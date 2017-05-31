@@ -76,25 +76,3 @@ void opj_raw_init_dec(opj_raw_t *raw, OPJ_BYTE *bp, OPJ_UINT32 len)
     raw->c = 0;
     raw->ct = 0;
 }
-
-OPJ_UINT32 opj_raw_decode(opj_raw_t *raw)
-{
-    OPJ_UINT32 d;
-    if (raw->ct == 0) {
-        raw->ct = 8;
-        if (raw->len == raw->lenmax) {
-            raw->c = 0xff;
-        } else {
-            if (raw->c == 0xff) {
-                raw->ct = 7;
-            }
-            raw->c = *(raw->start + raw->len);
-            raw->len++;
-        }
-    }
-    raw->ct--;
-    d = ((OPJ_UINT32)raw->c >> raw->ct) & 0x01U;
-
-    return d;
-}
-
