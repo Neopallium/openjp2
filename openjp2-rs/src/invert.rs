@@ -5,13 +5,6 @@ extern "C" {
   #[no_mangle]
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
   #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
-  #[no_mangle]
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
   #[no_mangle]
   fn opj_free(m: *mut libc::c_void);
@@ -306,16 +299,7 @@ unsafe extern "C" fn opj_lupSolve(
     .offset(-(1 as libc::c_int as isize));
   /* and we take after the last point of the destination vector */
   lDestPtr = pResult.offset(nb_compo as isize);
-  if nb_compo != 0 as libc::c_int as libc::c_uint {
-  } else {
-    __assert_fail(b"nb_compo != 0\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/invert.c\x00" as
-                          *const u8 as *const libc::c_char,
-                      252 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 104],
-                                                &[libc::c_char; 104]>(b"void opj_lupSolve(OPJ_FLOAT32 *, OPJ_FLOAT32 *, OPJ_FLOAT32 *, OPJ_UINT32 *, OPJ_UINT32, OPJ_FLOAT32 *)\x00")).as_ptr());
-  }
+  assert!(nb_compo != 0 as libc::c_int as libc::c_uint);
   k = nb_compo as OPJ_INT32 - 1 as libc::c_int;
   while k != -(1 as libc::c_int) {
     sum = 0.0f64 as OPJ_FLOAT32;

@@ -2,13 +2,6 @@ use ::libc;
 extern "C" {
   pub type opj_mutex_t;
   #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
-  #[no_mangle]
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
   #[no_mangle]
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
@@ -51,8 +44,9 @@ pub type OPJ_UINT32 = uint32_t;
 pub type OPJ_UINT64 = uint64_t;
 pub type opj_msg_callback =
   Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_event_mgr {
   pub m_error_data: *mut libc::c_void,
   pub m_warning_data: *mut libc::c_void,
@@ -63,8 +57,9 @@ pub struct opj_event_mgr {
 }
 pub type opj_event_mgr_t = opj_event_mgr;
 pub type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_cblk_dec {
   pub segs: *mut opj_tcd_seg_t,
   pub chunks: *mut opj_tcd_seg_data_chunk_t,
@@ -84,15 +79,17 @@ pub struct opj_tcd_cblk_dec {
   pub decoded_data: *mut OPJ_INT32,
 }
 pub type opj_tcd_seg_data_chunk_t = opj_tcd_seg_data_chunk;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_seg_data_chunk {
   pub data: *mut OPJ_BYTE,
   pub len: OPJ_UINT32,
 }
 pub type opj_tcd_seg_t = opj_tcd_seg;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_seg {
   pub len: OPJ_UINT32,
   pub numpasses: OPJ_UINT32,
@@ -101,8 +98,9 @@ pub struct opj_tcd_seg {
   pub numnewpasses: OPJ_UINT32,
   pub newlen: OPJ_UINT32,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_mqc_state {
   pub qeval: OPJ_UINT32,
   pub mps: OPJ_UINT32,
@@ -110,8 +108,9 @@ pub struct opj_mqc_state {
   pub nlps: *const opj_mqc_state,
 }
 pub type opj_mqc_state_t = opj_mqc_state;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_mqc {
   pub c: OPJ_UINT32,
   pub a: OPJ_UINT32,
@@ -127,8 +126,9 @@ pub struct opj_mqc {
 }
 pub type opj_mqc_t = opj_mqc;
 pub type opj_flag_t = OPJ_UINT32;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_t1 {
   pub mqc: opj_mqc_t,
   pub data: *mut OPJ_INT32,
@@ -143,8 +143,9 @@ pub struct opj_t1 {
   pub cblkdatabuffersize: OPJ_UINT32,
 }
 pub type opj_t1_t = opj_t1;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct dec_mel {
   pub data: *mut OPJ_UINT8,
   pub tmp: OPJ_UINT64,
@@ -163,8 +164,9 @@ pub struct dec_mel {
  *  Each run represents the number of zero events before a one event.
  */
 pub type dec_mel_t = dec_mel;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct rev_struct {
   pub data: *mut OPJ_UINT8,
   pub tmp: OPJ_UINT64,
@@ -187,8 +189,9 @@ pub struct rev_struct {
  *         backward, such as VLC and MRP
  */
 pub type rev_struct_t = rev_struct;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct frwd_struct {
   pub data: *const OPJ_UINT8,
   pub tmp: OPJ_UINT64,
@@ -2540,21 +2543,10 @@ unsafe extern "C" fn mel_init(
     // this code is similar to mel_read
     let mut d: OPJ_UINT64 = 0; // if buffer is consumed
     let mut d_bits: libc::c_int = 0;
-    if (*melp).unstuff == 0 as libc::c_int
-      || *(*melp).data.offset(0 as libc::c_int as isize) as libc::c_int <= 0x8f as libc::c_int
-    {
-    } else {
-      __assert_fail(
-        b"melp->unstuff == OPJ_FALSE || melp->data[0] <= 0x8F\x00" as *const u8
-          as *const libc::c_char,
-        b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00" as *const u8 as *const libc::c_char,
-        319 as libc::c_int as libc::c_uint,
-        (*::std::mem::transmute::<&[u8; 50], &[libc::c_char; 50]>(
-          b"void mel_init(dec_mel_t *, OPJ_UINT8 *, int, int)\x00",
-        ))
-        .as_ptr(),
-      );
-    }
+    assert!(
+      (*melp).unstuff == 0 as libc::c_int
+        || *(*melp).data.offset(0 as libc::c_int as isize) as libc::c_int <= 0x8f as libc::c_int
+    );
     d = if (*melp).size > 0 as libc::c_int {
       *(*melp).data as libc::c_int
     } else {
@@ -2824,18 +2816,7 @@ unsafe extern "C" fn rev_advance(
   mut vlcp: *mut rev_struct_t,
   mut num_bits: OPJ_UINT32,
 ) -> OPJ_UINT32 {
-  if num_bits <= (*vlcp).bits {
-  } else {
-    __assert_fail(
-      b"num_bits <= vlcp->bits\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00" as *const u8 as *const libc::c_char,
-      525 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 51], &[libc::c_char; 51]>(
-        b"OPJ_UINT32 rev_advance(rev_struct_t *, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    ); // vlcp->tmp must have more than num_bits
-  } // remove bits
+  assert!(num_bits <= (*vlcp).bits); // remove bits
   (*vlcp).tmp >>= num_bits; // decrement the number of bits
   (*vlcp).bits = ((*vlcp).bits as libc::c_uint).wrapping_sub(num_bits) as OPJ_UINT32 as OPJ_UINT32;
   return (*vlcp).tmp as OPJ_UINT32;
@@ -3041,18 +3022,7 @@ unsafe extern "C" fn rev_advance_mrp(
   mut mrp: *mut rev_struct_t,
   mut num_bits: OPJ_UINT32,
 ) -> OPJ_UINT32 {
-  if num_bits <= (*mrp).bits {
-  } else {
-    __assert_fail(
-      b"num_bits <= mrp->bits\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00" as *const u8 as *const libc::c_char,
-      670 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 55], &[libc::c_char; 55]>(
-        b"OPJ_UINT32 rev_advance_mrp(rev_struct_t *, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    ); // we must not consume more than mrp->bits
-  } // discard the lowest num_bits bits
+  assert!(num_bits <= (*mrp).bits); // discard the lowest num_bits bits
   (*mrp).tmp >>= num_bits;
   (*mrp).bits = ((*mrp).bits as libc::c_uint).wrapping_sub(num_bits) as OPJ_UINT32 as OPJ_UINT32;
   return (*mrp).tmp as OPJ_UINT32;
@@ -3356,18 +3326,7 @@ unsafe extern "C" fn frwd_read(mut msp: *mut frwd_struct_t) {
   let mut bits: OPJ_UINT32 = 0; // read 32 bits
   let mut t: OPJ_UINT32 = 0;
   let mut unstuff: OPJ_BOOL = 0;
-  if (*msp).bits <= 32 as libc::c_int as libc::c_uint {
-  } else {
-    __assert_fail(
-      b"msp->bits <= 32\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00" as *const u8 as *const libc::c_char,
-      904 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 32], &[libc::c_char; 32]>(
-        b"void frwd_read(frwd_struct_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!((*msp).bits <= 32 as libc::c_int as libc::c_uint);
   val = 0 as libc::c_uint;
   if (*msp).size > 3 as libc::c_int {
     val = read_le_uint32((*msp).data as *const libc::c_void);
@@ -3457,19 +3416,9 @@ unsafe extern "C" fn frwd_init(
   (*msp).unstuff = 0 as libc::c_int;
   (*msp).size = size;
   (*msp).X = X;
-  if (*msp).X == 0 as libc::c_int as libc::c_uint || (*msp).X == 0xff as libc::c_int as libc::c_uint
-  {
-  } else {
-    __assert_fail(
-      b"msp->X == 0 || msp->X == 0xFF\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00" as *const u8 as *const libc::c_char,
-      967 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 68], &[libc::c_char; 68]>(
-        b"void frwd_init(frwd_struct_t *, const OPJ_UINT8 *, int, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(
+    (*msp).X == 0 as libc::c_int as libc::c_uint || (*msp).X == 0xff as libc::c_int as libc::c_uint
+  );
   //This code is designed for an architecture that read address should
   // align to the read size (address multiple of 4 if read size is 4)
   //These few lines take care of the case where data is not at a multiple
@@ -3515,18 +3464,7 @@ unsafe extern "C" fn frwd_init(
  */
 #[inline]
 unsafe extern "C" fn frwd_advance(mut msp: *mut frwd_struct_t, mut num_bits: OPJ_UINT32) {
-  if num_bits <= (*msp).bits {
-  } else {
-    __assert_fail(
-      b"num_bits <= msp->bits\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00" as *const u8 as *const libc::c_char,
-      994 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 47], &[libc::c_char; 47]>(
-        b"void frwd_advance(frwd_struct_t *, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    ); // consume num_bits
-  }
+  assert!(num_bits <= (*msp).bits);
   (*msp).tmp >>= num_bits;
   (*msp).bits = ((*msp).bits as libc::c_uint).wrapping_sub(num_bits) as OPJ_UINT32 as OPJ_UINT32;
 }
@@ -3561,42 +3499,10 @@ unsafe extern "C" fn opj_t1_allocate_buffers(
   let mut flagssize: OPJ_UINT32 = 0;
   /* No risk of overflow. Prior checks ensure those assert are met */
   /* They are per the specification */
-  if w <= 1024 as libc::c_int as libc::c_uint {
-  } else {
-    __assert_fail(
-      b"w <= 1024\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00" as *const u8 as *const libc::c_char,
-      1032 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
-        b"OPJ_BOOL opj_t1_allocate_buffers(opj_t1_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if h <= 1024 as libc::c_int as libc::c_uint {
-  } else {
-    __assert_fail(
-      b"h <= 1024\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00" as *const u8 as *const libc::c_char,
-      1033 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
-        b"OPJ_BOOL opj_t1_allocate_buffers(opj_t1_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if w.wrapping_mul(h) <= 4096 as libc::c_int as libc::c_uint {
-  } else {
-    __assert_fail(
-      b"w * h <= 4096\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00" as *const u8 as *const libc::c_char,
-      1034 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
-        b"OPJ_BOOL opj_t1_allocate_buffers(opj_t1_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(w <= 1024 as libc::c_int as libc::c_uint);
+  assert!(h <= 1024 as libc::c_int as libc::c_uint);
+  assert!(w.wrapping_mul(h) <= 4096 as libc::c_int as libc::c_uint);
   /* encoder uses tile buffer, so no need to allocate */
   let mut datasize = w.wrapping_mul(h);
   if datasize > (*t1).datasize {
@@ -4917,20 +4823,9 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                 if sig & sample_mask != 0 {
                   //if LSB is set
                   let mut sym: OPJ_UINT32 = 0; // decoded value cannot be zero
-                  if *dp.offset(0 as libc::c_int as isize) != 0 as libc::c_int as libc::c_uint {
-                  } else {
-                    __assert_fail(b"dp[0] != 0\x00" as
-                                                          *const u8 as
-                                                          *const libc::c_char,
-                                                      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      2046 as libc::c_int as
-                                                          libc::c_uint,
-                                                      (*::std::mem::transmute::<&[u8; 145],
-                                                                                &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                    // get it value
-                  }
+                  assert!(
+                    *dp.offset(0 as libc::c_int as isize) != 0 as libc::c_int as libc::c_uint
+                  );
                   sym = cwd & 1 as libc::c_int as libc::c_uint;
                   // remove center of bin if sym is 0
                   let ref mut fresh16 = *dp.offset(0 as libc::c_int as isize); // put half the center of bin
@@ -4944,19 +4839,7 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   as OPJ_UINT32;
                 if sig & sample_mask != 0 {
                   let mut sym_0: OPJ_UINT32 = 0;
-                  if *dp.offset(stride as isize) != 0 as libc::c_int as libc::c_uint {
-                  } else {
-                    __assert_fail(b"dp[stride] != 0\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      2058 as libc::c_int as
-                                                          libc::c_uint,
-                                                      (*::std::mem::transmute::<&[u8; 145],
-                                                                                &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                  }
+                  assert!(*dp.offset(stride as isize) != 0 as libc::c_int as libc::c_uint);
                   sym_0 = cwd & 1 as libc::c_int as libc::c_uint;
                   let ref mut fresh18 = *dp.offset(stride as isize);
                   *fresh18 ^= (1 as libc::c_int as libc::c_uint).wrapping_sub(sym_0)
@@ -4969,21 +4852,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   as OPJ_UINT32;
                 if sig & sample_mask != 0 {
                   let mut sym_1: OPJ_UINT32 = 0;
-                  if *dp.offset((2 as libc::c_int * stride) as isize)
-                    != 0 as libc::c_int as libc::c_uint
-                  {
-                  } else {
-                    __assert_fail(b"dp[2 * stride] != 0\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      2069 as libc::c_int as
-                                                          libc::c_uint,
-                                                      (*::std::mem::transmute::<&[u8; 145],
-                                                                                &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                  }
+                  assert!(
+                    *dp.offset((2 as libc::c_int * stride) as isize)
+                      != 0 as libc::c_int as libc::c_uint
+                  );
                   sym_1 = cwd & 1 as libc::c_int as libc::c_uint;
                   let ref mut fresh20 = *dp.offset((2 as libc::c_int * stride) as isize);
                   *fresh20 ^= (1 as libc::c_int as libc::c_uint).wrapping_sub(sym_1)
@@ -4996,21 +4868,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   as OPJ_UINT32;
                 if sig & sample_mask != 0 {
                   let mut sym_2: OPJ_UINT32 = 0;
-                  if *dp.offset((3 as libc::c_int * stride) as isize)
-                    != 0 as libc::c_int as libc::c_uint
-                  {
-                  } else {
-                    __assert_fail(b"dp[3 * stride] != 0\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      2080 as libc::c_int as
-                                                          libc::c_uint,
-                                                      (*::std::mem::transmute::<&[u8; 145],
-                                                                                &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                  }
+                  assert!(
+                    *dp.offset((3 as libc::c_int * stride) as isize)
+                      != 0 as libc::c_int as libc::c_uint
+                  );
                   sym_2 = cwd & 1 as libc::c_int as libc::c_uint;
                   let ref mut fresh22 = *dp.offset((3 as libc::c_int * stride) as isize);
                   *fresh22 ^= (1 as libc::c_int as libc::c_uint).wrapping_sub(sym_2)
@@ -5183,20 +5044,9 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   //scan mbr to find a new significant sample
                   sample_mask_0 = 0x11111111 as libc::c_uint & col_mask_0; // LSB
                   if mbr_0 & sample_mask_0 != 0 {
-                    if *dp_0.offset(0 as libc::c_int as isize) == 0 as libc::c_int as libc::c_uint {
-                    } else {
-                      __assert_fail(b"dp[0] == 0\x00" as
-                                                              *const u8 as
-                                                              *const libc::c_char,
-                                                          b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          2193 as libc::c_int
-                                                              as libc::c_uint,
-                                                          (*::std::mem::transmute::<&[u8; 145],
-                                                                                    &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                      // the sample must have been 0
-                    }
+                    assert!(
+                      *dp_0.offset(0 as libc::c_int as isize) == 0 as libc::c_int as libc::c_uint
+                    );
                     if cwd_0 & 1 as libc::c_int as libc::c_uint != 0 {
                       //consume bit and increment number of
                       //consumed bits
@@ -5213,19 +5063,7 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   sample_mask_0 = (sample_mask_0 as libc::c_uint).wrapping_add(sample_mask_0)
                     as OPJ_UINT32 as OPJ_UINT32;
                   if mbr_0 & sample_mask_0 != 0 {
-                    if *dp_0.offset(stride as isize) == 0 as libc::c_int as libc::c_uint {
-                    } else {
-                      __assert_fail(b"dp[stride] == 0\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          2208 as libc::c_int
-                                                              as libc::c_uint,
-                                                          (*::std::mem::transmute::<&[u8; 145],
-                                                                                    &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                    }
+                    assert!(*dp_0.offset(stride as isize) == 0 as libc::c_int as libc::c_uint);
                     if cwd_0 & 1 as libc::c_int as libc::c_uint != 0 {
                       let mut t_6: OPJ_UINT32 = 0;
                       new_sig |= sample_mask_0;
@@ -5238,21 +5076,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   sample_mask_0 = (sample_mask_0 as libc::c_uint).wrapping_add(sample_mask_0)
                     as OPJ_UINT32 as OPJ_UINT32;
                   if mbr_0 & sample_mask_0 != 0 {
-                    if *dp_0.offset((2 as libc::c_int * stride) as isize)
-                      == 0 as libc::c_int as libc::c_uint
-                    {
-                    } else {
-                      __assert_fail(b"dp[2 * stride] == 0\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          2221 as libc::c_int
-                                                              as libc::c_uint,
-                                                          (*::std::mem::transmute::<&[u8; 145],
-                                                                                    &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                    }
+                    assert!(
+                      *dp_0.offset((2 as libc::c_int * stride) as isize)
+                        == 0 as libc::c_int as libc::c_uint
+                    );
                     if cwd_0 & 1 as libc::c_int as libc::c_uint != 0 {
                       let mut t_7: OPJ_UINT32 = 0;
                       new_sig |= sample_mask_0;
@@ -5265,21 +5092,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   sample_mask_0 = (sample_mask_0 as libc::c_uint).wrapping_add(sample_mask_0)
                     as OPJ_UINT32 as OPJ_UINT32;
                   if mbr_0 & sample_mask_0 != 0 {
-                    if *dp_0.offset((3 as libc::c_int * stride) as isize)
-                      == 0 as libc::c_int as libc::c_uint
-                    {
-                    } else {
-                      __assert_fail(b"dp[3 * stride] == 0\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          2234 as libc::c_int
-                                                              as libc::c_uint,
-                                                          (*::std::mem::transmute::<&[u8; 145],
-                                                                                    &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                    }
+                    assert!(
+                      *dp_0.offset((3 as libc::c_int * stride) as isize)
+                        == 0 as libc::c_int as libc::c_uint
+                    );
                     if cwd_0 & 1 as libc::c_int as libc::c_uint != 0 {
                       let mut t_8: OPJ_UINT32 = 0;
                       new_sig |= sample_mask_0;
@@ -5310,24 +5126,9 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                     //scan 4 signs
                     sample_mask_1 = 0x11111111 as libc::c_uint & col_mask_1;
                     if new_sig & sample_mask_1 != 0 {
-                      if *dp_1.offset(0 as libc::c_int as isize) == 0 as libc::c_int as libc::c_uint
-                      {
-                      } else {
-                        __assert_fail(b"dp[0] == 0\x00"
-                                                                  as *const u8
-                                                                  as
-                                                                  *const libc::c_char,
-                                                              b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                                  as *const u8
-                                                                  as
-                                                                  *const libc::c_char,
-                                                              2264 as
-                                                                  libc::c_int
-                                                                  as
-                                                                  libc::c_uint,
-                                                              (*::std::mem::transmute::<&[u8; 145],
-                                                                                        &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                      }
+                      assert!(
+                        *dp_1.offset(0 as libc::c_int as isize) == 0 as libc::c_int as libc::c_uint
+                      );
                       //consume bit and increment number
                       //of consumed bits
                       let ref mut fresh30 = *dp_1.offset(0 as libc::c_int as isize); //put value and sign
@@ -5339,23 +5140,7 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                     sample_mask_1 = (sample_mask_1 as libc::c_uint).wrapping_add(sample_mask_1)
                       as OPJ_UINT32 as OPJ_UINT32;
                     if new_sig & sample_mask_1 != 0 {
-                      if *dp_1.offset(stride as isize) == 0 as libc::c_int as libc::c_uint {
-                      } else {
-                        __assert_fail(b"dp[stride] == 0\x00"
-                                                                  as *const u8
-                                                                  as
-                                                                  *const libc::c_char,
-                                                              b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                                  as *const u8
-                                                                  as
-                                                                  *const libc::c_char,
-                                                              2273 as
-                                                                  libc::c_int
-                                                                  as
-                                                                  libc::c_uint,
-                                                              (*::std::mem::transmute::<&[u8; 145],
-                                                                                        &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                      }
+                      assert!(*dp_1.offset(stride as isize) == 0 as libc::c_int as libc::c_uint);
                       let ref mut fresh31 = *dp_1.offset(stride as isize);
                       *fresh31 |=
                         (cwd_0 & 1 as libc::c_int as libc::c_uint) << 31 as libc::c_int | val_15;
@@ -5365,25 +5150,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                     sample_mask_1 = (sample_mask_1 as libc::c_uint).wrapping_add(sample_mask_1)
                       as OPJ_UINT32 as OPJ_UINT32;
                     if new_sig & sample_mask_1 != 0 {
-                      if *dp_1.offset((2 as libc::c_int * stride) as isize)
-                        == 0 as libc::c_int as libc::c_uint
-                      {
-                      } else {
-                        __assert_fail(b"dp[2 * stride] == 0\x00"
-                                                                  as *const u8
-                                                                  as
-                                                                  *const libc::c_char,
-                                                              b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                                  as *const u8
-                                                                  as
-                                                                  *const libc::c_char,
-                                                              2281 as
-                                                                  libc::c_int
-                                                                  as
-                                                                  libc::c_uint,
-                                                              (*::std::mem::transmute::<&[u8; 145],
-                                                                                        &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                      }
+                      assert!(
+                        *dp_1.offset((2 as libc::c_int * stride) as isize)
+                          == 0 as libc::c_int as libc::c_uint
+                      );
                       let ref mut fresh32 = *dp_1.offset((2 as libc::c_int * stride) as isize);
                       *fresh32 |=
                         (cwd_0 & 1 as libc::c_int as libc::c_uint) << 31 as libc::c_int | val_15;
@@ -5393,25 +5163,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                     sample_mask_1 = (sample_mask_1 as libc::c_uint).wrapping_add(sample_mask_1)
                       as OPJ_UINT32 as OPJ_UINT32;
                     if new_sig & sample_mask_1 != 0 {
-                      if *dp_1.offset((3 as libc::c_int * stride) as isize)
-                        == 0 as libc::c_int as libc::c_uint
-                      {
-                      } else {
-                        __assert_fail(b"dp[3 * stride] == 0\x00"
-                                                                  as *const u8
-                                                                  as
-                                                                  *const libc::c_char,
-                                                              b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                                  as *const u8
-                                                                  as
-                                                                  *const libc::c_char,
-                                                              2289 as
-                                                                  libc::c_int
-                                                                  as
-                                                                  libc::c_uint,
-                                                              (*::std::mem::transmute::<&[u8; 145],
-                                                                                        &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                      }
+                      assert!(
+                        *dp_1.offset((3 as libc::c_int * stride) as isize)
+                          == 0 as libc::c_int as libc::c_uint
+                      );
                       let ref mut fresh33 = *dp_1.offset((3 as libc::c_int * stride) as isize);
                       *fresh33 |=
                         (cwd_0 & 1 as libc::c_int as libc::c_uint) << 31 as libc::c_int | val_15;
@@ -5507,19 +5262,9 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
               let mut sample_mask_2 = 0x11111111 as libc::c_int as libc::c_uint & col_mask_2;
               if sig_1 & sample_mask_2 != 0 {
                 let mut sym_3: OPJ_UINT32 = 0;
-                if *dp_2.offset(0 as libc::c_int as isize) != 0 as libc::c_int as libc::c_uint {
-                } else {
-                  __assert_fail(b"dp[0] != 0\x00" as
-                                                      *const u8 as
-                                                      *const libc::c_char,
-                                                  b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                      as *const u8 as
-                                                      *const libc::c_char,
-                                                  2351 as libc::c_int as
-                                                      libc::c_uint,
-                                                  (*::std::mem::transmute::<&[u8; 145],
-                                                                            &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                }
+                assert!(
+                  *dp_2.offset(0 as libc::c_int as isize) != 0 as libc::c_int as libc::c_uint
+                );
                 sym_3 = cwd_1 & 1 as libc::c_int as libc::c_uint;
                 let ref mut fresh39 = *dp_2.offset(0 as libc::c_int as isize);
                 *fresh39 ^= (1 as libc::c_int as libc::c_uint).wrapping_sub(sym_3)
@@ -5532,19 +5277,7 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                 as OPJ_UINT32 as OPJ_UINT32;
               if sig_1 & sample_mask_2 != 0 {
                 let mut sym_4: OPJ_UINT32 = 0;
-                if *dp_2.offset(stride as isize) != 0 as libc::c_int as libc::c_uint {
-                } else {
-                  __assert_fail(b"dp[stride] != 0\x00" as
-                                                      *const u8 as
-                                                      *const libc::c_char,
-                                                  b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                      as *const u8 as
-                                                      *const libc::c_char,
-                                                  2361 as libc::c_int as
-                                                      libc::c_uint,
-                                                  (*::std::mem::transmute::<&[u8; 145],
-                                                                            &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                }
+                assert!(*dp_2.offset(stride as isize) != 0 as libc::c_int as libc::c_uint);
                 sym_4 = cwd_1 & 1 as libc::c_int as libc::c_uint;
                 let ref mut fresh41 = *dp_2.offset(stride as isize);
                 *fresh41 ^= (1 as libc::c_int as libc::c_uint).wrapping_sub(sym_4)
@@ -5557,21 +5290,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                 as OPJ_UINT32 as OPJ_UINT32;
               if sig_1 & sample_mask_2 != 0 {
                 let mut sym_5: OPJ_UINT32 = 0;
-                if *dp_2.offset((2 as libc::c_int * stride) as isize)
-                  != 0 as libc::c_int as libc::c_uint
-                {
-                } else {
-                  __assert_fail(b"dp[2 * stride] != 0\x00"
-                                                      as *const u8 as
-                                                      *const libc::c_char,
-                                                  b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                      as *const u8 as
-                                                      *const libc::c_char,
-                                                  2371 as libc::c_int as
-                                                      libc::c_uint,
-                                                  (*::std::mem::transmute::<&[u8; 145],
-                                                                            &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                }
+                assert!(
+                  *dp_2.offset((2 as libc::c_int * stride) as isize)
+                    != 0 as libc::c_int as libc::c_uint
+                );
                 sym_5 = cwd_1 & 1 as libc::c_int as libc::c_uint;
                 let ref mut fresh43 = *dp_2.offset((2 as libc::c_int * stride) as isize);
                 *fresh43 ^= (1 as libc::c_int as libc::c_uint).wrapping_sub(sym_5)
@@ -5584,21 +5306,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                 as OPJ_UINT32 as OPJ_UINT32;
               if sig_1 & sample_mask_2 != 0 {
                 let mut sym_6: OPJ_UINT32 = 0;
-                if *dp_2.offset((3 as libc::c_int * stride) as isize)
-                  != 0 as libc::c_int as libc::c_uint
-                {
-                } else {
-                  __assert_fail(b"dp[3 * stride] != 0\x00"
-                                                      as *const u8 as
-                                                      *const libc::c_char,
-                                                  b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                      as *const u8 as
-                                                      *const libc::c_char,
-                                                  2381 as libc::c_int as
-                                                      libc::c_uint,
-                                                  (*::std::mem::transmute::<&[u8; 145],
-                                                                            &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                }
+                assert!(
+                  *dp_2.offset((3 as libc::c_int * stride) as isize)
+                    != 0 as libc::c_int as libc::c_uint
+                );
                 sym_6 = cwd_1 & 1 as libc::c_int as libc::c_uint;
                 let ref mut fresh45 = *dp_2.offset((3 as libc::c_int * stride) as isize);
                 *fresh45 ^= (1 as libc::c_int as libc::c_uint).wrapping_sub(sym_6)
@@ -5783,19 +5494,9 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                 //scan 4 mbr
                 sample_mask_3 = 0x11111111 as libc::c_uint & col_mask_3;
                 if mbr_2 & sample_mask_3 != 0 {
-                  if *dp_3.offset(0 as libc::c_int as isize) == 0 as libc::c_int as libc::c_uint {
-                  } else {
-                    __assert_fail(b"dp[0] == 0\x00" as
-                                                          *const u8 as
-                                                          *const libc::c_char,
-                                                      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      2503 as libc::c_int as
-                                                          libc::c_uint,
-                                                      (*::std::mem::transmute::<&[u8; 145],
-                                                                                &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                  }
+                  assert!(
+                    *dp_3.offset(0 as libc::c_int as isize) == 0 as libc::c_int as libc::c_uint
+                  );
                   if cwd_2 & 1 as libc::c_int as libc::c_uint != 0 {
                     let mut t_12: OPJ_UINT32 = 0;
                     new_sig_0 |= sample_mask_3;
@@ -5808,19 +5509,7 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                 sample_mask_3 = (sample_mask_3 as libc::c_uint).wrapping_add(sample_mask_3)
                   as OPJ_UINT32 as OPJ_UINT32;
                 if mbr_2 & sample_mask_3 != 0 {
-                  if *dp_3.offset(stride as isize) == 0 as libc::c_int as libc::c_uint {
-                  } else {
-                    __assert_fail(b"dp[stride] == 0\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      2516 as libc::c_int as
-                                                          libc::c_uint,
-                                                      (*::std::mem::transmute::<&[u8; 145],
-                                                                                &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                  }
+                  assert!(*dp_3.offset(stride as isize) == 0 as libc::c_int as libc::c_uint);
                   if cwd_2 & 1 as libc::c_int as libc::c_uint != 0 {
                     let mut t_13: OPJ_UINT32 = 0;
                     new_sig_0 |= sample_mask_3;
@@ -5833,21 +5522,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                 sample_mask_3 = (sample_mask_3 as libc::c_uint).wrapping_add(sample_mask_3)
                   as OPJ_UINT32 as OPJ_UINT32;
                 if mbr_2 & sample_mask_3 != 0 {
-                  if *dp_3.offset((2 as libc::c_int * stride) as isize)
-                    == 0 as libc::c_int as libc::c_uint
-                  {
-                  } else {
-                    __assert_fail(b"dp[2 * stride] == 0\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      2529 as libc::c_int as
-                                                          libc::c_uint,
-                                                      (*::std::mem::transmute::<&[u8; 145],
-                                                                                &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                  }
+                  assert!(
+                    *dp_3.offset((2 as libc::c_int * stride) as isize)
+                      == 0 as libc::c_int as libc::c_uint
+                  );
                   if cwd_2 & 1 as libc::c_int as libc::c_uint != 0 {
                     let mut t_14: OPJ_UINT32 = 0;
                     new_sig_0 |= sample_mask_3;
@@ -5860,21 +5538,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                 sample_mask_3 = (sample_mask_3 as libc::c_uint).wrapping_add(sample_mask_3)
                   as OPJ_UINT32 as OPJ_UINT32;
                 if mbr_2 & sample_mask_3 != 0 {
-                  if *dp_3.offset((3 as libc::c_int * stride) as isize)
-                    == 0 as libc::c_int as libc::c_uint
-                  {
-                  } else {
-                    __assert_fail(b"dp[3 * stride] == 0\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                          as *const u8 as
-                                                          *const libc::c_char,
-                                                      2542 as libc::c_int as
-                                                          libc::c_uint,
-                                                      (*::std::mem::transmute::<&[u8; 145],
-                                                                                &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                  }
+                  assert!(
+                    *dp_3.offset((3 as libc::c_int * stride) as isize)
+                      == 0 as libc::c_int as libc::c_uint
+                  );
                   if cwd_2 & 1 as libc::c_int as libc::c_uint != 0 {
                     let mut t_15: OPJ_UINT32 = 0;
                     new_sig_0 |= sample_mask_3;
@@ -5903,19 +5570,9 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   //scan 4 signs
                   sample_mask_4 = 0x11111111 as libc::c_uint & col_mask_4;
                   if new_sig_0 & sample_mask_4 != 0 {
-                    if *dp_4.offset(0 as libc::c_int as isize) == 0 as libc::c_int as libc::c_uint {
-                    } else {
-                      __assert_fail(b"dp[0] == 0\x00" as
-                                                              *const u8 as
-                                                              *const libc::c_char,
-                                                          b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          2571 as libc::c_int
-                                                              as libc::c_uint,
-                                                          (*::std::mem::transmute::<&[u8; 145],
-                                                                                    &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                    }
+                    assert!(
+                      *dp_4.offset(0 as libc::c_int as isize) == 0 as libc::c_int as libc::c_uint
+                    );
                     let ref mut fresh53 = *dp_4.offset(0 as libc::c_int as isize);
                     *fresh53 |=
                       (cwd_2 & 1 as libc::c_int as libc::c_uint) << 31 as libc::c_int | val_16;
@@ -5925,19 +5582,7 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   sample_mask_4 = (sample_mask_4 as libc::c_uint).wrapping_add(sample_mask_4)
                     as OPJ_UINT32 as OPJ_UINT32;
                   if new_sig_0 & sample_mask_4 != 0 {
-                    if *dp_4.offset(stride as isize) == 0 as libc::c_int as libc::c_uint {
-                    } else {
-                      __assert_fail(b"dp[stride] == 0\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          2579 as libc::c_int
-                                                              as libc::c_uint,
-                                                          (*::std::mem::transmute::<&[u8; 145],
-                                                                                    &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                    }
+                    assert!(*dp_4.offset(stride as isize) == 0 as libc::c_int as libc::c_uint);
                     let ref mut fresh54 = *dp_4.offset(stride as isize);
                     *fresh54 |=
                       (cwd_2 & 1 as libc::c_int as libc::c_uint) << 31 as libc::c_int | val_16;
@@ -5947,21 +5592,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   sample_mask_4 = (sample_mask_4 as libc::c_uint).wrapping_add(sample_mask_4)
                     as OPJ_UINT32 as OPJ_UINT32;
                   if new_sig_0 & sample_mask_4 != 0 {
-                    if *dp_4.offset((2 as libc::c_int * stride) as isize)
-                      == 0 as libc::c_int as libc::c_uint
-                    {
-                    } else {
-                      __assert_fail(b"dp[2 * stride] == 0\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          2587 as libc::c_int
-                                                              as libc::c_uint,
-                                                          (*::std::mem::transmute::<&[u8; 145],
-                                                                                    &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                    }
+                    assert!(
+                      *dp_4.offset((2 as libc::c_int * stride) as isize)
+                        == 0 as libc::c_int as libc::c_uint
+                    );
                     let ref mut fresh55 = *dp_4.offset((2 as libc::c_int * stride) as isize);
                     *fresh55 |=
                       (cwd_2 & 1 as libc::c_int as libc::c_uint) << 31 as libc::c_int | val_16;
@@ -5971,21 +5605,10 @@ pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
                   sample_mask_4 = (sample_mask_4 as libc::c_uint).wrapping_add(sample_mask_4)
                     as OPJ_UINT32 as OPJ_UINT32;
                   if new_sig_0 & sample_mask_4 != 0 {
-                    if *dp_4.offset((3 as libc::c_int * stride) as isize)
-                      == 0 as libc::c_int as libc::c_uint
-                    {
-                    } else {
-                      __assert_fail(b"dp[3 * stride] == 0\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          b"/opt/openjpeg/src/lib/openjp2/ht_dec.c\x00"
-                                                              as *const u8 as
-                                                              *const libc::c_char,
-                                                          2595 as libc::c_int
-                                                              as libc::c_uint,
-                                                          (*::std::mem::transmute::<&[u8; 145],
-                                                                                    &[libc::c_char; 145]>(b"OPJ_BOOL opj_t1_ht_decode_cblk(opj_t1_t *, opj_tcd_cblk_dec_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *, opj_mutex_t *, OPJ_BOOL)\x00")).as_ptr());
-                    }
+                    assert!(
+                      *dp_4.offset((3 as libc::c_int * stride) as isize)
+                        == 0 as libc::c_int as libc::c_uint
+                    );
                     let ref mut fresh56 = *dp_4.offset((3 as libc::c_int * stride) as isize);
                     *fresh56 |=
                       (cwd_2 & 1 as libc::c_int as libc::c_uint) << 31 as libc::c_int | val_16;

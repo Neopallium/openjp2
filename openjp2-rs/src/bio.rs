@@ -1,13 +1,6 @@
 use ::libc;
 extern "C" {
   #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
-  #[no_mangle]
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
   #[no_mangle]
   fn opj_free(m: *mut libc::c_void);
@@ -23,8 +16,9 @@ pub type OPJ_INT32 = int32_t;
 pub type OPJ_UINT32 = uint32_t;
 pub type OPJ_SIZE_T = size_t;
 pub type ptrdiff_t = libc::c_long;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_bio {
   pub start: *mut OPJ_BYTE,
   pub end: *mut OPJ_BYTE,
@@ -197,18 +191,7 @@ pub unsafe extern "C" fn opj_bio_write(
   mut n: OPJ_UINT32,
 ) {
   let mut i: OPJ_INT32 = 0;
-  if n > 0 as libc::c_uint && n <= 32 as libc::c_uint {
-  } else {
-    __assert_fail(
-      b"(n > 0U) && (n <= 32U)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/bio.c\x00" as *const u8 as *const libc::c_char,
-      169 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 56], &[libc::c_char; 56]>(
-        b"void opj_bio_write(opj_bio_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(n > 0 as libc::c_uint && n <= 32 as libc::c_uint);
   i = n as OPJ_INT32 - 1 as libc::c_int;
   while i >= 0 as libc::c_int {
     opj_bio_putbit(bio, v >> i & 1 as libc::c_int as libc::c_uint);
@@ -219,18 +202,7 @@ pub unsafe extern "C" fn opj_bio_write(
 pub unsafe extern "C" fn opj_bio_read(mut bio: *mut opj_bio_t, mut n: OPJ_UINT32) -> OPJ_UINT32 {
   let mut i: OPJ_INT32 = 0;
   let mut v: OPJ_UINT32 = 0;
-  if n > 0 as libc::c_uint {
-  } else {
-    __assert_fail(
-      b"(n > 0U)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/bio.c\x00" as *const u8 as *const libc::c_char,
-      180 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 49], &[libc::c_char; 49]>(
-        b"OPJ_UINT32 opj_bio_read(opj_bio_t *, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(n > 0 as libc::c_uint);
   v = 0 as libc::c_uint;
   i = n as OPJ_INT32 - 1 as libc::c_int;
   while i >= 0 as libc::c_int {

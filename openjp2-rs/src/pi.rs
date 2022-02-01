@@ -2,13 +2,6 @@ use ::c2rust_bitfields;
 use ::libc;
 extern "C" {
   #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
-  #[no_mangle]
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
   #[no_mangle]
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
@@ -64,8 +57,9 @@ pub const OPJ_CLRSPC_UNKNOWN: COLOR_SPACE = -1;
 pub type OPJ_COLOR_SPACE = COLOR_SPACE;
 pub type opj_msg_callback =
   Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_poc {
   pub resno0: OPJ_UINT32,
   pub compno0: OPJ_UINT32,
@@ -105,8 +99,9 @@ pub struct opj_poc {
   pub ty0_t: OPJ_UINT32,
 }
 pub type opj_poc_t = opj_poc;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_image_comp {
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
@@ -123,8 +118,9 @@ pub struct opj_image_comp {
   pub alpha: OPJ_UINT16,
 }
 pub type opj_image_comp_t = opj_image_comp;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_image {
   pub x0: OPJ_UINT32,
   pub y0: OPJ_UINT32,
@@ -138,8 +134,9 @@ pub struct opj_image {
 }
 pub type opj_image_t = opj_image;
 pub type OPJ_BITFIELD = libc::c_uint;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_event_mgr {
   pub m_error_data: *mut libc::c_void,
   pub m_warning_data: *mut libc::c_void,
@@ -149,8 +146,9 @@ pub struct opj_event_mgr {
   pub info_handler: opj_msg_callback,
 }
 pub type opj_event_mgr_t = opj_event_mgr;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_cp {
   pub rsiz: OPJ_UINT16,
   pub tx0: OPJ_UINT32,
@@ -185,15 +183,17 @@ pub struct opj_cp {
   #[bitfield(padding)]
   pub c2rust_padding: [u8; 3],
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed {
   pub m_dec: opj_decoding_param_t,
   pub m_enc: opj_encoding_param_t,
 }
 pub type opj_encoding_param_t = opj_encoding_param;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_encoding_param {
   pub m_max_comp_size: OPJ_UINT32,
   pub m_tp_pos: OPJ_INT32,
@@ -208,15 +208,17 @@ pub struct opj_encoding_param {
   pub c2rust_padding: [u8; 6],
 }
 pub type opj_decoding_param_t = opj_decoding_param;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_decoding_param {
   pub m_reduce: OPJ_UINT32,
   pub m_layer: OPJ_UINT32,
 }
 pub type opj_tcp_t = opj_tcp;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_tcp {
   pub csty: OPJ_UINT32,
   pub prg: OPJ_PROG_ORDER,
@@ -255,8 +257,9 @@ pub struct opj_tcp {
   pub c2rust_padding: [u8; 7],
 }
 pub type opj_simple_mcc_decorrelation_data_t = opj_simple_mcc_decorrelation_data;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_simple_mcc_decorrelation_data {
   pub m_index: OPJ_UINT32,
   pub m_nb_comps: OPJ_UINT32,
@@ -268,8 +271,9 @@ pub struct opj_simple_mcc_decorrelation_data {
   pub c2rust_padding: [u8; 7],
 }
 pub type opj_mct_data_t = opj_mct_data;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_mct_data {
   pub m_element_type: J2K_MCT_ELEMENT_TYPE,
   pub m_array_type: J2K_MCT_ARRAY_TYPE,
@@ -289,8 +293,9 @@ pub const MCT_TYPE_FLOAT: MCT_ELEMENT_TYPE = 2;
 pub const MCT_TYPE_INT32: MCT_ELEMENT_TYPE = 1;
 pub const MCT_TYPE_INT16: MCT_ELEMENT_TYPE = 0;
 pub type opj_tccp_t = opj_tccp;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tccp {
   pub csty: OPJ_UINT32,
   pub numresolutions: OPJ_UINT32,
@@ -307,15 +312,17 @@ pub struct opj_tccp {
   pub m_dc_level_shift: OPJ_INT32,
 }
 pub type opj_stepsize_t = opj_stepsize;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_stepsize {
   pub expn: OPJ_INT32,
   pub mant: OPJ_INT32,
 }
 pub type opj_ppx = opj_ppx_struct;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_ppx_struct {
   pub m_data: *mut OPJ_BYTE,
   pub m_data_size: OPJ_UINT32,
@@ -325,8 +332,9 @@ pub const FINAL_PASS: T2_MODE = 1;
 pub const THRESH_CALC: T2_MODE = 0;
 pub type J2K_T2_MODE = T2_MODE;
 pub type opj_cp_t = opj_cp;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_pi_resolution {
   pub pdx: OPJ_UINT32,
   pub pdy: OPJ_UINT32,
@@ -334,8 +342,9 @@ pub struct opj_pi_resolution {
   pub ph: OPJ_UINT32,
 }
 pub type opj_pi_resolution_t = opj_pi_resolution;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_pi_comp {
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
@@ -343,8 +352,9 @@ pub struct opj_pi_comp {
   pub resolutions: *mut opj_pi_resolution_t,
 }
 pub type opj_pi_comp_t = opj_pi_comp;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_pi_iterator {
   pub tp_on: OPJ_BYTE,
   pub include: *mut OPJ_INT16,
@@ -389,18 +399,7 @@ unsafe extern "C" fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_U
 }
 #[inline]
 unsafe extern "C" fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  if b != 0 {
-  } else {
-    __assert_fail(
-      b"b\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/opj_intmath.h\x00" as *const u8 as *const libc::c_char,
-      172 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 52], &[libc::c_char; 52]>(
-        b"OPJ_UINT32 opj_uint_ceildiv(OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(b != 0);
   return (a as OPJ_UINT64)
     .wrapping_add(b as libc::c_ulong)
     .wrapping_sub(1 as libc::c_int as libc::c_ulong)
@@ -1633,35 +1632,10 @@ unsafe extern "C" fn opj_get_encoding_parameters(
   let mut l_tx0: OPJ_UINT32 = 0;
   let mut l_ty0: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_cp.is_null() {
-  } else {
-    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      788 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 196],
-                                                &[libc::c_char; 196]>(b"void opj_get_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *)\x00")).as_ptr());
-  }
-  if !p_image.is_null() {
-  } else {
-    __assert_fail(b"p_image != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      789 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 196],
-                                                &[libc::c_char; 196]>(b"void opj_get_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *)\x00")).as_ptr());
-  }
-  if p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-  } else {
-    __assert_fail(b"p_tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      790 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 196],
-                                                &[libc::c_char; 196]>(b"void opj_get_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *)\x00")).as_ptr());
-  }
+
+  assert!(!p_cp.is_null());
+  assert!(!p_image.is_null());
+  assert!(p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th));
   /* initializations */
   l_tcp = &mut *(*p_cp).tcps.offset(p_tileno as isize) as *mut opj_tcp_t;
   l_img_comp = (*p_image).comps;
@@ -1820,35 +1794,10 @@ unsafe extern "C" fn opj_get_all_encoding_parameters(
   let mut l_tx0: OPJ_UINT32 = 0;
   let mut l_ty0: OPJ_UINT32 = 0;
   /* preconditions in debug*/
-  if !p_cp.is_null() {
-  } else {
-    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      914 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 215],
-                                                &[libc::c_char; 215]>(b"void opj_get_all_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 **)\x00")).as_ptr());
-  }
-  if !p_image.is_null() {
-  } else {
-    __assert_fail(b"p_image != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      915 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 215],
-                                                &[libc::c_char; 215]>(b"void opj_get_all_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 **)\x00")).as_ptr());
-  }
-  if tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-  } else {
-    __assert_fail(b"tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      916 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 215],
-                                                &[libc::c_char; 215]>(b"void opj_get_all_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 **)\x00")).as_ptr());
-  }
+
+  assert!(!p_cp.is_null());
+  assert!(!p_image.is_null());
+  assert!(tileno < (*p_cp).tw.wrapping_mul((*p_cp).th));
   /* initializations*/
   tcp = &mut *(*p_cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
   l_tccp = (*tcp).tccps;
@@ -2011,34 +1960,10 @@ unsafe extern "C" fn opj_pi_create(
   /* current packet iterator being allocated*/
   let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
   /* preconditions in debug*/
-  if !cp.is_null() {
-  } else {
-    __assert_fail(b"cp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1038 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"opj_pi_iterator_t *opj_pi_create(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !image.is_null() {
-  } else {
-    __assert_fail(b"image != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1039 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"opj_pi_iterator_t *opj_pi_create(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if tileno < (*cp).tw.wrapping_mul((*cp).th) {
-  } else {
-    __assert_fail(b"tileno < cp->tw * cp->th\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1040 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"opj_pi_iterator_t *opj_pi_create(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!cp.is_null());
+  assert!(!image.is_null());
+  assert!(tileno < (*cp).tw.wrapping_mul((*cp).th));
   /* initializations*/
   tcp = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
   l_poc_bound = (*tcp)
@@ -2121,25 +2046,9 @@ unsafe extern "C" fn opj_pi_update_encode_poc_and_final(
   /* number of pocs*/
   let mut l_poc_bound: OPJ_UINT32 = 0;
   /* preconditions in debug*/
-  if !p_cp.is_null() {
-  } else {
-    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1110 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 160],
-                                                &[libc::c_char; 160]>(b"void opj_pi_update_encode_poc_and_final(opj_cp_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-  }
-  if p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-  } else {
-    __assert_fail(b"p_tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1111 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 160],
-                                                &[libc::c_char; 160]>(b"void opj_pi_update_encode_poc_and_final(opj_cp_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-  }
+
+  assert!(!p_cp.is_null());
+  assert!(p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th));
   /* initializations*/
   l_tcp = &mut *(*p_cp).tcps.offset(p_tileno as isize) as *mut opj_tcp_t;
   /* number of iterations in the loop */
@@ -2230,25 +2139,9 @@ unsafe extern "C" fn opj_pi_update_encode_not_poc(
   /* number of pocs*/
   let mut l_poc_bound: OPJ_UINT32 = 0;
   /* preconditions in debug*/
-  if !p_cp.is_null() {
-  } else {
-    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1187 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 166],
-                                                &[libc::c_char; 166]>(b"void opj_pi_update_encode_not_poc(opj_cp_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-  }
-  if p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-  } else {
-    __assert_fail(b"p_tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1188 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 166],
-                                                &[libc::c_char; 166]>(b"void opj_pi_update_encode_not_poc(opj_cp_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-  }
+
+  assert!(!p_cp.is_null());
+  assert!(p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th));
   /* initializations*/
   l_tcp = &mut *(*p_cp).tcps.offset(p_tileno as isize) as *mut opj_tcp_t;
   /* number of iterations in the loop */
@@ -2295,24 +2188,9 @@ unsafe extern "C" fn opj_pi_update_decode_poc(
   let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
   let mut l_current_poc = 0 as *mut opj_poc_t;
   /* preconditions in debug*/
-  if !p_pi.is_null() {
-  } else {
-    __assert_fail(b"p_pi != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1237 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 88],
-                                                &[libc::c_char; 88]>(b"void opj_pi_update_decode_poc(opj_pi_iterator_t *, opj_tcp_t *, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-  }
-  if !p_tcp.is_null() {
-  } else {
-    __assert_fail(b"p_tcp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1238 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 88],
-                                                &[libc::c_char; 88]>(b"void opj_pi_update_decode_poc(opj_pi_iterator_t *, opj_tcp_t *, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-  }
+
+  assert!(!p_pi.is_null());
+  assert!(!p_tcp.is_null());
   /* initializations*/
   l_bound = (*p_tcp)
     .numpocs
@@ -2351,24 +2229,9 @@ unsafe extern "C" fn opj_pi_update_decode_not_poc(
   let mut l_bound: OPJ_UINT32 = 0;
   let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
   /* preconditions in debug*/
-  if !p_tcp.is_null() {
-  } else {
-    __assert_fail(b"p_tcp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1280 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 92],
-                                                &[libc::c_char; 92]>(b"void opj_pi_update_decode_not_poc(opj_pi_iterator_t *, opj_tcp_t *, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-  }
-  if !p_pi.is_null() {
-  } else {
-    __assert_fail(b"p_pi != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1281 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 92],
-                                                &[libc::c_char; 92]>(b"void opj_pi_update_decode_not_poc(opj_pi_iterator_t *, opj_tcp_t *, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-  }
+
+  assert!(!p_tcp.is_null());
+  assert!(!p_pi.is_null());
   /* initializations*/
   l_bound = (*p_tcp)
     .numpocs
@@ -2528,35 +2391,10 @@ pub unsafe extern "C" fn opj_pi_create_decode(
   let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
   let mut l_encoding_value_ptr = 0 as *mut OPJ_UINT32;
   /* preconditions in debug */
-  if !p_cp.is_null() {
-  } else {
-    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1427 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 98],
-                                                &[libc::c_char; 98]>(b"opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *, opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_image.is_null() {
-  } else {
-    __assert_fail(b"p_image != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1428 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 98],
-                                                &[libc::c_char; 98]>(b"opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *, opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-  } else {
-    __assert_fail(b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1429 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 98],
-                                                &[libc::c_char; 98]>(b"opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *, opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_cp.is_null());
+  assert!(!p_image.is_null());
+  assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
   /* initializations */
   l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_bound = (*l_tcp)
@@ -2764,35 +2602,10 @@ pub unsafe extern "C" fn opj_get_encoding_packet_count(
   let mut l_dx_min: OPJ_UINT32 = 0;
   let mut l_dy_min: OPJ_UINT32 = 0;
   /* preconditions in debug*/
-  if !p_cp.is_null() {
-  } else {
-    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1602 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 92],
-                                                &[libc::c_char; 92]>(b"OPJ_UINT32 opj_get_encoding_packet_count(const opj_image_t *, const opj_cp_t *, OPJ_UINT32)\x00")).as_ptr());
-  }
-  if !p_image.is_null() {
-  } else {
-    __assert_fail(b"p_image != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1603 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 92],
-                                                &[libc::c_char; 92]>(b"OPJ_UINT32 opj_get_encoding_packet_count(const opj_image_t *, const opj_cp_t *, OPJ_UINT32)\x00")).as_ptr());
-  }
-  if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-  } else {
-    __assert_fail(b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1604 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 92],
-                                                &[libc::c_char; 92]>(b"OPJ_UINT32 opj_get_encoding_packet_count(const opj_image_t *, const opj_cp_t *, OPJ_UINT32)\x00")).as_ptr());
-  }
+
+  assert!(!p_cp.is_null());
+  assert!(!p_image.is_null());
+  assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
   /* get encoding parameters*/
   opj_get_all_encoding_parameters(
     p_image,
@@ -2854,35 +2667,10 @@ pub unsafe extern "C" fn opj_pi_initialise_encode(
   let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
   let mut l_encoding_value_ptr = 0 as *mut OPJ_UINT32;
   /* preconditions in debug*/
-  if !p_cp.is_null() {
-  } else {
-    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1650 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 121],
-                                                &[libc::c_char; 121]>(b"opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *, opj_cp_t *, OPJ_UINT32, J2K_T2_MODE, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_image.is_null() {
-  } else {
-    __assert_fail(b"p_image != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1651 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 121],
-                                                &[libc::c_char; 121]>(b"opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *, opj_cp_t *, OPJ_UINT32, J2K_T2_MODE, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-  } else {
-    __assert_fail(b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1652 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 121],
-                                                &[libc::c_char; 121]>(b"opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *, opj_cp_t *, OPJ_UINT32, J2K_T2_MODE, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_cp.is_null());
+  assert!(!p_image.is_null());
+  assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
   /* initializations*/
   l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_bound = (*l_tcp)
@@ -3457,42 +3245,10 @@ pub unsafe extern "C" fn opj_pi_update_encoding_parameters(
   /* pointers */
   let mut l_tcp = 0 as *mut opj_tcp_t;
   /* preconditions */
-  if !p_cp.is_null() {
-  } else {
-    __assert_fail(
-      b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8 as *const libc::c_char,
-      2117 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
-        b"void opj_pi_update_encoding_parameters(const opj_image_t *, opj_cp_t *, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_image.is_null() {
-  } else {
-    __assert_fail(
-      b"p_image != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8 as *const libc::c_char,
-      2118 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
-        b"void opj_pi_update_encoding_parameters(const opj_image_t *, opj_cp_t *, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-  } else {
-    __assert_fail(
-      b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8 as *const libc::c_char,
-      2119 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
-        b"void opj_pi_update_encoding_parameters(const opj_image_t *, opj_cp_t *, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_cp.is_null());
+  assert!(!p_image.is_null());
+  assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
   l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   /* get encoding parameters */
   opj_get_encoding_parameters(
