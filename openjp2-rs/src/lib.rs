@@ -31,7 +31,6 @@ pub mod jp2;
 pub mod mct;
 pub mod mqc;
 pub mod openjpeg;
-pub mod opj_clock;
 pub mod opj_malloc;
 pub mod pi;
 pub mod sparse_array;
