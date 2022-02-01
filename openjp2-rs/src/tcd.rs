@@ -3,63 +3,63 @@ use ::libc;
 extern "C" {
   pub type opj_mutex_t;
   pub type opj_thread_pool_t;
-  #[no_mangle]
+
   fn pow(_: libc::c_double, _: libc::c_double) -> libc::c_double;
-  #[no_mangle]
+
   fn ceil(_: libc::c_double) -> libc::c_double;
-  #[no_mangle]
+
   fn lrintf(_: libc::c_float) -> libc::c_long;
-  #[no_mangle]
+
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_image_data_alloc(size: OPJ_SIZE_T) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_image_data_free(ptr: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_aligned_free(ptr: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_free(m: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_event_msg(
     event_mgr: *mut opj_event_mgr_t,
     event_type: OPJ_INT32,
     fmt: *const libc::c_char,
     _: ...
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_mutex_create() -> *mut opj_mutex_t;
-  #[no_mangle]
+
   fn opj_mutex_destroy(mutex: *mut opj_mutex_t);
-  #[no_mangle]
+
   fn opj_thread_pool_wait_completion(tp: *mut opj_thread_pool_t, max_remaining_jobs: libc::c_int);
-  #[no_mangle]
+
   fn opj_tgt_create(
     numleafsh: OPJ_UINT32,
     numleafsv: OPJ_UINT32,
     p_manager: *mut opj_event_mgr_t,
   ) -> *mut opj_tgt_tree_t;
-  #[no_mangle]
+
   fn opj_tgt_init(
     p_tree: *mut opj_tgt_tree_t,
     p_num_leafs_h: OPJ_UINT32,
     p_num_leafs_v: OPJ_UINT32,
     p_manager: *mut opj_event_mgr_t,
   ) -> *mut opj_tgt_tree_t;
-  #[no_mangle]
+
   fn opj_tgt_destroy(tree: *mut opj_tgt_tree_t);
-  #[no_mangle]
+
   fn opj_t2_create(p_image: *mut opj_image_t, p_cp: *mut opj_cp_t) -> *mut opj_t2_t;
-  #[no_mangle]
+
   fn opj_t2_destroy(t2: *mut opj_t2_t);
-  #[no_mangle]
+
   fn opj_t2_encode_packets(
     t2: *mut opj_t2_t,
     tileno: OPJ_UINT32,
@@ -76,7 +76,7 @@ extern "C" {
     t2_mode: J2K_T2_MODE,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_t1_encode_cblks(
     tcd: *mut opj_tcd_t,
     tile: *mut opj_tcd_tile_t,
@@ -84,24 +84,24 @@ extern "C" {
     mct_norms: *const OPJ_FLOAT64,
     mct_numcomps: OPJ_UINT32,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_mct_get_mct_norms() -> *const OPJ_FLOAT64;
-  #[no_mangle]
+
   fn opj_mct_get_mct_norms_real() -> *const OPJ_FLOAT64;
-  #[no_mangle]
+
   fn opj_dwt_encode_real(p_tcd: *mut opj_tcd_t, tilec: *mut opj_tcd_tilecomp_t) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_dwt_encode(p_tcd: *mut opj_tcd_t, tilec: *mut opj_tcd_tilecomp_t) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_mct_encode(c0: *mut OPJ_INT32, c1: *mut OPJ_INT32, c2: *mut OPJ_INT32, n: OPJ_SIZE_T);
-  #[no_mangle]
+
   fn opj_mct_encode_real(
     c0: *mut OPJ_FLOAT32,
     c1: *mut OPJ_FLOAT32,
     c2: *mut OPJ_FLOAT32,
     n: OPJ_SIZE_T,
   );
-  #[no_mangle]
+
   fn opj_mct_encode_custom(
     p_coding_data: *mut OPJ_BYTE,
     n: OPJ_SIZE_T,
@@ -109,16 +109,16 @@ extern "C" {
     p_nb_comp: OPJ_UINT32,
     is_signed: OPJ_UINT32,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_mct_decode_real(
     c0: *mut OPJ_FLOAT32,
     c1: *mut OPJ_FLOAT32,
     c2: *mut OPJ_FLOAT32,
     n: OPJ_SIZE_T,
   );
-  #[no_mangle]
+
   fn opj_mct_decode(c0: *mut OPJ_INT32, c1: *mut OPJ_INT32, c2: *mut OPJ_INT32, n: OPJ_SIZE_T);
-  #[no_mangle]
+
   fn opj_mct_decode_custom(
     pDecodingData: *mut OPJ_BYTE,
     n: OPJ_SIZE_T,
@@ -126,19 +126,19 @@ extern "C" {
     pNbComp: OPJ_UINT32,
     isSigned: OPJ_UINT32,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_dwt_decode_real(
     p_tcd: *mut opj_tcd_t,
     tilec: *mut opj_tcd_tilecomp_t,
     numres: OPJ_UINT32,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_dwt_decode(
     p_tcd: *mut opj_tcd_t,
     tilec: *mut opj_tcd_tilecomp_t,
     numres: OPJ_UINT32,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_t1_decode_cblks(
     tcd: *mut opj_tcd_t,
     pret: *mut OPJ_BOOL,
@@ -148,7 +148,7 @@ extern "C" {
     p_manager_mutex: *mut opj_mutex_t,
     check_pterm: OPJ_BOOL,
   );
-  #[no_mangle]
+
   fn opj_t2_decode_packets(
     tcd: *mut opj_tcd_t,
     t2: *mut opj_t2_t,

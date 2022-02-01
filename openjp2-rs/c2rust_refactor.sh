@@ -22,6 +22,7 @@ $C2RUST refactor "$@" \
 
 sed \
   -e 's/ assert_fail(/ assert!(/g' \
+  -e 's/  #\[no_mangle]//g' \
   -i src/*.rs
 
 cargo fmt

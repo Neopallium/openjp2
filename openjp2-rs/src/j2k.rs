@@ -5,51 +5,51 @@ extern "C" {
   pub type _IO_codecvt;
   pub type _IO_marker;
   pub type opj_thread_pool_t;
-  #[no_mangle]
+
   fn strcpy(_: *mut libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;
-  #[no_mangle]
+
   fn strcmp(_: *const libc::c_char, _: *const libc::c_char) -> libc::c_int;
-  #[no_mangle]
+
   fn strncmp(_: *const libc::c_char, _: *const libc::c_char, _: libc::c_ulong) -> libc::c_int;
-  #[no_mangle]
+
   fn strlen(_: *const libc::c_char) -> libc::c_ulong;
-  #[no_mangle]
+
   fn atoi(__nptr: *const libc::c_char) -> libc::c_int;
-  #[no_mangle]
+
   fn getenv(__name: *const libc::c_char) -> *mut libc::c_char;
-  #[no_mangle]
+
   fn floor(_: libc::c_double) -> libc::c_double;
-  #[no_mangle]
+
   fn opj_pi_update_encoding_parameters(
     p_image: *const opj_image_t,
     p_cp: *mut opj_cp_t,
     p_tile_no: OPJ_UINT32,
   );
-  #[no_mangle]
+
   fn opj_get_encoding_packet_count(
     p_image: *const opj_image_t,
     p_cp: *const opj_cp_t,
     p_tile_no: OPJ_UINT32,
   ) -> OPJ_UINT32;
-  #[no_mangle]
+
   fn opj_tcd_get_encoder_input_buffer_size(p_tcd: *mut opj_tcd_t) -> OPJ_SIZE_T;
-  #[no_mangle]
+
   fn opj_tcd_init_encode_tile(
     p_tcd: *mut opj_tcd_t,
     p_tile_no: OPJ_UINT32,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_alloc_tile_component_data(l_tilec: *mut opj_tcd_tilecomp_t) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_tcd_copy_tile_data(
     p_tcd: *mut opj_tcd_t,
     p_src: *mut OPJ_BYTE,
     p_src_length: OPJ_SIZE_T,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_tcd_marker_info_create(need_PLT: OPJ_BOOL) -> *mut opj_tcd_marker_info_t;
-  #[no_mangle]
+
   fn opj_tcd_encode_tile(
     p_tcd: *mut opj_tcd_t,
     p_tile_no: OPJ_UINT32,
@@ -60,152 +60,152 @@ extern "C" {
     p_marker_info: *mut opj_tcd_marker_info_t,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_tcd_marker_info_destroy(p_tcd_marker_info: *mut opj_tcd_marker_info_t);
-  #[no_mangle]
+
   fn opj_tcd_init_decode_tile(
     p_tcd: *mut opj_tcd_t,
     p_tile_no: OPJ_UINT32,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   static mut stdout: *mut FILE;
-  #[no_mangle]
+
   fn fprintf(_: *mut FILE, _: *const libc::c_char, _: ...) -> libc::c_int;
-  #[no_mangle]
+
   fn sprintf(_: *mut libc::c_char, _: *const libc::c_char, _: ...) -> libc::c_int;
-  #[no_mangle]
+
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn memmove(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_tcd_get_decoded_tile_size(
     p_tcd: *mut opj_tcd_t,
     take_into_account_partial_decoding: OPJ_BOOL,
   ) -> OPJ_UINT32;
-  #[no_mangle]
+
   fn opj_version() -> *const libc::c_char;
-  #[no_mangle]
+
   fn opj_image_destroy(image: *mut opj_image_t);
-  #[no_mangle]
+
   fn opj_image_data_alloc(size: OPJ_SIZE_T) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_image_data_free(ptr: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_destroy_cstr_info(cstr_info: *mut *mut opj_codestream_info_v2_t);
-  #[no_mangle]
+
   fn opj_has_thread_support() -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_get_num_cpus() -> libc::c_int;
-  #[no_mangle]
+
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_free(m: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_event_msg(
     event_mgr: *mut opj_event_mgr_t,
     event_type: OPJ_INT32,
     fmt: *const libc::c_char,
     _: ...
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_procedure_list_create() -> *mut opj_procedure_list_t;
-  #[no_mangle]
+
   fn opj_procedure_list_destroy(p_list: *mut opj_procedure_list_t);
-  #[no_mangle]
+
   fn opj_procedure_list_add_procedure(
     p_validation_list: *mut opj_procedure_list_t,
     p_procedure: opj_procedure,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_procedure_list_get_nb_procedures(
     p_validation_list: *mut opj_procedure_list_t,
   ) -> OPJ_UINT32;
-  #[no_mangle]
+
   fn opj_procedure_list_get_first_procedure(
     p_validation_list: *mut opj_procedure_list_t,
   ) -> *mut opj_procedure;
-  #[no_mangle]
+
   fn opj_procedure_list_clear(p_validation_list: *mut opj_procedure_list_t);
-  #[no_mangle]
+
   fn opj_write_bytes_LE(p_buffer: *mut OPJ_BYTE, p_value: OPJ_UINT32, p_nb_bytes: OPJ_UINT32);
-  #[no_mangle]
+
   fn opj_read_bytes_LE(p_buffer: *const OPJ_BYTE, p_value: *mut OPJ_UINT32, p_nb_bytes: OPJ_UINT32);
-  #[no_mangle]
+
   fn opj_write_double_LE(p_buffer: *mut OPJ_BYTE, p_value: OPJ_FLOAT64);
-  #[no_mangle]
+
   fn opj_read_double_LE(p_buffer: *const OPJ_BYTE, p_value: *mut OPJ_FLOAT64);
-  #[no_mangle]
+
   fn opj_read_float_LE(p_buffer: *const OPJ_BYTE, p_value: *mut OPJ_FLOAT32);
-  #[no_mangle]
+
   fn opj_write_float_LE(p_buffer: *mut OPJ_BYTE, p_value: OPJ_FLOAT32);
-  #[no_mangle]
+
   fn opj_stream_read_data(
     p_stream: *mut opj_stream_private_t,
     p_buffer: *mut OPJ_BYTE,
     p_size: OPJ_SIZE_T,
     p_event_mgr: *mut opj_event_mgr,
   ) -> OPJ_SIZE_T;
-  #[no_mangle]
+
   fn opj_stream_write_data(
     p_stream: *mut opj_stream_private_t,
     p_buffer: *const OPJ_BYTE,
     p_size: OPJ_SIZE_T,
     p_event_mgr: *mut opj_event_mgr,
   ) -> OPJ_SIZE_T;
-  #[no_mangle]
+
   fn opj_stream_flush(
     p_stream: *mut opj_stream_private_t,
     p_event_mgr: *mut opj_event_mgr,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_stream_skip(
     p_stream: *mut opj_stream_private_t,
     p_size: OPJ_OFF_T,
     p_event_mgr: *mut opj_event_mgr,
   ) -> OPJ_OFF_T;
-  #[no_mangle]
+
   fn opj_stream_tell(p_stream: *const opj_stream_private_t) -> OPJ_OFF_T;
-  #[no_mangle]
+
   fn opj_stream_get_number_byte_left(p_stream: *const opj_stream_private_t) -> OPJ_OFF_T;
-  #[no_mangle]
+
   fn opj_stream_read_seek(
     p_stream: *mut opj_stream_private_t,
     p_size: OPJ_OFF_T,
     p_event_mgr: *mut opj_event_mgr,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_stream_seek(
     p_stream: *mut opj_stream_private_t,
     p_size: OPJ_OFF_T,
     p_event_mgr: *mut opj_event_mgr,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_stream_has_seek(p_stream: *const opj_stream_private_t) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_thread_pool_create(num_threads: libc::c_int) -> *mut opj_thread_pool_t;
-  #[no_mangle]
+
   fn opj_thread_pool_destroy(tp: *mut opj_thread_pool_t);
-  #[no_mangle]
+
   fn opj_image_create0() -> *mut opj_image_t;
-  #[no_mangle]
+
   fn opj_image_comp_header_update(p_image: *mut opj_image_t, p_cp: *const opj_cp);
-  #[no_mangle]
+
   fn opj_copy_image_header(p_image_src: *const opj_image_t, p_image_dest: *mut opj_image_t);
-  #[no_mangle]
+
   fn opj_matrix_inversion_f(
     pSrcMatrix: *mut OPJ_FLOAT32,
     pDestMatrix: *mut OPJ_FLOAT32,
     nb_compo: OPJ_UINT32,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_tcd_decode_tile(
     tcd: *mut opj_tcd_t,
     win_x0: OPJ_UINT32,
@@ -220,30 +220,30 @@ extern "C" {
     cstr_info: *mut opj_codestream_index_t,
     manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_tcd_update_tile_data(
     p_tcd: *mut opj_tcd_t,
     p_dest: *mut OPJ_BYTE,
     p_dest_length: OPJ_UINT32,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_tcd_destroy(tcd: *mut opj_tcd_t);
-  #[no_mangle]
+
   fn opj_dwt_calc_explicit_stepsizes(tccp: *mut opj_tccp_t, prec: OPJ_UINT32);
-  #[no_mangle]
+
   fn opj_calculate_norms(
     pNorms: *mut OPJ_FLOAT64,
     p_nb_comps: OPJ_UINT32,
     pMatrix: *mut OPJ_FLOAT32,
   );
-  #[no_mangle]
+
   fn opj_tcd_init(
     p_tcd: *mut opj_tcd_t,
     p_image: *mut opj_image_t,
     p_cp: *mut opj_cp_t,
     p_tp: *mut opj_thread_pool_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_tcd_create(p_is_decoder: OPJ_BOOL) -> *mut opj_tcd_t;
 }
 pub type size_t = libc::c_ulong;

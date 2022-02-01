@@ -4,103 +4,103 @@ extern "C" {
   pub type opj_mutex_t;
   pub type opj_tls_t;
   pub type opj_thread_pool_t;
-  #[no_mangle]
+
   fn abs(_: libc::c_int) -> libc::c_int;
-  #[no_mangle]
+
   fn lrintf(_: libc::c_float) -> libc::c_long;
-  #[no_mangle]
+
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_aligned_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_aligned_free(ptr: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_free(m: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_event_msg(
     event_mgr: *mut opj_event_mgr_t,
     event_type: OPJ_INT32,
     fmt: *const libc::c_char,
     _: ...
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_mutex_create() -> *mut opj_mutex_t;
-  #[no_mangle]
+
   fn opj_mutex_lock(mutex: *mut opj_mutex_t);
-  #[no_mangle]
+
   fn opj_mutex_unlock(mutex: *mut opj_mutex_t);
-  #[no_mangle]
+
   fn opj_mutex_destroy(mutex: *mut opj_mutex_t);
-  #[no_mangle]
+
   fn opj_tls_get(tls: *mut opj_tls_t, key: libc::c_int) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_tls_set(
     tls: *mut opj_tls_t,
     key: libc::c_int,
     value: *mut libc::c_void,
     free_func: opj_tls_free_func,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_thread_pool_submit_job(
     tp: *mut opj_thread_pool_t,
     job_fn: opj_job_fn,
     user_data: *mut libc::c_void,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_thread_pool_wait_completion(tp: *mut opj_thread_pool_t, max_remaining_jobs: libc::c_int);
-  #[no_mangle]
+
   fn opj_thread_pool_get_thread_count(tp: *mut opj_thread_pool_t) -> libc::c_int;
-  #[no_mangle]
+
   fn opj_mqc_byteout(mqc: *mut opj_mqc_t);
-  #[no_mangle]
+
   fn opj_mqc_numbytes(mqc: *mut opj_mqc_t) -> OPJ_UINT32;
-  #[no_mangle]
+
   fn opj_mqc_resetstates(mqc: *mut opj_mqc_t);
-  #[no_mangle]
+
   fn opj_mqc_setstate(mqc: *mut opj_mqc_t, ctxno: OPJ_UINT32, msb: OPJ_UINT32, prob: OPJ_INT32);
-  #[no_mangle]
+
   fn opj_mqc_init_enc(mqc: *mut opj_mqc_t, bp: *mut OPJ_BYTE);
-  #[no_mangle]
+
   fn opj_mqc_flush(mqc: *mut opj_mqc_t);
-  #[no_mangle]
+
   fn opj_mqc_bypass_init_enc(mqc: *mut opj_mqc_t);
-  #[no_mangle]
+
   fn opj_mqc_bypass_get_extra_bytes(mqc: *mut opj_mqc_t, erterm: OPJ_BOOL) -> OPJ_UINT32;
-  #[no_mangle]
+
   fn opj_mqc_bypass_flush_enc(mqc: *mut opj_mqc_t, erterm: OPJ_BOOL);
-  #[no_mangle]
+
   fn opj_mqc_reset_enc(mqc: *mut opj_mqc_t);
-  #[no_mangle]
+
   fn opj_mqc_restart_init_enc(mqc: *mut opj_mqc_t);
-  #[no_mangle]
+
   fn opj_mqc_erterm_enc(mqc: *mut opj_mqc_t);
-  #[no_mangle]
+
   fn opj_mqc_segmark_enc(mqc: *mut opj_mqc_t);
-  #[no_mangle]
+
   fn opj_mqc_init_dec(
     mqc: *mut opj_mqc_t,
     bp: *mut OPJ_BYTE,
     len: OPJ_UINT32,
     extra_writable_bytes: OPJ_UINT32,
   );
-  #[no_mangle]
+
   fn opj_mqc_raw_init_dec(
     mqc: *mut opj_mqc_t,
     bp: *mut OPJ_BYTE,
     len: OPJ_UINT32,
     extra_writable_bytes: OPJ_UINT32,
   );
-  #[no_mangle]
+
   fn opq_mqc_finish_dec(mqc: *mut opj_mqc_t);
-  #[no_mangle]
+
   fn opj_tcd_is_band_empty(band: *mut opj_tcd_band_t) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_tcd_is_subband_area_of_interest(
     tcd: *mut opj_tcd_t,
     compno: OPJ_UINT32,
@@ -111,9 +111,9 @@ extern "C" {
     x1: OPJ_UINT32,
     y1: OPJ_UINT32,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_dwt_getnorm_real(level: OPJ_UINT32, orient: OPJ_UINT32) -> OPJ_FLOAT64;
-  #[no_mangle]
+
   fn opj_dwt_getnorm(level: OPJ_UINT32, orient: OPJ_UINT32) -> OPJ_FLOAT64;
   /* *
   Decode 1 HT code-block
@@ -126,7 +126,7 @@ extern "C" {
   @param p_manager_mutex mutex for the event manager
   @param check_pterm whether PTERM correct termination should be checked
   */
-  #[no_mangle]
+
   fn opj_t1_ht_decode_cblk(
     t1: *mut opj_t1_t,
     cblk: *mut opj_tcd_cblk_dec_t,

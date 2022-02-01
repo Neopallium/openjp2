@@ -5,46 +5,46 @@ extern "C" {
   pub type _IO_codecvt;
   pub type _IO_marker;
   pub type opj_thread_pool_t;
-  #[no_mangle]
+
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   static mut stderr: *mut FILE;
-  #[no_mangle]
+
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_free(m: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_event_msg(
     event_mgr: *mut opj_event_mgr_t,
     event_type: OPJ_INT32,
     fmt: *const libc::c_char,
     _: ...
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_bio_create() -> *mut opj_bio_t;
-  #[no_mangle]
+
   fn opj_bio_destroy(bio: *mut opj_bio_t);
-  #[no_mangle]
+
   fn opj_bio_numbytes(bio: *mut opj_bio_t) -> ptrdiff_t;
-  #[no_mangle]
+
   fn opj_bio_init_enc(bio: *mut opj_bio_t, bp: *mut OPJ_BYTE, len: OPJ_UINT32);
-  #[no_mangle]
+
   fn opj_bio_init_dec(bio: *mut opj_bio_t, bp: *mut OPJ_BYTE, len: OPJ_UINT32);
-  #[no_mangle]
+
   fn opj_bio_write(bio: *mut opj_bio_t, v: OPJ_UINT32, n: OPJ_UINT32);
-  #[no_mangle]
+
   fn opj_bio_read(bio: *mut opj_bio_t, n: OPJ_UINT32) -> OPJ_UINT32;
-  #[no_mangle]
+
   fn opj_bio_flush(bio: *mut opj_bio_t) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_bio_inalign(bio: *mut opj_bio_t) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_pi_initialise_encode(
     image: *const opj_image_t,
     cp: *mut opj_cp_t,
@@ -52,7 +52,7 @@ extern "C" {
     t2_mode: J2K_T2_MODE,
     manager: *mut opj_event_mgr_t,
   ) -> *mut opj_pi_iterator_t;
-  #[no_mangle]
+
   fn opj_pi_create_encode(
     pi: *mut opj_pi_iterator_t,
     cp: *mut opj_cp_t,
@@ -62,46 +62,46 @@ extern "C" {
     tppos: OPJ_INT32,
     t2_mode: J2K_T2_MODE,
   );
-  #[no_mangle]
+
   fn opj_pi_create_decode(
     image: *mut opj_image_t,
     cp: *mut opj_cp_t,
     tileno: OPJ_UINT32,
     manager: *mut opj_event_mgr_t,
   ) -> *mut opj_pi_iterator_t;
-  #[no_mangle]
+
   fn opj_pi_destroy(p_pi: *mut opj_pi_iterator_t, p_nb_elements: OPJ_UINT32);
-  #[no_mangle]
+
   fn opj_pi_next(pi: *mut opj_pi_iterator_t) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_get_encoding_packet_count(
     p_image: *const opj_image_t,
     p_cp: *const opj_cp_t,
     p_tile_no: OPJ_UINT32,
   ) -> OPJ_UINT32;
-  #[no_mangle]
+
   fn opj_tgt_reset(tree: *mut opj_tgt_tree_t);
-  #[no_mangle]
+
   fn opj_tgt_setvalue(tree: *mut opj_tgt_tree_t, leafno: OPJ_UINT32, value: OPJ_INT32);
-  #[no_mangle]
+
   fn opj_tgt_encode(
     bio: *mut opj_bio_t,
     tree: *mut opj_tgt_tree_t,
     leafno: OPJ_UINT32,
     threshold: OPJ_INT32,
   );
-  #[no_mangle]
+
   fn opj_tgt_decode(
     bio: *mut opj_bio_t,
     tree: *mut opj_tgt_tree_t,
     leafno: OPJ_UINT32,
     threshold: OPJ_INT32,
   ) -> OPJ_UINT32;
-  #[no_mangle]
+
   fn opj_tcd_is_band_empty(band: *mut opj_tcd_band_t) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_tcd_reinit_segment(seg: *mut opj_tcd_seg_t);
-  #[no_mangle]
+
   fn opj_tcd_is_subband_area_of_interest(
     tcd: *mut opj_tcd_t,
     compno: OPJ_UINT32,

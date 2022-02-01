@@ -1,20 +1,20 @@
 use ::libc;
 extern "C" {
-  #[no_mangle]
+
   fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn calloc(_: libc::c_ulong, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn realloc(_: *mut libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn free(_: *mut libc::c_void);
-  #[no_mangle]
+
   fn posix_memalign(
     __memptr: *mut *mut libc::c_void,
     __alignment: size_t,
     __size: size_t,
   ) -> libc::c_int;
-  #[no_mangle]
+
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
 }
 pub type size_t = libc::c_ulong;
