@@ -14,12 +14,9 @@
 #![feature(register_tool)]
 #![register_tool(c2rust)]
 
-
 #[macro_use]
 extern crate c2rust_bitfields;
 extern crate libc;
-
-
 
 pub mod bio;
 pub mod cio;
@@ -43,4 +40,3 @@ pub mod t2;
 pub mod tcd;
 pub mod tgt;
 pub mod thread;
-
