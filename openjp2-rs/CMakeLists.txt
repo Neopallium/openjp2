@@ -1,0 +1,1 @@
+cargo_build(NAME ${OPENJPEG_LIBRARY_NAME})
