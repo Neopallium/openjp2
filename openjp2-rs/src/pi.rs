@@ -1,23 +1,28 @@
-use ::libc;
 use ::c2rust_bitfields;
+use ::libc;
 extern "C" {
-    #[no_mangle]
-    fn __assert_fail(__assertion: *const libc::c_char,
-                     __file: *const libc::c_char, __line: libc::c_uint,
-                     __function: *const libc::c_char) -> !;
-    #[no_mangle]
-    fn opj_malloc(size: size_t) -> *mut libc::c_void;
-    #[no_mangle]
-    fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t)
-     -> *mut libc::c_void;
-    #[no_mangle]
-    fn opj_free(m: *mut libc::c_void);
-    #[no_mangle]
-    fn opj_event_msg(event_mgr: *mut opj_event_mgr_t, event_type: OPJ_INT32,
-                     fmt: *const libc::c_char, _: ...) -> OPJ_BOOL;
-    #[no_mangle]
-    fn opj_j2k_convert_progression_order(prg_order: OPJ_PROG_ORDER)
-     -> *const libc::c_char;
+  #[no_mangle]
+  fn __assert_fail(
+    __assertion: *const libc::c_char,
+    __file: *const libc::c_char,
+    __line: libc::c_uint,
+    __function: *const libc::c_char,
+  ) -> !;
+  #[no_mangle]
+  fn opj_malloc(size: size_t) -> *mut libc::c_void;
+  #[no_mangle]
+  fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
+  #[no_mangle]
+  fn opj_free(m: *mut libc::c_void);
+  #[no_mangle]
+  fn opj_event_msg(
+    event_mgr: *mut opj_event_mgr_t,
+    event_type: OPJ_INT32,
+    fmt: *const libc::c_char,
+    _: ...
+  ) -> OPJ_BOOL;
+  #[no_mangle]
+  fn opj_j2k_convert_progression_order(prg_order: OPJ_PROG_ORDER) -> *const libc::c_char;
 }
 pub type size_t = libc::c_ulong;
 pub type __int16_t = libc::c_short;
@@ -57,222 +62,220 @@ pub const OPJ_CLRSPC_SRGB: COLOR_SPACE = 1;
 pub const OPJ_CLRSPC_UNSPECIFIED: COLOR_SPACE = 0;
 pub const OPJ_CLRSPC_UNKNOWN: COLOR_SPACE = -1;
 pub type OPJ_COLOR_SPACE = COLOR_SPACE;
-pub type opj_msg_callback
-    =
-    Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void)
-               -> ()>;
+pub type opj_msg_callback =
+  Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_poc {
-    pub resno0: OPJ_UINT32,
-    pub compno0: OPJ_UINT32,
-    pub layno1: OPJ_UINT32,
-    pub resno1: OPJ_UINT32,
-    pub compno1: OPJ_UINT32,
-    pub layno0: OPJ_UINT32,
-    pub precno0: OPJ_UINT32,
-    pub precno1: OPJ_UINT32,
-    pub prg1: OPJ_PROG_ORDER,
-    pub prg: OPJ_PROG_ORDER,
-    pub progorder: [OPJ_CHAR; 5],
-    pub tile: OPJ_UINT32,
-    pub tx0: OPJ_UINT32,
-    pub tx1: OPJ_UINT32,
-    pub ty0: OPJ_UINT32,
-    pub ty1: OPJ_UINT32,
-    pub layS: OPJ_UINT32,
-    pub resS: OPJ_UINT32,
-    pub compS: OPJ_UINT32,
-    pub prcS: OPJ_UINT32,
-    pub layE: OPJ_UINT32,
-    pub resE: OPJ_UINT32,
-    pub compE: OPJ_UINT32,
-    pub prcE: OPJ_UINT32,
-    pub txS: OPJ_UINT32,
-    pub txE: OPJ_UINT32,
-    pub tyS: OPJ_UINT32,
-    pub tyE: OPJ_UINT32,
-    pub dx: OPJ_UINT32,
-    pub dy: OPJ_UINT32,
-    pub lay_t: OPJ_UINT32,
-    pub res_t: OPJ_UINT32,
-    pub comp_t: OPJ_UINT32,
-    pub prc_t: OPJ_UINT32,
-    pub tx0_t: OPJ_UINT32,
-    pub ty0_t: OPJ_UINT32,
+  pub resno0: OPJ_UINT32,
+  pub compno0: OPJ_UINT32,
+  pub layno1: OPJ_UINT32,
+  pub resno1: OPJ_UINT32,
+  pub compno1: OPJ_UINT32,
+  pub layno0: OPJ_UINT32,
+  pub precno0: OPJ_UINT32,
+  pub precno1: OPJ_UINT32,
+  pub prg1: OPJ_PROG_ORDER,
+  pub prg: OPJ_PROG_ORDER,
+  pub progorder: [OPJ_CHAR; 5],
+  pub tile: OPJ_UINT32,
+  pub tx0: OPJ_UINT32,
+  pub tx1: OPJ_UINT32,
+  pub ty0: OPJ_UINT32,
+  pub ty1: OPJ_UINT32,
+  pub layS: OPJ_UINT32,
+  pub resS: OPJ_UINT32,
+  pub compS: OPJ_UINT32,
+  pub prcS: OPJ_UINT32,
+  pub layE: OPJ_UINT32,
+  pub resE: OPJ_UINT32,
+  pub compE: OPJ_UINT32,
+  pub prcE: OPJ_UINT32,
+  pub txS: OPJ_UINT32,
+  pub txE: OPJ_UINT32,
+  pub tyS: OPJ_UINT32,
+  pub tyE: OPJ_UINT32,
+  pub dx: OPJ_UINT32,
+  pub dy: OPJ_UINT32,
+  pub lay_t: OPJ_UINT32,
+  pub res_t: OPJ_UINT32,
+  pub comp_t: OPJ_UINT32,
+  pub prc_t: OPJ_UINT32,
+  pub tx0_t: OPJ_UINT32,
+  pub ty0_t: OPJ_UINT32,
 }
 pub type opj_poc_t = opj_poc;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_image_comp {
-    pub dx: OPJ_UINT32,
-    pub dy: OPJ_UINT32,
-    pub w: OPJ_UINT32,
-    pub h: OPJ_UINT32,
-    pub x0: OPJ_UINT32,
-    pub y0: OPJ_UINT32,
-    pub prec: OPJ_UINT32,
-    pub bpp: OPJ_UINT32,
-    pub sgnd: OPJ_UINT32,
-    pub resno_decoded: OPJ_UINT32,
-    pub factor: OPJ_UINT32,
-    pub data: *mut OPJ_INT32,
-    pub alpha: OPJ_UINT16,
+  pub dx: OPJ_UINT32,
+  pub dy: OPJ_UINT32,
+  pub w: OPJ_UINT32,
+  pub h: OPJ_UINT32,
+  pub x0: OPJ_UINT32,
+  pub y0: OPJ_UINT32,
+  pub prec: OPJ_UINT32,
+  pub bpp: OPJ_UINT32,
+  pub sgnd: OPJ_UINT32,
+  pub resno_decoded: OPJ_UINT32,
+  pub factor: OPJ_UINT32,
+  pub data: *mut OPJ_INT32,
+  pub alpha: OPJ_UINT16,
 }
 pub type opj_image_comp_t = opj_image_comp;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_image {
-    pub x0: OPJ_UINT32,
-    pub y0: OPJ_UINT32,
-    pub x1: OPJ_UINT32,
-    pub y1: OPJ_UINT32,
-    pub numcomps: OPJ_UINT32,
-    pub color_space: OPJ_COLOR_SPACE,
-    pub comps: *mut opj_image_comp_t,
-    pub icc_profile_buf: *mut OPJ_BYTE,
-    pub icc_profile_len: OPJ_UINT32,
+  pub x0: OPJ_UINT32,
+  pub y0: OPJ_UINT32,
+  pub x1: OPJ_UINT32,
+  pub y1: OPJ_UINT32,
+  pub numcomps: OPJ_UINT32,
+  pub color_space: OPJ_COLOR_SPACE,
+  pub comps: *mut opj_image_comp_t,
+  pub icc_profile_buf: *mut OPJ_BYTE,
+  pub icc_profile_len: OPJ_UINT32,
 }
 pub type opj_image_t = opj_image;
 pub type OPJ_BITFIELD = libc::c_uint;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_event_mgr {
-    pub m_error_data: *mut libc::c_void,
-    pub m_warning_data: *mut libc::c_void,
-    pub m_info_data: *mut libc::c_void,
-    pub error_handler: opj_msg_callback,
-    pub warning_handler: opj_msg_callback,
-    pub info_handler: opj_msg_callback,
+  pub m_error_data: *mut libc::c_void,
+  pub m_warning_data: *mut libc::c_void,
+  pub m_info_data: *mut libc::c_void,
+  pub error_handler: opj_msg_callback,
+  pub warning_handler: opj_msg_callback,
+  pub info_handler: opj_msg_callback,
 }
 pub type opj_event_mgr_t = opj_event_mgr;
 #[derive(Copy, Clone, BitfieldStruct)]
 #[repr(C)]
 pub struct opj_cp {
-    pub rsiz: OPJ_UINT16,
-    pub tx0: OPJ_UINT32,
-    pub ty0: OPJ_UINT32,
-    pub tdx: OPJ_UINT32,
-    pub tdy: OPJ_UINT32,
-    pub comment: *mut OPJ_CHAR,
-    pub tw: OPJ_UINT32,
-    pub th: OPJ_UINT32,
-    pub ppm_markers_count: OPJ_UINT32,
-    pub ppm_markers: *mut opj_ppx,
-    pub ppm_data: *mut OPJ_BYTE,
-    pub ppm_len: OPJ_UINT32,
-    pub ppm_data_read: OPJ_UINT32,
-    pub ppm_data_current: *mut OPJ_BYTE,
-    pub ppm_buffer: *mut OPJ_BYTE,
-    pub ppm_data_first: *mut OPJ_BYTE,
-    pub ppm_data_size: OPJ_UINT32,
-    pub ppm_store: OPJ_INT32,
-    pub ppm_previous: OPJ_INT32,
-    pub tcps: *mut opj_tcp_t,
-    pub m_specific_param: C2RustUnnamed,
-    pub strict: OPJ_BOOL,
-    #[bitfield(name = "ppm", ty = "OPJ_BITFIELD", bits = "0..=0")]
-    #[bitfield(name = "m_is_decoder", ty = "OPJ_BITFIELD", bits = "1..=1")]
-    #[bitfield(name = "allow_different_bit_depth_sign", ty = "OPJ_BITFIELD",
-               bits = "2..=2")]
-    pub ppm_m_is_decoder_allow_different_bit_depth_sign: [u8; 1],
-    #[bitfield(padding)]
-    pub c2rust_padding: [u8; 3],
+  pub rsiz: OPJ_UINT16,
+  pub tx0: OPJ_UINT32,
+  pub ty0: OPJ_UINT32,
+  pub tdx: OPJ_UINT32,
+  pub tdy: OPJ_UINT32,
+  pub comment: *mut OPJ_CHAR,
+  pub tw: OPJ_UINT32,
+  pub th: OPJ_UINT32,
+  pub ppm_markers_count: OPJ_UINT32,
+  pub ppm_markers: *mut opj_ppx,
+  pub ppm_data: *mut OPJ_BYTE,
+  pub ppm_len: OPJ_UINT32,
+  pub ppm_data_read: OPJ_UINT32,
+  pub ppm_data_current: *mut OPJ_BYTE,
+  pub ppm_buffer: *mut OPJ_BYTE,
+  pub ppm_data_first: *mut OPJ_BYTE,
+  pub ppm_data_size: OPJ_UINT32,
+  pub ppm_store: OPJ_INT32,
+  pub ppm_previous: OPJ_INT32,
+  pub tcps: *mut opj_tcp_t,
+  pub m_specific_param: C2RustUnnamed,
+  pub strict: OPJ_BOOL,
+  #[bitfield(name = "ppm", ty = "OPJ_BITFIELD", bits = "0..=0")]
+  #[bitfield(name = "m_is_decoder", ty = "OPJ_BITFIELD", bits = "1..=1")]
+  #[bitfield(
+    name = "allow_different_bit_depth_sign",
+    ty = "OPJ_BITFIELD",
+    bits = "2..=2"
+  )]
+  pub ppm_m_is_decoder_allow_different_bit_depth_sign: [u8; 1],
+  #[bitfield(padding)]
+  pub c2rust_padding: [u8; 3],
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub union C2RustUnnamed {
-    pub m_dec: opj_decoding_param_t,
-    pub m_enc: opj_encoding_param_t,
+  pub m_dec: opj_decoding_param_t,
+  pub m_enc: opj_encoding_param_t,
 }
 pub type opj_encoding_param_t = opj_encoding_param;
 #[derive(Copy, Clone, BitfieldStruct)]
 #[repr(C)]
 pub struct opj_encoding_param {
-    pub m_max_comp_size: OPJ_UINT32,
-    pub m_tp_pos: OPJ_INT32,
-    pub m_matrice: *mut OPJ_INT32,
-    pub m_tp_flag: OPJ_BYTE,
-    #[bitfield(name = "m_disto_alloc", ty = "OPJ_BITFIELD", bits = "0..=0")]
-    #[bitfield(name = "m_fixed_alloc", ty = "OPJ_BITFIELD", bits = "1..=1")]
-    #[bitfield(name = "m_fixed_quality", ty = "OPJ_BITFIELD", bits = "2..=2")]
-    #[bitfield(name = "m_tp_on", ty = "OPJ_BITFIELD", bits = "3..=3")]
-    pub m_disto_alloc_m_fixed_alloc_m_fixed_quality_m_tp_on: [u8; 1],
-    #[bitfield(padding)]
-    pub c2rust_padding: [u8; 6],
+  pub m_max_comp_size: OPJ_UINT32,
+  pub m_tp_pos: OPJ_INT32,
+  pub m_matrice: *mut OPJ_INT32,
+  pub m_tp_flag: OPJ_BYTE,
+  #[bitfield(name = "m_disto_alloc", ty = "OPJ_BITFIELD", bits = "0..=0")]
+  #[bitfield(name = "m_fixed_alloc", ty = "OPJ_BITFIELD", bits = "1..=1")]
+  #[bitfield(name = "m_fixed_quality", ty = "OPJ_BITFIELD", bits = "2..=2")]
+  #[bitfield(name = "m_tp_on", ty = "OPJ_BITFIELD", bits = "3..=3")]
+  pub m_disto_alloc_m_fixed_alloc_m_fixed_quality_m_tp_on: [u8; 1],
+  #[bitfield(padding)]
+  pub c2rust_padding: [u8; 6],
 }
 pub type opj_decoding_param_t = opj_decoding_param;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_decoding_param {
-    pub m_reduce: OPJ_UINT32,
-    pub m_layer: OPJ_UINT32,
+  pub m_reduce: OPJ_UINT32,
+  pub m_layer: OPJ_UINT32,
 }
 pub type opj_tcp_t = opj_tcp;
 #[derive(Copy, Clone, BitfieldStruct)]
 #[repr(C)]
 pub struct opj_tcp {
-    pub csty: OPJ_UINT32,
-    pub prg: OPJ_PROG_ORDER,
-    pub numlayers: OPJ_UINT32,
-    pub num_layers_to_decode: OPJ_UINT32,
-    pub mct: OPJ_UINT32,
-    pub rates: [OPJ_FLOAT32; 100],
-    pub numpocs: OPJ_UINT32,
-    pub pocs: [opj_poc_t; 32],
-    pub ppt_markers_count: OPJ_UINT32,
-    pub ppt_markers: *mut opj_ppx,
-    pub ppt_data: *mut OPJ_BYTE,
-    pub ppt_buffer: *mut OPJ_BYTE,
-    pub ppt_data_size: OPJ_UINT32,
-    pub ppt_len: OPJ_UINT32,
-    pub distoratio: [OPJ_FLOAT32; 100],
-    pub tccps: *mut opj_tccp_t,
-    pub m_current_tile_part_number: OPJ_INT32,
-    pub m_nb_tile_parts: OPJ_UINT32,
-    pub m_data: *mut OPJ_BYTE,
-    pub m_data_size: OPJ_UINT32,
-    pub mct_norms: *mut OPJ_FLOAT64,
-    pub m_mct_decoding_matrix: *mut OPJ_FLOAT32,
-    pub m_mct_coding_matrix: *mut OPJ_FLOAT32,
-    pub m_mct_records: *mut opj_mct_data_t,
-    pub m_nb_mct_records: OPJ_UINT32,
-    pub m_nb_max_mct_records: OPJ_UINT32,
-    pub m_mcc_records: *mut opj_simple_mcc_decorrelation_data_t,
-    pub m_nb_mcc_records: OPJ_UINT32,
-    pub m_nb_max_mcc_records: OPJ_UINT32,
-    #[bitfield(name = "cod", ty = "OPJ_BITFIELD", bits = "0..=0")]
-    #[bitfield(name = "ppt", ty = "OPJ_BITFIELD", bits = "1..=1")]
-    #[bitfield(name = "POC", ty = "OPJ_BITFIELD", bits = "2..=2")]
-    pub cod_ppt_POC: [u8; 1],
-    #[bitfield(padding)]
-    pub c2rust_padding: [u8; 7],
+  pub csty: OPJ_UINT32,
+  pub prg: OPJ_PROG_ORDER,
+  pub numlayers: OPJ_UINT32,
+  pub num_layers_to_decode: OPJ_UINT32,
+  pub mct: OPJ_UINT32,
+  pub rates: [OPJ_FLOAT32; 100],
+  pub numpocs: OPJ_UINT32,
+  pub pocs: [opj_poc_t; 32],
+  pub ppt_markers_count: OPJ_UINT32,
+  pub ppt_markers: *mut opj_ppx,
+  pub ppt_data: *mut OPJ_BYTE,
+  pub ppt_buffer: *mut OPJ_BYTE,
+  pub ppt_data_size: OPJ_UINT32,
+  pub ppt_len: OPJ_UINT32,
+  pub distoratio: [OPJ_FLOAT32; 100],
+  pub tccps: *mut opj_tccp_t,
+  pub m_current_tile_part_number: OPJ_INT32,
+  pub m_nb_tile_parts: OPJ_UINT32,
+  pub m_data: *mut OPJ_BYTE,
+  pub m_data_size: OPJ_UINT32,
+  pub mct_norms: *mut OPJ_FLOAT64,
+  pub m_mct_decoding_matrix: *mut OPJ_FLOAT32,
+  pub m_mct_coding_matrix: *mut OPJ_FLOAT32,
+  pub m_mct_records: *mut opj_mct_data_t,
+  pub m_nb_mct_records: OPJ_UINT32,
+  pub m_nb_max_mct_records: OPJ_UINT32,
+  pub m_mcc_records: *mut opj_simple_mcc_decorrelation_data_t,
+  pub m_nb_mcc_records: OPJ_UINT32,
+  pub m_nb_max_mcc_records: OPJ_UINT32,
+  #[bitfield(name = "cod", ty = "OPJ_BITFIELD", bits = "0..=0")]
+  #[bitfield(name = "ppt", ty = "OPJ_BITFIELD", bits = "1..=1")]
+  #[bitfield(name = "POC", ty = "OPJ_BITFIELD", bits = "2..=2")]
+  pub cod_ppt_POC: [u8; 1],
+  #[bitfield(padding)]
+  pub c2rust_padding: [u8; 7],
 }
-pub type opj_simple_mcc_decorrelation_data_t
-    =
-    opj_simple_mcc_decorrelation_data;
+pub type opj_simple_mcc_decorrelation_data_t = opj_simple_mcc_decorrelation_data;
 #[derive(Copy, Clone, BitfieldStruct)]
 #[repr(C)]
 pub struct opj_simple_mcc_decorrelation_data {
-    pub m_index: OPJ_UINT32,
-    pub m_nb_comps: OPJ_UINT32,
-    pub m_decorrelation_array: *mut opj_mct_data_t,
-    pub m_offset_array: *mut opj_mct_data_t,
-    #[bitfield(name = "m_is_irreversible", ty = "OPJ_BITFIELD", bits =
-               "0..=0")]
-    pub m_is_irreversible: [u8; 1],
-    #[bitfield(padding)]
-    pub c2rust_padding: [u8; 7],
+  pub m_index: OPJ_UINT32,
+  pub m_nb_comps: OPJ_UINT32,
+  pub m_decorrelation_array: *mut opj_mct_data_t,
+  pub m_offset_array: *mut opj_mct_data_t,
+  #[bitfield(name = "m_is_irreversible", ty = "OPJ_BITFIELD", bits = "0..=0")]
+  pub m_is_irreversible: [u8; 1],
+  #[bitfield(padding)]
+  pub c2rust_padding: [u8; 7],
 }
 pub type opj_mct_data_t = opj_mct_data;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_mct_data {
-    pub m_element_type: J2K_MCT_ELEMENT_TYPE,
-    pub m_array_type: J2K_MCT_ARRAY_TYPE,
-    pub m_index: OPJ_UINT32,
-    pub m_data: *mut OPJ_BYTE,
-    pub m_data_size: OPJ_UINT32,
+  pub m_element_type: J2K_MCT_ELEMENT_TYPE,
+  pub m_array_type: J2K_MCT_ARRAY_TYPE,
+  pub m_index: OPJ_UINT32,
+  pub m_data: *mut OPJ_BYTE,
+  pub m_data_size: OPJ_UINT32,
 }
 pub type J2K_MCT_ARRAY_TYPE = MCT_ARRAY_TYPE;
 pub type MCT_ARRAY_TYPE = libc::c_uint;
@@ -289,33 +292,33 @@ pub type opj_tccp_t = opj_tccp;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_tccp {
-    pub csty: OPJ_UINT32,
-    pub numresolutions: OPJ_UINT32,
-    pub cblkw: OPJ_UINT32,
-    pub cblkh: OPJ_UINT32,
-    pub cblksty: OPJ_UINT32,
-    pub qmfbid: OPJ_UINT32,
-    pub qntsty: OPJ_UINT32,
-    pub stepsizes: [opj_stepsize_t; 97],
-    pub numgbits: OPJ_UINT32,
-    pub roishift: OPJ_INT32,
-    pub prcw: [OPJ_UINT32; 33],
-    pub prch: [OPJ_UINT32; 33],
-    pub m_dc_level_shift: OPJ_INT32,
+  pub csty: OPJ_UINT32,
+  pub numresolutions: OPJ_UINT32,
+  pub cblkw: OPJ_UINT32,
+  pub cblkh: OPJ_UINT32,
+  pub cblksty: OPJ_UINT32,
+  pub qmfbid: OPJ_UINT32,
+  pub qntsty: OPJ_UINT32,
+  pub stepsizes: [opj_stepsize_t; 97],
+  pub numgbits: OPJ_UINT32,
+  pub roishift: OPJ_INT32,
+  pub prcw: [OPJ_UINT32; 33],
+  pub prch: [OPJ_UINT32; 33],
+  pub m_dc_level_shift: OPJ_INT32,
 }
 pub type opj_stepsize_t = opj_stepsize;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_stepsize {
-    pub expn: OPJ_INT32,
-    pub mant: OPJ_INT32,
+  pub expn: OPJ_INT32,
+  pub mant: OPJ_INT32,
 }
 pub type opj_ppx = opj_ppx_struct;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_ppx_struct {
-    pub m_data: *mut OPJ_BYTE,
-    pub m_data_size: OPJ_UINT32,
+  pub m_data: *mut OPJ_BYTE,
+  pub m_data_size: OPJ_UINT32,
 }
 pub type T2_MODE = libc::c_uint;
 pub const FINAL_PASS: T2_MODE = 1;
@@ -325,105 +328,92 @@ pub type opj_cp_t = opj_cp;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_pi_resolution {
-    pub pdx: OPJ_UINT32,
-    pub pdy: OPJ_UINT32,
-    pub pw: OPJ_UINT32,
-    pub ph: OPJ_UINT32,
+  pub pdx: OPJ_UINT32,
+  pub pdy: OPJ_UINT32,
+  pub pw: OPJ_UINT32,
+  pub ph: OPJ_UINT32,
 }
 pub type opj_pi_resolution_t = opj_pi_resolution;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_pi_comp {
-    pub dx: OPJ_UINT32,
-    pub dy: OPJ_UINT32,
-    pub numresolutions: OPJ_UINT32,
-    pub resolutions: *mut opj_pi_resolution_t,
+  pub dx: OPJ_UINT32,
+  pub dy: OPJ_UINT32,
+  pub numresolutions: OPJ_UINT32,
+  pub resolutions: *mut opj_pi_resolution_t,
 }
 pub type opj_pi_comp_t = opj_pi_comp;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct opj_pi_iterator {
-    pub tp_on: OPJ_BYTE,
-    pub include: *mut OPJ_INT16,
-    pub include_size: OPJ_UINT32,
-    pub step_l: OPJ_UINT32,
-    pub step_r: OPJ_UINT32,
-    pub step_c: OPJ_UINT32,
-    pub step_p: OPJ_UINT32,
-    pub compno: OPJ_UINT32,
-    pub resno: OPJ_UINT32,
-    pub precno: OPJ_UINT32,
-    pub layno: OPJ_UINT32,
-    pub first: OPJ_BOOL,
-    pub poc: opj_poc_t,
-    pub numcomps: OPJ_UINT32,
-    pub comps: *mut opj_pi_comp_t,
-    pub tx0: OPJ_UINT32,
-    pub ty0: OPJ_UINT32,
-    pub tx1: OPJ_UINT32,
-    pub ty1: OPJ_UINT32,
-    pub x: OPJ_UINT32,
-    pub y: OPJ_UINT32,
-    pub dx: OPJ_UINT32,
-    pub dy: OPJ_UINT32,
-    pub manager: *mut opj_event_mgr_t,
+  pub tp_on: OPJ_BYTE,
+  pub include: *mut OPJ_INT16,
+  pub include_size: OPJ_UINT32,
+  pub step_l: OPJ_UINT32,
+  pub step_r: OPJ_UINT32,
+  pub step_c: OPJ_UINT32,
+  pub step_p: OPJ_UINT32,
+  pub compno: OPJ_UINT32,
+  pub resno: OPJ_UINT32,
+  pub precno: OPJ_UINT32,
+  pub layno: OPJ_UINT32,
+  pub first: OPJ_BOOL,
+  pub poc: opj_poc_t,
+  pub numcomps: OPJ_UINT32,
+  pub comps: *mut opj_pi_comp_t,
+  pub tx0: OPJ_UINT32,
+  pub ty0: OPJ_UINT32,
+  pub tx1: OPJ_UINT32,
+  pub ty1: OPJ_UINT32,
+  pub x: OPJ_UINT32,
+  pub y: OPJ_UINT32,
+  pub dx: OPJ_UINT32,
+  pub dy: OPJ_UINT32,
+  pub manager: *mut opj_event_mgr_t,
 }
 pub type opj_pi_iterator_t = opj_pi_iterator;
 #[inline]
-unsafe extern "C" fn opj_uint_ceildivpow2(mut a: OPJ_UINT32,
-                                          mut b: OPJ_UINT32) -> OPJ_UINT32 {
-    return ((a as
-                 libc::c_ulong).wrapping_add((1 as libc::c_uint as OPJ_UINT64)
-                                                 <<
-                                                 b).wrapping_sub(1 as
-                                                                     libc::c_uint
-                                                                     as
-                                                                     libc::c_ulong)
-                >> b) as OPJ_UINT32;
+unsafe extern "C" fn opj_uint_ceildivpow2(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
+  return ((a as libc::c_ulong)
+    .wrapping_add((1 as libc::c_uint as OPJ_UINT64) << b)
+    .wrapping_sub(1 as libc::c_uint as libc::c_ulong)
+    >> b) as OPJ_UINT32;
 }
 #[inline]
-unsafe extern "C" fn opj_uint_floordivpow2(mut a: OPJ_UINT32,
-                                           mut b: OPJ_UINT32) -> OPJ_UINT32 {
-    return a >> b;
+unsafe extern "C" fn opj_uint_floordivpow2(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
+  return a >> b;
 }
 #[inline]
-unsafe extern "C" fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32)
- -> OPJ_UINT32 {
-    return if a < b { a } else { b };
+unsafe extern "C" fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
+  return if a < b { a } else { b };
 }
 #[inline]
-unsafe extern "C" fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32)
- -> OPJ_UINT32 {
-    if b != 0 {
-    } else {
-        __assert_fail(b"b\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/opj_intmath.h\x00" as
-                          *const u8 as *const libc::c_char,
-                      172 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 52],
-                                                &[libc::c_char; 52]>(b"OPJ_UINT32 opj_uint_ceildiv(OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-    }
-    return (a as
-                OPJ_UINT64).wrapping_add(b as
-                                             libc::c_ulong).wrapping_sub(1 as
-                                                                             libc::c_int
-                                                                             as
-                                                                             libc::c_ulong).wrapping_div(b
-                                                                                                             as
-                                                                                                             libc::c_ulong)
-               as OPJ_UINT32;
+unsafe extern "C" fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
+  if b != 0 {
+  } else {
+    __assert_fail(
+      b"b\x00" as *const u8 as *const libc::c_char,
+      b"/opt/openjpeg/src/lib/openjp2/opj_intmath.h\x00" as *const u8 as *const libc::c_char,
+      172 as libc::c_int as libc::c_uint,
+      (*::std::mem::transmute::<&[u8; 52], &[libc::c_char; 52]>(
+        b"OPJ_UINT32 opj_uint_ceildiv(OPJ_UINT32, OPJ_UINT32)\x00",
+      ))
+      .as_ptr(),
+    );
+  }
+  return (a as OPJ_UINT64)
+    .wrapping_add(b as libc::c_ulong)
+    .wrapping_sub(1 as libc::c_int as libc::c_ulong)
+    .wrapping_div(b as libc::c_ulong) as OPJ_UINT32;
 }
 #[inline]
-unsafe extern "C" fn opj_uint_adds(mut a: OPJ_UINT32, mut b: OPJ_UINT32)
- -> OPJ_UINT32 {
-    let mut sum = (a as OPJ_UINT64).wrapping_add(b as OPJ_UINT64);
-    return -((sum >> 32 as libc::c_int) as OPJ_INT32) as OPJ_UINT32 |
-               sum as OPJ_UINT32;
+unsafe extern "C" fn opj_uint_adds(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
+  let mut sum = (a as OPJ_UINT64).wrapping_add(b as OPJ_UINT64);
+  return -((sum >> 32 as libc::c_int) as OPJ_INT32) as OPJ_UINT32 | sum as OPJ_UINT32;
 }
 #[inline]
-unsafe extern "C" fn opj_uint_max(mut a: OPJ_UINT32, mut b: OPJ_UINT32)
- -> OPJ_UINT32 {
-    return if a > b { a } else { b };
+unsafe extern "C" fn opj_uint_max(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
+  return if a > b { a } else { b };
 }
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -478,1169 +468,1128 @@ Get next packet in layer-resolution-component-precinct order.
    local functions
 ==========================================================
 */
-unsafe extern "C" fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t)
- -> OPJ_BOOL {
-    let mut current_block: u64;
-    let mut comp = 0 as *mut opj_pi_comp_t;
-    let mut res = 0 as *mut opj_pi_resolution_t;
-    let mut index = 0 as libc::c_int as OPJ_UINT32;
-    if (*pi).poc.compno0 >= (*pi).numcomps ||
-           (*pi).poc.compno1 >=
-               (*pi).numcomps.wrapping_add(1 as libc::c_int as libc::c_uint) {
-        opj_event_msg((*pi).manager, 1 as libc::c_int,
-                      b"opj_pi_next_lrcp(): invalid compno0/compno1\n\x00" as
-                          *const u8 as *const libc::c_char);
-        return 0 as libc::c_int
-    }
-    if (*pi).first == 0 {
-        comp =
-            &mut *(*pi).comps.offset((*pi).compno as isize) as
-                *mut opj_pi_comp_t;
-        res =
-            &mut *(*comp).resolutions.offset((*pi).resno as isize) as
-                *mut opj_pi_resolution_t;
-        current_block = 5634871135123216486;
-    } else {
-        (*pi).first = 0 as libc::c_int;
-        (*pi).layno = (*pi).poc.layno0;
-        current_block = 2868539653012386629;
-    }
-    loop  {
-        match current_block {
-            5634871135123216486 => {
-                (*pi).precno = (*pi).precno.wrapping_add(1);
-                current_block = 1109700713171191020;
-            }
-            _ => {
-                if !((*pi).layno < (*pi).poc.layno1) { break ; }
-                (*pi).resno = (*pi).poc.resno0;
-                current_block = 1856101646708284338;
-            }
-        }
-        loop  {
-            match current_block {
-                1856101646708284338 => {
-                    if (*pi).resno < (*pi).poc.resno1 {
-                        (*pi).compno = (*pi).poc.compno0
-                    } else {
-                        (*pi).layno = (*pi).layno.wrapping_add(1);
-                        current_block = 2868539653012386629;
-                        break ;
-                    }
-                    current_block = 10048703153582371463;
-                }
-                _ => {
-                    if (*pi).precno < (*pi).poc.precno1 {
-                        index =
-                            (*pi).layno.wrapping_mul((*pi).step_l).wrapping_add((*pi).resno.wrapping_mul((*pi).step_r)).wrapping_add((*pi).compno.wrapping_mul((*pi).step_c)).wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
-                        /* Avoids index out of bounds access with */
-                    /* id_000098,sig_11,src_005411,op_havoc,rep_2 of */
-                    /* https://github.com/uclouvain/openjpeg/issues/938 */
-                    /* Not sure if this is the most clever fix. Perhaps */
-                    /* include should be resized when a POC arises, or */
-                    /* the POC should be rejected */
-                        if index >= (*pi).include_size {
-                            opj_event_msg((*pi).manager, 1 as libc::c_int,
-                                          b"Invalid access to pi->include\x00"
-                                              as *const u8 as
-                                              *const libc::c_char);
-                            return 0 as libc::c_int
-                        }
-                        if *(*pi).include.offset(index as isize) == 0 {
-                            *(*pi).include.offset(index as isize) =
-                                1 as libc::c_int as OPJ_INT16;
-                            return 1 as libc::c_int
-                        }
-                        current_block = 5634871135123216486;
-                        break ;
-                    } else { current_block = 17860125682698302841; }
-                }
-            }
-            loop  {
-                match current_block {
-                    17860125682698302841 => {
-                        (*pi).compno = (*pi).compno.wrapping_add(1);
-                        current_block = 10048703153582371463;
-                    }
-                    _ => {
-                        if (*pi).compno < (*pi).poc.compno1 {
-                            comp =
-                                &mut *(*pi).comps.offset((*pi).compno as
-                                                             isize) as
-                                    *mut opj_pi_comp_t;
-                            if (*pi).resno >= (*comp).numresolutions {
-                                current_block = 17860125682698302841;
-                                continue ;
-                            }
-                            res =
-                                &mut *(*comp).resolutions.offset((*pi).resno
-                                                                     as isize)
-                                    as *mut opj_pi_resolution_t;
-                            if (*pi).tp_on == 0 {
-                                (*pi).poc.precno1 =
-                                    (*res).pw.wrapping_mul((*res).ph)
-                            }
-                            (*pi).precno = (*pi).poc.precno0;
-                            current_block = 1109700713171191020;
-                            break ;
-                        } else {
-                            (*pi).resno = (*pi).resno.wrapping_add(1);
-                            current_block = 1856101646708284338;
-                            break ;
-                        }
-                    }
-                }
-            }
-        }
-    }
+unsafe extern "C" fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+  let mut current_block: u64;
+  let mut comp = 0 as *mut opj_pi_comp_t;
+  let mut res = 0 as *mut opj_pi_resolution_t;
+  let mut index = 0 as libc::c_int as OPJ_UINT32;
+  if (*pi).poc.compno0 >= (*pi).numcomps
+    || (*pi).poc.compno1
+      >= (*pi)
+        .numcomps
+        .wrapping_add(1 as libc::c_int as libc::c_uint)
+  {
+    opj_event_msg(
+      (*pi).manager,
+      1 as libc::c_int,
+      b"opj_pi_next_lrcp(): invalid compno0/compno1\n\x00" as *const u8 as *const libc::c_char,
+    );
     return 0 as libc::c_int;
+  }
+  if (*pi).first == 0 {
+    comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+    res = &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+    current_block = 5634871135123216486;
+  } else {
+    (*pi).first = 0 as libc::c_int;
+    (*pi).layno = (*pi).poc.layno0;
+    current_block = 2868539653012386629;
+  }
+  loop {
+    match current_block {
+      5634871135123216486 => {
+        (*pi).precno = (*pi).precno.wrapping_add(1);
+        current_block = 1109700713171191020;
+      }
+      _ => {
+        if !((*pi).layno < (*pi).poc.layno1) {
+          break;
+        }
+        (*pi).resno = (*pi).poc.resno0;
+        current_block = 1856101646708284338;
+      }
+    }
+    loop {
+      match current_block {
+        1856101646708284338 => {
+          if (*pi).resno < (*pi).poc.resno1 {
+            (*pi).compno = (*pi).poc.compno0
+          } else {
+            (*pi).layno = (*pi).layno.wrapping_add(1);
+            current_block = 2868539653012386629;
+            break;
+          }
+          current_block = 10048703153582371463;
+        }
+        _ => {
+          if (*pi).precno < (*pi).poc.precno1 {
+            index = (*pi)
+              .layno
+              .wrapping_mul((*pi).step_l)
+              .wrapping_add((*pi).resno.wrapping_mul((*pi).step_r))
+              .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
+              .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
+            /* Avoids index out of bounds access with */
+            /* id_000098,sig_11,src_005411,op_havoc,rep_2 of */
+            /* https://github.com/uclouvain/openjpeg/issues/938 */
+            /* Not sure if this is the most clever fix. Perhaps */
+            /* include should be resized when a POC arises, or */
+            /* the POC should be rejected */
+            if index >= (*pi).include_size {
+              opj_event_msg(
+                (*pi).manager,
+                1 as libc::c_int,
+                b"Invalid access to pi->include\x00" as *const u8 as *const libc::c_char,
+              );
+              return 0 as libc::c_int;
+            }
+            if *(*pi).include.offset(index as isize) == 0 {
+              *(*pi).include.offset(index as isize) = 1 as libc::c_int as OPJ_INT16;
+              return 1 as libc::c_int;
+            }
+            current_block = 5634871135123216486;
+            break;
+          } else {
+            current_block = 17860125682698302841;
+          }
+        }
+      }
+      loop {
+        match current_block {
+          17860125682698302841 => {
+            (*pi).compno = (*pi).compno.wrapping_add(1);
+            current_block = 10048703153582371463;
+          }
+          _ => {
+            if (*pi).compno < (*pi).poc.compno1 {
+              comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+              if (*pi).resno >= (*comp).numresolutions {
+                current_block = 17860125682698302841;
+                continue;
+              }
+              res =
+                &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+              if (*pi).tp_on == 0 {
+                (*pi).poc.precno1 = (*res).pw.wrapping_mul((*res).ph)
+              }
+              (*pi).precno = (*pi).poc.precno0;
+              current_block = 1109700713171191020;
+              break;
+            } else {
+              (*pi).resno = (*pi).resno.wrapping_add(1);
+              current_block = 1856101646708284338;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  return 0 as libc::c_int;
 }
 /* *
 Get next packet in resolution-layer-component-precinct order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-unsafe extern "C" fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t)
- -> OPJ_BOOL {
-    let mut current_block: u64;
-    let mut comp = 0 as *mut opj_pi_comp_t;
-    let mut res = 0 as *mut opj_pi_resolution_t;
-    let mut index = 0 as libc::c_int as OPJ_UINT32;
-    if (*pi).poc.compno0 >= (*pi).numcomps ||
-           (*pi).poc.compno1 >=
-               (*pi).numcomps.wrapping_add(1 as libc::c_int as libc::c_uint) {
-        opj_event_msg((*pi).manager, 1 as libc::c_int,
-                      b"opj_pi_next_rlcp(): invalid compno0/compno1\n\x00" as
-                          *const u8 as *const libc::c_char);
-        return 0 as libc::c_int
-    }
-    if (*pi).first == 0 {
-        comp =
-            &mut *(*pi).comps.offset((*pi).compno as isize) as
-                *mut opj_pi_comp_t;
-        res =
-            &mut *(*comp).resolutions.offset((*pi).resno as isize) as
-                *mut opj_pi_resolution_t;
-        current_block = 5634871135123216486;
-    } else {
-        (*pi).first = 0 as libc::c_int;
-        (*pi).resno = (*pi).poc.resno0;
-        current_block = 2868539653012386629;
-    }
-    loop  {
-        match current_block {
-            5634871135123216486 => {
-                (*pi).precno = (*pi).precno.wrapping_add(1);
-                current_block = 1109700713171191020;
-            }
-            _ => {
-                if !((*pi).resno < (*pi).poc.resno1) { break ; }
-                (*pi).layno = (*pi).poc.layno0;
-                current_block = 1856101646708284338;
-            }
-        }
-        loop  {
-            match current_block {
-                1856101646708284338 => {
-                    if (*pi).layno < (*pi).poc.layno1 {
-                        (*pi).compno = (*pi).poc.compno0
-                    } else {
-                        (*pi).resno = (*pi).resno.wrapping_add(1);
-                        current_block = 2868539653012386629;
-                        break ;
-                    }
-                    current_block = 10048703153582371463;
-                }
-                _ => {
-                    if (*pi).precno < (*pi).poc.precno1 {
-                        index =
-                            (*pi).layno.wrapping_mul((*pi).step_l).wrapping_add((*pi).resno.wrapping_mul((*pi).step_r)).wrapping_add((*pi).compno.wrapping_mul((*pi).step_c)).wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
-                        if index >= (*pi).include_size {
-                            opj_event_msg((*pi).manager, 1 as libc::c_int,
-                                          b"Invalid access to pi->include\x00"
-                                              as *const u8 as
-                                              *const libc::c_char);
-                            return 0 as libc::c_int
-                        }
-                        if *(*pi).include.offset(index as isize) == 0 {
-                            *(*pi).include.offset(index as isize) =
-                                1 as libc::c_int as OPJ_INT16;
-                            return 1 as libc::c_int
-                        }
-                        current_block = 5634871135123216486;
-                        break ;
-                    } else { current_block = 17860125682698302841; }
-                }
-            }
-            loop  {
-                match current_block {
-                    17860125682698302841 => {
-                        (*pi).compno = (*pi).compno.wrapping_add(1);
-                        current_block = 10048703153582371463;
-                    }
-                    _ => {
-                        if (*pi).compno < (*pi).poc.compno1 {
-                            comp =
-                                &mut *(*pi).comps.offset((*pi).compno as
-                                                             isize) as
-                                    *mut opj_pi_comp_t;
-                            if (*pi).resno >= (*comp).numresolutions {
-                                current_block = 17860125682698302841;
-                                continue ;
-                            }
-                            res =
-                                &mut *(*comp).resolutions.offset((*pi).resno
-                                                                     as isize)
-                                    as *mut opj_pi_resolution_t;
-                            if (*pi).tp_on == 0 {
-                                (*pi).poc.precno1 =
-                                    (*res).pw.wrapping_mul((*res).ph)
-                            }
-                            (*pi).precno = (*pi).poc.precno0;
-                            current_block = 1109700713171191020;
-                            break ;
-                        } else {
-                            (*pi).layno = (*pi).layno.wrapping_add(1);
-                            current_block = 1856101646708284338;
-                            break ;
-                        }
-                    }
-                }
-            }
-        }
-    }
+unsafe extern "C" fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+  let mut current_block: u64;
+  let mut comp = 0 as *mut opj_pi_comp_t;
+  let mut res = 0 as *mut opj_pi_resolution_t;
+  let mut index = 0 as libc::c_int as OPJ_UINT32;
+  if (*pi).poc.compno0 >= (*pi).numcomps
+    || (*pi).poc.compno1
+      >= (*pi)
+        .numcomps
+        .wrapping_add(1 as libc::c_int as libc::c_uint)
+  {
+    opj_event_msg(
+      (*pi).manager,
+      1 as libc::c_int,
+      b"opj_pi_next_rlcp(): invalid compno0/compno1\n\x00" as *const u8 as *const libc::c_char,
+    );
     return 0 as libc::c_int;
+  }
+  if (*pi).first == 0 {
+    comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+    res = &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+    current_block = 5634871135123216486;
+  } else {
+    (*pi).first = 0 as libc::c_int;
+    (*pi).resno = (*pi).poc.resno0;
+    current_block = 2868539653012386629;
+  }
+  loop {
+    match current_block {
+      5634871135123216486 => {
+        (*pi).precno = (*pi).precno.wrapping_add(1);
+        current_block = 1109700713171191020;
+      }
+      _ => {
+        if !((*pi).resno < (*pi).poc.resno1) {
+          break;
+        }
+        (*pi).layno = (*pi).poc.layno0;
+        current_block = 1856101646708284338;
+      }
+    }
+    loop {
+      match current_block {
+        1856101646708284338 => {
+          if (*pi).layno < (*pi).poc.layno1 {
+            (*pi).compno = (*pi).poc.compno0
+          } else {
+            (*pi).resno = (*pi).resno.wrapping_add(1);
+            current_block = 2868539653012386629;
+            break;
+          }
+          current_block = 10048703153582371463;
+        }
+        _ => {
+          if (*pi).precno < (*pi).poc.precno1 {
+            index = (*pi)
+              .layno
+              .wrapping_mul((*pi).step_l)
+              .wrapping_add((*pi).resno.wrapping_mul((*pi).step_r))
+              .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
+              .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
+            if index >= (*pi).include_size {
+              opj_event_msg(
+                (*pi).manager,
+                1 as libc::c_int,
+                b"Invalid access to pi->include\x00" as *const u8 as *const libc::c_char,
+              );
+              return 0 as libc::c_int;
+            }
+            if *(*pi).include.offset(index as isize) == 0 {
+              *(*pi).include.offset(index as isize) = 1 as libc::c_int as OPJ_INT16;
+              return 1 as libc::c_int;
+            }
+            current_block = 5634871135123216486;
+            break;
+          } else {
+            current_block = 17860125682698302841;
+          }
+        }
+      }
+      loop {
+        match current_block {
+          17860125682698302841 => {
+            (*pi).compno = (*pi).compno.wrapping_add(1);
+            current_block = 10048703153582371463;
+          }
+          _ => {
+            if (*pi).compno < (*pi).poc.compno1 {
+              comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+              if (*pi).resno >= (*comp).numresolutions {
+                current_block = 17860125682698302841;
+                continue;
+              }
+              res =
+                &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+              if (*pi).tp_on == 0 {
+                (*pi).poc.precno1 = (*res).pw.wrapping_mul((*res).ph)
+              }
+              (*pi).precno = (*pi).poc.precno0;
+              current_block = 1109700713171191020;
+              break;
+            } else {
+              (*pi).layno = (*pi).layno.wrapping_add(1);
+              current_block = 1856101646708284338;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  return 0 as libc::c_int;
 }
 /* *
 Get next packet in resolution-precinct-component-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-unsafe extern "C" fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t)
- -> OPJ_BOOL {
-    let mut levelno: OPJ_UINT32 = 0;
-    let mut trx0: OPJ_UINT32 = 0;
-    let mut try0: OPJ_UINT32 = 0;
-    let mut trx1: OPJ_UINT32 = 0;
-    let mut try1: OPJ_UINT32 = 0;
-    let mut rpx: OPJ_UINT32 = 0;
-    let mut rpy: OPJ_UINT32 = 0;
-    let mut prci: OPJ_UINT32 = 0;
-    let mut prcj: OPJ_UINT32 = 0;
-    let mut current_block: u64;
-    let mut comp = 0 as *mut opj_pi_comp_t;
-    let mut res = 0 as *mut opj_pi_resolution_t;
-    let mut index = 0 as libc::c_int as OPJ_UINT32;
-    if (*pi).poc.compno0 >= (*pi).numcomps ||
-           (*pi).poc.compno1 >=
-               (*pi).numcomps.wrapping_add(1 as libc::c_int as libc::c_uint) {
-        opj_event_msg((*pi).manager, 1 as libc::c_int,
-                      b"opj_pi_next_rpcl(): invalid compno0/compno1\n\x00" as
-                          *const u8 as *const libc::c_char);
-        return 0 as libc::c_int
-    }
-    if (*pi).first == 0 {
-        current_block = 129780949503461575;
-    } else {
-        let mut compno: OPJ_UINT32 = 0;
-        let mut resno: OPJ_UINT32 = 0;
-        (*pi).first = 0 as libc::c_int;
-        (*pi).dx = 0 as libc::c_int as OPJ_UINT32;
-        (*pi).dy = 0 as libc::c_int as OPJ_UINT32;
-        compno = 0 as libc::c_int as OPJ_UINT32;
-        while compno < (*pi).numcomps {
-            comp =
-                &mut *(*pi).comps.offset(compno as isize) as
-                    *mut opj_pi_comp_t;
-            resno = 0 as libc::c_int as OPJ_UINT32;
-            while resno < (*comp).numresolutions {
-                let mut dx: OPJ_UINT32 = 0;
-                let mut dy: OPJ_UINT32 = 0;
-                res =
-                    &mut *(*comp).resolutions.offset(resno as isize) as
-                        *mut opj_pi_resolution_t;
-                if (*res).pdx.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                    as
-                                                                                    libc::c_int
-                                                                                    as
-                                                                                    libc::c_uint).wrapping_sub(resno)
-                       < 32 as libc::c_int as libc::c_uint &&
-                       (*comp).dx <=
-                           (2147483647 as libc::c_int as
-                                libc::c_uint).wrapping_mul(2 as
-                                                               libc::c_uint).wrapping_add(1
-                                                                                              as
-                                                                                              libc::c_uint).wrapping_div((1
-                                                                                                                              as
-                                                                                                                              libc::c_uint)
-                                                                                                                             <<
-                                                                                                                             (*res).pdx.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                                                                                              as
-                                                                                                                                                                                              libc::c_int
-                                                                                                                                                                                              as
-                                                                                                                                                                                              libc::c_uint).wrapping_sub(resno))
-                   {
-                    dx =
-                        (*comp).dx.wrapping_mul((1 as libc::c_uint) <<
-                                                    (*res).pdx.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                     as
-                                                                                                                     libc::c_int
-                                                                                                                     as
-                                                                                                                     libc::c_uint).wrapping_sub(resno));
-                    (*pi).dx =
-                        if (*pi).dx == 0 {
-                            dx
-                        } else { opj_uint_min((*pi).dx, dx) }
-                }
-                if (*res).pdy.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                    as
-                                                                                    libc::c_int
-                                                                                    as
-                                                                                    libc::c_uint).wrapping_sub(resno)
-                       < 32 as libc::c_int as libc::c_uint &&
-                       (*comp).dy <=
-                           (2147483647 as libc::c_int as
-                                libc::c_uint).wrapping_mul(2 as
-                                                               libc::c_uint).wrapping_add(1
-                                                                                              as
-                                                                                              libc::c_uint).wrapping_div((1
-                                                                                                                              as
-                                                                                                                              libc::c_uint)
-                                                                                                                             <<
-                                                                                                                             (*res).pdy.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                                                                                              as
-                                                                                                                                                                                              libc::c_int
-                                                                                                                                                                                              as
-                                                                                                                                                                                              libc::c_uint).wrapping_sub(resno))
-                   {
-                    dy =
-                        (*comp).dy.wrapping_mul((1 as libc::c_uint) <<
-                                                    (*res).pdy.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                     as
-                                                                                                                     libc::c_int
-                                                                                                                     as
-                                                                                                                     libc::c_uint).wrapping_sub(resno));
-                    (*pi).dy =
-                        if (*pi).dy == 0 {
-                            dy
-                        } else { opj_uint_min((*pi).dy, dy) }
-                }
-                resno = resno.wrapping_add(1)
-            }
-            compno = compno.wrapping_add(1)
-        }
-        if (*pi).dx == 0 as libc::c_int as libc::c_uint ||
-               (*pi).dy == 0 as libc::c_int as libc::c_uint {
-            return 0 as libc::c_int
-        }
-        if (*pi).tp_on == 0 {
-            (*pi).poc.ty0 = (*pi).ty0;
-            (*pi).poc.tx0 = (*pi).tx0;
-            (*pi).poc.ty1 = (*pi).ty1;
-            (*pi).poc.tx1 = (*pi).tx1
-        }
-        (*pi).resno = (*pi).poc.resno0;
-        current_block = 11385396242402735691;
-    }
-    loop  {
-        match current_block {
-            129780949503461575 => {
-                (*pi).layno = (*pi).layno.wrapping_add(1);
-                current_block = 2606304779496145856;
-            }
-            _ => {
-                if !((*pi).resno < (*pi).poc.resno1) { break ; }
-                (*pi).y = (*pi).poc.ty0;
-                current_block = 6450636197030046351;
-            }
-        }
-        loop  {
-            match current_block {
-                6450636197030046351 => {
-                    if (*pi).y < (*pi).poc.ty1 {
-                        (*pi).x = (*pi).poc.tx0
-                    } else {
-                        (*pi).resno = (*pi).resno.wrapping_add(1);
-                        current_block = 11385396242402735691;
-                        break ;
-                    }
-                    current_block = 3123434771885419771;
-                }
-                _ => {
-                    if (*pi).layno < (*pi).poc.layno1 {
-                        index =
-                            (*pi).layno.wrapping_mul((*pi).step_l).wrapping_add((*pi).resno.wrapping_mul((*pi).step_r)).wrapping_add((*pi).compno.wrapping_mul((*pi).step_c)).wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
-                        if index >= (*pi).include_size {
-                            opj_event_msg((*pi).manager, 1 as libc::c_int,
-                                          b"Invalid access to pi->include\x00"
-                                              as *const u8 as
-                                              *const libc::c_char);
-                            return 0 as libc::c_int
-                        }
-                        if *(*pi).include.offset(index as isize) == 0 {
-                            *(*pi).include.offset(index as isize) =
-                                1 as libc::c_int as OPJ_INT16;
-                            return 1 as libc::c_int
-                        }
-                        current_block = 129780949503461575;
-                        break ;
-                    } else { current_block = 10891380440665537214; }
-                }
-            }
-            loop  {
-                match current_block {
-                    10891380440665537214 => {
-                        (*pi).compno = (*pi).compno.wrapping_add(1)
-                    }
-                    _ => {
-                        if (*pi).x < (*pi).poc.tx1 {
-                            (*pi).compno = (*pi).poc.compno0
-                        } else {
-                            (*pi).y =
-                                ((*pi).y as
-                                     libc::c_uint).wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
-                                    as OPJ_UINT32 as OPJ_UINT32;
-                            current_block = 6450636197030046351;
-                            break ;
-                        }
-                    }
-                }
-                if (*pi).compno < (*pi).poc.compno1 {
-                    levelno = 0;
-                    trx0 = 0;
-                    try0 = 0;
-                    trx1 = 0;
-                    try1 = 0;
-                    rpx = 0;
-                    rpy = 0;
-                    prci = 0;
-                    prcj = 0;
-                    comp =
-                        &mut *(*pi).comps.offset((*pi).compno as isize) as
-                            *mut opj_pi_comp_t;
-                    if (*pi).resno >= (*comp).numresolutions {
-                        current_block = 10891380440665537214;
-                        continue ;
-                    }
-                    res =
-                        &mut *(*comp).resolutions.offset((*pi).resno as isize)
-                            as *mut opj_pi_resolution_t;
-                    levelno =
-                        (*comp).numresolutions.wrapping_sub(1 as libc::c_int
-                                                                as
-                                                                libc::c_uint).wrapping_sub((*pi).resno);
-                    /* Avoids division by zero */
-                    /* Relates to id_000004,sig_06,src_000679,op_arith8,pos_49,val_-17 */
-                    /* of  https://github.com/uclouvain/openjpeg/issues/938 */
-                    if levelno >= 32 as libc::c_int as libc::c_uint ||
-                           (*comp).dx << levelno >> levelno != (*comp).dx ||
-                           (*comp).dy << levelno >> levelno != (*comp).dy {
-                        current_block = 10891380440665537214;
-                        continue ;
-                    }
-                    if (*comp).dx << levelno >
-                           2147483647 as libc::c_int as libc::c_uint ||
-                           (*comp).dy << levelno >
-                               2147483647 as libc::c_int as libc::c_uint {
-                        current_block = 10891380440665537214;
-                        continue ;
-                    }
-                    trx0 = opj_uint_ceildiv((*pi).tx0, (*comp).dx << levelno);
-                    try0 = opj_uint_ceildiv((*pi).ty0, (*comp).dy << levelno);
-                    trx1 = opj_uint_ceildiv((*pi).tx1, (*comp).dx << levelno);
-                    try1 = opj_uint_ceildiv((*pi).ty1, (*comp).dy << levelno);
-                    rpx = (*res).pdx.wrapping_add(levelno);
-                    rpy = (*res).pdy.wrapping_add(levelno);
-                    /* To avoid divisions by zero / undefined behaviour on shift */
-                    /* in below tests */
-                    /* Fixes reading id:000026,sig:08,src:002419,op:int32,pos:60,val:+32 */
-                    /* of https://github.com/uclouvain/openjpeg/issues/938 */
-                    if rpx >= 31 as libc::c_int as libc::c_uint ||
-                           (*comp).dx << rpx >> rpx != (*comp).dx ||
-                           rpy >= 31 as libc::c_int as libc::c_uint ||
-                           (*comp).dy << rpy >> rpy != (*comp).dy {
-                        current_block = 10891380440665537214;
-                        continue ;
-                    }
-                    /* See ISO-15441. B.12.1.3 Resolution level-position-component-layer progression */
-                    if !((*pi).y.wrapping_rem((*comp).dy << rpy) ==
-                             0 as libc::c_int as libc::c_uint ||
-                             (*pi).y == (*pi).ty0 &&
-                                 (try0 <<
-                                      levelno).wrapping_rem((1 as
-                                                                 libc::c_uint)
-                                                                << rpy) != 0)
-                       {
-                        current_block = 10891380440665537214;
-                        continue ;
-                    }
-                    if !((*pi).x.wrapping_rem((*comp).dx << rpx) ==
-                             0 as libc::c_int as libc::c_uint ||
-                             (*pi).x == (*pi).tx0 &&
-                                 (trx0 <<
-                                      levelno).wrapping_rem((1 as
-                                                                 libc::c_uint)
-                                                                << rpx) != 0)
-                       {
-                        current_block = 10891380440665537214;
-                        continue ;
-                    }
-                    if (*res).pw == 0 as libc::c_int as libc::c_uint ||
-                           (*res).ph == 0 as libc::c_int as libc::c_uint {
-                        current_block = 10891380440665537214;
-                        continue ;
-                    }
-                    if trx0 == trx1 || try0 == try1 {
-                        current_block = 10891380440665537214;
-                        continue ;
-                    }
-                    prci =
-                        opj_uint_floordivpow2(opj_uint_ceildiv((*pi).x,
-                                                               (*comp).dx <<
-                                                                   levelno),
-                                              (*res).pdx).wrapping_sub(opj_uint_floordivpow2(trx0,
-                                                                                             (*res).pdx));
-                    prcj =
-                        opj_uint_floordivpow2(opj_uint_ceildiv((*pi).y,
-                                                               (*comp).dy <<
-                                                                   levelno),
-                                              (*res).pdy).wrapping_sub(opj_uint_floordivpow2(try0,
-                                                                                             (*res).pdy));
-                    (*pi).precno =
-                        prci.wrapping_add(prcj.wrapping_mul((*res).pw));
-                    (*pi).layno = (*pi).poc.layno0;
-                    current_block = 2606304779496145856;
-                    break ;
-                } else {
-                    (*pi).x =
-                        ((*pi).x as
-                             libc::c_uint).wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
-                            as OPJ_UINT32 as OPJ_UINT32;
-                    current_block = 3123434771885419771;
-                }
-            }
-        }
-    }
+unsafe extern "C" fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+  let mut levelno: OPJ_UINT32 = 0;
+  let mut trx0: OPJ_UINT32 = 0;
+  let mut try0: OPJ_UINT32 = 0;
+  let mut trx1: OPJ_UINT32 = 0;
+  let mut try1: OPJ_UINT32 = 0;
+  let mut rpx: OPJ_UINT32 = 0;
+  let mut rpy: OPJ_UINT32 = 0;
+  let mut prci: OPJ_UINT32 = 0;
+  let mut prcj: OPJ_UINT32 = 0;
+  let mut current_block: u64;
+  let mut comp = 0 as *mut opj_pi_comp_t;
+  let mut res = 0 as *mut opj_pi_resolution_t;
+  let mut index = 0 as libc::c_int as OPJ_UINT32;
+  if (*pi).poc.compno0 >= (*pi).numcomps
+    || (*pi).poc.compno1
+      >= (*pi)
+        .numcomps
+        .wrapping_add(1 as libc::c_int as libc::c_uint)
+  {
+    opj_event_msg(
+      (*pi).manager,
+      1 as libc::c_int,
+      b"opj_pi_next_rpcl(): invalid compno0/compno1\n\x00" as *const u8 as *const libc::c_char,
+    );
     return 0 as libc::c_int;
+  }
+  if (*pi).first == 0 {
+    current_block = 129780949503461575;
+  } else {
+    let mut compno: OPJ_UINT32 = 0;
+    let mut resno: OPJ_UINT32 = 0;
+    (*pi).first = 0 as libc::c_int;
+    (*pi).dx = 0 as libc::c_int as OPJ_UINT32;
+    (*pi).dy = 0 as libc::c_int as OPJ_UINT32;
+    compno = 0 as libc::c_int as OPJ_UINT32;
+    while compno < (*pi).numcomps {
+      comp = &mut *(*pi).comps.offset(compno as isize) as *mut opj_pi_comp_t;
+      resno = 0 as libc::c_int as OPJ_UINT32;
+      while resno < (*comp).numresolutions {
+        let mut dx: OPJ_UINT32 = 0;
+        let mut dy: OPJ_UINT32 = 0;
+        res = &mut *(*comp).resolutions.offset(resno as isize) as *mut opj_pi_resolution_t;
+        if (*res)
+          .pdx
+          .wrapping_add((*comp).numresolutions)
+          .wrapping_sub(1 as libc::c_int as libc::c_uint)
+          .wrapping_sub(resno)
+          < 32 as libc::c_int as libc::c_uint
+          && (*comp).dx
+            <= (2147483647 as libc::c_int as libc::c_uint)
+              .wrapping_mul(2 as libc::c_uint)
+              .wrapping_add(1 as libc::c_uint)
+              .wrapping_div(
+                (1 as libc::c_uint)
+                  << (*res)
+                    .pdx
+                    .wrapping_add((*comp).numresolutions)
+                    .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                    .wrapping_sub(resno),
+              )
+        {
+          dx = (*comp).dx.wrapping_mul(
+            (1 as libc::c_uint)
+              << (*res)
+                .pdx
+                .wrapping_add((*comp).numresolutions)
+                .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                .wrapping_sub(resno),
+          );
+          (*pi).dx = if (*pi).dx == 0 {
+            dx
+          } else {
+            opj_uint_min((*pi).dx, dx)
+          }
+        }
+        if (*res)
+          .pdy
+          .wrapping_add((*comp).numresolutions)
+          .wrapping_sub(1 as libc::c_int as libc::c_uint)
+          .wrapping_sub(resno)
+          < 32 as libc::c_int as libc::c_uint
+          && (*comp).dy
+            <= (2147483647 as libc::c_int as libc::c_uint)
+              .wrapping_mul(2 as libc::c_uint)
+              .wrapping_add(1 as libc::c_uint)
+              .wrapping_div(
+                (1 as libc::c_uint)
+                  << (*res)
+                    .pdy
+                    .wrapping_add((*comp).numresolutions)
+                    .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                    .wrapping_sub(resno),
+              )
+        {
+          dy = (*comp).dy.wrapping_mul(
+            (1 as libc::c_uint)
+              << (*res)
+                .pdy
+                .wrapping_add((*comp).numresolutions)
+                .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                .wrapping_sub(resno),
+          );
+          (*pi).dy = if (*pi).dy == 0 {
+            dy
+          } else {
+            opj_uint_min((*pi).dy, dy)
+          }
+        }
+        resno = resno.wrapping_add(1)
+      }
+      compno = compno.wrapping_add(1)
+    }
+    if (*pi).dx == 0 as libc::c_int as libc::c_uint || (*pi).dy == 0 as libc::c_int as libc::c_uint
+    {
+      return 0 as libc::c_int;
+    }
+    if (*pi).tp_on == 0 {
+      (*pi).poc.ty0 = (*pi).ty0;
+      (*pi).poc.tx0 = (*pi).tx0;
+      (*pi).poc.ty1 = (*pi).ty1;
+      (*pi).poc.tx1 = (*pi).tx1
+    }
+    (*pi).resno = (*pi).poc.resno0;
+    current_block = 11385396242402735691;
+  }
+  loop {
+    match current_block {
+      129780949503461575 => {
+        (*pi).layno = (*pi).layno.wrapping_add(1);
+        current_block = 2606304779496145856;
+      }
+      _ => {
+        if !((*pi).resno < (*pi).poc.resno1) {
+          break;
+        }
+        (*pi).y = (*pi).poc.ty0;
+        current_block = 6450636197030046351;
+      }
+    }
+    loop {
+      match current_block {
+        6450636197030046351 => {
+          if (*pi).y < (*pi).poc.ty1 {
+            (*pi).x = (*pi).poc.tx0
+          } else {
+            (*pi).resno = (*pi).resno.wrapping_add(1);
+            current_block = 11385396242402735691;
+            break;
+          }
+          current_block = 3123434771885419771;
+        }
+        _ => {
+          if (*pi).layno < (*pi).poc.layno1 {
+            index = (*pi)
+              .layno
+              .wrapping_mul((*pi).step_l)
+              .wrapping_add((*pi).resno.wrapping_mul((*pi).step_r))
+              .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
+              .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
+            if index >= (*pi).include_size {
+              opj_event_msg(
+                (*pi).manager,
+                1 as libc::c_int,
+                b"Invalid access to pi->include\x00" as *const u8 as *const libc::c_char,
+              );
+              return 0 as libc::c_int;
+            }
+            if *(*pi).include.offset(index as isize) == 0 {
+              *(*pi).include.offset(index as isize) = 1 as libc::c_int as OPJ_INT16;
+              return 1 as libc::c_int;
+            }
+            current_block = 129780949503461575;
+            break;
+          } else {
+            current_block = 10891380440665537214;
+          }
+        }
+      }
+      loop {
+        match current_block {
+          10891380440665537214 => (*pi).compno = (*pi).compno.wrapping_add(1),
+          _ => {
+            if (*pi).x < (*pi).poc.tx1 {
+              (*pi).compno = (*pi).poc.compno0
+            } else {
+              (*pi).y = ((*pi).y as libc::c_uint)
+                .wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
+                as OPJ_UINT32 as OPJ_UINT32;
+              current_block = 6450636197030046351;
+              break;
+            }
+          }
+        }
+        if (*pi).compno < (*pi).poc.compno1 {
+          levelno = 0;
+          trx0 = 0;
+          try0 = 0;
+          trx1 = 0;
+          try1 = 0;
+          rpx = 0;
+          rpy = 0;
+          prci = 0;
+          prcj = 0;
+          comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+          if (*pi).resno >= (*comp).numresolutions {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          res = &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+          levelno = (*comp)
+            .numresolutions
+            .wrapping_sub(1 as libc::c_int as libc::c_uint)
+            .wrapping_sub((*pi).resno);
+          /* Avoids division by zero */
+          /* Relates to id_000004,sig_06,src_000679,op_arith8,pos_49,val_-17 */
+          /* of  https://github.com/uclouvain/openjpeg/issues/938 */
+          if levelno >= 32 as libc::c_int as libc::c_uint
+            || (*comp).dx << levelno >> levelno != (*comp).dx
+            || (*comp).dy << levelno >> levelno != (*comp).dy
+          {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          if (*comp).dx << levelno > 2147483647 as libc::c_int as libc::c_uint
+            || (*comp).dy << levelno > 2147483647 as libc::c_int as libc::c_uint
+          {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          trx0 = opj_uint_ceildiv((*pi).tx0, (*comp).dx << levelno);
+          try0 = opj_uint_ceildiv((*pi).ty0, (*comp).dy << levelno);
+          trx1 = opj_uint_ceildiv((*pi).tx1, (*comp).dx << levelno);
+          try1 = opj_uint_ceildiv((*pi).ty1, (*comp).dy << levelno);
+          rpx = (*res).pdx.wrapping_add(levelno);
+          rpy = (*res).pdy.wrapping_add(levelno);
+          /* To avoid divisions by zero / undefined behaviour on shift */
+          /* in below tests */
+          /* Fixes reading id:000026,sig:08,src:002419,op:int32,pos:60,val:+32 */
+          /* of https://github.com/uclouvain/openjpeg/issues/938 */
+          if rpx >= 31 as libc::c_int as libc::c_uint
+            || (*comp).dx << rpx >> rpx != (*comp).dx
+            || rpy >= 31 as libc::c_int as libc::c_uint
+            || (*comp).dy << rpy >> rpy != (*comp).dy
+          {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          /* See ISO-15441. B.12.1.3 Resolution level-position-component-layer progression */
+          if !((*pi).y.wrapping_rem((*comp).dy << rpy) == 0 as libc::c_int as libc::c_uint
+            || (*pi).y == (*pi).ty0
+              && (try0 << levelno).wrapping_rem((1 as libc::c_uint) << rpy) != 0)
+          {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          if !((*pi).x.wrapping_rem((*comp).dx << rpx) == 0 as libc::c_int as libc::c_uint
+            || (*pi).x == (*pi).tx0
+              && (trx0 << levelno).wrapping_rem((1 as libc::c_uint) << rpx) != 0)
+          {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          if (*res).pw == 0 as libc::c_int as libc::c_uint
+            || (*res).ph == 0 as libc::c_int as libc::c_uint
+          {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          if trx0 == trx1 || try0 == try1 {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          prci =
+            opj_uint_floordivpow2(opj_uint_ceildiv((*pi).x, (*comp).dx << levelno), (*res).pdx)
+              .wrapping_sub(opj_uint_floordivpow2(trx0, (*res).pdx));
+          prcj =
+            opj_uint_floordivpow2(opj_uint_ceildiv((*pi).y, (*comp).dy << levelno), (*res).pdy)
+              .wrapping_sub(opj_uint_floordivpow2(try0, (*res).pdy));
+          (*pi).precno = prci.wrapping_add(prcj.wrapping_mul((*res).pw));
+          (*pi).layno = (*pi).poc.layno0;
+          current_block = 2606304779496145856;
+          break;
+        } else {
+          (*pi).x = ((*pi).x as libc::c_uint)
+            .wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
+            as OPJ_UINT32 as OPJ_UINT32;
+          current_block = 3123434771885419771;
+        }
+      }
+    }
+  }
+  return 0 as libc::c_int;
 }
 /* *
 Get next packet in precinct-component-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-unsafe extern "C" fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t)
- -> OPJ_BOOL {
-    let mut levelno: OPJ_UINT32 = 0;
-    let mut trx0: OPJ_UINT32 = 0;
-    let mut try0: OPJ_UINT32 = 0;
-    let mut trx1: OPJ_UINT32 = 0;
-    let mut try1: OPJ_UINT32 = 0;
-    let mut rpx: OPJ_UINT32 = 0;
-    let mut rpy: OPJ_UINT32 = 0;
-    let mut prci: OPJ_UINT32 = 0;
-    let mut prcj: OPJ_UINT32 = 0;
-    let mut current_block: u64;
-    let mut comp = 0 as *mut opj_pi_comp_t;
-    let mut res = 0 as *mut opj_pi_resolution_t;
-    let mut index = 0 as libc::c_int as OPJ_UINT32;
-    if (*pi).poc.compno0 >= (*pi).numcomps ||
-           (*pi).poc.compno1 >=
-               (*pi).numcomps.wrapping_add(1 as libc::c_int as libc::c_uint) {
-        opj_event_msg((*pi).manager, 1 as libc::c_int,
-                      b"opj_pi_next_pcrl(): invalid compno0/compno1\n\x00" as
-                          *const u8 as *const libc::c_char);
-        return 0 as libc::c_int
-    }
-    if (*pi).first == 0 {
-        comp =
-            &mut *(*pi).comps.offset((*pi).compno as isize) as
-                *mut opj_pi_comp_t;
-        current_block = 10853015579903106591;
-    } else {
-        let mut compno: OPJ_UINT32 = 0;
-        let mut resno: OPJ_UINT32 = 0;
-        (*pi).first = 0 as libc::c_int;
-        (*pi).dx = 0 as libc::c_int as OPJ_UINT32;
-        (*pi).dy = 0 as libc::c_int as OPJ_UINT32;
-        compno = 0 as libc::c_int as OPJ_UINT32;
-        while compno < (*pi).numcomps {
-            comp =
-                &mut *(*pi).comps.offset(compno as isize) as
-                    *mut opj_pi_comp_t;
-            resno = 0 as libc::c_int as OPJ_UINT32;
-            while resno < (*comp).numresolutions {
-                let mut dx: OPJ_UINT32 = 0;
-                let mut dy: OPJ_UINT32 = 0;
-                res =
-                    &mut *(*comp).resolutions.offset(resno as isize) as
-                        *mut opj_pi_resolution_t;
-                if (*res).pdx.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                    as
-                                                                                    libc::c_int
-                                                                                    as
-                                                                                    libc::c_uint).wrapping_sub(resno)
-                       < 32 as libc::c_int as libc::c_uint &&
-                       (*comp).dx <=
-                           (2147483647 as libc::c_int as
-                                libc::c_uint).wrapping_mul(2 as
-                                                               libc::c_uint).wrapping_add(1
-                                                                                              as
-                                                                                              libc::c_uint).wrapping_div((1
-                                                                                                                              as
-                                                                                                                              libc::c_uint)
-                                                                                                                             <<
-                                                                                                                             (*res).pdx.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                                                                                              as
-                                                                                                                                                                                              libc::c_int
-                                                                                                                                                                                              as
-                                                                                                                                                                                              libc::c_uint).wrapping_sub(resno))
-                   {
-                    dx =
-                        (*comp).dx.wrapping_mul((1 as libc::c_uint) <<
-                                                    (*res).pdx.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                     as
-                                                                                                                     libc::c_int
-                                                                                                                     as
-                                                                                                                     libc::c_uint).wrapping_sub(resno));
-                    (*pi).dx =
-                        if (*pi).dx == 0 {
-                            dx
-                        } else { opj_uint_min((*pi).dx, dx) }
-                }
-                if (*res).pdy.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                    as
-                                                                                    libc::c_int
-                                                                                    as
-                                                                                    libc::c_uint).wrapping_sub(resno)
-                       < 32 as libc::c_int as libc::c_uint &&
-                       (*comp).dy <=
-                           (2147483647 as libc::c_int as
-                                libc::c_uint).wrapping_mul(2 as
-                                                               libc::c_uint).wrapping_add(1
-                                                                                              as
-                                                                                              libc::c_uint).wrapping_div((1
-                                                                                                                              as
-                                                                                                                              libc::c_uint)
-                                                                                                                             <<
-                                                                                                                             (*res).pdy.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                                                                                              as
-                                                                                                                                                                                              libc::c_int
-                                                                                                                                                                                              as
-                                                                                                                                                                                              libc::c_uint).wrapping_sub(resno))
-                   {
-                    dy =
-                        (*comp).dy.wrapping_mul((1 as libc::c_uint) <<
-                                                    (*res).pdy.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                     as
-                                                                                                                     libc::c_int
-                                                                                                                     as
-                                                                                                                     libc::c_uint).wrapping_sub(resno));
-                    (*pi).dy =
-                        if (*pi).dy == 0 {
-                            dy
-                        } else { opj_uint_min((*pi).dy, dy) }
-                }
-                resno = resno.wrapping_add(1)
-            }
-            compno = compno.wrapping_add(1)
-        }
-        if (*pi).dx == 0 as libc::c_int as libc::c_uint ||
-               (*pi).dy == 0 as libc::c_int as libc::c_uint {
-            return 0 as libc::c_int
-        }
-        if (*pi).tp_on == 0 {
-            (*pi).poc.ty0 = (*pi).ty0;
-            (*pi).poc.tx0 = (*pi).tx0;
-            (*pi).poc.ty1 = (*pi).ty1;
-            (*pi).poc.tx1 = (*pi).tx1
-        }
-        (*pi).y = (*pi).poc.ty0;
-        current_block = 7245201122033322888;
-    }
-    loop  {
-        match current_block {
-            10853015579903106591 => {
-                (*pi).layno = (*pi).layno.wrapping_add(1);
-                current_block = 6281126495347172768;
-            }
-            _ => {
-                if !((*pi).y < (*pi).poc.ty1) { break ; }
-                (*pi).x = (*pi).poc.tx0;
-                current_block = 8845338526596852646;
-            }
-        }
-        loop  {
-            match current_block {
-                8845338526596852646 => {
-                    if (*pi).x < (*pi).poc.tx1 {
-                        (*pi).compno = (*pi).poc.compno0
-                    } else {
-                        (*pi).y =
-                            ((*pi).y as
-                                 libc::c_uint).wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
-                                as OPJ_UINT32 as OPJ_UINT32;
-                        current_block = 7245201122033322888;
-                        break ;
-                    }
-                    current_block = 980989089337379490;
-                }
-                _ => {
-                    if (*pi).layno < (*pi).poc.layno1 {
-                        index =
-                            (*pi).layno.wrapping_mul((*pi).step_l).wrapping_add((*pi).resno.wrapping_mul((*pi).step_r)).wrapping_add((*pi).compno.wrapping_mul((*pi).step_c)).wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
-                        if index >= (*pi).include_size {
-                            opj_event_msg((*pi).manager, 1 as libc::c_int,
-                                          b"Invalid access to pi->include\x00"
-                                              as *const u8 as
-                                              *const libc::c_char);
-                            return 0 as libc::c_int
-                        }
-                        if *(*pi).include.offset(index as isize) == 0 {
-                            *(*pi).include.offset(index as isize) =
-                                1 as libc::c_int as OPJ_INT16;
-                            return 1 as libc::c_int
-                        }
-                        current_block = 10853015579903106591;
-                        break ;
-                    } else { current_block = 15512526488502093901; }
-                }
-            }
-            loop  {
-                match current_block {
-                    15512526488502093901 => {
-                        (*pi).resno = (*pi).resno.wrapping_add(1)
-                    }
-                    _ => {
-                        if (*pi).compno < (*pi).poc.compno1 {
-                            comp =
-                                &mut *(*pi).comps.offset((*pi).compno as
-                                                             isize) as
-                                    *mut opj_pi_comp_t;
-                            (*pi).resno = (*pi).poc.resno0
-                        } else {
-                            (*pi).x =
-                                ((*pi).x as
-                                     libc::c_uint).wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
-                                    as OPJ_UINT32 as OPJ_UINT32;
-                            current_block = 8845338526596852646;
-                            break ;
-                        }
-                    }
-                }
-                if (*pi).resno <
-                       opj_uint_min((*pi).poc.resno1, (*comp).numresolutions)
-                   {
-                    levelno = 0;
-                    trx0 = 0;
-                    try0 = 0;
-                    trx1 = 0;
-                    try1 = 0;
-                    rpx = 0;
-                    rpy = 0;
-                    prci = 0;
-                    prcj = 0;
-                    res =
-                        &mut *(*comp).resolutions.offset((*pi).resno as isize)
-                            as *mut opj_pi_resolution_t;
-                    levelno =
-                        (*comp).numresolutions.wrapping_sub(1 as libc::c_int
-                                                                as
-                                                                libc::c_uint).wrapping_sub((*pi).resno);
-                    /* Avoids division by zero */
-                    /* Relates to id_000004,sig_06,src_000679,op_arith8,pos_49,val_-17 */
-                    /* of  https://github.com/uclouvain/openjpeg/issues/938 */
-                    if levelno >= 32 as libc::c_int as libc::c_uint ||
-                           (*comp).dx << levelno >> levelno != (*comp).dx ||
-                           (*comp).dy << levelno >> levelno != (*comp).dy {
-                        current_block = 15512526488502093901;
-                        continue ;
-                    }
-                    if (*comp).dx << levelno >
-                           2147483647 as libc::c_int as libc::c_uint ||
-                           (*comp).dy << levelno >
-                               2147483647 as libc::c_int as libc::c_uint {
-                        current_block = 15512526488502093901;
-                        continue ;
-                    }
-                    trx0 = opj_uint_ceildiv((*pi).tx0, (*comp).dx << levelno);
-                    try0 = opj_uint_ceildiv((*pi).ty0, (*comp).dy << levelno);
-                    trx1 = opj_uint_ceildiv((*pi).tx1, (*comp).dx << levelno);
-                    try1 = opj_uint_ceildiv((*pi).ty1, (*comp).dy << levelno);
-                    rpx = (*res).pdx.wrapping_add(levelno);
-                    rpy = (*res).pdy.wrapping_add(levelno);
-                    /* To avoid divisions by zero / undefined behaviour on shift */
-                    /* in below tests */
-                    /* Relates to id:000019,sig:08,src:001098,op:flip1,pos:49 */
-                    /* of https://github.com/uclouvain/openjpeg/issues/938 */
-                    if rpx >= 31 as libc::c_int as libc::c_uint ||
-                           (*comp).dx << rpx >> rpx != (*comp).dx ||
-                           rpy >= 31 as libc::c_int as libc::c_uint ||
-                           (*comp).dy << rpy >> rpy != (*comp).dy {
-                        current_block = 15512526488502093901;
-                        continue ;
-                    }
-                    /* See ISO-15441. B.12.1.4 Position-component-resolution level-layer progression */
-                    if !((*pi).y.wrapping_rem((*comp).dy << rpy) ==
-                             0 as libc::c_int as libc::c_uint ||
-                             (*pi).y == (*pi).ty0 &&
-                                 (try0 <<
-                                      levelno).wrapping_rem((1 as
-                                                                 libc::c_uint)
-                                                                << rpy) != 0)
-                       {
-                        current_block = 15512526488502093901;
-                        continue ;
-                    }
-                    if !((*pi).x.wrapping_rem((*comp).dx << rpx) ==
-                             0 as libc::c_int as libc::c_uint ||
-                             (*pi).x == (*pi).tx0 &&
-                                 (trx0 <<
-                                      levelno).wrapping_rem((1 as
-                                                                 libc::c_uint)
-                                                                << rpx) != 0)
-                       {
-                        current_block = 15512526488502093901;
-                        continue ;
-                    }
-                    if (*res).pw == 0 as libc::c_int as libc::c_uint ||
-                           (*res).ph == 0 as libc::c_int as libc::c_uint {
-                        current_block = 15512526488502093901;
-                        continue ;
-                    }
-                    if trx0 == trx1 || try0 == try1 {
-                        current_block = 15512526488502093901;
-                        continue ;
-                    }
-                    prci =
-                        opj_uint_floordivpow2(opj_uint_ceildiv((*pi).x,
-                                                               (*comp).dx <<
-                                                                   levelno),
-                                              (*res).pdx).wrapping_sub(opj_uint_floordivpow2(trx0,
-                                                                                             (*res).pdx));
-                    prcj =
-                        opj_uint_floordivpow2(opj_uint_ceildiv((*pi).y,
-                                                               (*comp).dy <<
-                                                                   levelno),
-                                              (*res).pdy).wrapping_sub(opj_uint_floordivpow2(try0,
-                                                                                             (*res).pdy));
-                    (*pi).precno =
-                        prci.wrapping_add(prcj.wrapping_mul((*res).pw));
-                    (*pi).layno = (*pi).poc.layno0;
-                    current_block = 6281126495347172768;
-                    break ;
-                } else {
-                    (*pi).compno = (*pi).compno.wrapping_add(1);
-                    current_block = 980989089337379490;
-                }
-            }
-        }
-    }
+unsafe extern "C" fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+  let mut levelno: OPJ_UINT32 = 0;
+  let mut trx0: OPJ_UINT32 = 0;
+  let mut try0: OPJ_UINT32 = 0;
+  let mut trx1: OPJ_UINT32 = 0;
+  let mut try1: OPJ_UINT32 = 0;
+  let mut rpx: OPJ_UINT32 = 0;
+  let mut rpy: OPJ_UINT32 = 0;
+  let mut prci: OPJ_UINT32 = 0;
+  let mut prcj: OPJ_UINT32 = 0;
+  let mut current_block: u64;
+  let mut comp = 0 as *mut opj_pi_comp_t;
+  let mut res = 0 as *mut opj_pi_resolution_t;
+  let mut index = 0 as libc::c_int as OPJ_UINT32;
+  if (*pi).poc.compno0 >= (*pi).numcomps
+    || (*pi).poc.compno1
+      >= (*pi)
+        .numcomps
+        .wrapping_add(1 as libc::c_int as libc::c_uint)
+  {
+    opj_event_msg(
+      (*pi).manager,
+      1 as libc::c_int,
+      b"opj_pi_next_pcrl(): invalid compno0/compno1\n\x00" as *const u8 as *const libc::c_char,
+    );
     return 0 as libc::c_int;
+  }
+  if (*pi).first == 0 {
+    comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+    current_block = 10853015579903106591;
+  } else {
+    let mut compno: OPJ_UINT32 = 0;
+    let mut resno: OPJ_UINT32 = 0;
+    (*pi).first = 0 as libc::c_int;
+    (*pi).dx = 0 as libc::c_int as OPJ_UINT32;
+    (*pi).dy = 0 as libc::c_int as OPJ_UINT32;
+    compno = 0 as libc::c_int as OPJ_UINT32;
+    while compno < (*pi).numcomps {
+      comp = &mut *(*pi).comps.offset(compno as isize) as *mut opj_pi_comp_t;
+      resno = 0 as libc::c_int as OPJ_UINT32;
+      while resno < (*comp).numresolutions {
+        let mut dx: OPJ_UINT32 = 0;
+        let mut dy: OPJ_UINT32 = 0;
+        res = &mut *(*comp).resolutions.offset(resno as isize) as *mut opj_pi_resolution_t;
+        if (*res)
+          .pdx
+          .wrapping_add((*comp).numresolutions)
+          .wrapping_sub(1 as libc::c_int as libc::c_uint)
+          .wrapping_sub(resno)
+          < 32 as libc::c_int as libc::c_uint
+          && (*comp).dx
+            <= (2147483647 as libc::c_int as libc::c_uint)
+              .wrapping_mul(2 as libc::c_uint)
+              .wrapping_add(1 as libc::c_uint)
+              .wrapping_div(
+                (1 as libc::c_uint)
+                  << (*res)
+                    .pdx
+                    .wrapping_add((*comp).numresolutions)
+                    .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                    .wrapping_sub(resno),
+              )
+        {
+          dx = (*comp).dx.wrapping_mul(
+            (1 as libc::c_uint)
+              << (*res)
+                .pdx
+                .wrapping_add((*comp).numresolutions)
+                .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                .wrapping_sub(resno),
+          );
+          (*pi).dx = if (*pi).dx == 0 {
+            dx
+          } else {
+            opj_uint_min((*pi).dx, dx)
+          }
+        }
+        if (*res)
+          .pdy
+          .wrapping_add((*comp).numresolutions)
+          .wrapping_sub(1 as libc::c_int as libc::c_uint)
+          .wrapping_sub(resno)
+          < 32 as libc::c_int as libc::c_uint
+          && (*comp).dy
+            <= (2147483647 as libc::c_int as libc::c_uint)
+              .wrapping_mul(2 as libc::c_uint)
+              .wrapping_add(1 as libc::c_uint)
+              .wrapping_div(
+                (1 as libc::c_uint)
+                  << (*res)
+                    .pdy
+                    .wrapping_add((*comp).numresolutions)
+                    .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                    .wrapping_sub(resno),
+              )
+        {
+          dy = (*comp).dy.wrapping_mul(
+            (1 as libc::c_uint)
+              << (*res)
+                .pdy
+                .wrapping_add((*comp).numresolutions)
+                .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                .wrapping_sub(resno),
+          );
+          (*pi).dy = if (*pi).dy == 0 {
+            dy
+          } else {
+            opj_uint_min((*pi).dy, dy)
+          }
+        }
+        resno = resno.wrapping_add(1)
+      }
+      compno = compno.wrapping_add(1)
+    }
+    if (*pi).dx == 0 as libc::c_int as libc::c_uint || (*pi).dy == 0 as libc::c_int as libc::c_uint
+    {
+      return 0 as libc::c_int;
+    }
+    if (*pi).tp_on == 0 {
+      (*pi).poc.ty0 = (*pi).ty0;
+      (*pi).poc.tx0 = (*pi).tx0;
+      (*pi).poc.ty1 = (*pi).ty1;
+      (*pi).poc.tx1 = (*pi).tx1
+    }
+    (*pi).y = (*pi).poc.ty0;
+    current_block = 7245201122033322888;
+  }
+  loop {
+    match current_block {
+      10853015579903106591 => {
+        (*pi).layno = (*pi).layno.wrapping_add(1);
+        current_block = 6281126495347172768;
+      }
+      _ => {
+        if !((*pi).y < (*pi).poc.ty1) {
+          break;
+        }
+        (*pi).x = (*pi).poc.tx0;
+        current_block = 8845338526596852646;
+      }
+    }
+    loop {
+      match current_block {
+        8845338526596852646 => {
+          if (*pi).x < (*pi).poc.tx1 {
+            (*pi).compno = (*pi).poc.compno0
+          } else {
+            (*pi).y = ((*pi).y as libc::c_uint)
+              .wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
+              as OPJ_UINT32 as OPJ_UINT32;
+            current_block = 7245201122033322888;
+            break;
+          }
+          current_block = 980989089337379490;
+        }
+        _ => {
+          if (*pi).layno < (*pi).poc.layno1 {
+            index = (*pi)
+              .layno
+              .wrapping_mul((*pi).step_l)
+              .wrapping_add((*pi).resno.wrapping_mul((*pi).step_r))
+              .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
+              .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
+            if index >= (*pi).include_size {
+              opj_event_msg(
+                (*pi).manager,
+                1 as libc::c_int,
+                b"Invalid access to pi->include\x00" as *const u8 as *const libc::c_char,
+              );
+              return 0 as libc::c_int;
+            }
+            if *(*pi).include.offset(index as isize) == 0 {
+              *(*pi).include.offset(index as isize) = 1 as libc::c_int as OPJ_INT16;
+              return 1 as libc::c_int;
+            }
+            current_block = 10853015579903106591;
+            break;
+          } else {
+            current_block = 15512526488502093901;
+          }
+        }
+      }
+      loop {
+        match current_block {
+          15512526488502093901 => (*pi).resno = (*pi).resno.wrapping_add(1),
+          _ => {
+            if (*pi).compno < (*pi).poc.compno1 {
+              comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+              (*pi).resno = (*pi).poc.resno0
+            } else {
+              (*pi).x = ((*pi).x as libc::c_uint)
+                .wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
+                as OPJ_UINT32 as OPJ_UINT32;
+              current_block = 8845338526596852646;
+              break;
+            }
+          }
+        }
+        if (*pi).resno < opj_uint_min((*pi).poc.resno1, (*comp).numresolutions) {
+          levelno = 0;
+          trx0 = 0;
+          try0 = 0;
+          trx1 = 0;
+          try1 = 0;
+          rpx = 0;
+          rpy = 0;
+          prci = 0;
+          prcj = 0;
+          res = &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+          levelno = (*comp)
+            .numresolutions
+            .wrapping_sub(1 as libc::c_int as libc::c_uint)
+            .wrapping_sub((*pi).resno);
+          /* Avoids division by zero */
+          /* Relates to id_000004,sig_06,src_000679,op_arith8,pos_49,val_-17 */
+          /* of  https://github.com/uclouvain/openjpeg/issues/938 */
+          if levelno >= 32 as libc::c_int as libc::c_uint
+            || (*comp).dx << levelno >> levelno != (*comp).dx
+            || (*comp).dy << levelno >> levelno != (*comp).dy
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          if (*comp).dx << levelno > 2147483647 as libc::c_int as libc::c_uint
+            || (*comp).dy << levelno > 2147483647 as libc::c_int as libc::c_uint
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          trx0 = opj_uint_ceildiv((*pi).tx0, (*comp).dx << levelno);
+          try0 = opj_uint_ceildiv((*pi).ty0, (*comp).dy << levelno);
+          trx1 = opj_uint_ceildiv((*pi).tx1, (*comp).dx << levelno);
+          try1 = opj_uint_ceildiv((*pi).ty1, (*comp).dy << levelno);
+          rpx = (*res).pdx.wrapping_add(levelno);
+          rpy = (*res).pdy.wrapping_add(levelno);
+          /* To avoid divisions by zero / undefined behaviour on shift */
+          /* in below tests */
+          /* Relates to id:000019,sig:08,src:001098,op:flip1,pos:49 */
+          /* of https://github.com/uclouvain/openjpeg/issues/938 */
+          if rpx >= 31 as libc::c_int as libc::c_uint
+            || (*comp).dx << rpx >> rpx != (*comp).dx
+            || rpy >= 31 as libc::c_int as libc::c_uint
+            || (*comp).dy << rpy >> rpy != (*comp).dy
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          /* See ISO-15441. B.12.1.4 Position-component-resolution level-layer progression */
+          if !((*pi).y.wrapping_rem((*comp).dy << rpy) == 0 as libc::c_int as libc::c_uint
+            || (*pi).y == (*pi).ty0
+              && (try0 << levelno).wrapping_rem((1 as libc::c_uint) << rpy) != 0)
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          if !((*pi).x.wrapping_rem((*comp).dx << rpx) == 0 as libc::c_int as libc::c_uint
+            || (*pi).x == (*pi).tx0
+              && (trx0 << levelno).wrapping_rem((1 as libc::c_uint) << rpx) != 0)
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          if (*res).pw == 0 as libc::c_int as libc::c_uint
+            || (*res).ph == 0 as libc::c_int as libc::c_uint
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          if trx0 == trx1 || try0 == try1 {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          prci =
+            opj_uint_floordivpow2(opj_uint_ceildiv((*pi).x, (*comp).dx << levelno), (*res).pdx)
+              .wrapping_sub(opj_uint_floordivpow2(trx0, (*res).pdx));
+          prcj =
+            opj_uint_floordivpow2(opj_uint_ceildiv((*pi).y, (*comp).dy << levelno), (*res).pdy)
+              .wrapping_sub(opj_uint_floordivpow2(try0, (*res).pdy));
+          (*pi).precno = prci.wrapping_add(prcj.wrapping_mul((*res).pw));
+          (*pi).layno = (*pi).poc.layno0;
+          current_block = 6281126495347172768;
+          break;
+        } else {
+          (*pi).compno = (*pi).compno.wrapping_add(1);
+          current_block = 980989089337379490;
+        }
+      }
+    }
+  }
+  return 0 as libc::c_int;
 }
 /* *
 Get next packet in component-precinct-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-unsafe extern "C" fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t)
- -> OPJ_BOOL {
-    let mut resno: OPJ_UINT32 = 0;
-    let mut levelno: OPJ_UINT32 = 0;
-    let mut trx0: OPJ_UINT32 = 0;
-    let mut try0: OPJ_UINT32 = 0;
-    let mut trx1: OPJ_UINT32 = 0;
-    let mut try1: OPJ_UINT32 = 0;
-    let mut rpx: OPJ_UINT32 = 0;
-    let mut rpy: OPJ_UINT32 = 0;
-    let mut prci: OPJ_UINT32 = 0;
-    let mut prcj: OPJ_UINT32 = 0;
-    let mut current_block: u64;
-    let mut comp = 0 as *mut opj_pi_comp_t;
-    let mut res = 0 as *mut opj_pi_resolution_t;
-    let mut index = 0 as libc::c_int as OPJ_UINT32;
-    if (*pi).poc.compno0 >= (*pi).numcomps ||
-           (*pi).poc.compno1 >=
-               (*pi).numcomps.wrapping_add(1 as libc::c_int as libc::c_uint) {
-        opj_event_msg((*pi).manager, 1 as libc::c_int,
-                      b"opj_pi_next_cprl(): invalid compno0/compno1\n\x00" as
-                          *const u8 as *const libc::c_char);
-        return 0 as libc::c_int
-    }
-    if (*pi).first == 0 {
-        comp =
-            &mut *(*pi).comps.offset((*pi).compno as isize) as
-                *mut opj_pi_comp_t;
-        current_block = 13707613154239713890;
-    } else {
-        (*pi).first = 0 as libc::c_int;
-        (*pi).compno = (*pi).poc.compno0;
-        current_block = 3640593987805443782;
-    }
-    loop  {
-        match current_block {
-            13707613154239713890 => {
-                (*pi).layno = (*pi).layno.wrapping_add(1);
-                current_block = 15594839951440953787;
-            }
-            _ => {
-                if !((*pi).compno < (*pi).poc.compno1) { break ; }
-                resno = 0;
-                comp =
-                    &mut *(*pi).comps.offset((*pi).compno as isize) as
-                        *mut opj_pi_comp_t;
-                (*pi).dx = 0 as libc::c_int as OPJ_UINT32;
-                (*pi).dy = 0 as libc::c_int as OPJ_UINT32;
-                resno = 0 as libc::c_int as OPJ_UINT32;
-                while resno < (*comp).numresolutions {
-                    let mut dx: OPJ_UINT32 = 0;
-                    let mut dy: OPJ_UINT32 = 0;
-                    res =
-                        &mut *(*comp).resolutions.offset(resno as isize) as
-                            *mut opj_pi_resolution_t;
-                    if (*res).pdx.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                        as
-                                                                                        libc::c_int
-                                                                                        as
-                                                                                        libc::c_uint).wrapping_sub(resno)
-                           < 32 as libc::c_int as libc::c_uint &&
-                           (*comp).dx <=
-                               (2147483647 as libc::c_int as
-                                    libc::c_uint).wrapping_mul(2 as
-                                                                   libc::c_uint).wrapping_add(1
-                                                                                                  as
-                                                                                                  libc::c_uint).wrapping_div((1
-                                                                                                                                  as
-                                                                                                                                  libc::c_uint)
-                                                                                                                                 <<
-                                                                                                                                 (*res).pdx.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                                                                                                  as
-                                                                                                                                                                                                  libc::c_int
-                                                                                                                                                                                                  as
-                                                                                                                                                                                                  libc::c_uint).wrapping_sub(resno))
-                       {
-                        dx =
-                            (*comp).dx.wrapping_mul((1 as libc::c_uint) <<
-                                                        (*res).pdx.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                         as
-                                                                                                                         libc::c_int
-                                                                                                                         as
-                                                                                                                         libc::c_uint).wrapping_sub(resno));
-                        (*pi).dx =
-                            if (*pi).dx == 0 {
-                                dx
-                            } else { opj_uint_min((*pi).dx, dx) }
-                    }
-                    if (*res).pdy.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                        as
-                                                                                        libc::c_int
-                                                                                        as
-                                                                                        libc::c_uint).wrapping_sub(resno)
-                           < 32 as libc::c_int as libc::c_uint &&
-                           (*comp).dy <=
-                               (2147483647 as libc::c_int as
-                                    libc::c_uint).wrapping_mul(2 as
-                                                                   libc::c_uint).wrapping_add(1
-                                                                                                  as
-                                                                                                  libc::c_uint).wrapping_div((1
-                                                                                                                                  as
-                                                                                                                                  libc::c_uint)
-                                                                                                                                 <<
-                                                                                                                                 (*res).pdy.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                                                                                                  as
-                                                                                                                                                                                                  libc::c_int
-                                                                                                                                                                                                  as
-                                                                                                                                                                                                  libc::c_uint).wrapping_sub(resno))
-                       {
-                        dy =
-                            (*comp).dy.wrapping_mul((1 as libc::c_uint) <<
-                                                        (*res).pdy.wrapping_add((*comp).numresolutions).wrapping_sub(1
-                                                                                                                         as
-                                                                                                                         libc::c_int
-                                                                                                                         as
-                                                                                                                         libc::c_uint).wrapping_sub(resno));
-                        (*pi).dy =
-                            if (*pi).dy == 0 {
-                                dy
-                            } else { opj_uint_min((*pi).dy, dy) }
-                    }
-                    resno = resno.wrapping_add(1)
-                }
-                if (*pi).dx == 0 as libc::c_int as libc::c_uint ||
-                       (*pi).dy == 0 as libc::c_int as libc::c_uint {
-                    return 0 as libc::c_int
-                }
-                if (*pi).tp_on == 0 {
-                    (*pi).poc.ty0 = (*pi).ty0;
-                    (*pi).poc.tx0 = (*pi).tx0;
-                    (*pi).poc.ty1 = (*pi).ty1;
-                    (*pi).poc.tx1 = (*pi).tx1
-                }
-                (*pi).y = (*pi).poc.ty0;
-                current_block = 18153031941552419006;
-            }
-        }
-        loop  {
-            match current_block {
-                18153031941552419006 => {
-                    if (*pi).y < (*pi).poc.ty1 {
-                        (*pi).x = (*pi).poc.tx0
-                    } else {
-                        (*pi).compno = (*pi).compno.wrapping_add(1);
-                        current_block = 3640593987805443782;
-                        break ;
-                    }
-                    current_block = 10692455896603418738;
-                }
-                _ => {
-                    if (*pi).layno < (*pi).poc.layno1 {
-                        index =
-                            (*pi).layno.wrapping_mul((*pi).step_l).wrapping_add((*pi).resno.wrapping_mul((*pi).step_r)).wrapping_add((*pi).compno.wrapping_mul((*pi).step_c)).wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
-                        if index >= (*pi).include_size {
-                            opj_event_msg((*pi).manager, 1 as libc::c_int,
-                                          b"Invalid access to pi->include\x00"
-                                              as *const u8 as
-                                              *const libc::c_char);
-                            return 0 as libc::c_int
-                        }
-                        if *(*pi).include.offset(index as isize) == 0 {
-                            *(*pi).include.offset(index as isize) =
-                                1 as libc::c_int as OPJ_INT16;
-                            return 1 as libc::c_int
-                        }
-                        current_block = 13707613154239713890;
-                        break ;
-                    } else { current_block = 3123434771885419771; }
-                }
-            }
-            loop  {
-                match current_block {
-                    3123434771885419771 => {
-                        (*pi).resno = (*pi).resno.wrapping_add(1)
-                    }
-                    _ => {
-                        if (*pi).x < (*pi).poc.tx1 {
-                            (*pi).resno = (*pi).poc.resno0
-                        } else {
-                            (*pi).y =
-                                ((*pi).y as
-                                     libc::c_uint).wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
-                                    as OPJ_UINT32 as OPJ_UINT32;
-                            current_block = 18153031941552419006;
-                            break ;
-                        }
-                    }
-                }
-                if (*pi).resno <
-                       opj_uint_min((*pi).poc.resno1, (*comp).numresolutions)
-                   {
-                    levelno = 0;
-                    trx0 = 0;
-                    try0 = 0;
-                    trx1 = 0;
-                    try1 = 0;
-                    rpx = 0;
-                    rpy = 0;
-                    prci = 0;
-                    prcj = 0;
-                    res =
-                        &mut *(*comp).resolutions.offset((*pi).resno as isize)
-                            as *mut opj_pi_resolution_t;
-                    levelno =
-                        (*comp).numresolutions.wrapping_sub(1 as libc::c_int
-                                                                as
-                                                                libc::c_uint).wrapping_sub((*pi).resno);
-                    /* Avoids division by zero on id_000004,sig_06,src_000679,op_arith8,pos_49,val_-17 */
-                    /* of  https://github.com/uclouvain/openjpeg/issues/938 */
-                    if levelno >= 32 as libc::c_int as libc::c_uint ||
-                           (*comp).dx << levelno >> levelno != (*comp).dx ||
-                           (*comp).dy << levelno >> levelno != (*comp).dy {
-                        current_block = 3123434771885419771;
-                        continue ;
-                    }
-                    if (*comp).dx << levelno >
-                           2147483647 as libc::c_int as libc::c_uint ||
-                           (*comp).dy << levelno >
-                               2147483647 as libc::c_int as libc::c_uint {
-                        current_block = 3123434771885419771;
-                        continue ;
-                    }
-                    trx0 = opj_uint_ceildiv((*pi).tx0, (*comp).dx << levelno);
-                    try0 = opj_uint_ceildiv((*pi).ty0, (*comp).dy << levelno);
-                    trx1 = opj_uint_ceildiv((*pi).tx1, (*comp).dx << levelno);
-                    try1 = opj_uint_ceildiv((*pi).ty1, (*comp).dy << levelno);
-                    rpx = (*res).pdx.wrapping_add(levelno);
-                    rpy = (*res).pdy.wrapping_add(levelno);
-                    /* To avoid divisions by zero / undefined behaviour on shift */
-                    /* in below tests */
-                    /* Fixes reading id:000019,sig:08,src:001098,op:flip1,pos:49 */
-                    /* of https://github.com/uclouvain/openjpeg/issues/938 */
-                    if rpx >= 31 as libc::c_int as libc::c_uint ||
-                           (*comp).dx << rpx >> rpx != (*comp).dx ||
-                           rpy >= 31 as libc::c_int as libc::c_uint ||
-                           (*comp).dy << rpy >> rpy != (*comp).dy {
-                        current_block = 3123434771885419771;
-                        continue ;
-                    }
-                    /* See ISO-15441. B.12.1.5 Component-position-resolution level-layer progression */
-                    if !((*pi).y.wrapping_rem((*comp).dy << rpy) ==
-                             0 as libc::c_int as libc::c_uint ||
-                             (*pi).y == (*pi).ty0 &&
-                                 (try0 <<
-                                      levelno).wrapping_rem((1 as
-                                                                 libc::c_uint)
-                                                                << rpy) != 0)
-                       {
-                        current_block = 3123434771885419771;
-                        continue ;
-                    }
-                    if !((*pi).x.wrapping_rem((*comp).dx << rpx) ==
-                             0 as libc::c_int as libc::c_uint ||
-                             (*pi).x == (*pi).tx0 &&
-                                 (trx0 <<
-                                      levelno).wrapping_rem((1 as
-                                                                 libc::c_uint)
-                                                                << rpx) != 0)
-                       {
-                        current_block = 3123434771885419771;
-                        continue ;
-                    }
-                    if (*res).pw == 0 as libc::c_int as libc::c_uint ||
-                           (*res).ph == 0 as libc::c_int as libc::c_uint {
-                        current_block = 3123434771885419771;
-                        continue ;
-                    }
-                    if trx0 == trx1 || try0 == try1 {
-                        current_block = 3123434771885419771;
-                        continue ;
-                    }
-                    prci =
-                        opj_uint_floordivpow2(opj_uint_ceildiv((*pi).x,
-                                                               (*comp).dx <<
-                                                                   levelno),
-                                              (*res).pdx).wrapping_sub(opj_uint_floordivpow2(trx0,
-                                                                                             (*res).pdx));
-                    prcj =
-                        opj_uint_floordivpow2(opj_uint_ceildiv((*pi).y,
-                                                               (*comp).dy <<
-                                                                   levelno),
-                                              (*res).pdy).wrapping_sub(opj_uint_floordivpow2(try0,
-                                                                                             (*res).pdy));
-                    (*pi).precno =
-                        prci.wrapping_add(prcj.wrapping_mul((*res).pw));
-                    (*pi).layno = (*pi).poc.layno0;
-                    current_block = 15594839951440953787;
-                    break ;
-                } else {
-                    (*pi).x =
-                        ((*pi).x as
-                             libc::c_uint).wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
-                            as OPJ_UINT32 as OPJ_UINT32;
-                    current_block = 10692455896603418738;
-                }
-            }
-        }
-    }
+unsafe extern "C" fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+  let mut resno: OPJ_UINT32 = 0;
+  let mut levelno: OPJ_UINT32 = 0;
+  let mut trx0: OPJ_UINT32 = 0;
+  let mut try0: OPJ_UINT32 = 0;
+  let mut trx1: OPJ_UINT32 = 0;
+  let mut try1: OPJ_UINT32 = 0;
+  let mut rpx: OPJ_UINT32 = 0;
+  let mut rpy: OPJ_UINT32 = 0;
+  let mut prci: OPJ_UINT32 = 0;
+  let mut prcj: OPJ_UINT32 = 0;
+  let mut current_block: u64;
+  let mut comp = 0 as *mut opj_pi_comp_t;
+  let mut res = 0 as *mut opj_pi_resolution_t;
+  let mut index = 0 as libc::c_int as OPJ_UINT32;
+  if (*pi).poc.compno0 >= (*pi).numcomps
+    || (*pi).poc.compno1
+      >= (*pi)
+        .numcomps
+        .wrapping_add(1 as libc::c_int as libc::c_uint)
+  {
+    opj_event_msg(
+      (*pi).manager,
+      1 as libc::c_int,
+      b"opj_pi_next_cprl(): invalid compno0/compno1\n\x00" as *const u8 as *const libc::c_char,
+    );
     return 0 as libc::c_int;
+  }
+  if (*pi).first == 0 {
+    comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+    current_block = 13707613154239713890;
+  } else {
+    (*pi).first = 0 as libc::c_int;
+    (*pi).compno = (*pi).poc.compno0;
+    current_block = 3640593987805443782;
+  }
+  loop {
+    match current_block {
+      13707613154239713890 => {
+        (*pi).layno = (*pi).layno.wrapping_add(1);
+        current_block = 15594839951440953787;
+      }
+      _ => {
+        if !((*pi).compno < (*pi).poc.compno1) {
+          break;
+        }
+        resno = 0;
+        comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+        (*pi).dx = 0 as libc::c_int as OPJ_UINT32;
+        (*pi).dy = 0 as libc::c_int as OPJ_UINT32;
+        resno = 0 as libc::c_int as OPJ_UINT32;
+        while resno < (*comp).numresolutions {
+          let mut dx: OPJ_UINT32 = 0;
+          let mut dy: OPJ_UINT32 = 0;
+          res = &mut *(*comp).resolutions.offset(resno as isize) as *mut opj_pi_resolution_t;
+          if (*res)
+            .pdx
+            .wrapping_add((*comp).numresolutions)
+            .wrapping_sub(1 as libc::c_int as libc::c_uint)
+            .wrapping_sub(resno)
+            < 32 as libc::c_int as libc::c_uint
+            && (*comp).dx
+              <= (2147483647 as libc::c_int as libc::c_uint)
+                .wrapping_mul(2 as libc::c_uint)
+                .wrapping_add(1 as libc::c_uint)
+                .wrapping_div(
+                  (1 as libc::c_uint)
+                    << (*res)
+                      .pdx
+                      .wrapping_add((*comp).numresolutions)
+                      .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                      .wrapping_sub(resno),
+                )
+          {
+            dx = (*comp).dx.wrapping_mul(
+              (1 as libc::c_uint)
+                << (*res)
+                  .pdx
+                  .wrapping_add((*comp).numresolutions)
+                  .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                  .wrapping_sub(resno),
+            );
+            (*pi).dx = if (*pi).dx == 0 {
+              dx
+            } else {
+              opj_uint_min((*pi).dx, dx)
+            }
+          }
+          if (*res)
+            .pdy
+            .wrapping_add((*comp).numresolutions)
+            .wrapping_sub(1 as libc::c_int as libc::c_uint)
+            .wrapping_sub(resno)
+            < 32 as libc::c_int as libc::c_uint
+            && (*comp).dy
+              <= (2147483647 as libc::c_int as libc::c_uint)
+                .wrapping_mul(2 as libc::c_uint)
+                .wrapping_add(1 as libc::c_uint)
+                .wrapping_div(
+                  (1 as libc::c_uint)
+                    << (*res)
+                      .pdy
+                      .wrapping_add((*comp).numresolutions)
+                      .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                      .wrapping_sub(resno),
+                )
+          {
+            dy = (*comp).dy.wrapping_mul(
+              (1 as libc::c_uint)
+                << (*res)
+                  .pdy
+                  .wrapping_add((*comp).numresolutions)
+                  .wrapping_sub(1 as libc::c_int as libc::c_uint)
+                  .wrapping_sub(resno),
+            );
+            (*pi).dy = if (*pi).dy == 0 {
+              dy
+            } else {
+              opj_uint_min((*pi).dy, dy)
+            }
+          }
+          resno = resno.wrapping_add(1)
+        }
+        if (*pi).dx == 0 as libc::c_int as libc::c_uint
+          || (*pi).dy == 0 as libc::c_int as libc::c_uint
+        {
+          return 0 as libc::c_int;
+        }
+        if (*pi).tp_on == 0 {
+          (*pi).poc.ty0 = (*pi).ty0;
+          (*pi).poc.tx0 = (*pi).tx0;
+          (*pi).poc.ty1 = (*pi).ty1;
+          (*pi).poc.tx1 = (*pi).tx1
+        }
+        (*pi).y = (*pi).poc.ty0;
+        current_block = 18153031941552419006;
+      }
+    }
+    loop {
+      match current_block {
+        18153031941552419006 => {
+          if (*pi).y < (*pi).poc.ty1 {
+            (*pi).x = (*pi).poc.tx0
+          } else {
+            (*pi).compno = (*pi).compno.wrapping_add(1);
+            current_block = 3640593987805443782;
+            break;
+          }
+          current_block = 10692455896603418738;
+        }
+        _ => {
+          if (*pi).layno < (*pi).poc.layno1 {
+            index = (*pi)
+              .layno
+              .wrapping_mul((*pi).step_l)
+              .wrapping_add((*pi).resno.wrapping_mul((*pi).step_r))
+              .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
+              .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
+            if index >= (*pi).include_size {
+              opj_event_msg(
+                (*pi).manager,
+                1 as libc::c_int,
+                b"Invalid access to pi->include\x00" as *const u8 as *const libc::c_char,
+              );
+              return 0 as libc::c_int;
+            }
+            if *(*pi).include.offset(index as isize) == 0 {
+              *(*pi).include.offset(index as isize) = 1 as libc::c_int as OPJ_INT16;
+              return 1 as libc::c_int;
+            }
+            current_block = 13707613154239713890;
+            break;
+          } else {
+            current_block = 3123434771885419771;
+          }
+        }
+      }
+      loop {
+        match current_block {
+          3123434771885419771 => (*pi).resno = (*pi).resno.wrapping_add(1),
+          _ => {
+            if (*pi).x < (*pi).poc.tx1 {
+              (*pi).resno = (*pi).poc.resno0
+            } else {
+              (*pi).y = ((*pi).y as libc::c_uint)
+                .wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
+                as OPJ_UINT32 as OPJ_UINT32;
+              current_block = 18153031941552419006;
+              break;
+            }
+          }
+        }
+        if (*pi).resno < opj_uint_min((*pi).poc.resno1, (*comp).numresolutions) {
+          levelno = 0;
+          trx0 = 0;
+          try0 = 0;
+          trx1 = 0;
+          try1 = 0;
+          rpx = 0;
+          rpy = 0;
+          prci = 0;
+          prcj = 0;
+          res = &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+          levelno = (*comp)
+            .numresolutions
+            .wrapping_sub(1 as libc::c_int as libc::c_uint)
+            .wrapping_sub((*pi).resno);
+          /* Avoids division by zero on id_000004,sig_06,src_000679,op_arith8,pos_49,val_-17 */
+          /* of  https://github.com/uclouvain/openjpeg/issues/938 */
+          if levelno >= 32 as libc::c_int as libc::c_uint
+            || (*comp).dx << levelno >> levelno != (*comp).dx
+            || (*comp).dy << levelno >> levelno != (*comp).dy
+          {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          if (*comp).dx << levelno > 2147483647 as libc::c_int as libc::c_uint
+            || (*comp).dy << levelno > 2147483647 as libc::c_int as libc::c_uint
+          {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          trx0 = opj_uint_ceildiv((*pi).tx0, (*comp).dx << levelno);
+          try0 = opj_uint_ceildiv((*pi).ty0, (*comp).dy << levelno);
+          trx1 = opj_uint_ceildiv((*pi).tx1, (*comp).dx << levelno);
+          try1 = opj_uint_ceildiv((*pi).ty1, (*comp).dy << levelno);
+          rpx = (*res).pdx.wrapping_add(levelno);
+          rpy = (*res).pdy.wrapping_add(levelno);
+          /* To avoid divisions by zero / undefined behaviour on shift */
+          /* in below tests */
+          /* Fixes reading id:000019,sig:08,src:001098,op:flip1,pos:49 */
+          /* of https://github.com/uclouvain/openjpeg/issues/938 */
+          if rpx >= 31 as libc::c_int as libc::c_uint
+            || (*comp).dx << rpx >> rpx != (*comp).dx
+            || rpy >= 31 as libc::c_int as libc::c_uint
+            || (*comp).dy << rpy >> rpy != (*comp).dy
+          {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          /* See ISO-15441. B.12.1.5 Component-position-resolution level-layer progression */
+          if !((*pi).y.wrapping_rem((*comp).dy << rpy) == 0 as libc::c_int as libc::c_uint
+            || (*pi).y == (*pi).ty0
+              && (try0 << levelno).wrapping_rem((1 as libc::c_uint) << rpy) != 0)
+          {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          if !((*pi).x.wrapping_rem((*comp).dx << rpx) == 0 as libc::c_int as libc::c_uint
+            || (*pi).x == (*pi).tx0
+              && (trx0 << levelno).wrapping_rem((1 as libc::c_uint) << rpx) != 0)
+          {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          if (*res).pw == 0 as libc::c_int as libc::c_uint
+            || (*res).ph == 0 as libc::c_int as libc::c_uint
+          {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          if trx0 == trx1 || try0 == try1 {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          prci =
+            opj_uint_floordivpow2(opj_uint_ceildiv((*pi).x, (*comp).dx << levelno), (*res).pdx)
+              .wrapping_sub(opj_uint_floordivpow2(trx0, (*res).pdx));
+          prcj =
+            opj_uint_floordivpow2(opj_uint_ceildiv((*pi).y, (*comp).dy << levelno), (*res).pdy)
+              .wrapping_sub(opj_uint_floordivpow2(try0, (*res).pdy));
+          (*pi).precno = prci.wrapping_add(prcj.wrapping_mul((*res).pw));
+          (*pi).layno = (*pi).poc.layno0;
+          current_block = 15594839951440953787;
+          break;
+        } else {
+          (*pi).x = ((*pi).x as libc::c_uint)
+            .wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
+            as OPJ_UINT32 as OPJ_UINT32;
+          current_block = 10692455896603418738;
+        }
+      }
+    }
+  }
+  return 0 as libc::c_int;
 }
 /* *
  * Gets the encoding parameters needed to update the coding parameters and all the pocs.
@@ -1657,170 +1606,169 @@ unsafe extern "C" fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t)
  * @param   p_dx_min            pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
  * @param   p_dy_min            pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  */
-unsafe extern "C" fn opj_get_encoding_parameters(mut p_image:
-                                                     *const opj_image_t,
-                                                 mut p_cp: *const opj_cp_t,
-                                                 mut p_tileno: OPJ_UINT32,
-                                                 mut p_tx0: *mut OPJ_UINT32,
-                                                 mut p_tx1: *mut OPJ_UINT32,
-                                                 mut p_ty0: *mut OPJ_UINT32,
-                                                 mut p_ty1: *mut OPJ_UINT32,
-                                                 mut p_dx_min:
-                                                     *mut OPJ_UINT32,
-                                                 mut p_dy_min:
-                                                     *mut OPJ_UINT32,
-                                                 mut p_max_prec:
-                                                     *mut OPJ_UINT32,
-                                                 mut p_max_res:
-                                                     *mut OPJ_UINT32) {
-    /* loop */
-    let mut compno: OPJ_UINT32 = 0;
-    let mut resno: OPJ_UINT32 = 0;
-    /* pointers */
-    let mut l_tcp = 0 as *const opj_tcp_t;
-    let mut l_tccp = 0 as *const opj_tccp_t;
-    let mut l_img_comp = 0 as *const opj_image_comp_t;
-    /* position in x and y of tile */
-    let mut p: OPJ_UINT32 = 0;
-    let mut q: OPJ_UINT32 = 0;
-    /* non-corrected (in regard to image offset) tile offset */
-    let mut l_tx0: OPJ_UINT32 = 0;
-    let mut l_ty0: OPJ_UINT32 = 0;
-    /* preconditions */
-    if !p_cp.is_null() {
-    } else {
-        __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
+unsafe extern "C" fn opj_get_encoding_parameters(
+  mut p_image: *const opj_image_t,
+  mut p_cp: *const opj_cp_t,
+  mut p_tileno: OPJ_UINT32,
+  mut p_tx0: *mut OPJ_UINT32,
+  mut p_tx1: *mut OPJ_UINT32,
+  mut p_ty0: *mut OPJ_UINT32,
+  mut p_ty1: *mut OPJ_UINT32,
+  mut p_dx_min: *mut OPJ_UINT32,
+  mut p_dy_min: *mut OPJ_UINT32,
+  mut p_max_prec: *mut OPJ_UINT32,
+  mut p_max_res: *mut OPJ_UINT32,
+) {
+  /* loop */
+  let mut compno: OPJ_UINT32 = 0;
+  let mut resno: OPJ_UINT32 = 0;
+  /* pointers */
+  let mut l_tcp = 0 as *const opj_tcp_t;
+  let mut l_tccp = 0 as *const opj_tccp_t;
+  let mut l_img_comp = 0 as *const opj_image_comp_t;
+  /* position in x and y of tile */
+  let mut p: OPJ_UINT32 = 0;
+  let mut q: OPJ_UINT32 = 0;
+  /* non-corrected (in regard to image offset) tile offset */
+  let mut l_tx0: OPJ_UINT32 = 0;
+  let mut l_ty0: OPJ_UINT32 = 0;
+  /* preconditions */
+  if !p_cp.is_null() {
+  } else {
+    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       788 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 196],
                                                 &[libc::c_char; 196]>(b"void opj_get_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *)\x00")).as_ptr());
-    }
-    if !p_image.is_null() {
-    } else {
-        __assert_fail(b"p_image != 00\x00" as *const u8 as
+  }
+  if !p_image.is_null() {
+  } else {
+    __assert_fail(b"p_image != 00\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       789 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 196],
                                                 &[libc::c_char; 196]>(b"void opj_get_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *)\x00")).as_ptr());
-    }
-    if p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-    } else {
-        __assert_fail(b"p_tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
+  }
+  if p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
+  } else {
+    __assert_fail(b"p_tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       790 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 196],
                                                 &[libc::c_char; 196]>(b"void opj_get_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *)\x00")).as_ptr());
+  }
+  /* initializations */
+  l_tcp = &mut *(*p_cp).tcps.offset(p_tileno as isize) as *mut opj_tcp_t;
+  l_img_comp = (*p_image).comps;
+  l_tccp = (*l_tcp).tccps;
+  /* here calculation of tx0, tx1, ty0, ty1, maxprec, dx and dy */
+  p = p_tileno.wrapping_rem((*p_cp).tw);
+  q = p_tileno.wrapping_div((*p_cp).tw);
+  /* find extent of tile */
+  l_tx0 = (*p_cp).tx0.wrapping_add(p.wrapping_mul((*p_cp).tdx)); /* can't be greater than p_image->x1 so won't overflow */
+  *p_tx0 = opj_uint_max(l_tx0, (*p_image).x0); /* can't be greater than p_image->y1 so won't overflow */
+  *p_tx1 = opj_uint_min(opj_uint_adds(l_tx0, (*p_cp).tdx), (*p_image).x1);
+  l_ty0 = (*p_cp).ty0.wrapping_add(q.wrapping_mul((*p_cp).tdy));
+  *p_ty0 = opj_uint_max(l_ty0, (*p_image).y0);
+  *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, (*p_cp).tdy), (*p_image).y1);
+  /* max precision is 0 (can only grow) */
+  *p_max_prec = 0 as libc::c_int as OPJ_UINT32;
+  *p_max_res = 0 as libc::c_int as OPJ_UINT32;
+  /* take the largest value for dx_min and dy_min */
+  *p_dx_min = 0x7fffffff as libc::c_int as OPJ_UINT32;
+  *p_dy_min = 0x7fffffff as libc::c_int as OPJ_UINT32;
+  compno = 0 as libc::c_int as OPJ_UINT32;
+  while compno < (*p_image).numcomps {
+    /* arithmetic variables to calculate */
+    let mut l_level_no: OPJ_UINT32 = 0;
+    let mut l_rx0: OPJ_UINT32 = 0;
+    let mut l_ry0: OPJ_UINT32 = 0;
+    let mut l_rx1: OPJ_UINT32 = 0;
+    let mut l_ry1: OPJ_UINT32 = 0;
+    let mut l_px0: OPJ_UINT32 = 0;
+    let mut l_py0: OPJ_UINT32 = 0;
+    let mut l_px1: OPJ_UINT32 = 0;
+    let mut py1: OPJ_UINT32 = 0;
+    let mut l_pdx: OPJ_UINT32 = 0;
+    let mut l_pdy: OPJ_UINT32 = 0;
+    let mut l_pw: OPJ_UINT32 = 0;
+    let mut l_ph: OPJ_UINT32 = 0;
+    let mut l_product: OPJ_UINT32 = 0;
+    let mut l_tcx0: OPJ_UINT32 = 0;
+    let mut l_tcy0: OPJ_UINT32 = 0;
+    let mut l_tcx1: OPJ_UINT32 = 0;
+    let mut l_tcy1: OPJ_UINT32 = 0;
+    l_tcx0 = opj_uint_ceildiv(*p_tx0, (*l_img_comp).dx);
+    l_tcy0 = opj_uint_ceildiv(*p_ty0, (*l_img_comp).dy);
+    l_tcx1 = opj_uint_ceildiv(*p_tx1, (*l_img_comp).dx);
+    l_tcy1 = opj_uint_ceildiv(*p_ty1, (*l_img_comp).dy);
+    if (*l_tccp).numresolutions > *p_max_res {
+      *p_max_res = (*l_tccp).numresolutions
     }
-    /* initializations */
-    l_tcp = &mut *(*p_cp).tcps.offset(p_tileno as isize) as *mut opj_tcp_t;
-    l_img_comp = (*p_image).comps;
-    l_tccp = (*l_tcp).tccps;
-    /* here calculation of tx0, tx1, ty0, ty1, maxprec, dx and dy */
-    p = p_tileno.wrapping_rem((*p_cp).tw);
-    q = p_tileno.wrapping_div((*p_cp).tw);
-    /* find extent of tile */
-    l_tx0 =
-        (*p_cp).tx0.wrapping_add(p.wrapping_mul((*p_cp).tdx)); /* can't be greater than p_image->x1 so won't overflow */
-    *p_tx0 =
-        opj_uint_max(l_tx0,
-                     (*p_image).x0); /* can't be greater than p_image->y1 so won't overflow */
-    *p_tx1 = opj_uint_min(opj_uint_adds(l_tx0, (*p_cp).tdx), (*p_image).x1);
-    l_ty0 = (*p_cp).ty0.wrapping_add(q.wrapping_mul((*p_cp).tdy));
-    *p_ty0 = opj_uint_max(l_ty0, (*p_image).y0);
-    *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, (*p_cp).tdy), (*p_image).y1);
-    /* max precision is 0 (can only grow) */
-    *p_max_prec = 0 as libc::c_int as OPJ_UINT32;
-    *p_max_res = 0 as libc::c_int as OPJ_UINT32;
-    /* take the largest value for dx_min and dy_min */
-    *p_dx_min = 0x7fffffff as libc::c_int as OPJ_UINT32;
-    *p_dy_min = 0x7fffffff as libc::c_int as OPJ_UINT32;
-    compno = 0 as libc::c_int as OPJ_UINT32;
-    while compno < (*p_image).numcomps {
-        /* arithmetic variables to calculate */
-        let mut l_level_no: OPJ_UINT32 = 0;
-        let mut l_rx0: OPJ_UINT32 = 0;
-        let mut l_ry0: OPJ_UINT32 = 0;
-        let mut l_rx1: OPJ_UINT32 = 0;
-        let mut l_ry1: OPJ_UINT32 = 0;
-        let mut l_px0: OPJ_UINT32 = 0;
-        let mut l_py0: OPJ_UINT32 = 0;
-        let mut l_px1: OPJ_UINT32 = 0;
-        let mut py1: OPJ_UINT32 = 0;
-        let mut l_pdx: OPJ_UINT32 = 0;
-        let mut l_pdy: OPJ_UINT32 = 0;
-        let mut l_pw: OPJ_UINT32 = 0;
-        let mut l_ph: OPJ_UINT32 = 0;
-        let mut l_product: OPJ_UINT32 = 0;
-        let mut l_tcx0: OPJ_UINT32 = 0;
-        let mut l_tcy0: OPJ_UINT32 = 0;
-        let mut l_tcx1: OPJ_UINT32 = 0;
-        let mut l_tcy1: OPJ_UINT32 = 0;
-        l_tcx0 = opj_uint_ceildiv(*p_tx0, (*l_img_comp).dx);
-        l_tcy0 = opj_uint_ceildiv(*p_ty0, (*l_img_comp).dy);
-        l_tcx1 = opj_uint_ceildiv(*p_tx1, (*l_img_comp).dx);
-        l_tcy1 = opj_uint_ceildiv(*p_ty1, (*l_img_comp).dy);
-        if (*l_tccp).numresolutions > *p_max_res {
-            *p_max_res = (*l_tccp).numresolutions
-        }
-        /* use custom size for precincts */
-        resno = 0 as libc::c_int as OPJ_UINT32;
-        while resno < (*l_tccp).numresolutions {
-            let mut l_dx: OPJ_UINT32 = 0;
-            let mut l_dy: OPJ_UINT32 = 0;
-            /* precinct width and height */
-            l_pdx = (*l_tccp).prcw[resno as usize];
-            l_pdy = (*l_tccp).prch[resno as usize];
-            l_dx =
-                (*l_img_comp).dx.wrapping_mul((1 as libc::c_uint) <<
-                                                  l_pdx.wrapping_add((*l_tccp).numresolutions).wrapping_sub(1
-                                                                                                                as
-                                                                                                                libc::c_int
-                                                                                                                as
-                                                                                                                libc::c_uint).wrapping_sub(resno));
-            l_dy =
-                (*l_img_comp).dy.wrapping_mul((1 as libc::c_uint) <<
-                                                  l_pdy.wrapping_add((*l_tccp).numresolutions).wrapping_sub(1
-                                                                                                                as
-                                                                                                                libc::c_int
-                                                                                                                as
-                                                                                                                libc::c_uint).wrapping_sub(resno));
-            /* take the minimum size for dx for each comp and resolution */
-            *p_dx_min = opj_uint_min(*p_dx_min, l_dx);
-            *p_dy_min = opj_uint_min(*p_dy_min, l_dy);
-            /* various calculations of extents */
-            l_level_no =
-                (*l_tccp).numresolutions.wrapping_sub(1 as libc::c_int as
-                                                          libc::c_uint).wrapping_sub(resno);
-            l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
-            l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
-            l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
-            l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
-            l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
-            l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
-            l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
-            py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
-            l_pw =
-                if l_rx0 == l_rx1 {
-                    0 as libc::c_int as libc::c_uint
-                } else { (l_px1.wrapping_sub(l_px0)) >> l_pdx };
-            l_ph =
-                if l_ry0 == l_ry1 {
-                    0 as libc::c_int as libc::c_uint
-                } else { (py1.wrapping_sub(l_py0)) >> l_pdy };
-            l_product = l_pw.wrapping_mul(l_ph);
-            /* update precision */
-            if l_product > *p_max_prec { *p_max_prec = l_product }
-            resno = resno.wrapping_add(1)
-        }
-        l_img_comp = l_img_comp.offset(1);
-        l_tccp = l_tccp.offset(1);
-        compno = compno.wrapping_add(1)
-    };
+    /* use custom size for precincts */
+    resno = 0 as libc::c_int as OPJ_UINT32;
+    while resno < (*l_tccp).numresolutions {
+      let mut l_dx: OPJ_UINT32 = 0;
+      let mut l_dy: OPJ_UINT32 = 0;
+      /* precinct width and height */
+      l_pdx = (*l_tccp).prcw[resno as usize];
+      l_pdy = (*l_tccp).prch[resno as usize];
+      l_dx = (*l_img_comp).dx.wrapping_mul(
+        (1 as libc::c_uint)
+          << l_pdx
+            .wrapping_add((*l_tccp).numresolutions)
+            .wrapping_sub(1 as libc::c_int as libc::c_uint)
+            .wrapping_sub(resno),
+      );
+      l_dy = (*l_img_comp).dy.wrapping_mul(
+        (1 as libc::c_uint)
+          << l_pdy
+            .wrapping_add((*l_tccp).numresolutions)
+            .wrapping_sub(1 as libc::c_int as libc::c_uint)
+            .wrapping_sub(resno),
+      );
+      /* take the minimum size for dx for each comp and resolution */
+      *p_dx_min = opj_uint_min(*p_dx_min, l_dx);
+      *p_dy_min = opj_uint_min(*p_dy_min, l_dy);
+      /* various calculations of extents */
+      l_level_no = (*l_tccp)
+        .numresolutions
+        .wrapping_sub(1 as libc::c_int as libc::c_uint)
+        .wrapping_sub(resno);
+      l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
+      l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
+      l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
+      l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
+      l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
+      l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
+      l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
+      py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
+      l_pw = if l_rx0 == l_rx1 {
+        0 as libc::c_int as libc::c_uint
+      } else {
+        (l_px1.wrapping_sub(l_px0)) >> l_pdx
+      };
+      l_ph = if l_ry0 == l_ry1 {
+        0 as libc::c_int as libc::c_uint
+      } else {
+        (py1.wrapping_sub(l_py0)) >> l_pdy
+      };
+      l_product = l_pw.wrapping_mul(l_ph);
+      /* update precision */
+      if l_product > *p_max_prec {
+        *p_max_prec = l_product
+      }
+      resno = resno.wrapping_add(1)
+    }
+    l_img_comp = l_img_comp.offset(1);
+    l_tccp = l_tccp.offset(1);
+    compno = compno.wrapping_add(1)
+  }
 }
 /* *
  * Gets the encoding parameters needed to update the coding parameters and all the pocs.
@@ -1842,218 +1790,199 @@ unsafe extern "C" fn opj_get_encoding_parameters(mut p_image:
  * @param   p_dy_min        pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  * @param   p_resolutions   pointer to an area corresponding to the one described above.
  */
-unsafe extern "C" fn opj_get_all_encoding_parameters(mut p_image:
-                                                         *const opj_image_t,
-                                                     mut p_cp:
-                                                         *const opj_cp_t,
-                                                     mut tileno: OPJ_UINT32,
-                                                     mut p_tx0:
-                                                         *mut OPJ_UINT32,
-                                                     mut p_tx1:
-                                                         *mut OPJ_UINT32,
-                                                     mut p_ty0:
-                                                         *mut OPJ_UINT32,
-                                                     mut p_ty1:
-                                                         *mut OPJ_UINT32,
-                                                     mut p_dx_min:
-                                                         *mut OPJ_UINT32,
-                                                     mut p_dy_min:
-                                                         *mut OPJ_UINT32,
-                                                     mut p_max_prec:
-                                                         *mut OPJ_UINT32,
-                                                     mut p_max_res:
-                                                         *mut OPJ_UINT32,
-                                                     mut p_resolutions:
-                                                         *mut *mut OPJ_UINT32) {
-    /* loop*/
-    let mut compno: OPJ_UINT32 = 0;
-    let mut resno: OPJ_UINT32 = 0;
-    /* pointers*/
-    let mut tcp = 0 as *const opj_tcp_t;
-    let mut l_tccp = 0 as *const opj_tccp_t;
-    let mut l_img_comp = 0 as *const opj_image_comp_t;
-    /* to store l_dx, l_dy, w and h for each resolution and component.*/
-    let mut lResolutionPtr = 0 as *mut OPJ_UINT32;
-    /* position in x and y of tile*/
-    let mut p: OPJ_UINT32 = 0;
-    let mut q: OPJ_UINT32 = 0;
-    /* non-corrected (in regard to image offset) tile offset */
-    let mut l_tx0: OPJ_UINT32 = 0;
-    let mut l_ty0: OPJ_UINT32 = 0;
-    /* preconditions in debug*/
-    if !p_cp.is_null() {
-    } else {
-        __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
+unsafe extern "C" fn opj_get_all_encoding_parameters(
+  mut p_image: *const opj_image_t,
+  mut p_cp: *const opj_cp_t,
+  mut tileno: OPJ_UINT32,
+  mut p_tx0: *mut OPJ_UINT32,
+  mut p_tx1: *mut OPJ_UINT32,
+  mut p_ty0: *mut OPJ_UINT32,
+  mut p_ty1: *mut OPJ_UINT32,
+  mut p_dx_min: *mut OPJ_UINT32,
+  mut p_dy_min: *mut OPJ_UINT32,
+  mut p_max_prec: *mut OPJ_UINT32,
+  mut p_max_res: *mut OPJ_UINT32,
+  mut p_resolutions: *mut *mut OPJ_UINT32,
+) {
+  /* loop*/
+  let mut compno: OPJ_UINT32 = 0;
+  let mut resno: OPJ_UINT32 = 0;
+  /* pointers*/
+  let mut tcp = 0 as *const opj_tcp_t;
+  let mut l_tccp = 0 as *const opj_tccp_t;
+  let mut l_img_comp = 0 as *const opj_image_comp_t;
+  /* to store l_dx, l_dy, w and h for each resolution and component.*/
+  let mut lResolutionPtr = 0 as *mut OPJ_UINT32;
+  /* position in x and y of tile*/
+  let mut p: OPJ_UINT32 = 0;
+  let mut q: OPJ_UINT32 = 0;
+  /* non-corrected (in regard to image offset) tile offset */
+  let mut l_tx0: OPJ_UINT32 = 0;
+  let mut l_ty0: OPJ_UINT32 = 0;
+  /* preconditions in debug*/
+  if !p_cp.is_null() {
+  } else {
+    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       914 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 215],
                                                 &[libc::c_char; 215]>(b"void opj_get_all_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 **)\x00")).as_ptr());
-    }
-    if !p_image.is_null() {
-    } else {
-        __assert_fail(b"p_image != 00\x00" as *const u8 as
+  }
+  if !p_image.is_null() {
+  } else {
+    __assert_fail(b"p_image != 00\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       915 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 215],
                                                 &[libc::c_char; 215]>(b"void opj_get_all_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 **)\x00")).as_ptr());
-    }
-    if tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-    } else {
-        __assert_fail(b"tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
+  }
+  if tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
+  } else {
+    __assert_fail(b"tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       916 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 215],
                                                 &[libc::c_char; 215]>(b"void opj_get_all_encoding_parameters(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 **)\x00")).as_ptr());
-    }
-    /* initializations*/
-    tcp = &mut *(*p_cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
-    l_tccp = (*tcp).tccps;
-    l_img_comp = (*p_image).comps;
-    /* position in x and y of tile*/
-    p = tileno.wrapping_rem((*p_cp).tw);
-    q = tileno.wrapping_div((*p_cp).tw);
-    /* here calculation of tx0, tx1, ty0, ty1, maxprec, l_dx and l_dy */
-    l_tx0 =
-        (*p_cp).tx0.wrapping_add(p.wrapping_mul((*p_cp).tdx)); /* can't be greater than p_image->x1 so won't overflow */
-    *p_tx0 =
-        opj_uint_max(l_tx0,
-                     (*p_image).x0); /* can't be greater than p_image->y1 so won't overflow */
-    *p_tx1 = opj_uint_min(opj_uint_adds(l_tx0, (*p_cp).tdx), (*p_image).x1);
-    l_ty0 = (*p_cp).ty0.wrapping_add(q.wrapping_mul((*p_cp).tdy));
-    *p_ty0 = opj_uint_max(l_ty0, (*p_image).y0);
-    *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, (*p_cp).tdy), (*p_image).y1);
-    /* max precision and resolution is 0 (can only grow)*/
-    *p_max_prec = 0 as libc::c_int as OPJ_UINT32;
-    *p_max_res = 0 as libc::c_int as OPJ_UINT32;
-    /* take the largest value for dx_min and dy_min*/
-    *p_dx_min = 0x7fffffff as libc::c_int as OPJ_UINT32;
-    *p_dy_min = 0x7fffffff as libc::c_int as OPJ_UINT32;
-    compno = 0 as libc::c_int as OPJ_UINT32;
-    while compno < (*p_image).numcomps {
-        /* arithmetic variables to calculate*/
-        let mut l_level_no: OPJ_UINT32 = 0;
-        let mut l_rx0: OPJ_UINT32 = 0;
-        let mut l_ry0: OPJ_UINT32 = 0;
-        let mut l_rx1: OPJ_UINT32 = 0;
-        let mut l_ry1: OPJ_UINT32 = 0;
-        let mut l_px0: OPJ_UINT32 = 0;
-        let mut l_py0: OPJ_UINT32 = 0;
-        let mut l_px1: OPJ_UINT32 = 0;
-        let mut py1: OPJ_UINT32 = 0;
-        let mut l_product: OPJ_UINT32 = 0;
-        let mut l_tcx0: OPJ_UINT32 = 0;
-        let mut l_tcy0: OPJ_UINT32 = 0;
-        let mut l_tcx1: OPJ_UINT32 = 0;
-        let mut l_tcy1: OPJ_UINT32 = 0;
-        let mut l_pdx: OPJ_UINT32 = 0;
-        let mut l_pdy: OPJ_UINT32 = 0;
-        let mut l_pw: OPJ_UINT32 = 0;
-        let mut l_ph: OPJ_UINT32 = 0;
-        lResolutionPtr =
-            if !p_resolutions.is_null() {
-                *p_resolutions.offset(compno as isize)
-            } else { 0 as *mut OPJ_UINT32 };
-        l_tcx0 = opj_uint_ceildiv(*p_tx0, (*l_img_comp).dx);
-        l_tcy0 = opj_uint_ceildiv(*p_ty0, (*l_img_comp).dy);
-        l_tcx1 = opj_uint_ceildiv(*p_tx1, (*l_img_comp).dx);
-        l_tcy1 = opj_uint_ceildiv(*p_ty1, (*l_img_comp).dy);
-        if (*l_tccp).numresolutions > *p_max_res {
-            *p_max_res = (*l_tccp).numresolutions
-        }
-        /* use custom size for precincts*/
-        l_level_no = (*l_tccp).numresolutions;
-        resno = 0 as libc::c_int as OPJ_UINT32;
-        while resno < (*l_tccp).numresolutions {
-            let mut l_dx: OPJ_UINT32 = 0;
-            let mut l_dy: OPJ_UINT32 = 0;
-            l_level_no = l_level_no.wrapping_sub(1);
-            /* precinct width and height*/
-            l_pdx = (*l_tccp).prcw[resno as usize];
-            l_pdy = (*l_tccp).prch[resno as usize];
-            if !lResolutionPtr.is_null() {
-                let fresh0 = lResolutionPtr;
-                lResolutionPtr = lResolutionPtr.offset(1);
-                *fresh0 = l_pdx;
-                let fresh1 = lResolutionPtr;
-                lResolutionPtr = lResolutionPtr.offset(1);
-                *fresh1 = l_pdy
-            }
-            if l_pdx.wrapping_add(l_level_no) <
-                   32 as libc::c_int as libc::c_uint &&
-                   (*l_img_comp).dx <=
-                       (2147483647 as libc::c_int as
-                            libc::c_uint).wrapping_mul(2 as
-                                                           libc::c_uint).wrapping_add(1
-                                                                                          as
-                                                                                          libc::c_uint).wrapping_div((1
-                                                                                                                          as
-                                                                                                                          libc::c_uint)
-                                                                                                                         <<
-                                                                                                                         l_pdx.wrapping_add(l_level_no))
-               {
-                l_dx =
-                    (*l_img_comp).dx.wrapping_mul((1 as libc::c_uint) <<
-                                                      l_pdx.wrapping_add(l_level_no));
-                /* take the minimum size for l_dx for each comp and resolution*/
-                *p_dx_min = opj_uint_min(*p_dx_min, l_dx)
-            }
-            if l_pdy.wrapping_add(l_level_no) <
-                   32 as libc::c_int as libc::c_uint &&
-                   (*l_img_comp).dy <=
-                       (2147483647 as libc::c_int as
-                            libc::c_uint).wrapping_mul(2 as
-                                                           libc::c_uint).wrapping_add(1
-                                                                                          as
-                                                                                          libc::c_uint).wrapping_div((1
-                                                                                                                          as
-                                                                                                                          libc::c_uint)
-                                                                                                                         <<
-                                                                                                                         l_pdy.wrapping_add(l_level_no))
-               {
-                l_dy =
-                    (*l_img_comp).dy.wrapping_mul((1 as libc::c_uint) <<
-                                                      l_pdy.wrapping_add(l_level_no));
-                *p_dy_min = opj_uint_min(*p_dy_min, l_dy)
-            }
-            /* various calculations of extents*/
-            l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
-            l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
-            l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
-            l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
-            l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
-            l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
-            l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
-            py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
-            l_pw =
-                if l_rx0 == l_rx1 {
-                    0 as libc::c_int as libc::c_uint
-                } else { (l_px1.wrapping_sub(l_px0)) >> l_pdx };
-            l_ph =
-                if l_ry0 == l_ry1 {
-                    0 as libc::c_int as libc::c_uint
-                } else { (py1.wrapping_sub(l_py0)) >> l_pdy };
-            if !lResolutionPtr.is_null() {
-                let fresh2 = lResolutionPtr;
-                lResolutionPtr = lResolutionPtr.offset(1);
-                *fresh2 = l_pw;
-                let fresh3 = lResolutionPtr;
-                lResolutionPtr = lResolutionPtr.offset(1);
-                *fresh3 = l_ph
-            }
-            l_product = l_pw.wrapping_mul(l_ph);
-            /* update precision*/
-            if l_product > *p_max_prec { *p_max_prec = l_product }
-            resno = resno.wrapping_add(1)
-        }
-        l_tccp = l_tccp.offset(1);
-        l_img_comp = l_img_comp.offset(1);
-        compno = compno.wrapping_add(1)
+  }
+  /* initializations*/
+  tcp = &mut *(*p_cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
+  l_tccp = (*tcp).tccps;
+  l_img_comp = (*p_image).comps;
+  /* position in x and y of tile*/
+  p = tileno.wrapping_rem((*p_cp).tw);
+  q = tileno.wrapping_div((*p_cp).tw);
+  /* here calculation of tx0, tx1, ty0, ty1, maxprec, l_dx and l_dy */
+  l_tx0 = (*p_cp).tx0.wrapping_add(p.wrapping_mul((*p_cp).tdx)); /* can't be greater than p_image->x1 so won't overflow */
+  *p_tx0 = opj_uint_max(l_tx0, (*p_image).x0); /* can't be greater than p_image->y1 so won't overflow */
+  *p_tx1 = opj_uint_min(opj_uint_adds(l_tx0, (*p_cp).tdx), (*p_image).x1);
+  l_ty0 = (*p_cp).ty0.wrapping_add(q.wrapping_mul((*p_cp).tdy));
+  *p_ty0 = opj_uint_max(l_ty0, (*p_image).y0);
+  *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, (*p_cp).tdy), (*p_image).y1);
+  /* max precision and resolution is 0 (can only grow)*/
+  *p_max_prec = 0 as libc::c_int as OPJ_UINT32;
+  *p_max_res = 0 as libc::c_int as OPJ_UINT32;
+  /* take the largest value for dx_min and dy_min*/
+  *p_dx_min = 0x7fffffff as libc::c_int as OPJ_UINT32;
+  *p_dy_min = 0x7fffffff as libc::c_int as OPJ_UINT32;
+  compno = 0 as libc::c_int as OPJ_UINT32;
+  while compno < (*p_image).numcomps {
+    /* arithmetic variables to calculate*/
+    let mut l_level_no: OPJ_UINT32 = 0;
+    let mut l_rx0: OPJ_UINT32 = 0;
+    let mut l_ry0: OPJ_UINT32 = 0;
+    let mut l_rx1: OPJ_UINT32 = 0;
+    let mut l_ry1: OPJ_UINT32 = 0;
+    let mut l_px0: OPJ_UINT32 = 0;
+    let mut l_py0: OPJ_UINT32 = 0;
+    let mut l_px1: OPJ_UINT32 = 0;
+    let mut py1: OPJ_UINT32 = 0;
+    let mut l_product: OPJ_UINT32 = 0;
+    let mut l_tcx0: OPJ_UINT32 = 0;
+    let mut l_tcy0: OPJ_UINT32 = 0;
+    let mut l_tcx1: OPJ_UINT32 = 0;
+    let mut l_tcy1: OPJ_UINT32 = 0;
+    let mut l_pdx: OPJ_UINT32 = 0;
+    let mut l_pdy: OPJ_UINT32 = 0;
+    let mut l_pw: OPJ_UINT32 = 0;
+    let mut l_ph: OPJ_UINT32 = 0;
+    lResolutionPtr = if !p_resolutions.is_null() {
+      *p_resolutions.offset(compno as isize)
+    } else {
+      0 as *mut OPJ_UINT32
     };
+    l_tcx0 = opj_uint_ceildiv(*p_tx0, (*l_img_comp).dx);
+    l_tcy0 = opj_uint_ceildiv(*p_ty0, (*l_img_comp).dy);
+    l_tcx1 = opj_uint_ceildiv(*p_tx1, (*l_img_comp).dx);
+    l_tcy1 = opj_uint_ceildiv(*p_ty1, (*l_img_comp).dy);
+    if (*l_tccp).numresolutions > *p_max_res {
+      *p_max_res = (*l_tccp).numresolutions
+    }
+    /* use custom size for precincts*/
+    l_level_no = (*l_tccp).numresolutions;
+    resno = 0 as libc::c_int as OPJ_UINT32;
+    while resno < (*l_tccp).numresolutions {
+      let mut l_dx: OPJ_UINT32 = 0;
+      let mut l_dy: OPJ_UINT32 = 0;
+      l_level_no = l_level_no.wrapping_sub(1);
+      /* precinct width and height*/
+      l_pdx = (*l_tccp).prcw[resno as usize];
+      l_pdy = (*l_tccp).prch[resno as usize];
+      if !lResolutionPtr.is_null() {
+        let fresh0 = lResolutionPtr;
+        lResolutionPtr = lResolutionPtr.offset(1);
+        *fresh0 = l_pdx;
+        let fresh1 = lResolutionPtr;
+        lResolutionPtr = lResolutionPtr.offset(1);
+        *fresh1 = l_pdy
+      }
+      if l_pdx.wrapping_add(l_level_no) < 32 as libc::c_int as libc::c_uint
+        && (*l_img_comp).dx
+          <= (2147483647 as libc::c_int as libc::c_uint)
+            .wrapping_mul(2 as libc::c_uint)
+            .wrapping_add(1 as libc::c_uint)
+            .wrapping_div((1 as libc::c_uint) << l_pdx.wrapping_add(l_level_no))
+      {
+        l_dx = (*l_img_comp)
+          .dx
+          .wrapping_mul((1 as libc::c_uint) << l_pdx.wrapping_add(l_level_no));
+        /* take the minimum size for l_dx for each comp and resolution*/
+        *p_dx_min = opj_uint_min(*p_dx_min, l_dx)
+      }
+      if l_pdy.wrapping_add(l_level_no) < 32 as libc::c_int as libc::c_uint
+        && (*l_img_comp).dy
+          <= (2147483647 as libc::c_int as libc::c_uint)
+            .wrapping_mul(2 as libc::c_uint)
+            .wrapping_add(1 as libc::c_uint)
+            .wrapping_div((1 as libc::c_uint) << l_pdy.wrapping_add(l_level_no))
+      {
+        l_dy = (*l_img_comp)
+          .dy
+          .wrapping_mul((1 as libc::c_uint) << l_pdy.wrapping_add(l_level_no));
+        *p_dy_min = opj_uint_min(*p_dy_min, l_dy)
+      }
+      /* various calculations of extents*/
+      l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
+      l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
+      l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
+      l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
+      l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
+      l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
+      l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
+      py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
+      l_pw = if l_rx0 == l_rx1 {
+        0 as libc::c_int as libc::c_uint
+      } else {
+        (l_px1.wrapping_sub(l_px0)) >> l_pdx
+      };
+      l_ph = if l_ry0 == l_ry1 {
+        0 as libc::c_int as libc::c_uint
+      } else {
+        (py1.wrapping_sub(l_py0)) >> l_pdy
+      };
+      if !lResolutionPtr.is_null() {
+        let fresh2 = lResolutionPtr;
+        lResolutionPtr = lResolutionPtr.offset(1);
+        *fresh2 = l_pw;
+        let fresh3 = lResolutionPtr;
+        lResolutionPtr = lResolutionPtr.offset(1);
+        *fresh3 = l_ph
+      }
+      l_product = l_pw.wrapping_mul(l_ph);
+      /* update precision*/
+      if l_product > *p_max_prec {
+        *p_max_prec = l_product
+      }
+      resno = resno.wrapping_add(1)
+    }
+    l_tccp = l_tccp.offset(1);
+    l_img_comp = l_img_comp.offset(1);
+    compno = compno.wrapping_add(1)
+  }
 }
 /* *
  * Allocates memory for a packet iterator. Data and data sizes are set by this operation.
@@ -2064,96 +1993,98 @@ unsafe extern "C" fn opj_get_all_encoding_parameters(mut p_image:
  * @param   tileno  the index of the tile from which creating the packet iterator.
  * @param   manager Event manager
  */
-unsafe extern "C" fn opj_pi_create(mut image: *const opj_image_t,
-                                   mut cp: *const opj_cp_t,
-                                   mut tileno: OPJ_UINT32,
-                                   mut manager: *mut opj_event_mgr_t)
- -> *mut opj_pi_iterator_t {
-    /* loop*/
-    let mut pino: OPJ_UINT32 = 0;
-    let mut compno: OPJ_UINT32 = 0;
-    /* number of poc in the p_pi*/
-    let mut l_poc_bound: OPJ_UINT32 = 0;
-    /* pointers to tile coding parameters and components.*/
-    let mut l_pi = 0 as *mut opj_pi_iterator_t;
-    let mut tcp = 0 as *mut opj_tcp_t;
-    let mut tccp = 0 as *const opj_tccp_t;
-    /* current packet iterator being allocated*/
-    let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
-    /* preconditions in debug*/
-    if !cp.is_null() {
-    } else {
-        __assert_fail(b"cp != 00\x00" as *const u8 as *const libc::c_char,
+unsafe extern "C" fn opj_pi_create(
+  mut image: *const opj_image_t,
+  mut cp: *const opj_cp_t,
+  mut tileno: OPJ_UINT32,
+  mut manager: *mut opj_event_mgr_t,
+) -> *mut opj_pi_iterator_t {
+  /* loop*/
+  let mut pino: OPJ_UINT32 = 0;
+  let mut compno: OPJ_UINT32 = 0;
+  /* number of poc in the p_pi*/
+  let mut l_poc_bound: OPJ_UINT32 = 0;
+  /* pointers to tile coding parameters and components.*/
+  let mut l_pi = 0 as *mut opj_pi_iterator_t;
+  let mut tcp = 0 as *mut opj_tcp_t;
+  let mut tccp = 0 as *const opj_tccp_t;
+  /* current packet iterator being allocated*/
+  let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
+  /* preconditions in debug*/
+  if !cp.is_null() {
+  } else {
+    __assert_fail(b"cp != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1038 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 103],
                                                 &[libc::c_char; 103]>(b"opj_pi_iterator_t *opj_pi_create(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-    }
-    if !image.is_null() {
-    } else {
-        __assert_fail(b"image != 00\x00" as *const u8 as *const libc::c_char,
+  }
+  if !image.is_null() {
+  } else {
+    __assert_fail(b"image != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1039 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 103],
                                                 &[libc::c_char; 103]>(b"opj_pi_iterator_t *opj_pi_create(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-    }
-    if tileno < (*cp).tw.wrapping_mul((*cp).th) {
-    } else {
-        __assert_fail(b"tileno < cp->tw * cp->th\x00" as *const u8 as
+  }
+  if tileno < (*cp).tw.wrapping_mul((*cp).th) {
+  } else {
+    __assert_fail(b"tileno < cp->tw * cp->th\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1040 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 103],
                                                 &[libc::c_char; 103]>(b"opj_pi_iterator_t *opj_pi_create(const opj_image_t *, const opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
+  }
+  /* initializations*/
+  tcp = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
+  l_poc_bound = (*tcp)
+    .numpocs
+    .wrapping_add(1 as libc::c_int as libc::c_uint);
+  /* memory allocations*/
+  l_pi = opj_calloc(
+    l_poc_bound as size_t,
+    ::std::mem::size_of::<opj_pi_iterator_t>() as libc::c_ulong,
+  ) as *mut opj_pi_iterator_t;
+  if l_pi.is_null() {
+    return 0 as *mut opj_pi_iterator_t;
+  }
+  l_current_pi = l_pi;
+  pino = 0 as libc::c_int as OPJ_UINT32;
+  while pino < l_poc_bound {
+    (*l_current_pi).manager = manager;
+    (*l_current_pi).comps = opj_calloc(
+      (*image).numcomps as size_t,
+      ::std::mem::size_of::<opj_pi_comp_t>() as libc::c_ulong,
+    ) as *mut opj_pi_comp_t;
+    if (*l_current_pi).comps.is_null() {
+      opj_pi_destroy(l_pi, l_poc_bound);
+      return 0 as *mut opj_pi_iterator_t;
     }
-    /* initializations*/
-    tcp = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
-    l_poc_bound =
-        (*tcp).numpocs.wrapping_add(1 as libc::c_int as libc::c_uint);
-    /* memory allocations*/
-    l_pi =
-        opj_calloc(l_poc_bound as size_t,
-                   ::std::mem::size_of::<opj_pi_iterator_t>() as
-                       libc::c_ulong) as *mut opj_pi_iterator_t;
-    if l_pi.is_null() { return 0 as *mut opj_pi_iterator_t }
-    l_current_pi = l_pi;
-    pino = 0 as libc::c_int as OPJ_UINT32;
-    while pino < l_poc_bound {
-        (*l_current_pi).manager = manager;
-        (*l_current_pi).comps =
-            opj_calloc((*image).numcomps as size_t,
-                       ::std::mem::size_of::<opj_pi_comp_t>() as
-                           libc::c_ulong) as *mut opj_pi_comp_t;
-        if (*l_current_pi).comps.is_null() {
-            opj_pi_destroy(l_pi, l_poc_bound);
-            return 0 as *mut opj_pi_iterator_t
-        }
-        (*l_current_pi).numcomps = (*image).numcomps;
-        compno = 0 as libc::c_int as OPJ_UINT32;
-        while compno < (*image).numcomps {
-            let mut comp: *mut opj_pi_comp_t =
-                &mut *(*l_current_pi).comps.offset(compno as isize) as
-                    *mut opj_pi_comp_t;
-            tccp =
-                &mut *(*tcp).tccps.offset(compno as isize) as *mut opj_tccp_t;
-            (*comp).resolutions =
-                opj_calloc((*tccp).numresolutions as size_t,
-                           ::std::mem::size_of::<opj_pi_resolution_t>() as
-                               libc::c_ulong) as *mut opj_pi_resolution_t;
-            if (*comp).resolutions.is_null() {
-                opj_pi_destroy(l_pi, l_poc_bound);
-                return 0 as *mut opj_pi_iterator_t
-            }
-            (*comp).numresolutions = (*tccp).numresolutions;
-            compno = compno.wrapping_add(1)
-        }
-        l_current_pi = l_current_pi.offset(1);
-        pino = pino.wrapping_add(1)
+    (*l_current_pi).numcomps = (*image).numcomps;
+    compno = 0 as libc::c_int as OPJ_UINT32;
+    while compno < (*image).numcomps {
+      let mut comp: *mut opj_pi_comp_t =
+        &mut *(*l_current_pi).comps.offset(compno as isize) as *mut opj_pi_comp_t;
+      tccp = &mut *(*tcp).tccps.offset(compno as isize) as *mut opj_tccp_t;
+      (*comp).resolutions = opj_calloc(
+        (*tccp).numresolutions as size_t,
+        ::std::mem::size_of::<opj_pi_resolution_t>() as libc::c_ulong,
+      ) as *mut opj_pi_resolution_t;
+      if (*comp).resolutions.is_null() {
+        opj_pi_destroy(l_pi, l_poc_bound);
+        return 0 as *mut opj_pi_iterator_t;
+      }
+      (*comp).numresolutions = (*tccp).numresolutions;
+      compno = compno.wrapping_add(1)
     }
-    return l_pi;
+    l_current_pi = l_current_pi.offset(1);
+    pino = pino.wrapping_add(1)
+  }
+  return l_pi;
 }
 /* *
  * Updates the coding parameters if the encoding is used with Progression order changes and final (or cinema parameters are used).
@@ -2169,67 +2100,88 @@ unsafe extern "C" fn opj_pi_create(mut image: *const opj_image_t,
  * @param   p_dx_min        the minimum dx of all the components of all the resolutions for the tile.
  * @param   p_dy_min        the minimum dy of all the components of all the resolutions for the tile.
  */
-unsafe extern "C" fn opj_pi_update_encode_poc_and_final(mut p_cp:
-                                                            *mut opj_cp_t,
-                                                        mut p_tileno:
-                                                            OPJ_UINT32,
-                                                        mut p_tx0: OPJ_UINT32,
-                                                        mut p_tx1: OPJ_UINT32,
-                                                        mut p_ty0: OPJ_UINT32,
-                                                        mut p_ty1: OPJ_UINT32,
-                                                        mut p_max_prec:
-                                                            OPJ_UINT32,
-                                                        mut _p_max_res:
-                                                            OPJ_UINT32,
-                                                        mut p_dx_min:
-                                                            OPJ_UINT32,
-                                                        mut p_dy_min:
-                                                            OPJ_UINT32) {
-    /* loop*/
-    let mut pino: OPJ_UINT32 = 0;
-    /* tile coding parameter*/
-    let mut l_tcp = 0 as *mut opj_tcp_t;
-    /* current poc being updated*/
-    let mut l_current_poc = 0 as *mut opj_poc_t;
-    /* number of pocs*/
-    let mut l_poc_bound: OPJ_UINT32 = 0;
-    /* preconditions in debug*/
-    if !p_cp.is_null() {
-    } else {
-        __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
+unsafe extern "C" fn opj_pi_update_encode_poc_and_final(
+  mut p_cp: *mut opj_cp_t,
+  mut p_tileno: OPJ_UINT32,
+  mut p_tx0: OPJ_UINT32,
+  mut p_tx1: OPJ_UINT32,
+  mut p_ty0: OPJ_UINT32,
+  mut p_ty1: OPJ_UINT32,
+  mut p_max_prec: OPJ_UINT32,
+  mut _p_max_res: OPJ_UINT32,
+  mut p_dx_min: OPJ_UINT32,
+  mut p_dy_min: OPJ_UINT32,
+) {
+  /* loop*/
+  let mut pino: OPJ_UINT32 = 0;
+  /* tile coding parameter*/
+  let mut l_tcp = 0 as *mut opj_tcp_t;
+  /* current poc being updated*/
+  let mut l_current_poc = 0 as *mut opj_poc_t;
+  /* number of pocs*/
+  let mut l_poc_bound: OPJ_UINT32 = 0;
+  /* preconditions in debug*/
+  if !p_cp.is_null() {
+  } else {
+    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1110 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 160],
                                                 &[libc::c_char; 160]>(b"void opj_pi_update_encode_poc_and_final(opj_cp_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-    }
-    if p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-    } else {
-        __assert_fail(b"p_tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
+  }
+  if p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
+  } else {
+    __assert_fail(b"p_tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1111 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 160],
                                                 &[libc::c_char; 160]>(b"void opj_pi_update_encode_poc_and_final(opj_cp_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-    }
-    /* initializations*/
-    l_tcp = &mut *(*p_cp).tcps.offset(p_tileno as isize) as *mut opj_tcp_t;
-    /* number of iterations in the loop */
-    l_poc_bound =
-        (*l_tcp).numpocs.wrapping_add(1 as libc::c_int as libc::c_uint);
-    /* start at first element, and to make sure the compiler will not make a calculation each time in the loop
-       store a pointer to the current element to modify rather than l_tcp->pocs[i]*/
-    l_current_poc = (*l_tcp).pocs.as_mut_ptr();
+  }
+  /* initializations*/
+  l_tcp = &mut *(*p_cp).tcps.offset(p_tileno as isize) as *mut opj_tcp_t;
+  /* number of iterations in the loop */
+  l_poc_bound = (*l_tcp)
+    .numpocs
+    .wrapping_add(1 as libc::c_int as libc::c_uint);
+  /* start at first element, and to make sure the compiler will not make a calculation each time in the loop
+  store a pointer to the current element to modify rather than l_tcp->pocs[i]*/
+  l_current_poc = (*l_tcp).pocs.as_mut_ptr();
+  (*l_current_poc).compS = (*l_current_poc).compno0;
+  (*l_current_poc).compE = (*l_current_poc).compno1;
+  (*l_current_poc).resS = (*l_current_poc).resno0;
+  (*l_current_poc).resE = (*l_current_poc).resno1;
+  (*l_current_poc).layE = (*l_current_poc).layno1;
+  /* special treatment for the first element*/
+  (*l_current_poc).layS = 0 as libc::c_int as OPJ_UINT32;
+  (*l_current_poc).prg = (*l_current_poc).prg1;
+  (*l_current_poc).prcS = 0 as libc::c_int as OPJ_UINT32;
+  (*l_current_poc).prcE = p_max_prec;
+  (*l_current_poc).txS = p_tx0;
+  (*l_current_poc).txE = p_tx1;
+  (*l_current_poc).tyS = p_ty0;
+  (*l_current_poc).tyE = p_ty1;
+  (*l_current_poc).dx = p_dx_min;
+  (*l_current_poc).dy = p_dy_min;
+  l_current_poc = l_current_poc.offset(1);
+  pino = 1 as libc::c_int as OPJ_UINT32;
+  while pino < l_poc_bound {
     (*l_current_poc).compS = (*l_current_poc).compno0;
     (*l_current_poc).compE = (*l_current_poc).compno1;
     (*l_current_poc).resS = (*l_current_poc).resno0;
     (*l_current_poc).resE = (*l_current_poc).resno1;
     (*l_current_poc).layE = (*l_current_poc).layno1;
-    /* special treatment for the first element*/
-    (*l_current_poc).layS = 0 as libc::c_int as OPJ_UINT32;
     (*l_current_poc).prg = (*l_current_poc).prg1;
     (*l_current_poc).prcS = 0 as libc::c_int as OPJ_UINT32;
+    /* special treatment here different from the first element*/
+    (*l_current_poc).layS =
+      if (*l_current_poc).layE > (*l_current_poc.offset(-(1 as libc::c_int as isize))).layE {
+        (*l_current_poc).layE
+      } else {
+        0 as libc::c_int as libc::c_uint
+      };
     (*l_current_poc).prcE = p_max_prec;
     (*l_current_poc).txS = p_tx0;
     (*l_current_poc).txE = p_tx1;
@@ -2238,32 +2190,8 @@ unsafe extern "C" fn opj_pi_update_encode_poc_and_final(mut p_cp:
     (*l_current_poc).dx = p_dx_min;
     (*l_current_poc).dy = p_dy_min;
     l_current_poc = l_current_poc.offset(1);
-    pino = 1 as libc::c_int as OPJ_UINT32;
-    while pino < l_poc_bound {
-        (*l_current_poc).compS = (*l_current_poc).compno0;
-        (*l_current_poc).compE = (*l_current_poc).compno1;
-        (*l_current_poc).resS = (*l_current_poc).resno0;
-        (*l_current_poc).resE = (*l_current_poc).resno1;
-        (*l_current_poc).layE = (*l_current_poc).layno1;
-        (*l_current_poc).prg = (*l_current_poc).prg1;
-        (*l_current_poc).prcS = 0 as libc::c_int as OPJ_UINT32;
-        /* special treatment here different from the first element*/
-        (*l_current_poc).layS =
-            if (*l_current_poc).layE >
-                   (*l_current_poc.offset(-(1 as libc::c_int as isize))).layE
-               {
-                (*l_current_poc).layE
-            } else { 0 as libc::c_int as libc::c_uint };
-        (*l_current_poc).prcE = p_max_prec;
-        (*l_current_poc).txS = p_tx0;
-        (*l_current_poc).txE = p_tx1;
-        (*l_current_poc).tyS = p_ty0;
-        (*l_current_poc).tyE = p_ty1;
-        (*l_current_poc).dx = p_dx_min;
-        (*l_current_poc).dy = p_dy_min;
-        l_current_poc = l_current_poc.offset(1);
-        pino = pino.wrapping_add(1)
-    };
+    pino = pino.wrapping_add(1)
+  }
 }
 /* *
  * Updates the coding parameters if the encoding is not used with Progression order changes and final (and cinema parameters are used).
@@ -2280,270 +2208,281 @@ unsafe extern "C" fn opj_pi_update_encode_poc_and_final(mut p_cp:
  * @param   p_dx_min        the minimum dx of all the components of all the resolutions for the tile.
  * @param   p_dy_min        the minimum dy of all the components of all the resolutions for the tile.
  */
-unsafe extern "C" fn opj_pi_update_encode_not_poc(mut p_cp: *mut opj_cp_t,
-                                                  mut p_num_comps: OPJ_UINT32,
-                                                  mut p_tileno: OPJ_UINT32,
-                                                  mut p_tx0: OPJ_UINT32,
-                                                  mut p_tx1: OPJ_UINT32,
-                                                  mut p_ty0: OPJ_UINT32,
-                                                  mut p_ty1: OPJ_UINT32,
-                                                  mut p_max_prec: OPJ_UINT32,
-                                                  mut p_max_res: OPJ_UINT32,
-                                                  mut p_dx_min: OPJ_UINT32,
-                                                  mut p_dy_min: OPJ_UINT32) {
-    /* loop*/
-    let mut pino: OPJ_UINT32 = 0;
-    /* tile coding parameter*/
-    let mut l_tcp = 0 as *mut opj_tcp_t;
-    /* current poc being updated*/
-    let mut l_current_poc = 0 as *mut opj_poc_t;
-    /* number of pocs*/
-    let mut l_poc_bound: OPJ_UINT32 = 0;
-    /* preconditions in debug*/
-    if !p_cp.is_null() {
-    } else {
-        __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
+unsafe extern "C" fn opj_pi_update_encode_not_poc(
+  mut p_cp: *mut opj_cp_t,
+  mut p_num_comps: OPJ_UINT32,
+  mut p_tileno: OPJ_UINT32,
+  mut p_tx0: OPJ_UINT32,
+  mut p_tx1: OPJ_UINT32,
+  mut p_ty0: OPJ_UINT32,
+  mut p_ty1: OPJ_UINT32,
+  mut p_max_prec: OPJ_UINT32,
+  mut p_max_res: OPJ_UINT32,
+  mut p_dx_min: OPJ_UINT32,
+  mut p_dy_min: OPJ_UINT32,
+) {
+  /* loop*/
+  let mut pino: OPJ_UINT32 = 0;
+  /* tile coding parameter*/
+  let mut l_tcp = 0 as *mut opj_tcp_t;
+  /* current poc being updated*/
+  let mut l_current_poc = 0 as *mut opj_poc_t;
+  /* number of pocs*/
+  let mut l_poc_bound: OPJ_UINT32 = 0;
+  /* preconditions in debug*/
+  if !p_cp.is_null() {
+  } else {
+    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1187 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 166],
                                                 &[libc::c_char; 166]>(b"void opj_pi_update_encode_not_poc(opj_cp_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-    }
-    if p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-    } else {
-        __assert_fail(b"p_tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
+  }
+  if p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th) {
+  } else {
+    __assert_fail(b"p_tileno < p_cp->tw * p_cp->th\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1188 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 166],
                                                 &[libc::c_char; 166]>(b"void opj_pi_update_encode_not_poc(opj_cp_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-    }
-    /* initializations*/
-    l_tcp = &mut *(*p_cp).tcps.offset(p_tileno as isize) as *mut opj_tcp_t;
-    /* number of iterations in the loop */
-    l_poc_bound =
-        (*l_tcp).numpocs.wrapping_add(1 as libc::c_int as libc::c_uint);
-    /* start at first element, and to make sure the compiler will not make a calculation each time in the loop
-       store a pointer to the current element to modify rather than l_tcp->pocs[i]*/
-    l_current_poc = (*l_tcp).pocs.as_mut_ptr(); /*p_image->numcomps;*/
-    pino = 0 as libc::c_int as OPJ_UINT32;
-    while pino < l_poc_bound {
-        (*l_current_poc).compS = 0 as libc::c_int as OPJ_UINT32;
-        (*l_current_poc).compE = p_num_comps;
-        (*l_current_poc).resS = 0 as libc::c_int as OPJ_UINT32;
-        (*l_current_poc).resE = p_max_res;
-        (*l_current_poc).layS = 0 as libc::c_int as OPJ_UINT32;
-        (*l_current_poc).layE = (*l_tcp).numlayers;
-        (*l_current_poc).prg = (*l_tcp).prg;
-        (*l_current_poc).prcS = 0 as libc::c_int as OPJ_UINT32;
-        (*l_current_poc).prcE = p_max_prec;
-        (*l_current_poc).txS = p_tx0;
-        (*l_current_poc).txE = p_tx1;
-        (*l_current_poc).tyS = p_ty0;
-        (*l_current_poc).tyE = p_ty1;
-        (*l_current_poc).dx = p_dx_min;
-        (*l_current_poc).dy = p_dy_min;
-        l_current_poc = l_current_poc.offset(1);
-        pino = pino.wrapping_add(1)
-    };
+  }
+  /* initializations*/
+  l_tcp = &mut *(*p_cp).tcps.offset(p_tileno as isize) as *mut opj_tcp_t;
+  /* number of iterations in the loop */
+  l_poc_bound = (*l_tcp)
+    .numpocs
+    .wrapping_add(1 as libc::c_int as libc::c_uint);
+  /* start at first element, and to make sure the compiler will not make a calculation each time in the loop
+  store a pointer to the current element to modify rather than l_tcp->pocs[i]*/
+  l_current_poc = (*l_tcp).pocs.as_mut_ptr(); /*p_image->numcomps;*/
+  pino = 0 as libc::c_int as OPJ_UINT32;
+  while pino < l_poc_bound {
+    (*l_current_poc).compS = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_poc).compE = p_num_comps;
+    (*l_current_poc).resS = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_poc).resE = p_max_res;
+    (*l_current_poc).layS = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_poc).layE = (*l_tcp).numlayers;
+    (*l_current_poc).prg = (*l_tcp).prg;
+    (*l_current_poc).prcS = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_poc).prcE = p_max_prec;
+    (*l_current_poc).txS = p_tx0;
+    (*l_current_poc).txE = p_tx1;
+    (*l_current_poc).tyS = p_ty0;
+    (*l_current_poc).tyE = p_ty1;
+    (*l_current_poc).dx = p_dx_min;
+    (*l_current_poc).dy = p_dy_min;
+    l_current_poc = l_current_poc.offset(1);
+    pino = pino.wrapping_add(1)
+  }
 }
 /* *
  * FIXME DOC
  */
-unsafe extern "C" fn opj_pi_update_decode_poc(mut p_pi:
-                                                  *mut opj_pi_iterator_t,
-                                              mut p_tcp: *mut opj_tcp_t,
-                                              mut p_max_precision: OPJ_UINT32,
-                                              mut _p_max_res: OPJ_UINT32) {
-    /* loop*/
-    let mut pino: OPJ_UINT32 = 0;
-    /* encoding parameters to set*/
-    let mut l_bound: OPJ_UINT32 = 0;
-    let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
-    let mut l_current_poc = 0 as *mut opj_poc_t;
-    /* preconditions in debug*/
-    if !p_pi.is_null() {
-    } else {
-        __assert_fail(b"p_pi != 00\x00" as *const u8 as *const libc::c_char,
+unsafe extern "C" fn opj_pi_update_decode_poc(
+  mut p_pi: *mut opj_pi_iterator_t,
+  mut p_tcp: *mut opj_tcp_t,
+  mut p_max_precision: OPJ_UINT32,
+  mut _p_max_res: OPJ_UINT32,
+) {
+  /* loop*/
+  let mut pino: OPJ_UINT32 = 0;
+  /* encoding parameters to set*/
+  let mut l_bound: OPJ_UINT32 = 0;
+  let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
+  let mut l_current_poc = 0 as *mut opj_poc_t;
+  /* preconditions in debug*/
+  if !p_pi.is_null() {
+  } else {
+    __assert_fail(b"p_pi != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1237 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 88],
                                                 &[libc::c_char; 88]>(b"void opj_pi_update_decode_poc(opj_pi_iterator_t *, opj_tcp_t *, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-    }
-    if !p_tcp.is_null() {
-    } else {
-        __assert_fail(b"p_tcp != 00\x00" as *const u8 as *const libc::c_char,
+  }
+  if !p_tcp.is_null() {
+  } else {
+    __assert_fail(b"p_tcp != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1238 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 88],
                                                 &[libc::c_char; 88]>(b"void opj_pi_update_decode_poc(opj_pi_iterator_t *, opj_tcp_t *, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-    }
-    /* initializations*/
-    l_bound =
-        (*p_tcp).numpocs.wrapping_add(1 as libc::c_int as
-                                          libc::c_uint); /* Progression Order #0 */
-    l_current_pi = p_pi; /* Resolution Level Index #0 (Start) */
-    l_current_poc =
-        (*p_tcp).pocs.as_mut_ptr(); /* Component Index #0 (Start) */
-    pino =
-        0 as libc::c_int as OPJ_UINT32; /* Resolution Level Index #0 (End) */
-    while pino < l_bound {
-        (*l_current_pi).poc.prg =
-            (*l_current_poc).prg; /* Component Index #0 (End) */
-        (*l_current_pi).first = 1 as libc::c_int; /* Layer Index #0 (End) */
-        (*l_current_pi).poc.resno0 = (*l_current_poc).resno0;
-        (*l_current_pi).poc.compno0 = (*l_current_poc).compno0;
-        (*l_current_pi).poc.layno0 = 0 as libc::c_int as OPJ_UINT32;
-        (*l_current_pi).poc.precno0 = 0 as libc::c_int as OPJ_UINT32;
-        (*l_current_pi).poc.resno1 = (*l_current_poc).resno1;
-        (*l_current_pi).poc.compno1 = (*l_current_poc).compno1;
-        (*l_current_pi).poc.layno1 =
-            opj_uint_min((*l_current_poc).layno1, (*p_tcp).numlayers);
-        (*l_current_pi).poc.precno1 = p_max_precision;
-        l_current_pi = l_current_pi.offset(1);
-        l_current_poc = l_current_poc.offset(1);
-        pino = pino.wrapping_add(1)
-    };
+  }
+  /* initializations*/
+  l_bound = (*p_tcp)
+    .numpocs
+    .wrapping_add(1 as libc::c_int as libc::c_uint); /* Progression Order #0 */
+  l_current_pi = p_pi; /* Resolution Level Index #0 (Start) */
+  l_current_poc = (*p_tcp).pocs.as_mut_ptr(); /* Component Index #0 (Start) */
+  pino = 0 as libc::c_int as OPJ_UINT32; /* Resolution Level Index #0 (End) */
+  while pino < l_bound {
+    (*l_current_pi).poc.prg = (*l_current_poc).prg; /* Component Index #0 (End) */
+    (*l_current_pi).first = 1 as libc::c_int; /* Layer Index #0 (End) */
+    (*l_current_pi).poc.resno0 = (*l_current_poc).resno0;
+    (*l_current_pi).poc.compno0 = (*l_current_poc).compno0;
+    (*l_current_pi).poc.layno0 = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_pi).poc.precno0 = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_pi).poc.resno1 = (*l_current_poc).resno1;
+    (*l_current_pi).poc.compno1 = (*l_current_poc).compno1;
+    (*l_current_pi).poc.layno1 = opj_uint_min((*l_current_poc).layno1, (*p_tcp).numlayers);
+    (*l_current_pi).poc.precno1 = p_max_precision;
+    l_current_pi = l_current_pi.offset(1);
+    l_current_poc = l_current_poc.offset(1);
+    pino = pino.wrapping_add(1)
+  }
 }
 /* *
  * FIXME DOC
  */
-unsafe extern "C" fn opj_pi_update_decode_not_poc(mut p_pi:
-                                                      *mut opj_pi_iterator_t,
-                                                  mut p_tcp: *mut opj_tcp_t,
-                                                  mut p_max_precision:
-                                                      OPJ_UINT32,
-                                                  mut p_max_res: OPJ_UINT32) {
-    /* loop*/
-    let mut pino: OPJ_UINT32 = 0;
-    /* encoding parameters to set*/
-    let mut l_bound: OPJ_UINT32 = 0;
-    let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
-    /* preconditions in debug*/
-    if !p_tcp.is_null() {
-    } else {
-        __assert_fail(b"p_tcp != 00\x00" as *const u8 as *const libc::c_char,
+unsafe extern "C" fn opj_pi_update_decode_not_poc(
+  mut p_pi: *mut opj_pi_iterator_t,
+  mut p_tcp: *mut opj_tcp_t,
+  mut p_max_precision: OPJ_UINT32,
+  mut p_max_res: OPJ_UINT32,
+) {
+  /* loop*/
+  let mut pino: OPJ_UINT32 = 0;
+  /* encoding parameters to set*/
+  let mut l_bound: OPJ_UINT32 = 0;
+  let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
+  /* preconditions in debug*/
+  if !p_tcp.is_null() {
+  } else {
+    __assert_fail(b"p_tcp != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1280 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 92],
                                                 &[libc::c_char; 92]>(b"void opj_pi_update_decode_not_poc(opj_pi_iterator_t *, opj_tcp_t *, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-    }
-    if !p_pi.is_null() {
-    } else {
-        __assert_fail(b"p_pi != 00\x00" as *const u8 as *const libc::c_char,
+  }
+  if !p_pi.is_null() {
+  } else {
+    __assert_fail(b"p_pi != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1281 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 92],
                                                 &[libc::c_char; 92]>(b"void opj_pi_update_decode_not_poc(opj_pi_iterator_t *, opj_tcp_t *, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-    }
-    /* initializations*/
-    l_bound = (*p_tcp).numpocs.wrapping_add(1 as libc::c_int as libc::c_uint);
-    l_current_pi = p_pi;
-    pino = 0 as libc::c_int as OPJ_UINT32;
-    while pino < l_bound {
-        (*l_current_pi).poc.prg = (*p_tcp).prg;
-        (*l_current_pi).first = 1 as libc::c_int;
-        (*l_current_pi).poc.resno0 = 0 as libc::c_int as OPJ_UINT32;
-        (*l_current_pi).poc.compno0 = 0 as libc::c_int as OPJ_UINT32;
-        (*l_current_pi).poc.layno0 = 0 as libc::c_int as OPJ_UINT32;
-        (*l_current_pi).poc.precno0 = 0 as libc::c_int as OPJ_UINT32;
-        (*l_current_pi).poc.resno1 = p_max_res;
-        (*l_current_pi).poc.compno1 = (*l_current_pi).numcomps;
-        (*l_current_pi).poc.layno1 = (*p_tcp).numlayers;
-        (*l_current_pi).poc.precno1 = p_max_precision;
-        l_current_pi = l_current_pi.offset(1);
-        pino = pino.wrapping_add(1)
-    };
+  }
+  /* initializations*/
+  l_bound = (*p_tcp)
+    .numpocs
+    .wrapping_add(1 as libc::c_int as libc::c_uint);
+  l_current_pi = p_pi;
+  pino = 0 as libc::c_int as OPJ_UINT32;
+  while pino < l_bound {
+    (*l_current_pi).poc.prg = (*p_tcp).prg;
+    (*l_current_pi).first = 1 as libc::c_int;
+    (*l_current_pi).poc.resno0 = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_pi).poc.compno0 = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_pi).poc.layno0 = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_pi).poc.precno0 = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_pi).poc.resno1 = p_max_res;
+    (*l_current_pi).poc.compno1 = (*l_current_pi).numcomps;
+    (*l_current_pi).poc.layno1 = (*p_tcp).numlayers;
+    (*l_current_pi).poc.precno1 = p_max_precision;
+    l_current_pi = l_current_pi.offset(1);
+    pino = pino.wrapping_add(1)
+  }
 }
 /* *
  * FIXME DOC
  */
-unsafe extern "C" fn opj_pi_check_next_level(mut pos: OPJ_INT32,
-                                             mut cp: *mut opj_cp_t,
-                                             mut tileno: OPJ_UINT32,
-                                             mut pino: OPJ_UINT32,
-                                             mut prog: *const OPJ_CHAR)
- -> OPJ_BOOL {
-    let mut i: OPJ_INT32 = 0; /*end if*/
-    let mut tcps: *mut opj_tcp_t =
-        &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
-    let mut tcp: *mut opj_poc_t =
-        &mut *(*tcps).pocs.as_mut_ptr().offset(pino as isize) as
-            *mut opj_poc_t;
-    if pos >= 0 as libc::c_int {
-        i = pos;
-        while i >= 0 as libc::c_int {
-            match *prog.offset(i as isize) as libc::c_int {
-                82 => {
-                    if (*tcp).res_t == (*tcp).resE {
-                        if opj_pi_check_next_level(pos - 1 as libc::c_int, cp,
-                                                   tileno, pino, prog) != 0 {
-                            return 1 as libc::c_int
-                        } else { return 0 as libc::c_int }
-                    } else { return 1 as libc::c_int }
-                    /*end case P*/
-                }
-                67 => {
-                    if (*tcp).comp_t == (*tcp).compE {
-                        if opj_pi_check_next_level(pos - 1 as libc::c_int, cp,
-                                                   tileno, pino, prog) != 0 {
-                            return 1 as libc::c_int
-                        } else { return 0 as libc::c_int }
-                    } else { return 1 as libc::c_int }
-                }
-                76 => {
-                    if (*tcp).lay_t == (*tcp).layE {
-                        if opj_pi_check_next_level(pos - 1 as libc::c_int, cp,
-                                                   tileno, pino, prog) != 0 {
-                            return 1 as libc::c_int
-                        } else { return 0 as libc::c_int }
-                    } else { return 1 as libc::c_int }
-                }
-                80 => {
-                    match (*tcp).prg as libc::c_int {
-                        0 | 1 => {
-                            /* fall through */
-                            if (*tcp).prc_t == (*tcp).prcE {
-                                if opj_pi_check_next_level(i -
-                                                               1 as
-                                                                   libc::c_int,
-                                                           cp, tileno, pino,
-                                                           prog) != 0 {
-                                    return 1 as libc::c_int
-                                } else { return 0 as libc::c_int }
-                            } else { return 1 as libc::c_int }
-                        }
-                        _ => {
-                            if (*tcp).tx0_t == (*tcp).txE {
-                                /*TY*/
-                                if (*tcp).ty0_t == (*tcp).tyE {
-                                    if opj_pi_check_next_level(i -
-                                                                   1 as
-                                                                       libc::c_int,
-                                                               cp, tileno,
-                                                               pino, prog) !=
-                                           0 {
-                                        return 1 as libc::c_int
-                                    } else { return 0 as libc::c_int }
-                                } else { return 1 as libc::c_int }
-                                /*TY*/
-                            } else { return 1 as libc::c_int }
-                        }
-                    }
-                }
-                _ => { }
+unsafe extern "C" fn opj_pi_check_next_level(
+  mut pos: OPJ_INT32,
+  mut cp: *mut opj_cp_t,
+  mut tileno: OPJ_UINT32,
+  mut pino: OPJ_UINT32,
+  mut prog: *const OPJ_CHAR,
+) -> OPJ_BOOL {
+  let mut i: OPJ_INT32 = 0; /*end if*/
+  let mut tcps: *mut opj_tcp_t = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
+  let mut tcp: *mut opj_poc_t =
+    &mut *(*tcps).pocs.as_mut_ptr().offset(pino as isize) as *mut opj_poc_t;
+  if pos >= 0 as libc::c_int {
+    i = pos;
+    while i >= 0 as libc::c_int {
+      match *prog.offset(i as isize) as libc::c_int {
+        82 => {
+          if (*tcp).res_t == (*tcp).resE {
+            if opj_pi_check_next_level(pos - 1 as libc::c_int, cp, tileno, pino, prog) != 0 {
+              return 1 as libc::c_int;
+            } else {
+              return 0 as libc::c_int;
             }
-            i -= 1
-            /*end switch*/
+          } else {
+            return 1 as libc::c_int;
+          }
+          /*end case P*/
         }
-        /*end for*/
+        67 => {
+          if (*tcp).comp_t == (*tcp).compE {
+            if opj_pi_check_next_level(pos - 1 as libc::c_int, cp, tileno, pino, prog) != 0 {
+              return 1 as libc::c_int;
+            } else {
+              return 0 as libc::c_int;
+            }
+          } else {
+            return 1 as libc::c_int;
+          }
+        }
+        76 => {
+          if (*tcp).lay_t == (*tcp).layE {
+            if opj_pi_check_next_level(pos - 1 as libc::c_int, cp, tileno, pino, prog) != 0 {
+              return 1 as libc::c_int;
+            } else {
+              return 0 as libc::c_int;
+            }
+          } else {
+            return 1 as libc::c_int;
+          }
+        }
+        80 => {
+          match (*tcp).prg as libc::c_int {
+            0 | 1 => {
+              /* fall through */
+              if (*tcp).prc_t == (*tcp).prcE {
+                if opj_pi_check_next_level(i - 1 as libc::c_int, cp, tileno, pino, prog) != 0 {
+                  return 1 as libc::c_int;
+                } else {
+                  return 0 as libc::c_int;
+                }
+              } else {
+                return 1 as libc::c_int;
+              }
+            }
+            _ => {
+              if (*tcp).tx0_t == (*tcp).txE {
+                /*TY*/
+                if (*tcp).ty0_t == (*tcp).tyE {
+                  if opj_pi_check_next_level(i - 1 as libc::c_int, cp, tileno, pino, prog) != 0 {
+                    return 1 as libc::c_int;
+                  } else {
+                    return 0 as libc::c_int;
+                  }
+                } else {
+                  return 1 as libc::c_int;
+                }
+              /*TY*/
+              } else {
+                return 1 as libc::c_int;
+              }
+            }
+          }
+        }
+        _ => {}
+      }
+      i -= 1
+      /*end switch*/
     }
-    return 0 as libc::c_int;
+    /*end for*/
+  }
+  return 0 as libc::c_int;
 }
 /*
 ==========================================================
@@ -2551,149 +2490,204 @@ unsafe extern "C" fn opj_pi_check_next_level(mut pos: OPJ_INT32,
 ==========================================================
 */
 #[no_mangle]
-pub unsafe extern "C" fn opj_pi_create_decode(mut p_image: *mut opj_image_t,
-                                              mut p_cp: *mut opj_cp_t,
-                                              mut p_tile_no: OPJ_UINT32,
-                                              mut manager:
-                                                  *mut opj_event_mgr_t)
- -> *mut opj_pi_iterator_t {
-    let mut numcomps = (*p_image).numcomps;
-    /* loop */
-    let mut pino: OPJ_UINT32 = 0;
-    let mut compno: OPJ_UINT32 = 0;
-    let mut resno: OPJ_UINT32 = 0;
-    /* to store w, h, dx and dy for all components and resolutions */
-    let mut l_tmp_data = 0 as *mut OPJ_UINT32;
-    let mut l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
-    /* encoding parameters to set */
-    let mut l_max_res: OPJ_UINT32 = 0;
-    let mut l_max_prec: OPJ_UINT32 = 0;
-    let mut l_tx0: OPJ_UINT32 = 0;
-    let mut l_tx1: OPJ_UINT32 = 0;
-    let mut l_ty0: OPJ_UINT32 = 0;
-    let mut l_ty1: OPJ_UINT32 = 0;
-    let mut l_dx_min: OPJ_UINT32 = 0;
-    let mut l_dy_min: OPJ_UINT32 = 0;
-    let mut l_bound: OPJ_UINT32 = 0;
-    let mut l_step_p: OPJ_UINT32 = 0;
-    let mut l_step_c: OPJ_UINT32 = 0;
-    let mut l_step_r: OPJ_UINT32 = 0;
-    let mut l_step_l: OPJ_UINT32 = 0;
-    let mut l_data_stride: OPJ_UINT32 = 0;
-    /* pointers */
-    let mut l_pi = 0 as *mut opj_pi_iterator_t;
-    let mut l_tcp = 0 as *mut opj_tcp_t;
-    let mut l_tccp = 0 as *const opj_tccp_t;
-    let mut l_current_comp = 0 as *mut opj_pi_comp_t;
-    let mut l_img_comp = 0 as *mut opj_image_comp_t;
-    let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
-    let mut l_encoding_value_ptr = 0 as *mut OPJ_UINT32;
-    /* preconditions in debug */
-    if !p_cp.is_null() {
-    } else {
-        __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
+pub unsafe extern "C" fn opj_pi_create_decode(
+  mut p_image: *mut opj_image_t,
+  mut p_cp: *mut opj_cp_t,
+  mut p_tile_no: OPJ_UINT32,
+  mut manager: *mut opj_event_mgr_t,
+) -> *mut opj_pi_iterator_t {
+  let mut numcomps = (*p_image).numcomps;
+  /* loop */
+  let mut pino: OPJ_UINT32 = 0;
+  let mut compno: OPJ_UINT32 = 0;
+  let mut resno: OPJ_UINT32 = 0;
+  /* to store w, h, dx and dy for all components and resolutions */
+  let mut l_tmp_data = 0 as *mut OPJ_UINT32;
+  let mut l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
+  /* encoding parameters to set */
+  let mut l_max_res: OPJ_UINT32 = 0;
+  let mut l_max_prec: OPJ_UINT32 = 0;
+  let mut l_tx0: OPJ_UINT32 = 0;
+  let mut l_tx1: OPJ_UINT32 = 0;
+  let mut l_ty0: OPJ_UINT32 = 0;
+  let mut l_ty1: OPJ_UINT32 = 0;
+  let mut l_dx_min: OPJ_UINT32 = 0;
+  let mut l_dy_min: OPJ_UINT32 = 0;
+  let mut l_bound: OPJ_UINT32 = 0;
+  let mut l_step_p: OPJ_UINT32 = 0;
+  let mut l_step_c: OPJ_UINT32 = 0;
+  let mut l_step_r: OPJ_UINT32 = 0;
+  let mut l_step_l: OPJ_UINT32 = 0;
+  let mut l_data_stride: OPJ_UINT32 = 0;
+  /* pointers */
+  let mut l_pi = 0 as *mut opj_pi_iterator_t;
+  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_tccp = 0 as *const opj_tccp_t;
+  let mut l_current_comp = 0 as *mut opj_pi_comp_t;
+  let mut l_img_comp = 0 as *mut opj_image_comp_t;
+  let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
+  let mut l_encoding_value_ptr = 0 as *mut OPJ_UINT32;
+  /* preconditions in debug */
+  if !p_cp.is_null() {
+  } else {
+    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1427 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 98],
                                                 &[libc::c_char; 98]>(b"opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *, opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-    }
-    if !p_image.is_null() {
-    } else {
-        __assert_fail(b"p_image != 00\x00" as *const u8 as
+  }
+  if !p_image.is_null() {
+  } else {
+    __assert_fail(b"p_image != 00\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1428 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 98],
                                                 &[libc::c_char; 98]>(b"opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *, opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-    }
-    if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-    } else {
-        __assert_fail(b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as
+  }
+  if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
+  } else {
+    __assert_fail(b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1429 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 98],
                                                 &[libc::c_char; 98]>(b"opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *, opj_cp_t *, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
+  }
+  /* initializations */
+  l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
+  l_bound = (*l_tcp)
+    .numpocs
+    .wrapping_add(1 as libc::c_int as libc::c_uint);
+  l_data_stride = (4 as libc::c_int * 33 as libc::c_int) as OPJ_UINT32;
+  l_tmp_data = opj_malloc(
+    (l_data_stride.wrapping_mul(numcomps) as libc::c_ulong)
+      .wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
+  ) as *mut OPJ_UINT32;
+  if l_tmp_data.is_null() {
+    return 0 as *mut opj_pi_iterator_t;
+  }
+  l_tmp_ptr = opj_malloc(
+    (numcomps as libc::c_ulong)
+      .wrapping_mul(::std::mem::size_of::<*mut OPJ_UINT32>() as libc::c_ulong),
+  ) as *mut *mut OPJ_UINT32;
+  if l_tmp_ptr.is_null() {
+    opj_free(l_tmp_data as *mut libc::c_void);
+    return 0 as *mut opj_pi_iterator_t;
+  }
+  /* memory allocation for pi */
+  l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
+  if l_pi.is_null() {
+    opj_free(l_tmp_data as *mut libc::c_void);
+    opj_free(l_tmp_ptr as *mut libc::c_void);
+    return 0 as *mut opj_pi_iterator_t;
+  }
+  l_encoding_value_ptr = l_tmp_data;
+  /* update pointer array */
+  compno = 0 as libc::c_int as OPJ_UINT32;
+  while compno < numcomps {
+    let ref mut fresh4 = *l_tmp_ptr.offset(compno as isize);
+    *fresh4 = l_encoding_value_ptr;
+    l_encoding_value_ptr = l_encoding_value_ptr.offset(l_data_stride as isize);
+    compno = compno.wrapping_add(1)
+  }
+  /* get encoding parameters */
+  opj_get_all_encoding_parameters(
+    p_image,
+    p_cp,
+    p_tile_no,
+    &mut l_tx0,
+    &mut l_tx1,
+    &mut l_ty0,
+    &mut l_ty1,
+    &mut l_dx_min,
+    &mut l_dy_min,
+    &mut l_max_prec,
+    &mut l_max_res,
+    l_tmp_ptr,
+  );
+  /* step calculations */
+  l_step_p = 1 as libc::c_int as OPJ_UINT32;
+  l_step_c = l_max_prec.wrapping_mul(l_step_p);
+  l_step_r = numcomps.wrapping_mul(l_step_c);
+  l_step_l = l_max_res.wrapping_mul(l_step_r);
+  /* set values for first packet iterator */
+  l_current_pi = l_pi;
+  /* memory allocation for include */
+  /* prevent an integer overflow issue */
+  /* 0 < l_tcp->numlayers < 65536 c.f. opj_j2k_read_cod in j2k.c */
+  (*l_current_pi).include = 0 as *mut OPJ_INT16;
+  if l_step_l
+    <= (2147483647 as libc::c_int as libc::c_uint)
+      .wrapping_mul(2 as libc::c_uint)
+      .wrapping_add(1 as libc::c_uint)
+      .wrapping_div((*l_tcp).numlayers.wrapping_add(1 as libc::c_uint))
+  {
+    (*l_current_pi).include_size = (*l_tcp)
+      .numlayers
+      .wrapping_add(1 as libc::c_uint)
+      .wrapping_mul(l_step_l);
+    (*l_current_pi).include = opj_calloc(
+      (*l_current_pi).include_size as size_t,
+      ::std::mem::size_of::<OPJ_INT16>() as libc::c_ulong,
+    ) as *mut OPJ_INT16
+  }
+  if (*l_current_pi).include.is_null() {
+    opj_free(l_tmp_data as *mut libc::c_void);
+    opj_free(l_tmp_ptr as *mut libc::c_void);
+    opj_pi_destroy(l_pi, l_bound);
+    return 0 as *mut opj_pi_iterator_t;
+  }
+  /* special treatment for the first packet iterator */
+  l_current_comp = (*l_current_pi).comps;
+  l_img_comp = (*p_image).comps;
+  l_tccp = (*l_tcp).tccps;
+  (*l_current_pi).tx0 = l_tx0;
+  (*l_current_pi).ty0 = l_ty0;
+  (*l_current_pi).tx1 = l_tx1;
+  (*l_current_pi).ty1 = l_ty1;
+  /*l_current_pi->dx = l_img_comp->dx;*/
+  /*l_current_pi->dy = l_img_comp->dy;*/
+  (*l_current_pi).step_p = l_step_p;
+  (*l_current_pi).step_c = l_step_c;
+  (*l_current_pi).step_r = l_step_r;
+  (*l_current_pi).step_l = l_step_l;
+  /* allocation for components and number of components has already been calculated by opj_pi_create */
+  compno = 0 as libc::c_int as OPJ_UINT32;
+  while compno < numcomps {
+    let mut l_res = (*l_current_comp).resolutions;
+    l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
+    (*l_current_comp).dx = (*l_img_comp).dx;
+    (*l_current_comp).dy = (*l_img_comp).dy;
+    /* resolutions have already been initialized */
+    resno = 0 as libc::c_int as OPJ_UINT32;
+    while resno < (*l_current_comp).numresolutions {
+      let fresh5 = l_encoding_value_ptr;
+      l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+      (*l_res).pdx = *fresh5;
+      let fresh6 = l_encoding_value_ptr;
+      l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+      (*l_res).pdy = *fresh6;
+      let fresh7 = l_encoding_value_ptr;
+      l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+      (*l_res).pw = *fresh7;
+      let fresh8 = l_encoding_value_ptr;
+      l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+      (*l_res).ph = *fresh8;
+      l_res = l_res.offset(1);
+      resno = resno.wrapping_add(1)
     }
-    /* initializations */
-    l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
-    l_bound = (*l_tcp).numpocs.wrapping_add(1 as libc::c_int as libc::c_uint);
-    l_data_stride = (4 as libc::c_int * 33 as libc::c_int) as OPJ_UINT32;
-    l_tmp_data =
-        opj_malloc((l_data_stride.wrapping_mul(numcomps) as
-                        libc::c_ulong).wrapping_mul(::std::mem::size_of::<OPJ_UINT32>()
-                                                        as libc::c_ulong)) as
-            *mut OPJ_UINT32;
-    if l_tmp_data.is_null() { return 0 as *mut opj_pi_iterator_t }
-    l_tmp_ptr =
-        opj_malloc((numcomps as
-                        libc::c_ulong).wrapping_mul(::std::mem::size_of::<*mut OPJ_UINT32>()
-                                                        as libc::c_ulong)) as
-            *mut *mut OPJ_UINT32;
-    if l_tmp_ptr.is_null() {
-        opj_free(l_tmp_data as *mut libc::c_void);
-        return 0 as *mut opj_pi_iterator_t
-    }
-    /* memory allocation for pi */
-    l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
-    if l_pi.is_null() {
-        opj_free(l_tmp_data as *mut libc::c_void);
-        opj_free(l_tmp_ptr as *mut libc::c_void);
-        return 0 as *mut opj_pi_iterator_t
-    }
-    l_encoding_value_ptr = l_tmp_data;
-    /* update pointer array */
-    compno = 0 as libc::c_int as OPJ_UINT32;
-    while compno < numcomps {
-        let ref mut fresh4 = *l_tmp_ptr.offset(compno as isize);
-        *fresh4 = l_encoding_value_ptr;
-        l_encoding_value_ptr =
-            l_encoding_value_ptr.offset(l_data_stride as isize);
-        compno = compno.wrapping_add(1)
-    }
-    /* get encoding parameters */
-    opj_get_all_encoding_parameters(p_image, p_cp, p_tile_no, &mut l_tx0,
-                                    &mut l_tx1, &mut l_ty0, &mut l_ty1,
-                                    &mut l_dx_min, &mut l_dy_min,
-                                    &mut l_max_prec, &mut l_max_res,
-                                    l_tmp_ptr);
-    /* step calculations */
-    l_step_p = 1 as libc::c_int as OPJ_UINT32;
-    l_step_c = l_max_prec.wrapping_mul(l_step_p);
-    l_step_r = numcomps.wrapping_mul(l_step_c);
-    l_step_l = l_max_res.wrapping_mul(l_step_r);
-    /* set values for first packet iterator */
-    l_current_pi = l_pi;
-    /* memory allocation for include */
-    /* prevent an integer overflow issue */
-    /* 0 < l_tcp->numlayers < 65536 c.f. opj_j2k_read_cod in j2k.c */
-    (*l_current_pi).include = 0 as *mut OPJ_INT16;
-    if l_step_l <=
-           (2147483647 as libc::c_int as
-                libc::c_uint).wrapping_mul(2 as
-                                               libc::c_uint).wrapping_add(1 as
-                                                                              libc::c_uint).wrapping_div((*l_tcp).numlayers.wrapping_add(1
-                                                                                                                                             as
-                                                                                                                                             libc::c_uint))
-       {
-        (*l_current_pi).include_size =
-            (*l_tcp).numlayers.wrapping_add(1 as
-                                                libc::c_uint).wrapping_mul(l_step_l);
-        (*l_current_pi).include =
-            opj_calloc((*l_current_pi).include_size as size_t,
-                       ::std::mem::size_of::<OPJ_INT16>() as libc::c_ulong) as
-                *mut OPJ_INT16
-    }
-    if (*l_current_pi).include.is_null() {
-        opj_free(l_tmp_data as *mut libc::c_void);
-        opj_free(l_tmp_ptr as *mut libc::c_void);
-        opj_pi_destroy(l_pi, l_bound);
-        return 0 as *mut opj_pi_iterator_t
-    }
-    /* special treatment for the first packet iterator */
+    l_current_comp = l_current_comp.offset(1);
+    l_img_comp = l_img_comp.offset(1);
+    l_tccp = l_tccp.offset(1);
+    compno = compno.wrapping_add(1)
+  }
+  l_current_pi = l_current_pi.offset(1);
+  pino = 1 as libc::c_int as OPJ_UINT32;
+  while pino < l_bound {
     l_current_comp = (*l_current_pi).comps;
     l_img_comp = (*p_image).comps;
     l_tccp = (*l_tcp).tccps;
@@ -2701,8 +2695,8 @@ pub unsafe extern "C" fn opj_pi_create_decode(mut p_image: *mut opj_image_t,
     (*l_current_pi).ty0 = l_ty0;
     (*l_current_pi).tx1 = l_tx1;
     (*l_current_pi).ty1 = l_ty1;
-    /*l_current_pi->dx = l_img_comp->dx;*/
-    /*l_current_pi->dy = l_img_comp->dy;*/
+    /*l_current_pi->dx = l_dx_min;*/
+    /*l_current_pi->dy = l_dy_min;*/
     (*l_current_pi).step_p = l_step_p;
     (*l_current_pi).step_c = l_step_c;
     (*l_current_pi).step_r = l_step_r;
@@ -2710,286 +2704,304 @@ pub unsafe extern "C" fn opj_pi_create_decode(mut p_image: *mut opj_image_t,
     /* allocation for components and number of components has already been calculated by opj_pi_create */
     compno = 0 as libc::c_int as OPJ_UINT32;
     while compno < numcomps {
-        let mut l_res = (*l_current_comp).resolutions;
-        l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
-        (*l_current_comp).dx = (*l_img_comp).dx;
-        (*l_current_comp).dy = (*l_img_comp).dy;
-        /* resolutions have already been initialized */
-        resno = 0 as libc::c_int as OPJ_UINT32;
-        while resno < (*l_current_comp).numresolutions {
-            let fresh5 = l_encoding_value_ptr;
-            l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-            (*l_res).pdx = *fresh5;
-            let fresh6 = l_encoding_value_ptr;
-            l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-            (*l_res).pdy = *fresh6;
-            let fresh7 = l_encoding_value_ptr;
-            l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-            (*l_res).pw = *fresh7;
-            let fresh8 = l_encoding_value_ptr;
-            l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-            (*l_res).ph = *fresh8;
-            l_res = l_res.offset(1);
-            resno = resno.wrapping_add(1)
-        }
-        l_current_comp = l_current_comp.offset(1);
-        l_img_comp = l_img_comp.offset(1);
-        l_tccp = l_tccp.offset(1);
-        compno = compno.wrapping_add(1)
+      let mut l_res_0 = (*l_current_comp).resolutions;
+      l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
+      (*l_current_comp).dx = (*l_img_comp).dx;
+      (*l_current_comp).dy = (*l_img_comp).dy;
+      /* resolutions have already been initialized */
+      resno = 0 as libc::c_int as OPJ_UINT32;
+      while resno < (*l_current_comp).numresolutions {
+        let fresh9 = l_encoding_value_ptr;
+        l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+        (*l_res_0).pdx = *fresh9;
+        let fresh10 = l_encoding_value_ptr;
+        l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+        (*l_res_0).pdy = *fresh10;
+        let fresh11 = l_encoding_value_ptr;
+        l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+        (*l_res_0).pw = *fresh11;
+        let fresh12 = l_encoding_value_ptr;
+        l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+        (*l_res_0).ph = *fresh12;
+        l_res_0 = l_res_0.offset(1);
+        resno = resno.wrapping_add(1)
+      }
+      l_current_comp = l_current_comp.offset(1);
+      l_img_comp = l_img_comp.offset(1);
+      l_tccp = l_tccp.offset(1);
+      compno = compno.wrapping_add(1)
     }
+    /* special treatment*/
+    (*l_current_pi).include = (*l_current_pi.offset(-(1 as libc::c_int as isize))).include;
+    (*l_current_pi).include_size =
+      (*l_current_pi.offset(-(1 as libc::c_int as isize))).include_size;
     l_current_pi = l_current_pi.offset(1);
-    pino = 1 as libc::c_int as OPJ_UINT32;
-    while pino < l_bound {
-        l_current_comp = (*l_current_pi).comps;
-        l_img_comp = (*p_image).comps;
-        l_tccp = (*l_tcp).tccps;
-        (*l_current_pi).tx0 = l_tx0;
-        (*l_current_pi).ty0 = l_ty0;
-        (*l_current_pi).tx1 = l_tx1;
-        (*l_current_pi).ty1 = l_ty1;
-        /*l_current_pi->dx = l_dx_min;*/
-        /*l_current_pi->dy = l_dy_min;*/
-        (*l_current_pi).step_p = l_step_p;
-        (*l_current_pi).step_c = l_step_c;
-        (*l_current_pi).step_r = l_step_r;
-        (*l_current_pi).step_l = l_step_l;
-        /* allocation for components and number of components has already been calculated by opj_pi_create */
-        compno = 0 as libc::c_int as OPJ_UINT32;
-        while compno < numcomps {
-            let mut l_res_0 = (*l_current_comp).resolutions;
-            l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
-            (*l_current_comp).dx = (*l_img_comp).dx;
-            (*l_current_comp).dy = (*l_img_comp).dy;
-            /* resolutions have already been initialized */
-            resno = 0 as libc::c_int as OPJ_UINT32;
-            while resno < (*l_current_comp).numresolutions {
-                let fresh9 = l_encoding_value_ptr;
-                l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-                (*l_res_0).pdx = *fresh9;
-                let fresh10 = l_encoding_value_ptr;
-                l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-                (*l_res_0).pdy = *fresh10;
-                let fresh11 = l_encoding_value_ptr;
-                l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-                (*l_res_0).pw = *fresh11;
-                let fresh12 = l_encoding_value_ptr;
-                l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-                (*l_res_0).ph = *fresh12;
-                l_res_0 = l_res_0.offset(1);
-                resno = resno.wrapping_add(1)
-            }
-            l_current_comp = l_current_comp.offset(1);
-            l_img_comp = l_img_comp.offset(1);
-            l_tccp = l_tccp.offset(1);
-            compno = compno.wrapping_add(1)
-        }
-        /* special treatment*/
-        (*l_current_pi).include =
-            (*l_current_pi.offset(-(1 as libc::c_int as isize))).include;
-        (*l_current_pi).include_size =
-            (*l_current_pi.offset(-(1 as libc::c_int as isize))).include_size;
-        l_current_pi = l_current_pi.offset(1);
-        pino = pino.wrapping_add(1)
-    }
-    opj_free(l_tmp_data as *mut libc::c_void);
-    l_tmp_data = 0 as *mut OPJ_UINT32;
-    opj_free(l_tmp_ptr as *mut libc::c_void);
-    l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
-    if (*l_tcp).POC() != 0 {
-        opj_pi_update_decode_poc(l_pi, l_tcp, l_max_prec, l_max_res);
-    } else {
-        opj_pi_update_decode_not_poc(l_pi, l_tcp, l_max_prec, l_max_res);
-    }
-    return l_pi;
+    pino = pino.wrapping_add(1)
+  }
+  opj_free(l_tmp_data as *mut libc::c_void);
+  l_tmp_data = 0 as *mut OPJ_UINT32;
+  opj_free(l_tmp_ptr as *mut libc::c_void);
+  l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
+  if (*l_tcp).POC() != 0 {
+    opj_pi_update_decode_poc(l_pi, l_tcp, l_max_prec, l_max_res);
+  } else {
+    opj_pi_update_decode_not_poc(l_pi, l_tcp, l_max_prec, l_max_res);
+  }
+  return l_pi;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_get_encoding_packet_count(mut p_image:
-                                                           *const opj_image_t,
-                                                       mut p_cp:
-                                                           *const opj_cp_t,
-                                                       mut p_tile_no:
-                                                           OPJ_UINT32)
- -> OPJ_UINT32 {
-    let mut l_max_res: OPJ_UINT32 = 0;
-    let mut l_max_prec: OPJ_UINT32 = 0;
-    let mut l_tx0: OPJ_UINT32 = 0;
-    let mut l_tx1: OPJ_UINT32 = 0;
-    let mut l_ty0: OPJ_UINT32 = 0;
-    let mut l_ty1: OPJ_UINT32 = 0;
-    let mut l_dx_min: OPJ_UINT32 = 0;
-    let mut l_dy_min: OPJ_UINT32 = 0;
-    /* preconditions in debug*/
-    if !p_cp.is_null() {
-    } else {
-        __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
+pub unsafe extern "C" fn opj_get_encoding_packet_count(
+  mut p_image: *const opj_image_t,
+  mut p_cp: *const opj_cp_t,
+  mut p_tile_no: OPJ_UINT32,
+) -> OPJ_UINT32 {
+  let mut l_max_res: OPJ_UINT32 = 0;
+  let mut l_max_prec: OPJ_UINT32 = 0;
+  let mut l_tx0: OPJ_UINT32 = 0;
+  let mut l_tx1: OPJ_UINT32 = 0;
+  let mut l_ty0: OPJ_UINT32 = 0;
+  let mut l_ty1: OPJ_UINT32 = 0;
+  let mut l_dx_min: OPJ_UINT32 = 0;
+  let mut l_dy_min: OPJ_UINT32 = 0;
+  /* preconditions in debug*/
+  if !p_cp.is_null() {
+  } else {
+    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1602 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 92],
                                                 &[libc::c_char; 92]>(b"OPJ_UINT32 opj_get_encoding_packet_count(const opj_image_t *, const opj_cp_t *, OPJ_UINT32)\x00")).as_ptr());
-    }
-    if !p_image.is_null() {
-    } else {
-        __assert_fail(b"p_image != 00\x00" as *const u8 as
+  }
+  if !p_image.is_null() {
+  } else {
+    __assert_fail(b"p_image != 00\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1603 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 92],
                                                 &[libc::c_char; 92]>(b"OPJ_UINT32 opj_get_encoding_packet_count(const opj_image_t *, const opj_cp_t *, OPJ_UINT32)\x00")).as_ptr());
-    }
-    if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-    } else {
-        __assert_fail(b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as
+  }
+  if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
+  } else {
+    __assert_fail(b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1604 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 92],
                                                 &[libc::c_char; 92]>(b"OPJ_UINT32 opj_get_encoding_packet_count(const opj_image_t *, const opj_cp_t *, OPJ_UINT32)\x00")).as_ptr());
-    }
-    /* get encoding parameters*/
-    opj_get_all_encoding_parameters(p_image, p_cp, p_tile_no, &mut l_tx0,
-                                    &mut l_tx1, &mut l_ty0, &mut l_ty1,
-                                    &mut l_dx_min, &mut l_dy_min,
-                                    &mut l_max_prec, &mut l_max_res,
-                                    0 as *mut *mut OPJ_UINT32);
-    return (*(*p_cp).tcps.offset(p_tile_no as
-                                     isize)).numlayers.wrapping_mul(l_max_prec).wrapping_mul((*p_image).numcomps).wrapping_mul(l_max_res);
+  }
+  /* get encoding parameters*/
+  opj_get_all_encoding_parameters(
+    p_image,
+    p_cp,
+    p_tile_no,
+    &mut l_tx0,
+    &mut l_tx1,
+    &mut l_ty0,
+    &mut l_ty1,
+    &mut l_dx_min,
+    &mut l_dy_min,
+    &mut l_max_prec,
+    &mut l_max_res,
+    0 as *mut *mut OPJ_UINT32,
+  );
+  return (*(*p_cp).tcps.offset(p_tile_no as isize))
+    .numlayers
+    .wrapping_mul(l_max_prec)
+    .wrapping_mul((*p_image).numcomps)
+    .wrapping_mul(l_max_res);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_pi_initialise_encode(mut p_image:
-                                                      *const opj_image_t,
-                                                  mut p_cp: *mut opj_cp_t,
-                                                  mut p_tile_no: OPJ_UINT32,
-                                                  mut p_t2_mode: J2K_T2_MODE,
-                                                  mut manager:
-                                                      *mut opj_event_mgr_t)
- -> *mut opj_pi_iterator_t {
-    let mut numcomps = (*p_image).numcomps;
-    /* loop*/
-    let mut pino: OPJ_UINT32 = 0;
-    let mut compno: OPJ_UINT32 = 0;
-    let mut resno: OPJ_UINT32 = 0;
-    /* to store w, h, dx and dy for all components and resolutions*/
-    let mut l_tmp_data = 0 as *mut OPJ_UINT32;
-    let mut l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
-    /* encoding parameters to set*/
-    let mut l_max_res: OPJ_UINT32 = 0;
-    let mut l_max_prec: OPJ_UINT32 = 0;
-    let mut l_tx0: OPJ_UINT32 = 0;
-    let mut l_tx1: OPJ_UINT32 = 0;
-    let mut l_ty0: OPJ_UINT32 = 0;
-    let mut l_ty1: OPJ_UINT32 = 0;
-    let mut l_dx_min: OPJ_UINT32 = 0;
-    let mut l_dy_min: OPJ_UINT32 = 0;
-    let mut l_bound: OPJ_UINT32 = 0;
-    let mut l_step_p: OPJ_UINT32 = 0;
-    let mut l_step_c: OPJ_UINT32 = 0;
-    let mut l_step_r: OPJ_UINT32 = 0;
-    let mut l_step_l: OPJ_UINT32 = 0;
-    let mut l_data_stride: OPJ_UINT32 = 0;
-    /* pointers*/
-    let mut l_pi = 0 as *mut opj_pi_iterator_t;
-    let mut l_tcp = 0 as *mut opj_tcp_t;
-    let mut l_tccp = 0 as *const opj_tccp_t;
-    let mut l_current_comp = 0 as *mut opj_pi_comp_t;
-    let mut l_img_comp = 0 as *mut opj_image_comp_t;
-    let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
-    let mut l_encoding_value_ptr = 0 as *mut OPJ_UINT32;
-    /* preconditions in debug*/
-    if !p_cp.is_null() {
-    } else {
-        __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
+pub unsafe extern "C" fn opj_pi_initialise_encode(
+  mut p_image: *const opj_image_t,
+  mut p_cp: *mut opj_cp_t,
+  mut p_tile_no: OPJ_UINT32,
+  mut p_t2_mode: J2K_T2_MODE,
+  mut manager: *mut opj_event_mgr_t,
+) -> *mut opj_pi_iterator_t {
+  let mut numcomps = (*p_image).numcomps;
+  /* loop*/
+  let mut pino: OPJ_UINT32 = 0;
+  let mut compno: OPJ_UINT32 = 0;
+  let mut resno: OPJ_UINT32 = 0;
+  /* to store w, h, dx and dy for all components and resolutions*/
+  let mut l_tmp_data = 0 as *mut OPJ_UINT32;
+  let mut l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
+  /* encoding parameters to set*/
+  let mut l_max_res: OPJ_UINT32 = 0;
+  let mut l_max_prec: OPJ_UINT32 = 0;
+  let mut l_tx0: OPJ_UINT32 = 0;
+  let mut l_tx1: OPJ_UINT32 = 0;
+  let mut l_ty0: OPJ_UINT32 = 0;
+  let mut l_ty1: OPJ_UINT32 = 0;
+  let mut l_dx_min: OPJ_UINT32 = 0;
+  let mut l_dy_min: OPJ_UINT32 = 0;
+  let mut l_bound: OPJ_UINT32 = 0;
+  let mut l_step_p: OPJ_UINT32 = 0;
+  let mut l_step_c: OPJ_UINT32 = 0;
+  let mut l_step_r: OPJ_UINT32 = 0;
+  let mut l_step_l: OPJ_UINT32 = 0;
+  let mut l_data_stride: OPJ_UINT32 = 0;
+  /* pointers*/
+  let mut l_pi = 0 as *mut opj_pi_iterator_t;
+  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_tccp = 0 as *const opj_tccp_t;
+  let mut l_current_comp = 0 as *mut opj_pi_comp_t;
+  let mut l_img_comp = 0 as *mut opj_image_comp_t;
+  let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
+  let mut l_encoding_value_ptr = 0 as *mut OPJ_UINT32;
+  /* preconditions in debug*/
+  if !p_cp.is_null() {
+  } else {
+    __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1650 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 121],
                                                 &[libc::c_char; 121]>(b"opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *, opj_cp_t *, OPJ_UINT32, J2K_T2_MODE, opj_event_mgr_t *)\x00")).as_ptr());
-    }
-    if !p_image.is_null() {
-    } else {
-        __assert_fail(b"p_image != 00\x00" as *const u8 as
+  }
+  if !p_image.is_null() {
+  } else {
+    __assert_fail(b"p_image != 00\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1651 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 121],
                                                 &[libc::c_char; 121]>(b"opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *, opj_cp_t *, OPJ_UINT32, J2K_T2_MODE, opj_event_mgr_t *)\x00")).as_ptr());
-    }
-    if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-    } else {
-        __assert_fail(b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as
+  }
+  if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
+  } else {
+    __assert_fail(b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as
                           *const libc::c_char,
                       b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
                           as *const libc::c_char,
                       1652 as libc::c_int as libc::c_uint,
                       (*::std::mem::transmute::<&[u8; 121],
                                                 &[libc::c_char; 121]>(b"opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *, opj_cp_t *, OPJ_UINT32, J2K_T2_MODE, opj_event_mgr_t *)\x00")).as_ptr());
+  }
+  /* initializations*/
+  l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
+  l_bound = (*l_tcp)
+    .numpocs
+    .wrapping_add(1 as libc::c_int as libc::c_uint);
+  l_data_stride = (4 as libc::c_int * 33 as libc::c_int) as OPJ_UINT32;
+  l_tmp_data = opj_malloc(
+    (l_data_stride.wrapping_mul(numcomps) as libc::c_ulong)
+      .wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
+  ) as *mut OPJ_UINT32;
+  if l_tmp_data.is_null() {
+    return 0 as *mut opj_pi_iterator_t;
+  }
+  l_tmp_ptr = opj_malloc(
+    (numcomps as libc::c_ulong)
+      .wrapping_mul(::std::mem::size_of::<*mut OPJ_UINT32>() as libc::c_ulong),
+  ) as *mut *mut OPJ_UINT32;
+  if l_tmp_ptr.is_null() {
+    opj_free(l_tmp_data as *mut libc::c_void);
+    return 0 as *mut opj_pi_iterator_t;
+  }
+  /* memory allocation for pi*/
+  l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
+  if l_pi.is_null() {
+    opj_free(l_tmp_data as *mut libc::c_void);
+    opj_free(l_tmp_ptr as *mut libc::c_void);
+    return 0 as *mut opj_pi_iterator_t;
+  }
+  l_encoding_value_ptr = l_tmp_data;
+  /* update pointer array*/
+  compno = 0 as libc::c_int as OPJ_UINT32;
+  while compno < numcomps {
+    let ref mut fresh13 = *l_tmp_ptr.offset(compno as isize);
+    *fresh13 = l_encoding_value_ptr;
+    l_encoding_value_ptr = l_encoding_value_ptr.offset(l_data_stride as isize);
+    compno = compno.wrapping_add(1)
+  }
+  /* get encoding parameters*/
+  opj_get_all_encoding_parameters(
+    p_image,
+    p_cp,
+    p_tile_no,
+    &mut l_tx0,
+    &mut l_tx1,
+    &mut l_ty0,
+    &mut l_ty1,
+    &mut l_dx_min,
+    &mut l_dy_min,
+    &mut l_max_prec,
+    &mut l_max_res,
+    l_tmp_ptr,
+  );
+  /* step calculations*/
+  l_step_p = 1 as libc::c_int as OPJ_UINT32;
+  l_step_c = l_max_prec.wrapping_mul(l_step_p);
+  l_step_r = numcomps.wrapping_mul(l_step_c);
+  l_step_l = l_max_res.wrapping_mul(l_step_r);
+  /* set values for first packet iterator*/
+  (*l_pi).tp_on = (*p_cp).m_specific_param.m_enc.m_tp_on() as OPJ_BYTE;
+  l_current_pi = l_pi;
+  /* memory allocation for include*/
+  (*l_current_pi).include_size = (*l_tcp).numlayers.wrapping_mul(l_step_l);
+  (*l_current_pi).include = opj_calloc(
+    (*l_current_pi).include_size as size_t,
+    ::std::mem::size_of::<OPJ_INT16>() as libc::c_ulong,
+  ) as *mut OPJ_INT16;
+  if (*l_current_pi).include.is_null() {
+    opj_free(l_tmp_data as *mut libc::c_void);
+    opj_free(l_tmp_ptr as *mut libc::c_void);
+    opj_pi_destroy(l_pi, l_bound);
+    return 0 as *mut opj_pi_iterator_t;
+  }
+  /* special treatment for the first packet iterator*/
+  l_current_comp = (*l_current_pi).comps;
+  l_img_comp = (*p_image).comps;
+  l_tccp = (*l_tcp).tccps;
+  (*l_current_pi).tx0 = l_tx0;
+  (*l_current_pi).ty0 = l_ty0;
+  (*l_current_pi).tx1 = l_tx1;
+  (*l_current_pi).ty1 = l_ty1;
+  (*l_current_pi).dx = l_dx_min;
+  (*l_current_pi).dy = l_dy_min;
+  (*l_current_pi).step_p = l_step_p;
+  (*l_current_pi).step_c = l_step_c;
+  (*l_current_pi).step_r = l_step_r;
+  (*l_current_pi).step_l = l_step_l;
+  /* allocation for components and number of components has already been calculated by opj_pi_create */
+  compno = 0 as libc::c_int as OPJ_UINT32;
+  while compno < numcomps {
+    let mut l_res = (*l_current_comp).resolutions;
+    l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
+    (*l_current_comp).dx = (*l_img_comp).dx;
+    (*l_current_comp).dy = (*l_img_comp).dy;
+    /* resolutions have already been initialized */
+    resno = 0 as libc::c_int as OPJ_UINT32;
+    while resno < (*l_current_comp).numresolutions {
+      let fresh14 = l_encoding_value_ptr;
+      l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+      (*l_res).pdx = *fresh14;
+      let fresh15 = l_encoding_value_ptr;
+      l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+      (*l_res).pdy = *fresh15;
+      let fresh16 = l_encoding_value_ptr;
+      l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+      (*l_res).pw = *fresh16;
+      let fresh17 = l_encoding_value_ptr;
+      l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+      (*l_res).ph = *fresh17;
+      l_res = l_res.offset(1);
+      resno = resno.wrapping_add(1)
     }
-    /* initializations*/
-    l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
-    l_bound = (*l_tcp).numpocs.wrapping_add(1 as libc::c_int as libc::c_uint);
-    l_data_stride = (4 as libc::c_int * 33 as libc::c_int) as OPJ_UINT32;
-    l_tmp_data =
-        opj_malloc((l_data_stride.wrapping_mul(numcomps) as
-                        libc::c_ulong).wrapping_mul(::std::mem::size_of::<OPJ_UINT32>()
-                                                        as libc::c_ulong)) as
-            *mut OPJ_UINT32;
-    if l_tmp_data.is_null() { return 0 as *mut opj_pi_iterator_t }
-    l_tmp_ptr =
-        opj_malloc((numcomps as
-                        libc::c_ulong).wrapping_mul(::std::mem::size_of::<*mut OPJ_UINT32>()
-                                                        as libc::c_ulong)) as
-            *mut *mut OPJ_UINT32;
-    if l_tmp_ptr.is_null() {
-        opj_free(l_tmp_data as *mut libc::c_void);
-        return 0 as *mut opj_pi_iterator_t
-    }
-    /* memory allocation for pi*/
-    l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
-    if l_pi.is_null() {
-        opj_free(l_tmp_data as *mut libc::c_void);
-        opj_free(l_tmp_ptr as *mut libc::c_void);
-        return 0 as *mut opj_pi_iterator_t
-    }
-    l_encoding_value_ptr = l_tmp_data;
-    /* update pointer array*/
-    compno = 0 as libc::c_int as OPJ_UINT32;
-    while compno < numcomps {
-        let ref mut fresh13 = *l_tmp_ptr.offset(compno as isize);
-        *fresh13 = l_encoding_value_ptr;
-        l_encoding_value_ptr =
-            l_encoding_value_ptr.offset(l_data_stride as isize);
-        compno = compno.wrapping_add(1)
-    }
-    /* get encoding parameters*/
-    opj_get_all_encoding_parameters(p_image, p_cp, p_tile_no, &mut l_tx0,
-                                    &mut l_tx1, &mut l_ty0, &mut l_ty1,
-                                    &mut l_dx_min, &mut l_dy_min,
-                                    &mut l_max_prec, &mut l_max_res,
-                                    l_tmp_ptr);
-    /* step calculations*/
-    l_step_p = 1 as libc::c_int as OPJ_UINT32;
-    l_step_c = l_max_prec.wrapping_mul(l_step_p);
-    l_step_r = numcomps.wrapping_mul(l_step_c);
-    l_step_l = l_max_res.wrapping_mul(l_step_r);
-    /* set values for first packet iterator*/
-    (*l_pi).tp_on = (*p_cp).m_specific_param.m_enc.m_tp_on() as OPJ_BYTE;
-    l_current_pi = l_pi;
-    /* memory allocation for include*/
-    (*l_current_pi).include_size = (*l_tcp).numlayers.wrapping_mul(l_step_l);
-    (*l_current_pi).include =
-        opj_calloc((*l_current_pi).include_size as size_t,
-                   ::std::mem::size_of::<OPJ_INT16>() as libc::c_ulong) as
-            *mut OPJ_INT16;
-    if (*l_current_pi).include.is_null() {
-        opj_free(l_tmp_data as *mut libc::c_void);
-        opj_free(l_tmp_ptr as *mut libc::c_void);
-        opj_pi_destroy(l_pi, l_bound);
-        return 0 as *mut opj_pi_iterator_t
-    }
-    /* special treatment for the first packet iterator*/
+    l_current_comp = l_current_comp.offset(1);
+    l_img_comp = l_img_comp.offset(1);
+    l_tccp = l_tccp.offset(1);
+    compno = compno.wrapping_add(1)
+  }
+  l_current_pi = l_current_pi.offset(1);
+  pino = 1 as libc::c_int as OPJ_UINT32;
+  while pino < l_bound {
     l_current_comp = (*l_current_pi).comps;
     l_img_comp = (*p_image).comps;
     l_tccp = (*l_tcp).tccps;
@@ -3006,708 +3018,526 @@ pub unsafe extern "C" fn opj_pi_initialise_encode(mut p_image:
     /* allocation for components and number of components has already been calculated by opj_pi_create */
     compno = 0 as libc::c_int as OPJ_UINT32;
     while compno < numcomps {
-        let mut l_res = (*l_current_comp).resolutions;
-        l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
-        (*l_current_comp).dx = (*l_img_comp).dx;
-        (*l_current_comp).dy = (*l_img_comp).dy;
-        /* resolutions have already been initialized */
-        resno = 0 as libc::c_int as OPJ_UINT32;
-        while resno < (*l_current_comp).numresolutions {
-            let fresh14 = l_encoding_value_ptr;
-            l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-            (*l_res).pdx = *fresh14;
-            let fresh15 = l_encoding_value_ptr;
-            l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-            (*l_res).pdy = *fresh15;
-            let fresh16 = l_encoding_value_ptr;
-            l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-            (*l_res).pw = *fresh16;
-            let fresh17 = l_encoding_value_ptr;
-            l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-            (*l_res).ph = *fresh17;
-            l_res = l_res.offset(1);
-            resno = resno.wrapping_add(1)
-        }
-        l_current_comp = l_current_comp.offset(1);
-        l_img_comp = l_img_comp.offset(1);
-        l_tccp = l_tccp.offset(1);
-        compno = compno.wrapping_add(1)
+      let mut l_res_0 = (*l_current_comp).resolutions;
+      l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
+      (*l_current_comp).dx = (*l_img_comp).dx;
+      (*l_current_comp).dy = (*l_img_comp).dy;
+      /* resolutions have already been initialized */
+      resno = 0 as libc::c_int as OPJ_UINT32;
+      while resno < (*l_current_comp).numresolutions {
+        let fresh18 = l_encoding_value_ptr;
+        l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+        (*l_res_0).pdx = *fresh18;
+        let fresh19 = l_encoding_value_ptr;
+        l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+        (*l_res_0).pdy = *fresh19;
+        let fresh20 = l_encoding_value_ptr;
+        l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+        (*l_res_0).pw = *fresh20;
+        let fresh21 = l_encoding_value_ptr;
+        l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
+        (*l_res_0).ph = *fresh21;
+        l_res_0 = l_res_0.offset(1);
+        resno = resno.wrapping_add(1)
+      }
+      l_current_comp = l_current_comp.offset(1);
+      l_img_comp = l_img_comp.offset(1);
+      l_tccp = l_tccp.offset(1);
+      compno = compno.wrapping_add(1)
     }
+    /* special treatment*/
+    (*l_current_pi).include = (*l_current_pi.offset(-(1 as libc::c_int as isize))).include;
+    (*l_current_pi).include_size =
+      (*l_current_pi.offset(-(1 as libc::c_int as isize))).include_size;
     l_current_pi = l_current_pi.offset(1);
-    pino = 1 as libc::c_int as OPJ_UINT32;
-    while pino < l_bound {
-        l_current_comp = (*l_current_pi).comps;
-        l_img_comp = (*p_image).comps;
-        l_tccp = (*l_tcp).tccps;
-        (*l_current_pi).tx0 = l_tx0;
-        (*l_current_pi).ty0 = l_ty0;
-        (*l_current_pi).tx1 = l_tx1;
-        (*l_current_pi).ty1 = l_ty1;
-        (*l_current_pi).dx = l_dx_min;
-        (*l_current_pi).dy = l_dy_min;
-        (*l_current_pi).step_p = l_step_p;
-        (*l_current_pi).step_c = l_step_c;
-        (*l_current_pi).step_r = l_step_r;
-        (*l_current_pi).step_l = l_step_l;
-        /* allocation for components and number of components has already been calculated by opj_pi_create */
+    pino = pino.wrapping_add(1)
+  }
+  opj_free(l_tmp_data as *mut libc::c_void);
+  l_tmp_data = 0 as *mut OPJ_UINT32;
+  opj_free(l_tmp_ptr as *mut libc::c_void);
+  l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
+  if (*l_tcp).POC() as libc::c_int != 0
+    && ((*p_cp).rsiz as libc::c_int >= 0x3 as libc::c_int
+      && (*p_cp).rsiz as libc::c_int <= 0x6 as libc::c_int
+      || p_t2_mode as libc::c_uint == FINAL_PASS as libc::c_int as libc::c_uint)
+  {
+    opj_pi_update_encode_poc_and_final(
+      p_cp, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min,
+    );
+  } else {
+    opj_pi_update_encode_not_poc(
+      p_cp, numcomps, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min,
+      l_dy_min,
+    );
+  }
+  return l_pi;
+}
+#[no_mangle]
+pub unsafe extern "C" fn opj_pi_create_encode(
+  mut pi: *mut opj_pi_iterator_t,
+  mut cp: *mut opj_cp_t,
+  mut tileno: OPJ_UINT32,
+  mut pino: OPJ_UINT32,
+  mut tpnum: OPJ_UINT32,
+  mut tppos: OPJ_INT32,
+  mut t2_mode: J2K_T2_MODE,
+) {
+  let mut prog = 0 as *const OPJ_CHAR;
+  let mut i: OPJ_INT32 = 0;
+  let mut incr_top = 1 as libc::c_int as OPJ_UINT32;
+  let mut resetX = 0 as libc::c_int as OPJ_UINT32;
+  let mut tcps: *mut opj_tcp_t = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
+  let mut tcp: *mut opj_poc_t =
+    &mut *(*tcps).pocs.as_mut_ptr().offset(pino as isize) as *mut opj_poc_t;
+  prog = opj_j2k_convert_progression_order((*tcp).prg);
+  (*pi.offset(pino as isize)).first = 1 as libc::c_int;
+  (*pi.offset(pino as isize)).poc.prg = (*tcp).prg;
+  if !((*cp).m_specific_param.m_enc.m_tp_on() as libc::c_int != 0
+    && (!((*cp).rsiz as libc::c_int >= 0x3 as libc::c_int
+      && (*cp).rsiz as libc::c_int <= 0x6 as libc::c_int)
+      && !((*cp).rsiz as libc::c_int >= 0x400 as libc::c_int
+        && (*cp).rsiz as libc::c_int <= 0x900 as libc::c_int | 0x9b as libc::c_int)
+      && t2_mode as libc::c_uint == FINAL_PASS as libc::c_int as libc::c_uint
+      || (*cp).rsiz as libc::c_int >= 0x3 as libc::c_int
+        && (*cp).rsiz as libc::c_int <= 0x6 as libc::c_int
+      || (*cp).rsiz as libc::c_int >= 0x400 as libc::c_int
+        && (*cp).rsiz as libc::c_int <= 0x900 as libc::c_int | 0x9b as libc::c_int))
+  {
+    (*pi.offset(pino as isize)).poc.resno0 = (*tcp).resS;
+    (*pi.offset(pino as isize)).poc.resno1 = (*tcp).resE;
+    (*pi.offset(pino as isize)).poc.compno0 = (*tcp).compS;
+    (*pi.offset(pino as isize)).poc.compno1 = (*tcp).compE;
+    (*pi.offset(pino as isize)).poc.layno0 = (*tcp).layS;
+    (*pi.offset(pino as isize)).poc.layno1 = (*tcp).layE;
+    (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prcS;
+    (*pi.offset(pino as isize)).poc.precno1 = (*tcp).prcE;
+    (*pi.offset(pino as isize)).poc.tx0 = (*tcp).txS;
+    (*pi.offset(pino as isize)).poc.ty0 = (*tcp).tyS;
+    (*pi.offset(pino as isize)).poc.tx1 = (*tcp).txE;
+    (*pi.offset(pino as isize)).poc.ty1 = (*tcp).tyE
+  } else {
+    i = tppos + 1 as libc::c_int;
+    while i < 4 as libc::c_int {
+      match *prog.offset(i as isize) as libc::c_int {
+        82 => {
+          (*pi.offset(pino as isize)).poc.resno0 = (*tcp).resS;
+          (*pi.offset(pino as isize)).poc.resno1 = (*tcp).resE
+        }
+        67 => {
+          (*pi.offset(pino as isize)).poc.compno0 = (*tcp).compS;
+          (*pi.offset(pino as isize)).poc.compno1 = (*tcp).compE
+        }
+        76 => {
+          (*pi.offset(pino as isize)).poc.layno0 = (*tcp).layS;
+          (*pi.offset(pino as isize)).poc.layno1 = (*tcp).layE
+        }
+        80 => match (*tcp).prg as libc::c_int {
+          0 | 1 => {
+            (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prcS;
+            (*pi.offset(pino as isize)).poc.precno1 = (*tcp).prcE
+          }
+          _ => {
+            (*pi.offset(pino as isize)).poc.tx0 = (*tcp).txS;
+            (*pi.offset(pino as isize)).poc.ty0 = (*tcp).tyS;
+            (*pi.offset(pino as isize)).poc.tx1 = (*tcp).txE;
+            (*pi.offset(pino as isize)).poc.ty1 = (*tcp).tyE
+          }
+        },
+        _ => {}
+      }
+      i += 1
+    }
+    if tpnum == 0 as libc::c_int as libc::c_uint {
+      i = tppos;
+      while i >= 0 as libc::c_int {
+        match *prog.offset(i as isize) as libc::c_int {
+          67 => {
+            (*tcp).comp_t = (*tcp).compS;
+            (*pi.offset(pino as isize)).poc.compno0 = (*tcp).comp_t;
+            (*pi.offset(pino as isize)).poc.compno1 =
+              (*tcp).comp_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+            (*tcp).comp_t = ((*tcp).comp_t as libc::c_uint)
+              .wrapping_add(1 as libc::c_int as libc::c_uint)
+              as OPJ_UINT32 as OPJ_UINT32
+          }
+          82 => {
+            (*tcp).res_t = (*tcp).resS;
+            (*pi.offset(pino as isize)).poc.resno0 = (*tcp).res_t;
+            (*pi.offset(pino as isize)).poc.resno1 =
+              (*tcp).res_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+            (*tcp).res_t = ((*tcp).res_t as libc::c_uint)
+              .wrapping_add(1 as libc::c_int as libc::c_uint)
+              as OPJ_UINT32 as OPJ_UINT32
+          }
+          76 => {
+            (*tcp).lay_t = (*tcp).layS;
+            (*pi.offset(pino as isize)).poc.layno0 = (*tcp).lay_t;
+            (*pi.offset(pino as isize)).poc.layno1 =
+              (*tcp).lay_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+            (*tcp).lay_t = ((*tcp).lay_t as libc::c_uint)
+              .wrapping_add(1 as libc::c_int as libc::c_uint)
+              as OPJ_UINT32 as OPJ_UINT32
+          }
+          80 => match (*tcp).prg as libc::c_int {
+            0 | 1 => {
+              (*tcp).prc_t = (*tcp).prcS;
+              (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prc_t;
+              (*pi.offset(pino as isize)).poc.precno1 =
+                (*tcp).prc_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+              (*tcp).prc_t = ((*tcp).prc_t as libc::c_uint)
+                .wrapping_add(1 as libc::c_int as libc::c_uint)
+                as OPJ_UINT32 as OPJ_UINT32
+            }
+            _ => {
+              (*tcp).tx0_t = (*tcp).txS;
+              (*tcp).ty0_t = (*tcp).tyS;
+              (*pi.offset(pino as isize)).poc.tx0 = (*tcp).tx0_t;
+              (*pi.offset(pino as isize)).poc.tx1 = (*tcp)
+                .tx0_t
+                .wrapping_add((*tcp).dx)
+                .wrapping_sub((*tcp).tx0_t.wrapping_rem((*tcp).dx));
+              (*pi.offset(pino as isize)).poc.ty0 = (*tcp).ty0_t;
+              (*pi.offset(pino as isize)).poc.ty1 = (*tcp)
+                .ty0_t
+                .wrapping_add((*tcp).dy)
+                .wrapping_sub((*tcp).ty0_t.wrapping_rem((*tcp).dy));
+              (*tcp).tx0_t = (*pi.offset(pino as isize)).poc.tx1;
+              (*tcp).ty0_t = (*pi.offset(pino as isize)).poc.ty1
+            }
+          },
+          _ => {}
+        }
+        i -= 1
+      }
+      incr_top = 1 as libc::c_int as OPJ_UINT32
+    } else {
+      i = tppos;
+      while i >= 0 as libc::c_int {
+        match *prog.offset(i as isize) as libc::c_int {
+          67 => {
+            (*pi.offset(pino as isize)).poc.compno0 =
+              (*tcp).comp_t.wrapping_sub(1 as libc::c_int as libc::c_uint);
+            (*pi.offset(pino as isize)).poc.compno1 = (*tcp).comp_t
+          }
+          82 => {
+            (*pi.offset(pino as isize)).poc.resno0 =
+              (*tcp).res_t.wrapping_sub(1 as libc::c_int as libc::c_uint);
+            (*pi.offset(pino as isize)).poc.resno1 = (*tcp).res_t
+          }
+          76 => {
+            (*pi.offset(pino as isize)).poc.layno0 =
+              (*tcp).lay_t.wrapping_sub(1 as libc::c_int as libc::c_uint);
+            (*pi.offset(pino as isize)).poc.layno1 = (*tcp).lay_t
+          }
+          80 => match (*tcp).prg as libc::c_int {
+            0 | 1 => {
+              (*pi.offset(pino as isize)).poc.precno0 =
+                (*tcp).prc_t.wrapping_sub(1 as libc::c_int as libc::c_uint);
+              (*pi.offset(pino as isize)).poc.precno1 = (*tcp).prc_t
+            }
+            _ => {
+              (*pi.offset(pino as isize)).poc.tx0 = (*tcp)
+                .tx0_t
+                .wrapping_sub((*tcp).dx)
+                .wrapping_sub((*tcp).tx0_t.wrapping_rem((*tcp).dx));
+              (*pi.offset(pino as isize)).poc.tx1 = (*tcp).tx0_t;
+              (*pi.offset(pino as isize)).poc.ty0 = (*tcp)
+                .ty0_t
+                .wrapping_sub((*tcp).dy)
+                .wrapping_sub((*tcp).ty0_t.wrapping_rem((*tcp).dy));
+              (*pi.offset(pino as isize)).poc.ty1 = (*tcp).ty0_t
+            }
+          },
+          _ => {}
+        }
+        if incr_top == 1 as libc::c_int as libc::c_uint {
+          match *prog.offset(i as isize) as libc::c_int {
+            82 => {
+              if (*tcp).res_t == (*tcp).resE {
+                if opj_pi_check_next_level(i - 1 as libc::c_int, cp, tileno, pino, prog) != 0 {
+                  (*tcp).res_t = (*tcp).resS;
+                  (*pi.offset(pino as isize)).poc.resno0 = (*tcp).res_t;
+                  (*pi.offset(pino as isize)).poc.resno1 =
+                    (*tcp).res_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+                  (*tcp).res_t = ((*tcp).res_t as libc::c_uint)
+                    .wrapping_add(1 as libc::c_int as libc::c_uint)
+                    as OPJ_UINT32 as OPJ_UINT32;
+                  incr_top = 1 as libc::c_int as OPJ_UINT32
+                } else {
+                  incr_top = 0 as libc::c_int as OPJ_UINT32
+                }
+              } else {
+                (*pi.offset(pino as isize)).poc.resno0 = (*tcp).res_t;
+                (*pi.offset(pino as isize)).poc.resno1 =
+                  (*tcp).res_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+                (*tcp).res_t = ((*tcp).res_t as libc::c_uint)
+                  .wrapping_add(1 as libc::c_int as libc::c_uint)
+                  as OPJ_UINT32 as OPJ_UINT32;
+                incr_top = 0 as libc::c_int as OPJ_UINT32
+              }
+            }
+            67 => {
+              if (*tcp).comp_t == (*tcp).compE {
+                if opj_pi_check_next_level(i - 1 as libc::c_int, cp, tileno, pino, prog) != 0 {
+                  (*tcp).comp_t = (*tcp).compS;
+                  (*pi.offset(pino as isize)).poc.compno0 = (*tcp).comp_t;
+                  (*pi.offset(pino as isize)).poc.compno1 =
+                    (*tcp).comp_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+                  (*tcp).comp_t = ((*tcp).comp_t as libc::c_uint)
+                    .wrapping_add(1 as libc::c_int as libc::c_uint)
+                    as OPJ_UINT32 as OPJ_UINT32;
+                  incr_top = 1 as libc::c_int as OPJ_UINT32
+                } else {
+                  incr_top = 0 as libc::c_int as OPJ_UINT32
+                }
+              } else {
+                (*pi.offset(pino as isize)).poc.compno0 = (*tcp).comp_t;
+                (*pi.offset(pino as isize)).poc.compno1 =
+                  (*tcp).comp_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+                (*tcp).comp_t = ((*tcp).comp_t as libc::c_uint)
+                  .wrapping_add(1 as libc::c_int as libc::c_uint)
+                  as OPJ_UINT32 as OPJ_UINT32;
+                incr_top = 0 as libc::c_int as OPJ_UINT32
+              }
+            }
+            76 => {
+              if (*tcp).lay_t == (*tcp).layE {
+                if opj_pi_check_next_level(i - 1 as libc::c_int, cp, tileno, pino, prog) != 0 {
+                  (*tcp).lay_t = (*tcp).layS;
+                  (*pi.offset(pino as isize)).poc.layno0 = (*tcp).lay_t;
+                  (*pi.offset(pino as isize)).poc.layno1 =
+                    (*tcp).lay_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+                  (*tcp).lay_t = ((*tcp).lay_t as libc::c_uint)
+                    .wrapping_add(1 as libc::c_int as libc::c_uint)
+                    as OPJ_UINT32 as OPJ_UINT32;
+                  incr_top = 1 as libc::c_int as OPJ_UINT32
+                } else {
+                  incr_top = 0 as libc::c_int as OPJ_UINT32
+                }
+              } else {
+                (*pi.offset(pino as isize)).poc.layno0 = (*tcp).lay_t;
+                (*pi.offset(pino as isize)).poc.layno1 =
+                  (*tcp).lay_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+                (*tcp).lay_t = ((*tcp).lay_t as libc::c_uint)
+                  .wrapping_add(1 as libc::c_int as libc::c_uint)
+                  as OPJ_UINT32 as OPJ_UINT32;
+                incr_top = 0 as libc::c_int as OPJ_UINT32
+              }
+            }
+            80 => match (*tcp).prg as libc::c_int {
+              0 | 1 => {
+                if (*tcp).prc_t == (*tcp).prcE {
+                  if opj_pi_check_next_level(i - 1 as libc::c_int, cp, tileno, pino, prog) != 0 {
+                    (*tcp).prc_t = (*tcp).prcS;
+                    (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prc_t;
+                    (*pi.offset(pino as isize)).poc.precno1 =
+                      (*tcp).prc_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+                    (*tcp).prc_t = ((*tcp).prc_t as libc::c_uint)
+                      .wrapping_add(1 as libc::c_int as libc::c_uint)
+                      as OPJ_UINT32 as OPJ_UINT32;
+                    incr_top = 1 as libc::c_int as OPJ_UINT32
+                  } else {
+                    incr_top = 0 as libc::c_int as OPJ_UINT32
+                  }
+                } else {
+                  (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prc_t;
+                  (*pi.offset(pino as isize)).poc.precno1 =
+                    (*tcp).prc_t.wrapping_add(1 as libc::c_int as libc::c_uint);
+                  (*tcp).prc_t = ((*tcp).prc_t as libc::c_uint)
+                    .wrapping_add(1 as libc::c_int as libc::c_uint)
+                    as OPJ_UINT32 as OPJ_UINT32;
+                  incr_top = 0 as libc::c_int as OPJ_UINT32
+                }
+              }
+              _ => {
+                if (*tcp).tx0_t >= (*tcp).txE {
+                  if (*tcp).ty0_t >= (*tcp).tyE {
+                    if opj_pi_check_next_level(i - 1 as libc::c_int, cp, tileno, pino, prog) != 0 {
+                      (*tcp).ty0_t = (*tcp).tyS;
+                      (*pi.offset(pino as isize)).poc.ty0 = (*tcp).ty0_t;
+                      (*pi.offset(pino as isize)).poc.ty1 = (*tcp)
+                        .ty0_t
+                        .wrapping_add((*tcp).dy)
+                        .wrapping_sub((*tcp).ty0_t.wrapping_rem((*tcp).dy));
+                      (*tcp).ty0_t = (*pi.offset(pino as isize)).poc.ty1;
+                      incr_top = 1 as libc::c_int as OPJ_UINT32;
+                      resetX = 1 as libc::c_int as OPJ_UINT32
+                    } else {
+                      incr_top = 0 as libc::c_int as OPJ_UINT32;
+                      resetX = 0 as libc::c_int as OPJ_UINT32
+                    }
+                  } else {
+                    (*pi.offset(pino as isize)).poc.ty0 = (*tcp).ty0_t;
+                    (*pi.offset(pino as isize)).poc.ty1 = (*tcp)
+                      .ty0_t
+                      .wrapping_add((*tcp).dy)
+                      .wrapping_sub((*tcp).ty0_t.wrapping_rem((*tcp).dy));
+                    (*tcp).ty0_t = (*pi.offset(pino as isize)).poc.ty1;
+                    incr_top = 0 as libc::c_int as OPJ_UINT32;
+                    resetX = 1 as libc::c_int as OPJ_UINT32
+                  }
+                  if resetX == 1 as libc::c_int as libc::c_uint {
+                    (*tcp).tx0_t = (*tcp).txS;
+                    (*pi.offset(pino as isize)).poc.tx0 = (*tcp).tx0_t;
+                    (*pi.offset(pino as isize)).poc.tx1 = (*tcp)
+                      .tx0_t
+                      .wrapping_add((*tcp).dx)
+                      .wrapping_sub((*tcp).tx0_t.wrapping_rem((*tcp).dx));
+                    (*tcp).tx0_t = (*pi.offset(pino as isize)).poc.tx1
+                  }
+                } else {
+                  (*pi.offset(pino as isize)).poc.tx0 = (*tcp).tx0_t;
+                  (*pi.offset(pino as isize)).poc.tx1 = (*tcp)
+                    .tx0_t
+                    .wrapping_add((*tcp).dx)
+                    .wrapping_sub((*tcp).tx0_t.wrapping_rem((*tcp).dx));
+                  (*tcp).tx0_t = (*pi.offset(pino as isize)).poc.tx1;
+                  incr_top = 0 as libc::c_int as OPJ_UINT32
+                }
+              }
+            },
+            _ => {}
+          }
+        }
+        i -= 1
+      }
+    }
+  };
+}
+#[no_mangle]
+pub unsafe extern "C" fn opj_pi_destroy(
+  mut p_pi: *mut opj_pi_iterator_t,
+  mut p_nb_elements: OPJ_UINT32,
+) {
+  let mut compno: OPJ_UINT32 = 0;
+  let mut pino: OPJ_UINT32 = 0;
+  let mut l_current_pi = p_pi;
+  if !p_pi.is_null() {
+    if !(*p_pi).include.is_null() {
+      opj_free((*p_pi).include as *mut libc::c_void);
+      (*p_pi).include = 0 as *mut OPJ_INT16
+    }
+    pino = 0 as libc::c_int as OPJ_UINT32;
+    while pino < p_nb_elements {
+      if !(*l_current_pi).comps.is_null() {
+        let mut l_current_component = (*l_current_pi).comps;
         compno = 0 as libc::c_int as OPJ_UINT32;
-        while compno < numcomps {
-            let mut l_res_0 = (*l_current_comp).resolutions;
-            l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
-            (*l_current_comp).dx = (*l_img_comp).dx;
-            (*l_current_comp).dy = (*l_img_comp).dy;
-            /* resolutions have already been initialized */
-            resno = 0 as libc::c_int as OPJ_UINT32;
-            while resno < (*l_current_comp).numresolutions {
-                let fresh18 = l_encoding_value_ptr;
-                l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-                (*l_res_0).pdx = *fresh18;
-                let fresh19 = l_encoding_value_ptr;
-                l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-                (*l_res_0).pdy = *fresh19;
-                let fresh20 = l_encoding_value_ptr;
-                l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-                (*l_res_0).pw = *fresh20;
-                let fresh21 = l_encoding_value_ptr;
-                l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-                (*l_res_0).ph = *fresh21;
-                l_res_0 = l_res_0.offset(1);
-                resno = resno.wrapping_add(1)
-            }
-            l_current_comp = l_current_comp.offset(1);
-            l_img_comp = l_img_comp.offset(1);
-            l_tccp = l_tccp.offset(1);
-            compno = compno.wrapping_add(1)
+        while compno < (*l_current_pi).numcomps {
+          if !(*l_current_component).resolutions.is_null() {
+            opj_free((*l_current_component).resolutions as *mut libc::c_void);
+            (*l_current_component).resolutions = 0 as *mut opj_pi_resolution_t
+          }
+          l_current_component = l_current_component.offset(1);
+          compno = compno.wrapping_add(1)
         }
-        /* special treatment*/
-        (*l_current_pi).include =
-            (*l_current_pi.offset(-(1 as libc::c_int as isize))).include;
-        (*l_current_pi).include_size =
-            (*l_current_pi.offset(-(1 as libc::c_int as isize))).include_size;
-        l_current_pi = l_current_pi.offset(1);
-        pino = pino.wrapping_add(1)
+        opj_free((*l_current_pi).comps as *mut libc::c_void);
+        (*l_current_pi).comps = 0 as *mut opj_pi_comp_t
+      }
+      l_current_pi = l_current_pi.offset(1);
+      pino = pino.wrapping_add(1)
     }
-    opj_free(l_tmp_data as *mut libc::c_void);
-    l_tmp_data = 0 as *mut OPJ_UINT32;
-    opj_free(l_tmp_ptr as *mut libc::c_void);
-    l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
-    if (*l_tcp).POC() as libc::c_int != 0 &&
-           ((*p_cp).rsiz as libc::c_int >= 0x3 as libc::c_int &&
-                (*p_cp).rsiz as libc::c_int <= 0x6 as libc::c_int ||
-                p_t2_mode as libc::c_uint ==
-                    FINAL_PASS as libc::c_int as libc::c_uint) {
-        opj_pi_update_encode_poc_and_final(p_cp, p_tile_no, l_tx0, l_tx1,
-                                           l_ty0, l_ty1, l_max_prec,
-                                           l_max_res, l_dx_min, l_dy_min);
-    } else {
-        opj_pi_update_encode_not_poc(p_cp, numcomps, p_tile_no, l_tx0, l_tx1,
-                                     l_ty0, l_ty1, l_max_prec, l_max_res,
-                                     l_dx_min, l_dy_min);
-    }
-    return l_pi;
+    opj_free(p_pi as *mut libc::c_void);
+  };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_pi_create_encode(mut pi: *mut opj_pi_iterator_t,
-                                              mut cp: *mut opj_cp_t,
-                                              mut tileno: OPJ_UINT32,
-                                              mut pino: OPJ_UINT32,
-                                              mut tpnum: OPJ_UINT32,
-                                              mut tppos: OPJ_INT32,
-                                              mut t2_mode: J2K_T2_MODE) {
-    let mut prog = 0 as *const OPJ_CHAR;
-    let mut i: OPJ_INT32 = 0;
-    let mut incr_top = 1 as libc::c_int as OPJ_UINT32;
-    let mut resetX = 0 as libc::c_int as OPJ_UINT32;
-    let mut tcps: *mut opj_tcp_t =
-        &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
-    let mut tcp: *mut opj_poc_t =
-        &mut *(*tcps).pocs.as_mut_ptr().offset(pino as isize) as
-            *mut opj_poc_t;
-    prog = opj_j2k_convert_progression_order((*tcp).prg);
-    (*pi.offset(pino as isize)).first = 1 as libc::c_int;
-    (*pi.offset(pino as isize)).poc.prg = (*tcp).prg;
-    if !((*cp).m_specific_param.m_enc.m_tp_on() as libc::c_int != 0 &&
-             (!((*cp).rsiz as libc::c_int >= 0x3 as libc::c_int &&
-                    (*cp).rsiz as libc::c_int <= 0x6 as libc::c_int) &&
-                  !((*cp).rsiz as libc::c_int >= 0x400 as libc::c_int &&
-                        (*cp).rsiz as libc::c_int <=
-                            0x900 as libc::c_int | 0x9b as libc::c_int) &&
-                  t2_mode as libc::c_uint ==
-                      FINAL_PASS as libc::c_int as libc::c_uint ||
-                  (*cp).rsiz as libc::c_int >= 0x3 as libc::c_int &&
-                      (*cp).rsiz as libc::c_int <= 0x6 as libc::c_int ||
-                  (*cp).rsiz as libc::c_int >= 0x400 as libc::c_int &&
-                      (*cp).rsiz as libc::c_int <=
-                          0x900 as libc::c_int | 0x9b as libc::c_int)) {
-        (*pi.offset(pino as isize)).poc.resno0 = (*tcp).resS;
-        (*pi.offset(pino as isize)).poc.resno1 = (*tcp).resE;
-        (*pi.offset(pino as isize)).poc.compno0 = (*tcp).compS;
-        (*pi.offset(pino as isize)).poc.compno1 = (*tcp).compE;
-        (*pi.offset(pino as isize)).poc.layno0 = (*tcp).layS;
-        (*pi.offset(pino as isize)).poc.layno1 = (*tcp).layE;
-        (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prcS;
-        (*pi.offset(pino as isize)).poc.precno1 = (*tcp).prcE;
-        (*pi.offset(pino as isize)).poc.tx0 = (*tcp).txS;
-        (*pi.offset(pino as isize)).poc.ty0 = (*tcp).tyS;
-        (*pi.offset(pino as isize)).poc.tx1 = (*tcp).txE;
-        (*pi.offset(pino as isize)).poc.ty1 = (*tcp).tyE
-    } else {
-        i = tppos + 1 as libc::c_int;
-        while i < 4 as libc::c_int {
-            match *prog.offset(i as isize) as libc::c_int {
-                82 => {
-                    (*pi.offset(pino as isize)).poc.resno0 = (*tcp).resS;
-                    (*pi.offset(pino as isize)).poc.resno1 = (*tcp).resE
-                }
-                67 => {
-                    (*pi.offset(pino as isize)).poc.compno0 = (*tcp).compS;
-                    (*pi.offset(pino as isize)).poc.compno1 = (*tcp).compE
-                }
-                76 => {
-                    (*pi.offset(pino as isize)).poc.layno0 = (*tcp).layS;
-                    (*pi.offset(pino as isize)).poc.layno1 = (*tcp).layE
-                }
-                80 => {
-                    match (*tcp).prg as libc::c_int {
-                        0 | 1 => {
-                            (*pi.offset(pino as isize)).poc.precno0 =
-                                (*tcp).prcS;
-                            (*pi.offset(pino as isize)).poc.precno1 =
-                                (*tcp).prcE
-                        }
-                        _ => {
-                            (*pi.offset(pino as isize)).poc.tx0 = (*tcp).txS;
-                            (*pi.offset(pino as isize)).poc.ty0 = (*tcp).tyS;
-                            (*pi.offset(pino as isize)).poc.tx1 = (*tcp).txE;
-                            (*pi.offset(pino as isize)).poc.ty1 = (*tcp).tyE
-                        }
-                    }
-                }
-                _ => { }
-            }
-            i += 1
-        }
-        if tpnum == 0 as libc::c_int as libc::c_uint {
-            i = tppos;
-            while i >= 0 as libc::c_int {
-                match *prog.offset(i as isize) as libc::c_int {
-                    67 => {
-                        (*tcp).comp_t = (*tcp).compS;
-                        (*pi.offset(pino as isize)).poc.compno0 =
-                            (*tcp).comp_t;
-                        (*pi.offset(pino as isize)).poc.compno1 =
-                            (*tcp).comp_t.wrapping_add(1 as libc::c_int as
-                                                           libc::c_uint);
-                        (*tcp).comp_t =
-                            ((*tcp).comp_t as
-                                 libc::c_uint).wrapping_add(1 as libc::c_int
-                                                                as
-                                                                libc::c_uint)
-                                as OPJ_UINT32 as OPJ_UINT32
-                    }
-                    82 => {
-                        (*tcp).res_t = (*tcp).resS;
-                        (*pi.offset(pino as isize)).poc.resno0 = (*tcp).res_t;
-                        (*pi.offset(pino as isize)).poc.resno1 =
-                            (*tcp).res_t.wrapping_add(1 as libc::c_int as
-                                                          libc::c_uint);
-                        (*tcp).res_t =
-                            ((*tcp).res_t as
-                                 libc::c_uint).wrapping_add(1 as libc::c_int
-                                                                as
-                                                                libc::c_uint)
-                                as OPJ_UINT32 as OPJ_UINT32
-                    }
-                    76 => {
-                        (*tcp).lay_t = (*tcp).layS;
-                        (*pi.offset(pino as isize)).poc.layno0 = (*tcp).lay_t;
-                        (*pi.offset(pino as isize)).poc.layno1 =
-                            (*tcp).lay_t.wrapping_add(1 as libc::c_int as
-                                                          libc::c_uint);
-                        (*tcp).lay_t =
-                            ((*tcp).lay_t as
-                                 libc::c_uint).wrapping_add(1 as libc::c_int
-                                                                as
-                                                                libc::c_uint)
-                                as OPJ_UINT32 as OPJ_UINT32
-                    }
-                    80 => {
-                        match (*tcp).prg as libc::c_int {
-                            0 | 1 => {
-                                (*tcp).prc_t = (*tcp).prcS;
-                                (*pi.offset(pino as isize)).poc.precno0 =
-                                    (*tcp).prc_t;
-                                (*pi.offset(pino as isize)).poc.precno1 =
-                                    (*tcp).prc_t.wrapping_add(1 as libc::c_int
-                                                                  as
-                                                                  libc::c_uint);
-                                (*tcp).prc_t =
-                                    ((*tcp).prc_t as
-                                         libc::c_uint).wrapping_add(1 as
-                                                                        libc::c_int
-                                                                        as
-                                                                        libc::c_uint)
-                                        as OPJ_UINT32 as OPJ_UINT32
-                            }
-                            _ => {
-                                (*tcp).tx0_t = (*tcp).txS;
-                                (*tcp).ty0_t = (*tcp).tyS;
-                                (*pi.offset(pino as isize)).poc.tx0 =
-                                    (*tcp).tx0_t;
-                                (*pi.offset(pino as isize)).poc.tx1 =
-                                    (*tcp).tx0_t.wrapping_add((*tcp).dx).wrapping_sub((*tcp).tx0_t.wrapping_rem((*tcp).dx));
-                                (*pi.offset(pino as isize)).poc.ty0 =
-                                    (*tcp).ty0_t;
-                                (*pi.offset(pino as isize)).poc.ty1 =
-                                    (*tcp).ty0_t.wrapping_add((*tcp).dy).wrapping_sub((*tcp).ty0_t.wrapping_rem((*tcp).dy));
-                                (*tcp).tx0_t =
-                                    (*pi.offset(pino as isize)).poc.tx1;
-                                (*tcp).ty0_t =
-                                    (*pi.offset(pino as isize)).poc.ty1
-                            }
-                        }
-                    }
-                    _ => { }
-                }
-                i -= 1
-            }
-            incr_top = 1 as libc::c_int as OPJ_UINT32
-        } else {
-            i = tppos;
-            while i >= 0 as libc::c_int {
-                match *prog.offset(i as isize) as libc::c_int {
-                    67 => {
-                        (*pi.offset(pino as isize)).poc.compno0 =
-                            (*tcp).comp_t.wrapping_sub(1 as libc::c_int as
-                                                           libc::c_uint);
-                        (*pi.offset(pino as isize)).poc.compno1 =
-                            (*tcp).comp_t
-                    }
-                    82 => {
-                        (*pi.offset(pino as isize)).poc.resno0 =
-                            (*tcp).res_t.wrapping_sub(1 as libc::c_int as
-                                                          libc::c_uint);
-                        (*pi.offset(pino as isize)).poc.resno1 = (*tcp).res_t
-                    }
-                    76 => {
-                        (*pi.offset(pino as isize)).poc.layno0 =
-                            (*tcp).lay_t.wrapping_sub(1 as libc::c_int as
-                                                          libc::c_uint);
-                        (*pi.offset(pino as isize)).poc.layno1 = (*tcp).lay_t
-                    }
-                    80 => {
-                        match (*tcp).prg as libc::c_int {
-                            0 | 1 => {
-                                (*pi.offset(pino as isize)).poc.precno0 =
-                                    (*tcp).prc_t.wrapping_sub(1 as libc::c_int
-                                                                  as
-                                                                  libc::c_uint);
-                                (*pi.offset(pino as isize)).poc.precno1 =
-                                    (*tcp).prc_t
-                            }
-                            _ => {
-                                (*pi.offset(pino as isize)).poc.tx0 =
-                                    (*tcp).tx0_t.wrapping_sub((*tcp).dx).wrapping_sub((*tcp).tx0_t.wrapping_rem((*tcp).dx));
-                                (*pi.offset(pino as isize)).poc.tx1 =
-                                    (*tcp).tx0_t;
-                                (*pi.offset(pino as isize)).poc.ty0 =
-                                    (*tcp).ty0_t.wrapping_sub((*tcp).dy).wrapping_sub((*tcp).ty0_t.wrapping_rem((*tcp).dy));
-                                (*pi.offset(pino as isize)).poc.ty1 =
-                                    (*tcp).ty0_t
-                            }
-                        }
-                    }
-                    _ => { }
-                }
-                if incr_top == 1 as libc::c_int as libc::c_uint {
-                    match *prog.offset(i as isize) as libc::c_int {
-                        82 => {
-                            if (*tcp).res_t == (*tcp).resE {
-                                if opj_pi_check_next_level(i -
-                                                               1 as
-                                                                   libc::c_int,
-                                                           cp, tileno, pino,
-                                                           prog) != 0 {
-                                    (*tcp).res_t = (*tcp).resS;
-                                    (*pi.offset(pino as isize)).poc.resno0 =
-                                        (*tcp).res_t;
-                                    (*pi.offset(pino as isize)).poc.resno1 =
-                                        (*tcp).res_t.wrapping_add(1 as
-                                                                      libc::c_int
-                                                                      as
-                                                                      libc::c_uint);
-                                    (*tcp).res_t =
-                                        ((*tcp).res_t as
-                                             libc::c_uint).wrapping_add(1 as
-                                                                            libc::c_int
-                                                                            as
-                                                                            libc::c_uint)
-                                            as OPJ_UINT32 as OPJ_UINT32;
-                                    incr_top = 1 as libc::c_int as OPJ_UINT32
-                                } else {
-                                    incr_top = 0 as libc::c_int as OPJ_UINT32
-                                }
-                            } else {
-                                (*pi.offset(pino as isize)).poc.resno0 =
-                                    (*tcp).res_t;
-                                (*pi.offset(pino as isize)).poc.resno1 =
-                                    (*tcp).res_t.wrapping_add(1 as libc::c_int
-                                                                  as
-                                                                  libc::c_uint);
-                                (*tcp).res_t =
-                                    ((*tcp).res_t as
-                                         libc::c_uint).wrapping_add(1 as
-                                                                        libc::c_int
-                                                                        as
-                                                                        libc::c_uint)
-                                        as OPJ_UINT32 as OPJ_UINT32;
-                                incr_top = 0 as libc::c_int as OPJ_UINT32
-                            }
-                        }
-                        67 => {
-                            if (*tcp).comp_t == (*tcp).compE {
-                                if opj_pi_check_next_level(i -
-                                                               1 as
-                                                                   libc::c_int,
-                                                           cp, tileno, pino,
-                                                           prog) != 0 {
-                                    (*tcp).comp_t = (*tcp).compS;
-                                    (*pi.offset(pino as isize)).poc.compno0 =
-                                        (*tcp).comp_t;
-                                    (*pi.offset(pino as isize)).poc.compno1 =
-                                        (*tcp).comp_t.wrapping_add(1 as
-                                                                       libc::c_int
-                                                                       as
-                                                                       libc::c_uint);
-                                    (*tcp).comp_t =
-                                        ((*tcp).comp_t as
-                                             libc::c_uint).wrapping_add(1 as
-                                                                            libc::c_int
-                                                                            as
-                                                                            libc::c_uint)
-                                            as OPJ_UINT32 as OPJ_UINT32;
-                                    incr_top = 1 as libc::c_int as OPJ_UINT32
-                                } else {
-                                    incr_top = 0 as libc::c_int as OPJ_UINT32
-                                }
-                            } else {
-                                (*pi.offset(pino as isize)).poc.compno0 =
-                                    (*tcp).comp_t;
-                                (*pi.offset(pino as isize)).poc.compno1 =
-                                    (*tcp).comp_t.wrapping_add(1 as
-                                                                   libc::c_int
-                                                                   as
-                                                                   libc::c_uint);
-                                (*tcp).comp_t =
-                                    ((*tcp).comp_t as
-                                         libc::c_uint).wrapping_add(1 as
-                                                                        libc::c_int
-                                                                        as
-                                                                        libc::c_uint)
-                                        as OPJ_UINT32 as OPJ_UINT32;
-                                incr_top = 0 as libc::c_int as OPJ_UINT32
-                            }
-                        }
-                        76 => {
-                            if (*tcp).lay_t == (*tcp).layE {
-                                if opj_pi_check_next_level(i -
-                                                               1 as
-                                                                   libc::c_int,
-                                                           cp, tileno, pino,
-                                                           prog) != 0 {
-                                    (*tcp).lay_t = (*tcp).layS;
-                                    (*pi.offset(pino as isize)).poc.layno0 =
-                                        (*tcp).lay_t;
-                                    (*pi.offset(pino as isize)).poc.layno1 =
-                                        (*tcp).lay_t.wrapping_add(1 as
-                                                                      libc::c_int
-                                                                      as
-                                                                      libc::c_uint);
-                                    (*tcp).lay_t =
-                                        ((*tcp).lay_t as
-                                             libc::c_uint).wrapping_add(1 as
-                                                                            libc::c_int
-                                                                            as
-                                                                            libc::c_uint)
-                                            as OPJ_UINT32 as OPJ_UINT32;
-                                    incr_top = 1 as libc::c_int as OPJ_UINT32
-                                } else {
-                                    incr_top = 0 as libc::c_int as OPJ_UINT32
-                                }
-                            } else {
-                                (*pi.offset(pino as isize)).poc.layno0 =
-                                    (*tcp).lay_t;
-                                (*pi.offset(pino as isize)).poc.layno1 =
-                                    (*tcp).lay_t.wrapping_add(1 as libc::c_int
-                                                                  as
-                                                                  libc::c_uint);
-                                (*tcp).lay_t =
-                                    ((*tcp).lay_t as
-                                         libc::c_uint).wrapping_add(1 as
-                                                                        libc::c_int
-                                                                        as
-                                                                        libc::c_uint)
-                                        as OPJ_UINT32 as OPJ_UINT32;
-                                incr_top = 0 as libc::c_int as OPJ_UINT32
-                            }
-                        }
-                        80 => {
-                            match (*tcp).prg as libc::c_int {
-                                0 | 1 => {
-                                    if (*tcp).prc_t == (*tcp).prcE {
-                                        if opj_pi_check_next_level(i -
-                                                                       1 as
-                                                                           libc::c_int,
-                                                                   cp, tileno,
-                                                                   pino, prog)
-                                               != 0 {
-                                            (*tcp).prc_t = (*tcp).prcS;
-                                            (*pi.offset(pino as
-                                                            isize)).poc.precno0
-                                                = (*tcp).prc_t;
-                                            (*pi.offset(pino as
-                                                            isize)).poc.precno1
-                                                =
-                                                (*tcp).prc_t.wrapping_add(1 as
-                                                                              libc::c_int
-                                                                              as
-                                                                              libc::c_uint);
-                                            (*tcp).prc_t =
-                                                ((*tcp).prc_t as
-                                                     libc::c_uint).wrapping_add(1
-                                                                                    as
-                                                                                    libc::c_int
-                                                                                    as
-                                                                                    libc::c_uint)
-                                                    as OPJ_UINT32 as
-                                                    OPJ_UINT32;
-                                            incr_top =
-                                                1 as libc::c_int as OPJ_UINT32
-                                        } else {
-                                            incr_top =
-                                                0 as libc::c_int as OPJ_UINT32
-                                        }
-                                    } else {
-                                        (*pi.offset(pino as
-                                                        isize)).poc.precno0 =
-                                            (*tcp).prc_t;
-                                        (*pi.offset(pino as
-                                                        isize)).poc.precno1 =
-                                            (*tcp).prc_t.wrapping_add(1 as
-                                                                          libc::c_int
-                                                                          as
-                                                                          libc::c_uint);
-                                        (*tcp).prc_t =
-                                            ((*tcp).prc_t as
-                                                 libc::c_uint).wrapping_add(1
-                                                                                as
-                                                                                libc::c_int
-                                                                                as
-                                                                                libc::c_uint)
-                                                as OPJ_UINT32 as OPJ_UINT32;
-                                        incr_top =
-                                            0 as libc::c_int as OPJ_UINT32
-                                    }
-                                }
-                                _ => {
-                                    if (*tcp).tx0_t >= (*tcp).txE {
-                                        if (*tcp).ty0_t >= (*tcp).tyE {
-                                            if opj_pi_check_next_level(i -
-                                                                           1
-                                                                               as
-                                                                               libc::c_int,
-                                                                       cp,
-                                                                       tileno,
-                                                                       pino,
-                                                                       prog)
-                                                   != 0 {
-                                                (*tcp).ty0_t = (*tcp).tyS;
-                                                (*pi.offset(pino as
-                                                                isize)).poc.ty0
-                                                    = (*tcp).ty0_t;
-                                                (*pi.offset(pino as
-                                                                isize)).poc.ty1
-                                                    =
-                                                    (*tcp).ty0_t.wrapping_add((*tcp).dy).wrapping_sub((*tcp).ty0_t.wrapping_rem((*tcp).dy));
-                                                (*tcp).ty0_t =
-                                                    (*pi.offset(pino as
-                                                                    isize)).poc.ty1;
-                                                incr_top =
-                                                    1 as libc::c_int as
-                                                        OPJ_UINT32;
-                                                resetX =
-                                                    1 as libc::c_int as
-                                                        OPJ_UINT32
-                                            } else {
-                                                incr_top =
-                                                    0 as libc::c_int as
-                                                        OPJ_UINT32;
-                                                resetX =
-                                                    0 as libc::c_int as
-                                                        OPJ_UINT32
-                                            }
-                                        } else {
-                                            (*pi.offset(pino as
-                                                            isize)).poc.ty0 =
-                                                (*tcp).ty0_t;
-                                            (*pi.offset(pino as
-                                                            isize)).poc.ty1 =
-                                                (*tcp).ty0_t.wrapping_add((*tcp).dy).wrapping_sub((*tcp).ty0_t.wrapping_rem((*tcp).dy));
-                                            (*tcp).ty0_t =
-                                                (*pi.offset(pino as
-                                                                isize)).poc.ty1;
-                                            incr_top =
-                                                0 as libc::c_int as
-                                                    OPJ_UINT32;
-                                            resetX =
-                                                1 as libc::c_int as OPJ_UINT32
-                                        }
-                                        if resetX ==
-                                               1 as libc::c_int as
-                                                   libc::c_uint {
-                                            (*tcp).tx0_t = (*tcp).txS;
-                                            (*pi.offset(pino as
-                                                            isize)).poc.tx0 =
-                                                (*tcp).tx0_t;
-                                            (*pi.offset(pino as
-                                                            isize)).poc.tx1 =
-                                                (*tcp).tx0_t.wrapping_add((*tcp).dx).wrapping_sub((*tcp).tx0_t.wrapping_rem((*tcp).dx));
-                                            (*tcp).tx0_t =
-                                                (*pi.offset(pino as
-                                                                isize)).poc.tx1
-                                        }
-                                    } else {
-                                        (*pi.offset(pino as isize)).poc.tx0 =
-                                            (*tcp).tx0_t;
-                                        (*pi.offset(pino as isize)).poc.tx1 =
-                                            (*tcp).tx0_t.wrapping_add((*tcp).dx).wrapping_sub((*tcp).tx0_t.wrapping_rem((*tcp).dx));
-                                        (*tcp).tx0_t =
-                                            (*pi.offset(pino as
-                                                            isize)).poc.tx1;
-                                        incr_top =
-                                            0 as libc::c_int as OPJ_UINT32
-                                    }
-                                }
-                            }
-                        }
-                        _ => { }
-                    }
-                }
-                i -= 1
-            }
-        }
-    };
+pub unsafe extern "C" fn opj_pi_update_encoding_parameters(
+  mut p_image: *const opj_image_t,
+  mut p_cp: *mut opj_cp_t,
+  mut p_tile_no: OPJ_UINT32,
+) {
+  /* encoding parameters to set */
+  let mut l_max_res: OPJ_UINT32 = 0;
+  let mut l_max_prec: OPJ_UINT32 = 0;
+  let mut l_tx0: OPJ_UINT32 = 0;
+  let mut l_tx1: OPJ_UINT32 = 0;
+  let mut l_ty0: OPJ_UINT32 = 0;
+  let mut l_ty1: OPJ_UINT32 = 0;
+  let mut l_dx_min: OPJ_UINT32 = 0;
+  let mut l_dy_min: OPJ_UINT32 = 0;
+  /* pointers */
+  let mut l_tcp = 0 as *mut opj_tcp_t;
+  /* preconditions */
+  if !p_cp.is_null() {
+  } else {
+    __assert_fail(
+      b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
+      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8 as *const libc::c_char,
+      2117 as libc::c_int as libc::c_uint,
+      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
+        b"void opj_pi_update_encoding_parameters(const opj_image_t *, opj_cp_t *, OPJ_UINT32)\x00",
+      ))
+      .as_ptr(),
+    );
+  }
+  if !p_image.is_null() {
+  } else {
+    __assert_fail(
+      b"p_image != 00\x00" as *const u8 as *const libc::c_char,
+      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8 as *const libc::c_char,
+      2118 as libc::c_int as libc::c_uint,
+      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
+        b"void opj_pi_update_encoding_parameters(const opj_image_t *, opj_cp_t *, OPJ_UINT32)\x00",
+      ))
+      .as_ptr(),
+    );
+  }
+  if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
+  } else {
+    __assert_fail(
+      b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as *const libc::c_char,
+      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8 as *const libc::c_char,
+      2119 as libc::c_int as libc::c_uint,
+      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
+        b"void opj_pi_update_encoding_parameters(const opj_image_t *, opj_cp_t *, OPJ_UINT32)\x00",
+      ))
+      .as_ptr(),
+    );
+  }
+  l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
+  /* get encoding parameters */
+  opj_get_encoding_parameters(
+    p_image,
+    p_cp,
+    p_tile_no,
+    &mut l_tx0,
+    &mut l_tx1,
+    &mut l_ty0,
+    &mut l_ty1,
+    &mut l_dx_min,
+    &mut l_dy_min,
+    &mut l_max_prec,
+    &mut l_max_res,
+  );
+  if (*l_tcp).POC() != 0 {
+    opj_pi_update_encode_poc_and_final(
+      p_cp, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min,
+    );
+  } else {
+    opj_pi_update_encode_not_poc(
+      p_cp,
+      (*p_image).numcomps,
+      p_tile_no,
+      l_tx0,
+      l_tx1,
+      l_ty0,
+      l_ty1,
+      l_max_prec,
+      l_max_res,
+      l_dx_min,
+      l_dy_min,
+    );
+  };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_pi_destroy(mut p_pi: *mut opj_pi_iterator_t,
-                                        mut p_nb_elements: OPJ_UINT32) {
-    let mut compno: OPJ_UINT32 = 0;
-    let mut pino: OPJ_UINT32 = 0;
-    let mut l_current_pi = p_pi;
-    if !p_pi.is_null() {
-        if !(*p_pi).include.is_null() {
-            opj_free((*p_pi).include as *mut libc::c_void);
-            (*p_pi).include = 0 as *mut OPJ_INT16
-        }
-        pino = 0 as libc::c_int as OPJ_UINT32;
-        while pino < p_nb_elements {
-            if !(*l_current_pi).comps.is_null() {
-                let mut l_current_component = (*l_current_pi).comps;
-                compno = 0 as libc::c_int as OPJ_UINT32;
-                while compno < (*l_current_pi).numcomps {
-                    if !(*l_current_component).resolutions.is_null() {
-                        opj_free((*l_current_component).resolutions as
-                                     *mut libc::c_void);
-                        (*l_current_component).resolutions =
-                            0 as *mut opj_pi_resolution_t
-                    }
-                    l_current_component = l_current_component.offset(1);
-                    compno = compno.wrapping_add(1)
-                }
-                opj_free((*l_current_pi).comps as *mut libc::c_void);
-                (*l_current_pi).comps = 0 as *mut opj_pi_comp_t
-            }
-            l_current_pi = l_current_pi.offset(1);
-            pino = pino.wrapping_add(1)
-        }
-        opj_free(p_pi as *mut libc::c_void);
-    };
-}
-#[no_mangle]
-pub unsafe extern "C" fn opj_pi_update_encoding_parameters(mut p_image:
-                                                               *const opj_image_t,
-                                                           mut p_cp:
-                                                               *mut opj_cp_t,
-                                                           mut p_tile_no:
-                                                               OPJ_UINT32) {
-    /* encoding parameters to set */
-    let mut l_max_res: OPJ_UINT32 = 0;
-    let mut l_max_prec: OPJ_UINT32 = 0;
-    let mut l_tx0: OPJ_UINT32 = 0;
-    let mut l_tx1: OPJ_UINT32 = 0;
-    let mut l_ty0: OPJ_UINT32 = 0;
-    let mut l_ty1: OPJ_UINT32 = 0;
-    let mut l_dx_min: OPJ_UINT32 = 0;
-    let mut l_dy_min: OPJ_UINT32 = 0;
-    /* pointers */
-    let mut l_tcp = 0 as *mut opj_tcp_t;
-    /* preconditions */
-    if !p_cp.is_null() {
-    } else {
-        __assert_fail(b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      2117 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 84],
-                                                &[libc::c_char; 84]>(b"void opj_pi_update_encoding_parameters(const opj_image_t *, opj_cp_t *, OPJ_UINT32)\x00")).as_ptr());
-    }
-    if !p_image.is_null() {
-    } else {
-        __assert_fail(b"p_image != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      2118 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 84],
-                                                &[libc::c_char; 84]>(b"void opj_pi_update_encoding_parameters(const opj_image_t *, opj_cp_t *, OPJ_UINT32)\x00")).as_ptr());
-    }
-    if p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th) {
-    } else {
-        __assert_fail(b"p_tile_no < p_cp->tw * p_cp->th\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/pi.c\x00" as *const u8
-                          as *const libc::c_char,
-                      2119 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 84],
-                                                &[libc::c_char; 84]>(b"void opj_pi_update_encoding_parameters(const opj_image_t *, opj_cp_t *, OPJ_UINT32)\x00")).as_ptr());
-    }
-    l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
-    /* get encoding parameters */
-    opj_get_encoding_parameters(p_image, p_cp, p_tile_no, &mut l_tx0,
-                                &mut l_tx1, &mut l_ty0, &mut l_ty1,
-                                &mut l_dx_min, &mut l_dy_min, &mut l_max_prec,
-                                &mut l_max_res);
-    if (*l_tcp).POC() != 0 {
-        opj_pi_update_encode_poc_and_final(p_cp, p_tile_no, l_tx0, l_tx1,
-                                           l_ty0, l_ty1, l_max_prec,
-                                           l_max_res, l_dx_min, l_dy_min);
-    } else {
-        opj_pi_update_encode_not_poc(p_cp, (*p_image).numcomps, p_tile_no,
-                                     l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec,
-                                     l_max_res, l_dx_min, l_dy_min);
-    };
-}
-#[no_mangle]
-pub unsafe extern "C" fn opj_pi_next(mut pi: *mut opj_pi_iterator_t)
- -> OPJ_BOOL {
-    match (*pi).poc.prg as libc::c_int {
-        0 => { return opj_pi_next_lrcp(pi) }
-        1 => { return opj_pi_next_rlcp(pi) }
-        2 => { return opj_pi_next_rpcl(pi) }
-        3 => { return opj_pi_next_pcrl(pi) }
-        4 => { return opj_pi_next_cprl(pi) }
-        -1 => { return 0 as libc::c_int }
-        _ => { }
-    }
-    return 0 as libc::c_int;
+pub unsafe extern "C" fn opj_pi_next(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+  match (*pi).poc.prg as libc::c_int {
+    0 => return opj_pi_next_lrcp(pi),
+    1 => return opj_pi_next_rlcp(pi),
+    2 => return opj_pi_next_rpcl(pi),
+    3 => return opj_pi_next_pcrl(pi),
+    4 => return opj_pi_next_cprl(pi),
+    -1 => return 0 as libc::c_int,
+    _ => {}
+  }
+  return 0 as libc::c_int;
 }
