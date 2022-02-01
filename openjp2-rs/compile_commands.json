@@ -1,0 +1,342 @@
+[
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/thread.c.o   -c /opt/openjpeg/src/lib/openjp2/thread.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/thread.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/bio.c.o   -c /opt/openjpeg/src/lib/openjp2/bio.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/bio.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/cio.c.o   -c /opt/openjpeg/src/lib/openjp2/cio.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/cio.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/dwt.c.o   -c /opt/openjpeg/src/lib/openjp2/dwt.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/dwt.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/event.c.o   -c /opt/openjpeg/src/lib/openjp2/event.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/event.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/ht_dec.c.o   -c /opt/openjpeg/src/lib/openjp2/ht_dec.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/ht_dec.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/image.c.o   -c /opt/openjpeg/src/lib/openjp2/image.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/image.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/invert.c.o   -c /opt/openjpeg/src/lib/openjp2/invert.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/invert.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/j2k.c.o   -c /opt/openjpeg/src/lib/openjp2/j2k.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/j2k.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/jp2.c.o   -c /opt/openjpeg/src/lib/openjp2/jp2.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/jp2.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/mct.c.o   -c /opt/openjpeg/src/lib/openjp2/mct.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/mct.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/mqc.c.o   -c /opt/openjpeg/src/lib/openjp2/mqc.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/mqc.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/openjpeg.c.o   -c /opt/openjpeg/src/lib/openjp2/openjpeg.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/openjpeg.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/opj_clock.c.o   -c /opt/openjpeg/src/lib/openjp2/opj_clock.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/opj_clock.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/pi.c.o   -c /opt/openjpeg/src/lib/openjp2/pi.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/pi.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/t1.c.o   -c /opt/openjpeg/src/lib/openjp2/t1.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/t1.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/t2.c.o   -c /opt/openjpeg/src/lib/openjp2/t2.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/t2.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/tcd.c.o   -c /opt/openjpeg/src/lib/openjp2/tcd.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/tcd.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/tgt.c.o   -c /opt/openjpeg/src/lib/openjp2/tgt.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/tgt.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/function_list.c.o   -c /opt/openjpeg/src/lib/openjp2/function_list.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/function_list.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/opj_malloc.c.o   -c /opt/openjpeg/src/lib/openjp2/opj_malloc.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/opj_malloc.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -I/opt/openjpeg/build/src/lib/openjp2    -o CMakeFiles/openjp2_static.dir/sparse_array.c.o   -c /opt/openjpeg/src/lib/openjp2/sparse_array.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/sparse_array.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/thread.c.o   -c /opt/openjpeg/src/lib/openjp2/thread.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/thread.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/bio.c.o   -c /opt/openjpeg/src/lib/openjp2/bio.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/bio.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/cio.c.o   -c /opt/openjpeg/src/lib/openjp2/cio.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/cio.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/dwt.c.o   -c /opt/openjpeg/src/lib/openjp2/dwt.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/dwt.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/event.c.o   -c /opt/openjpeg/src/lib/openjp2/event.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/event.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/ht_dec.c.o   -c /opt/openjpeg/src/lib/openjp2/ht_dec.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/ht_dec.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/image.c.o   -c /opt/openjpeg/src/lib/openjp2/image.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/image.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/invert.c.o   -c /opt/openjpeg/src/lib/openjp2/invert.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/invert.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/j2k.c.o   -c /opt/openjpeg/src/lib/openjp2/j2k.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/j2k.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/jp2.c.o   -c /opt/openjpeg/src/lib/openjp2/jp2.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/jp2.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/mct.c.o   -c /opt/openjpeg/src/lib/openjp2/mct.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/mct.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/mqc.c.o   -c /opt/openjpeg/src/lib/openjp2/mqc.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/mqc.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/openjpeg.c.o   -c /opt/openjpeg/src/lib/openjp2/openjpeg.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/openjpeg.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/opj_clock.c.o   -c /opt/openjpeg/src/lib/openjp2/opj_clock.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/opj_clock.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/pi.c.o   -c /opt/openjpeg/src/lib/openjp2/pi.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/pi.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/t1.c.o   -c /opt/openjpeg/src/lib/openjp2/t1.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/t1.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/t2.c.o   -c /opt/openjpeg/src/lib/openjp2/t2.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/t2.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/tcd.c.o   -c /opt/openjpeg/src/lib/openjp2/tcd.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/tcd.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/tgt.c.o   -c /opt/openjpeg/src/lib/openjp2/tgt.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/tgt.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/function_list.c.o   -c /opt/openjpeg/src/lib/openjp2/function_list.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/function_list.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/opj_malloc.c.o   -c /opt/openjpeg/src/lib/openjp2/opj_malloc.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/opj_malloc.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/lib/openjp2",
+  "command": "/usr/bin/cc -DMUTEX_stub -Dopenjp2_EXPORTS -I/opt/openjpeg/build/src/lib/openjp2  -fPIC   -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/openjp2.dir/sparse_array.c.o   -c /opt/openjpeg/src/lib/openjp2/sparse_array.c",
+  "file": "/opt/openjpeg/src/lib/openjp2/sparse_array.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_dump.dir/opj_dump.c.o   -c /opt/openjpeg/src/bin/jp2/opj_dump.c",
+  "file": "/opt/openjpeg/src/bin/jp2/opj_dump.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_dump.dir/convert.c.o   -c /opt/openjpeg/src/bin/jp2/convert.c",
+  "file": "/opt/openjpeg/src/bin/jp2/convert.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_dump.dir/convertbmp.c.o   -c /opt/openjpeg/src/bin/jp2/convertbmp.c",
+  "file": "/opt/openjpeg/src/bin/jp2/convertbmp.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_dump.dir/index.c.o   -c /opt/openjpeg/src/bin/jp2/index.c",
+  "file": "/opt/openjpeg/src/bin/jp2/index.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_dump.dir/__/common/color.c.o   -c /opt/openjpeg/src/bin/common/color.c",
+  "file": "/opt/openjpeg/src/bin/common/color.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_dump.dir/__/common/opj_getopt.c.o   -c /opt/openjpeg/src/bin/common/opj_getopt.c",
+  "file": "/opt/openjpeg/src/bin/common/opj_getopt.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_dump.dir/converttif.c.o   -c /opt/openjpeg/src/bin/jp2/converttif.c",
+  "file": "/opt/openjpeg/src/bin/jp2/converttif.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_dump.dir/convertpng.c.o   -c /opt/openjpeg/src/bin/jp2/convertpng.c",
+  "file": "/opt/openjpeg/src/bin/jp2/convertpng.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_compress.dir/opj_compress.c.o   -c /opt/openjpeg/src/bin/jp2/opj_compress.c",
+  "file": "/opt/openjpeg/src/bin/jp2/opj_compress.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_compress.dir/convert.c.o   -c /opt/openjpeg/src/bin/jp2/convert.c",
+  "file": "/opt/openjpeg/src/bin/jp2/convert.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_compress.dir/convertbmp.c.o   -c /opt/openjpeg/src/bin/jp2/convertbmp.c",
+  "file": "/opt/openjpeg/src/bin/jp2/convertbmp.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_compress.dir/index.c.o   -c /opt/openjpeg/src/bin/jp2/index.c",
+  "file": "/opt/openjpeg/src/bin/jp2/index.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_compress.dir/__/common/color.c.o   -c /opt/openjpeg/src/bin/common/color.c",
+  "file": "/opt/openjpeg/src/bin/common/color.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_compress.dir/__/common/opj_getopt.c.o   -c /opt/openjpeg/src/bin/common/opj_getopt.c",
+  "file": "/opt/openjpeg/src/bin/common/opj_getopt.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_compress.dir/converttif.c.o   -c /opt/openjpeg/src/bin/jp2/converttif.c",
+  "file": "/opt/openjpeg/src/bin/jp2/converttif.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_compress.dir/convertpng.c.o   -c /opt/openjpeg/src/bin/jp2/convertpng.c",
+  "file": "/opt/openjpeg/src/bin/jp2/convertpng.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_decompress.dir/opj_decompress.c.o   -c /opt/openjpeg/src/bin/jp2/opj_decompress.c",
+  "file": "/opt/openjpeg/src/bin/jp2/opj_decompress.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_decompress.dir/convert.c.o   -c /opt/openjpeg/src/bin/jp2/convert.c",
+  "file": "/opt/openjpeg/src/bin/jp2/convert.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_decompress.dir/convertbmp.c.o   -c /opt/openjpeg/src/bin/jp2/convertbmp.c",
+  "file": "/opt/openjpeg/src/bin/jp2/convertbmp.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_decompress.dir/index.c.o   -c /opt/openjpeg/src/bin/jp2/index.c",
+  "file": "/opt/openjpeg/src/bin/jp2/index.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_decompress.dir/__/common/color.c.o   -c /opt/openjpeg/src/bin/common/color.c",
+  "file": "/opt/openjpeg/src/bin/common/color.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_decompress.dir/__/common/opj_getopt.c.o   -c /opt/openjpeg/src/bin/common/opj_getopt.c",
+  "file": "/opt/openjpeg/src/bin/common/opj_getopt.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_decompress.dir/converttif.c.o   -c /opt/openjpeg/src/bin/jp2/converttif.c",
+  "file": "/opt/openjpeg/src/bin/jp2/converttif.c"
+},
+{
+  "directory": "/opt/openjpeg/build/src/bin/jp2",
+  "command": "/usr/bin/cc  -I/opt/openjpeg/build/src/lib/openjp2 -I/opt/openjpeg/build/src/bin/common -I/opt/openjpeg/src/lib/openjp2 -I/opt/openjpeg/src/bin/common    -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement -o CMakeFiles/opj_decompress.dir/convertpng.c.o   -c /opt/openjpeg/src/bin/jp2/convertpng.c",
+  "file": "/opt/openjpeg/src/bin/jp2/convertpng.c"
+}
+]

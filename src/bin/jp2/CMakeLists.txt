@@ -48,6 +48,9 @@ foreach(exe opj_decompress opj_compress opj_dump)
   target_link_libraries(${exe} ${OPENJPEG_LIBRARY_NAME}
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
     )
+  if(USE_RUST_LIB)
+    target_link_libraries(${exe} dl)
+  endif()
   # To support universal exe:
   if(ZLIB_FOUND AND APPLE)
     target_link_libraries(${exe} z)
