@@ -1,26 +1,26 @@
 use ::libc;
 extern "C" {
   pub type opj_mutex_t;
-  #[no_mangle]
+
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_aligned_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_aligned_free(ptr: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_event_msg(
     event_mgr: *mut opj_event_mgr_t,
     event_type: OPJ_INT32,
     fmt: *const libc::c_char,
     _: ...
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_mutex_lock(mutex: *mut opj_mutex_t);
-  #[no_mangle]
+
   fn opj_mutex_unlock(mutex: *mut opj_mutex_t);
 }
 pub type size_t = libc::c_ulong;

@@ -5,116 +5,116 @@ extern "C" {
   pub type _IO_codecvt;
   pub type _IO_marker;
   pub type opj_thread_pool_t;
-  #[no_mangle]
+
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_image_data_alloc(size: OPJ_SIZE_T) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_image_data_free(ptr: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_free(m: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_event_msg(
     event_mgr: *mut opj_event_mgr_t,
     event_type: OPJ_INT32,
     fmt: *const libc::c_char,
     _: ...
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_procedure_list_create() -> *mut opj_procedure_list_t;
-  #[no_mangle]
+
   fn opj_procedure_list_destroy(p_list: *mut opj_procedure_list_t);
-  #[no_mangle]
+
   fn opj_procedure_list_add_procedure(
     p_validation_list: *mut opj_procedure_list_t,
     p_procedure: opj_procedure,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_procedure_list_get_nb_procedures(
     p_validation_list: *mut opj_procedure_list_t,
   ) -> OPJ_UINT32;
-  #[no_mangle]
+
   fn opj_procedure_list_get_first_procedure(
     p_validation_list: *mut opj_procedure_list_t,
   ) -> *mut opj_procedure;
-  #[no_mangle]
+
   fn opj_procedure_list_clear(p_validation_list: *mut opj_procedure_list_t);
-  #[no_mangle]
+
   fn opj_write_bytes_LE(p_buffer: *mut OPJ_BYTE, p_value: OPJ_UINT32, p_nb_bytes: OPJ_UINT32);
-  #[no_mangle]
+
   fn opj_read_bytes_LE(p_buffer: *const OPJ_BYTE, p_value: *mut OPJ_UINT32, p_nb_bytes: OPJ_UINT32);
-  #[no_mangle]
+
   fn opj_stream_read_data(
     p_stream: *mut opj_stream_private_t,
     p_buffer: *mut OPJ_BYTE,
     p_size: OPJ_SIZE_T,
     p_event_mgr: *mut opj_event_mgr,
   ) -> OPJ_SIZE_T;
-  #[no_mangle]
+
   fn opj_stream_write_data(
     p_stream: *mut opj_stream_private_t,
     p_buffer: *const OPJ_BYTE,
     p_size: OPJ_SIZE_T,
     p_event_mgr: *mut opj_event_mgr,
   ) -> OPJ_SIZE_T;
-  #[no_mangle]
+
   fn opj_stream_skip(
     p_stream: *mut opj_stream_private_t,
     p_size: OPJ_OFF_T,
     p_event_mgr: *mut opj_event_mgr,
   ) -> OPJ_OFF_T;
-  #[no_mangle]
+
   fn opj_stream_tell(p_stream: *const opj_stream_private_t) -> OPJ_OFF_T;
-  #[no_mangle]
+
   fn opj_stream_get_number_byte_left(p_stream: *const opj_stream_private_t) -> OPJ_OFF_T;
-  #[no_mangle]
+
   fn opj_stream_seek(
     p_stream: *mut opj_stream_private_t,
     p_size: OPJ_OFF_T,
     p_event_mgr: *mut opj_event_mgr,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_stream_has_seek(p_stream: *const opj_stream_private_t) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_setup_decoder(j2k: *mut opj_j2k_t, parameters: *mut opj_dparameters_t);
-  #[no_mangle]
+
   fn opj_j2k_decoder_set_strict_mode(j2k: *mut opj_j2k_t, strict: OPJ_BOOL);
-  #[no_mangle]
+
   fn opj_j2k_set_threads(j2k: *mut opj_j2k_t, num_threads: OPJ_UINT32) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_create_compress() -> *mut opj_j2k_t;
-  #[no_mangle]
+
   fn opj_j2k_setup_encoder(
     p_j2k: *mut opj_j2k_t,
     parameters: *mut opj_cparameters_t,
     image: *mut opj_image_t,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_end_decompress(
     j2k: *mut opj_j2k_t,
     p_stream: *mut opj_stream_private_t,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_read_header(
     p_stream: *mut opj_stream_private_t,
     p_j2k: *mut opj_j2k_t,
     p_image: *mut *mut opj_image_t,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_destroy(p_j2k: *mut opj_j2k_t);
-  #[no_mangle]
+
   fn opj_j2k_decode_tile(
     p_j2k: *mut opj_j2k_t,
     p_tile_index: OPJ_UINT32,
@@ -123,7 +123,7 @@ extern "C" {
     p_stream: *mut opj_stream_private_t,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_read_tile_header(
     p_j2k: *mut opj_j2k_t,
     p_tile_index: *mut OPJ_UINT32,
@@ -137,14 +137,14 @@ extern "C" {
     p_stream: *mut opj_stream_private_t,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_set_decoded_components(
     p_j2k: *mut opj_j2k_t,
     numcomps: OPJ_UINT32,
     comps_indices: *const OPJ_UINT32,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_set_decode_area(
     p_j2k: *mut opj_j2k_t,
     p_image: *mut opj_image_t,
@@ -154,22 +154,22 @@ extern "C" {
     p_end_y: OPJ_INT32,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_create_decompress() -> *mut opj_j2k_t;
-  #[no_mangle]
+
   fn j2k_dump(p_j2k: *mut opj_j2k_t, flag: OPJ_INT32, out_stream: *mut FILE);
-  #[no_mangle]
+
   fn j2k_get_cstr_info(p_j2k: *mut opj_j2k_t) -> *mut opj_codestream_info_v2_t;
-  #[no_mangle]
+
   fn j2k_get_cstr_index(p_j2k: *mut opj_j2k_t) -> *mut opj_codestream_index_t;
-  #[no_mangle]
+
   fn opj_j2k_decode(
     j2k: *mut opj_j2k_t,
     p_stream: *mut opj_stream_private_t,
     p_image: *mut opj_image_t,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_get_tile(
     p_j2k: *mut opj_j2k_t,
     p_stream: *mut opj_stream_private_t,
@@ -177,19 +177,19 @@ extern "C" {
     p_manager: *mut opj_event_mgr_t,
     tile_index: OPJ_UINT32,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_set_decoded_resolution_factor(
     p_j2k: *mut opj_j2k_t,
     res_factor: OPJ_UINT32,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_encoder_set_extra_options(
     p_j2k: *mut opj_j2k_t,
     p_options: *const *const libc::c_char,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_write_tile(
     p_j2k: *mut opj_j2k_t,
     p_tile_index: OPJ_UINT32,
@@ -198,20 +198,20 @@ extern "C" {
     p_stream: *mut opj_stream_private_t,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_encode(
     p_j2k: *mut opj_j2k_t,
     cio: *mut opj_stream_private_t,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_start_compress(
     p_j2k: *mut opj_j2k_t,
     p_stream: *mut opj_stream_private_t,
     p_image: *mut opj_image_t,
     p_manager: *mut opj_event_mgr_t,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_j2k_end_compress(
     p_j2k: *mut opj_j2k_t,
     cio: *mut opj_stream_private_t,

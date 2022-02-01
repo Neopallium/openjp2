@@ -4,38 +4,38 @@ extern "C" {
   pub type opj_tls_t;
   pub type opj_thread_pool_t;
   pub type opj_sparse_array_int32;
-  #[no_mangle]
+
   fn floor(_: libc::c_double) -> libc::c_double;
-  #[no_mangle]
+
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_aligned_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_aligned_free(ptr: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_aligned_32_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_free(m: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_thread_pool_submit_job(
     tp: *mut opj_thread_pool_t,
     job_fn: opj_job_fn,
     user_data: *mut libc::c_void,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_thread_pool_wait_completion(tp: *mut opj_thread_pool_t, max_remaining_jobs: libc::c_int);
-  #[no_mangle]
+
   fn opj_thread_pool_get_thread_count(tp: *mut opj_thread_pool_t) -> libc::c_int;
-  #[no_mangle]
+
   fn opj_sparse_array_int32_create(
     width: OPJ_UINT32,
     height: OPJ_UINT32,
     block_width: OPJ_UINT32,
     block_height: OPJ_UINT32,
   ) -> *mut opj_sparse_array_int32_t;
-  #[no_mangle]
+
   fn opj_sparse_array_int32_write(
     sa: *mut opj_sparse_array_int32_t,
     x0: OPJ_UINT32,
@@ -47,7 +47,7 @@ extern "C" {
     src_line_stride: OPJ_UINT32,
     forgiving: OPJ_BOOL,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_sparse_array_int32_read(
     sa: *const opj_sparse_array_int32_t,
     x0: OPJ_UINT32,
@@ -59,7 +59,7 @@ extern "C" {
     dest_line_stride: OPJ_UINT32,
     forgiving: OPJ_BOOL,
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_sparse_array_int32_free(sa: *mut opj_sparse_array_int32_t);
 }
 pub type size_t = libc::c_ulong;

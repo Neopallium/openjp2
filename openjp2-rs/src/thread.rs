@@ -3,13 +3,13 @@ extern "C" {
   pub type opj_mutex_t;
   pub type opj_cond_t;
   pub type opj_thread_t;
-  #[no_mangle]
+
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_free(m: *mut libc::c_void);
 }
 pub type size_t = libc::c_ulong;

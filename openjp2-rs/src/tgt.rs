@@ -1,23 +1,23 @@
 use ::libc;
 extern "C" {
-  #[no_mangle]
+
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_free(m: *mut libc::c_void);
-  #[no_mangle]
+
   fn opj_event_msg(
     event_mgr: *mut opj_event_mgr_t,
     event_type: OPJ_INT32,
     fmt: *const libc::c_char,
     _: ...
   ) -> OPJ_BOOL;
-  #[no_mangle]
+
   fn opj_bio_write(bio: *mut opj_bio_t, v: OPJ_UINT32, n: OPJ_UINT32);
-  #[no_mangle]
+
   fn opj_bio_read(bio: *mut opj_bio_t, n: OPJ_UINT32) -> OPJ_UINT32;
 }
 pub type size_t = libc::c_ulong;

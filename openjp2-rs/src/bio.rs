@@ -1,8 +1,8 @@
 use ::libc;
 extern "C" {
-  #[no_mangle]
+
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
-  #[no_mangle]
+
   fn opj_free(m: *mut libc::c_void);
 }
 pub type size_t = libc::c_ulong;

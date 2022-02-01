@@ -1,6 +1,6 @@
 use ::libc;
 extern "C" {
-  #[no_mangle]
+
   fn getrusage(__who: __rusage_who_t, __usage: *mut rusage) -> libc::c_int;
 }
 pub type __time_t = libc::c_long;
