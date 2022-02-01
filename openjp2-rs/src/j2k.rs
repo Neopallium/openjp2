@@ -1394,7 +1394,6 @@ static mut MCT_ELEMENT_SIZE: [OPJ_UINT32; 4] =
     [2 as libc::c_int as OPJ_UINT32, 4 as libc::c_int as OPJ_UINT32,
      4 as libc::c_int as OPJ_UINT32, 8 as libc::c_int as OPJ_UINT32];
 static mut j2k_mct_read_functions_to_float: [opj_j2k_mct_function; 4] =
-    unsafe {
         [Some(opj_j2k_read_int16_to_float as
                   unsafe extern "C" fn(_: *const libc::c_void,
                                        _: *mut libc::c_void, _: OPJ_UINT32)
@@ -1410,10 +1409,8 @@ static mut j2k_mct_read_functions_to_float: [opj_j2k_mct_function; 4] =
          Some(opj_j2k_read_float64_to_float as
                   unsafe extern "C" fn(_: *const libc::c_void,
                                        _: *mut libc::c_void, _: OPJ_UINT32)
-                      -> ())]
-    };
+                      -> ())];
 static mut j2k_mct_read_functions_to_int32: [opj_j2k_mct_function; 4] =
-    unsafe {
         [Some(opj_j2k_read_int16_to_int32 as
                   unsafe extern "C" fn(_: *const libc::c_void,
                                        _: *mut libc::c_void, _: OPJ_UINT32)
@@ -1429,10 +1426,8 @@ static mut j2k_mct_read_functions_to_int32: [opj_j2k_mct_function; 4] =
          Some(opj_j2k_read_float64_to_int32 as
                   unsafe extern "C" fn(_: *const libc::c_void,
                                        _: *mut libc::c_void, _: OPJ_UINT32)
-                      -> ())]
-    };
+                      -> ())];
 static mut j2k_mct_write_functions_from_float: [opj_j2k_mct_function; 4] =
-    unsafe {
         [Some(opj_j2k_write_float_to_int16 as
                   unsafe extern "C" fn(_: *const libc::c_void,
                                        _: *mut libc::c_void, _: OPJ_UINT32)
@@ -1448,11 +1443,9 @@ static mut j2k_mct_write_functions_from_float: [opj_j2k_mct_function; 4] =
          Some(opj_j2k_write_float_to_float64 as
                   unsafe extern "C" fn(_: *const libc::c_void,
                                        _: *mut libc::c_void, _: OPJ_UINT32)
-                      -> ())]
-    };
+                      -> ())];
 static mut j2k_memory_marker_handler_tab:
        [opj_dec_memory_marker_handler_t; 23] =
-    unsafe {
         [{
              let mut init =
                  opj_dec_memory_marker_handler{id:
@@ -1975,8 +1968,7 @@ static mut j2k_memory_marker_handler_tab:
                                                        OPJ_UINT32,
                                                handler: None,};
              init
-         }]
-    };
+         }];
 unsafe extern "C" fn opj_j2k_read_int16_to_float(mut p_src_data:
                                                      *const libc::c_void,
                                                  mut p_dest_data:
@@ -3438,7 +3430,7 @@ unsafe extern "C" fn opj_j2k_write_com(mut p_j2k: *mut opj_j2k_t,
 */
 unsafe extern "C" fn opj_j2k_read_com(mut p_j2k: *mut opj_j2k_t,
                                       mut p_header_data: *mut OPJ_BYTE,
-                                      mut p_header_size: OPJ_UINT32,
+                                      mut _p_header_size: OPJ_UINT32,
                                       mut p_manager: *mut opj_event_mgr_t)
  -> OPJ_BOOL {
     /* preconditions */
@@ -6746,7 +6738,7 @@ unsafe extern "C" fn opj_j2k_read_sot(mut p_j2k: *mut opj_j2k_t,
 /* *
  * Write one or more PLT markers in the provided buffer
  */
-unsafe extern "C" fn opj_j2k_write_plt_in_memory(mut p_j2k: *mut opj_j2k_t,
+unsafe extern "C" fn opj_j2k_write_plt_in_memory(mut _p_j2k: *mut opj_j2k_t,
                                                  mut marker_info:
                                                      *mut opj_tcd_marker_info_t,
                                                  mut p_data: *mut OPJ_BYTE,
@@ -7490,7 +7482,7 @@ unsafe extern "C" fn opj_j2k_get_tp_stride(mut p_tcp: *mut opj_tcp_t)
                                                                                     libc::c_uint)
                as OPJ_FLOAT32;
 }
-unsafe extern "C" fn opj_j2k_get_default_stride(mut p_tcp: *mut opj_tcp_t)
+unsafe extern "C" fn opj_j2k_get_default_stride(mut _p_tcp: *mut opj_tcp_t)
  -> OPJ_FLOAT32 {
     return 0 as libc::c_int as OPJ_FLOAT32;
 }
@@ -9552,7 +9544,7 @@ unsafe extern "C" fn opj_j2k_read_cbd(mut p_j2k: *mut opj_j2k_t,
 */
 unsafe extern "C" fn opj_j2k_read_cap(mut p_j2k: *mut opj_j2k_t,
                                       mut p_header_data: *mut OPJ_BYTE,
-                                      mut p_header_size: OPJ_UINT32,
+                                      mut _p_header_size: OPJ_UINT32,
                                       mut p_manager: *mut opj_event_mgr_t)
  -> OPJ_BOOL {
     /* preconditions */
@@ -9603,7 +9595,7 @@ unsafe extern "C" fn opj_j2k_read_cap(mut p_j2k: *mut opj_j2k_t,
 */
 unsafe extern "C" fn opj_j2k_read_cpf(mut p_j2k: *mut opj_j2k_t,
                                       mut p_header_data: *mut OPJ_BYTE,
-                                      mut p_header_size: OPJ_UINT32,
+                                      mut _p_header_size: OPJ_UINT32,
                                       mut p_manager: *mut opj_event_mgr_t)
  -> OPJ_BOOL {
     /* preconditions */
@@ -10067,7 +10059,7 @@ unsafe extern "C" fn opj_j2k_get_imf_max_NL(mut parameters:
 unsafe extern "C" fn opj_j2k_set_imf_parameters(mut parameters:
                                                     *mut opj_cparameters_t,
                                                 mut image: *mut opj_image_t,
-                                                mut p_manager:
+                                                mut _p_manager:
                                                     *mut opj_event_mgr_t) {
     let rsiz = (*parameters).rsiz;
     let profile = (rsiz as libc::c_int & 0xff00 as libc::c_int) as OPJ_UINT16;
@@ -10391,13 +10383,8 @@ unsafe extern "C" fn opj_j2k_is_imf_compliant(mut parameters:
             }
         }
         _ => {
-            __assert_fail(b"0\x00" as *const u8 as *const libc::c_char,
-                          b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as
-                              *const u8 as *const libc::c_char,
-                          7377 as libc::c_int as libc::c_uint,
-                          (*::std::mem::transmute::<&[u8; 89],
-                                                    &[libc::c_char; 89]>(b"OPJ_BOOL opj_j2k_is_imf_compliant(opj_cparameters_t *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-            return 0 as libc::c_int
+            panic!("Unknown OPJ_PROFILE");
+            //C: assert(0);
         }
     }
     if (*parameters).roi_compno != -(1 as libc::c_int) {
@@ -11671,10 +11658,10 @@ unsafe extern "C" fn opj_j2k_add_tlmarker(mut tileno: OPJ_UINT32,
  * -----------------------------------------------------------------------
  */
 #[no_mangle]
-pub unsafe extern "C" fn opj_j2k_end_decompress(mut p_j2k: *mut opj_j2k_t,
-                                                mut p_stream:
+pub unsafe extern "C" fn opj_j2k_end_decompress(mut _p_j2k: *mut opj_j2k_t,
+                                                mut _p_stream:
                                                     *mut opj_stream_private_t,
-                                                mut p_manager:
+                                                mut _p_manager:
                                                     *mut opj_event_mgr_t)
  -> OPJ_BOOL {
     return 1 as libc::c_int;
@@ -12251,10 +12238,10 @@ pub unsafe extern "C" fn opj_j2k_setup_mct_encoding(mut p_tcp: *mut opj_tcp_t,
 /* *
  * Builds the tcd decoder to use to decode tile.
  */
-unsafe extern "C" fn opj_j2k_build_decoder(mut p_j2k: *mut opj_j2k_t,
-                                           mut p_stream:
+unsafe extern "C" fn opj_j2k_build_decoder(mut _p_j2k: *mut opj_j2k_t,
+                                           mut _p_stream:
                                                *mut opj_stream_private_t,
-                                           mut p_manager:
+                                           mut _p_manager:
                                                *mut opj_event_mgr_t)
  -> OPJ_BOOL {
     /* add here initialization of cp
@@ -12264,10 +12251,10 @@ unsafe extern "C" fn opj_j2k_build_decoder(mut p_j2k: *mut opj_j2k_t,
 /* *
  * Builds the tcd encoder to use to encode tile.
  */
-unsafe extern "C" fn opj_j2k_build_encoder(mut p_j2k: *mut opj_j2k_t,
-                                           mut p_stream:
+unsafe extern "C" fn opj_j2k_build_encoder(mut _p_j2k: *mut opj_j2k_t,
+                                           mut _p_stream:
                                                *mut opj_stream_private_t,
-                                           mut p_manager:
+                                           mut _p_manager:
                                                *mut opj_event_mgr_t)
  -> OPJ_BOOL {
     /* add here initialization of cp
@@ -15906,13 +15893,15 @@ pub unsafe extern "C" fn j2k_dump(mut p_j2k: *mut opj_j2k_t,
         }
     }
     /* Dump the codestream info of the current tile */
-    (flag & 4 as libc::c_int) != 0;
+    if (flag & 4 as libc::c_int) != 0 {
+    }
     /* Dump the codestream index from main header */
     if flag & 16 as libc::c_int != 0 {
         opj_j2k_dump_MH_index(p_j2k, out_stream);
     }
     /* Dump the codestream index of the current tile */
-    (flag & 32 as libc::c_int) != 0;
+    if (flag & 32 as libc::c_int) != 0 {
+    }
 }
 unsafe extern "C" fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t,
                                            mut out_stream: *mut FILE) {
@@ -17395,13 +17384,8 @@ pub unsafe extern "C" fn opj_j2k_encode(mut p_j2k: *mut opj_j2k_t,
             if l_current_data.is_null() {
                 /* Should not happen in practice, but will avoid Coverity to */
                 /* complain about a null pointer dereference */
-                __assert_fail(b"0\x00" as *const u8 as *const libc::c_char,
-                              b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as
-                                  *const u8 as *const libc::c_char,
-                              12306 as libc::c_int as libc::c_uint,
-                              (*::std::mem::transmute::<&[u8; 80],
-                                                        &[libc::c_char; 80]>(b"OPJ_BOOL opj_j2k_encode(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-                return 0 as libc::c_int
+                panic!("");
+                // C: assert(0);
             }
             /* copy image data (32 bit) to l_current_data as contiguous, all-component, zero offset buffer */
             /* 32 bit components @ 8 bit precision get converted to 8 bit */
@@ -17532,7 +17516,7 @@ pub unsafe extern "C" fn opj_j2k_start_compress(mut p_j2k: *mut opj_j2k_t,
 }
 unsafe extern "C" fn opj_j2k_pre_write_tile(mut p_j2k: *mut opj_j2k_t,
                                             mut p_tile_index: OPJ_UINT32,
-                                            mut p_stream:
+                                            mut _p_stream:
                                                 *mut opj_stream_private_t,
                                             mut p_manager:
                                                 *mut opj_event_mgr_t)
@@ -18828,7 +18812,6 @@ unsafe extern "C" fn opj_j2k_init_info(mut p_j2k: *mut opj_j2k_t,
                                        mut p_stream: *mut opj_stream_private,
                                        mut p_manager: *mut opj_event_mgr)
  -> OPJ_BOOL {
-    let mut l_cstr_info = 0 as *mut opj_codestream_info_t;
     /* preconditions */
     if !p_j2k.is_null() {
     } else {
@@ -18860,7 +18843,9 @@ unsafe extern "C" fn opj_j2k_init_info(mut p_j2k: *mut opj_j2k_t,
                                                 &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_init_info(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
     }
     /* TODO mergeV2: check this part which use cstr_info */
-    /*l_cstr_info = p_j2k->cstr_info;
+    /*
+    let mut l_cstr_info = 0 as *mut opj_codestream_info_t;
+    l_cstr_info = p_j2k->cstr_info;
 
     if (l_cstr_info)  {
             OPJ_UINT32 compno;

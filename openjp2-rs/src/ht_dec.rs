@@ -1647,7 +1647,7 @@ unsafe extern "C" fn rev_read(mut vlcp: *mut rev_struct_t) {
     // test unstuff (previous byte is >0x8F), and this byte is 0x7F
     bits =
         (8 as
-             libc::c_uint).wrapping_sub((if (*vlcp).unstuff != 0 &&
+             libc::c_uint).wrapping_sub(if (*vlcp).unstuff != 0 &&
                                                 val >> 24 as libc::c_int &
                                                     0x7f as libc::c_int as
                                                         libc::c_uint ==
@@ -1656,7 +1656,7 @@ unsafe extern "C" fn rev_read(mut vlcp: *mut rev_struct_t) {
                                              1 as libc::c_uint
                                          } else {
                                              0 as libc::c_uint
-                                         })); //this is for the next byte
+                                         }); //this is for the next byte
     unstuff =
         (val >> 24 as libc::c_int > 0x8f as libc::c_int as libc::c_uint) as
             libc::c_int; //process the next byte
@@ -1666,7 +1666,7 @@ unsafe extern "C" fn rev_read(mut vlcp: *mut rev_struct_t) {
     bits =
         (bits as
              libc::c_uint).wrapping_add((8 as
-                                             libc::c_uint).wrapping_sub((if unstuff
+                                             libc::c_uint).wrapping_sub(if unstuff
                                                                                 !=
                                                                                 0
                                                                                 &&
@@ -1695,7 +1695,7 @@ unsafe extern "C" fn rev_read(mut vlcp: *mut rev_struct_t) {
                                                                              0
                                                                                  as
                                                                                  libc::c_uint
-                                                                         })))
+                                                                         }))
             as OPJ_UINT32 as OPJ_UINT32;
     unstuff =
         (val >> 16 as libc::c_int & 0xff as libc::c_int as libc::c_uint >
@@ -1706,7 +1706,7 @@ unsafe extern "C" fn rev_read(mut vlcp: *mut rev_struct_t) {
     bits =
         (bits as
              libc::c_uint).wrapping_add((8 as
-                                             libc::c_uint).wrapping_sub((if unstuff
+                                             libc::c_uint).wrapping_sub(if unstuff
                                                                                 !=
                                                                                 0
                                                                                 &&
@@ -1735,7 +1735,7 @@ unsafe extern "C" fn rev_read(mut vlcp: *mut rev_struct_t) {
                                                                              0
                                                                                  as
                                                                                  libc::c_uint
-                                                                         })))
+                                                                         }))
             as OPJ_UINT32 as OPJ_UINT32;
     unstuff =
         (val >> 8 as libc::c_int & 0xff as libc::c_int as libc::c_uint >
@@ -1744,7 +1744,7 @@ unsafe extern "C" fn rev_read(mut vlcp: *mut rev_struct_t) {
     bits =
         (bits as
              libc::c_uint).wrapping_add((8 as
-                                             libc::c_uint).wrapping_sub((if unstuff
+                                             libc::c_uint).wrapping_sub(if unstuff
                                                                                 !=
                                                                                 0
                                                                                 &&
@@ -1769,7 +1769,7 @@ unsafe extern "C" fn rev_read(mut vlcp: *mut rev_struct_t) {
                                                                              0
                                                                                  as
                                                                                  libc::c_uint
-                                                                         })))
+                                                                         }))
             as OPJ_UINT32 as OPJ_UINT32;
     unstuff =
         (val & 0xff as libc::c_int as libc::c_uint >
@@ -1842,14 +1842,14 @@ unsafe extern "C" fn rev_init(mut vlcp: *mut rev_struct_t,
         d_0 = *fresh5 as OPJ_UINT64;
         d_bits =
             (8 as
-                 libc::c_uint).wrapping_sub((if (*vlcp).unstuff != 0 &&
+                 libc::c_uint).wrapping_sub(if (*vlcp).unstuff != 0 &&
                                                     d_0 &
                                                         0x7f as libc::c_int as
                                                             libc::c_ulong ==
                                                         0x7f as libc::c_int as
                                                             libc::c_ulong {
                                                  1 as libc::c_uint
-                                             } else { 0 as libc::c_uint }));
+                                             } else { 0 as libc::c_uint });
         (*vlcp).tmp |= d_0 << (*vlcp).bits;
         (*vlcp).bits =
             ((*vlcp).bits as libc::c_uint).wrapping_add(d_bits) as OPJ_UINT32
@@ -1957,14 +1957,14 @@ unsafe extern "C" fn rev_read_mrp(mut mrp: *mut rev_struct_t) {
     //test if the last byte > 0x8F (unstuff must be true) and this is 0x7F
     bits =
         (8 as
-             libc::c_uint).wrapping_sub((if (*mrp).unstuff != 0 &&
+             libc::c_uint).wrapping_sub(if (*mrp).unstuff != 0 &&
                                                 val >> 24 as libc::c_int &
                                                     0x7f as libc::c_int as
                                                         libc::c_uint ==
                                                     0x7f as libc::c_int as
                                                         libc::c_uint {
                                              1 as libc::c_uint
-                                         } else { 0 as libc::c_uint }));
+                                         } else { 0 as libc::c_uint });
     unstuff =
         (val >> 24 as libc::c_int > 0x8f as libc::c_int as libc::c_uint) as
             libc::c_int;
@@ -1975,7 +1975,7 @@ unsafe extern "C" fn rev_read_mrp(mut mrp: *mut rev_struct_t) {
     bits =
         (bits as
              libc::c_uint).wrapping_add((8 as
-                                             libc::c_uint).wrapping_sub((if unstuff
+                                             libc::c_uint).wrapping_sub(if unstuff
                                                                                 !=
                                                                                 0
                                                                                 &&
@@ -2004,7 +2004,7 @@ unsafe extern "C" fn rev_read_mrp(mut mrp: *mut rev_struct_t) {
                                                                              0
                                                                                  as
                                                                                  libc::c_uint
-                                                                         })))
+                                                                         }))
             as OPJ_UINT32 as OPJ_UINT32;
     unstuff =
         (val >> 16 as libc::c_int & 0xff as libc::c_int as libc::c_uint >
@@ -2015,7 +2015,7 @@ unsafe extern "C" fn rev_read_mrp(mut mrp: *mut rev_struct_t) {
     bits =
         (bits as
              libc::c_uint).wrapping_add((8 as
-                                             libc::c_uint).wrapping_sub((if unstuff
+                                             libc::c_uint).wrapping_sub(if unstuff
                                                                                 !=
                                                                                 0
                                                                                 &&
@@ -2044,7 +2044,7 @@ unsafe extern "C" fn rev_read_mrp(mut mrp: *mut rev_struct_t) {
                                                                              0
                                                                                  as
                                                                                  libc::c_uint
-                                                                         })))
+                                                                         }))
             as OPJ_UINT32 as OPJ_UINT32;
     unstuff =
         (val >> 8 as libc::c_int & 0xff as libc::c_int as libc::c_uint >
@@ -2053,7 +2053,7 @@ unsafe extern "C" fn rev_read_mrp(mut mrp: *mut rev_struct_t) {
     bits =
         (bits as
              libc::c_uint).wrapping_add((8 as
-                                             libc::c_uint).wrapping_sub((if unstuff
+                                             libc::c_uint).wrapping_sub(if unstuff
                                                                                 !=
                                                                                 0
                                                                                 &&
@@ -2078,7 +2078,7 @@ unsafe extern "C" fn rev_read_mrp(mut mrp: *mut rev_struct_t) {
                                                                              0
                                                                                  as
                                                                                  libc::c_uint
-                                                                         })))
+                                                                         }))
             as OPJ_UINT32 as OPJ_UINT32;
     unstuff =
         (val & 0xff as libc::c_int as libc::c_uint >
@@ -2144,14 +2144,14 @@ unsafe extern "C" fn rev_init_mrp(mut mrp: *mut rev_struct_t,
             } else { 0 as libc::c_int } as OPJ_UINT64;
         d_bits =
             (8 as
-                 libc::c_uint).wrapping_sub((if (*mrp).unstuff != 0 &&
+                 libc::c_uint).wrapping_sub(if (*mrp).unstuff != 0 &&
                                                     d &
                                                         0x7f as libc::c_int as
                                                             libc::c_ulong ==
                                                         0x7f as libc::c_int as
                                                             libc::c_ulong {
                                                  1 as libc::c_uint
-                                             } else { 0 as libc::c_uint }));
+                                             } else { 0 as libc::c_uint });
         (*mrp).tmp |= d << (*mrp).bits;
         (*mrp).bits =
             ((*mrp).bits as libc::c_uint).wrapping_add(d_bits) as OPJ_UINT32
@@ -2669,11 +2669,11 @@ unsafe extern "C" fn frwd_read(mut msp: *mut frwd_struct_t) {
     // we accumulate in t and keep a count of the number of bits in bits
     bits =
         (8 as
-             libc::c_uint).wrapping_sub((if (*msp).unstuff != 0 {
+             libc::c_uint).wrapping_sub(if (*msp).unstuff != 0 {
                                              1 as libc::c_uint
                                          } else {
                                              0 as libc::c_uint
-                                         })); // Do we need unstuffing next?
+                                         }); // Do we need unstuffing next?
     t = val & 0xff as libc::c_int as libc::c_uint; // for next byte
     unstuff =
         (val & 0xff as libc::c_int as libc::c_uint ==
@@ -2685,7 +2685,7 @@ unsafe extern "C" fn frwd_read(mut msp: *mut frwd_struct_t) {
     bits =
         (bits as
              libc::c_uint).wrapping_add((8 as
-                                             libc::c_uint).wrapping_sub((if unstuff
+                                             libc::c_uint).wrapping_sub(if unstuff
                                                                                 !=
                                                                                 0
                                                                             {
@@ -2696,7 +2696,7 @@ unsafe extern "C" fn frwd_read(mut msp: *mut frwd_struct_t) {
                                                                              0
                                                                                  as
                                                                                  libc::c_uint
-                                                                         })))
+                                                                         }))
             as OPJ_UINT32 as OPJ_UINT32;
     unstuff =
         (val >> 8 as libc::c_int & 0xff as libc::c_int as libc::c_uint ==
@@ -2707,7 +2707,7 @@ unsafe extern "C" fn frwd_read(mut msp: *mut frwd_struct_t) {
     bits =
         (bits as
              libc::c_uint).wrapping_add((8 as
-                                             libc::c_uint).wrapping_sub((if unstuff
+                                             libc::c_uint).wrapping_sub(if unstuff
                                                                                 !=
                                                                                 0
                                                                             {
@@ -2718,7 +2718,7 @@ unsafe extern "C" fn frwd_read(mut msp: *mut frwd_struct_t) {
                                                                              0
                                                                                  as
                                                                                  libc::c_uint
-                                                                         })))
+                                                                         }))
             as OPJ_UINT32 as OPJ_UINT32;
     unstuff =
         (val >> 16 as libc::c_int & 0xff as libc::c_int as libc::c_uint ==
@@ -2729,7 +2729,7 @@ unsafe extern "C" fn frwd_read(mut msp: *mut frwd_struct_t) {
     bits =
         (bits as
              libc::c_uint).wrapping_add((8 as
-                                             libc::c_uint).wrapping_sub((if unstuff
+                                             libc::c_uint).wrapping_sub(if unstuff
                                                                                 !=
                                                                                 0
                                                                             {
@@ -2740,7 +2740,7 @@ unsafe extern "C" fn frwd_read(mut msp: *mut frwd_struct_t) {
                                                                              0
                                                                                  as
                                                                                  libc::c_uint
-                                                                         })))
+                                                                         }))
             as OPJ_UINT32 as OPJ_UINT32;
     (*msp).unstuff =
         (val >> 24 as libc::c_int & 0xff as libc::c_int as libc::c_uint ==
@@ -2806,7 +2806,7 @@ unsafe extern "C" fn frwd_init(mut msp: *mut frwd_struct_t,
         (*msp).bits =
             ((*msp).bits as
                  libc::c_uint).wrapping_add((8 as
-                                                 libc::c_uint).wrapping_sub((if (*msp).unstuff
+                                                 libc::c_uint).wrapping_sub(if (*msp).unstuff
                                                                                     !=
                                                                                     0
                                                                                 {
@@ -2817,7 +2817,7 @@ unsafe extern "C" fn frwd_init(mut msp: *mut frwd_struct_t,
                                                                                  0
                                                                                      as
                                                                                      libc::c_uint
-                                                                             })))
+                                                                             }))
                 as OPJ_UINT32 as OPJ_UINT32;
         (*msp).unstuff =
             (d & 0xff as libc::c_int as libc::c_ulong ==
@@ -2982,14 +2982,14 @@ unsafe extern "C" fn opj_t1_allocate_buffers(mut t1: *mut opj_t1_t,
 pub unsafe extern "C" fn opj_t1_ht_decode_cblk(mut t1: *mut opj_t1_t,
                                                mut cblk:
                                                    *mut opj_tcd_cblk_dec_t,
-                                               mut orient: OPJ_UINT32,
+                                               mut _orient: OPJ_UINT32,
                                                mut roishift: OPJ_UINT32,
                                                mut cblksty: OPJ_UINT32,
                                                mut p_manager:
                                                    *mut opj_event_mgr_t,
                                                mut p_manager_mutex:
                                                    *mut opj_mutex_t,
-                                               mut check_pterm: OPJ_BOOL)
+                                               mut _check_pterm: OPJ_BOOL)
  -> OPJ_BOOL {
     let mut cblkdata = 0 as *mut OPJ_BYTE; // fetched data from VLC bitstream
     let mut coded_data = 0 as *mut OPJ_UINT8; // loop indices

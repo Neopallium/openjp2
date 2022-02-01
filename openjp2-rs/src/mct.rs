@@ -224,7 +224,7 @@ pub unsafe extern "C" fn opj_mct_encode_custom(mut pCodingdata: *mut OPJ_BYTE,
                                                mut n: OPJ_SIZE_T,
                                                mut pData: *mut *mut OPJ_BYTE,
                                                mut pNbComp: OPJ_UINT32,
-                                               mut isSigned: OPJ_UINT32)
+                                               mut _isSigned: OPJ_UINT32)
  -> OPJ_BOOL {
     let mut lMct = pCodingdata as *mut OPJ_FLOAT32;
     let mut i: OPJ_SIZE_T = 0;
@@ -287,7 +287,7 @@ pub unsafe extern "C" fn opj_mct_decode_custom(mut pDecodingData:
                                                mut n: OPJ_SIZE_T,
                                                mut pData: *mut *mut OPJ_BYTE,
                                                mut pNbComp: OPJ_UINT32,
-                                               mut isSigned: OPJ_UINT32)
+                                               mut _isSigned: OPJ_UINT32)
  -> OPJ_BOOL {
     let mut lMct = 0 as *mut OPJ_FLOAT32;
     let mut i: OPJ_SIZE_T = 0;

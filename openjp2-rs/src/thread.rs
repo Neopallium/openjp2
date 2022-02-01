@@ -132,31 +132,31 @@ pub unsafe extern "C" fn opj_mutex_create() -> *mut opj_mutex_t {
     return 0 as *mut opj_mutex_t;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_mutex_lock(mut mutex: *mut opj_mutex_t) { }
+pub unsafe extern "C" fn opj_mutex_lock(mut _mutex: *mut opj_mutex_t) { }
 #[no_mangle]
-pub unsafe extern "C" fn opj_mutex_unlock(mut mutex: *mut opj_mutex_t) { }
+pub unsafe extern "C" fn opj_mutex_unlock(mut _mutex: *mut opj_mutex_t) { }
 #[no_mangle]
-pub unsafe extern "C" fn opj_mutex_destroy(mut mutex: *mut opj_mutex_t) { }
+pub unsafe extern "C" fn opj_mutex_destroy(mut _mutex: *mut opj_mutex_t) { }
 #[no_mangle]
 pub unsafe extern "C" fn opj_cond_create() -> *mut opj_cond_t {
     return 0 as *mut opj_cond_t;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_cond_wait(mut cond: *mut opj_cond_t,
-                                       mut mutex: *mut opj_mutex_t) {
+pub unsafe extern "C" fn opj_cond_wait(mut _cond: *mut opj_cond_t,
+                                       mut _mutex: *mut opj_mutex_t) {
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_cond_signal(mut cond: *mut opj_cond_t) { }
+pub unsafe extern "C" fn opj_cond_signal(mut _cond: *mut opj_cond_t) { }
 #[no_mangle]
-pub unsafe extern "C" fn opj_cond_destroy(mut cond: *mut opj_cond_t) { }
+pub unsafe extern "C" fn opj_cond_destroy(mut _cond: *mut opj_cond_t) { }
 #[no_mangle]
-pub unsafe extern "C" fn opj_thread_create(mut thread_fn: opj_thread_fn,
-                                           mut user_data: *mut libc::c_void)
+pub unsafe extern "C" fn opj_thread_create(mut _thread_fn: opj_thread_fn,
+                                           mut _user_data: *mut libc::c_void)
  -> *mut opj_thread_t {
     return 0 as *mut opj_thread_t;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_thread_join(mut thread: *mut opj_thread_t) { }
+pub unsafe extern "C" fn opj_thread_join(mut _thread: *mut opj_thread_t) { }
 unsafe extern "C" fn opj_tls_new() -> *mut opj_tls_t {
     return opj_calloc(1 as libc::c_int as size_t,
                       ::std::mem::size_of::<opj_tls_t>() as libc::c_ulong) as

@@ -35977,7 +35977,7 @@ unsafe extern "C" fn opj_t1_getwmsedec(mut nmsedec: OPJ_INT32,
                                        mut bpno: OPJ_INT32,
                                        mut qmfbid: OPJ_UINT32,
                                        mut stepsize: OPJ_FLOAT64,
-                                       mut numcomps: OPJ_UINT32,
+                                       mut _numcomps: OPJ_UINT32,
                                        mut mct_norms: *const OPJ_FLOAT64,
                                        mut mct_numcomps: OPJ_UINT32)
  -> OPJ_FLOAT64 {
@@ -37478,7 +37478,7 @@ unsafe extern "C" fn opj_t1_encode_cblk(mut t1: *mut opj_t1_t,
             (*pass_1).rate = (*pass_1).rate.wrapping_sub(1)
         }
         (*pass_1).len =
-            (*pass_1).rate.wrapping_sub((if passno ==
+            (*pass_1).rate.wrapping_sub(if passno ==
                                                 0 as libc::c_int as
                                                     libc::c_uint {
                                              0 as libc::c_int as libc::c_uint
@@ -37490,7 +37490,7 @@ unsafe extern "C" fn opj_t1_encode_cblk(mut t1: *mut opj_t1_t,
                                                                                              libc::c_uint)
                                                                          as
                                                                          isize)).rate
-                                         }));
+                                         });
         passno = passno.wrapping_add(1)
     }
     return cumwmsedec;
