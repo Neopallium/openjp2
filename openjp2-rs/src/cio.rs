@@ -978,7 +978,7 @@ pub unsafe extern "C" fn opj_stream_skip(mut p_stream:
 pub unsafe extern "C" fn opj_stream_read_seek(mut p_stream:
                                                   *mut opj_stream_private_t,
                                               mut p_size: OPJ_OFF_T,
-                                              mut p_event_mgr:
+                                              mut _p_event_mgr:
                                                   *mut opj_event_mgr_t)
  -> OPJ_BOOL {
     (*p_stream).m_current_data = (*p_stream).m_stored_data;
@@ -1046,33 +1046,33 @@ pub unsafe extern "C" fn opj_stream_has_seek(mut p_stream:
                              -> OPJ_BOOL)) as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_stream_default_read(mut p_buffer:
+pub unsafe extern "C" fn opj_stream_default_read(mut _p_buffer:
                                                      *mut libc::c_void,
-                                                 mut p_nb_bytes: OPJ_SIZE_T,
-                                                 mut p_user_data:
+                                                 mut _p_nb_bytes: OPJ_SIZE_T,
+                                                 mut _p_user_data:
                                                      *mut libc::c_void)
  -> OPJ_SIZE_T {
     return -(1 as libc::c_int) as OPJ_SIZE_T;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_stream_default_write(mut p_buffer:
+pub unsafe extern "C" fn opj_stream_default_write(mut _p_buffer:
                                                       *mut libc::c_void,
-                                                  mut p_nb_bytes: OPJ_SIZE_T,
-                                                  mut p_user_data:
+                                                  mut _p_nb_bytes: OPJ_SIZE_T,
+                                                  mut _p_user_data:
                                                       *mut libc::c_void)
  -> OPJ_SIZE_T {
     return -(1 as libc::c_int) as OPJ_SIZE_T;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_stream_default_skip(mut p_nb_bytes: OPJ_OFF_T,
-                                                 mut p_user_data:
+pub unsafe extern "C" fn opj_stream_default_skip(mut _p_nb_bytes: OPJ_OFF_T,
+                                                 mut _p_user_data:
                                                      *mut libc::c_void)
  -> OPJ_OFF_T {
     return -(1 as libc::c_int) as OPJ_OFF_T;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_stream_default_seek(mut p_nb_bytes: OPJ_OFF_T,
-                                                 mut p_user_data:
+pub unsafe extern "C" fn opj_stream_default_seek(mut _p_nb_bytes: OPJ_OFF_T,
+                                                 mut _p_user_data:
                                                      *mut libc::c_void)
  -> OPJ_BOOL {
     return 0 as libc::c_int;

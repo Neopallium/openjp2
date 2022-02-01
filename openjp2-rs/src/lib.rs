@@ -21,7 +21,6 @@ extern crate libc;
 
 
 
-pub mod src {
 pub mod bio;
 pub mod cio;
 pub mod dwt;
@@ -44,5 +43,4 @@ pub mod t2;
 pub mod tcd;
 pub mod tgt;
 pub mod thread;
-} // mod src
 

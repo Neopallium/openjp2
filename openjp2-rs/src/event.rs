@@ -77,8 +77,8 @@ pub type opj_event_mgr_t = opj_event_mgr;
  * Default callback function.
  * Do nothing.
  */
-unsafe extern "C" fn opj_default_callback(mut msg: *const libc::c_char,
-                                          mut client_data:
+unsafe extern "C" fn opj_default_callback(mut _msg: *const libc::c_char,
+                                          mut _client_data:
                                               *mut libc::c_void) {
 }
 /* ----------------------------------------------------------------------- */

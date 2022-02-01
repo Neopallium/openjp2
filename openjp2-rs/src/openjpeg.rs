@@ -3456,7 +3456,9 @@ pub unsafe extern "C" fn opj_destroy_cstr_info(mut cstr_info:
             opj_free((**cstr_info).m_default_tile_info.tccp_info as
                          *mut libc::c_void);
         }
-        !(**cstr_info).tile_info.is_null();
+        if !(**cstr_info).tile_info.is_null() {
+            opj_free((**cstr_info).tile_info as *mut libc::c_void);
+        }
         opj_free(*cstr_info as *mut libc::c_void);
         *cstr_info = 0 as *mut opj_codestream_info_v2_t
     };

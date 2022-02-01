@@ -2179,7 +2179,7 @@ unsafe extern "C" fn opj_pi_update_encode_poc_and_final(mut p_cp:
                                                         mut p_ty1: OPJ_UINT32,
                                                         mut p_max_prec:
                                                             OPJ_UINT32,
-                                                        mut p_max_res:
+                                                        mut _p_max_res:
                                                             OPJ_UINT32,
                                                         mut p_dx_min:
                                                             OPJ_UINT32,
@@ -2355,7 +2355,7 @@ unsafe extern "C" fn opj_pi_update_decode_poc(mut p_pi:
                                                   *mut opj_pi_iterator_t,
                                               mut p_tcp: *mut opj_tcp_t,
                                               mut p_max_precision: OPJ_UINT32,
-                                              mut p_max_res: OPJ_UINT32) {
+                                              mut _p_max_res: OPJ_UINT32) {
     /* loop*/
     let mut pino: OPJ_UINT32 = 0;
     /* encoding parameters to set*/

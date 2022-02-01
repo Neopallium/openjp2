@@ -1225,9 +1225,9 @@ pub unsafe extern "C" fn opj_t2_encode_packets(mut p_t2: *mut opj_t2_t,
 }
 /* see issue 80 */
 /* issue 290 */
-unsafe extern "C" fn opj_null_jas_fprintf(mut file: *mut FILE,
-                                          mut format: *const libc::c_char,
-                                          mut args: ...) {
+unsafe extern "C" fn opj_null_jas_fprintf(mut _file: *mut FILE,
+                                          mut _format: *const libc::c_char,
+                                          mut _args: ...) {
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_t2_decode_packets(mut tcd: *mut opj_tcd_t,
@@ -1239,7 +1239,7 @@ pub unsafe extern "C" fn opj_t2_decode_packets(mut tcd: *mut opj_tcd_t,
                                                mut p_data_read:
                                                    *mut OPJ_UINT32,
                                                mut p_max_len: OPJ_UINT32,
-                                               mut p_cstr_index:
+                                               mut _p_cstr_index:
                                                    *mut opj_codestream_index_t,
                                                mut p_manager:
                                                    *mut opj_event_mgr_t)
@@ -2387,7 +2387,7 @@ unsafe extern "C" fn opj_t2_read_packet_data(mut p_t2: *mut opj_t2_t,
                                              mut p_src_data: *mut OPJ_BYTE,
                                              mut p_data_read: *mut OPJ_UINT32,
                                              mut p_max_length: OPJ_UINT32,
-                                             mut pack_info:
+                                             mut _pack_info:
                                                  *mut opj_packet_info_t,
                                              mut p_manager:
                                                  *mut opj_event_mgr_t)
@@ -2586,7 +2586,7 @@ unsafe extern "C" fn opj_t2_skip_packet_data(mut p_t2: *mut opj_t2_t,
                                              mut p_pi: *mut opj_pi_iterator_t,
                                              mut p_data_read: *mut OPJ_UINT32,
                                              mut p_max_length: OPJ_UINT32,
-                                             mut pack_info:
+                                             mut _pack_info:
                                                  *mut opj_packet_info_t,
                                              mut p_manager:
                                                  *mut opj_event_mgr_t)

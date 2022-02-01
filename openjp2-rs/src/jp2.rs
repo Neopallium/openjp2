@@ -1193,7 +1193,6 @@ pub type opj_jp2_img_header_writer_handler_t
     =
     opj_jp2_img_header_writer_handler;
 static mut jp2_header: [opj_jp2_header_handler_t; 3] =
-    unsafe {
         [{
              let mut init =
                  opj_jp2_header_handler{id:
@@ -1247,10 +1246,8 @@ static mut jp2_header: [opj_jp2_header_handler_t; 3] =
                                                                               *mut opj_event_mgr_t)
                                                          -> OPJ_BOOL),};
              init
-         }]
-    };
+         }];
 static mut jp2_img_header: [opj_jp2_header_handler_t; 6] =
-    unsafe {
         [{
              let mut init =
                  opj_jp2_header_handler{id:
@@ -1358,8 +1355,7 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] =
                                                                               *mut opj_event_mgr_t)
                                                          -> OPJ_BOOL),};
              init
-         }]
-    };
+         }];
 /* *
  * Reads a box header. The box is the way data is packed inside a jpeg2000 file structure.
  *

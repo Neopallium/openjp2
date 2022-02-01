@@ -1456,7 +1456,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row_real(mut rowIn:
                            } else { 1 as libc::c_int });
 }
 unsafe extern "C" fn opj_dwt_encode_h_func(mut user_data: *mut libc::c_void,
-                                           mut tls: *mut opj_tls_t) {
+                                           mut _tls: *mut opj_tls_t) {
     let mut j: OPJ_UINT32 = 0;
     let mut job = 0 as *mut opj_dwt_encode_h_job_t;
     job = user_data as *mut opj_dwt_encode_h_job_t;
@@ -1490,7 +1490,7 @@ unsafe extern "C" fn opj_dwt_encode_h_func(mut user_data: *mut libc::c_void,
     opj_free(job as *mut libc::c_void);
 }
 unsafe extern "C" fn opj_dwt_encode_v_func(mut user_data: *mut libc::c_void,
-                                           mut tls: *mut opj_tls_t) {
+                                           mut _tls: *mut opj_tls_t) {
     let mut j: OPJ_UINT32 = 0;
     let mut job = 0 as *mut opj_dwt_encode_v_job_t;
     job = user_data as *mut opj_dwt_encode_v_job_t;
@@ -2762,7 +2762,7 @@ unsafe extern "C" fn opj_dwt_max_resolution(mut r: *mut opj_tcd_resolution_t,
     return mr;
 }
 unsafe extern "C" fn opj_dwt_decode_h_func(mut user_data: *mut libc::c_void,
-                                           mut tls: *mut opj_tls_t) {
+                                           mut _tls: *mut opj_tls_t) {
     let mut j: OPJ_UINT32 = 0;
     let mut job = 0 as *mut opj_dwt_decode_h_job_t;
     job = user_data as *mut opj_dwt_decode_h_job_t;
@@ -2777,7 +2777,7 @@ unsafe extern "C" fn opj_dwt_decode_h_func(mut user_data: *mut libc::c_void,
     opj_free(job as *mut libc::c_void);
 }
 unsafe extern "C" fn opj_dwt_decode_v_func(mut user_data: *mut libc::c_void,
-                                           mut tls: *mut opj_tls_t) {
+                                           mut _tls: *mut opj_tls_t) {
     let mut j: OPJ_UINT32 = 0;
     let mut job = 0 as *mut opj_dwt_decode_v_job_t;
     job = user_data as *mut opj_dwt_decode_v_job_t;
@@ -3338,7 +3338,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_1(mut a: *mut OPJ_INT32,
                 opj_int_sub_no_overflow(*a.offset((1 as libc::c_int +
                                                        i * 2 as libc::c_int)
                                                       as isize),
-                                        opj_int_add_no_overflow(opj_int_add_no_overflow((if i
+                                        opj_int_add_no_overflow(opj_int_add_no_overflow(if i
                                                                                                 <
                                                                                                 0
                                                                                                     as
@@ -3378,8 +3378,8 @@ unsafe extern "C" fn opj_dwt_decode_partial_1(mut a: *mut OPJ_INT32,
                                                                                                                 as
                                                                                                                 isize)
                                                                                               })
-                                                                                         }),
-                                                                                        (if (i
+                                                                                         },
+                                                                                        if (i
                                                                                                  +
                                                                                                  1
                                                                                                      as
@@ -3431,7 +3431,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_1(mut a: *mut OPJ_INT32,
                                                                                                                 as
                                                                                                                 isize)
                                                                                               })
-                                                                                         })),
+                                                                                         }),
                                                                 2 as
                                                                     libc::c_int)
                                             >> 2 as libc::c_int);
@@ -3442,7 +3442,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_1(mut a: *mut OPJ_INT32,
             *a.offset((i * 2 as libc::c_int) as isize) =
                 opj_int_add_no_overflow(*a.offset((i * 2 as libc::c_int) as
                                                       isize),
-                                        opj_int_add_no_overflow((if i <
+                                        opj_int_add_no_overflow(if i <
                                                                         0 as
                                                                             libc::c_int
                                                                     {
@@ -3491,8 +3491,8 @@ unsafe extern "C" fn opj_dwt_decode_partial_1(mut a: *mut OPJ_INT32,
                                                                                         as
                                                                                         isize)
                                                                       })
-                                                                 }),
-                                                                (if (i -
+                                                                 },
+                                                                if (i -
                                                                          1 as
                                                                              libc::c_int)
                                                                         <
@@ -3552,14 +3552,14 @@ unsafe extern "C" fn opj_dwt_decode_partial_1(mut a: *mut OPJ_INT32,
                                                                                         as
                                                                                         isize)
                                                                       })
-                                                                 })) >>
+                                                                 }) >>
                                             1 as libc::c_int);
             i += 1
         }
     };
 }
 unsafe extern "C" fn opj_dwt_decode_partial_1_parallel(mut a: *mut OPJ_INT32,
-                                                       mut nb_cols:
+                                                       mut _nb_cols:
                                                            OPJ_UINT32,
                                                        mut dn: OPJ_INT32,
                                                        mut sn: OPJ_INT32,
@@ -4087,7 +4087,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_1_parallel(mut a: *mut OPJ_INT32,
                                                                                                                                                         as
                                                                                                                                                         libc::c_uint).wrapping_add(off)
                                                           as isize),
-                                            opj_int_add_no_overflow(opj_int_add_no_overflow((if i
+                                            opj_int_add_no_overflow(opj_int_add_no_overflow(if i
                                                                                                     <
                                                                                                     0
                                                                                                         as
@@ -4145,8 +4145,8 @@ unsafe extern "C" fn opj_dwt_decode_partial_1_parallel(mut a: *mut OPJ_INT32,
                                                                                                                     as
                                                                                                                     isize)
                                                                                                   })
-                                                                                             }),
-                                                                                            (if (i
+                                                                                             },
+                                                                                            if (i
                                                                                                      +
                                                                                                      1
                                                                                                          as
@@ -4216,7 +4216,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_1_parallel(mut a: *mut OPJ_INT32,
                                                                                                                     as
                                                                                                                     isize)
                                                                                                   })
-                                                                                             })),
+                                                                                             }),
                                                                     2 as
                                                                         libc::c_int)
                                                 >> 2 as libc::c_int);
@@ -4247,7 +4247,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_1_parallel(mut a: *mut OPJ_INT32,
                                                                                                                        as
                                                                                                                        libc::c_uint).wrapping_add(off)
                                                           as isize),
-                                            opj_int_add_no_overflow((if i <
+                                            opj_int_add_no_overflow(if i <
                                                                             0
                                                                                 as
                                                                                 libc::c_int
@@ -4316,8 +4316,8 @@ unsafe extern "C" fn opj_dwt_decode_partial_1_parallel(mut a: *mut OPJ_INT32,
                                                                                             as
                                                                                             isize)
                                                                           })
-                                                                     }),
-                                                                    (if (i -
+                                                                     },
+                                                                    if (i -
                                                                              1
                                                                                  as
                                                                                  libc::c_int)
@@ -4398,7 +4398,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_1_parallel(mut a: *mut OPJ_INT32,
                                                                                             as
                                                                                             isize)
                                                                           })
-                                                                     })) >>
+                                                                     }) >>
                                                 1 as libc::c_int);
                 off = off.wrapping_add(1)
             }
@@ -5670,7 +5670,7 @@ unsafe extern "C" fn opj_v8dwt_decode(mut dwt: *mut opj_v8dwt_t) {
                                OPJ_UINT32, -opj_dwt_alpha);
 }
 unsafe extern "C" fn opj_dwt97_decode_h_func(mut user_data: *mut libc::c_void,
-                                             mut tls: *mut opj_tls_t) {
+                                             mut _tls: *mut opj_tls_t) {
     let mut j: OPJ_UINT32 = 0;
     let mut job = 0 as *mut opj_dwt97_decode_h_job_t;
     let mut aj = 0 as *mut OPJ_FLOAT32;
@@ -5790,7 +5790,7 @@ unsafe extern "C" fn opj_dwt97_decode_h_func(mut user_data: *mut libc::c_void,
     opj_free(job as *mut libc::c_void);
 }
 unsafe extern "C" fn opj_dwt97_decode_v_func(mut user_data: *mut libc::c_void,
-                                             mut tls: *mut opj_tls_t) {
+                                             mut _tls: *mut opj_tls_t) {
     let mut j: OPJ_UINT32 = 0;
     let mut job = 0 as *mut opj_dwt97_decode_v_job_t;
     let mut aj = 0 as *mut OPJ_FLOAT32;
