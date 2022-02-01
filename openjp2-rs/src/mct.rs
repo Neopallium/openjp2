@@ -3,13 +3,6 @@ extern "C" {
   #[no_mangle]
   fn sqrt(_: libc::c_double) -> libc::c_double;
   #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
-  #[no_mangle]
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
   #[no_mangle]
   fn opj_free(m: *mut libc::c_void);
@@ -33,33 +26,12 @@ pub type OPJ_SIZE_T = size_t;
 unsafe extern "C" fn opj_int_fix_mul(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
   let mut temp = a as OPJ_INT64 * b as OPJ_INT64;
   temp += 4096 as libc::c_int as libc::c_long;
-  if temp >> 13 as libc::c_int <= 0x7fffffff as libc::c_int as OPJ_INT64 {
-  } else {
-    __assert_fail(
-      b"(temp >> 13) <= (OPJ_INT64)0x7FFFFFFF\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/opj_intmath.h\x00" as *const u8 as *const libc::c_char,
-      260 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 48], &[libc::c_char; 48]>(
-        b"OPJ_INT32 opj_int_fix_mul(OPJ_INT32, OPJ_INT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if temp >> 13 as libc::c_int
-    >= -(0x7fffffff as libc::c_int as OPJ_INT64) - 1 as libc::c_int as OPJ_INT64
-  {
-  } else {
-    __assert_fail(
-      b"(temp >> 13) >= (-(OPJ_INT64)0x7FFFFFFF - (OPJ_INT64)1)\x00" as *const u8
-        as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/opj_intmath.h\x00" as *const u8 as *const libc::c_char,
-      261 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 48], &[libc::c_char; 48]>(
-        b"OPJ_INT32 opj_int_fix_mul(OPJ_INT32, OPJ_INT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(temp >> 13 as libc::c_int <= 0x7fffffff as libc::c_int as OPJ_INT64);
+  assert!(
+    temp >> 13 as libc::c_int
+      >= -(0x7fffffff as libc::c_int as OPJ_INT64) - 1 as libc::c_int as OPJ_INT64
+  );
   return (temp >> 13 as libc::c_int) as OPJ_INT32;
 }
 /*

@@ -5,13 +5,6 @@ extern "C" {
   #[no_mangle]
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
   #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
-  #[no_mangle]
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
   #[no_mangle]
   fn opj_free(m: *mut libc::c_void);
@@ -58,8 +51,9 @@ pub type OPJ_SIZE_T = size_t;
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_sparse_array_int32 {
   pub width: OPJ_UINT32,
   pub height: OPJ_UINT32,
@@ -72,18 +66,7 @@ pub struct opj_sparse_array_int32 {
 pub type opj_sparse_array_int32_t = opj_sparse_array_int32;
 #[inline]
 unsafe extern "C" fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  if b != 0 {
-  } else {
-    __assert_fail(
-      b"b\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/opj_intmath.h\x00" as *const u8 as *const libc::c_char,
-      172 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 52], &[libc::c_char; 52]>(
-        b"OPJ_UINT32 opj_uint_ceildiv(OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(b != 0);
   return (a as OPJ_UINT64)
     .wrapping_add(b as libc::c_ulong)
     .wrapping_sub(1 as libc::c_int as libc::c_ulong)

@@ -2,7 +2,7 @@
 #
 C2RUST=~/opt/c2rust/target/release/c2rust
 
-rm -rf Cargo.* rust-toolchain build.rs lib.rs src target
+#rm -rf Cargo.* rust-toolchain build.rs lib.rs src target
 
 $C2RUST transpile --reduce-type-annotations \
   --emit-modules --emit-build-files \

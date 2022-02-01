@@ -13,13 +13,6 @@ extern "C" {
   #[no_mangle]
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
   #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
-  #[no_mangle]
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
   #[no_mangle]
   fn opj_aligned_malloc(size: size_t) -> *mut libc::c_void;
@@ -183,8 +176,9 @@ pub const OPJ_CLRSPC_UNKNOWN: COLOR_SPACE = -1;
 pub type OPJ_COLOR_SPACE = COLOR_SPACE;
 pub type opj_msg_callback =
   Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_poc {
   pub resno0: OPJ_UINT32,
   pub compno0: OPJ_UINT32,
@@ -224,8 +218,9 @@ pub struct opj_poc {
   pub ty0_t: OPJ_UINT32,
 }
 pub type opj_poc_t = opj_poc;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_image_comp {
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
@@ -242,8 +237,9 @@ pub struct opj_image_comp {
   pub alpha: OPJ_UINT16,
 }
 pub type opj_image_comp_t = opj_image_comp;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_image {
   pub x0: OPJ_UINT32,
   pub y0: OPJ_UINT32,
@@ -257,8 +253,9 @@ pub struct opj_image {
 }
 pub type opj_image_t = opj_image;
 pub type OPJ_BITFIELD = libc::c_uint;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_event_mgr {
   pub m_error_data: *mut libc::c_void,
   pub m_warning_data: *mut libc::c_void,
@@ -270,8 +267,9 @@ pub struct opj_event_mgr {
 pub type opj_event_mgr_t = opj_event_mgr;
 pub type opj_tls_free_func = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
 pub type opj_job_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_tls_t) -> ()>;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_cp {
   pub rsiz: OPJ_UINT16,
   pub tx0: OPJ_UINT32,
@@ -306,15 +304,17 @@ pub struct opj_cp {
   #[bitfield(padding)]
   pub c2rust_padding: [u8; 3],
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed {
   pub m_dec: opj_decoding_param_t,
   pub m_enc: opj_encoding_param_t,
 }
 pub type opj_encoding_param_t = opj_encoding_param;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_encoding_param {
   pub m_max_comp_size: OPJ_UINT32,
   pub m_tp_pos: OPJ_INT32,
@@ -329,15 +329,17 @@ pub struct opj_encoding_param {
   pub c2rust_padding: [u8; 6],
 }
 pub type opj_decoding_param_t = opj_decoding_param;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_decoding_param {
   pub m_reduce: OPJ_UINT32,
   pub m_layer: OPJ_UINT32,
 }
 pub type opj_tcp_t = opj_tcp;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_tcp {
   pub csty: OPJ_UINT32,
   pub prg: OPJ_PROG_ORDER,
@@ -376,8 +378,9 @@ pub struct opj_tcp {
   pub c2rust_padding: [u8; 7],
 }
 pub type opj_simple_mcc_decorrelation_data_t = opj_simple_mcc_decorrelation_data;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_simple_mcc_decorrelation_data {
   pub m_index: OPJ_UINT32,
   pub m_nb_comps: OPJ_UINT32,
@@ -389,8 +392,9 @@ pub struct opj_simple_mcc_decorrelation_data {
   pub c2rust_padding: [u8; 7],
 }
 pub type opj_mct_data_t = opj_mct_data;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_mct_data {
   pub m_element_type: J2K_MCT_ELEMENT_TYPE,
   pub m_array_type: J2K_MCT_ARRAY_TYPE,
@@ -410,8 +414,9 @@ pub const MCT_TYPE_FLOAT: MCT_ELEMENT_TYPE = 2;
 pub const MCT_TYPE_INT32: MCT_ELEMENT_TYPE = 1;
 pub const MCT_TYPE_INT16: MCT_ELEMENT_TYPE = 0;
 pub type opj_tccp_t = opj_tccp;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tccp {
   pub csty: OPJ_UINT32,
   pub numresolutions: OPJ_UINT32,
@@ -428,22 +433,25 @@ pub struct opj_tccp {
   pub m_dc_level_shift: OPJ_INT32,
 }
 pub type opj_stepsize_t = opj_stepsize;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_stepsize {
   pub expn: OPJ_INT32,
   pub mant: OPJ_INT32,
 }
 pub type opj_ppx = opj_ppx_struct;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_ppx_struct {
   pub m_data: *mut OPJ_BYTE,
   pub m_data_size: OPJ_UINT32,
 }
 pub type opj_cp_t = opj_cp;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_tcd {
   pub tp_pos: OPJ_INT32,
   pub tp_num: OPJ_UINT32,
@@ -468,14 +476,16 @@ pub struct opj_tcd {
   pub used_component: *mut OPJ_BOOL,
 }
 pub type opj_tcd_image_t = opj_tcd_image;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_image {
   pub tiles: *mut opj_tcd_tile_t,
 }
 pub type opj_tcd_tile_t = opj_tcd_tile;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_tile {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -489,8 +499,9 @@ pub struct opj_tcd_tile {
   pub packno: OPJ_UINT32,
 }
 pub type opj_tcd_tilecomp_t = opj_tcd_tilecomp;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_tilecomp {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -513,8 +524,9 @@ pub struct opj_tcd_tilecomp {
   pub numpix: OPJ_INT32,
 }
 pub type opj_tcd_resolution_t = opj_tcd_resolution;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_resolution {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -530,8 +542,9 @@ pub struct opj_tcd_resolution {
   pub win_y1: OPJ_UINT32,
 }
 pub type opj_tcd_band_t = opj_tcd_band;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_band {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -544,8 +557,9 @@ pub struct opj_tcd_band {
   pub stepsize: OPJ_FLOAT32,
 }
 pub type opj_tcd_precinct_t = opj_tcd_precinct;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_precinct {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -559,8 +573,9 @@ pub struct opj_tcd_precinct {
   pub imsbtree: *mut opj_tgt_tree_t,
 }
 pub type opj_tgt_tree_t = opj_tgt_tree;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tgt_tree {
   pub numleafsh: OPJ_UINT32,
   pub numleafsv: OPJ_UINT32,
@@ -569,24 +584,27 @@ pub struct opj_tgt_tree {
   pub nodes_size: OPJ_UINT32,
 }
 pub type opj_tgt_node_t = opj_tgt_node;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tgt_node {
   pub parent: *mut opj_tgt_node,
   pub value: OPJ_INT32,
   pub low: OPJ_INT32,
   pub known: OPJ_UINT32,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_0 {
   pub enc: *mut opj_tcd_cblk_enc_t,
   pub dec: *mut opj_tcd_cblk_dec_t,
   pub blocks: *mut libc::c_void,
 }
 pub type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_cblk_dec {
   pub segs: *mut opj_tcd_seg_t,
   pub chunks: *mut opj_tcd_seg_data_chunk_t,
@@ -606,15 +624,17 @@ pub struct opj_tcd_cblk_dec {
   pub decoded_data: *mut OPJ_INT32,
 }
 pub type opj_tcd_seg_data_chunk_t = opj_tcd_seg_data_chunk;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_seg_data_chunk {
   pub data: *mut OPJ_BYTE,
   pub len: OPJ_UINT32,
 }
 pub type opj_tcd_seg_t = opj_tcd_seg;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_seg {
   pub len: OPJ_UINT32,
   pub numpasses: OPJ_UINT32,
@@ -624,8 +644,9 @@ pub struct opj_tcd_seg {
   pub newlen: OPJ_UINT32,
 }
 pub type opj_tcd_cblk_enc_t = opj_tcd_cblk_enc;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_cblk_enc {
   pub data: *mut OPJ_BYTE,
   pub layers: *mut opj_tcd_layer_t,
@@ -642,8 +663,9 @@ pub struct opj_tcd_cblk_enc {
   pub totalpasses: OPJ_UINT32,
 }
 pub type opj_tcd_pass_t = opj_tcd_pass;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_tcd_pass {
   pub rate: OPJ_UINT32,
   pub distortiondec: OPJ_FLOAT64,
@@ -654,16 +676,18 @@ pub struct opj_tcd_pass {
   pub c2rust_padding: [u8; 3],
 }
 pub type opj_tcd_layer_t = opj_tcd_layer;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_layer {
   pub numpasses: OPJ_UINT32,
   pub len: OPJ_UINT32,
   pub disto: OPJ_FLOAT64,
   pub data: *mut OPJ_BYTE,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_mqc_state {
   pub qeval: OPJ_UINT32,
   pub mps: OPJ_UINT32,
@@ -671,8 +695,9 @@ pub struct opj_mqc_state {
   pub nlps: *const opj_mqc_state,
 }
 pub type opj_mqc_state_t = opj_mqc_state;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_mqc {
   pub c: OPJ_UINT32,
   pub a: OPJ_UINT32,
@@ -689,8 +714,9 @@ pub struct opj_mqc {
 pub type opj_mqc_t = opj_mqc;
 pub type opj_tcd_t = opj_tcd;
 pub type opj_flag_t = OPJ_UINT32;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_t1 {
   pub mqc: opj_mqc_t,
   pub data: *mut OPJ_INT32,
@@ -705,8 +731,9 @@ pub struct opj_t1 {
   pub cblkdatabuffersize: OPJ_UINT32,
 }
 pub type opj_t1_t = opj_t1;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_t1_cblk_encode_processing_job_t {
   pub compno: OPJ_UINT32,
   pub resno: OPJ_UINT32,
@@ -720,8 +747,9 @@ pub struct opj_t1_cblk_encode_processing_job_t {
   pub pret: *mut OPJ_BOOL,
   pub mutex: *mut opj_mutex_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_t1_cblk_decode_processing_job_t {
   pub whole_tile_decoding: OPJ_BOOL,
   pub resno: OPJ_UINT32,
@@ -22345,42 +22373,10 @@ unsafe extern "C" fn opj_t1_allocate_buffers(
   let mut flags_stride: OPJ_UINT32 = 0;
   /* No risk of overflow. Prior checks ensure those assert are met */
   /* They are per the specification */
-  if w <= 1024 as libc::c_int as libc::c_uint {
-  } else {
-    __assert_fail(
-      b"w <= 1024\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/t1.c\x00" as *const u8 as *const libc::c_char,
-      1459 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
-        b"OPJ_BOOL opj_t1_allocate_buffers(opj_t1_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if h <= 1024 as libc::c_int as libc::c_uint {
-  } else {
-    __assert_fail(
-      b"h <= 1024\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/t1.c\x00" as *const u8 as *const libc::c_char,
-      1460 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
-        b"OPJ_BOOL opj_t1_allocate_buffers(opj_t1_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if w.wrapping_mul(h) <= 4096 as libc::c_int as libc::c_uint {
-  } else {
-    __assert_fail(
-      b"w * h <= 4096\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/t1.c\x00" as *const u8 as *const libc::c_char,
-      1461 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
-        b"OPJ_BOOL opj_t1_allocate_buffers(opj_t1_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(w <= 1024 as libc::c_int as libc::c_uint);
+  assert!(h <= 1024 as libc::c_int as libc::c_uint);
+  assert!(w.wrapping_mul(h) <= 4096 as libc::c_int as libc::c_uint);
   /* encoder uses tile buffer, so no need to allocate */
   let mut datasize = w.wrapping_mul(h);
   if datasize > (*t1).datasize {
@@ -22728,19 +22724,7 @@ unsafe extern "C" fn opj_t1_clbl_decode_processor(
   /* Both can be non NULL if for example decoding a full tile and then */
   /* partially a tile. In which case partial decoding should be the */
   /* priority */
-  if !(*cblk).decoded_data.is_null() || !(*tilec).data.is_null() {
-  } else {
-    __assert_fail(
-      b"(cblk->decoded_data != NULL) || (tilec->data != NULL)\x00" as *const u8
-        as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/t1.c\x00" as *const u8 as *const libc::c_char,
-      1759 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 55], &[libc::c_char; 55]>(
-        b"void opj_t1_clbl_decode_processor(void *, opj_tls_t *)\x00",
-      ))
-      .as_ptr(),
-    ); /* if (tccp->qmfbid == 0) */
-  } /* if (tccp->qmfbid == 0) */
+  assert!(!(*cblk).decoded_data.is_null() || !(*tilec).data.is_null()); /* if (tccp->qmfbid == 0) */
   if !(*cblk).decoded_data.is_null() {
     let mut cblk_size = cblk_w.wrapping_mul(cblk_h); /* resno */
     if (*tccp).qmfbid == 1 as libc::c_int as libc::c_uint {
@@ -23803,16 +23787,7 @@ unsafe extern "C" fn opj_t1_encode_cblk(
       &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
     /* Prevent generation of FF as last data byte of a pass*/
     /* For terminating passes, the flushing procedure ensured this already */
-    if (*pass_1).rate > 0 as libc::c_int as libc::c_uint {
-    } else {
-      __assert_fail(b"pass->rate > 0\x00" as *const u8 as
-                              *const libc::c_char,
-                          b"/opt/openjpeg/src/lib/openjp2/t1.c\x00" as
-                              *const u8 as *const libc::c_char,
-                          2564 as libc::c_int as libc::c_uint,
-                          (*::std::mem::transmute::<&[u8; 178],
-                                                    &[libc::c_char; 178]>(b"double opj_t1_encode_cblk(opj_t1_t *, opj_tcd_cblk_enc_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_FLOAT64, OPJ_UINT32, OPJ_UINT32, const OPJ_FLOAT64 *, OPJ_UINT32)\x00")).as_ptr());
-    }
+    assert!((*pass_1).rate > 0 as libc::c_int as libc::c_uint);
     if *(*cblk).data.offset(
       (*pass_1)
         .rate

@@ -75,13 +75,6 @@ extern "C" {
   #[no_mangle]
   fn sprintf(_: *mut libc::c_char, _: *const libc::c_char, _: ...) -> libc::c_int;
   #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
-  #[no_mangle]
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
   #[no_mangle]
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
@@ -263,8 +256,9 @@ pub type __int64_t = libc::c_long;
 pub type __uint64_t = libc::c_ulong;
 pub type __off_t = libc::c_long;
 pub type __off64_t = libc::c_long;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct _IO_FILE {
   pub _flags: libc::c_int,
   pub _IO_read_ptr: *mut libc::c_char,
@@ -350,8 +344,9 @@ pub const OPJ_CLRSPC_UNKNOWN: COLOR_SPACE = -1;
 pub type OPJ_COLOR_SPACE = COLOR_SPACE;
 pub type opj_msg_callback =
   Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_poc {
   pub resno0: OPJ_UINT32,
   pub compno0: OPJ_UINT32,
@@ -391,8 +386,9 @@ pub struct opj_poc {
   pub ty0_t: OPJ_UINT32,
 }
 pub type opj_poc_t = opj_poc;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_cparameters {
   pub tile_size_on: OPJ_BOOL,
   pub cp_tx0: libc::c_int,
@@ -456,8 +452,9 @@ pub struct opj_cparameters {
   pub rsiz: OPJ_UINT16,
 }
 pub type opj_cparameters_t = opj_cparameters;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_dparameters {
   pub cp_reduce: OPJ_UINT32,
   pub cp_layer: OPJ_UINT32,
@@ -489,8 +486,9 @@ pub type opj_stream_skip_fn =
 pub type opj_stream_seek_fn =
   Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut libc::c_void) -> OPJ_BOOL>;
 pub type opj_stream_free_user_data_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_image_comp {
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
@@ -507,8 +505,9 @@ pub struct opj_image_comp {
   pub alpha: OPJ_UINT16,
 }
 pub type opj_image_comp_t = opj_image_comp;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_image {
   pub x0: OPJ_UINT32,
   pub y0: OPJ_UINT32,
@@ -521,8 +520,9 @@ pub struct opj_image {
   pub icc_profile_len: OPJ_UINT32,
 }
 pub type opj_image_t = opj_image;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_packet_info {
   pub start_pos: OPJ_OFF_T,
   pub end_ph_pos: OPJ_OFF_T,
@@ -530,16 +530,18 @@ pub struct opj_packet_info {
   pub disto: libc::c_double,
 }
 pub type opj_packet_info_t = opj_packet_info;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_marker_info {
   pub type_0: libc::c_ushort,
   pub pos: OPJ_OFF_T,
   pub len: libc::c_int,
 }
 pub type opj_marker_info_t = opj_marker_info;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tp_info {
   pub tp_start_pos: libc::c_int,
   pub tp_end_header: libc::c_int,
@@ -548,8 +550,9 @@ pub struct opj_tp_info {
   pub tp_numpacks: libc::c_int,
 }
 pub type opj_tp_info_t = opj_tp_info;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tile_info {
   pub thresh: *mut libc::c_double,
   pub tileno: libc::c_int,
@@ -570,8 +573,9 @@ pub struct opj_tile_info {
   pub tp: *mut opj_tp_info_t,
 }
 pub type opj_tile_info_t = opj_tile_info;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_codestream_info {
   pub D_max: libc::c_double,
   pub packno: libc::c_int,
@@ -597,8 +601,9 @@ pub struct opj_codestream_info {
   pub tile: *mut opj_tile_info_t,
 }
 pub type opj_codestream_info_t = opj_codestream_info;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tccp_info {
   pub compno: OPJ_UINT32,
   pub csty: OPJ_UINT32,
@@ -616,8 +621,9 @@ pub struct opj_tccp_info {
   pub prch: [OPJ_UINT32; 33],
 }
 pub type opj_tccp_info_t = opj_tccp_info;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tile_v2_info {
   pub tileno: libc::c_int,
   pub csty: OPJ_UINT32,
@@ -627,8 +633,9 @@ pub struct opj_tile_v2_info {
   pub tccp_info: *mut opj_tccp_info_t,
 }
 pub type opj_tile_info_v2_t = opj_tile_v2_info;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_codestream_info_v2 {
   pub tx0: OPJ_UINT32,
   pub ty0: OPJ_UINT32,
@@ -641,16 +648,18 @@ pub struct opj_codestream_info_v2 {
   pub tile_info: *mut opj_tile_info_v2_t,
 }
 pub type opj_codestream_info_v2_t = opj_codestream_info_v2;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tp_index {
   pub start_pos: OPJ_OFF_T,
   pub end_header: OPJ_OFF_T,
   pub end_pos: OPJ_OFF_T,
 }
 pub type opj_tp_index_t = opj_tp_index;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tile_index {
   pub tileno: OPJ_UINT32,
   pub nb_tps: OPJ_UINT32,
@@ -664,8 +673,9 @@ pub struct opj_tile_index {
   pub packet_index: *mut opj_packet_info_t,
 }
 pub type opj_tile_index_t = opj_tile_index;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_codestream_index {
   pub main_head_start: OPJ_OFF_T,
   pub main_head_end: OPJ_OFF_T,
@@ -678,8 +688,9 @@ pub struct opj_codestream_index {
 }
 pub type opj_codestream_index_t = opj_codestream_index;
 pub type OPJ_BITFIELD = libc::c_uint;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_event_mgr {
   pub m_error_data: *mut libc::c_void,
   pub m_warning_data: *mut libc::c_void,
@@ -690,16 +701,18 @@ pub struct opj_event_mgr {
 }
 pub type opj_event_mgr_t = opj_event_mgr;
 pub type opj_procedure = Option<unsafe extern "C" fn() -> ()>;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_procedure_list {
   pub m_nb_procedures: OPJ_UINT32,
   pub m_nb_max_procedures: OPJ_UINT32,
   pub m_procedures: *mut opj_procedure,
 }
 pub type opj_procedure_list_t = opj_procedure_list;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_stream_private {
   pub m_user_data: *mut libc::c_void,
   pub m_free_user_data_fn: opj_stream_free_user_data_fn,
@@ -730,8 +743,9 @@ pub struct opj_stream_private {
   pub m_status: OPJ_UINT32,
 }
 pub type opj_stream_private_t = opj_stream_private;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_cp {
   pub rsiz: OPJ_UINT16,
   pub tx0: OPJ_UINT32,
@@ -766,15 +780,17 @@ pub struct opj_cp {
   #[bitfield(padding)]
   pub c2rust_padding: [u8; 3],
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed {
   pub m_dec: opj_decoding_param_t,
   pub m_enc: opj_encoding_param_t,
 }
 pub type opj_encoding_param_t = opj_encoding_param;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_encoding_param {
   pub m_max_comp_size: OPJ_UINT32,
   pub m_tp_pos: OPJ_INT32,
@@ -789,15 +805,17 @@ pub struct opj_encoding_param {
   pub c2rust_padding: [u8; 6],
 }
 pub type opj_decoding_param_t = opj_decoding_param;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_decoding_param {
   pub m_reduce: OPJ_UINT32,
   pub m_layer: OPJ_UINT32,
 }
 pub type opj_tcp_t = opj_tcp;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_tcp {
   pub csty: OPJ_UINT32,
   pub prg: OPJ_PROG_ORDER,
@@ -836,8 +854,9 @@ pub struct opj_tcp {
   pub c2rust_padding: [u8; 7],
 }
 pub type opj_simple_mcc_decorrelation_data_t = opj_simple_mcc_decorrelation_data;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_simple_mcc_decorrelation_data {
   pub m_index: OPJ_UINT32,
   pub m_nb_comps: OPJ_UINT32,
@@ -849,8 +868,9 @@ pub struct opj_simple_mcc_decorrelation_data {
   pub c2rust_padding: [u8; 7],
 }
 pub type opj_mct_data_t = opj_mct_data;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_mct_data {
   pub m_element_type: J2K_MCT_ELEMENT_TYPE,
   pub m_array_type: J2K_MCT_ARRAY_TYPE,
@@ -870,8 +890,9 @@ pub const MCT_TYPE_FLOAT: MCT_ELEMENT_TYPE = 2;
 pub const MCT_TYPE_INT32: MCT_ELEMENT_TYPE = 1;
 pub const MCT_TYPE_INT16: MCT_ELEMENT_TYPE = 0;
 pub type opj_tccp_t = opj_tccp;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tccp {
   pub csty: OPJ_UINT32,
   pub numresolutions: OPJ_UINT32,
@@ -888,15 +909,17 @@ pub struct opj_tccp {
   pub m_dc_level_shift: OPJ_INT32,
 }
 pub type opj_stepsize_t = opj_stepsize;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_stepsize {
   pub expn: OPJ_INT32,
   pub mant: OPJ_INT32,
 }
 pub type opj_ppx = opj_ppx_struct;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_ppx_struct {
   pub m_data: *mut OPJ_BYTE,
   pub m_data_size: OPJ_UINT32,
@@ -914,8 +937,9 @@ pub const J2K_STATE_MHSIZ: J2K_STATUS = 2;
 pub const J2K_STATE_MHSOC: J2K_STATUS = 1;
 pub const J2K_STATE_NONE: J2K_STATUS = 0;
 pub type opj_cp_t = opj_cp;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_j2k_dec {
   pub m_state: OPJ_UINT32,
   pub m_default_tcp: *mut opj_tcp_t,
@@ -950,8 +974,9 @@ pub struct opj_j2k_dec {
   pub c2rust_padding: [u8; 7],
 }
 pub type opj_j2k_dec_t = opj_j2k_dec;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_j2k_enc {
   pub m_current_poc_tile_part_number: OPJ_UINT32,
   pub m_current_tile_part_number: OPJ_UINT32,
@@ -970,8 +995,9 @@ pub struct opj_j2k_enc {
   pub m_nb_comps: OPJ_UINT32,
 }
 pub type opj_j2k_enc_t = opj_j2k_enc;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_tcd {
   pub tp_pos: OPJ_INT32,
   pub tp_num: OPJ_UINT32,
@@ -996,14 +1022,16 @@ pub struct opj_tcd {
   pub used_component: *mut OPJ_BOOL,
 }
 pub type opj_tcd_image_t = opj_tcd_image;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_image {
   pub tiles: *mut opj_tcd_tile_t,
 }
 pub type opj_tcd_tile_t = opj_tcd_tile;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_tile {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -1017,8 +1045,9 @@ pub struct opj_tcd_tile {
   pub packno: OPJ_UINT32,
 }
 pub type opj_tcd_tilecomp_t = opj_tcd_tilecomp;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_tilecomp {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -1041,8 +1070,9 @@ pub struct opj_tcd_tilecomp {
   pub numpix: OPJ_INT32,
 }
 pub type opj_tcd_resolution_t = opj_tcd_resolution;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_resolution {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -1058,8 +1088,9 @@ pub struct opj_tcd_resolution {
   pub win_y1: OPJ_UINT32,
 }
 pub type opj_tcd_band_t = opj_tcd_band;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_band {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -1072,8 +1103,9 @@ pub struct opj_tcd_band {
   pub stepsize: OPJ_FLOAT32,
 }
 pub type opj_tcd_precinct_t = opj_tcd_precinct;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_precinct {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -1087,8 +1119,9 @@ pub struct opj_tcd_precinct {
   pub imsbtree: *mut opj_tgt_tree_t,
 }
 pub type opj_tgt_tree_t = opj_tgt_tree;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tgt_tree {
   pub numleafsh: OPJ_UINT32,
   pub numleafsv: OPJ_UINT32,
@@ -1097,24 +1130,27 @@ pub struct opj_tgt_tree {
   pub nodes_size: OPJ_UINT32,
 }
 pub type opj_tgt_node_t = opj_tgt_node;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tgt_node {
   pub parent: *mut opj_tgt_node,
   pub value: OPJ_INT32,
   pub low: OPJ_INT32,
   pub known: OPJ_UINT32,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_0 {
   pub enc: *mut opj_tcd_cblk_enc_t,
   pub dec: *mut opj_tcd_cblk_dec_t,
   pub blocks: *mut libc::c_void,
 }
 pub type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_cblk_dec {
   pub segs: *mut opj_tcd_seg_t,
   pub chunks: *mut opj_tcd_seg_data_chunk_t,
@@ -1134,15 +1170,17 @@ pub struct opj_tcd_cblk_dec {
   pub decoded_data: *mut OPJ_INT32,
 }
 pub type opj_tcd_seg_data_chunk_t = opj_tcd_seg_data_chunk;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_seg_data_chunk {
   pub data: *mut OPJ_BYTE,
   pub len: OPJ_UINT32,
 }
 pub type opj_tcd_seg_t = opj_tcd_seg;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_seg {
   pub len: OPJ_UINT32,
   pub numpasses: OPJ_UINT32,
@@ -1152,8 +1190,9 @@ pub struct opj_tcd_seg {
   pub newlen: OPJ_UINT32,
 }
 pub type opj_tcd_cblk_enc_t = opj_tcd_cblk_enc;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_cblk_enc {
   pub data: *mut OPJ_BYTE,
   pub layers: *mut opj_tcd_layer_t,
@@ -1170,8 +1209,9 @@ pub struct opj_tcd_cblk_enc {
   pub totalpasses: OPJ_UINT32,
 }
 pub type opj_tcd_pass_t = opj_tcd_pass;
-#[derive(Copy, Clone, BitfieldStruct)]
+
 #[repr(C)]
+#[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_tcd_pass {
   pub rate: OPJ_UINT32,
   pub distortiondec: OPJ_FLOAT64,
@@ -1182,16 +1222,18 @@ pub struct opj_tcd_pass {
   pub c2rust_padding: [u8; 3],
 }
 pub type opj_tcd_layer_t = opj_tcd_layer;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_layer {
   pub numpasses: OPJ_UINT32,
   pub len: OPJ_UINT32,
   pub disto: OPJ_FLOAT64,
   pub data: *mut OPJ_BYTE,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_j2k {
   pub m_is_decoder: OPJ_BOOL,
   pub m_specific_param: C2RustUnnamed_1,
@@ -1208,8 +1250,9 @@ pub struct opj_j2k {
   pub ihdr_h: OPJ_UINT32,
   pub dump_state: libc::c_uint,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_1 {
   pub m_decoder: opj_j2k_dec_t,
   pub m_encoder: opj_j2k_enc_t,
@@ -1222,15 +1265,17 @@ pub type opj_j2k_mct_function =
 /*@}*/
 /* ----------------------------------------------------------------------- */
 pub type j2k_prog_order_t = j2k_prog_order;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct j2k_prog_order {
   pub enum_prog: OPJ_PROG_ORDER,
   pub str_prog: [libc::c_char; 5],
 }
 pub type opj_dec_memory_marker_handler_t = opj_dec_memory_marker_handler;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_dec_memory_marker_handler {
   pub id: OPJ_UINT32,
   pub states: OPJ_UINT32,
@@ -1244,8 +1289,9 @@ pub struct opj_dec_memory_marker_handler {
   >,
 }
 pub type opj_tcd_marker_info_t = opj_tcd_marker_info;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tcd_marker_info {
   pub need_PLT: OPJ_BOOL,
   pub packet_count: OPJ_UINT32,
@@ -1261,18 +1307,7 @@ unsafe extern "C" fn opj_uint_max(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_U
 }
 #[inline]
 unsafe extern "C" fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  if b != 0 {
-  } else {
-    __assert_fail(
-      b"b\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/opj_intmath.h\x00" as *const u8 as *const libc::c_char,
-      172 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 52], &[libc::c_char; 52]>(
-        b"OPJ_UINT32 opj_uint_ceildiv(OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(b != 0);
   return (a as OPJ_UINT64)
     .wrapping_add(b as libc::c_ulong)
     .wrapping_sub(1 as libc::c_int as libc::c_ulong)
@@ -1316,18 +1351,7 @@ unsafe extern "C" fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_U
 }
 #[inline]
 unsafe extern "C" fn opj_int_ceildiv(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  if b != 0 {
-  } else {
-    __assert_fail(
-      b"b\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/opj_intmath.h\x00" as *const u8 as *const libc::c_char,
-      162 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 48], &[libc::c_char; 48]>(
-        b"OPJ_INT32 opj_int_ceildiv(OPJ_INT32, OPJ_INT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(b != 0);
   return ((a as OPJ_INT64 + b as libc::c_long - 1 as libc::c_int as libc::c_long)
     / b as libc::c_long) as OPJ_INT32;
 }
@@ -2143,16 +2167,7 @@ unsafe extern "C" fn opj_j2k_check_poc_val(
   let mut step_r = p_num_comps.wrapping_mul(step_c);
   let mut step_l = p_nb_resolutions.wrapping_mul(step_r);
   let mut loss = 0 as libc::c_int;
-  if p_nb_pocs > 0 as libc::c_int as libc::c_uint {
-  } else {
-    __assert_fail(b"p_nb_pocs > 0\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1678 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 129],
-                                                &[libc::c_char; 129]>(b"OPJ_BOOL opj_j2k_check_poc_val(const opj_poc_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+  assert!(p_nb_pocs > 0 as libc::c_int as libc::c_uint);
   packet_array = opj_calloc(
     (step_l as size_t).wrapping_mul(p_num_layers as libc::c_ulong),
     ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong,
@@ -2245,75 +2260,22 @@ unsafe extern "C" fn opj_j2k_get_num_tp(
   let mut tcp = 0 as *mut opj_tcp_t;
   let mut l_current_poc = 0 as *mut opj_poc_t;
   /*  preconditions */
-  if tileno < (*cp).tw.wrapping_mul((*cp).th) {
-  } else {
-    __assert_fail(
-      b"tileno < (cp->tw * cp->th)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1759 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 66], &[libc::c_char; 66]>(
-        b"OPJ_UINT32 opj_j2k_get_num_tp(opj_cp_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if pino
-    < (*(*cp).tcps.offset(tileno as isize))
-      .numpocs
-      .wrapping_add(1 as libc::c_int as libc::c_uint)
-  {
-  } else {
-    __assert_fail(
-      b"pino < (cp->tcps[tileno].numpocs + 1)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1760 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 66], &[libc::c_char; 66]>(
-        b"OPJ_UINT32 opj_j2k_get_num_tp(opj_cp_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(tileno < (*cp).tw.wrapping_mul((*cp).th));
+  assert!(
+    pino
+      < (*(*cp).tcps.offset(tileno as isize))
+        .numpocs
+        .wrapping_add(1 as libc::c_int as libc::c_uint)
+  );
   /* get the given tile coding parameter */
   tcp = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
-  if !tcp.is_null() {
-  } else {
-    __assert_fail(
-      b"tcp != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1764 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 66], &[libc::c_char; 66]>(
-        b"OPJ_UINT32 opj_j2k_get_num_tp(opj_cp_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(!tcp.is_null());
   l_current_poc = &mut *(*tcp).pocs.as_mut_ptr().offset(pino as isize) as *mut opj_poc_t;
-  if !l_current_poc.is_null() {
-  } else {
-    __assert_fail(
-      b"l_current_poc != 0\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1767 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 66], &[libc::c_char; 66]>(
-        b"OPJ_UINT32 opj_j2k_get_num_tp(opj_cp_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(!l_current_poc.is_null());
   /* get the progression order as a character string */
   prog = opj_j2k_convert_progression_order((*tcp).prg);
-  if strlen(prog) > 0 as libc::c_int as libc::c_ulong {
-  } else {
-    __assert_fail(
-      b"strlen(prog) > 0\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1771 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 66], &[libc::c_char; 66]>(
-        b"OPJ_UINT32 opj_j2k_get_num_tp(opj_cp_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(strlen(prog) > 0 as libc::c_int as libc::c_ulong);
   if (*cp).m_specific_param.m_enc.m_tp_on() as libc::c_int == 1 as libc::c_int {
     i = 0 as libc::c_int;
     while i < 4 as libc::c_int {
@@ -2379,53 +2341,12 @@ unsafe extern "C" fn opj_j2k_calculate_tp(
   let mut l_nb_tiles: OPJ_UINT32 = 0;
   let mut tcp = 0 as *mut opj_tcp_t;
   /* preconditions */
-  if !p_nb_tiles.is_null() {
-  } else {
-    __assert_fail(b"p_nb_tiles != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1818 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"OPJ_BOOL opj_j2k_calculate_tp(opj_j2k_t *, opj_cp_t *, OPJ_UINT32 *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !cp.is_null() {
-  } else {
-    __assert_fail(b"cp != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1819 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"OPJ_BOOL opj_j2k_calculate_tp(opj_j2k_t *, opj_cp_t *, OPJ_UINT32 *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !image.is_null() {
-  } else {
-    __assert_fail(b"image != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1820 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"OPJ_BOOL opj_j2k_calculate_tp(opj_j2k_t *, opj_cp_t *, OPJ_UINT32 *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1821 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"OPJ_BOOL opj_j2k_calculate_tp(opj_j2k_t *, opj_cp_t *, OPJ_UINT32 *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      1822 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"OPJ_BOOL opj_j2k_calculate_tp(opj_j2k_t *, opj_cp_t *, OPJ_UINT32 *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_nb_tiles.is_null());
+  assert!(!cp.is_null());
+  assert!(!image.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_nb_tiles = (*cp).tw.wrapping_mul((*cp).th);
   *p_nb_tiles = 0 as libc::c_int as OPJ_UINT32;
   tcp = (*cp).tcps;
@@ -2502,42 +2423,10 @@ unsafe extern "C" fn opj_j2k_write_soc(
   /* 2 bytes will be written */
   let mut l_start_stream = 0 as *mut OPJ_BYTE;
   /* preconditions */
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1895 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_soc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1896 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_soc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1897 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_soc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_stream.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_start_stream = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
   /* write SOC identifier */
   opj_write_bytes_LE(
@@ -2579,42 +2468,10 @@ unsafe extern "C" fn opj_j2k_read_soc(
   let mut l_data: [OPJ_BYTE; 2] = [0; 2];
   let mut l_marker: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1936 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_soc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1937 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_soc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1938 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_soc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   if opj_stream_read_data(
     p_stream,
     l_data.as_mut_ptr(),
@@ -2680,42 +2537,10 @@ unsafe extern "C" fn opj_j2k_write_siz(
   let mut cp = 0 as *mut opj_cp_t;
   let mut l_img_comp = 0 as *mut opj_image_comp_t;
   /* preconditions */
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1980 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_siz(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1981 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_siz(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      1982 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_siz(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_stream.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_image = (*p_j2k).m_private_image;
   cp = &mut (*p_j2k).m_cp;
   l_size_len = (40 as libc::c_int as libc::c_uint)
@@ -2855,42 +2680,10 @@ unsafe extern "C" fn opj_j2k_read_siz(
   let mut l_img_comp = 0 as *mut opj_image_comp_t;
   let mut l_current_tile_param = 0 as *mut opj_tcp_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2093 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_siz(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2094 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_siz(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2095 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_siz(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_header_data.is_null());
   l_image = (*p_j2k).m_private_image;
   l_cp = &mut (*p_j2k).m_cp;
   /* minimum size == 39 - 3 (= minimum component parameter) */
@@ -3310,44 +3103,11 @@ unsafe extern "C" fn opj_j2k_write_com(
   let mut l_comment = 0 as *const OPJ_CHAR;
   let mut l_current_ptr = 0 as *mut OPJ_BYTE;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2506 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_com(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* COM */
-  } /* L_COM */
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2507 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_com(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* General use (IS 8859-15:1999 (Latin) values) */
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2508 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_com(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  /* L_COM */
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   l_comment = (*p_j2k).m_cp.comment;
   l_comment_size = strlen(l_comment) as OPJ_UINT32;
   l_total_com_size = l_comment_size.wrapping_add(6 as libc::c_int as libc::c_uint);
@@ -3426,42 +3186,10 @@ unsafe extern "C" fn opj_j2k_read_com(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2567 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_com(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2568 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_com(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2569 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_com(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_header_data.is_null());
   return 1 as libc::c_int;
 }
 /* *
@@ -3482,45 +3210,11 @@ unsafe extern "C" fn opj_j2k_write_cod(
   let mut l_remaining_size: OPJ_UINT32 = 0;
   let mut l_current_data = 0 as *mut OPJ_BYTE;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2589 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_cod(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* COD */
-  } /* L_COD */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2590 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_cod(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* Scod */
-  } /* SGcod (A) */
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2591 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_cod(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* SGcod (B) */
-  } /* SGcod (C) */
+  /* L_COD */
+  /* SGcod (A) */
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null()); /* SGcod (C) */
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
   l_code_size = (9 as libc::c_int as libc::c_uint).wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
@@ -3646,42 +3340,10 @@ unsafe extern "C" fn opj_j2k_read_cod(
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let mut l_image = 0 as *mut opj_image_t;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2676 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cod(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2677 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cod(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2678 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cod(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_image = (*p_j2k).m_private_image;
   l_cp = &mut (*p_j2k).m_cp;
   /* If we are in the first tile-part header of the current tile */
@@ -3820,35 +3482,10 @@ unsafe extern "C" fn opj_j2k_write_coc(
   let mut l_remaining_size: OPJ_UINT32 = 0;
   let mut l_comp_room: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      2798 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_write_coc(opj_j2k_t *, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      2799 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_write_coc(opj_j2k_t *, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      2800 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_write_coc(opj_j2k_t *, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_comp_room = if (*(*p_j2k).m_private_image).numcomps <= 256 as libc::c_int as libc::c_uint {
     1 as libc::c_int
   } else {
@@ -3920,18 +3557,7 @@ unsafe extern "C" fn opj_j2k_compare_coc(
   let mut l_cp = 0 as *mut opj_cp_t;
   let mut l_tcp = 0 as *mut opj_tcp_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2847 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 66], &[libc::c_char; 66]>(
-        b"OPJ_BOOL opj_j2k_compare_coc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(!p_j2k.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
   if (*(*l_tcp).tccps.offset(p_first_comp_no as isize)).csty
@@ -3970,27 +3596,9 @@ unsafe extern "C" fn opj_j2k_write_coc_in_memory(
   let mut l_image = 0 as *mut opj_image_t;
   let mut l_comp_room: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      2876 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"void opj_j2k_write_coc_in_memory(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* COC */
-  } /* L_COC */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      2877 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"void opj_j2k_write_coc_in_memory(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* Ccoc */
-  } /* Scoc */
+  /* L_COC */
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null()); /* Scoc */
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
   l_image = (*p_j2k).m_private_image;
@@ -4092,42 +3700,10 @@ unsafe extern "C" fn opj_j2k_read_coc(
   let mut l_comp_room: OPJ_UINT32 = 0;
   let mut l_comp_no: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2952 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_coc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2953 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_coc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      2954 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_coc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
     == J2K_STATE_TPH as libc::c_int as libc::c_uint
@@ -4212,43 +3788,11 @@ unsafe extern "C" fn opj_j2k_write_qcd(
   let mut l_remaining_size: OPJ_UINT32 = 0;
   let mut l_current_data = 0 as *mut OPJ_BYTE;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3007 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_qcd(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* QCD */
-  } /* L_QCD */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3008 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_qcd(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3009 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_qcd(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  /* L_QCD */
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_qcd_size = (4 as libc::c_int as libc::c_uint).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
     p_j2k,
     (*p_j2k).m_current_tile_number,
@@ -4346,42 +3890,10 @@ unsafe extern "C" fn opj_j2k_read_qcd(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3073 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_qcd(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3074 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_qcd(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3075 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_qcd(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if opj_j2k_read_SQcd_SQcc(
     p_j2k,
     0 as libc::c_int as OPJ_UINT32,
@@ -4426,35 +3938,10 @@ unsafe extern "C" fn opj_j2k_write_qcc(
   let mut l_qcc_size: OPJ_UINT32 = 0;
   let mut l_remaining_size: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      3103 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_write_qcc(opj_j2k_t *, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      3104 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_write_qcc(opj_j2k_t *, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      3105 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_write_qcc(opj_j2k_t *, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_qcc_size = (5 as libc::c_int as libc::c_uint).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
     p_j2k,
     (*p_j2k).m_current_tile_number,
@@ -4546,27 +4033,9 @@ unsafe extern "C" fn opj_j2k_write_qcc_in_memory(
   let mut l_remaining_size: OPJ_UINT32 = 0;
   let mut l_current_data = 0 as *mut OPJ_BYTE;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      3157 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"void opj_j2k_write_qcc_in_memory(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* QCC */
-  } /* L_QCC */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      3158 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"void opj_j2k_write_qcc_in_memory(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* Cqcc */
-  }
+  /* L_QCC */
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_qcc_size = (6 as libc::c_int as libc::c_uint).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
     p_j2k,
     (*p_j2k).m_current_tile_number,
@@ -4646,42 +4115,10 @@ unsafe extern "C" fn opj_j2k_read_qcc(
   let mut l_num_comp: OPJ_UINT32 = 0;
   let mut l_comp_no: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3217 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_qcc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3218 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_qcc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3219 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_qcc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_num_comp = (*(*p_j2k).m_private_image).numcomps;
   if l_num_comp <= 256 as libc::c_int as libc::c_uint {
     if p_header_size < 1 as libc::c_int as libc::c_uint {
@@ -4773,42 +4210,10 @@ unsafe extern "C" fn opj_j2k_write_poc(
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let mut l_poc_room: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3301 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_poc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3302 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_poc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3303 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_poc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_tcp = &mut *(*p_j2k)
     .m_cp
     .tcps
@@ -4886,27 +4291,9 @@ unsafe extern "C" fn opj_j2k_write_poc_in_memory(
   let mut l_current_poc = 0 as *mut opj_poc_t;
   let mut l_poc_room: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      3361 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 91],
-                                                &[libc::c_char; 91]>(b"void opj_j2k_write_poc_in_memory(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* POC  */
-  } /* Lpoc */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      3362 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 91],
-                                                &[libc::c_char; 91]>(b"void opj_j2k_write_poc_in_memory(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* RSpoc_i */
-  } /* CSpoc_i */
+  /* Lpoc */
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null()); /* CSpoc_i */
   l_tcp = &mut *(*p_j2k)
     .m_cp
     .tcps
@@ -5125,42 +4512,10 @@ unsafe extern "C" fn opj_j2k_read_poc(
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let mut l_current_poc = 0 as *mut opj_poc_t;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3539 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_poc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3540 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_poc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3541 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_poc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_image = (*p_j2k).m_private_image;
   l_nb_comp = (*l_image).numcomps;
   if l_nb_comp <= 256 as libc::c_int as libc::c_uint {
@@ -5272,42 +4627,10 @@ unsafe extern "C" fn opj_j2k_read_crg(
 ) -> OPJ_BOOL {
   let mut l_nb_comp: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3622 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_crg(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3623 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_crg(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3624 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_crg(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_nb_comp = (*(*p_j2k).m_private_image).numcomps;
   if p_header_size != l_nb_comp.wrapping_mul(4 as libc::c_int as libc::c_uint) {
     opj_event_msg(
@@ -5360,43 +4683,11 @@ unsafe extern "C" fn opj_j2k_read_tlm(
   let mut l_quotient: OPJ_UINT32 = 0;
   let mut l_Ptlm_size: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3665 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_tlm(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* Ztlm */
-  } /* Stlm */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3666 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_tlm(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3667 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_tlm(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  /* Stlm */
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if p_header_size < 2 as libc::c_int as libc::c_uint {
     opj_event_msg(
       p_manager,
@@ -5461,42 +4752,10 @@ unsafe extern "C" fn opj_j2k_read_plm(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3724 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_plm(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3725 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_plm(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3726 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_plm(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if p_header_size < 1 as libc::c_int as libc::c_uint {
     opj_event_msg(
       p_manager,
@@ -5578,43 +4837,11 @@ unsafe extern "C" fn opj_j2k_read_plt(
   let mut l_packet_len = 0 as libc::c_int as OPJ_UINT32;
   let mut i: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3799 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_plt(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* Zplt */
-  } /* Iplt_ij */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3800 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_plt(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3801 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_plt(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  /* Iplt_ij */
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if p_header_size < 1 as libc::c_int as libc::c_uint {
     opj_event_msg(
       p_manager,
@@ -5675,42 +4902,10 @@ unsafe extern "C" fn opj_j2k_read_ppm(
   let mut l_cp = 0 as *mut opj_cp_t;
   let mut l_Z_ppm: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3854 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_ppm(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3855 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_ppm(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3856 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_ppm(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   /* We need to have the Z_ppm element + 1 byte of Nppm/Ippm at minimum */
   if p_header_size < 2 as libc::c_int as libc::c_uint {
     opj_event_msg(
@@ -5729,19 +4924,7 @@ unsafe extern "C" fn opj_j2k_read_ppm(
   if (*l_cp).ppm_markers.is_null() {
     /* first PPM marker */
     let mut l_newCount = l_Z_ppm.wrapping_add(1 as libc::c_uint); /* can't overflow, l_Z_ppm is UINT8 */
-    if (*l_cp).ppm_markers_count == 0 as libc::c_uint {
-    } else {
-      __assert_fail(
-        b"l_cp->ppm_markers_count == 0U\x00" as *const u8 as *const libc::c_char,
-        b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-        3874 as libc::c_int as libc::c_uint,
-        (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-          b"OPJ_BOOL opj_j2k_read_ppm(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-        ))
-        .as_ptr(),
-      );
-      /* can't overflow, l_Z_ppm is UINT8 */
-    }
+    assert!((*l_cp).ppm_markers_count == 0 as libc::c_uint);
     (*l_cp).ppm_markers = opj_calloc(
       l_newCount as size_t,
       ::std::mem::size_of::<opj_ppx>() as libc::c_ulong,
@@ -5838,42 +5021,10 @@ unsafe extern "C" fn opj_j2k_merge_ppm(
   let mut l_ppm_data_size: OPJ_UINT32 = 0;
   let mut l_N_ppm_remaining: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_cp.is_null() {
-  } else {
-    __assert_fail(
-      b"p_cp != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3927 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 58], &[libc::c_char; 58]>(
-        b"OPJ_BOOL opj_j2k_merge_ppm(opj_cp_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3928 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 58], &[libc::c_char; 58]>(
-        b"OPJ_BOOL opj_j2k_merge_ppm(opj_cp_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if (*p_cp).ppm_buffer.is_null() {
-  } else {
-    __assert_fail(
-      b"p_cp->ppm_buffer == NULL\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      3929 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 58], &[libc::c_char; 58]>(
-        b"OPJ_BOOL opj_j2k_merge_ppm(opj_cp_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_cp.is_null());
+  assert!(!p_manager.is_null());
+  assert!((*p_cp).ppm_buffer.is_null());
   if (*p_cp).ppm() == 0 as libc::c_uint {
     return 1 as libc::c_int;
   }
@@ -6066,42 +5217,10 @@ unsafe extern "C" fn opj_j2k_read_ppt(
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let mut l_Z_ppt: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4073 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_ppt(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4074 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_ppt(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4075 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_ppt(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   /* We need to have the Z_ppt element + 1 byte of Ippt at minimum */
   if p_header_size < 2 as libc::c_int as libc::c_uint {
     opj_event_msg(
@@ -6127,19 +5246,7 @@ unsafe extern "C" fn opj_j2k_read_ppt(
   if (*l_tcp).ppt_markers.is_null() {
     /* first PPT marker */
     let mut l_newCount = l_Z_ppt.wrapping_add(1 as libc::c_uint); /* can't overflow, l_Z_ppt is UINT8 */
-    if (*l_tcp).ppt_markers_count == 0 as libc::c_uint {
-    } else {
-      __assert_fail(
-        b"l_tcp->ppt_markers_count == 0U\x00" as *const u8 as *const libc::c_char,
-        b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-        4100 as libc::c_int as libc::c_uint,
-        (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-          b"OPJ_BOOL opj_j2k_read_ppt(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-        ))
-        .as_ptr(),
-      );
-      /* can't overflow, l_Z_ppt is UINT8 */
-    }
+    assert!((*l_tcp).ppt_markers_count == 0 as libc::c_uint);
     (*l_tcp).ppt_markers = opj_calloc(
       l_newCount as size_t,
       ::std::mem::size_of::<opj_ppx>() as libc::c_ulong,
@@ -6235,30 +5342,9 @@ unsafe extern "C" fn opj_j2k_merge_ppt(
   let mut i: OPJ_UINT32 = 0;
   let mut l_ppt_data_size: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_tcp.is_null() {
-  } else {
-    __assert_fail(
-      b"p_tcp != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4151 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 59], &[libc::c_char; 59]>(
-        b"OPJ_BOOL opj_j2k_merge_ppt(opj_tcp_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4152 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 59], &[libc::c_char; 59]>(
-        b"OPJ_BOOL opj_j2k_merge_ppt(opj_tcp_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_tcp.is_null());
+  assert!(!p_manager.is_null());
   if !(*p_tcp).ppt_buffer.is_null() {
     opj_event_msg(
       p_manager,
@@ -6332,42 +5418,10 @@ unsafe extern "C" fn opj_j2k_write_tlm(
   let mut l_tlm_size: OPJ_UINT32 = 0;
   let mut size_per_tile_part: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4210 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_tlm(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4211 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_tlm(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4212 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_tlm(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   /* 10921 = (65535 - header_size) / size_per_tile_part where */
   /* header_size = 4 and size_per_tile_part = 6 */
   if (*p_j2k).m_specific_param.m_encoder.m_total_tile_parts > 10921 as libc::c_int as libc::c_uint {
@@ -6479,37 +5533,11 @@ unsafe extern "C" fn opj_j2k_write_sot(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      4294 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 127],
-                                                &[libc::c_char; 127]>(b"OPJ_BOOL opj_j2k_write_sot(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, OPJ_UINT32 *, const opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* SOT */
-  } /* Lsot */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      4295 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 127],
-                                                &[libc::c_char; 127]>(b"OPJ_BOOL opj_j2k_write_sot(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, OPJ_UINT32 *, const opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* Isot */
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      4296 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 127],
-                                                &[libc::c_char; 127]>(b"OPJ_BOOL opj_j2k_write_sot(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, OPJ_UINT32 *, const opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+  /* Lsot */
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   if total_data_size < 12 as libc::c_int as libc::c_uint {
     opj_event_msg(
       p_manager,
@@ -6586,26 +5614,9 @@ unsafe extern "C" fn opj_j2k_get_sot_values(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(b"p_header_data != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      4354 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 131],
-                                                &[libc::c_char; 131]>(b"OPJ_BOOL opj_j2k_get_sot_values(OPJ_BYTE *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      4355 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 131],
-                                                &[libc::c_char; 131]>(b"OPJ_BOOL opj_j2k_get_sot_values(OPJ_BYTE *, OPJ_UINT32, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_manager.is_null());
   /* Size of this marker is fixed = 12 (we have already read marker and its size)*/
   if p_header_size != 8 as libc::c_int as libc::c_uint {
     opj_event_msg(
@@ -6651,30 +5662,9 @@ unsafe extern "C" fn opj_j2k_read_sot(
   let mut l_tile_x: OPJ_UINT32 = 0;
   let mut l_tile_y: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4387 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_sot(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4388 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_sot(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if opj_j2k_get_sot_values(
     p_header_data,
     p_header_size,
@@ -6840,19 +5830,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
         as OPJ_BITFIELD,
     )
   } else {
-    if (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec >= 0 as libc::c_int {
-    } else {
-      __assert_fail(
-        b"p_j2k->m_specific_param.m_decoder.m_tile_ind_to_dec >= 0\x00" as *const u8
-          as *const libc::c_char,
-        b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-        4578 as libc::c_int as libc::c_uint,
-        (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-          b"OPJ_BOOL opj_j2k_read_sot(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-        ))
-        .as_ptr(),
-      );
-    }
+    assert!((*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec >= 0 as libc::c_int);
     (*p_j2k).m_specific_param.m_decoder.set_m_skip_data(
       ((*p_j2k).m_current_tile_number
         != (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32) as libc::c_int
@@ -6861,18 +5839,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
   }
   /* Index */
   if !(*p_j2k).cstr_index.is_null() {
-    if !(*(*p_j2k).cstr_index).tile_index.is_null() {
-    } else {
-      __assert_fail(
-        b"p_j2k->cstr_index->tile_index != 00\x00" as *const u8 as *const libc::c_char,
-        b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-        4586 as libc::c_int as libc::c_uint,
-        (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-          b"OPJ_BOOL opj_j2k_read_sot(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-        ))
-        .as_ptr(),
-      );
-    }
+    assert!(!(*(*p_j2k).cstr_index).tile_index.is_null());
     (*(*(*p_j2k).cstr_index)
       .tile_index
       .offset((*p_j2k).m_current_tile_number as isize))
@@ -7202,36 +6169,10 @@ unsafe extern "C" fn opj_j2k_write_sod(
   let mut l_remaining_data: OPJ_UINT32 = 0;
   let mut marker_info = 0 as *mut opj_tcd_marker_info_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      4794 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 140],
-                                                &[libc::c_char; 140]>(b"OPJ_BOOL opj_j2k_write_sod(opj_j2k_t *, opj_tcd_t *, OPJ_BYTE *, OPJ_UINT32 *, OPJ_UINT32, const opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* SOD */
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      4795 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 140],
-                                                &[libc::c_char; 140]>(b"OPJ_BOOL opj_j2k_write_sod(opj_j2k_t *, opj_tcd_t *, OPJ_BYTE *, OPJ_UINT32 *, OPJ_UINT32, const opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      4796 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 140],
-                                                &[libc::c_char; 140]>(b"OPJ_BOOL opj_j2k_write_sod(opj_j2k_t *, opj_tcd_t *, OPJ_BYTE *, OPJ_UINT32 *, OPJ_UINT32, const opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   if total_data_size < 4 as libc::c_int as libc::c_uint {
     opj_event_msg(
       p_manager,
@@ -7361,16 +6302,7 @@ unsafe extern "C" fn opj_j2k_write_sod(
       opj_free(p_PLT_buffer as *mut libc::c_void);
       return 0 as libc::c_int;
     }
-    if l_data_written_PLT <= (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT {
-    } else {
-      __assert_fail(b"l_data_written_PLT <= p_j2k->m_specific_param.m_encoder.m_reserved_bytes_for_PLT\x00"
-                              as *const u8 as *const libc::c_char,
-                          b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as
-                              *const u8 as *const libc::c_char,
-                          4909 as libc::c_int as libc::c_uint,
-                          (*::std::mem::transmute::<&[u8; 140],
-                                                    &[libc::c_char; 140]>(b"OPJ_BOOL opj_j2k_write_sod(opj_j2k_t *, opj_tcd_t *, OPJ_BYTE *, OPJ_UINT32 *, OPJ_UINT32, const opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-    }
+    assert!(l_data_written_PLT <= (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT);
     /* Move PLT marker(s) before SOD */
     memmove(
       p_data.offset(l_data_written_PLT as isize) as *mut libc::c_void,
@@ -7408,42 +6340,10 @@ unsafe extern "C" fn opj_j2k_read_sod(
   let mut l_tile_len = 0 as *mut OPJ_UINT32;
   let mut l_sot_length_pb_detected = 0 as libc::c_int;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4936 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_sod(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4937 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_sod(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      4938 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_sod(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_tcp = &mut *(*p_j2k)
     .m_cp
     .tcps
@@ -7641,38 +6541,11 @@ unsafe extern "C" fn opj_j2k_write_rgn(
   let mut l_tccp = 0 as *mut opj_tccp_t;
   let mut l_comp_room: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5087 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 119],
-                                                &[libc::c_char; 119]>(b"OPJ_BOOL opj_j2k_write_rgn(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* RGN  */
-  } /* Lrgn */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5088 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 119],
-                                                &[libc::c_char; 119]>(b"OPJ_BOOL opj_j2k_write_rgn(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* Crgn */
-  } /* Srgn */
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5089 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 119],
-                                                &[libc::c_char; 119]>(b"OPJ_BOOL opj_j2k_write_rgn(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* SPrgn */
-  }
+  /* Lrgn */
+  /* Srgn */
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
@@ -7733,43 +6606,10 @@ unsafe extern "C" fn opj_j2k_write_eoc(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      5140 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_eoc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* EOC */
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      5141 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_eoc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      5142 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 83], &[libc::c_char; 83]>(
-        b"OPJ_BOOL opj_j2k_write_eoc(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   opj_write_bytes_LE(
     (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
     0xffd9 as libc::c_int as OPJ_UINT32,
@@ -7821,43 +6661,11 @@ unsafe extern "C" fn opj_j2k_read_rgn(
   let mut l_comp_no: OPJ_UINT32 = 0;
   let mut l_roi_sty: OPJ_UINT32 = 0;
   /* preconditions*/
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      5189 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_rgn(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* Crgn */
-  } /* Srgn */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      5190 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_rgn(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      5191 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_rgn(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  /* Srgn */
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_image = (*p_j2k).m_private_image;
   l_nb_comp = (*l_image).numcomps;
   if l_nb_comp <= 256 as libc::c_int as libc::c_uint {
@@ -7950,35 +6758,10 @@ unsafe extern "C" fn opj_j2k_update_rates(
   let mut l_last_res: OPJ_UINT32 = 0;
   let mut l_tp_stride_func: Option<unsafe extern "C" fn(_: *mut opj_tcp_t) -> OPJ_FLOAT32> = None;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5279 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 86],
-                                                &[libc::c_char; 86]>(b"OPJ_BOOL opj_j2k_update_rates(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5280 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 86],
-                                                &[libc::c_char; 86]>(b"OPJ_BOOL opj_j2k_update_rates(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5281 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 86],
-                                                &[libc::c_char; 86]>(b"OPJ_BOOL opj_j2k_update_rates(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_image = (*p_j2k).m_private_image;
   l_tcp = (*l_cp).tcps;
@@ -8172,35 +6955,10 @@ unsafe extern "C" fn opj_j2k_get_end_header(
   mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5492 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 98],
-                                                &[libc::c_char; 98]>(b"OPJ_BOOL opj_j2k_get_end_header(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5493 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 98],
-                                                &[libc::c_char; 98]>(b"OPJ_BOOL opj_j2k_get_end_header(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5494 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 98],
-                                                &[libc::c_char; 98]>(b"OPJ_BOOL opj_j2k_get_end_header(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   (*(*p_j2k).cstr_index).main_head_end = opj_stream_tell(p_stream);
   return 1 as libc::c_int;
 }
@@ -8221,35 +6979,10 @@ unsafe extern "C" fn opj_j2k_write_mct_data_group(
   let mut l_mct_record = 0 as *mut opj_mct_data_t;
   let mut l_tcp = 0 as *mut opj_tcp_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5513 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 104],
-                                                &[libc::c_char; 104]>(b"OPJ_BOOL opj_j2k_write_mct_data_group(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5514 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 104],
-                                                &[libc::c_char; 104]>(b"OPJ_BOOL opj_j2k_write_mct_data_group(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5515 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 104],
-                                                &[libc::c_char; 104]>(b"OPJ_BOOL opj_j2k_write_mct_data_group(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   if opj_j2k_write_cbd(p_j2k, p_stream, p_manager) == 0 {
     return 0 as libc::c_int;
   }
@@ -8294,35 +7027,10 @@ unsafe extern "C" fn opj_j2k_write_all_coc(
 ) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5559 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 97],
-                                                &[libc::c_char; 97]>(b"OPJ_BOOL opj_j2k_write_all_coc(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5560 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 97],
-                                                &[libc::c_char; 97]>(b"OPJ_BOOL opj_j2k_write_all_coc(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5561 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 97],
-                                                &[libc::c_char; 97]>(b"OPJ_BOOL opj_j2k_write_all_coc(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   compno = 1 as libc::c_int as OPJ_UINT32;
   while compno < (*(*p_j2k).m_private_image).numcomps {
     /* cod is first component of first tile */
@@ -8349,35 +7057,10 @@ unsafe extern "C" fn opj_j2k_write_all_qcc(
 ) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5583 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 97],
-                                                &[libc::c_char; 97]>(b"OPJ_BOOL opj_j2k_write_all_qcc(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5584 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 97],
-                                                &[libc::c_char; 97]>(b"OPJ_BOOL opj_j2k_write_all_qcc(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5585 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 97],
-                                                &[libc::c_char; 97]>(b"OPJ_BOOL opj_j2k_write_all_qcc(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   compno = 1 as libc::c_int as OPJ_UINT32;
   while compno < (*(*p_j2k).m_private_image).numcomps {
     /* qcd is first component of first tile */
@@ -8405,35 +7088,10 @@ unsafe extern "C" fn opj_j2k_write_regions(
   let mut compno: OPJ_UINT32 = 0;
   let mut l_tccp = 0 as *const opj_tccp_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5606 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 97],
-                                                &[libc::c_char; 97]>(b"OPJ_BOOL opj_j2k_write_regions(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5607 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 97],
-                                                &[libc::c_char; 97]>(b"OPJ_BOOL opj_j2k_write_regions(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5608 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 97],
-                                                &[libc::c_char; 97]>(b"OPJ_BOOL opj_j2k_write_regions(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_tccp = (*(*p_j2k).m_cp.tcps).tccps;
   compno = 0 as libc::c_int as OPJ_UINT32;
   while compno < (*(*p_j2k).m_private_image).numcomps {
@@ -8469,35 +7127,10 @@ unsafe extern "C" fn opj_j2k_write_epc(
 ) -> OPJ_BOOL {
   let mut l_cstr_index = 0 as *mut opj_codestream_index_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5634 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_write_epc(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5635 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_write_epc(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5636 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_write_epc(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_cstr_index = (*p_j2k).cstr_index;
   if !l_cstr_index.is_null() {
     (*l_cstr_index).codestream_size = opj_stream_tell(p_stream) as OPJ_UINT64;
@@ -8533,35 +7166,10 @@ unsafe extern "C" fn opj_j2k_read_unk(
   let mut l_marker_handler = 0 as *const opj_dec_memory_marker_handler_t;
   let mut l_size_unk = 2 as libc::c_int as OPJ_UINT32;
   /* preconditions*/
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5678 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 96],
-                                                &[libc::c_char; 96]>(b"OPJ_BOOL opj_j2k_read_unk(opj_j2k_t *, opj_stream_private_t *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5679 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 96],
-                                                &[libc::c_char; 96]>(b"OPJ_BOOL opj_j2k_read_unk(opj_j2k_t *, opj_stream_private_t *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5680 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 96],
-                                                &[libc::c_char; 96]>(b"OPJ_BOOL opj_j2k_read_unk(opj_j2k_t *, opj_stream_private_t *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   opj_event_msg(
     p_manager,
     2 as libc::c_int,
@@ -8647,37 +7255,11 @@ unsafe extern "C" fn opj_j2k_write_mct_record(
   let mut l_current_data = 0 as *mut OPJ_BYTE;
   let mut l_tmp: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5740 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 118],
-                                                &[libc::c_char; 118]>(b"OPJ_BOOL opj_j2k_write_mct_record(opj_j2k_t *, opj_mct_data_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* MCT */
-  } /* Lmct */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5741 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 118],
-                                                &[libc::c_char; 118]>(b"OPJ_BOOL opj_j2k_write_mct_record(opj_j2k_t *, opj_mct_data_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* Zmct */
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5742 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 118],
-                                                &[libc::c_char; 118]>(b"OPJ_BOOL opj_j2k_write_mct_record(opj_j2k_t *, opj_mct_data_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+  /* Lmct */
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_mct_size = (10 as libc::c_int as libc::c_uint).wrapping_add((*p_mct_record).m_data_size);
   if l_mct_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
@@ -8773,30 +7355,9 @@ unsafe extern "C" fn opj_j2k_read_mct(
   let mut l_indix: OPJ_UINT32 = 0;
   let mut l_mct_data = 0 as *mut opj_mct_data_t;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      5817 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_mct(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      5818 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_mct(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
     == J2K_STATE_TPH as libc::c_int as libc::c_uint
   {
@@ -8977,36 +7538,11 @@ unsafe extern "C" fn opj_j2k_write_mcc_record(
   let mut l_mask: OPJ_UINT32 = 0;
   let mut l_tmcc: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5950 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 144],
-                                                &[libc::c_char; 144]>(b"OPJ_BOOL opj_j2k_write_mcc_record(opj_j2k_t *, struct opj_simple_mcc_decorrelation_data *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* MCC */
-  } /* Lmcc */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5951 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 144],
-                                                &[libc::c_char; 144]>(b"OPJ_BOOL opj_j2k_write_mcc_record(opj_j2k_t *, struct opj_simple_mcc_decorrelation_data *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      5952 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 144],
-                                                &[libc::c_char; 144]>(b"OPJ_BOOL opj_j2k_write_mcc_record(opj_j2k_t *, struct opj_simple_mcc_decorrelation_data *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+  /* Lmcc */
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   if (*p_mcc_record).m_nb_comps > 255 as libc::c_int as libc::c_uint {
     l_nb_bytes_for_comp = 2 as libc::c_int as OPJ_UINT32;
     l_mask = 0x8000 as libc::c_int as OPJ_UINT32
@@ -9155,42 +7691,10 @@ unsafe extern "C" fn opj_j2k_read_mcc(
   let mut l_nb_bytes_by_comp: OPJ_UINT32 = 0;
   let mut l_new_mcc = 0 as libc::c_int;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6069 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_mcc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6070 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_mcc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6071 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_mcc(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
     == J2K_STATE_TPH as libc::c_int as libc::c_uint
   {
@@ -9511,37 +8015,11 @@ unsafe extern "C" fn opj_j2k_write_mco(
   let mut l_mcc_record = 0 as *mut opj_simple_mcc_decorrelation_data_t;
   let mut i: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      6297 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_write_mco(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* MCO */
-  } /* Lmco */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      6298 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_write_mco(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* Nmco : only one transform stage*/
-  } /* Imco -> use the mcc indicated by 1*/
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      6299 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_write_mco(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+  /* Lmco */
+  /* Imco -> use the mcc indicated by 1*/
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_tcp = &mut *(*p_j2k)
     .m_cp
     .tcps
@@ -9637,43 +8115,10 @@ unsafe extern "C" fn opj_j2k_read_mco(
   let mut l_tccp = 0 as *mut opj_tccp_t;
   let mut l_image = 0 as *mut opj_image_t;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6369 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_mco(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* Nmco : only one transform stage*/
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6370 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_mco(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6371 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_mco(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_image = (*p_j2k).m_private_image;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
     == J2K_STATE_TPH as libc::c_int as libc::c_uint
@@ -9755,18 +8200,7 @@ unsafe extern "C" fn opj_j2k_add_mct(
   let mut l_current_offset_data = 0 as *mut OPJ_UINT32;
   let mut l_tccp = 0 as *mut opj_tccp_t;
   /* preconditions */
-  if !p_tcp.is_null() {
-  } else {
-    __assert_fail(
-      b"p_tcp != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6434 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 65], &[libc::c_char; 65]>(
-        b"OPJ_BOOL opj_j2k_add_mct(opj_tcp_t *, opj_image_t *, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(!p_tcp.is_null());
   l_mcc_record = (*p_tcp).m_mcc_records;
   i = 0 as libc::c_int as OPJ_UINT32;
   while i < (*p_tcp).m_nb_mcc_records {
@@ -9857,37 +8291,11 @@ unsafe extern "C" fn opj_j2k_write_cbd(
   let mut l_image = 0 as *mut opj_image_t;
   let mut l_comp = 0 as *mut opj_image_comp_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      6520 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_write_cbd(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* CBD */
-  } /* L_CBD */
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      6521 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_write_cbd(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* Ncbd */
-  } /* Component bit depth */
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      6522 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_write_cbd(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+  /* L_CBD */
+  /* Component bit depth */
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   l_image = (*p_j2k).m_private_image;
   l_cbd_size =
     (6 as libc::c_int as libc::c_uint).wrapping_add((*(*p_j2k).m_private_image).numcomps);
@@ -9981,43 +8389,11 @@ unsafe extern "C" fn opj_j2k_read_cbd(
   let mut i: OPJ_UINT32 = 0;
   let mut l_comp = 0 as *mut opj_image_comp_t;
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6590 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cbd(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-    /* Ncbd */
-  } /* Component bit depth */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6591 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cbd(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6592 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cbd(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  /* Component bit depth */
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   l_num_comp = (*(*p_j2k).m_private_image).numcomps;
   if p_header_size
     != (*(*p_j2k).m_private_image)
@@ -10094,42 +8470,10 @@ unsafe extern "C" fn opj_j2k_read_cap(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6646 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cap(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6647 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cap(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6648 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cap(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   return 1 as libc::c_int;
 }
 /* *
@@ -10153,42 +8497,10 @@ unsafe extern "C" fn opj_j2k_read_cpf(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(
-      b"p_header_data != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6672 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cpf(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6673 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cpf(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      6674 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 82], &[libc::c_char; 82]>(
-        b"OPJ_BOOL opj_j2k_read_cpf(opj_j2k_t *, OPJ_BYTE *, OPJ_UINT32, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_header_data.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   return 1 as libc::c_int;
 }
 /* ----------------------------------------------------------------------- */
@@ -10721,19 +9033,11 @@ unsafe extern "C" fn opj_j2k_is_imf_compliant(
     ret = 0 as libc::c_int
   } else {
     /* Validate sublevel */
-    if ::std::mem::size_of::<[OPJ_UINT16; 12]>() as libc::c_ulong
-      == ((11 as libc::c_int + 1 as libc::c_int) as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<OPJ_UINT16>() as libc::c_ulong)
-    {
-    } else {
-      __assert_fail(b"sizeof(tabMaxSubLevelFromMainLevel) == (OPJ_IMF_MAINLEVEL_MAX + 1) * sizeof(tabMaxSubLevelFromMainLevel[0])\x00"
-                              as *const u8 as *const libc::c_char,
-                          b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as
-                              *const u8 as *const libc::c_char,
-                          7200 as libc::c_int as libc::c_uint,
-                          (*::std::mem::transmute::<&[u8; 89],
-                                                    &[libc::c_char; 89]>(b"OPJ_BOOL opj_j2k_is_imf_compliant(opj_cparameters_t *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-    }
+    assert!(
+      ::std::mem::size_of::<[OPJ_UINT16; 12]>() as libc::c_ulong
+        == ((11 as libc::c_int + 1 as libc::c_int) as libc::c_ulong)
+          .wrapping_mul(::std::mem::size_of::<OPJ_UINT16>() as libc::c_ulong)
+    );
     if sublevel as libc::c_int > tabMaxSubLevelFromMainLevel[mainlevel as usize] as libc::c_int {
       opj_event_msg(p_manager, 2 as libc::c_int,
                           b"IMF profile require sublevel <= %d for mainlevel = %d.\n-> %d is thus not compliant\n-> Non-IMF codestream will be generated\n\x00"
@@ -11941,16 +10245,7 @@ pub unsafe extern "C" fn opj_j2k_setup_encoder(
       if (*parameters).csty & 0x1 as libc::c_int != 0 {
         let mut p = 0 as libc::c_int;
         let mut it_res: OPJ_INT32 = 0;
-        if (*tccp_1).numresolutions > 0 as libc::c_int as libc::c_uint {
-        } else {
-          __assert_fail(b"tccp->numresolutions > 0\x00" as *const u8
-                                      as *const libc::c_char,
-                                  b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00"
-                                      as *const u8 as *const libc::c_char,
-                                  8236 as libc::c_int as libc::c_uint,
-                                  (*::std::mem::transmute::<&[u8; 99],
-                                                            &[libc::c_char; 99]>(b"OPJ_BOOL opj_j2k_setup_encoder(opj_j2k_t *, opj_cparameters_t *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-        }
+        assert!((*tccp_1).numresolutions > 0 as libc::c_int as libc::c_uint);
         it_res = (*tccp_1).numresolutions as OPJ_INT32 - 1 as libc::c_int;
         while it_res >= 0 as libc::c_int {
           if p < (*parameters).res_spec {
@@ -11971,18 +10266,7 @@ pub unsafe extern "C" fn opj_j2k_setup_encoder(
             let mut size_prcw = 0 as libc::c_int;
             let mut size_prch = 0 as libc::c_int;
             /*end for*/
-            if res_spec > 0 as libc::c_int {
-            } else {
-              __assert_fail(b"res_spec > 0\x00" as *const u8 as
-                                              *const libc::c_char,
-                                          b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00"
-                                              as *const u8 as
-                                              *const libc::c_char,
-                                          8257 as libc::c_int as libc::c_uint,
-                                          (*::std::mem::transmute::<&[u8; 99],
-                                                                    &[libc::c_char; 99]>(b"OPJ_BOOL opj_j2k_setup_encoder(opj_j2k_t *, opj_cparameters_t *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-              /* issue 189 */
-            }
+            assert!(res_spec > 0 as libc::c_int);
             size_prcw = (*parameters).prcw_init[(res_spec - 1 as libc::c_int) as usize]
               >> p - (res_spec - 1 as libc::c_int);
             size_prch = (*parameters).prch_init[(res_spec - 1 as libc::c_int) as usize]
@@ -12034,16 +10318,7 @@ unsafe extern "C" fn opj_j2k_add_mhmarker(
   mut pos: OPJ_OFF_T,
   mut len: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  if !cstr_index.is_null() {
-  } else {
-    __assert_fail(b"cstr_index != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8298 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 91],
-                                                &[libc::c_char; 91]>(b"OPJ_BOOL opj_j2k_add_mhmarker(opj_codestream_index_t *, OPJ_UINT32, OPJ_OFF_T, OPJ_UINT32)\x00")).as_ptr());
-  }
+  assert!(!cstr_index.is_null());
   /* expand the list? */
   if (*cstr_index)
     .marknum
@@ -12091,26 +10366,8 @@ unsafe extern "C" fn opj_j2k_add_tlmarker(
   mut pos: OPJ_OFF_T,
   mut len: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  if !cstr_index.is_null() {
-  } else {
-    __assert_fail(b"cstr_index != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8330 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"OPJ_BOOL opj_j2k_add_tlmarker(OPJ_UINT32, opj_codestream_index_t *, OPJ_UINT32, OPJ_OFF_T, OPJ_UINT32)\x00")).as_ptr());
-  }
-  if !(*cstr_index).tile_index.is_null() {
-  } else {
-    __assert_fail(b"cstr_index->tile_index != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8331 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"OPJ_BOOL opj_j2k_add_tlmarker(OPJ_UINT32, opj_codestream_index_t *, OPJ_UINT32, OPJ_OFF_T, OPJ_UINT32)\x00")).as_ptr());
-  }
+  assert!(!cstr_index.is_null());
+  assert!(!(*cstr_index).tile_index.is_null());
   /* expand the list? */
   if (*(*cstr_index).tile_index.offset(tileno as isize))
     .marknum
@@ -12190,35 +10447,10 @@ pub unsafe extern "C" fn opj_j2k_read_header(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8396 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 101],
-                                                &[libc::c_char; 101]>(b"OPJ_BOOL opj_j2k_read_header(opj_stream_private_t *, opj_j2k_t *, opj_image_t **, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8397 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 101],
-                                                &[libc::c_char; 101]>(b"OPJ_BOOL opj_j2k_read_header(opj_stream_private_t *, opj_j2k_t *, opj_image_t **, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8398 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 101],
-                                                &[libc::c_char; 101]>(b"OPJ_BOOL opj_j2k_read_header(opj_stream_private_t *, opj_j2k_t *, opj_image_t **, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   /* create an empty image header */
   (*p_j2k).m_private_image = opj_image_create0();
   if (*p_j2k).m_private_image.is_null() {
@@ -12316,30 +10548,9 @@ unsafe extern "C" fn opj_j2k_setup_header_reading(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions*/
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      8456 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 70], &[libc::c_char; 70]>(
-        b"OPJ_BOOL opj_j2k_setup_header_reading(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      8457 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 70], &[libc::c_char; 70]>(
-        b"OPJ_BOOL opj_j2k_setup_header_reading(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
     ::std::mem::transmute::<
@@ -12400,30 +10611,9 @@ unsafe extern "C" fn opj_j2k_setup_decoding_validation(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions*/
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      8477 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 75], &[libc::c_char; 75]>(
-        b"OPJ_BOOL opj_j2k_setup_decoding_validation(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      8478 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 75], &[libc::c_char; 75]>(
-        b"OPJ_BOOL opj_j2k_setup_decoding_validation(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
     ::std::mem::transmute::<
@@ -12493,35 +10683,10 @@ unsafe extern "C" fn opj_j2k_mct_validation(
   let mut i: OPJ_UINT32 = 0;
   let mut j: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8501 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 88],
-                                                &[libc::c_char; 88]>(b"OPJ_BOOL opj_j2k_mct_validation(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8502 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 88],
-                                                &[libc::c_char; 88]>(b"OPJ_BOOL opj_j2k_mct_validation(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8503 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 88],
-                                                &[libc::c_char; 88]>(b"OPJ_BOOL opj_j2k_mct_validation(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   if (*p_j2k).m_cp.rsiz as libc::c_int & 0x8200 as libc::c_int == 0x8200 as libc::c_int {
     let mut l_nb_tiles = (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw);
     let mut l_tcp = (*p_j2k).m_cp.tcps;
@@ -12559,18 +10724,7 @@ pub unsafe extern "C" fn opj_j2k_setup_mct_encoding(
   let mut l_current_data = 0 as *mut OPJ_FLOAT32;
   let mut l_tccp = 0 as *mut opj_tccp_t;
   /* preconditions */
-  if !p_tcp.is_null() {
-  } else {
-    __assert_fail(
-      b"p_tcp != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      8540 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 64], &[libc::c_char; 64]>(
-        b"OPJ_BOOL opj_j2k_setup_mct_encoding(opj_tcp_t *, opj_image_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(!p_tcp.is_null());
   if (*p_tcp).mct != 2 as libc::c_int as libc::c_uint {
     return 1 as libc::c_int;
   }
@@ -12803,35 +10957,10 @@ unsafe extern "C" fn opj_j2k_encoding_validation(
 ) -> OPJ_BOOL {
   let mut l_is_valid = 1 as libc::c_int;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8723 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_encoding_validation(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8724 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_encoding_validation(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8725 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_encoding_validation(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   /* STATE checking */
   /* make sure the state is at 0 */
   l_is_valid &= ((*p_j2k).m_specific_param.m_decoder.m_state
@@ -12902,35 +11031,10 @@ unsafe extern "C" fn opj_j2k_decoding_validation(
 ) -> OPJ_BOOL {
   let mut l_is_valid = 1 as libc::c_int;
   /* preconditions*/
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8775 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_decoding_validation(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8776 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_decoding_validation(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8777 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_decoding_validation(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   /* STATE checking */
   /* make sure the state is at 0 */
   l_is_valid &= ((*p_j2k).m_specific_param.m_decoder.m_state == 0 as libc::c_int as libc::c_uint)
@@ -12959,35 +11063,10 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
   let mut l_has_cod = 0 as libc::c_int;
   let mut l_has_qcd = 0 as libc::c_int;
   /* preconditions */
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8812 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_read_header_procedure(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8813 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_read_header_procedure(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8814 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_read_header_procedure(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_stream.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   /*  We enter in the main header */
   (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_MHSOC as libc::c_int as OPJ_UINT32;
   /* Try to read the SOC marker, the codestream must begin with SOC marker */
@@ -13271,45 +11350,11 @@ unsafe extern "C" fn opj_j2k_exec(
   let mut l_nb_proc: OPJ_UINT32 = 0;
   let mut i: OPJ_UINT32 = 0;
   /* preconditions*/
-  if !p_procedure_list.is_null() {
-  } else {
-    __assert_fail(b"p_procedure_list != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8996 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 102],
-                                                &[libc::c_char; 102]>(b"OPJ_BOOL opj_j2k_exec(opj_j2k_t *, opj_procedure_list_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8997 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 102],
-                                                &[libc::c_char; 102]>(b"OPJ_BOOL opj_j2k_exec(opj_j2k_t *, opj_procedure_list_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8998 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 102],
-                                                &[libc::c_char; 102]>(b"OPJ_BOOL opj_j2k_exec(opj_j2k_t *, opj_procedure_list_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      8999 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 102],
-                                                &[libc::c_char; 102]>(b"OPJ_BOOL opj_j2k_exec(opj_j2k_t *, opj_procedure_list_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_procedure_list.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   l_nb_proc = opj_procedure_list_get_nb_procedures(p_procedure_list);
   l_procedure = opj_procedure_list_get_first_procedure(p_procedure_list)
     as *mut Option<
@@ -13358,35 +11403,10 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
   let mut l_dest_mcc_rec = 0 as *mut opj_simple_mcc_decorrelation_data_t;
   let mut l_offset: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      9035 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 105],
-                                                &[libc::c_char; 105]>(b"OPJ_BOOL opj_j2k_copy_default_tcp_and_create_tcd(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      9036 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 105],
-                                                &[libc::c_char; 105]>(b"OPJ_BOOL opj_j2k_copy_default_tcp_and_create_tcd(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      9037 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 105],
-                                                &[libc::c_char; 105]>(b"OPJ_BOOL opj_j2k_copy_default_tcp_and_create_tcd(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   l_image = (*p_j2k).m_private_image;
   l_nb_tiles = (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw);
   l_tcp = (*p_j2k).m_cp.tcps;
@@ -13986,35 +12006,10 @@ pub unsafe extern "C" fn opj_j2k_read_tile_header(
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let l_nb_tiles = (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th);
   /* preconditions */
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      9535 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 196],
-                                                &[libc::c_char; 196]>(b"OPJ_BOOL opj_j2k_read_tile_header(opj_j2k_t *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_INT32 *, OPJ_INT32 *, OPJ_INT32 *, OPJ_INT32 *, OPJ_UINT32 *, OPJ_BOOL *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      9536 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 196],
-                                                &[libc::c_char; 196]>(b"OPJ_BOOL opj_j2k_read_tile_header(opj_j2k_t *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_INT32 *, OPJ_INT32 *, OPJ_INT32 *, OPJ_INT32 *, OPJ_UINT32 *, OPJ_BOOL *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      9537 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 196],
-                                                &[libc::c_char; 196]>(b"OPJ_BOOL opj_j2k_read_tile_header(opj_j2k_t *, OPJ_UINT32 *, OPJ_UINT32 *, OPJ_INT32 *, OPJ_INT32 *, OPJ_INT32 *, OPJ_INT32 *, OPJ_UINT32 *, OPJ_BOOL *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_stream.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   /* Reach the End Of Codestream ?*/
   if (*p_j2k).m_specific_param.m_decoder.m_state == J2K_STATE_EOC as libc::c_int as libc::c_uint {
     l_current_marker = 0xffd9 as libc::c_int as OPJ_UINT32
@@ -14476,35 +12471,10 @@ pub unsafe extern "C" fn opj_j2k_decode_tile(
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let mut l_image_for_bounds = 0 as *mut opj_image_t;
   /* preconditions */
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      9840 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 121],
-                                                &[libc::c_char; 121]>(b"OPJ_BOOL opj_j2k_decode_tile(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      9841 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 121],
-                                                &[libc::c_char; 121]>(b"OPJ_BOOL opj_j2k_decode_tile(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      9842 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 121],
-                                                &[libc::c_char; 121]>(b"OPJ_BOOL opj_j2k_decode_tile(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_stream.is_null());
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if (*p_j2k).m_specific_param.m_decoder.m_state & J2K_STATE_DATA as libc::c_int as libc::c_uint
     == 0
     || p_tile_index != (*p_j2k).m_current_tile_number
@@ -14716,30 +12686,9 @@ unsafe extern "C" fn opj_j2k_update_image_data(
        * l_start_y_dest, l_width_dest, l_height_dest)  which will be modified
        * by this input area.
        * */
-      if res_x0 >= 0 as libc::c_int {
-      } else {
-        __assert_fail(
-          b"res_x0 >= 0\x00" as *const u8 as *const libc::c_char,
-          b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-          10018 as libc::c_int as libc::c_uint,
-          (*::std::mem::transmute::<&[u8; 63], &[libc::c_char; 63]>(
-            b"OPJ_BOOL opj_j2k_update_image_data(opj_tcd_t *, opj_image_t *)\x00",
-          ))
-          .as_ptr(),
-        );
-      }
-      if res_x1 >= 0 as libc::c_int {
-      } else {
-        __assert_fail(
-          b"res_x1 >= 0\x00" as *const u8 as *const libc::c_char,
-          b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-          10019 as libc::c_int as libc::c_uint,
-          (*::std::mem::transmute::<&[u8; 63], &[libc::c_char; 63]>(
-            b"OPJ_BOOL opj_j2k_update_image_data(opj_tcd_t *, opj_image_t *)\x00",
-          ))
-          .as_ptr(),
-        );
-      }
+
+      assert!(res_x0 >= 0 as libc::c_int);
+      assert!(res_x1 >= 0 as libc::c_int);
       if l_x0_dest < res_x0 as OPJ_UINT32 {
         l_start_x_dest = (res_x0 as OPJ_UINT32).wrapping_sub(l_x0_dest);
         l_offset_x0_src = 0 as libc::c_int;
@@ -15357,46 +13306,14 @@ unsafe extern "C" fn opj_j2k_get_SPCod_SPCoc_size(
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let mut l_tccp = 0 as *mut opj_tccp_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      10516 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 77], &[libc::c_char; 77]>(
-        b"OPJ_UINT32 opj_j2k_get_SPCod_SPCoc_size(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(!p_j2k.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   /* preconditions again */
-  if p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th) {
-  } else {
-    __assert_fail(
-      b"p_tile_no < (l_cp->tw * l_cp->th)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      10523 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 77], &[libc::c_char; 77]>(
-        b"OPJ_UINT32 opj_j2k_get_SPCod_SPCoc_size(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if p_comp_no < (*(*p_j2k).m_private_image).numcomps {
-  } else {
-    __assert_fail(
-      b"p_comp_no < p_j2k->m_private_image->numcomps\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      10524 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 77], &[libc::c_char; 77]>(
-        b"OPJ_UINT32 opj_j2k_get_SPCod_SPCoc_size(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
+  assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps);
   if (*l_tccp).csty & 0x1 as libc::c_int as libc::c_uint != 0 {
     return (5 as libc::c_int as libc::c_uint).wrapping_add((*l_tccp).numresolutions);
   } else {
@@ -15425,15 +13342,7 @@ unsafe extern "C" fn opj_j2k_compare_SPCod_SPCoc(
   let mut l_tccp0 = 0 as *mut opj_tccp_t;
   let mut l_tccp1 = 0 as *mut opj_tccp_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10543 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 86],
-                                                &[libc::c_char; 86]>(b"OPJ_BOOL opj_j2k_compare_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32)\x00")).as_ptr());
-  }
+  assert!(!p_j2k.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp0 = &mut *(*l_tcp).tccps.offset(p_first_comp_no as isize) as *mut opj_tccp_t;
@@ -15495,70 +13404,18 @@ unsafe extern "C" fn opj_j2k_write_SPCod_SPCoc(
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let mut l_tccp = 0 as *mut opj_tccp_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10593 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 122],
-                                                &[libc::c_char; 122]>(b"OPJ_BOOL opj_j2k_write_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_header_size.is_null() {
-  } else {
-    __assert_fail(b"p_header_size != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10594 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 122],
-                                                &[libc::c_char; 122]>(b"OPJ_BOOL opj_j2k_write_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10595 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 122],
-                                                &[libc::c_char; 122]>(b"OPJ_BOOL opj_j2k_write_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_data.is_null() {
-  } else {
-    __assert_fail(b"p_data != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10596 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 122],
-                                                &[libc::c_char; 122]>(b"OPJ_BOOL opj_j2k_write_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_header_size.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_data.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   /* preconditions again */
-  if p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th) {
-  } else {
-    __assert_fail(b"p_tile_no < (l_cp->tw * l_cp->th)\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10603 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 122],
-                                                &[libc::c_char; 122]>(b"OPJ_BOOL opj_j2k_write_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* SPcoc (D) */
-  } /* SPcoc (E) */
-  if p_comp_no < (*(*p_j2k).m_private_image).numcomps {
-  } else {
-    __assert_fail(b"p_comp_no < (p_j2k->m_private_image->numcomps)\x00" as
-                          *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10604 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 122],
-                                                &[libc::c_char; 122]>(b"OPJ_BOOL opj_j2k_write_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* SPcoc (F) */
-  } /* SPcoc (G) */
+  /* SPcoc (E) */
+  assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
+  assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps); /* SPcoc (G) */
   if *p_header_size < 5 as libc::c_int as libc::c_uint {
     opj_event_msg(
       p_manager,
@@ -15641,35 +13498,10 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
   let mut l_tccp = 0 as *mut opj_tccp_t;
   let mut l_current_ptr = 0 as *mut OPJ_BYTE;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10662 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 104],
-                                                &[libc::c_char; 104]>(b"OPJ_BOOL opj_j2k_read_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10663 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 104],
-                                                &[libc::c_char; 104]>(b"OPJ_BOOL opj_j2k_read_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(b"p_header_data != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10664 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 104],
-                                                &[libc::c_char; 104]>(b"OPJ_BOOL opj_j2k_read_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_header_data.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
     == J2K_STATE_TPH as libc::c_int as libc::c_uint
@@ -15679,16 +13511,7 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
     (*p_j2k).m_specific_param.m_decoder.m_default_tcp
   };
   /* precondition again */
-  if compno < (*(*p_j2k).m_private_image).numcomps {
-  } else {
-    __assert_fail(b"compno < p_j2k->m_private_image->numcomps\x00" as
-                          *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10672 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 104],
-                                                &[libc::c_char; 104]>(b"OPJ_BOOL opj_j2k_read_SPCod_SPCoc(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+  assert!(compno < (*(*p_j2k).m_private_image).numcomps);
   l_tccp = &mut *(*l_tcp).tccps.offset(compno as isize) as *mut opj_tccp_t;
   l_current_ptr = p_header_data;
   /* make sure room is sufficient */
@@ -15850,18 +13673,7 @@ unsafe extern "C" fn opj_j2k_copy_tile_component_parameters(mut p_j2k: *mut opj_
   let mut l_copied_tccp = 0 as *mut opj_tccp_t;
   let mut l_prc_size: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      10811 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 57], &[libc::c_char; 57]>(
-        b"void opj_j2k_copy_tile_component_parameters(opj_j2k_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(!p_j2k.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
     == J2K_STATE_TPH as libc::c_int as libc::c_uint
@@ -15915,46 +13727,14 @@ unsafe extern "C" fn opj_j2k_get_SQcd_SQcc_size(
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let mut l_tccp = 0 as *mut opj_tccp_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      10846 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 75], &[libc::c_char; 75]>(
-        b"OPJ_UINT32 opj_j2k_get_SQcd_SQcc_size(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(!p_j2k.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   /* preconditions again */
-  if p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th) {
-  } else {
-    __assert_fail(
-      b"p_tile_no < l_cp->tw * l_cp->th\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      10853 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 75], &[libc::c_char; 75]>(
-        b"OPJ_UINT32 opj_j2k_get_SQcd_SQcc_size(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if p_comp_no < (*(*p_j2k).m_private_image).numcomps {
-  } else {
-    __assert_fail(
-      b"p_comp_no < p_j2k->m_private_image->numcomps\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      10854 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 75], &[libc::c_char; 75]>(
-        b"OPJ_UINT32 opj_j2k_get_SQcd_SQcc_size(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
+  assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps);
   l_num_bands = if (*l_tccp).qntsty == 1 as libc::c_int as libc::c_uint {
     1 as libc::c_int as libc::c_uint
   } else {
@@ -15993,18 +13773,7 @@ unsafe extern "C" fn opj_j2k_compare_SQcd_SQcc(
   let mut l_band_no: OPJ_UINT32 = 0;
   let mut l_num_bands: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      10876 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
-        b"OPJ_BOOL opj_j2k_compare_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(!p_j2k.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp0 = &mut *(*l_tcp).tccps.offset(p_first_comp_no as isize) as *mut opj_tccp_t;
@@ -16081,70 +13850,18 @@ unsafe extern "C" fn opj_j2k_write_SQcd_SQcc(
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let mut l_tccp = 0 as *mut opj_tccp_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10930 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 120],
-                                                &[libc::c_char; 120]>(b"OPJ_BOOL opj_j2k_write_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_header_size.is_null() {
-  } else {
-    __assert_fail(b"p_header_size != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10931 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 120],
-                                                &[libc::c_char; 120]>(b"OPJ_BOOL opj_j2k_write_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10932 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 120],
-                                                &[libc::c_char; 120]>(b"OPJ_BOOL opj_j2k_write_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_data.is_null() {
-  } else {
-    __assert_fail(b"p_data != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10933 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 120],
-                                                &[libc::c_char; 120]>(b"OPJ_BOOL opj_j2k_write_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_header_size.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_data.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   /* preconditions again */
-  if p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th) {
-  } else {
-    __assert_fail(b"p_tile_no < l_cp->tw * l_cp->th\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10940 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 120],
-                                                &[libc::c_char; 120]>(b"OPJ_BOOL opj_j2k_write_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* Sqcx */
-  } /* SPqcx_i */
-  if p_comp_no < (*(*p_j2k).m_private_image).numcomps {
-  } else {
-    __assert_fail(b"p_comp_no < p_j2k->m_private_image->numcomps\x00" as
-                          *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      10941 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 120],
-                                                &[libc::c_char; 120]>(b"OPJ_BOOL opj_j2k_write_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, struct opj_event_mgr *)\x00")).as_ptr());
-    /* Sqcx */
-  } /* SPqcx_i */
+  /* SPqcx_i */
+  assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
+  assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps); /* SPqcx_i */
   l_num_bands = if (*l_tccp).qntsty == 1 as libc::c_int as libc::c_uint {
     1 as libc::c_int as libc::c_uint
   } else {
@@ -16243,35 +13960,10 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
   let mut l_tmp: OPJ_UINT32 = 0;
   let mut l_num_band: OPJ_UINT32 = 0;
   /* preconditions*/
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      11005 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 102],
-                                                &[libc::c_char; 102]>(b"OPJ_BOOL opj_j2k_read_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      11006 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 102],
-                                                &[libc::c_char; 102]>(b"OPJ_BOOL opj_j2k_read_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_header_data.is_null() {
-  } else {
-    __assert_fail(b"p_header_data != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      11007 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 102],
-                                                &[libc::c_char; 102]>(b"OPJ_BOOL opj_j2k_read_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_header_data.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   /* come from tile part header or main header ?*/
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
@@ -16282,17 +13974,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
     (*p_j2k).m_specific_param.m_decoder.m_default_tcp
   };
   /* precondition again*/
-  if p_comp_no < (*(*p_j2k).m_private_image).numcomps {
-  } else {
-    __assert_fail(b"p_comp_no < p_j2k->m_private_image->numcomps\x00" as
-                          *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      11017 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 102],
-                                                &[libc::c_char; 102]>(b"OPJ_BOOL opj_j2k_read_SQcd_SQcc(opj_j2k_t *, OPJ_UINT32, OPJ_BYTE *, OPJ_UINT32 *, opj_event_mgr_t *)\x00")).as_ptr());
-    /* Sqcx */
-  }
+  assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps);
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   l_current_ptr = p_header_data;
   if *p_header_size < 1 as libc::c_int as libc::c_uint {
@@ -16394,18 +14076,7 @@ unsafe extern "C" fn opj_j2k_copy_tile_quantization_parameters(mut p_j2k: *mut o
   let mut l_copied_tccp = 0 as *mut opj_tccp_t;
   let mut l_size: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      11118 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 60], &[libc::c_char; 60]>(
-        b"void opj_j2k_copy_tile_quantization_parameters(opj_j2k_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(!p_j2k.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
     == J2K_STATE_TPH as libc::c_int as libc::c_uint
@@ -17394,30 +15065,9 @@ unsafe extern "C" fn opj_j2k_setup_decoding(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions*/
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      11758 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 64], &[libc::c_char; 64]>(
-        b"OPJ_BOOL opj_j2k_setup_decoding(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      11759 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 64], &[libc::c_char; 64]>(
-        b"OPJ_BOOL opj_j2k_setup_decoding(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
     ::std::mem::transmute::<
@@ -17619,30 +15269,9 @@ unsafe extern "C" fn opj_j2k_setup_decoding_tile(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions*/
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      11890 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
-        b"OPJ_BOOL opj_j2k_setup_decoding_tile(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      11891 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 69], &[libc::c_char; 69]>(
-        b"OPJ_BOOL opj_j2k_setup_decoding_tile(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
     ::std::mem::transmute::<
@@ -17716,19 +15345,9 @@ unsafe extern "C" fn opj_j2k_move_data_from_codec_to_output_image(
     }
     compno = 0 as libc::c_int as OPJ_UINT32;
     while compno < (*p_image).numcomps {
-      if (*(*(*p_j2k).m_output_image).comps.offset(compno as isize))
+      assert!((*(*(*p_j2k).m_output_image).comps.offset(compno as isize))
         .data
-        .is_null()
-      {
-      } else {
-        __assert_fail(b"p_j2k->m_output_image->comps[compno].data == NULL\x00"
-                                  as *const u8 as *const libc::c_char,
-                              b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as
-                                  *const u8 as *const libc::c_char,
-                              11935 as libc::c_int as libc::c_uint,
-                              (*::std::mem::transmute::<&[u8; 82],
-                                                        &[libc::c_char; 82]>(b"OPJ_BOOL opj_j2k_move_data_from_codec_to_output_image(opj_j2k_t *, opj_image_t *)\x00")).as_ptr());
-      }
+        .is_null());
       opj_image_data_free(
         (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data as *mut libc::c_void,
       );
@@ -18122,42 +15741,10 @@ pub unsafe extern "C" fn opj_j2k_encode(
   let mut l_reuse_data = 0 as libc::c_int;
   let mut p_tcd = 0 as *mut opj_tcd_t;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      12243 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 80], &[libc::c_char; 80]>(
-        b"OPJ_BOOL opj_j2k_encode(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      12244 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 80], &[libc::c_char; 80]>(
-        b"OPJ_BOOL opj_j2k_encode(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      12245 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 80], &[libc::c_char; 80]>(
-        b"OPJ_BOOL opj_j2k_encode(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   p_tcd = (*p_j2k).m_tcd;
   l_nb_tiles = (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw);
   if l_nb_tiles == 1 as libc::c_int as libc::c_uint {
@@ -18269,35 +15856,10 @@ pub unsafe extern "C" fn opj_j2k_start_compress(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      12361 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"OPJ_BOOL opj_j2k_start_compress(opj_j2k_t *, opj_stream_private_t *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      12362 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"OPJ_BOOL opj_j2k_start_compress(opj_j2k_t *, opj_stream_private_t *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      12363 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 103],
-                                                &[libc::c_char; 103]>(b"OPJ_BOOL opj_j2k_start_compress(opj_j2k_t *, opj_stream_private_t *, opj_image_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   (*p_j2k).m_private_image = opj_image_create0();
   if (*p_j2k).m_private_image.is_null() {
     opj_event_msg(
@@ -18553,21 +16115,11 @@ unsafe extern "C" fn opj_j2k_post_write_tile(
   let mut l_tile_size = 0 as libc::c_int as OPJ_UINT32;
   let mut l_available_data: OPJ_UINT32 = 0;
   /* preconditions */
-  if !(*p_j2k)
+  assert!(!(*p_j2k)
     .m_specific_param
     .m_encoder
     .m_encoded_tile_data
-    .is_null()
-  {
-  } else {
-    __assert_fail(b"p_j2k->m_specific_param.m_encoder.m_encoded_tile_data\x00"
-                          as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      12569 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 89],
-                                                &[libc::c_char; 89]>(b"OPJ_BOOL opj_j2k_post_write_tile(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+    .is_null());
   l_tile_size = (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_size;
   l_available_data = l_tile_size;
   l_current_data = (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data;
@@ -18622,30 +16174,9 @@ unsafe extern "C" fn opj_j2k_setup_end_compress(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      12607 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 68], &[libc::c_char; 68]>(
-        b"OPJ_BOOL opj_j2k_setup_end_compress(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      12608 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 68], &[libc::c_char; 68]>(
-        b"OPJ_BOOL opj_j2k_setup_end_compress(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   /* DEVELOPER CORNER, insert your custom procedures */
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
@@ -18780,30 +16311,9 @@ unsafe extern "C" fn opj_j2k_setup_encoding_validation(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      12642 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 75], &[libc::c_char; 75]>(
-        b"OPJ_BOOL opj_j2k_setup_encoding_validation(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      12643 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 75], &[libc::c_char; 75]>(
-        b"OPJ_BOOL opj_j2k_setup_encoding_validation(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
     ::std::mem::transmute::<
@@ -18888,30 +16398,9 @@ unsafe extern "C" fn opj_j2k_setup_header_writing(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      12667 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 70], &[libc::c_char; 70]>(
-        b"OPJ_BOOL opj_j2k_setup_header_writing(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      12668 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 70], &[libc::c_char; 70]>(
-        b"OPJ_BOOL opj_j2k_setup_header_writing(opj_j2k_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
     ::std::mem::transmute::<
@@ -19569,35 +17058,10 @@ unsafe extern "C" fn opj_j2k_write_updated_tlm(
   let mut l_current_position: OPJ_OFF_T = 0;
   let mut size_per_tile_part: OPJ_UINT32 = 0;
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      12970 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 101],
-                                                &[libc::c_char; 101]>(b"OPJ_BOOL opj_j2k_write_updated_tlm(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      12971 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 101],
-                                                &[libc::c_char; 101]>(b"OPJ_BOOL opj_j2k_write_updated_tlm(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      12972 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 101],
-                                                &[libc::c_char; 101]>(b"OPJ_BOOL opj_j2k_write_updated_tlm(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   size_per_tile_part = if (*p_j2k).m_specific_param.m_encoder.m_Ttlmi_is_byte != 0 {
     5 as libc::c_int
   } else {
@@ -19638,35 +17102,10 @@ unsafe extern "C" fn opj_j2k_end_encoding(
   mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      13002 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 96],
-                                                &[libc::c_char; 96]>(b"OPJ_BOOL opj_j2k_end_encoding(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      13003 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 96],
-                                                &[libc::c_char; 96]>(b"OPJ_BOOL opj_j2k_end_encoding(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      13004 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 96],
-                                                &[libc::c_char; 96]>(b"OPJ_BOOL opj_j2k_end_encoding(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   opj_tcd_destroy((*p_j2k).m_tcd);
   (*p_j2k).m_tcd = 0 as *mut opj_tcd;
   if !(*p_j2k)
@@ -19706,35 +17145,10 @@ unsafe extern "C" fn opj_j2k_destroy_header_memory(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      13037 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_destroy_header_memory(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      13038 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_destroy_header_memory(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      13039 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 95],
-                                                &[libc::c_char; 95]>(b"OPJ_BOOL opj_j2k_destroy_header_memory(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_stream.is_null());
+  assert!(!p_manager.is_null());
   if !(*p_j2k)
     .m_specific_param
     .m_encoder
@@ -19760,35 +17174,10 @@ unsafe extern "C" fn opj_j2k_init_info(
   mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      13061 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_init_info(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(b"p_manager != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      13062 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_init_info(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(b"p_stream != 00\x00" as *const u8 as
-                          *const libc::c_char,
-                      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8
-                          as *const libc::c_char,
-                      13063 as libc::c_int as libc::c_uint,
-                      (*::std::mem::transmute::<&[u8; 93],
-                                                &[libc::c_char; 93]>(b"OPJ_BOOL opj_j2k_init_info(opj_j2k_t *, struct opj_stream_private *, struct opj_event_mgr *)\x00")).as_ptr());
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   /* TODO mergeV2: check this part which use cstr_info */
   /*
   let mut l_cstr_info = 0 as *mut opj_codestream_info_t;
@@ -19860,42 +17249,10 @@ unsafe extern "C" fn opj_j2k_create_tcd(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* preconditions */
-  if !p_j2k.is_null() {
-  } else {
-    __assert_fail(
-      b"p_j2k != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      13125 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
-        b"OPJ_BOOL opj_j2k_create_tcd(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_manager.is_null() {
-  } else {
-    __assert_fail(
-      b"p_manager != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      13126 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
-        b"OPJ_BOOL opj_j2k_create_tcd(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if !p_stream.is_null() {
-  } else {
-    __assert_fail(
-      b"p_stream != 00\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/j2k.c\x00" as *const u8 as *const libc::c_char,
-      13127 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
-        b"OPJ_BOOL opj_j2k_create_tcd(opj_j2k_t *, opj_stream_private_t *, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!(!p_j2k.is_null());
+  assert!(!p_manager.is_null());
+  assert!(!p_stream.is_null());
   (*p_j2k).m_tcd = opj_tcd_create(0 as libc::c_int);
   if (*p_j2k).m_tcd.is_null() {
     opj_event_msg(

@@ -31,8 +31,9 @@ pub type OPJ_INT32 = int32_t;
 pub type OPJ_UINT32 = uint32_t;
 pub type opj_msg_callback =
   Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_event_mgr {
   pub m_error_data: *mut libc::c_void,
   pub m_warning_data: *mut libc::c_void,
@@ -42,8 +43,9 @@ pub struct opj_event_mgr {
   pub info_handler: opj_msg_callback,
 }
 pub type opj_event_mgr_t = opj_event_mgr;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_bio {
   pub start: *mut OPJ_BYTE,
   pub end: *mut OPJ_BYTE,
@@ -53,8 +55,9 @@ pub struct opj_bio {
 }
 pub type opj_bio_t = opj_bio;
 pub type opj_tgt_tree_t = opj_tgt_tree;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tgt_tree {
   pub numleafsh: OPJ_UINT32,
   pub numleafsv: OPJ_UINT32,
@@ -63,8 +66,9 @@ pub struct opj_tgt_tree {
   pub nodes_size: OPJ_UINT32,
 }
 pub type opj_tgt_node_t = opj_tgt_node;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tgt_node {
   pub parent: *mut opj_tgt_node,
   pub value: OPJ_INT32,

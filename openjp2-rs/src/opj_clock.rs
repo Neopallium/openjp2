@@ -7,14 +7,16 @@ pub type __time_t = libc::c_long;
 pub type __suseconds_t = libc::c_long;
 pub type __syscall_slong_t = libc::c_long;
 pub type OPJ_FLOAT64 = libc::c_double;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct timeval {
   pub tv_sec: __time_t,
   pub tv_usec: __suseconds_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct rusage {
   pub ru_utime: timeval,
   pub ru_stime: timeval,
@@ -33,86 +35,100 @@ pub struct rusage {
   pub c2rust_unnamed_11: C2RustUnnamed_0,
   pub c2rust_unnamed_12: C2RustUnnamed,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed {
   pub ru_nivcsw: libc::c_long,
   pub __ru_nivcsw_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_0 {
   pub ru_nvcsw: libc::c_long,
   pub __ru_nvcsw_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_1 {
   pub ru_nsignals: libc::c_long,
   pub __ru_nsignals_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_2 {
   pub ru_msgrcv: libc::c_long,
   pub __ru_msgrcv_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_3 {
   pub ru_msgsnd: libc::c_long,
   pub __ru_msgsnd_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_4 {
   pub ru_oublock: libc::c_long,
   pub __ru_oublock_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_5 {
   pub ru_inblock: libc::c_long,
   pub __ru_inblock_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_6 {
   pub ru_nswap: libc::c_long,
   pub __ru_nswap_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_7 {
   pub ru_majflt: libc::c_long,
   pub __ru_majflt_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_8 {
   pub ru_minflt: libc::c_long,
   pub __ru_minflt_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_9 {
   pub ru_isrss: libc::c_long,
   pub __ru_isrss_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_10 {
   pub ru_idrss: libc::c_long,
   pub __ru_idrss_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_11 {
   pub ru_ixrss: libc::c_long,
   pub __ru_ixrss_word: __syscall_slong_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub union C2RustUnnamed_12 {
   pub ru_maxrss: libc::c_long,
   pub __ru_maxrss_word: __syscall_slong_t,

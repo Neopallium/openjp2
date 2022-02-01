@@ -2,13 +2,6 @@ use ::libc;
 extern "C" {
   #[no_mangle]
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
 }
 pub type __int32_t = libc::c_int;
 pub type __uint32_t = libc::c_uint;
@@ -19,8 +12,9 @@ pub type uint32_t = __uint32_t;
 pub type OPJ_INT32 = int32_t;
 pub type OPJ_UINT32 = uint32_t;
 pub type ptrdiff_t = libc::c_long;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_mqc_state {
   pub qeval: OPJ_UINT32,
   pub mps: OPJ_UINT32,
@@ -28,8 +22,9 @@ pub struct opj_mqc_state {
   pub nlps: *const opj_mqc_state,
 }
 pub type opj_mqc_state_t = opj_mqc_state;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_mqc {
   pub c: OPJ_UINT32,
   pub a: OPJ_UINT32,
@@ -167,18 +162,7 @@ pub unsafe extern "C" fn opj_mqc_init_enc(mut mqc: *mut opj_mqc_t, mut bp: *mut 
   /* At this point we should test *(mqc->bp) against 0xFF, but this is not */
   /* necessary, as this is only used at the beginning of the code block */
   /* and our initial fake byte is set at 0 */
-  if *(*mqc).bp as libc::c_int != 0xff as libc::c_int {
-  } else {
-    __assert_fail(
-      b"*(mqc->bp) != 0xff\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/mqc.c\x00" as *const u8 as *const libc::c_char,
-      205 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 47], &[libc::c_char; 47]>(
-        b"void opj_mqc_init_enc(opj_mqc_t *, OPJ_BYTE *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(*(*mqc).bp as libc::c_int != 0xff as libc::c_int);
   (*mqc).start = bp;
   (*mqc).end_of_byte_stream_counter = 0 as libc::c_int as OPJ_UINT32;
 }
@@ -202,18 +186,7 @@ pub unsafe extern "C" fn opj_mqc_bypass_init_enc(mut mqc: *mut opj_mqc_t) {
   /* This function is normally called after at least one opj_mqc_flush() */
   /* which will have advance mqc->bp by at least 2 bytes beyond its */
   /* initial position */
-  if (*mqc).bp >= (*mqc).start {
-  } else {
-    __assert_fail(
-      b"mqc->bp >= mqc->start\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/mqc.c\x00" as *const u8 as *const libc::c_char,
-      234 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 42], &[libc::c_char; 42]>(
-        b"void opj_mqc_bypass_init_enc(opj_mqc_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!((*mqc).bp >= (*mqc).start);
   (*mqc).c = 0 as libc::c_int as OPJ_UINT32;
   /* in theory we should initialize to 8, but use this special value */
   /* as a hint that opj_mqc_bypass_enc() has never been called, so */
@@ -223,18 +196,7 @@ pub unsafe extern "C" fn opj_mqc_bypass_init_enc(mut mqc: *mut opj_mqc_t) {
   (*mqc).ct = 0xdeadbeef as libc::c_uint;
   /* Given that we are called after opj_mqc_flush(), the previous byte */
   /* cannot be 0xff. */
-  if *(*mqc).bp.offset(-(1 as libc::c_int) as isize) as libc::c_int != 0xff as libc::c_int {
-  } else {
-    __assert_fail(
-      b"mqc->bp[-1] != 0xff\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/mqc.c\x00" as *const u8 as *const libc::c_char,
-      244 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 42], &[libc::c_char; 42]>(
-        b"void opj_mqc_bypass_init_enc(opj_mqc_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  };
+  assert!(*(*mqc).bp.offset(-(1 as libc::c_int) as isize) as libc::c_int != 0xff as libc::c_int);
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_mqc_bypass_enc(mut mqc: *mut opj_mqc_t, mut d: OPJ_UINT32) {
@@ -301,18 +263,7 @@ pub unsafe extern "C" fn opj_mqc_bypass_flush_enc(mut mqc: *mut opj_mqc_t, mut e
     && *(*mqc).bp.offset(-(1 as libc::c_int) as isize) as libc::c_int == 0xff as libc::c_int
   {
     /* Discard last 0xff */
-    if erterm == 0 {
-    } else {
-      __assert_fail(
-        b"!erterm\x00" as *const u8 as *const libc::c_char,
-        b"/opt/openjpeg/src/lib/openjp2/mqc.c\x00" as *const u8 as *const libc::c_char,
-        296 as libc::c_int as libc::c_uint,
-        (*::std::mem::transmute::<&[u8; 53], &[libc::c_char; 53]>(
-          b"void opj_mqc_bypass_flush_enc(opj_mqc_t *, OPJ_BOOL)\x00",
-        ))
-        .as_ptr(),
-      );
-    }
+    assert!(erterm == 0);
     (*mqc).bp = (*mqc).bp.offset(-1)
   } else if (*mqc).ct == 8 as libc::c_int as libc::c_uint
     && erterm == 0
@@ -325,18 +276,7 @@ pub unsafe extern "C" fn opj_mqc_bypass_flush_enc(mut mqc: *mut opj_mqc_t, mut e
     /* Happens once on opj_compress -i ../MAPA.tif -o MAPA.j2k  -M 1 */
     (*mqc).bp = (*mqc).bp.offset(-(2 as libc::c_int as isize))
   }
-  if *(*mqc).bp.offset(-(1 as libc::c_int) as isize) as libc::c_int != 0xff as libc::c_int {
-  } else {
-    __assert_fail(
-      b"mqc->bp[-1] != 0xff\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/mqc.c\x00" as *const u8 as *const libc::c_char,
-      307 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 53], &[libc::c_char; 53]>(
-        b"void opj_mqc_bypass_flush_enc(opj_mqc_t *, OPJ_BOOL)\x00",
-      ))
-      .as_ptr(),
-    );
-  };
+  assert!(*(*mqc).bp.offset(-(1 as libc::c_int) as isize) as libc::c_int != 0xff as libc::c_int);
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_mqc_reset_enc(mut mqc: *mut opj_mqc_t) {
@@ -373,30 +313,9 @@ pub unsafe extern "C" fn opj_mqc_restart_init_enc(mut mqc: *mut opj_mqc_t) {
   /* which will have advance mqc->bp by at least 2 bytes beyond its */
   /* initial position */
   (*mqc).bp = (*mqc).bp.offset(-1);
-  if (*mqc).bp >= (*mqc).start.offset(-(1 as libc::c_int as isize)) {
-  } else {
-    __assert_fail(
-      b"mqc->bp >= mqc->start - 1\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/mqc.c\x00" as *const u8 as *const libc::c_char,
-      350 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 43], &[libc::c_char; 43]>(
-        b"void opj_mqc_restart_init_enc(opj_mqc_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if *(*mqc).bp as libc::c_int != 0xff as libc::c_int {
-  } else {
-    __assert_fail(
-      b"*mqc->bp != 0xff\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/mqc.c\x00" as *const u8 as *const libc::c_char,
-      351 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 43], &[libc::c_char; 43]>(
-        b"void opj_mqc_restart_init_enc(opj_mqc_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
+  assert!((*mqc).bp >= (*mqc).start.offset(-(1 as libc::c_int as isize)));
+  assert!(*(*mqc).bp as libc::c_int != 0xff as libc::c_int);
   if *(*mqc).bp as libc::c_int == 0xff as libc::c_int {
     (*mqc).ct = 13 as libc::c_int as OPJ_UINT32
   };
@@ -514,18 +433,7 @@ unsafe extern "C" fn opj_mqc_init_dec_common(
   mut len: OPJ_UINT32,
   mut extra_writable_bytes: OPJ_UINT32,
 ) {
-  if extra_writable_bytes >= 2 as libc::c_int as libc::c_uint {
-  } else {
-    __assert_fail(
-      b"extra_writable_bytes >= OPJ_COMMON_CBLK_DATA_EXTRA\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/mqc.c\x00" as *const u8 as *const libc::c_char,
-      427 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 78], &[libc::c_char; 78]>(
-        b"void opj_mqc_init_dec_common(opj_mqc_t *, OPJ_BYTE *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(extra_writable_bytes >= 2 as libc::c_int as libc::c_uint);
   (*mqc).start = bp;
   (*mqc).end = bp.offset(len as isize);
   /* Insert an artificial 0xFF 0xFF marker at end of the code block */
@@ -616,18 +524,7 @@ pub unsafe extern "C" fn opj_mqc_setstate(
 pub unsafe extern "C" fn opj_mqc_byteout(mut mqc: *mut opj_mqc_t) {
   /* bp is initialized to start - 1 in opj_mqc_init_enc() */
   /* but this is safe, see opj_tcd_code_block_enc_allocate_data() */
-  if (*mqc).bp >= (*mqc).start.offset(-(1 as libc::c_int as isize)) {
-  } else {
-    __assert_fail(
-      b"mqc->bp >= mqc->start - 1\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/mqc.c\x00" as *const u8 as *const libc::c_char,
-      496 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 34], &[libc::c_char; 34]>(
-        b"void opj_mqc_byteout(opj_mqc_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!((*mqc).bp >= (*mqc).start.offset(-(1 as libc::c_int as isize)));
   if *(*mqc).bp as libc::c_int == 0xff as libc::c_int {
     (*mqc).bp = (*mqc).bp.offset(1);
     *(*mqc).bp = ((*mqc).c >> 20 as libc::c_int) as OPJ_BYTE;

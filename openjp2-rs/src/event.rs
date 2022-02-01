@@ -11,8 +11,9 @@ extern "C" {
   ) -> libc::c_int;
 }
 pub type __builtin_va_list = [__va_list_tag; 1];
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct __va_list_tag {
   pub gp_offset: libc::c_uint,
   pub fp_offset: libc::c_uint,
@@ -26,8 +27,9 @@ pub type int32_t = __int32_t;
 pub type OPJ_INT32 = int32_t;
 pub type opj_msg_callback =
   Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_event_mgr {
   pub m_error_data: *mut libc::c_void,
   pub m_warning_data: *mut libc::c_void,

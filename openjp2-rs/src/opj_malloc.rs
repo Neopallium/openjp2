@@ -16,13 +16,6 @@ extern "C" {
   ) -> libc::c_int;
   #[no_mangle]
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-  #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
 }
 pub type size_t = libc::c_ulong;
 /*
@@ -63,35 +56,14 @@ unsafe extern "C" fn opj_aligned_alloc_n(
 ) -> *mut libc::c_void {
   let mut ptr = 0 as *mut libc::c_void;
   /* alignment shall be power of 2 */
-  if alignment != 0 as libc::c_uint as libc::c_ulong
-    && alignment & alignment.wrapping_sub(1 as libc::c_uint as libc::c_ulong)
-      == 0 as libc::c_uint as libc::c_ulong
-  {
-  } else {
-    __assert_fail(
-      b"(alignment != 0U) && ((alignment & (alignment - 1U)) == 0U)\x00" as *const u8
-        as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/opj_malloc.c\x00" as *const u8 as *const libc::c_char,
-      48 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 42], &[libc::c_char; 42]>(
-        b"void *opj_aligned_alloc_n(size_t, size_t)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
   /* alignment shall be at least sizeof(void*) */
-  if alignment >= ::std::mem::size_of::<*mut libc::c_void>() as libc::c_ulong {
-  } else {
-    __assert_fail(
-      b"alignment >= sizeof(void*)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/opj_malloc.c\x00" as *const u8 as *const libc::c_char,
-      50 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 42], &[libc::c_char; 42]>(
-        b"void *opj_aligned_alloc_n(size_t, size_t)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(
+    alignment != 0 as libc::c_uint as libc::c_ulong
+      && alignment & alignment.wrapping_sub(1 as libc::c_uint as libc::c_ulong)
+        == 0 as libc::c_uint as libc::c_ulong
+  );
+  assert!(alignment >= ::std::mem::size_of::<*mut libc::c_void>() as libc::c_ulong);
   if size == 0 as libc::c_uint as libc::c_ulong {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;
@@ -114,35 +86,14 @@ unsafe extern "C" fn opj_aligned_realloc_n(
 ) -> *mut libc::c_void {
   let mut r_ptr = 0 as *mut libc::c_void;
   /* alignment shall be power of 2 */
-  if alignment != 0 as libc::c_uint as libc::c_ulong
-    && alignment & alignment.wrapping_sub(1 as libc::c_uint as libc::c_ulong)
-      == 0 as libc::c_uint as libc::c_ulong
-  {
-  } else {
-    __assert_fail(
-      b"(alignment != 0U) && ((alignment & (alignment - 1U)) == 0U)\x00" as *const u8
-        as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/opj_malloc.c\x00" as *const u8 as *const libc::c_char,
-      113 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 52], &[libc::c_char; 52]>(
-        b"void *opj_aligned_realloc_n(void *, size_t, size_t)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+
   /* alignment shall be at least sizeof(void*) */
-  if alignment >= ::std::mem::size_of::<*mut libc::c_void>() as libc::c_ulong {
-  } else {
-    __assert_fail(
-      b"alignment >= sizeof(void*)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/opj_malloc.c\x00" as *const u8 as *const libc::c_char,
-      115 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 52], &[libc::c_char; 52]>(
-        b"void *opj_aligned_realloc_n(void *, size_t, size_t)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(
+    alignment != 0 as libc::c_uint as libc::c_ulong
+      && alignment & alignment.wrapping_sub(1 as libc::c_uint as libc::c_ulong)
+        == 0 as libc::c_uint as libc::c_ulong
+  );
+  assert!(alignment >= ::std::mem::size_of::<*mut libc::c_void>() as libc::c_ulong);
   if new_size == 0 as libc::c_uint as libc::c_ulong {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;

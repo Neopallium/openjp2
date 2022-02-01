@@ -4,13 +4,6 @@ extern "C" {
   pub type opj_cond_t;
   pub type opj_thread_t;
   #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
-  #[no_mangle]
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
   #[no_mangle]
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
@@ -22,22 +15,25 @@ extern "C" {
 pub type size_t = libc::c_ulong;
 pub type OPJ_BOOL = libc::c_int;
 pub type opj_thread_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tls_t {
   pub key_val: *mut opj_tls_key_val_t,
   pub key_val_count: libc::c_int,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_tls_key_val_t {
   pub key: libc::c_int,
   pub value: *mut libc::c_void,
   pub opj_free_func: opj_tls_free_func,
 }
 pub type opj_tls_free_func = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_thread_pool_t {
   pub worker_threads: *mut opj_worker_thread_t,
   pub worker_threads_count: libc::c_int,
@@ -51,14 +47,16 @@ pub struct opj_thread_pool_t {
   pub tls: *mut opj_tls_t,
   pub signaling_threshold: libc::c_int,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_worker_thread_list_t {
   pub worker_thread: *mut opj_worker_thread_t,
   pub next: *mut opj_worker_thread_list_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_worker_thread_t {
   pub tp: *mut opj_thread_pool_t,
   pub thread: *mut opj_thread_t,
@@ -66,14 +64,16 @@ pub struct opj_worker_thread_t {
   pub mutex: *mut opj_mutex_t,
   pub cond: *mut opj_cond_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_job_list_t {
   pub job: *mut opj_worker_thread_job_t,
   pub next: *mut opj_job_list_t,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_worker_thread_job_t {
   pub job_fn: opj_job_fn,
   pub user_data: *mut libc::c_void,
@@ -294,18 +294,7 @@ unsafe extern "C" fn opj_thread_pool_setup(
 ) -> OPJ_BOOL {
   let mut i: libc::c_int = 0;
   let mut bRet = 1 as libc::c_int;
-  if num_threads > 0 as libc::c_int {
-  } else {
-    __assert_fail(
-      b"num_threads > 0\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/thread.c\x00" as *const u8 as *const libc::c_char,
-      689 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 57], &[libc::c_char; 57]>(
-        b"OPJ_BOOL opj_thread_pool_setup(opj_thread_pool_t *, int)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(num_threads > 0 as libc::c_int);
   (*tp).cond = opj_cond_create();
   if (*tp).cond.is_null() {
     return 0 as libc::c_int;
@@ -413,16 +402,7 @@ unsafe extern "C" fn opj_thread_pool_get_next_job(
       let mut item = 0 as *mut opj_worker_thread_list_t;
       (*worker_thread).marked_as_waiting = 1 as libc::c_int;
       (*tp).waiting_worker_thread_count += 1;
-      if (*tp).waiting_worker_thread_count <= (*tp).worker_threads_count {
-      } else {
-        __assert_fail(b"tp->waiting_worker_thread_count <= tp->worker_threads_count\x00"
-                                  as *const u8 as *const libc::c_char,
-                              b"/opt/openjpeg/src/lib/openjp2/thread.c\x00" as
-                                  *const u8 as *const libc::c_char,
-                              797 as libc::c_int as libc::c_uint,
-                              (*::std::mem::transmute::<&[u8; 108],
-                                                        &[libc::c_char; 108]>(b"opj_worker_thread_job_t *opj_thread_pool_get_next_job(opj_thread_pool_t *, opj_worker_thread_t *, OPJ_BOOL)\x00")).as_ptr());
-      }
+      assert!((*tp).waiting_worker_thread_count <= (*tp).worker_threads_count);
       item = opj_malloc(::std::mem::size_of::<opj_worker_thread_list_t>() as libc::c_ulong)
         as *mut opj_worker_thread_list_t;
       if item.is_null() {
@@ -492,18 +472,7 @@ pub unsafe extern "C" fn opj_thread_pool_submit_job(
     let mut next = 0 as *mut opj_worker_thread_list_t;
     let mut to_opj_free = 0 as *mut opj_worker_thread_list_t;
     worker_thread = (*(*tp).waiting_worker_thread_list).worker_thread;
-    if (*worker_thread).marked_as_waiting != 0 {
-    } else {
-      __assert_fail(
-        b"worker_thread->marked_as_waiting\x00" as *const u8 as *const libc::c_char,
-        b"/opt/openjpeg/src/lib/openjp2/thread.c\x00" as *const u8 as *const libc::c_char,
-        873 as libc::c_int as libc::c_uint,
-        (*::std::mem::transmute::<&[u8; 77], &[libc::c_char; 77]>(
-          b"OPJ_BOOL opj_thread_pool_submit_job(opj_thread_pool_t *, opj_job_fn, void *)\x00",
-        ))
-        .as_ptr(),
-      );
-    }
+    assert!((*worker_thread).marked_as_waiting != 0);
     (*worker_thread).marked_as_waiting = 0 as libc::c_int;
     next = (*(*tp).waiting_worker_thread_list).next;
     to_opj_free = (*tp).waiting_worker_thread_list;

@@ -3,13 +3,6 @@ extern "C" {
   #[no_mangle]
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
   #[no_mangle]
-  fn __assert_fail(
-    __assertion: *const libc::c_char,
-    __file: *const libc::c_char,
-    __line: libc::c_uint,
-    __function: *const libc::c_char,
-  ) -> !;
-  #[no_mangle]
   fn opj_event_msg(
     event_mgr: *mut opj_event_mgr_t,
     event_type: OPJ_INT32,
@@ -56,8 +49,9 @@ pub type opj_stream_seek_fn =
 pub type opj_stream_free_user_data_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
 pub type opj_stream_t = *mut libc::c_void;
 pub type opj_stream_private_t = opj_stream_private;
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_stream_private {
   pub m_user_data: *mut libc::c_void,
   pub m_free_user_data_fn: opj_stream_free_user_data_fn,
@@ -87,8 +81,9 @@ pub struct opj_stream_private {
   pub m_buffer_size: OPJ_SIZE_T,
   pub m_status: OPJ_UINT32,
 }
-#[derive(Copy, Clone)]
+
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct opj_event_mgr {
   pub m_error_data: *mut libc::c_void,
   pub m_warning_data: *mut libc::c_void,
@@ -147,20 +142,10 @@ pub unsafe extern "C" fn opj_write_bytes_BE(
   let mut l_data_ptr = (&mut p_value as *mut OPJ_UINT32 as *const OPJ_BYTE)
     .offset(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong as isize)
     .offset(-(p_nb_bytes as isize));
-  if p_nb_bytes > 0 as libc::c_int as libc::c_uint
-    && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
-  {
-  } else {
-    __assert_fail(
-      b"p_nb_bytes > 0 && p_nb_bytes <= sizeof(OPJ_UINT32)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/cio.c\x00" as *const u8 as *const libc::c_char,
-      53 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 60], &[libc::c_char; 60]>(
-        b"void opj_write_bytes_BE(OPJ_BYTE *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(
+    p_nb_bytes > 0 as libc::c_int as libc::c_uint
+      && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
+  );
   memcpy(
     p_buffer as *mut libc::c_void,
     l_data_ptr as *const libc::c_void,
@@ -177,20 +162,10 @@ pub unsafe extern "C" fn opj_write_bytes_LE(
     .offset(p_nb_bytes as isize)
     .offset(-(1 as libc::c_int as isize));
   let mut i: OPJ_UINT32 = 0;
-  if p_nb_bytes > 0 as libc::c_int as libc::c_uint
-    && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
-  {
-  } else {
-    __assert_fail(
-      b"p_nb_bytes > 0 && p_nb_bytes <= sizeof(OPJ_UINT32)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/cio.c\x00" as *const u8 as *const libc::c_char,
-      64 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 60], &[libc::c_char; 60]>(
-        b"void opj_write_bytes_LE(OPJ_BYTE *, OPJ_UINT32, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(
+    p_nb_bytes > 0 as libc::c_int as libc::c_uint
+      && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
+  );
   i = 0 as libc::c_int as OPJ_UINT32;
   while i < p_nb_bytes {
     let fresh0 = l_data_ptr;
@@ -208,20 +183,10 @@ pub unsafe extern "C" fn opj_read_bytes_BE(
   mut p_nb_bytes: OPJ_UINT32,
 ) {
   let mut l_data_ptr = p_value as *mut OPJ_BYTE;
-  if p_nb_bytes > 0 as libc::c_int as libc::c_uint
-    && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
-  {
-  } else {
-    __assert_fail(
-      b"p_nb_bytes > 0 && p_nb_bytes <= sizeof(OPJ_UINT32)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/cio.c\x00" as *const u8 as *const libc::c_char,
-      76 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 67], &[libc::c_char; 67]>(
-        b"void opj_read_bytes_BE(const OPJ_BYTE *, OPJ_UINT32 *, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(
+    p_nb_bytes > 0 as libc::c_int as libc::c_uint
+      && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
+  );
   *p_value = 0 as libc::c_int as OPJ_UINT32;
   memcpy(
     l_data_ptr
@@ -241,20 +206,10 @@ pub unsafe extern "C" fn opj_read_bytes_LE(
     .offset(p_nb_bytes as isize)
     .offset(-(1 as libc::c_int as isize));
   let mut i: OPJ_UINT32 = 0;
-  if p_nb_bytes > 0 as libc::c_int as libc::c_uint
-    && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
-  {
-  } else {
-    __assert_fail(
-      b"p_nb_bytes > 0 && p_nb_bytes <= sizeof(OPJ_UINT32)\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/cio.c\x00" as *const u8 as *const libc::c_char,
-      88 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 67], &[libc::c_char; 67]>(
-        b"void opj_read_bytes_LE(const OPJ_BYTE *, OPJ_UINT32 *, OPJ_UINT32)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(
+    p_nb_bytes > 0 as libc::c_int as libc::c_uint
+      && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
+  );
   *p_value = 0 as libc::c_int as OPJ_UINT32;
   i = 0 as libc::c_int as OPJ_UINT32;
   while i < p_nb_bytes {
@@ -816,18 +771,7 @@ pub unsafe extern "C" fn opj_stream_read_skip(
 ) -> OPJ_OFF_T {
   let mut l_skip_nb_bytes = 0 as libc::c_int as OPJ_OFF_T;
   let mut l_current_skip_nb_bytes = 0 as libc::c_int as OPJ_OFF_T;
-  if p_size >= 0 as libc::c_int as libc::c_long {
-  } else {
-    __assert_fail(
-      b"p_size >= 0\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/cio.c\x00" as *const u8 as *const libc::c_char,
-      469 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 85], &[libc::c_char; 85]>(
-        b"OPJ_OFF_T opj_stream_read_skip(opj_stream_private_t *, OPJ_OFF_T, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(p_size >= 0 as libc::c_int as libc::c_long);
   if (*p_stream).m_bytes_in_buffer >= p_size as OPJ_SIZE_T {
     (*p_stream).m_current_data = (*p_stream).m_current_data.offset(p_size as isize);
     /* it is safe to cast p_size to OPJ_SIZE_T since it is <= m_bytes_in_buffer
@@ -967,31 +911,8 @@ pub unsafe extern "C" fn opj_stream_tell(mut p_stream: *const opj_stream_private
 pub unsafe extern "C" fn opj_stream_get_number_byte_left(
   mut p_stream: *const opj_stream_private_t,
 ) -> OPJ_OFF_T {
-  if (*p_stream).m_byte_offset >= 0 as libc::c_int as libc::c_long {
-  } else {
-    __assert_fail(
-      b"p_stream->m_byte_offset >= 0\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/cio.c\x00" as *const u8 as *const libc::c_char,
-      586 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 72], &[libc::c_char; 72]>(
-        b"OPJ_OFF_T opj_stream_get_number_byte_left(const opj_stream_private_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
-  if (*p_stream).m_user_data_length >= (*p_stream).m_byte_offset as OPJ_UINT64 {
-  } else {
-    __assert_fail(
-      b"p_stream->m_user_data_length >= (OPJ_UINT64)p_stream->m_byte_offset\x00" as *const u8
-        as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/cio.c\x00" as *const u8 as *const libc::c_char,
-      587 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 72], &[libc::c_char; 72]>(
-        b"OPJ_OFF_T opj_stream_get_number_byte_left(const opj_stream_private_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!((*p_stream).m_byte_offset >= 0 as libc::c_int as libc::c_long);
+  assert!((*p_stream).m_user_data_length >= (*p_stream).m_byte_offset as OPJ_UINT64);
   return if (*p_stream).m_user_data_length != 0 {
     ((*p_stream).m_user_data_length as OPJ_OFF_T) - (*p_stream).m_byte_offset
   } else {
@@ -1004,18 +925,7 @@ pub unsafe extern "C" fn opj_stream_skip(
   mut p_size: OPJ_OFF_T,
   mut p_event_mgr: *mut opj_event_mgr_t,
 ) -> OPJ_OFF_T {
-  if p_size >= 0 as libc::c_int as libc::c_long {
-  } else {
-    __assert_fail(
-      b"p_size >= 0\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/cio.c\x00" as *const u8 as *const libc::c_char,
-      596 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 80], &[libc::c_char; 80]>(
-        b"OPJ_OFF_T opj_stream_skip(opj_stream_private_t *, OPJ_OFF_T, opj_event_mgr_t *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(p_size >= 0 as libc::c_int as libc::c_long);
   return (*p_stream).m_opj_skip.expect("non-null function pointer")(p_stream, p_size, p_event_mgr);
 }
 #[no_mangle]
@@ -1064,18 +974,7 @@ pub unsafe extern "C" fn opj_stream_seek(
   mut p_size: OPJ_OFF_T,
   mut p_event_mgr: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  if p_size >= 0 as libc::c_int as libc::c_long {
-  } else {
-    __assert_fail(
-      b"p_size >= 0\x00" as *const u8 as *const libc::c_char,
-      b"/opt/openjpeg/src/lib/openjp2/cio.c\x00" as *const u8 as *const libc::c_char,
-      644 as libc::c_int as libc::c_uint,
-      (*::std::mem::transmute::<&[u8; 84], &[libc::c_char; 84]>(
-        b"OPJ_BOOL opj_stream_seek(opj_stream_private_t *, OPJ_OFF_T, struct opj_event_mgr *)\x00",
-      ))
-      .as_ptr(),
-    );
-  }
+  assert!(p_size >= 0 as libc::c_int as libc::c_long);
   return (*p_stream).m_opj_seek.expect("non-null function pointer")(p_stream, p_size, p_event_mgr);
 }
 #[no_mangle]
