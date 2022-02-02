@@ -1,5 +1,5 @@
-use ::libc;
 use super::openjpeg::*;
+use ::libc;
 
 extern "C" {
   fn lrintf(_: libc::c_float) -> libc::c_long;
@@ -109,11 +109,7 @@ pub unsafe fn opj_lrintf(mut f: libc::c_float) -> libc::c_long {
 }
 
 #[inline]
-pub fn opj_int64_clamp(
-  mut a: OPJ_INT64,
-  mut min: OPJ_INT64,
-  mut max: OPJ_INT64,
-) -> OPJ_INT64 {
+pub fn opj_int64_clamp(mut a: OPJ_INT64, mut min: OPJ_INT64, mut max: OPJ_INT64) -> OPJ_INT64 {
   if a < min {
     return min;
   }
@@ -123,11 +119,7 @@ pub fn opj_int64_clamp(
   return a;
 }
 #[inline]
-pub fn opj_int_clamp(
-  mut a: OPJ_INT32,
-  mut min: OPJ_INT32,
-  mut max: OPJ_INT32,
-) -> OPJ_INT32 {
+pub fn opj_int_clamp(mut a: OPJ_INT32, mut min: OPJ_INT32, mut max: OPJ_INT32) -> OPJ_INT32 {
   if a < min {
     return min;
   }
@@ -159,4 +151,3 @@ pub unsafe fn opj_int_add_no_overflow(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ
   let mut ipres = pures as *mut OPJ_INT32;
   return *ipres;
 }
-

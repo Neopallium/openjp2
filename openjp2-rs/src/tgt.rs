@@ -1,6 +1,6 @@
-use ::libc;
-use super::openjpeg::*;
 use super::bio::*;
+use super::openjpeg::*;
+use ::libc;
 
 extern "C" {
 

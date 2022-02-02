@@ -1,8 +1,8 @@
-use ::libc;
-use super::openjpeg::*;
-use super::thread::*;
-use super::sparse_array::*;
 use super::math::*;
+use super::openjpeg::*;
+use super::sparse_array::*;
+use super::thread::*;
+use ::libc;
 
 extern "C" {
   fn floor(_: libc::c_double) -> libc::c_double;

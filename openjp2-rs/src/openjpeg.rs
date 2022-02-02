@@ -1,6 +1,6 @@
+use super::thread::*;
 use ::c2rust_bitfields;
 use ::libc;
-use super::thread::*;
 
 extern "C" {
   pub type _IO_wide_data;

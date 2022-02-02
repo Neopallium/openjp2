@@ -1,5 +1,5 @@
-use ::libc;
 use super::openjpeg::*;
+use ::libc;
 
 extern "C" {
   fn opj_malloc(size: size_t) -> *mut libc::c_void;

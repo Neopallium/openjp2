@@ -1,8 +1,8 @@
-use ::libc;
 use super::openjpeg::*;
-use super::thread::*;
 use super::t1::*;
 use super::t1_ht_luts::*;
+use super::thread::*;
+use ::libc;
 
 extern "C" {
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
