@@ -1,7 +1,10 @@
 [package]
 name = "openjp2"
-authors = ["C2Rust"]
+authors = ["Robert G. Jakabosky <rjakabosky+neopallium@neoawareness.com>"]
 version = "0.1.0"
+license = "BSD-2-Clause"
+description = "Rust port of libopenjp2."
+keywords = ["j2k", "jp2", "jpeg2000", "image"]
 publish = false
 edition = "2018"
 autobins = false

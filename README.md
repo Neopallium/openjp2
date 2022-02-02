@@ -1,4 +1,18 @@
 
+## C2Rust port
+
+An experimental Rust port is being developed in [openjp2-rs][link-openjp2-rs].
+
+To build the CLI tools `opj_compress`/`opj_decompress`/`opj_dump` with the Rust
+port use CMake flag `USE_RUST_LIB`.
+
+```
+mkdir build
+cd build
+cmake .. -DUSE_RUST_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
+make
+```
+
 # OPENJPEG Library and Applications
 
 ## What is OpenJPEG ? 
@@ -37,6 +51,7 @@ The library is developed and maintained by the Image and Signal Processing Group
       * java: a Java client viewer for JPIP
     * wx
       * OPJViewer: gui for displaying j2k files (based on wxWidget)
+* openjp2-rs: Rust port of `src/lib/openjp2`
 * wrapping
   * java: java jni to use openjpeg in a java program
 * thirdparty: thirdparty libraries used by some applications. These libraries will be built only if there are not found on the system. Note that libopenjpeg itself does not have any dependency.
@@ -81,3 +96,4 @@ API available is the one supported by OpenJPEG.
 [badge-coverity]: https://scan.coverity.com/projects/6383/badge.svg "Coverity Scan Build Status"
 [link-coverity]: https://scan.coverity.com/projects/uclouvain-openjpeg "Coverity Scan Build Status"
 [link-api-timeline]: http://www.openjpeg.org/abi-check/timeline/openjpeg "OpenJPEG API/ABI timeline"
+[link-openjp2-rs]: https://github.com/Neopallium/openjpeg/openjp2-rs/ "Rust openjp2 port"
