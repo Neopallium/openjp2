@@ -1,4 +1,6 @@
 use ::libc;
+use super::openjpeg::*;
+
 extern "C" {
 
   fn sqrt(_: libc::c_double) -> libc::c_double;
@@ -7,21 +9,7 @@ extern "C" {
 
   fn opj_free(m: *mut libc::c_void);
 }
-pub type size_t = libc::c_ulong;
-pub type __int32_t = libc::c_int;
-pub type __uint32_t = libc::c_uint;
-pub type __int64_t = libc::c_long;
-pub type OPJ_BOOL = libc::c_int;
-pub type OPJ_FLOAT32 = libc::c_float;
-pub type OPJ_FLOAT64 = libc::c_double;
-pub type OPJ_BYTE = libc::c_uchar;
-pub type int32_t = __int32_t;
-pub type int64_t = __int64_t;
-pub type uint32_t = __uint32_t;
-pub type OPJ_INT32 = int32_t;
-pub type OPJ_UINT32 = uint32_t;
-pub type OPJ_INT64 = int64_t;
-pub type OPJ_SIZE_T = size_t;
+
 #[inline]
 unsafe extern "C" fn opj_int_fix_mul(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
   let mut temp = a as OPJ_INT64 * b as OPJ_INT64;

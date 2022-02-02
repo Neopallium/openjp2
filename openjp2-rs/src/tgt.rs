@@ -1,4 +1,7 @@
 use ::libc;
+use super::openjpeg::*;
+use super::bio::*;
+
 extern "C" {
 
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
@@ -15,66 +18,8 @@ extern "C" {
     fmt: *const libc::c_char,
     _: ...
   ) -> OPJ_BOOL;
-
-  fn opj_bio_write(bio: *mut opj_bio_t, v: OPJ_UINT32, n: OPJ_UINT32);
-
-  fn opj_bio_read(bio: *mut opj_bio_t, n: OPJ_UINT32) -> OPJ_UINT32;
 }
-pub type size_t = libc::c_ulong;
-pub type __int32_t = libc::c_int;
-pub type __uint32_t = libc::c_uint;
-pub type OPJ_BOOL = libc::c_int;
-pub type OPJ_BYTE = libc::c_uchar;
-pub type int32_t = __int32_t;
-pub type uint32_t = __uint32_t;
-pub type OPJ_INT32 = int32_t;
-pub type OPJ_UINT32 = uint32_t;
-pub type opj_msg_callback =
-  Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_event_mgr {
-  pub m_error_data: *mut libc::c_void,
-  pub m_warning_data: *mut libc::c_void,
-  pub m_info_data: *mut libc::c_void,
-  pub error_handler: opj_msg_callback,
-  pub warning_handler: opj_msg_callback,
-  pub info_handler: opj_msg_callback,
-}
-pub type opj_event_mgr_t = opj_event_mgr;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_bio {
-  pub start: *mut OPJ_BYTE,
-  pub end: *mut OPJ_BYTE,
-  pub bp: *mut OPJ_BYTE,
-  pub buf: OPJ_UINT32,
-  pub ct: OPJ_UINT32,
-}
-pub type opj_bio_t = opj_bio;
-pub type opj_tgt_tree_t = opj_tgt_tree;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_tgt_tree {
-  pub numleafsh: OPJ_UINT32,
-  pub numleafsv: OPJ_UINT32,
-  pub numnodes: OPJ_UINT32,
-  pub nodes: *mut opj_tgt_node_t,
-  pub nodes_size: OPJ_UINT32,
-}
-pub type opj_tgt_node_t = opj_tgt_node;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_tgt_node {
-  pub parent: *mut opj_tgt_node,
-  pub value: OPJ_INT32,
-  pub low: OPJ_INT32,
-  pub known: OPJ_UINT32,
-}
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third

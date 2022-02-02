@@ -1,4 +1,6 @@
 use ::libc;
+use super::openjpeg::*;
+
 extern "C" {
 
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
@@ -9,18 +11,6 @@ extern "C" {
 
   fn opj_free(m: *mut libc::c_void);
 }
-pub type size_t = libc::c_ulong;
-pub type __int32_t = libc::c_int;
-pub type __uint32_t = libc::c_uint;
-pub type __uint64_t = libc::c_ulong;
-pub type OPJ_BOOL = libc::c_int;
-pub type int32_t = __int32_t;
-pub type uint32_t = __uint32_t;
-pub type uint64_t = __uint64_t;
-pub type OPJ_INT32 = int32_t;
-pub type OPJ_UINT32 = uint32_t;
-pub type OPJ_UINT64 = uint64_t;
-pub type OPJ_SIZE_T = size_t;
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third

@@ -1,4 +1,6 @@
 use ::libc;
+use super::openjpeg::*;
+
 extern "C" {
 
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
@@ -16,83 +18,7 @@ extern "C" {
 
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
 }
-pub type size_t = libc::c_ulong;
-pub type __int32_t = libc::c_int;
-pub type __uint32_t = libc::c_uint;
-pub type __int64_t = libc::c_long;
-pub type __uint64_t = libc::c_ulong;
-pub type OPJ_BOOL = libc::c_int;
-pub type OPJ_FLOAT32 = libc::c_float;
-pub type OPJ_FLOAT64 = libc::c_double;
-pub type OPJ_BYTE = libc::c_uchar;
-pub type int32_t = __int32_t;
-pub type int64_t = __int64_t;
-pub type uint32_t = __uint32_t;
-pub type uint64_t = __uint64_t;
-pub type OPJ_INT32 = int32_t;
-pub type OPJ_UINT32 = uint32_t;
-pub type OPJ_UINT64 = uint64_t;
-pub type OPJ_OFF_T = int64_t;
-pub type OPJ_SIZE_T = size_t;
-pub type opj_msg_callback =
-  Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
-pub type opj_stream_read_fn = Option<
-  unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_SIZE_T, _: *mut libc::c_void) -> OPJ_SIZE_T,
->;
-pub type opj_stream_write_fn = Option<
-  unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_SIZE_T, _: *mut libc::c_void) -> OPJ_SIZE_T,
->;
-pub type opj_stream_skip_fn =
-  Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut libc::c_void) -> OPJ_OFF_T>;
-pub type opj_stream_seek_fn =
-  Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut libc::c_void) -> OPJ_BOOL>;
-pub type opj_stream_free_user_data_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
-pub type opj_stream_t = *mut libc::c_void;
-pub type opj_stream_private_t = opj_stream_private;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_stream_private {
-  pub m_user_data: *mut libc::c_void,
-  pub m_free_user_data_fn: opj_stream_free_user_data_fn,
-  pub m_user_data_length: OPJ_UINT64,
-  pub m_read_fn: opj_stream_read_fn,
-  pub m_write_fn: opj_stream_write_fn,
-  pub m_skip_fn: opj_stream_skip_fn,
-  pub m_seek_fn: opj_stream_seek_fn,
-  pub m_stored_data: *mut OPJ_BYTE,
-  pub m_current_data: *mut OPJ_BYTE,
-  pub m_opj_skip: Option<
-    unsafe extern "C" fn(
-      _: *mut opj_stream_private,
-      _: OPJ_OFF_T,
-      _: *mut opj_event_mgr,
-    ) -> OPJ_OFF_T,
-  >,
-  pub m_opj_seek: Option<
-    unsafe extern "C" fn(
-      _: *mut opj_stream_private,
-      _: OPJ_OFF_T,
-      _: *mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub m_bytes_in_buffer: OPJ_SIZE_T,
-  pub m_byte_offset: OPJ_OFF_T,
-  pub m_buffer_size: OPJ_SIZE_T,
-  pub m_status: OPJ_UINT32,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_event_mgr {
-  pub m_error_data: *mut libc::c_void,
-  pub m_warning_data: *mut libc::c_void,
-  pub m_info_data: *mut libc::c_void,
-  pub error_handler: opj_msg_callback,
-  pub warning_handler: opj_msg_callback,
-  pub info_handler: opj_msg_callback,
-}
-pub type opj_event_mgr_t = opj_event_mgr;
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third

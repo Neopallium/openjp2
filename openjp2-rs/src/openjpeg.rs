@@ -1,10 +1,11 @@
 use ::c2rust_bitfields;
 use ::libc;
+use super::thread::*;
+
 extern "C" {
   pub type _IO_wide_data;
   pub type _IO_codecvt;
   pub type _IO_marker;
-  pub type opj_thread_pool_t;
 
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
 
@@ -332,6 +333,9 @@ extern "C" {
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
 }
 pub type size_t = libc::c_ulong;
+pub type __int8_t = libc::c_char;
+pub type __uint8_t = libc::c_uchar;
+pub type __int16_t = libc::c_short;
 pub type __uint16_t = libc::c_ushort;
 pub type __int32_t = libc::c_int;
 pub type __uint32_t = libc::c_uint;
@@ -375,22 +379,32 @@ pub struct _IO_FILE {
 }
 pub type _IO_lock_t = ();
 pub type FILE = _IO_FILE;
+pub type intptr_t = libc::c_long;
+pub type ptrdiff_t = libc::c_long;
 pub type OPJ_BOOL = libc::c_int;
 pub type OPJ_CHAR = libc::c_char;
 pub type OPJ_FLOAT32 = libc::c_float;
 pub type OPJ_FLOAT64 = libc::c_double;
 pub type OPJ_BYTE = libc::c_uchar;
+pub type int8_t = __int8_t;
+pub type int16_t = __int16_t;
 pub type int32_t = __int32_t;
 pub type int64_t = __int64_t;
+pub type uint8_t = __uint8_t;
 pub type uint16_t = __uint16_t;
 pub type uint32_t = __uint32_t;
 pub type uint64_t = __uint64_t;
+pub type OPJ_INT8 = int8_t;
+pub type OPJ_UINT8 = uint8_t;
+pub type OPJ_INT16 = int16_t;
 pub type OPJ_UINT16 = uint16_t;
 pub type OPJ_INT32 = int32_t;
 pub type OPJ_UINT32 = uint32_t;
+pub type OPJ_INT64 = int64_t;
 pub type OPJ_UINT64 = uint64_t;
 pub type OPJ_OFF_T = int64_t;
 pub type OPJ_SIZE_T = size_t;
+pub type opj_flag_t = OPJ_UINT32;
 pub type RSIZ_CAPABILITIES = libc::c_uint;
 pub const OPJ_MCT: RSIZ_CAPABILITIES = 33024;
 pub const OPJ_CINEMA4K: RSIZ_CAPABILITIES = 4;
@@ -446,10 +460,10 @@ pub struct opj_poc {
   pub prg: OPJ_PROG_ORDER,
   pub progorder: [OPJ_CHAR; 5],
   pub tile: OPJ_UINT32,
-  pub tx0: OPJ_INT32,
-  pub tx1: OPJ_INT32,
-  pub ty0: OPJ_INT32,
-  pub ty1: OPJ_INT32,
+  pub tx0: OPJ_UINT32,
+  pub tx1: OPJ_UINT32,
+  pub ty0: OPJ_UINT32,
+  pub ty1: OPJ_UINT32,
   pub layS: OPJ_UINT32,
   pub resS: OPJ_UINT32,
   pub compS: OPJ_UINT32,
@@ -674,6 +688,77 @@ pub struct opj_codestream_info_v2 {
   pub tile_info: *mut opj_tile_info_v2_t,
 }
 pub type opj_codestream_info_v2_t = opj_codestream_info_v2;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct opj_tp_info {
+  pub tp_start_pos: libc::c_int,
+  pub tp_end_header: libc::c_int,
+  pub tp_end_pos: libc::c_int,
+  pub tp_start_pack: libc::c_int,
+  pub tp_numpacks: libc::c_int,
+}
+pub type opj_tp_info_t = opj_tp_info;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct opj_tile_info {
+  pub thresh: *mut libc::c_double,
+  pub tileno: libc::c_int,
+  pub start_pos: libc::c_int,
+  pub end_header: libc::c_int,
+  pub end_pos: libc::c_int,
+  pub pw: [libc::c_int; 33],
+  pub ph: [libc::c_int; 33],
+  pub pdx: [libc::c_int; 33],
+  pub pdy: [libc::c_int; 33],
+  pub packet: *mut opj_packet_info_t,
+  pub numpix: libc::c_int,
+  pub distotile: libc::c_double,
+  pub marknum: libc::c_int,
+  pub marker: *mut opj_marker_info_t,
+  pub maxmarknum: libc::c_int,
+  pub num_tps: libc::c_int,
+  pub tp: *mut opj_tp_info_t,
+}
+pub type opj_tile_info_t = opj_tile_info;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct opj_codestream_info {
+  pub D_max: libc::c_double,
+  pub packno: libc::c_int,
+  pub index_write: libc::c_int,
+  pub image_w: libc::c_int,
+  pub image_h: libc::c_int,
+  pub prog: OPJ_PROG_ORDER,
+  pub tile_x: libc::c_int,
+  pub tile_y: libc::c_int,
+  pub tile_Ox: libc::c_int,
+  pub tile_Oy: libc::c_int,
+  pub tw: libc::c_int,
+  pub th: libc::c_int,
+  pub numcomps: libc::c_int,
+  pub numlayers: libc::c_int,
+  pub numdecompos: *mut libc::c_int,
+  pub marknum: libc::c_int,
+  pub marker: *mut opj_marker_info_t,
+  pub maxmarknum: libc::c_int,
+  pub main_head_start: libc::c_int,
+  pub main_head_end: libc::c_int,
+  pub codestream_size: libc::c_int,
+  pub tile: *mut opj_tile_info_t,
+}
+pub type opj_codestream_info_t = opj_codestream_info;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct opj_tcd_marker_info {
+  pub need_PLT: OPJ_BOOL,
+  pub packet_count: OPJ_UINT32,
+  pub p_packet_size: *mut OPJ_UINT32,
+}
+pub type opj_tcd_marker_info_t = opj_tcd_marker_info;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1046,6 +1131,7 @@ pub struct opj_j2k {
   pub ihdr_h: OPJ_UINT32,
   pub dump_state: libc::c_uint,
 }
+pub type opj_tcd_t = opj_tcd;
 
 #[repr(C)]
 #[derive(Copy, Clone, BitfieldStruct)]

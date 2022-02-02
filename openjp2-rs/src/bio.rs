@@ -1,21 +1,12 @@
 use ::libc;
+use super::openjpeg::*;
+
 extern "C" {
 
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
 
   fn opj_free(m: *mut libc::c_void);
 }
-pub type size_t = libc::c_ulong;
-pub type __int32_t = libc::c_int;
-pub type __uint32_t = libc::c_uint;
-pub type OPJ_BOOL = libc::c_int;
-pub type OPJ_BYTE = libc::c_uchar;
-pub type int32_t = __int32_t;
-pub type uint32_t = __uint32_t;
-pub type OPJ_INT32 = int32_t;
-pub type OPJ_UINT32 = uint32_t;
-pub type OPJ_SIZE_T = size_t;
-pub type ptrdiff_t = libc::c_long;
 
 #[repr(C)]
 #[derive(Copy, Clone)]

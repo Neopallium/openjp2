@@ -1,4 +1,6 @@
 use ::libc;
+use super::openjpeg::*;
+
 extern "C" {
 
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
@@ -14,38 +16,7 @@ extern "C" {
     _: ...
   ) -> OPJ_BOOL;
 }
-pub type size_t = libc::c_ulong;
-pub type __int32_t = libc::c_int;
-pub type __uint32_t = libc::c_uint;
-pub type OPJ_BOOL = libc::c_int;
-pub type int32_t = __int32_t;
-pub type uint32_t = __uint32_t;
-pub type OPJ_INT32 = int32_t;
-pub type OPJ_UINT32 = uint32_t;
-pub type opj_msg_callback =
-  Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_event_mgr {
-  pub m_error_data: *mut libc::c_void,
-  pub m_warning_data: *mut libc::c_void,
-  pub m_info_data: *mut libc::c_void,
-  pub error_handler: opj_msg_callback,
-  pub warning_handler: opj_msg_callback,
-  pub info_handler: opj_msg_callback,
-}
-pub type opj_event_mgr_t = opj_event_mgr;
-pub type opj_procedure = Option<unsafe extern "C" fn() -> ()>;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_procedure_list {
-  pub m_nb_procedures: OPJ_UINT32,
-  pub m_nb_max_procedures: OPJ_UINT32,
-  pub m_procedures: *mut opj_procedure,
-}
-pub type opj_procedure_list_t = opj_procedure_list;
 #[no_mangle]
 pub unsafe extern "C" fn opj_procedure_list_create() -> *mut opj_procedure_list_t {
   /* memory allocation */

@@ -1,17 +1,10 @@
 use ::libc;
+use super::openjpeg::*;
+
 extern "C" {
 
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
 }
-pub type __int32_t = libc::c_int;
-pub type __uint32_t = libc::c_uint;
-pub type OPJ_BOOL = libc::c_int;
-pub type OPJ_BYTE = libc::c_uchar;
-pub type int32_t = __int32_t;
-pub type uint32_t = __uint32_t;
-pub type OPJ_INT32 = int32_t;
-pub type OPJ_UINT32 = uint32_t;
-pub type ptrdiff_t = libc::c_long;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -39,6 +32,7 @@ pub struct opj_mqc {
   pub backup: [OPJ_BYTE; 2],
 }
 pub type opj_mqc_t = opj_mqc;
+
 #[inline]
 unsafe extern "C" fn opj_mqc_bytein(mqc: *mut opj_mqc_t) {
   let mut l_c: OPJ_UINT32 = 0;

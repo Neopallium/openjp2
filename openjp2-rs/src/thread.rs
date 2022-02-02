@@ -1,9 +1,7 @@
 use ::libc;
-extern "C" {
-  pub type opj_mutex_t;
-  pub type opj_cond_t;
-  pub type opj_thread_t;
+use super::openjpeg::*;
 
+extern "C" {
   fn opj_malloc(size: size_t) -> *mut libc::c_void;
 
   fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
@@ -12,8 +10,19 @@ extern "C" {
 
   fn opj_free(m: *mut libc::c_void);
 }
-pub type size_t = libc::c_ulong;
-pub type OPJ_BOOL = libc::c_int;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct opj_thread_t(usize);
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct opj_mutex_t(usize);
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct opj_cond_t(usize);
+
 pub type opj_thread_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
 
 #[repr(C)]
