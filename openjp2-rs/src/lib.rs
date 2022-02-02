@@ -36,6 +36,8 @@ pub mod malloc;
 pub mod pi;
 pub mod sparse_array;
 pub mod t1;
+pub mod t1_luts;
+pub mod t1_ht_luts;
 pub mod t2;
 pub mod tcd;
 pub mod tgt;
