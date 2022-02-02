@@ -1,7 +1,9 @@
 use ::libc;
-extern "C" {
-  pub type opj_mutex_t;
+use super::openjpeg::*;
+use super::thread::*;
+use super::t1::*;
 
+extern "C" {
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
 
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
@@ -23,126 +25,6 @@ extern "C" {
 
   fn opj_mutex_unlock(mutex: *mut opj_mutex_t);
 }
-pub type size_t = libc::c_ulong;
-pub type __uint8_t = libc::c_uchar;
-pub type __uint16_t = libc::c_ushort;
-pub type __int32_t = libc::c_int;
-pub type __uint32_t = libc::c_uint;
-pub type __uint64_t = libc::c_ulong;
-pub type int32_t = __int32_t;
-pub type OPJ_BOOL = libc::c_int;
-pub type OPJ_BYTE = libc::c_uchar;
-pub type uint8_t = __uint8_t;
-pub type uint16_t = __uint16_t;
-pub type uint32_t = __uint32_t;
-pub type uint64_t = __uint64_t;
-pub type intptr_t = libc::c_long;
-pub type OPJ_UINT8 = uint8_t;
-pub type OPJ_UINT16 = uint16_t;
-pub type OPJ_INT32 = int32_t;
-pub type OPJ_UINT32 = uint32_t;
-pub type OPJ_UINT64 = uint64_t;
-pub type opj_msg_callback =
-  Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_event_mgr {
-  pub m_error_data: *mut libc::c_void,
-  pub m_warning_data: *mut libc::c_void,
-  pub m_info_data: *mut libc::c_void,
-  pub error_handler: opj_msg_callback,
-  pub warning_handler: opj_msg_callback,
-  pub info_handler: opj_msg_callback,
-}
-pub type opj_event_mgr_t = opj_event_mgr;
-pub type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_tcd_cblk_dec {
-  pub segs: *mut opj_tcd_seg_t,
-  pub chunks: *mut opj_tcd_seg_data_chunk_t,
-  pub x0: OPJ_INT32,
-  pub y0: OPJ_INT32,
-  pub x1: OPJ_INT32,
-  pub y1: OPJ_INT32,
-  pub Mb: OPJ_UINT32,
-  pub numbps: OPJ_UINT32,
-  pub numlenbits: OPJ_UINT32,
-  pub numnewpasses: OPJ_UINT32,
-  pub numsegs: OPJ_UINT32,
-  pub real_num_segs: OPJ_UINT32,
-  pub m_current_max_segs: OPJ_UINT32,
-  pub numchunks: OPJ_UINT32,
-  pub numchunksalloc: OPJ_UINT32,
-  pub decoded_data: *mut OPJ_INT32,
-}
-pub type opj_tcd_seg_data_chunk_t = opj_tcd_seg_data_chunk;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_tcd_seg_data_chunk {
-  pub data: *mut OPJ_BYTE,
-  pub len: OPJ_UINT32,
-}
-pub type opj_tcd_seg_t = opj_tcd_seg;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_tcd_seg {
-  pub len: OPJ_UINT32,
-  pub numpasses: OPJ_UINT32,
-  pub real_num_passes: OPJ_UINT32,
-  pub maxpasses: OPJ_UINT32,
-  pub numnewpasses: OPJ_UINT32,
-  pub newlen: OPJ_UINT32,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_mqc_state {
-  pub qeval: OPJ_UINT32,
-  pub mps: OPJ_UINT32,
-  pub nmps: *const opj_mqc_state,
-  pub nlps: *const opj_mqc_state,
-}
-pub type opj_mqc_state_t = opj_mqc_state;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_mqc {
-  pub c: OPJ_UINT32,
-  pub a: OPJ_UINT32,
-  pub ct: OPJ_UINT32,
-  pub end_of_byte_stream_counter: OPJ_UINT32,
-  pub bp: *mut OPJ_BYTE,
-  pub start: *mut OPJ_BYTE,
-  pub end: *mut OPJ_BYTE,
-  pub ctxs: [*const opj_mqc_state_t; 19],
-  pub curctx: *mut *const opj_mqc_state_t,
-  pub lut_ctxno_zc_orient: *const OPJ_BYTE,
-  pub backup: [OPJ_BYTE; 2],
-}
-pub type opj_mqc_t = opj_mqc;
-pub type opj_flag_t = OPJ_UINT32;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_t1 {
-  pub mqc: opj_mqc_t,
-  pub data: *mut OPJ_INT32,
-  pub flags: *mut opj_flag_t,
-  pub w: OPJ_UINT32,
-  pub h: OPJ_UINT32,
-  pub datasize: OPJ_UINT32,
-  pub flagssize: OPJ_UINT32,
-  pub encoder: OPJ_BOOL,
-  pub mustuse_cblkdatabuffer: OPJ_BOOL,
-  pub cblkdatabuffer: *mut OPJ_BYTE,
-  pub cblkdatabuffersize: OPJ_UINT32,
-}
-pub type opj_t1_t = opj_t1;
 
 #[repr(C)]
 #[derive(Copy, Clone)]

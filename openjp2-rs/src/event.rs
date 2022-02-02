@@ -1,4 +1,6 @@
 use ::libc;
+use super::openjpeg::*;
+
 extern "C" {
 
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
@@ -20,25 +22,8 @@ pub struct __va_list_tag {
   pub overflow_arg_area: *mut libc::c_void,
   pub reg_save_area: *mut libc::c_void,
 }
-pub type __int32_t = libc::c_int;
 pub type va_list = __builtin_va_list;
-pub type OPJ_BOOL = libc::c_int;
-pub type int32_t = __int32_t;
-pub type OPJ_INT32 = int32_t;
-pub type opj_msg_callback =
-  Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_event_mgr {
-  pub m_error_data: *mut libc::c_void,
-  pub m_warning_data: *mut libc::c_void,
-  pub m_info_data: *mut libc::c_void,
-  pub error_handler: opj_msg_callback,
-  pub warning_handler: opj_msg_callback,
-  pub info_handler: opj_msg_callback,
-}
-pub type opj_event_mgr_t = opj_event_mgr;
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
