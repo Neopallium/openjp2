@@ -18,7 +18,6 @@
 extern crate c2rust_bitfields;
 extern crate libc;
 
-mod math;
 pub mod bio;
 pub mod cio;
 pub mod dwt;
@@ -29,15 +28,16 @@ pub mod image;
 pub mod invert;
 pub mod j2k;
 pub mod jp2;
+pub mod malloc;
+mod math;
 pub mod mct;
 pub mod mqc;
 pub mod openjpeg;
-pub mod malloc;
 pub mod pi;
 pub mod sparse_array;
 pub mod t1;
-pub mod t1_luts;
 pub mod t1_ht_luts;
+pub mod t1_luts;
 pub mod t2;
 pub mod tcd;
 pub mod tgt;

@@ -1,9 +1,9 @@
-use ::libc;
+use super::math::*;
 use super::openjpeg::*;
 use super::pi::*;
-use super::thread::*;
 use super::t2::*;
-use super::math::*;
+use super::thread::*;
+use ::libc;
 
 extern "C" {
   fn pow(_: libc::c_double, _: libc::c_double) -> libc::c_double;

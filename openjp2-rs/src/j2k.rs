@@ -1,7 +1,7 @@
-use ::libc;
+use super::math::*;
 use super::openjpeg::*;
 use super::thread::*;
-use super::math::*;
+use ::libc;
 
 extern "C" {
   fn strcpy(_: *mut libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;

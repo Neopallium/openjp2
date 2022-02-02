@@ -1,9 +1,9 @@
-use ::libc;
-use super::openjpeg::*;
-use super::thread::*;
-use super::mqc::*;
 use super::math::*;
+use super::mqc::*;
+use super::openjpeg::*;
 use super::t1_luts::*;
+use super::thread::*;
+use ::libc;
 
 extern "C" {
 
