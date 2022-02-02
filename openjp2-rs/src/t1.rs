@@ -2,6 +2,7 @@ use ::libc;
 use super::openjpeg::*;
 use super::thread::*;
 use super::mqc::*;
+use super::math::*;
 
 extern "C" {
 
@@ -187,10 +188,7 @@ pub struct opj_t1_cblk_decode_processing_job_t {
   pub p_manager_mutex: *mut opj_mutex_t,
   pub check_pterm: OPJ_BOOL,
 }
-#[inline]
-unsafe extern "C" fn opj_lrintf(mut f: libc::c_float) -> libc::c_long {
-  return lrintf(f);
-}
+
 #[inline]
 unsafe extern "C" fn opj_mqc_raw_decode(mut mqc: *mut opj_mqc_t) -> OPJ_UINT32 {
   let mut d: OPJ_UINT32 = 0;
@@ -214,20 +212,7 @@ unsafe extern "C" fn opj_mqc_raw_decode(mut mqc: *mut opj_mqc_t) -> OPJ_UINT32 {
   d = (*mqc).c >> (*mqc).ct & 0x1 as libc::c_uint;
   return d;
 }
-#[inline]
-unsafe extern "C" fn opj_int_floorlog2(mut a: OPJ_INT32) -> OPJ_INT32 {
-  let mut l: OPJ_INT32 = 0;
-  l = 0 as libc::c_int;
-  while a > 1 as libc::c_int {
-    a >>= 1 as libc::c_int;
-    l += 1
-  }
-  return l;
-}
-#[inline]
-unsafe extern "C" fn opj_int_max(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return if a > b { a } else { b };
-}
+
 static mut lut_ctxno_zc: [OPJ_BYTE; 2048] = [
   0 as libc::c_int as OPJ_BYTE,
   1 as libc::c_int as OPJ_BYTE,

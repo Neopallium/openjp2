@@ -3,13 +3,12 @@ use super::openjpeg::*;
 use super::pi::*;
 use super::thread::*;
 use super::t2::*;
+use super::math::*;
 
 extern "C" {
   fn pow(_: libc::c_double, _: libc::c_double) -> libc::c_double;
 
   fn ceil(_: libc::c_double) -> libc::c_double;
-
-  fn lrintf(_: libc::c_float) -> libc::c_long;
 
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
 
@@ -163,95 +162,6 @@ extern "C" {
   ) -> OPJ_BOOL;
 }
 
-#[inline]
-unsafe extern "C" fn opj_lrintf(mut f: libc::c_float) -> libc::c_long {
-  return lrintf(f);
-}
-#[inline]
-unsafe extern "C" fn opj_int_min(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return if a < b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_int_max(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return if a > b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_int_ceildivpow2(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return (a as libc::c_long + ((1 as libc::c_int as OPJ_INT64) << b)
-    - 1 as libc::c_int as libc::c_long
-    >> b) as OPJ_INT32;
-}
-#[inline]
-unsafe extern "C" fn opj_int_floordivpow2(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return a >> b;
-}
-#[inline]
-unsafe extern "C" fn opj_int64_ceildivpow2(mut a: OPJ_INT64, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return (a + ((1 as libc::c_int as OPJ_INT64) << b) - 1 as libc::c_int as libc::c_long >> b)
-    as OPJ_INT32;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a < b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_int_ceildiv(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  assert!(b != 0);
-  return ((a as OPJ_INT64 + b as libc::c_long - 1 as libc::c_int as libc::c_long)
-    / b as libc::c_long) as OPJ_INT32;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_adds(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  let mut sum = (a as OPJ_UINT64).wrapping_add(b as OPJ_UINT64);
-  return -((sum >> 32 as libc::c_int) as OPJ_INT32) as OPJ_UINT32 | sum as OPJ_UINT32;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_max(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a > b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_int64_clamp(
-  mut a: OPJ_INT64,
-  mut min: OPJ_INT64,
-  mut max: OPJ_INT64,
-) -> OPJ_INT64 {
-  if a < min {
-    return min;
-  }
-  if a > max {
-    return max;
-  }
-  return a;
-}
-#[inline]
-unsafe extern "C" fn opj_int_clamp(
-  mut a: OPJ_INT32,
-  mut min: OPJ_INT32,
-  mut max: OPJ_INT32,
-) -> OPJ_INT32 {
-  if a < min {
-    return min;
-  }
-  if a > max {
-    return max;
-  }
-  return a;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_ceildivpow2(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return ((a as libc::c_ulong)
-    .wrapping_add((1 as libc::c_uint as OPJ_UINT64) << b)
-    .wrapping_sub(1 as libc::c_uint as libc::c_ulong)
-    >> b) as OPJ_UINT32;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  assert!(b != 0);
-  return (a as OPJ_UINT64)
-    .wrapping_add(b as libc::c_ulong)
-    .wrapping_sub(1 as libc::c_int as libc::c_ulong)
-    .wrapping_div(b as libc::c_ulong) as OPJ_UINT32;
-}
 /* ----------------------------------------------------------------------- */
 /* *
 Create a new TCD handle

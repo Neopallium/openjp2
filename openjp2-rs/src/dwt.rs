@@ -2,6 +2,7 @@ use ::libc;
 use super::openjpeg::*;
 use super::thread::*;
 use super::sparse_array::*;
+use super::math::*;
 
 extern "C" {
   fn floor(_: libc::c_double) -> libc::c_double;
@@ -182,74 +183,7 @@ pub struct opj_dwt97_decode_h_job_t {
   pub aj: *mut OPJ_FLOAT32,
   pub nb_rows: OPJ_UINT32,
 }
-#[inline]
-unsafe extern "C" fn opj_int_floorlog2(mut a: OPJ_INT32) -> OPJ_INT32 {
-  let mut l: OPJ_INT32 = 0;
-  l = 0 as libc::c_int;
-  while a > 1 as libc::c_int {
-    a >>= 1 as libc::c_int;
-    l += 1
-  }
-  return l;
-}
-#[inline]
-unsafe extern "C" fn opj_int_min(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return if a < b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_int_abs(mut a: OPJ_INT32) -> OPJ_INT32 {
-  return if a < 0 as libc::c_int { -a } else { a };
-}
-#[inline]
-unsafe extern "C" fn opj_uint_ceildivpow2(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return ((a as libc::c_ulong)
-    .wrapping_add((1 as libc::c_uint as OPJ_UINT64) << b)
-    .wrapping_sub(1 as libc::c_uint as libc::c_ulong)
-    >> b) as OPJ_UINT32;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_subs(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a >= b {
-    a.wrapping_sub(b)
-  } else {
-    0 as libc::c_int as libc::c_uint
-  };
-}
-#[inline]
-unsafe extern "C" fn opj_uint_adds(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  let mut sum = (a as OPJ_UINT64).wrapping_add(b as OPJ_UINT64);
-  return -((sum >> 32 as libc::c_int) as OPJ_INT32) as OPJ_UINT32 | sum as OPJ_UINT32;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_max(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a > b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_int_sub_no_overflow(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  let mut pa = &mut a as *mut OPJ_INT32 as *mut libc::c_void;
-  let mut pb = &mut b as *mut OPJ_INT32 as *mut libc::c_void;
-  let mut upa = pa as *mut OPJ_UINT32;
-  let mut upb = pb as *mut OPJ_UINT32;
-  let mut ures = (*upa).wrapping_sub(*upb);
-  let mut pures = &mut ures as *mut OPJ_UINT32 as *mut libc::c_void;
-  let mut ipres = pures as *mut OPJ_INT32;
-  return *ipres;
-}
-#[inline]
-unsafe extern "C" fn opj_int_add_no_overflow(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  let mut pa = &mut a as *mut OPJ_INT32 as *mut libc::c_void;
-  let mut pb = &mut b as *mut OPJ_INT32 as *mut libc::c_void;
-  let mut upa = pa as *mut OPJ_UINT32;
-  let mut upb = pb as *mut OPJ_UINT32;
-  let mut ures = (*upa).wrapping_add(*upb);
-  let mut pures = &mut ures as *mut OPJ_UINT32 as *mut libc::c_void;
-  let mut ipres = pures as *mut OPJ_INT32;
-  return *ipres;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a < b { a } else { b };
-}
+
 /* number of elements in high pass band */
 /* number of elements in low pass band */
 /* 0 = start on even coord, 1 = start on odd coord */
