@@ -18,6 +18,7 @@
 extern crate c2rust_bitfields;
 extern crate libc;
 
+mod math;
 pub mod bio;
 pub mod cio;
 pub mod dwt;

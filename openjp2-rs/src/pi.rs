@@ -1,5 +1,6 @@
 use ::libc;
 use super::openjpeg::*;
+use super::math::*;
 
 extern "C" {
 
@@ -80,31 +81,7 @@ unsafe extern "C" fn opj_uint_ceildivpow2(mut a: OPJ_UINT32, mut b: OPJ_UINT32) 
     .wrapping_sub(1 as libc::c_uint as libc::c_ulong)
     >> b) as OPJ_UINT32;
 }
-#[inline]
-unsafe extern "C" fn opj_uint_floordivpow2(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return a >> b;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a < b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  assert!(b != 0);
-  return (a as OPJ_UINT64)
-    .wrapping_add(b as libc::c_ulong)
-    .wrapping_sub(1 as libc::c_int as libc::c_ulong)
-    .wrapping_div(b as libc::c_ulong) as OPJ_UINT32;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_adds(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  let mut sum = (a as OPJ_UINT64).wrapping_add(b as OPJ_UINT64);
-  return -((sum >> 32 as libc::c_int) as OPJ_INT32) as OPJ_UINT32 | sum as OPJ_UINT32;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_max(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a > b { a } else { b };
-}
+
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third

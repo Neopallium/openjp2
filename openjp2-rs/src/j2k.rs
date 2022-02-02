@@ -1,6 +1,7 @@
 use ::libc;
 use super::openjpeg::*;
 use super::thread::*;
+use super::math::*;
 
 extern "C" {
   fn strcpy(_: *mut libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;
@@ -287,64 +288,6 @@ pub struct opj_dec_memory_marker_handler {
   >,
 }
 
-#[inline]
-unsafe extern "C" fn opj_int_max(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return if a > b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_uint_max(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a > b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  assert!(b != 0);
-  return (a as OPJ_UINT64)
-    .wrapping_add(b as libc::c_ulong)
-    .wrapping_sub(1 as libc::c_int as libc::c_ulong)
-    .wrapping_div(b as libc::c_ulong) as OPJ_UINT32;
-}
-#[inline]
-unsafe extern "C" fn opj_int_min(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return if a < b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_uint_ceildivpow2(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return ((a as libc::c_ulong)
-    .wrapping_add((1 as libc::c_uint as OPJ_UINT64) << b)
-    .wrapping_sub(1 as libc::c_uint as libc::c_ulong)
-    >> b) as OPJ_UINT32;
-}
-#[inline]
-unsafe extern "C" fn opj_int_ceildivpow2(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return (a as libc::c_long + ((1 as libc::c_int as OPJ_INT64) << b)
-    - 1 as libc::c_int as libc::c_long
-    >> b) as OPJ_INT32;
-}
-#[inline]
-unsafe extern "C" fn opj_int_floorlog2(mut a: OPJ_INT32) -> OPJ_INT32 {
-  let mut l: OPJ_INT32 = 0;
-  l = 0 as libc::c_int;
-  while a > 1 as libc::c_int {
-    a >>= 1 as libc::c_int;
-    l += 1
-  }
-  return l;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_adds(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  let mut sum = (a as OPJ_UINT64).wrapping_add(b as OPJ_UINT64);
-  return -((sum >> 32 as libc::c_int) as OPJ_INT32) as OPJ_UINT32 | sum as OPJ_UINT32;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a < b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_int_ceildiv(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  assert!(b != 0);
-  return ((a as OPJ_INT64 + b as libc::c_long - 1 as libc::c_int as libc::c_long)
-    / b as libc::c_long) as OPJ_INT32;
-}
 /* * marker value */
 /* * value of the state when the marker can appear */
 /* * action linked to the marker */

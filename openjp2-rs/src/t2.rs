@@ -1,5 +1,6 @@
 use ::libc;
 use super::openjpeg::*;
+use super::math::*;
 use super::bio::*;
 use super::pi::*;
 
@@ -119,38 +120,6 @@ pub struct opj_t2 {
   pub cp: *mut opj_cp_t,
 }
 pub type opj_t2_t = opj_t2;
-#[inline]
-unsafe extern "C" fn opj_int_max(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return if a > b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_int_min(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
-  return if a < b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_uint_max(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a > b { a } else { b };
-}
-#[inline]
-unsafe extern "C" fn opj_int_floorlog2(mut a: OPJ_INT32) -> OPJ_INT32 {
-  let mut l: OPJ_INT32 = 0;
-  l = 0 as libc::c_int;
-  while a > 1 as libc::c_int {
-    a >>= 1 as libc::c_int;
-    l += 1
-  }
-  return l;
-}
-#[inline]
-unsafe extern "C" fn opj_uint_floorlog2(mut a: OPJ_UINT32) -> OPJ_UINT32 {
-  let mut l: OPJ_UINT32 = 0;
-  l = 0 as libc::c_int as OPJ_UINT32;
-  while a > 1 as libc::c_int as libc::c_uint {
-    a >>= 1 as libc::c_int;
-    l = l.wrapping_add(1)
-  }
-  return l;
-}
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
