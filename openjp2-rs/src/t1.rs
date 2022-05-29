@@ -190,30 +190,6 @@ pub struct opj_t1_cblk_decode_processing_job_t {
   pub check_pterm: OPJ_BOOL,
 }
 
-#[inline]
-unsafe extern "C" fn opj_mqc_raw_decode(mut mqc: *mut opj_mqc_t) -> OPJ_UINT32 {
-  let mut d: OPJ_UINT32 = 0;
-  if (*mqc).ct == 0 as libc::c_int as libc::c_uint {
-    if (*mqc).c == 0xff as libc::c_int as libc::c_uint {
-      if *(*mqc).bp as libc::c_int > 0x8f as libc::c_int {
-        (*mqc).c = 0xff as libc::c_int as OPJ_UINT32;
-        (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
-      } else {
-        (*mqc).c = *(*mqc).bp as OPJ_UINT32;
-        (*mqc).bp = (*mqc).bp.offset(1);
-        (*mqc).ct = 7 as libc::c_int as OPJ_UINT32
-      }
-    } else {
-      (*mqc).c = *(*mqc).bp as OPJ_UINT32;
-      (*mqc).bp = (*mqc).bp.offset(1);
-      (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
-    }
-  }
-  (*mqc).ct = (*mqc).ct.wrapping_sub(1);
-  d = (*mqc).c >> (*mqc).ct & 0x1 as libc::c_uint;
-  return d;
-}
-
 /* * @name Local static functions */
 /*@{*/
 /*@}*/
@@ -402,7 +378,7 @@ unsafe extern "C" fn opj_t1_dec_sigpass_step_raw(
   mut ci: OPJ_UINT32,
 ) {
   let mut v: OPJ_UINT32 = 0; /* RAW component */
-  let mut mqc: *mut opj_mqc_t = &mut (*t1).mqc; /* MQC component */
+  let mut mqc = &mut (*t1).mqc; /* MQC component */
   let flags = *flagsp;
   if flags
     & ((1 as libc::c_uint) << 4 as libc::c_int | (1 as libc::c_uint) << 21 as libc::c_int)
@@ -5980,7 +5956,7 @@ unsafe extern "C" fn opj_t1_dec_refpass_step_raw(
   mut ci: OPJ_UINT32,
 ) {
   let mut v: OPJ_UINT32 = 0; /* RAW component */
-  let mut mqc: *mut opj_mqc_t = &mut (*t1).mqc; /* MQC component */
+  let mut mqc = &mut (*t1).mqc; /* MQC component */
   if *flagsp
     & ((1 as libc::c_uint) << 4 as libc::c_int | (1 as libc::c_uint) << 21 as libc::c_int)
       << ci.wrapping_mul(3 as libc::c_uint)

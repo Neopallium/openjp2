@@ -33,9 +33,43 @@ pub struct opj_mqc {
 }
 pub type opj_mqc_t = opj_mqc;
 
+/**
+Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
+@param mqc MQC handle
+@return Returns the decoded symbol (0 or 1)
+*/
 #[inline]
-unsafe extern "C" fn opj_mqc_bytein(mqc: *mut opj_mqc_t) {
+pub unsafe extern "C" fn opj_mqc_raw_decode(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
+  let mut d: OPJ_UINT32 = 0;
+  if (*mqc).ct == 0 as libc::c_int as libc::c_uint {
+    /* Given opj_mqc_raw_init_dec() we know that at some point we will */
+    /* have a 0xFF 0xFF artificial marker */
+    if (*mqc).c == 0xff as libc::c_int as libc::c_uint {
+      if *(*mqc).bp as libc::c_int > 0x8f as libc::c_int {
+        (*mqc).c = 0xff as libc::c_int as OPJ_UINT32;
+        (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
+      } else {
+        (*mqc).c = *(*mqc).bp as OPJ_UINT32;
+        (*mqc).bp = (*mqc).bp.offset(1);
+        (*mqc).ct = 7 as libc::c_int as OPJ_UINT32
+      }
+    } else {
+      (*mqc).c = *(*mqc).bp as OPJ_UINT32;
+      (*mqc).bp = (*mqc).bp.offset(1);
+      (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
+    }
+  }
+  (*mqc).ct = (*mqc).ct.wrapping_sub(1);
+  d = (*mqc).c >> (*mqc).ct & 0x1 as libc::c_uint;
+  return d;
+}
+
+//#define opj_mqc_bytein_macro(mqc, c, ct) \
+#[inline]
+unsafe extern "C" fn opj_mqc_bytein_macro(mqc: *mut opj_mqc_t) {
   let mut l_c: OPJ_UINT32 = 0;
+  /* Given opj_mqc_init_dec() we know that at some point we will */
+  /* have a 0xFF 0xFF artificial marker */
   l_c = *(*mqc).bp.offset(1 as libc::c_int as isize) as OPJ_UINT32;
   if *(*mqc).bp as libc::c_int == 0xff as libc::c_int {
     if l_c > 0x8f as libc::c_int as libc::c_uint {
@@ -56,6 +90,12 @@ unsafe extern "C" fn opj_mqc_bytein(mqc: *mut opj_mqc_t) {
     (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
   };
 }
+
+#[inline]
+unsafe extern "C" fn opj_mqc_bytein(mqc: *mut opj_mqc_t) {
+  opj_mqc_bytein_macro(mqc);
+}
+
 /*@}*/
 /*@}*/
 /* <summary> */
