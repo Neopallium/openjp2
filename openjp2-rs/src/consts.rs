@@ -375,11 +375,11 @@ pub mod t1 {
   pub const T1_CTXNO_AGG: u32  = (T1_CTXNO_MAG+T1_NUMCTXS_MAG);
   pub const T1_CTXNO_UNI: u32  = (T1_CTXNO_AGG+T1_NUMCTXS_AGG);
   pub const T1_NUMCTXS: u32    = (T1_CTXNO_UNI+T1_NUMCTXS_UNI);
-  pub const T1_NMSEDEC_FRACBITS: u32  = (T1_NMSEDEC_BITS-1);
+  pub const T1_NMSEDEC_FRACBITS: i32  = (T1_NMSEDEC_BITS-1) as i32;
   /**< Normal coding using entropy coder */
-  pub const T1_TYPE_MQ: u32  = 0;
+  pub const T1_TYPE_MQ: u8  = 0;
   /**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
-  pub const T1_TYPE_RAW: u32  = 1;
+  pub const T1_TYPE_RAW: u8  = 1;
   pub const T1_SIGMA_0: u32   = (1u32 << 0);
   pub const T1_SIGMA_1: u32   = (1u32 << 1);
   pub const T1_SIGMA_2: u32   = (1u32 << 2);
