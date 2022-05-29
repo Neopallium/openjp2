@@ -191,7 +191,7 @@ fn opj_mqc_bytein_macro(mqc: &mut opj_mqc_t) {
 }
 
 #[inline]
-fn opj_mqc_bytein(mqc: &mut opj_mqc_t) {
+pub fn opj_mqc_bytein(mqc: &mut opj_mqc_t) {
   opj_mqc_bytein_macro(mqc);
 }
 
@@ -286,7 +286,7 @@ fn opj_mqc_codelps_macro(mqc: &mut opj_mqc_t) {
 }
 
 #[inline]
-fn opj_mqc_encode_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
+pub fn opj_mqc_encode_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
   if mqc.curctx().mps == d {
     opj_mqc_codemps(mqc);
   } else {
@@ -295,7 +295,7 @@ fn opj_mqc_encode_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
 }
 
 #[inline]
-fn opj_mqc_bypass_enc_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
+pub fn opj_mqc_bypass_enc_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
   if mqc.ct == BYPASS_CT_INIT {
     mqc.ct = 8;
   }
@@ -582,7 +582,7 @@ Encode a symbol using the MQ-coder
 @param d The symbol to be encoded (0 or 1)
 */
 #[inline]
-fn opj_mqc_encode(mut mqc: &mut opj_mqc_t, mut d: OPJ_UINT32) {
+pub fn opj_mqc_encode(mut mqc: &mut opj_mqc_t, mut d: OPJ_UINT32) {
   opj_mqc_encode_macro(mqc, d)
 }
 
