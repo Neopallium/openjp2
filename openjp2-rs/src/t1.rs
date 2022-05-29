@@ -410,18 +410,24 @@ unsafe extern "C" fn opj_t1_dec_sigpass_step_raw(
     *flagsp |= ((1 as libc::c_uint) << 21 as libc::c_int) << ci.wrapping_mul(3 as libc::c_uint)
   };
 }
+
 #[inline]
-unsafe extern "C" fn opj_t1_dec_sigpass_step_mqc(
-  mut t1: *mut opj_t1_t,
+fn opj_t1_setcurctx(mqc: &mut opj_mqc_t, ctxno: usize) {
+  mqc.set_curctx(ctxno);
+}
+
+#[inline]
+unsafe extern "C" fn opj_t1_dec_sigpass_step_mqc_macro(
   mut flagsp: *mut opj_flag_t,
-  mut datap: *mut OPJ_INT32,
-  mut oneplushalf: OPJ_INT32,
-  mut ci: OPJ_UINT32,
   mut flags_stride: OPJ_UINT32,
+  mut datap: *mut OPJ_INT32,
+  mut data_stride: OPJ_UINT32,
+  mut ci: OPJ_UINT32,
+  mut mqc: &mut opj_mqc_t,
+  mut v: OPJ_UINT32,
+  mut oneplushalf: OPJ_INT32,
   mut vsc: OPJ_UINT32,
 ) {
-  let mut v: OPJ_UINT32 = 0;
-  let mut mqc: *mut opj_mqc_t = &mut (*t1).mqc;
   if *flagsp
     & ((1 as libc::c_uint) << 4 as libc::c_int | (1 as libc::c_uint) << 21 as libc::c_int)
       << ci.wrapping_mul(3 as libc::c_uint)
@@ -440,99 +446,8 @@ unsafe extern "C" fn opj_t1_dec_sigpass_step_mqc(
   {
     let mut ctxt1 =
       opj_t1_getctxno_zc(mqc, *flagsp >> ci.wrapping_mul(3 as libc::c_uint)) as OPJ_UINT32;
-    (*mqc).curctx =
-      &mut *(*mqc).ctxs.as_mut_ptr().offset(ctxt1 as isize) as *mut *const opj_mqc_state_t;
-    (*mqc).a =
-      ((*mqc).a as libc::c_uint).wrapping_sub((**(*mqc).curctx).qeval) as OPJ_UINT32 as OPJ_UINT32;
-    if ((*mqc).c >> 16 as libc::c_int) < (**(*mqc).curctx).qeval {
-      if (*mqc).a < (**(*mqc).curctx).qeval {
-        (*mqc).a = (**(*mqc).curctx).qeval;
-        v = (**(*mqc).curctx).mps;
-        *(*mqc).curctx = (**(*mqc).curctx).nmps
-      } else {
-        (*mqc).a = (**(*mqc).curctx).qeval;
-        v = ((**(*mqc).curctx).mps == 0) as libc::c_int as OPJ_UINT32;
-        *(*mqc).curctx = (**(*mqc).curctx).nlps
-      }
-      loop {
-        if (*mqc).ct == 0 as libc::c_int as libc::c_uint {
-          let mut l_c: OPJ_UINT32 = 0;
-          l_c = *(*mqc).bp.offset(1 as libc::c_int as isize) as OPJ_UINT32;
-          if *(*mqc).bp as libc::c_int == 0xff as libc::c_int {
-            if l_c > 0x8f as libc::c_int as libc::c_uint {
-              (*mqc).c = ((*mqc).c as libc::c_uint)
-                .wrapping_add(0xff00 as libc::c_int as libc::c_uint)
-                as OPJ_UINT32 as OPJ_UINT32;
-              (*mqc).ct = 8 as libc::c_int as OPJ_UINT32;
-              (*mqc).end_of_byte_stream_counter = (*mqc).end_of_byte_stream_counter.wrapping_add(1)
-            } else {
-              (*mqc).bp = (*mqc).bp.offset(1);
-              (*mqc).c = ((*mqc).c as libc::c_uint).wrapping_add(l_c << 9 as libc::c_int)
-                as OPJ_UINT32 as OPJ_UINT32;
-              (*mqc).ct = 7 as libc::c_int as OPJ_UINT32
-            }
-          } else {
-            (*mqc).bp = (*mqc).bp.offset(1);
-            (*mqc).c = ((*mqc).c as libc::c_uint).wrapping_add(l_c << 8 as libc::c_int)
-              as OPJ_UINT32 as OPJ_UINT32;
-            (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
-          }
-        }
-        (*mqc).a <<= 1 as libc::c_int;
-        (*mqc).c <<= 1 as libc::c_int;
-        (*mqc).ct = (*mqc).ct.wrapping_sub(1);
-        if !((*mqc).a < 0x8000 as libc::c_int as libc::c_uint) {
-          break;
-        }
-      }
-    } else {
-      (*mqc).c = ((*mqc).c as libc::c_uint)
-        .wrapping_sub((**(*mqc).curctx).qeval << 16 as libc::c_int) as OPJ_UINT32
-        as OPJ_UINT32;
-      if (*mqc).a & 0x8000 as libc::c_int as libc::c_uint == 0 as libc::c_int as libc::c_uint {
-        if (*mqc).a < (**(*mqc).curctx).qeval {
-          v = ((**(*mqc).curctx).mps == 0) as libc::c_int as OPJ_UINT32;
-          *(*mqc).curctx = (**(*mqc).curctx).nlps
-        } else {
-          v = (**(*mqc).curctx).mps;
-          *(*mqc).curctx = (**(*mqc).curctx).nmps
-        }
-        loop {
-          if (*mqc).ct == 0 as libc::c_int as libc::c_uint {
-            let mut l_c_0: OPJ_UINT32 = 0;
-            l_c_0 = *(*mqc).bp.offset(1 as libc::c_int as isize) as OPJ_UINT32;
-            if *(*mqc).bp as libc::c_int == 0xff as libc::c_int {
-              if l_c_0 > 0x8f as libc::c_int as libc::c_uint {
-                (*mqc).c = ((*mqc).c as libc::c_uint)
-                  .wrapping_add(0xff00 as libc::c_int as libc::c_uint)
-                  as OPJ_UINT32 as OPJ_UINT32;
-                (*mqc).ct = 8 as libc::c_int as OPJ_UINT32;
-                (*mqc).end_of_byte_stream_counter =
-                  (*mqc).end_of_byte_stream_counter.wrapping_add(1)
-              } else {
-                (*mqc).bp = (*mqc).bp.offset(1);
-                (*mqc).c = ((*mqc).c as libc::c_uint).wrapping_add(l_c_0 << 9 as libc::c_int)
-                  as OPJ_UINT32 as OPJ_UINT32;
-                (*mqc).ct = 7 as libc::c_int as OPJ_UINT32
-              }
-            } else {
-              (*mqc).bp = (*mqc).bp.offset(1);
-              (*mqc).c = ((*mqc).c as libc::c_uint).wrapping_add(l_c_0 << 8 as libc::c_int)
-                as OPJ_UINT32 as OPJ_UINT32;
-              (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
-            }
-          }
-          (*mqc).a <<= 1 as libc::c_int;
-          (*mqc).c <<= 1 as libc::c_int;
-          (*mqc).ct = (*mqc).ct.wrapping_sub(1);
-          if !((*mqc).a < 0x8000 as libc::c_int as libc::c_uint) {
-            break;
-          }
-        }
-      } else {
-        v = (**(*mqc).curctx).mps
-      }
-    }
+    opj_t1_setcurctx(mqc, ctxt1 as usize);
+    opj_mqc_decode_macro(&mut v, mqc);
     if v != 0 {
       let mut lu = opj_t1_getctxtno_sc_or_spb_index(
         *flagsp,
@@ -542,129 +457,32 @@ unsafe extern "C" fn opj_t1_dec_sigpass_step_mqc(
       );
       let mut ctxt2 = opj_t1_getctxno_sc(lu) as OPJ_UINT32;
       let mut spb = opj_t1_getspb(lu) as OPJ_UINT32;
-      (*mqc).curctx =
-        &mut *(*mqc).ctxs.as_mut_ptr().offset(ctxt2 as isize) as *mut *const opj_mqc_state_t;
-      (*mqc).a = ((*mqc).a as libc::c_uint).wrapping_sub((**(*mqc).curctx).qeval) as OPJ_UINT32
-        as OPJ_UINT32;
-      if ((*mqc).c >> 16 as libc::c_int) < (**(*mqc).curctx).qeval {
-        if (*mqc).a < (**(*mqc).curctx).qeval {
-          (*mqc).a = (**(*mqc).curctx).qeval;
-          v = (**(*mqc).curctx).mps;
-          *(*mqc).curctx = (**(*mqc).curctx).nmps
-        } else {
-          (*mqc).a = (**(*mqc).curctx).qeval;
-          v = ((**(*mqc).curctx).mps == 0) as libc::c_int as OPJ_UINT32;
-          *(*mqc).curctx = (**(*mqc).curctx).nlps
-        }
-        loop {
-          if (*mqc).ct == 0 as libc::c_int as libc::c_uint {
-            let mut l_c_1: OPJ_UINT32 = 0;
-            l_c_1 = *(*mqc).bp.offset(1 as libc::c_int as isize) as OPJ_UINT32;
-            if *(*mqc).bp as libc::c_int == 0xff as libc::c_int {
-              if l_c_1 > 0x8f as libc::c_int as libc::c_uint {
-                (*mqc).c = ((*mqc).c as libc::c_uint)
-                  .wrapping_add(0xff00 as libc::c_int as libc::c_uint)
-                  as OPJ_UINT32 as OPJ_UINT32;
-                (*mqc).ct = 8 as libc::c_int as OPJ_UINT32;
-                (*mqc).end_of_byte_stream_counter =
-                  (*mqc).end_of_byte_stream_counter.wrapping_add(1)
-              } else {
-                (*mqc).bp = (*mqc).bp.offset(1);
-                (*mqc).c = ((*mqc).c as libc::c_uint).wrapping_add(l_c_1 << 9 as libc::c_int)
-                  as OPJ_UINT32 as OPJ_UINT32;
-                (*mqc).ct = 7 as libc::c_int as OPJ_UINT32
-              }
-            } else {
-              (*mqc).bp = (*mqc).bp.offset(1);
-              (*mqc).c = ((*mqc).c as libc::c_uint).wrapping_add(l_c_1 << 8 as libc::c_int)
-                as OPJ_UINT32 as OPJ_UINT32;
-              (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
-            }
-          }
-          (*mqc).a <<= 1 as libc::c_int;
-          (*mqc).c <<= 1 as libc::c_int;
-          (*mqc).ct = (*mqc).ct.wrapping_sub(1);
-          if !((*mqc).a < 0x8000 as libc::c_int as libc::c_uint) {
-            break;
-          }
-        }
-      } else {
-        (*mqc).c = ((*mqc).c as libc::c_uint)
-          .wrapping_sub((**(*mqc).curctx).qeval << 16 as libc::c_int)
-          as OPJ_UINT32 as OPJ_UINT32;
-        if (*mqc).a & 0x8000 as libc::c_int as libc::c_uint == 0 as libc::c_int as libc::c_uint {
-          if (*mqc).a < (**(*mqc).curctx).qeval {
-            v = ((**(*mqc).curctx).mps == 0) as libc::c_int as OPJ_UINT32;
-            *(*mqc).curctx = (**(*mqc).curctx).nlps
-          } else {
-            v = (**(*mqc).curctx).mps;
-            *(*mqc).curctx = (**(*mqc).curctx).nmps
-          }
-          loop {
-            if (*mqc).ct == 0 as libc::c_int as libc::c_uint {
-              let mut l_c_2: OPJ_UINT32 = 0;
-              l_c_2 = *(*mqc).bp.offset(1 as libc::c_int as isize) as OPJ_UINT32;
-              if *(*mqc).bp as libc::c_int == 0xff as libc::c_int {
-                if l_c_2 > 0x8f as libc::c_int as libc::c_uint {
-                  (*mqc).c = ((*mqc).c as libc::c_uint)
-                    .wrapping_add(0xff00 as libc::c_int as libc::c_uint)
-                    as OPJ_UINT32 as OPJ_UINT32;
-                  (*mqc).ct = 8 as libc::c_int as OPJ_UINT32;
-                  (*mqc).end_of_byte_stream_counter =
-                    (*mqc).end_of_byte_stream_counter.wrapping_add(1)
-                } else {
-                  (*mqc).bp = (*mqc).bp.offset(1);
-                  (*mqc).c = ((*mqc).c as libc::c_uint).wrapping_add(l_c_2 << 9 as libc::c_int)
-                    as OPJ_UINT32 as OPJ_UINT32;
-                  (*mqc).ct = 7 as libc::c_int as OPJ_UINT32
-                }
-              } else {
-                (*mqc).bp = (*mqc).bp.offset(1);
-                (*mqc).c = ((*mqc).c as libc::c_uint).wrapping_add(l_c_2 << 8 as libc::c_int)
-                  as OPJ_UINT32 as OPJ_UINT32;
-                (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
-              }
-            }
-            (*mqc).a <<= 1 as libc::c_int;
-            (*mqc).c <<= 1 as libc::c_int;
-            (*mqc).ct = (*mqc).ct.wrapping_sub(1);
-            if !((*mqc).a < 0x8000 as libc::c_int as libc::c_uint) {
-              break;
-            }
-          }
-        } else {
-          v = (**(*mqc).curctx).mps
-        }
-      }
+      opj_t1_setcurctx(mqc, ctxt2 as usize);
+      opj_mqc_decode_macro(&mut v, mqc);
       v = v ^ spb;
-      *datap.offset(ci.wrapping_mul(0 as libc::c_int as libc::c_uint) as isize) =
+      *datap.offset(ci.wrapping_mul(data_stride) as isize) =
         if v != 0 { -oneplushalf } else { oneplushalf };
-      let ref mut fresh6 = *flagsp.offset(-(1 as libc::c_int) as isize);
-      *fresh6 |= ((1 as libc::c_uint) << 5 as libc::c_int) << (3 as libc::c_uint).wrapping_mul(ci);
-      *flagsp |= (v << 19 as libc::c_int | (1 as libc::c_uint) << 4 as libc::c_int)
-        << (3 as libc::c_uint).wrapping_mul(ci);
-      let ref mut fresh7 = *flagsp.offset(1 as libc::c_int as isize);
-      *fresh7 |= ((1 as libc::c_uint) << 3 as libc::c_int) << (3 as libc::c_uint).wrapping_mul(ci);
-      if ci == 0 as libc::c_uint && vsc == 0 {
-        let mut north = flagsp.offset(-(flags_stride as isize));
-        *north |= v << 31 as libc::c_int | (1 as libc::c_uint) << 16 as libc::c_int;
-        let ref mut fresh8 = *north.offset(-(1 as libc::c_int) as isize);
-        *fresh8 |= (1 as libc::c_uint) << 17 as libc::c_int;
-        let ref mut fresh9 = *north.offset(1 as libc::c_int as isize);
-        *fresh9 |= (1 as libc::c_uint) << 15 as libc::c_int
-      }
-      if ci == 3 as libc::c_uint {
-        let mut south = flagsp.offset(flags_stride as isize);
-        *south |= v << 18 as libc::c_int | (1 as libc::c_uint) << 1 as libc::c_int;
-        let ref mut fresh10 = *south.offset(-(1 as libc::c_int) as isize);
-        *fresh10 |= (1 as libc::c_uint) << 2 as libc::c_int;
-        let ref mut fresh11 = *south.offset(1 as libc::c_int as isize);
-        *fresh11 |= (1 as libc::c_uint) << 0 as libc::c_int
-      }
+      opj_t1_update_flags_macro(flagsp, ci, v, flags_stride, vsc);
     }
-    *flagsp |= ((1 as libc::c_uint) << 21 as libc::c_int) << ci.wrapping_mul(3 as libc::c_uint)
-  };
+    *flagsp |= ((1 as libc::c_uint) << 21 as libc::c_int) << ci.wrapping_mul(3 as libc::c_uint);
+  }
 }
+
+#[inline]
+unsafe extern "C" fn opj_t1_dec_sigpass_step_mqc(
+  mut t1: *mut opj_t1_t,
+  mut flagsp: *mut opj_flag_t,
+  mut datap: *mut OPJ_INT32,
+  mut oneplushalf: OPJ_INT32,
+  mut ci: OPJ_UINT32,
+  mut flags_stride: OPJ_UINT32,
+  mut vsc: OPJ_UINT32,
+) {
+  let v: OPJ_UINT32 = 0;
+  let mut mqc = &mut (*t1).mqc; // MQC component
+  opj_t1_dec_sigpass_step_mqc_macro(flagsp, flags_stride, datap, 0, ci, mqc, v, oneplushalf, vsc)
+}
+
 /* *
 Encode significant pass
 */
