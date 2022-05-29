@@ -49,7 +49,7 @@ foreach(exe opj_decompress opj_compress opj_dump)
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
     )
   if(USE_RUST_LIB)
-    target_link_libraries(${exe} dl)
+    target_link_libraries(${exe} dl pthread)
   endif()
   # To support universal exe:
   if(ZLIB_FOUND AND APPLE)
