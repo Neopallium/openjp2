@@ -33,67 +33,171 @@ pub struct opj_mqc {
 }
 pub type opj_mqc_t = opj_mqc;
 
+impl opj_mqc {
+  pub fn set_curctx(&mut self, ctxno: usize) {
+    self.curctx = (&mut self.ctxs[ctxno]) as *mut *const opj_mqc_state_t;
+  }
+
+  pub fn set_curctx_nlps(&mut self) {
+    unsafe {
+      *self.curctx = (**self.curctx).nlps;
+    }
+  }
+
+  pub fn set_curctx_nmps(&mut self) {
+    unsafe {
+      *self.curctx = (**self.curctx).nmps;
+    }
+  }
+
+  pub fn curctx(&self) -> &'static opj_mqc_state_t {
+    unsafe { &**(self.curctx) }
+  }
+
+  pub fn bp(&self) -> OPJ_BYTE {
+    unsafe { *self.bp }
+  }
+
+  pub fn bp_peek(&self) -> OPJ_BYTE {
+    unsafe { *self.bp.offset(1) }
+  }
+
+  pub fn inc_bp(&mut self) {
+    unsafe {
+      self.bp = self.bp.offset(1);
+    }
+  }
+}
+
+#[inline]
+pub fn opj_mqc_setcurctx(mqc: &mut opj_mqc_t, ctxno: usize) {
+  mqc.set_curctx(ctxno);
+}
+
+/* For internal use of opj_mqc_decode_macro() */
+fn opj_mqc_mpsexchange_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
+  let curctx = mqc.curctx();
+  if mqc.a < curctx.qeval {
+    *d = (curctx.mps == 0) as u32;
+    mqc.set_curctx_nlps();
+  } else {
+    *d = curctx.mps;
+    mqc.set_curctx_nmps();
+  }
+}
+
+/* For internal use of opj_mqc_decode_macro() */
+fn opj_mqc_lpsexchange_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
+  let curctx = mqc.curctx();
+  if mqc.a < curctx.qeval {
+    mqc.a = curctx.qeval;
+    *d = curctx.mps;
+    mqc.set_curctx_nmps();
+  } else {
+    mqc.a = curctx.qeval;
+    *d = (curctx.mps == 0) as u32;
+    mqc.set_curctx_nlps();
+  }
+}
+
 /**
 Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
 @param mqc MQC handle
 @return Returns the decoded symbol (0 or 1)
 */
 #[inline]
-pub unsafe extern "C" fn opj_mqc_raw_decode(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
-  let mut d: OPJ_UINT32 = 0;
-  if (*mqc).ct == 0 as libc::c_int as libc::c_uint {
+pub fn opj_mqc_raw_decode(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
+  if mqc.ct == 0 {
     /* Given opj_mqc_raw_init_dec() we know that at some point we will */
     /* have a 0xFF 0xFF artificial marker */
-    if (*mqc).c == 0xff as libc::c_int as libc::c_uint {
-      if *(*mqc).bp as libc::c_int > 0x8f as libc::c_int {
-        (*mqc).c = 0xff as libc::c_int as OPJ_UINT32;
-        (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
+    if mqc.c == 0xff {
+      if mqc.bp() > 0x8f {
+        mqc.c = 0xff;
+        mqc.ct = 8;
       } else {
-        (*mqc).c = *(*mqc).bp as OPJ_UINT32;
-        (*mqc).bp = (*mqc).bp.offset(1);
-        (*mqc).ct = 7 as libc::c_int as OPJ_UINT32
+        mqc.c = mqc.bp() as OPJ_UINT32;
+        mqc.inc_bp();
+        mqc.ct = 7;
       }
     } else {
-      (*mqc).c = *(*mqc).bp as OPJ_UINT32;
-      (*mqc).bp = (*mqc).bp.offset(1);
-      (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
+      mqc.c = mqc.bp() as OPJ_UINT32;
+      mqc.inc_bp();
+      mqc.ct = 8;
     }
   }
-  (*mqc).ct = (*mqc).ct.wrapping_sub(1);
-  d = (*mqc).c >> (*mqc).ct & 0x1 as libc::c_uint;
+  mqc.ct = mqc.ct.wrapping_sub(1);
+  let d = mqc.c >> mqc.ct & 0x1 as libc::c_uint;
   return d;
 }
 
 //#define opj_mqc_bytein_macro(mqc, c, ct) \
 #[inline]
-unsafe extern "C" fn opj_mqc_bytein_macro(mqc: *mut opj_mqc_t) {
+fn opj_mqc_bytein_macro(mqc: &mut opj_mqc_t) {
   let mut l_c: OPJ_UINT32 = 0;
   /* Given opj_mqc_init_dec() we know that at some point we will */
   /* have a 0xFF 0xFF artificial marker */
-  l_c = *(*mqc).bp.offset(1 as libc::c_int as isize) as OPJ_UINT32;
-  if *(*mqc).bp as libc::c_int == 0xff as libc::c_int {
-    if l_c > 0x8f as libc::c_int as libc::c_uint {
-      (*mqc).c = ((*mqc).c as libc::c_uint).wrapping_add(0xff00 as libc::c_int as libc::c_uint)
-        as OPJ_UINT32 as OPJ_UINT32;
-      (*mqc).ct = 8 as libc::c_int as OPJ_UINT32;
-      (*mqc).end_of_byte_stream_counter = (*mqc).end_of_byte_stream_counter.wrapping_add(1)
+  l_c = mqc.bp_peek() as OPJ_UINT32;
+  if mqc.bp() == 0xff {
+    if l_c > 0x8f {
+      mqc.c = mqc.c.wrapping_add(0xff00);
+      mqc.ct = 8;
+      mqc.end_of_byte_stream_counter = mqc.end_of_byte_stream_counter.wrapping_add(1);
     } else {
-      (*mqc).bp = (*mqc).bp.offset(1);
-      (*mqc).c = ((*mqc).c as libc::c_uint).wrapping_add(l_c << 9 as libc::c_int) as OPJ_UINT32
-        as OPJ_UINT32;
-      (*mqc).ct = 7 as libc::c_int as OPJ_UINT32
+      mqc.inc_bp();
+      mqc.c = mqc.c.wrapping_add(l_c << 9);
+      mqc.ct = 7;
     }
   } else {
-    (*mqc).bp = (*mqc).bp.offset(1);
-    (*mqc).c =
-      ((*mqc).c as libc::c_uint).wrapping_add(l_c << 8 as libc::c_int) as OPJ_UINT32 as OPJ_UINT32;
-    (*mqc).ct = 8 as libc::c_int as OPJ_UINT32
-  };
+    mqc.inc_bp();
+    mqc.c = mqc.c.wrapping_add(l_c << 8);
+    mqc.ct = 8;
+  }
 }
 
 #[inline]
-unsafe extern "C" fn opj_mqc_bytein(mqc: *mut opj_mqc_t) {
+fn opj_mqc_bytein(mqc: &mut opj_mqc_t) {
   opj_mqc_bytein_macro(mqc);
+}
+
+/* For internal use of opj_mqc_decode_macro() */
+#[inline]
+fn opj_mqc_renormd_macro(mqc: &mut opj_mqc_t) {
+  loop {
+    if mqc.ct == 0 {
+      opj_mqc_bytein_macro(mqc);
+    }
+    mqc.a <<= 1;
+    mqc.c <<= 1;
+    mqc.ct = mqc.ct.wrapping_sub(1);
+    if !(mqc.a < 0x8000) {
+      break;
+    }
+  }
+}
+
+//#define opj_mqc_decode_macro(d, mqc, curctx, a, c, ct) \
+#[inline]
+pub fn opj_mqc_decode_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
+  /* Implements ISO 15444-1 C.3.2 Decoding a decision (DECODE) */
+  /* Note: alternate "J.2 - Decoding an MPS or an LPS in the */
+  /* software-conventions decoder" has been tried, but does not bring any */
+  /* improvement. See https://github.com/uclouvain/openjpeg/issues/921 */
+  mqc.a =
+    (mqc.a as libc::c_uint).wrapping_sub(mqc.curctx().qeval) as OPJ_UINT32 as OPJ_UINT32;
+  if (mqc.c >> 16 as libc::c_int) < mqc.curctx().qeval {
+    opj_mqc_lpsexchange_macro(d, mqc);
+    opj_mqc_renormd_macro(mqc);
+  } else {
+    mqc.c = (mqc.c as libc::c_uint)
+      .wrapping_sub(mqc.curctx().qeval << 16 as libc::c_int) as OPJ_UINT32
+      as OPJ_UINT32;
+    if mqc.a & 0x8000 as libc::c_int as libc::c_uint == 0 as libc::c_int as libc::c_uint {
+      opj_mqc_mpsexchange_macro(d, mqc);
+      opj_mqc_renormd_macro(mqc);
+    } else {
+      *d = mqc.curctx().mps
+    }
+  }
 }
 
 /*@}*/
@@ -507,7 +611,7 @@ pub unsafe extern "C" fn opj_mqc_init_dec(
   } else {
     (*mqc).c = ((*(*mqc).bp as libc::c_int) << 16 as libc::c_int) as OPJ_UINT32
   }
-  opj_mqc_bytein(mqc);
+  opj_mqc_bytein(&mut *mqc);
   (*mqc).c <<= 7 as libc::c_int;
   (*mqc).ct = ((*mqc).ct as libc::c_uint).wrapping_sub(7 as libc::c_int as libc::c_uint)
     as OPJ_UINT32 as OPJ_UINT32;
