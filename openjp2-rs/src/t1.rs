@@ -331,11 +331,48 @@ unsafe extern "C" fn opj_t1_getnmsedec_ref(mut x: OPJ_UINT32, mut bitpos: OPJ_UI
   return lut_nmsedec_ref0
     [(x & (((1 as libc::c_int) << 7 as libc::c_int) - 1 as libc::c_int) as libc::c_uint) as usize];
 }
-/* east */
-/* mark target as significant */
-/* west */
-/* north-west, north, north-east */
-/* south-west, south, south-east */
+
+#[inline]
+unsafe extern "C" fn opj_t1_update_flags_macro(
+  mut flagsp: *mut opj_flag_t,
+  mut ci: OPJ_UINT32,
+  mut s: OPJ_UINT32,
+  mut stride: OPJ_UINT32,
+  mut vsc: OPJ_UINT32,
+) {
+  /* east */
+  let ref mut fresh0 = *flagsp.offset(-1);
+  *fresh0 |= ((1 as libc::c_uint) << 5 as libc::c_int) << (3 as libc::c_uint).wrapping_mul(ci);
+
+  /* mark target as significant */
+  *flagsp |= (s << 19 as libc::c_int | (1 as libc::c_uint) << 4 as libc::c_int)
+    << (3 as libc::c_uint).wrapping_mul(ci);
+
+  /* west */
+  let ref mut fresh1 = *flagsp.offset(1);
+  *fresh1 |= ((1 as libc::c_uint) << 3 as libc::c_int) << (3 as libc::c_uint).wrapping_mul(ci);
+
+  /* north-west, north, north-east */
+  if ci == 0 as libc::c_uint && vsc == 0 {
+    let mut north = flagsp.offset(-(stride as isize));
+    *north |= s << 31 as libc::c_int | (1 as libc::c_uint) << 16 as libc::c_int;
+    let ref mut fresh2 = *north.offset(-1);
+    *fresh2 |= (1 as libc::c_uint) << 17 as libc::c_int;
+    let ref mut fresh3 = *north.offset(1);
+    *fresh3 |= (1 as libc::c_uint) << 15 as libc::c_int
+  }
+
+  /* south-west, south, south-east */
+  if ci == 3 as libc::c_uint {
+    let mut south = flagsp.offset(stride as isize);
+    *south |= s << 18 as libc::c_int | (1 as libc::c_uint) << 1 as libc::c_int;
+    let ref mut fresh4 = *south.offset(-1);
+    *fresh4 |= (1 as libc::c_uint) << 2 as libc::c_int;
+    let ref mut fresh5 = *south.offset(1);
+    *fresh5 |= (1 as libc::c_uint) << 0 as libc::c_int
+  };
+}
+
 #[inline]
 unsafe extern "C" fn opj_t1_update_flags(
   mut flagsp: *mut opj_flag_t,
@@ -344,29 +381,9 @@ unsafe extern "C" fn opj_t1_update_flags(
   mut stride: OPJ_UINT32,
   mut vsc: OPJ_UINT32,
 ) {
-  let ref mut fresh0 = *flagsp.offset(-(1 as libc::c_int) as isize);
-  *fresh0 |= ((1 as libc::c_uint) << 5 as libc::c_int) << (3 as libc::c_uint).wrapping_mul(ci);
-  *flagsp |= (s << 19 as libc::c_int | (1 as libc::c_uint) << 4 as libc::c_int)
-    << (3 as libc::c_uint).wrapping_mul(ci);
-  let ref mut fresh1 = *flagsp.offset(1 as libc::c_int as isize);
-  *fresh1 |= ((1 as libc::c_uint) << 3 as libc::c_int) << (3 as libc::c_uint).wrapping_mul(ci);
-  if ci == 0 as libc::c_uint && vsc == 0 {
-    let mut north = flagsp.offset(-(stride as isize));
-    *north |= s << 31 as libc::c_int | (1 as libc::c_uint) << 16 as libc::c_int;
-    let ref mut fresh2 = *north.offset(-(1 as libc::c_int) as isize);
-    *fresh2 |= (1 as libc::c_uint) << 17 as libc::c_int;
-    let ref mut fresh3 = *north.offset(1 as libc::c_int as isize);
-    *fresh3 |= (1 as libc::c_uint) << 15 as libc::c_int
-  }
-  if ci == 3 as libc::c_uint {
-    let mut south = flagsp.offset(stride as isize);
-    *south |= s << 18 as libc::c_int | (1 as libc::c_uint) << 1 as libc::c_int;
-    let ref mut fresh4 = *south.offset(-(1 as libc::c_int) as isize);
-    *fresh4 |= (1 as libc::c_uint) << 2 as libc::c_int;
-    let ref mut fresh5 = *south.offset(1 as libc::c_int as isize);
-    *fresh5 |= (1 as libc::c_uint) << 0 as libc::c_int
-  };
+  opj_t1_update_flags_macro(flagsp, ci, s, stride, vsc);
 }
+
 /* *
 Decode significant pass
 */
