@@ -1,10 +1,5 @@
 use super::openjpeg::*;
-use ::libc;
-
-extern "C" {
-
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-}
+use super::consts::*;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -26,7 +21,7 @@ pub struct opj_mqc {
   pub bp: *mut OPJ_BYTE,
   pub start: *mut OPJ_BYTE,
   pub end: *mut OPJ_BYTE,
-  pub ctxs: [*const opj_mqc_state_t; 19],
+  pub ctxs: [*const opj_mqc_state_t; MQC_NUMCTXS],
   pub curctx: *mut *const opj_mqc_state_t,
   pub lut_ctxno_zc_orient: *const OPJ_BYTE,
   pub backup: [OPJ_BYTE; 2],
@@ -88,6 +83,26 @@ impl opj_mqc {
     unsafe {
       self.bp = self.bp.offset(offset)
     }
+  }
+
+  pub fn backup_extra(&mut self) {
+    let len = self.backup.len();
+    let extra = unsafe {
+      std::slice::from_raw_parts_mut(self.end, len)
+    };
+    // Backup extra bytes and replace with `0xff`
+    for idx in 0..len {
+      self.backup[idx] = extra[idx];
+      extra[idx] = 0xff;
+    }
+  }
+
+  pub fn restore_extra(&mut self) {
+    let len = self.backup.len();
+    let extra = unsafe {
+      std::slice::from_raw_parts_mut(self.end, len)
+    };
+    extra.copy_from_slice(&self.backup[..]);
   }
 }
 
@@ -152,7 +167,6 @@ pub fn opj_mqc_raw_decode(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
   return d;
 }
 
-//#define opj_mqc_bytein_macro(mqc, c, ct) \
 #[inline]
 fn opj_mqc_bytein_macro(mqc: &mut opj_mqc_t) {
   let mut l_c: OPJ_UINT32 = 0;
@@ -197,7 +211,6 @@ fn opj_mqc_renormd_macro(mqc: &mut opj_mqc_t) {
   }
 }
 
-//#define opj_mqc_decode_macro(d, mqc, curctx, a, c, ct) \
 #[inline]
 pub fn opj_mqc_decode_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
   /* Implements ISO 15444-1 C.3.2 Decoding a decision (DECODE) */
@@ -226,7 +239,6 @@ Renormalize mqc->a and mqc->c while encoding, so that mqc->a stays between 0x800
 @param c_ value of mqc->c_
 @param ct_ value of mqc->ct_
 */
-//#define opj_mqc_renorme_macro(mqc, a_, c_, ct_) \
 #[inline]
 fn opj_mqc_renorme_macro(mqc: &mut opj_mqc_t) {
   loop {
@@ -245,7 +257,6 @@ fn opj_mqc_renorme_macro(mqc: &mut opj_mqc_t) {
   }
 }
 
-//#define opj_mqc_codemps_macro(mqc, curctx, a, c, ct) \
 #[inline]
 fn opj_mqc_codemps_macro(mqc: &mut opj_mqc_t) {
   mqc.a = mqc.a.wrapping_sub(mqc.curctx().qeval);
@@ -259,10 +270,9 @@ fn opj_mqc_codemps_macro(mqc: &mut opj_mqc_t) {
     opj_mqc_renorme_macro(mqc);
   } else {
     mqc.c = mqc.c.wrapping_add(mqc.curctx().qeval);
-  };
+  }
 }
 
-//#define opj_mqc_codelps_macro(mqc, curctx, a, c, ct) \
 #[inline]
 fn opj_mqc_codelps_macro(mqc: &mut opj_mqc_t) {
   mqc.a = mqc.a.wrapping_sub(mqc.curctx().qeval);
@@ -275,20 +285,18 @@ fn opj_mqc_codelps_macro(mqc: &mut opj_mqc_t) {
   opj_mqc_renorme_macro(mqc);
 }
 
-//#define opj_mqc_encode_macro(mqc, curctx, a, c, ct, d) \
 #[inline]
 fn opj_mqc_encode_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
   if mqc.curctx().mps == d {
     opj_mqc_codemps(mqc);
   } else {
     opj_mqc_codelps(mqc);
-  };
+  }
 }
 
-//#define opj_mqc_bypass_enc_macro(mqc, c, ct, d) \
 #[inline]
 fn opj_mqc_bypass_enc_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
-  if mqc.ct == 0xdeadbeef {
+  if mqc.ct == BYPASS_CT_INIT {
     mqc.ct = 8;
   }
   mqc.ct = mqc.ct.wrapping_sub(1);
@@ -444,7 +452,7 @@ pub fn opj_mqc_bypass_init_enc(mut mqc: &mut opj_mqc_t) {
   /* as to avoid the 0xff 0x7f elimination trick in opj_mqc_bypass_flush_enc() */
   /* to trigger when we don't have output any bit during this bypass sequence */
   /* Any value > 8 will do */
-  mqc.ct = 0xdeadbeef;
+  mqc.ct = BYPASS_CT_INIT;
   /* Given that we are called after opj_mqc_flush(), the previous byte */
   /* cannot be 0xff. */
   assert!(mqc.bp_peek_offset(-1) != 0xff);
@@ -509,24 +517,9 @@ pub fn opj_mqc_bypass_flush_enc(mut mqc: &mut opj_mqc_t, mut erterm: OPJ_BOOL) {
 #[no_mangle]
 pub fn opj_mqc_reset_enc(mut mqc: &mut opj_mqc_t) {
   opj_mqc_resetstates(mqc);
-  opj_mqc_setstate(
-    mqc,
-    0 + 9 + 5 + 3 + 1,
-    0,
-    46,
-  );
-  opj_mqc_setstate(
-    mqc,
-    0 + 9 + 5 + 3,
-    0,
-    3,
-  );
-  opj_mqc_setstate(
-    mqc,
-    0,
-    0,
-    4,
-  );
+  opj_mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
+  opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
+  opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
 }
 
 #[no_mangle]
@@ -545,8 +538,8 @@ pub fn opj_mqc_restart_init_enc(mut mqc: &mut opj_mqc_t) {
   assert!(mqc.check_start(-1));
   assert!(mqc.bp() != 0xff);
   if mqc.bp() == 0xff {
-    mqc.ct = 13
-  };
+    mqc.ct = 13;
+  }
 }
 
 #[no_mangle]
@@ -562,7 +555,7 @@ pub fn opj_mqc_erterm_enc(mut mqc: &mut opj_mqc_t) {
   }
   if mqc.bp() != 0xff {
     opj_mqc_byteout(mqc);
-  };
+  }
 }
 
 /* *
@@ -608,23 +601,17 @@ fn opj_mqc_init_dec_common(
   mut len: OPJ_UINT32,
   mut extra_writable_bytes: OPJ_UINT32,
 ) {
-  assert!(extra_writable_bytes >= 2);
+  assert!(extra_writable_bytes >= OPJ_COMMON_CBLK_DATA_EXTRA);
+  mqc.start = bp;
   unsafe {
-    mqc.start = bp;
     mqc.end = bp.offset(len as isize);
-    /* Insert an artificial 0xFF 0xFF marker at end of the code block */
-    /* data so that the bytein routines stop on it. This saves us comparing */
-    /* the bp and end pointers */
-    /* But before inserting it, backup th bytes we will overwrite */
-    memcpy(
-      mqc.backup.as_mut_ptr() as *mut libc::c_void,
-      mqc.end as *const libc::c_void,
-      2,
-    );
-    *mqc.end.offset(0) = 0xff;
-    *mqc.end.offset(1) = 0xff;
-    mqc.bp = bp;
   }
+  /* Insert an artificial 0xFF 0xFF marker at end of the code block */
+  /* data so that the bytein routines stop on it. This saves us comparing */
+  /* the bp and end pointers */
+  /* But before inserting it, backup th bytes we will overwrite */
+  mqc.backup_extra();
+  mqc.bp = bp;
 }
 
 #[no_mangle]
@@ -667,23 +654,14 @@ pub fn opj_mqc_raw_init_dec(
 
 #[no_mangle]
 pub fn opq_mqc_finish_dec(mut mqc: &mut opj_mqc_t) {
-  unsafe {
-    /* Restore the bytes overwritten by opj_mqc_init_dec_common() */
-    memcpy(
-      mqc.end as *mut libc::c_void,
-      mqc.backup.as_mut_ptr() as *const libc::c_void,
-      2,
-    );
-  }
+  /* Restore the bytes overwritten by opj_mqc_init_dec_common() */
+  mqc.restore_extra();
 }
 
 #[no_mangle]
 pub fn opj_mqc_resetstates(mut mqc: &mut opj_mqc_t) {
-  let mut i: OPJ_UINT32 = 0;
-  i = 0;
-  while i < 19 {
-    mqc.ctxs[i as usize] = unsafe { mqc_states.as_ptr() };
-    i = i.wrapping_add(1)
+  for i in 0..19 {
+    mqc.ctxs[i] = unsafe { mqc_states.as_ptr() };
   }
 }
 
@@ -712,8 +690,7 @@ pub fn opj_mqc_byteout(mut mqc: &mut opj_mqc_t) {
     mqc.write_byte((mqc.c >> 20) as OPJ_BYTE);
     mqc.c &= 0xfffff;
     mqc.ct = 7
-  } else if mqc.c & 0x8000000 == 0
-  {
+  } else if mqc.c & 0x8000000 == 0 {
     mqc.inc_bp();
     mqc.write_byte((mqc.c >> 19) as OPJ_BYTE);
     mqc.c &= 0x7ffff;
@@ -732,7 +709,7 @@ pub fn opj_mqc_byteout(mut mqc: &mut opj_mqc_t) {
       mqc.c &= 0x7ffff;
       mqc.ct = 8
     }
-  };
+  }
 }
 unsafe extern "C" fn run_static_initializers() {
   mqc_states = [

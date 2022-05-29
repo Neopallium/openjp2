@@ -169,7 +169,7 @@ pub mod jp2 {
 }
 
 pub mod mqc {
-  pub const MQC_NUMCTXS: u32  = 19;
+  pub const MQC_NUMCTXS: usize  = 19;
   pub const BYPASS_CT_INIT: u32   = 0xDEADBEEF;
 }
 
