@@ -14,6 +14,10 @@ foreach(ut ${unit_test})
   add_executable(${ut} ${ut}.c)
   target_link_libraries(${ut} openjp2)
   add_test(NAME ${ut} COMMAND ${ut})
+
+  if(USE_RUST_LIB)
+    target_link_libraries(${ut} m dl pthread)
+  endif()
 endforeach()
 
 add_executable(testjp2 testjp2.c)
