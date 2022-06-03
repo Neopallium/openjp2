@@ -1,144 +1,17 @@
+use super::openjpeg::*;
 use super::math::*;
 use super::mqc::*;
 use super::dwt::*;
-use super::openjpeg::*;
 use super::t1_luts::*;
+use super::ht_dec::*;
+use super::tcd::*;
+use super::event::*;
 use super::thread::*;
 use super::consts::*;
 use ::libc;
 
-extern "C" {
-
-  fn abs(_: libc::c_int) -> libc::c_int;
-
-  fn lrintf(_: libc::c_float) -> libc::c_long;
-
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-
-  fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-
-  fn opj_aligned_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_aligned_free(ptr: *mut libc::c_void);
-
-  fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
-
-  fn opj_event_msg(
-    event_mgr: *mut opj_event_mgr_t,
-    event_type: OPJ_INT32,
-    fmt: *const libc::c_char,
-    _: ...
-  ) -> OPJ_BOOL;
-
-  fn opj_mutex_create() -> *mut opj_mutex_t;
-
-  fn opj_mutex_lock(mutex: *mut opj_mutex_t);
-
-  fn opj_mutex_unlock(mutex: *mut opj_mutex_t);
-
-  fn opj_mutex_destroy(mutex: *mut opj_mutex_t);
-
-  fn opj_tls_get(tls: *mut opj_tls_t, key: libc::c_int) -> *mut libc::c_void;
-
-  fn opj_tls_set(
-    tls: *mut opj_tls_t,
-    key: libc::c_int,
-    value: *mut libc::c_void,
-    free_func: opj_tls_free_func,
-  ) -> OPJ_BOOL;
-
-  fn opj_thread_pool_submit_job(
-    tp: *mut opj_thread_pool_t,
-    job_fn: opj_job_fn,
-    user_data: *mut libc::c_void,
-  ) -> OPJ_BOOL;
-
-  fn opj_thread_pool_wait_completion(tp: *mut opj_thread_pool_t, max_remaining_jobs: libc::c_int);
-
-  fn opj_thread_pool_get_thread_count(tp: *mut opj_thread_pool_t) -> libc::c_int;
-
-  fn opj_mqc_byteout(mqc: &mut opj_mqc_t);
-
-  fn opj_mqc_numbytes(mqc: &mut opj_mqc_t) -> OPJ_UINT32;
-
-  fn opj_mqc_resetstates(mqc: &mut opj_mqc_t);
-
-  fn opj_mqc_setstate(mqc: &mut opj_mqc_t, ctxno: OPJ_UINT32, msb: OPJ_UINT32, prob: OPJ_INT32);
-
-  fn opj_mqc_init_enc(mqc: &mut opj_mqc_t, bp: *mut OPJ_BYTE);
-
-  fn opj_mqc_flush(mqc: &mut opj_mqc_t);
-
-  fn opj_mqc_bypass_init_enc(mqc: &mut opj_mqc_t);
-
-  fn opj_mqc_bypass_get_extra_bytes(mqc: &mut opj_mqc_t, erterm: OPJ_BOOL) -> OPJ_UINT32;
-
-  fn opj_mqc_bypass_flush_enc(mqc: &mut opj_mqc_t, erterm: OPJ_BOOL);
-
-  fn opj_mqc_reset_enc(mqc: &mut opj_mqc_t);
-
-  fn opj_mqc_restart_init_enc(mqc: &mut opj_mqc_t);
-
-  fn opj_mqc_erterm_enc(mqc: &mut opj_mqc_t);
-
-  fn opj_mqc_segmark_enc(mqc: &mut opj_mqc_t);
-
-  fn opj_mqc_init_dec(
-    mqc: &mut opj_mqc_t,
-    bp: *mut OPJ_BYTE,
-    len: OPJ_UINT32,
-    extra_writable_bytes: OPJ_UINT32,
-  );
-
-  fn opj_mqc_raw_init_dec(
-    mqc: &mut opj_mqc_t,
-    bp: *mut OPJ_BYTE,
-    len: OPJ_UINT32,
-    extra_writable_bytes: OPJ_UINT32,
-  );
-
-  fn opq_mqc_finish_dec(mqc: &mut opj_mqc_t);
-
-  fn opj_tcd_is_band_empty(band: *mut opj_tcd_band_t) -> OPJ_BOOL;
-
-  fn opj_tcd_is_subband_area_of_interest(
-    tcd: *mut opj_tcd_t,
-    compno: OPJ_UINT32,
-    resno: OPJ_UINT32,
-    bandno: OPJ_UINT32,
-    x0: OPJ_UINT32,
-    y0: OPJ_UINT32,
-    x1: OPJ_UINT32,
-    y1: OPJ_UINT32,
-  ) -> OPJ_BOOL;
-
-  /* *
-  Decode 1 HT code-block
-  @param t1 T1 handle
-  @param cblk Code-block coding parameters
-  @param orient
-  @param roishift Region of interest shifting value
-  @param cblksty Code-block style
-  @param p_manager the event manager
-  @param p_manager_mutex mutex for the event manager
-  @param check_pterm whether PTERM correct termination should be checked
-  */
-
-  fn opj_t1_ht_decode_cblk(
-    t1: *mut opj_t1_t,
-    cblk: *mut opj_tcd_cblk_dec_t,
-    orient: OPJ_UINT32,
-    roishift: OPJ_UINT32,
-    cblksty: OPJ_UINT32,
-    p_manager: *mut opj_event_mgr_t,
-    p_manager_mutex: *mut opj_mutex_t,
-    check_pterm: OPJ_BOOL,
-  ) -> OPJ_BOOL;
-}
+use super::malloc::*;
+use ::libc::{memset, memcpy};
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1622,7 +1495,7 @@ unsafe extern "C" fn opj_t1_allocate_buffers(
     memset(
       (*t1).data as *mut libc::c_void,
       0 as libc::c_int,
-      (datasize as libc::c_ulong).wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+      datasize as usize * ::std::mem::size_of::<OPJ_INT32>(),
     ); /* can't be 0U */
   }
   flags_stride = w.wrapping_add(2 as libc::c_uint);
@@ -1651,7 +1524,7 @@ unsafe extern "C" fn opj_t1_allocate_buffers(
   memset(
     (*t1).flags as *mut libc::c_void,
     0 as libc::c_int,
-    (flagssize as libc::c_ulong).wrapping_mul(::std::mem::size_of::<opj_flag_t>() as libc::c_ulong),
+    flagssize as usize * ::std::mem::size_of::<opj_flag_t>(),
   );
   p = &mut *(*t1).flags.offset(0 as libc::c_int as isize) as *mut opj_flag_t;
   x = 0 as libc::c_int as OPJ_UINT32;
@@ -1800,9 +1673,9 @@ unsafe extern "C" fn opj_t1_clbl_decode_processor(
     memset(
       (*cblk).decoded_data as *mut libc::c_void,
       0 as libc::c_int,
-      (::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
-        .wrapping_mul(cblk_w as libc::c_ulong)
-        .wrapping_mul(cblk_h as libc::c_ulong),
+      ::std::mem::size_of::<OPJ_INT32>()
+        .wrapping_mul(cblk_w as usize)
+        .wrapping_mul(cblk_h as usize),
     );
   } else if !(*cblk).decoded_data.is_null() {
     /* Not sure if that code path can happen, but better be */
@@ -1936,7 +1809,7 @@ unsafe extern "C" fn opj_t1_clbl_decode_processor(
         i = 0 as libc::c_int as OPJ_UINT32;
         while i < cblk_w {
           let mut val = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
-          let mut mag = abs(val);
+          let mut mag = val.abs();
           if mag >= thresh {
             mag >>= (*tccp).roishift;
             *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) =
@@ -1969,7 +1842,7 @@ unsafe extern "C" fn opj_t1_clbl_decode_processor(
         memcpy(
           datap as *mut libc::c_void,
           &mut tmp as *mut OPJ_FLOAT32 as *const libc::c_void,
-          ::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong,
+          ::std::mem::size_of::<OPJ_FLOAT32>(),
         );
         datap = datap.offset(1);
         i = i.wrapping_add(1)
@@ -2260,27 +2133,13 @@ unsafe extern "C" fn opj_t1_decode_cblk(
     }
     return 0 as libc::c_int;
   }
-  passtype = 2 as libc::c_int as OPJ_UINT32;
+  passtype = 2;
+
   opj_mqc_resetstates(mqc);
-  opj_mqc_setstate(
-    mqc,
-    (0 as libc::c_int + 9 as libc::c_int + 5 as libc::c_int + 3 as libc::c_int + 1 as libc::c_int)
-      as OPJ_UINT32,
-    0 as libc::c_int as OPJ_UINT32,
-    46 as libc::c_int,
-  );
-  opj_mqc_setstate(
-    mqc,
-    (0 as libc::c_int + 9 as libc::c_int + 5 as libc::c_int + 3 as libc::c_int) as OPJ_UINT32,
-    0 as libc::c_int as OPJ_UINT32,
-    3 as libc::c_int,
-  );
-  opj_mqc_setstate(
-    mqc,
-    0 as libc::c_int as OPJ_UINT32,
-    0 as libc::c_int as OPJ_UINT32,
-    4 as libc::c_int,
-  );
+  opj_mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
+  opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
+  opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
+
   /* Even if we have a single chunk, in multi-threaded decoding */
   /* the insertion of our synthetic marker might potentially override */
   /* valid codestream of other codeblocks decoded in parallel. */
@@ -2307,8 +2166,8 @@ unsafe extern "C" fn opj_t1_decode_cblk(
       (*t1).cblkdatabuffer = cblkdata;
       memset(
         (*t1).cblkdatabuffer.offset(cblk_len as isize) as *mut libc::c_void,
-        0 as libc::c_int,
-        2 as libc::c_int as libc::c_ulong,
+        0,
+        OPJ_COMMON_CBLK_DATA_EXTRA as usize,
       );
       (*t1).cblkdatabuffersize = cblk_len.wrapping_add(2 as libc::c_int as libc::c_uint)
     }
@@ -2320,7 +2179,7 @@ unsafe extern "C" fn opj_t1_decode_cblk(
       memcpy(
         cblkdata.offset(cblk_len as isize) as *mut libc::c_void,
         (*(*cblk).chunks.offset(i as isize)).data as *const libc::c_void,
-        (*(*cblk).chunks.offset(i as isize)).len as libc::c_ulong,
+        (*(*cblk).chunks.offset(i as isize)).len as usize,
       );
       cblk_len = (cblk_len as libc::c_uint).wrapping_add((*(*cblk).chunks.offset(i as isize)).len)
         as OPJ_UINT32 as OPJ_UINT32;
@@ -2391,36 +2250,15 @@ unsafe extern "C" fn opj_t1_decode_cblk(
         }
         _ => {}
       }
-      if cblksty & 0x2 as libc::c_int as libc::c_uint != 0
-        && type_0 as libc::c_int == 0 as libc::c_int
-      {
+      if (cblksty & J2K_CCP_CBLKSTY_RESET) != 0 && type_0 == T1_TYPE_MQ {
         opj_mqc_resetstates(mqc);
-        opj_mqc_setstate(
-          mqc,
-          (0 as libc::c_int
-            + 9 as libc::c_int
-            + 5 as libc::c_int
-            + 3 as libc::c_int
-            + 1 as libc::c_int) as OPJ_UINT32,
-          0 as libc::c_int as OPJ_UINT32,
-          46 as libc::c_int,
-        );
-        opj_mqc_setstate(
-          mqc,
-          (0 as libc::c_int + 9 as libc::c_int + 5 as libc::c_int + 3 as libc::c_int) as OPJ_UINT32,
-          0 as libc::c_int as OPJ_UINT32,
-          3 as libc::c_int,
-        );
-        opj_mqc_setstate(
-          mqc,
-          0 as libc::c_int as OPJ_UINT32,
-          0 as libc::c_int as OPJ_UINT32,
-          4 as libc::c_int,
-        );
+        opj_mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
+        opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
+        opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
       }
       passtype = passtype.wrapping_add(1);
-      if passtype == 3 as libc::c_int as libc::c_uint {
-        passtype = 0 as libc::c_int as OPJ_UINT32;
+      if passtype == 3 {
+        passtype = 0;
         bpno_plus_one -= 1
       }
       passno = passno.wrapping_add(1)
@@ -2851,7 +2689,7 @@ unsafe extern "C" fn opj_t1_encode_cblk(
         memcpy(
           datap as *mut libc::c_void,
           &mut tmp_unsigned as *mut OPJ_UINT32 as *const libc::c_void,
-          ::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong,
+          ::std::mem::size_of::<OPJ_INT32>(),
         );
       } else {
         max = opj_int_max(max, tmp)
@@ -2875,27 +2713,13 @@ unsafe extern "C" fn opj_t1_encode_cblk(
     .numbps
     .wrapping_sub(1 as libc::c_int as libc::c_uint) as OPJ_INT32;
   passtype = 2 as libc::c_int as OPJ_UINT32;
+
   opj_mqc_resetstates(mqc);
-  opj_mqc_setstate(
-    mqc,
-    (0 as libc::c_int + 9 as libc::c_int + 5 as libc::c_int + 3 as libc::c_int + 1 as libc::c_int)
-      as OPJ_UINT32,
-    0 as libc::c_int as OPJ_UINT32,
-    46 as libc::c_int,
-  );
-  opj_mqc_setstate(
-    mqc,
-    (0 as libc::c_int + 9 as libc::c_int + 5 as libc::c_int + 3 as libc::c_int) as OPJ_UINT32,
-    0 as libc::c_int as OPJ_UINT32,
-    3 as libc::c_int,
-  );
-  opj_mqc_setstate(
-    mqc,
-    0 as libc::c_int as OPJ_UINT32,
-    0 as libc::c_int as OPJ_UINT32,
-    4 as libc::c_int,
-  );
+  opj_mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
+  opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
+  opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
   opj_mqc_init_enc(mqc, (*cblk).data);
+
   passno = 0 as libc::c_int as OPJ_UINT32;
   while bpno >= 0 as libc::c_int {
     let mut pass: *mut opj_tcd_pass_t =
