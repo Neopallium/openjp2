@@ -51,7 +51,7 @@ extern "C" {
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #[inline]
-unsafe extern "C" fn opj_aligned_alloc_n(
+unsafe fn opj_aligned_alloc_n(
   mut alignment: size_t,
   mut size: size_t,
 ) -> *mut libc::c_void {
@@ -80,7 +80,7 @@ unsafe extern "C" fn opj_aligned_alloc_n(
   return ptr;
 }
 #[inline]
-unsafe extern "C" fn opj_aligned_realloc_n(
+unsafe fn opj_aligned_realloc_n(
   mut ptr: *mut libc::c_void,
   mut alignment: size_t,
   mut new_size: size_t,
@@ -122,7 +122,7 @@ unsafe extern "C" fn opj_aligned_realloc_n(
   return r_ptr;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_malloc(mut size: size_t) -> *mut libc::c_void {
+pub(crate) unsafe fn opj_malloc(mut size: size_t) -> *mut libc::c_void {
   if size == 0 as libc::c_uint as libc::c_ulong {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn opj_malloc(mut size: size_t) -> *mut libc::c_void {
   return malloc(size);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_calloc(mut num: size_t, mut size: size_t) -> *mut libc::c_void {
+pub(crate) unsafe fn opj_calloc(mut num: size_t, mut size: size_t) -> *mut libc::c_void {
   if num == 0 as libc::c_int as libc::c_ulong || size == 0 as libc::c_int as libc::c_ulong {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;
@@ -138,33 +138,33 @@ pub unsafe extern "C" fn opj_calloc(mut num: size_t, mut size: size_t) -> *mut l
   return calloc(num, size);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_aligned_malloc(mut size: size_t) -> *mut libc::c_void {
+pub(crate) unsafe fn opj_aligned_malloc(mut size: size_t) -> *mut libc::c_void {
   return opj_aligned_alloc_n(16 as libc::c_uint as size_t, size);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_aligned_realloc(
+pub(crate) unsafe fn opj_aligned_realloc(
   mut ptr: *mut libc::c_void,
   mut size: size_t,
 ) -> *mut libc::c_void {
   return opj_aligned_realloc_n(ptr, 16 as libc::c_uint as size_t, size);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_aligned_32_malloc(mut size: size_t) -> *mut libc::c_void {
+pub(crate) unsafe fn opj_aligned_32_malloc(mut size: size_t) -> *mut libc::c_void {
   return opj_aligned_alloc_n(32 as libc::c_uint as size_t, size);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_aligned_32_realloc(
+pub(crate) unsafe fn opj_aligned_32_realloc(
   mut ptr: *mut libc::c_void,
   mut size: size_t,
 ) -> *mut libc::c_void {
   return opj_aligned_realloc_n(ptr, 32 as libc::c_uint as size_t, size);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_aligned_free(mut ptr: *mut libc::c_void) {
+pub(crate) unsafe fn opj_aligned_free(mut ptr: *mut libc::c_void) {
   free(ptr);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_realloc(
+pub(crate) unsafe fn opj_realloc(
   mut ptr: *mut libc::c_void,
   mut new_size: size_t,
 ) -> *mut libc::c_void {
@@ -175,6 +175,6 @@ pub unsafe extern "C" fn opj_realloc(
   return realloc(ptr, new_size);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_free(mut ptr: *mut libc::c_void) {
+pub(crate) unsafe fn opj_free(mut ptr: *mut libc::c_void) {
   free(ptr);
 }

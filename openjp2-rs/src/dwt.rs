@@ -4,63 +4,12 @@ use super::sparse_array::*;
 use super::thread::*;
 use ::libc;
 
+use super::malloc::*;
+
 extern "C" {
   fn floor(_: libc::c_double) -> libc::c_double;
 
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-
-  fn opj_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_aligned_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_aligned_free(ptr: *mut libc::c_void);
-
-  fn opj_aligned_32_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
-
-  fn opj_thread_pool_submit_job(
-    tp: *mut opj_thread_pool_t,
-    job_fn: opj_job_fn,
-    user_data: *mut libc::c_void,
-  ) -> OPJ_BOOL;
-
-  fn opj_thread_pool_wait_completion(tp: *mut opj_thread_pool_t, max_remaining_jobs: libc::c_int);
-
-  fn opj_thread_pool_get_thread_count(tp: *mut opj_thread_pool_t) -> libc::c_int;
-
-  fn opj_sparse_array_int32_create(
-    width: OPJ_UINT32,
-    height: OPJ_UINT32,
-    block_width: OPJ_UINT32,
-    block_height: OPJ_UINT32,
-  ) -> *mut opj_sparse_array_int32_t;
-
-  fn opj_sparse_array_int32_write(
-    sa: *mut opj_sparse_array_int32_t,
-    x0: OPJ_UINT32,
-    y0: OPJ_UINT32,
-    x1: OPJ_UINT32,
-    y1: OPJ_UINT32,
-    src: *const OPJ_INT32,
-    src_col_stride: OPJ_UINT32,
-    src_line_stride: OPJ_UINT32,
-    forgiving: OPJ_BOOL,
-  ) -> OPJ_BOOL;
-
-  fn opj_sparse_array_int32_read(
-    sa: *const opj_sparse_array_int32_t,
-    x0: OPJ_UINT32,
-    y0: OPJ_UINT32,
-    x1: OPJ_UINT32,
-    y1: OPJ_UINT32,
-    dest: *mut OPJ_INT32,
-    dest_col_stride: OPJ_UINT32,
-    dest_line_stride: OPJ_UINT32,
-    forgiving: OPJ_BOOL,
-  ) -> OPJ_BOOL;
-
-  fn opj_sparse_array_int32_free(sa: *mut opj_sparse_array_int32_t);
 }
 /* Where void* is a OPJ_INT32* for 5x3 and OPJ_FLOAT32* for 9x7 */
 pub type opj_encode_and_deinterleave_h_one_row_fnptr_type = Option<
@@ -258,7 +207,7 @@ Forward lazy transform (horizontal)
 /* <summary>                             */
 /* Forward lazy transform (horizontal).  */
 /* </summary>                            */
-unsafe extern "C" fn opj_dwt_deinterleave_h(
+unsafe fn opj_dwt_deinterleave_h(
   mut a: *const OPJ_INT32,
   mut b: *mut OPJ_INT32,
   mut dn: OPJ_INT32,
@@ -290,7 +239,7 @@ unsafe extern "C" fn opj_dwt_deinterleave_h(
 /* <summary>                             */
 /* Inverse lazy transform (horizontal).  */
 /* </summary>                            */
-unsafe extern "C" fn opj_dwt_interleave_h(mut h: *const opj_dwt_t, mut a: *mut OPJ_INT32) {
+unsafe fn opj_dwt_interleave_h(mut h: *const opj_dwt_t, mut a: *mut OPJ_INT32) {
   let mut ai: *const OPJ_INT32 = a;
   let mut bi = (*h).mem.offset((*h).cas as isize);
   let mut i = (*h).sn;
@@ -326,7 +275,7 @@ unsafe extern "C" fn opj_dwt_interleave_h(mut h: *const opj_dwt_t, mut a: *mut O
 /* <summary>                             */
 /* Inverse lazy transform (vertical).    */
 /* </summary>                            */
-unsafe extern "C" fn opj_dwt_interleave_v(
+unsafe fn opj_dwt_interleave_v(
   mut v: *const opj_dwt_t,
   mut a: *mut OPJ_INT32,
   mut x: OPJ_INT32,
@@ -365,7 +314,7 @@ unsafe extern "C" fn opj_dwt_interleave_v(
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 1-D. */
 /* </summary>                           */
-unsafe extern "C" fn opj_dwt_decode_1_(
+unsafe fn opj_dwt_decode_1_(
   mut a: *mut OPJ_INT32,
   mut dn: OPJ_INT32,
   mut sn: OPJ_INT32,
@@ -473,7 +422,7 @@ unsafe extern "C" fn opj_dwt_decode_1_(
     }
   };
 }
-unsafe extern "C" fn opj_dwt_decode_1(mut v: *const opj_dwt_t) {
+unsafe fn opj_dwt_decode_1(mut v: *const opj_dwt_t) {
   opj_dwt_decode_1_((*v).mem, (*v).dn, (*v).sn, (*v).cas);
 }
 /* STANDARD_SLOW_VERSION */
@@ -482,7 +431,7 @@ unsafe extern "C" fn opj_dwt_decode_1(mut v: *const opj_dwt_t) {
 /* Inverse 5-3 wavelet transform in 1-D for one row. */
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
-unsafe extern "C" fn opj_idwt53_h(mut dwt: *const opj_dwt_t, mut tiledp: *mut OPJ_INT32) {
+unsafe fn opj_idwt53_h(mut dwt: *const opj_dwt_t, mut tiledp: *mut OPJ_INT32) {
   /* For documentation purpose */
   opj_dwt_interleave_h(dwt, tiledp);
   opj_dwt_decode_1(dwt);
@@ -499,7 +448,7 @@ unsafe extern "C" fn opj_idwt53_h(mut dwt: *const opj_dwt_t, mut tiledp: *mut OP
 /* Inverse vertical 5-3 wavelet transform in 1-D for several columns. */
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
-unsafe extern "C" fn opj_idwt53_v(
+unsafe fn opj_idwt53_v(
   mut dwt: *const opj_dwt_t,
   mut tiledp_col: *mut OPJ_INT32,
   mut stride: OPJ_SIZE_T,
@@ -522,7 +471,7 @@ unsafe extern "C" fn opj_idwt53_v(
     c += 1
   }
 }
-unsafe extern "C" fn opj_dwt_encode_step1_combined(
+unsafe fn opj_dwt_encode_step1_combined(
   mut fw: *mut OPJ_FLOAT32,
   mut iters_c1: OPJ_UINT32,
   mut iters_c2: OPJ_UINT32,
@@ -573,7 +522,7 @@ unsafe extern "C" fn opj_dwt_encode_step1_combined(
     *fresh24 *= c2
   };
 }
-unsafe extern "C" fn opj_dwt_encode_step2(
+unsafe fn opj_dwt_encode_step2(
   mut fl: *mut OPJ_FLOAT32,
   mut fw: *mut OPJ_FLOAT32,
   mut end: OPJ_UINT32,
@@ -621,7 +570,7 @@ unsafe extern "C" fn opj_dwt_encode_step2(
 /* *
 Forward 9-7 wavelet transform in 1-D
 */
-unsafe extern "C" fn opj_dwt_encode_1_real(
+unsafe fn opj_dwt_encode_1_real(
   mut aIn: *mut libc::c_void,
   mut dn: OPJ_INT32,
   mut sn: OPJ_INT32,
@@ -675,7 +624,7 @@ unsafe extern "C" fn opj_dwt_encode_1_real(
 /* *
 Explicit calculation of the Quantization Stepsizes
 */
-unsafe extern "C" fn opj_dwt_encode_stepsize(
+unsafe fn opj_dwt_encode_stepsize(
   mut stepsize: OPJ_INT32,
   mut numbps: OPJ_INT32,
   mut bandno_stepsize: *mut opj_stepsize_t,
@@ -916,7 +865,7 @@ unsafe extern "C" fn opj_dwt_encode_v_func(
 }
 /* * Fetch up to cols <= NB_ELTS_V8 for each line, and put them in tmpOut */
 /* that has a NB_ELTS_V8 interleave factor. */
-unsafe extern "C" fn opj_dwt_fetch_cols_vertical_pass(
+unsafe fn opj_dwt_fetch_cols_vertical_pass(
   mut arrayIn: *const libc::c_void,
   mut tmpOut: *mut libc::c_void,
   mut height: OPJ_UINT32,
@@ -968,7 +917,7 @@ unsafe extern "C" fn opj_dwt_fetch_cols_vertical_pass(
 /* and src contains NB_ELTS_V8 consecutive values for up to NB_ELTS_V8 */
 /* columns. */
 #[inline]
-unsafe extern "C" fn opj_dwt_deinterleave_v_cols(
+unsafe fn opj_dwt_deinterleave_v_cols(
   mut src: *const OPJ_INT32,
   mut dst: *mut OPJ_INT32,
   mut dn: OPJ_INT32,
@@ -1378,7 +1327,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v(
     );
   };
 }
-unsafe extern "C" fn opj_v8dwt_encode_step1(
+unsafe fn opj_v8dwt_encode_step1(
   mut fw: *mut OPJ_FLOAT32,
   mut end: OPJ_UINT32,
   cst: OPJ_FLOAT32,
@@ -1400,7 +1349,7 @@ unsafe extern "C" fn opj_v8dwt_encode_step1(
     i = i.wrapping_add(1)
   }
 }
-unsafe extern "C" fn opj_v8dwt_encode_step2(
+unsafe fn opj_v8dwt_encode_step2(
   mut fl: *mut OPJ_FLOAT32,
   mut fw: *mut OPJ_FLOAT32,
   mut end: OPJ_UINT32,
@@ -1551,7 +1500,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v_real(
 /* Forward 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
 #[inline]
-unsafe extern "C" fn opj_dwt_encode_procedure(
+unsafe fn opj_dwt_encode_procedure(
   mut tp: *mut opj_thread_pool_t,
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut p_encode_and_deinterleave_v: opj_encode_and_deinterleave_v_fnptr_type,
@@ -1776,7 +1725,7 @@ unsafe extern "C" fn opj_dwt_encode_procedure(
 /* Forward 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
 #[no_mangle]
-pub unsafe extern "C" fn opj_dwt_encode(
+pub(crate) unsafe fn opj_dwt_encode(
   mut p_tcd: *mut opj_tcd_t,
   mut tilec: *mut opj_tcd_tilecomp_t,
 ) -> OPJ_BOOL {
@@ -1809,7 +1758,7 @@ pub unsafe extern "C" fn opj_dwt_encode(
 /* Inverse 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
 #[no_mangle]
-pub unsafe extern "C" fn opj_dwt_decode(
+pub(crate) unsafe fn opj_dwt_decode(
   mut p_tcd: *mut opj_tcd_t,
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
@@ -1844,7 +1793,7 @@ pub fn opj_dwt_getnorm(
 /* Forward 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
 #[no_mangle]
-pub unsafe extern "C" fn opj_dwt_encode_real(
+pub(crate) unsafe fn opj_dwt_encode_real(
   mut p_tcd: *mut opj_tcd_t,
   mut tilec: *mut opj_tcd_tilecomp_t,
 ) -> OPJ_BOOL {
@@ -1894,7 +1843,7 @@ pub fn opj_dwt_getnorm_real(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn opj_dwt_calc_explicit_stepsizes(
+pub(crate) unsafe fn opj_dwt_calc_explicit_stepsizes(
   mut tccp: *mut opj_tccp_t,
   mut prec: OPJ_UINT32,
 ) {
@@ -1958,7 +1907,7 @@ pub unsafe extern "C" fn opj_dwt_calc_explicit_stepsizes(
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
 /* </summary>                            */
-unsafe extern "C" fn opj_dwt_max_resolution(
+unsafe fn opj_dwt_max_resolution(
   mut r: *mut opj_tcd_resolution_t,
   mut i: OPJ_UINT32,
 ) -> OPJ_UINT32 {
@@ -2034,7 +1983,7 @@ Inverse wavelet transform in 2-D.
 /* <summary>                            */
 /* Inverse wavelet transform in 2-D.    */
 /* </summary>                           */
-unsafe extern "C" fn opj_dwt_decode_tile(
+unsafe fn opj_dwt_decode_tile(
   mut tp: *mut opj_thread_pool_t,
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
@@ -2246,7 +2195,7 @@ unsafe extern "C" fn opj_dwt_decode_tile(
   opj_aligned_free(h.mem as *mut libc::c_void);
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_dwt_interleave_partial_h(
+unsafe fn opj_dwt_interleave_partial_h(
   mut dest: *mut OPJ_INT32,
   mut cas: OPJ_INT32,
   mut sa: *mut opj_sparse_array_int32_t,
@@ -2288,7 +2237,7 @@ unsafe extern "C" fn opj_dwt_interleave_partial_h(
   );
   assert!(ret != 0);
 }
-unsafe extern "C" fn opj_dwt_interleave_partial_v(
+unsafe fn opj_dwt_interleave_partial_v(
   mut dest: *mut OPJ_INT32,
   mut cas: OPJ_INT32,
   mut sa: *mut opj_sparse_array_int32_t,
@@ -2332,7 +2281,7 @@ unsafe extern "C" fn opj_dwt_interleave_partial_v(
   );
   assert!(ret != 0);
 }
-unsafe extern "C" fn opj_dwt_decode_partial_1(
+unsafe fn opj_dwt_decode_partial_1(
   mut a: *mut OPJ_INT32,
   mut dn: OPJ_INT32,
   mut sn: OPJ_INT32,
@@ -2520,7 +2469,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_1(
     }
   };
 }
-unsafe extern "C" fn opj_dwt_decode_partial_1_parallel(
+unsafe fn opj_dwt_decode_partial_1_parallel(
   mut a: *mut OPJ_INT32,
   mut _nb_cols: OPJ_UINT32,
   mut dn: OPJ_INT32,
@@ -2999,7 +2948,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_1_parallel(
     }
   };
 }
-unsafe extern "C" fn opj_dwt_get_band_coordinates(
+unsafe fn opj_dwt_get_band_coordinates(
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut resno: OPJ_UINT32,
   mut bandno: OPJ_UINT32,
@@ -3097,7 +3046,7 @@ unsafe extern "C" fn opj_dwt_get_band_coordinates(
     }
   };
 }
-unsafe extern "C" fn opj_dwt_segment_grow(
+unsafe fn opj_dwt_segment_grow(
   mut filter_width: OPJ_UINT32,
   mut max_size: OPJ_UINT32,
   mut start: *mut OPJ_UINT32,
@@ -3107,7 +3056,7 @@ unsafe extern "C" fn opj_dwt_segment_grow(
   *end = opj_uint_adds(*end, filter_width);
   *end = opj_uint_min(*end, max_size);
 }
-unsafe extern "C" fn opj_dwt_init_sparse_array(
+unsafe fn opj_dwt_init_sparse_array(
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
 ) -> *mut opj_sparse_array_int32_t {
@@ -3193,7 +3142,7 @@ unsafe extern "C" fn opj_dwt_init_sparse_array(
   }
   return sa;
 }
-unsafe extern "C" fn opj_dwt_decode_partial_tile(
+unsafe fn opj_dwt_decode_partial_tile(
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
@@ -3581,7 +3530,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_tile(
   opj_sparse_array_int32_free(sa);
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_v8dwt_interleave_h(
+unsafe fn opj_v8dwt_interleave_h(
   mut dwt: *mut opj_v8dwt_t,
   mut a: *mut OPJ_FLOAT32,
   mut width: OPJ_UINT32,
@@ -3674,7 +3623,7 @@ unsafe extern "C" fn opj_v8dwt_interleave_h(
     k = k.wrapping_add(1)
   }
 }
-unsafe extern "C" fn opj_v8dwt_interleave_partial_h(
+unsafe fn opj_v8dwt_interleave_partial_h(
   mut dwt: *mut opj_v8dwt_t,
   mut sa: *mut opj_sparse_array_int32_t,
   mut sa_line: OPJ_UINT32,
@@ -3727,7 +3676,7 @@ unsafe extern "C" fn opj_v8dwt_interleave_partial_h(
   }
 }
 #[inline]
-unsafe extern "C" fn opj_v8dwt_interleave_v(
+unsafe fn opj_v8dwt_interleave_v(
   mut dwt: *mut opj_v8dwt_t,
   mut a: *mut OPJ_FLOAT32,
   mut width: OPJ_UINT32,
@@ -3766,7 +3715,7 @@ unsafe extern "C" fn opj_v8dwt_interleave_v(
     i = i.wrapping_add(1)
   }
 }
-unsafe extern "C" fn opj_v8dwt_interleave_partial_v(
+unsafe fn opj_v8dwt_interleave_partial_v(
   mut dwt: *mut opj_v8dwt_t,
   mut sa: *mut opj_sparse_array_int32_t,
   mut sa_col: OPJ_UINT32,
@@ -3807,7 +3756,7 @@ unsafe extern "C" fn opj_v8dwt_interleave_partial_v(
   );
   assert!(ret != 0);
 }
-unsafe extern "C" fn opj_v8dwt_decode_step1(
+unsafe fn opj_v8dwt_decode_step1(
   mut w: *mut opj_v8_t,
   mut start: OPJ_UINT32,
   mut end: OPJ_UINT32,
@@ -3891,7 +3840,7 @@ unsafe extern "C" fn opj_v8dwt_decode_step1(
     i = i.wrapping_add(1)
   }
 }
-unsafe extern "C" fn opj_v8dwt_decode_step2(
+unsafe fn opj_v8dwt_decode_step2(
   mut l: *mut opj_v8_t,
   mut w: *mut opj_v8_t,
   mut start: OPJ_UINT32,
@@ -3955,7 +3904,7 @@ unsafe extern "C" fn opj_v8dwt_decode_step2(
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-unsafe extern "C" fn opj_v8dwt_decode(mut dwt: *mut opj_v8dwt_t) {
+unsafe fn opj_v8dwt_decode(mut dwt: *mut opj_v8dwt_t) {
   let mut a: OPJ_INT32 = 0;
   let mut b: OPJ_INT32 = 0;
   /* BUG_WEIRD_TWO_INVK (look for this identifier in tcd.c) */
@@ -4148,7 +4097,7 @@ unsafe extern "C" fn opj_dwt97_decode_v_func(
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
-unsafe extern "C" fn opj_dwt_decode_tile_97(
+unsafe fn opj_dwt_decode_tile_97(
   mut tp: *mut opj_thread_pool_t,
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
@@ -4472,7 +4421,7 @@ unsafe extern "C" fn opj_dwt_decode_tile_97(
   opj_aligned_free(h.wavelet as *mut libc::c_void);
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_dwt_decode_partial_97(
+unsafe fn opj_dwt_decode_partial_97(
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
@@ -4863,7 +4812,7 @@ unsafe extern "C" fn opj_dwt_decode_partial_97(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_dwt_decode_real(
+pub(crate) unsafe fn opj_dwt_decode_real(
   mut p_tcd: *mut opj_tcd_t,
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,

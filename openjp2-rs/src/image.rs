@@ -2,21 +2,12 @@ use super::math::*;
 use super::openjpeg::*;
 use ::libc;
 
-extern "C" {
+use super::malloc::*;
 
+extern "C" {
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
 
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
-
-  fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-
-  fn opj_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_image_data_free(ptr: *mut libc::c_void);
-
-  fn opj_image_data_alloc(size: OPJ_SIZE_T) -> *mut libc::c_void;
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -64,7 +55,7 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #[no_mangle]
-pub unsafe extern "C" fn opj_image_create0() -> *mut opj_image_t {
+pub(crate) unsafe fn opj_image_create0() -> *mut opj_image_t {
   let mut image = opj_calloc(
     1 as libc::c_int as size_t,
     ::std::mem::size_of::<opj_image_t>() as libc::c_ulong,
@@ -72,7 +63,7 @@ pub unsafe extern "C" fn opj_image_create0() -> *mut opj_image_t {
   return image;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_image_create(
+pub(crate) unsafe fn opj_image_create(
   mut numcmpts: OPJ_UINT32,
   mut cmptparms: *mut opj_image_cmptparm_t,
   mut clrspc: OPJ_COLOR_SPACE,
@@ -144,7 +135,7 @@ pub unsafe extern "C" fn opj_image_create(
   return image;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_image_destroy(mut image: *mut opj_image_t) {
+pub(crate) unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
   if !image.is_null() {
     if !(*image).comps.is_null() {
       let mut compno: OPJ_UINT32 = 0;
@@ -173,7 +164,7 @@ pub unsafe extern "C" fn opj_image_destroy(mut image: *mut opj_image_t) {
  * @param p_cp              the coding parameters from which to update the image.
  */
 #[no_mangle]
-pub unsafe extern "C" fn opj_image_comp_header_update(
+pub(crate) unsafe fn opj_image_comp_header_update(
   mut p_image_header: *mut opj_image_t,
   mut p_cp: *const opj_cp,
 ) {
@@ -231,7 +222,7 @@ pub unsafe extern "C" fn opj_image_comp_header_update(
  *
  */
 #[no_mangle]
-pub unsafe extern "C" fn opj_copy_image_header(
+pub(crate) unsafe fn opj_copy_image_header(
   mut p_image_src: *const opj_image_t,
   mut p_image_dest: *mut opj_image_t,
 ) {
@@ -300,7 +291,7 @@ pub unsafe extern "C" fn opj_copy_image_header(
   };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_image_tile_create(
+pub(crate) unsafe fn opj_image_tile_create(
   mut numcmpts: OPJ_UINT32,
   mut cmptparms: *mut opj_image_cmptparm_t,
   mut clrspc: OPJ_COLOR_SPACE,
