@@ -4,10 +4,10 @@ use super::consts::*;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_mqc_state {
-  pub qeval: OPJ_UINT32,
-  pub mps: OPJ_UINT32,
-  pub nmps: *const opj_mqc_state,
-  pub nlps: *const opj_mqc_state,
+  pub qeval: u32,
+  pub mps: u8,
+  pub nmps: u8,
+  pub nlps: u8,
 }
 pub type opj_mqc_state_t = opj_mqc_state;
 
@@ -21,32 +21,30 @@ pub struct opj_mqc {
   pub bp: *mut OPJ_BYTE,
   pub start: *mut OPJ_BYTE,
   pub end: *mut OPJ_BYTE,
-  pub ctxs: [*const opj_mqc_state_t; MQC_NUMCTXS],
-  pub curctx: *mut *const opj_mqc_state_t,
+  pub ctxs: [&'static opj_mqc_state_t; MQC_NUMCTXS],
+  pub curctx: u8,
   pub lut_ctxno_zc_orient: *const OPJ_BYTE,
   pub backup: [OPJ_BYTE; 2],
 }
 pub type opj_mqc_t = opj_mqc;
 
 impl opj_mqc {
-  pub fn set_curctx(&mut self, ctxno: usize) {
-    self.curctx = (&mut self.ctxs[ctxno]) as *mut *const opj_mqc_state_t;
+  pub fn set_curctx(&mut self, ctxno: u8) {
+    self.curctx = ctxno;
   }
 
   pub fn set_curctx_nlps(&mut self) {
-    unsafe {
-      *self.curctx = (**self.curctx).nlps;
-    }
+    let curctx = self.curctx();
+    self.ctxs[self.curctx as usize] = &mqc_states[curctx.nlps as usize];
   }
 
   pub fn set_curctx_nmps(&mut self) {
-    unsafe {
-      *self.curctx = (**self.curctx).nmps;
-    }
+    let curctx = self.curctx();
+    self.ctxs[self.curctx as usize] = &mqc_states[curctx.nmps as usize];
   }
 
   pub fn curctx(&self) -> &'static opj_mqc_state_t {
-    unsafe { &**(self.curctx) }
+    self.ctxs[self.curctx as usize]
   }
 
   pub fn write_byte(&mut self, b: OPJ_BYTE) {
@@ -107,7 +105,7 @@ impl opj_mqc {
 }
 
 #[inline]
-pub fn opj_mqc_setcurctx(mqc: &mut opj_mqc_t, ctxno: usize) {
+pub fn opj_mqc_setcurctx(mqc: &mut opj_mqc_t, ctxno: u8) {
   mqc.set_curctx(ctxno);
 }
 
@@ -118,7 +116,7 @@ fn opj_mqc_mpsexchange_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
     *d = (curctx.mps == 0) as u32;
     mqc.set_curctx_nlps();
   } else {
-    *d = curctx.mps;
+    *d = curctx.mps as u32;
     mqc.set_curctx_nmps();
   }
 }
@@ -128,7 +126,7 @@ fn opj_mqc_lpsexchange_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
   let curctx = mqc.curctx();
   if mqc.a < curctx.qeval {
     mqc.a = curctx.qeval;
-    *d = curctx.mps;
+    *d = curctx.mps as u32;
     mqc.set_curctx_nmps();
   } else {
     mqc.a = curctx.qeval;
@@ -227,7 +225,7 @@ pub fn opj_mqc_decode_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
       opj_mqc_mpsexchange_macro(d, mqc);
       opj_mqc_renormd_macro(mqc);
     } else {
-      *d = mqc.curctx().mps
+      *d = mqc.curctx().mps as u32
     }
   }
 }
@@ -287,7 +285,7 @@ fn opj_mqc_codelps_macro(mqc: &mut opj_mqc_t) {
 
 #[inline]
 pub fn opj_mqc_encode_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
-  if mqc.curctx().mps == d {
+  if mqc.curctx().mps as u32 == d {
     opj_mqc_codemps(mqc);
   } else {
     opj_mqc_codelps(mqc);
@@ -318,13 +316,103 @@ pub fn opj_mqc_bypass_enc_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
 /* <summary> */
 /* This array defines all the possible states for a context. */
 /* </summary> */
-// Initialized in run_static_initializers
-static mut mqc_states: [opj_mqc_state_t; 94] = [opj_mqc_state_t {
-  qeval: 0,
-  mps: 0,
-  nmps: 0 as *const opj_mqc_state,
-  nlps: 0 as *const opj_mqc_state,
-}; 94];
+const mqc_states: [opj_mqc_state_t; 47 * 2] = [
+    opj_mqc_state_t { qeval: 0x5601, mps: 0, nmps: 2, nlps: 3 },
+    opj_mqc_state_t { qeval: 0x5601, mps: 1, nmps: 3, nlps: 2 },
+    opj_mqc_state_t { qeval: 0x3401, mps: 0, nmps: 4, nlps: 12 },
+    opj_mqc_state_t { qeval: 0x3401, mps: 1, nmps: 5, nlps: 13 },
+    opj_mqc_state_t { qeval: 0x1801, mps: 0, nmps: 6, nlps: 18 },
+    opj_mqc_state_t { qeval: 0x1801, mps: 1, nmps: 7, nlps: 19 },
+    opj_mqc_state_t { qeval: 0x0ac1, mps: 0, nmps: 8, nlps: 24 },
+    opj_mqc_state_t { qeval: 0x0ac1, mps: 1, nmps: 9, nlps: 25 },
+    opj_mqc_state_t { qeval: 0x0521, mps: 0, nmps: 10, nlps: 58 },
+    opj_mqc_state_t { qeval: 0x0521, mps: 1, nmps: 11, nlps: 59 },
+    opj_mqc_state_t { qeval: 0x0221, mps: 0, nmps: 76, nlps: 66 },
+    opj_mqc_state_t { qeval: 0x0221, mps: 1, nmps: 77, nlps: 67 },
+    opj_mqc_state_t { qeval: 0x5601, mps: 0, nmps: 14, nlps: 13 },
+    opj_mqc_state_t { qeval: 0x5601, mps: 1, nmps: 15, nlps: 12 },
+    opj_mqc_state_t { qeval: 0x5401, mps: 0, nmps: 16, nlps: 28 },
+    opj_mqc_state_t { qeval: 0x5401, mps: 1, nmps: 17, nlps: 29 },
+    opj_mqc_state_t { qeval: 0x4801, mps: 0, nmps: 18, nlps: 28 },
+    opj_mqc_state_t { qeval: 0x4801, mps: 1, nmps: 19, nlps: 29 },
+    opj_mqc_state_t { qeval: 0x3801, mps: 0, nmps: 20, nlps: 28 },
+    opj_mqc_state_t { qeval: 0x3801, mps: 1, nmps: 21, nlps: 29 },
+    opj_mqc_state_t { qeval: 0x3001, mps: 0, nmps: 22, nlps: 34 },
+    opj_mqc_state_t { qeval: 0x3001, mps: 1, nmps: 23, nlps: 35 },
+    opj_mqc_state_t { qeval: 0x2401, mps: 0, nmps: 24, nlps: 36 },
+    opj_mqc_state_t { qeval: 0x2401, mps: 1, nmps: 25, nlps: 37 },
+    opj_mqc_state_t { qeval: 0x1c01, mps: 0, nmps: 26, nlps: 40 },
+    opj_mqc_state_t { qeval: 0x1c01, mps: 1, nmps: 27, nlps: 41 },
+    opj_mqc_state_t { qeval: 0x1601, mps: 0, nmps: 58, nlps: 42 },
+    opj_mqc_state_t { qeval: 0x1601, mps: 1, nmps: 59, nlps: 43 },
+    opj_mqc_state_t { qeval: 0x5601, mps: 0, nmps: 30, nlps: 29 },
+    opj_mqc_state_t { qeval: 0x5601, mps: 1, nmps: 31, nlps: 28 },
+    opj_mqc_state_t { qeval: 0x5401, mps: 0, nmps: 32, nlps: 28 },
+    opj_mqc_state_t { qeval: 0x5401, mps: 1, nmps: 33, nlps: 29 },
+    opj_mqc_state_t { qeval: 0x5101, mps: 0, nmps: 34, nlps: 30 },
+    opj_mqc_state_t { qeval: 0x5101, mps: 1, nmps: 35, nlps: 31 },
+    opj_mqc_state_t { qeval: 0x4801, mps: 0, nmps: 36, nlps: 32 },
+    opj_mqc_state_t { qeval: 0x4801, mps: 1, nmps: 37, nlps: 33 },
+    opj_mqc_state_t { qeval: 0x3801, mps: 0, nmps: 38, nlps: 34 },
+    opj_mqc_state_t { qeval: 0x3801, mps: 1, nmps: 39, nlps: 35 },
+    opj_mqc_state_t { qeval: 0x3401, mps: 0, nmps: 40, nlps: 36 },
+    opj_mqc_state_t { qeval: 0x3401, mps: 1, nmps: 41, nlps: 37 },
+    opj_mqc_state_t { qeval: 0x3001, mps: 0, nmps: 42, nlps: 38 },
+    opj_mqc_state_t { qeval: 0x3001, mps: 1, nmps: 43, nlps: 39 },
+    opj_mqc_state_t { qeval: 0x2801, mps: 0, nmps: 44, nlps: 38 },
+    opj_mqc_state_t { qeval: 0x2801, mps: 1, nmps: 45, nlps: 39 },
+    opj_mqc_state_t { qeval: 0x2401, mps: 0, nmps: 46, nlps: 40 },
+    opj_mqc_state_t { qeval: 0x2401, mps: 1, nmps: 47, nlps: 41 },
+    opj_mqc_state_t { qeval: 0x2201, mps: 0, nmps: 48, nlps: 42 },
+    opj_mqc_state_t { qeval: 0x2201, mps: 1, nmps: 49, nlps: 43 },
+    opj_mqc_state_t { qeval: 0x1c01, mps: 0, nmps: 50, nlps: 44 },
+    opj_mqc_state_t { qeval: 0x1c01, mps: 1, nmps: 51, nlps: 45 },
+    opj_mqc_state_t { qeval: 0x1801, mps: 0, nmps: 52, nlps: 46 },
+    opj_mqc_state_t { qeval: 0x1801, mps: 1, nmps: 53, nlps: 47 },
+    opj_mqc_state_t { qeval: 0x1601, mps: 0, nmps: 54, nlps: 48 },
+    opj_mqc_state_t { qeval: 0x1601, mps: 1, nmps: 55, nlps: 49 },
+    opj_mqc_state_t { qeval: 0x1401, mps: 0, nmps: 56, nlps: 50 },
+    opj_mqc_state_t { qeval: 0x1401, mps: 1, nmps: 57, nlps: 51 },
+    opj_mqc_state_t { qeval: 0x1201, mps: 0, nmps: 58, nlps: 52 },
+    opj_mqc_state_t { qeval: 0x1201, mps: 1, nmps: 59, nlps: 53 },
+    opj_mqc_state_t { qeval: 0x1101, mps: 0, nmps: 60, nlps: 54 },
+    opj_mqc_state_t { qeval: 0x1101, mps: 1, nmps: 61, nlps: 55 },
+    opj_mqc_state_t { qeval: 0x0ac1, mps: 0, nmps: 62, nlps: 56 },
+    opj_mqc_state_t { qeval: 0x0ac1, mps: 1, nmps: 63, nlps: 57 },
+    opj_mqc_state_t { qeval: 0x09c1, mps: 0, nmps: 64, nlps: 58 },
+    opj_mqc_state_t { qeval: 0x09c1, mps: 1, nmps: 65, nlps: 59 },
+    opj_mqc_state_t { qeval: 0x08a1, mps: 0, nmps: 66, nlps: 60 },
+    opj_mqc_state_t { qeval: 0x08a1, mps: 1, nmps: 67, nlps: 61 },
+    opj_mqc_state_t { qeval: 0x0521, mps: 0, nmps: 68, nlps: 62 },
+    opj_mqc_state_t { qeval: 0x0521, mps: 1, nmps: 69, nlps: 63 },
+    opj_mqc_state_t { qeval: 0x0441, mps: 0, nmps: 70, nlps: 64 },
+    opj_mqc_state_t { qeval: 0x0441, mps: 1, nmps: 71, nlps: 65 },
+    opj_mqc_state_t { qeval: 0x02a1, mps: 0, nmps: 72, nlps: 66 },
+    opj_mqc_state_t { qeval: 0x02a1, mps: 1, nmps: 73, nlps: 67 },
+    opj_mqc_state_t { qeval: 0x0221, mps: 0, nmps: 74, nlps: 68 },
+    opj_mqc_state_t { qeval: 0x0221, mps: 1, nmps: 75, nlps: 69 },
+    opj_mqc_state_t { qeval: 0x0141, mps: 0, nmps: 76, nlps: 70 },
+    opj_mqc_state_t { qeval: 0x0141, mps: 1, nmps: 77, nlps: 71 },
+    opj_mqc_state_t { qeval: 0x0111, mps: 0, nmps: 78, nlps: 72 },
+    opj_mqc_state_t { qeval: 0x0111, mps: 1, nmps: 79, nlps: 73 },
+    opj_mqc_state_t { qeval: 0x0085, mps: 0, nmps: 80, nlps: 74 },
+    opj_mqc_state_t { qeval: 0x0085, mps: 1, nmps: 81, nlps: 75 },
+    opj_mqc_state_t { qeval: 0x0049, mps: 0, nmps: 82, nlps: 76 },
+    opj_mqc_state_t { qeval: 0x0049, mps: 1, nmps: 83, nlps: 77 },
+    opj_mqc_state_t { qeval: 0x0025, mps: 0, nmps: 84, nlps: 78 },
+    opj_mqc_state_t { qeval: 0x0025, mps: 1, nmps: 85, nlps: 79 },
+    opj_mqc_state_t { qeval: 0x0015, mps: 0, nmps: 86, nlps: 80 },
+    opj_mqc_state_t { qeval: 0x0015, mps: 1, nmps: 87, nlps: 81 },
+    opj_mqc_state_t { qeval: 0x0009, mps: 0, nmps: 88, nlps: 82 },
+    opj_mqc_state_t { qeval: 0x0009, mps: 1, nmps: 89, nlps: 83 },
+    opj_mqc_state_t { qeval: 0x0005, mps: 0, nmps: 90, nlps: 84 },
+    opj_mqc_state_t { qeval: 0x0005, mps: 1, nmps: 91, nlps: 85 },
+    opj_mqc_state_t { qeval: 0x0001, mps: 0, nmps: 90, nlps: 86 },
+    opj_mqc_state_t { qeval: 0x0001, mps: 1, nmps: 91, nlps: 87 },
+    opj_mqc_state_t { qeval: 0x5601, mps: 0, nmps: 92, nlps: 92 },
+    opj_mqc_state_t { qeval: 0x5601, mps: 1, nmps: 93, nlps: 93 },
+];
+
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
@@ -642,10 +730,10 @@ pub fn opj_mqc_init_dec(
 
 #[no_mangle]
 pub fn opj_mqc_raw_init_dec(
-  mut mqc: &mut opj_mqc_t,
-  mut bp: *mut OPJ_BYTE,
-  mut len: OPJ_UINT32,
-  mut extra_writable_bytes: OPJ_UINT32,
+  mqc: &mut opj_mqc_t,
+  bp: *mut OPJ_BYTE,
+  len: OPJ_UINT32,
+  extra_writable_bytes: OPJ_UINT32,
 ) {
   opj_mqc_init_dec_common(mqc, bp, len, extra_writable_bytes);
   mqc.c = 0;
@@ -653,31 +741,26 @@ pub fn opj_mqc_raw_init_dec(
 }
 
 #[no_mangle]
-pub fn opq_mqc_finish_dec(mut mqc: &mut opj_mqc_t) {
+pub fn opq_mqc_finish_dec(mqc: &mut opj_mqc_t) {
   /* Restore the bytes overwritten by opj_mqc_init_dec_common() */
   mqc.restore_extra();
 }
 
 #[no_mangle]
-pub fn opj_mqc_resetstates(mut mqc: &mut opj_mqc_t) {
+pub fn opj_mqc_resetstates(mqc: &mut opj_mqc_t) {
   for i in 0..19 {
-    mqc.ctxs[i] = unsafe { mqc_states.as_ptr() };
+    mqc.ctxs[i] = &mqc_states[0];
   }
 }
 
 #[no_mangle]
 pub fn opj_mqc_setstate(
-  mut mqc: &mut opj_mqc_t,
-  mut ctxno: OPJ_UINT32,
-  mut msb: OPJ_UINT32,
-  mut prob: OPJ_INT32,
+  mqc: &mut opj_mqc_t,
+  ctxno: u8,
+  msb: OPJ_UINT32,
+  prob: OPJ_INT32,
 ) {
-  unsafe {
-    mqc.ctxs[ctxno as usize] = &*mqc_states
-      .as_ptr()
-      .offset(msb.wrapping_add((prob << 1) as OPJ_UINT32) as isize)
-      as *const opj_mqc_state_t;
-  }
+  mqc.ctxs[ctxno as usize] = &mqc_states[msb.wrapping_add((prob << 1) as OPJ_UINT32) as usize];
 }
 
 #[no_mangle]
@@ -711,858 +794,3 @@ pub fn opj_mqc_byteout(mut mqc: &mut opj_mqc_t) {
     }
   }
 }
-unsafe extern "C" fn run_static_initializers() {
-  mqc_states = [
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5601,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(2) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(3) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5601,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(3) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(2) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3401,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(4) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(12) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3401,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(5) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(13) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1801,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(6) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(18) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1801,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(7) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(19) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0xac1,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(8) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(24) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0xac1,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(9) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(25) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x521,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(10) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(58) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x521,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(11) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(59) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x221,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(76) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(66) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x221,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(77) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(67) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5601,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(14) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(13) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5601,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(15) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(12) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5401,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(16) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(28) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5401,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(17) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(29) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x4801,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(18) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(28) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x4801,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(19) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(29) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3801,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(20) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(28) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3801,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(21) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(29) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3001,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(22) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(34) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3001,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(23) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(35) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x2401,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(24) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(36) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x2401,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(25) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(37) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1c01,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(26) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(40) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1c01,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(27) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(41) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1601,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(58) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(42) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1601,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(59) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(43) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5601,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(30) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(29) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5601,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(31) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(28) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5401,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(32) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(28) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5401,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(33) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(29) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5101,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(34) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(30) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5101,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(35) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(31) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x4801,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(36) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(32) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x4801,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(37) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(33) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3801,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(38) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(34) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3801,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(39) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(35) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3401,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(40) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(36) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3401,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(41) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(37) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3001,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(42) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(38) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x3001,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(43) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(39) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x2801,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(44) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(38) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x2801,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(45) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(39) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x2401,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(46) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(40) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x2401,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(47) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(41) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x2201,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(48) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(42) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x2201,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(49) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(43) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1c01,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(50) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(44) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1c01,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(51) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(45) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1801,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(52) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(46) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1801,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(53) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(47) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1601,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(54) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(48) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1601,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(55) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(49) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1401,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(56) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(50) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1401,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(57) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(51) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1201,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(58) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(52) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1201,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(59) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(53) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1101,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(60) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(54) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1101,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(61) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(55) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0xac1,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(62) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(56) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0xac1,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(63) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(57) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x9c1,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(64) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(58) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x9c1,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(65) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(59) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x8a1,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(66) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(60) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x8a1,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(67) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(61) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x521,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(68) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(62) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x521,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(69) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(63) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x441,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(70) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(64) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x441,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(71) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(65) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x2a1,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(72) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(66) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x2a1,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(73) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(67) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x221,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(74) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(68) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x221,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(75) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(69) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x141,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(76) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(70) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x141,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(77) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(71) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x111,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(78) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(72) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x111,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(79) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(73) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x85,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(80) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(74) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x85,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(81) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(75) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x49,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(82) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(76) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x49,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(83) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(77) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x25,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(84) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(78) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x25,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(85) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(79) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x15,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(86) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(80) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x15,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(87) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(81) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x9,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(88) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(82) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x9,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(89) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(83) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(90) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(84) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(91) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(85) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(90) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(86) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x1,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(91) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(87) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5601,
-        mps: 0,
-        nmps: &*mqc_states.as_ptr().offset(92) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(92) as *const opj_mqc_state_t,
-      };
-      init
-    },
-    {
-      let mut init = opj_mqc_state {
-        qeval: 0x5601,
-        mps: 1,
-        nmps: &*mqc_states.as_ptr().offset(93) as *const opj_mqc_state_t,
-        nlps: &*mqc_states.as_ptr().offset(93) as *const opj_mqc_state_t,
-      };
-      init
-    },
-  ]
-}
-#[used]
-#[cfg_attr(target_os = "linux", link_section = ".init_array")]
-#[cfg_attr(target_os = "windows", link_section = ".CRT$XIB")]
-#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-static INIT_ARRAY: [unsafe extern "C" fn(); 1] = [run_static_initializers];
