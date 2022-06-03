@@ -1,23 +1,12 @@
 use super::bio::*;
 use super::openjpeg::*;
+use super::event::*;
 use ::libc;
 
+use super::malloc::*;
+
 extern "C" {
-
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-
-  fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-
-  fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
-
-  fn opj_event_msg(
-    event_mgr: *mut opj_event_mgr_t,
-    event_type: OPJ_INT32,
-    fmt: *const libc::c_char,
-    _: ...
-  ) -> OPJ_BOOL;
 }
 
 /*
@@ -64,7 +53,7 @@ extern "C" {
 ==========================================================
 */
 #[no_mangle]
-pub unsafe extern "C" fn opj_tgt_create(
+pub(crate) unsafe fn opj_tgt_create(
   mut numleafsh: OPJ_UINT32,
   mut numleafsv: OPJ_UINT32,
   mut p_manager: *mut opj_event_mgr_t,
@@ -180,7 +169,7 @@ pub unsafe extern "C" fn opj_tgt_create(
  * @return      a new tag-tree if successful, NULL otherwise
 */
 #[no_mangle]
-pub unsafe extern "C" fn opj_tgt_init(
+pub(crate) unsafe fn opj_tgt_init(
   mut p_tree: *mut opj_tgt_tree_t,
   mut p_num_leafs_h: OPJ_UINT32,
   mut p_num_leafs_v: OPJ_UINT32,
@@ -291,7 +280,7 @@ pub unsafe extern "C" fn opj_tgt_init(
   return p_tree;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tgt_destroy(mut p_tree: *mut opj_tgt_tree_t) {
+pub(crate) unsafe fn opj_tgt_destroy(mut p_tree: *mut opj_tgt_tree_t) {
   if p_tree.is_null() {
     return;
   }
@@ -302,7 +291,7 @@ pub unsafe extern "C" fn opj_tgt_destroy(mut p_tree: *mut opj_tgt_tree_t) {
   opj_free(p_tree as *mut libc::c_void);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tgt_reset(mut p_tree: *mut opj_tgt_tree_t) {
+pub(crate) unsafe fn opj_tgt_reset(mut p_tree: *mut opj_tgt_tree_t) {
   let mut i: OPJ_UINT32 = 0;
   let mut l_current_node = 0 as *mut opj_tgt_node_t;
   if p_tree.is_null() {
@@ -319,7 +308,7 @@ pub unsafe extern "C" fn opj_tgt_reset(mut p_tree: *mut opj_tgt_tree_t) {
   }
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tgt_setvalue(
+pub(crate) unsafe fn opj_tgt_setvalue(
   mut tree: *mut opj_tgt_tree_t,
   mut leafno: OPJ_UINT32,
   mut value: OPJ_INT32,
@@ -332,7 +321,7 @@ pub unsafe extern "C" fn opj_tgt_setvalue(
   }
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tgt_encode(
+pub(crate) unsafe fn opj_tgt_encode(
   mut bio: *mut opj_bio_t,
   mut tree: *mut opj_tgt_tree_t,
   mut leafno: OPJ_UINT32,
@@ -386,7 +375,7 @@ pub unsafe extern "C" fn opj_tgt_encode(
   }
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tgt_decode(
+pub(crate) unsafe fn opj_tgt_decode(
   mut bio: *mut opj_bio_t,
   mut tree: *mut opj_tgt_tree_t,
   mut leafno: OPJ_UINT32,

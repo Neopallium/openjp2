@@ -1,30 +1,16 @@
 use super::openjpeg::*;
+use super::event::*;
 use super::t1::*;
 use super::t1_ht_luts::*;
 use super::thread::*;
 use ::libc;
 
+use super::malloc::*;
+
 extern "C" {
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
 
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
-
-  fn opj_aligned_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_aligned_free(ptr: *mut libc::c_void);
-
-  fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-
-  fn opj_event_msg(
-    event_mgr: *mut opj_event_mgr_t,
-    event_type: OPJ_INT32,
-    fmt: *const libc::c_char,
-    _: ...
-  ) -> OPJ_BOOL;
-
-  fn opj_mutex_lock(mutex: *mut opj_mutex_t);
-
-  fn opj_mutex_unlock(mutex: *mut opj_mutex_t);
 }
 
 #[repr(C)]
@@ -155,7 +141,7 @@ static mut only_cleanup_pass_is_decoded: OPJ_BOOL = 0 as libc::c_int;
  *   @param [in]  val is the value for which population count is sought
  */
 #[inline]
-unsafe extern "C" fn population_count(mut val: OPJ_UINT32) -> OPJ_UINT32 {
+fn population_count(mut val: OPJ_UINT32) -> OPJ_UINT32 {
   return val.count_ones() as i32 as OPJ_UINT32;
 }
 //* ***********************************************************************/
@@ -164,7 +150,7 @@ unsafe extern "C" fn population_count(mut val: OPJ_UINT32) -> OPJ_UINT32 {
  *   @param [in]  val is the value for which leading zero count is sought
  */
 #[inline]
-unsafe extern "C" fn count_leading_zeros(mut val: OPJ_UINT32) -> OPJ_UINT32 {
+fn count_leading_zeros(mut val: OPJ_UINT32) -> OPJ_UINT32 {
   return val.leading_zeros() as i32 as OPJ_UINT32;
 }
 //* ***********************************************************************/
@@ -173,7 +159,7 @@ unsafe extern "C" fn count_leading_zeros(mut val: OPJ_UINT32) -> OPJ_UINT32 {
  *   @param [in]  dataIn pointer to byte stream to read from
  */
 #[inline]
-unsafe extern "C" fn read_le_uint32(mut dataIn: *const libc::c_void) -> OPJ_UINT32 {
+unsafe fn read_le_uint32(mut dataIn: *const libc::c_void) -> OPJ_UINT32 {
   return *(dataIn as *mut OPJ_UINT32);
 }
 //* ***********************************************************************/
@@ -189,7 +175,7 @@ unsafe extern "C" fn read_le_uint32(mut dataIn: *const libc::c_void) -> OPJ_UINT
  *  @param [in]  melp is a pointer to dec_mel_t structure
  */
 #[inline]
-unsafe extern "C" fn mel_read(mut melp: *mut dec_mel_t) {
+unsafe fn mel_read(mut melp: *mut dec_mel_t) {
   let mut val: OPJ_UINT32 = 0;
   let mut bits: libc::c_int = 0;
   let mut t: OPJ_UINT32 = 0;
@@ -276,7 +262,7 @@ unsafe extern "C" fn mel_read(mut melp: *mut dec_mel_t) {
  *  @param [in]  melp is a pointer to dec_mel_t structure
  */
 #[inline]
-unsafe extern "C" fn mel_decode(mut melp: *mut dec_mel_t) {
+unsafe fn mel_decode(mut melp: *mut dec_mel_t) {
   static mut mel_exp: [libc::c_int; 13] = [
     0 as libc::c_int,
     0 as libc::c_int,
@@ -348,7 +334,7 @@ unsafe extern "C" fn mel_decode(mut melp: *mut dec_mel_t) {
  *  @param [in]  scup is the length of MEL+VLC segments
  */
 #[inline]
-unsafe extern "C" fn mel_init(
+unsafe fn mel_init(
   mut melp: *mut dec_mel_t,
   mut bbuf: *mut OPJ_UINT8,
   mut lcup: libc::c_int,
@@ -412,7 +398,7 @@ unsafe extern "C" fn mel_init(
  * @param [in]  melp is a pointer to dec_mel_t structure
  */
 #[inline]
-unsafe extern "C" fn mel_get_run(mut melp: *mut dec_mel_t) -> libc::c_int {
+unsafe fn mel_get_run(mut melp: *mut dec_mel_t) -> libc::c_int {
   let mut t: libc::c_int = 0;
   if (*melp).num_runs == 0 as libc::c_int {
     //if no runs, decode more bit from MEL segment
@@ -445,7 +431,7 @@ unsafe extern "C" fn mel_get_run(mut melp: *mut dec_mel_t) -> libc::c_int {
  *  @param [in]  vlcp is a pointer to rev_struct_t structure
  */
 #[inline]
-unsafe extern "C" fn rev_read(mut vlcp: *mut rev_struct_t) {
+unsafe fn rev_read(mut vlcp: *mut rev_struct_t) {
   let mut val: OPJ_UINT32 = 0;
   let mut tmp: OPJ_UINT32 = 0;
   let mut bits: OPJ_UINT32 = 0;
@@ -550,7 +536,7 @@ unsafe extern "C" fn rev_read(mut vlcp: *mut rev_struct_t) {
  *  @param [in]  scup is the length of MEL+VLC segments
  */
 #[inline]
-unsafe extern "C" fn rev_init(
+unsafe fn rev_init(
   mut vlcp: *mut rev_struct_t,
   mut data: *mut OPJ_UINT8,
   mut lcup: libc::c_int,
@@ -623,7 +609,7 @@ unsafe extern "C" fn rev_init(
  *  @param [in]  vlcp is a pointer to rev_struct structure
  */
 #[inline]
-unsafe extern "C" fn rev_fetch(mut vlcp: *mut rev_struct_t) -> OPJ_UINT32 {
+unsafe fn rev_fetch(mut vlcp: *mut rev_struct_t) -> OPJ_UINT32 {
   if (*vlcp).bits < 32 as libc::c_int as libc::c_uint {
     // if there are less then 32 bits, read more
     rev_read(vlcp); // read 32 bits, but unstuffing might reduce this
@@ -643,7 +629,7 @@ unsafe extern "C" fn rev_fetch(mut vlcp: *mut rev_struct_t) -> OPJ_UINT32 {
  *  @param [in]  num_bits is the number of bits to be removed
  */
 #[inline]
-unsafe extern "C" fn rev_advance(
+unsafe fn rev_advance(
   mut vlcp: *mut rev_struct_t,
   mut num_bits: OPJ_UINT32,
 ) -> OPJ_UINT32 {
@@ -664,7 +650,7 @@ unsafe extern "C" fn rev_advance(
  *  @param [in]  mrp is a pointer to rev_struct structure
  */
 #[inline]
-unsafe extern "C" fn rev_read_mrp(mut mrp: *mut rev_struct_t) {
+unsafe fn rev_read_mrp(mut mrp: *mut rev_struct_t) {
   let mut val: OPJ_UINT32 = 0;
   let mut tmp: OPJ_UINT32 = 0;
   let mut bits: OPJ_UINT32 = 0;
@@ -766,7 +752,7 @@ unsafe extern "C" fn rev_read_mrp(mut mrp: *mut rev_struct_t) {
  *  @param [in]  len2 is the length of SPP+MRP segments
  */
 #[inline]
-unsafe extern "C" fn rev_init_mrp(
+unsafe fn rev_init_mrp(
   mut mrp: *mut rev_struct_t,
   mut data: *mut OPJ_UINT8,
   mut lcup: libc::c_int,
@@ -829,7 +815,7 @@ unsafe extern "C" fn rev_init_mrp(
  *  @param [in]  mrp is a pointer to rev_struct structure
  */
 #[inline]
-unsafe extern "C" fn rev_fetch_mrp(mut mrp: *mut rev_struct_t) -> OPJ_UINT32 {
+unsafe fn rev_fetch_mrp(mut mrp: *mut rev_struct_t) -> OPJ_UINT32 {
   if (*mrp).bits < 32 as libc::c_int as libc::c_uint {
     // if there are less than 32 bits in mrp->tmp
     rev_read_mrp(mrp); // read 30-32 bits from mrp
@@ -849,7 +835,7 @@ unsafe extern "C" fn rev_fetch_mrp(mut mrp: *mut rev_struct_t) -> OPJ_UINT32 {
  *  @param [in]  num_bits is the number of bits to be removed
  */
 #[inline]
-unsafe extern "C" fn rev_advance_mrp(
+unsafe fn rev_advance_mrp(
   mut mrp: *mut rev_struct_t,
   mut num_bits: OPJ_UINT32,
 ) -> OPJ_UINT32 {
@@ -871,7 +857,7 @@ unsafe extern "C" fn rev_advance_mrp(
  *               this value is a partial calculation of u + kappa.
  */
 #[inline]
-unsafe extern "C" fn decode_init_uvlc(
+unsafe fn decode_init_uvlc(
   mut vlc: OPJ_UINT32,
   mut mode: OPJ_UINT32,
   mut u: *mut OPJ_UINT32,
@@ -1033,7 +1019,7 @@ unsafe extern "C" fn decode_init_uvlc(
  *               this value is a partial calculation of u + kappa.
  */
 #[inline]
-unsafe extern "C" fn decode_noninit_uvlc(
+unsafe fn decode_noninit_uvlc(
   mut vlc: OPJ_UINT32,
   mut mode: OPJ_UINT32,
   mut u: *mut OPJ_UINT32,
@@ -1152,7 +1138,7 @@ unsafe extern "C" fn decode_noninit_uvlc(
  *
  */
 #[inline]
-unsafe extern "C" fn frwd_read(mut msp: *mut frwd_struct_t) {
+unsafe fn frwd_read(mut msp: *mut frwd_struct_t) {
   let mut val: OPJ_UINT32 = 0; // assert that there is a space for 32 bits
   let mut bits: OPJ_UINT32 = 0; // read 32 bits
   let mut t: OPJ_UINT32 = 0;
@@ -1233,7 +1219,7 @@ unsafe extern "C" fn frwd_read(mut msp: *mut frwd_struct_t) {
  *               See frwd_read.
  */
 #[inline]
-unsafe extern "C" fn frwd_init(
+unsafe fn frwd_init(
   mut msp: *mut frwd_struct_t,
   mut data: *const OPJ_UINT8,
   mut size: libc::c_int,
@@ -1294,7 +1280,7 @@ unsafe extern "C" fn frwd_init(
  *  @param [in]  num_bits is the number of bit to consume
  */
 #[inline]
-unsafe extern "C" fn frwd_advance(mut msp: *mut frwd_struct_t, mut num_bits: OPJ_UINT32) {
+unsafe fn frwd_advance(mut msp: *mut frwd_struct_t, mut num_bits: OPJ_UINT32) {
   assert!(num_bits <= (*msp).bits);
   (*msp).tmp >>= num_bits;
   (*msp).bits = ((*msp).bits as libc::c_uint).wrapping_sub(num_bits) as OPJ_UINT32 as OPJ_UINT32;
@@ -1305,7 +1291,7 @@ unsafe extern "C" fn frwd_advance(mut msp: *mut frwd_struct_t, mut num_bits: OPJ
  *  @param [in]  msp is a pointer to frwd_struct_t
  */
 #[inline]
-unsafe extern "C" fn frwd_fetch(mut msp: *mut frwd_struct_t) -> OPJ_UINT32 {
+unsafe fn frwd_fetch(mut msp: *mut frwd_struct_t) -> OPJ_UINT32 {
   if (*msp).bits < 32 as libc::c_int as libc::c_uint {
     frwd_read(msp);
     if (*msp).bits < 32 as libc::c_int as libc::c_uint {
@@ -1322,7 +1308,7 @@ unsafe extern "C" fn frwd_fetch(mut msp: *mut frwd_struct_t) -> OPJ_UINT32 {
  *  @param [in]       w is codeblock width
  *  @param [in]       h is codeblock height
  */
-unsafe extern "C" fn opj_t1_allocate_buffers(
+unsafe fn opj_t1_allocate_buffers(
   mut t1: *mut opj_t1_t,
   mut w: OPJ_UINT32,
   mut h: OPJ_UINT32,
@@ -1394,8 +1380,7 @@ unsafe extern "C" fn opj_t1_allocate_buffers(
  *  @param [in]       p_manager_mutex a mutex to control access to p_manager
  *  @param [in]       check_pterm: check termination (not used)
  */
-#[no_mangle]
-pub unsafe extern "C" fn opj_t1_ht_decode_cblk(
+pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   mut t1: *mut opj_t1_t,
   mut cblk: *mut opj_tcd_cblk_dec_t,
   mut _orient: OPJ_UINT32,

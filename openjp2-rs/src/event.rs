@@ -72,7 +72,7 @@ unsafe extern "C" fn opj_default_callback(
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
-pub unsafe extern "C" fn opj_event_msg(
+pub(crate) unsafe extern "C" fn opj_event_msg(
   mut p_event_mgr: *mut opj_event_mgr_t,
   mut event_type: OPJ_INT32,
   mut fmt: *const libc::c_char,
@@ -129,7 +129,7 @@ pub unsafe extern "C" fn opj_event_msg(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_set_default_event_handler(mut p_manager: *mut opj_event_mgr_t) {
+pub(crate) unsafe fn opj_set_default_event_handler(mut p_manager: *mut opj_event_mgr_t) {
   (*p_manager).m_error_data = 0 as *mut libc::c_void;
   (*p_manager).m_warning_data = 0 as *mut libc::c_void;
   (*p_manager).m_info_data = 0 as *mut libc::c_void;

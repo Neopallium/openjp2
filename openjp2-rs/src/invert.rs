@@ -1,15 +1,12 @@
 use super::openjpeg::*;
 use ::libc;
 
-extern "C" {
+use super::malloc::*;
 
+extern "C" {
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
 
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-
-  fn opj_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
 }
 /*
 ==========================================================
@@ -20,7 +17,7 @@ extern "C" {
  * Matrix inversion.
  */
 #[no_mangle]
-pub unsafe extern "C" fn opj_matrix_inversion_f(
+pub(crate) unsafe fn opj_matrix_inversion_f(
   mut pSrcMatrix: *mut OPJ_FLOAT32,
   mut pDestMatrix: *mut OPJ_FLOAT32,
   mut nb_compo: OPJ_UINT32,
@@ -99,7 +96,7 @@ pub unsafe extern "C" fn opj_matrix_inversion_f(
    Local functions
 ==========================================================
 */
-unsafe extern "C" fn opj_lupDecompose(
+unsafe fn opj_lupDecompose(
   mut matrix: *mut OPJ_FLOAT32,
   mut permutations: *mut OPJ_UINT32,
   mut p_swap_area: *mut OPJ_FLOAT32,
@@ -233,7 +230,7 @@ unsafe extern "C" fn opj_lupDecompose(
 /* *
  * LUP solving
  */
-unsafe extern "C" fn opj_lupSolve(
+unsafe fn opj_lupSolve(
   mut pResult: *mut OPJ_FLOAT32,
   mut pMatrix: *mut OPJ_FLOAT32,
   mut pVector: *mut OPJ_FLOAT32,
@@ -325,7 +322,7 @@ unsafe extern "C" fn opj_lupSolve(
 /* *
  *LUP inversion (call with the result of lupDecompose)
  */
-unsafe extern "C" fn opj_lupInvert(
+unsafe fn opj_lupInvert(
   mut pSrcMatrix: *mut OPJ_FLOAT32,
   mut pDestMatrix: *mut OPJ_FLOAT32,
   mut nb_compo: OPJ_UINT32,

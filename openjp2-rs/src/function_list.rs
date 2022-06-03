@@ -1,24 +1,11 @@
 use super::openjpeg::*;
+use super::event::*;
 use ::libc;
 
-extern "C" {
-
-  fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-
-  fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
-
-  fn opj_event_msg(
-    event_mgr: *mut opj_event_mgr_t,
-    event_type: OPJ_INT32,
-    fmt: *const libc::c_char,
-    _: ...
-  ) -> OPJ_BOOL;
-}
+use super::malloc::*;
 
 #[no_mangle]
-pub unsafe extern "C" fn opj_procedure_list_create() -> *mut opj_procedure_list_t {
+pub(crate) unsafe fn opj_procedure_list_create() -> *mut opj_procedure_list_t {
   /* memory allocation */
   let mut l_validation = opj_calloc(
     1 as libc::c_int as size_t,
@@ -40,7 +27,7 @@ pub unsafe extern "C" fn opj_procedure_list_create() -> *mut opj_procedure_list_
   return l_validation;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_procedure_list_destroy(mut p_list: *mut opj_procedure_list_t) {
+pub(crate) unsafe fn opj_procedure_list_destroy(mut p_list: *mut opj_procedure_list_t) {
   if p_list.is_null() {
     return;
   }
@@ -51,7 +38,7 @@ pub unsafe extern "C" fn opj_procedure_list_destroy(mut p_list: *mut opj_procedu
   opj_free(p_list as *mut libc::c_void);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_procedure_list_add_procedure(
+pub(crate) unsafe fn opj_procedure_list_add_procedure(
   mut p_validation_list: *mut opj_procedure_list_t,
   mut p_procedure: opj_procedure,
   mut p_manager: *mut opj_event_mgr_t,
@@ -90,19 +77,19 @@ pub unsafe extern "C" fn opj_procedure_list_add_procedure(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_procedure_list_get_nb_procedures(
+pub(crate) unsafe fn opj_procedure_list_get_nb_procedures(
   mut p_validation_list: *mut opj_procedure_list_t,
 ) -> OPJ_UINT32 {
   return (*p_validation_list).m_nb_procedures;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_procedure_list_get_first_procedure(
+pub(crate) unsafe fn opj_procedure_list_get_first_procedure(
   mut p_validation_list: *mut opj_procedure_list_t,
 ) -> *mut opj_procedure {
   return (*p_validation_list).m_procedures;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_procedure_list_clear(
+pub(crate) unsafe fn opj_procedure_list_clear(
   mut p_validation_list: *mut opj_procedure_list_t,
 ) {
   (*p_validation_list).m_nb_procedures = 0 as libc::c_int as OPJ_UINT32;

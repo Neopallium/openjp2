@@ -1,17 +1,14 @@
 use super::openjpeg::*;
 use ::libc;
 
+use super::malloc::*;
+
 extern "C" {
-
   fn sqrt(_: libc::c_double) -> libc::c_double;
-
-  fn opj_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
 }
 
 #[inline]
-unsafe extern "C" fn opj_int_fix_mul(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
+unsafe fn opj_int_fix_mul(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
   let mut temp = a as OPJ_INT64 * b as OPJ_INT64;
   temp += 4096 as libc::c_int as libc::c_long;
 
@@ -69,18 +66,18 @@ static mut opj_mct_norms: [OPJ_FLOAT64; 3] = [1.732f64, 0.8292f64, 0.8292f64];
 /* </summary> */
 static mut opj_mct_norms_real: [OPJ_FLOAT64; 3] = [1.732f64, 1.805f64, 1.573f64];
 #[no_mangle]
-pub unsafe extern "C" fn opj_mct_get_mct_norms() -> *const OPJ_FLOAT64 {
+pub(crate) unsafe fn opj_mct_get_mct_norms() -> *const OPJ_FLOAT64 {
   return opj_mct_norms.as_ptr();
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_mct_get_mct_norms_real() -> *const OPJ_FLOAT64 {
+pub(crate) unsafe fn opj_mct_get_mct_norms_real() -> *const OPJ_FLOAT64 {
   return opj_mct_norms_real.as_ptr();
 }
 /* <summary> */
 /* Forward reversible MCT. */
 /* </summary> */
 #[no_mangle]
-pub unsafe extern "C" fn opj_mct_encode(
+pub(crate) unsafe fn opj_mct_encode(
   mut c0: *mut OPJ_INT32,
   mut c1: *mut OPJ_INT32,
   mut c2: *mut OPJ_INT32,
@@ -106,7 +103,7 @@ pub unsafe extern "C" fn opj_mct_encode(
 /* Inverse reversible MCT. */
 /* </summary> */
 #[no_mangle]
-pub unsafe extern "C" fn opj_mct_decode(
+pub(crate) unsafe fn opj_mct_decode(
   mut c0: *mut OPJ_INT32,
   mut c1: *mut OPJ_INT32,
   mut c2: *mut OPJ_INT32,
@@ -131,14 +128,14 @@ pub unsafe extern "C" fn opj_mct_decode(
 /* Get norm of basis function of reversible MCT. */
 /* </summary> */
 #[no_mangle]
-pub unsafe extern "C" fn opj_mct_getnorm(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
+pub(crate) unsafe fn opj_mct_getnorm(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
   return opj_mct_norms[compno as usize];
 }
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
 #[no_mangle]
-pub unsafe extern "C" fn opj_mct_encode_real(
+pub(crate) unsafe fn opj_mct_encode_real(
   mut c0: *mut OPJ_FLOAT32,
   mut c1: *mut OPJ_FLOAT32,
   mut c2: *mut OPJ_FLOAT32,
@@ -163,7 +160,7 @@ pub unsafe extern "C" fn opj_mct_encode_real(
 /* Inverse irreversible MCT. */
 /* </summary> */
 #[no_mangle]
-pub unsafe extern "C" fn opj_mct_decode_real(
+pub(crate) unsafe fn opj_mct_decode_real(
   mut c0: *mut OPJ_FLOAT32,
   mut c1: *mut OPJ_FLOAT32,
   mut c2: *mut OPJ_FLOAT32,
@@ -188,11 +185,11 @@ pub unsafe extern "C" fn opj_mct_decode_real(
 /* Get norm of basis function of irreversible MCT. */
 /* </summary> */
 #[no_mangle]
-pub unsafe extern "C" fn opj_mct_getnorm_real(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
+pub(crate) unsafe fn opj_mct_getnorm_real(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
   return opj_mct_norms_real[compno as usize];
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_mct_encode_custom(
+pub(crate) unsafe fn opj_mct_encode_custom(
   mut pCodingdata: *mut OPJ_BYTE,
   mut n: OPJ_SIZE_T,
   mut pData: *mut *mut OPJ_BYTE,
@@ -252,7 +249,7 @@ pub unsafe extern "C" fn opj_mct_encode_custom(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_mct_decode_custom(
+pub(crate) unsafe fn opj_mct_decode_custom(
   mut pDecodingData: *mut OPJ_BYTE,
   mut n: OPJ_SIZE_T,
   mut pData: *mut *mut OPJ_BYTE,
@@ -305,7 +302,7 @@ pub unsafe extern "C" fn opj_mct_decode_custom(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_calculate_norms(
+pub(crate) unsafe fn opj_calculate_norms(
   mut pNorms: *mut OPJ_FLOAT64,
   mut pNbComps: OPJ_UINT32,
   mut pMatrix: *mut OPJ_FLOAT32,

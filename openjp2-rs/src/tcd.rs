@@ -1,9 +1,16 @@
-use super::math::*;
 use super::openjpeg::*;
+use super::math::*;
+use super::dwt::*;
+use super::mct::*;
+use super::tgt::*;
 use super::pi::*;
+use super::t1::*;
 use super::t2::*;
+use super::event::*;
 use super::thread::*;
 use ::libc;
+
+use super::malloc::*;
 
 extern "C" {
   fn pow(_: libc::c_double, _: libc::c_double) -> libc::c_double;
@@ -13,153 +20,6 @@ extern "C" {
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
 
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-
-  fn opj_image_data_alloc(size: OPJ_SIZE_T) -> *mut libc::c_void;
-
-  fn opj_image_data_free(ptr: *mut libc::c_void);
-
-  fn opj_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-
-  fn opj_aligned_free(ptr: *mut libc::c_void);
-
-  fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
-
-  fn opj_event_msg(
-    event_mgr: *mut opj_event_mgr_t,
-    event_type: OPJ_INT32,
-    fmt: *const libc::c_char,
-    _: ...
-  ) -> OPJ_BOOL;
-
-  fn opj_mutex_create() -> *mut opj_mutex_t;
-
-  fn opj_mutex_destroy(mutex: *mut opj_mutex_t);
-
-  fn opj_thread_pool_wait_completion(tp: *mut opj_thread_pool_t, max_remaining_jobs: libc::c_int);
-
-  fn opj_tgt_create(
-    numleafsh: OPJ_UINT32,
-    numleafsv: OPJ_UINT32,
-    p_manager: *mut opj_event_mgr_t,
-  ) -> *mut opj_tgt_tree_t;
-
-  fn opj_tgt_init(
-    p_tree: *mut opj_tgt_tree_t,
-    p_num_leafs_h: OPJ_UINT32,
-    p_num_leafs_v: OPJ_UINT32,
-    p_manager: *mut opj_event_mgr_t,
-  ) -> *mut opj_tgt_tree_t;
-
-  fn opj_tgt_destroy(tree: *mut opj_tgt_tree_t);
-
-  fn opj_t2_create(p_image: *mut opj_image_t, p_cp: *mut opj_cp_t) -> *mut opj_t2_t;
-
-  fn opj_t2_destroy(t2: *mut opj_t2_t);
-
-  fn opj_t2_encode_packets(
-    t2: *mut opj_t2_t,
-    tileno: OPJ_UINT32,
-    tile: *mut opj_tcd_tile_t,
-    maxlayers: OPJ_UINT32,
-    dest: *mut OPJ_BYTE,
-    p_data_written: *mut OPJ_UINT32,
-    len: OPJ_UINT32,
-    cstr_info: *mut opj_codestream_info_t,
-    p_marker_info: *mut opj_tcd_marker_info_t,
-    tpnum: OPJ_UINT32,
-    tppos: OPJ_INT32,
-    pino: OPJ_UINT32,
-    t2_mode: J2K_T2_MODE,
-    p_manager: *mut opj_event_mgr_t,
-  ) -> OPJ_BOOL;
-
-  fn opj_t1_encode_cblks(
-    tcd: *mut opj_tcd_t,
-    tile: *mut opj_tcd_tile_t,
-    tcp: *mut opj_tcp_t,
-    mct_norms: *const OPJ_FLOAT64,
-    mct_numcomps: OPJ_UINT32,
-  ) -> OPJ_BOOL;
-
-  fn opj_mct_get_mct_norms() -> *const OPJ_FLOAT64;
-
-  fn opj_mct_get_mct_norms_real() -> *const OPJ_FLOAT64;
-
-  fn opj_dwt_encode_real(p_tcd: *mut opj_tcd_t, tilec: *mut opj_tcd_tilecomp_t) -> OPJ_BOOL;
-
-  fn opj_dwt_encode(p_tcd: *mut opj_tcd_t, tilec: *mut opj_tcd_tilecomp_t) -> OPJ_BOOL;
-
-  fn opj_mct_encode(c0: *mut OPJ_INT32, c1: *mut OPJ_INT32, c2: *mut OPJ_INT32, n: OPJ_SIZE_T);
-
-  fn opj_mct_encode_real(
-    c0: *mut OPJ_FLOAT32,
-    c1: *mut OPJ_FLOAT32,
-    c2: *mut OPJ_FLOAT32,
-    n: OPJ_SIZE_T,
-  );
-
-  fn opj_mct_encode_custom(
-    p_coding_data: *mut OPJ_BYTE,
-    n: OPJ_SIZE_T,
-    p_data: *mut *mut OPJ_BYTE,
-    p_nb_comp: OPJ_UINT32,
-    is_signed: OPJ_UINT32,
-  ) -> OPJ_BOOL;
-
-  fn opj_mct_decode_real(
-    c0: *mut OPJ_FLOAT32,
-    c1: *mut OPJ_FLOAT32,
-    c2: *mut OPJ_FLOAT32,
-    n: OPJ_SIZE_T,
-  );
-
-  fn opj_mct_decode(c0: *mut OPJ_INT32, c1: *mut OPJ_INT32, c2: *mut OPJ_INT32, n: OPJ_SIZE_T);
-
-  fn opj_mct_decode_custom(
-    pDecodingData: *mut OPJ_BYTE,
-    n: OPJ_SIZE_T,
-    pData: *mut *mut OPJ_BYTE,
-    pNbComp: OPJ_UINT32,
-    isSigned: OPJ_UINT32,
-  ) -> OPJ_BOOL;
-
-  fn opj_dwt_decode_real(
-    p_tcd: *mut opj_tcd_t,
-    tilec: *mut opj_tcd_tilecomp_t,
-    numres: OPJ_UINT32,
-  ) -> OPJ_BOOL;
-
-  fn opj_dwt_decode(
-    p_tcd: *mut opj_tcd_t,
-    tilec: *mut opj_tcd_tilecomp_t,
-    numres: OPJ_UINT32,
-  ) -> OPJ_BOOL;
-
-  fn opj_t1_decode_cblks(
-    tcd: *mut opj_tcd_t,
-    pret: *mut OPJ_BOOL,
-    tilec: *mut opj_tcd_tilecomp_t,
-    tccp: *mut opj_tccp_t,
-    p_manager: *mut opj_event_mgr_t,
-    p_manager_mutex: *mut opj_mutex_t,
-    check_pterm: OPJ_BOOL,
-  );
-
-  fn opj_t2_decode_packets(
-    tcd: *mut opj_tcd_t,
-    t2: *mut opj_t2_t,
-    tileno: OPJ_UINT32,
-    tile: *mut opj_tcd_tile_t,
-    src: *mut OPJ_BYTE,
-    p_data_read: *mut OPJ_UINT32,
-    len: OPJ_UINT32,
-    cstr_info: *mut opj_codestream_index_t,
-    p_manager: *mut opj_event_mgr_t,
-  ) -> OPJ_BOOL;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -167,7 +27,7 @@ extern "C" {
 Create a new TCD handle
 */
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_create(mut p_is_decoder: OPJ_BOOL) -> *mut opj_tcd_t {
+pub(crate) unsafe fn opj_tcd_create(mut p_is_decoder: OPJ_BOOL) -> *mut opj_tcd_t {
   let mut l_tcd = 0 as *mut opj_tcd_t;
   /* create the tcd structure */
   l_tcd = opj_calloc(
@@ -194,7 +54,7 @@ pub unsafe extern "C" fn opj_tcd_create(mut p_is_decoder: OPJ_BOOL) -> *mut opj_
 }
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_rateallocate_fixed(mut tcd: *mut opj_tcd_t) {
+pub(crate) unsafe fn opj_tcd_rateallocate_fixed(mut tcd: *mut opj_tcd_t) {
   let mut layno: OPJ_UINT32 = 0; /* fixed_quality */
   layno = 0 as libc::c_int as OPJ_UINT32;
   while layno < (*(*tcd).tcp).numlayers {
@@ -203,7 +63,7 @@ pub unsafe extern "C" fn opj_tcd_rateallocate_fixed(mut tcd: *mut opj_tcd_t) {
   }
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_makelayer(
+pub(crate) unsafe fn opj_tcd_makelayer(
   mut tcd: *mut opj_tcd_t,
   mut layno: OPJ_UINT32,
   mut thresh: OPJ_FLOAT64,
@@ -350,7 +210,7 @@ pub unsafe extern "C" fn opj_tcd_makelayer(
   }
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_makelayer_fixed(
+pub(crate) unsafe fn opj_tcd_makelayer_fixed(
   mut tcd: *mut opj_tcd_t,
   mut layno: OPJ_UINT32,
   mut final_0: OPJ_UINT32,
@@ -508,7 +368,7 @@ pub unsafe extern "C" fn opj_tcd_makelayer_fixed(
   }
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_rateallocate(
+pub(crate) unsafe fn opj_tcd_rateallocate(
   mut tcd: *mut opj_tcd_t,
   mut dest: *mut OPJ_BYTE,
   mut p_data_written: *mut OPJ_UINT32,
@@ -781,7 +641,7 @@ pub unsafe extern "C" fn opj_tcd_rateallocate(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_init(
+pub(crate) unsafe fn opj_tcd_init(
   mut p_tcd: *mut opj_tcd_t,
   mut p_image: *mut opj_image_t,
   mut p_cp: *mut opj_cp_t,
@@ -812,7 +672,7 @@ pub unsafe extern "C" fn opj_tcd_init(
 Destroy a previously created TCD handle
 */
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_destroy(mut tcd: *mut opj_tcd_t) {
+pub(crate) unsafe fn opj_tcd_destroy(mut tcd: *mut opj_tcd_t) {
   if !tcd.is_null() {
     opj_tcd_free_tile(tcd);
     if !(*tcd).tcd_image.is_null() {
@@ -824,7 +684,7 @@ pub unsafe extern "C" fn opj_tcd_destroy(mut tcd: *mut opj_tcd_t) {
   };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_alloc_tile_component_data(
+pub(crate) unsafe fn opj_alloc_tile_component_data(
   mut l_tilec: *mut opj_tcd_tilecomp_t,
 ) -> OPJ_BOOL {
   if (*l_tilec).data.is_null()
@@ -901,7 +761,7 @@ pub unsafe extern "C" fn opj_alloc_tile_component_data(
  */
 /* ----------------------------------------------------------------------- */
 #[inline]
-unsafe extern "C" fn opj_tcd_init_tile(
+unsafe fn opj_tcd_init_tile(
   mut p_tcd: *mut opj_tcd_t,
   mut p_tile_no: OPJ_UINT32,
   mut isEncoder: OPJ_BOOL,
@@ -1499,7 +1359,7 @@ unsafe extern "C" fn opj_tcd_init_tile(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_init_encode_tile(
+pub(crate) unsafe fn opj_tcd_init_encode_tile(
   mut p_tcd: *mut opj_tcd_t,
   mut p_tile_no: OPJ_UINT32,
   mut p_manager: *mut opj_event_mgr_t,
@@ -1513,7 +1373,7 @@ pub unsafe extern "C" fn opj_tcd_init_encode_tile(
   );
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_init_decode_tile(
+pub(crate) unsafe fn opj_tcd_init_decode_tile(
   mut p_tcd: *mut opj_tcd_t,
   mut p_tile_no: OPJ_UINT32,
   mut p_manager: *mut opj_event_mgr_t,
@@ -1532,7 +1392,7 @@ pub unsafe extern "C" fn opj_tcd_init_decode_tile(
 /* *
  * Allocates memory for an encoding code block (but not data memory).
  */
-unsafe extern "C" fn opj_tcd_code_block_enc_allocate(
+unsafe fn opj_tcd_code_block_enc_allocate(
   mut p_code_block: *mut opj_tcd_cblk_enc_t,
 ) -> OPJ_BOOL {
   if (*p_code_block).layers.is_null() {
@@ -1562,7 +1422,7 @@ unsafe extern "C" fn opj_tcd_code_block_enc_allocate(
 /* *
  * Allocates data memory for an encoding code block.
  */
-unsafe extern "C" fn opj_tcd_code_block_enc_allocate_data(
+unsafe fn opj_tcd_code_block_enc_allocate_data(
   mut p_code_block: *mut opj_tcd_cblk_enc_t,
 ) -> OPJ_BOOL {
   let mut l_data_size: OPJ_UINT32 = 0;
@@ -1601,7 +1461,7 @@ unsafe extern "C" fn opj_tcd_code_block_enc_allocate_data(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_reinit_segment(mut seg: *mut opj_tcd_seg_t) {
+pub(crate) unsafe fn opj_tcd_reinit_segment(mut seg: *mut opj_tcd_seg_t) {
   memset(
     seg as *mut libc::c_void,
     0 as libc::c_int,
@@ -1618,7 +1478,7 @@ pub unsafe extern "C" fn opj_tcd_reinit_segment(mut seg: *mut opj_tcd_seg_t) {
 /* *
  * Allocates memory for a decoding code block.
  */
-unsafe extern "C" fn opj_tcd_code_block_dec_allocate(
+unsafe fn opj_tcd_code_block_dec_allocate(
   mut p_code_block: *mut opj_tcd_cblk_dec_t,
 ) -> OPJ_BOOL {
   if (*p_code_block).segs.is_null() {
@@ -1659,7 +1519,7 @@ unsafe extern "C" fn opj_tcd_code_block_dec_allocate(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_get_decoded_tile_size(
+pub(crate) unsafe fn opj_tcd_get_decoded_tile_size(
   mut p_tcd: *mut opj_tcd_t,
   mut take_into_account_partial_decoding: OPJ_BOOL,
 ) -> OPJ_UINT32 {
@@ -1738,7 +1598,7 @@ pub unsafe extern "C" fn opj_tcd_get_decoded_tile_size(
   return l_data_size;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_encode_tile(
+pub(crate) unsafe fn opj_tcd_encode_tile(
   mut p_tcd: *mut opj_tcd_t,
   mut p_tile_no: OPJ_UINT32,
   mut p_dest: *mut OPJ_BYTE,
@@ -1843,7 +1703,7 @@ pub unsafe extern "C" fn opj_tcd_encode_tile(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_decode_tile(
+pub(crate) unsafe fn opj_tcd_decode_tile(
   mut p_tcd: *mut opj_tcd_t,
   mut win_x0: OPJ_UINT32,
   mut win_y0: OPJ_UINT32,
@@ -2134,7 +1994,7 @@ pub unsafe extern "C" fn opj_tcd_decode_tile(
   return 1 as libc::c_int; /*(/ 8)*/
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_update_tile_data(
+pub(crate) unsafe fn opj_tcd_update_tile_data(
   mut p_tcd: *mut opj_tcd_t,
   mut p_dest: *mut OPJ_BYTE,
   mut p_dest_length: OPJ_UINT32,
@@ -2309,7 +2169,7 @@ pub unsafe extern "C" fn opj_tcd_update_tile_data(
 Free the memory allocated for encoding
 @param tcd TCD handle
 */
-unsafe extern "C" fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
+unsafe fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
   let mut compno: OPJ_UINT32 = 0; /* for (resno */
   let mut resno: OPJ_UINT32 = 0;
   let mut bandno: OPJ_UINT32 = 0;
@@ -2322,7 +2182,7 @@ unsafe extern "C" fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
   let mut l_nb_resolutions: OPJ_UINT32 = 0;
   let mut l_nb_precincts: OPJ_UINT32 = 0;
   let mut l_tcd_code_block_deallocate: Option<
-    unsafe extern "C" fn(_: *mut opj_tcd_precinct_t) -> (),
+    unsafe fn(_: *mut opj_tcd_precinct_t) -> (),
   > = None;
   if p_tcd.is_null() {
     return;
@@ -2332,11 +2192,11 @@ unsafe extern "C" fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
   }
   if (*p_tcd).m_is_decoder() != 0 {
     l_tcd_code_block_deallocate = Some(
-      opj_tcd_code_block_dec_deallocate as unsafe extern "C" fn(_: *mut opj_tcd_precinct_t) -> (),
+      opj_tcd_code_block_dec_deallocate as unsafe fn(_: *mut opj_tcd_precinct_t) -> (),
     )
   } else {
     l_tcd_code_block_deallocate = Some(
-      opj_tcd_code_block_enc_deallocate as unsafe extern "C" fn(_: *mut opj_tcd_precinct_t) -> (),
+      opj_tcd_code_block_enc_deallocate as unsafe fn(_: *mut opj_tcd_precinct_t) -> (),
     )
   }
   l_tile = (*(*p_tcd).tcd_image).tiles;
@@ -2401,7 +2261,7 @@ unsafe extern "C" fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
   opj_free((*(*p_tcd).tcd_image).tiles as *mut libc::c_void);
   (*(*p_tcd).tcd_image).tiles = 0 as *mut opj_tcd_tile_t;
 }
-unsafe extern "C" fn opj_tcd_t2_decode(
+unsafe fn opj_tcd_t2_decode(
   mut p_tcd: *mut opj_tcd_t,
   mut p_src_data: *mut OPJ_BYTE,
   mut p_data_read: *mut OPJ_UINT32,
@@ -2433,7 +2293,7 @@ unsafe extern "C" fn opj_tcd_t2_decode(
   /*---------------CLEAN-------------------*/
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_tcd_t1_decode(
+unsafe fn opj_tcd_t1_decode(
   mut p_tcd: *mut opj_tcd_t,
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
@@ -2479,7 +2339,7 @@ unsafe extern "C" fn opj_tcd_t1_decode(
   }
   return ret;
 }
-unsafe extern "C" fn opj_tcd_dwt_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
+unsafe fn opj_tcd_dwt_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   let mut l_tile = (*(*p_tcd).tcd_image).tiles;
   let mut l_tile_comp = (*l_tile).comps;
@@ -2519,7 +2379,7 @@ unsafe extern "C" fn opj_tcd_dwt_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   }
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_tcd_mct_decode(
+unsafe fn opj_tcd_mct_decode(
   mut p_tcd: *mut opj_tcd_t,
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
@@ -2704,7 +2564,7 @@ unsafe extern "C" fn opj_tcd_mct_decode(
   }
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_tcd_dc_level_shift_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
+unsafe fn opj_tcd_dc_level_shift_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   let mut l_tile_comp = 0 as *mut opj_tcd_tilecomp_t;
   let mut l_tccp = 0 as *mut opj_tccp_t;
@@ -2831,7 +2691,7 @@ unsafe extern "C" fn opj_tcd_dc_level_shift_decode(mut p_tcd: *mut opj_tcd_t) ->
 /* *
  * Deallocates the encoding data of the given precinct.
  */
-unsafe extern "C" fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
+unsafe fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
   let mut cblkno: OPJ_UINT32 = 0;
   let mut l_nb_code_blocks: OPJ_UINT32 = 0;
   let mut l_code_block = (*p_precinct).cblks.dec;
@@ -2869,7 +2729,7 @@ unsafe extern "C" fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_
 /* *
  * Deallocates the encoding data of the given precinct.
  */
-unsafe extern "C" fn opj_tcd_code_block_enc_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
+unsafe fn opj_tcd_code_block_enc_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
   let mut cblkno: OPJ_UINT32 = 0;
   let mut l_nb_code_blocks: OPJ_UINT32 = 0;
   let mut l_code_block = (*p_precinct).cblks.enc;
@@ -2901,7 +2761,7 @@ unsafe extern "C" fn opj_tcd_code_block_enc_deallocate(mut p_precinct: *mut opj_
   };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_get_encoder_input_buffer_size(
+pub(crate) unsafe fn opj_tcd_get_encoder_input_buffer_size(
   mut p_tcd: *mut opj_tcd_t,
 ) -> OPJ_SIZE_T {
   let mut i: OPJ_UINT32 = 0;
@@ -2934,7 +2794,7 @@ pub unsafe extern "C" fn opj_tcd_get_encoder_input_buffer_size(
   }
   return l_data_size;
 }
-unsafe extern "C" fn opj_tcd_dc_level_shift_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
+unsafe fn opj_tcd_dc_level_shift_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   let mut l_tile_comp = 0 as *mut opj_tcd_tilecomp_t;
   let mut l_tccp = 0 as *mut opj_tccp_t;
@@ -2975,7 +2835,7 @@ unsafe extern "C" fn opj_tcd_dc_level_shift_encode(mut p_tcd: *mut opj_tcd_t) ->
   }
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_tcd_mct_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
+unsafe fn opj_tcd_mct_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   let mut l_tile = (*(*p_tcd).tcd_image).tiles;
   let mut l_tile_comp = (*(*(*p_tcd).tcd_image).tiles).comps;
   let mut samples = (((*l_tile_comp).x1 - (*l_tile_comp).x0) as OPJ_SIZE_T)
@@ -3033,7 +2893,7 @@ unsafe extern "C" fn opj_tcd_mct_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   }
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_tcd_dwt_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
+unsafe fn opj_tcd_dwt_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   let mut l_tile = (*(*p_tcd).tcd_image).tiles;
   let mut l_tile_comp = (*(*(*p_tcd).tcd_image).tiles).comps;
   let mut l_tccp = (*(*p_tcd).tcp).tccps;
@@ -3055,7 +2915,7 @@ unsafe extern "C" fn opj_tcd_dwt_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   }
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_tcd_t1_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
+unsafe fn opj_tcd_t1_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   let mut l_mct_norms = 0 as *const OPJ_FLOAT64;
   let mut l_mct_numcomps = 0 as libc::c_uint;
   let mut l_tcp = (*p_tcd).tcp;
@@ -3079,7 +2939,7 @@ unsafe extern "C" fn opj_tcd_t1_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
     l_mct_numcomps,
   );
 }
-unsafe extern "C" fn opj_tcd_t2_encode(
+unsafe fn opj_tcd_t2_encode(
   mut p_tcd: *mut opj_tcd_t,
   mut p_dest_data: *mut OPJ_BYTE,
   mut p_data_written: *mut OPJ_UINT32,
@@ -3117,7 +2977,7 @@ unsafe extern "C" fn opj_tcd_t2_encode(
   /*---------------CLEAN-------------------*/
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_tcd_rate_allocate_encode(
+unsafe fn opj_tcd_rate_allocate_encode(
   mut p_tcd: *mut opj_tcd_t,
   mut p_dest_data: *mut OPJ_BYTE,
   mut p_max_dest_size: OPJ_UINT32,
@@ -3152,7 +3012,7 @@ unsafe extern "C" fn opj_tcd_rate_allocate_encode(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_copy_tile_data(
+pub(crate) unsafe fn opj_tcd_copy_tile_data(
   mut p_tcd: *mut opj_tcd_t,
   mut p_src: *mut OPJ_BYTE,
   mut p_src_length: OPJ_SIZE_T,
@@ -3259,12 +3119,12 @@ pub unsafe extern "C" fn opj_tcd_copy_tile_data(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_is_band_empty(mut band: *mut opj_tcd_band_t) -> OPJ_BOOL {
+pub(crate) unsafe fn opj_tcd_is_band_empty(mut band: *mut opj_tcd_band_t) -> OPJ_BOOL {
   return ((*band).x1 - (*band).x0 == 0 as libc::c_int
     || (*band).y1 - (*band).y0 == 0 as libc::c_int) as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_is_subband_area_of_interest(
+pub(crate) unsafe fn opj_tcd_is_subband_area_of_interest(
   mut tcd: *mut opj_tcd_t,
   mut compno: OPJ_UINT32,
   mut resno: OPJ_UINT32,
@@ -3406,7 +3266,7 @@ pub unsafe extern "C" fn opj_tcd_is_subband_area_of_interest(
  * @param compno Component number
  * @return OPJ_TRUE whether the tile componenent is fully decoded
  */
-unsafe extern "C" fn opj_tcd_is_whole_tilecomp_decoding(
+unsafe fn opj_tcd_is_whole_tilecomp_decoding(
   mut p_tcd: *mut opj_tcd_t,
   mut compno: OPJ_UINT32,
 ) -> OPJ_BOOL {
@@ -3452,7 +3312,7 @@ unsafe extern "C" fn opj_tcd_is_whole_tilecomp_decoding(
 }
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_marker_info_create(
+pub(crate) unsafe fn opj_tcd_marker_info_create(
   mut need_PLT: OPJ_BOOL,
 ) -> *mut opj_tcd_marker_info_t {
   let mut l_tcd_marker_info = opj_calloc(
@@ -3467,7 +3327,7 @@ pub unsafe extern "C" fn opj_tcd_marker_info_create(
 }
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
-pub unsafe extern "C" fn opj_tcd_marker_info_destroy(
+pub(crate) unsafe fn opj_tcd_marker_info_destroy(
   mut p_tcd_marker_info: *mut opj_tcd_marker_info_t,
 ) {
   if !p_tcd_marker_info.is_null() {

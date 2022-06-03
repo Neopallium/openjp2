@@ -1,15 +1,12 @@
 use super::openjpeg::*;
 use ::libc;
 
-extern "C" {
+use super::malloc::*;
 
+extern "C" {
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
 
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-
-  fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
 }
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -55,7 +52,7 @@ pub struct opj_sparse_array_int32 {
 }
 pub type opj_sparse_array_int32_t = opj_sparse_array_int32;
 #[inline]
-unsafe extern "C" fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
+unsafe fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
   assert!(b != 0);
   return (a as OPJ_UINT64)
     .wrapping_add(b as libc::c_ulong)
@@ -63,11 +60,11 @@ unsafe extern "C" fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> O
     .wrapping_div(b as libc::c_ulong) as OPJ_UINT32;
 }
 #[inline]
-unsafe extern "C" fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
+unsafe fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
   return if a < b { a } else { b };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_sparse_array_int32_create(
+pub(crate) unsafe fn opj_sparse_array_int32_create(
   mut width: OPJ_UINT32,
   mut height: OPJ_UINT32,
   mut block_width: OPJ_UINT32,
@@ -112,7 +109,7 @@ pub unsafe extern "C" fn opj_sparse_array_int32_create(
   return sa;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_sparse_array_int32_free(mut sa: *mut opj_sparse_array_int32_t) {
+pub(crate) unsafe fn opj_sparse_array_int32_free(mut sa: *mut opj_sparse_array_int32_t) {
   if !sa.is_null() {
     let mut i: OPJ_UINT32 = 0;
     i = 0 as libc::c_int as OPJ_UINT32;
@@ -127,7 +124,7 @@ pub unsafe extern "C" fn opj_sparse_array_int32_free(mut sa: *mut opj_sparse_arr
   };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_sparse_array_is_region_valid(
+pub(crate) unsafe fn opj_sparse_array_is_region_valid(
   mut sa: *const opj_sparse_array_int32_t,
   mut x0: OPJ_UINT32,
   mut y0: OPJ_UINT32,
@@ -141,7 +138,7 @@ pub unsafe extern "C" fn opj_sparse_array_is_region_valid(
     || y1 <= y0
     || y1 > (*sa).height) as libc::c_int;
 }
-unsafe extern "C" fn opj_sparse_array_int32_read_or_write(
+unsafe fn opj_sparse_array_int32_read_or_write(
   mut sa: *const opj_sparse_array_int32_t,
   mut x0: OPJ_UINT32,
   mut y0: OPJ_UINT32,
@@ -524,7 +521,7 @@ unsafe extern "C" fn opj_sparse_array_int32_read_or_write(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_sparse_array_int32_read(
+pub(crate) unsafe fn opj_sparse_array_int32_read(
   mut sa: *const opj_sparse_array_int32_t,
   mut x0: OPJ_UINT32,
   mut y0: OPJ_UINT32,
@@ -549,7 +546,7 @@ pub unsafe extern "C" fn opj_sparse_array_int32_read(
   );
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_sparse_array_int32_write(
+pub(crate) unsafe fn opj_sparse_array_int32_write(
   mut sa: *mut opj_sparse_array_int32_t,
   mut x0: OPJ_UINT32,
   mut y0: OPJ_UINT32,

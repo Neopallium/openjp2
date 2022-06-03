@@ -1,12 +1,7 @@
 use super::openjpeg::*;
 use ::libc;
 
-extern "C" {
-
-  fn opj_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
-}
+use super::malloc::*;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -30,7 +25,7 @@ Write a byte
    local functions
 ==========================================================
 */
-unsafe extern "C" fn opj_bio_byteout(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
+unsafe fn opj_bio_byteout(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   (*bio).buf = (*bio).buf << 8 as libc::c_int & 0xffff as libc::c_int as libc::c_uint;
   (*bio).ct = if (*bio).buf == 0xff00 as libc::c_int as libc::c_uint {
     7 as libc::c_int
@@ -50,7 +45,7 @@ Read a byte
 @param bio BIO handle
 @return Returns OPJ_TRUE if successful, returns OPJ_FALSE otherwise
 */
-unsafe extern "C" fn opj_bio_bytein(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
+unsafe fn opj_bio_bytein(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   (*bio).buf = (*bio).buf << 8 as libc::c_int & 0xffff as libc::c_int as libc::c_uint;
   (*bio).ct = if (*bio).buf == 0xff00 as libc::c_int as libc::c_uint {
     7 as libc::c_int
@@ -110,7 +105,7 @@ Write a bit
 @param bio BIO handle
 @param b Bit to write (0 or 1)
 */
-unsafe extern "C" fn opj_bio_putbit(mut bio: *mut opj_bio_t, mut b: OPJ_UINT32) {
+unsafe fn opj_bio_putbit(mut bio: *mut opj_bio_t, mut b: OPJ_UINT32) {
   if (*bio).ct == 0 as libc::c_int as libc::c_uint {
     opj_bio_byteout(bio);
     /* MSD: why not check the return value of this function ? */
@@ -123,7 +118,7 @@ Read a bit
 @param bio BIO handle
 @return Returns the read bit
 */
-unsafe extern "C" fn opj_bio_getbit(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
+unsafe fn opj_bio_getbit(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
   if (*bio).ct == 0 as libc::c_int as libc::c_uint {
     opj_bio_bytein(bio);
     /* MSD: why not check the return value of this function ? */
@@ -137,22 +132,22 @@ unsafe extern "C" fn opj_bio_getbit(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
 ==========================================================
 */
 #[no_mangle]
-pub unsafe extern "C" fn opj_bio_create() -> *mut opj_bio_t {
+pub(crate) unsafe fn opj_bio_create() -> *mut opj_bio_t {
   let mut bio = opj_malloc(::std::mem::size_of::<opj_bio_t>() as libc::c_ulong) as *mut opj_bio_t; /* && (n <= 32U)*/
   return bio;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_bio_destroy(mut bio: *mut opj_bio_t) {
+pub(crate) unsafe fn opj_bio_destroy(mut bio: *mut opj_bio_t) {
   if !bio.is_null() {
     opj_free(bio as *mut libc::c_void);
   };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_bio_numbytes(mut bio: *mut opj_bio_t) -> ptrdiff_t {
+pub(crate) unsafe fn opj_bio_numbytes(mut bio: *mut opj_bio_t) -> ptrdiff_t {
   return (*bio).bp.wrapping_offset_from((*bio).start) as libc::c_long;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_bio_init_enc(
+pub(crate) unsafe fn opj_bio_init_enc(
   mut bio: *mut opj_bio_t,
   mut bp: *mut OPJ_BYTE,
   mut len: OPJ_UINT32,
@@ -164,7 +159,7 @@ pub unsafe extern "C" fn opj_bio_init_enc(
   (*bio).ct = 8 as libc::c_int as OPJ_UINT32;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_bio_init_dec(
+pub(crate) unsafe fn opj_bio_init_dec(
   mut bio: *mut opj_bio_t,
   mut bp: *mut OPJ_BYTE,
   mut len: OPJ_UINT32,
@@ -176,7 +171,7 @@ pub unsafe extern "C" fn opj_bio_init_dec(
   (*bio).ct = 0 as libc::c_int as OPJ_UINT32;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_bio_write(
+pub(crate) unsafe fn opj_bio_write(
   mut bio: *mut opj_bio_t,
   mut v: OPJ_UINT32,
   mut n: OPJ_UINT32,
@@ -190,7 +185,7 @@ pub unsafe extern "C" fn opj_bio_write(
   }
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_bio_read(mut bio: *mut opj_bio_t, mut n: OPJ_UINT32) -> OPJ_UINT32 {
+pub(crate) unsafe fn opj_bio_read(mut bio: *mut opj_bio_t, mut n: OPJ_UINT32) -> OPJ_UINT32 {
   let mut i: OPJ_INT32 = 0;
   let mut v: OPJ_UINT32 = 0;
   assert!(n > 0 as libc::c_uint);
@@ -204,7 +199,7 @@ pub unsafe extern "C" fn opj_bio_read(mut bio: *mut opj_bio_t, mut n: OPJ_UINT32
   return v;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_bio_flush(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
+pub(crate) unsafe fn opj_bio_flush(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   if opj_bio_byteout(bio) == 0 {
     return 0 as libc::c_int;
   }
@@ -216,7 +211,7 @@ pub unsafe extern "C" fn opj_bio_flush(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_bio_inalign(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
+pub(crate) unsafe fn opj_bio_inalign(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   if (*bio).buf & 0xff as libc::c_int as libc::c_uint == 0xff as libc::c_int as libc::c_uint {
     if opj_bio_bytein(bio) == 0 {
       return 0 as libc::c_int;

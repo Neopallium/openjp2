@@ -1,15 +1,7 @@
 use super::openjpeg::*;
 use ::libc;
 
-extern "C" {
-  fn opj_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-
-  fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
-}
+use super::malloc::*;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -124,49 +116,49 @@ pub const OPJWTS_OK: opj_worker_thread_state = 0;
  */
 /* Stub implementation */
 #[no_mangle]
-pub unsafe extern "C" fn opj_has_thread_support() -> OPJ_BOOL {
+pub(crate) unsafe fn opj_has_thread_support() -> OPJ_BOOL {
   return 0 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_get_num_cpus() -> libc::c_int {
+pub(crate) unsafe fn opj_get_num_cpus() -> libc::c_int {
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_mutex_create() -> *mut opj_mutex_t {
+pub(crate) unsafe fn opj_mutex_create() -> *mut opj_mutex_t {
   return 0 as *mut opj_mutex_t;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_mutex_lock(mut _mutex: *mut opj_mutex_t) {}
+pub(crate) unsafe fn opj_mutex_lock(mut _mutex: *mut opj_mutex_t) {}
 #[no_mangle]
-pub unsafe extern "C" fn opj_mutex_unlock(mut _mutex: *mut opj_mutex_t) {}
+pub(crate) unsafe fn opj_mutex_unlock(mut _mutex: *mut opj_mutex_t) {}
 #[no_mangle]
-pub unsafe extern "C" fn opj_mutex_destroy(mut _mutex: *mut opj_mutex_t) {}
+pub(crate) unsafe fn opj_mutex_destroy(mut _mutex: *mut opj_mutex_t) {}
 #[no_mangle]
-pub unsafe extern "C" fn opj_cond_create() -> *mut opj_cond_t {
+pub(crate) unsafe fn opj_cond_create() -> *mut opj_cond_t {
   return 0 as *mut opj_cond_t;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_cond_wait(mut _cond: *mut opj_cond_t, mut _mutex: *mut opj_mutex_t) {}
+pub(crate) unsafe fn opj_cond_wait(mut _cond: *mut opj_cond_t, mut _mutex: *mut opj_mutex_t) {}
 #[no_mangle]
-pub unsafe extern "C" fn opj_cond_signal(mut _cond: *mut opj_cond_t) {}
+pub(crate) unsafe fn opj_cond_signal(mut _cond: *mut opj_cond_t) {}
 #[no_mangle]
-pub unsafe extern "C" fn opj_cond_destroy(mut _cond: *mut opj_cond_t) {}
+pub(crate) unsafe fn opj_cond_destroy(mut _cond: *mut opj_cond_t) {}
 #[no_mangle]
-pub unsafe extern "C" fn opj_thread_create(
+pub(crate) unsafe fn opj_thread_create(
   mut _thread_fn: opj_thread_fn,
   mut _user_data: *mut libc::c_void,
 ) -> *mut opj_thread_t {
   return 0 as *mut opj_thread_t;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_thread_join(mut _thread: *mut opj_thread_t) {}
-unsafe extern "C" fn opj_tls_new() -> *mut opj_tls_t {
+pub(crate) unsafe fn opj_thread_join(mut _thread: *mut opj_thread_t) {}
+unsafe fn opj_tls_new() -> *mut opj_tls_t {
   return opj_calloc(
     1 as libc::c_int as size_t,
     ::std::mem::size_of::<opj_tls_t>() as libc::c_ulong,
   ) as *mut opj_tls_t;
 }
-unsafe extern "C" fn opj_tls_destroy(mut tls: *mut opj_tls_t) {
+unsafe fn opj_tls_destroy(mut tls: *mut opj_tls_t) {
   let mut i: libc::c_int = 0;
   if tls.is_null() {
     return;
@@ -184,7 +176,7 @@ unsafe extern "C" fn opj_tls_destroy(mut tls: *mut opj_tls_t) {
   opj_free(tls as *mut libc::c_void);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tls_get(
+pub(crate) unsafe fn opj_tls_get(
   mut tls: *mut opj_tls_t,
   mut key: libc::c_int,
 ) -> *mut libc::c_void {
@@ -199,7 +191,7 @@ pub unsafe extern "C" fn opj_tls_get(
   return 0 as *mut libc::c_void;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_tls_set(
+pub(crate) unsafe fn opj_tls_set(
   mut tls: *mut opj_tls_t,
   mut key: libc::c_int,
   mut value: *mut libc::c_void,
@@ -245,7 +237,7 @@ pub unsafe extern "C" fn opj_tls_set(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_thread_pool_create(
+pub(crate) unsafe fn opj_thread_pool_create(
   mut num_threads: libc::c_int,
 ) -> *mut opj_thread_pool_t {
   let mut tp = 0 as *mut opj_thread_pool_t;
@@ -297,7 +289,7 @@ unsafe extern "C" fn opj_worker_thread_function(mut user_data: *mut libc::c_void
   }
   opj_tls_destroy(tls);
 }
-unsafe extern "C" fn opj_thread_pool_setup(
+unsafe fn opj_thread_pool_setup(
   mut tp: *mut opj_thread_pool_t,
   mut num_threads: libc::c_int,
 ) -> OPJ_BOOL {
@@ -373,7 +365,7 @@ void opj_waiting()
     printf("waiting!\n");
 }
 */
-unsafe extern "C" fn opj_thread_pool_get_next_job(
+unsafe fn opj_thread_pool_get_next_job(
   mut tp: *mut opj_thread_pool_t,
   mut worker_thread: *mut opj_worker_thread_t,
   mut signal_job_finished: OPJ_BOOL,
@@ -435,7 +427,7 @@ unsafe extern "C" fn opj_thread_pool_get_next_job(
   }
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_thread_pool_submit_job(
+pub(crate) unsafe fn opj_thread_pool_submit_job(
   mut tp: *mut opj_thread_pool_t,
   mut job_fn: opj_job_fn,
   mut user_data: *mut libc::c_void,
@@ -498,7 +490,7 @@ pub unsafe extern "C" fn opj_thread_pool_submit_job(
   return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_thread_pool_wait_completion(
+pub(crate) unsafe fn opj_thread_pool_wait_completion(
   mut tp: *mut opj_thread_pool_t,
   mut max_remaining_jobs: libc::c_int,
 ) {
@@ -518,13 +510,13 @@ pub unsafe extern "C" fn opj_thread_pool_wait_completion(
   opj_mutex_unlock((*tp).mutex);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_thread_pool_get_thread_count(
+pub(crate) unsafe fn opj_thread_pool_get_thread_count(
   mut tp: *mut opj_thread_pool_t,
 ) -> libc::c_int {
   return (*tp).worker_threads_count;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_thread_pool_destroy(mut tp: *mut opj_thread_pool_t) {
+pub(crate) unsafe fn opj_thread_pool_destroy(mut tp: *mut opj_thread_pool_t) {
   if tp.is_null() {
     return;
   }

@@ -1,8 +1,13 @@
+use super::openjpeg::*;
 use super::bio::*;
 use super::math::*;
-use super::openjpeg::*;
 use super::pi::*;
+use super::tcd::*;
+use super::tgt::*;
+use super::event::*;
 use ::libc;
+
+use super::malloc::*;
 
 extern "C" {
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
@@ -10,107 +15,6 @@ extern "C" {
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
 
   static mut stderr: *mut FILE;
-
-  fn opj_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-
-  fn opj_realloc(m: *mut libc::c_void, s: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
-
-  fn opj_event_msg(
-    event_mgr: *mut opj_event_mgr_t,
-    event_type: OPJ_INT32,
-    fmt: *const libc::c_char,
-    _: ...
-  ) -> OPJ_BOOL;
-
-  fn opj_bio_create() -> *mut opj_bio_t;
-
-  fn opj_bio_destroy(bio: *mut opj_bio_t);
-
-  fn opj_bio_numbytes(bio: *mut opj_bio_t) -> ptrdiff_t;
-
-  fn opj_bio_init_enc(bio: *mut opj_bio_t, bp: *mut OPJ_BYTE, len: OPJ_UINT32);
-
-  fn opj_bio_init_dec(bio: *mut opj_bio_t, bp: *mut OPJ_BYTE, len: OPJ_UINT32);
-
-  fn opj_bio_write(bio: *mut opj_bio_t, v: OPJ_UINT32, n: OPJ_UINT32);
-
-  fn opj_bio_read(bio: *mut opj_bio_t, n: OPJ_UINT32) -> OPJ_UINT32;
-
-  fn opj_bio_flush(bio: *mut opj_bio_t) -> OPJ_BOOL;
-
-  fn opj_bio_inalign(bio: *mut opj_bio_t) -> OPJ_BOOL;
-
-  fn opj_pi_initialise_encode(
-    image: *const opj_image_t,
-    cp: *mut opj_cp_t,
-    tileno: OPJ_UINT32,
-    t2_mode: J2K_T2_MODE,
-    manager: *mut opj_event_mgr_t,
-  ) -> *mut opj_pi_iterator_t;
-
-  fn opj_pi_create_encode(
-    pi: *mut opj_pi_iterator_t,
-    cp: *mut opj_cp_t,
-    tileno: OPJ_UINT32,
-    pino: OPJ_UINT32,
-    tpnum: OPJ_UINT32,
-    tppos: OPJ_INT32,
-    t2_mode: J2K_T2_MODE,
-  );
-
-  fn opj_pi_create_decode(
-    mage: *mut opj_image_t,
-    cp: *mut opj_cp_t,
-    tileno: OPJ_UINT32,
-    manager: *mut opj_event_mgr_t,
-  ) -> *mut opj_pi_iterator_t;
-
-  fn opj_pi_destroy(p_pi: *mut opj_pi_iterator_t, p_nb_elements: OPJ_UINT32);
-
-  fn opj_pi_next(pi: *mut opj_pi_iterator_t) -> OPJ_BOOL;
-
-  fn opj_get_encoding_packet_count(
-    p_image: *const opj_image_t,
-    p_cp: *const opj_cp_t,
-    p_tile_no: OPJ_UINT32,
-  ) -> OPJ_UINT32;
-
-  fn opj_tgt_reset(tree: *mut opj_tgt_tree_t);
-
-  fn opj_tgt_setvalue(tree: *mut opj_tgt_tree_t, leafno: OPJ_UINT32, value: OPJ_INT32);
-
-  fn opj_tgt_encode(
-    bio: *mut opj_bio_t,
-    tree: *mut opj_tgt_tree_t,
-    leafno: OPJ_UINT32,
-    threshold: OPJ_INT32,
-  );
-
-  fn opj_tgt_decode(
-    bio: *mut opj_bio_t,
-    tree: *mut opj_tgt_tree_t,
-    leafno: OPJ_UINT32,
-    threshold: OPJ_INT32,
-  ) -> OPJ_UINT32;
-
-  fn opj_tcd_is_band_empty(band: *mut opj_tcd_band_t) -> OPJ_BOOL;
-
-  fn opj_tcd_reinit_segment(seg: *mut opj_tcd_seg_t);
-
-  fn opj_tcd_is_subband_area_of_interest(
-    tcd: *mut opj_tcd_t,
-    compno: OPJ_UINT32,
-    resno: OPJ_UINT32,
-    bandno: OPJ_UINT32,
-    x0: OPJ_UINT32,
-    y0: OPJ_UINT32,
-    x1: OPJ_UINT32,
-    y1: OPJ_UINT32,
-  ) -> OPJ_BOOL;
 }
 
 #[repr(C)]
@@ -167,7 +71,7 @@ pub type opj_t2_t = opj_t2;
 /*@}*/
 /* ----------------------------------------------------------------------- */
 /* #define RESTART 0x04 */
-unsafe extern "C" fn opj_t2_putcommacode(mut bio: *mut opj_bio_t, mut n: OPJ_INT32) {
+unsafe fn opj_t2_putcommacode(mut bio: *mut opj_bio_t, mut n: OPJ_INT32) {
   loop {
     n -= 1;
     if !(n >= 0 as libc::c_int) {
@@ -185,7 +89,7 @@ unsafe extern "C" fn opj_t2_putcommacode(mut bio: *mut opj_bio_t, mut n: OPJ_INT
     1 as libc::c_int as OPJ_UINT32,
   );
 }
-unsafe extern "C" fn opj_t2_getcommacode(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
+unsafe fn opj_t2_getcommacode(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
   let mut n = 0 as libc::c_int as OPJ_UINT32;
   while opj_bio_read(bio, 1 as libc::c_int as OPJ_UINT32) != 0 {
     n = n.wrapping_add(1)
@@ -197,7 +101,7 @@ Variable length code for signalling delta Zil (truncation point)
 @param bio  Bit Input/Output component
 @param n    delta Zil
 */
-unsafe extern "C" fn opj_t2_putnumpasses(mut bio: *mut opj_bio_t, mut n: OPJ_UINT32) {
+unsafe fn opj_t2_putnumpasses(mut bio: *mut opj_bio_t, mut n: OPJ_UINT32) {
   if n == 1 as libc::c_int as libc::c_uint {
     opj_bio_write(
       bio,
@@ -230,7 +134,7 @@ unsafe extern "C" fn opj_t2_putnumpasses(mut bio: *mut opj_bio_t, mut n: OPJ_UIN
     );
   };
 }
-unsafe extern "C" fn opj_t2_getnumpasses(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
+unsafe fn opj_t2_getnumpasses(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
   let mut n: OPJ_UINT32 = 0;
   if opj_bio_read(bio, 1 as libc::c_int as OPJ_UINT32) == 0 {
     return 1 as libc::c_int as OPJ_UINT32;
@@ -251,7 +155,7 @@ unsafe extern "C" fn opj_t2_getnumpasses(mut bio: *mut opj_bio_t) -> OPJ_UINT32 
 }
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
-pub unsafe extern "C" fn opj_t2_encode_packets(
+pub(crate) unsafe fn opj_t2_encode_packets(
   mut p_t2: *mut opj_t2_t,
   mut p_tile_no: OPJ_UINT32,
   mut p_tile: *mut opj_tcd_tile_t,
@@ -453,7 +357,7 @@ unsafe extern "C" fn opj_null_jas_fprintf(
 ) {
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_t2_decode_packets(
+pub(crate) unsafe fn opj_t2_decode_packets(
   mut tcd: *mut opj_tcd_t,
   mut p_t2: *mut opj_t2_t,
   mut p_tile_no: OPJ_UINT32,
@@ -645,7 +549,7 @@ pub unsafe extern "C" fn opj_t2_decode_packets(
  * @return              a new T2 handle if successful, NULL otherwise.
 */
 #[no_mangle]
-pub unsafe extern "C" fn opj_t2_create(
+pub(crate) unsafe fn opj_t2_create(
   mut p_image: *mut opj_image_t,
   mut p_cp: *mut opj_cp_t,
 ) -> *mut opj_t2_t {
@@ -662,7 +566,7 @@ pub unsafe extern "C" fn opj_t2_create(
   return l_t2;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_t2_destroy(mut t2: *mut opj_t2_t) {
+pub(crate) unsafe fn opj_t2_destroy(mut t2: *mut opj_t2_t) {
   if !t2.is_null() {
     opj_free(t2 as *mut libc::c_void);
   };
@@ -681,7 +585,7 @@ Decode a packet of a tile from a source buffer
 
 @return  FIXME DOC
 */
-unsafe extern "C" fn opj_t2_decode_packet(
+unsafe fn opj_t2_decode_packet(
   mut p_t2: *mut opj_t2_t,
   mut p_tile: *mut opj_tcd_tile_t,
   mut p_tcp: *mut opj_tcp_t,
@@ -752,7 +656,7 @@ Encode a packet of a tile to a destination buffer
 @param p_manager the user event manager
 @return
 */
-unsafe extern "C" fn opj_t2_encode_packet(
+unsafe fn opj_t2_encode_packet(
   mut tileno: OPJ_UINT32,
   mut tile: *mut opj_tcd_tile_t,
   mut tcp: *mut opj_tcp_t,
@@ -1102,7 +1006,7 @@ unsafe extern "C" fn opj_t2_encode_packet(
     as OPJ_UINT32 as OPJ_UINT32;
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_t2_skip_packet(
+unsafe fn opj_t2_skip_packet(
   mut p_t2: *mut opj_t2_t,
   mut p_tile: *mut opj_tcd_tile_t,
   mut p_tcp: *mut opj_tcp_t,
@@ -1158,7 +1062,7 @@ unsafe extern "C" fn opj_t2_skip_packet(
   *p_data_read = l_nb_total_bytes_read;
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_t2_read_packet_header(
+unsafe fn opj_t2_read_packet_header(
   mut p_t2: *mut opj_t2_t,
   mut p_tile: *mut opj_tcd_tile_t,
   mut p_tcp: *mut opj_tcp_t,
@@ -1583,7 +1487,7 @@ unsafe extern "C" fn opj_t2_read_packet_header(
   *p_data_read = l_current_data.wrapping_offset_from(p_src_data) as libc::c_long as OPJ_UINT32;
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_t2_read_packet_data(
+unsafe fn opj_t2_read_packet_data(
   mut p_t2: *mut opj_t2_t,
   mut p_tile: *mut opj_tcd_tile_t,
   mut p_pi: *mut opj_pi_iterator_t,
@@ -1749,7 +1653,7 @@ unsafe extern "C" fn opj_t2_read_packet_data(
   }
   return 1 as libc::c_int;
 }
-unsafe extern "C" fn opj_t2_skip_packet_data(
+unsafe fn opj_t2_skip_packet_data(
   mut p_t2: *mut opj_t2_t,
   mut p_tile: *mut opj_tcd_tile_t,
   mut p_pi: *mut opj_pi_iterator_t,
@@ -1864,7 +1768,7 @@ unsafe extern "C" fn opj_t2_skip_packet_data(
 @param cblksty
 @param first
 */
-unsafe extern "C" fn opj_t2_init_seg(
+unsafe fn opj_t2_init_seg(
   mut cblk: *mut opj_tcd_cblk_dec_t,
   mut index: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,

@@ -1,24 +1,10 @@
 use super::math::*;
 use super::openjpeg::*;
+use super::event::*;
+use super::j2k::*;
 use ::libc;
 
-extern "C" {
-
-  fn opj_malloc(size: size_t) -> *mut libc::c_void;
-
-  fn opj_calloc(numOfElements: size_t, sizeOfElements: size_t) -> *mut libc::c_void;
-
-  fn opj_free(m: *mut libc::c_void);
-
-  fn opj_event_msg(
-    event_mgr: *mut opj_event_mgr_t,
-    event_type: OPJ_INT32,
-    fmt: *const libc::c_char,
-    _: ...
-  ) -> OPJ_BOOL;
-
-  fn opj_j2k_convert_progression_order(prg_order: OPJ_PROG_ORDER) -> *const libc::c_char;
-}
+use super::malloc::*;
 
 pub type T2_MODE = libc::c_uint;
 pub const FINAL_PASS: T2_MODE = 1;
@@ -75,7 +61,7 @@ pub struct opj_pi_iterator {
 }
 pub type opj_pi_iterator_t = opj_pi_iterator;
 #[inline]
-unsafe extern "C" fn opj_uint_ceildivpow2(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
+unsafe fn opj_uint_ceildivpow2(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
   return ((a as libc::c_ulong)
     .wrapping_add((1 as libc::c_uint as OPJ_UINT64) << b)
     .wrapping_sub(1 as libc::c_uint as libc::c_ulong)
@@ -135,7 +121,7 @@ Get next packet in layer-resolution-component-precinct order.
    local functions
 ==========================================================
 */
-unsafe extern "C" fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+unsafe fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   let mut current_block: u64;
   let mut comp = 0 as *mut opj_pi_comp_t;
   let mut res = 0 as *mut opj_pi_resolution_t;
@@ -259,7 +245,7 @@ Get next packet in resolution-layer-component-precinct order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-unsafe extern "C" fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+unsafe fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   let mut current_block: u64;
   let mut comp = 0 as *mut opj_pi_comp_t;
   let mut res = 0 as *mut opj_pi_resolution_t;
@@ -377,7 +363,7 @@ Get next packet in resolution-precinct-component-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-unsafe extern "C" fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   let mut levelno: OPJ_UINT32 = 0;
   let mut trx0: OPJ_UINT32 = 0;
   let mut try0: OPJ_UINT32 = 0;
@@ -676,7 +662,7 @@ Get next packet in precinct-component-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-unsafe extern "C" fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+unsafe fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   let mut levelno: OPJ_UINT32 = 0;
   let mut trx0: OPJ_UINT32 = 0;
   let mut try0: OPJ_UINT32 = 0;
@@ -972,7 +958,7 @@ Get next packet in component-precinct-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-unsafe extern "C" fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+unsafe fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   let mut resno: OPJ_UINT32 = 0;
   let mut levelno: OPJ_UINT32 = 0;
   let mut trx0: OPJ_UINT32 = 0;
@@ -1273,7 +1259,7 @@ unsafe extern "C" fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOO
  * @param   p_dx_min            pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
  * @param   p_dy_min            pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  */
-unsafe extern "C" fn opj_get_encoding_parameters(
+unsafe fn opj_get_encoding_parameters(
   mut p_image: *const opj_image_t,
   mut p_cp: *const opj_cp_t,
   mut p_tileno: OPJ_UINT32,
@@ -1432,7 +1418,7 @@ unsafe extern "C" fn opj_get_encoding_parameters(
  * @param   p_dy_min        pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  * @param   p_resolutions   pointer to an area corresponding to the one described above.
  */
-unsafe extern "C" fn opj_get_all_encoding_parameters(
+unsafe fn opj_get_all_encoding_parameters(
   mut p_image: *const opj_image_t,
   mut p_cp: *const opj_cp_t,
   mut tileno: OPJ_UINT32,
@@ -1610,7 +1596,7 @@ unsafe extern "C" fn opj_get_all_encoding_parameters(
  * @param   tileno  the index of the tile from which creating the packet iterator.
  * @param   manager Event manager
  */
-unsafe extern "C" fn opj_pi_create(
+unsafe fn opj_pi_create(
   mut image: *const opj_image_t,
   mut cp: *const opj_cp_t,
   mut tileno: OPJ_UINT32,
@@ -1693,7 +1679,7 @@ unsafe extern "C" fn opj_pi_create(
  * @param   p_dx_min        the minimum dx of all the components of all the resolutions for the tile.
  * @param   p_dy_min        the minimum dy of all the components of all the resolutions for the tile.
  */
-unsafe extern "C" fn opj_pi_update_encode_poc_and_final(
+unsafe fn opj_pi_update_encode_poc_and_final(
   mut p_cp: *mut opj_cp_t,
   mut p_tileno: OPJ_UINT32,
   mut p_tx0: OPJ_UINT32,
@@ -1785,7 +1771,7 @@ unsafe extern "C" fn opj_pi_update_encode_poc_and_final(
  * @param   p_dx_min        the minimum dx of all the components of all the resolutions for the tile.
  * @param   p_dy_min        the minimum dy of all the components of all the resolutions for the tile.
  */
-unsafe extern "C" fn opj_pi_update_encode_not_poc(
+unsafe fn opj_pi_update_encode_not_poc(
   mut p_cp: *mut opj_cp_t,
   mut p_num_comps: OPJ_UINT32,
   mut p_tileno: OPJ_UINT32,
@@ -1843,7 +1829,7 @@ unsafe extern "C" fn opj_pi_update_encode_not_poc(
 /* *
  * FIXME DOC
  */
-unsafe extern "C" fn opj_pi_update_decode_poc(
+unsafe fn opj_pi_update_decode_poc(
   mut p_pi: *mut opj_pi_iterator_t,
   mut p_tcp: *mut opj_tcp_t,
   mut p_max_precision: OPJ_UINT32,
@@ -1885,7 +1871,7 @@ unsafe extern "C" fn opj_pi_update_decode_poc(
 /* *
  * FIXME DOC
  */
-unsafe extern "C" fn opj_pi_update_decode_not_poc(
+unsafe fn opj_pi_update_decode_not_poc(
   mut p_pi: *mut opj_pi_iterator_t,
   mut p_tcp: *mut opj_tcp_t,
   mut p_max_precision: OPJ_UINT32,
@@ -1924,7 +1910,7 @@ unsafe extern "C" fn opj_pi_update_decode_not_poc(
 /* *
  * FIXME DOC
  */
-unsafe extern "C" fn opj_pi_check_next_level(
+unsafe fn opj_pi_check_next_level(
   mut pos: OPJ_INT32,
   mut cp: *mut opj_cp_t,
   mut tileno: OPJ_UINT32,
@@ -2021,7 +2007,7 @@ unsafe extern "C" fn opj_pi_check_next_level(
 ==========================================================
 */
 #[no_mangle]
-pub unsafe extern "C" fn opj_pi_create_decode(
+pub(crate) unsafe fn opj_pi_create_decode(
   mut p_image: *mut opj_image_t,
   mut p_cp: *mut opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
@@ -2256,7 +2242,7 @@ pub unsafe extern "C" fn opj_pi_create_decode(
   return l_pi;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_get_encoding_packet_count(
+pub(crate) unsafe fn opj_get_encoding_packet_count(
   mut p_image: *const opj_image_t,
   mut p_cp: *const opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
@@ -2296,7 +2282,7 @@ pub unsafe extern "C" fn opj_get_encoding_packet_count(
     .wrapping_mul(l_max_res);
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_pi_initialise_encode(
+pub(crate) unsafe fn opj_pi_initialise_encode(
   mut p_image: *const opj_image_t,
   mut p_cp: *mut opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
@@ -2529,7 +2515,7 @@ pub unsafe extern "C" fn opj_pi_initialise_encode(
   return l_pi;
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_pi_create_encode(
+pub(crate) unsafe fn opj_pi_create_encode(
   mut pi: *mut opj_pi_iterator_t,
   mut cp: *mut opj_cp_t,
   mut tileno: OPJ_UINT32,
@@ -2861,7 +2847,7 @@ pub unsafe extern "C" fn opj_pi_create_encode(
   };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_pi_destroy(
+pub(crate) unsafe fn opj_pi_destroy(
   mut p_pi: *mut opj_pi_iterator_t,
   mut p_nb_elements: OPJ_UINT32,
 ) {
@@ -2896,7 +2882,7 @@ pub unsafe extern "C" fn opj_pi_destroy(
   };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_pi_update_encoding_parameters(
+pub(crate) unsafe fn opj_pi_update_encoding_parameters(
   mut p_image: *const opj_image_t,
   mut p_cp: *mut opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
@@ -2953,7 +2939,7 @@ pub unsafe extern "C" fn opj_pi_update_encoding_parameters(
   };
 }
 #[no_mangle]
-pub unsafe extern "C" fn opj_pi_next(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
+pub(crate) unsafe fn opj_pi_next(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   match (*pi).poc.prg as libc::c_int {
     0 => return opj_pi_next_lrcp(pi),
     1 => return opj_pi_next_rlcp(pi),
