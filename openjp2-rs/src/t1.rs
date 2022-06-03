@@ -1,5 +1,6 @@
 use super::math::*;
 use super::mqc::*;
+use super::dwt::*;
 use super::openjpeg::*;
 use super::t1_luts::*;
 use super::thread::*;
@@ -115,9 +116,6 @@ extern "C" {
     y1: OPJ_UINT32,
   ) -> OPJ_BOOL;
 
-  fn opj_dwt_getnorm_real(level: OPJ_UINT32, orient: OPJ_UINT32) -> OPJ_FLOAT64;
-
-  fn opj_dwt_getnorm(level: OPJ_UINT32, orient: OPJ_UINT32) -> OPJ_FLOAT64;
   /* *
   Decode 1 HT code-block
   @param t1 T1 handle
@@ -1554,7 +1552,7 @@ fn opj_t1_dec_clnpass(
 }
 
 /* * mod fixed_quality */
-unsafe extern "C" fn opj_t1_getwmsedec(
+fn opj_t1_getwmsedec(
   mut nmsedec: OPJ_INT32,
   mut compno: OPJ_UINT32,
   mut level: OPJ_UINT32,
@@ -1566,30 +1564,33 @@ unsafe extern "C" fn opj_t1_getwmsedec(
   mut mct_norms: *const OPJ_FLOAT64,
   mut mct_numcomps: OPJ_UINT32,
 ) -> OPJ_FLOAT64 {
-  let mut w1 = 1 as libc::c_int as OPJ_FLOAT64; /* if (qmfbid == 0) */
-  let mut w2: OPJ_FLOAT64 = 0.;
-  let mut wmsedec: OPJ_FLOAT64 = 0.;
-  if !mct_norms.is_null() && compno < mct_numcomps {
-    w1 = *mct_norms.offset(compno as isize)
+  let mut w1 = 1.0;
+  let mut w2 = 0.0;
+  let mut wmsedec = 0.0;
+  unsafe {
+    if !mct_norms.is_null() && compno < mct_numcomps {
+      w1 = *mct_norms.offset(compno as isize)
+    }
   }
-  if qmfbid == 1 as libc::c_int as libc::c_uint {
+  if qmfbid == 1 {
     w2 = opj_dwt_getnorm(level, orient)
-  } else {
-    let log2_gain = if orient == 0 as libc::c_int as libc::c_uint {
-      0 as libc::c_int
-    } else if orient == 3 as libc::c_int as libc::c_uint {
-      2 as libc::c_int
+  } else { /* if (qmfbid == 0) */
+    let log2_gain = if orient == 0 {
+      0
+    } else if orient == 3 {
+      2
     } else {
-      1 as libc::c_int
+      1
     };
     w2 = opj_dwt_getnorm_real(level, orient);
     /* Not sure this is right. But preserves past behaviour */
-    stepsize /= ((1 as libc::c_int) << log2_gain) as libc::c_double
+    stepsize /= (1 << log2_gain) as f64;
   }
-  wmsedec = w1 * w2 * stepsize * ((1 as libc::c_int) << bpno) as libc::c_double;
-  wmsedec *= wmsedec * nmsedec as libc::c_double / 8192.0f64;
+  wmsedec = w1 * w2 * stepsize * (1 << bpno) as f64;
+  wmsedec *= wmsedec * nmsedec as f64 / 8192.0f64;
   return wmsedec;
 }
+
 unsafe extern "C" fn opj_t1_allocate_buffers(
   mut t1: *mut opj_t1_t,
   mut w: OPJ_UINT32,
