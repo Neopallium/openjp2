@@ -194,31 +194,33 @@ pub struct opj_dwt97_decode_h_job_t {
 /* end coord in low pass band */
 /* start coord in high pass band */
 /* end coord in high pass band */
+
 /* From table F.4 from the standard */
-static mut opj_dwt_alpha: OPJ_FLOAT32 = -1.586134342f32;
-static mut opj_dwt_beta: OPJ_FLOAT32 = -0.052980118f32;
-static mut opj_dwt_gamma: OPJ_FLOAT32 = 0.882911075f32;
-static mut opj_dwt_delta: OPJ_FLOAT32 = 0.443506852f32;
-static mut opj_K: OPJ_FLOAT32 = 1.230174105f32;
-static mut opj_invK: OPJ_FLOAT32 = (1.0f64 / 1.230174105f64) as OPJ_FLOAT32;
+const opj_dwt_alpha: f32 = -1.586134342;
+const opj_dwt_beta: f32 = -0.052980118;
+const opj_dwt_gamma: f32 = 0.882911075;
+const opj_dwt_delta: f32 = 0.443506852;
+const opj_K: f32 = 1.230174105;
+const opj_invK: f32 = (1.0 / 1.230174105);
+
 /* <summary>                                                              */
 /* This table contains the norms of the 5-3 wavelets for different bands. */
 /* </summary>                                                             */
 /* FIXME! the array should really be extended up to 33 resolution levels */
 /* See https://github.com/uclouvain/openjpeg/issues/493 */
-static mut opj_dwt_norms: [[OPJ_FLOAT64; 10]; 4] = [
+const opj_dwt_norms: [[f64; 10]; 4] = [
   [
-    1.000f64, 1.500f64, 2.750f64, 5.375f64, 10.68f64, 21.34f64, 42.67f64, 85.33f64, 170.7f64,
-    341.3f64,
+    1.000, 1.500, 2.750, 5.375, 10.68, 21.34, 42.67, 85.33, 170.7,
+    341.3,
   ],
   [
-    1.038f64, 1.592f64, 2.919f64, 5.703f64, 11.33f64, 22.64f64, 45.25f64, 90.48f64, 180.9f64, 0.,
+    1.038, 1.592, 2.919, 5.703, 11.33, 22.64, 45.25, 90.48, 180.9, 0.,
   ],
   [
-    1.038f64, 1.592f64, 2.919f64, 5.703f64, 11.33f64, 22.64f64, 45.25f64, 90.48f64, 180.9f64, 0.,
+    1.038, 1.592, 2.919, 5.703, 11.33, 22.64, 45.25, 90.48, 180.9, 0.,
   ],
   [
-    0.7186f64, 0.9218f64, 1.586f64, 3.043f64, 6.019f64, 12.01f64, 24.00f64, 47.97f64, 95.93f64, 0.,
+    0.7186, 0.9218, 1.586, 3.043, 6.019, 12.01, 24.00, 47.97, 95.93, 0.,
   ],
 ];
 /* <summary>                                                              */
@@ -226,21 +228,22 @@ static mut opj_dwt_norms: [[OPJ_FLOAT64; 10]; 4] = [
 /* </summary>                                                             */
 /* FIXME! the array should really be extended up to 33 resolution levels */
 /* See https://github.com/uclouvain/openjpeg/issues/493 */
-static mut opj_dwt_norms_real: [[OPJ_FLOAT64; 10]; 4] = [
+const opj_dwt_norms_real: [[f64; 10]; 4] = [
   [
-    1.000f64, 1.965f64, 4.177f64, 8.403f64, 16.90f64, 33.84f64, 67.69f64, 135.3f64, 270.6f64,
-    540.9f64,
+    1.000, 1.965, 4.177, 8.403, 16.90, 33.84, 67.69, 135.3, 270.6,
+    540.9,
   ],
   [
-    2.022f64, 3.989f64, 8.355f64, 17.04f64, 34.27f64, 68.63f64, 137.3f64, 274.6f64, 549.0f64, 0.,
+    2.022, 3.989, 8.355, 17.04, 34.27, 68.63, 137.3, 274.6, 549.0, 0.,
   ],
   [
-    2.022f64, 3.989f64, 8.355f64, 17.04f64, 34.27f64, 68.63f64, 137.3f64, 274.6f64, 549.0f64, 0.,
+    2.022, 3.989, 8.355, 17.04, 34.27, 68.63, 137.3, 274.6, 549.0, 0.,
   ],
   [
-    2.080f64, 3.865f64, 8.307f64, 17.18f64, 34.71f64, 69.59f64, 139.3f64, 278.6f64, 557.2f64, 0.,
+    2.080, 3.865, 8.307, 17.18, 34.71, 69.59, 139.3, 278.6, 557.2, 0.,
   ],
 ];
+
 /*@}*/
 /* * @name Local static functions */
 /*@{*/
@@ -1817,24 +1820,26 @@ pub unsafe extern "C" fn opj_dwt_decode(
     return opj_dwt_decode_partial_tile(tilec, numres);
   };
 }
+
 /* <summary>                */
 /* Get norm of 5-3 wavelet. */
 /* </summary>               */
 #[no_mangle]
-pub unsafe extern "C" fn opj_dwt_getnorm(
+pub fn opj_dwt_getnorm(
   mut level: OPJ_UINT32,
-  mut orient: OPJ_UINT32,
+  orient: OPJ_UINT32,
 ) -> OPJ_FLOAT64 {
   /* FIXME ! This is just a band-aid to avoid a buffer overflow */
   /* but the array should really be extended up to 33 resolution levels */
   /* See https://github.com/uclouvain/openjpeg/issues/493 */
-  if orient == 0 as libc::c_int as libc::c_uint && level >= 10 as libc::c_int as libc::c_uint {
-    level = 9 as libc::c_int as OPJ_UINT32
-  } else if orient > 0 as libc::c_int as libc::c_uint && level >= 9 as libc::c_int as libc::c_uint {
-    level = 8 as libc::c_int as OPJ_UINT32
+  if orient == 0 && level >= 10 {
+    level = 9
+  } else if orient > 0 && level >= 9 {
+    level = 8
   }
   return opj_dwt_norms[orient as usize][level as usize];
 }
+
 /* <summary>                             */
 /* Forward 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
@@ -1868,24 +1873,26 @@ pub unsafe extern "C" fn opj_dwt_encode_real(
     ),
   );
 }
+
 /* <summary>                */
 /* Get norm of 9-7 wavelet. */
 /* </summary>               */
 #[no_mangle]
-pub unsafe extern "C" fn opj_dwt_getnorm_real(
+pub fn opj_dwt_getnorm_real(
   mut level: OPJ_UINT32,
-  mut orient: OPJ_UINT32,
+  orient: OPJ_UINT32,
 ) -> OPJ_FLOAT64 {
   /* FIXME ! This is just a band-aid to avoid a buffer overflow */
   /* but the array should really be extended up to 33 resolution levels */
   /* See https://github.com/uclouvain/openjpeg/issues/493 */
-  if orient == 0 as libc::c_int as libc::c_uint && level >= 10 as libc::c_int as libc::c_uint {
-    level = 9 as libc::c_int as OPJ_UINT32
-  } else if orient > 0 as libc::c_int as libc::c_uint && level >= 9 as libc::c_int as libc::c_uint {
-    level = 8 as libc::c_int as OPJ_UINT32
+  if orient == 0 && level >= 10 {
+    level = 9
+  } else if orient > 0 && level >= 9 {
+    level = 8
   }
   return opj_dwt_norms_real[orient as usize][level as usize];
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn opj_dwt_calc_explicit_stepsizes(
   mut tccp: *mut opj_tccp_t,
