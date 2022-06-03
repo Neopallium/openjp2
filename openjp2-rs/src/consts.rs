@@ -364,17 +364,17 @@ pub mod common {
 
 pub mod t1 {
   pub const T1_NMSEDEC_BITS: u32  = 7;
-  pub const T1_NUMCTXS_ZC: u32   = 9;
-  pub const T1_NUMCTXS_SC: u32   = 5;
-  pub const T1_NUMCTXS_MAG: u32  = 3;
-  pub const T1_NUMCTXS_AGG: u32  = 1;
-  pub const T1_NUMCTXS_UNI: u32  = 1;
-  pub const T1_CTXNO_ZC: u32   = 0;
-  pub const T1_CTXNO_SC: u32   = (T1_CTXNO_ZC+T1_NUMCTXS_ZC);
-  pub const T1_CTXNO_MAG: u32  = (T1_CTXNO_SC+T1_NUMCTXS_SC);
-  pub const T1_CTXNO_AGG: u32  = (T1_CTXNO_MAG+T1_NUMCTXS_MAG);
-  pub const T1_CTXNO_UNI: u32  = (T1_CTXNO_AGG+T1_NUMCTXS_AGG);
-  pub const T1_NUMCTXS: u32    = (T1_CTXNO_UNI+T1_NUMCTXS_UNI);
+  pub const T1_NUMCTXS_ZC: u8   = 9;
+  pub const T1_NUMCTXS_SC: u8   = 5;
+  pub const T1_NUMCTXS_MAG: u8  = 3;
+  pub const T1_NUMCTXS_AGG: u8  = 1;
+  pub const T1_NUMCTXS_UNI: u8  = 1;
+  pub const T1_CTXNO_ZC: u8   = 0;
+  pub const T1_CTXNO_SC: u8   = (T1_CTXNO_ZC+T1_NUMCTXS_ZC) as u8;
+  pub const T1_CTXNO_MAG: u8  = (T1_CTXNO_SC+T1_NUMCTXS_SC) as u8;
+  pub const T1_CTXNO_AGG: u8  = (T1_CTXNO_MAG+T1_NUMCTXS_MAG) as u8;
+  pub const T1_CTXNO_UNI: u8  = (T1_CTXNO_AGG+T1_NUMCTXS_AGG) as u8;
+  pub const T1_NUMCTXS: u8    = (T1_CTXNO_UNI+T1_NUMCTXS_UNI) as u8;
   pub const T1_NMSEDEC_FRACBITS: i32  = (T1_NMSEDEC_BITS-1) as i32;
   /**< Normal coding using entropy coder */
   pub const T1_TYPE_MQ: u8  = 0;

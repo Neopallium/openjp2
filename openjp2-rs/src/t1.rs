@@ -190,7 +190,7 @@ pub struct opj_t1_cblk_decode_processing_job_t {
 }
 
 #[inline]
-fn opj_t1_setcurctx(mqc: &mut opj_mqc_t, ctxno: usize) {
+fn opj_t1_setcurctx(mqc: &mut opj_mqc_t, ctxno: u8) {
   mqc.set_curctx(ctxno);
 }
 
@@ -261,30 +261,30 @@ fn opj_t1_getctxtno_sc_or_spb_index(
 }
 
 #[inline]
-unsafe extern "C" fn opj_t1_getctxno_sc(mut lu: OPJ_UINT32) -> OPJ_BYTE {
+fn opj_t1_getctxno_sc(mut lu: OPJ_UINT32) -> OPJ_BYTE {
   return lut_ctxno_sc[lu as usize];
 }
 
 #[inline]
-fn opj_t1_getctxno_mag(mut f: OPJ_UINT32) -> OPJ_UINT32 {
+fn opj_t1_getctxno_mag(mut f: OPJ_UINT32) -> u8 {
   let tmp = if f & T1_SIGMA_NEIGHBOURS!= 0 { T1_CTXNO_MAG + 1 } else { T1_CTXNO_MAG };
   let tmp2 = if f & T1_MU_0 != 0 { T1_CTXNO_MAG + 2 } else { tmp };
   return tmp2;
 }
 
 #[inline]
-unsafe extern "C" fn opj_t1_getspb(mut lu: OPJ_UINT32) -> OPJ_BYTE {
+fn opj_t1_getspb(mut lu: OPJ_UINT32) -> OPJ_BYTE {
   return lut_spb[lu as usize];
 }
 
-unsafe extern "C" fn opj_t1_getnmsedec_sig(mut x: OPJ_UINT32, mut bitpos: OPJ_UINT32) -> OPJ_INT16 {
+fn opj_t1_getnmsedec_sig(mut x: OPJ_UINT32, mut bitpos: OPJ_UINT32) -> OPJ_INT16 {
   if bitpos > 0 {
     return lut_nmsedec_sig[((x >> bitpos) & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
   }
   return lut_nmsedec_sig0[(x & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
 }
 
-unsafe extern "C" fn opj_t1_getnmsedec_ref(mut x: OPJ_UINT32, mut bitpos: OPJ_UINT32) -> OPJ_INT16 {
+fn opj_t1_getnmsedec_ref(mut x: OPJ_UINT32, mut bitpos: OPJ_UINT32) -> OPJ_INT16 {
   if bitpos > 0 {
     return lut_nmsedec_ref[((x >> bitpos) & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
   }
@@ -372,7 +372,7 @@ fn opj_t1_enc_sigpass_step_macro(
       let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
       v = if opj_smr_abs(*l_datap) & one != 0 { 1 } else { 0 };
       log::debug!("   ctxt1={}", ctxt1);
-      opj_t1_setcurctx(mqc, ctxt1 as usize);
+      opj_t1_setcurctx(mqc, ctxt1);
 
       if type_0 == T1_TYPE_RAW {  /* BYPASS/LAZY MODE */
         opj_mqc_bypass_enc_macro(mqc, v);
@@ -388,7 +388,7 @@ fn opj_t1_enc_sigpass_step_macro(
         v = opj_smr_sign(*l_datap);
         *nmsedec += opj_t1_getnmsedec_sig(opj_smr_abs(*l_datap), bpno as u32) as i32;
         log::debug!("   ctxt2={}", ctxt2);
-        opj_t1_setcurctx(mqc, ctxt2 as usize);
+        opj_t1_setcurctx(mqc, ctxt2);
         if type_0 == T1_TYPE_RAW {  /* BYPASS/LAZY MODE */
             opj_mqc_bypass_enc_macro(mqc, v);
         } else {
@@ -445,7 +445,7 @@ fn opj_t1_dec_sigpass_step_mqc_macro(
     if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 &&
          (flags & (T1_SIGMA_NEIGHBOURS << ci.wrapping_mul(3))) != 0 {
       let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
-      opj_t1_setcurctx(mqc, ctxt1 as usize);
+      opj_t1_setcurctx(mqc, ctxt1);
       opj_mqc_decode_macro(&mut v, mqc);
       if v != 0 {
         let mut lu = opj_t1_getctxtno_sc_or_spb_index(
@@ -454,7 +454,7 @@ fn opj_t1_dec_sigpass_step_mqc_macro(
                         ci);
         let mut ctxt2 = opj_t1_getctxno_sc(lu);
         let mut spb = opj_t1_getspb(lu) as OPJ_UINT32;
-        opj_t1_setcurctx(mqc, ctxt2 as usize);
+        opj_t1_setcurctx(mqc, ctxt2);
         opj_mqc_decode_macro(&mut v, mqc);
         v = v ^ spb;
         *datap.offset(ci.wrapping_mul(data_stride) as isize) =
@@ -826,7 +826,7 @@ fn opj_t1_enc_refpass_step_macro(
       *nmsedec += opj_t1_getnmsedec_ref(abs_data, bpno as u32) as i32;
       v = if abs_data & one != 0 { 1 } else { 0 };
       log::debug!("   ctxt={}", ctxt);
-      opj_t1_setcurctx(mqc, ctxt as usize);
+      opj_t1_setcurctx(mqc, ctxt);
 
       if type_0 == T1_TYPE_RAW {  /* BYPASS/LAZY MODE */
         opj_mqc_bypass_enc_macro(mqc, v);
@@ -876,7 +876,7 @@ fn opj_t1_dec_refpass_step_mqc_macro(
     let flags = *flagsp;
     if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == (T1_SIGMA_THIS << ci.wrapping_mul(3)) {
       let ctxt = opj_t1_getctxno_mag(flags >> ci.wrapping_mul(3));
-      opj_t1_setcurctx(mqc, ctxt as usize);
+      opj_t1_setcurctx(mqc, ctxt);
       opj_mqc_decode_macro(v, mqc);
       let datap = datap.offset(ci.wrapping_mul(data_stride) as isize);
       *datap += if *v ^ (*datap < 0) as u32 != 0 {
@@ -1209,7 +1209,7 @@ fn opj_t1_enc_clnpass_step_macro(
         } else if (*flagsp & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 {
           let ctxt1 = opj_t1_getctxno_zc(mqc, *flagsp >> ci.wrapping_mul(3));
           log::debug!("   ctxt1={}", ctxt1);
-          opj_t1_setcurctx(mqc, ctxt1 as usize);
+          opj_t1_setcurctx(mqc, ctxt1);
           v = if opj_smr_abs(*l_datap) & one != 0 { 1 } else { 0 };
           opj_mqc_encode_macro(mqc, v);
           if v != 0 {
@@ -1224,7 +1224,7 @@ fn opj_t1_enc_clnpass_step_macro(
           *nmsedec += opj_t1_getnmsedec_sig(opj_smr_abs(*l_datap), bpno as u32) as i32;
           let ctxt2 = opj_t1_getctxno_sc(lu);
           log::debug!("   ctxt2={}", ctxt2);
-          opj_t1_setcurctx(mqc, ctxt2 as usize);
+          opj_t1_setcurctx(mqc, ctxt2);
 
           v = opj_smr_sign(*l_datap);
           let spb = opj_t1_getspb(lu);
@@ -1259,7 +1259,7 @@ fn opj_t1_dec_clnpass_step_macro(
     if !check_flags || (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 {
       if !partial  {
         let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
-        opj_t1_setcurctx(mqc, ctxt1 as usize);
+        opj_t1_setcurctx(mqc, ctxt1);
         opj_mqc_decode_macro(&mut v, mqc);
         if v == 0 {
           return;
@@ -1269,7 +1269,7 @@ fn opj_t1_dec_clnpass_step_macro(
                       flags,
                       *flagsp.offset(-1), *flagsp.offset(1),
                       ci);
-      opj_t1_setcurctx(mqc, opj_t1_getctxno_sc(lu) as usize);
+      opj_t1_setcurctx(mqc, opj_t1_getctxno_sc(lu));
       opj_mqc_decode_macro(&mut v, mqc);
       v = v ^ opj_t1_getspb(lu) as u32;
       *datap.offset(ci.wrapping_mul(data_stride) as isize) =
@@ -1337,12 +1337,12 @@ fn opj_t1_enc_clnpass(
               runlen = runlen.wrapping_add(1);
               datap = datap.offset(1)
             }
-            opj_t1_setcurctx(mqc, T1_CTXNO_AGG as usize);
+            opj_t1_setcurctx(mqc, T1_CTXNO_AGG);
             opj_mqc_encode_macro(mqc, (runlen != 4) as u32);
             if runlen == 4 {
               break;
             }
-            opj_t1_setcurctx(mqc, T1_CTXNO_UNI as usize);
+            opj_t1_setcurctx(mqc, T1_CTXNO_UNI);
             opj_mqc_encode_macro(mqc, runlen >> 1);
             opj_mqc_encode_macro(mqc, runlen & 1);
           } else {
@@ -1400,12 +1400,12 @@ fn opj_t1_dec_clnpass_internal(t1: &mut opj_t1_t, bpno: OPJ_INT32, vsc: bool, w:
       while i < l_w {
         if *flagsp == 0 {
           let mut partial = true;
-          opj_t1_setcurctx(mqc, T1_CTXNO_AGG as usize);
+          opj_t1_setcurctx(mqc, T1_CTXNO_AGG);
           opj_mqc_decode_macro(&mut v, mqc);
           if v == 0 {
             // continue;
           } else {
-            opj_t1_setcurctx(mqc, T1_CTXNO_UNI as usize);
+            opj_t1_setcurctx(mqc, T1_CTXNO_UNI);
             opj_mqc_decode_macro(&mut runlen, mqc);
             opj_mqc_decode_macro(&mut v, mqc);
             runlen = (runlen << 1) | v;
@@ -1500,7 +1500,7 @@ fn opj_t1_dec_clnpass_check_segsym(
     let mqc = &mut t1.mqc;
     let mut v = 0;
     let mut v2 = 0;
-    opj_mqc_setcurctx(mqc, T1_CTXNO_UNI as usize);
+    opj_t1_setcurctx(mqc, T1_CTXNO_UNI);
     opj_mqc_decode_macro(&mut v, mqc);
     opj_mqc_decode_macro(&mut v2, mqc);
     v = (v << 1) | v2;
