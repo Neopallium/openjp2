@@ -23,7 +23,7 @@ pub struct opj_mqc {
   pub end: *mut OPJ_BYTE,
   pub ctxs: [&'static opj_mqc_state_t; MQC_NUMCTXS],
   pub curctx: u8,
-  pub lut_ctxno_zc_orient: *const OPJ_BYTE,
+  pub lut_ctxno_zc_orient: &'static [OPJ_BYTE; 512],
   pub backup: [OPJ_BYTE; 2],
 }
 pub type opj_mqc_t = opj_mqc;

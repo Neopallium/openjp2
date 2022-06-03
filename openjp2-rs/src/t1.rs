@@ -96,9 +96,7 @@ fn opj_to_smr(x: i32) -> u32 {
 
 #[inline]
 fn opj_t1_getctxno_zc(mut mqc: &mut opj_mqc_t, f: OPJ_UINT32) -> OPJ_BYTE {
-  unsafe {
-    return *mqc.lut_ctxno_zc_orient.offset((f & T1_SIGMA_NEIGHBOURS) as isize);
-  }
+  return mqc.lut_ctxno_zc_orient[(f & T1_SIGMA_NEIGHBOURS) as usize];
 }
 
 #[inline]
@@ -1474,9 +1472,9 @@ unsafe extern "C" fn opj_t1_allocate_buffers(
   /* No risk of overflow. Prior checks ensure those assert are met */
   /* They are per the specification */
 
-  assert!(w <= 1024 as libc::c_int as libc::c_uint);
-  assert!(h <= 1024 as libc::c_int as libc::c_uint);
-  assert!(w.wrapping_mul(h) <= 4096 as libc::c_int as libc::c_uint);
+  assert!(w <= 1024);
+  assert!(h <= 1024);
+  assert!(w.wrapping_mul(h) <= 4096);
   /* encoder uses tile buffer, so no need to allocate */
   let mut datasize = w.wrapping_mul(h);
   if datasize > (*t1).datasize {
@@ -1540,7 +1538,7 @@ unsafe extern "C" fn opj_t1_allocate_buffers(
   }
   p = &mut *(*t1).flags.offset(
     flags_height
-      .wrapping_add(1 as libc::c_int as libc::c_uint)
+      .wrapping_add(1)
       .wrapping_mul(flags_stride) as isize,
   ) as *mut opj_flag_t;
   x = 0 as libc::c_int as OPJ_UINT32;
@@ -1554,18 +1552,18 @@ unsafe extern "C" fn opj_t1_allocate_buffers(
       | (1 as libc::c_uint) << 30 as libc::c_int;
     x = x.wrapping_add(1)
   }
-  if h.wrapping_rem(4 as libc::c_int as libc::c_uint) != 0 {
+  if h.wrapping_rem(4) != 0 {
     let mut v = 0 as libc::c_int as OPJ_UINT32;
     p = &mut *(*t1)
       .flags
       .offset(flags_height.wrapping_mul(flags_stride) as isize) as *mut opj_flag_t;
-    if h.wrapping_rem(4 as libc::c_int as libc::c_uint) == 1 as libc::c_int as libc::c_uint {
+    if h.wrapping_rem(4) == 1 {
       v |= (1 as libc::c_uint) << 24 as libc::c_int
         | (1 as libc::c_uint) << 27 as libc::c_int
         | (1 as libc::c_uint) << 30 as libc::c_int
-    } else if h.wrapping_rem(4 as libc::c_int as libc::c_uint) == 2 as libc::c_int as libc::c_uint {
+    } else if h.wrapping_rem(4) == 2 {
       v |= (1 as libc::c_uint) << 27 as libc::c_int | (1 as libc::c_uint) << 30 as libc::c_int
-    } else if h.wrapping_rem(4 as libc::c_int as libc::c_uint) == 3 as libc::c_int as libc::c_uint {
+    } else if h.wrapping_rem(4) == 3 {
       v |= (1 as libc::c_uint) << 30 as libc::c_int
     }
     x = 0 as libc::c_int as OPJ_UINT32;
@@ -1690,13 +1688,13 @@ unsafe extern "C" fn opj_t1_clbl_decode_processor(
   tile_w = ((*(*tilec).resolutions.offset(
     (*tilec)
       .minimum_num_resolutions
-      .wrapping_sub(1 as libc::c_int as libc::c_uint) as isize,
+      .wrapping_sub(1) as isize,
   ))
   .x1
     - (*(*tilec).resolutions.offset(
       (*tilec)
         .minimum_num_resolutions
-        .wrapping_sub(1 as libc::c_int as libc::c_uint) as isize,
+        .wrapping_sub(1) as isize,
     ))
     .x0) as OPJ_UINT32;
   if *(*job).pret == 0 {
@@ -1735,7 +1733,7 @@ unsafe extern "C" fn opj_t1_clbl_decode_processor(
     }
   }
   (*t1).mustuse_cblkdatabuffer = (*job).mustuse_cblkdatabuffer;
-  if (*tccp).cblksty & 0x40 as libc::c_int as libc::c_uint != 0 as libc::c_int as libc::c_uint {
+  if (*tccp).cblksty & 0x40 != 0 {
     if 0 as libc::c_int
       == opj_t1_ht_decode_cblk(
         t1,
@@ -1770,17 +1768,17 @@ unsafe extern "C" fn opj_t1_clbl_decode_processor(
   }
   x = (*cblk).x0 - (*band).x0;
   y = (*cblk).y0 - (*band).y0;
-  if (*band).bandno & 1 as libc::c_int as libc::c_uint != 0 {
+  if (*band).bandno & 1 != 0 {
     let mut pres: *mut opj_tcd_resolution_t = &mut *(*tilec)
       .resolutions
-      .offset(resno.wrapping_sub(1 as libc::c_int as libc::c_uint) as isize)
+      .offset(resno.wrapping_sub(1) as isize)
       as *mut opj_tcd_resolution_t;
     x += (*pres).x1 - (*pres).x0
   }
-  if (*band).bandno & 2 as libc::c_int as libc::c_uint != 0 {
+  if (*band).bandno & 2 != 0 {
     let mut pres_0: *mut opj_tcd_resolution_t = &mut *(*tilec)
       .resolutions
-      .offset(resno.wrapping_sub(1 as libc::c_int as libc::c_uint) as isize)
+      .offset(resno.wrapping_sub(1) as isize)
       as *mut opj_tcd_resolution_t;
     y += (*pres_0).y1 - (*pres_0).y0
   }
@@ -1827,7 +1825,7 @@ unsafe extern "C" fn opj_t1_clbl_decode_processor(
   assert!(!(*cblk).decoded_data.is_null() || !(*tilec).data.is_null()); /* if (tccp->qmfbid == 0) */
   if !(*cblk).decoded_data.is_null() {
     let mut cblk_size = cblk_w.wrapping_mul(cblk_h); /* resno */
-    if (*tccp).qmfbid == 1 as libc::c_int as libc::c_uint {
+    if (*tccp).qmfbid == 1 {
       i = 0 as libc::c_int as OPJ_UINT32;
       while i < cblk_size {
         let ref mut fresh318 = *datap.offset(i as isize);
@@ -1848,7 +1846,7 @@ unsafe extern "C" fn opj_t1_clbl_decode_processor(
         i = i.wrapping_add(1)
       }
     }
-  } else if (*tccp).qmfbid == 1 as libc::c_int as libc::c_uint {
+  } else if (*tccp).qmfbid == 1 {
     let mut tiledp: *mut OPJ_INT32 = &mut *(*tilec).data.offset(
       (y as OPJ_SIZE_T)
         .wrapping_mul(tile_w as libc::c_ulong)
@@ -2015,8 +2013,8 @@ pub unsafe extern "C" fn opj_t1_decode_cblks(
                 let mut cblk_h = ((*cblk_0).y1 - (*cblk_0).y0) as OPJ_UINT32;
                 if !(*cblk_0).decoded_data.is_null() {
                   current_block_34 = 2370887241019905314;
-                } else if cblk_w == 0 as libc::c_int as libc::c_uint
-                  || cblk_h == 0 as libc::c_int as libc::c_uint
+                } else if cblk_w == 0
+                  || cblk_h == 0
                 {
                   current_block_34 = 2370887241019905314;
                 } else {
@@ -2105,9 +2103,7 @@ unsafe extern "C" fn opj_t1_decode_cblk(
   let mut cblkdataindex = 0 as libc::c_int as OPJ_UINT32;
   let mut type_0 = 0 as libc::c_int as OPJ_BYTE;
   let mut original_t1_data = 0 as *mut OPJ_INT32;
-  (*mqc).lut_ctxno_zc_orient = lut_ctxno_zc
-    .as_ptr()
-    .offset((orient << 9 as libc::c_int) as isize);
+  (*mqc).lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
   if opj_t1_allocate_buffers(
     t1,
     ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32,
@@ -2143,7 +2139,7 @@ unsafe extern "C" fn opj_t1_decode_cblk(
   /* Even if we have a single chunk, in multi-threaded decoding */
   /* the insertion of our synthetic marker might potentially override */
   /* valid codestream of other codeblocks decoded in parallel. */
-  if (*cblk).numchunks > 1 as libc::c_int as libc::c_uint || (*t1).mustuse_cblkdatabuffer != 0 {
+  if (*cblk).numchunks > 1 || (*t1).mustuse_cblkdatabuffer != 0 {
     let mut i: OPJ_UINT32 = 0;
     let mut cblk_len: OPJ_UINT32 = 0;
     /* Compute whole codeblock length from chunk lengths */
@@ -2155,10 +2151,10 @@ unsafe extern "C" fn opj_t1_decode_cblk(
       i = i.wrapping_add(1)
     }
     /* Allocate temporary memory if needed */
-    if cblk_len.wrapping_add(2 as libc::c_int as libc::c_uint) > (*t1).cblkdatabuffersize {
+    if cblk_len.wrapping_add(2) > (*t1).cblkdatabuffersize {
       cblkdata = opj_realloc(
         (*t1).cblkdatabuffer as *mut libc::c_void,
-        cblk_len.wrapping_add(2 as libc::c_int as libc::c_uint) as size_t,
+        cblk_len.wrapping_add(2) as size_t,
       ) as *mut OPJ_BYTE;
       if cblkdata.is_null() {
         return 0 as libc::c_int;
@@ -2169,7 +2165,7 @@ unsafe extern "C" fn opj_t1_decode_cblk(
         0,
         OPJ_COMMON_CBLK_DATA_EXTRA as usize,
       );
-      (*t1).cblkdatabuffersize = cblk_len.wrapping_add(2 as libc::c_int as libc::c_uint)
+      (*t1).cblkdatabuffersize = cblk_len.wrapping_add(2)
     }
     /* Concatenate all chunks */
     cblkdata = (*t1).cblkdatabuffer;
@@ -2185,7 +2181,7 @@ unsafe extern "C" fn opj_t1_decode_cblk(
         as OPJ_UINT32 as OPJ_UINT32;
       i = i.wrapping_add(1)
     }
-  } else if (*cblk).numchunks == 1 as libc::c_int as libc::c_uint {
+  } else if (*cblk).numchunks == 1 {
     cblkdata = (*(*cblk).chunks.offset(0 as libc::c_int as isize)).data
   } else {
     /* Not sure if that can happen in practice, but avoid Coverity to */
@@ -2204,8 +2200,8 @@ unsafe extern "C" fn opj_t1_decode_cblk(
       &mut *(*cblk).segs.offset(segno as isize) as *mut opj_tcd_seg_t;
     /* BYPASS mode */
     type_0 = if bpno_plus_one <= (*cblk).numbps as OPJ_INT32 - 4 as libc::c_int
-      && passtype < 2 as libc::c_int as libc::c_uint
-      && cblksty & 0x1 as libc::c_int as libc::c_uint != 0
+      && passtype < 2
+      && cblksty & 0x1 != 0
     {
       1 as libc::c_int
     } else {
@@ -2284,7 +2280,7 @@ unsafe extern "C" fn opj_t1_decode_cblk(
       if !p_manager_mutex.is_null() {
         opj_mutex_unlock(p_manager_mutex);
       }
-    } else if (*mqc).end_of_byte_stream_counter > 2 as libc::c_int as libc::c_uint {
+    } else if (*mqc).end_of_byte_stream_counter > 2 {
       if !p_manager_mutex.is_null() {
         opj_mutex_lock(p_manager_mutex);
       }
@@ -2344,17 +2340,17 @@ unsafe extern "C" fn opj_t1_cblk_encode_processor(
       Some(opj_t1_destroy_wrapper as unsafe extern "C" fn(_: *mut libc::c_void) -> ()),
     );
   }
-  if (*band).bandno & 1 as libc::c_int as libc::c_uint != 0 {
+  if (*band).bandno & 1 != 0 {
     let mut pres: *mut opj_tcd_resolution_t = &mut *(*tilec)
       .resolutions
-      .offset(resno.wrapping_sub(1 as libc::c_int as libc::c_uint) as isize)
+      .offset(resno.wrapping_sub(1) as isize)
       as *mut opj_tcd_resolution_t;
     x += (*pres).x1 - (*pres).x0
   }
-  if (*band).bandno & 2 as libc::c_int as libc::c_uint != 0 {
+  if (*band).bandno & 2 != 0 {
     let mut pres_0: *mut opj_tcd_resolution_t = &mut *(*tilec)
       .resolutions
-      .offset(resno.wrapping_sub(1 as libc::c_int as libc::c_uint) as isize)
+      .offset(resno.wrapping_sub(1) as isize)
       as *mut opj_tcd_resolution_t;
     y += (*pres_0).y1 - (*pres_0).y0
   }
@@ -2375,7 +2371,7 @@ unsafe extern "C" fn opj_t1_cblk_encode_processor(
       .wrapping_mul(tile_w as libc::c_ulong)
       .wrapping_add(x as OPJ_SIZE_T) as isize,
   ) as *mut OPJ_INT32;
-  if (*tccp).qmfbid == 1 as libc::c_int as libc::c_uint {
+  if (*tccp).qmfbid == 1 {
     let mut tiledp_u = tiledp as *mut OPJ_UINT32;
     let mut t1data = (*t1).data as *mut OPJ_UINT32;
     /* Do multiplication on unsigned type, even if the
@@ -2391,29 +2387,29 @@ unsafe extern "C" fn opj_t1_cblk_encode_processor(
       i = 0 as libc::c_int as OPJ_UINT32;
       while i < cblk_w {
         *t1data.offset(0 as libc::c_int as isize) = *tiledp_u.offset(
-          j.wrapping_add(0 as libc::c_int as libc::c_uint)
+          j.wrapping_add(0)
             .wrapping_mul(tile_w)
             .wrapping_add(i) as isize,
         ) << 7 as libc::c_int - 1 as libc::c_int;
         *t1data.offset(1 as libc::c_int as isize) = *tiledp_u.offset(
-          j.wrapping_add(1 as libc::c_int as libc::c_uint)
+          j.wrapping_add(1)
             .wrapping_mul(tile_w)
             .wrapping_add(i) as isize,
         ) << 7 as libc::c_int - 1 as libc::c_int;
         *t1data.offset(2 as libc::c_int as isize) = *tiledp_u.offset(
-          j.wrapping_add(2 as libc::c_int as libc::c_uint)
+          j.wrapping_add(2)
             .wrapping_mul(tile_w)
             .wrapping_add(i) as isize,
         ) << 7 as libc::c_int - 1 as libc::c_int;
         *t1data.offset(3 as libc::c_int as isize) = *tiledp_u.offset(
-          j.wrapping_add(3 as libc::c_int as libc::c_uint)
+          j.wrapping_add(3)
             .wrapping_mul(tile_w)
             .wrapping_add(i) as isize,
         ) << 7 as libc::c_int - 1 as libc::c_int;
         t1data = t1data.offset(4 as libc::c_int as isize);
         i = i.wrapping_add(1)
       }
-      j = (j as libc::c_uint).wrapping_add(4 as libc::c_int as libc::c_uint) as OPJ_UINT32
+      j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
         as OPJ_UINT32
     }
     if j < cblk_h {
@@ -2442,7 +2438,7 @@ unsafe extern "C" fn opj_t1_cblk_encode_processor(
       while i < cblk_w {
         *t1data_0.offset(0 as libc::c_int as isize) = opj_lrintf(
           *tiledp_f.offset(
-            j.wrapping_add(0 as libc::c_int as libc::c_uint)
+            j.wrapping_add(0)
               .wrapping_mul(tile_w)
               .wrapping_add(i) as isize,
           ) / (*band).stepsize
@@ -2450,7 +2446,7 @@ unsafe extern "C" fn opj_t1_cblk_encode_processor(
         ) as OPJ_INT32;
         *t1data_0.offset(1 as libc::c_int as isize) = opj_lrintf(
           *tiledp_f.offset(
-            j.wrapping_add(1 as libc::c_int as libc::c_uint)
+            j.wrapping_add(1)
               .wrapping_mul(tile_w)
               .wrapping_add(i) as isize,
           ) / (*band).stepsize
@@ -2458,7 +2454,7 @@ unsafe extern "C" fn opj_t1_cblk_encode_processor(
         ) as OPJ_INT32;
         *t1data_0.offset(2 as libc::c_int as isize) = opj_lrintf(
           *tiledp_f.offset(
-            j.wrapping_add(2 as libc::c_int as libc::c_uint)
+            j.wrapping_add(2)
               .wrapping_mul(tile_w)
               .wrapping_add(i) as isize,
           ) / (*band).stepsize
@@ -2466,7 +2462,7 @@ unsafe extern "C" fn opj_t1_cblk_encode_processor(
         ) as OPJ_INT32;
         *t1data_0.offset(3 as libc::c_int as isize) = opj_lrintf(
           *tiledp_f.offset(
-            j.wrapping_add(3 as libc::c_int as libc::c_uint)
+            j.wrapping_add(3)
               .wrapping_mul(tile_w)
               .wrapping_add(i) as isize,
           ) / (*band).stepsize
@@ -2475,7 +2471,7 @@ unsafe extern "C" fn opj_t1_cblk_encode_processor(
         t1data_0 = t1data_0.offset(4 as libc::c_int as isize);
         i = i.wrapping_add(1)
       }
-      j = (j as libc::c_uint).wrapping_add(4 as libc::c_int as libc::c_uint) as OPJ_UINT32
+      j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
         as OPJ_UINT32
     }
     if j < cblk_h {
@@ -2502,7 +2498,7 @@ unsafe extern "C" fn opj_t1_cblk_encode_processor(
     (*job).compno,
     (*tilec)
       .numresolutions
-      .wrapping_sub(1 as libc::c_int as libc::c_uint)
+      .wrapping_sub(1)
       .wrapping_sub(resno),
     (*tccp).qmfbid,
     (*band).stepsize as OPJ_FLOAT64,
@@ -2617,23 +2613,23 @@ unsafe extern "C" fn opj_t1_enc_is_term_pass(
   mut passtype: OPJ_UINT32,
 ) -> libc::c_int {
   /* Is it the last cleanup pass ? */
-  if passtype == 2 as libc::c_int as libc::c_uint && bpno == 0 as libc::c_int {
+  if passtype == 2 && bpno == 0 as libc::c_int {
     return 1 as libc::c_int;
   }
-  if cblksty & 0x4 as libc::c_int as libc::c_uint != 0 {
+  if cblksty & 0x4 != 0 {
     return 1 as libc::c_int;
   }
-  if cblksty & 0x1 as libc::c_int as libc::c_uint != 0 {
+  if cblksty & 0x1 != 0 {
     /* For bypass arithmetic bypass, terminate the 4th cleanup pass */
     if bpno == (*cblk).numbps as OPJ_INT32 - 4 as libc::c_int
-      && passtype == 2 as libc::c_int as libc::c_uint
+      && passtype == 2
     {
       return 1 as libc::c_int;
     }
     /* and beyond terminate all the magnitude refinement passes (in raw) */
     /* and cleanup passes (in MQC) */
     if bpno < (*cblk).numbps as OPJ_INT32 - 4 as libc::c_int
-      && passtype > 0 as libc::c_int as libc::c_uint
+      && passtype > 0
     {
       return 1 as libc::c_int;
     }
@@ -2667,9 +2663,7 @@ unsafe extern "C" fn opj_t1_encode_cblk(
   let mut type_0 = 0 as libc::c_int as OPJ_BYTE;
   let mut tempwmsedec: OPJ_FLOAT64 = 0.;
   let mut datap = 0 as *mut OPJ_INT32;
-  (*mqc).lut_ctxno_zc_orient = lut_ctxno_zc
-    .as_ptr()
-    .offset((orient << 9 as libc::c_int) as isize);
+  (*mqc).lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
   max = 0 as libc::c_int;
   datap = (*t1).data;
   j = 0 as libc::c_int as OPJ_UINT32;
@@ -2703,15 +2697,15 @@ unsafe extern "C" fn opj_t1_encode_cblk(
     (opj_int_floorlog2(max) + 1 as libc::c_int - (7 as libc::c_int - 1 as libc::c_int))
       as OPJ_UINT32
   } else {
-    0 as libc::c_int as libc::c_uint
+    0
   };
-  if (*cblk).numbps == 0 as libc::c_int as libc::c_uint {
+  if (*cblk).numbps == 0 {
     (*cblk).totalpasses = 0 as libc::c_int as OPJ_UINT32;
     return cumwmsedec;
   }
   bpno = (*cblk)
     .numbps
-    .wrapping_sub(1 as libc::c_int as libc::c_uint) as OPJ_INT32;
+    .wrapping_sub(1) as OPJ_INT32;
   passtype = 2 as libc::c_int as OPJ_UINT32;
 
   opj_mqc_resetstates(mqc);
@@ -2725,18 +2719,18 @@ unsafe extern "C" fn opj_t1_encode_cblk(
     let mut pass: *mut opj_tcd_pass_t =
       &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
     type_0 = if bpno < (*cblk).numbps as OPJ_INT32 - 4 as libc::c_int
-      && passtype < 2 as libc::c_int as libc::c_uint
-      && cblksty & 0x1 as libc::c_int as libc::c_uint != 0
+      && passtype < 2
+      && cblksty & 0x1 != 0
     {
       1 as libc::c_int
     } else {
       0 as libc::c_int
     } as OPJ_BYTE;
     /* If the previous pass was terminating, we need to reset the encoder */
-    if passno > 0 as libc::c_int as libc::c_uint
+    if passno > 0
       && (*(*cblk)
         .passes
-        .offset(passno.wrapping_sub(1 as libc::c_int as libc::c_uint) as isize))
+        .offset(passno.wrapping_sub(1) as isize))
       .term() as libc::c_int
         != 0
     {
@@ -2756,7 +2750,7 @@ unsafe extern "C" fn opj_t1_encode_cblk(
       2 => {
         opj_t1_enc_clnpass(&mut *t1, bpno, &mut nmsedec, cblksty);
         /* code switch SEGMARK (i.e. SEGSYM) */
-        if cblksty & 0x20 as libc::c_int as libc::c_uint != 0 {
+        if cblksty & 0x20 != 0 {
           opj_mqc_segmark_enc(mqc);
         }
       }
@@ -2782,9 +2776,9 @@ unsafe extern "C" fn opj_t1_encode_cblk(
       if type_0 as libc::c_int == 1 as libc::c_int {
         opj_mqc_bypass_flush_enc(
           mqc,
-          (cblksty & 0x10 as libc::c_int as libc::c_uint) as OPJ_BOOL,
+          (cblksty & 0x10) as OPJ_BOOL,
         );
-      } else if cblksty & 0x10 as libc::c_int as libc::c_uint != 0 {
+      } else if cblksty & 0x10 != 0 {
         opj_mqc_erterm_enc(mqc);
       } else {
         opj_mqc_flush(mqc);
@@ -2797,7 +2791,7 @@ unsafe extern "C" fn opj_t1_encode_cblk(
       if type_0 as libc::c_int == 1 as libc::c_int {
         rate_extra_bytes = opj_mqc_bypass_get_extra_bytes(
           mqc,
-          (cblksty & 0x10 as libc::c_int as libc::c_uint) as OPJ_BOOL,
+          (cblksty & 0x10) as OPJ_BOOL,
         )
       } else {
         rate_extra_bytes = 3 as libc::c_int as OPJ_UINT32
@@ -2806,12 +2800,12 @@ unsafe extern "C" fn opj_t1_encode_cblk(
       (*pass).rate = opj_mqc_numbytes(mqc).wrapping_add(rate_extra_bytes)
     }
     passtype = passtype.wrapping_add(1);
-    if passtype == 3 as libc::c_int as libc::c_uint {
+    if passtype == 3 {
       passtype = 0 as libc::c_int as OPJ_UINT32;
       bpno -= 1
     }
     /* Code-switch "RESET" */
-    if cblksty & 0x2 as libc::c_int as libc::c_uint != 0 {
+    if cblksty & 0x2 != 0 {
       opj_mqc_reset_enc(mqc);
     }
     passno = passno.wrapping_add(1)
@@ -2821,7 +2815,7 @@ unsafe extern "C" fn opj_t1_encode_cblk(
     /* Make sure that pass rates are increasing */
     let mut last_pass_rate = opj_mqc_numbytes(mqc);
     passno = (*cblk).totalpasses;
-    while passno > 0 as libc::c_int as libc::c_uint {
+    while passno > 0 {
       passno = passno.wrapping_sub(1);
       let mut pass_0: *mut opj_tcd_pass_t =
         &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
@@ -2838,11 +2832,11 @@ unsafe extern "C" fn opj_t1_encode_cblk(
       &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
     /* Prevent generation of FF as last data byte of a pass*/
     /* For terminating passes, the flushing procedure ensured this already */
-    assert!((*pass_1).rate > 0 as libc::c_int as libc::c_uint);
+    assert!((*pass_1).rate > 0);
     if *(*cblk).data.offset(
       (*pass_1)
         .rate
-        .wrapping_sub(1 as libc::c_int as libc::c_uint) as isize,
+        .wrapping_sub(1) as isize,
     ) as libc::c_int
       == 0xff as libc::c_int
     {
@@ -2850,12 +2844,12 @@ unsafe extern "C" fn opj_t1_encode_cblk(
     }
     (*pass_1).len = (*pass_1)
       .rate
-      .wrapping_sub(if passno == 0 as libc::c_int as libc::c_uint {
-        0 as libc::c_int as libc::c_uint
+      .wrapping_sub(if passno == 0 {
+        0
       } else {
         (*(*cblk)
           .passes
-          .offset(passno.wrapping_sub(1 as libc::c_int as libc::c_uint) as isize))
+          .offset(passno.wrapping_sub(1) as isize))
         .rate
       });
     passno = passno.wrapping_add(1)
