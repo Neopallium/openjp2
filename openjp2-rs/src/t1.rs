@@ -1485,7 +1485,7 @@ fn opj_t1_allocate_buffers(
       ) as *mut OPJ_INT32;
       if t1.data.is_null() {
         /* FIXME event manager error callback */
-        return 0 as libc::c_int;
+        return 0i32;
       }
       t1.datasize = datasize
     }
@@ -1493,21 +1493,21 @@ fn opj_t1_allocate_buffers(
     if !t1.data.is_null() {
       memset(
         t1.data as *mut libc::c_void,
-        0 as libc::c_int,
+        0i32,
         datasize as usize * ::std::mem::size_of::<OPJ_INT32>(),
       ); /* can't be 0U */
     }
-    flags_stride = w.wrapping_add(2 as libc::c_uint);
+    flags_stride = w.wrapping_add(2u32);
     flagssize = h
-      .wrapping_add(3 as libc::c_uint)
-      .wrapping_div(4 as libc::c_uint)
-      .wrapping_add(2 as libc::c_uint);
+      .wrapping_add(3u32)
+      .wrapping_div(4u32)
+      .wrapping_add(2u32);
     flagssize = (flagssize as libc::c_uint).wrapping_mul(flags_stride);
     let mut p = 0 as *mut opj_flag_t;
     let mut x: OPJ_UINT32 = 0;
     let mut flags_height = h
-      .wrapping_add(3 as libc::c_uint)
-      .wrapping_div(4 as libc::c_uint);
+      .wrapping_add(3u32)
+      .wrapping_div(4u32);
     if flagssize > t1.flagssize {
       opj_aligned_free(t1.flags as *mut libc::c_void);
       t1.flags = opj_aligned_malloc(
@@ -1516,25 +1516,25 @@ fn opj_t1_allocate_buffers(
       ) as *mut opj_flag_t;
       if t1.flags.is_null() {
         /* FIXME event manager error callback */
-        return 0 as libc::c_int;
+        return 0i32;
       }
     }
     t1.flagssize = flagssize;
     memset(
       t1.flags as *mut libc::c_void,
-      0 as libc::c_int,
+      0i32,
       flagssize as usize * ::std::mem::size_of::<opj_flag_t>(),
     );
-    p = &mut *t1.flags.offset(0 as libc::c_int as isize) as *mut opj_flag_t;
-    x = 0 as libc::c_int as OPJ_UINT32;
+    p = &mut *t1.flags.offset(0) as *mut opj_flag_t;
+    x = 0 as OPJ_UINT32;
     while x < flags_stride {
       /* magic value to hopefully stop any passes being interested in this entry */
       let fresh315 = p;
       p = p.offset(1);
-      *fresh315 = (1 as libc::c_uint) << 21 as libc::c_int
-        | (1 as libc::c_uint) << 24 as libc::c_int
-        | (1 as libc::c_uint) << 27 as libc::c_int
-        | (1 as libc::c_uint) << 30 as libc::c_int;
+      *fresh315 = (1u32) << 21i32
+        | (1u32) << 24i32
+        | (1u32) << 27i32
+        | (1u32) << 30i32;
       x = x.wrapping_add(1)
     }
     p = &mut *t1.flags.offset(
@@ -1542,32 +1542,32 @@ fn opj_t1_allocate_buffers(
         .wrapping_add(1)
         .wrapping_mul(flags_stride) as isize,
     ) as *mut opj_flag_t;
-    x = 0 as libc::c_int as OPJ_UINT32;
+    x = 0 as OPJ_UINT32;
     while x < flags_stride {
       /* magic value to hopefully stop any passes being interested in this entry */
       let fresh316 = p;
       p = p.offset(1);
-      *fresh316 = (1 as libc::c_uint) << 21 as libc::c_int
-        | (1 as libc::c_uint) << 24 as libc::c_int
-        | (1 as libc::c_uint) << 27 as libc::c_int
-        | (1 as libc::c_uint) << 30 as libc::c_int;
+      *fresh316 = (1u32) << 21i32
+        | (1u32) << 24i32
+        | (1u32) << 27i32
+        | (1u32) << 30i32;
       x = x.wrapping_add(1)
     }
     if h.wrapping_rem(4) != 0 {
-      let mut v = 0 as libc::c_int as OPJ_UINT32;
+      let mut v = 0 as OPJ_UINT32;
       p = &mut *t1
         .flags
         .offset(flags_height.wrapping_mul(flags_stride) as isize) as *mut opj_flag_t;
       if h.wrapping_rem(4) == 1 {
-        v |= (1 as libc::c_uint) << 24 as libc::c_int
-          | (1 as libc::c_uint) << 27 as libc::c_int
-          | (1 as libc::c_uint) << 30 as libc::c_int
+        v |= (1u32) << 24i32
+          | (1u32) << 27i32
+          | (1u32) << 30i32
       } else if h.wrapping_rem(4) == 2 {
-        v |= (1 as libc::c_uint) << 27 as libc::c_int | (1 as libc::c_uint) << 30 as libc::c_int
+        v |= (1u32) << 27i32 | (1u32) << 30i32
       } else if h.wrapping_rem(4) == 3 {
-        v |= (1 as libc::c_uint) << 30 as libc::c_int
+        v |= (1u32) << 30i32
       }
-      x = 0 as libc::c_int as OPJ_UINT32;
+      x = 0 as OPJ_UINT32;
       while x < flags_stride {
         let fresh317 = p;
         p = p.offset(1);
@@ -1577,7 +1577,7 @@ fn opj_t1_allocate_buffers(
     }
     t1.w = w;
     t1.h = h;
-    return 1 as libc::c_int;
+    return 1i32;
   }
 }
 
@@ -1592,7 +1592,7 @@ pub(crate) fn opj_t1_create(mut isEncoder: OPJ_BOOL) -> *mut opj_t1_t {
   unsafe {
     let mut l_t1 = 0 as *mut opj_t1_t;
     l_t1 = opj_calloc(
-      1 as libc::c_int as size_t,
+      1i32 as size_t,
       ::std::mem::size_of::<opj_t1_t>() as libc::c_ulong,
     ) as *mut opj_t1_t;
     if l_t1.is_null() {
@@ -1666,20 +1666,20 @@ extern "C" fn opj_t1_clbl_decode_processor(
         }
         opj_event_msg(
           (*job).p_manager,
-          1 as libc::c_int,
+          1i32,
           b"Cannot allocate cblk->decoded_data\n\x00" as *const u8 as *const libc::c_char,
         );
         if !(*job).p_manager_mutex.is_null() {
           opj_mutex_unlock((*job).p_manager_mutex);
         }
-        ::std::ptr::write_volatile((*job).pret, 0 as libc::c_int);
+        ::std::ptr::write_volatile((*job).pret, 0i32);
         opj_free(job as *mut libc::c_void);
         return;
       }
       /* Zero-init required */
       memset(
         (*cblk).decoded_data as *mut libc::c_void,
-        0 as libc::c_int,
+        0i32,
         ::std::mem::size_of::<OPJ_INT32>()
           .wrapping_mul(cblk_w as usize)
           .wrapping_mul(cblk_h as usize),
@@ -1710,33 +1710,33 @@ extern "C" fn opj_t1_clbl_decode_processor(
       opj_free(job as *mut libc::c_void);
       return;
     }
-    t1 = opj_tls_get(tls, 0 as libc::c_int) as *mut opj_t1_t;
+    t1 = opj_tls_get(tls, 0i32) as *mut opj_t1_t;
     if t1.is_null() {
-      t1 = opj_t1_create(0 as libc::c_int);
+      t1 = opj_t1_create(0i32);
       if t1.is_null() {
         opj_event_msg(
           (*job).p_manager,
-          1 as libc::c_int,
+          1i32,
           b"Cannot allocate Tier 1 handle\n\x00" as *const u8 as *const libc::c_char,
         );
-        ::std::ptr::write_volatile((*job).pret, 0 as libc::c_int);
+        ::std::ptr::write_volatile((*job).pret, 0i32);
         opj_free(job as *mut libc::c_void);
         return;
       }
       if opj_tls_set(
         tls,
-        0 as libc::c_int,
+        0i32,
         t1 as *mut libc::c_void,
         Some(opj_t1_destroy_wrapper as unsafe extern "C" fn(_: *mut libc::c_void) -> ()),
       ) == 0
       {
         opj_event_msg(
           (*job).p_manager,
-          1 as libc::c_int,
+          1i32,
           b"Unable to set t1 handle as TLS\n\x00" as *const u8 as *const libc::c_char,
         );
         opj_t1_destroy(t1);
-        ::std::ptr::write_volatile((*job).pret, 0 as libc::c_int);
+        ::std::ptr::write_volatile((*job).pret, 0i32);
         opj_free(job as *mut libc::c_void);
         return;
       }
@@ -1744,7 +1744,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
     let t1 = &mut *t1;
     t1.mustuse_cblkdatabuffer = (*job).mustuse_cblkdatabuffer;
     if (*tccp).cblksty & 0x40 != 0 {
-      if 0 as libc::c_int
+      if 0i32
         == opj_t1_ht_decode_cblk(
           t1,
           cblk,
@@ -1756,11 +1756,11 @@ extern "C" fn opj_t1_clbl_decode_processor(
           (*job).check_pterm,
         )
       {
-        ::std::ptr::write_volatile((*job).pret, 0 as libc::c_int);
+        ::std::ptr::write_volatile((*job).pret, 0i32);
         opj_free(job as *mut libc::c_void);
         return;
       }
-    } else if 0 as libc::c_int
+    } else if 0i32
       == opj_t1_decode_cblk(
         &mut *t1,
         cblk,
@@ -1772,7 +1772,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
         (*job).check_pterm,
       )
     {
-      ::std::ptr::write_volatile((*job).pret, 0 as libc::c_int);
+      ::std::ptr::write_volatile((*job).pret, 0i32);
       opj_free(job as *mut libc::c_void);
       return;
     }
@@ -1800,28 +1800,28 @@ extern "C" fn opj_t1_clbl_decode_processor(
     cblk_w = t1.w;
     cblk_h = t1.h;
     if (*tccp).roishift != 0 {
-      if (*tccp).roishift >= 31 as libc::c_int {
-        j = 0 as libc::c_int as OPJ_UINT32;
+      if (*tccp).roishift >= 31i32 {
+        j = 0 as OPJ_UINT32;
         while j < cblk_h {
-          i = 0 as libc::c_int as OPJ_UINT32;
+          i = 0 as OPJ_UINT32;
           while i < cblk_w {
-            *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) = 0 as libc::c_int;
+            *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) = 0i32;
             i = i.wrapping_add(1)
           }
           j = j.wrapping_add(1)
         }
       } else {
-        let mut thresh = (1 as libc::c_int) << (*tccp).roishift;
-        j = 0 as libc::c_int as OPJ_UINT32;
+        let mut thresh = (1i32) << (*tccp).roishift;
+        j = 0 as OPJ_UINT32;
         while j < cblk_h {
-          i = 0 as libc::c_int as OPJ_UINT32;
+          i = 0 as OPJ_UINT32;
           while i < cblk_w {
             let mut val = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
             let mut mag = val.abs();
             if mag >= thresh {
               mag >>= (*tccp).roishift;
               *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) =
-                if val < 0 as libc::c_int { -mag } else { mag }
+                if val < 0i32 { -mag } else { mag }
             }
             i = i.wrapping_add(1)
           }
@@ -1836,15 +1836,15 @@ extern "C" fn opj_t1_clbl_decode_processor(
     if !(*cblk).decoded_data.is_null() {
       let mut cblk_size = cblk_w.wrapping_mul(cblk_h); /* resno */
       if (*tccp).qmfbid == 1 {
-        i = 0 as libc::c_int as OPJ_UINT32;
+        i = 0 as OPJ_UINT32;
         while i < cblk_size {
           let ref mut fresh318 = *datap.offset(i as isize);
-          *fresh318 /= 2 as libc::c_int;
+          *fresh318 /= 2i32;
           i = i.wrapping_add(1)
         }
       } else {
         let stepsize = 0.5f32 * (*band).stepsize;
-        i = 0 as libc::c_int as OPJ_UINT32;
+        i = 0 as OPJ_UINT32;
         while i < cblk_size {
           let mut tmp = *datap as OPJ_FLOAT32 * stepsize;
           memcpy(
@@ -1862,55 +1862,55 @@ extern "C" fn opj_t1_clbl_decode_processor(
           .wrapping_mul(tile_w as libc::c_ulong)
           .wrapping_add(x as OPJ_SIZE_T) as isize,
       ) as *mut OPJ_INT32;
-      j = 0 as libc::c_int as OPJ_UINT32;
+      j = 0 as OPJ_UINT32;
       while j < cblk_h {
-        i = 0 as libc::c_int as OPJ_UINT32;
-        while i < cblk_w & !(3 as libc::c_uint) {
+        i = 0 as OPJ_UINT32;
+        while i < cblk_w & !(3u32) {
           let mut tmp0 = *datap.offset(
             j.wrapping_mul(cblk_w)
               .wrapping_add(i)
-              .wrapping_add(0 as libc::c_uint) as isize,
+              .wrapping_add(0u32) as isize,
           );
           let mut tmp1 = *datap.offset(
             j.wrapping_mul(cblk_w)
               .wrapping_add(i)
-              .wrapping_add(1 as libc::c_uint) as isize,
+              .wrapping_add(1u32) as isize,
           );
           let mut tmp2 = *datap.offset(
             j.wrapping_mul(cblk_w)
               .wrapping_add(i)
-              .wrapping_add(2 as libc::c_uint) as isize,
+              .wrapping_add(2u32) as isize,
           );
           let mut tmp3 = *datap.offset(
             j.wrapping_mul(cblk_w)
               .wrapping_add(i)
-              .wrapping_add(3 as libc::c_uint) as isize,
+              .wrapping_add(3u32) as isize,
           );
           *tiledp.offset(
             (j as libc::c_ulong)
               .wrapping_mul(tile_w as OPJ_SIZE_T)
               .wrapping_add(i as libc::c_ulong)
-              .wrapping_add(0 as libc::c_uint as libc::c_ulong) as isize,
-          ) = tmp0 / 2 as libc::c_int;
+              .wrapping_add(0u64) as isize,
+          ) = tmp0 / 2i32;
           *tiledp.offset(
             (j as libc::c_ulong)
               .wrapping_mul(tile_w as OPJ_SIZE_T)
               .wrapping_add(i as libc::c_ulong)
-              .wrapping_add(1 as libc::c_uint as libc::c_ulong) as isize,
-          ) = tmp1 / 2 as libc::c_int;
+              .wrapping_add(1u64) as isize,
+          ) = tmp1 / 2i32;
           *tiledp.offset(
             (j as libc::c_ulong)
               .wrapping_mul(tile_w as OPJ_SIZE_T)
               .wrapping_add(i as libc::c_ulong)
-              .wrapping_add(2 as libc::c_uint as libc::c_ulong) as isize,
-          ) = tmp2 / 2 as libc::c_int;
+              .wrapping_add(2u64) as isize,
+          ) = tmp2 / 2i32;
           *tiledp.offset(
             (j as libc::c_ulong)
               .wrapping_mul(tile_w as OPJ_SIZE_T)
               .wrapping_add(i as libc::c_ulong)
-              .wrapping_add(3 as libc::c_uint as libc::c_ulong) as isize,
-          ) = tmp3 / 2 as libc::c_int;
-          i = (i as libc::c_uint).wrapping_add(4 as libc::c_uint)
+              .wrapping_add(3u64) as isize,
+          ) = tmp3 / 2i32;
+          i = (i as libc::c_uint).wrapping_add(4u32)
         }
         while i < cblk_w {
           let mut tmp_0 = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
@@ -1918,7 +1918,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
             (j as libc::c_ulong)
               .wrapping_mul(tile_w as OPJ_SIZE_T)
               .wrapping_add(i as libc::c_ulong) as isize,
-          ) = tmp_0 / 2 as libc::c_int;
+          ) = tmp_0 / 2i32;
           i = i.wrapping_add(1)
         }
         j = j.wrapping_add(1)
@@ -1930,10 +1930,10 @@ extern "C" fn opj_t1_clbl_decode_processor(
           .wrapping_mul(tile_w as libc::c_ulong)
           .wrapping_add(x as OPJ_SIZE_T) as isize,
       ) as *mut OPJ_INT32 as *mut OPJ_FLOAT32;
-      j = 0 as libc::c_int as OPJ_UINT32;
+      j = 0 as OPJ_UINT32;
       while j < cblk_h {
         let mut tiledp2 = tiledp_0;
-        i = 0 as libc::c_int as OPJ_UINT32;
+        i = 0 as OPJ_UINT32;
         while i < cblk_w {
           let mut tmp_1 = *datap as OPJ_FLOAT32 * stepsize_0;
           *tiledp2 = tmp_1;
@@ -1964,15 +1964,15 @@ pub fn opj_t1_decode_cblks(
     let mut bandno: OPJ_UINT32 = 0;
     let mut precno: OPJ_UINT32 = 0;
     let mut cblkno: OPJ_UINT32 = 0;
-    resno = 0 as libc::c_int as OPJ_UINT32;
+    resno = 0 as OPJ_UINT32;
     while resno < (*tilec).minimum_num_resolutions {
       let mut res: *mut opj_tcd_resolution_t =
         &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
-      bandno = 0 as libc::c_int as OPJ_UINT32;
+      bandno = 0 as OPJ_UINT32;
       while bandno < (*res).numbands {
         let mut band: *mut opj_tcd_band_t =
           &mut *(*res).bands.as_mut_ptr().offset(bandno as isize) as *mut opj_tcd_band_t;
-        precno = 0 as libc::c_int as OPJ_UINT32;
+        precno = 0 as OPJ_UINT32;
         while precno < (*res).pw.wrapping_mul((*res).ph) {
           let mut precinct: *mut opj_tcd_precinct_t =
             &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
@@ -1987,7 +1987,7 @@ pub fn opj_t1_decode_cblks(
             (*precinct).y1 as OPJ_UINT32,
           ) == 0
           {
-            cblkno = 0 as libc::c_int as OPJ_UINT32;
+            cblkno = 0 as OPJ_UINT32;
             while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
               let mut cblk: *mut opj_tcd_cblk_dec_t =
                 &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
@@ -1999,7 +1999,7 @@ pub fn opj_t1_decode_cblks(
             }
           } else {
             let mut current_block_34: u64;
-            cblkno = 0 as libc::c_int as OPJ_UINT32;
+            cblkno = 0 as OPJ_UINT32;
             while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
               let mut cblk_0: *mut opj_tcd_cblk_dec_t =
                 &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
@@ -2039,11 +2039,11 @@ pub fn opj_t1_decode_cblks(
                   2370887241019905314 => {}
                   _ => {
                     job = opj_calloc(
-                      1 as libc::c_int as size_t,
+                      1i32 as size_t,
                       ::std::mem::size_of::<opj_t1_cblk_decode_processing_job_t>() as libc::c_ulong,
                     ) as *mut opj_t1_cblk_decode_processing_job_t;
                     if job.is_null() {
-                      ::std::ptr::write_volatile(pret, 0 as libc::c_int);
+                      ::std::ptr::write_volatile(pret, 0i32);
                       return;
                     }
                     (*job).whole_tile_decoding = (*tcd).whole_tile_decoding;
@@ -2057,7 +2057,7 @@ pub fn opj_t1_decode_cblks(
                     (*job).p_manager = p_manager;
                     (*job).check_pterm = check_pterm;
                     (*job).mustuse_cblkdatabuffer =
-                      (opj_thread_pool_get_thread_count(tp) > 1 as libc::c_int) as libc::c_int;
+                      (opj_thread_pool_get_thread_count(tp) > 1i32) as libc::c_int;
                     opj_thread_pool_submit_job(
                       tp,
                       Some(
@@ -2114,8 +2114,8 @@ fn opj_t1_decode_cblk(
     let mut segno: OPJ_UINT32 = 0;
     let mut passno: OPJ_UINT32 = 0;
     let mut cblkdata = 0 as *mut OPJ_BYTE;
-    let mut cblkdataindex = 0 as libc::c_int as OPJ_UINT32;
-    let mut type_0 = 0 as libc::c_int as OPJ_BYTE;
+    let mut cblkdataindex = 0 as OPJ_UINT32;
+    let mut type_0 = 0 as OPJ_BYTE;
     let mut original_t1_data = 0 as *mut OPJ_INT32;
     t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
     if opj_t1_allocate_buffers(
@@ -2124,16 +2124,16 @@ fn opj_t1_decode_cblk(
       ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32,
     ) == 0
     {
-      return 0 as libc::c_int;
+      return 0i32;
     }
     bpno_plus_one = roishift.wrapping_add((*cblk).numbps) as OPJ_INT32;
-    if bpno_plus_one >= 31 as libc::c_int {
+    if bpno_plus_one >= 31i32 {
       if !p_manager_mutex.is_null() {
         opj_mutex_lock(p_manager_mutex);
       }
       opj_event_msg(
         p_manager,
-        2 as libc::c_int,
+        2i32,
         b"opj_t1_decode_cblk(): unsupported bpno_plus_one = %d >= 31\n\x00" as *const u8
           as *const libc::c_char,
         bpno_plus_one,
@@ -2141,7 +2141,7 @@ fn opj_t1_decode_cblk(
       if !p_manager_mutex.is_null() {
         opj_mutex_unlock(p_manager_mutex);
       }
-      return 0 as libc::c_int;
+      return 0i32;
     }
     passtype = 2;
 
@@ -2157,11 +2157,11 @@ fn opj_t1_decode_cblk(
       let mut i: OPJ_UINT32 = 0;
       let mut cblk_len: OPJ_UINT32 = 0;
       /* Compute whole codeblock length from chunk lengths */
-      cblk_len = 0 as libc::c_int as OPJ_UINT32;
-      i = 0 as libc::c_int as OPJ_UINT32;
+      cblk_len = 0 as OPJ_UINT32;
+      i = 0 as OPJ_UINT32;
       while i < (*cblk).numchunks {
         cblk_len = (cblk_len as libc::c_uint).wrapping_add((*(*cblk).chunks.offset(i as isize)).len)
-          as OPJ_UINT32 as OPJ_UINT32;
+          as OPJ_UINT32;
         i = i.wrapping_add(1)
       }
       /* Allocate temporary memory if needed */
@@ -2171,7 +2171,7 @@ fn opj_t1_decode_cblk(
           cblk_len.wrapping_add(2) as size_t,
         ) as *mut OPJ_BYTE;
         if cblkdata.is_null() {
-          return 0 as libc::c_int;
+          return 0i32;
         }
         t1.cblkdatabuffer = cblkdata;
         memset(
@@ -2183,8 +2183,8 @@ fn opj_t1_decode_cblk(
       }
       /* Concatenate all chunks */
       cblkdata = t1.cblkdatabuffer;
-      cblk_len = 0 as libc::c_int as OPJ_UINT32;
-      i = 0 as libc::c_int as OPJ_UINT32;
+      cblk_len = 0 as OPJ_UINT32;
+      i = 0 as OPJ_UINT32;
       while i < (*cblk).numchunks {
         memcpy(
           cblkdata.offset(cblk_len as isize) as *mut libc::c_void,
@@ -2192,15 +2192,15 @@ fn opj_t1_decode_cblk(
           (*(*cblk).chunks.offset(i as isize)).len as usize,
         );
         cblk_len = (cblk_len as libc::c_uint).wrapping_add((*(*cblk).chunks.offset(i as isize)).len)
-          as OPJ_UINT32 as OPJ_UINT32;
+          as OPJ_UINT32;
         i = i.wrapping_add(1)
       }
     } else if (*cblk).numchunks == 1 {
-      cblkdata = (*(*cblk).chunks.offset(0 as libc::c_int as isize)).data
+      cblkdata = (*(*cblk).chunks.offset(0)).data
     } else {
       /* Not sure if that can happen in practice, but avoid Coverity to */
       /* think we will dereference a null cblkdta pointer */
-      return 1 as libc::c_int;
+      return 1i32;
     }
     /* For subtile decoding, directly decode in the decoded_data buffer of */
     /* the code-block. Hack t1->data to point to it, and restore it later */
@@ -2208,48 +2208,48 @@ fn opj_t1_decode_cblk(
       original_t1_data = t1.data;
       t1.data = (*cblk).decoded_data
     }
-    segno = 0 as libc::c_int as OPJ_UINT32;
+    segno = 0 as OPJ_UINT32;
     while segno < (*cblk).real_num_segs {
       let mut seg: *mut opj_tcd_seg_t =
         &mut *(*cblk).segs.offset(segno as isize) as *mut opj_tcd_seg_t;
       /* BYPASS mode */
-      type_0 = if bpno_plus_one <= (*cblk).numbps as OPJ_INT32 - 4 as libc::c_int
+      type_0 = if bpno_plus_one <= (*cblk).numbps as OPJ_INT32 - 4i32
         && passtype < 2
         && cblksty & 0x1 != 0
       {
-        1 as libc::c_int
+        1i32
       } else {
-        0 as libc::c_int
+        0i32
       } as OPJ_BYTE;
-      if type_0 as libc::c_int == 1 as libc::c_int {
+      if type_0 as libc::c_int == 1i32 {
         opj_mqc_raw_init_dec(
           &mut t1.mqc,
           cblkdata.offset(cblkdataindex as isize),
           (*seg).len,
-          2 as libc::c_int as OPJ_UINT32,
+          2 as OPJ_UINT32,
         );
       } else {
         opj_mqc_init_dec(
           &mut t1.mqc,
           cblkdata.offset(cblkdataindex as isize),
           (*seg).len,
-          2 as libc::c_int as OPJ_UINT32,
+          2 as OPJ_UINT32,
         );
       }
       cblkdataindex =
         (cblkdataindex as libc::c_uint).wrapping_add((*seg).len);
-      passno = 0 as libc::c_int as OPJ_UINT32;
-      while passno < (*seg).real_num_passes && bpno_plus_one >= 1 as libc::c_int {
+      passno = 0 as OPJ_UINT32;
+      while passno < (*seg).real_num_passes && bpno_plus_one >= 1i32 {
         match passtype {
           0 => {
-            if type_0 as libc::c_int == 1 as libc::c_int {
+            if type_0 as libc::c_int == 1i32 {
               opj_t1_dec_sigpass_raw(t1, bpno_plus_one, cblksty as OPJ_INT32);
             } else {
               opj_t1_dec_sigpass_mqc(t1, bpno_plus_one, cblksty as OPJ_INT32);
             }
           }
           1 => {
-            if type_0 as libc::c_int == 1 as libc::c_int {
+            if type_0 as libc::c_int == 1i32 {
               opj_t1_dec_refpass_raw(t1, bpno_plus_one);
             } else {
               opj_t1_dec_refpass_mqc(t1, bpno_plus_one);
@@ -2278,19 +2278,19 @@ fn opj_t1_decode_cblk(
     }
     if check_pterm != 0 {
       let mqc = &mut t1.mqc; /* MQC component */
-      if (*mqc).bp.offset(2 as libc::c_int as isize) < (*mqc).end {
+      if (*mqc).bp.offset(2) < (*mqc).end {
         if !p_manager_mutex.is_null() {
           opj_mutex_lock(p_manager_mutex);
         }
         opj_event_msg(
           p_manager,
-          2 as libc::c_int,
+          2i32,
           b"PTERM check failure: %d remaining bytes in code block (%d used / %d)\n\x00" as *const u8
             as *const libc::c_char,
-          (*mqc).end.wrapping_offset_from((*mqc).bp) as libc::c_long as libc::c_int
-            - 2 as libc::c_int,
-          (*mqc).bp.wrapping_offset_from((*mqc).start) as libc::c_long as libc::c_int,
-          (*mqc).end.wrapping_offset_from((*mqc).start) as libc::c_long as libc::c_int,
+          (*mqc).end.wrapping_offset_from((*mqc).bp) as libc::c_int
+            - 2i32,
+          (*mqc).bp.wrapping_offset_from((*mqc).start) as libc::c_int,
+          (*mqc).end.wrapping_offset_from((*mqc).start) as libc::c_int,
         );
         if !p_manager_mutex.is_null() {
           opj_mutex_unlock(p_manager_mutex);
@@ -2301,7 +2301,7 @@ fn opj_t1_decode_cblk(
         }
         opj_event_msg(
           p_manager,
-          2 as libc::c_int,
+          2i32,
           b"PTERM check failure: %d synthetized 0xFF markers read\n\x00" as *const u8
             as *const libc::c_char,
           (*mqc).end_of_byte_stream_counter,
@@ -2315,7 +2315,7 @@ fn opj_t1_decode_cblk(
     if !(*cblk).decoded_data.is_null() {
       t1.data = original_t1_data
     }
-    return 1 as libc::c_int;
+    return 1i32;
   }
 }
 
@@ -2348,12 +2348,12 @@ extern "C" fn opj_t1_cblk_encode_processor(
       opj_free(job as *mut libc::c_void);
       return;
     }
-    t1 = opj_tls_get(tls, 0 as libc::c_int) as *mut opj_t1_t;
+    t1 = opj_tls_get(tls, 0i32) as *mut opj_t1_t;
     if t1.is_null() {
-      t1 = opj_t1_create(1 as libc::c_int);
+      t1 = opj_t1_create(1i32);
       opj_tls_set(
         tls,
-        0 as libc::c_int,
+        0i32,
         t1 as *mut libc::c_void,
         Some(opj_t1_destroy_wrapper as unsafe extern "C" fn(_: *mut libc::c_void) -> ()),
       );
@@ -2379,7 +2379,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
       ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32,
     ) == 0
     {
-      ::std::ptr::write_volatile((*job).pret, 0 as libc::c_int);
+      ::std::ptr::write_volatile((*job).pret, 0i32);
       opj_free(job as *mut libc::c_void);
       return;
     }
@@ -2401,45 +2401,45 @@ extern "C" fn opj_t1_cblk_encode_processor(
        * representation
        * Fixes https://github.com/uclouvain/openjpeg/issues/1053
        */
-      j = 0 as libc::c_int as OPJ_UINT32;
-      while j < cblk_h & !(3 as libc::c_uint) {
-        i = 0 as libc::c_int as OPJ_UINT32;
+      j = 0 as OPJ_UINT32;
+      while j < cblk_h & !(3u32) {
+        i = 0 as OPJ_UINT32;
         while i < cblk_w {
-          *t1data.offset(0 as libc::c_int as isize) = *tiledp_u.offset(
+          *t1data.offset(0) = *tiledp_u.offset(
             j.wrapping_add(0)
               .wrapping_mul(tile_w)
               .wrapping_add(i) as isize,
-          ) << 7 as libc::c_int - 1 as libc::c_int;
-          *t1data.offset(1 as libc::c_int as isize) = *tiledp_u.offset(
+          ) << 7i32 - 1i32;
+          *t1data.offset(1) = *tiledp_u.offset(
             j.wrapping_add(1)
               .wrapping_mul(tile_w)
               .wrapping_add(i) as isize,
-          ) << 7 as libc::c_int - 1 as libc::c_int;
-          *t1data.offset(2 as libc::c_int as isize) = *tiledp_u.offset(
+          ) << 7i32 - 1i32;
+          *t1data.offset(2) = *tiledp_u.offset(
             j.wrapping_add(2)
               .wrapping_mul(tile_w)
               .wrapping_add(i) as isize,
-          ) << 7 as libc::c_int - 1 as libc::c_int;
-          *t1data.offset(3 as libc::c_int as isize) = *tiledp_u.offset(
+          ) << 7i32 - 1i32;
+          *t1data.offset(3) = *tiledp_u.offset(
             j.wrapping_add(3)
               .wrapping_mul(tile_w)
               .wrapping_add(i) as isize,
-          ) << 7 as libc::c_int - 1 as libc::c_int;
-          t1data = t1data.offset(4 as libc::c_int as isize);
+          ) << 7i32 - 1i32;
+          t1data = t1data.offset(4);
           i = i.wrapping_add(1)
         }
         j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
           as OPJ_UINT32
       }
       if j < cblk_h {
-        i = 0 as libc::c_int as OPJ_UINT32;
+        i = 0 as OPJ_UINT32;
         while i < cblk_w {
           let mut k: OPJ_UINT32 = 0;
           k = j;
           while k < cblk_h {
-            *t1data.offset(0 as libc::c_int as isize) = *tiledp_u
+            *t1data.offset(0) = *tiledp_u
               .offset(k.wrapping_mul(tile_w).wrapping_add(i) as isize)
-              << 7 as libc::c_int - 1 as libc::c_int;
+              << 7i32 - 1i32;
             t1data = t1data.offset(1);
             k = k.wrapping_add(1)
           }
@@ -2451,57 +2451,57 @@ extern "C" fn opj_t1_cblk_encode_processor(
       let mut t1data_0 = t1.data;
       /* Change from "natural" order to "zigzag" order of T1 passes */
       /* Change from "natural" order to "zigzag" order of T1 passes */
-      j = 0 as libc::c_int as OPJ_UINT32; /* fixed_quality */
-      while j < cblk_h & !(3 as libc::c_uint) {
-        i = 0 as libc::c_int as OPJ_UINT32; /* compno  */
+      j = 0 as OPJ_UINT32; /* fixed_quality */
+      while j < cblk_h & !(3u32) {
+        i = 0 as OPJ_UINT32; /* compno  */
         while i < cblk_w {
-          *t1data_0.offset(0 as libc::c_int as isize) = opj_lrintf(
+          *t1data_0.offset(0) = opj_lrintf(
             *tiledp_f.offset(
               j.wrapping_add(0)
                 .wrapping_mul(tile_w)
                 .wrapping_add(i) as isize,
             ) / (*band).stepsize
-              * ((1 as libc::c_int) << 7 as libc::c_int - 1 as libc::c_int) as libc::c_float,
+              * ((1i32) << 7i32 - 1i32) as libc::c_float,
           ) as OPJ_INT32;
-          *t1data_0.offset(1 as libc::c_int as isize) = opj_lrintf(
+          *t1data_0.offset(1) = opj_lrintf(
             *tiledp_f.offset(
               j.wrapping_add(1)
                 .wrapping_mul(tile_w)
                 .wrapping_add(i) as isize,
             ) / (*band).stepsize
-              * ((1 as libc::c_int) << 7 as libc::c_int - 1 as libc::c_int) as libc::c_float,
+              * ((1i32) << 7i32 - 1i32) as libc::c_float,
           ) as OPJ_INT32;
-          *t1data_0.offset(2 as libc::c_int as isize) = opj_lrintf(
+          *t1data_0.offset(2) = opj_lrintf(
             *tiledp_f.offset(
               j.wrapping_add(2)
                 .wrapping_mul(tile_w)
                 .wrapping_add(i) as isize,
             ) / (*band).stepsize
-              * ((1 as libc::c_int) << 7 as libc::c_int - 1 as libc::c_int) as libc::c_float,
+              * ((1i32) << 7i32 - 1i32) as libc::c_float,
           ) as OPJ_INT32;
-          *t1data_0.offset(3 as libc::c_int as isize) = opj_lrintf(
+          *t1data_0.offset(3) = opj_lrintf(
             *tiledp_f.offset(
               j.wrapping_add(3)
                 .wrapping_mul(tile_w)
                 .wrapping_add(i) as isize,
             ) / (*band).stepsize
-              * ((1 as libc::c_int) << 7 as libc::c_int - 1 as libc::c_int) as libc::c_float,
+              * ((1i32) << 7i32 - 1i32) as libc::c_float,
           ) as OPJ_INT32;
-          t1data_0 = t1data_0.offset(4 as libc::c_int as isize);
+          t1data_0 = t1data_0.offset(4);
           i = i.wrapping_add(1)
         }
         j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
           as OPJ_UINT32
       }
       if j < cblk_h {
-        i = 0 as libc::c_int as OPJ_UINT32;
+        i = 0 as OPJ_UINT32;
         while i < cblk_w {
           let mut k_0: OPJ_UINT32 = 0;
           k_0 = j;
           while k_0 < cblk_h {
-            *t1data_0.offset(0 as libc::c_int as isize) = opj_lrintf(
+            *t1data_0.offset(0) = opj_lrintf(
               *tiledp_f.offset(k_0.wrapping_mul(tile_w).wrapping_add(i) as isize) / (*band).stepsize
-                * ((1 as libc::c_int) << 7 as libc::c_int - 1 as libc::c_int) as libc::c_float,
+                * ((1i32) << 7i32 - 1i32) as libc::c_float,
             ) as OPJ_INT32;
             t1data_0 = t1data_0.offset(1);
             k_0 = k_0.wrapping_add(1)
@@ -2545,7 +2545,7 @@ pub fn opj_t1_encode_cblks(
   mut mct_numcomps: OPJ_UINT32,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut ret = 1 as libc::c_int;
+    let mut ret = 1i32;
     let mut tp = (*tcd).thread_pool;
     let mut compno: OPJ_UINT32 = 0;
     let mut resno: OPJ_UINT32 = 0;
@@ -2553,17 +2553,17 @@ pub fn opj_t1_encode_cblks(
     let mut precno: OPJ_UINT32 = 0;
     let mut cblkno: OPJ_UINT32 = 0;
     let mut mutex = opj_mutex_create();
-    (*tile).distotile = 0 as libc::c_int as OPJ_FLOAT64;
-    compno = 0 as libc::c_int as OPJ_UINT32;
+    (*tile).distotile = 0 as OPJ_FLOAT64;
+    compno = 0 as OPJ_UINT32;
     's_19: while compno < (*tile).numcomps {
       let mut tilec: *mut opj_tcd_tilecomp_t =
         &mut *(*tile).comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
       let mut tccp: *mut opj_tccp_t = &mut *(*tcp).tccps.offset(compno as isize) as *mut opj_tccp_t;
-      resno = 0 as libc::c_int as OPJ_UINT32;
+      resno = 0 as OPJ_UINT32;
       while resno < (*tilec).numresolutions {
         let mut res: *mut opj_tcd_resolution_t =
           &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
-        bandno = 0 as libc::c_int as OPJ_UINT32;
+        bandno = 0 as OPJ_UINT32;
         while bandno < (*res).numbands {
           let mut band: *mut opj_tcd_band_t =
             &mut *(*res).bands.as_mut_ptr().offset(bandno as isize) as *mut opj_tcd_band_t;
@@ -2572,20 +2572,20 @@ pub fn opj_t1_encode_cblks(
           /* precno */
           /* Skip empty bands */
           if !(opj_tcd_is_band_empty(band) != 0) {
-            precno = 0 as libc::c_int as OPJ_UINT32;
+            precno = 0 as OPJ_UINT32;
             while precno < (*res).pw.wrapping_mul((*res).ph) {
               let mut prc: *mut opj_tcd_precinct_t =
                 &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
-              cblkno = 0 as libc::c_int as OPJ_UINT32;
+              cblkno = 0 as OPJ_UINT32;
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
                   &mut *(*prc).cblks.enc.offset(cblkno as isize) as *mut opj_tcd_cblk_enc_t;
                 let mut job = opj_calloc(
-                  1 as libc::c_int as size_t,
+                  1i32 as size_t,
                   ::std::mem::size_of::<opj_t1_cblk_encode_processing_job_t>() as libc::c_ulong,
                 ) as *mut opj_t1_cblk_encode_processing_job_t;
                 if job.is_null() {
-                  ::std::ptr::write_volatile(&mut ret as *mut OPJ_BOOL, 0 as libc::c_int);
+                  ::std::ptr::write_volatile(&mut ret as *mut OPJ_BOOL, 0i32);
                   break 's_19;
                 } else {
                   (*job).compno = compno;
@@ -2620,7 +2620,7 @@ pub fn opj_t1_encode_cblks(
       }
       compno = compno.wrapping_add(1)
     }
-    opj_thread_pool_wait_completion((*tcd).thread_pool, 0 as libc::c_int);
+    opj_thread_pool_wait_completion((*tcd).thread_pool, 0i32);
     if !mutex.is_null() {
       opj_mutex_destroy(mutex);
     }
@@ -2637,28 +2637,28 @@ fn opj_t1_enc_is_term_pass(
 ) -> libc::c_int {
   unsafe {
     /* Is it the last cleanup pass ? */
-    if passtype == 2 && bpno == 0 as libc::c_int {
-      return 1 as libc::c_int;
+    if passtype == 2 && bpno == 0i32 {
+      return 1i32;
     }
     if cblksty & 0x4 != 0 {
-      return 1 as libc::c_int;
+      return 1i32;
     }
     if cblksty & 0x1 != 0 {
       /* For bypass arithmetic bypass, terminate the 4th cleanup pass */
-      if bpno == (*cblk).numbps as OPJ_INT32 - 4 as libc::c_int
+      if bpno == (*cblk).numbps as OPJ_INT32 - 4i32
         && passtype == 2
       {
-        return 1 as libc::c_int;
+        return 1i32;
       }
       /* and beyond terminate all the magnitude refinement passes (in raw) */
       /* and cleanup passes (in MQC) */
-      if bpno < (*cblk).numbps as OPJ_INT32 - 4 as libc::c_int
+      if bpno < (*cblk).numbps as OPJ_INT32 - 4i32
         && passtype > 0
       {
-        return 1 as libc::c_int;
+        return 1i32;
       }
     }
-    return 0 as libc::c_int;
+    return 0i32;
   }
 }
 
@@ -2682,29 +2682,29 @@ fn opj_t1_encode_cblk(
     let mut passno: OPJ_UINT32 = 0;
     let mut bpno: OPJ_INT32 = 0;
     let mut passtype: OPJ_UINT32 = 0;
-    let mut nmsedec = 0 as libc::c_int;
+    let mut nmsedec = 0i32;
     let mut max: OPJ_INT32 = 0;
     let mut i: OPJ_UINT32 = 0;
     let mut j: OPJ_UINT32 = 0;
-    let mut type_0 = 0 as libc::c_int as OPJ_BYTE;
+    let mut type_0 = 0 as OPJ_BYTE;
     let mut tempwmsedec: OPJ_FLOAT64 = 0.;
     let mut datap = 0 as *mut OPJ_INT32;
     t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
-    max = 0 as libc::c_int;
+    max = 0i32;
     datap = t1.data;
-    j = 0 as libc::c_int as OPJ_UINT32;
+    j = 0 as OPJ_UINT32;
     while j < t1.h {
       let w = t1.w;
-      i = 0 as libc::c_int as OPJ_UINT32;
+      i = 0 as OPJ_UINT32;
       while i < w {
         let mut tmp = *datap;
-        if tmp < 0 as libc::c_int {
+        if tmp < 0i32 {
           let mut tmp_unsigned: OPJ_UINT32 = 0;
           max = opj_int_max(max, -tmp);
-          tmp_unsigned = if tmp >= 0 as libc::c_int {
+          tmp_unsigned = if tmp >= 0i32 {
             tmp as OPJ_UINT32
           } else {
-            (-tmp as OPJ_UINT32) | 0x80000000 as libc::c_uint
+            (-tmp as OPJ_UINT32) | 0x80000000u32
           };
           memcpy(
             datap as *mut libc::c_void,
@@ -2720,19 +2720,19 @@ fn opj_t1_encode_cblk(
       j = j.wrapping_add(1)
     }
     (*cblk).numbps = if max != 0 {
-      (opj_int_floorlog2(max) + 1 as libc::c_int - (7 as libc::c_int - 1 as libc::c_int))
+      (opj_int_floorlog2(max) + 1i32 - (7i32 - 1i32))
         as OPJ_UINT32
     } else {
       0
     };
     if (*cblk).numbps == 0 {
-      (*cblk).totalpasses = 0 as libc::c_int as OPJ_UINT32;
+      (*cblk).totalpasses = 0 as OPJ_UINT32;
       return cumwmsedec;
     }
     bpno = (*cblk)
       .numbps
       .wrapping_sub(1) as OPJ_INT32;
-    passtype = 2 as libc::c_int as OPJ_UINT32;
+    passtype = 2 as OPJ_UINT32;
 
     opj_mqc_resetstates(&mut t1.mqc);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
@@ -2740,17 +2740,17 @@ fn opj_t1_encode_cblk(
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
     opj_mqc_init_enc(&mut t1.mqc, (*cblk).data);
 
-    passno = 0 as libc::c_int as OPJ_UINT32;
-    while bpno >= 0 as libc::c_int {
+    passno = 0 as OPJ_UINT32;
+    while bpno >= 0i32 {
       let mut pass: *mut opj_tcd_pass_t =
         &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
-      type_0 = if bpno < (*cblk).numbps as OPJ_INT32 - 4 as libc::c_int
+      type_0 = if bpno < (*cblk).numbps as OPJ_INT32 - 4i32
         && passtype < 2
         && cblksty & 0x1 != 0
       {
-        1 as libc::c_int
+        1i32
       } else {
-        0 as libc::c_int
+        0i32
       } as OPJ_BYTE;
       /* If the previous pass was terminating, we need to reset the encoder */
       if passno > 0
@@ -2760,7 +2760,7 @@ fn opj_t1_encode_cblk(
         .term() as libc::c_int
           != 0
       {
-        if type_0 as libc::c_int == 1 as libc::c_int {
+        if type_0 as libc::c_int == 1i32 {
           opj_mqc_bypass_init_enc(&mut t1.mqc);
         } else {
           opj_mqc_restart_init_enc(&mut t1.mqc);
@@ -2799,7 +2799,7 @@ fn opj_t1_encode_cblk(
       (*pass).distortiondec = cumwmsedec;
       if opj_t1_enc_is_term_pass(cblk, cblksty, bpno, passtype) != 0 {
         /* If it is a terminated pass, terminate it */
-        if type_0 as libc::c_int == 1 as libc::c_int {
+        if type_0 as libc::c_int == 1i32 {
           opj_mqc_bypass_flush_enc(
             &mut t1.mqc,
             (cblksty & 0x10) as OPJ_BOOL,
@@ -2809,25 +2809,25 @@ fn opj_t1_encode_cblk(
         } else {
           opj_mqc_flush(&mut t1.mqc);
         }
-        (*pass).set_term(1 as libc::c_int as OPJ_BITFIELD);
+        (*pass).set_term(1 as OPJ_BITFIELD);
         (*pass).rate = opj_mqc_numbytes(&mut t1.mqc)
       } else {
         /* Non terminated pass */
         let mut rate_extra_bytes: OPJ_UINT32 = 0;
-        if type_0 as libc::c_int == 1 as libc::c_int {
+        if type_0 as libc::c_int == 1i32 {
           rate_extra_bytes = opj_mqc_bypass_get_extra_bytes(
             &mut t1.mqc,
             (cblksty & 0x10) as OPJ_BOOL,
           )
         } else {
-          rate_extra_bytes = 3 as libc::c_int as OPJ_UINT32
+          rate_extra_bytes = 3 as OPJ_UINT32
         }
-        (*pass).set_term(0 as libc::c_int as OPJ_BITFIELD);
+        (*pass).set_term(0 as OPJ_BITFIELD);
         (*pass).rate = opj_mqc_numbytes(&mut t1.mqc).wrapping_add(rate_extra_bytes)
       }
       passtype = passtype.wrapping_add(1);
       if passtype == 3 {
-        passtype = 0 as libc::c_int as OPJ_UINT32;
+        passtype = 0 as OPJ_UINT32;
         bpno -= 1
       }
       /* Code-switch "RESET" */
@@ -2852,7 +2852,7 @@ fn opj_t1_encode_cblk(
         }
       }
     }
-    passno = 0 as libc::c_int as OPJ_UINT32;
+    passno = 0 as OPJ_UINT32;
     while passno < (*cblk).totalpasses {
       let mut pass_1: *mut opj_tcd_pass_t =
         &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
@@ -2864,7 +2864,7 @@ fn opj_t1_encode_cblk(
           .rate
           .wrapping_sub(1) as isize,
       ) as libc::c_int
-        == 0xff as libc::c_int
+        == 0xffi32
       {
         (*pass_1).rate = (*pass_1).rate.wrapping_sub(1)
       }
