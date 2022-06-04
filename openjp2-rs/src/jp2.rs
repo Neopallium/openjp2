@@ -4,6 +4,7 @@ use super::event::*;
 use super::cio::*;
 use super::j2k::*;
 use ::libc;
+use ::libc::FILE;
 
 use super::malloc::*;
 
@@ -1275,11 +1276,11 @@ unsafe extern "C" fn opj_jp2_read_pclr(
       if bytes_to_read as libc::c_ulong > ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong {
         bytes_to_read = ::std::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32
       }
-      if (p_pclr_header_size as ptrdiff_t)
-        < p_pclr_header_data.wrapping_offset_from(orig_header_data) as libc::c_long
-          + bytes_to_read as ptrdiff_t
+      if (p_pclr_header_size as isize)
+        < p_pclr_header_data.wrapping_offset_from(orig_header_data)
+          + bytes_to_read as isize
       {
-        return 0i32;
+        return 0;
       }
       opj_read_bytes_LE(p_pclr_header_data, &mut l_value, bytes_to_read);
       p_pclr_header_data = p_pclr_header_data.offset(bytes_to_read as isize);

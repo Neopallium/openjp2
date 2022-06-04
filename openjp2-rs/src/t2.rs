@@ -6,6 +6,7 @@ use super::tcd::*;
 use super::tgt::*;
 use super::event::*;
 use ::libc;
+use ::libc::FILE;
 
 use super::malloc::*;
 
@@ -1187,7 +1188,7 @@ unsafe fn opj_t2_read_packet_header(
   if l_present == 0 {
     /* TODO MSD: no test to control the output of this function*/
     opj_bio_inalign(l_bio);
-    l_header_data = l_header_data.offset(opj_bio_numbytes(l_bio) as isize);
+    l_header_data = l_header_data.offset(opj_bio_numbytes(l_bio));
     opj_bio_destroy(l_bio);
     /* EPH markers */
     if (*p_tcp).csty & 0x4u32 != 0 {
@@ -1436,7 +1437,7 @@ unsafe fn opj_t2_read_packet_header(
     opj_bio_destroy(l_bio);
     return 0i32;
   }
-  l_header_data = l_header_data.offset(opj_bio_numbytes(l_bio) as isize);
+  l_header_data = l_header_data.offset(opj_bio_numbytes(l_bio));
   opj_bio_destroy(l_bio);
   /* EPH markers */
   if (*p_tcp).csty & 0x4u32 != 0 {
