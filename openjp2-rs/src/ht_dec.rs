@@ -263,20 +263,20 @@ unsafe fn mel_read(mut melp: *mut dec_mel_t) {
  */
 #[inline]
 unsafe fn mel_decode(mut melp: *mut dec_mel_t) {
-  static mut mel_exp: [libc::c_int; 13] = [
-    0i32,
-    0i32,
-    0i32,
-    1i32,
-    1i32,
-    1i32,
-    2i32,
-    2i32,
-    2i32,
-    3i32,
-    3i32,
-    4i32,
-    5i32,
+  const mel_exp: [libc::c_int; 13] = [
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    3,
+    3,
+    4,
+    5,
   ];
   if (*melp).bits < 6i32 {
     // if there are less than 6 bits in tmp
@@ -354,7 +354,7 @@ unsafe fn mel_init(
   //These few lines take care of the case where data is not at a multiple
   // of 4 boundary.  It reads 1,2,3 up to 4 bytes from the MEL segment
   num = 4i32
-    - ((*melp).data as intptr_t & 0x3i64) as libc::c_int;
+    - ((*melp).data as usize & 0x3) as libc::c_int;
   i = 0i32;
   while i < num {
     // this code is similar to mel_read
@@ -567,7 +567,7 @@ unsafe fn rev_init(
   // of 4 boundary. It reads 1,2,3 up to 4 bytes from the VLC bitstream.
   // To read 32 bits, read from (vlcp->data - 3)
   num = 1i32
-    + ((*vlcp).data as intptr_t & 0x3i64) as libc::c_int;
+    + ((*vlcp).data as usize & 0x3) as libc::c_int;
   tnum = if num < (*vlcp).size {
     num
   } else {
@@ -773,7 +773,7 @@ unsafe fn rev_init_mrp(
   //These few lines take care of the case where data is not at a multiple
   // of 4 boundary.  It reads 1,2,3 up to 4 bytes from the MRP stream
   num = 1i32
-    + ((*mrp).data as intptr_t & 0x3i64) as libc::c_int;
+    + ((*mrp).data as usize & 0x3) as libc::c_int;
   i = 0i32;
   while i < num {
     let mut d: OPJ_UINT64 = 0;
@@ -1241,7 +1241,7 @@ unsafe fn frwd_init(
   //These few lines take care of the case where data is not at a multiple
   // of 4 boundary.  It reads 1,2,3 up to 4 bytes from the bitstream
   num = 4i32
-    - ((*msp).data as intptr_t & 0x3i64) as libc::c_int;
+    - ((*msp).data as usize & 0x3) as libc::c_int;
   i = 0i32;
   while i < num {
     let mut d: OPJ_UINT64 = 0;

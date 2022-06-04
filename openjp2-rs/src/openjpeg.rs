@@ -8,76 +8,25 @@ use ::libc;
 
 use super::malloc::*;
 
-extern "C" {
-  pub type _IO_wide_data;
-  pub type _IO_codecvt;
-  pub type _IO_marker;
+use ::libc::{
+  FILE,
+  fclose,
+  fopen,
+  fread,
+  fwrite,
+  fseeko,
+  ftello,
+};
 
+extern "C" {
   fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
 
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
-
-  fn fclose(__stream: *mut FILE) -> libc::c_int;
-
-  fn fopen(_: *const libc::c_char, _: *const libc::c_char) -> *mut FILE;
-
-  fn fread(_: *mut libc::c_void, _: libc::c_ulong, _: libc::c_ulong, _: *mut FILE)
-    -> libc::c_ulong;
-
-  fn fwrite(
-    _: *const libc::c_void,
-    _: libc::c_ulong,
-    _: libc::c_ulong,
-    _: *mut FILE,
-  ) -> libc::c_ulong;
-
-  fn fseeko(__stream: *mut FILE, __off: __off_t, __whence: libc::c_int) -> libc::c_int;
-
-  fn ftello(__stream: *mut FILE) -> __off_t;
 }
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct _IO_FILE {
-  pub _flags: libc::c_int,
-  pub _IO_read_ptr: *mut libc::c_char,
-  pub _IO_read_end: *mut libc::c_char,
-  pub _IO_read_base: *mut libc::c_char,
-  pub _IO_write_base: *mut libc::c_char,
-  pub _IO_write_ptr: *mut libc::c_char,
-  pub _IO_write_end: *mut libc::c_char,
-  pub _IO_buf_base: *mut libc::c_char,
-  pub _IO_buf_end: *mut libc::c_char,
-  pub _IO_save_base: *mut libc::c_char,
-  pub _IO_backup_base: *mut libc::c_char,
-  pub _IO_save_end: *mut libc::c_char,
-  pub _markers: *mut _IO_marker,
-  pub _chain: *mut _IO_FILE,
-  pub _fileno: libc::c_int,
-  pub _flags2: libc::c_int,
-  pub _old_offset: __off_t,
-  pub _cur_column: libc::c_ushort,
-  pub _vtable_offset: libc::c_schar,
-  pub _shortbuf: [libc::c_char; 1],
-  pub _lock: *mut libc::c_void,
-  pub _offset: __off64_t,
-  pub _codecvt: *mut _IO_codecvt,
-  pub _wide_data: *mut _IO_wide_data,
-  pub _freeres_list: *mut _IO_FILE,
-  pub _freeres_buf: *mut libc::c_void,
-  pub __pad5: size_t,
-  pub _mode: libc::c_int,
-  pub _unused2: [libc::c_char; 20],
-}
-pub type _IO_lock_t = ();
-pub type FILE = _IO_FILE;
 
 pub type size_t = libc::c_ulong;
-type __off_t = libc::c_long;
-type __off64_t = libc::c_long;
 
 pub type intptr_t = i64;
-pub type ptrdiff_t = i64;
 pub type OPJ_BOOL = i32;
 pub type OPJ_CHAR = i8;
 pub type OPJ_FLOAT32 = f32;
@@ -1390,12 +1339,12 @@ unsafe extern "C" fn opj_read_from_file(
   mut p_user_data: *mut libc::c_void,
 ) -> OPJ_SIZE_T {
   let mut p_file = p_user_data as *mut FILE;
-  let mut l_nb_read = fread(
+  let l_nb_read = fread(
     p_buffer,
-    1u64,
-    p_nb_bytes,
+    1,
+    p_nb_bytes as usize,
     p_file,
-  );
+  ) as u64;
   return if l_nb_read != 0 {
     l_nb_read
   } else {
@@ -1407,9 +1356,9 @@ unsafe extern "C" fn opj_get_data_length_from_file(
 ) -> OPJ_UINT64 {
   let mut p_file = p_user_data as *mut FILE;
   let mut file_length = 0 as OPJ_OFF_T;
-  fseeko(p_file, 0i32 as __off_t, 2i32);
+  fseeko(p_file, 0, 2);
   file_length = ftello(p_file);
-  fseeko(p_file, 0i32 as __off_t, 0i32);
+  fseeko(p_file, 0, 0);
   return file_length as OPJ_UINT64;
 }
 unsafe extern "C" fn opj_write_from_file(
@@ -1420,10 +1369,10 @@ unsafe extern "C" fn opj_write_from_file(
   let mut p_file = p_user_data as *mut FILE;
   return fwrite(
     p_buffer,
-    1u64,
-    p_nb_bytes,
+    1,
+    p_nb_bytes as usize,
     p_file,
-  );
+  ) as u64;
 }
 unsafe extern "C" fn opj_skip_from_file(
   mut p_nb_bytes: OPJ_OFF_T,

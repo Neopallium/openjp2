@@ -14,6 +14,12 @@ use ::libc;
 
 use super::malloc::*;
 
+use ::libc::{
+  FILE,
+  fprintf,
+  sprintf,
+};
+
 extern "C" {
   fn strcpy(_: *mut libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;
 
@@ -29,10 +35,6 @@ extern "C" {
 
   fn floor(_: libc::c_double) -> libc::c_double;
   static mut stdout: *mut FILE;
-
-  fn fprintf(_: *mut FILE, _: *const libc::c_char, _: ...) -> libc::c_int;
-
-  fn sprintf(_: *mut libc::c_char, _: *const libc::c_char, _: ...) -> libc::c_int;
 
   fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
 
