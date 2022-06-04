@@ -35,17 +35,6 @@ extern "C" {
 
   fn ftello(__stream: *mut FILE) -> __off_t;
 }
-pub type size_t = libc::c_ulong;
-pub type __int8_t = libc::c_char;
-pub type __uint8_t = libc::c_uchar;
-pub type __int16_t = libc::c_short;
-pub type __uint16_t = libc::c_ushort;
-pub type __int32_t = libc::c_int;
-pub type __uint32_t = libc::c_uint;
-pub type __int64_t = libc::c_long;
-pub type __uint64_t = libc::c_ulong;
-pub type __off_t = libc::c_long;
-pub type __off64_t = libc::c_long;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -82,32 +71,29 @@ pub struct _IO_FILE {
 }
 pub type _IO_lock_t = ();
 pub type FILE = _IO_FILE;
-pub type intptr_t = libc::c_long;
-pub type ptrdiff_t = libc::c_long;
-pub type OPJ_BOOL = libc::c_int;
-pub type OPJ_CHAR = libc::c_char;
-pub type OPJ_FLOAT32 = libc::c_float;
-pub type OPJ_FLOAT64 = libc::c_double;
-pub type OPJ_BYTE = libc::c_uchar;
-pub type int8_t = __int8_t;
-pub type int16_t = __int16_t;
-pub type int32_t = __int32_t;
-pub type int64_t = __int64_t;
-pub type uint8_t = __uint8_t;
-pub type uint16_t = __uint16_t;
-pub type uint32_t = __uint32_t;
-pub type uint64_t = __uint64_t;
-pub type OPJ_INT8 = int8_t;
-pub type OPJ_UINT8 = uint8_t;
-pub type OPJ_INT16 = int16_t;
-pub type OPJ_UINT16 = uint16_t;
-pub type OPJ_INT32 = int32_t;
-pub type OPJ_UINT32 = uint32_t;
-pub type OPJ_INT64 = int64_t;
-pub type OPJ_UINT64 = uint64_t;
-pub type OPJ_OFF_T = int64_t;
-pub type OPJ_SIZE_T = size_t;
-pub type opj_flag_t = OPJ_UINT32;
+
+pub type size_t = libc::c_ulong;
+type __off_t = libc::c_long;
+type __off64_t = libc::c_long;
+
+pub type intptr_t = i64;
+pub type ptrdiff_t = i64;
+pub type OPJ_BOOL = i32;
+pub type OPJ_CHAR = i8;
+pub type OPJ_FLOAT32 = f32;
+pub type OPJ_FLOAT64 = f64;
+pub type OPJ_BYTE = u8;
+pub type OPJ_INT8 = i8;
+pub type OPJ_UINT8 = u8;
+pub type OPJ_INT16 = i16;
+pub type OPJ_UINT16 = u16;
+pub type OPJ_INT32 = i32;
+pub type OPJ_UINT32 = u32;
+pub type OPJ_INT64 = i64;
+pub type OPJ_UINT64 = u64;
+pub type OPJ_OFF_T = i64;
+pub type OPJ_SIZE_T = u64;
+pub type opj_flag_t = u32;
 pub type RSIZ_CAPABILITIES = libc::c_uint;
 pub const OPJ_MCT: RSIZ_CAPABILITIES = 33024;
 pub const OPJ_CINEMA4K: RSIZ_CAPABILITIES = 4;
