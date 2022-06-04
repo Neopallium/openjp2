@@ -55,10 +55,10 @@ pub(crate) unsafe extern "C" fn opj_write_bytes_BE(
   mut p_nb_bytes: OPJ_UINT32,
 ) {
   let mut l_data_ptr = (&mut p_value as *mut OPJ_UINT32 as *const OPJ_BYTE)
-    .offset(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong as isize)
+    .offset(::std::mem::size_of::<OPJ_UINT32>() as isize)
     .offset(-(p_nb_bytes as isize));
   assert!(
-    p_nb_bytes > 0 as libc::c_int as libc::c_uint
+    p_nb_bytes > 0u32
       && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
   );
   memcpy(
@@ -75,13 +75,13 @@ pub(crate) unsafe extern "C" fn opj_write_bytes_LE(
 ) {
   let mut l_data_ptr = (&mut p_value as *mut OPJ_UINT32 as *const OPJ_BYTE)
     .offset(p_nb_bytes as isize)
-    .offset(-(1 as libc::c_int as isize));
+    .offset(-1);
   let mut i: OPJ_UINT32 = 0;
   assert!(
-    p_nb_bytes > 0 as libc::c_int as libc::c_uint
+    p_nb_bytes > 0u32
       && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
   );
-  i = 0 as libc::c_int as OPJ_UINT32;
+  i = 0 as OPJ_UINT32;
   while i < p_nb_bytes {
     let fresh0 = l_data_ptr;
     l_data_ptr = l_data_ptr.offset(-1);
@@ -99,13 +99,13 @@ pub(crate) unsafe extern "C" fn opj_read_bytes_BE(
 ) {
   let mut l_data_ptr = p_value as *mut OPJ_BYTE;
   assert!(
-    p_nb_bytes > 0 as libc::c_int as libc::c_uint
+    p_nb_bytes > 0u32
       && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
   );
-  *p_value = 0 as libc::c_int as OPJ_UINT32;
+  *p_value = 0 as OPJ_UINT32;
   memcpy(
     l_data_ptr
-      .offset(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong as isize)
+      .offset(::std::mem::size_of::<OPJ_UINT32>() as isize)
       .offset(-(p_nb_bytes as isize)) as *mut libc::c_void,
     p_buffer as *const libc::c_void,
     p_nb_bytes as libc::c_ulong,
@@ -119,14 +119,14 @@ pub(crate) unsafe extern "C" fn opj_read_bytes_LE(
 ) {
   let mut l_data_ptr = (p_value as *mut OPJ_BYTE)
     .offset(p_nb_bytes as isize)
-    .offset(-(1 as libc::c_int as isize));
+    .offset(-1);
   let mut i: OPJ_UINT32 = 0;
   assert!(
-    p_nb_bytes > 0 as libc::c_int as libc::c_uint
+    p_nb_bytes > 0u32
       && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
   );
-  *p_value = 0 as libc::c_int as OPJ_UINT32;
-  i = 0 as libc::c_int as OPJ_UINT32;
+  *p_value = 0 as OPJ_UINT32;
+  i = 0 as OPJ_UINT32;
   while i < p_nb_bytes {
     let fresh2 = p_buffer;
     p_buffer = p_buffer.offset(1);
@@ -154,10 +154,10 @@ pub(crate) unsafe extern "C" fn opj_write_double_LE(
   mut p_value: OPJ_FLOAT64,
 ) {
   let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT64 as *const OPJ_BYTE)
-    .offset(::std::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong as isize)
-    .offset(-(1 as libc::c_int as isize));
+    .offset(::std::mem::size_of::<OPJ_FLOAT64>() as isize)
+    .offset(-1);
   let mut i: OPJ_UINT32 = 0;
-  i = 0 as libc::c_int as OPJ_UINT32;
+  i = 0 as OPJ_UINT32;
   while (i as libc::c_ulong) < ::std::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong {
     let fresh4 = l_data_ptr;
     l_data_ptr = l_data_ptr.offset(-1);
@@ -185,10 +185,10 @@ pub(crate) unsafe extern "C" fn opj_read_double_LE(
   mut p_value: *mut OPJ_FLOAT64,
 ) {
   let mut l_data_ptr = (p_value as *mut OPJ_BYTE)
-    .offset(::std::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong as isize)
-    .offset(-(1 as libc::c_int as isize));
+    .offset(::std::mem::size_of::<OPJ_FLOAT64>() as isize)
+    .offset(-1);
   let mut i: OPJ_UINT32 = 0;
-  i = 0 as libc::c_int as OPJ_UINT32;
+  i = 0 as OPJ_UINT32;
   while (i as libc::c_ulong) < ::std::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong {
     let fresh6 = p_buffer;
     p_buffer = p_buffer.offset(1);
@@ -210,10 +210,10 @@ pub(crate) unsafe extern "C" fn opj_write_float_BE(mut p_buffer: *mut OPJ_BYTE, 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_write_float_LE(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT32) {
   let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT32 as *const OPJ_BYTE)
-    .offset(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong as isize)
-    .offset(-(1 as libc::c_int as isize));
+    .offset(::std::mem::size_of::<OPJ_FLOAT32>() as isize)
+    .offset(-1);
   let mut i: OPJ_UINT32 = 0;
-  i = 0 as libc::c_int as OPJ_UINT32;
+  i = 0 as OPJ_UINT32;
   while (i as libc::c_ulong) < ::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong {
     let fresh8 = l_data_ptr;
     l_data_ptr = l_data_ptr.offset(-1);
@@ -241,10 +241,10 @@ pub(crate) unsafe extern "C" fn opj_read_float_LE(
   mut p_value: *mut OPJ_FLOAT32,
 ) {
   let mut l_data_ptr = (p_value as *mut OPJ_BYTE)
-    .offset(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong as isize)
-    .offset(-(1 as libc::c_int as isize));
+    .offset(::std::mem::size_of::<OPJ_FLOAT32>() as isize)
+    .offset(-1);
   let mut i: OPJ_UINT32 = 0;
-  i = 0 as libc::c_int as OPJ_UINT32;
+  i = 0 as OPJ_UINT32;
   while (i as libc::c_ulong) < ::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong {
     let fresh10 = p_buffer;
     p_buffer = p_buffer.offset(1);
@@ -261,7 +261,7 @@ pub(crate) unsafe extern "C" fn opj_stream_create(
 ) -> *mut opj_stream_t {
   let mut l_stream = 0 as *mut opj_stream_private_t;
   l_stream = opj_calloc(
-    1 as libc::c_int as size_t,
+    1i32 as size_t,
     ::std::mem::size_of::<opj_stream_private_t>() as libc::c_ulong,
   ) as *mut opj_stream_private_t;
   if l_stream.is_null() {
@@ -275,7 +275,7 @@ pub(crate) unsafe extern "C" fn opj_stream_create(
   }
   (*l_stream).m_current_data = (*l_stream).m_stored_data;
   if l_is_input != 0 {
-    (*l_stream).m_status |= 0x2 as libc::c_uint;
+    (*l_stream).m_status |= 0x2u32;
     (*l_stream).m_opj_skip = Some(
       opj_stream_read_skip
         as unsafe extern "C" fn(
@@ -293,7 +293,7 @@ pub(crate) unsafe extern "C" fn opj_stream_create(
         ) -> OPJ_BOOL,
     )
   } else {
-    (*l_stream).m_status |= 0x1 as libc::c_uint;
+    (*l_stream).m_status |= 0x1u32;
     (*l_stream).m_opj_skip = Some(
       opj_stream_write_skip
         as unsafe extern "C" fn(
@@ -338,7 +338,7 @@ pub(crate) unsafe extern "C" fn opj_stream_create(
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_stream_default_create(mut l_is_input: OPJ_BOOL) -> *mut opj_stream_t {
-  return opj_stream_create(0x100000 as libc::c_int as OPJ_SIZE_T, l_is_input);
+  return opj_stream_create(0x100000 as OPJ_SIZE_T, l_is_input);
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_stream_destroy(mut p_stream: *mut opj_stream_t) {
@@ -360,7 +360,7 @@ pub(crate) unsafe extern "C" fn opj_stream_set_read_function(
   mut p_function: opj_stream_read_fn,
 ) {
   let mut l_stream = p_stream as *mut opj_stream_private_t;
-  if l_stream.is_null() || (*l_stream).m_status & 0x2 as libc::c_uint == 0 {
+  if l_stream.is_null() || (*l_stream).m_status & 0x2u32 == 0 {
     return;
   }
   (*l_stream).m_read_fn = p_function;
@@ -382,7 +382,7 @@ pub(crate) unsafe extern "C" fn opj_stream_set_write_function(
   mut p_function: opj_stream_write_fn,
 ) {
   let mut l_stream = p_stream as *mut opj_stream_private_t;
-  if l_stream.is_null() || (*l_stream).m_status & 0x1 as libc::c_uint == 0 {
+  if l_stream.is_null() || (*l_stream).m_status & 0x1u32 == 0 {
     return;
   }
   (*l_stream).m_write_fn = p_function;
@@ -429,7 +429,7 @@ pub(crate) unsafe extern "C" fn opj_stream_read_data(
   mut p_size: OPJ_SIZE_T,
   mut p_event_mgr: *mut opj_event_mgr_t,
 ) -> OPJ_SIZE_T {
-  let mut l_read_nb_bytes = 0 as libc::c_int as OPJ_SIZE_T;
+  let mut l_read_nb_bytes = 0 as OPJ_SIZE_T;
   if (*p_stream).m_bytes_in_buffer >= p_size {
     memcpy(
       p_buffer as *mut libc::c_void,
@@ -445,7 +445,7 @@ pub(crate) unsafe extern "C" fn opj_stream_read_data(
     return l_read_nb_bytes;
   }
   /* we are now in the case when the remaining data if not sufficient */
-  if (*p_stream).m_status & 0x4 as libc::c_uint != 0 {
+  if (*p_stream).m_status & 0x4u32 != 0 {
     l_read_nb_bytes = (l_read_nb_bytes as libc::c_ulong).wrapping_add((*p_stream).m_bytes_in_buffer)
       as OPJ_SIZE_T as OPJ_SIZE_T;
     memcpy(
@@ -457,11 +457,11 @@ pub(crate) unsafe extern "C" fn opj_stream_read_data(
       .m_current_data
       .offset((*p_stream).m_bytes_in_buffer as isize);
     (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
-    (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T;
+    (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
     return if l_read_nb_bytes != 0 {
       l_read_nb_bytes
     } else {
-      -(1 as libc::c_int) as OPJ_SIZE_T
+      -(1i32) as OPJ_SIZE_T
     };
   }
   /* the flag is not set, we copy data and then do an actual read on the stream */
@@ -478,7 +478,7 @@ pub(crate) unsafe extern "C" fn opj_stream_read_data(
     p_size = (p_size as libc::c_ulong).wrapping_sub((*p_stream).m_bytes_in_buffer) as OPJ_SIZE_T
       as OPJ_SIZE_T;
     (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
-    (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T
+    (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T
   } else {
     /* case where we are already at the end of the buffer
     so reset the m_current_data to point to the start of the
@@ -494,20 +494,20 @@ pub(crate) unsafe extern "C" fn opj_stream_read_data(
         (*p_stream).m_buffer_size,
         (*p_stream).m_user_data,
       );
-      if (*p_stream).m_bytes_in_buffer == -(1 as libc::c_int) as OPJ_SIZE_T {
+      if (*p_stream).m_bytes_in_buffer == -(1i32) as OPJ_SIZE_T {
         /* end of stream */
         opj_event_msg(
           p_event_mgr,
-          4 as libc::c_int,
+          4i32,
           b"Stream reached its end !\n\x00" as *const u8 as *const libc::c_char,
         );
-        (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T;
-        (*p_stream).m_status |= 0x4 as libc::c_uint;
+        (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
+        (*p_stream).m_status |= 0x4u32;
         /* end of stream */
         return if l_read_nb_bytes != 0 {
           l_read_nb_bytes
         } else {
-          -(1 as libc::c_int) as OPJ_SIZE_T
+          -(1i32) as OPJ_SIZE_T
         };
       } else {
         if (*p_stream).m_bytes_in_buffer < p_size {
@@ -525,7 +525,7 @@ pub(crate) unsafe extern "C" fn opj_stream_read_data(
           p_size = (p_size as libc::c_ulong).wrapping_sub((*p_stream).m_bytes_in_buffer)
             as OPJ_SIZE_T as OPJ_SIZE_T;
           (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
-          (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T
+          (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T
         } else {
           l_read_nb_bytes =
             (l_read_nb_bytes as libc::c_ulong).wrapping_add(p_size) as OPJ_SIZE_T as OPJ_SIZE_T;
@@ -549,20 +549,20 @@ pub(crate) unsafe extern "C" fn opj_stream_read_data(
         p_size,
         (*p_stream).m_user_data,
       );
-      if (*p_stream).m_bytes_in_buffer == -(1 as libc::c_int) as OPJ_SIZE_T {
+      if (*p_stream).m_bytes_in_buffer == -(1i32) as OPJ_SIZE_T {
         /*  end of stream */
         opj_event_msg(
           p_event_mgr,
-          4 as libc::c_int,
+          4i32,
           b"Stream reached its end !\n\x00" as *const u8 as *const libc::c_char,
         );
-        (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T;
-        (*p_stream).m_status |= 0x4 as libc::c_uint;
+        (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
+        (*p_stream).m_status |= 0x4u32;
         /* end of stream */
         return if l_read_nb_bytes != 0 {
           l_read_nb_bytes
         } else {
-          -(1 as libc::c_int) as OPJ_SIZE_T
+          -(1i32) as OPJ_SIZE_T
         };
       } else {
         if (*p_stream).m_bytes_in_buffer < p_size {
@@ -575,7 +575,7 @@ pub(crate) unsafe extern "C" fn opj_stream_read_data(
           p_size = (p_size as libc::c_ulong).wrapping_sub((*p_stream).m_bytes_in_buffer)
             as OPJ_SIZE_T as OPJ_SIZE_T;
           (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
-          (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T
+          (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T
         } else {
           /* we have read the exact size */
           l_read_nb_bytes = (l_read_nb_bytes as libc::c_ulong)
@@ -583,7 +583,7 @@ pub(crate) unsafe extern "C" fn opj_stream_read_data(
             as OPJ_SIZE_T;
           (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
           (*p_stream).m_current_data = (*p_stream).m_stored_data;
-          (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T;
+          (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
           return l_read_nb_bytes;
         }
       }
@@ -597,10 +597,10 @@ pub(crate) unsafe extern "C" fn opj_stream_write_data(
   mut p_size: OPJ_SIZE_T,
   mut p_event_mgr: *mut opj_event_mgr_t,
 ) -> OPJ_SIZE_T {
-  let mut l_remaining_bytes = 0 as libc::c_int as OPJ_SIZE_T;
-  let mut l_write_nb_bytes = 0 as libc::c_int as OPJ_SIZE_T;
-  if (*p_stream).m_status & 0x8 as libc::c_uint != 0 {
-    return -(1 as libc::c_int) as OPJ_SIZE_T;
+  let mut l_remaining_bytes = 0 as OPJ_SIZE_T;
+  let mut l_write_nb_bytes = 0 as OPJ_SIZE_T;
+  if (*p_stream).m_status & 0x8u32 != 0 {
+    return -(1i32) as OPJ_SIZE_T;
   }
   loop {
     l_remaining_bytes = (*p_stream)
@@ -640,7 +640,7 @@ pub(crate) unsafe extern "C" fn opj_stream_write_data(
       (*p_stream).m_byte_offset += l_remaining_bytes as OPJ_OFF_T
     }
     if opj_stream_flush(p_stream, p_event_mgr) == 0 {
-      return -(1 as libc::c_int) as OPJ_SIZE_T;
+      return -(1i32) as OPJ_SIZE_T;
     }
   }
 }
@@ -650,7 +650,7 @@ pub(crate) unsafe extern "C" fn opj_stream_flush(
   mut p_event_mgr: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   /* the number of bytes written on the media. */
-  let mut l_current_write_nb_bytes = 0 as libc::c_int as OPJ_SIZE_T;
+  let mut l_current_write_nb_bytes = 0 as OPJ_SIZE_T;
   (*p_stream).m_current_data = (*p_stream).m_stored_data;
   while (*p_stream).m_bytes_in_buffer != 0 {
     /* we should do an actual write on the media */
@@ -659,14 +659,14 @@ pub(crate) unsafe extern "C" fn opj_stream_flush(
       (*p_stream).m_bytes_in_buffer,
       (*p_stream).m_user_data,
     );
-    if l_current_write_nb_bytes == -(1 as libc::c_int) as OPJ_SIZE_T {
-      (*p_stream).m_status |= 0x8 as libc::c_uint;
+    if l_current_write_nb_bytes == -(1i32) as OPJ_SIZE_T {
+      (*p_stream).m_status |= 0x8u32;
       opj_event_msg(
         p_event_mgr,
-        4 as libc::c_int,
+        4i32,
         b"Error on writing stream!\n\x00" as *const u8 as *const libc::c_char,
       );
-      return 0 as libc::c_int;
+      return 0i32;
     }
     (*p_stream).m_current_data = (*p_stream)
       .m_current_data
@@ -676,7 +676,7 @@ pub(crate) unsafe extern "C" fn opj_stream_flush(
       as OPJ_SIZE_T
   }
   (*p_stream).m_current_data = (*p_stream).m_stored_data;
-  return 1 as libc::c_int;
+  return 1i32;
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_stream_read_skip(
@@ -684,9 +684,9 @@ pub(crate) unsafe extern "C" fn opj_stream_read_skip(
   mut p_size: OPJ_OFF_T,
   mut p_event_mgr: *mut opj_event_mgr_t,
 ) -> OPJ_OFF_T {
-  let mut l_skip_nb_bytes = 0 as libc::c_int as OPJ_OFF_T;
-  let mut l_current_skip_nb_bytes = 0 as libc::c_int as OPJ_OFF_T;
-  assert!(p_size >= 0 as libc::c_int as libc::c_long);
+  let mut l_skip_nb_bytes = 0 as OPJ_OFF_T;
+  let mut l_current_skip_nb_bytes = 0 as OPJ_OFF_T;
+  assert!(p_size >= 0i64);
   if (*p_stream).m_bytes_in_buffer >= p_size as OPJ_SIZE_T {
     (*p_stream).m_current_data = (*p_stream).m_current_data.offset(p_size as isize);
     /* it is safe to cast p_size to OPJ_SIZE_T since it is <= m_bytes_in_buffer
@@ -699,17 +699,17 @@ pub(crate) unsafe extern "C" fn opj_stream_read_skip(
     return l_skip_nb_bytes;
   }
   /* we are now in the case when the remaining data if not sufficient */
-  if (*p_stream).m_status & 0x4 as libc::c_uint != 0 {
+  if (*p_stream).m_status & 0x4u32 != 0 {
     l_skip_nb_bytes += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
     (*p_stream).m_current_data = (*p_stream)
       .m_current_data
       .offset((*p_stream).m_bytes_in_buffer as isize);
-    (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T;
+    (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
     (*p_stream).m_byte_offset += l_skip_nb_bytes;
     return if l_skip_nb_bytes != 0 {
       l_skip_nb_bytes
     } else {
-      -(1 as libc::c_int) as OPJ_OFF_T
+      -(1i32) as OPJ_OFF_T
     };
   }
   /* the flag is not set, we copy data and then do an actual skip on the stream */
@@ -717,9 +717,9 @@ pub(crate) unsafe extern "C" fn opj_stream_read_skip(
     l_skip_nb_bytes += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
     (*p_stream).m_current_data = (*p_stream).m_stored_data;
     p_size -= (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
-    (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T
+    (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T
   }
-  while p_size > 0 as libc::c_int as libc::c_long {
+  while p_size > 0i64 {
     /* Check if we are going beyond the end of file. Most skip_fn do not */
     /* check that, but we must be careful not to advance m_byte_offset */
     /* beyond m_user_data_length, otherwise */
@@ -729,7 +729,7 @@ pub(crate) unsafe extern "C" fn opj_stream_read_skip(
     {
       opj_event_msg(
         p_event_mgr,
-        4 as libc::c_int,
+        4i32,
         b"Stream reached its end !\n\x00" as *const u8 as *const libc::c_char,
       );
       (*p_stream).m_byte_offset += l_skip_nb_bytes;
@@ -741,30 +741,30 @@ pub(crate) unsafe extern "C" fn opj_stream_read_skip(
         (*p_stream).m_user_data_length as OPJ_OFF_T,
         p_event_mgr,
       );
-      (*p_stream).m_status |= 0x4 as libc::c_uint;
+      (*p_stream).m_status |= 0x4u32;
       /* end if stream */
       return if l_skip_nb_bytes != 0 {
         l_skip_nb_bytes
       } else {
-        -(1 as libc::c_int) as OPJ_OFF_T
+        -(1i32) as OPJ_OFF_T
       };
     }
     /* we should do an actual skip on the media */
     l_current_skip_nb_bytes =
       (*p_stream).m_skip_fn.expect("non-null function pointer")(p_size, (*p_stream).m_user_data);
-    if l_current_skip_nb_bytes == -(1 as libc::c_int) as OPJ_OFF_T {
+    if l_current_skip_nb_bytes == -(1i32) as OPJ_OFF_T {
       opj_event_msg(
         p_event_mgr,
-        4 as libc::c_int,
+        4i32,
         b"Stream reached its end !\n\x00" as *const u8 as *const libc::c_char,
       );
-      (*p_stream).m_status |= 0x4 as libc::c_uint;
+      (*p_stream).m_status |= 0x4u32;
       (*p_stream).m_byte_offset += l_skip_nb_bytes;
       /* end if stream */
       return if l_skip_nb_bytes != 0 {
         l_skip_nb_bytes
       } else {
-        -(1 as libc::c_int) as OPJ_OFF_T
+        -(1i32) as OPJ_OFF_T
       };
     }
     p_size -= l_current_skip_nb_bytes;
@@ -779,37 +779,37 @@ pub(crate) unsafe extern "C" fn opj_stream_write_skip(
   mut p_size: OPJ_OFF_T,
   mut p_event_mgr: *mut opj_event_mgr_t,
 ) -> OPJ_OFF_T {
-  let mut l_is_written = 0 as libc::c_int;
-  let mut l_current_skip_nb_bytes = 0 as libc::c_int as OPJ_OFF_T;
-  let mut l_skip_nb_bytes = 0 as libc::c_int as OPJ_OFF_T;
-  if (*p_stream).m_status & 0x8 as libc::c_uint != 0 {
-    return -(1 as libc::c_int) as OPJ_OFF_T;
+  let mut l_is_written = 0i32;
+  let mut l_current_skip_nb_bytes = 0 as OPJ_OFF_T;
+  let mut l_skip_nb_bytes = 0 as OPJ_OFF_T;
+  if (*p_stream).m_status & 0x8u32 != 0 {
+    return -(1i32) as OPJ_OFF_T;
   }
   /* we should flush data */
   l_is_written = opj_stream_flush(p_stream, p_event_mgr);
   if l_is_written == 0 {
-    (*p_stream).m_status |= 0x8 as libc::c_uint;
-    (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T;
-    return -(1 as libc::c_int) as OPJ_OFF_T;
+    (*p_stream).m_status |= 0x8u32;
+    (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
+    return -(1i32) as OPJ_OFF_T;
   }
   /* then skip */
-  while p_size > 0 as libc::c_int as libc::c_long {
+  while p_size > 0i64 {
     /* we should do an actual skip on the media */
     l_current_skip_nb_bytes =
       (*p_stream).m_skip_fn.expect("non-null function pointer")(p_size, (*p_stream).m_user_data);
-    if l_current_skip_nb_bytes == -(1 as libc::c_int) as OPJ_OFF_T {
+    if l_current_skip_nb_bytes == -(1i32) as OPJ_OFF_T {
       opj_event_msg(
         p_event_mgr,
-        4 as libc::c_int,
+        4i32,
         b"Stream error!\n\x00" as *const u8 as *const libc::c_char,
       );
-      (*p_stream).m_status |= 0x8 as libc::c_uint;
+      (*p_stream).m_status |= 0x8u32;
       (*p_stream).m_byte_offset += l_skip_nb_bytes;
       /* end if stream */
       return if l_skip_nb_bytes != 0 {
         l_skip_nb_bytes
       } else {
-        -(1 as libc::c_int) as OPJ_OFF_T
+        -(1i32) as OPJ_OFF_T
       };
     }
     p_size -= l_current_skip_nb_bytes;
@@ -826,12 +826,12 @@ pub(crate) unsafe extern "C" fn opj_stream_tell(mut p_stream: *const opj_stream_
 pub(crate) unsafe extern "C" fn opj_stream_get_number_byte_left(
   mut p_stream: *const opj_stream_private_t,
 ) -> OPJ_OFF_T {
-  assert!((*p_stream).m_byte_offset >= 0 as libc::c_int as libc::c_long);
+  assert!((*p_stream).m_byte_offset >= 0i64);
   assert!((*p_stream).m_user_data_length >= (*p_stream).m_byte_offset as OPJ_UINT64);
   return if (*p_stream).m_user_data_length != 0 {
     ((*p_stream).m_user_data_length as OPJ_OFF_T) - (*p_stream).m_byte_offset
   } else {
-    0 as libc::c_int as libc::c_long
+    0i64
   };
 }
 #[no_mangle]
@@ -840,7 +840,7 @@ pub(crate) unsafe extern "C" fn opj_stream_skip(
   mut p_size: OPJ_OFF_T,
   mut p_event_mgr: *mut opj_event_mgr_t,
 ) -> OPJ_OFF_T {
-  assert!(p_size >= 0 as libc::c_int as libc::c_long);
+  assert!(p_size >= 0i64);
   return (*p_stream).m_opj_skip.expect("non-null function pointer")(p_stream, p_size, p_event_mgr);
 }
 #[no_mangle]
@@ -850,17 +850,17 @@ pub(crate) unsafe extern "C" fn opj_stream_read_seek(
   mut _p_event_mgr: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   (*p_stream).m_current_data = (*p_stream).m_stored_data;
-  (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T;
+  (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
   if (*p_stream).m_seek_fn.expect("non-null function pointer")(p_size, (*p_stream).m_user_data) == 0
   {
-    (*p_stream).m_status |= 0x4 as libc::c_uint;
-    return 0 as libc::c_int;
+    (*p_stream).m_status |= 0x4u32;
+    return 0i32;
   } else {
     /* reset stream status */
-    (*p_stream).m_status &= !(0x4 as libc::c_uint);
+    (*p_stream).m_status &= !(0x4u32);
     (*p_stream).m_byte_offset = p_size
   }
-  return 1 as libc::c_int;
+  return 1i32;
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_stream_write_seek(
@@ -869,19 +869,19 @@ pub(crate) unsafe extern "C" fn opj_stream_write_seek(
   mut p_event_mgr: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   if opj_stream_flush(p_stream, p_event_mgr) == 0 {
-    (*p_stream).m_status |= 0x8 as libc::c_uint;
-    return 0 as libc::c_int;
+    (*p_stream).m_status |= 0x8u32;
+    return 0i32;
   }
   (*p_stream).m_current_data = (*p_stream).m_stored_data;
-  (*p_stream).m_bytes_in_buffer = 0 as libc::c_int as OPJ_SIZE_T;
+  (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
   if (*p_stream).m_seek_fn.expect("non-null function pointer")(p_size, (*p_stream).m_user_data) == 0
   {
-    (*p_stream).m_status |= 0x8 as libc::c_uint;
-    return 0 as libc::c_int;
+    (*p_stream).m_status |= 0x8u32;
+    return 0i32;
   } else {
     (*p_stream).m_byte_offset = p_size
   }
-  return 1 as libc::c_int;
+  return 1i32;
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_stream_seek(
@@ -889,7 +889,7 @@ pub(crate) unsafe extern "C" fn opj_stream_seek(
   mut p_size: OPJ_OFF_T,
   mut p_event_mgr: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  assert!(p_size >= 0 as libc::c_int as libc::c_long);
+  assert!(p_size >= 0i64);
   return (*p_stream).m_opj_seek.expect("non-null function pointer")(p_stream, p_size, p_event_mgr);
 }
 #[no_mangle]
@@ -908,7 +908,7 @@ pub(crate) unsafe extern "C" fn opj_stream_default_read(
   mut _p_nb_bytes: OPJ_SIZE_T,
   mut _p_user_data: *mut libc::c_void,
 ) -> OPJ_SIZE_T {
-  return -(1 as libc::c_int) as OPJ_SIZE_T;
+  return -(1i32) as OPJ_SIZE_T;
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_stream_default_write(
@@ -916,19 +916,19 @@ pub(crate) unsafe extern "C" fn opj_stream_default_write(
   mut _p_nb_bytes: OPJ_SIZE_T,
   mut _p_user_data: *mut libc::c_void,
 ) -> OPJ_SIZE_T {
-  return -(1 as libc::c_int) as OPJ_SIZE_T;
+  return -(1i32) as OPJ_SIZE_T;
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_stream_default_skip(
   mut _p_nb_bytes: OPJ_OFF_T,
   mut _p_user_data: *mut libc::c_void,
 ) -> OPJ_OFF_T {
-  return -(1 as libc::c_int) as OPJ_OFF_T;
+  return -(1i32) as OPJ_OFF_T;
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_stream_default_seek(
   mut _p_nb_bytes: OPJ_OFF_T,
   mut _p_user_data: *mut libc::c_void,
 ) -> OPJ_BOOL {
-  return 0 as libc::c_int;
+  return 0i32;
 }

@@ -57,7 +57,7 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
 #[no_mangle]
 pub(crate) unsafe fn opj_image_create0() -> *mut opj_image_t {
   let mut image = opj_calloc(
-    1 as libc::c_int as size_t,
+    1i32 as size_t,
     ::std::mem::size_of::<opj_image_t>() as libc::c_ulong,
   ) as *mut opj_image_t;
   return image;
@@ -71,7 +71,7 @@ pub(crate) unsafe fn opj_image_create(
   let mut compno: OPJ_UINT32 = 0;
   let mut image = 0 as *mut opj_image_t;
   image = opj_calloc(
-    1 as libc::c_int as size_t,
+    1i32 as size_t,
     ::std::mem::size_of::<opj_image_t>() as libc::c_ulong,
   ) as *mut opj_image_t;
   if !image.is_null() {
@@ -89,7 +89,7 @@ pub(crate) unsafe fn opj_image_create(
       return 0 as *mut opj_image_t;
     }
     /* create the individual image components */
-    compno = 0 as libc::c_int as OPJ_UINT32;
+    compno = 0 as OPJ_UINT32;
     while compno < numcmpts {
       let mut comp: *mut opj_image_comp_t =
         &mut *(*image).comps.offset(compno as isize) as *mut opj_image_comp_t;
@@ -101,9 +101,9 @@ pub(crate) unsafe fn opj_image_create(
       (*comp).y0 = (*cmptparms.offset(compno as isize)).y0;
       (*comp).prec = (*cmptparms.offset(compno as isize)).prec;
       (*comp).sgnd = (*cmptparms.offset(compno as isize)).sgnd;
-      if (*comp).h != 0 as libc::c_int as libc::c_uint
+      if (*comp).h != 0u32
         && (*comp).w as OPJ_SIZE_T
-          > (18446744073709551615 as libc::c_ulong)
+          > (18446744073709551615u64)
             .wrapping_div((*comp).h as libc::c_ulong)
             .wrapping_div(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
       {
@@ -124,7 +124,7 @@ pub(crate) unsafe fn opj_image_create(
       }
       memset(
         (*comp).data as *mut libc::c_void,
-        0 as libc::c_int,
+        0i32,
         ((*comp).w as size_t)
           .wrapping_mul((*comp).h as libc::c_ulong)
           .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
@@ -140,7 +140,7 @@ pub(crate) unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
     if !(*image).comps.is_null() {
       let mut compno: OPJ_UINT32 = 0;
       /* image components */
-      compno = 0 as libc::c_int as OPJ_UINT32;
+      compno = 0 as OPJ_UINT32;
       while compno < (*image).numcomps {
         let mut image_comp: *mut opj_image_comp_t =
           &mut *(*image).comps.offset(compno as isize) as *mut opj_image_comp_t;
@@ -185,19 +185,19 @@ pub(crate) unsafe fn opj_image_comp_header_update(
   l_x1 = (*p_cp).tx0.wrapping_add(
     (*p_cp)
       .tw
-      .wrapping_sub(1 as libc::c_uint)
+      .wrapping_sub(1u32)
       .wrapping_mul((*p_cp).tdx),
   );
   l_y1 = (*p_cp).ty0.wrapping_add(
     (*p_cp)
       .th
-      .wrapping_sub(1 as libc::c_uint)
+      .wrapping_sub(1u32)
       .wrapping_mul((*p_cp).tdy),
   );
   l_x1 = opj_uint_min(opj_uint_adds(l_x1, (*p_cp).tdx), (*p_image_header).x1);
   l_y1 = opj_uint_min(opj_uint_adds(l_y1, (*p_cp).tdy), (*p_image_header).y1);
   l_img_comp = (*p_image_header).comps;
-  i = 0 as libc::c_int as OPJ_UINT32;
+  i = 0 as OPJ_UINT32;
   while i < (*p_image_header).numcomps {
     l_comp_x0 = opj_uint_ceildiv(l_x0, (*l_img_comp).dx);
     l_comp_y0 = opj_uint_ceildiv(l_y0, (*l_img_comp).dy);
@@ -236,7 +236,7 @@ pub(crate) unsafe fn opj_copy_image_header(
   (*p_image_dest).x1 = (*p_image_src).x1;
   (*p_image_dest).y1 = (*p_image_src).y1;
   if !(*p_image_dest).comps.is_null() {
-    compno = 0 as libc::c_int as OPJ_UINT32;
+    compno = 0 as OPJ_UINT32;
     while compno < (*p_image_dest).numcomps {
       let mut image_comp: *mut opj_image_comp_t =
         &mut *(*p_image_dest).comps.offset(compno as isize) as *mut opj_image_comp_t;
@@ -255,10 +255,10 @@ pub(crate) unsafe fn opj_copy_image_header(
   ) as *mut opj_image_comp_t;
   if (*p_image_dest).comps.is_null() {
     (*p_image_dest).comps = 0 as *mut opj_image_comp_t;
-    (*p_image_dest).numcomps = 0 as libc::c_int as OPJ_UINT32;
+    (*p_image_dest).numcomps = 0 as OPJ_UINT32;
     return;
   }
-  compno = 0 as libc::c_int as OPJ_UINT32;
+  compno = 0 as OPJ_UINT32;
   while compno < (*p_image_dest).numcomps {
     memcpy(
       &mut *(*p_image_dest).comps.offset(compno as isize) as *mut opj_image_comp_t
@@ -278,7 +278,7 @@ pub(crate) unsafe fn opj_copy_image_header(
       opj_malloc((*p_image_dest).icc_profile_len as size_t) as *mut OPJ_BYTE;
     if (*p_image_dest).icc_profile_buf.is_null() {
       (*p_image_dest).icc_profile_buf = 0 as *mut OPJ_BYTE;
-      (*p_image_dest).icc_profile_len = 0 as libc::c_int as OPJ_UINT32;
+      (*p_image_dest).icc_profile_len = 0 as OPJ_UINT32;
       return;
     }
     memcpy(
@@ -299,7 +299,7 @@ pub(crate) unsafe fn opj_image_tile_create(
   let mut compno: OPJ_UINT32 = 0;
   let mut image = 0 as *mut opj_image_t;
   image = opj_calloc(
-    1 as libc::c_int as size_t,
+    1i32 as size_t,
     ::std::mem::size_of::<opj_image_t>() as libc::c_ulong,
   ) as *mut opj_image_t;
   if !image.is_null() {
@@ -315,7 +315,7 @@ pub(crate) unsafe fn opj_image_tile_create(
       return 0 as *mut opj_image_t;
     }
     /* create the individual image components */
-    compno = 0 as libc::c_int as OPJ_UINT32;
+    compno = 0 as OPJ_UINT32;
     while compno < numcmpts {
       let mut comp: *mut opj_image_comp_t =
         &mut *(*image).comps.offset(compno as isize) as *mut opj_image_comp_t;

@@ -98,35 +98,35 @@ pub(crate) unsafe extern "C" fn opj_event_msg(
       _ => {}
     }
     if msg_handler.is_none() {
-      return 0 as libc::c_int;
+      return 0i32;
     }
   } else {
-    return 0 as libc::c_int;
+    return 0i32;
   }
   if !fmt.is_null() && !p_event_mgr.is_null() {
     let mut arg: ::std::ffi::VaListImpl;
     let mut message: [libc::c_char; 512] = [0; 512];
     memset(
       message.as_mut_ptr() as *mut libc::c_void,
-      0 as libc::c_int,
-      512 as libc::c_int as libc::c_ulong,
+      0i32,
+      512u64,
     );
     /* initialize the optional parameter list */
     arg = args.clone();
     /* parse the format string and put the result in 'message' */
     vsnprintf(
       message.as_mut_ptr(),
-      512 as libc::c_int as libc::c_ulong,
+      512u64,
       fmt,
       arg.as_va_list(),
     );
     /* force zero termination for Windows _vsnprintf() of old MSVC */
-    message[(512 as libc::c_int - 1 as libc::c_int) as usize] = '\u{0}' as i32 as libc::c_char;
+    message[(512i32 - 1i32) as usize] = '\u{0}' as i32 as libc::c_char;
     /* deinitialize the optional parameter list */
     /* output the message to the user program */
     msg_handler.expect("non-null function pointer")(message.as_mut_ptr(), l_data);
   }
-  return 1 as libc::c_int;
+  return 1i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_set_default_event_handler(mut p_manager: *mut opj_event_mgr_t) {

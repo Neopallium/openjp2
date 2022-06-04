@@ -70,38 +70,38 @@ pub(crate) unsafe fn opj_tgt_create(
   let mut numlvls: OPJ_UINT32 = 0;
   let mut n: OPJ_UINT32 = 0;
   tree = opj_calloc(
-    1 as libc::c_int as size_t,
+    1i32 as size_t,
     ::std::mem::size_of::<opj_tgt_tree_t>() as libc::c_ulong,
   ) as *mut opj_tgt_tree_t;
   if tree.is_null() {
     opj_event_msg(
       p_manager,
-      1 as libc::c_int,
+      1i32,
       b"Not enough memory to create Tag-tree\n\x00" as *const u8 as *const libc::c_char,
     );
     return 0 as *mut opj_tgt_tree_t;
   }
   (*tree).numleafsh = numleafsh;
   (*tree).numleafsv = numleafsv;
-  numlvls = 0 as libc::c_int as OPJ_UINT32;
-  nplh[0 as libc::c_int as usize] = numleafsh as OPJ_INT32;
-  nplv[0 as libc::c_int as usize] = numleafsv as OPJ_INT32;
-  (*tree).numnodes = 0 as libc::c_int as OPJ_UINT32;
+  numlvls = 0 as OPJ_UINT32;
+  nplh[0 as usize] = numleafsh as OPJ_INT32;
+  nplv[0 as usize] = numleafsv as OPJ_INT32;
+  (*tree).numnodes = 0 as OPJ_UINT32;
   loop {
     n = (nplh[numlvls as usize] * nplv[numlvls as usize]) as OPJ_UINT32;
-    nplh[numlvls.wrapping_add(1 as libc::c_int as libc::c_uint) as usize] =
-      (nplh[numlvls as usize] + 1 as libc::c_int) / 2 as libc::c_int;
-    nplv[numlvls.wrapping_add(1 as libc::c_int as libc::c_uint) as usize] =
-      (nplv[numlvls as usize] + 1 as libc::c_int) / 2 as libc::c_int;
+    nplh[numlvls.wrapping_add(1u32) as usize] =
+      (nplh[numlvls as usize] + 1i32) / 2i32;
+    nplv[numlvls.wrapping_add(1u32) as usize] =
+      (nplv[numlvls as usize] + 1i32) / 2i32;
     (*tree).numnodes =
-      ((*tree).numnodes as libc::c_uint).wrapping_add(n) as OPJ_UINT32 as OPJ_UINT32;
+      ((*tree).numnodes as libc::c_uint).wrapping_add(n) as OPJ_UINT32;
     numlvls = numlvls.wrapping_add(1);
-    if !(n > 1 as libc::c_int as libc::c_uint) {
+    if !(n > 1u32) {
       break;
     }
   }
   /* ADD */
-  if (*tree).numnodes == 0 as libc::c_int as libc::c_uint {
+  if (*tree).numnodes == 0u32 {
     opj_free(tree as *mut libc::c_void);
     return 0 as *mut opj_tgt_tree_t;
   }
@@ -112,7 +112,7 @@ pub(crate) unsafe fn opj_tgt_create(
   if (*tree).nodes.is_null() {
     opj_event_msg(
       p_manager,
-      1 as libc::c_int,
+      1i32,
       b"Not enough memory to create Tag-tree nodes\n\x00" as *const u8 as *const libc::c_char,
     );
     opj_free(tree as *mut libc::c_void);
@@ -120,33 +120,33 @@ pub(crate) unsafe fn opj_tgt_create(
   }
   (*tree).nodes_size = (*tree)
     .numnodes
-    .wrapping_mul(::std::mem::size_of::<opj_tgt_node_t>() as libc::c_ulong as OPJ_UINT32);
+    .wrapping_mul(::std::mem::size_of::<opj_tgt_node_t>() as OPJ_UINT32);
   node = (*tree).nodes;
   l_parent_node = &mut *(*tree)
     .nodes
     .offset((*tree).numleafsh.wrapping_mul((*tree).numleafsv) as isize)
     as *mut opj_tgt_node_t;
   l_parent_node0 = l_parent_node;
-  i = 0 as libc::c_int as OPJ_UINT32;
-  while i < numlvls.wrapping_sub(1 as libc::c_int as libc::c_uint) {
-    j = 0 as libc::c_int;
+  i = 0 as OPJ_UINT32;
+  while i < numlvls.wrapping_sub(1u32) {
+    j = 0i32;
     while j < nplv[i as usize] {
       k = nplh[i as usize];
       loop {
         k -= 1;
-        if !(k >= 0 as libc::c_int) {
+        if !(k >= 0i32) {
           break;
         }
         (*node).parent = l_parent_node;
         node = node.offset(1);
         k -= 1;
-        if k >= 0 as libc::c_int {
+        if k >= 0i32 {
           (*node).parent = l_parent_node;
           node = node.offset(1)
         }
         l_parent_node = l_parent_node.offset(1)
       }
-      if j & 1 as libc::c_int != 0 || j == nplv[i as usize] - 1 as libc::c_int {
+      if j & 1i32 != 0 || j == nplv[i as usize] - 1i32 {
         l_parent_node0 = l_parent_node
       } else {
         l_parent_node = l_parent_node0;
@@ -192,38 +192,38 @@ pub(crate) unsafe fn opj_tgt_init(
   if (*p_tree).numleafsh != p_num_leafs_h || (*p_tree).numleafsv != p_num_leafs_v {
     (*p_tree).numleafsh = p_num_leafs_h;
     (*p_tree).numleafsv = p_num_leafs_v;
-    l_num_levels = 0 as libc::c_int as OPJ_UINT32;
-    l_nplh[0 as libc::c_int as usize] = p_num_leafs_h as OPJ_INT32;
-    l_nplv[0 as libc::c_int as usize] = p_num_leafs_v as OPJ_INT32;
-    (*p_tree).numnodes = 0 as libc::c_int as OPJ_UINT32;
+    l_num_levels = 0 as OPJ_UINT32;
+    l_nplh[0 as usize] = p_num_leafs_h as OPJ_INT32;
+    l_nplv[0 as usize] = p_num_leafs_v as OPJ_INT32;
+    (*p_tree).numnodes = 0 as OPJ_UINT32;
     loop {
       n = (l_nplh[l_num_levels as usize] * l_nplv[l_num_levels as usize]) as OPJ_UINT32;
-      l_nplh[l_num_levels.wrapping_add(1 as libc::c_int as libc::c_uint) as usize] =
-        (l_nplh[l_num_levels as usize] + 1 as libc::c_int) / 2 as libc::c_int;
-      l_nplv[l_num_levels.wrapping_add(1 as libc::c_int as libc::c_uint) as usize] =
-        (l_nplv[l_num_levels as usize] + 1 as libc::c_int) / 2 as libc::c_int;
+      l_nplh[l_num_levels.wrapping_add(1u32) as usize] =
+        (l_nplh[l_num_levels as usize] + 1i32) / 2i32;
+      l_nplv[l_num_levels.wrapping_add(1u32) as usize] =
+        (l_nplv[l_num_levels as usize] + 1i32) / 2i32;
       (*p_tree).numnodes =
-        ((*p_tree).numnodes as libc::c_uint).wrapping_add(n) as OPJ_UINT32 as OPJ_UINT32;
+        ((*p_tree).numnodes as libc::c_uint).wrapping_add(n) as OPJ_UINT32;
       l_num_levels = l_num_levels.wrapping_add(1);
-      if !(n > 1 as libc::c_int as libc::c_uint) {
+      if !(n > 1u32) {
         break;
       }
     }
     /* ADD */
-    if (*p_tree).numnodes == 0 as libc::c_int as libc::c_uint {
+    if (*p_tree).numnodes == 0u32 {
       opj_tgt_destroy(p_tree);
       return 0 as *mut opj_tgt_tree_t;
     }
     l_node_size = (*p_tree)
       .numnodes
-      .wrapping_mul(::std::mem::size_of::<opj_tgt_node_t>() as libc::c_ulong as OPJ_UINT32);
+      .wrapping_mul(::std::mem::size_of::<opj_tgt_node_t>() as OPJ_UINT32);
     if l_node_size > (*p_tree).nodes_size {
       let mut new_nodes = opj_realloc((*p_tree).nodes as *mut libc::c_void, l_node_size as size_t)
         as *mut opj_tgt_node_t;
       if new_nodes.is_null() {
         opj_event_msg(
           p_manager,
-          1 as libc::c_int,
+          1i32,
           b"Not enough memory to reinitialize the tag tree\n\x00" as *const u8
             as *const libc::c_char,
         );
@@ -234,7 +234,7 @@ pub(crate) unsafe fn opj_tgt_init(
       memset(
         ((*p_tree).nodes as *mut libc::c_char).offset((*p_tree).nodes_size as isize)
           as *mut libc::c_void,
-        0 as libc::c_int,
+        0i32,
         l_node_size.wrapping_sub((*p_tree).nodes_size) as libc::c_ulong,
       );
       (*p_tree).nodes_size = l_node_size
@@ -245,26 +245,26 @@ pub(crate) unsafe fn opj_tgt_init(
       .offset((*p_tree).numleafsh.wrapping_mul((*p_tree).numleafsv) as isize)
       as *mut opj_tgt_node_t;
     l_parent_node0 = l_parent_node;
-    i = 0 as libc::c_int as OPJ_UINT32;
-    while i < l_num_levels.wrapping_sub(1 as libc::c_int as libc::c_uint) {
-      j = 0 as libc::c_int;
+    i = 0 as OPJ_UINT32;
+    while i < l_num_levels.wrapping_sub(1u32) {
+      j = 0i32;
       while j < l_nplv[i as usize] {
         k = l_nplh[i as usize];
         loop {
           k -= 1;
-          if !(k >= 0 as libc::c_int) {
+          if !(k >= 0i32) {
             break;
           }
           (*l_node).parent = l_parent_node;
           l_node = l_node.offset(1);
           k -= 1;
-          if k >= 0 as libc::c_int {
+          if k >= 0i32 {
             (*l_node).parent = l_parent_node;
             l_node = l_node.offset(1)
           }
           l_parent_node = l_parent_node.offset(1)
         }
-        if j & 1 as libc::c_int != 0 || j == l_nplv[i as usize] - 1 as libc::c_int {
+        if j & 1i32 != 0 || j == l_nplv[i as usize] - 1i32 {
           l_parent_node0 = l_parent_node
         } else {
           l_parent_node = l_parent_node0;
@@ -298,11 +298,11 @@ pub(crate) unsafe fn opj_tgt_reset(mut p_tree: *mut opj_tgt_tree_t) {
     return;
   }
   l_current_node = (*p_tree).nodes;
-  i = 0 as libc::c_int as OPJ_UINT32;
+  i = 0 as OPJ_UINT32;
   while i < (*p_tree).numnodes {
-    (*l_current_node).value = 999 as libc::c_int;
-    (*l_current_node).low = 0 as libc::c_int;
-    (*l_current_node).known = 0 as libc::c_int as OPJ_UINT32;
+    (*l_current_node).value = 999i32;
+    (*l_current_node).low = 0i32;
+    (*l_current_node).known = 0 as OPJ_UINT32;
     l_current_node = l_current_node.offset(1);
     i = i.wrapping_add(1)
   }
@@ -339,7 +339,7 @@ pub(crate) unsafe fn opj_tgt_encode(
     *fresh0 = node;
     node = (*node).parent
   }
-  low = 0 as libc::c_int;
+  low = 0i32;
   loop {
     if low > (*node).low {
       (*node).low = low
@@ -351,17 +351,17 @@ pub(crate) unsafe fn opj_tgt_encode(
         if (*node).known == 0 {
           opj_bio_write(
             bio,
-            1 as libc::c_int as OPJ_UINT32,
-            1 as libc::c_int as OPJ_UINT32,
+            1 as OPJ_UINT32,
+            1 as OPJ_UINT32,
           );
-          (*node).known = 1 as libc::c_int as OPJ_UINT32
+          (*node).known = 1 as OPJ_UINT32
         }
         break;
       } else {
         opj_bio_write(
           bio,
-          0 as libc::c_int as OPJ_UINT32,
-          1 as libc::c_int as OPJ_UINT32,
+          0 as OPJ_UINT32,
+          1 as OPJ_UINT32,
         );
         low += 1
       }
@@ -393,7 +393,7 @@ pub(crate) unsafe fn opj_tgt_decode(
     *fresh1 = node;
     node = (*node).parent
   }
-  low = 0 as libc::c_int;
+  low = 0i32;
   loop {
     if low > (*node).low {
       (*node).low = low
@@ -401,7 +401,7 @@ pub(crate) unsafe fn opj_tgt_decode(
       low = (*node).low
     }
     while low < threshold && low < (*node).value {
-      if opj_bio_read(bio, 1 as libc::c_int as OPJ_UINT32) != 0 {
+      if opj_bio_read(bio, 1 as OPJ_UINT32) != 0 {
         (*node).value = low
       } else {
         low += 1
@@ -415,8 +415,8 @@ pub(crate) unsafe fn opj_tgt_decode(
     node = *stkptr
   }
   return if (*node).value < threshold {
-    1 as libc::c_int
+    1i32
   } else {
-    0 as libc::c_int
+    0i32
   } as OPJ_UINT32;
 }

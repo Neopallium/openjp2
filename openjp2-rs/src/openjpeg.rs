@@ -1349,11 +1349,11 @@ pub(crate) unsafe fn opj_set_info_handler(
 ) -> OPJ_BOOL {
   let mut l_codec = p_codec as *mut opj_codec_private_t;
   if l_codec.is_null() {
-    return 0 as libc::c_int;
+    return 0i32;
   }
   (*l_codec).m_event_mgr.info_handler = p_callback;
   (*l_codec).m_event_mgr.m_info_data = p_user_data;
-  return 1 as libc::c_int;
+  return 1i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_set_warning_handler(
@@ -1363,11 +1363,11 @@ pub(crate) unsafe fn opj_set_warning_handler(
 ) -> OPJ_BOOL {
   let mut l_codec = p_codec as *mut opj_codec_private_t;
   if l_codec.is_null() {
-    return 0 as libc::c_int;
+    return 0i32;
   }
   (*l_codec).m_event_mgr.warning_handler = p_callback;
   (*l_codec).m_event_mgr.m_warning_data = p_user_data;
-  return 1 as libc::c_int;
+  return 1i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_set_error_handler(
@@ -1377,11 +1377,11 @@ pub(crate) unsafe fn opj_set_error_handler(
 ) -> OPJ_BOOL {
   let mut l_codec = p_codec as *mut opj_codec_private_t;
   if l_codec.is_null() {
-    return 0 as libc::c_int;
+    return 0i32;
   }
   (*l_codec).m_event_mgr.error_handler = p_callback;
   (*l_codec).m_event_mgr.m_error_data = p_user_data;
-  return 1 as libc::c_int;
+  return 1i32;
 }
 /* ---------------------------------------------------------------------- */
 unsafe extern "C" fn opj_read_from_file(
@@ -1392,24 +1392,24 @@ unsafe extern "C" fn opj_read_from_file(
   let mut p_file = p_user_data as *mut FILE;
   let mut l_nb_read = fread(
     p_buffer,
-    1 as libc::c_int as libc::c_ulong,
+    1u64,
     p_nb_bytes,
     p_file,
   );
   return if l_nb_read != 0 {
     l_nb_read
   } else {
-    -(1 as libc::c_int) as OPJ_SIZE_T
+    -(1i32) as OPJ_SIZE_T
   };
 }
 unsafe extern "C" fn opj_get_data_length_from_file(
   mut p_user_data: *mut libc::c_void,
 ) -> OPJ_UINT64 {
   let mut p_file = p_user_data as *mut FILE;
-  let mut file_length = 0 as libc::c_int as OPJ_OFF_T;
-  fseeko(p_file, 0 as libc::c_int as __off_t, 2 as libc::c_int);
+  let mut file_length = 0 as OPJ_OFF_T;
+  fseeko(p_file, 0i32 as __off_t, 2i32);
   file_length = ftello(p_file);
-  fseeko(p_file, 0 as libc::c_int as __off_t, 0 as libc::c_int);
+  fseeko(p_file, 0i32 as __off_t, 0i32);
   return file_length as OPJ_UINT64;
 }
 unsafe extern "C" fn opj_write_from_file(
@@ -1420,7 +1420,7 @@ unsafe extern "C" fn opj_write_from_file(
   let mut p_file = p_user_data as *mut FILE;
   return fwrite(
     p_buffer,
-    1 as libc::c_int as libc::c_ulong,
+    1u64,
     p_nb_bytes,
     p_file,
   );
@@ -1430,8 +1430,8 @@ unsafe extern "C" fn opj_skip_from_file(
   mut p_user_data: *mut libc::c_void,
 ) -> OPJ_OFF_T {
   let mut p_file = p_user_data as *mut FILE;
-  if fseeko(p_file, p_nb_bytes, 1 as libc::c_int) != 0 {
-    return -(1 as libc::c_int) as OPJ_OFF_T;
+  if fseeko(p_file, p_nb_bytes, 1i32) != 0 {
+    return -(1i32) as OPJ_OFF_T;
   }
   return p_nb_bytes;
 }
@@ -1440,10 +1440,10 @@ unsafe extern "C" fn opj_seek_from_file(
   mut p_user_data: *mut libc::c_void,
 ) -> OPJ_BOOL {
   let mut p_file = p_user_data as *mut FILE;
-  if fseeko(p_file, p_nb_bytes, 0 as libc::c_int) != 0 {
-    return 0 as libc::c_int;
+  if fseeko(p_file, p_nb_bytes, 0i32) != 0 {
+    return 0i32;
   }
-  return 1 as libc::c_int;
+  return 1i32;
 }
 unsafe extern "C" fn opj_close_from_file(mut p_user_data: *mut libc::c_void) {
   let mut p_file = p_user_data as *mut FILE;
@@ -1462,13 +1462,13 @@ pub(crate) unsafe fn opj_version() -> *const libc::c_char {
 pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
   let mut l_codec = 0 as *mut opj_codec_private_t;
   l_codec = opj_calloc(
-    1 as libc::c_int as size_t,
+    1i32 as size_t,
     ::std::mem::size_of::<opj_codec_private_t>() as libc::c_ulong,
   ) as *mut opj_codec_private_t;
   if l_codec.is_null() {
     return 0 as *mut opj_codec_t;
   }
-  (*l_codec).is_decompressor = 1 as libc::c_int;
+  (*l_codec).is_decompressor = 1i32;
   match p_format as libc::c_int {
     0 => {
       (*l_codec).opj_dump_codec = ::std::mem::transmute::<
@@ -2123,7 +2123,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
       >(Some(
         opj_jp2_set_threads as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec = opj_jp2_create(1 as libc::c_int) as *mut libc::c_void;
+      (*l_codec).m_codec = opj_jp2_create(1i32) as *mut libc::c_void;
       if (*l_codec).m_codec.is_null() {
         opj_free(l_codec as *mut libc::c_void);
         return 0 as *mut opj_codec_t;
@@ -2144,17 +2144,17 @@ pub(crate) unsafe fn opj_set_default_decoder_parameters(
   if !parameters.is_null() {
     memset(
       parameters as *mut libc::c_void,
-      0 as libc::c_int,
+      0i32,
       ::std::mem::size_of::<opj_dparameters_t>() as libc::c_ulong,
     );
     /* UniPG>> */
     /* USE_JPWL */
     /* <<UniPG */
-    (*parameters).cp_layer = 0 as libc::c_int as OPJ_UINT32;
-    (*parameters).cp_reduce = 0 as libc::c_int as OPJ_UINT32;
-    (*parameters).decod_format = -(1 as libc::c_int);
-    (*parameters).cod_format = -(1 as libc::c_int);
-    (*parameters).flags = 0 as libc::c_int as libc::c_uint
+    (*parameters).cp_layer = 0 as OPJ_UINT32;
+    (*parameters).cp_reduce = 0 as OPJ_UINT32;
+    (*parameters).decod_format = -(1i32);
+    (*parameters).cod_format = -(1i32);
+    (*parameters).flags = 0u32
   };
 }
 #[no_mangle]
@@ -2162,7 +2162,7 @@ pub(crate) unsafe fn opj_codec_set_threads(
   mut p_codec: *mut opj_codec_t,
   mut num_threads: libc::c_int,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && num_threads >= 0 as libc::c_int {
+  if !p_codec.is_null() && num_threads >= 0i32 {
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     return (*l_codec)
       .opj_set_threads
@@ -2170,7 +2170,7 @@ pub(crate) unsafe fn opj_codec_set_threads(
       (*l_codec).m_codec, num_threads as OPJ_UINT32
     );
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_setup_decoder(
@@ -2182,20 +2182,20 @@ pub(crate) unsafe fn opj_setup_decoder(
     if (*l_codec).is_decompressor == 0 {
       opj_event_msg(
         &mut (*l_codec).m_event_mgr as *mut opj_event_mgr_t,
-        1 as libc::c_int,
+        1i32,
         b"Codec provided to the opj_setup_decoder function is not a decompressor handler.\n\x00"
           as *const u8 as *const libc::c_char,
       );
-      return 0 as libc::c_int;
+      return 0i32;
     }
     (*l_codec)
       .m_codec_data
       .m_decompression
       .opj_setup_decoder
       .expect("non-null function pointer")((*l_codec).m_codec, parameters);
-    return 1 as libc::c_int;
+    return 1i32;
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_decoder_set_strict_mode(
@@ -2206,19 +2206,19 @@ pub(crate) unsafe fn opj_decoder_set_strict_mode(
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     if (*l_codec).is_decompressor == 0 {
       opj_event_msg(&mut (*l_codec).m_event_mgr as *mut opj_event_mgr_t,
-                          1 as libc::c_int,
+                          1i32,
                           b"Codec provided to the opj_decoder_set_strict_mode function is not a decompressor handler.\n\x00"
                               as *const u8 as *const libc::c_char);
-      return 0 as libc::c_int;
+      return 0i32;
     }
     (*l_codec)
       .m_codec_data
       .m_decompression
       .opj_decoder_set_strict_mode
       .expect("non-null function pointer")((*l_codec).m_codec, strict);
-    return 1 as libc::c_int;
+    return 1i32;
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_read_header(
@@ -2232,11 +2232,11 @@ pub(crate) unsafe fn opj_read_header(
     if (*l_codec).is_decompressor == 0 {
       opj_event_msg(
         &mut (*l_codec).m_event_mgr as *mut opj_event_mgr_t,
-        1 as libc::c_int,
+        1i32,
         b"Codec provided to the opj_read_header function is not a decompressor handler.\n\x00"
           as *const u8 as *const libc::c_char,
       );
-      return 0 as libc::c_int;
+      return 0i32;
     }
     return (*l_codec)
       .m_codec_data
@@ -2249,7 +2249,7 @@ pub(crate) unsafe fn opj_read_header(
       &mut (*l_codec).m_event_mgr,
     );
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_set_decoded_components(
@@ -2262,19 +2262,19 @@ pub(crate) unsafe fn opj_set_decoded_components(
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     if (*l_codec).is_decompressor == 0 {
       opj_event_msg(&mut (*l_codec).m_event_mgr as *mut opj_event_mgr_t,
-                          1 as libc::c_int,
+                          1i32,
                           b"Codec provided to the opj_set_decoded_components function is not a decompressor handler.\n\x00"
                               as *const u8 as *const libc::c_char);
-      return 0 as libc::c_int;
+      return 0i32;
     }
     if apply_color_transforms != 0 {
       opj_event_msg(
         &mut (*l_codec).m_event_mgr as *mut opj_event_mgr_t,
-        1 as libc::c_int,
+        1i32,
         b"apply_color_transforms = OPJ_TRUE is not supported.\n\x00" as *const u8
           as *const libc::c_char,
       );
-      return 0 as libc::c_int;
+      return 0i32;
     }
     return (*l_codec)
       .m_codec_data
@@ -2287,7 +2287,7 @@ pub(crate) unsafe fn opj_set_decoded_components(
       &mut (*l_codec).m_event_mgr,
     );
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_decode(
@@ -2299,7 +2299,7 @@ pub(crate) unsafe fn opj_decode(
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     let mut l_stream = p_stream as *mut opj_stream_private_t;
     if (*l_codec).is_decompressor == 0 {
-      return 0 as libc::c_int;
+      return 0i32;
     }
     return (*l_codec)
       .m_codec_data
@@ -2312,7 +2312,7 @@ pub(crate) unsafe fn opj_decode(
       &mut (*l_codec).m_event_mgr,
     );
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_set_decode_area(
@@ -2326,7 +2326,7 @@ pub(crate) unsafe fn opj_set_decode_area(
   if !p_codec.is_null() {
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     if (*l_codec).is_decompressor == 0 {
-      return 0 as libc::c_int;
+      return 0i32;
     }
     return (*l_codec)
       .m_codec_data
@@ -2342,7 +2342,7 @@ pub(crate) unsafe fn opj_set_decode_area(
       &mut (*l_codec).m_event_mgr,
     );
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_read_tile_header(
@@ -2362,7 +2362,7 @@ pub(crate) unsafe fn opj_read_tile_header(
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     let mut l_stream = p_stream as *mut opj_stream_private_t;
     if (*l_codec).is_decompressor == 0 {
-      return 0 as libc::c_int;
+      return 0i32;
     }
     return (*l_codec)
       .m_codec_data
@@ -2382,7 +2382,7 @@ pub(crate) unsafe fn opj_read_tile_header(
       &mut (*l_codec).m_event_mgr,
     );
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_decode_tile_data(
@@ -2396,7 +2396,7 @@ pub(crate) unsafe fn opj_decode_tile_data(
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     let mut l_stream = p_stream as *mut opj_stream_private_t;
     if (*l_codec).is_decompressor == 0 {
-      return 0 as libc::c_int;
+      return 0i32;
     }
     return (*l_codec)
       .m_codec_data
@@ -2411,7 +2411,7 @@ pub(crate) unsafe fn opj_decode_tile_data(
       &mut (*l_codec).m_event_mgr,
     );
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_get_decoded_tile(
@@ -2424,7 +2424,7 @@ pub(crate) unsafe fn opj_get_decoded_tile(
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     let mut l_stream = p_stream as *mut opj_stream_private_t;
     if (*l_codec).is_decompressor == 0 {
-      return 0 as libc::c_int;
+      return 0i32;
     }
     return (*l_codec)
       .m_codec_data
@@ -2438,7 +2438,7 @@ pub(crate) unsafe fn opj_get_decoded_tile(
       tile_index,
     );
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_set_decoded_resolution_factor(
@@ -2447,7 +2447,7 @@ pub(crate) unsafe fn opj_set_decoded_resolution_factor(
 ) -> OPJ_BOOL {
   let mut l_codec = p_codec as *mut opj_codec_private_t;
   if l_codec.is_null() {
-    return 0 as libc::c_int;
+    return 0i32;
   }
   return (*l_codec)
     .m_codec_data
@@ -2466,13 +2466,13 @@ pub(crate) unsafe fn opj_set_decoded_resolution_factor(
 pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
   let mut l_codec = 0 as *mut opj_codec_private_t;
   l_codec = opj_calloc(
-    1 as libc::c_int as size_t,
+    1i32 as size_t,
     ::std::mem::size_of::<opj_codec_private_t>() as libc::c_ulong,
   ) as *mut opj_codec_private_t;
   if l_codec.is_null() {
     return 0 as *mut opj_codec_t;
   }
-  (*l_codec).is_decompressor = 0 as libc::c_int;
+  (*l_codec).is_decompressor = 0i32;
   match p_format as libc::c_int {
     0 => {
       (*l_codec).m_codec_data.m_compression.opj_encode = ::std::mem::transmute::<
@@ -2819,7 +2819,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
       >(Some(
         opj_jp2_set_threads as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec = opj_jp2_create(0 as libc::c_int) as *mut libc::c_void;
+      (*l_codec).m_codec = opj_jp2_create(0i32) as *mut libc::c_void;
       if (*l_codec).m_codec.is_null() {
         opj_free(l_codec as *mut libc::c_void);
         return 0 as *mut opj_codec_t;
@@ -2840,32 +2840,32 @@ pub(crate) unsafe fn opj_set_default_encoder_parameters(
   if !parameters.is_null() {
     memset(
       parameters as *mut libc::c_void,
-      0 as libc::c_int,
+      0i32,
       ::std::mem::size_of::<opj_cparameters_t>() as libc::c_ulong,
     );
     /* UniPG>> */
     /* USE_JPWL */
     /* <<UniPG */
     (*parameters).cp_cinema = OPJ_OFF;
-    (*parameters).rsiz = 0 as libc::c_int as OPJ_UINT16;
-    (*parameters).max_comp_size = 0 as libc::c_int;
-    (*parameters).numresolution = 6 as libc::c_int;
+    (*parameters).rsiz = 0 as OPJ_UINT16;
+    (*parameters).max_comp_size = 0i32;
+    (*parameters).numresolution = 6i32;
     (*parameters).cp_rsiz = OPJ_STD_RSIZ;
-    (*parameters).cblockw_init = 64 as libc::c_int;
-    (*parameters).cblockh_init = 64 as libc::c_int;
+    (*parameters).cblockw_init = 64i32;
+    (*parameters).cblockh_init = 64i32;
     (*parameters).prog_order = OPJ_LRCP;
-    (*parameters).roi_compno = -(1 as libc::c_int);
-    (*parameters).subsampling_dx = 1 as libc::c_int;
-    (*parameters).subsampling_dy = 1 as libc::c_int;
-    (*parameters).tp_on = 0 as libc::c_int as libc::c_char;
-    (*parameters).decod_format = -(1 as libc::c_int);
-    (*parameters).cod_format = -(1 as libc::c_int);
-    (*parameters).tcp_rates[0 as libc::c_int as usize] = 0 as libc::c_int as libc::c_float;
-    (*parameters).tcp_numlayers = 0 as libc::c_int;
-    (*parameters).cp_disto_alloc = 0 as libc::c_int;
-    (*parameters).cp_fixed_alloc = 0 as libc::c_int;
-    (*parameters).cp_fixed_quality = 0 as libc::c_int;
-    (*parameters).jpip_on = 0 as libc::c_int
+    (*parameters).roi_compno = -(1i32);
+    (*parameters).subsampling_dx = 1i32;
+    (*parameters).subsampling_dy = 1i32;
+    (*parameters).tp_on = 0 as libc::c_char;
+    (*parameters).decod_format = -(1i32);
+    (*parameters).cod_format = -(1i32);
+    (*parameters).tcp_rates[0 as usize] = 0 as libc::c_float;
+    (*parameters).tcp_numlayers = 0i32;
+    (*parameters).cp_disto_alloc = 0i32;
+    (*parameters).cp_fixed_alloc = 0i32;
+    (*parameters).cp_fixed_quality = 0i32;
+    (*parameters).jpip_on = 0i32
   };
 }
 #[no_mangle]
@@ -2889,7 +2889,7 @@ pub(crate) unsafe fn opj_setup_encoder(
       );
     }
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 /* default coding parameters */
 /* DEPRECATED */
@@ -2915,7 +2915,7 @@ pub(crate) unsafe fn opj_encoder_set_extra_options(
       );
     }
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
@@ -2940,7 +2940,7 @@ pub(crate) unsafe fn opj_start_compress(
       );
     }
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_encode(
@@ -2962,7 +2962,7 @@ pub(crate) unsafe fn opj_encode(
       );
     }
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_end_compress(
@@ -2984,7 +2984,7 @@ pub(crate) unsafe fn opj_end_compress(
       );
     }
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_end_decompress(
@@ -2995,7 +2995,7 @@ pub(crate) unsafe fn opj_end_decompress(
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     let mut l_stream = p_stream as *mut opj_stream_private_t;
     if (*l_codec).is_decompressor == 0 {
-      return 0 as libc::c_int;
+      return 0i32;
     }
     return (*l_codec)
       .m_codec_data
@@ -3007,7 +3007,7 @@ pub(crate) unsafe fn opj_end_decompress(
       &mut (*l_codec).m_event_mgr,
     );
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_set_MCT(
@@ -3018,22 +3018,22 @@ pub(crate) unsafe fn opj_set_MCT(
 ) -> OPJ_BOOL {
   let mut l_matrix_size = pNbComp
     .wrapping_mul(pNbComp)
-    .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong as OPJ_UINT32);
+    .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
   let mut l_dc_shift_size =
-    pNbComp.wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong as OPJ_UINT32);
+    pNbComp.wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as OPJ_UINT32);
   let mut l_mct_total_size = l_matrix_size.wrapping_add(l_dc_shift_size);
   /* add MCT capability */
-  if (*parameters).rsiz as libc::c_int & 0x8000 as libc::c_int != 0 {
-    (*parameters).rsiz = ((*parameters).rsiz as libc::c_int | 0x100 as libc::c_int) as OPJ_UINT16
+  if (*parameters).rsiz as libc::c_int & 0x8000i32 != 0 {
+    (*parameters).rsiz = ((*parameters).rsiz as libc::c_int | 0x100i32) as OPJ_UINT16
   } else {
-    (*parameters).rsiz = (0x8000 as libc::c_int | 0x100 as libc::c_int) as OPJ_UINT16
+    (*parameters).rsiz = (0x8000i32 | 0x100i32) as OPJ_UINT16
   }
-  (*parameters).irreversible = 1 as libc::c_int;
+  (*parameters).irreversible = 1i32;
   /* use array based MCT */
-  (*parameters).tcp_mct = 2 as libc::c_int as libc::c_char;
+  (*parameters).tcp_mct = 2 as libc::c_char;
   (*parameters).mct_data = opj_malloc(l_mct_total_size as size_t);
   if (*parameters).mct_data.is_null() {
-    return 0 as libc::c_int;
+    return 0i32;
   }
   memcpy(
     (*parameters).mct_data,
@@ -3045,7 +3045,7 @@ pub(crate) unsafe fn opj_set_MCT(
     p_dc_shift as *const libc::c_void,
     l_dc_shift_size as libc::c_ulong,
   );
-  return 1 as libc::c_int;
+  return 1i32;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_write_tile(
@@ -3059,7 +3059,7 @@ pub(crate) unsafe fn opj_write_tile(
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     let mut l_stream = p_stream as *mut opj_stream_private_t;
     if (*l_codec).is_decompressor != 0 {
-      return 0 as libc::c_int;
+      return 0i32;
     }
     return (*l_codec)
       .m_codec_data
@@ -3074,7 +3074,7 @@ pub(crate) unsafe fn opj_write_tile(
       &mut (*l_codec).m_event_mgr,
     );
   }
-  return 0 as libc::c_int;
+  return 0i32;
 }
 /* ---------------------------------------------------------------------- */
 #[no_mangle]
@@ -3166,7 +3166,7 @@ pub(crate) unsafe fn opj_stream_create_default_file_stream(
 ) -> *mut opj_stream_t {
   return opj_stream_create_file_stream(
     fname,
-    0x100000 as libc::c_int as OPJ_SIZE_T,
+    0x100000 as OPJ_SIZE_T,
     p_is_read_stream,
   );
 }
