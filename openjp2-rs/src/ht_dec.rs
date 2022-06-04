@@ -1309,7 +1309,7 @@ unsafe fn frwd_fetch(mut msp: *mut frwd_struct_t) -> OPJ_UINT32 {
  *  @param [in]       h is codeblock height
  */
 unsafe fn opj_t1_allocate_buffers(
-  mut t1: *mut opj_t1_t,
+  mut t1: &mut opj_t1_t,
   mut w: OPJ_UINT32,
   mut h: OPJ_UINT32,
 ) -> OPJ_BOOL {
@@ -1322,21 +1322,21 @@ unsafe fn opj_t1_allocate_buffers(
   assert!(w.wrapping_mul(h) <= 4096 as libc::c_int as libc::c_uint);
   /* encoder uses tile buffer, so no need to allocate */
   let mut datasize = w.wrapping_mul(h);
-  if datasize > (*t1).datasize {
-    opj_aligned_free((*t1).data as *mut libc::c_void);
-    (*t1).data = opj_aligned_malloc(
+  if datasize > t1.datasize {
+    opj_aligned_free(t1.data as *mut libc::c_void);
+    t1.data = opj_aligned_malloc(
       (datasize as libc::c_ulong).wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
     ) as *mut OPJ_INT32;
-    if (*t1).data.is_null() {
+    if t1.data.is_null() {
       /* FIXME event manager error callback */
       return 0 as libc::c_int;
     }
-    (*t1).datasize = datasize
+    t1.datasize = datasize
   }
   /* memset first arg is declared to never be null by gcc */
-  if !(*t1).data.is_null() {
+  if !t1.data.is_null() {
     memset(
-      (*t1).data as *mut libc::c_void,
+      t1.data as *mut libc::c_void,
       0 as libc::c_int,
       (datasize as libc::c_ulong).wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
     );
@@ -1349,22 +1349,22 @@ unsafe fn opj_t1_allocate_buffers(
     .wrapping_mul(4 as libc::c_uint as libc::c_ulong) as OPJ_UINT32; // expanded to multiple of 16
   flagssize =
     (flagssize as libc::c_uint).wrapping_add(528 as libc::c_uint) as OPJ_UINT32 as OPJ_UINT32; // 514 expanded to multiples of 16
-  if flagssize > (*t1).flagssize {
-    opj_aligned_free((*t1).flags as *mut libc::c_void);
-    (*t1).flags = opj_aligned_malloc(flagssize as size_t) as *mut opj_flag_t;
-    if (*t1).flags.is_null() {
+  if flagssize > t1.flagssize {
+    opj_aligned_free(t1.flags as *mut libc::c_void);
+    t1.flags = opj_aligned_malloc(flagssize as size_t) as *mut opj_flag_t;
+    if t1.flags.is_null() {
       /* FIXME event manager error callback */
       return 0 as libc::c_int;
     }
   }
-  (*t1).flagssize = flagssize;
+  t1.flagssize = flagssize;
   memset(
-    (*t1).flags as *mut libc::c_void,
+    t1.flags as *mut libc::c_void,
     0 as libc::c_int,
     flagssize as libc::c_ulong,
   );
-  (*t1).w = w;
-  (*t1).h = h;
+  t1.w = w;
+  t1.h = h;
   return 1 as libc::c_int;
 }
 //* ***********************************************************************/
@@ -1381,7 +1381,7 @@ unsafe fn opj_t1_allocate_buffers(
  *  @param [in]       check_pterm: check termination (not used)
  */
 pub(crate) unsafe fn opj_t1_ht_decode_cblk(
-  mut t1: *mut opj_t1_t,
+  mut t1: &mut opj_t1_t,
   mut cblk: *mut opj_tcd_cblk_dec_t,
   mut _orient: OPJ_UINT32,
   mut roishift: OPJ_UINT32,
@@ -1506,22 +1506,22 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       as OPJ_UINT32 as OPJ_UINT32;
     i = i.wrapping_add(1)
   }
-  if (*cblk).numchunks > 1 as libc::c_int as libc::c_uint || (*t1).mustuse_cblkdatabuffer != 0 {
+  if (*cblk).numchunks > 1 as libc::c_int as libc::c_uint || t1.mustuse_cblkdatabuffer != 0 {
     let mut i_0: OPJ_UINT32 = 0;
     /* Allocate temporary memory if needed */
-    if cblk_len > (*t1).cblkdatabuffersize {
+    if cblk_len > t1.cblkdatabuffersize {
       cblkdata = opj_realloc(
-        (*t1).cblkdatabuffer as *mut libc::c_void,
+        t1.cblkdatabuffer as *mut libc::c_void,
         cblk_len as size_t,
       ) as *mut OPJ_BYTE;
       if cblkdata.is_null() {
         return 0 as libc::c_int;
       }
-      (*t1).cblkdatabuffer = cblkdata;
-      (*t1).cblkdatabuffersize = cblk_len
+      t1.cblkdatabuffer = cblkdata;
+      t1.cblkdatabuffersize = cblk_len
     }
     /* Concatenate all chunks */
-    cblkdata = (*t1).cblkdatabuffer;
+    cblkdata = t1.cblkdatabuffer;
     cblk_len = 0 as libc::c_int as OPJ_UINT32;
     i_0 = 0 as libc::c_int as OPJ_UINT32;
     while i_0 < (*cblk).numchunks {
@@ -1544,7 +1544,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   // OPJ_BYTE* coded_data is a pointer to bitstream
   coded_data = cblkdata;
   // OPJ_UINT32* decoded_data is a pointer to decoded codeblock data buf.
-  decoded_data = (*t1).data as *mut OPJ_UINT32;
+  decoded_data = t1.data as *mut OPJ_UINT32;
   // OPJ_UINT32 num_passes is the number of passes: 1 if CUP only, 2 for
   // CUP+SPP, and 3 for CUP+SPP+MRP
   num_passes = if (*cblk).numsegs > 0 as libc::c_int as libc::c_uint {
@@ -1591,7 +1591,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
    *  To work in OpenJPEG these buffers has been expanded to 132.
    */
   // OPJ_UINT32 *pflags, *sigma1, *sigma2, *mbr1, *mbr2, *sip, sip_shift;
-  pflags = (*t1).flags as *mut OPJ_UINT32;
+  pflags = t1.flags as *mut OPJ_UINT32;
   sigma1 = pflags;
   sigma2 = sigma1.offset(132 as libc::c_int as isize);
   // mbr arrangement is similar to sigma; mbr contains locations
