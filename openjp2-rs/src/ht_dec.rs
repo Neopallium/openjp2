@@ -142,7 +142,7 @@ static mut only_cleanup_pass_is_decoded: OPJ_BOOL = 0 as libc::c_int;
  */
 #[inline]
 fn population_count(mut val: OPJ_UINT32) -> OPJ_UINT32 {
-  return val.count_ones() as i32 as OPJ_UINT32;
+  val.count_ones()
 }
 //* ***********************************************************************/
 /* * @brief Counts the number of leading zeros
@@ -151,7 +151,7 @@ fn population_count(mut val: OPJ_UINT32) -> OPJ_UINT32 {
  */
 #[inline]
 fn count_leading_zeros(mut val: OPJ_UINT32) -> OPJ_UINT32 {
-  return val.leading_zeros() as i32 as OPJ_UINT32;
+  val.leading_zeros()
 }
 //* ***********************************************************************/
 /* * @brief Read a little-endian serialized UINT32.
