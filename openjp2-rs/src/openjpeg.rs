@@ -26,7 +26,6 @@ extern "C" {
 
 pub type size_t = libc::c_ulong;
 
-pub type intptr_t = i64;
 pub type OPJ_BOOL = i32;
 pub type OPJ_CHAR = i8;
 pub type OPJ_FLOAT32 = f32;
