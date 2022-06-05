@@ -15,18 +15,48 @@ use core::{
   ops::DerefMut,
   ptr::null_mut,
 };
+use alloc::vec::Vec;
 
 use super::malloc::*;
 use ::libc::{memset, memcpy};
 
+#[derive(Default)]
+pub struct T1Flags {
+  flags: Vec<opj_flag_t>,
+}
+
+impl T1Flags {
+  fn new() -> Self {
+    Self::default()
+  }
+
+  pub fn resize(&mut self, len: usize) {
+    if self.flags.len() != len {
+      self.flags = vec![0; len];
+    } else {
+      for flag in &mut self.flags {
+        *flag = 0;
+      }
+    }
+  }
+
+  pub fn as_mut_ptr(&mut self) -> *mut opj_flag_t {
+    self.flags.as_mut_ptr()
+  }
+
+  pub fn offset(&mut self, offset: isize) -> *mut opj_flag_t {
+    let flags = self.as_mut_ptr();
+    unsafe { flags.offset(offset) }
+  }
+}
+
 pub struct opj_t1 {
   pub mqc: opj_mqc_t,
   pub data: *mut OPJ_INT32,
-  pub flags: *mut opj_flag_t,
+  pub flags: T1Flags,
   pub w: OPJ_UINT32,
   pub h: OPJ_UINT32,
   pub datasize: OPJ_UINT32,
-  pub flagssize: OPJ_UINT32,
   pub encoder: OPJ_BOOL,
   pub mustuse_cblkdatabuffer: OPJ_BOOL,
   pub cblkdatabuffer: *mut OPJ_BYTE,
@@ -39,11 +69,10 @@ impl Default for opj_t1 {
     Self {
       mqc: opj_mqc::default(),
       data: null_mut(),
-      flags: null_mut(),
+      flags: T1Flags::default(),
       w: 0,
       h: 0,
       datasize: 0,
-      flagssize: 0,
       encoder: 0,
       mustuse_cblkdatabuffer: 0,
       cblkdatabuffer: null_mut(),
@@ -58,10 +87,6 @@ impl Drop for opj_t1 {
       if !self.data.is_null() {
         opj_aligned_free(self.data as *mut libc::c_void);
         self.data = null_mut();
-      }
-      if !self.flags.is_null() {
-        opj_aligned_free(self.flags as *mut libc::c_void);
-        self.flags = null_mut();
       }
       opj_free(self.cblkdatabuffer as *mut libc::c_void);
     }
@@ -1551,23 +1576,7 @@ fn opj_t1_allocate_buffers(
     let mut flags_height = h
       .wrapping_add(3u32)
       .wrapping_div(4u32);
-    if flagssize > t1.flagssize {
-      opj_aligned_free(t1.flags as *mut libc::c_void);
-      t1.flags = opj_aligned_malloc(
-        (flagssize as libc::c_ulong)
-          .wrapping_mul(core::mem::size_of::<opj_flag_t>() as libc::c_ulong),
-      ) as *mut opj_flag_t;
-      if t1.flags.is_null() {
-        /* FIXME event manager error callback */
-        return 0i32;
-      }
-    }
-    t1.flagssize = flagssize;
-    memset(
-      t1.flags as *mut libc::c_void,
-      0i32,
-      flagssize as usize * core::mem::size_of::<opj_flag_t>(),
-    );
+    t1.flags.resize(flagssize as usize);
     p = &mut *t1.flags.offset(0) as *mut opj_flag_t;
     for x in 0..flags_stride as isize {
       /* magic value to hopefully stop any passes being interested in this entry */

@@ -1349,20 +1349,7 @@ unsafe fn opj_t1_allocate_buffers(
     .wrapping_mul(4u64) as OPJ_UINT32; // expanded to multiple of 16
   flagssize =
     (flagssize as libc::c_uint).wrapping_add(528u32) as OPJ_UINT32; // 514 expanded to multiples of 16
-  if flagssize > t1.flagssize {
-    opj_aligned_free(t1.flags as *mut libc::c_void);
-    t1.flags = opj_aligned_malloc(flagssize as size_t) as *mut opj_flag_t;
-    if t1.flags.is_null() {
-      /* FIXME event manager error callback */
-      return 0i32;
-    }
-  }
-  t1.flagssize = flagssize;
-  memset(
-    t1.flags as *mut libc::c_void,
-    0i32,
-    flagssize as libc::c_ulong,
-  );
+  t1.flags.resize(flagssize as usize);
   t1.w = w;
   t1.h = h;
   return 1i32;
@@ -1591,7 +1578,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
    *  To work in OpenJPEG these buffers has been expanded to 132.
    */
   // OPJ_UINT32 *pflags, *sigma1, *sigma2, *mbr1, *mbr2, *sip, sip_shift;
-  pflags = t1.flags as *mut OPJ_UINT32;
+  pflags = t1.flags.as_mut_ptr() as *mut OPJ_UINT32;
   sigma1 = pflags;
   sigma2 = sigma1.offset(132);
   // mbr arrangement is similar to sigma; mbr contains locations
