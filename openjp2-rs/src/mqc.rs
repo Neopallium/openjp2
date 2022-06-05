@@ -482,7 +482,7 @@ fn opj_mqc_setbits(mut mqc: &mut opj_mqc_t) {
 */
 
 pub(crate) fn opj_mqc_numbytes(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
-  let diff = mqc.bp.wrapping_offset_from(mqc.start);
+  let diff = unsafe { mqc.bp.offset_from(mqc.start) };
   return diff as OPJ_UINT32;
 }
 

@@ -181,7 +181,7 @@ pub mod opj {
   /**< Number of maximum resolution level authorized */
   pub const OPJ_J2K_MAXRLVLS: u32  = 33;
   /**< Number of maximum sub-band linked to number of resolution level */
-  pub const OPJ_J2K_MAXBANDS: u32  = (3*OPJ_J2K_MAXRLVLS-2);
+  pub const OPJ_J2K_MAXBANDS: u32  = 3*OPJ_J2K_MAXRLVLS-2;
   pub const OPJ_J2K_DEFAULT_NB_SEGS: u32              = 10;
   /** 1 mega by default */
   pub const OPJ_J2K_STREAM_CHUNK_SIZE: u32            = 0x100000;
@@ -263,38 +263,38 @@ pub mod opj {
   pub const OPJ_EXTENSION_MCT: u32        = 0x0100;
 
   pub fn opj_is_cinema(v: u32) -> bool {
-    (((v) >= OPJ_PROFILE_CINEMA_2K)&&((v) <= OPJ_PROFILE_CINEMA_S4K))
+    v >= OPJ_PROFILE_CINEMA_2K && v <= OPJ_PROFILE_CINEMA_S4K
   }
 
   pub fn opj_is_storage(v: u32) -> bool {
-    ((v) == OPJ_PROFILE_CINEMA_LTS)
+    v == OPJ_PROFILE_CINEMA_LTS
   }
 
   pub fn opj_is_broadcast(v: u32) -> bool {
-    (((v) >= OPJ_PROFILE_BC_SINGLE)&&((v) <= ((OPJ_PROFILE_BC_MULTI_R) | (0x000b))))
+    v >= OPJ_PROFILE_BC_SINGLE && v <= (OPJ_PROFILE_BC_MULTI_R | 0x000b)
   }
 
   pub fn opj_is_imf(v: u32) -> bool {
-    (((v) >= OPJ_PROFILE_IMF_2K)&&((v) <= ((OPJ_PROFILE_IMF_8K_R) | (0x009b))))
+    v >= OPJ_PROFILE_IMF_2K && v <= (OPJ_PROFILE_IMF_8K_R | 0x009b)
   }
 
   pub fn opj_is_part2(v: u32) -> bool {
-    ((v) & OPJ_PROFILE_PART2) != 0
+    v & OPJ_PROFILE_PART2 != 0
   }
 
   /** Extract IMF profile without mainlevel/sublevel */
   pub fn opj_get_imf_profile(v: u32) -> u32 {
-    ((v) & 0xff00)
+    v & 0xff00
   }
 
   /** Extract IMF main level */
   pub fn opj_get_imf_mainlevel(v: u32) -> u32 {
-    ((v) & 0xf)
+    v & 0xf
   }
 
   /** Extract IMF sub level */
   pub fn opj_get_imf_sublevel(v: u32) -> u32 {
-    (((v) >> 4) & 0xf)
+    (v >> 4) & 0xf
   }
 
   /** Maximum main level */
@@ -380,41 +380,41 @@ pub mod t1 {
   pub const T1_TYPE_MQ: u8  = 0;
   /**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
   pub const T1_TYPE_RAW: u8  = 1;
-  pub const T1_SIGMA_0: u32   = (1u32 << 0);
-  pub const T1_SIGMA_1: u32   = (1u32 << 1);
-  pub const T1_SIGMA_2: u32   = (1u32 << 2);
-  pub const T1_SIGMA_3: u32   = (1u32 << 3);
-  pub const T1_SIGMA_4: u32   = (1u32 << 4);
-  pub const T1_SIGMA_5: u32   = (1u32 << 5);
-  pub const T1_SIGMA_6: u32   = (1u32 << 6);
-  pub const T1_SIGMA_7: u32   = (1u32 << 7);
-  pub const T1_SIGMA_8: u32   = (1u32 << 8);
-  pub const T1_SIGMA_9: u32   = (1u32 << 9);
-  pub const T1_SIGMA_10: u32  = (1u32 << 10);
-  pub const T1_SIGMA_11: u32  = (1u32 << 11);
-  pub const T1_SIGMA_12: u32  = (1u32 << 12);
-  pub const T1_SIGMA_13: u32  = (1u32 << 13);
-  pub const T1_SIGMA_14: u32  = (1u32 << 14);
-  pub const T1_SIGMA_15: u32  = (1u32 << 15);
-  pub const T1_SIGMA_16: u32  = (1u32 << 16);
-  pub const T1_SIGMA_17: u32  = (1u32 << 17);
-  pub const T1_CHI_0: u32     = (1u32 << 18);
+  pub const T1_SIGMA_0: u32   = 1u32 << 0;
+  pub const T1_SIGMA_1: u32   = 1u32 << 1;
+  pub const T1_SIGMA_2: u32   = 1u32 << 2;
+  pub const T1_SIGMA_3: u32   = 1u32 << 3;
+  pub const T1_SIGMA_4: u32   = 1u32 << 4;
+  pub const T1_SIGMA_5: u32   = 1u32 << 5;
+  pub const T1_SIGMA_6: u32   = 1u32 << 6;
+  pub const T1_SIGMA_7: u32   = 1u32 << 7;
+  pub const T1_SIGMA_8: u32   = 1u32 << 8;
+  pub const T1_SIGMA_9: u32   = 1u32 << 9;
+  pub const T1_SIGMA_10: u32  = 1u32 << 10;
+  pub const T1_SIGMA_11: u32  = 1u32 << 11;
+  pub const T1_SIGMA_12: u32  = 1u32 << 12;
+  pub const T1_SIGMA_13: u32  = 1u32 << 13;
+  pub const T1_SIGMA_14: u32  = 1u32 << 14;
+  pub const T1_SIGMA_15: u32  = 1u32 << 15;
+  pub const T1_SIGMA_16: u32  = 1u32 << 16;
+  pub const T1_SIGMA_17: u32  = 1u32 << 17;
+  pub const T1_CHI_0: u32     = 1u32 << 18;
   pub const T1_CHI_0_I: u32   = 18;
-  pub const T1_CHI_1: u32     = (1u32 << 19);
+  pub const T1_CHI_1: u32     = 1u32 << 19;
   pub const T1_CHI_1_I: u32   = 19;
-  pub const T1_MU_0: u32      = (1u32 << 20);
-  pub const T1_PI_0: u32      = (1u32 << 21);
-  pub const T1_CHI_2: u32     = (1u32 << 22);
+  pub const T1_MU_0: u32      = 1u32 << 20;
+  pub const T1_PI_0: u32      = 1u32 << 21;
+  pub const T1_CHI_2: u32     = 1u32 << 22;
   pub const T1_CHI_2_I: u32   = 22;
-  pub const T1_MU_1: u32      = (1u32 << 23);
-  pub const T1_PI_1: u32      = (1u32 << 24);
-  pub const T1_CHI_3: u32     = (1u32 << 25);
-  pub const T1_MU_2: u32      = (1u32 << 26);
-  pub const T1_PI_2: u32      = (1u32 << 27);
-  pub const T1_CHI_4: u32     = (1u32 << 28);
-  pub const T1_MU_3: u32      = (1u32 << 29);
-  pub const T1_PI_3: u32      = (1u32 << 30);
-  pub const T1_CHI_5: u32     = (1u32 << 31);
+  pub const T1_MU_1: u32      = 1u32 << 23;
+  pub const T1_PI_1: u32      = 1u32 << 24;
+  pub const T1_CHI_3: u32     = 1u32 << 25;
+  pub const T1_MU_2: u32      = 1u32 << 26;
+  pub const T1_PI_2: u32      = 1u32 << 27;
+  pub const T1_CHI_4: u32     = 1u32 << 28;
+  pub const T1_MU_3: u32      = 1u32 << 29;
+  pub const T1_PI_3: u32      = 1u32 << 30;
+  pub const T1_CHI_5: u32     = 1u32 << 31;
   pub const T1_CHI_5_I: u32   = 31;
   pub const T1_SIGMA_NW: u32    = T1_SIGMA_0;
   pub const T1_SIGMA_N: u32     = T1_SIGMA_1;
@@ -425,20 +425,20 @@ pub mod t1 {
   pub const T1_SIGMA_SW: u32    = T1_SIGMA_6;
   pub const T1_SIGMA_S: u32     = T1_SIGMA_7;
   pub const T1_SIGMA_SE: u32    = T1_SIGMA_8;
-  pub const T1_SIGMA_NEIGHBOURS: u32  = (T1_SIGMA_NW | T1_SIGMA_N | T1_SIGMA_NE | T1_SIGMA_W | T1_SIGMA_E | T1_SIGMA_SW | T1_SIGMA_S | T1_SIGMA_SE);
+  pub const T1_SIGMA_NEIGHBOURS: u32  = T1_SIGMA_NW | T1_SIGMA_N | T1_SIGMA_NE | T1_SIGMA_W | T1_SIGMA_E | T1_SIGMA_SW | T1_SIGMA_S | T1_SIGMA_SE;
   pub const T1_CHI_THIS: u32    = T1_CHI_1;
   pub const T1_CHI_THIS_I: u32  = T1_CHI_1_I;
   pub const T1_MU_THIS: u32     = T1_MU_0;
   pub const T1_PI_THIS: u32     = T1_PI_0;
   pub const T1_CHI_S: u32       = T1_CHI_2;
-  pub const T1_LUT_SGN_W: u32  = (1u32 << 0);
-  pub const T1_LUT_SIG_N: u32  = (1u32 << 1);
-  pub const T1_LUT_SGN_E: u32  = (1u32 << 2);
-  pub const T1_LUT_SIG_W: u32  = (1u32 << 3);
-  pub const T1_LUT_SGN_N: u32  = (1u32 << 4);
-  pub const T1_LUT_SIG_E: u32  = (1u32 << 5);
-  pub const T1_LUT_SGN_S: u32  = (1u32 << 6);
-  pub const T1_LUT_SIG_S: u32  = (1u32 << 7);
+  pub const T1_LUT_SGN_W: u32  = 1u32 << 0;
+  pub const T1_LUT_SIG_N: u32  = 1u32 << 1;
+  pub const T1_LUT_SGN_E: u32  = 1u32 << 2;
+  pub const T1_LUT_SIG_W: u32  = 1u32 << 3;
+  pub const T1_LUT_SGN_N: u32  = 1u32 << 4;
+  pub const T1_LUT_SIG_E: u32  = 1u32 << 5;
+  pub const T1_LUT_SGN_S: u32  = 1u32 << 6;
+  pub const T1_LUT_SIG_S: u32  = 1u32 << 7;
 }
 
 pub mod tls {

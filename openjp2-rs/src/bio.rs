@@ -144,7 +144,7 @@ pub(crate) unsafe fn opj_bio_destroy(mut bio: *mut opj_bio_t) {
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_bio_numbytes(mut bio: *mut opj_bio_t) -> isize {
-  (*bio).bp.wrapping_offset_from((*bio).start)
+  (*bio).bp.offset_from((*bio).start)
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_bio_init_enc(

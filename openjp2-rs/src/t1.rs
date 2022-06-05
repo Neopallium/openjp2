@@ -1058,8 +1058,8 @@ fn opj_t1_enc_clnpass_step_macro(
   lim: OPJ_UINT32,
   cblksty: OPJ_UINT32,
 ) {
-  const CHECK: opj_flag_t = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 |
-                              T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+  const CHECK: opj_flag_t = T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 |
+                              T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3;
   unsafe {
     let mut v = 0;
     if (*flagsp & CHECK) == CHECK {
@@ -2267,10 +2267,10 @@ fn opj_t1_decode_cblk(
           2i32,
           b"PTERM check failure: %d remaining bytes in code block (%d used / %d)\n\x00" as *const u8
             as *const libc::c_char,
-          (*mqc).end.wrapping_offset_from((*mqc).bp) as libc::c_int
+          (*mqc).end.offset_from((*mqc).bp) as libc::c_int
             - 2i32,
-          (*mqc).bp.wrapping_offset_from((*mqc).start) as libc::c_int,
-          (*mqc).end.wrapping_offset_from((*mqc).start) as libc::c_int,
+          (*mqc).bp.offset_from((*mqc).start) as libc::c_int,
+          (*mqc).end.offset_from((*mqc).start) as libc::c_int,
         );
         if !p_manager_mutex.is_null() {
           opj_mutex_unlock(p_manager_mutex);
