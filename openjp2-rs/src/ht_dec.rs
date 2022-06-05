@@ -1321,26 +1321,8 @@ unsafe fn opj_t1_allocate_buffers(
   assert!(h <= 1024u32);
   assert!(w.wrapping_mul(h) <= 4096u32);
   /* encoder uses tile buffer, so no need to allocate */
-  let mut datasize = w.wrapping_mul(h);
-  if datasize > t1.datasize {
-    opj_aligned_free(t1.data as *mut libc::c_void);
-    t1.data = opj_aligned_malloc(
-      (datasize as libc::c_ulong).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
-    ) as *mut OPJ_INT32;
-    if t1.data.is_null() {
-      /* FIXME event manager error callback */
-      return 0i32;
-    }
-    t1.datasize = datasize
-  }
-  /* memset first arg is declared to never be null by gcc */
-  if !t1.data.is_null() {
-    memset(
-      t1.data as *mut libc::c_void,
-      0i32,
-      (datasize as libc::c_ulong).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
-    );
-  }
+  let datasize = w.wrapping_mul(h);
+  t1.data.resize(datasize as usize);
   // We expand these buffers to multiples of 16 bytes.
   // We need 4 buffers of 129 integers each, expanded to 132 integers each
   // We also need 514 bytes of buffer, expanded to 528 bytes
@@ -1531,7 +1513,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   // OPJ_BYTE* coded_data is a pointer to bitstream
   coded_data = cblkdata;
   // OPJ_UINT32* decoded_data is a pointer to decoded codeblock data buf.
-  decoded_data = t1.data as *mut OPJ_UINT32;
+  decoded_data = t1.data.as_mut_ptr() as *mut OPJ_UINT32;
   // OPJ_UINT32 num_passes is the number of passes: 1 if CUP only, 2 for
   // CUP+SPP, and 3 for CUP+SPP+MRP
   num_passes = if (*cblk).numsegs > 0u32 {
