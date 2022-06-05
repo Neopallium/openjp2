@@ -1,18 +1,16 @@
 use super::openjpeg::*;
+use super::t1_luts::*;
 use super::consts::*;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct opj_mqc_state {
   pub qeval: u32,
+  // TODO: use 'bool'
   pub mps: u8,
   pub nmps: u8,
   pub nlps: u8,
 }
 pub type opj_mqc_state_t = opj_mqc_state;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct opj_mqc {
   pub c: OPJ_UINT32,
   pub a: OPJ_UINT32,
@@ -27,6 +25,26 @@ pub struct opj_mqc {
   pub backup: [OPJ_BYTE; 2],
 }
 pub type opj_mqc_t = opj_mqc;
+
+impl Default for opj_mqc {
+  fn default() -> Self {
+    use core::ptr::null_mut;
+    let ctx = &mqc_states[0];
+    Self {
+      c: 0,
+      a: 0,
+      ct: 0,
+      end_of_byte_stream_counter: 0,
+      bp: null_mut(),
+      start: null_mut(),
+      end: null_mut(),
+      ctxs: [ctx; MQC_NUMCTXS],
+      curctx: 0,
+      lut_ctxno_zc_orient: &lut_ctxno_zc[0],
+      backup: [0; 2],
+    }
+  }
+}
 
 impl opj_mqc {
   pub(crate) fn set_curctx(&mut self, ctxno: u8) {

@@ -19,22 +19,6 @@ pub type opj_thread_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct opj_tls_t {
-  pub key_val: *mut opj_tls_key_val_t,
-  pub key_val_count: libc::c_int,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_tls_key_val_t {
-  pub key: libc::c_int,
-  pub value: *mut libc::c_void,
-  pub opj_free_func: opj_tls_free_func,
-}
-pub type opj_tls_free_func = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct opj_thread_pool_t {
   pub worker_threads: *mut opj_worker_thread_t,
   pub worker_threads_count: libc::c_int,
@@ -45,7 +29,6 @@ pub struct opj_thread_pool_t {
   pub pending_jobs_count: libc::c_int,
   pub waiting_worker_thread_list: *mut opj_worker_thread_list_t,
   pub waiting_worker_thread_count: libc::c_int,
-  pub tls: *mut opj_tls_t,
   pub signaling_threshold: libc::c_int,
 }
 
@@ -79,7 +62,7 @@ pub struct opj_worker_thread_job_t {
   pub job_fn: opj_job_fn,
   pub user_data: *mut libc::c_void,
 }
-pub type opj_job_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_tls_t) -> ()>;
+pub type opj_job_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
 pub type opj_worker_thread_state = libc::c_uint;
 pub const OPJWTS_ERROR: opj_worker_thread_state = 2;
 pub const OPJWTS_STOP: opj_worker_thread_state = 1;
@@ -116,127 +99,37 @@ pub const OPJWTS_OK: opj_worker_thread_state = 0;
  */
 /* Stub implementation */
 #[no_mangle]
-pub(crate) unsafe fn opj_has_thread_support() -> OPJ_BOOL {
+pub fn opj_has_thread_support() -> OPJ_BOOL {
   return 0i32;
 }
 #[no_mangle]
-pub(crate) unsafe fn opj_get_num_cpus() -> libc::c_int {
+pub fn opj_get_num_cpus() -> libc::c_int {
   return 1i32;
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_mutex_create() -> *mut opj_mutex_t {
+
+pub(crate) fn opj_mutex_create() -> *mut opj_mutex_t {
   return 0 as *mut opj_mutex_t;
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_mutex_lock(mut _mutex: *mut opj_mutex_t) {}
-#[no_mangle]
-pub(crate) unsafe fn opj_mutex_unlock(mut _mutex: *mut opj_mutex_t) {}
-#[no_mangle]
-pub(crate) unsafe fn opj_mutex_destroy(mut _mutex: *mut opj_mutex_t) {}
-#[no_mangle]
-pub(crate) unsafe fn opj_cond_create() -> *mut opj_cond_t {
+pub(crate) fn opj_mutex_lock(mut _mutex: *mut opj_mutex_t) {}
+pub(crate) fn opj_mutex_unlock(mut _mutex: *mut opj_mutex_t) {}
+pub(crate) fn opj_mutex_destroy(mut _mutex: *mut opj_mutex_t) {}
+pub(crate) fn opj_cond_create() -> *mut opj_cond_t {
   return 0 as *mut opj_cond_t;
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_cond_wait(mut _cond: *mut opj_cond_t, mut _mutex: *mut opj_mutex_t) {}
-#[no_mangle]
-pub(crate) unsafe fn opj_cond_signal(mut _cond: *mut opj_cond_t) {}
-#[no_mangle]
-pub(crate) unsafe fn opj_cond_destroy(mut _cond: *mut opj_cond_t) {}
-#[no_mangle]
-pub(crate) unsafe fn opj_thread_create(
+
+pub(crate) fn opj_cond_wait(mut _cond: *mut opj_cond_t, mut _mutex: *mut opj_mutex_t) {}
+pub(crate) fn opj_cond_signal(mut _cond: *mut opj_cond_t) {}
+pub(crate) fn opj_cond_destroy(mut _cond: *mut opj_cond_t) {}
+
+pub(crate) fn opj_thread_create(
   mut _thread_fn: opj_thread_fn,
   mut _user_data: *mut libc::c_void,
 ) -> *mut opj_thread_t {
   return 0 as *mut opj_thread_t;
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_thread_join(mut _thread: *mut opj_thread_t) {}
-unsafe fn opj_tls_new() -> *mut opj_tls_t {
-  return opj_calloc(
-    1i32 as size_t,
-    core::mem::size_of::<opj_tls_t>() as libc::c_ulong,
-  ) as *mut opj_tls_t;
-}
-unsafe fn opj_tls_destroy(mut tls: *mut opj_tls_t) {
-  let mut i: libc::c_int = 0;
-  if tls.is_null() {
-    return;
-  }
-  i = 0i32;
-  while i < (*tls).key_val_count {
-    if (*(*tls).key_val.offset(i as isize)).opj_free_func.is_some() {
-      (*(*tls).key_val.offset(i as isize))
-        .opj_free_func
-        .expect("non-null function pointer")((*(*tls).key_val.offset(i as isize)).value);
-    }
-    i += 1
-  }
-  opj_free((*tls).key_val as *mut libc::c_void);
-  opj_free(tls as *mut libc::c_void);
-}
-#[no_mangle]
-pub(crate) unsafe fn opj_tls_get(
-  mut tls: *mut opj_tls_t,
-  mut key: libc::c_int,
-) -> *mut libc::c_void {
-  let mut i: libc::c_int = 0;
-  i = 0i32;
-  while i < (*tls).key_val_count {
-    if (*(*tls).key_val.offset(i as isize)).key == key {
-      return (*(*tls).key_val.offset(i as isize)).value;
-    }
-    i += 1
-  }
-  return 0 as *mut libc::c_void;
-}
-#[no_mangle]
-pub(crate) unsafe fn opj_tls_set(
-  mut tls: *mut opj_tls_t,
-  mut key: libc::c_int,
-  mut value: *mut libc::c_void,
-  mut opj_free_func: opj_tls_free_func,
-) -> OPJ_BOOL {
-  let mut new_key_val = 0 as *mut opj_tls_key_val_t;
-  let mut i: libc::c_int = 0;
-  if (*tls).key_val_count == 2147483647i32 {
-    return 0i32;
-  }
-  i = 0i32;
-  while i < (*tls).key_val_count {
-    if (*(*tls).key_val.offset(i as isize)).key == key {
-      if (*(*tls).key_val.offset(i as isize)).opj_free_func.is_some() {
-        (*(*tls).key_val.offset(i as isize))
-          .opj_free_func
-          .expect("non-null function pointer")((*(*tls).key_val.offset(i as isize)).value);
-      }
-      let ref mut fresh0 = (*(*tls).key_val.offset(i as isize)).value;
-      *fresh0 = value;
-      let ref mut fresh1 = (*(*tls).key_val.offset(i as isize)).opj_free_func;
-      *fresh1 = opj_free_func;
-      return 1i32;
-    }
-    i += 1
-  }
-  new_key_val = opj_realloc(
-    (*tls).key_val as *mut libc::c_void,
-    ((*tls).key_val_count as size_t)
-      .wrapping_add(1u64)
-      .wrapping_mul(core::mem::size_of::<opj_tls_key_val_t>() as libc::c_ulong),
-  ) as *mut opj_tls_key_val_t;
-  if new_key_val.is_null() {
-    return 0i32;
-  }
-  (*tls).key_val = new_key_val;
-  (*new_key_val.offset((*tls).key_val_count as isize)).key = key;
-  let ref mut fresh2 = (*new_key_val.offset((*tls).key_val_count as isize)).value;
-  *fresh2 = value;
-  let ref mut fresh3 = (*new_key_val.offset((*tls).key_val_count as isize)).opj_free_func;
-  *fresh3 = opj_free_func;
-  (*tls).key_val_count += 1;
-  return 1i32;
-}
-#[no_mangle]
+
+pub(crate) fn opj_thread_join(mut _thread: *mut opj_thread_t) {}
+
 pub(crate) unsafe fn opj_thread_pool_create(
   mut num_threads: libc::c_int,
 ) -> *mut opj_thread_pool_t {
@@ -250,11 +143,6 @@ pub(crate) unsafe fn opj_thread_pool_create(
   }
   core::ptr::write_volatile(&mut (*tp).state as *mut opj_worker_thread_state, OPJWTS_OK);
   if num_threads <= 0i32 {
-    (*tp).tls = opj_tls_new();
-    if (*tp).tls.is_null() {
-      opj_free(tp as *mut libc::c_void);
-      tp = 0 as *mut opj_thread_pool_t
-    }
     return tp;
   }
   (*tp).mutex = opj_mutex_create();
@@ -268,27 +156,26 @@ pub(crate) unsafe fn opj_thread_pool_create(
   }
   return tp;
 }
+
 unsafe extern "C" fn opj_worker_thread_function(mut user_data: *mut libc::c_void) {
   let mut worker_thread = 0 as *mut opj_worker_thread_t;
   let mut tp = 0 as *mut opj_thread_pool_t;
-  let mut tls = 0 as *mut opj_tls_t;
   let mut job_finished = 0i32;
   worker_thread = user_data as *mut opj_worker_thread_t;
   tp = (*worker_thread).tp;
-  tls = opj_tls_new();
   loop {
     let mut job = opj_thread_pool_get_next_job(tp, worker_thread, job_finished);
     if job.is_null() {
       break;
     }
     if (*job).job_fn.is_some() {
-      (*job).job_fn.expect("non-null function pointer")((*job).user_data, tls);
+      (*job).job_fn.expect("non-null function pointer")((*job).user_data);
     }
     opj_free(job as *mut libc::c_void);
     job_finished = 1i32
   }
-  opj_tls_destroy(tls);
 }
+
 unsafe fn opj_thread_pool_setup(
   mut tp: *mut opj_thread_pool_t,
   mut num_threads: libc::c_int,
@@ -359,12 +246,7 @@ unsafe fn opj_thread_pool_setup(
   }
   return bRet;
 }
-/*
-void opj_waiting()
-{
-    printf("waiting!\n");
-}
-*/
+
 unsafe fn opj_thread_pool_get_next_job(
   mut tp: *mut opj_thread_pool_t,
   mut worker_thread: *mut opj_worker_thread_t,
@@ -426,7 +308,7 @@ unsafe fn opj_thread_pool_get_next_job(
     opj_mutex_unlock((*worker_thread).mutex);
   }
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_thread_pool_submit_job(
   mut tp: *mut opj_thread_pool_t,
   mut job_fn: opj_job_fn,
@@ -435,7 +317,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
   let mut job = 0 as *mut opj_worker_thread_job_t;
   let mut item = 0 as *mut opj_job_list_t;
   if (*tp).mutex.is_null() {
-    job_fn.expect("non-null function pointer")(user_data, (*tp).tls);
+    job_fn.expect("non-null function pointer")(user_data);
     return 1i32;
   }
   job = opj_malloc(core::mem::size_of::<opj_worker_thread_job_t>() as libc::c_ulong)
@@ -489,7 +371,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
   }
   return 1i32;
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_thread_pool_wait_completion(
   mut tp: *mut opj_thread_pool_t,
   mut max_remaining_jobs: libc::c_int,
@@ -509,13 +391,13 @@ pub(crate) unsafe fn opj_thread_pool_wait_completion(
   }
   opj_mutex_unlock((*tp).mutex);
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_thread_pool_get_thread_count(
   mut tp: *mut opj_thread_pool_t,
 ) -> libc::c_int {
   return (*tp).worker_threads_count;
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_thread_pool_destroy(mut tp: *mut opj_thread_pool_t) {
   if tp.is_null() {
     return;
@@ -548,6 +430,5 @@ pub(crate) unsafe fn opj_thread_pool_destroy(mut tp: *mut opj_thread_pool_t) {
     opj_cond_destroy((*tp).cond);
   }
   opj_mutex_destroy((*tp).mutex);
-  opj_tls_destroy((*tp).tls);
   opj_free(tp as *mut libc::c_void);
 }

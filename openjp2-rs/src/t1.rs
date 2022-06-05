@@ -10,11 +10,15 @@ use super::thread::*;
 use super::consts::*;
 use ::libc;
 
+use core::{
+  cell::RefCell,
+  ops::DerefMut,
+  ptr::null_mut,
+};
+
 use super::malloc::*;
 use ::libc::{memset, memcpy};
 
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct opj_t1 {
   pub mqc: opj_mqc_t,
   pub data: *mut OPJ_INT32,
@@ -30,8 +34,50 @@ pub struct opj_t1 {
 }
 pub type opj_t1_t = opj_t1;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
+impl Default for opj_t1 {
+  fn default() -> Self {
+    Self {
+      mqc: opj_mqc::default(),
+      data: null_mut(),
+      flags: null_mut(),
+      w: 0,
+      h: 0,
+      datasize: 0,
+      flagssize: 0,
+      encoder: 0,
+      mustuse_cblkdatabuffer: 0,
+      cblkdatabuffer: null_mut(),
+      cblkdatabuffersize: 0,
+    }
+  }
+}
+
+impl Drop for opj_t1 {
+  fn drop(&mut self) {
+    unsafe {
+      if !self.data.is_null() {
+        opj_aligned_free(self.data as *mut libc::c_void);
+        self.data = null_mut();
+      }
+      if !self.flags.is_null() {
+        opj_aligned_free(self.flags as *mut libc::c_void);
+        self.flags = null_mut();
+      }
+      opj_free(self.cblkdatabuffer as *mut libc::c_void);
+    }
+  }
+}
+
+impl opj_t1 {
+  fn new() -> Self {
+    Self::default()
+  }
+}
+
+thread_local!{
+  static T1: RefCell<opj_t1> = RefCell::new(opj_t1::new())
+}
+
 pub struct opj_t1_cblk_encode_processing_job_t {
   pub compno: OPJ_UINT32,
   pub resno: OPJ_UINT32,
@@ -46,8 +92,6 @@ pub struct opj_t1_cblk_encode_processing_job_t {
   pub mutex: *mut opj_mutex_t,
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct opj_t1_cblk_decode_processing_job_t {
   pub whole_tile_decoding: OPJ_BOOL,
   pub resno: OPJ_UINT32,
@@ -1563,56 +1607,9 @@ fn opj_t1_allocate_buffers(
 
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */
-/* *
- * Creates a new Tier 1 handle
- * and initializes the look-up tables of the Tier-1 coder/decoder
- * @return a new T1 handle if successful, returns NULL otherwise
-*/
-pub(crate) fn opj_t1_create(mut isEncoder: OPJ_BOOL) -> *mut opj_t1_t {
-  unsafe {
-    let mut l_t1 = 0 as *mut opj_t1_t;
-    l_t1 = opj_calloc(
-      1i32 as size_t,
-      core::mem::size_of::<opj_t1_t>() as libc::c_ulong,
-    ) as *mut opj_t1_t;
-    if l_t1.is_null() {
-      return 0 as *mut opj_t1_t;
-    }
-    (*l_t1).encoder = isEncoder;
-    return l_t1;
-  }
-}
-
-/* *
- * Destroys a previously created T1 handle
- *
- * @param p_t1 Tier 1 handle to destroy
-*/
-fn opj_t1_destroy(mut p_t1: *mut opj_t1_t) {
-  unsafe {
-    if p_t1.is_null() {
-      return;
-    }
-    if !(*p_t1).data.is_null() {
-      opj_aligned_free((*p_t1).data as *mut libc::c_void);
-      (*p_t1).data = 0 as *mut OPJ_INT32
-    }
-    if !(*p_t1).flags.is_null() {
-      opj_aligned_free((*p_t1).flags as *mut libc::c_void);
-      (*p_t1).flags = 0 as *mut opj_flag_t
-    }
-    opj_free((*p_t1).cblkdatabuffer as *mut libc::c_void);
-    opj_free(p_t1 as *mut libc::c_void);
-  }
-}
-
-extern "C" fn opj_t1_destroy_wrapper(mut t1: *mut libc::c_void) {
-  opj_t1_destroy(t1 as *mut opj_t1_t);
-}
 
 extern "C" fn opj_t1_clbl_decode_processor(
   mut user_data: *mut libc::c_void,
-  mut tls: *mut opj_tls_t,
 ) {
   unsafe {
     let mut cblk = 0 as *mut opj_tcd_cblk_dec_t;
@@ -1627,7 +1624,6 @@ extern "C" fn opj_t1_clbl_decode_processor(
     let mut i: OPJ_UINT32 = 0;
     let mut j: OPJ_UINT32 = 0;
     let mut job = 0 as *mut opj_t1_cblk_decode_processing_job_t;
-    let mut t1 = 0 as *mut opj_t1_t;
     let mut resno: OPJ_UINT32 = 0;
     let mut tile_w: OPJ_UINT32 = 0;
     job = user_data as *mut opj_t1_cblk_decode_processing_job_t;
@@ -1690,42 +1686,32 @@ extern "C" fn opj_t1_clbl_decode_processor(
       opj_free(job as *mut libc::c_void);
       return;
     }
-    t1 = opj_tls_get(tls, 0i32) as *mut opj_t1_t;
-    if t1.is_null() {
-      t1 = opj_t1_create(0i32);
-      if t1.is_null() {
-        opj_event_msg(
-          (*job).p_manager,
-          1i32,
-          b"Cannot allocate Tier 1 handle\n\x00" as *const u8 as *const libc::c_char,
-        );
-        core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free(job as *mut libc::c_void);
-        return;
-      }
-      if opj_tls_set(
-        tls,
-        0i32,
-        t1 as *mut libc::c_void,
-        Some(opj_t1_destroy_wrapper as unsafe extern "C" fn(_: *mut libc::c_void) -> ()),
-      ) == 0
-      {
-        opj_event_msg(
-          (*job).p_manager,
-          1i32,
-          b"Unable to set t1 handle as TLS\n\x00" as *const u8 as *const libc::c_char,
-        );
-        opj_t1_destroy(t1);
-        core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free(job as *mut libc::c_void);
-        return;
-      }
-    }
-    let t1 = &mut *t1;
-    t1.mustuse_cblkdatabuffer = (*job).mustuse_cblkdatabuffer;
-    if (*tccp).cblksty & J2K_CCP_CBLKSTY_HT != 0 {
-      if 0i32
-        == opj_t1_ht_decode_cblk(
+
+    // Use thread local t1 instance.
+    T1.with(|l_t1| {
+      let mut ref_t1 = l_t1.borrow_mut();
+      let t1 = ref_t1.deref_mut();
+
+      t1.mustuse_cblkdatabuffer = (*job).mustuse_cblkdatabuffer;
+      if (*tccp).cblksty & J2K_CCP_CBLKSTY_HT != 0 {
+        if 0i32
+          == opj_t1_ht_decode_cblk(
+            t1,
+            cblk,
+            (*band).bandno,
+            (*tccp).roishift as OPJ_UINT32,
+            (*tccp).cblksty,
+            (*job).p_manager,
+            (*job).p_manager_mutex,
+            (*job).check_pterm,
+          )
+        {
+          core::ptr::write_volatile((*job).pret, 0i32);
+          opj_free(job as *mut libc::c_void);
+          return;
+        }
+      } else if 0i32
+        == opj_t1_decode_cblk(
           t1,
           cblk,
           (*band).bandno,
@@ -1740,192 +1726,177 @@ extern "C" fn opj_t1_clbl_decode_processor(
         opj_free(job as *mut libc::c_void);
         return;
       }
-    } else if 0i32
-      == opj_t1_decode_cblk(
-        &mut *t1,
-        cblk,
-        (*band).bandno,
-        (*tccp).roishift as OPJ_UINT32,
-        (*tccp).cblksty,
-        (*job).p_manager,
-        (*job).p_manager_mutex,
-        (*job).check_pterm,
-      )
-    {
-      core::ptr::write_volatile((*job).pret, 0i32);
-      opj_free(job as *mut libc::c_void);
-      return;
-    }
-    x = (*cblk).x0 - (*band).x0;
-    y = (*cblk).y0 - (*band).y0;
-    if (*band).bandno & 1 != 0 {
-      let mut pres: *mut opj_tcd_resolution_t = &mut *(*tilec)
-        .resolutions
-        .offset(resno.wrapping_sub(1) as isize)
-        as *mut opj_tcd_resolution_t;
-      x += (*pres).x1 - (*pres).x0
-    }
-    if (*band).bandno & 2 != 0 {
-      let mut pres_0: *mut opj_tcd_resolution_t = &mut *(*tilec)
-        .resolutions
-        .offset(resno.wrapping_sub(1) as isize)
-        as *mut opj_tcd_resolution_t;
-      y += (*pres_0).y1 - (*pres_0).y0
-    }
-    datap = if !(*cblk).decoded_data.is_null() {
-      (*cblk).decoded_data
-    } else {
-      t1.data
-    };
-    cblk_w = t1.w;
-    cblk_h = t1.h;
-    if (*tccp).roishift != 0 {
-      if (*tccp).roishift >= 31i32 {
-        j = 0 as OPJ_UINT32;
-        while j < cblk_h {
-          i = 0 as OPJ_UINT32;
-          while i < cblk_w {
-            *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) = 0i32;
-            i = i.wrapping_add(1)
-          }
-          j = j.wrapping_add(1)
-        }
+      x = (*cblk).x0 - (*band).x0;
+      y = (*cblk).y0 - (*band).y0;
+      if (*band).bandno & 1 != 0 {
+        let mut pres: *mut opj_tcd_resolution_t = &mut *(*tilec)
+          .resolutions
+          .offset(resno.wrapping_sub(1) as isize)
+          as *mut opj_tcd_resolution_t;
+        x += (*pres).x1 - (*pres).x0
+      }
+      if (*band).bandno & 2 != 0 {
+        let mut pres_0: *mut opj_tcd_resolution_t = &mut *(*tilec)
+          .resolutions
+          .offset(resno.wrapping_sub(1) as isize)
+          as *mut opj_tcd_resolution_t;
+        y += (*pres_0).y1 - (*pres_0).y0
+      }
+      datap = if !(*cblk).decoded_data.is_null() {
+        (*cblk).decoded_data
       } else {
-        let mut thresh = (1i32) << (*tccp).roishift;
-        j = 0 as OPJ_UINT32;
-        while j < cblk_h {
-          i = 0 as OPJ_UINT32;
-          while i < cblk_w {
-            let mut val = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
-            let mut mag = val.abs();
-            if mag >= thresh {
-              mag >>= (*tccp).roishift;
-              *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) =
-                if val < 0i32 { -mag } else { mag }
+        t1.data
+      };
+      cblk_w = t1.w;
+      cblk_h = t1.h;
+      if (*tccp).roishift != 0 {
+        if (*tccp).roishift >= 31i32 {
+          j = 0 as OPJ_UINT32;
+          while j < cblk_h {
+            i = 0 as OPJ_UINT32;
+            while i < cblk_w {
+              *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) = 0i32;
+              i = i.wrapping_add(1)
             }
+            j = j.wrapping_add(1)
+          }
+        } else {
+          let mut thresh = (1i32) << (*tccp).roishift;
+          j = 0 as OPJ_UINT32;
+          while j < cblk_h {
+            i = 0 as OPJ_UINT32;
+            while i < cblk_w {
+              let mut val = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
+              let mut mag = val.abs();
+              if mag >= thresh {
+                mag >>= (*tccp).roishift;
+                *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) =
+                  if val < 0i32 { -mag } else { mag }
+              }
+              i = i.wrapping_add(1)
+            }
+            j = j.wrapping_add(1)
+          }
+        }
+      }
+      /* Both can be non NULL if for example decoding a full tile and then */
+      /* partially a tile. In which case partial decoding should be the */
+      /* priority */
+      assert!(!(*cblk).decoded_data.is_null() || !(*tilec).data.is_null()); /* if (tccp->qmfbid == 0) */
+      if !(*cblk).decoded_data.is_null() {
+        let mut cblk_size = cblk_w.wrapping_mul(cblk_h); /* resno */
+        if (*tccp).qmfbid == 1 {
+          i = 0 as OPJ_UINT32;
+          while i < cblk_size {
+            let ref mut fresh318 = *datap.offset(i as isize);
+            *fresh318 /= 2i32;
+            i = i.wrapping_add(1)
+          }
+        } else {
+          let stepsize = 0.5f32 * (*band).stepsize;
+          i = 0 as OPJ_UINT32;
+          while i < cblk_size {
+            let mut tmp = *datap as OPJ_FLOAT32 * stepsize;
+            memcpy(
+              datap as *mut libc::c_void,
+              &mut tmp as *mut OPJ_FLOAT32 as *const libc::c_void,
+              core::mem::size_of::<OPJ_FLOAT32>(),
+            );
+            datap = datap.offset(1);
+            i = i.wrapping_add(1)
+          }
+        }
+      } else if (*tccp).qmfbid == 1 {
+        let mut tiledp: *mut OPJ_INT32 = &mut *(*tilec).data.offset(
+          (y as OPJ_SIZE_T)
+            .wrapping_mul(tile_w as libc::c_ulong)
+            .wrapping_add(x as OPJ_SIZE_T) as isize,
+        ) as *mut OPJ_INT32;
+        j = 0 as OPJ_UINT32;
+        while j < cblk_h {
+          i = 0 as OPJ_UINT32;
+          while i < cblk_w & !(3u32) {
+            let mut tmp0 = *datap.offset(
+              j.wrapping_mul(cblk_w)
+                .wrapping_add(i)
+                .wrapping_add(0u32) as isize,
+            );
+            let mut tmp1 = *datap.offset(
+              j.wrapping_mul(cblk_w)
+                .wrapping_add(i)
+                .wrapping_add(1u32) as isize,
+            );
+            let mut tmp2 = *datap.offset(
+              j.wrapping_mul(cblk_w)
+                .wrapping_add(i)
+                .wrapping_add(2u32) as isize,
+            );
+            let mut tmp3 = *datap.offset(
+              j.wrapping_mul(cblk_w)
+                .wrapping_add(i)
+                .wrapping_add(3u32) as isize,
+            );
+            *tiledp.offset(
+              (j as libc::c_ulong)
+                .wrapping_mul(tile_w as OPJ_SIZE_T)
+                .wrapping_add(i as libc::c_ulong)
+                .wrapping_add(0u64) as isize,
+            ) = tmp0 / 2i32;
+            *tiledp.offset(
+              (j as libc::c_ulong)
+                .wrapping_mul(tile_w as OPJ_SIZE_T)
+                .wrapping_add(i as libc::c_ulong)
+                .wrapping_add(1u64) as isize,
+            ) = tmp1 / 2i32;
+            *tiledp.offset(
+              (j as libc::c_ulong)
+                .wrapping_mul(tile_w as OPJ_SIZE_T)
+                .wrapping_add(i as libc::c_ulong)
+                .wrapping_add(2u64) as isize,
+            ) = tmp2 / 2i32;
+            *tiledp.offset(
+              (j as libc::c_ulong)
+                .wrapping_mul(tile_w as OPJ_SIZE_T)
+                .wrapping_add(i as libc::c_ulong)
+                .wrapping_add(3u64) as isize,
+            ) = tmp3 / 2i32;
+            i = (i as libc::c_uint).wrapping_add(4u32)
+          }
+          while i < cblk_w {
+            let mut tmp_0 = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
+            *tiledp.offset(
+              (j as libc::c_ulong)
+                .wrapping_mul(tile_w as OPJ_SIZE_T)
+                .wrapping_add(i as libc::c_ulong) as isize,
+            ) = tmp_0 / 2i32;
             i = i.wrapping_add(1)
           }
           j = j.wrapping_add(1)
         }
-      }
-    }
-    /* Both can be non NULL if for example decoding a full tile and then */
-    /* partially a tile. In which case partial decoding should be the */
-    /* priority */
-    assert!(!(*cblk).decoded_data.is_null() || !(*tilec).data.is_null()); /* if (tccp->qmfbid == 0) */
-    if !(*cblk).decoded_data.is_null() {
-      let mut cblk_size = cblk_w.wrapping_mul(cblk_h); /* resno */
-      if (*tccp).qmfbid == 1 {
-        i = 0 as OPJ_UINT32;
-        while i < cblk_size {
-          let ref mut fresh318 = *datap.offset(i as isize);
-          *fresh318 /= 2i32;
-          i = i.wrapping_add(1)
-        }
       } else {
-        let stepsize = 0.5f32 * (*band).stepsize;
-        i = 0 as OPJ_UINT32;
-        while i < cblk_size {
-          let mut tmp = *datap as OPJ_FLOAT32 * stepsize;
-          memcpy(
-            datap as *mut libc::c_void,
-            &mut tmp as *mut OPJ_FLOAT32 as *const libc::c_void,
-            core::mem::size_of::<OPJ_FLOAT32>(),
-          );
-          datap = datap.offset(1);
-          i = i.wrapping_add(1)
+        let stepsize_0 = 0.5f32 * (*band).stepsize;
+        let mut tiledp_0 = &mut *(*tilec).data.offset(
+          (y as OPJ_SIZE_T)
+            .wrapping_mul(tile_w as libc::c_ulong)
+            .wrapping_add(x as OPJ_SIZE_T) as isize,
+        ) as *mut OPJ_INT32 as *mut OPJ_FLOAT32;
+        j = 0 as OPJ_UINT32;
+        while j < cblk_h {
+          let mut tiledp2 = tiledp_0;
+          i = 0 as OPJ_UINT32;
+          while i < cblk_w {
+            let mut tmp_1 = *datap as OPJ_FLOAT32 * stepsize_0;
+            *tiledp2 = tmp_1;
+            datap = datap.offset(1);
+            tiledp2 = tiledp2.offset(1);
+            i = i.wrapping_add(1)
+          }
+          tiledp_0 = tiledp_0.offset(tile_w as isize);
+          j = j.wrapping_add(1)
         }
       }
-    } else if (*tccp).qmfbid == 1 {
-      let mut tiledp: *mut OPJ_INT32 = &mut *(*tilec).data.offset(
-        (y as OPJ_SIZE_T)
-          .wrapping_mul(tile_w as libc::c_ulong)
-          .wrapping_add(x as OPJ_SIZE_T) as isize,
-      ) as *mut OPJ_INT32;
-      j = 0 as OPJ_UINT32;
-      while j < cblk_h {
-        i = 0 as OPJ_UINT32;
-        while i < cblk_w & !(3u32) {
-          let mut tmp0 = *datap.offset(
-            j.wrapping_mul(cblk_w)
-              .wrapping_add(i)
-              .wrapping_add(0u32) as isize,
-          );
-          let mut tmp1 = *datap.offset(
-            j.wrapping_mul(cblk_w)
-              .wrapping_add(i)
-              .wrapping_add(1u32) as isize,
-          );
-          let mut tmp2 = *datap.offset(
-            j.wrapping_mul(cblk_w)
-              .wrapping_add(i)
-              .wrapping_add(2u32) as isize,
-          );
-          let mut tmp3 = *datap.offset(
-            j.wrapping_mul(cblk_w)
-              .wrapping_add(i)
-              .wrapping_add(3u32) as isize,
-          );
-          *tiledp.offset(
-            (j as libc::c_ulong)
-              .wrapping_mul(tile_w as OPJ_SIZE_T)
-              .wrapping_add(i as libc::c_ulong)
-              .wrapping_add(0u64) as isize,
-          ) = tmp0 / 2i32;
-          *tiledp.offset(
-            (j as libc::c_ulong)
-              .wrapping_mul(tile_w as OPJ_SIZE_T)
-              .wrapping_add(i as libc::c_ulong)
-              .wrapping_add(1u64) as isize,
-          ) = tmp1 / 2i32;
-          *tiledp.offset(
-            (j as libc::c_ulong)
-              .wrapping_mul(tile_w as OPJ_SIZE_T)
-              .wrapping_add(i as libc::c_ulong)
-              .wrapping_add(2u64) as isize,
-          ) = tmp2 / 2i32;
-          *tiledp.offset(
-            (j as libc::c_ulong)
-              .wrapping_mul(tile_w as OPJ_SIZE_T)
-              .wrapping_add(i as libc::c_ulong)
-              .wrapping_add(3u64) as isize,
-          ) = tmp3 / 2i32;
-          i = (i as libc::c_uint).wrapping_add(4u32)
-        }
-        while i < cblk_w {
-          let mut tmp_0 = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
-          *tiledp.offset(
-            (j as libc::c_ulong)
-              .wrapping_mul(tile_w as OPJ_SIZE_T)
-              .wrapping_add(i as libc::c_ulong) as isize,
-          ) = tmp_0 / 2i32;
-          i = i.wrapping_add(1)
-        }
-        j = j.wrapping_add(1)
-      }
-    } else {
-      let stepsize_0 = 0.5f32 * (*band).stepsize;
-      let mut tiledp_0 = &mut *(*tilec).data.offset(
-        (y as OPJ_SIZE_T)
-          .wrapping_mul(tile_w as libc::c_ulong)
-          .wrapping_add(x as OPJ_SIZE_T) as isize,
-      ) as *mut OPJ_INT32 as *mut OPJ_FLOAT32;
-      j = 0 as OPJ_UINT32;
-      while j < cblk_h {
-        let mut tiledp2 = tiledp_0;
-        i = 0 as OPJ_UINT32;
-        while i < cblk_w {
-          let mut tmp_1 = *datap as OPJ_FLOAT32 * stepsize_0;
-          *tiledp2 = tmp_1;
-          datap = datap.offset(1);
-          tiledp2 = tiledp2.offset(1);
-          i = i.wrapping_add(1)
-        }
-        tiledp_0 = tiledp_0.offset(tile_w as isize);
-        j = j.wrapping_add(1)
-      }
-    }
-    opj_free(job as *mut libc::c_void);
+      opj_free(job as *mut libc::c_void);
+    })
   }
 }
 
@@ -2042,7 +2013,7 @@ pub fn opj_t1_decode_cblks(
                       tp,
                       Some(
                         opj_t1_clbl_decode_processor
-                          as unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_tls_t) -> (),
+                          as unsafe extern "C" fn(_: *mut libc::c_void) -> (),
                       ),
                       job as *mut libc::c_void,
                     );
@@ -2306,7 +2277,6 @@ fn opj_t1_decode_cblk(
  */
 extern "C" fn opj_t1_cblk_encode_processor(
   mut user_data: *mut libc::c_void,
-  mut tls: *mut opj_tls_t,
 ) {
   unsafe {
     let mut job = user_data as *mut opj_t1_cblk_encode_processing_job_t; /* OPJ_TRUE == T1 for encoding */
@@ -2315,7 +2285,6 @@ extern "C" fn opj_t1_cblk_encode_processor(
     let mut tilec: *const opj_tcd_tilecomp_t = (*job).tilec;
     let mut tccp: *const opj_tccp_t = (*job).tccp;
     let resno = (*job).resno;
-    let mut t1 = 0 as *mut opj_t1_t;
     let tile_w = ((*tilec).x1 - (*tilec).x0) as OPJ_UINT32;
     let mut tiledp = 0 as *mut OPJ_INT32;
     let mut cblk_w: OPJ_UINT32 = 0;
@@ -2328,192 +2297,188 @@ extern "C" fn opj_t1_cblk_encode_processor(
       opj_free(job as *mut libc::c_void);
       return;
     }
-    t1 = opj_tls_get(tls, 0i32) as *mut opj_t1_t;
-    if t1.is_null() {
-      t1 = opj_t1_create(1i32);
-      opj_tls_set(
-        tls,
-        0i32,
-        t1 as *mut libc::c_void,
-        Some(opj_t1_destroy_wrapper as unsafe extern "C" fn(_: *mut libc::c_void) -> ()),
-      );
-    }
-    let t1 = &mut *t1;
-    if (*band).bandno & 1 != 0 {
-      let mut pres: *mut opj_tcd_resolution_t = &mut *(*tilec)
-        .resolutions
-        .offset(resno.wrapping_sub(1) as isize)
-        as *mut opj_tcd_resolution_t;
-      x += (*pres).x1 - (*pres).x0
-    }
-    if (*band).bandno & 2 != 0 {
-      let mut pres_0: *mut opj_tcd_resolution_t = &mut *(*tilec)
-        .resolutions
-        .offset(resno.wrapping_sub(1) as isize)
-        as *mut opj_tcd_resolution_t;
-      y += (*pres_0).y1 - (*pres_0).y0
-    }
-    if opj_t1_allocate_buffers(
-      t1,
-      ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32,
-      ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32,
-    ) == 0
-    {
-      core::ptr::write_volatile((*job).pret, 0i32);
-      opj_free(job as *mut libc::c_void);
-      return;
-    }
-    cblk_w = t1.w;
-    cblk_h = t1.h;
-    tiledp = &mut *(*tilec).data.offset(
-      (y as OPJ_SIZE_T)
-        .wrapping_mul(tile_w as libc::c_ulong)
-        .wrapping_add(x as OPJ_SIZE_T) as isize,
-    ) as *mut OPJ_INT32;
-    if (*tccp).qmfbid == 1 {
-      let mut tiledp_u = tiledp as *mut OPJ_UINT32;
-      let mut t1data = t1.data as *mut OPJ_UINT32;
-      /* Do multiplication on unsigned type, even if the
-       * underlying type is signed, to avoid potential
-       * int overflow on large value (the output will be
-       * incorrect in such situation, but whatever...)
-       * This assumes complement-to-2 signed integer
-       * representation
-       * Fixes https://github.com/uclouvain/openjpeg/issues/1053
-       */
-      j = 0 as OPJ_UINT32;
-      while j < cblk_h & !(3u32) {
-        i = 0 as OPJ_UINT32;
-        while i < cblk_w {
-          *t1data.offset(0) = *tiledp_u.offset(
-            j.wrapping_add(0)
-              .wrapping_mul(tile_w)
-              .wrapping_add(i) as isize,
-          ) << 7i32 - 1i32;
-          *t1data.offset(1) = *tiledp_u.offset(
-            j.wrapping_add(1)
-              .wrapping_mul(tile_w)
-              .wrapping_add(i) as isize,
-          ) << 7i32 - 1i32;
-          *t1data.offset(2) = *tiledp_u.offset(
-            j.wrapping_add(2)
-              .wrapping_mul(tile_w)
-              .wrapping_add(i) as isize,
-          ) << 7i32 - 1i32;
-          *t1data.offset(3) = *tiledp_u.offset(
-            j.wrapping_add(3)
-              .wrapping_mul(tile_w)
-              .wrapping_add(i) as isize,
-          ) << 7i32 - 1i32;
-          t1data = t1data.offset(4);
-          i = i.wrapping_add(1)
-        }
-        j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
-          as OPJ_UINT32
+
+    // Use thread local t1 instance.
+    T1.with(|l_t1| {
+      let mut ref_t1 = l_t1.borrow_mut();
+      let t1 = ref_t1.deref_mut();
+
+      if (*band).bandno & 1 != 0 {
+        let mut pres: *mut opj_tcd_resolution_t = &mut *(*tilec)
+          .resolutions
+          .offset(resno.wrapping_sub(1) as isize)
+          as *mut opj_tcd_resolution_t;
+        x += (*pres).x1 - (*pres).x0
       }
-      if j < cblk_h {
-        i = 0 as OPJ_UINT32;
-        while i < cblk_w {
-          let mut k: OPJ_UINT32 = 0;
-          k = j;
-          while k < cblk_h {
-            *t1data.offset(0) = *tiledp_u
-              .offset(k.wrapping_mul(tile_w).wrapping_add(i) as isize)
-              << 7i32 - 1i32;
-            t1data = t1data.offset(1);
-            k = k.wrapping_add(1)
-          }
-          i = i.wrapping_add(1)
-        }
+      if (*band).bandno & 2 != 0 {
+        let mut pres_0: *mut opj_tcd_resolution_t = &mut *(*tilec)
+          .resolutions
+          .offset(resno.wrapping_sub(1) as isize)
+          as *mut opj_tcd_resolution_t;
+        y += (*pres_0).y1 - (*pres_0).y0
       }
-    } else {
-      let mut tiledp_f = tiledp as *mut OPJ_FLOAT32;
-      let mut t1data_0 = t1.data;
-      /* Change from "natural" order to "zigzag" order of T1 passes */
-      /* Change from "natural" order to "zigzag" order of T1 passes */
-      j = 0 as OPJ_UINT32; /* fixed_quality */
-      while j < cblk_h & !(3u32) {
-        i = 0 as OPJ_UINT32; /* compno  */
-        while i < cblk_w {
-          *t1data_0.offset(0) = opj_lrintf(
-            *tiledp_f.offset(
+      if opj_t1_allocate_buffers(
+        t1,
+        ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32,
+        ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32,
+      ) == 0
+      {
+        core::ptr::write_volatile((*job).pret, 0i32);
+        opj_free(job as *mut libc::c_void);
+        return;
+      }
+      cblk_w = t1.w;
+      cblk_h = t1.h;
+      tiledp = &mut *(*tilec).data.offset(
+        (y as OPJ_SIZE_T)
+          .wrapping_mul(tile_w as libc::c_ulong)
+          .wrapping_add(x as OPJ_SIZE_T) as isize,
+      ) as *mut OPJ_INT32;
+      if (*tccp).qmfbid == 1 {
+        let mut tiledp_u = tiledp as *mut OPJ_UINT32;
+        let mut t1data = t1.data as *mut OPJ_UINT32;
+        /* Do multiplication on unsigned type, even if the
+         * underlying type is signed, to avoid potential
+         * int overflow on large value (the output will be
+         * incorrect in such situation, but whatever...)
+         * This assumes complement-to-2 signed integer
+         * representation
+         * Fixes https://github.com/uclouvain/openjpeg/issues/1053
+         */
+        j = 0 as OPJ_UINT32;
+        while j < cblk_h & !(3u32) {
+          i = 0 as OPJ_UINT32;
+          while i < cblk_w {
+            *t1data.offset(0) = *tiledp_u.offset(
               j.wrapping_add(0)
                 .wrapping_mul(tile_w)
                 .wrapping_add(i) as isize,
-            ) / (*band).stepsize
-              * ((1i32) << 7i32 - 1i32) as libc::c_float,
-          ) as OPJ_INT32;
-          *t1data_0.offset(1) = opj_lrintf(
-            *tiledp_f.offset(
+            ) << 7i32 - 1i32;
+            *t1data.offset(1) = *tiledp_u.offset(
               j.wrapping_add(1)
                 .wrapping_mul(tile_w)
                 .wrapping_add(i) as isize,
-            ) / (*band).stepsize
-              * ((1i32) << 7i32 - 1i32) as libc::c_float,
-          ) as OPJ_INT32;
-          *t1data_0.offset(2) = opj_lrintf(
-            *tiledp_f.offset(
+            ) << 7i32 - 1i32;
+            *t1data.offset(2) = *tiledp_u.offset(
               j.wrapping_add(2)
                 .wrapping_mul(tile_w)
                 .wrapping_add(i) as isize,
-            ) / (*band).stepsize
-              * ((1i32) << 7i32 - 1i32) as libc::c_float,
-          ) as OPJ_INT32;
-          *t1data_0.offset(3) = opj_lrintf(
-            *tiledp_f.offset(
+            ) << 7i32 - 1i32;
+            *t1data.offset(3) = *tiledp_u.offset(
               j.wrapping_add(3)
                 .wrapping_mul(tile_w)
                 .wrapping_add(i) as isize,
-            ) / (*band).stepsize
-              * ((1i32) << 7i32 - 1i32) as libc::c_float,
-          ) as OPJ_INT32;
-          t1data_0 = t1data_0.offset(4);
-          i = i.wrapping_add(1)
+            ) << 7i32 - 1i32;
+            t1data = t1data.offset(4);
+            i = i.wrapping_add(1)
+          }
+          j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
+            as OPJ_UINT32
         }
-        j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
-          as OPJ_UINT32
-      }
-      if j < cblk_h {
-        i = 0 as OPJ_UINT32;
-        while i < cblk_w {
-          let mut k_0: OPJ_UINT32 = 0;
-          k_0 = j;
-          while k_0 < cblk_h {
+        if j < cblk_h {
+          i = 0 as OPJ_UINT32;
+          while i < cblk_w {
+            let mut k: OPJ_UINT32 = 0;
+            k = j;
+            while k < cblk_h {
+              *t1data.offset(0) = *tiledp_u
+                .offset(k.wrapping_mul(tile_w).wrapping_add(i) as isize)
+                << 7i32 - 1i32;
+              t1data = t1data.offset(1);
+              k = k.wrapping_add(1)
+            }
+            i = i.wrapping_add(1)
+          }
+        }
+      } else {
+        let mut tiledp_f = tiledp as *mut OPJ_FLOAT32;
+        let mut t1data_0 = t1.data;
+        /* Change from "natural" order to "zigzag" order of T1 passes */
+        /* Change from "natural" order to "zigzag" order of T1 passes */
+        j = 0 as OPJ_UINT32; /* fixed_quality */
+        while j < cblk_h & !(3u32) {
+          i = 0 as OPJ_UINT32; /* compno  */
+          while i < cblk_w {
             *t1data_0.offset(0) = opj_lrintf(
-              *tiledp_f.offset(k_0.wrapping_mul(tile_w).wrapping_add(i) as isize) / (*band).stepsize
+              *tiledp_f.offset(
+                j.wrapping_add(0)
+                  .wrapping_mul(tile_w)
+                  .wrapping_add(i) as isize,
+              ) / (*band).stepsize
                 * ((1i32) << 7i32 - 1i32) as libc::c_float,
             ) as OPJ_INT32;
-            t1data_0 = t1data_0.offset(1);
-            k_0 = k_0.wrapping_add(1)
+            *t1data_0.offset(1) = opj_lrintf(
+              *tiledp_f.offset(
+                j.wrapping_add(1)
+                  .wrapping_mul(tile_w)
+                  .wrapping_add(i) as isize,
+              ) / (*band).stepsize
+                * ((1i32) << 7i32 - 1i32) as libc::c_float,
+            ) as OPJ_INT32;
+            *t1data_0.offset(2) = opj_lrintf(
+              *tiledp_f.offset(
+                j.wrapping_add(2)
+                  .wrapping_mul(tile_w)
+                  .wrapping_add(i) as isize,
+              ) / (*band).stepsize
+                * ((1i32) << 7i32 - 1i32) as libc::c_float,
+            ) as OPJ_INT32;
+            *t1data_0.offset(3) = opj_lrintf(
+              *tiledp_f.offset(
+                j.wrapping_add(3)
+                  .wrapping_mul(tile_w)
+                  .wrapping_add(i) as isize,
+              ) / (*band).stepsize
+                * ((1i32) << 7i32 - 1i32) as libc::c_float,
+            ) as OPJ_INT32;
+            t1data_0 = t1data_0.offset(4);
+            i = i.wrapping_add(1)
           }
-          i = i.wrapping_add(1)
+          j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
+            as OPJ_UINT32
+        }
+        if j < cblk_h {
+          i = 0 as OPJ_UINT32;
+          while i < cblk_w {
+            let mut k_0: OPJ_UINT32 = 0;
+            k_0 = j;
+            while k_0 < cblk_h {
+              *t1data_0.offset(0) = opj_lrintf(
+                *tiledp_f.offset(k_0.wrapping_mul(tile_w).wrapping_add(i) as isize) / (*band).stepsize
+                  * ((1i32) << 7i32 - 1i32) as libc::c_float,
+              ) as OPJ_INT32;
+              t1data_0 = t1data_0.offset(1);
+              k_0 = k_0.wrapping_add(1)
+            }
+            i = i.wrapping_add(1)
+          }
         }
       }
-    }
-    let mut cumwmsedec = opj_t1_encode_cblk(
-      &mut *t1,
-      cblk,
-      (*band).bandno,
-      (*job).compno,
-      (*tilec)
-        .numresolutions
-        .wrapping_sub(1)
-        .wrapping_sub(resno),
-      (*tccp).qmfbid,
-      (*band).stepsize as OPJ_FLOAT64,
-      (*tccp).cblksty,
-      (*(*job).tile).numcomps,
-      (*job).mct_norms,
-      (*job).mct_numcomps,
-    );
-    if !(*job).mutex.is_null() {
-      opj_mutex_lock((*job).mutex);
-    }
-    (*(*job).tile).distotile += cumwmsedec;
-    if !(*job).mutex.is_null() {
-      opj_mutex_unlock((*job).mutex);
-    }
-    opj_free(job as *mut libc::c_void);
+      let mut cumwmsedec = opj_t1_encode_cblk(
+        t1,
+        cblk,
+        (*band).bandno,
+        (*job).compno,
+        (*tilec)
+          .numresolutions
+          .wrapping_sub(1)
+          .wrapping_sub(resno),
+        (*tccp).qmfbid,
+        (*band).stepsize as OPJ_FLOAT64,
+        (*tccp).cblksty,
+        (*(*job).tile).numcomps,
+        (*job).mct_norms,
+        (*job).mct_numcomps,
+      );
+      if !(*job).mutex.is_null() {
+        opj_mutex_lock((*job).mutex);
+      }
+      (*(*job).tile).distotile += cumwmsedec;
+      if !(*job).mutex.is_null() {
+        opj_mutex_unlock((*job).mutex);
+      }
+      opj_free(job as *mut libc::c_void);
+    })
   }
 }
 
@@ -2583,7 +2548,7 @@ pub fn opj_t1_encode_cblks(
                     tp,
                     Some(
                       opj_t1_cblk_encode_processor
-                        as unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_tls_t) -> (),
+                        as unsafe extern "C" fn(_: *mut libc::c_void) -> (),
                     ),
                     job as *mut libc::c_void,
                   );
