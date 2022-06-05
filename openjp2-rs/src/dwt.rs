@@ -439,7 +439,7 @@ unsafe fn opj_idwt53_h(mut dwt: *const opj_dwt_t, mut tiledp: *mut OPJ_INT32) {
     tiledp as *mut libc::c_void,
     (*dwt).mem as *const libc::c_void,
     (((*dwt).sn + (*dwt).dn) as OPJ_UINT32 as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
   );
 }
 /* (defined(__SSE2__) || defined(__AVX2__)) && !defined(STANDARD_SLOW_VERSION) */
@@ -701,7 +701,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row(
       memcpy(
         row.offset(sn as isize) as *mut libc::c_void,
         tmp.offset(sn as isize) as *const libc::c_void,
-        (dn as OPJ_SIZE_T).wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+        (dn as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
       );
     }
   } else if width == 1u32 {
@@ -740,7 +740,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row(
     memcpy(
       row.offset(sn as isize) as *mut libc::c_void,
       tmp.offset(sn as isize) as *const libc::c_void,
-      (dn as OPJ_SIZE_T).wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+      (dn as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
     );
   };
 }
@@ -767,7 +767,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row_real(
   memcpy(
     tmp as *mut libc::c_void,
     row as *const libc::c_void,
-    (width as libc::c_ulong).wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+    (width as libc::c_ulong).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
   );
   opj_dwt_encode_1_real(
     tmp as *mut libc::c_void,
@@ -883,7 +883,7 @@ unsafe fn opj_dwt_fetch_cols_vertical_pass(
           as *mut libc::c_void,
         array.offset(k.wrapping_mul(stride_width) as isize) as *const libc::c_void,
         (8u64)
-          .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
       );
       k = k.wrapping_add(1)
     }
@@ -944,7 +944,7 @@ unsafe fn opj_dwt_deinterleave_v_cols(
           l_dest as *mut libc::c_void,
           l_src as *const libc::c_void,
           (8u64)
-            .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+            .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
         );
       } else {
         c = 0 as OPJ_UINT32;
@@ -1524,7 +1524,7 @@ unsafe fn opj_dwt_encode_procedure(
   if l_data_size
     > (18446744073709551615u64).wrapping_div(
       (8u64)
-        .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
     )
   {
     /* FIXME event manager error callback */
@@ -1532,7 +1532,7 @@ unsafe fn opj_dwt_encode_procedure(
   }
   l_data_size = (l_data_size as libc::c_ulong).wrapping_mul(
     (8u64)
-      .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
   ) as OPJ_SIZE_T as OPJ_SIZE_T;
   bj = opj_aligned_32_malloc(l_data_size) as *mut OPJ_INT32;
   /* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
@@ -1607,7 +1607,7 @@ unsafe fn opj_dwt_encode_procedure(
       j = 0 as OPJ_UINT32;
       while j < num_jobs {
         let mut job = 0 as *mut opj_dwt_encode_v_job_t;
-        job = opj_malloc(::std::mem::size_of::<opj_dwt_encode_v_job_t>() as libc::c_ulong)
+        job = opj_malloc(core::mem::size_of::<opj_dwt_encode_v_job_t>() as libc::c_ulong)
           as *mut opj_dwt_encode_v_job_t;
         if job.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -1677,7 +1677,7 @@ unsafe fn opj_dwt_encode_procedure(
       j = 0 as OPJ_UINT32;
       while j < num_jobs_0 {
         let mut job_0 = 0 as *mut opj_dwt_encode_h_job_t;
-        job_0 = opj_malloc(::std::mem::size_of::<opj_dwt_encode_h_job_t>() as libc::c_ulong)
+        job_0 = opj_malloc(core::mem::size_of::<opj_dwt_encode_h_job_t>() as libc::c_ulong)
           as *mut opj_dwt_encode_h_job_t;
         if job_0.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -2026,7 +2026,7 @@ unsafe fn opj_dwt_decode_tile(
   if h_mem_size
     > (18446744073709551615u64)
       .wrapping_div((2i32 * 4i32) as libc::c_ulong)
-      .wrapping_div(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+      .wrapping_div(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
   {
     /* FIXME event manager error callback */
     return 0i32;
@@ -2036,7 +2036,7 @@ unsafe fn opj_dwt_decode_tile(
   /* we process PARALLEL_COLS_53 columns at a time */
   h_mem_size = (h_mem_size as libc::c_ulong).wrapping_mul(
     ((2i32 * 4i32) as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
   ) as OPJ_SIZE_T as OPJ_SIZE_T;
   h.mem = opj_aligned_32_malloc(h_mem_size) as *mut OPJ_INT32;
   if h.mem.is_null() {
@@ -2077,7 +2077,7 @@ unsafe fn opj_dwt_decode_tile(
       j = 0 as OPJ_UINT32;
       while j < num_jobs {
         let mut job = 0 as *mut opj_dwt_decode_h_job_t;
-        job = opj_malloc(::std::mem::size_of::<opj_dwt_decode_h_job_t>() as libc::c_ulong)
+        job = opj_malloc(core::mem::size_of::<opj_dwt_decode_h_job_t>() as libc::c_ulong)
           as *mut opj_dwt_decode_h_job_t;
         if job.is_null() {
           /* It would be nice to fallback to single thread case, but */
@@ -2150,7 +2150,7 @@ unsafe fn opj_dwt_decode_tile(
       j = 0 as OPJ_UINT32;
       while j < num_jobs_0 {
         let mut job_0 = 0 as *mut opj_dwt_decode_v_job_t;
-        job_0 = opj_malloc(::std::mem::size_of::<opj_dwt_decode_v_job_t>() as libc::c_ulong)
+        job_0 = opj_malloc(core::mem::size_of::<opj_dwt_decode_v_job_t>() as libc::c_ulong)
           as *mut opj_dwt_decode_v_job_t;
         if job_0.is_null() {
           /* It would be nice to fallback to single thread case, but */
@@ -3206,7 +3206,7 @@ unsafe fn opj_dwt_decode_partial_tile(
   if h_mem_size
     > (18446744073709551615u64).wrapping_div(
       (4u64)
-        .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
     )
   {
     /* FIXME event manager error callback */
@@ -3215,7 +3215,7 @@ unsafe fn opj_dwt_decode_partial_tile(
   }
   h_mem_size = (h_mem_size as libc::c_ulong).wrapping_mul(
     (4u64)
-      .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
   ) as OPJ_SIZE_T as OPJ_SIZE_T;
   h.mem = opj_aligned_32_malloc(h_mem_size) as *mut OPJ_INT32;
   if h.mem.is_null() {
@@ -3692,7 +3692,7 @@ unsafe fn opj_v8dwt_interleave_v(
       &mut *a.offset((i as libc::c_ulong).wrapping_mul(width as OPJ_SIZE_T) as isize)
         as *mut OPJ_FLOAT32 as *const libc::c_void,
       (nb_elts_read as OPJ_SIZE_T)
-        .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
     );
     i = i.wrapping_add(1)
   }
@@ -3710,7 +3710,7 @@ unsafe fn opj_v8dwt_interleave_v(
       &mut *a.offset((i as libc::c_ulong).wrapping_mul(width as OPJ_SIZE_T) as isize)
         as *mut OPJ_FLOAT32 as *const libc::c_void,
       (nb_elts_read as OPJ_SIZE_T)
-        .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
     );
     i = i.wrapping_add(1)
   }
@@ -4083,7 +4083,7 @@ unsafe extern "C" fn opj_dwt97_decode_v_func(
           as *mut OPJ_FLOAT32 as *mut libc::c_void,
         &mut *(*job).v.wavelet.offset(k as isize) as *mut opj_v8_t as *const libc::c_void,
         (8u64)
-          .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
       );
       k = k.wrapping_add(1)
     }
@@ -4146,13 +4146,13 @@ unsafe fn opj_dwt_decode_tile_97(
   /* overflow check */
   if l_data_size
     > (18446744073709551615u64)
-      .wrapping_div(::std::mem::size_of::<opj_v8_t>() as libc::c_ulong)
+      .wrapping_div(core::mem::size_of::<opj_v8_t>() as libc::c_ulong)
   {
     /* FIXME event manager error callback */
     return 0i32;
   }
   h.wavelet = opj_aligned_malloc(
-    l_data_size.wrapping_mul(::std::mem::size_of::<opj_v8_t>() as libc::c_ulong),
+    l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as libc::c_ulong),
   ) as *mut opj_v8_t;
   if h.wavelet.is_null() {
     /* FIXME event manager error callback */
@@ -4243,7 +4243,7 @@ unsafe fn opj_dwt_decode_tile_97(
       j = 0 as OPJ_UINT32;
       while j < num_jobs {
         let mut job = 0 as *mut opj_dwt97_decode_h_job_t;
-        job = opj_malloc(::std::mem::size_of::<opj_dwt97_decode_h_job_t>() as libc::c_ulong)
+        job = opj_malloc(core::mem::size_of::<opj_dwt97_decode_h_job_t>() as libc::c_ulong)
           as *mut opj_dwt97_decode_h_job_t;
         if job.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -4251,7 +4251,7 @@ unsafe fn opj_dwt_decode_tile_97(
           return 0i32;
         }
         (*job).h.wavelet = opj_aligned_malloc(
-          l_data_size.wrapping_mul(::std::mem::size_of::<opj_v8_t>() as libc::c_ulong),
+          l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as libc::c_ulong),
         ) as *mut opj_v8_t;
         if (*job).h.wavelet.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -4328,7 +4328,7 @@ unsafe fn opj_dwt_decode_tile_97(
               as *mut OPJ_FLOAT32 as *mut libc::c_void,
             &mut *v.wavelet.offset(k_1 as isize) as *mut opj_v8_t as *const libc::c_void,
             (8u64)
-              .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+              .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
           );
           k_1 = k_1.wrapping_add(1)
         }
@@ -4356,7 +4356,7 @@ unsafe fn opj_dwt_decode_tile_97(
       j = 0 as OPJ_UINT32;
       while j < num_jobs_0 {
         let mut job_0 = 0 as *mut opj_dwt97_decode_v_job_t;
-        job_0 = opj_malloc(::std::mem::size_of::<opj_dwt97_decode_v_job_t>() as libc::c_ulong)
+        job_0 = opj_malloc(core::mem::size_of::<opj_dwt97_decode_v_job_t>() as libc::c_ulong)
           as *mut opj_dwt97_decode_v_job_t;
         if job_0.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -4364,7 +4364,7 @@ unsafe fn opj_dwt_decode_tile_97(
           return 0i32;
         }
         (*job_0).v.wavelet = opj_aligned_malloc(
-          l_data_size.wrapping_mul(::std::mem::size_of::<opj_v8_t>() as libc::c_ulong),
+          l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as libc::c_ulong),
         ) as *mut opj_v8_t;
         if (*job_0).v.wavelet.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -4412,7 +4412,7 @@ unsafe fn opj_dwt_decode_tile_97(
           &mut *aj.offset((k_2 as libc::c_ulong).wrapping_mul(w as OPJ_SIZE_T) as isize)
             as *mut OPJ_FLOAT32 as *mut libc::c_void,
           &mut *v.wavelet.offset(k_2 as isize) as *mut opj_v8_t as *const libc::c_void,
-          (j as OPJ_SIZE_T).wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+          (j as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
         );
         k_2 = k_2.wrapping_add(1)
       }
@@ -4492,14 +4492,14 @@ unsafe fn opj_dwt_decode_partial_97(
   /* overflow check */
   if l_data_size
     > (18446744073709551615u64)
-      .wrapping_div(::std::mem::size_of::<opj_v8_t>() as libc::c_ulong)
+      .wrapping_div(core::mem::size_of::<opj_v8_t>() as libc::c_ulong)
   {
     /* FIXME event manager error callback */
     opj_sparse_array_int32_free(sa);
     return 0i32;
   }
   h.wavelet = opj_aligned_malloc(
-    l_data_size.wrapping_mul(::std::mem::size_of::<opj_v8_t>() as libc::c_ulong),
+    l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as libc::c_ulong),
   ) as *mut opj_v8_t;
   if h.wavelet.is_null() {
     /* FIXME event manager error callback */

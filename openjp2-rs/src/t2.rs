@@ -271,7 +271,7 @@ pub(crate) unsafe fn opj_t2_encode_packets(
       assert!((*p_marker_info).p_packet_size.is_null());
       (*p_marker_info).p_packet_size = opj_malloc(
         (opj_get_encoding_packet_count(l_image, l_cp, p_tile_no) as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
       ) as *mut OPJ_UINT32;
       if (*p_marker_info).p_packet_size.is_null() {
         opj_pi_destroy(l_pi, l_nb_pocs);
@@ -404,7 +404,7 @@ pub(crate) unsafe fn opj_t2_decode_packets(
     }
     first_pass_failed = opj_malloc(
       ((*l_image).numcomps as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<OPJ_BOOL>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<OPJ_BOOL>() as libc::c_ulong),
     ) as *mut OPJ_BOOL;
     if first_pass_failed.is_null() {
       opj_pi_destroy(l_pi, l_nb_pocs);
@@ -414,7 +414,7 @@ pub(crate) unsafe fn opj_t2_decode_packets(
       first_pass_failed as *mut libc::c_void,
       1i32,
       ((*l_image).numcomps as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<OPJ_BOOL>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<OPJ_BOOL>() as libc::c_ulong),
     );
     while opj_pi_next(l_current_pi) != 0 {
       let mut skip_packet = 0i32;
@@ -557,7 +557,7 @@ pub(crate) unsafe fn opj_t2_create(
   /* create the t2 structure */
   let mut l_t2 = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_t2_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_t2_t>() as libc::c_ulong,
   ) as *mut opj_t2_t;
   if l_t2.is_null() {
     return 0 as *mut opj_t2_t;
@@ -1104,7 +1104,7 @@ unsafe fn opj_t2_read_packet_header(
           &mut *(*l_band).precincts.offset((*p_pi).precno as isize) as *mut opj_tcd_precinct_t;
         if !(((*p_pi).precno as libc::c_ulong)
           < ((*l_band).precincts_data_size as libc::c_ulong)
-            .wrapping_div(::std::mem::size_of::<opj_tcd_precinct_t>() as libc::c_ulong))
+            .wrapping_div(core::mem::size_of::<opj_tcd_precinct_t>() as libc::c_ulong))
         {
           opj_event_msg(
             p_manager,
@@ -1599,7 +1599,7 @@ unsafe fn opj_t2_read_packet_data(
                   (*l_cblk).chunks as *mut libc::c_void,
                   (l_numchunksalloc as libc::c_ulong)
                     .wrapping_mul(
-                      ::std::mem::size_of::<opj_tcd_seg_data_chunk_t>() as libc::c_ulong
+                      core::mem::size_of::<opj_tcd_seg_data_chunk_t>() as libc::c_ulong
                     ),
                 ) as *mut opj_tcd_seg_data_chunk_t;
                 if l_chunks.is_null() {
@@ -1785,7 +1785,7 @@ unsafe fn opj_t2_init_seg(
     new_segs = opj_realloc(
       (*cblk).segs as *mut libc::c_void,
       (l_m_current_max_segs as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_tcd_seg_t>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_tcd_seg_t>() as libc::c_ulong),
     ) as *mut opj_tcd_seg_t;
     if new_segs.is_null() {
       /* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to initialize segment %d\n", l_nb_segs); */
@@ -1796,7 +1796,7 @@ unsafe fn opj_t2_init_seg(
       new_segs.offset((*cblk).m_current_max_segs as isize) as *mut libc::c_void,
       0i32,
       (10u64)
-        .wrapping_mul(::std::mem::size_of::<opj_tcd_seg_t>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_tcd_seg_t>() as libc::c_ulong),
     );
     (*cblk).m_current_max_segs = l_m_current_max_segs
   }

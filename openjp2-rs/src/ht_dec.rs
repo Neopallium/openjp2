@@ -1325,7 +1325,7 @@ unsafe fn opj_t1_allocate_buffers(
   if datasize > t1.datasize {
     opj_aligned_free(t1.data as *mut libc::c_void);
     t1.data = opj_aligned_malloc(
-      (datasize as libc::c_ulong).wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+      (datasize as libc::c_ulong).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
     ) as *mut OPJ_INT32;
     if t1.data.is_null() {
       /* FIXME event manager error callback */
@@ -1338,14 +1338,14 @@ unsafe fn opj_t1_allocate_buffers(
     memset(
       t1.data as *mut libc::c_void,
       0i32,
-      (datasize as libc::c_ulong).wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+      (datasize as libc::c_ulong).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
     );
   }
   // We expand these buffers to multiples of 16 bytes.
   // We need 4 buffers of 129 integers each, expanded to 132 integers each
   // We also need 514 bytes of buffer, expanded to 528 bytes
   flagssize = (132u64)
-    .wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong)
+    .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong)
     .wrapping_mul(4u64) as OPJ_UINT32; // expanded to multiple of 16
   flagssize =
     (flagssize as libc::c_uint).wrapping_add(528u32) as OPJ_UINT32; // 514 expanded to multiples of 16

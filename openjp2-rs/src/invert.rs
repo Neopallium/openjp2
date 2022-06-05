@@ -24,9 +24,9 @@ pub(crate) unsafe fn opj_matrix_inversion_f(
 ) -> OPJ_BOOL {
   let mut l_data = 0 as *mut OPJ_BYTE;
   let mut l_permutation_size =
-    nb_compo.wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32);
+    nb_compo.wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32);
   let mut l_swap_size =
-    nb_compo.wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
+    nb_compo.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
   let mut l_total_size =
     l_permutation_size.wrapping_add((3u32).wrapping_mul(l_swap_size));
   let mut lPermutations = 0 as *mut OPJ_UINT32;
@@ -113,7 +113,7 @@ unsafe fn opj_lupDecompose(
   let mut p: OPJ_FLOAT32 = 0.;
   let mut lLastColum = nb_compo.wrapping_sub(1u32);
   let mut lSwapSize =
-    nb_compo.wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
+    nb_compo.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
   let mut lTmpMatrix = matrix;
   let mut lColumnMatrix = 0 as *mut OPJ_FLOAT32;
   let mut lDestMatrix = 0 as *mut OPJ_FLOAT32;
@@ -336,7 +336,7 @@ unsafe fn opj_lupInvert(
   let mut lCurrentPtr = 0 as *mut OPJ_FLOAT32;
   let mut lLineMatrix = pDestMatrix;
   let mut lSwapSize =
-    nb_compo.wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
+    nb_compo.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
   j = 0 as OPJ_UINT32;
   while j < nb_compo {
     let fresh15 = lLineMatrix;

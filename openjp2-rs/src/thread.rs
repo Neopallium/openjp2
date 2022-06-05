@@ -155,7 +155,7 @@ pub(crate) unsafe fn opj_thread_join(mut _thread: *mut opj_thread_t) {}
 unsafe fn opj_tls_new() -> *mut opj_tls_t {
   return opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_tls_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tls_t>() as libc::c_ulong,
   ) as *mut opj_tls_t;
 }
 unsafe fn opj_tls_destroy(mut tls: *mut opj_tls_t) {
@@ -222,7 +222,7 @@ pub(crate) unsafe fn opj_tls_set(
     (*tls).key_val as *mut libc::c_void,
     ((*tls).key_val_count as size_t)
       .wrapping_add(1u64)
-      .wrapping_mul(::std::mem::size_of::<opj_tls_key_val_t>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<opj_tls_key_val_t>() as libc::c_ulong),
   ) as *mut opj_tls_key_val_t;
   if new_key_val.is_null() {
     return 0i32;
@@ -243,12 +243,12 @@ pub(crate) unsafe fn opj_thread_pool_create(
   let mut tp = 0 as *mut opj_thread_pool_t;
   tp = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_thread_pool_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_thread_pool_t>() as libc::c_ulong,
   ) as *mut opj_thread_pool_t;
   if tp.is_null() {
     return 0 as *mut opj_thread_pool_t;
   }
-  ::std::ptr::write_volatile(&mut (*tp).state as *mut opj_worker_thread_state, OPJWTS_OK);
+  core::ptr::write_volatile(&mut (*tp).state as *mut opj_worker_thread_state, OPJWTS_OK);
   if num_threads <= 0i32 {
     (*tp).tls = opj_tls_new();
     if (*tp).tls.is_null() {
@@ -302,7 +302,7 @@ unsafe fn opj_thread_pool_setup(
   }
   (*tp).worker_threads = opj_calloc(
     num_threads as size_t,
-    ::std::mem::size_of::<opj_worker_thread_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_worker_thread_t>() as libc::c_ulong,
   ) as *mut opj_worker_thread_t;
   if (*tp).worker_threads.is_null() {
     return 0i32;
@@ -375,9 +375,9 @@ unsafe fn opj_thread_pool_get_next_job(
     opj_mutex_lock((*tp).mutex);
     if signal_job_finished != 0 {
       signal_job_finished = 0i32;
-      ::std::ptr::write_volatile(
+      core::ptr::write_volatile(
         &mut (*tp).pending_jobs_count as *mut libc::c_int,
-        ::std::ptr::read_volatile::<libc::c_int>(&(*tp).pending_jobs_count as *const libc::c_int)
+        core::ptr::read_volatile::<libc::c_int>(&(*tp).pending_jobs_count as *const libc::c_int)
           - 1,
       );
       /* printf("got job\n"); */
@@ -404,10 +404,10 @@ unsafe fn opj_thread_pool_get_next_job(
       (*worker_thread).marked_as_waiting = 1i32;
       (*tp).waiting_worker_thread_count += 1;
       assert!((*tp).waiting_worker_thread_count <= (*tp).worker_threads_count);
-      item = opj_malloc(::std::mem::size_of::<opj_worker_thread_list_t>() as libc::c_ulong)
+      item = opj_malloc(core::mem::size_of::<opj_worker_thread_list_t>() as libc::c_ulong)
         as *mut opj_worker_thread_list_t;
       if item.is_null() {
-        ::std::ptr::write_volatile(
+        core::ptr::write_volatile(
           &mut (*tp).state as *mut opj_worker_thread_state,
           OPJWTS_ERROR,
         );
@@ -438,7 +438,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
     job_fn.expect("non-null function pointer")(user_data, (*tp).tls);
     return 1i32;
   }
-  job = opj_malloc(::std::mem::size_of::<opj_worker_thread_job_t>() as libc::c_ulong)
+  job = opj_malloc(core::mem::size_of::<opj_worker_thread_job_t>() as libc::c_ulong)
     as *mut opj_worker_thread_job_t;
   if job.is_null() {
     return 0i32;
@@ -446,7 +446,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
   (*job).job_fn = job_fn;
   (*job).user_data = user_data;
   item =
-    opj_malloc(::std::mem::size_of::<opj_job_list_t>() as libc::c_ulong) as *mut opj_job_list_t;
+    opj_malloc(core::mem::size_of::<opj_job_list_t>() as libc::c_ulong) as *mut opj_job_list_t;
   if item.is_null() {
     opj_free(job as *mut libc::c_void);
     return 0i32;
@@ -464,9 +464,9 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
   }
   (*item).next = (*tp).job_queue;
   (*tp).job_queue = item;
-  ::std::ptr::write_volatile(
+  core::ptr::write_volatile(
     &mut (*tp).pending_jobs_count as *mut libc::c_int,
-    ::std::ptr::read_volatile::<libc::c_int>(&(*tp).pending_jobs_count as *const libc::c_int) + 1,
+    core::ptr::read_volatile::<libc::c_int>(&(*tp).pending_jobs_count as *const libc::c_int) + 1,
   );
   if !(*tp).waiting_worker_thread_list.is_null() {
     let mut worker_thread = 0 as *mut opj_worker_thread_t;
@@ -524,7 +524,7 @@ pub(crate) unsafe fn opj_thread_pool_destroy(mut tp: *mut opj_thread_pool_t) {
     let mut i: libc::c_int = 0;
     opj_thread_pool_wait_completion(tp, 0i32);
     opj_mutex_lock((*tp).mutex);
-    ::std::ptr::write_volatile(
+    core::ptr::write_volatile(
       &mut (*tp).state as *mut opj_worker_thread_state,
       OPJWTS_STOP,
     );

@@ -1481,7 +1481,7 @@ fn opj_t1_allocate_buffers(
     if datasize > t1.datasize {
       opj_aligned_free(t1.data as *mut libc::c_void);
       t1.data = opj_aligned_malloc(
-        (datasize as libc::c_ulong).wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+        (datasize as libc::c_ulong).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
       ) as *mut OPJ_INT32;
       if t1.data.is_null() {
         /* FIXME event manager error callback */
@@ -1494,7 +1494,7 @@ fn opj_t1_allocate_buffers(
       memset(
         t1.data as *mut libc::c_void,
         0i32,
-        datasize as usize * ::std::mem::size_of::<OPJ_INT32>(),
+        datasize as usize * core::mem::size_of::<OPJ_INT32>(),
       ); /* can't be 0U */
     }
     flags_stride = w.wrapping_add(2u32);
@@ -1511,7 +1511,7 @@ fn opj_t1_allocate_buffers(
       opj_aligned_free(t1.flags as *mut libc::c_void);
       t1.flags = opj_aligned_malloc(
         (flagssize as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<opj_flag_t>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<opj_flag_t>() as libc::c_ulong),
       ) as *mut opj_flag_t;
       if t1.flags.is_null() {
         /* FIXME event manager error callback */
@@ -1522,7 +1522,7 @@ fn opj_t1_allocate_buffers(
     memset(
       t1.flags as *mut libc::c_void,
       0i32,
-      flagssize as usize * ::std::mem::size_of::<opj_flag_t>(),
+      flagssize as usize * core::mem::size_of::<opj_flag_t>(),
     );
     p = &mut *t1.flags.offset(0) as *mut opj_flag_t;
     for x in 0..flags_stride as isize {
@@ -1573,7 +1573,7 @@ pub(crate) fn opj_t1_create(mut isEncoder: OPJ_BOOL) -> *mut opj_t1_t {
     let mut l_t1 = 0 as *mut opj_t1_t;
     l_t1 = opj_calloc(
       1i32 as size_t,
-      ::std::mem::size_of::<opj_t1_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_t1_t>() as libc::c_ulong,
     ) as *mut opj_t1_t;
     if l_t1.is_null() {
       return 0 as *mut opj_t1_t;
@@ -1636,7 +1636,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
       cblk_w = ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32;
       cblk_h = ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32;
       (*cblk).decoded_data = opj_aligned_malloc(
-        (::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+        (core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
           .wrapping_mul(cblk_w as libc::c_ulong)
           .wrapping_mul(cblk_h as libc::c_ulong),
       ) as *mut OPJ_INT32;
@@ -1652,7 +1652,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
         if !(*job).p_manager_mutex.is_null() {
           opj_mutex_unlock((*job).p_manager_mutex);
         }
-        ::std::ptr::write_volatile((*job).pret, 0i32);
+        core::ptr::write_volatile((*job).pret, 0i32);
         opj_free(job as *mut libc::c_void);
         return;
       }
@@ -1660,7 +1660,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
       memset(
         (*cblk).decoded_data as *mut libc::c_void,
         0i32,
-        ::std::mem::size_of::<OPJ_INT32>()
+        core::mem::size_of::<OPJ_INT32>()
           .wrapping_mul(cblk_w as usize)
           .wrapping_mul(cblk_h as usize),
       );
@@ -1699,7 +1699,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
           1i32,
           b"Cannot allocate Tier 1 handle\n\x00" as *const u8 as *const libc::c_char,
         );
-        ::std::ptr::write_volatile((*job).pret, 0i32);
+        core::ptr::write_volatile((*job).pret, 0i32);
         opj_free(job as *mut libc::c_void);
         return;
       }
@@ -1716,7 +1716,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
           b"Unable to set t1 handle as TLS\n\x00" as *const u8 as *const libc::c_char,
         );
         opj_t1_destroy(t1);
-        ::std::ptr::write_volatile((*job).pret, 0i32);
+        core::ptr::write_volatile((*job).pret, 0i32);
         opj_free(job as *mut libc::c_void);
         return;
       }
@@ -1736,7 +1736,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
           (*job).check_pterm,
         )
       {
-        ::std::ptr::write_volatile((*job).pret, 0i32);
+        core::ptr::write_volatile((*job).pret, 0i32);
         opj_free(job as *mut libc::c_void);
         return;
       }
@@ -1752,7 +1752,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
         (*job).check_pterm,
       )
     {
-      ::std::ptr::write_volatile((*job).pret, 0i32);
+      core::ptr::write_volatile((*job).pret, 0i32);
       opj_free(job as *mut libc::c_void);
       return;
     }
@@ -1830,7 +1830,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
           memcpy(
             datap as *mut libc::c_void,
             &mut tmp as *mut OPJ_FLOAT32 as *const libc::c_void,
-            ::std::mem::size_of::<OPJ_FLOAT32>(),
+            core::mem::size_of::<OPJ_FLOAT32>(),
           );
           datap = datap.offset(1);
           i = i.wrapping_add(1)
@@ -2020,10 +2020,10 @@ pub fn opj_t1_decode_cblks(
                   _ => {
                     job = opj_calloc(
                       1i32 as size_t,
-                      ::std::mem::size_of::<opj_t1_cblk_decode_processing_job_t>() as libc::c_ulong,
+                      core::mem::size_of::<opj_t1_cblk_decode_processing_job_t>() as libc::c_ulong,
                     ) as *mut opj_t1_cblk_decode_processing_job_t;
                     if job.is_null() {
-                      ::std::ptr::write_volatile(pret, 0i32);
+                      core::ptr::write_volatile(pret, 0i32);
                       return;
                     }
                     (*job).whole_tile_decoding = (*tcd).whole_tile_decoding;
@@ -2359,7 +2359,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
       ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32,
     ) == 0
     {
-      ::std::ptr::write_volatile((*job).pret, 0i32);
+      core::ptr::write_volatile((*job).pret, 0i32);
       opj_free(job as *mut libc::c_void);
       return;
     }
@@ -2562,10 +2562,10 @@ pub fn opj_t1_encode_cblks(
                   &mut *(*prc).cblks.enc.offset(cblkno as isize) as *mut opj_tcd_cblk_enc_t;
                 let mut job = opj_calloc(
                   1i32 as size_t,
-                  ::std::mem::size_of::<opj_t1_cblk_encode_processing_job_t>() as libc::c_ulong,
+                  core::mem::size_of::<opj_t1_cblk_encode_processing_job_t>() as libc::c_ulong,
                 ) as *mut opj_t1_cblk_encode_processing_job_t;
                 if job.is_null() {
-                  ::std::ptr::write_volatile(&mut ret as *mut OPJ_BOOL, 0i32);
+                  core::ptr::write_volatile(&mut ret as *mut OPJ_BOOL, 0i32);
                   break 's_19;
                 } else {
                   (*job).compno = compno;
@@ -2689,7 +2689,7 @@ fn opj_t1_encode_cblk(
           memcpy(
             datap as *mut libc::c_void,
             &mut tmp_unsigned as *mut OPJ_UINT32 as *const libc::c_void,
-            ::std::mem::size_of::<OPJ_INT32>(),
+            core::mem::size_of::<OPJ_INT32>(),
           );
         } else {
           max = opj_int_max(max, tmp)

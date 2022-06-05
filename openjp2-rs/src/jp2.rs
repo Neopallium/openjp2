@@ -382,7 +382,7 @@ unsafe extern "C" fn opj_jp2_read_ihdr(
   /* allocate memory for components */
   (*jp2).comps = opj_calloc(
     (*jp2).numcomps as size_t,
-    ::std::mem::size_of::<opj_jp2_comps_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_jp2_comps_t>() as libc::c_ulong,
   ) as *mut opj_jp2_comps_t; /* BPC */
   if (*jp2).comps.is_null() {
     opj_event_msg(
@@ -866,7 +866,7 @@ unsafe fn opj_jp2_check_color(
     }
     pcol_usage = opj_calloc(
       nr_channels_0 as size_t,
-      ::std::mem::size_of::<OPJ_BOOL>() as libc::c_ulong,
+      core::mem::size_of::<OPJ_BOOL>() as libc::c_ulong,
     ) as *mut OPJ_BOOL;
     if pcol_usage.is_null() {
       opj_event_msg(
@@ -1036,7 +1036,7 @@ unsafe fn opj_jp2_apply_pclr(
   old_comps = (*image).comps;
   new_comps = opj_malloc(
     (nr_channels as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong),
   ) as *mut opj_image_comp_t;
   if new_comps.is_null() {
     opj_event_msg(
@@ -1062,7 +1062,7 @@ unsafe fn opj_jp2_apply_pclr(
     /* Palette mapping: */
     let ref mut fresh0 = (*new_comps.offset(i as isize)).data;
     *fresh0 = opj_image_data_alloc(
-      (::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+      (core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
         .wrapping_mul((*old_comps.offset(cmp as isize)).w as libc::c_ulong)
         .wrapping_mul((*old_comps.offset(cmp as isize)).h as libc::c_ulong),
     ) as *mut OPJ_INT32;
@@ -1216,7 +1216,7 @@ unsafe extern "C" fn opj_jp2_read_pclr(
     return 0i32;
   }
   entries = opj_malloc(
-    (::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong)
+    (core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong)
       .wrapping_mul(nr_channels as libc::c_ulong)
       .wrapping_mul(nr_entries as libc::c_ulong),
   ) as *mut OPJ_UINT32;
@@ -1235,7 +1235,7 @@ unsafe extern "C" fn opj_jp2_read_pclr(
     return 0i32;
   }
   jp2_pclr =
-    opj_malloc(::std::mem::size_of::<opj_jp2_pclr_t>() as libc::c_ulong) as *mut opj_jp2_pclr_t;
+    opj_malloc(core::mem::size_of::<opj_jp2_pclr_t>() as libc::c_ulong) as *mut opj_jp2_pclr_t;
   if jp2_pclr.is_null() {
     opj_free(entries as *mut libc::c_void);
     opj_free(channel_size as *mut libc::c_void);
@@ -1273,8 +1273,8 @@ unsafe extern "C" fn opj_jp2_read_pclr(
     while (i as libc::c_int) < nr_channels as libc::c_int {
       let mut bytes_to_read = (*channel_size.offset(i as isize) as libc::c_int + 7i32
         >> 3i32) as OPJ_UINT32;
-      if bytes_to_read as libc::c_ulong > ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong {
-        bytes_to_read = ::std::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32
+      if bytes_to_read as libc::c_ulong > core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong {
+        bytes_to_read = core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32
       }
       if (p_pclr_header_size as isize)
         < p_pclr_header_data.wrapping_offset_from(orig_header_data)
@@ -1349,7 +1349,7 @@ unsafe extern "C" fn opj_jp2_read_cmap(
   }
   cmap = opj_malloc(
     (nr_channels as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<opj_jp2_cmap_comp_t>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<opj_jp2_cmap_comp_t>() as libc::c_ulong),
   ) as *mut opj_jp2_cmap_comp_t;
   if cmap.is_null() {
     return 0i32;
@@ -1446,18 +1446,18 @@ unsafe fn opj_jp2_apply_cdef(
             &mut saved as *mut opj_image_comp_t as *mut libc::c_void,
             &mut *(*image).comps.offset(cn as isize) as *mut opj_image_comp_t
               as *const libc::c_void,
-            ::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+            core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
           );
           memcpy(
             &mut *(*image).comps.offset(cn as isize) as *mut opj_image_comp_t as *mut libc::c_void,
             &mut *(*image).comps.offset(acn as isize) as *mut opj_image_comp_t
               as *const libc::c_void,
-            ::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+            core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
           );
           memcpy(
             &mut *(*image).comps.offset(acn as isize) as *mut opj_image_comp_t as *mut libc::c_void,
             &mut saved as *mut opj_image_comp_t as *const libc::c_void,
-            ::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+            core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
           );
           /* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
           j = (i as libc::c_uint).wrapping_add(1u32) as OPJ_UINT16;
@@ -1540,13 +1540,13 @@ unsafe extern "C" fn opj_jp2_read_cdef(
   }
   cdef_info = opj_malloc(
     (l_value as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<opj_jp2_cdef_info_t>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<opj_jp2_cdef_info_t>() as libc::c_ulong),
   ) as *mut opj_jp2_cdef_info_t;
   if cdef_info.is_null() {
     return 0i32;
   }
   (*jp2).color.jp2_cdef =
-    opj_malloc(::std::mem::size_of::<opj_jp2_cdef_t>() as libc::c_ulong) as *mut opj_jp2_cdef_t;
+    opj_malloc(core::mem::size_of::<opj_jp2_cdef_t>() as libc::c_ulong) as *mut opj_jp2_cdef_t;
   if (*jp2).color.jp2_cdef.is_null() {
     opj_free(cdef_info as *mut libc::c_void);
     return 0i32;
@@ -1678,7 +1678,7 @@ unsafe extern "C" fn opj_jp2_read_colr(
       let mut il: OPJ_UINT32 = 0;
       cielab = opj_malloc(
         (9u64)
-          .wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
       ) as *mut OPJ_UINT32;
       if cielab.is_null() {
         opj_event_msg(
@@ -1867,7 +1867,7 @@ unsafe extern "C" fn opj_jp2_write_jp2h(
   memset(
     l_writers.as_mut_ptr() as *mut libc::c_void,
     0i32,
-    ::std::mem::size_of::<[opj_jp2_img_header_writer_handler_t; 4]>() as libc::c_ulong,
+    core::mem::size_of::<[opj_jp2_img_header_writer_handler_t; 4]>() as libc::c_ulong,
   );
   if (*jp2).bpc == 255u32 {
     l_nb_pass = 3i32;
@@ -2275,7 +2275,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
   (*jp2).numcl = 1 as OPJ_UINT32; /* CL0 : JP2 */
   (*jp2).cl = opj_malloc(
     ((*jp2).numcl as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
   ) as *mut OPJ_UINT32;
   if (*jp2).cl.is_null() {
     opj_event_msg(
@@ -2290,7 +2290,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
   (*jp2).numcomps = (*image).numcomps; /* NC */
   (*jp2).comps = opj_malloc(
     ((*jp2).numcomps as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<opj_jp2_comps_t>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<opj_jp2_comps_t>() as libc::c_ulong),
   ) as *mut opj_jp2_comps_t;
   if (*jp2).comps.is_null() {
     opj_event_msg(
@@ -2400,7 +2400,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
   if alpha_count == 1u32 {
     /* if here, we know what we can do */
     (*jp2).color.jp2_cdef =
-      opj_malloc(::std::mem::size_of::<opj_jp2_cdef_t>() as libc::c_ulong) as *mut opj_jp2_cdef_t;
+      opj_malloc(core::mem::size_of::<opj_jp2_cdef_t>() as libc::c_ulong) as *mut opj_jp2_cdef_t;
     if (*jp2).color.jp2_cdef.is_null() {
       opj_event_msg(
         p_manager,
@@ -2413,7 +2413,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
     /* in which case jp2->color.jp2_cdef->info will be NULL => valid for destruction */
     (*(*jp2).color.jp2_cdef).info = opj_malloc(
       ((*image).numcomps as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_jp2_cdef_info_t>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_jp2_cdef_info_t>() as libc::c_ulong),
     ) as *mut opj_jp2_cdef_info_t;
     if (*(*jp2).color.jp2_cdef).info.is_null() {
       /* memory will be freed by opj_jp2_destroy */
@@ -2523,7 +2523,7 @@ unsafe fn opj_jp2_setup_end_header_writing(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
@@ -2562,7 +2562,7 @@ unsafe fn opj_jp2_setup_end_header_reading(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
@@ -2975,8 +2975,8 @@ pub(crate) unsafe extern "C" fn opj_jp2_start_compress(
  */
 unsafe fn opj_jp2_find_handler(mut p_id: OPJ_UINT32) -> *const opj_jp2_header_handler_t {
   let mut i: OPJ_UINT32 = 0;
-  let mut l_handler_size = (::std::mem::size_of::<[opj_jp2_header_handler_t; 3]>() as libc::c_ulong)
-    .wrapping_div(::std::mem::size_of::<opj_jp2_header_handler_t>() as libc::c_ulong)
+  let mut l_handler_size = (core::mem::size_of::<[opj_jp2_header_handler_t; 3]>() as libc::c_ulong)
+    .wrapping_div(core::mem::size_of::<opj_jp2_header_handler_t>() as libc::c_ulong)
     as OPJ_UINT32;
   i = 0 as OPJ_UINT32;
   while i < l_handler_size {
@@ -3005,8 +3005,8 @@ unsafe fn opj_jp2_img_find_handler(
   mut p_id: OPJ_UINT32,
 ) -> *const opj_jp2_header_handler_t {
   let mut i: OPJ_UINT32 = 0;
-  let mut l_handler_size = (::std::mem::size_of::<[opj_jp2_header_handler_t; 6]>() as libc::c_ulong)
-    .wrapping_div(::std::mem::size_of::<opj_jp2_header_handler_t>() as libc::c_ulong)
+  let mut l_handler_size = (core::mem::size_of::<[opj_jp2_header_handler_t; 6]>() as libc::c_ulong)
+    .wrapping_div(core::mem::size_of::<opj_jp2_header_handler_t>() as libc::c_ulong)
     as OPJ_UINT32;
   i = 0 as OPJ_UINT32;
   while i < l_handler_size {
@@ -3162,7 +3162,7 @@ unsafe extern "C" fn opj_jp2_read_ftyp(
   if (*jp2).numcl != 0 {
     (*jp2).cl = opj_calloc(
       (*jp2).numcl as size_t,
-      ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong,
+      core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong,
     ) as *mut OPJ_UINT32;
     if (*jp2).cl.is_null() {
       opj_event_msg(
@@ -3492,7 +3492,7 @@ unsafe fn opj_jp2_setup_encoding_validation(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*jp2).m_validation_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
@@ -3545,7 +3545,7 @@ unsafe fn opj_jp2_setup_header_writing(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
@@ -3569,7 +3569,7 @@ unsafe fn opj_jp2_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
@@ -3593,7 +3593,7 @@ unsafe fn opj_jp2_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
@@ -3618,7 +3618,7 @@ unsafe fn opj_jp2_setup_header_writing(
   if (*jp2).jpip_on != 0 {
     if opj_procedure_list_add_procedure(
       (*jp2).m_procedure_list,
-      ::std::mem::transmute::<
+      core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -3643,7 +3643,7 @@ unsafe fn opj_jp2_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
@@ -3682,7 +3682,7 @@ unsafe fn opj_jp2_setup_header_reading(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
@@ -3934,7 +3934,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_get_tile(
 pub(crate) unsafe extern "C" fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> *mut opj_jp2_t {
   let mut jp2 = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_jp2_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_jp2_t>() as libc::c_ulong,
   ) as *mut opj_jp2_t;
   if !jp2.is_null() {
     /* create the J2K codec */

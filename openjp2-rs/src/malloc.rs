@@ -64,7 +64,7 @@ unsafe fn opj_aligned_alloc_n(
       && alignment & alignment.wrapping_sub(1u64)
         == 0u64
   );
-  assert!(alignment >= ::std::mem::size_of::<*mut libc::c_void>() as libc::c_ulong);
+  assert!(alignment >= core::mem::size_of::<*mut libc::c_void>() as libc::c_ulong);
   if size == 0u64 {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;
@@ -94,7 +94,7 @@ unsafe fn opj_aligned_realloc_n(
       && alignment & alignment.wrapping_sub(1u64)
         == 0u64
   );
-  assert!(alignment >= ::std::mem::size_of::<*mut libc::c_void>() as libc::c_ulong);
+  assert!(alignment >= core::mem::size_of::<*mut libc::c_void>() as libc::c_ulong);
   if new_size == 0u64 {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;

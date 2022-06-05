@@ -17,3 +17,9 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 c2rust-bitfields = "0.3"
 libc = "0.2"
 log = "0.4.17"
+
+[features]
+default = ["std"]
+std = [
+	"log/std",
+]

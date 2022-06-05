@@ -86,7 +86,7 @@ impl opj_mqc {
   pub(crate) fn backup_extra(&mut self) {
     let len = self.backup.len();
     let extra = unsafe {
-      std::slice::from_raw_parts_mut(self.end, len)
+      core::slice::from_raw_parts_mut(self.end, len)
     };
     // Backup extra bytes and replace with `0xff`
     for idx in 0..len {
@@ -98,7 +98,7 @@ impl opj_mqc {
   pub(crate) fn restore_extra(&mut self) {
     let len = self.backup.len();
     let extra = unsafe {
-      std::slice::from_raw_parts_mut(self.end, len)
+      core::slice::from_raw_parts_mut(self.end, len)
     };
     extra.copy_from_slice(&self.backup[..]);
   }
