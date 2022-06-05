@@ -9,7 +9,7 @@ extern "C" {
     _: *mut libc::c_char,
     _: libc::c_ulong,
     _: *const libc::c_char,
-    _: ::std::ffi::VaList,
+    _: core::ffi::VaList,
   ) -> libc::c_int;
 }
 pub type __builtin_va_list = [__va_list_tag; 1];
@@ -104,7 +104,7 @@ pub(crate) unsafe extern "C" fn opj_event_msg(
     return 0i32;
   }
   if !fmt.is_null() && !p_event_mgr.is_null() {
-    let mut arg: ::std::ffi::VaListImpl;
+    let mut arg: core::ffi::VaListImpl;
     let mut message: [libc::c_char; 512] = [0; 512];
     memset(
       message.as_mut_ptr() as *mut libc::c_void,

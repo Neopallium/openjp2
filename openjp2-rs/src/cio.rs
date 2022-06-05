@@ -55,11 +55,11 @@ pub(crate) unsafe extern "C" fn opj_write_bytes_BE(
   mut p_nb_bytes: OPJ_UINT32,
 ) {
   let mut l_data_ptr = (&mut p_value as *mut OPJ_UINT32 as *const OPJ_BYTE)
-    .offset(::std::mem::size_of::<OPJ_UINT32>() as isize)
+    .offset(core::mem::size_of::<OPJ_UINT32>() as isize)
     .offset(-(p_nb_bytes as isize));
   assert!(
     p_nb_bytes > 0u32
-      && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
+      && p_nb_bytes as libc::c_ulong <= core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
   );
   memcpy(
     p_buffer as *mut libc::c_void,
@@ -79,7 +79,7 @@ pub(crate) unsafe extern "C" fn opj_write_bytes_LE(
   let mut i: OPJ_UINT32 = 0;
   assert!(
     p_nb_bytes > 0u32
-      && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
+      && p_nb_bytes as libc::c_ulong <= core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
   );
   i = 0 as OPJ_UINT32;
   while i < p_nb_bytes {
@@ -100,12 +100,12 @@ pub(crate) unsafe extern "C" fn opj_read_bytes_BE(
   let mut l_data_ptr = p_value as *mut OPJ_BYTE;
   assert!(
     p_nb_bytes > 0u32
-      && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
+      && p_nb_bytes as libc::c_ulong <= core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
   );
   *p_value = 0 as OPJ_UINT32;
   memcpy(
     l_data_ptr
-      .offset(::std::mem::size_of::<OPJ_UINT32>() as isize)
+      .offset(core::mem::size_of::<OPJ_UINT32>() as isize)
       .offset(-(p_nb_bytes as isize)) as *mut libc::c_void,
     p_buffer as *const libc::c_void,
     p_nb_bytes as libc::c_ulong,
@@ -123,7 +123,7 @@ pub(crate) unsafe extern "C" fn opj_read_bytes_LE(
   let mut i: OPJ_UINT32 = 0;
   assert!(
     p_nb_bytes > 0u32
-      && p_nb_bytes as libc::c_ulong <= ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
+      && p_nb_bytes as libc::c_ulong <= core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong
   );
   *p_value = 0 as OPJ_UINT32;
   i = 0 as OPJ_UINT32;
@@ -145,7 +145,7 @@ pub(crate) unsafe extern "C" fn opj_write_double_BE(
   memcpy(
     p_buffer as *mut libc::c_void,
     l_data_ptr as *const libc::c_void,
-    ::std::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong,
+    core::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong,
   );
 }
 #[no_mangle]
@@ -154,11 +154,11 @@ pub(crate) unsafe extern "C" fn opj_write_double_LE(
   mut p_value: OPJ_FLOAT64,
 ) {
   let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT64 as *const OPJ_BYTE)
-    .offset(::std::mem::size_of::<OPJ_FLOAT64>() as isize)
+    .offset(core::mem::size_of::<OPJ_FLOAT64>() as isize)
     .offset(-1);
   let mut i: OPJ_UINT32 = 0;
   i = 0 as OPJ_UINT32;
-  while (i as libc::c_ulong) < ::std::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong {
+  while (i as libc::c_ulong) < core::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong {
     let fresh4 = l_data_ptr;
     l_data_ptr = l_data_ptr.offset(-1);
     let fresh5 = p_buffer;
@@ -176,7 +176,7 @@ pub(crate) unsafe extern "C" fn opj_read_double_BE(
   memcpy(
     l_data_ptr as *mut libc::c_void,
     p_buffer as *const libc::c_void,
-    ::std::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong,
+    core::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong,
   );
 }
 #[no_mangle]
@@ -185,11 +185,11 @@ pub(crate) unsafe extern "C" fn opj_read_double_LE(
   mut p_value: *mut OPJ_FLOAT64,
 ) {
   let mut l_data_ptr = (p_value as *mut OPJ_BYTE)
-    .offset(::std::mem::size_of::<OPJ_FLOAT64>() as isize)
+    .offset(core::mem::size_of::<OPJ_FLOAT64>() as isize)
     .offset(-1);
   let mut i: OPJ_UINT32 = 0;
   i = 0 as OPJ_UINT32;
-  while (i as libc::c_ulong) < ::std::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong {
+  while (i as libc::c_ulong) < core::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong {
     let fresh6 = p_buffer;
     p_buffer = p_buffer.offset(1);
     let fresh7 = l_data_ptr;
@@ -204,17 +204,17 @@ pub(crate) unsafe extern "C" fn opj_write_float_BE(mut p_buffer: *mut OPJ_BYTE, 
   memcpy(
     p_buffer as *mut libc::c_void,
     l_data_ptr as *const libc::c_void,
-    ::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong,
+    core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong,
   );
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_write_float_LE(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT32) {
   let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT32 as *const OPJ_BYTE)
-    .offset(::std::mem::size_of::<OPJ_FLOAT32>() as isize)
+    .offset(core::mem::size_of::<OPJ_FLOAT32>() as isize)
     .offset(-1);
   let mut i: OPJ_UINT32 = 0;
   i = 0 as OPJ_UINT32;
-  while (i as libc::c_ulong) < ::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong {
+  while (i as libc::c_ulong) < core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong {
     let fresh8 = l_data_ptr;
     l_data_ptr = l_data_ptr.offset(-1);
     let fresh9 = p_buffer;
@@ -232,7 +232,7 @@ pub(crate) unsafe extern "C" fn opj_read_float_BE(
   memcpy(
     l_data_ptr as *mut libc::c_void,
     p_buffer as *const libc::c_void,
-    ::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong,
+    core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong,
   );
 }
 #[no_mangle]
@@ -241,11 +241,11 @@ pub(crate) unsafe extern "C" fn opj_read_float_LE(
   mut p_value: *mut OPJ_FLOAT32,
 ) {
   let mut l_data_ptr = (p_value as *mut OPJ_BYTE)
-    .offset(::std::mem::size_of::<OPJ_FLOAT32>() as isize)
+    .offset(core::mem::size_of::<OPJ_FLOAT32>() as isize)
     .offset(-1);
   let mut i: OPJ_UINT32 = 0;
   i = 0 as OPJ_UINT32;
-  while (i as libc::c_ulong) < ::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong {
+  while (i as libc::c_ulong) < core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong {
     let fresh10 = p_buffer;
     p_buffer = p_buffer.offset(1);
     let fresh11 = l_data_ptr;
@@ -262,7 +262,7 @@ pub(crate) unsafe extern "C" fn opj_stream_create(
   let mut l_stream = 0 as *mut opj_stream_private_t;
   l_stream = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_stream_private_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_stream_private_t>() as libc::c_ulong,
   ) as *mut opj_stream_private_t;
   if l_stream.is_null() {
     return 0 as *mut opj_stream_t;

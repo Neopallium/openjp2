@@ -208,7 +208,7 @@ pub(crate) unsafe fn opj_mct_encode_custom(
   let mut lMctPtr = 0 as *mut OPJ_INT32;
   lCurrentData = opj_malloc(
     (pNbComp.wrapping_add(lNbMatCoeff) as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
   ) as *mut OPJ_INT32;
   if lCurrentData.is_null() {
     return 0i32;
@@ -265,7 +265,7 @@ pub(crate) unsafe fn opj_mct_decode_custom(
   let mut lData = pData as *mut *mut OPJ_FLOAT32;
   lCurrentData = opj_malloc(
     ((2u32).wrapping_mul(pNbComp) as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
   ) as *mut OPJ_FLOAT32;
   if lCurrentData.is_null() {
     return 0i32;

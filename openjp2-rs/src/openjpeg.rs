@@ -1411,7 +1411,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
   let mut l_codec = 0 as *mut opj_codec_private_t;
   l_codec = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_codec_private_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_codec_private_t>() as libc::c_ulong,
   ) as *mut opj_codec_private_t;
   if l_codec.is_null() {
     return 0 as *mut opj_codec_t;
@@ -1419,27 +1419,27 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
   (*l_codec).is_decompressor = 1i32;
   match p_format as libc::c_int {
     0 => {
-      (*l_codec).opj_dump_codec = ::std::mem::transmute::<
+      (*l_codec).opj_dump_codec = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_INT32, _: *mut FILE) -> ()>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
       >(Some(
         j2k_dump as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_INT32, _: *mut FILE) -> (),
       ));
-      (*l_codec).opj_get_codec_info = ::std::mem::transmute::<
+      (*l_codec).opj_get_codec_info = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_info_v2_t>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void) -> *mut opj_codestream_info_v2_t>,
       >(Some(
         j2k_get_cstr_info
           as unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_info_v2_t,
       ));
-      (*l_codec).opj_get_codec_index = ::std::mem::transmute::<
+      (*l_codec).opj_get_codec_index = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_index_t>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void) -> *mut opj_codestream_index_t>,
       >(Some(
         j2k_get_cstr_index
           as unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_index_t,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_decode = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_decode = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -1465,7 +1465,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_end_decompress = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_end_decompress = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -1488,7 +1488,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_read_header = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_read_header = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_stream_private_t,
@@ -1514,13 +1514,13 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_destroy = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_destroy = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> ()>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
       >(Some(
         opj_j2k_destroy as unsafe extern "C" fn(_: *mut opj_j2k_t) -> (),
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_setup_decoder = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_setup_decoder = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: *mut opj_dparameters_t) -> ()>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_dparameters_t) -> ()>,
       >(Some(
@@ -1530,14 +1530,14 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
       (*l_codec)
         .m_codec_data
         .m_decompression
-        .opj_decoder_set_strict_mode = ::std::mem::transmute::<
+        .opj_decoder_set_strict_mode = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_BOOL) -> ()>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_BOOL) -> ()>,
       >(Some(
         opj_j2k_decoder_set_strict_mode
           as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_BOOL) -> (),
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_read_tile_header = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_read_tile_header = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -1584,7 +1584,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_decode_tile_data = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_decode_tile_data = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -1616,7 +1616,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_set_decode_area = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_set_decode_area = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -1651,7 +1651,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_get_decoded_tile = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_get_decoded_tile = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -1683,7 +1683,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
       (*l_codec)
         .m_codec_data
         .m_decompression
-        .opj_set_decoded_resolution_factor = ::std::mem::transmute::<
+        .opj_set_decoded_resolution_factor = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -1709,7 +1709,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
       (*l_codec)
         .m_codec_data
         .m_decompression
-        .opj_set_decoded_components = ::std::mem::transmute::<
+        .opj_set_decoded_components = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -1735,7 +1735,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).opj_set_threads = ::std::mem::transmute::<
+      (*l_codec).opj_set_threads = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_UINT32) -> OPJ_BOOL>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
       >(Some(
@@ -1749,27 +1749,27 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
     }
     2 => {
       /* get a JP2 decoder handle */
-      (*l_codec).opj_dump_codec = ::std::mem::transmute::<
+      (*l_codec).opj_dump_codec = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_INT32, _: *mut FILE) -> ()>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
       >(Some(
         jp2_dump as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_INT32, _: *mut FILE) -> (),
       ));
-      (*l_codec).opj_get_codec_info = ::std::mem::transmute::<
+      (*l_codec).opj_get_codec_info = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_info_v2_t>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void) -> *mut opj_codestream_info_v2_t>,
       >(Some(
         jp2_get_cstr_info
           as unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_info_v2_t,
       ));
-      (*l_codec).opj_get_codec_index = ::std::mem::transmute::<
+      (*l_codec).opj_get_codec_index = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_index_t>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void) -> *mut opj_codestream_index_t>,
       >(Some(
         jp2_get_cstr_index
           as unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_index_t,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_decode = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_decode = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -1795,7 +1795,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_end_decompress = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_end_decompress = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -1818,7 +1818,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_read_header = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_read_header = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_stream_private_t,
@@ -1844,7 +1844,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_read_tile_header = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_read_tile_header = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -1891,7 +1891,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_decode_tile_data = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_decode_tile_data = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -1923,13 +1923,13 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_destroy = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_destroy = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> ()>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
       >(Some(
         opj_jp2_destroy as unsafe extern "C" fn(_: *mut opj_jp2_t) -> (),
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_setup_decoder = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_setup_decoder = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: *mut opj_dparameters_t) -> ()>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_dparameters_t) -> ()>,
       >(Some(
@@ -1939,14 +1939,14 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
       (*l_codec)
         .m_codec_data
         .m_decompression
-        .opj_decoder_set_strict_mode = ::std::mem::transmute::<
+        .opj_decoder_set_strict_mode = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_BOOL) -> ()>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_BOOL) -> ()>,
       >(Some(
         opj_jp2_decoder_set_strict_mode
           as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_BOOL) -> (),
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_set_decode_area = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_set_decode_area = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -1981,7 +1981,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_decompression.opj_get_decoded_tile = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_decompression.opj_get_decoded_tile = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -2013,7 +2013,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
       (*l_codec)
         .m_codec_data
         .m_decompression
-        .opj_set_decoded_resolution_factor = ::std::mem::transmute::<
+        .opj_set_decoded_resolution_factor = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -2039,7 +2039,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
       (*l_codec)
         .m_codec_data
         .m_decompression
-        .opj_set_decoded_components = ::std::mem::transmute::<
+        .opj_set_decoded_components = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -2065,7 +2065,7 @@ pub(crate) unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *m
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).opj_set_threads = ::std::mem::transmute::<
+      (*l_codec).opj_set_threads = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
       >(Some(
@@ -2093,7 +2093,7 @@ pub(crate) unsafe fn opj_set_default_decoder_parameters(
     memset(
       parameters as *mut libc::c_void,
       0i32,
-      ::std::mem::size_of::<opj_dparameters_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_dparameters_t>() as libc::c_ulong,
     );
     /* UniPG>> */
     /* USE_JPWL */
@@ -2415,7 +2415,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
   let mut l_codec = 0 as *mut opj_codec_private_t;
   l_codec = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_codec_private_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_codec_private_t>() as libc::c_ulong,
   ) as *mut opj_codec_private_t;
   if l_codec.is_null() {
     return 0 as *mut opj_codec_t;
@@ -2423,7 +2423,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
   (*l_codec).is_decompressor = 0i32;
   match p_format as libc::c_int {
     0 => {
-      (*l_codec).m_codec_data.m_compression.opj_encode = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_encode = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -2446,7 +2446,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_compression.opj_end_compress = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_end_compress = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -2469,7 +2469,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_compression.opj_start_compress = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_start_compress = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -2495,7 +2495,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_compression.opj_write_tile = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_write_tile = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -2527,13 +2527,13 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_compression.opj_destroy = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_destroy = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> ()>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
       >(Some(
         opj_j2k_destroy as unsafe extern "C" fn(_: *mut opj_j2k_t) -> (),
       ));
-      (*l_codec).m_codec_data.m_compression.opj_setup_encoder = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_setup_encoder = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -2562,7 +2562,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
       (*l_codec)
         .m_codec_data
         .m_compression
-        .opj_encoder_set_extra_options = ::std::mem::transmute::<
+        .opj_encoder_set_extra_options = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -2585,7 +2585,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).opj_set_threads = ::std::mem::transmute::<
+      (*l_codec).opj_set_threads = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_UINT32) -> OPJ_BOOL>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
       >(Some(
@@ -2599,7 +2599,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
     }
     2 => {
       /* get a JP2 decoder handle */
-      (*l_codec).m_codec_data.m_compression.opj_encode = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_encode = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -2622,7 +2622,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_compression.opj_end_compress = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_end_compress = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -2645,7 +2645,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_compression.opj_start_compress = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_start_compress = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -2671,7 +2671,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_compression.opj_write_tile = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_write_tile = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -2703,13 +2703,13 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec_data.m_compression.opj_destroy = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_destroy = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> ()>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
       >(Some(
         opj_jp2_destroy as unsafe extern "C" fn(_: *mut opj_jp2_t) -> (),
       ));
-      (*l_codec).m_codec_data.m_compression.opj_setup_encoder = ::std::mem::transmute::<
+      (*l_codec).m_codec_data.m_compression.opj_setup_encoder = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -2738,7 +2738,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
       (*l_codec)
         .m_codec_data
         .m_compression
-        .opj_encoder_set_extra_options = ::std::mem::transmute::<
+        .opj_encoder_set_extra_options = core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
@@ -2761,7 +2761,7 @@ pub(crate) unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut
             _: *mut opj_event_mgr_t,
           ) -> OPJ_BOOL,
       ));
-      (*l_codec).opj_set_threads = ::std::mem::transmute::<
+      (*l_codec).opj_set_threads = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL>,
         Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
       >(Some(
@@ -2789,7 +2789,7 @@ pub(crate) unsafe fn opj_set_default_encoder_parameters(
     memset(
       parameters as *mut libc::c_void,
       0i32,
-      ::std::mem::size_of::<opj_cparameters_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_cparameters_t>() as libc::c_ulong,
     );
     /* UniPG>> */
     /* USE_JPWL */
@@ -2966,9 +2966,9 @@ pub(crate) unsafe fn opj_set_MCT(
 ) -> OPJ_BOOL {
   let mut l_matrix_size = pNbComp
     .wrapping_mul(pNbComp)
-    .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
+    .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
   let mut l_dc_shift_size =
-    pNbComp.wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as OPJ_UINT32);
+    pNbComp.wrapping_mul(core::mem::size_of::<OPJ_INT32>() as OPJ_UINT32);
   let mut l_mct_total_size = l_matrix_size.wrapping_add(l_dc_shift_size);
   /* add MCT capability */
   if (*parameters).rsiz as libc::c_int & 0x8000i32 != 0 {
@@ -3166,7 +3166,7 @@ pub(crate) unsafe fn opj_stream_create_file_stream(
   );
   opj_stream_set_write_function(
     l_stream,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut libc::c_void,

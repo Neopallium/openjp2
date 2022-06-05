@@ -80,13 +80,13 @@ pub(crate) unsafe fn opj_sparse_array_int32_create(
   }
   if block_width as libc::c_ulong
     > ((!(0u32)).wrapping_div(block_height) as libc::c_ulong)
-      .wrapping_div(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+      .wrapping_div(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
   {
     return 0 as *mut opj_sparse_array_int32_t;
   }
   sa = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_sparse_array_int32_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_sparse_array_int32_t>() as libc::c_ulong,
   ) as *mut opj_sparse_array_int32_t;
   (*sa).width = width;
   (*sa).height = height;
@@ -99,7 +99,7 @@ pub(crate) unsafe fn opj_sparse_array_int32_create(
     return 0 as *mut opj_sparse_array_int32_t;
   }
   (*sa).data_blocks = opj_calloc(
-    ::std::mem::size_of::<*mut OPJ_INT32>() as libc::c_ulong,
+    core::mem::size_of::<*mut OPJ_INT32>() as libc::c_ulong,
     ((*sa).block_count_hor as size_t).wrapping_mul((*sa).block_count_ver as libc::c_ulong),
   ) as *mut *mut OPJ_INT32;
   if (*sa).data_blocks.is_null() {
@@ -205,7 +205,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               memset(
                 dest_ptr as *mut libc::c_void,
                 0i32,
-                (::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+                (core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
                   .wrapping_mul(x_incr as libc::c_ulong),
               );
               dest_ptr = dest_ptr.offset(buf_line_stride as isize);
@@ -252,7 +252,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
                 memcpy(
                   dest_ptr_1 as *mut libc::c_void,
                   src_ptr as *const libc::c_void,
-                  (::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+                  (core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
                     .wrapping_mul(x_incr as libc::c_ulong),
                 );
                 dest_ptr_1 = dest_ptr_1.offset(buf_line_stride as isize);
@@ -265,7 +265,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
                 memcpy(
                   dest_ptr_1 as *mut libc::c_void,
                   src_ptr as *const libc::c_void,
-                  (::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+                  (core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
                     .wrapping_mul(x_incr as libc::c_ulong),
                 );
                 dest_ptr_1 = dest_ptr_1.offset(buf_line_stride as isize);
@@ -380,7 +380,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
             1i32 as size_t,
             ((*sa).block_width as size_t)
               .wrapping_mul((*sa).block_height as libc::c_ulong)
-              .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+              .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
           ) as *mut OPJ_INT32;
           if src_block.is_null() {
             return 0i32;
@@ -413,7 +413,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               memcpy(
                 dest_ptr_3 as *mut libc::c_void,
                 src_ptr_0 as *const libc::c_void,
-                (::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+                (core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
                   .wrapping_mul(x_incr as libc::c_ulong),
               );
               dest_ptr_3 = dest_ptr_3.offset(block_width as isize);
@@ -426,7 +426,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               memcpy(
                 dest_ptr_3 as *mut libc::c_void,
                 src_ptr_0 as *const libc::c_void,
-                (::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+                (core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
                   .wrapping_mul(x_incr as libc::c_ulong),
               );
               dest_ptr_3 = dest_ptr_3.offset(block_width as isize);

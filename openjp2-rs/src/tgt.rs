@@ -71,7 +71,7 @@ pub(crate) unsafe fn opj_tgt_create(
   let mut n: OPJ_UINT32 = 0;
   tree = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_tgt_tree_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tgt_tree_t>() as libc::c_ulong,
   ) as *mut opj_tgt_tree_t;
   if tree.is_null() {
     opj_event_msg(
@@ -107,7 +107,7 @@ pub(crate) unsafe fn opj_tgt_create(
   }
   (*tree).nodes = opj_calloc(
     (*tree).numnodes as size_t,
-    ::std::mem::size_of::<opj_tgt_node_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tgt_node_t>() as libc::c_ulong,
   ) as *mut opj_tgt_node_t;
   if (*tree).nodes.is_null() {
     opj_event_msg(
@@ -120,7 +120,7 @@ pub(crate) unsafe fn opj_tgt_create(
   }
   (*tree).nodes_size = (*tree)
     .numnodes
-    .wrapping_mul(::std::mem::size_of::<opj_tgt_node_t>() as OPJ_UINT32);
+    .wrapping_mul(core::mem::size_of::<opj_tgt_node_t>() as OPJ_UINT32);
   node = (*tree).nodes;
   l_parent_node = &mut *(*tree)
     .nodes
@@ -216,7 +216,7 @@ pub(crate) unsafe fn opj_tgt_init(
     }
     l_node_size = (*p_tree)
       .numnodes
-      .wrapping_mul(::std::mem::size_of::<opj_tgt_node_t>() as OPJ_UINT32);
+      .wrapping_mul(core::mem::size_of::<opj_tgt_node_t>() as OPJ_UINT32);
     if l_node_size > (*p_tree).nodes_size {
       let mut new_nodes = opj_realloc((*p_tree).nodes as *mut libc::c_void, l_node_size as size_t)
         as *mut opj_tgt_node_t;

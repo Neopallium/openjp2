@@ -153,42 +153,42 @@ static mut j2k_prog_order_list: [j2k_prog_order_t; 6] = unsafe {
     {
       let mut init = j2k_prog_order {
         enum_prog: OPJ_CPRL,
-        str_prog: *::std::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"CPRL\x00"),
+        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"CPRL\x00"),
       };
       init
     },
     {
       let mut init = j2k_prog_order {
         enum_prog: OPJ_LRCP,
-        str_prog: *::std::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"LRCP\x00"),
+        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"LRCP\x00"),
       };
       init
     },
     {
       let mut init = j2k_prog_order {
         enum_prog: OPJ_PCRL,
-        str_prog: *::std::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"PCRL\x00"),
+        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"PCRL\x00"),
       };
       init
     },
     {
       let mut init = j2k_prog_order {
         enum_prog: OPJ_RLCP,
-        str_prog: *::std::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"RLCP\x00"),
+        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"RLCP\x00"),
       };
       init
     },
     {
       let mut init = j2k_prog_order {
         enum_prog: OPJ_RPCL,
-        str_prog: *::std::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"RPCL\x00"),
+        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"RPCL\x00"),
       };
       init
     },
     {
       let mut init = j2k_prog_order {
         enum_prog: OPJ_PROG_UNKNOWN,
-        str_prog: *::std::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(
+        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(
           b"\x00\x00\x00\x00\x00",
         ),
       };
@@ -625,7 +625,7 @@ unsafe extern "C" fn opj_j2k_read_int16_to_float(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_bytes_LE(l_src_data, &mut l_temp, 2 as OPJ_UINT32);
-    l_src_data = l_src_data.offset(::std::mem::size_of::<OPJ_INT16>() as isize);
+    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_INT16>() as isize);
     let fresh0 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh0 = l_temp as OPJ_FLOAT32;
@@ -644,7 +644,7 @@ unsafe extern "C" fn opj_j2k_read_int32_to_float(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_bytes_LE(l_src_data, &mut l_temp, 4 as OPJ_UINT32);
-    l_src_data = l_src_data.offset(::std::mem::size_of::<OPJ_INT32>() as isize);
+    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_INT32>() as isize);
     let fresh1 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh1 = l_temp as OPJ_FLOAT32;
@@ -663,7 +663,7 @@ unsafe extern "C" fn opj_j2k_read_float32_to_float(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_float_LE(l_src_data, &mut l_temp);
-    l_src_data = l_src_data.offset(::std::mem::size_of::<OPJ_FLOAT32>() as isize);
+    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_FLOAT32>() as isize);
     let fresh2 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh2 = l_temp;
@@ -682,7 +682,7 @@ unsafe extern "C" fn opj_j2k_read_float64_to_float(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_double_LE(l_src_data, &mut l_temp);
-    l_src_data = l_src_data.offset(::std::mem::size_of::<OPJ_FLOAT64>() as isize);
+    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_FLOAT64>() as isize);
     let fresh3 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh3 = l_temp as OPJ_FLOAT32;
@@ -701,7 +701,7 @@ unsafe extern "C" fn opj_j2k_read_int16_to_int32(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_bytes_LE(l_src_data, &mut l_temp, 2 as OPJ_UINT32);
-    l_src_data = l_src_data.offset(::std::mem::size_of::<OPJ_INT16>() as isize);
+    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_INT16>() as isize);
     let fresh4 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh4 = l_temp as OPJ_INT32;
@@ -720,7 +720,7 @@ unsafe extern "C" fn opj_j2k_read_int32_to_int32(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_bytes_LE(l_src_data, &mut l_temp, 4 as OPJ_UINT32);
-    l_src_data = l_src_data.offset(::std::mem::size_of::<OPJ_INT32>() as isize);
+    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_INT32>() as isize);
     let fresh5 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh5 = l_temp as OPJ_INT32;
@@ -739,7 +739,7 @@ unsafe extern "C" fn opj_j2k_read_float32_to_int32(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_float_LE(l_src_data, &mut l_temp);
-    l_src_data = l_src_data.offset(::std::mem::size_of::<OPJ_FLOAT32>() as isize);
+    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_FLOAT32>() as isize);
     let fresh6 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh6 = l_temp as OPJ_INT32;
@@ -758,7 +758,7 @@ unsafe extern "C" fn opj_j2k_read_float64_to_int32(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_double_LE(l_src_data, &mut l_temp);
-    l_src_data = l_src_data.offset(::std::mem::size_of::<OPJ_FLOAT64>() as isize);
+    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_FLOAT64>() as isize);
     let fresh7 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh7 = l_temp as OPJ_INT32;
@@ -782,9 +782,9 @@ unsafe extern "C" fn opj_j2k_write_float_to_int16(
     opj_write_bytes_LE(
       l_dest_data,
       l_temp,
-      ::std::mem::size_of::<OPJ_INT16>() as OPJ_UINT32,
+      core::mem::size_of::<OPJ_INT16>() as OPJ_UINT32,
     );
-    l_dest_data = l_dest_data.offset(::std::mem::size_of::<OPJ_INT16>() as isize);
+    l_dest_data = l_dest_data.offset(core::mem::size_of::<OPJ_INT16>() as isize);
     i = i.wrapping_add(1)
   }
 }
@@ -805,9 +805,9 @@ unsafe extern "C" fn opj_j2k_write_float_to_int32(
     opj_write_bytes_LE(
       l_dest_data,
       l_temp,
-      ::std::mem::size_of::<OPJ_INT32>() as OPJ_UINT32,
+      core::mem::size_of::<OPJ_INT32>() as OPJ_UINT32,
     );
-    l_dest_data = l_dest_data.offset(::std::mem::size_of::<OPJ_INT32>() as isize);
+    l_dest_data = l_dest_data.offset(core::mem::size_of::<OPJ_INT32>() as isize);
     i = i.wrapping_add(1)
   }
 }
@@ -827,7 +827,7 @@ unsafe extern "C" fn opj_j2k_write_float_to_float(
     l_temp = *fresh10;
     opj_write_float_LE(l_dest_data, l_temp);
     l_dest_data =
-      l_dest_data.offset(::std::mem::size_of::<OPJ_FLOAT32>() as isize);
+      l_dest_data.offset(core::mem::size_of::<OPJ_FLOAT32>() as isize);
     i = i.wrapping_add(1)
   }
 }
@@ -847,7 +847,7 @@ unsafe extern "C" fn opj_j2k_write_float_to_float64(
     l_temp = *fresh11 as OPJ_FLOAT64;
     opj_write_double_LE(l_dest_data, l_temp);
     l_dest_data =
-      l_dest_data.offset(::std::mem::size_of::<OPJ_FLOAT64>() as isize);
+      l_dest_data.offset(core::mem::size_of::<OPJ_FLOAT64>() as isize);
     i = i.wrapping_add(1)
   }
 }
@@ -901,7 +901,7 @@ unsafe fn opj_j2k_check_poc_val(
   assert!(p_nb_pocs > 0u32);
   packet_array = opj_calloc(
     (step_l as size_t).wrapping_mul(p_num_layers as libc::c_ulong),
-    ::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong,
+    core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong,
   ) as *mut OPJ_UINT32;
   if packet_array.is_null() {
     opj_event_msg(
@@ -1579,7 +1579,7 @@ unsafe extern "C" fn opj_j2k_read_siz(
   /* Allocate the resulting image components */
   (*l_image).comps = opj_calloc(
     (*l_image).numcomps as size_t,
-    ::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
   ) as *mut opj_image_comp_t;
   if (*l_image).comps.is_null() {
     (*l_image).numcomps = 0 as OPJ_UINT32;
@@ -1720,7 +1720,7 @@ unsafe extern "C" fn opj_j2k_read_siz(
   /* memory allocations */
   (*l_cp).tcps = opj_calloc(
     l_nb_tiles as size_t,
-    ::std::mem::size_of::<opj_tcp_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcp_t>() as libc::c_ulong,
   ) as *mut opj_tcp_t;
   if (*l_cp).tcps.is_null() {
     opj_event_msg(
@@ -1733,7 +1733,7 @@ unsafe extern "C" fn opj_j2k_read_siz(
   /* USE_JPWL */
   (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp).tccps = opj_calloc(
     (*l_image).numcomps as size_t,
-    ::std::mem::size_of::<opj_tccp_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tccp_t>() as libc::c_ulong,
   ) as *mut opj_tccp_t;
   if (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp)
     .tccps
@@ -1748,7 +1748,7 @@ unsafe extern "C" fn opj_j2k_read_siz(
   }
   (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp).m_mct_records = opj_calloc(
     10i32 as size_t,
-    ::std::mem::size_of::<opj_mct_data_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_mct_data_t>() as libc::c_ulong,
   ) as *mut opj_mct_data_t;
   if (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp)
     .m_mct_records
@@ -1765,7 +1765,7 @@ unsafe extern "C" fn opj_j2k_read_siz(
     10 as OPJ_UINT32;
   (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp).m_mcc_records = opj_calloc(
     10i32 as size_t,
-    ::std::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as libc::c_ulong,
   )
     as *mut opj_simple_mcc_decorrelation_data_t;
   if (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp)
@@ -1800,7 +1800,7 @@ unsafe extern "C" fn opj_j2k_read_siz(
   while i < l_nb_tiles {
     (*l_current_tile_param).tccps = opj_calloc(
       (*l_image).numcomps as size_t,
-      ::std::mem::size_of::<opj_tccp_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_tccp_t>() as libc::c_ulong,
     ) as *mut opj_tccp_t;
     if (*l_current_tile_param).tccps.is_null() {
       opj_event_msg(
@@ -3658,7 +3658,7 @@ unsafe extern "C" fn opj_j2k_read_ppm(
     assert!((*l_cp).ppm_markers_count == 0u32);
     (*l_cp).ppm_markers = opj_calloc(
       l_newCount as size_t,
-      ::std::mem::size_of::<opj_ppx>() as libc::c_ulong,
+      core::mem::size_of::<opj_ppx>() as libc::c_ulong,
     ) as *mut opj_ppx;
     if (*l_cp).ppm_markers.is_null() {
       opj_event_msg(
@@ -3675,7 +3675,7 @@ unsafe extern "C" fn opj_j2k_read_ppm(
     new_ppm_markers = opj_realloc(
       (*l_cp).ppm_markers as *mut libc::c_void,
       (l_newCount_0 as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_ppx>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_ppx>() as libc::c_ulong),
     ) as *mut opj_ppx;
     if new_ppm_markers.is_null() {
       /* clean up to be done on l_cp destruction */
@@ -3693,7 +3693,7 @@ unsafe extern "C" fn opj_j2k_read_ppm(
         .offset((*l_cp).ppm_markers_count as isize) as *mut libc::c_void,
       0i32,
       (l_newCount_0.wrapping_sub((*l_cp).ppm_markers_count) as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_ppx>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_ppx>() as libc::c_ulong),
     );
     (*l_cp).ppm_markers_count = l_newCount_0
   }
@@ -3980,7 +3980,7 @@ unsafe extern "C" fn opj_j2k_read_ppt(
     assert!((*l_tcp).ppt_markers_count == 0u32);
     (*l_tcp).ppt_markers = opj_calloc(
       l_newCount as size_t,
-      ::std::mem::size_of::<opj_ppx>() as libc::c_ulong,
+      core::mem::size_of::<opj_ppx>() as libc::c_ulong,
     ) as *mut opj_ppx;
     if (*l_tcp).ppt_markers.is_null() {
       opj_event_msg(
@@ -3997,7 +3997,7 @@ unsafe extern "C" fn opj_j2k_read_ppt(
     new_ppt_markers = opj_realloc(
       (*l_tcp).ppt_markers as *mut libc::c_void,
       (l_newCount_0 as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_ppx>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_ppx>() as libc::c_ulong),
     ) as *mut opj_ppx;
     if new_ppt_markers.is_null() {
       /* clean up to be done on l_tcp destruction */
@@ -4015,7 +4015,7 @@ unsafe extern "C" fn opj_j2k_read_ppt(
         .offset((*l_tcp).ppt_markers_count as isize) as *mut libc::c_void,
       0i32,
       (l_newCount_0.wrapping_sub((*l_tcp).ppt_markers_count) as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_ppx>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_ppx>() as libc::c_ulong),
     );
     (*l_tcp).ppt_markers_count = l_newCount_0
   }
@@ -4600,7 +4600,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
         .tp_index;
         *fresh16 = opj_calloc(
           l_num_parts as size_t,
-          ::std::mem::size_of::<opj_tp_index_t>() as libc::c_ulong,
+          core::mem::size_of::<opj_tp_index_t>() as libc::c_ulong,
         ) as *mut opj_tp_index_t;
         if (*(*(*p_j2k).cstr_index)
           .tile_index
@@ -4623,7 +4623,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
             .offset((*p_j2k).m_current_tile_number as isize))
           .tp_index as *mut libc::c_void,
           (l_num_parts as libc::c_ulong)
-            .wrapping_mul(::std::mem::size_of::<opj_tp_index_t>() as libc::c_ulong),
+            .wrapping_mul(core::mem::size_of::<opj_tp_index_t>() as libc::c_ulong),
         ) as *mut opj_tp_index_t;
         if new_tp_index.is_null() {
           opj_free(
@@ -4672,7 +4672,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
             .tile_index
             .offset((*p_j2k).m_current_tile_number as isize))
           .current_nb_tps as size_t,
-          ::std::mem::size_of::<opj_tp_index_t>() as libc::c_ulong,
+          core::mem::size_of::<opj_tp_index_t>() as libc::c_ulong,
         ) as *mut opj_tp_index_t;
         if (*(*(*p_j2k).cstr_index)
           .tile_index
@@ -4713,7 +4713,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
             .tile_index
             .offset((*p_j2k).m_current_tile_number as isize))
           .current_nb_tps as libc::c_ulong)
-            .wrapping_mul(::std::mem::size_of::<opj_tp_index_t>() as libc::c_ulong),
+            .wrapping_mul(core::mem::size_of::<opj_tp_index_t>() as libc::c_ulong),
         ) as *mut opj_tp_index_t;
         if new_tp_index_0.is_null() {
           opj_free(
@@ -6150,7 +6150,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
       new_mct_records = opj_realloc(
         (*l_tcp).m_mct_records as *mut libc::c_void,
         ((*l_tcp).m_nb_max_mct_records as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
       ) as *mut opj_mct_data_t;
       if new_mct_records.is_null() {
         opj_free((*l_tcp).m_mct_records as *mut libc::c_void);
@@ -6201,7 +6201,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
         ((*l_tcp)
           .m_nb_max_mct_records
           .wrapping_sub((*l_tcp).m_nb_mct_records) as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
       );
     }
     l_mct_data = (*l_tcp)
@@ -6483,7 +6483,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
         as OPJ_UINT32;
       new_mcc_records = opj_realloc(
         (*l_tcp).m_mcc_records as *mut libc::c_void,
-        ((*l_tcp).m_nb_max_mcc_records as libc::c_ulong).wrapping_mul(::std::mem::size_of::<
+        ((*l_tcp).m_nb_max_mcc_records as libc::c_ulong).wrapping_mul(core::mem::size_of::<
           opj_simple_mcc_decorrelation_data_t,
         >() as libc::c_ulong),
       ) as *mut opj_simple_mcc_decorrelation_data_t;
@@ -6510,7 +6510,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
           .m_nb_max_mcc_records
           .wrapping_sub((*l_tcp).m_nb_mcc_records) as libc::c_ulong)
           .wrapping_mul(
-            ::std::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as libc::c_ulong
+            core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as libc::c_ulong
           ),
       );
     }
@@ -6958,7 +6958,7 @@ unsafe fn opj_j2k_add_mct(
     }
     l_nb_elem = (*p_image).numcomps.wrapping_mul((*p_image).numcomps);
     l_mct_size =
-      l_nb_elem.wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
+      l_nb_elem.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
     (*p_tcp).m_mct_decoding_matrix = opj_malloc(l_mct_size as size_t) as *mut OPJ_FLOAT32;
     if (*p_tcp).m_mct_decoding_matrix.is_null() {
       return 0i32;
@@ -6979,7 +6979,7 @@ unsafe fn opj_j2k_add_mct(
     }
     l_nb_elem = (*p_image).numcomps;
     l_offset_size =
-      l_nb_elem.wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32);
+      l_nb_elem.wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32);
     l_offset_data = opj_malloc(l_offset_size as size_t) as *mut OPJ_UINT32;
     if l_offset_data.is_null() {
       return 0i32;
@@ -7313,7 +7313,7 @@ unsafe fn opj_j2k_get_default_thread_count() -> libc::c_int {
 pub(crate) unsafe extern "C" fn opj_j2k_create_compress() -> *mut opj_j2k_t {
   let mut l_j2k = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_j2k_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_j2k_t>() as libc::c_ulong,
   ) as *mut opj_j2k_t;
   if l_j2k.is_null() {
     return 0 as *mut opj_j2k_t;
@@ -7533,9 +7533,9 @@ unsafe fn opj_j2k_is_cinema_compliant(
       != 0
     {
       let mut signed_str: [libc::c_char; 7] =
-        *::std::mem::transmute::<&[u8; 7], &mut [libc::c_char; 7]>(b"signed\x00");
+        *core::mem::transmute::<&[u8; 7], &mut [libc::c_char; 7]>(b"signed\x00");
       let mut unsigned_str: [libc::c_char; 9] =
-        *::std::mem::transmute::<&[u8; 9], &mut [libc::c_char; 9]>(b"unsigned\x00");
+        *core::mem::transmute::<&[u8; 9], &mut [libc::c_char; 9]>(b"unsigned\x00");
       let mut tmp_str = if (*(*image).comps.offset(i as isize)).sgnd != 0 {
         signed_str.as_mut_ptr()
       } else {
@@ -7765,9 +7765,9 @@ unsafe fn opj_j2k_is_imf_compliant(
   } else {
     /* Validate sublevel */
     assert!(
-      ::std::mem::size_of::<[OPJ_UINT16; 12]>() as libc::c_ulong
+      core::mem::size_of::<[OPJ_UINT16; 12]>() as libc::c_ulong
         == ((11i32 + 1i32) as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<OPJ_UINT16>() as libc::c_ulong)
+          .wrapping_mul(core::mem::size_of::<OPJ_UINT16>() as libc::c_ulong)
     );
     if sublevel as libc::c_int > tabMaxSubLevelFromMainLevel[mainlevel as usize] as libc::c_int {
       opj_event_msg(p_manager, 2i32,
@@ -7853,9 +7853,9 @@ unsafe fn opj_j2k_is_imf_compliant(
       || (*(*image).comps.offset(i as isize)).sgnd != 0
     {
       let mut signed_str: [libc::c_char; 7] =
-        *::std::mem::transmute::<&[u8; 7], &mut [libc::c_char; 7]>(b"signed\x00");
+        *core::mem::transmute::<&[u8; 7], &mut [libc::c_char; 7]>(b"signed\x00");
       let mut unsigned_str: [libc::c_char; 9] =
-        *::std::mem::transmute::<&[u8; 9], &mut [libc::c_char; 9]>(b"unsigned\x00");
+        *core::mem::transmute::<&[u8; 9], &mut [libc::c_char; 9]>(b"unsigned\x00");
       let mut tmp_str = if (*(*image).comps.offset(i as isize)).sgnd != 0 {
         signed_str.as_mut_ptr()
       } else {
@@ -8584,7 +8584,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     let mut array_size = ((*parameters).tcp_numlayers as size_t)
       .wrapping_mul((*parameters).numresolution as size_t)
       .wrapping_mul(3u64)
-      .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong);
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong);
     (*cp).m_specific_param.m_enc.m_matrice = opj_malloc(array_size) as *mut OPJ_INT32;
     if (*cp).m_specific_param.m_enc.m_matrice.is_null() {
       opj_event_msg(
@@ -8625,7 +8625,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   } else {
     /* Create default comment for codestream */
     let comment: [libc::c_char; 29] =
-      *::std::mem::transmute::<&[u8; 29], &[libc::c_char; 29]>(b"Created by OpenJPEG version \x00");
+      *core::mem::transmute::<&[u8; 29], &[libc::c_char; 29]>(b"Created by OpenJPEG version \x00");
     let clen = strlen(comment.as_ptr());
     let mut version = opj_version();
     /* UniPG>> */
@@ -8705,7 +8705,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   /* ---------------------------- */
   (*cp).tcps = opj_calloc(
     (*cp).tw.wrapping_mul((*cp).th) as size_t,
-    ::std::mem::size_of::<opj_tcp_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcp_t>() as libc::c_ulong,
   ) as *mut opj_tcp_t;
   if (*cp).tcps.is_null() {
     opj_event_msg(
@@ -8801,7 +8801,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     }
     (*tcp).tccps = opj_calloc(
       (*image).numcomps as size_t,
-      ::std::mem::size_of::<opj_tccp_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_tccp_t>() as libc::c_ulong,
     ) as *mut opj_tccp_t;
     if (*tcp).tccps.is_null() {
       opj_event_msg(
@@ -8816,7 +8816,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       let mut lMctSize = (*image)
         .numcomps
         .wrapping_mul((*image).numcomps)
-        .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
+        .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
       let mut lTmpBuf = opj_malloc(lMctSize as size_t) as *mut OPJ_FLOAT32;
       let mut l_dc_shift =
         ((*parameters).mct_data as *mut OPJ_BYTE).offset(lMctSize as isize) as *mut OPJ_INT32;
@@ -8878,7 +8878,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       }
       (*tcp).mct_norms = opj_malloc(
         ((*image).numcomps as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong),
       ) as *mut OPJ_FLOAT64;
       if (*tcp).mct_norms.is_null() {
         opj_free(lTmpBuf as *mut libc::c_void);
@@ -9062,7 +9062,7 @@ unsafe fn opj_j2k_add_mhmarker(
     new_marker = opj_realloc(
       (*cstr_index).marker as *mut libc::c_void,
       ((*cstr_index).maxmarknum as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
     ) as *mut opj_marker_info_t;
     if new_marker.is_null() {
       opj_free((*cstr_index).marker as *mut libc::c_void);
@@ -9113,7 +9113,7 @@ unsafe fn opj_j2k_add_tlmarker(
     new_marker = opj_realloc(
       (*(*cstr_index).tile_index.offset(tileno as isize)).marker as *mut libc::c_void,
       ((*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
     ) as *mut opj_marker_info_t;
     if new_marker.is_null() {
       opj_free((*(*cstr_index).tile_index.offset(tileno as isize)).marker as *mut libc::c_void);
@@ -9284,7 +9284,7 @@ unsafe fn opj_j2k_setup_header_reading(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -9309,7 +9309,7 @@ unsafe fn opj_j2k_setup_header_reading(
   /* DEVELOPER CORNER, add your custom procedures */
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -9347,7 +9347,7 @@ unsafe fn opj_j2k_setup_decoding_validation(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -9371,7 +9371,7 @@ unsafe fn opj_j2k_setup_decoding_validation(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -9468,7 +9468,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
       new_mct_records = opj_realloc(
         (*p_tcp).m_mct_records as *mut libc::c_void,
         ((*p_tcp).m_nb_max_mct_records as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
       ) as *mut opj_mct_data_t;
       if new_mct_records.is_null() {
         opj_free((*p_tcp).m_mct_records as *mut libc::c_void);
@@ -9488,7 +9488,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
         ((*p_tcp)
           .m_nb_max_mct_records
           .wrapping_sub((*p_tcp).m_nb_mct_records) as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
       );
     }
     l_mct_deco_data = (*p_tcp)
@@ -9527,7 +9527,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
     new_mct_records_0 = opj_realloc(
       (*p_tcp).m_mct_records as *mut libc::c_void,
       ((*p_tcp).m_nb_max_mct_records as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
     ) as *mut opj_mct_data_t;
     if new_mct_records_0.is_null() {
       opj_free((*p_tcp).m_mct_records as *mut libc::c_void);
@@ -9547,7 +9547,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
       ((*p_tcp)
         .m_nb_max_mct_records
         .wrapping_sub((*p_tcp).m_nb_mct_records) as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as libc::c_ulong),
     );
     if !l_mct_deco_data.is_null() {
       l_mct_deco_data = l_mct_offset_data.offset(-1)
@@ -9574,7 +9574,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
   }
   l_data = opj_malloc(
     (l_nb_elem as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
   ) as *mut OPJ_FLOAT32;
   if l_data.is_null() {
     opj_free((*l_mct_offset_data).m_data as *mut libc::c_void);
@@ -9608,7 +9608,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
     new_mcc_records =
       opj_realloc(
         (*p_tcp).m_mcc_records as *mut libc::c_void,
-        ((*p_tcp).m_nb_max_mcc_records as libc::c_ulong).wrapping_mul(::std::mem::size_of::<
+        ((*p_tcp).m_nb_max_mcc_records as libc::c_ulong).wrapping_mul(core::mem::size_of::<
           opj_simple_mcc_decorrelation_data_t,
         >() as libc::c_ulong),
       ) as *mut opj_simple_mcc_decorrelation_data_t;
@@ -9631,7 +9631,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
                 .m_nb_max_mcc_records
                 .wrapping_sub((*p_tcp).m_nb_mcc_records) as libc::c_ulong)
                 .wrapping_mul(
-                    ::std::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as libc::c_ulong
+                    core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as libc::c_ulong
                 ),
         );
   }
@@ -10143,12 +10143,12 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
   l_tcp = (*p_j2k).m_cp.tcps;
   l_tccp_size = (*l_image)
     .numcomps
-    .wrapping_mul(::std::mem::size_of::<opj_tccp_t>() as OPJ_UINT32);
+    .wrapping_mul(core::mem::size_of::<opj_tccp_t>() as OPJ_UINT32);
   l_default_tcp = (*p_j2k).m_specific_param.m_decoder.m_default_tcp;
   l_mct_size = (*l_image)
     .numcomps
     .wrapping_mul((*l_image).numcomps)
-    .wrapping_mul(::std::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
+    .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
   /* For each tile */
   i = 0 as OPJ_UINT32;
   while i < l_nb_tiles {
@@ -10158,7 +10158,7 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
     memcpy(
       l_tcp as *mut libc::c_void,
       l_default_tcp as *const libc::c_void,
-      ::std::mem::size_of::<opj_tcp_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_tcp_t>() as libc::c_ulong,
     );
     /* Initialize some values of the current tile coding parameters*/
     (*l_tcp).set_cod(0 as OPJ_BITFIELD);
@@ -10188,7 +10188,7 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
     /* Get the mct_record of the dflt_tile_cp and copy them into the current tile cp*/
     l_mct_records_size = (*l_default_tcp)
       .m_nb_max_mct_records
-      .wrapping_mul(::std::mem::size_of::<opj_mct_data_t>() as OPJ_UINT32);
+      .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as OPJ_UINT32);
     (*l_tcp).m_mct_records = opj_malloc(l_mct_records_size as size_t) as *mut opj_mct_data_t;
     if (*l_tcp).m_mct_records.is_null() {
       return 0i32;
@@ -10227,7 +10227,7 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
     l_mcc_records_size = (*l_default_tcp)
       .m_nb_max_mcc_records
       .wrapping_mul(
-        ::std::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as OPJ_UINT32,
+        core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as OPJ_UINT32,
       );
     (*l_tcp).m_mcc_records =
       opj_malloc(l_mcc_records_size as size_t) as *mut opj_simple_mcc_decorrelation_data_t;
@@ -10376,7 +10376,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_destroy(mut p_j2k: *mut opj_j2k_t) {
   memset(
     &mut (*p_j2k).m_cp as *mut opj_cp_t as *mut libc::c_void,
     0i32,
-    ::std::mem::size_of::<opj_cp_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_cp_t>() as libc::c_ulong,
   );
   opj_procedure_list_destroy((*p_j2k).m_procedure_list);
   (*p_j2k).m_procedure_list = 0 as *mut opj_procedure_list_t;
@@ -11508,7 +11508,7 @@ unsafe fn opj_j2k_update_image_data(
             || l_width > (18446744073709551615u64).wrapping_div(l_height)
             || l_width.wrapping_mul(l_height)
               > (18446744073709551615u64)
-                .wrapping_div(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+                .wrapping_div(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
           {
             /* would overflow */
             return 0i32;
@@ -11516,7 +11516,7 @@ unsafe fn opj_j2k_update_image_data(
           (*l_img_comp_dest).data = opj_image_data_alloc(
             l_width
               .wrapping_mul(l_height)
-              .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+              .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
           ) as *mut OPJ_INT32;
           if (*l_img_comp_dest).data.is_null() {
             return 0i32;
@@ -11527,7 +11527,7 @@ unsafe fn opj_j2k_update_image_data(
               0i32,
               ((*l_img_comp_dest).w as OPJ_SIZE_T)
                 .wrapping_mul((*l_img_comp_dest).h as libc::c_ulong)
-                .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+                .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
             );
           }
         }
@@ -11541,7 +11541,7 @@ unsafe fn opj_j2k_update_image_data(
             l_dest_ptr as *mut libc::c_void,
             l_src_ptr as *const libc::c_void,
             (l_width_dest as libc::c_ulong)
-              .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+              .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
           );
           l_dest_ptr = l_dest_ptr.offset((*l_img_comp_dest).w as isize);
           l_src_ptr = l_src_ptr.offset(src_data_stride as isize);
@@ -11647,7 +11647,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_components(
     return 0i32;
   }
   already_mapped = opj_calloc(
-    ::std::mem::size_of::<OPJ_BOOL>() as libc::c_ulong,
+    core::mem::size_of::<OPJ_BOOL>() as libc::c_ulong,
     (*(*p_j2k).m_private_image).numcomps as size_t,
   ) as *mut OPJ_BOOL;
   if already_mapped.is_null() {
@@ -11691,7 +11691,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_components(
       .m_decoder
       .m_comps_indices_to_decode = opj_malloc(
       (numcomps as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
     ) as *mut OPJ_UINT32;
     if (*p_j2k)
       .m_specific_param
@@ -11709,7 +11709,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_components(
         .m_comps_indices_to_decode as *mut libc::c_void,
       comps_indices as *const libc::c_void,
       (numcomps as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
     );
   } else {
     (*p_j2k)
@@ -11937,7 +11937,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
 pub(crate) unsafe extern "C" fn opj_j2k_create_decompress() -> *mut opj_j2k_t {
   let mut l_j2k = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_j2k_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_j2k_t>() as libc::c_ulong,
   ) as *mut opj_j2k_t;
   if l_j2k.is_null() {
     return 0 as *mut opj_j2k_t;
@@ -11955,7 +11955,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_create_decompress() -> *mut opj_j2k_t {
   (*l_j2k).m_cp.strict = 1i32;
   (*l_j2k).m_specific_param.m_decoder.m_default_tcp = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_tcp_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcp_t>() as libc::c_ulong,
   ) as *mut opj_tcp_t;
   if (*l_j2k).m_specific_param.m_decoder.m_default_tcp.is_null() {
     opj_j2k_destroy(l_j2k);
@@ -12001,7 +12001,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_create_decompress() -> *mut opj_j2k_t {
 unsafe fn opj_j2k_create_cstr_index() -> *mut opj_codestream_index_t {
   let mut cstr_index = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_codestream_index_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_codestream_index_t>() as libc::c_ulong,
   ) as *mut opj_codestream_index_t;
   if cstr_index.is_null() {
     return 0 as *mut opj_codestream_index_t;
@@ -12010,7 +12010,7 @@ unsafe fn opj_j2k_create_cstr_index() -> *mut opj_codestream_index_t {
   (*cstr_index).marknum = 0 as OPJ_UINT32;
   (*cstr_index).marker = opj_calloc(
     (*cstr_index).maxmarknum as size_t,
-    ::std::mem::size_of::<opj_marker_info_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_marker_info_t>() as libc::c_ulong,
   ) as *mut opj_marker_info_t;
   if (*cstr_index).marker.is_null() {
     opj_free(cstr_index as *mut libc::c_void);
@@ -12417,7 +12417,7 @@ unsafe fn opj_j2k_copy_tile_component_parameters(mut p_j2k: *mut opj_j2k_t) {
   l_copied_tccp = l_ref_tccp.offset(1);
   l_prc_size = (*l_ref_tccp)
     .numresolutions
-    .wrapping_mul(::std::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32);
+    .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32);
   i = 1 as OPJ_UINT32;
   while i < (*(*p_j2k).m_private_image).numcomps {
     (*l_copied_tccp).numresolutions = (*l_ref_tccp).numresolutions;
@@ -12819,7 +12819,7 @@ unsafe fn opj_j2k_copy_tile_quantization_parameters(mut p_j2k: *mut opj_j2k_t) {
   l_ref_tccp = &mut *(*l_tcp).tccps.offset(0) as *mut opj_tccp_t;
   l_copied_tccp = l_ref_tccp.offset(1);
   l_size = ((3i32 * 33i32 - 2i32) as libc::c_ulong)
-    .wrapping_mul(::std::mem::size_of::<opj_stepsize_t>() as libc::c_ulong)
+    .wrapping_mul(core::mem::size_of::<opj_stepsize_t>() as libc::c_ulong)
     as OPJ_UINT32;
   i = 1 as OPJ_UINT32;
   while i < (*(*p_j2k).m_private_image).numcomps {
@@ -13295,7 +13295,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_info(
   let mut l_default_tile = 0 as *mut opj_tcp_t;
   let mut cstr_info = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_codestream_info_v2_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_codestream_info_v2_t>() as libc::c_ulong,
   ) as *mut opj_codestream_info_v2_t;
   if cstr_info.is_null() {
     return 0 as *mut opj_codestream_info_v2_t;
@@ -13315,7 +13315,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_info(
   (*cstr_info).m_default_tile_info.mct = (*l_default_tile).mct;
   (*cstr_info).m_default_tile_info.tccp_info = opj_calloc(
     (*cstr_info).nbcomps as size_t,
-    ::std::mem::size_of::<opj_tccp_info_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tccp_info_t>() as libc::c_ulong,
   ) as *mut opj_tccp_info_t;
   if (*cstr_info).m_default_tile_info.tccp_info.is_null() {
     opj_destroy_cstr_info(&mut cstr_info);
@@ -13381,7 +13381,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
 ) -> *mut opj_codestream_index_t {
   let mut l_cstr_index = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_codestream_index_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_codestream_index_t>() as libc::c_ulong,
   ) as *mut opj_codestream_index_t;
   if l_cstr_index.is_null() {
     return 0 as *mut opj_codestream_index_t;
@@ -13392,7 +13392,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
   (*l_cstr_index).marknum = (*(*p_j2k).cstr_index).marknum;
   (*l_cstr_index).marker = opj_malloc(
     ((*l_cstr_index).marknum as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
   ) as *mut opj_marker_info_t;
   if (*l_cstr_index).marker.is_null() {
     opj_free(l_cstr_index as *mut libc::c_void);
@@ -13403,7 +13403,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
       (*l_cstr_index).marker as *mut libc::c_void,
       (*(*p_j2k).cstr_index).marker as *const libc::c_void,
       ((*l_cstr_index).marknum as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
     );
   } else {
     opj_free((*l_cstr_index).marker as *mut libc::c_void);
@@ -13412,7 +13412,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
   (*l_cstr_index).nb_of_tiles = (*(*p_j2k).cstr_index).nb_of_tiles;
   (*l_cstr_index).tile_index = opj_calloc(
     (*l_cstr_index).nb_of_tiles as size_t,
-    ::std::mem::size_of::<opj_tile_index_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tile_index_t>() as libc::c_ulong,
   ) as *mut opj_tile_index_t;
   if (*l_cstr_index).tile_index.is_null() {
     opj_free((*l_cstr_index).marker as *mut libc::c_void);
@@ -13432,7 +13432,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
       let ref mut fresh34 = (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker;
       *fresh34 = opj_malloc(
         ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).marknum as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
       ) as *mut opj_marker_info_t;
       if (*(*l_cstr_index).tile_index.offset(it_tile as isize))
         .marker
@@ -13460,7 +13460,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
           (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).marker
             as *const libc::c_void,
           ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).marknum as libc::c_ulong)
-            .wrapping_mul(::std::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
+            .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as libc::c_ulong),
         );
       } else {
         opj_free(
@@ -13475,7 +13475,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
       let ref mut fresh36 = (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index;
       *fresh36 = opj_malloc(
         ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_tps as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<opj_tp_index_t>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<opj_tp_index_t>() as libc::c_ulong),
       ) as *mut opj_tp_index_t;
       if (*(*l_cstr_index).tile_index.offset(it_tile as isize))
         .tp_index
@@ -13508,7 +13508,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
           (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).tp_index
             as *const libc::c_void,
           ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_tps as libc::c_ulong)
-            .wrapping_mul(::std::mem::size_of::<opj_tp_index_t>() as libc::c_ulong),
+            .wrapping_mul(core::mem::size_of::<opj_tp_index_t>() as libc::c_ulong),
         );
       } else {
         opj_free(
@@ -13534,7 +13534,7 @@ unsafe fn opj_j2k_allocate_tile_element_cstr_index(
   (*(*p_j2k).cstr_index).nb_of_tiles = (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th);
   (*(*p_j2k).cstr_index).tile_index = opj_calloc(
     (*(*p_j2k).cstr_index).nb_of_tiles as size_t,
-    ::std::mem::size_of::<opj_tile_index_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tile_index_t>() as libc::c_ulong,
   ) as *mut opj_tile_index_t;
   if (*(*p_j2k).cstr_index).tile_index.is_null() {
     return 0i32;
@@ -13548,7 +13548,7 @@ unsafe fn opj_j2k_allocate_tile_element_cstr_index(
     let ref mut fresh39 = (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).marker;
     *fresh39 = opj_calloc(
       (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).maxmarknum as size_t,
-      ::std::mem::size_of::<opj_marker_info_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_marker_info_t>() as libc::c_ulong,
     ) as *mut opj_marker_info_t;
     if (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize))
       .marker
@@ -13801,7 +13801,7 @@ unsafe fn opj_j2k_setup_decoding(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -14005,7 +14005,7 @@ unsafe fn opj_j2k_setup_decoding_tile(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -14039,7 +14039,7 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
   if (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode > 0u32 {
     let mut newcomps = opj_malloc(
       ((*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong),
     ) as *mut opj_image_comp_t;
     if newcomps.is_null() {
       opj_image_destroy((*p_j2k).m_private_image);
@@ -14064,7 +14064,7 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
         &mut *newcomps.offset(compno as isize) as *mut opj_image_comp_t as *mut libc::c_void,
         &mut *(*(*p_j2k).m_output_image).comps.offset(src_compno as isize) as *mut opj_image_comp_t
           as *const libc::c_void,
-        ::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+        core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
       );
       (*newcomps.offset(compno as isize)).resno_decoded =
         (*(*(*p_j2k).m_output_image).comps.offset(src_compno as isize)).resno_decoded;
@@ -14911,7 +14911,7 @@ unsafe fn opj_j2k_setup_end_compress(
   /* DEVELOPER CORNER, insert your custom procedures */
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -14936,7 +14936,7 @@ unsafe fn opj_j2k_setup_end_compress(
   if (*p_j2k).m_specific_param.m_encoder.m_TLM != 0 {
     if opj_procedure_list_add_procedure(
       (*p_j2k).m_procedure_list,
-      ::std::mem::transmute::<
+      core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -14961,7 +14961,7 @@ unsafe fn opj_j2k_setup_end_compress(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -14985,7 +14985,7 @@ unsafe fn opj_j2k_setup_end_compress(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15009,7 +15009,7 @@ unsafe fn opj_j2k_setup_end_compress(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15047,7 +15047,7 @@ unsafe fn opj_j2k_setup_encoding_validation(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15071,7 +15071,7 @@ unsafe fn opj_j2k_setup_encoding_validation(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15096,7 +15096,7 @@ unsafe fn opj_j2k_setup_encoding_validation(
   /* DEVELOPER CORNER, add your custom validation procedure */
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15134,7 +15134,7 @@ unsafe fn opj_j2k_setup_header_writing(
   assert!(!p_manager.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15158,7 +15158,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15182,7 +15182,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15206,7 +15206,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15230,7 +15230,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15254,7 +15254,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15278,7 +15278,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15303,7 +15303,7 @@ unsafe fn opj_j2k_setup_header_writing(
   if (*p_j2k).m_specific_param.m_encoder.m_TLM != 0 {
     if opj_procedure_list_add_procedure(
       (*p_j2k).m_procedure_list,
-      ::std::mem::transmute::<
+      core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -15328,7 +15328,7 @@ unsafe fn opj_j2k_setup_header_writing(
     if (*p_j2k).m_cp.rsiz as libc::c_int == 0x4i32 {
       if opj_procedure_list_add_procedure(
         (*p_j2k).m_procedure_list,
-        ::std::mem::transmute::<
+        core::mem::transmute::<
           Option<
             unsafe extern "C" fn(
               _: *mut opj_j2k_t,
@@ -15354,7 +15354,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15379,7 +15379,7 @@ unsafe fn opj_j2k_setup_header_writing(
   if !(*p_j2k).m_cp.comment.is_null() {
     if opj_procedure_list_add_procedure(
       (*p_j2k).m_procedure_list,
-      ::std::mem::transmute::<
+      core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -15408,7 +15408,7 @@ unsafe fn opj_j2k_setup_header_writing(
   {
     if opj_procedure_list_add_procedure(
       (*p_j2k).m_procedure_list,
-      ::std::mem::transmute::<
+      core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -15435,7 +15435,7 @@ unsafe fn opj_j2k_setup_header_writing(
   if !(*p_j2k).cstr_index.is_null() {
     if opj_procedure_list_add_procedure(
       (*p_j2k).m_procedure_list,
-      ::std::mem::transmute::<
+      core::mem::transmute::<
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
@@ -15460,7 +15460,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,
@@ -15484,7 +15484,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    ::std::mem::transmute::<
+    core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
           _: *mut opj_j2k_t,

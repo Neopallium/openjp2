@@ -58,7 +58,7 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
 pub(crate) unsafe fn opj_image_create0() -> *mut opj_image_t {
   let mut image = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_image_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_image_t>() as libc::c_ulong,
   ) as *mut opj_image_t;
   return image;
 }
@@ -72,7 +72,7 @@ pub(crate) unsafe fn opj_image_create(
   let mut image = 0 as *mut opj_image_t;
   image = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_image_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_image_t>() as libc::c_ulong,
   ) as *mut opj_image_t;
   if !image.is_null() {
     (*image).color_space = clrspc;
@@ -80,7 +80,7 @@ pub(crate) unsafe fn opj_image_create(
     /* allocate memory for the per-component information */
     (*image).comps = opj_calloc(
       (*image).numcomps as size_t,
-      ::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
     ) as *mut opj_image_comp_t;
     if (*image).comps.is_null() {
       /* TODO replace with event manager, breaks API */
@@ -105,7 +105,7 @@ pub(crate) unsafe fn opj_image_create(
         && (*comp).w as OPJ_SIZE_T
           > (18446744073709551615u64)
             .wrapping_div((*comp).h as libc::c_ulong)
-            .wrapping_div(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+            .wrapping_div(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
       {
         /* TODO event manager */
         opj_image_destroy(image);
@@ -114,7 +114,7 @@ pub(crate) unsafe fn opj_image_create(
       (*comp).data = opj_image_data_alloc(
         ((*comp).w as size_t)
           .wrapping_mul((*comp).h as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
       ) as *mut OPJ_INT32;
       if (*comp).data.is_null() {
         /* TODO replace with event manager, breaks API */
@@ -127,7 +127,7 @@ pub(crate) unsafe fn opj_image_create(
         0i32,
         ((*comp).w as size_t)
           .wrapping_mul((*comp).h as libc::c_ulong)
-          .wrapping_mul(::std::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
       );
       compno = compno.wrapping_add(1)
     }
@@ -251,7 +251,7 @@ pub(crate) unsafe fn opj_copy_image_header(
   (*p_image_dest).numcomps = (*p_image_src).numcomps;
   (*p_image_dest).comps = opj_malloc(
     ((*p_image_dest).numcomps as libc::c_ulong)
-      .wrapping_mul(::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong),
+      .wrapping_mul(core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong),
   ) as *mut opj_image_comp_t;
   if (*p_image_dest).comps.is_null() {
     (*p_image_dest).comps = 0 as *mut opj_image_comp_t;
@@ -265,7 +265,7 @@ pub(crate) unsafe fn opj_copy_image_header(
         as *mut libc::c_void,
       &mut *(*p_image_src).comps.offset(compno as isize) as *mut opj_image_comp_t
         as *const libc::c_void,
-      ::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
     );
     let ref mut fresh0 = (*(*p_image_dest).comps.offset(compno as isize)).data;
     *fresh0 = 0 as *mut OPJ_INT32;
@@ -300,7 +300,7 @@ pub(crate) unsafe fn opj_image_tile_create(
   let mut image = 0 as *mut opj_image_t;
   image = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_image_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_image_t>() as libc::c_ulong,
   ) as *mut opj_image_t;
   if !image.is_null() {
     (*image).color_space = clrspc;
@@ -308,7 +308,7 @@ pub(crate) unsafe fn opj_image_tile_create(
     /* allocate memory for the per-component information */
     (*image).comps = opj_calloc(
       (*image).numcomps as size_t,
-      ::std::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
     ) as *mut opj_image_comp_t;
     if (*image).comps.is_null() {
       opj_image_destroy(image);

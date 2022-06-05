@@ -9,7 +9,7 @@ pub(crate) unsafe fn opj_procedure_list_create() -> *mut opj_procedure_list_t {
   /* memory allocation */
   let mut l_validation = opj_calloc(
     1i32 as size_t,
-    ::std::mem::size_of::<opj_procedure_list_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_procedure_list_t>() as libc::c_ulong,
   ) as *mut opj_procedure_list_t;
   if l_validation.is_null() {
     return 0 as *mut opj_procedure_list_t;
@@ -18,7 +18,7 @@ pub(crate) unsafe fn opj_procedure_list_create() -> *mut opj_procedure_list_t {
   (*l_validation).m_nb_max_procedures = 10 as OPJ_UINT32;
   (*l_validation).m_procedures = opj_calloc(
     10i32 as size_t,
-    ::std::mem::size_of::<opj_procedure>() as libc::c_ulong,
+    core::mem::size_of::<opj_procedure>() as libc::c_ulong,
   ) as *mut opj_procedure;
   if (*l_validation).m_procedures.is_null() {
     opj_free(l_validation as *mut libc::c_void);
@@ -52,7 +52,7 @@ pub(crate) unsafe fn opj_procedure_list_add_procedure(
     new_procedures = opj_realloc(
       (*p_validation_list).m_procedures as *mut libc::c_void,
       ((*p_validation_list).m_nb_max_procedures as libc::c_ulong)
-        .wrapping_mul(::std::mem::size_of::<opj_procedure>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<opj_procedure>() as libc::c_ulong),
     ) as *mut opj_procedure;
     if new_procedures.is_null() {
       opj_free((*p_validation_list).m_procedures as *mut libc::c_void);
