@@ -12,7 +12,7 @@ use ::libc;
 
 use core::{
   cell::RefCell,
-  ops::DerefMut,
+  ops::{Deref, DerefMut},
   ptr::null_mut,
 };
 use alloc::vec::Vec;
@@ -23,6 +23,35 @@ use ::libc::{memset, memcpy};
 #[derive(Default)]
 pub struct T1Flags {
   flags: Vec<opj_flag_t>,
+}
+
+#[derive(Copy, Clone)]
+pub struct FlagsPtr {
+  flags: *mut opj_flag_t,
+}
+
+impl Deref for FlagsPtr {
+  type Target = opj_flag_t;
+
+  fn deref(&self) -> &Self::Target {
+    unsafe { &*self.flags }
+  }
+}
+
+impl DerefMut for FlagsPtr {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    unsafe { &mut *self.flags }
+  }
+}
+
+impl FlagsPtr {
+  pub fn offset(&self, offset: isize) -> Self {
+    unsafe {
+      Self {
+        flags: self.flags.offset(offset),
+      }
+    }
+  }
 }
 
 impl T1Flags {
@@ -44,9 +73,12 @@ impl T1Flags {
     self.flags.as_mut_ptr()
   }
 
-  pub fn offset(&mut self, offset: isize) -> *mut opj_flag_t {
-    let flags = self.as_mut_ptr();
-    unsafe { flags.offset(offset) }
+  pub fn offset(&mut self, offset: isize) -> FlagsPtr {
+    unsafe {
+      FlagsPtr {
+        flags: self.as_mut_ptr().offset(offset)
+      }
+    }
   }
 }
 
@@ -233,53 +265,45 @@ fn opj_t1_getnmsedec_ref(mut x: OPJ_UINT32, mut bitpos: OPJ_UINT32) -> OPJ_INT16
 
 #[inline]
 fn opj_t1_update_flags_macro(
-  mut flagsp: *mut opj_flag_t,
-  mut ci: OPJ_UINT32,
-  mut s: OPJ_UINT32,
-  mut stride: OPJ_UINT32,
-  mut vsc: OPJ_UINT32,
+  mut flagsp: FlagsPtr,
+  ci: OPJ_UINT32,
+  s: OPJ_UINT32,
+  stride: OPJ_UINT32,
+  vsc: OPJ_UINT32,
 ) {
-  unsafe {
-    /* east */
-    let ref mut fresh0 = *flagsp.offset(-1);
-    *fresh0 |= T1_SIGMA_5 << 3_u32.wrapping_mul(ci);
+  /* east */
+  *flagsp.offset(-1) |= T1_SIGMA_5 << 3_u32.wrapping_mul(ci);
 
-    /* mark target as significant */
-    *flagsp |= ((s << T1_CHI_1_I) | T1_SIGMA_4) << 3_u32.wrapping_mul(ci);
+  /* mark target as significant */
+  *flagsp |= ((s << T1_CHI_1_I) | T1_SIGMA_4) << 3_u32.wrapping_mul(ci);
 
-    /* west */
-    let ref mut fresh1 = *flagsp.offset(1);
-    *fresh1 |= T1_SIGMA_3 << 3_u32.wrapping_mul(ci);
+  /* west */
+  *flagsp.offset(1) |= T1_SIGMA_3 << 3_u32.wrapping_mul(ci);
 
-    /* north-west, north, north-east */
-    if ci == 0 && vsc == 0 {
-      let mut north = flagsp.offset(-(stride as isize));
-      *north |= (s << T1_CHI_5_I) | T1_SIGMA_16;
-      let ref mut fresh2 = *north.offset(-1);
-      *fresh2 |= T1_SIGMA_17;
-      let ref mut fresh3 = *north.offset(1);
-      *fresh3 |= T1_SIGMA_15;
-    }
+  /* north-west, north, north-east */
+  if ci == 0 && vsc == 0 {
+    let mut north = flagsp.offset(-(stride as isize));
+    *north |= (s << T1_CHI_5_I) | T1_SIGMA_16;
+    *north.offset(-1) |= T1_SIGMA_17;
+    *north.offset(1) |= T1_SIGMA_15;
+  }
 
-    /* south-west, south, south-east */
-    if ci == 3 {
-      let mut south = flagsp.offset(stride as isize);
-      *south |= (s << T1_CHI_0_I) | T1_SIGMA_1;
-      let ref mut fresh4 = *south.offset(-1);
-      *fresh4 |= T1_SIGMA_2;
-      let ref mut fresh5 = *south.offset(1);
-      *fresh5 |= T1_SIGMA_0;
-    }
+  /* south-west, south, south-east */
+  if ci == 3 {
+    let mut south = flagsp.offset(stride as isize);
+    *south |= (s << T1_CHI_0_I) | T1_SIGMA_1;
+    *south.offset(-1) |= T1_SIGMA_2;
+    *south.offset(1) |= T1_SIGMA_0;
   }
 }
 
 #[inline]
 fn opj_t1_update_flags(
-  mut flagsp: *mut opj_flag_t,
-  mut ci: OPJ_UINT32,
-  mut s: OPJ_UINT32,
-  mut stride: OPJ_UINT32,
-  mut vsc: OPJ_UINT32,
+  mut flagsp: FlagsPtr,
+  ci: OPJ_UINT32,
+  s: OPJ_UINT32,
+  stride: OPJ_UINT32,
+  vsc: OPJ_UINT32,
 ) {
   opj_t1_update_flags_macro(flagsp, ci, s, stride, vsc);
 }
@@ -295,7 +319,7 @@ Encode significant pass
 fn opj_t1_enc_sigpass_step_macro(
   mqc: &mut opj_mqc_t,
   w: OPJ_UINT32,
-  flagsp: *mut opj_flag_t,
+  mut flagsp: FlagsPtr,
   l_datap: *const OPJ_INT32,
   bpno: OPJ_INT32,
   one: OPJ_UINT32,
@@ -346,7 +370,7 @@ fn opj_t1_enc_sigpass_step_macro(
 #[inline]
 fn opj_t1_dec_sigpass_step_raw(
   mut t1: &mut opj_t1_t,
-  mut flagsp: *mut opj_flag_t,
+  mut flagsp: FlagsPtr,
   mut datap: *mut OPJ_INT32,
   mut oneplushalf: OPJ_INT32,
   mut vsc: OPJ_UINT32,
@@ -370,7 +394,7 @@ fn opj_t1_dec_sigpass_step_raw(
 
 #[inline]
 fn opj_t1_dec_sigpass_step_mqc_macro(
-  mut flagsp: *mut opj_flag_t,
+  mut flagsp: FlagsPtr,
   mut flags_stride: OPJ_UINT32,
   mut datap: *mut OPJ_INT32,
   mut data_stride: OPJ_UINT32,
@@ -409,7 +433,7 @@ fn opj_t1_dec_sigpass_step_mqc_macro(
 #[inline]
 fn opj_t1_dec_sigpass_step_mqc(
   mut t1: &mut opj_t1_t,
-  mut flagsp: *mut opj_flag_t,
+  mut flagsp: FlagsPtr,
   mut datap: *mut OPJ_INT32,
   mut oneplushalf: OPJ_INT32,
   mut ci: OPJ_UINT32,
@@ -422,15 +446,13 @@ fn opj_t1_dec_sigpass_step_mqc(
 }
 
 // #define T1_FLAGS(x, y)
-fn t1_flags(t1: &mut opj_t1_t, x: u32, y: u32) -> *mut opj_flag_t {
-  unsafe {
-    &mut *t1.flags.offset(
-      (x + 1).wrapping_add(
-        (y / 4 + 1)
-        .wrapping_mul(t1.w.wrapping_add(2))
-      ) as isize
-    )
-  }
+fn t1_flags(t1: &mut opj_t1_t, x: u32, y: u32) -> FlagsPtr {
+  t1.flags.offset(
+    (x + 1).wrapping_add(
+      (y / 4 + 1)
+      .wrapping_mul(t1.w.wrapping_add(2))
+    ) as isize
+  )
 }
 
 /* *
@@ -650,7 +672,7 @@ fn opj_t1_dec_sigpass_mqc_internal(
     let mut j = 0;
     let mut k = 0;
     let mut data = t1.data;
-    let mut flagsp = &mut *t1.flags.offset(flags_stride as isize + 1) as *mut opj_flag_t;
+    let mut flagsp = t1.flags.offset(flags_stride as isize + 1);
     let l_w = w;
     let mqc = &mut t1.mqc;
     let mut v = 0;
@@ -748,7 +770,7 @@ Encode refinement pass step
 #[inline]
 fn opj_t1_enc_refpass_step_macro(
   mqc: &mut opj_mqc_t,
-  flagsp: *mut opj_flag_t,
+  mut flagsp: FlagsPtr,
   l_datap: *const OPJ_INT32,
   bpno: OPJ_INT32,
   one: OPJ_UINT32,
@@ -781,7 +803,7 @@ fn opj_t1_enc_refpass_step_macro(
 #[inline]
 fn opj_t1_dec_refpass_step_raw(
   mut t1: &mut opj_t1_t,
-  mut flagsp: *mut opj_flag_t,
+  mut flagsp: FlagsPtr,
   mut datap: *mut OPJ_INT32,
   mut poshalf: OPJ_INT32,
   mut ci: OPJ_UINT32,
@@ -804,7 +826,7 @@ fn opj_t1_dec_refpass_step_raw(
 }
 
 fn opj_t1_dec_refpass_step_mqc_macro(
-  mut flagsp: *mut opj_flag_t,
+  mut flagsp: FlagsPtr,
   mut datap: *mut OPJ_INT32,
   mut data_stride: OPJ_UINT32,
   mut ci: OPJ_UINT32,
@@ -832,7 +854,7 @@ fn opj_t1_dec_refpass_step_mqc_macro(
 #[inline]
 fn opj_t1_dec_refpass_step_mqc(
   mut t1: &mut opj_t1_t,
-  mut flagsp: *mut opj_flag_t,
+  mut flagsp: FlagsPtr,
   mut datap: *mut OPJ_INT32,
   mut poshalf: OPJ_INT32,
   mut ci: OPJ_UINT32,
@@ -1043,7 +1065,7 @@ fn opj_t1_dec_refpass_mqc_internal(
     let mut j = 0;
     let mut k = 0;
     let mut data = t1.data;
-    let mut flagsp = &mut *t1.flags.offset(flags_stride as isize + 1) as *mut opj_flag_t;
+    let mut flagsp = t1.flags.offset(flags_stride as isize + 1);
     let l_w = w;
     let mqc = &mut t1.mqc;
     let mut v = 0;
@@ -1117,7 +1139,7 @@ Encode clean-up pass step
 fn opj_t1_enc_clnpass_step_macro(
   mqc: &mut opj_mqc_t,
   w: OPJ_UINT32,
-  flagsp: *mut opj_flag_t,
+  mut flagsp: FlagsPtr,
   mut l_datap: *const OPJ_INT32,
   bpno: OPJ_INT32,
   one: OPJ_UINT32,
@@ -1184,7 +1206,7 @@ fn opj_t1_enc_clnpass_step_macro(
 fn opj_t1_dec_clnpass_step_macro(
   check_flags: bool,
   partial: bool,
-  flagsp: *mut opj_flag_t,
+  flagsp: FlagsPtr,
   flags_stride: OPJ_UINT32,
   datap: *mut OPJ_INT32,
   data_stride: OPJ_UINT32,
@@ -1221,7 +1243,7 @@ fn opj_t1_dec_clnpass_step_macro(
 
 fn opj_t1_dec_clnpass_step(
   mut t1: &mut opj_t1_t,
-  mut flagsp: *mut opj_flag_t,
+  mut flagsp: FlagsPtr,
   mut datap: *mut OPJ_INT32,
   mut oneplushalf: OPJ_INT32,
   mut ci: OPJ_UINT32,
@@ -1327,7 +1349,7 @@ fn opj_t1_dec_clnpass_internal(t1: &mut opj_t1_t, bpno: OPJ_INT32, vsc: bool, w:
     let mut k = 0;
     let mqc = &mut t1.mqc;
     let mut data = t1.data;
-    let mut flagsp = &mut *t1.flags.offset(flags_stride as isize + 1) as *mut opj_flag_t;
+    let mut flagsp = t1.flags.offset(flags_stride as isize + 1);
     let l_w = w;
     let mut v = 0u32;
     one = 1 << bpno;
@@ -1572,29 +1594,28 @@ fn opj_t1_allocate_buffers(
       .wrapping_div(4u32)
       .wrapping_add(2u32);
     flagssize = (flagssize as libc::c_uint).wrapping_mul(flags_stride);
-    let mut p = 0 as *mut opj_flag_t;
     let mut flags_height = h
       .wrapping_add(3u32)
       .wrapping_div(4u32);
     t1.flags.resize(flagssize as usize);
-    p = &mut *t1.flags.offset(0) as *mut opj_flag_t;
+    let p = t1.flags.as_mut_ptr().offset(0);
     for x in 0..flags_stride as isize {
       /* magic value to hopefully stop any passes being interested in this entry */
       *p.offset(x) = T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3;
     }
-    p = &mut *t1.flags.offset(
+    let p = t1.flags.as_mut_ptr().offset(
       flags_height
         .wrapping_add(1)
         .wrapping_mul(flags_stride) as isize,
-    ) as *mut opj_flag_t;
+    );
     for x in 0..flags_stride as isize {
       /* magic value to hopefully stop any passes being interested in this entry */
       *p.offset(x) = T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3;
     }
     if h % 4 != 0 {
-      p = &mut *t1
-        .flags
-        .offset(flags_height.wrapping_mul(flags_stride) as isize) as *mut opj_flag_t;
+      let p = t1
+        .flags.as_mut_ptr()
+        .offset(flags_height.wrapping_mul(flags_stride) as isize);
       let v = if h % 4 == 1 {
         T1_PI_1 | T1_PI_2 | T1_PI_3
       } else if h % 4 == 2 {
@@ -1797,8 +1818,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
         if (*tccp).qmfbid == 1 {
           i = 0 as OPJ_UINT32;
           while i < cblk_size {
-            let ref mut fresh318 = *datap.offset(i as isize);
-            *fresh318 /= 2i32;
+            *datap.offset(i as isize) /= 2i32;
             i = i.wrapping_add(1)
           }
         } else {
