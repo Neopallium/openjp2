@@ -12,7 +12,10 @@ use ::libc;
 
 use core::{
   cell::RefCell,
-  ops::{Deref, DerefMut},
+  ops::{
+    AddAssign,
+    Deref, DerefMut, Index, IndexMut,
+  },
   ptr::null_mut,
 };
 use alloc::vec::Vec;
@@ -44,12 +47,44 @@ impl DerefMut for FlagsPtr {
   }
 }
 
+impl Index<isize> for FlagsPtr {
+  type Output = opj_flag_t;
+
+  fn index(&self, idx: isize) -> &Self::Output {
+    unsafe {
+      &*self.flags.offset(idx)
+    }
+  }
+}
+
+impl IndexMut<isize> for FlagsPtr {
+  fn index_mut(&mut self, idx: isize) -> &mut Self::Output {
+    unsafe {
+      &mut *self.flags.offset(idx)
+    }
+  }
+}
+
+impl AddAssign<usize> for FlagsPtr {
+  fn add_assign(&mut self, n: usize) {
+    unsafe {
+      self.flags = self.flags.offset(n as isize);
+    }
+  }
+}
+
 impl FlagsPtr {
   pub fn offset(&self, offset: isize) -> Self {
     unsafe {
       Self {
         flags: self.flags.offset(offset),
       }
+    }
+  }
+
+  pub fn inc(&mut self, n: usize) {
+    unsafe {
+      self.flags = self.flags.offset(n as isize);
     }
   }
 }
@@ -272,28 +307,28 @@ fn opj_t1_update_flags_macro(
   vsc: OPJ_UINT32,
 ) {
   /* east */
-  *flagsp.offset(-1) |= T1_SIGMA_5 << 3_u32.wrapping_mul(ci);
+  flagsp[-1] |= T1_SIGMA_5 << 3_u32.wrapping_mul(ci);
 
   /* mark target as significant */
-  *flagsp |= ((s << T1_CHI_1_I) | T1_SIGMA_4) << 3_u32.wrapping_mul(ci);
+  flagsp[0] |= ((s << T1_CHI_1_I) | T1_SIGMA_4) << 3_u32.wrapping_mul(ci);
 
   /* west */
-  *flagsp.offset(1) |= T1_SIGMA_3 << 3_u32.wrapping_mul(ci);
+  flagsp[1] |= T1_SIGMA_3 << 3_u32.wrapping_mul(ci);
 
   /* north-west, north, north-east */
   if ci == 0 && vsc == 0 {
     let mut north = flagsp.offset(-(stride as isize));
-    *north |= (s << T1_CHI_5_I) | T1_SIGMA_16;
-    *north.offset(-1) |= T1_SIGMA_17;
-    *north.offset(1) |= T1_SIGMA_15;
+    north[0] |= (s << T1_CHI_5_I) | T1_SIGMA_16;
+    north[-1] |= T1_SIGMA_17;
+    north[1] |= T1_SIGMA_15;
   }
 
   /* south-west, south, south-east */
   if ci == 3 {
     let mut south = flagsp.offset(stride as isize);
-    *south |= (s << T1_CHI_0_I) | T1_SIGMA_1;
-    *south.offset(-1) |= T1_SIGMA_2;
-    *south.offset(1) |= T1_SIGMA_0;
+    south[0] |= (s << T1_CHI_0_I) | T1_SIGMA_1;
+    south[-1] |= T1_SIGMA_2;
+    south[1] |= T1_SIGMA_0;
   }
 }
 
@@ -330,7 +365,7 @@ fn opj_t1_enc_sigpass_step_macro(
 ) {
   unsafe {
     let mut v = 0;
-    let flags = *flagsp;
+    let flags = flagsp[0];
     if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 &&
           (flags & (T1_SIGMA_NEIGHBOURS << ci.wrapping_mul(3))) != 0 {
       let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
@@ -346,7 +381,7 @@ fn opj_t1_enc_sigpass_step_macro(
       if v != 0 {
         let lu = opj_t1_getctxtno_sc_or_spb_index(
                     flags,
-                    *flagsp.offset(-1), *flagsp.offset(1),
+                    flagsp[-1], flagsp[1],
                     ci);
         let ctxt2 = opj_t1_getctxno_sc(lu);
         v = opj_smr_sign(*l_datap);
@@ -379,7 +414,7 @@ fn opj_t1_dec_sigpass_step_raw(
   unsafe {
     let mut v = 0;
     let mut mqc = &mut t1.mqc; /* RAW component */
-    let flags = *flagsp;
+    let flags = flagsp[0];
     if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 &&
           (flags & (T1_SIGMA_NEIGHBOURS << ci.wrapping_mul(3))) != 0 {
       if opj_mqc_raw_decode(mqc) != 0 {
@@ -405,7 +440,7 @@ fn opj_t1_dec_sigpass_step_mqc_macro(
   mut vsc: OPJ_UINT32,
 ) {
   unsafe {
-    let flags = *flagsp;
+    let flags = flagsp[0];
     if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 &&
          (flags & (T1_SIGMA_NEIGHBOURS << ci.wrapping_mul(3))) != 0 {
       let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
@@ -414,7 +449,7 @@ fn opj_t1_dec_sigpass_step_mqc_macro(
       if v != 0 {
         let mut lu = opj_t1_getctxtno_sc_or_spb_index(
                         flags,
-                        *flagsp.offset(-1), *flagsp.offset(1),
+                        flagsp[-1], flagsp[1],
                         ci);
         let mut ctxt2 = opj_t1_getctxno_sc(lu);
         let mut spb = opj_t1_getspb(lu) as OPJ_UINT32;
@@ -523,12 +558,12 @@ fn opj_t1_enc_sigpass(
               type_0,
               3, 0);
         }
-        i = i.wrapping_add(1);
-        f = f.offset(1);
+        i += 1;
+        f += 1;
         datap = datap.offset(4)
       }
-      k = k.wrapping_add(4);
-      f = f.offset(extra)
+      k += 4;
+      f += extra;
     }
 
     if k < t1.h {
@@ -553,12 +588,12 @@ fn opj_t1_enc_sigpass(
                 type_0,
                 j - k,
                 (j == k && (cblksty & J2K_CCP_CBLKSTY_VSC) != 0) as u32);
-            j = j.wrapping_add(1);
+            j += 1;
             datap = datap.offset(1)
           }
         }
-        i = i.wrapping_add(1);
-        f = f.offset(1)
+        i += 1;
+        f += 1
       }
     }
   }
@@ -625,12 +660,12 @@ fn opj_t1_dec_sigpass_raw(
             3,
           );
         }
-        i = i.wrapping_add(1);
-        flagsp = flagsp.offset(1);
+        i += 1;
+        flagsp += 1;
         data = data.offset(1)
       }
-      k = k.wrapping_add(4);
-      flagsp = flagsp.offset(2);
+      k += 4;
+      flagsp += 2;
       data = data.offset(3_u32.wrapping_mul(l_w) as isize)
     }
     if k < t1.h {
@@ -646,10 +681,10 @@ fn opj_t1_dec_sigpass_raw(
             cblksty as u32 & J2K_CCP_CBLKSTY_VSC,
             j,
           );
-          j = j.wrapping_add(1)
+          j += 1
         }
-        i = i.wrapping_add(1);
-        flagsp = flagsp.offset(1);
+        i += 1;
+        flagsp += 1;
         data = data.offset(1)
       }
     }
@@ -698,13 +733,13 @@ fn opj_t1_dec_sigpass_mqc_internal(
               flagsp, flags_stride, data,
               l_w, 3, mqc, v, oneplushalf, OPJ_FALSE);
         }
-        i = i.wrapping_add(1);
+        i += 1;
         data = data.offset(1);
-        flagsp = flagsp.offset(1)
+        flagsp += 1
       }
-      k = k.wrapping_add(4);
+      k += 4;
       data = data.offset(3_u32.wrapping_mul(l_w) as isize);
-      flagsp = flagsp.offset(2)
+      flagsp += 2
     }
     if k < h {
       i = 0;
@@ -714,11 +749,11 @@ fn opj_t1_dec_sigpass_mqc_internal(
           opj_t1_dec_sigpass_step_mqc(t1, flagsp,
             data.offset(j.wrapping_mul(l_w) as isize),
             oneplushalf, j, flags_stride, vsc);
-          j = j.wrapping_add(1)
+          j += 1
         }
-        i = i.wrapping_add(1);
+        i += 1;
         data = data.offset(1);
-        flagsp = flagsp.offset(1)
+        flagsp += 1
       }
     }
   }
@@ -780,7 +815,7 @@ fn opj_t1_enc_refpass_step_macro(
 ) {
   unsafe {
     let mut v: OPJ_UINT32 = 0;
-    let flags = *flagsp;
+    let flags = flagsp[0];
     if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == (T1_SIGMA_THIS << ci.wrapping_mul(3)) {
       let shift_flags = flags >> ci.wrapping_mul(3);
       let ctxt = opj_t1_getctxno_mag(shift_flags);
@@ -835,7 +870,7 @@ fn opj_t1_dec_refpass_step_mqc_macro(
   mut poshalf: OPJ_INT32,
 ) {
   unsafe {
-    let flags = *flagsp;
+    let flags = flagsp[0];
     if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == (T1_SIGMA_THIS << ci.wrapping_mul(3)) {
       let ctxt = opj_t1_getctxno_mag(flags >> ci.wrapping_mul(3));
       opj_t1_setcurctx(mqc, ctxt);
@@ -891,7 +926,7 @@ fn opj_t1_enc_refpass(
       log::debug!(" k={}", k);
       i = 0;
       while i < t1.w {
-        let flags = *f;
+        let flags = f[0];
         log::debug!(" i={}", i);
         if (flags & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0 {
             /* none significant */
@@ -936,12 +971,12 @@ fn opj_t1_enc_refpass(
               type_0,
               3);
         }
-        i = i.wrapping_add(1);
-        f = f.offset(1);
+        i += 1;
+        f += 1;
         datap = datap.offset(4)
       }
-      k = k.wrapping_add(4);
-      f = f.offset(extra);
+      k += 4;
+      f += extra;
     }
 
     if k < t1.h {
@@ -966,12 +1001,12 @@ fn opj_t1_enc_refpass(
                 nmsedec,
                 type_0,
                 j);
-            j = j.wrapping_add(1);
+            j += 1;
             datap = datap.offset(1)
           }
         }
-        i = i.wrapping_add(1);
-        f = f.offset(1)
+        i += 1;
+        f += 1
       }
     }
   }
@@ -1021,12 +1056,12 @@ fn opj_t1_dec_refpass_raw(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
             3,
           );
         }
-        i = i.wrapping_add(1);
-        flagsp = flagsp.offset(1);
+        i += 1;
+        flagsp += 1;
         data = data.offset(1)
       }
-      k = k.wrapping_add(4);
-      flagsp = flagsp.offset(2);
+      k += 4;
+      flagsp += 2;
       data = data.offset(3_u32.wrapping_mul(l_w) as isize)
     }
     if k < t1.h {
@@ -1041,10 +1076,10 @@ fn opj_t1_dec_refpass_raw(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
             poshalf,
             j,
           );
-          j = j.wrapping_add(1)
+          j += 1
         }
-        i = i.wrapping_add(1);
-        flagsp = flagsp.offset(1);
+        i += 1;
+        flagsp += 1;
         data = data.offset(1)
       }
     }
@@ -1090,13 +1125,13 @@ fn opj_t1_dec_refpass_mqc_internal(
               flagsp, data, l_w, 3,
               mqc, &mut v, poshalf);
         }
-        i = i.wrapping_add(1);
+        i += 1;
         data = data.offset(1);
-        flagsp = flagsp.offset(1)
+        flagsp += 1
       }
-      k = k.wrapping_add(4);
+      k += 4;
       data = data.offset(3_u32.wrapping_mul(l_w) as isize);
-      flagsp = flagsp.offset(2)
+      flagsp += 2
     }
     if k < h {
       i = 0;
@@ -1106,11 +1141,11 @@ fn opj_t1_dec_refpass_mqc_internal(
           opj_t1_dec_refpass_step_mqc(t1, flagsp,
             data.offset(j.wrapping_mul(l_w) as isize),
             poshalf, j);
-          j = j.wrapping_add(1)
+          j += 1
         }
-        i = i.wrapping_add(1);
+        i += 1;
         data = data.offset(1);
-        flagsp = flagsp.offset(1)
+        flagsp += 1
       }
     }
   }
@@ -1181,7 +1216,7 @@ fn opj_t1_enc_clnpass_step_macro(
         if goto_PARTIAL {
           let lu = opj_t1_getctxtno_sc_or_spb_index(
                       *flagsp,
-                      *flagsp.offset(-1), *flagsp.offset(1),
+                      flagsp[-1], flagsp[1],
                       ci);
           *nmsedec += opj_t1_getnmsedec_sig(opj_smr_abs(*l_datap), bpno as u32) as i32;
           let ctxt2 = opj_t1_getctxno_sc(lu);
@@ -1217,7 +1252,7 @@ fn opj_t1_dec_clnpass_step_macro(
   vsc: OPJ_UINT32,
 ) {
   unsafe {
-    let flags = *flagsp;
+    let flags = flagsp[0];
     if !check_flags || (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 {
       if !partial  {
         let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
@@ -1229,7 +1264,7 @@ fn opj_t1_dec_clnpass_step_macro(
       }
       let mut lu = opj_t1_getctxtno_sc_or_spb_index(
                       flags,
-                      *flagsp.offset(-1), *flagsp.offset(1),
+                      flagsp[-1], flagsp[1],
                       ci);
       opj_t1_setcurctx(mqc, opj_t1_getctxno_sc(lu));
       opj_mqc_decode_macro(&mut v, mqc);
@@ -1314,11 +1349,11 @@ fn opj_t1_enc_clnpass(
           datap = datap.offset(4_u32.wrapping_sub(runlen) as isize);
           break;
         }
-        i = i.wrapping_add(1);
-        f = f.offset(1)
+        i += 1;
+        f += 1
       }
-      k = k.wrapping_add(4);
-      f = f.offset(extra as isize)
+      k += 4;
+      f += extra;
     }
 
     if k < t1.h {
@@ -1331,8 +1366,8 @@ fn opj_t1_enc_clnpass(
         log::debug!("  agg={}", agg);
         opj_t1_enc_clnpass_step_macro(mqc, t1.w, f, datap, bpno, one, nmsedec, agg, runlen, t1.h - k, cblksty);
         datap = datap.offset((t1.h - k) as isize);
-        i = i.wrapping_add(1);
-        f = f.offset(1)
+        i += 1;
+        f += 1
       }
     }
   }
@@ -1422,13 +1457,13 @@ fn opj_t1_dec_clnpass_internal(t1: &mut opj_t1_t, bpno: OPJ_INT32, vsc: bool, w:
                     v, oneplushalf, false as u32);
           *flagsp &= !(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
         }
-        i = i.wrapping_add(1);
+        i += 1;
         data = data.offset(1);
-        flagsp = flagsp.offset(1)
+        flagsp += 1
       }
-      k = k.wrapping_add(4);
+      k += 4;
       data = data.offset(3_u32.wrapping_mul(l_w) as isize);
-      flagsp = flagsp.offset(2);
+      flagsp += 2;
     }
     if k < h {
       i = 0;
@@ -1443,11 +1478,11 @@ fn opj_t1_dec_clnpass_internal(t1: &mut opj_t1_t, bpno: OPJ_INT32, vsc: bool, w:
             j,
             vsc as u32,
           );
-          j = j.wrapping_add(1)
+          j += 1
         }
         *flagsp &= !(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-        i = i.wrapping_add(1);
-        flagsp = flagsp.offset(1);
+        i += 1;
+        flagsp += 1;
         data = data.offset(1)
       }
     };
@@ -1786,9 +1821,9 @@ extern "C" fn opj_t1_clbl_decode_processor(
             i = 0 as OPJ_UINT32;
             while i < cblk_w {
               *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) = 0i32;
-              i = i.wrapping_add(1)
+              i += 1
             }
-            j = j.wrapping_add(1)
+            j += 1
           }
         } else {
           let mut thresh = (1i32) << (*tccp).roishift;
@@ -1803,9 +1838,9 @@ extern "C" fn opj_t1_clbl_decode_processor(
                 *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) =
                   if val < 0i32 { -mag } else { mag }
               }
-              i = i.wrapping_add(1)
+              i += 1
             }
-            j = j.wrapping_add(1)
+            j += 1
           }
         }
       }
@@ -1819,7 +1854,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
           i = 0 as OPJ_UINT32;
           while i < cblk_size {
             *datap.offset(i as isize) /= 2i32;
-            i = i.wrapping_add(1)
+            i += 1
           }
         } else {
           let stepsize = 0.5f32 * (*band).stepsize;
@@ -1832,7 +1867,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
               core::mem::size_of::<OPJ_FLOAT32>(),
             );
             datap = datap.offset(1);
-            i = i.wrapping_add(1)
+            i += 1
           }
         }
       } else if (*tccp).qmfbid == 1 {
@@ -1898,9 +1933,9 @@ extern "C" fn opj_t1_clbl_decode_processor(
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
                 .wrapping_add(i as libc::c_ulong) as isize,
             ) = tmp_0 / 2i32;
-            i = i.wrapping_add(1)
+            i += 1
           }
-          j = j.wrapping_add(1)
+          j += 1
         }
       } else {
         let stepsize_0 = 0.5f32 * (*band).stepsize;
@@ -1918,10 +1953,10 @@ extern "C" fn opj_t1_clbl_decode_processor(
             *tiledp2 = tmp_1;
             datap = datap.offset(1);
             tiledp2 = tiledp2.offset(1);
-            i = i.wrapping_add(1)
+            i += 1
           }
           tiledp_0 = tiledp_0.offset(tile_w as isize);
-          j = j.wrapping_add(1)
+          j += 1
         }
       }
       opj_free(job as *mut libc::c_void);
@@ -2142,7 +2177,7 @@ fn opj_t1_decode_cblk(
       while i < (*cblk).numchunks {
         cblk_len = (cblk_len as libc::c_uint).wrapping_add((*(*cblk).chunks.offset(i as isize)).len)
           as OPJ_UINT32;
-        i = i.wrapping_add(1)
+        i += 1
       }
       /* Allocate temporary memory if needed */
       if cblk_len.wrapping_add(2) > t1.cblkdatabuffersize {
@@ -2173,7 +2208,7 @@ fn opj_t1_decode_cblk(
         );
         cblk_len = (cblk_len as libc::c_uint).wrapping_add((*(*cblk).chunks.offset(i as isize)).len)
           as OPJ_UINT32;
-        i = i.wrapping_add(1)
+        i += 1
       }
     } else if (*cblk).numchunks == 1 {
       cblkdata = (*(*cblk).chunks.offset(0)).data
@@ -2399,7 +2434,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
                 .wrapping_add(i) as isize,
             ) << 7i32 - 1i32;
             t1data = t1data.offset(4);
-            i = i.wrapping_add(1)
+            i += 1
           }
           j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
             as OPJ_UINT32
@@ -2414,9 +2449,9 @@ extern "C" fn opj_t1_cblk_encode_processor(
                 .offset(k.wrapping_mul(tile_w).wrapping_add(i) as isize)
                 << 7i32 - 1i32;
               t1data = t1data.offset(1);
-              k = k.wrapping_add(1)
+              k += 1
             }
-            i = i.wrapping_add(1)
+            i += 1
           }
         }
       } else {
@@ -2461,7 +2496,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
                 * ((1i32) << 7i32 - 1i32) as libc::c_float,
             ) as OPJ_INT32;
             t1data_0 = t1data_0.offset(4);
-            i = i.wrapping_add(1)
+            i += 1
           }
           j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
             as OPJ_UINT32
@@ -2479,7 +2514,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
               t1data_0 = t1data_0.offset(1);
               k_0 = k_0.wrapping_add(1)
             }
-            i = i.wrapping_add(1)
+            i += 1
           }
         }
       }
@@ -2688,10 +2723,10 @@ fn opj_t1_encode_cblk(
         } else {
           max = opj_int_max(max, tmp)
         }
-        i = i.wrapping_add(1);
+        i += 1;
         datap = datap.offset(1)
       }
-      j = j.wrapping_add(1)
+      j += 1
     }
     (*cblk).numbps = if max != 0 {
       (opj_int_floorlog2(max) + 1i32 - (7i32 - 1i32))
