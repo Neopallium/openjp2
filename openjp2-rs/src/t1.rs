@@ -1504,7 +1504,6 @@ fn opj_t1_allocate_buffers(
       .wrapping_add(2u32);
     flagssize = (flagssize as libc::c_uint).wrapping_mul(flags_stride);
     let mut p = 0 as *mut opj_flag_t;
-    let mut x: OPJ_UINT32 = 0;
     let mut flags_height = h
       .wrapping_add(3u32)
       .wrapping_div(4u32);
@@ -1526,53 +1525,34 @@ fn opj_t1_allocate_buffers(
       flagssize as usize * ::std::mem::size_of::<opj_flag_t>(),
     );
     p = &mut *t1.flags.offset(0) as *mut opj_flag_t;
-    x = 0 as OPJ_UINT32;
-    while x < flags_stride {
+    for x in 0..flags_stride as isize {
       /* magic value to hopefully stop any passes being interested in this entry */
-      let fresh315 = p;
-      p = p.offset(1);
-      *fresh315 = (1u32) << 21i32
-        | (1u32) << 24i32
-        | (1u32) << 27i32
-        | (1u32) << 30i32;
-      x = x.wrapping_add(1)
+      *p.offset(x) = T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3;
     }
     p = &mut *t1.flags.offset(
       flags_height
         .wrapping_add(1)
         .wrapping_mul(flags_stride) as isize,
     ) as *mut opj_flag_t;
-    x = 0 as OPJ_UINT32;
-    while x < flags_stride {
+    for x in 0..flags_stride as isize {
       /* magic value to hopefully stop any passes being interested in this entry */
-      let fresh316 = p;
-      p = p.offset(1);
-      *fresh316 = (1u32) << 21i32
-        | (1u32) << 24i32
-        | (1u32) << 27i32
-        | (1u32) << 30i32;
-      x = x.wrapping_add(1)
+      *p.offset(x) = T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3;
     }
-    if h.wrapping_rem(4) != 0 {
-      let mut v = 0 as OPJ_UINT32;
+    if h % 4 != 0 {
       p = &mut *t1
         .flags
         .offset(flags_height.wrapping_mul(flags_stride) as isize) as *mut opj_flag_t;
-      if h.wrapping_rem(4) == 1 {
-        v |= (1u32) << 24i32
-          | (1u32) << 27i32
-          | (1u32) << 30i32
-      } else if h.wrapping_rem(4) == 2 {
-        v |= (1u32) << 27i32 | (1u32) << 30i32
-      } else if h.wrapping_rem(4) == 3 {
-        v |= (1u32) << 30i32
-      }
-      x = 0 as OPJ_UINT32;
-      while x < flags_stride {
-        let fresh317 = p;
-        p = p.offset(1);
-        *fresh317 = v;
-        x = x.wrapping_add(1)
+      let v = if h % 4 == 1 {
+        T1_PI_1 | T1_PI_2 | T1_PI_3
+      } else if h % 4 == 2 {
+        T1_PI_2 | T1_PI_3
+      } else if h % 4 == 3 {
+        T1_PI_3
+      } else {
+        0
+      };
+      for x in 0..flags_stride as isize {
+        *p.offset(x) = v;
       }
     }
     t1.w = w;
@@ -1743,7 +1723,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
     }
     let t1 = &mut *t1;
     t1.mustuse_cblkdatabuffer = (*job).mustuse_cblkdatabuffer;
-    if (*tccp).cblksty & 0x40 != 0 {
+    if (*tccp).cblksty & J2K_CCP_CBLKSTY_HT != 0 {
       if 0i32
         == opj_t1_ht_decode_cblk(
           t1,
