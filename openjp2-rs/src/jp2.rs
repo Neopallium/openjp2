@@ -1277,7 +1277,7 @@ unsafe extern "C" fn opj_jp2_read_pclr(
         bytes_to_read = core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32
       }
       if (p_pclr_header_size as isize)
-        < p_pclr_header_data.wrapping_offset_from(orig_header_data)
+        < p_pclr_header_data.offset_from(orig_header_data)
           + bytes_to_read as isize
       {
         return 0;

@@ -538,7 +538,7 @@ pub(crate) unsafe fn opj_t2_decode_packets(
   /* << INDEX */
   /* don't forget to release pi */
   opj_pi_destroy(l_pi, l_nb_pocs);
-  *p_data_read = l_current_data.wrapping_offset_from(p_src) as OPJ_UINT32;
+  *p_data_read = l_current_data.offset_from(p_src) as OPJ_UINT32;
   return 1i32;
 }
 /* ----------------------------------------------------------------------- */
@@ -941,7 +941,7 @@ unsafe fn opj_t2_encode_packet(
       .packet
       .offset((*cstr_info).packno as isize)
       as *mut opj_packet_info_t;
-    (*info_PK).end_ph_pos = c.wrapping_offset_from(dest) as OPJ_OFF_T
+    (*info_PK).end_ph_pos = c.offset_from(dest) as OPJ_OFF_T
   }
   /* INDEX >> */
   /* Writing the packet body */
@@ -1003,7 +1003,7 @@ unsafe fn opj_t2_encode_packet(
   }
   assert!(c >= dest);
   *p_data_written = (*p_data_written as libc::c_uint)
-    .wrapping_add(c.wrapping_offset_from(dest) as OPJ_UINT32)
+    .wrapping_add(c.offset_from(dest) as OPJ_UINT32)
     as OPJ_UINT32;
   return 1i32;
 }
@@ -1175,7 +1175,7 @@ unsafe fn opj_t2_read_packet_header(
     l_header_data = *l_header_data_start;
     l_remaining_length = p_src_data
       .offset(p_max_length as isize)
-      .wrapping_offset_from(l_header_data) as OPJ_UINT32;
+      .offset_from(l_header_data) as OPJ_UINT32;
     l_modified_length_ptr = &mut l_remaining_length
   }
   opj_bio_init_dec(l_bio, l_header_data, *l_modified_length_ptr);
@@ -1193,7 +1193,7 @@ unsafe fn opj_t2_read_packet_header(
     /* EPH markers */
     if (*p_tcp).csty & 0x4u32 != 0 {
       if (*l_modified_length_ptr).wrapping_sub(
-        l_header_data.wrapping_offset_from(*l_header_data_start) as OPJ_UINT32,
+        l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32,
       ) < 2u32
       {
         opj_event_msg(
@@ -1214,7 +1214,7 @@ unsafe fn opj_t2_read_packet_header(
       }
     }
     l_header_length =
-      l_header_data.wrapping_offset_from(*l_header_data_start) as OPJ_UINT32;
+      l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32;
     *l_modified_length_ptr = (*l_modified_length_ptr as libc::c_uint).wrapping_sub(l_header_length)
       as OPJ_UINT32;
     *l_header_data_start = (*l_header_data_start).offset(l_header_length as isize);
@@ -1223,11 +1223,11 @@ unsafe fn opj_t2_read_packet_header(
     Will be updated later by incrementing with packet start value */
     if !p_pack_info.is_null() {
       (*p_pack_info).end_ph_pos =
-        l_current_data.wrapping_offset_from(p_src_data) as OPJ_OFF_T
+        l_current_data.offset_from(p_src_data) as OPJ_OFF_T
     }
     /* INDEX >> */
     *p_is_data_present = 0i32;
-    *p_data_read = l_current_data.wrapping_offset_from(p_src_data) as OPJ_UINT32;
+    *p_data_read = l_current_data.offset_from(p_src_data) as OPJ_UINT32;
     return 1i32;
   }
   l_band = (*l_res).bands.as_mut_ptr();
@@ -1442,7 +1442,7 @@ unsafe fn opj_t2_read_packet_header(
   /* EPH markers */
   if (*p_tcp).csty & 0x4u32 != 0 {
     if (*l_modified_length_ptr).wrapping_sub(
-      l_header_data.wrapping_offset_from(*l_header_data_start) as OPJ_UINT32,
+      l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32,
     ) < 2u32
     {
       opj_event_msg(
@@ -1463,7 +1463,7 @@ unsafe fn opj_t2_read_packet_header(
     }
   }
   l_header_length =
-    l_header_data.wrapping_offset_from(*l_header_data_start) as OPJ_UINT32;
+    l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32;
   opj_null_jas_fprintf(
     stderr,
     b"hdrlen=%d \n\x00" as *const u8 as *const libc::c_char,
@@ -1481,11 +1481,11 @@ unsafe fn opj_t2_read_packet_header(
   Will be updated later by incrementing with packet start value */
   if !p_pack_info.is_null() {
     (*p_pack_info).end_ph_pos =
-      l_current_data.wrapping_offset_from(p_src_data) as OPJ_OFF_T
+      l_current_data.offset_from(p_src_data) as OPJ_OFF_T
   }
   /* INDEX >> */
   *p_is_data_present = 1i32; /* next code_block */
-  *p_data_read = l_current_data.wrapping_offset_from(p_src_data) as OPJ_UINT32;
+  *p_data_read = l_current_data.offset_from(p_src_data) as OPJ_UINT32;
   return 1i32;
 }
 unsafe fn opj_t2_read_packet_data(
@@ -1650,7 +1650,7 @@ unsafe fn opj_t2_read_packet_data(
   if partial_buffer != 0 {
     *p_data_read = p_max_length
   } else {
-    *p_data_read = l_current_data.wrapping_offset_from(p_src_data) as OPJ_UINT32
+    *p_data_read = l_current_data.offset_from(p_src_data) as OPJ_UINT32
   }
   return 1i32;
 }

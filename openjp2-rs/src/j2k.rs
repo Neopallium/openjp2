@@ -4865,7 +4865,7 @@ unsafe extern "C" fn opj_j2k_write_plt_in_memory(
     }
     i = i.wrapping_add(1)
   }
-  *p_data_written = p_data.wrapping_offset_from(p_data_start) as OPJ_UINT32;
+  *p_data_written = p_data.offset_from(p_data_start) as OPJ_UINT32;
   /* Patch Lplt */
   opj_write_bytes_LE(
     p_data_Lplt,
@@ -6176,7 +6176,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
             (*l_mcc_record).m_decorrelation_array = new_mct_records.offset(
               (*l_mcc_record)
                 .m_decorrelation_array
-                .wrapping_offset_from((*l_tcp).m_mct_records) as libc::c_long
+                .offset_from((*l_tcp).m_mct_records) as libc::c_long
                 as isize,
             )
           }
@@ -6184,7 +6184,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
             (*l_mcc_record).m_offset_array = new_mct_records.offset(
               (*l_mcc_record)
                 .m_offset_array
-                .wrapping_offset_from((*l_tcp).m_mct_records) as libc::c_long
+                .offset_from((*l_tcp).m_mct_records) as libc::c_long
                 as isize,
             )
           }
@@ -10248,14 +10248,14 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
       if !(*l_src_mcc_rec).m_decorrelation_array.is_null() {
         l_offset = (*l_src_mcc_rec)
           .m_decorrelation_array
-          .wrapping_offset_from((*l_default_tcp).m_mct_records) as libc::c_long
+          .offset_from((*l_default_tcp).m_mct_records) as libc::c_long
           as OPJ_UINT32;
         (*l_dest_mcc_rec).m_decorrelation_array = (*l_tcp).m_mct_records.offset(l_offset as isize)
       }
       if !(*l_src_mcc_rec).m_offset_array.is_null() {
         l_offset = (*l_src_mcc_rec)
           .m_offset_array
-          .wrapping_offset_from((*l_default_tcp).m_mct_records) as libc::c_long
+          .offset_from((*l_default_tcp).m_mct_records) as libc::c_long
           as OPJ_UINT32;
         (*l_dest_mcc_rec).m_offset_array = (*l_tcp).m_mct_records.offset(l_offset as isize)
       }

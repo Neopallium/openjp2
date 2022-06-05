@@ -150,7 +150,7 @@ const opj_dwt_beta: f32 = -0.052980118;
 const opj_dwt_gamma: f32 = 0.882911075;
 const opj_dwt_delta: f32 = 0.443506852;
 const opj_K: f32 = 1.230174105;
-const opj_invK: f32 = (1.0 / 1.230174105);
+const opj_invK: f32 = 1.0 / 1.230174105;
 
 /* <summary>                                                              */
 /* This table contains the norms of the 5-3 wavelets for different bands. */
@@ -330,19 +330,19 @@ unsafe fn opj_dwt_decode_1_(
         *fresh8 -= (if (i - 1i32) < 0i32 {
           *a.offset((1i32 + 0i32 * 2i32) as isize)
         } else {
-          (if i - 1i32 >= dn {
+          if i - 1i32 >= dn {
             *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
           } else {
             *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
-          })
+          }
         }) + (if i < 0i32 {
           *a.offset((1i32 + 0i32 * 2i32) as isize)
         } else {
-          (if i >= dn {
+          if i >= dn {
             *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
           } else {
             *a.offset((1i32 + i * 2i32) as isize)
-          })
+          }
         }) + 2i32
           >> 2i32;
         i += 1
@@ -353,19 +353,19 @@ unsafe fn opj_dwt_decode_1_(
         *fresh9 += (if i < 0i32 {
           *a.offset((0i32 * 2i32) as isize)
         } else {
-          (if i >= sn {
+          if i >= sn {
             *a.offset(((sn - 1i32) * 2i32) as isize)
           } else {
             *a.offset((i * 2i32) as isize)
-          })
+          }
         }) + (if (i + 1i32) < 0i32 {
           *a.offset((0i32 * 2i32) as isize)
         } else {
-          (if i + 1i32 >= sn {
+          if i + 1i32 >= sn {
             *a.offset(((sn - 1i32) * 2i32) as isize)
           } else {
             *a.offset(((i + 1i32) * 2i32) as isize)
-          })
+          }
         }) >> 1i32;
         i += 1
       }
@@ -381,19 +381,19 @@ unsafe fn opj_dwt_decode_1_(
       *fresh11 -= (if i < 0i32 {
         *a.offset((0i32 * 2i32) as isize)
       } else {
-        (if i >= dn {
+        if i >= dn {
           *a.offset(((dn - 1i32) * 2i32) as isize)
         } else {
           *a.offset((i * 2i32) as isize)
-        })
+        }
       }) + (if (i + 1i32) < 0i32 {
         *a.offset((0i32 * 2i32) as isize)
       } else {
-        (if i + 1i32 >= dn {
+        if i + 1i32 >= dn {
           *a.offset(((dn - 1i32) * 2i32) as isize)
         } else {
           *a.offset(((i + 1i32) * 2i32) as isize)
-        })
+        }
       }) + 2i32
         >> 2i32;
       i += 1
@@ -404,19 +404,19 @@ unsafe fn opj_dwt_decode_1_(
       *fresh12 += (if i < 0i32 {
         *a.offset((1i32 + 0i32 * 2i32) as isize)
       } else {
-        (if i >= sn {
+        if i >= sn {
           *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
         } else {
           *a.offset((1i32 + i * 2i32) as isize)
-        })
+        }
       }) + (if (i - 1i32) < 0i32 {
         *a.offset((1i32 + 0i32 * 2i32) as isize)
       } else {
-        (if i - 1i32 >= sn {
+        if i - 1i32 >= sn {
           *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
         } else {
           *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
-        })
+        }
       }) >> 1i32;
       i += 1
     }
@@ -633,11 +633,11 @@ unsafe fn opj_dwt_encode_stepsize(
   let mut n: OPJ_INT32 = 0;
   p = opj_int_floorlog2(stepsize) - 13i32;
   n = 11i32 - opj_int_floorlog2(stepsize);
-  (*bandno_stepsize).mant = (if n < 0i32 {
+  (*bandno_stepsize).mant = if n < 0i32 {
     (stepsize) >> -n
   } else {
     (stepsize) << n
-  }) & 0x7ffi32;
+  } & 0x7ffi32;
   (*bandno_stepsize).expn = numbps - p;
 }
 /*
@@ -655,11 +655,11 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row(
   let mut row = rowIn as *mut OPJ_INT32;
   let mut tmp = tmpIn as *mut OPJ_INT32;
   let sn = (width.wrapping_add(
-    (if even != 0 {
-      1i32
+    if even != 0 {
+      1
     } else {
-      0i32
-    }) as libc::c_uint,
+      0
+    }
   ) >> 1i32) as OPJ_INT32;
   let dn = width.wrapping_sub(sn as OPJ_UINT32) as OPJ_INT32;
   if even != 0 {
@@ -754,11 +754,11 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row_real(
   let mut row = rowIn as *mut OPJ_FLOAT32;
   let mut tmp = tmpIn as *mut OPJ_FLOAT32;
   let sn = (width.wrapping_add(
-    (if even != 0 {
-      1i32
+    if even != 0 {
+      1
     } else {
-      0i32
-    }) as libc::c_uint,
+      0
+    }
   ) >> 1i32) as OPJ_INT32;
   let dn = width.wrapping_sub(sn as OPJ_UINT32) as OPJ_INT32;
   if width == 1u32 {
@@ -1037,11 +1037,11 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v(
   let mut array = arrayIn as *mut OPJ_INT32;
   let mut tmp = tmpIn as *mut OPJ_INT32;
   let sn = height.wrapping_add(
-    (if even != 0 {
-      1i32
+    if even != 0 {
+      1
     } else {
-      0i32
-    }) as libc::c_uint,
+      0
+    }
   ) >> 1i32;
   let dn = height.wrapping_sub(sn);
   opj_dwt_fetch_cols_vertical_pass(arrayIn, tmpIn, height, stride_width, cols);
@@ -1408,11 +1408,11 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v_real(
   let mut array = arrayIn as *mut OPJ_FLOAT32;
   let mut tmp = tmpIn as *mut OPJ_FLOAT32;
   let sn = (height.wrapping_add(
-    (if even != 0 {
-      1i32
+    if even != 0 {
+      1
     } else {
-      0i32
-    }) as libc::c_uint,
+      0
+    }
   ) >> 1i32) as OPJ_INT32;
   let dn = height.wrapping_sub(sn as OPJ_UINT32) as OPJ_INT32;
   let mut a: OPJ_INT32 = 0;
@@ -2310,23 +2310,23 @@ unsafe fn opj_dwt_decode_partial_1(
         let mut i_max: OPJ_INT32 = 0;
         /* Left-most case */
         let ref mut fresh51 = *a.offset((i * 2i32) as isize);
-        *fresh51 -= (if (i - 1i32) < 0i32 {
+        *fresh51 -= if (i - 1i32) < 0i32 {
           *a.offset((1i32 + 0i32 * 2i32) as isize)
         } else {
-          (if i - 1i32 >= dn {
+          if i - 1i32 >= dn {
             *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
           } else {
             *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
-          })
-        }) + (if i < 0i32 {
+          }
+        } + if i < 0i32 {
           *a.offset((1i32 + 0i32 * 2i32) as isize)
         } else {
-          (if i >= dn {
+          if i >= dn {
             *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
           } else {
             *a.offset((1i32 + i * 2i32) as isize)
-          })
-        }) + 2i32
+          }
+        } + 2i32
           >> 2i32;
         i += 1;
         i_max = win_l_x1;
@@ -2346,23 +2346,23 @@ unsafe fn opj_dwt_decode_partial_1(
         while i < win_l_x1 {
           /* Right-most case */
           let ref mut fresh53 = *a.offset((i * 2i32) as isize);
-          *fresh53 -= (if (i - 1i32) < 0i32 {
+          *fresh53 -= if (i - 1i32) < 0i32 {
             *a.offset((1i32 + 0i32 * 2i32) as isize)
           } else {
-            (if i - 1i32 >= dn {
+            if i - 1i32 >= dn {
               *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
             } else {
               *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
-            })
-          }) + (if i < 0i32 {
+            }
+          } + if i < 0i32 {
             *a.offset((1i32 + 0i32 * 2i32) as isize)
           } else {
-            (if i >= dn {
+            if i >= dn {
               *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
             } else {
               *a.offset((1i32 + i * 2i32) as isize)
-            })
-          }) + 2i32
+            }
+          } + 2i32
             >> 2i32;
           i += 1
         }
@@ -2384,23 +2384,23 @@ unsafe fn opj_dwt_decode_partial_1(
         while i < win_h_x1 {
           /* Right-most case */
           let ref mut fresh55 = *a.offset((1i32 + i * 2i32) as isize);
-          *fresh55 += (if i < 0i32 {
+          *fresh55 += if i < 0i32 {
             *a.offset((0i32 * 2i32) as isize)
           } else {
-            (if i >= sn {
+            if i >= sn {
               *a.offset(((sn - 1i32) * 2i32) as isize)
             } else {
               *a.offset((i * 2i32) as isize)
-            })
-          }) + (if (i + 1i32) < 0i32 {
+            }
+          } + if (i + 1i32) < 0i32 {
             *a.offset((0i32 * 2i32) as isize)
           } else {
-            (if i + 1i32 >= sn {
+            if i + 1i32 >= sn {
               *a.offset(((sn - 1i32) * 2i32) as isize)
             } else {
               *a.offset(((i + 1i32) * 2i32) as isize)
-            })
-          }) >> 1i32;
+            }
+          } >> 1i32;
           i += 1
         }
       }
@@ -2419,20 +2419,20 @@ unsafe fn opj_dwt_decode_partial_1(
             if i < 0i32 {
               *a.offset((0i32 * 2i32) as isize)
             } else {
-              (if i >= dn {
+              if i >= dn {
                 *a.offset(((dn - 1i32) * 2i32) as isize)
               } else {
                 *a.offset((i * 2i32) as isize)
-              })
+              }
             },
             if (i + 1i32) < 0i32 {
               *a.offset((0i32 * 2i32) as isize)
             } else {
-              (if i + 1i32 >= dn {
+              if i + 1i32 >= dn {
                 *a.offset(((dn - 1i32) * 2i32) as isize)
               } else {
                 *a.offset(((i + 1i32) * 2i32) as isize)
-              })
+              }
             },
           ),
           2i32,
@@ -2448,20 +2448,20 @@ unsafe fn opj_dwt_decode_partial_1(
           if i < 0i32 {
             *a.offset((1i32 + 0i32 * 2i32) as isize)
           } else {
-            (if i >= sn {
+            if i >= sn {
               *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
             } else {
               *a.offset((1i32 + i * 2i32) as isize)
-            })
+            }
           },
           if (i - 1i32) < 0i32 {
             *a.offset((1i32 + 0i32 * 2i32) as isize)
           } else {
-            (if i - 1i32 >= sn {
+            if i - 1i32 >= sn {
               *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
             } else {
               *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
-            })
+            }
           },
         ) >> 1i32,
       );
@@ -2517,7 +2517,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                 .wrapping_add(off) as isize,
             )
           } else {
-            (if i - 1i32 >= dn {
+            if i - 1i32 >= dn {
               *a.offset(
                 (1u32)
                   .wrapping_add(
@@ -2537,8 +2537,8 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_mul(4u32)
                   .wrapping_add(off) as isize,
               )
-            })
-          }) + (if i < 0i32 {
+            }
+          }) + if i < 0i32 {
             *a.offset(
               (1u32)
                 .wrapping_add(
@@ -2548,7 +2548,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                 .wrapping_add(off) as isize,
             )
           } else {
-            (if i >= dn {
+            if i >= dn {
               *a.offset(
                 (1u32)
                   .wrapping_add(
@@ -2565,8 +2565,8 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_mul(4u32)
                   .wrapping_add(off) as isize,
               )
-            })
-          }) + 2i32
+            }
+          } + 2i32
             >> 2i32;
           off = off.wrapping_add(1)
         }
@@ -2614,7 +2614,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                 .wrapping_mul(4u32)
                 .wrapping_add(off) as isize,
             );
-            *fresh59 -= (if (i - 1i32) < 0i32 {
+            *fresh59 -= if (i - 1i32) < 0i32 {
               *a.offset(
                 (1u32)
                   .wrapping_add(
@@ -2624,7 +2624,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_add(off) as isize,
               )
             } else {
-              (if i - 1i32 >= dn {
+              if i - 1i32 >= dn {
                 *a.offset(
                   (1u32)
                     .wrapping_add(
@@ -2644,8 +2644,8 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                     .wrapping_mul(4u32)
                     .wrapping_add(off) as isize,
                 )
-              })
-            }) + (if i < 0i32 {
+              }
+            } + if i < 0i32 {
               *a.offset(
                 (1u32)
                   .wrapping_add(
@@ -2655,7 +2655,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_add(off) as isize,
               )
             } else {
-              (if i >= dn {
+              if i >= dn {
                 *a.offset(
                   (1u32)
                     .wrapping_add(
@@ -2672,8 +2672,8 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                     .wrapping_mul(4u32)
                     .wrapping_add(off) as isize,
                 )
-              })
-            }) + 2i32
+              }
+            } + 2i32
               >> 2i32;
             off = off.wrapping_add(1)
           }
@@ -2721,7 +2721,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                 .wrapping_mul(4u32)
                 .wrapping_add(off) as isize,
             );
-            *fresh61 += (if i < 0i32 {
+            *fresh61 += if i < 0i32 {
               *a.offset(
                 (0 as OPJ_UINT32)
                   .wrapping_mul(2u32)
@@ -2729,7 +2729,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_add(off) as isize,
               )
             } else {
-              (if i >= sn {
+              if i >= sn {
                 *a.offset(
                   ((sn - 1i32) as OPJ_UINT32)
                     .wrapping_mul(2u32)
@@ -2743,8 +2743,8 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                     .wrapping_mul(4u32)
                     .wrapping_add(off) as isize,
                 )
-              })
-            }) + (if (i + 1i32) < 0i32 {
+              }
+            } + if (i + 1i32) < 0i32 {
               *a.offset(
                 (0 as OPJ_UINT32)
                   .wrapping_mul(2u32)
@@ -2752,7 +2752,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_add(off) as isize,
               )
             } else {
-              (if i + 1i32 >= sn {
+              if i + 1i32 >= sn {
                 *a.offset(
                   ((sn - 1i32) as OPJ_UINT32)
                     .wrapping_mul(2u32)
@@ -2766,8 +2766,8 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                     .wrapping_mul(4u32)
                     .wrapping_add(off) as isize,
                 )
-              })
-            }) >> 1i32;
+              }
+            } >> 1i32;
             off = off.wrapping_add(1)
           }
           i += 1
@@ -2814,7 +2814,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                     .wrapping_add(off) as isize,
                 )
               } else {
-                (if i >= dn {
+                if i >= dn {
                   *a.offset(
                     ((dn - 1i32) as OPJ_UINT32)
                       .wrapping_mul(2u32)
@@ -2828,7 +2828,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                       .wrapping_mul(4u32)
                       .wrapping_add(off) as isize,
                   )
-                })
+                }
               },
               if (i + 1i32) < 0i32 {
                 *a.offset(
@@ -2838,7 +2838,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                     .wrapping_add(off) as isize,
                 )
               } else {
-                (if i + 1i32 >= dn {
+                if i + 1i32 >= dn {
                   *a.offset(
                     ((dn - 1i32) as OPJ_UINT32)
                       .wrapping_mul(2u32)
@@ -2852,7 +2852,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                       .wrapping_mul(4u32)
                       .wrapping_add(off) as isize,
                   )
-                })
+                }
               },
             ),
             2i32,
@@ -2889,7 +2889,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_add(off) as isize,
               )
             } else {
-              (if i >= sn {
+              if i >= sn {
                 *a.offset(
                   (1u32)
                     .wrapping_add(
@@ -2906,7 +2906,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                     .wrapping_mul(4u32)
                     .wrapping_add(off) as isize,
                 )
-              })
+              }
             },
             if (i - 1i32) < 0i32 {
               *a.offset(
@@ -2918,7 +2918,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_add(off) as isize,
               )
             } else {
-              (if i - 1i32 >= sn {
+              if i - 1i32 >= sn {
                 *a.offset(
                   (1u32)
                     .wrapping_add(
@@ -2938,7 +2938,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                     .wrapping_mul(4u32)
                     .wrapping_add(off) as isize,
                 )
-              })
+              }
             },
           ) >> 1i32,
         );
