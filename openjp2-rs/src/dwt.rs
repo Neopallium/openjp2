@@ -793,7 +793,6 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row_real(
 }
 unsafe extern "C" fn opj_dwt_encode_h_func(
   mut user_data: *mut libc::c_void,
-  mut _tls: *mut opj_tls_t,
 ) {
   let mut j: OPJ_UINT32 = 0;
   let mut job = 0 as *mut opj_dwt_encode_h_job_t;
@@ -818,7 +817,6 @@ unsafe extern "C" fn opj_dwt_encode_h_func(
 }
 unsafe extern "C" fn opj_dwt_encode_v_func(
   mut user_data: *mut libc::c_void,
-  mut _tls: *mut opj_tls_t,
 ) {
   let mut j: OPJ_UINT32 = 0;
   let mut job = 0 as *mut opj_dwt_encode_v_job_t;
@@ -1639,7 +1637,7 @@ unsafe fn opj_dwt_encode_procedure(
           tp,
           Some(
             opj_dwt_encode_v_func
-              as unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_tls_t) -> (),
+              as unsafe extern "C" fn(_: *mut libc::c_void) -> (),
           ),
           job as *mut libc::c_void,
         );
@@ -1708,7 +1706,7 @@ unsafe fn opj_dwt_encode_procedure(
           tp,
           Some(
             opj_dwt_encode_h_func
-              as unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_tls_t) -> (),
+              as unsafe extern "C" fn(_: *mut libc::c_void) -> (),
           ),
           job_0 as *mut libc::c_void,
         );
@@ -1932,7 +1930,6 @@ unsafe fn opj_dwt_max_resolution(
 }
 unsafe extern "C" fn opj_dwt_decode_h_func(
   mut user_data: *mut libc::c_void,
-  mut _tls: *mut opj_tls_t,
 ) {
   let mut j: OPJ_UINT32 = 0;
   let mut job = 0 as *mut opj_dwt_decode_h_job_t;
@@ -1950,7 +1947,6 @@ unsafe extern "C" fn opj_dwt_decode_h_func(
 }
 unsafe extern "C" fn opj_dwt_decode_v_func(
   mut user_data: *mut libc::c_void,
-  mut _tls: *mut opj_tls_t,
 ) {
   let mut j: OPJ_UINT32 = 0;
   let mut job = 0 as *mut opj_dwt_decode_v_job_t;
@@ -2110,7 +2106,7 @@ unsafe fn opj_dwt_decode_tile(
           tp,
           Some(
             opj_dwt_decode_h_func
-              as unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_tls_t) -> (),
+              as unsafe extern "C" fn(_: *mut libc::c_void) -> (),
           ),
           job as *mut libc::c_void,
         );
@@ -2183,7 +2179,7 @@ unsafe fn opj_dwt_decode_tile(
           tp,
           Some(
             opj_dwt_decode_v_func
-              as unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_tls_t) -> (),
+              as unsafe extern "C" fn(_: *mut libc::c_void) -> (),
           ),
           job_0 as *mut libc::c_void,
         );
@@ -3987,7 +3983,6 @@ unsafe fn opj_v8dwt_decode(mut dwt: *mut opj_v8dwt_t) {
 }
 unsafe extern "C" fn opj_dwt97_decode_h_func(
   mut user_data: *mut libc::c_void,
-  mut _tls: *mut opj_tls_t,
 ) {
   let mut j: OPJ_UINT32 = 0;
   let mut job = 0 as *mut opj_dwt97_decode_h_job_t;
@@ -4058,7 +4053,6 @@ unsafe extern "C" fn opj_dwt97_decode_h_func(
 }
 unsafe extern "C" fn opj_dwt97_decode_v_func(
   mut user_data: *mut libc::c_void,
-  mut _tls: *mut opj_tls_t,
 ) {
   let mut j: OPJ_UINT32 = 0;
   let mut job = 0 as *mut opj_dwt97_decode_v_job_t;
@@ -4280,7 +4274,7 @@ unsafe fn opj_dwt_decode_tile_97(
           tp,
           Some(
             opj_dwt97_decode_h_func
-              as unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_tls_t) -> (),
+              as unsafe extern "C" fn(_: *mut libc::c_void) -> (),
           ),
           job as *mut libc::c_void,
         );
@@ -4393,7 +4387,7 @@ unsafe fn opj_dwt_decode_tile_97(
           tp,
           Some(
             opj_dwt97_decode_v_func
-              as unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_tls_t) -> (),
+              as unsafe extern "C" fn(_: *mut libc::c_void) -> (),
           ),
           job_0 as *mut libc::c_void,
         );

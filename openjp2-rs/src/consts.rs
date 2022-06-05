@@ -441,10 +441,6 @@ pub mod t1 {
   pub const T1_LUT_SIG_S: u32  = 1u32 << 7;
 }
 
-pub mod tls {
-  pub const OPJ_TLS_KEY_T1: u32   = 0;
-}
-
 pub use cio::*;
 pub use event::*;
 pub use jpip::*;
@@ -454,4 +450,3 @@ pub use mqc::*;
 pub use opj::*;
 pub use common::*;
 pub use t1::*;
-pub use tls::*;
