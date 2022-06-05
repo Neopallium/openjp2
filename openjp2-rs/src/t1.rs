@@ -117,9 +117,104 @@ impl T1Flags {
   }
 }
 
+#[derive(Default)]
+pub struct T1Data {
+  data: Vec<i32>,
+}
+
+#[derive(Copy, Clone)]
+pub struct DataPtr {
+  data: *mut i32,
+}
+
+impl Deref for DataPtr {
+  type Target = i32;
+
+  fn deref(&self) -> &Self::Target {
+    unsafe { &*self.data }
+  }
+}
+
+impl DerefMut for DataPtr {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    unsafe { &mut *self.data }
+  }
+}
+
+impl Index<isize> for DataPtr {
+  type Output = i32;
+
+  fn index(&self, idx: isize) -> &Self::Output {
+    unsafe {
+      &*self.data.offset(idx)
+    }
+  }
+}
+
+impl IndexMut<isize> for DataPtr {
+  fn index_mut(&mut self, idx: isize) -> &mut Self::Output {
+    unsafe {
+      &mut *self.data.offset(idx)
+    }
+  }
+}
+
+impl AddAssign<usize> for DataPtr {
+  fn add_assign(&mut self, n: usize) {
+    unsafe {
+      self.data = self.data.offset(n as isize);
+    }
+  }
+}
+
+impl DataPtr {
+  pub fn offset(&self, offset: isize) -> Self {
+    unsafe {
+      Self {
+        data: self.data.offset(offset),
+      }
+    }
+  }
+
+  pub fn inc(&mut self, n: usize) {
+    unsafe {
+      self.data = self.data.offset(n as isize);
+    }
+  }
+}
+
+impl T1Data {
+  fn new() -> Self {
+    Self::default()
+  }
+
+  pub fn resize(&mut self, len: usize) {
+    if self.data.len() != len {
+      self.data = vec![0; len];
+    } else {
+      for data in &mut self.data {
+        *data = 0;
+      }
+    }
+  }
+
+  pub fn as_mut_ptr(&mut self) -> *mut i32 {
+    self.data.as_mut_ptr()
+  }
+
+  pub fn offset(&mut self, offset: isize) -> DataPtr {
+    unsafe {
+      DataPtr {
+        data: self.as_mut_ptr().offset(offset)
+      }
+    }
+  }
+}
+
 pub struct opj_t1 {
   pub mqc: opj_mqc_t,
-  pub data: *mut OPJ_INT32,
+  pub data: T1Data,
+  decoded_data: Option<*mut OPJ_INT32>,
   pub flags: T1Flags,
   pub w: OPJ_UINT32,
   pub h: OPJ_UINT32,
@@ -135,7 +230,8 @@ impl Default for opj_t1 {
   fn default() -> Self {
     Self {
       mqc: opj_mqc::default(),
-      data: null_mut(),
+      data: T1Data::default(),
+      decoded_data: None,
       flags: T1Flags::default(),
       w: 0,
       h: 0,
@@ -151,10 +247,6 @@ impl Default for opj_t1 {
 impl Drop for opj_t1 {
   fn drop(&mut self) {
     unsafe {
-      if !self.data.is_null() {
-        opj_aligned_free(self.data as *mut libc::c_void);
-        self.data = null_mut();
-      }
       opj_free(self.cblkdatabuffer as *mut libc::c_void);
     }
   }
@@ -163,6 +255,26 @@ impl Drop for opj_t1 {
 impl opj_t1 {
   fn new() -> Self {
     Self::default()
+  }
+
+  fn set_decoded_data(&mut self, decoded_data: *mut OPJ_INT32) {
+    self.decoded_data = Some(decoded_data);
+  }
+
+  fn reset_decoded_data(&mut self) {
+    self.decoded_data = None;
+  }
+
+  fn data_offset(&mut self, offset: isize) -> DataPtr {
+    if let Some(decoded_data) = self.decoded_data {
+      unsafe {
+        DataPtr {
+          data: decoded_data.offset(offset)
+        }
+      }
+    } else {
+      self.data.offset(offset)
+    }
   }
 }
 
@@ -355,7 +467,7 @@ fn opj_t1_enc_sigpass_step_macro(
   mqc: &mut opj_mqc_t,
   w: OPJ_UINT32,
   mut flagsp: FlagsPtr,
-  l_datap: *const OPJ_INT32,
+  mut l_datap: DataPtr,
   bpno: OPJ_INT32,
   one: OPJ_UINT32,
   nmsedec: *mut OPJ_INT32,
@@ -406,24 +518,22 @@ fn opj_t1_enc_sigpass_step_macro(
 fn opj_t1_dec_sigpass_step_raw(
   mut t1: &mut opj_t1_t,
   mut flagsp: FlagsPtr,
-  mut datap: *mut OPJ_INT32,
+  mut datap: DataPtr,
   mut oneplushalf: OPJ_INT32,
   mut vsc: OPJ_UINT32,
   mut ci: OPJ_UINT32,
 ) {
-  unsafe {
-    let mut v = 0;
-    let mut mqc = &mut t1.mqc; /* RAW component */
-    let flags = flagsp[0];
-    if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 &&
-          (flags & (T1_SIGMA_NEIGHBOURS << ci.wrapping_mul(3))) != 0 {
-      if opj_mqc_raw_decode(mqc) != 0 {
-        v = opj_mqc_raw_decode(mqc);
-        *datap = if v != 0 { -oneplushalf } else { oneplushalf };
-        opj_t1_update_flags(flagsp, ci, v, t1.w.wrapping_add(2), vsc);
-      }
-      *flagsp |= T1_PI_THIS << ci.wrapping_mul(3);
+  let mut v = 0;
+  let mut mqc = &mut t1.mqc; /* RAW component */
+  let flags = flagsp[0];
+  if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 &&
+        (flags & (T1_SIGMA_NEIGHBOURS << ci.wrapping_mul(3))) != 0 {
+    if opj_mqc_raw_decode(mqc) != 0 {
+      v = opj_mqc_raw_decode(mqc);
+      *datap = if v != 0 { -oneplushalf } else { oneplushalf };
+      opj_t1_update_flags(flagsp, ci, v, t1.w.wrapping_add(2), vsc);
     }
+    *flagsp |= T1_PI_THIS << ci.wrapping_mul(3);
   }
 }
 
@@ -431,7 +541,7 @@ fn opj_t1_dec_sigpass_step_raw(
 fn opj_t1_dec_sigpass_step_mqc_macro(
   mut flagsp: FlagsPtr,
   mut flags_stride: OPJ_UINT32,
-  mut datap: *mut OPJ_INT32,
+  mut datap: DataPtr,
   mut data_stride: OPJ_UINT32,
   mut ci: OPJ_UINT32,
   mut mqc: &mut opj_mqc_t,
@@ -439,29 +549,27 @@ fn opj_t1_dec_sigpass_step_mqc_macro(
   mut oneplushalf: OPJ_INT32,
   mut vsc: OPJ_UINT32,
 ) {
-  unsafe {
-    let flags = flagsp[0];
-    if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 &&
-         (flags & (T1_SIGMA_NEIGHBOURS << ci.wrapping_mul(3))) != 0 {
-      let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
-      opj_t1_setcurctx(mqc, ctxt1);
+  let flags = flagsp[0];
+  if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 &&
+       (flags & (T1_SIGMA_NEIGHBOURS << ci.wrapping_mul(3))) != 0 {
+    let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
+    opj_t1_setcurctx(mqc, ctxt1);
+    opj_mqc_decode_macro(&mut v, mqc);
+    if v != 0 {
+      let mut lu = opj_t1_getctxtno_sc_or_spb_index(
+                      flags,
+                      flagsp[-1], flagsp[1],
+                      ci);
+      let mut ctxt2 = opj_t1_getctxno_sc(lu);
+      let mut spb = opj_t1_getspb(lu) as OPJ_UINT32;
+      opj_t1_setcurctx(mqc, ctxt2);
       opj_mqc_decode_macro(&mut v, mqc);
-      if v != 0 {
-        let mut lu = opj_t1_getctxtno_sc_or_spb_index(
-                        flags,
-                        flagsp[-1], flagsp[1],
-                        ci);
-        let mut ctxt2 = opj_t1_getctxno_sc(lu);
-        let mut spb = opj_t1_getspb(lu) as OPJ_UINT32;
-        opj_t1_setcurctx(mqc, ctxt2);
-        opj_mqc_decode_macro(&mut v, mqc);
-        v = v ^ spb;
-        *datap.offset(ci.wrapping_mul(data_stride) as isize) =
-          if v != 0 { -oneplushalf } else { oneplushalf };
-        opj_t1_update_flags_macro(flagsp, ci, v, flags_stride, vsc);
-      }
-      *flagsp |= T1_PI_THIS << ci.wrapping_mul(3);
+      v = v ^ spb;
+      *datap.offset(ci.wrapping_mul(data_stride) as isize) =
+        if v != 0 { -oneplushalf } else { oneplushalf };
+      opj_t1_update_flags_macro(flagsp, ci, v, flags_stride, vsc);
     }
+    *flagsp |= T1_PI_THIS << ci.wrapping_mul(3);
   }
 }
 
@@ -469,7 +577,7 @@ fn opj_t1_dec_sigpass_step_mqc_macro(
 fn opj_t1_dec_sigpass_step_mqc(
   mut t1: &mut opj_t1_t,
   mut flagsp: FlagsPtr,
-  mut datap: *mut OPJ_INT32,
+  mut datap: DataPtr,
   mut oneplushalf: OPJ_INT32,
   mut ci: OPJ_UINT32,
   mut flags_stride: OPJ_UINT32,
@@ -506,8 +614,8 @@ fn opj_t1_enc_sigpass(
     let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
     let mut f = t1_flags(t1, 0, 0);
     let extra = 2;
+    let mut datap = t1.data_offset(0);
     let mqc = &mut t1.mqc;
-    let mut datap: *const OPJ_INT32 = t1.data;
 
     *nmsedec = 0;
     log::debug!("enc_sigpass: bpno={}", bpno);
@@ -560,7 +668,7 @@ fn opj_t1_enc_sigpass(
         }
         i += 1;
         f += 1;
-        datap = datap.offset(4)
+        datap += 4
       }
       k += 4;
       f += extra;
@@ -589,7 +697,7 @@ fn opj_t1_enc_sigpass(
                 j - k,
                 (j == k && (cblksty & J2K_CCP_CBLKSTY_VSC) != 0) as u32);
             j += 1;
-            datap = datap.offset(1)
+            datap += 1
           }
         }
         i += 1;
@@ -607,86 +715,84 @@ fn opj_t1_dec_sigpass_raw(
   mut bpno: OPJ_INT32,
   mut cblksty: OPJ_INT32,
 ) {
-  unsafe {
-    let mut one = 0;
-    let mut half = 0;
-    let mut oneplushalf = 0;
-    let mut i = 0;
-    let mut j = 0;
-    let mut k = 0;
-    let mut data = t1.data;
-    let mut flagsp = t1_flags(t1, 0, 0);
-    let l_w = t1.w;
-    one = 1 << bpno;
-    half = one >> 1;
-    oneplushalf = one | half;
+  let mut one = 0;
+  let mut half = 0;
+  let mut oneplushalf = 0;
+  let mut i = 0;
+  let mut j = 0;
+  let mut k = 0;
+  let mut data = t1.data_offset(0);
+  let mut flagsp = t1_flags(t1, 0, 0);
+  let l_w = t1.w;
+  one = 1 << bpno;
+  half = one >> 1;
+  oneplushalf = one | half;
 
-    k = 0;
-    while k < t1.h & !(0x3) {
-      i = 0;
-      while i < l_w {
-        let mut flags = *flagsp;
-        if flags != 0 {
-          opj_t1_dec_sigpass_step_raw(
-            t1,
-            flagsp,
-            data,
-            oneplushalf,
-            cblksty as u32 & J2K_CCP_CBLKSTY_VSC, /* vsc */
-            0,
-          );
-          opj_t1_dec_sigpass_step_raw(
-            t1,
-            flagsp,
-            data.offset(l_w as isize),
-            oneplushalf,
-            0, /* vsc */
-            1,
-          );
-          opj_t1_dec_sigpass_step_raw(
-            t1,
-            flagsp,
-            data.offset(2_u32.wrapping_mul(l_w) as isize),
-            oneplushalf,
-            0, /* vsc */
-            2,
-          );
-          opj_t1_dec_sigpass_step_raw(
-            t1,
-            flagsp,
-            data.offset(3_u32.wrapping_mul(l_w) as isize),
-            oneplushalf,
-            0, /* vsc */
-            3,
-          );
-        }
-        i += 1;
-        flagsp += 1;
-        data = data.offset(1)
+  k = 0;
+  while k < t1.h & !(0x3) {
+    i = 0;
+    while i < l_w {
+      let mut flags = *flagsp;
+      if flags != 0 {
+        opj_t1_dec_sigpass_step_raw(
+          t1,
+          flagsp,
+          data,
+          oneplushalf,
+          cblksty as u32 & J2K_CCP_CBLKSTY_VSC, /* vsc */
+          0,
+        );
+        opj_t1_dec_sigpass_step_raw(
+          t1,
+          flagsp,
+          data.offset(l_w as isize),
+          oneplushalf,
+          0, /* vsc */
+          1,
+        );
+        opj_t1_dec_sigpass_step_raw(
+          t1,
+          flagsp,
+          data.offset(2_u32.wrapping_mul(l_w) as isize),
+          oneplushalf,
+          0, /* vsc */
+          2,
+        );
+        opj_t1_dec_sigpass_step_raw(
+          t1,
+          flagsp,
+          data.offset(3_u32.wrapping_mul(l_w) as isize),
+          oneplushalf,
+          0, /* vsc */
+          3,
+        );
       }
-      k += 4;
-      flagsp += 2;
-      data = data.offset(3_u32.wrapping_mul(l_w) as isize)
+      i += 1;
+      flagsp += 1;
+      data = data.offset(1)
     }
-    if k < t1.h {
-      i = 0;
-      while i < l_w {
-        j = 0;
-        while j < t1.h.wrapping_sub(k) {
-          opj_t1_dec_sigpass_step_raw(
-            t1,
-            flagsp,
-            data.offset(j.wrapping_mul(l_w) as isize),
-            oneplushalf,
-            cblksty as u32 & J2K_CCP_CBLKSTY_VSC,
-            j,
-          );
-          j += 1
-        }
-        i += 1;
-        flagsp += 1;
-        data = data.offset(1)
+    k += 4;
+    flagsp += 2;
+    data = data.offset(3_u32.wrapping_mul(l_w) as isize)
+  }
+  if k < t1.h {
+    i = 0;
+    while i < l_w {
+      j = 0;
+      while j < t1.h.wrapping_sub(k) {
+        opj_t1_dec_sigpass_step_raw(
+          t1,
+          flagsp,
+          data.offset(j.wrapping_mul(l_w) as isize),
+          oneplushalf,
+          cblksty as u32 & J2K_CCP_CBLKSTY_VSC,
+          j,
+        );
+        j += 1
       }
+      i += 1;
+      flagsp += 1;
+      data = data.offset(1)
     }
   }
 }
@@ -699,62 +805,60 @@ fn opj_t1_dec_sigpass_mqc_internal(
   h: OPJ_UINT32,
   flags_stride: OPJ_UINT32,
 ) {
-  unsafe {
-    let mut one = 0;
-    let mut half = 0;
-    let mut oneplushalf = 0;
-    let mut i = 0;
-    let mut j = 0;
-    let mut k = 0;
-    let mut data = t1.data;
-    let mut flagsp = t1.flags.offset(flags_stride as isize + 1);
-    let l_w = w;
-    let mqc = &mut t1.mqc;
-    let mut v = 0;
-    one = 1 << bpno;
-    half = one >> 1;
-    oneplushalf = one | half;
+  let mut one = 0;
+  let mut half = 0;
+  let mut oneplushalf = 0;
+  let mut i = 0;
+  let mut j = 0;
+  let mut k = 0;
+  let mut data = t1.data_offset(0);
+  let mut flagsp = t1.flags.offset(flags_stride as isize + 1);
+  let l_w = w;
+  let mqc = &mut t1.mqc;
+  let mut v = 0;
+  one = 1 << bpno;
+  half = one >> 1;
+  oneplushalf = one | half;
 
-    k = 0;
-    while k < h & !(0x03) {
-      i = 0;
-      while i < l_w {
-        if *flagsp != 0 {
-          opj_t1_dec_sigpass_step_mqc_macro(
-              flagsp, flags_stride, data,
-              l_w, 0, mqc, v, oneplushalf, vsc);
-          opj_t1_dec_sigpass_step_mqc_macro(
-              flagsp, flags_stride, data,
-              l_w, 1, mqc, v, oneplushalf, OPJ_FALSE);
-          opj_t1_dec_sigpass_step_mqc_macro(
-              flagsp, flags_stride, data,
-              l_w, 2, mqc, v, oneplushalf, OPJ_FALSE);
-          opj_t1_dec_sigpass_step_mqc_macro(
-              flagsp, flags_stride, data,
-              l_w, 3, mqc, v, oneplushalf, OPJ_FALSE);
-        }
-        i += 1;
-        data = data.offset(1);
-        flagsp += 1
+  k = 0;
+  while k < h & !(0x03) {
+    i = 0;
+    while i < l_w {
+      if *flagsp != 0 {
+        opj_t1_dec_sigpass_step_mqc_macro(
+            flagsp, flags_stride, data,
+            l_w, 0, mqc, v, oneplushalf, vsc);
+        opj_t1_dec_sigpass_step_mqc_macro(
+            flagsp, flags_stride, data,
+            l_w, 1, mqc, v, oneplushalf, OPJ_FALSE);
+        opj_t1_dec_sigpass_step_mqc_macro(
+            flagsp, flags_stride, data,
+            l_w, 2, mqc, v, oneplushalf, OPJ_FALSE);
+        opj_t1_dec_sigpass_step_mqc_macro(
+            flagsp, flags_stride, data,
+            l_w, 3, mqc, v, oneplushalf, OPJ_FALSE);
       }
-      k += 4;
-      data = data.offset(3_u32.wrapping_mul(l_w) as isize);
-      flagsp += 2
+      i += 1;
+      data = data.offset(1);
+      flagsp += 1
     }
-    if k < h {
-      i = 0;
-      while i < l_w {
-        j = 0;
-        while j < h.wrapping_sub(k) {
-          opj_t1_dec_sigpass_step_mqc(t1, flagsp,
-            data.offset(j.wrapping_mul(l_w) as isize),
-            oneplushalf, j, flags_stride, vsc);
-          j += 1
-        }
-        i += 1;
-        data = data.offset(1);
-        flagsp += 1
+    k += 4;
+    data = data.offset(3_u32.wrapping_mul(l_w) as isize);
+    flagsp += 2
+  }
+  if k < h {
+    i = 0;
+    while i < l_w {
+      j = 0;
+      while j < h.wrapping_sub(k) {
+        opj_t1_dec_sigpass_step_mqc(t1, flagsp,
+          data.offset(j.wrapping_mul(l_w) as isize),
+          oneplushalf, j, flags_stride, vsc);
+        j += 1
       }
+      i += 1;
+      data = data.offset(1);
+      flagsp += 1
     }
   }
 }
@@ -806,7 +910,7 @@ Encode refinement pass step
 fn opj_t1_enc_refpass_step_macro(
   mqc: &mut opj_mqc_t,
   mut flagsp: FlagsPtr,
-  l_datap: *const OPJ_INT32,
+  l_datap: DataPtr,
   bpno: OPJ_INT32,
   one: OPJ_UINT32,
   nmsedec: *mut OPJ_INT32,
@@ -839,50 +943,46 @@ fn opj_t1_enc_refpass_step_macro(
 fn opj_t1_dec_refpass_step_raw(
   mut t1: &mut opj_t1_t,
   mut flagsp: FlagsPtr,
-  mut datap: *mut OPJ_INT32,
+  mut datap: DataPtr,
   mut poshalf: OPJ_INT32,
   mut ci: OPJ_UINT32,
 ) {
-  unsafe {
-    let mut v = 0;
+  let mut v = 0;
 
-    let mut mqc = &mut t1.mqc; /* RAW component */
+  let mut mqc = &mut t1.mqc; /* RAW component */
 
-    if (*flagsp & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == (T1_SIGMA_THIS << ci.wrapping_mul(3)) {
-      v = opj_mqc_raw_decode(mqc);
-      *datap += if v ^ (*datap < 0) as u32 != 0 {
-        poshalf
-      } else {
-        -poshalf
-      };
-      *flagsp |= T1_MU_THIS << ci.wrapping_mul(3);
-    }
+  if (*flagsp & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == (T1_SIGMA_THIS << ci.wrapping_mul(3)) {
+    v = opj_mqc_raw_decode(mqc);
+    *datap += if v ^ (*datap < 0) as u32 != 0 {
+      poshalf
+    } else {
+      -poshalf
+    };
+    *flagsp |= T1_MU_THIS << ci.wrapping_mul(3);
   }
 }
 
 fn opj_t1_dec_refpass_step_mqc_macro(
   mut flagsp: FlagsPtr,
-  mut datap: *mut OPJ_INT32,
+  mut datap: DataPtr,
   mut data_stride: OPJ_UINT32,
   mut ci: OPJ_UINT32,
   mut mqc: &mut opj_mqc_t,
   mut v: &mut OPJ_UINT32,
   mut poshalf: OPJ_INT32,
 ) {
-  unsafe {
-    let flags = flagsp[0];
-    if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == (T1_SIGMA_THIS << ci.wrapping_mul(3)) {
-      let ctxt = opj_t1_getctxno_mag(flags >> ci.wrapping_mul(3));
-      opj_t1_setcurctx(mqc, ctxt);
-      opj_mqc_decode_macro(v, mqc);
-      let datap = datap.offset(ci.wrapping_mul(data_stride) as isize);
-      *datap += if *v ^ (*datap < 0) as u32 != 0 {
-        poshalf
-      } else {
-        -poshalf
-      };
-      *flagsp |= T1_MU_THIS << ci.wrapping_mul(3);
-    }
+  let flags = flagsp[0];
+  if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == (T1_SIGMA_THIS << ci.wrapping_mul(3)) {
+    let ctxt = opj_t1_getctxno_mag(flags >> ci.wrapping_mul(3));
+    opj_t1_setcurctx(mqc, ctxt);
+    opj_mqc_decode_macro(v, mqc);
+    let mut datap = datap.offset(ci.wrapping_mul(data_stride) as isize);
+    *datap += if *v ^ (*datap < 0) as u32 != 0 {
+      poshalf
+    } else {
+      -poshalf
+    };
+    *flagsp |= T1_MU_THIS << ci.wrapping_mul(3);
   }
 }
 
@@ -890,7 +990,7 @@ fn opj_t1_dec_refpass_step_mqc_macro(
 fn opj_t1_dec_refpass_step_mqc(
   mut t1: &mut opj_t1_t,
   mut flagsp: FlagsPtr,
-  mut datap: *mut OPJ_INT32,
+  mut datap: DataPtr,
   mut poshalf: OPJ_INT32,
   mut ci: OPJ_UINT32,
 ) {
@@ -916,8 +1016,8 @@ fn opj_t1_enc_refpass(
     let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
     let mut f = t1_flags(t1, 0, 0);
     let extra = 2;
+    let mut datap = t1.data_offset(0);
     let mqc = &mut t1.mqc;
-    let mut datap: *const OPJ_INT32 = t1.data;
 
     *nmsedec = 0;
     log::debug!("enc_refpass: bpno={}", bpno);
@@ -973,7 +1073,7 @@ fn opj_t1_enc_refpass(
         }
         i += 1;
         f += 1;
-        datap = datap.offset(4)
+        datap += 4
       }
       k += 4;
       f += extra;
@@ -1002,7 +1102,7 @@ fn opj_t1_enc_refpass(
                 type_0,
                 j);
             j += 1;
-            datap = datap.offset(1)
+            datap += 1
           }
         }
         i += 1;
@@ -1016,72 +1116,70 @@ fn opj_t1_enc_refpass(
 Decode refinement pass
 */
 fn opj_t1_dec_refpass_raw(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
-  unsafe {
-    let mut one: OPJ_INT32 = 0;
-    let mut poshalf: OPJ_INT32 = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut k: OPJ_UINT32 = 0;
-    let mut data = t1.data;
-    let mut flagsp = t1_flags(t1, 0, 0);
-    let l_w = t1.w;
-    one = 1 << bpno;
-    poshalf = one >> 1;
-    k = 0;
-    while k < t1.h & !(0x03) {
-      i = 0;
-      while i < l_w {
-        let mut flags = *flagsp;
-        if flags != 0 {
-          opj_t1_dec_refpass_step_raw(t1, flagsp, data, poshalf, 0);
-          opj_t1_dec_refpass_step_raw(
-            t1,
-            flagsp,
-            data.offset(l_w as isize),
-            poshalf,
-            1,
-          );
-          opj_t1_dec_refpass_step_raw(
-            t1,
-            flagsp,
-            data.offset(2_u32.wrapping_mul(l_w) as isize),
-            poshalf,
-            2,
-          );
-          opj_t1_dec_refpass_step_raw(
-            t1,
-            flagsp,
-            data.offset(3_u32.wrapping_mul(l_w) as isize),
-            poshalf,
-            3,
-          );
-        }
-        i += 1;
-        flagsp += 1;
-        data = data.offset(1)
+  let mut one: OPJ_INT32 = 0;
+  let mut poshalf: OPJ_INT32 = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let mut j: OPJ_UINT32 = 0;
+  let mut k: OPJ_UINT32 = 0;
+  let mut data = t1.data_offset(0);
+  let mut flagsp = t1_flags(t1, 0, 0);
+  let l_w = t1.w;
+  one = 1 << bpno;
+  poshalf = one >> 1;
+  k = 0;
+  while k < t1.h & !(0x03) {
+    i = 0;
+    while i < l_w {
+      let mut flags = *flagsp;
+      if flags != 0 {
+        opj_t1_dec_refpass_step_raw(t1, flagsp, data, poshalf, 0);
+        opj_t1_dec_refpass_step_raw(
+          t1,
+          flagsp,
+          data.offset(l_w as isize),
+          poshalf,
+          1,
+        );
+        opj_t1_dec_refpass_step_raw(
+          t1,
+          flagsp,
+          data.offset(2_u32.wrapping_mul(l_w) as isize),
+          poshalf,
+          2,
+        );
+        opj_t1_dec_refpass_step_raw(
+          t1,
+          flagsp,
+          data.offset(3_u32.wrapping_mul(l_w) as isize),
+          poshalf,
+          3,
+        );
       }
-      k += 4;
-      flagsp += 2;
-      data = data.offset(3_u32.wrapping_mul(l_w) as isize)
+      i += 1;
+      flagsp += 1;
+      data = data.offset(1)
     }
-    if k < t1.h {
-      i = 0;
-      while i < l_w {
-        j = 0;
-        while j < t1.h.wrapping_sub(k) {
-          opj_t1_dec_refpass_step_raw(
-            t1,
-            flagsp,
-            data.offset(j.wrapping_mul(l_w) as isize),
-            poshalf,
-            j,
-          );
-          j += 1
-        }
-        i += 1;
-        flagsp += 1;
-        data = data.offset(1)
+    k += 4;
+    flagsp += 2;
+    data = data.offset(3_u32.wrapping_mul(l_w) as isize)
+  }
+  if k < t1.h {
+    i = 0;
+    while i < l_w {
+      j = 0;
+      while j < t1.h.wrapping_sub(k) {
+        opj_t1_dec_refpass_step_raw(
+          t1,
+          flagsp,
+          data.offset(j.wrapping_mul(l_w) as isize),
+          poshalf,
+          j,
+        );
+        j += 1
       }
+      i += 1;
+      flagsp += 1;
+      data = data.offset(1)
     }
   }
 }
@@ -1093,60 +1191,58 @@ fn opj_t1_dec_refpass_mqc_internal(
   h: OPJ_UINT32,
   flags_stride: OPJ_UINT32,
 ) {
-  unsafe {
-    let mut one= 0;
-    let mut poshalf= 0;
-    let mut i = 0;
-    let mut j = 0;
-    let mut k = 0;
-    let mut data = t1.data;
-    let mut flagsp = t1.flags.offset(flags_stride as isize + 1);
-    let l_w = w;
-    let mqc = &mut t1.mqc;
-    let mut v = 0;
-    one = 1 << bpno;
-    poshalf = one >> 1;
+  let mut one= 0;
+  let mut poshalf= 0;
+  let mut i = 0;
+  let mut j = 0;
+  let mut k = 0;
+  let mut data = t1.data_offset(0);
+  let mut flagsp = t1.flags.offset(flags_stride as isize + 1);
+  let l_w = w;
+  let mqc = &mut t1.mqc;
+  let mut v = 0;
+  one = 1 << bpno;
+  poshalf = one >> 1;
 
-    k = 0;
-    while k < h & !(0x03) {
-      i = 0;
-      while i < l_w {
-        if *flagsp != 0 {
-          opj_t1_dec_refpass_step_mqc_macro(
-              flagsp, data, l_w, 0,
-              mqc, &mut v, poshalf);
-          opj_t1_dec_refpass_step_mqc_macro(
-              flagsp, data, l_w, 1,
-              mqc, &mut v, poshalf);
-          opj_t1_dec_refpass_step_mqc_macro(
-              flagsp, data, l_w, 2,
-              mqc, &mut v, poshalf);
-          opj_t1_dec_refpass_step_mqc_macro(
-              flagsp, data, l_w, 3,
-              mqc, &mut v, poshalf);
-        }
-        i += 1;
-        data = data.offset(1);
-        flagsp += 1
+  k = 0;
+  while k < h & !(0x03) {
+    i = 0;
+    while i < l_w {
+      if *flagsp != 0 {
+        opj_t1_dec_refpass_step_mqc_macro(
+            flagsp, data, l_w, 0,
+            mqc, &mut v, poshalf);
+        opj_t1_dec_refpass_step_mqc_macro(
+            flagsp, data, l_w, 1,
+            mqc, &mut v, poshalf);
+        opj_t1_dec_refpass_step_mqc_macro(
+            flagsp, data, l_w, 2,
+            mqc, &mut v, poshalf);
+        opj_t1_dec_refpass_step_mqc_macro(
+            flagsp, data, l_w, 3,
+            mqc, &mut v, poshalf);
       }
-      k += 4;
-      data = data.offset(3_u32.wrapping_mul(l_w) as isize);
-      flagsp += 2
+      i += 1;
+      data = data.offset(1);
+      flagsp += 1
     }
-    if k < h {
-      i = 0;
-      while i < l_w {
-        j = 0;
-        while j < h.wrapping_sub(k) {
-          opj_t1_dec_refpass_step_mqc(t1, flagsp,
-            data.offset(j.wrapping_mul(l_w) as isize),
-            poshalf, j);
-          j += 1
-        }
-        i += 1;
-        data = data.offset(1);
-        flagsp += 1
+    k += 4;
+    data = data.offset(3_u32.wrapping_mul(l_w) as isize);
+    flagsp += 2
+  }
+  if k < h {
+    i = 0;
+    while i < l_w {
+      j = 0;
+      while j < h.wrapping_sub(k) {
+        opj_t1_dec_refpass_step_mqc(t1, flagsp,
+          data.offset(j.wrapping_mul(l_w) as isize),
+          poshalf, j);
+        j += 1
       }
+      i += 1;
+      data = data.offset(1);
+      flagsp += 1
     }
   }
 }
@@ -1175,7 +1271,7 @@ fn opj_t1_enc_clnpass_step_macro(
   mqc: &mut opj_mqc_t,
   w: OPJ_UINT32,
   mut flagsp: FlagsPtr,
-  mut l_datap: *const OPJ_INT32,
+  mut l_datap: DataPtr,
   bpno: OPJ_INT32,
   one: OPJ_UINT32,
   nmsedec: *mut OPJ_INT32,
@@ -1243,7 +1339,7 @@ fn opj_t1_dec_clnpass_step_macro(
   partial: bool,
   flagsp: FlagsPtr,
   flags_stride: OPJ_UINT32,
-  datap: *mut OPJ_INT32,
+  datap: DataPtr,
   data_stride: OPJ_UINT32,
   ci: OPJ_UINT32,
   mqc: &mut opj_mqc_t,
@@ -1251,35 +1347,33 @@ fn opj_t1_dec_clnpass_step_macro(
   oneplushalf: OPJ_INT32,
   vsc: OPJ_UINT32,
 ) {
-  unsafe {
-    let flags = flagsp[0];
-    if !check_flags || (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 {
-      if !partial  {
-        let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
-        opj_t1_setcurctx(mqc, ctxt1);
-        opj_mqc_decode_macro(&mut v, mqc);
-        if v == 0 {
-          return;
-        }
-      }
-      let mut lu = opj_t1_getctxtno_sc_or_spb_index(
-                      flags,
-                      flagsp[-1], flagsp[1],
-                      ci);
-      opj_t1_setcurctx(mqc, opj_t1_getctxno_sc(lu));
+  let flags = flagsp[0];
+  if !check_flags || (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 {
+    if !partial  {
+      let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
+      opj_t1_setcurctx(mqc, ctxt1);
       opj_mqc_decode_macro(&mut v, mqc);
-      v = v ^ opj_t1_getspb(lu) as u32;
-      *datap.offset(ci.wrapping_mul(data_stride) as isize) =
-        if v != 0 { -oneplushalf } else { oneplushalf };
-      opj_t1_update_flags_macro(flagsp, ci, v, flags_stride, vsc);
+      if v == 0 {
+        return;
+      }
     }
+    let mut lu = opj_t1_getctxtno_sc_or_spb_index(
+                    flags,
+                    flagsp[-1], flagsp[1],
+                    ci);
+    opj_t1_setcurctx(mqc, opj_t1_getctxno_sc(lu));
+    opj_mqc_decode_macro(&mut v, mqc);
+    v = v ^ opj_t1_getspb(lu) as u32;
+    *datap.offset(ci.wrapping_mul(data_stride) as isize) =
+      if v != 0 { -oneplushalf } else { oneplushalf };
+    opj_t1_update_flags_macro(flagsp, ci, v, flags_stride, vsc);
   }
 }
 
 fn opj_t1_dec_clnpass_step(
   mut t1: &mut opj_t1_t,
   mut flagsp: FlagsPtr,
-  mut datap: *mut OPJ_INT32,
+  mut datap: DataPtr,
   mut oneplushalf: OPJ_INT32,
   mut ci: OPJ_UINT32,
   mut vsc: OPJ_UINT32,
@@ -1308,8 +1402,8 @@ fn opj_t1_enc_clnpass(
     let mut k: OPJ_UINT32 = 0;
     let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
     let mut f = t1_flags(t1, 0, 0);
+    let mut datap = t1.data_offset(0);
     let mqc = &mut t1.mqc;
-    let mut datap: *const OPJ_INT32 = t1.data;
     let extra = 2;
 
     *nmsedec = 0;
@@ -1332,7 +1426,7 @@ fn opj_t1_enc_clnpass(
                 break;
               }
               runlen = runlen.wrapping_add(1);
-              datap = datap.offset(1)
+              datap += 1
             }
             opj_t1_setcurctx(mqc, T1_CTXNO_AGG);
             opj_mqc_encode_macro(mqc, (runlen != 4) as u32);
@@ -1374,118 +1468,116 @@ fn opj_t1_enc_clnpass(
 }
 
 fn opj_t1_dec_clnpass_internal(t1: &mut opj_t1_t, bpno: OPJ_INT32, vsc: bool, w: u32, h: u32, flags_stride: u32) {
-  unsafe {
-    let mut one= 0;
-    let mut half= 0;
-    let mut oneplushalf= 0;
-    let mut runlen = 0u32;
-    let mut i = 0;
-    let mut j = 0;
-    let mut k = 0;
-    let mqc = &mut t1.mqc;
-    let mut data = t1.data;
-    let mut flagsp = t1.flags.offset(flags_stride as isize + 1);
-    let l_w = w;
-    let mut v = 0u32;
-    one = 1 << bpno;
-    half = one >> 1;
-    oneplushalf = one | half;
+  let mut one= 0;
+  let mut half= 0;
+  let mut oneplushalf= 0;
+  let mut runlen = 0u32;
+  let mut i = 0;
+  let mut j = 0;
+  let mut k = 0;
+  let mut data = t1.data_offset(0);
+  let mqc = &mut t1.mqc;
+  let mut flagsp = t1.flags.offset(flags_stride as isize + 1);
+  let l_w = w;
+  let mut v = 0u32;
+  one = 1 << bpno;
+  half = one >> 1;
+  oneplushalf = one | half;
 
-    k = 0;
-    while k < (h & !3) {
-      i = 0;
-      while i < l_w {
-        if *flagsp == 0 {
-          let mut partial = true;
-          opj_t1_setcurctx(mqc, T1_CTXNO_AGG);
-          opj_mqc_decode_macro(&mut v, mqc);
-          if v == 0 {
-            // continue;
-          } else {
-            opj_t1_setcurctx(mqc, T1_CTXNO_UNI);
-            opj_mqc_decode_macro(&mut runlen, mqc);
-            opj_mqc_decode_macro(&mut v, mqc);
-            runlen = (runlen << 1) | v;
-            if runlen == 0 {
-                opj_t1_dec_clnpass_step_macro(false, true,
-                          flagsp, flags_stride, data,
-                          l_w, 0, mqc,
-                          v, oneplushalf, vsc as u32);
-                partial = false;
-                /* FALLTHRU */
-            }
-            if runlen <= 1 {
-                opj_t1_dec_clnpass_step_macro(false, partial,
-                          flagsp, flags_stride, data,
-                          l_w, 1, mqc,
-                          v, oneplushalf, false as u32);
-                partial = false;
-                /* FALLTHRU */
-            }
-            if runlen <= 2 {
-                opj_t1_dec_clnpass_step_macro(false, partial,
-                          flagsp, flags_stride, data,
-                          l_w, 2, mqc,
-                          v, oneplushalf, false as u32);
-                partial = false;
-                /* FALLTHRU */
-            }
-            if runlen <= 3 {
-                opj_t1_dec_clnpass_step_macro(false, partial,
-                          flagsp, flags_stride, data,
-                          l_w, 3, mqc,
-                          v, oneplushalf, false as u32);
-            }
-            *flagsp &= !(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-          }
+  k = 0;
+  while k < (h & !3) {
+    i = 0;
+    while i < l_w {
+      if *flagsp == 0 {
+        let mut partial = true;
+        opj_t1_setcurctx(mqc, T1_CTXNO_AGG);
+        opj_mqc_decode_macro(&mut v, mqc);
+        if v == 0 {
+          // continue;
         } else {
-          opj_t1_dec_clnpass_step_macro(true, false,
-                    flagsp, flags_stride, data,
-                    l_w, 0, mqc,
-                    v, oneplushalf, vsc as u32);
-          opj_t1_dec_clnpass_step_macro(true, false,
-                    flagsp, flags_stride, data,
-                    l_w, 1, mqc,
-                    v, oneplushalf, false as u32);
-          opj_t1_dec_clnpass_step_macro(true, false,
-                    flagsp, flags_stride, data,
-                    l_w, 2, mqc,
-                    v, oneplushalf, false as u32);
-          opj_t1_dec_clnpass_step_macro(true, false,
-                    flagsp, flags_stride, data,
-                    l_w, 3, mqc,
-                    v, oneplushalf, false as u32);
+          opj_t1_setcurctx(mqc, T1_CTXNO_UNI);
+          opj_mqc_decode_macro(&mut runlen, mqc);
+          opj_mqc_decode_macro(&mut v, mqc);
+          runlen = (runlen << 1) | v;
+          if runlen == 0 {
+              opj_t1_dec_clnpass_step_macro(false, true,
+                        flagsp, flags_stride, data,
+                        l_w, 0, mqc,
+                        v, oneplushalf, vsc as u32);
+              partial = false;
+              /* FALLTHRU */
+          }
+          if runlen <= 1 {
+              opj_t1_dec_clnpass_step_macro(false, partial,
+                        flagsp, flags_stride, data,
+                        l_w, 1, mqc,
+                        v, oneplushalf, false as u32);
+              partial = false;
+              /* FALLTHRU */
+          }
+          if runlen <= 2 {
+              opj_t1_dec_clnpass_step_macro(false, partial,
+                        flagsp, flags_stride, data,
+                        l_w, 2, mqc,
+                        v, oneplushalf, false as u32);
+              partial = false;
+              /* FALLTHRU */
+          }
+          if runlen <= 3 {
+              opj_t1_dec_clnpass_step_macro(false, partial,
+                        flagsp, flags_stride, data,
+                        l_w, 3, mqc,
+                        v, oneplushalf, false as u32);
+          }
           *flagsp &= !(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
         }
-        i += 1;
-        data = data.offset(1);
-        flagsp += 1
-      }
-      k += 4;
-      data = data.offset(3_u32.wrapping_mul(l_w) as isize);
-      flagsp += 2;
-    }
-    if k < h {
-      i = 0;
-      while i < l_w {
-        j = 0;
-        while j < h - k {
-          opj_t1_dec_clnpass_step(
-            t1,
-            flagsp,
-            data.offset(j.wrapping_mul(l_w) as isize),
-            oneplushalf,
-            j,
-            vsc as u32,
-          );
-          j += 1
-        }
+      } else {
+        opj_t1_dec_clnpass_step_macro(true, false,
+                  flagsp, flags_stride, data,
+                  l_w, 0, mqc,
+                  v, oneplushalf, vsc as u32);
+        opj_t1_dec_clnpass_step_macro(true, false,
+                  flagsp, flags_stride, data,
+                  l_w, 1, mqc,
+                  v, oneplushalf, false as u32);
+        opj_t1_dec_clnpass_step_macro(true, false,
+                  flagsp, flags_stride, data,
+                  l_w, 2, mqc,
+                  v, oneplushalf, false as u32);
+        opj_t1_dec_clnpass_step_macro(true, false,
+                  flagsp, flags_stride, data,
+                  l_w, 3, mqc,
+                  v, oneplushalf, false as u32);
         *flagsp &= !(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-        i += 1;
-        flagsp += 1;
-        data = data.offset(1)
       }
-    };
+      i += 1;
+      data = data.offset(1);
+      flagsp += 1
+    }
+    k += 4;
+    data = data.offset(3_u32.wrapping_mul(l_w) as isize);
+    flagsp += 2;
+  }
+  if k < h {
+    i = 0;
+    while i < l_w {
+      j = 0;
+      while j < h - k {
+        opj_t1_dec_clnpass_step(
+          t1,
+          flagsp,
+          data.offset(j.wrapping_mul(l_w) as isize),
+          oneplushalf,
+          j,
+          vsc as u32,
+        );
+        j += 1
+      }
+      *flagsp &= !(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+      i += 1;
+      flagsp += 1;
+      data = data.offset(1)
+    }
   }
 }
 
@@ -1603,26 +1695,8 @@ fn opj_t1_allocate_buffers(
     assert!(h <= 1024);
     assert!(w.wrapping_mul(h) <= 4096);
     /* encoder uses tile buffer, so no need to allocate */
-    let mut datasize = w.wrapping_mul(h);
-    if datasize > t1.datasize {
-      opj_aligned_free(t1.data as *mut libc::c_void);
-      t1.data = opj_aligned_malloc(
-        (datasize as libc::c_ulong).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
-      ) as *mut OPJ_INT32;
-      if t1.data.is_null() {
-        /* FIXME event manager error callback */
-        return 0i32;
-      }
-      t1.datasize = datasize
-    }
-    /* memset first arg is declared to never be null by gcc */
-    if !t1.data.is_null() {
-      memset(
-        t1.data as *mut libc::c_void,
-        0i32,
-        datasize as usize * core::mem::size_of::<OPJ_INT32>(),
-      ); /* can't be 0U */
-    }
+    let datasize = w.wrapping_mul(h);
+    t1.data.resize(datasize as usize);
     flags_stride = w.wrapping_add(2u32);
     flagssize = h
       .wrapping_add(3u32)
@@ -1810,7 +1884,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
       datap = if !(*cblk).decoded_data.is_null() {
         (*cblk).decoded_data
       } else {
-        t1.data
+        t1.data.as_mut_ptr()
       };
       cblk_w = t1.w;
       cblk_h = t1.h;
@@ -2131,7 +2205,6 @@ fn opj_t1_decode_cblk(
     let mut cblkdata = 0 as *mut OPJ_BYTE;
     let mut cblkdataindex = 0 as OPJ_UINT32;
     let mut type_0 = 0 as OPJ_BYTE;
-    let mut original_t1_data = 0 as *mut OPJ_INT32;
     t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
     if opj_t1_allocate_buffers(
       t1,
@@ -2220,8 +2293,7 @@ fn opj_t1_decode_cblk(
     /* For subtile decoding, directly decode in the decoded_data buffer of */
     /* the code-block. Hack t1->data to point to it, and restore it later */
     if !(*cblk).decoded_data.is_null() {
-      original_t1_data = t1.data;
-      t1.data = (*cblk).decoded_data
+      t1.set_decoded_data((*cblk).decoded_data);
     }
     segno = 0 as OPJ_UINT32;
     while segno < (*cblk).real_num_segs {
@@ -2328,7 +2400,7 @@ fn opj_t1_decode_cblk(
     }
     /* Restore original t1->data is needed */
     if !(*cblk).decoded_data.is_null() {
-      t1.data = original_t1_data
+      t1.reset_decoded_data();
     }
     return 1i32;
   }
@@ -2400,7 +2472,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
       ) as *mut OPJ_INT32;
       if (*tccp).qmfbid == 1 {
         let mut tiledp_u = tiledp as *mut OPJ_UINT32;
-        let mut t1data = t1.data as *mut OPJ_UINT32;
+        let mut t1data = t1.data.as_mut_ptr() as *mut OPJ_UINT32;
         /* Do multiplication on unsigned type, even if the
          * underlying type is signed, to avoid potential
          * int overflow on large value (the output will be
@@ -2456,7 +2528,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
         }
       } else {
         let mut tiledp_f = tiledp as *mut OPJ_FLOAT32;
-        let mut t1data_0 = t1.data;
+        let mut t1data_0 = t1.data_offset(0);
         /* Change from "natural" order to "zigzag" order of T1 passes */
         /* Change from "natural" order to "zigzag" order of T1 passes */
         j = 0 as OPJ_UINT32; /* fixed_quality */
@@ -2697,10 +2769,9 @@ fn opj_t1_encode_cblk(
     let mut j: OPJ_UINT32 = 0;
     let mut type_0 = 0 as OPJ_BYTE;
     let mut tempwmsedec: OPJ_FLOAT64 = 0.;
-    let mut datap = 0 as *mut OPJ_INT32;
     t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
     max = 0i32;
-    datap = t1.data;
+    let mut datap = t1.data.as_mut_ptr();
     j = 0 as OPJ_UINT32;
     while j < t1.h {
       let w = t1.w;
@@ -2724,7 +2795,7 @@ fn opj_t1_encode_cblk(
           max = opj_int_max(max, tmp)
         }
         i += 1;
-        datap = datap.offset(1)
+        datap = datap.offset(1);
       }
       j += 1
     }
