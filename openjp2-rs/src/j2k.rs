@@ -61,14 +61,76 @@ pub type opj_j2k_mct_function =
 /*@}*/
 /*@}*/
 /* ----------------------------------------------------------------------- */
-pub type j2k_prog_order_t = j2k_prog_order;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
-pub struct j2k_prog_order {
-  pub enum_prog: OPJ_PROG_ORDER,
-  pub str_prog: [libc::c_char; 5],
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub(crate) enum ProgressionStep {
+  Unknown = 0,
+  Component = 67,
+  Resolution = 82,
+  Precinct = 80,
+  Layer = 76,
 }
+
+impl ProgressionStep {
+  pub fn as_byte(&self) -> u8 {
+    match self {
+      Self::Component => b'C',
+      Self::Resolution => b'R',
+      Self::Precinct => b'P',
+      Self::Layer => b'L',
+      Self::Unknown => 0,
+    }
+  }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub(crate) enum ProgressionOrder {
+  Unknown = 0,
+  CPRL,
+  PCRL,
+  RLCP,
+  LRCP,
+}
+
+impl ProgressionOrder {
+  pub fn from_c_enum(enum_prog: OPJ_PROG_ORDER) -> Self {
+    match enum_prog {
+      OPJ_CPRL => Self::CPRL,
+      OPJ_PCRL => Self::PCRL,
+      OPJ_RLCP => Self::RLCP,
+      OPJ_LRCP => Self::LRCP,
+      _ => Self::Unknown,
+    }
+  }
+
+  pub fn get_order(&self) -> &'static [ProgressionStep] {
+    use ProgressionStep::*;
+    match self {
+      Self::CPRL => &[Component, Precinct, Resolution, Layer],
+      Self::PCRL => &[Precinct, Component, Resolution, Layer],
+      Self::RLCP => &[Resolution, Layer, Component, Precinct],
+      Self::LRCP => &[Layer, Resolution, Component, Precinct],
+      Self::Unknown => &[],
+    }
+  }
+
+  pub fn get_order_str(&self) -> &'static str {
+    match self {
+      Self::CPRL => "CPRL",
+      Self::PCRL => "PCRL",
+      Self::RLCP => "RLCP",
+      Self::LRCP => "LRCP",
+      Self::Unknown => "",
+    }
+  }
+
+  pub fn get_step(&self, pos: i32) -> ProgressionStep {
+    let steps = self.get_order();
+    steps.get(pos as usize).cloned().unwrap_or(ProgressionStep::Unknown)
+  }
+}
+
 pub type opj_dec_memory_marker_handler_t = opj_dec_memory_marker_handler;
 
 #[repr(C)]
@@ -148,54 +210,7 @@ unsafe fn opj_j2k_update_tlm(
     .m_tlm_sot_offsets_current
     .offset(4);
 }
-static mut j2k_prog_order_list: [j2k_prog_order_t; 6] = unsafe {
-  [
-    {
-      let mut init = j2k_prog_order {
-        enum_prog: OPJ_CPRL,
-        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"CPRL\x00"),
-      };
-      init
-    },
-    {
-      let mut init = j2k_prog_order {
-        enum_prog: OPJ_LRCP,
-        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"LRCP\x00"),
-      };
-      init
-    },
-    {
-      let mut init = j2k_prog_order {
-        enum_prog: OPJ_PCRL,
-        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"PCRL\x00"),
-      };
-      init
-    },
-    {
-      let mut init = j2k_prog_order {
-        enum_prog: OPJ_RLCP,
-        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"RLCP\x00"),
-      };
-      init
-    },
-    {
-      let mut init = j2k_prog_order {
-        enum_prog: OPJ_RPCL,
-        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(b"RPCL\x00"),
-      };
-      init
-    },
-    {
-      let mut init = j2k_prog_order {
-        enum_prog: OPJ_PROG_UNKNOWN,
-        str_prog: *core::mem::transmute::<&[u8; 5], &mut [libc::c_char; 5]>(
-          b"\x00\x00\x00\x00\x00",
-        ),
-      };
-      init
-    },
-  ]
-};
+
 /* *
  * FIXME DOC
  */
@@ -851,19 +866,11 @@ unsafe extern "C" fn opj_j2k_write_float_to_float64(
     i = i.wrapping_add(1)
   }
 }
-#[no_mangle]
-pub(crate) unsafe extern "C" fn opj_j2k_convert_progression_order(
-  mut prg_order: OPJ_PROG_ORDER,
-) -> *const libc::c_char {
-  let mut po = 0 as *const j2k_prog_order_t;
-  po = j2k_prog_order_list.as_ptr();
-  while (*po).enum_prog as libc::c_int != -(1i32) {
-    if (*po).enum_prog as libc::c_int == prg_order as libc::c_int {
-      return (*po).str_prog.as_ptr();
-    }
-    po = po.offset(1)
-  }
-  return (*po).str_prog.as_ptr();
+
+pub(crate) fn opj_j2k_convert_progression_order(
+  prg_order: OPJ_PROG_ORDER,
+) -> ProgressionOrder {
+  ProgressionOrder::from_c_enum(prg_order)
 }
 /* *
  * Checks the progression order changes values. Tells of the poc given as input are valid.
@@ -985,7 +992,6 @@ unsafe fn opj_j2k_get_num_tp(
   mut pino: OPJ_UINT32,
   mut tileno: OPJ_UINT32,
 ) -> OPJ_UINT32 {
-  let mut prog = 0 as *const OPJ_CHAR;
   let mut i: OPJ_INT32 = 0;
   let mut tpnum = 1 as OPJ_UINT32;
   let mut tcp = 0 as *mut opj_tcp_t;
@@ -1005,42 +1011,37 @@ unsafe fn opj_j2k_get_num_tp(
   l_current_poc = &mut *(*tcp).pocs.as_mut_ptr().offset(pino as isize) as *mut opj_poc_t;
   assert!(!l_current_poc.is_null());
   /* get the progression order as a character string */
-  prog = opj_j2k_convert_progression_order((*tcp).prg);
-  assert!(strlen(prog) > 0u64);
+  let prog = opj_j2k_convert_progression_order((*tcp).prg);
+  assert!(prog != ProgressionOrder::Unknown);
   if (*cp).m_specific_param.m_enc.m_tp_on() as libc::c_int == 1i32 {
-    i = 0i32;
-    while i < 4i32 {
-      match *prog.offset(i as isize) as libc::c_int {
-        67 => {
+    for step in prog.get_order() {
+      match step {
+        ProgressionStep::Component => {
           /* component wise */
           tpnum =
             (tpnum as libc::c_uint).wrapping_mul((*l_current_poc).compE) as OPJ_UINT32
         }
-        82 => {
+        ProgressionStep::Resolution => {
           /* resolution wise */
           tpnum =
             (tpnum as libc::c_uint).wrapping_mul((*l_current_poc).resE) as OPJ_UINT32
         }
-        80 => {
+        ProgressionStep::Precinct => {
           /* precinct wise */
           tpnum =
             (tpnum as libc::c_uint).wrapping_mul((*l_current_poc).prcE) as OPJ_UINT32
         }
-        76 => {
+        ProgressionStep::Layer => {
           /* layer wise */
           tpnum =
             (tpnum as libc::c_uint).wrapping_mul((*l_current_poc).layE) as OPJ_UINT32
         }
-        _ => {}
+        ProgressionStep::Unknown => {}
       }
       /* would we split here ? */
-      if (*cp).m_specific_param.m_enc.m_tp_flag as libc::c_int
-        == *prog.offset(i as isize) as libc::c_int
-      {
+      if (*cp).m_specific_param.m_enc.m_tp_flag == *step as u8 {
         (*cp).m_specific_param.m_enc.m_tp_pos = i;
         break;
-      } else {
-        i += 1
       }
     }
   } else {
