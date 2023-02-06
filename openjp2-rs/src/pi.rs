@@ -1915,7 +1915,7 @@ unsafe fn opj_pi_check_next_level(
   mut cp: *mut opj_cp_t,
   mut tileno: OPJ_UINT32,
   mut pino: OPJ_UINT32,
-  mut prog: *const OPJ_CHAR,
+  mut prog: ProgressionOrder,
 ) -> OPJ_BOOL {
   let mut i: OPJ_INT32 = 0; /*end if*/
   let mut tcps: *mut opj_tcp_t = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
@@ -1924,8 +1924,8 @@ unsafe fn opj_pi_check_next_level(
   if pos >= 0i32 {
     i = pos;
     while i >= 0i32 {
-      match *prog.offset(i as isize) as libc::c_int {
-        82 => {
+      match prog.get_step(i) {
+        ProgressionStep::Resolution => {
           if (*tcp).res_t == (*tcp).resE {
             if opj_pi_check_next_level(pos - 1i32, cp, tileno, pino, prog) != 0 {
               return 1i32;
@@ -1937,7 +1937,7 @@ unsafe fn opj_pi_check_next_level(
           }
           /*end case P*/
         }
-        67 => {
+        ProgressionStep::Component => {
           if (*tcp).comp_t == (*tcp).compE {
             if opj_pi_check_next_level(pos - 1i32, cp, tileno, pino, prog) != 0 {
               return 1i32;
@@ -1948,7 +1948,7 @@ unsafe fn opj_pi_check_next_level(
             return 1i32;
           }
         }
-        76 => {
+        ProgressionStep::Layer => {
           if (*tcp).lay_t == (*tcp).layE {
             if opj_pi_check_next_level(pos - 1i32, cp, tileno, pino, prog) != 0 {
               return 1i32;
@@ -1959,7 +1959,7 @@ unsafe fn opj_pi_check_next_level(
             return 1i32;
           }
         }
-        80 => {
+        ProgressionStep::Precinct => {
           match (*tcp).prg as libc::c_int {
             0 | 1 => {
               /* fall through */
@@ -2524,14 +2524,13 @@ pub(crate) unsafe fn opj_pi_create_encode(
   mut tppos: OPJ_INT32,
   mut t2_mode: J2K_T2_MODE,
 ) {
-  let mut prog = 0 as *const OPJ_CHAR;
   let mut i: OPJ_INT32 = 0;
   let mut incr_top = 1 as OPJ_UINT32;
   let mut resetX = 0 as OPJ_UINT32;
   let mut tcps: *mut opj_tcp_t = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
   let mut tcp: *mut opj_poc_t =
     &mut *(*tcps).pocs.as_mut_ptr().offset(pino as isize) as *mut opj_poc_t;
-  prog = opj_j2k_convert_progression_order((*tcp).prg);
+  let prog = opj_j2k_convert_progression_order((*tcp).prg);
   (*pi.offset(pino as isize)).first = 1i32;
   (*pi.offset(pino as isize)).poc.prg = (*tcp).prg;
   if !((*cp).m_specific_param.m_enc.m_tp_on() as libc::c_int != 0
@@ -2560,20 +2559,20 @@ pub(crate) unsafe fn opj_pi_create_encode(
   } else {
     i = tppos + 1i32;
     while i < 4i32 {
-      match *prog.offset(i as isize) as libc::c_int {
-        82 => {
+      match prog.get_step(i) {
+        ProgressionStep::Resolution => {
           (*pi.offset(pino as isize)).poc.resno0 = (*tcp).resS;
           (*pi.offset(pino as isize)).poc.resno1 = (*tcp).resE
         }
-        67 => {
+        ProgressionStep::Component => {
           (*pi.offset(pino as isize)).poc.compno0 = (*tcp).compS;
           (*pi.offset(pino as isize)).poc.compno1 = (*tcp).compE
         }
-        76 => {
+        ProgressionStep::Layer => {
           (*pi.offset(pino as isize)).poc.layno0 = (*tcp).layS;
           (*pi.offset(pino as isize)).poc.layno1 = (*tcp).layE
         }
-        80 => match (*tcp).prg as libc::c_int {
+        ProgressionStep::Precinct => match (*tcp).prg as libc::c_int {
           0 | 1 => {
             (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prcS;
             (*pi.offset(pino as isize)).poc.precno1 = (*tcp).prcE
@@ -2592,8 +2591,8 @@ pub(crate) unsafe fn opj_pi_create_encode(
     if tpnum == 0u32 {
       i = tppos;
       while i >= 0i32 {
-        match *prog.offset(i as isize) as libc::c_int {
-          67 => {
+        match prog.get_step(i) {
+          ProgressionStep::Component => {
             (*tcp).comp_t = (*tcp).compS;
             (*pi.offset(pino as isize)).poc.compno0 = (*tcp).comp_t;
             (*pi.offset(pino as isize)).poc.compno1 =
@@ -2602,7 +2601,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
               .wrapping_add(1u32)
               as OPJ_UINT32
           }
-          82 => {
+          ProgressionStep::Resolution => {
             (*tcp).res_t = (*tcp).resS;
             (*pi.offset(pino as isize)).poc.resno0 = (*tcp).res_t;
             (*pi.offset(pino as isize)).poc.resno1 =
@@ -2611,7 +2610,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
               .wrapping_add(1u32)
               as OPJ_UINT32
           }
-          76 => {
+          ProgressionStep::Layer => {
             (*tcp).lay_t = (*tcp).layS;
             (*pi.offset(pino as isize)).poc.layno0 = (*tcp).lay_t;
             (*pi.offset(pino as isize)).poc.layno1 =
@@ -2620,7 +2619,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
               .wrapping_add(1u32)
               as OPJ_UINT32
           }
-          80 => match (*tcp).prg as libc::c_int {
+          ProgressionStep::Precinct => match (*tcp).prg as libc::c_int {
             0 | 1 => {
               (*tcp).prc_t = (*tcp).prcS;
               (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prc_t;
@@ -2655,23 +2654,23 @@ pub(crate) unsafe fn opj_pi_create_encode(
     } else {
       i = tppos;
       while i >= 0i32 {
-        match *prog.offset(i as isize) as libc::c_int {
-          67 => {
+        match prog.get_step(i) {
+          ProgressionStep::Component => {
             (*pi.offset(pino as isize)).poc.compno0 =
               (*tcp).comp_t.wrapping_sub(1u32);
             (*pi.offset(pino as isize)).poc.compno1 = (*tcp).comp_t
           }
-          82 => {
+          ProgressionStep::Resolution => {
             (*pi.offset(pino as isize)).poc.resno0 =
               (*tcp).res_t.wrapping_sub(1u32);
             (*pi.offset(pino as isize)).poc.resno1 = (*tcp).res_t
           }
-          76 => {
+          ProgressionStep::Layer => {
             (*pi.offset(pino as isize)).poc.layno0 =
               (*tcp).lay_t.wrapping_sub(1u32);
             (*pi.offset(pino as isize)).poc.layno1 = (*tcp).lay_t
           }
-          80 => match (*tcp).prg as libc::c_int {
+          ProgressionStep::Precinct => match (*tcp).prg as libc::c_int {
             0 | 1 => {
               (*pi.offset(pino as isize)).poc.precno0 =
                 (*tcp).prc_t.wrapping_sub(1u32);
@@ -2693,8 +2692,8 @@ pub(crate) unsafe fn opj_pi_create_encode(
           _ => {}
         }
         if incr_top == 1u32 {
-          match *prog.offset(i as isize) as libc::c_int {
-            82 => {
+          match prog.get_step(i) {
+            ProgressionStep::Resolution => {
               if (*tcp).res_t == (*tcp).resE {
                 if opj_pi_check_next_level(i - 1i32, cp, tileno, pino, prog) != 0 {
                   (*tcp).res_t = (*tcp).resS;
@@ -2718,7 +2717,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
                 incr_top = 0 as OPJ_UINT32
               }
             }
-            67 => {
+            ProgressionStep::Component => {
               if (*tcp).comp_t == (*tcp).compE {
                 if opj_pi_check_next_level(i - 1i32, cp, tileno, pino, prog) != 0 {
                   (*tcp).comp_t = (*tcp).compS;
@@ -2742,7 +2741,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
                 incr_top = 0 as OPJ_UINT32
               }
             }
-            76 => {
+            ProgressionStep::Layer => {
               if (*tcp).lay_t == (*tcp).layE {
                 if opj_pi_check_next_level(i - 1i32, cp, tileno, pino, prog) != 0 {
                   (*tcp).lay_t = (*tcp).layS;
@@ -2766,7 +2765,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
                 incr_top = 0 as OPJ_UINT32
               }
             }
-            80 => match (*tcp).prg as libc::c_int {
+            ProgressionStep::Precinct => match (*tcp).prg as libc::c_int {
               0 | 1 => {
                 if (*tcp).prc_t == (*tcp).prcE {
                   if opj_pi_check_next_level(i - 1i32, cp, tileno, pino, prog) != 0 {
