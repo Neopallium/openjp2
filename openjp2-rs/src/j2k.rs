@@ -20,6 +20,8 @@ use ::libc::{
   sprintf,
 };
 
+use bitflags::bitflags;
+
 extern "C" {
   fn strcpy(_: *mut libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;
 
@@ -43,18 +45,21 @@ extern "C" {
   fn memmove(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
 }
 
-pub type J2K_STATUS = libc::c_uint;
-pub const J2K_STATE_ERR: J2K_STATUS = 32768;
-pub const J2K_STATE_EOC: J2K_STATUS = 256;
-pub const J2K_STATE_DATA: J2K_STATUS = 128;
-pub const J2K_STATE_NEOC: J2K_STATUS = 64;
-pub const J2K_STATE_MT: J2K_STATUS = 32;
-pub const J2K_STATE_TPH: J2K_STATUS = 16;
-pub const J2K_STATE_TPHSOT: J2K_STATUS = 8;
-pub const J2K_STATE_MH: J2K_STATUS = 4;
-pub const J2K_STATE_MHSIZ: J2K_STATUS = 2;
-pub const J2K_STATE_MHSOC: J2K_STATUS = 1;
-pub const J2K_STATE_NONE: J2K_STATUS = 0;
+bitflags! {
+  pub struct J2KState: u16 {
+    const ERR = 32768;
+    const EOC = 256;
+    const DATA = 128;
+    const NEOC = 64;
+    const MT = 32;
+    const TPH = 16;
+    const TPHSOT = 8;
+    const MH = 4;
+    const MHSIZ = 2;
+    const MHSOC = 1;
+    const NONE = 0;
+  }
+}
 
 pub type opj_j2k_mct_function =
   Option<unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> ()>;
@@ -137,7 +142,7 @@ pub type opj_dec_memory_marker_handler_t = opj_dec_memory_marker_handler;
 #[derive(Copy, Clone)]
 pub struct opj_dec_memory_marker_handler {
   pub id: OPJ_UINT32,
-  pub states: OPJ_UINT32,
+  pub states: J2KState,
   pub handler: Option<
     unsafe extern "C" fn(
       _: *mut opj_j2k_t,
@@ -278,7 +283,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff90 as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPHSOT as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPHSOT.bits()),
       handler: Some(
         opj_j2k_read_sot
           as unsafe extern "C" fn(
@@ -294,7 +299,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff52 as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: Some(
         opj_j2k_read_cod
           as unsafe extern "C" fn(
@@ -310,7 +315,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff53 as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: Some(
         opj_j2k_read_coc
           as unsafe extern "C" fn(
@@ -326,7 +331,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff5e as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: Some(
         opj_j2k_read_rgn
           as unsafe extern "C" fn(
@@ -342,7 +347,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff5c as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: Some(
         opj_j2k_read_qcd
           as unsafe extern "C" fn(
@@ -358,7 +363,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff5d as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: Some(
         opj_j2k_read_qcc
           as unsafe extern "C" fn(
@@ -374,7 +379,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff5f as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: Some(
         opj_j2k_read_poc
           as unsafe extern "C" fn(
@@ -390,7 +395,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff51 as OPJ_UINT32,
-      states: J2K_STATE_MHSIZ as OPJ_UINT32,
+      states: J2KState::MHSIZ,
       handler: Some(
         opj_j2k_read_siz
           as unsafe extern "C" fn(
@@ -406,7 +411,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff55 as OPJ_UINT32,
-      states: J2K_STATE_MH as OPJ_UINT32,
+      states: J2KState::MH,
       handler: Some(
         opj_j2k_read_tlm
           as unsafe extern "C" fn(
@@ -422,7 +427,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff57 as OPJ_UINT32,
-      states: J2K_STATE_MH as OPJ_UINT32,
+      states: J2KState::MH,
       handler: Some(
         opj_j2k_read_plm
           as unsafe extern "C" fn(
@@ -438,7 +443,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff58 as OPJ_UINT32,
-      states: J2K_STATE_TPH as OPJ_UINT32,
+      states: J2KState::TPH,
       handler: Some(
         opj_j2k_read_plt
           as unsafe extern "C" fn(
@@ -454,7 +459,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff60 as OPJ_UINT32,
-      states: J2K_STATE_MH as OPJ_UINT32,
+      states: J2KState::MH,
       handler: Some(
         opj_j2k_read_ppm
           as unsafe extern "C" fn(
@@ -470,7 +475,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff61 as OPJ_UINT32,
-      states: J2K_STATE_TPH as OPJ_UINT32,
+      states: J2KState::TPH,
       handler: Some(
         opj_j2k_read_ppt
           as unsafe extern "C" fn(
@@ -486,7 +491,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff91 as OPJ_UINT32,
-      states: 0 as OPJ_UINT32,
+      states: J2KState::NONE,
       handler: None,
     };
     init
@@ -494,7 +499,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff63 as OPJ_UINT32,
-      states: J2K_STATE_MH as OPJ_UINT32,
+      states: J2KState::MH,
       handler: Some(
         opj_j2k_read_crg
           as unsafe extern "C" fn(
@@ -510,7 +515,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff64 as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: Some(
         opj_j2k_read_com
           as unsafe extern "C" fn(
@@ -526,7 +531,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff74 as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: Some(
         opj_j2k_read_mct
           as unsafe extern "C" fn(
@@ -542,7 +547,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff78 as OPJ_UINT32,
-      states: J2K_STATE_MH as OPJ_UINT32,
+      states: J2KState::MH,
       handler: Some(
         opj_j2k_read_cbd
           as unsafe extern "C" fn(
@@ -558,7 +563,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff50 as OPJ_UINT32,
-      states: J2K_STATE_MH as OPJ_UINT32,
+      states: J2KState::MH,
       handler: Some(
         opj_j2k_read_cap
           as unsafe extern "C" fn(
@@ -574,7 +579,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff59 as OPJ_UINT32,
-      states: J2K_STATE_MH as OPJ_UINT32,
+      states: J2KState::MH,
       handler: Some(
         opj_j2k_read_cpf
           as unsafe extern "C" fn(
@@ -590,7 +595,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff75 as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: Some(
         opj_j2k_read_mcc
           as unsafe extern "C" fn(
@@ -606,7 +611,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0xff77 as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: Some(
         opj_j2k_read_mco
           as unsafe extern "C" fn(
@@ -622,7 +627,7 @@ static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] 
   {
     let mut init = opj_dec_memory_marker_handler {
       id: 0 as OPJ_UINT32,
-      states: (J2K_STATE_MH as libc::c_int | J2K_STATE_TPH as libc::c_int) as OPJ_UINT32,
+      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
       handler: None,
     };
     init
@@ -1222,7 +1227,7 @@ unsafe extern "C" fn opj_j2k_read_soc(
     return 0i32;
   }
   /* Next marker should be a SIZ marker in the main header */
-  (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_MHSIZ as OPJ_UINT32;
+  (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::MHSIZ;
   /* FIXME move it in a index structure included in p_j2k*/
   (*(*p_j2k).cstr_index).main_head_start =
     opj_stream_tell(p_stream) - 2i64;
@@ -1814,7 +1819,7 @@ unsafe extern "C" fn opj_j2k_read_siz(
     l_current_tile_param = l_current_tile_param.offset(1);
     i = i.wrapping_add(1)
   }
-  (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_MH as OPJ_UINT32;
+  (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::MH;
   opj_image_comp_header_update(l_image, l_cp);
   return 1i32;
 }
@@ -2080,7 +2085,7 @@ unsafe extern "C" fn opj_j2k_read_cod(
   l_cp = &mut (*p_j2k).m_cp;
   /* If we are in the first tile-part header of the current tile */
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
@@ -2438,7 +2443,7 @@ unsafe extern "C" fn opj_j2k_read_coc(
   assert!(!p_manager.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
@@ -3271,7 +3276,7 @@ unsafe extern "C" fn opj_j2k_read_poc(
   }
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
@@ -4551,7 +4556,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
     /* FIXME: need to be computed from the number of bytes remaining in the codestream */
     (*p_j2k).m_specific_param.m_decoder.m_sot_length = 0 as OPJ_UINT32
   }
-  (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_TPH as OPJ_UINT32;
+  (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPH;
   /* Check if the current tile is outside the area we want decode or not corresponding to the tile index*/
   if (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec == -(1i32) {
     (*p_j2k).m_specific_param.m_decoder.set_m_skip_data(
@@ -5240,9 +5245,9 @@ unsafe extern "C" fn opj_j2k_read_sod(
     l_current_read_size = 0 as OPJ_SIZE_T
   }
   if l_current_read_size != (*p_j2k).m_specific_param.m_decoder.m_sot_length as libc::c_ulong {
-    (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_NEOC as OPJ_UINT32
+    (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_TPHSOT as OPJ_UINT32
+    (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPHSOT
   }
   *l_tile_len = (*l_tile_len as libc::c_uint).wrapping_add(l_current_read_size as OPJ_UINT32)
     as OPJ_UINT32;
@@ -5415,7 +5420,7 @@ unsafe extern "C" fn opj_j2k_read_rgn(
   }
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
@@ -5934,7 +5939,7 @@ unsafe extern "C" fn opj_j2k_read_unk(
     }
     /* Get the marker handler from the marker ID*/
     l_marker_handler = opj_j2k_get_marker_handler(l_unknown_marker);
-    if (*p_j2k).m_specific_param.m_decoder.m_state & (*l_marker_handler).states == 0 {
+    if (*p_j2k).m_specific_param.m_decoder.m_state & (*l_marker_handler).states == J2KState::NONE {
       opj_event_msg(
         p_manager,
         1i32,
@@ -6091,7 +6096,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
   assert!(!p_header_data.is_null());
   assert!(!p_j2k.is_null());
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*p_j2k)
       .m_cp
@@ -6428,7 +6433,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
   assert!(!p_j2k.is_null());
   assert!(!p_manager.is_null());
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*p_j2k)
       .m_cp
@@ -6853,7 +6858,7 @@ unsafe extern "C" fn opj_j2k_read_mco(
   assert!(!p_manager.is_null());
   l_image = (*p_j2k).m_private_image;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*p_j2k)
       .m_cp
@@ -9696,7 +9701,7 @@ unsafe extern "C" fn opj_j2k_encoding_validation(
   /* STATE checking */
   /* make sure the state is at 0 */
   l_is_valid &= ((*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_NONE as libc::c_uint) as libc::c_int;
+    == J2KState::NONE) as libc::c_int;
   /* POINTER validation */
   /* make sure a p_j2k codec is present */
   l_is_valid &= ((*p_j2k).m_procedure_list != 0 as *mut opj_procedure_list_t) as libc::c_int;
@@ -9769,7 +9774,7 @@ unsafe extern "C" fn opj_j2k_decoding_validation(
   assert!(!p_manager.is_null());
   /* STATE checking */
   /* make sure the state is at 0 */
-  l_is_valid &= ((*p_j2k).m_specific_param.m_decoder.m_state == 0u32)
+  l_is_valid &= ((*p_j2k).m_specific_param.m_decoder.m_state == J2KState::NONE)
     as libc::c_int;
   /* POINTER validation */
   /* make sure a p_j2k codec is present */
@@ -9800,7 +9805,7 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
   assert!(!p_j2k.is_null());
   assert!(!p_manager.is_null());
   /*  We enter in the main header */
-  (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_MHSOC as OPJ_UINT32;
+  (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::MHSOC;
   /* Try to read the SOC marker, the codestream must begin with SOC marker */
   if opj_j2k_read_soc(p_j2k, p_stream, p_manager) == 0 {
     opj_event_msg(
@@ -9875,7 +9880,7 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
       l_has_qcd = 1i32
     }
     /* Check if the marker is known and if it is the right place to find it */
-    if (*p_j2k).m_specific_param.m_decoder.m_state & (*l_marker_handler).states == 0 {
+    if (*p_j2k).m_specific_param.m_decoder.m_state & (*l_marker_handler).states == J2KState::NONE {
       opj_event_msg(
         p_manager,
         1i32,
@@ -10052,7 +10057,7 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
     .wrapping_sub(2u32)
     as OPJ_OFF_T;
   /* Next step: read a tile-part header */
-  (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_TPHSOT as OPJ_UINT32;
+  (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPHSOT;
   return 1i32;
 }
 /* *
@@ -10743,10 +10748,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
   assert!(!p_j2k.is_null());
   assert!(!p_manager.is_null());
   /* Reach the End Of Codestream ?*/
-  if (*p_j2k).m_specific_param.m_decoder.m_state == J2K_STATE_EOC as libc::c_uint {
+  if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::EOC {
     l_current_marker = 0xffd9 as OPJ_UINT32
   } else if (*p_j2k).m_specific_param.m_decoder.m_state
-    != J2K_STATE_TPHSOT as libc::c_uint
+    != J2KState::TPHSOT
   {
     return 0i32;
   }
@@ -10758,7 +10763,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
     /* Try to read until the Start Of Data is detected */
     while l_current_marker != 0xff93u32 {
       if opj_stream_get_number_byte_left(p_stream) == 0i64 {
-        (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_NEOC as OPJ_UINT32;
+        (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC;
         break;
       } else {
         /* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
@@ -10795,13 +10800,13 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
         if l_current_marker == 0x8080u32
           && opj_stream_get_number_byte_left(p_stream) == 0i64
         {
-          (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_NEOC as OPJ_UINT32;
+          (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC;
           break;
         } else {
           /* Why this condition? FIXME */
           if (*p_j2k).m_specific_param.m_decoder.m_state
-            & J2K_STATE_TPH as libc::c_uint
-            != 0
+            & J2KState::TPH
+            != J2KState::NONE
           {
             (*p_j2k).m_specific_param.m_decoder.m_sot_length =
               ((*p_j2k).m_specific_param.m_decoder.m_sot_length as libc::c_uint)
@@ -10814,7 +10819,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
           /* Get the marker handler from the marker ID */
           l_marker_handler = opj_j2k_get_marker_handler(l_current_marker);
           /* Check if the marker is known and if it is the right place to find it */
-          if (*p_j2k).m_specific_param.m_decoder.m_state & (*l_marker_handler).states == 0 {
+          if (*p_j2k).m_specific_param.m_decoder.m_state & (*l_marker_handler).states == J2KState::NONE {
             opj_event_msg(
               p_manager,
               1i32,
@@ -10976,7 +10981,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
     }
     if opj_stream_get_number_byte_left(p_stream) == 0i64
       && (*p_j2k).m_specific_param.m_decoder.m_state
-        == J2K_STATE_NEOC as libc::c_uint
+        == J2KState::NEOC
     {
       break;
     }
@@ -11053,7 +11058,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
         .m_specific_param
         .m_decoder
         .set_m_can_decode(0 as OPJ_BITFIELD);
-      (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_TPHSOT as OPJ_UINT32
+      (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPHSOT
     }
     if !((*p_j2k).m_specific_param.m_decoder.m_can_decode() == 0) {
       continue;
@@ -11093,7 +11098,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
                                   l_tile_no_0);
           (*p_j2k).m_current_tile_number = l_tile_no_0;
           l_current_marker = 0xffd9 as OPJ_UINT32;
-          (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_EOC as OPJ_UINT32;
+          (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::EOC;
           break;
         }
       }
@@ -11114,9 +11119,9 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
   }
   /* Current marker is the EOC marker ?*/
   if l_current_marker == 0xffd9u32 {
-    if (*p_j2k).m_specific_param.m_decoder.m_state != J2K_STATE_EOC as libc::c_uint {
+    if (*p_j2k).m_specific_param.m_decoder.m_state != J2KState::EOC {
       (*p_j2k).m_current_tile_number = 0 as OPJ_UINT32;
-      (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_EOC as OPJ_UINT32
+      (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::EOC
     }
   }
   /* Deal with tiles that have a single tile-part with TPsot == 0 and TNsot == 0 */
@@ -11186,7 +11191,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
   *p_tile_x1 = (*(*(*(*p_j2k).m_tcd).tcd_image).tiles).x1;
   *p_tile_y1 = (*(*(*(*p_j2k).m_tcd).tcd_image).tiles).y1;
   *p_nb_comps = (*(*(*(*p_j2k).m_tcd).tcd_image).tiles).numcomps;
-  (*p_j2k).m_specific_param.m_decoder.m_state |= J2K_STATE_DATA as libc::c_uint;
+  (*p_j2k).m_specific_param.m_decoder.m_state |= J2KState::DATA;
   return 1i32;
 }
 #[no_mangle]
@@ -11207,8 +11212,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode_tile(
   assert!(!p_stream.is_null());
   assert!(!p_j2k.is_null());
   assert!(!p_manager.is_null());
-  if (*p_j2k).m_specific_param.m_decoder.m_state & J2K_STATE_DATA as libc::c_uint
-    == 0
+  if (*p_j2k).m_specific_param.m_decoder.m_state & J2KState::DATA
+    == J2KState::NONE
     || p_tile_index != (*p_j2k).m_current_tile_number
   {
     return 0i32;
@@ -11247,7 +11252,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode_tile(
   ) == 0
   {
     opj_j2k_tcp_destroy(l_tcp);
-    (*p_j2k).m_specific_param.m_decoder.m_state |= J2K_STATE_ERR as libc::c_uint;
+    (*p_j2k).m_specific_param.m_decoder.m_state |= J2KState::ERR;
     opj_event_msg(
       p_manager,
       1i32,
@@ -11272,13 +11277,13 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode_tile(
     .m_specific_param
     .m_decoder
     .set_m_can_decode(0 as OPJ_BITFIELD);
-  (*p_j2k).m_specific_param.m_decoder.m_state &= !(J2K_STATE_DATA as OPJ_UINT32);
+  (*p_j2k).m_specific_param.m_decoder.m_state &= !(J2KState::DATA);
   if opj_stream_get_number_byte_left(p_stream) == 0i64
-    && (*p_j2k).m_specific_param.m_decoder.m_state == J2K_STATE_NEOC as libc::c_uint
+    && (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::NEOC
   {
     return 1i32;
   }
-  if (*p_j2k).m_specific_param.m_decoder.m_state != J2K_STATE_EOC as libc::c_uint {
+  if (*p_j2k).m_specific_param.m_decoder.m_state != J2KState::EOC {
     if opj_stream_read_data(
       p_stream,
       l_data.as_mut_ptr(),
@@ -11300,10 +11305,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode_tile(
     );
     if l_current_marker == 0xffd9u32 {
       (*p_j2k).m_current_tile_number = 0 as OPJ_UINT32;
-      (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_EOC as OPJ_UINT32
+      (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::EOC
     } else if l_current_marker != 0xff90u32 {
       if opj_stream_get_number_byte_left(p_stream) == 0i64 {
-        (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_NEOC as OPJ_UINT32;
+        (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC;
         opj_event_msg(
           p_manager,
           2i32,
@@ -11743,7 +11748,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
   {
     /* Check if we are read the main header */
     if (*p_j2k).m_specific_param.m_decoder.m_state
-      != J2K_STATE_TPHSOT as libc::c_uint
+      != J2KState::TPHSOT
     {
       opj_event_msg(
         p_manager,
@@ -12236,7 +12241,7 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
   assert!(!p_header_data.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
@@ -12280,8 +12285,8 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
                       b"Error decoding component %d.\nThe number of resolutions to remove (%d) is greater or equal than the number of resolutions of this component (%d)\nModify the cp_reduce parameter.\n\n\x00"
                           as *const u8 as *const libc::c_char, compno,
                       (*l_cp).m_specific_param.m_dec.m_reduce,
-                      (*l_tccp).numresolutions); /* FIXME J2K_DEC_STATE_ERR;*/
-    (*p_j2k).m_specific_param.m_decoder.m_state |= 0x8000u32;
+                      (*l_tccp).numresolutions);
+    (*p_j2k).m_specific_param.m_decoder.m_state |= J2KState::ERR;
     return 0i32;
   }
   /* SPcod (E) / SPcoc (B) */
@@ -12408,7 +12413,7 @@ unsafe fn opj_j2k_copy_tile_component_parameters(mut p_j2k: *mut opj_j2k_t) {
   assert!(!p_j2k.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
@@ -12699,7 +12704,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
   l_cp = &mut (*p_j2k).m_cp;
   /* come from tile part header or main header ?*/
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
@@ -12811,7 +12816,7 @@ unsafe fn opj_j2k_copy_tile_quantization_parameters(mut p_j2k: *mut opj_j2k_t) {
   assert!(!p_j2k.is_null());
   l_cp = &mut (*p_j2k).m_cp;
   l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state
-    == J2K_STATE_TPH as libc::c_uint
+    == J2KState::TPH
   {
     &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
@@ -13708,7 +13713,7 @@ unsafe extern "C" fn opj_j2k_decode_tiles(
     {
       l_current_tile_no = 0 as OPJ_UINT32;
       (*p_j2k).m_current_tile_number = 0 as OPJ_UINT32;
-      (*p_j2k).m_specific_param.m_decoder.m_state |= J2K_STATE_DATA as libc::c_uint
+      (*p_j2k).m_specific_param.m_decoder.m_state |= J2KState::DATA
     } else {
       if opj_j2k_read_tile_header(
         p_j2k,
@@ -13775,7 +13780,7 @@ unsafe extern "C" fn opj_j2k_decode_tiles(
     );
     if opj_stream_get_number_byte_left(p_stream) == 0i64
       && (*p_j2k).m_specific_param.m_decoder.m_state
-        == J2K_STATE_NEOC as libc::c_uint
+        == J2KState::NEOC
     {
       break;
     }
@@ -13897,9 +13902,9 @@ unsafe extern "C" fn opj_j2k_decode_one_tile(
         return 0i32;
       }
       /* Special case if we have previously read the EOC marker (if the previous tile getted is the last ) */
-      if (*p_j2k).m_specific_param.m_decoder.m_state == J2K_STATE_EOC as libc::c_uint
+      if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::EOC
       {
-        (*p_j2k).m_specific_param.m_decoder.m_state = J2K_STATE_TPHSOT as OPJ_UINT32
+        (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPHSOT
       }
     }
   }

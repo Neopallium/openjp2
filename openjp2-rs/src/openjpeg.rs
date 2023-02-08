@@ -1222,7 +1222,7 @@ pub type opj_j2k_dec_t = opj_j2k_dec;
 #[repr(C)]
 #[derive(Copy, Clone, BitfieldStruct)]
 pub struct opj_j2k_dec {
-  pub m_state: OPJ_UINT32,
+  pub m_state: J2KState,
   pub m_default_tcp: *mut opj_tcp_t,
   pub m_header_data: *mut OPJ_BYTE,
   pub m_header_data_size: OPJ_UINT32,
