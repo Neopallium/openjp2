@@ -1,4 +1,5 @@
 use super::openjpeg::*;
+use super::consts::*;
 use super::math::*;
 use super::pi::*;
 use super::cio::*;
@@ -46,7 +47,7 @@ extern "C" {
 }
 
 bitflags! {
-  pub struct J2KState: u16 {
+  pub struct J2KState: u32 {
     const ERR = 32768;
     const EOC = 256;
     const DATA = 128;
@@ -58,6 +59,81 @@ bitflags! {
     const MHSIZ = 2;
     const MHSOC = 1;
     const NONE = 0;
+  }
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy)]
+pub enum MCTElementType {
+  DOUBLE = 3,
+  FLOAT = 2,
+  INT32 = 1,
+  INT16 = 0,
+}
+
+impl MCTElementType {
+  pub fn new(num: u32) -> Self {
+    match num & 0b_11_u32 {
+      0 => Self::INT16,
+      1 => Self::INT32,
+      2 => Self::FLOAT,
+      3 => Self::DOUBLE,
+      _ => Self::INT16,
+    }
+  }
+
+  pub fn size(&self) -> u32 {
+    match self {
+      Self::INT16 => 2,
+      Self::INT32 => 4,
+      Self::FLOAT => 4,
+      Self::DOUBLE => 8,
+    }
+  }
+
+  pub fn read_to_float(&self,
+    p_src_data: *const libc::c_void,
+    p_dest_data: *mut libc::c_void,
+    p_nb_elem: OPJ_UINT32,
+  ) {
+    unsafe {
+      match self {
+         Self::INT16 => opj_j2k_read_int16_to_float(p_src_data, p_dest_data, p_nb_elem),
+         Self::INT32 => opj_j2k_read_int32_to_float(p_src_data, p_dest_data, p_nb_elem),
+         Self::FLOAT => opj_j2k_read_float32_to_float(p_src_data, p_dest_data, p_nb_elem),
+         Self::DOUBLE => opj_j2k_read_float64_to_float(p_src_data, p_dest_data, p_nb_elem),
+      }
+    }
+  }
+
+  pub fn read_to_int32(&self,
+    p_src_data: *const libc::c_void,
+    p_dest_data: *mut libc::c_void,
+    p_nb_elem: OPJ_UINT32,
+  ) {
+    unsafe {
+      match self {
+         Self::INT16 => opj_j2k_read_int16_to_int32(p_src_data, p_dest_data, p_nb_elem),
+         Self::INT32 => opj_j2k_read_int32_to_int32(p_src_data, p_dest_data, p_nb_elem),
+         Self::FLOAT => opj_j2k_read_float32_to_int32(p_src_data, p_dest_data, p_nb_elem),
+         Self::DOUBLE => opj_j2k_read_float64_to_int32(p_src_data, p_dest_data, p_nb_elem),
+      }
+    }
+  }
+
+  pub fn write_from_float(&self,
+    p_src_data: *const libc::c_void,
+    p_dest_data: *mut libc::c_void,
+    p_nb_elem: OPJ_UINT32,
+  ) {
+    unsafe {
+      match self {
+         Self::INT16 => opj_j2k_write_float_to_int16(p_src_data, p_dest_data, p_nb_elem),
+         Self::INT32 => opj_j2k_write_float_to_int32(p_src_data, p_dest_data, p_nb_elem),
+         Self::FLOAT => opj_j2k_write_float_to_float(p_src_data, p_dest_data, p_nb_elem),
+         Self::DOUBLE => opj_j2k_write_float_to_float64(p_src_data, p_dest_data, p_nb_elem),
+      }
+    }
   }
 }
 
@@ -136,26 +212,293 @@ impl ProgressionOrder {
   }
 }
 
-pub type opj_dec_memory_marker_handler_t = opj_dec_memory_marker_handler;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_dec_memory_marker_handler {
-  pub id: OPJ_UINT32,
-  pub states: J2KState,
-  pub handler: Option<
-    unsafe extern "C" fn(
-      _: *mut opj_j2k_t,
-      _: *mut OPJ_BYTE,
-      _: OPJ_UINT32,
-      _: *mut opj_event_mgr_t,
-    ) -> OPJ_BOOL,
-  >,
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub enum J2KMarker {
+  /// UNKNOWN marker value
+  UNK(u32),
+  /// SOC marker value
+  SOC,
+  /// SOT marker value
+  SOT,
+  /// SOD marker value
+  SOD,
+  /// EOC marker value
+  EOC,
+  /// CAP marker value
+  CAP,
+  /// SIZ marker value
+  SIZ,
+  /// COD marker value
+  COD,
+  /// COC marker value
+  COC,
+  /// CPF marker value
+  CPF,
+  /// RGN marker value
+  RGN,
+  /// QCD marker value
+  QCD,
+  /// QCC marker value
+  QCC,
+  /// POC marker value
+  POC,
+  /// TLM marker value
+  TLM,
+  /// PLM marker value
+  PLM,
+  /// PLT marker value
+  PLT,
+  /// PPM marker value
+  PPM,
+  /// PPT marker value
+  PPT,
+  /// SOP marker value
+  SOP,
+  /// EPH marker value
+  EPH,
+  /// CRG marker value
+  CRG,
+  /// COM marker value
+  COM,
+  /// CBD marker value
+  CBD,
+  /// MCC marker value
+  MCC,
+  /// MCT marker value
+  MCT,
+  /// MCO marker value
+  MCO,
+  /// EPC marker value (Part 11: JPEG 2000 for Wireless)
+  #[cfg(feature = "jpwl")]
+  EPC,
+  /// EPB marker value (Part 11: JPEG 2000 for Wireless)
+  #[cfg(feature = "jpwl")]
+  EPB,
+  /// ESD marker value (Part 11: JPEG 2000 for Wireless)
+  #[cfg(feature = "jpwl")]
+  ESD,
+  /// RED marker value (Part 11: JPEG 2000 for Wireless)
+  #[cfg(feature = "jpwl")]
+  RED,
+  /// SEC marker value (Part 8: Secure JPEG 2000)
+  #[cfg(feature = "jpspec")]
+  SEC,
+  /// INSEC marker value (Part 8: Secure JPEG 2000)
+  #[cfg(feature = "jpspec")]
+  INSEC,
 }
 
-/* * marker value */
-/* * value of the state when the marker can appear */
-/* * action linked to the marker */
+impl From<u32> for J2KMarker {
+  fn from(num: u32) -> Self {
+    match num {
+      0xff4f => Self::SOC,
+      0xff90 => Self::SOT,
+      0xff93 => Self::SOD,
+      0xffd9 => Self::EOC,
+      0xff50 => Self::CAP,
+      0xff51 => Self::SIZ,
+      0xff52 => Self::COD,
+      0xff53 => Self::COC,
+      0xff59 => Self::CPF,
+      0xff5e => Self::RGN,
+      0xff5c => Self::QCD,
+      0xff5d => Self::QCC,
+      0xff5f => Self::POC,
+      0xff55 => Self::TLM,
+      0xff57 => Self::PLM,
+      0xff58 => Self::PLT,
+      0xff60 => Self::PPM,
+      0xff61 => Self::PPT,
+      0xff91 => Self::SOP,
+      0xff92 => Self::EPH,
+      0xff63 => Self::CRG,
+      0xff64 => Self::COM,
+      0xff78 => Self::CBD,
+      0xff75 => Self::MCC,
+      0xff74 => Self::MCT,
+      0xff77 => Self::MCO,
+      #[cfg(feature = "jpwl")]
+      0xff68 => Self::EPC,
+      #[cfg(feature = "jpwl")]
+      0xff66 => Self::EPB,
+      #[cfg(feature = "jpwl")]
+      0xff67 => Self::ESD,
+      #[cfg(feature = "jpwl")]
+      0xff69 => Self::RED,
+      #[cfg(feature = "jpspec")]
+      0xff65 => Self::SEC,
+      #[cfg(feature = "jpspec")]
+      0xff94 => Self::INSEC,
+      num => Self::UNK(num),
+    }
+  }
+}
+
+impl J2KMarker {
+  pub fn from_buffer(p_buffer: *const OPJ_BYTE) -> Self {
+    let mut marker: OPJ_UINT32 = 0;
+    /* Read 2 bytes as the new marker ID */
+    unsafe {
+      opj_read_bytes_LE(
+        p_buffer,
+        &mut marker,
+        2 as OPJ_UINT32,
+      );
+    }
+    Self::from(marker)
+  }
+
+  pub fn as_u32(&self) -> u32 {
+    match self {
+      Self::SOC => 0xff4f,
+      Self::SOT => 0xff90,
+      Self::SOD => 0xff93,
+      Self::EOC => 0xffd9,
+      Self::CAP => 0xff50,
+      Self::SIZ => 0xff51,
+      Self::COD => 0xff52,
+      Self::COC => 0xff53,
+      Self::CPF => 0xff59,
+      Self::RGN => 0xff5e,
+      Self::QCD => 0xff5c,
+      Self::QCC => 0xff5d,
+      Self::POC => 0xff5f,
+      Self::TLM => 0xff55,
+      Self::PLM => 0xff57,
+      Self::PLT => 0xff58,
+      Self::PPM => 0xff60,
+      Self::PPT => 0xff61,
+      Self::SOP => 0xff91,
+      Self::EPH => 0xff92,
+      Self::CRG => 0xff63,
+      Self::COM => 0xff64,
+      Self::CBD => 0xff78,
+      Self::MCC => 0xff75,
+      Self::MCT => 0xff74,
+      Self::MCO => 0xff77,
+      #[cfg(feature = "jpwl")]
+      Self::EPC => 0xff68,
+      #[cfg(feature = "jpwl")]
+      Self::EPB => 0xff66,
+      #[cfg(feature = "jpwl")]
+      Self::ESD => 0xff67,
+      #[cfg(feature = "jpwl")]
+      Self::RED => 0xff69,
+      #[cfg(feature = "jpspec")]
+      Self::SEC => 0xff65,
+      #[cfg(feature = "jpspec")]
+      Self::INSEC => 0xff94,
+      Self::UNK(num) => *num,
+    }
+  }
+
+  pub fn is_invalid(&self) -> bool {
+    self.as_u32() < 0xff00u32
+  }
+
+  pub fn is_unknown(&self) -> bool {
+    match self {
+      Self::UNK(_) => true,
+      _ => false,
+    }
+  }
+
+  pub fn states(&self) -> J2KState {
+    match self {
+      Self::SOT => J2KState::MH | J2KState::TPHSOT,
+      Self::COD => J2KState::MH | J2KState::TPH,
+      Self::COC => J2KState::MH | J2KState::TPH,
+      Self::RGN => J2KState::MH | J2KState::TPH,
+      Self::QCD => J2KState::MH | J2KState::TPH,
+      Self::QCC => J2KState::MH | J2KState::TPH,
+      Self::POC => J2KState::MH | J2KState::TPH,
+      Self::SIZ => J2KState::MHSIZ,
+      Self::TLM => J2KState::MH,
+      Self::PLM => J2KState::MH,
+      Self::PLT => J2KState::TPH,
+      Self::PPM => J2KState::MH,
+      Self::PPT => J2KState::TPH,
+      Self::SOP => J2KState::NONE,
+      Self::CRG => J2KState::MH,
+      Self::COM => J2KState::MH | J2KState::TPH,
+      Self::MCT => J2KState::MH | J2KState::TPH,
+      Self::CBD => J2KState::MH,
+      Self::CAP => J2KState::MH,
+      Self::CPF => J2KState::MH,
+      Self::MCC => J2KState::MH | J2KState::TPH,
+      Self::MCO => J2KState::MH | J2KState::TPH,
+      #[cfg(feature = "jpwl")]
+      Self::EPC => J2KState::MH | J2KState::TPH,
+      #[cfg(feature = "jpwl")]
+      Self::EPB => J2KState::MH | J2KState::TPH,
+      #[cfg(feature = "jpwl")]
+      Self::ESD => J2KState::MH | J2KState::TPH,
+      #[cfg(feature = "jpwl")]
+      Self::RED => J2KState::MH | J2KState::TPH,
+      #[cfg(feature = "jpspec")]
+      Self::SEC => J2K_DEC_STATE_MH,
+      #[cfg(feature = "jpspec")]
+      Self::INSEC => J2KState::NONE,
+
+      _ => J2KState::MH | J2KState::TPH,
+    }
+  }
+
+  pub fn handler(&self,
+    p_j2k: *mut opj_j2k_t,
+    p_header_data: *mut OPJ_BYTE,
+    p_header_size: OPJ_UINT32,
+    p_manager: *mut opj_event_mgr_t,
+  ) -> OPJ_BOOL {
+    unsafe {
+      match self {
+        Self::SOT => opj_j2k_read_sot(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::COD => opj_j2k_read_cod(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::COC => opj_j2k_read_coc(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::RGN => opj_j2k_read_rgn(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::QCD => opj_j2k_read_qcd(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::QCC => opj_j2k_read_qcc(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::POC => opj_j2k_read_poc(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::SIZ => opj_j2k_read_siz(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::TLM => opj_j2k_read_tlm(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::PLM => opj_j2k_read_plm(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::PLT => opj_j2k_read_plt(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::PPM => opj_j2k_read_ppm(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::PPT => opj_j2k_read_ppt(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::CRG => opj_j2k_read_crg(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::COM => opj_j2k_read_com(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::MCT => opj_j2k_read_mct(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::CBD => opj_j2k_read_cbd(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::CAP => opj_j2k_read_cap(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::CPF => opj_j2k_read_cpf(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::MCC => opj_j2k_read_mcc(p_j2k, p_header_data, p_header_size, p_manager),
+        Self::MCO => opj_j2k_read_mco(p_j2k, p_header_data, p_header_size, p_manager),
+        #[cfg(feature = "jpwl")]
+        Self::EPC => opj_j2k_read_epc(p_j2k, p_header_data, p_header_size, p_manager),
+        #[cfg(feature = "jpwl")]
+        Self::EPB => opj_j2k_read_epb(p_j2k, p_header_data, p_header_size, p_manager),
+        #[cfg(feature = "jpwl")]
+        Self::ESD => opj_j2k_read_esd(p_j2k, p_header_data, p_header_size, p_manager),
+        #[cfg(feature = "jpwl")]
+        Self::RED => opj_j2k_read_red(p_j2k, p_header_data, p_header_size, p_manager),
+        #[cfg(feature = "jpspec")]
+        Self::SEC => opj_j2k_read_sec(p_j2k, p_header_data, p_header_size, p_manager),
+        #[cfg(feature = "jpspec")]
+        Self::INSEC => opj_j2k_read_insec(p_j2k, p_header_data, p_header_size, p_manager),
+        _ => {
+          // No handler for this marker.
+          opj_event_msg(
+            p_manager,
+            EVT_ERROR as i32,
+            b"No handler for unknown marker.\n\x00" as *const u8 as *const libc::c_char,
+          );
+          return 0i32;
+        }
+      }
+    }
+  }
+}
+
 /* *
  * Updates the Tile Length Marker.
  */
@@ -216,423 +559,6 @@ unsafe fn opj_j2k_update_tlm(
     .offset(4);
 }
 
-/* *
- * FIXME DOC
- */
-static mut MCT_ELEMENT_SIZE: [OPJ_UINT32; 4] = [
-  2 as OPJ_UINT32,
-  4 as OPJ_UINT32,
-  4 as OPJ_UINT32,
-  8 as OPJ_UINT32,
-];
-static mut j2k_mct_read_functions_to_float: [opj_j2k_mct_function; 4] = [
-  Some(
-    opj_j2k_read_int16_to_float
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-  Some(
-    opj_j2k_read_int32_to_float
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-  Some(
-    opj_j2k_read_float32_to_float
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-  Some(
-    opj_j2k_read_float64_to_float
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-];
-static mut j2k_mct_read_functions_to_int32: [opj_j2k_mct_function; 4] = [
-  Some(
-    opj_j2k_read_int16_to_int32
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-  Some(
-    opj_j2k_read_int32_to_int32
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-  Some(
-    opj_j2k_read_float32_to_int32
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-  Some(
-    opj_j2k_read_float64_to_int32
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-];
-static mut j2k_mct_write_functions_from_float: [opj_j2k_mct_function; 4] = [
-  Some(
-    opj_j2k_write_float_to_int16
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-  Some(
-    opj_j2k_write_float_to_int32
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-  Some(
-    opj_j2k_write_float_to_float
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-  Some(
-    opj_j2k_write_float_to_float64
-      as unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> (),
-  ),
-];
-static mut j2k_memory_marker_handler_tab: [opj_dec_memory_marker_handler_t; 23] = [
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff90 as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPHSOT.bits()),
-      handler: Some(
-        opj_j2k_read_sot
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff52 as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: Some(
-        opj_j2k_read_cod
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff53 as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: Some(
-        opj_j2k_read_coc
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff5e as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: Some(
-        opj_j2k_read_rgn
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff5c as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: Some(
-        opj_j2k_read_qcd
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff5d as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: Some(
-        opj_j2k_read_qcc
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff5f as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: Some(
-        opj_j2k_read_poc
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff51 as OPJ_UINT32,
-      states: J2KState::MHSIZ,
-      handler: Some(
-        opj_j2k_read_siz
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff55 as OPJ_UINT32,
-      states: J2KState::MH,
-      handler: Some(
-        opj_j2k_read_tlm
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff57 as OPJ_UINT32,
-      states: J2KState::MH,
-      handler: Some(
-        opj_j2k_read_plm
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff58 as OPJ_UINT32,
-      states: J2KState::TPH,
-      handler: Some(
-        opj_j2k_read_plt
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff60 as OPJ_UINT32,
-      states: J2KState::MH,
-      handler: Some(
-        opj_j2k_read_ppm
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff61 as OPJ_UINT32,
-      states: J2KState::TPH,
-      handler: Some(
-        opj_j2k_read_ppt
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff91 as OPJ_UINT32,
-      states: J2KState::NONE,
-      handler: None,
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff63 as OPJ_UINT32,
-      states: J2KState::MH,
-      handler: Some(
-        opj_j2k_read_crg
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff64 as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: Some(
-        opj_j2k_read_com
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff74 as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: Some(
-        opj_j2k_read_mct
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff78 as OPJ_UINT32,
-      states: J2KState::MH,
-      handler: Some(
-        opj_j2k_read_cbd
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff50 as OPJ_UINT32,
-      states: J2KState::MH,
-      handler: Some(
-        opj_j2k_read_cap
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff59 as OPJ_UINT32,
-      states: J2KState::MH,
-      handler: Some(
-        opj_j2k_read_cpf
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff75 as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: Some(
-        opj_j2k_read_mcc
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0xff77 as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: Some(
-        opj_j2k_read_mco
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
-          ) -> OPJ_BOOL,
-      ),
-    };
-    init
-  },
-  {
-    let mut init = opj_dec_memory_marker_handler {
-      id: 0 as OPJ_UINT32,
-      states: J2KState::from_bits_truncate(J2KState::MH.bits() | J2KState::TPH.bits()),
-      handler: None,
-    };
-    init
-  },
-];
 unsafe extern "C" fn opj_j2k_read_int16_to_float(
   mut p_src_data: *const libc::c_void,
   mut p_dest_data: *mut libc::c_void,
@@ -1168,7 +1094,7 @@ unsafe extern "C" fn opj_j2k_write_soc(
   /* write SOC identifier */
   opj_write_bytes_LE(
     l_start_stream,
-    0xff4f as OPJ_UINT32,
+    J2KMarker::SOC.as_u32(),
     2 as OPJ_UINT32,
   );
   if opj_stream_write_data(
@@ -1203,7 +1129,6 @@ unsafe extern "C" fn opj_j2k_read_soc(
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   let mut l_data: [OPJ_BYTE; 2] = [0; 2];
-  let mut l_marker: OPJ_UINT32 = 0;
   /* preconditions */
 
   assert!(!p_j2k.is_null());
@@ -1218,12 +1143,8 @@ unsafe extern "C" fn opj_j2k_read_soc(
   {
     return 0i32;
   }
-  opj_read_bytes_LE(
-    l_data.as_mut_ptr(),
-    &mut l_marker,
-    2 as OPJ_UINT32,
-  );
-  if l_marker != 0xff4fu32 {
+  let l_marker = J2KMarker::from_buffer(l_data.as_mut_ptr());
+  if l_marker != J2KMarker::SOC {
     return 0i32;
   }
   /* Next marker should be a SIZ marker in the main header */
@@ -1241,7 +1162,7 @@ unsafe extern "C" fn opj_j2k_read_soc(
   if 0i32
     == opj_j2k_add_mhmarker(
       (*p_j2k).cstr_index,
-      0xff4f as OPJ_UINT32,
+      J2KMarker::SOC,
       (*(*p_j2k).cstr_index).main_head_start,
       2 as OPJ_UINT32,
     )
@@ -1306,7 +1227,7 @@ unsafe extern "C" fn opj_j2k_write_siz(
   /* write SOC identifier */
   opj_write_bytes_LE(
     l_current_ptr,
-    0xff51 as OPJ_UINT32,
+    J2KMarker::SIZ.as_u32(),
     2 as OPJ_UINT32,
   ); /* SIZ */
   l_current_ptr = l_current_ptr.offset(2); /* L_SIZ */
@@ -1870,7 +1791,7 @@ unsafe extern "C" fn opj_j2k_write_com(
   l_current_ptr = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(
     l_current_ptr,
-    0xff64 as OPJ_UINT32,
+    J2KMarker::COM.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_ptr = l_current_ptr.offset(2);
@@ -1982,7 +1903,7 @@ unsafe extern "C" fn opj_j2k_write_cod(
   l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(
     l_current_data,
-    0xff52 as OPJ_UINT32,
+    J2KMarker::COD.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
@@ -2355,7 +2276,7 @@ unsafe extern "C" fn opj_j2k_write_coc_in_memory(
   l_current_data = p_data;
   opj_write_bytes_LE(
     l_current_data,
-    0xff53 as OPJ_UINT32,
+    J2KMarker::COC.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
@@ -2558,7 +2479,7 @@ unsafe extern "C" fn opj_j2k_write_qcd(
   l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(
     l_current_data,
-    0xff5c as OPJ_UINT32,
+    J2KMarker::QCD.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
@@ -2782,7 +2703,7 @@ unsafe extern "C" fn opj_j2k_write_qcc_in_memory(
   l_current_data = p_data;
   opj_write_bytes_LE(
     l_current_data,
-    0xff5d as OPJ_UINT32,
+    J2KMarker::QCC.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
@@ -3052,7 +2973,7 @@ unsafe extern "C" fn opj_j2k_write_poc_in_memory(
   l_current_data = p_data;
   opj_write_bytes_LE(
     l_current_data,
-    0xff5f as OPJ_UINT32,
+    J2KMarker::POC.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
@@ -4211,7 +4132,7 @@ unsafe extern "C" fn opj_j2k_write_tlm(
   (*p_j2k).m_specific_param.m_encoder.m_tlm_start = opj_stream_tell(p_stream); /* TLM */
   opj_write_bytes_LE(
     l_current_data,
-    0xff55 as OPJ_UINT32,
+    J2KMarker::TLM.as_u32(),
     2 as OPJ_UINT32,
   ); /* Lpoc */
   l_current_data = l_current_data.offset(2); /* Ztlm=0*/
@@ -4286,7 +4207,7 @@ unsafe extern "C" fn opj_j2k_write_sot(
   }
   opj_write_bytes_LE(
     p_data,
-    0xff90 as OPJ_UINT32,
+    J2KMarker::SOT.as_u32(),
     2 as OPJ_UINT32,
   );
   p_data = p_data.offset(2);
@@ -4799,7 +4720,7 @@ unsafe extern "C" fn opj_j2k_write_plt_in_memory(
   let mut i: OPJ_UINT32 = 0;
   opj_write_bytes_LE(
     p_data,
-    0xff58 as OPJ_UINT32,
+    J2KMarker::PLT.as_u32(),
     2 as OPJ_UINT32,
   );
   p_data = p_data.offset(2);
@@ -4846,7 +4767,7 @@ unsafe extern "C" fn opj_j2k_write_plt_in_memory(
       /* Start new segment */
       opj_write_bytes_LE(
         p_data,
-        0xff58 as OPJ_UINT32,
+        J2KMarker::PLT.as_u32(),
         2 as OPJ_UINT32,
       );
       p_data = p_data.offset(2);
@@ -4921,7 +4842,7 @@ unsafe extern "C" fn opj_j2k_write_sod(
   }
   opj_write_bytes_LE(
     p_data,
-    0xff93 as OPJ_UINT32,
+    J2KMarker::SOD.as_u32(),
     2 as OPJ_UINT32,
   );
   /* make room for the EOF marker */
@@ -5215,7 +5136,7 @@ unsafe extern "C" fn opj_j2k_read_sod(
       == opj_j2k_add_tlmarker(
         (*p_j2k).m_current_tile_number,
         l_cstr_index,
-        0xff93 as OPJ_UINT32,
+        J2KMarker::SOD,
         l_current_pos,
         (*p_j2k)
           .m_specific_param
@@ -5295,7 +5216,7 @@ unsafe extern "C" fn opj_j2k_write_rgn(
   l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(
     l_current_data,
-    0xff5e as OPJ_UINT32,
+    J2KMarker::RGN.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
@@ -5349,7 +5270,7 @@ unsafe extern "C" fn opj_j2k_write_eoc(
   assert!(!p_stream.is_null());
   opj_write_bytes_LE(
     (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
-    0xffd9 as OPJ_UINT32,
+    J2KMarker::EOC.as_u32(),
     2 as OPJ_UINT32,
   );
   /* UniPG>> */
@@ -5896,12 +5817,12 @@ unsafe extern "C" fn opj_j2k_write_epc(
 unsafe extern "C" fn opj_j2k_read_unk(
   mut p_j2k: *mut opj_j2k_t,
   mut p_stream: *mut opj_stream_private_t,
-  mut output_marker: *mut OPJ_UINT32,
+  mut output_marker: &mut J2KMarker,
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
   let mut l_unknown_marker: OPJ_UINT32 = 0;
-  let mut l_marker_handler = 0 as *const opj_dec_memory_marker_handler_t;
   let mut l_size_unk = 2 as OPJ_UINT32;
+  let mut l_marker_handler = J2KMarker::UNK(0);
   /* preconditions*/
 
   assert!(!p_j2k.is_null());
@@ -5938,20 +5859,20 @@ unsafe extern "C" fn opj_j2k_read_unk(
       continue;
     }
     /* Get the marker handler from the marker ID*/
-    l_marker_handler = opj_j2k_get_marker_handler(l_unknown_marker);
-    if (*p_j2k).m_specific_param.m_decoder.m_state & (*l_marker_handler).states == J2KState::NONE {
+    l_marker_handler = J2KMarker::from(l_unknown_marker);
+    if (*p_j2k).m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
       opj_event_msg(
         p_manager,
         1i32,
         b"Marker is not compliant with its position\n\x00" as *const u8 as *const libc::c_char,
       );
       return 0i32;
-    } else if (*l_marker_handler).id != 0u32 {
+    } else if !l_marker_handler.is_unknown() {
       /* Add the marker to the codestream index*/
-      if (*l_marker_handler).id != 0xff90u32 {
+      if l_marker_handler != J2KMarker::SOT {
         let mut res = opj_j2k_add_mhmarker(
           (*p_j2k).cstr_index,
-          0 as OPJ_UINT32,
+          J2KMarker::UNK(0),
           (opj_stream_tell(p_stream) as OPJ_UINT32).wrapping_sub(l_size_unk) as OPJ_OFF_T,
           l_size_unk,
         );
@@ -5971,7 +5892,7 @@ unsafe extern "C" fn opj_j2k_read_unk(
         as OPJ_UINT32
     }
   }
-  *output_marker = (*l_marker_handler).id;
+  *output_marker = l_marker_handler;
   return 1i32;
 }
 /* *
@@ -6020,7 +5941,7 @@ unsafe extern "C" fn opj_j2k_write_mct_record(
   l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(
     l_current_data,
-    0xff74 as OPJ_UINT32,
+    J2KMarker::MCT.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
@@ -6224,7 +6145,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
   (*l_mct_data).m_array_type =
     (l_tmp >> 8i32 & 3u32) as J2K_MCT_ARRAY_TYPE;
   (*l_mct_data).m_element_type =
-    (l_tmp >> 10i32 & 3u32) as J2K_MCT_ELEMENT_TYPE;
+    MCTElementType::new(l_tmp >> 10i32 & 3u32);
   opj_read_bytes_LE(p_header_data, &mut l_tmp, 2 as OPJ_UINT32);
   p_header_data = p_header_data.offset(2);
   if l_tmp != 0u32 {
@@ -6314,7 +6235,7 @@ unsafe extern "C" fn opj_j2k_write_mcc_record(
   l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(
     l_current_data,
-    0xff75 as OPJ_UINT32,
+    J2KMarker::MCC.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
@@ -6784,7 +6705,7 @@ unsafe extern "C" fn opj_j2k_write_mco(
   l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(
     l_current_data,
-    0xff77 as OPJ_UINT32,
+    J2KMarker::MCO.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
@@ -6956,7 +6877,7 @@ unsafe fn opj_j2k_add_mct(
   }
   l_deco_array = (*l_mcc_record).m_decorrelation_array;
   if !l_deco_array.is_null() {
-    l_data_size = MCT_ELEMENT_SIZE[(*l_deco_array).m_element_type as usize]
+    l_data_size = (*l_deco_array).m_element_type.size()
       .wrapping_mul((*p_image).numcomps)
       .wrapping_mul((*p_image).numcomps);
     if (*l_deco_array).m_data_size != l_data_size {
@@ -6969,8 +6890,7 @@ unsafe fn opj_j2k_add_mct(
     if (*p_tcp).m_mct_decoding_matrix.is_null() {
       return 0i32;
     }
-    j2k_mct_read_functions_to_float[(*l_deco_array).m_element_type as usize]
-      .expect("non-null function pointer")(
+    (*l_deco_array).m_element_type.read_to_float(
       (*l_deco_array).m_data as *const libc::c_void,
       (*p_tcp).m_mct_decoding_matrix as *mut libc::c_void,
       l_nb_elem,
@@ -6979,7 +6899,7 @@ unsafe fn opj_j2k_add_mct(
   l_offset_array = (*l_mcc_record).m_offset_array;
   if !l_offset_array.is_null() {
     l_data_size =
-      MCT_ELEMENT_SIZE[(*l_offset_array).m_element_type as usize].wrapping_mul((*p_image).numcomps);
+      (*l_offset_array).m_element_type.size().wrapping_mul((*p_image).numcomps);
     if (*l_offset_array).m_data_size != l_data_size {
       return 0i32;
     }
@@ -6990,8 +6910,7 @@ unsafe fn opj_j2k_add_mct(
     if l_offset_data.is_null() {
       return 0i32;
     }
-    j2k_mct_read_functions_to_int32[(*l_offset_array).m_element_type as usize]
-      .expect("non-null function pointer")(
+    (*l_offset_array).m_element_type.read_to_int32(
       (*l_offset_array).m_data as *const libc::c_void,
       l_offset_data as *mut libc::c_void,
       l_nb_elem,
@@ -7058,7 +6977,7 @@ unsafe extern "C" fn opj_j2k_write_cbd(
   l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(
     l_current_data,
-    0xff78 as OPJ_UINT32,
+    J2KMarker::CBD.as_u32(),
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
@@ -9051,7 +8970,7 @@ Add main header marker information
  */
 unsafe fn opj_j2k_add_mhmarker(
   mut cstr_index: *mut opj_codestream_index_t,
-  mut type_0: OPJ_UINT32,
+  mut marker: J2KMarker,
   mut pos: OPJ_OFF_T,
   mut len: OPJ_UINT32,
 ) -> OPJ_BOOL {
@@ -9081,7 +9000,7 @@ unsafe fn opj_j2k_add_mhmarker(
     (*cstr_index).marker = new_marker
   }
   /* add the marker */
-  (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).type_0 = type_0 as OPJ_UINT16;
+  (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).type_0 = marker.as_u32() as OPJ_UINT16;
   (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).pos =
     pos as OPJ_OFF_T;
   (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).len = len as OPJ_INT32;
@@ -9099,7 +9018,7 @@ Add tile header marker information
 unsafe fn opj_j2k_add_tlmarker(
   mut tileno: OPJ_UINT32,
   mut cstr_index: *mut opj_codestream_index_t,
-  mut type_0: OPJ_UINT32,
+  mut marker: J2KMarker,
   mut pos: OPJ_OFF_T,
   mut len: OPJ_UINT32,
 ) -> OPJ_BOOL {
@@ -9138,7 +9057,7 @@ unsafe fn opj_j2k_add_tlmarker(
   (*(*(*cstr_index).tile_index.offset(tileno as isize))
     .marker
     .offset((*(*cstr_index).tile_index.offset(tileno as isize)).marknum as isize))
-  .type_0 = type_0 as OPJ_UINT16;
+  .type_0 = marker.as_u32() as OPJ_UINT16;
   (*(*(*cstr_index).tile_index.offset(tileno as isize))
     .marker
     .offset((*(*cstr_index).tile_index.offset(tileno as isize)).marknum as isize))
@@ -9149,7 +9068,7 @@ unsafe fn opj_j2k_add_tlmarker(
   .len = len as OPJ_INT32;
   let ref mut fresh25 = (*(*cstr_index).tile_index.offset(tileno as isize)).marknum;
   *fresh25 = (*fresh25).wrapping_add(1);
-  if type_0 == 0xff90u32 {
+  if marker == J2KMarker::SOT {
     let mut l_current_tile_part = (*(*cstr_index).tile_index.offset(tileno as isize)).current_tpsno;
     if !(*(*cstr_index).tile_index.offset(tileno as isize))
       .tp_index
@@ -9508,16 +9427,15 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
     l_indix = l_indix.wrapping_add(1);
     (*l_mct_deco_data).m_index = fresh26;
     (*l_mct_deco_data).m_array_type = MCT_TYPE_DECORRELATION;
-    (*l_mct_deco_data).m_element_type = MCT_TYPE_FLOAT;
+    (*l_mct_deco_data).m_element_type = MCTElementType::FLOAT;
     l_nb_elem = (*p_image).numcomps.wrapping_mul((*p_image).numcomps);
     l_mct_size =
-      l_nb_elem.wrapping_mul(MCT_ELEMENT_SIZE[(*l_mct_deco_data).m_element_type as usize]);
+      l_nb_elem.wrapping_mul((*l_mct_deco_data).m_element_type.size());
     (*l_mct_deco_data).m_data = opj_malloc(l_mct_size as size_t) as *mut OPJ_BYTE;
     if (*l_mct_deco_data).m_data.is_null() {
       return 0i32;
     }
-    j2k_mct_write_functions_from_float[(*l_mct_deco_data).m_element_type as usize]
-      .expect("non-null function pointer")(
+    (*l_mct_deco_data).m_element_type.write_from_float(
       (*p_tcp).m_mct_decoding_matrix as *const libc::c_void,
       (*l_mct_deco_data).m_data as *mut libc::c_void,
       l_nb_elem,
@@ -9570,10 +9488,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
   l_indix = l_indix.wrapping_add(1);
   (*l_mct_offset_data).m_index = fresh27;
   (*l_mct_offset_data).m_array_type = MCT_TYPE_OFFSET;
-  (*l_mct_offset_data).m_element_type = MCT_TYPE_FLOAT;
+  (*l_mct_offset_data).m_element_type = MCTElementType::FLOAT;
   l_nb_elem = (*p_image).numcomps;
   l_mct_size =
-    l_nb_elem.wrapping_mul(MCT_ELEMENT_SIZE[(*l_mct_offset_data).m_element_type as usize]);
+    l_nb_elem.wrapping_mul((*l_mct_offset_data).m_element_type.size());
   (*l_mct_offset_data).m_data = opj_malloc(l_mct_size as size_t) as *mut OPJ_BYTE;
   if (*l_mct_offset_data).m_data.is_null() {
     return 0i32;
@@ -9597,8 +9515,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
     l_tccp = l_tccp.offset(1);
     i = i.wrapping_add(1)
   }
-  j2k_mct_write_functions_from_float[(*l_mct_offset_data).m_element_type as usize]
-    .expect("non-null function pointer")(
+  (*l_mct_offset_data).m_element_type.write_from_float(
     l_data as *const libc::c_void,
     (*l_mct_offset_data).m_data as *mut libc::c_void,
     l_nb_elem,
@@ -9793,9 +9710,7 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
   mut p_stream: *mut opj_stream_private_t,
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
-  let mut l_current_marker: OPJ_UINT32 = 0;
   let mut l_marker_size: OPJ_UINT32 = 0;
-  let mut l_marker_handler = 0 as *const opj_dec_memory_marker_handler_t;
   let mut l_has_siz = 0i32;
   let mut l_has_cod = 0i32;
   let mut l_has_qcd = 0i32;
@@ -9831,28 +9746,24 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
     return 0i32;
   }
   /* Read 2 bytes as the new marker ID */
-  opj_read_bytes_LE(
-    (*p_j2k).m_specific_param.m_decoder.m_header_data,
-    &mut l_current_marker,
-    2 as OPJ_UINT32,
-  );
+  let mut l_current_marker = J2KMarker::from_buffer((*p_j2k).m_specific_param.m_decoder.m_header_data);
   /* Try to read until the SOT is detected */
-  while l_current_marker != 0xff90u32 {
+  while l_current_marker != J2KMarker::SOT {
     /* Check if the current marker ID is valid */
-    if l_current_marker < 0xff00u32 {
+    if l_current_marker.is_invalid() {
       opj_event_msg(
         p_manager,
         1i32,
         b"A marker ID was expected (0xff--) instead of %.8x\n\x00" as *const u8
           as *const libc::c_char,
-        l_current_marker,
+        l_current_marker.as_u32(),
       );
       return 0i32;
     }
     /* Get the marker handler from the marker ID */
-    l_marker_handler = opj_j2k_get_marker_handler(l_current_marker);
+    let mut l_marker_handler = l_current_marker;
     /* Manage case where marker is unknown */
-    if (*l_marker_handler).id == 0u32 {
+    if l_marker_handler.is_unknown() {
       if opj_j2k_read_unk(p_j2k, p_stream, &mut l_current_marker, p_manager) == 0 {
         opj_event_msg(
           p_manager,
@@ -9862,25 +9773,25 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
         );
         return 0i32;
       }
-      if l_current_marker == 0xff90u32 {
+      if l_current_marker == J2KMarker::SOT {
         break;
       }
-      l_marker_handler = opj_j2k_get_marker_handler(l_current_marker)
+      l_marker_handler = l_current_marker;
     }
-    if (*l_marker_handler).id == 0xff51u32 {
+    if l_marker_handler == J2KMarker::SIZ {
       /* Mark required SIZ marker as found */
       l_has_siz = 1i32
     }
-    if (*l_marker_handler).id == 0xff52u32 {
+    if l_marker_handler == J2KMarker::COD {
       /* Mark required COD marker as found */
       l_has_cod = 1i32
     }
-    if (*l_marker_handler).id == 0xff5cu32 {
+    if l_marker_handler == J2KMarker::QCD {
       /* Mark required QCD marker as found */
       l_has_qcd = 1i32
     }
     /* Check if the marker is known and if it is the right place to find it */
-    if (*p_j2k).m_specific_param.m_decoder.m_state & (*l_marker_handler).states == J2KState::NONE {
+    if (*p_j2k).m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
       opj_event_msg(
         p_manager,
         1i32,
@@ -9955,12 +9866,7 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
       return 0i32;
     }
     /* Read the marker segment with the correct marker handler */
-    if Some(
-      (*l_marker_handler)
-        .handler
-        .expect("non-null function pointer"),
-    )
-    .expect("non-null function pointer")(
+    if l_marker_handler.handler(
       p_j2k,
       (*p_j2k).m_specific_param.m_decoder.m_header_data,
       l_marker_size,
@@ -9979,7 +9885,7 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
     if 0i32
       == opj_j2k_add_mhmarker(
         (*p_j2k).cstr_index,
-        (*l_marker_handler).id,
+        l_marker_handler,
         (opj_stream_tell(p_stream) as OPJ_UINT32)
           .wrapping_sub(l_marker_size)
           .wrapping_sub(4u32) as OPJ_OFF_T,
@@ -10009,11 +9915,7 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
       return 0i32;
     }
     /* read 2 bytes as the new marker ID */
-    opj_read_bytes_LE(
-      (*p_j2k).m_specific_param.m_decoder.m_header_data,
-      &mut l_current_marker,
-      2 as OPJ_UINT32,
-    );
+    l_current_marker = J2KMarker::from_buffer((*p_j2k).m_specific_param.m_decoder.m_header_data);
   }
   if l_has_siz == 0i32 {
     opj_event_msg(
@@ -10296,26 +10198,7 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
   }
   return 1i32;
 }
-/* *
- * Reads the lookup table containing all the marker, status and action, and returns the handler associated
- * with the marker value.
- * @param       p_id            Marker value to look up
- *
- * @return      the handler associated with the id.
-*/
-unsafe fn opj_j2k_get_marker_handler(
-  mut p_id: OPJ_UINT32,
-) -> *const opj_dec_memory_marker_handler {
-  let mut e = 0 as *const opj_dec_memory_marker_handler_t;
-  e = j2k_memory_marker_handler_tab.as_ptr();
-  while (*e).id != 0u32 {
-    if (*e).id == p_id {
-      break;
-    }
-    e = e.offset(1)
-  }
-  return e;
-}
+
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_j2k_destroy(mut p_j2k: *mut opj_j2k_t) {
   if p_j2k.is_null() {
@@ -10589,7 +10472,7 @@ unsafe fn opj_j2k_need_nb_tile_parts_correction(
 ) -> OPJ_BOOL {
   let mut l_header_data: [OPJ_BYTE; 10] = [0; 10];
   let mut l_stream_pos_backup: OPJ_OFF_T = 0;
-  let mut l_current_marker: OPJ_UINT32 = 0;
+  let mut l_current_marker = J2KMarker::UNK(0);
   let mut l_marker_size: OPJ_UINT32 = 0;
   let mut l_tile_no: OPJ_UINT32 = 0;
   let mut l_tot_len: OPJ_UINT32 = 0;
@@ -10622,12 +10505,8 @@ unsafe fn opj_j2k_need_nb_tile_parts_correction(
       return 1i32;
     }
     /* Read 2 bytes from buffer as the new marker ID */
-    opj_read_bytes_LE(
-      l_header_data.as_mut_ptr(),
-      &mut l_current_marker,
-      2 as OPJ_UINT32,
-    );
-    if l_current_marker != 0xff90u32 {
+    l_current_marker = J2KMarker::from_buffer(l_header_data.as_mut_ptr());
+    if l_current_marker != J2KMarker::SOT {
       /* assume all is OK */
       if opj_stream_seek(p_stream, l_stream_pos_backup, p_manager) == 0 {
         return 0i32;
@@ -10737,9 +10616,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
   mut p_stream: *mut opj_stream_private_t,
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
-  let mut l_current_marker = 0xff90 as OPJ_UINT32;
+  let mut l_current_marker = J2KMarker::SOT;
   let mut l_marker_size: OPJ_UINT32 = 0;
-  let mut l_marker_handler = 0 as *const opj_dec_memory_marker_handler_t;
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let l_nb_tiles = (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th);
   /* preconditions */
@@ -10749,7 +10627,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
   assert!(!p_manager.is_null());
   /* Reach the End Of Codestream ?*/
   if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::EOC {
-    l_current_marker = 0xffd9 as OPJ_UINT32
+    l_current_marker = J2KMarker::EOC;
   } else if (*p_j2k).m_specific_param.m_decoder.m_state
     != J2KState::TPHSOT
   {
@@ -10758,10 +10636,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
   /* We need to encounter a SOT marker (a new tile-part header) */
   /* Read into the codestream until reach the EOC or ! can_decode ??? FIXME */
   while (*p_j2k).m_specific_param.m_decoder.m_can_decode() == 0
-    && l_current_marker != 0xffd9u32
+    && l_current_marker != J2KMarker::EOC
   {
     /* Try to read until the Start Of Data is detected */
-    while l_current_marker != 0xff93u32 {
+    while l_current_marker != J2KMarker::SOD {
       if opj_stream_get_number_byte_left(p_stream) == 0i64 {
         (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC;
         break;
@@ -10797,7 +10675,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
           return 0i32;
         }
         /* cf. https://code.google.com/p/openjpeg/issues/detail?id=226 */
-        if l_current_marker == 0x8080u32
+        if l_current_marker == J2KMarker::UNK(0x8080u32)
           && opj_stream_get_number_byte_left(p_stream) == 0i64
         {
           (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC;
@@ -10817,9 +10695,9 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
             .wrapping_sub(2u32) as OPJ_UINT32
             as OPJ_UINT32;
           /* Get the marker handler from the marker ID */
-          l_marker_handler = opj_j2k_get_marker_handler(l_current_marker);
+          let l_marker_handler = l_current_marker;
           /* Check if the marker is known and if it is the right place to find it */
-          if (*p_j2k).m_specific_param.m_decoder.m_state & (*l_marker_handler).states == J2KState::NONE {
+          if (*p_j2k).m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
             opj_event_msg(
               p_manager,
               1i32,
@@ -10877,22 +10755,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
             );
             return 0i32;
           }
-          if (*l_marker_handler).handler.is_none() {
-            /* See issue #175 */
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Not sure how that happened.\n\x00" as *const u8 as *const libc::c_char,
-            );
-            return 0i32;
-          }
           /* Read the marker segment with the correct marker handler */
-          if Some(
-            (*l_marker_handler)
-              .handler
-              .expect("non-null function pointer"),
-          )
-          .expect("non-null function pointer")(
+          if l_marker_handler.handler(
             p_j2k,
             (*p_j2k).m_specific_param.m_decoder.m_header_data,
             l_marker_size,
@@ -10904,7 +10768,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
               1i32,
               b"Fail to read the current marker segment (%#x)\n\x00" as *const u8
                 as *const libc::c_char,
-              l_current_marker,
+              l_current_marker.as_u32(),
             );
             return 0i32;
           }
@@ -10913,7 +10777,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
             == opj_j2k_add_tlmarker(
               (*p_j2k).m_current_tile_number,
               (*p_j2k).cstr_index,
-              (*l_marker_handler).id,
+              l_marker_handler,
               (opj_stream_tell(p_stream) as OPJ_UINT32)
                 .wrapping_sub(l_marker_size)
                 .wrapping_sub(4u32) as OPJ_OFF_T,
@@ -10928,7 +10792,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
             return 0i32;
           }
           /* Keep the position of the last SOT marker read */
-          if (*l_marker_handler).id == 0xff90u32 {
+          if l_marker_handler == J2KMarker::SOT {
             let mut sot_pos = (opj_stream_tell(p_stream) as OPJ_UINT32)
               .wrapping_sub(l_marker_size)
               .wrapping_sub(4u32);
@@ -10951,7 +10815,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
               );
               return 0i32;
             }
-            l_current_marker = 0xff93 as OPJ_UINT32
+            l_current_marker = J2KMarker::SOD
           /* Normally we reached a SOD */
           } else {
             /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
@@ -10970,11 +10834,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
               return 0i32;
             }
             /* Read 2 bytes from the buffer as the new marker ID */
-            opj_read_bytes_LE(
-              (*p_j2k).m_specific_param.m_decoder.m_header_data,
-              &mut l_current_marker,
-              2 as OPJ_UINT32,
-            );
+            l_current_marker = J2KMarker::from_buffer((*p_j2k).m_specific_param.m_decoder.m_header_data);
           }
         }
       }
@@ -11097,7 +10957,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
                                       as *const u8 as *const libc::c_char,
                                   l_tile_no_0);
           (*p_j2k).m_current_tile_number = l_tile_no_0;
-          l_current_marker = 0xffd9 as OPJ_UINT32;
+          l_current_marker = J2KMarker::EOC;
           (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::EOC;
           break;
         }
@@ -11110,15 +10970,11 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
       return 0i32;
     } else {
       /* Read 2 bytes from buffer as the new marker ID */
-      opj_read_bytes_LE(
-        (*p_j2k).m_specific_param.m_decoder.m_header_data,
-        &mut l_current_marker,
-        2 as OPJ_UINT32,
-      );
+      l_current_marker = J2KMarker::from_buffer((*p_j2k).m_specific_param.m_decoder.m_header_data);
     }
   }
   /* Current marker is the EOC marker ?*/
-  if l_current_marker == 0xffd9u32 {
+  if l_current_marker == J2KMarker::EOC {
     if (*p_j2k).m_specific_param.m_decoder.m_state != J2KState::EOC {
       (*p_j2k).m_current_tile_number = 0 as OPJ_UINT32;
       (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::EOC
@@ -11203,7 +11059,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode_tile(
   mut p_stream: *mut opj_stream_private_t,
   mut p_manager: *mut opj_event_mgr_t,
 ) -> OPJ_BOOL {
-  let mut l_current_marker: OPJ_UINT32 = 0;
+  let mut l_current_marker = J2KMarker::UNK(0);
   let mut l_data: [OPJ_BYTE; 2] = [0; 2];
   let mut l_tcp = 0 as *mut opj_tcp_t;
   let mut l_image_for_bounds = 0 as *mut opj_image_t;
@@ -11298,15 +11154,11 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode_tile(
       );
       return 0i32;
     }
-    opj_read_bytes_LE(
-      l_data.as_mut_ptr(),
-      &mut l_current_marker,
-      2 as OPJ_UINT32,
-    );
-    if l_current_marker == 0xffd9u32 {
+    l_current_marker = J2KMarker::from_buffer(l_data.as_mut_ptr());
+    if l_current_marker == J2KMarker::EOC {
       (*p_j2k).m_current_tile_number = 0 as OPJ_UINT32;
       (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::EOC
-    } else if l_current_marker != 0xff90u32 {
+    } else if l_current_marker != J2KMarker::SOT {
       if opj_stream_get_number_byte_left(p_stream) == 0i64 {
         (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC;
         opj_event_msg(

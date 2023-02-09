@@ -856,7 +856,7 @@ pub type opj_mct_data_t = opj_mct_data;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_mct_data {
-  pub m_element_type: J2K_MCT_ELEMENT_TYPE,
+  pub m_element_type: MCTElementType,
   pub m_array_type: J2K_MCT_ARRAY_TYPE,
   pub m_index: OPJ_UINT32,
   pub m_data: *mut OPJ_BYTE,
@@ -867,12 +867,6 @@ pub type MCT_ARRAY_TYPE = libc::c_uint;
 pub const MCT_TYPE_OFFSET: MCT_ARRAY_TYPE = 2;
 pub const MCT_TYPE_DECORRELATION: MCT_ARRAY_TYPE = 1;
 pub const MCT_TYPE_DEPENDENCY: MCT_ARRAY_TYPE = 0;
-pub type J2K_MCT_ELEMENT_TYPE = MCT_ELEMENT_TYPE;
-pub type MCT_ELEMENT_TYPE = libc::c_uint;
-pub const MCT_TYPE_DOUBLE: MCT_ELEMENT_TYPE = 3;
-pub const MCT_TYPE_FLOAT: MCT_ELEMENT_TYPE = 2;
-pub const MCT_TYPE_INT32: MCT_ELEMENT_TYPE = 1;
-pub const MCT_TYPE_INT16: MCT_ELEMENT_TYPE = 0;
 pub type opj_tccp_t = opj_tccp;
 
 #[repr(C)]
