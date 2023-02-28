@@ -3,9 +3,11 @@ name = "openjp2"
 authors = ["Robert G. Jakabosky <rjakabosky+neopallium@neoawareness.com>"]
 version = "0.1.0"
 license = "BSD-2-Clause"
-description = "Rust port of libopenjp2."
+description = "Rust port of Openjpeg."
+repository = "https://github.com/Neopallium/openjpeg"
+homepage = "https://github.com/Neopallium/openjpeg/tree/master/openjp2-rs"
+documentation = "https://docs.rs/openjp2"
 keywords = ["j2k", "jp2", "jpeg2000", "image"]
-publish = false
 edition = "2018"
 autobins = false
 
