@@ -1,0 +1,4 @@
+test
+*.sh
+c2rust
+target
