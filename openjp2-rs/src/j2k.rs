@@ -8987,7 +8987,7 @@ unsafe fn opj_j2k_add_mhmarker(
     (*cstr_index).marker = new_marker
   }
   /* add the marker */
-  (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).type_0 = marker.as_u32() as OPJ_UINT16;
+  (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).type_ = marker.as_u32() as OPJ_UINT16;
   (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).pos =
     pos as OPJ_OFF_T;
   (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).len = len as OPJ_INT32;
@@ -9044,7 +9044,7 @@ unsafe fn opj_j2k_add_tlmarker(
   (*(*(*cstr_index).tile_index.offset(tileno as isize))
     .marker
     .offset((*(*cstr_index).tile_index.offset(tileno as isize)).marknum as isize))
-  .type_0 = marker.as_u32() as OPJ_UINT16;
+  .type_ = marker.as_u32() as OPJ_UINT16;
   (*(*(*cstr_index).tile_index.offset(tileno as isize))
     .marker
     .offset((*(*cstr_index).tile_index.offset(tileno as isize)).marknum as isize))
@@ -12897,7 +12897,7 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
       fprintf(
         out_stream,
         b"\t\t type=%#x, pos=%li, len=%d\n\x00" as *const u8 as *const libc::c_char,
-        (*(*cstr_index).marker.offset(it_marker as isize)).type_0 as libc::c_int,
+        (*(*cstr_index).marker.offset(it_marker as isize)).type_ as libc::c_int,
         (*(*cstr_index).marker.offset(it_marker as isize)).pos,
         (*(*cstr_index).marker.offset(it_marker as isize)).len,
       );
@@ -12971,7 +12971,7 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
               (*(*(*cstr_index).tile_index.offset(it_tile as isize))
                 .marker
                 .offset(it_marker as isize))
-              .type_0 as libc::c_int,
+              .type_ as libc::c_int,
               (*(*(*cstr_index).tile_index.offset(it_tile as isize))
                 .marker
                 .offset(it_marker as isize))

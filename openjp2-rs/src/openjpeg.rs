@@ -301,7 +301,7 @@ pub type opj_packet_info_t = opj_packet_info;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_marker_info {
-  pub type_0: libc::c_ushort,
+  pub type_: libc::c_ushort,
   pub pos: OPJ_OFF_T,
   pub len: libc::c_int,
 }
