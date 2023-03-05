@@ -19,12 +19,12 @@ use ::libc::{
 };
 
 extern "C" {
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
 }
 
-pub type size_t = libc::c_ulong;
+pub type size_t = usize;
 
 pub type OPJ_BOOL = i32;
 pub type OPJ_CHAR = i8;
@@ -40,7 +40,7 @@ pub type OPJ_UINT32 = u32;
 pub type OPJ_INT64 = i64;
 pub type OPJ_UINT64 = u64;
 pub type OPJ_OFF_T = i64;
-pub type OPJ_SIZE_T = u64;
+pub type OPJ_SIZE_T = usize;
 pub type opj_flag_t = u32;
 pub type RSIZ_CAPABILITIES = libc::c_uint;
 pub const OPJ_MCT: RSIZ_CAPABILITIES = 33024;
@@ -1365,7 +1365,7 @@ unsafe extern "C" fn opj_read_from_file(
     1,
     p_nb_bytes as usize,
     p_file,
-  ) as u64;
+  );
   return if l_nb_read != 0 {
     l_nb_read
   } else {
@@ -1393,7 +1393,7 @@ unsafe extern "C" fn opj_write_from_file(
     1,
     p_nb_bytes as usize,
     p_file,
-  ) as u64;
+  );
 }
 unsafe extern "C" fn opj_skip_from_file(
   mut p_nb_bytes: OPJ_OFF_T,
@@ -1433,7 +1433,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
   let mut l_codec = 0 as *mut opj_codec_private_t;
   l_codec = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_codec_private_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_codec_private_t>() as usize,
   ) as *mut opj_codec_private_t;
   if l_codec.is_null() {
     return 0 as *mut opj_codec_t;
@@ -2115,7 +2115,7 @@ pub unsafe fn opj_set_default_decoder_parameters(
     memset(
       parameters as *mut libc::c_void,
       0i32,
-      core::mem::size_of::<opj_dparameters_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_dparameters_t>() as usize,
     );
     /* UniPG>> */
     /* USE_JPWL */
@@ -2437,7 +2437,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
   let mut l_codec = 0 as *mut opj_codec_private_t;
   l_codec = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_codec_private_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_codec_private_t>() as usize,
   ) as *mut opj_codec_private_t;
   if l_codec.is_null() {
     return 0 as *mut opj_codec_t;
@@ -2811,7 +2811,7 @@ pub unsafe fn opj_set_default_encoder_parameters(
     memset(
       parameters as *mut libc::c_void,
       0i32,
-      core::mem::size_of::<opj_cparameters_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_cparameters_t>() as usize,
     );
     /* UniPG>> */
     /* USE_JPWL */
@@ -3008,12 +3008,12 @@ pub unsafe fn opj_set_MCT(
   memcpy(
     (*parameters).mct_data,
     pEncodingMatrix as *const libc::c_void,
-    l_matrix_size as libc::c_ulong,
+    l_matrix_size as usize,
   );
   memcpy(
     ((*parameters).mct_data as *mut OPJ_BYTE).offset(l_matrix_size as isize) as *mut libc::c_void,
     p_dc_shift as *const libc::c_void,
-    l_dc_shift_size as libc::c_ulong,
+    l_dc_shift_size as usize,
   );
   return 1i32;
 }

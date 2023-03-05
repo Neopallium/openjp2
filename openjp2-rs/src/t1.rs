@@ -1771,9 +1771,9 @@ extern "C" fn opj_t1_clbl_decode_processor(
       cblk_w = ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32;
       cblk_h = ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32;
       (*cblk).decoded_data = opj_aligned_malloc(
-        (core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
-          .wrapping_mul(cblk_w as libc::c_ulong)
-          .wrapping_mul(cblk_h as libc::c_ulong),
+        (core::mem::size_of::<OPJ_INT32>() as usize)
+          .wrapping_mul(cblk_w as usize)
+          .wrapping_mul(cblk_h as usize),
       ) as *mut OPJ_INT32;
       if (*cblk).decoded_data.is_null() {
         if !(*job).p_manager_mutex.is_null() {
@@ -1947,7 +1947,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
       } else if (*tccp).qmfbid == 1 {
         let mut tiledp: *mut OPJ_INT32 = &mut *(*tilec).data.offset(
           (y as OPJ_SIZE_T)
-            .wrapping_mul(tile_w as libc::c_ulong)
+            .wrapping_mul(tile_w as usize)
             .wrapping_add(x as OPJ_SIZE_T) as isize,
         ) as *mut OPJ_INT32;
         j = 0 as OPJ_UINT32;
@@ -1975,37 +1975,37 @@ extern "C" fn opj_t1_clbl_decode_processor(
                 .wrapping_add(3u32) as isize,
             );
             *tiledp.offset(
-              (j as libc::c_ulong)
+              (j as usize)
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as libc::c_ulong)
-                .wrapping_add(0u64) as isize,
+                .wrapping_add(i as usize)
+                .wrapping_add(0) as isize,
             ) = tmp0 / 2i32;
             *tiledp.offset(
-              (j as libc::c_ulong)
+              (j as usize)
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as libc::c_ulong)
-                .wrapping_add(1u64) as isize,
+                .wrapping_add(i as usize)
+                .wrapping_add(1) as isize,
             ) = tmp1 / 2i32;
             *tiledp.offset(
-              (j as libc::c_ulong)
+              (j as usize)
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as libc::c_ulong)
-                .wrapping_add(2u64) as isize,
+                .wrapping_add(i as usize)
+                .wrapping_add(2) as isize,
             ) = tmp2 / 2i32;
             *tiledp.offset(
-              (j as libc::c_ulong)
+              (j as usize)
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as libc::c_ulong)
-                .wrapping_add(3u64) as isize,
+                .wrapping_add(i as usize)
+                .wrapping_add(3) as isize,
             ) = tmp3 / 2i32;
             i = (i as libc::c_uint).wrapping_add(4u32)
           }
           while i < cblk_w {
             let mut tmp_0 = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
             *tiledp.offset(
-              (j as libc::c_ulong)
+              (j as usize)
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as libc::c_ulong) as isize,
+                .wrapping_add(i as usize) as isize,
             ) = tmp_0 / 2i32;
             i += 1
           }
@@ -2015,7 +2015,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
         let stepsize_0 = 0.5f32 * (*band).stepsize;
         let mut tiledp_0 = &mut *(*tilec).data.offset(
           (y as OPJ_SIZE_T)
-            .wrapping_mul(tile_w as libc::c_ulong)
+            .wrapping_mul(tile_w as usize)
             .wrapping_add(x as OPJ_SIZE_T) as isize,
         ) as *mut OPJ_INT32 as *mut OPJ_FLOAT32;
         j = 0 as OPJ_UINT32;
@@ -2129,7 +2129,7 @@ pub fn opj_t1_decode_cblks(
                   _ => {
                     job = opj_calloc(
                       1i32 as size_t,
-                      core::mem::size_of::<opj_t1_cblk_decode_processing_job_t>() as libc::c_ulong,
+                      core::mem::size_of::<opj_t1_cblk_decode_processing_job_t>() as usize,
                     ) as *mut opj_t1_cblk_decode_processing_job_t;
                     if job.is_null() {
                       core::ptr::write_volatile(pret, 0i32);
@@ -2467,7 +2467,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
       cblk_h = t1.h;
       tiledp = &mut *(*tilec).data.offset(
         (y as OPJ_SIZE_T)
-          .wrapping_mul(tile_w as libc::c_ulong)
+          .wrapping_mul(tile_w as usize)
           .wrapping_add(x as OPJ_SIZE_T) as isize,
       ) as *mut OPJ_INT32;
       if (*tccp).qmfbid == 1 {
@@ -2663,7 +2663,7 @@ pub fn opj_t1_encode_cblks(
                   &mut *(*prc).cblks.enc.offset(cblkno as isize) as *mut opj_tcd_cblk_enc_t;
                 let mut job = opj_calloc(
                   1i32 as size_t,
-                  core::mem::size_of::<opj_t1_cblk_encode_processing_job_t>() as libc::c_ulong,
+                  core::mem::size_of::<opj_t1_cblk_encode_processing_job_t>() as usize,
                 ) as *mut opj_t1_cblk_encode_processing_job_t;
                 if job.is_null() {
                   core::ptr::write_volatile(&mut ret as *mut OPJ_BOOL, 0i32);

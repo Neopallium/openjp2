@@ -1626,7 +1626,7 @@ unsafe fn opj_pi_create(
   /* memory allocations*/
   l_pi = opj_calloc(
     l_poc_bound as size_t,
-    core::mem::size_of::<opj_pi_iterator_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_pi_iterator_t>() as usize,
   ) as *mut opj_pi_iterator_t;
   if l_pi.is_null() {
     return 0 as *mut opj_pi_iterator_t;
@@ -1637,7 +1637,7 @@ unsafe fn opj_pi_create(
     (*l_current_pi).manager = manager;
     (*l_current_pi).comps = opj_calloc(
       (*image).numcomps as size_t,
-      core::mem::size_of::<opj_pi_comp_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_pi_comp_t>() as usize,
     ) as *mut opj_pi_comp_t;
     if (*l_current_pi).comps.is_null() {
       opj_pi_destroy(l_pi, l_poc_bound);
@@ -1651,7 +1651,7 @@ unsafe fn opj_pi_create(
       tccp = &mut *(*tcp).tccps.offset(compno as isize) as *mut opj_tccp_t;
       (*comp).resolutions = opj_calloc(
         (*tccp).numresolutions as size_t,
-        core::mem::size_of::<opj_pi_resolution_t>() as libc::c_ulong,
+        core::mem::size_of::<opj_pi_resolution_t>() as usize,
       ) as *mut opj_pi_resolution_t;
       if (*comp).resolutions.is_null() {
         opj_pi_destroy(l_pi, l_poc_bound);
@@ -2056,15 +2056,15 @@ pub(crate) unsafe fn opj_pi_create_decode(
     .wrapping_add(1u32);
   l_data_stride = (4i32 * 33i32) as OPJ_UINT32;
   l_tmp_data = opj_malloc(
-    (l_data_stride.wrapping_mul(numcomps) as libc::c_ulong)
-      .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
+    (l_data_stride.wrapping_mul(numcomps) as usize)
+      .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize),
   ) as *mut OPJ_UINT32;
   if l_tmp_data.is_null() {
     return 0 as *mut opj_pi_iterator_t;
   }
   l_tmp_ptr = opj_malloc(
-    (numcomps as libc::c_ulong)
-      .wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>() as libc::c_ulong),
+    (numcomps as usize)
+      .wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>() as usize),
   ) as *mut *mut OPJ_UINT32;
   if l_tmp_ptr.is_null() {
     opj_free(l_tmp_data as *mut libc::c_void);
@@ -2124,7 +2124,7 @@ pub(crate) unsafe fn opj_pi_create_decode(
       .wrapping_mul(l_step_l);
     (*l_current_pi).include = opj_calloc(
       (*l_current_pi).include_size as size_t,
-      core::mem::size_of::<OPJ_INT16>() as libc::c_ulong,
+      core::mem::size_of::<OPJ_INT16>() as usize,
     ) as *mut OPJ_INT16
   }
   if (*l_current_pi).include.is_null() {
@@ -2332,15 +2332,15 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
     .wrapping_add(1u32);
   l_data_stride = (4i32 * 33i32) as OPJ_UINT32;
   l_tmp_data = opj_malloc(
-    (l_data_stride.wrapping_mul(numcomps) as libc::c_ulong)
-      .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong),
+    (l_data_stride.wrapping_mul(numcomps) as usize)
+      .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize),
   ) as *mut OPJ_UINT32;
   if l_tmp_data.is_null() {
     return 0 as *mut opj_pi_iterator_t;
   }
   l_tmp_ptr = opj_malloc(
-    (numcomps as libc::c_ulong)
-      .wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>() as libc::c_ulong),
+    (numcomps as usize)
+      .wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>() as usize),
   ) as *mut *mut OPJ_UINT32;
   if l_tmp_ptr.is_null() {
     opj_free(l_tmp_data as *mut libc::c_void);
@@ -2389,7 +2389,7 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
   (*l_current_pi).include_size = (*l_tcp).numlayers.wrapping_mul(l_step_l);
   (*l_current_pi).include = opj_calloc(
     (*l_current_pi).include_size as size_t,
-    core::mem::size_of::<OPJ_INT16>() as libc::c_ulong,
+    core::mem::size_of::<OPJ_INT16>() as usize,
   ) as *mut OPJ_INT16;
   if (*l_current_pi).include.is_null() {
     opj_free(l_tmp_data as *mut libc::c_void);
