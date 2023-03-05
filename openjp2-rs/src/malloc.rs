@@ -3,11 +3,11 @@ use ::libc;
 
 extern "C" {
 
-  fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
+  fn malloc(_: usize) -> *mut libc::c_void;
 
-  fn calloc(_: libc::c_ulong, _: libc::c_ulong) -> *mut libc::c_void;
+  fn calloc(_: usize, _: usize) -> *mut libc::c_void;
 
-  fn realloc(_: *mut libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
+  fn realloc(_: *mut libc::c_void, _: usize) -> *mut libc::c_void;
 
   fn free(_: *mut libc::c_void);
 
@@ -17,7 +17,7 @@ extern "C" {
     __size: size_t,
   ) -> libc::c_int;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
 }
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -60,12 +60,12 @@ unsafe fn opj_aligned_alloc_n(
 
   /* alignment shall be at least sizeof(void*) */
   assert!(
-    alignment != 0u64
-      && alignment & alignment.wrapping_sub(1u64)
-        == 0u64
+    alignment != 0
+      && alignment & alignment.wrapping_sub(1)
+        == 0
   );
-  assert!(alignment >= core::mem::size_of::<*mut libc::c_void>() as libc::c_ulong);
-  if size == 0u64 {
+  assert!(alignment >= core::mem::size_of::<*mut libc::c_void>() as usize);
+  if size == 0 {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;
   }
@@ -90,12 +90,12 @@ unsafe fn opj_aligned_realloc_n(
 
   /* alignment shall be at least sizeof(void*) */
   assert!(
-    alignment != 0u64
-      && alignment & alignment.wrapping_sub(1u64)
-        == 0u64
+    alignment != 0
+      && alignment & alignment.wrapping_sub(1)
+        == 0
   );
-  assert!(alignment >= core::mem::size_of::<*mut libc::c_void>() as libc::c_ulong);
-  if new_size == 0u64 {
+  assert!(alignment >= core::mem::size_of::<*mut libc::c_void>() as usize);
+  if new_size == 0 {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;
   }
@@ -104,8 +104,8 @@ unsafe fn opj_aligned_realloc_n(
   r_ptr = realloc(ptr, new_size); /* fast path */
   /* we simply use `size_t` to cast, since we are only interest in binary AND
    * operator */
-  if r_ptr as size_t & alignment.wrapping_sub(1u64)
-    != 0u64
+  if r_ptr as size_t & alignment.wrapping_sub(1)
+    != 0
   {
     /* this is non-trivial to implement a portable aligned realloc, so use a
      * simple approach where we do not need a function that return the size of an
@@ -123,7 +123,7 @@ unsafe fn opj_aligned_realloc_n(
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_malloc(mut size: size_t) -> *mut libc::c_void {
-  if size == 0u64 {
+  if size == 0 {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;
   }
@@ -131,7 +131,7 @@ pub(crate) unsafe fn opj_malloc(mut size: size_t) -> *mut libc::c_void {
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_calloc(mut num: size_t, mut size: size_t) -> *mut libc::c_void {
-  if num == 0u64 || size == 0u64 {
+  if num == 0 || size == 0 {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;
   }
@@ -168,7 +168,7 @@ pub(crate) unsafe fn opj_realloc(
   mut ptr: *mut libc::c_void,
   mut new_size: size_t,
 ) -> *mut libc::c_void {
-  if new_size == 0u64 {
+  if new_size == 0 {
     /* prevent implementation defined behavior of realloc */
     return 0 as *mut libc::c_void;
   }

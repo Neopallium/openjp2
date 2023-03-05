@@ -4,9 +4,9 @@ use ::libc;
 use super::malloc::*;
 
 extern "C" {
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
 }
 /*
 ==========================================================
@@ -40,7 +40,7 @@ pub(crate) unsafe fn opj_matrix_inversion_f(
   memset(
     lPermutations as *mut libc::c_void,
     0i32,
-    l_permutation_size as libc::c_ulong,
+    l_permutation_size as usize,
   );
   if opj_lupDecompose(pSrcMatrix, lPermutations, l_double_data, nb_compo) == 0 {
     opj_free(l_data as *mut libc::c_void);
@@ -168,17 +168,17 @@ unsafe fn opj_lupDecompose(
       memcpy(
         p_swap_area as *mut libc::c_void,
         lColumnMatrix as *const libc::c_void,
-        lSwapSize as libc::c_ulong,
+        lSwapSize as usize,
       );
       memcpy(
         lColumnMatrix as *mut libc::c_void,
         lTmpMatrix as *const libc::c_void,
-        lSwapSize as libc::c_ulong,
+        lSwapSize as usize,
       );
       memcpy(
         lTmpMatrix as *mut libc::c_void,
         p_swap_area as *const libc::c_void,
-        lSwapSize as libc::c_ulong,
+        lSwapSize as usize,
       );
     }
     /* now update data in the rest of the line and line after */
@@ -345,7 +345,7 @@ unsafe fn opj_lupInvert(
     memset(
       p_src_temp as *mut libc::c_void,
       0i32,
-      lSwapSize as libc::c_ulong,
+      lSwapSize as usize,
     );
     *p_src_temp.offset(j as isize) = 1.0f64 as OPJ_FLOAT32;
     opj_lupSolve(

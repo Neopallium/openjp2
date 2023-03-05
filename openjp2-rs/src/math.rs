@@ -116,7 +116,7 @@ pub(crate) fn opj_lrintf(mut f: f32) -> i64 {
   }
 
   unsafe {
-    lrintf(f as f32)
+    lrintf(f as f32) as i64
   }
 }
 

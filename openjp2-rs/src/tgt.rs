@@ -6,7 +6,7 @@ use ::libc;
 use super::malloc::*;
 
 extern "C" {
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
 }
 
 /*
@@ -71,7 +71,7 @@ pub(crate) unsafe fn opj_tgt_create(
   let mut n: OPJ_UINT32 = 0;
   tree = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_tgt_tree_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tgt_tree_t>() as usize,
   ) as *mut opj_tgt_tree_t;
   if tree.is_null() {
     opj_event_msg(
@@ -107,7 +107,7 @@ pub(crate) unsafe fn opj_tgt_create(
   }
   (*tree).nodes = opj_calloc(
     (*tree).numnodes as size_t,
-    core::mem::size_of::<opj_tgt_node_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tgt_node_t>() as usize,
   ) as *mut opj_tgt_node_t;
   if (*tree).nodes.is_null() {
     opj_event_msg(
@@ -235,7 +235,7 @@ pub(crate) unsafe fn opj_tgt_init(
         ((*p_tree).nodes as *mut libc::c_char).offset((*p_tree).nodes_size as isize)
           as *mut libc::c_void,
         0i32,
-        l_node_size.wrapping_sub((*p_tree).nodes_size) as libc::c_ulong,
+        l_node_size.wrapping_sub((*p_tree).nodes_size) as usize,
       );
       (*p_tree).nodes_size = l_node_size
     }

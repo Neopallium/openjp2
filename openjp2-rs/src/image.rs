@@ -5,9 +5,9 @@ use ::libc;
 use super::malloc::*;
 
 extern "C" {
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -58,7 +58,7 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
 pub unsafe fn opj_image_create0() -> *mut opj_image_t {
   let mut image = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_image_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_image_t>() as usize,
   ) as *mut opj_image_t;
   return image;
 }
@@ -72,7 +72,7 @@ pub unsafe fn opj_image_create(
   let mut image = 0 as *mut opj_image_t;
   image = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_image_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_image_t>() as usize,
   ) as *mut opj_image_t;
   if !image.is_null() {
     (*image).color_space = clrspc;
@@ -80,7 +80,7 @@ pub unsafe fn opj_image_create(
     /* allocate memory for the per-component information */
     (*image).comps = opj_calloc(
       (*image).numcomps as size_t,
-      core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_image_comp_t>() as usize,
     ) as *mut opj_image_comp_t;
     if (*image).comps.is_null() {
       /* TODO replace with event manager, breaks API */
@@ -103,9 +103,9 @@ pub unsafe fn opj_image_create(
       (*comp).sgnd = (*cmptparms.offset(compno as isize)).sgnd;
       if (*comp).h != 0u32
         && (*comp).w as OPJ_SIZE_T
-          > (18446744073709551615u64)
-            .wrapping_div((*comp).h as libc::c_ulong)
-            .wrapping_div(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+          > (usize::MAX)
+            .wrapping_div((*comp).h as usize)
+            .wrapping_div(core::mem::size_of::<OPJ_INT32>() as usize)
       {
         /* TODO event manager */
         opj_image_destroy(image);
@@ -113,8 +113,8 @@ pub unsafe fn opj_image_create(
       }
       (*comp).data = opj_image_data_alloc(
         ((*comp).w as size_t)
-          .wrapping_mul((*comp).h as libc::c_ulong)
-          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+          .wrapping_mul((*comp).h as usize)
+          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
       ) as *mut OPJ_INT32;
       if (*comp).data.is_null() {
         /* TODO replace with event manager, breaks API */
@@ -126,8 +126,8 @@ pub unsafe fn opj_image_create(
         (*comp).data as *mut libc::c_void,
         0i32,
         ((*comp).w as size_t)
-          .wrapping_mul((*comp).h as libc::c_ulong)
-          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+          .wrapping_mul((*comp).h as usize)
+          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
       );
       compno = compno.wrapping_add(1)
     }
@@ -250,8 +250,8 @@ pub unsafe fn opj_copy_image_header(
   }
   (*p_image_dest).numcomps = (*p_image_src).numcomps;
   (*p_image_dest).comps = opj_malloc(
-    ((*p_image_dest).numcomps as libc::c_ulong)
-      .wrapping_mul(core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong),
+    ((*p_image_dest).numcomps as usize)
+      .wrapping_mul(core::mem::size_of::<opj_image_comp_t>() as usize),
   ) as *mut opj_image_comp_t;
   if (*p_image_dest).comps.is_null() {
     (*p_image_dest).comps = 0 as *mut opj_image_comp_t;
@@ -265,7 +265,7 @@ pub unsafe fn opj_copy_image_header(
         as *mut libc::c_void,
       &mut *(*p_image_src).comps.offset(compno as isize) as *mut opj_image_comp_t
         as *const libc::c_void,
-      core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_image_comp_t>() as usize,
     );
     let ref mut fresh0 = (*(*p_image_dest).comps.offset(compno as isize)).data;
     *fresh0 = 0 as *mut OPJ_INT32;
@@ -284,7 +284,7 @@ pub unsafe fn opj_copy_image_header(
     memcpy(
       (*p_image_dest).icc_profile_buf as *mut libc::c_void,
       (*p_image_src).icc_profile_buf as *const libc::c_void,
-      (*p_image_src).icc_profile_len as libc::c_ulong,
+      (*p_image_src).icc_profile_len as usize,
     );
   } else {
     (*p_image_dest).icc_profile_buf = 0 as *mut OPJ_BYTE
@@ -300,7 +300,7 @@ pub unsafe fn opj_image_tile_create(
   let mut image = 0 as *mut opj_image_t;
   image = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_image_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_image_t>() as usize,
   ) as *mut opj_image_t;
   if !image.is_null() {
     (*image).color_space = clrspc;
@@ -308,7 +308,7 @@ pub unsafe fn opj_image_tile_create(
     /* allocate memory for the per-component information */
     (*image).comps = opj_calloc(
       (*image).numcomps as size_t,
-      core::mem::size_of::<opj_image_comp_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_image_comp_t>() as usize,
     ) as *mut opj_image_comp_t;
     if (*image).comps.is_null() {
       opj_image_destroy(image);

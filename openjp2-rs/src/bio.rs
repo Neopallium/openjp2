@@ -133,7 +133,7 @@ unsafe fn opj_bio_getbit(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
 */
 #[no_mangle]
 pub(crate) unsafe fn opj_bio_create() -> *mut opj_bio_t {
-  let mut bio = opj_malloc(core::mem::size_of::<opj_bio_t>() as libc::c_ulong) as *mut opj_bio_t; /* && (n <= 32U)*/
+  let mut bio = opj_malloc(core::mem::size_of::<opj_bio_t>() as usize) as *mut opj_bio_t; /* && (n <= 32U)*/
   return bio;
 }
 #[no_mangle]

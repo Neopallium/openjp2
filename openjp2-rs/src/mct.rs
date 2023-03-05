@@ -207,15 +207,15 @@ pub(crate) unsafe fn opj_mct_encode_custom(
   let mut lMultiplicator = ((1i32) << 13i32) as OPJ_UINT32;
   let mut lMctPtr = 0 as *mut OPJ_INT32;
   lCurrentData = opj_malloc(
-    (pNbComp.wrapping_add(lNbMatCoeff) as libc::c_ulong)
-      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+    (pNbComp.wrapping_add(lNbMatCoeff) as usize)
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
   ) as *mut OPJ_INT32;
   if lCurrentData.is_null() {
     return 0i32;
   }
   lCurrentMatrix = lCurrentData.offset(pNbComp as isize);
   i = 0 as OPJ_SIZE_T;
-  while i < lNbMatCoeff as libc::c_ulong {
+  while i < lNbMatCoeff as usize {
     let fresh0 = lMct;
     lMct = lMct.offset(1);
     *lCurrentMatrix.offset(i as isize) = (*fresh0 * lMultiplicator as OPJ_FLOAT32) as OPJ_INT32;
@@ -264,8 +264,8 @@ pub(crate) unsafe fn opj_mct_decode_custom(
   let mut lCurrentResult = 0 as *mut OPJ_FLOAT32;
   let mut lData = pData as *mut *mut OPJ_FLOAT32;
   lCurrentData = opj_malloc(
-    ((2u32).wrapping_mul(pNbComp) as libc::c_ulong)
-      .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+    ((2u32).wrapping_mul(pNbComp) as usize)
+      .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
   ) as *mut OPJ_FLOAT32;
   if lCurrentData.is_null() {
     return 0i32;

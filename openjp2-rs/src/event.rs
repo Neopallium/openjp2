@@ -3,11 +3,11 @@ use ::libc;
 
 extern "C" {
 
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
 
   fn vsnprintf(
     _: *mut libc::c_char,
-    _: libc::c_ulong,
+    _: usize,
     _: *const libc::c_char,
     _: core::ffi::VaList,
   ) -> libc::c_int;
@@ -109,14 +109,14 @@ pub(crate) unsafe extern "C" fn opj_event_msg(
     memset(
       message.as_mut_ptr() as *mut libc::c_void,
       0i32,
-      512u64,
+      512,
     );
     /* initialize the optional parameter list */
     arg = args.clone();
     /* parse the format string and put the result in 'message' */
     vsnprintf(
       message.as_mut_ptr(),
-      512u64,
+      512,
       fmt,
       arg.as_va_list(),
     );

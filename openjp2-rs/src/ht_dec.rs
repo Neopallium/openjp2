@@ -8,9 +8,9 @@ use ::libc;
 use super::malloc::*;
 
 extern "C" {
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
 
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
 }
 
 #[repr(C)]
@@ -289,7 +289,7 @@ unsafe fn mel_decode(mut melp: *mut dec_mel_t) {
   while (*melp).bits >= 6i32 && (*melp).num_runs < 8i32 {
     let mut eval = mel_exp[(*melp).k as usize]; // number of bits associated with state
     let mut run = 0i32;
-    if (*melp).tmp as libc::c_ulonglong & (1u64) << 63i32 != 0 {
+    if (*melp).tmp & (1u64) << 63i32 != 0 {
       //The next bit to decode (stored in MSB)
       //one is found
       run = (1i32) << eval;
@@ -1313,7 +1313,7 @@ unsafe fn opj_t1_allocate_buffers(
   mut w: OPJ_UINT32,
   mut h: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  let mut flagssize: OPJ_UINT32 = 0;
+  let mut flagssize: usize = 0;
   /* No risk of overflow. Prior checks ensure those assert are met */
   /* They are per the specification */
 
@@ -1326,12 +1326,11 @@ unsafe fn opj_t1_allocate_buffers(
   // We expand these buffers to multiples of 16 bytes.
   // We need 4 buffers of 129 integers each, expanded to 132 integers each
   // We also need 514 bytes of buffer, expanded to 528 bytes
-  flagssize = (132u64)
-    .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong)
-    .wrapping_mul(4u64) as OPJ_UINT32; // expanded to multiple of 16
-  flagssize =
-    (flagssize as libc::c_uint).wrapping_add(528u32) as OPJ_UINT32; // 514 expanded to multiples of 16
-  t1.flags.resize(flagssize as usize);
+  flagssize = (132usize)
+    .wrapping_mul(core::mem::size_of::<OPJ_UINT32>())
+    .wrapping_mul(4); // expanded to multiple of 16
+  flagssize += 528; // 514 expanded to multiples of 16
+  t1.flags.resize(flagssize);
   t1.w = w;
   t1.h = h;
   return 1i32;
@@ -1497,7 +1496,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       memcpy(
         cblkdata.offset(cblk_len as isize) as *mut libc::c_void,
         (*(*cblk).chunks.offset(i_0 as isize)).data as *const libc::c_void,
-        (*(*cblk).chunks.offset(i_0 as isize)).len as libc::c_ulong,
+        (*(*cblk).chunks.offset(i_0 as isize)).len as usize,
       );
       cblk_len = (cblk_len as libc::c_uint).wrapping_add((*(*cblk).chunks.offset(i_0 as isize)).len)
         as OPJ_UINT32;
@@ -3009,7 +3008,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
           0i32,
           (((width as OPJ_UINT32).wrapping_add(7u32) >> 3i32)
             .wrapping_add(1u32)
-            << 2i32) as libc::c_ulong,
+            << 2i32) as usize,
         );
       }
     }

@@ -17,9 +17,9 @@ extern "C" {
 
   fn ceil(_: libc::c_double) -> libc::c_double;
 
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -32,7 +32,7 @@ pub(crate) unsafe fn opj_tcd_create(mut p_is_decoder: OPJ_BOOL) -> *mut opj_tcd_
   /* create the tcd structure */
   l_tcd = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_tcd_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcd_t>() as usize,
   ) as *mut opj_tcd_t;
   if l_tcd.is_null() {
     return 0 as *mut opj_tcd_t;
@@ -44,7 +44,7 @@ pub(crate) unsafe fn opj_tcd_create(mut p_is_decoder: OPJ_BOOL) -> *mut opj_tcd_
   } as OPJ_BITFIELD);
   (*l_tcd).tcd_image = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_tcd_image_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcd_image_t>() as usize,
   ) as *mut opj_tcd_image_t;
   if (*l_tcd).tcd_image.is_null() {
     opj_free(l_tcd as *mut libc::c_void);
@@ -482,8 +482,8 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
     (*tile_info).numpix = (*tcd_tile).numpix;
     (*tile_info).distotile = (*tcd_tile).distotile;
     (*tile_info).thresh = opj_malloc(
-      ((*tcd_tcp).numlayers as libc::c_ulong)
-        .wrapping_mul(core::mem::size_of::<OPJ_FLOAT64>() as libc::c_ulong),
+      ((*tcd_tcp).numlayers as usize)
+        .wrapping_mul(core::mem::size_of::<OPJ_FLOAT64>() as usize),
     ) as *mut OPJ_FLOAT64;
     if (*tile_info).thresh.is_null() {
       /* FIXME event manager error callback */
@@ -651,14 +651,14 @@ pub(crate) unsafe fn opj_tcd_init(
   (*p_tcd).cp = p_cp;
   (*(*p_tcd).tcd_image).tiles = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_tcd_tile_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcd_tile_t>() as usize,
   ) as *mut opj_tcd_tile_t;
   if (*(*p_tcd).tcd_image).tiles.is_null() {
     return 0i32;
   }
   (*(*(*p_tcd).tcd_image).tiles).comps = opj_calloc(
     (*p_image).numcomps as size_t,
-    core::mem::size_of::<opj_tcd_tilecomp_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcd_tilecomp_t>() as usize,
   ) as *mut opj_tcd_tilecomp_t;
   if (*(*(*p_tcd).tcd_image).tiles).comps.is_null() {
     return 0i32;
@@ -691,7 +691,7 @@ pub(crate) unsafe fn opj_alloc_tile_component_data(
     || (*l_tilec).data_size_needed > (*l_tilec).data_size && (*l_tilec).ownsData == 0i32
   {
     (*l_tilec).data = opj_image_data_alloc((*l_tilec).data_size_needed) as *mut OPJ_INT32;
-    if (*l_tilec).data.is_null() && (*l_tilec).data_size_needed != 0u64
+    if (*l_tilec).data.is_null() && (*l_tilec).data_size_needed != 0
     {
       return 0i32;
     }
@@ -879,8 +879,8 @@ unsafe fn opj_tcd_init_tile(
       let mut w = ((*l_tilec).x1 - (*l_tilec).x0) as OPJ_SIZE_T;
       let mut h = ((*l_tilec).y1 - (*l_tilec).y0) as OPJ_SIZE_T;
       /* issue 733, l_data_size == 0U, probably something wrong should be checked before getting here */
-      if h > 0u64
-        && w > (18446744073709551615u64).wrapping_div(h)
+      if h > 0
+        && w > (usize::MAX).wrapping_div(h)
       {
         opj_event_msg(
           manager,
@@ -890,8 +890,8 @@ unsafe fn opj_tcd_init_tile(
         return 0i32;
       }
       l_tile_data_size = w.wrapping_mul(h);
-      if (18446744073709551615u64)
-        .wrapping_div(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong)
+      if (usize::MAX)
+        .wrapping_div(core::mem::size_of::<OPJ_UINT32>() as usize)
         < l_tile_data_size
       {
         opj_event_msg(
@@ -902,7 +902,7 @@ unsafe fn opj_tcd_init_tile(
         return 0i32;
       }
       l_tile_data_size =
-        l_tile_data_size.wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong);
+        l_tile_data_size.wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize);
       (*l_tilec).data_size_needed = l_tile_data_size
     }
     l_data_size = (*l_tilec)
@@ -924,7 +924,7 @@ unsafe fn opj_tcd_init_tile(
       memset(
         (*l_tilec).resolutions as *mut libc::c_void,
         0i32,
-        l_data_size as libc::c_ulong,
+        l_data_size as usize,
       );
     } else if l_data_size > (*l_tilec).resolutions_size {
       let mut new_resolutions = opj_realloc(
@@ -948,7 +948,7 @@ unsafe fn opj_tcd_init_tile(
         ((*l_tilec).resolutions as *mut OPJ_BYTE).offset((*l_tilec).resolutions_size as isize)
           as *mut libc::c_void,
         0i32,
-        l_data_size.wrapping_sub((*l_tilec).resolutions_size) as libc::c_ulong,
+        l_data_size.wrapping_sub((*l_tilec).resolutions_size) as usize,
       );
       (*l_tilec).resolutions_size = l_data_size
     }
@@ -1074,19 +1074,19 @@ unsafe fn opj_tcd_init_tile(
           l_y0b = ((*l_band).bandno >> 1i32) as OPJ_INT32;
           /* l_band border (global) */
           (*l_band).x0 = opj_int64_ceildivpow2(
-            (*l_tilec).x0 as libc::c_long - ((l_x0b as OPJ_INT64) << l_level_no),
+            (*l_tilec).x0 as i64 - ((l_x0b as OPJ_INT64) << l_level_no),
             l_level_no.wrapping_add(1u32) as OPJ_INT32,
           );
           (*l_band).y0 = opj_int64_ceildivpow2(
-            (*l_tilec).y0 as libc::c_long - ((l_y0b as OPJ_INT64) << l_level_no),
+            (*l_tilec).y0 as i64 - ((l_y0b as OPJ_INT64) << l_level_no),
             l_level_no.wrapping_add(1u32) as OPJ_INT32,
           );
           (*l_band).x1 = opj_int64_ceildivpow2(
-            (*l_tilec).x1 as libc::c_long - ((l_x0b as OPJ_INT64) << l_level_no),
+            (*l_tilec).x1 as i64 - ((l_x0b as OPJ_INT64) << l_level_no),
             l_level_no.wrapping_add(1u32) as OPJ_INT32,
           );
           (*l_band).y1 = opj_int64_ceildivpow2(
-            (*l_tilec).y1 as libc::c_long - ((l_y0b as OPJ_INT64) << l_level_no),
+            (*l_tilec).y1 as i64 - ((l_y0b as OPJ_INT64) << l_level_no),
             l_level_no.wrapping_add(1u32) as OPJ_INT32,
           )
         }
@@ -1144,7 +1144,7 @@ unsafe fn opj_tcd_init_tile(
               memset(
                 (*l_band).precincts as *mut libc::c_void,
                 0i32,
-                l_nb_precinct_size as libc::c_ulong,
+                l_nb_precinct_size as usize,
               );
               (*l_band).precincts_data_size = l_nb_precinct_size
             } else if (*l_band).precincts_data_size < l_nb_precinct_size {
@@ -1171,7 +1171,7 @@ unsafe fn opj_tcd_init_tile(
                   .offset((*l_band).precincts_data_size as isize)
                   as *mut libc::c_void,
                 0i32,
-                l_nb_precinct_size.wrapping_sub((*l_band).precincts_data_size) as libc::c_ulong,
+                l_nb_precinct_size.wrapping_sub((*l_band).precincts_data_size) as usize,
               );
               (*l_band).precincts_data_size = l_nb_precinct_size
             }
@@ -1245,7 +1245,7 @@ unsafe fn opj_tcd_init_tile(
                 memset(
                   (*l_current_precinct).cblks.blocks,
                   0i32,
-                  l_nb_code_blocks_size as libc::c_ulong,
+                  l_nb_code_blocks_size as usize,
                 );
                 (*l_current_precinct).block_size = l_nb_code_blocks_size
               } else if l_nb_code_blocks_size > (*l_current_precinct).block_size {
@@ -1273,7 +1273,7 @@ unsafe fn opj_tcd_init_tile(
                     as *mut libc::c_void,
                   0i32,
                   l_nb_code_blocks_size.wrapping_sub((*l_current_precinct).block_size)
-                    as libc::c_ulong,
+                    as usize,
                 );
                 (*l_current_precinct).block_size = l_nb_code_blocks_size
               }
@@ -1368,7 +1368,7 @@ pub(crate) unsafe fn opj_tcd_init_encode_tile(
     p_tcd,
     p_tile_no,
     1i32,
-    core::mem::size_of::<opj_tcd_cblk_enc_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcd_cblk_enc_t>() as usize,
     p_manager,
   );
 }
@@ -1382,7 +1382,7 @@ pub(crate) unsafe fn opj_tcd_init_decode_tile(
     p_tcd,
     p_tile_no,
     0i32,
-    core::mem::size_of::<opj_tcd_cblk_dec_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcd_cblk_dec_t>() as usize,
     p_manager,
   );
 }
@@ -1399,7 +1399,7 @@ unsafe fn opj_tcd_code_block_enc_allocate(
     /* no memset since data */
     (*p_code_block).layers = opj_calloc(
       100i32 as size_t,
-      core::mem::size_of::<opj_tcd_layer_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_tcd_layer_t>() as usize,
     ) as *mut opj_tcd_layer_t;
     if (*p_code_block).layers.is_null() {
       return 0i32;
@@ -1408,7 +1408,7 @@ unsafe fn opj_tcd_code_block_enc_allocate(
   if (*p_code_block).passes.is_null() {
     (*p_code_block).passes = opj_calloc(
       100i32 as size_t,
-      core::mem::size_of::<opj_tcd_pass_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_tcd_pass_t>() as usize,
     ) as *mut opj_tcd_pass_t;
     if (*p_code_block).passes.is_null() {
       return 0i32;
@@ -1465,7 +1465,7 @@ pub(crate) unsafe fn opj_tcd_reinit_segment(mut seg: *mut opj_tcd_seg_t) {
   memset(
     seg as *mut libc::c_void,
     0i32,
-    core::mem::size_of::<opj_tcd_seg_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcd_seg_t>() as usize,
   );
 }
 /* We reserve the initial byte as a fake byte to a non-FF value */
@@ -1484,7 +1484,7 @@ unsafe fn opj_tcd_code_block_dec_allocate(
   if (*p_code_block).segs.is_null() {
     (*p_code_block).segs = opj_calloc(
       10i32 as size_t,
-      core::mem::size_of::<opj_tcd_seg_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_tcd_seg_t>() as usize,
     ) as *mut opj_tcd_seg_t;
     if (*p_code_block).segs.is_null() {
       return 0i32;
@@ -1504,7 +1504,7 @@ unsafe fn opj_tcd_code_block_dec_allocate(
     memset(
       p_code_block as *mut libc::c_void,
       0i32,
-      core::mem::size_of::<opj_tcd_cblk_dec_t>() as libc::c_ulong,
+      core::mem::size_of::<opj_tcd_cblk_dec_t>() as usize,
     );
     (*p_code_block).segs = l_segs;
     (*p_code_block).m_current_max_segs = l_current_max_segs;
@@ -1642,8 +1642,8 @@ pub(crate) unsafe fn opj_tcd_encode_tile(
       *fresh0 = opj_calloc(
         ((*p_cstr_info).numcomps as OPJ_SIZE_T)
           .wrapping_mul((*p_cstr_info).numlayers as OPJ_SIZE_T)
-          .wrapping_mul(l_num_packs as libc::c_ulong),
-        core::mem::size_of::<opj_packet_info_t>() as libc::c_ulong,
+          .wrapping_mul(l_num_packs as usize),
+        core::mem::size_of::<opj_packet_info_t>() as usize,
       ) as *mut opj_packet_info_t;
       if (*(*p_cstr_info).tile.offset(p_tile_no as isize))
         .packet
@@ -1730,7 +1730,7 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
   (*p_tcd).used_component = 0 as *mut OPJ_BOOL;
   if numcomps_to_decode != 0 {
     let mut used_component = opj_calloc(
-      core::mem::size_of::<OPJ_BOOL>() as libc::c_ulong,
+      core::mem::size_of::<OPJ_BOOL>() as usize,
       (*(*p_tcd).image).numcomps as size_t,
     ) as *mut OPJ_BOOL;
     if used_component.is_null() {
@@ -1774,8 +1774,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
         && *(*p_tcd).used_component.offset(compno as isize) == 0)
       {
         /* issue 733, l_data_size == 0U, probably something wrong should be checked before getting here */
-        if res_h > 0u64
-          && res_w > (18446744073709551615u64).wrapping_div(res_h)
+        if res_h > 0
+          && res_w > (usize::MAX).wrapping_div(res_h)
         {
           opj_event_msg(
             p_manager,
@@ -1785,8 +1785,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
           return 0i32;
         }
         l_data_size = res_w.wrapping_mul(res_h);
-        if (18446744073709551615u64)
-          .wrapping_div(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong)
+        if (usize::MAX)
+          .wrapping_div(core::mem::size_of::<OPJ_UINT32>() as usize)
           < l_data_size
         {
           opj_event_msg(
@@ -1796,8 +1796,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
           );
           return 0i32;
         }
-        l_data_size = (l_data_size as libc::c_ulong)
-          .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as libc::c_ulong)
+        l_data_size = (l_data_size as usize)
+          .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize)
           as OPJ_SIZE_T as OPJ_SIZE_T;
         (*tilec).data_size_needed = l_data_size;
         if opj_alloc_tile_component_data(tilec) == 0 {
@@ -1935,8 +1935,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
       if !(!(*p_tcd).used_component.is_null()
         && *(*p_tcd).used_component.offset(compno as isize) == 0)
       {
-        if w > 0u64 && h > 0u64 {
-          if w > (18446744073709551615u64).wrapping_div(h) {
+        if w > 0 && h > 0 {
+          if w > (usize::MAX).wrapping_div(h) {
             opj_event_msg(
               p_manager,
               1i32,
@@ -1946,8 +1946,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
           }
           l_data_size_0 = w.wrapping_mul(h);
           if l_data_size_0
-            > (18446744073709551615u64)
-              .wrapping_div(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+            > (usize::MAX)
+              .wrapping_div(core::mem::size_of::<OPJ_INT32>() as usize)
           {
             opj_event_msg(
               p_manager,
@@ -1956,8 +1956,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
             );
             return 0i32;
           }
-          l_data_size_0 = (l_data_size_0 as libc::c_ulong)
-            .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+          l_data_size_0 = (l_data_size_0 as usize)
+            .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize)
             as OPJ_SIZE_T as OPJ_SIZE_T;
           (*tilec_1).data_win = opj_image_data_alloc(l_data_size_0) as *mut OPJ_INT32;
           if (*tilec_1).data_win.is_null() {
@@ -2110,7 +2110,7 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
               memcpy(
                 l_dest_ptr_0 as *mut libc::c_void,
                 &mut val as *mut OPJ_INT16 as *const libc::c_void,
-                core::mem::size_of::<OPJ_INT16>() as libc::c_ulong,
+                core::mem::size_of::<OPJ_INT16>() as usize,
               );
               l_dest_ptr_0 = l_dest_ptr_0.offset(1);
               k = k.wrapping_add(1)
@@ -2129,7 +2129,7 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
               memcpy(
                 l_dest_ptr_0 as *mut libc::c_void,
                 &mut val_0 as *mut OPJ_INT16 as *const libc::c_void,
-                core::mem::size_of::<OPJ_INT16>() as libc::c_ulong,
+                core::mem::size_of::<OPJ_INT16>() as usize,
               );
               l_dest_ptr_0 = l_dest_ptr_0.offset(1);
               k = k.wrapping_add(1)
@@ -2148,8 +2148,8 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
           memcpy(
             l_dest_ptr_1 as *mut libc::c_void,
             l_src_ptr_1 as *const libc::c_void,
-            (l_width as libc::c_ulong)
-              .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+            (l_width as usize)
+              .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
           );
           l_dest_ptr_1 = l_dest_ptr_1.offset(l_width as isize);
           l_src_ptr_1 = l_src_ptr_1.offset(l_width.wrapping_add(l_stride) as isize);
@@ -2492,8 +2492,8 @@ unsafe fn opj_tcd_mct_decode(
         return 1i32;
       }
       l_data = opj_malloc(
-        ((*l_tile).numcomps as libc::c_ulong)
-          .wrapping_mul(core::mem::size_of::<*mut OPJ_BYTE>() as libc::c_ulong),
+        ((*l_tile).numcomps as usize)
+          .wrapping_mul(core::mem::size_of::<*mut OPJ_BYTE>() as usize),
       ) as *mut *mut OPJ_BYTE;
       if l_data.is_null() {
         return 0i32;
@@ -2615,10 +2615,10 @@ unsafe fn opj_tcd_dc_level_shift_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
         l_current_ptr = (*l_tile_comp).data;
         assert!(
           l_height == 0u32
-            || l_width.wrapping_add(l_stride) as libc::c_ulong
+            || l_width.wrapping_add(l_stride) as usize
               <= (*l_tile_comp)
                 .data_size
-                .wrapping_div(l_height as libc::c_ulong)
+                .wrapping_div(l_height as usize)
         );
         /*MUPDF*/
       }
@@ -2665,7 +2665,7 @@ unsafe fn opj_tcd_dc_level_shift_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
               /* Do addition on int64 to avoid overflows */
               let mut l_value_int = opj_lrintf(l_value);
               *l_current_ptr = opj_int64_clamp(
-                l_value_int + (*l_tccp).m_dc_level_shift as libc::c_long,
+                l_value_int + (*l_tccp).m_dc_level_shift as i64,
                 l_min as OPJ_INT64,
                 l_max as OPJ_INT64,
               ) as OPJ_INT32
@@ -2782,8 +2782,8 @@ pub(crate) unsafe fn opj_tcd_get_encoder_input_buffer_size(
     if l_size_comp == 3u32 {
       l_size_comp = 4 as OPJ_UINT32
     }
-    l_data_size = (l_data_size as libc::c_ulong).wrapping_add(
-      (l_size_comp as libc::c_ulong).wrapping_mul(
+    l_data_size = (l_data_size as usize).wrapping_add(
+      (l_size_comp as usize).wrapping_mul(
         (((*l_tilec).x1 - (*l_tilec).x0) as OPJ_SIZE_T)
           .wrapping_mul(((*l_tilec).y1 - (*l_tilec).y0) as OPJ_SIZE_T),
       ),
@@ -2851,8 +2851,8 @@ unsafe fn opj_tcd_mct_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
       return 1i32;
     }
     l_data = opj_malloc(
-      ((*l_tile).numcomps as libc::c_ulong)
-        .wrapping_mul(core::mem::size_of::<*mut OPJ_BYTE>() as libc::c_ulong),
+      ((*l_tile).numcomps as usize)
+        .wrapping_mul(core::mem::size_of::<*mut OPJ_BYTE>() as usize),
     ) as *mut *mut OPJ_BYTE;
     if l_data.is_null() {
       return 0i32;
@@ -3317,7 +3317,7 @@ pub(crate) unsafe fn opj_tcd_marker_info_create(
 ) -> *mut opj_tcd_marker_info_t {
   let mut l_tcd_marker_info = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_tcd_marker_info_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_tcd_marker_info_t>() as usize,
   ) as *mut opj_tcd_marker_info_t;
   if l_tcd_marker_info.is_null() {
     return 0 as *mut opj_tcd_marker_info_t;

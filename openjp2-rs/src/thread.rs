@@ -136,7 +136,7 @@ pub(crate) unsafe fn opj_thread_pool_create(
   let mut tp = 0 as *mut opj_thread_pool_t;
   tp = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_thread_pool_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_thread_pool_t>() as usize,
   ) as *mut opj_thread_pool_t;
   if tp.is_null() {
     return 0 as *mut opj_thread_pool_t;
@@ -189,7 +189,7 @@ unsafe fn opj_thread_pool_setup(
   }
   (*tp).worker_threads = opj_calloc(
     num_threads as size_t,
-    core::mem::size_of::<opj_worker_thread_t>() as libc::c_ulong,
+    core::mem::size_of::<opj_worker_thread_t>() as usize,
   ) as *mut opj_worker_thread_t;
   if (*tp).worker_threads.is_null() {
     return 0i32;
@@ -286,7 +286,7 @@ unsafe fn opj_thread_pool_get_next_job(
       (*worker_thread).marked_as_waiting = 1i32;
       (*tp).waiting_worker_thread_count += 1;
       assert!((*tp).waiting_worker_thread_count <= (*tp).worker_threads_count);
-      item = opj_malloc(core::mem::size_of::<opj_worker_thread_list_t>() as libc::c_ulong)
+      item = opj_malloc(core::mem::size_of::<opj_worker_thread_list_t>() as usize)
         as *mut opj_worker_thread_list_t;
       if item.is_null() {
         core::ptr::write_volatile(
@@ -320,7 +320,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
     job_fn.expect("non-null function pointer")(user_data);
     return 1i32;
   }
-  job = opj_malloc(core::mem::size_of::<opj_worker_thread_job_t>() as libc::c_ulong)
+  job = opj_malloc(core::mem::size_of::<opj_worker_thread_job_t>() as usize)
     as *mut opj_worker_thread_job_t;
   if job.is_null() {
     return 0i32;
@@ -328,7 +328,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
   (*job).job_fn = job_fn;
   (*job).user_data = user_data;
   item =
-    opj_malloc(core::mem::size_of::<opj_job_list_t>() as libc::c_ulong) as *mut opj_job_list_t;
+    opj_malloc(core::mem::size_of::<opj_job_list_t>() as usize) as *mut opj_job_list_t;
   if item.is_null() {
     opj_free(job as *mut libc::c_void);
     return 0i32;

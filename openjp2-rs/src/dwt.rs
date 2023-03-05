@@ -9,7 +9,7 @@ use super::malloc::*;
 extern "C" {
   fn floor(_: libc::c_double) -> libc::c_double;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong) -> *mut libc::c_void;
+  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
 }
 /* Where void* is a OPJ_INT32* for 5x3 and OPJ_FLOAT32* for 9x7 */
 pub type opj_encode_and_deinterleave_h_one_row_fnptr_type = Option<
@@ -293,7 +293,7 @@ unsafe fn opj_dwt_interleave_v(
     bi = bi.offset(2);
     ai = ai.offset(x as isize)
   }
-  ai = a.offset(((*v).sn as libc::c_ulong).wrapping_mul(x as OPJ_SIZE_T) as isize);
+  ai = a.offset(((*v).sn as usize).wrapping_mul(x as OPJ_SIZE_T) as isize);
   bi = (*v)
     .mem
     .offset(1)
@@ -438,8 +438,8 @@ unsafe fn opj_idwt53_h(mut dwt: *const opj_dwt_t, mut tiledp: *mut OPJ_INT32) {
   memcpy(
     tiledp as *mut libc::c_void,
     (*dwt).mem as *const libc::c_void,
-    (((*dwt).sn + (*dwt).dn) as OPJ_UINT32 as libc::c_ulong)
-      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+    (((*dwt).sn + (*dwt).dn) as OPJ_UINT32 as usize)
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
   );
 }
 /* (defined(__SSE2__) || defined(__AVX2__)) && !defined(STANDARD_SLOW_VERSION) */
@@ -464,7 +464,7 @@ unsafe fn opj_idwt53_v(
     k = 0i32;
     while k < (*dwt).sn + (*dwt).dn {
       *tiledp_col.offset(
-        (c as u64).wrapping_add((k as u64).wrapping_mul(stride)) as isize,
+        (c as usize).wrapping_add((k as usize).wrapping_mul(stride)) as isize,
       ) = *(*dwt).mem.offset(k as isize);
       k += 1
     }
@@ -482,7 +482,7 @@ unsafe fn opj_dwt_encode_step1_combined(
   let iters_common = opj_uint_min(iters_c1, iters_c2);
 
   assert!(
-    fw as OPJ_SIZE_T & 0xfu64 == 0u64
+    fw as OPJ_SIZE_T & 0xf == 0
   );
   assert!(opj_int_abs(iters_c1 as OPJ_INT32 - iters_c2 as OPJ_INT32) <= 1i32);
   while i.wrapping_add(3u32) < iters_common {
@@ -701,7 +701,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row(
       memcpy(
         row.offset(sn as isize) as *mut libc::c_void,
         tmp.offset(sn as isize) as *const libc::c_void,
-        (dn as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+        (dn as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
       );
     }
   } else if width == 1u32 {
@@ -740,7 +740,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row(
     memcpy(
       row.offset(sn as isize) as *mut libc::c_void,
       tmp.offset(sn as isize) as *const libc::c_void,
-      (dn as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+      (dn as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
     );
   };
 }
@@ -767,7 +767,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row_real(
   memcpy(
     tmp as *mut libc::c_void,
     row as *const libc::c_void,
-    (width as libc::c_ulong).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+    (width as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
   );
   opj_dwt_encode_1_real(
     tmp as *mut libc::c_void,
@@ -880,8 +880,8 @@ unsafe fn opj_dwt_fetch_cols_vertical_pass(
         tmp.offset((8u32).wrapping_mul(k) as isize)
           as *mut libc::c_void,
         array.offset(k.wrapping_mul(stride_width) as isize) as *const libc::c_void,
-        (8u64)
-          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+        (8usize)
+          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
       );
       k = k.wrapping_add(1)
     }
@@ -941,8 +941,8 @@ unsafe fn opj_dwt_deinterleave_v_cols(
         memcpy(
           l_dest as *mut libc::c_void,
           l_src as *const libc::c_void,
-          (8u64)
-            .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+          (8usize)
+            .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
         );
       } else {
         c = 0 as OPJ_UINT32;
@@ -1520,22 +1520,22 @@ unsafe fn opj_dwt_encode_procedure(
   l_data_size = opj_dwt_max_resolution((*tilec).resolutions, (*tilec).numresolutions) as OPJ_SIZE_T;
   /* overflow check */
   if l_data_size
-    > (18446744073709551615u64).wrapping_div(
-      (8u64)
-        .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+    > (usize::MAX).wrapping_div(
+      (8usize)
+        .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
     )
   {
     /* FIXME event manager error callback */
     return 0i32;
   }
-  l_data_size = (l_data_size as libc::c_ulong).wrapping_mul(
-    (8u64)
-      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+  l_data_size = (l_data_size as usize).wrapping_mul(
+    (8usize)
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
   ) as OPJ_SIZE_T as OPJ_SIZE_T;
   bj = opj_aligned_32_malloc(l_data_size) as *mut OPJ_INT32;
   /* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
   /* in that case, so do not error out */
-  if l_data_size != 0u64 && bj.is_null() {
+  if l_data_size != 0 && bj.is_null() {
     return 0i32;
   } /* width of the resolution level computed   */
   i = l; /* height of the resolution level computed  */
@@ -1605,7 +1605,7 @@ unsafe fn opj_dwt_encode_procedure(
       j = 0 as OPJ_UINT32;
       while j < num_jobs {
         let mut job = 0 as *mut opj_dwt_encode_v_job_t;
-        job = opj_malloc(core::mem::size_of::<opj_dwt_encode_v_job_t>() as libc::c_ulong)
+        job = opj_malloc(core::mem::size_of::<opj_dwt_encode_v_job_t>() as usize)
           as *mut opj_dwt_encode_v_job_t;
         if job.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -1675,7 +1675,7 @@ unsafe fn opj_dwt_encode_procedure(
       j = 0 as OPJ_UINT32;
       while j < num_jobs_0 {
         let mut job_0 = 0 as *mut opj_dwt_encode_h_job_t;
-        job_0 = opj_malloc(core::mem::size_of::<opj_dwt_encode_h_job_t>() as libc::c_ulong)
+        job_0 = opj_malloc(core::mem::size_of::<opj_dwt_encode_h_job_t>() as usize)
           as *mut opj_dwt_encode_h_job_t;
         if job_0.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -2020,9 +2020,9 @@ unsafe fn opj_dwt_decode_tile(
   h_mem_size = opj_dwt_max_resolution(tr, numres) as OPJ_SIZE_T;
   /* overflow check */
   if h_mem_size
-    > (18446744073709551615u64)
-      .wrapping_div((2i32 * 4i32) as libc::c_ulong)
-      .wrapping_div(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong)
+    > (usize::MAX)
+      .wrapping_div((2i32 * 4i32) as usize)
+      .wrapping_div(core::mem::size_of::<OPJ_INT32>() as usize)
   {
     /* FIXME event manager error callback */
     return 0i32;
@@ -2030,9 +2030,9 @@ unsafe fn opj_dwt_decode_tile(
   /* We need PARALLEL_COLS_53 times the height of the array, */
   /* since for the vertical pass */
   /* we process PARALLEL_COLS_53 columns at a time */
-  h_mem_size = (h_mem_size as libc::c_ulong).wrapping_mul(
-    ((2i32 * 4i32) as libc::c_ulong)
-      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+  h_mem_size = (h_mem_size as usize).wrapping_mul(
+    ((2i32 * 4i32) as usize)
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
   ) as OPJ_SIZE_T as OPJ_SIZE_T;
   h.mem = opj_aligned_32_malloc(h_mem_size) as *mut OPJ_INT32;
   if h.mem.is_null() {
@@ -2059,7 +2059,7 @@ unsafe fn opj_dwt_decode_tile(
       while j < rh {
         opj_idwt53_h(
           &mut h,
-          &mut *tiledp.offset((j as OPJ_SIZE_T).wrapping_mul(w as libc::c_ulong) as isize),
+          &mut *tiledp.offset((j as OPJ_SIZE_T).wrapping_mul(w as usize) as isize),
         );
         j = j.wrapping_add(1)
       }
@@ -2073,7 +2073,7 @@ unsafe fn opj_dwt_decode_tile(
       j = 0 as OPJ_UINT32;
       while j < num_jobs {
         let mut job = 0 as *mut opj_dwt_decode_h_job_t;
-        job = opj_malloc(core::mem::size_of::<opj_dwt_decode_h_job_t>() as libc::c_ulong)
+        job = opj_malloc(core::mem::size_of::<opj_dwt_decode_h_job_t>() as usize)
           as *mut opj_dwt_decode_h_job_t;
         if job.is_null() {
           /* It would be nice to fallback to single thread case, but */
@@ -2146,7 +2146,7 @@ unsafe fn opj_dwt_decode_tile(
       j = 0 as OPJ_UINT32;
       while j < num_jobs_0 {
         let mut job_0 = 0 as *mut opj_dwt_decode_v_job_t;
-        job_0 = opj_malloc(core::mem::size_of::<opj_dwt_decode_v_job_t>() as libc::c_ulong)
+        job_0 = opj_malloc(core::mem::size_of::<opj_dwt_decode_v_job_t>() as usize)
           as *mut opj_dwt_decode_v_job_t;
         if job_0.is_null() {
           /* It would be nice to fallback to single thread case, but */
@@ -3200,18 +3200,18 @@ unsafe fn opj_dwt_decode_partial_tile(
   /* overflow check */
   /* in vertical pass, we process 4 columns at a time */
   if h_mem_size
-    > (18446744073709551615u64).wrapping_div(
-      (4u64)
-        .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+    > (usize::MAX).wrapping_div(
+      (4usize)
+        .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
     )
   {
     /* FIXME event manager error callback */
     opj_sparse_array_int32_free(sa);
     return 0i32;
   }
-  h_mem_size = (h_mem_size as libc::c_ulong).wrapping_mul(
-    (4u64)
-      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as libc::c_ulong),
+  h_mem_size = (h_mem_size as usize).wrapping_mul(
+    (4usize)
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
   ) as OPJ_SIZE_T as OPJ_SIZE_T;
   h.mem = opj_aligned_32_malloc(h_mem_size) as *mut OPJ_INT32;
   if h.mem.is_null() {
@@ -3540,8 +3540,8 @@ unsafe fn opj_v8dwt_interleave_h(
   k = 0 as OPJ_UINT32;
   while k < 2u32 {
     if remaining_height >= 8u32
-      && a as OPJ_SIZE_T & 0xfu64 == 0u64
-      && bi as OPJ_SIZE_T & 0xfu64 == 0u64
+      && a as OPJ_SIZE_T & 0xf == 0
+      && bi as OPJ_SIZE_T & 0xf == 0
     {
       /* Fast code path */
       i = x0;
@@ -3685,15 +3685,15 @@ unsafe fn opj_v8dwt_interleave_v(
     memcpy(
       &mut *bi.offset(i.wrapping_mul(2u32) as isize) as *mut opj_v8_t
         as *mut libc::c_void,
-      &mut *a.offset((i as libc::c_ulong).wrapping_mul(width as OPJ_SIZE_T) as isize)
+      &mut *a.offset((i as usize).wrapping_mul(width as OPJ_SIZE_T) as isize)
         as *mut OPJ_FLOAT32 as *const libc::c_void,
       (nb_elts_read as OPJ_SIZE_T)
-        .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
     );
     i = i.wrapping_add(1)
   }
   a =
-    a.offset(((*dwt).sn as OPJ_UINT32 as libc::c_ulong).wrapping_mul(width as OPJ_SIZE_T) as isize);
+    a.offset(((*dwt).sn as OPJ_UINT32 as usize).wrapping_mul(width as OPJ_SIZE_T) as isize);
   bi = (*dwt)
     .wavelet
     .offset(1)
@@ -3703,10 +3703,10 @@ unsafe fn opj_v8dwt_interleave_v(
     memcpy(
       &mut *bi.offset(i.wrapping_mul(2u32) as isize) as *mut opj_v8_t
         as *mut libc::c_void,
-      &mut *a.offset((i as libc::c_ulong).wrapping_mul(width as OPJ_SIZE_T) as isize)
+      &mut *a.offset((i as usize).wrapping_mul(width as OPJ_SIZE_T) as isize)
         as *mut OPJ_FLOAT32 as *const libc::c_void,
       (nb_elts_read as OPJ_SIZE_T)
-        .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+        .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
     );
     i = i.wrapping_add(1)
   }
@@ -4006,16 +4006,16 @@ unsafe extern "C" fn opj_dwt97_decode_h_func(
     k = 0 as OPJ_UINT32;
     while k < (*job).rw {
       *aj.offset(k as isize) = (*(*job).h.wavelet.offset(k as isize)).f[0 as usize];
-      *aj.offset((k as libc::c_ulong).wrapping_add(w as OPJ_SIZE_T) as isize) =
+      *aj.offset((k as usize).wrapping_add(w as OPJ_SIZE_T) as isize) =
         (*(*job).h.wavelet.offset(k as isize)).f[1 as usize];
       *aj.offset(
-        (k as libc::c_ulong)
-          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(2u64))
+        (k as usize)
+          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(2))
           as isize,
       ) = (*(*job).h.wavelet.offset(k as isize)).f[2 as usize];
       *aj.offset(
-        (k as libc::c_ulong)
-          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3u64))
+        (k as usize)
+          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3))
           as isize,
       ) = (*(*job).h.wavelet.offset(k as isize)).f[3 as usize];
       k = k.wrapping_add(1)
@@ -4023,23 +4023,23 @@ unsafe extern "C" fn opj_dwt97_decode_h_func(
     k = 0 as OPJ_UINT32;
     while k < (*job).rw {
       *aj.offset(
-        (k as libc::c_ulong)
-          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(4u64))
+        (k as usize)
+          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(4))
           as isize,
       ) = (*(*job).h.wavelet.offset(k as isize)).f[4 as usize];
       *aj.offset(
-        (k as libc::c_ulong)
-          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(5u64))
+        (k as usize)
+          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(5))
           as isize,
       ) = (*(*job).h.wavelet.offset(k as isize)).f[5 as usize];
       *aj.offset(
-        (k as libc::c_ulong)
-          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(6u64))
+        (k as usize)
+          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(6))
           as isize,
       ) = (*(*job).h.wavelet.offset(k as isize)).f[6 as usize];
       *aj.offset(
-        (k as libc::c_ulong)
-          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7u64))
+        (k as usize)
+          .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7))
           as isize,
       ) = (*(*job).h.wavelet.offset(k as isize)).f[7 as usize];
       k = k.wrapping_add(1)
@@ -4073,11 +4073,11 @@ unsafe extern "C" fn opj_dwt97_decode_v_func(
     k = 0 as OPJ_UINT32;
     while k < (*job).rh {
       memcpy(
-        &mut *aj.offset((k as libc::c_ulong).wrapping_mul((*job).w as OPJ_SIZE_T) as isize)
+        &mut *aj.offset((k as usize).wrapping_mul((*job).w as OPJ_SIZE_T) as isize)
           as *mut OPJ_FLOAT32 as *mut libc::c_void,
         &mut *(*job).v.wavelet.offset(k as isize) as *mut opj_v8_t as *const libc::c_void,
-        (8u64)
-          .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+        (8usize)
+          .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
       );
       k = k.wrapping_add(1)
     }
@@ -4139,14 +4139,14 @@ unsafe fn opj_dwt_decode_tile_97(
   l_data_size = opj_dwt_max_resolution(res, numres) as OPJ_SIZE_T;
   /* overflow check */
   if l_data_size
-    > (18446744073709551615u64)
-      .wrapping_div(core::mem::size_of::<opj_v8_t>() as libc::c_ulong)
+    > (usize::MAX)
+      .wrapping_div(core::mem::size_of::<opj_v8_t>() as usize)
   {
     /* FIXME event manager error callback */
     return 0i32;
   }
   h.wavelet = opj_aligned_malloc(
-    l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as libc::c_ulong),
+    l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as usize),
   ) as *mut opj_v8_t;
   if h.wavelet.is_null() {
     /* FIXME event manager error callback */
@@ -4182,16 +4182,16 @@ unsafe fn opj_dwt_decode_tile_97(
         k = 0 as OPJ_UINT32;
         while k < rw {
           *aj.offset(k as isize) = (*h.wavelet.offset(k as isize)).f[0 as usize];
-          *aj.offset((k as libc::c_ulong).wrapping_add(w as OPJ_SIZE_T) as isize) =
+          *aj.offset((k as usize).wrapping_add(w as OPJ_SIZE_T) as isize) =
             (*h.wavelet.offset(k as isize)).f[1 as usize];
           *aj.offset(
-            (k as libc::c_ulong)
-              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(2u64))
+            (k as usize)
+              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(2))
               as isize,
           ) = (*h.wavelet.offset(k as isize)).f[2 as usize];
           *aj.offset(
-            (k as libc::c_ulong)
-              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3u64))
+            (k as usize)
+              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3))
               as isize,
           ) = (*h.wavelet.offset(k as isize)).f[3 as usize];
           k = k.wrapping_add(1)
@@ -4199,23 +4199,23 @@ unsafe fn opj_dwt_decode_tile_97(
         k = 0 as OPJ_UINT32;
         while k < rw {
           *aj.offset(
-            (k as libc::c_ulong)
-              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(4u64))
+            (k as usize)
+              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(4))
               as isize,
           ) = (*h.wavelet.offset(k as isize)).f[4 as usize];
           *aj.offset(
-            (k as libc::c_ulong)
-              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(5u64))
+            (k as usize)
+              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(5))
               as isize,
           ) = (*h.wavelet.offset(k as isize)).f[5 as usize];
           *aj.offset(
-            (k as libc::c_ulong)
-              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(6u64))
+            (k as usize)
+              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(6))
               as isize,
           ) = (*h.wavelet.offset(k as isize)).f[6 as usize];
           *aj.offset(
-            (k as libc::c_ulong)
-              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7u64))
+            (k as usize)
+              .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7))
               as isize,
           ) = (*h.wavelet.offset(k as isize)).f[7 as usize];
           k = k.wrapping_add(1)
@@ -4237,7 +4237,7 @@ unsafe fn opj_dwt_decode_tile_97(
       j = 0 as OPJ_UINT32;
       while j < num_jobs {
         let mut job = 0 as *mut opj_dwt97_decode_h_job_t;
-        job = opj_malloc(core::mem::size_of::<opj_dwt97_decode_h_job_t>() as libc::c_ulong)
+        job = opj_malloc(core::mem::size_of::<opj_dwt97_decode_h_job_t>() as usize)
           as *mut opj_dwt97_decode_h_job_t;
         if job.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -4245,7 +4245,7 @@ unsafe fn opj_dwt_decode_tile_97(
           return 0i32;
         }
         (*job).h.wavelet = opj_aligned_malloc(
-          l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as libc::c_ulong),
+          l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as usize),
         ) as *mut opj_v8_t;
         if (*job).h.wavelet.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -4293,7 +4293,7 @@ unsafe fn opj_dwt_decode_tile_97(
         l = 0 as OPJ_UINT32;
         while l < rh.wrapping_sub(j) {
           *aj.offset(
-            (k_0 as libc::c_ulong).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(l as libc::c_ulong))
+            (k_0 as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(l as usize))
               as isize,
           ) = (*h.wavelet.offset(k_0 as isize)).f[l as usize];
           l = l.wrapping_add(1)
@@ -4318,11 +4318,11 @@ unsafe fn opj_dwt_decode_tile_97(
         k_1 = 0 as OPJ_UINT32;
         while k_1 < rh {
           memcpy(
-            &mut *aj.offset((k_1 as libc::c_ulong).wrapping_mul(w as OPJ_SIZE_T) as isize)
+            &mut *aj.offset((k_1 as usize).wrapping_mul(w as OPJ_SIZE_T) as isize)
               as *mut OPJ_FLOAT32 as *mut libc::c_void,
             &mut *v.wavelet.offset(k_1 as isize) as *mut opj_v8_t as *const libc::c_void,
-            (8u64)
-              .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+            (8usize)
+              .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
           );
           k_1 = k_1.wrapping_add(1)
         }
@@ -4350,7 +4350,7 @@ unsafe fn opj_dwt_decode_tile_97(
       j = 0 as OPJ_UINT32;
       while j < num_jobs_0 {
         let mut job_0 = 0 as *mut opj_dwt97_decode_v_job_t;
-        job_0 = opj_malloc(core::mem::size_of::<opj_dwt97_decode_v_job_t>() as libc::c_ulong)
+        job_0 = opj_malloc(core::mem::size_of::<opj_dwt97_decode_v_job_t>() as usize)
           as *mut opj_dwt97_decode_v_job_t;
         if job_0.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -4358,7 +4358,7 @@ unsafe fn opj_dwt_decode_tile_97(
           return 0i32;
         }
         (*job_0).v.wavelet = opj_aligned_malloc(
-          l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as libc::c_ulong),
+          l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as usize),
         ) as *mut opj_v8_t;
         if (*job_0).v.wavelet.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -4403,10 +4403,10 @@ unsafe fn opj_dwt_decode_tile_97(
       k_2 = 0 as OPJ_UINT32;
       while k_2 < rh {
         memcpy(
-          &mut *aj.offset((k_2 as libc::c_ulong).wrapping_mul(w as OPJ_SIZE_T) as isize)
+          &mut *aj.offset((k_2 as usize).wrapping_mul(w as OPJ_SIZE_T) as isize)
             as *mut OPJ_FLOAT32 as *mut libc::c_void,
           &mut *v.wavelet.offset(k_2 as isize) as *mut opj_v8_t as *const libc::c_void,
-          (j as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as libc::c_ulong),
+          (j as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
         );
         k_2 = k_2.wrapping_add(1)
       }
@@ -4485,15 +4485,15 @@ unsafe fn opj_dwt_decode_partial_97(
   l_data_size = opj_dwt_max_resolution(tr, numres) as OPJ_SIZE_T;
   /* overflow check */
   if l_data_size
-    > (18446744073709551615u64)
-      .wrapping_div(core::mem::size_of::<opj_v8_t>() as libc::c_ulong)
+    > (usize::MAX)
+      .wrapping_div(core::mem::size_of::<opj_v8_t>() as usize)
   {
     /* FIXME event manager error callback */
     opj_sparse_array_int32_free(sa);
     return 0i32;
   }
   h.wavelet = opj_aligned_malloc(
-    l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as libc::c_ulong),
+    l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as usize),
   ) as *mut opj_v8_t;
   if h.wavelet.is_null() {
     /* FIXME event manager error callback */
