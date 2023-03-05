@@ -55,7 +55,7 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #[no_mangle]
-pub(crate) unsafe fn opj_image_create0() -> *mut opj_image_t {
+pub unsafe fn opj_image_create0() -> *mut opj_image_t {
   let mut image = opj_calloc(
     1i32 as size_t,
     core::mem::size_of::<opj_image_t>() as libc::c_ulong,
@@ -63,7 +63,7 @@ pub(crate) unsafe fn opj_image_create0() -> *mut opj_image_t {
   return image;
 }
 #[no_mangle]
-pub(crate) unsafe fn opj_image_create(
+pub unsafe fn opj_image_create(
   mut numcmpts: OPJ_UINT32,
   mut cmptparms: *mut opj_image_cmptparm_t,
   mut clrspc: OPJ_COLOR_SPACE,
@@ -135,7 +135,7 @@ pub(crate) unsafe fn opj_image_create(
   return image;
 }
 #[no_mangle]
-pub(crate) unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
+pub unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
   if !image.is_null() {
     if !(*image).comps.is_null() {
       let mut compno: OPJ_UINT32 = 0;
@@ -164,7 +164,7 @@ pub(crate) unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
  * @param p_cp              the coding parameters from which to update the image.
  */
 #[no_mangle]
-pub(crate) unsafe fn opj_image_comp_header_update(
+pub unsafe fn opj_image_comp_header_update(
   mut p_image_header: *mut opj_image_t,
   mut p_cp: *const opj_cp,
 ) {
@@ -222,7 +222,7 @@ pub(crate) unsafe fn opj_image_comp_header_update(
  *
  */
 #[no_mangle]
-pub(crate) unsafe fn opj_copy_image_header(
+pub unsafe fn opj_copy_image_header(
   mut p_image_src: *const opj_image_t,
   mut p_image_dest: *mut opj_image_t,
 ) {
@@ -291,7 +291,7 @@ pub(crate) unsafe fn opj_copy_image_header(
   };
 }
 #[no_mangle]
-pub(crate) unsafe fn opj_image_tile_create(
+pub unsafe fn opj_image_tile_create(
   mut numcmpts: OPJ_UINT32,
   mut cmptparms: *mut opj_image_cmptparm_t,
   mut clrspc: OPJ_COLOR_SPACE,
