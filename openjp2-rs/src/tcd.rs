@@ -59,7 +59,7 @@ pub(crate) unsafe fn opj_tcd_rateallocate_fixed(mut tcd: *mut opj_tcd_t) {
   layno = 0 as OPJ_UINT32;
   while layno < (*(*tcd).tcp).numlayers {
     opj_tcd_makelayer_fixed(tcd, layno, 1 as OPJ_UINT32);
-    layno = layno.wrapping_add(1)
+    layno += 1;
   }
 }
 #[no_mangle]
@@ -140,7 +140,7 @@ pub(crate) unsafe fn opj_tcd_makelayer(
                     /* do not rely on float equality, check with DBL_EPSILON margin */
                     n = passno.wrapping_add(1u32)
                   } /* fixed_quality */
-                  passno = passno.wrapping_add(1)
+                  passno += 1;
                 }
               } /*, matrice[tcd_tcp->numlayers][tcd_tile->comps[0].numresolutions][3]; */
               (*layer).numpasses = n.wrapping_sub((*cblk).numpassesinlayers);
@@ -197,16 +197,16 @@ pub(crate) unsafe fn opj_tcd_makelayer(
                   (*cblk).numpassesinlayers = n
                 }
               }
-              cblkno = cblkno.wrapping_add(1)
+              cblkno += 1;
             }
-            precno = precno.wrapping_add(1)
+            precno += 1;
           }
         }
-        bandno = bandno.wrapping_add(1)
+        bandno += 1;
       }
-      resno = resno.wrapping_add(1)
+      resno += 1;
     }
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
 }
 #[no_mangle]
@@ -247,11 +247,11 @@ pub(crate) unsafe fn opj_tcd_makelayer_fixed(
             ) as OPJ_FLOAT32
               * ((*(*(*tcd).image).comps.offset(compno as isize)).prec as libc::c_double / 16.0f64)
                 as OPJ_FLOAT32) as OPJ_INT32;
-          k = k.wrapping_add(1)
+          k += 1;
         }
-        j = j.wrapping_add(1)
+        j += 1;
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
     resno = 0 as OPJ_UINT32;
     while resno < (*tilec).numresolutions {
@@ -355,16 +355,16 @@ pub(crate) unsafe fn opj_tcd_makelayer_fixed(
                   (*cblk).numpassesinlayers = n
                 }
               }
-              cblkno = cblkno.wrapping_add(1)
+              cblkno += 1;
             }
-            precno = precno.wrapping_add(1)
+            precno += 1;
           }
         }
-        bandno = bandno.wrapping_add(1)
+        bandno += 1;
       }
-      resno = resno.wrapping_add(1)
+      resno += 1;
     }
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
 }
 #[no_mangle]
@@ -452,19 +452,19 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
                     max = rdslope
                   }
                 }
-                passno = passno.wrapping_add(1)
+                passno += 1;
               }
               /* fixed_quality */
               (*tcd_tile).numpix += ((*cblk).x1 - (*cblk).x0) * ((*cblk).y1 - (*cblk).y0);
               (*tilec).numpix += ((*cblk).x1 - (*cblk).x0) * ((*cblk).y1 - (*cblk).y0);
-              cblkno = cblkno.wrapping_add(1)
+              cblkno += 1;
             }
-            precno = precno.wrapping_add(1)
+            precno += 1;
           }
         }
-        bandno = bandno.wrapping_add(1)
+        bandno += 1;
       }
-      resno = resno.wrapping_add(1)
+      resno += 1;
     }
     maxSE += (((1i32) << (*(*(*tcd).image).comps.offset(compno as isize)).prec)
       as OPJ_FLOAT64
@@ -473,7 +473,7 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
         as OPJ_FLOAT64
         - 1.0f64)
       * (*tilec).numpix as OPJ_FLOAT64;
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   /* index file */
   if !cstr_info.is_null() {
@@ -610,7 +610,7 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
           hi = thresh;
           stable_thresh = thresh
         }
-        i = i.wrapping_add(1)
+        i += 1;
       }
       goodthresh = if stable_thresh == 0 as libc::c_double {
         thresh
@@ -636,7 +636,7 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
       (cumdisto[layno.wrapping_sub(1u32) as usize])
         + (*tcd_tile).distolayer[layno as usize]
     };
-    layno = layno.wrapping_add(1)
+    layno += 1;
   }
   return 1i32;
 }
@@ -1333,10 +1333,10 @@ unsafe fn opj_tcd_init_tile(
                   (*l_code_block_0).x1 = opj_int_min(cblkxend, (*l_current_precinct).x1);
                   (*l_code_block_0).y1 = opj_int_min(cblkyend, (*l_current_precinct).y1)
                 }
-                cblkno = cblkno.wrapping_add(1)
+                cblkno += 1;
               }
               l_current_precinct = l_current_precinct.offset(1);
-              precno = precno.wrapping_add(1)
+              precno += 1;
             }
           }
           _ => {}
@@ -1349,12 +1349,12 @@ unsafe fn opj_tcd_init_tile(
         l_step_size = l_step_size.offset(1)
       }
       l_res = l_res.offset(1);
-      resno = resno.wrapping_add(1)
+      resno += 1;
     }
     l_tccp = l_tccp.offset(1);
     l_tilec = l_tilec.offset(1);
     l_image_comp = l_image_comp.offset(1);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   return 1i32;
 }
@@ -1511,7 +1511,7 @@ unsafe fn opj_tcd_code_block_dec_allocate(
     i = 0 as OPJ_UINT32;
     while i < l_current_max_segs {
       opj_tcd_reinit_segment(&mut *l_segs.offset(i as isize));
-      i = i.wrapping_add(1)
+      i += 1;
     }
     (*p_code_block).chunks = l_chunks;
     (*p_code_block).numchunksalloc = l_numchunksalloc
@@ -1540,7 +1540,7 @@ pub(crate) unsafe fn opj_tcd_get_decoded_tile_size(
     l_size_comp = (*l_img_comp).prec >> 3i32;
     l_remaining = (*l_img_comp).prec & 7u32;
     if l_remaining != 0 {
-      l_size_comp = l_size_comp.wrapping_add(1)
+      l_size_comp += 1;
     }
     if l_size_comp == 3u32 {
       l_size_comp = 4 as OPJ_UINT32
@@ -1593,7 +1593,7 @@ pub(crate) unsafe fn opj_tcd_get_decoded_tile_size(
     l_data_size = (l_data_size as libc::c_uint).wrapping_add(l_temp) as OPJ_UINT32;
     l_img_comp = l_img_comp.offset(1);
     l_tile_comp = l_tile_comp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return l_data_size;
 }
@@ -1636,7 +1636,7 @@ pub(crate) unsafe fn opj_tcd_encode_tile(
           (*l_tccp).prcw[i as usize] as libc::c_int;
         (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pdy[i as usize] =
           (*l_tccp).prch[i as usize] as libc::c_int;
-        i = i.wrapping_add(1)
+        i += 1;
       }
       let ref mut fresh0 = (*(*p_cstr_info).tile.offset(p_tile_no as isize)).packet;
       *fresh0 = opj_calloc(
@@ -1739,7 +1739,7 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
     compno = 0 as OPJ_UINT32;
     while compno < numcomps_to_decode {
       *used_component.offset(*comps_indices.offset(compno as isize) as isize) = 1i32;
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     (*p_tcd).used_component = used_component
   }
@@ -1753,7 +1753,7 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
         break;
       }
     }
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   if (*p_tcd).whole_tile_decoding != 0 {
     compno = 0 as OPJ_UINT32;
@@ -1809,7 +1809,7 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
           return 0i32;
         }
       }
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
   } else {
     /* Compute restricted tile-component and tile-resolution coordinates */
@@ -1886,10 +1886,10 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
               .wrapping_sub(1u32)
               .wrapping_sub(resno),
           );
-          resno = resno.wrapping_add(1)
+          resno += 1;
         }
       }
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
   }
   /* FIXME */
@@ -1970,7 +1970,7 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
           }
         }
       }
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
   }
   /*----------------DWT---------------------*/
@@ -2054,7 +2054,7 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
       l_src_data = (*l_tilec).data_win
     }
     if l_remaining != 0 {
-      l_size_comp = l_size_comp.wrapping_add(1)
+      l_size_comp += 1;
     }
     if l_size_comp == 3u32 {
       l_size_comp = 4 as OPJ_UINT32
@@ -2073,10 +2073,10 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
               let fresh2 = l_dest_ptr;
               l_dest_ptr = l_dest_ptr.offset(1);
               *fresh2 = *fresh1 as OPJ_CHAR;
-              k = k.wrapping_add(1)
+              k += 1;
             }
             l_src_ptr = l_src_ptr.offset(l_stride as isize);
-            j = j.wrapping_add(1)
+            j += 1;
           }
         } else {
           j = 0 as OPJ_UINT32;
@@ -2088,10 +2088,10 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
               let fresh4 = l_dest_ptr;
               l_dest_ptr = l_dest_ptr.offset(1);
               *fresh4 = (*fresh3 & 0xffi32) as OPJ_CHAR;
-              k = k.wrapping_add(1)
+              k += 1;
             }
             l_src_ptr = l_src_ptr.offset(l_stride as isize);
-            j = j.wrapping_add(1)
+            j += 1;
           }
         }
         p_dest = l_dest_ptr as *mut OPJ_BYTE
@@ -2113,10 +2113,10 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
                 core::mem::size_of::<OPJ_INT16>() as usize,
               );
               l_dest_ptr_0 = l_dest_ptr_0.offset(1);
-              k = k.wrapping_add(1)
+              k += 1;
             }
             l_src_ptr_0 = l_src_ptr_0.offset(l_stride as isize);
-            j = j.wrapping_add(1)
+            j += 1;
           }
         } else {
           j = 0 as OPJ_UINT32;
@@ -2132,10 +2132,10 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
                 core::mem::size_of::<OPJ_INT16>() as usize,
               );
               l_dest_ptr_0 = l_dest_ptr_0.offset(1);
-              k = k.wrapping_add(1)
+              k += 1;
             }
             l_src_ptr_0 = l_src_ptr_0.offset(l_stride as isize);
-            j = j.wrapping_add(1)
+            j += 1;
           }
         }
         p_dest = l_dest_ptr_0 as *mut OPJ_BYTE
@@ -2153,7 +2153,7 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
           );
           l_dest_ptr_1 = l_dest_ptr_1.offset(l_width as isize);
           l_src_ptr_1 = l_src_ptr_1.offset(l_width.wrapping_add(l_stride) as isize);
-          j = j.wrapping_add(1)
+          j += 1;
         }
         p_dest = l_dest_ptr_1 as *mut OPJ_BYTE
       }
@@ -2161,7 +2161,7 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
     }
     l_img_comp = l_img_comp.offset(1);
     l_tilec = l_tilec.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return 1i32;
 }
@@ -2231,16 +2231,16 @@ unsafe fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
               Some(l_tcd_code_block_deallocate.expect("non-null function pointer"))
                 .expect("non-null function pointer")(l_precinct);
               l_precinct = l_precinct.offset(1);
-              precno = precno.wrapping_add(1)
+              precno += 1;
             }
             opj_free((*l_band).precincts as *mut libc::c_void);
             (*l_band).precincts = 0 as *mut opj_tcd_precinct_t
           }
           l_band = l_band.offset(1);
-          bandno = bandno.wrapping_add(1)
+          bandno += 1;
         }
         l_res = l_res.offset(1);
-        resno = resno.wrapping_add(1)
+        resno += 1;
       }
       opj_free((*l_tile_comp).resolutions as *mut libc::c_void);
       (*l_tile_comp).resolutions = 0 as *mut opj_tcd_resolution_t
@@ -2254,7 +2254,7 @@ unsafe fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
     }
     opj_image_data_free((*l_tile_comp).data_win as *mut libc::c_void);
     l_tile_comp = l_tile_comp.offset(1);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   opj_free((*l_tile).comps as *mut libc::c_void);
   (*l_tile).comps = 0 as *mut opj_tcd_tilecomp_t;
@@ -2508,7 +2508,7 @@ unsafe fn opj_tcd_mct_decode(
           *fresh8 = (*l_tile_comp).data_win as *mut OPJ_BYTE
         }
         l_tile_comp = l_tile_comp.offset(1);
-        i = i.wrapping_add(1)
+        i += 1;
       }
       if opj_mct_decode_custom(
         (*l_tcp).m_mct_decoding_matrix as *mut OPJ_BYTE,
@@ -2646,10 +2646,10 @@ unsafe fn opj_tcd_dc_level_shift_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
             *l_current_ptr =
               opj_int_clamp(*l_current_ptr + (*l_tccp).m_dc_level_shift, l_min, l_max);
             l_current_ptr = l_current_ptr.offset(1);
-            i = i.wrapping_add(1)
+            i += 1;
           }
           l_current_ptr = l_current_ptr.offset(l_stride as isize);
-          j = j.wrapping_add(1)
+          j += 1;
         }
       } else {
         j = 0 as OPJ_UINT32;
@@ -2671,10 +2671,10 @@ unsafe fn opj_tcd_dc_level_shift_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
               ) as OPJ_INT32
             }
             l_current_ptr = l_current_ptr.offset(1);
-            i = i.wrapping_add(1)
+            i += 1;
           }
           l_current_ptr = l_current_ptr.offset(l_stride as isize);
-          j = j.wrapping_add(1)
+          j += 1;
         }
       }
     }
@@ -2717,7 +2717,7 @@ unsafe fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinc
       opj_aligned_free((*l_code_block).decoded_data as *mut libc::c_void);
       (*l_code_block).decoded_data = 0 as *mut OPJ_INT32;
       l_code_block = l_code_block.offset(1);
-      cblkno = cblkno.wrapping_add(1)
+      cblkno += 1;
     }
     opj_free((*p_precinct).cblks.dec as *mut libc::c_void);
     (*p_precinct).cblks.dec = 0 as *mut opj_tcd_cblk_dec_t
@@ -2754,7 +2754,7 @@ unsafe fn opj_tcd_code_block_enc_deallocate(mut p_precinct: *mut opj_tcd_precinc
         (*l_code_block).passes = 0 as *mut opj_tcd_pass_t
       }
       l_code_block = l_code_block.offset(1);
-      cblkno = cblkno.wrapping_add(1)
+      cblkno += 1;
     }
     opj_free((*p_precinct).cblks.enc as *mut libc::c_void);
     (*p_precinct).cblks.enc = 0 as *mut opj_tcd_cblk_enc_t
@@ -2777,7 +2777,7 @@ pub(crate) unsafe fn opj_tcd_get_encoder_input_buffer_size(
     l_size_comp = (*l_img_comp).prec >> 3i32;
     l_remaining = (*l_img_comp).prec & 7u32;
     if l_remaining != 0 {
-      l_size_comp = l_size_comp.wrapping_add(1)
+      l_size_comp += 1;
     }
     if l_size_comp == 3u32 {
       l_size_comp = 4 as OPJ_UINT32
@@ -2790,7 +2790,7 @@ pub(crate) unsafe fn opj_tcd_get_encoder_input_buffer_size(
     ) as OPJ_SIZE_T as OPJ_SIZE_T;
     l_img_comp = l_img_comp.offset(1);
     l_tilec = l_tilec.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return l_data_size;
 }
@@ -2817,7 +2817,7 @@ unsafe fn opj_tcd_dc_level_shift_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
       while i < l_nb_elem {
         *l_current_ptr -= (*l_tccp).m_dc_level_shift;
         l_current_ptr = l_current_ptr.offset(1);
-        i = i.wrapping_add(1)
+        i += 1;
       }
     } else {
       i = 0 as OPJ_SIZE_T;
@@ -2825,13 +2825,13 @@ unsafe fn opj_tcd_dc_level_shift_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
         *(l_current_ptr as *mut OPJ_FLOAT32) =
           (*l_current_ptr - (*l_tccp).m_dc_level_shift) as OPJ_FLOAT32;
         l_current_ptr = l_current_ptr.offset(1);
-        i = i.wrapping_add(1)
+        i += 1;
       }
     }
     l_img_comp = l_img_comp.offset(1);
     l_tccp = l_tccp.offset(1);
     l_tile_comp = l_tile_comp.offset(1);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   return 1i32;
 }
@@ -2862,7 +2862,7 @@ unsafe fn opj_tcd_mct_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
       let ref mut fresh9 = *l_data.offset(i as isize);
       *fresh9 = (*l_tile_comp).data as *mut OPJ_BYTE;
       l_tile_comp = l_tile_comp.offset(1);
-      i = i.wrapping_add(1)
+      i += 1;
     }
     if opj_mct_encode_custom(
       (*(*p_tcd).tcp).m_mct_coding_matrix as *mut OPJ_BYTE,
@@ -2911,7 +2911,7 @@ unsafe fn opj_tcd_dwt_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
     }
     l_tile_comp = l_tile_comp.offset(1);
     l_tccp = l_tccp.offset(1);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   return 1i32;
 }
@@ -3038,7 +3038,7 @@ pub(crate) unsafe fn opj_tcd_copy_tile_data(
     l_nb_elem = (((*l_tilec).x1 - (*l_tilec).x0) as OPJ_SIZE_T)
       .wrapping_mul(((*l_tilec).y1 - (*l_tilec).y0) as OPJ_SIZE_T);
     if l_remaining != 0 {
-      l_size_comp = l_size_comp.wrapping_add(1)
+      l_size_comp += 1;
     }
     if l_size_comp == 3u32 {
       l_size_comp = 4 as OPJ_UINT32
@@ -3055,7 +3055,7 @@ pub(crate) unsafe fn opj_tcd_copy_tile_data(
             let fresh11 = l_dest_ptr;
             l_dest_ptr = l_dest_ptr.offset(1);
             *fresh11 = *fresh10 as OPJ_INT32;
-            j = j.wrapping_add(1)
+            j += 1;
           }
         } else {
           j = 0 as OPJ_SIZE_T;
@@ -3065,7 +3065,7 @@ pub(crate) unsafe fn opj_tcd_copy_tile_data(
             let fresh13 = l_dest_ptr;
             l_dest_ptr = l_dest_ptr.offset(1);
             *fresh13 = *fresh12 as libc::c_int & 0xffi32;
-            j = j.wrapping_add(1)
+            j += 1;
           }
         }
         p_src = l_src_ptr as *mut OPJ_BYTE
@@ -3081,7 +3081,7 @@ pub(crate) unsafe fn opj_tcd_copy_tile_data(
             let fresh15 = l_dest_ptr_0;
             l_dest_ptr_0 = l_dest_ptr_0.offset(1);
             *fresh15 = *fresh14 as OPJ_INT32;
-            j = j.wrapping_add(1)
+            j += 1;
           }
         } else {
           j = 0 as OPJ_SIZE_T;
@@ -3091,7 +3091,7 @@ pub(crate) unsafe fn opj_tcd_copy_tile_data(
             let fresh17 = l_dest_ptr_0;
             l_dest_ptr_0 = l_dest_ptr_0.offset(1);
             *fresh17 = *fresh16 as libc::c_int & 0xffffi32;
-            j = j.wrapping_add(1)
+            j += 1;
           }
         }
         p_src = l_src_ptr_0 as *mut OPJ_BYTE
@@ -3106,7 +3106,7 @@ pub(crate) unsafe fn opj_tcd_copy_tile_data(
           let fresh19 = l_dest_ptr_1;
           l_dest_ptr_1 = l_dest_ptr_1.offset(1);
           *fresh19 = *fresh18;
-          j = j.wrapping_add(1)
+          j += 1;
         }
         p_src = l_src_ptr_1 as *mut OPJ_BYTE
       }
@@ -3114,7 +3114,7 @@ pub(crate) unsafe fn opj_tcd_copy_tile_data(
     }
     l_img_comp = l_img_comp.offset(1);
     l_tilec = l_tilec.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return 1i32;
 }

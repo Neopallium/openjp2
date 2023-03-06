@@ -125,7 +125,7 @@ unsafe fn opj_lupDecompose(
     let fresh0 = tmpPermutations;
     tmpPermutations = tmpPermutations.offset(1);
     *fresh0 = i;
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* now make a pivot with column switch */
   tmpPermutations = permutations;
@@ -148,7 +148,7 @@ unsafe fn opj_lupDecompose(
       }
       /* next line */
       lColumnMatrix = lColumnMatrix.offset(nb_compo as isize);
-      i = i.wrapping_add(1)
+      i += 1;
     }
     /* a whole rest of 0 -> non singular */
     if p as libc::c_double == 0.0f64 {
@@ -207,13 +207,13 @@ unsafe fn opj_lupDecompose(
         let fresh4 = lColumnMatrix;
         lColumnMatrix = lColumnMatrix.offset(1);
         *fresh4 -= p * *fresh3;
-        j = j.wrapping_add(1)
+        j += 1;
       }
       /* come back to the k+1th element */
       lDestMatrix = lDestMatrix.offset(-(lStride as isize));
       /* go to kth element of the next line */
       lColumnMatrix = lColumnMatrix.offset(k as isize);
-      i = i.wrapping_add(1)
+      i += 1;
     }
     /* offset is now k+2 */
     offset = offset.wrapping_add(1);
@@ -223,7 +223,7 @@ unsafe fn opj_lupDecompose(
     lTmpMatrix = lTmpMatrix.offset(nb_compo as isize);
     /* next permutation element */
     tmpPermutations = tmpPermutations.offset(1);
-    k = k.wrapping_add(1)
+    k += 1;
   }
   return 1i32;
 }
@@ -271,7 +271,7 @@ unsafe fn opj_lupSolve(
       let fresh6 = lCurrentPtr;
       lCurrentPtr = lCurrentPtr.offset(1);
       sum += *fresh5 * *fresh6;
-      j = j.wrapping_add(1)
+      j += 1;
     }
     /*y[i] = pVector[pPermutations[i]] - sum; */
     let fresh7 = lCurrentPermutationPtr;
@@ -280,7 +280,7 @@ unsafe fn opj_lupSolve(
     lIntermediatePtr = lIntermediatePtr.offset(1);
     *fresh8 = *pVector.offset(*fresh7 as isize) - sum;
     lLineMatrix = lLineMatrix.offset(nb_compo as isize);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* we take the last point of the matrix */
   lLineMatrix = pMatrix
@@ -307,7 +307,7 @@ unsafe fn opj_lupSolve(
       let fresh12 = lCurrentPtr;
       lCurrentPtr = lCurrentPtr.offset(1);
       sum += *fresh11 * *fresh12;
-      j = j.wrapping_add(1)
+      j += 1;
     }
     /*x[k] = (y[k] - sum) / u; */
     let fresh13 = lGeneratedData;
@@ -360,8 +360,8 @@ unsafe fn opj_lupInvert(
     while i < nb_compo {
       *lCurrentPtr = *p_dest_temp.offset(i as isize);
       lCurrentPtr = lCurrentPtr.offset(nb_compo as isize);
-      i = i.wrapping_add(1)
+      i += 1;
     }
-    j = j.wrapping_add(1)
+    j += 1;
   }
 }

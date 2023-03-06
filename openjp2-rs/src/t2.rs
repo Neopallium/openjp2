@@ -93,7 +93,7 @@ unsafe fn opj_t2_putcommacode(mut bio: *mut opj_bio_t, mut n: OPJ_INT32) {
 unsafe fn opj_t2_getcommacode(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
   let mut n = 0 as OPJ_UINT32;
   while opj_bio_read(bio, 1 as OPJ_UINT32) != 0 {
-    n = n.wrapping_add(1)
+    n += 1;
   }
   return n;
 }
@@ -252,9 +252,9 @@ pub(crate) unsafe fn opj_t2_encode_packets(
           }
         }
         l_current_pi = l_current_pi.offset(1);
-        poc = poc.wrapping_add(1)
+        poc += 1;
       }
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
   } else {
     opj_pi_create_encode(l_pi, l_cp, p_tile_no, p_pino, p_tp_num, p_tp_pos, p_t2_mode);
@@ -471,7 +471,7 @@ pub(crate) unsafe fn opj_t2_decode_packets(
             skip_packet = 0i32;
             break;
           } else {
-            bandno = bandno.wrapping_add(1)
+            bandno += 1;
           }
         }
       }
@@ -532,7 +532,7 @@ pub(crate) unsafe fn opj_t2_decode_packets(
     }
     l_current_pi = l_current_pi.offset(1);
     opj_free(first_pass_failed as *mut libc::c_void);
-    pino = pino.wrapping_add(1)
+    pino += 1;
   }
   /* INDEX >> */
   /* << INDEX */
@@ -748,7 +748,7 @@ unsafe fn opj_t2_encode_packet(
             cblkno,
             (*band).numbps - (*cblk).numbps as OPJ_INT32,
           );
-          cblkno = cblkno.wrapping_add(1)
+          cblkno += 1;
         }
       }
       bandno = bandno.wrapping_add(1);
@@ -801,7 +801,7 @@ unsafe fn opj_t2_encode_packet(
           opj_tgt_setvalue((*prc_0).incltree, cblkno, layno as OPJ_INT32);
         }
         cblk = cblk.offset(1);
-        cblkno = cblkno.wrapping_add(1)
+        cblkno += 1;
       }
       cblk = (*prc_0).cblks.enc;
       cblkno = 0 as OPJ_UINT32;
@@ -862,7 +862,7 @@ unsafe fn opj_t2_encode_packet(
               nump = 0 as OPJ_UINT32
             }
             pass = pass.offset(1);
-            passno = passno.wrapping_add(1)
+            passno += 1;
           }
           opj_t2_putcommacode(bio, increment as OPJ_INT32);
           /* computation of the new Length indicator */
@@ -892,11 +892,11 @@ unsafe fn opj_t2_encode_packet(
               nump = 0 as OPJ_UINT32
             }
             pass = pass.offset(1);
-            passno = passno.wrapping_add(1)
+            passno += 1;
           }
           cblk = cblk.offset(1)
         }
-        cblkno = cblkno.wrapping_add(1)
+        cblkno += 1;
       }
     }
     bandno = bandno.wrapping_add(1);
@@ -995,7 +995,7 @@ unsafe fn opj_t2_encode_packet(
           }
           cblk = cblk.offset(1)
         }
-        cblkno = cblkno.wrapping_add(1)
+        cblkno += 1;
       }
     }
     bandno = bandno.wrapping_add(1);
@@ -1122,11 +1122,11 @@ unsafe fn opj_t2_read_packet_header(
           (*l_cblk).numsegs = 0 as OPJ_UINT32;
           (*l_cblk).real_num_segs = 0 as OPJ_UINT32;
           l_cblk = l_cblk.offset(1);
-          cblkno = cblkno.wrapping_add(1)
+          cblkno += 1;
         }
       }
       l_band = l_band.offset(1);
-      bandno = bandno.wrapping_add(1)
+      bandno += 1;
     }
   }
   /* SOP markers */
@@ -1270,7 +1270,7 @@ unsafe fn opj_t2_read_packet_header(
           if (*l_cblk).numsegs == 0 {
             let mut i = 0 as OPJ_UINT32;
             while opj_tgt_decode(l_bio, (*l_prc_0).imsbtree, cblkno, i as OPJ_INT32) == 0 {
-              i = i.wrapping_add(1)
+              i += 1;
             }
             (*l_cblk).Mb = (*l_band).numbps as OPJ_UINT32;
             (*l_cblk).numbps = ((*l_band).numbps as OPJ_UINT32)
@@ -1427,7 +1427,7 @@ unsafe fn opj_t2_read_packet_header(
           }
           l_cblk = l_cblk.offset(1)
         }
-        cblkno = cblkno.wrapping_add(1)
+        cblkno += 1;
       }
     }
     bandno = bandno.wrapping_add(1);
@@ -1640,11 +1640,11 @@ unsafe fn opj_t2_read_packet_data(
           (*l_cblk).real_num_segs = (*l_cblk).numsegs;
           l_cblk = l_cblk.offset(1)
         }
-        cblkno = cblkno.wrapping_add(1)
+        cblkno += 1;
       }
       l_band = l_band.offset(1)
     }
-    bandno = bandno.wrapping_add(1)
+    bandno += 1;
   }
   // return the number of bytes read
   if partial_buffer != 0 {
@@ -1755,11 +1755,11 @@ unsafe fn opj_t2_skip_packet_data(
           }
           l_cblk = l_cblk.offset(1)
         }
-        cblkno = cblkno.wrapping_add(1)
+        cblkno += 1;
       }
       l_band = l_band.offset(1)
     }
-    bandno = bandno.wrapping_add(1)
+    bandno += 1;
   }
   return 1i32;
 }

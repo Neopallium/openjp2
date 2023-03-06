@@ -516,7 +516,7 @@ unsafe fn opj_dwt_encode_step1_combined(
     let ref mut fresh22 = *fw.offset(1);
     *fresh22 *= c2;
     fw = fw.offset(2);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if i < iters_c1 {
     let ref mut fresh23 = *fw.offset(0);
@@ -562,7 +562,7 @@ unsafe fn opj_dwt_encode_step2(
       *fresh30 +=
         (*fw.offset(-(2i32) as isize) + *fw.offset(0)) * c;
       fw = fw.offset(2);
-      i = i.wrapping_add(1)
+      i += 1;
     }
   }
   if m < end {
@@ -814,7 +814,7 @@ unsafe extern "C" fn opj_dwt_encode_h_func(
         0i32
       },
     );
-    j = j.wrapping_add(1)
+    j += 1;
   }
   opj_aligned_free((*job).h.mem as *mut libc::c_void);
   opj_free(job as *mut libc::c_void);
@@ -882,7 +882,7 @@ unsafe fn opj_dwt_fetch_cols_vertical_pass(
         array.offset(k.wrapping_mul(stride_width) as isize) as *const libc::c_void,
         NB_ELTS_V8 as usize * core::mem::size_of::<OPJ_INT32>(),
       );
-      k = k.wrapping_add(1)
+      k += 1;
     }
   } else {
     let mut k_0: OPJ_UINT32 = 0;
@@ -1159,7 +1159,7 @@ unsafe fn opj_v8dwt_encode_step2(
         c += 1
       }
       fw = fw.offset((2 * NB_ELTS_V8 as i32) as isize);
-      i = i.wrapping_add(1)
+      i += 1;
     }
   }
   if m < end {
@@ -1411,7 +1411,7 @@ unsafe fn opj_dwt_encode_procedure(
           ),
           job as *mut libc::c_void,
         );
-        j = j.wrapping_add(1)
+        j += 1;
       }
       opj_thread_pool_wait_completion(tp, 0i32);
     }
@@ -1433,7 +1433,7 @@ unsafe fn opj_dwt_encode_procedure(
             0i32
           },
         );
-        j = j.wrapping_add(1)
+        j += 1;
       }
     } else {
       let mut num_jobs_0 = num_threads as OPJ_UINT32;
@@ -1480,7 +1480,7 @@ unsafe fn opj_dwt_encode_procedure(
           ),
           job_0 as *mut libc::c_void,
         );
-        j = j.wrapping_add(1)
+        j += 1;
       }
       opj_thread_pool_wait_completion(tp, 0i32);
     }
@@ -1670,7 +1670,7 @@ pub(crate) unsafe fn opj_dwt_calc_explicit_stepsizes(
       prec.wrapping_add(gain) as OPJ_INT32,
       &mut *(*tccp).stepsizes.as_mut_ptr().offset(bandno as isize),
     );
-    bandno = bandno.wrapping_add(1)
+    bandno += 1;
   }
 }
 /* <summary>                             */
@@ -1711,7 +1711,7 @@ unsafe extern "C" fn opj_dwt_decode_h_func(
       &mut (*job).h,
       &mut *(*job).tiledp.offset(j.wrapping_mul((*job).w) as isize),
     );
-    j = j.wrapping_add(1)
+    j += 1;
   }
   opj_aligned_free((*job).h.mem as *mut libc::c_void);
   opj_free(job as *mut libc::c_void);
@@ -1825,7 +1825,7 @@ unsafe fn opj_dwt_decode_tile(
           &mut h,
           &mut *tiledp.offset((j as OPJ_SIZE_T).wrapping_mul(w as usize) as isize),
         );
-        j = j.wrapping_add(1)
+        j += 1;
       }
     } else {
       let mut num_jobs = num_threads as OPJ_UINT32;
@@ -1874,7 +1874,7 @@ unsafe fn opj_dwt_decode_tile(
           ),
           job as *mut libc::c_void,
         );
-        j = j.wrapping_add(1)
+        j += 1;
       }
       opj_thread_pool_wait_completion(tp, 0i32);
     }
@@ -1947,7 +1947,7 @@ unsafe fn opj_dwt_decode_tile(
           ),
           job_0 as *mut libc::c_void,
         );
-        j = j.wrapping_add(1)
+        j += 1;
       }
       opj_thread_pool_wait_completion(tp, 0i32);
     }
@@ -2328,7 +2328,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
             }
           } + 2i32
             >> 2i32;
-          off = off.wrapping_add(1)
+          off += 1;
         }
         i += 1;
         i_max = win_l_x1;
@@ -2360,7 +2360,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                 .wrapping_add(off) as isize,
             ) + 2i32
               >> 2i32;
-            off = off.wrapping_add(1)
+            off += 1;
           }
           i += 1
         }
@@ -2435,7 +2435,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
               }
             } + 2i32
               >> 2i32;
-            off = off.wrapping_add(1)
+            off += 1;
           }
           i += 1
         }
@@ -2467,7 +2467,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                 .wrapping_mul(4u32)
                 .wrapping_add(off) as isize,
             ) >> 1i32;
-            off = off.wrapping_add(1)
+            off += 1;
           }
           i += 1
         }
@@ -2528,7 +2528,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                 )
               }
             } >> 1i32;
-            off = off.wrapping_add(1)
+            off += 1;
           }
           i += 1
         }
@@ -2545,7 +2545,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
           .wrapping_add(off) as isize,
       );
       *fresh62 /= 2i32;
-      off = off.wrapping_add(1)
+      off += 1;
     }
   } else {
     i = win_l_x0;
@@ -2618,7 +2618,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
             2i32,
           ) >> 2i32,
         );
-        off = off.wrapping_add(1)
+        off += 1;
       }
       i += 1
     }
@@ -2702,7 +2702,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
             },
           ) >> 1i32,
         );
-        off = off.wrapping_add(1)
+        off += 1;
       }
       i += 1
     }
@@ -2892,13 +2892,13 @@ unsafe fn opj_dwt_init_sparse_array(
               return 0 as *mut opj_sparse_array_int32_t;
             }
           }
-          cblkno = cblkno.wrapping_add(1)
+          cblkno += 1;
         }
-        precno = precno.wrapping_add(1)
+        precno += 1;
       }
-      bandno = bandno.wrapping_add(1)
+      bandno += 1;
     }
-    resno = resno.wrapping_add(1)
+    resno += 1;
   }
   return sa;
 }
@@ -3218,7 +3218,7 @@ unsafe fn opj_dwt_decode_partial_tile(
           return 0i32;
         }
       }
-      j = j.wrapping_add(1)
+      j += 1;
     }
     i = win_tr_x0;
     while i < win_tr_x1 {
@@ -3266,7 +3266,7 @@ unsafe fn opj_dwt_decode_partial_tile(
       }
       i = (i as libc::c_uint).wrapping_add(nb_cols) as OPJ_UINT32
     }
-    resno = resno.wrapping_add(1)
+    resno += 1;
   }
   opj_aligned_free(h.mem as *mut libc::c_void);
   let mut ret_0 = opj_sparse_array_int32_read(
@@ -3359,7 +3359,7 @@ unsafe fn opj_v8dwt_interleave_h(
             }
           }
         }
-        i = i.wrapping_add(1)
+        i += 1;
       }
     }
     bi = (*dwt)
@@ -3369,7 +3369,7 @@ unsafe fn opj_v8dwt_interleave_h(
     a = a.offset((*dwt).sn as isize);
     x0 = (*dwt).win_h_x0;
     x1 = (*dwt).win_h_x1;
-    k = k.wrapping_add(1)
+    k += 1;
   }
 }
 
@@ -3422,7 +3422,7 @@ unsafe fn opj_v8dwt_interleave_partial_h(
       1i32,
     );
     assert!(ret != 0);
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 
@@ -3445,7 +3445,7 @@ unsafe fn opj_v8dwt_interleave_v(
       (nb_elts_read as OPJ_SIZE_T)
         .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
     );
-    i = i.wrapping_add(1)
+    i += 1;
   }
   a =
     a.offset(((*dwt).sn as OPJ_UINT32 as usize).wrapping_mul(width as OPJ_SIZE_T) as isize);
@@ -3463,7 +3463,7 @@ unsafe fn opj_v8dwt_interleave_v(
       (nb_elts_read as OPJ_SIZE_T)
         .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
     );
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe fn opj_v8dwt_interleave_partial_v(
@@ -3589,7 +3589,7 @@ unsafe fn opj_v8dwt_decode_step1(
         .wrapping_mul(8u32)
         .wrapping_add(7u32) as isize,
     ) * c;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 
@@ -3774,7 +3774,7 @@ unsafe extern "C" fn opj_dwt97_decode_h_func(
           .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3))
           as isize,
       ) = (*(*job).h.wavelet.offset(k as isize)).f[3 as usize];
-      k = k.wrapping_add(1)
+      k += 1;
     }
     k = 0 as OPJ_UINT32;
     while k < (*job).rw {
@@ -3798,7 +3798,7 @@ unsafe extern "C" fn opj_dwt97_decode_h_func(
           .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7))
           as isize,
       ) = (*(*job).h.wavelet.offset(k as isize)).f[7 as usize];
-      k = k.wrapping_add(1)
+      k += 1;
     }
     aj = aj.offset((w * NB_ELTS_V8) as isize);
     j += NB_ELTS_V8;
@@ -3946,7 +3946,7 @@ unsafe fn opj_dwt_decode_tile_97(
               .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3))
               as isize,
           ) = (*h.wavelet.offset(k as isize)).f[3];
-          k = k.wrapping_add(1)
+          k += 1;
         }
         k = 0 as OPJ_UINT32;
         while k < rw {
@@ -3970,7 +3970,7 @@ unsafe fn opj_dwt_decode_tile_97(
               .wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7))
               as isize,
           ) = (*h.wavelet.offset(k as isize)).f[7];
-          k = k.wrapping_add(1)
+          k += 1;
         }
         aj = aj.offset((w * NB_ELTS_V8) as isize);
         j += NB_ELTS_V8;
@@ -4043,9 +4043,9 @@ unsafe fn opj_dwt_decode_tile_97(
             (k_0 as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(l as usize))
               as isize,
           ) = (*h.wavelet.offset(k_0 as isize)).f[l as usize];
-          l = l.wrapping_add(1)
+          l += 1;
         }
-        k_0 = k_0.wrapping_add(1)
+        k_0 += 1;
       }
     }
     v.dn = rh.wrapping_sub(v.sn as OPJ_UINT32) as OPJ_INT32;
@@ -4148,7 +4148,7 @@ unsafe fn opj_dwt_decode_tile_97(
           &mut *v.wavelet.offset(k_2 as isize) as *mut opj_v8_t as *const libc::c_void,
           (j as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
         );
-        k_2 = k_2.wrapping_add(1)
+        k_2 += 1;
       }
     }
   }
@@ -4525,7 +4525,7 @@ unsafe fn opj_dwt_decode_partial_97(
       }
       j += NB_ELTS_V8;
     }
-    resno = resno.wrapping_add(1)
+    resno += 1;
   }
   let mut ret_0 = opj_sparse_array_int32_read(
     sa,

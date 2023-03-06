@@ -154,7 +154,7 @@ pub(crate) unsafe fn opj_tgt_create(
       }
       j += 1
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   (*node).parent = 0 as *mut opj_tgt_node;
   opj_tgt_reset(tree);
@@ -272,7 +272,7 @@ pub(crate) unsafe fn opj_tgt_init(
         }
         j += 1
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
     (*l_node).parent = 0 as *mut opj_tgt_node
   }
@@ -304,7 +304,7 @@ pub(crate) unsafe fn opj_tgt_reset(mut p_tree: *mut opj_tgt_tree_t) {
     (*l_current_node).low = 0i32;
     (*l_current_node).known = 0 as OPJ_UINT32;
     l_current_node = l_current_node.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 #[no_mangle]

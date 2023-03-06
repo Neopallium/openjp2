@@ -88,7 +88,7 @@ pub unsafe extern "C" fn opj_write_bytes_LE(
     let fresh1 = p_buffer;
     p_buffer = p_buffer.offset(1);
     *fresh1 = *fresh0;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 #[no_mangle]
@@ -133,7 +133,7 @@ pub unsafe extern "C" fn opj_read_bytes_LE(
     let fresh3 = l_data_ptr;
     l_data_ptr = l_data_ptr.offset(-1);
     *fresh3 = *fresh2;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 #[no_mangle]
@@ -164,7 +164,7 @@ pub unsafe extern "C" fn opj_write_double_LE(
     let fresh5 = p_buffer;
     p_buffer = p_buffer.offset(1);
     *fresh5 = *fresh4;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 #[no_mangle]
@@ -195,7 +195,7 @@ pub unsafe extern "C" fn opj_read_double_LE(
     let fresh7 = l_data_ptr;
     l_data_ptr = l_data_ptr.offset(-1);
     *fresh7 = *fresh6;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 #[no_mangle]
@@ -220,7 +220,7 @@ pub unsafe extern "C" fn opj_write_float_LE(mut p_buffer: *mut OPJ_BYTE, mut p_v
     let fresh9 = p_buffer;
     p_buffer = p_buffer.offset(1);
     *fresh9 = *fresh8;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 #[no_mangle]
@@ -251,7 +251,7 @@ pub unsafe extern "C" fn opj_read_float_LE(
     let fresh11 = l_data_ptr;
     l_data_ptr = l_data_ptr.offset(-1);
     *fresh11 = *fresh10;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 #[no_mangle]
