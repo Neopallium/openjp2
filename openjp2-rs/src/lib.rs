@@ -6,9 +6,6 @@
 #![allow(unused_assignments)]
 #![allow(unused_mut)]
 #![feature(c_variadic)]
-#![feature(extern_types)]
-#![feature(register_tool)]
-#![register_tool(c2rust)]
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -27,6 +24,7 @@ mod consts;
 pub mod bio;
 pub mod cio;
 pub mod dwt;
+#[macro_use]
 pub mod event;
 pub mod function_list;
 pub mod ht_dec;

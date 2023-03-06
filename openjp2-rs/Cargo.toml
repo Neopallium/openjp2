@@ -20,9 +20,8 @@ bitflags = "1.3.2"
 c2rust-bitfields = "0.3"
 libc = "0.2"
 log = "0.4.17"
+sprintf = "0.1.3"
 
 [features]
 default = ["std"]
-std = [
-	"log/std",
-]
+std = ["log/std"]

@@ -56,7 +56,7 @@ extern "C" {
 pub(crate) unsafe fn opj_tgt_create(
   mut numleafsh: OPJ_UINT32,
   mut numleafsv: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> *mut opj_tgt_tree_t {
   let mut nplh: [OPJ_INT32; 32] = [0; 32];
   let mut nplv: [OPJ_INT32; 32] = [0; 32];
@@ -173,7 +173,7 @@ pub(crate) unsafe fn opj_tgt_init(
   mut p_tree: *mut opj_tgt_tree_t,
   mut p_num_leafs_h: OPJ_UINT32,
   mut p_num_leafs_v: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> *mut opj_tgt_tree_t {
   let mut l_nplh: [OPJ_INT32; 32] = [0; 32];
   let mut l_nplv: [OPJ_INT32; 32] = [0; 32];
