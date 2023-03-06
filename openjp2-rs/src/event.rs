@@ -59,6 +59,9 @@ pub type va_list = __builtin_va_list;
 /* ==========================================================
   Utility functions
 ==========================================================*/
+
+use crate::consts::*;
+
 /* ----------------------------------------------------------------------- */
 /* *
  * Default callback function.
@@ -69,11 +72,117 @@ unsafe extern "C" fn opj_default_callback(
   mut _client_data: *mut libc::c_void,
 ) {
 }
+
+impl opj_event_mgr {
+  pub fn set_default_event_handler(&mut self) {
+    self.m_error_data = 0 as *mut libc::c_void;
+    self.m_warning_data = 0 as *mut libc::c_void;
+    self.m_info_data = 0 as *mut libc::c_void;
+    self.error_handler = None;
+    self.info_handler = None;
+    self.warning_handler = None;
+  }
+
+  pub fn set_info_handler(&mut self,
+    mut p_callback: opj_msg_callback,
+    mut p_user_data: *mut libc::c_void,
+  ) {
+    self.info_handler = p_callback;
+    self.m_info_data = p_user_data;
+  }
+
+  pub fn set_warning_handler(&mut self,
+    mut p_callback: opj_msg_callback,
+    mut p_user_data: *mut libc::c_void,
+  ) {
+    self.warning_handler = p_callback;
+    self.m_warning_data = p_user_data;
+  }
+
+  pub fn set_error_handler(&mut self,
+    mut p_callback: opj_msg_callback,
+    mut p_user_data: *mut libc::c_void,
+  ) {
+    self.error_handler = p_callback;
+    self.m_error_data = p_user_data;
+  }
+
+  pub fn is_enabled(&self, event_type: OPJ_INT32) -> bool {
+    match event_type {
+      EVT_ERROR => {
+        self.error_handler.is_some()
+      }
+      EVT_WARNING => {
+        self.warning_handler.is_some()
+      }
+      EVT_INFO => {
+        self.info_handler.is_some()
+      }
+      _ => {
+        false
+      }
+    }
+  }
+
+  pub fn msg_write(&self,
+    event_type: OPJ_INT32,
+    msg: &str,
+  ) -> bool {
+    let (msg_handler, l_data) = match event_type {
+      EVT_ERROR => {
+        (self.error_handler, self.m_error_data)
+      }
+      EVT_WARNING => {
+        (self.warning_handler, self.m_warning_data)
+      }
+      EVT_INFO => {
+        (self.info_handler, self.m_info_data)
+      }
+      _ => {
+        return false;
+      }
+    };
+    match msg_handler {
+      Some(msg_handler) => {
+        let c_msg = std::ffi::CString::new(msg).unwrap();
+        /* output the message to the user program */
+        unsafe {
+          msg_handler(c_msg.as_ptr(), l_data);
+        }
+        true
+      }
+      None => {
+        false
+      }
+    }
+  }
+}
+
+macro_rules! opj_event_msg {
+  ($event_mgr:expr, $event_type:expr, $fmt:expr, $($arg:expr),*) => {
+    if $event_mgr.is_enabled($event_type) {
+      let s = ::sprintf::sprintf!($fmt, $($arg),*);
+      match s {
+        Ok(s) => if $event_mgr.msg_write($event_type, &s) {
+          1i32
+        } else {
+          0i32
+        },
+        Err(err) => {
+          log::error!("sprintf failed: {err:?}");
+          0i32
+        }
+      }
+    } else {
+      0i32
+    }
+  };
+}
+
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */
-#[no_mangle]
 pub(crate) unsafe extern "C" fn opj_event_msg(
-  mut p_event_mgr: *mut opj_event_mgr_t,
+  mut p_event_mgr: *mut opj_event_mgr,
   mut event_type: OPJ_INT32,
   mut fmt: *const libc::c_char,
   mut args: ...
@@ -83,15 +192,15 @@ pub(crate) unsafe extern "C" fn opj_event_msg(
   let mut l_data = 0 as *mut libc::c_void;
   if !p_event_mgr.is_null() {
     match event_type {
-      1 => {
+      EVT_ERROR => {
         msg_handler = (*p_event_mgr).error_handler;
         l_data = (*p_event_mgr).m_error_data
       }
-      2 => {
+      EVT_WARNING => {
         msg_handler = (*p_event_mgr).warning_handler;
         l_data = (*p_event_mgr).m_warning_data
       }
-      4 => {
+      EVT_INFO => {
         msg_handler = (*p_event_mgr).info_handler;
         l_data = (*p_event_mgr).m_info_data
       }
@@ -128,21 +237,4 @@ pub(crate) unsafe extern "C" fn opj_event_msg(
   }
   return 1i32;
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_set_default_event_handler(mut p_manager: *mut opj_event_mgr_t) {
-  (*p_manager).m_error_data = 0 as *mut libc::c_void;
-  (*p_manager).m_warning_data = 0 as *mut libc::c_void;
-  (*p_manager).m_info_data = 0 as *mut libc::c_void;
-  (*p_manager).error_handler = Some(
-    opj_default_callback
-      as unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> (),
-  );
-  (*p_manager).info_handler = Some(
-    opj_default_callback
-      as unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> (),
-  );
-  (*p_manager).warning_handler = Some(
-    opj_default_callback
-      as unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> (),
-  );
-}
+

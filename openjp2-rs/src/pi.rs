@@ -57,7 +57,7 @@ pub struct opj_pi_iterator {
   pub y: OPJ_UINT32,
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
-  pub manager: *mut opj_event_mgr_t,
+  pub manager: *mut opj_event_mgr,
 }
 pub type opj_pi_iterator_t = opj_pi_iterator;
 #[inline]
@@ -1600,7 +1600,7 @@ unsafe fn opj_pi_create(
   mut image: *const opj_image_t,
   mut cp: *const opj_cp_t,
   mut tileno: OPJ_UINT32,
-  mut manager: *mut opj_event_mgr_t,
+  mut manager: *mut opj_event_mgr,
 ) -> *mut opj_pi_iterator_t {
   /* loop*/
   let mut pino: OPJ_UINT32 = 0;
@@ -2011,7 +2011,7 @@ pub(crate) unsafe fn opj_pi_create_decode(
   mut p_image: *mut opj_image_t,
   mut p_cp: *mut opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
-  mut manager: *mut opj_event_mgr_t,
+  mut manager: *mut opj_event_mgr,
 ) -> *mut opj_pi_iterator_t {
   let mut numcomps = (*p_image).numcomps;
   /* loop */
@@ -2287,7 +2287,7 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
   mut p_cp: *mut opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
   mut p_t2_mode: J2K_T2_MODE,
-  mut manager: *mut opj_event_mgr_t,
+  mut manager: *mut opj_event_mgr,
 ) -> *mut opj_pi_iterator_t {
   let mut numcomps = (*p_image).numcomps;
   /* loop*/

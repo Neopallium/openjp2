@@ -8,11 +8,11 @@ pub mod cio {
 
 pub mod event {
   /**< Error event type */
-  pub const EVT_ERROR: u32    = 1;
+  pub const EVT_ERROR: i32    = 1;
   /**< Warning event type */
-  pub const EVT_WARNING: u32  = 2;
+  pub const EVT_WARNING: i32  = 2;
   /**< Debug event type */
-  pub const EVT_INFO: u32     = 4;
+  pub const EVT_INFO: i32     = 4;
 }
 
 pub mod jpip {

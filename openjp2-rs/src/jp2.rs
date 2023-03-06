@@ -44,7 +44,7 @@ pub struct opj_jp2_header_handler {
       _: *mut opj_jp2_t,
       _: *mut OPJ_BYTE,
       _: OPJ_UINT32,
-      _: *mut opj_event_mgr_t,
+      _: *mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
 }
@@ -68,7 +68,7 @@ static mut jp2_header: [opj_jp2_header_handler_t; 3] = [
             _: *mut opj_jp2_t,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ),
     };
@@ -83,7 +83,7 @@ static mut jp2_header: [opj_jp2_header_handler_t; 3] = [
             _: *mut opj_jp2_t,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ),
     };
@@ -98,7 +98,7 @@ static mut jp2_header: [opj_jp2_header_handler_t; 3] = [
             _: *mut opj_jp2_t,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ),
     };
@@ -115,7 +115,7 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
             _: *mut opj_jp2_t,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ),
     };
@@ -130,7 +130,7 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
             _: *mut opj_jp2_t,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ),
     };
@@ -145,7 +145,7 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
             _: *mut opj_jp2_t,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ),
     };
@@ -160,7 +160,7 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
             _: *mut opj_jp2_t,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ),
     };
@@ -175,7 +175,7 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
             _: *mut opj_jp2_t,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ),
     };
@@ -190,7 +190,7 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
             _: *mut opj_jp2_t,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ),
     };
@@ -212,7 +212,7 @@ unsafe fn opj_jp2_read_boxhdr(
   mut box_0: *mut opj_jp2_box_t,
   mut p_number_bytes_read: *mut OPJ_UINT32,
   mut cio: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* read header from file */
   let mut l_data_header: [OPJ_BYTE; 8] = [0; 8];
@@ -313,7 +313,7 @@ unsafe extern "C" fn opj_jp2_read_ihdr(
   mut jp2: *mut opj_jp2_t,
   mut p_image_header_data: *mut OPJ_BYTE,
   mut p_image_header_size: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
   /* WIDTH */
@@ -567,7 +567,7 @@ unsafe extern "C" fn opj_jp2_read_bpcc(
   mut jp2: *mut opj_jp2_t,
   mut p_bpc_header_data: *mut OPJ_BYTE,
   mut p_bpc_header_size: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
   /* preconditions */
@@ -778,7 +778,7 @@ unsafe fn opj_jp2_free_pclr(mut color: *mut opj_jp2_color_t) {
 unsafe fn opj_jp2_check_color(
   mut image: *mut opj_image_t,
   mut color: *mut opj_jp2_color_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT16 = 0;
   /* testcase 4149.pdf.SIGSEGV.cf7.3501 */
@@ -994,7 +994,7 @@ Apply collected palette data
 unsafe fn opj_jp2_apply_pclr(
   mut image: *mut opj_image_t,
   mut color: *mut opj_jp2_color_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut old_comps = 0 as *mut opj_image_comp_t;
   let mut new_comps = 0 as *mut opj_image_comp_t;
@@ -1154,7 +1154,7 @@ unsafe extern "C" fn opj_jp2_read_pclr(
   mut jp2: *mut opj_jp2_t,
   mut p_pclr_header_data: *mut OPJ_BYTE,
   mut p_pclr_header_size: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut jp2_pclr = 0 as *mut opj_jp2_pclr_t;
   let mut channel_size = 0 as *mut OPJ_BYTE;
@@ -1306,7 +1306,7 @@ unsafe extern "C" fn opj_jp2_read_cmap(
   mut jp2: *mut opj_jp2_t,
   mut p_cmap_header_data: *mut OPJ_BYTE,
   mut p_cmap_header_size: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut cmap = 0 as *mut opj_jp2_cmap_comp_t;
   let mut i: OPJ_BYTE = 0;
@@ -1385,7 +1385,7 @@ unsafe extern "C" fn opj_jp2_read_cmap(
 unsafe fn opj_jp2_apply_cdef(
   mut image: *mut opj_image_t,
   mut color: *mut opj_jp2_color_t,
-  mut manager: *mut opj_event_mgr_t,
+  mut manager: *mut opj_event_mgr,
 ) {
   let mut info = 0 as *mut opj_jp2_cdef_info_t;
   let mut i: OPJ_UINT16 = 0;
@@ -1487,7 +1487,7 @@ unsafe extern "C" fn opj_jp2_read_cdef(
   mut jp2: *mut opj_jp2_t,
   mut p_cdef_header_data: *mut OPJ_BYTE,
   mut p_cdef_header_size: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut cdef_info = 0 as *mut opj_jp2_cdef_info_t;
   let mut i: OPJ_UINT16 = 0;
@@ -1594,7 +1594,7 @@ unsafe extern "C" fn opj_jp2_read_colr(
   mut jp2: *mut opj_jp2_t,
   mut p_colr_header_data: *mut OPJ_BYTE,
   mut p_colr_header_size: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_value: OPJ_UINT32 = 0;
   /* preconditions */
@@ -1767,7 +1767,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_decode(
   mut jp2: *mut opj_jp2_t,
   mut p_stream: *mut opj_stream_private_t,
   mut p_image: *mut opj_image_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   if p_image.is_null() {
     return 0i32;
@@ -1840,7 +1840,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_decode(
 unsafe extern "C" fn opj_jp2_write_jp2h(
   mut jp2: *mut opj_jp2_t,
   mut stream: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_writers: [opj_jp2_img_header_writer_handler_t; 4] =
     [opj_jp2_img_header_writer_handler_t {
@@ -2008,7 +2008,7 @@ unsafe extern "C" fn opj_jp2_write_jp2h(
 unsafe extern "C" fn opj_jp2_write_ftyp(
   mut jp2: *mut opj_jp2_t,
   mut cio: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
   let mut l_ftyp_size: OPJ_UINT32 = 0;
@@ -2091,7 +2091,7 @@ unsafe extern "C" fn opj_jp2_write_ftyp(
 unsafe extern "C" fn opj_jp2_write_jp2c(
   mut jp2: *mut opj_jp2_t,
   mut cio: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut j2k_codestream_exit: OPJ_OFF_T = 0;
   let mut l_data_header: [OPJ_BYTE; 8] = [0; 8];
@@ -2157,7 +2157,7 @@ unsafe extern "C" fn opj_jp2_write_jp2c(
 unsafe extern "C" fn opj_jp2_write_jp(
   mut jp2: *mut opj_jp2_t,
   mut cio: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* 12 bytes will be read */
   let mut l_signature_data: [OPJ_BYTE; 12] = [0; 12];
@@ -2236,7 +2236,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
   mut jp2: *mut opj_jp2_t,
   mut parameters: *mut opj_cparameters_t,
   mut image: *mut opj_image_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
   let mut depth_0: OPJ_UINT32 = 0;
@@ -2458,7 +2458,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
 pub(crate) unsafe extern "C" fn opj_jp2_encode(
   mut jp2: *mut opj_jp2_t,
   mut stream: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_j2k_encode((*jp2).j2k, stream, p_manager);
 }
@@ -2466,7 +2466,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_encode(
 pub(crate) unsafe extern "C" fn opj_jp2_end_decompress(
   mut jp2: *mut opj_jp2_t,
   mut cio: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -2487,7 +2487,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_end_decompress(
 pub(crate) unsafe extern "C" fn opj_jp2_end_compress(
   mut jp2: *mut opj_jp2_t,
   mut cio: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -2512,7 +2512,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_end_compress(
  */
 unsafe fn opj_jp2_setup_end_header_writing(
   mut jp2: *mut opj_jp2_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -2525,7 +2525,7 @@ unsafe fn opj_jp2_setup_end_header_writing(
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
       >,
       opj_procedure,
@@ -2534,7 +2534,7 @@ unsafe fn opj_jp2_setup_end_header_writing(
         as unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
     )),
     p_manager,
@@ -2551,7 +2551,7 @@ unsafe fn opj_jp2_setup_end_header_writing(
  */
 unsafe fn opj_jp2_setup_end_header_reading(
   mut jp2: *mut opj_jp2_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -2564,7 +2564,7 @@ unsafe fn opj_jp2_setup_end_header_reading(
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
       >,
       opj_procedure,
@@ -2573,7 +2573,7 @@ unsafe fn opj_jp2_setup_end_header_reading(
         as unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
     )),
     p_manager,
@@ -2587,7 +2587,7 @@ unsafe fn opj_jp2_setup_end_header_reading(
 unsafe extern "C" fn opj_jp2_default_validation(
   mut jp2: *mut opj_jp2_t,
   mut cio: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_is_valid = 1i32;
   let mut i: OPJ_UINT32 = 0;
@@ -2645,7 +2645,7 @@ unsafe extern "C" fn opj_jp2_default_validation(
 unsafe extern "C" fn opj_jp2_read_header_procedure(
   mut jp2: *mut opj_jp2_t,
   mut stream: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut box_0 = opj_jp2_box_t {
     length: 0,
@@ -2894,13 +2894,13 @@ unsafe fn opj_jp2_exec(
   mut jp2: *mut opj_jp2_t,
   mut p_procedure_list: *mut opj_procedure_list_t,
   mut stream: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_procedure = 0 as *mut Option<
     unsafe extern "C" fn(
       _: *mut opj_jp2_t,
       _: *mut opj_stream_private_t,
-      _: *mut opj_event_mgr_t,
+      _: *mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >;
   let mut l_result = 1i32;
@@ -2918,7 +2918,7 @@ unsafe fn opj_jp2_exec(
       unsafe extern "C" fn(
         _: *mut opj_jp2_t,
         _: *mut opj_stream_private_t,
-        _: *mut opj_event_mgr_t,
+        _: *mut opj_event_mgr,
       ) -> OPJ_BOOL,
     >;
   i = 0 as OPJ_UINT32;
@@ -2938,7 +2938,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_start_compress(
   mut jp2: *mut opj_jp2_t,
   mut stream: *mut opj_stream_private_t,
   mut p_image: *mut opj_image_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -3039,7 +3039,7 @@ unsafe extern "C" fn opj_jp2_read_jp(
   mut jp2: *mut opj_jp2_t,
   mut p_header_data: *mut OPJ_BYTE,
   mut p_header_size: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_magic_number: OPJ_UINT32 = 0;
   /* preconditions */
@@ -3106,7 +3106,7 @@ unsafe extern "C" fn opj_jp2_read_ftyp(
   mut jp2: *mut opj_jp2_t,
   mut p_header_data: *mut OPJ_BYTE,
   mut p_header_size: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
   let mut l_remaining_bytes: OPJ_UINT32 = 0;
@@ -3186,7 +3186,7 @@ unsafe extern "C" fn opj_jp2_read_ftyp(
 unsafe extern "C" fn opj_jp2_skip_jp2c(
   mut jp2: *mut opj_jp2_t,
   mut stream: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -3204,7 +3204,7 @@ unsafe extern "C" fn opj_jp2_skip_jp2c(
 unsafe extern "C" fn opj_jpip_skip_iptr(
   mut jp2: *mut opj_jp2_t,
   mut stream: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -3243,7 +3243,7 @@ unsafe extern "C" fn opj_jp2_read_jp2h(
   mut jp2: *mut opj_jp2_t,
   mut p_header_data: *mut OPJ_BYTE,
   mut p_header_size: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_box_size = 0 as OPJ_UINT32;
   let mut l_current_data_size = 0 as OPJ_UINT32;
@@ -3348,7 +3348,7 @@ unsafe fn opj_jp2_read_boxhdr_char(
   mut p_data: *mut OPJ_BYTE,
   mut p_number_bytes_read: *mut OPJ_UINT32,
   mut p_box_max_size: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_value: OPJ_UINT32 = 0;
   /* preconditions */
@@ -3434,7 +3434,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_read_header(
   mut p_stream: *mut opj_stream_private_t,
   mut jp2: *mut opj_jp2_t,
   mut p_image: *mut *mut opj_image_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -3481,7 +3481,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_read_header(
  */
 unsafe fn opj_jp2_setup_encoding_validation(
   mut jp2: *mut opj_jp2_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -3494,7 +3494,7 @@ unsafe fn opj_jp2_setup_encoding_validation(
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
       >,
       opj_procedure,
@@ -3503,7 +3503,7 @@ unsafe fn opj_jp2_setup_encoding_validation(
         as unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
     )),
     p_manager,
@@ -3520,7 +3520,7 @@ unsafe fn opj_jp2_setup_encoding_validation(
  */
 unsafe fn opj_jp2_setup_decoding_validation(
   mut jp2: *mut opj_jp2_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -3534,7 +3534,7 @@ unsafe fn opj_jp2_setup_decoding_validation(
  */
 unsafe fn opj_jp2_setup_header_writing(
   mut jp2: *mut opj_jp2_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -3547,7 +3547,7 @@ unsafe fn opj_jp2_setup_header_writing(
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
       >,
       opj_procedure,
@@ -3556,7 +3556,7 @@ unsafe fn opj_jp2_setup_header_writing(
         as unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
     )),
     p_manager,
@@ -3571,7 +3571,7 @@ unsafe fn opj_jp2_setup_header_writing(
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
       >,
       opj_procedure,
@@ -3580,7 +3580,7 @@ unsafe fn opj_jp2_setup_header_writing(
         as unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
     )),
     p_manager,
@@ -3595,7 +3595,7 @@ unsafe fn opj_jp2_setup_header_writing(
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
       >,
       opj_procedure,
@@ -3604,7 +3604,7 @@ unsafe fn opj_jp2_setup_header_writing(
         as unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
     )),
     p_manager,
@@ -3620,7 +3620,7 @@ unsafe fn opj_jp2_setup_header_writing(
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         opj_procedure,
@@ -3629,7 +3629,7 @@ unsafe fn opj_jp2_setup_header_writing(
           as unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr_t,
+            _: *mut opj_event_mgr,
           ) -> OPJ_BOOL,
       )),
       p_manager,
@@ -3645,7 +3645,7 @@ unsafe fn opj_jp2_setup_header_writing(
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
       >,
       opj_procedure,
@@ -3654,7 +3654,7 @@ unsafe fn opj_jp2_setup_header_writing(
         as unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
     )),
     p_manager,
@@ -3671,7 +3671,7 @@ unsafe fn opj_jp2_setup_header_writing(
  */
 unsafe fn opj_jp2_setup_header_reading(
   mut jp2: *mut opj_jp2_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -3684,7 +3684,7 @@ unsafe fn opj_jp2_setup_header_reading(
         unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
       >,
       opj_procedure,
@@ -3693,7 +3693,7 @@ unsafe fn opj_jp2_setup_header_reading(
         as unsafe extern "C" fn(
           _: *mut opj_jp2_t,
           _: *mut opj_stream_private_t,
-          _: *mut opj_event_mgr_t,
+          _: *mut opj_event_mgr,
         ) -> OPJ_BOOL,
     )),
     p_manager,
@@ -3716,7 +3716,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_read_tile_header(
   mut p_nb_comps: *mut OPJ_UINT32,
   mut p_go_on: *mut OPJ_BOOL,
   mut p_stream: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_j2k_read_tile_header(
     (*p_jp2).j2k,
@@ -3739,7 +3739,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_write_tile(
   mut p_data: *mut OPJ_BYTE,
   mut p_data_size: OPJ_UINT32,
   mut p_stream: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_j2k_write_tile(
     (*p_jp2).j2k,
@@ -3757,7 +3757,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_decode_tile(
   mut p_data: *mut OPJ_BYTE,
   mut p_data_size: OPJ_UINT32,
   mut p_stream: *mut opj_stream_private_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_j2k_decode_tile(
     (*p_jp2).j2k,
@@ -3830,7 +3830,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_set_decoded_components(
   mut p_jp2: *mut opj_jp2_t,
   mut numcomps: OPJ_UINT32,
   mut comps_indices: *const OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_j2k_set_decoded_components((*p_jp2).j2k, numcomps, comps_indices, p_manager);
 }
@@ -3842,7 +3842,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_set_decode_area(
   mut p_start_y: OPJ_INT32,
   mut p_end_x: OPJ_INT32,
   mut p_end_y: OPJ_INT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_j2k_set_decode_area(
     (*p_jp2).j2k,
@@ -3859,7 +3859,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_get_tile(
   mut p_jp2: *mut opj_jp2_t,
   mut p_stream: *mut opj_stream_private_t,
   mut p_image: *mut opj_image_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
   mut tile_index: OPJ_UINT32,
 ) -> OPJ_BOOL {
   if p_image.is_null() {
@@ -3991,7 +3991,7 @@ pub(crate) unsafe extern "C" fn jp2_get_cstr_info(
 pub(crate) unsafe extern "C" fn opj_jp2_set_decoded_resolution_factor(
   mut p_jp2: *mut opj_jp2_t,
   mut res_factor: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_j2k_set_decoded_resolution_factor((*p_jp2).j2k, res_factor, p_manager);
 }
@@ -4000,7 +4000,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_set_decoded_resolution_factor(
 pub(crate) unsafe extern "C" fn opj_jp2_encoder_set_extra_options(
   mut p_jp2: *mut opj_jp2_t,
   mut p_options: *const *const libc::c_char,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_j2k_encoder_set_extra_options((*p_jp2).j2k, p_options, p_manager);
 }

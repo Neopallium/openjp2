@@ -170,7 +170,7 @@ pub(crate) unsafe fn opj_t2_encode_packets(
   mut p_tp_pos: OPJ_INT32,
   mut p_pino: OPJ_UINT32,
   mut p_t2_mode: J2K_T2_MODE,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_current_data = p_dest; /* t2_mode == FINAL_PASS  */
   let mut l_nb_bytes = 0 as OPJ_UINT32;
@@ -367,7 +367,7 @@ pub(crate) unsafe fn opj_t2_decode_packets(
   mut p_data_read: *mut OPJ_UINT32,
   mut p_max_len: OPJ_UINT32,
   mut _p_cstr_index: *mut opj_codestream_index_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_current_data = p_src;
   let mut l_pi = 0 as *mut opj_pi_iterator_t;
@@ -595,7 +595,7 @@ unsafe fn opj_t2_decode_packet(
   mut p_data_read: *mut OPJ_UINT32,
   mut p_max_length: OPJ_UINT32,
   mut p_pack_info: *mut opj_packet_info_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_read_data: OPJ_BOOL = 0;
   let mut l_nb_bytes_read = 0 as OPJ_UINT32;
@@ -667,7 +667,7 @@ unsafe fn opj_t2_encode_packet(
   mut length: OPJ_UINT32,
   mut cstr_info: *mut opj_codestream_info_t,
   mut p_t2_mode: J2K_T2_MODE,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut bandno: OPJ_UINT32 = 0; /* component value */
   let mut cblkno: OPJ_UINT32 = 0; /* resolution level value */
@@ -1016,7 +1016,7 @@ unsafe fn opj_t2_skip_packet(
   mut p_data_read: *mut OPJ_UINT32,
   mut p_max_length: OPJ_UINT32,
   mut p_pack_info: *mut opj_packet_info_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_read_data: OPJ_BOOL = 0;
   let mut l_nb_bytes_read = 0 as OPJ_UINT32;
@@ -1073,7 +1073,7 @@ unsafe fn opj_t2_read_packet_header(
   mut p_data_read: *mut OPJ_UINT32,
   mut p_max_length: OPJ_UINT32,
   mut p_pack_info: *mut opj_packet_info_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* loop */
   let mut bandno: OPJ_UINT32 = 0; /* BIO component */
@@ -1496,7 +1496,7 @@ unsafe fn opj_t2_read_packet_data(
   mut p_data_read: *mut OPJ_UINT32,
   mut p_max_length: OPJ_UINT32,
   mut _pack_info: *mut opj_packet_info_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut bandno: OPJ_UINT32 = 0;
   let mut cblkno: OPJ_UINT32 = 0;
@@ -1661,7 +1661,7 @@ unsafe fn opj_t2_skip_packet_data(
   mut p_data_read: *mut OPJ_UINT32,
   mut p_max_length: OPJ_UINT32,
   mut _pack_info: *mut opj_packet_info_t,
-  mut p_manager: *mut opj_event_mgr_t,
+  mut p_manager: *mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut bandno: OPJ_UINT32 = 0;
   let mut cblkno: OPJ_UINT32 = 0;
