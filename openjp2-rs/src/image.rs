@@ -129,7 +129,7 @@ pub unsafe fn opj_image_create(
           .wrapping_mul((*comp).h as usize)
           .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
       );
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
   }
   return image;
@@ -147,7 +147,7 @@ pub unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
         if !(*image_comp).data.is_null() {
           opj_image_data_free((*image_comp).data as *mut libc::c_void);
         }
-        compno = compno.wrapping_add(1)
+        compno += 1;
       }
       opj_free((*image).comps as *mut libc::c_void);
     }
@@ -210,7 +210,7 @@ pub unsafe fn opj_image_comp_header_update(
     (*l_img_comp).x0 = l_comp_x0;
     (*l_img_comp).y0 = l_comp_y0;
     l_img_comp = l_img_comp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 /* *
@@ -243,7 +243,7 @@ pub unsafe fn opj_copy_image_header(
       if !(*image_comp).data.is_null() {
         opj_image_data_free((*image_comp).data as *mut libc::c_void);
       }
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     opj_free((*p_image_dest).comps as *mut libc::c_void);
     (*p_image_dest).comps = 0 as *mut opj_image_comp_t
@@ -269,7 +269,7 @@ pub unsafe fn opj_copy_image_header(
     );
     let ref mut fresh0 = (*(*p_image_dest).comps.offset(compno as isize)).data;
     *fresh0 = 0 as *mut OPJ_INT32;
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   (*p_image_dest).color_space = (*p_image_src).color_space;
   (*p_image_dest).icc_profile_len = (*p_image_src).icc_profile_len;
@@ -328,7 +328,7 @@ pub unsafe fn opj_image_tile_create(
       (*comp).prec = (*cmptparms.offset(compno as isize)).prec;
       (*comp).sgnd = (*cmptparms.offset(compno as isize)).sgnd;
       (*comp).data = 0 as *mut OPJ_INT32;
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
   }
   return image;

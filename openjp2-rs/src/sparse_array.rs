@@ -117,7 +117,7 @@ pub(crate) unsafe fn opj_sparse_array_int32_free(mut sa: *mut opj_sparse_array_i
       if !(*(*sa).data_blocks.offset(i as isize)).is_null() {
         opj_free(*(*sa).data_blocks.offset(i as isize) as *mut libc::c_void);
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
     opj_free((*sa).data_blocks as *mut libc::c_void);
     opj_free(sa as *mut libc::c_void);
@@ -209,7 +209,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
                   .wrapping_mul(x_incr as usize),
               );
               dest_ptr = dest_ptr.offset(buf_line_stride as isize);
-              j = j.wrapping_add(1)
+              j += 1;
             }
           } else {
             let mut dest_ptr_0 = buf
@@ -224,10 +224,10 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               k = 0 as OPJ_UINT32;
               while k < x_incr {
                 *dest_ptr_0.offset(k.wrapping_mul(buf_col_stride) as isize) = 0i32;
-                k = k.wrapping_add(1)
+                k += 1;
               }
               dest_ptr_0 = dest_ptr_0.offset(buf_line_stride as isize);
-              j = j.wrapping_add(1)
+              j += 1;
             }
           }
         } else {
@@ -257,7 +257,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
                 );
                 dest_ptr_1 = dest_ptr_1.offset(buf_line_stride as isize);
                 src_ptr = src_ptr.offset(block_width as isize);
-                j = j.wrapping_add(1)
+                j += 1;
               }
             } else {
               j = 0 as OPJ_UINT32;
@@ -270,7 +270,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
                 );
                 dest_ptr_1 = dest_ptr_1.offset(buf_line_stride as isize);
                 src_ptr = src_ptr.offset(block_width as isize);
-                j = j.wrapping_add(1)
+                j += 1;
               }
             }
           } else {
@@ -286,7 +286,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
                 *dest_ptr_2 = *src_ptr;
                 dest_ptr_2 = dest_ptr_2.offset(buf_line_stride as isize);
                 src_ptr = src_ptr.offset(block_width as isize);
-                j = j.wrapping_add(1)
+                j += 1;
               }
             } else if y_incr == 1u32
               && buf_col_stride == 2u32
@@ -317,7 +317,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               while k_0 < x_incr {
                 *dest_ptr_2.offset(k_0.wrapping_mul(buf_col_stride) as isize) =
                   *src_ptr.offset(k_0 as isize);
-                k_0 = k_0.wrapping_add(1)
+                k_0 += 1;
               }
             } else if x_incr >= 8u32
               && buf_col_stride == 8u32
@@ -350,11 +350,11 @@ unsafe fn opj_sparse_array_int32_read_or_write(
                 while k_1 < x_incr {
                   *dest_ptr_2.offset(k_1.wrapping_mul(buf_col_stride) as isize) =
                     *src_ptr.offset(k_1 as isize);
-                  k_1 = k_1.wrapping_add(1)
+                  k_1 += 1;
                 }
                 dest_ptr_2 = dest_ptr_2.offset(buf_line_stride as isize);
                 src_ptr = src_ptr.offset(block_width as isize);
-                j = j.wrapping_add(1)
+                j += 1;
               }
             } else {
               /* General case */
@@ -365,11 +365,11 @@ unsafe fn opj_sparse_array_int32_read_or_write(
                 while k_2 < x_incr {
                   *dest_ptr_2.offset(k_2.wrapping_mul(buf_col_stride) as isize) =
                     *src_ptr.offset(k_2 as isize);
-                  k_2 = k_2.wrapping_add(1)
+                  k_2 += 1;
                 }
                 dest_ptr_2 = dest_ptr_2.offset(buf_line_stride as isize);
                 src_ptr = src_ptr.offset(block_width as isize);
-                j = j.wrapping_add(1)
+                j += 1;
               }
             }
           }
@@ -418,7 +418,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               );
               dest_ptr_3 = dest_ptr_3.offset(block_width as isize);
               src_ptr_0 = src_ptr_0.offset(buf_line_stride as isize);
-              j = j.wrapping_add(1)
+              j += 1;
             }
           } else {
             j = 0 as OPJ_UINT32;
@@ -431,7 +431,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               );
               dest_ptr_3 = dest_ptr_3.offset(block_width as isize);
               src_ptr_0 = src_ptr_0.offset(buf_line_stride as isize);
-              j = j.wrapping_add(1)
+              j += 1;
             }
           }
         } else {
@@ -452,7 +452,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               *dest_ptr_4 = *src_ptr_1;
               src_ptr_1 = src_ptr_1.offset(buf_line_stride as isize);
               dest_ptr_4 = dest_ptr_4.offset(block_width as isize);
-              j = j.wrapping_add(1)
+              j += 1;
             }
           } else if x_incr >= 8u32
             && buf_col_stride == 8u32
@@ -488,11 +488,11 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               while k_3 < x_incr {
                 *dest_ptr_4.offset(k_3 as isize) =
                   *src_ptr_1.offset(k_3.wrapping_mul(buf_col_stride) as isize);
-                k_3 = k_3.wrapping_add(1)
+                k_3 += 1;
               }
               src_ptr_1 = src_ptr_1.offset(buf_line_stride as isize);
               dest_ptr_4 = dest_ptr_4.offset(block_width as isize);
-              j = j.wrapping_add(1)
+              j += 1;
             }
           } else {
             /* General case */
@@ -503,11 +503,11 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               while k_4 < x_incr {
                 *dest_ptr_4.offset(k_4 as isize) =
                   *src_ptr_1.offset(k_4.wrapping_mul(buf_col_stride) as isize);
-                k_4 = k_4.wrapping_add(1)
+                k_4 += 1;
               }
               src_ptr_1 = src_ptr_1.offset(buf_line_stride as isize);
               dest_ptr_4 = dest_ptr_4.offset(block_width as isize);
-              j = j.wrapping_add(1)
+              j += 1;
             }
           }
         }

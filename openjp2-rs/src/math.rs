@@ -45,7 +45,7 @@ pub(crate) fn opj_uint_floorlog2(mut a: u32) -> u32 {
   l = 0 as u32;
   while a > 1 {
     a >>= 1;
-    l = l.wrapping_add(1)
+    l += 1;
   }
   return l;
 }

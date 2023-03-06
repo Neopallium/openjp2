@@ -2084,7 +2084,7 @@ pub fn opj_t1_decode_cblks(
                 opj_aligned_free((*cblk).decoded_data as *mut libc::c_void);
                 (*cblk).decoded_data = 0 as *mut OPJ_INT32
               }
-              cblkno = cblkno.wrapping_add(1)
+              cblkno += 1;
             }
           } else {
             let mut current_block_34: u64;
@@ -2161,17 +2161,17 @@ pub fn opj_t1_decode_cblks(
                   }
                 }
               }
-              cblkno = cblkno.wrapping_add(1)
+              cblkno += 1;
             }
           }
-          precno = precno.wrapping_add(1)
+          precno += 1;
           /* bandno */
           /* precno */
           /* cblkno */
         }
-        bandno = bandno.wrapping_add(1)
+        bandno += 1;
       }
-      resno = resno.wrapping_add(1)
+      resno += 1;
     }
   }
 }
@@ -2358,10 +2358,10 @@ fn opj_t1_decode_cblk(
           passtype = 0;
           bpno_plus_one -= 1
         }
-        passno = passno.wrapping_add(1)
+        passno += 1;
       }
       opq_mqc_finish_dec(&mut t1.mqc);
-      segno = segno.wrapping_add(1)
+      segno += 1;
     }
     if check_pterm != 0 {
       let mqc = &mut t1.mqc; /* MQC component */
@@ -2584,7 +2584,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
                   * ((1i32) << 7i32 - 1i32) as libc::c_float,
               ) as OPJ_INT32;
               t1data_0 = t1data_0.offset(1);
-              k_0 = k_0.wrapping_add(1)
+              k_0 += 1;
             }
             i += 1
           }
@@ -2688,18 +2688,18 @@ pub fn opj_t1_encode_cblks(
                     ),
                     job as *mut libc::c_void,
                   );
-                  cblkno = cblkno.wrapping_add(1)
+                  cblkno += 1;
                 }
               }
-              precno = precno.wrapping_add(1)
+              precno += 1;
               /* cblkno */
             }
           }
-          bandno = bandno.wrapping_add(1)
+          bandno += 1;
         }
-        resno = resno.wrapping_add(1)
+        resno += 1;
       }
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     opj_thread_pool_wait_completion((*tcd).thread_pool, 0i32);
     if !mutex.is_null() {
@@ -2914,7 +2914,7 @@ fn opj_t1_encode_cblk(
       if cblksty & 0x2 != 0 {
         opj_mqc_reset_enc(&mut t1.mqc);
       }
-      passno = passno.wrapping_add(1)
+      passno += 1;
     }
     (*cblk).totalpasses = passno;
     if (*cblk).totalpasses != 0 {
@@ -2958,7 +2958,7 @@ fn opj_t1_encode_cblk(
             .offset(passno.wrapping_sub(1) as isize))
           .rate
         });
-      passno = passno.wrapping_add(1)
+      passno += 1;
     }
     return cumwmsedec;
   }

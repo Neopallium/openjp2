@@ -472,9 +472,9 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             opj_uint_min((*pi).dy, dy)
           }
         }
-        resno = resno.wrapping_add(1)
+        resno += 1;
       }
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     if (*pi).dx == 0u32 || (*pi).dy == 0u32
     {
@@ -772,9 +772,9 @@ unsafe fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             opj_uint_min((*pi).dy, dy)
           }
         }
-        resno = resno.wrapping_add(1)
+        resno += 1;
       }
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     if (*pi).dx == 0u32 || (*pi).dy == 0u32
     {
@@ -1079,7 +1079,7 @@ unsafe fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
               opj_uint_min((*pi).dy, dy)
             }
           }
-          resno = resno.wrapping_add(1)
+          resno += 1;
         }
         if (*pi).dx == 0u32
           || (*pi).dy == 0u32
@@ -1391,11 +1391,11 @@ unsafe fn opj_get_encoding_parameters(
       if l_product > *p_max_prec {
         *p_max_prec = l_product
       }
-      resno = resno.wrapping_add(1)
+      resno += 1;
     }
     l_img_comp = l_img_comp.offset(1);
     l_tccp = l_tccp.offset(1);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
 }
 /* *
@@ -1580,11 +1580,11 @@ unsafe fn opj_get_all_encoding_parameters(
       if l_product > *p_max_prec {
         *p_max_prec = l_product
       }
-      resno = resno.wrapping_add(1)
+      resno += 1;
     }
     l_tccp = l_tccp.offset(1);
     l_img_comp = l_img_comp.offset(1);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
 }
 /* *
@@ -1658,10 +1658,10 @@ unsafe fn opj_pi_create(
         return 0 as *mut opj_pi_iterator_t;
       }
       (*comp).numresolutions = (*tccp).numresolutions;
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     l_current_pi = l_current_pi.offset(1);
-    pino = pino.wrapping_add(1)
+    pino += 1;
   }
   return l_pi;
 }
@@ -1753,7 +1753,7 @@ unsafe fn opj_pi_update_encode_poc_and_final(
     (*l_current_poc).dx = p_dx_min;
     (*l_current_poc).dy = p_dy_min;
     l_current_poc = l_current_poc.offset(1);
-    pino = pino.wrapping_add(1)
+    pino += 1;
   }
 }
 /* *
@@ -1823,7 +1823,7 @@ unsafe fn opj_pi_update_encode_not_poc(
     (*l_current_poc).dx = p_dx_min;
     (*l_current_poc).dy = p_dy_min;
     l_current_poc = l_current_poc.offset(1);
-    pino = pino.wrapping_add(1)
+    pino += 1;
   }
 }
 /* *
@@ -1865,7 +1865,7 @@ unsafe fn opj_pi_update_decode_poc(
     (*l_current_pi).poc.precno1 = p_max_precision;
     l_current_pi = l_current_pi.offset(1);
     l_current_poc = l_current_poc.offset(1);
-    pino = pino.wrapping_add(1)
+    pino += 1;
   }
 }
 /* *
@@ -1904,7 +1904,7 @@ unsafe fn opj_pi_update_decode_not_poc(
     (*l_current_pi).poc.layno1 = (*p_tcp).numlayers;
     (*l_current_pi).poc.precno1 = p_max_precision;
     l_current_pi = l_current_pi.offset(1);
-    pino = pino.wrapping_add(1)
+    pino += 1;
   }
 }
 /* *
@@ -2084,7 +2084,7 @@ pub(crate) unsafe fn opj_pi_create_decode(
     let ref mut fresh4 = *l_tmp_ptr.offset(compno as isize);
     *fresh4 = l_encoding_value_ptr;
     l_encoding_value_ptr = l_encoding_value_ptr.offset(l_data_stride as isize);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   /* get encoding parameters */
   opj_get_all_encoding_parameters(
@@ -2170,12 +2170,12 @@ pub(crate) unsafe fn opj_pi_create_decode(
       l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
       (*l_res).ph = *fresh8;
       l_res = l_res.offset(1);
-      resno = resno.wrapping_add(1)
+      resno += 1;
     }
     l_current_comp = l_current_comp.offset(1);
     l_img_comp = l_img_comp.offset(1);
     l_tccp = l_tccp.offset(1);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   l_current_pi = l_current_pi.offset(1);
   pino = 1 as OPJ_UINT32;
@@ -2216,19 +2216,19 @@ pub(crate) unsafe fn opj_pi_create_decode(
         l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
         (*l_res_0).ph = *fresh12;
         l_res_0 = l_res_0.offset(1);
-        resno = resno.wrapping_add(1)
+        resno += 1;
       }
       l_current_comp = l_current_comp.offset(1);
       l_img_comp = l_img_comp.offset(1);
       l_tccp = l_tccp.offset(1);
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     /* special treatment*/
     (*l_current_pi).include = (*l_current_pi.offset(-1)).include;
     (*l_current_pi).include_size =
       (*l_current_pi.offset(-1)).include_size;
     l_current_pi = l_current_pi.offset(1);
-    pino = pino.wrapping_add(1)
+    pino += 1;
   }
   opj_free(l_tmp_data as *mut libc::c_void);
   l_tmp_data = 0 as *mut OPJ_UINT32;
@@ -2360,7 +2360,7 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
     let ref mut fresh13 = *l_tmp_ptr.offset(compno as isize);
     *fresh13 = l_encoding_value_ptr;
     l_encoding_value_ptr = l_encoding_value_ptr.offset(l_data_stride as isize);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   /* get encoding parameters*/
   opj_get_all_encoding_parameters(
@@ -2434,12 +2434,12 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
       l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
       (*l_res).ph = *fresh17;
       l_res = l_res.offset(1);
-      resno = resno.wrapping_add(1)
+      resno += 1;
     }
     l_current_comp = l_current_comp.offset(1);
     l_img_comp = l_img_comp.offset(1);
     l_tccp = l_tccp.offset(1);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   l_current_pi = l_current_pi.offset(1);
   pino = 1 as OPJ_UINT32;
@@ -2480,19 +2480,19 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
         l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
         (*l_res_0).ph = *fresh21;
         l_res_0 = l_res_0.offset(1);
-        resno = resno.wrapping_add(1)
+        resno += 1;
       }
       l_current_comp = l_current_comp.offset(1);
       l_img_comp = l_img_comp.offset(1);
       l_tccp = l_tccp.offset(1);
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     /* special treatment*/
     (*l_current_pi).include = (*l_current_pi.offset(-1)).include;
     (*l_current_pi).include_size =
       (*l_current_pi.offset(-1)).include_size;
     l_current_pi = l_current_pi.offset(1);
-    pino = pino.wrapping_add(1)
+    pino += 1;
   }
   opj_free(l_tmp_data as *mut libc::c_void);
   l_tmp_data = 0 as *mut OPJ_UINT32;
@@ -2869,13 +2869,13 @@ pub(crate) unsafe fn opj_pi_destroy(
             (*l_current_component).resolutions = 0 as *mut opj_pi_resolution_t
           }
           l_current_component = l_current_component.offset(1);
-          compno = compno.wrapping_add(1)
+          compno += 1;
         }
         opj_free((*l_current_pi).comps as *mut libc::c_void);
         (*l_current_pi).comps = 0 as *mut opj_pi_comp_t
       }
       l_current_pi = l_current_pi.offset(1);
-      pino = pino.wrapping_add(1)
+      pino += 1;
     }
     opj_free(p_pi as *mut libc::c_void);
   };

@@ -575,7 +575,7 @@ unsafe extern "C" fn opj_j2k_read_int16_to_float(
     let fresh0 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh0 = l_temp as OPJ_FLOAT32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_read_int32_to_float(
@@ -594,7 +594,7 @@ unsafe extern "C" fn opj_j2k_read_int32_to_float(
     let fresh1 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh1 = l_temp as OPJ_FLOAT32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_read_float32_to_float(
@@ -613,7 +613,7 @@ unsafe extern "C" fn opj_j2k_read_float32_to_float(
     let fresh2 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh2 = l_temp;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_read_float64_to_float(
@@ -632,7 +632,7 @@ unsafe extern "C" fn opj_j2k_read_float64_to_float(
     let fresh3 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh3 = l_temp as OPJ_FLOAT32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_read_int16_to_int32(
@@ -651,7 +651,7 @@ unsafe extern "C" fn opj_j2k_read_int16_to_int32(
     let fresh4 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh4 = l_temp as OPJ_INT32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_read_int32_to_int32(
@@ -670,7 +670,7 @@ unsafe extern "C" fn opj_j2k_read_int32_to_int32(
     let fresh5 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh5 = l_temp as OPJ_INT32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_read_float32_to_int32(
@@ -689,7 +689,7 @@ unsafe extern "C" fn opj_j2k_read_float32_to_int32(
     let fresh6 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh6 = l_temp as OPJ_INT32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_read_float64_to_int32(
@@ -708,7 +708,7 @@ unsafe extern "C" fn opj_j2k_read_float64_to_int32(
     let fresh7 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh7 = l_temp as OPJ_INT32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_write_float_to_int16(
@@ -731,7 +731,7 @@ unsafe extern "C" fn opj_j2k_write_float_to_int16(
       core::mem::size_of::<OPJ_INT16>() as OPJ_UINT32,
     );
     l_dest_data = l_dest_data.offset(core::mem::size_of::<OPJ_INT16>() as isize);
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_write_float_to_int32(
@@ -754,7 +754,7 @@ unsafe extern "C" fn opj_j2k_write_float_to_int32(
       core::mem::size_of::<OPJ_INT32>() as OPJ_UINT32,
     );
     l_dest_data = l_dest_data.offset(core::mem::size_of::<OPJ_INT32>() as isize);
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_write_float_to_float(
@@ -774,7 +774,7 @@ unsafe extern "C" fn opj_j2k_write_float_to_float(
     opj_write_float_LE(l_dest_data, l_temp);
     l_dest_data =
       l_dest_data.offset(core::mem::size_of::<OPJ_FLOAT32>() as isize);
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe extern "C" fn opj_j2k_write_float_to_float64(
@@ -794,7 +794,7 @@ unsafe extern "C" fn opj_j2k_write_float_to_float64(
     opj_write_double_LE(l_dest_data, l_temp);
     l_dest_data =
       l_dest_data.offset(core::mem::size_of::<OPJ_FLOAT64>() as isize);
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 
@@ -871,16 +871,16 @@ unsafe fn opj_j2k_check_poc_val(
             *packet_array.offset(comp_index as isize) = 1 as OPJ_UINT32;
             comp_index =
               (comp_index as libc::c_uint).wrapping_add(step_l) as OPJ_UINT32;
-            layno = layno.wrapping_add(1)
+            layno += 1;
           }
           res_index = (res_index as libc::c_uint).wrapping_add(step_c) as OPJ_UINT32;
-          compno = compno.wrapping_add(1)
+          compno += 1;
         }
         index = (index as libc::c_uint).wrapping_add(step_r) as OPJ_UINT32;
-        resno = resno.wrapping_add(1)
+        resno += 1;
       }
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   index = 0 as OPJ_UINT32;
   layno = 0 as OPJ_UINT32;
@@ -892,11 +892,11 @@ unsafe fn opj_j2k_check_poc_val(
         loss |=
           (*packet_array.offset(index as isize) != 1u32) as libc::c_int;
         index = (index as libc::c_uint).wrapping_add(step_c) as OPJ_UINT32;
-        compno = compno.wrapping_add(1)
+        compno += 1;
       }
-      resno = resno.wrapping_add(1)
+      resno += 1;
     }
-    layno = layno.wrapping_add(1)
+    layno += 1;
   }
   if loss != 0 {
     opj_event_msg(
@@ -1058,11 +1058,11 @@ unsafe fn opj_j2k_calculate_tp(
       *p_nb_tiles = (*p_nb_tiles).wrapping_add(tp_num);
       cur_totnum_tp =
         (cur_totnum_tp as libc::c_uint).wrapping_add(tp_num) as OPJ_UINT32;
-      pino = pino.wrapping_add(1)
+      pino += 1;
     }
     (*tcp).m_nb_tile_parts = cur_totnum_tp;
     tcp = tcp.offset(1);
-    tileno = tileno.wrapping_add(1)
+    tileno += 1;
   }
   return 1i32;
 }
@@ -1290,7 +1290,7 @@ unsafe extern "C" fn opj_j2k_write_siz(
     );
     l_current_ptr = l_current_ptr.offset(1);
     l_img_comp = l_img_comp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if opj_stream_write_data(
     p_stream,
@@ -1575,7 +1575,7 @@ unsafe extern "C" fn opj_j2k_read_siz(
     (*l_img_comp).resno_decoded = 0 as OPJ_UINT32; /* number of resolution decoded */
     (*l_img_comp).factor = (*l_cp).m_specific_param.m_dec.m_reduce; /* reducing factor per component */
     l_img_comp = l_img_comp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if (*l_cp).tdx == 0u32
     || (*l_cp).tdy == 0u32
@@ -1720,7 +1720,7 @@ unsafe extern "C" fn opj_j2k_read_siz(
           .prec
           .wrapping_sub(1u32)
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   l_current_tile_param = (*l_cp).tcps;
   i = 0 as OPJ_UINT32;
@@ -1738,7 +1738,7 @@ unsafe extern "C" fn opj_j2k_read_siz(
       return 0i32;
     }
     l_current_tile_param = l_current_tile_param.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::MH;
   opj_image_comp_header_update(l_image, l_cp);
@@ -2092,7 +2092,7 @@ unsafe extern "C" fn opj_j2k_read_cod(
   i = 0 as OPJ_UINT32;
   while i < (*l_image).numcomps {
     (*(*l_tcp).tccps.offset(i as isize)).csty = (*l_tcp).csty & 0x1u32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if opj_j2k_read_SPCod_SPCoc(
     p_j2k,
@@ -2326,9 +2326,9 @@ unsafe fn opj_j2k_get_max_coc_size(mut p_j2k: *mut opj_j2k_t) -> OPJ_UINT32 {
     j = 0 as OPJ_UINT32;
     while j < l_nb_comp {
       l_max = opj_uint_max(l_max, opj_j2k_get_SPCod_SPCoc_size(p_j2k, i, j));
-      j = j.wrapping_add(1)
+      j += 1;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return (6u32).wrapping_add(l_max);
 }
@@ -3028,7 +3028,7 @@ unsafe extern "C" fn opj_j2k_write_poc_in_memory(
       l_nb_comp as OPJ_INT32,
     ) as OPJ_UINT32;
     l_current_poc = l_current_poc.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   *p_data_written = l_poc_size;
 }
@@ -3046,7 +3046,7 @@ unsafe fn opj_j2k_get_max_poc_size(mut p_j2k: *mut opj_j2k_t) -> OPJ_UINT32 {
   while i < l_nb_tiles {
     l_max_poc = opj_uint_max(l_max_poc, (*l_tcp).numpocs);
     l_tcp = l_tcp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   l_max_poc = l_max_poc.wrapping_add(1);
   return (4u32)
@@ -3066,7 +3066,7 @@ unsafe fn opj_j2k_get_max_toc_size(mut p_j2k: *mut opj_j2k_t) -> OPJ_UINT32 {
   while i < l_nb_tiles {
     l_max = opj_uint_max(l_max, (*l_tcp).m_nb_tile_parts);
     l_tcp = l_tcp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return (12u32).wrapping_mul(l_max);
 }
@@ -3108,7 +3108,7 @@ unsafe fn opj_j2k_get_specific_header_sizes(mut p_j2k: *mut opj_j2k_t) -> OPJ_UI
         l_max_packet_count,
         opj_get_encoding_packet_count((*p_j2k).m_private_image, l_cp, i),
       );
-      i = i.wrapping_add(1)
+      i += 1;
     }
     /* Minimum 6 bytes per PLT marker, and at a minimum (taking a pessimistic */
     /* estimate of 4 bytes for a packet size), one can write */
@@ -3256,7 +3256,7 @@ unsafe extern "C" fn opj_j2k_read_poc(
     /* make sure comp is in acceptable bounds */
     (*l_current_poc).compno1 = opj_uint_min((*l_current_poc).compno1, l_nb_comp);
     l_current_poc = l_current_poc.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   (*l_tcp).numpocs = l_current_poc_nb.wrapping_sub(1u32);
   return 1i32;
@@ -3523,7 +3523,7 @@ unsafe extern "C" fn opj_j2k_read_plt(
       /* store packet length and proceed to next packet */
       l_packet_len = 0 as OPJ_UINT32
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if l_packet_len != 0u32 {
     opj_event_msg(
@@ -3737,7 +3737,7 @@ unsafe fn opj_j2k_merge_ppm(
         }
       }
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if l_N_ppm_remaining != 0u32 {
     /* clean up to be done on l_cp destruction */
@@ -3840,7 +3840,7 @@ unsafe fn opj_j2k_merge_ppm(
       *fresh13 = 0 as *mut OPJ_BYTE;
       (*(*p_cp).ppm_markers.offset(i as isize)).m_data_size = 0u32
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   (*p_cp).ppm_data = (*p_cp).ppm_buffer;
   (*p_cp).ppm_data_size = (*p_cp).ppm_len;
@@ -4020,7 +4020,7 @@ unsafe fn opj_j2k_merge_ppt(
     l_ppt_data_size = (l_ppt_data_size as libc::c_uint)
       .wrapping_add((*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size)
       as OPJ_UINT32;
-    i = i.wrapping_add(1)
+    i += 1;
     /* can't overflow, max 256 markers of max 65536 bytes */
   }
   (*p_tcp).ppt_buffer = opj_malloc(l_ppt_data_size as size_t) as *mut OPJ_BYTE;
@@ -4051,7 +4051,7 @@ unsafe fn opj_j2k_merge_ppt(
       *fresh15 = 0 as *mut OPJ_BYTE;
       (*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size = 0u32
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   (*p_tcp).ppt_markers_count = 0u32;
   opj_free((*p_tcp).ppt_markers as *mut libc::c_void);
@@ -4790,7 +4790,7 @@ unsafe extern "C" fn opj_j2k_write_plt_in_memory(
       p_data = p_data.offset(1);
       var_bytes_size = var_bytes_size.wrapping_sub(1)
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   *p_data_written = p_data.offset_from(p_data_start) as OPJ_UINT32;
   /* Patch Lplt */
@@ -5478,12 +5478,12 @@ unsafe extern "C" fn opj_j2k_update_rates(
             - l_offset
         }
         l_rates = l_rates.offset(1);
-        k = k.wrapping_add(1)
+        k += 1;
       }
       l_tcp = l_tcp.offset(1);
-      j = j.wrapping_add(1)
+      j += 1;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   l_tcp = (*l_cp).tcps;
   i = 0 as OPJ_UINT32;
@@ -5510,7 +5510,7 @@ unsafe extern "C" fn opj_j2k_update_rates(
           }
         }
         l_rates = l_rates.offset(1);
-        k = k.wrapping_add(1)
+        k += 1;
       }
       if *l_rates > 0.0f32 {
         *l_rates -= l_sot_remove + 2.0f32;
@@ -5519,9 +5519,9 @@ unsafe extern "C" fn opj_j2k_update_rates(
         }
       }
       l_tcp = l_tcp.offset(1);
-      j = j.wrapping_add(1)
+      j += 1;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   l_img_comp = (*l_image).comps;
   let mut l_tile_size = 0u64;
@@ -5646,7 +5646,7 @@ unsafe extern "C" fn opj_j2k_write_mct_data_group(
       return 0i32;
     }
     l_mct_record = l_mct_record.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   l_mcc_record = (*l_tcp).m_mcc_records;
   i = 0 as OPJ_UINT32;
@@ -5655,7 +5655,7 @@ unsafe extern "C" fn opj_j2k_write_mct_data_group(
       return 0i32;
     }
     l_mcc_record = l_mcc_record.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if opj_j2k_write_mco(p_j2k, p_stream, p_manager) == 0 {
     return 0i32;
@@ -5688,7 +5688,7 @@ unsafe extern "C" fn opj_j2k_write_all_coc(
         return 0i32;
       }
     }
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   return 1i32;
 }
@@ -5718,7 +5718,7 @@ unsafe extern "C" fn opj_j2k_write_all_qcc(
         return 0i32;
       }
     }
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   return 1i32;
 }
@@ -5758,7 +5758,7 @@ unsafe extern "C" fn opj_j2k_write_regions(
       }
     }
     l_tccp = l_tccp.offset(1);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   return 1i32;
 }
@@ -6054,7 +6054,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
       break;
     }
     l_mct_data = l_mct_data.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* NOT FOUND */
   if i == (*l_tcp).m_nb_mct_records {
@@ -6102,7 +6102,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
                 .offset_from((*l_tcp).m_mct_records) as isize,
             )
           }
-          i = i.wrapping_add(1)
+          i += 1;
         }
       }
       (*l_tcp).m_mct_records = new_mct_records;
@@ -6274,7 +6274,7 @@ unsafe extern "C" fn opj_j2k_write_mcc_record(
   while i < (*p_mcc_record).m_nb_comps {
     opj_write_bytes_LE(l_current_data, i, l_nb_bytes_for_comp);
     l_current_data = l_current_data.offset(l_nb_bytes_for_comp as isize);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   opj_write_bytes_LE(
     l_current_data,
@@ -6286,7 +6286,7 @@ unsafe extern "C" fn opj_j2k_write_mcc_record(
   while i < (*p_mcc_record).m_nb_comps {
     opj_write_bytes_LE(l_current_data, i, l_nb_bytes_for_comp);
     l_current_data = l_current_data.offset(l_nb_bytes_for_comp as isize);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   l_tmcc = (((*p_mcc_record).m_is_irreversible() == 0) as libc::c_uint
     & 1u32)
@@ -6386,7 +6386,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
       break;
     }
     l_mcc_record = l_mcc_record.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* * NOT FOUND */
   if i == (*l_tcp).m_nb_mcc_records {
@@ -6523,7 +6523,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
         );
         return 1i32;
       }
-      j = j.wrapping_add(1)
+      j += 1;
     }
     opj_read_bytes_LE(
       p_header_data,
@@ -6573,7 +6573,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
         );
         return 1i32;
       }
-      j = j.wrapping_add(1)
+      j += 1;
     }
     opj_read_bytes_LE(p_header_data, &mut l_tmp, 3 as OPJ_UINT32);
     p_header_data = p_header_data.offset(3);
@@ -6593,7 +6593,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
           break;
         } else {
           l_mct_data = l_mct_data.offset(1);
-          j = j.wrapping_add(1)
+          j += 1;
         }
       }
       if (*l_mcc_record).m_decorrelation_array.is_null() {
@@ -6615,7 +6615,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
           break;
         } else {
           l_mct_data = l_mct_data.offset(1);
-          j = j.wrapping_add(1)
+          j += 1;
         }
       }
       if (*l_mcc_record).m_offset_array.is_null() {
@@ -6627,7 +6627,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
         return 0i32;
       }
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if p_header_size != 0u32 {
     opj_event_msg(
@@ -6718,7 +6718,7 @@ unsafe extern "C" fn opj_j2k_write_mco(
     );
     l_current_data = l_current_data.offset(1);
     l_mcc_record = l_mcc_record.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if opj_stream_write_data(
     p_stream,
@@ -6811,7 +6811,7 @@ unsafe extern "C" fn opj_j2k_read_mco(
   while i < (*l_image).numcomps {
     (*l_tccp).m_dc_level_shift = 0i32;
     l_tccp = l_tccp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if !(*l_tcp).m_mct_decoding_matrix.is_null() {
     opj_free((*l_tcp).m_mct_decoding_matrix as *mut libc::c_void);
@@ -6824,7 +6824,7 @@ unsafe extern "C" fn opj_j2k_read_mco(
     if opj_j2k_add_mct(l_tcp, (*p_j2k).m_private_image, l_tmp) == 0 {
       return 0i32;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return 1i32;
 }
@@ -6852,7 +6852,7 @@ unsafe fn opj_j2k_add_mct(
     if (*l_mcc_record).m_index == p_index {
       break;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if i == (*p_tcp).m_nb_mcc_records {
     /* * element discarded **/
@@ -6910,7 +6910,7 @@ unsafe fn opj_j2k_add_mct(
       l_current_offset_data = l_current_offset_data.offset(1);
       (*l_tccp).m_dc_level_shift = *fresh22 as OPJ_INT32;
       l_tccp = l_tccp.offset(1);
-      i = i.wrapping_add(1)
+      i += 1;
     }
     opj_free(l_offset_data as *mut libc::c_void);
   }
@@ -6993,7 +6993,7 @@ unsafe extern "C" fn opj_j2k_write_cbd(
     );
     l_current_data = l_current_data.offset(1);
     l_comp = l_comp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if opj_stream_write_data(
     p_stream,
@@ -7084,7 +7084,7 @@ unsafe extern "C" fn opj_j2k_read_cbd(
       return 0i32;
     }
     l_comp = l_comp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return 1i32;
 }
@@ -7459,7 +7459,7 @@ unsafe fn opj_j2k_is_cinema_compliant(
                           (*(*image).comps.offset(i as isize)).prec, tmp_str);
       return 0i32;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* Image size */
   match rsiz as libc::c_int {
@@ -7779,7 +7779,7 @@ unsafe fn opj_j2k_is_imf_compliant(
                           (*(*image).comps.offset(i as isize)).prec, tmp_str);
       ret = 0i32
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* Sub-sampling */
   i = 0 as OPJ_UINT32;
@@ -7829,7 +7829,7 @@ unsafe fn opj_j2k_is_imf_compliant(
                           (*(*image).comps.offset(i as isize)).dy, i);
       ret = 0i32
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* Image size */
   match profile as libc::c_int {
@@ -8310,7 +8310,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
           );
         }
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
   } else if (*parameters).cp_fixed_quality != 0 {
     /* Emit warnings if tcp_distoratio are not increasing */
@@ -8335,7 +8335,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
             as libc::c_double,
         );
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
   }
   /* see if max_codestream_size does limit input rate */
@@ -8398,7 +8398,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         (*parameters).tcp_rates[i as usize] = temp_rate;
         cap = 1i32
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
     if cap != 0 {
       opj_event_msg(p_manager, 2i32,
@@ -8655,7 +8655,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         (*tcp).rates[j as usize] = 0.0f64 as OPJ_FLOAT32
         /* force lossless */
       }
-      j = j.wrapping_add(1)
+      j += 1;
     }
     (*tcp).csty = (*parameters).csty as OPJ_UINT32;
     (*tcp).prg = (*parameters).prog_order;
@@ -8690,9 +8690,9 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
           );
           (*tcp_poc).prg1 = (*parameters).POC[numpocs_tile as usize].prg1;
           (*tcp_poc).tile = (*parameters).POC[numpocs_tile as usize].tile;
-          numpocs_tile = numpocs_tile.wrapping_add(1)
+          numpocs_tile += 1;
         }
-        i = i.wrapping_add(1)
+        i += 1;
       }
       if numpocs_tile != 0 {
         /* TODO MSD use the return value*/
@@ -8813,7 +8813,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       while i < (*image).numcomps {
         let mut tccp: *mut opj_tccp_t = &mut *(*tcp).tccps.offset(i as isize) as *mut opj_tccp_t;
         (*tccp).m_dc_level_shift = *l_dc_shift.offset(i as isize);
-        i = i.wrapping_add(1)
+        i += 1;
       }
       if opj_j2k_setup_mct_encoding(tcp, image) == 0i32 {
         /* free will be handled by opj_j2k_destroy */
@@ -8858,7 +8858,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
               .prec
               .wrapping_sub(1u32)
         }
-        i = i.wrapping_add(1)
+        i += 1;
       }
     }
     i = 0 as OPJ_UINT32;
@@ -8934,13 +8934,13 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         while j < (*tccp_1).numresolutions {
           (*tccp_1).prcw[j as usize] = 15 as OPJ_UINT32;
           (*tccp_1).prch[j as usize] = 15 as OPJ_UINT32;
-          j = j.wrapping_add(1)
+          j += 1;
         }
       }
       opj_dwt_calc_explicit_stepsizes(tccp_1, (*(*image).comps.offset(i as isize)).prec);
-      i = i.wrapping_add(1)
+      i += 1;
     }
-    tileno = tileno.wrapping_add(1)
+    tileno += 1;
   }
   if !(*parameters).mct_data.is_null() {
     opj_free((*parameters).mct_data);
@@ -9342,11 +9342,11 @@ unsafe extern "C" fn opj_j2k_mct_validation(
         while j < (*(*p_j2k).m_private_image).numcomps {
           l_is_valid &= ((*l_tccp).qmfbid & 1u32 == 0) as libc::c_int;
           l_tccp = l_tccp.offset(1);
-          j = j.wrapping_add(1)
+          j += 1;
         }
       }
       l_tcp = l_tcp.offset(1);
-      i = i.wrapping_add(1)
+      i += 1;
     }
   }
   return l_is_valid;
@@ -9500,7 +9500,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
     l_current_data = l_current_data.offset(1);
     *fresh28 = (*l_tccp).m_dc_level_shift as OPJ_FLOAT32;
     l_tccp = l_tccp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   (*l_mct_offset_data).m_element_type.write_from_float(
     l_data as *const libc::c_void,
@@ -9996,7 +9996,7 @@ unsafe fn opj_j2k_exec(
       && (*l_procedure).expect("non-null function pointer")(p_j2k, p_stream, p_manager) != 0)
       as libc::c_int;
     l_procedure = l_procedure.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* and clear the procedure list at the end.*/
   opj_procedure_list_clear(p_procedure_list);
@@ -10116,7 +10116,7 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
       (*l_tcp).m_nb_max_mct_records = ((*l_tcp).m_nb_max_mct_records as libc::c_uint)
         .wrapping_add(1u32)
         as OPJ_UINT32;
-      j = j.wrapping_add(1)
+      j += 1;
     }
     /* Get the mcc_record of the dflt_tile_cp and copy them into the current tile cp*/
     l_mcc_records_size = (*l_default_tcp)
@@ -10156,7 +10156,7 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
       }
       l_src_mcc_rec = l_src_mcc_rec.offset(1);
       l_dest_mcc_rec = l_dest_mcc_rec.offset(1);
-      j = j.wrapping_add(1)
+      j += 1;
     }
     /* Copy all the dflt_tile_compo_cp to the current tile cp */
     memcpy(
@@ -10166,7 +10166,7 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
     );
     /* Move to next tile cp*/
     l_tcp = l_tcp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* Create the current tile decoder*/
   (*p_j2k).m_tcd = opj_tcd_create(1i32);
@@ -10309,7 +10309,7 @@ pub(crate) unsafe extern "C" fn j2k_destroy_cstr_index(mut p_cstr_ind: *mut opj_
           let ref mut fresh32 = (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker;
           *fresh32 = 0 as *mut opj_marker_info_t
         }
-        it_tile = it_tile.wrapping_add(1)
+        it_tile += 1;
       }
       opj_free((*p_cstr_ind).tile_index as *mut libc::c_void);
       (*p_cstr_ind).tile_index = 0 as *mut opj_tile_index_t
@@ -10333,7 +10333,7 @@ unsafe fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
       if !(*(*p_tcp).ppt_markers.offset(i as isize)).m_data.is_null() {
         opj_free((*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *mut libc::c_void);
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
     (*p_tcp).ppt_markers_count = 0u32;
     opj_free((*p_tcp).ppt_markers as *mut libc::c_void);
@@ -10371,7 +10371,7 @@ unsafe fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
         (*l_mct_data).m_data = 0 as *mut OPJ_BYTE
       }
       l_mct_data = l_mct_data.offset(1);
-      i_0 = i_0.wrapping_add(1)
+      i_0 += 1;
     }
     opj_free((*p_tcp).m_mct_records as *mut libc::c_void);
     (*p_tcp).m_mct_records = 0 as *mut opj_mct_data_t
@@ -10413,7 +10413,7 @@ unsafe fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
     while i < l_nb_tiles {
       opj_j2k_tcp_destroy(l_current_tile);
       l_current_tile = l_current_tile.offset(1);
-      i = i.wrapping_add(1)
+      i += 1;
     }
     opj_free((*p_cp).tcps as *mut libc::c_void);
     (*p_cp).tcps = 0 as *mut opj_tcp_t
@@ -10425,7 +10425,7 @@ unsafe fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
       if !(*(*p_cp).ppm_markers.offset(i_0 as isize)).m_data.is_null() {
         opj_free((*(*p_cp).ppm_markers.offset(i_0 as isize)).m_data as *mut libc::c_void);
       }
-      i_0 = i_0.wrapping_add(1)
+      i_0 += 1;
     }
     (*p_cp).ppm_markers_count = 0u32;
     opj_free((*p_cp).ppm_markers as *mut libc::c_void);
@@ -10886,7 +10886,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
               *fresh33 = (*fresh33 as libc::c_uint).wrapping_add(1u32)
                 as OPJ_UINT32
             }
-            l_tile_no = l_tile_no.wrapping_add(1)
+            l_tile_no += 1;
           }
           opj_event_msg(
             p_manager,
@@ -10936,7 +10936,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
           {
             break;
           }
-          l_tile_no_0 = l_tile_no_0.wrapping_add(1)
+          l_tile_no_0 += 1;
         }
         if l_tile_no_0 < l_nb_tiles {
           opj_event_msg(p_manager, 4i32,
@@ -11390,7 +11390,7 @@ unsafe fn opj_j2k_update_image_data(
           );
           l_dest_ptr = l_dest_ptr.offset((*l_img_comp_dest).w as isize);
           l_src_ptr = l_src_ptr.offset(src_data_stride as isize);
-          j = j.wrapping_add(1)
+          j += 1;
         }
       }
     }
@@ -11469,7 +11469,7 @@ unsafe fn opj_j2k_update_image_dimensions(
     }
     (*l_img_comp).h = l_h as OPJ_UINT32;
     l_img_comp = l_img_comp.offset(1);
-    it_comp = it_comp.wrapping_add(1)
+    it_comp += 1;
   }
   return 1i32;
 }
@@ -11521,7 +11521,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_components(
       return 0i32;
     }
     *already_mapped.offset(*comps_indices.offset(i as isize) as isize) = 1i32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
   opj_free(already_mapped as *mut libc::c_void);
   opj_free(
@@ -11604,7 +11604,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
   while it_comp < (*p_image).numcomps {
     (*(*p_image).comps.offset(it_comp as isize)).factor =
       (*p_j2k).m_cp.m_specific_param.m_dec.m_reduce;
-    it_comp = it_comp.wrapping_add(1)
+    it_comp += 1;
   }
   if p_start_x == 0 && p_start_y == 0 && p_end_x == 0 && p_end_y == 0 {
     opj_event_msg(
@@ -11951,7 +11951,7 @@ unsafe fn opj_j2k_compare_SPCod_SPCoc(
     if (*l_tccp0).prch[i as usize] != (*l_tccp1).prch[i as usize] {
       return 0i32;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return 1i32;
 }
@@ -12046,7 +12046,7 @@ unsafe extern "C" fn opj_j2k_write_SPCod_SPCoc(
         1 as OPJ_UINT32,
       );
       p_data = p_data.offset(1);
-      i = i.wrapping_add(1)
+      i += 1;
     }
     *p_header_size = (*p_header_size).wrapping_sub((*l_tccp).numresolutions)
   }
@@ -12221,7 +12221,7 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
       }
       (*l_tccp).prcw[i as usize] = l_tmp & 0xfu32;
       (*l_tccp).prch[i as usize] = l_tmp >> 4i32;
-      i = i.wrapping_add(1)
+      i += 1;
     }
     *p_header_size = (*p_header_size).wrapping_sub((*l_tccp).numresolutions)
   } else {
@@ -12230,7 +12230,7 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
     while i < (*l_tccp).numresolutions {
       (*l_tccp).prcw[i as usize] = 15 as OPJ_UINT32;
       (*l_tccp).prch[i as usize] = 15 as OPJ_UINT32;
-      i = i.wrapping_add(1)
+      i += 1;
     }
   }
   return 1i32;
@@ -12281,7 +12281,7 @@ unsafe fn opj_j2k_copy_tile_component_parameters(mut p_j2k: *mut opj_j2k_t) {
       l_prc_size as usize,
     );
     l_copied_tccp = l_copied_tccp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 /* *
@@ -12383,7 +12383,7 @@ unsafe fn opj_j2k_compare_SQcd_SQcc(
     {
       return 0i32;
     }
-    l_band_no = l_band_no.wrapping_add(1)
+    l_band_no += 1;
   }
   if (*l_tccp0).qntsty != 0u32 {
     l_band_no = 0 as OPJ_UINT32;
@@ -12393,7 +12393,7 @@ unsafe fn opj_j2k_compare_SQcd_SQcc(
       {
         return 0i32;
       }
-      l_band_no = l_band_no.wrapping_add(1)
+      l_band_no += 1;
     }
   }
   return 1i32;
@@ -12473,7 +12473,7 @@ unsafe extern "C" fn opj_j2k_write_SQcd_SQcc(
         1 as OPJ_UINT32,
       );
       p_data = p_data.offset(1);
-      l_band_no = l_band_no.wrapping_add(1)
+      l_band_no += 1;
     }
   } else {
     l_header_size = (1u32)
@@ -12504,7 +12504,7 @@ unsafe extern "C" fn opj_j2k_write_SQcd_SQcc(
         2 as OPJ_UINT32,
       );
       p_data = p_data.offset(2);
-      l_band_no = l_band_no.wrapping_add(1)
+      l_band_no += 1;
     }
   }
   *p_header_size = (*p_header_size).wrapping_sub(l_header_size);
@@ -12596,7 +12596,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
         (*l_tccp).stepsizes[l_band_no as usize].expn = (l_tmp >> 3i32) as OPJ_INT32;
         (*l_tccp).stepsizes[l_band_no as usize].mant = 0i32
       }
-      l_band_no = l_band_no.wrapping_add(1)
+      l_band_no += 1;
     }
     *p_header_size = (*p_header_size).wrapping_sub(l_num_band)
   } else {
@@ -12609,7 +12609,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
         (*l_tccp).stepsizes[l_band_no as usize].mant =
           (l_tmp & 0x7ffu32) as OPJ_INT32
       }
-      l_band_no = l_band_no.wrapping_add(1)
+      l_band_no += 1;
     }
     *p_header_size =
       (*p_header_size).wrapping_sub((2u32).wrapping_mul(l_num_band))
@@ -12634,7 +12634,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
         };
       (*l_tccp).stepsizes[l_band_no as usize].mant =
         (*l_tccp).stepsizes[0 as usize].mant;
-      l_band_no = l_band_no.wrapping_add(1)
+      l_band_no += 1;
     }
   }
   return 1i32;
@@ -12676,7 +12676,7 @@ unsafe fn opj_j2k_copy_tile_quantization_parameters(mut p_j2k: *mut opj_j2k_t) {
       l_size as usize,
     );
     l_copied_tccp = l_copied_tccp.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe fn opj_j2k_dump_tile_info(
@@ -12766,7 +12766,7 @@ unsafe fn opj_j2k_dump_tile_info(
           (*l_tccp).prcw[resno as usize],
           (*l_tccp).prch[resno as usize],
         );
-        resno = resno.wrapping_add(1)
+        resno += 1;
       }
       fprintf(out_stream, b"\n\x00" as *const u8 as *const libc::c_char);
       /* quantization style*/
@@ -12858,7 +12858,7 @@ pub(crate) unsafe extern "C" fn j2k_dump(
           out_stream,
         );
         l_tcp = l_tcp.offset(1);
-        i = i.wrapping_add(1)
+        i += 1;
       }
     }
   }
@@ -12901,7 +12901,7 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
         (*(*cstr_index).marker.offset(it_marker as isize)).pos,
         (*(*cstr_index).marker.offset(it_marker as isize)).len,
       );
-      it_marker = it_marker.wrapping_add(1)
+      it_marker += 1;
     }
   }
   fprintf(
@@ -12916,7 +12916,7 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
       l_acc_nb_of_tile_part = (l_acc_nb_of_tile_part as libc::c_uint)
         .wrapping_add((*(*cstr_index).tile_index.offset(it_tile as isize)).nb_tps)
         as OPJ_UINT32;
-      it_tile = it_tile.wrapping_add(1)
+      it_tile += 1;
     }
     if l_acc_nb_of_tile_part != 0 {
       fprintf(
@@ -12956,7 +12956,7 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
                 .offset(it_tile_part as isize))
               .end_pos,
             );
-            it_tile_part = it_tile_part.wrapping_add(1)
+            it_tile_part += 1;
           }
         }
         if !(*(*cstr_index).tile_index.offset(it_tile as isize))
@@ -12981,10 +12981,10 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
                 .offset(it_marker as isize))
               .len,
             );
-            it_marker = it_marker.wrapping_add(1)
+            it_marker += 1;
           }
         }
-        it_tile = it_tile.wrapping_add(1)
+        it_tile += 1;
       }
       fprintf(
         out_stream,
@@ -13085,7 +13085,7 @@ pub(crate) unsafe extern "C" fn j2k_dump_image_header(
         b"%s}\n\x00" as *const u8 as *const libc::c_char,
         tab.as_mut_ptr(),
       );
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
   }
   fprintf(out_stream, b"}\n\x00" as *const u8 as *const libc::c_char);
@@ -13216,7 +13216,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_info(
     }
     /* RGN value*/
     (*l_tccp_info).roishift = (*l_tccp).roishift;
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   return cstr_info;
 }
@@ -13289,7 +13289,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
           opj_free(
             (*(*l_cstr_index).tile_index.offset(it_tile_free as isize)).marker as *mut libc::c_void,
           );
-          it_tile_free = it_tile_free.wrapping_add(1)
+          it_tile_free += 1;
         }
         opj_free((*l_cstr_index).tile_index as *mut libc::c_void);
         opj_free((*l_cstr_index).marker as *mut libc::c_void);
@@ -13337,7 +13337,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
             (*(*l_cstr_index).tile_index.offset(it_tile_free_0 as isize)).tp_index
               as *mut libc::c_void,
           );
-          it_tile_free_0 = it_tile_free_0.wrapping_add(1)
+          it_tile_free_0 += 1;
         }
         opj_free((*l_cstr_index).tile_index as *mut libc::c_void);
         opj_free((*l_cstr_index).marker as *mut libc::c_void);
@@ -13367,7 +13367,7 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
         0 as OPJ_UINT32;
       let ref mut fresh38 = (*(*l_cstr_index).tile_index.offset(it_tile as isize)).packet_index;
       *fresh38 = 0 as *mut opj_packet_info_t;
-      it_tile = it_tile.wrapping_add(1)
+      it_tile += 1;
     }
   }
   return l_cstr_index;
@@ -13401,7 +13401,7 @@ unsafe fn opj_j2k_allocate_tile_element_cstr_index(
     {
       return 0i32;
     }
-    it_tile = it_tile.wrapping_add(1)
+    it_tile += 1;
   }
   return 1i32;
 }
@@ -13431,7 +13431,7 @@ unsafe fn opj_j2k_are_all_used_components_decoded(
         );
         decoded_all_used_components = 0i32
       }
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
   } else {
     compno = 0 as OPJ_UINT32;
@@ -13448,7 +13448,7 @@ unsafe fn opj_j2k_are_all_used_components_decoded(
         );
         decoded_all_used_components = 0i32
       }
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
   }
   if decoded_all_used_components == 0i32 {
@@ -13539,7 +13539,7 @@ unsafe extern "C" fn opj_j2k_decode_tiles(
         .offset(i as isize))
       .data;
       *fresh41 = 0 as *mut OPJ_INT32;
-      i = i.wrapping_add(1)
+      i += 1;
     }
     return 1i32;
   }
@@ -13755,7 +13755,7 @@ unsafe extern "C" fn opj_j2k_decode_one_tile(
   i = 0 as OPJ_UINT32;
   while i < l_nb_tiles {
     (*(*p_j2k).m_cp.tcps.offset(i as isize)).m_current_tile_part_number = -(1i32);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   loop {
     if opj_j2k_read_tile_header(
@@ -13896,7 +13896,7 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
       opj_image_data_free((*(*p_image).comps.offset(compno as isize)).data as *mut libc::c_void);
       let ref mut fresh42 = (*(*p_image).comps.offset(compno as isize)).data;
       *fresh42 = 0 as *mut OPJ_INT32;
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     compno = 0 as OPJ_UINT32;
     while compno < (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode {
@@ -13917,7 +13917,7 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
       *fresh43 = (*(*(*p_j2k).m_output_image).comps.offset(src_compno as isize)).data;
       let ref mut fresh44 = (*(*(*p_j2k).m_output_image).comps.offset(src_compno as isize)).data;
       *fresh44 = 0 as *mut OPJ_INT32;
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     compno = 0 as OPJ_UINT32;
     while compno < (*p_image).numcomps {
@@ -13929,7 +13929,7 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
       );
       let ref mut fresh45 = (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data;
       *fresh45 = 0 as *mut OPJ_INT32;
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     (*p_image).numcomps = (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode;
     opj_free((*p_image).comps as *mut libc::c_void);
@@ -13944,7 +13944,7 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
       *fresh46 = (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data;
       let ref mut fresh47 = (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data;
       *fresh47 = 0 as *mut OPJ_INT32;
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
   }
   return 1i32;
@@ -13985,7 +13985,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode(
     while it_comp < (*p_image).numcomps {
       (*(*p_image).comps.offset(it_comp as isize)).factor =
         (*p_j2k).m_cp.m_specific_param.m_dec.m_reduce;
-      it_comp = it_comp.wrapping_add(1)
+      it_comp += 1;
     }
     if opj_j2k_update_image_dimensions(p_image, p_manager) == 0 {
       return 0i32;
@@ -14106,7 +14106,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_get_tile(
         (*l_img_comp).factor as OPJ_INT32,
       )) as OPJ_UINT32;
     l_img_comp = l_img_comp.offset(1);
-    compno = compno.wrapping_add(1)
+    compno += 1;
   }
   if (*p_image).numcomps > (*(*p_j2k).m_private_image).numcomps {
     /* Can happen when calling repeatdly opj_get_decoded_tile() on an
@@ -14117,7 +14117,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_get_tile(
       opj_image_data_free((*(*p_image).comps.offset(compno as isize)).data as *mut libc::c_void);
       let ref mut fresh48 = (*(*p_image).comps.offset(compno as isize)).data;
       *fresh48 = 0 as *mut OPJ_INT32;
-      compno = compno.wrapping_add(1)
+      compno += 1;
     }
     (*p_image).numcomps = (*(*p_j2k).m_private_image).numcomps
   }
@@ -14176,7 +14176,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_resolution_factor(
               return 0i32;
             }
             (*(*(*p_j2k).m_private_image).comps.offset(it_comp as isize)).factor = res_factor;
-            it_comp = it_comp.wrapping_add(1)
+            it_comp += 1;
           }
           return 1i32;
         }
@@ -14284,9 +14284,9 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
         while i < (*p_j2k).m_specific_param.m_encoder.m_nb_comps {
           let mut tccp: *mut opj_tccp_t = &mut *(*tcp).tccps.offset(i as isize) as *mut opj_tccp_t;
           (*tccp).numgbits = numgbits as OPJ_UINT32;
-          i = i.wrapping_add(1)
+          i += 1;
         }
-        tileno = tileno.wrapping_add(1)
+        tileno += 1;
       }
     } else {
       opj_event_msg(
@@ -14354,7 +14354,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_encode(
         }
         return 0i32;
       }
-      j = j.wrapping_add(1)
+      j += 1;
     }
     l_current_tile_size = opj_tcd_get_encoder_input_buffer_size((*p_j2k).m_tcd);
     if l_reuse_data == 0 {
@@ -14402,7 +14402,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_encode(
       }
       return 0i32;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if !l_current_data.is_null() {
     opj_free(l_current_data as *mut libc::c_void);
@@ -14457,7 +14457,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_start_compress(
         let ref mut fresh50 = (*(*p_image).comps.offset(it_comp as isize)).data;
         *fresh50 = 0 as *mut OPJ_INT32
       }
-      it_comp = it_comp.wrapping_add(1)
+      it_comp += 1;
     }
   }
   /* customization of the validation */
@@ -14602,10 +14602,10 @@ unsafe fn opj_j2k_get_tile_data(mut p_tcd: *mut opj_tcd_t, mut p_data: *mut OPJ_
               *l_dest_ptr = *l_src_ptr as OPJ_CHAR;
               l_dest_ptr = l_dest_ptr.offset(1);
               l_src_ptr = l_src_ptr.offset(1);
-              k = k.wrapping_add(1)
+              k += 1;
             }
             l_src_ptr = l_src_ptr.offset(l_stride as isize);
-            j = j.wrapping_add(1)
+            j += 1;
           }
         } else {
           j = 0 as OPJ_UINT32;
@@ -14615,10 +14615,10 @@ unsafe fn opj_j2k_get_tile_data(mut p_tcd: *mut opj_tcd_t, mut p_data: *mut OPJ_
               *l_dest_ptr = (*l_src_ptr & 0xffi32) as OPJ_CHAR;
               l_dest_ptr = l_dest_ptr.offset(1);
               l_src_ptr = l_src_ptr.offset(1);
-              k = k.wrapping_add(1)
+              k += 1;
             }
             l_src_ptr = l_src_ptr.offset(l_stride as isize);
-            j = j.wrapping_add(1)
+            j += 1;
           }
         }
         p_data = l_dest_ptr as *mut OPJ_BYTE
@@ -14635,10 +14635,10 @@ unsafe fn opj_j2k_get_tile_data(mut p_tcd: *mut opj_tcd_t, mut p_data: *mut OPJ_
               let fresh52 = l_dest_ptr_0;
               l_dest_ptr_0 = l_dest_ptr_0.offset(1);
               *fresh52 = *fresh51 as OPJ_INT16;
-              k = k.wrapping_add(1)
+              k += 1;
             }
             l_src_ptr = l_src_ptr.offset(l_stride as isize);
-            j = j.wrapping_add(1)
+            j += 1;
           }
         } else {
           j = 0 as OPJ_UINT32;
@@ -14650,10 +14650,10 @@ unsafe fn opj_j2k_get_tile_data(mut p_tcd: *mut opj_tcd_t, mut p_data: *mut OPJ_
               let fresh54 = l_dest_ptr_0;
               l_dest_ptr_0 = l_dest_ptr_0.offset(1);
               *fresh54 = (*fresh53 & 0xffffi32) as OPJ_INT16;
-              k = k.wrapping_add(1)
+              k += 1;
             }
             l_src_ptr = l_src_ptr.offset(l_stride as isize);
-            j = j.wrapping_add(1)
+            j += 1;
           }
         }
         p_data = l_dest_ptr_0 as *mut OPJ_BYTE
@@ -14669,16 +14669,16 @@ unsafe fn opj_j2k_get_tile_data(mut p_tcd: *mut opj_tcd_t, mut p_data: *mut OPJ_
             let fresh56 = l_dest_ptr_1;
             l_dest_ptr_1 = l_dest_ptr_1.offset(1);
             *fresh56 = *fresh55;
-            k = k.wrapping_add(1)
+            k += 1;
           }
           l_src_ptr = l_src_ptr.offset(l_stride as isize);
-          j = j.wrapping_add(1)
+          j += 1;
         }
         p_data = l_dest_ptr_1 as *mut OPJ_BYTE
       }
       _ => {}
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 unsafe fn opj_j2k_post_write_tile(
@@ -15537,7 +15537,7 @@ unsafe extern "C" fn opj_j2k_write_all_tile_parts(
       .m_encoder
       .m_current_tile_part_number
       .wrapping_add(1);
-    tilepartno = tilepartno.wrapping_add(1)
+    tilepartno += 1;
   }
   pino = 1 as OPJ_UINT32;
   while pino <= (*l_tcp).numpocs {
@@ -15610,9 +15610,9 @@ unsafe extern "C" fn opj_j2k_write_all_tile_parts(
         .m_encoder
         .m_current_tile_part_number
         .wrapping_add(1);
-      tilepartno = tilepartno.wrapping_add(1)
+      tilepartno += 1;
     }
-    pino = pino.wrapping_add(1)
+    pino += 1;
   }
   *p_data_written = l_nb_bytes_written;
   return 1i32;
@@ -15885,7 +15885,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_write_tile(
         );
         return 0i32;
       }
-      j = j.wrapping_add(1)
+      j += 1;
     }
     /* now copy data into the tile component */
     if opj_tcd_copy_tile_data((*p_j2k).m_tcd, p_data, p_data_size as OPJ_SIZE_T) == 0 {

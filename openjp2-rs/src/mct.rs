@@ -96,7 +96,7 @@ pub(crate) unsafe fn opj_mct_encode(
     *c0.offset(i as isize) = y;
     *c1.offset(i as isize) = u;
     *c2.offset(i as isize) = v;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 /* <summary> */
@@ -121,7 +121,7 @@ pub(crate) unsafe fn opj_mct_decode(
     *c0.offset(i as isize) = r;
     *c1.offset(i as isize) = g;
     *c2.offset(i as isize) = b;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 /* <summary> */
@@ -153,7 +153,7 @@ pub(crate) unsafe fn opj_mct_encode_real(
     *c0.offset(i as isize) = y;
     *c1.offset(i as isize) = u;
     *c2.offset(i as isize) = v;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 /* <summary> */
@@ -178,7 +178,7 @@ pub(crate) unsafe fn opj_mct_decode_real(
     *c0.offset(i as isize) = r;
     *c1.offset(i as isize) = g;
     *c2.offset(i as isize) = b;
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }
 /* <summary> */
@@ -219,7 +219,7 @@ pub(crate) unsafe fn opj_mct_encode_custom(
     let fresh0 = lMct;
     lMct = lMct.offset(1);
     *lCurrentMatrix.offset(i as isize) = (*fresh0 * lMultiplicator as OPJ_FLOAT32) as OPJ_INT32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
   i = 0 as OPJ_SIZE_T;
   while i < n {
@@ -227,7 +227,7 @@ pub(crate) unsafe fn opj_mct_encode_custom(
     j = 0 as OPJ_UINT32;
     while j < pNbComp {
       *lCurrentData.offset(j as isize) = **lData.offset(j as isize);
-      j = j.wrapping_add(1)
+      j += 1;
     }
     j = 0 as OPJ_UINT32;
     while j < pNbComp {
@@ -237,13 +237,13 @@ pub(crate) unsafe fn opj_mct_encode_custom(
         let ref mut fresh1 = **lData.offset(j as isize);
         *fresh1 += opj_int_fix_mul(*lMctPtr, *lCurrentData.offset(k as isize));
         lMctPtr = lMctPtr.offset(1);
-        k = k.wrapping_add(1)
+        k += 1;
       }
       let ref mut fresh2 = *lData.offset(j as isize);
       *fresh2 = (*fresh2).offset(1);
-      j = j.wrapping_add(1)
+      j += 1;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   opj_free(lCurrentData as *mut libc::c_void);
   return 1i32;
@@ -277,7 +277,7 @@ pub(crate) unsafe fn opj_mct_decode_custom(
     j = 0 as OPJ_UINT32;
     while j < pNbComp {
       *lCurrentData.offset(j as isize) = **lData.offset(j as isize);
-      j = j.wrapping_add(1)
+      j += 1;
     }
     j = 0 as OPJ_UINT32;
     while j < pNbComp {
@@ -288,15 +288,15 @@ pub(crate) unsafe fn opj_mct_decode_custom(
         lMct = lMct.offset(1);
         let ref mut fresh4 = *lCurrentResult.offset(j as isize);
         *fresh4 += *fresh3 * *lCurrentData.offset(k as isize);
-        k = k.wrapping_add(1)
+        k += 1;
       }
       let ref mut fresh5 = *lData.offset(j as isize);
       let fresh6 = *fresh5;
       *fresh5 = (*fresh5).offset(1);
       *fresh6 = *lCurrentResult.offset(j as isize);
-      j = j.wrapping_add(1)
+      j += 1;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   opj_free(lCurrentData as *mut libc::c_void);
   return 1i32;
@@ -323,9 +323,9 @@ pub(crate) unsafe fn opj_calculate_norms(
       lIndex = (lIndex as libc::c_uint).wrapping_add(pNbComps) as OPJ_UINT32;
       let ref mut fresh7 = *lNorms.offset(i as isize);
       *fresh7 += lCurrentValue as OPJ_FLOAT64 * lCurrentValue as libc::c_double;
-      j = j.wrapping_add(1)
+      j += 1;
     }
     *lNorms.offset(i as isize) = sqrt(*lNorms.offset(i as isize));
-    i = i.wrapping_add(1)
+    i += 1;
   }
 }

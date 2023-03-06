@@ -548,7 +548,7 @@ unsafe extern "C" fn opj_jp2_write_bpcc(
       1 as OPJ_UINT32,
     );
     l_current_bpcc_ptr = l_current_bpcc_ptr.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   *p_nb_bytes_written = l_bpcc_size;
   return l_bpcc_data;
@@ -598,7 +598,7 @@ unsafe extern "C" fn opj_jp2_read_bpcc(
       1 as OPJ_UINT32,
     );
     p_bpc_header_data = p_bpc_header_data.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return 1i32;
 }
@@ -664,7 +664,7 @@ unsafe extern "C" fn opj_jp2_write_cdef(
     l_value = (*(*(*jp2).color.jp2_cdef).info.offset(i as isize)).asoc as OPJ_UINT32;
     opj_write_bytes_LE(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
     l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   *p_nb_bytes_written = l_cdef_size;
   return l_cdef_data;
@@ -759,7 +759,7 @@ unsafe extern "C" fn opj_jp2_write_colr(
         1 as OPJ_UINT32,
       );
       l_current_colr_ptr = l_current_colr_ptr.offset(1);
-      i = i.wrapping_add(1)
+      i += 1;
     }
   }
   *p_nb_bytes_written = l_colr_size;
@@ -817,7 +817,7 @@ unsafe fn opj_jp2_check_color(
           return 0i32;
         }
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
     /* issue 397 */
     /* ISO 15444-1 states that if cdef is present, it shall contain a complete list of channel definitions. */
@@ -829,7 +829,7 @@ unsafe fn opj_jp2_check_color(
         {
           break;
         }
-        i = i.wrapping_add(1)
+        i += 1;
       }
       if i as libc::c_int == n as libc::c_int {
         opj_event_msg(
@@ -862,7 +862,7 @@ unsafe fn opj_jp2_check_color(
         );
         is_sane = 0i32
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
     pcol_usage = opj_calloc(
       nr_channels_0 as size_t,
@@ -931,7 +931,7 @@ unsafe fn opj_jp2_check_color(
       } else {
         *pcol_usage.offset(pcol as isize) = 1i32
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
     /* verify that all components are targeted at least once */
     i = 0 as OPJ_UINT16;
@@ -947,7 +947,7 @@ unsafe fn opj_jp2_check_color(
         );
         is_sane = 0i32
       }
-      i = i.wrapping_add(1)
+      i += 1;
     }
     /* Issue 235/447 weird cmap */
     if 1i32 != 0 && is_sane != 0 && (*image).numcomps == 1u32 {
@@ -963,7 +963,7 @@ unsafe fn opj_jp2_check_color(
           );
           break;
         } else {
-          i = i.wrapping_add(1)
+          i += 1;
         }
       }
       if is_sane == 0 {
@@ -972,7 +972,7 @@ unsafe fn opj_jp2_check_color(
         while (i as libc::c_int) < nr_channels_0 as libc::c_int {
           (*cmap.offset(i as isize)).mtyp = 1 as OPJ_BYTE;
           (*cmap.offset(i as isize)).pcol = i as OPJ_BYTE;
-          i = i.wrapping_add(1)
+          i += 1;
         }
       }
     }
@@ -1031,7 +1031,7 @@ unsafe fn opj_jp2_apply_pclr(
       );
       return 0i32;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   old_comps = (*image).comps;
   new_comps = opj_malloc(
@@ -1082,7 +1082,7 @@ unsafe fn opj_jp2_apply_pclr(
     }
     (*new_comps.offset(i as isize)).prec = *channel_size.offset(i as isize) as OPJ_UINT32;
     (*new_comps.offset(i as isize)).sgnd = *channel_sign.offset(i as isize) as OPJ_UINT32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
   top_k = (*(*color).jp2_pclr).nr_entries as libc::c_int - 1i32;
   i = 0 as OPJ_UINT16;
@@ -1102,7 +1102,7 @@ unsafe fn opj_jp2_apply_pclr(
       j = 0 as OPJ_UINT32;
       while j < max {
         *dst.offset(j as isize) = *src.offset(j as isize);
-        j = j.wrapping_add(1)
+        j += 1;
       }
     } else {
       assert!(i as libc::c_int == pcol as libc::c_int);
@@ -1121,10 +1121,10 @@ unsafe fn opj_jp2_apply_pclr(
         *dst.offset(j as isize) = *entries
           .offset((k * nr_channels as libc::c_int + pcol as libc::c_int) as isize)
           as OPJ_INT32;
-        j = j.wrapping_add(1)
+        j += 1;
       }
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   max = (*image).numcomps;
   j = 0 as OPJ_UINT32;
@@ -1132,7 +1132,7 @@ unsafe fn opj_jp2_apply_pclr(
     if !(*old_comps.offset(j as isize)).data.is_null() {
       opj_image_data_free((*old_comps.offset(j as isize)).data as *mut libc::c_void);
     }
-    j = j.wrapping_add(1)
+    j += 1;
   }
   opj_free(old_comps as *mut libc::c_void);
   (*image).comps = new_comps;
@@ -1265,7 +1265,7 @@ unsafe extern "C" fn opj_jp2_read_pclr(
     } else {
       0i32
     } as OPJ_BYTE;
-    i = i.wrapping_add(1)
+    i += 1;
   }
   j = 0 as OPJ_UINT16;
   while (j as libc::c_int) < nr_entries as libc::c_int {
@@ -1286,9 +1286,9 @@ unsafe extern "C" fn opj_jp2_read_pclr(
       p_pclr_header_data = p_pclr_header_data.offset(bytes_to_read as isize);
       *entries = l_value;
       entries = entries.offset(1);
-      i = i.wrapping_add(1)
+      i += 1;
     }
-    j = j.wrapping_add(1)
+    j += 1;
   }
   return 1i32;
 }
@@ -1377,7 +1377,7 @@ unsafe extern "C" fn opj_jp2_read_cmap(
     );
     p_cmap_header_data = p_cmap_header_data.offset(1);
     (*cmap.offset(i as isize)).pcol = l_value as OPJ_BYTE;
-    i = i.wrapping_add(1)
+    i += 1;
   }
   (*(*jp2).color.jp2_pclr).cmap = cmap;
   return 1i32;
@@ -1467,14 +1467,14 @@ unsafe fn opj_jp2_apply_cdef(
             } else if (*info.offset(j as isize)).cn as libc::c_int == acn as libc::c_int {
               (*info.offset(j as isize)).cn = cn
             }
-            j = j.wrapping_add(1)
+            j += 1;
             /* asoc is related to color index. Do not update. */
           }
         }
         (*(*image).comps.offset(cn as isize)).alpha = (*info.offset(i as isize)).typ
       }
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if !(*(*color).jp2_cdef).info.is_null() {
     opj_free((*(*color).jp2_cdef).info as *mut libc::c_void);
@@ -1576,7 +1576,7 @@ unsafe extern "C" fn opj_jp2_read_cdef(
     );
     p_cdef_header_data = p_cdef_header_data.offset(2);
     (*cdef_info.offset(i as isize)).asoc = l_value as OPJ_UINT16;
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return 1i32;
 }
@@ -2064,7 +2064,7 @@ unsafe extern "C" fn opj_jp2_write_ftyp(
       *(*jp2).cl.offset(i as isize),
       4 as OPJ_UINT32,
     );
-    i = i.wrapping_add(1)
+    i += 1;
     /* CL */
   }
   l_result = (opj_stream_write_data(cio, l_ftyp_data, l_ftyp_size as OPJ_SIZE_T, p_manager)
@@ -2315,7 +2315,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
     if depth_0 != depth {
       (*jp2).bpc = 255 as OPJ_UINT32
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   (*jp2).C = 7 as OPJ_UINT32;
   (*jp2).UnkC = 0 as OPJ_UINT32;
@@ -2327,7 +2327,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
       .prec
       .wrapping_sub(1u32)
       .wrapping_add((*(*image).comps.offset(i as isize)).sgnd << 7i32);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* Colour Specification box */
   if (*image).icc_profile_len != 0 {
@@ -2356,7 +2356,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
       alpha_count = alpha_count.wrapping_add(1);
       alpha_channel = i
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if alpha_count == 1u32 {
     /* no way to deal with more than 1 alpha channel */
@@ -2428,7 +2428,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
       (*(*(*jp2).color.jp2_cdef).info.offset(i as isize)).typ = 0 as OPJ_UINT16;
       (*(*(*jp2).color.jp2_cdef).info.offset(i as isize)).asoc =
         i.wrapping_add(1u32) as OPJ_UINT16;
-      i = i.wrapping_add(1)
+      i += 1;
       /* No overflow + cast is valid : image->numcomps [1,16384] */
     }
     while i < (*image).numcomps {
@@ -2446,7 +2446,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
         (*(*(*jp2).color.jp2_cdef).info.offset(i as isize)).asoc =
           65535 as OPJ_UINT16
       } /* APPROX */
-      i = i.wrapping_add(1)
+      i += 1;
     }
   }
   (*jp2).precedence = 0 as OPJ_UINT32;
@@ -2622,7 +2622,7 @@ unsafe extern "C" fn opj_jp2_default_validation(
   while i < (*jp2).numcomps {
     l_is_valid &= (((*(*jp2).comps.offset(i as isize)).bpcc & 0x7fu32)
       < 38u32) as libc::c_int;
-    i = i.wrapping_add(1)
+    i += 1;
     /* 0 is valid, ignore sign for check */
   }
   /* METH */
@@ -2927,7 +2927,7 @@ unsafe fn opj_jp2_exec(
       && (*l_procedure).expect("non-null function pointer")(jp2, stream, p_manager) != 0)
       as libc::c_int;
     l_procedure = l_procedure.offset(1);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   /* and clear the procedure list at the end. */
   opj_procedure_list_clear(p_procedure_list);
@@ -2980,7 +2980,7 @@ unsafe fn opj_jp2_find_handler(mut p_id: OPJ_UINT32) -> *const opj_jp2_header_ha
     if jp2_header[i as usize].id == p_id {
       return &*jp2_header.as_ptr().offset(i as isize) as *const opj_jp2_header_handler_t;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return 0 as *const opj_jp2_header_handler_t;
 }
@@ -3010,7 +3010,7 @@ unsafe fn opj_jp2_img_find_handler(
     if jp2_img_header[i as usize].id == p_id {
       return &*jp2_img_header.as_ptr().offset(i as isize) as *const opj_jp2_header_handler_t;
     }
-    i = i.wrapping_add(1)
+    i += 1;
   }
   return 0 as *const opj_jp2_header_handler_t;
 }
@@ -3178,7 +3178,7 @@ unsafe extern "C" fn opj_jp2_read_ftyp(
       4 as OPJ_UINT32,
     );
     p_header_data = p_header_data.offset(4);
-    i = i.wrapping_add(1)
+    i += 1;
   }
   (*jp2).jp2_state |= JP2_STATE_FILE_TYPE as libc::c_uint;
   return 1i32;

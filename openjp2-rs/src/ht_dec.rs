@@ -1472,7 +1472,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   while i < (*cblk).numchunks {
     cblk_len = (cblk_len as libc::c_uint).wrapping_add((*(*cblk).chunks.offset(i as isize)).len)
       as OPJ_UINT32;
-    i = i.wrapping_add(1)
+    i += 1;
   }
   if (*cblk).numchunks > 1u32 || t1.mustuse_cblkdatabuffer != 0 {
     let mut i_0: OPJ_UINT32 = 0;
@@ -1500,7 +1500,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       );
       cblk_len = (cblk_len as libc::c_uint).wrapping_add((*(*cblk).chunks.offset(i_0 as isize)).len)
         as OPJ_UINT32;
-      i_0 = i_0.wrapping_add(1)
+      i_0 += 1;
     }
   } else if (*cblk).numchunks == 1u32 {
     cblkdata = (*(*cblk).chunks.offset(0)).data
@@ -2842,7 +2842,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       mbr_0 |= t_5 & inv_sig
                     }
                     cwd_0 >>= 1i32;
-                    cnt = cnt.wrapping_add(1)
+                    cnt += 1;
                   }
                   sample_mask_0 = (sample_mask_0 as libc::c_uint).wrapping_add(sample_mask_0)
                     as OPJ_UINT32;
@@ -2855,7 +2855,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       mbr_0 |= t_6 & inv_sig
                     }
                     cwd_0 >>= 1i32;
-                    cnt = cnt.wrapping_add(1)
+                    cnt += 1;
                   }
                   sample_mask_0 = (sample_mask_0 as libc::c_uint).wrapping_add(sample_mask_0)
                     as OPJ_UINT32;
@@ -2871,7 +2871,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       mbr_0 |= t_7 & inv_sig
                     }
                     cwd_0 >>= 1i32;
-                    cnt = cnt.wrapping_add(1)
+                    cnt += 1;
                   }
                   sample_mask_0 = (sample_mask_0 as libc::c_uint).wrapping_add(sample_mask_0)
                     as OPJ_UINT32;
@@ -2887,7 +2887,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       mbr_0 |= t_8 & inv_sig
                     }
                     cwd_0 >>= 1i32;
-                    cnt = cnt.wrapping_add(1)
+                    cnt += 1;
                   }
                 }
                 //no samples need checking
@@ -2919,7 +2919,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       *fresh30 |=
                         (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
-                      cnt = cnt.wrapping_add(1)
+                      cnt += 1;
                     }
                     sample_mask_1 = (sample_mask_1 as libc::c_uint).wrapping_add(sample_mask_1)
                       as OPJ_UINT32;
@@ -2929,7 +2929,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       *fresh31 |=
                         (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
-                      cnt = cnt.wrapping_add(1)
+                      cnt += 1;
                     }
                     sample_mask_1 = (sample_mask_1 as libc::c_uint).wrapping_add(sample_mask_1)
                       as OPJ_UINT32;
@@ -2942,7 +2942,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       *fresh32 |=
                         (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
-                      cnt = cnt.wrapping_add(1)
+                      cnt += 1;
                     }
                     sample_mask_1 = (sample_mask_1 as libc::c_uint).wrapping_add(sample_mask_1)
                       as OPJ_UINT32;
@@ -2955,7 +2955,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       *fresh33 |=
                         (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
-                      cnt = cnt.wrapping_add(1)
+                      cnt += 1;
                     }
                   }
                   //if non is significant
@@ -3288,7 +3288,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     mbr_2 |= t_12 & inv_sig_0
                   }
                   cwd_2 >>= 1i32;
-                  cnt_0 = cnt_0.wrapping_add(1)
+                  cnt_0 += 1;
                 }
                 sample_mask_3 = (sample_mask_3 as libc::c_uint).wrapping_add(sample_mask_3)
                   as OPJ_UINT32;
@@ -3301,7 +3301,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     mbr_2 |= t_13 & inv_sig_0
                   }
                   cwd_2 >>= 1i32;
-                  cnt_0 = cnt_0.wrapping_add(1)
+                  cnt_0 += 1;
                 }
                 sample_mask_3 = (sample_mask_3 as libc::c_uint).wrapping_add(sample_mask_3)
                   as OPJ_UINT32;
@@ -3317,7 +3317,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     mbr_2 |= t_14 & inv_sig_0
                   }
                   cwd_2 >>= 1i32;
-                  cnt_0 = cnt_0.wrapping_add(1)
+                  cnt_0 += 1;
                 }
                 sample_mask_3 = (sample_mask_3 as libc::c_uint).wrapping_add(sample_mask_3)
                   as OPJ_UINT32;
@@ -3333,7 +3333,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     mbr_2 |= t_15 & inv_sig_0
                   }
                   cwd_2 >>= 1i32;
-                  cnt_0 = cnt_0.wrapping_add(1)
+                  cnt_0 += 1;
                 }
               }
               j_3 += 1;
@@ -3361,7 +3361,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     *fresh53 |=
                       (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
-                    cnt_0 = cnt_0.wrapping_add(1)
+                    cnt_0 += 1;
                   }
                   sample_mask_4 = (sample_mask_4 as libc::c_uint).wrapping_add(sample_mask_4)
                     as OPJ_UINT32;
@@ -3371,7 +3371,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     *fresh54 |=
                       (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
-                    cnt_0 = cnt_0.wrapping_add(1)
+                    cnt_0 += 1;
                   }
                   sample_mask_4 = (sample_mask_4 as libc::c_uint).wrapping_add(sample_mask_4)
                     as OPJ_UINT32;
@@ -3384,7 +3384,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     *fresh55 |=
                       (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
-                    cnt_0 = cnt_0.wrapping_add(1)
+                    cnt_0 += 1;
                   }
                   sample_mask_4 = (sample_mask_4 as libc::c_uint).wrapping_add(sample_mask_4)
                     as OPJ_UINT32;
@@ -3397,7 +3397,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     *fresh56 |=
                       (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
-                    cnt_0 = cnt_0.wrapping_add(1)
+                    cnt_0 += 1;
                   }
                 }
                 j_4 += 1;
