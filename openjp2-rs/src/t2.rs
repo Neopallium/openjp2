@@ -349,14 +349,7 @@ pub(crate) unsafe fn opj_t2_encode_packets(
   opj_pi_destroy(l_pi, l_nb_pocs);
   return 1i32;
 }
-/* see issue 80 */
-/* issue 290 */
-unsafe extern "C" fn opj_null_jas_fprintf(
-  mut _file: *mut FILE,
-  mut _format: *const libc::c_char,
-  mut _args: ...
-) {
-}
+
 #[no_mangle]
 pub(crate) unsafe fn opj_t2_decode_packets(
   mut tcd: *mut opj_tcd_t,
@@ -418,10 +411,8 @@ pub(crate) unsafe fn opj_t2_decode_packets(
     );
     while opj_pi_next(l_current_pi) != 0 {
       let mut skip_packet = 0i32;
-      opj_null_jas_fprintf(
-        stderr,
-        b"packet offset=00000166 prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n\n\x00"
-          as *const u8 as *const libc::c_char,
+      log::debug!(
+        "packet offset=00000166 prg={} cmptno={:02} rlvlno={:02} prcno={:03} lyrno={:02}",
         (*l_current_pi).poc.prg1 as libc::c_int,
         (*l_current_pi).compno,
         (*l_current_pi).resno,
@@ -1160,11 +1151,7 @@ unsafe fn opj_t2_read_packet_header(
   }
   opj_bio_init_dec(l_bio, l_header_data, *l_modified_length_ptr);
   l_present = opj_bio_read(l_bio, 1 as OPJ_UINT32);
-  opj_null_jas_fprintf(
-    stderr,
-    b"present=%d \n\x00" as *const u8 as *const libc::c_char,
-    l_present,
-  );
+  log::debug!("present={}", l_present);
   if l_present == 0 {
     /* TODO MSD: no test to control the output of this function*/
     opj_bio_inalign(l_bio);
@@ -1236,11 +1223,7 @@ unsafe fn opj_t2_read_packet_header(
         if l_included == 0 {
           (*l_cblk).numnewpasses = 0 as OPJ_UINT32;
           l_cblk = l_cblk.offset(1);
-          opj_null_jas_fprintf(
-            stderr,
-            b"included=%d \n\x00" as *const u8 as *const libc::c_char,
-            l_included,
-          );
+          log::debug!("included={}", l_included);
         } else {
           /* if cblk not yet included --> zero-bitplane tagtree */
           if (*l_cblk).numsegs == 0 {
@@ -1317,10 +1300,8 @@ unsafe fn opj_t2_read_packet_header(
                 return 0i32;
               }
               (*(*l_cblk).segs.offset(l_segno as isize)).newlen = opj_bio_read(l_bio, bit_number);
-              opj_null_jas_fprintf(
-                stderr,
-                b"included=%d numnewpasses=%d increment=%d len=%d \n\x00" as *const u8
-                  as *const libc::c_char,
+              log::debug!(
+                "included={} numnewpasses={} increment={} len={}",
                 l_included,
                 (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses,
                 l_increment,
@@ -1367,10 +1348,8 @@ unsafe fn opj_t2_read_packet_header(
                 return 0i32;
               }
               (*(*l_cblk).segs.offset(l_segno as isize)).newlen = opj_bio_read(l_bio, bit_number_0);
-              opj_null_jas_fprintf(
-                stderr,
-                b"included=%d numnewpasses=%d increment=%d len=%d \n\x00" as *const u8
-                  as *const libc::c_char,
+              log::debug!(
+                "included={} numnewpasses={} increment={} len={}",
                 l_included,
                 (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses,
                 l_increment,
@@ -1430,15 +1409,8 @@ unsafe fn opj_t2_read_packet_header(
   }
   l_header_length =
     l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32;
-  opj_null_jas_fprintf(
-    stderr,
-    b"hdrlen=%d \n\x00" as *const u8 as *const libc::c_char,
-    l_header_length,
-  );
-  opj_null_jas_fprintf(
-    stderr,
-    b"packet body\n\x00" as *const u8 as *const libc::c_char,
-  );
+  log::debug!("hdrlen={}", l_header_length);
+  log::debug!("packet body");
   *l_modified_length_ptr = (*l_modified_length_ptr as libc::c_uint).wrapping_sub(l_header_length)
     as OPJ_UINT32;
   *l_header_data_start = (*l_header_data_start).offset(l_header_length as isize);
@@ -1686,12 +1658,7 @@ unsafe fn opj_t2_skip_packet_data(
               }
             }
             /* USE_JPWL */
-            opj_null_jas_fprintf(
-              stderr,
-              b"p_data_read (%d) newlen (%d) \n\x00" as *const u8 as *const libc::c_char,
-              *p_data_read,
-              (*l_seg).newlen,
-            );
+            log::debug!("p_data_read ({}) newlen ({})", *p_data_read, (*l_seg).newlen);
             *p_data_read = (*p_data_read as libc::c_uint).wrapping_add((*l_seg).newlen)
               as OPJ_UINT32;
             (*l_seg).numpasses = ((*l_seg).numpasses as libc::c_uint)
