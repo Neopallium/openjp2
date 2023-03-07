@@ -1,11 +1,10 @@
 use super::openjpeg::*;
 use super::event::*;
-use ::libc;
 
 use super::malloc::*;
 
 extern "C" {
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
+  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
 }
 
 /*
@@ -62,8 +61,8 @@ pub unsafe extern "C" fn opj_write_bytes_BE(
       && p_nb_bytes as usize <= core::mem::size_of::<OPJ_UINT32>() as usize
   );
   memcpy(
-    p_buffer as *mut libc::c_void,
-    l_data_ptr as *const libc::c_void,
+    p_buffer as *mut core::ffi::c_void,
+    l_data_ptr as *const core::ffi::c_void,
     p_nb_bytes as usize,
   );
 }
@@ -106,8 +105,8 @@ pub unsafe extern "C" fn opj_read_bytes_BE(
   memcpy(
     l_data_ptr
       .offset(core::mem::size_of::<OPJ_UINT32>() as isize)
-      .offset(-(p_nb_bytes as isize)) as *mut libc::c_void,
-    p_buffer as *const libc::c_void,
+      .offset(-(p_nb_bytes as isize)) as *mut core::ffi::c_void,
+    p_buffer as *const core::ffi::c_void,
     p_nb_bytes as usize,
   );
 }
@@ -143,8 +142,8 @@ pub unsafe extern "C" fn opj_write_double_BE(
 ) {
   let mut l_data_ptr = &mut p_value as *mut OPJ_FLOAT64 as *const OPJ_BYTE;
   memcpy(
-    p_buffer as *mut libc::c_void,
-    l_data_ptr as *const libc::c_void,
+    p_buffer as *mut core::ffi::c_void,
+    l_data_ptr as *const core::ffi::c_void,
     core::mem::size_of::<OPJ_FLOAT64>() as usize,
   );
 }
@@ -174,8 +173,8 @@ pub unsafe extern "C" fn opj_read_double_BE(
 ) {
   let mut l_data_ptr = p_value as *mut OPJ_BYTE;
   memcpy(
-    l_data_ptr as *mut libc::c_void,
-    p_buffer as *const libc::c_void,
+    l_data_ptr as *mut core::ffi::c_void,
+    p_buffer as *const core::ffi::c_void,
     core::mem::size_of::<OPJ_FLOAT64>() as usize,
   );
 }
@@ -202,8 +201,8 @@ pub unsafe extern "C" fn opj_read_double_LE(
 pub unsafe extern "C" fn opj_write_float_BE(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT32) {
   let mut l_data_ptr = &mut p_value as *mut OPJ_FLOAT32 as *const OPJ_BYTE;
   memcpy(
-    p_buffer as *mut libc::c_void,
-    l_data_ptr as *const libc::c_void,
+    p_buffer as *mut core::ffi::c_void,
+    l_data_ptr as *const core::ffi::c_void,
     core::mem::size_of::<OPJ_FLOAT32>() as usize,
   );
 }
@@ -230,8 +229,8 @@ pub unsafe extern "C" fn opj_read_float_BE(
 ) {
   let mut l_data_ptr = p_value as *mut OPJ_BYTE;
   memcpy(
-    l_data_ptr as *mut libc::c_void,
-    p_buffer as *const libc::c_void,
+    l_data_ptr as *mut core::ffi::c_void,
+    p_buffer as *const core::ffi::c_void,
     core::mem::size_of::<OPJ_FLOAT32>() as usize,
   );
 }
@@ -270,7 +269,7 @@ pub unsafe extern "C" fn opj_stream_create(
   (*l_stream).m_buffer_size = p_buffer_size;
   (*l_stream).m_stored_data = opj_malloc(p_buffer_size) as *mut OPJ_BYTE;
   if (*l_stream).m_stored_data.is_null() {
-    opj_free(l_stream as *mut libc::c_void);
+    opj_free(l_stream as *mut core::ffi::c_void);
     return 0 as *mut opj_stream_t;
   }
   (*l_stream).m_current_data = (*l_stream).m_stored_data;
@@ -314,25 +313,25 @@ pub unsafe extern "C" fn opj_stream_create(
   (*l_stream).m_read_fn = Some(
     opj_stream_default_read
       as unsafe extern "C" fn(
-        _: *mut libc::c_void,
+        _: *mut core::ffi::c_void,
         _: OPJ_SIZE_T,
-        _: *mut libc::c_void,
+        _: *mut core::ffi::c_void,
       ) -> OPJ_SIZE_T,
   );
   (*l_stream).m_write_fn = Some(
     opj_stream_default_write
       as unsafe extern "C" fn(
-        _: *mut libc::c_void,
+        _: *mut core::ffi::c_void,
         _: OPJ_SIZE_T,
-        _: *mut libc::c_void,
+        _: *mut core::ffi::c_void,
       ) -> OPJ_SIZE_T,
   );
   (*l_stream).m_skip_fn = Some(
     opj_stream_default_skip
-      as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut libc::c_void) -> OPJ_OFF_T,
+      as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_OFF_T,
   );
   (*l_stream).m_seek_fn = Some(
-    opj_stream_default_seek as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut libc::c_void) -> OPJ_BOOL,
+    opj_stream_default_seek as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL,
   );
   return l_stream as *mut opj_stream_t;
 }
@@ -349,9 +348,9 @@ pub unsafe extern "C" fn opj_stream_destroy(mut p_stream: *mut opj_stream_t) {
         .m_free_user_data_fn
         .expect("non-null function pointer")((*l_stream).m_user_data);
     }
-    opj_free((*l_stream).m_stored_data as *mut libc::c_void);
+    opj_free((*l_stream).m_stored_data as *mut core::ffi::c_void);
     (*l_stream).m_stored_data = 0 as *mut OPJ_BYTE;
-    opj_free(l_stream as *mut libc::c_void);
+    opj_free(l_stream as *mut core::ffi::c_void);
   };
 }
 #[no_mangle]
@@ -401,7 +400,7 @@ pub unsafe extern "C" fn opj_stream_set_skip_function(
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_user_data(
   mut p_stream: *mut opj_stream_t,
-  mut p_data: *mut libc::c_void,
+  mut p_data: *mut core::ffi::c_void,
   mut p_function: opj_stream_free_user_data_fn,
 ) {
   let mut l_stream = p_stream as *mut opj_stream_private_t;
@@ -432,8 +431,8 @@ pub unsafe extern "C" fn opj_stream_read_data(
   let mut l_read_nb_bytes = 0 as OPJ_SIZE_T;
   if (*p_stream).m_bytes_in_buffer >= p_size {
     memcpy(
-      p_buffer as *mut libc::c_void,
-      (*p_stream).m_current_data as *const libc::c_void,
+      p_buffer as *mut core::ffi::c_void,
+      (*p_stream).m_current_data as *const core::ffi::c_void,
       p_size,
     );
     (*p_stream).m_current_data = (*p_stream).m_current_data.offset(p_size as isize);
@@ -449,8 +448,8 @@ pub unsafe extern "C" fn opj_stream_read_data(
     l_read_nb_bytes = (l_read_nb_bytes as usize).wrapping_add((*p_stream).m_bytes_in_buffer)
       as OPJ_SIZE_T as OPJ_SIZE_T;
     memcpy(
-      p_buffer as *mut libc::c_void,
-      (*p_stream).m_current_data as *const libc::c_void,
+      p_buffer as *mut core::ffi::c_void,
+      (*p_stream).m_current_data as *const core::ffi::c_void,
       (*p_stream).m_bytes_in_buffer,
     );
     (*p_stream).m_current_data = (*p_stream)
@@ -469,8 +468,8 @@ pub unsafe extern "C" fn opj_stream_read_data(
     l_read_nb_bytes = (l_read_nb_bytes as usize).wrapping_add((*p_stream).m_bytes_in_buffer)
       as OPJ_SIZE_T as OPJ_SIZE_T;
     memcpy(
-      p_buffer as *mut libc::c_void,
-      (*p_stream).m_current_data as *const libc::c_void,
+      p_buffer as *mut core::ffi::c_void,
+      (*p_stream).m_current_data as *const core::ffi::c_void,
       (*p_stream).m_bytes_in_buffer,
     );
     (*p_stream).m_current_data = (*p_stream).m_stored_data;
@@ -490,7 +489,7 @@ pub unsafe extern "C" fn opj_stream_read_data(
     if p_size < (*p_stream).m_buffer_size {
       /* we should do an actual read on the media */
       (*p_stream).m_bytes_in_buffer = (*p_stream).m_read_fn.expect("non-null function pointer")(
-        (*p_stream).m_stored_data as *mut libc::c_void,
+        (*p_stream).m_stored_data as *mut core::ffi::c_void,
         (*p_stream).m_buffer_size,
         (*p_stream).m_user_data,
       );
@@ -514,8 +513,8 @@ pub unsafe extern "C" fn opj_stream_read_data(
             .wrapping_add((*p_stream).m_bytes_in_buffer) as OPJ_SIZE_T
             as OPJ_SIZE_T;
           memcpy(
-            p_buffer as *mut libc::c_void,
-            (*p_stream).m_current_data as *const libc::c_void,
+            p_buffer as *mut core::ffi::c_void,
+            (*p_stream).m_current_data as *const core::ffi::c_void,
             (*p_stream).m_bytes_in_buffer,
           );
           (*p_stream).m_current_data = (*p_stream).m_stored_data;
@@ -528,8 +527,8 @@ pub unsafe extern "C" fn opj_stream_read_data(
           l_read_nb_bytes =
             (l_read_nb_bytes as usize).wrapping_add(p_size) as OPJ_SIZE_T as OPJ_SIZE_T;
           memcpy(
-            p_buffer as *mut libc::c_void,
-            (*p_stream).m_current_data as *const libc::c_void,
+            p_buffer as *mut core::ffi::c_void,
+            (*p_stream).m_current_data as *const core::ffi::c_void,
             p_size,
           );
           (*p_stream).m_current_data = (*p_stream).m_current_data.offset(p_size as isize);
@@ -543,7 +542,7 @@ pub unsafe extern "C" fn opj_stream_read_data(
     } else {
       /* direct read on the dest buffer */
       (*p_stream).m_bytes_in_buffer = (*p_stream).m_read_fn.expect("non-null function pointer")(
-        p_buffer as *mut libc::c_void,
+        p_buffer as *mut core::ffi::c_void,
         p_size,
         (*p_stream).m_user_data,
       );
@@ -605,8 +604,8 @@ pub unsafe extern "C" fn opj_stream_write_data(
     /* we have more memory than required */
     if l_remaining_bytes >= p_size {
       memcpy(
-        (*p_stream).m_current_data as *mut libc::c_void,
-        p_buffer as *const libc::c_void,
+        (*p_stream).m_current_data as *mut core::ffi::c_void,
+        p_buffer as *const core::ffi::c_void,
         p_size,
       );
       (*p_stream).m_current_data = (*p_stream).m_current_data.offset(p_size as isize);
@@ -622,8 +621,8 @@ pub unsafe extern "C" fn opj_stream_write_data(
       l_write_nb_bytes = (l_write_nb_bytes as usize).wrapping_add(l_remaining_bytes)
         as OPJ_SIZE_T as OPJ_SIZE_T;
       memcpy(
-        (*p_stream).m_current_data as *mut libc::c_void,
-        p_buffer as *const libc::c_void,
+        (*p_stream).m_current_data as *mut core::ffi::c_void,
+        p_buffer as *const core::ffi::c_void,
         l_remaining_bytes,
       );
       (*p_stream).m_current_data = (*p_stream).m_stored_data;
@@ -651,7 +650,7 @@ pub unsafe extern "C" fn opj_stream_flush(
   while (*p_stream).m_bytes_in_buffer != 0 {
     /* we should do an actual write on the media */
     l_current_write_nb_bytes = (*p_stream).m_write_fn.expect("non-null function pointer")(
-      (*p_stream).m_current_data as *mut libc::c_void,
+      (*p_stream).m_current_data as *mut core::ffi::c_void,
       (*p_stream).m_bytes_in_buffer,
       (*p_stream).m_user_data,
     );
@@ -887,36 +886,36 @@ pub unsafe extern "C" fn opj_stream_has_seek(
   return ((*p_stream).m_seek_fn
     != Some(
       opj_stream_default_seek
-        as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut libc::c_void) -> OPJ_BOOL,
-    )) as libc::c_int;
+        as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL,
+    )) as core::ffi::c_int;
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_read(
-  mut _p_buffer: *mut libc::c_void,
+  mut _p_buffer: *mut core::ffi::c_void,
   mut _p_nb_bytes: OPJ_SIZE_T,
-  mut _p_user_data: *mut libc::c_void,
+  mut _p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_SIZE_T {
   return -(1i32) as OPJ_SIZE_T;
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_write(
-  mut _p_buffer: *mut libc::c_void,
+  mut _p_buffer: *mut core::ffi::c_void,
   mut _p_nb_bytes: OPJ_SIZE_T,
-  mut _p_user_data: *mut libc::c_void,
+  mut _p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_SIZE_T {
   return -(1i32) as OPJ_SIZE_T;
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_skip(
   mut _p_nb_bytes: OPJ_OFF_T,
-  mut _p_user_data: *mut libc::c_void,
+  mut _p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_OFF_T {
   return -(1i32) as OPJ_OFF_T;
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_seek(
   mut _p_nb_bytes: OPJ_OFF_T,
-  mut _p_user_data: *mut libc::c_void,
+  mut _p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
   return 0i32;
 }

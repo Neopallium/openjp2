@@ -8,7 +8,6 @@ use super::tcd::*;
 use super::event::*;
 use super::thread::*;
 use super::consts::*;
-use ::libc;
 
 use core::{
   cell::RefCell,
@@ -247,7 +246,7 @@ impl Default for opj_t1 {
 impl Drop for opj_t1 {
   fn drop(&mut self) {
     unsafe {
-      opj_free(self.cblkdatabuffer as *mut libc::c_void);
+      opj_free(self.cblkdatabuffer as *mut core::ffi::c_void);
     }
   }
 }
@@ -1702,7 +1701,7 @@ fn opj_t1_allocate_buffers(
       .wrapping_add(3u32)
       .wrapping_div(4u32)
       .wrapping_add(2u32);
-    flagssize = (flagssize as libc::c_uint).wrapping_mul(flags_stride);
+    flagssize = (flagssize as core::ffi::c_uint).wrapping_mul(flags_stride);
     let mut flags_height = h
       .wrapping_add(3u32)
       .wrapping_div(4u32);
@@ -1748,7 +1747,7 @@ fn opj_t1_allocate_buffers(
 /* ----------------------------------------------------------------------- */
 
 extern "C" fn opj_t1_clbl_decode_processor(
-  mut user_data: *mut libc::c_void,
+  mut user_data: *mut core::ffi::c_void,
 ) {
   unsafe {
     let mut cblk = 0 as *mut opj_tcd_cblk_dec_t;
@@ -1788,12 +1787,12 @@ extern "C" fn opj_t1_clbl_decode_processor(
           opj_mutex_unlock((*job).p_manager_mutex);
         }
         core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free(job as *mut libc::c_void);
+        opj_free(job as *mut core::ffi::c_void);
         return;
       }
       /* Zero-init required */
       memset(
-        (*cblk).decoded_data as *mut libc::c_void,
+        (*cblk).decoded_data as *mut core::ffi::c_void,
         0i32,
         core::mem::size_of::<OPJ_INT32>()
           .wrapping_mul(cblk_w as usize)
@@ -1802,7 +1801,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
     } else if !(*cblk).decoded_data.is_null() {
       /* Not sure if that code path can happen, but better be */
       /* safe than sorry */
-      opj_aligned_free((*cblk).decoded_data as *mut libc::c_void);
+      opj_aligned_free((*cblk).decoded_data as *mut core::ffi::c_void);
       (*cblk).decoded_data = 0 as *mut OPJ_INT32
     }
     resno = (*job).resno;
@@ -1822,7 +1821,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
       ))
       .x0) as OPJ_UINT32;
     if *(*job).pret == 0 {
-      opj_free(job as *mut libc::c_void);
+      opj_free(job as *mut core::ffi::c_void);
       return;
     }
 
@@ -1846,7 +1845,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
           )
         {
           core::ptr::write_volatile((*job).pret, 0i32);
-          opj_free(job as *mut libc::c_void);
+          opj_free(job as *mut core::ffi::c_void);
           return;
         }
       } else if 0i32
@@ -1862,7 +1861,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
         )
       {
         core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free(job as *mut libc::c_void);
+        opj_free(job as *mut core::ffi::c_void);
         return;
       }
       x = (*cblk).x0 - (*band).x0;
@@ -1936,8 +1935,8 @@ extern "C" fn opj_t1_clbl_decode_processor(
           while i < cblk_size {
             let mut tmp = *datap as OPJ_FLOAT32 * stepsize;
             memcpy(
-              datap as *mut libc::c_void,
-              &mut tmp as *mut OPJ_FLOAT32 as *const libc::c_void,
+              datap as *mut core::ffi::c_void,
+              &mut tmp as *mut OPJ_FLOAT32 as *const core::ffi::c_void,
               core::mem::size_of::<OPJ_FLOAT32>(),
             );
             datap = datap.offset(1);
@@ -1998,7 +1997,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
                 .wrapping_add(i as usize)
                 .wrapping_add(3) as isize,
             ) = tmp3 / 2i32;
-            i = (i as libc::c_uint).wrapping_add(4u32)
+            i = (i as core::ffi::c_uint).wrapping_add(4u32)
           }
           while i < cblk_w {
             let mut tmp_0 = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
@@ -2033,7 +2032,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
           j += 1
         }
       }
-      opj_free(job as *mut libc::c_void);
+      opj_free(job as *mut core::ffi::c_void);
     })
   }
 }
@@ -2081,7 +2080,7 @@ pub fn opj_t1_decode_cblks(
               let mut cblk: *mut opj_tcd_cblk_dec_t =
                 &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
               if !(*cblk).decoded_data.is_null() {
-                opj_aligned_free((*cblk).decoded_data as *mut libc::c_void);
+                opj_aligned_free((*cblk).decoded_data as *mut core::ffi::c_void);
                 (*cblk).decoded_data = 0 as *mut OPJ_INT32
               }
               cblkno += 1;
@@ -2105,7 +2104,7 @@ pub fn opj_t1_decode_cblks(
               ) == 0
               {
                 if !(*cblk_0).decoded_data.is_null() {
-                  opj_aligned_free((*cblk_0).decoded_data as *mut libc::c_void);
+                  opj_aligned_free((*cblk_0).decoded_data as *mut core::ffi::c_void);
                   (*cblk_0).decoded_data = 0 as *mut OPJ_INT32
                 }
               } else {
@@ -2146,14 +2145,14 @@ pub fn opj_t1_decode_cblks(
                     (*job).p_manager = p_manager.clone();
                     (*job).check_pterm = check_pterm;
                     (*job).mustuse_cblkdatabuffer =
-                      (opj_thread_pool_get_thread_count(tp) > 1i32) as libc::c_int;
+                      (opj_thread_pool_get_thread_count(tp) > 1i32) as core::ffi::c_int;
                     opj_thread_pool_submit_job(
                       tp,
                       Some(
                         opj_t1_clbl_decode_processor
-                          as unsafe extern "C" fn(_: *mut libc::c_void) -> (),
+                          as unsafe extern "C" fn(_: *mut core::ffi::c_void) -> (),
                       ),
-                      job as *mut libc::c_void,
+                      job as *mut core::ffi::c_void,
                     );
                     if *pret == 0 {
                       return;
@@ -2245,14 +2244,14 @@ fn opj_t1_decode_cblk(
       cblk_len = 0 as OPJ_UINT32;
       i = 0 as OPJ_UINT32;
       while i < (*cblk).numchunks {
-        cblk_len = (cblk_len as libc::c_uint).wrapping_add((*(*cblk).chunks.offset(i as isize)).len)
+        cblk_len = (cblk_len as core::ffi::c_uint).wrapping_add((*(*cblk).chunks.offset(i as isize)).len)
           as OPJ_UINT32;
         i += 1
       }
       /* Allocate temporary memory if needed */
       if cblk_len.wrapping_add(2) > t1.cblkdatabuffersize {
         cblkdata = opj_realloc(
-          t1.cblkdatabuffer as *mut libc::c_void,
+          t1.cblkdatabuffer as *mut core::ffi::c_void,
           cblk_len.wrapping_add(2) as size_t,
         ) as *mut OPJ_BYTE;
         if cblkdata.is_null() {
@@ -2260,7 +2259,7 @@ fn opj_t1_decode_cblk(
         }
         t1.cblkdatabuffer = cblkdata;
         memset(
-          t1.cblkdatabuffer.offset(cblk_len as isize) as *mut libc::c_void,
+          t1.cblkdatabuffer.offset(cblk_len as isize) as *mut core::ffi::c_void,
           0,
           OPJ_COMMON_CBLK_DATA_EXTRA as usize,
         );
@@ -2272,11 +2271,11 @@ fn opj_t1_decode_cblk(
       i = 0 as OPJ_UINT32;
       while i < (*cblk).numchunks {
         memcpy(
-          cblkdata.offset(cblk_len as isize) as *mut libc::c_void,
-          (*(*cblk).chunks.offset(i as isize)).data as *const libc::c_void,
+          cblkdata.offset(cblk_len as isize) as *mut core::ffi::c_void,
+          (*(*cblk).chunks.offset(i as isize)).data as *const core::ffi::c_void,
           (*(*cblk).chunks.offset(i as isize)).len as usize,
         );
-        cblk_len = (cblk_len as libc::c_uint).wrapping_add((*(*cblk).chunks.offset(i as isize)).len)
+        cblk_len = (cblk_len as core::ffi::c_uint).wrapping_add((*(*cblk).chunks.offset(i as isize)).len)
           as OPJ_UINT32;
         i += 1
       }
@@ -2305,7 +2304,7 @@ fn opj_t1_decode_cblk(
       } else {
         0i32
       } as OPJ_BYTE;
-      if type_0 as libc::c_int == 1i32 {
+      if type_0 as core::ffi::c_int == 1i32 {
         opj_mqc_raw_init_dec(
           &mut t1.mqc,
           cblkdata.offset(cblkdataindex as isize),
@@ -2321,19 +2320,19 @@ fn opj_t1_decode_cblk(
         );
       }
       cblkdataindex =
-        (cblkdataindex as libc::c_uint).wrapping_add((*seg).len);
+        (cblkdataindex as core::ffi::c_uint).wrapping_add((*seg).len);
       passno = 0 as OPJ_UINT32;
       while passno < (*seg).real_num_passes && bpno_plus_one >= 1i32 {
         match passtype {
           0 => {
-            if type_0 as libc::c_int == 1i32 {
+            if type_0 as core::ffi::c_int == 1i32 {
               opj_t1_dec_sigpass_raw(t1, bpno_plus_one, cblksty as OPJ_INT32);
             } else {
               opj_t1_dec_sigpass_mqc(t1, bpno_plus_one, cblksty as OPJ_INT32);
             }
           }
           1 => {
-            if type_0 as libc::c_int == 1i32 {
+            if type_0 as core::ffi::c_int == 1i32 {
               opj_t1_dec_refpass_raw(t1, bpno_plus_one);
             } else {
               opj_t1_dec_refpass_mqc(t1, bpno_plus_one);
@@ -2368,10 +2367,10 @@ fn opj_t1_decode_cblk(
         }
         event_msg!(p_manager, EVT_WARNING,
           "PTERM check failure: %d remaining bytes in code block (%d used / %d)\n",
-          (*mqc).end.offset_from((*mqc).bp) as libc::c_int
+          (*mqc).end.offset_from((*mqc).bp) as core::ffi::c_int
             - 2i32,
-          (*mqc).bp.offset_from((*mqc).start) as libc::c_int,
-          (*mqc).end.offset_from((*mqc).start) as libc::c_int,
+          (*mqc).bp.offset_from((*mqc).start) as core::ffi::c_int,
+          (*mqc).end.offset_from((*mqc).start) as core::ffi::c_int,
         );
         if !p_manager_mutex.is_null() {
           opj_mutex_unlock(p_manager_mutex);
@@ -2403,7 +2402,7 @@ fn opj_t1_decode_cblk(
  * @param tls       TLS handle.
  */
 extern "C" fn opj_t1_cblk_encode_processor(
-  mut user_data: *mut libc::c_void,
+  mut user_data: *mut core::ffi::c_void,
 ) {
   unsafe {
     let mut job = user_data as *mut opj_t1_cblk_encode_processing_job_t; /* OPJ_TRUE == T1 for encoding */
@@ -2421,7 +2420,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
     let mut x = (*cblk).x0 - (*band).x0;
     let mut y = (*cblk).y0 - (*band).y0;
     if *(*job).pret == 0 {
-      opj_free(job as *mut libc::c_void);
+      opj_free(job as *mut core::ffi::c_void);
       return;
     }
 
@@ -2451,7 +2450,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
       ) == 0
       {
         core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free(job as *mut libc::c_void);
+        opj_free(job as *mut core::ffi::c_void);
         return;
       }
       cblk_w = t1.w;
@@ -2499,7 +2498,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
             t1data = t1data.offset(4);
             i += 1
           }
-          j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
+          j = (j as core::ffi::c_uint).wrapping_add(4) as OPJ_UINT32
             as OPJ_UINT32
         }
         if j < cblk_h {
@@ -2532,7 +2531,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
                   .wrapping_mul(tile_w)
                   .wrapping_add(i) as isize,
               ) / (*band).stepsize
-                * ((1i32) << 7i32 - 1i32) as libc::c_float,
+                * ((1i32) << 7i32 - 1i32) as core::ffi::c_float,
             ) as OPJ_INT32;
             *t1data_0.offset(1) = opj_lrintf(
               *tiledp_f.offset(
@@ -2540,7 +2539,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
                   .wrapping_mul(tile_w)
                   .wrapping_add(i) as isize,
               ) / (*band).stepsize
-                * ((1i32) << 7i32 - 1i32) as libc::c_float,
+                * ((1i32) << 7i32 - 1i32) as core::ffi::c_float,
             ) as OPJ_INT32;
             *t1data_0.offset(2) = opj_lrintf(
               *tiledp_f.offset(
@@ -2548,7 +2547,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
                   .wrapping_mul(tile_w)
                   .wrapping_add(i) as isize,
               ) / (*band).stepsize
-                * ((1i32) << 7i32 - 1i32) as libc::c_float,
+                * ((1i32) << 7i32 - 1i32) as core::ffi::c_float,
             ) as OPJ_INT32;
             *t1data_0.offset(3) = opj_lrintf(
               *tiledp_f.offset(
@@ -2556,12 +2555,12 @@ extern "C" fn opj_t1_cblk_encode_processor(
                   .wrapping_mul(tile_w)
                   .wrapping_add(i) as isize,
               ) / (*band).stepsize
-                * ((1i32) << 7i32 - 1i32) as libc::c_float,
+                * ((1i32) << 7i32 - 1i32) as core::ffi::c_float,
             ) as OPJ_INT32;
             t1data_0 = t1data_0.offset(4);
             i += 1
           }
-          j = (j as libc::c_uint).wrapping_add(4) as OPJ_UINT32
+          j = (j as core::ffi::c_uint).wrapping_add(4) as OPJ_UINT32
             as OPJ_UINT32
         }
         if j < cblk_h {
@@ -2572,7 +2571,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
             while k_0 < cblk_h {
               *t1data_0.offset(0) = opj_lrintf(
                 *tiledp_f.offset(k_0.wrapping_mul(tile_w).wrapping_add(i) as isize) / (*band).stepsize
-                  * ((1i32) << 7i32 - 1i32) as libc::c_float,
+                  * ((1i32) << 7i32 - 1i32) as core::ffi::c_float,
               ) as OPJ_INT32;
               t1data_0 = t1data_0.offset(1);
               k_0 += 1;
@@ -2604,7 +2603,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
       if !(*job).mutex.is_null() {
         opj_mutex_unlock((*job).mutex);
       }
-      opj_free(job as *mut libc::c_void);
+      opj_free(job as *mut core::ffi::c_void);
     })
   }
 }
@@ -2675,9 +2674,9 @@ pub fn opj_t1_encode_cblks(
                     tp,
                     Some(
                       opj_t1_cblk_encode_processor
-                        as unsafe extern "C" fn(_: *mut libc::c_void) -> (),
+                        as unsafe extern "C" fn(_: *mut core::ffi::c_void) -> (),
                     ),
-                    job as *mut libc::c_void,
+                    job as *mut core::ffi::c_void,
                   );
                   cblkno += 1;
                 }
@@ -2706,7 +2705,7 @@ fn opj_t1_enc_is_term_pass(
   mut cblksty: OPJ_UINT32,
   mut bpno: OPJ_INT32,
   mut passtype: OPJ_UINT32,
-) -> libc::c_int {
+) -> core::ffi::c_int {
   unsafe {
     /* Is it the last cleanup pass ? */
     if passtype == 2 && bpno == 0i32 {
@@ -2748,7 +2747,7 @@ fn opj_t1_encode_cblk(
   mut numcomps: OPJ_UINT32,
   mut mct_norms: *const OPJ_FLOAT64,
   mut mct_numcomps: OPJ_UINT32,
-) -> libc::c_double {
+) -> core::ffi::c_double {
   unsafe {
     let mut cumwmsedec = 0.0f64; /* MQC component */
     let mut passno: OPJ_UINT32 = 0;
@@ -2778,8 +2777,8 @@ fn opj_t1_encode_cblk(
             (-tmp as OPJ_UINT32) | 0x80000000u32
           };
           memcpy(
-            datap as *mut libc::c_void,
-            &mut tmp_unsigned as *mut OPJ_UINT32 as *const libc::c_void,
+            datap as *mut core::ffi::c_void,
+            &mut tmp_unsigned as *mut OPJ_UINT32 as *const core::ffi::c_void,
             core::mem::size_of::<OPJ_INT32>(),
           );
         } else {
@@ -2828,10 +2827,10 @@ fn opj_t1_encode_cblk(
         && (*(*cblk)
           .passes
           .offset(passno.wrapping_sub(1) as isize))
-        .term() as libc::c_int
+        .term() as core::ffi::c_int
           != 0
       {
-        if type_0 as libc::c_int == 1i32 {
+        if type_0 as core::ffi::c_int == 1i32 {
           opj_mqc_bypass_init_enc(&mut t1.mqc);
         } else {
           opj_mqc_restart_init_enc(&mut t1.mqc);
@@ -2870,7 +2869,7 @@ fn opj_t1_encode_cblk(
       (*pass).distortiondec = cumwmsedec;
       if opj_t1_enc_is_term_pass(cblk, cblksty, bpno, passtype) != 0 {
         /* If it is a terminated pass, terminate it */
-        if type_0 as libc::c_int == 1i32 {
+        if type_0 as core::ffi::c_int == 1i32 {
           opj_mqc_bypass_flush_enc(
             &mut t1.mqc,
             (cblksty & 0x10) as OPJ_BOOL,
@@ -2885,7 +2884,7 @@ fn opj_t1_encode_cblk(
       } else {
         /* Non terminated pass */
         let mut rate_extra_bytes: OPJ_UINT32 = 0;
-        if type_0 as libc::c_int == 1i32 {
+        if type_0 as core::ffi::c_int == 1i32 {
           rate_extra_bytes = opj_mqc_bypass_get_extra_bytes(
             &mut t1.mqc,
             (cblksty & 0x10) as OPJ_BOOL,
@@ -2934,7 +2933,7 @@ fn opj_t1_encode_cblk(
         (*pass_1)
           .rate
           .wrapping_sub(1) as isize,
-      ) as libc::c_int
+      ) as core::ffi::c_int
         == 0xffi32
       {
         (*pass_1).rate = (*pass_1).rate.wrapping_sub(1)

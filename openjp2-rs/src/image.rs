@@ -1,13 +1,12 @@
 use super::math::*;
 use super::openjpeg::*;
-use ::libc;
 
 use super::malloc::*;
 
 extern "C" {
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
+  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
+  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -123,7 +122,7 @@ pub unsafe fn opj_image_create(
         return 0 as *mut opj_image_t;
       }
       memset(
-        (*comp).data as *mut libc::c_void,
+        (*comp).data as *mut core::ffi::c_void,
         0i32,
         ((*comp).w as size_t)
           .wrapping_mul((*comp).h as usize)
@@ -145,16 +144,16 @@ pub unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
         let mut image_comp: *mut opj_image_comp_t =
           &mut *(*image).comps.offset(compno as isize) as *mut opj_image_comp_t;
         if !(*image_comp).data.is_null() {
-          opj_image_data_free((*image_comp).data as *mut libc::c_void);
+          opj_image_data_free((*image_comp).data as *mut core::ffi::c_void);
         }
         compno += 1;
       }
-      opj_free((*image).comps as *mut libc::c_void);
+      opj_free((*image).comps as *mut core::ffi::c_void);
     }
     if !(*image).icc_profile_buf.is_null() {
-      opj_free((*image).icc_profile_buf as *mut libc::c_void);
+      opj_free((*image).icc_profile_buf as *mut core::ffi::c_void);
     }
-    opj_free(image as *mut libc::c_void);
+    opj_free(image as *mut core::ffi::c_void);
   };
 }
 /* *
@@ -241,11 +240,11 @@ pub unsafe fn opj_copy_image_header(
       let mut image_comp: *mut opj_image_comp_t =
         &mut *(*p_image_dest).comps.offset(compno as isize) as *mut opj_image_comp_t;
       if !(*image_comp).data.is_null() {
-        opj_image_data_free((*image_comp).data as *mut libc::c_void);
+        opj_image_data_free((*image_comp).data as *mut core::ffi::c_void);
       }
       compno += 1;
     }
-    opj_free((*p_image_dest).comps as *mut libc::c_void);
+    opj_free((*p_image_dest).comps as *mut core::ffi::c_void);
     (*p_image_dest).comps = 0 as *mut opj_image_comp_t
   }
   (*p_image_dest).numcomps = (*p_image_src).numcomps;
@@ -262,9 +261,9 @@ pub unsafe fn opj_copy_image_header(
   while compno < (*p_image_dest).numcomps {
     memcpy(
       &mut *(*p_image_dest).comps.offset(compno as isize) as *mut opj_image_comp_t
-        as *mut libc::c_void,
+        as *mut core::ffi::c_void,
       &mut *(*p_image_src).comps.offset(compno as isize) as *mut opj_image_comp_t
-        as *const libc::c_void,
+        as *const core::ffi::c_void,
       core::mem::size_of::<opj_image_comp_t>() as usize,
     );
     let ref mut fresh0 = (*(*p_image_dest).comps.offset(compno as isize)).data;
@@ -282,8 +281,8 @@ pub unsafe fn opj_copy_image_header(
       return;
     }
     memcpy(
-      (*p_image_dest).icc_profile_buf as *mut libc::c_void,
-      (*p_image_src).icc_profile_buf as *const libc::c_void,
+      (*p_image_dest).icc_profile_buf as *mut core::ffi::c_void,
+      (*p_image_src).icc_profile_buf as *const core::ffi::c_void,
       (*p_image_src).icc_profile_len as usize,
     );
   } else {

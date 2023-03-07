@@ -11,7 +11,6 @@ use super::function_list::*;
 use super::invert::*;
 use super::image::*;
 use super::thread::*;
-use ::libc;
 
 use super::malloc::*;
 
@@ -24,26 +23,26 @@ use ::libc::{
 use bitflags::bitflags;
 
 extern "C" {
-  fn strcpy(_: *mut libc::c_char, _: *const libc::c_char) -> *mut libc::c_char;
+  fn strcpy(_: *mut core::ffi::c_char, _: *const core::ffi::c_char) -> *mut core::ffi::c_char;
 
-  fn strcmp(_: *const libc::c_char, _: *const libc::c_char) -> libc::c_int;
+  fn strcmp(_: *const core::ffi::c_char, _: *const core::ffi::c_char) -> core::ffi::c_int;
 
-  fn strncmp(_: *const libc::c_char, _: *const libc::c_char, _: usize) -> libc::c_int;
+  fn strncmp(_: *const core::ffi::c_char, _: *const core::ffi::c_char, _: usize) -> core::ffi::c_int;
 
-  fn strlen(_: *const libc::c_char) -> usize;
+  fn strlen(_: *const core::ffi::c_char) -> usize;
 
-  fn atoi(__nptr: *const libc::c_char) -> libc::c_int;
+  fn atoi(__nptr: *const core::ffi::c_char) -> core::ffi::c_int;
 
-  fn getenv(__name: *const libc::c_char) -> *mut libc::c_char;
+  fn getenv(__name: *const core::ffi::c_char) -> *mut core::ffi::c_char;
 
-  fn floor(_: libc::c_double) -> libc::c_double;
+  fn floor(_: core::ffi::c_double) -> core::ffi::c_double;
   static mut stdout: *mut FILE;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
+  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
 
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
+  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
 
-  fn memmove(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
+  fn memmove(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
 }
 
 bitflags! {
@@ -92,8 +91,8 @@ impl MCTElementType {
   }
 
   pub fn read_to_float(&self,
-    p_src_data: *const libc::c_void,
-    p_dest_data: *mut libc::c_void,
+    p_src_data: *const core::ffi::c_void,
+    p_dest_data: *mut core::ffi::c_void,
     p_nb_elem: OPJ_UINT32,
   ) {
     unsafe {
@@ -107,8 +106,8 @@ impl MCTElementType {
   }
 
   pub fn read_to_int32(&self,
-    p_src_data: *const libc::c_void,
-    p_dest_data: *mut libc::c_void,
+    p_src_data: *const core::ffi::c_void,
+    p_dest_data: *mut core::ffi::c_void,
     p_nb_elem: OPJ_UINT32,
   ) {
     unsafe {
@@ -122,8 +121,8 @@ impl MCTElementType {
   }
 
   pub fn write_from_float(&self,
-    p_src_data: *const libc::c_void,
-    p_dest_data: *mut libc::c_void,
+    p_src_data: *const core::ffi::c_void,
+    p_dest_data: *mut core::ffi::c_void,
     p_nb_elem: OPJ_UINT32,
   ) {
     unsafe {
@@ -138,7 +137,7 @@ impl MCTElementType {
 }
 
 pub type opj_j2k_mct_function =
-  Option<unsafe extern "C" fn(_: *const libc::c_void, _: *mut libc::c_void, _: OPJ_UINT32) -> ()>;
+  Option<unsafe extern "C" fn(_: *const core::ffi::c_void, _: *mut core::ffi::c_void, _: OPJ_UINT32) -> ()>;
 /*@}*/
 /*@}*/
 /* ----------------------------------------------------------------------- */
@@ -560,8 +559,8 @@ unsafe fn opj_j2k_update_tlm(
 }
 
 unsafe extern "C" fn opj_j2k_read_int16_to_float(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_src_data = p_src_data as *mut OPJ_BYTE;
@@ -579,8 +578,8 @@ unsafe extern "C" fn opj_j2k_read_int16_to_float(
   }
 }
 unsafe extern "C" fn opj_j2k_read_int32_to_float(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_src_data = p_src_data as *mut OPJ_BYTE;
@@ -598,8 +597,8 @@ unsafe extern "C" fn opj_j2k_read_int32_to_float(
   }
 }
 unsafe extern "C" fn opj_j2k_read_float32_to_float(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_src_data = p_src_data as *mut OPJ_BYTE;
@@ -617,8 +616,8 @@ unsafe extern "C" fn opj_j2k_read_float32_to_float(
   }
 }
 unsafe extern "C" fn opj_j2k_read_float64_to_float(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_src_data = p_src_data as *mut OPJ_BYTE;
@@ -636,8 +635,8 @@ unsafe extern "C" fn opj_j2k_read_float64_to_float(
   }
 }
 unsafe extern "C" fn opj_j2k_read_int16_to_int32(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_src_data = p_src_data as *mut OPJ_BYTE;
@@ -655,8 +654,8 @@ unsafe extern "C" fn opj_j2k_read_int16_to_int32(
   }
 }
 unsafe extern "C" fn opj_j2k_read_int32_to_int32(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_src_data = p_src_data as *mut OPJ_BYTE;
@@ -674,8 +673,8 @@ unsafe extern "C" fn opj_j2k_read_int32_to_int32(
   }
 }
 unsafe extern "C" fn opj_j2k_read_float32_to_int32(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_src_data = p_src_data as *mut OPJ_BYTE;
@@ -693,8 +692,8 @@ unsafe extern "C" fn opj_j2k_read_float32_to_int32(
   }
 }
 unsafe extern "C" fn opj_j2k_read_float64_to_int32(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_src_data = p_src_data as *mut OPJ_BYTE;
@@ -712,8 +711,8 @@ unsafe extern "C" fn opj_j2k_read_float64_to_int32(
   }
 }
 unsafe extern "C" fn opj_j2k_write_float_to_int16(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_dest_data = p_dest_data as *mut OPJ_BYTE;
@@ -735,8 +734,8 @@ unsafe extern "C" fn opj_j2k_write_float_to_int16(
   }
 }
 unsafe extern "C" fn opj_j2k_write_float_to_int32(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_dest_data = p_dest_data as *mut OPJ_BYTE;
@@ -758,8 +757,8 @@ unsafe extern "C" fn opj_j2k_write_float_to_int32(
   }
 }
 unsafe extern "C" fn opj_j2k_write_float_to_float(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_dest_data = p_dest_data as *mut OPJ_BYTE;
@@ -778,8 +777,8 @@ unsafe extern "C" fn opj_j2k_write_float_to_float(
   }
 }
 unsafe extern "C" fn opj_j2k_write_float_to_float64(
-  mut p_src_data: *const libc::c_void,
-  mut p_dest_data: *mut libc::c_void,
+  mut p_src_data: *const core::ffi::c_void,
+  mut p_dest_data: *mut core::ffi::c_void,
   mut p_nb_elem: OPJ_UINT32,
 ) {
   let mut l_dest_data = p_dest_data as *mut OPJ_BYTE;
@@ -868,13 +867,13 @@ unsafe fn opj_j2k_check_poc_val(
           while layno < opj_uint_min((*poc).layno1, p_num_layers) {
             *packet_array.offset(comp_index as isize) = 1 as OPJ_UINT32;
             comp_index =
-              (comp_index as libc::c_uint).wrapping_add(step_l) as OPJ_UINT32;
+              (comp_index as core::ffi::c_uint).wrapping_add(step_l) as OPJ_UINT32;
             layno += 1;
           }
-          res_index = (res_index as libc::c_uint).wrapping_add(step_c) as OPJ_UINT32;
+          res_index = (res_index as core::ffi::c_uint).wrapping_add(step_c) as OPJ_UINT32;
           compno += 1;
         }
-        index = (index as libc::c_uint).wrapping_add(step_r) as OPJ_UINT32;
+        index = (index as core::ffi::c_uint).wrapping_add(step_r) as OPJ_UINT32;
         resno += 1;
       }
     }
@@ -888,8 +887,8 @@ unsafe fn opj_j2k_check_poc_val(
       compno = 0 as OPJ_UINT32;
       while compno < p_num_comps {
         loss |=
-          (*packet_array.offset(index as isize) != 1u32) as libc::c_int;
-        index = (index as libc::c_uint).wrapping_add(step_c) as OPJ_UINT32;
+          (*packet_array.offset(index as isize) != 1u32) as core::ffi::c_int;
+        index = (index as core::ffi::c_uint).wrapping_add(step_c) as OPJ_UINT32;
         compno += 1;
       }
       resno += 1;
@@ -901,8 +900,8 @@ unsafe fn opj_j2k_check_poc_val(
       "Missing packets possible loss of data\n",
     );
   }
-  opj_free(packet_array as *mut libc::c_void);
-  return (loss == 0) as libc::c_int;
+  opj_free(packet_array as *mut core::ffi::c_void);
+  return (loss == 0) as core::ffi::c_int;
 }
 /* *
  * Gets the number of tile parts used for the given change of progression (if any) and the given tile.
@@ -940,28 +939,28 @@ unsafe fn opj_j2k_get_num_tp(
   /* get the progression order as a character string */
   let prog = opj_j2k_convert_progression_order((*tcp).prg);
   assert!(prog != ProgressionOrder::Unknown);
-  if (*cp).m_specific_param.m_enc.m_tp_on() as libc::c_int == 1i32 {
+  if (*cp).m_specific_param.m_enc.m_tp_on() as core::ffi::c_int == 1i32 {
     for step in prog.get_order() {
       match step {
         ProgressionStep::Component => {
           /* component wise */
           tpnum =
-            (tpnum as libc::c_uint).wrapping_mul((*l_current_poc).compE) as OPJ_UINT32
+            (tpnum as core::ffi::c_uint).wrapping_mul((*l_current_poc).compE) as OPJ_UINT32
         }
         ProgressionStep::Resolution => {
           /* resolution wise */
           tpnum =
-            (tpnum as libc::c_uint).wrapping_mul((*l_current_poc).resE) as OPJ_UINT32
+            (tpnum as core::ffi::c_uint).wrapping_mul((*l_current_poc).resE) as OPJ_UINT32
         }
         ProgressionStep::Precinct => {
           /* precinct wise */
           tpnum =
-            (tpnum as libc::c_uint).wrapping_mul((*l_current_poc).prcE) as OPJ_UINT32
+            (tpnum as core::ffi::c_uint).wrapping_mul((*l_current_poc).prcE) as OPJ_UINT32
         }
         ProgressionStep::Layer => {
           /* layer wise */
           tpnum =
-            (tpnum as libc::c_uint).wrapping_mul((*l_current_poc).layE) as OPJ_UINT32
+            (tpnum as core::ffi::c_uint).wrapping_mul((*l_current_poc).layE) as OPJ_UINT32
         }
         ProgressionStep::Unknown => {}
       }
@@ -1052,7 +1051,7 @@ unsafe fn opj_j2k_calculate_tp(
       let mut tp_num = opj_j2k_get_num_tp(cp, pino, tileno);
       *p_nb_tiles = (*p_nb_tiles).wrapping_add(tp_num);
       cur_totnum_tp =
-        (cur_totnum_tp as libc::c_uint).wrapping_add(tp_num) as OPJ_UINT32;
+        (cur_totnum_tp as core::ffi::c_uint).wrapping_add(tp_num) as OPJ_UINT32;
       pino += 1;
     }
     (*tcp).m_nb_tile_parts = cur_totnum_tp;
@@ -1194,11 +1193,11 @@ unsafe extern "C" fn opj_j2k_write_siz(
   l_img_comp = (*l_image).comps;
   if l_size_len > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_size_len as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -1718,11 +1717,11 @@ unsafe extern "C" fn opj_j2k_write_com(
   l_total_com_size = l_comment_size.wrapping_add(6u32);
   if l_total_com_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_total_com_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -1753,8 +1752,8 @@ unsafe extern "C" fn opj_j2k_write_com(
   );
   l_current_ptr = l_current_ptr.offset(2);
   memcpy(
-    l_current_ptr as *mut libc::c_void,
-    l_comment as *const libc::c_void,
+    l_current_ptr as *mut core::ffi::c_void,
+    l_comment as *const core::ffi::c_void,
     l_comment_size as usize,
   );
   if opj_stream_write_data(
@@ -1826,11 +1825,11 @@ unsafe extern "C" fn opj_j2k_write_cod(
   l_remaining_size = l_code_size;
   if l_code_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_code_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -1874,7 +1873,7 @@ unsafe extern "C" fn opj_j2k_write_cod(
   l_current_data = l_current_data.offset(2);
   opj_write_bytes_LE(l_current_data, (*l_tcp).mct, 1 as OPJ_UINT32);
   l_current_data = l_current_data.offset(1);
-  l_remaining_size = (l_remaining_size as libc::c_uint)
+  l_remaining_size = (l_remaining_size as core::ffi::c_uint)
     .wrapping_sub(9u32) as OPJ_UINT32
     as OPJ_UINT32;
   if opj_j2k_write_SPCod_SPCoc(
@@ -1975,7 +1974,7 @@ unsafe extern "C" fn opj_j2k_read_cod(
   p_header_data = p_header_data.offset(1);
   (*l_tcp).prg = l_tmp as OPJ_PROG_ORDER;
   /* Make sure progression order is valid */
-  if (*l_tcp).prg as libc::c_int > OPJ_CPRL as libc::c_int {
+  if (*l_tcp).prg as core::ffi::c_int > OPJ_CPRL as core::ffi::c_int {
     event_msg!(p_manager, EVT_ERROR,
       "Unknown progression order in COD marker\n",
     ); /* SGcod (B) */
@@ -2012,7 +2011,7 @@ unsafe extern "C" fn opj_j2k_read_cod(
     );
     return 0i32;
   }
-  p_header_size = (p_header_size as libc::c_uint).wrapping_sub(5u32)
+  p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(5u32)
     as OPJ_UINT32;
   i = 0 as OPJ_UINT32;
   while i < (*l_image).numcomps {
@@ -2083,11 +2082,11 @@ unsafe extern "C" fn opj_j2k_write_coc(
             p_j2k->m_specific_param.m_encoder.m_header_tile_data,
             l_coc_size);*/
     new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_coc_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -2211,7 +2210,7 @@ unsafe extern "C" fn opj_j2k_write_coc_in_memory(
     1 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(1);
-  l_remaining_size = (l_remaining_size as libc::c_uint)
+  l_remaining_size = (l_remaining_size as core::ffi::c_uint)
     .wrapping_sub((5u32).wrapping_add(l_comp_room))
     as OPJ_UINT32;
   opj_j2k_write_SPCod_SPCoc(
@@ -2299,7 +2298,7 @@ unsafe extern "C" fn opj_j2k_read_coc(
     ); /* Ccoc */
     return 0i32;
   } /* Scoc */
-  p_header_size = (p_header_size as libc::c_uint)
+  p_header_size = (p_header_size as core::ffi::c_uint)
     .wrapping_sub(l_comp_room.wrapping_add(1u32))
     as OPJ_UINT32;
   opj_read_bytes_LE(p_header_data, &mut l_comp_no, l_comp_room);
@@ -2365,11 +2364,11 @@ unsafe extern "C" fn opj_j2k_write_qcd(
   l_remaining_size = l_qcd_size;
   if l_qcd_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_qcd_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -2393,7 +2392,7 @@ unsafe extern "C" fn opj_j2k_write_qcd(
     2 as OPJ_UINT32,
   );
   l_current_data = l_current_data.offset(2);
-  l_remaining_size = (l_remaining_size as libc::c_uint)
+  l_remaining_size = (l_remaining_size as core::ffi::c_uint)
     .wrapping_sub(4u32) as OPJ_UINT32
     as OPJ_UINT32;
   if opj_j2k_write_SQcd_SQcc(
@@ -2499,21 +2498,21 @@ unsafe extern "C" fn opj_j2k_write_qcc(
     (*p_j2k).m_current_tile_number,
     p_comp_no,
   ));
-  l_qcc_size = (l_qcc_size as libc::c_uint).wrapping_add(if (*(*p_j2k).m_private_image).numcomps
+  l_qcc_size = (l_qcc_size as core::ffi::c_uint).wrapping_add(if (*(*p_j2k).m_private_image).numcomps
     <= 256u32
   {
     0i32
   } else {
     1i32
-  } as libc::c_uint) as OPJ_UINT32;
+  } as core::ffi::c_uint) as OPJ_UINT32;
   l_remaining_size = l_qcc_size;
   if l_qcc_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_qcc_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -2609,7 +2608,7 @@ unsafe extern "C" fn opj_j2k_write_qcc_in_memory(
     opj_write_bytes_LE(l_current_data, p_comp_no, 1 as OPJ_UINT32);
     l_current_data = l_current_data.offset(1);
     /* in the case only one byte is sufficient the last byte allocated is useless -> still do -6 for available */
-    l_remaining_size = (l_remaining_size as libc::c_uint)
+    l_remaining_size = (l_remaining_size as core::ffi::c_uint)
       .wrapping_sub(6u32) as OPJ_UINT32
       as OPJ_UINT32
   } else {
@@ -2621,7 +2620,7 @@ unsafe extern "C" fn opj_j2k_write_qcc_in_memory(
     l_current_data = l_current_data.offset(2); /* Cqcc */
     opj_write_bytes_LE(l_current_data, p_comp_no, 2 as OPJ_UINT32);
     l_current_data = l_current_data.offset(2);
-    l_remaining_size = (l_remaining_size as libc::c_uint)
+    l_remaining_size = (l_remaining_size as core::ffi::c_uint)
       .wrapping_sub(6u32) as OPJ_UINT32
       as OPJ_UINT32
   }
@@ -2695,7 +2694,7 @@ unsafe extern "C" fn opj_j2k_read_qcc(
       2 as OPJ_UINT32,
     );
     p_header_data = p_header_data.offset(2);
-    p_header_size = (p_header_size as libc::c_uint).wrapping_sub(2u32)
+    p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(2u32)
       as OPJ_UINT32
   }
   /* USE_JPWL */
@@ -2768,11 +2767,11 @@ unsafe extern "C" fn opj_j2k_write_poc(
   );
   if l_poc_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_poc_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -2958,19 +2957,19 @@ unsafe fn opj_j2k_get_specific_header_sizes(mut p_j2k: *mut opj_j2k_t) -> OPJ_UI
   l_nb_comps = (*(*p_j2k).m_private_image)
     .numcomps
     .wrapping_sub(1u32);
-  l_nb_bytes = (l_nb_bytes as libc::c_uint).wrapping_add(opj_j2k_get_max_toc_size(p_j2k))
+  l_nb_bytes = (l_nb_bytes as core::ffi::c_uint).wrapping_add(opj_j2k_get_max_toc_size(p_j2k))
     as OPJ_UINT32;
-  if !((*p_j2k).m_cp.rsiz as libc::c_int >= 0x3i32
-    && (*p_j2k).m_cp.rsiz as libc::c_int <= 0x6i32)
+  if !((*p_j2k).m_cp.rsiz as core::ffi::c_int >= 0x3i32
+    && (*p_j2k).m_cp.rsiz as core::ffi::c_int <= 0x6i32)
   {
     l_coc_bytes = opj_j2k_get_max_coc_size(p_j2k);
-    l_nb_bytes = (l_nb_bytes as libc::c_uint).wrapping_add(l_nb_comps.wrapping_mul(l_coc_bytes))
+    l_nb_bytes = (l_nb_bytes as core::ffi::c_uint).wrapping_add(l_nb_comps.wrapping_mul(l_coc_bytes))
       as OPJ_UINT32;
     l_qcc_bytes = opj_j2k_get_max_qcc_size(p_j2k);
-    l_nb_bytes = (l_nb_bytes as libc::c_uint).wrapping_add(l_nb_comps.wrapping_mul(l_qcc_bytes))
+    l_nb_bytes = (l_nb_bytes as core::ffi::c_uint).wrapping_add(l_nb_comps.wrapping_mul(l_qcc_bytes))
       as OPJ_UINT32
   }
-  l_nb_bytes = (l_nb_bytes as libc::c_uint).wrapping_add(opj_j2k_get_max_poc_size(p_j2k))
+  l_nb_bytes = (l_nb_bytes as core::ffi::c_uint).wrapping_add(opj_j2k_get_max_poc_size(p_j2k))
     as OPJ_UINT32;
   if (*p_j2k).m_specific_param.m_encoder.m_PLT != 0 {
     /* Reserve space for PLT markers */
@@ -2994,16 +2993,16 @@ unsafe fn opj_j2k_get_specific_header_sizes(mut p_j2k: *mut opj_j2k_t) -> OPJ_UI
         16382 as OPJ_UINT32,
       ));
     /* Maximum 5 bytes per packet to encode a full UINT32 */
-    l_nb_bytes = (l_nb_bytes as libc::c_uint)
+    l_nb_bytes = (l_nb_bytes as core::ffi::c_uint)
       .wrapping_add((5u32).wrapping_mul(l_max_packet_count))
       as OPJ_UINT32;
     (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
-      ((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT as libc::c_uint)
+      ((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT as core::ffi::c_uint)
         .wrapping_add(l_nb_bytes) as OPJ_UINT32;
     (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
-      ((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT as libc::c_uint)
+      ((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT as core::ffi::c_uint)
         .wrapping_add(1u32) as OPJ_UINT32;
-    l_nb_bytes = (l_nb_bytes as libc::c_uint)
+    l_nb_bytes = (l_nb_bytes as core::ffi::c_uint)
       .wrapping_add((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT)
       as OPJ_UINT32
   }
@@ -3075,7 +3074,7 @@ unsafe extern "C" fn opj_j2k_read_poc(
   } else {
     (*p_j2k).m_specific_param.m_decoder.m_default_tcp
   };
-  l_old_poc_nb = if (*l_tcp).POC() as libc::c_int != 0 {
+  l_old_poc_nb = if (*l_tcp).POC() as core::ffi::c_int != 0 {
     (*l_tcp)
       .numpocs
       .wrapping_add(1u32)
@@ -3083,7 +3082,7 @@ unsafe extern "C" fn opj_j2k_read_poc(
     0u32
   };
   l_current_poc_nb =
-    (l_current_poc_nb as libc::c_uint).wrapping_add(l_old_poc_nb) as OPJ_UINT32;
+    (l_current_poc_nb as core::ffi::c_uint).wrapping_add(l_old_poc_nb) as OPJ_UINT32;
   if l_current_poc_nb >= 32u32 {
     event_msg!(p_manager, EVT_ERROR,
       "Too many POCs %d\n",
@@ -3218,7 +3217,7 @@ unsafe extern "C" fn opj_j2k_read_tlm(
     );
     return 0i32;
   }
-  p_header_size = (p_header_size as libc::c_uint).wrapping_sub(2u32)
+  p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(2u32)
     as OPJ_UINT32;
   opj_read_bytes_LE(p_header_data, &mut l_Ztlm, 1 as OPJ_UINT32);
   p_header_data = p_header_data.offset(1);
@@ -3449,7 +3448,7 @@ unsafe extern "C" fn opj_j2k_read_ppm(
     let mut l_newCount_0 = l_Z_ppm.wrapping_add(1u32);
     let mut new_ppm_markers = 0 as *mut opj_ppx;
     new_ppm_markers = opj_realloc(
-      (*l_cp).ppm_markers as *mut libc::c_void,
+      (*l_cp).ppm_markers as *mut core::ffi::c_void,
       (l_newCount_0 as usize)
         .wrapping_mul(core::mem::size_of::<opj_ppx>() as usize),
     ) as *mut opj_ppx;
@@ -3464,7 +3463,7 @@ unsafe extern "C" fn opj_j2k_read_ppm(
     memset(
       (*l_cp)
         .ppm_markers
-        .offset((*l_cp).ppm_markers_count as isize) as *mut libc::c_void,
+        .offset((*l_cp).ppm_markers_count as isize) as *mut core::ffi::c_void,
       0i32,
       (l_newCount_0.wrapping_sub((*l_cp).ppm_markers_count) as usize)
         .wrapping_mul(core::mem::size_of::<opj_ppx>() as usize),
@@ -3496,8 +3495,8 @@ unsafe extern "C" fn opj_j2k_read_ppm(
   }
   (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize)).m_data_size = p_header_size;
   memcpy(
-    (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize)).m_data as *mut libc::c_void,
-    p_header_data as *const libc::c_void,
+    (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize)).m_data as *mut core::ffi::c_void,
+    p_header_data as *const core::ffi::c_void,
     p_header_size as usize,
   );
   return 1i32;
@@ -3539,12 +3538,12 @@ unsafe fn opj_j2k_merge_ppm(
       let mut l_data: *const OPJ_BYTE = (*(*p_cp).ppm_markers.offset(i as isize)).m_data;
       if l_N_ppm_remaining >= l_data_size {
         l_N_ppm_remaining =
-          (l_N_ppm_remaining as libc::c_uint).wrapping_sub(l_data_size) as OPJ_UINT32;
+          (l_N_ppm_remaining as core::ffi::c_uint).wrapping_sub(l_data_size) as OPJ_UINT32;
         l_data_size = 0u32
       } else {
         l_data = l_data.offset(l_N_ppm_remaining as isize);
         l_data_size =
-          (l_data_size as libc::c_uint).wrapping_sub(l_N_ppm_remaining) as OPJ_UINT32;
+          (l_data_size as core::ffi::c_uint).wrapping_sub(l_N_ppm_remaining) as OPJ_UINT32;
         l_N_ppm_remaining = 0u32
       }
       if l_data_size > 0u32 {
@@ -3559,13 +3558,13 @@ unsafe fn opj_j2k_merge_ppm(
           }
           opj_read_bytes_LE(l_data, &mut l_N_ppm, 4 as OPJ_UINT32);
           l_data = l_data.offset(4);
-          l_data_size = (l_data_size as libc::c_uint).wrapping_sub(4u32)
+          l_data_size = (l_data_size as core::ffi::c_uint).wrapping_sub(4u32)
             as OPJ_UINT32;
           l_ppm_data_size =
-            (l_ppm_data_size as libc::c_uint).wrapping_add(l_N_ppm) as OPJ_UINT32;
+            (l_ppm_data_size as core::ffi::c_uint).wrapping_add(l_N_ppm) as OPJ_UINT32;
           if l_data_size >= l_N_ppm {
             l_data_size =
-              (l_data_size as libc::c_uint).wrapping_sub(l_N_ppm) as OPJ_UINT32;
+              (l_data_size as core::ffi::c_uint).wrapping_sub(l_N_ppm) as OPJ_UINT32;
             l_data = l_data.offset(l_N_ppm as isize)
           } else {
             l_N_ppm_remaining = l_N_ppm.wrapping_sub(l_data_size);
@@ -3605,25 +3604,25 @@ unsafe fn opj_j2k_merge_ppm(
       let mut l_data_0: *const OPJ_BYTE = (*(*p_cp).ppm_markers.offset(i as isize)).m_data;
       if l_N_ppm_remaining >= l_data_size_0 {
         memcpy(
-          (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut libc::c_void,
-          l_data_0 as *const libc::c_void,
+          (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut core::ffi::c_void,
+          l_data_0 as *const core::ffi::c_void,
           l_data_size_0 as usize,
         );
         l_ppm_data_size =
-          (l_ppm_data_size as libc::c_uint).wrapping_add(l_data_size_0) as OPJ_UINT32;
-        l_N_ppm_remaining = (l_N_ppm_remaining as libc::c_uint).wrapping_sub(l_data_size_0)
+          (l_ppm_data_size as core::ffi::c_uint).wrapping_add(l_data_size_0) as OPJ_UINT32;
+        l_N_ppm_remaining = (l_N_ppm_remaining as core::ffi::c_uint).wrapping_sub(l_data_size_0)
           as OPJ_UINT32;
         l_data_size_0 = 0u32
       } else {
         memcpy(
-          (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut libc::c_void,
-          l_data_0 as *const libc::c_void,
+          (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut core::ffi::c_void,
+          l_data_0 as *const core::ffi::c_void,
           l_N_ppm_remaining as usize,
         );
-        l_ppm_data_size = (l_ppm_data_size as libc::c_uint).wrapping_add(l_N_ppm_remaining)
+        l_ppm_data_size = (l_ppm_data_size as core::ffi::c_uint).wrapping_add(l_N_ppm_remaining)
           as OPJ_UINT32;
         l_data_0 = l_data_0.offset(l_N_ppm_remaining as isize);
-        l_data_size_0 = (l_data_size_0 as libc::c_uint).wrapping_sub(l_N_ppm_remaining)
+        l_data_size_0 = (l_data_size_0 as core::ffi::c_uint).wrapping_sub(l_N_ppm_remaining)
           as OPJ_UINT32;
         l_N_ppm_remaining = 0u32
       }
@@ -3639,27 +3638,27 @@ unsafe fn opj_j2k_merge_ppm(
           }
           opj_read_bytes_LE(l_data_0, &mut l_N_ppm_0, 4 as OPJ_UINT32);
           l_data_0 = l_data_0.offset(4);
-          l_data_size_0 = (l_data_size_0 as libc::c_uint)
+          l_data_size_0 = (l_data_size_0 as core::ffi::c_uint)
             .wrapping_sub(4u32) as OPJ_UINT32
             as OPJ_UINT32;
           if l_data_size_0 >= l_N_ppm_0 {
             memcpy(
-              (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut libc::c_void,
-              l_data_0 as *const libc::c_void,
+              (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut core::ffi::c_void,
+              l_data_0 as *const core::ffi::c_void,
               l_N_ppm_0 as usize,
             );
             l_ppm_data_size =
-              (l_ppm_data_size as libc::c_uint).wrapping_add(l_N_ppm_0) as OPJ_UINT32;
+              (l_ppm_data_size as core::ffi::c_uint).wrapping_add(l_N_ppm_0) as OPJ_UINT32;
             l_data_size_0 =
-              (l_data_size_0 as libc::c_uint).wrapping_sub(l_N_ppm_0) as OPJ_UINT32;
+              (l_data_size_0 as core::ffi::c_uint).wrapping_sub(l_N_ppm_0) as OPJ_UINT32;
             l_data_0 = l_data_0.offset(l_N_ppm_0 as isize)
           } else {
             memcpy(
-              (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut libc::c_void,
-              l_data_0 as *const libc::c_void,
+              (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut core::ffi::c_void,
+              l_data_0 as *const core::ffi::c_void,
               l_data_size_0 as usize,
             );
-            l_ppm_data_size = (l_ppm_data_size as libc::c_uint).wrapping_add(l_data_size_0)
+            l_ppm_data_size = (l_ppm_data_size as core::ffi::c_uint).wrapping_add(l_data_size_0)
               as OPJ_UINT32;
             l_N_ppm_remaining = l_N_ppm_0.wrapping_sub(l_data_size_0);
             l_data_size_0 = 0u32
@@ -3669,7 +3668,7 @@ unsafe fn opj_j2k_merge_ppm(
           }
         }
       }
-      opj_free((*(*p_cp).ppm_markers.offset(i as isize)).m_data as *mut libc::c_void);
+      opj_free((*(*p_cp).ppm_markers.offset(i as isize)).m_data as *mut core::ffi::c_void);
       let ref mut fresh13 = (*(*p_cp).ppm_markers.offset(i as isize)).m_data;
       *fresh13 = 0 as *mut OPJ_BYTE;
       (*(*p_cp).ppm_markers.offset(i as isize)).m_data_size = 0u32
@@ -3679,7 +3678,7 @@ unsafe fn opj_j2k_merge_ppm(
   (*p_cp).ppm_data = (*p_cp).ppm_buffer;
   (*p_cp).ppm_data_size = (*p_cp).ppm_len;
   (*p_cp).ppm_markers_count = 0u32;
-  opj_free((*p_cp).ppm_markers as *mut libc::c_void);
+  opj_free((*p_cp).ppm_markers as *mut core::ffi::c_void);
   (*p_cp).ppm_markers = 0 as *mut opj_ppx;
   return 1i32;
 }
@@ -3750,7 +3749,7 @@ unsafe extern "C" fn opj_j2k_read_ppt(
     let mut l_newCount_0 = l_Z_ppt.wrapping_add(1u32);
     let mut new_ppt_markers = 0 as *mut opj_ppx;
     new_ppt_markers = opj_realloc(
-      (*l_tcp).ppt_markers as *mut libc::c_void,
+      (*l_tcp).ppt_markers as *mut core::ffi::c_void,
       (l_newCount_0 as usize)
         .wrapping_mul(core::mem::size_of::<opj_ppx>() as usize),
     ) as *mut opj_ppx;
@@ -3765,7 +3764,7 @@ unsafe extern "C" fn opj_j2k_read_ppt(
     memset(
       (*l_tcp)
         .ppt_markers
-        .offset((*l_tcp).ppt_markers_count as isize) as *mut libc::c_void,
+        .offset((*l_tcp).ppt_markers_count as isize) as *mut core::ffi::c_void,
       0i32,
       (l_newCount_0.wrapping_sub((*l_tcp).ppt_markers_count) as usize)
         .wrapping_mul(core::mem::size_of::<opj_ppx>() as usize),
@@ -3797,8 +3796,8 @@ unsafe extern "C" fn opj_j2k_read_ppt(
   }
   (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize)).m_data_size = p_header_size;
   memcpy(
-    (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize)).m_data as *mut libc::c_void,
-    p_header_data as *const libc::c_void,
+    (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize)).m_data as *mut core::ffi::c_void,
+    p_header_data as *const core::ffi::c_void,
     p_header_size as usize,
   );
   return 1i32;
@@ -3836,7 +3835,7 @@ unsafe fn opj_j2k_merge_ppt(
   l_ppt_data_size = 0u32;
   i = 0u32;
   while i < (*p_tcp).ppt_markers_count {
-    l_ppt_data_size = (l_ppt_data_size as libc::c_uint)
+    l_ppt_data_size = (l_ppt_data_size as core::ffi::c_uint)
       .wrapping_add((*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size)
       as OPJ_UINT32;
     i += 1;
@@ -3856,14 +3855,14 @@ unsafe fn opj_j2k_merge_ppt(
     if !(*(*p_tcp).ppt_markers.offset(i as isize)).m_data.is_null() {
       /* standard doesn't seem to require contiguous Zppt */
       memcpy(
-        (*p_tcp).ppt_buffer.offset(l_ppt_data_size as isize) as *mut libc::c_void,
-        (*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *const libc::c_void,
+        (*p_tcp).ppt_buffer.offset(l_ppt_data_size as isize) as *mut core::ffi::c_void,
+        (*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *const core::ffi::c_void,
         (*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size as usize,
       ); /* can't overflow, max 256 markers of max 65536 bytes */
-      l_ppt_data_size = (l_ppt_data_size as libc::c_uint)
+      l_ppt_data_size = (l_ppt_data_size as core::ffi::c_uint)
         .wrapping_add((*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size)
         as OPJ_UINT32;
-      opj_free((*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *mut libc::c_void);
+      opj_free((*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *mut core::ffi::c_void);
       let ref mut fresh15 = (*(*p_tcp).ppt_markers.offset(i as isize)).m_data;
       *fresh15 = 0 as *mut OPJ_BYTE;
       (*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size = 0u32
@@ -3871,7 +3870,7 @@ unsafe fn opj_j2k_merge_ppt(
     i += 1;
   }
   (*p_tcp).ppt_markers_count = 0u32;
-  opj_free((*p_tcp).ppt_markers as *mut libc::c_void);
+  opj_free((*p_tcp).ppt_markers as *mut core::ffi::c_void);
   (*p_tcp).ppt_markers = 0 as *mut opj_ppx;
   (*p_tcp).ppt_data = (*p_tcp).ppt_buffer;
   (*p_tcp).ppt_data_size = (*p_tcp).ppt_len;
@@ -3912,16 +3911,16 @@ unsafe extern "C" fn opj_j2k_write_tlm(
     size_per_tile_part = 6 as OPJ_UINT32;
     (*p_j2k).m_specific_param.m_encoder.m_Ttlmi_is_byte = 0i32
   }
-  l_tlm_size = ((2i32 + 4i32) as libc::c_uint).wrapping_add(
+  l_tlm_size = ((2i32 + 4i32) as core::ffi::c_uint).wrapping_add(
     size_per_tile_part.wrapping_mul((*p_j2k).m_specific_param.m_encoder.m_total_tile_parts),
   );
   if l_tlm_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_tlm_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -3933,7 +3932,7 @@ unsafe extern "C" fn opj_j2k_write_tlm(
     (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_tlm_size
   }
   memset(
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
     0i32,
     l_tlm_size as usize,
   );
@@ -4218,7 +4217,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
   }
   if l_num_parts != 0u32 {
     /* Number of tile-part header is provided by this tile-part header */
-    l_num_parts = (l_num_parts as libc::c_uint).wrapping_add(
+    l_num_parts = (l_num_parts as core::ffi::c_uint).wrapping_add(
       (*p_j2k)
         .m_specific_param
         .m_decoder
@@ -4271,14 +4270,14 @@ unsafe extern "C" fn opj_j2k_read_sot(
       (l_tile_x < (*p_j2k).m_specific_param.m_decoder.m_start_tile_x
         || l_tile_x >= (*p_j2k).m_specific_param.m_decoder.m_end_tile_x
         || l_tile_y < (*p_j2k).m_specific_param.m_decoder.m_start_tile_y
-        || l_tile_y >= (*p_j2k).m_specific_param.m_decoder.m_end_tile_y) as libc::c_int
+        || l_tile_y >= (*p_j2k).m_specific_param.m_decoder.m_end_tile_y) as core::ffi::c_int
         as OPJ_BITFIELD,
     )
   } else {
     assert!((*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec >= 0i32);
     (*p_j2k).m_specific_param.m_decoder.set_m_skip_data(
       ((*p_j2k).m_current_tile_number
-        != (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32) as libc::c_int
+        != (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32) as core::ffi::c_int
         as OPJ_BITFIELD,
     )
   }
@@ -4332,7 +4331,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
           (*(*(*p_j2k).cstr_index)
             .tile_index
             .offset((*p_j2k).m_current_tile_number as isize))
-          .tp_index as *mut libc::c_void,
+          .tp_index as *mut core::ffi::c_void,
           (l_num_parts as usize)
             .wrapping_mul(core::mem::size_of::<opj_tp_index_t>() as usize),
         ) as *mut opj_tp_index_t;
@@ -4341,7 +4340,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
             (*(*(*p_j2k).cstr_index)
               .tile_index
               .offset((*p_j2k).m_current_tile_number as isize))
-            .tp_index as *mut libc::c_void,
+            .tp_index as *mut core::ffi::c_void,
           );
           let ref mut fresh17 = (*(*(*p_j2k).cstr_index)
             .tile_index
@@ -4413,7 +4412,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
           (*(*(*p_j2k).cstr_index)
             .tile_index
             .offset((*p_j2k).m_current_tile_number as isize))
-          .tp_index as *mut libc::c_void,
+          .tp_index as *mut core::ffi::c_void,
           ((*(*(*p_j2k).cstr_index)
             .tile_index
             .offset((*p_j2k).m_current_tile_number as isize))
@@ -4425,7 +4424,7 @@ unsafe extern "C" fn opj_j2k_read_sot(
             (*(*(*p_j2k).cstr_index)
               .tile_index
               .offset((*p_j2k).m_current_tile_number as isize))
-            .tp_index as *mut libc::c_void,
+            .tp_index as *mut core::ffi::c_void,
           );
           let ref mut fresh20 = (*(*(*p_j2k).cstr_index)
             .tile_index
@@ -4523,8 +4522,8 @@ unsafe extern "C" fn opj_j2k_write_plt_in_memory(
     }
     /* Check if that can fit in the current PLT marker. If not, finish */
     /* current one, and start a new one */
-    if Lplt as libc::c_int + var_bytes_size as libc::c_int > 65535i32 {
-      if Zplt as libc::c_int == 255i32 {
+    if Lplt as core::ffi::c_int + var_bytes_size as core::ffi::c_int > 65535i32 {
+      if Zplt as core::ffi::c_int == 255i32 {
         event_msg!(p_manager, EVT_ERROR,
           "More than 255 PLT markers would be needed for current tile-part !\n",
         );
@@ -4551,12 +4550,12 @@ unsafe extern "C" fn opj_j2k_write_plt_in_memory(
       p_data = p_data.offset(1);
       Lplt = 3 as OPJ_UINT16
     }
-    Lplt = (Lplt as libc::c_int + var_bytes_size as libc::c_int) as OPJ_UINT16;
+    Lplt = (Lplt as core::ffi::c_int + var_bytes_size as core::ffi::c_int) as OPJ_UINT16;
     /* Serialize variable-length packet size, starting with MSB */
-    while var_bytes_size as libc::c_int > 0i32 {
+    while var_bytes_size as core::ffi::c_int > 0i32 {
       opj_write_bytes_LE(
         p_data,
-        var_bytes[(var_bytes_size as libc::c_int - 1i32) as usize] as OPJ_UINT32,
+        var_bytes[(var_bytes_size as core::ffi::c_int - 1i32) as usize] as OPJ_UINT32,
         1 as OPJ_UINT32,
       );
       p_data = p_data.offset(1);
@@ -4671,7 +4670,7 @@ unsafe extern "C" fn opj_j2k_write_sod(
     opj_tcd_marker_info_destroy(marker_info);
     return 0i32;
   }
-  l_remaining_data = (l_remaining_data as libc::c_uint)
+  l_remaining_data = (l_remaining_data as core::ffi::c_uint)
     .wrapping_sub((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT)
     as OPJ_UINT32;
   if opj_tcd_encode_tile(
@@ -4692,7 +4691,7 @@ unsafe extern "C" fn opj_j2k_write_sod(
     return 0i32;
   }
   /* For SOD */
-  *p_data_written = (*p_data_written as libc::c_uint).wrapping_add(2u32)
+  *p_data_written = (*p_data_written as core::ffi::c_uint).wrapping_add(2u32)
     as OPJ_UINT32;
   if (*p_j2k).m_specific_param.m_encoder.m_PLT != 0 {
     let mut l_data_written_PLT = 0 as OPJ_UINT32;
@@ -4715,24 +4714,24 @@ unsafe extern "C" fn opj_j2k_write_sod(
     ) == 0
     {
       opj_tcd_marker_info_destroy(marker_info);
-      opj_free(p_PLT_buffer as *mut libc::c_void);
+      opj_free(p_PLT_buffer as *mut core::ffi::c_void);
       return 0i32;
     }
     assert!(l_data_written_PLT <= (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT);
     /* Move PLT marker(s) before SOD */
     memmove(
-      p_data.offset(l_data_written_PLT as isize) as *mut libc::c_void,
-      p_data as *const libc::c_void,
+      p_data.offset(l_data_written_PLT as isize) as *mut core::ffi::c_void,
+      p_data as *const core::ffi::c_void,
       *p_data_written as usize,
     );
     memcpy(
-      p_data as *mut libc::c_void,
-      p_PLT_buffer as *const libc::c_void,
+      p_data as *mut core::ffi::c_void,
+      p_PLT_buffer as *const core::ffi::c_void,
       l_data_written_PLT as usize,
     );
-    opj_free(p_PLT_buffer as *mut libc::c_void);
+    opj_free(p_PLT_buffer as *mut core::ffi::c_void);
     *p_data_written =
-      (*p_data_written as libc::c_uint).wrapping_add(l_data_written_PLT) as OPJ_UINT32
+      (*p_data_written as core::ffi::c_uint).wrapping_add(l_data_written_PLT) as OPJ_UINT32
   }
   opj_tcd_marker_info_destroy(marker_info);
   return 1i32;
@@ -4772,7 +4771,7 @@ unsafe extern "C" fn opj_j2k_read_sod(
       (opj_stream_get_number_byte_left(p_stream) - 2i64) as OPJ_UINT32
   } else if (*p_j2k).m_specific_param.m_decoder.m_sot_length >= 2u32 {
     (*p_j2k).m_specific_param.m_decoder.m_sot_length =
-      ((*p_j2k).m_specific_param.m_decoder.m_sot_length as libc::c_uint)
+      ((*p_j2k).m_specific_param.m_decoder.m_sot_length as core::ffi::c_uint)
         .wrapping_sub(2u32) as OPJ_UINT32
   }
   l_current_data = &mut (*l_tcp).m_data;
@@ -4834,13 +4833,13 @@ unsafe extern "C" fn opj_j2k_read_sod(
         return 0i32;
       }
       l_new_current_data = opj_realloc(
-        *l_current_data as *mut libc::c_void,
+        *l_current_data as *mut core::ffi::c_void,
         (*l_tile_len)
           .wrapping_add((*p_j2k).m_specific_param.m_decoder.m_sot_length)
           .wrapping_add(2u32) as size_t,
       ) as *mut OPJ_BYTE;
       if l_new_current_data.is_null() {
-        opj_free(*l_current_data as *mut libc::c_void);
+        opj_free(*l_current_data as *mut core::ffi::c_void);
         /*nothing more is done as l_current_data will be set to null, and just
         afterward we enter in the error path
         and the actual tile_len is updated (committed) at the end of the
@@ -4915,7 +4914,7 @@ unsafe extern "C" fn opj_j2k_read_sod(
   } else {
     (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPHSOT
   }
-  *l_tile_len = (*l_tile_len as libc::c_uint).wrapping_add(l_current_read_size as OPJ_UINT32)
+  *l_tile_len = (*l_tile_len as core::ffi::c_uint).wrapping_add(l_current_read_size as OPJ_UINT32)
     as OPJ_UINT32;
   return 1i32;
 }
@@ -5207,9 +5206,9 @@ unsafe extern "C" fn opj_j2k_update_rates(
       while k < (*l_tcp).numlayers {
         if *l_rates > 0.0f32 {
           *l_rates = (l_size_pixel as OPJ_FLOAT64
-            * (l_x1 - l_x0) as OPJ_UINT32 as libc::c_double
-            * (l_y1 - l_y0) as OPJ_UINT32 as libc::c_double
-            / (*l_rates * l_bits_empty as OPJ_FLOAT32) as libc::c_double)
+            * (l_x1 - l_x0) as OPJ_UINT32 as core::ffi::c_double
+            * (l_y1 - l_y0) as OPJ_UINT32 as core::ffi::c_double
+            / (*l_rates * l_bits_empty as OPJ_FLOAT32) as core::ffi::c_double)
             as OPJ_FLOAT32
             - l_offset
         }
@@ -5595,7 +5594,7 @@ unsafe extern "C" fn opj_j2k_read_unk(
       break;
     /* next marker is known and well located */
     } else {
-      l_size_unk = (l_size_unk as libc::c_uint).wrapping_add(2u32)
+      l_size_unk = (l_size_unk as core::ffi::c_uint).wrapping_add(2u32)
         as OPJ_UINT32
     }
   }
@@ -5627,11 +5626,11 @@ unsafe extern "C" fn opj_j2k_write_mct_record(
   l_mct_size = (10u32).wrapping_add((*p_mct_record).m_data_size);
   if l_mct_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_mct_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -5663,8 +5662,8 @@ unsafe extern "C" fn opj_j2k_write_mct_record(
   l_current_data = l_current_data.offset(2);
   /* only one marker atm */
   l_tmp = (*p_mct_record).m_index & 0xffu32
-    | ((*p_mct_record).m_array_type as libc::c_uint) << 8i32
-    | ((*p_mct_record).m_element_type as libc::c_uint) << 10i32; /* Ymct */
+    | ((*p_mct_record).m_array_type as core::ffi::c_uint) << 8i32
+    | ((*p_mct_record).m_element_type as core::ffi::c_uint) << 10i32; /* Ymct */
   opj_write_bytes_LE(l_current_data, l_tmp, 2 as OPJ_UINT32);
   l_current_data = l_current_data.offset(2);
   opj_write_bytes_LE(
@@ -5674,8 +5673,8 @@ unsafe extern "C" fn opj_j2k_write_mct_record(
   );
   l_current_data = l_current_data.offset(2);
   memcpy(
-    l_current_data as *mut libc::c_void,
-    (*p_mct_record).m_data as *const libc::c_void,
+    l_current_data as *mut core::ffi::c_void,
+    (*p_mct_record).m_data as *const core::ffi::c_void,
     (*p_mct_record).m_data_size as usize,
   );
   if opj_stream_write_data(
@@ -5768,16 +5767,16 @@ unsafe extern "C" fn opj_j2k_read_mct(
   if i == (*l_tcp).m_nb_mct_records {
     if (*l_tcp).m_nb_mct_records == (*l_tcp).m_nb_max_mct_records {
       let mut new_mct_records = 0 as *mut opj_mct_data_t;
-      (*l_tcp).m_nb_max_mct_records = ((*l_tcp).m_nb_max_mct_records as libc::c_uint)
+      (*l_tcp).m_nb_max_mct_records = ((*l_tcp).m_nb_max_mct_records as core::ffi::c_uint)
         .wrapping_add(10u32)
         as OPJ_UINT32;
       new_mct_records = opj_realloc(
-        (*l_tcp).m_mct_records as *mut libc::c_void,
+        (*l_tcp).m_mct_records as *mut core::ffi::c_void,
         ((*l_tcp).m_nb_max_mct_records as usize)
           .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as usize),
       ) as *mut opj_mct_data_t;
       if new_mct_records.is_null() {
-        opj_free((*l_tcp).m_mct_records as *mut libc::c_void);
+        opj_free((*l_tcp).m_mct_records as *mut core::ffi::c_void);
         (*l_tcp).m_mct_records = 0 as *mut opj_mct_data_t;
         (*l_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
         (*l_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
@@ -5816,7 +5815,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
         .m_mct_records
         .offset((*l_tcp).m_nb_mct_records as isize);
       memset(
-        l_mct_data as *mut libc::c_void,
+        l_mct_data as *mut core::ffi::c_void,
         0i32,
         ((*l_tcp)
           .m_nb_max_mct_records
@@ -5830,7 +5829,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
     (*l_tcp).m_nb_mct_records = (*l_tcp).m_nb_mct_records.wrapping_add(1)
   }
   if !(*l_mct_data).m_data.is_null() {
-    opj_free((*l_mct_data).m_data as *mut libc::c_void);
+    opj_free((*l_mct_data).m_data as *mut core::ffi::c_void);
     (*l_mct_data).m_data = 0 as *mut OPJ_BYTE;
     (*l_mct_data).m_data_size = 0 as OPJ_UINT32
   }
@@ -5847,7 +5846,7 @@ unsafe extern "C" fn opj_j2k_read_mct(
     );
     return 1i32;
   }
-  p_header_size = (p_header_size as libc::c_uint).wrapping_sub(6u32)
+  p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(6u32)
     as OPJ_UINT32;
   (*l_mct_data).m_data = opj_malloc(p_header_size as size_t) as *mut OPJ_BYTE;
   if (*l_mct_data).m_data.is_null() {
@@ -5857,8 +5856,8 @@ unsafe extern "C" fn opj_j2k_read_mct(
     return 0i32;
   }
   memcpy(
-    (*l_mct_data).m_data as *mut libc::c_void,
-    p_header_data as *const libc::c_void,
+    (*l_mct_data).m_data as *mut core::ffi::c_void,
+    p_header_data as *const core::ffi::c_void,
     p_header_size as usize,
   );
   (*l_mct_data).m_data_size = p_header_size;
@@ -5903,11 +5902,11 @@ unsafe extern "C" fn opj_j2k_write_mcc_record(
     .wrapping_add(19u32);
   if l_mcc_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_mcc_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -5987,7 +5986,7 @@ unsafe extern "C" fn opj_j2k_write_mcc_record(
     l_current_data = l_current_data.offset(l_nb_bytes_for_comp as isize);
     i += 1;
   }
-  l_tmcc = (((*p_mcc_record).m_is_irreversible() == 0) as libc::c_uint
+  l_tmcc = (((*p_mcc_record).m_is_irreversible() == 0) as core::ffi::c_uint
     & 1u32)
     << 16i32;
   if !(*p_mcc_record).m_decorrelation_array.is_null() {
@@ -6084,17 +6083,17 @@ unsafe extern "C" fn opj_j2k_read_mcc(
   if i == (*l_tcp).m_nb_mcc_records {
     if (*l_tcp).m_nb_mcc_records == (*l_tcp).m_nb_max_mcc_records {
       let mut new_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
-      (*l_tcp).m_nb_max_mcc_records = ((*l_tcp).m_nb_max_mcc_records as libc::c_uint)
+      (*l_tcp).m_nb_max_mcc_records = ((*l_tcp).m_nb_max_mcc_records as core::ffi::c_uint)
         .wrapping_add(10u32)
         as OPJ_UINT32;
       new_mcc_records = opj_realloc(
-        (*l_tcp).m_mcc_records as *mut libc::c_void,
+        (*l_tcp).m_mcc_records as *mut core::ffi::c_void,
         ((*l_tcp).m_nb_max_mcc_records as usize).wrapping_mul(core::mem::size_of::<
           opj_simple_mcc_decorrelation_data_t,
         >() as usize),
       ) as *mut opj_simple_mcc_decorrelation_data_t;
       if new_mcc_records.is_null() {
-        opj_free((*l_tcp).m_mcc_records as *mut libc::c_void);
+        opj_free((*l_tcp).m_mcc_records as *mut core::ffi::c_void);
         (*l_tcp).m_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
         (*l_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
         (*l_tcp).m_nb_mcc_records = 0 as OPJ_UINT32;
@@ -6108,7 +6107,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
         .m_mcc_records
         .offset((*l_tcp).m_nb_mcc_records as isize);
       memset(
-        l_mcc_record as *mut libc::c_void,
+        l_mcc_record as *mut core::ffi::c_void,
         0i32,
         ((*l_tcp)
           .m_nb_max_mcc_records
@@ -6145,7 +6144,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
     );
     return 1i32;
   }
-  p_header_size = (p_header_size as libc::c_uint).wrapping_sub(7u32)
+  p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(7u32)
     as OPJ_UINT32;
   i = 0 as OPJ_UINT32;
   while i < l_nb_collections {
@@ -6169,7 +6168,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
       2 as OPJ_UINT32,
     );
     p_header_data = p_header_data.offset(2);
-    p_header_size = (p_header_size as libc::c_uint).wrapping_sub(3u32)
+    p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(3u32)
       as OPJ_UINT32;
     l_nb_bytes_by_comp =
       (1u32).wrapping_add(l_nb_comps >> 15i32);
@@ -6184,7 +6183,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
       );
       return 0i32;
     }
-    p_header_size = (p_header_size as libc::c_uint).wrapping_sub(
+    p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(
       l_nb_bytes_by_comp
         .wrapping_mul((*l_mcc_record).m_nb_comps)
         .wrapping_add(2u32),
@@ -6226,7 +6225,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
       );
       return 0i32;
     }
-    p_header_size = (p_header_size as libc::c_uint).wrapping_sub(
+    p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(
       l_nb_bytes_by_comp
         .wrapping_mul((*l_mcc_record).m_nb_comps)
         .wrapping_add(3u32),
@@ -6246,7 +6245,7 @@ unsafe extern "C" fn opj_j2k_read_mcc(
     opj_read_bytes_LE(p_header_data, &mut l_tmp, 3 as OPJ_UINT32);
     p_header_data = p_header_data.offset(3);
     (*l_mcc_record).set_m_is_irreversible(
-      (l_tmp >> 16i32 & 1u32 == 0) as libc::c_int
+      (l_tmp >> 16i32 & 1u32 == 0) as core::ffi::c_int
         as OPJ_BITFIELD,
     );
     (*l_mcc_record).m_decorrelation_array = 0 as *mut opj_mct_data_t;
@@ -6333,11 +6332,11 @@ unsafe extern "C" fn opj_j2k_write_mco(
   l_mco_size = (5u32).wrapping_add((*l_tcp).m_nb_mcc_records);
   if l_mco_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_mco_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -6465,7 +6464,7 @@ unsafe extern "C" fn opj_j2k_read_mco(
     i += 1;
   }
   if !(*l_tcp).m_mct_decoding_matrix.is_null() {
-    opj_free((*l_tcp).m_mct_decoding_matrix as *mut libc::c_void);
+    opj_free((*l_tcp).m_mct_decoding_matrix as *mut core::ffi::c_void);
     (*l_tcp).m_mct_decoding_matrix = 0 as *mut OPJ_FLOAT32
   }
   i = 0 as OPJ_UINT32;
@@ -6529,8 +6528,8 @@ unsafe fn opj_j2k_add_mct(
       return 0i32;
     }
     (*l_deco_array).m_element_type.read_to_float(
-      (*l_deco_array).m_data as *const libc::c_void,
-      (*p_tcp).m_mct_decoding_matrix as *mut libc::c_void,
+      (*l_deco_array).m_data as *const core::ffi::c_void,
+      (*p_tcp).m_mct_decoding_matrix as *mut core::ffi::c_void,
       l_nb_elem,
     );
   }
@@ -6549,8 +6548,8 @@ unsafe fn opj_j2k_add_mct(
       return 0i32;
     }
     (*l_offset_array).m_element_type.read_to_int32(
-      (*l_offset_array).m_data as *const libc::c_void,
-      l_offset_data as *mut libc::c_void,
+      (*l_offset_array).m_data as *const core::ffi::c_void,
+      l_offset_data as *mut core::ffi::c_void,
       l_nb_elem,
     );
     l_tccp = (*p_tcp).tccps;
@@ -6563,7 +6562,7 @@ unsafe fn opj_j2k_add_mct(
       l_tccp = l_tccp.offset(1);
       i += 1;
     }
-    opj_free(l_offset_data as *mut libc::c_void);
+    opj_free(l_offset_data as *mut core::ffi::c_void);
   }
   return 1i32;
 }
@@ -6594,11 +6593,11 @@ unsafe extern "C" fn opj_j2k_write_cbd(
     (6u32).wrapping_add((*(*p_j2k).m_private_image).numcomps);
   if l_cbd_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void,
+      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_cbd_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(p_manager, EVT_ERROR,
@@ -6821,7 +6820,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_threads(
     opj_thread_pool_destroy((*j2k).m_tp);
     (*j2k).m_tp = 0 as *mut opj_thread_pool_t;
     if num_threads <= 2147483647 as OPJ_UINT32 {
-      (*j2k).m_tp = opj_thread_pool_create(num_threads as libc::c_int)
+      (*j2k).m_tp = opj_thread_pool_create(num_threads as core::ffi::c_int)
     }
     if (*j2k).m_tp.is_null() {
       (*j2k).m_tp = opj_thread_pool_create(0i32);
@@ -6831,18 +6830,18 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_threads(
   }
   return 0i32;
 }
-unsafe fn opj_j2k_get_default_thread_count() -> libc::c_int {
-  let mut num_threads_str: *const libc::c_char =
-    getenv(b"OPJ_NUM_THREADS\x00" as *const u8 as *const libc::c_char);
-  let mut num_cpus: libc::c_int = 0;
-  let mut num_threads: libc::c_int = 0;
+unsafe fn opj_j2k_get_default_thread_count() -> core::ffi::c_int {
+  let mut num_threads_str: *const core::ffi::c_char =
+    getenv(b"OPJ_NUM_THREADS\x00" as *const u8 as *const core::ffi::c_char);
+  let mut num_cpus: core::ffi::c_int = 0;
+  let mut num_threads: core::ffi::c_int = 0;
   if num_threads_str.is_null() || opj_has_thread_support() == 0 {
     return 0i32;
   }
   num_cpus = opj_get_num_cpus();
   if strcmp(
     num_threads_str,
-    b"ALL_CPUS\x00" as *const u8 as *const libc::c_char,
+    b"ALL_CPUS\x00" as *const u8 as *const core::ffi::c_char,
   ) == 0i32
   {
     return num_cpus;
@@ -6910,8 +6909,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_create_compress() -> *mut opj_j2k_t {
 }
 unsafe fn opj_j2k_initialise_4K_poc(
   mut POC: *mut opj_poc_t,
-  mut numres: libc::c_int,
-) -> libc::c_int {
+  mut numres: core::ffi::c_int,
+) -> core::ffi::c_int {
   (*POC.offset(0)).tile = 1 as OPJ_UINT32;
   (*POC.offset(0)).resno0 = 0 as OPJ_UINT32;
   (*POC.offset(0)).compno0 = 0 as OPJ_UINT32;
@@ -6934,14 +6933,14 @@ unsafe fn opj_j2k_set_cinema_parameters(
   mut p_manager: &mut opj_event_mgr,
 ) {
   /* Configure cinema parameters */
-  let mut i: libc::c_int = 0;
+  let mut i: core::ffi::c_int = 0;
   /* No tiling */
   (*parameters).tile_size_on = 0i32;
   (*parameters).cp_tdx = 1i32;
   (*parameters).cp_tdy = 1i32;
   /* One tile part for each component */
-  (*parameters).tp_flag = 'C' as i32 as libc::c_char;
-  (*parameters).tp_on = 1 as libc::c_char;
+  (*parameters).tp_flag = 'C' as i32 as core::ffi::c_char;
+  (*parameters).tp_on = 1 as core::ffi::c_char;
   /* Tile and Image shall be at (0,0) */
   (*parameters).cp_tx0 = 0i32;
   (*parameters).cp_ty0 = 0i32;
@@ -6966,13 +6965,13 @@ unsafe fn opj_j2k_set_cinema_parameters(
                       (*parameters).tcp_numlayers,
                       (*parameters).tcp_rates[((*parameters).tcp_numlayers -
                                                    1i32) as usize]
-                          as libc::c_double);
+                          as core::ffi::c_double);
     (*parameters).tcp_rates[0 as usize] =
       (*parameters).tcp_rates[((*parameters).tcp_numlayers - 1i32) as usize];
     (*parameters).tcp_numlayers = 1i32
   }
   /* Resolution levels */
-  match (*parameters).rsiz as libc::c_int {
+  match (*parameters).rsiz as core::ffi::c_int {
     3 => {
       if (*parameters).numresolution > 6i32 {
         event_msg!(p_manager, EVT_WARNING,
@@ -7014,7 +7013,7 @@ unsafe fn opj_j2k_set_cinema_parameters(
   /* The progression order shall be CPRL */
   (*parameters).prog_order = OPJ_CPRL;
   /* Progression order changes for 4K, disallowed for 2K */
-  if (*parameters).rsiz as libc::c_int == 0x4i32 {
+  if (*parameters).rsiz as core::ffi::c_int == 0x4i32 {
     (*parameters).numpocs =
       opj_j2k_initialise_4K_poc((*parameters).POC.as_mut_ptr(), (*parameters).numresolution)
         as OPJ_UINT32
@@ -7071,7 +7070,7 @@ unsafe fn opj_j2k_is_cinema_compliant(
   i = 0 as OPJ_UINT32;
   while i < (*image).numcomps {
     if ((*(*image).comps.offset(i as isize)).prec != 12u32)
-      as libc::c_uint
+      as core::ffi::c_uint
       | (*(*image).comps.offset(i as isize)).sgnd
       != 0
     {
@@ -7088,12 +7087,12 @@ unsafe fn opj_j2k_is_cinema_compliant(
     i += 1;
   }
   /* Image size */
-  match rsiz as libc::c_int {
+  match rsiz as core::ffi::c_int {
     3 => {
       if ((*(*image).comps.offset(0)).w
-        > 2048u32) as libc::c_int
+        > 2048u32) as core::ffi::c_int
         | ((*(*image).comps.offset(0)).h
-          > 1080u32) as libc::c_int
+          > 1080u32) as core::ffi::c_int
         != 0
       {
         event_msg!(p_manager, EVT_WARNING,
@@ -7107,9 +7106,9 @@ unsafe fn opj_j2k_is_cinema_compliant(
     }
     4 => {
       if ((*(*image).comps.offset(0)).w
-        > 4096u32) as libc::c_int
+        > 4096u32) as core::ffi::c_int
         | ((*(*image).comps.offset(0)).h
-          > 2160u32) as libc::c_int
+          > 2160u32) as core::ffi::c_int
         != 0
       {
         event_msg!(p_manager, EVT_WARNING,
@@ -7128,16 +7127,16 @@ unsafe fn opj_j2k_is_cinema_compliant(
 unsafe fn opj_j2k_get_imf_max_NL(
   mut parameters: *mut opj_cparameters_t,
   mut image: *mut opj_image_t,
-) -> libc::c_int {
+) -> core::ffi::c_int {
   /* Decomposition levels */
   let rsiz = (*parameters).rsiz;
-  let profile = (rsiz as libc::c_int & 0xff00i32) as OPJ_UINT16;
+  let profile = (rsiz as core::ffi::c_int & 0xff00i32) as OPJ_UINT16;
   let XTsiz = if (*parameters).tile_size_on != 0 {
     (*parameters).cp_tdx as OPJ_UINT32
   } else {
     (*image).x1
   };
-  match profile as libc::c_int {
+  match profile as core::ffi::c_int {
     1024 => return 5i32,
     1280 => return 6i32,
     1536 => return 7i32,
@@ -7190,7 +7189,7 @@ unsafe fn opj_j2k_set_imf_parameters(
   mut _p_manager: &mut opj_event_mgr,
 ) {
   let rsiz = (*parameters).rsiz;
-  let profile = (rsiz as libc::c_int & 0xff00i32) as OPJ_UINT16;
+  let profile = (rsiz as core::ffi::c_int & 0xff00i32) as OPJ_UINT16;
   /* Override defaults set by opj_set_default_encoder_parameters */
   if (*parameters).cblockw_init == 64i32
     && (*parameters).cblockh_init == 64i32
@@ -7199,14 +7198,14 @@ unsafe fn opj_j2k_set_imf_parameters(
     (*parameters).cblockh_init = 32i32
   }
   /* One tile part for each component */
-  (*parameters).tp_flag = 'C' as i32 as libc::c_char;
-  (*parameters).tp_on = 1 as libc::c_char;
-  if (*parameters).prog_order as libc::c_int == OPJ_LRCP as libc::c_int {
+  (*parameters).tp_flag = 'C' as i32 as core::ffi::c_char;
+  (*parameters).tp_on = 1 as core::ffi::c_char;
+  if (*parameters).prog_order as core::ffi::c_int == OPJ_LRCP as core::ffi::c_int {
     (*parameters).prog_order = OPJ_CPRL
   }
-  if profile as libc::c_int == 0x400i32
-    || profile as libc::c_int == 0x500i32
-    || profile as libc::c_int == 0x600i32
+  if profile as core::ffi::c_int == 0x400i32
+    || profile as core::ffi::c_int == 0x500i32
+    || profile as core::ffi::c_int == 0x600i32
   {
     /* 9-7 transform */
     (*parameters).irreversible = 1i32
@@ -7248,7 +7247,7 @@ unsafe fn opj_j2k_set_imf_parameters(
       (*parameters).prcw_init[0 as usize] = 128i32;
       (*parameters).prch_init[0 as usize] = 128i32
     } else {
-      let mut i: libc::c_int = 0;
+      let mut i: core::ffi::c_int = 0;
       (*parameters).res_spec = (*parameters).numresolution - 1i32;
       i = 0i32;
       while i < (*parameters).res_spec {
@@ -7281,9 +7280,9 @@ unsafe fn opj_j2k_is_imf_compliant(
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
   let rsiz = (*parameters).rsiz;
-  let profile = (rsiz as libc::c_int & 0xff00i32) as OPJ_UINT16;
-  let mainlevel = (rsiz as libc::c_int & 0xfi32) as OPJ_UINT16;
-  let sublevel = (rsiz as libc::c_int >> 4i32 & 0xfi32) as OPJ_UINT16;
+  let profile = (rsiz as core::ffi::c_int & 0xff00i32) as OPJ_UINT16;
+  let mainlevel = (rsiz as core::ffi::c_int & 0xfi32) as OPJ_UINT16;
+  let sublevel = (rsiz as core::ffi::c_int >> 4i32 & 0xfi32) as OPJ_UINT16;
   let NL = (*parameters).numresolution - 1i32;
   let XTsiz = if (*parameters).tile_size_on != 0 {
     (*parameters).cp_tdx as OPJ_UINT32
@@ -7292,10 +7291,10 @@ unsafe fn opj_j2k_is_imf_compliant(
   };
   let mut ret = 1i32;
   /* Validate mainlevel */
-  if mainlevel as libc::c_int > 11i32 {
+  if mainlevel as core::ffi::c_int > 11i32 {
     event_msg!(p_manager, EVT_WARNING,
                       "IMF profile require mainlevel <= 11.\n-> %d is thus not compliant\n-> Non-IMF codestream will be generated\n",
-                      mainlevel as libc::c_int);
+                      mainlevel as core::ffi::c_int);
     ret = 0i32
   } else {
     /* Validate sublevel */
@@ -7304,12 +7303,12 @@ unsafe fn opj_j2k_is_imf_compliant(
         == ((11i32 + 1i32) as usize)
           .wrapping_mul(core::mem::size_of::<OPJ_UINT16>() as usize)
     );
-    if sublevel as libc::c_int > tabMaxSubLevelFromMainLevel[mainlevel as usize] as libc::c_int {
+    if sublevel as core::ffi::c_int > tabMaxSubLevelFromMainLevel[mainlevel as usize] as core::ffi::c_int {
       event_msg!(p_manager, EVT_WARNING,
                           "IMF profile require sublevel <= %d for mainlevel = %d.\n-> %d is thus not compliant\n-> Non-IMF codestream will be generated\n",
                           tabMaxSubLevelFromMainLevel[mainlevel as usize] as
-                              libc::c_int, mainlevel as libc::c_int,
-                          sublevel as libc::c_int);
+                              core::ffi::c_int, mainlevel as core::ffi::c_int,
+                          sublevel as core::ffi::c_int);
       ret = 0i32
     }
   }
@@ -7326,7 +7325,7 @@ unsafe fn opj_j2k_is_imf_compliant(
     event_msg!(p_manager, EVT_WARNING,
                       "IMF profiles require image origin to be at 0,0.\n-> %d,%d is not compliant\n-> Non-IMF codestream will be generated\n", (*image).x0,
                       ((*image).y0 != 0u32) as
-                          libc::c_int);
+                          core::ffi::c_int);
     ret = 0i32
   }
   if (*parameters).cp_tx0 != 0i32 || (*parameters).cp_ty0 != 0i32 {
@@ -7336,9 +7335,9 @@ unsafe fn opj_j2k_is_imf_compliant(
     ret = 0i32
   }
   if (*parameters).tile_size_on != 0 {
-    if profile as libc::c_int == 0x400i32
-      || profile as libc::c_int == 0x500i32
-      || profile as libc::c_int == 0x600i32
+    if profile as core::ffi::c_int == 0x400i32
+      || profile as core::ffi::c_int == 0x500i32
+      || profile as core::ffi::c_int == 0x600i32
     {
       if ((*parameters).cp_tdx as OPJ_UINT32) < (*image).x1
         || ((*parameters).cp_tdy as OPJ_UINT32) < (*image).y1
@@ -7357,12 +7356,12 @@ unsafe fn opj_j2k_is_imf_compliant(
       {
         if !((*parameters).cp_tdx == 2048i32
           && (*parameters).cp_tdy == 2048i32
-          && (profile as libc::c_int == 0x500i32
-            || profile as libc::c_int == 0x600i32))
+          && (profile as core::ffi::c_int == 0x500i32
+            || profile as core::ffi::c_int == 0x600i32))
         {
           if !((*parameters).cp_tdx == 4096i32
             && (*parameters).cp_tdy == 4096i32
-            && profile as libc::c_int == 0x600i32)
+            && profile as core::ffi::c_int == 0x600i32)
           {
             event_msg!(p_manager, EVT_WARNING,
                                       "IMF 2K_R/4K_R/8K_R single/multiple tile profiles require tile to be greater or equal to image size,\nor to be (1024,1024), or (2048,2048) for 4K_R/8K_R or (4096,4096) for 8K_R.\n-> %d,%d is non conformant\n-> Non-IMF codestream will be generated\n",
@@ -7425,9 +7424,9 @@ unsafe fn opj_j2k_is_imf_compliant(
                           i.wrapping_add(1u32),
                           (*(*image).comps.offset(i as isize)).dx,
                           (*(*image).comps.offset(i.wrapping_sub(1 as
-                                                                     libc::c_int
+                                                                     core::ffi::c_int
                                                                      as
-                                                                     libc::c_uint)
+                                                                     core::ffi::c_uint)
                                                       as isize)).dx);
       ret = 0i32
     }
@@ -7440,12 +7439,12 @@ unsafe fn opj_j2k_is_imf_compliant(
     i += 1;
   }
   /* Image size */
-  match profile as libc::c_int {
+  match profile as core::ffi::c_int {
     1024 | 1792 => {
       if ((*(*image).comps.offset(0)).w
-        > 2048u32) as libc::c_int
+        > 2048u32) as core::ffi::c_int
         | ((*(*image).comps.offset(0)).h
-          > 1556u32) as libc::c_int
+          > 1556u32) as core::ffi::c_int
         != 0
       {
         event_msg!(p_manager, EVT_WARNING,
@@ -7459,9 +7458,9 @@ unsafe fn opj_j2k_is_imf_compliant(
     }
     1280 | 2048 => {
       if ((*(*image).comps.offset(0)).w
-        > 4096u32) as libc::c_int
+        > 4096u32) as core::ffi::c_int
         | ((*(*image).comps.offset(0)).h
-          > 3112u32) as libc::c_int
+          > 3112u32) as core::ffi::c_int
         != 0
       {
         event_msg!(p_manager, EVT_WARNING,
@@ -7475,9 +7474,9 @@ unsafe fn opj_j2k_is_imf_compliant(
     }
     1536 | 2304 => {
       if ((*(*image).comps.offset(0)).w
-        > 8192u32) as libc::c_int
+        > 8192u32) as core::ffi::c_int
         | ((*(*image).comps.offset(0)).h
-          > 6224u32) as libc::c_int
+          > 6224u32) as core::ffi::c_int
         != 0
       {
         event_msg!(p_manager, EVT_WARNING,
@@ -7507,10 +7506,10 @@ unsafe fn opj_j2k_is_imf_compliant(
                       (*parameters).cblockw_init, (*parameters).cblockh_init);
     ret = 0i32
   }
-  if (*parameters).prog_order as libc::c_int != OPJ_CPRL as libc::c_int {
+  if (*parameters).prog_order as core::ffi::c_int != OPJ_CPRL as core::ffi::c_int {
     event_msg!(p_manager, EVT_WARNING,
                       "IMF profile require progression order to be CPRL.\n-> Compression parameters set it to %d.\n-> Non-IMF codestream will be generated\n",
-                      (*parameters).prog_order as libc::c_int);
+                      (*parameters).prog_order as core::ffi::c_int);
     ret = 0i32
   }
   if (*parameters).numpocs != 0u32 {
@@ -7526,9 +7525,9 @@ unsafe fn opj_j2k_is_imf_compliant(
                       (*parameters).mode);
     ret = 0i32
   }
-  if profile as libc::c_int == 0x400i32
-    || profile as libc::c_int == 0x500i32
-    || profile as libc::c_int == 0x600i32
+  if profile as core::ffi::c_int == 0x400i32
+    || profile as core::ffi::c_int == 0x500i32
+    || profile as core::ffi::c_int == 0x600i32
   {
     /* Expect 9-7 transform */
     if (*parameters).irreversible != 1i32 {
@@ -7550,7 +7549,7 @@ unsafe fn opj_j2k_is_imf_compliant(
     ret = 0i32
   }
   /* Decomposition levels */
-  match profile as libc::c_int {
+  match profile as core::ffi::c_int {
     1024 => {
       if !(NL >= 1i32 && NL <= 5i32) {
         event_msg!(p_manager, EVT_WARNING,
@@ -7656,7 +7655,7 @@ unsafe fn opj_j2k_is_imf_compliant(
       ret = 0i32
     }
   } else {
-    let mut i_0: libc::c_int = 0;
+    let mut i_0: core::ffi::c_int = 0;
     i_0 = 0i32;
     while i_0 < (*parameters).res_spec {
       if (*parameters).prcw_init[i_0 as usize] != 256i32
@@ -7745,10 +7744,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   (*cp).tw = 1 as OPJ_UINT32;
   (*cp).th = 1 as OPJ_UINT32;
   /* FIXME ADE: to be removed once deprecated cp_cinema and cp_rsiz have been removed */
-  if (*parameters).rsiz as libc::c_int == 0i32 {
+  if (*parameters).rsiz as core::ffi::c_int == 0i32 {
     /* consider deprecated fields only if RSIZ has not been set */
     let mut deprecated_used = 0i32;
-    match (*parameters).cp_cinema as libc::c_uint {
+    match (*parameters).cp_cinema as core::ffi::c_uint {
       1 => {
         (*parameters).rsiz = 0x3 as OPJ_UINT16;
         (*parameters).max_cs_size = 1302083i32;
@@ -7769,7 +7768,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       }
       0 | _ => {}
     }
-    match (*parameters).cp_rsiz as libc::c_uint {
+    match (*parameters).cp_rsiz as core::ffi::c_uint {
       3 => {
         (*parameters).rsiz = 0x3 as OPJ_UINT16;
         deprecated_used = 1i32
@@ -7793,7 +7792,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   if (*parameters).tcp_numlayers == 0i32 {
     (*parameters).tcp_numlayers = 1i32;
     (*parameters).cp_disto_alloc = 1i32;
-    (*parameters).tcp_rates[0 as usize] = 0 as libc::c_float
+    (*parameters).tcp_rates[0 as usize] = 0 as core::ffi::c_float
   }
   if (*parameters).cp_disto_alloc != 0 {
     /* Emit warnings if tcp_rates are not decreasing */
@@ -7802,10 +7801,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       let mut rate_i_corr = (*parameters).tcp_rates[i as usize];
       let mut rate_i_m_1_corr =
         (*parameters).tcp_rates[i.wrapping_sub(1u32) as usize];
-      if rate_i_corr as libc::c_double <= 1.0f64 {
+      if rate_i_corr as core::ffi::c_double <= 1.0f64 {
         rate_i_corr = 1.0f64 as OPJ_FLOAT32
       }
-      if rate_i_m_1_corr as libc::c_double <= 1.0f64 {
+      if rate_i_m_1_corr as core::ffi::c_double <= 1.0f64 {
         rate_i_m_1_corr = 1.0f64 as OPJ_FLOAT32
       }
       if rate_i_corr >= rate_i_m_1_corr {
@@ -7816,55 +7815,55 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
           event_msg!(p_manager, EVT_WARNING,
                                   "tcp_rates[%d]=%f (corrected as %f) should be strictly lesser than tcp_rates[%d]=%f (corrected as %f)\n", i,
                                   (*parameters).tcp_rates[i as usize] as
-                                      libc::c_double,
-                                  rate_i_corr as libc::c_double,
+                                      core::ffi::c_double,
+                                  rate_i_corr as core::ffi::c_double,
                                   i.wrapping_sub(1i32 as
-                                                     libc::c_uint),
+                                                     core::ffi::c_uint),
                                   (*parameters).tcp_rates[i.wrapping_sub(1 as
-                                                                             libc::c_int
+                                                                             core::ffi::c_int
                                                                              as
-                                                                             libc::c_uint)
+                                                                             core::ffi::c_uint)
                                                               as usize] as
-                                      libc::c_double,
-                                  rate_i_m_1_corr as libc::c_double);
+                                      core::ffi::c_double,
+                                  rate_i_m_1_corr as core::ffi::c_double);
         } else if rate_i_corr != (*parameters).tcp_rates[i as usize] {
           event_msg!(p_manager, EVT_WARNING,
                                   "tcp_rates[%d]=%f (corrected as %f) should be strictly lesser than tcp_rates[%d]=%f\n", i,
                                   (*parameters).tcp_rates[i as usize] as
-                                      libc::c_double,
-                                  rate_i_corr as libc::c_double,
+                                      core::ffi::c_double,
+                                  rate_i_corr as core::ffi::c_double,
                                   i.wrapping_sub(1i32 as
-                                                     libc::c_uint),
+                                                     core::ffi::c_uint),
                                   (*parameters).tcp_rates[i.wrapping_sub(1 as
-                                                                             libc::c_int
+                                                                             core::ffi::c_int
                                                                              as
-                                                                             libc::c_uint)
+                                                                             core::ffi::c_uint)
                                                               as usize] as
-                                      libc::c_double);
+                                      core::ffi::c_double);
         } else if rate_i_m_1_corr
           != (*parameters).tcp_rates[i.wrapping_sub(1u32) as usize]
         {
           event_msg!(p_manager, EVT_WARNING,
                                   "tcp_rates[%d]=%f should be strictly lesser than tcp_rates[%d]=%f (corrected as %f)\n", i,
                                   (*parameters).tcp_rates[i as usize] as
-                                      libc::c_double,
+                                      core::ffi::c_double,
                                   i.wrapping_sub(1i32 as
-                                                     libc::c_uint),
+                                                     core::ffi::c_uint),
                                   (*parameters).tcp_rates[i.wrapping_sub(1 as
-                                                                             libc::c_int
+                                                                             core::ffi::c_int
                                                                              as
-                                                                             libc::c_uint)
+                                                                             core::ffi::c_uint)
                                                               as usize] as
-                                      libc::c_double,
-                                  rate_i_m_1_corr as libc::c_double);
+                                      core::ffi::c_double,
+                                  rate_i_m_1_corr as core::ffi::c_double);
         } else {
           event_msg!(p_manager, EVT_WARNING,
             "tcp_rates[%d]=%f should be strictly lesser than tcp_rates[%d]=%f\n",
             i,
-            (*parameters).tcp_rates[i as usize] as libc::c_double,
+            (*parameters).tcp_rates[i as usize] as core::ffi::c_double,
             i.wrapping_sub(1u32),
             (*parameters).tcp_rates[i.wrapping_sub(1u32) as usize]
-              as libc::c_double,
+              as core::ffi::c_double,
           );
         }
       }
@@ -7879,15 +7878,15 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         && !(i
           == ((*parameters).tcp_numlayers as OPJ_UINT32)
             .wrapping_sub(1u32)
-          && (*parameters).tcp_distoratio[i as usize] == 0 as libc::c_float)
+          && (*parameters).tcp_distoratio[i as usize] == 0 as core::ffi::c_float)
       {
         event_msg!(p_manager, EVT_WARNING,
           "tcp_distoratio[%d]=%f should be strictly greater than tcp_distoratio[%d]=%f\n",
           i,
-          (*parameters).tcp_distoratio[i as usize] as libc::c_double,
+          (*parameters).tcp_distoratio[i as usize] as core::ffi::c_double,
           i.wrapping_sub(1u32),
           (*parameters).tcp_distoratio[i.wrapping_sub(1u32) as usize]
-            as libc::c_double,
+            as core::ffi::c_double,
         );
       }
       i += 1;
@@ -7896,23 +7895,23 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   /* see if max_codestream_size does limit input rate */
   if (*parameters).max_cs_size <= 0i32 {
     if (*parameters).tcp_rates[((*parameters).tcp_numlayers - 1i32) as usize]
-      > 0 as libc::c_float
+      > 0 as core::ffi::c_float
     {
       let mut temp_size: OPJ_FLOAT32 = 0.;
-      temp_size = ((*image).numcomps as libc::c_double
-        * (*(*image).comps.offset(0)).w as libc::c_double
-        * (*(*image).comps.offset(0)).h as libc::c_double
-        * (*(*image).comps.offset(0)).prec as libc::c_double
+      temp_size = ((*image).numcomps as core::ffi::c_double
+        * (*(*image).comps.offset(0)).w as core::ffi::c_double
+        * (*(*image).comps.offset(0)).h as core::ffi::c_double
+        * (*(*image).comps.offset(0)).prec as core::ffi::c_double
         / ((*parameters).tcp_rates[((*parameters).tcp_numlayers - 1i32) as usize]
-          as libc::c_double
-          * 8 as libc::c_double
-          * (*(*image).comps.offset(0)).dx as libc::c_double
-          * (*(*image).comps.offset(0)).dy as libc::c_double))
+          as core::ffi::c_double
+          * 8 as core::ffi::c_double
+          * (*(*image).comps.offset(0)).dx as core::ffi::c_double
+          * (*(*image).comps.offset(0)).dy as core::ffi::c_double))
         as OPJ_FLOAT32;
-      if temp_size > 2147483647 as libc::c_float {
+      if temp_size > 2147483647 as core::ffi::c_float {
         (*parameters).max_cs_size = 2147483647i32
       } else {
-        (*parameters).max_cs_size = floor(temp_size as libc::c_double) as libc::c_int
+        (*parameters).max_cs_size = floor(temp_size as core::ffi::c_double) as core::ffi::c_int
       }
     } else {
       (*parameters).max_cs_size = 0i32
@@ -7920,11 +7919,11 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   } else {
     let mut temp_rate: OPJ_FLOAT32 = 0.;
     let mut cap = 0i32;
-    if (*parameters).rsiz as libc::c_int >= 0x400i32
-      && (*parameters).rsiz as libc::c_int <= 0x900i32 | 0x9bi32
+    if (*parameters).rsiz as core::ffi::c_int >= 0x400i32
+      && (*parameters).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
       && (*parameters).max_cs_size > 0i32
       && (*parameters).tcp_numlayers == 1i32
-      && (*parameters).tcp_rates[0 as usize] == 0 as libc::c_float
+      && (*parameters).tcp_rates[0 as usize] == 0 as core::ffi::c_float
     {
       (*parameters).tcp_rates[0 as usize] = (*image)
         .numcomps
@@ -7938,14 +7937,14 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
           .wrapping_mul((*(*image).comps.offset(0)).dy)
           as OPJ_FLOAT32
     }
-    temp_rate = ((*image).numcomps as libc::c_double
-      * (*(*image).comps.offset(0)).w as libc::c_double
-      * (*(*image).comps.offset(0)).h as libc::c_double
-      * (*(*image).comps.offset(0)).prec as libc::c_double
-      / ((*parameters).max_cs_size as libc::c_double
-        * 8 as libc::c_double
-        * (*(*image).comps.offset(0)).dx as libc::c_double
-        * (*(*image).comps.offset(0)).dy as libc::c_double))
+    temp_rate = ((*image).numcomps as core::ffi::c_double
+      * (*(*image).comps.offset(0)).w as core::ffi::c_double
+      * (*(*image).comps.offset(0)).h as core::ffi::c_double
+      * (*(*image).comps.offset(0)).prec as core::ffi::c_double
+      / ((*parameters).max_cs_size as core::ffi::c_double
+        * 8 as core::ffi::c_double
+        * (*(*image).comps.offset(0)).dx as core::ffi::c_double
+        * (*(*image).comps.offset(0)).dy as core::ffi::c_double))
       as OPJ_FLOAT32;
     i = 0 as OPJ_UINT32;
     while i < (*parameters).tcp_numlayers as OPJ_UINT32 {
@@ -7960,20 +7959,20 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
                           "The desired maximum codestream size has limited\nat least one of the desired quality layers\n");
     }
   }
-  if (*parameters).rsiz as libc::c_int >= 0x3i32
-    && (*parameters).rsiz as libc::c_int <= 0x6i32
-    || (*parameters).rsiz as libc::c_int >= 0x400i32
-      && (*parameters).rsiz as libc::c_int <= 0x900i32 | 0x9bi32
+  if (*parameters).rsiz as core::ffi::c_int >= 0x3i32
+    && (*parameters).rsiz as core::ffi::c_int <= 0x6i32
+    || (*parameters).rsiz as core::ffi::c_int >= 0x400i32
+      && (*parameters).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
   {
     (*p_j2k).m_specific_param.m_encoder.m_TLM = 1i32
   }
   /* Manage profiles and applications and set RSIZ */
   /* set cinema parameters if required */
-  if (*parameters).rsiz as libc::c_int >= 0x3i32
-    && (*parameters).rsiz as libc::c_int <= 0x6i32
+  if (*parameters).rsiz as core::ffi::c_int >= 0x3i32
+    && (*parameters).rsiz as core::ffi::c_int <= 0x6i32
   {
-    if (*parameters).rsiz as libc::c_int == 0x5i32
-      || (*parameters).rsiz as libc::c_int == 0x6i32
+    if (*parameters).rsiz as core::ffi::c_int == 0x5i32
+      || (*parameters).rsiz as core::ffi::c_int == 0x6i32
     {
       event_msg!(p_manager, EVT_WARNING,
         "JPEG 2000 Scalable Digital Cinema profiles not yet supported\n",
@@ -7985,31 +7984,31 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         (*parameters).rsiz = 0 as OPJ_UINT16
       }
     }
-  } else if (*parameters).rsiz as libc::c_int == 0x7i32 {
+  } else if (*parameters).rsiz as core::ffi::c_int == 0x7i32 {
     event_msg!(p_manager, EVT_WARNING,
       "JPEG 2000 Long Term Storage profile not yet supported\n",
     );
     (*parameters).rsiz = 0 as OPJ_UINT16
-  } else if (*parameters).rsiz as libc::c_int >= 0x100i32
-    && (*parameters).rsiz as libc::c_int <= 0x300i32 | 0xbi32
+  } else if (*parameters).rsiz as core::ffi::c_int >= 0x100i32
+    && (*parameters).rsiz as core::ffi::c_int <= 0x300i32 | 0xbi32
   {
     event_msg!(p_manager, EVT_WARNING,
       "JPEG 2000 Broadcast profiles not yet supported\n",
     );
     (*parameters).rsiz = 0 as OPJ_UINT16
-  } else if (*parameters).rsiz as libc::c_int >= 0x400i32
-    && (*parameters).rsiz as libc::c_int <= 0x900i32 | 0x9bi32
+  } else if (*parameters).rsiz as core::ffi::c_int >= 0x400i32
+    && (*parameters).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
   {
     opj_j2k_set_imf_parameters(parameters, image, p_manager);
     if opj_j2k_is_imf_compliant(parameters, image, p_manager) == 0 {
       (*parameters).rsiz = 0 as OPJ_UINT16
     }
-  } else if (*parameters).rsiz as libc::c_int & 0x8000i32 != 0 {
-    if (*parameters).rsiz as libc::c_int == 0x8000i32 | 0i32 {
+  } else if (*parameters).rsiz as core::ffi::c_int & 0x8000i32 != 0 {
+    if (*parameters).rsiz as core::ffi::c_int == 0x8000i32 | 0i32 {
       event_msg!(p_manager, EVT_WARNING,
                           "JPEG 2000 Part-2 profile defined\nbut no Part-2 extension enabled.\nProfile set to NONE.\n");
       (*parameters).rsiz = 0 as OPJ_UINT16
-    } else if (*parameters).rsiz as libc::c_int != 0x8000i32 | 0x100i32 {
+    } else if (*parameters).rsiz as core::ffi::c_int != 0x8000i32 | 0x100i32 {
       event_msg!(p_manager, EVT_WARNING,
         "Unsupported Part-2 extension enabled\nProfile set to NONE.\n",
       );
@@ -8047,8 +8046,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       return 0i32;
     }
     memcpy(
-      (*cp).m_specific_param.m_enc.m_matrice as *mut libc::c_void,
-      (*parameters).cp_matrice as *const libc::c_void,
+      (*cp).m_specific_param.m_enc.m_matrice as *mut core::ffi::c_void,
+      (*parameters).cp_matrice as *const core::ffi::c_void,
       array_size,
     );
   }
@@ -8062,7 +8061,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   if !(*parameters).cp_comment.is_null() {
     (*cp).comment =
       opj_malloc(strlen((*parameters).cp_comment).wrapping_add(1))
-        as *mut libc::c_char;
+        as *mut core::ffi::c_char;
     if (*cp).comment.is_null() {
       event_msg!(p_manager, EVT_ERROR,
         "Not enough memory to allocate copy of comment string\n",
@@ -8072,8 +8071,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     strcpy((*cp).comment, (*parameters).cp_comment);
   } else {
     /* Create default comment for codestream */
-    let comment: [libc::c_char; 29] =
-      *core::mem::transmute::<&[u8; 29], &[libc::c_char; 29]>(b"Created by OpenJPEG version \x00");
+    let comment: [core::ffi::c_char; 29] =
+      *core::mem::transmute::<&[u8; 29], &[core::ffi::c_char; 29]>(b"Created by OpenJPEG version \x00");
     let clen = strlen(comment.as_ptr());
     let mut version = opj_version();
     /* UniPG>> */
@@ -8081,7 +8080,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       clen
         .wrapping_add(strlen(version))
         .wrapping_add(1),
-    ) as *mut libc::c_char;
+    ) as *mut core::ffi::c_char;
     if (*cp).comment.is_null() {
       event_msg!(p_manager, EVT_ERROR,
         "Not enough memory to allocate comment string\n",
@@ -8090,7 +8089,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     }
     sprintf(
       (*cp).comment,
-      b"%s%s\x00" as *const u8 as *const libc::c_char,
+      b"%s%s\x00" as *const u8 as *const core::ffi::c_char,
       comment.as_ptr(),
       version,
     );
@@ -8158,10 +8157,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     (*tcp).numlayers = (*parameters).tcp_numlayers as OPJ_UINT32;
     j = 0 as OPJ_UINT32;
     while j < (*tcp).numlayers {
-      if (*cp).rsiz as libc::c_int >= 0x3i32
-        && (*cp).rsiz as libc::c_int <= 0x6i32
-        || (*cp).rsiz as libc::c_int >= 0x400i32
-          && (*cp).rsiz as libc::c_int <= 0x900i32 | 0x9bi32
+      if (*cp).rsiz as core::ffi::c_int >= 0x3i32
+        && (*cp).rsiz as core::ffi::c_int <= 0x6i32
+        || (*cp).rsiz as core::ffi::c_int >= 0x400i32
+          && (*cp).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
       {
         if (*cp).m_specific_param.m_enc.m_fixed_quality() != 0 {
           (*tcp).distoratio[j as usize] = (*parameters).tcp_distoratio[j as usize]
@@ -8174,7 +8173,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         (*tcp).rates[j as usize] = (*parameters).tcp_rates[j as usize]
       }
       if (*cp).m_specific_param.m_enc.m_fixed_quality() == 0
-        && (*tcp).rates[j as usize] as libc::c_double <= 1.0f64
+        && (*tcp).rates[j as usize] as core::ffi::c_double <= 1.0f64
       {
         (*tcp).rates[j as usize] = 0.0f64 as OPJ_FLOAT32
         /* force lossless */
@@ -8260,7 +8259,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       (*tcp).mct = 2 as OPJ_UINT32;
       (*tcp).m_mct_coding_matrix = opj_malloc(lMctSize as size_t) as *mut OPJ_FLOAT32;
       if (*tcp).m_mct_coding_matrix.is_null() {
-        opj_free(lTmpBuf as *mut libc::c_void);
+        opj_free(lTmpBuf as *mut core::ffi::c_void);
         lTmpBuf = 0 as *mut OPJ_FLOAT32;
         event_msg!(p_manager, EVT_ERROR,
           "Not enough memory to allocate encoder MCT coding matrix \n",
@@ -8268,18 +8267,18 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         return 0i32;
       }
       memcpy(
-        (*tcp).m_mct_coding_matrix as *mut libc::c_void,
+        (*tcp).m_mct_coding_matrix as *mut core::ffi::c_void,
         (*parameters).mct_data,
         lMctSize as usize,
       );
       memcpy(
-        lTmpBuf as *mut libc::c_void,
+        lTmpBuf as *mut core::ffi::c_void,
         (*parameters).mct_data,
         lMctSize as usize,
       );
       (*tcp).m_mct_decoding_matrix = opj_malloc(lMctSize as size_t) as *mut OPJ_FLOAT32;
       if (*tcp).m_mct_decoding_matrix.is_null() {
-        opj_free(lTmpBuf as *mut libc::c_void);
+        opj_free(lTmpBuf as *mut core::ffi::c_void);
         lTmpBuf = 0 as *mut OPJ_FLOAT32;
         event_msg!(p_manager, EVT_ERROR,
           "Not enough memory to allocate encoder MCT decoding matrix \n",
@@ -8289,7 +8288,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       if opj_matrix_inversion_f(lTmpBuf, (*tcp).m_mct_decoding_matrix, (*image).numcomps)
         == 0i32
       {
-        opj_free(lTmpBuf as *mut libc::c_void);
+        opj_free(lTmpBuf as *mut core::ffi::c_void);
         lTmpBuf = 0 as *mut OPJ_FLOAT32;
         event_msg!(p_manager, EVT_ERROR,
           "Failed to inverse encoder MCT decoding matrix \n",
@@ -8301,7 +8300,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
           .wrapping_mul(core::mem::size_of::<OPJ_FLOAT64>() as usize),
       ) as *mut OPJ_FLOAT64;
       if (*tcp).mct_norms.is_null() {
-        opj_free(lTmpBuf as *mut libc::c_void);
+        opj_free(lTmpBuf as *mut core::ffi::c_void);
         lTmpBuf = 0 as *mut OPJ_FLOAT32;
         event_msg!(p_manager, EVT_ERROR,
           "Not enough memory to allocate encoder MCT norms \n",
@@ -8313,7 +8312,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         (*image).numcomps,
         (*tcp).m_mct_decoding_matrix,
       );
-      opj_free(lTmpBuf as *mut libc::c_void);
+      opj_free(lTmpBuf as *mut core::ffi::c_void);
       i = 0 as OPJ_UINT32;
       while i < (*image).numcomps {
         let mut tccp: *mut opj_tccp_t = &mut *(*tcp).tccps.offset(i as isize) as *mut opj_tccp_t;
@@ -8444,7 +8443,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   }
   if !(*parameters).mct_data.is_null() {
     opj_free((*parameters).mct_data);
-    (*parameters).mct_data = 0 as *mut libc::c_void
+    (*parameters).mct_data = 0 as *mut core::ffi::c_void
   }
   return 1i32;
 }
@@ -8470,14 +8469,14 @@ unsafe fn opj_j2k_add_mhmarker(
   {
     let mut new_marker = 0 as *mut opj_marker_info_t;
     (*cstr_index).maxmarknum =
-      (100 as libc::c_float + (*cstr_index).maxmarknum as OPJ_FLOAT32) as OPJ_UINT32;
+      (100 as core::ffi::c_float + (*cstr_index).maxmarknum as OPJ_FLOAT32) as OPJ_UINT32;
     new_marker = opj_realloc(
-      (*cstr_index).marker as *mut libc::c_void,
+      (*cstr_index).marker as *mut core::ffi::c_void,
       ((*cstr_index).maxmarknum as usize)
         .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
     ) as *mut opj_marker_info_t;
     if new_marker.is_null() {
-      opj_free((*cstr_index).marker as *mut libc::c_void);
+      opj_free((*cstr_index).marker as *mut core::ffi::c_void);
       (*cstr_index).marker = 0 as *mut opj_marker_info_t;
       (*cstr_index).maxmarknum = 0 as OPJ_UINT32;
       (*cstr_index).marknum = 0 as OPJ_UINT32;
@@ -8519,16 +8518,16 @@ unsafe fn opj_j2k_add_tlmarker(
   {
     let mut new_marker = 0 as *mut opj_marker_info_t;
     (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum = (100i32
-      as libc::c_float
+      as core::ffi::c_float
       + (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum as OPJ_FLOAT32)
       as OPJ_UINT32;
     new_marker = opj_realloc(
-      (*(*cstr_index).tile_index.offset(tileno as isize)).marker as *mut libc::c_void,
+      (*(*cstr_index).tile_index.offset(tileno as isize)).marker as *mut core::ffi::c_void,
       ((*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum as usize)
         .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
     ) as *mut opj_marker_info_t;
     if new_marker.is_null() {
-      opj_free((*(*cstr_index).tile_index.offset(tileno as isize)).marker as *mut libc::c_void);
+      opj_free((*(*cstr_index).tile_index.offset(tileno as isize)).marker as *mut core::ffi::c_void);
       let ref mut fresh23 = (*(*cstr_index).tile_index.offset(tileno as isize)).marker;
       *fresh23 = 0 as *mut opj_marker_info_t;
       (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum =
@@ -8826,17 +8825,17 @@ unsafe extern "C" fn opj_j2k_mct_validation(
 
   assert!(!p_j2k.is_null());
   assert!(!p_stream.is_null());
-  if (*p_j2k).m_cp.rsiz as libc::c_int & 0x8200i32 == 0x8200i32 {
+  if (*p_j2k).m_cp.rsiz as core::ffi::c_int & 0x8200i32 == 0x8200i32 {
     let mut l_nb_tiles = (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw);
     let mut l_tcp = (*p_j2k).m_cp.tcps;
     i = 0 as OPJ_UINT32;
     while i < l_nb_tiles {
       if (*l_tcp).mct == 2u32 {
         let mut l_tccp = (*l_tcp).tccps;
-        l_is_valid &= ((*l_tcp).m_mct_coding_matrix != 0 as *mut OPJ_FLOAT32) as libc::c_int;
+        l_is_valid &= ((*l_tcp).m_mct_coding_matrix != 0 as *mut OPJ_FLOAT32) as core::ffi::c_int;
         j = 0 as OPJ_UINT32;
         while j < (*(*p_j2k).m_private_image).numcomps {
-          l_is_valid &= ((*l_tccp).qmfbid & 1u32 == 0) as libc::c_int;
+          l_is_valid &= ((*l_tccp).qmfbid & 1u32 == 0) as core::ffi::c_int;
           l_tccp = l_tccp.offset(1);
           j += 1;
         }
@@ -8870,16 +8869,16 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
   if !(*p_tcp).m_mct_decoding_matrix.is_null() {
     if (*p_tcp).m_nb_mct_records == (*p_tcp).m_nb_max_mct_records {
       let mut new_mct_records = 0 as *mut opj_mct_data_t;
-      (*p_tcp).m_nb_max_mct_records = ((*p_tcp).m_nb_max_mct_records as libc::c_uint)
+      (*p_tcp).m_nb_max_mct_records = ((*p_tcp).m_nb_max_mct_records as core::ffi::c_uint)
         .wrapping_add(10u32)
         as OPJ_UINT32;
       new_mct_records = opj_realloc(
-        (*p_tcp).m_mct_records as *mut libc::c_void,
+        (*p_tcp).m_mct_records as *mut core::ffi::c_void,
         ((*p_tcp).m_nb_max_mct_records as usize)
           .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as usize),
       ) as *mut opj_mct_data_t;
       if new_mct_records.is_null() {
-        opj_free((*p_tcp).m_mct_records as *mut libc::c_void);
+        opj_free((*p_tcp).m_mct_records as *mut core::ffi::c_void);
         (*p_tcp).m_mct_records = 0 as *mut opj_mct_data_t;
         (*p_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
         (*p_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
@@ -8891,7 +8890,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
         .m_mct_records
         .offset((*p_tcp).m_nb_mct_records as isize);
       memset(
-        l_mct_deco_data as *mut libc::c_void,
+        l_mct_deco_data as *mut core::ffi::c_void,
         0i32,
         ((*p_tcp)
           .m_nb_max_mct_records
@@ -8903,7 +8902,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
       .m_mct_records
       .offset((*p_tcp).m_nb_mct_records as isize);
     if !(*l_mct_deco_data).m_data.is_null() {
-      opj_free((*l_mct_deco_data).m_data as *mut libc::c_void);
+      opj_free((*l_mct_deco_data).m_data as *mut core::ffi::c_void);
       (*l_mct_deco_data).m_data = 0 as *mut OPJ_BYTE
     }
     let fresh26 = l_indix;
@@ -8919,8 +8918,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
       return 0i32;
     }
     (*l_mct_deco_data).m_element_type.write_from_float(
-      (*p_tcp).m_mct_decoding_matrix as *const libc::c_void,
-      (*l_mct_deco_data).m_data as *mut libc::c_void,
+      (*p_tcp).m_mct_decoding_matrix as *const core::ffi::c_void,
+      (*l_mct_deco_data).m_data as *mut core::ffi::c_void,
       l_nb_elem,
     );
     (*l_mct_deco_data).m_data_size = l_mct_size;
@@ -8928,16 +8927,16 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
   }
   if (*p_tcp).m_nb_mct_records == (*p_tcp).m_nb_max_mct_records {
     let mut new_mct_records_0 = 0 as *mut opj_mct_data_t;
-    (*p_tcp).m_nb_max_mct_records = ((*p_tcp).m_nb_max_mct_records as libc::c_uint)
+    (*p_tcp).m_nb_max_mct_records = ((*p_tcp).m_nb_max_mct_records as core::ffi::c_uint)
       .wrapping_add(10u32)
       as OPJ_UINT32;
     new_mct_records_0 = opj_realloc(
-      (*p_tcp).m_mct_records as *mut libc::c_void,
+      (*p_tcp).m_mct_records as *mut core::ffi::c_void,
       ((*p_tcp).m_nb_max_mct_records as usize)
         .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as usize),
     ) as *mut opj_mct_data_t;
     if new_mct_records_0.is_null() {
-      opj_free((*p_tcp).m_mct_records as *mut libc::c_void);
+      opj_free((*p_tcp).m_mct_records as *mut core::ffi::c_void);
       (*p_tcp).m_mct_records = 0 as *mut opj_mct_data_t;
       (*p_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
       (*p_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
@@ -8949,7 +8948,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
       .m_mct_records
       .offset((*p_tcp).m_nb_mct_records as isize);
     memset(
-      l_mct_offset_data as *mut libc::c_void,
+      l_mct_offset_data as *mut core::ffi::c_void,
       0i32,
       ((*p_tcp)
         .m_nb_max_mct_records
@@ -8964,7 +8963,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
     .m_mct_records
     .offset((*p_tcp).m_nb_mct_records as isize);
   if !(*l_mct_offset_data).m_data.is_null() {
-    opj_free((*l_mct_offset_data).m_data as *mut libc::c_void);
+    opj_free((*l_mct_offset_data).m_data as *mut core::ffi::c_void);
     (*l_mct_offset_data).m_data = 0 as *mut OPJ_BYTE
   }
   let fresh27 = l_indix;
@@ -8984,7 +8983,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
       .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
   ) as *mut OPJ_FLOAT32;
   if l_data.is_null() {
-    opj_free((*l_mct_offset_data).m_data as *mut libc::c_void);
+    opj_free((*l_mct_offset_data).m_data as *mut core::ffi::c_void);
     (*l_mct_offset_data).m_data = 0 as *mut OPJ_BYTE;
     return 0i32;
   }
@@ -8999,27 +8998,27 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
     i += 1;
   }
   (*l_mct_offset_data).m_element_type.write_from_float(
-    l_data as *const libc::c_void,
-    (*l_mct_offset_data).m_data as *mut libc::c_void,
+    l_data as *const core::ffi::c_void,
+    (*l_mct_offset_data).m_data as *mut core::ffi::c_void,
     l_nb_elem,
   );
-  opj_free(l_data as *mut libc::c_void);
+  opj_free(l_data as *mut core::ffi::c_void);
   (*l_mct_offset_data).m_data_size = l_mct_size;
   (*p_tcp).m_nb_mct_records = (*p_tcp).m_nb_mct_records.wrapping_add(1);
   if (*p_tcp).m_nb_mcc_records == (*p_tcp).m_nb_max_mcc_records {
     let mut new_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
-    (*p_tcp).m_nb_max_mcc_records = ((*p_tcp).m_nb_max_mcc_records as libc::c_uint)
+    (*p_tcp).m_nb_max_mcc_records = ((*p_tcp).m_nb_max_mcc_records as core::ffi::c_uint)
       .wrapping_add(10u32)
       as OPJ_UINT32;
     new_mcc_records =
       opj_realloc(
-        (*p_tcp).m_mcc_records as *mut libc::c_void,
+        (*p_tcp).m_mcc_records as *mut core::ffi::c_void,
         ((*p_tcp).m_nb_max_mcc_records as usize).wrapping_mul(core::mem::size_of::<
           opj_simple_mcc_decorrelation_data_t,
         >() as usize),
       ) as *mut opj_simple_mcc_decorrelation_data_t;
     if new_mcc_records.is_null() {
-      opj_free((*p_tcp).m_mcc_records as *mut libc::c_void);
+      opj_free((*p_tcp).m_mcc_records as *mut core::ffi::c_void);
       (*p_tcp).m_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
       (*p_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
       (*p_tcp).m_nb_mcc_records = 0 as OPJ_UINT32;
@@ -9031,7 +9030,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
       .m_mcc_records
       .offset((*p_tcp).m_nb_mcc_records as isize);
     memset(
-            l_mcc_data as *mut libc::c_void,
+            l_mcc_data as *mut core::ffi::c_void,
             0i32,
             ((*p_tcp)
                 .m_nb_max_mcc_records
@@ -9100,12 +9099,12 @@ unsafe extern "C" fn opj_j2k_encoding_validation(
   /* STATE checking */
   /* make sure the state is at 0 */
   l_is_valid &= ((*p_j2k).m_specific_param.m_decoder.m_state
-    == J2KState::NONE) as libc::c_int;
+    == J2KState::NONE) as core::ffi::c_int;
   /* POINTER validation */
   /* make sure a p_j2k codec is present */
-  l_is_valid &= ((*p_j2k).m_procedure_list != 0 as *mut opj_procedure_list_t) as libc::c_int;
+  l_is_valid &= ((*p_j2k).m_procedure_list != 0 as *mut opj_procedure_list_t) as core::ffi::c_int;
   /* make sure a validation list is present */
-  l_is_valid &= ((*p_j2k).m_validation_list != 0 as *mut opj_procedure_list_t) as libc::c_int;
+  l_is_valid &= ((*p_j2k).m_validation_list != 0 as *mut opj_procedure_list_t) as core::ffi::c_int;
   /* ISO 15444-1:2004 states between 1 & 33 (0 -> 32) */
   /* 33 (32) would always fail the check below (if a cast to 64bits was done) */
   /* FIXME Shall we change OPJ_J2K_MAXRLVLS to 32 ? */
@@ -9164,13 +9163,13 @@ unsafe extern "C" fn opj_j2k_decoding_validation(
   /* STATE checking */
   /* make sure the state is at 0 */
   l_is_valid &= ((*p_j2k).m_specific_param.m_decoder.m_state == J2KState::NONE)
-    as libc::c_int;
+    as core::ffi::c_int;
   /* POINTER validation */
   /* make sure a p_j2k codec is present */
   /* make sure a procedure list is present */
-  l_is_valid &= ((*p_j2k).m_procedure_list != 0 as *mut opj_procedure_list_t) as libc::c_int;
+  l_is_valid &= ((*p_j2k).m_procedure_list != 0 as *mut opj_procedure_list_t) as core::ffi::c_int;
   /* make sure a validation list is present */
-  l_is_valid &= ((*p_j2k).m_validation_list != 0 as *mut opj_procedure_list_t) as libc::c_int;
+  l_is_valid &= ((*p_j2k).m_validation_list != 0 as *mut opj_procedure_list_t) as core::ffi::c_int;
   /* PARAMETER VALIDATION */
   return l_is_valid;
 }
@@ -9283,16 +9282,16 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
       );
       return 0i32;
     }
-    l_marker_size = (l_marker_size as libc::c_uint).wrapping_sub(2u32)
+    l_marker_size = (l_marker_size as core::ffi::c_uint).wrapping_sub(2u32)
       as OPJ_UINT32;
     /* Check if the marker size is compatible with the header data size */
     if l_marker_size > (*p_j2k).m_specific_param.m_decoder.m_header_data_size {
       let mut new_header_data = opj_realloc(
-        (*p_j2k).m_specific_param.m_decoder.m_header_data as *mut libc::c_void,
+        (*p_j2k).m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void,
         l_marker_size as size_t,
       ) as *mut OPJ_BYTE;
       if new_header_data.is_null() {
-        opj_free((*p_j2k).m_specific_param.m_decoder.m_header_data as *mut libc::c_void);
+        opj_free((*p_j2k).m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void);
         (*p_j2k).m_specific_param.m_decoder.m_header_data = 0 as *mut OPJ_BYTE;
         (*p_j2k).m_specific_param.m_decoder.m_header_data_size = 0 as OPJ_UINT32;
         event_msg!(p_manager, EVT_ERROR,
@@ -9440,7 +9439,7 @@ unsafe fn opj_j2k_exec(
   while i < l_nb_proc {
     l_result = (l_result != 0
       && (*l_procedure).expect("non-null function pointer")(p_j2k, p_stream, p_manager) != 0)
-      as libc::c_int;
+      as core::ffi::c_int;
     l_procedure = l_procedure.offset(1);
     i += 1;
   }
@@ -9496,8 +9495,8 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
     l_current_tccp = (*l_tcp).tccps;
     /*Copy default coding parameters into the current tile coding parameters*/
     memcpy(
-      l_tcp as *mut libc::c_void,
-      l_default_tcp as *const libc::c_void,
+      l_tcp as *mut core::ffi::c_void,
+      l_default_tcp as *const core::ffi::c_void,
       core::mem::size_of::<opj_tcp_t>() as usize,
     );
     /* Initialize some values of the current tile coding parameters*/
@@ -9520,8 +9519,8 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
         return 0i32;
       }
       memcpy(
-        (*l_tcp).m_mct_decoding_matrix as *mut libc::c_void,
-        (*l_default_tcp).m_mct_decoding_matrix as *const libc::c_void,
+        (*l_tcp).m_mct_decoding_matrix as *mut core::ffi::c_void,
+        (*l_default_tcp).m_mct_decoding_matrix as *const core::ffi::c_void,
         l_mct_size as usize,
       );
     }
@@ -9534,8 +9533,8 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
       return 0i32;
     }
     memcpy(
-      (*l_tcp).m_mct_records as *mut libc::c_void,
-      (*l_default_tcp).m_mct_records as *const libc::c_void,
+      (*l_tcp).m_mct_records as *mut core::ffi::c_void,
+      (*l_default_tcp).m_mct_records as *const core::ffi::c_void,
       l_mct_records_size as usize,
     );
     /* Copy the mct record data from dflt_tile_cp to the current tile*/
@@ -9550,15 +9549,15 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
           return 0i32;
         }
         memcpy(
-          (*l_dest_mct_rec).m_data as *mut libc::c_void,
-          (*l_src_mct_rec).m_data as *const libc::c_void,
+          (*l_dest_mct_rec).m_data as *mut core::ffi::c_void,
+          (*l_src_mct_rec).m_data as *const core::ffi::c_void,
           (*l_src_mct_rec).m_data_size as usize,
         );
       }
       l_src_mct_rec = l_src_mct_rec.offset(1);
       l_dest_mct_rec = l_dest_mct_rec.offset(1);
       /* Update with each pass to free exactly what has been allocated on early return. */
-      (*l_tcp).m_nb_max_mct_records = ((*l_tcp).m_nb_max_mct_records as libc::c_uint)
+      (*l_tcp).m_nb_max_mct_records = ((*l_tcp).m_nb_max_mct_records as core::ffi::c_uint)
         .wrapping_add(1u32)
         as OPJ_UINT32;
       j += 1;
@@ -9575,8 +9574,8 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
       return 0i32;
     }
     memcpy(
-      (*l_tcp).m_mcc_records as *mut libc::c_void,
-      (*l_default_tcp).m_mcc_records as *const libc::c_void,
+      (*l_tcp).m_mcc_records as *mut core::ffi::c_void,
+      (*l_default_tcp).m_mcc_records as *const core::ffi::c_void,
       l_mcc_records_size as usize,
     );
     (*l_tcp).m_nb_max_mcc_records = (*l_default_tcp).m_nb_max_mcc_records;
@@ -9588,14 +9587,14 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
       if !(*l_src_mcc_rec).m_decorrelation_array.is_null() {
         l_offset = (*l_src_mcc_rec)
           .m_decorrelation_array
-          .offset_from((*l_default_tcp).m_mct_records) as libc::c_long
+          .offset_from((*l_default_tcp).m_mct_records) as core::ffi::c_long
           as OPJ_UINT32;
         (*l_dest_mcc_rec).m_decorrelation_array = (*l_tcp).m_mct_records.offset(l_offset as isize)
       }
       if !(*l_src_mcc_rec).m_offset_array.is_null() {
         l_offset = (*l_src_mcc_rec)
           .m_offset_array
-          .offset_from((*l_default_tcp).m_mct_records) as libc::c_long
+          .offset_from((*l_default_tcp).m_mct_records) as core::ffi::c_long
           as OPJ_UINT32;
         (*l_dest_mcc_rec).m_offset_array = (*l_tcp).m_mct_records.offset(l_offset as isize)
       }
@@ -9605,8 +9604,8 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
     }
     /* Copy all the dflt_tile_compo_cp to the current tile cp */
     memcpy(
-      l_current_tccp as *mut libc::c_void,
-      (*l_default_tcp).tccps as *const libc::c_void,
+      l_current_tccp as *mut core::ffi::c_void,
+      (*l_default_tcp).tccps as *const core::ffi::c_void,
       l_tccp_size as usize,
     );
     /* Move to next tile cp*/
@@ -9637,11 +9636,11 @@ pub(crate) unsafe extern "C" fn opj_j2k_destroy(mut p_j2k: *mut opj_j2k_t) {
   if (*p_j2k).m_is_decoder != 0 {
     if !(*p_j2k).m_specific_param.m_decoder.m_default_tcp.is_null() {
       opj_j2k_tcp_destroy((*p_j2k).m_specific_param.m_decoder.m_default_tcp);
-      opj_free((*p_j2k).m_specific_param.m_decoder.m_default_tcp as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_decoder.m_default_tcp as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_decoder.m_default_tcp = 0 as *mut opj_tcp_t
     }
     if !(*p_j2k).m_specific_param.m_decoder.m_header_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_decoder.m_header_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_decoder.m_header_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_decoder.m_header_data_size = 0 as OPJ_UINT32
     }
@@ -9649,7 +9648,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_destroy(mut p_j2k: *mut opj_j2k_t) {
       (*p_j2k)
         .m_specific_param
         .m_decoder
-        .m_comps_indices_to_decode as *mut libc::c_void,
+        .m_comps_indices_to_decode as *mut core::ffi::c_void,
     );
     (*p_j2k)
       .m_specific_param
@@ -9663,7 +9662,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_destroy(mut p_j2k: *mut opj_j2k_t) {
       .m_encoded_tile_data
       .is_null()
     {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data = 0 as *mut OPJ_BYTE
     }
     if !(*p_j2k)
@@ -9672,7 +9671,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_destroy(mut p_j2k: *mut opj_j2k_t) {
       .m_tlm_sot_offsets_buffer
       .is_null()
     {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = 0 as *mut OPJ_BYTE;
       (*p_j2k)
         .m_specific_param
@@ -9685,7 +9684,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_destroy(mut p_j2k: *mut opj_j2k_t) {
       .m_header_tile_data
       .is_null()
     {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32
     }
@@ -9693,7 +9692,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_destroy(mut p_j2k: *mut opj_j2k_t) {
   opj_tcd_destroy((*p_j2k).m_tcd);
   opj_j2k_cp_destroy(&mut (*p_j2k).m_cp);
   memset(
-    &mut (*p_j2k).m_cp as *mut opj_cp_t as *mut libc::c_void,
+    &mut (*p_j2k).m_cp as *mut opj_cp_t as *mut core::ffi::c_void,
     0i32,
     core::mem::size_of::<opj_cp_t>() as usize,
   );
@@ -9709,13 +9708,13 @@ pub(crate) unsafe extern "C" fn opj_j2k_destroy(mut p_j2k: *mut opj_j2k_t) {
   (*p_j2k).m_output_image = 0 as *mut opj_image_t;
   opj_thread_pool_destroy((*p_j2k).m_tp);
   (*p_j2k).m_tp = 0 as *mut opj_thread_pool_t;
-  opj_free(p_j2k as *mut libc::c_void);
+  opj_free(p_j2k as *mut core::ffi::c_void);
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn j2k_destroy_cstr_index(mut p_cstr_ind: *mut opj_codestream_index_t) {
   if !p_cstr_ind.is_null() {
     if !(*p_cstr_ind).marker.is_null() {
-      opj_free((*p_cstr_ind).marker as *mut libc::c_void);
+      opj_free((*p_cstr_ind).marker as *mut core::ffi::c_void);
       (*p_cstr_ind).marker = 0 as *mut opj_marker_info_t
     }
     if !(*p_cstr_ind).tile_index.is_null() {
@@ -9727,7 +9726,7 @@ pub(crate) unsafe extern "C" fn j2k_destroy_cstr_index(mut p_cstr_ind: *mut opj_
           .is_null()
         {
           opj_free(
-            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).packet_index as *mut libc::c_void,
+            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).packet_index as *mut core::ffi::c_void,
           );
           let ref mut fresh30 = (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).packet_index;
           *fresh30 = 0 as *mut opj_packet_info_t
@@ -9737,7 +9736,7 @@ pub(crate) unsafe extern "C" fn j2k_destroy_cstr_index(mut p_cstr_ind: *mut opj_
           .is_null()
         {
           opj_free(
-            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).tp_index as *mut libc::c_void,
+            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).tp_index as *mut core::ffi::c_void,
           );
           let ref mut fresh31 = (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).tp_index;
           *fresh31 = 0 as *mut opj_tp_index_t
@@ -9747,17 +9746,17 @@ pub(crate) unsafe extern "C" fn j2k_destroy_cstr_index(mut p_cstr_ind: *mut opj_
           .is_null()
         {
           opj_free(
-            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker as *mut libc::c_void,
+            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
           );
           let ref mut fresh32 = (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker;
           *fresh32 = 0 as *mut opj_marker_info_t
         }
         it_tile += 1;
       }
-      opj_free((*p_cstr_ind).tile_index as *mut libc::c_void);
+      opj_free((*p_cstr_ind).tile_index as *mut core::ffi::c_void);
       (*p_cstr_ind).tile_index = 0 as *mut opj_tile_index_t
     }
-    opj_free(p_cstr_ind as *mut libc::c_void);
+    opj_free(p_cstr_ind as *mut core::ffi::c_void);
   };
 }
 /* *
@@ -9774,32 +9773,32 @@ unsafe fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
     i = 0u32;
     while i < (*p_tcp).ppt_markers_count {
       if !(*(*p_tcp).ppt_markers.offset(i as isize)).m_data.is_null() {
-        opj_free((*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *mut libc::c_void);
+        opj_free((*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *mut core::ffi::c_void);
       }
       i += 1;
     }
     (*p_tcp).ppt_markers_count = 0u32;
-    opj_free((*p_tcp).ppt_markers as *mut libc::c_void);
+    opj_free((*p_tcp).ppt_markers as *mut core::ffi::c_void);
     (*p_tcp).ppt_markers = 0 as *mut opj_ppx
   }
   if !(*p_tcp).ppt_buffer.is_null() {
-    opj_free((*p_tcp).ppt_buffer as *mut libc::c_void);
+    opj_free((*p_tcp).ppt_buffer as *mut core::ffi::c_void);
     (*p_tcp).ppt_buffer = 0 as *mut OPJ_BYTE
   }
   if !(*p_tcp).tccps.is_null() {
-    opj_free((*p_tcp).tccps as *mut libc::c_void);
+    opj_free((*p_tcp).tccps as *mut core::ffi::c_void);
     (*p_tcp).tccps = 0 as *mut opj_tccp_t
   }
   if !(*p_tcp).m_mct_coding_matrix.is_null() {
-    opj_free((*p_tcp).m_mct_coding_matrix as *mut libc::c_void);
+    opj_free((*p_tcp).m_mct_coding_matrix as *mut core::ffi::c_void);
     (*p_tcp).m_mct_coding_matrix = 0 as *mut OPJ_FLOAT32
   }
   if !(*p_tcp).m_mct_decoding_matrix.is_null() {
-    opj_free((*p_tcp).m_mct_decoding_matrix as *mut libc::c_void);
+    opj_free((*p_tcp).m_mct_decoding_matrix as *mut core::ffi::c_void);
     (*p_tcp).m_mct_decoding_matrix = 0 as *mut OPJ_FLOAT32
   }
   if !(*p_tcp).m_mcc_records.is_null() {
-    opj_free((*p_tcp).m_mcc_records as *mut libc::c_void);
+    opj_free((*p_tcp).m_mcc_records as *mut core::ffi::c_void);
     (*p_tcp).m_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
     (*p_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
     (*p_tcp).m_nb_mcc_records = 0 as OPJ_UINT32
@@ -9810,17 +9809,17 @@ unsafe fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
     i_0 = 0 as OPJ_UINT32;
     while i_0 < (*p_tcp).m_nb_mct_records {
       if !(*l_mct_data).m_data.is_null() {
-        opj_free((*l_mct_data).m_data as *mut libc::c_void);
+        opj_free((*l_mct_data).m_data as *mut core::ffi::c_void);
         (*l_mct_data).m_data = 0 as *mut OPJ_BYTE
       }
       l_mct_data = l_mct_data.offset(1);
       i_0 += 1;
     }
-    opj_free((*p_tcp).m_mct_records as *mut libc::c_void);
+    opj_free((*p_tcp).m_mct_records as *mut core::ffi::c_void);
     (*p_tcp).m_mct_records = 0 as *mut opj_mct_data_t
   }
   if !(*p_tcp).mct_norms.is_null() {
-    opj_free((*p_tcp).mct_norms as *mut libc::c_void);
+    opj_free((*p_tcp).mct_norms as *mut core::ffi::c_void);
     (*p_tcp).mct_norms = 0 as *mut OPJ_FLOAT64
   }
   opj_j2k_tcp_data_destroy(p_tcp);
@@ -9832,7 +9831,7 @@ unsafe fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
  */
 unsafe fn opj_j2k_tcp_data_destroy(mut p_tcp: *mut opj_tcp_t) {
   if !(*p_tcp).m_data.is_null() {
-    opj_free((*p_tcp).m_data as *mut libc::c_void);
+    opj_free((*p_tcp).m_data as *mut core::ffi::c_void);
     (*p_tcp).m_data = 0 as *mut OPJ_BYTE;
     (*p_tcp).m_data_size = 0 as OPJ_UINT32
   };
@@ -9858,7 +9857,7 @@ unsafe fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
       l_current_tile = l_current_tile.offset(1);
       i += 1;
     }
-    opj_free((*p_cp).tcps as *mut libc::c_void);
+    opj_free((*p_cp).tcps as *mut core::ffi::c_void);
     (*p_cp).tcps = 0 as *mut opj_tcp_t
   }
   if !(*p_cp).ppm_markers.is_null() {
@@ -9866,21 +9865,21 @@ unsafe fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
     i_0 = 0u32;
     while i_0 < (*p_cp).ppm_markers_count {
       if !(*(*p_cp).ppm_markers.offset(i_0 as isize)).m_data.is_null() {
-        opj_free((*(*p_cp).ppm_markers.offset(i_0 as isize)).m_data as *mut libc::c_void);
+        opj_free((*(*p_cp).ppm_markers.offset(i_0 as isize)).m_data as *mut core::ffi::c_void);
       }
       i_0 += 1;
     }
     (*p_cp).ppm_markers_count = 0u32;
-    opj_free((*p_cp).ppm_markers as *mut libc::c_void);
+    opj_free((*p_cp).ppm_markers as *mut core::ffi::c_void);
     (*p_cp).ppm_markers = 0 as *mut opj_ppx
   }
-  opj_free((*p_cp).ppm_buffer as *mut libc::c_void);
+  opj_free((*p_cp).ppm_buffer as *mut core::ffi::c_void);
   (*p_cp).ppm_buffer = 0 as *mut OPJ_BYTE;
   (*p_cp).ppm_data = 0 as *mut OPJ_BYTE;
-  opj_free((*p_cp).comment as *mut libc::c_void);
+  opj_free((*p_cp).comment as *mut core::ffi::c_void);
   (*p_cp).comment = 0 as *mut OPJ_CHAR;
   if (*p_cp).m_is_decoder() == 0 {
-    opj_free((*p_cp).m_specific_param.m_enc.m_matrice as *mut libc::c_void);
+    opj_free((*p_cp).m_specific_param.m_enc.m_matrice as *mut core::ffi::c_void);
     (*p_cp).m_specific_param.m_enc.m_matrice = 0 as *mut OPJ_INT32
   };
 }
@@ -9969,7 +9968,7 @@ unsafe fn opj_j2k_need_nb_tile_parts_correction(
       );
       return 0i32;
     }
-    l_marker_size = (l_marker_size as libc::c_uint).wrapping_sub(2u32)
+    l_marker_size = (l_marker_size as core::ffi::c_uint).wrapping_sub(2u32)
       as OPJ_UINT32;
     if opj_stream_read_data(
       p_stream,
@@ -10007,7 +10006,7 @@ unsafe fn opj_j2k_need_nb_tile_parts_correction(
       return 1i32;
     }
     l_tot_len =
-      (l_tot_len as libc::c_uint).wrapping_sub(12u32) as OPJ_UINT32;
+      (l_tot_len as core::ffi::c_uint).wrapping_sub(12u32) as OPJ_UINT32;
     /* look for next SOT marker */
     if opj_stream_skip(p_stream, l_tot_len as OPJ_OFF_T, p_manager) != l_tot_len as OPJ_OFF_T {
       /* assume all is OK */
@@ -10106,11 +10105,11 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
             != J2KState::NONE
           {
             (*p_j2k).m_specific_param.m_decoder.m_sot_length =
-              ((*p_j2k).m_specific_param.m_decoder.m_sot_length as libc::c_uint)
+              ((*p_j2k).m_specific_param.m_decoder.m_sot_length as core::ffi::c_uint)
                 .wrapping_sub(l_marker_size.wrapping_add(2u32))
                 as OPJ_UINT32
           } /* Subtract the size of the marker ID already read */
-          l_marker_size = (l_marker_size as libc::c_uint)
+          l_marker_size = (l_marker_size as core::ffi::c_uint)
             .wrapping_sub(2u32) as OPJ_UINT32
             as OPJ_UINT32;
           /* Get the marker handler from the marker ID */
@@ -10135,11 +10134,11 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
               return 0i32;
             }
             new_header_data = opj_realloc(
-              (*p_j2k).m_specific_param.m_decoder.m_header_data as *mut libc::c_void,
+              (*p_j2k).m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void,
               l_marker_size as size_t,
             ) as *mut OPJ_BYTE;
             if new_header_data.is_null() {
-              opj_free((*p_j2k).m_specific_param.m_decoder.m_header_data as *mut libc::c_void);
+              opj_free((*p_j2k).m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void);
               (*p_j2k).m_specific_param.m_decoder.m_header_data = 0 as *mut OPJ_BYTE;
               (*p_j2k).m_specific_param.m_decoder.m_header_data_size =
                 0 as OPJ_UINT32;
@@ -10251,7 +10250,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
       if opj_j2k_read_sod(p_j2k, p_stream, p_manager) == 0 {
         return 0i32;
       }
-      if (*p_j2k).m_specific_param.m_decoder.m_can_decode() as libc::c_int != 0
+      if (*p_j2k).m_specific_param.m_decoder.m_can_decode() as core::ffi::c_int != 0
         && (*p_j2k)
           .m_specific_param
           .m_decoder
@@ -10293,7 +10292,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
             {
               let ref mut fresh33 =
                 (*(*p_j2k).m_cp.tcps.offset(l_tile_no as isize)).m_nb_tile_parts;
-              *fresh33 = (*fresh33 as libc::c_uint).wrapping_add(1u32)
+              *fresh33 = (*fresh33 as core::ffi::c_uint).wrapping_add(1u32)
                 as OPJ_UINT32
             }
             l_tile_no += 1;
@@ -10758,7 +10757,7 @@ unsafe fn opj_j2k_update_image_data(
           }
           if (*l_img_comp_dest).w != l_width_dest || (*l_img_comp_dest).h != l_height_dest {
             memset(
-              (*l_img_comp_dest).data as *mut libc::c_void,
+              (*l_img_comp_dest).data as *mut core::ffi::c_void,
               0i32,
               ((*l_img_comp_dest).w as OPJ_SIZE_T)
                 .wrapping_mul((*l_img_comp_dest).h as usize)
@@ -10773,8 +10772,8 @@ unsafe fn opj_j2k_update_image_data(
         j = 0 as OPJ_UINT32;
         while j < l_height_dest {
           memcpy(
-            l_dest_ptr as *mut libc::c_void,
-            l_src_ptr as *const libc::c_void,
+            l_dest_ptr as *mut core::ffi::c_void,
+            l_src_ptr as *const core::ffi::c_void,
             (l_width_dest as usize)
               .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
           );
@@ -10883,7 +10882,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_components(
         "Invalid component index: %u\n",
         *comps_indices.offset(i as isize),
       );
-      opj_free(already_mapped as *mut libc::c_void);
+      opj_free(already_mapped as *mut core::ffi::c_void);
       return 0i32;
     }
     if *already_mapped.offset(*comps_indices.offset(i as isize) as isize) != 0 {
@@ -10891,18 +10890,18 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_components(
         "Component index %u used several times\n",
         *comps_indices.offset(i as isize),
       );
-      opj_free(already_mapped as *mut libc::c_void);
+      opj_free(already_mapped as *mut core::ffi::c_void);
       return 0i32;
     }
     *already_mapped.offset(*comps_indices.offset(i as isize) as isize) = 1i32;
     i += 1;
   }
-  opj_free(already_mapped as *mut libc::c_void);
+  opj_free(already_mapped as *mut core::ffi::c_void);
   opj_free(
     (*p_j2k)
       .m_specific_param
       .m_decoder
-      .m_comps_indices_to_decode as *mut libc::c_void,
+      .m_comps_indices_to_decode as *mut core::ffi::c_void,
   );
   if numcomps != 0 {
     (*p_j2k)
@@ -10925,8 +10924,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_components(
       (*p_j2k)
         .m_specific_param
         .m_decoder
-        .m_comps_indices_to_decode as *mut libc::c_void,
-      comps_indices as *const libc::c_void,
+        .m_comps_indices_to_decode as *mut core::ffi::c_void,
+      comps_indices as *const core::ffi::c_void,
       (numcomps as usize)
         .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize),
     );
@@ -11202,7 +11201,7 @@ unsafe fn opj_j2k_create_cstr_index() -> *mut opj_codestream_index_t {
     core::mem::size_of::<opj_marker_info_t>() as usize,
   ) as *mut opj_marker_info_t;
   if (*cstr_index).marker.is_null() {
-    opj_free(cstr_index as *mut libc::c_void);
+    opj_free(cstr_index as *mut core::ffi::c_void);
     return 0 as *mut opj_codestream_index_t;
   }
   (*cstr_index).tile_index = 0 as *mut opj_tile_index_t;
@@ -11467,7 +11466,7 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
     1 as OPJ_UINT32,
   );
   l_current_ptr = l_current_ptr.offset(1);
-  (*l_tccp).cblkw = ((*l_tccp).cblkw as libc::c_uint).wrapping_add(2u32)
+  (*l_tccp).cblkw = ((*l_tccp).cblkw as core::ffi::c_uint).wrapping_add(2u32)
     as OPJ_UINT32;
   /* SPcod (F) / SPcoc (C) */
   opj_read_bytes_LE(
@@ -11476,7 +11475,7 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
     1 as OPJ_UINT32,
   );
   l_current_ptr = l_current_ptr.offset(1);
-  (*l_tccp).cblkh = ((*l_tccp).cblkh as libc::c_uint).wrapping_add(2u32)
+  (*l_tccp).cblkh = ((*l_tccp).cblkh as core::ffi::c_uint).wrapping_add(2u32)
     as OPJ_UINT32;
   if (*l_tccp).cblkw > 10u32
     || (*l_tccp).cblkh > 10u32
@@ -11590,13 +11589,13 @@ unsafe fn opj_j2k_copy_tile_component_parameters(mut p_j2k: *mut opj_j2k_t) {
     (*l_copied_tccp).cblksty = (*l_ref_tccp).cblksty;
     (*l_copied_tccp).qmfbid = (*l_ref_tccp).qmfbid;
     memcpy(
-      (*l_copied_tccp).prcw.as_mut_ptr() as *mut libc::c_void,
-      (*l_ref_tccp).prcw.as_mut_ptr() as *const libc::c_void,
+      (*l_copied_tccp).prcw.as_mut_ptr() as *mut core::ffi::c_void,
+      (*l_ref_tccp).prcw.as_mut_ptr() as *const core::ffi::c_void,
       l_prc_size as usize,
     );
     memcpy(
-      (*l_copied_tccp).prch.as_mut_ptr() as *mut libc::c_void,
-      (*l_ref_tccp).prch.as_mut_ptr() as *const libc::c_void,
+      (*l_copied_tccp).prch.as_mut_ptr() as *mut core::ffi::c_void,
+      (*l_ref_tccp).prch.as_mut_ptr() as *const core::ffi::c_void,
       l_prc_size as usize,
     );
     l_copied_tccp = l_copied_tccp.offset(1);
@@ -11872,7 +11871,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
     );
     return 0i32;
   }
-  *p_header_size = (*p_header_size as libc::c_uint).wrapping_sub(1u32)
+  *p_header_size = (*p_header_size as core::ffi::c_uint).wrapping_sub(1u32)
     as OPJ_UINT32;
   opj_read_bytes_LE(l_current_ptr, &mut l_tmp, 1 as OPJ_UINT32);
   l_current_ptr = l_current_ptr.offset(1);
@@ -11886,7 +11885,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
     } else {
       (*p_header_size).wrapping_div(2u32)
     };
-    if l_num_band > (3i32 * 33i32 - 2i32) as libc::c_uint {
+    if l_num_band > (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
       event_msg!(p_manager, EVT_WARNING,
                           "While reading CCP_QNTSTY element inside QCD or QCC marker segment, number of subbands (%d) is greater to OPJ_J2K_MAXBANDS (%d). So we limit the number of elements stored to OPJ_J2K_MAXBANDS (%d) and skip the rest. \n", l_num_band,
                           3i32 * 33i32 -
@@ -11902,7 +11901,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
     while l_band_no < l_num_band {
       opj_read_bytes_LE(l_current_ptr, &mut l_tmp, 1 as OPJ_UINT32); /* SPqcx_i */
       l_current_ptr = l_current_ptr.offset(1);
-      if l_band_no < (3i32 * 33i32 - 2i32) as libc::c_uint {
+      if l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
         (*l_tccp).stepsizes[l_band_no as usize].expn = (l_tmp >> 3i32) as OPJ_INT32;
         (*l_tccp).stepsizes[l_band_no as usize].mant = 0i32
       }
@@ -11914,7 +11913,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
     while l_band_no < l_num_band {
       opj_read_bytes_LE(l_current_ptr, &mut l_tmp, 2 as OPJ_UINT32);
       l_current_ptr = l_current_ptr.offset(2);
-      if l_band_no < (3i32 * 33i32 - 2i32) as libc::c_uint {
+      if l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
         (*l_tccp).stepsizes[l_band_no as usize].expn = (l_tmp >> 11i32) as OPJ_INT32;
         (*l_tccp).stepsizes[l_band_no as usize].mant =
           (l_tmp & 0x7ffu32) as OPJ_INT32
@@ -11927,7 +11926,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
   /* Add Antonin : if scalar_derived -> compute other stepsizes */
   if (*l_tccp).qntsty == 1u32 {
     l_band_no = 1 as OPJ_UINT32;
-    while l_band_no < (3i32 * 33i32 - 2i32) as libc::c_uint {
+    while l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
       (*l_tccp).stepsizes[l_band_no as usize].expn =
         if (*l_tccp).stepsizes[0 as usize].expn
           - l_band_no
@@ -11981,8 +11980,8 @@ unsafe fn opj_j2k_copy_tile_quantization_parameters(mut p_j2k: *mut opj_j2k_t) {
     (*l_copied_tccp).qntsty = (*l_ref_tccp).qntsty;
     (*l_copied_tccp).numgbits = (*l_ref_tccp).numgbits;
     memcpy(
-      (*l_copied_tccp).stepsizes.as_mut_ptr() as *mut libc::c_void,
-      (*l_ref_tccp).stepsizes.as_mut_ptr() as *const libc::c_void,
+      (*l_copied_tccp).stepsizes.as_mut_ptr() as *mut core::ffi::c_void,
+      (*l_ref_tccp).stepsizes.as_mut_ptr() as *const core::ffi::c_void,
       l_size as usize,
     );
     l_copied_tccp = l_copied_tccp.offset(1);
@@ -11998,26 +11997,26 @@ unsafe fn opj_j2k_dump_tile_info(
     let mut compno: OPJ_INT32 = 0;
     fprintf(
       out_stream,
-      b"\t default tile {\n\x00" as *const u8 as *const libc::c_char,
+      b"\t default tile {\n\x00" as *const u8 as *const core::ffi::c_char,
     );
     fprintf(
       out_stream,
-      b"\t\t csty=%#x\n\x00" as *const u8 as *const libc::c_char,
+      b"\t\t csty=%#x\n\x00" as *const u8 as *const core::ffi::c_char,
       (*l_default_tile).csty,
     );
     fprintf(
       out_stream,
-      b"\t\t prg=%#x\n\x00" as *const u8 as *const libc::c_char,
-      (*l_default_tile).prg as libc::c_int,
+      b"\t\t prg=%#x\n\x00" as *const u8 as *const core::ffi::c_char,
+      (*l_default_tile).prg as core::ffi::c_int,
     );
     fprintf(
       out_stream,
-      b"\t\t numlayers=%d\n\x00" as *const u8 as *const libc::c_char,
+      b"\t\t numlayers=%d\n\x00" as *const u8 as *const core::ffi::c_char,
       (*l_default_tile).numlayers,
     );
     fprintf(
       out_stream,
-      b"\t\t mct=%x\n\x00" as *const u8 as *const libc::c_char,
+      b"\t\t mct=%x\n\x00" as *const u8 as *const core::ffi::c_char,
       (*l_default_tile).mct,
     );
     /*end of default tile*/
@@ -12031,68 +12030,68 @@ unsafe fn opj_j2k_dump_tile_info(
       /* coding style*/
       fprintf(
         out_stream,
-        b"\t\t comp %d {\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t comp %d {\n\x00" as *const u8 as *const core::ffi::c_char,
         compno,
       );
       fprintf(
         out_stream,
-        b"\t\t\t csty=%#x\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t csty=%#x\n\x00" as *const u8 as *const core::ffi::c_char,
         (*l_tccp).csty,
       );
       fprintf(
         out_stream,
-        b"\t\t\t numresolutions=%d\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t numresolutions=%d\n\x00" as *const u8 as *const core::ffi::c_char,
         (*l_tccp).numresolutions,
       );
       fprintf(
         out_stream,
-        b"\t\t\t cblkw=2^%d\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t cblkw=2^%d\n\x00" as *const u8 as *const core::ffi::c_char,
         (*l_tccp).cblkw,
       );
       fprintf(
         out_stream,
-        b"\t\t\t cblkh=2^%d\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t cblkh=2^%d\n\x00" as *const u8 as *const core::ffi::c_char,
         (*l_tccp).cblkh,
       );
       fprintf(
         out_stream,
-        b"\t\t\t cblksty=%#x\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t cblksty=%#x\n\x00" as *const u8 as *const core::ffi::c_char,
         (*l_tccp).cblksty,
       );
       fprintf(
         out_stream,
-        b"\t\t\t qmfbid=%d\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t qmfbid=%d\n\x00" as *const u8 as *const core::ffi::c_char,
         (*l_tccp).qmfbid,
       );
       fprintf(
         out_stream,
-        b"\t\t\t preccintsize (w,h)=\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t preccintsize (w,h)=\x00" as *const u8 as *const core::ffi::c_char,
       );
       resno = 0 as OPJ_UINT32;
       while resno < (*l_tccp).numresolutions {
         fprintf(
           out_stream,
-          b"(%d,%d) \x00" as *const u8 as *const libc::c_char,
+          b"(%d,%d) \x00" as *const u8 as *const core::ffi::c_char,
           (*l_tccp).prcw[resno as usize],
           (*l_tccp).prch[resno as usize],
         );
         resno += 1;
       }
-      fprintf(out_stream, b"\n\x00" as *const u8 as *const libc::c_char);
+      fprintf(out_stream, b"\n\x00" as *const u8 as *const core::ffi::c_char);
       /* quantization style*/
       fprintf(
         out_stream,
-        b"\t\t\t qntsty=%d\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t qntsty=%d\n\x00" as *const u8 as *const core::ffi::c_char,
         (*l_tccp).qntsty,
       );
       fprintf(
         out_stream,
-        b"\t\t\t numgbits=%d\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t numgbits=%d\n\x00" as *const u8 as *const core::ffi::c_char,
         (*l_tccp).numgbits,
       );
       fprintf(
         out_stream,
-        b"\t\t\t stepsizes (m,e)=\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t stepsizes (m,e)=\x00" as *const u8 as *const core::ffi::c_char,
       );
       numbands = if (*l_tccp).qntsty == 1u32 {
         1i32
@@ -12103,28 +12102,28 @@ unsafe fn opj_j2k_dump_tile_info(
       while bandno < numbands {
         fprintf(
           out_stream,
-          b"(%d,%d) \x00" as *const u8 as *const libc::c_char,
+          b"(%d,%d) \x00" as *const u8 as *const core::ffi::c_char,
           (*l_tccp).stepsizes[bandno as usize].mant,
           (*l_tccp).stepsizes[bandno as usize].expn,
         );
         bandno += 1
       }
-      fprintf(out_stream, b"\n\x00" as *const u8 as *const libc::c_char);
+      fprintf(out_stream, b"\n\x00" as *const u8 as *const core::ffi::c_char);
       /* RGN value*/
       fprintf(
         out_stream,
-        b"\t\t\t roishift=%d\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t\t roishift=%d\n\x00" as *const u8 as *const core::ffi::c_char,
         (*l_tccp).roishift,
       );
       fprintf(
         out_stream,
-        b"\t\t }\n\x00" as *const u8 as *const libc::c_char,
+        b"\t\t }\n\x00" as *const u8 as *const core::ffi::c_char,
       );
       compno += 1
     }
     fprintf(
       out_stream,
-      b"\t }\n\x00" as *const u8 as *const libc::c_char,
+      b"\t }\n\x00" as *const u8 as *const core::ffi::c_char,
     );
   };
 }
@@ -12138,7 +12137,7 @@ pub(crate) unsafe extern "C" fn j2k_dump(
   if flag & 128i32 != 0 || flag & 256i32 != 0 {
     fprintf(
       out_stream,
-      b"Wrong flag\n\x00" as *const u8 as *const libc::c_char,
+      b"Wrong flag\n\x00" as *const u8 as *const core::ffi::c_char,
     );
     return;
   }
@@ -12188,26 +12187,26 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
   let mut it_tile_part: OPJ_UINT32 = 0;
   fprintf(
     out_stream,
-    b"Codestream index from main header: {\n\x00" as *const u8 as *const libc::c_char,
+    b"Codestream index from main header: {\n\x00" as *const u8 as *const core::ffi::c_char,
   );
   fprintf(
     out_stream,
     b"\t Main header start position=%li\n\t Main header end position=%li\n\x00" as *const u8
-      as *const libc::c_char,
+      as *const core::ffi::c_char,
     (*cstr_index).main_head_start,
     (*cstr_index).main_head_end,
   );
   fprintf(
     out_stream,
-    b"\t Marker list: {\n\x00" as *const u8 as *const libc::c_char,
+    b"\t Marker list: {\n\x00" as *const u8 as *const core::ffi::c_char,
   );
   if !(*cstr_index).marker.is_null() {
     it_marker = 0 as OPJ_UINT32;
     while it_marker < (*cstr_index).marknum {
       fprintf(
         out_stream,
-        b"\t\t type=%#x, pos=%li, len=%d\n\x00" as *const u8 as *const libc::c_char,
-        (*(*cstr_index).marker.offset(it_marker as isize)).type_ as libc::c_int,
+        b"\t\t type=%#x, pos=%li, len=%d\n\x00" as *const u8 as *const core::ffi::c_char,
+        (*(*cstr_index).marker.offset(it_marker as isize)).type_ as core::ffi::c_int,
         (*(*cstr_index).marker.offset(it_marker as isize)).pos,
         (*(*cstr_index).marker.offset(it_marker as isize)).len,
       );
@@ -12216,14 +12215,14 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
   }
   fprintf(
     out_stream,
-    b"\t }\n\x00" as *const u8 as *const libc::c_char,
+    b"\t }\n\x00" as *const u8 as *const core::ffi::c_char,
   );
   if !(*cstr_index).tile_index.is_null() {
     /* Simple test to avoid to write empty information*/
     let mut l_acc_nb_of_tile_part = 0 as OPJ_UINT32; /* Not fill from the main header*/
     it_tile = 0 as OPJ_UINT32;
     while it_tile < (*cstr_index).nb_of_tiles {
-      l_acc_nb_of_tile_part = (l_acc_nb_of_tile_part as libc::c_uint)
+      l_acc_nb_of_tile_part = (l_acc_nb_of_tile_part as core::ffi::c_uint)
         .wrapping_add((*(*cstr_index).tile_index.offset(it_tile as isize)).nb_tps)
         as OPJ_UINT32;
       it_tile += 1;
@@ -12231,14 +12230,14 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
     if l_acc_nb_of_tile_part != 0 {
       fprintf(
         out_stream,
-        b"\t Tile index: {\n\x00" as *const u8 as *const libc::c_char,
+        b"\t Tile index: {\n\x00" as *const u8 as *const core::ffi::c_char,
       );
       it_tile = 0 as OPJ_UINT32;
       while it_tile < (*cstr_index).nb_of_tiles {
         let mut nb_of_tile_part = (*(*cstr_index).tile_index.offset(it_tile as isize)).nb_tps;
         fprintf(
           out_stream,
-          b"\t\t nb of tile-part in tile [%d]=%d\n\x00" as *const u8 as *const libc::c_char,
+          b"\t\t nb of tile-part in tile [%d]=%d\n\x00" as *const u8 as *const core::ffi::c_char,
           it_tile,
           nb_of_tile_part,
         );
@@ -12251,7 +12250,7 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
             fprintf(
               out_stream,
               b"\t\t\t tile-part[%d]: star_pos=%li, end_header=%li, end_pos=%li.\n\x00" as *const u8
-                as *const libc::c_char,
+                as *const core::ffi::c_char,
               it_tile_part,
               (*(*(*cstr_index).tile_index.offset(it_tile as isize))
                 .tp_index
@@ -12277,11 +12276,11 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
           while it_marker < (*(*cstr_index).tile_index.offset(it_tile as isize)).marknum {
             fprintf(
               out_stream,
-              b"\t\t type=%#x, pos=%li, len=%d\n\x00" as *const u8 as *const libc::c_char,
+              b"\t\t type=%#x, pos=%li, len=%d\n\x00" as *const u8 as *const core::ffi::c_char,
               (*(*(*cstr_index).tile_index.offset(it_tile as isize))
                 .marker
                 .offset(it_marker as isize))
-              .type_ as libc::c_int,
+              .type_ as core::ffi::c_int,
               (*(*(*cstr_index).tile_index.offset(it_tile as isize))
                 .marker
                 .offset(it_marker as isize))
@@ -12298,32 +12297,32 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
       }
       fprintf(
         out_stream,
-        b"\t }\n\x00" as *const u8 as *const libc::c_char,
+        b"\t }\n\x00" as *const u8 as *const core::ffi::c_char,
       );
     }
   }
-  fprintf(out_stream, b"}\n\x00" as *const u8 as *const libc::c_char);
+  fprintf(out_stream, b"}\n\x00" as *const u8 as *const core::ffi::c_char);
 }
 unsafe fn opj_j2k_dump_MH_info(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut FILE) {
   fprintf(
     out_stream,
-    b"Codestream info from main header: {\n\x00" as *const u8 as *const libc::c_char,
+    b"Codestream info from main header: {\n\x00" as *const u8 as *const core::ffi::c_char,
   );
   fprintf(
     out_stream,
-    b"\t tx0=%d, ty0=%d\n\x00" as *const u8 as *const libc::c_char,
+    b"\t tx0=%d, ty0=%d\n\x00" as *const u8 as *const core::ffi::c_char,
     (*p_j2k).m_cp.tx0,
     (*p_j2k).m_cp.ty0,
   );
   fprintf(
     out_stream,
-    b"\t tdx=%d, tdy=%d\n\x00" as *const u8 as *const libc::c_char,
+    b"\t tdx=%d, tdy=%d\n\x00" as *const u8 as *const core::ffi::c_char,
     (*p_j2k).m_cp.tdx,
     (*p_j2k).m_cp.tdy,
   );
   fprintf(
     out_stream,
-    b"\t tw=%d, th=%d\n\x00" as *const u8 as *const libc::c_char,
+    b"\t tw=%d, th=%d\n\x00" as *const u8 as *const core::ffi::c_char,
     (*p_j2k).m_cp.tw,
     (*p_j2k).m_cp.th,
   );
@@ -12332,7 +12331,7 @@ unsafe fn opj_j2k_dump_MH_info(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut F
     (*(*p_j2k).m_private_image).numcomps as OPJ_INT32,
     out_stream,
   );
-  fprintf(out_stream, b"}\n\x00" as *const u8 as *const libc::c_char);
+  fprintf(out_stream, b"}\n\x00" as *const u8 as *const core::ffi::c_char);
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn j2k_dump_image_header(
@@ -12340,38 +12339,38 @@ pub(crate) unsafe extern "C" fn j2k_dump_image_header(
   mut dev_dump_flag: OPJ_BOOL,
   mut out_stream: *mut FILE,
 ) {
-  let mut tab: [libc::c_char; 2] = [0; 2];
+  let mut tab: [core::ffi::c_char; 2] = [0; 2];
   if dev_dump_flag != 0 {
     fprintf(
       stdout,
-      b"[DEV] Dump an image_header struct {\n\x00" as *const u8 as *const libc::c_char,
+      b"[DEV] Dump an image_header struct {\n\x00" as *const u8 as *const core::ffi::c_char,
     );
-    tab[0 as usize] = '\u{0}' as i32 as libc::c_char
+    tab[0 as usize] = '\u{0}' as i32 as core::ffi::c_char
   } else {
     fprintf(
       out_stream,
-      b"Image info {\n\x00" as *const u8 as *const libc::c_char,
+      b"Image info {\n\x00" as *const u8 as *const core::ffi::c_char,
     );
-    tab[0 as usize] = '\t' as i32 as libc::c_char;
-    tab[1 as usize] = '\u{0}' as i32 as libc::c_char
+    tab[0 as usize] = '\t' as i32 as core::ffi::c_char;
+    tab[1 as usize] = '\u{0}' as i32 as core::ffi::c_char
   }
   fprintf(
     out_stream,
-    b"%s x0=%d, y0=%d\n\x00" as *const u8 as *const libc::c_char,
+    b"%s x0=%d, y0=%d\n\x00" as *const u8 as *const core::ffi::c_char,
     tab.as_mut_ptr(),
     (*img_header).x0,
     (*img_header).y0,
   );
   fprintf(
     out_stream,
-    b"%s x1=%d, y1=%d\n\x00" as *const u8 as *const libc::c_char,
+    b"%s x1=%d, y1=%d\n\x00" as *const u8 as *const core::ffi::c_char,
     tab.as_mut_ptr(),
     (*img_header).x1,
     (*img_header).y1,
   );
   fprintf(
     out_stream,
-    b"%s numcomps=%d\n\x00" as *const u8 as *const libc::c_char,
+    b"%s numcomps=%d\n\x00" as *const u8 as *const core::ffi::c_char,
     tab.as_mut_ptr(),
     (*img_header).numcomps,
   );
@@ -12381,7 +12380,7 @@ pub(crate) unsafe extern "C" fn j2k_dump_image_header(
     while compno < (*img_header).numcomps {
       fprintf(
         out_stream,
-        b"%s\t component %d {\n\x00" as *const u8 as *const libc::c_char,
+        b"%s\t component %d {\n\x00" as *const u8 as *const core::ffi::c_char,
         tab.as_mut_ptr(),
         compno,
       );
@@ -12392,13 +12391,13 @@ pub(crate) unsafe extern "C" fn j2k_dump_image_header(
       );
       fprintf(
         out_stream,
-        b"%s}\n\x00" as *const u8 as *const libc::c_char,
+        b"%s}\n\x00" as *const u8 as *const core::ffi::c_char,
         tab.as_mut_ptr(),
       );
       compno += 1;
     }
   }
-  fprintf(out_stream, b"}\n\x00" as *const u8 as *const libc::c_char);
+  fprintf(out_stream, b"}\n\x00" as *const u8 as *const core::ffi::c_char);
 }
 #[no_mangle]
 pub(crate) unsafe extern "C" fn j2k_dump_image_comp_header(
@@ -12406,39 +12405,39 @@ pub(crate) unsafe extern "C" fn j2k_dump_image_comp_header(
   mut dev_dump_flag: OPJ_BOOL,
   mut out_stream: *mut FILE,
 ) {
-  let mut tab: [libc::c_char; 3] = [0; 3];
+  let mut tab: [core::ffi::c_char; 3] = [0; 3];
   if dev_dump_flag != 0 {
     fprintf(
       stdout,
-      b"[DEV] Dump an image_comp_header struct {\n\x00" as *const u8 as *const libc::c_char,
+      b"[DEV] Dump an image_comp_header struct {\n\x00" as *const u8 as *const core::ffi::c_char,
     );
-    tab[0 as usize] = '\u{0}' as i32 as libc::c_char
+    tab[0 as usize] = '\u{0}' as i32 as core::ffi::c_char
   } else {
-    tab[0 as usize] = '\t' as i32 as libc::c_char;
-    tab[1 as usize] = '\t' as i32 as libc::c_char;
-    tab[2 as usize] = '\u{0}' as i32 as libc::c_char
+    tab[0 as usize] = '\t' as i32 as core::ffi::c_char;
+    tab[1 as usize] = '\t' as i32 as core::ffi::c_char;
+    tab[2 as usize] = '\u{0}' as i32 as core::ffi::c_char
   }
   fprintf(
     out_stream,
-    b"%s dx=%d, dy=%d\n\x00" as *const u8 as *const libc::c_char,
+    b"%s dx=%d, dy=%d\n\x00" as *const u8 as *const core::ffi::c_char,
     tab.as_mut_ptr(),
     (*comp_header).dx,
     (*comp_header).dy,
   );
   fprintf(
     out_stream,
-    b"%s prec=%d\n\x00" as *const u8 as *const libc::c_char,
+    b"%s prec=%d\n\x00" as *const u8 as *const core::ffi::c_char,
     tab.as_mut_ptr(),
     (*comp_header).prec,
   );
   fprintf(
     out_stream,
-    b"%s sgnd=%d\n\x00" as *const u8 as *const libc::c_char,
+    b"%s sgnd=%d\n\x00" as *const u8 as *const core::ffi::c_char,
     tab.as_mut_ptr(),
     (*comp_header).sgnd,
   );
   if dev_dump_flag != 0 {
-    fprintf(out_stream, b"}\n\x00" as *const u8 as *const libc::c_char);
+    fprintf(out_stream, b"}\n\x00" as *const u8 as *const core::ffi::c_char);
   };
 }
 #[no_mangle]
@@ -12496,13 +12495,13 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_info(
     (*l_tccp_info).qmfbid = (*l_tccp).qmfbid;
     if (*l_tccp).numresolutions < 33u32 {
       memcpy(
-        (*l_tccp_info).prch.as_mut_ptr() as *mut libc::c_void,
-        (*l_tccp).prch.as_mut_ptr() as *const libc::c_void,
+        (*l_tccp_info).prch.as_mut_ptr() as *mut core::ffi::c_void,
+        (*l_tccp).prch.as_mut_ptr() as *const core::ffi::c_void,
         (*l_tccp).numresolutions as usize,
       );
       memcpy(
-        (*l_tccp_info).prcw.as_mut_ptr() as *mut libc::c_void,
-        (*l_tccp).prcw.as_mut_ptr() as *const libc::c_void,
+        (*l_tccp_info).prcw.as_mut_ptr() as *mut core::ffi::c_void,
+        (*l_tccp).prcw.as_mut_ptr() as *const core::ffi::c_void,
         (*l_tccp).numresolutions as usize,
       );
     }
@@ -12550,18 +12549,18 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
       .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
   ) as *mut opj_marker_info_t;
   if (*l_cstr_index).marker.is_null() {
-    opj_free(l_cstr_index as *mut libc::c_void);
+    opj_free(l_cstr_index as *mut core::ffi::c_void);
     return 0 as *mut opj_codestream_index_t;
   }
   if !(*(*p_j2k).cstr_index).marker.is_null() {
     memcpy(
-      (*l_cstr_index).marker as *mut libc::c_void,
-      (*(*p_j2k).cstr_index).marker as *const libc::c_void,
+      (*l_cstr_index).marker as *mut core::ffi::c_void,
+      (*(*p_j2k).cstr_index).marker as *const core::ffi::c_void,
       ((*l_cstr_index).marknum as usize)
         .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
     );
   } else {
-    opj_free((*l_cstr_index).marker as *mut libc::c_void);
+    opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
     (*l_cstr_index).marker = 0 as *mut opj_marker_info_t
   }
   (*l_cstr_index).nb_of_tiles = (*(*p_j2k).cstr_index).nb_of_tiles;
@@ -12570,12 +12569,12 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
     core::mem::size_of::<opj_tile_index_t>() as usize,
   ) as *mut opj_tile_index_t;
   if (*l_cstr_index).tile_index.is_null() {
-    opj_free((*l_cstr_index).marker as *mut libc::c_void);
-    opj_free(l_cstr_index as *mut libc::c_void);
+    opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
+    opj_free(l_cstr_index as *mut core::ffi::c_void);
     return 0 as *mut opj_codestream_index_t;
   }
   if (*(*p_j2k).cstr_index).tile_index.is_null() {
-    opj_free((*l_cstr_index).tile_index as *mut libc::c_void);
+    opj_free((*l_cstr_index).tile_index as *mut core::ffi::c_void);
     (*l_cstr_index).tile_index = 0 as *mut opj_tile_index_t
   } else {
     let mut it_tile = 0 as OPJ_UINT32;
@@ -12597,13 +12596,13 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
         it_tile_free = 0 as OPJ_UINT32;
         while it_tile_free < it_tile {
           opj_free(
-            (*(*l_cstr_index).tile_index.offset(it_tile_free as isize)).marker as *mut libc::c_void,
+            (*(*l_cstr_index).tile_index.offset(it_tile_free as isize)).marker as *mut core::ffi::c_void,
           );
           it_tile_free += 1;
         }
-        opj_free((*l_cstr_index).tile_index as *mut libc::c_void);
-        opj_free((*l_cstr_index).marker as *mut libc::c_void);
-        opj_free(l_cstr_index as *mut libc::c_void);
+        opj_free((*l_cstr_index).tile_index as *mut core::ffi::c_void);
+        opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
+        opj_free(l_cstr_index as *mut core::ffi::c_void);
         return 0 as *mut opj_codestream_index_t;
       }
       if !(*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize))
@@ -12611,15 +12610,15 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
         .is_null()
       {
         memcpy(
-          (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker as *mut libc::c_void,
+          (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
           (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).marker
-            as *const libc::c_void,
+            as *const core::ffi::c_void,
           ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).marknum as usize)
             .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
         );
       } else {
         opj_free(
-          (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker as *mut libc::c_void,
+          (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
         );
         let ref mut fresh35 = (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker;
         *fresh35 = 0 as *mut opj_marker_info_t
@@ -12641,17 +12640,17 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
         while it_tile_free_0 < it_tile {
           opj_free(
             (*(*l_cstr_index).tile_index.offset(it_tile_free_0 as isize)).marker
-              as *mut libc::c_void,
+              as *mut core::ffi::c_void,
           );
           opj_free(
             (*(*l_cstr_index).tile_index.offset(it_tile_free_0 as isize)).tp_index
-              as *mut libc::c_void,
+              as *mut core::ffi::c_void,
           );
           it_tile_free_0 += 1;
         }
-        opj_free((*l_cstr_index).tile_index as *mut libc::c_void);
-        opj_free((*l_cstr_index).marker as *mut libc::c_void);
-        opj_free(l_cstr_index as *mut libc::c_void);
+        opj_free((*l_cstr_index).tile_index as *mut core::ffi::c_void);
+        opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
+        opj_free(l_cstr_index as *mut core::ffi::c_void);
         return 0 as *mut opj_codestream_index_t;
       }
       if !(*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize))
@@ -12659,15 +12658,15 @@ pub(crate) unsafe extern "C" fn j2k_get_cstr_index(
         .is_null()
       {
         memcpy(
-          (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index as *mut libc::c_void,
+          (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index as *mut core::ffi::c_void,
           (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).tp_index
-            as *const libc::c_void,
+            as *const core::ffi::c_void,
           ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_tps as usize)
             .wrapping_mul(core::mem::size_of::<opj_tp_index_t>() as usize),
         );
       } else {
         opj_free(
-          (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index as *mut libc::c_void,
+          (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index as *mut core::ffi::c_void,
         );
         let ref mut fresh37 = (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index;
         *fresh37 = 0 as *mut opj_tp_index_t
@@ -12827,7 +12826,7 @@ unsafe extern "C" fn opj_j2k_decode_tiles(
     i = 0 as OPJ_UINT32;
     while i < (*(*p_j2k).m_output_image).numcomps {
       opj_image_data_free(
-        (*(*(*p_j2k).m_output_image).comps.offset(i as isize)).data as *mut libc::c_void,
+        (*(*(*p_j2k).m_output_image).comps.offset(i as isize)).data as *mut core::ffi::c_void,
       );
       let ref mut fresh40 = (*(*(*p_j2k).m_output_image).comps.offset(i as isize)).data;
       *fresh40 = (*(*(*(*(*p_j2k).m_tcd).tcd_image).tiles)
@@ -13174,7 +13173,7 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
     }
     compno = 0 as OPJ_UINT32;
     while compno < (*p_image).numcomps {
-      opj_image_data_free((*(*p_image).comps.offset(compno as isize)).data as *mut libc::c_void);
+      opj_image_data_free((*(*p_image).comps.offset(compno as isize)).data as *mut core::ffi::c_void);
       let ref mut fresh42 = (*(*p_image).comps.offset(compno as isize)).data;
       *fresh42 = 0 as *mut OPJ_INT32;
       compno += 1;
@@ -13187,9 +13186,9 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
         .m_comps_indices_to_decode
         .offset(compno as isize);
       memcpy(
-        &mut *newcomps.offset(compno as isize) as *mut opj_image_comp_t as *mut libc::c_void,
+        &mut *newcomps.offset(compno as isize) as *mut opj_image_comp_t as *mut core::ffi::c_void,
         &mut *(*(*p_j2k).m_output_image).comps.offset(src_compno as isize) as *mut opj_image_comp_t
-          as *const libc::c_void,
+          as *const core::ffi::c_void,
         core::mem::size_of::<opj_image_comp_t>() as usize,
       );
       (*newcomps.offset(compno as isize)).resno_decoded =
@@ -13206,21 +13205,21 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
         .data
         .is_null());
       opj_image_data_free(
-        (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data as *mut libc::c_void,
+        (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data as *mut core::ffi::c_void,
       );
       let ref mut fresh45 = (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data;
       *fresh45 = 0 as *mut OPJ_INT32;
       compno += 1;
     }
     (*p_image).numcomps = (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode;
-    opj_free((*p_image).comps as *mut libc::c_void);
+    opj_free((*p_image).comps as *mut core::ffi::c_void);
     (*p_image).comps = newcomps
   } else {
     compno = 0 as OPJ_UINT32;
     while compno < (*p_image).numcomps {
       (*(*p_image).comps.offset(compno as isize)).resno_decoded =
         (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).resno_decoded;
-      opj_image_data_free((*(*p_image).comps.offset(compno as isize)).data as *mut libc::c_void);
+      opj_image_data_free((*(*p_image).comps.offset(compno as isize)).data as *mut core::ffi::c_void);
       let ref mut fresh46 = (*(*p_image).comps.offset(compno as isize)).data;
       *fresh46 = (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data;
       let ref mut fresh47 = (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data;
@@ -13388,7 +13387,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_get_tile(
      * later in jp2.c */
     compno = (*(*p_j2k).m_private_image).numcomps;
     while compno < (*p_image).numcomps {
-      opj_image_data_free((*(*p_image).comps.offset(compno as isize)).data as *mut libc::c_void);
+      opj_image_data_free((*(*p_image).comps.offset(compno as isize)).data as *mut core::ffi::c_void);
       let ref mut fresh48 = (*(*p_image).comps.offset(compno as isize)).data;
       *fresh48 = 0 as *mut OPJ_INT32;
       compno += 1;
@@ -13460,10 +13459,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_resolution_factor(
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
   mut p_j2k: *mut opj_j2k_t,
-  mut p_options: *const *const libc::c_char,
+  mut p_options: *const *const core::ffi::c_char,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut p_option_iter = 0 as *const *const libc::c_char;
+  let mut p_option_iter = 0 as *const *const core::ffi::c_char;
   if p_options.is_null() {
     return 1i32;
   }
@@ -13471,19 +13470,19 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
   while !(*p_option_iter).is_null() {
     if strncmp(
       *p_option_iter,
-      b"PLT=\x00" as *const u8 as *const libc::c_char,
+      b"PLT=\x00" as *const u8 as *const core::ffi::c_char,
       4,
     ) == 0i32
     {
       if strcmp(
         *p_option_iter,
-        b"PLT=YES\x00" as *const u8 as *const libc::c_char,
+        b"PLT=YES\x00" as *const u8 as *const core::ffi::c_char,
       ) == 0i32
       {
         (*p_j2k).m_specific_param.m_encoder.m_PLT = 1i32
       } else if strcmp(
         *p_option_iter,
-        b"PLT=NO\x00" as *const u8 as *const libc::c_char,
+        b"PLT=NO\x00" as *const u8 as *const core::ffi::c_char,
       ) == 0i32
       {
         (*p_j2k).m_specific_param.m_encoder.m_PLT = 0i32
@@ -13497,19 +13496,19 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
       }
     } else if strncmp(
       *p_option_iter,
-      b"TLM=\x00" as *const u8 as *const libc::c_char,
+      b"TLM=\x00" as *const u8 as *const core::ffi::c_char,
       4,
     ) == 0i32
     {
       if strcmp(
         *p_option_iter,
-        b"TLM=YES\x00" as *const u8 as *const libc::c_char,
+        b"TLM=YES\x00" as *const u8 as *const core::ffi::c_char,
       ) == 0i32
       {
         (*p_j2k).m_specific_param.m_encoder.m_TLM = 1i32
       } else if strcmp(
         *p_option_iter,
-        b"TLM=NO\x00" as *const u8 as *const libc::c_char,
+        b"TLM=NO\x00" as *const u8 as *const core::ffi::c_char,
       ) == 0i32
       {
         (*p_j2k).m_specific_param.m_encoder.m_TLM = 0i32
@@ -13523,8 +13522,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
       }
     } else if strncmp(
       *p_option_iter,
-      b"GUARD_BITS=\x00" as *const u8 as *const libc::c_char,
-      strlen(b"GUARD_BITS=\x00" as *const u8 as *const libc::c_char),
+      b"GUARD_BITS=\x00" as *const u8 as *const core::ffi::c_char,
+      strlen(b"GUARD_BITS=\x00" as *const u8 as *const core::ffi::c_char),
     ) == 0i32
     {
       let mut tileno: OPJ_UINT32 = 0;
@@ -13533,7 +13532,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
       cp = cp;
       let mut numgbits = atoi(
         (*p_option_iter)
-          .offset(strlen(b"GUARD_BITS=\x00" as *const u8 as *const libc::c_char) as isize),
+          .offset(strlen(b"GUARD_BITS=\x00" as *const u8 as *const core::ffi::c_char) as isize),
       );
       if numgbits < 0i32 || numgbits > 7i32 {
         let tmp_str = unsafe { std::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
@@ -13595,7 +13594,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_encode(
   while i < l_nb_tiles {
     if opj_j2k_pre_write_tile(p_j2k, i, p_stream, p_manager) == 0 {
       if !l_current_data.is_null() {
-        opj_free(l_current_data as *mut libc::c_void);
+        opj_free(l_current_data as *mut core::ffi::c_void);
       }
       return 0i32;
     }
@@ -13613,7 +13612,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_encode(
           "Error allocating tile component data.",
         );
         if !l_current_data.is_null() {
-          opj_free(l_current_data as *mut libc::c_void);
+          opj_free(l_current_data as *mut core::ffi::c_void);
         }
         return 0i32;
       }
@@ -13623,10 +13622,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_encode(
     if l_reuse_data == 0 {
       if l_current_tile_size > l_max_tile_size {
         let mut l_new_current_data =
-          opj_realloc(l_current_data as *mut libc::c_void, l_current_tile_size) as *mut OPJ_BYTE;
+          opj_realloc(l_current_data as *mut core::ffi::c_void, l_current_tile_size) as *mut OPJ_BYTE;
         if l_new_current_data.is_null() {
           if !l_current_data.is_null() {
-            opj_free(l_current_data as *mut libc::c_void);
+            opj_free(l_current_data as *mut core::ffi::c_void);
           }
           event_msg!(p_manager, EVT_ERROR,
             "Not enough memory to encode all tiles\n",
@@ -13651,20 +13650,20 @@ pub(crate) unsafe extern "C" fn opj_j2k_encode(
         event_msg!(p_manager, EVT_ERROR,
           "Size mismatch between tile data and sent data.",
         );
-        opj_free(l_current_data as *mut libc::c_void);
+        opj_free(l_current_data as *mut core::ffi::c_void);
         return 0i32;
       }
     }
     if opj_j2k_post_write_tile(p_j2k, p_stream, p_manager) == 0 {
       if !l_current_data.is_null() {
-        opj_free(l_current_data as *mut libc::c_void);
+        opj_free(l_current_data as *mut core::ffi::c_void);
       }
       return 0i32;
     }
     i += 1;
   }
   if !l_current_data.is_null() {
-    opj_free(l_current_data as *mut libc::c_void);
+    opj_free(l_current_data as *mut core::ffi::c_void);
   }
   return 1i32;
 }
@@ -13786,7 +13785,7 @@ unsafe fn opj_get_tile_dimensions(
   *l_size_comp = (*l_img_comp).prec >> 3i32;
   l_remaining = (*l_img_comp).prec & 7u32;
   if l_remaining != 0 {
-    *l_size_comp = (*l_size_comp as libc::c_uint).wrapping_add(1u32)
+    *l_size_comp = (*l_size_comp as core::ffi::c_uint).wrapping_add(1u32)
       as OPJ_UINT32
   }
   if *l_size_comp == 3u32 {
@@ -13965,7 +13964,7 @@ unsafe fn opj_j2k_post_write_tile(
   }
   l_current_data = l_current_data.offset(l_nb_bytes_written as isize);
   l_available_data =
-    (l_available_data as libc::c_uint).wrapping_sub(l_nb_bytes_written) as OPJ_UINT32;
+    (l_available_data as core::ffi::c_uint).wrapping_sub(l_nb_bytes_written) as OPJ_UINT32;
   l_nb_bytes_written = 0 as OPJ_UINT32;
   if opj_j2k_write_all_tile_parts(
     p_j2k,
@@ -13979,7 +13978,7 @@ unsafe fn opj_j2k_post_write_tile(
     return 0i32;
   }
   l_available_data =
-    (l_available_data as libc::c_uint).wrapping_sub(l_nb_bytes_written) as OPJ_UINT32;
+    (l_available_data as core::ffi::c_uint).wrapping_sub(l_nb_bytes_written) as OPJ_UINT32;
   l_nb_bytes_written = l_tile_size.wrapping_sub(l_available_data);
   if opj_stream_write_data(
     p_stream,
@@ -14419,7 +14418,7 @@ unsafe fn opj_j2k_setup_header_writing(
     {
       return 0i32;
     }
-    if (*p_j2k).m_cp.rsiz as libc::c_int == 0x4i32 {
+    if (*p_j2k).m_cp.rsiz as core::ffi::c_int == 0x4i32 {
       if opj_procedure_list_add_procedure(
         (*p_j2k).m_procedure_list,
         core::mem::transmute::<
@@ -14497,7 +14496,7 @@ unsafe fn opj_j2k_setup_header_writing(
     }
   }
   /* DEVELOPER CORNER, insert your custom procedures */
-  if (*p_j2k).m_cp.rsiz as libc::c_int & (0x8000i32 | 0x100i32)
+  if (*p_j2k).m_cp.rsiz as core::ffi::c_int & (0x8000i32 | 0x100i32)
     == 0x8000i32 | 0x100i32
   {
     if opj_procedure_list_add_procedure(
@@ -14638,22 +14637,22 @@ unsafe extern "C" fn opj_j2k_write_first_tile_part(
   {
     return 0i32;
   }
-  l_nb_bytes_written = (l_nb_bytes_written as libc::c_uint).wrapping_add(l_current_nb_bytes_written)
+  l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint).wrapping_add(l_current_nb_bytes_written)
     as OPJ_UINT32;
   p_data = p_data.offset(l_current_nb_bytes_written as isize);
-  total_data_size = (total_data_size as libc::c_uint).wrapping_sub(l_current_nb_bytes_written)
+  total_data_size = (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written)
     as OPJ_UINT32;
-  if !((*l_cp).rsiz as libc::c_int >= 0x3i32
-    && (*l_cp).rsiz as libc::c_int <= 0x6i32)
+  if !((*l_cp).rsiz as core::ffi::c_int >= 0x3i32
+    && (*l_cp).rsiz as core::ffi::c_int <= 0x6i32)
   {
     if (*(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize)).POC() != 0 {
       l_current_nb_bytes_written = 0 as OPJ_UINT32;
       opj_j2k_write_poc_in_memory(p_j2k, p_data, &mut l_current_nb_bytes_written, p_manager);
-      l_nb_bytes_written = (l_nb_bytes_written as libc::c_uint)
+      l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
         .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
         as OPJ_UINT32;
       p_data = p_data.offset(l_current_nb_bytes_written as isize);
-      total_data_size = (total_data_size as libc::c_uint).wrapping_sub(l_current_nb_bytes_written)
+      total_data_size = (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written)
         as OPJ_UINT32
     }
   }
@@ -14670,7 +14669,7 @@ unsafe extern "C" fn opj_j2k_write_first_tile_part(
   {
     return 0i32;
   }
-  l_nb_bytes_written = (l_nb_bytes_written as libc::c_uint).wrapping_add(l_current_nb_bytes_written)
+  l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint).wrapping_add(l_current_nb_bytes_written)
     as OPJ_UINT32;
   *p_data_written = l_nb_bytes_written;
   /* Writing Psot in SOT marker */
@@ -14740,13 +14739,13 @@ unsafe extern "C" fn opj_j2k_write_all_tile_parts(
     {
       return 0i32;
     }
-    l_nb_bytes_written = (l_nb_bytes_written as libc::c_uint)
+    l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
       .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
       as OPJ_UINT32;
     p_data = p_data.offset(l_current_nb_bytes_written as isize);
-    total_data_size = (total_data_size as libc::c_uint).wrapping_sub(l_current_nb_bytes_written)
+    total_data_size = (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written)
       as OPJ_UINT32;
-    l_part_tile_size = (l_part_tile_size as libc::c_uint).wrapping_add(l_current_nb_bytes_written)
+    l_part_tile_size = (l_part_tile_size as core::ffi::c_uint).wrapping_add(l_current_nb_bytes_written)
       as OPJ_UINT32;
     l_current_nb_bytes_written = 0 as OPJ_UINT32;
     if opj_j2k_write_sod(
@@ -14762,12 +14761,12 @@ unsafe extern "C" fn opj_j2k_write_all_tile_parts(
       return 0i32;
     }
     p_data = p_data.offset(l_current_nb_bytes_written as isize);
-    l_nb_bytes_written = (l_nb_bytes_written as libc::c_uint)
+    l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
       .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
       as OPJ_UINT32;
-    total_data_size = (total_data_size as libc::c_uint).wrapping_sub(l_current_nb_bytes_written)
+    total_data_size = (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written)
       as OPJ_UINT32;
-    l_part_tile_size = (l_part_tile_size as libc::c_uint).wrapping_add(l_current_nb_bytes_written)
+    l_part_tile_size = (l_part_tile_size as core::ffi::c_uint).wrapping_add(l_current_nb_bytes_written)
       as OPJ_UINT32;
     /* Writing Psot in SOT marker */
     opj_write_bytes_LE(
@@ -14813,13 +14812,13 @@ unsafe extern "C" fn opj_j2k_write_all_tile_parts(
       {
         return 0i32;
       }
-      l_nb_bytes_written = (l_nb_bytes_written as libc::c_uint)
+      l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
         .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
         as OPJ_UINT32;
       p_data = p_data.offset(l_current_nb_bytes_written as isize);
-      total_data_size = (total_data_size as libc::c_uint).wrapping_sub(l_current_nb_bytes_written)
+      total_data_size = (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written)
         as OPJ_UINT32;
-      l_part_tile_size = (l_part_tile_size as libc::c_uint).wrapping_add(l_current_nb_bytes_written)
+      l_part_tile_size = (l_part_tile_size as core::ffi::c_uint).wrapping_add(l_current_nb_bytes_written)
         as OPJ_UINT32;
       l_current_nb_bytes_written = 0 as OPJ_UINT32;
       if opj_j2k_write_sod(
@@ -14834,13 +14833,13 @@ unsafe extern "C" fn opj_j2k_write_all_tile_parts(
       {
         return 0i32;
       }
-      l_nb_bytes_written = (l_nb_bytes_written as libc::c_uint)
+      l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
         .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
         as OPJ_UINT32;
       p_data = p_data.offset(l_current_nb_bytes_written as isize);
-      total_data_size = (total_data_size as libc::c_uint).wrapping_sub(l_current_nb_bytes_written)
+      total_data_size = (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written)
         as OPJ_UINT32;
-      l_part_tile_size = (l_part_tile_size as libc::c_uint).wrapping_add(l_current_nb_bytes_written)
+      l_part_tile_size = (l_part_tile_size as core::ffi::c_uint).wrapping_add(l_current_nb_bytes_written)
         as OPJ_UINT32;
       /* Writing Psot in SOT marker */
       opj_write_bytes_LE(
@@ -14937,7 +14936,7 @@ unsafe extern "C" fn opj_j2k_end_encoding(
     .m_tlm_sot_offsets_buffer
     .is_null()
   {
-    opj_free((*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer as *mut libc::c_void);
+    opj_free((*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer as *mut core::ffi::c_void);
     (*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = 0 as *mut OPJ_BYTE;
     (*p_j2k)
       .m_specific_param
@@ -14950,7 +14949,7 @@ unsafe extern "C" fn opj_j2k_end_encoding(
     .m_encoded_tile_data
     .is_null()
   {
-    opj_free((*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data as *mut libc::c_void);
+    opj_free((*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data as *mut core::ffi::c_void);
     (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data = 0 as *mut OPJ_BYTE
   }
   (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_size = 0 as OPJ_UINT32;
@@ -14977,7 +14976,7 @@ unsafe extern "C" fn opj_j2k_destroy_header_memory(
     .m_header_tile_data
     .is_null()
   {
-    opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
+    opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
     (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE
   }
   (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;

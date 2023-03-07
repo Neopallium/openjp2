@@ -2,11 +2,10 @@ use super::math::*;
 use super::openjpeg::*;
 use super::event::*;
 use super::j2k::*;
-use ::libc;
 
 use super::malloc::*;
 
-pub type T2_MODE = libc::c_uint;
+pub type T2_MODE = core::ffi::c_uint;
 pub const FINAL_PASS: T2_MODE = 1;
 pub const THRESH_CALC: T2_MODE = 0;
 pub type J2K_T2_MODE = T2_MODE;
@@ -549,7 +548,7 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             if (*pi).x < (*pi).poc.tx1 {
               (*pi).compno = (*pi).poc.compno0
             } else {
-              (*pi).y = ((*pi).y as libc::c_uint)
+              (*pi).y = ((*pi).y as core::ffi::c_uint)
                 .wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
                 as OPJ_UINT32;
               current_block = 6450636197030046351;
@@ -647,7 +646,7 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
           current_block = 2606304779496145856;
           break;
         } else {
-          (*pi).x = ((*pi).x as libc::c_uint)
+          (*pi).x = ((*pi).x as core::ffi::c_uint)
             .wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
             as OPJ_UINT32;
           current_block = 3123434771885419771;
@@ -809,7 +808,7 @@ unsafe fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
           if (*pi).x < (*pi).poc.tx1 {
             (*pi).compno = (*pi).poc.compno0
           } else {
-            (*pi).y = ((*pi).y as libc::c_uint)
+            (*pi).y = ((*pi).y as core::ffi::c_uint)
               .wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
               as OPJ_UINT32;
             current_block = 7245201122033322888;
@@ -852,7 +851,7 @@ unsafe fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
               comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
               (*pi).resno = (*pi).poc.resno0
             } else {
-              (*pi).x = ((*pi).x as libc::c_uint)
+              (*pi).x = ((*pi).x as core::ffi::c_uint)
                 .wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
                 as OPJ_UINT32;
               current_block = 8845338526596852646;
@@ -1142,7 +1141,7 @@ unsafe fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             if (*pi).x < (*pi).poc.tx1 {
               (*pi).resno = (*pi).poc.resno0
             } else {
-              (*pi).y = ((*pi).y as libc::c_uint)
+              (*pi).y = ((*pi).y as core::ffi::c_uint)
                 .wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
                 as OPJ_UINT32;
               current_block = 18153031941552419006;
@@ -1234,7 +1233,7 @@ unsafe fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
           current_block = 15594839951440953787;
           break;
         } else {
-          (*pi).x = ((*pi).x as libc::c_uint)
+          (*pi).x = ((*pi).x as core::ffi::c_uint)
             .wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
             as OPJ_UINT32;
           current_block = 10692455896603418738;
@@ -1960,7 +1959,7 @@ unsafe fn opj_pi_check_next_level(
           }
         }
         ProgressionStep::Precinct => {
-          match (*tcp).prg as libc::c_int {
+          match (*tcp).prg as core::ffi::c_int {
             0 | 1 => {
               /* fall through */
               if (*tcp).prc_t == (*tcp).prcE {
@@ -2067,14 +2066,14 @@ pub(crate) unsafe fn opj_pi_create_decode(
       .wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>() as usize),
   ) as *mut *mut OPJ_UINT32;
   if l_tmp_ptr.is_null() {
-    opj_free(l_tmp_data as *mut libc::c_void);
+    opj_free(l_tmp_data as *mut core::ffi::c_void);
     return 0 as *mut opj_pi_iterator_t;
   }
   /* memory allocation for pi */
   l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
   if l_pi.is_null() {
-    opj_free(l_tmp_data as *mut libc::c_void);
-    opj_free(l_tmp_ptr as *mut libc::c_void);
+    opj_free(l_tmp_data as *mut core::ffi::c_void);
+    opj_free(l_tmp_ptr as *mut core::ffi::c_void);
     return 0 as *mut opj_pi_iterator_t;
   }
   l_encoding_value_ptr = l_tmp_data;
@@ -2128,8 +2127,8 @@ pub(crate) unsafe fn opj_pi_create_decode(
     ) as *mut OPJ_INT16
   }
   if (*l_current_pi).include.is_null() {
-    opj_free(l_tmp_data as *mut libc::c_void);
-    opj_free(l_tmp_ptr as *mut libc::c_void);
+    opj_free(l_tmp_data as *mut core::ffi::c_void);
+    opj_free(l_tmp_ptr as *mut core::ffi::c_void);
     opj_pi_destroy(l_pi, l_bound);
     return 0 as *mut opj_pi_iterator_t;
   }
@@ -2230,9 +2229,9 @@ pub(crate) unsafe fn opj_pi_create_decode(
     l_current_pi = l_current_pi.offset(1);
     pino += 1;
   }
-  opj_free(l_tmp_data as *mut libc::c_void);
+  opj_free(l_tmp_data as *mut core::ffi::c_void);
   l_tmp_data = 0 as *mut OPJ_UINT32;
-  opj_free(l_tmp_ptr as *mut libc::c_void);
+  opj_free(l_tmp_ptr as *mut core::ffi::c_void);
   l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
   if (*l_tcp).POC() != 0 {
     opj_pi_update_decode_poc(l_pi, l_tcp, l_max_prec, l_max_res);
@@ -2343,14 +2342,14 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
       .wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>() as usize),
   ) as *mut *mut OPJ_UINT32;
   if l_tmp_ptr.is_null() {
-    opj_free(l_tmp_data as *mut libc::c_void);
+    opj_free(l_tmp_data as *mut core::ffi::c_void);
     return 0 as *mut opj_pi_iterator_t;
   }
   /* memory allocation for pi*/
   l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
   if l_pi.is_null() {
-    opj_free(l_tmp_data as *mut libc::c_void);
-    opj_free(l_tmp_ptr as *mut libc::c_void);
+    opj_free(l_tmp_data as *mut core::ffi::c_void);
+    opj_free(l_tmp_ptr as *mut core::ffi::c_void);
     return 0 as *mut opj_pi_iterator_t;
   }
   l_encoding_value_ptr = l_tmp_data;
@@ -2392,8 +2391,8 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
     core::mem::size_of::<OPJ_INT16>() as usize,
   ) as *mut OPJ_INT16;
   if (*l_current_pi).include.is_null() {
-    opj_free(l_tmp_data as *mut libc::c_void);
-    opj_free(l_tmp_ptr as *mut libc::c_void);
+    opj_free(l_tmp_data as *mut core::ffi::c_void);
+    opj_free(l_tmp_ptr as *mut core::ffi::c_void);
     opj_pi_destroy(l_pi, l_bound);
     return 0 as *mut opj_pi_iterator_t;
   }
@@ -2494,14 +2493,14 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
     l_current_pi = l_current_pi.offset(1);
     pino += 1;
   }
-  opj_free(l_tmp_data as *mut libc::c_void);
+  opj_free(l_tmp_data as *mut core::ffi::c_void);
   l_tmp_data = 0 as *mut OPJ_UINT32;
-  opj_free(l_tmp_ptr as *mut libc::c_void);
+  opj_free(l_tmp_ptr as *mut core::ffi::c_void);
   l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
-  if (*l_tcp).POC() as libc::c_int != 0
-    && ((*p_cp).rsiz as libc::c_int >= 0x3i32
-      && (*p_cp).rsiz as libc::c_int <= 0x6i32
-      || p_t2_mode as libc::c_uint == FINAL_PASS as libc::c_uint)
+  if (*l_tcp).POC() as core::ffi::c_int != 0
+    && ((*p_cp).rsiz as core::ffi::c_int >= 0x3i32
+      && (*p_cp).rsiz as core::ffi::c_int <= 0x6i32
+      || p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint)
   {
     opj_pi_update_encode_poc_and_final(
       p_cp, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min,
@@ -2533,16 +2532,16 @@ pub(crate) unsafe fn opj_pi_create_encode(
   let prog = opj_j2k_convert_progression_order((*tcp).prg);
   (*pi.offset(pino as isize)).first = 1i32;
   (*pi.offset(pino as isize)).poc.prg = (*tcp).prg;
-  if !((*cp).m_specific_param.m_enc.m_tp_on() as libc::c_int != 0
-    && (!((*cp).rsiz as libc::c_int >= 0x3i32
-      && (*cp).rsiz as libc::c_int <= 0x6i32)
-      && !((*cp).rsiz as libc::c_int >= 0x400i32
-        && (*cp).rsiz as libc::c_int <= 0x900i32 | 0x9bi32)
-      && t2_mode as libc::c_uint == FINAL_PASS as libc::c_uint
-      || (*cp).rsiz as libc::c_int >= 0x3i32
-        && (*cp).rsiz as libc::c_int <= 0x6i32
-      || (*cp).rsiz as libc::c_int >= 0x400i32
-        && (*cp).rsiz as libc::c_int <= 0x900i32 | 0x9bi32))
+  if !((*cp).m_specific_param.m_enc.m_tp_on() as core::ffi::c_int != 0
+    && (!((*cp).rsiz as core::ffi::c_int >= 0x3i32
+      && (*cp).rsiz as core::ffi::c_int <= 0x6i32)
+      && !((*cp).rsiz as core::ffi::c_int >= 0x400i32
+        && (*cp).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32)
+      && t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint
+      || (*cp).rsiz as core::ffi::c_int >= 0x3i32
+        && (*cp).rsiz as core::ffi::c_int <= 0x6i32
+      || (*cp).rsiz as core::ffi::c_int >= 0x400i32
+        && (*cp).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32))
   {
     (*pi.offset(pino as isize)).poc.resno0 = (*tcp).resS;
     (*pi.offset(pino as isize)).poc.resno1 = (*tcp).resE;
@@ -2572,7 +2571,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
           (*pi.offset(pino as isize)).poc.layno0 = (*tcp).layS;
           (*pi.offset(pino as isize)).poc.layno1 = (*tcp).layE
         }
-        ProgressionStep::Precinct => match (*tcp).prg as libc::c_int {
+        ProgressionStep::Precinct => match (*tcp).prg as core::ffi::c_int {
           0 | 1 => {
             (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prcS;
             (*pi.offset(pino as isize)).poc.precno1 = (*tcp).prcE
@@ -2597,7 +2596,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
             (*pi.offset(pino as isize)).poc.compno0 = (*tcp).comp_t;
             (*pi.offset(pino as isize)).poc.compno1 =
               (*tcp).comp_t.wrapping_add(1u32);
-            (*tcp).comp_t = ((*tcp).comp_t as libc::c_uint)
+            (*tcp).comp_t = ((*tcp).comp_t as core::ffi::c_uint)
               .wrapping_add(1u32)
               as OPJ_UINT32
           }
@@ -2606,7 +2605,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
             (*pi.offset(pino as isize)).poc.resno0 = (*tcp).res_t;
             (*pi.offset(pino as isize)).poc.resno1 =
               (*tcp).res_t.wrapping_add(1u32);
-            (*tcp).res_t = ((*tcp).res_t as libc::c_uint)
+            (*tcp).res_t = ((*tcp).res_t as core::ffi::c_uint)
               .wrapping_add(1u32)
               as OPJ_UINT32
           }
@@ -2615,17 +2614,17 @@ pub(crate) unsafe fn opj_pi_create_encode(
             (*pi.offset(pino as isize)).poc.layno0 = (*tcp).lay_t;
             (*pi.offset(pino as isize)).poc.layno1 =
               (*tcp).lay_t.wrapping_add(1u32);
-            (*tcp).lay_t = ((*tcp).lay_t as libc::c_uint)
+            (*tcp).lay_t = ((*tcp).lay_t as core::ffi::c_uint)
               .wrapping_add(1u32)
               as OPJ_UINT32
           }
-          ProgressionStep::Precinct => match (*tcp).prg as libc::c_int {
+          ProgressionStep::Precinct => match (*tcp).prg as core::ffi::c_int {
             0 | 1 => {
               (*tcp).prc_t = (*tcp).prcS;
               (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prc_t;
               (*pi.offset(pino as isize)).poc.precno1 =
                 (*tcp).prc_t.wrapping_add(1u32);
-              (*tcp).prc_t = ((*tcp).prc_t as libc::c_uint)
+              (*tcp).prc_t = ((*tcp).prc_t as core::ffi::c_uint)
                 .wrapping_add(1u32)
                 as OPJ_UINT32
             }
@@ -2670,7 +2669,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
               (*tcp).lay_t.wrapping_sub(1u32);
             (*pi.offset(pino as isize)).poc.layno1 = (*tcp).lay_t
           }
-          ProgressionStep::Precinct => match (*tcp).prg as libc::c_int {
+          ProgressionStep::Precinct => match (*tcp).prg as core::ffi::c_int {
             0 | 1 => {
               (*pi.offset(pino as isize)).poc.precno0 =
                 (*tcp).prc_t.wrapping_sub(1u32);
@@ -2700,7 +2699,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
                   (*pi.offset(pino as isize)).poc.resno0 = (*tcp).res_t;
                   (*pi.offset(pino as isize)).poc.resno1 =
                     (*tcp).res_t.wrapping_add(1u32);
-                  (*tcp).res_t = ((*tcp).res_t as libc::c_uint)
+                  (*tcp).res_t = ((*tcp).res_t as core::ffi::c_uint)
                     .wrapping_add(1u32)
                     as OPJ_UINT32;
                   incr_top = 1 as OPJ_UINT32
@@ -2711,7 +2710,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
                 (*pi.offset(pino as isize)).poc.resno0 = (*tcp).res_t;
                 (*pi.offset(pino as isize)).poc.resno1 =
                   (*tcp).res_t.wrapping_add(1u32);
-                (*tcp).res_t = ((*tcp).res_t as libc::c_uint)
+                (*tcp).res_t = ((*tcp).res_t as core::ffi::c_uint)
                   .wrapping_add(1u32)
                   as OPJ_UINT32;
                 incr_top = 0 as OPJ_UINT32
@@ -2724,7 +2723,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
                   (*pi.offset(pino as isize)).poc.compno0 = (*tcp).comp_t;
                   (*pi.offset(pino as isize)).poc.compno1 =
                     (*tcp).comp_t.wrapping_add(1u32);
-                  (*tcp).comp_t = ((*tcp).comp_t as libc::c_uint)
+                  (*tcp).comp_t = ((*tcp).comp_t as core::ffi::c_uint)
                     .wrapping_add(1u32)
                     as OPJ_UINT32;
                   incr_top = 1 as OPJ_UINT32
@@ -2735,7 +2734,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
                 (*pi.offset(pino as isize)).poc.compno0 = (*tcp).comp_t;
                 (*pi.offset(pino as isize)).poc.compno1 =
                   (*tcp).comp_t.wrapping_add(1u32);
-                (*tcp).comp_t = ((*tcp).comp_t as libc::c_uint)
+                (*tcp).comp_t = ((*tcp).comp_t as core::ffi::c_uint)
                   .wrapping_add(1u32)
                   as OPJ_UINT32;
                 incr_top = 0 as OPJ_UINT32
@@ -2748,7 +2747,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
                   (*pi.offset(pino as isize)).poc.layno0 = (*tcp).lay_t;
                   (*pi.offset(pino as isize)).poc.layno1 =
                     (*tcp).lay_t.wrapping_add(1u32);
-                  (*tcp).lay_t = ((*tcp).lay_t as libc::c_uint)
+                  (*tcp).lay_t = ((*tcp).lay_t as core::ffi::c_uint)
                     .wrapping_add(1u32)
                     as OPJ_UINT32;
                   incr_top = 1 as OPJ_UINT32
@@ -2759,13 +2758,13 @@ pub(crate) unsafe fn opj_pi_create_encode(
                 (*pi.offset(pino as isize)).poc.layno0 = (*tcp).lay_t;
                 (*pi.offset(pino as isize)).poc.layno1 =
                   (*tcp).lay_t.wrapping_add(1u32);
-                (*tcp).lay_t = ((*tcp).lay_t as libc::c_uint)
+                (*tcp).lay_t = ((*tcp).lay_t as core::ffi::c_uint)
                   .wrapping_add(1u32)
                   as OPJ_UINT32;
                 incr_top = 0 as OPJ_UINT32
               }
             }
-            ProgressionStep::Precinct => match (*tcp).prg as libc::c_int {
+            ProgressionStep::Precinct => match (*tcp).prg as core::ffi::c_int {
               0 | 1 => {
                 if (*tcp).prc_t == (*tcp).prcE {
                   if opj_pi_check_next_level(i - 1i32, cp, tileno, pino, prog) != 0 {
@@ -2773,7 +2772,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
                     (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prc_t;
                     (*pi.offset(pino as isize)).poc.precno1 =
                       (*tcp).prc_t.wrapping_add(1u32);
-                    (*tcp).prc_t = ((*tcp).prc_t as libc::c_uint)
+                    (*tcp).prc_t = ((*tcp).prc_t as core::ffi::c_uint)
                       .wrapping_add(1u32)
                       as OPJ_UINT32;
                     incr_top = 1 as OPJ_UINT32
@@ -2784,7 +2783,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
                   (*pi.offset(pino as isize)).poc.precno0 = (*tcp).prc_t;
                   (*pi.offset(pino as isize)).poc.precno1 =
                     (*tcp).prc_t.wrapping_add(1u32);
-                  (*tcp).prc_t = ((*tcp).prc_t as libc::c_uint)
+                  (*tcp).prc_t = ((*tcp).prc_t as core::ffi::c_uint)
                     .wrapping_add(1u32)
                     as OPJ_UINT32;
                   incr_top = 0 as OPJ_UINT32
@@ -2855,7 +2854,7 @@ pub(crate) unsafe fn opj_pi_destroy(
   let mut l_current_pi = p_pi;
   if !p_pi.is_null() {
     if !(*p_pi).include.is_null() {
-      opj_free((*p_pi).include as *mut libc::c_void);
+      opj_free((*p_pi).include as *mut core::ffi::c_void);
       (*p_pi).include = 0 as *mut OPJ_INT16
     }
     pino = 0 as OPJ_UINT32;
@@ -2865,19 +2864,19 @@ pub(crate) unsafe fn opj_pi_destroy(
         compno = 0 as OPJ_UINT32;
         while compno < (*l_current_pi).numcomps {
           if !(*l_current_component).resolutions.is_null() {
-            opj_free((*l_current_component).resolutions as *mut libc::c_void);
+            opj_free((*l_current_component).resolutions as *mut core::ffi::c_void);
             (*l_current_component).resolutions = 0 as *mut opj_pi_resolution_t
           }
           l_current_component = l_current_component.offset(1);
           compno += 1;
         }
-        opj_free((*l_current_pi).comps as *mut libc::c_void);
+        opj_free((*l_current_pi).comps as *mut core::ffi::c_void);
         (*l_current_pi).comps = 0 as *mut opj_pi_comp_t
       }
       l_current_pi = l_current_pi.offset(1);
       pino += 1;
     }
-    opj_free(p_pi as *mut libc::c_void);
+    opj_free(p_pi as *mut core::ffi::c_void);
   };
 }
 #[no_mangle]
@@ -2939,7 +2938,7 @@ pub(crate) unsafe fn opj_pi_update_encoding_parameters(
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_pi_next(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
-  match (*pi).poc.prg as libc::c_int {
+  match (*pi).poc.prg as core::ffi::c_int {
     0 => return opj_pi_next_lrcp(pi),
     1 => return opj_pi_next_rlcp(pi),
     2 => return opj_pi_next_rpcl(pi),
