@@ -8,6 +8,8 @@ use ::libc;
 use super::malloc::*;
 use super::consts::*;
 
+use super::event::opj_event_mgr;
+
 use ::libc::{
   FILE,
   fclose,
@@ -107,8 +109,10 @@ pub enum CODEC_FORMAT {
 pub use CODEC_FORMAT as OPJ_CODEC_FORMAT;
 pub use CODEC_FORMAT::*;
 
-pub type opj_msg_callback =
-  Option<unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ()>;
+pub type opj_msg_callback_fn =
+  unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ();
+
+pub type opj_msg_callback = Option<opj_msg_callback_fn>;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -464,17 +468,6 @@ pub struct opj_codestream_index {
 }
 pub type opj_codestream_index_t = opj_codestream_index;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_event_mgr {
-  pub m_error_data: *mut libc::c_void,
-  pub m_warning_data: *mut libc::c_void,
-  pub m_info_data: *mut libc::c_void,
-  pub error_handler: opj_msg_callback,
-  pub warning_handler: opj_msg_callback,
-  pub info_handler: opj_msg_callback,
-}
-
 pub type opj_codec_private_t = opj_codec_private;
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -508,14 +501,14 @@ pub struct opj_compression {
       _: *mut libc::c_void,
       _: *mut opj_stream_private,
       _: *mut opj_image,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_encode: Option<
     unsafe extern "C" fn(
       _: *mut libc::c_void,
       _: *mut opj_stream_private,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_write_tile: Option<
@@ -525,14 +518,14 @@ pub struct opj_compression {
       _: *mut OPJ_BYTE,
       _: OPJ_UINT32,
       _: *mut opj_stream_private,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_end_compress: Option<
     unsafe extern "C" fn(
       _: *mut libc::c_void,
       _: *mut opj_stream_private,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_destroy: Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
@@ -541,14 +534,14 @@ pub struct opj_compression {
       _: *mut libc::c_void,
       _: *mut opj_cparameters_t,
       _: *mut opj_image,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_encoder_set_extra_options: Option<
     unsafe extern "C" fn(
       _: *mut libc::c_void,
       _: *const *const libc::c_char,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
 }
@@ -569,14 +562,14 @@ pub struct opj_stream_private {
     unsafe extern "C" fn(
       _: *mut opj_stream_private,
       _: OPJ_OFF_T,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_OFF_T,
   >,
   pub m_opj_seek: Option<
     unsafe extern "C" fn(
       _: *mut opj_stream_private,
       _: OPJ_OFF_T,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub m_bytes_in_buffer: OPJ_SIZE_T,
@@ -593,7 +586,7 @@ pub struct opj_decompression {
       _: *mut opj_stream_private,
       _: *mut libc::c_void,
       _: *mut *mut opj_image_t,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_decode: Option<
@@ -601,7 +594,7 @@ pub struct opj_decompression {
       _: *mut libc::c_void,
       _: *mut opj_stream_private,
       _: *mut opj_image_t,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_read_tile_header: Option<
@@ -616,7 +609,7 @@ pub struct opj_decompression {
       _: *mut OPJ_UINT32,
       _: *mut OPJ_BOOL,
       _: *mut opj_stream_private,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_decode_tile_data: Option<
@@ -626,14 +619,14 @@ pub struct opj_decompression {
       _: *mut OPJ_BYTE,
       _: OPJ_UINT32,
       _: *mut opj_stream_private,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_end_decompress: Option<
     unsafe extern "C" fn(
       _: *mut libc::c_void,
       _: *mut opj_stream_private,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_destroy: Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
@@ -649,7 +642,7 @@ pub struct opj_decompression {
       _: OPJ_INT32,
       _: OPJ_INT32,
       _: OPJ_INT32,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_get_decoded_tile: Option<
@@ -657,19 +650,19 @@ pub struct opj_decompression {
       _: *mut libc::c_void,
       _: *mut opj_stream_private_t,
       _: *mut opj_image_t,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
       _: OPJ_UINT32,
     ) -> OPJ_BOOL,
   >,
   pub opj_set_decoded_resolution_factor: Option<
-    unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32, _: *mut opj_event_mgr) -> OPJ_BOOL,
+    unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32, _: &mut opj_event_mgr) -> OPJ_BOOL,
   >,
   pub opj_set_decoded_components: Option<
     unsafe extern "C" fn(
       _: *mut libc::c_void,
       _: OPJ_UINT32,
       _: *const OPJ_UINT32,
-      _: *mut opj_event_mgr,
+      _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
 }
@@ -1320,8 +1313,7 @@ pub unsafe fn opj_set_info_handler(
   if l_codec.is_null() {
     return 0i32;
   }
-  (*l_codec).m_event_mgr.info_handler = p_callback;
-  (*l_codec).m_event_mgr.m_info_data = p_user_data;
+  (*l_codec).m_event_mgr.set_info_handler(p_callback, p_user_data);
   return 1i32;
 }
 #[no_mangle]
@@ -1334,8 +1326,7 @@ pub unsafe fn opj_set_warning_handler(
   if l_codec.is_null() {
     return 0i32;
   }
-  (*l_codec).m_event_mgr.warning_handler = p_callback;
-  (*l_codec).m_event_mgr.m_warning_data = p_user_data;
+  (*l_codec).m_event_mgr.set_warning_handler(p_callback, p_user_data);
   return 1i32;
 }
 #[no_mangle]
@@ -1348,8 +1339,7 @@ pub unsafe fn opj_set_error_handler(
   if l_codec.is_null() {
     return 0i32;
   }
-  (*l_codec).m_event_mgr.error_handler = p_callback;
-  (*l_codec).m_event_mgr.m_error_data = p_user_data;
+  (*l_codec).m_event_mgr.set_error_handler(p_callback, p_user_data);
   return 1i32;
 }
 /* ---------------------------------------------------------------------- */
@@ -1466,7 +1456,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1474,7 +1464,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut libc::c_void,
             _: *mut opj_stream_private,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1483,7 +1473,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_end_decompress = core::mem::transmute::<
@@ -1491,14 +1481,14 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
             _: *mut libc::c_void,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1506,7 +1496,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
           as unsafe extern "C" fn(
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_read_header = core::mem::transmute::<
@@ -1515,7 +1505,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_stream_private_t,
             _: *mut opj_j2k_t,
             _: *mut *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1523,7 +1513,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_stream_private,
             _: *mut libc::c_void,
             _: *mut *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1532,7 +1522,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_stream_private_t,
             _: *mut opj_j2k_t,
             _: *mut *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_destroy = core::mem::transmute::<
@@ -1571,7 +1561,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_UINT32,
             _: *mut OPJ_BOOL,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1586,7 +1576,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_UINT32,
             _: *mut OPJ_BOOL,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1602,7 +1592,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_UINT32,
             _: *mut OPJ_BOOL,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_decode_tile_data = core::mem::transmute::<
@@ -1613,7 +1603,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1623,7 +1613,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1634,7 +1624,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_set_decode_area = core::mem::transmute::<
@@ -1646,7 +1636,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: OPJ_INT32,
             _: OPJ_INT32,
             _: OPJ_INT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1657,7 +1647,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: OPJ_INT32,
             _: OPJ_INT32,
             _: OPJ_INT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1669,7 +1659,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: OPJ_INT32,
             _: OPJ_INT32,
             _: OPJ_INT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_get_decoded_tile = core::mem::transmute::<
@@ -1678,7 +1668,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
             _: OPJ_UINT32,
           ) -> OPJ_BOOL,
         >,
@@ -1687,7 +1677,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut libc::c_void,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
             _: OPJ_UINT32,
           ) -> OPJ_BOOL,
         >,
@@ -1697,7 +1687,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
             _: OPJ_UINT32,
           ) -> OPJ_BOOL,
       ));
@@ -1709,14 +1699,14 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
             _: *mut libc::c_void,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1724,7 +1714,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
           as unsafe extern "C" fn(
             _: *mut opj_j2k_t,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec)
@@ -1736,7 +1726,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_j2k_t,
             _: OPJ_UINT32,
             _: *const OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1744,7 +1734,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut libc::c_void,
             _: OPJ_UINT32,
             _: *const OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1753,7 +1743,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_j2k_t,
             _: OPJ_UINT32,
             _: *const OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).opj_set_threads = core::mem::transmute::<
@@ -1796,7 +1786,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1804,7 +1794,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut libc::c_void,
             _: *mut opj_stream_private,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1813,7 +1803,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_end_decompress = core::mem::transmute::<
@@ -1821,14 +1811,14 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
             _: *mut libc::c_void,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1836,7 +1826,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
           as unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_read_header = core::mem::transmute::<
@@ -1845,7 +1835,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_stream_private_t,
             _: *mut opj_jp2_t,
             _: *mut *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1853,7 +1843,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_stream_private,
             _: *mut libc::c_void,
             _: *mut *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1862,7 +1852,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_stream_private_t,
             _: *mut opj_jp2_t,
             _: *mut *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_read_tile_header = core::mem::transmute::<
@@ -1878,7 +1868,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_UINT32,
             _: *mut OPJ_BOOL,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1893,7 +1883,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_UINT32,
             _: *mut OPJ_BOOL,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1909,7 +1899,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_UINT32,
             _: *mut OPJ_BOOL,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_decode_tile_data = core::mem::transmute::<
@@ -1920,7 +1910,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1930,7 +1920,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1941,7 +1931,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_destroy = core::mem::transmute::<
@@ -1976,7 +1966,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: OPJ_INT32,
             _: OPJ_INT32,
             _: OPJ_INT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -1987,7 +1977,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: OPJ_INT32,
             _: OPJ_INT32,
             _: OPJ_INT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -1999,7 +1989,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: OPJ_INT32,
             _: OPJ_INT32,
             _: OPJ_INT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_decompression.opj_get_decoded_tile = core::mem::transmute::<
@@ -2008,7 +1998,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
             _: OPJ_UINT32,
           ) -> OPJ_BOOL,
         >,
@@ -2017,7 +2007,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut libc::c_void,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
             _: OPJ_UINT32,
           ) -> OPJ_BOOL,
         >,
@@ -2027,7 +2017,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
             _: OPJ_UINT32,
           ) -> OPJ_BOOL,
       ));
@@ -2039,14 +2029,14 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
             _: *mut libc::c_void,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2054,7 +2044,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
           as unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec)
@@ -2066,7 +2056,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_jp2_t,
             _: OPJ_UINT32,
             _: *const OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -2074,7 +2064,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut libc::c_void,
             _: OPJ_UINT32,
             _: *const OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2083,7 +2073,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
             _: *mut opj_jp2_t,
             _: OPJ_UINT32,
             _: *const OPJ_UINT32,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).opj_set_threads = core::mem::transmute::<
@@ -2445,14 +2435,14 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
             _: *mut libc::c_void,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2460,7 +2450,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           as unsafe extern "C" fn(
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_compression.opj_end_compress = core::mem::transmute::<
@@ -2468,14 +2458,14 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
             _: *mut libc::c_void,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2483,7 +2473,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           as unsafe extern "C" fn(
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_compression.opj_start_compress = core::mem::transmute::<
@@ -2492,7 +2482,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -2500,7 +2490,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut libc::c_void,
             _: *mut opj_stream_private,
             _: *mut opj_image,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2509,7 +2499,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut opj_j2k_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_compression.opj_write_tile = core::mem::transmute::<
@@ -2520,7 +2510,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -2530,7 +2520,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2541,7 +2531,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_compression.opj_destroy = core::mem::transmute::<
@@ -2556,7 +2546,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut opj_j2k_t,
             _: *mut opj_cparameters_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -2564,7 +2554,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut libc::c_void,
             _: *mut opj_cparameters_t,
             _: *mut opj_image,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2573,7 +2563,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut opj_j2k_t,
             _: *mut opj_cparameters_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec)
@@ -2584,14 +2574,14 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
             _: *const *const libc::c_char,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
             _: *mut libc::c_void,
             _: *const *const libc::c_char,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2599,7 +2589,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           as unsafe extern "C" fn(
             _: *mut opj_j2k_t,
             _: *const *const libc::c_char,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).opj_set_threads = core::mem::transmute::<
@@ -2621,14 +2611,14 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
             _: *mut libc::c_void,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2636,7 +2626,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           as unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_compression.opj_end_compress = core::mem::transmute::<
@@ -2644,14 +2634,14 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
             _: *mut libc::c_void,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2659,7 +2649,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           as unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_compression.opj_start_compress = core::mem::transmute::<
@@ -2668,7 +2658,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -2676,7 +2666,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut libc::c_void,
             _: *mut opj_stream_private,
             _: *mut opj_image,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2685,7 +2675,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut opj_jp2_t,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_compression.opj_write_tile = core::mem::transmute::<
@@ -2696,7 +2686,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -2706,7 +2696,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2717,7 +2707,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
             _: *mut opj_stream_private_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).m_codec_data.m_compression.opj_destroy = core::mem::transmute::<
@@ -2732,7 +2722,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut opj_jp2_t,
             _: *mut opj_cparameters_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
@@ -2740,7 +2730,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut libc::c_void,
             _: *mut opj_cparameters_t,
             _: *mut opj_image,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2749,7 +2739,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
             _: *mut opj_jp2_t,
             _: *mut opj_cparameters_t,
             _: *mut opj_image_t,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec)
@@ -2760,14 +2750,14 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: *const *const libc::c_char,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
             _: *mut libc::c_void,
             _: *const *const libc::c_char,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
       >(Some(
@@ -2775,7 +2765,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
           as unsafe extern "C" fn(
             _: *mut opj_jp2_t,
             _: *const *const libc::c_char,
-            _: *mut opj_event_mgr,
+            _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).opj_set_threads = core::mem::transmute::<

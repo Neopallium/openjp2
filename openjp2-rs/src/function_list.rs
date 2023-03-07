@@ -41,9 +41,8 @@ pub(crate) unsafe fn opj_procedure_list_destroy(mut p_list: *mut opj_procedure_l
 pub(crate) unsafe fn opj_procedure_list_add_procedure(
   mut p_validation_list: *mut opj_procedure_list_t,
   mut p_procedure: opj_procedure,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  assert!(!p_manager.is_null());
   if (*p_validation_list).m_nb_max_procedures == (*p_validation_list).m_nb_procedures {
     let mut new_procedures = 0 as *mut opj_procedure;
     (*p_validation_list).m_nb_max_procedures =

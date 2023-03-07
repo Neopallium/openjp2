@@ -1354,7 +1354,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   mut _orient: OPJ_UINT32,
   mut roishift: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
   mut p_manager_mutex: *mut opj_mutex_t,
   mut _check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
