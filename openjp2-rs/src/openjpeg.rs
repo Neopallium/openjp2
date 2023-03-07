@@ -2139,7 +2139,7 @@ pub unsafe fn opj_setup_decoder(
   if !p_codec.is_null() && !parameters.is_null() {
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     if (*l_codec).is_decompressor == 0 {
-      opj_event_msg!(
+      event_msg!(
         &(*l_codec).m_event_mgr,
         EVT_ERROR,
         "Codec provided to the opj_setup_decoder function is not a decompressor handler.\n",
@@ -2163,7 +2163,7 @@ pub unsafe fn opj_decoder_set_strict_mode(
   if !p_codec.is_null() {
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     if (*l_codec).is_decompressor == 0 {
-      opj_event_msg!(&(*l_codec).m_event_mgr,
+      event_msg!(&(*l_codec).m_event_mgr,
                     EVT_ERROR,
                     "Codec provided to the opj_decoder_set_strict_mode function is not a decompressor handler.\n",);
       return 0i32;
@@ -2187,7 +2187,7 @@ pub unsafe fn opj_read_header(
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     let mut l_stream = p_stream as *mut opj_stream_private_t;
     if (*l_codec).is_decompressor == 0 {
-      opj_event_msg!(
+      event_msg!(
         &(*l_codec).m_event_mgr,
         EVT_ERROR,
         "Codec provided to the opj_read_header function is not a decompressor handler.\n",
@@ -2217,14 +2217,14 @@ pub unsafe fn opj_set_decoded_components(
   if !p_codec.is_null() {
     let mut l_codec = p_codec as *mut opj_codec_private_t;
     if (*l_codec).is_decompressor == 0 {
-      opj_event_msg!(&mut (*l_codec).m_event_mgr,
+      event_msg!(&mut (*l_codec).m_event_mgr,
                     EVT_ERROR,
                     "Codec provided to the opj_set_decoded_components function is not a decompressor handler.\n",
                     );
       return 0i32;
     }
     if apply_color_transforms != 0 {
-      opj_event_msg!(
+      event_msg!(
         &mut (*l_codec).m_event_mgr,
         EVT_ERROR,
         "apply_color_transforms = OPJ_TRUE is not supported.\n",

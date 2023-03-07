@@ -21,11 +21,12 @@ extern crate libc;
 
 mod consts;
 
+#[macro_use]
+pub mod event;
+
 pub mod bio;
 pub mod cio;
 pub mod dwt;
-#[macro_use]
-pub mod event;
 pub mod function_list;
 pub mod ht_dec;
 pub mod image;
