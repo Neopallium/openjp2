@@ -39,15 +39,6 @@ use ::libc;
 ==========================================================*/
 
 /* ----------------------------------------------------------------------- */
-/* *
- * Default callback function.
- * Do nothing.
- */
-unsafe extern "C" fn opj_default_callback(
-  mut _msg: *const libc::c_char,
-  mut _client_data: *mut libc::c_void,
-) {
-}
 
 #[derive(Copy, Clone)]
 pub struct opj_event_mgr {
