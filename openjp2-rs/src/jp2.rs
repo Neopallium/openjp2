@@ -3,18 +3,17 @@ use super::function_list::*;
 use super::event::*;
 use super::cio::*;
 use super::j2k::*;
-use ::libc;
 use ::libc::FILE;
 
 use super::malloc::*;
 
 extern "C" {
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
+  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
+  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
 }
 
-pub type C2RustUnnamed_2 = libc::c_uint;
+pub type C2RustUnnamed_2 = core::ffi::c_uint;
 pub const JP2_STATE_UNKNOWN: C2RustUnnamed_2 = 2147483647;
 pub const JP2_STATE_END_CODESTREAM: C2RustUnnamed_2 = 16;
 pub const JP2_STATE_CODESTREAM: C2RustUnnamed_2 = 8;
@@ -22,7 +21,7 @@ pub const JP2_STATE_HEADER: C2RustUnnamed_2 = 4;
 pub const JP2_STATE_FILE_TYPE: C2RustUnnamed_2 = 2;
 pub const JP2_STATE_SIGNATURE: C2RustUnnamed_2 = 1;
 pub const JP2_STATE_NONE: C2RustUnnamed_2 = 0;
-pub type C2RustUnnamed_3 = libc::c_uint;
+pub type C2RustUnnamed_3 = core::ffi::c_uint;
 pub const JP2_IMG_STATE_UNKNOWN: C2RustUnnamed_3 = 2147483647;
 pub const JP2_IMG_STATE_NONE: C2RustUnnamed_3 = 0;
 
@@ -266,7 +265,7 @@ unsafe fn opj_jp2_read_boxhdr(
     ) as OPJ_UINT32;
     if l_nb_bytes_read != 8u32 {
       if l_nb_bytes_read > 0u32 {
-        *p_number_bytes_read = (*p_number_bytes_read as libc::c_uint).wrapping_add(l_nb_bytes_read)
+        *p_number_bytes_read = (*p_number_bytes_read as core::ffi::c_uint).wrapping_add(l_nb_bytes_read)
           as OPJ_UINT32
       }
       return 0i32;
@@ -607,9 +606,9 @@ unsafe extern "C" fn opj_jp2_write_cdef(
   assert!(!p_nb_bytes_written.is_null());
   assert!(!(*jp2).color.jp2_cdef.is_null());
   assert!(!(*(*jp2).color.jp2_cdef).info.is_null());
-  assert!((*(*jp2).color.jp2_cdef).n as libc::c_uint > 0u32);
-  l_cdef_size = (l_cdef_size as libc::c_uint)
-    .wrapping_add((6u32).wrapping_mul((*(*jp2).color.jp2_cdef).n as libc::c_uint))
+  assert!((*(*jp2).color.jp2_cdef).n as core::ffi::c_uint > 0u32);
+  l_cdef_size = (l_cdef_size as core::ffi::c_uint)
+    .wrapping_add((6u32).wrapping_mul((*(*jp2).color.jp2_cdef).n as core::ffi::c_uint))
     as OPJ_UINT32;
   l_cdef_data = opj_malloc(l_cdef_size as size_t) as *mut OPJ_BYTE;
   if l_cdef_data.is_null() {
@@ -632,7 +631,7 @@ unsafe extern "C" fn opj_jp2_write_cdef(
   opj_write_bytes_LE(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
   l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
   i = 0 as OPJ_UINT16;
-  while (i as libc::c_int) < (*(*jp2).color.jp2_cdef).n as libc::c_int {
+  while (i as core::ffi::c_int) < (*(*jp2).color.jp2_cdef).n as core::ffi::c_int {
     l_value = (*(*(*jp2).color.jp2_cdef).info.offset(i as isize)).cn as OPJ_UINT32;
     opj_write_bytes_LE(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
     l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
@@ -674,12 +673,12 @@ unsafe extern "C" fn opj_jp2_write_colr(
   ); /* PRECEDENCE */
   match (*jp2).meth {
     1 => {
-      l_colr_size = (l_colr_size as libc::c_uint).wrapping_add(4u32)
+      l_colr_size = (l_colr_size as core::ffi::c_uint).wrapping_add(4u32)
         as OPJ_UINT32
     }
     2 => {
       assert!((*jp2).color.icc_profile_len != 0); /* EnumCS */
-      l_colr_size = (l_colr_size as libc::c_uint).wrapping_add((*jp2).color.icc_profile_len)
+      l_colr_size = (l_colr_size as core::ffi::c_uint).wrapping_add((*jp2).color.icc_profile_len)
         as OPJ_UINT32
     }
     _ => return 0 as *mut OPJ_BYTE,
@@ -744,13 +743,13 @@ unsafe extern "C" fn opj_jp2_write_colr(
   return l_colr_data;
 }
 unsafe fn opj_jp2_free_pclr(mut color: *mut opj_jp2_color_t) {
-  opj_free((*(*color).jp2_pclr).channel_sign as *mut libc::c_void);
-  opj_free((*(*color).jp2_pclr).channel_size as *mut libc::c_void);
-  opj_free((*(*color).jp2_pclr).entries as *mut libc::c_void);
+  opj_free((*(*color).jp2_pclr).channel_sign as *mut core::ffi::c_void);
+  opj_free((*(*color).jp2_pclr).channel_size as *mut core::ffi::c_void);
+  opj_free((*(*color).jp2_pclr).entries as *mut core::ffi::c_void);
   if !(*(*color).jp2_pclr).cmap.is_null() {
-    opj_free((*(*color).jp2_pclr).cmap as *mut libc::c_void);
+    opj_free((*(*color).jp2_pclr).cmap as *mut core::ffi::c_void);
   }
-  opj_free((*color).jp2_pclr as *mut libc::c_void);
+  opj_free((*color).jp2_pclr as *mut core::ffi::c_void);
   (*color).jp2_pclr = 0 as *mut opj_jp2_pclr_t;
 }
 unsafe fn opj_jp2_check_color(
@@ -769,23 +768,23 @@ unsafe fn opj_jp2_check_color(
       nr_channels = (*(*color).jp2_pclr).nr_channels as OPJ_UINT32
     }
     i = 0 as OPJ_UINT16;
-    while (i as libc::c_int) < n as libc::c_int {
-      if (*info.offset(i as isize)).cn as libc::c_uint >= nr_channels {
+    while (i as core::ffi::c_int) < n as core::ffi::c_int {
+      if (*info.offset(i as isize)).cn as core::ffi::c_uint >= nr_channels {
         event_msg!(p_manager, EVT_ERROR,
           "Invalid component index %d (>= %d).\n",
-          (*info.offset(i as isize)).cn as libc::c_int,
+          (*info.offset(i as isize)).cn as core::ffi::c_int,
           nr_channels,
         );
         return 0i32;
       }
-      if !((*info.offset(i as isize)).asoc as libc::c_uint == 65535u32) {
-        if (*info.offset(i as isize)).asoc as libc::c_int > 0i32
-          && ((*info.offset(i as isize)).asoc as libc::c_int - 1i32) as OPJ_UINT32
+      if !((*info.offset(i as isize)).asoc as core::ffi::c_uint == 65535u32) {
+        if (*info.offset(i as isize)).asoc as core::ffi::c_int > 0i32
+          && ((*info.offset(i as isize)).asoc as core::ffi::c_int - 1i32) as OPJ_UINT32
             >= nr_channels
         {
           event_msg!(p_manager, EVT_ERROR,
             "Invalid component index %d (>= %d).\n",
-            (*info.offset(i as isize)).asoc as libc::c_int - 1i32,
+            (*info.offset(i as isize)).asoc as core::ffi::c_int - 1i32,
             nr_channels,
           );
           return 0i32;
@@ -797,7 +796,7 @@ unsafe fn opj_jp2_check_color(
     /* ISO 15444-1 states that if cdef is present, it shall contain a complete list of channel definitions. */
     while nr_channels > 0u32 {
       i = 0 as OPJ_UINT16;
-      while (i as libc::c_int) < n as libc::c_int {
+      while (i as core::ffi::c_int) < n as core::ffi::c_int {
         if (*info.offset(i as isize)).cn as OPJ_UINT32
           == nr_channels.wrapping_sub(1u32)
         {
@@ -805,7 +804,7 @@ unsafe fn opj_jp2_check_color(
         }
         i += 1;
       }
-      if i as libc::c_int == n as libc::c_int {
+      if i as core::ffi::c_int == n as core::ffi::c_int {
         event_msg!(p_manager, EVT_ERROR,
           "Incomplete channel definitions.\n",
         );
@@ -823,11 +822,11 @@ unsafe fn opj_jp2_check_color(
     let mut is_sane = 1i32;
     /* verify that all original components match an existing one */
     i = 0 as OPJ_UINT16;
-    while (i as libc::c_int) < nr_channels_0 as libc::c_int {
-      if (*cmap.offset(i as isize)).cmp as libc::c_uint >= (*image).numcomps {
+    while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
+      if (*cmap.offset(i as isize)).cmp as core::ffi::c_uint >= (*image).numcomps {
         event_msg!(p_manager, EVT_ERROR,
           "Invalid component index %d (>= %d).\n",
-          (*cmap.offset(i as isize)).cmp as libc::c_int,
+          (*cmap.offset(i as isize)).cmp as core::ffi::c_int,
           (*image).numcomps,
         );
         is_sane = 0i32
@@ -846,45 +845,45 @@ unsafe fn opj_jp2_check_color(
     }
     /* verify that no component is targeted more than once */
     i = 0 as OPJ_UINT16;
-    while (i as libc::c_int) < nr_channels_0 as libc::c_int {
+    while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
       let mut mtyp = (*cmap.offset(i as isize)).mtyp;
       let mut pcol = (*cmap.offset(i as isize)).pcol;
       /* See ISO 15444-1 Table I.14 – MTYPi field values */
-      if mtyp as libc::c_int != 0i32 && mtyp as libc::c_int != 1i32 {
+      if mtyp as core::ffi::c_int != 0i32 && mtyp as core::ffi::c_int != 1i32 {
         event_msg!(p_manager, EVT_ERROR,
           "Invalid value for cmap[%d].mtyp = %d.\n",
-          i as libc::c_int,
-          mtyp as libc::c_int,
+          i as core::ffi::c_int,
+          mtyp as core::ffi::c_int,
         );
         is_sane = 0i32
-      } else if pcol as libc::c_int >= nr_channels_0 as libc::c_int {
+      } else if pcol as core::ffi::c_int >= nr_channels_0 as core::ffi::c_int {
         event_msg!(p_manager, EVT_ERROR,
           "Invalid component/palette index for direct mapping %d.\n",
-          pcol as libc::c_int,
+          pcol as core::ffi::c_int,
         );
         is_sane = 0i32
-      } else if *pcol_usage.offset(pcol as isize) != 0 && mtyp as libc::c_int == 1i32 {
+      } else if *pcol_usage.offset(pcol as isize) != 0 && mtyp as core::ffi::c_int == 1i32 {
         event_msg!(p_manager, EVT_ERROR,
           "Component %d is mapped twice.\n",
-          pcol as libc::c_int,
+          pcol as core::ffi::c_int,
         );
         is_sane = 0i32
-      } else if mtyp as libc::c_int == 0i32 && pcol as libc::c_int != 0i32 {
+      } else if mtyp as core::ffi::c_int == 0i32 && pcol as core::ffi::c_int != 0i32 {
         /* I.5.3.5 PCOL: If the value of the MTYP field for this channel is 0, then
          * the value of this field shall be 0. */
         event_msg!(p_manager, EVT_ERROR,
           "Direct use at #%d however pcol=%d.\n",
-          i as libc::c_int,
-          pcol as libc::c_int,
+          i as core::ffi::c_int,
+          pcol as core::ffi::c_int,
         );
         is_sane = 0i32
-      } else if mtyp as libc::c_int == 1i32 && pcol as libc::c_int != i as libc::c_int {
+      } else if mtyp as core::ffi::c_int == 1i32 && pcol as core::ffi::c_int != i as core::ffi::c_int {
         /* OpenJPEG implementation limitation. See assert(i == pcol); */
         /* in opj_jp2_apply_pclr() */
         event_msg!(p_manager, EVT_ERROR,
                               "Implementation limitation: for palette mapping, pcol[%d] should be equal to %d, but is equal to %d.\n",
-                              i as libc::c_int, i as libc::c_int,
-                              pcol as libc::c_int);
+                              i as core::ffi::c_int, i as core::ffi::c_int,
+                              pcol as core::ffi::c_int);
         is_sane = 0i32
       } else {
         *pcol_usage.offset(pcol as isize) = 1i32
@@ -893,13 +892,13 @@ unsafe fn opj_jp2_check_color(
     }
     /* verify that all components are targeted at least once */
     i = 0 as OPJ_UINT16;
-    while (i as libc::c_int) < nr_channels_0 as libc::c_int {
+    while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
       if *pcol_usage.offset(i as isize) == 0
-        && (*cmap.offset(i as isize)).mtyp as libc::c_int != 0i32
+        && (*cmap.offset(i as isize)).mtyp as core::ffi::c_int != 0i32
       {
         event_msg!(p_manager, EVT_ERROR,
           "Component %d doesn\'t have a mapping.\n",
-          i as libc::c_int,
+          i as core::ffi::c_int,
         );
         is_sane = 0i32
       }
@@ -908,7 +907,7 @@ unsafe fn opj_jp2_check_color(
     /* Issue 235/447 weird cmap */
     if 1i32 != 0 && is_sane != 0 && (*image).numcomps == 1u32 {
       i = 0 as OPJ_UINT16;
-      while (i as libc::c_int) < nr_channels_0 as libc::c_int {
+      while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
         if *pcol_usage.offset(i as isize) == 0 {
           is_sane = 0 as OPJ_BOOL;
           event_msg!(p_manager, EVT_WARNING,
@@ -922,14 +921,14 @@ unsafe fn opj_jp2_check_color(
       if is_sane == 0 {
         is_sane = 1i32;
         i = 0 as OPJ_UINT16;
-        while (i as libc::c_int) < nr_channels_0 as libc::c_int {
+        while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
           (*cmap.offset(i as isize)).mtyp = 1 as OPJ_BYTE;
           (*cmap.offset(i as isize)).pcol = i as OPJ_BYTE;
           i += 1;
         }
       }
     }
-    opj_free(pcol_usage as *mut libc::c_void);
+    opj_free(pcol_usage as *mut core::ffi::c_void);
     if is_sane == 0 {
       return 0i32;
     }
@@ -971,13 +970,13 @@ unsafe fn opj_jp2_apply_pclr(
   cmap = (*(*color).jp2_pclr).cmap;
   nr_channels = (*(*color).jp2_pclr).nr_channels as OPJ_UINT16;
   i = 0 as OPJ_UINT16;
-  while (i as libc::c_int) < nr_channels as libc::c_int {
+  while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
     /* Palette mapping: */
     cmp = (*cmap.offset(i as isize)).cmp;
     if (*(*image).comps.offset(cmp as isize)).data.is_null() {
       event_msg!(p_manager, EVT_ERROR,
         "image->comps[%d].data == NULL in opj_jp2_apply_pclr().\n",
-        i as libc::c_int,
+        i as core::ffi::c_int,
       );
       return 0i32;
     }
@@ -995,15 +994,15 @@ unsafe fn opj_jp2_apply_pclr(
     return 0i32;
   }
   i = 0 as OPJ_UINT16;
-  while (i as libc::c_int) < nr_channels as libc::c_int {
+  while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
     pcol = (*cmap.offset(i as isize)).pcol as OPJ_UINT16;
     cmp = (*cmap.offset(i as isize)).cmp;
     /* Direct use */
-    if (*cmap.offset(i as isize)).mtyp as libc::c_int == 0i32 {
-      assert!(pcol as libc::c_int == 0i32);
+    if (*cmap.offset(i as isize)).mtyp as core::ffi::c_int == 0i32 {
+      assert!(pcol as core::ffi::c_int == 0i32);
       *new_comps.offset(i as isize) = *old_comps.offset(cmp as isize)
     } else {
-      assert!(i as libc::c_int == pcol as libc::c_int);
+      assert!(i as core::ffi::c_int == pcol as core::ffi::c_int);
       *new_comps.offset(pcol as isize) = *old_comps.offset(cmp as isize)
     }
     /* Palette mapping: */
@@ -1014,11 +1013,11 @@ unsafe fn opj_jp2_apply_pclr(
         .wrapping_mul((*old_comps.offset(cmp as isize)).h as usize),
     ) as *mut OPJ_INT32;
     if (*new_comps.offset(i as isize)).data.is_null() {
-      while i as libc::c_int > 0i32 {
+      while i as core::ffi::c_int > 0i32 {
         i = i.wrapping_sub(1);
-        opj_image_data_free((*new_comps.offset(i as isize)).data as *mut libc::c_void);
+        opj_image_data_free((*new_comps.offset(i as isize)).data as *mut core::ffi::c_void);
       }
-      opj_free(new_comps as *mut libc::c_void);
+      opj_free(new_comps as *mut core::ffi::c_void);
       event_msg!(p_manager, EVT_ERROR,
         "Memory allocation failure in opj_jp2_apply_pclr().\n",
       );
@@ -1028,9 +1027,9 @@ unsafe fn opj_jp2_apply_pclr(
     (*new_comps.offset(i as isize)).sgnd = *channel_sign.offset(i as isize) as OPJ_UINT32;
     i += 1;
   }
-  top_k = (*(*color).jp2_pclr).nr_entries as libc::c_int - 1i32;
+  top_k = (*(*color).jp2_pclr).nr_entries as core::ffi::c_int - 1i32;
   i = 0 as OPJ_UINT16;
-  while (i as libc::c_int) < nr_channels as libc::c_int {
+  while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
     /* Palette mapping: */
     cmp = (*cmap.offset(i as isize)).cmp; /* verified above */
     pcol = (*cmap.offset(i as isize)).pcol as OPJ_UINT16;
@@ -1040,7 +1039,7 @@ unsafe fn opj_jp2_apply_pclr(
       .w
       .wrapping_mul((*new_comps.offset(pcol as isize)).h);
     /* Direct use: */
-    if (*cmap.offset(i as isize)).mtyp as libc::c_int == 0i32 {
+    if (*cmap.offset(i as isize)).mtyp as core::ffi::c_int == 0i32 {
       dst = (*new_comps.offset(i as isize)).data;
       assert!(!dst.is_null());
       j = 0 as OPJ_UINT32;
@@ -1049,7 +1048,7 @@ unsafe fn opj_jp2_apply_pclr(
         j += 1;
       }
     } else {
-      assert!(i as libc::c_int == pcol as libc::c_int);
+      assert!(i as core::ffi::c_int == pcol as core::ffi::c_int);
       dst = (*new_comps.offset(pcol as isize)).data;
       assert!(!dst.is_null());
       j = 0 as OPJ_UINT32;
@@ -1063,7 +1062,7 @@ unsafe fn opj_jp2_apply_pclr(
         }
         /* The colour */
         *dst.offset(j as isize) = *entries
-          .offset((k * nr_channels as libc::c_int + pcol as libc::c_int) as isize)
+          .offset((k * nr_channels as core::ffi::c_int + pcol as core::ffi::c_int) as isize)
           as OPJ_INT32;
         j += 1;
       }
@@ -1074,11 +1073,11 @@ unsafe fn opj_jp2_apply_pclr(
   j = 0 as OPJ_UINT32;
   while j < max {
     if !(*old_comps.offset(j as isize)).data.is_null() {
-      opj_image_data_free((*old_comps.offset(j as isize)).data as *mut libc::c_void);
+      opj_image_data_free((*old_comps.offset(j as isize)).data as *mut core::ffi::c_void);
     }
     j += 1;
   }
-  opj_free(old_comps as *mut libc::c_void);
+  opj_free(old_comps as *mut core::ffi::c_void);
   (*image).comps = new_comps;
   (*image).numcomps = nr_channels as OPJ_UINT32;
   return 1i32;
@@ -1128,12 +1127,12 @@ unsafe extern "C" fn opj_jp2_read_pclr(
   );
   p_pclr_header_data = p_pclr_header_data.offset(2);
   nr_entries = l_value as OPJ_UINT16;
-  if nr_entries as libc::c_uint == 0u32
-    || nr_entries as libc::c_uint > 1024u32
+  if nr_entries as core::ffi::c_uint == 0u32
+    || nr_entries as core::ffi::c_uint > 1024u32
   {
     event_msg!(p_manager, EVT_ERROR,
       "Invalid PCLR box. Reports %d entries\n",
-      nr_entries as libc::c_int,
+      nr_entries as core::ffi::c_int,
     );
     return 0i32;
   }
@@ -1144,7 +1143,7 @@ unsafe extern "C" fn opj_jp2_read_pclr(
   );
   p_pclr_header_data = p_pclr_header_data.offset(1);
   nr_channels = l_value as OPJ_UINT16;
-  if nr_channels as libc::c_uint == 0u32 {
+  if nr_channels as core::ffi::c_uint == 0u32 {
     event_msg!(p_manager, EVT_ERROR,
       "Invalid PCLR box. Reports 0 palette columns\n",
     );
@@ -1164,21 +1163,21 @@ unsafe extern "C" fn opj_jp2_read_pclr(
   }
   channel_size = opj_malloc(nr_channels as size_t) as *mut OPJ_BYTE;
   if channel_size.is_null() {
-    opj_free(entries as *mut libc::c_void);
+    opj_free(entries as *mut core::ffi::c_void);
     return 0i32;
   }
   channel_sign = opj_malloc(nr_channels as size_t) as *mut OPJ_BYTE;
   if channel_sign.is_null() {
-    opj_free(entries as *mut libc::c_void);
-    opj_free(channel_size as *mut libc::c_void);
+    opj_free(entries as *mut core::ffi::c_void);
+    opj_free(channel_size as *mut core::ffi::c_void);
     return 0i32;
   }
   jp2_pclr =
     opj_malloc(core::mem::size_of::<opj_jp2_pclr_t>() as usize) as *mut opj_jp2_pclr_t;
   if jp2_pclr.is_null() {
-    opj_free(entries as *mut libc::c_void);
-    opj_free(channel_size as *mut libc::c_void);
-    opj_free(channel_sign as *mut libc::c_void);
+    opj_free(entries as *mut core::ffi::c_void);
+    opj_free(channel_size as *mut core::ffi::c_void);
+    opj_free(channel_sign as *mut core::ffi::c_void);
     return 0i32;
   }
   (*jp2_pclr).channel_sign = channel_sign;
@@ -1189,7 +1188,7 @@ unsafe extern "C" fn opj_jp2_read_pclr(
   (*jp2_pclr).cmap = 0 as *mut opj_jp2_cmap_comp_t;
   (*jp2).color.jp2_pclr = jp2_pclr;
   i = 0 as OPJ_UINT16;
-  while (i as libc::c_int) < nr_channels as libc::c_int {
+  while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
     opj_read_bytes_LE(
       p_pclr_header_data,
       &mut l_value,
@@ -1207,10 +1206,10 @@ unsafe extern "C" fn opj_jp2_read_pclr(
     i += 1;
   }
   j = 0 as OPJ_UINT16;
-  while (j as libc::c_int) < nr_entries as libc::c_int {
+  while (j as core::ffi::c_int) < nr_entries as core::ffi::c_int {
     i = 0 as OPJ_UINT16;
-    while (i as libc::c_int) < nr_channels as libc::c_int {
-      let mut bytes_to_read = (*channel_size.offset(i as isize) as libc::c_int + 7i32
+    while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
+      let mut bytes_to_read = (*channel_size.offset(i as isize) as core::ffi::c_int + 7i32
         >> 3i32) as OPJ_UINT32;
       if bytes_to_read as usize > core::mem::size_of::<OPJ_UINT32>() as usize {
         bytes_to_read = core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32
@@ -1287,7 +1286,7 @@ unsafe extern "C" fn opj_jp2_read_cmap(
     return 0i32;
   }
   i = 0 as OPJ_BYTE;
-  while (i as libc::c_int) < nr_channels as libc::c_int {
+  while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
     opj_read_bytes_LE(
       p_cmap_header_data,
       &mut l_value,
@@ -1328,31 +1327,31 @@ unsafe fn opj_jp2_apply_cdef(
   info = (*(*color).jp2_cdef).info;
   n = (*(*color).jp2_cdef).n;
   i = 0 as OPJ_UINT16;
-  while (i as libc::c_int) < n as libc::c_int {
+  while (i as core::ffi::c_int) < n as core::ffi::c_int {
     /* WATCH: acn = asoc - 1 ! */
     asoc = (*info.offset(i as isize)).asoc;
     cn = (*info.offset(i as isize)).cn;
-    if cn as libc::c_uint >= (*image).numcomps {
+    if cn as core::ffi::c_uint >= (*image).numcomps {
       event_msg!(manager, EVT_WARNING,
         "opj_jp2_apply_cdef: cn=%d, numcomps=%d\n",
-        cn as libc::c_int,
+        cn as core::ffi::c_int,
         (*image).numcomps,
       );
-    } else if asoc as libc::c_int == 0i32 || asoc as libc::c_int == 65535i32
+    } else if asoc as core::ffi::c_int == 0i32 || asoc as core::ffi::c_int == 65535i32
     {
       (*(*image).comps.offset(cn as isize)).alpha = (*info.offset(i as isize)).typ
     } else {
-      acn = (asoc as libc::c_int - 1i32) as OPJ_UINT16;
-      if acn as libc::c_uint >= (*image).numcomps {
+      acn = (asoc as core::ffi::c_int - 1i32) as OPJ_UINT16;
+      if acn as core::ffi::c_uint >= (*image).numcomps {
         event_msg!(manager, EVT_WARNING,
           "opj_jp2_apply_cdef: acn=%d, numcomps=%d\n",
-          acn as libc::c_int,
+          acn as core::ffi::c_int,
           (*image).numcomps,
         );
       } else {
         /* Swap only if color channel */
-        if cn as libc::c_int != acn as libc::c_int
-          && (*info.offset(i as isize)).typ as libc::c_int == 0i32
+        if cn as core::ffi::c_int != acn as core::ffi::c_int
+          && (*info.offset(i as isize)).typ as core::ffi::c_int == 0i32
         {
           let mut saved = opj_image_comp_t {
             dx: 0,
@@ -1371,28 +1370,28 @@ unsafe fn opj_jp2_apply_cdef(
           };
           let mut j: OPJ_UINT16 = 0;
           memcpy(
-            &mut saved as *mut opj_image_comp_t as *mut libc::c_void,
+            &mut saved as *mut opj_image_comp_t as *mut core::ffi::c_void,
             &mut *(*image).comps.offset(cn as isize) as *mut opj_image_comp_t
-              as *const libc::c_void,
+              as *const core::ffi::c_void,
             core::mem::size_of::<opj_image_comp_t>() as usize,
           );
           memcpy(
-            &mut *(*image).comps.offset(cn as isize) as *mut opj_image_comp_t as *mut libc::c_void,
+            &mut *(*image).comps.offset(cn as isize) as *mut opj_image_comp_t as *mut core::ffi::c_void,
             &mut *(*image).comps.offset(acn as isize) as *mut opj_image_comp_t
-              as *const libc::c_void,
+              as *const core::ffi::c_void,
             core::mem::size_of::<opj_image_comp_t>() as usize,
           );
           memcpy(
-            &mut *(*image).comps.offset(acn as isize) as *mut opj_image_comp_t as *mut libc::c_void,
-            &mut saved as *mut opj_image_comp_t as *const libc::c_void,
+            &mut *(*image).comps.offset(acn as isize) as *mut opj_image_comp_t as *mut core::ffi::c_void,
+            &mut saved as *mut opj_image_comp_t as *const core::ffi::c_void,
             core::mem::size_of::<opj_image_comp_t>() as usize,
           );
           /* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
-          j = (i as libc::c_uint).wrapping_add(1u32) as OPJ_UINT16;
-          while (j as libc::c_int) < n as libc::c_int {
-            if (*info.offset(j as isize)).cn as libc::c_int == cn as libc::c_int {
+          j = (i as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT16;
+          while (j as core::ffi::c_int) < n as core::ffi::c_int {
+            if (*info.offset(j as isize)).cn as core::ffi::c_int == cn as core::ffi::c_int {
               (*info.offset(j as isize)).cn = acn
-            } else if (*info.offset(j as isize)).cn as libc::c_int == acn as libc::c_int {
+            } else if (*info.offset(j as isize)).cn as core::ffi::c_int == acn as core::ffi::c_int {
               (*info.offset(j as isize)).cn = cn
             }
             j += 1;
@@ -1405,9 +1404,9 @@ unsafe fn opj_jp2_apply_cdef(
     i += 1;
   }
   if !(*(*color).jp2_cdef).info.is_null() {
-    opj_free((*(*color).jp2_cdef).info as *mut libc::c_void);
+    opj_free((*(*color).jp2_cdef).info as *mut core::ffi::c_void);
   }
-  opj_free((*color).jp2_cdef as *mut libc::c_void);
+  opj_free((*color).jp2_cdef as *mut core::ffi::c_void);
   (*color).jp2_cdef = 0 as *mut opj_jp2_cdef_t;
 }
 /* jp2_apply_cdef() */
@@ -1441,7 +1440,7 @@ unsafe extern "C" fn opj_jp2_read_cdef(
     2 as OPJ_UINT32,
   );
   p_cdef_header_data = p_cdef_header_data.offset(2);
-  if l_value as OPJ_UINT16 as libc::c_int == 0i32 {
+  if l_value as OPJ_UINT16 as core::ffi::c_int == 0i32 {
     /* szukw000: FIXME */
     event_msg!(p_manager, EVT_ERROR,
       "Number of channel description is equal to zero in CDEF box.\n",
@@ -1468,13 +1467,13 @@ unsafe extern "C" fn opj_jp2_read_cdef(
   (*jp2).color.jp2_cdef =
     opj_malloc(core::mem::size_of::<opj_jp2_cdef_t>() as usize) as *mut opj_jp2_cdef_t;
   if (*jp2).color.jp2_cdef.is_null() {
-    opj_free(cdef_info as *mut libc::c_void);
+    opj_free(cdef_info as *mut core::ffi::c_void);
     return 0i32;
   }
   (*(*jp2).color.jp2_cdef).info = cdef_info;
   (*(*jp2).color.jp2_cdef).n = l_value as OPJ_UINT16;
   i = 0 as OPJ_UINT16;
-  while (i as libc::c_int) < (*(*jp2).color.jp2_cdef).n as libc::c_int {
+  while (i as core::ffi::c_int) < (*(*jp2).color.jp2_cdef).n as core::ffi::c_int {
     opj_read_bytes_LE(
       p_cdef_header_data,
       &mut l_value,
@@ -1766,7 +1765,7 @@ unsafe extern "C" fn opj_jp2_write_jp2h(
   assert!(!stream.is_null());
   assert!(!jp2.is_null());
   memset(
-    l_writers.as_mut_ptr() as *mut libc::c_void,
+    l_writers.as_mut_ptr() as *mut core::ffi::c_void,
     0i32,
     core::mem::size_of::<[opj_jp2_img_header_writer_handler_t; 4]>() as usize,
   );
@@ -1823,7 +1822,7 @@ unsafe extern "C" fn opj_jp2_write_jp2h(
       l_result = 0i32;
       break;
     } else {
-      l_jp2h_size = (l_jp2h_size as libc::c_uint).wrapping_add((*l_current_writer).m_size)
+      l_jp2h_size = (l_jp2h_size as core::ffi::c_uint).wrapping_add((*l_current_writer).m_size)
         as OPJ_UINT32;
       l_current_writer = l_current_writer.offset(1);
       i += 1
@@ -1834,7 +1833,7 @@ unsafe extern "C" fn opj_jp2_write_jp2h(
     i = 0i32;
     while i < l_nb_pass {
       if !(*l_current_writer).m_data.is_null() {
-        opj_free((*l_current_writer).m_data as *mut libc::c_void);
+        opj_free((*l_current_writer).m_data as *mut core::ffi::c_void);
       }
       l_current_writer = l_current_writer.offset(1);
       i += 1
@@ -1887,7 +1886,7 @@ unsafe extern "C" fn opj_jp2_write_jp2h(
   i = 0i32;
   while i < l_nb_pass {
     if !(*l_current_writer).m_data.is_null() {
-      opj_free((*l_current_writer).m_data as *mut libc::c_void);
+      opj_free((*l_current_writer).m_data as *mut core::ffi::c_void);
     }
     l_current_writer = l_current_writer.offset(1);
     i += 1
@@ -1963,13 +1962,13 @@ unsafe extern "C" fn opj_jp2_write_ftyp(
     /* CL */
   }
   l_result = (opj_stream_write_data(cio, l_ftyp_data, l_ftyp_size as OPJ_SIZE_T, p_manager)
-    == l_ftyp_size as usize) as libc::c_int;
+    == l_ftyp_size as usize) as core::ffi::c_int;
   if l_result == 0 {
     event_msg!(p_manager, EVT_ERROR,
       "Error while writing ftyp data to stream\n",
     );
   }
-  opj_free(l_ftyp_data as *mut libc::c_void);
+  opj_free(l_ftyp_data as *mut core::ffi::c_void);
   return l_result;
 }
 /* *
@@ -2213,13 +2212,13 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
     (*jp2).enumcs = 0 as OPJ_UINT32
   } else {
     (*jp2).meth = 1 as OPJ_UINT32;
-    if (*image).color_space as libc::c_int == 1i32 {
+    if (*image).color_space as core::ffi::c_int == 1i32 {
       (*jp2).enumcs = 16 as OPJ_UINT32
     /* sRGB as defined by IEC 61966-2-1 */
-    } else if (*image).color_space as libc::c_int == 2i32 {
+    } else if (*image).color_space as core::ffi::c_int == 2i32 {
       (*jp2).enumcs = 17 as OPJ_UINT32
     /* greyscale */
-    } else if (*image).color_space as libc::c_int == 3i32 {
+    } else if (*image).color_space as core::ffi::c_int == 3i32 {
       (*jp2).enumcs = 18 as OPJ_UINT32
       /* YUV */
     }
@@ -2230,7 +2229,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
   alpha_count = 0u32;
   i = 0 as OPJ_UINT32;
   while i < (*image).numcomps {
-    if (*(*image).comps.offset(i as isize)).alpha as libc::c_int != 0i32 {
+    if (*(*image).comps.offset(i as isize)).alpha as core::ffi::c_int != 0i32 {
       alpha_count = alpha_count.wrapping_add(1);
       alpha_channel = i
     }
@@ -2296,7 +2295,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
       /* No overflow + cast is valid : image->numcomps [1,16384] */
     }
     while i < (*image).numcomps {
-      if (*(*image).comps.offset(i as isize)).alpha as libc::c_int != 0i32 {
+      if (*(*image).comps.offset(i as isize)).alpha as core::ffi::c_int != 0i32 {
         /* we'll be here exactly once */
         (*(*(*jp2).color.jp2_cdef).info.offset(i as isize)).cn = i as OPJ_UINT16; /* cast is valid : image->numcomps [1,16384] */
         /* Apply alpha channel to the whole image */
@@ -2458,35 +2457,35 @@ unsafe extern "C" fn opj_jp2_default_validation(
   /* JPEG2000 codec validation */
   /* STATE checking */
   /* make sure the state is at 0 */
-  l_is_valid &= ((*jp2).jp2_state == JP2_STATE_NONE as libc::c_uint) as libc::c_int;
+  l_is_valid &= ((*jp2).jp2_state == JP2_STATE_NONE as core::ffi::c_uint) as core::ffi::c_int;
   /* make sure not reading a jp2h ???? WEIRD */
   l_is_valid &=
-    ((*jp2).jp2_img_state == JP2_IMG_STATE_NONE as libc::c_uint) as libc::c_int;
+    ((*jp2).jp2_img_state == JP2_IMG_STATE_NONE as core::ffi::c_uint) as core::ffi::c_int;
   /* POINTER validation */
   /* make sure a j2k codec is present */
-  l_is_valid &= ((*jp2).j2k != 0 as *mut opj_j2k_t) as libc::c_int;
+  l_is_valid &= ((*jp2).j2k != 0 as *mut opj_j2k_t) as core::ffi::c_int;
   /* make sure a procedure list is present */
-  l_is_valid &= ((*jp2).m_procedure_list != 0 as *mut opj_procedure_list) as libc::c_int;
+  l_is_valid &= ((*jp2).m_procedure_list != 0 as *mut opj_procedure_list) as core::ffi::c_int;
   /* make sure a validation list is present */
-  l_is_valid &= ((*jp2).m_validation_list != 0 as *mut opj_procedure_list) as libc::c_int;
+  l_is_valid &= ((*jp2).m_validation_list != 0 as *mut opj_procedure_list) as core::ffi::c_int;
   /* PARAMETER VALIDATION */
   /* number of components */
-  l_is_valid &= ((*jp2).numcl > 0u32) as libc::c_int;
+  l_is_valid &= ((*jp2).numcl > 0u32) as core::ffi::c_int;
   /* width */
-  l_is_valid &= ((*jp2).h > 0u32) as libc::c_int;
+  l_is_valid &= ((*jp2).h > 0u32) as core::ffi::c_int;
   /* height */
-  l_is_valid &= ((*jp2).w > 0u32) as libc::c_int;
+  l_is_valid &= ((*jp2).w > 0u32) as core::ffi::c_int;
   /* precision */
   i = 0 as OPJ_UINT32;
   while i < (*jp2).numcomps {
     l_is_valid &= (((*(*jp2).comps.offset(i as isize)).bpcc & 0x7fu32)
-      < 38u32) as libc::c_int;
+      < 38u32) as core::ffi::c_int;
     i += 1;
     /* 0 is valid, ignore sign for check */
   }
   /* METH */
   l_is_valid &= ((*jp2).meth > 0u32
-    && (*jp2).meth < 3u32) as libc::c_int;
+    && (*jp2).meth < 3u32) as core::ffi::c_int;
   /* stream validation */
   /* back and forth is needed */
   l_is_valid &= opj_stream_has_seek(cio);
@@ -2532,15 +2531,15 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
   while opj_jp2_read_boxhdr(&mut box_0, &mut l_nb_bytes_read, stream, p_manager) != 0 {
     /* is it the codestream box ? */
     if box_0.type_0 == 0x6a703263u32 {
-      if (*jp2).jp2_state & JP2_STATE_HEADER as libc::c_uint != 0 {
-        (*jp2).jp2_state |= JP2_STATE_CODESTREAM as libc::c_uint;
-        opj_free(l_current_data as *mut libc::c_void);
+      if (*jp2).jp2_state & JP2_STATE_HEADER as core::ffi::c_uint != 0 {
+        (*jp2).jp2_state |= JP2_STATE_CODESTREAM as core::ffi::c_uint;
+        opj_free(l_current_data as *mut core::ffi::c_void);
         return 1i32;
       } else {
         event_msg!(p_manager, EVT_ERROR,
           "bad placed jpeg codestream\n",
         );
-        opj_free(l_current_data as *mut libc::c_void);
+        opj_free(l_current_data as *mut core::ffi::c_void);
         return 0i32;
       }
     } else {
@@ -2548,7 +2547,7 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
         event_msg!(p_manager, EVT_ERROR,
           "Cannot handle box of undefined sizes\n",
         );
-        opj_free(l_current_data as *mut libc::c_void);
+        opj_free(l_current_data as *mut core::ffi::c_void);
         return 0i32;
       } else {
         /* testcase 1851.pdf.SIGSEGV.ce9.948 */
@@ -2558,7 +2557,7 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
             box_0.length,
             box_0.type_0,
           );
-          opj_free(l_current_data as *mut libc::c_void);
+          opj_free(l_current_data as *mut core::ffi::c_void);
           return 0i32;
         }
       }
@@ -2570,30 +2569,30 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
       if l_current_handler.is_null() {
         event_msg!(p_manager, EVT_WARNING,
           "Found a misplaced \'%c%c%c%c\' box outside jp2h box\n",
-          (box_0.type_0 >> 24i32) as OPJ_BYTE as libc::c_int,
-          (box_0.type_0 >> 16i32) as OPJ_BYTE as libc::c_int,
-          (box_0.type_0 >> 8i32) as OPJ_BYTE as libc::c_int,
-          (box_0.type_0 >> 0i32) as OPJ_BYTE as libc::c_int,
+          (box_0.type_0 >> 24i32) as OPJ_BYTE as core::ffi::c_int,
+          (box_0.type_0 >> 16i32) as OPJ_BYTE as core::ffi::c_int,
+          (box_0.type_0 >> 8i32) as OPJ_BYTE as core::ffi::c_int,
+          (box_0.type_0 >> 0i32) as OPJ_BYTE as core::ffi::c_int,
         );
-        if (*jp2).jp2_state & JP2_STATE_HEADER as libc::c_uint != 0 {
+        if (*jp2).jp2_state & JP2_STATE_HEADER as core::ffi::c_uint != 0 {
           /* read anyway, we already have jp2h */
           l_current_handler = l_current_handler_misplaced
         } else {
           event_msg!(p_manager, EVT_WARNING,
             "JPEG2000 Header box not read yet, \'%c%c%c%c\' box will be ignored\n",
-            (box_0.type_0 >> 24i32) as OPJ_BYTE as libc::c_int,
-            (box_0.type_0 >> 16i32) as OPJ_BYTE as libc::c_int,
-            (box_0.type_0 >> 8i32) as OPJ_BYTE as libc::c_int,
-            (box_0.type_0 >> 0i32) as OPJ_BYTE as libc::c_int,
+            (box_0.type_0 >> 24i32) as OPJ_BYTE as core::ffi::c_int,
+            (box_0.type_0 >> 16i32) as OPJ_BYTE as core::ffi::c_int,
+            (box_0.type_0 >> 8i32) as OPJ_BYTE as core::ffi::c_int,
+            (box_0.type_0 >> 0i32) as OPJ_BYTE as core::ffi::c_int,
           );
-          (*jp2).jp2_state |= JP2_STATE_UNKNOWN as libc::c_uint;
+          (*jp2).jp2_state |= JP2_STATE_UNKNOWN as core::ffi::c_uint;
           if opj_stream_skip(stream, l_current_data_size as OPJ_OFF_T, p_manager)
             != l_current_data_size as i64
           {
             event_msg!(p_manager, EVT_ERROR,
               "Problem with skipping JPEG2000 box, stream error\n",
             );
-            opj_free(l_current_data as *mut libc::c_void);
+            opj_free(l_current_data as *mut core::ffi::c_void);
             return 0i32;
           }
           continue;
@@ -2604,23 +2603,23 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
         event_msg!(p_manager, EVT_ERROR,
           "Invalid box size %d for box \'%c%c%c%c\'. Need %d bytes, %d bytes remaining \n",
           box_0.length,
-          (box_0.type_0 >> 24i32) as OPJ_BYTE as libc::c_int,
-          (box_0.type_0 >> 16i32) as OPJ_BYTE as libc::c_int,
-          (box_0.type_0 >> 8i32) as OPJ_BYTE as libc::c_int,
-          (box_0.type_0 >> 0i32) as OPJ_BYTE as libc::c_int,
+          (box_0.type_0 >> 24i32) as OPJ_BYTE as core::ffi::c_int,
+          (box_0.type_0 >> 16i32) as OPJ_BYTE as core::ffi::c_int,
+          (box_0.type_0 >> 8i32) as OPJ_BYTE as core::ffi::c_int,
+          (box_0.type_0 >> 0i32) as OPJ_BYTE as core::ffi::c_int,
           l_current_data_size,
           opj_stream_get_number_byte_left(stream) as OPJ_UINT32,
         );
-        opj_free(l_current_data as *mut libc::c_void);
+        opj_free(l_current_data as *mut core::ffi::c_void);
         return 0i32;
       }
       if l_current_data_size > l_last_data_size {
         let mut new_current_data = opj_realloc(
-          l_current_data as *mut libc::c_void,
+          l_current_data as *mut core::ffi::c_void,
           l_current_data_size as size_t,
         ) as *mut OPJ_BYTE;
         if new_current_data.is_null() {
-          opj_free(l_current_data as *mut libc::c_void);
+          opj_free(l_current_data as *mut core::ffi::c_void);
           event_msg!(p_manager, EVT_ERROR,
             "Not enough memory to handle jpeg2000 box\n",
           );
@@ -2639,7 +2638,7 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
         event_msg!(p_manager, EVT_ERROR,
           "Problem with reading JPEG2000 box, stream error\n",
         );
-        opj_free(l_current_data as *mut libc::c_void);
+        opj_free(l_current_data as *mut core::ffi::c_void);
         return 0i32;
       }
       if (*l_current_handler)
@@ -2648,47 +2647,47 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
         jp2, l_current_data, l_current_data_size, p_manager
       ) == 0
       {
-        opj_free(l_current_data as *mut libc::c_void);
+        opj_free(l_current_data as *mut core::ffi::c_void);
         return 0i32;
       }
     } else {
-      if (*jp2).jp2_state & JP2_STATE_SIGNATURE as libc::c_uint == 0 {
+      if (*jp2).jp2_state & JP2_STATE_SIGNATURE as core::ffi::c_uint == 0 {
         event_msg!(p_manager, EVT_ERROR,
           "Malformed JP2 file format: first box must be JPEG 2000 signature box\n",
         );
-        opj_free(l_current_data as *mut libc::c_void);
+        opj_free(l_current_data as *mut core::ffi::c_void);
         return 0i32;
       }
-      if (*jp2).jp2_state & JP2_STATE_FILE_TYPE as libc::c_uint == 0 {
+      if (*jp2).jp2_state & JP2_STATE_FILE_TYPE as core::ffi::c_uint == 0 {
         event_msg!(p_manager, EVT_ERROR,
           "Malformed JP2 file format: second box must be file type box\n",
         );
-        opj_free(l_current_data as *mut libc::c_void);
+        opj_free(l_current_data as *mut core::ffi::c_void);
         return 0i32;
       }
-      (*jp2).jp2_state |= JP2_STATE_UNKNOWN as libc::c_uint;
+      (*jp2).jp2_state |= JP2_STATE_UNKNOWN as core::ffi::c_uint;
       if opj_stream_skip(stream, l_current_data_size as OPJ_OFF_T, p_manager)
         != l_current_data_size as i64
       {
-        if (*jp2).jp2_state & JP2_STATE_CODESTREAM as libc::c_uint != 0 {
+        if (*jp2).jp2_state & JP2_STATE_CODESTREAM as core::ffi::c_uint != 0 {
           /* If we already read the codestream, do not error out */
           /* Needed for data/input/nonregression/issue254.jp2 */
           event_msg!(p_manager, EVT_WARNING,
             "Problem with skipping JPEG2000 box, stream error\n",
           );
-          opj_free(l_current_data as *mut libc::c_void);
+          opj_free(l_current_data as *mut core::ffi::c_void);
           return 1i32;
         } else {
           event_msg!(p_manager, EVT_ERROR,
             "Problem with skipping JPEG2000 box, stream error\n",
           );
-          opj_free(l_current_data as *mut libc::c_void);
+          opj_free(l_current_data as *mut core::ffi::c_void);
           return 0i32;
         }
       }
     }
   }
-  opj_free(l_current_data as *mut libc::c_void);
+  opj_free(l_current_data as *mut core::ffi::c_void);
   return 1i32;
 }
 /* *
@@ -2745,7 +2744,7 @@ unsafe fn opj_jp2_exec(
   while i < l_nb_proc {
     l_result = (l_result != 0
       && (*l_procedure).expect("non-null function pointer")(jp2, stream, p_manager) != 0)
-      as libc::c_int;
+      as core::ffi::c_int;
     l_procedure = l_procedure.offset(1);
     i += 1;
   }
@@ -2865,7 +2864,7 @@ unsafe extern "C" fn opj_jp2_read_jp(
 
   assert!(!p_header_data.is_null());
   assert!(!jp2.is_null());
-  if (*jp2).jp2_state != JP2_STATE_NONE as libc::c_uint {
+  if (*jp2).jp2_state != JP2_STATE_NONE as core::ffi::c_uint {
     event_msg!(p_manager, EVT_ERROR,
       "The signature box must be the first box in the file.\n",
     );
@@ -2890,7 +2889,7 @@ unsafe extern "C" fn opj_jp2_read_jp(
     );
     return 0i32;
   }
-  (*jp2).jp2_state |= JP2_STATE_SIGNATURE as libc::c_uint;
+  (*jp2).jp2_state |= JP2_STATE_SIGNATURE as core::ffi::c_uint;
   return 1i32;
 }
 /* *
@@ -2925,7 +2924,7 @@ unsafe extern "C" fn opj_jp2_read_ftyp(
 
   assert!(!p_header_data.is_null());
   assert!(!jp2.is_null());
-  if (*jp2).jp2_state != JP2_STATE_SIGNATURE as libc::c_uint {
+  if (*jp2).jp2_state != JP2_STATE_SIGNATURE as core::ffi::c_uint {
     event_msg!(p_manager, EVT_ERROR,
       "The ftyp box must be the second box in the file.\n",
     );
@@ -2982,7 +2981,7 @@ unsafe extern "C" fn opj_jp2_read_ftyp(
     p_header_data = p_header_data.offset(4);
     i += 1;
   }
-  (*jp2).jp2_state |= JP2_STATE_FILE_TYPE as libc::c_uint;
+  (*jp2).jp2_state |= JP2_STATE_FILE_TYPE as core::ffi::c_uint;
   return 1i32;
 }
 unsafe extern "C" fn opj_jp2_skip_jp2c(
@@ -3059,8 +3058,8 @@ unsafe extern "C" fn opj_jp2_read_jp2h(
   assert!(!p_header_data.is_null());
   assert!(!jp2.is_null());
   /* make sure the box is well placed */
-  if (*jp2).jp2_state & JP2_STATE_FILE_TYPE as libc::c_uint
-    != JP2_STATE_FILE_TYPE as libc::c_uint
+  if (*jp2).jp2_state & JP2_STATE_FILE_TYPE as core::ffi::c_uint
+    != JP2_STATE_FILE_TYPE as core::ffi::c_uint
   {
     event_msg!(p_manager, EVT_ERROR,
       "The  box must be the first box in the file.\n",
@@ -3102,14 +3101,14 @@ unsafe extern "C" fn opj_jp2_read_jp2h(
         return 0i32;
       }
     } else {
-      (*jp2).jp2_img_state |= JP2_IMG_STATE_UNKNOWN as libc::c_uint
+      (*jp2).jp2_img_state |= JP2_IMG_STATE_UNKNOWN as core::ffi::c_uint
     }
     if box_0.type_0 == 0x69686472u32 {
       l_has_ihdr = 1i32
     }
     p_header_data = p_header_data.offset(l_current_data_size as isize);
     p_header_size =
-      (p_header_size as libc::c_uint).wrapping_sub(box_0.length) as OPJ_UINT32
+      (p_header_size as core::ffi::c_uint).wrapping_sub(box_0.length) as OPJ_UINT32
   }
   if l_has_ihdr == 0i32 {
     event_msg!(p_manager, EVT_ERROR,
@@ -3117,7 +3116,7 @@ unsafe extern "C" fn opj_jp2_read_jp2h(
     );
     return 0i32;
   }
-  (*jp2).jp2_state |= JP2_STATE_HEADER as libc::c_uint;
+  (*jp2).jp2_state |= JP2_STATE_HEADER as core::ffi::c_uint;
   (*jp2).has_jp2h = 1 as OPJ_BYTE;
   return 1i32;
 }
@@ -3171,7 +3170,7 @@ unsafe fn opj_jp2_read_boxhdr_char(
     }
     opj_read_bytes_LE(p_data, &mut l_xl_part_size, 4 as OPJ_UINT32);
     p_data = p_data.offset(4);
-    *p_number_bytes_read = (*p_number_bytes_read as libc::c_uint)
+    *p_number_bytes_read = (*p_number_bytes_read as core::ffi::c_uint)
       .wrapping_add(4u32) as OPJ_UINT32
       as OPJ_UINT32;
     if l_xl_part_size != 0u32 {
@@ -3181,7 +3180,7 @@ unsafe fn opj_jp2_read_boxhdr_char(
       return 0i32;
     }
     opj_read_bytes_LE(p_data, &mut l_value, 4 as OPJ_UINT32);
-    *p_number_bytes_read = (*p_number_bytes_read as libc::c_uint)
+    *p_number_bytes_read = (*p_number_bytes_read as core::ffi::c_uint)
       .wrapping_add(4u32) as OPJ_UINT32
       as OPJ_UINT32;
     (*box_0).length = l_value;
@@ -3232,13 +3231,13 @@ pub(crate) unsafe extern "C" fn opj_jp2_read_header(
   if opj_jp2_exec(jp2, (*jp2).m_procedure_list, p_stream, p_manager) == 0 {
     return 0i32;
   }
-  if (*jp2).has_jp2h as libc::c_int == 0i32 {
+  if (*jp2).has_jp2h as core::ffi::c_int == 0i32 {
     event_msg!(p_manager, EVT_ERROR,
       "JP2H box missing. Required.\n",
     );
     return 0i32;
   }
-  if (*jp2).has_ihdr as libc::c_int == 0i32 {
+  if (*jp2).has_ihdr as core::ffi::c_int == 0i32 {
     event_msg!(p_manager, EVT_ERROR,
       "IHDR box_missing. Required.\n",
     );
@@ -3542,43 +3541,43 @@ pub(crate) unsafe extern "C" fn opj_jp2_destroy(mut jp2: *mut opj_jp2_t) {
     opj_j2k_destroy((*jp2).j2k);
     (*jp2).j2k = 0 as *mut opj_j2k_t;
     if !(*jp2).comps.is_null() {
-      opj_free((*jp2).comps as *mut libc::c_void);
+      opj_free((*jp2).comps as *mut core::ffi::c_void);
       (*jp2).comps = 0 as *mut opj_jp2_comps_t
     }
     if !(*jp2).cl.is_null() {
-      opj_free((*jp2).cl as *mut libc::c_void);
+      opj_free((*jp2).cl as *mut core::ffi::c_void);
       (*jp2).cl = 0 as *mut OPJ_UINT32
     }
     if !(*jp2).color.icc_profile_buf.is_null() {
-      opj_free((*jp2).color.icc_profile_buf as *mut libc::c_void);
+      opj_free((*jp2).color.icc_profile_buf as *mut core::ffi::c_void);
       (*jp2).color.icc_profile_buf = 0 as *mut OPJ_BYTE
     }
     if !(*jp2).color.jp2_cdef.is_null() {
       if !(*(*jp2).color.jp2_cdef).info.is_null() {
-        opj_free((*(*jp2).color.jp2_cdef).info as *mut libc::c_void);
+        opj_free((*(*jp2).color.jp2_cdef).info as *mut core::ffi::c_void);
         (*(*jp2).color.jp2_cdef).info = 0 as *mut opj_jp2_cdef_info_t
       }
-      opj_free((*jp2).color.jp2_cdef as *mut libc::c_void);
+      opj_free((*jp2).color.jp2_cdef as *mut core::ffi::c_void);
       (*jp2).color.jp2_cdef = 0 as *mut opj_jp2_cdef_t
     }
     if !(*jp2).color.jp2_pclr.is_null() {
       if !(*(*jp2).color.jp2_pclr).cmap.is_null() {
-        opj_free((*(*jp2).color.jp2_pclr).cmap as *mut libc::c_void);
+        opj_free((*(*jp2).color.jp2_pclr).cmap as *mut core::ffi::c_void);
         (*(*jp2).color.jp2_pclr).cmap = 0 as *mut opj_jp2_cmap_comp_t
       }
       if !(*(*jp2).color.jp2_pclr).channel_sign.is_null() {
-        opj_free((*(*jp2).color.jp2_pclr).channel_sign as *mut libc::c_void);
+        opj_free((*(*jp2).color.jp2_pclr).channel_sign as *mut core::ffi::c_void);
         (*(*jp2).color.jp2_pclr).channel_sign = 0 as *mut OPJ_BYTE
       }
       if !(*(*jp2).color.jp2_pclr).channel_size.is_null() {
-        opj_free((*(*jp2).color.jp2_pclr).channel_size as *mut libc::c_void);
+        opj_free((*(*jp2).color.jp2_pclr).channel_size as *mut core::ffi::c_void);
         (*(*jp2).color.jp2_pclr).channel_size = 0 as *mut OPJ_BYTE
       }
       if !(*(*jp2).color.jp2_pclr).entries.is_null() {
-        opj_free((*(*jp2).color.jp2_pclr).entries as *mut libc::c_void);
+        opj_free((*(*jp2).color.jp2_pclr).entries as *mut core::ffi::c_void);
         (*(*jp2).color.jp2_pclr).entries = 0 as *mut OPJ_UINT32
       }
-      opj_free((*jp2).color.jp2_pclr as *mut libc::c_void);
+      opj_free((*jp2).color.jp2_pclr as *mut core::ffi::c_void);
       (*jp2).color.jp2_pclr = 0 as *mut opj_jp2_pclr_t
     }
     if !(*jp2).m_validation_list.is_null() {
@@ -3589,7 +3588,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_destroy(mut jp2: *mut opj_jp2_t) {
       opj_procedure_list_destroy((*jp2).m_procedure_list);
       (*jp2).m_procedure_list = 0 as *mut opj_procedure_list
     }
-    opj_free(jp2 as *mut libc::c_void);
+    opj_free(jp2 as *mut core::ffi::c_void);
   };
 }
 #[no_mangle]
@@ -3761,7 +3760,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_set_decoded_resolution_factor(
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_jp2_encoder_set_extra_options(
   mut p_jp2: *mut opj_jp2_t,
-  mut p_options: *const *const libc::c_char,
+  mut p_options: *const *const core::ffi::c_char,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_j2k_encoder_set_extra_options((*p_jp2).j2k, p_options, p_manager);

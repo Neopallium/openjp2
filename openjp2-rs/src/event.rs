@@ -1,6 +1,5 @@
 use super::openjpeg::*;
 pub use super::consts::event::*;
-use ::libc;
 
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -42,9 +41,9 @@ use ::libc;
 
 #[derive(Copy, Clone)]
 pub struct opj_event_mgr {
-  m_error_data: *mut libc::c_void,
-  m_warning_data: *mut libc::c_void,
-  m_info_data: *mut libc::c_void,
+  m_error_data: *mut core::ffi::c_void,
+  m_warning_data: *mut core::ffi::c_void,
+  m_info_data: *mut core::ffi::c_void,
   error_handler: opj_msg_callback,
   warning_handler: opj_msg_callback,
   info_handler: opj_msg_callback,
@@ -53,9 +52,9 @@ pub struct opj_event_mgr {
 impl Default for opj_event_mgr {
   fn default() -> Self {
     Self {
-      m_error_data: 0 as *mut libc::c_void,
-      m_warning_data: 0 as *mut libc::c_void,
-      m_info_data: 0 as *mut libc::c_void,
+      m_error_data: 0 as *mut core::ffi::c_void,
+      m_warning_data: 0 as *mut core::ffi::c_void,
+      m_info_data: 0 as *mut core::ffi::c_void,
       error_handler: None,
       info_handler: None,
       warning_handler: None,
@@ -65,9 +64,9 @@ impl Default for opj_event_mgr {
 
 impl opj_event_mgr {
   pub fn set_default_event_handler(&mut self) {
-    self.m_error_data = 0 as *mut libc::c_void;
-    self.m_warning_data = 0 as *mut libc::c_void;
-    self.m_info_data = 0 as *mut libc::c_void;
+    self.m_error_data = 0 as *mut core::ffi::c_void;
+    self.m_warning_data = 0 as *mut core::ffi::c_void;
+    self.m_info_data = 0 as *mut core::ffi::c_void;
     self.error_handler = None;
     self.info_handler = None;
     self.warning_handler = None;
@@ -75,7 +74,7 @@ impl opj_event_mgr {
 
   pub fn set_info_handler(&mut self,
     mut p_callback: opj_msg_callback,
-    mut p_user_data: *mut libc::c_void,
+    mut p_user_data: *mut core::ffi::c_void,
   ) {
     self.info_handler = p_callback;
     self.m_info_data = p_user_data;
@@ -83,7 +82,7 @@ impl opj_event_mgr {
 
   pub fn set_warning_handler(&mut self,
     mut p_callback: opj_msg_callback,
-    mut p_user_data: *mut libc::c_void,
+    mut p_user_data: *mut core::ffi::c_void,
   ) {
     self.warning_handler = p_callback;
     self.m_warning_data = p_user_data;
@@ -91,7 +90,7 @@ impl opj_event_mgr {
 
   pub fn set_error_handler(&mut self,
     mut p_callback: opj_msg_callback,
-    mut p_user_data: *mut libc::c_void,
+    mut p_user_data: *mut core::ffi::c_void,
   ) {
     self.error_handler = p_callback;
     self.m_error_data = p_user_data;
@@ -99,7 +98,7 @@ impl opj_event_mgr {
 
   pub fn get_handler(&self,
     event_type: EventType,
-  ) -> Option<(opj_msg_callback_fn, *mut libc::c_void)> {
+  ) -> Option<(opj_msg_callback_fn, *mut core::ffi::c_void)> {
     match event_type {
       EventType::Error => {
         self.error_handler.map(|h| (h, self.m_error_data))
@@ -120,11 +119,11 @@ impl opj_event_mgr {
   pub fn msg_write(&self,
     event_type: EventType,
     msg: &str,
-  ) -> bool {
+  ) -> i32 {
     let (msg_handler, l_data) = match self.get_handler(event_type) {
       Some(handler) => handler,
       None => {
-        return false;
+        return 0;
       }
     };
     let c_msg = std::ffi::CString::new(msg).unwrap();
@@ -132,17 +131,16 @@ impl opj_event_mgr {
     unsafe {
       msg_handler(c_msg.as_ptr(), l_data);
     }
-    true
+    1
   }
 }
 
 macro_rules! event_msg {
   ($event_mgr:expr, $event_type:expr, $fmt:expr) => {
-    if $event_mgr.msg_write($event_type, $fmt) {
-      1i32
-    } else {
-      0i32
-    }
+    $event_mgr.msg_write($event_type, $fmt)
+  };
+  ($event_mgr:expr, $event_type:expr, $fmt:expr,) => {
+    $event_mgr.msg_write($event_type, $fmt)
   };
   ($event_mgr:expr, $event_type:expr, $fmt:expr, $($arg:expr),*) => {
     event_msg!(internal $event_mgr, $event_type, $fmt, $($arg,)*)
@@ -154,11 +152,7 @@ macro_rules! event_msg {
     if $event_mgr.is_enabled($event_type) {
       let s = ::sprintf::sprintf!($fmt, $($arg),*);
       match &s {
-        Ok(s) => if $event_mgr.msg_write($event_type, s) {
-          1i32
-        } else {
-          0i32
-        },
+        Ok(s) => $event_mgr.msg_write($event_type, s),
         Err(err) => {
           log::error!("sprintf failed: {err:?}");
           0i32

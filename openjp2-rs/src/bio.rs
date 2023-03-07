@@ -1,5 +1,4 @@
 use super::openjpeg::*;
-use ::libc;
 
 use super::malloc::*;
 
@@ -57,7 +56,7 @@ unsafe fn opj_bio_bytein(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   }
   let fresh1 = (*bio).bp;
   (*bio).bp = (*bio).bp.offset(1);
-  (*bio).buf |= *fresh1 as libc::c_uint;
+  (*bio).buf |= *fresh1 as core::ffi::c_uint;
   return 1i32;
 }
 /*
@@ -139,7 +138,7 @@ pub(crate) unsafe fn opj_bio_create() -> *mut opj_bio_t {
 #[no_mangle]
 pub(crate) unsafe fn opj_bio_destroy(mut bio: *mut opj_bio_t) {
   if !bio.is_null() {
-    opj_free(bio as *mut libc::c_void);
+    opj_free(bio as *mut core::ffi::c_void);
   };
 }
 #[no_mangle]

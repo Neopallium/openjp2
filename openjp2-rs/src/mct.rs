@@ -1,10 +1,9 @@
 use super::openjpeg::*;
-use ::libc;
 
 use super::malloc::*;
 
 extern "C" {
-  fn sqrt(_: libc::c_double) -> libc::c_double;
+  fn sqrt(_: core::ffi::c_double) -> core::ffi::c_double;
 }
 
 #[inline]
@@ -245,7 +244,7 @@ pub(crate) unsafe fn opj_mct_encode_custom(
     }
     i += 1;
   }
-  opj_free(lCurrentData as *mut libc::c_void);
+  opj_free(lCurrentData as *mut core::ffi::c_void);
   return 1i32;
 }
 #[no_mangle]
@@ -298,7 +297,7 @@ pub(crate) unsafe fn opj_mct_decode_custom(
     }
     i += 1;
   }
-  opj_free(lCurrentData as *mut libc::c_void);
+  opj_free(lCurrentData as *mut core::ffi::c_void);
   return 1i32;
 }
 #[no_mangle]
@@ -320,9 +319,9 @@ pub(crate) unsafe fn opj_calculate_norms(
     j = 0 as OPJ_UINT32;
     while j < pNbComps {
       lCurrentValue = *lMatrix.offset(lIndex as isize);
-      lIndex = (lIndex as libc::c_uint).wrapping_add(pNbComps) as OPJ_UINT32;
+      lIndex = (lIndex as core::ffi::c_uint).wrapping_add(pNbComps) as OPJ_UINT32;
       let ref mut fresh7 = *lNorms.offset(i as isize);
-      *fresh7 += lCurrentValue as OPJ_FLOAT64 * lCurrentValue as libc::c_double;
+      *fresh7 += lCurrentValue as OPJ_FLOAT64 * lCurrentValue as core::ffi::c_double;
       j += 1;
     }
     *lNorms.offset(i as isize) = sqrt(*lNorms.offset(i as isize));

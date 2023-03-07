@@ -3,7 +3,6 @@ use super::cio::*;
 use super::jp2::*;
 use super::j2k::*;
 use ::c2rust_bitfields;
-use ::libc;
 
 use super::malloc::*;
 use super::consts::*;
@@ -21,9 +20,9 @@ use ::libc::{
 };
 
 extern "C" {
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
+  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
+  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
 }
 
 pub type size_t = usize;
@@ -44,19 +43,19 @@ pub type OPJ_UINT64 = u64;
 pub type OPJ_OFF_T = i64;
 pub type OPJ_SIZE_T = usize;
 pub type opj_flag_t = u32;
-pub type RSIZ_CAPABILITIES = libc::c_uint;
+pub type RSIZ_CAPABILITIES = core::ffi::c_uint;
 pub const OPJ_MCT: RSIZ_CAPABILITIES = 33024;
 pub const OPJ_CINEMA4K: RSIZ_CAPABILITIES = 4;
 pub const OPJ_CINEMA2K: RSIZ_CAPABILITIES = 3;
 pub const OPJ_STD_RSIZ: RSIZ_CAPABILITIES = 0;
 pub type OPJ_RSIZ_CAPABILITIES = RSIZ_CAPABILITIES;
-pub type CINEMA_MODE = libc::c_uint;
+pub type CINEMA_MODE = core::ffi::c_uint;
 pub const OPJ_CINEMA4K_24: CINEMA_MODE = 3;
 pub const OPJ_CINEMA2K_48: CINEMA_MODE = 2;
 pub const OPJ_CINEMA2K_24: CINEMA_MODE = 1;
 pub const OPJ_OFF: CINEMA_MODE = 0;
 pub type OPJ_CINEMA_MODE = CINEMA_MODE;
-pub type PROG_ORDER = libc::c_int;
+pub type PROG_ORDER = core::ffi::c_int;
 pub const OPJ_CPRL: PROG_ORDER = 4;
 pub const OPJ_PCRL: PROG_ORDER = 3;
 pub const OPJ_RPCL: PROG_ORDER = 2;
@@ -110,7 +109,7 @@ pub use CODEC_FORMAT as OPJ_CODEC_FORMAT;
 pub use CODEC_FORMAT::*;
 
 pub type opj_msg_callback_fn =
-  unsafe extern "C" fn(_: *const libc::c_char, _: *mut libc::c_void) -> ();
+  unsafe extern "C" fn(_: *const core::ffi::c_char, _: *mut core::ffi::c_void) -> ();
 
 pub type opj_msg_callback = Option<opj_msg_callback_fn>;
 
@@ -160,64 +159,64 @@ pub type opj_poc_t = opj_poc;
 #[derive(Copy, Clone)]
 pub struct opj_cparameters {
   pub tile_size_on: OPJ_BOOL,
-  pub cp_tx0: libc::c_int,
-  pub cp_ty0: libc::c_int,
-  pub cp_tdx: libc::c_int,
-  pub cp_tdy: libc::c_int,
-  pub cp_disto_alloc: libc::c_int,
-  pub cp_fixed_alloc: libc::c_int,
-  pub cp_fixed_quality: libc::c_int,
-  pub cp_matrice: *mut libc::c_int,
-  pub cp_comment: *mut libc::c_char,
-  pub csty: libc::c_int,
+  pub cp_tx0: core::ffi::c_int,
+  pub cp_ty0: core::ffi::c_int,
+  pub cp_tdx: core::ffi::c_int,
+  pub cp_tdy: core::ffi::c_int,
+  pub cp_disto_alloc: core::ffi::c_int,
+  pub cp_fixed_alloc: core::ffi::c_int,
+  pub cp_fixed_quality: core::ffi::c_int,
+  pub cp_matrice: *mut core::ffi::c_int,
+  pub cp_comment: *mut core::ffi::c_char,
+  pub csty: core::ffi::c_int,
   pub prog_order: OPJ_PROG_ORDER,
   pub POC: [opj_poc_t; 32],
   pub numpocs: OPJ_UINT32,
-  pub tcp_numlayers: libc::c_int,
-  pub tcp_rates: [libc::c_float; 100],
-  pub tcp_distoratio: [libc::c_float; 100],
-  pub numresolution: libc::c_int,
-  pub cblockw_init: libc::c_int,
-  pub cblockh_init: libc::c_int,
-  pub mode: libc::c_int,
-  pub irreversible: libc::c_int,
-  pub roi_compno: libc::c_int,
-  pub roi_shift: libc::c_int,
-  pub res_spec: libc::c_int,
-  pub prcw_init: [libc::c_int; 33],
-  pub prch_init: [libc::c_int; 33],
-  pub infile: [libc::c_char; 4096],
-  pub outfile: [libc::c_char; 4096],
-  pub index_on: libc::c_int,
-  pub index: [libc::c_char; 4096],
-  pub image_offset_x0: libc::c_int,
-  pub image_offset_y0: libc::c_int,
-  pub subsampling_dx: libc::c_int,
-  pub subsampling_dy: libc::c_int,
-  pub decod_format: libc::c_int,
-  pub cod_format: libc::c_int,
+  pub tcp_numlayers: core::ffi::c_int,
+  pub tcp_rates: [core::ffi::c_float; 100],
+  pub tcp_distoratio: [core::ffi::c_float; 100],
+  pub numresolution: core::ffi::c_int,
+  pub cblockw_init: core::ffi::c_int,
+  pub cblockh_init: core::ffi::c_int,
+  pub mode: core::ffi::c_int,
+  pub irreversible: core::ffi::c_int,
+  pub roi_compno: core::ffi::c_int,
+  pub roi_shift: core::ffi::c_int,
+  pub res_spec: core::ffi::c_int,
+  pub prcw_init: [core::ffi::c_int; 33],
+  pub prch_init: [core::ffi::c_int; 33],
+  pub infile: [core::ffi::c_char; 4096],
+  pub outfile: [core::ffi::c_char; 4096],
+  pub index_on: core::ffi::c_int,
+  pub index: [core::ffi::c_char; 4096],
+  pub image_offset_x0: core::ffi::c_int,
+  pub image_offset_y0: core::ffi::c_int,
+  pub subsampling_dx: core::ffi::c_int,
+  pub subsampling_dy: core::ffi::c_int,
+  pub decod_format: core::ffi::c_int,
+  pub cod_format: core::ffi::c_int,
   pub jpwl_epc_on: OPJ_BOOL,
-  pub jpwl_hprot_MH: libc::c_int,
-  pub jpwl_hprot_TPH_tileno: [libc::c_int; 16],
-  pub jpwl_hprot_TPH: [libc::c_int; 16],
-  pub jpwl_pprot_tileno: [libc::c_int; 16],
-  pub jpwl_pprot_packno: [libc::c_int; 16],
-  pub jpwl_pprot: [libc::c_int; 16],
-  pub jpwl_sens_size: libc::c_int,
-  pub jpwl_sens_addr: libc::c_int,
-  pub jpwl_sens_range: libc::c_int,
-  pub jpwl_sens_MH: libc::c_int,
-  pub jpwl_sens_TPH_tileno: [libc::c_int; 16],
-  pub jpwl_sens_TPH: [libc::c_int; 16],
+  pub jpwl_hprot_MH: core::ffi::c_int,
+  pub jpwl_hprot_TPH_tileno: [core::ffi::c_int; 16],
+  pub jpwl_hprot_TPH: [core::ffi::c_int; 16],
+  pub jpwl_pprot_tileno: [core::ffi::c_int; 16],
+  pub jpwl_pprot_packno: [core::ffi::c_int; 16],
+  pub jpwl_pprot: [core::ffi::c_int; 16],
+  pub jpwl_sens_size: core::ffi::c_int,
+  pub jpwl_sens_addr: core::ffi::c_int,
+  pub jpwl_sens_range: core::ffi::c_int,
+  pub jpwl_sens_MH: core::ffi::c_int,
+  pub jpwl_sens_TPH_tileno: [core::ffi::c_int; 16],
+  pub jpwl_sens_TPH: [core::ffi::c_int; 16],
   pub cp_cinema: OPJ_CINEMA_MODE,
-  pub max_comp_size: libc::c_int,
+  pub max_comp_size: core::ffi::c_int,
   pub cp_rsiz: OPJ_RSIZ_CAPABILITIES,
-  pub tp_on: libc::c_char,
-  pub tp_flag: libc::c_char,
-  pub tcp_mct: libc::c_char,
+  pub tp_on: core::ffi::c_char,
+  pub tp_flag: core::ffi::c_char,
+  pub tcp_mct: core::ffi::c_char,
   pub jpip_on: OPJ_BOOL,
-  pub mct_data: *mut libc::c_void,
-  pub max_cs_size: libc::c_int,
+  pub mct_data: *mut core::ffi::c_void,
+  pub max_cs_size: core::ffi::c_int,
   pub rsiz: OPJ_UINT16,
 }
 pub type opj_cparameters_t = opj_cparameters;
@@ -227,10 +226,10 @@ pub type opj_cparameters_t = opj_cparameters;
 pub struct opj_dparameters {
   pub cp_reduce: OPJ_UINT32,
   pub cp_layer: OPJ_UINT32,
-  pub infile: [libc::c_char; 4096],
-  pub outfile: [libc::c_char; 4096],
-  pub decod_format: libc::c_int,
-  pub cod_format: libc::c_int,
+  pub infile: [core::ffi::c_char; 4096],
+  pub outfile: [core::ffi::c_char; 4096],
+  pub decod_format: core::ffi::c_int,
+  pub cod_format: core::ffi::c_int,
   pub DA_x0: OPJ_UINT32,
   pub DA_x1: OPJ_UINT32,
   pub DA_y0: OPJ_UINT32,
@@ -239,24 +238,24 @@ pub struct opj_dparameters {
   pub tile_index: OPJ_UINT32,
   pub nb_tile_to_decode: OPJ_UINT32,
   pub jpwl_correct: OPJ_BOOL,
-  pub jpwl_exp_comps: libc::c_int,
-  pub jpwl_max_tiles: libc::c_int,
-  pub flags: libc::c_uint,
+  pub jpwl_exp_comps: core::ffi::c_int,
+  pub jpwl_max_tiles: core::ffi::c_int,
+  pub flags: core::ffi::c_uint,
 }
 pub type opj_dparameters_t = opj_dparameters;
-pub type opj_codec_t = *mut libc::c_void;
+pub type opj_codec_t = *mut core::ffi::c_void;
 pub type opj_stream_read_fn = Option<
-  unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_SIZE_T, _: *mut libc::c_void) -> OPJ_SIZE_T,
+  unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_SIZE_T, _: *mut core::ffi::c_void) -> OPJ_SIZE_T,
 >;
 pub type opj_stream_write_fn = Option<
-  unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_SIZE_T, _: *mut libc::c_void) -> OPJ_SIZE_T,
+  unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_SIZE_T, _: *mut core::ffi::c_void) -> OPJ_SIZE_T,
 >;
 pub type opj_stream_skip_fn =
-  Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut libc::c_void) -> OPJ_OFF_T>;
+  Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_OFF_T>;
 pub type opj_stream_seek_fn =
-  Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut libc::c_void) -> OPJ_BOOL>;
-pub type opj_stream_free_user_data_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
-pub type opj_stream_t = *mut libc::c_void;
+  Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL>;
+pub type opj_stream_free_user_data_fn = Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>;
+pub type opj_stream_t = *mut core::ffi::c_void;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -298,16 +297,16 @@ pub struct opj_packet_info {
   pub start_pos: OPJ_OFF_T,
   pub end_ph_pos: OPJ_OFF_T,
   pub end_pos: OPJ_OFF_T,
-  pub disto: libc::c_double,
+  pub disto: core::ffi::c_double,
 }
 pub type opj_packet_info_t = opj_packet_info;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_marker_info {
-  pub type_: libc::c_ushort,
+  pub type_: core::ffi::c_ushort,
   pub pos: OPJ_OFF_T,
-  pub len: libc::c_int,
+  pub len: core::ffi::c_int,
 }
 pub type opj_marker_info_t = opj_marker_info;
 
@@ -334,7 +333,7 @@ pub type opj_tccp_info_t = opj_tccp_info;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_tile_v2_info {
-  pub tileno: libc::c_int,
+  pub tileno: core::ffi::c_int,
   pub csty: OPJ_UINT32,
   pub prg: OPJ_PROG_ORDER,
   pub numlayers: OPJ_UINT32,
@@ -361,33 +360,33 @@ pub type opj_codestream_info_v2_t = opj_codestream_info_v2;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_tp_info {
-  pub tp_start_pos: libc::c_int,
-  pub tp_end_header: libc::c_int,
-  pub tp_end_pos: libc::c_int,
-  pub tp_start_pack: libc::c_int,
-  pub tp_numpacks: libc::c_int,
+  pub tp_start_pos: core::ffi::c_int,
+  pub tp_end_header: core::ffi::c_int,
+  pub tp_end_pos: core::ffi::c_int,
+  pub tp_start_pack: core::ffi::c_int,
+  pub tp_numpacks: core::ffi::c_int,
 }
 pub type opj_tp_info_t = opj_tp_info;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_tile_info {
-  pub thresh: *mut libc::c_double,
-  pub tileno: libc::c_int,
-  pub start_pos: libc::c_int,
-  pub end_header: libc::c_int,
-  pub end_pos: libc::c_int,
-  pub pw: [libc::c_int; 33],
-  pub ph: [libc::c_int; 33],
-  pub pdx: [libc::c_int; 33],
-  pub pdy: [libc::c_int; 33],
+  pub thresh: *mut core::ffi::c_double,
+  pub tileno: core::ffi::c_int,
+  pub start_pos: core::ffi::c_int,
+  pub end_header: core::ffi::c_int,
+  pub end_pos: core::ffi::c_int,
+  pub pw: [core::ffi::c_int; 33],
+  pub ph: [core::ffi::c_int; 33],
+  pub pdx: [core::ffi::c_int; 33],
+  pub pdy: [core::ffi::c_int; 33],
   pub packet: *mut opj_packet_info_t,
-  pub numpix: libc::c_int,
-  pub distotile: libc::c_double,
-  pub marknum: libc::c_int,
+  pub numpix: core::ffi::c_int,
+  pub distotile: core::ffi::c_double,
+  pub marknum: core::ffi::c_int,
   pub marker: *mut opj_marker_info_t,
-  pub maxmarknum: libc::c_int,
-  pub num_tps: libc::c_int,
+  pub maxmarknum: core::ffi::c_int,
+  pub num_tps: core::ffi::c_int,
   pub tp: *mut opj_tp_info_t,
 }
 pub type opj_tile_info_t = opj_tile_info;
@@ -395,27 +394,27 @@ pub type opj_tile_info_t = opj_tile_info;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_codestream_info {
-  pub D_max: libc::c_double,
-  pub packno: libc::c_int,
-  pub index_write: libc::c_int,
-  pub image_w: libc::c_int,
-  pub image_h: libc::c_int,
+  pub D_max: core::ffi::c_double,
+  pub packno: core::ffi::c_int,
+  pub index_write: core::ffi::c_int,
+  pub image_w: core::ffi::c_int,
+  pub image_h: core::ffi::c_int,
   pub prog: OPJ_PROG_ORDER,
-  pub tile_x: libc::c_int,
-  pub tile_y: libc::c_int,
-  pub tile_Ox: libc::c_int,
-  pub tile_Oy: libc::c_int,
-  pub tw: libc::c_int,
-  pub th: libc::c_int,
-  pub numcomps: libc::c_int,
-  pub numlayers: libc::c_int,
-  pub numdecompos: *mut libc::c_int,
-  pub marknum: libc::c_int,
+  pub tile_x: core::ffi::c_int,
+  pub tile_y: core::ffi::c_int,
+  pub tile_Ox: core::ffi::c_int,
+  pub tile_Oy: core::ffi::c_int,
+  pub tw: core::ffi::c_int,
+  pub th: core::ffi::c_int,
+  pub numcomps: core::ffi::c_int,
+  pub numlayers: core::ffi::c_int,
+  pub numdecompos: *mut core::ffi::c_int,
+  pub marknum: core::ffi::c_int,
   pub marker: *mut opj_marker_info_t,
-  pub maxmarknum: libc::c_int,
-  pub main_head_start: libc::c_int,
-  pub main_head_end: libc::c_int,
-  pub codestream_size: libc::c_int,
+  pub maxmarknum: core::ffi::c_int,
+  pub main_head_start: core::ffi::c_int,
+  pub main_head_end: core::ffi::c_int,
+  pub codestream_size: core::ffi::c_int,
   pub tile: *mut opj_tile_info_t,
 }
 pub type opj_codestream_info_t = opj_codestream_info;
@@ -473,17 +472,17 @@ pub type opj_codec_private_t = opj_codec_private;
 #[derive(Copy, Clone)]
 pub struct opj_codec_private {
   pub m_codec_data: C2RustUnnamed,
-  pub m_codec: *mut libc::c_void,
+  pub m_codec: *mut core::ffi::c_void,
   pub m_event_mgr: opj_event_mgr,
   pub is_decompressor: OPJ_BOOL,
   pub opj_dump_codec:
-    Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
+    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
   pub opj_get_codec_info:
-    Option<unsafe extern "C" fn(_: *mut libc::c_void) -> *mut opj_codestream_info_v2_t>,
+    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_info_v2_t>,
   pub opj_get_codec_index:
-    Option<unsafe extern "C" fn(_: *mut libc::c_void) -> *mut opj_codestream_index_t>,
+    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_index_t>,
   pub opj_set_threads:
-    Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
+    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
 }
 
 #[repr(C)]
@@ -498,7 +497,7 @@ pub union C2RustUnnamed {
 pub struct opj_compression {
   pub opj_start_compress: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: *mut opj_stream_private,
       _: *mut opj_image,
       _: &mut opj_event_mgr,
@@ -506,14 +505,14 @@ pub struct opj_compression {
   >,
   pub opj_encode: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: *mut opj_stream_private,
       _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_write_tile: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: OPJ_UINT32,
       _: *mut OPJ_BYTE,
       _: OPJ_UINT32,
@@ -523,15 +522,15 @@ pub struct opj_compression {
   >,
   pub opj_end_compress: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: *mut opj_stream_private,
       _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
-  pub opj_destroy: Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
+  pub opj_destroy: Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
   pub opj_setup_encoder: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: *mut opj_cparameters_t,
       _: *mut opj_image,
       _: &mut opj_event_mgr,
@@ -539,8 +538,8 @@ pub struct opj_compression {
   >,
   pub opj_encoder_set_extra_options: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
-      _: *const *const libc::c_char,
+      _: *mut core::ffi::c_void,
+      _: *const *const core::ffi::c_char,
       _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
@@ -549,7 +548,7 @@ pub struct opj_compression {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_stream_private {
-  pub m_user_data: *mut libc::c_void,
+  pub m_user_data: *mut core::ffi::c_void,
   pub m_free_user_data_fn: opj_stream_free_user_data_fn,
   pub m_user_data_length: OPJ_UINT64,
   pub m_read_fn: opj_stream_read_fn,
@@ -584,14 +583,14 @@ pub struct opj_decompression {
   pub opj_read_header: Option<
     unsafe extern "C" fn(
       _: *mut opj_stream_private,
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: *mut *mut opj_image_t,
       _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
   pub opj_decode: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: *mut opj_stream_private,
       _: *mut opj_image_t,
       _: &mut opj_event_mgr,
@@ -599,7 +598,7 @@ pub struct opj_decompression {
   >,
   pub opj_read_tile_header: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: *mut OPJ_UINT32,
       _: *mut OPJ_UINT32,
       _: *mut OPJ_INT32,
@@ -614,7 +613,7 @@ pub struct opj_decompression {
   >,
   pub opj_decode_tile_data: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: OPJ_UINT32,
       _: *mut OPJ_BYTE,
       _: OPJ_UINT32,
@@ -624,19 +623,19 @@ pub struct opj_decompression {
   >,
   pub opj_end_decompress: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: *mut opj_stream_private,
       _: &mut opj_event_mgr,
     ) -> OPJ_BOOL,
   >,
-  pub opj_destroy: Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
+  pub opj_destroy: Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
   pub opj_setup_decoder:
-    Option<unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_dparameters_t) -> ()>,
+    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: *mut opj_dparameters_t) -> ()>,
   pub opj_decoder_set_strict_mode:
-    Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_BOOL) -> ()>,
+    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_BOOL) -> ()>,
   pub opj_set_decode_area: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: *mut opj_image_t,
       _: OPJ_INT32,
       _: OPJ_INT32,
@@ -647,7 +646,7 @@ pub struct opj_decompression {
   >,
   pub opj_get_decoded_tile: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: *mut opj_stream_private_t,
       _: *mut opj_image_t,
       _: &mut opj_event_mgr,
@@ -655,11 +654,11 @@ pub struct opj_decompression {
     ) -> OPJ_BOOL,
   >,
   pub opj_set_decoded_resolution_factor: Option<
-    unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32, _: &mut opj_event_mgr) -> OPJ_BOOL,
+    unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32, _: &mut opj_event_mgr) -> OPJ_BOOL,
   >,
   pub opj_set_decoded_components: Option<
     unsafe extern "C" fn(
-      _: *mut libc::c_void,
+      _: *mut core::ffi::c_void,
       _: OPJ_UINT32,
       _: *const OPJ_UINT32,
       _: &mut opj_event_mgr,
@@ -786,7 +785,7 @@ pub struct opj_j2k {
   pub m_tp: *mut opj_thread_pool_t,
   pub ihdr_w: OPJ_UINT32,
   pub ihdr_h: OPJ_UINT32,
-  pub dump_state: libc::c_uint,
+  pub dump_state: core::ffi::c_uint,
 }
 pub type opj_tcd_t = opj_tcd;
 
@@ -815,7 +814,7 @@ pub struct opj_tcd {
   pub whole_tile_decoding: OPJ_BOOL,
   pub used_component: *mut OPJ_BOOL,
 }
-pub type OPJ_BITFIELD = libc::c_uint;
+pub type OPJ_BITFIELD = core::ffi::c_uint;
 pub type opj_tcp_t = opj_tcp;
 
 #[repr(C)]
@@ -883,7 +882,7 @@ pub struct opj_mct_data {
   pub m_data_size: OPJ_UINT32,
 }
 pub type J2K_MCT_ARRAY_TYPE = MCT_ARRAY_TYPE;
-pub type MCT_ARRAY_TYPE = libc::c_uint;
+pub type MCT_ARRAY_TYPE = core::ffi::c_uint;
 pub const MCT_TYPE_OFFSET: MCT_ARRAY_TYPE = 2;
 pub const MCT_TYPE_DECORRELATION: MCT_ARRAY_TYPE = 1;
 pub const MCT_TYPE_DEPENDENCY: MCT_ARRAY_TYPE = 0;
@@ -1116,7 +1115,7 @@ pub struct opj_tgt_node {
 pub union C2RustUnnamed_1 {
   pub enc: *mut opj_tcd_cblk_enc_t,
   pub dec: *mut opj_tcd_cblk_dec_t,
-  pub blocks: *mut libc::c_void,
+  pub blocks: *mut core::ffi::c_void,
 }
 pub type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
 
@@ -1307,7 +1306,7 @@ pub struct opj_j2k_dec {
 pub unsafe fn opj_set_info_handler(
   mut p_codec: *mut opj_codec_t,
   mut p_callback: opj_msg_callback,
-  mut p_user_data: *mut libc::c_void,
+  mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
   let mut l_codec = p_codec as *mut opj_codec_private_t;
   if l_codec.is_null() {
@@ -1320,7 +1319,7 @@ pub unsafe fn opj_set_info_handler(
 pub unsafe fn opj_set_warning_handler(
   mut p_codec: *mut opj_codec_t,
   mut p_callback: opj_msg_callback,
-  mut p_user_data: *mut libc::c_void,
+  mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
   let mut l_codec = p_codec as *mut opj_codec_private_t;
   if l_codec.is_null() {
@@ -1333,7 +1332,7 @@ pub unsafe fn opj_set_warning_handler(
 pub unsafe fn opj_set_error_handler(
   mut p_codec: *mut opj_codec_t,
   mut p_callback: opj_msg_callback,
-  mut p_user_data: *mut libc::c_void,
+  mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
   let mut l_codec = p_codec as *mut opj_codec_private_t;
   if l_codec.is_null() {
@@ -1344,9 +1343,9 @@ pub unsafe fn opj_set_error_handler(
 }
 /* ---------------------------------------------------------------------- */
 unsafe extern "C" fn opj_read_from_file(
-  mut p_buffer: *mut libc::c_void,
+  mut p_buffer: *mut core::ffi::c_void,
   mut p_nb_bytes: OPJ_SIZE_T,
-  mut p_user_data: *mut libc::c_void,
+  mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_SIZE_T {
   let mut p_file = p_user_data as *mut FILE;
   let l_nb_read = fread(
@@ -1362,7 +1361,7 @@ unsafe extern "C" fn opj_read_from_file(
   };
 }
 unsafe extern "C" fn opj_get_data_length_from_file(
-  mut p_user_data: *mut libc::c_void,
+  mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_UINT64 {
   let mut p_file = p_user_data as *mut FILE;
   let mut file_length = 0 as OPJ_OFF_T;
@@ -1372,9 +1371,9 @@ unsafe extern "C" fn opj_get_data_length_from_file(
   return file_length as OPJ_UINT64;
 }
 unsafe extern "C" fn opj_write_from_file(
-  mut p_buffer: *mut libc::c_void,
+  mut p_buffer: *mut core::ffi::c_void,
   mut p_nb_bytes: OPJ_SIZE_T,
-  mut p_user_data: *mut libc::c_void,
+  mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_SIZE_T {
   let mut p_file = p_user_data as *mut FILE;
   return fwrite(
@@ -1386,7 +1385,7 @@ unsafe extern "C" fn opj_write_from_file(
 }
 unsafe extern "C" fn opj_skip_from_file(
   mut p_nb_bytes: OPJ_OFF_T,
-  mut p_user_data: *mut libc::c_void,
+  mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_OFF_T {
   let mut p_file = p_user_data as *mut FILE;
   if fseeko(p_file, p_nb_bytes, 1i32) != 0 {
@@ -1396,7 +1395,7 @@ unsafe extern "C" fn opj_skip_from_file(
 }
 unsafe extern "C" fn opj_seek_from_file(
   mut p_nb_bytes: OPJ_OFF_T,
-  mut p_user_data: *mut libc::c_void,
+  mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
   let mut p_file = p_user_data as *mut FILE;
   if fseeko(p_file, p_nb_bytes, 0i32) != 0 {
@@ -1404,7 +1403,7 @@ unsafe extern "C" fn opj_seek_from_file(
   }
   return 1i32;
 }
-unsafe extern "C" fn opj_close_from_file(mut p_user_data: *mut libc::c_void) {
+unsafe extern "C" fn opj_close_from_file(mut p_user_data: *mut core::ffi::c_void) {
   let mut p_file = p_user_data as *mut FILE;
   fclose(p_file);
 }
@@ -1412,8 +1411,8 @@ unsafe extern "C" fn opj_close_from_file(mut p_user_data: *mut libc::c_void) {
 /* _WIN32 */
 /* ---------------------------------------------------------------------- */
 #[no_mangle]
-pub unsafe fn opj_version() -> *const libc::c_char {
-  return b"2.5.0\x00" as *const u8 as *const libc::c_char;
+pub unsafe fn opj_version() -> *const core::ffi::c_char {
+  return b"2.5.0\x00" as *const u8 as *const core::ffi::c_char;
 }
 /* ---------------------------------------------------------------------- */
 /* DECOMPRESSION FUNCTIONS*/
@@ -1428,24 +1427,24 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
     return 0 as *mut opj_codec_t;
   }
   (*l_codec).is_decompressor = 1i32;
-  match p_format as libc::c_int {
+  match p_format as core::ffi::c_int {
     0 => {
       (*l_codec).opj_dump_codec = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_INT32, _: *mut FILE) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
       >(Some(
         j2k_dump as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_INT32, _: *mut FILE) -> (),
       ));
       (*l_codec).opj_get_codec_info = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_info_v2_t>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void) -> *mut opj_codestream_info_v2_t>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_info_v2_t>,
       >(Some(
         j2k_get_cstr_info
           as unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_info_v2_t,
       ));
       (*l_codec).opj_get_codec_index = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_index_t>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void) -> *mut opj_codestream_index_t>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_index_t>,
       >(Some(
         j2k_get_cstr_index
           as unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_index_t,
@@ -1461,7 +1460,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private,
             _: *mut opj_image_t,
             _: &mut opj_event_mgr,
@@ -1486,7 +1485,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
@@ -1511,7 +1510,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         Option<
           unsafe extern "C" fn(
             _: *mut opj_stream_private,
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut *mut opj_image_t,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
@@ -1527,13 +1526,13 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
       ));
       (*l_codec).m_codec_data.m_decompression.opj_destroy = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
       >(Some(
         opj_j2k_destroy as unsafe extern "C" fn(_: *mut opj_j2k_t) -> (),
       ));
       (*l_codec).m_codec_data.m_decompression.opj_setup_decoder = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: *mut opj_dparameters_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_dparameters_t) -> ()>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: *mut opj_dparameters_t) -> ()>,
       >(Some(
         opj_j2k_setup_decoder
           as unsafe extern "C" fn(_: *mut opj_j2k_t, _: *mut opj_dparameters_t) -> (),
@@ -1543,7 +1542,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         .m_decompression
         .opj_decoder_set_strict_mode = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_BOOL) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_BOOL) -> ()>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_BOOL) -> ()>,
       >(Some(
         opj_j2k_decoder_set_strict_mode
           as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_BOOL) -> (),
@@ -1566,7 +1565,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut OPJ_UINT32,
             _: *mut OPJ_UINT32,
             _: *mut OPJ_INT32,
@@ -1608,7 +1607,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: OPJ_UINT32,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
@@ -1641,7 +1640,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_image_t,
             _: OPJ_INT32,
             _: OPJ_INT32,
@@ -1674,7 +1673,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
             _: &mut opj_event_mgr,
@@ -1704,7 +1703,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: OPJ_UINT32,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
@@ -1731,7 +1730,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: OPJ_UINT32,
             _: *const OPJ_UINT32,
             _: &mut opj_event_mgr,
@@ -1748,13 +1747,13 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
       ));
       (*l_codec).opj_set_threads = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_UINT32) -> OPJ_BOOL>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
       >(Some(
         opj_j2k_set_threads as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_UINT32) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec = opj_j2k_create_decompress() as *mut libc::c_void;
+      (*l_codec).m_codec = opj_j2k_create_decompress() as *mut core::ffi::c_void;
       if (*l_codec).m_codec.is_null() {
-        opj_free(l_codec as *mut libc::c_void);
+        opj_free(l_codec as *mut core::ffi::c_void);
         return 0 as *mut opj_codec_t;
       }
     }
@@ -1762,20 +1761,20 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
       /* get a JP2 decoder handle */
       (*l_codec).opj_dump_codec = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_INT32, _: *mut FILE) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
       >(Some(
         jp2_dump as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_INT32, _: *mut FILE) -> (),
       ));
       (*l_codec).opj_get_codec_info = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_info_v2_t>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void) -> *mut opj_codestream_info_v2_t>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_info_v2_t>,
       >(Some(
         jp2_get_cstr_info
           as unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_info_v2_t,
       ));
       (*l_codec).opj_get_codec_index = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_index_t>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void) -> *mut opj_codestream_index_t>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_index_t>,
       >(Some(
         jp2_get_cstr_index
           as unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_index_t,
@@ -1791,7 +1790,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private,
             _: *mut opj_image_t,
             _: &mut opj_event_mgr,
@@ -1816,7 +1815,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
@@ -1841,7 +1840,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         Option<
           unsafe extern "C" fn(
             _: *mut opj_stream_private,
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut *mut opj_image_t,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
@@ -1873,7 +1872,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut OPJ_UINT32,
             _: *mut OPJ_UINT32,
             _: *mut OPJ_INT32,
@@ -1915,7 +1914,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: OPJ_UINT32,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
@@ -1936,13 +1935,13 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
       ));
       (*l_codec).m_codec_data.m_decompression.opj_destroy = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
       >(Some(
         opj_jp2_destroy as unsafe extern "C" fn(_: *mut opj_jp2_t) -> (),
       ));
       (*l_codec).m_codec_data.m_decompression.opj_setup_decoder = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: *mut opj_dparameters_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void, _: *mut opj_dparameters_t) -> ()>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: *mut opj_dparameters_t) -> ()>,
       >(Some(
         opj_jp2_setup_decoder
           as unsafe extern "C" fn(_: *mut opj_jp2_t, _: *mut opj_dparameters_t) -> (),
@@ -1952,7 +1951,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         .m_decompression
         .opj_decoder_set_strict_mode = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_BOOL) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_BOOL) -> ()>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_BOOL) -> ()>,
       >(Some(
         opj_jp2_decoder_set_strict_mode
           as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_BOOL) -> (),
@@ -1971,7 +1970,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_image_t,
             _: OPJ_INT32,
             _: OPJ_INT32,
@@ -2004,7 +2003,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private_t,
             _: *mut opj_image_t,
             _: &mut opj_event_mgr,
@@ -2034,7 +2033,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: OPJ_UINT32,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
@@ -2061,7 +2060,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: OPJ_UINT32,
             _: *const OPJ_UINT32,
             _: &mut opj_event_mgr,
@@ -2078,18 +2077,18 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
       ));
       (*l_codec).opj_set_threads = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
       >(Some(
         opj_jp2_set_threads as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec = opj_jp2_create(1i32) as *mut libc::c_void;
+      (*l_codec).m_codec = opj_jp2_create(1i32) as *mut core::ffi::c_void;
       if (*l_codec).m_codec.is_null() {
-        opj_free(l_codec as *mut libc::c_void);
+        opj_free(l_codec as *mut core::ffi::c_void);
         return 0 as *mut opj_codec_t;
       }
     }
     -1 | 1 | _ => {
-      opj_free(l_codec as *mut libc::c_void);
+      opj_free(l_codec as *mut core::ffi::c_void);
       return 0 as *mut opj_codec_t;
     }
   }
@@ -2102,7 +2101,7 @@ pub unsafe fn opj_set_default_decoder_parameters(
 ) {
   if !parameters.is_null() {
     memset(
-      parameters as *mut libc::c_void,
+      parameters as *mut core::ffi::c_void,
       0i32,
       core::mem::size_of::<opj_dparameters_t>() as usize,
     );
@@ -2119,7 +2118,7 @@ pub unsafe fn opj_set_default_decoder_parameters(
 #[no_mangle]
 pub unsafe fn opj_codec_set_threads(
   mut p_codec: *mut opj_codec_t,
-  mut num_threads: libc::c_int,
+  mut num_threads: core::ffi::c_int,
 ) -> OPJ_BOOL {
   if !p_codec.is_null() && num_threads >= 0i32 {
     let mut l_codec = p_codec as *mut opj_codec_private_t;
@@ -2428,7 +2427,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
     return 0 as *mut opj_codec_t;
   }
   (*l_codec).is_decompressor = 0i32;
-  match p_format as libc::c_int {
+  match p_format as core::ffi::c_int {
     0 => {
       (*l_codec).m_codec_data.m_compression.opj_encode = core::mem::transmute::<
         Option<
@@ -2440,7 +2439,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
@@ -2463,7 +2462,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
@@ -2487,7 +2486,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private,
             _: *mut opj_image,
             _: &mut opj_event_mgr,
@@ -2515,7 +2514,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: OPJ_UINT32,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
@@ -2536,7 +2535,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
       ));
       (*l_codec).m_codec_data.m_compression.opj_destroy = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
       >(Some(
         opj_j2k_destroy as unsafe extern "C" fn(_: *mut opj_j2k_t) -> (),
       ));
@@ -2551,7 +2550,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_cparameters_t,
             _: *mut opj_image,
             _: &mut opj_event_mgr,
@@ -2573,14 +2572,14 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         Option<
           unsafe extern "C" fn(
             _: *mut opj_j2k_t,
-            _: *const *const libc::c_char,
+            _: *const *const core::ffi::c_char,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
-            _: *const *const libc::c_char,
+            _: *mut core::ffi::c_void,
+            _: *const *const core::ffi::c_char,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
@@ -2588,19 +2587,19 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         opj_j2k_encoder_set_extra_options
           as unsafe extern "C" fn(
             _: *mut opj_j2k_t,
-            _: *const *const libc::c_char,
+            _: *const *const core::ffi::c_char,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).opj_set_threads = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_UINT32) -> OPJ_BOOL>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
       >(Some(
         opj_j2k_set_threads as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_UINT32) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec = opj_j2k_create_compress() as *mut libc::c_void;
+      (*l_codec).m_codec = opj_j2k_create_compress() as *mut core::ffi::c_void;
       if (*l_codec).m_codec.is_null() {
-        opj_free(l_codec as *mut libc::c_void);
+        opj_free(l_codec as *mut core::ffi::c_void);
         return 0 as *mut opj_codec_t;
       }
     }
@@ -2616,7 +2615,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
@@ -2639,7 +2638,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
@@ -2663,7 +2662,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_stream_private,
             _: *mut opj_image,
             _: &mut opj_event_mgr,
@@ -2691,7 +2690,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: OPJ_UINT32,
             _: *mut OPJ_BYTE,
             _: OPJ_UINT32,
@@ -2712,7 +2711,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
       ));
       (*l_codec).m_codec_data.m_compression.opj_destroy = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
       >(Some(
         opj_jp2_destroy as unsafe extern "C" fn(_: *mut opj_jp2_t) -> (),
       ));
@@ -2727,7 +2726,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
+            _: *mut core::ffi::c_void,
             _: *mut opj_cparameters_t,
             _: *mut opj_image,
             _: &mut opj_event_mgr,
@@ -2749,14 +2748,14 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         Option<
           unsafe extern "C" fn(
             _: *mut opj_jp2_t,
-            _: *const *const libc::c_char,
+            _: *const *const core::ffi::c_char,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
         Option<
           unsafe extern "C" fn(
-            _: *mut libc::c_void,
-            _: *const *const libc::c_char,
+            _: *mut core::ffi::c_void,
+            _: *const *const core::ffi::c_char,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
         >,
@@ -2764,24 +2763,24 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
         opj_jp2_encoder_set_extra_options
           as unsafe extern "C" fn(
             _: *mut opj_jp2_t,
-            _: *const *const libc::c_char,
+            _: *const *const core::ffi::c_char,
             _: &mut opj_event_mgr,
           ) -> OPJ_BOOL,
       ));
       (*l_codec).opj_set_threads = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL>,
-        Option<unsafe extern "C" fn(_: *mut libc::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
+        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
       >(Some(
         opj_jp2_set_threads as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL,
       ));
-      (*l_codec).m_codec = opj_jp2_create(0i32) as *mut libc::c_void;
+      (*l_codec).m_codec = opj_jp2_create(0i32) as *mut core::ffi::c_void;
       if (*l_codec).m_codec.is_null() {
-        opj_free(l_codec as *mut libc::c_void);
+        opj_free(l_codec as *mut core::ffi::c_void);
         return 0 as *mut opj_codec_t;
       }
     }
     -1 | 1 | _ => {
-      opj_free(l_codec as *mut libc::c_void);
+      opj_free(l_codec as *mut core::ffi::c_void);
       return 0 as *mut opj_codec_t;
     }
   }
@@ -2794,7 +2793,7 @@ pub unsafe fn opj_set_default_encoder_parameters(
 ) {
   if !parameters.is_null() {
     memset(
-      parameters as *mut libc::c_void,
+      parameters as *mut core::ffi::c_void,
       0i32,
       core::mem::size_of::<opj_cparameters_t>() as usize,
     );
@@ -2812,10 +2811,10 @@ pub unsafe fn opj_set_default_encoder_parameters(
     (*parameters).roi_compno = -(1i32);
     (*parameters).subsampling_dx = 1i32;
     (*parameters).subsampling_dy = 1i32;
-    (*parameters).tp_on = 0 as libc::c_char;
+    (*parameters).tp_on = 0 as core::ffi::c_char;
     (*parameters).decod_format = -(1i32);
     (*parameters).cod_format = -(1i32);
-    (*parameters).tcp_rates[0 as usize] = 0 as libc::c_float;
+    (*parameters).tcp_rates[0 as usize] = 0 as core::ffi::c_float;
     (*parameters).tcp_numlayers = 0i32;
     (*parameters).cp_disto_alloc = 0i32;
     (*parameters).cp_fixed_alloc = 0i32;
@@ -2854,7 +2853,7 @@ pub unsafe fn opj_setup_encoder(
 #[no_mangle]
 pub unsafe fn opj_encoder_set_extra_options(
   mut p_codec: *mut opj_codec_t,
-  mut options: *const *const libc::c_char,
+  mut options: *const *const core::ffi::c_char,
 ) -> OPJ_BOOL {
   if !p_codec.is_null() {
     let mut l_codec = p_codec as *mut opj_codec_private_t;
@@ -2978,26 +2977,26 @@ pub unsafe fn opj_set_MCT(
     pNbComp.wrapping_mul(core::mem::size_of::<OPJ_INT32>() as OPJ_UINT32);
   let mut l_mct_total_size = l_matrix_size.wrapping_add(l_dc_shift_size);
   /* add MCT capability */
-  if (*parameters).rsiz as libc::c_int & 0x8000i32 != 0 {
-    (*parameters).rsiz = ((*parameters).rsiz as libc::c_int | 0x100i32) as OPJ_UINT16
+  if (*parameters).rsiz as core::ffi::c_int & 0x8000i32 != 0 {
+    (*parameters).rsiz = ((*parameters).rsiz as core::ffi::c_int | 0x100i32) as OPJ_UINT16
   } else {
     (*parameters).rsiz = (0x8000i32 | 0x100i32) as OPJ_UINT16
   }
   (*parameters).irreversible = 1i32;
   /* use array based MCT */
-  (*parameters).tcp_mct = 2 as libc::c_char;
+  (*parameters).tcp_mct = 2 as core::ffi::c_char;
   (*parameters).mct_data = opj_malloc(l_mct_total_size as size_t);
   if (*parameters).mct_data.is_null() {
     return 0i32;
   }
   memcpy(
     (*parameters).mct_data,
-    pEncodingMatrix as *const libc::c_void,
+    pEncodingMatrix as *const core::ffi::c_void,
     l_matrix_size as usize,
   );
   memcpy(
-    ((*parameters).mct_data as *mut OPJ_BYTE).offset(l_matrix_size as isize) as *mut libc::c_void,
-    p_dc_shift as *const libc::c_void,
+    ((*parameters).mct_data as *mut OPJ_BYTE).offset(l_matrix_size as isize) as *mut core::ffi::c_void,
+    p_dc_shift as *const core::ffi::c_void,
     l_dc_shift_size as usize,
   );
   return 1i32;
@@ -3049,8 +3048,8 @@ pub unsafe fn opj_destroy_codec(mut p_codec: *mut opj_codec_t) {
         .opj_destroy
         .expect("non-null function pointer")((*l_codec).m_codec);
     }
-    (*l_codec).m_codec = 0 as *mut libc::c_void;
-    opj_free(l_codec as *mut libc::c_void);
+    (*l_codec).m_codec = 0 as *mut core::ffi::c_void;
+    opj_free(l_codec as *mut core::ffi::c_void);
   };
 }
 /* ---------------------------------------------------------------------- */
@@ -3084,12 +3083,12 @@ pub unsafe fn opj_get_cstr_info(
 pub unsafe fn opj_destroy_cstr_info(mut cstr_info: *mut *mut opj_codestream_info_v2_t) {
   if !cstr_info.is_null() {
     if !(**cstr_info).m_default_tile_info.tccp_info.is_null() {
-      opj_free((**cstr_info).m_default_tile_info.tccp_info as *mut libc::c_void);
+      opj_free((**cstr_info).m_default_tile_info.tccp_info as *mut core::ffi::c_void);
     }
     if !(**cstr_info).tile_info.is_null() {
-      opj_free((**cstr_info).tile_info as *mut libc::c_void);
+      opj_free((**cstr_info).tile_info as *mut core::ffi::c_void);
     }
-    opj_free(*cstr_info as *mut libc::c_void);
+    opj_free(*cstr_info as *mut core::ffi::c_void);
     *cstr_info = 0 as *mut opj_codestream_info_v2_t
   };
 }
@@ -3116,7 +3115,7 @@ pub unsafe fn opj_destroy_cstr_index(
 }
 #[no_mangle]
 pub unsafe fn opj_stream_create_default_file_stream(
-  mut fname: *const libc::c_char,
+  mut fname: *const core::ffi::c_char,
   mut p_is_read_stream: OPJ_BOOL,
 ) -> *mut opj_stream_t {
   return opj_stream_create_file_stream(
@@ -3127,20 +3126,20 @@ pub unsafe fn opj_stream_create_default_file_stream(
 }
 #[no_mangle]
 pub unsafe fn opj_stream_create_file_stream(
-  mut fname: *const libc::c_char,
+  mut fname: *const core::ffi::c_char,
   mut p_size: OPJ_SIZE_T,
   mut p_is_read_stream: OPJ_BOOL,
 ) -> *mut opj_stream_t {
   let mut l_stream = 0 as *mut opj_stream_t;
   let mut p_file = 0 as *mut FILE;
-  let mut mode = 0 as *const libc::c_char;
+  let mut mode = 0 as *const core::ffi::c_char;
   if fname.is_null() {
     return 0 as *mut opj_stream_t;
   }
   if p_is_read_stream != 0 {
-    mode = b"rb\x00" as *const u8 as *const libc::c_char
+    mode = b"rb\x00" as *const u8 as *const core::ffi::c_char
   } else {
-    mode = b"wb\x00" as *const u8 as *const libc::c_char
+    mode = b"wb\x00" as *const u8 as *const core::ffi::c_char
   }
   p_file = fopen(fname, mode);
   if p_file.is_null() {
@@ -3153,21 +3152,21 @@ pub unsafe fn opj_stream_create_file_stream(
   }
   opj_stream_set_user_data(
     l_stream,
-    p_file as *mut libc::c_void,
-    Some(opj_close_from_file as unsafe extern "C" fn(_: *mut libc::c_void) -> ()),
+    p_file as *mut core::ffi::c_void,
+    Some(opj_close_from_file as unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()),
   );
   opj_stream_set_user_data_length(
     l_stream,
-    opj_get_data_length_from_file(p_file as *mut libc::c_void),
+    opj_get_data_length_from_file(p_file as *mut core::ffi::c_void),
   );
   opj_stream_set_read_function(
     l_stream,
     Some(
       opj_read_from_file
         as unsafe extern "C" fn(
-          _: *mut libc::c_void,
+          _: *mut core::ffi::c_void,
           _: OPJ_SIZE_T,
-          _: *mut libc::c_void,
+          _: *mut core::ffi::c_void,
         ) -> OPJ_SIZE_T,
     ),
   );
@@ -3176,43 +3175,43 @@ pub unsafe fn opj_stream_create_file_stream(
     core::mem::transmute::<
       Option<
         unsafe extern "C" fn(
-          _: *mut libc::c_void,
+          _: *mut core::ffi::c_void,
           _: OPJ_SIZE_T,
-          _: *mut libc::c_void,
+          _: *mut core::ffi::c_void,
         ) -> OPJ_SIZE_T,
       >,
       opj_stream_write_fn,
     >(Some(
       opj_write_from_file
         as unsafe extern "C" fn(
-          _: *mut libc::c_void,
+          _: *mut core::ffi::c_void,
           _: OPJ_SIZE_T,
-          _: *mut libc::c_void,
+          _: *mut core::ffi::c_void,
         ) -> OPJ_SIZE_T,
     )),
   );
   opj_stream_set_skip_function(
     l_stream,
     Some(
-      opj_skip_from_file as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut libc::c_void) -> OPJ_OFF_T,
+      opj_skip_from_file as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_OFF_T,
     ),
   );
   opj_stream_set_seek_function(
     l_stream,
     Some(
-      opj_seek_from_file as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut libc::c_void) -> OPJ_BOOL,
+      opj_seek_from_file as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL,
     ),
   );
   return l_stream;
 }
 #[no_mangle]
-pub unsafe fn opj_image_data_alloc(mut size: OPJ_SIZE_T) -> *mut libc::c_void {
+pub unsafe fn opj_image_data_alloc(mut size: OPJ_SIZE_T) -> *mut core::ffi::c_void {
   let mut ret = opj_aligned_malloc(size);
   /* printf("opj_image_data_alloc %p\n", ret); */
   return ret;
 }
 #[no_mangle]
-pub unsafe fn opj_image_data_free(mut ptr: *mut libc::c_void) {
+pub unsafe fn opj_image_data_free(mut ptr: *mut core::ffi::c_void) {
   /* printf("opj_image_data_free %p\n", ptr); */
   opj_aligned_free(ptr);
 }

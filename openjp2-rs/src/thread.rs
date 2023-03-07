@@ -1,5 +1,4 @@
 use super::openjpeg::*;
-use ::libc;
 
 use super::malloc::*;
 
@@ -15,21 +14,21 @@ pub struct opj_mutex_t(usize);
 #[derive(Copy, Clone)]
 pub struct opj_cond_t(usize);
 
-pub type opj_thread_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
+pub type opj_thread_fn = Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_thread_pool_t {
   pub worker_threads: *mut opj_worker_thread_t,
-  pub worker_threads_count: libc::c_int,
+  pub worker_threads_count: core::ffi::c_int,
   pub cond: *mut opj_cond_t,
   pub mutex: *mut opj_mutex_t,
   pub state: opj_worker_thread_state,
   pub job_queue: *mut opj_job_list_t,
-  pub pending_jobs_count: libc::c_int,
+  pub pending_jobs_count: core::ffi::c_int,
   pub waiting_worker_thread_list: *mut opj_worker_thread_list_t,
-  pub waiting_worker_thread_count: libc::c_int,
-  pub signaling_threshold: libc::c_int,
+  pub waiting_worker_thread_count: core::ffi::c_int,
+  pub signaling_threshold: core::ffi::c_int,
 }
 
 #[repr(C)]
@@ -44,7 +43,7 @@ pub struct opj_worker_thread_list_t {
 pub struct opj_worker_thread_t {
   pub tp: *mut opj_thread_pool_t,
   pub thread: *mut opj_thread_t,
-  pub marked_as_waiting: libc::c_int,
+  pub marked_as_waiting: core::ffi::c_int,
   pub mutex: *mut opj_mutex_t,
   pub cond: *mut opj_cond_t,
 }
@@ -60,10 +59,10 @@ pub struct opj_job_list_t {
 #[derive(Copy, Clone)]
 pub struct opj_worker_thread_job_t {
   pub job_fn: opj_job_fn,
-  pub user_data: *mut libc::c_void,
+  pub user_data: *mut core::ffi::c_void,
 }
-pub type opj_job_fn = Option<unsafe extern "C" fn(_: *mut libc::c_void) -> ()>;
-pub type opj_worker_thread_state = libc::c_uint;
+pub type opj_job_fn = Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>;
+pub type opj_worker_thread_state = core::ffi::c_uint;
 pub const OPJWTS_ERROR: opj_worker_thread_state = 2;
 pub const OPJWTS_STOP: opj_worker_thread_state = 1;
 pub const OPJWTS_OK: opj_worker_thread_state = 0;
@@ -103,7 +102,7 @@ pub fn opj_has_thread_support() -> OPJ_BOOL {
   return 0i32;
 }
 #[no_mangle]
-pub fn opj_get_num_cpus() -> libc::c_int {
+pub fn opj_get_num_cpus() -> core::ffi::c_int {
   return 1i32;
 }
 
@@ -123,7 +122,7 @@ pub(crate) fn opj_cond_destroy(mut _cond: *mut opj_cond_t) {}
 
 pub(crate) fn opj_thread_create(
   mut _thread_fn: opj_thread_fn,
-  mut _user_data: *mut libc::c_void,
+  mut _user_data: *mut core::ffi::c_void,
 ) -> *mut opj_thread_t {
   return 0 as *mut opj_thread_t;
 }
@@ -131,7 +130,7 @@ pub(crate) fn opj_thread_create(
 pub(crate) fn opj_thread_join(mut _thread: *mut opj_thread_t) {}
 
 pub(crate) unsafe fn opj_thread_pool_create(
-  mut num_threads: libc::c_int,
+  mut num_threads: core::ffi::c_int,
 ) -> *mut opj_thread_pool_t {
   let mut tp = 0 as *mut opj_thread_pool_t;
   tp = opj_calloc(
@@ -147,7 +146,7 @@ pub(crate) unsafe fn opj_thread_pool_create(
   }
   (*tp).mutex = opj_mutex_create();
   if (*tp).mutex.is_null() {
-    opj_free(tp as *mut libc::c_void);
+    opj_free(tp as *mut core::ffi::c_void);
     return 0 as *mut opj_thread_pool_t;
   }
   if opj_thread_pool_setup(tp, num_threads) == 0 {
@@ -157,7 +156,7 @@ pub(crate) unsafe fn opj_thread_pool_create(
   return tp;
 }
 
-unsafe extern "C" fn opj_worker_thread_function(mut user_data: *mut libc::c_void) {
+unsafe extern "C" fn opj_worker_thread_function(mut user_data: *mut core::ffi::c_void) {
   let mut worker_thread = 0 as *mut opj_worker_thread_t;
   let mut tp = 0 as *mut opj_thread_pool_t;
   let mut job_finished = 0i32;
@@ -171,16 +170,16 @@ unsafe extern "C" fn opj_worker_thread_function(mut user_data: *mut libc::c_void
     if (*job).job_fn.is_some() {
       (*job).job_fn.expect("non-null function pointer")((*job).user_data);
     }
-    opj_free(job as *mut libc::c_void);
+    opj_free(job as *mut core::ffi::c_void);
     job_finished = 1i32
   }
 }
 
 unsafe fn opj_thread_pool_setup(
   mut tp: *mut opj_thread_pool_t,
-  mut num_threads: libc::c_int,
+  mut num_threads: core::ffi::c_int,
 ) -> OPJ_BOOL {
-  let mut i: libc::c_int = 0;
+  let mut i: core::ffi::c_int = 0;
   let mut bRet = 1i32;
   assert!(num_threads > 0i32);
   (*tp).cond = opj_cond_create();
@@ -217,9 +216,9 @@ unsafe fn opj_thread_pool_setup(
         (*(*tp).worker_threads.offset(i as isize)).marked_as_waiting = 0i32;
         let ref mut fresh7 = (*(*tp).worker_threads.offset(i as isize)).thread;
         *fresh7 = opj_thread_create(
-          Some(opj_worker_thread_function as unsafe extern "C" fn(_: *mut libc::c_void) -> ()),
+          Some(opj_worker_thread_function as unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()),
           &mut *(*tp).worker_threads.offset(i as isize) as *mut opj_worker_thread_t
-            as *mut libc::c_void,
+            as *mut core::ffi::c_void,
         );
         if (*(*tp).worker_threads.offset(i as isize)).thread.is_null() {
           opj_mutex_destroy((*(*tp).worker_threads.offset(i as isize)).mutex);
@@ -241,7 +240,7 @@ unsafe fn opj_thread_pool_setup(
   }
   opj_mutex_unlock((*tp).mutex);
   /* printf("all threads started\n"); */
-  if (*tp).state as libc::c_uint == OPJWTS_ERROR as libc::c_uint {
+  if (*tp).state as core::ffi::c_uint == OPJWTS_ERROR as core::ffi::c_uint {
     bRet = 0i32
   }
   return bRet;
@@ -258,8 +257,8 @@ unsafe fn opj_thread_pool_get_next_job(
     if signal_job_finished != 0 {
       signal_job_finished = 0i32;
       core::ptr::write_volatile(
-        &mut (*tp).pending_jobs_count as *mut libc::c_int,
-        core::ptr::read_volatile::<libc::c_int>(&(*tp).pending_jobs_count as *const libc::c_int)
+        &mut (*tp).pending_jobs_count as *mut core::ffi::c_int,
+        core::ptr::read_volatile::<core::ffi::c_int>(&(*tp).pending_jobs_count as *const core::ffi::c_int)
           - 1,
       );
       /* printf("got job\n"); */
@@ -268,7 +267,7 @@ unsafe fn opj_thread_pool_get_next_job(
         opj_cond_signal((*tp).cond);
       }
     }
-    if (*tp).state as libc::c_uint == OPJWTS_STOP as libc::c_uint {
+    if (*tp).state as core::ffi::c_uint == OPJWTS_STOP as core::ffi::c_uint {
       opj_mutex_unlock((*tp).mutex);
       return 0 as *mut opj_worker_thread_job_t;
     }
@@ -278,7 +277,7 @@ unsafe fn opj_thread_pool_get_next_job(
       (*tp).job_queue = (*top_job_iter).next;
       job = (*top_job_iter).job;
       opj_mutex_unlock((*tp).mutex);
-      opj_free(top_job_iter as *mut libc::c_void);
+      opj_free(top_job_iter as *mut core::ffi::c_void);
       return job;
     }
     if (*worker_thread).marked_as_waiting == 0 {
@@ -312,7 +311,7 @@ unsafe fn opj_thread_pool_get_next_job(
 pub(crate) unsafe fn opj_thread_pool_submit_job(
   mut tp: *mut opj_thread_pool_t,
   mut job_fn: opj_job_fn,
-  mut user_data: *mut libc::c_void,
+  mut user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
   let mut job = 0 as *mut opj_worker_thread_job_t;
   let mut item = 0 as *mut opj_job_list_t;
@@ -330,7 +329,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
   item =
     opj_malloc(core::mem::size_of::<opj_job_list_t>() as usize) as *mut opj_job_list_t;
   if item.is_null() {
-    opj_free(job as *mut libc::c_void);
+    opj_free(job as *mut core::ffi::c_void);
     return 0i32;
   }
   (*item).job = job;
@@ -347,8 +346,8 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
   (*item).next = (*tp).job_queue;
   (*tp).job_queue = item;
   core::ptr::write_volatile(
-    &mut (*tp).pending_jobs_count as *mut libc::c_int,
-    core::ptr::read_volatile::<libc::c_int>(&(*tp).pending_jobs_count as *const libc::c_int) + 1,
+    &mut (*tp).pending_jobs_count as *mut core::ffi::c_int,
+    core::ptr::read_volatile::<core::ffi::c_int>(&(*tp).pending_jobs_count as *const core::ffi::c_int) + 1,
   );
   if !(*tp).waiting_worker_thread_list.is_null() {
     let mut worker_thread = 0 as *mut opj_worker_thread_t;
@@ -365,7 +364,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
     opj_mutex_unlock((*tp).mutex);
     opj_cond_signal((*worker_thread).cond);
     opj_mutex_unlock((*worker_thread).mutex);
-    opj_free(to_opj_free as *mut libc::c_void);
+    opj_free(to_opj_free as *mut core::ffi::c_void);
   } else {
     opj_mutex_unlock((*tp).mutex);
   }
@@ -374,7 +373,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
 
 pub(crate) unsafe fn opj_thread_pool_wait_completion(
   mut tp: *mut opj_thread_pool_t,
-  mut max_remaining_jobs: libc::c_int,
+  mut max_remaining_jobs: core::ffi::c_int,
 ) {
   if (*tp).mutex.is_null() {
     return;
@@ -394,7 +393,7 @@ pub(crate) unsafe fn opj_thread_pool_wait_completion(
 
 pub(crate) unsafe fn opj_thread_pool_get_thread_count(
   mut tp: *mut opj_thread_pool_t,
-) -> libc::c_int {
+) -> core::ffi::c_int {
   return (*tp).worker_threads_count;
 }
 
@@ -403,7 +402,7 @@ pub(crate) unsafe fn opj_thread_pool_destroy(mut tp: *mut opj_thread_pool_t) {
     return;
   }
   if !(*tp).cond.is_null() {
-    let mut i: libc::c_int = 0;
+    let mut i: core::ffi::c_int = 0;
     opj_thread_pool_wait_completion(tp, 0i32);
     opj_mutex_lock((*tp).mutex);
     core::ptr::write_volatile(
@@ -421,14 +420,14 @@ pub(crate) unsafe fn opj_thread_pool_destroy(mut tp: *mut opj_thread_pool_t) {
       opj_mutex_destroy((*(*tp).worker_threads.offset(i as isize)).mutex);
       i += 1
     }
-    opj_free((*tp).worker_threads as *mut libc::c_void);
+    opj_free((*tp).worker_threads as *mut core::ffi::c_void);
     while !(*tp).waiting_worker_thread_list.is_null() {
       let mut next = (*(*tp).waiting_worker_thread_list).next;
-      opj_free((*tp).waiting_worker_thread_list as *mut libc::c_void);
+      opj_free((*tp).waiting_worker_thread_list as *mut core::ffi::c_void);
       (*tp).waiting_worker_thread_list = next
     }
     opj_cond_destroy((*tp).cond);
   }
   opj_mutex_destroy((*tp).mutex);
-  opj_free(tp as *mut libc::c_void);
+  opj_free(tp as *mut core::ffi::c_void);
 }

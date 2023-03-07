@@ -1,12 +1,11 @@
 use super::openjpeg::*;
-use ::libc;
 
 use super::malloc::*;
 
 extern "C" {
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
+  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
 
-  fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: usize) -> *mut libc::c_void;
+  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
 }
 /*
 ==========================================================
@@ -38,12 +37,12 @@ pub(crate) unsafe fn opj_matrix_inversion_f(
   lPermutations = l_data as *mut OPJ_UINT32;
   l_double_data = l_data.offset(l_permutation_size as isize) as *mut OPJ_FLOAT32;
   memset(
-    lPermutations as *mut libc::c_void,
+    lPermutations as *mut core::ffi::c_void,
     0i32,
     l_permutation_size as usize,
   );
   if opj_lupDecompose(pSrcMatrix, lPermutations, l_double_data, nb_compo) == 0 {
-    opj_free(l_data as *mut libc::c_void);
+    opj_free(l_data as *mut core::ffi::c_void);
     return 0i32;
   }
   opj_lupInvert(
@@ -55,7 +54,7 @@ pub(crate) unsafe fn opj_matrix_inversion_f(
     l_double_data.offset(nb_compo as isize),
     l_double_data.offset((2u32).wrapping_mul(nb_compo) as isize),
   );
-  opj_free(l_data as *mut libc::c_void);
+  opj_free(l_data as *mut core::ffi::c_void);
   return 1i32;
 }
 /*
@@ -137,7 +136,7 @@ unsafe fn opj_lupDecompose(
     /* make permutation with the biggest value in the column */
     i = k;
     while i < nb_compo {
-      temp = if *lColumnMatrix > 0 as libc::c_float {
+      temp = if *lColumnMatrix > 0 as core::ffi::c_float {
         *lColumnMatrix
       } else {
         -*lColumnMatrix
@@ -151,7 +150,7 @@ unsafe fn opj_lupDecompose(
       i += 1;
     }
     /* a whole rest of 0 -> non singular */
-    if p as libc::c_double == 0.0f64 {
+    if p as core::ffi::c_double == 0.0f64 {
       return 0i32;
     }
     /* should we permute ? */
@@ -166,18 +165,18 @@ unsafe fn opj_lupDecompose(
       /* and swap entire line. */
       lColumnMatrix = lTmpMatrix.offset(k2.wrapping_sub(k).wrapping_mul(nb_compo) as isize);
       memcpy(
-        p_swap_area as *mut libc::c_void,
-        lColumnMatrix as *const libc::c_void,
+        p_swap_area as *mut core::ffi::c_void,
+        lColumnMatrix as *const core::ffi::c_void,
         lSwapSize as usize,
       );
       memcpy(
-        lColumnMatrix as *mut libc::c_void,
-        lTmpMatrix as *const libc::c_void,
+        lColumnMatrix as *mut core::ffi::c_void,
+        lTmpMatrix as *const core::ffi::c_void,
         lSwapSize as usize,
       );
       memcpy(
-        lTmpMatrix as *mut libc::c_void,
-        p_swap_area as *const libc::c_void,
+        lTmpMatrix as *mut core::ffi::c_void,
+        p_swap_area as *const core::ffi::c_void,
         lSwapSize as usize,
       );
     }
@@ -343,7 +342,7 @@ unsafe fn opj_lupInvert(
     lLineMatrix = lLineMatrix.offset(1);
     lCurrentPtr = fresh15;
     memset(
-      p_src_temp as *mut libc::c_void,
+      p_src_temp as *mut core::ffi::c_void,
       0i32,
       lSwapSize as usize,
     );

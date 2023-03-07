@@ -112,7 +112,7 @@ pub(crate) fn opj_lrintf(mut f: f32) -> i64 {
   // (39.5000) = 40.0
   // (38.5000) = 39.0
   extern "C" {
-    fn lrintf(_: ::libc::c_float) -> ::libc::c_long;
+    fn lrintf(_: ::core::ffi::c_float) -> ::core::ffi::c_long;
   }
 
   unsafe {

@@ -1,12 +1,11 @@
 use super::bio::*;
 use super::openjpeg::*;
 use super::event::*;
-use ::libc;
 
 use super::malloc::*;
 
 extern "C" {
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
+  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
 }
 
 /*
@@ -92,7 +91,7 @@ pub(crate) unsafe fn opj_tgt_create(
     nplv[numlvls.wrapping_add(1u32) as usize] =
       (nplv[numlvls as usize] + 1i32) / 2i32;
     (*tree).numnodes =
-      ((*tree).numnodes as libc::c_uint).wrapping_add(n) as OPJ_UINT32;
+      ((*tree).numnodes as core::ffi::c_uint).wrapping_add(n) as OPJ_UINT32;
     numlvls = numlvls.wrapping_add(1);
     if !(n > 1u32) {
       break;
@@ -100,7 +99,7 @@ pub(crate) unsafe fn opj_tgt_create(
   }
   /* ADD */
   if (*tree).numnodes == 0u32 {
-    opj_free(tree as *mut libc::c_void);
+    opj_free(tree as *mut core::ffi::c_void);
     return 0 as *mut opj_tgt_tree_t;
   }
   (*tree).nodes = opj_calloc(
@@ -111,7 +110,7 @@ pub(crate) unsafe fn opj_tgt_create(
     event_msg!(p_manager, EVT_ERROR,
       "Not enough memory to create Tag-tree nodes\n",
     );
-    opj_free(tree as *mut libc::c_void);
+    opj_free(tree as *mut core::ffi::c_void);
     return 0 as *mut opj_tgt_tree_t;
   }
   (*tree).nodes_size = (*tree)
@@ -199,7 +198,7 @@ pub(crate) unsafe fn opj_tgt_init(
       l_nplv[l_num_levels.wrapping_add(1u32) as usize] =
         (l_nplv[l_num_levels as usize] + 1i32) / 2i32;
       (*p_tree).numnodes =
-        ((*p_tree).numnodes as libc::c_uint).wrapping_add(n) as OPJ_UINT32;
+        ((*p_tree).numnodes as core::ffi::c_uint).wrapping_add(n) as OPJ_UINT32;
       l_num_levels = l_num_levels.wrapping_add(1);
       if !(n > 1u32) {
         break;
@@ -214,7 +213,7 @@ pub(crate) unsafe fn opj_tgt_init(
       .numnodes
       .wrapping_mul(core::mem::size_of::<opj_tgt_node_t>() as OPJ_UINT32);
     if l_node_size > (*p_tree).nodes_size {
-      let mut new_nodes = opj_realloc((*p_tree).nodes as *mut libc::c_void, l_node_size as size_t)
+      let mut new_nodes = opj_realloc((*p_tree).nodes as *mut core::ffi::c_void, l_node_size as size_t)
         as *mut opj_tgt_node_t;
       if new_nodes.is_null() {
         event_msg!(p_manager, EVT_ERROR,
@@ -225,8 +224,8 @@ pub(crate) unsafe fn opj_tgt_init(
       }
       (*p_tree).nodes = new_nodes;
       memset(
-        ((*p_tree).nodes as *mut libc::c_char).offset((*p_tree).nodes_size as isize)
-          as *mut libc::c_void,
+        ((*p_tree).nodes as *mut core::ffi::c_char).offset((*p_tree).nodes_size as isize)
+          as *mut core::ffi::c_void,
         0i32,
         l_node_size.wrapping_sub((*p_tree).nodes_size) as usize,
       );
@@ -278,10 +277,10 @@ pub(crate) unsafe fn opj_tgt_destroy(mut p_tree: *mut opj_tgt_tree_t) {
     return;
   }
   if !(*p_tree).nodes.is_null() {
-    opj_free((*p_tree).nodes as *mut libc::c_void);
+    opj_free((*p_tree).nodes as *mut core::ffi::c_void);
     (*p_tree).nodes = 0 as *mut opj_tgt_node_t
   }
-  opj_free(p_tree as *mut libc::c_void);
+  opj_free(p_tree as *mut core::ffi::c_void);
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_tgt_reset(mut p_tree: *mut opj_tgt_tree_t) {
