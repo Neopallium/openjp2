@@ -281,7 +281,7 @@ pub unsafe extern "C" fn opj_stream_create(
         as unsafe extern "C" fn(
           _: *mut opj_stream_private_t,
           _: OPJ_OFF_T,
-          _: *mut opj_event_mgr,
+          _: &mut opj_event_mgr,
         ) -> OPJ_OFF_T,
     );
     (*l_stream).m_opj_seek = Some(
@@ -289,7 +289,7 @@ pub unsafe extern "C" fn opj_stream_create(
         as unsafe extern "C" fn(
           _: *mut opj_stream_private_t,
           _: OPJ_OFF_T,
-          _: *mut opj_event_mgr,
+          _: &mut opj_event_mgr,
         ) -> OPJ_BOOL,
     )
   } else {
@@ -299,7 +299,7 @@ pub unsafe extern "C" fn opj_stream_create(
         as unsafe extern "C" fn(
           _: *mut opj_stream_private_t,
           _: OPJ_OFF_T,
-          _: *mut opj_event_mgr,
+          _: &mut opj_event_mgr,
         ) -> OPJ_OFF_T,
     );
     (*l_stream).m_opj_seek = Some(
@@ -307,7 +307,7 @@ pub unsafe extern "C" fn opj_stream_create(
         as unsafe extern "C" fn(
           _: *mut opj_stream_private_t,
           _: OPJ_OFF_T,
-          _: *mut opj_event_mgr,
+          _: &mut opj_event_mgr,
         ) -> OPJ_BOOL,
     )
   }
@@ -427,7 +427,7 @@ pub unsafe extern "C" fn opj_stream_read_data(
   mut p_stream: *mut opj_stream_private_t,
   mut p_buffer: *mut OPJ_BYTE,
   mut p_size: OPJ_SIZE_T,
-  mut p_event_mgr: *mut opj_event_mgr,
+  mut p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_SIZE_T {
   let mut l_read_nb_bytes = 0 as OPJ_SIZE_T;
   if (*p_stream).m_bytes_in_buffer >= p_size {
@@ -595,7 +595,7 @@ pub unsafe extern "C" fn opj_stream_write_data(
   mut p_stream: *mut opj_stream_private_t,
   mut p_buffer: *const OPJ_BYTE,
   mut p_size: OPJ_SIZE_T,
-  mut p_event_mgr: *mut opj_event_mgr,
+  mut p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_SIZE_T {
   let mut l_remaining_bytes = 0 as OPJ_SIZE_T;
   let mut l_write_nb_bytes = 0 as OPJ_SIZE_T;
@@ -647,7 +647,7 @@ pub unsafe extern "C" fn opj_stream_write_data(
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_flush(
   mut p_stream: *mut opj_stream_private_t,
-  mut p_event_mgr: *mut opj_event_mgr,
+  mut p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* the number of bytes written on the media. */
   let mut l_current_write_nb_bytes = 0 as OPJ_SIZE_T;
@@ -682,7 +682,7 @@ pub unsafe extern "C" fn opj_stream_flush(
 pub unsafe extern "C" fn opj_stream_read_skip(
   mut p_stream: *mut opj_stream_private_t,
   mut p_size: OPJ_OFF_T,
-  mut p_event_mgr: *mut opj_event_mgr,
+  mut p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_OFF_T {
   let mut l_skip_nb_bytes = 0 as OPJ_OFF_T;
   let mut l_current_skip_nb_bytes = 0 as OPJ_OFF_T;
@@ -777,7 +777,7 @@ pub unsafe extern "C" fn opj_stream_read_skip(
 pub unsafe extern "C" fn opj_stream_write_skip(
   mut p_stream: *mut opj_stream_private_t,
   mut p_size: OPJ_OFF_T,
-  mut p_event_mgr: *mut opj_event_mgr,
+  mut p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_OFF_T {
   let mut l_is_written = 0i32;
   let mut l_current_skip_nb_bytes = 0 as OPJ_OFF_T;
@@ -838,7 +838,7 @@ pub unsafe extern "C" fn opj_stream_get_number_byte_left(
 pub unsafe extern "C" fn opj_stream_skip(
   mut p_stream: *mut opj_stream_private_t,
   mut p_size: OPJ_OFF_T,
-  mut p_event_mgr: *mut opj_event_mgr,
+  mut p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_OFF_T {
   assert!(p_size >= 0i64);
   return (*p_stream).m_opj_skip.expect("non-null function pointer")(p_stream, p_size, p_event_mgr);
@@ -847,7 +847,7 @@ pub unsafe extern "C" fn opj_stream_skip(
 pub unsafe extern "C" fn opj_stream_read_seek(
   mut p_stream: *mut opj_stream_private_t,
   mut p_size: OPJ_OFF_T,
-  mut _p_event_mgr: *mut opj_event_mgr,
+  mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   (*p_stream).m_current_data = (*p_stream).m_stored_data;
   (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
@@ -866,7 +866,7 @@ pub unsafe extern "C" fn opj_stream_read_seek(
 pub unsafe extern "C" fn opj_stream_write_seek(
   mut p_stream: *mut opj_stream_private_t,
   mut p_size: OPJ_OFF_T,
-  mut p_event_mgr: *mut opj_event_mgr,
+  mut p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   if opj_stream_flush(p_stream, p_event_mgr) == 0 {
     (*p_stream).m_status |= 0x8u32;
@@ -887,7 +887,7 @@ pub unsafe extern "C" fn opj_stream_write_seek(
 pub unsafe extern "C" fn opj_stream_seek(
   mut p_stream: *mut opj_stream_private_t,
   mut p_size: OPJ_OFF_T,
-  mut p_event_mgr: *mut opj_event_mgr,
+  mut p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   assert!(p_size >= 0i64);
   return (*p_stream).m_opj_seek.expect("non-null function pointer")(p_stream, p_size, p_event_mgr);

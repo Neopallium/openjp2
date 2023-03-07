@@ -73,6 +73,29 @@ unsafe extern "C" fn opj_default_callback(
 ) {
 }
 
+#[derive(Copy, Clone)]
+pub struct opj_event_mgr {
+  m_error_data: *mut libc::c_void,
+  m_warning_data: *mut libc::c_void,
+  m_info_data: *mut libc::c_void,
+  error_handler: opj_msg_callback,
+  warning_handler: opj_msg_callback,
+  info_handler: opj_msg_callback,
+}
+
+impl Default for opj_event_mgr {
+  fn default() -> Self {
+    Self {
+      m_error_data: 0 as *mut libc::c_void,
+      m_warning_data: 0 as *mut libc::c_void,
+      m_info_data: 0 as *mut libc::c_void,
+      error_handler: None,
+      info_handler: None,
+      warning_handler: None,
+    }
+  }
+}
+
 impl opj_event_mgr {
   pub fn set_default_event_handler(&mut self) {
     self.m_error_data = 0 as *mut libc::c_void;
@@ -107,54 +130,42 @@ impl opj_event_mgr {
     self.m_error_data = p_user_data;
   }
 
-  pub fn is_enabled(&self, event_type: OPJ_INT32) -> bool {
+  pub fn get_handler(&self,
+    event_type: EventType,
+  ) -> Option<(opj_msg_callback_fn, *mut libc::c_void)> {
     match event_type {
-      EVT_ERROR => {
-        self.error_handler.is_some()
+      EventType::Error => {
+        self.error_handler.map(|h| (h, self.m_error_data))
       }
-      EVT_WARNING => {
-        self.warning_handler.is_some()
+      EventType::Warning => {
+        self.warning_handler.map(|h| (h, self.m_warning_data))
       }
-      EVT_INFO => {
-        self.info_handler.is_some()
-      }
-      _ => {
-        false
+      EventType::Info => {
+        self.info_handler.map(|h| (h, self.m_info_data))
       }
     }
   }
 
+  pub fn is_enabled(&self, event_type: EventType) -> bool {
+    self.get_handler(event_type).is_some()
+  }
+
   pub fn msg_write(&self,
-    event_type: OPJ_INT32,
+    event_type: EventType,
     msg: &str,
   ) -> bool {
-    let (msg_handler, l_data) = match event_type {
-      EVT_ERROR => {
-        (self.error_handler, self.m_error_data)
-      }
-      EVT_WARNING => {
-        (self.warning_handler, self.m_warning_data)
-      }
-      EVT_INFO => {
-        (self.info_handler, self.m_info_data)
-      }
-      _ => {
+    let (msg_handler, l_data) = match self.get_handler(event_type) {
+      Some(handler) => handler,
+      None => {
         return false;
       }
     };
-    match msg_handler {
-      Some(msg_handler) => {
-        let c_msg = std::ffi::CString::new(msg).unwrap();
-        /* output the message to the user program */
-        unsafe {
-          msg_handler(c_msg.as_ptr(), l_data);
-        }
-        true
-      }
-      None => {
-        false
-      }
+    let c_msg = std::ffi::CString::new(msg).unwrap();
+    /* output the message to the user program */
+    unsafe {
+      msg_handler(c_msg.as_ptr(), l_data);
     }
+    true
   }
 }
 
@@ -182,37 +193,22 @@ macro_rules! opj_event_msg {
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */
 pub(crate) unsafe extern "C" fn opj_event_msg(
-  mut p_event_mgr: *mut opj_event_mgr,
+  mut p_event_mgr: &mut opj_event_mgr,
   mut event_type: OPJ_INT32,
   mut fmt: *const libc::c_char,
   mut args: ...
 ) -> OPJ_BOOL {
-  /* 512 bytes should be more than enough for a short message */
-  let mut msg_handler: opj_msg_callback = None;
-  let mut l_data = 0 as *mut libc::c_void;
-  if !p_event_mgr.is_null() {
-    match event_type {
-      EVT_ERROR => {
-        msg_handler = (*p_event_mgr).error_handler;
-        l_data = (*p_event_mgr).m_error_data
-      }
-      EVT_WARNING => {
-        msg_handler = (*p_event_mgr).warning_handler;
-        l_data = (*p_event_mgr).m_warning_data
-      }
-      EVT_INFO => {
-        msg_handler = (*p_event_mgr).info_handler;
-        l_data = (*p_event_mgr).m_info_data
-      }
-      _ => {}
-    }
-    if msg_handler.is_none() {
+  let handler = EventType::from_i32(event_type).and_then(|evt| {
+    p_event_mgr.get_handler(evt)
+  });
+  let (msg_handler, l_data) = match handler {
+    Some(handler) => handler,
+    None => {
       return 0i32;
     }
-  } else {
-    return 0i32;
-  }
-  if !fmt.is_null() && !p_event_mgr.is_null() {
+  };
+  /* 512 bytes should be more than enough for a short message */
+  if !fmt.is_null() {
     let mut arg: core::ffi::VaListImpl;
     let mut message: [libc::c_char; 512] = [0; 512];
     memset(
@@ -233,7 +229,7 @@ pub(crate) unsafe extern "C" fn opj_event_msg(
     message[(512i32 - 1i32) as usize] = '\u{0}' as i32 as libc::c_char;
     /* deinitialize the optional parameter list */
     /* output the message to the user program */
-    msg_handler.expect("non-null function pointer")(message.as_mut_ptr(), l_data);
+    msg_handler(message.as_mut_ptr(), l_data);
   }
   return 1i32;
 }

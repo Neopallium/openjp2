@@ -374,7 +374,7 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
   mut p_data_written: *mut OPJ_UINT32,
   mut len: OPJ_UINT32,
   mut cstr_info: *mut opj_codestream_info_t,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   let mut resno: OPJ_UINT32 = 0;
@@ -766,7 +766,7 @@ unsafe fn opj_tcd_init_tile(
   mut p_tile_no: OPJ_UINT32,
   mut isEncoder: OPJ_BOOL,
   mut sizeof_block: OPJ_SIZE_T,
-  mut manager: *mut opj_event_mgr,
+  mut manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   let mut resno: OPJ_UINT32 = 0;
@@ -1362,7 +1362,7 @@ unsafe fn opj_tcd_init_tile(
 pub(crate) unsafe fn opj_tcd_init_encode_tile(
   mut p_tcd: *mut opj_tcd_t,
   mut p_tile_no: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_tcd_init_tile(
     p_tcd,
@@ -1376,7 +1376,7 @@ pub(crate) unsafe fn opj_tcd_init_encode_tile(
 pub(crate) unsafe fn opj_tcd_init_decode_tile(
   mut p_tcd: *mut opj_tcd_t,
   mut p_tile_no: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   return opj_tcd_init_tile(
     p_tcd,
@@ -1606,7 +1606,7 @@ pub(crate) unsafe fn opj_tcd_encode_tile(
   mut p_max_length: OPJ_UINT32,
   mut p_cstr_info: *mut opj_codestream_info_t,
   mut p_marker_info: *mut opj_tcd_marker_info_t,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   if (*p_tcd).cur_tp_num == 0u32 {
     (*p_tcd).tcd_tileno = p_tile_no;
@@ -1715,7 +1715,7 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
   mut p_max_length: OPJ_UINT32,
   mut p_tile_no: OPJ_UINT32,
   mut p_cstr_index: *mut opj_codestream_index_t,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_data_read: OPJ_UINT32 = 0;
   let mut compno: OPJ_UINT32 = 0;
@@ -2267,7 +2267,7 @@ unsafe fn opj_tcd_t2_decode(
   mut p_data_read: *mut OPJ_UINT32,
   mut p_max_src_size: OPJ_UINT32,
   mut p_cstr_index: *mut opj_codestream_index_t,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_t2 = 0 as *mut opj_t2_t;
   l_t2 = opj_t2_create((*p_tcd).image, (*p_tcd).cp);
@@ -2295,7 +2295,7 @@ unsafe fn opj_tcd_t2_decode(
 }
 unsafe fn opj_tcd_t1_decode(
   mut p_tcd: *mut opj_tcd_t,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   let mut l_tile = (*(*p_tcd).tcd_image).tiles;
@@ -2381,7 +2381,7 @@ unsafe fn opj_tcd_dwt_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
 }
 unsafe fn opj_tcd_mct_decode(
   mut p_tcd: *mut opj_tcd_t,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_tile = (*(*p_tcd).tcd_image).tiles;
   let mut l_tcp = (*p_tcd).tcp;
@@ -2946,7 +2946,7 @@ unsafe fn opj_tcd_t2_encode(
   mut p_max_dest_size: OPJ_UINT32,
   mut p_cstr_info: *mut opj_codestream_info_t,
   mut p_marker_info: *mut opj_tcd_marker_info_t,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_t2 = 0 as *mut opj_t2_t;
   l_t2 = opj_t2_create((*p_tcd).image, (*p_tcd).cp);
@@ -2982,7 +2982,7 @@ unsafe fn opj_tcd_rate_allocate_encode(
   mut p_dest_data: *mut OPJ_BYTE,
   mut p_max_dest_size: OPJ_UINT32,
   mut p_cstr_info: *mut opj_codestream_info_t,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_cp = (*p_tcd).cp;
   let mut l_nb_written = 0 as OPJ_UINT32;

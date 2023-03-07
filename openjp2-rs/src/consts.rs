@@ -7,12 +7,30 @@ pub mod cio {
 }
 
 pub mod event {
+  #[derive(Copy, Clone)]
+  pub enum EventType {
+    Error = 1,
+    Warning = 2,
+    Info = 3,
+  }
+
+  impl EventType {
+    pub fn from_i32(v: i32) -> Option<Self> {
+      match v {
+        1 => Some(EventType::Error),
+        2 => Some(EventType::Warning),
+        3 => Some(EventType::Info),
+        _ => None,
+      }
+    }
+  }
+
   /**< Error event type */
-  pub const EVT_ERROR: i32    = 1;
+  pub const EVT_ERROR: EventType    = EventType::Error;
   /**< Warning event type */
-  pub const EVT_WARNING: i32  = 2;
+  pub const EVT_WARNING: EventType  = EventType::Warning;
   /**< Debug event type */
-  pub const EVT_INFO: i32     = 4;
+  pub const EVT_INFO: EventType     = EventType::Info;
 }
 
 pub mod jpip {

@@ -305,7 +305,7 @@ pub struct opj_t1_cblk_decode_processing_job_t {
   pub tccp: *mut opj_tccp_t,
   pub mustuse_cblkdatabuffer: OPJ_BOOL,
   pub pret: *mut OPJ_BOOL,
-  pub p_manager: *mut opj_event_mgr,
+  pub p_manager: opj_event_mgr,
   pub p_manager_mutex: *mut opj_mutex_t,
   pub check_pterm: OPJ_BOOL,
 }
@@ -1779,10 +1779,10 @@ extern "C" fn opj_t1_clbl_decode_processor(
         if !(*job).p_manager_mutex.is_null() {
           opj_mutex_lock((*job).p_manager_mutex);
         }
-        opj_event_msg(
+        opj_event_msg!(
           (*job).p_manager,
-          1i32,
-          b"Cannot allocate cblk->decoded_data\n\x00" as *const u8 as *const libc::c_char,
+          EVT_ERROR,
+          "Cannot allocate cblk->decoded_data\n",
         );
         if !(*job).p_manager_mutex.is_null() {
           opj_mutex_unlock((*job).p_manager_mutex);
@@ -1840,7 +1840,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
             (*band).bandno,
             (*tccp).roishift as OPJ_UINT32,
             (*tccp).cblksty,
-            (*job).p_manager,
+            &mut (*job).p_manager,
             (*job).p_manager_mutex,
             (*job).check_pterm,
           )
@@ -1856,7 +1856,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
           (*band).bandno,
           (*tccp).roishift as OPJ_UINT32,
           (*tccp).cblksty,
-          (*job).p_manager,
+          &mut (*job).p_manager,
           (*job).p_manager_mutex,
           (*job).check_pterm,
         )
@@ -2043,7 +2043,7 @@ pub fn opj_t1_decode_cblks(
   mut pret: *mut OPJ_BOOL,
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut tccp: *mut opj_tccp_t,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
   mut p_manager_mutex: *mut opj_mutex_t,
   mut check_pterm: OPJ_BOOL,
 ) {
@@ -2143,7 +2143,7 @@ pub fn opj_t1_decode_cblks(
                     (*job).tccp = tccp;
                     (*job).pret = pret;
                     (*job).p_manager_mutex = p_manager_mutex;
-                    (*job).p_manager = p_manager;
+                    (*job).p_manager = p_manager.clone();
                     (*job).check_pterm = check_pterm;
                     (*job).mustuse_cblkdatabuffer =
                       (opj_thread_pool_get_thread_count(tp) > 1i32) as libc::c_int;
@@ -2193,7 +2193,7 @@ fn opj_t1_decode_cblk(
   mut orient: OPJ_UINT32,
   mut roishift: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,
-  mut p_manager: *mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr,
   mut p_manager_mutex: *mut opj_mutex_t,
   mut check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {

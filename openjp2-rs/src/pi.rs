@@ -5,6 +5,7 @@ use super::j2k::*;
 use ::libc;
 
 use super::malloc::*;
+use super::consts::*;
 
 pub type T2_MODE = libc::c_uint;
 pub const FINAL_PASS: T2_MODE = 1;
@@ -32,7 +33,7 @@ pub struct opj_pi_comp {
 pub type opj_pi_comp_t = opj_pi_comp;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct opj_pi_iterator {
   pub tp_on: OPJ_BYTE,
   pub include: *mut OPJ_INT16,
@@ -57,7 +58,7 @@ pub struct opj_pi_iterator {
   pub y: OPJ_UINT32,
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
-  pub manager: *mut opj_event_mgr,
+  pub manager: opj_event_mgr,
 }
 pub type opj_pi_iterator_t = opj_pi_iterator;
 #[inline]
@@ -132,10 +133,10 @@ unsafe fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         .numcomps
         .wrapping_add(1u32)
   {
-    opj_event_msg(
+    opj_event_msg!(
       (*pi).manager,
-      1i32,
-      b"opj_pi_next_lrcp(): invalid compno0/compno1\n\x00" as *const u8 as *const libc::c_char,
+      EVT_ERROR,
+      "opj_pi_next_lrcp(): invalid compno0/compno1\n",
     );
     return 0i32;
   }
@@ -189,10 +190,10 @@ unsafe fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             /* include should be resized when a POC arises, or */
             /* the POC should be rejected */
             if index >= (*pi).include_size {
-              opj_event_msg(
+              opj_event_msg!(
                 (*pi).manager,
-                1i32,
-                b"Invalid access to pi->include\x00" as *const u8 as *const libc::c_char,
+                EVT_ERROR,
+                "Invalid access to pi->include",
               );
               return 0i32;
             }
@@ -256,10 +257,10 @@ unsafe fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         .numcomps
         .wrapping_add(1u32)
   {
-    opj_event_msg(
+    opj_event_msg!(
       (*pi).manager,
-      1i32,
-      b"opj_pi_next_rlcp(): invalid compno0/compno1\n\x00" as *const u8 as *const libc::c_char,
+      EVT_ERROR,
+      "opj_pi_next_rlcp(): invalid compno0/compno1\n",
     );
     return 0i32;
   }
@@ -307,10 +308,10 @@ unsafe fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
               .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
               .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
             if index >= (*pi).include_size {
-              opj_event_msg(
+              opj_event_msg!(
                 (*pi).manager,
-                1i32,
-                b"Invalid access to pi->include\x00" as *const u8 as *const libc::c_char,
+                EVT_ERROR,
+                "Invalid access to pi->include",
               );
               return 0i32;
             }
@@ -383,10 +384,10 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         .numcomps
         .wrapping_add(1u32)
   {
-    opj_event_msg(
+    opj_event_msg!(
       (*pi).manager,
-      1i32,
-      b"opj_pi_next_rpcl(): invalid compno0/compno1\n\x00" as *const u8 as *const libc::c_char,
+      EVT_ERROR,
+      "opj_pi_next_rpcl(): invalid compno0/compno1\n",
     );
     return 0i32;
   }
@@ -524,10 +525,10 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
               .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
               .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
             if index >= (*pi).include_size {
-              opj_event_msg(
+              opj_event_msg!(
                 (*pi).manager,
-                1i32,
-                b"Invalid access to pi->include\x00" as *const u8 as *const libc::c_char,
+                EVT_ERROR,
+                "Invalid access to pi->include",
               );
               return 0i32;
             }
@@ -682,10 +683,10 @@ unsafe fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         .numcomps
         .wrapping_add(1u32)
   {
-    opj_event_msg(
+    opj_event_msg!(
       (*pi).manager,
-      1i32,
-      b"opj_pi_next_pcrl(): invalid compno0/compno1\n\x00" as *const u8 as *const libc::c_char,
+      EVT_ERROR,
+      "opj_pi_next_pcrl(): invalid compno0/compno1\n",
     );
     return 0i32;
   }
@@ -826,10 +827,10 @@ unsafe fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
               .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
               .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
             if index >= (*pi).include_size {
-              opj_event_msg(
+              opj_event_msg!(
                 (*pi).manager,
-                1i32,
-                b"Invalid access to pi->include\x00" as *const u8 as *const libc::c_char,
+                EVT_ERROR,
+                "Invalid access to pi->include",
               );
               return 0i32;
             }
@@ -979,10 +980,10 @@ unsafe fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         .numcomps
         .wrapping_add(1u32)
   {
-    opj_event_msg(
+    opj_event_msg!(
       (*pi).manager,
-      1i32,
-      b"opj_pi_next_cprl(): invalid compno0/compno1\n\x00" as *const u8 as *const libc::c_char,
+      EVT_ERROR,
+      "opj_pi_next_cprl(): invalid compno0/compno1\n",
     );
     return 0i32;
   }
@@ -1117,10 +1118,10 @@ unsafe fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
               .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
               .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
             if index >= (*pi).include_size {
-              opj_event_msg(
+              opj_event_msg!(
                 (*pi).manager,
-                1i32,
-                b"Invalid access to pi->include\x00" as *const u8 as *const libc::c_char,
+                EVT_ERROR,
+                "Invalid access to pi->include",
               );
               return 0i32;
             }
@@ -1600,7 +1601,7 @@ unsafe fn opj_pi_create(
   mut image: *const opj_image_t,
   mut cp: *const opj_cp_t,
   mut tileno: OPJ_UINT32,
-  mut manager: *mut opj_event_mgr,
+  mut manager: &mut opj_event_mgr,
 ) -> *mut opj_pi_iterator_t {
   /* loop*/
   let mut pino: OPJ_UINT32 = 0;
@@ -1634,7 +1635,7 @@ unsafe fn opj_pi_create(
   l_current_pi = l_pi;
   pino = 0 as OPJ_UINT32;
   while pino < l_poc_bound {
-    (*l_current_pi).manager = manager;
+    (*l_current_pi).manager = manager.clone();
     (*l_current_pi).comps = opj_calloc(
       (*image).numcomps as size_t,
       core::mem::size_of::<opj_pi_comp_t>() as usize,
@@ -2011,7 +2012,7 @@ pub(crate) unsafe fn opj_pi_create_decode(
   mut p_image: *mut opj_image_t,
   mut p_cp: *mut opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
-  mut manager: *mut opj_event_mgr,
+  mut manager: &mut opj_event_mgr,
 ) -> *mut opj_pi_iterator_t {
   let mut numcomps = (*p_image).numcomps;
   /* loop */
@@ -2287,7 +2288,7 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
   mut p_cp: *mut opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
   mut p_t2_mode: J2K_T2_MODE,
-  mut manager: *mut opj_event_mgr,
+  mut manager: &mut opj_event_mgr,
 ) -> *mut opj_pi_iterator_t {
   let mut numcomps = (*p_image).numcomps;
   /* loop*/
