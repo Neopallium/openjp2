@@ -126,7 +126,7 @@ impl opj_event_mgr {
         return 0;
       }
     };
-    let c_msg = std::ffi::CString::new(msg).unwrap();
+    let c_msg = alloc::ffi::CString::new(msg).unwrap();
     /* output the message to the user program */
     unsafe {
       msg_handler(c_msg.as_ptr(), l_data);
