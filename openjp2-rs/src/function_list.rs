@@ -57,11 +57,8 @@ pub(crate) unsafe fn opj_procedure_list_add_procedure(
       opj_free((*p_validation_list).m_procedures as *mut libc::c_void);
       (*p_validation_list).m_nb_max_procedures = 0 as OPJ_UINT32;
       (*p_validation_list).m_nb_procedures = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to add a new validation procedure\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to add a new validation procedure\n",
       );
       return 0i32;
     } else {

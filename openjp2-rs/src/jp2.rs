@@ -245,10 +245,8 @@ unsafe fn opj_jp2_read_boxhdr(
     /* last box */
     let bleft = opj_stream_get_number_byte_left(cio);
     if bleft > (0xffffffffu32).wrapping_sub(8u32) as OPJ_OFF_T {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Cannot handle box sizes higher than 2^32\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Cannot handle box sizes higher than 2^32\n",
       );
       return 0i32;
     }
@@ -280,10 +278,8 @@ unsafe fn opj_jp2_read_boxhdr(
       4 as OPJ_UINT32,
     );
     if l_xl_part_size != 0u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Cannot handle box sizes higher than 2^32\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Cannot handle box sizes higher than 2^32\n",
       );
       return 0i32;
     }
@@ -320,18 +316,14 @@ unsafe extern "C" fn opj_jp2_read_ihdr(
   assert!(!p_image_header_data.is_null());
   assert!(!jp2.is_null());
   if !(*jp2).comps.is_null() {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"Ignoring ihdr box. First ihdr box already read\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "Ignoring ihdr box. First ihdr box already read\n",
     );
     return 1i32;
   }
   if p_image_header_size != 14u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Bad image header box (bad size)\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Bad image header box (bad size)\n",
     );
     return 0i32;
   }
@@ -357,11 +349,8 @@ unsafe extern "C" fn opj_jp2_read_ihdr(
     || (*jp2).w < 1u32
     || (*jp2).numcomps < 1u32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Wrong values for: w(%d) h(%d) numcomps(%d) (ihdr)\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Wrong values for: w(%d) h(%d) numcomps(%d) (ihdr)\n",
       (*jp2).w,
       (*jp2).h,
       (*jp2).numcomps,
@@ -370,10 +359,8 @@ unsafe extern "C" fn opj_jp2_read_ihdr(
   }
   if (*jp2).numcomps.wrapping_sub(1u32) >= 16384u32 {
     /* unsigned underflow is well defined: 1U <= jp2->numcomps <= 16384U */
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid number of components (ihdr)\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid number of components (ihdr)\n",
     );
     return 0i32;
   }
@@ -383,10 +370,8 @@ unsafe extern "C" fn opj_jp2_read_ihdr(
     core::mem::size_of::<opj_jp2_comps_t>() as usize,
   ) as *mut opj_jp2_comps_t; /* BPC */
   if (*jp2).comps.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to handle image header (ihdr)\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to handle image header (ihdr)\n",
     ); /* C */
     return 0i32;
   }
@@ -404,9 +389,8 @@ unsafe extern "C" fn opj_jp2_read_ihdr(
   p_image_header_data = p_image_header_data.offset(1);
   /* Should be equal to 7 cf. chapter about image header box of the norm */
   if (*jp2).C != 7u32 {
-    opj_event_msg(p_manager, 4i32,
-                      b"JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) \n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_INFO,
+                      "JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) \n",
                       (*jp2).C); /* UnkC */
   } /* IPR */
   opj_read_bytes_LE(
@@ -573,16 +557,13 @@ unsafe extern "C" fn opj_jp2_read_bpcc(
   assert!(!p_bpc_header_data.is_null());
   assert!(!jp2.is_null());
   if (*jp2).bpc != 255u32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"A BPCC header box is available although BPC given by the IHDR box (%d) indicate components bit depth is constant\n\x00"
-                          as *const u8 as *const libc::c_char, (*jp2).bpc);
+    event_msg!(p_manager, EVT_WARNING,
+                      "A BPCC header box is available although BPC given by the IHDR box (%d) indicate components bit depth is constant\n", (*jp2).bpc);
   }
   /* and length is relevant */
   if p_bpc_header_size != (*jp2).numcomps {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Bad BPCC header box (bad size)\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Bad BPCC header box (bad size)\n",
     );
     return 0i32;
   }
@@ -790,10 +771,8 @@ unsafe fn opj_jp2_check_color(
     i = 0 as OPJ_UINT16;
     while (i as libc::c_int) < n as libc::c_int {
       if (*info.offset(i as isize)).cn as libc::c_uint >= nr_channels {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Invalid component index %d (>= %d).\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Invalid component index %d (>= %d).\n",
           (*info.offset(i as isize)).cn as libc::c_int,
           nr_channels,
         );
@@ -804,10 +783,8 @@ unsafe fn opj_jp2_check_color(
           && ((*info.offset(i as isize)).asoc as libc::c_int - 1i32) as OPJ_UINT32
             >= nr_channels
         {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Invalid component index %d (>= %d).\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Invalid component index %d (>= %d).\n",
             (*info.offset(i as isize)).asoc as libc::c_int - 1i32,
             nr_channels,
           );
@@ -829,10 +806,8 @@ unsafe fn opj_jp2_check_color(
         i += 1;
       }
       if i as libc::c_int == n as libc::c_int {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Incomplete channel definitions.\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Incomplete channel definitions.\n",
         );
         return 0i32;
       }
@@ -850,10 +825,8 @@ unsafe fn opj_jp2_check_color(
     i = 0 as OPJ_UINT16;
     while (i as libc::c_int) < nr_channels_0 as libc::c_int {
       if (*cmap.offset(i as isize)).cmp as libc::c_uint >= (*image).numcomps {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Invalid component index %d (>= %d).\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Invalid component index %d (>= %d).\n",
           (*cmap.offset(i as isize)).cmp as libc::c_int,
           (*image).numcomps,
         );
@@ -866,10 +839,8 @@ unsafe fn opj_jp2_check_color(
       core::mem::size_of::<OPJ_BOOL>() as usize,
     ) as *mut OPJ_BOOL;
     if pcol_usage.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Unexpected OOM.\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Unexpected OOM.\n",
       );
       return 0i32;
     }
@@ -880,38 +851,29 @@ unsafe fn opj_jp2_check_color(
       let mut pcol = (*cmap.offset(i as isize)).pcol;
       /* See ISO 15444-1 Table I.14 – MTYPi field values */
       if mtyp as libc::c_int != 0i32 && mtyp as libc::c_int != 1i32 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Invalid value for cmap[%d].mtyp = %d.\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Invalid value for cmap[%d].mtyp = %d.\n",
           i as libc::c_int,
           mtyp as libc::c_int,
         );
         is_sane = 0i32
       } else if pcol as libc::c_int >= nr_channels_0 as libc::c_int {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Invalid component/palette index for direct mapping %d.\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Invalid component/palette index for direct mapping %d.\n",
           pcol as libc::c_int,
         );
         is_sane = 0i32
       } else if *pcol_usage.offset(pcol as isize) != 0 && mtyp as libc::c_int == 1i32 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Component %d is mapped twice.\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Component %d is mapped twice.\n",
           pcol as libc::c_int,
         );
         is_sane = 0i32
       } else if mtyp as libc::c_int == 0i32 && pcol as libc::c_int != 0i32 {
         /* I.5.3.5 PCOL: If the value of the MTYP field for this channel is 0, then
          * the value of this field shall be 0. */
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Direct use at #%d however pcol=%d.\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Direct use at #%d however pcol=%d.\n",
           i as libc::c_int,
           pcol as libc::c_int,
         );
@@ -919,9 +881,8 @@ unsafe fn opj_jp2_check_color(
       } else if mtyp as libc::c_int == 1i32 && pcol as libc::c_int != i as libc::c_int {
         /* OpenJPEG implementation limitation. See assert(i == pcol); */
         /* in opj_jp2_apply_pclr() */
-        opj_event_msg(p_manager, 1i32,
-                              b"Implementation limitation: for palette mapping, pcol[%d] should be equal to %d, but is equal to %d.\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+                              "Implementation limitation: for palette mapping, pcol[%d] should be equal to %d, but is equal to %d.\n",
                               i as libc::c_int, i as libc::c_int,
                               pcol as libc::c_int);
         is_sane = 0i32
@@ -936,10 +897,8 @@ unsafe fn opj_jp2_check_color(
       if *pcol_usage.offset(i as isize) == 0
         && (*cmap.offset(i as isize)).mtyp as libc::c_int != 0i32
       {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Component %d doesn\'t have a mapping.\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Component %d doesn\'t have a mapping.\n",
           i as libc::c_int,
         );
         is_sane = 0i32
@@ -952,11 +911,8 @@ unsafe fn opj_jp2_check_color(
       while (i as libc::c_int) < nr_channels_0 as libc::c_int {
         if *pcol_usage.offset(i as isize) == 0 {
           is_sane = 0 as OPJ_BOOL;
-          opj_event_msg(
-            p_manager,
-            2i32,
-            b"Component mapping seems wrong. Trying to correct.\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+            "Component mapping seems wrong. Trying to correct.\n",
           );
           break;
         } else {
@@ -1019,11 +975,8 @@ unsafe fn opj_jp2_apply_pclr(
     /* Palette mapping: */
     cmp = (*cmap.offset(i as isize)).cmp;
     if (*(*image).comps.offset(cmp as isize)).data.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"image->comps[%d].data == NULL in opj_jp2_apply_pclr().\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "image->comps[%d].data == NULL in opj_jp2_apply_pclr().\n",
         i as libc::c_int,
       );
       return 0i32;
@@ -1036,11 +989,8 @@ unsafe fn opj_jp2_apply_pclr(
       .wrapping_mul(core::mem::size_of::<opj_image_comp_t>() as usize),
   ) as *mut opj_image_comp_t;
   if new_comps.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Memory allocation failure in opj_jp2_apply_pclr().\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Memory allocation failure in opj_jp2_apply_pclr().\n",
     );
     return 0i32;
   }
@@ -1069,11 +1019,8 @@ unsafe fn opj_jp2_apply_pclr(
         opj_image_data_free((*new_comps.offset(i as isize)).data as *mut libc::c_void);
       }
       opj_free(new_comps as *mut libc::c_void);
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Memory allocation failure in opj_jp2_apply_pclr().\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Memory allocation failure in opj_jp2_apply_pclr().\n",
       );
       return 0i32;
     }
@@ -1184,10 +1131,8 @@ unsafe extern "C" fn opj_jp2_read_pclr(
   if nr_entries as libc::c_uint == 0u32
     || nr_entries as libc::c_uint > 1024u32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid PCLR box. Reports %d entries\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid PCLR box. Reports %d entries\n",
       nr_entries as libc::c_int,
     );
     return 0i32;
@@ -1200,10 +1145,8 @@ unsafe extern "C" fn opj_jp2_read_pclr(
   p_pclr_header_data = p_pclr_header_data.offset(1);
   nr_channels = l_value as OPJ_UINT16;
   if nr_channels as libc::c_uint == 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid PCLR box. Reports 0 palette columns\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid PCLR box. Reports 0 palette columns\n",
     );
     return 0i32;
   }
@@ -1314,10 +1257,8 @@ unsafe extern "C" fn opj_jp2_read_cmap(
   assert!(!p_cmap_header_data.is_null());
   /* Need nr_channels: */
   if (*jp2).color.jp2_pclr.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Need to read a PCLR box before the CMAP box.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Need to read a PCLR box before the CMAP box.\n",
     );
     return 0i32;
   }
@@ -1325,20 +1266,16 @@ unsafe extern "C" fn opj_jp2_read_cmap(
    * inside a JP2 Header box' :
    */
   if !(*(*jp2).color.jp2_pclr).cmap.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Only one CMAP box is allowed.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Only one CMAP box is allowed.\n",
     ); /* CMP^i */
     return 0i32;
   } /* MTYP^i */
   nr_channels = (*(*jp2).color.jp2_pclr).nr_channels; /* PCOL^i */
   if p_cmap_header_size < (nr_channels as OPJ_UINT32).wrapping_mul(4u32)
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Insufficient data for CMAP box.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Insufficient data for CMAP box.\n",
     );
     return 0i32;
   }
@@ -1396,10 +1333,8 @@ unsafe fn opj_jp2_apply_cdef(
     asoc = (*info.offset(i as isize)).asoc;
     cn = (*info.offset(i as isize)).cn;
     if cn as libc::c_uint >= (*image).numcomps {
-      opj_event_msg(
-        manager,
-        2i32,
-        b"opj_jp2_apply_cdef: cn=%d, numcomps=%d\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(manager, EVT_WARNING,
+        "opj_jp2_apply_cdef: cn=%d, numcomps=%d\n",
         cn as libc::c_int,
         (*image).numcomps,
       );
@@ -1409,10 +1344,8 @@ unsafe fn opj_jp2_apply_cdef(
     } else {
       acn = (asoc as libc::c_int - 1i32) as OPJ_UINT16;
       if acn as libc::c_uint >= (*image).numcomps {
-        opj_event_msg(
-          manager,
-          2i32,
-          b"opj_jp2_apply_cdef: acn=%d, numcomps=%d\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(manager, EVT_WARNING,
+          "opj_jp2_apply_cdef: acn=%d, numcomps=%d\n",
           acn as libc::c_int,
           (*image).numcomps,
         );
@@ -1497,10 +1430,8 @@ unsafe extern "C" fn opj_jp2_read_cdef(
     return 0i32;
   } /* N */
   if p_cdef_header_size < 2u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Insufficient data for CDEF box.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Insufficient data for CDEF box.\n",
     );
     return 0i32;
   }
@@ -1512,11 +1443,8 @@ unsafe extern "C" fn opj_jp2_read_cdef(
   p_cdef_header_data = p_cdef_header_data.offset(2);
   if l_value as OPJ_UINT16 as libc::c_int == 0i32 {
     /* szukw000: FIXME */
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Number of channel description is equal to zero in CDEF box.\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Number of channel description is equal to zero in CDEF box.\n",
     ); /* Cn^i */
     return 0i32;
   } /* Typ^i */
@@ -1525,10 +1453,8 @@ unsafe extern "C" fn opj_jp2_read_cdef(
       (l_value as OPJ_UINT16 as OPJ_UINT32).wrapping_mul(6u32),
     )
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Insufficient data for CDEF box.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Insufficient data for CDEF box.\n",
     ); /* Asoc^i */
     return 0i32;
   }
@@ -1596,10 +1522,8 @@ unsafe extern "C" fn opj_jp2_read_colr(
   assert!(!jp2.is_null());
   assert!(!p_colr_header_data.is_null());
   if p_colr_header_size < 3u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Bad COLR header box (bad size)\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Bad COLR header box (bad size)\n",
     );
     return 0i32;
   }
@@ -1607,9 +1531,8 @@ unsafe extern "C" fn opj_jp2_read_colr(
    * Specification boxes after the first.'
    */
   if (*jp2).color.jp2_has_colr != 0 {
-    opj_event_msg(p_manager, 4i32,
-                      b"A conforming JP2 reader shall ignore all Colour Specification boxes after the first, so we ignore this one.\n\x00"
-                          as *const u8 as *const libc::c_char); /* METH */
+    event_msg!(p_manager, EVT_INFO,
+                      "A conforming JP2 reader shall ignore all Colour Specification boxes after the first, so we ignore this one.\n"); /* METH */
     p_colr_header_data = p_colr_header_data.offset(p_colr_header_size as isize); /* PRECEDENCE */
     return 1i32;
   } /* APPROX */
@@ -1633,10 +1556,8 @@ unsafe extern "C" fn opj_jp2_read_colr(
   p_colr_header_data = p_colr_header_data.offset(1);
   if (*jp2).meth == 1u32 {
     if p_colr_header_size < 7u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Bad COLR header box (bad size: %d)\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Bad COLR header box (bad size: %d)\n",
         p_colr_header_size,
       );
       return 0i32;
@@ -1646,10 +1567,8 @@ unsafe extern "C" fn opj_jp2_read_colr(
     {
       /* handled below for CIELab) */
       /* testcase Altona_Technical_v20_x4.pdf */
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Bad COLR header box (bad size: %d)\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Bad COLR header box (bad size: %d)\n",
         p_colr_header_size,
       ); /* EnumCS */
     }
@@ -1671,10 +1590,8 @@ unsafe extern "C" fn opj_jp2_read_colr(
       let mut il: OPJ_UINT32 = 0;
       cielab = opj_malloc(9 * core::mem::size_of::<OPJ_UINT32>()) as *mut OPJ_UINT32;
       if cielab.is_null() {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Not enough memory for cielab\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Not enough memory for cielab\n",
         );
         return 0i32;
       }
@@ -1705,10 +1622,8 @@ unsafe extern "C" fn opj_jp2_read_colr(
         p_colr_header_data = p_colr_header_data.offset(4);
         *cielab.offset(1) = 0 as OPJ_UINT32
       } else if p_colr_header_size != 7u32 {
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"Bad COLR header box (CIELab, bad size: %d)\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "Bad COLR header box (CIELab, bad size: %d)\n",
           p_colr_header_size,
         );
       }
@@ -1749,9 +1664,8 @@ unsafe extern "C" fn opj_jp2_read_colr(
   } else if (*jp2).meth > 2u32 {
     /*  ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
     conforming JP2 reader shall ignore the entire Colour Specification box.*/
-    opj_event_msg(p_manager, 4i32,
-                      b"COLR BOX meth value is not a regular value (%d), so we will ignore the entire Colour Specification box. \n\x00"
-                          as *const u8 as *const libc::c_char, (*jp2).meth);
+    event_msg!(p_manager, EVT_INFO,
+                      "COLR BOX meth value is not a regular value (%d), so we will ignore the entire Colour Specification box. \n", (*jp2).meth);
   }
   return 1i32;
 }
@@ -1767,10 +1681,8 @@ pub(crate) unsafe extern "C" fn opj_jp2_decode(
   }
   /* J2K decoding */
   if opj_j2k_decode((*jp2).j2k, p_stream, p_image, p_manager) == 0 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Failed to decode the codestream in the JP2 file\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to decode the codestream in the JP2 file\n",
     );
     return 0i32;
   }
@@ -1905,10 +1817,8 @@ unsafe extern "C" fn opj_jp2_write_jp2h(
         .handler
         .expect("non-null function pointer")(jp2, &mut (*l_current_writer).m_size);
     if (*l_current_writer).m_data.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to hold JP2 Header data\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to hold JP2 Header data\n",
       );
       l_result = 0i32;
       break;
@@ -1945,10 +1855,8 @@ unsafe extern "C" fn opj_jp2_write_jp2h(
     p_manager,
   ) != 8
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Stream error while writing JP2 Header box\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Stream error while writing JP2 Header box\n",
     );
     l_result = 0i32
   }
@@ -1963,10 +1871,8 @@ unsafe extern "C" fn opj_jp2_write_jp2h(
         p_manager,
       ) != (*l_current_writer).m_size as usize
       {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Stream error while writing JP2 Header box\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Stream error while writing JP2 Header box\n",
         );
         l_result = 0i32;
         break;
@@ -2016,10 +1922,8 @@ unsafe extern "C" fn opj_jp2_write_ftyp(
     .wrapping_add((4u32).wrapping_mul((*jp2).numcl));
   l_ftyp_data = opj_calloc(1i32 as size_t, l_ftyp_size as size_t) as *mut OPJ_BYTE;
   if l_ftyp_data.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to handle ftyp data\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to handle ftyp data\n",
     );
     return 0i32;
   }
@@ -2061,10 +1965,8 @@ unsafe extern "C" fn opj_jp2_write_ftyp(
   l_result = (opj_stream_write_data(cio, l_ftyp_data, l_ftyp_size as OPJ_SIZE_T, p_manager)
     == l_ftyp_size as usize) as libc::c_int;
   if l_result == 0 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error while writing ftyp data to stream\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error while writing ftyp data to stream\n",
     );
   }
   opj_free(l_ftyp_data as *mut libc::c_void);
@@ -2104,10 +2006,8 @@ unsafe extern "C" fn opj_jp2_write_jp2c(
     4 as OPJ_UINT32,
   );
   if opj_stream_seek(cio, (*jp2).j2k_codestream_offset, p_manager) == 0 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Failed to seek in the stream.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to seek in the stream.\n",
     );
     return 0i32;
   }
@@ -2118,18 +2018,14 @@ unsafe extern "C" fn opj_jp2_write_jp2c(
     p_manager,
   ) != 8
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Failed to seek in the stream.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to seek in the stream.\n",
     );
     return 0i32;
   }
   if opj_stream_seek(cio, j2k_codestream_exit, p_manager) == 0 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Failed to seek in the stream.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to seek in the stream.\n",
     );
     return 0i32;
   }
@@ -2242,11 +2138,8 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
   if (*image).numcomps < 1u32
     || (*image).numcomps > 16384u32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid number of components specified while setting up JP2 encoder\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid number of components specified while setting up JP2 encoder\n",
     );
     return 0i32;
   }
@@ -2264,10 +2157,8 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
       .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize),
   ) as *mut OPJ_UINT32;
   if (*jp2).cl.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory when setup the JP2 encoder\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory when setup the JP2 encoder\n",
     );
     return 0i32;
   }
@@ -2279,10 +2170,8 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
       .wrapping_mul(core::mem::size_of::<opj_jp2_comps_t>() as usize),
   ) as *mut opj_jp2_comps_t;
   if (*jp2).comps.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory when setup the JP2 encoder\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory when setup the JP2 encoder\n",
     );
     /* Memory of jp2->cl will be freed by opj_jp2_destroy */
     return 0i32;
@@ -2355,32 +2244,22 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
       _ => alpha_count = 0u32,
     }
     if alpha_count == 0u32 {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Alpha channel specified but unknown enumcs. No cdef box will be created.\n\x00"
-          as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Alpha channel specified but unknown enumcs. No cdef box will be created.\n",
       );
     } else if (*image).numcomps < color_channels.wrapping_add(1u32) {
-      opj_event_msg(p_manager, 2i32,
-                          b"Alpha channel specified but not enough image components for an automatic cdef box creation.\n\x00"
-                              as *const u8 as *const libc::c_char);
+      event_msg!(p_manager, EVT_WARNING,
+                          "Alpha channel specified but not enough image components for an automatic cdef box creation.\n");
       alpha_count = 0u32
     } else if alpha_channel < color_channels {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Alpha channel position conflicts with color channel. No cdef box will be created.\n\x00"
-          as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Alpha channel position conflicts with color channel. No cdef box will be created.\n",
       );
       alpha_count = 0u32
     }
   } else if alpha_count > 1u32 {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"Multiple alpha channels specified. No cdef box will be created.\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "Multiple alpha channels specified. No cdef box will be created.\n",
     );
   }
   if alpha_count == 1u32 {
@@ -2388,10 +2267,8 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
     (*jp2).color.jp2_cdef =
       opj_malloc(core::mem::size_of::<opj_jp2_cdef_t>() as usize) as *mut opj_jp2_cdef_t;
     if (*jp2).color.jp2_cdef.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to setup the JP2 encoder\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to setup the JP2 encoder\n",
       );
       return 0i32;
     }
@@ -2403,10 +2280,8 @@ pub(crate) unsafe extern "C" fn opj_jp2_setup_encoder(
     ) as *mut opj_jp2_cdef_info_t;
     if (*(*jp2).color.jp2_cdef).info.is_null() {
       /* memory will be freed by opj_jp2_destroy */
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to setup the JP2 encoder\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to setup the JP2 encoder\n",
       ); /* cast is valid : image->numcomps [1,16384] */
       return 0i32;
     } /* cast is valid : image->numcomps [1,16384] */
@@ -2649,10 +2524,8 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
   l_current_data =
     opj_calloc(1i32 as size_t, l_last_data_size as size_t) as *mut OPJ_BYTE;
   if l_current_data.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to handle jpeg2000 file header\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to handle jpeg2000 file header\n",
     );
     return 0i32;
   }
@@ -2664,30 +2537,24 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
         opj_free(l_current_data as *mut libc::c_void);
         return 1i32;
       } else {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"bad placed jpeg codestream\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "bad placed jpeg codestream\n",
         );
         opj_free(l_current_data as *mut libc::c_void);
         return 0i32;
       }
     } else {
       if box_0.length == 0u32 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Cannot handle box of undefined sizes\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Cannot handle box of undefined sizes\n",
         );
         opj_free(l_current_data as *mut libc::c_void);
         return 0i32;
       } else {
         /* testcase 1851.pdf.SIGSEGV.ce9.948 */
         if box_0.length < l_nb_bytes_read {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"invalid box size %d (%x)\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "invalid box size %d (%x)\n",
             box_0.length,
             box_0.type_0,
           );
@@ -2701,11 +2568,8 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
     l_current_data_size = box_0.length.wrapping_sub(l_nb_bytes_read);
     if !l_current_handler.is_null() || !l_current_handler_misplaced.is_null() {
       if l_current_handler.is_null() {
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"Found a misplaced \'%c%c%c%c\' box outside jp2h box\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "Found a misplaced \'%c%c%c%c\' box outside jp2h box\n",
           (box_0.type_0 >> 24i32) as OPJ_BYTE as libc::c_int,
           (box_0.type_0 >> 16i32) as OPJ_BYTE as libc::c_int,
           (box_0.type_0 >> 8i32) as OPJ_BYTE as libc::c_int,
@@ -2715,11 +2579,8 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
           /* read anyway, we already have jp2h */
           l_current_handler = l_current_handler_misplaced
         } else {
-          opj_event_msg(
-            p_manager,
-            2i32,
-            b"JPEG2000 Header box not read yet, \'%c%c%c%c\' box will be ignored\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+            "JPEG2000 Header box not read yet, \'%c%c%c%c\' box will be ignored\n",
             (box_0.type_0 >> 24i32) as OPJ_BYTE as libc::c_int,
             (box_0.type_0 >> 16i32) as OPJ_BYTE as libc::c_int,
             (box_0.type_0 >> 8i32) as OPJ_BYTE as libc::c_int,
@@ -2729,11 +2590,8 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
           if opj_stream_skip(stream, l_current_data_size as OPJ_OFF_T, p_manager)
             != l_current_data_size as i64
           {
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Problem with skipping JPEG2000 box, stream error\n\x00" as *const u8
-                as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Problem with skipping JPEG2000 box, stream error\n",
             );
             opj_free(l_current_data as *mut libc::c_void);
             return 0i32;
@@ -2743,11 +2601,8 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
       }
       if l_current_data_size as OPJ_OFF_T > opj_stream_get_number_byte_left(stream) {
         /* do not even try to malloc if we can't read */
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Invalid box size %d for box \'%c%c%c%c\'. Need %d bytes, %d bytes remaining \n\x00"
-            as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Invalid box size %d for box \'%c%c%c%c\'. Need %d bytes, %d bytes remaining \n",
           box_0.length,
           (box_0.type_0 >> 24i32) as OPJ_BYTE as libc::c_int,
           (box_0.type_0 >> 16i32) as OPJ_BYTE as libc::c_int,
@@ -2766,10 +2621,8 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
         ) as *mut OPJ_BYTE;
         if new_current_data.is_null() {
           opj_free(l_current_data as *mut libc::c_void);
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Not enough memory to handle jpeg2000 box\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Not enough memory to handle jpeg2000 box\n",
           );
           return 0i32;
         }
@@ -2783,11 +2636,8 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
         p_manager,
       ) as OPJ_UINT32;
       if l_nb_bytes_read != l_current_data_size {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Problem with reading JPEG2000 box, stream error\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Problem with reading JPEG2000 box, stream error\n",
         );
         opj_free(l_current_data as *mut libc::c_void);
         return 0i32;
@@ -2803,21 +2653,15 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
       }
     } else {
       if (*jp2).jp2_state & JP2_STATE_SIGNATURE as libc::c_uint == 0 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Malformed JP2 file format: first box must be JPEG 2000 signature box\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Malformed JP2 file format: first box must be JPEG 2000 signature box\n",
         );
         opj_free(l_current_data as *mut libc::c_void);
         return 0i32;
       }
       if (*jp2).jp2_state & JP2_STATE_FILE_TYPE as libc::c_uint == 0 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Malformed JP2 file format: second box must be file type box\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Malformed JP2 file format: second box must be file type box\n",
         );
         opj_free(l_current_data as *mut libc::c_void);
         return 0i32;
@@ -2829,20 +2673,14 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
         if (*jp2).jp2_state & JP2_STATE_CODESTREAM as libc::c_uint != 0 {
           /* If we already read the codestream, do not error out */
           /* Needed for data/input/nonregression/issue254.jp2 */
-          opj_event_msg(
-            p_manager,
-            2i32,
-            b"Problem with skipping JPEG2000 box, stream error\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+            "Problem with skipping JPEG2000 box, stream error\n",
           );
           opj_free(l_current_data as *mut libc::c_void);
           return 1i32;
         } else {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Problem with skipping JPEG2000 box, stream error\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Problem with skipping JPEG2000 box, stream error\n",
           );
           opj_free(l_current_data as *mut libc::c_void);
           return 0i32;
@@ -3028,20 +2866,15 @@ unsafe extern "C" fn opj_jp2_read_jp(
   assert!(!p_header_data.is_null());
   assert!(!jp2.is_null());
   if (*jp2).jp2_state != JP2_STATE_NONE as libc::c_uint {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"The signature box must be the first box in the file.\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "The signature box must be the first box in the file.\n",
     );
     return 0i32;
   }
   /* assure length of data is correct (4 -> magic number) */
   if p_header_size != 4u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error with JP signature Box size\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error with JP signature Box size\n",
     );
     return 0i32;
   }
@@ -3052,10 +2885,8 @@ unsafe extern "C" fn opj_jp2_read_jp(
     4 as OPJ_UINT32,
   );
   if l_magic_number != 0xd0a870au32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error with JP Signature : bad magic number\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error with JP Signature : bad magic number\n",
     );
     return 0i32;
   }
@@ -3095,19 +2926,15 @@ unsafe extern "C" fn opj_jp2_read_ftyp(
   assert!(!p_header_data.is_null());
   assert!(!jp2.is_null());
   if (*jp2).jp2_state != JP2_STATE_SIGNATURE as libc::c_uint {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"The ftyp box must be the second box in the file.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "The ftyp box must be the second box in the file.\n",
     );
     return 0i32;
   }
   /* assure length of data is correct */
   if p_header_size < 8u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error with FTYP signature Box size\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error with FTYP signature Box size\n",
     ); /* BR */
     return 0i32;
   } /* MinV */
@@ -3126,10 +2953,8 @@ unsafe extern "C" fn opj_jp2_read_ftyp(
   l_remaining_bytes = p_header_size.wrapping_sub(8u32);
   /* the number of remaining bytes should be a multiple of 4 */
   if l_remaining_bytes & 0x3u32 != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error with FTYP signature Box size\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error with FTYP signature Box size\n",
     );
     return 0i32;
   }
@@ -3141,10 +2966,8 @@ unsafe extern "C" fn opj_jp2_read_ftyp(
       core::mem::size_of::<OPJ_UINT32>() as usize,
     ) as *mut OPJ_UINT32;
     if (*jp2).cl.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory with FTYP Box\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory with FTYP Box\n",
       );
       return 0i32;
     }
@@ -3239,10 +3062,8 @@ unsafe extern "C" fn opj_jp2_read_jp2h(
   if (*jp2).jp2_state & JP2_STATE_FILE_TYPE as libc::c_uint
     != JP2_STATE_FILE_TYPE as libc::c_uint
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"The  box must be the first box in the file.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "The  box must be the first box in the file.\n",
     );
     return 0i32;
   }
@@ -3257,19 +3078,14 @@ unsafe extern "C" fn opj_jp2_read_jp2h(
       p_manager,
     ) == 0
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream error while reading JP2 Header box\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream error while reading JP2 Header box\n",
       );
       return 0i32;
     }
     if box_0.length > p_header_size {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream error while reading JP2 Header box: box length is inconsistent.\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream error while reading JP2 Header box: box length is inconsistent.\n",
       );
       return 0i32;
     }
@@ -3296,11 +3112,8 @@ unsafe extern "C" fn opj_jp2_read_jp2h(
       (p_header_size as libc::c_uint).wrapping_sub(box_0.length) as OPJ_UINT32
   }
   if l_has_ihdr == 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Stream error while reading JP2 Header box: no \'ihdr\' box.\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Stream error while reading JP2 Header box: no \'ihdr\' box.\n",
     );
     return 0i32;
   }
@@ -3333,10 +3146,8 @@ unsafe fn opj_jp2_read_boxhdr_char(
   assert!(!box_0.is_null());
   assert!(!p_number_bytes_read.is_null());
   if p_box_max_size < 8u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Cannot handle box of less than 8 bytes\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Cannot handle box of less than 8 bytes\n",
     );
     return 0i32;
   }
@@ -3353,10 +3164,8 @@ unsafe fn opj_jp2_read_boxhdr_char(
   if (*box_0).length == 1u32 {
     let mut l_xl_part_size: OPJ_UINT32 = 0;
     if p_box_max_size < 16u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Cannot handle XL box of less than 16 bytes\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Cannot handle XL box of less than 16 bytes\n",
       );
       return 0i32;
     }
@@ -3366,10 +3175,8 @@ unsafe fn opj_jp2_read_boxhdr_char(
       .wrapping_add(4u32) as OPJ_UINT32
       as OPJ_UINT32;
     if l_xl_part_size != 0u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Cannot handle box sizes higher than 2^32\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Cannot handle box sizes higher than 2^32\n",
       );
       return 0i32;
     }
@@ -3379,26 +3186,20 @@ unsafe fn opj_jp2_read_boxhdr_char(
       as OPJ_UINT32;
     (*box_0).length = l_value;
     if (*box_0).length == 0u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Cannot handle box of undefined sizes\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Cannot handle box of undefined sizes\n",
       );
       return 0i32;
     }
   } else if (*box_0).length == 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Cannot handle box of undefined sizes\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Cannot handle box of undefined sizes\n",
     );
     return 0i32;
   }
   if (*box_0).length < *p_number_bytes_read {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Box length is inconsistent.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Box length is inconsistent.\n",
     );
     return 0i32;
   }
@@ -3432,18 +3233,14 @@ pub(crate) unsafe extern "C" fn opj_jp2_read_header(
     return 0i32;
   }
   if (*jp2).has_jp2h as libc::c_int == 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"JP2H box missing. Required.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "JP2H box missing. Required.\n",
     );
     return 0i32;
   }
   if (*jp2).has_ihdr as libc::c_int == 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"IHDR box_missing. Required.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "IHDR box_missing. Required.\n",
     );
     return 0i32;
   }
@@ -3835,17 +3632,12 @@ pub(crate) unsafe extern "C" fn opj_jp2_get_tile(
   if p_image.is_null() {
     return 0i32;
   }
-  opj_event_msg(
-    p_manager,
-    2i32,
-    b"JP2 box which are after the codestream will not be read by this function.\n\x00" as *const u8
-      as *const libc::c_char,
+  event_msg!(p_manager, EVT_WARNING,
+    "JP2 box which are after the codestream will not be read by this function.\n",
   );
   if opj_j2k_get_tile((*p_jp2).j2k, p_stream, p_image, p_manager, tile_index) == 0 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Failed to decode the codestream in the JP2 file\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to decode the codestream in the JP2 file\n",
     );
     return 0i32;
   }

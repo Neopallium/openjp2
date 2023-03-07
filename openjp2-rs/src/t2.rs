@@ -691,11 +691,8 @@ unsafe fn opj_t2_encode_packet(
   if (*tcp).csty & 0x2u32 != 0 {
     if length < 6u32 {
       if p_t2_mode as libc::c_uint == FINAL_PASS as libc::c_uint {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"opj_t2_encode_packet(): only %u bytes remaining in output buffer. %u needed.\n\x00"
-            as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "opj_t2_encode_packet(): only %u bytes remaining in output buffer. %u needed.\n",
           length,
           6i32,
         ); /* packno is uint32_t */
@@ -725,11 +722,8 @@ unsafe fn opj_t2_encode_packet(
         /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1294 */
         /* but likely not a proper fix. */
         if precno >= (*res).pw.wrapping_mul((*res).ph) {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"opj_t2_encode_packet(): accessing precno=%u >= %u\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "opj_t2_encode_packet(): accessing precno=%u >= %u\n",
             precno,
             (*res).pw.wrapping_mul((*res).ph),
           );
@@ -780,11 +774,8 @@ unsafe fn opj_t2_encode_packet(
       /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1297 */
       /* but likely not a proper fix. */
       if precno >= (*res).pw.wrapping_mul((*res).ph) {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"opj_t2_encode_packet(): accessing precno=%u >= %u\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "opj_t2_encode_packet(): accessing precno=%u >= %u\n",
           precno,
           (*res).pw.wrapping_mul((*res).ph),
         );
@@ -915,11 +906,8 @@ unsafe fn opj_t2_encode_packet(
   if (*tcp).csty & 0x4u32 != 0 {
     if length < 2u32 {
       if p_t2_mode as libc::c_uint == FINAL_PASS as libc::c_uint {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"opj_t2_encode_packet(): only %u bytes remaining in output buffer. %u needed.\n\x00"
-            as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "opj_t2_encode_packet(): only %u bytes remaining in output buffer. %u needed.\n",
           length,
           2i32,
         );
@@ -963,10 +951,8 @@ unsafe fn opj_t2_encode_packet(
         } else {
           if (*layer_1).len > length {
             if p_t2_mode as libc::c_uint == FINAL_PASS as libc::c_uint {
-              opj_event_msg(p_manager, 1i32,
-                                          b"opj_t2_encode_packet(): only %u bytes remaining in output buffer. %u needed.\n\x00"
-                                              as *const u8 as
-                                              *const libc::c_char, length,
+              event_msg!(p_manager, EVT_ERROR,
+                                          "opj_t2_encode_packet(): only %u bytes remaining in output buffer. %u needed.\n", length,
                                           (*layer_1).len);
             }
             return 0i32;
@@ -1106,10 +1092,8 @@ unsafe fn opj_t2_read_packet_header(
           < ((*l_band).precincts_data_size as usize)
             .wrapping_div(core::mem::size_of::<opj_tcd_precinct_t>() as usize))
         {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Invalid precinct\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Invalid precinct\n",
           );
           return 0i32;
         }
@@ -1132,18 +1116,14 @@ unsafe fn opj_t2_read_packet_header(
   /* SOP markers */
   if (*p_tcp).csty & 0x2u32 != 0 {
     if p_max_length < 6u32 {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Not enough space for expected SOP marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Not enough space for expected SOP marker\n",
       );
     } else if *l_current_data as libc::c_int != 0xffi32
       || *l_current_data.offset(1) as libc::c_int != 0x91i32
     {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Expected SOP marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Expected SOP marker\n",
       );
     } else {
       l_current_data = l_current_data.offset(6)
@@ -1196,18 +1176,14 @@ unsafe fn opj_t2_read_packet_header(
         l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32,
       ) < 2u32
       {
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"Not enough space for expected EPH marker\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "Not enough space for expected EPH marker\n",
         );
       } else if *l_header_data as libc::c_int != 0xffi32
         || *l_header_data.offset(1) as libc::c_int != 0x92i32
       {
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"Expected EPH marker\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "Expected EPH marker\n",
         );
       } else {
         l_header_data = l_header_data.offset(2)
@@ -1333,11 +1309,8 @@ unsafe fn opj_t2_read_packet_header(
                 (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses,
               ));
               if bit_number > 32u32 {
-                opj_event_msg(
-                  p_manager,
-                  1i32,
-                  b"Invalid bit number %d in opj_t2_read_packet_header()\n\x00" as *const u8
-                    as *const libc::c_char,
+                event_msg!(p_manager, EVT_ERROR,
+                  "Invalid bit number %d in opj_t2_read_packet_header()\n",
                   bit_number,
                 );
                 opj_bio_destroy(l_bio);
@@ -1386,11 +1359,8 @@ unsafe fn opj_t2_read_packet_header(
                 (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses,
               ));
               if bit_number_0 > 32u32 {
-                opj_event_msg(
-                  p_manager,
-                  1i32,
-                  b"Invalid bit number %d in opj_t2_read_packet_header()\n\x00" as *const u8
-                    as *const libc::c_char,
+                event_msg!(p_manager, EVT_ERROR,
+                  "Invalid bit number %d in opj_t2_read_packet_header()\n",
                   bit_number_0,
                 );
                 opj_bio_destroy(l_bio);
@@ -1445,18 +1415,14 @@ unsafe fn opj_t2_read_packet_header(
       l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32,
     ) < 2u32
     {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Not enough space for expected EPH marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Not enough space for expected EPH marker\n",
       );
     } else if *l_header_data as libc::c_int != 0xffi32
       || *l_header_data.offset(1) as libc::c_int != 0x92i32
     {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Expected EPH marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Expected EPH marker\n",
       );
     } else {
       l_header_data = l_header_data.offset(2)
@@ -1557,19 +1523,15 @@ unsafe fn opj_t2_read_packet_data(
               || partial_buffer != 0
             {
               if (*(*p_t2).cp).strict != 0 {
-                opj_event_msg(p_manager, 1i32,
-                                              b"read: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n\x00"
-                                                  as *const u8 as
-                                                  *const libc::c_char,
+                event_msg!(p_manager, EVT_ERROR,
+                                              "read: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
                                               (*l_seg).newlen, p_max_length,
                                               cblkno, (*p_pi).precno, bandno,
                                               (*p_pi).resno, (*p_pi).compno);
                 return 0i32;
               } else {
-                opj_event_msg(p_manager, 2i32,
-                                              b"read: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n\x00"
-                                                  as *const u8 as
-                                                  *const libc::c_char,
+                event_msg!(p_manager, EVT_WARNING,
+                                              "read: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
                                               (*l_seg).newlen, p_max_length,
                                               cblkno, (*p_pi).precno, bandno,
                                               (*p_pi).resno, (*p_pi).compno);
@@ -1603,11 +1565,8 @@ unsafe fn opj_t2_read_packet_data(
                     ),
                 ) as *mut opj_tcd_seg_data_chunk_t;
                 if l_chunks.is_null() {
-                  opj_event_msg(
-                    p_manager,
-                    1i32,
-                    b"cannot allocate opj_tcd_seg_data_chunk_t* array\x00" as *const u8
-                      as *const libc::c_char,
+                  event_msg!(p_manager, EVT_ERROR,
+                    "cannot allocate opj_tcd_seg_data_chunk_t* array",
                   );
                   return 0i32;
                 }
@@ -1712,19 +1671,15 @@ unsafe fn opj_t2_skip_packet_data(
               || (*p_data_read).wrapping_add((*l_seg).newlen) > p_max_length
             {
               if (*(*p_t2).cp).strict != 0 {
-                opj_event_msg(p_manager, 1i32,
-                                              b"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n\x00"
-                                                  as *const u8 as
-                                                  *const libc::c_char,
+                event_msg!(p_manager, EVT_ERROR,
+                                              "skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
                                               (*l_seg).newlen, p_max_length,
                                               cblkno, (*p_pi).precno, bandno,
                                               (*p_pi).resno, (*p_pi).compno);
                 return 0i32;
               } else {
-                opj_event_msg(p_manager, 2i32,
-                                              b"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n\x00"
-                                                  as *const u8 as
-                                                  *const libc::c_char,
+                event_msg!(p_manager, EVT_WARNING,
+                                              "skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
                                               (*l_seg).newlen, p_max_length,
                                               cblkno, (*p_pi).precno, bandno,
                                               (*p_pi).resno, (*p_pi).compno);
@@ -1788,7 +1743,7 @@ unsafe fn opj_t2_init_seg(
         .wrapping_mul(core::mem::size_of::<opj_tcd_seg_t>() as usize),
     ) as *mut opj_tcd_seg_t;
     if new_segs.is_null() {
-      /* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to initialize segment %d\n", l_nb_segs); */
+      /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to initialize segment %d\n", l_nb_segs); */
       return 0i32;
     }
     (*cblk).segs = new_segs;

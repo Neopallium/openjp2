@@ -604,7 +604,7 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
         ) == 0
         {
           /* TODO: what to do with l ??? seek / tell ??? */
-          /* opj_event_msg(tcd->cinfo, EVT_INFO, "rate alloc: len=%d, max=%d\n", l, maxlen); */
+          /* event_msg!(tcd->cinfo, EVT_INFO, "rate alloc: len=%d, max=%d\n", l, maxlen); */
           lo = thresh
         } else {
           hi = thresh;
@@ -824,10 +824,8 @@ unsafe fn opj_tcd_init_tile(
   (*l_tile).x1 = opj_uint_min(opj_uint_adds(l_tx0, (*l_cp).tdx), (*l_image).x1) as OPJ_INT32;
   /* all those OPJ_UINT32 are casted to OPJ_INT32, let's do some sanity check */
   if (*l_tile).x0 < 0i32 || (*l_tile).x1 <= (*l_tile).x0 {
-    opj_event_msg(
-      manager,
-      1i32,
-      b"Tile X coordinates are not supported\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(manager, EVT_ERROR,
+      "Tile X coordinates are not supported\n",
     ); /* can't be greater than l_image->y1 so won't overflow */
     return 0i32;
   }
@@ -836,19 +834,15 @@ unsafe fn opj_tcd_init_tile(
   (*l_tile).y1 = opj_uint_min(opj_uint_adds(l_ty0, (*l_cp).tdy), (*l_image).y1) as OPJ_INT32;
   /* all those OPJ_UINT32 are casted to OPJ_INT32, let's do some sanity check */
   if (*l_tile).y0 < 0i32 || (*l_tile).y1 <= (*l_tile).y0 {
-    opj_event_msg(
-      manager,
-      1i32,
-      b"Tile Y coordinates are not supported\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(manager, EVT_ERROR,
+      "Tile Y coordinates are not supported\n",
     );
     return 0i32;
   }
   /* testcase 1888.pdf.asan.35.988 */
   if (*l_tccp).numresolutions == 0u32 {
-    opj_event_msg(
-      manager,
-      1i32,
-      b"tiles require at least one resolution\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(manager, EVT_ERROR,
+      "tiles require at least one resolution\n",
     );
     return 0i32;
   }
@@ -882,10 +876,8 @@ unsafe fn opj_tcd_init_tile(
       if h > 0
         && w > (usize::MAX).wrapping_div(h)
       {
-        opj_event_msg(
-          manager,
-          1i32,
-          b"Size of tile data exceeds system limits\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(manager, EVT_ERROR,
+          "Size of tile data exceeds system limits\n",
         );
         return 0i32;
       }
@@ -894,10 +886,8 @@ unsafe fn opj_tcd_init_tile(
         .wrapping_div(core::mem::size_of::<OPJ_UINT32>() as usize)
         < l_tile_data_size
       {
-        opj_event_msg(
-          manager,
-          1i32,
-          b"Size of tile data exceeds system limits\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(manager, EVT_ERROR,
+          "Size of tile data exceeds system limits\n",
         );
         return 0i32;
       }
@@ -932,10 +922,8 @@ unsafe fn opj_tcd_init_tile(
         l_data_size as size_t,
       ) as *mut opj_tcd_resolution_t;
       if new_resolutions.is_null() {
-        opj_event_msg(
-          manager,
-          1i32,
-          b"Not enough memory for tile resolutions\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(manager, EVT_ERROR,
+          "Not enough memory for tile resolutions\n",
         );
         opj_free((*l_tilec).resolutions as *mut libc::c_void);
         (*l_tilec).resolutions = 0 as *mut opj_tcd_resolution_t;
@@ -977,20 +965,16 @@ unsafe fn opj_tcd_init_tile(
       l_tl_prc_y_start = opj_int_floordivpow2((*l_res).y0, l_pdy as OPJ_INT32) << l_pdy;
       let mut tmp = (opj_int_ceildivpow2((*l_res).x1, l_pdx as OPJ_INT32) as OPJ_UINT32) << l_pdx;
       if tmp > 2147483647 as OPJ_UINT32 {
-        opj_event_msg(
-          manager,
-          1i32,
-          b"Integer overflow\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(manager, EVT_ERROR,
+          "Integer overflow\n",
         );
         return 0i32;
       }
       l_br_prc_x_end = tmp as OPJ_INT32;
       let mut tmp_0 = (opj_int_ceildivpow2((*l_res).y1, l_pdy as OPJ_INT32) as OPJ_UINT32) << l_pdy;
       if tmp_0 > 2147483647 as OPJ_UINT32 {
-        opj_event_msg(
-          manager,
-          1i32,
-          b"Integer overflow\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(manager, EVT_ERROR,
+          "Integer overflow\n",
         );
         return 0i32;
       }
@@ -1008,10 +992,8 @@ unsafe fn opj_tcd_init_tile(
       if (*l_res).pw != 0u32
         && (-(1i32) as OPJ_UINT32).wrapping_div((*l_res).pw) < (*l_res).ph
       {
-        opj_event_msg(
-          manager,
-          1i32,
-          b"Size of tile data exceeds system limits\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(manager, EVT_ERROR,
+          "Size of tile data exceeds system limits\n",
         );
         return 0i32;
       }
@@ -1020,10 +1002,8 @@ unsafe fn opj_tcd_init_tile(
         .wrapping_div(core::mem::size_of::<opj_tcd_precinct_t>() as OPJ_UINT32)
         < l_nb_precincts
       {
-        opj_event_msg(
-          manager,
-          1i32,
-          b"Size of tile data exceeds system limits\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(manager, EVT_ERROR,
+          "Size of tile data exceeds system limits\n",
         );
         return 0i32;
       }
@@ -1132,11 +1112,8 @@ unsafe fn opj_tcd_init_tile(
               (*l_band).precincts =
                 opj_malloc(l_nb_precinct_size as size_t) as *mut opj_tcd_precinct_t;
               if (*l_band).precincts.is_null() {
-                opj_event_msg(
-                  manager,
-                  1i32,
-                  b"Not enough memory to handle band precints\n\x00" as *const u8
-                    as *const libc::c_char,
+                event_msg!(manager, EVT_ERROR,
+                  "Not enough memory to handle band precints\n",
                 );
                 return 0i32;
               }
@@ -1153,11 +1130,8 @@ unsafe fn opj_tcd_init_tile(
                 l_nb_precinct_size as size_t,
               ) as *mut opj_tcd_precinct_t;
               if new_precincts.is_null() {
-                opj_event_msg(
-                  manager,
-                  1i32,
-                  b"Not enough memory to handle band precints\n\x00" as *const u8
-                    as *const libc::c_char,
+                event_msg!(manager, EVT_ERROR,
+                  "Not enough memory to handle band precints\n",
                 );
                 opj_free((*l_band).precincts as *mut libc::c_void);
                 (*l_band).precincts = 0 as *mut opj_tcd_precinct_t;
@@ -1225,11 +1199,8 @@ unsafe fn opj_tcd_init_tile(
               if (-(1i32) as OPJ_UINT32).wrapping_div(sizeof_block as OPJ_UINT32)
                 < l_nb_code_blocks
               {
-                opj_event_msg(
-                  manager,
-                  1i32,
-                  b"Size of code block data exceeds system limits\n\x00" as *const u8
-                    as *const libc::c_char,
+                event_msg!(manager, EVT_ERROR,
+                  "Size of code block data exceeds system limits\n",
                 );
                 return 0i32;
               }
@@ -1257,11 +1228,8 @@ unsafe fn opj_tcd_init_tile(
                   opj_free((*l_current_precinct).cblks.blocks);
                   (*l_current_precinct).cblks.blocks = 0 as *mut libc::c_void;
                   (*l_current_precinct).block_size = 0 as OPJ_UINT32;
-                  opj_event_msg(
-                    manager,
-                    1i32,
-                    b"Not enough memory for current precinct codeblock element\n\x00" as *const u8
-                      as *const libc::c_char,
+                  event_msg!(manager, EVT_ERROR,
+                    "Not enough memory for current precinct codeblock element\n",
                   );
                   return 0i32;
                 }
@@ -1777,10 +1745,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
         if res_h > 0
           && res_w > (usize::MAX).wrapping_div(res_h)
         {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Size of tile data exceeds system limits\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Size of tile data exceeds system limits\n",
           );
           return 0i32;
         }
@@ -1789,10 +1755,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
           .wrapping_div(core::mem::size_of::<OPJ_UINT32>() as usize)
           < l_data_size
         {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Size of tile data exceeds system limits\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Size of tile data exceeds system limits\n",
           );
           return 0i32;
         }
@@ -1801,10 +1765,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
           as OPJ_SIZE_T as OPJ_SIZE_T;
         (*tilec).data_size_needed = l_data_size;
         if opj_alloc_tile_component_data(tilec) == 0 {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Size of tile data exceeds system limits\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Size of tile data exceeds system limits\n",
           );
           return 0i32;
         }
@@ -1848,10 +1810,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
           /* We should not normally go there. The circumstance is when */
           /* the tile coordinates do not intersect the area of interest */
           /* Upper level logic should not even try to decode that tile */
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Invalid tilec->win_xxx values\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Invalid tilec->win_xxx values\n",
           );
           return 0i32;
         }
@@ -1937,10 +1897,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
       {
         if w > 0 && h > 0 {
           if w > (usize::MAX).wrapping_div(h) {
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Size of tile data exceeds system limits\n\x00" as *const u8 as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Size of tile data exceeds system limits\n",
             );
             return 0i32;
           }
@@ -1949,10 +1907,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
             > (usize::MAX)
               .wrapping_div(core::mem::size_of::<OPJ_INT32>() as usize)
           {
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Size of tile data exceeds system limits\n\x00" as *const u8 as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Size of tile data exceeds system limits\n",
             );
             return 0i32;
           }
@@ -1961,10 +1917,8 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
             as OPJ_SIZE_T as OPJ_SIZE_T;
           (*tilec_1).data_win = opj_image_data_alloc(l_data_size_0) as *mut OPJ_INT32;
           if (*tilec_1).data_win.is_null() {
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Size of tile data exceeds system limits\n\x00" as *const u8 as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Size of tile data exceeds system limits\n",
             );
             return 0i32;
           }
@@ -2407,11 +2361,8 @@ unsafe fn opj_tcd_mct_decode(
         || (*l_tile_comp).minimum_num_resolutions
           != (*(*l_tile).comps.offset(2)).minimum_num_resolutions
       {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Tiles don\'t all have the same dimension. Skip the MCT step.\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Tiles don\'t all have the same dimension. Skip the MCT step.\n",
         );
         return 0i32;
       }
@@ -2437,11 +2388,8 @@ unsafe fn opj_tcd_mct_decode(
           .wrapping_mul(((*res_comp2).y1 - (*res_comp2).y0) as OPJ_SIZE_T)
           != l_samples
       {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Tiles don\'t all have the same dimension. Skip the MCT step.\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Tiles don\'t all have the same dimension. Skip the MCT step.\n",
         );
         return 0i32;
       }
@@ -2475,11 +2423,8 @@ unsafe fn opj_tcd_mct_decode(
           .wrapping_mul((*res_comp2_0).win_y1.wrapping_sub((*res_comp2_0).win_y0) as OPJ_SIZE_T)
           != l_samples
       {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Tiles don\'t all have the same dimension. Skip the MCT step.\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Tiles don\'t all have the same dimension. Skip the MCT step.\n",
         );
         return 0i32;
       }
@@ -2554,11 +2499,8 @@ unsafe fn opj_tcd_mct_decode(
       );
     }
   } else {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Number of components (%d) is inconsistent with a MCT. Skip the MCT step.\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Number of components (%d) is inconsistent with a MCT. Skip the MCT step.\n",
       (*l_tile).numcomps,
     );
   }

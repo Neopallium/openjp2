@@ -74,10 +74,8 @@ pub(crate) unsafe fn opj_tgt_create(
     core::mem::size_of::<opj_tgt_tree_t>() as usize,
   ) as *mut opj_tgt_tree_t;
   if tree.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to create Tag-tree\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to create Tag-tree\n",
     );
     return 0 as *mut opj_tgt_tree_t;
   }
@@ -110,10 +108,8 @@ pub(crate) unsafe fn opj_tgt_create(
     core::mem::size_of::<opj_tgt_node_t>() as usize,
   ) as *mut opj_tgt_node_t;
   if (*tree).nodes.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to create Tag-tree nodes\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to create Tag-tree nodes\n",
     );
     opj_free(tree as *mut libc::c_void);
     return 0 as *mut opj_tgt_tree_t;
@@ -221,11 +217,8 @@ pub(crate) unsafe fn opj_tgt_init(
       let mut new_nodes = opj_realloc((*p_tree).nodes as *mut libc::c_void, l_node_size as size_t)
         as *mut opj_tgt_node_t;
       if new_nodes.is_null() {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Not enough memory to reinitialize the tag tree\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Not enough memory to reinitialize the tag tree\n",
         );
         opj_tgt_destroy(p_tree);
         return 0 as *mut opj_tgt_tree_t;
