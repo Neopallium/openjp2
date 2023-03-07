@@ -842,10 +842,8 @@ unsafe fn opj_j2k_check_poc_val(
     core::mem::size_of::<OPJ_UINT32>() as usize,
   ) as *mut OPJ_UINT32;
   if packet_array.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory for checking the poc values.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory for checking the poc values.\n",
     );
     return 0i32;
   }
@@ -899,10 +897,8 @@ unsafe fn opj_j2k_check_poc_val(
     layno += 1;
   }
   if loss != 0 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Missing packets possible loss of data\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Missing packets possible loss of data\n",
     );
   }
   opj_free(packet_array as *mut libc::c_void);
@@ -1149,10 +1145,8 @@ unsafe extern "C" fn opj_j2k_read_soc(
   /* FIXME move it in a index structure included in p_j2k*/
   (*(*p_j2k).cstr_index).main_head_start =
     opj_stream_tell(p_stream) - 2i64;
-  opj_event_msg(
-    p_manager,
-    4i32,
-    b"Start to read j2k main header (%ld).\n\x00" as *const u8 as *const libc::c_char,
+  event_msg!(p_manager, EVT_INFO,
+    "Start to read j2k main header (%ld).\n",
     (*(*p_j2k).cstr_index).main_head_start,
   );
   /* Add the marker to the codestream index*/
@@ -1164,10 +1158,8 @@ unsafe extern "C" fn opj_j2k_read_soc(
       2 as OPJ_UINT32,
     )
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to add mh marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to add mh marker\n",
     );
     return 0i32;
   }
@@ -1209,10 +1201,8 @@ unsafe extern "C" fn opj_j2k_write_siz(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory for the SIZ marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory for the SIZ marker\n",
       );
       return 0i32;
     }
@@ -1341,10 +1331,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
   l_cp = &mut (*p_j2k).m_cp;
   /* minimum size == 39 - 3 (= minimum component parameter) */
   if p_header_size < 36u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error with SIZ marker size\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error with SIZ marker size\n",
     ); /* Rsiz (capabilities) */
     return 0i32;
   } /* Xsiz */
@@ -1352,10 +1340,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
   l_nb_comp = l_remaining_size.wrapping_div(3u32); /* X0siz */
   l_nb_comp_remain = l_remaining_size.wrapping_rem(3u32); /* Y0siz */
   if l_nb_comp_remain != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error with SIZ marker size\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error with SIZ marker size\n",
     ); /* XTsiz */
     return 0i32;
   } /* YTsiz */
@@ -1419,30 +1405,23 @@ unsafe extern "C" fn opj_j2k_read_siz(
   if l_tmp < 16385u32 {
     (*l_image).numcomps = l_tmp as OPJ_UINT16 as OPJ_UINT32
   } else {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error with SIZ marker: number of component is illegal -> %d\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error with SIZ marker: number of component is illegal -> %d\n",
       l_tmp,
     );
     return 0i32;
   }
   if (*l_image).numcomps != l_nb_comp {
-    opj_event_msg(p_manager, 1i32,
-                      b"Error with SIZ marker: number of component is not compatible with the remaining number of parameters ( %d vs %d)\n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+                      "Error with SIZ marker: number of component is not compatible with the remaining number of parameters ( %d vs %d)\n",
                       (*l_image).numcomps, l_nb_comp);
     return 0i32;
   }
   /* testcase 4035.pdf.SIGSEGV.d8b.3375 */
   /* testcase issue427-null-image-size.jp2 */
   if (*l_image).x0 >= (*l_image).x1 || (*l_image).y0 >= (*l_image).y1 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error with SIZ marker: negative or zero image size (%ld x %ld)\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error with SIZ marker: negative or zero image size (%ld x %ld)\n",
       (*l_image).x1 as OPJ_INT64 - (*l_image).x0 as i64,
       (*l_image).y1 as OPJ_INT64 - (*l_image).y0 as i64,
     );
@@ -1450,11 +1429,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
   }
   /* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
   if (*l_cp).tdx == 0u32 || (*l_cp).tdy == 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error with SIZ marker: invalid tile size (tdx: %d, tdy: %d)\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error with SIZ marker: invalid tile size (tdx: %d, tdy: %d)\n",
       (*l_cp).tdx,
       (*l_cp).tdy,
     );
@@ -1468,10 +1444,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
     || l_tx1 <= (*l_image).x0
     || l_ty1 <= (*l_image).y0
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error with SIZ marker: illegal tile offset\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error with SIZ marker: illegal tile offset\n",
     );
     return 0i32;
   }
@@ -1484,11 +1458,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
       && (*p_j2k).ihdr_h > 0u32
       && ((*p_j2k).ihdr_w != siz_w || (*p_j2k).ihdr_h != siz_h)
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error with SIZ marker: IHDR w(%u) h(%u) vs. SIZ w(%u) h(%u)\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error with SIZ marker: IHDR w(%u) h(%u) vs. SIZ w(%u) h(%u)\n",
         (*p_j2k).ihdr_w,
         (*p_j2k).ihdr_h,
         siz_w,
@@ -1505,10 +1476,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
   ) as *mut opj_image_comp_t;
   if (*l_image).comps.is_null() {
     (*l_image).numcomps = 0 as OPJ_UINT32;
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to take in charge SIZ marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to take in charge SIZ marker\n",
     );
     return 0i32;
   }
@@ -1531,9 +1500,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
       } else if (*l_cp).allow_different_bit_depth_sign() == 0
         && ((*l_img_comp).prec != l_prec0 || (*l_img_comp).sgnd != l_sgnd0)
       {
-        opj_event_msg(p_manager, 2i32,
-                              b"Despite JP2 BPC!=255, precision and/or sgnd values for comp[%d] is different than comp[0]:\n        [0] prec(%d) sgnd(%d) [%d] prec(%d) sgnd(%d)\n\x00"
-                                  as *const u8 as *const libc::c_char, i,
+        event_msg!(p_manager, EVT_WARNING,
+                              "Despite JP2 BPC!=255, precision and/or sgnd values for comp[%d] is different than comp[0]:\n        [0] prec(%d) sgnd(%d) [%d] prec(%d) sgnd(%d)\n", i,
                               l_prec0, l_sgnd0, i, (*l_img_comp).prec,
                               (*l_img_comp).sgnd);
       }
@@ -1550,9 +1518,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
       || (*l_img_comp).dy < 1u32
       || (*l_img_comp).dy > 255u32
     {
-      opj_event_msg(p_manager, 1i32,
-                          b"Invalid values for comp = %d : dx=%u dy=%u (should be between 1 and 255 according to the JPEG2000 norm)\n\x00"
-                              as *const u8 as *const libc::c_char, i,
+      event_msg!(p_manager, EVT_ERROR,
+                          "Invalid values for comp = %d : dx=%u dy=%u (should be between 1 and 255 according to the JPEG2000 norm)\n", i,
                           (*l_img_comp).dx, (*l_img_comp).dy);
       return 0i32;
     }
@@ -1560,9 +1527,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
     /* p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps[i].m_dc_level_shift = 1
     << (l_image->comps[i].prec - 1); */
     if (*l_img_comp).prec > 31u32 {
-      opj_event_msg(p_manager, 1i32,
-                          b"Invalid values for comp = %d : prec=%u (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n\x00"
-                              as *const u8 as *const libc::c_char, i,
+      event_msg!(p_manager, EVT_ERROR,
+                          "Invalid values for comp = %d : prec=%u (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n", i,
                           (*l_img_comp).prec);
       return 0i32;
     }
@@ -1591,11 +1557,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
     || (*l_cp).th == 0u32
     || (*l_cp).tw > (65535u32).wrapping_div((*l_cp).th)
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid number of tiles : %u x %u (maximum fixed by jpeg2000 norm is 65535 tiles)\n\x00"
-        as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid number of tiles : %u x %u (maximum fixed by jpeg2000 norm is 65535 tiles)\n",
       (*l_cp).tw,
       (*l_cp).th,
     );
@@ -1645,10 +1608,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
     core::mem::size_of::<opj_tcp_t>() as usize,
   ) as *mut opj_tcp_t;
   if (*l_cp).tcps.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to take in charge SIZ marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to take in charge SIZ marker\n",
     );
     return 0i32;
   }
@@ -1661,10 +1622,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
     .tccps
     .is_null()
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to take in charge SIZ marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to take in charge SIZ marker\n",
     );
     return 0i32;
   }
@@ -1676,10 +1635,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
     .m_mct_records
     .is_null()
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to take in charge SIZ marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to take in charge SIZ marker\n",
     );
     return 0i32;
   }
@@ -1694,10 +1651,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
     .m_mcc_records
     .is_null()
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to take in charge SIZ marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to take in charge SIZ marker\n",
     );
     return 0i32;
   }
@@ -1725,10 +1680,8 @@ unsafe extern "C" fn opj_j2k_read_siz(
       core::mem::size_of::<opj_tccp_t>() as usize,
     ) as *mut opj_tccp_t;
     if (*l_current_tile_param).tccps.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to take in charge SIZ marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to take in charge SIZ marker\n",
       );
       return 0i32;
     }
@@ -1772,10 +1725,8 @@ unsafe extern "C" fn opj_j2k_write_com(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write the COM marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write the COM marker\n",
       );
       return 0i32;
     }
@@ -1882,10 +1833,8 @@ unsafe extern "C" fn opj_j2k_write_cod(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write COD marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write COD marker\n",
       );
       return 0i32;
     }
@@ -1937,18 +1886,14 @@ unsafe extern "C" fn opj_j2k_write_cod(
     p_manager,
   ) == 0
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error writing COD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error writing COD marker\n",
     );
     return 0i32;
   }
   if l_remaining_size != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error writing COD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error writing COD marker\n",
     );
     return 0i32;
   }
@@ -2006,10 +1951,8 @@ unsafe extern "C" fn opj_j2k_read_cod(
   (*l_tcp).set_cod(1 as OPJ_BITFIELD);
   /* Make sure room is sufficient */
   if p_header_size < 5u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading COD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading COD marker\n",
     ); /* Scod */
     return 0i32;
   }
@@ -2023,10 +1966,8 @@ unsafe extern "C" fn opj_j2k_read_cod(
   if (*l_tcp).csty & !((0x1i32 | 0x2i32 | 0x4i32) as OPJ_UINT32)
     != 0u32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Unknown Scod value in COD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Unknown Scod value in COD marker\n",
     ); /* SGcod (A) */
     return 0i32;
   }
@@ -2035,10 +1976,8 @@ unsafe extern "C" fn opj_j2k_read_cod(
   (*l_tcp).prg = l_tmp as OPJ_PROG_ORDER;
   /* Make sure progression order is valid */
   if (*l_tcp).prg as libc::c_int > OPJ_CPRL as libc::c_int {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Unknown progression order in COD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Unknown progression order in COD marker\n",
     ); /* SGcod (B) */
     (*l_tcp).prg = OPJ_PROG_UNKNOWN
   }
@@ -2049,11 +1988,8 @@ unsafe extern "C" fn opj_j2k_read_cod(
   );
   p_header_data = p_header_data.offset(2);
   if (*l_tcp).numlayers < 1u32 || (*l_tcp).numlayers > 65535u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid number of layers in COD marker : %d not in range [1-65535]\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid number of layers in COD marker : %d not in range [1-65535]\n",
       (*l_tcp).numlayers,
     );
     return 0i32;
@@ -2071,10 +2007,8 @@ unsafe extern "C" fn opj_j2k_read_cod(
   );
   p_header_data = p_header_data.offset(1);
   if (*l_tcp).mct > 1u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid multiple component transformation\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid multiple component transformation\n",
     );
     return 0i32;
   }
@@ -2093,18 +2027,14 @@ unsafe extern "C" fn opj_j2k_read_cod(
     p_manager,
   ) == 0
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading COD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading COD marker\n",
     );
     return 0i32;
   }
   if p_header_size != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading COD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading COD marker\n",
     );
     return 0i32;
   }
@@ -2160,10 +2090,8 @@ unsafe extern "C" fn opj_j2k_write_coc(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write COC marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write COC marker\n",
       );
       return 0i32;
     }
@@ -2366,10 +2294,8 @@ unsafe extern "C" fn opj_j2k_read_coc(
   } as OPJ_UINT32;
   /* make sure room is sufficient*/
   if p_header_size < l_comp_room.wrapping_add(1u32) {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading COC marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading COC marker\n",
     ); /* Ccoc */
     return 0i32;
   } /* Scoc */
@@ -2379,11 +2305,8 @@ unsafe extern "C" fn opj_j2k_read_coc(
   opj_read_bytes_LE(p_header_data, &mut l_comp_no, l_comp_room);
   p_header_data = p_header_data.offset(l_comp_room as isize);
   if l_comp_no >= (*l_image).numcomps {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading COC marker (bad number of components)\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading COC marker (bad number of components)\n",
     );
     return 0i32;
   }
@@ -2401,18 +2324,14 @@ unsafe extern "C" fn opj_j2k_read_coc(
     p_manager,
   ) == 0
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading COC marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading COC marker\n",
     );
     return 0i32;
   }
   if p_header_size != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading COC marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading COC marker\n",
     );
     return 0i32;
   }
@@ -2453,10 +2372,8 @@ unsafe extern "C" fn opj_j2k_write_qcd(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write QCD marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write QCD marker\n",
       );
       return 0i32;
     }
@@ -2488,18 +2405,14 @@ unsafe extern "C" fn opj_j2k_write_qcd(
     p_manager,
   ) == 0
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error writing QCD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error writing QCD marker\n",
     );
     return 0i32;
   }
   if l_remaining_size != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error writing QCD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error writing QCD marker\n",
     );
     return 0i32;
   }
@@ -2546,18 +2459,14 @@ unsafe extern "C" fn opj_j2k_read_qcd(
     p_manager,
   ) == 0
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading QCD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading QCD marker\n",
     );
     return 0i32;
   }
   if p_header_size != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading QCD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading QCD marker\n",
     );
     return 0i32;
   }
@@ -2607,10 +2516,8 @@ unsafe extern "C" fn opj_j2k_write_qcc(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write QCC marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write QCC marker\n",
       );
       return 0i32;
     }
@@ -2763,10 +2670,8 @@ unsafe extern "C" fn opj_j2k_read_qcc(
   l_num_comp = (*(*p_j2k).m_private_image).numcomps;
   if l_num_comp <= 256u32 {
     if p_header_size < 1u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error reading QCC marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error reading QCC marker\n",
       );
       return 0i32;
     }
@@ -2779,10 +2684,8 @@ unsafe extern "C" fn opj_j2k_read_qcc(
     p_header_size = p_header_size.wrapping_sub(1)
   } else {
     if p_header_size < 2u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error reading QCC marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error reading QCC marker\n",
       );
       return 0i32;
     }
@@ -2797,11 +2700,8 @@ unsafe extern "C" fn opj_j2k_read_qcc(
   }
   /* USE_JPWL */
   if l_comp_no >= (*(*p_j2k).m_private_image).numcomps {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid component number: %d, regarding the number of components %d\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid component number: %d, regarding the number of components %d\n",
       l_comp_no,
       (*(*p_j2k).m_private_image).numcomps,
     );
@@ -2815,18 +2715,14 @@ unsafe extern "C" fn opj_j2k_read_qcc(
     p_manager,
   ) == 0
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading QCC marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading QCC marker\n",
     );
     return 0i32;
   }
   if p_header_size != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading QCC marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading QCC marker\n",
     );
     return 0i32;
   }
@@ -2879,10 +2775,8 @@ unsafe extern "C" fn opj_j2k_write_poc(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write POC marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write POC marker\n",
       );
       return 0i32;
     }
@@ -3168,10 +3062,8 @@ unsafe extern "C" fn opj_j2k_read_poc(
   if l_current_poc_nb <= 0u32
     || l_current_poc_remaining != 0u32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading POC marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading POC marker\n",
     );
     return 0i32;
   }
@@ -3193,10 +3085,8 @@ unsafe extern "C" fn opj_j2k_read_poc(
   l_current_poc_nb =
     (l_current_poc_nb as libc::c_uint).wrapping_add(l_old_poc_nb) as OPJ_UINT32;
   if l_current_poc_nb >= 32u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Too many POCs %d\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Too many POCs %d\n",
       l_current_poc_nb,
     );
     return 0i32;
@@ -3270,10 +3160,8 @@ unsafe extern "C" fn opj_j2k_read_crg(
   assert!(!p_j2k.is_null());
   l_nb_comp = (*(*p_j2k).m_private_image).numcomps;
   if p_header_size != l_nb_comp.wrapping_mul(4u32) {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading CRG marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading CRG marker\n",
     );
     return 0i32;
   }
@@ -3325,10 +3213,8 @@ unsafe extern "C" fn opj_j2k_read_tlm(
   assert!(!p_header_data.is_null());
   assert!(!p_j2k.is_null());
   if p_header_size < 2u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading TLM marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading TLM marker\n",
     );
     return 0i32;
   }
@@ -3346,10 +3232,8 @@ unsafe extern "C" fn opj_j2k_read_tlm(
   l_quotient = l_Ptlm_size.wrapping_add(l_ST);
   l_tot_num_tp_remaining = p_header_size.wrapping_rem(l_quotient);
   if l_tot_num_tp_remaining != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading TLM marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading TLM marker\n",
     );
     return 0i32;
   }
@@ -3392,10 +3276,8 @@ unsafe extern "C" fn opj_j2k_read_plm(
   assert!(!p_header_data.is_null());
   assert!(!p_j2k.is_null());
   if p_header_size < 1u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading PLM marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading PLM marker\n",
     );
     return 0i32;
   }
@@ -3414,7 +3296,7 @@ unsafe extern "C" fn opj_j2k_read_plm(
           if
                   (p_header_size < 0)
           {
-                  opj_event_msg(p_manager, EVT_ERROR, "Error reading PLM marker\n");
+                  event_msg!(p_manager, EVT_ERROR, "Error reading PLM marker\n");
                   return false;
           }
           for
@@ -3438,7 +3320,7 @@ unsafe extern "C" fn opj_j2k_read_plm(
           if
                   (l_packet_len != 0)
           {
-                  opj_event_msg(p_manager, EVT_ERROR, "Error reading PLM marker\n");
+                  event_msg!(p_manager, EVT_ERROR, "Error reading PLM marker\n");
                   return false;
           }
   }
@@ -3477,10 +3359,8 @@ unsafe extern "C" fn opj_j2k_read_plt(
   assert!(!p_header_data.is_null());
   assert!(!p_j2k.is_null());
   if p_header_size < 1u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading PLT marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading PLT marker\n",
     );
     return 0i32;
   }
@@ -3502,10 +3382,8 @@ unsafe extern "C" fn opj_j2k_read_plt(
     i += 1;
   }
   if l_packet_len != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading PLT marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading PLT marker\n",
     );
     return 0i32;
   }
@@ -3541,10 +3419,8 @@ unsafe extern "C" fn opj_j2k_read_ppm(
   assert!(!p_j2k.is_null());
   /* We need to have the Z_ppm element + 1 byte of Nppm/Ippm at minimum */
   if p_header_size < 2u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading PPM marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading PPM marker\n",
     ); /* Z_ppm */
     return 0i32;
   }
@@ -3563,10 +3439,8 @@ unsafe extern "C" fn opj_j2k_read_ppm(
       core::mem::size_of::<opj_ppx>() as usize,
     ) as *mut opj_ppx;
     if (*l_cp).ppm_markers.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to read PPM marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to read PPM marker\n",
       );
       return 0i32;
     }
@@ -3581,10 +3455,8 @@ unsafe extern "C" fn opj_j2k_read_ppm(
     ) as *mut opj_ppx;
     if new_ppm_markers.is_null() {
       /* clean up to be done on l_cp destruction */
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to read PPM marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to read PPM marker\n",
       );
       return 0i32;
     }
@@ -3604,10 +3476,8 @@ unsafe extern "C" fn opj_j2k_read_ppm(
     .is_null()
   {
     /* clean up to be done on l_cp destruction */
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Zppm %u already read\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Zppm %u already read\n",
       l_Z_ppm,
     );
     return 0i32;
@@ -3619,10 +3489,8 @@ unsafe extern "C" fn opj_j2k_read_ppm(
     .is_null()
   {
     /* clean up to be done on l_cp destruction */
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to read PPM marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to read PPM marker\n",
     );
     return 0i32;
   }
@@ -3684,10 +3552,8 @@ unsafe fn opj_j2k_merge_ppm(
           /* read Nppm */
           if l_data_size < 4u32 {
             /* clean up to be done on l_cp destruction */
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Not enough bytes to read Nppm\n\x00" as *const u8 as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Not enough bytes to read Nppm\n",
             ); /* can't overflow, max 256 markers of max 65536 bytes, that is when PPM markers are not corrupted which is checked elsewhere */
             return 0i32;
           }
@@ -3715,19 +3581,15 @@ unsafe fn opj_j2k_merge_ppm(
   }
   if l_N_ppm_remaining != 0u32 {
     /* clean up to be done on l_cp destruction */
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Corrupted PPM markers\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Corrupted PPM markers\n",
     );
     return 0i32;
   }
   (*p_cp).ppm_buffer = opj_malloc(l_ppm_data_size as size_t) as *mut OPJ_BYTE;
   if (*p_cp).ppm_buffer.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to read PPM marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to read PPM marker\n",
     );
     return 0i32;
   }
@@ -3770,10 +3632,8 @@ unsafe fn opj_j2k_merge_ppm(
           /* read Nppm */
           if l_data_size_0 < 4u32 {
             /* clean up to be done on l_cp destruction */
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Not enough bytes to read Nppm\n\x00" as *const u8 as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Not enough bytes to read Nppm\n",
             );
             return 0i32;
           }
@@ -3854,18 +3714,15 @@ unsafe extern "C" fn opj_j2k_read_ppt(
   assert!(!p_j2k.is_null());
   /* We need to have the Z_ppt element + 1 byte of Ippt at minimum */
   if p_header_size < 2u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading PPT marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading PPT marker\n",
     ); /* Z_ppt */
     return 0i32;
   }
   l_cp = &mut (*p_j2k).m_cp;
   if (*l_cp).ppm() != 0 {
-    opj_event_msg(p_manager, 1i32,
-                      b"Error reading PPT marker: packet header have been previously found in the main header (PPM marker).\n\x00"
-                          as *const u8 as *const libc::c_char);
+    event_msg!(p_manager, EVT_ERROR,
+                      "Error reading PPT marker: packet header have been previously found in the main header (PPM marker).\n");
     return 0i32;
   }
   l_tcp = &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
@@ -3883,10 +3740,8 @@ unsafe extern "C" fn opj_j2k_read_ppt(
       core::mem::size_of::<opj_ppx>() as usize,
     ) as *mut opj_ppx;
     if (*l_tcp).ppt_markers.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to read PPT marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to read PPT marker\n",
       );
       return 0i32;
     }
@@ -3901,10 +3756,8 @@ unsafe extern "C" fn opj_j2k_read_ppt(
     ) as *mut opj_ppx;
     if new_ppt_markers.is_null() {
       /* clean up to be done on l_tcp destruction */
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to read PPT marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to read PPT marker\n",
       );
       return 0i32;
     }
@@ -3924,10 +3777,8 @@ unsafe extern "C" fn opj_j2k_read_ppt(
     .is_null()
   {
     /* clean up to be done on l_tcp destruction */
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Zppt %u already read\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Zppt %u already read\n",
       l_Z_ppt,
     );
     return 0i32;
@@ -3939,10 +3790,8 @@ unsafe extern "C" fn opj_j2k_read_ppt(
     .is_null()
   {
     /* clean up to be done on l_tcp destruction */
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to read PPT marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to read PPT marker\n",
     );
     return 0i32;
   }
@@ -3976,10 +3825,8 @@ unsafe fn opj_j2k_merge_ppt(
 
   assert!(!p_tcp.is_null());
   if !(*p_tcp).ppt_buffer.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"opj_j2k_merge_ppt() has already been called\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "opj_j2k_merge_ppt() has already been called\n",
     );
     return 0i32;
   }
@@ -3997,10 +3844,8 @@ unsafe fn opj_j2k_merge_ppt(
   }
   (*p_tcp).ppt_buffer = opj_malloc(l_ppt_data_size as size_t) as *mut OPJ_BYTE;
   if (*p_tcp).ppt_buffer.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to read PPT marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to read PPT marker\n",
     );
     return 0i32;
   }
@@ -4055,11 +3900,8 @@ unsafe extern "C" fn opj_j2k_write_tlm(
   /* header_size = 4 and size_per_tile_part = 6 */
   if (*p_j2k).m_specific_param.m_encoder.m_total_tile_parts > 10921u32 {
     /* We could do more but it would require writing several TLM markers */
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"A maximum of 10921 tile-parts are supported currently when writing TLM marker\n\x00"
-        as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "A maximum of 10921 tile-parts are supported currently when writing TLM marker\n",
     );
     return 0i32;
   }
@@ -4082,10 +3924,8 @@ unsafe extern "C" fn opj_j2k_write_tlm(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write TLM marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write TLM marker\n",
       );
       return 0i32;
     }
@@ -4167,11 +4007,8 @@ unsafe extern "C" fn opj_j2k_write_sot(
   assert!(!p_j2k.is_null());
   assert!(!p_stream.is_null());
   if total_data_size < 12u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough bytes in output buffer to write SOT marker\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough bytes in output buffer to write SOT marker\n",
     );
     return 0i32;
   }
@@ -4246,10 +4083,8 @@ unsafe fn opj_j2k_get_sot_values(
   assert!(!p_header_data.is_null());
   /* Size of this marker is fixed = 12 (we have already read marker and its size)*/
   if p_header_size != 8u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading SOT marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading SOT marker\n",
     ); /* Isot */
     return 0i32;
   } /* Psot */
@@ -4301,20 +4136,16 @@ unsafe extern "C" fn opj_j2k_read_sot(
     p_manager,
   ) == 0
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading SOT marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading SOT marker\n",
     );
     return 0i32;
   }
   l_cp = &mut (*p_j2k).m_cp;
   /* testcase 2.pdf.SIGFPE.706.1112 */
   if (*p_j2k).m_current_tile_number >= (*l_cp).tw.wrapping_mul((*l_cp).th) {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid tile number %d\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid tile number %d\n",
       (*p_j2k).m_current_tile_number,
     );
     return 0i32;
@@ -4337,11 +4168,8 @@ unsafe extern "C" fn opj_j2k_read_sot(
     /* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
     /* should appear in increasing order. */
     if (*l_tcp).m_current_tile_part_number + 1i32 != l_current_part as OPJ_INT32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Invalid tile part index for tile number %d. Got %d, expected %d\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Invalid tile part index for tile number %d. Got %d, expected %d\n",
         (*p_j2k).m_current_tile_number,
         l_current_part,
         (*l_tcp).m_current_tile_part_number + 1i32,
@@ -4359,18 +4187,13 @@ unsafe extern "C" fn opj_j2k_read_sot(
   {
     if l_tot_len == 12u32 {
       /* MSD: Special case for the PHR data which are read by kakadu*/
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Empty SOT marker detected: Psot=%d.\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Empty SOT marker detected: Psot=%d.\n",
         l_tot_len,
       );
     } else {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Psot value is not correct regards to the JPEG2000 norm: %d.\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Psot value is not correct regards to the JPEG2000 norm: %d.\n",
         l_tot_len,
       );
       return 0i32;
@@ -4379,18 +4202,16 @@ unsafe extern "C" fn opj_j2k_read_sot(
   /* USE_JPWL */
   /* Ref A.4.2: Psot could be equal zero if it is the last tile-part of the codestream.*/
   if l_tot_len == 0 {
-    opj_event_msg(p_manager, 4i32,
-                      b"Psot value of the current tile-part is equal to zero, we assuming it is the last tile-part of the codestream.\n\x00"
-                          as *const u8 as *const libc::c_char);
+    event_msg!(p_manager, EVT_INFO,
+                      "Psot value of the current tile-part is equal to zero, we assuming it is the last tile-part of the codestream.\n");
     (*p_j2k).m_specific_param.m_decoder.m_last_tile_part = 1i32
   }
   if (*l_tcp).m_nb_tile_parts != 0u32
     && l_current_part >= (*l_tcp).m_nb_tile_parts
   {
     /* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
-    opj_event_msg(p_manager, 1i32,
-                      b"In SOT marker, TPSot (%d) is not valid regards to the previous number of tile-part (%d), giving up\n\x00"
-                          as *const u8 as *const libc::c_char, l_current_part,
+    event_msg!(p_manager, EVT_ERROR,
+                      "In SOT marker, TPSot (%d) is not valid regards to the previous number of tile-part (%d), giving up\n", l_current_part,
                       (*l_tcp).m_nb_tile_parts);
     (*p_j2k).m_specific_param.m_decoder.m_last_tile_part = 1i32;
     return 0i32;
@@ -4407,9 +4228,8 @@ unsafe extern "C" fn opj_j2k_read_sot(
      * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
     if (*l_tcp).m_nb_tile_parts != 0 {
       if l_current_part >= (*l_tcp).m_nb_tile_parts {
-        opj_event_msg(p_manager, 1i32,
-                              b"In SOT marker, TPSot (%d) is not valid regards to the current number of tile-part (%d), giving up\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+                              "In SOT marker, TPSot (%d) is not valid regards to the current number of tile-part (%d), giving up\n",
                               l_current_part, (*l_tcp).m_nb_tile_parts);
         (*p_j2k).m_specific_param.m_decoder.m_last_tile_part = 1i32;
         return 0i32;
@@ -4417,9 +4237,8 @@ unsafe extern "C" fn opj_j2k_read_sot(
     }
     if l_current_part >= l_num_parts {
       /* testcase 451.pdf.SIGSEGV.ce9.3723 */
-      opj_event_msg(p_manager, 1i32,
-                          b"In SOT marker, TPSot (%d) is not valid regards to the current number of tile-part (header) (%d), giving up\n\x00"
-                              as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+                          "In SOT marker, TPSot (%d) is not valid regards to the current number of tile-part (header) (%d), giving up\n",
                           l_current_part, l_num_parts);
       (*p_j2k).m_specific_param.m_decoder.m_last_tile_part = 1i32;
       return 0i32;
@@ -4503,11 +4322,8 @@ unsafe extern "C" fn opj_j2k_read_sot(
         .tp_index
         .is_null()
         {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Not enough memory to read SOT marker. Tile index allocation failed\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Not enough memory to read SOT marker. Tile index allocation failed\n",
           );
           return 0i32;
         }
@@ -4532,11 +4348,8 @@ unsafe extern "C" fn opj_j2k_read_sot(
             .offset((*p_j2k).m_current_tile_number as isize))
           .tp_index;
           *fresh17 = 0 as *mut opj_tp_index_t;
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Not enough memory to read SOT marker. Tile index allocation failed\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Not enough memory to read SOT marker. Tile index allocation failed\n",
           );
           return 0i32;
         }
@@ -4579,11 +4392,8 @@ unsafe extern "C" fn opj_j2k_read_sot(
             .tile_index
             .offset((*p_j2k).m_current_tile_number as isize))
           .current_nb_tps = 0 as OPJ_UINT32;
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Not enough memory to read SOT marker. Tile index allocation failed\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Not enough memory to read SOT marker. Tile index allocation failed\n",
           );
           return 0i32;
         }
@@ -4626,11 +4436,8 @@ unsafe extern "C" fn opj_j2k_read_sot(
             .tile_index
             .offset((*p_j2k).m_current_tile_number as isize))
           .current_nb_tps = 0 as OPJ_UINT32;
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Not enough memory to read SOT marker. Tile index allocation failed\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Not enough memory to read SOT marker. Tile index allocation failed\n",
           );
           return 0i32;
         }
@@ -4718,11 +4525,8 @@ unsafe extern "C" fn opj_j2k_write_plt_in_memory(
     /* current one, and start a new one */
     if Lplt as libc::c_int + var_bytes_size as libc::c_int > 65535i32 {
       if Zplt as libc::c_int == 255i32 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"More than 255 PLT markers would be needed for current tile-part !\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "More than 255 PLT markers would be needed for current tile-part !\n",
         );
         return 0i32;
       }
@@ -4799,11 +4603,8 @@ unsafe extern "C" fn opj_j2k_write_sod(
   assert!(!p_j2k.is_null());
   assert!(!p_stream.is_null());
   if total_data_size < 4u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough bytes in output buffer to write SOD marker\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough bytes in output buffer to write SOD marker\n",
     );
     return 0i32;
   }
@@ -4857,21 +4658,15 @@ unsafe extern "C" fn opj_j2k_write_sod(
   if (*p_j2k).m_specific_param.m_encoder.m_PLT != 0 {
     marker_info = opj_tcd_marker_info_create((*p_j2k).m_specific_param.m_encoder.m_PLT);
     if marker_info.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Cannot encode tile: opj_tcd_marker_info_create() failed\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Cannot encode tile: opj_tcd_marker_info_create() failed\n",
       );
       return 0i32;
     }
   }
   if l_remaining_data < (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough bytes in output buffer to write SOD marker\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough bytes in output buffer to write SOD marker\n",
     );
     opj_tcd_marker_info_destroy(marker_info);
     return 0i32;
@@ -4890,10 +4685,8 @@ unsafe extern "C" fn opj_j2k_write_sod(
     p_manager,
   ) == 0
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Cannot encode tile\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Cannot encode tile\n",
     );
     opj_tcd_marker_info_destroy(marker_info);
     return 0i32;
@@ -4907,10 +4700,8 @@ unsafe extern "C" fn opj_j2k_write_sod(
       opj_malloc((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT as size_t)
         as *mut OPJ_BYTE;
     if p_PLT_buffer.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Cannot allocate memory\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Cannot allocate memory\n",
       );
       opj_tcd_marker_info_destroy(marker_info);
       return 0i32;
@@ -4995,19 +4786,13 @@ unsafe extern "C" fn opj_j2k_read_sod(
       > opj_stream_get_number_byte_left(p_stream)
     {
       if (*p_j2k).m_cp.strict != 0 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Tile part length size inconsistent with stream length\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Tile part length size inconsistent with stream length\n",
         );
         return 0i32;
       } else {
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"Tile part length size inconsistent with stream length\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "Tile part length size inconsistent with stream length\n",
         );
       }
     }
@@ -5017,9 +4802,8 @@ unsafe extern "C" fn opj_j2k_read_sod(
         .wrapping_add(1u32)
         .wrapping_sub(2u32)
     {
-      opj_event_msg(p_manager, 1i32,
-                          b"p_j2k->m_specific_param.m_decoder.m_sot_length > UINT_MAX - OPJ_COMMON_CBLK_DATA_EXTRA\x00"
-                              as *const u8 as *const libc::c_char);
+      event_msg!(p_manager, EVT_ERROR,
+                          "p_j2k->m_specific_param.m_decoder.m_sot_length > UINT_MAX - OPJ_COMMON_CBLK_DATA_EXTRA");
       return 0i32;
     }
     /* Add a margin of OPJ_COMMON_CBLK_DATA_EXTRA to the allocation we */
@@ -5045,9 +4829,8 @@ unsafe extern "C" fn opj_j2k_read_sod(
           .wrapping_sub(2u32)
           .wrapping_sub((*p_j2k).m_specific_param.m_decoder.m_sot_length)
       {
-        opj_event_msg(p_manager, 1i32,
-                              b"*l_tile_len > UINT_MAX - OPJ_COMMON_CBLK_DATA_EXTRA - p_j2k->m_specific_param.m_decoder.m_sot_length\x00"
-                                  as *const u8 as *const libc::c_char);
+        event_msg!(p_manager, EVT_ERROR,
+                              "*l_tile_len > UINT_MAX - OPJ_COMMON_CBLK_DATA_EXTRA - p_j2k->m_specific_param.m_decoder.m_sot_length");
         return 0i32;
       }
       l_new_current_data = opj_realloc(
@@ -5066,10 +4849,8 @@ unsafe extern "C" fn opj_j2k_read_sod(
       *l_current_data = l_new_current_data
     }
     if (*l_current_data).is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to decode tile\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to decode tile\n",
       );
       return 0i32;
     }
@@ -5111,10 +4892,8 @@ unsafe extern "C" fn opj_j2k_read_sod(
           .wrapping_add(2u32),
       )
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to add tl marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to add tl marker\n",
       );
       return 0i32;
     }
@@ -5295,10 +5074,8 @@ unsafe extern "C" fn opj_j2k_read_rgn(
     l_comp_room = 2 as OPJ_UINT32
   }
   if p_header_size != (2u32).wrapping_add(l_comp_room) {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading RGN marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading RGN marker\n",
     );
     return 0i32;
   }
@@ -5321,11 +5098,8 @@ unsafe extern "C" fn opj_j2k_read_rgn(
   /* USE_JPWL */
   /* testcase 3635.pdf.asan.77.2930 */
   if l_comp_no >= l_nb_comp {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"bad component number in RGN (%d when there are only %d)\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "bad component number in RGN (%d when there are only %d)\n",
       l_comp_no,
       l_nb_comp,
     ); /* SPrgn */
@@ -5522,11 +5296,8 @@ unsafe extern "C" fn opj_j2k_update_rates(
     .m_encoded_tile_data
     .is_null()
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to allocate m_encoded_tile_data. %u MB required\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to allocate m_encoded_tile_data. %u MB required\n",
       l_tile_size
         .wrapping_div(1024u64)
         .wrapping_div(1024u64) as OPJ_UINT32,
@@ -5772,10 +5543,8 @@ unsafe extern "C" fn opj_j2k_read_unk(
 
   assert!(!p_j2k.is_null());
   assert!(!p_stream.is_null());
-  opj_event_msg(
-    p_manager,
-    2i32,
-    b"Unknown marker\n\x00" as *const u8 as *const libc::c_char,
+  event_msg!(p_manager, EVT_WARNING,
+    "Unknown marker\n",
   );
   loop {
     /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
@@ -5786,10 +5555,8 @@ unsafe extern "C" fn opj_j2k_read_unk(
       p_manager,
     ) != 2
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream too short\n",
       );
       return 0i32;
     }
@@ -5805,10 +5572,8 @@ unsafe extern "C" fn opj_j2k_read_unk(
     /* Get the marker handler from the marker ID*/
     l_marker_handler = J2KMarker::from(l_unknown_marker);
     if (*p_j2k).m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Marker is not compliant with its position\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Marker is not compliant with its position\n",
       );
       return 0i32;
     } else if !l_marker_handler.is_unknown() {
@@ -5821,10 +5586,8 @@ unsafe extern "C" fn opj_j2k_read_unk(
           l_size_unk,
         );
         if res == 0i32 {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Not enough memory to add mh marker\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Not enough memory to add mh marker\n",
           );
           return 0i32;
         }
@@ -5871,10 +5634,8 @@ unsafe extern "C" fn opj_j2k_write_mct_record(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write MCT marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write MCT marker\n",
       );
       return 0i32;
     }
@@ -5970,10 +5731,8 @@ unsafe extern "C" fn opj_j2k_read_mct(
     (*p_j2k).m_specific_param.m_decoder.m_default_tcp
   };
   if p_header_size < 2u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading MCT marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading MCT marker\n",
     );
     return 0i32;
   }
@@ -5981,19 +5740,14 @@ unsafe extern "C" fn opj_j2k_read_mct(
   opj_read_bytes_LE(p_header_data, &mut l_tmp, 2 as OPJ_UINT32); /* Zmct */
   p_header_data = p_header_data.offset(2);
   if l_tmp != 0u32 {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"Cannot take in charge mct data within multiple MCT records\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "Cannot take in charge mct data within multiple MCT records\n",
     );
     return 1i32;
   }
   if p_header_size <= 6u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading MCT marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading MCT marker\n",
     );
     return 0i32;
   }
@@ -6027,10 +5781,8 @@ unsafe extern "C" fn opj_j2k_read_mct(
         (*l_tcp).m_mct_records = 0 as *mut opj_mct_data_t;
         (*l_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
         (*l_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Not enough memory to read MCT marker\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Not enough memory to read MCT marker\n",
         );
         return 0i32;
       }
@@ -6090,10 +5842,8 @@ unsafe extern "C" fn opj_j2k_read_mct(
   opj_read_bytes_LE(p_header_data, &mut l_tmp, 2 as OPJ_UINT32);
   p_header_data = p_header_data.offset(2);
   if l_tmp != 0u32 {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"Cannot take in charge multiple MCT markers\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "Cannot take in charge multiple MCT markers\n",
     );
     return 1i32;
   }
@@ -6101,10 +5851,8 @@ unsafe extern "C" fn opj_j2k_read_mct(
     as OPJ_UINT32;
   (*l_mct_data).m_data = opj_malloc(p_header_size as size_t) as *mut OPJ_BYTE;
   if (*l_mct_data).m_data.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading MCT marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading MCT marker\n",
     );
     return 0i32;
   }
@@ -6162,10 +5910,8 @@ unsafe extern "C" fn opj_j2k_write_mcc_record(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write MCC marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write MCC marker\n",
       );
       return 0i32;
     }
@@ -6303,10 +6049,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
     (*p_j2k).m_specific_param.m_decoder.m_default_tcp
   };
   if p_header_size < 2u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading MCC marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading MCC marker\n",
     );
     return 0i32;
   }
@@ -6314,18 +6058,14 @@ unsafe extern "C" fn opj_j2k_read_mcc(
   opj_read_bytes_LE(p_header_data, &mut l_tmp, 2 as OPJ_UINT32); /* Zmcc */
   p_header_data = p_header_data.offset(2); /* Imcc -> no need for other values, take the first */
   if l_tmp != 0u32 {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"Cannot take in charge multiple data spanning\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "Cannot take in charge multiple data spanning\n",
     );
     return 1i32;
   }
   if p_header_size < 7u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading MCC marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading MCC marker\n",
     );
     return 0i32;
   }
@@ -6358,10 +6098,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
         (*l_tcp).m_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
         (*l_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
         (*l_tcp).m_nb_mcc_records = 0 as OPJ_UINT32;
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Not enough memory to read MCC marker\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Not enough memory to read MCC marker\n",
         );
         return 0i32;
       }
@@ -6390,10 +6128,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
   opj_read_bytes_LE(p_header_data, &mut l_tmp, 2 as OPJ_UINT32); /* Ymcc */
   p_header_data = p_header_data.offset(2); /* Qmcc -> number of collections -> 1 */
   if l_tmp != 0u32 {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"Cannot take in charge multiple data spanning\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "Cannot take in charge multiple data spanning\n",
     ); /* Xmcci type of component transformation -> array based decorrelation */
     return 1i32;
   } /* Cmccij Component offset*/
@@ -6404,10 +6140,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
   ); /* Wmccij Component offset*/
   p_header_data = p_header_data.offset(2); /* Wmccij Component offset*/
   if l_nb_collections > 1u32 {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"Cannot take in charge multiple collections\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "Cannot take in charge multiple collections\n",
     );
     return 1i32;
   }
@@ -6416,21 +6150,16 @@ unsafe extern "C" fn opj_j2k_read_mcc(
   i = 0 as OPJ_UINT32;
   while i < l_nb_collections {
     if p_header_size < 3u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error reading MCC marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error reading MCC marker\n",
       );
       return 0i32;
     }
     opj_read_bytes_LE(p_header_data, &mut l_tmp, 1 as OPJ_UINT32);
     p_header_data = p_header_data.offset(1);
     if l_tmp != 1u32 {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Cannot take in charge collections other than array decorrelation\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Cannot take in charge collections other than array decorrelation\n",
       );
       return 1i32;
     }
@@ -6450,10 +6179,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
         .wrapping_mul((*l_mcc_record).m_nb_comps)
         .wrapping_add(2u32)
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error reading MCC marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error reading MCC marker\n",
       );
       return 0i32;
     }
@@ -6467,11 +6194,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
       opj_read_bytes_LE(p_header_data, &mut l_tmp, l_nb_bytes_by_comp);
       p_header_data = p_header_data.offset(l_nb_bytes_by_comp as isize);
       if l_tmp != j {
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"Cannot take in charge collections with indix shuffle\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "Cannot take in charge collections with indix shuffle\n",
         );
         return 1i32;
       }
@@ -6487,11 +6211,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
       (1u32).wrapping_add(l_nb_comps >> 15i32);
     l_nb_comps &= 0x7fffu32;
     if l_nb_comps != (*l_mcc_record).m_nb_comps {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Cannot take in charge collections without same number of indixes\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Cannot take in charge collections without same number of indixes\n",
       );
       return 1i32;
     }
@@ -6500,10 +6221,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
         .wrapping_mul((*l_mcc_record).m_nb_comps)
         .wrapping_add(3u32)
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error reading MCC marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error reading MCC marker\n",
       );
       return 0i32;
     }
@@ -6517,11 +6236,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
       opj_read_bytes_LE(p_header_data, &mut l_tmp, l_nb_bytes_by_comp);
       p_header_data = p_header_data.offset(l_nb_bytes_by_comp as isize);
       if l_tmp != j {
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"Cannot take in charge collections with indix shuffle\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "Cannot take in charge collections with indix shuffle\n",
         );
         return 1i32;
       }
@@ -6549,10 +6265,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
         }
       }
       if (*l_mcc_record).m_decorrelation_array.is_null() {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Error reading MCC marker\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Error reading MCC marker\n",
         );
         return 0i32;
       }
@@ -6571,10 +6285,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
         }
       }
       if (*l_mcc_record).m_offset_array.is_null() {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Error reading MCC marker\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Error reading MCC marker\n",
         );
         return 0i32;
       }
@@ -6582,10 +6294,8 @@ unsafe extern "C" fn opj_j2k_read_mcc(
     i += 1;
   }
   if p_header_size != 0u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading MCC marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading MCC marker\n",
     );
     return 0i32;
   }
@@ -6630,10 +6340,8 @@ unsafe extern "C" fn opj_j2k_write_mco(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write MCO marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write MCO marker\n",
       );
       return 0i32;
     }
@@ -6726,10 +6434,8 @@ unsafe extern "C" fn opj_j2k_read_mco(
     (*p_j2k).m_specific_param.m_decoder.m_default_tcp
   };
   if p_header_size < 1u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading MCO marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading MCO marker\n",
     );
     return 0i32;
   }
@@ -6740,19 +6446,14 @@ unsafe extern "C" fn opj_j2k_read_mco(
   );
   p_header_data = p_header_data.offset(1);
   if l_nb_stages > 1u32 {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"Cannot take in charge multiple transformation stages.\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "Cannot take in charge multiple transformation stages.\n",
     );
     return 1i32;
   }
   if p_header_size != l_nb_stages.wrapping_add(1u32) {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"Error reading MCO marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "Error reading MCO marker\n",
     );
     return 0i32;
   }
@@ -6900,10 +6601,8 @@ unsafe extern "C" fn opj_j2k_write_cbd(
       opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut libc::c_void);
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
       (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to write CBD marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to write CBD marker\n",
       );
       return 0i32;
     }
@@ -6991,10 +6690,8 @@ unsafe extern "C" fn opj_j2k_read_cbd(
       .numcomps
       .wrapping_add(2u32)
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Crror reading CBD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Crror reading CBD marker\n",
     );
     return 0i32;
   }
@@ -7005,10 +6702,8 @@ unsafe extern "C" fn opj_j2k_read_cbd(
   );
   p_header_data = p_header_data.offset(2);
   if l_nb_comp != l_num_comp {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Crror reading CBD marker\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Crror reading CBD marker\n",
     );
     return 0i32;
   }
@@ -7025,9 +6720,8 @@ unsafe extern "C" fn opj_j2k_read_cbd(
     (*l_comp).prec = (l_comp_def & 0x7fu32)
       .wrapping_add(1u32);
     if (*l_comp).prec > 31u32 {
-      opj_event_msg(p_manager, 1i32,
-                          b"Invalid values for comp = %d : prec=%u (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n\x00"
-                              as *const u8 as *const libc::c_char, i,
+      event_msg!(p_manager, EVT_ERROR,
+                          "Invalid values for comp = %d : prec=%u (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n", i,
                           (*l_comp).prec);
       return 0i32;
     }
@@ -7267,9 +6961,8 @@ unsafe fn opj_j2k_set_cinema_parameters(
   (*parameters).irreversible = 1i32;
   /* Number of layers */
   if (*parameters).tcp_numlayers > 1i32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\n1 single quality layer-> Number of layers forced to 1 (rather than %d)\n-> Rate of the last layer (%3.1f) will be used\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+                      "JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\n1 single quality layer-> Number of layers forced to 1 (rather than %d)\n-> Rate of the last layer (%3.1f) will be used",
                       (*parameters).tcp_numlayers,
                       (*parameters).tcp_rates[((*parameters).tcp_numlayers -
                                                    1i32) as usize]
@@ -7282,24 +6975,21 @@ unsafe fn opj_j2k_set_cinema_parameters(
   match (*parameters).rsiz as libc::c_int {
     3 => {
       if (*parameters).numresolution > 6i32 {
-        opj_event_msg(p_manager, 2i32,
-                              b"JPEG 2000 Profile-3 (2k dc profile) requires:\nNumber of decomposition levels <= 5\n-> Number of decomposition levels forced to 5 (rather than %d)\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "JPEG 2000 Profile-3 (2k dc profile) requires:\nNumber of decomposition levels <= 5\n-> Number of decomposition levels forced to 5 (rather than %d)\n",
                               (*parameters).numresolution + 1i32);
         (*parameters).numresolution = 6i32
       }
     }
     4 => {
       if (*parameters).numresolution < 2i32 {
-        opj_event_msg(p_manager, 2i32,
-                              b"JPEG 2000 Profile-4 (4k dc profile) requires:\nNumber of decomposition levels >= 1 && <= 6\n-> Number of decomposition levels forced to 1 (rather than %d)\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "JPEG 2000 Profile-4 (4k dc profile) requires:\nNumber of decomposition levels >= 1 && <= 6\n-> Number of decomposition levels forced to 1 (rather than %d)\n",
                               (*parameters).numresolution + 1i32);
         (*parameters).numresolution = 1i32
       } else if (*parameters).numresolution > 7i32 {
-        opj_event_msg(p_manager, 2i32,
-                              b"JPEG 2000 Profile-4 (4k dc profile) requires:\nNumber of decomposition levels >= 1 && <= 6\n-> Number of decomposition levels forced to 6 (rather than %d)\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "JPEG 2000 Profile-4 (4k dc profile) requires:\nNumber of decomposition levels >= 1 && <= 6\n-> Number of decomposition levels forced to 6 (rather than %d)\n",
                               (*parameters).numresolution + 1i32);
         (*parameters).numresolution = 7i32
       }
@@ -7336,25 +7026,21 @@ unsafe fn opj_j2k_set_cinema_parameters(
   if (*parameters).max_cs_size <= 0i32 {
     /* No rate has been introduced, 24 fps is assumed */
     (*parameters).max_cs_size = 1302083i32;
-    opj_event_msg(p_manager, 2i32,
-                      b"JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\nMaximum 1302083 compressed bytes @ 24fps\nAs no rate has been given, this limit will be used.\n\x00"
-                          as *const u8 as *const libc::c_char);
+    event_msg!(p_manager, EVT_WARNING,
+                      "JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\nMaximum 1302083 compressed bytes @ 24fps\nAs no rate has been given, this limit will be used.\n");
   } else if (*parameters).max_cs_size > 1302083i32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\nMaximum 1302083 compressed bytes @ 24fps\n-> Specified rate exceeds this limit. Rate will be forced to 1302083 bytes.\n\x00"
-                          as *const u8 as *const libc::c_char);
+    event_msg!(p_manager, EVT_WARNING,
+                      "JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\nMaximum 1302083 compressed bytes @ 24fps\n-> Specified rate exceeds this limit. Rate will be forced to 1302083 bytes.\n");
     (*parameters).max_cs_size = 1302083i32
   }
   if (*parameters).max_comp_size <= 0i32 {
     /* No rate has been introduced, 24 fps is assumed */
     (*parameters).max_comp_size = 1041666i32;
-    opj_event_msg(p_manager, 2i32,
-                      b"JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\nMaximum 1041666 compressed bytes @ 24fps\nAs no rate has been given, this limit will be used.\n\x00"
-                          as *const u8 as *const libc::c_char);
+    event_msg!(p_manager, EVT_WARNING,
+                      "JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\nMaximum 1041666 compressed bytes @ 24fps\nAs no rate has been given, this limit will be used.\n");
   } else if (*parameters).max_comp_size > 1041666i32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\nMaximum 1041666 compressed bytes @ 24fps\n-> Specified rate exceeds this limit. Rate will be forced to 1041666 bytes.\n\x00"
-                          as *const u8 as *const libc::c_char);
+    event_msg!(p_manager, EVT_WARNING,
+                      "JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\nMaximum 1041666 compressed bytes @ 24fps\n-> Specified rate exceeds this limit. Rate will be forced to 1041666 bytes.\n");
     (*parameters).max_comp_size = 1041666i32
   }
   (*parameters).tcp_rates[0 as usize] = (*image)
@@ -7376,9 +7062,8 @@ unsafe fn opj_j2k_is_cinema_compliant(
   let mut i: OPJ_UINT32 = 0;
   /* Number of components */
   if (*image).numcomps != 3u32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"JPEG 2000 Profile-3 (2k dc profile) requires:\n3 components-> Number of components of input image (%d) is not compliant\n-> Non-profile-3 codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+                      "JPEG 2000 Profile-3 (2k dc profile) requires:\n3 components-> Number of components of input image (%d) is not compliant\n-> Non-profile-3 codestream will be generated\n",
                       (*image).numcomps);
     return 0i32;
   }
@@ -7390,18 +7075,13 @@ unsafe fn opj_j2k_is_cinema_compliant(
       | (*(*image).comps.offset(i as isize)).sgnd
       != 0
     {
-      let mut signed_str: [libc::c_char; 7] =
-        *core::mem::transmute::<&[u8; 7], &mut [libc::c_char; 7]>(b"signed\x00");
-      let mut unsigned_str: [libc::c_char; 9] =
-        *core::mem::transmute::<&[u8; 9], &mut [libc::c_char; 9]>(b"unsigned\x00");
-      let mut tmp_str = if (*(*image).comps.offset(i as isize)).sgnd != 0 {
-        signed_str.as_mut_ptr()
+      let tmp_str = if (*(*image).comps.offset(i as isize)).sgnd != 0 {
+        "signed"
       } else {
-        unsigned_str.as_mut_ptr()
+        "unsigned"
       };
-      opj_event_msg(p_manager, 2i32,
-                          b"JPEG 2000 Profile-3 (2k dc profile) requires:\nPrecision of each component shall be 12 bits unsigned-> At least component %d of input image (%d bits, %s) is not compliant\n-> Non-profile-3 codestream will be generated\n\x00"
-                              as *const u8 as *const libc::c_char, i,
+      event_msg!(p_manager, EVT_WARNING,
+                          "JPEG 2000 Profile-3 (2k dc profile) requires:\nPrecision of each component shall be 12 bits unsigned-> At least component %d of input image (%d bits, %s) is not compliant\n-> Non-profile-3 codestream will be generated\n", i,
                           (*(*image).comps.offset(i as isize)).prec, tmp_str);
       return 0i32;
     }
@@ -7416,9 +7096,8 @@ unsafe fn opj_j2k_is_cinema_compliant(
           > 1080u32) as libc::c_int
         != 0
       {
-        opj_event_msg(p_manager, 2i32,
-                              b"JPEG 2000 Profile-3 (2k dc profile) requires:\nwidth <= 2048 and height <= 1080\n-> Input image size %d x %d is not compliant\n-> Non-profile-3 codestream will be generated\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "JPEG 2000 Profile-3 (2k dc profile) requires:\nwidth <= 2048 and height <= 1080\n-> Input image size %d x %d is not compliant\n-> Non-profile-3 codestream will be generated\n",
                               (*(*image).comps.offset(0i32 as
                                                           isize)).w,
                               (*(*image).comps.offset(0i32 as
@@ -7433,9 +7112,8 @@ unsafe fn opj_j2k_is_cinema_compliant(
           > 2160u32) as libc::c_int
         != 0
       {
-        opj_event_msg(p_manager, 2i32,
-                              b"JPEG 2000 Profile-4 (4k dc profile) requires:\nwidth <= 4096 and height <= 2160\n-> Image size %d x %d is not compliant\n-> Non-profile-4 codestream will be generated\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "JPEG 2000 Profile-4 (4k dc profile) requires:\nwidth <= 4096 and height <= 2160\n-> Image size %d x %d is not compliant\n-> Non-profile-4 codestream will be generated\n",
                               (*(*image).comps.offset(0i32 as
                                                           isize)).w,
                               (*(*image).comps.offset(0i32 as
@@ -7615,9 +7293,8 @@ unsafe fn opj_j2k_is_imf_compliant(
   let mut ret = 1i32;
   /* Validate mainlevel */
   if mainlevel as libc::c_int > 11i32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF profile require mainlevel <= 11.\n-> %d is thus not compliant\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF profile require mainlevel <= 11.\n-> %d is thus not compliant\n-> Non-IMF codestream will be generated\n",
                       mainlevel as libc::c_int);
     ret = 0i32
   } else {
@@ -7628,9 +7305,8 @@ unsafe fn opj_j2k_is_imf_compliant(
           .wrapping_mul(core::mem::size_of::<OPJ_UINT16>() as usize)
     );
     if sublevel as libc::c_int > tabMaxSubLevelFromMainLevel[mainlevel as usize] as libc::c_int {
-      opj_event_msg(p_manager, 2i32,
-                          b"IMF profile require sublevel <= %d for mainlevel = %d.\n-> %d is thus not compliant\n-> Non-IMF codestream will be generated\n\x00"
-                              as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+                          "IMF profile require sublevel <= %d for mainlevel = %d.\n-> %d is thus not compliant\n-> Non-IMF codestream will be generated\n",
                           tabMaxSubLevelFromMainLevel[mainlevel as usize] as
                               libc::c_int, mainlevel as libc::c_int,
                           sublevel as libc::c_int);
@@ -7639,26 +7315,23 @@ unsafe fn opj_j2k_is_imf_compliant(
   }
   /* Number of components */
   if (*image).numcomps > 3u32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF profiles require at most 3 components.\n-> Number of components of input image (%d) is not compliant\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF profiles require at most 3 components.\n-> Number of components of input image (%d) is not compliant\n-> Non-IMF codestream will be generated\n",
                       (*image).numcomps);
     ret = 0i32
   }
   if (*image).x0 != 0u32
     || (*image).y0 != 0u32
   {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF profiles require image origin to be at 0,0.\n-> %d,%d is not compliant\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char, (*image).x0,
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF profiles require image origin to be at 0,0.\n-> %d,%d is not compliant\n-> Non-IMF codestream will be generated\n", (*image).x0,
                       ((*image).y0 != 0u32) as
                           libc::c_int);
     ret = 0i32
   }
   if (*parameters).cp_tx0 != 0i32 || (*parameters).cp_ty0 != 0i32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF profiles require tile origin to be at 0,0.\n-> %d,%d is not compliant\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF profiles require tile origin to be at 0,0.\n-> %d,%d is not compliant\n-> Non-IMF codestream will be generated\n",
                       (*parameters).cp_tx0, (*parameters).cp_ty0);
     ret = 0i32
   }
@@ -7670,9 +7343,8 @@ unsafe fn opj_j2k_is_imf_compliant(
       if ((*parameters).cp_tdx as OPJ_UINT32) < (*image).x1
         || ((*parameters).cp_tdy as OPJ_UINT32) < (*image).y1
       {
-        opj_event_msg(p_manager, 2i32,
-                              b"IMF 2K/4K/8K single tile profiles require tile to be greater or equal to image size.\n-> %d,%d is lesser than %d,%d\n-> Non-IMF codestream will be generated\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "IMF 2K/4K/8K single tile profiles require tile to be greater or equal to image size.\n-> %d,%d is lesser than %d,%d\n-> Non-IMF codestream will be generated\n",
                               (*parameters).cp_tdx, (*parameters).cp_tdy,
                               (*image).x1, (*image).y1);
         ret = 0i32
@@ -7692,9 +7364,8 @@ unsafe fn opj_j2k_is_imf_compliant(
             && (*parameters).cp_tdy == 4096i32
             && profile as libc::c_int == 0x600i32)
           {
-            opj_event_msg(p_manager, 2i32,
-                                      b"IMF 2K_R/4K_R/8K_R single/multiple tile profiles require tile to be greater or equal to image size,\nor to be (1024,1024), or (2048,2048) for 4K_R/8K_R or (4096,4096) for 8K_R.\n-> %d,%d is non conformant\n-> Non-IMF codestream will be generated\n\x00"
-                                          as *const u8 as *const libc::c_char,
+            event_msg!(p_manager, EVT_WARNING,
+                                      "IMF 2K_R/4K_R/8K_R single/multiple tile profiles require tile to be greater or equal to image size,\nor to be (1024,1024), or (2048,2048) for 4K_R/8K_R or (4096,4096) for 8K_R.\n-> %d,%d is non conformant\n-> Non-IMF codestream will be generated\n",
                                       (*parameters).cp_tdx,
                                       (*parameters).cp_tdy);
             ret = 0i32
@@ -7710,18 +7381,13 @@ unsafe fn opj_j2k_is_imf_compliant(
       && (*(*image).comps.offset(i as isize)).prec <= 16u32)
       || (*(*image).comps.offset(i as isize)).sgnd != 0
     {
-      let mut signed_str: [libc::c_char; 7] =
-        *core::mem::transmute::<&[u8; 7], &mut [libc::c_char; 7]>(b"signed\x00");
-      let mut unsigned_str: [libc::c_char; 9] =
-        *core::mem::transmute::<&[u8; 9], &mut [libc::c_char; 9]>(b"unsigned\x00");
-      let mut tmp_str = if (*(*image).comps.offset(i as isize)).sgnd != 0 {
-        signed_str.as_mut_ptr()
+      let tmp_str = if (*(*image).comps.offset(i as isize)).sgnd != 0 {
+        "signed"
       } else {
-        unsigned_str.as_mut_ptr()
+        "unsigned"
       };
-      opj_event_msg(p_manager, 2i32,
-                          b"IMF profiles require precision of each component to b in [8-16] bits unsigned-> At least component %d of input image (%d bits, %s) is not compliant\n-> Non-IMF codestream will be generated\n\x00"
-                              as *const u8 as *const libc::c_char, i,
+      event_msg!(p_manager, EVT_WARNING,
+                          "IMF profiles require precision of each component to b in [8-16] bits unsigned-> At least component %d of input image (%d bits, %s) is not compliant\n-> Non-IMF codestream will be generated\n", i,
                           (*(*image).comps.offset(i as isize)).prec, tmp_str);
       ret = 0i32
     }
@@ -7733,9 +7399,8 @@ unsafe fn opj_j2k_is_imf_compliant(
     if i == 0u32
       && (*(*image).comps.offset(i as isize)).dx != 1u32
     {
-      opj_event_msg(p_manager, 2i32,
-                          b"IMF profiles require XRSiz1 == 1. Here it is set to %d.\n-> Non-IMF codestream will be generated\n\x00"
-                              as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+                          "IMF profiles require XRSiz1 == 1. Here it is set to %d.\n-> Non-IMF codestream will be generated\n",
                           (*(*image).comps.offset(i as isize)).dx);
       ret = 0i32
     }
@@ -7743,9 +7408,8 @@ unsafe fn opj_j2k_is_imf_compliant(
       && (*(*image).comps.offset(i as isize)).dx != 1u32
       && (*(*image).comps.offset(i as isize)).dx != 2u32
     {
-      opj_event_msg(p_manager, 2i32,
-                          b"IMF profiles require XRSiz2 == 1 or 2. Here it is set to %d.\n-> Non-IMF codestream will be generated\n\x00"
-                              as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+                          "IMF profiles require XRSiz2 == 1 or 2. Here it is set to %d.\n-> Non-IMF codestream will be generated\n",
                           (*(*image).comps.offset(i as isize)).dx);
       ret = 0i32
     }
@@ -7756,9 +7420,8 @@ unsafe fn opj_j2k_is_imf_compliant(
           .offset(i.wrapping_sub(1u32) as isize))
         .dx
     {
-      opj_event_msg(p_manager, 2i32,
-                          b"IMF profiles require XRSiz%d to be the same as XRSiz2. Here it is set to %d instead of %d.\n-> Non-IMF codestream will be generated\n\x00"
-                              as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+                          "IMF profiles require XRSiz%d to be the same as XRSiz2. Here it is set to %d instead of %d.\n-> Non-IMF codestream will be generated\n",
                           i.wrapping_add(1u32),
                           (*(*image).comps.offset(i as isize)).dx,
                           (*(*image).comps.offset(i.wrapping_sub(1 as
@@ -7769,9 +7432,8 @@ unsafe fn opj_j2k_is_imf_compliant(
       ret = 0i32
     }
     if (*(*image).comps.offset(i as isize)).dy != 1u32 {
-      opj_event_msg(p_manager, 2i32,
-                          b"IMF profiles require YRsiz == 1. Here it is set to %d for component %d.\n-> Non-IMF codestream will be generated\n\x00"
-                              as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+                          "IMF profiles require YRsiz == 1. Here it is set to %d for component %d.\n-> Non-IMF codestream will be generated\n",
                           (*(*image).comps.offset(i as isize)).dy, i);
       ret = 0i32
     }
@@ -7786,9 +7448,8 @@ unsafe fn opj_j2k_is_imf_compliant(
           > 1556u32) as libc::c_int
         != 0
       {
-        opj_event_msg(p_manager, 2i32,
-                              b"IMF 2K/2K_R profile require:\nwidth <= 2048 and height <= 1556\n-> Input image size %d x %d is not compliant\n-> Non-IMF codestream will be generated\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "IMF 2K/2K_R profile require:\nwidth <= 2048 and height <= 1556\n-> Input image size %d x %d is not compliant\n-> Non-IMF codestream will be generated\n",
                               (*(*image).comps.offset(0i32 as
                                                           isize)).w,
                               (*(*image).comps.offset(0i32 as
@@ -7803,9 +7464,8 @@ unsafe fn opj_j2k_is_imf_compliant(
           > 3112u32) as libc::c_int
         != 0
       {
-        opj_event_msg(p_manager, 2i32,
-                              b"IMF 4K/4K_R profile require:\nwidth <= 4096 and height <= 3112\n-> Input image size %d x %d is not compliant\n-> Non-IMF codestream will be generated\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "IMF 4K/4K_R profile require:\nwidth <= 4096 and height <= 3112\n-> Input image size %d x %d is not compliant\n-> Non-IMF codestream will be generated\n",
                               (*(*image).comps.offset(0i32 as
                                                           isize)).w,
                               (*(*image).comps.offset(0i32 as
@@ -7820,9 +7480,8 @@ unsafe fn opj_j2k_is_imf_compliant(
           > 6224u32) as libc::c_int
         != 0
       {
-        opj_event_msg(p_manager, 2i32,
-                              b"IMF 8K/8K_R profile require:\nwidth <= 8192 and height <= 6224\n-> Input image size %d x %d is not compliant\n-> Non-IMF codestream will be generated\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "IMF 8K/8K_R profile require:\nwidth <= 8192 and height <= 6224\n-> Input image size %d x %d is not compliant\n-> Non-IMF codestream will be generated\n",
                               (*(*image).comps.offset(0i32 as
                                                           isize)).w,
                               (*(*image).comps.offset(0i32 as
@@ -7836,39 +7495,34 @@ unsafe fn opj_j2k_is_imf_compliant(
     }
   }
   if (*parameters).roi_compno != -(1i32) {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF profile forbid RGN / region of interest marker.\n-> Compression parameters specify a ROI\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char);
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF profile forbid RGN / region of interest marker.\n-> Compression parameters specify a ROI\n-> Non-IMF codestream will be generated\n");
     ret = 0i32
   }
   if (*parameters).cblockw_init != 32i32
     || (*parameters).cblockh_init != 32i32
   {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF profile require code block size to be 32x32.\n-> Compression parameters set it to %dx%d.\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF profile require code block size to be 32x32.\n-> Compression parameters set it to %dx%d.\n-> Non-IMF codestream will be generated\n",
                       (*parameters).cblockw_init, (*parameters).cblockh_init);
     ret = 0i32
   }
   if (*parameters).prog_order as libc::c_int != OPJ_CPRL as libc::c_int {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF profile require progression order to be CPRL.\n-> Compression parameters set it to %d.\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF profile require progression order to be CPRL.\n-> Compression parameters set it to %d.\n-> Non-IMF codestream will be generated\n",
                       (*parameters).prog_order as libc::c_int);
     ret = 0i32
   }
   if (*parameters).numpocs != 0u32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF profile forbid POC markers.\n-> Compression parameters set %d POC.\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF profile forbid POC markers.\n-> Compression parameters set %d POC.\n-> Non-IMF codestream will be generated\n",
                       (*parameters).numpocs);
     ret = 0i32
   }
   /* Codeblock style: no mode switch enabled */
   if (*parameters).mode != 0i32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF profile forbid mode switch in code block style.\n-> Compression parameters set code block style to %d.\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF profile forbid mode switch in code block style.\n-> Compression parameters set code block style to %d.\n-> Non-IMF codestream will be generated\n",
                       (*parameters).mode);
     ret = 0i32
   }
@@ -7878,23 +7532,20 @@ unsafe fn opj_j2k_is_imf_compliant(
   {
     /* Expect 9-7 transform */
     if (*parameters).irreversible != 1i32 {
-      opj_event_msg(p_manager, 2i32,
-                          b"IMF 2K/4K/8K profiles require 9-7 Irreversible Transform.\n-> Compression parameters set it to reversible.\n-> Non-IMF codestream will be generated\n\x00"
-                              as *const u8 as *const libc::c_char);
+      event_msg!(p_manager, EVT_WARNING,
+                          "IMF 2K/4K/8K profiles require 9-7 Irreversible Transform.\n-> Compression parameters set it to reversible.\n-> Non-IMF codestream will be generated\n");
       ret = 0i32
     }
   } else if (*parameters).irreversible != 0i32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF 2K/4K/8K profiles require 5-3 reversible Transform.\n-> Compression parameters set it to irreversible.\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char);
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF 2K/4K/8K profiles require 5-3 reversible Transform.\n-> Compression parameters set it to irreversible.\n-> Non-IMF codestream will be generated\n");
     ret = 0i32
   }
   /* Expect 5-3 transform */
   /* Number of layers */
   if (*parameters).tcp_numlayers != 1i32 {
-    opj_event_msg(p_manager, 2i32,
-                      b"IMF 2K/4K/8K profiles require 1 single quality layer.\n-> Number of layers is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                          as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+                      "IMF 2K/4K/8K profiles require 1 single quality layer.\n-> Number of layers is %d.\n-> Non-IMF codestream will be generated\n",
                       (*parameters).tcp_numlayers);
     ret = 0i32
   }
@@ -7902,42 +7553,37 @@ unsafe fn opj_j2k_is_imf_compliant(
   match profile as libc::c_int {
     1024 => {
       if !(NL >= 1i32 && NL <= 5i32) {
-        opj_event_msg(p_manager, 2i32,
-                              b"IMF 2K profile requires 1 <= NL <= 5:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                  as *const u8 as *const libc::c_char, NL);
+        event_msg!(p_manager, EVT_WARNING,
+                              "IMF 2K profile requires 1 <= NL <= 5:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n", NL);
         ret = 0i32
       }
     }
     1280 => {
       if !(NL >= 1i32 && NL <= 6i32) {
-        opj_event_msg(p_manager, 2i32,
-                              b"IMF 4K profile requires 1 <= NL <= 6:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                  as *const u8 as *const libc::c_char, NL);
+        event_msg!(p_manager, EVT_WARNING,
+                              "IMF 4K profile requires 1 <= NL <= 6:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n", NL);
         ret = 0i32
       }
     }
     1536 => {
       if !(NL >= 1i32 && NL <= 7i32) {
-        opj_event_msg(p_manager, 2i32,
-                              b"IMF 8K profile requires 1 <= NL <= 7:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                  as *const u8 as *const libc::c_char, NL);
+        event_msg!(p_manager, EVT_WARNING,
+                              "IMF 8K profile requires 1 <= NL <= 7:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n", NL);
         ret = 0i32
       }
     }
     1792 => {
       if XTsiz >= 2048u32 {
         if !(NL >= 1i32 && NL <= 5i32) {
-          opj_event_msg(p_manager, 2i32,
-                                  b"IMF 2K_R profile requires 1 <= NL <= 5 for XTsiz >= 2048:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                      as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "IMF 2K_R profile requires 1 <= NL <= 5 for XTsiz >= 2048:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
       } else if XTsiz >= 1024u32 {
         if !(NL >= 1i32 && NL <= 4i32) {
-          opj_event_msg(p_manager, 2i32,
-                                  b"IMF 2K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                      as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "IMF 2K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
@@ -7946,25 +7592,22 @@ unsafe fn opj_j2k_is_imf_compliant(
     2048 => {
       if XTsiz >= 4096u32 {
         if !(NL >= 1i32 && NL <= 6i32) {
-          opj_event_msg(p_manager, 2i32,
-                                  b"IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz >= 4096:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                      as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz >= 4096:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
       } else if XTsiz >= 2048u32 {
         if !(NL >= 1i32 && NL <= 5i32) {
-          opj_event_msg(p_manager, 2i32,
-                                  b"IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                      as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
       } else if XTsiz >= 1024u32 {
         if !(NL >= 1i32 && NL <= 4i32) {
-          opj_event_msg(p_manager, 2i32,
-                                  b"IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                      as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
@@ -7973,33 +7616,29 @@ unsafe fn opj_j2k_is_imf_compliant(
     2304 => {
       if XTsiz >= 8192u32 {
         if !(NL >= 1i32 && NL <= 7i32) {
-          opj_event_msg(p_manager, 2i32,
-                                  b"IMF 4K_R profile requires 1 <= NL <= 7 for XTsiz >= 8192:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                      as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "IMF 4K_R profile requires 1 <= NL <= 7 for XTsiz >= 8192:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
       } else if XTsiz >= 4096u32 {
         if !(NL >= 1i32 && NL <= 6i32) {
-          opj_event_msg(p_manager, 2i32,
-                                  b"IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz in [4096,8192[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                      as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz in [4096,8192[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
       } else if XTsiz >= 2048u32 {
         if !(NL >= 1i32 && NL <= 5i32) {
-          opj_event_msg(p_manager, 2i32,
-                                  b"IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                      as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
       } else if XTsiz >= 1024u32 {
         if !(NL >= 1i32 && NL <= 4i32) {
-          opj_event_msg(p_manager, 2i32,
-                                  b"IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n\x00"
-                                      as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
@@ -8012,9 +7651,8 @@ unsafe fn opj_j2k_is_imf_compliant(
       || (*parameters).prcw_init[0 as usize] != 128i32
       || (*parameters).prch_init[0 as usize] != 128i32
     {
-      opj_event_msg(p_manager, 2i32,
-                          b"IMF profiles require PPx = PPy = 7 for NLLL band, else 8.\n-> Supplied values are different from that.\n-> Non-IMF codestream will be generated\n\x00"
-                              as *const u8 as *const libc::c_char);
+      event_msg!(p_manager, EVT_WARNING,
+                          "IMF profiles require PPx = PPy = 7 for NLLL band, else 8.\n-> Supplied values are different from that.\n-> Non-IMF codestream will be generated\n");
       ret = 0i32
     }
   } else {
@@ -8024,9 +7662,8 @@ unsafe fn opj_j2k_is_imf_compliant(
       if (*parameters).prcw_init[i_0 as usize] != 256i32
         || (*parameters).prch_init[i_0 as usize] != 256i32
       {
-        opj_event_msg(p_manager, 2i32,
-                              b"IMF profiles require PPx = PPy = 7 for NLLL band, else 8.\n-> Supplied values are different from that.\n-> Non-IMF codestream will be generated\n\x00"
-                                  as *const u8 as *const libc::c_char);
+        event_msg!(p_manager, EVT_WARNING,
+                              "IMF profiles require PPx = PPy = 7 for NLLL band, else 8.\n-> Supplied values are different from that.\n-> Non-IMF codestream will be generated\n");
         ret = 0i32
       }
       i_0 += 1
@@ -8054,11 +7691,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   if (*parameters).numresolution <= 0i32
     || (*parameters).numresolution > 33i32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid number of resolutions : %d not in range [1,%d]\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid number of resolutions : %d not in range [1,%d]\n",
       (*parameters).numresolution,
       33i32,
     );
@@ -8067,11 +7701,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   if (*parameters).cblockw_init < 4i32
     || (*parameters).cblockw_init > 1024i32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid value for cblockw_init: %d not a power of 2 in range [4,1024]\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid value for cblockw_init: %d not a power of 2 in range [4,1024]\n",
       (*parameters).cblockw_init,
     );
     return 0i32;
@@ -8079,42 +7710,30 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   if (*parameters).cblockh_init < 4i32
     || (*parameters).cblockh_init > 1024i32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid value for cblockh_init: %d not a power of 2 not in range [4,1024]\n\x00"
-        as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid value for cblockh_init: %d not a power of 2 not in range [4,1024]\n",
       (*parameters).cblockh_init,
     );
     return 0i32;
   }
   if (*parameters).cblockw_init * (*parameters).cblockh_init > 4096i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid value for cblockw_init * cblockh_init: should be <= 4096\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid value for cblockw_init * cblockh_init: should be <= 4096\n",
     );
     return 0i32;
   }
   cblkw = opj_int_floorlog2((*parameters).cblockw_init) as OPJ_UINT32;
   cblkh = opj_int_floorlog2((*parameters).cblockh_init) as OPJ_UINT32;
   if (*parameters).cblockw_init != (1i32) << cblkw {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid value for cblockw_init: %d not a power of 2 in range [4,1024]\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid value for cblockw_init: %d not a power of 2 in range [4,1024]\n",
       (*parameters).cblockw_init,
     );
     return 0i32;
   }
   if (*parameters).cblockh_init != (1i32) << cblkh {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid value for cblockw_init: %d not a power of 2 in range [4,1024]\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid value for cblockw_init: %d not a power of 2 in range [4,1024]\n",
       (*parameters).cblockh_init,
     );
     return 0i32;
@@ -8166,9 +7785,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       0 | _ => {}
     }
     if deprecated_used != 0 {
-      opj_event_msg(p_manager, 2i32,
-                          b"Deprecated fields cp_cinema or cp_rsiz are used\nPlease consider using only the rsiz field\nSee openjpeg.h documentation for more details\n\x00"
-                              as *const u8 as *const libc::c_char);
+      event_msg!(p_manager, EVT_WARNING,
+                          "Deprecated fields cp_cinema or cp_rsiz are used\nPlease consider using only the rsiz field\nSee openjpeg.h documentation for more details\n");
     }
   }
   /* If no explicit layers are provided, use lossless settings */
@@ -8195,9 +7813,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
           && rate_i_m_1_corr
             != (*parameters).tcp_rates[i.wrapping_sub(1u32) as usize]
         {
-          opj_event_msg(p_manager, 2i32,
-                                  b"tcp_rates[%d]=%f (corrected as %f) should be strictly lesser than tcp_rates[%d]=%f (corrected as %f)\n\x00"
-                                      as *const u8 as *const libc::c_char, i,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "tcp_rates[%d]=%f (corrected as %f) should be strictly lesser than tcp_rates[%d]=%f (corrected as %f)\n", i,
                                   (*parameters).tcp_rates[i as usize] as
                                       libc::c_double,
                                   rate_i_corr as libc::c_double,
@@ -8211,9 +7828,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
                                       libc::c_double,
                                   rate_i_m_1_corr as libc::c_double);
         } else if rate_i_corr != (*parameters).tcp_rates[i as usize] {
-          opj_event_msg(p_manager, 2i32,
-                                  b"tcp_rates[%d]=%f (corrected as %f) should be strictly lesser than tcp_rates[%d]=%f\n\x00"
-                                      as *const u8 as *const libc::c_char, i,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "tcp_rates[%d]=%f (corrected as %f) should be strictly lesser than tcp_rates[%d]=%f\n", i,
                                   (*parameters).tcp_rates[i as usize] as
                                       libc::c_double,
                                   rate_i_corr as libc::c_double,
@@ -8228,9 +7844,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         } else if rate_i_m_1_corr
           != (*parameters).tcp_rates[i.wrapping_sub(1u32) as usize]
         {
-          opj_event_msg(p_manager, 2i32,
-                                  b"tcp_rates[%d]=%f should be strictly lesser than tcp_rates[%d]=%f (corrected as %f)\n\x00"
-                                      as *const u8 as *const libc::c_char, i,
+          event_msg!(p_manager, EVT_WARNING,
+                                  "tcp_rates[%d]=%f should be strictly lesser than tcp_rates[%d]=%f (corrected as %f)\n", i,
                                   (*parameters).tcp_rates[i as usize] as
                                       libc::c_double,
                                   i.wrapping_sub(1i32 as
@@ -8243,11 +7858,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
                                       libc::c_double,
                                   rate_i_m_1_corr as libc::c_double);
         } else {
-          opj_event_msg(
-            p_manager,
-            2i32,
-            b"tcp_rates[%d]=%f should be strictly lesser than tcp_rates[%d]=%f\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+            "tcp_rates[%d]=%f should be strictly lesser than tcp_rates[%d]=%f\n",
             i,
             (*parameters).tcp_rates[i as usize] as libc::c_double,
             i.wrapping_sub(1u32),
@@ -8269,11 +7881,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
             .wrapping_sub(1u32)
           && (*parameters).tcp_distoratio[i as usize] == 0 as libc::c_float)
       {
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"tcp_distoratio[%d]=%f should be strictly greater than tcp_distoratio[%d]=%f\n\x00"
-            as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "tcp_distoratio[%d]=%f should be strictly greater than tcp_distoratio[%d]=%f\n",
           i,
           (*parameters).tcp_distoratio[i as usize] as libc::c_double,
           i.wrapping_sub(1u32),
@@ -8347,9 +7956,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       i += 1;
     }
     if cap != 0 {
-      opj_event_msg(p_manager, 2i32,
-                          b"The desired maximum codestream size has limited\nat least one of the desired quality layers\n\x00"
-                              as *const u8 as *const libc::c_char);
+      event_msg!(p_manager, EVT_WARNING,
+                          "The desired maximum codestream size has limited\nat least one of the desired quality layers\n");
     }
   }
   if (*parameters).rsiz as libc::c_int >= 0x3i32
@@ -8367,11 +7975,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     if (*parameters).rsiz as libc::c_int == 0x5i32
       || (*parameters).rsiz as libc::c_int == 0x6i32
     {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"JPEG 2000 Scalable Digital Cinema profiles not yet supported\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "JPEG 2000 Scalable Digital Cinema profiles not yet supported\n",
       );
       (*parameters).rsiz = 0 as OPJ_UINT16
     } else {
@@ -8381,20 +7986,15 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       }
     }
   } else if (*parameters).rsiz as libc::c_int == 0x7i32 {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"JPEG 2000 Long Term Storage profile not yet supported\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "JPEG 2000 Long Term Storage profile not yet supported\n",
     );
     (*parameters).rsiz = 0 as OPJ_UINT16
   } else if (*parameters).rsiz as libc::c_int >= 0x100i32
     && (*parameters).rsiz as libc::c_int <= 0x300i32 | 0xbi32
   {
-    opj_event_msg(
-      p_manager,
-      2i32,
-      b"JPEG 2000 Broadcast profiles not yet supported\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_WARNING,
+      "JPEG 2000 Broadcast profiles not yet supported\n",
     );
     (*parameters).rsiz = 0 as OPJ_UINT16
   } else if (*parameters).rsiz as libc::c_int >= 0x400i32
@@ -8406,16 +8006,12 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     }
   } else if (*parameters).rsiz as libc::c_int & 0x8000i32 != 0 {
     if (*parameters).rsiz as libc::c_int == 0x8000i32 | 0i32 {
-      opj_event_msg(p_manager, 2i32,
-                          b"JPEG 2000 Part-2 profile defined\nbut no Part-2 extension enabled.\nProfile set to NONE.\n\x00"
-                              as *const u8 as *const libc::c_char);
+      event_msg!(p_manager, EVT_WARNING,
+                          "JPEG 2000 Part-2 profile defined\nbut no Part-2 extension enabled.\nProfile set to NONE.\n");
       (*parameters).rsiz = 0 as OPJ_UINT16
     } else if (*parameters).rsiz as libc::c_int != 0x8000i32 | 0x100i32 {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Unsupported Part-2 extension enabled\nProfile set to NONE.\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Unsupported Part-2 extension enabled\nProfile set to NONE.\n",
       );
       (*parameters).rsiz = 0 as OPJ_UINT16
     }
@@ -8445,11 +8041,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize);
     (*cp).m_specific_param.m_enc.m_matrice = opj_malloc(array_size) as *mut OPJ_INT32;
     if (*cp).m_specific_param.m_enc.m_matrice.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to allocate copy of user encoding parameters matrix \n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to allocate copy of user encoding parameters matrix \n",
       );
       return 0i32;
     }
@@ -8471,11 +8064,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       opj_malloc(strlen((*parameters).cp_comment).wrapping_add(1))
         as *mut libc::c_char;
     if (*cp).comment.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to allocate copy of comment string\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to allocate copy of comment string\n",
       );
       return 0i32;
     }
@@ -8493,10 +8083,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         .wrapping_add(1),
     ) as *mut libc::c_char;
     if (*cp).comment.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to allocate comment string\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to allocate comment string\n",
       );
       return 0i32;
     }
@@ -8512,18 +8100,14 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   */
   if (*parameters).tile_size_on != 0 {
     if (*cp).tdx == 0u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Invalid tile width\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Invalid tile width\n",
       );
       return 0i32;
     }
     if (*cp).tdy == 0u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Invalid tile height\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Invalid tile height\n",
       );
       return 0i32;
     }
@@ -8537,11 +8121,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     ) as OPJ_UINT32;
     /* Check that the number of tiles is valid */
     if (*cp).tw > (65535u32).wrapping_div((*cp).th) {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Invalid number of tiles : %u x %u (maximum fixed by jpeg2000 norm is 65535 tiles)\n\x00"
-          as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Invalid number of tiles : %u x %u (maximum fixed by jpeg2000 norm is 65535 tiles)\n",
         (*cp).tw,
         (*cp).th,
       );
@@ -8566,11 +8147,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     core::mem::size_of::<opj_tcp_t>() as usize,
   ) as *mut opj_tcp_t;
   if (*cp).tcps.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to allocate tile coding parameters\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to allocate tile coding parameters\n",
     );
     return 0i32;
   }
@@ -8618,10 +8196,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
           let mut tcp_poc: *mut opj_poc_t =
             &mut *(*tcp).pocs.as_mut_ptr().offset(numpocs_tile as isize) as *mut opj_poc_t;
           if (*parameters).POC[numpocs_tile as usize].compno0 >= (*image).numcomps {
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Invalid compno0 for POC %d\n\x00" as *const u8 as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Invalid compno0 for POC %d\n",
               i,
             );
             return 0i32;
@@ -8662,11 +8238,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       core::mem::size_of::<opj_tccp_t>() as usize,
     ) as *mut opj_tccp_t;
     if (*tcp).tccps.is_null() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to allocate tile component coding parameters\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to allocate tile component coding parameters\n",
       );
       return 0i32;
     }
@@ -8679,10 +8252,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       let mut l_dc_shift =
         ((*parameters).mct_data as *mut OPJ_BYTE).offset(lMctSize as isize) as *mut OPJ_INT32;
       if lTmpBuf.is_null() {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Not enough memory to allocate temp buffer\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Not enough memory to allocate temp buffer\n",
         );
         return 0i32;
       }
@@ -8691,11 +8262,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       if (*tcp).m_mct_coding_matrix.is_null() {
         opj_free(lTmpBuf as *mut libc::c_void);
         lTmpBuf = 0 as *mut OPJ_FLOAT32;
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Not enough memory to allocate encoder MCT coding matrix \n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Not enough memory to allocate encoder MCT coding matrix \n",
         );
         return 0i32;
       }
@@ -8713,11 +8281,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       if (*tcp).m_mct_decoding_matrix.is_null() {
         opj_free(lTmpBuf as *mut libc::c_void);
         lTmpBuf = 0 as *mut OPJ_FLOAT32;
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Not enough memory to allocate encoder MCT decoding matrix \n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Not enough memory to allocate encoder MCT decoding matrix \n",
         );
         return 0i32;
       }
@@ -8726,11 +8291,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       {
         opj_free(lTmpBuf as *mut libc::c_void);
         lTmpBuf = 0 as *mut OPJ_FLOAT32;
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Failed to inverse encoder MCT decoding matrix \n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Failed to inverse encoder MCT decoding matrix \n",
         );
         return 0i32;
       }
@@ -8741,11 +8303,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       if (*tcp).mct_norms.is_null() {
         opj_free(lTmpBuf as *mut libc::c_void);
         lTmpBuf = 0 as *mut OPJ_FLOAT32;
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Not enough memory to allocate encoder MCT norms \n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Not enough memory to allocate encoder MCT norms \n",
         );
         return 0i32;
       }
@@ -8763,10 +8322,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       }
       if opj_j2k_setup_mct_encoding(tcp, image) == 0i32 {
         /* free will be handled by opj_j2k_destroy */
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Failed to setup j2k mct encoding\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Failed to setup j2k mct encoding\n",
         );
         return 0i32;
       }
@@ -8784,11 +8341,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
           || (*(*image).comps.offset(0)).dy
             != (*(*image).comps.offset(2)).dy
         {
-          opj_event_msg(
-            p_manager,
-            2i32,
-            b"Cannot perform MCT on components with different sizes. Disabling MCT.\n\x00"
-              as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+            "Cannot perform MCT on components with different sizes. Disabling MCT.\n",
           ); /* 0 => one precinct || 1 => custom precinct  */
           (*tcp).mct = 0 as OPJ_UINT32
         }
@@ -8927,7 +8481,7 @@ unsafe fn opj_j2k_add_mhmarker(
       (*cstr_index).marker = 0 as *mut opj_marker_info_t;
       (*cstr_index).maxmarknum = 0 as OPJ_UINT32;
       (*cstr_index).marknum = 0 as OPJ_UINT32;
-      /* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n"); */
+      /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n"); */
       return 0i32;
     }
     (*cstr_index).marker = new_marker
@@ -8980,7 +8534,7 @@ unsafe fn opj_j2k_add_tlmarker(
       (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum =
         0 as OPJ_UINT32;
       (*(*cstr_index).tile_index.offset(tileno as isize)).marknum = 0 as OPJ_UINT32;
-      /* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n"); */
+      /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n"); */
       return 0i32;
     }
     let ref mut fresh24 = (*(*cstr_index).tile_index.offset(tileno as isize)).marker;
@@ -9329,7 +8883,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
         (*p_tcp).m_mct_records = 0 as *mut opj_mct_data_t;
         (*p_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
         (*p_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
-        /* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
+        /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
         return 0i32;
       }
       (*p_tcp).m_mct_records = new_mct_records;
@@ -9387,7 +8941,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
       (*p_tcp).m_mct_records = 0 as *mut opj_mct_data_t;
       (*p_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
       (*p_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
-      /* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
+      /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
       return 0i32;
     }
     (*p_tcp).m_mct_records = new_mct_records_0;
@@ -9469,7 +9023,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_mct_encoding(
       (*p_tcp).m_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
       (*p_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
       (*p_tcp).m_nb_mcc_records = 0 as OPJ_UINT32;
-      /* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
+      /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
       return 0i32;
     }
     (*p_tcp).m_mcc_records = new_mcc_records;
@@ -9558,11 +9112,8 @@ unsafe extern "C" fn opj_j2k_encoding_validation(
   if (*(*(*p_j2k).m_cp.tcps).tccps).numresolutions <= 0u32
     || (*(*(*p_j2k).m_cp.tcps).tccps).numresolutions > 32u32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Number of resolutions is too high in comparison to the size of tiles\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Number of resolutions is too high in comparison to the size of tiles\n",
     );
     return 0i32;
   }
@@ -9572,11 +9123,8 @@ unsafe extern "C" fn opj_j2k_encoding_validation(
         .numresolutions
         .wrapping_sub(1u32)) as OPJ_UINT32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Number of resolutions is too high in comparison to the size of tiles\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Number of resolutions is too high in comparison to the size of tiles\n",
     );
     return 0i32;
   }
@@ -9586,11 +9134,8 @@ unsafe extern "C" fn opj_j2k_encoding_validation(
         .numresolutions
         .wrapping_sub(1u32)) as OPJ_UINT32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Number of resolutions is too high in comparison to the size of tiles\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Number of resolutions is too high in comparison to the size of tiles\n",
     );
     return 0i32;
   }
@@ -9649,10 +9194,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
   (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::MHSOC;
   /* Try to read the SOC marker, the codestream must begin with SOC marker */
   if opj_j2k_read_soc(p_j2k, p_stream, p_manager) == 0 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Expected a SOC marker \n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Expected a SOC marker \n",
     );
     return 0i32;
   }
@@ -9664,10 +9207,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
     p_manager,
   ) != 2
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Stream too short\n",
     );
     return 0i32;
   }
@@ -9677,11 +9218,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
   while l_current_marker != J2KMarker::SOT {
     /* Check if the current marker ID is valid */
     if l_current_marker.is_invalid() {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"A marker ID was expected (0xff--) instead of %.8x\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "A marker ID was expected (0xff--) instead of %.8x\n",
         l_current_marker.as_u32(),
       );
       return 0i32;
@@ -9691,11 +9229,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
     /* Manage case where marker is unknown */
     if l_marker_handler.is_unknown() {
       if opj_j2k_read_unk(p_j2k, p_stream, &mut l_current_marker, p_manager) == 0 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Unknown marker has been detected and generated error.\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Unknown marker has been detected and generated error.\n",
         );
         return 0i32;
       }
@@ -9718,10 +9253,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
     }
     /* Check if the marker is known and if it is the right place to find it */
     if (*p_j2k).m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Marker is not compliant with its position\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Marker is not compliant with its position\n",
       );
       return 0i32;
     }
@@ -9733,10 +9266,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
       p_manager,
     ) != 2
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream too short\n",
       );
       return 0i32;
     }
@@ -9747,10 +9278,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
       2 as OPJ_UINT32,
     ); /* Subtract the size of the marker ID already read */
     if l_marker_size < 2u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Invalid marker size\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Invalid marker size\n",
       );
       return 0i32;
     }
@@ -9766,10 +9295,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
         opj_free((*p_j2k).m_specific_param.m_decoder.m_header_data as *mut libc::c_void);
         (*p_j2k).m_specific_param.m_decoder.m_header_data = 0 as *mut OPJ_BYTE;
         (*p_j2k).m_specific_param.m_decoder.m_header_data_size = 0 as OPJ_UINT32;
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Not enough memory to read header\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Not enough memory to read header\n",
         );
         return 0i32;
       }
@@ -9784,10 +9311,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
       p_manager,
     ) != l_marker_size as usize
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream too short\n",
       );
       return 0i32;
     }
@@ -9799,11 +9324,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
       p_manager,
     ) == 0
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Marker handler function failed to read the marker segment\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Marker handler function failed to read the marker segment\n",
       );
       return 0i32;
     }
@@ -9818,10 +9340,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
         l_marker_size.wrapping_add(4u32),
       )
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Not enough memory to add mh marker\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Not enough memory to add mh marker\n",
       );
       return 0i32;
     }
@@ -9833,10 +9353,8 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
       p_manager,
     ) != 2
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream too short\n",
       );
       return 0i32;
     }
@@ -9844,41 +9362,31 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
     l_current_marker = J2KMarker::from_buffer((*p_j2k).m_specific_param.m_decoder.m_header_data);
   }
   if l_has_siz == 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"required SIZ marker not found in main header\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "required SIZ marker not found in main header\n",
     );
     return 0i32;
   }
   if l_has_cod == 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"required COD marker not found in main header\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "required COD marker not found in main header\n",
     );
     return 0i32;
   }
   if l_has_qcd == 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"required QCD marker not found in main header\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "required QCD marker not found in main header\n",
     );
     return 0i32;
   }
   if opj_j2k_merge_ppm(&mut (*p_j2k).m_cp, p_manager) == 0 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Failed to merge PPM data\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to merge PPM data\n",
     );
     return 0i32;
   }
-  opj_event_msg(
-    p_manager,
-    4i32,
-    b"Main header has been correctly decoded.\n\x00" as *const u8 as *const libc::c_char,
+  event_msg!(p_manager, EVT_INFO,
+    "Main header has been correctly decoded.\n",
   );
   /* Position of the last element if the main header */
   (*(*p_j2k).cstr_index).main_head_end = (opj_stream_tell(p_stream) as OPJ_UINT32)
@@ -10113,10 +9621,8 @@ unsafe extern "C" fn opj_j2k_copy_default_tcp_and_create_tcd(
   if opj_tcd_init((*p_j2k).m_tcd, l_image, &mut (*p_j2k).m_cp, (*p_j2k).m_tp) == 0 {
     opj_tcd_destroy((*p_j2k).m_tcd);
     (*p_j2k).m_tcd = 0 as *mut opj_tcd;
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Cannot decode tile, memory error\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Cannot decode tile, memory error\n",
     );
     return 0i32;
   }
@@ -10445,10 +9951,8 @@ unsafe fn opj_j2k_need_nb_tile_parts_correction(
       p_manager,
     ) != 2
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream too short\n",
       );
       return 0i32;
     }
@@ -10460,10 +9964,8 @@ unsafe fn opj_j2k_need_nb_tile_parts_correction(
     );
     /* Check marker size for SOT Marker */
     if l_marker_size != 10u32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Inconsistent marker size\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Inconsistent marker size\n",
       );
       return 0i32;
     }
@@ -10476,10 +9978,8 @@ unsafe fn opj_j2k_need_nb_tile_parts_correction(
       p_manager,
     ) != l_marker_size as usize
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream too short\n",
       );
       return 0i32;
     }
@@ -10575,10 +10075,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
           p_manager,
         ) != 2
         {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Stream too short\n",
           );
           return 0i32;
         }
@@ -10590,10 +10088,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
         );
         /* Check marker size (does not include marker ID but includes marker size) */
         if l_marker_size < 2u32 {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Inconsistent marker size\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Inconsistent marker size\n",
           );
           return 0i32;
         }
@@ -10621,11 +10117,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
           let l_marker_handler = l_current_marker;
           /* Check if the marker is known and if it is the right place to find it */
           if (*p_j2k).m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Marker is not compliant with its position\n\x00" as *const u8
-                as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Marker is not compliant with its position\n",
             );
             return 0i32;
           }
@@ -10636,11 +10129,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
             /* If we are here, this means we consider this marker as known & we will read it */
             /* Check enough bytes left in stream before allocation */
             if l_marker_size as OPJ_OFF_T > opj_stream_get_number_byte_left(p_stream) {
-              opj_event_msg(
-                p_manager,
-                1i32,
-                b"Marker size inconsistent with stream length\n\x00" as *const u8
-                  as *const libc::c_char,
+              event_msg!(p_manager, EVT_ERROR,
+                "Marker size inconsistent with stream length\n",
               );
               return 0i32;
             }
@@ -10653,10 +10143,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
               (*p_j2k).m_specific_param.m_decoder.m_header_data = 0 as *mut OPJ_BYTE;
               (*p_j2k).m_specific_param.m_decoder.m_header_data_size =
                 0 as OPJ_UINT32;
-              opj_event_msg(
-                p_manager,
-                1i32,
-                b"Not enough memory to read header\n\x00" as *const u8 as *const libc::c_char,
+              event_msg!(p_manager, EVT_ERROR,
+                "Not enough memory to read header\n",
               );
               return 0i32;
             }
@@ -10671,10 +10159,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
             p_manager,
           ) != l_marker_size as usize
           {
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Stream too short\n",
             );
             return 0i32;
           }
@@ -10686,11 +10172,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
             p_manager,
           ) == 0
           {
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Fail to read the current marker segment (%#x)\n\x00" as *const u8
-                as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Fail to read the current marker segment (%#x)\n",
               l_current_marker.as_u32(),
             );
             return 0i32;
@@ -10707,10 +10190,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
               l_marker_size.wrapping_add(4u32),
             )
           {
-            opj_event_msg(
-              p_manager,
-              1i32,
-              b"Not enough memory to add tl marker\n\x00" as *const u8 as *const libc::c_char,
+            event_msg!(p_manager, EVT_ERROR,
+              "Not enough memory to add tl marker\n",
             );
             return 0i32;
           }
@@ -10731,10 +10212,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
               p_manager,
             ) != (*p_j2k).m_specific_param.m_decoder.m_sot_length as i64
             {
-              opj_event_msg(
-                p_manager,
-                1i32,
-                b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+              event_msg!(p_manager, EVT_ERROR,
+                "Stream too short\n",
               );
               return 0i32;
             }
@@ -10749,10 +10228,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
               p_manager,
             ) != 2
             {
-              opj_event_msg(
-                p_manager,
-                1i32,
-                b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+              event_msg!(p_manager, EVT_ERROR,
+                "Stream too short\n",
               );
               return 0i32;
             }
@@ -10794,11 +10271,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
           p_manager,
         ) == 0
         {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"opj_j2k_apply_nb_tile_parts_correction error\n\x00" as *const u8
-              as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "opj_j2k_apply_nb_tile_parts_correction error\n",
           );
           return 0i32;
         }
@@ -10824,10 +10298,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
             }
             l_tile_no += 1;
           }
-          opj_event_msg(
-            p_manager,
-            2i32,
-            b"Non conformant codestream TPsot==TNsot.\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_WARNING,
+            "Non conformant codestream TPsot==TNsot.\n",
           );
         }
       }
@@ -10875,9 +10347,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
           l_tile_no_0 += 1;
         }
         if l_tile_no_0 < l_nb_tiles {
-          opj_event_msg(p_manager, 4i32,
-                                  b"Tile %u has TPsot == 0 and TNsot == 0, but no other tile-parts were found. EOC is also missing.\n\x00"
-                                      as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_INFO,
+                                  "Tile %u has TPsot == 0 and TNsot == 0, but no other tile-parts were found. EOC is also missing.\n",
                                   l_tile_no_0);
           (*p_j2k).m_current_tile_number = l_tile_no_0;
           l_current_marker = J2KMarker::EOC;
@@ -10885,10 +10356,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
           break;
         }
       }
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream too short\n",
       );
       return 0i32;
     } else {
@@ -10926,26 +10395,20 @@ pub(crate) unsafe extern "C" fn opj_j2k_read_tile_header(
     p_manager,
   ) == 0
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Failed to merge PPT data\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to merge PPT data\n",
     );
     return 0i32;
   }
   /*FIXME ???*/
   if opj_tcd_init_decode_tile((*p_j2k).m_tcd, (*p_j2k).m_current_tile_number, p_manager) == 0 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Cannot decode tile, memory error\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Cannot decode tile, memory error\n",
     );
     return 0i32;
   }
-  opj_event_msg(
-    p_manager,
-    4i32,
-    b"Header of tile %d / %d has been read.\n\x00" as *const u8 as *const libc::c_char,
+  event_msg!(p_manager, EVT_INFO,
+    "Header of tile %d / %d has been read.\n",
     (*p_j2k)
       .m_current_tile_number
       .wrapping_add(1u32),
@@ -11031,10 +10494,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode_tile(
   {
     opj_j2k_tcp_destroy(l_tcp);
     (*p_j2k).m_specific_param.m_decoder.m_state |= J2KState::ERR;
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Failed to decode.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to decode.\n",
     );
     return 0i32;
   }
@@ -11069,10 +10530,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode_tile(
       p_manager,
     ) != 2
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream too short\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream too short\n",
       );
       return 0i32;
     }
@@ -11083,17 +10542,13 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode_tile(
     } else if l_current_marker != J2KMarker::SOT {
       if opj_stream_get_number_byte_left(p_stream) == 0i64 {
         (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC;
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"Stream does not end with EOC\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "Stream does not end with EOC\n",
         );
         return 1i32;
       }
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Stream too short, expected SOT\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Stream too short, expected SOT\n",
       );
       return 0i32;
     }
@@ -11355,11 +10810,8 @@ unsafe fn opj_j2k_update_image_dimensions(
       || (*p_image).x1 > 2147483647 as OPJ_UINT32
       || (*p_image).y1 > 2147483647 as OPJ_UINT32
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Image coordinates above INT_MAX are not supported\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Image coordinates above INT_MAX are not supported\n",
       );
       return 0i32;
     }
@@ -11375,11 +10827,8 @@ unsafe fn opj_j2k_update_image_dimensions(
         (*l_img_comp).factor as OPJ_INT32,
       );
     if l_w < 0i32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Size x of the decoded component image is incorrect (comp[%d].w=%d).\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Size x of the decoded component image is incorrect (comp[%d].w=%d).\n",
         it_comp,
         l_w,
       );
@@ -11392,11 +10841,8 @@ unsafe fn opj_j2k_update_image_dimensions(
         (*l_img_comp).factor as OPJ_INT32,
       );
     if l_h < 0i32 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Size y of the decoded component image is incorrect (comp[%d].h=%d).\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Size y of the decoded component image is incorrect (comp[%d].h=%d).\n",
         it_comp,
         l_h,
       );
@@ -11418,11 +10864,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_components(
   let mut i: OPJ_UINT32 = 0;
   let mut already_mapped = 0 as *mut OPJ_BOOL;
   if (*p_j2k).m_private_image.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"opj_read_header() should be called before opj_set_decoded_components().\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "opj_read_header() should be called before opj_set_decoded_components().\n",
     );
     return 0i32;
   }
@@ -11436,20 +10879,16 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_components(
   i = 0 as OPJ_UINT32;
   while i < numcomps {
     if *comps_indices.offset(i as isize) >= (*(*p_j2k).m_private_image).numcomps {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Invalid component index: %u\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Invalid component index: %u\n",
         *comps_indices.offset(i as isize),
       );
       opj_free(already_mapped as *mut libc::c_void);
       return 0i32;
     }
     if *already_mapped.offset(*comps_indices.offset(i as isize) as isize) != 0 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Component index %u used several times\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Component index %u used several times\n",
         *comps_indices.offset(i as isize),
       );
       opj_free(already_mapped as *mut libc::c_void);
@@ -11524,11 +10963,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
     if (*p_j2k).m_specific_param.m_decoder.m_state
       != J2KState::TPHSOT
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Need to decode the main header before begin to decode the remaining codestream.\n\x00"
-          as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Need to decode the main header before begin to decode the remaining codestream.\n",
       );
       return 0i32;
     }
@@ -11542,11 +10978,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
     it_comp += 1;
   }
   if p_start_x == 0 && p_start_y == 0 && p_end_x == 0 && p_end_y == 0 {
-    opj_event_msg(
-      p_manager,
-      4i32,
-      b"No decoded area parameters, set the decoded area to the whole image\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_INFO,
+      "No decoded area parameters, set the decoded area to the whole image\n",
     );
     (*p_j2k).m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
     (*p_j2k).m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
@@ -11562,26 +10995,21 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
   /* Check if the positions provided by the user are correct */
   /* Left */
   if p_start_x < 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Left position of the decoded area (region_x0=%d) should be >= 0.\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Left position of the decoded area (region_x0=%d) should be >= 0.\n",
       p_start_x,
     );
     return 0i32;
   } else {
     if p_start_x as OPJ_UINT32 > (*l_image).x1 {
-      opj_event_msg(p_manager, 1i32,
-                          b"Left position of the decoded area (region_x0=%d) is outside the image area (Xsiz=%d).\n\x00"
-                              as *const u8 as *const libc::c_char, p_start_x,
+      event_msg!(p_manager, EVT_ERROR,
+                          "Left position of the decoded area (region_x0=%d) is outside the image area (Xsiz=%d).\n", p_start_x,
                           (*l_image).x1);
       return 0i32;
     } else {
       if (p_start_x as OPJ_UINT32) < (*l_image).x0 {
-        opj_event_msg(p_manager, 2i32,
-                              b"Left position of the decoded area (region_x0=%d) is outside the image area (XOsiz=%d).\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "Left position of the decoded area (region_x0=%d) is outside the image area (XOsiz=%d).\n",
                               p_start_x, (*l_image).x0);
         (*p_j2k).m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
         (*p_image).x0 = (*l_image).x0
@@ -11595,30 +11023,23 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
   }
   /* Up */
   if p_start_y < 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Up position of the decoded area (region_y0=%d) should be >= 0.\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Up position of the decoded area (region_y0=%d) should be >= 0.\n",
       p_start_y,
     );
     return 0i32;
   } else {
     if p_start_y as OPJ_UINT32 > (*l_image).y1 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Up position of the decoded area (region_y0=%d) is outside the image area (Ysiz=%d).\n\x00"
-          as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Up position of the decoded area (region_y0=%d) is outside the image area (Ysiz=%d).\n",
         p_start_y,
         (*l_image).y1,
       );
       return 0i32;
     } else {
       if (p_start_y as OPJ_UINT32) < (*l_image).y0 {
-        opj_event_msg(p_manager, 2i32,
-                              b"Up position of the decoded area (region_y0=%d) is outside the image area (YOsiz=%d).\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "Up position of the decoded area (region_y0=%d) is outside the image area (YOsiz=%d).\n",
                               p_start_y, (*l_image).y0);
         (*p_j2k).m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
         (*p_image).y0 = (*l_image).y0
@@ -11632,26 +11053,21 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
   }
   /* Right */
   if p_end_x <= 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Right position of the decoded area (region_x1=%d) should be > 0.\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Right position of the decoded area (region_x1=%d) should be > 0.\n",
       p_end_x,
     );
     return 0i32;
   } else {
     if (p_end_x as OPJ_UINT32) < (*l_image).x0 {
-      opj_event_msg(p_manager, 1i32,
-                          b"Right position of the decoded area (region_x1=%d) is outside the image area (XOsiz=%d).\n\x00"
-                              as *const u8 as *const libc::c_char, p_end_x,
+      event_msg!(p_manager, EVT_ERROR,
+                          "Right position of the decoded area (region_x1=%d) is outside the image area (XOsiz=%d).\n", p_end_x,
                           (*l_image).x0);
       return 0i32;
     } else {
       if p_end_x as OPJ_UINT32 > (*l_image).x1 {
-        opj_event_msg(p_manager, 2i32,
-                              b"Right position of the decoded area (region_x1=%d) is outside the image area (Xsiz=%d).\n\x00"
-                                  as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+                              "Right position of the decoded area (region_x1=%d) is outside the image area (Xsiz=%d).\n",
                               p_end_x, (*l_image).x1);
         (*p_j2k).m_specific_param.m_decoder.m_end_tile_x = (*l_cp).tw;
         (*p_image).x1 = (*l_image).x1
@@ -11665,27 +11081,22 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
   }
   /* Bottom */
   if p_end_y <= 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Bottom position of the decoded area (region_y1=%d) should be > 0.\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Bottom position of the decoded area (region_y1=%d) should be > 0.\n",
       p_end_y,
     );
     return 0i32;
   } else {
     if (p_end_y as OPJ_UINT32) < (*l_image).y0 {
-      opj_event_msg(p_manager, 1i32,
-                          b"Bottom position of the decoded area (region_y1=%d) is outside the image area (YOsiz=%d).\n\x00"
-                              as *const u8 as *const libc::c_char, p_end_y,
+      event_msg!(p_manager, EVT_ERROR,
+                          "Bottom position of the decoded area (region_y1=%d) is outside the image area (YOsiz=%d).\n", p_end_y,
                           (*l_image).y0);
       return 0i32;
     }
   }
   if p_end_y as OPJ_UINT32 > (*l_image).y1 {
-    opj_event_msg(p_manager, 2i32,
-                      b"Bottom position of the decoded area (region_y1=%d) is outside the image area (Ysiz=%d).\n\x00"
-                          as *const u8 as *const libc::c_char, p_end_y,
+    event_msg!(p_manager, EVT_WARNING,
+                      "Bottom position of the decoded area (region_y1=%d) is outside the image area (Ysiz=%d).\n", p_end_y,
                       (*l_image).y1);
     (*p_j2k).m_specific_param.m_decoder.m_end_tile_y = (*l_cp).th;
     (*p_image).y1 = (*l_image).y1
@@ -11701,10 +11112,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
     .set_m_discard_tiles(1 as OPJ_BITFIELD);
   ret = opj_j2k_update_image_dimensions(p_image, p_manager);
   if ret != 0 {
-    opj_event_msg(
-      p_manager,
-      4i32,
-      b"Setting decoding area to %d,%d,%d,%d\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_INFO,
+      "Setting decoding area to %d,%d,%d,%d\n",
       (*p_image).x0,
       (*p_image).y0,
       (*p_image).x1,
@@ -11927,10 +11336,8 @@ unsafe extern "C" fn opj_j2k_write_SPCod_SPCoc(
   assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
   assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps); /* SPcoc (G) */
   if *p_header_size < 5u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error writing SPCod SPCoc element\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error writing SPCod SPCoc element\n",
     ); /* SPcoc (H) */
     return 0i32;
   } /* SPcoc (I_i) */
@@ -11965,10 +11372,8 @@ unsafe extern "C" fn opj_j2k_write_SPCod_SPCoc(
   *p_header_size = (*p_header_size).wrapping_sub(5u32);
   if (*l_tccp).csty & 0x1u32 != 0 {
     if *p_header_size < (*l_tccp).numresolutions {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error writing SPCod SPCoc element\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error writing SPCod SPCoc element\n",
       );
       return 0i32;
     }
@@ -12025,10 +11430,8 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
   l_current_ptr = p_header_data;
   /* make sure room is sufficient */
   if *p_header_size < 5u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading SPCod SPCoc element\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading SPCod SPCoc element\n",
     );
     return 0i32;
   }
@@ -12040,11 +11443,8 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
   ); /* tccp->numresolutions = read() + 1 */
   (*l_tccp).numresolutions = (*l_tccp).numresolutions.wrapping_add(1);
   if (*l_tccp).numresolutions > 33u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Invalid value for numresolutions : %d, max value is set in openjpeg.h at %d\n\x00"
-        as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Invalid value for numresolutions : %d, max value is set in openjpeg.h at %d\n",
       (*l_tccp).numresolutions,
       33i32,
     );
@@ -12053,9 +11453,8 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
   l_current_ptr = l_current_ptr.offset(1);
   /* If user wants to remove more resolutions than the codestream contains, return error */
   if (*l_cp).m_specific_param.m_dec.m_reduce >= (*l_tccp).numresolutions {
-    opj_event_msg(p_manager, 1i32,
-                      b"Error decoding component %d.\nThe number of resolutions to remove (%d) is greater or equal than the number of resolutions of this component (%d)\nModify the cp_reduce parameter.\n\n\x00"
-                          as *const u8 as *const libc::c_char, compno,
+    event_msg!(p_manager, EVT_ERROR,
+                      "Error decoding component %d.\nThe number of resolutions to remove (%d) is greater or equal than the number of resolutions of this component (%d)\nModify the cp_reduce parameter.\n\n", compno,
                       (*l_cp).m_specific_param.m_dec.m_reduce,
                       (*l_tccp).numresolutions);
     (*p_j2k).m_specific_param.m_decoder.m_state |= J2KState::ERR;
@@ -12083,11 +11482,8 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
     || (*l_tccp).cblkh > 10u32
     || (*l_tccp).cblkw.wrapping_add((*l_tccp).cblkh) > 12u32
   {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading SPCod SPCoc element, Invalid cblkw/cblkh combination\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading SPCod SPCoc element, Invalid cblkw/cblkh combination\n",
     );
     return 0i32;
   }
@@ -12100,11 +11496,8 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
   l_current_ptr = l_current_ptr.offset(1);
   if (*l_tccp).cblksty & 0x80u32 != 0u32 {
     /* We do not support HT mixed mode yet.  For conformance, it should be supported.*/
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading SPCod SPCoc element. Unsupported Mixed HT code-block style found\n\x00"
-        as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading SPCod SPCoc element. Unsupported Mixed HT code-block style found\n",
     );
     return 0i32;
   }
@@ -12116,11 +11509,8 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
   );
   l_current_ptr = l_current_ptr.offset(1);
   if (*l_tccp).qmfbid > 1u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading SPCod SPCoc element, Invalid transformation found\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading SPCod SPCoc element, Invalid transformation found\n",
     );
     return 0i32;
   }
@@ -12128,10 +11518,8 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
   /* use custom precinct size ? */
   if (*l_tccp).csty & 0x1u32 != 0 {
     if *p_header_size < (*l_tccp).numresolutions {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error reading SPCod SPCoc element\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error reading SPCod SPCoc element\n",
       );
       return 0i32;
     }
@@ -12145,10 +11533,8 @@ unsafe extern "C" fn opj_j2k_read_SPCod_SPCoc(
         && (l_tmp & 0xfu32 == 0u32
           || l_tmp >> 4i32 == 0u32)
       {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Invalid precinct size\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Invalid precinct size\n",
         );
         return 0i32;
       }
@@ -12381,10 +11767,8 @@ unsafe extern "C" fn opj_j2k_write_SQcd_SQcc(
   if (*l_tccp).qntsty == 0u32 {
     l_header_size = (1u32).wrapping_add(l_num_bands);
     if *p_header_size < l_header_size {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error writing SQcd SQcc element\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error writing SQcd SQcc element\n",
       );
       return 0i32;
     }
@@ -12411,10 +11795,8 @@ unsafe extern "C" fn opj_j2k_write_SQcd_SQcc(
     l_header_size = (1u32)
       .wrapping_add((2u32).wrapping_mul(l_num_bands));
     if *p_header_size < l_header_size {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error writing SQcd SQcc element\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error writing SQcd SQcc element\n",
       );
       return 0i32;
     }
@@ -12485,10 +11867,8 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   l_current_ptr = p_header_data;
   if *p_header_size < 1u32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error reading SQcd or SQcc element\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error reading SQcd or SQcc element\n",
     );
     return 0i32;
   }
@@ -12507,9 +11887,8 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
       (*p_header_size).wrapping_div(2u32)
     };
     if l_num_band > (3i32 * 33i32 - 2i32) as libc::c_uint {
-      opj_event_msg(p_manager, 2i32,
-                          b"While reading CCP_QNTSTY element inside QCD or QCC marker segment, number of subbands (%d) is greater to OPJ_J2K_MAXBANDS (%d). So we limit the number of elements stored to OPJ_J2K_MAXBANDS (%d) and skip the rest. \n\x00"
-                              as *const u8 as *const libc::c_char, l_num_band,
+      event_msg!(p_manager, EVT_WARNING,
+                          "While reading CCP_QNTSTY element inside QCD or QCC marker segment, number of subbands (%d) is greater to OPJ_J2K_MAXBANDS (%d). So we limit the number of elements stored to OPJ_J2K_MAXBANDS (%d) and skip the rest. \n", l_num_band,
                           3i32 * 33i32 -
                               2i32,
                           3i32 * 33i32 -
@@ -13354,10 +12733,8 @@ unsafe fn opj_j2k_are_all_used_components_decoded(
         .data
         .is_null()
       {
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"Failed to decode component %d\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "Failed to decode component %d\n",
           dec_compno,
         );
         decoded_all_used_components = 0i32
@@ -13371,10 +12748,8 @@ unsafe fn opj_j2k_are_all_used_components_decoded(
         .data
         .is_null()
       {
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"Failed to decode component %d\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "Failed to decode component %d\n",
           compno,
         );
         decoded_all_used_components = 0i32
@@ -13383,10 +12758,8 @@ unsafe fn opj_j2k_are_all_used_components_decoded(
     }
   }
   if decoded_all_used_components == 0i32 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Failed to decode all used components\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to decode all used components\n",
     );
     return 0i32;
   }
@@ -13445,10 +12818,8 @@ unsafe extern "C" fn opj_j2k_decode_tiles(
       p_manager,
     ) == 0
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Failed to decode tile 1/1\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Failed to decode tile 1/1\n",
       );
       return 0i32;
     }
@@ -13514,19 +12885,15 @@ unsafe extern "C" fn opj_j2k_decode_tiles(
       p_manager,
     ) == 0
     {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Failed to decode tile %d/%d\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Failed to decode tile %d/%d\n",
         l_current_tile_no.wrapping_add(1u32),
         (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw),
       );
       return 0i32;
     }
-    opj_event_msg(
-      p_manager,
-      4i32,
-      b"Tile %d/%d has been decoded.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_INFO,
+      "Tile %d/%d has been decoded.\n",
       l_current_tile_no.wrapping_add(1u32),
       (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw),
     );
@@ -13542,10 +12909,8 @@ unsafe extern "C" fn opj_j2k_decode_tiles(
     {
       opj_j2k_tcp_data_destroy(&mut *(*p_j2k).m_cp.tcps.offset(l_current_tile_no as isize));
     }
-    opj_event_msg(
-      p_manager,
-      4i32,
-      b"Image data has been updated with tile %d.\n\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_INFO,
+      "Image data has been updated with tile %d.\n\n",
       l_current_tile_no.wrapping_add(1u32),
     );
     if opj_stream_get_number_byte_left(p_stream) == 0i64
@@ -13644,10 +13009,8 @@ unsafe extern "C" fn opj_j2k_decode_one_tile(
           p_manager,
         ) == 0
         {
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Problem with seek function\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Problem with seek function\n",
           );
           return 0i32;
         }
@@ -13663,10 +13026,8 @@ unsafe extern "C" fn opj_j2k_decode_one_tile(
         p_manager,
       ) == 0
       {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Problem with seek function\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Problem with seek function\n",
         );
         return 0i32;
       }
@@ -13718,10 +13079,8 @@ unsafe extern "C" fn opj_j2k_decode_one_tile(
     {
       return 0i32;
     }
-    opj_event_msg(
-      p_manager,
-      4i32,
-      b"Tile %d/%d has been decoded.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_INFO,
+      "Tile %d/%d has been decoded.\n",
       l_current_tile_no.wrapping_add(1u32),
       (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw),
     );
@@ -13729,10 +13088,8 @@ unsafe extern "C" fn opj_j2k_decode_one_tile(
       return 0i32;
     }
     opj_j2k_tcp_data_destroy(&mut *(*p_j2k).m_cp.tcps.offset(l_current_tile_no as isize));
-    opj_event_msg(
-      p_manager,
-      4i32,
-      b"Image data has been updated with tile %d.\n\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_INFO,
+      "Image data has been updated with tile %d.\n\n",
       l_current_tile_no.wrapping_add(1u32),
     );
     if l_current_tile_no == l_tile_no_to_dec {
@@ -13743,20 +13100,15 @@ unsafe extern "C" fn opj_j2k_decode_one_tile(
         p_manager,
       ) == 0
       {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Problem with seek function\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Problem with seek function\n",
         );
         return 0i32;
       }
       break;
     } else {
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"Tile read, decoded and updated is not the desired one (%d vs %d).\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "Tile read, decoded and updated is not the desired one (%d vs %d).\n",
         l_current_tile_no.wrapping_add(1u32),
         l_tile_no_to_dec.wrapping_add(1u32),
       );
@@ -13953,27 +13305,20 @@ pub(crate) unsafe extern "C" fn opj_j2k_get_tile(
   let mut l_tile_y: OPJ_UINT32 = 0;
   let mut l_img_comp = 0 as *mut opj_image_comp_t;
   if p_image.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"We need an image previously created.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "We need an image previously created.\n",
     );
     return 0i32;
   }
   if (*p_image).numcomps < (*(*p_j2k).m_private_image).numcomps {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Image has less components than codestream.\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Image has less components than codestream.\n",
     );
     return 0i32;
   }
   if tile_index >= (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th) {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Tile index provided by the user is incorrect %d (max = %d) \n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Tile index provided by the user is incorrect %d (max = %d) \n",
       tile_index,
       (*p_j2k)
         .m_cp
@@ -14096,11 +13441,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decoded_resolution_factor(
               .offset(it_comp as isize))
             .numresolutions;
             if res_factor >= max_res {
-              opj_event_msg(
-                p_manager,
-                1i32,
-                b"Resolution factor is greater than the maximum resolution in the component.\n\x00"
-                  as *const u8 as *const libc::c_char,
+              event_msg!(p_manager, EVT_ERROR,
+                "Resolution factor is greater than the maximum resolution in the component.\n",
               );
               return 0i32;
             }
@@ -14146,11 +13488,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
       {
         (*p_j2k).m_specific_param.m_encoder.m_PLT = 0i32
       } else {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Invalid value for option: %s.\n\x00" as *const u8 as *const libc::c_char,
-          *p_option_iter,
+        let tmp_str = unsafe { std::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
+        event_msg!(p_manager, EVT_ERROR,
+          "Invalid value for option: %s.\n",
+          tmp_str,
         );
         return 0i32;
       }
@@ -14173,11 +13514,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
       {
         (*p_j2k).m_specific_param.m_encoder.m_TLM = 0i32
       } else {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Invalid value for option: %s.\n\x00" as *const u8 as *const libc::c_char,
-          *p_option_iter,
+        let tmp_str = unsafe { std::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
+        event_msg!(p_manager, EVT_ERROR,
+          "Invalid value for option: %s.\n",
+          tmp_str,
         );
         return 0i32;
       }
@@ -14196,12 +13536,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
           .offset(strlen(b"GUARD_BITS=\x00" as *const u8 as *const libc::c_char) as isize),
       );
       if numgbits < 0i32 || numgbits > 7i32 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Invalid value for option: %s. Should be in [0,7]\n\x00" as *const u8
-            as *const libc::c_char,
-          *p_option_iter,
+        let tmp_str = unsafe { std::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
+        event_msg!(p_manager, EVT_ERROR,
+          "Invalid value for option: %s. Should be in [0,7]\n",
+          tmp_str,
         );
         return 0i32;
       }
@@ -14218,11 +13556,10 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
         tileno += 1;
       }
     } else {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Invalid option: %s.\n\x00" as *const u8 as *const libc::c_char,
-        *p_option_iter,
+      let tmp_str = unsafe { std::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
+      event_msg!(p_manager, EVT_ERROR,
+        "Invalid option: %s.\n",
+        tmp_str,
       );
       return 0i32;
     }
@@ -14272,10 +13609,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_encode(
         (*l_tilec).data = (*l_img_comp).data;
         (*l_tilec).ownsData = 0i32
       } else if opj_alloc_tile_component_data(l_tilec) == 0 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Error allocating tile component data.\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Error allocating tile component data.",
         );
         if !l_current_data.is_null() {
           opj_free(l_current_data as *mut libc::c_void);
@@ -14293,10 +13628,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_encode(
           if !l_current_data.is_null() {
             opj_free(l_current_data as *mut libc::c_void);
           }
-          opj_event_msg(
-            p_manager,
-            1i32,
-            b"Not enough memory to encode all tiles\n\x00" as *const u8 as *const libc::c_char,
+          event_msg!(p_manager, EVT_ERROR,
+            "Not enough memory to encode all tiles\n",
           );
           return 0i32;
         }
@@ -14315,10 +13648,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_encode(
       opj_j2k_get_tile_data((*p_j2k).m_tcd, l_current_data);
       /* now copy this data into the tile component */
       if opj_tcd_copy_tile_data((*p_j2k).m_tcd, l_current_data, l_current_tile_size) == 0 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Size mismatch between tile data and sent data.\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Size mismatch between tile data and sent data.",
         );
         opj_free(l_current_data as *mut libc::c_void);
         return 0i32;
@@ -14365,10 +13696,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_start_compress(
   assert!(!p_stream.is_null());
   (*p_j2k).m_private_image = opj_image_create0();
   if (*p_j2k).m_private_image.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Failed to allocate image header.\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to allocate image header.",
     );
     return 0i32;
   }
@@ -14412,17 +13741,13 @@ unsafe fn opj_j2k_pre_write_tile(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   if p_tile_index != (*p_j2k).m_current_tile_number {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"The given tile index does not match.\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "The given tile index does not match.",
     );
     return 0i32;
   }
-  opj_event_msg(
-    p_manager,
-    4i32,
-    b"tile number %d / %d\n\x00" as *const u8 as *const libc::c_char,
+  event_msg!(p_manager, EVT_INFO,
+    "tile number %d / %d\n",
     (*p_j2k)
       .m_current_tile_number
       .wrapping_add(1u32),
@@ -15750,10 +15075,8 @@ unsafe extern "C" fn opj_j2k_create_tcd(
   assert!(!p_stream.is_null());
   (*p_j2k).m_tcd = opj_tcd_create(0i32);
   if (*p_j2k).m_tcd.is_null() {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Not enough memory to create Tile Coder\n\x00" as *const u8 as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Not enough memory to create Tile Coder\n",
     );
     return 0i32;
   }
@@ -15780,11 +15103,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_write_tile(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   if opj_j2k_pre_write_tile(p_j2k, p_tile_index, p_stream, p_manager) == 0 {
-    opj_event_msg(
-      p_manager,
-      1i32,
-      b"Error while opj_j2k_pre_write_tile with tile index = %d\n\x00" as *const u8
-        as *const libc::c_char,
+    event_msg!(p_manager, EVT_ERROR,
+      "Error while opj_j2k_pre_write_tile with tile index = %d\n",
       p_tile_index,
     );
     return 0i32;
@@ -15797,10 +15117,8 @@ pub(crate) unsafe extern "C" fn opj_j2k_write_tile(
         .comps
         .offset(j as isize);
       if opj_alloc_tile_component_data(l_tilec) == 0 {
-        opj_event_msg(
-          p_manager,
-          1i32,
-          b"Error allocating tile component data.\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_manager, EVT_ERROR,
+          "Error allocating tile component data.",
         );
         return 0i32;
       }
@@ -15808,19 +15126,14 @@ pub(crate) unsafe extern "C" fn opj_j2k_write_tile(
     }
     /* now copy data into the tile component */
     if opj_tcd_copy_tile_data((*p_j2k).m_tcd, p_data, p_data_size as OPJ_SIZE_T) == 0 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Size mismatch between tile data and sent data.\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Size mismatch between tile data and sent data.",
       );
       return 0i32;
     }
     if opj_j2k_post_write_tile(p_j2k, p_stream, p_manager) == 0 {
-      opj_event_msg(
-        p_manager,
-        1i32,
-        b"Error while opj_j2k_post_write_tile with tile index = %d\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_ERROR,
+        "Error while opj_j2k_post_write_tile with tile index = %d\n",
         p_tile_index,
       );
       return 0i32;

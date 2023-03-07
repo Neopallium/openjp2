@@ -1599,7 +1599,7 @@ fn opj_t1_dec_clnpass_check_segsym(
     v = (v << 1) | v2;
     if v != 0xa {
       /*
-      opj_event_msg(t1->cinfo, EVT_WARNING, "Bad segmentation symbol %x\n", v);
+      event_msg!(t1->cinfo, EVT_WARNING, "Bad segmentation symbol %x\n", v);
       */
     }
   }
@@ -2219,11 +2219,8 @@ fn opj_t1_decode_cblk(
       if !p_manager_mutex.is_null() {
         opj_mutex_lock(p_manager_mutex);
       }
-      opj_event_msg(
-        p_manager,
-        2i32,
-        b"opj_t1_decode_cblk(): unsupported bpno_plus_one = %d >= 31\n\x00" as *const u8
-          as *const libc::c_char,
+      event_msg!(p_manager, EVT_WARNING,
+        "opj_t1_decode_cblk(): unsupported bpno_plus_one = %d >= 31\n",
         bpno_plus_one,
       );
       if !p_manager_mutex.is_null() {
@@ -2369,11 +2366,8 @@ fn opj_t1_decode_cblk(
         if !p_manager_mutex.is_null() {
           opj_mutex_lock(p_manager_mutex);
         }
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"PTERM check failure: %d remaining bytes in code block (%d used / %d)\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "PTERM check failure: %d remaining bytes in code block (%d used / %d)\n",
           (*mqc).end.offset_from((*mqc).bp) as libc::c_int
             - 2i32,
           (*mqc).bp.offset_from((*mqc).start) as libc::c_int,
@@ -2386,11 +2380,8 @@ fn opj_t1_decode_cblk(
         if !p_manager_mutex.is_null() {
           opj_mutex_lock(p_manager_mutex);
         }
-        opj_event_msg(
-          p_manager,
-          2i32,
-          b"PTERM check failure: %d synthetized 0xFF markers read\n\x00" as *const u8
-            as *const libc::c_char,
+        event_msg!(p_manager, EVT_WARNING,
+          "PTERM check failure: %d synthetized 0xFF markers read\n",
           (*mqc).end_of_byte_stream_counter,
         );
         if !p_manager_mutex.is_null() {

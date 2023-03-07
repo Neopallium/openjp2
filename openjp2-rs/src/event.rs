@@ -2,29 +2,6 @@ use super::openjpeg::*;
 pub use super::consts::event::*;
 use ::libc;
 
-extern "C" {
-
-  fn memset(_: *mut libc::c_void, _: libc::c_int, _: usize) -> *mut libc::c_void;
-
-  fn vsnprintf(
-    _: *mut libc::c_char,
-    _: usize,
-    _: *const libc::c_char,
-    _: core::ffi::VaList,
-  ) -> libc::c_int;
-}
-pub type __builtin_va_list = [__va_list_tag; 1];
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct __va_list_tag {
-  pub gp_offset: libc::c_uint,
-  pub fp_offset: libc::c_uint,
-  pub overflow_arg_area: *mut libc::c_void,
-  pub reg_save_area: *mut libc::c_void,
-}
-pub type va_list = __builtin_va_list;
-
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
@@ -169,11 +146,24 @@ impl opj_event_mgr {
 }
 
 macro_rules! event_msg {
+  ($event_mgr:expr, $event_type:expr, $fmt:expr) => {
+    if $event_mgr.msg_write($event_type, $fmt) {
+      1i32
+    } else {
+      0i32
+    }
+  };
   ($event_mgr:expr, $event_type:expr, $fmt:expr, $($arg:expr),*) => {
+    event_msg!(internal $event_mgr, $event_type, $fmt, $($arg,)*)
+  };
+  ($event_mgr:expr, $event_type:expr, $fmt:expr, $($arg:expr,)*) => {
+    event_msg!(internal $event_mgr, $event_type, $fmt, $($arg,)*)
+  };
+  (internal $event_mgr:expr, $event_type:expr, $fmt:expr, $($arg:expr,)*) => {
     if $event_mgr.is_enabled($event_type) {
       let s = ::sprintf::sprintf!($fmt, $($arg),*);
-      match s {
-        Ok(s) => if $event_mgr.msg_write($event_type, &s) {
+      match &s {
+        Ok(s) => if $event_mgr.msg_write($event_type, s) {
           1i32
         } else {
           0i32
@@ -188,48 +178,3 @@ macro_rules! event_msg {
     }
   };
 }
-
-/* ----------------------------------------------------------------------- */
-/* ----------------------------------------------------------------------- */
-pub(crate) unsafe extern "C" fn opj_event_msg(
-  mut p_event_mgr: &mut opj_event_mgr,
-  mut event_type: OPJ_INT32,
-  mut fmt: *const libc::c_char,
-  mut args: ...
-) -> OPJ_BOOL {
-  let handler = EventType::from_i32(event_type).and_then(|evt| {
-    p_event_mgr.get_handler(evt)
-  });
-  let (msg_handler, l_data) = match handler {
-    Some(handler) => handler,
-    None => {
-      return 0i32;
-    }
-  };
-  /* 512 bytes should be more than enough for a short message */
-  if !fmt.is_null() {
-    let mut arg: core::ffi::VaListImpl;
-    let mut message: [libc::c_char; 512] = [0; 512];
-    memset(
-      message.as_mut_ptr() as *mut libc::c_void,
-      0i32,
-      512,
-    );
-    /* initialize the optional parameter list */
-    arg = args.clone();
-    /* parse the format string and put the result in 'message' */
-    vsnprintf(
-      message.as_mut_ptr(),
-      512,
-      fmt,
-      arg.as_va_list(),
-    );
-    /* force zero termination for Windows _vsnprintf() of old MSVC */
-    message[(512i32 - 1i32) as usize] = '\u{0}' as i32 as libc::c_char;
-    /* deinitialize the optional parameter list */
-    /* output the message to the user program */
-    msg_handler(message.as_mut_ptr(), l_data);
-  }
-  return 1i32;
-}
-
