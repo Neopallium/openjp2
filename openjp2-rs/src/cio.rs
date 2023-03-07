@@ -496,10 +496,8 @@ pub unsafe extern "C" fn opj_stream_read_data(
       );
       if (*p_stream).m_bytes_in_buffer == -(1i32) as OPJ_SIZE_T {
         /* end of stream */
-        opj_event_msg(
-          p_event_mgr,
-          4i32,
-          b"Stream reached its end !\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_event_mgr, EVT_INFO,
+          "Stream reached its end !\n",
         );
         (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
         (*p_stream).m_status |= 0x4u32;
@@ -551,10 +549,8 @@ pub unsafe extern "C" fn opj_stream_read_data(
       );
       if (*p_stream).m_bytes_in_buffer == -(1i32) as OPJ_SIZE_T {
         /*  end of stream */
-        opj_event_msg(
-          p_event_mgr,
-          4i32,
-          b"Stream reached its end !\n\x00" as *const u8 as *const libc::c_char,
+        event_msg!(p_event_mgr, EVT_INFO,
+          "Stream reached its end !\n",
         );
         (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
         (*p_stream).m_status |= 0x4u32;
@@ -661,10 +657,8 @@ pub unsafe extern "C" fn opj_stream_flush(
     );
     if l_current_write_nb_bytes == -(1i32) as OPJ_SIZE_T {
       (*p_stream).m_status |= 0x8u32;
-      opj_event_msg(
-        p_event_mgr,
-        4i32,
-        b"Error on writing stream!\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_event_mgr, EVT_INFO,
+        "Error on writing stream!\n",
       );
       return 0i32;
     }
@@ -727,10 +721,8 @@ pub unsafe extern "C" fn opj_stream_read_skip(
     if ((*p_stream).m_byte_offset + l_skip_nb_bytes + p_size) as OPJ_UINT64
       > (*p_stream).m_user_data_length
     {
-      opj_event_msg(
-        p_event_mgr,
-        4i32,
-        b"Stream reached its end !\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_event_mgr, EVT_INFO,
+        "Stream reached its end !\n",
       );
       (*p_stream).m_byte_offset += l_skip_nb_bytes;
       l_skip_nb_bytes = (*p_stream)
@@ -753,10 +745,8 @@ pub unsafe extern "C" fn opj_stream_read_skip(
     l_current_skip_nb_bytes =
       (*p_stream).m_skip_fn.expect("non-null function pointer")(p_size, (*p_stream).m_user_data);
     if l_current_skip_nb_bytes == -(1i32) as OPJ_OFF_T {
-      opj_event_msg(
-        p_event_mgr,
-        4i32,
-        b"Stream reached its end !\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_event_mgr, EVT_INFO,
+        "Stream reached its end !\n",
       );
       (*p_stream).m_status |= 0x4u32;
       (*p_stream).m_byte_offset += l_skip_nb_bytes;
@@ -798,10 +788,8 @@ pub unsafe extern "C" fn opj_stream_write_skip(
     l_current_skip_nb_bytes =
       (*p_stream).m_skip_fn.expect("non-null function pointer")(p_size, (*p_stream).m_user_data);
     if l_current_skip_nb_bytes == -(1i32) as OPJ_OFF_T {
-      opj_event_msg(
-        p_event_mgr,
-        4i32,
-        b"Stream error!\n\x00" as *const u8 as *const libc::c_char,
+      event_msg!(p_event_mgr, EVT_INFO,
+        "Stream error!\n",
       );
       (*p_stream).m_status |= 0x8u32;
       (*p_stream).m_byte_offset += l_skip_nb_bytes;

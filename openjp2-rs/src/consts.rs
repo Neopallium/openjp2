@@ -11,7 +11,7 @@ pub mod event {
   pub enum EventType {
     Error = 1,
     Warning = 2,
-    Info = 3,
+    Info = 4,
   }
 
   impl EventType {
@@ -19,7 +19,7 @@ pub mod event {
       match v {
         1 => Some(EventType::Error),
         2 => Some(EventType::Warning),
-        3 => Some(EventType::Info),
+        4 => Some(EventType::Info),
         _ => None,
       }
     }

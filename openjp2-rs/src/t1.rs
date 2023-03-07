@@ -1779,7 +1779,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
         if !(*job).p_manager_mutex.is_null() {
           opj_mutex_lock((*job).p_manager_mutex);
         }
-        opj_event_msg!(
+        event_msg!(
           (*job).p_manager,
           EVT_ERROR,
           "Cannot allocate cblk->decoded_data\n",

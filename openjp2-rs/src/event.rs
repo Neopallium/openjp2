@@ -1,4 +1,5 @@
 use super::openjpeg::*;
+pub use super::consts::event::*;
 use ::libc;
 
 extern "C" {
@@ -59,8 +60,6 @@ pub type va_list = __builtin_va_list;
 /* ==========================================================
   Utility functions
 ==========================================================*/
-
-use crate::consts::*;
 
 /* ----------------------------------------------------------------------- */
 /* *
@@ -169,7 +168,7 @@ impl opj_event_mgr {
   }
 }
 
-macro_rules! opj_event_msg {
+macro_rules! event_msg {
   ($event_mgr:expr, $event_type:expr, $fmt:expr, $($arg:expr),*) => {
     if $event_mgr.is_enabled($event_type) {
       let s = ::sprintf::sprintf!($fmt, $($arg),*);

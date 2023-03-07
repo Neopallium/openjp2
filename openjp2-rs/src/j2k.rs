@@ -487,7 +487,7 @@ impl J2KMarker {
         Self::INSEC => opj_j2k_read_insec(p_j2k, p_header_data, p_header_size, p_manager),
         _ => {
           // No handler for this marker.
-          opj_event_msg!(
+          event_msg!(
             &mut *p_manager,
             EVT_ERROR,
             "No handler for unknown marker.\n",
