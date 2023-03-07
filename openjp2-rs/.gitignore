@@ -1,4 +1,5 @@
 test
 *.sh
+*.sed
 c2rust
 target
