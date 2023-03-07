@@ -1,5 +1,4 @@
 use super::thread::*;
-use super::cio::*;
 use super::jp2::*;
 use super::j2k::*;
 use ::c2rust_bitfields;
@@ -9,6 +8,10 @@ use super::consts::*;
 
 use super::event::opj_event_mgr;
 
+#[cfg(feature = "file-io")]
+use super::cio::*;
+
+#[cfg(feature = "file-io")]
 use ::libc::{
   FILE,
   fclose,
@@ -475,6 +478,7 @@ pub struct opj_codec_private {
   pub m_codec: *mut core::ffi::c_void,
   pub m_event_mgr: opj_event_mgr,
   pub is_decompressor: OPJ_BOOL,
+  #[cfg(feature = "file-io")]
   pub opj_dump_codec:
     Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
   pub opj_get_codec_info:
@@ -1341,7 +1345,9 @@ pub unsafe fn opj_set_error_handler(
   (*l_codec).m_event_mgr.set_error_handler(p_callback, p_user_data);
   return 1i32;
 }
+
 /* ---------------------------------------------------------------------- */
+#[cfg(feature = "file-io")]
 unsafe extern "C" fn opj_read_from_file(
   mut p_buffer: *mut core::ffi::c_void,
   mut p_nb_bytes: OPJ_SIZE_T,
@@ -1360,6 +1366,7 @@ unsafe extern "C" fn opj_read_from_file(
     -(1i32) as OPJ_SIZE_T
   };
 }
+#[cfg(feature = "file-io")]
 unsafe extern "C" fn opj_get_data_length_from_file(
   mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_UINT64 {
@@ -1370,6 +1377,7 @@ unsafe extern "C" fn opj_get_data_length_from_file(
   fseeko(p_file, 0, 0);
   return file_length as OPJ_UINT64;
 }
+#[cfg(feature = "file-io")]
 unsafe extern "C" fn opj_write_from_file(
   mut p_buffer: *mut core::ffi::c_void,
   mut p_nb_bytes: OPJ_SIZE_T,
@@ -1383,6 +1391,7 @@ unsafe extern "C" fn opj_write_from_file(
     p_file,
   );
 }
+#[cfg(feature = "file-io")]
 unsafe extern "C" fn opj_skip_from_file(
   mut p_nb_bytes: OPJ_OFF_T,
   mut p_user_data: *mut core::ffi::c_void,
@@ -1393,6 +1402,7 @@ unsafe extern "C" fn opj_skip_from_file(
   }
   return p_nb_bytes;
 }
+#[cfg(feature = "file-io")]
 unsafe extern "C" fn opj_seek_from_file(
   mut p_nb_bytes: OPJ_OFF_T,
   mut p_user_data: *mut core::ffi::c_void,
@@ -1403,6 +1413,7 @@ unsafe extern "C" fn opj_seek_from_file(
   }
   return 1i32;
 }
+#[cfg(feature = "file-io")]
 unsafe extern "C" fn opj_close_from_file(mut p_user_data: *mut core::ffi::c_void) {
   let mut p_file = p_user_data as *mut FILE;
   fclose(p_file);
@@ -1410,9 +1421,12 @@ unsafe extern "C" fn opj_close_from_file(mut p_user_data: *mut core::ffi::c_void
 /* ---------------------------------------------------------------------- */
 /* _WIN32 */
 /* ---------------------------------------------------------------------- */
+pub const OPJ_VERSION: &str = "2.5.0";
+pub const OPJ_VERSION_C: *const u8 = b"2.5.0\x00" as *const u8;
+
 #[no_mangle]
 pub unsafe fn opj_version() -> *const core::ffi::c_char {
-  return b"2.5.0\x00" as *const u8 as *const core::ffi::c_char;
+  return OPJ_VERSION_C as *const core::ffi::c_char;
 }
 /* ---------------------------------------------------------------------- */
 /* DECOMPRESSION FUNCTIONS*/
@@ -1429,12 +1443,15 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
   (*l_codec).is_decompressor = 1i32;
   match p_format as core::ffi::c_int {
     0 => {
-      (*l_codec).opj_dump_codec = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_INT32, _: *mut FILE) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
-      >(Some(
-        j2k_dump as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_INT32, _: *mut FILE) -> (),
-      ));
+      #[cfg(feature = "file-io")]
+      {
+        (*l_codec).opj_dump_codec = core::mem::transmute::<
+          Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_INT32, _: *mut FILE) -> ()>,
+          Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
+        >(Some(
+          j2k_dump as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_INT32, _: *mut FILE) -> (),
+        ));
+      }
       (*l_codec).opj_get_codec_info = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_info_v2_t>,
         Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_info_v2_t>,
@@ -1759,12 +1776,15 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
     }
     2 => {
       /* get a JP2 decoder handle */
-      (*l_codec).opj_dump_codec = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_INT32, _: *mut FILE) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
-      >(Some(
-        jp2_dump as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_INT32, _: *mut FILE) -> (),
-      ));
+      #[cfg(feature = "file-io")]
+      {
+        (*l_codec).opj_dump_codec = core::mem::transmute::<
+          Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_INT32, _: *mut FILE) -> ()>,
+          Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
+        >(Some(
+          jp2_dump as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_INT32, _: *mut FILE) -> (),
+        ));
+      }
       (*l_codec).opj_get_codec_info = core::mem::transmute::<
         Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_info_v2_t>,
         Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_info_v2_t>,
@@ -3053,6 +3073,7 @@ pub unsafe fn opj_destroy_codec(mut p_codec: *mut opj_codec_t) {
   };
 }
 /* ---------------------------------------------------------------------- */
+#[cfg(feature = "file-io")]
 #[no_mangle]
 pub unsafe fn opj_dump_codec(
   mut p_codec: *mut opj_codec_t,
@@ -3113,6 +3134,8 @@ pub unsafe fn opj_destroy_cstr_index(
     *p_cstr_index = 0 as *mut opj_codestream_index_t
   };
 }
+
+#[cfg(feature = "file-io")]
 #[no_mangle]
 pub unsafe fn opj_stream_create_default_file_stream(
   mut fname: *const core::ffi::c_char,
@@ -3124,6 +3147,8 @@ pub unsafe fn opj_stream_create_default_file_stream(
     p_is_read_stream,
   );
 }
+
+#[cfg(feature = "file-io")]
 #[no_mangle]
 pub unsafe fn opj_stream_create_file_stream(
   mut fname: *const core::ffi::c_char,

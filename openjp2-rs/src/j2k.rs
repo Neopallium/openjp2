@@ -14,10 +14,10 @@ use super::thread::*;
 
 use super::malloc::*;
 
+#[cfg(feature = "file-io")]
 use ::libc::{
   FILE,
   fprintf,
-  sprintf,
 };
 
 use bitflags::bitflags;
@@ -36,6 +36,7 @@ extern "C" {
   fn getenv(__name: *const core::ffi::c_char) -> *mut core::ffi::c_char;
 
   fn floor(_: core::ffi::c_double) -> core::ffi::c_double;
+  #[cfg(feature = "file-io")]
   static mut stdout: *mut FILE;
 
   fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
@@ -8071,28 +8072,16 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     strcpy((*cp).comment, (*parameters).cp_comment);
   } else {
     /* Create default comment for codestream */
-    let comment: [core::ffi::c_char; 29] =
-      *core::mem::transmute::<&[u8; 29], &[core::ffi::c_char; 29]>(b"Created by OpenJPEG version \x00");
-    let clen = strlen(comment.as_ptr());
-    let mut version = opj_version();
+    let comment = format!("Created by OpenJPEG version {}", OPJ_VERSION);
+    let c_comment = alloc::ffi::CString::new(comment).unwrap();
     /* UniPG>> */
-    (*cp).comment = opj_malloc(
-      clen
-        .wrapping_add(strlen(version))
-        .wrapping_add(1),
-    ) as *mut core::ffi::c_char;
+    (*cp).comment = c_comment.into_raw();
     if (*cp).comment.is_null() {
       event_msg!(p_manager, EVT_ERROR,
         "Not enough memory to allocate comment string\n",
       );
       return 0i32;
     }
-    sprintf(
-      (*cp).comment,
-      b"%s%s\x00" as *const u8 as *const core::ffi::c_char,
-      comment.as_ptr(),
-      version,
-    );
   }
   /*
   calculate other encoding parameters
@@ -11988,6 +11977,8 @@ unsafe fn opj_j2k_copy_tile_quantization_parameters(mut p_j2k: *mut opj_j2k_t) {
     i += 1;
   }
 }
+
+#[cfg(feature = "file-io")]
 unsafe fn opj_j2k_dump_tile_info(
   mut l_default_tile: *mut opj_tcp_t,
   mut numcomps: OPJ_INT32,
@@ -12127,6 +12118,8 @@ unsafe fn opj_j2k_dump_tile_info(
     );
   };
 }
+
+#[cfg(feature = "file-io")]
 #[no_mangle]
 pub(crate) unsafe extern "C" fn j2k_dump(
   mut p_j2k: *mut opj_j2k_t,
@@ -12180,6 +12173,8 @@ pub(crate) unsafe extern "C" fn j2k_dump(
   /* Dump the codestream index of the current tile */
   if (flag & 32i32) != 0 {}
 }
+
+#[cfg(feature = "file-io")]
 unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut FILE) {
   let mut cstr_index = (*p_j2k).cstr_index;
   let mut it_marker: OPJ_UINT32 = 0;
@@ -12303,6 +12298,8 @@ unsafe fn opj_j2k_dump_MH_index(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut 
   }
   fprintf(out_stream, b"}\n\x00" as *const u8 as *const core::ffi::c_char);
 }
+
+#[cfg(feature = "file-io")]
 unsafe fn opj_j2k_dump_MH_info(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut FILE) {
   fprintf(
     out_stream,
@@ -12333,6 +12330,8 @@ unsafe fn opj_j2k_dump_MH_info(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut F
   );
   fprintf(out_stream, b"}\n\x00" as *const u8 as *const core::ffi::c_char);
 }
+
+#[cfg(feature = "file-io")]
 #[no_mangle]
 pub(crate) unsafe extern "C" fn j2k_dump_image_header(
   mut img_header: *mut opj_image_t,
@@ -12399,6 +12398,8 @@ pub(crate) unsafe extern "C" fn j2k_dump_image_header(
   }
   fprintf(out_stream, b"}\n\x00" as *const u8 as *const core::ffi::c_char);
 }
+
+#[cfg(feature = "file-io")]
 #[no_mangle]
 pub(crate) unsafe extern "C" fn j2k_dump_image_comp_header(
   mut comp_header: *mut opj_image_comp_t,
@@ -13487,7 +13488,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
       {
         (*p_j2k).m_specific_param.m_encoder.m_PLT = 0i32
       } else {
-        let tmp_str = unsafe { std::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
+        let tmp_str = unsafe { core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
         event_msg!(p_manager, EVT_ERROR,
           "Invalid value for option: %s.\n",
           tmp_str,
@@ -13513,7 +13514,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
       {
         (*p_j2k).m_specific_param.m_encoder.m_TLM = 0i32
       } else {
-        let tmp_str = unsafe { std::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
+        let tmp_str = unsafe { core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
         event_msg!(p_manager, EVT_ERROR,
           "Invalid value for option: %s.\n",
           tmp_str,
@@ -13535,7 +13536,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
           .offset(strlen(b"GUARD_BITS=\x00" as *const u8 as *const core::ffi::c_char) as isize),
       );
       if numgbits < 0i32 || numgbits > 7i32 {
-        let tmp_str = unsafe { std::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
+        let tmp_str = unsafe { core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
         event_msg!(p_manager, EVT_ERROR,
           "Invalid value for option: %s. Should be in [0,7]\n",
           tmp_str,
@@ -13555,7 +13556,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_encoder_set_extra_options(
         tileno += 1;
       }
     } else {
-      let tmp_str = unsafe { std::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
+      let tmp_str = unsafe { core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
       event_msg!(p_manager, EVT_ERROR,
         "Invalid option: %s.\n",
         tmp_str,

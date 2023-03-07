@@ -20,7 +20,12 @@ use core::{
 use alloc::vec::Vec;
 
 use super::malloc::*;
-use ::libc::{memset, memcpy};
+
+extern "C" {
+  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
+
+  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
+}
 
 #[derive(Default)]
 pub struct T1Flags {

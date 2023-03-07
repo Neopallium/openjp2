@@ -3,6 +3,7 @@ use super::function_list::*;
 use super::event::*;
 use super::cio::*;
 use super::j2k::*;
+#[cfg(feature = "file-io")]
 use ::libc::FILE;
 
 use super::malloc::*;
@@ -3726,6 +3727,8 @@ pub(crate) unsafe extern "C" fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> *m
   }
   return jp2;
 }
+
+#[cfg(feature = "file-io")]
 #[no_mangle]
 pub(crate) unsafe extern "C" fn jp2_dump(
   mut p_jp2: *mut opj_jp2_t,
