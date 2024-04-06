@@ -31,7 +31,7 @@ extern "C" {
 pub type size_t = usize;
 
 pub type OPJ_BOOL = i32;
-pub type OPJ_CHAR = i8;
+pub type OPJ_CHAR = core::ffi::c_char;
 pub type OPJ_FLOAT32 = f32;
 pub type OPJ_FLOAT64 = f64;
 pub type OPJ_BYTE = u8;
