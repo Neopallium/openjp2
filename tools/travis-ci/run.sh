@@ -236,6 +236,8 @@ export OPJ_DO_SUBMIT=${OPJ_DO_SUBMIT}
 
 if [ "${OPJ_SKIP_REBUILD:-}" != "1" ]; then
     ctest -S ${OPJ_SOURCE_DIR}/tools/ctest_scripts/travis-ci.cmake -V || true
+    cd $OPJ_BINARY_DIR
+    make
 fi
 # ctest will exit with various error codes depending on version.
 # ignore ctest exit code & parse this ourselves
