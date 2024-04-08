@@ -119,7 +119,7 @@ CMAKE_CXX_FLAGS:STRING= ${CCFLAGS_ARCH}
 BUILD_TESTING:BOOL=${BUILD_TESTING}
 
 # Build Thirdparty, useful but not required for test suite
-BUILD_THIRDPARTY:BOOL=TRUE
+BUILD_THIRDPARTY:BOOL=FALSE
 
 # Build unit tests that test subcomponents of libopenjp2 (e.g. DWT)
 BUILD_UNIT_TESTS:BOOL=TRUE
@@ -128,7 +128,13 @@ BUILD_UNIT_TESTS:BOOL=TRUE
 OPJ_DATA_ROOT:PATH=$ENV{PWD}/data
 
 # Use Rust code for CI tests.
-USE_RUST_LIB:BOOL=ON
+USE_RUST_LIB:BOOL=TRUE
+
+# Disable shared library.
+BUILD_SHARED_LIBS:BOOL=FALSE
+
+# Disable thread support
+OPJ_USE_THREAD:BOOL=FALSE
 
 # Enable astyle
 WITH_ASTYLE:BOOL=${BUILD_ASTYLE}
