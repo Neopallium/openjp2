@@ -127,6 +127,9 @@ BUILD_UNIT_TESTS:BOOL=TRUE
 # JPEG2000 test files are available with git clone https://github.com/uclouvain/openjpeg-data.git
 OPJ_DATA_ROOT:PATH=$ENV{PWD}/data
 
+# Use Rust code for CI tests.
+USE_RUST_LIB:BOOL=ON
+
 # Enable astyle
 WITH_ASTYLE:BOOL=${BUILD_ASTYLE}
 " )
