@@ -133,7 +133,7 @@ add_executable(ppm2rgb3 ppm2rgb3.c)
 #add_executable(pdf2jp2 pdf2jp2.c)
 
 if(USE_RUST_LIB)
-  target_link_libraries(compare_images dl pthread)
+  target_link_libraries(compare_images m dl pthread)
   target_link_libraries(j2k_random_tile_access m dl pthread)
 
   target_link_libraries(test_tile_encoder m dl pthread)
