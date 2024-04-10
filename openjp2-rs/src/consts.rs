@@ -459,11 +459,8 @@ pub mod t1 {
   pub const T1_LUT_SIG_S: u32  = 1u32 << 7;
 }
 
-pub use cio::*;
 pub use event::*;
-pub use jpip::*;
 pub use j2k::*;
-pub use jp2::*;
 pub use mqc::*;
 pub use opj::*;
 pub use common::*;
