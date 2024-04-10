@@ -57,6 +57,7 @@ dependencies = [
  "c2rust-bitfields",
  "libc",
  "log",
+ "smallvec",
  "sprintf",
 ]
 
@@ -77,6 +78,12 @@ checksum = "864d3e96a899863136fc6e99f3d7cae289dafe43bf2c5ac19b70df7210c0a145"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "smallvec"
+version = "1.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 
 [[package]]
 name = "sprintf"
