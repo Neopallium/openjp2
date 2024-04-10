@@ -8232,9 +8232,9 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       return 0i32;
     }
     if !(*parameters).mct_data.is_null() {
-      let mut lMctSize = (*image)
-        .numcomps
-        .wrapping_mul((*image).numcomps)
+      let numcomps = (*image).numcomps;
+      let mut lMctLen = numcomps * numcomps;
+      let mut lMctSize = lMctLen
         .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
       let mut lTmpBuf = opj_malloc(lMctSize as size_t) as *mut OPJ_FLOAT32;
       let mut l_dc_shift =
@@ -8274,8 +8274,11 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         );
         return 0i32;
       }
-      if opj_matrix_inversion_f(lTmpBuf, (*tcp).m_mct_decoding_matrix, (*image).numcomps)
-        == 0i32
+      if opj_matrix_inversion_f(
+        unsafe { std::slice::from_raw_parts_mut(lTmpBuf as *mut f32, lMctLen as usize) },
+        unsafe { std::slice::from_raw_parts_mut((*tcp).m_mct_decoding_matrix as *mut f32, lMctLen as usize) },
+        numcomps as usize
+      ) == false
       {
         opj_free(lTmpBuf as *mut core::ffi::c_void);
         lTmpBuf = 0 as *mut OPJ_FLOAT32;

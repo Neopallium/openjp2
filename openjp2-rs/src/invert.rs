@@ -1,12 +1,5 @@
-use super::openjpeg::*;
+use smallvec::SmallVec;
 
-use super::malloc::*;
-
-extern "C" {
-  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
-
-  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
-}
 /*
 ==========================================================
    Matric inversion interface
@@ -17,45 +10,31 @@ extern "C" {
  */
 #[no_mangle]
 pub(crate) unsafe fn opj_matrix_inversion_f(
-  mut pSrcMatrix: *mut OPJ_FLOAT32,
-  mut pDestMatrix: *mut OPJ_FLOAT32,
-  mut nb_compo: OPJ_UINT32,
-) -> OPJ_BOOL {
-  let mut l_data = 0 as *mut OPJ_BYTE;
-  let mut l_permutation_size =
-    nb_compo.wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32);
-  let mut l_swap_size =
-    nb_compo.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
-  let mut l_total_size =
-    l_permutation_size.wrapping_add((3u32).wrapping_mul(l_swap_size));
-  let mut lPermutations = 0 as *mut OPJ_UINT32;
-  let mut l_double_data = 0 as *mut OPJ_FLOAT32;
-  l_data = opj_malloc(l_total_size as size_t) as *mut OPJ_BYTE;
-  if l_data.is_null() {
-    return 0i32;
-  }
-  lPermutations = l_data as *mut OPJ_UINT32;
-  l_double_data = l_data.offset(l_permutation_size as isize) as *mut OPJ_FLOAT32;
-  memset(
-    lPermutations as *mut core::ffi::c_void,
-    0i32,
-    l_permutation_size as usize,
-  );
-  if opj_lupDecompose(pSrcMatrix, lPermutations, l_double_data, nb_compo) == 0 {
-    opj_free(l_data as *mut core::ffi::c_void);
-    return 0i32;
+  mut pSrcMatrix: &mut [f32],
+  mut pDestMatrix: &mut [f32],
+  mut nb_compo: usize,
+) -> bool {
+  let mut lPermutations = SmallVec::<[u32; 0]>::with_capacity(nb_compo);
+  let mut src_tmp = SmallVec::<[f32; 0]>::with_capacity(nb_compo);
+  let mut dest_tmp = SmallVec::<[f32; 0]>::with_capacity(nb_compo);
+  let mut swap_area = SmallVec::<[f32; 0]>::with_capacity(nb_compo);
+  lPermutations.resize(nb_compo, 0);
+  src_tmp.resize(nb_compo, 0.0);
+  dest_tmp.resize(nb_compo, 0.0);
+  swap_area.resize(nb_compo, 0.0);
+  if opj_lupDecompose(pSrcMatrix, lPermutations.as_mut_slice(), swap_area.as_mut_slice(), nb_compo as usize) == false {
+    return false;
   }
   opj_lupInvert(
     pSrcMatrix,
     pDestMatrix,
-    nb_compo,
-    lPermutations,
-    l_double_data,
-    l_double_data.offset(nb_compo as isize),
-    l_double_data.offset((2u32).wrapping_mul(nb_compo) as isize),
+    nb_compo as usize,
+    lPermutations.as_slice(),
+    src_tmp.as_mut_slice(),
+    dest_tmp.as_mut_slice(),
+    swap_area.as_mut_slice(),
   );
-  opj_free(l_data as *mut core::ffi::c_void);
-  return 1i32;
+  return true;
 }
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -95,272 +74,195 @@ pub(crate) unsafe fn opj_matrix_inversion_f(
    Local functions
 ==========================================================
 */
-unsafe fn opj_lupDecompose(
-  mut matrix: *mut OPJ_FLOAT32,
-  mut permutations: *mut OPJ_UINT32,
-  mut p_swap_area: *mut OPJ_FLOAT32,
-  mut nb_compo: OPJ_UINT32,
-) -> OPJ_BOOL {
-  let mut tmpPermutations = permutations;
-  let mut dstPermutations = 0 as *mut OPJ_UINT32;
-  let mut k2 = 0 as OPJ_UINT32;
-  let mut t: OPJ_UINT32 = 0;
-  let mut temp: OPJ_FLOAT32 = 0.;
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
-  let mut k: OPJ_UINT32 = 0;
-  let mut p: OPJ_FLOAT32 = 0.;
-  let mut lLastColum = nb_compo.wrapping_sub(1u32);
-  let mut lSwapSize =
-    nb_compo.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
-  let mut lTmpMatrix = matrix;
-  let mut lColumnMatrix = 0 as *mut OPJ_FLOAT32;
-  let mut lDestMatrix = 0 as *mut OPJ_FLOAT32;
-  let mut offset = 1 as OPJ_UINT32;
-  let mut lStride = nb_compo.wrapping_sub(1u32);
-  /*initialize permutations */
-  i = 0 as OPJ_UINT32;
-  while i < nb_compo {
-    let fresh0 = tmpPermutations;
-    tmpPermutations = tmpPermutations.offset(1);
-    *fresh0 = i;
-    i += 1;
+fn opj_lupDecompose(
+  matrix: &mut [f32],
+  permutations: &mut [u32],
+  p_swap_area: &mut [f32],
+  nb_compo: usize,
+) -> bool {
+  let mut tmp_permutations = 0;
+  let mut k2 = 0;
+  let mut temp = 0.0;
+  let l_last_column = nb_compo - 1;
+  let l_swap_size = nb_compo * std::mem::size_of::<f32>();
+  let mut l_tmp_matrix = 0;
+  let mut l_column_matrix = 0;
+  let mut l_dest_matrix = 0;
+  let mut offset = 1;
+  let mut l_stride = nb_compo - 1;
+  // initialize permutations
+  for i in 0..nb_compo {
+    permutations[i] = i as u32;
   }
-  /* now make a pivot with column switch */
-  tmpPermutations = permutations;
-  k = 0 as OPJ_UINT32;
-  while k < lLastColum {
-    p = 0.0f64 as OPJ_FLOAT32;
-    /* take the middle element */
-    lColumnMatrix = lTmpMatrix.offset(k as isize);
-    /* make permutation with the biggest value in the column */
-    i = k;
-    while i < nb_compo {
-      temp = if *lColumnMatrix > 0 as core::ffi::c_float {
-        *lColumnMatrix
-      } else {
-        -*lColumnMatrix
-      };
+  // now make a pivot with column switch
+  for k in 0..l_last_column {
+    // take the middle element
+    l_column_matrix = l_tmp_matrix + k;
+    // make permutation with the biggest value in the column
+    let mut p = 0.0;
+    for i in k..nb_compo {
+      temp = matrix[l_column_matrix].abs();
       if temp > p {
         p = temp;
-        k2 = i
+        k2 = i;
       }
-      /* next line */
-      lColumnMatrix = lColumnMatrix.offset(nb_compo as isize);
-      i += 1;
+      // next line
+      l_column_matrix += nb_compo;
     }
-    /* a whole rest of 0 -> non singular */
-    if p as core::ffi::c_double == 0.0f64 {
-      return 0i32;
+    // a whole rest of 0 -> non singular
+    if p == 0.0 {
+      return false;
     }
-    /* should we permute ? */
+    // should we permute ?
     if k2 != k {
-      /*exchange of line */
-      /* k2 > k */
-      dstPermutations = tmpPermutations.offset(k2 as isize).offset(-(k as isize));
-      /* swap indices */
-      t = *tmpPermutations;
-      *tmpPermutations = *dstPermutations;
-      *dstPermutations = t;
-      /* and swap entire line. */
-      lColumnMatrix = lTmpMatrix.offset(k2.wrapping_sub(k).wrapping_mul(nb_compo) as isize);
-      memcpy(
-        p_swap_area as *mut core::ffi::c_void,
-        lColumnMatrix as *const core::ffi::c_void,
-        lSwapSize as usize,
-      );
-      memcpy(
-        lColumnMatrix as *mut core::ffi::c_void,
-        lTmpMatrix as *const core::ffi::c_void,
-        lSwapSize as usize,
-      );
-      memcpy(
-        lTmpMatrix as *mut core::ffi::c_void,
-        p_swap_area as *const core::ffi::c_void,
-        lSwapSize as usize,
-      );
+      // exchange of line
+      // k2 > k
+      let dst_p = tmp_permutations + k2 - k;
+      // swap indices
+      let t = permutations[tmp_permutations];
+      permutations[tmp_permutations] = permutations[dst_p];
+      permutations[dst_p] = t;
+      // and swap entire line.
+      l_column_matrix = l_tmp_matrix + (k2 - k) * nb_compo;
+      p_swap_area.copy_from_slice(&matrix[l_column_matrix.. l_column_matrix + l_swap_size]);
+      matrix.copy_within(l_tmp_matrix..l_tmp_matrix+l_swap_size, l_column_matrix);
+      matrix[l_tmp_matrix.. l_tmp_matrix + l_swap_size].copy_from_slice(&p_swap_area[..l_swap_size]);
     }
-    /* now update data in the rest of the line and line after */
-    lDestMatrix = lTmpMatrix.offset(k as isize);
-    lColumnMatrix = lDestMatrix.offset(nb_compo as isize);
-    /* take the middle element */
-    let fresh1 = lDestMatrix;
-    lDestMatrix = lDestMatrix.offset(1);
-    temp = *fresh1;
-    /* now compute up data (i.e. coeff up of the diagonal). */
-    i = offset;
-    while i < nb_compo {
-      /*lColumnMatrix; */
-      /* divide the lower column elements by the diagonal value */
-      /* matrix[i][k] /= matrix[k][k]; */
-      /* p = matrix[i][k] */
-      p = *lColumnMatrix / temp;
-      let fresh2 = lColumnMatrix;
-      lColumnMatrix = lColumnMatrix.offset(1);
-      *fresh2 = p;
-      j = offset;
-      while j < nb_compo {
-        /* matrix[i][j] -= matrix[i][k] * matrix[k][j]; */
-        let fresh3 = lDestMatrix;
-        lDestMatrix = lDestMatrix.offset(1);
-        let fresh4 = lColumnMatrix;
-        lColumnMatrix = lColumnMatrix.offset(1);
-        *fresh4 -= p * *fresh3;
-        j += 1;
+    // now update data in the rest of the line and line after
+    l_dest_matrix = l_tmp_matrix + k;
+    l_column_matrix = l_dest_matrix + nb_compo;
+    // take the middle element
+    let temp = matrix[l_dest_matrix];
+    l_dest_matrix += 1;
+    // now compute up data (i.e. coeff up of the diagonal).
+    for _ in offset..nb_compo {
+      // divide the lower column elements by the diagonal value
+      // matrix[i][k] /= matrix[k][k];
+      // p = matrix[i][k]
+      let p = matrix[l_column_matrix] / temp;
+      l_column_matrix += 1;
+      matrix[l_column_matrix] = p;
+
+      for j in offset..nb_compo {
+        matrix[l_dest_matrix + j] -= p * matrix[l_dest_matrix + j - 1];
       }
-      /* come back to the k+1th element */
-      lDestMatrix = lDestMatrix.offset(-(lStride as isize));
-      /* go to kth element of the next line */
-      lColumnMatrix = lColumnMatrix.offset(k as isize);
-      i += 1;
+      // come back to the k+1th element
+      l_dest_matrix -= l_stride;
+      // go to kth element of the next line
+      l_column_matrix += k;
     }
-    /* offset is now k+2 */
-    offset = offset.wrapping_add(1);
-    /* 1 element less for stride */
-    lStride = lStride.wrapping_sub(1);
-    /* next line */
-    lTmpMatrix = lTmpMatrix.offset(nb_compo as isize);
-    /* next permutation element */
-    tmpPermutations = tmpPermutations.offset(1);
-    k += 1;
+    // offset is now k+2
+    offset += 1;
+    // 1 element less for stride
+    l_stride -= 1;
+    // next line
+    l_tmp_matrix += nb_compo;
   }
-  return 1i32;
+  true
 }
 /* *
  * LUP solving
  */
-unsafe fn opj_lupSolve(
-  mut pResult: *mut OPJ_FLOAT32,
-  mut pMatrix: *mut OPJ_FLOAT32,
-  mut pVector: *mut OPJ_FLOAT32,
-  mut pPermutations: *mut OPJ_UINT32,
-  mut nb_compo: OPJ_UINT32,
-  mut p_intermediate_data: *mut OPJ_FLOAT32,
+fn opj_lupSolve(
+  p_result: &mut [f32],
+  p_matrix: &[f32],
+  p_vector: &[f32],
+  p_permutations: &[u32],
+  nb_compo: usize,
+  p_intermediate_data: &mut [f32],
 ) {
-  let mut k: OPJ_INT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
-  let mut sum: OPJ_FLOAT32 = 0.;
-  let mut u: OPJ_FLOAT32 = 0.;
-  let mut lStride = nb_compo.wrapping_add(1u32);
-  let mut lCurrentPtr = 0 as *mut OPJ_FLOAT32;
-  let mut lIntermediatePtr = 0 as *mut OPJ_FLOAT32;
-  let mut lDestPtr = 0 as *mut OPJ_FLOAT32;
-  let mut lTmpMatrix = 0 as *mut OPJ_FLOAT32;
-  let mut lLineMatrix = pMatrix;
-  let mut lBeginPtr = pResult
-    .offset(nb_compo as isize)
-    .offset(-1);
-  let mut lGeneratedData = 0 as *mut OPJ_FLOAT32;
-  let mut lCurrentPermutationPtr = pPermutations;
-  lIntermediatePtr = p_intermediate_data;
-  lGeneratedData = p_intermediate_data
-    .offset(nb_compo as isize)
-    .offset(-1);
-  i = 0 as OPJ_UINT32;
+  let mut k: i32 = 0;
+  let mut i: usize = 0;
+  let mut j: usize = 0;
+  let mut sum: f32 = 0.;
+  let mut u: f32 = 0.;
+  let l_stride = nb_compo + 1;
+  let mut l_current_ptr: usize;
+  let mut l_intermediate_ptr: usize;
+  let mut l_dest_ptr: usize;
+  let mut l_tmp_matrix: usize;
+  let mut l_line_matrix = 0;
+  let mut l_begin_ptr = p_result.len() - 1;
+  let mut l_generated_data = 0;
+  let mut l_current_permutation_ptr = 0;
+  l_intermediate_ptr = 0;
+  l_generated_data = nb_compo - 1;
+  i = 0;
   while i < nb_compo {
-    sum = 0.0f64 as OPJ_FLOAT32;
-    lCurrentPtr = p_intermediate_data;
-    lTmpMatrix = lLineMatrix;
-    j = 1 as OPJ_UINT32;
+    sum = 0.0;
+    l_current_ptr = 0;
+    l_tmp_matrix = l_line_matrix;
+    j = 1;
     while j <= i {
-      /* sum += matrix[i][j-1] * y[j-1]; */
-      let fresh5 = lTmpMatrix;
-      lTmpMatrix = lTmpMatrix.offset(1);
-      let fresh6 = lCurrentPtr;
-      lCurrentPtr = lCurrentPtr.offset(1);
-      sum += *fresh5 * *fresh6;
+      sum += p_matrix[l_tmp_matrix] * p_intermediate_data[l_current_ptr];
+      l_tmp_matrix += 1;
+      l_current_ptr += 1;
       j += 1;
     }
-    /*y[i] = pVector[pPermutations[i]] - sum; */
-    let fresh7 = lCurrentPermutationPtr;
-    lCurrentPermutationPtr = lCurrentPermutationPtr.offset(1);
-    let fresh8 = lIntermediatePtr;
-    lIntermediatePtr = lIntermediatePtr.offset(1);
-    *fresh8 = *pVector.offset(*fresh7 as isize) - sum;
-    lLineMatrix = lLineMatrix.offset(nb_compo as isize);
+    p_intermediate_data[l_intermediate_ptr] =
+      p_vector[p_permutations[l_current_permutation_ptr] as usize] - sum;
+    l_line_matrix += nb_compo;
+    l_intermediate_ptr += 1;
+    l_current_permutation_ptr += 1;
     i += 1;
   }
-  /* we take the last point of the matrix */
-  lLineMatrix = pMatrix
-    .offset(nb_compo.wrapping_mul(nb_compo) as isize)
-    .offset(-1);
-  /* and we take after the last point of the destination vector */
-  lDestPtr = pResult.offset(nb_compo as isize);
-  assert!(nb_compo != 0u32);
-  k = nb_compo as OPJ_INT32 - 1i32;
-  while k != -(1i32) {
-    sum = 0.0f64 as OPJ_FLOAT32;
-    lTmpMatrix = lLineMatrix;
-    let fresh9 = lTmpMatrix;
-    lTmpMatrix = lTmpMatrix.offset(1);
-    u = *fresh9;
-    let fresh10 = lDestPtr;
-    lDestPtr = lDestPtr.offset(-1);
-    lCurrentPtr = fresh10;
-    j = (k + 1i32) as OPJ_UINT32;
+  l_line_matrix = p_matrix.len() - nb_compo - 1;
+  l_dest_ptr = nb_compo;
+  assert!(nb_compo != 0);
+  k = nb_compo as i32 - 1;
+  while k != -1 {
+    sum = 0.0;
+    l_tmp_matrix = l_line_matrix;
+    u = p_matrix[l_tmp_matrix];
+    l_line_matrix -= l_stride;
+    l_current_ptr = l_dest_ptr;
+    j = (k + 1) as usize;
     while j < nb_compo {
-      /* sum += matrix[k][j] * x[j] */
-      let fresh11 = lTmpMatrix;
-      lTmpMatrix = lTmpMatrix.offset(1);
-      let fresh12 = lCurrentPtr;
-      lCurrentPtr = lCurrentPtr.offset(1);
-      sum += *fresh11 * *fresh12;
+      sum += p_matrix[l_tmp_matrix] * p_result[l_current_ptr];
+      l_tmp_matrix += 1;
+      l_current_ptr += 1;
       j += 1;
     }
-    /*x[k] = (y[k] - sum) / u; */
-    let fresh13 = lGeneratedData;
-    lGeneratedData = lGeneratedData.offset(-1);
-    let fresh14 = lBeginPtr;
-    lBeginPtr = lBeginPtr.offset(-1);
-    *fresh14 = (*fresh13 - sum) / u;
-    lLineMatrix = lLineMatrix.offset(-(lStride as isize));
-    k -= 1
+    p_result[l_begin_ptr] = (p_intermediate_data[l_generated_data] - sum) / u;
+    l_generated_data -= 1;
+    l_begin_ptr -= 1;
+    l_dest_ptr -= 1;
+    k -= 1;
   }
 }
 /* *
  *LUP inversion (call with the result of lupDecompose)
  */
-unsafe fn opj_lupInvert(
-  mut pSrcMatrix: *mut OPJ_FLOAT32,
-  mut pDestMatrix: *mut OPJ_FLOAT32,
-  mut nb_compo: OPJ_UINT32,
-  mut pPermutations: *mut OPJ_UINT32,
-  mut p_src_temp: *mut OPJ_FLOAT32,
-  mut p_dest_temp: *mut OPJ_FLOAT32,
-  mut p_swap_area: *mut OPJ_FLOAT32,
+fn opj_lupInvert(
+  pSrcMatrix: &mut [f32],
+  pDestMatrix: &mut [f32],
+  nb_compo: usize,
+  pPermutations: &[u32],
+  p_src_temp: &mut [f32],
+  p_dest_temp: &mut [f32],
+  p_swap_area: &mut [f32],
 ) {
-  let mut j: OPJ_UINT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let mut lCurrentPtr = 0 as *mut OPJ_FLOAT32;
+  let nb_compo_usize = nb_compo as usize;
   let mut lLineMatrix = pDestMatrix;
-  let mut lSwapSize =
-    nb_compo.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
-  j = 0 as OPJ_UINT32;
-  while j < nb_compo {
-    let fresh15 = lLineMatrix;
-    lLineMatrix = lLineMatrix.offset(1);
-    lCurrentPtr = fresh15;
-    memset(
-      p_src_temp as *mut core::ffi::c_void,
-      0i32,
-      lSwapSize as usize,
-    );
-    *p_src_temp.offset(j as isize) = 1.0f64 as OPJ_FLOAT32;
+  for j in 0..nb_compo {
+    let lCurrentPtr = &mut lLineMatrix[j + 1..];
+    p_src_temp.fill(0.0);
+    p_src_temp[j] = 1.0;
+    let p_src_temp_slice = &mut p_src_temp[..nb_compo_usize];
+    let p_dest_temp_slice = &mut p_dest_temp[..nb_compo_usize];
+    let pSrcMatrix_slice = &pSrcMatrix[..nb_compo_usize * nb_compo_usize];
+    let pPermutations_slice = &pPermutations[..nb_compo_usize];
+    let p_swap_area_slice = &mut p_swap_area[..nb_compo_usize];
     opj_lupSolve(
-      p_dest_temp,
-      pSrcMatrix,
-      p_src_temp,
-      pPermutations,
-      nb_compo,
-      p_swap_area,
+      p_dest_temp_slice,
+      pSrcMatrix_slice,
+      p_src_temp_slice,
+      pPermutations_slice,
+      nb_compo_usize,
+      p_swap_area_slice,
     );
-    i = 0 as OPJ_UINT32;
-    while i < nb_compo {
-      *lCurrentPtr = *p_dest_temp.offset(i as isize);
-      lCurrentPtr = lCurrentPtr.offset(nb_compo as isize);
-      i += 1;
+    for i in 0..nb_compo_usize {
+      lCurrentPtr[i * nb_compo_usize] = p_dest_temp[i];
     }
-    j += 1;
   }
 }
