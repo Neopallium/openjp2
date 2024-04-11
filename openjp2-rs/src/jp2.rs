@@ -37,7 +37,7 @@ pub type opj_jp2_box_t = opj_jp2_box;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct opj_jp2_header_handler {
+pub(crate) struct opj_jp2_header_handler {
   pub id: OPJ_UINT32,
   pub handler: Option<
     unsafe extern "C" fn(
@@ -48,16 +48,16 @@ pub struct opj_jp2_header_handler {
     ) -> OPJ_BOOL,
   >,
 }
-pub type opj_jp2_header_handler_t = opj_jp2_header_handler;
+pub(crate) type opj_jp2_header_handler_t = opj_jp2_header_handler;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct opj_jp2_img_header_writer_handler {
+pub(crate) struct opj_jp2_img_header_writer_handler {
   pub handler: Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: *mut OPJ_UINT32) -> *mut OPJ_BYTE>,
   pub m_data: *mut OPJ_BYTE,
   pub m_size: OPJ_UINT32,
 }
-pub type opj_jp2_img_header_writer_handler_t = opj_jp2_img_header_writer_handler;
+pub(crate) type opj_jp2_img_header_writer_handler_t = opj_jp2_img_header_writer_handler;
 static mut jp2_header: [opj_jp2_header_handler_t; 3] = [
   {
     let mut init = opj_jp2_header_handler {

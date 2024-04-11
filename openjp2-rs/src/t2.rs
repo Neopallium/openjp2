@@ -16,11 +16,11 @@ extern "C" {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct opj_t2 {
+pub(crate) struct opj_t2 {
   pub image: *mut opj_image_t,
   pub cp: *mut opj_cp_t,
 }
-pub type opj_t2_t = opj_t2;
+pub(crate) type opj_t2_t = opj_t2;
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
