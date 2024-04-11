@@ -1320,14 +1320,12 @@ unsafe fn opj_t1_allocate_buffers(
   assert!(h <= 1024u32);
   assert!(w.wrapping_mul(h) <= 4096u32);
   /* encoder uses tile buffer, so no need to allocate */
-  let datasize = w.wrapping_mul(h);
+  let datasize = w * h;
   t1.data.resize(datasize as usize);
   // We expand these buffers to multiples of 16 bytes.
   // We need 4 buffers of 129 integers each, expanded to 132 integers each
   // We also need 514 bytes of buffer, expanded to 528 bytes
-  flagssize = (132usize)
-    .wrapping_mul(core::mem::size_of::<OPJ_UINT32>())
-    .wrapping_mul(4); // expanded to multiple of 16
+  flagssize = 132usize * core::mem::size_of::<OPJ_UINT32>() * 4; // expanded to multiple of 16
   flagssize += 528; // 514 expanded to multiples of 16
   t1.flags.resize(flagssize);
   t1.w = w;
