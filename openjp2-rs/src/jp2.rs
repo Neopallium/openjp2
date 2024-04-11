@@ -1036,9 +1036,8 @@ unsafe fn opj_jp2_apply_pclr(
     pcol = (*cmap.offset(i as isize)).pcol as OPJ_UINT16;
     src = (*old_comps.offset(cmp as isize)).data;
     assert!(!src.is_null());
-    max = (*new_comps.offset(pcol as isize))
-      .w
-      .wrapping_mul((*new_comps.offset(pcol as isize)).h);
+    max = (*new_comps.offset(i as isize)).w * (*new_comps.offset(i as isize)).h;
+
     /* Direct use: */
     if (*cmap.offset(i as isize)).mtyp as core::ffi::c_int == 0i32 {
       dst = (*new_comps.offset(i as isize)).data;
