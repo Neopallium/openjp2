@@ -1700,11 +1700,6 @@ pub(crate) unsafe extern "C" fn opj_jp2_apply_color_postprocessing(
     if !(*jp2).color.jp2_cdef.is_null() {
       opj_jp2_apply_cdef(p_image, &mut (*jp2).color, p_manager);
     }
-    if !(*jp2).color.icc_profile_buf.is_null() {
-      (*p_image).icc_profile_buf = (*jp2).color.icc_profile_buf;
-      (*p_image).icc_profile_len = (*jp2).color.icc_profile_len;
-      (*jp2).color.icc_profile_buf = 0 as *mut OPJ_BYTE
-    }
   }
   return 1i32;
 }
@@ -3259,6 +3254,12 @@ pub(crate) unsafe extern "C" fn opj_jp2_read_header(
       (*p_image).color_space = OPJ_CLRSPC_CMYK
     } else {
       (*p_image).color_space = OPJ_CLRSPC_UNKNOWN
+    }
+
+    if !(*jp2).color.icc_profile_buf.is_null() {
+      (*p_image).icc_profile_buf = (*jp2).color.icc_profile_buf;
+      (*p_image).icc_profile_len = (*jp2).color.icc_profile_len;
+      (*jp2).color.icc_profile_buf = 0 as *mut OPJ_BYTE
     }
   }
   return ret;
