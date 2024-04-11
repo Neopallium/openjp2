@@ -1567,6 +1567,7 @@ unsafe fn opj_t2_read_packet_data(
   }
   return 1i32;
 }
+
 unsafe fn opj_t2_skip_packet_data(
   mut p_t2: *mut opj_t2_t,
   mut p_tile: *mut opj_tcd_tile_t,
@@ -1637,6 +1638,7 @@ unsafe fn opj_t2_skip_packet_data(
                                               (*l_seg).newlen, p_max_length,
                                               cblkno, (*p_pi).precno, bandno,
                                               (*p_pi).resno, (*p_pi).compno);
+                return 1i32;
               }
             }
             /* USE_JPWL */
