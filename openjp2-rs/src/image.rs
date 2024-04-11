@@ -162,8 +162,7 @@ pub unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
  * @param p_image_header    the image header to update.
  * @param p_cp              the coding parameters from which to update the image.
  */
-#[no_mangle]
-pub unsafe fn opj_image_comp_header_update(
+pub(crate) unsafe fn opj_image_comp_header_update(
   mut p_image_header: *mut opj_image_t,
   mut p_cp: *const opj_cp,
 ) {

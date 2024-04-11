@@ -213,7 +213,7 @@ impl ProgressionOrder {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub enum J2KMarker {
+pub(crate) enum J2KMarker {
   /// UNKNOWN marker value
   UNK(u32),
   /// SOC marker value

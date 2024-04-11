@@ -27,12 +27,12 @@ extern "C" {
 }
 
 #[derive(Default)]
-pub struct T1Flags {
+pub(crate) struct T1Flags {
   flags: Vec<opj_flag_t>,
 }
 
 #[derive(Copy, Clone)]
-pub struct FlagsPtr {
+pub(crate) struct FlagsPtr {
   flags: *mut opj_flag_t,
 }
 
@@ -121,12 +121,12 @@ impl T1Flags {
 }
 
 #[derive(Default)]
-pub struct T1Data {
+pub(crate) struct T1Data {
   data: Vec<i32>,
 }
 
 #[derive(Copy, Clone)]
-pub struct DataPtr {
+pub(crate) struct DataPtr {
   data: *mut i32,
 }
 
@@ -214,7 +214,7 @@ impl T1Data {
   }
 }
 
-pub struct opj_t1 {
+pub(crate) struct opj_t1 {
   pub mqc: opj_mqc_t,
   pub data: T1Data,
   decoded_data: Option<*mut OPJ_INT32>,
@@ -227,7 +227,7 @@ pub struct opj_t1 {
   pub cblkdatabuffer: *mut OPJ_BYTE,
   pub cblkdatabuffersize: OPJ_UINT32,
 }
-pub type opj_t1_t = opj_t1;
+pub(crate) type opj_t1_t = opj_t1;
 
 impl Default for opj_t1 {
   fn default() -> Self {
@@ -285,7 +285,7 @@ thread_local!{
   static T1: RefCell<opj_t1> = RefCell::new(opj_t1::new())
 }
 
-pub struct opj_t1_cblk_encode_processing_job_t {
+pub(crate) struct opj_t1_cblk_encode_processing_job_t {
   pub compno: OPJ_UINT32,
   pub resno: OPJ_UINT32,
   pub cblk: *mut opj_tcd_cblk_enc_t,
@@ -299,7 +299,7 @@ pub struct opj_t1_cblk_encode_processing_job_t {
   pub mutex: *mut opj_mutex_t,
 }
 
-pub struct opj_t1_cblk_decode_processing_job_t {
+pub(crate) struct opj_t1_cblk_decode_processing_job_t {
   pub whole_tile_decoding: OPJ_BOOL,
   pub resno: OPJ_UINT32,
   pub cblk: *mut opj_tcd_cblk_dec_t,
@@ -2041,7 +2041,7 @@ extern "C" fn opj_t1_clbl_decode_processor(
   }
 }
 
-pub fn opj_t1_decode_cblks(
+pub(crate) fn opj_t1_decode_cblks(
   mut tcd: *mut opj_tcd_t,
   mut pret: *mut OPJ_BOOL,
   mut tilec: *mut opj_tcd_tilecomp_t,
@@ -2612,7 +2612,7 @@ extern "C" fn opj_t1_cblk_encode_processor(
   }
 }
 
-pub fn opj_t1_encode_cblks(
+pub(crate) fn opj_t1_encode_cblks(
   mut tcd: *mut opj_tcd_t,
   mut tile: *mut opj_tcd_tile_t,
   mut tcp: *mut opj_tcp_t,
