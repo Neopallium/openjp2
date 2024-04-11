@@ -1668,23 +1668,12 @@ unsafe extern "C" fn opj_jp2_read_colr(
   }
   return 1i32;
 }
-#[no_mangle]
-pub(crate) unsafe extern "C" fn opj_jp2_decode(
+
+pub(crate) unsafe extern "C" fn opj_jp2_apply_color_postprocessing(
   mut jp2: *mut opj_jp2_t,
-  mut p_stream: *mut opj_stream_private_t,
   mut p_image: *mut opj_image_t,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut opj_event_mgr
 ) -> OPJ_BOOL {
-  if p_image.is_null() {
-    return 0i32;
-  }
-  /* J2K decoding */
-  if opj_j2k_decode((*jp2).j2k, p_stream, p_image, p_manager) == 0 {
-    event_msg!(p_manager, EVT_ERROR,
-      "Failed to decode the codestream in the JP2 file\n",
-    );
-    return 0i32;
-  }
   if (*(*jp2).j2k)
     .m_specific_param
     .m_decoder
@@ -1698,20 +1687,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_decode(
     if opj_jp2_check_color(p_image, &mut (*jp2).color, p_manager) == 0 {
       return 0i32;
     }
-    /* Set Image Color Space */
-    if (*jp2).enumcs == 16u32 {
-      (*p_image).color_space = OPJ_CLRSPC_SRGB
-    } else if (*jp2).enumcs == 17u32 {
-      (*p_image).color_space = OPJ_CLRSPC_GRAY
-    } else if (*jp2).enumcs == 18u32 {
-      (*p_image).color_space = OPJ_CLRSPC_SYCC
-    } else if (*jp2).enumcs == 24u32 {
-      (*p_image).color_space = OPJ_CLRSPC_EYCC
-    } else if (*jp2).enumcs == 12u32 {
-      (*p_image).color_space = OPJ_CLRSPC_CMYK
-    } else {
-      (*p_image).color_space = OPJ_CLRSPC_UNKNOWN
-    }
+
     if !(*jp2).color.jp2_pclr.is_null() {
       /* Part 1, I.5.3.4: Either both or none : */
       if (*(*jp2).color.jp2_pclr).cmap.is_null() {
@@ -1732,6 +1708,27 @@ pub(crate) unsafe extern "C" fn opj_jp2_decode(
   }
   return 1i32;
 }
+
+pub(crate) unsafe extern "C" fn opj_jp2_decode(
+  mut jp2: *mut opj_jp2_t,
+  mut p_stream: *mut opj_stream_private_t,
+  mut p_image: *mut opj_image_t,
+  mut p_manager: &mut opj_event_mgr,
+) -> OPJ_BOOL {
+  if p_image.is_null() {
+    return 0i32;
+  }
+  /* J2K decoding */
+  if opj_j2k_decode((*jp2).j2k, p_stream, p_image, p_manager) == 0 {
+    event_msg!(p_manager, EVT_ERROR,
+      "Failed to decode the codestream in the JP2 file\n",
+    );
+    return 0i32;
+  }
+
+  return opj_jp2_apply_color_postprocessing(jp2, p_image, p_manager);
+}
+
 /* *
  * Writes the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
@@ -3204,6 +3201,7 @@ unsafe fn opj_jp2_read_boxhdr_char(
   }
   return 1i32;
 }
+
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_jp2_read_header(
   mut p_stream: *mut opj_stream_private_t,
@@ -3243,7 +3241,27 @@ pub(crate) unsafe extern "C" fn opj_jp2_read_header(
     );
     return 0i32;
   }
-  return opj_j2k_read_header(p_stream, (*jp2).j2k, p_image, p_manager);
+
+  let ret = opj_j2k_read_header(p_stream, (*jp2).j2k, p_image, p_manager);
+
+  if !p_image.is_null() && !(*p_image).is_null() {
+    let p_image = *p_image;
+    /* Set Image Color Space */
+    if (*jp2).enumcs == 16u32 {
+      (*p_image).color_space = OPJ_CLRSPC_SRGB
+    } else if (*jp2).enumcs == 17u32 {
+      (*p_image).color_space = OPJ_CLRSPC_GRAY
+    } else if (*jp2).enumcs == 18u32 {
+      (*p_image).color_space = OPJ_CLRSPC_SYCC
+    } else if (*jp2).enumcs == 24u32 {
+      (*p_image).color_space = OPJ_CLRSPC_EYCC
+    } else if (*jp2).enumcs == 12u32 {
+      (*p_image).color_space = OPJ_CLRSPC_CMYK
+    } else {
+      (*p_image).color_space = OPJ_CLRSPC_UNKNOWN
+    }
+  }
+  return ret;
 }
 /* *
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
@@ -3640,51 +3658,10 @@ pub(crate) unsafe extern "C" fn opj_jp2_get_tile(
     );
     return 0i32;
   }
-  if (*(*p_jp2).j2k)
-    .m_specific_param
-    .m_decoder
-    .m_numcomps_to_decode
-    != 0
-  {
-    /* Bypass all JP2 component transforms */
-    return 1i32;
-  }
-  if opj_jp2_check_color(p_image, &mut (*p_jp2).color, p_manager) == 0 {
-    return 0i32;
-  }
-  /* Set Image Color Space */
-  if (*p_jp2).enumcs == 16u32 {
-    (*p_image).color_space = OPJ_CLRSPC_SRGB
-  } else if (*p_jp2).enumcs == 17u32 {
-    (*p_image).color_space = OPJ_CLRSPC_GRAY
-  } else if (*p_jp2).enumcs == 18u32 {
-    (*p_image).color_space = OPJ_CLRSPC_SYCC
-  } else if (*p_jp2).enumcs == 24u32 {
-    (*p_image).color_space = OPJ_CLRSPC_EYCC
-  } else if (*p_jp2).enumcs == 12u32 {
-    (*p_image).color_space = OPJ_CLRSPC_CMYK
-  } else {
-    (*p_image).color_space = OPJ_CLRSPC_UNKNOWN
-  }
-  if !(*p_jp2).color.jp2_pclr.is_null() {
-    /* Part 1, I.5.3.4: Either both or none : */
-    if (*(*p_jp2).color.jp2_pclr).cmap.is_null() {
-      opj_jp2_free_pclr(&mut (*p_jp2).color);
-    } else if opj_jp2_apply_pclr(p_image, &mut (*p_jp2).color, p_manager) == 0 {
-      return 0i32;
-    }
-  }
-  /* Apply the color space if needed */
-  if !(*p_jp2).color.jp2_cdef.is_null() {
-    opj_jp2_apply_cdef(p_image, &mut (*p_jp2).color, p_manager);
-  }
-  if !(*p_jp2).color.icc_profile_buf.is_null() {
-    (*p_image).icc_profile_buf = (*p_jp2).color.icc_profile_buf;
-    (*p_image).icc_profile_len = (*p_jp2).color.icc_profile_len;
-    (*p_jp2).color.icc_profile_buf = 0 as *mut OPJ_BYTE
-  }
-  return 1i32;
+
+  return opj_jp2_apply_color_postprocessing(p_jp2, p_image, p_manager);
 }
+
 /* ----------------------------------------------------------------------- */
 /* JP2 encoder interface                                             */
 /* ----------------------------------------------------------------------- */
