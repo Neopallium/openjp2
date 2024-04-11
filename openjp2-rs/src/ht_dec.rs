@@ -338,7 +338,7 @@ unsafe fn mel_init(
   mut bbuf: *mut OPJ_UINT8,
   mut lcup: core::ffi::c_int,
   mut scup: core::ffi::c_int,
-) {
+) -> bool {
   let mut num: core::ffi::c_int = 0; // move the pointer to the start of MEL
   let mut i: core::ffi::c_int = 0; // 0 bits in tmp
   (*melp).data = bbuf.offset(lcup as isize).offset(-(scup as isize)); //
@@ -359,10 +359,10 @@ unsafe fn mel_init(
     // this code is similar to mel_read
     let mut d: OPJ_UINT64 = 0; // if buffer is consumed
     let mut d_bits: core::ffi::c_int = 0;
-    assert!(
-      (*melp).unstuff == 0i32
-        || *(*melp).data.offset(0) as core::ffi::c_int <= 0x8fi32
-    );
+    if (*melp).unstuff != 0i32
+        && *(*melp).data.offset(0) as core::ffi::c_int > 0x8fi32 {
+      return false;
+    }
     d = if (*melp).size > 0i32 {
       *(*melp).data as core::ffi::c_int
     } else {
@@ -389,6 +389,7 @@ unsafe fn mel_init(
   (*melp).tmp <<= 64i32 - (*melp).bits;
   //push all the way up so the first bit
   // is the MSB
+  return true;
 }
 //* ***********************************************************************/
 /* * @brief Retrieves one run from dec_mel_t; if there are no runs stored
@@ -1685,7 +1686,16 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     return 0i32;
   }
   // init structures
-  mel_init(&mut mel, coded_data, lcup, scup);
+  if !mel_init(&mut mel, coded_data, lcup, scup) {
+    if !p_manager_mutex.is_null() {
+      opj_mutex_lock(p_manager_mutex);
+    }
+    event_msg!(p_manager, EVT_ERROR, "Malformed HT codeblock.  Incorrect MEL segment sequence.\n");
+    if !p_manager_mutex.is_null() {
+      opj_mutex_unlock(p_manager_mutex);
+    }
+    return 0i32;
+  }
   rev_init(&mut vlc, coded_data, lcup, scup);
   frwd_init(
     &mut magsgn,
