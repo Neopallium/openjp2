@@ -1543,15 +1543,16 @@ unsafe extern "C" fn opj_j2k_read_siz(
   {
     return 0i32;
   }
+
   /* Compute the number of tiles */
-  (*l_cp).tw = opj_int_ceildiv(
-    (*l_image).x1.wrapping_sub((*l_cp).tx0) as OPJ_INT32,
-    (*l_cp).tdx as OPJ_INT32,
-  ) as OPJ_UINT32;
-  (*l_cp).th = opj_int_ceildiv(
-    (*l_image).y1.wrapping_sub((*l_cp).ty0) as OPJ_INT32,
-    (*l_cp).tdy as OPJ_INT32,
-  ) as OPJ_UINT32;
+  (*l_cp).tw = opj_uint_ceildiv(
+    (*l_image).x1 - ((*l_cp).tx0),
+    (*l_cp).tdx,
+  );
+  (*l_cp).th = opj_uint_ceildiv(
+    (*l_image).y1 - ((*l_cp).ty0),
+    (*l_cp).tdy,
+  );
   /* Check that the number of tiles is valid */
   if (*l_cp).tw == 0u32
     || (*l_cp).th == 0u32
@@ -1579,22 +1580,22 @@ unsafe extern "C" fn opj_j2k_read_siz(
       .m_start_tile_y
       .wrapping_sub((*l_cp).ty0)
       .wrapping_div((*l_cp).tdy);
-    (*p_j2k).m_specific_param.m_decoder.m_end_tile_x = opj_int_ceildiv(
+    (*p_j2k).m_specific_param.m_decoder.m_end_tile_x = opj_uint_ceildiv(
       (*p_j2k)
         .m_specific_param
         .m_decoder
         .m_end_tile_x
-        .wrapping_sub((*l_cp).tx0) as OPJ_INT32,
-      (*l_cp).tdx as OPJ_INT32,
-    ) as OPJ_UINT32;
-    (*p_j2k).m_specific_param.m_decoder.m_end_tile_y = opj_int_ceildiv(
+        - ((*l_cp).tx0),
+      (*l_cp).tdx,
+    );
+    (*p_j2k).m_specific_param.m_decoder.m_end_tile_y = opj_uint_ceildiv(
       (*p_j2k)
         .m_specific_param
         .m_decoder
         .m_end_tile_y
-        .wrapping_sub((*l_cp).ty0) as OPJ_INT32,
-      (*l_cp).tdy as OPJ_INT32,
-    ) as OPJ_UINT32
+        - ((*l_cp).ty0),
+      (*l_cp).tdy,
+    );
   } else {
     (*p_j2k).m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
     (*p_j2k).m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
@@ -8117,14 +8118,14 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
       );
       return 0i32;
     }
-    (*cp).tw = opj_int_ceildiv(
-      (*image).x1.wrapping_sub((*cp).tx0) as OPJ_INT32,
-      (*cp).tdx as OPJ_INT32,
-    ) as OPJ_UINT32;
-    (*cp).th = opj_int_ceildiv(
-      (*image).y1.wrapping_sub((*cp).ty0) as OPJ_INT32,
-      (*cp).tdy as OPJ_INT32,
-    ) as OPJ_UINT32;
+    (*cp).tw = opj_uint_ceildiv(
+      (*image).x1 - ((*cp).tx0),
+      (*cp).tdx
+    );
+    (*cp).th = opj_uint_ceildiv(
+      (*image).y1 - ((*cp).ty0),
+      (*cp).tdy
+    );
     /* Check that the number of tiles is valid */
     if (*cp).tw > (65535u32).wrapping_div((*cp).th) {
       event_msg!(p_manager, EVT_ERROR,
@@ -10802,6 +10803,7 @@ unsafe fn opj_j2k_update_image_data(
   }
   return 1i32;
 }
+
 unsafe fn opj_j2k_update_image_dimensions(
   mut p_image: *mut opj_image_t,
   mut p_manager: &mut opj_event_mgr,
@@ -10825,12 +10827,14 @@ unsafe fn opj_j2k_update_image_dimensions(
       );
       return 0i32;
     }
+
     (*l_img_comp).x0 =
-      opj_int_ceildiv((*p_image).x0 as OPJ_INT32, (*l_img_comp).dx as OPJ_INT32) as OPJ_UINT32;
+      opj_uint_ceildiv((*p_image).x0, (*l_img_comp).dx);
     (*l_img_comp).y0 =
-      opj_int_ceildiv((*p_image).y0 as OPJ_INT32, (*l_img_comp).dy as OPJ_INT32) as OPJ_UINT32;
+      opj_uint_ceildiv((*p_image).y0, (*l_img_comp).dy);
     l_comp_x1 = opj_int_ceildiv((*p_image).x1 as OPJ_INT32, (*l_img_comp).dx as OPJ_INT32);
     l_comp_y1 = opj_int_ceildiv((*p_image).y1 as OPJ_INT32, (*l_img_comp).dy as OPJ_INT32);
+
     l_w = opj_int_ceildivpow2(l_comp_x1, (*l_img_comp).factor as OPJ_INT32)
       - opj_int_ceildivpow2(
         (*l_img_comp).x0 as OPJ_INT32,
@@ -11083,8 +11087,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
         (*p_image).x1 = (*l_image).x1
       } else {
         (*p_j2k).m_specific_param.m_decoder.m_end_tile_x =
-          opj_int_ceildiv(p_end_x - (*l_cp).tx0 as OPJ_INT32, (*l_cp).tdx as OPJ_INT32)
-            as OPJ_UINT32;
+          opj_uint_ceildiv(p_end_x as OPJ_UINT32 - (*l_cp).tx0, (*l_cp).tdx);
         (*p_image).x1 = p_end_x as OPJ_UINT32
       }
     }
@@ -11112,7 +11115,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_set_decode_area(
     (*p_image).y1 = (*l_image).y1
   } else {
     (*p_j2k).m_specific_param.m_decoder.m_end_tile_y =
-      opj_int_ceildiv(p_end_y - (*l_cp).ty0 as OPJ_INT32, (*l_cp).tdy as OPJ_INT32) as OPJ_UINT32;
+      opj_uint_ceildiv(p_end_y as OPJ_UINT32 - (*l_cp).ty0, (*l_cp).tdy);
     (*p_image).y1 = p_end_y as OPJ_UINT32
   }
   /* ----- */
@@ -12329,19 +12332,19 @@ unsafe fn opj_j2k_dump_MH_info(mut p_j2k: *mut opj_j2k_t, mut out_stream: *mut F
   );
   fprintf(
     out_stream,
-    b"\t tx0=%d, ty0=%d\n\x00" as *const u8 as *const core::ffi::c_char,
+    b"\t tx0=%u, ty0=%u\n\x00" as *const u8 as *const core::ffi::c_char,
     (*p_j2k).m_cp.tx0,
     (*p_j2k).m_cp.ty0,
   );
   fprintf(
     out_stream,
-    b"\t tdx=%d, tdy=%d\n\x00" as *const u8 as *const core::ffi::c_char,
+    b"\t tdx=%u, tdy=%u\n\x00" as *const u8 as *const core::ffi::c_char,
     (*p_j2k).m_cp.tdx,
     (*p_j2k).m_cp.tdy,
   );
   fprintf(
     out_stream,
-    b"\t tw=%d, th=%d\n\x00" as *const u8 as *const core::ffi::c_char,
+    b"\t tw=%u, th=%u\n\x00" as *const u8 as *const core::ffi::c_char,
     (*p_j2k).m_cp.tw,
     (*p_j2k).m_cp.th,
   );
@@ -13314,6 +13317,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_decode(
   /* Move data and copy one information from codec to output image*/
   return opj_j2k_move_data_from_codec_to_output_image(p_j2k, p_image);
 }
+
 #[no_mangle]
 pub(crate) unsafe extern "C" fn opj_j2k_get_tile(
   mut p_j2k: *mut opj_j2k_t,
@@ -13379,18 +13383,22 @@ pub(crate) unsafe extern "C" fn opj_j2k_get_tile(
   if (*p_image).y1 > (*(*p_j2k).m_private_image).y1 {
     (*p_image).y1 = (*(*p_j2k).m_private_image).y1
   }
+
   l_img_comp = (*p_image).comps;
   compno = 0 as OPJ_UINT32;
   while compno < (*(*p_j2k).m_private_image).numcomps {
     let mut l_comp_x1: OPJ_INT32 = 0;
     let mut l_comp_y1: OPJ_INT32 = 0;
+
     (*l_img_comp).factor = (*(*(*p_j2k).m_private_image).comps.offset(compno as isize)).factor;
+
     (*l_img_comp).x0 =
-      opj_int_ceildiv((*p_image).x0 as OPJ_INT32, (*l_img_comp).dx as OPJ_INT32) as OPJ_UINT32;
+      opj_uint_ceildiv((*p_image).x0, (*l_img_comp).dx);
     (*l_img_comp).y0 =
-      opj_int_ceildiv((*p_image).y0 as OPJ_INT32, (*l_img_comp).dy as OPJ_INT32) as OPJ_UINT32;
+      opj_uint_ceildiv((*p_image).y0, (*l_img_comp).dy);
     l_comp_x1 = opj_int_ceildiv((*p_image).x1 as OPJ_INT32, (*l_img_comp).dx as OPJ_INT32);
     l_comp_y1 = opj_int_ceildiv((*p_image).y1 as OPJ_INT32, (*l_img_comp).dy as OPJ_INT32);
+
     (*l_img_comp).w = (opj_int_ceildivpow2(l_comp_x1, (*l_img_comp).factor as OPJ_INT32)
       - opj_int_ceildivpow2(
         (*l_img_comp).x0 as OPJ_INT32,
@@ -13791,6 +13799,7 @@ unsafe fn opj_j2k_pre_write_tile(
   } /* (/8) */
   return 1i32; /* (%8) */
 }
+
 unsafe fn opj_get_tile_dimensions(
   mut l_image: *mut opj_image_t,
   mut l_tilec: *mut opj_tcd_tilecomp_t,
@@ -13814,16 +13823,17 @@ unsafe fn opj_get_tile_dimensions(
   if *l_size_comp == 3u32 {
     *l_size_comp = 4 as OPJ_UINT32
   }
+
   *l_width = ((*l_tilec).x1 - (*l_tilec).x0) as OPJ_UINT32;
   *l_height = ((*l_tilec).y1 - (*l_tilec).y0) as OPJ_UINT32;
   *l_offset_x =
-    opj_int_ceildiv((*l_image).x0 as OPJ_INT32, (*l_img_comp).dx as OPJ_INT32) as OPJ_UINT32;
+    opj_uint_ceildiv((*l_image).x0, (*l_img_comp).dx);
   *l_offset_y =
-    opj_int_ceildiv((*l_image).y0 as OPJ_INT32, (*l_img_comp).dy as OPJ_INT32) as OPJ_UINT32;
-  *l_image_width = opj_int_ceildiv(
-    (*l_image).x1 as OPJ_INT32 - (*l_image).x0 as OPJ_INT32,
-    (*l_img_comp).dx as OPJ_INT32,
-  ) as OPJ_UINT32;
+    opj_uint_ceildiv((*l_image).y0, (*l_img_comp).dy);
+  *l_image_width = opj_uint_ceildiv(
+    (*l_image).x1 - (*l_image).x0,
+    (*l_img_comp).dx,
+  );
   *l_stride = (*l_image_width).wrapping_sub(*l_width);
   *l_tile_offset = ((*l_tilec).x0 as OPJ_UINT32)
     .wrapping_sub(*l_offset_x)
