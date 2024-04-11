@@ -100,19 +100,6 @@ unsafe fn opj_bio_bytein(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
 /* * @name Local static functions */
 /*@{*/
 /* *
-Write a bit
-@param bio BIO handle
-@param b Bit to write (0 or 1)
-*/
-unsafe fn opj_bio_putbit(mut bio: *mut opj_bio_t, mut b: OPJ_UINT32) {
-  if (*bio).ct == 0u32 {
-    opj_bio_byteout(bio);
-    /* MSD: why not check the return value of this function ? */
-  }
-  (*bio).ct = (*bio).ct.wrapping_sub(1);
-  (*bio).buf |= b << (*bio).ct;
-}
-/* *
 Read a bit
 @param bio BIO handle
 @return Returns the read bit
@@ -168,6 +155,20 @@ pub(crate) unsafe fn opj_bio_init_dec(
   (*bio).bp = bp;
   (*bio).buf = 0 as OPJ_UINT32;
   (*bio).ct = 0 as OPJ_UINT32;
+}
+/* *
+Write a bit
+@param bio BIO handle
+@param b Bit to write (0 or 1)
+*/
+#[no_mangle]
+pub(crate) unsafe fn opj_bio_putbit(mut bio: *mut opj_bio_t, mut b: OPJ_UINT32) {
+  if (*bio).ct == 0u32 {
+    opj_bio_byteout(bio);
+    /* MSD: why not check the return value of this function ? */
+  }
+  (*bio).ct -= 1;
+  (*bio).buf |= b << (*bio).ct;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_bio_write(

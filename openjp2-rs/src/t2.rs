@@ -69,22 +69,10 @@ pub type opj_t2_t = opj_t2;
 /* ----------------------------------------------------------------------- */
 /* #define RESTART 0x04 */
 unsafe fn opj_t2_putcommacode(mut bio: *mut opj_bio_t, mut n: OPJ_INT32) {
-  loop {
-    n -= 1;
-    if !(n >= 0i32) {
-      break;
-    }
-    opj_bio_write(
-      bio,
-      1 as OPJ_UINT32,
-      1 as OPJ_UINT32,
-    );
+  for _ in 0..n {
+    opj_bio_putbit(bio, 1);
   }
-  opj_bio_write(
-    bio,
-    0 as OPJ_UINT32,
-    1 as OPJ_UINT32,
-  );
+  opj_bio_putbit(bio, 0);
 }
 unsafe fn opj_t2_getcommacode(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
   let mut n = 0 as OPJ_UINT32;
@@ -100,11 +88,7 @@ Variable length code for signalling delta Zil (truncation point)
 */
 unsafe fn opj_t2_putnumpasses(mut bio: *mut opj_bio_t, mut n: OPJ_UINT32) {
   if n == 1u32 {
-    opj_bio_write(
-      bio,
-      0 as OPJ_UINT32,
-      1 as OPJ_UINT32,
-    );
+    opj_bio_putbit(bio, 0);
   } else if n == 2u32 {
     opj_bio_write(
       bio,
@@ -740,17 +724,18 @@ unsafe fn opj_t2_encode_packet(
   if bio.is_null() {
     /* FIXME event manager error callback */
     return 0i32;
-  } /* Empty header bit */
+  }
   opj_bio_init_enc(bio, c, length);
-  opj_bio_write(
+  /* Empty header bit */
+  opj_bio_putbit(
     bio,
     if packet_empty != 0 {
-      0i32
+      0
     } else {
-      1i32
-    } as OPJ_UINT32,
-    1 as OPJ_UINT32,
+      1
+    }
   );
+
   /* Writing Packet header */
   band = (*res).bands.as_mut_ptr();
   bandno = 0 as OPJ_UINT32;
@@ -800,10 +785,9 @@ unsafe fn opj_t2_encode_packet(
             layno.wrapping_add(1u32) as OPJ_INT32,
           );
         } else {
-          opj_bio_write(
+          opj_bio_putbit(
             bio,
-            ((*layer_0).numpasses != 0u32) as OPJ_UINT32,
-            1 as OPJ_UINT32,
+            ((*layer_0).numpasses != 0u32) as u32
           );
         }
         /* if cblk not included, go to the next cblk  */
@@ -944,11 +928,14 @@ unsafe fn opj_t2_encode_packet(
             }
             return 0i32;
           }
-          memcpy(
-            c as *mut core::ffi::c_void,
-            (*layer_1).data as *const core::ffi::c_void,
-            (*layer_1).len as usize,
-          );
+
+          if p_t2_mode == FINAL_PASS {
+            memcpy(
+              c as *mut core::ffi::c_void,
+              (*layer_1).data as *const core::ffi::c_void,
+              (*layer_1).len as usize,
+            );
+          }
           (*cblk).numpasses = ((*cblk).numpasses as core::ffi::c_uint).wrapping_add((*layer_1).numpasses)
             as OPJ_UINT32;
           c = c.offset((*layer_1).len as isize);

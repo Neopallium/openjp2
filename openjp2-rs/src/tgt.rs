@@ -341,20 +341,12 @@ pub(crate) unsafe fn opj_tgt_encode(
     while low < threshold {
       if low >= (*node).value {
         if (*node).known == 0 {
-          opj_bio_write(
-            bio,
-            1 as OPJ_UINT32,
-            1 as OPJ_UINT32,
-          );
+          opj_bio_putbit(bio, 1);
           (*node).known = 1 as OPJ_UINT32
         }
         break;
       } else {
-        opj_bio_write(
-          bio,
-          0 as OPJ_UINT32,
-          1 as OPJ_UINT32,
-        );
+        opj_bio_putbit(bio, 0);
         low += 1
       }
     }
