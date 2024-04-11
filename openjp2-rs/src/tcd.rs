@@ -52,8 +52,7 @@ pub(crate) unsafe fn opj_tcd_create(mut p_is_decoder: OPJ_BOOL) -> *mut opj_tcd_
   return l_tcd;
 }
 /* ----------------------------------------------------------------------- */
-#[no_mangle]
-pub(crate) unsafe fn opj_tcd_rateallocate_fixed(mut tcd: *mut opj_tcd_t) {
+unsafe fn opj_tcd_rateallocate_fixed(mut tcd: *mut opj_tcd_t) {
   let mut layno: OPJ_UINT32 = 0; /* fixed_quality */
   layno = 0 as OPJ_UINT32;
   while layno < (*(*tcd).tcp).numlayers {
@@ -61,13 +60,15 @@ pub(crate) unsafe fn opj_tcd_rateallocate_fixed(mut tcd: *mut opj_tcd_t) {
     layno += 1;
   }
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_tcd_makelayer(
+
+/** Returns OPJ_TRUE if the layer allocation is unchanged w.r.t to the previous
+ * invokation with a different threshold */
+unsafe fn opj_tcd_makelayer(
   mut tcd: *mut opj_tcd_t,
   mut layno: OPJ_UINT32,
   mut thresh: OPJ_FLOAT64,
   mut final_0: OPJ_UINT32,
-) {
+) -> bool {
   let mut compno: OPJ_UINT32 = 0;
   let mut resno: OPJ_UINT32 = 0;
   let mut bandno: OPJ_UINT32 = 0;
@@ -75,6 +76,7 @@ pub(crate) unsafe fn opj_tcd_makelayer(
   let mut cblkno: OPJ_UINT32 = 0;
   let mut passno: OPJ_UINT32 = 0;
   let mut tcd_tile = (*(*tcd).tcd_image).tiles;
+  let mut layer_allocation_is_same = true;
   (*tcd_tile).distolayer[layno as usize] = 0 as OPJ_FLOAT64;
   compno = 0 as OPJ_UINT32;
   while compno < (*tcd_tile).numcomps {
@@ -142,7 +144,11 @@ pub(crate) unsafe fn opj_tcd_makelayer(
                   passno += 1;
                 }
               } /*, matrice[tcd_tcp->numlayers][tcd_tile->comps[0].numresolutions][3]; */
-              (*layer).numpasses = n.wrapping_sub((*cblk).numpassesinlayers);
+
+              if (*layer).numpasses != n - (*cblk).numpassesinlayers {
+                layer_allocation_is_same = false;
+                (*layer).numpasses = n - (*cblk).numpassesinlayers;
+              }
               if (*layer).numpasses == 0 {
                 (*layer).disto = 0 as OPJ_FLOAT64
               } else {
@@ -207,9 +213,9 @@ pub(crate) unsafe fn opj_tcd_makelayer(
     }
     compno += 1;
   }
+  return layer_allocation_is_same;
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_tcd_makelayer_fixed(
+unsafe fn opj_tcd_makelayer_fixed(
   mut tcd: *mut opj_tcd_t,
   mut layno: OPJ_UINT32,
   mut final_0: OPJ_UINT32,
@@ -366,8 +372,12 @@ pub(crate) unsafe fn opj_tcd_makelayer_fixed(
     compno += 1;
   }
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_tcd_rateallocate(
+
+/** Rate allocation for the following methods:
+ * - allocation by rate/distortio (m_disto_alloc == 1)
+ * - allocation by fixed quality  (m_fixed_quality == 1)
+ */
+unsafe fn opj_tcd_rateallocate(
   mut tcd: *mut opj_tcd_t,
   mut dest: *mut OPJ_BYTE,
   mut p_data_written: *mut OPJ_UINT32,
@@ -489,6 +499,7 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
       return 0i32;
     }
   } /* fixed_quality */
+
   layno = 0 as OPJ_UINT32;
   while layno < (*tcd_tcp).numlayers {
     let mut lo = min;
@@ -513,6 +524,7 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
           ((*tcd_tcp).distoratio[layno as usize] / 10 as core::ffi::c_float)
             as core::ffi::c_double,
         );
+
     /* Don't try to find an optimal threshold but rather take everything not included yet, if
     -r xx,yy,zz,0   (disto_alloc == 1 and rates == 0)
     -q xx,yy,zz,0   (fixed_quality == 1 and distoratio == 0)
@@ -524,14 +536,25 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
     {
       let mut t2 = opj_t2_create((*tcd).image, cp); /* fixed_quality */
       let mut thresh = 0 as OPJ_FLOAT64;
+      let mut last_layer_allocation_ok = false;
+
       if t2.is_null() {
         return 0i32;
       }
       i = 0 as OPJ_UINT32;
       while i < 128u32 {
         let mut distoachieved = 0 as OPJ_FLOAT64;
-        thresh = (lo + hi) / 2 as core::ffi::c_double;
-        opj_tcd_makelayer(tcd, layno, thresh, 0 as OPJ_UINT32);
+        let new_thresh = (lo + hi) / 2.0;
+        /* Stop iterating when the threshold has stabilized enough */
+        /* 0.5 * 1e-5 is somewhat arbitrary, but has been selected */
+        /* so that this doesn't change the results of the regression */
+        /* test suite. */
+        if (new_thresh - thresh).abs() <= 0.5 * 1e-5 * thresh {
+          break;
+        }
+        thresh = new_thresh;
+
+        let layer_allocation_is_same = opj_tcd_makelayer(tcd, layno, thresh, 0 as OPJ_UINT32) && i != 0;
         if (*cp).m_specific_param.m_enc.m_fixed_quality() != 0 {
           /* fixed_quality */
           if (*cp).rsiz as core::ffi::c_int >= 0x3i32
@@ -585,7 +608,17 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
               lo = thresh
             }
           }
-        } else if opj_t2_encode_packets(
+        } else { /* Disto/rate based optimization */
+          /* Check if the layer allocation done by opj_tcd_makelayer()
+           * is compatible of the maximum rate allocation. If not,
+           * retry with a higher threshold.
+           * If OK, try with a lower threshold.
+           * Call opj_t2_encode_packets() only if opj_tcd_makelayer()
+           * has resulted in different truncation points since its last
+           * call. */
+          if (layer_allocation_is_same && !last_layer_allocation_ok) ||
+                  (!layer_allocation_is_same &&
+                   opj_t2_encode_packets(
           t2,
           (*tcd).tcd_tileno,
           tcd_tile,
@@ -600,14 +633,14 @@ pub(crate) unsafe fn opj_tcd_rateallocate(
           (*tcd).cur_pino,
           THRESH_CALC,
           p_manager,
-        ) == 0
-        {
-          /* TODO: what to do with l ??? seek / tell ??? */
-          /* event_msg!(tcd->cinfo, EVT_INFO, "rate alloc: len=%d, max=%d\n", l, maxlen); */
-          lo = thresh
-        } else {
-          hi = thresh;
-          stable_thresh = thresh
+        ) == 0) {
+            last_layer_allocation_ok = false;
+            lo = thresh;
+          } else {
+            last_layer_allocation_ok = true;
+            hi = thresh;
+            stable_thresh = thresh
+          }
         }
         i += 1;
       }
