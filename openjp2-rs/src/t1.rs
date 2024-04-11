@@ -2775,6 +2775,13 @@ fn opj_t1_encode_cblk(
         let mut tmp = *datap;
         if tmp < 0i32 {
           let mut tmp_unsigned: OPJ_UINT32 = 0;
+          if tmp == i32::MIN {
+              /* To avoid undefined behaviour when negating INT_MIN */
+              /* but if we go here, it means we have supplied an input */
+              /* with more bit depth than we we can really support. */
+              /* Cf https://github.com/uclouvain/openjpeg/issues/1432 */
+              tmp = i32::MIN + 1;
+          }
           max = opj_int_max(max, -tmp);
           tmp_unsigned = if tmp >= 0i32 {
             tmp as OPJ_UINT32
