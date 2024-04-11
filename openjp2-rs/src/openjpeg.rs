@@ -971,6 +971,20 @@ pub(crate) union C2RustUnnamed_0 {
 }
 pub(crate) type opj_encoding_param_t = opj_encoding_param;
 
+/**
+Rate allocation strategy
+*/
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(i32)]
+pub enum J2K_QUALITY_LAYER_ALLOCATION_STRATEGY {
+  /// allocation by rate/distortion
+  RATE_DISTORTION_RATIO = 0,
+  /// allocation by fixed distortion ratio (PSNR) (fixed quality)
+  FIXED_DISTORTION_RATIO = 1,
+  /// allocation by fixed layer (number of passes per layer / resolution / subband)
+  FIXED_LAYER = 2,
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, BitfieldStruct)]
 pub(crate) struct opj_encoding_param {
@@ -978,13 +992,8 @@ pub(crate) struct opj_encoding_param {
   pub m_tp_pos: OPJ_INT32,
   pub m_matrice: *mut OPJ_INT32,
   pub m_tp_flag: OPJ_BYTE,
-  #[bitfield(name = "m_disto_alloc", ty = "OPJ_BITFIELD", bits = "0..=0")]
-  #[bitfield(name = "m_fixed_alloc", ty = "OPJ_BITFIELD", bits = "1..=1")]
-  #[bitfield(name = "m_fixed_quality", ty = "OPJ_BITFIELD", bits = "2..=2")]
-  #[bitfield(name = "m_tp_on", ty = "OPJ_BITFIELD", bits = "3..=3")]
-  pub m_disto_alloc_m_fixed_alloc_m_fixed_quality_m_tp_on: [u8; 1],
-  #[bitfield(padding)]
-  pub c2rust_padding: [u8; 6],
+  pub m_quality_layer_alloc_strategy: J2K_QUALITY_LAYER_ALLOCATION_STRATEGY,
+  pub m_tp_on: bool,
 }
 pub(crate) type opj_decoding_param_t = opj_decoding_param;
 

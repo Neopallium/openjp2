@@ -1643,7 +1643,6 @@ fn opj_t1_dec_clnpass(
   opj_t1_dec_clnpass_check_segsym(t1, cblksty);
 }
 
-/* * mod fixed_quality */
 fn opj_t1_getwmsedec(
   mut nmsedec: OPJ_INT32,
   mut compno: OPJ_UINT32,
@@ -2863,7 +2862,7 @@ fn opj_t1_encode_cblk(
         }
         _ => {}
       }
-      /* fixed_quality */
+
       tempwmsedec = opj_t1_getwmsedec(
         nmsedec,
         compno,

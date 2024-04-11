@@ -1,4 +1,5 @@
 use super::openjpeg::*;
+use super::consts::*;
 use super::math::*;
 use super::dwt::*;
 use super::mct::*;
@@ -140,7 +141,7 @@ unsafe fn opj_tcd_makelayer(
                   } else if (thresh - dd / dr as core::ffi::c_double) < 2.2204460492503131e-16f64 {
                     /* do not rely on float equality, check with DBL_EPSILON margin */
                     n = passno.wrapping_add(1u32)
-                  } /* fixed_quality */
+                  }
                   passno += 1;
                 }
               } /*, matrice[tcd_tcp->numlayers][tcd_tile->comps[0].numresolutions][3]; */
@@ -215,6 +216,7 @@ unsafe fn opj_tcd_makelayer(
   }
   return layer_allocation_is_same;
 }
+
 unsafe fn opj_tcd_makelayer_fixed(
   mut tcd: *mut opj_tcd_t,
   mut layno: OPJ_UINT32,
@@ -226,7 +228,8 @@ unsafe fn opj_tcd_makelayer_fixed(
   let mut precno: OPJ_UINT32 = 0;
   let mut cblkno: OPJ_UINT32 = 0;
   let mut value: OPJ_INT32 = 0;
-  let mut matrice: [[[OPJ_INT32; 3]; 10]; 10] = [[[0; 3]; 10]; 10];
+  let mut matrice: [[[OPJ_INT32; 3]; j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT as usize]; j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT as usize] =
+    [[[0; 3]; j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT as usize]; j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT as usize];
   let mut i: OPJ_UINT32 = 0;
   let mut j: OPJ_UINT32 = 0;
   let mut k: OPJ_UINT32 = 0;
@@ -374,8 +377,8 @@ unsafe fn opj_tcd_makelayer_fixed(
 }
 
 /** Rate allocation for the following methods:
- * - allocation by rate/distortio (m_disto_alloc == 1)
- * - allocation by fixed quality  (m_fixed_quality == 1)
+ * - allocation by rate/distortio (m_quality_layer_alloc_strategy == RATE_DISTORTION_RATIO)
+ * - allocation by fixed quality  (m_quality_layer_alloc_strategy == FIXED_DISTORTION_RATIO)
  */
 unsafe fn opj_tcd_rateallocate(
   mut tcd: *mut opj_tcd_t,
@@ -463,9 +466,12 @@ unsafe fn opj_tcd_rateallocate(
                 }
                 passno += 1;
               }
-              /* fixed_quality */
-              (*tcd_tile).numpix += ((*cblk).x1 - (*cblk).x0) * ((*cblk).y1 - (*cblk).y0);
-              (*tilec).numpix += ((*cblk).x1 - (*cblk).x0) * ((*cblk).y1 - (*cblk).y0);
+
+              {
+                let cblk_pix_count = ((*cblk).x1 - (*cblk).x0) * ((*cblk).y1 - (*cblk).y0);
+                (*tcd_tile).numpix += cblk_pix_count;
+                (*tilec).numpix += cblk_pix_count;
+              }
               cblkno += 1;
             }
             precno += 1;
@@ -484,6 +490,7 @@ unsafe fn opj_tcd_rateallocate(
       * (*tilec).numpix as OPJ_FLOAT64;
     compno += 1;
   }
+
   /* index file */
   if !cstr_info.is_null() {
     let mut tile_info: *mut opj_tile_info_t =
@@ -516,7 +523,7 @@ unsafe fn opj_tcd_rateallocate(
     let mut stable_thresh = 0 as OPJ_FLOAT64;
     let mut i: OPJ_UINT32 = 0;
     let mut distotarget: OPJ_FLOAT64 = 0.;
-    /* fixed_quality */
+
     distotarget = (*tcd_tile).distotile
       - K * maxSE
         / pow(
@@ -526,12 +533,12 @@ unsafe fn opj_tcd_rateallocate(
         );
 
     /* Don't try to find an optimal threshold but rather take everything not included yet, if
-    -r xx,yy,zz,0   (disto_alloc == 1 and rates == 0)
-    -q xx,yy,zz,0   (fixed_quality == 1 and distoratio == 0)
+    -r xx,yy,zz,0   (m_quality_layer_alloc_strategy == RATE_DISTORTION_RATIO and rates == NULL)
+    -q xx,yy,zz,0   (m_quality_layer_alloc_strategy == FIXED_DISTORTION_RATIO and distoratio == NULL)
     ==> possible to have some lossy layers and the last layer for sure lossless */
-    if (*cp).m_specific_param.m_enc.m_disto_alloc() as core::ffi::c_int == 1i32
+    if (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO
       && (*tcd_tcp).rates[layno as usize] > 0.0f32
-      || (*cp).m_specific_param.m_enc.m_fixed_quality() as core::ffi::c_int == 1i32
+      || (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
         && (*tcd_tcp).distoratio[layno as usize] as core::ffi::c_double > 0.0f64
     {
       let mut t2 = opj_t2_create((*tcd).image, cp); /* fixed_quality */
@@ -555,8 +562,7 @@ unsafe fn opj_tcd_rateallocate(
         thresh = new_thresh;
 
         let layer_allocation_is_same = opj_tcd_makelayer(tcd, layno, thresh, 0 as OPJ_UINT32) && i != 0;
-        if (*cp).m_specific_param.m_enc.m_fixed_quality() != 0 {
-          /* fixed_quality */
+        if (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO {
           if (*cp).rsiz as core::ffi::c_int >= 0x3i32
             && (*cp).rsiz as core::ffi::c_int <= 0x6i32
             || (*cp).rsiz as core::ffi::c_int >= 0x400i32
@@ -660,8 +666,9 @@ unsafe fn opj_tcd_rateallocate(
         .thresh
         .offset(layno as isize) = goodthresh
     }
+
     opj_tcd_makelayer(tcd, layno, goodthresh, 1 as OPJ_UINT32);
-    /* fixed_quality */
+
     cumdisto[layno as usize] = if layno == 0u32 {
       (*tcd_tile).distolayer[0 as usize]
     } else {
@@ -2963,11 +2970,10 @@ unsafe fn opj_tcd_rate_allocate_encode(
   if !p_cstr_info.is_null() {
     (*p_cstr_info).index_write = 0i32
   }
-  if (*l_cp).m_specific_param.m_enc.m_disto_alloc() as core::ffi::c_int != 0
-    || (*l_cp).m_specific_param.m_enc.m_fixed_quality() as core::ffi::c_int != 0
+
+  if (*l_cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO
+    || (*l_cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
   {
-    /* fixed_quality */
-    /* Normal Rate/distortion allocation */
     if opj_tcd_rateallocate(
       p_tcd,
       p_dest_data,

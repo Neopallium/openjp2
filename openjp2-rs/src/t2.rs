@@ -299,9 +299,8 @@ pub(crate) unsafe fn opj_t2_encode_packets(
             if (*cstr_info).packno == 0 {
               (*info_PK).start_pos = ((*info_TL).end_header + 1i32) as OPJ_OFF_T
             } else {
-              (*info_PK).start_pos = if (*l_cp).m_specific_param.m_enc.m_tp_on() as core::ffi::c_int
-                | (*l_tcp).POC() as core::ffi::c_int
-                != 0
+              (*info_PK).start_pos = if ((*l_cp).m_specific_param.m_enc.m_tp_on as u32
+                | (*l_tcp).POC()) != 0
                 && (*info_PK).start_pos != 0
               {
                 (*info_PK).start_pos

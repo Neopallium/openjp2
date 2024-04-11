@@ -142,6 +142,9 @@ pub mod j2k {
   pub const J2K_MS_INSEC: u32  = 0xff94;
   /**< Maximum number of POCs */
   pub const J2K_MAX_POCS: u32     = 32;
+
+  pub const J2K_TCD_MATRIX_MAX_LAYER_COUNT: i32 = 10;
+  pub const J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT: i32 = 10;
 }
 
 pub mod jp2 {

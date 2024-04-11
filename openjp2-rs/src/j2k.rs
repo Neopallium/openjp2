@@ -940,7 +940,7 @@ unsafe fn opj_j2k_get_num_tp(
   /* get the progression order as a character string */
   let prog = opj_j2k_convert_progression_order((*tcp).prg);
   assert!(prog != ProgressionOrder::Unknown);
-  if (*cp).m_specific_param.m_enc.m_tp_on() as core::ffi::c_int == 1i32 {
+  if (*cp).m_specific_param.m_enc.m_tp_on {
     for step in prog.get_order() {
       match step {
         ProgressionStep::Component => {
@@ -5164,7 +5164,7 @@ unsafe extern "C" fn opj_j2k_update_rates(
   l_size_pixel = (*l_image).numcomps.wrapping_mul((*(*l_image).comps).prec);
   l_sot_remove =
     opj_stream_tell(p_stream) as OPJ_FLOAT32 / (*l_cp).th.wrapping_mul((*l_cp).tw) as OPJ_FLOAT32;
-  if (*l_cp).m_specific_param.m_enc.m_tp_on() != 0 {
+  if (*l_cp).m_specific_param.m_enc.m_tp_on {
     l_tp_stride_func =
       Some(opj_j2k_get_tp_stride as unsafe extern "C" fn(_: *mut opj_tcp_t) -> OPJ_FLOAT32)
   } else {
@@ -7738,6 +7738,28 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     );
     return 0i32;
   }
+
+  if (*parameters).cp_fixed_alloc != 0 {
+    if (*parameters).cp_matrice.is_null() {
+      event_msg!(p_manager, EVT_ERROR,
+                    "cp_fixed_alloc set, but cp_matrice missing\n");
+      return 0;
+    }
+
+    if (*parameters).tcp_numlayers > j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT {
+      event_msg!(p_manager, EVT_ERROR,
+                    "tcp_numlayers when cp_fixed_alloc set should not exceed %d\n",
+                    j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT);
+      return 0;
+    }
+    if (*parameters).numresolution > j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT {
+      event_msg!(p_manager, EVT_ERROR,
+                    "numresolution when cp_fixed_alloc set should not exceed %d\n",
+                    j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT);
+      return 0;
+    }
+  }
+
   (*p_j2k).m_specific_param.m_encoder.m_nb_comps = (*image).numcomps;
   /* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
   cp = &mut (*p_j2k).m_cp;
@@ -8021,20 +8043,16 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   */
   (*cp).m_specific_param.m_enc.m_max_comp_size = (*parameters).max_comp_size as OPJ_UINT32;
   (*cp).rsiz = (*parameters).rsiz;
-  (*cp)
-    .m_specific_param
-    .m_enc
-    .set_m_disto_alloc((*parameters).cp_disto_alloc as OPJ_UINT32 & 1u32);
-  (*cp)
-    .m_specific_param
-    .m_enc
-    .set_m_fixed_alloc((*parameters).cp_fixed_alloc as OPJ_UINT32 & 1u32);
-  (*cp)
-    .m_specific_param
-    .m_enc
-    .set_m_fixed_quality((*parameters).cp_fixed_quality as OPJ_UINT32 & 1u32);
-  /* mod fixed_quality */
-  if (*parameters).cp_fixed_alloc != 0 && !(*parameters).cp_matrice.is_null() {
+
+  if (*parameters).cp_fixed_alloc != 0 {
+    (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy = J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_LAYER;
+  } else if (*parameters).cp_fixed_quality != 0 {
+    (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy = J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO;
+  } else {
+    (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy = J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO;
+  }
+
+  if (*parameters).cp_fixed_alloc != 0 {
     let mut array_size = ((*parameters).tcp_numlayers as size_t)
       .wrapping_mul((*parameters).numresolution as size_t)
       .wrapping_mul(3)
@@ -8125,7 +8143,7 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
     (*cp)
       .m_specific_param
       .m_enc
-      .set_m_tp_on(1 as OPJ_BITFIELD)
+      .m_tp_on = true;
   }
   /* USE_JPWL */
   /* initialize the multiple tiles */
@@ -8143,7 +8161,9 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
   tileno = 0 as OPJ_UINT32;
   while tileno < (*cp).tw.wrapping_mul((*cp).th) {
     let mut tcp: *mut opj_tcp_t = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
+    let fixed_distoratio = (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO;
     (*tcp).numlayers = (*parameters).tcp_numlayers as OPJ_UINT32;
+
     j = 0 as OPJ_UINT32;
     while j < (*tcp).numlayers {
       if (*cp).rsiz as core::ffi::c_int >= 0x3i32
@@ -8151,18 +8171,17 @@ pub(crate) unsafe extern "C" fn opj_j2k_setup_encoder(
         || (*cp).rsiz as core::ffi::c_int >= 0x400i32
           && (*cp).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
       {
-        if (*cp).m_specific_param.m_enc.m_fixed_quality() != 0 {
+        if fixed_distoratio {
           (*tcp).distoratio[j as usize] = (*parameters).tcp_distoratio[j as usize]
         }
         (*tcp).rates[j as usize] = (*parameters).tcp_rates[j as usize]
-      } else if (*cp).m_specific_param.m_enc.m_fixed_quality() != 0 {
+      } else if fixed_distoratio {
         /* add fixed_quality */
         (*tcp).distoratio[j as usize] = (*parameters).tcp_distoratio[j as usize]
       } else {
         (*tcp).rates[j as usize] = (*parameters).tcp_rates[j as usize]
       }
-      if (*cp).m_specific_param.m_enc.m_fixed_quality() == 0
-        && (*tcp).rates[j as usize] as core::ffi::c_double <= 1.0f64
+      if !fixed_distoratio && (*tcp).rates[j as usize] as core::ffi::c_double <= 1.0f64
       {
         (*tcp).rates[j as usize] = 0.0f64 as OPJ_FLOAT32
         /* force lossless */

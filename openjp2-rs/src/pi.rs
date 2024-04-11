@@ -2382,7 +2382,7 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
   l_step_r = numcomps.wrapping_mul(l_step_c);
   l_step_l = l_max_res.wrapping_mul(l_step_r);
   /* set values for first packet iterator*/
-  (*l_pi).tp_on = (*p_cp).m_specific_param.m_enc.m_tp_on() as OPJ_BYTE;
+  (*l_pi).tp_on = (*p_cp).m_specific_param.m_enc.m_tp_on as OPJ_BYTE;
   l_current_pi = l_pi;
   /* memory allocation for include*/
   (*l_current_pi).include_size = (*l_tcp).numlayers.wrapping_mul(l_step_l);
@@ -2532,7 +2532,7 @@ pub(crate) unsafe fn opj_pi_create_encode(
   let prog = opj_j2k_convert_progression_order((*tcp).prg);
   (*pi.offset(pino as isize)).first = 1i32;
   (*pi.offset(pino as isize)).poc.prg = (*tcp).prg;
-  if !((*cp).m_specific_param.m_enc.m_tp_on() as core::ffi::c_int != 0
+  if !((*cp).m_specific_param.m_enc.m_tp_on
     && (!((*cp).rsiz as core::ffi::c_int >= 0x3i32
       && (*cp).rsiz as core::ffi::c_int <= 0x6i32)
       && !((*cp).rsiz as core::ffi::c_int >= 0x400i32
