@@ -1,7 +1,6 @@
 use super::thread::*;
 use super::jp2::*;
 use super::j2k::*;
-use ::c2rust_bitfields;
 
 use super::malloc::*;
 use super::consts::*;

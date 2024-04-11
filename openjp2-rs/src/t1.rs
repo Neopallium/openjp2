@@ -17,7 +17,6 @@ use core::{
   },
   ptr::null_mut,
 };
-use alloc::vec::Vec;
 
 use super::malloc::*;
 
