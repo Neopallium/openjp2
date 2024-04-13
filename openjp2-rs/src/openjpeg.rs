@@ -1429,8 +1429,8 @@ unsafe extern "C" fn opj_close_from_file(mut p_user_data: *mut core::ffi::c_void
 /* ---------------------------------------------------------------------- */
 /* _WIN32 */
 /* ---------------------------------------------------------------------- */
-pub const OPJ_VERSION: &str = "2.5.0";
-pub const OPJ_VERSION_C: *const u8 = b"2.5.0\x00" as *const u8;
+pub const OPJ_VERSION: &str = "2.5.2";
+pub const OPJ_VERSION_C: *const u8 = b"2.5.2\x00" as *const u8;
 
 #[no_mangle]
 pub unsafe fn opj_version() -> *const core::ffi::c_char {
