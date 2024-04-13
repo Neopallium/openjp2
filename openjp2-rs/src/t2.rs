@@ -1022,6 +1022,7 @@ unsafe fn opj_t2_skip_packet(
   *p_data_read = l_nb_total_bytes_read;
   return 1i32;
 }
+
 unsafe fn opj_t2_read_packet_header(
   mut p_t2: *mut opj_t2_t,
   mut p_tile: *mut opj_tcd_tile_t,
@@ -1086,6 +1087,7 @@ unsafe fn opj_t2_read_packet_header(
       bandno += 1;
     }
   }
+
   /* SOP markers */
   if (*p_tcp).csty & 0x2u32 != 0 {
     if p_max_length < 6u32 {
@@ -1103,6 +1105,7 @@ unsafe fn opj_t2_read_packet_header(
     }
     /* * TODO : check the Nsop value */
   }
+
   /*
   When the marker PPT/PPM is used the packet header are store in PPT/PPM marker
   This part deal with this characteristic
@@ -1113,6 +1116,7 @@ unsafe fn opj_t2_read_packet_header(
   if l_bio.is_null() {
     return 0i32;
   }
+
   if (*l_cp).ppm() as core::ffi::c_int == 1i32 {
     /* PPM */
     l_header_data_start = &mut (*l_cp).ppm_data; /* Normal Case */
@@ -1131,7 +1135,9 @@ unsafe fn opj_t2_read_packet_header(
       .offset_from(l_header_data) as OPJ_UINT32;
     l_modified_length_ptr = &mut l_remaining_length
   }
+
   opj_bio_init_dec(l_bio, l_header_data, *l_modified_length_ptr);
+
   l_present = opj_bio_read(l_bio, 1 as OPJ_UINT32);
   log::debug!("present={}", l_present);
   if l_present == 0 {
@@ -1175,6 +1181,7 @@ unsafe fn opj_t2_read_packet_header(
     *p_data_read = l_current_data.offset_from(p_src_data) as OPJ_UINT32;
     return 1i32;
   }
+
   l_band = (*l_res).bands.as_mut_ptr();
   bandno = 0 as OPJ_UINT32;
   while bandno < (*l_res).numbands {
@@ -1189,6 +1196,7 @@ unsafe fn opj_t2_read_packet_header(
         let mut l_increment: OPJ_UINT32 = 0;
         let mut l_segno: OPJ_UINT32 = 0;
         let mut n: OPJ_INT32 = 0;
+
         /* if cblk not yet included before --> inclusion tagtree */
         if (*l_cblk).numsegs == 0 {
           l_included = opj_tgt_decode(
@@ -1201,6 +1209,7 @@ unsafe fn opj_t2_read_packet_header(
         } else {
           l_included = opj_bio_read(l_bio, 1 as OPJ_UINT32)
         }
+
         /* if cblk not included */
         if l_included == 0 {
           (*l_cblk).numnewpasses = 0 as OPJ_UINT32;
@@ -1214,9 +1223,16 @@ unsafe fn opj_t2_read_packet_header(
               i += 1;
             }
             (*l_cblk).Mb = (*l_band).numbps as OPJ_UINT32;
-            (*l_cblk).numbps = ((*l_band).numbps as OPJ_UINT32)
-              .wrapping_add(1u32)
-              .wrapping_sub(i);
+            if (*l_band).numbps as u32 + 1 < i {
+              /* Not totally sure what we should do in that situation,
+               * but that avoids the integer overflow of
+               * https://github.com/uclouvain/openjpeg/pull/1488
+               * while keeping the regression test suite happy.
+               */
+              (*l_cblk).numbps = ((*l_band).numbps + 1 - i as i32) as u32;
+            } else {
+              (*l_cblk).numbps = (*l_band).numbps as u32 + 1 - i;
+            }
             (*l_cblk).numlenbits = 3 as OPJ_UINT32
           }
           /* number of coding passes */
