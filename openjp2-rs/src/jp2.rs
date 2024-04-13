@@ -2372,23 +2372,7 @@ unsafe fn opj_jp2_setup_end_header_writing(
   assert!(!jp2.is_null());
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_jp2_write_jp2c
-        as unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_jp2_write_jp2c,
     p_manager,
   ) == 0
   {
@@ -2410,23 +2394,7 @@ unsafe fn opj_jp2_setup_end_header_reading(
   assert!(!jp2.is_null());
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_jp2_read_header_procedure
-        as unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_jp2_read_header_procedure,
     p_manager,
   ) == 0
   {
@@ -2457,9 +2425,9 @@ unsafe extern "C" fn opj_jp2_default_validation(
   /* make sure a j2k codec is present */
   l_is_valid &= ((*jp2).j2k != 0 as *mut opj_j2k_t) as core::ffi::c_int;
   /* make sure a procedure list is present */
-  l_is_valid &= ((*jp2).m_procedure_list != 0 as *mut opj_procedure_list) as core::ffi::c_int;
+  l_is_valid &= (!(*jp2).m_procedure_list.is_null()) as core::ffi::c_int;
   /* make sure a validation list is present */
-  l_is_valid &= ((*jp2).m_validation_list != 0 as *mut opj_procedure_list) as core::ffi::c_int;
+  l_is_valid &= (!(*jp2).m_validation_list.is_null()) as core::ffi::c_int;
   /* PARAMETER VALIDATION */
   /* number of components */
   l_is_valid &= ((*jp2).numcl > 0u32) as core::ffi::c_int;
@@ -2702,49 +2670,21 @@ unsafe extern "C" fn opj_jp2_read_header_procedure(
  *
  * @return  true                if all the procedures were successfully executed.
  */
-unsafe fn opj_jp2_exec(
+fn opj_jp2_exec(
   mut jp2: *mut opj_jp2_t,
-  mut p_procedure_list: *mut opj_procedure_list_t,
+  mut p_procedure_list: *mut opj_jp2_proc_list_t,
   mut stream: *mut opj_stream_private_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_procedure = 0 as *mut Option<
-    unsafe extern "C" fn(
-      _: *mut opj_jp2_t,
-      _: *mut opj_stream_private_t,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >;
-  let mut l_result = 1i32;
-  let mut l_nb_proc: OPJ_UINT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
-  /* preconditions */
-
   assert!(!p_procedure_list.is_null());
   assert!(!jp2.is_null());
   assert!(!stream.is_null());
-  l_nb_proc = opj_procedure_list_get_nb_procedures(p_procedure_list);
-  l_procedure = opj_procedure_list_get_first_procedure(p_procedure_list)
-    as *mut Option<
-      unsafe extern "C" fn(
-        _: *mut opj_jp2_t,
-        _: *mut opj_stream_private_t,
-        _: &mut opj_event_mgr,
-      ) -> OPJ_BOOL,
-    >;
-  i = 0 as OPJ_UINT32;
-  while i < l_nb_proc {
-    l_result = (l_result != 0
-      && (*l_procedure).expect("non-null function pointer")(jp2, stream, p_manager) != 0)
-      as core::ffi::c_int;
-    l_procedure = l_procedure.offset(1);
-    i += 1;
-  }
-  /* and clear the procedure list at the end. */
-  opj_procedure_list_clear(p_procedure_list);
-  return l_result;
+
+  opj_procedure_list_execute(p_procedure_list, |p| {
+    unsafe { (p)(jp2, stream, p_manager) != 0 }
+  }) as i32
 }
-#[no_mangle]
+
 pub(crate) unsafe extern "C" fn opj_jp2_start_compress(
   mut jp2: *mut opj_jp2_t,
   mut stream: *mut opj_stream_private_t,
@@ -2773,6 +2713,7 @@ pub(crate) unsafe extern "C" fn opj_jp2_start_compress(
   }
   return opj_j2k_start_compress((*jp2).j2k, stream, p_image, p_manager);
 }
+
 /* *
  * Finds the execution function related to the given box id.
  *
@@ -3277,23 +3218,7 @@ unsafe fn opj_jp2_setup_encoding_validation(
   assert!(!jp2.is_null());
   if opj_procedure_list_add_procedure(
     (*jp2).m_validation_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_jp2_default_validation
-        as unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_jp2_default_validation,
     p_manager,
   ) == 0
   {
@@ -3328,23 +3253,7 @@ unsafe fn opj_jp2_setup_header_writing(
   assert!(!jp2.is_null());
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_jp2_write_jp
-        as unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_jp2_write_jp,
     p_manager,
   ) == 0
   {
@@ -3352,23 +3261,7 @@ unsafe fn opj_jp2_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_jp2_write_ftyp
-        as unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_jp2_write_ftyp,
     p_manager,
   ) == 0
   {
@@ -3376,23 +3269,7 @@ unsafe fn opj_jp2_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_jp2_write_jp2h
-        as unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_jp2_write_jp2h,
     p_manager,
   ) == 0
   {
@@ -3401,23 +3278,7 @@ unsafe fn opj_jp2_setup_header_writing(
   if (*jp2).jpip_on != 0 {
     if opj_procedure_list_add_procedure(
       (*jp2).m_procedure_list,
-      core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        opj_procedure,
-      >(Some(
-        opj_jpip_skip_iptr
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      )),
+      opj_jpip_skip_iptr,
       p_manager,
     ) == 0
     {
@@ -3426,23 +3287,7 @@ unsafe fn opj_jp2_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_jp2_skip_jp2c
-        as unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_jp2_skip_jp2c,
     p_manager,
   ) == 0
   {
@@ -3464,23 +3309,7 @@ unsafe fn opj_jp2_setup_header_reading(
   assert!(!jp2.is_null());
   if opj_procedure_list_add_procedure(
     (*jp2).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_jp2_read_header_procedure
-        as unsafe extern "C" fn(
-          _: *mut opj_jp2_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_jp2_read_header_procedure,
     p_manager,
   ) == 0
   {
@@ -3601,11 +3430,11 @@ pub(crate) unsafe extern "C" fn opj_jp2_destroy(mut jp2: *mut opj_jp2_t) {
     }
     if !(*jp2).m_validation_list.is_null() {
       opj_procedure_list_destroy((*jp2).m_validation_list);
-      (*jp2).m_validation_list = 0 as *mut opj_procedure_list
+      (*jp2).m_validation_list = std::ptr::null_mut();
     }
     if !(*jp2).m_procedure_list.is_null() {
       opj_procedure_list_destroy((*jp2).m_procedure_list);
-      (*jp2).m_procedure_list = 0 as *mut opj_procedure_list
+      (*jp2).m_procedure_list = std::ptr::null_mut();
     }
     opj_free(jp2 as *mut core::ffi::c_void);
   };
