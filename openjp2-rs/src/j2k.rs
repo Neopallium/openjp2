@@ -3529,6 +3529,7 @@ unsafe fn opj_j2k_merge_ppm(
   if (*p_cp).ppm() == 0u32 {
     return 1i32;
   }
+
   l_ppm_data_size = 0u32;
   l_N_ppm_remaining = 0u32;
   i = 0u32;
@@ -3555,15 +3556,20 @@ unsafe fn opj_j2k_merge_ppm(
             /* clean up to be done on l_cp destruction */
             event_msg!(p_manager, EVT_ERROR,
               "Not enough bytes to read Nppm\n",
-            ); /* can't overflow, max 256 markers of max 65536 bytes, that is when PPM markers are not corrupted which is checked elsewhere */
+            );
             return 0i32;
           }
           opj_read_bytes_LE(l_data, &mut l_N_ppm, 4 as OPJ_UINT32);
           l_data = l_data.offset(4);
-          l_data_size = (l_data_size as core::ffi::c_uint).wrapping_sub(4u32)
-            as OPJ_UINT32;
-          l_ppm_data_size =
-            (l_ppm_data_size as core::ffi::c_uint).wrapping_add(l_N_ppm) as OPJ_UINT32;
+          l_data_size -= 4;
+
+          if l_ppm_data_size > u32::MAX - l_N_ppm {
+            event_msg!(p_manager, EVT_ERROR,
+              "Too large value for Nppm\n",
+            );
+            return 0i32;
+          }
+          l_ppm_data_size += l_N_ppm;
           if l_data_size >= l_N_ppm {
             l_data_size =
               (l_data_size as core::ffi::c_uint).wrapping_sub(l_N_ppm) as OPJ_UINT32;
