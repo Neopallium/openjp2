@@ -1783,7 +1783,10 @@ unsafe fn opj_dwt_decode_tile(
     .x0) as OPJ_UINT32;
   let mut h_mem_size: OPJ_SIZE_T = 0;
   let mut num_threads: core::ffi::c_int = 0;
-  if numres == 1u32 {
+
+  // Not entirely sure for the return code of w == 0 which is triggered per
+  // https://github.com/uclouvain/openjpeg/issues/1505
+  if numres == 1 || w == 0 {
     return 1i32;
   }
   num_threads = opj_thread_pool_get_thread_count(tp);
