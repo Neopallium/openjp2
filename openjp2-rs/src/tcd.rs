@@ -2603,59 +2603,63 @@ unsafe fn opj_tcd_dc_level_shift_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
         );
         /*MUPDF*/
       }
-      if (*l_img_comp).sgnd != 0 {
-        l_min = -((1i32)
-          << (*l_img_comp)
-            .prec
-            .wrapping_sub(1u32));
-        l_max = ((1i32)
-          << (*l_img_comp)
-            .prec
-            .wrapping_sub(1u32))
-          - 1i32
-      } else {
-        l_min = 0i32;
-        l_max = ((1u32) << (*l_img_comp).prec)
-          .wrapping_sub(1u32) as OPJ_INT32
-      }
-      if (*l_tccp).qmfbid == 1u32 {
-        j = 0 as OPJ_UINT32;
-        while j < l_height {
-          i = 0 as OPJ_UINT32;
-          while i < l_width {
-            /* TODO: do addition on int64 ? */
-            *l_current_ptr =
-              opj_int_clamp(*l_current_ptr + (*l_tccp).m_dc_level_shift, l_min, l_max);
-            l_current_ptr = l_current_ptr.offset(1);
-            i += 1;
-          }
-          l_current_ptr = l_current_ptr.offset(l_stride as isize);
-          j += 1;
+
+      if l_width != 0 && l_height != 0 {
+        if (*l_img_comp).sgnd != 0 {
+          l_min = -((1i32)
+            << (*l_img_comp)
+              .prec
+              .wrapping_sub(1u32));
+          l_max = ((1i32)
+            << (*l_img_comp)
+              .prec
+              .wrapping_sub(1u32))
+            - 1i32
+        } else {
+          l_min = 0i32;
+          l_max = ((1u32) << (*l_img_comp).prec)
+            .wrapping_sub(1u32) as OPJ_INT32
         }
-      } else {
-        j = 0 as OPJ_UINT32;
-        while j < l_height {
-          i = 0 as OPJ_UINT32;
-          while i < l_width {
-            let mut l_value = *(l_current_ptr as *mut OPJ_FLOAT32);
-            if l_value > 2147483647 as core::ffi::c_float {
-              *l_current_ptr = l_max
-            } else if l_value < (-(2147483647i32) - 1i32) as core::ffi::c_float {
-              *l_current_ptr = l_min
-            } else {
-              /* Do addition on int64 to avoid overflows */
-              let mut l_value_int = opj_lrintf(l_value);
-              *l_current_ptr = opj_int64_clamp(
-                l_value_int + (*l_tccp).m_dc_level_shift as i64,
-                l_min as OPJ_INT64,
-                l_max as OPJ_INT64,
-              ) as OPJ_INT32
+
+        if (*l_tccp).qmfbid == 1u32 {
+          j = 0 as OPJ_UINT32;
+          while j < l_height {
+            i = 0 as OPJ_UINT32;
+            while i < l_width {
+              /* TODO: do addition on int64 ? */
+              *l_current_ptr =
+                opj_int_clamp(*l_current_ptr + (*l_tccp).m_dc_level_shift, l_min, l_max);
+              l_current_ptr = l_current_ptr.offset(1);
+              i += 1;
             }
-            l_current_ptr = l_current_ptr.offset(1);
-            i += 1;
+            l_current_ptr = l_current_ptr.offset(l_stride as isize);
+            j += 1;
           }
-          l_current_ptr = l_current_ptr.offset(l_stride as isize);
-          j += 1;
+        } else {
+          j = 0 as OPJ_UINT32;
+          while j < l_height {
+            i = 0 as OPJ_UINT32;
+            while i < l_width {
+              let mut l_value = *(l_current_ptr as *mut OPJ_FLOAT32);
+              if l_value > 2147483647 as core::ffi::c_float {
+                *l_current_ptr = l_max
+              } else if l_value < (-(2147483647i32) - 1i32) as core::ffi::c_float {
+                *l_current_ptr = l_min
+              } else {
+                /* Do addition on int64 to avoid overflows */
+                let mut l_value_int = opj_lrintf(l_value);
+                *l_current_ptr = opj_int64_clamp(
+                  l_value_int + (*l_tccp).m_dc_level_shift as i64,
+                  l_min as OPJ_INT64,
+                  l_max as OPJ_INT64,
+                ) as OPJ_INT32
+              }
+              l_current_ptr = l_current_ptr.offset(1);
+              i += 1;
+            }
+            l_current_ptr = l_current_ptr.offset(l_stride as isize);
+            j += 1;
+          }
         }
       }
     }
