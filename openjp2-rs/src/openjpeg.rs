@@ -670,12 +670,19 @@ pub(crate) struct opj_decompression {
   >,
 }
 
+pub(crate) type opj_jp2_proc = unsafe extern "C" fn(
+    _: *mut opj_jp2_t,
+    _: *mut opj_stream_private_t,
+    _: &mut opj_event_mgr,
+  ) -> OPJ_BOOL;
+pub(crate) type opj_jp2_proc_list_t = super::function_list::ProcedureList<opj_jp2_proc>;
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_jp2 {
   pub j2k: *mut opj_j2k_t,
-  pub m_validation_list: *mut opj_procedure_list,
-  pub m_procedure_list: *mut opj_procedure_list,
+  pub m_validation_list: *mut opj_jp2_proc_list_t,
+  pub m_procedure_list: *mut opj_jp2_proc_list_t,
   pub w: OPJ_UINT32,
   pub h: OPJ_UINT32,
   pub numcomps: OPJ_UINT32,
@@ -762,26 +769,23 @@ pub(crate) struct opj_jp2_comps {
 }
 pub(crate) type opj_jp2_comps_t = opj_jp2_comps;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub(crate) struct opj_procedure_list {
-  pub m_nb_procedures: OPJ_UINT32,
-  pub m_nb_max_procedures: OPJ_UINT32,
-  pub m_procedures: *mut opj_procedure,
-}
-pub(crate) type opj_procedure_list_t = opj_procedure_list;
-pub(crate) type opj_procedure = Option<unsafe extern "C" fn() -> ()>;
+pub(crate) type opj_j2k_proc = unsafe extern "C" fn(
+    _: *mut opj_j2k_t,
+    _: *mut opj_stream_private_t,
+    _: &mut opj_event_mgr,
+  ) -> OPJ_BOOL;
+pub(crate) type opj_j2k_proc_list_t = super::function_list::ProcedureList<opj_j2k_proc>;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_j2k {
   pub m_is_decoder: OPJ_BOOL,
   pub m_specific_param: C2RustUnnamed_2,
   pub m_private_image: *mut opj_image_t,
   pub m_output_image: *mut opj_image_t,
   pub m_cp: opj_cp_t,
-  pub m_procedure_list: *mut opj_procedure_list_t,
-  pub m_validation_list: *mut opj_procedure_list_t,
+  pub m_procedure_list: *mut opj_j2k_proc_list_t,
+  pub m_validation_list: *mut opj_j2k_proc_list_t,
   pub cstr_index: *mut opj_codestream_index_t,
   pub m_current_tile_number: OPJ_UINT32,
   pub m_tcd: *mut opj_tcd,

@@ -8711,23 +8711,7 @@ unsafe fn opj_j2k_setup_header_reading(
   assert!(!p_j2k.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_read_header_procedure
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_read_header_procedure,
     p_manager,
   ) == 0
   {
@@ -8736,23 +8720,7 @@ unsafe fn opj_j2k_setup_header_reading(
   /* DEVELOPER CORNER, add your custom procedures */
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_copy_default_tcp_and_create_tcd
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_copy_default_tcp_and_create_tcd,
     p_manager,
   ) == 0
   {
@@ -8773,23 +8741,7 @@ unsafe fn opj_j2k_setup_decoding_validation(
   assert!(!p_j2k.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_build_decoder
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_build_decoder,
     p_manager,
   ) == 0
   {
@@ -8797,23 +8749,7 @@ unsafe fn opj_j2k_setup_decoding_validation(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_decoding_validation
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_decoding_validation,
     p_manager,
   ) == 0
   {
@@ -9120,9 +9056,9 @@ unsafe extern "C" fn opj_j2k_encoding_validation(
     == J2KState::NONE) as core::ffi::c_int;
   /* POINTER validation */
   /* make sure a p_j2k codec is present */
-  l_is_valid &= ((*p_j2k).m_procedure_list != 0 as *mut opj_procedure_list_t) as core::ffi::c_int;
+  l_is_valid &= (!(*p_j2k).m_procedure_list.is_null()) as core::ffi::c_int;
   /* make sure a validation list is present */
-  l_is_valid &= ((*p_j2k).m_validation_list != 0 as *mut opj_procedure_list_t) as core::ffi::c_int;
+  l_is_valid &= (!(*p_j2k).m_validation_list.is_null()) as core::ffi::c_int;
   /* ISO 15444-1:2004 states between 1 & 33 (0 -> 32) */
   /* 33 (32) would always fail the check below (if a cast to 64bits was done) */
   /* FIXME Shall we change OPJ_J2K_MAXRLVLS to 32 ? */
@@ -9185,9 +9121,9 @@ unsafe extern "C" fn opj_j2k_decoding_validation(
   /* POINTER validation */
   /* make sure a p_j2k codec is present */
   /* make sure a procedure list is present */
-  l_is_valid &= ((*p_j2k).m_procedure_list != 0 as *mut opj_procedure_list_t) as core::ffi::c_int;
+  l_is_valid &= (!(*p_j2k).m_procedure_list.is_null()) as core::ffi::c_int;
   /* make sure a validation list is present */
-  l_is_valid &= ((*p_j2k).m_validation_list != 0 as *mut opj_procedure_list_t) as core::ffi::c_int;
+  l_is_valid &= (!(*p_j2k).m_validation_list.is_null()) as core::ffi::c_int;
   /* PARAMETER VALIDATION */
   return l_is_valid;
 }
@@ -9423,48 +9359,21 @@ unsafe extern "C" fn opj_j2k_read_header_procedure(
  *
  * @return      true                            if all the procedures were successfully executed.
  */
-unsafe fn opj_j2k_exec(
+fn opj_j2k_exec(
   mut p_j2k: *mut opj_j2k_t,
-  mut p_procedure_list: *mut opj_procedure_list_t,
+  mut p_procedure_list: *mut opj_j2k_proc_list_t,
   mut p_stream: *mut opj_stream_private_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_procedure = 0 as *mut Option<
-    unsafe extern "C" fn(
-      _: *mut opj_j2k_t,
-      _: *mut opj_stream_private_t,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >;
-  let mut l_result = 1i32;
-  let mut l_nb_proc: OPJ_UINT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
-  /* preconditions*/
-
   assert!(!p_procedure_list.is_null());
   assert!(!p_j2k.is_null());
   assert!(!p_stream.is_null());
-  l_nb_proc = opj_procedure_list_get_nb_procedures(p_procedure_list);
-  l_procedure = opj_procedure_list_get_first_procedure(p_procedure_list)
-    as *mut Option<
-      unsafe extern "C" fn(
-        _: *mut opj_j2k_t,
-        _: *mut opj_stream_private_t,
-        _: &mut opj_event_mgr,
-      ) -> OPJ_BOOL,
-    >;
-  i = 0 as OPJ_UINT32;
-  while i < l_nb_proc {
-    l_result = (l_result != 0
-      && (*l_procedure).expect("non-null function pointer")(p_j2k, p_stream, p_manager) != 0)
-      as core::ffi::c_int;
-    l_procedure = l_procedure.offset(1);
-    i += 1;
-  }
-  /* and clear the procedure list at the end.*/
-  opj_procedure_list_clear(p_procedure_list);
-  return l_result;
+
+  opj_procedure_list_execute(p_procedure_list, |p| {
+    unsafe { (p)(p_j2k, p_stream, p_manager) != 0 }
+  }) as i32
 }
+
 /* *
  * Copies the decoding tile parameters onto all the tile parameters.
  * Creates also the tile decoder.
@@ -9715,9 +9624,9 @@ pub(crate) unsafe extern "C" fn opj_j2k_destroy(mut p_j2k: *mut opj_j2k_t) {
     core::mem::size_of::<opj_cp_t>() as usize,
   );
   opj_procedure_list_destroy((*p_j2k).m_procedure_list);
-  (*p_j2k).m_procedure_list = 0 as *mut opj_procedure_list_t;
+  (*p_j2k).m_procedure_list = std::ptr::null_mut();
   opj_procedure_list_destroy((*p_j2k).m_validation_list);
-  (*p_j2k).m_procedure_list = 0 as *mut opj_procedure_list_t;
+  (*p_j2k).m_procedure_list = std::ptr::null_mut();
   j2k_destroy_cstr_index((*p_j2k).cstr_index);
   (*p_j2k).cstr_index = 0 as *mut opj_codestream_index_t;
   opj_image_destroy((*p_j2k).m_private_image);
@@ -12979,23 +12888,7 @@ unsafe fn opj_j2k_setup_decoding(
   assert!(!p_j2k.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_decode_tiles
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_decode_tiles,
     p_manager,
   ) == 0
   {
@@ -13169,23 +13062,7 @@ unsafe fn opj_j2k_setup_decoding_tile(
   assert!(!p_j2k.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_decode_one_tile
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_decode_one_tile,
     p_manager,
   ) == 0
   {
@@ -14052,23 +13929,7 @@ unsafe fn opj_j2k_setup_end_compress(
   /* DEVELOPER CORNER, insert your custom procedures */
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_write_eoc
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_write_eoc,
     p_manager,
   ) == 0
   {
@@ -14077,23 +13938,7 @@ unsafe fn opj_j2k_setup_end_compress(
   if (*p_j2k).m_specific_param.m_encoder.m_TLM != 0 {
     if opj_procedure_list_add_procedure(
       (*p_j2k).m_procedure_list,
-      core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        opj_procedure,
-      >(Some(
-        opj_j2k_write_updated_tlm
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      )),
+      opj_j2k_write_updated_tlm,
       p_manager,
     ) == 0
     {
@@ -14102,23 +13947,7 @@ unsafe fn opj_j2k_setup_end_compress(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_write_epc
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_write_epc,
     p_manager,
   ) == 0
   {
@@ -14126,23 +13955,7 @@ unsafe fn opj_j2k_setup_end_compress(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_end_encoding
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_end_encoding,
     p_manager,
   ) == 0
   {
@@ -14150,23 +13963,7 @@ unsafe fn opj_j2k_setup_end_compress(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_destroy_header_memory
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_destroy_header_memory,
     p_manager,
   ) == 0
   {
@@ -14187,23 +13984,7 @@ unsafe fn opj_j2k_setup_encoding_validation(
   assert!(!p_j2k.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_build_encoder
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_build_encoder,
     p_manager,
   ) == 0
   {
@@ -14211,23 +13992,7 @@ unsafe fn opj_j2k_setup_encoding_validation(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_encoding_validation
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_encoding_validation,
     p_manager,
   ) == 0
   {
@@ -14236,23 +14001,7 @@ unsafe fn opj_j2k_setup_encoding_validation(
   /* DEVELOPER CORNER, add your custom validation procedure */
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_validation_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_mct_validation
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_mct_validation,
     p_manager,
   ) == 0
   {
@@ -14273,23 +14022,7 @@ unsafe fn opj_j2k_setup_header_writing(
   assert!(!p_j2k.is_null());
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_init_info
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_init_info,
     p_manager,
   ) == 0
   {
@@ -14297,23 +14030,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_write_soc
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_write_soc,
     p_manager,
   ) == 0
   {
@@ -14321,23 +14038,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_write_siz
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_write_siz,
     p_manager,
   ) == 0
   {
@@ -14345,23 +14046,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_write_cod
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_write_cod,
     p_manager,
   ) == 0
   {
@@ -14369,23 +14054,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_write_qcd
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_write_qcd,
     p_manager,
   ) == 0
   {
@@ -14393,23 +14062,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_write_all_coc
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_write_all_coc,
     p_manager,
   ) == 0
   {
@@ -14417,23 +14070,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_write_all_qcc
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_write_all_qcc,
     p_manager,
   ) == 0
   {
@@ -14442,23 +14079,7 @@ unsafe fn opj_j2k_setup_header_writing(
   if (*p_j2k).m_specific_param.m_encoder.m_TLM != 0 {
     if opj_procedure_list_add_procedure(
       (*p_j2k).m_procedure_list,
-      core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        opj_procedure,
-      >(Some(
-        opj_j2k_write_tlm
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      )),
+      opj_j2k_write_tlm,
       p_manager,
     ) == 0
     {
@@ -14467,23 +14088,7 @@ unsafe fn opj_j2k_setup_header_writing(
     if (*p_j2k).m_cp.rsiz as core::ffi::c_int == 0x4i32 {
       if opj_procedure_list_add_procedure(
         (*p_j2k).m_procedure_list,
-        core::mem::transmute::<
-          Option<
-            unsafe extern "C" fn(
-              _: *mut opj_j2k_t,
-              _: *mut opj_stream_private_t,
-              _: &mut opj_event_mgr,
-            ) -> OPJ_BOOL,
-          >,
-          opj_procedure,
-        >(Some(
-          opj_j2k_write_poc
-            as unsafe extern "C" fn(
-              _: *mut opj_j2k_t,
-              _: *mut opj_stream_private_t,
-              _: &mut opj_event_mgr,
-            ) -> OPJ_BOOL,
-        )),
+        opj_j2k_write_poc,
         p_manager,
       ) == 0
       {
@@ -14493,23 +14098,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_write_regions
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_write_regions,
     p_manager,
   ) == 0
   {
@@ -14518,23 +14107,7 @@ unsafe fn opj_j2k_setup_header_writing(
   if !(*p_j2k).m_cp.comment.is_null() {
     if opj_procedure_list_add_procedure(
       (*p_j2k).m_procedure_list,
-      core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        opj_procedure,
-      >(Some(
-        opj_j2k_write_com
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      )),
+      opj_j2k_write_com,
       p_manager,
     ) == 0
     {
@@ -14547,23 +14120,7 @@ unsafe fn opj_j2k_setup_header_writing(
   {
     if opj_procedure_list_add_procedure(
       (*p_j2k).m_procedure_list,
-      core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        opj_procedure,
-      >(Some(
-        opj_j2k_write_mct_data_group
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      )),
+      opj_j2k_write_mct_data_group,
       p_manager,
     ) == 0
     {
@@ -14574,23 +14131,7 @@ unsafe fn opj_j2k_setup_header_writing(
   if !(*p_j2k).cstr_index.is_null() {
     if opj_procedure_list_add_procedure(
       (*p_j2k).m_procedure_list,
-      core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        opj_procedure,
-      >(Some(
-        opj_j2k_get_end_header
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      )),
+      opj_j2k_get_end_header,
       p_manager,
     ) == 0
     {
@@ -14599,23 +14140,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_create_tcd
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_create_tcd,
     p_manager,
   ) == 0
   {
@@ -14623,23 +14148,7 @@ unsafe fn opj_j2k_setup_header_writing(
   }
   if opj_procedure_list_add_procedure(
     (*p_j2k).m_procedure_list,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-      >,
-      opj_procedure,
-    >(Some(
-      opj_j2k_update_rates
-        as unsafe extern "C" fn(
-          _: *mut opj_j2k_t,
-          _: *mut opj_stream_private_t,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )),
+    opj_j2k_update_rates,
     p_manager,
   ) == 0
   {
