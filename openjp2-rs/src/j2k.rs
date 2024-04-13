@@ -11910,6 +11910,7 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
     }
   }
   /* USE_JPWL */
+
   if (*l_tccp).qntsty == 0u32 {
     l_band_no = 0 as OPJ_UINT32; /* SPqcx_i */
     while l_band_no < l_num_band {
@@ -11920,6 +11921,9 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
         (*l_tccp).stepsizes[l_band_no as usize].mant = 0i32
       }
       l_band_no += 1;
+    }
+    if *p_header_size < l_num_band {
+      return 0i32;
     }
     *p_header_size = (*p_header_size).wrapping_sub(l_num_band)
   } else {
@@ -11933,6 +11937,9 @@ unsafe extern "C" fn opj_j2k_read_SQcd_SQcc(
           (l_tmp & 0x7ffu32) as OPJ_INT32
       }
       l_band_no += 1;
+    }
+    if *p_header_size < 2 * l_num_band {
+      return 0i32;
     }
     *p_header_size =
       (*p_header_size).wrapping_sub((2u32).wrapping_mul(l_num_band))
