@@ -469,83 +469,923 @@ pub struct opj_codestream_index {
 }
 pub type opj_codestream_index_t = opj_codestream_index;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub(crate) struct opj_codec_private {
-  pub m_codec_data: C2RustUnnamed,
-  pub m_codec: *mut core::ffi::c_void,
-  pub m_event_mgr: opj_event_mgr,
-  pub is_decompressor: OPJ_BOOL,
+pub(crate) enum Codec {
+  Encoder(CodecEncoder),
+  Decoder(CodecDecoder),
+}
+
+impl Codec {
+  pub unsafe fn set_threads(
+    &mut self,
+    mut num_threads: core::ffi::c_int,
+  ) -> OPJ_BOOL {
+    if num_threads >= 0i32 {
+      match self {
+        Self::Encoder(CodecEncoder::J2K(j2k)) | Self::Decoder(CodecDecoder::J2K(j2k)) => {
+          opj_j2k_set_threads(j2k, num_threads as _)
+        }
+        Self::Encoder(CodecEncoder::JP2(jp2)) | Self::Decoder(CodecDecoder::JP2(jp2)) => {
+          opj_jp2_set_threads(jp2, num_threads as _)
+        },
+      }
+    } else {
+      0
+    }
+  }
+
   #[cfg(feature = "file-io")]
-  pub opj_dump_codec:
-    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
-  pub opj_get_codec_info:
-    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_info_v2_t>,
-  pub opj_get_codec_index:
-    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_index_t>,
-  pub opj_set_threads:
-    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
+  pub unsafe fn dump_codec(
+    &mut self,
+    mut info_flag: OPJ_INT32,
+    mut output_stream: *mut FILE,
+  ) {
+    match self {
+      Self::Encoder(CodecEncoder::J2K(j2k)) | Self::Decoder(CodecDecoder::J2K(j2k)) => {
+        j2k_dump(j2k, info_flag, output_stream)
+      }
+      Self::Encoder(CodecEncoder::JP2(jp2)) | Self::Decoder(CodecDecoder::JP2(jp2)) => {
+        jp2_dump(jp2, info_flag, output_stream)
+      },
+    }
+  }
+
+  pub unsafe fn get_cstr_info(
+    &mut self,
+  ) -> *mut opj_codestream_info_v2_t {
+    match self {
+      Self::Encoder(CodecEncoder::J2K(j2k)) | Self::Decoder(CodecDecoder::J2K(j2k)) => {
+        j2k_get_cstr_info(j2k)
+      }
+      Self::Encoder(CodecEncoder::JP2(jp2)) | Self::Decoder(CodecDecoder::JP2(jp2)) => {
+        jp2_get_cstr_info(jp2)
+      },
+    }
+  }
+
+  pub unsafe fn get_cstr_index(
+    &mut self,
+  ) -> *mut opj_codestream_index_t {
+    match self {
+      Self::Encoder(CodecEncoder::J2K(j2k)) | Self::Decoder(CodecDecoder::J2K(j2k)) => {
+        j2k_get_cstr_index(j2k)
+      }
+      Self::Encoder(CodecEncoder::JP2(jp2)) | Self::Decoder(CodecDecoder::JP2(jp2)) => {
+        jp2_get_cstr_index(jp2)
+      },
+    }
+  }
+}
+
+/// Decoder
+impl Codec {
+  pub unsafe fn setup_decoder(
+    &mut self,
+    mut parameters: *mut opj_dparameters_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "Codec provided to the opj_setup_decoder function is not a decompressor handler.\n",
+        );
+      }
+      Self::Decoder(dec) => {
+        if !parameters.is_null() {
+          return dec.setup_decoder(parameters);
+        }
+      },
+    }
+    return 0i32;
+  }
+
+  pub unsafe fn decoder_set_strict_mode(
+    &mut self,
+    mut strict: OPJ_BOOL,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => {
+        event_msg!(p_manager,
+                      EVT_ERROR,
+                      "Codec provided to the opj_decoder_set_strict_mode function is not a decompressor handler.\n",);
+        0
+      }
+      Self::Decoder(dec) => {
+        dec.decoder_set_strict_mode(strict);
+        1
+      },
+    }
+  }
+
+  pub unsafe fn read_header(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_image: *mut *mut opj_image_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => {
+        event_msg!(p_manager,
+          EVT_ERROR,
+          "Codec provided to the opj_read_header function is not a decompressor handler.\n",
+        );
+      }
+      Self::Decoder(dec) => {
+        if !p_stream.is_null() {
+          let mut l_stream = p_stream as *mut opj_stream_private_t;
+          return dec.read_header(l_stream, p_image, p_manager);
+        }
+      },
+    }
+    0
+  }
+
+  pub unsafe fn set_decoded_components(
+    &mut self,
+    mut numcomps: OPJ_UINT32,
+    mut comps_indices: *const OPJ_UINT32,
+    mut apply_color_transforms: OPJ_BOOL,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => {
+        event_msg!(p_manager,
+                      EVT_ERROR,
+                      "Codec provided to the opj_set_decoded_components function is not a decompressor handler.\n",
+                      );
+        0
+      }
+      Self::Decoder(dec) => {
+        if apply_color_transforms != 0 {
+          event_msg!(p_manager,
+            EVT_ERROR,
+            "apply_color_transforms = OPJ_TRUE is not supported.\n",
+          );
+          return 0i32;
+        }
+        return dec.set_decoded_components(numcomps, comps_indices, p_manager);
+      },
+    }
+  }
+
+  pub unsafe fn decode(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_image: *mut opj_image_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => (),
+      Self::Decoder(dec) => {
+        if !p_stream.is_null() {
+          let mut l_stream = p_stream as *mut opj_stream_private_t;
+          return dec.decode(l_stream, p_image, p_manager);
+        }
+      },
+    }
+    return 0i32;
+  }
+
+  pub unsafe fn end_decompress(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => (),
+      Self::Decoder(dec) => {
+        if !p_stream.is_null() {
+          let mut l_stream = p_stream as *mut opj_stream_private_t;
+          return dec.end_decompress(l_stream, p_manager);
+        }
+      },
+    }
+    0
+  }
+
+  pub unsafe fn set_decode_area(
+    &mut self,
+    mut p_image: *mut opj_image_t,
+    mut p_start_x: OPJ_INT32,
+    mut p_start_y: OPJ_INT32,
+    mut p_end_x: OPJ_INT32,
+    mut p_end_y: OPJ_INT32,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => (),
+      Self::Decoder(dec) => {
+        return dec.set_decode_area(p_image, p_start_x, p_start_y, p_end_x, p_end_y, p_manager);
+      },
+    }
+    return 0i32;
+  }
+
+  pub unsafe fn read_tile_header(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_tile_index: *mut OPJ_UINT32,
+    mut p_data_size: *mut OPJ_UINT32,
+    mut p_tile_x0: *mut OPJ_INT32,
+    mut p_tile_y0: *mut OPJ_INT32,
+    mut p_tile_x1: *mut OPJ_INT32,
+    mut p_tile_y1: *mut OPJ_INT32,
+    mut p_nb_comps: *mut OPJ_UINT32,
+    mut p_should_go_on: *mut OPJ_BOOL,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => (),
+      Self::Decoder(dec) => {
+        if !p_stream.is_null() && !p_data_size.is_null() && !p_tile_index.is_null() {
+          let mut l_stream = p_stream as *mut opj_stream_private_t;
+          return dec.read_tile_header(l_stream, p_tile_index, p_data_size, p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on, p_manager);
+        }
+      },
+    }
+    return 0i32;
+  }
+
+  pub unsafe fn decode_tile_data(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_tile_index: OPJ_UINT32,
+    mut p_data: *mut OPJ_BYTE,
+    mut p_data_size: OPJ_UINT32,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => (),
+      Self::Decoder(dec) => {
+        if !p_data.is_null() && !p_stream.is_null() {
+          let mut l_stream = p_stream as *mut opj_stream_private_t;
+          return dec.decode_tile_data(l_stream, p_tile_index, p_data, p_data_size, p_manager);
+        }
+      },
+    }
+    return 0i32;
+  }
+
+  pub unsafe fn get_decoded_tile(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_image: *mut opj_image_t,
+    mut tile_index: OPJ_UINT32,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => (),
+      Self::Decoder(dec) => {
+        if !p_stream.is_null() {
+          let mut l_stream = p_stream as *mut opj_stream_private_t;
+          return dec.get_decoded_tile(l_stream, p_image, tile_index, p_manager);
+        }
+      },
+    }
+    return 0;
+  }
+
+  pub unsafe fn set_decoded_resolution_factor(
+    &mut self,
+    mut res_factor: OPJ_UINT32,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(_) => {
+        return 0;
+      }
+      Self::Decoder(dec) => {
+        return dec.set_decoded_resolution_factor(res_factor, p_manager);
+      },
+    }
+  }
+}
+
+/// Encoder
+impl Codec {
+  pub unsafe fn setup_encoder(
+    &mut self,
+    mut parameters: *mut opj_cparameters_t,
+    mut p_image: *mut opj_image_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(enc) => {
+        if !parameters.is_null() && !p_image.is_null() {
+          return enc.setup_encoder(parameters, p_image, p_manager);
+        }
+      }
+      Self::Decoder(_) => (),
+    }
+    return 0i32;
+  }
+
+  pub unsafe fn set_extra_options(
+    &mut self,
+    mut options: *const *const core::ffi::c_char,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(enc) => {
+        return enc.set_extra_options(options, p_manager);
+      }
+      Self::Decoder(_) => (),
+    }
+    return 0i32;
+  }
+
+  pub unsafe fn start_compress(
+    &mut self,
+    mut p_image: *mut opj_image_t,
+    mut p_stream: *mut opj_stream_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(enc) => {
+        if !p_stream.is_null() {
+          let mut l_stream = p_stream as *mut opj_stream_private_t;
+          return enc.start_compress(p_image, l_stream, p_manager);
+        }
+      }
+      Self::Decoder(_) => (),
+    }
+    return 0i32;
+  }
+
+  pub unsafe fn encode(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(enc) => {
+        if !p_stream.is_null() {
+          let mut l_stream = p_stream as *mut opj_stream_private_t;
+          return enc.encode(l_stream, p_manager);
+        }
+      }
+      Self::Decoder(_) => (),
+    }
+    return 0i32;
+  }
+
+  pub unsafe fn end_compress(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(enc) => {
+        if !p_stream.is_null() {
+          let mut l_stream = p_stream as *mut opj_stream_private_t;
+          return enc.end_compress(l_stream, p_manager);
+        }
+      }
+      Self::Decoder(_) => (),
+    }
+    return 0i32;
+  }
+
+  pub unsafe fn write_tile(
+    &mut self,
+    mut p_tile_index: OPJ_UINT32,
+    mut p_data: *mut OPJ_BYTE,
+    mut p_data_size: OPJ_UINT32,
+    mut p_stream: *mut opj_stream_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::Encoder(enc) => {
+        if !p_stream.is_null() && !p_data.is_null() {
+          let mut l_stream = p_stream as *mut opj_stream_private_t;
+          return enc.write_tile(p_tile_index, p_data, p_data_size, l_stream, p_manager);
+        }
+      }
+      Self::Decoder(_) => (),
+    }
+    return 0i32;
+  }
+}
+
+pub(crate) enum CodecEncoder {
+  J2K(opj_j2k),
+  JP2(opj_jp2),
+}
+
+/// Encoder
+impl CodecEncoder {
+  pub unsafe fn setup_encoder(
+    &mut self,
+    mut parameters: *mut opj_cparameters_t,
+    mut p_image: *mut opj_image_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(enc) => {
+        opj_j2k_setup_encoder(enc, parameters, p_image, p_manager)
+      }
+      Self::JP2(enc) => {
+        opj_jp2_setup_encoder(enc, parameters, p_image, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn set_extra_options(
+    &mut self,
+    mut options: *const *const core::ffi::c_char,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(enc) => {
+        opj_j2k_encoder_set_extra_options(enc, options, p_manager)
+      }
+      Self::JP2(enc) => {
+        opj_jp2_encoder_set_extra_options(enc, options, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn start_compress(
+    &mut self,
+    mut p_image: *mut opj_image_t,
+    mut l_stream: *mut opj_stream_private_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(enc) => {
+        opj_j2k_start_compress(enc, l_stream, p_image, p_manager)
+      }
+      Self::JP2(enc) => {
+        opj_jp2_start_compress(enc, l_stream, p_image, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn encode(
+    &mut self,
+    mut l_stream: *mut opj_stream_private_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(enc) => {
+        opj_j2k_encode(enc, l_stream, p_manager)
+      }
+      Self::JP2(enc) => {
+        opj_jp2_encode(enc, l_stream, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn end_compress(
+    &mut self,
+    mut l_stream: *mut opj_stream_private_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(enc) => {
+        opj_j2k_end_compress(enc, l_stream, p_manager)
+      }
+      Self::JP2(enc) => {
+        opj_jp2_end_compress(enc, l_stream, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn write_tile(
+    &mut self,
+    mut p_tile_index: OPJ_UINT32,
+    mut p_data: *mut OPJ_BYTE,
+    mut p_data_size: OPJ_UINT32,
+    mut l_stream: *mut opj_stream_private_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(enc) => {
+        opj_j2k_write_tile(enc, p_tile_index, p_data, p_data_size, l_stream, p_manager)
+      }
+      Self::JP2(enc) => {
+        opj_jp2_write_tile(enc, p_tile_index, p_data, p_data_size, l_stream, p_manager)
+      },
+    }
+  }
+}
+
+
+pub(crate) enum CodecDecoder {
+  J2K(opj_j2k),
+  JP2(opj_jp2),
+}
+
+/// Decoder
+impl CodecDecoder {
+  pub unsafe fn destroy(&mut self) {
+    match self {
+      Self::J2K(_enc) => {
+      }
+      Self::JP2(_enc) => {
+      },
+    }
+  }
+
+  pub unsafe fn setup_decoder(
+    &mut self,
+    mut parameters: *mut opj_dparameters_t,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_setup_decoder(dec, parameters);
+      }
+      Self::JP2(dec) => {
+        opj_jp2_setup_decoder(dec, parameters);
+      },
+    }
+    1
+  }
+
+  pub unsafe fn decoder_set_strict_mode(
+    &mut self,
+    mut strict: OPJ_BOOL,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_decoder_set_strict_mode(dec, strict);
+      }
+      Self::JP2(dec) => {
+        opj_jp2_decoder_set_strict_mode(dec, strict);
+      },
+    }
+    0
+  }
+
+  pub unsafe fn read_header(
+    &mut self,
+    mut l_stream: *mut opj_stream_private_t,
+    mut p_image: *mut *mut opj_image_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_read_header(l_stream, dec, p_image, p_manager)
+      }
+      Self::JP2(dec) => {
+        opj_jp2_read_header(l_stream, dec, p_image, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn set_decoded_components(
+    &mut self,
+    mut numcomps: OPJ_UINT32,
+    mut comps_indices: *const OPJ_UINT32,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_set_decoded_components(dec, numcomps, comps_indices, p_manager)
+      }
+      Self::JP2(dec) => {
+        opj_jp2_set_decoded_components(dec, numcomps, comps_indices, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn decode(
+    &mut self,
+    mut l_stream: *mut opj_stream_private_t,
+    mut p_image: *mut opj_image_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_decode(dec, l_stream, p_image, p_manager)
+      }
+      Self::JP2(dec) => {
+        opj_jp2_decode(dec, l_stream, p_image, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn end_decompress(
+    &mut self,
+    mut l_stream: *mut opj_stream_private_t,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_end_decompress(dec, l_stream, p_manager)
+      }
+      Self::JP2(dec) => {
+        opj_jp2_end_decompress(dec, l_stream, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn set_decode_area(
+    &mut self,
+    mut p_image: *mut opj_image_t,
+    mut p_start_x: OPJ_INT32,
+    mut p_start_y: OPJ_INT32,
+    mut p_end_x: OPJ_INT32,
+    mut p_end_y: OPJ_INT32,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_set_decode_area(dec, p_image, p_start_x, p_start_y, p_end_x, p_end_y, p_manager)
+      }
+      Self::JP2(dec) => {
+        opj_jp2_set_decode_area(dec, p_image, p_start_x, p_start_y, p_end_x, p_end_y, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn read_tile_header(
+    &mut self,
+    mut l_stream: *mut opj_stream_private_t,
+    mut p_tile_index: *mut OPJ_UINT32,
+    mut p_data_size: *mut OPJ_UINT32,
+    mut p_tile_x0: *mut OPJ_INT32,
+    mut p_tile_y0: *mut OPJ_INT32,
+    mut p_tile_x1: *mut OPJ_INT32,
+    mut p_tile_y1: *mut OPJ_INT32,
+    mut p_nb_comps: *mut OPJ_UINT32,
+    mut p_should_go_on: *mut OPJ_BOOL,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_read_tile_header(dec, p_tile_index, p_data_size, p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on, l_stream, p_manager)
+      }
+      Self::JP2(dec) => {
+        opj_jp2_read_tile_header(dec, p_tile_index, p_data_size, p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on, l_stream, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn decode_tile_data(
+    &mut self,
+    mut l_stream: *mut opj_stream_private_t,
+    mut p_tile_index: OPJ_UINT32,
+    mut p_data: *mut OPJ_BYTE,
+    mut p_data_size: OPJ_UINT32,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_decode_tile(dec, p_tile_index, p_data, p_data_size, l_stream, p_manager)
+      }
+      Self::JP2(dec) => {
+        opj_jp2_decode_tile(dec, p_tile_index, p_data, p_data_size, l_stream, p_manager)
+      },
+    }
+  }
+
+  pub unsafe fn get_decoded_tile(
+    &mut self,
+    mut l_stream: *mut opj_stream_private_t,
+    mut p_image: *mut opj_image_t,
+    mut tile_index: OPJ_UINT32,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_get_tile(dec, l_stream, p_image, p_manager, tile_index)
+      }
+      Self::JP2(dec) => {
+        opj_jp2_get_tile(dec, l_stream, p_image, p_manager, tile_index)
+      },
+    }
+  }
+
+  pub unsafe fn set_decoded_resolution_factor(
+    &mut self,
+    mut res_factor: OPJ_UINT32,
+    mut p_manager: &mut opj_event_mgr,
+  ) -> OPJ_BOOL {
+    match self {
+      Self::J2K(dec) => {
+        opj_j2k_set_decoded_resolution_factor(dec, res_factor, p_manager)
+      }
+      Self::JP2(dec) => {
+        opj_jp2_set_decoded_resolution_factor(dec, res_factor, p_manager)
+      },
+    }
+  }
+}
+
+
+#[repr(C)]
+pub(crate) struct opj_codec_private {
+  pub m_codec: Codec,
+  pub m_event_mgr: opj_event_mgr,
 }
 pub(crate) type opj_codec_private_t = opj_codec_private;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub(crate) union C2RustUnnamed {
-  pub m_decompression: opj_decompression,
-  pub m_compression: opj_compression,
+impl opj_codec_private {
+  pub fn set_info_handler(
+    &mut self,
+    mut p_callback: opj_msg_callback,
+    mut p_user_data: *mut core::ffi::c_void,
+  ) -> OPJ_BOOL {
+    self.m_event_mgr.set_info_handler(p_callback, p_user_data);
+    return 1i32;
+  }
+
+  pub fn set_warning_handler(
+    &mut self,
+    mut p_callback: opj_msg_callback,
+    mut p_user_data: *mut core::ffi::c_void,
+  ) -> OPJ_BOOL {
+    self.m_event_mgr.set_warning_handler(p_callback, p_user_data);
+    return 1i32;
+  }
+
+  pub fn set_error_handler(
+    &mut self,
+    mut p_callback: opj_msg_callback,
+    mut p_user_data: *mut core::ffi::c_void,
+  ) -> OPJ_BOOL {
+    self.m_event_mgr.set_error_handler(p_callback, p_user_data);
+    return 1i32;
+  }
+
+  pub unsafe fn set_threads(
+    &mut self,
+    mut num_threads: core::ffi::c_int,
+  ) -> OPJ_BOOL {
+    return self.m_codec.set_threads(num_threads);
+  }
+
+  pub unsafe fn setup_decoder(
+    &mut self,
+    mut parameters: *mut opj_dparameters_t,
+  ) -> OPJ_BOOL {
+    return self.m_codec.setup_decoder(parameters, &mut self.m_event_mgr);
+  }
+
+  pub unsafe fn decoder_set_strict_mode(
+    &mut self,
+    mut strict: OPJ_BOOL,
+  ) -> OPJ_BOOL {
+    return self.m_codec.decoder_set_strict_mode(strict, &mut self.m_event_mgr);
+  }
+
+  pub unsafe fn read_header(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_image: *mut *mut opj_image_t,
+  ) -> OPJ_BOOL {
+    return self.m_codec.read_header(p_stream, p_image, &mut self.m_event_mgr);
+  }
+
+  pub unsafe fn set_decoded_components(
+    &mut self,
+    mut numcomps: OPJ_UINT32,
+    mut comps_indices: *const OPJ_UINT32,
+    mut apply_color_transforms: OPJ_BOOL,
+  ) -> OPJ_BOOL {
+    return self.m_codec.set_decoded_components(numcomps, comps_indices, apply_color_transforms, &mut self.m_event_mgr);
+  }
+
+  pub unsafe fn decode(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_image: *mut opj_image_t,
+  ) -> OPJ_BOOL {
+    return self.m_codec.decode(p_stream, p_image, &mut self.m_event_mgr);
+  }
+
+  pub unsafe fn end_decompress(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+  ) -> OPJ_BOOL {
+    return self.m_codec.end_decompress(p_stream, &mut self.m_event_mgr);
+  }
+
+  pub unsafe fn set_decode_area(
+    &mut self,
+    mut p_image: *mut opj_image_t,
+    mut p_start_x: OPJ_INT32,
+    mut p_start_y: OPJ_INT32,
+    mut p_end_x: OPJ_INT32,
+    mut p_end_y: OPJ_INT32,
+  ) -> OPJ_BOOL {
+    return self.m_codec.set_decode_area(p_image, p_start_x, p_start_y, p_end_x, p_end_y, &mut self.m_event_mgr);
+  }
+
+  pub unsafe fn read_tile_header(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_tile_index: *mut OPJ_UINT32,
+    mut p_data_size: *mut OPJ_UINT32,
+    mut p_tile_x0: *mut OPJ_INT32,
+    mut p_tile_y0: *mut OPJ_INT32,
+    mut p_tile_x1: *mut OPJ_INT32,
+    mut p_tile_y1: *mut OPJ_INT32,
+    mut p_nb_comps: *mut OPJ_UINT32,
+    mut p_should_go_on: *mut OPJ_BOOL,
+  ) -> OPJ_BOOL {
+    return self.m_codec.read_tile_header(p_stream, p_tile_index, p_data_size, p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on, &mut self.m_event_mgr);
+  }
+
+  pub unsafe fn decode_tile_data(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_tile_index: OPJ_UINT32,
+    mut p_data: *mut OPJ_BYTE,
+    mut p_data_size: OPJ_UINT32,
+  ) -> OPJ_BOOL {
+    return self.m_codec.decode_tile_data(p_stream, p_tile_index, p_data, p_data_size, &mut self.m_event_mgr);
+  }
+
+  pub unsafe fn get_decoded_tile(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+    mut p_image: *mut opj_image_t,
+    mut tile_index: OPJ_UINT32,
+  ) -> OPJ_BOOL {
+    return self.m_codec.get_decoded_tile(p_stream, p_image, tile_index, &mut self.m_event_mgr);
+  }
+
+  pub unsafe fn set_decoded_resolution_factor(
+    &mut self,
+    mut res_factor: OPJ_UINT32,
+  ) -> OPJ_BOOL {
+    return self.m_codec.set_decoded_resolution_factor(res_factor, &mut self.m_event_mgr);
+  }
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub(crate) struct opj_compression {
-  pub opj_start_compress: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: *mut opj_stream_private,
-      _: *mut opj_image,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_encode: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: *mut opj_stream_private,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_write_tile: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: OPJ_UINT32,
-      _: *mut OPJ_BYTE,
-      _: OPJ_UINT32,
-      _: *mut opj_stream_private,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_end_compress: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: *mut opj_stream_private,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_destroy: Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
-  pub opj_setup_encoder: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: *mut opj_cparameters_t,
-      _: *mut opj_image,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_encoder_set_extra_options: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: *const *const core::ffi::c_char,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
+// Encoder
+impl opj_codec_private {
+  pub unsafe fn setup_encoder(
+    &mut self,
+    mut parameters: *mut opj_cparameters_t,
+    mut p_image: *mut opj_image_t,
+  ) -> OPJ_BOOL {
+    self.m_codec.setup_encoder(parameters, p_image, &mut self.m_event_mgr)
+  }
+
+  pub unsafe fn encoder_set_extra_options(
+    &mut self,
+    mut options: *const *const core::ffi::c_char,
+  ) -> OPJ_BOOL {
+    self.m_codec.set_extra_options(options, &mut self.m_event_mgr)
+  }
+
+  pub unsafe fn start_compress(
+    &mut self,
+    mut p_image: *mut opj_image_t,
+    mut p_stream: *mut opj_stream_t,
+  ) -> OPJ_BOOL {
+    self.m_codec.start_compress(p_image, p_stream, &mut self.m_event_mgr)
+  }
+
+  pub unsafe fn encode(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+  ) -> OPJ_BOOL {
+    self.m_codec.encode(p_stream, &mut self.m_event_mgr)
+  }
+
+  pub unsafe fn end_compress(
+    &mut self,
+    mut p_stream: *mut opj_stream_t,
+  ) -> OPJ_BOOL {
+    self.m_codec.end_compress(p_stream, &mut self.m_event_mgr)
+  }
+
+  pub unsafe fn write_tile(
+    &mut self,
+    mut p_tile_index: OPJ_UINT32,
+    mut p_data: *mut OPJ_BYTE,
+    mut p_data_size: OPJ_UINT32,
+    mut p_stream: *mut opj_stream_t,
+  ) -> OPJ_BOOL {
+    self.m_codec.write_tile(p_tile_index, p_data, p_data_size, p_stream, &mut self.m_event_mgr)
+  }
+
+  #[cfg(feature = "file-io")]
+  pub unsafe fn dump_codec(
+    &mut self,
+    mut info_flag: OPJ_INT32,
+    mut output_stream: *mut FILE,
+  ) {
+    self.m_codec.dump_codec(info_flag, output_stream)
+  }
+
+  pub unsafe fn get_cstr_info(
+    &mut self,
+  ) -> *mut opj_codestream_info_v2_t {
+    self.m_codec.get_cstr_info()
+  }
+
+  pub unsafe fn get_cstr_index(
+    &mut self,
+  ) -> *mut opj_codestream_index_t {
+    self.m_codec.get_cstr_index()
+  }
 }
 
 #[repr(C)]
@@ -581,106 +1421,17 @@ pub struct opj_stream_private {
 }
 pub type opj_stream_private_t = opj_stream_private;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub(crate) struct opj_decompression {
-  pub opj_read_header: Option<
-    unsafe extern "C" fn(
-      _: *mut opj_stream_private,
-      _: *mut core::ffi::c_void,
-      _: *mut *mut opj_image_t,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_decode: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: *mut opj_stream_private,
-      _: *mut opj_image_t,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_read_tile_header: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: *mut OPJ_UINT32,
-      _: *mut OPJ_UINT32,
-      _: *mut OPJ_INT32,
-      _: *mut OPJ_INT32,
-      _: *mut OPJ_INT32,
-      _: *mut OPJ_INT32,
-      _: *mut OPJ_UINT32,
-      _: *mut OPJ_BOOL,
-      _: *mut opj_stream_private,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_decode_tile_data: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: OPJ_UINT32,
-      _: *mut OPJ_BYTE,
-      _: OPJ_UINT32,
-      _: *mut opj_stream_private,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_end_decompress: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: *mut opj_stream_private,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_destroy: Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
-  pub opj_setup_decoder:
-    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: *mut opj_dparameters_t) -> ()>,
-  pub opj_decoder_set_strict_mode:
-    Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_BOOL) -> ()>,
-  pub opj_set_decode_area: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: *mut opj_image_t,
-      _: OPJ_INT32,
-      _: OPJ_INT32,
-      _: OPJ_INT32,
-      _: OPJ_INT32,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_get_decoded_tile: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: *mut opj_stream_private_t,
-      _: *mut opj_image_t,
-      _: &mut opj_event_mgr,
-      _: OPJ_UINT32,
-    ) -> OPJ_BOOL,
-  >,
-  pub opj_set_decoded_resolution_factor: Option<
-    unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32, _: &mut opj_event_mgr) -> OPJ_BOOL,
-  >,
-  pub opj_set_decoded_components: Option<
-    unsafe extern "C" fn(
-      _: *mut core::ffi::c_void,
-      _: OPJ_UINT32,
-      _: *const OPJ_UINT32,
-      _: &mut opj_event_mgr,
-    ) -> OPJ_BOOL,
-  >,
-}
-
-pub(crate) type opj_jp2_proc = unsafe extern "C" fn(
-    _: *mut opj_jp2_t,
+pub(crate) type opj_jp2_proc = unsafe fn(
+    _: &mut opj_jp2,
     _: *mut opj_stream_private_t,
     _: &mut opj_event_mgr,
   ) -> OPJ_BOOL;
 pub(crate) type opj_jp2_proc_list_t = super::function_list::ProcedureList<opj_jp2_proc>;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_jp2 {
-  pub j2k: *mut opj_j2k_t,
+  pub j2k: opj_j2k,
   pub m_validation_list: *mut opj_jp2_proc_list_t,
   pub m_procedure_list: *mut opj_jp2_proc_list_t,
   pub w: OPJ_UINT32,
@@ -709,7 +1460,6 @@ pub(crate) struct opj_jp2 {
   pub has_jp2h: OPJ_BYTE,
   pub has_ihdr: OPJ_BYTE,
 }
-pub(crate) type opj_jp2_t = opj_jp2;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -769,8 +1519,8 @@ pub(crate) struct opj_jp2_comps {
 }
 pub(crate) type opj_jp2_comps_t = opj_jp2_comps;
 
-pub(crate) type opj_j2k_proc = unsafe extern "C" fn(
-    _: *mut opj_j2k_t,
+pub(crate) type opj_j2k_proc = unsafe fn(
+    _: &mut opj_j2k,
     _: *mut opj_stream_private_t,
     _: &mut opj_event_mgr,
   ) -> OPJ_BOOL;
@@ -794,7 +1544,6 @@ pub(crate) struct opj_j2k {
   pub ihdr_h: OPJ_UINT32,
   pub dump_state: core::ffi::c_uint,
 }
-pub(crate) type opj_j2k_t = opj_j2k;
 
 #[repr(C)]
 #[derive(Copy, Clone, BitfieldStruct)]
@@ -1325,38 +2074,37 @@ pub unsafe fn opj_set_info_handler(
   mut p_callback: opj_msg_callback,
   mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
-  let mut l_codec = p_codec as *mut opj_codec_private_t;
-  if l_codec.is_null() {
+  if p_codec.is_null() {
     return 0i32;
   }
-  (*l_codec).m_event_mgr.set_info_handler(p_callback, p_user_data);
-  return 1i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.set_info_handler(p_callback, p_user_data)
 }
+
 #[no_mangle]
 pub unsafe fn opj_set_warning_handler(
   mut p_codec: *mut opj_codec_t,
   mut p_callback: opj_msg_callback,
   mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
-  let mut l_codec = p_codec as *mut opj_codec_private_t;
-  if l_codec.is_null() {
+  if p_codec.is_null() {
     return 0i32;
   }
-  (*l_codec).m_event_mgr.set_warning_handler(p_callback, p_user_data);
-  return 1i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.set_warning_handler(p_callback, p_user_data)
 }
+
 #[no_mangle]
 pub unsafe fn opj_set_error_handler(
   mut p_codec: *mut opj_codec_t,
   mut p_callback: opj_msg_callback,
   mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
-  let mut l_codec = p_codec as *mut opj_codec_private_t;
-  if l_codec.is_null() {
+  if p_codec.is_null() {
     return 0i32;
   }
-  (*l_codec).m_event_mgr.set_error_handler(p_callback, p_user_data);
-  return 1i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.set_error_handler(p_callback, p_user_data)
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1441,692 +2189,34 @@ pub const OPJ_VERSION_C: *const u8 = b"2.5.2\x00" as *const u8;
 pub unsafe fn opj_version() -> *const core::ffi::c_char {
   return OPJ_VERSION_C as *const core::ffi::c_char;
 }
+
 /* ---------------------------------------------------------------------- */
 /* DECOMPRESSION FUNCTIONS*/
 #[no_mangle]
 pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
-  let mut l_codec = 0 as *mut opj_codec_private_t;
-  l_codec = opj_calloc(
-    1i32 as size_t,
-    core::mem::size_of::<opj_codec_private_t>() as usize,
-  ) as *mut opj_codec_private_t;
-  if l_codec.is_null() {
-    return 0 as *mut opj_codec_t;
-  }
-  (*l_codec).is_decompressor = 1i32;
+  let mut l_codec = Box::<opj_codec_private_t>::new_zeroed().assume_init();
   match p_format as core::ffi::c_int {
     0 => {
-      #[cfg(feature = "file-io")]
-      {
-        (*l_codec).opj_dump_codec = core::mem::transmute::<
-          Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_INT32, _: *mut FILE) -> ()>,
-          Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
-        >(Some(
-          j2k_dump as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_INT32, _: *mut FILE) -> (),
-        ));
-      }
-      (*l_codec).opj_get_codec_info = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_info_v2_t>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_info_v2_t>,
-      >(Some(
-        j2k_get_cstr_info
-          as unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_info_v2_t,
-      ));
-      (*l_codec).opj_get_codec_index = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_index_t>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_index_t>,
-      >(Some(
-        j2k_get_cstr_index
-          as unsafe extern "C" fn(_: *mut opj_j2k_t) -> *mut opj_codestream_index_t,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_decode = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_decode
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_end_decompress = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_end_decompress
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_read_header = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_stream_private_t,
-            _: *mut opj_j2k_t,
-            _: *mut *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_stream_private,
-            _: *mut core::ffi::c_void,
-            _: *mut *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_read_header
-          as unsafe extern "C" fn(
-            _: *mut opj_stream_private_t,
-            _: *mut opj_j2k_t,
-            _: *mut *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_destroy = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
-      >(Some(
-        opj_j2k_destroy as unsafe extern "C" fn(_: *mut opj_j2k_t) -> (),
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_setup_decoder = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: *mut opj_dparameters_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: *mut opj_dparameters_t) -> ()>,
-      >(Some(
-        opj_j2k_setup_decoder
-          as unsafe extern "C" fn(_: *mut opj_j2k_t, _: *mut opj_dparameters_t) -> (),
-      ));
-      (*l_codec)
-        .m_codec_data
-        .m_decompression
-        .opj_decoder_set_strict_mode = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_BOOL) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_BOOL) -> ()>,
-      >(Some(
-        opj_j2k_decoder_set_strict_mode
-          as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_BOOL) -> (),
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_read_tile_header = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_BOOL,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_BOOL,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_read_tile_header
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_BOOL,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_decode_tile_data = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_decode_tile
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_set_decode_area = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_image_t,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_image_t,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_set_decode_area
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_image_t,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_get_decoded_tile = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-            _: OPJ_UINT32,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-            _: OPJ_UINT32,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_get_tile
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-            _: OPJ_UINT32,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec)
-        .m_codec_data
-        .m_decompression
-        .opj_set_decoded_resolution_factor = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_set_decoded_resolution_factor
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec)
-        .m_codec_data
-        .m_decompression
-        .opj_set_decoded_components = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: OPJ_UINT32,
-            _: *const OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: OPJ_UINT32,
-            _: *const OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_set_decoded_components
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: OPJ_UINT32,
-            _: *const OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).opj_set_threads = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_UINT32) -> OPJ_BOOL>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
-      >(Some(
-        opj_j2k_set_threads as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_UINT32) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec = opj_j2k_create_decompress() as *mut core::ffi::c_void;
-      if (*l_codec).m_codec.is_null() {
-        opj_free(l_codec as *mut core::ffi::c_void);
-        return 0 as *mut opj_codec_t;
+      if let Some(codec) = opj_j2k_create_decompress() {
+        l_codec.m_codec = Codec::Decoder(CodecDecoder::J2K(codec));
+      } else {
+        return std::ptr::null_mut();
       }
     }
     2 => {
       /* get a JP2 decoder handle */
-      #[cfg(feature = "file-io")]
-      {
-        (*l_codec).opj_dump_codec = core::mem::transmute::<
-          Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_INT32, _: *mut FILE) -> ()>,
-          Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_INT32, _: *mut FILE) -> ()>,
-        >(Some(
-          jp2_dump as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_INT32, _: *mut FILE) -> (),
-        ));
-      }
-      (*l_codec).opj_get_codec_info = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_info_v2_t>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_info_v2_t>,
-      >(Some(
-        jp2_get_cstr_info
-          as unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_info_v2_t,
-      ));
-      (*l_codec).opj_get_codec_index = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_index_t>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> *mut opj_codestream_index_t>,
-      >(Some(
-        jp2_get_cstr_index
-          as unsafe extern "C" fn(_: *mut opj_jp2_t) -> *mut opj_codestream_index_t,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_decode = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_decode
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_end_decompress = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_end_decompress
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_read_header = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_stream_private_t,
-            _: *mut opj_jp2_t,
-            _: *mut *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_stream_private,
-            _: *mut core::ffi::c_void,
-            _: *mut *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_read_header
-          as unsafe extern "C" fn(
-            _: *mut opj_stream_private_t,
-            _: *mut opj_jp2_t,
-            _: *mut *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_read_tile_header = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_BOOL,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_BOOL,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_read_tile_header
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_INT32,
-            _: *mut OPJ_UINT32,
-            _: *mut OPJ_BOOL,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_decode_tile_data = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_decode_tile
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_destroy = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
-      >(Some(
-        opj_jp2_destroy as unsafe extern "C" fn(_: *mut opj_jp2_t) -> (),
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_setup_decoder = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: *mut opj_dparameters_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: *mut opj_dparameters_t) -> ()>,
-      >(Some(
-        opj_jp2_setup_decoder
-          as unsafe extern "C" fn(_: *mut opj_jp2_t, _: *mut opj_dparameters_t) -> (),
-      ));
-      (*l_codec)
-        .m_codec_data
-        .m_decompression
-        .opj_decoder_set_strict_mode = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_BOOL) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_BOOL) -> ()>,
-      >(Some(
-        opj_jp2_decoder_set_strict_mode
-          as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_BOOL) -> (),
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_set_decode_area = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_image_t,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_image_t,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_set_decode_area
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_image_t,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: OPJ_INT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_decompression.opj_get_decoded_tile = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-            _: OPJ_UINT32,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-            _: OPJ_UINT32,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_get_tile
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-            _: OPJ_UINT32,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec)
-        .m_codec_data
-        .m_decompression
-        .opj_set_decoded_resolution_factor = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_set_decoded_resolution_factor
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec)
-        .m_codec_data
-        .m_decompression
-        .opj_set_decoded_components = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: OPJ_UINT32,
-            _: *const OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: OPJ_UINT32,
-            _: *const OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_set_decoded_components
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: OPJ_UINT32,
-            _: *const OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).opj_set_threads = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
-      >(Some(
-        opj_jp2_set_threads as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec = opj_jp2_create(1i32) as *mut core::ffi::c_void;
-      if (*l_codec).m_codec.is_null() {
-        opj_free(l_codec as *mut core::ffi::c_void);
-        return 0 as *mut opj_codec_t;
+      if let Some(codec) = opj_jp2_create(1i32) {
+        l_codec.m_codec = Codec::Decoder(CodecDecoder::JP2(codec));
+      } else {
+        return std::ptr::null_mut();
       }
     }
     -1 | 1 | _ => {
-      opj_free(l_codec as *mut core::ffi::c_void);
       return 0 as *mut opj_codec_t;
     }
   }
-  (*l_codec).m_event_mgr.set_default_event_handler();
-  return l_codec as *mut opj_codec_t;
+  l_codec.m_event_mgr.set_default_event_handler();
+  return Box::into_raw(l_codec) as *mut opj_codec_t;
 }
 #[no_mangle]
 pub unsafe fn opj_set_default_decoder_parameters(
@@ -2148,97 +2238,56 @@ pub unsafe fn opj_set_default_decoder_parameters(
     (*parameters).flags = 0u32
   };
 }
+
 #[no_mangle]
 pub unsafe fn opj_codec_set_threads(
   mut p_codec: *mut opj_codec_t,
   mut num_threads: core::ffi::c_int,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && num_threads >= 0i32 {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    return (*l_codec)
-      .opj_set_threads
-      .expect("non-null function pointer")(
-      (*l_codec).m_codec, num_threads as OPJ_UINT32
-    );
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.set_threads(num_threads)
 }
+
 #[no_mangle]
 pub unsafe fn opj_setup_decoder(
   mut p_codec: *mut opj_codec_t,
   mut parameters: *mut opj_dparameters_t,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !parameters.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      event_msg!(
-        &(*l_codec).m_event_mgr,
-        EVT_ERROR,
-        "Codec provided to the opj_setup_decoder function is not a decompressor handler.\n",
-      );
-      return 0i32;
-    }
-    (*l_codec)
-      .m_codec_data
-      .m_decompression
-      .opj_setup_decoder
-      .expect("non-null function pointer")((*l_codec).m_codec, parameters);
-    return 1i32;
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.setup_decoder(parameters)
 }
+
 #[no_mangle]
 pub unsafe fn opj_decoder_set_strict_mode(
   mut p_codec: *mut opj_codec_t,
   mut strict: OPJ_BOOL,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      event_msg!(&(*l_codec).m_event_mgr,
-                    EVT_ERROR,
-                    "Codec provided to the opj_decoder_set_strict_mode function is not a decompressor handler.\n",);
-      return 0i32;
-    }
-    (*l_codec)
-      .m_codec_data
-      .m_decompression
-      .opj_decoder_set_strict_mode
-      .expect("non-null function pointer")((*l_codec).m_codec, strict);
-    return 1i32;
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.decoder_set_strict_mode(strict)
 }
+
 #[no_mangle]
 pub unsafe fn opj_read_header(
   mut p_stream: *mut opj_stream_t,
   mut p_codec: *mut opj_codec_t,
   mut p_image: *mut *mut opj_image_t,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !p_stream.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    let mut l_stream = p_stream as *mut opj_stream_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      event_msg!(
-        &(*l_codec).m_event_mgr,
-        EVT_ERROR,
-        "Codec provided to the opj_read_header function is not a decompressor handler.\n",
-      );
-      return 0i32;
-    }
-    return (*l_codec)
-      .m_codec_data
-      .m_decompression
-      .opj_read_header
-      .expect("non-null function pointer")(
-      l_stream,
-      (*l_codec).m_codec,
-      p_image,
-      &mut (*l_codec).m_event_mgr,
-    );
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.read_header(p_stream, p_image)
 }
+
 #[no_mangle]
 pub unsafe fn opj_set_decoded_components(
   mut p_codec: *mut opj_codec_t,
@@ -2246,61 +2295,26 @@ pub unsafe fn opj_set_decoded_components(
   mut comps_indices: *const OPJ_UINT32,
   mut apply_color_transforms: OPJ_BOOL,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      event_msg!(&mut (*l_codec).m_event_mgr,
-                    EVT_ERROR,
-                    "Codec provided to the opj_set_decoded_components function is not a decompressor handler.\n",
-                    );
-      return 0i32;
-    }
-    if apply_color_transforms != 0 {
-      event_msg!(
-        &mut (*l_codec).m_event_mgr,
-        EVT_ERROR,
-        "apply_color_transforms = OPJ_TRUE is not supported.\n",
-      );
-      return 0i32;
-    }
-    return (*l_codec)
-      .m_codec_data
-      .m_decompression
-      .opj_set_decoded_components
-      .expect("non-null function pointer")(
-      (*l_codec).m_codec,
-      numcomps,
-      comps_indices,
-      &mut (*l_codec).m_event_mgr,
-    );
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.set_decoded_components(numcomps, comps_indices, apply_color_transforms)
 }
+
 #[no_mangle]
 pub unsafe fn opj_decode(
   mut p_codec: *mut opj_codec_t,
   mut p_stream: *mut opj_stream_t,
   mut p_image: *mut opj_image_t,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !p_stream.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    let mut l_stream = p_stream as *mut opj_stream_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return 0i32;
-    }
-    return (*l_codec)
-      .m_codec_data
-      .m_decompression
-      .opj_decode
-      .expect("non-null function pointer")(
-      (*l_codec).m_codec,
-      l_stream,
-      p_image,
-      &mut (*l_codec).m_event_mgr,
-    );
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.decode(p_stream, p_image)
 }
+
 #[no_mangle]
 pub unsafe fn opj_set_decode_area(
   mut p_codec: *mut opj_codec_t,
@@ -2310,27 +2324,13 @@ pub unsafe fn opj_set_decode_area(
   mut p_end_x: OPJ_INT32,
   mut p_end_y: OPJ_INT32,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return 0i32;
-    }
-    return (*l_codec)
-      .m_codec_data
-      .m_decompression
-      .opj_set_decode_area
-      .expect("non-null function pointer")(
-      (*l_codec).m_codec,
-      p_image,
-      p_start_x,
-      p_start_y,
-      p_end_x,
-      p_end_y,
-      &mut (*l_codec).m_event_mgr,
-    );
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.set_decode_area(p_image, p_start_x, p_start_y, p_end_x, p_end_y)
 }
+
 #[no_mangle]
 pub unsafe fn opj_read_tile_header(
   mut p_codec: *mut opj_codec_t,
@@ -2344,33 +2344,13 @@ pub unsafe fn opj_read_tile_header(
   mut p_nb_comps: *mut OPJ_UINT32,
   mut p_should_go_on: *mut OPJ_BOOL,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !p_stream.is_null() && !p_data_size.is_null() && !p_tile_index.is_null()
-  {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    let mut l_stream = p_stream as *mut opj_stream_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return 0i32;
-    }
-    return (*l_codec)
-      .m_codec_data
-      .m_decompression
-      .opj_read_tile_header
-      .expect("non-null function pointer")(
-      (*l_codec).m_codec,
-      p_tile_index,
-      p_data_size,
-      p_tile_x0,
-      p_tile_y0,
-      p_tile_x1,
-      p_tile_y1,
-      p_nb_comps,
-      p_should_go_on,
-      l_stream,
-      &mut (*l_codec).m_event_mgr,
-    );
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.read_tile_header(p_stream, p_tile_index, p_data_size, p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on)
 }
+
 #[no_mangle]
 pub unsafe fn opj_decode_tile_data(
   mut p_codec: *mut opj_codec_t,
@@ -2379,27 +2359,13 @@ pub unsafe fn opj_decode_tile_data(
   mut p_data_size: OPJ_UINT32,
   mut p_stream: *mut opj_stream_t,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !p_data.is_null() && !p_stream.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    let mut l_stream = p_stream as *mut opj_stream_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return 0i32;
-    }
-    return (*l_codec)
-      .m_codec_data
-      .m_decompression
-      .opj_decode_tile_data
-      .expect("non-null function pointer")(
-      (*l_codec).m_codec,
-      p_tile_index,
-      p_data,
-      p_data_size,
-      l_stream,
-      &mut (*l_codec).m_event_mgr,
-    );
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.decode_tile_data(p_stream, p_tile_index, p_data, p_data_size)
 }
+
 #[no_mangle]
 pub unsafe fn opj_get_decoded_tile(
   mut p_codec: *mut opj_codec_t,
@@ -2407,419 +2373,56 @@ pub unsafe fn opj_get_decoded_tile(
   mut p_image: *mut opj_image_t,
   mut tile_index: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !p_stream.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    let mut l_stream = p_stream as *mut opj_stream_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return 0i32;
-    }
-    return (*l_codec)
-      .m_codec_data
-      .m_decompression
-      .opj_get_decoded_tile
-      .expect("non-null function pointer")(
-      (*l_codec).m_codec,
-      l_stream,
-      p_image,
-      &mut (*l_codec).m_event_mgr,
-      tile_index,
-    );
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.get_decoded_tile(p_stream, p_image, tile_index)
 }
+
 #[no_mangle]
 pub unsafe fn opj_set_decoded_resolution_factor(
   mut p_codec: *mut opj_codec_t,
   mut res_factor: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  let mut l_codec = p_codec as *mut opj_codec_private_t;
-  if l_codec.is_null() {
+  if p_codec.is_null() {
     return 0i32;
   }
-  return (*l_codec)
-    .m_codec_data
-    .m_decompression
-    .opj_set_decoded_resolution_factor
-    .expect("non-null function pointer")(
-    (*l_codec).m_codec,
-    res_factor,
-    &mut (*l_codec).m_event_mgr,
-  );
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.set_decoded_resolution_factor(res_factor)
 }
+
 /* default decoding parameters */
 /* ---------------------------------------------------------------------- */
 /* COMPRESSION FUNCTIONS*/
 #[no_mangle]
 pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
-  let mut l_codec = 0 as *mut opj_codec_private_t;
-  l_codec = opj_calloc(
-    1i32 as size_t,
-    core::mem::size_of::<opj_codec_private_t>() as usize,
-  ) as *mut opj_codec_private_t;
-  if l_codec.is_null() {
-    return 0 as *mut opj_codec_t;
-  }
-  (*l_codec).is_decompressor = 0i32;
+  let mut l_codec = Box::<opj_codec_private_t>::new_zeroed().assume_init();
   match p_format as core::ffi::c_int {
     0 => {
-      (*l_codec).m_codec_data.m_compression.opj_encode = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_encode
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_compression.opj_end_compress = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_end_compress
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_compression.opj_start_compress = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private,
-            _: *mut opj_image,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_start_compress
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_compression.opj_write_tile = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_write_tile
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_compression.opj_destroy = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_j2k_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
-      >(Some(
-        opj_j2k_destroy as unsafe extern "C" fn(_: *mut opj_j2k_t) -> (),
-      ));
-      (*l_codec).m_codec_data.m_compression.opj_setup_encoder = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_cparameters_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_cparameters_t,
-            _: *mut opj_image,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_setup_encoder
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *mut opj_cparameters_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec)
-        .m_codec_data
-        .m_compression
-        .opj_encoder_set_extra_options = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *const *const core::ffi::c_char,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *const *const core::ffi::c_char,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_j2k_encoder_set_extra_options
-          as unsafe extern "C" fn(
-            _: *mut opj_j2k_t,
-            _: *const *const core::ffi::c_char,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).opj_set_threads = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_UINT32) -> OPJ_BOOL>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
-      >(Some(
-        opj_j2k_set_threads as unsafe extern "C" fn(_: *mut opj_j2k_t, _: OPJ_UINT32) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec = opj_j2k_create_compress() as *mut core::ffi::c_void;
-      if (*l_codec).m_codec.is_null() {
-        opj_free(l_codec as *mut core::ffi::c_void);
-        return 0 as *mut opj_codec_t;
+      if let Some(codec) = opj_j2k_create_compress() {
+        l_codec.m_codec = Codec::Encoder(CodecEncoder::J2K(codec));
+      } else {
+        return std::ptr::null_mut();
       }
     }
     2 => {
       /* get a JP2 decoder handle */
-      (*l_codec).m_codec_data.m_compression.opj_encode = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_encode
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_compression.opj_end_compress = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_end_compress
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_compression.opj_start_compress = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_stream_private,
-            _: *mut opj_image,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_start_compress
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_stream_private_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_compression.opj_write_tile = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_write_tile
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: OPJ_UINT32,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: *mut opj_stream_private_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec_data.m_compression.opj_destroy = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_jp2_t) -> ()>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>,
-      >(Some(
-        opj_jp2_destroy as unsafe extern "C" fn(_: *mut opj_jp2_t) -> (),
-      ));
-      (*l_codec).m_codec_data.m_compression.opj_setup_encoder = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_cparameters_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *mut opj_cparameters_t,
-            _: *mut opj_image,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_setup_encoder
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *mut opj_cparameters_t,
-            _: *mut opj_image_t,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec)
-        .m_codec_data
-        .m_compression
-        .opj_encoder_set_extra_options = core::mem::transmute::<
-        Option<
-          unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *const *const core::ffi::c_char,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-        Option<
-          unsafe extern "C" fn(
-            _: *mut core::ffi::c_void,
-            _: *const *const core::ffi::c_char,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-        >,
-      >(Some(
-        opj_jp2_encoder_set_extra_options
-          as unsafe extern "C" fn(
-            _: *mut opj_jp2_t,
-            _: *const *const core::ffi::c_char,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ));
-      (*l_codec).opj_set_threads = core::mem::transmute::<
-        Option<unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL>,
-        Option<unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_UINT32) -> OPJ_BOOL>,
-      >(Some(
-        opj_jp2_set_threads as unsafe extern "C" fn(_: *mut opj_jp2_t, _: OPJ_UINT32) -> OPJ_BOOL,
-      ));
-      (*l_codec).m_codec = opj_jp2_create(0i32) as *mut core::ffi::c_void;
-      if (*l_codec).m_codec.is_null() {
-        opj_free(l_codec as *mut core::ffi::c_void);
-        return 0 as *mut opj_codec_t;
+      if let Some(codec) = opj_jp2_create(0i32) {
+        l_codec.m_codec = Codec::Encoder(CodecEncoder::JP2(codec));
+      } else {
+        return std::ptr::null_mut();
       }
     }
     -1 | 1 | _ => {
-      opj_free(l_codec as *mut core::ffi::c_void);
       return 0 as *mut opj_codec_t;
     }
   }
-  (*l_codec).m_event_mgr.set_default_event_handler();
-  return l_codec as *mut opj_codec_t;
+  l_codec.m_event_mgr.set_default_event_handler();
+  return Box::into_raw(l_codec) as *mut opj_codec_t;
 }
+
+/* default coding parameters */
 #[no_mangle]
 pub unsafe fn opj_set_default_encoder_parameters(
   mut parameters: *mut opj_cparameters_t,
@@ -2855,55 +2458,33 @@ pub unsafe fn opj_set_default_encoder_parameters(
     (*parameters).jpip_on = 0i32
   };
 }
+
 #[no_mangle]
 pub unsafe fn opj_setup_encoder(
   mut p_codec: *mut opj_codec_t,
   mut parameters: *mut opj_cparameters_t,
   mut p_image: *mut opj_image_t,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !parameters.is_null() && !p_image.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return (*l_codec)
-        .m_codec_data
-        .m_compression
-        .opj_setup_encoder
-        .expect("non-null function pointer")(
-        (*l_codec).m_codec,
-        parameters,
-        p_image,
-        &mut (*l_codec).m_event_mgr,
-      );
-    }
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.setup_encoder(parameters, p_image)
 }
-/* default coding parameters */
-/* DEPRECATED */
-/* DEPRECATED */
-/* no ROI */
+
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
 pub unsafe fn opj_encoder_set_extra_options(
   mut p_codec: *mut opj_codec_t,
   mut options: *const *const core::ffi::c_char,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return (*l_codec)
-        .m_codec_data
-        .m_compression
-        .opj_encoder_set_extra_options
-        .expect("non-null function pointer")(
-        (*l_codec).m_codec,
-        options,
-        &mut (*l_codec).m_event_mgr,
-      );
-    }
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.encoder_set_extra_options(options)
 }
+
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
 pub unsafe fn opj_start_compress(
@@ -2911,91 +2492,49 @@ pub unsafe fn opj_start_compress(
   mut p_image: *mut opj_image_t,
   mut p_stream: *mut opj_stream_t,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !p_stream.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    let mut l_stream = p_stream as *mut opj_stream_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return (*l_codec)
-        .m_codec_data
-        .m_compression
-        .opj_start_compress
-        .expect("non-null function pointer")(
-        (*l_codec).m_codec,
-        l_stream,
-        p_image,
-        &mut (*l_codec).m_event_mgr,
-      );
-    }
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.start_compress(p_image, p_stream)
 }
+
 #[no_mangle]
 pub unsafe fn opj_encode(
-  mut p_info: *mut opj_codec_t,
+  mut p_codec: *mut opj_codec_t,
   mut p_stream: *mut opj_stream_t,
 ) -> OPJ_BOOL {
-  if !p_info.is_null() && !p_stream.is_null() {
-    let mut l_codec = p_info as *mut opj_codec_private_t;
-    let mut l_stream = p_stream as *mut opj_stream_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return (*l_codec)
-        .m_codec_data
-        .m_compression
-        .opj_encode
-        .expect("non-null function pointer")(
-        (*l_codec).m_codec,
-        l_stream,
-        &mut (*l_codec).m_event_mgr,
-      );
-    }
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.encode(p_stream)
 }
+
 #[no_mangle]
 pub unsafe fn opj_end_compress(
   mut p_codec: *mut opj_codec_t,
   mut p_stream: *mut opj_stream_t,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !p_stream.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    let mut l_stream = p_stream as *mut opj_stream_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return (*l_codec)
-        .m_codec_data
-        .m_compression
-        .opj_end_compress
-        .expect("non-null function pointer")(
-        (*l_codec).m_codec,
-        l_stream,
-        &mut (*l_codec).m_event_mgr,
-      );
-    }
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.end_compress(p_stream)
 }
+
 #[no_mangle]
 pub unsafe fn opj_end_decompress(
   mut p_codec: *mut opj_codec_t,
   mut p_stream: *mut opj_stream_t,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !p_stream.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    let mut l_stream = p_stream as *mut opj_stream_private_t;
-    if (*l_codec).is_decompressor == 0 {
-      return 0i32;
-    }
-    return (*l_codec)
-      .m_codec_data
-      .m_decompression
-      .opj_end_decompress
-      .expect("non-null function pointer")(
-      (*l_codec).m_codec,
-      l_stream,
-      &mut (*l_codec).m_event_mgr,
-    );
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.end_decompress(p_stream)
 }
+
 #[no_mangle]
 pub unsafe fn opj_set_MCT(
   mut parameters: *mut opj_cparameters_t,
@@ -3034,6 +2573,7 @@ pub unsafe fn opj_set_MCT(
   );
   return 1i32;
 }
+
 #[no_mangle]
 pub unsafe fn opj_write_tile(
   mut p_codec: *mut opj_codec_t,
@@ -3042,49 +2582,22 @@ pub unsafe fn opj_write_tile(
   mut p_data_size: OPJ_UINT32,
   mut p_stream: *mut opj_stream_t,
 ) -> OPJ_BOOL {
-  if !p_codec.is_null() && !p_stream.is_null() && !p_data.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    let mut l_stream = p_stream as *mut opj_stream_private_t;
-    if (*l_codec).is_decompressor != 0 {
-      return 0i32;
-    }
-    return (*l_codec)
-      .m_codec_data
-      .m_compression
-      .opj_write_tile
-      .expect("non-null function pointer")(
-      (*l_codec).m_codec,
-      p_tile_index,
-      p_data,
-      p_data_size,
-      l_stream,
-      &mut (*l_codec).m_event_mgr,
-    );
+  if p_codec.is_null() {
+    return 0i32;
   }
-  return 0i32;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.write_tile(p_tile_index, p_data, p_data_size, p_stream)
 }
+
 /* ---------------------------------------------------------------------- */
 #[no_mangle]
 pub unsafe fn opj_destroy_codec(mut p_codec: *mut opj_codec_t) {
-  if !p_codec.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    if (*l_codec).is_decompressor != 0 {
-      (*l_codec)
-        .m_codec_data
-        .m_decompression
-        .opj_destroy
-        .expect("non-null function pointer")((*l_codec).m_codec);
-    } else {
-      (*l_codec)
-        .m_codec_data
-        .m_compression
-        .opj_destroy
-        .expect("non-null function pointer")((*l_codec).m_codec);
-    }
-    (*l_codec).m_codec = 0 as *mut core::ffi::c_void;
-    opj_free(l_codec as *mut core::ffi::c_void);
-  };
+  if p_codec.is_null() {
+    return;
+  }
+  let _ = Box::from_raw(p_codec as *mut opj_codec_private_t);
 }
+
 /* ---------------------------------------------------------------------- */
 #[cfg(feature = "file-io")]
 #[no_mangle]
@@ -3093,26 +2606,24 @@ pub unsafe fn opj_dump_codec(
   mut info_flag: OPJ_INT32,
   mut output_stream: *mut FILE,
 ) {
-  if !p_codec.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    (*l_codec)
-      .opj_dump_codec
-      .expect("non-null function pointer")((*l_codec).m_codec, info_flag, output_stream);
+  if p_codec.is_null() {
     return;
-  };
+  }
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.dump_codec(info_flag, output_stream)
 }
+
 #[no_mangle]
 pub unsafe fn opj_get_cstr_info(
   mut p_codec: *mut opj_codec_t,
 ) -> *mut opj_codestream_info_v2_t {
-  if !p_codec.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    return (*l_codec)
-      .opj_get_codec_info
-      .expect("non-null function pointer")((*l_codec).m_codec);
+  if p_codec.is_null() {
+    return 0 as *mut opj_codestream_info_v2_t;
   }
-  return 0 as *mut opj_codestream_info_v2_t;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.get_cstr_info()
 }
+
 #[no_mangle]
 pub unsafe fn opj_destroy_cstr_info(mut cstr_info: *mut *mut opj_codestream_info_v2_t) {
   if !cstr_info.is_null() {
@@ -3126,18 +2637,18 @@ pub unsafe fn opj_destroy_cstr_info(mut cstr_info: *mut *mut opj_codestream_info
     *cstr_info = 0 as *mut opj_codestream_info_v2_t
   };
 }
+
 #[no_mangle]
 pub unsafe fn opj_get_cstr_index(
   mut p_codec: *mut opj_codec_t,
 ) -> *mut opj_codestream_index_t {
-  if !p_codec.is_null() {
-    let mut l_codec = p_codec as *mut opj_codec_private_t;
-    return (*l_codec)
-      .opj_get_codec_index
-      .expect("non-null function pointer")((*l_codec).m_codec);
+  if p_codec.is_null() {
+    return 0 as *mut opj_codestream_index_t;
   }
-  return 0 as *mut opj_codestream_index_t;
+  let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  l_codec.get_cstr_index()
 }
+
 #[no_mangle]
 pub unsafe fn opj_destroy_cstr_index(
   mut p_cstr_index: *mut *mut opj_codestream_index_t,
