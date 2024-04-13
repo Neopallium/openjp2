@@ -1484,8 +1484,12 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       t1.cblkdatabuffer = cblkdata;
       t1.cblkdatabuffersize = cblk_len
     }
+
     /* Concatenate all chunks */
     cblkdata = t1.cblkdatabuffer;
+    if cblkdata.is_null() {
+      return 0i32;
+    }
     cblk_len = 0 as OPJ_UINT32;
     i_0 = 0 as OPJ_UINT32;
     while i_0 < (*cblk).numchunks {
