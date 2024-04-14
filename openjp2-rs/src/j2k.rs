@@ -10,7 +10,6 @@ use super::mct::*;
 use super::openjpeg::*;
 use super::pi::*;
 use super::tcd::*;
-use super::thread::*;
 
 use super::malloc::*;
 
@@ -6341,52 +6340,12 @@ pub(crate) unsafe fn opj_j2k_decoder_set_strict_mode(mut j2k: &mut opj_j2k, mut 
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_set_threads(
-  mut j2k: &mut opj_j2k,
-  mut num_threads: OPJ_UINT32,
+  mut _j2k: &mut opj_j2k,
+  mut _num_threads: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  /* Currently we pass the thread-pool to the tcd, so we cannot re-set it */
-  /* afterwards */
-  if opj_has_thread_support() != 0 && j2k.m_tcd.is_null() {
-    opj_thread_pool_destroy(j2k.m_tp);
-    j2k.m_tp = std::ptr::null_mut::<opj_thread_pool_t>();
-    if num_threads <= 2147483647 as OPJ_UINT32 {
-      j2k.m_tp = opj_thread_pool_create(num_threads as core::ffi::c_int)
-    }
-    if j2k.m_tp.is_null() {
-      j2k.m_tp = opj_thread_pool_create(0i32);
-      return 0i32;
-    }
-    return 1i32;
-  }
   0i32
 }
-unsafe fn opj_j2k_get_default_thread_count() -> core::ffi::c_int {
-  let mut num_threads_str: *const core::ffi::c_char =
-    getenv(b"OPJ_NUM_THREADS\x00" as *const u8 as *const core::ffi::c_char);
-  let mut num_cpus: core::ffi::c_int = 0;
-  let mut num_threads: core::ffi::c_int = 0;
-  if num_threads_str.is_null() || opj_has_thread_support() == 0 {
-    return 0i32;
-  }
-  num_cpus = opj_get_num_cpus();
-  if strcmp(
-    num_threads_str,
-    b"ALL_CPUS\x00" as *const u8 as *const core::ffi::c_char,
-  ) == 0i32
-  {
-    return num_cpus;
-  }
-  if num_cpus == 0i32 {
-    num_cpus = 32i32
-  }
-  num_threads = atoi(num_threads_str);
-  if num_threads < 0i32 {
-    num_threads = 0i32
-  } else if num_threads > 2i32 * num_cpus {
-    num_threads = 2i32 * num_cpus
-  }
-  num_threads
-}
+
 /* ----------------------------------------------------------------------- */
 /* J2K encoder interface                                                       */
 /* ----------------------------------------------------------------------- */
@@ -6405,13 +6364,6 @@ pub(crate) fn opj_j2k_create_compress() -> Option<opj_j2k> {
       return None;
     }
     l_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 1000 as OPJ_UINT32;
-    l_j2k.m_tp = opj_thread_pool_create(opj_j2k_get_default_thread_count());
-    if l_j2k.m_tp.is_null() {
-      l_j2k.m_tp = opj_thread_pool_create(0i32)
-    }
-  }
-  if l_j2k.m_tp.is_null() {
-    return None;
   }
   Some(l_j2k)
 }
@@ -8969,7 +8921,7 @@ unsafe fn opj_j2k_copy_default_tcp_and_create_tcd(
   if p_j2k.m_tcd.is_null() {
     return 0i32;
   }
-  if opj_tcd_init(p_j2k.m_tcd, l_image, &mut p_j2k.m_cp, p_j2k.m_tp) == 0 {
+  if opj_tcd_init(p_j2k.m_tcd, l_image, &mut p_j2k.m_cp) == 0 {
     opj_tcd_destroy(p_j2k.m_tcd);
     p_j2k.m_tcd = std::ptr::null_mut::<opj_tcd>();
     event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
@@ -9045,8 +8997,6 @@ impl Drop for opj_j2k {
       self.m_private_image = std::ptr::null_mut::<opj_image_t>();
       opj_image_destroy(self.m_output_image);
       self.m_output_image = std::ptr::null_mut::<opj_image_t>();
-      opj_thread_pool_destroy(self.m_tp);
-      self.m_tp = std::ptr::null_mut::<opj_thread_pool_t>();
     }
   }
 }
@@ -10425,7 +10375,6 @@ impl opj_j2k {
         cstr_index: std::ptr::null_mut(),
         m_current_tile_number: 0,
         m_tcd: std::ptr::null_mut(),
-        m_tp: std::ptr::null_mut(),
         ihdr_w: 0,
         ihdr_h: 0,
         dump_state: 0,
@@ -10461,13 +10410,6 @@ pub(crate) fn opj_j2k_create_decompress() -> Option<opj_j2k> {
     /* codestream index creation */
     l_j2k.cstr_index = opj_j2k_create_cstr_index();
     if l_j2k.cstr_index.is_null() {
-      return None;
-    }
-    l_j2k.m_tp = opj_thread_pool_create(opj_j2k_get_default_thread_count());
-    if l_j2k.m_tp.is_null() {
-      l_j2k.m_tp = opj_thread_pool_create(0i32)
-    }
-    if l_j2k.m_tp.is_null() {
       return None;
     }
   }
@@ -13773,13 +13715,7 @@ unsafe fn opj_j2k_create_tcd(
     );
     return 0i32;
   }
-  if opj_tcd_init(
-    p_j2k.m_tcd,
-    p_j2k.m_private_image,
-    &mut p_j2k.m_cp,
-    p_j2k.m_tp,
-  ) == 0
-  {
+  if opj_tcd_init(p_j2k.m_tcd, p_j2k.m_private_image, &mut p_j2k.m_cp) == 0 {
     opj_tcd_destroy(p_j2k.m_tcd);
     p_j2k.m_tcd = std::ptr::null_mut::<opj_tcd>();
     return 0i32;

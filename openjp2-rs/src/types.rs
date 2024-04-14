@@ -33,7 +33,6 @@
 
 use super::c_api_types::*;
 use super::j2k::*;
-use super::thread::*;
 
 use super::event::opj_event_mgr;
 
@@ -191,7 +190,6 @@ pub(crate) struct opj_j2k {
   pub cstr_index: *mut opj_codestream_index_t,
   pub m_current_tile_number: OPJ_UINT32,
   pub m_tcd: *mut opj_tcd,
-  pub m_tp: *mut opj_thread_pool_t,
   pub ihdr_w: OPJ_UINT32,
   pub ihdr_h: OPJ_UINT32,
   pub dump_state: core::ffi::c_uint,
@@ -214,7 +212,6 @@ pub(crate) struct opj_tcd {
   pub m_is_decoder: [u8; 1],
   #[bitfield(padding)]
   pub c2rust_padding: [u8; 3],
-  pub thread_pool: *mut opj_thread_pool_t,
   pub win_x0: OPJ_UINT32,
   pub win_y0: OPJ_UINT32,
   pub win_x1: OPJ_UINT32,
