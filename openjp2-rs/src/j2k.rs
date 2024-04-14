@@ -504,7 +504,7 @@ impl J2KMarker {
             EVT_ERROR,
             "No handler for unknown marker.\n",
           );
-          return 0i32;
+          0i32
         }
       }
     }
@@ -515,53 +515,53 @@ impl J2KMarker {
  * Updates the Tile Length Marker.
  */
 unsafe fn opj_j2k_update_tlm(mut p_j2k: &mut opj_j2k, mut p_tile_part_size: OPJ_UINT32) {
-  if (*p_j2k).m_specific_param.m_encoder.m_Ttlmi_is_byte != 0 {
+  if p_j2k.m_specific_param.m_encoder.m_Ttlmi_is_byte != 0 {
     opj_write_bytes_LE(
-      (*p_j2k)
+      p_j2k
         .m_specific_param
         .m_encoder
         .m_tlm_sot_offsets_current,
-      (*p_j2k).m_current_tile_number,
+      p_j2k.m_current_tile_number,
       1 as OPJ_UINT32,
     ); /* PSOT */
-    (*p_j2k)
+    p_j2k
       .m_specific_param
       .m_encoder
-      .m_tlm_sot_offsets_current = (*p_j2k)
+      .m_tlm_sot_offsets_current = p_j2k
       .m_specific_param
       .m_encoder
       .m_tlm_sot_offsets_current
       .offset(1)
   } else {
     opj_write_bytes_LE(
-      (*p_j2k)
+      p_j2k
         .m_specific_param
         .m_encoder
         .m_tlm_sot_offsets_current,
-      (*p_j2k).m_current_tile_number,
+      p_j2k.m_current_tile_number,
       2 as OPJ_UINT32,
     );
-    (*p_j2k)
+    p_j2k
       .m_specific_param
       .m_encoder
-      .m_tlm_sot_offsets_current = (*p_j2k)
+      .m_tlm_sot_offsets_current = p_j2k
       .m_specific_param
       .m_encoder
       .m_tlm_sot_offsets_current
       .offset(2)
   }
   opj_write_bytes_LE(
-    (*p_j2k)
+    p_j2k
       .m_specific_param
       .m_encoder
       .m_tlm_sot_offsets_current,
     p_tile_part_size,
     4 as OPJ_UINT32,
   );
-  (*p_j2k)
+  p_j2k
     .m_specific_param
     .m_encoder
-    .m_tlm_sot_offsets_current = (*p_j2k)
+    .m_tlm_sot_offsets_current = p_j2k
     .m_specific_param
     .m_encoder
     .m_tlm_sot_offsets_current
@@ -580,7 +580,7 @@ unsafe fn opj_j2k_read_int16_to_float(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_bytes_LE(l_src_data, &mut l_temp, 2 as OPJ_UINT32);
-    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_INT16>() as isize);
+    l_src_data = l_src_data.add(core::mem::size_of::<OPJ_INT16>());
     let fresh0 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh0 = l_temp as OPJ_FLOAT32;
@@ -599,7 +599,7 @@ unsafe fn opj_j2k_read_int32_to_float(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_bytes_LE(l_src_data, &mut l_temp, 4 as OPJ_UINT32);
-    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_INT32>() as isize);
+    l_src_data = l_src_data.add(core::mem::size_of::<OPJ_INT32>());
     let fresh1 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh1 = l_temp as OPJ_FLOAT32;
@@ -618,7 +618,7 @@ unsafe fn opj_j2k_read_float32_to_float(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_float_LE(l_src_data, &mut l_temp);
-    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_FLOAT32>() as isize);
+    l_src_data = l_src_data.add(core::mem::size_of::<OPJ_FLOAT32>());
     let fresh2 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh2 = l_temp;
@@ -637,7 +637,7 @@ unsafe fn opj_j2k_read_float64_to_float(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_double_LE(l_src_data, &mut l_temp);
-    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_FLOAT64>() as isize);
+    l_src_data = l_src_data.add(core::mem::size_of::<OPJ_FLOAT64>());
     let fresh3 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh3 = l_temp as OPJ_FLOAT32;
@@ -656,7 +656,7 @@ unsafe fn opj_j2k_read_int16_to_int32(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_bytes_LE(l_src_data, &mut l_temp, 2 as OPJ_UINT32);
-    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_INT16>() as isize);
+    l_src_data = l_src_data.add(core::mem::size_of::<OPJ_INT16>());
     let fresh4 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh4 = l_temp as OPJ_INT32;
@@ -675,7 +675,7 @@ unsafe fn opj_j2k_read_int32_to_int32(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_bytes_LE(l_src_data, &mut l_temp, 4 as OPJ_UINT32);
-    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_INT32>() as isize);
+    l_src_data = l_src_data.add(core::mem::size_of::<OPJ_INT32>());
     let fresh5 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh5 = l_temp as OPJ_INT32;
@@ -694,7 +694,7 @@ unsafe fn opj_j2k_read_float32_to_int32(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_float_LE(l_src_data, &mut l_temp);
-    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_FLOAT32>() as isize);
+    l_src_data = l_src_data.add(core::mem::size_of::<OPJ_FLOAT32>());
     let fresh6 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh6 = l_temp as OPJ_INT32;
@@ -713,7 +713,7 @@ unsafe fn opj_j2k_read_float64_to_int32(
   i = 0 as OPJ_UINT32;
   while i < p_nb_elem {
     opj_read_double_LE(l_src_data, &mut l_temp);
-    l_src_data = l_src_data.offset(core::mem::size_of::<OPJ_FLOAT64>() as isize);
+    l_src_data = l_src_data.add(core::mem::size_of::<OPJ_FLOAT64>());
     let fresh7 = l_dest_data;
     l_dest_data = l_dest_data.offset(1);
     *fresh7 = l_temp as OPJ_INT32;
@@ -739,7 +739,7 @@ unsafe fn opj_j2k_write_float_to_int16(
       l_temp,
       core::mem::size_of::<OPJ_INT16>() as OPJ_UINT32,
     );
-    l_dest_data = l_dest_data.offset(core::mem::size_of::<OPJ_INT16>() as isize);
+    l_dest_data = l_dest_data.add(core::mem::size_of::<OPJ_INT16>());
     i += 1;
   }
 }
@@ -762,7 +762,7 @@ unsafe fn opj_j2k_write_float_to_int32(
       l_temp,
       core::mem::size_of::<OPJ_INT32>() as OPJ_UINT32,
     );
-    l_dest_data = l_dest_data.offset(core::mem::size_of::<OPJ_INT32>() as isize);
+    l_dest_data = l_dest_data.add(core::mem::size_of::<OPJ_INT32>());
     i += 1;
   }
 }
@@ -781,7 +781,7 @@ unsafe fn opj_j2k_write_float_to_float(
     l_src_data = l_src_data.offset(1);
     l_temp = *fresh10;
     opj_write_float_LE(l_dest_data, l_temp);
-    l_dest_data = l_dest_data.offset(core::mem::size_of::<OPJ_FLOAT32>() as isize);
+    l_dest_data = l_dest_data.add(core::mem::size_of::<OPJ_FLOAT32>());
     i += 1;
   }
 }
@@ -800,7 +800,7 @@ unsafe fn opj_j2k_write_float_to_float64(
     l_src_data = l_src_data.offset(1);
     l_temp = *fresh11 as OPJ_FLOAT64;
     opj_write_double_LE(l_dest_data, l_temp);
-    l_dest_data = l_dest_data.offset(core::mem::size_of::<OPJ_FLOAT64>() as isize);
+    l_dest_data = l_dest_data.add(core::mem::size_of::<OPJ_FLOAT64>());
     i += 1;
   }
 }
@@ -831,7 +831,7 @@ unsafe fn opj_j2k_check_poc_val(
   mut p_num_layers: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut packet_array = 0 as *mut OPJ_UINT32;
+  let mut packet_array = std::ptr::null_mut::<OPJ_UINT32>();
   let mut index: OPJ_UINT32 = 0;
   let mut resno: OPJ_UINT32 = 0;
   let mut compno: OPJ_UINT32 = 0;
@@ -844,7 +844,7 @@ unsafe fn opj_j2k_check_poc_val(
   assert!(p_nb_pocs > 0u32);
   packet_array = opj_calloc(
     (step_l as size_t).wrapping_mul(p_num_layers as usize),
-    core::mem::size_of::<OPJ_UINT32>() as usize,
+    core::mem::size_of::<OPJ_UINT32>(),
   ) as *mut OPJ_UINT32;
   if packet_array.is_null() {
     event_msg!(
@@ -909,7 +909,7 @@ unsafe fn opj_j2k_check_poc_val(
     );
   }
   opj_free(packet_array as *mut core::ffi::c_void);
-  return (loss == 0) as core::ffi::c_int;
+  (loss == 0) as core::ffi::c_int
 }
 /* *
  * Gets the number of tile parts used for the given change of progression (if any) and the given tile.
@@ -928,8 +928,8 @@ unsafe fn opj_j2k_get_num_tp(
 ) -> OPJ_UINT32 {
   let mut i: OPJ_INT32 = 0;
   let mut tpnum = 1 as OPJ_UINT32;
-  let mut tcp = 0 as *mut opj_tcp_t;
-  let mut l_current_poc = 0 as *mut opj_poc_t;
+  let mut tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_current_poc = std::ptr::null_mut::<opj_poc_t>();
   /*  preconditions */
 
   assert!(tileno < (*cp).tw.wrapping_mul((*cp).th));
@@ -977,7 +977,7 @@ unsafe fn opj_j2k_get_num_tp(
   } else {
     tpnum = 1 as OPJ_UINT32
   }
-  return tpnum;
+  tpnum
 }
 /* *
  * Calculates the total number of tile parts needed by the encoder to
@@ -1000,7 +1000,7 @@ unsafe fn opj_j2k_calculate_tp(
   let mut pino: OPJ_UINT32 = 0;
   let mut tileno: OPJ_UINT32 = 0;
   let mut l_nb_tiles: OPJ_UINT32 = 0;
-  let mut tcp = 0 as *mut opj_tcp_t;
+  let mut tcp = std::ptr::null_mut::<opj_tcp_t>();
   /* preconditions */
 
   assert!(!p_nb_tiles.is_null());
@@ -1059,7 +1059,7 @@ unsafe fn opj_j2k_calculate_tp(
     tcp = tcp.offset(1);
     tileno += 1;
   }
-  return 1i32;
+  1i32
 }
 /*
  * -----------------------------------------------------------------------
@@ -1079,11 +1079,11 @@ unsafe fn opj_j2k_write_soc(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* 2 bytes will be written */
-  let mut l_start_stream = 0 as *mut OPJ_BYTE;
+  let mut l_start_stream = std::ptr::null_mut::<OPJ_BYTE>();
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  l_start_stream = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_start_stream = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   /* write SOC identifier */
   opj_write_bytes_LE(l_start_stream, J2KMarker::SOC.as_u32(), 2 as OPJ_UINT32);
   if opj_stream_write_data(p_stream, l_start_stream, 2 as OPJ_SIZE_T, p_manager) != 2 {
@@ -1092,7 +1092,7 @@ unsafe fn opj_j2k_write_soc(
   /* UniPG>> */
   /* USE_JPWL */
   /* <<UniPG */
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a SOC marker (Start of Codestream)
@@ -1123,28 +1123,28 @@ unsafe fn opj_j2k_read_soc(
     return 0i32;
   }
   /* Next marker should be a SIZ marker in the main header */
-  (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::MHSIZ;
+  p_j2k.m_specific_param.m_decoder.m_state = J2KState::MHSIZ;
   /* FIXME move it in a index structure included in p_j2k*/
-  (*(*p_j2k).cstr_index).main_head_start = opj_stream_tell(p_stream) - 2i64;
+  (*p_j2k.cstr_index).main_head_start = opj_stream_tell(p_stream) - 2i64;
   event_msg!(
     p_manager,
     EVT_INFO,
     "Start to read j2k main header (%ld).\n",
-    (*(*p_j2k).cstr_index).main_head_start,
+    (*p_j2k.cstr_index).main_head_start,
   );
   /* Add the marker to the codestream index*/
   if 0i32
     == opj_j2k_add_mhmarker(
-      (*p_j2k).cstr_index,
+      p_j2k.cstr_index,
       J2KMarker::SOC,
-      (*(*p_j2k).cstr_index).main_head_start,
+      (*p_j2k.cstr_index).main_head_start,
       2 as OPJ_UINT32,
     )
   {
     event_msg!(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n",);
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the SIZ marker (image and tile size)
@@ -1160,26 +1160,26 @@ unsafe fn opj_j2k_write_siz(
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
   let mut l_size_len: OPJ_UINT32 = 0;
-  let mut l_current_ptr = 0 as *mut OPJ_BYTE;
-  let mut l_image = 0 as *mut opj_image_t;
-  let mut cp = 0 as *mut opj_cp_t;
-  let mut l_img_comp = 0 as *mut opj_image_comp_t;
+  let mut l_current_ptr = std::ptr::null_mut::<OPJ_BYTE>();
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
+  let mut cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  l_image = (*p_j2k).m_private_image;
-  cp = &mut (*p_j2k).m_cp;
+  l_image = p_j2k.m_private_image;
+  cp = &mut p_j2k.m_cp;
   l_size_len = (40u32).wrapping_add((3u32).wrapping_mul((*l_image).numcomps));
   l_img_comp = (*l_image).comps;
-  if l_size_len > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  if l_size_len > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_size_len as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -1187,10 +1187,10 @@ unsafe fn opj_j2k_write_siz(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_size_len
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_size_len
   }
-  l_current_ptr = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_current_ptr = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   /* write SOC identifier */
   opj_write_bytes_LE(l_current_ptr, J2KMarker::SIZ.as_u32(), 2 as OPJ_UINT32); /* SIZ */
   l_current_ptr = l_current_ptr.offset(2); /* L_SIZ */
@@ -1241,14 +1241,14 @@ unsafe fn opj_j2k_write_siz(
   }
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_size_len as OPJ_SIZE_T,
     p_manager,
   ) != l_size_len as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a SIZ marker (image and tile size)
@@ -1280,15 +1280,15 @@ unsafe fn opj_j2k_read_siz(
   let mut l_ty1: OPJ_UINT32 = 0;
   let mut l_prec0: OPJ_UINT32 = 0;
   let mut l_sgnd0: OPJ_UINT32 = 0;
-  let mut l_image = 0 as *mut opj_image_t;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_img_comp = 0 as *mut opj_image_comp_t;
-  let mut l_current_tile_param = 0 as *mut opj_tcp_t;
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
+  let mut l_current_tile_param = std::ptr::null_mut::<opj_tcp_t>();
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  l_image = (*p_j2k).m_private_image;
-  l_cp = &mut (*p_j2k).m_cp;
+  l_image = p_j2k.m_private_image;
+  l_cp = &mut p_j2k.m_cp;
   /* minimum size == 39 - 3 (= minimum component parameter) */
   if p_header_size < 36u32 {
     event_msg!(p_manager, EVT_ERROR, "Error with SIZ marker size\n",); /* Rsiz (capabilities) */
@@ -1413,21 +1413,21 @@ unsafe fn opj_j2k_read_siz(
     );
     return 0i32;
   }
-  if (*p_j2k).dump_state == 0 {
+  if p_j2k.dump_state == 0 {
     let mut siz_w: OPJ_UINT32 = 0;
     let mut siz_h: OPJ_UINT32 = 0;
     siz_w = (*l_image).x1.wrapping_sub((*l_image).x0);
     siz_h = (*l_image).y1.wrapping_sub((*l_image).y0);
-    if (*p_j2k).ihdr_w > 0u32
-      && (*p_j2k).ihdr_h > 0u32
-      && ((*p_j2k).ihdr_w != siz_w || (*p_j2k).ihdr_h != siz_h)
+    if p_j2k.ihdr_w > 0u32
+      && p_j2k.ihdr_h > 0u32
+      && (p_j2k.ihdr_w != siz_w || p_j2k.ihdr_h != siz_h)
     {
       event_msg!(
         p_manager,
         EVT_ERROR,
         "Error with SIZ marker: IHDR w(%u) h(%u) vs. SIZ w(%u) h(%u)\n",
-        (*p_j2k).ihdr_w,
-        (*p_j2k).ihdr_h,
+        p_j2k.ihdr_w,
+        p_j2k.ihdr_h,
         siz_w,
         siz_h,
       );
@@ -1438,7 +1438,7 @@ unsafe fn opj_j2k_read_siz(
   /* Allocate the resulting image components */
   (*l_image).comps = opj_calloc(
     (*l_image).numcomps as size_t,
-    core::mem::size_of::<opj_image_comp_t>() as usize,
+    core::mem::size_of::<opj_image_comp_t>(),
   ) as *mut opj_image_comp_t;
   if (*l_image).comps.is_null() {
     (*l_image).numcomps = 0 as OPJ_UINT32;
@@ -1460,7 +1460,7 @@ unsafe fn opj_j2k_read_siz(
     p_header_data = p_header_data.offset(1);
     (*l_img_comp).prec = (tmp & 0x7fu32).wrapping_add(1u32);
     (*l_img_comp).sgnd = tmp >> 7i32;
-    if (*p_j2k).dump_state == 0u32 {
+    if p_j2k.dump_state == 0u32 {
       if i == 0u32 {
         l_prec0 = (*l_img_comp).prec;
         l_sgnd0 = (*l_img_comp).sgnd
@@ -1525,38 +1525,38 @@ unsafe fn opj_j2k_read_siz(
   }
   l_nb_tiles = (*l_cp).tw.wrapping_mul((*l_cp).th);
   /* Define the tiles which will be decoded */
-  if (*p_j2k).m_specific_param.m_decoder.m_discard_tiles() != 0 {
-    (*p_j2k).m_specific_param.m_decoder.m_start_tile_x = (*p_j2k)
+  if p_j2k.m_specific_param.m_decoder.m_discard_tiles() != 0 {
+    p_j2k.m_specific_param.m_decoder.m_start_tile_x = p_j2k
       .m_specific_param
       .m_decoder
       .m_start_tile_x
       .wrapping_sub((*l_cp).tx0)
       .wrapping_div((*l_cp).tdx);
-    (*p_j2k).m_specific_param.m_decoder.m_start_tile_y = (*p_j2k)
+    p_j2k.m_specific_param.m_decoder.m_start_tile_y = p_j2k
       .m_specific_param
       .m_decoder
       .m_start_tile_y
       .wrapping_sub((*l_cp).ty0)
       .wrapping_div((*l_cp).tdy);
-    (*p_j2k).m_specific_param.m_decoder.m_end_tile_x = opj_uint_ceildiv(
-      (*p_j2k).m_specific_param.m_decoder.m_end_tile_x - ((*l_cp).tx0),
+    p_j2k.m_specific_param.m_decoder.m_end_tile_x = opj_uint_ceildiv(
+      p_j2k.m_specific_param.m_decoder.m_end_tile_x - ((*l_cp).tx0),
       (*l_cp).tdx,
     );
-    (*p_j2k).m_specific_param.m_decoder.m_end_tile_y = opj_uint_ceildiv(
-      (*p_j2k).m_specific_param.m_decoder.m_end_tile_y - ((*l_cp).ty0),
+    p_j2k.m_specific_param.m_decoder.m_end_tile_y = opj_uint_ceildiv(
+      p_j2k.m_specific_param.m_decoder.m_end_tile_y - ((*l_cp).ty0),
       (*l_cp).tdy,
     );
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
-    (*p_j2k).m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
-    (*p_j2k).m_specific_param.m_decoder.m_end_tile_x = (*l_cp).tw;
-    (*p_j2k).m_specific_param.m_decoder.m_end_tile_y = (*l_cp).th
+    p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
+    p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
+    p_j2k.m_specific_param.m_decoder.m_end_tile_x = (*l_cp).tw;
+    p_j2k.m_specific_param.m_decoder.m_end_tile_y = (*l_cp).th
   }
   /* USE_JPWL */
   /* memory allocations */
   (*l_cp).tcps = opj_calloc(
     l_nb_tiles as size_t,
-    core::mem::size_of::<opj_tcp_t>() as usize,
+    core::mem::size_of::<opj_tcp_t>(),
   ) as *mut opj_tcp_t;
   if (*l_cp).tcps.is_null() {
     event_msg!(
@@ -1567,11 +1567,11 @@ unsafe fn opj_j2k_read_siz(
     return 0i32;
   }
   /* USE_JPWL */
-  (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp).tccps = opj_calloc(
+  (*p_j2k.m_specific_param.m_decoder.m_default_tcp).tccps = opj_calloc(
     (*l_image).numcomps as size_t,
-    core::mem::size_of::<opj_tccp_t>() as usize,
+    core::mem::size_of::<opj_tccp_t>(),
   ) as *mut opj_tccp_t;
-  if (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp)
+  if (*p_j2k.m_specific_param.m_decoder.m_default_tcp)
     .tccps
     .is_null()
   {
@@ -1582,11 +1582,11 @@ unsafe fn opj_j2k_read_siz(
     );
     return 0i32;
   }
-  (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp).m_mct_records = opj_calloc(
+  (*p_j2k.m_specific_param.m_decoder.m_default_tcp).m_mct_records = opj_calloc(
     10i32 as size_t,
-    core::mem::size_of::<opj_mct_data_t>() as usize,
+    core::mem::size_of::<opj_mct_data_t>(),
   ) as *mut opj_mct_data_t;
-  if (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp)
+  if (*p_j2k.m_specific_param.m_decoder.m_default_tcp)
     .m_mct_records
     .is_null()
   {
@@ -1597,13 +1597,13 @@ unsafe fn opj_j2k_read_siz(
     );
     return 0i32;
   }
-  (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp).m_nb_max_mct_records = 10 as OPJ_UINT32;
-  (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp).m_mcc_records = opj_calloc(
+  (*p_j2k.m_specific_param.m_decoder.m_default_tcp).m_nb_max_mct_records = 10 as OPJ_UINT32;
+  (*p_j2k.m_specific_param.m_decoder.m_default_tcp).m_mcc_records = opj_calloc(
     10i32 as size_t,
-    core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as usize,
+    core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>(),
   )
     as *mut opj_simple_mcc_decorrelation_data_t;
-  if (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp)
+  if (*p_j2k.m_specific_param.m_decoder.m_default_tcp)
     .m_mcc_records
     .is_null()
   {
@@ -1614,12 +1614,12 @@ unsafe fn opj_j2k_read_siz(
     );
     return 0i32;
   }
-  (*(*p_j2k).m_specific_param.m_decoder.m_default_tcp).m_nb_max_mcc_records = 10 as OPJ_UINT32;
+  (*p_j2k.m_specific_param.m_decoder.m_default_tcp).m_nb_max_mcc_records = 10 as OPJ_UINT32;
   /* set up default dc level shift */
   i = 0 as OPJ_UINT32;
   while i < (*l_image).numcomps {
     if (*(*l_image).comps.offset(i as isize)).sgnd == 0 {
-      (*(*(*p_j2k).m_specific_param.m_decoder.m_default_tcp)
+      (*(*p_j2k.m_specific_param.m_decoder.m_default_tcp)
         .tccps
         .offset(i as isize))
       .m_dc_level_shift = (1i32)
@@ -1634,7 +1634,7 @@ unsafe fn opj_j2k_read_siz(
   while i < l_nb_tiles {
     (*l_current_tile_param).tccps = opj_calloc(
       (*l_image).numcomps as size_t,
-      core::mem::size_of::<opj_tccp_t>() as usize,
+      core::mem::size_of::<opj_tccp_t>(),
     ) as *mut opj_tccp_t;
     if (*l_current_tile_param).tccps.is_null() {
       event_msg!(
@@ -1647,9 +1647,9 @@ unsafe fn opj_j2k_read_siz(
     l_current_tile_param = l_current_tile_param.offset(1);
     i += 1;
   }
-  (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::MH;
+  p_j2k.m_specific_param.m_decoder.m_state = J2KState::MH;
   opj_image_comp_header_update(l_image, l_cp);
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the COM marker (comment)
@@ -1665,24 +1665,24 @@ unsafe fn opj_j2k_write_com(
 ) -> OPJ_BOOL {
   let mut l_comment_size: OPJ_UINT32 = 0;
   let mut l_total_com_size: OPJ_UINT32 = 0;
-  let mut l_comment = 0 as *const OPJ_CHAR;
-  let mut l_current_ptr = 0 as *mut OPJ_BYTE;
+  let mut l_comment = std::ptr::null::<OPJ_CHAR>();
+  let mut l_current_ptr = std::ptr::null_mut::<OPJ_BYTE>();
   /* preconditions */
   /* L_COM */
 
   assert!(!p_stream.is_null());
-  l_comment = (*p_j2k).m_cp.comment;
+  l_comment = p_j2k.m_cp.comment;
   l_comment_size = strlen(l_comment) as OPJ_UINT32;
   l_total_com_size = l_comment_size.wrapping_add(6u32);
-  if l_total_com_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  if l_total_com_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_total_com_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -1690,10 +1690,10 @@ unsafe fn opj_j2k_write_com(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_total_com_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_total_com_size
   }
-  l_current_ptr = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_current_ptr = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(l_current_ptr, J2KMarker::COM.as_u32(), 2 as OPJ_UINT32);
   l_current_ptr = l_current_ptr.offset(2);
   opj_write_bytes_LE(
@@ -1711,14 +1711,14 @@ unsafe fn opj_j2k_write_com(
   );
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_total_com_size as OPJ_SIZE_T,
     p_manager,
   ) != l_total_com_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a COM marker (comments)
@@ -1743,7 +1743,7 @@ unsafe fn opj_j2k_read_com(
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the COD marker (Coding style default)
@@ -1757,32 +1757,32 @@ unsafe fn opj_j2k_write_cod(
   mut p_stream: *mut opj_stream_private_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   let mut l_code_size: OPJ_UINT32 = 0;
   let mut l_remaining_size: OPJ_UINT32 = 0;
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   /* preconditions */
   /* L_COD */
   /* SGcod (A) */
   assert!(!p_stream.is_null()); /* SGcod (C) */
-  l_cp = &mut (*p_j2k).m_cp;
-  l_tcp = &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
+  l_cp = &mut p_j2k.m_cp;
+  l_tcp = &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t;
   l_code_size = (9u32).wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
     p_j2k,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     0 as OPJ_UINT32,
   ));
   l_remaining_size = l_code_size;
-  if l_code_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  if l_code_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_code_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -1790,10 +1790,10 @@ unsafe fn opj_j2k_write_cod(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_code_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_code_size
   }
-  l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_current_data = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(l_current_data, J2KMarker::COD.as_u32(), 2 as OPJ_UINT32);
   l_current_data = l_current_data.offset(2);
   opj_write_bytes_LE(
@@ -1814,7 +1814,7 @@ unsafe fn opj_j2k_write_cod(
     (l_remaining_size as core::ffi::c_uint).wrapping_sub(9u32) as OPJ_UINT32 as OPJ_UINT32;
   if opj_j2k_write_SPCod_SPCoc(
     p_j2k,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     0 as OPJ_UINT32,
     l_current_data,
     &mut l_remaining_size,
@@ -1830,14 +1830,14 @@ unsafe fn opj_j2k_write_cod(
   }
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_code_size as OPJ_SIZE_T,
     p_manager,
   ) != l_code_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a COD marker (Coding style defaults)
@@ -1862,19 +1862,19 @@ unsafe fn opj_j2k_read_cod(
   /* loop */
   let mut i: OPJ_UINT32 = 0;
   let mut l_tmp: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_image = 0 as *mut opj_image_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  l_image = (*p_j2k).m_private_image;
-  l_cp = &mut (*p_j2k).m_cp;
+  l_image = p_j2k.m_private_image;
+  l_cp = &mut p_j2k.m_cp;
   /* If we are in the first tile-part header of the current tile */
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
   (*l_tcp).set_cod(1 as OPJ_BITFIELD);
   /* Make sure room is sufficient */
@@ -1952,7 +1952,7 @@ unsafe fn opj_j2k_read_cod(
   /* Apply the coding style to other components of the current tile or the m_default_tcp*/
   opj_j2k_copy_tile_component_parameters(p_j2k);
   /* Index */
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the COC marker (Coding style component)
@@ -1974,7 +1974,7 @@ unsafe fn opj_j2k_write_coc(
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  l_comp_room = if (*(*p_j2k).m_private_image).numcomps <= 256u32 {
+  l_comp_room = if (*p_j2k.m_private_image).numcomps <= 256u32 {
     1i32
   } else {
     2i32
@@ -1983,23 +1983,23 @@ unsafe fn opj_j2k_write_coc(
     .wrapping_add(l_comp_room)
     .wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
       p_j2k,
-      (*p_j2k).m_current_tile_number,
+      p_j2k.m_current_tile_number,
       p_comp_no,
     ));
-  if l_coc_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
-    let mut new_header_tile_data = 0 as *mut OPJ_BYTE;
+  if l_coc_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
+    let mut new_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
     /*p_j2k->m_specific_param.m_encoder.m_header_tile_data
     = (OPJ_BYTE*)opj_realloc(
             p_j2k->m_specific_param.m_encoder.m_header_tile_data,
             l_coc_size);*/
     new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_coc_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -2007,26 +2007,26 @@ unsafe fn opj_j2k_write_coc(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_coc_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_coc_size
   }
   opj_j2k_write_coc_in_memory(
     p_j2k,
     p_comp_no,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     &mut l_remaining_size,
     p_manager,
   );
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_coc_size as OPJ_SIZE_T,
     p_manager,
   ) != l_coc_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Compares 2 COC markers (Coding style component)
@@ -2042,22 +2042,22 @@ unsafe fn opj_j2k_compare_coc(
   mut p_first_comp_no: OPJ_UINT32,
   mut p_second_comp_no: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   /* preconditions */
-  l_cp = &mut (*p_j2k).m_cp;
-  l_tcp = &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
+  l_cp = &mut p_j2k.m_cp;
+  l_tcp = &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t;
   if (*(*l_tcp).tccps.offset(p_first_comp_no as isize)).csty
     != (*(*l_tcp).tccps.offset(p_second_comp_no as isize)).csty
   {
     return 0i32;
   }
-  return opj_j2k_compare_SPCod_SPCoc(
+  opj_j2k_compare_SPCod_SPCoc(
     p_j2k,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     p_first_comp_no,
     p_second_comp_no,
-  );
+  )
 }
 /* *
  * Writes the COC marker (Coding style component)
@@ -2075,18 +2075,18 @@ unsafe fn opj_j2k_write_coc_in_memory(
   mut p_data_written: *mut OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) {
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   let mut l_coc_size: OPJ_UINT32 = 0;
   let mut l_remaining_size: OPJ_UINT32 = 0;
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
-  let mut l_image = 0 as *mut opj_image_t;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
   let mut l_comp_room: OPJ_UINT32 = 0;
   /* preconditions */
   /* L_COC */
-  l_cp = &mut (*p_j2k).m_cp;
-  l_tcp = &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
-  l_image = (*p_j2k).m_private_image;
+  l_cp = &mut p_j2k.m_cp;
+  l_tcp = &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t;
+  l_image = p_j2k.m_private_image;
   l_comp_room = if (*l_image).numcomps <= 256u32 {
     1i32
   } else {
@@ -2096,7 +2096,7 @@ unsafe fn opj_j2k_write_coc_in_memory(
     .wrapping_add(l_comp_room)
     .wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
       p_j2k,
-      (*p_j2k).m_current_tile_number,
+      p_j2k.m_current_tile_number,
       p_comp_no,
     ));
   l_remaining_size = l_coc_size;
@@ -2121,7 +2121,7 @@ unsafe fn opj_j2k_write_coc_in_memory(
     .wrapping_sub((5u32).wrapping_add(l_comp_room)) as OPJ_UINT32;
   opj_j2k_write_SPCod_SPCoc(
     p_j2k,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     0 as OPJ_UINT32,
     l_current_data,
     &mut l_remaining_size,
@@ -2141,8 +2141,8 @@ unsafe fn opj_j2k_get_max_coc_size(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
   let mut l_nb_tiles: OPJ_UINT32 = 0;
   let mut l_max = 0 as OPJ_UINT32;
   /* preconditions */
-  l_nb_tiles = (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th);
-  l_nb_comp = (*(*p_j2k).m_private_image).numcomps;
+  l_nb_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
+  l_nb_comp = (*p_j2k.m_private_image).numcomps;
   i = 0 as OPJ_UINT32;
   while i < l_nb_tiles {
     j = 0 as OPJ_UINT32;
@@ -2152,7 +2152,7 @@ unsafe fn opj_j2k_get_max_coc_size(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
     }
     i += 1;
   }
-  return (6u32).wrapping_add(l_max);
+  (6u32).wrapping_add(l_max)
 }
 /* *
  * Reads a COC marker (Coding Style Component)
@@ -2174,21 +2174,21 @@ unsafe fn opj_j2k_read_coc(
   mut p_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_image = 0 as *mut opj_image_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
   let mut l_comp_room: OPJ_UINT32 = 0;
   let mut l_comp_no: OPJ_UINT32 = 0;
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  l_cp = &mut (*p_j2k).m_cp;
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+  l_cp = &mut p_j2k.m_cp;
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
-  l_image = (*p_j2k).m_private_image;
+  l_image = p_j2k.m_private_image;
   l_comp_room = if (*l_image).numcomps <= 256u32 {
     1i32
   } else {
@@ -2232,7 +2232,7 @@ unsafe fn opj_j2k_read_coc(
     event_msg!(p_manager, EVT_ERROR, "Error reading COC marker\n",);
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the QCD marker (quantization default)
@@ -2248,26 +2248,26 @@ unsafe fn opj_j2k_write_qcd(
 ) -> OPJ_BOOL {
   let mut l_qcd_size: OPJ_UINT32 = 0;
   let mut l_remaining_size: OPJ_UINT32 = 0;
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   /* preconditions */
   /* L_QCD */
 
   assert!(!p_stream.is_null());
   l_qcd_size = (4u32).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
     p_j2k,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     0 as OPJ_UINT32,
   ));
   l_remaining_size = l_qcd_size;
-  if l_qcd_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  if l_qcd_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_qcd_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -2275,10 +2275,10 @@ unsafe fn opj_j2k_write_qcd(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_qcd_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_qcd_size
   }
-  l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_current_data = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(l_current_data, J2KMarker::QCD.as_u32(), 2 as OPJ_UINT32);
   l_current_data = l_current_data.offset(2);
   opj_write_bytes_LE(
@@ -2291,7 +2291,7 @@ unsafe fn opj_j2k_write_qcd(
     (l_remaining_size as core::ffi::c_uint).wrapping_sub(4u32) as OPJ_UINT32 as OPJ_UINT32;
   if opj_j2k_write_SQcd_SQcc(
     p_j2k,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     0 as OPJ_UINT32,
     l_current_data,
     &mut l_remaining_size,
@@ -2307,14 +2307,14 @@ unsafe fn opj_j2k_write_qcd(
   }
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_qcd_size as OPJ_SIZE_T,
     p_manager,
   ) != l_qcd_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a QCD marker (Quantization defaults)
@@ -2356,7 +2356,7 @@ unsafe fn opj_j2k_read_qcd(
   }
   /* Apply the quantization parameters to other components of the current tile or the m_default_tcp */
   opj_j2k_copy_tile_quantization_parameters(p_j2k);
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the QCC marker (quantization component)
@@ -2379,10 +2379,10 @@ unsafe fn opj_j2k_write_qcc(
   assert!(!p_stream.is_null());
   l_qcc_size = (5u32).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
     p_j2k,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     p_comp_no,
   ));
-  l_qcc_size = (l_qcc_size as core::ffi::c_uint).wrapping_add(if (*(*p_j2k).m_private_image)
+  l_qcc_size = (l_qcc_size as core::ffi::c_uint).wrapping_add(if (*p_j2k.m_private_image)
     .numcomps
     <= 256u32
   {
@@ -2391,15 +2391,15 @@ unsafe fn opj_j2k_write_qcc(
     1i32
   } as core::ffi::c_uint) as OPJ_UINT32;
   l_remaining_size = l_qcc_size;
-  if l_qcc_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  if l_qcc_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_qcc_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -2407,26 +2407,26 @@ unsafe fn opj_j2k_write_qcc(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_qcc_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_qcc_size
   }
   opj_j2k_write_qcc_in_memory(
     p_j2k,
     p_comp_no,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     &mut l_remaining_size,
     p_manager,
   );
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_qcc_size as OPJ_SIZE_T,
     p_manager,
   ) != l_qcc_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Compare QCC markers (quantization component)
@@ -2442,12 +2442,12 @@ unsafe fn opj_j2k_compare_qcc(
   mut p_first_comp_no: OPJ_UINT32,
   mut p_second_comp_no: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  return opj_j2k_compare_SQcd_SQcc(
+  opj_j2k_compare_SQcd_SQcc(
     p_j2k,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     p_first_comp_no,
     p_second_comp_no,
-  );
+  )
 }
 /* *
  * Writes the QCC marker (quantization component)
@@ -2467,19 +2467,19 @@ unsafe fn opj_j2k_write_qcc_in_memory(
 ) {
   let mut l_qcc_size: OPJ_UINT32 = 0;
   let mut l_remaining_size: OPJ_UINT32 = 0;
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   /* preconditions */
   /* L_QCC */
   l_qcc_size = (6u32).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
     p_j2k,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     p_comp_no,
   ));
   l_remaining_size = l_qcc_size;
   l_current_data = p_data;
   opj_write_bytes_LE(l_current_data, J2KMarker::QCC.as_u32(), 2 as OPJ_UINT32);
   l_current_data = l_current_data.offset(2);
-  if (*(*p_j2k).m_private_image).numcomps <= 256u32 {
+  if (*p_j2k.m_private_image).numcomps <= 256u32 {
     l_qcc_size = l_qcc_size.wrapping_sub(1);
     opj_write_bytes_LE(
       l_current_data,
@@ -2506,7 +2506,7 @@ unsafe fn opj_j2k_write_qcc_in_memory(
   }
   opj_j2k_write_SQcd_SQcc(
     p_j2k,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     p_comp_no,
     l_current_data,
     &mut l_remaining_size,
@@ -2518,7 +2518,7 @@ unsafe fn opj_j2k_write_qcc_in_memory(
  * Gets the maximum size taken by a qcc.
  */
 unsafe fn opj_j2k_get_max_qcc_size(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
-  return opj_j2k_get_max_coc_size(p_j2k);
+  opj_j2k_get_max_coc_size(p_j2k)
 }
 /* *
  * Reads a QCC marker (Quantization component)
@@ -2545,7 +2545,7 @@ unsafe fn opj_j2k_read_qcc(
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  l_num_comp = (*(*p_j2k).m_private_image).numcomps;
+  l_num_comp = (*p_j2k.m_private_image).numcomps;
   if l_num_comp <= 256u32 {
     if p_header_size < 1u32 {
       event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
@@ -2564,13 +2564,13 @@ unsafe fn opj_j2k_read_qcc(
     p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32
   }
   /* USE_JPWL */
-  if l_comp_no >= (*(*p_j2k).m_private_image).numcomps {
+  if l_comp_no >= (*p_j2k.m_private_image).numcomps {
     event_msg!(
       p_manager,
       EVT_ERROR,
       "Invalid component number: %d, regarding the number of components %d\n",
       l_comp_no,
-      (*(*p_j2k).m_private_image).numcomps,
+      (*p_j2k.m_private_image).numcomps,
     );
     return 0i32;
   }
@@ -2589,7 +2589,7 @@ unsafe fn opj_j2k_read_qcc(
     event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the POC marker (Progression Order Change)
@@ -2607,16 +2607,16 @@ unsafe fn opj_j2k_write_poc(
   let mut l_nb_poc: OPJ_UINT32 = 0;
   let mut l_poc_size: OPJ_UINT32 = 0;
   let mut l_written_size = 0 as OPJ_UINT32;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   let mut l_poc_room: OPJ_UINT32 = 0;
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  l_tcp = &mut *(*p_j2k)
+  l_tcp = &mut *p_j2k
     .m_cp
     .tcps
-    .offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
-  l_nb_comp = (*(*p_j2k).m_private_image).numcomps;
+    .offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t;
+  l_nb_comp = (*p_j2k.m_private_image).numcomps;
   l_nb_poc = (1u32).wrapping_add((*l_tcp).numpocs);
   if l_nb_comp <= 256u32 {
     l_poc_room = 1 as OPJ_UINT32
@@ -2628,15 +2628,15 @@ unsafe fn opj_j2k_write_poc(
       .wrapping_add((2u32).wrapping_mul(l_poc_room))
       .wrapping_mul(l_nb_poc),
   );
-  if l_poc_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  if l_poc_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_poc_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -2644,25 +2644,25 @@ unsafe fn opj_j2k_write_poc(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_poc_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_poc_size
   }
   opj_j2k_write_poc_in_memory(
     p_j2k,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     &mut l_written_size,
     p_manager,
   );
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_poc_size as OPJ_SIZE_T,
     p_manager,
   ) != l_poc_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the POC marker (Progression Order Change)
@@ -2679,23 +2679,23 @@ unsafe fn opj_j2k_write_poc_in_memory(
   mut _p_manager: &mut opj_event_mgr,
 ) {
   let mut i: OPJ_UINT32 = 0;
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   let mut l_nb_comp: OPJ_UINT32 = 0;
   let mut l_nb_poc: OPJ_UINT32 = 0;
   let mut l_poc_size: OPJ_UINT32 = 0;
-  let mut l_image = 0 as *mut opj_image_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
-  let mut l_current_poc = 0 as *mut opj_poc_t;
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
+  let mut l_current_poc = std::ptr::null_mut::<opj_poc_t>();
   let mut l_poc_room: OPJ_UINT32 = 0;
   /* preconditions */
   /* Lpoc */
-  l_tcp = &mut *(*p_j2k)
+  l_tcp = &mut *p_j2k
     .m_cp
     .tcps
-    .offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t; /* LYEpoc_i */
+    .offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t; /* LYEpoc_i */
   l_tccp = &mut *(*l_tcp).tccps.offset(0) as *mut opj_tccp_t; /* REpoc_i */
-  l_image = (*p_j2k).m_private_image; /* CEpoc_i */
+  l_image = p_j2k.m_private_image; /* CEpoc_i */
   l_nb_comp = (*l_image).numcomps; /* Ppoc_i */
   l_nb_poc = (1u32).wrapping_add((*l_tcp).numpocs);
   if l_nb_comp <= 256u32 {
@@ -2758,12 +2758,12 @@ unsafe fn opj_j2k_write_poc_in_memory(
  * Gets the maximum size taken by the writing of a POC.
  */
 unsafe fn opj_j2k_get_max_poc_size(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   let mut l_nb_tiles = 0 as OPJ_UINT32;
   let mut l_max_poc = 0 as OPJ_UINT32;
   let mut i: OPJ_UINT32 = 0;
-  l_tcp = (*p_j2k).m_cp.tcps;
-  l_nb_tiles = (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw);
+  l_tcp = p_j2k.m_cp.tcps;
+  l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
   i = 0 as OPJ_UINT32;
   while i < l_nb_tiles {
     l_max_poc = opj_uint_max(l_max_poc, (*l_tcp).numpocs);
@@ -2771,7 +2771,7 @@ unsafe fn opj_j2k_get_max_poc_size(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
     i += 1;
   }
   l_max_poc = l_max_poc.wrapping_add(1);
-  return (4u32).wrapping_add((9u32).wrapping_mul(l_max_poc));
+  (4u32).wrapping_add((9u32).wrapping_mul(l_max_poc))
 }
 /* *
  * Gets the maximum size taken by the toc headers of all the tile parts of any given tile.
@@ -2780,16 +2780,16 @@ unsafe fn opj_j2k_get_max_toc_size(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
   let mut i: OPJ_UINT32 = 0;
   let mut l_nb_tiles: OPJ_UINT32 = 0;
   let mut l_max = 0 as OPJ_UINT32;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  l_tcp = (*p_j2k).m_cp.tcps;
-  l_nb_tiles = (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th);
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  l_tcp = p_j2k.m_cp.tcps;
+  l_nb_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   i = 0 as OPJ_UINT32;
   while i < l_nb_tiles {
     l_max = opj_uint_max(l_max, (*l_tcp).m_nb_tile_parts);
     l_tcp = l_tcp.offset(1);
     i += 1;
   }
-  return (12u32).wrapping_mul(l_max);
+  (12u32).wrapping_mul(l_max)
 }
 /* *
  * Gets the maximum size taken by the headers of the SOT.
@@ -2801,11 +2801,11 @@ unsafe fn opj_j2k_get_specific_header_sizes(mut p_j2k: &mut opj_j2k) -> OPJ_UINT
   let mut l_nb_comps: OPJ_UINT32 = 0;
   let mut l_coc_bytes: OPJ_UINT32 = 0;
   let mut l_qcc_bytes: OPJ_UINT32 = 0;
-  l_nb_comps = (*(*p_j2k).m_private_image).numcomps.wrapping_sub(1u32);
+  l_nb_comps = (*p_j2k.m_private_image).numcomps.wrapping_sub(1u32);
   l_nb_bytes =
     (l_nb_bytes as core::ffi::c_uint).wrapping_add(opj_j2k_get_max_toc_size(p_j2k)) as OPJ_UINT32;
-  if !((*p_j2k).m_cp.rsiz as core::ffi::c_int >= 0x3i32
-    && (*p_j2k).m_cp.rsiz as core::ffi::c_int <= 0x6i32)
+  if !(p_j2k.m_cp.rsiz as core::ffi::c_int >= 0x3i32
+    && p_j2k.m_cp.rsiz as core::ffi::c_int <= 0x6i32)
   {
     l_coc_bytes = opj_j2k_get_max_coc_size(p_j2k);
     l_nb_bytes = (l_nb_bytes as core::ffi::c_uint)
@@ -2816,39 +2816,39 @@ unsafe fn opj_j2k_get_specific_header_sizes(mut p_j2k: &mut opj_j2k) -> OPJ_UINT
   }
   l_nb_bytes =
     (l_nb_bytes as core::ffi::c_uint).wrapping_add(opj_j2k_get_max_poc_size(p_j2k)) as OPJ_UINT32;
-  if (*p_j2k).m_specific_param.m_encoder.m_PLT != 0 {
+  if p_j2k.m_specific_param.m_encoder.m_PLT != 0 {
     /* Reserve space for PLT markers */
     let mut i: OPJ_UINT32 = 0;
-    let mut l_cp: *const opj_cp_t = &mut (*p_j2k).m_cp;
+    let mut l_cp: *const opj_cp_t = &mut p_j2k.m_cp;
     let mut l_max_packet_count = 0 as OPJ_UINT32;
     i = 0 as OPJ_UINT32;
     while i < (*l_cp).th.wrapping_mul((*l_cp).tw) {
       l_max_packet_count = opj_uint_max(
         l_max_packet_count,
-        opj_get_encoding_packet_count((*p_j2k).m_private_image, l_cp, i),
+        opj_get_encoding_packet_count(p_j2k.m_private_image, l_cp, i),
       );
       i += 1;
     }
     /* Minimum 6 bytes per PLT marker, and at a minimum (taking a pessimistic */
     /* estimate of 4 bytes for a packet size), one can write */
     /* (65536-6) / 4 = 16382 paquet sizes per PLT marker */
-    (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
+    p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
       (6u32).wrapping_mul(opj_uint_ceildiv(l_max_packet_count, 16382 as OPJ_UINT32));
     /* Maximum 5 bytes per packet to encode a full UINT32 */
     l_nb_bytes = (l_nb_bytes as core::ffi::c_uint)
       .wrapping_add((5u32).wrapping_mul(l_max_packet_count)) as OPJ_UINT32;
-    (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
-      ((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT as core::ffi::c_uint)
+    p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
+      (p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT as core::ffi::c_uint)
         .wrapping_add(l_nb_bytes) as OPJ_UINT32;
-    (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
-      ((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT as core::ffi::c_uint)
+    p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
+      (p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT as core::ffi::c_uint)
         .wrapping_add(1u32) as OPJ_UINT32;
     l_nb_bytes = (l_nb_bytes as core::ffi::c_uint)
-      .wrapping_add((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT)
+      .wrapping_add(p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT)
       as OPJ_UINT32
   }
   /* ** DEVELOPER CORNER, Add room for your headers ***/
-  return l_nb_bytes;
+  l_nb_bytes
 }
 /* *
  * Reads a POC marker (Progression Order Change)
@@ -2875,19 +2875,19 @@ unsafe fn opj_j2k_read_poc(
   let mut i: OPJ_UINT32 = 0;
   let mut l_nb_comp: OPJ_UINT32 = 0;
   let mut l_tmp: OPJ_UINT32 = 0;
-  let mut l_image = 0 as *mut opj_image_t;
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
   let mut l_old_poc_nb: OPJ_UINT32 = 0;
   let mut l_current_poc_nb: OPJ_UINT32 = 0;
   let mut l_current_poc_remaining: OPJ_UINT32 = 0;
   let mut l_chunk_size: OPJ_UINT32 = 0;
   let mut l_comp_room: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_current_poc = 0 as *mut opj_poc_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_current_poc = std::ptr::null_mut::<opj_poc_t>();
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  l_image = (*p_j2k).m_private_image;
+  l_image = p_j2k.m_private_image;
   l_nb_comp = (*l_image).numcomps;
   if l_nb_comp <= 256u32 {
     l_comp_room = 1 as OPJ_UINT32
@@ -2901,11 +2901,11 @@ unsafe fn opj_j2k_read_poc(
     event_msg!(p_manager, EVT_ERROR, "Error reading POC marker\n",);
     return 0i32;
   }
-  l_cp = &mut (*p_j2k).m_cp;
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+  l_cp = &mut p_j2k.m_cp;
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
   l_old_poc_nb = if (*l_tcp).POC() as core::ffi::c_int != 0 {
     (*l_tcp).numpocs.wrapping_add(1u32)
@@ -2944,7 +2944,7 @@ unsafe fn opj_j2k_read_poc(
     i += 1;
   }
   (*l_tcp).numpocs = l_current_poc_nb.wrapping_sub(1u32);
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a CRG marker (Component registration)
@@ -2972,7 +2972,7 @@ unsafe fn opj_j2k_read_crg(
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  l_nb_comp = (*(*p_j2k).m_private_image).numcomps;
+  l_nb_comp = (*p_j2k.m_private_image).numcomps;
   if p_header_size != l_nb_comp.wrapping_mul(4u32) {
     event_msg!(p_manager, EVT_ERROR, "Error reading CRG marker\n",);
     return 0i32;
@@ -2988,7 +2988,7 @@ unsafe fn opj_j2k_read_crg(
           p_header_data+=2;
   }
   */
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a TLM marker (Tile Length Marker)
@@ -3051,7 +3051,7 @@ unsafe fn opj_j2k_read_tlm(
           opj_read_bytes(p_header_data,&l_Ptlm_i,l_Ptlm_size);            // Ptlm_i
           p_header_data += l_Ptlm_size;
   }*/
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a PLM marker (Packet length, main header marker)
@@ -3126,7 +3126,7 @@ unsafe fn opj_j2k_read_plm(
           }
   }
   */
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a PLT marker (Packet length, tile-part header)
@@ -3183,7 +3183,7 @@ unsafe fn opj_j2k_read_plt(
     event_msg!(p_manager, EVT_ERROR, "Error reading PLT marker\n",);
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a PPM marker (Packed headers, main header)
@@ -3207,7 +3207,7 @@ unsafe fn opj_j2k_read_ppm(
   mut p_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_cp = 0 as *mut opj_cp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
   let mut l_Z_ppm: OPJ_UINT32 = 0;
   /* preconditions */
 
@@ -3217,7 +3217,7 @@ unsafe fn opj_j2k_read_ppm(
     event_msg!(p_manager, EVT_ERROR, "Error reading PPM marker\n",); /* Z_ppm */
     return 0i32;
   }
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   (*l_cp).set_ppm(1 as OPJ_BITFIELD);
   opj_read_bytes_LE(p_header_data, &mut l_Z_ppm, 1 as OPJ_UINT32);
   p_header_data = p_header_data.offset(1);
@@ -3229,7 +3229,7 @@ unsafe fn opj_j2k_read_ppm(
     assert!((*l_cp).ppm_markers_count == 0u32);
     (*l_cp).ppm_markers = opj_calloc(
       l_newCount as size_t,
-      core::mem::size_of::<opj_ppx>() as usize,
+      core::mem::size_of::<opj_ppx>(),
     ) as *mut opj_ppx;
     if (*l_cp).ppm_markers.is_null() {
       event_msg!(
@@ -3242,10 +3242,10 @@ unsafe fn opj_j2k_read_ppm(
     (*l_cp).ppm_markers_count = l_newCount
   } else if (*l_cp).ppm_markers_count <= l_Z_ppm {
     let mut l_newCount_0 = l_Z_ppm.wrapping_add(1u32);
-    let mut new_ppm_markers = 0 as *mut opj_ppx;
+    let mut new_ppm_markers = std::ptr::null_mut::<opj_ppx>();
     new_ppm_markers = opj_realloc(
       (*l_cp).ppm_markers as *mut core::ffi::c_void,
-      (l_newCount_0 as usize).wrapping_mul(core::mem::size_of::<opj_ppx>() as usize),
+      (l_newCount_0 as usize).wrapping_mul(core::mem::size_of::<opj_ppx>()),
     ) as *mut opj_ppx;
     if new_ppm_markers.is_null() {
       /* clean up to be done on l_cp destruction */
@@ -3263,7 +3263,7 @@ unsafe fn opj_j2k_read_ppm(
         .offset((*l_cp).ppm_markers_count as isize) as *mut core::ffi::c_void,
       0i32,
       (l_newCount_0.wrapping_sub((*l_cp).ppm_markers_count) as usize)
-        .wrapping_mul(core::mem::size_of::<opj_ppx>() as usize),
+        .wrapping_mul(core::mem::size_of::<opj_ppx>()),
     );
     (*l_cp).ppm_markers_count = l_newCount_0
   }
@@ -3275,7 +3275,7 @@ unsafe fn opj_j2k_read_ppm(
     event_msg!(p_manager, EVT_ERROR, "Zppm %u already read\n", l_Z_ppm,);
     return 0i32;
   }
-  let ref mut fresh12 = (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize)).m_data;
+  let fresh12 = &mut (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize)).m_data;
   *fresh12 = opj_malloc(p_header_size as size_t) as *mut OPJ_BYTE;
   if (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize))
     .m_data
@@ -3295,7 +3295,7 @@ unsafe fn opj_j2k_read_ppm(
     p_header_data as *const core::ffi::c_void,
     p_header_size as usize,
   );
-  return 1i32;
+  1i32
 }
 /* *
  * Merges all PPM markers read (Packed headers, main header)
@@ -3367,7 +3367,7 @@ unsafe fn opj_j2k_merge_ppm(
             l_N_ppm_remaining = l_N_ppm.wrapping_sub(l_data_size);
             l_data_size = 0u32
           }
-          if !(l_data_size > 0u32) {
+          if l_data_size <= 0u32 {
             break;
           }
         }
@@ -3457,14 +3457,14 @@ unsafe fn opj_j2k_merge_ppm(
             l_N_ppm_remaining = l_N_ppm_0.wrapping_sub(l_data_size_0);
             l_data_size_0 = 0u32
           }
-          if !(l_data_size_0 > 0u32) {
+          if l_data_size_0 <= 0u32 {
             break;
           }
         }
       }
       opj_free((*(*p_cp).ppm_markers.offset(i as isize)).m_data as *mut core::ffi::c_void);
-      let ref mut fresh13 = (*(*p_cp).ppm_markers.offset(i as isize)).m_data;
-      *fresh13 = 0 as *mut OPJ_BYTE;
+      let fresh13 = &mut (*(*p_cp).ppm_markers.offset(i as isize)).m_data;
+      *fresh13 = std::ptr::null_mut::<OPJ_BYTE>();
       (*(*p_cp).ppm_markers.offset(i as isize)).m_data_size = 0u32
     }
     i += 1;
@@ -3473,8 +3473,8 @@ unsafe fn opj_j2k_merge_ppm(
   (*p_cp).ppm_data_size = (*p_cp).ppm_len;
   (*p_cp).ppm_markers_count = 0u32;
   opj_free((*p_cp).ppm_markers as *mut core::ffi::c_void);
-  (*p_cp).ppm_markers = 0 as *mut opj_ppx;
-  return 1i32;
+  (*p_cp).ppm_markers = std::ptr::null_mut::<opj_ppx>();
+  1i32
 }
 /* *
  * Reads a PPT marker (Packed packet headers, tile-part header)
@@ -3498,8 +3498,8 @@ unsafe fn opj_j2k_read_ppt(
   mut p_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   let mut l_Z_ppt: OPJ_UINT32 = 0;
   /* preconditions */
 
@@ -3509,13 +3509,13 @@ unsafe fn opj_j2k_read_ppt(
     event_msg!(p_manager, EVT_ERROR, "Error reading PPT marker\n",); /* Z_ppt */
     return 0i32;
   }
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   if (*l_cp).ppm() != 0 {
     event_msg!(p_manager, EVT_ERROR,
                       "Error reading PPT marker: packet header have been previously found in the main header (PPM marker).\n");
     return 0i32;
   }
-  l_tcp = &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
+  l_tcp = &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t;
   (*l_tcp).set_ppt(1 as OPJ_BITFIELD);
   opj_read_bytes_LE(p_header_data, &mut l_Z_ppt, 1 as OPJ_UINT32);
   p_header_data = p_header_data.offset(1);
@@ -3527,7 +3527,7 @@ unsafe fn opj_j2k_read_ppt(
     assert!((*l_tcp).ppt_markers_count == 0u32);
     (*l_tcp).ppt_markers = opj_calloc(
       l_newCount as size_t,
-      core::mem::size_of::<opj_ppx>() as usize,
+      core::mem::size_of::<opj_ppx>(),
     ) as *mut opj_ppx;
     if (*l_tcp).ppt_markers.is_null() {
       event_msg!(
@@ -3540,10 +3540,10 @@ unsafe fn opj_j2k_read_ppt(
     (*l_tcp).ppt_markers_count = l_newCount
   } else if (*l_tcp).ppt_markers_count <= l_Z_ppt {
     let mut l_newCount_0 = l_Z_ppt.wrapping_add(1u32);
-    let mut new_ppt_markers = 0 as *mut opj_ppx;
+    let mut new_ppt_markers = std::ptr::null_mut::<opj_ppx>();
     new_ppt_markers = opj_realloc(
       (*l_tcp).ppt_markers as *mut core::ffi::c_void,
-      (l_newCount_0 as usize).wrapping_mul(core::mem::size_of::<opj_ppx>() as usize),
+      (l_newCount_0 as usize).wrapping_mul(core::mem::size_of::<opj_ppx>()),
     ) as *mut opj_ppx;
     if new_ppt_markers.is_null() {
       /* clean up to be done on l_tcp destruction */
@@ -3561,7 +3561,7 @@ unsafe fn opj_j2k_read_ppt(
         .offset((*l_tcp).ppt_markers_count as isize) as *mut core::ffi::c_void,
       0i32,
       (l_newCount_0.wrapping_sub((*l_tcp).ppt_markers_count) as usize)
-        .wrapping_mul(core::mem::size_of::<opj_ppx>() as usize),
+        .wrapping_mul(core::mem::size_of::<opj_ppx>()),
     );
     (*l_tcp).ppt_markers_count = l_newCount_0
   }
@@ -3573,7 +3573,7 @@ unsafe fn opj_j2k_read_ppt(
     event_msg!(p_manager, EVT_ERROR, "Zppt %u already read\n", l_Z_ppt,);
     return 0i32;
   }
-  let ref mut fresh14 = (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize)).m_data;
+  let fresh14 = &mut (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize)).m_data;
   *fresh14 = opj_malloc(p_header_size as size_t) as *mut OPJ_BYTE;
   if (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize))
     .m_data
@@ -3593,7 +3593,7 @@ unsafe fn opj_j2k_read_ppt(
     p_header_data as *const core::ffi::c_void,
     p_header_size as usize,
   );
-  return 1i32;
+  1i32
 }
 /* *
  * Merges all PPT markers read (Packed headers, tile-part header)
@@ -3660,18 +3660,18 @@ unsafe fn opj_j2k_merge_ppt(
         .wrapping_add((*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size)
         as OPJ_UINT32;
       opj_free((*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *mut core::ffi::c_void);
-      let ref mut fresh15 = (*(*p_tcp).ppt_markers.offset(i as isize)).m_data;
-      *fresh15 = 0 as *mut OPJ_BYTE;
+      let fresh15 = &mut (*(*p_tcp).ppt_markers.offset(i as isize)).m_data;
+      *fresh15 = std::ptr::null_mut::<OPJ_BYTE>();
       (*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size = 0u32
     }
     i += 1;
   }
   (*p_tcp).ppt_markers_count = 0u32;
   opj_free((*p_tcp).ppt_markers as *mut core::ffi::c_void);
-  (*p_tcp).ppt_markers = 0 as *mut opj_ppx;
+  (*p_tcp).ppt_markers = std::ptr::null_mut::<opj_ppx>();
   (*p_tcp).ppt_data = (*p_tcp).ppt_buffer;
   (*p_tcp).ppt_data_size = (*p_tcp).ppt_len;
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the TLM marker (Tile Length Marker)
@@ -3685,7 +3685,7 @@ unsafe fn opj_j2k_write_tlm(
   mut p_stream: *mut opj_stream_private_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   let mut l_tlm_size: OPJ_UINT32 = 0;
   let mut size_per_tile_part: OPJ_UINT32 = 0;
   /* preconditions */
@@ -3693,7 +3693,7 @@ unsafe fn opj_j2k_write_tlm(
   assert!(!p_stream.is_null());
   /* 10921 = (65535 - header_size) / size_per_tile_part where */
   /* header_size = 4 and size_per_tile_part = 6 */
-  if (*p_j2k).m_specific_param.m_encoder.m_total_tile_parts > 10921u32 {
+  if p_j2k.m_specific_param.m_encoder.m_total_tile_parts > 10921u32 {
     /* We could do more but it would require writing several TLM markers */
     event_msg!(
       p_manager,
@@ -3702,25 +3702,25 @@ unsafe fn opj_j2k_write_tlm(
     );
     return 0i32;
   }
-  if (*p_j2k).m_specific_param.m_encoder.m_total_tile_parts <= 255u32 {
+  if p_j2k.m_specific_param.m_encoder.m_total_tile_parts <= 255u32 {
     size_per_tile_part = 5 as OPJ_UINT32;
-    (*p_j2k).m_specific_param.m_encoder.m_Ttlmi_is_byte = 1i32
+    p_j2k.m_specific_param.m_encoder.m_Ttlmi_is_byte = 1i32
   } else {
     size_per_tile_part = 6 as OPJ_UINT32;
-    (*p_j2k).m_specific_param.m_encoder.m_Ttlmi_is_byte = 0i32
+    p_j2k.m_specific_param.m_encoder.m_Ttlmi_is_byte = 0i32
   }
   l_tlm_size = ((2i32 + 4i32) as core::ffi::c_uint).wrapping_add(
-    size_per_tile_part.wrapping_mul((*p_j2k).m_specific_param.m_encoder.m_total_tile_parts),
+    size_per_tile_part.wrapping_mul(p_j2k.m_specific_param.m_encoder.m_total_tile_parts),
   );
-  if l_tlm_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  if l_tlm_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_tlm_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -3728,18 +3728,18 @@ unsafe fn opj_j2k_write_tlm(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_tlm_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_tlm_size
   }
   memset(
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
     0i32,
     l_tlm_size as usize,
   );
-  l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_current_data = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   /* change the way data is written to avoid seeking if possible */
   /* TODO */
-  (*p_j2k).m_specific_param.m_encoder.m_tlm_start = opj_stream_tell(p_stream); /* TLM */
+  p_j2k.m_specific_param.m_encoder.m_tlm_start = opj_stream_tell(p_stream); /* TLM */
   opj_write_bytes_LE(l_current_data, J2KMarker::TLM.as_u32(), 2 as OPJ_UINT32); /* Lpoc */
   l_current_data = l_current_data.offset(2); /* Ztlm=0*/
   opj_write_bytes_LE(
@@ -3765,14 +3765,14 @@ unsafe fn opj_j2k_write_tlm(
   /* do nothing on the size_per_tile_part * l_j2k->m_specific_param.m_encoder.m_total_tile_parts remaining data */
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_tlm_size as OPJ_SIZE_T,
     p_manager,
   ) != l_tlm_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the SOT marker (Start of tile-part)
@@ -3808,13 +3808,13 @@ unsafe fn opj_j2k_write_sot(
   p_data = p_data.offset(2);
   opj_write_bytes_LE(p_data, 10 as OPJ_UINT32, 2 as OPJ_UINT32);
   p_data = p_data.offset(2);
-  opj_write_bytes_LE(p_data, (*p_j2k).m_current_tile_number, 2 as OPJ_UINT32);
+  opj_write_bytes_LE(p_data, p_j2k.m_current_tile_number, 2 as OPJ_UINT32);
   p_data = p_data.offset(2);
   /* Psot  */
   p_data = p_data.offset(4); /* TPsot */
   opj_write_bytes_LE(
     p_data,
-    (*p_j2k)
+    p_j2k
       .m_specific_param
       .m_encoder
       .m_current_tile_part_number,
@@ -3823,10 +3823,10 @@ unsafe fn opj_j2k_write_sot(
   p_data = p_data.offset(1);
   opj_write_bytes_LE(
     p_data,
-    (*(*p_j2k)
+    (*p_j2k
       .m_cp
       .tcps
-      .offset((*p_j2k).m_current_tile_number as isize))
+      .offset(p_j2k.m_current_tile_number as isize))
     .m_nb_tile_parts,
     1 as OPJ_UINT32,
   );
@@ -3834,7 +3834,7 @@ unsafe fn opj_j2k_write_sot(
   /* UniPG>> */
   /* USE_JPWL */
   *p_data_written = 12 as OPJ_UINT32;
-  return 1i32;
+  1i32
 }
 /* *
  * Reads values from a SOT marker (Start of tile-part)
@@ -3874,7 +3874,7 @@ unsafe fn opj_j2k_get_sot_values(
   p_header_data = p_header_data.offset(1);
   opj_read_bytes_LE(p_header_data, p_num_parts, 1 as OPJ_UINT32);
   p_header_data = p_header_data.offset(1);
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a SOT marker (Start of tile-part)
@@ -3890,8 +3890,8 @@ unsafe fn opj_j2k_read_sot(
   mut p_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   let mut l_tot_len: OPJ_UINT32 = 0;
   let mut l_num_parts = 0 as OPJ_UINT32;
   let mut l_current_part: OPJ_UINT32 = 0;
@@ -3902,7 +3902,7 @@ unsafe fn opj_j2k_read_sot(
   if opj_j2k_get_sot_values(
     p_header_data,
     p_header_size,
-    &mut (*p_j2k).m_current_tile_number,
+    &mut p_j2k.m_current_tile_number,
     &mut l_tot_len,
     &mut l_current_part,
     &mut l_num_parts,
@@ -3912,23 +3912,23 @@ unsafe fn opj_j2k_read_sot(
     event_msg!(p_manager, EVT_ERROR, "Error reading SOT marker\n",);
     return 0i32;
   }
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   /* testcase 2.pdf.SIGFPE.706.1112 */
-  if (*p_j2k).m_current_tile_number >= (*l_cp).tw.wrapping_mul((*l_cp).th) {
+  if p_j2k.m_current_tile_number >= (*l_cp).tw.wrapping_mul((*l_cp).th) {
     event_msg!(
       p_manager,
       EVT_ERROR,
       "Invalid tile number %d\n",
-      (*p_j2k).m_current_tile_number,
+      p_j2k.m_current_tile_number,
     );
     return 0i32;
   }
-  l_tcp = &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
-  l_tile_x = (*p_j2k).m_current_tile_number.wrapping_rem((*l_cp).tw);
-  l_tile_y = (*p_j2k).m_current_tile_number.wrapping_div((*l_cp).tw);
-  if (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec < 0i32
-    || (*p_j2k).m_current_tile_number
-      == (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32
+  l_tcp = &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t;
+  l_tile_x = p_j2k.m_current_tile_number.wrapping_rem((*l_cp).tw);
+  l_tile_y = p_j2k.m_current_tile_number.wrapping_div((*l_cp).tw);
+  if p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec < 0i32
+    || p_j2k.m_current_tile_number
+      == p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32
   {
     /* Do only this check if we decode all tile part headers, or if */
     /* we decode one precise tile. Otherwise the m_current_tile_part_number */
@@ -3945,7 +3945,7 @@ unsafe fn opj_j2k_read_sot(
         p_manager,
         EVT_ERROR,
         "Invalid tile part index for tile number %d. Got %d, expected %d\n",
-        (*p_j2k).m_current_tile_number,
+        p_j2k.m_current_tile_number,
         l_current_part,
         (*l_tcp).m_current_tile_part_number + 1i32,
       );
@@ -3982,118 +3982,114 @@ unsafe fn opj_j2k_read_sot(
   if l_tot_len == 0 {
     event_msg!(p_manager, EVT_INFO,
                       "Psot value of the current tile-part is equal to zero, we assuming it is the last tile-part of the codestream.\n");
-    (*p_j2k).m_specific_param.m_decoder.m_last_tile_part = 1i32
+    p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32
   }
   if (*l_tcp).m_nb_tile_parts != 0u32 && l_current_part >= (*l_tcp).m_nb_tile_parts {
     /* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
     event_msg!(p_manager, EVT_ERROR,
                       "In SOT marker, TPSot (%d) is not valid regards to the previous number of tile-part (%d), giving up\n", l_current_part,
                       (*l_tcp).m_nb_tile_parts);
-    (*p_j2k).m_specific_param.m_decoder.m_last_tile_part = 1i32;
+    p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32;
     return 0i32;
   }
   if l_num_parts != 0u32 {
     /* Number of tile-part header is provided by this tile-part header */
     l_num_parts = (l_num_parts as core::ffi::c_uint).wrapping_add(
-      (*p_j2k)
+      p_j2k
         .m_specific_param
         .m_decoder
         .m_nb_tile_parts_correction(),
     ) as OPJ_UINT32;
     /* Useful to manage the case of textGBR.jp2 file because two values of TNSot are allowed: the correct numbers of
      * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
-    if (*l_tcp).m_nb_tile_parts != 0 {
-      if l_current_part >= (*l_tcp).m_nb_tile_parts {
-        event_msg!(p_manager, EVT_ERROR,
-                              "In SOT marker, TPSot (%d) is not valid regards to the current number of tile-part (%d), giving up\n",
-                              l_current_part, (*l_tcp).m_nb_tile_parts);
-        (*p_j2k).m_specific_param.m_decoder.m_last_tile_part = 1i32;
-        return 0i32;
-      }
+    if (*l_tcp).m_nb_tile_parts != 0 && l_current_part >= (*l_tcp).m_nb_tile_parts {
+      event_msg!(p_manager, EVT_ERROR,
+                            "In SOT marker, TPSot (%d) is not valid regards to the current number of tile-part (%d), giving up\n",
+                            l_current_part, (*l_tcp).m_nb_tile_parts);
+      p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32;
+      return 0i32;
     }
     if l_current_part >= l_num_parts {
       /* testcase 451.pdf.SIGSEGV.ce9.3723 */
       event_msg!(p_manager, EVT_ERROR,
                           "In SOT marker, TPSot (%d) is not valid regards to the current number of tile-part (header) (%d), giving up\n",
                           l_current_part, l_num_parts);
-      (*p_j2k).m_specific_param.m_decoder.m_last_tile_part = 1i32;
+      p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32;
       return 0i32;
     }
     (*l_tcp).m_nb_tile_parts = l_num_parts
   }
   /* If know the number of tile part header we will check if we didn't read the last*/
-  if (*l_tcp).m_nb_tile_parts != 0 {
-    if (*l_tcp).m_nb_tile_parts == l_current_part.wrapping_add(1u32) {
-      (*p_j2k)
-        .m_specific_param
-        .m_decoder
-        .set_m_can_decode(1 as OPJ_BITFIELD)
-      /* Process the last tile-part header*/
-    }
+  if (*l_tcp).m_nb_tile_parts != 0 && (*l_tcp).m_nb_tile_parts == l_current_part.wrapping_add(1u32) {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .set_m_can_decode(1 as OPJ_BITFIELD)
+    /* Process the last tile-part header*/
   }
-  if (*p_j2k).m_specific_param.m_decoder.m_last_tile_part == 0 {
+  if p_j2k.m_specific_param.m_decoder.m_last_tile_part == 0 {
     /* Keep the size of data to skip after this marker */
-    (*p_j2k).m_specific_param.m_decoder.m_sot_length = l_tot_len.wrapping_sub(12u32)
+    p_j2k.m_specific_param.m_decoder.m_sot_length = l_tot_len.wrapping_sub(12u32)
   /* SOT_marker_size = 12 */
   } else {
     /* FIXME: need to be computed from the number of bytes remaining in the codestream */
-    (*p_j2k).m_specific_param.m_decoder.m_sot_length = 0 as OPJ_UINT32
+    p_j2k.m_specific_param.m_decoder.m_sot_length = 0 as OPJ_UINT32
   }
-  (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPH;
+  p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPH;
   /* Check if the current tile is outside the area we want decode or not corresponding to the tile index*/
-  if (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec == -(1i32) {
-    (*p_j2k).m_specific_param.m_decoder.set_m_skip_data(
-      (l_tile_x < (*p_j2k).m_specific_param.m_decoder.m_start_tile_x
-        || l_tile_x >= (*p_j2k).m_specific_param.m_decoder.m_end_tile_x
-        || l_tile_y < (*p_j2k).m_specific_param.m_decoder.m_start_tile_y
-        || l_tile_y >= (*p_j2k).m_specific_param.m_decoder.m_end_tile_y) as core::ffi::c_int
+  if p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec == -(1i32) {
+    p_j2k.m_specific_param.m_decoder.set_m_skip_data(
+      (l_tile_x < p_j2k.m_specific_param.m_decoder.m_start_tile_x
+        || l_tile_x >= p_j2k.m_specific_param.m_decoder.m_end_tile_x
+        || l_tile_y < p_j2k.m_specific_param.m_decoder.m_start_tile_y
+        || l_tile_y >= p_j2k.m_specific_param.m_decoder.m_end_tile_y) as core::ffi::c_int
         as OPJ_BITFIELD,
     )
   } else {
-    assert!((*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec >= 0i32);
-    (*p_j2k).m_specific_param.m_decoder.set_m_skip_data(
-      ((*p_j2k).m_current_tile_number
-        != (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32)
+    assert!(p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec >= 0i32);
+    p_j2k.m_specific_param.m_decoder.set_m_skip_data(
+      (p_j2k.m_current_tile_number
+        != p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32)
         as core::ffi::c_int as OPJ_BITFIELD,
     )
   }
   /* Index */
-  if !(*p_j2k).cstr_index.is_null() {
-    assert!(!(*(*p_j2k).cstr_index).tile_index.is_null());
-    (*(*(*p_j2k).cstr_index)
+  if !p_j2k.cstr_index.is_null() {
+    assert!(!(*p_j2k.cstr_index).tile_index.is_null());
+    (*(*p_j2k.cstr_index)
       .tile_index
-      .offset((*p_j2k).m_current_tile_number as isize))
-    .tileno = (*p_j2k).m_current_tile_number;
-    (*(*(*p_j2k).cstr_index)
+      .offset(p_j2k.m_current_tile_number as isize))
+    .tileno = p_j2k.m_current_tile_number;
+    (*(*p_j2k.cstr_index)
       .tile_index
-      .offset((*p_j2k).m_current_tile_number as isize))
+      .offset(p_j2k.m_current_tile_number as isize))
     .current_tpsno = l_current_part;
     if l_num_parts != 0u32 {
-      (*(*(*p_j2k).cstr_index)
+      (*(*p_j2k.cstr_index)
         .tile_index
-        .offset((*p_j2k).m_current_tile_number as isize))
+        .offset(p_j2k.m_current_tile_number as isize))
       .nb_tps = l_num_parts;
-      (*(*(*p_j2k).cstr_index)
+      (*(*p_j2k.cstr_index)
         .tile_index
-        .offset((*p_j2k).m_current_tile_number as isize))
+        .offset(p_j2k.m_current_tile_number as isize))
       .current_nb_tps = l_num_parts;
-      if (*(*(*p_j2k).cstr_index)
+      if (*(*p_j2k.cstr_index)
         .tile_index
-        .offset((*p_j2k).m_current_tile_number as isize))
+        .offset(p_j2k.m_current_tile_number as isize))
       .tp_index
       .is_null()
       {
-        let ref mut fresh16 = (*(*(*p_j2k).cstr_index)
+        let fresh16 = &mut (*(*p_j2k.cstr_index)
           .tile_index
-          .offset((*p_j2k).m_current_tile_number as isize))
+          .offset(p_j2k.m_current_tile_number as isize))
         .tp_index;
         *fresh16 = opj_calloc(
           l_num_parts as size_t,
-          core::mem::size_of::<opj_tp_index_t>() as usize,
+          core::mem::size_of::<opj_tp_index_t>(),
         ) as *mut opj_tp_index_t;
-        if (*(*(*p_j2k).cstr_index)
+        if (*(*p_j2k.cstr_index)
           .tile_index
-          .offset((*p_j2k).m_current_tile_number as isize))
+          .offset(p_j2k.m_current_tile_number as isize))
         .tp_index
         .is_null()
         {
@@ -4106,24 +4102,24 @@ unsafe fn opj_j2k_read_sot(
         }
       } else {
         let mut new_tp_index = opj_realloc(
-          (*(*(*p_j2k).cstr_index)
+          (*(*p_j2k.cstr_index)
             .tile_index
-            .offset((*p_j2k).m_current_tile_number as isize))
+            .offset(p_j2k.m_current_tile_number as isize))
           .tp_index as *mut core::ffi::c_void,
-          (l_num_parts as usize).wrapping_mul(core::mem::size_of::<opj_tp_index_t>() as usize),
+          (l_num_parts as usize).wrapping_mul(core::mem::size_of::<opj_tp_index_t>()),
         ) as *mut opj_tp_index_t;
         if new_tp_index.is_null() {
           opj_free(
-            (*(*(*p_j2k).cstr_index)
+            (*(*p_j2k.cstr_index)
               .tile_index
-              .offset((*p_j2k).m_current_tile_number as isize))
+              .offset(p_j2k.m_current_tile_number as isize))
             .tp_index as *mut core::ffi::c_void,
           );
-          let ref mut fresh17 = (*(*(*p_j2k).cstr_index)
+          let fresh17 = &mut (*(*p_j2k.cstr_index)
             .tile_index
-            .offset((*p_j2k).m_current_tile_number as isize))
+            .offset(p_j2k.m_current_tile_number as isize))
           .tp_index;
-          *fresh17 = 0 as *mut opj_tp_index_t;
+          *fresh17 = std::ptr::null_mut::<opj_tp_index_t>();
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -4131,44 +4127,44 @@ unsafe fn opj_j2k_read_sot(
           );
           return 0i32;
         }
-        let ref mut fresh18 = (*(*(*p_j2k).cstr_index)
+        let fresh18 = &mut (*(*p_j2k.cstr_index)
           .tile_index
-          .offset((*p_j2k).m_current_tile_number as isize))
+          .offset(p_j2k.m_current_tile_number as isize))
         .tp_index;
         *fresh18 = new_tp_index
       }
     } else {
       /*if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index)*/
-      if (*(*(*p_j2k).cstr_index)
+      if (*(*p_j2k.cstr_index)
         .tile_index
-        .offset((*p_j2k).m_current_tile_number as isize))
+        .offset(p_j2k.m_current_tile_number as isize))
       .tp_index
       .is_null()
       {
-        (*(*(*p_j2k).cstr_index)
+        (*(*p_j2k.cstr_index)
           .tile_index
-          .offset((*p_j2k).m_current_tile_number as isize))
+          .offset(p_j2k.m_current_tile_number as isize))
         .current_nb_tps = 10 as OPJ_UINT32;
-        let ref mut fresh19 = (*(*(*p_j2k).cstr_index)
+        let fresh19 = &mut (*(*p_j2k.cstr_index)
           .tile_index
-          .offset((*p_j2k).m_current_tile_number as isize))
+          .offset(p_j2k.m_current_tile_number as isize))
         .tp_index;
         *fresh19 = opj_calloc(
-          (*(*(*p_j2k).cstr_index)
+          (*(*p_j2k.cstr_index)
             .tile_index
-            .offset((*p_j2k).m_current_tile_number as isize))
+            .offset(p_j2k.m_current_tile_number as isize))
           .current_nb_tps as size_t,
-          core::mem::size_of::<opj_tp_index_t>() as usize,
+          core::mem::size_of::<opj_tp_index_t>(),
         ) as *mut opj_tp_index_t;
-        if (*(*(*p_j2k).cstr_index)
+        if (*(*p_j2k.cstr_index)
           .tile_index
-          .offset((*p_j2k).m_current_tile_number as isize))
+          .offset(p_j2k.m_current_tile_number as isize))
         .tp_index
         .is_null()
         {
-          (*(*(*p_j2k).cstr_index)
+          (*(*p_j2k.cstr_index)
             .tile_index
-            .offset((*p_j2k).m_current_tile_number as isize))
+            .offset(p_j2k.m_current_tile_number as isize))
           .current_nb_tps = 0 as OPJ_UINT32;
           event_msg!(
             p_manager,
@@ -4179,42 +4175,42 @@ unsafe fn opj_j2k_read_sot(
         }
       }
       if l_current_part
-        >= (*(*(*p_j2k).cstr_index)
+        >= (*(*p_j2k.cstr_index)
           .tile_index
-          .offset((*p_j2k).m_current_tile_number as isize))
+          .offset(p_j2k.m_current_tile_number as isize))
         .current_nb_tps
       {
-        let mut new_tp_index_0 = 0 as *mut opj_tp_index_t;
-        (*(*(*p_j2k).cstr_index)
+        let mut new_tp_index_0 = std::ptr::null_mut::<opj_tp_index_t>();
+        (*(*p_j2k.cstr_index)
           .tile_index
-          .offset((*p_j2k).m_current_tile_number as isize))
+          .offset(p_j2k.m_current_tile_number as isize))
         .current_nb_tps = l_current_part.wrapping_add(1u32);
         new_tp_index_0 = opj_realloc(
-          (*(*(*p_j2k).cstr_index)
+          (*(*p_j2k.cstr_index)
             .tile_index
-            .offset((*p_j2k).m_current_tile_number as isize))
+            .offset(p_j2k.m_current_tile_number as isize))
           .tp_index as *mut core::ffi::c_void,
-          ((*(*(*p_j2k).cstr_index)
+          ((*(*p_j2k.cstr_index)
             .tile_index
-            .offset((*p_j2k).m_current_tile_number as isize))
+            .offset(p_j2k.m_current_tile_number as isize))
           .current_nb_tps as usize)
-            .wrapping_mul(core::mem::size_of::<opj_tp_index_t>() as usize),
+            .wrapping_mul(core::mem::size_of::<opj_tp_index_t>()),
         ) as *mut opj_tp_index_t;
         if new_tp_index_0.is_null() {
           opj_free(
-            (*(*(*p_j2k).cstr_index)
+            (*(*p_j2k.cstr_index)
               .tile_index
-              .offset((*p_j2k).m_current_tile_number as isize))
+              .offset(p_j2k.m_current_tile_number as isize))
             .tp_index as *mut core::ffi::c_void,
           );
-          let ref mut fresh20 = (*(*(*p_j2k).cstr_index)
+          let fresh20 = &mut (*(*p_j2k.cstr_index)
             .tile_index
-            .offset((*p_j2k).m_current_tile_number as isize))
+            .offset(p_j2k.m_current_tile_number as isize))
           .tp_index;
-          *fresh20 = 0 as *mut opj_tp_index_t;
-          (*(*(*p_j2k).cstr_index)
+          *fresh20 = std::ptr::null_mut::<opj_tp_index_t>();
+          (*(*p_j2k.cstr_index)
             .tile_index
-            .offset((*p_j2k).m_current_tile_number as isize))
+            .offset(p_j2k.m_current_tile_number as isize))
           .current_nb_tps = 0 as OPJ_UINT32;
           event_msg!(
             p_manager,
@@ -4223,9 +4219,9 @@ unsafe fn opj_j2k_read_sot(
           );
           return 0i32;
         }
-        let ref mut fresh21 = (*(*(*p_j2k).cstr_index)
+        let fresh21 = &mut (*(*p_j2k.cstr_index)
           .tile_index
-          .offset((*p_j2k).m_current_tile_number as isize))
+          .offset(p_j2k.m_current_tile_number as isize))
         .tp_index;
         *fresh21 = new_tp_index_0
       }
@@ -4258,7 +4254,7 @@ unsafe fn opj_j2k_read_sot(
   p_j2k->cstr_info->tile[tileno].tp[partno].tp_end_pos =
   p_j2k->cstr_info->tile[tileno].tp[partno].tp_start_pos + totlen - 1;
   }*/
-  return 1i32;
+  1i32
 }
 /* *
  * Write one or more PLT markers in the provided buffer
@@ -4336,7 +4332,7 @@ unsafe fn opj_j2k_write_plt_in_memory(
   *p_data_written = p_data.offset_from(p_data_start) as OPJ_UINT32;
   /* Patch Lplt */
   opj_write_bytes_LE(p_data_Lplt, Lplt as OPJ_UINT32, 2 as OPJ_UINT32);
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the SOD marker (Start of data)
@@ -4360,9 +4356,9 @@ unsafe fn opj_j2k_write_sod(
   mut p_stream: *const opj_stream_private_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_cstr_info = 0 as *mut opj_codestream_info_t;
+  let mut l_cstr_info = std::ptr::null_mut::<opj_codestream_info_t>();
   let mut l_remaining_data: OPJ_UINT32 = 0;
-  let mut marker_info = 0 as *mut opj_tcd_marker_info_t;
+  let mut marker_info = std::ptr::null_mut::<opj_tcd_marker_info_t>();
   /* preconditions */
 
   assert!(!p_stream.is_null());
@@ -4378,11 +4374,11 @@ unsafe fn opj_j2k_write_sod(
   /* make room for the EOF marker */
   l_remaining_data = total_data_size.wrapping_sub(4u32);
   /* update tile coder */
-  (*p_tile_coder).tp_num = (*p_j2k)
+  (*p_tile_coder).tp_num = p_j2k
     .m_specific_param
     .m_encoder
     .m_current_poc_tile_part_number;
-  (*p_tile_coder).cur_tp_num = (*p_j2k)
+  (*p_tile_coder).cur_tp_num = p_j2k
     .m_specific_param
     .m_encoder
     .m_current_tile_part_number;
@@ -4408,7 +4404,7 @@ unsafe fn opj_j2k_write_sod(
   /* <<UniPG */
   /*}*/
   /* << INDEX */
-  if (*p_j2k)
+  if p_j2k
     .m_specific_param
     .m_encoder
     .m_current_tile_part_number
@@ -4417,8 +4413,8 @@ unsafe fn opj_j2k_write_sod(
     (*(*(*p_tile_coder).tcd_image).tiles).packno = 0 as OPJ_UINT32
   }
   *p_data_written = 0 as OPJ_UINT32;
-  if (*p_j2k).m_specific_param.m_encoder.m_PLT != 0 {
-    marker_info = opj_tcd_marker_info_create((*p_j2k).m_specific_param.m_encoder.m_PLT);
+  if p_j2k.m_specific_param.m_encoder.m_PLT != 0 {
+    marker_info = opj_tcd_marker_info_create(p_j2k.m_specific_param.m_encoder.m_PLT);
     if marker_info.is_null() {
       event_msg!(
         p_manager,
@@ -4428,7 +4424,7 @@ unsafe fn opj_j2k_write_sod(
       return 0i32;
     }
   }
-  if l_remaining_data < (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT {
+  if l_remaining_data < p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT {
     event_msg!(
       p_manager,
       EVT_ERROR,
@@ -4438,11 +4434,11 @@ unsafe fn opj_j2k_write_sod(
     return 0i32;
   }
   l_remaining_data = (l_remaining_data as core::ffi::c_uint)
-    .wrapping_sub((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT)
+    .wrapping_sub(p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT)
     as OPJ_UINT32;
   if opj_tcd_encode_tile(
     p_tile_coder,
-    (*p_j2k).m_current_tile_number,
+    p_j2k.m_current_tile_number,
     p_data.offset(2),
     p_data_written,
     l_remaining_data,
@@ -4457,10 +4453,10 @@ unsafe fn opj_j2k_write_sod(
   }
   /* For SOD */
   *p_data_written = (*p_data_written as core::ffi::c_uint).wrapping_add(2u32) as OPJ_UINT32;
-  if (*p_j2k).m_specific_param.m_encoder.m_PLT != 0 {
+  if p_j2k.m_specific_param.m_encoder.m_PLT != 0 {
     let mut l_data_written_PLT = 0 as OPJ_UINT32;
     let mut p_PLT_buffer =
-      opj_malloc((*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT as size_t)
+      opj_malloc(p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT as size_t)
         as *mut OPJ_BYTE;
     if p_PLT_buffer.is_null() {
       event_msg!(p_manager, EVT_ERROR, "Cannot allocate memory\n",);
@@ -4479,7 +4475,7 @@ unsafe fn opj_j2k_write_sod(
       opj_free(p_PLT_buffer as *mut core::ffi::c_void);
       return 0i32;
     }
-    assert!(l_data_written_PLT <= (*p_j2k).m_specific_param.m_encoder.m_reserved_bytes_for_PLT);
+    assert!(l_data_written_PLT <= p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT);
     /* Move PLT marker(s) before SOD */
     memmove(
       p_data.offset(l_data_written_PLT as isize) as *mut core::ffi::c_void,
@@ -4496,7 +4492,7 @@ unsafe fn opj_j2k_write_sod(
       (*p_data_written as core::ffi::c_uint).wrapping_add(l_data_written_PLT) as OPJ_UINT32
   }
   opj_tcd_marker_info_destroy(marker_info);
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a SOD marker (Start Of Data)
@@ -4511,41 +4507,41 @@ unsafe fn opj_j2k_read_sod(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_current_read_size: OPJ_SIZE_T = 0;
-  let mut l_cstr_index = 0 as *mut opj_codestream_index_t;
-  let mut l_current_data = 0 as *mut *mut OPJ_BYTE;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tile_len = 0 as *mut OPJ_UINT32;
+  let mut l_cstr_index = std::ptr::null_mut::<opj_codestream_index_t>();
+  let mut l_current_data = std::ptr::null_mut::<*mut OPJ_BYTE>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tile_len = std::ptr::null_mut::<OPJ_UINT32>();
   let mut l_sot_length_pb_detected = 0i32;
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  l_tcp = &mut *(*p_j2k)
+  l_tcp = &mut *p_j2k
     .m_cp
     .tcps
-    .offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
-  if (*p_j2k).m_specific_param.m_decoder.m_last_tile_part != 0 {
+    .offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t;
+  if p_j2k.m_specific_param.m_decoder.m_last_tile_part != 0 {
     /* opj_stream_get_number_byte_left returns OPJ_OFF_T
     // but we are in the last tile part,
     // so its result will fit on OPJ_UINT32 unless we find
     // a file with a single tile part of more than 4 GB...*/
-    (*p_j2k).m_specific_param.m_decoder.m_sot_length =
+    p_j2k.m_specific_param.m_decoder.m_sot_length =
       (opj_stream_get_number_byte_left(p_stream) - 2i64) as OPJ_UINT32
-  } else if (*p_j2k).m_specific_param.m_decoder.m_sot_length >= 2u32 {
-    (*p_j2k).m_specific_param.m_decoder.m_sot_length =
-      ((*p_j2k).m_specific_param.m_decoder.m_sot_length as core::ffi::c_uint).wrapping_sub(2u32)
+  } else if p_j2k.m_specific_param.m_decoder.m_sot_length >= 2u32 {
+    p_j2k.m_specific_param.m_decoder.m_sot_length =
+      (p_j2k.m_specific_param.m_decoder.m_sot_length as core::ffi::c_uint).wrapping_sub(2u32)
         as OPJ_UINT32
   }
   l_current_data = &mut (*l_tcp).m_data;
   l_tile_len = &mut (*l_tcp).m_data_size;
   /* Check to avoid pass the limit of OPJ_UINT32 */
   /* Patch to support new PHR data */
-  if (*p_j2k).m_specific_param.m_decoder.m_sot_length != 0 {
+  if p_j2k.m_specific_param.m_decoder.m_sot_length != 0 {
     /* If we are here, we'll try to read the data after allocation */
     /* Check enough bytes left in stream before allocation */
-    if (*p_j2k).m_specific_param.m_decoder.m_sot_length as OPJ_OFF_T
+    if p_j2k.m_specific_param.m_decoder.m_sot_length as OPJ_OFF_T
       > opj_stream_get_number_byte_left(p_stream)
     {
-      if (*p_j2k).m_cp.strict != 0 {
+      if p_j2k.m_cp.strict != 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -4560,7 +4556,7 @@ unsafe fn opj_j2k_read_sod(
         );
       }
     }
-    if (*p_j2k).m_specific_param.m_decoder.m_sot_length
+    if p_j2k.m_specific_param.m_decoder.m_sot_length
       > (2147483647u32)
         .wrapping_mul(2u32)
         .wrapping_add(1u32)
@@ -4581,20 +4577,20 @@ unsafe fn opj_j2k_read_sod(
        * TODO: If this was consistent, we could simplify the code to only use realloc(), as realloc(0,...) default to malloc(0,...).
        */
       *l_current_data = opj_malloc(
-        (*p_j2k)
+        p_j2k
           .m_specific_param
           .m_decoder
           .m_sot_length
           .wrapping_add(2u32) as size_t,
       ) as *mut OPJ_BYTE
     } else {
-      let mut l_new_current_data = 0 as *mut OPJ_BYTE;
+      let mut l_new_current_data = std::ptr::null_mut::<OPJ_BYTE>();
       if *l_tile_len
         > (2147483647u32)
           .wrapping_mul(2u32)
           .wrapping_add(1u32)
           .wrapping_sub(2u32)
-          .wrapping_sub((*p_j2k).m_specific_param.m_decoder.m_sot_length)
+          .wrapping_sub(p_j2k.m_specific_param.m_decoder.m_sot_length)
       {
         event_msg!(p_manager, EVT_ERROR,
                               "*l_tile_len > UINT_MAX - OPJ_COMMON_CBLK_DATA_EXTRA - p_j2k->m_specific_param.m_decoder.m_sot_length");
@@ -4603,7 +4599,7 @@ unsafe fn opj_j2k_read_sod(
       l_new_current_data = opj_realloc(
         *l_current_data as *mut core::ffi::c_void,
         (*l_tile_len)
-          .wrapping_add((*p_j2k).m_specific_param.m_decoder.m_sot_length)
+          .wrapping_add(p_j2k.m_specific_param.m_decoder.m_sot_length)
           .wrapping_add(2u32) as size_t,
       ) as *mut OPJ_BYTE;
       if l_new_current_data.is_null() {
@@ -4623,32 +4619,32 @@ unsafe fn opj_j2k_read_sod(
     l_sot_length_pb_detected = 1i32
   }
   /* Index */
-  l_cstr_index = (*p_j2k).cstr_index;
+  l_cstr_index = p_j2k.cstr_index;
   if !l_cstr_index.is_null() {
     let mut l_current_pos = opj_stream_tell(p_stream) - 2i64;
     let mut l_current_tile_part = (*(*l_cstr_index)
       .tile_index
-      .offset((*p_j2k).m_current_tile_number as isize))
+      .offset(p_j2k.m_current_tile_number as isize))
     .current_tpsno;
     (*(*(*l_cstr_index)
       .tile_index
-      .offset((*p_j2k).m_current_tile_number as isize))
+      .offset(p_j2k.m_current_tile_number as isize))
     .tp_index
     .offset(l_current_tile_part as isize))
     .end_header = l_current_pos;
     (*(*(*l_cstr_index)
       .tile_index
-      .offset((*p_j2k).m_current_tile_number as isize))
+      .offset(p_j2k.m_current_tile_number as isize))
     .tp_index
     .offset(l_current_tile_part as isize))
-    .end_pos = l_current_pos + (*p_j2k).m_specific_param.m_decoder.m_sot_length as i64 + 2i64;
+    .end_pos = l_current_pos + p_j2k.m_specific_param.m_decoder.m_sot_length as i64 + 2i64;
     if 0i32
       == opj_j2k_add_tlmarker(
-        (*p_j2k).m_current_tile_number,
+        p_j2k.m_current_tile_number,
         l_cstr_index,
         J2KMarker::SOD,
         l_current_pos,
-        (*p_j2k)
+        p_j2k
           .m_specific_param
           .m_decoder
           .m_sot_length
@@ -4665,20 +4661,20 @@ unsafe fn opj_j2k_read_sod(
     l_current_read_size = opj_stream_read_data(
       p_stream,
       (*l_current_data).offset(*l_tile_len as isize),
-      (*p_j2k).m_specific_param.m_decoder.m_sot_length as OPJ_SIZE_T,
+      p_j2k.m_specific_param.m_decoder.m_sot_length as OPJ_SIZE_T,
       p_manager,
     )
   } else {
     l_current_read_size = 0 as OPJ_SIZE_T
   }
-  if l_current_read_size != (*p_j2k).m_specific_param.m_decoder.m_sot_length as usize {
-    (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC
+  if l_current_read_size != p_j2k.m_specific_param.m_decoder.m_sot_length as usize {
+    p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPHSOT
+    p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT
   }
   *l_tile_len = (*l_tile_len as core::ffi::c_uint).wrapping_add(l_current_read_size as OPJ_UINT32)
     as OPJ_UINT32;
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the RGN marker (Region Of Interest)
@@ -4698,17 +4694,17 @@ unsafe fn opj_j2k_write_rgn(
   mut p_stream: *mut opj_stream_private_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   let mut l_rgn_size: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
   let mut l_comp_room: OPJ_UINT32 = 0;
   /* preconditions */
   /* Lrgn */
   /* Srgn */
   assert!(!p_stream.is_null());
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   if nb_comps <= 256u32 {
@@ -4717,7 +4713,7 @@ unsafe fn opj_j2k_write_rgn(
     l_comp_room = 2 as OPJ_UINT32
   }
   l_rgn_size = (6u32).wrapping_add(l_comp_room);
-  l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_current_data = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(l_current_data, J2KMarker::RGN.as_u32(), 2 as OPJ_UINT32);
   l_current_data = l_current_data.offset(2);
   opj_write_bytes_LE(
@@ -4738,14 +4734,14 @@ unsafe fn opj_j2k_write_rgn(
   l_current_data = l_current_data.offset(1);
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_rgn_size as OPJ_SIZE_T,
     p_manager,
   ) != l_rgn_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the EOC marker (End of Codestream)
@@ -4763,7 +4759,7 @@ unsafe fn opj_j2k_write_eoc(
 
   assert!(!p_stream.is_null());
   opj_write_bytes_LE(
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     J2KMarker::EOC.as_u32(),
     2 as OPJ_UINT32,
   );
@@ -4771,7 +4767,7 @@ unsafe fn opj_j2k_write_eoc(
   /* USE_JPWL */
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     2 as OPJ_SIZE_T,
     p_manager,
   ) != 2
@@ -4781,7 +4777,7 @@ unsafe fn opj_j2k_write_eoc(
   if opj_stream_flush(p_stream, p_manager) == 0 {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a RGN marker (Region Of Interest)
@@ -4806,9 +4802,9 @@ unsafe fn opj_j2k_read_rgn(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_nb_comp: OPJ_UINT32 = 0;
-  let mut l_image = 0 as *mut opj_image_t;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   let mut l_comp_room: OPJ_UINT32 = 0;
   let mut l_comp_no: OPJ_UINT32 = 0;
   let mut l_roi_sty: OPJ_UINT32 = 0;
@@ -4816,7 +4812,7 @@ unsafe fn opj_j2k_read_rgn(
   /* Srgn */
 
   assert!(!p_header_data.is_null());
-  l_image = (*p_j2k).m_private_image;
+  l_image = p_j2k.m_private_image;
   l_nb_comp = (*l_image).numcomps;
   if l_nb_comp <= 256u32 {
     l_comp_room = 1 as OPJ_UINT32
@@ -4827,11 +4823,11 @@ unsafe fn opj_j2k_read_rgn(
     event_msg!(p_manager, EVT_ERROR, "Error reading RGN marker\n",);
     return 0i32;
   }
-  l_cp = &mut (*p_j2k).m_cp;
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+  l_cp = &mut p_j2k.m_cp;
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
   opj_read_bytes_LE(p_header_data, &mut l_comp_no, l_comp_room);
   p_header_data = p_header_data.offset(l_comp_room as isize);
@@ -4855,16 +4851,16 @@ unsafe fn opj_j2k_read_rgn(
     1 as OPJ_UINT32,
   );
   p_header_data = p_header_data.offset(1);
-  return 1i32;
+  1i32
 }
 unsafe fn opj_j2k_get_tp_stride(mut p_tcp: *mut opj_tcp_t) -> OPJ_FLOAT32 {
-  return (*p_tcp)
+  (*p_tcp)
     .m_nb_tile_parts
     .wrapping_sub(1u32)
-    .wrapping_mul(14u32) as OPJ_FLOAT32;
+    .wrapping_mul(14u32) as OPJ_FLOAT32
 }
 unsafe fn opj_j2k_get_default_stride(mut _p_tcp: *mut opj_tcp_t) -> OPJ_FLOAT32 {
-  return 0 as OPJ_FLOAT32;
+  0 as OPJ_FLOAT32
 }
 /* *
  * Updates the rates of the tcp.
@@ -4878,10 +4874,10 @@ unsafe fn opj_j2k_update_rates(
   mut p_stream: *mut opj_stream_private_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_image = 0 as *mut opj_image_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_img_comp = 0 as *mut opj_image_comp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
   let mut i: OPJ_UINT32 = 0;
   let mut j: OPJ_UINT32 = 0;
   let mut k: OPJ_UINT32 = 0;
@@ -4889,7 +4885,7 @@ unsafe fn opj_j2k_update_rates(
   let mut l_y0: OPJ_INT32 = 0;
   let mut l_x1: OPJ_INT32 = 0;
   let mut l_y1: OPJ_INT32 = 0;
-  let mut l_rates = 0 as *mut OPJ_FLOAT32;
+  let mut l_rates = std::ptr::null_mut::<OPJ_FLOAT32>();
   let mut l_sot_remove: OPJ_FLOAT32 = 0.;
   let mut l_bits_empty: OPJ_UINT32 = 0;
   let mut l_size_pixel: OPJ_UINT32 = 0;
@@ -4898,8 +4894,8 @@ unsafe fn opj_j2k_update_rates(
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  l_cp = &mut (*p_j2k).m_cp;
-  l_image = (*p_j2k).m_private_image;
+  l_cp = &mut p_j2k.m_cp;
+  l_image = p_j2k.m_private_image;
   l_tcp = (*l_cp).tcps;
   l_bits_empty = (8u32)
     .wrapping_mul((*(*l_image).comps).dx)
@@ -4917,8 +4913,7 @@ unsafe fn opj_j2k_update_rates(
   while i < (*l_cp).th {
     j = 0 as OPJ_UINT32;
     while j < (*l_cp).tw {
-      let mut l_offset = Some(l_tp_stride_func.expect("non-null function pointer"))
-        .expect("non-null function pointer")(l_tcp)
+      let mut l_offset = l_tp_stride_func.expect("non-null function pointer")(l_tcp)
         / (*l_tcp).numlayers as OPJ_FLOAT32;
       /* 4 borders of the tile rescale on the image if necessary */
       l_x0 = opj_int_max(
@@ -5025,10 +5020,10 @@ unsafe fn opj_j2k_update_rates(
     l_tile_size = u32::MAX as u64;
   }
 
-  (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_size = l_tile_size as OPJ_UINT32;
-  (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data =
-    opj_malloc((*p_j2k).m_specific_param.m_encoder.m_encoded_tile_size as size_t) as *mut OPJ_BYTE;
-  if (*p_j2k)
+  p_j2k.m_specific_param.m_encoder.m_encoded_tile_size = l_tile_size as OPJ_UINT32;
+  p_j2k.m_specific_param.m_encoder.m_encoded_tile_data =
+    opj_malloc(p_j2k.m_specific_param.m_encoder.m_encoded_tile_size as size_t) as *mut OPJ_BYTE;
+  if p_j2k
     .m_specific_param
     .m_encoder
     .m_encoded_tile_data
@@ -5042,11 +5037,11 @@ unsafe fn opj_j2k_update_rates(
     );
     return 0i32;
   }
-  if (*p_j2k).m_specific_param.m_encoder.m_TLM != 0 {
-    (*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = opj_malloc(
-      (6u32).wrapping_mul((*p_j2k).m_specific_param.m_encoder.m_total_tile_parts) as size_t,
+  if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
+    p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = opj_malloc(
+      (6u32).wrapping_mul(p_j2k.m_specific_param.m_encoder.m_total_tile_parts) as size_t,
     ) as *mut OPJ_BYTE;
-    if (*p_j2k)
+    if p_j2k
       .m_specific_param
       .m_encoder
       .m_tlm_sot_offsets_buffer
@@ -5054,12 +5049,12 @@ unsafe fn opj_j2k_update_rates(
     {
       return 0i32;
     }
-    (*p_j2k)
+    p_j2k
       .m_specific_param
       .m_encoder
-      .m_tlm_sot_offsets_current = (*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer
+      .m_tlm_sot_offsets_current = p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Gets the offset of the header.
@@ -5076,8 +5071,8 @@ unsafe fn opj_j2k_get_end_header(
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  (*(*p_j2k).cstr_index).main_head_end = opj_stream_tell(p_stream);
-  return 1i32;
+  (*p_j2k.cstr_index).main_head_end = opj_stream_tell(p_stream);
+  1i32
 }
 /* *
  * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
@@ -5092,19 +5087,19 @@ unsafe fn opj_j2k_write_mct_data_group(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
-  let mut l_mcc_record = 0 as *mut opj_simple_mcc_decorrelation_data_t;
-  let mut l_mct_record = 0 as *mut opj_mct_data_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_mcc_record = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
+  let mut l_mct_record = std::ptr::null_mut::<opj_mct_data_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   /* preconditions */
 
   assert!(!p_stream.is_null());
   if opj_j2k_write_cbd(p_j2k, p_stream, p_manager) == 0 {
     return 0i32;
   }
-  l_tcp = &mut *(*p_j2k)
+  l_tcp = &mut *p_j2k
     .m_cp
     .tcps
-    .offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
+    .offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t;
   l_mct_record = (*l_tcp).m_mct_records;
   i = 0 as OPJ_UINT32;
   while i < (*l_tcp).m_nb_mct_records {
@@ -5126,7 +5121,7 @@ unsafe fn opj_j2k_write_mct_data_group(
   if opj_j2k_write_mco(p_j2k, p_stream, p_manager) == 0 {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes COC marker for each component.
@@ -5145,16 +5140,14 @@ unsafe fn opj_j2k_write_all_coc(
 
   assert!(!p_stream.is_null());
   compno = 1 as OPJ_UINT32;
-  while compno < (*(*p_j2k).m_private_image).numcomps {
+  while compno < (*p_j2k.m_private_image).numcomps {
     /* cod is first component of first tile */
-    if opj_j2k_compare_coc(p_j2k, 0 as OPJ_UINT32, compno) == 0 {
-      if opj_j2k_write_coc(p_j2k, compno, p_stream, p_manager) == 0 {
-        return 0i32;
-      }
+    if opj_j2k_compare_coc(p_j2k, 0 as OPJ_UINT32, compno) == 0 && opj_j2k_write_coc(p_j2k, compno, p_stream, p_manager) == 0 {
+      return 0i32;
     }
     compno += 1;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes QCC marker for each component.
@@ -5173,16 +5166,14 @@ unsafe fn opj_j2k_write_all_qcc(
 
   assert!(!p_stream.is_null());
   compno = 1 as OPJ_UINT32;
-  while compno < (*(*p_j2k).m_private_image).numcomps {
+  while compno < (*p_j2k.m_private_image).numcomps {
     /* qcd is first component of first tile */
-    if opj_j2k_compare_qcc(p_j2k, 0 as OPJ_UINT32, compno) == 0 {
-      if opj_j2k_write_qcc(p_j2k, compno, p_stream, p_manager) == 0 {
-        return 0i32;
-      }
+    if opj_j2k_compare_qcc(p_j2k, 0 as OPJ_UINT32, compno) == 0 && opj_j2k_write_qcc(p_j2k, compno, p_stream, p_manager) == 0 {
+      return 0i32;
     }
     compno += 1;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes regions of interests.
@@ -5197,30 +5188,27 @@ unsafe fn opj_j2k_write_regions(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
-  let mut l_tccp = 0 as *const opj_tccp_t;
+  let mut l_tccp = std::ptr::null::<opj_tccp_t>();
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  l_tccp = (*(*p_j2k).m_cp.tcps).tccps;
+  l_tccp = (*p_j2k.m_cp.tcps).tccps;
   compno = 0 as OPJ_UINT32;
-  while compno < (*(*p_j2k).m_private_image).numcomps {
-    if (*l_tccp).roishift != 0 {
-      if opj_j2k_write_rgn(
+  while compno < (*p_j2k.m_private_image).numcomps {
+    if (*l_tccp).roishift != 0 && opj_j2k_write_rgn(
         p_j2k,
         0 as OPJ_UINT32,
         compno,
-        (*(*p_j2k).m_private_image).numcomps,
+        (*p_j2k.m_private_image).numcomps,
         p_stream,
         p_manager,
-      ) == 0
-      {
-        return 0i32;
-      }
+      ) == 0 {
+      return 0i32;
     }
     l_tccp = l_tccp.offset(1);
     compno += 1;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes EPC ????
@@ -5234,11 +5222,11 @@ unsafe fn opj_j2k_write_epc(
   mut p_stream: *mut opj_stream_private,
   mut _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_cstr_index = 0 as *mut opj_codestream_index_t;
+  let mut l_cstr_index = std::ptr::null_mut::<opj_codestream_index_t>();
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  l_cstr_index = (*p_j2k).cstr_index;
+  l_cstr_index = p_j2k.cstr_index;
   if !l_cstr_index.is_null() {
     (*l_cstr_index).codestream_size = opj_stream_tell(p_stream) as OPJ_UINT64;
     /* UniPG>> */
@@ -5249,7 +5237,7 @@ unsafe fn opj_j2k_write_epc(
     /* <<UniPG */
   }
   /* USE_JPWL */
-  return 1i32;
+  1i32
 }
 /* *
  * Reads an unknown marker
@@ -5278,7 +5266,7 @@ unsafe fn opj_j2k_read_unk(
     /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
     if opj_stream_read_data(
       p_stream,
-      (*p_j2k).m_specific_param.m_decoder.m_header_data,
+      p_j2k.m_specific_param.m_decoder.m_header_data,
       2 as OPJ_SIZE_T,
       p_manager,
     ) != 2
@@ -5288,7 +5276,7 @@ unsafe fn opj_j2k_read_unk(
     }
     /* read 2 bytes as the new marker ID*/
     opj_read_bytes_LE(
-      (*p_j2k).m_specific_param.m_decoder.m_header_data,
+      p_j2k.m_specific_param.m_decoder.m_header_data,
       &mut l_unknown_marker,
       2 as OPJ_UINT32,
     );
@@ -5297,7 +5285,7 @@ unsafe fn opj_j2k_read_unk(
     }
     /* Get the marker handler from the marker ID*/
     l_marker_handler = J2KMarker::from(l_unknown_marker);
-    if (*p_j2k).m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
+    if p_j2k.m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -5308,7 +5296,7 @@ unsafe fn opj_j2k_read_unk(
       /* Add the marker to the codestream index*/
       if l_marker_handler != J2KMarker::SOT {
         let mut res = opj_j2k_add_mhmarker(
-          (*p_j2k).cstr_index,
+          p_j2k.cstr_index,
           J2KMarker::UNK(0),
           (opj_stream_tell(p_stream) as OPJ_UINT32).wrapping_sub(l_size_unk) as OPJ_OFF_T,
           l_size_unk,
@@ -5325,7 +5313,7 @@ unsafe fn opj_j2k_read_unk(
     }
   }
   *output_marker = l_marker_handler;
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the MCT marker (Multiple Component Transform)
@@ -5342,22 +5330,22 @@ unsafe fn opj_j2k_write_mct_record(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_mct_size: OPJ_UINT32 = 0;
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   let mut l_tmp: OPJ_UINT32 = 0;
   /* preconditions */
   /* Lmct */
 
   assert!(!p_stream.is_null());
   l_mct_size = (10u32).wrapping_add((*p_mct_record).m_data_size);
-  if l_mct_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  if l_mct_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_mct_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -5365,10 +5353,10 @@ unsafe fn opj_j2k_write_mct_record(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_mct_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_mct_size
   }
-  l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_current_data = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(l_current_data, J2KMarker::MCT.as_u32(), 2 as OPJ_UINT32);
   l_current_data = l_current_data.offset(2);
   opj_write_bytes_LE(
@@ -5394,14 +5382,14 @@ unsafe fn opj_j2k_write_mct_record(
   );
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_mct_size as OPJ_SIZE_T,
     p_manager,
   ) != l_mct_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a MCT marker (Multiple Component Transform)
@@ -5426,20 +5414,20 @@ unsafe fn opj_j2k_read_mct(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   let mut l_tmp: OPJ_UINT32 = 0;
   let mut l_indix: OPJ_UINT32 = 0;
-  let mut l_mct_data = 0 as *mut opj_mct_data_t;
+  let mut l_mct_data = std::ptr::null_mut::<opj_mct_data_t>();
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*p_j2k)
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *p_j2k
       .m_cp
       .tcps
-      .offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+      .offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
   if p_header_size < 2u32 {
     event_msg!(p_manager, EVT_ERROR, "Error reading MCT marker\n",);
@@ -5476,17 +5464,17 @@ unsafe fn opj_j2k_read_mct(
   /* NOT FOUND */
   if i == (*l_tcp).m_nb_mct_records {
     if (*l_tcp).m_nb_mct_records == (*l_tcp).m_nb_max_mct_records {
-      let mut new_mct_records = 0 as *mut opj_mct_data_t;
+      let mut new_mct_records = std::ptr::null_mut::<opj_mct_data_t>();
       (*l_tcp).m_nb_max_mct_records =
         ((*l_tcp).m_nb_max_mct_records as core::ffi::c_uint).wrapping_add(10u32) as OPJ_UINT32;
       new_mct_records = opj_realloc(
         (*l_tcp).m_mct_records as *mut core::ffi::c_void,
         ((*l_tcp).m_nb_max_mct_records as usize)
-          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as usize),
+          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
       ) as *mut opj_mct_data_t;
       if new_mct_records.is_null() {
         opj_free((*l_tcp).m_mct_records as *mut core::ffi::c_void);
-        (*l_tcp).m_mct_records = 0 as *mut opj_mct_data_t;
+        (*l_tcp).m_mct_records = std::ptr::null_mut::<opj_mct_data_t>();
         (*l_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
         (*l_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
         event_msg!(
@@ -5531,7 +5519,7 @@ unsafe fn opj_j2k_read_mct(
         ((*l_tcp)
           .m_nb_max_mct_records
           .wrapping_sub((*l_tcp).m_nb_mct_records) as usize)
-          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as usize),
+          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
       );
     }
     l_mct_data = (*l_tcp)
@@ -5541,7 +5529,7 @@ unsafe fn opj_j2k_read_mct(
   }
   if !(*l_mct_data).m_data.is_null() {
     opj_free((*l_mct_data).m_data as *mut core::ffi::c_void);
-    (*l_mct_data).m_data = 0 as *mut OPJ_BYTE;
+    (*l_mct_data).m_data = std::ptr::null_mut::<OPJ_BYTE>();
     (*l_mct_data).m_data_size = 0 as OPJ_UINT32
   }
   (*l_mct_data).m_index = l_indix;
@@ -5569,7 +5557,7 @@ unsafe fn opj_j2k_read_mct(
     p_header_size as usize,
   );
   (*l_mct_data).m_data_size = p_header_size;
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the MCC marker (Multiple Component Collection)
@@ -5587,7 +5575,7 @@ unsafe fn opj_j2k_write_mcc_record(
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
   let mut l_mcc_size: OPJ_UINT32 = 0;
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   let mut l_nb_bytes_for_comp: OPJ_UINT32 = 0;
   let mut l_mask: OPJ_UINT32 = 0;
   let mut l_tmcc: OPJ_UINT32 = 0;
@@ -5607,15 +5595,15 @@ unsafe fn opj_j2k_write_mcc_record(
     .wrapping_mul(2u32)
     .wrapping_mul(l_nb_bytes_for_comp)
     .wrapping_add(19u32);
-  if l_mcc_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  if l_mcc_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_mcc_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -5623,10 +5611,10 @@ unsafe fn opj_j2k_write_mcc_record(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_mcc_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_mcc_size
   }
-  l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_current_data = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(l_current_data, J2KMarker::MCC.as_u32(), 2 as OPJ_UINT32);
   l_current_data = l_current_data.offset(2);
   opj_write_bytes_LE(
@@ -5682,14 +5670,14 @@ unsafe fn opj_j2k_write_mcc_record(
   l_current_data = l_current_data.offset(3);
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_mcc_size as OPJ_SIZE_T,
     p_manager,
   ) != l_mcc_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a MCC marker (Multiple Component Collection)
@@ -5709,9 +5697,9 @@ unsafe fn opj_j2k_read_mcc(
   let mut j: OPJ_UINT32 = 0;
   let mut l_tmp: OPJ_UINT32 = 0;
   let mut l_indix: OPJ_UINT32 = 0;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_mcc_record = 0 as *mut opj_simple_mcc_decorrelation_data_t;
-  let mut l_mct_data = 0 as *mut opj_mct_data_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_mcc_record = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
+  let mut l_mct_data = std::ptr::null_mut::<opj_mct_data_t>();
   let mut l_nb_collections: OPJ_UINT32 = 0;
   let mut l_nb_comps: OPJ_UINT32 = 0;
   let mut l_nb_bytes_by_comp: OPJ_UINT32 = 0;
@@ -5719,13 +5707,13 @@ unsafe fn opj_j2k_read_mcc(
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*p_j2k)
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *p_j2k
       .m_cp
       .tcps
-      .offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+      .offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
   if p_header_size < 2u32 {
     event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
@@ -5760,17 +5748,17 @@ unsafe fn opj_j2k_read_mcc(
   /* * NOT FOUND */
   if i == (*l_tcp).m_nb_mcc_records {
     if (*l_tcp).m_nb_mcc_records == (*l_tcp).m_nb_max_mcc_records {
-      let mut new_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
+      let mut new_mcc_records = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
       (*l_tcp).m_nb_max_mcc_records =
         ((*l_tcp).m_nb_max_mcc_records as core::ffi::c_uint).wrapping_add(10u32) as OPJ_UINT32;
       new_mcc_records = opj_realloc(
         (*l_tcp).m_mcc_records as *mut core::ffi::c_void,
         ((*l_tcp).m_nb_max_mcc_records as usize)
-          .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as usize),
+          .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>()),
       ) as *mut opj_simple_mcc_decorrelation_data_t;
       if new_mcc_records.is_null() {
         opj_free((*l_tcp).m_mcc_records as *mut core::ffi::c_void);
-        (*l_tcp).m_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
+        (*l_tcp).m_mcc_records = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
         (*l_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
         (*l_tcp).m_nb_mcc_records = 0 as OPJ_UINT32;
         event_msg!(
@@ -5790,7 +5778,7 @@ unsafe fn opj_j2k_read_mcc(
         ((*l_tcp)
           .m_nb_max_mcc_records
           .wrapping_sub((*l_tcp).m_nb_mcc_records) as usize)
-          .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as usize),
+          .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>()),
       );
     }
     l_mcc_record = (*l_tcp)
@@ -5912,8 +5900,8 @@ unsafe fn opj_j2k_read_mcc(
     p_header_data = p_header_data.offset(3);
     (*l_mcc_record)
       .set_m_is_irreversible((l_tmp >> 16i32 & 1u32 == 0) as core::ffi::c_int as OPJ_BITFIELD);
-    (*l_mcc_record).m_decorrelation_array = 0 as *mut opj_mct_data_t;
-    (*l_mcc_record).m_offset_array = 0 as *mut opj_mct_data_t;
+    (*l_mcc_record).m_decorrelation_array = std::ptr::null_mut::<opj_mct_data_t>();
+    (*l_mcc_record).m_offset_array = std::ptr::null_mut::<opj_mct_data_t>();
     l_indix = l_tmp & 0xffu32;
     if l_indix != 0u32 {
       l_mct_data = (*l_tcp).m_mct_records;
@@ -5959,7 +5947,7 @@ unsafe fn opj_j2k_read_mcc(
   if l_new_mcc != 0 {
     (*l_tcp).m_nb_mcc_records = (*l_tcp).m_nb_mcc_records.wrapping_add(1)
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the MCO marker (Multiple component transformation ordering)
@@ -5973,29 +5961,29 @@ unsafe fn opj_j2k_write_mco(
   mut p_stream: *mut opj_stream_private,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   let mut l_mco_size: OPJ_UINT32 = 0;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_mcc_record = 0 as *mut opj_simple_mcc_decorrelation_data_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_mcc_record = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
   let mut i: OPJ_UINT32 = 0;
   /* preconditions */
   /* Lmco */
   /* Imco -> use the mcc indicated by 1*/
   assert!(!p_stream.is_null());
-  l_tcp = &mut *(*p_j2k)
+  l_tcp = &mut *p_j2k
     .m_cp
     .tcps
-    .offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t;
+    .offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t;
   l_mco_size = (5u32).wrapping_add((*l_tcp).m_nb_mcc_records);
-  if l_mco_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  if l_mco_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_mco_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -6003,10 +5991,10 @@ unsafe fn opj_j2k_write_mco(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_mco_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_mco_size
   }
-  l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_current_data = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(l_current_data, J2KMarker::MCO.as_u32(), 2 as OPJ_UINT32);
   l_current_data = l_current_data.offset(2);
   opj_write_bytes_LE(
@@ -6027,14 +6015,14 @@ unsafe fn opj_j2k_write_mco(
   }
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_mco_size as OPJ_SIZE_T,
     p_manager,
   ) != l_mco_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a MCO marker (Multiple Component Transform Ordering)
@@ -6061,20 +6049,20 @@ unsafe fn opj_j2k_read_mco(
   let mut l_tmp: OPJ_UINT32 = 0;
   let mut i: OPJ_UINT32 = 0;
   let mut l_nb_stages: OPJ_UINT32 = 0;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
-  let mut l_image = 0 as *mut opj_image_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  l_image = (*p_j2k).m_private_image;
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*p_j2k)
+  l_image = p_j2k.m_private_image;
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *p_j2k
       .m_cp
       .tcps
-      .offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+      .offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
   if p_header_size < 1u32 {
     event_msg!(p_manager, EVT_ERROR, "Error reading MCO marker\n",);
@@ -6103,18 +6091,18 @@ unsafe fn opj_j2k_read_mco(
   }
   if !(*l_tcp).m_mct_decoding_matrix.is_null() {
     opj_free((*l_tcp).m_mct_decoding_matrix as *mut core::ffi::c_void);
-    (*l_tcp).m_mct_decoding_matrix = 0 as *mut OPJ_FLOAT32
+    (*l_tcp).m_mct_decoding_matrix = std::ptr::null_mut::<OPJ_FLOAT32>()
   }
   i = 0 as OPJ_UINT32;
   while i < l_nb_stages {
     opj_read_bytes_LE(p_header_data, &mut l_tmp, 1 as OPJ_UINT32);
     p_header_data = p_header_data.offset(1);
-    if opj_j2k_add_mct(l_tcp, (*p_j2k).m_private_image, l_tmp) == 0 {
+    if opj_j2k_add_mct(l_tcp, p_j2k.m_private_image, l_tmp) == 0 {
       return 0i32;
     }
     i += 1;
   }
-  return 1i32;
+  1i32
 }
 unsafe fn opj_j2k_add_mct(
   mut p_tcp: *mut opj_tcp_t,
@@ -6122,16 +6110,16 @@ unsafe fn opj_j2k_add_mct(
   mut p_index: OPJ_UINT32,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
-  let mut l_mcc_record = 0 as *mut opj_simple_mcc_decorrelation_data_t;
-  let mut l_deco_array = 0 as *mut opj_mct_data_t;
-  let mut l_offset_array = 0 as *mut opj_mct_data_t;
+  let mut l_mcc_record = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
+  let mut l_deco_array = std::ptr::null_mut::<opj_mct_data_t>();
+  let mut l_offset_array = std::ptr::null_mut::<opj_mct_data_t>();
   let mut l_data_size: OPJ_UINT32 = 0;
   let mut l_mct_size: OPJ_UINT32 = 0;
   let mut l_offset_size: OPJ_UINT32 = 0;
   let mut l_nb_elem: OPJ_UINT32 = 0;
-  let mut l_offset_data = 0 as *mut OPJ_UINT32;
-  let mut l_current_offset_data = 0 as *mut OPJ_UINT32;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
+  let mut l_offset_data = std::ptr::null_mut::<OPJ_UINT32>();
+  let mut l_current_offset_data = std::ptr::null_mut::<OPJ_UINT32>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
   /* preconditions */
   assert!(!p_tcp.is_null());
   l_mcc_record = (*p_tcp).m_mcc_records;
@@ -6204,7 +6192,7 @@ unsafe fn opj_j2k_add_mct(
     }
     opj_free(l_offset_data as *mut core::ffi::c_void);
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the CBD marker (Component bit depth definition)
@@ -6220,24 +6208,24 @@ unsafe fn opj_j2k_write_cbd(
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
   let mut l_cbd_size: OPJ_UINT32 = 0;
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
-  let mut l_image = 0 as *mut opj_image_t;
-  let mut l_comp = 0 as *mut opj_image_comp_t;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
+  let mut l_comp = std::ptr::null_mut::<opj_image_comp_t>();
   /* preconditions */
   /* L_CBD */
   /* Component bit depth */
   assert!(!p_stream.is_null());
-  l_image = (*p_j2k).m_private_image;
-  l_cbd_size = (6u32).wrapping_add((*(*p_j2k).m_private_image).numcomps);
-  if l_cbd_size > (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size {
+  l_image = p_j2k.m_private_image;
+  l_cbd_size = (6u32).wrapping_add((*p_j2k.m_private_image).numcomps);
+  if l_cbd_size > p_j2k.m_specific_param.m_encoder.m_header_tile_data_size {
     let mut new_header_tile_data = opj_realloc(
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void,
       l_cbd_size as size_t,
     ) as *mut OPJ_BYTE;
     if new_header_tile_data.is_null() {
-      opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
-      (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+      opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
+      p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -6245,10 +6233,10 @@ unsafe fn opj_j2k_write_cbd(
       );
       return 0i32;
     }
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = l_cbd_size
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = l_cbd_size
   }
-  l_current_data = (*p_j2k).m_specific_param.m_encoder.m_header_tile_data;
+  l_current_data = p_j2k.m_specific_param.m_encoder.m_header_tile_data;
   opj_write_bytes_LE(l_current_data, J2KMarker::CBD.as_u32(), 2 as OPJ_UINT32);
   l_current_data = l_current_data.offset(2);
   opj_write_bytes_LE(
@@ -6273,14 +6261,14 @@ unsafe fn opj_j2k_write_cbd(
   }
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data,
     l_cbd_size as OPJ_SIZE_T,
     p_manager,
   ) != l_cbd_size as usize
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a CBD marker (Component bit depth definition)
@@ -6306,13 +6294,13 @@ unsafe fn opj_j2k_read_cbd(
   let mut l_num_comp: OPJ_UINT32 = 0;
   let mut l_comp_def: OPJ_UINT32 = 0;
   let mut i: OPJ_UINT32 = 0;
-  let mut l_comp = 0 as *mut opj_image_comp_t;
+  let mut l_comp = std::ptr::null_mut::<opj_image_comp_t>();
   /* preconditions */
   /* Component bit depth */
 
   assert!(!p_header_data.is_null());
-  l_num_comp = (*(*p_j2k).m_private_image).numcomps;
-  if p_header_size != (*(*p_j2k).m_private_image).numcomps.wrapping_add(2u32) {
+  l_num_comp = (*p_j2k.m_private_image).numcomps;
+  if p_header_size != (*p_j2k.m_private_image).numcomps.wrapping_add(2u32) {
     event_msg!(p_manager, EVT_ERROR, "Crror reading CBD marker\n",);
     return 0i32;
   }
@@ -6322,7 +6310,7 @@ unsafe fn opj_j2k_read_cbd(
     event_msg!(p_manager, EVT_ERROR, "Crror reading CBD marker\n",);
     return 0i32;
   }
-  l_comp = (*(*p_j2k).m_private_image).comps;
+  l_comp = (*p_j2k.m_private_image).comps;
   i = 0 as OPJ_UINT32;
   while i < l_num_comp {
     opj_read_bytes_LE(p_header_data, &mut l_comp_def, 1 as OPJ_UINT32);
@@ -6338,7 +6326,7 @@ unsafe fn opj_j2k_read_cbd(
     l_comp = l_comp.offset(1);
     i += 1;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a CAP marker (extended capabilities definition). Empty implementation.
@@ -6367,7 +6355,7 @@ unsafe fn opj_j2k_read_cap(
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a CPF marker (corresponding profile). Empty implementation. Found in HTJ2K files
@@ -6392,7 +6380,7 @@ unsafe fn opj_j2k_read_cpf(
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  return 1i32;
+  1i32
 }
 /* ----------------------------------------------------------------------- */
 /* J2K / JPT decoder interface                                             */
@@ -6403,15 +6391,15 @@ pub(crate) unsafe fn opj_j2k_setup_decoder(
   mut parameters: *mut opj_dparameters_t,
 ) {
   if !parameters.is_null() {
-    (*j2k).m_cp.m_specific_param.m_dec.m_layer = (*parameters).cp_layer;
-    (*j2k).m_cp.m_specific_param.m_dec.m_reduce = (*parameters).cp_reduce;
-    (*j2k).dump_state = (*parameters).flags & 0x2u32
+    j2k.m_cp.m_specific_param.m_dec.m_layer = (*parameters).cp_layer;
+    j2k.m_cp.m_specific_param.m_dec.m_reduce = (*parameters).cp_reduce;
+    j2k.dump_state = (*parameters).flags & 0x2u32
     /* USE_JPWL */
   };
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_decoder_set_strict_mode(mut j2k: &mut opj_j2k, mut strict: OPJ_BOOL) {
-  (*j2k).m_cp.strict = strict
+  j2k.m_cp.strict = strict
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_set_threads(
@@ -6420,19 +6408,19 @@ pub(crate) unsafe fn opj_j2k_set_threads(
 ) -> OPJ_BOOL {
   /* Currently we pass the thread-pool to the tcd, so we cannot re-set it */
   /* afterwards */
-  if opj_has_thread_support() != 0 && (*j2k).m_tcd.is_null() {
-    opj_thread_pool_destroy((*j2k).m_tp);
-    (*j2k).m_tp = 0 as *mut opj_thread_pool_t;
+  if opj_has_thread_support() != 0 && j2k.m_tcd.is_null() {
+    opj_thread_pool_destroy(j2k.m_tp);
+    j2k.m_tp = std::ptr::null_mut::<opj_thread_pool_t>();
     if num_threads <= 2147483647 as OPJ_UINT32 {
-      (*j2k).m_tp = opj_thread_pool_create(num_threads as core::ffi::c_int)
+      j2k.m_tp = opj_thread_pool_create(num_threads as core::ffi::c_int)
     }
-    if (*j2k).m_tp.is_null() {
-      (*j2k).m_tp = opj_thread_pool_create(0i32);
+    if j2k.m_tp.is_null() {
+      j2k.m_tp = opj_thread_pool_create(0i32);
       return 0i32;
     }
     return 1i32;
   }
-  return 0i32;
+  0i32
 }
 unsafe fn opj_j2k_get_default_thread_count() -> core::ffi::c_int {
   let mut num_threads_str: *const core::ffi::c_char =
@@ -6459,7 +6447,7 @@ unsafe fn opj_j2k_get_default_thread_count() -> core::ffi::c_int {
   } else if num_threads > 2i32 * num_cpus {
     num_threads = 2i32 * num_cpus
   }
-  return num_threads;
+  num_threads
 }
 /* ----------------------------------------------------------------------- */
 /* J2K encoder interface                                                       */
@@ -6485,7 +6473,7 @@ pub(crate) unsafe fn opj_j2k_create_compress() -> Option<opj_j2k> {
   if l_j2k.m_tp.is_null() {
     return None;
   }
-  return Some(l_j2k);
+  Some(l_j2k)
 }
 
 unsafe fn opj_j2k_initialise_4K_poc(
@@ -6506,7 +6494,7 @@ unsafe fn opj_j2k_initialise_4K_poc(
   (*POC.offset(1)).resno1 = numres as OPJ_UINT32;
   (*POC.offset(1)).compno1 = 3 as OPJ_UINT32;
   (*POC.offset(1)).prg1 = OPJ_CPRL;
-  return 2i32;
+  2i32
 }
 unsafe fn opj_j2k_set_cinema_parameters(
   mut parameters: *mut opj_cparameters_t,
@@ -6547,7 +6535,7 @@ unsafe fn opj_j2k_set_cinema_parameters(
                       (*parameters).tcp_rates[((*parameters).tcp_numlayers -
                                                    1i32) as usize]
                           as core::ffi::c_double);
-    (*parameters).tcp_rates[0 as usize] =
+    (*parameters).tcp_rates[0_usize] =
       (*parameters).tcp_rates[((*parameters).tcp_numlayers - 1i32) as usize];
     (*parameters).tcp_numlayers = 1i32
   }
@@ -6580,8 +6568,8 @@ unsafe fn opj_j2k_set_cinema_parameters(
   (*parameters).csty |= 0x1i32;
   if (*parameters).numresolution == 1i32 {
     (*parameters).res_spec = 1i32;
-    (*parameters).prcw_init[0 as usize] = 128i32;
-    (*parameters).prch_init[0 as usize] = 128i32
+    (*parameters).prcw_init[0_usize] = 128i32;
+    (*parameters).prch_init[0_usize] = 128i32
   } else {
     (*parameters).res_spec = (*parameters).numresolution - 1i32;
     i = 0i32;
@@ -6623,7 +6611,7 @@ unsafe fn opj_j2k_set_cinema_parameters(
                       "JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\nMaximum 1041666 compressed bytes @ 24fps\n-> Specified rate exceeds this limit. Rate will be forced to 1041666 bytes.\n");
     (*parameters).max_comp_size = 1041666i32
   }
-  (*parameters).tcp_rates[0 as usize] = (*image)
+  (*parameters).tcp_rates[0_usize] = (*image)
     .numcomps
     .wrapping_mul((*(*image).comps.offset(0)).w)
     .wrapping_mul((*(*image).comps.offset(0)).h)
@@ -6698,7 +6686,7 @@ unsafe fn opj_j2k_is_cinema_compliant(
     }
     _ => {}
   }
-  return 1i32;
+  1i32
 }
 unsafe fn opj_j2k_get_imf_max_NL(
   mut parameters: *mut opj_cparameters_t,
@@ -6719,45 +6707,33 @@ unsafe fn opj_j2k_get_imf_max_NL(
     1792 => {
       if XTsiz >= 2048u32 {
         return 5i32;
-      } else {
-        if XTsiz >= 1024u32 {
-          return 4i32;
-        }
+      } else if XTsiz >= 1024u32 {
+        return 4i32;
       }
     }
     2048 => {
       if XTsiz >= 4096u32 {
         return 6i32;
-      } else {
-        if XTsiz >= 2048u32 {
-          return 5i32;
-        } else {
-          if XTsiz >= 1024u32 {
-            return 4i32;
-          }
-        }
+      } else if XTsiz >= 2048u32 {
+        return 5i32;
+      } else if XTsiz >= 1024u32 {
+        return 4i32;
       }
     }
     2304 => {
       if XTsiz >= 8192u32 {
         return 7i32;
-      } else {
-        if XTsiz >= 4096u32 {
-          return 6i32;
-        } else {
-          if XTsiz >= 2048u32 {
-            return 5i32;
-          } else {
-            if XTsiz >= 1024u32 {
-              return 4i32;
-            }
-          }
-        }
+      } else if XTsiz >= 4096u32 {
+        return 6i32;
+      } else if XTsiz >= 2048u32 {
+        return 5i32;
+      } else if XTsiz >= 1024u32 {
+        return 4i32;
       }
     }
     _ => {}
   }
-  return -(1i32);
+  -(1i32)
 }
 unsafe fn opj_j2k_set_imf_parameters(
   mut parameters: *mut opj_cparameters_t,
@@ -6796,8 +6772,7 @@ unsafe fn opj_j2k_set_imf_parameters(
         if (*image).x1 < (1u32) << ((*parameters).numresolution as OPJ_UINT32).wrapping_sub(1u32) {
           (*parameters).numresolution -= 1
         } else {
-          if !((*image).y1
-            < (1u32) << ((*parameters).numresolution as OPJ_UINT32).wrapping_sub(1u32))
+          if (*image).y1 >= (1u32) << ((*parameters).numresolution as OPJ_UINT32).wrapping_sub(1u32)
           {
             break;
           }
@@ -6811,8 +6786,8 @@ unsafe fn opj_j2k_set_imf_parameters(
     (*parameters).csty |= 0x1i32;
     if (*parameters).numresolution == 1i32 {
       (*parameters).res_spec = 1i32;
-      (*parameters).prcw_init[0 as usize] = 128i32;
-      (*parameters).prch_init[0 as usize] = 128i32
+      (*parameters).prcw_init[0_usize] = 128i32;
+      (*parameters).prch_init[0_usize] = 128i32
     } else {
       let mut i: core::ffi::c_int = 0;
       (*parameters).res_spec = (*parameters).numresolution - 1i32;
@@ -6866,8 +6841,8 @@ unsafe fn opj_j2k_is_imf_compliant(
   } else {
     /* Validate sublevel */
     assert!(
-      core::mem::size_of::<[OPJ_UINT16; 12]>() as usize
-        == ((11i32 + 1i32) as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT16>() as usize)
+      core::mem::size_of::<[OPJ_UINT16; 12]>()
+        == ((11i32 + 1i32) as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT16>())
     );
     if sublevel as core::ffi::c_int
       > tabMaxSubLevelFromMainLevel[mainlevel as usize] as core::ffi::c_int
@@ -6915,25 +6890,16 @@ unsafe fn opj_j2k_is_imf_compliant(
         ret = 0i32
       }
     } else if !((*parameters).cp_tdx as OPJ_UINT32 >= (*image).x1
-      && (*parameters).cp_tdy as OPJ_UINT32 >= (*image).y1)
-    {
-      if !((*parameters).cp_tdx == 1024i32 && (*parameters).cp_tdy == 1024i32) {
-        if !((*parameters).cp_tdx == 2048i32
+      && (*parameters).cp_tdy as OPJ_UINT32 >= (*image).y1) && !((*parameters).cp_tdx == 1024i32 && (*parameters).cp_tdy == 1024i32) && !((*parameters).cp_tdx == 2048i32
           && (*parameters).cp_tdy == 2048i32
-          && (profile as core::ffi::c_int == 0x500i32 || profile as core::ffi::c_int == 0x600i32))
-        {
-          if !((*parameters).cp_tdx == 4096i32
+          && (profile as core::ffi::c_int == 0x500i32 || profile as core::ffi::c_int == 0x600i32)) && !((*parameters).cp_tdx == 4096i32
             && (*parameters).cp_tdy == 4096i32
-            && profile as core::ffi::c_int == 0x600i32)
-          {
-            event_msg!(p_manager, EVT_WARNING,
-                                      "IMF 2K_R/4K_R/8K_R single/multiple tile profiles require tile to be greater or equal to image size,\nor to be (1024,1024), or (2048,2048) for 4K_R/8K_R or (4096,4096) for 8K_R.\n-> %d,%d is non conformant\n-> Non-IMF codestream will be generated\n",
-                                      (*parameters).cp_tdx,
-                                      (*parameters).cp_tdy);
-            ret = 0i32
-          }
-        }
-      }
+            && profile as core::ffi::c_int == 0x600i32) {
+      event_msg!(p_manager, EVT_WARNING,
+                                "IMF 2K_R/4K_R/8K_R single/multiple tile profiles require tile to be greater or equal to image size,\nor to be (1024,1024), or (2048,2048) for 4K_R/8K_R or (4096,4096) for 8K_R.\n-> %d,%d is non conformant\n-> Non-IMF codestream will be generated\n",
+                                (*parameters).cp_tdx,
+                                (*parameters).cp_tdy);
+      ret = 0i32
     }
   }
   /* Bitdepth */
@@ -7101,21 +7067,21 @@ unsafe fn opj_j2k_is_imf_compliant(
   /* Decomposition levels */
   match profile as core::ffi::c_int {
     1024 => {
-      if !(NL >= 1i32 && NL <= 5i32) {
+      if !(1i32..=5i32).contains(&NL) {
         event_msg!(p_manager, EVT_WARNING,
                               "IMF 2K profile requires 1 <= NL <= 5:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n", NL);
         ret = 0i32
       }
     }
     1280 => {
-      if !(NL >= 1i32 && NL <= 6i32) {
+      if !(1i32..=6i32).contains(&NL) {
         event_msg!(p_manager, EVT_WARNING,
                               "IMF 4K profile requires 1 <= NL <= 6:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n", NL);
         ret = 0i32
       }
     }
     1536 => {
-      if !(NL >= 1i32 && NL <= 7i32) {
+      if !(1i32..=7i32).contains(&NL) {
         event_msg!(p_manager, EVT_WARNING,
                               "IMF 8K profile requires 1 <= NL <= 7:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n", NL);
         ret = 0i32
@@ -7123,82 +7089,76 @@ unsafe fn opj_j2k_is_imf_compliant(
     }
     1792 => {
       if XTsiz >= 2048u32 {
-        if !(NL >= 1i32 && NL <= 5i32) {
+        if !(1i32..=5i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
                                   "IMF 2K_R profile requires 1 <= NL <= 5 for XTsiz >= 2048:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
-      } else if XTsiz >= 1024u32 {
-        if !(NL >= 1i32 && NL <= 4i32) {
-          event_msg!(p_manager, EVT_WARNING,
-                                  "IMF 2K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
-                                  NL);
-          ret = 0i32
-        }
+      } else if XTsiz >= 1024u32 && !(1i32..=4i32).contains(&NL) {
+        event_msg!(p_manager, EVT_WARNING,
+                                "IMF 2K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                NL);
+        ret = 0i32
       }
     }
     2048 => {
       if XTsiz >= 4096u32 {
-        if !(NL >= 1i32 && NL <= 6i32) {
+        if !(1i32..=6i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
                                   "IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz >= 4096:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
       } else if XTsiz >= 2048u32 {
-        if !(NL >= 1i32 && NL <= 5i32) {
+        if !(1i32..=5i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
                                   "IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
-      } else if XTsiz >= 1024u32 {
-        if !(NL >= 1i32 && NL <= 4i32) {
-          event_msg!(p_manager, EVT_WARNING,
-                                  "IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
-                                  NL);
-          ret = 0i32
-        }
+      } else if XTsiz >= 1024u32 && !(1i32..=4i32).contains(&NL) {
+        event_msg!(p_manager, EVT_WARNING,
+                                "IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                NL);
+        ret = 0i32
       }
     }
     2304 => {
       if XTsiz >= 8192u32 {
-        if !(NL >= 1i32 && NL <= 7i32) {
+        if !(1i32..=7i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
                                   "IMF 4K_R profile requires 1 <= NL <= 7 for XTsiz >= 8192:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
       } else if XTsiz >= 4096u32 {
-        if !(NL >= 1i32 && NL <= 6i32) {
+        if !(1i32..=6i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
                                   "IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz in [4096,8192[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
       } else if XTsiz >= 2048u32 {
-        if !(NL >= 1i32 && NL <= 5i32) {
+        if !(1i32..=5i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
                                   "IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
                                   NL);
           ret = 0i32
         }
-      } else if XTsiz >= 1024u32 {
-        if !(NL >= 1i32 && NL <= 4i32) {
-          event_msg!(p_manager, EVT_WARNING,
-                                  "IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
-                                  NL);
-          ret = 0i32
-        }
+      } else if XTsiz >= 1024u32 && !(1i32..=4i32).contains(&NL) {
+        event_msg!(p_manager, EVT_WARNING,
+                                "IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                NL);
+        ret = 0i32
       }
     }
     _ => {}
   }
   if (*parameters).numresolution == 1i32 {
     if (*parameters).res_spec != 1i32
-      || (*parameters).prcw_init[0 as usize] != 128i32
-      || (*parameters).prch_init[0 as usize] != 128i32
+      || (*parameters).prcw_init[0_usize] != 128i32
+      || (*parameters).prch_init[0_usize] != 128i32
     {
       event_msg!(p_manager, EVT_WARNING,
                           "IMF profiles require PPx = PPy = 7 for NLLL band, else 8.\n-> Supplied values are different from that.\n-> Non-IMF codestream will be generated\n");
@@ -7218,7 +7178,7 @@ unsafe fn opj_j2k_is_imf_compliant(
       i_0 += 1
     }
   }
-  return ret;
+  ret
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_setup_encoder(
@@ -7231,7 +7191,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
   let mut j: OPJ_UINT32 = 0;
   let mut tileno: OPJ_UINT32 = 0;
   let mut numpocs_tile: OPJ_UINT32 = 0;
-  let mut cp = 0 as *mut opj_cp_t;
+  let mut cp = std::ptr::null_mut::<opj_cp_t>();
   let mut cblkw: OPJ_UINT32 = 0;
   let mut cblkh: OPJ_UINT32 = 0;
   if parameters.is_null() || image.is_null() {
@@ -7324,9 +7284,9 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
     }
   }
 
-  (*p_j2k).m_specific_param.m_encoder.m_nb_comps = (*image).numcomps;
+  p_j2k.m_specific_param.m_encoder.m_nb_comps = (*image).numcomps;
   /* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
-  cp = &mut (*p_j2k).m_cp;
+  cp = &mut p_j2k.m_cp;
   /* set default values for cp */
   (*cp).tw = 1 as OPJ_UINT32;
   (*cp).th = 1 as OPJ_UINT32;
@@ -7379,7 +7339,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
   if (*parameters).tcp_numlayers == 0i32 {
     (*parameters).tcp_numlayers = 1i32;
     (*parameters).cp_disto_alloc = 1i32;
-    (*parameters).tcp_rates[0 as usize] = 0 as core::ffi::c_float
+    (*parameters).tcp_rates[0_usize] = 0 as core::ffi::c_float
   }
   if (*parameters).cp_disto_alloc != 0 {
     /* Emit warnings if tcp_rates are not decreasing */
@@ -7504,9 +7464,9 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
       && (*parameters).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
       && (*parameters).max_cs_size > 0i32
       && (*parameters).tcp_numlayers == 1i32
-      && (*parameters).tcp_rates[0 as usize] == 0 as core::ffi::c_float
+      && (*parameters).tcp_rates[0_usize] == 0 as core::ffi::c_float
     {
-      (*parameters).tcp_rates[0 as usize] = (*image)
+      (*parameters).tcp_rates[0_usize] = (*image)
         .numcomps
         .wrapping_mul((*(*image).comps.offset(0)).w)
         .wrapping_mul((*(*image).comps.offset(0)).h)
@@ -7543,7 +7503,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
     || (*parameters).rsiz as core::ffi::c_int >= 0x400i32
       && (*parameters).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
   {
-    (*p_j2k).m_specific_param.m_encoder.m_TLM = 1i32
+    p_j2k.m_specific_param.m_encoder.m_TLM = 1i32
   }
   /* Manage profiles and applications and set RSIZ */
   /* set cinema parameters if required */
@@ -7589,7 +7549,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
       (*parameters).rsiz = 0 as OPJ_UINT16
     }
   } else if (*parameters).rsiz as core::ffi::c_int & 0x8000i32 != 0 {
-    if (*parameters).rsiz as core::ffi::c_int == 0x8000i32 | 0i32 {
+    if (*parameters).rsiz as core::ffi::c_int == 0x8000i32 {
       event_msg!(p_manager, EVT_WARNING,
                           "JPEG 2000 Part-2 profile defined\nbut no Part-2 extension enabled.\nProfile set to NONE.\n");
       (*parameters).rsiz = 0 as OPJ_UINT16
@@ -7623,7 +7583,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
     let mut array_size = ((*parameters).tcp_numlayers as size_t)
       .wrapping_mul((*parameters).numresolution as size_t)
       .wrapping_mul(3)
-      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize);
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>());
     (*cp).m_specific_param.m_enc.m_matrice = opj_malloc(array_size) as *mut OPJ_INT32;
     if (*cp).m_specific_param.m_enc.m_matrice.is_null() {
       event_msg!(
@@ -7711,7 +7671,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
   /* ---------------------------- */
   (*cp).tcps = opj_calloc(
     (*cp).tw.wrapping_mul((*cp).th) as size_t,
-    core::mem::size_of::<opj_tcp_t>() as usize,
+    core::mem::size_of::<opj_tcp_t>(),
   ) as *mut opj_tcp_t;
   if (*cp).tcps.is_null() {
     event_msg!(
@@ -7799,7 +7759,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
     }
     (*tcp).tccps = opj_calloc(
       (*image).numcomps as size_t,
-      core::mem::size_of::<opj_tccp_t>() as usize,
+      core::mem::size_of::<opj_tccp_t>(),
     ) as *mut opj_tccp_t;
     if (*tcp).tccps.is_null() {
       event_msg!(
@@ -7828,7 +7788,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
       (*tcp).m_mct_coding_matrix = opj_malloc(lMctSize as size_t) as *mut OPJ_FLOAT32;
       if (*tcp).m_mct_coding_matrix.is_null() {
         opj_free(lTmpBuf as *mut core::ffi::c_void);
-        lTmpBuf = 0 as *mut OPJ_FLOAT32;
+        lTmpBuf = std::ptr::null_mut::<OPJ_FLOAT32>();
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -7849,7 +7809,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
       (*tcp).m_mct_decoding_matrix = opj_malloc(lMctSize as size_t) as *mut OPJ_FLOAT32;
       if (*tcp).m_mct_decoding_matrix.is_null() {
         opj_free(lTmpBuf as *mut core::ffi::c_void);
-        lTmpBuf = 0 as *mut OPJ_FLOAT32;
+        lTmpBuf = std::ptr::null_mut::<OPJ_FLOAT32>();
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -7857,16 +7817,16 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
         );
         return 0i32;
       }
-      if opj_matrix_inversion_f(
+      if !opj_matrix_inversion_f(
         unsafe { std::slice::from_raw_parts_mut(lTmpBuf as *mut f32, lMctLen as usize) },
         unsafe {
           std::slice::from_raw_parts_mut((*tcp).m_mct_decoding_matrix as *mut f32, lMctLen as usize)
         },
         numcomps as usize,
-      ) == false
+      )
       {
         opj_free(lTmpBuf as *mut core::ffi::c_void);
-        lTmpBuf = 0 as *mut OPJ_FLOAT32;
+        lTmpBuf = std::ptr::null_mut::<OPJ_FLOAT32>();
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -7875,11 +7835,11 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
         return 0i32;
       }
       (*tcp).mct_norms = opj_malloc(
-        ((*image).numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT64>() as usize),
+        ((*image).numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT64>()),
       ) as *mut OPJ_FLOAT64;
       if (*tcp).mct_norms.is_null() {
         opj_free(lTmpBuf as *mut core::ffi::c_void);
-        lTmpBuf = 0 as *mut OPJ_FLOAT32;
+        lTmpBuf = std::ptr::null_mut::<OPJ_FLOAT32>();
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -7981,9 +7941,9 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
             /*end for*/
             assert!(res_spec > 0i32);
             size_prcw =
-              (*parameters).prcw_init[(res_spec - 1i32) as usize] >> p - (res_spec - 1i32);
+              (*parameters).prcw_init[(res_spec - 1i32) as usize] >> (p - (res_spec - 1i32));
             size_prch =
-              (*parameters).prch_init[(res_spec - 1i32) as usize] >> p - (res_spec - 1i32);
+              (*parameters).prch_init[(res_spec - 1i32) as usize] >> (p - (res_spec - 1i32));
             if size_prcw < 1i32 {
               (*tccp_1).prcw[it_res as usize] = 1 as OPJ_UINT32
             } else {
@@ -8014,9 +7974,9 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
   }
   if !(*parameters).mct_data.is_null() {
     opj_free((*parameters).mct_data);
-    (*parameters).mct_data = 0 as *mut core::ffi::c_void
+    (*parameters).mct_data = std::ptr::null_mut::<core::ffi::c_void>()
   }
-  return 1i32;
+  1i32
 }
 /* *
 Add main header marker information
@@ -8034,17 +7994,17 @@ unsafe fn opj_j2k_add_mhmarker(
   assert!(!cstr_index.is_null());
   /* expand the list? */
   if (*cstr_index).marknum.wrapping_add(1u32) > (*cstr_index).maxmarknum {
-    let mut new_marker = 0 as *mut opj_marker_info_t;
+    let mut new_marker = std::ptr::null_mut::<opj_marker_info_t>();
     (*cstr_index).maxmarknum =
       (100 as core::ffi::c_float + (*cstr_index).maxmarknum as OPJ_FLOAT32) as OPJ_UINT32;
     new_marker = opj_realloc(
       (*cstr_index).marker as *mut core::ffi::c_void,
       ((*cstr_index).maxmarknum as usize)
-        .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
+        .wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
     ) as *mut opj_marker_info_t;
     if new_marker.is_null() {
       opj_free((*cstr_index).marker as *mut core::ffi::c_void);
-      (*cstr_index).marker = 0 as *mut opj_marker_info_t;
+      (*cstr_index).marker = std::ptr::null_mut::<opj_marker_info_t>();
       (*cstr_index).maxmarknum = 0 as OPJ_UINT32;
       (*cstr_index).marknum = 0 as OPJ_UINT32;
       /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n"); */
@@ -8058,7 +8018,7 @@ unsafe fn opj_j2k_add_mhmarker(
   (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).pos = pos as OPJ_OFF_T;
   (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).len = len as OPJ_INT32;
   (*cstr_index).marknum = (*cstr_index).marknum.wrapping_add(1);
-  return 1i32;
+  1i32
 }
 /* *
 Add tile header marker information
@@ -8083,27 +8043,27 @@ unsafe fn opj_j2k_add_tlmarker(
     .wrapping_add(1u32)
     > (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum
   {
-    let mut new_marker = 0 as *mut opj_marker_info_t;
+    let mut new_marker = std::ptr::null_mut::<opj_marker_info_t>();
     (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum = (100i32 as core::ffi::c_float
       + (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum as OPJ_FLOAT32)
       as OPJ_UINT32;
     new_marker = opj_realloc(
       (*(*cstr_index).tile_index.offset(tileno as isize)).marker as *mut core::ffi::c_void,
       ((*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum as usize)
-        .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
+        .wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
     ) as *mut opj_marker_info_t;
     if new_marker.is_null() {
       opj_free(
         (*(*cstr_index).tile_index.offset(tileno as isize)).marker as *mut core::ffi::c_void,
       );
-      let ref mut fresh23 = (*(*cstr_index).tile_index.offset(tileno as isize)).marker;
-      *fresh23 = 0 as *mut opj_marker_info_t;
+      let fresh23 = &mut (*(*cstr_index).tile_index.offset(tileno as isize)).marker;
+      *fresh23 = std::ptr::null_mut::<opj_marker_info_t>();
       (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum = 0 as OPJ_UINT32;
       (*(*cstr_index).tile_index.offset(tileno as isize)).marknum = 0 as OPJ_UINT32;
       /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n"); */
       return 0i32;
     }
-    let ref mut fresh24 = (*(*cstr_index).tile_index.offset(tileno as isize)).marker;
+    let fresh24 = &mut (*(*cstr_index).tile_index.offset(tileno as isize)).marker;
     *fresh24 = new_marker
   }
   /* add the marker */
@@ -8119,7 +8079,7 @@ unsafe fn opj_j2k_add_tlmarker(
     .marker
     .offset((*(*cstr_index).tile_index.offset(tileno as isize)).marknum as isize))
   .len = len as OPJ_INT32;
-  let ref mut fresh25 = (*(*cstr_index).tile_index.offset(tileno as isize)).marknum;
+  let fresh25 = &mut (*(*cstr_index).tile_index.offset(tileno as isize)).marknum;
   *fresh25 = (*fresh25).wrapping_add(1);
   if marker == J2KMarker::SOT {
     let mut l_current_tile_part = (*(*cstr_index).tile_index.offset(tileno as isize)).current_tpsno;
@@ -8133,7 +8093,7 @@ unsafe fn opj_j2k_add_tlmarker(
       .start_pos = pos
     }
   }
-  return 1i32;
+  1i32
 }
 /*
  * -----------------------------------------------------------------------
@@ -8146,7 +8106,7 @@ pub(crate) unsafe fn opj_j2k_end_decompress(
   mut _p_stream: *mut opj_stream_private_t,
   mut _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_read_header(
@@ -8159,32 +8119,32 @@ pub(crate) unsafe fn opj_j2k_read_header(
 
   assert!(!p_stream.is_null());
   /* create an empty image header */
-  (*p_j2k).m_private_image = opj_image_create0();
-  if (*p_j2k).m_private_image.is_null() {
+  p_j2k.m_private_image = opj_image_create0();
+  if p_j2k.m_private_image.is_null() {
     return 0i32;
   }
   /* customization of the validation */
   if opj_j2k_setup_decoding_validation(p_j2k, p_manager) == 0 {
-    opj_image_destroy((*p_j2k).m_private_image);
-    (*p_j2k).m_private_image = 0 as *mut opj_image_t;
+    opj_image_destroy(p_j2k.m_private_image);
+    p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
     return 0i32;
   }
   /* validation of the parameters codec */
-  if opj_j2k_exec(p_j2k, (*p_j2k).m_validation_list, p_stream, p_manager) == 0 {
-    opj_image_destroy((*p_j2k).m_private_image);
-    (*p_j2k).m_private_image = 0 as *mut opj_image_t;
+  if opj_j2k_exec(p_j2k, p_j2k.m_validation_list, p_stream, p_manager) == 0 {
+    opj_image_destroy(p_j2k.m_private_image);
+    p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
     return 0i32;
   }
   /* customization of the encoding */
   if opj_j2k_setup_header_reading(p_j2k, p_manager) == 0 {
-    opj_image_destroy((*p_j2k).m_private_image);
-    (*p_j2k).m_private_image = 0 as *mut opj_image_t;
+    opj_image_destroy(p_j2k.m_private_image);
+    p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
     return 0i32;
   }
   /* read header */
-  if opj_j2k_exec(p_j2k, (*p_j2k).m_procedure_list, p_stream, p_manager) == 0 {
-    opj_image_destroy((*p_j2k).m_private_image);
-    (*p_j2k).m_private_image = 0 as *mut opj_image_t;
+  if opj_j2k_exec(p_j2k, p_j2k.m_procedure_list, p_stream, p_manager) == 0 {
+    opj_image_destroy(p_j2k.m_private_image);
+    p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
     return 0i32;
   }
   *p_image = opj_image_create0();
@@ -8192,14 +8152,14 @@ pub(crate) unsafe fn opj_j2k_read_header(
     return 0i32;
   }
   /* Copy codestream image information to the output image */
-  opj_copy_image_header((*p_j2k).m_private_image, *p_image);
+  opj_copy_image_header(p_j2k.m_private_image, *p_image);
   /*Allocate and initialize some elements of codestrem index*/
   if opj_j2k_allocate_tile_element_cstr_index(p_j2k) == 0 {
     opj_image_destroy(*p_image);
-    *p_image = 0 as *mut opj_image_t;
+    *p_image = std::ptr::null_mut::<opj_image_t>();
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -8257,7 +8217,7 @@ unsafe fn opj_j2k_setup_header_reading(
   /* preconditions*/
 
   if opj_procedure_list_add_procedure(
-    (*p_j2k).m_procedure_list,
+    p_j2k.m_procedure_list,
     opj_j2k_read_header_procedure,
     p_manager,
   ) == 0
@@ -8266,14 +8226,14 @@ unsafe fn opj_j2k_setup_header_reading(
   }
   /* DEVELOPER CORNER, add your custom procedures */
   if opj_procedure_list_add_procedure(
-    (*p_j2k).m_procedure_list,
+    p_j2k.m_procedure_list,
     opj_j2k_copy_default_tcp_and_create_tcd,
     p_manager,
   ) == 0
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
@@ -8285,13 +8245,13 @@ unsafe fn opj_j2k_setup_decoding_validation(
 ) -> OPJ_BOOL {
   /* preconditions*/
 
-  if opj_procedure_list_add_procedure((*p_j2k).m_validation_list, opj_j2k_build_decoder, p_manager)
+  if opj_procedure_list_add_procedure(p_j2k.m_validation_list, opj_j2k_build_decoder, p_manager)
     == 0
   {
     return 0i32;
   }
   if opj_procedure_list_add_procedure(
-    (*p_j2k).m_validation_list,
+    p_j2k.m_validation_list,
     opj_j2k_decoding_validation,
     p_manager,
   ) == 0
@@ -8299,7 +8259,7 @@ unsafe fn opj_j2k_setup_decoding_validation(
     return 0i32;
   }
   /* DEVELOPER CORNER, add your custom validation procedure */
-  return 1i32;
+  1i32
 }
 /* *
  * The mct encoding validation procedure.
@@ -8321,16 +8281,16 @@ unsafe fn opj_j2k_mct_validation(
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  if (*p_j2k).m_cp.rsiz as core::ffi::c_int & 0x8200i32 == 0x8200i32 {
-    let mut l_nb_tiles = (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw);
-    let mut l_tcp = (*p_j2k).m_cp.tcps;
+  if p_j2k.m_cp.rsiz as core::ffi::c_int & 0x8200i32 == 0x8200i32 {
+    let mut l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
+    let mut l_tcp = p_j2k.m_cp.tcps;
     i = 0 as OPJ_UINT32;
     while i < l_nb_tiles {
       if (*l_tcp).mct == 2u32 {
         let mut l_tccp = (*l_tcp).tccps;
-        l_is_valid &= ((*l_tcp).m_mct_coding_matrix != 0 as *mut OPJ_FLOAT32) as core::ffi::c_int;
+        l_is_valid &= ((*l_tcp).m_mct_coding_matrix != std::ptr::null_mut::<OPJ_FLOAT32>()) as core::ffi::c_int;
         j = 0 as OPJ_UINT32;
-        while j < (*(*p_j2k).m_private_image).numcomps {
+        while j < (*p_j2k.m_private_image).numcomps {
           l_is_valid &= ((*l_tccp).qmfbid & 1u32 == 0) as core::ffi::c_int;
           l_tccp = l_tccp.offset(1);
           j += 1;
@@ -8340,7 +8300,7 @@ unsafe fn opj_j2k_mct_validation(
       i += 1;
     }
   }
-  return l_is_valid;
+  l_is_valid
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
@@ -8349,14 +8309,14 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
   let mut l_indix = 1 as OPJ_UINT32;
-  let mut l_mct_deco_data = 0 as *mut opj_mct_data_t;
-  let mut l_mct_offset_data = 0 as *mut opj_mct_data_t;
-  let mut l_mcc_data = 0 as *mut opj_simple_mcc_decorrelation_data_t;
+  let mut l_mct_deco_data = std::ptr::null_mut::<opj_mct_data_t>();
+  let mut l_mct_offset_data = std::ptr::null_mut::<opj_mct_data_t>();
+  let mut l_mcc_data = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
   let mut l_mct_size: OPJ_UINT32 = 0;
   let mut l_nb_elem: OPJ_UINT32 = 0;
-  let mut l_data = 0 as *mut OPJ_FLOAT32;
-  let mut l_current_data = 0 as *mut OPJ_FLOAT32;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
+  let mut l_data = std::ptr::null_mut::<OPJ_FLOAT32>();
+  let mut l_current_data = std::ptr::null_mut::<OPJ_FLOAT32>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
   /* preconditions */
   assert!(!p_tcp.is_null());
   if (*p_tcp).mct != 2u32 {
@@ -8364,17 +8324,17 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
   }
   if !(*p_tcp).m_mct_decoding_matrix.is_null() {
     if (*p_tcp).m_nb_mct_records == (*p_tcp).m_nb_max_mct_records {
-      let mut new_mct_records = 0 as *mut opj_mct_data_t;
+      let mut new_mct_records = std::ptr::null_mut::<opj_mct_data_t>();
       (*p_tcp).m_nb_max_mct_records =
         ((*p_tcp).m_nb_max_mct_records as core::ffi::c_uint).wrapping_add(10u32) as OPJ_UINT32;
       new_mct_records = opj_realloc(
         (*p_tcp).m_mct_records as *mut core::ffi::c_void,
         ((*p_tcp).m_nb_max_mct_records as usize)
-          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as usize),
+          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
       ) as *mut opj_mct_data_t;
       if new_mct_records.is_null() {
         opj_free((*p_tcp).m_mct_records as *mut core::ffi::c_void);
-        (*p_tcp).m_mct_records = 0 as *mut opj_mct_data_t;
+        (*p_tcp).m_mct_records = std::ptr::null_mut::<opj_mct_data_t>();
         (*p_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
         (*p_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
         /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
@@ -8390,7 +8350,7 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
         ((*p_tcp)
           .m_nb_max_mct_records
           .wrapping_sub((*p_tcp).m_nb_mct_records) as usize)
-          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as usize),
+          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
       );
     }
     l_mct_deco_data = (*p_tcp)
@@ -8398,7 +8358,7 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
       .offset((*p_tcp).m_nb_mct_records as isize);
     if !(*l_mct_deco_data).m_data.is_null() {
       opj_free((*l_mct_deco_data).m_data as *mut core::ffi::c_void);
-      (*l_mct_deco_data).m_data = 0 as *mut OPJ_BYTE
+      (*l_mct_deco_data).m_data = std::ptr::null_mut::<OPJ_BYTE>()
     }
     let fresh26 = l_indix;
     l_indix = l_indix.wrapping_add(1);
@@ -8420,17 +8380,17 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
     (*p_tcp).m_nb_mct_records = (*p_tcp).m_nb_mct_records.wrapping_add(1)
   }
   if (*p_tcp).m_nb_mct_records == (*p_tcp).m_nb_max_mct_records {
-    let mut new_mct_records_0 = 0 as *mut opj_mct_data_t;
+    let mut new_mct_records_0 = std::ptr::null_mut::<opj_mct_data_t>();
     (*p_tcp).m_nb_max_mct_records =
       ((*p_tcp).m_nb_max_mct_records as core::ffi::c_uint).wrapping_add(10u32) as OPJ_UINT32;
     new_mct_records_0 = opj_realloc(
       (*p_tcp).m_mct_records as *mut core::ffi::c_void,
       ((*p_tcp).m_nb_max_mct_records as usize)
-        .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as usize),
+        .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
     ) as *mut opj_mct_data_t;
     if new_mct_records_0.is_null() {
       opj_free((*p_tcp).m_mct_records as *mut core::ffi::c_void);
-      (*p_tcp).m_mct_records = 0 as *mut opj_mct_data_t;
+      (*p_tcp).m_mct_records = std::ptr::null_mut::<opj_mct_data_t>();
       (*p_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
       (*p_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
       /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
@@ -8446,7 +8406,7 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
       ((*p_tcp)
         .m_nb_max_mct_records
         .wrapping_sub((*p_tcp).m_nb_mct_records) as usize)
-        .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as usize),
+        .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
     );
     if !l_mct_deco_data.is_null() {
       l_mct_deco_data = l_mct_offset_data.offset(-1)
@@ -8457,7 +8417,7 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
     .offset((*p_tcp).m_nb_mct_records as isize);
   if !(*l_mct_offset_data).m_data.is_null() {
     opj_free((*l_mct_offset_data).m_data as *mut core::ffi::c_void);
-    (*l_mct_offset_data).m_data = 0 as *mut OPJ_BYTE
+    (*l_mct_offset_data).m_data = std::ptr::null_mut::<OPJ_BYTE>()
   }
   let fresh27 = l_indix;
   l_indix = l_indix.wrapping_add(1);
@@ -8471,11 +8431,11 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
     return 0i32;
   }
   l_data =
-    opj_malloc((l_nb_elem as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize))
+    opj_malloc((l_nb_elem as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()))
       as *mut OPJ_FLOAT32;
   if l_data.is_null() {
     opj_free((*l_mct_offset_data).m_data as *mut core::ffi::c_void);
-    (*l_mct_offset_data).m_data = 0 as *mut OPJ_BYTE;
+    (*l_mct_offset_data).m_data = std::ptr::null_mut::<OPJ_BYTE>();
     return 0i32;
   }
   l_tccp = (*p_tcp).tccps;
@@ -8497,17 +8457,17 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
   (*l_mct_offset_data).m_data_size = l_mct_size;
   (*p_tcp).m_nb_mct_records = (*p_tcp).m_nb_mct_records.wrapping_add(1);
   if (*p_tcp).m_nb_mcc_records == (*p_tcp).m_nb_max_mcc_records {
-    let mut new_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
+    let mut new_mcc_records = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
     (*p_tcp).m_nb_max_mcc_records =
       ((*p_tcp).m_nb_max_mcc_records as core::ffi::c_uint).wrapping_add(10u32) as OPJ_UINT32;
     new_mcc_records = opj_realloc(
       (*p_tcp).m_mcc_records as *mut core::ffi::c_void,
       ((*p_tcp).m_nb_max_mcc_records as usize)
-        .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as usize),
+        .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>()),
     ) as *mut opj_simple_mcc_decorrelation_data_t;
     if new_mcc_records.is_null() {
       opj_free((*p_tcp).m_mcc_records as *mut core::ffi::c_void);
-      (*p_tcp).m_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
+      (*p_tcp).m_mcc_records = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
       (*p_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
       (*p_tcp).m_nb_mcc_records = 0 as OPJ_UINT32;
       /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
@@ -8523,7 +8483,7 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
       ((*p_tcp)
         .m_nb_max_mcc_records
         .wrapping_sub((*p_tcp).m_nb_mcc_records) as usize)
-        .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as usize),
+        .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>()),
     );
   }
   l_mcc_data = (*p_tcp)
@@ -8537,7 +8497,7 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
   (*l_mcc_data).m_index = fresh29;
   (*l_mcc_data).m_offset_array = l_mct_offset_data;
   (*p_tcp).m_nb_mcc_records = (*p_tcp).m_nb_mcc_records.wrapping_add(1);
-  return 1i32;
+  1i32
 }
 /* *
  * Builds the tcd decoder to use to decode tile.
@@ -8549,7 +8509,7 @@ unsafe fn opj_j2k_build_decoder(
 ) -> OPJ_BOOL {
   /* add here initialization of cp
   copy paste of setup_decoder */
-  return 1i32;
+  1i32
 }
 /* *
  * Builds the tcd encoder to use to encode tile.
@@ -8561,7 +8521,7 @@ unsafe fn opj_j2k_build_encoder(
 ) -> OPJ_BOOL {
   /* add here initialization of cp
   copy paste of setup_encoder */
-  return 1i32;
+  1i32
 }
 /* *
  * The default encoding validation procedure without any extension.
@@ -8583,17 +8543,17 @@ unsafe fn opj_j2k_encoding_validation(
   assert!(!p_stream.is_null());
   /* STATE checking */
   /* make sure the state is at 0 */
-  l_is_valid &= ((*p_j2k).m_specific_param.m_decoder.m_state == J2KState::NONE) as core::ffi::c_int;
+  l_is_valid &= (p_j2k.m_specific_param.m_decoder.m_state == J2KState::NONE) as core::ffi::c_int;
   /* POINTER validation */
   /* make sure a p_j2k codec is present */
-  l_is_valid &= (!(*p_j2k).m_procedure_list.is_null()) as core::ffi::c_int;
+  l_is_valid &= (!p_j2k.m_procedure_list.is_null()) as core::ffi::c_int;
   /* make sure a validation list is present */
-  l_is_valid &= (!(*p_j2k).m_validation_list.is_null()) as core::ffi::c_int;
+  l_is_valid &= (!p_j2k.m_validation_list.is_null()) as core::ffi::c_int;
   /* ISO 15444-1:2004 states between 1 & 33 (0 -> 32) */
   /* 33 (32) would always fail the check below (if a cast to 64bits was done) */
   /* FIXME Shall we change OPJ_J2K_MAXRLVLS to 32 ? */
-  if (*(*(*p_j2k).m_cp.tcps).tccps).numresolutions <= 0u32
-    || (*(*(*p_j2k).m_cp.tcps).tccps).numresolutions > 32u32
+  if (*(*p_j2k.m_cp.tcps).tccps).numresolutions <= 0u32
+    || (*(*p_j2k.m_cp.tcps).tccps).numresolutions > 32u32
   {
     event_msg!(
       p_manager,
@@ -8602,9 +8562,9 @@ unsafe fn opj_j2k_encoding_validation(
     );
     return 0i32;
   }
-  if (*p_j2k).m_cp.tdx
+  if p_j2k.m_cp.tdx
     < ((1i32)
-      << (*(*(*p_j2k).m_cp.tcps).tccps)
+      << (*(*p_j2k.m_cp.tcps).tccps)
         .numresolutions
         .wrapping_sub(1u32)) as OPJ_UINT32
   {
@@ -8615,9 +8575,9 @@ unsafe fn opj_j2k_encoding_validation(
     );
     return 0i32;
   }
-  if (*p_j2k).m_cp.tdy
+  if p_j2k.m_cp.tdy
     < ((1i32)
-      << (*(*(*p_j2k).m_cp.tcps).tccps)
+      << (*(*p_j2k.m_cp.tcps).tccps)
         .numresolutions
         .wrapping_sub(1u32)) as OPJ_UINT32
   {
@@ -8629,7 +8589,7 @@ unsafe fn opj_j2k_encoding_validation(
     return 0i32;
   }
   /* PARAMETER VALIDATION */
-  return l_is_valid;
+  l_is_valid
 }
 /* *
  * The default decoding validation procedure without any extension.
@@ -8651,15 +8611,15 @@ unsafe fn opj_j2k_decoding_validation(
   assert!(!p_stream.is_null());
   /* STATE checking */
   /* make sure the state is at 0 */
-  l_is_valid &= ((*p_j2k).m_specific_param.m_decoder.m_state == J2KState::NONE) as core::ffi::c_int;
+  l_is_valid &= (p_j2k.m_specific_param.m_decoder.m_state == J2KState::NONE) as core::ffi::c_int;
   /* POINTER validation */
   /* make sure a p_j2k codec is present */
   /* make sure a procedure list is present */
-  l_is_valid &= (!(*p_j2k).m_procedure_list.is_null()) as core::ffi::c_int;
+  l_is_valid &= (!p_j2k.m_procedure_list.is_null()) as core::ffi::c_int;
   /* make sure a validation list is present */
-  l_is_valid &= (!(*p_j2k).m_validation_list.is_null()) as core::ffi::c_int;
+  l_is_valid &= (!p_j2k.m_validation_list.is_null()) as core::ffi::c_int;
   /* PARAMETER VALIDATION */
-  return l_is_valid;
+  l_is_valid
 }
 /* *
  * The read header procedure.
@@ -8677,7 +8637,7 @@ unsafe fn opj_j2k_read_header_procedure(
 
   assert!(!p_stream.is_null());
   /*  We enter in the main header */
-  (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::MHSOC;
+  p_j2k.m_specific_param.m_decoder.m_state = J2KState::MHSOC;
   /* Try to read the SOC marker, the codestream must begin with SOC marker */
   if opj_j2k_read_soc(p_j2k, p_stream, p_manager) == 0 {
     event_msg!(p_manager, EVT_ERROR, "Expected a SOC marker \n",);
@@ -8686,7 +8646,7 @@ unsafe fn opj_j2k_read_header_procedure(
   /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
   if opj_stream_read_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_decoder.m_header_data,
+    p_j2k.m_specific_param.m_decoder.m_header_data,
     2 as OPJ_SIZE_T,
     p_manager,
   ) != 2
@@ -8696,7 +8656,7 @@ unsafe fn opj_j2k_read_header_procedure(
   }
   /* Read 2 bytes as the new marker ID */
   let mut l_current_marker =
-    J2KMarker::from_buffer((*p_j2k).m_specific_param.m_decoder.m_header_data);
+    J2KMarker::from_buffer(p_j2k.m_specific_param.m_decoder.m_header_data);
   /* Try to read until the SOT is detected */
   while l_current_marker != J2KMarker::SOT {
     /* Check if the current marker ID is valid */
@@ -8739,7 +8699,7 @@ unsafe fn opj_j2k_read_header_procedure(
       l_has_qcd = 1i32
     }
     /* Check if the marker is known and if it is the right place to find it */
-    if (*p_j2k).m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
+    if p_j2k.m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -8750,7 +8710,7 @@ unsafe fn opj_j2k_read_header_procedure(
     /* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
     if opj_stream_read_data(
       p_stream,
-      (*p_j2k).m_specific_param.m_decoder.m_header_data,
+      p_j2k.m_specific_param.m_decoder.m_header_data,
       2 as OPJ_SIZE_T,
       p_manager,
     ) != 2
@@ -8760,7 +8720,7 @@ unsafe fn opj_j2k_read_header_procedure(
     }
     /* read 2 bytes as the marker size */
     opj_read_bytes_LE(
-      (*p_j2k).m_specific_param.m_decoder.m_header_data,
+      p_j2k.m_specific_param.m_decoder.m_header_data,
       &mut l_marker_size,
       2 as OPJ_UINT32,
     ); /* Subtract the size of the marker ID already read */
@@ -8770,25 +8730,25 @@ unsafe fn opj_j2k_read_header_procedure(
     }
     l_marker_size = (l_marker_size as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32;
     /* Check if the marker size is compatible with the header data size */
-    if l_marker_size > (*p_j2k).m_specific_param.m_decoder.m_header_data_size {
+    if l_marker_size > p_j2k.m_specific_param.m_decoder.m_header_data_size {
       let mut new_header_data = opj_realloc(
-        (*p_j2k).m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void,
+        p_j2k.m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void,
         l_marker_size as size_t,
       ) as *mut OPJ_BYTE;
       if new_header_data.is_null() {
-        opj_free((*p_j2k).m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void);
-        (*p_j2k).m_specific_param.m_decoder.m_header_data = 0 as *mut OPJ_BYTE;
-        (*p_j2k).m_specific_param.m_decoder.m_header_data_size = 0 as OPJ_UINT32;
+        opj_free(p_j2k.m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void);
+        p_j2k.m_specific_param.m_decoder.m_header_data = std::ptr::null_mut::<OPJ_BYTE>();
+        p_j2k.m_specific_param.m_decoder.m_header_data_size = 0 as OPJ_UINT32;
         event_msg!(p_manager, EVT_ERROR, "Not enough memory to read header\n",);
         return 0i32;
       }
-      (*p_j2k).m_specific_param.m_decoder.m_header_data = new_header_data;
-      (*p_j2k).m_specific_param.m_decoder.m_header_data_size = l_marker_size
+      p_j2k.m_specific_param.m_decoder.m_header_data = new_header_data;
+      p_j2k.m_specific_param.m_decoder.m_header_data_size = l_marker_size
     }
     /* Try to read the rest of the marker segment from stream and copy them into the buffer */
     if opj_stream_read_data(
       p_stream,
-      (*p_j2k).m_specific_param.m_decoder.m_header_data,
+      p_j2k.m_specific_param.m_decoder.m_header_data,
       l_marker_size as OPJ_SIZE_T,
       p_manager,
     ) != l_marker_size as usize
@@ -8799,7 +8759,7 @@ unsafe fn opj_j2k_read_header_procedure(
     /* Read the marker segment with the correct marker handler */
     if l_marker_handler.handler(
       p_j2k,
-      (*p_j2k).m_specific_param.m_decoder.m_header_data,
+      p_j2k.m_specific_param.m_decoder.m_header_data,
       l_marker_size,
       p_manager,
     ) == 0
@@ -8814,7 +8774,7 @@ unsafe fn opj_j2k_read_header_procedure(
     /* Add the marker to the codestream index*/
     if 0i32
       == opj_j2k_add_mhmarker(
-        (*p_j2k).cstr_index,
+        p_j2k.cstr_index,
         l_marker_handler,
         (opj_stream_tell(p_stream) as OPJ_UINT32)
           .wrapping_sub(l_marker_size)
@@ -8828,7 +8788,7 @@ unsafe fn opj_j2k_read_header_procedure(
     /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
     if opj_stream_read_data(
       p_stream,
-      (*p_j2k).m_specific_param.m_decoder.m_header_data,
+      p_j2k.m_specific_param.m_decoder.m_header_data,
       2 as OPJ_SIZE_T,
       p_manager,
     ) != 2
@@ -8837,7 +8797,7 @@ unsafe fn opj_j2k_read_header_procedure(
       return 0i32;
     }
     /* read 2 bytes as the new marker ID */
-    l_current_marker = J2KMarker::from_buffer((*p_j2k).m_specific_param.m_decoder.m_header_data);
+    l_current_marker = J2KMarker::from_buffer(p_j2k.m_specific_param.m_decoder.m_header_data);
   }
   if l_has_siz == 0i32 {
     event_msg!(
@@ -8863,7 +8823,7 @@ unsafe fn opj_j2k_read_header_procedure(
     );
     return 0i32;
   }
-  if opj_j2k_merge_ppm(&mut (*p_j2k).m_cp, p_manager) == 0 {
+  if opj_j2k_merge_ppm(&mut p_j2k.m_cp, p_manager) == 0 {
     event_msg!(p_manager, EVT_ERROR, "Failed to merge PPM data\n",);
     return 0i32;
   }
@@ -8873,11 +8833,11 @@ unsafe fn opj_j2k_read_header_procedure(
     "Main header has been correctly decoded.\n",
   );
   /* Position of the last element if the main header */
-  (*(*p_j2k).cstr_index).main_head_end =
+  (*p_j2k.cstr_index).main_head_end =
     (opj_stream_tell(p_stream) as OPJ_UINT32).wrapping_sub(2u32) as OPJ_OFF_T;
   /* Next step: read a tile-part header */
-  (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPHSOT;
-  return 1i32;
+  p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT;
+  1i32
 }
 /* *
  * Executes the given procedures on the given codec.
@@ -8913,32 +8873,32 @@ unsafe fn opj_j2k_copy_default_tcp_and_create_tcd(
   mut p_stream: *mut opj_stream_private_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_default_tcp = 0 as *mut opj_tcp_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_default_tcp = std::ptr::null_mut::<opj_tcp_t>();
   let mut l_nb_tiles: OPJ_UINT32 = 0;
   let mut i: OPJ_UINT32 = 0;
   let mut j: OPJ_UINT32 = 0;
-  let mut l_current_tccp = 0 as *mut opj_tccp_t;
+  let mut l_current_tccp = std::ptr::null_mut::<opj_tccp_t>();
   let mut l_tccp_size: OPJ_UINT32 = 0;
   let mut l_mct_size: OPJ_UINT32 = 0;
-  let mut l_image = 0 as *mut opj_image_t;
+  let mut l_image = std::ptr::null_mut::<opj_image_t>();
   let mut l_mcc_records_size: OPJ_UINT32 = 0;
   let mut l_mct_records_size: OPJ_UINT32 = 0;
-  let mut l_src_mct_rec = 0 as *mut opj_mct_data_t;
-  let mut l_dest_mct_rec = 0 as *mut opj_mct_data_t;
-  let mut l_src_mcc_rec = 0 as *mut opj_simple_mcc_decorrelation_data_t;
-  let mut l_dest_mcc_rec = 0 as *mut opj_simple_mcc_decorrelation_data_t;
+  let mut l_src_mct_rec = std::ptr::null_mut::<opj_mct_data_t>();
+  let mut l_dest_mct_rec = std::ptr::null_mut::<opj_mct_data_t>();
+  let mut l_src_mcc_rec = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
+  let mut l_dest_mcc_rec = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
   let mut l_offset: OPJ_UINT32 = 0;
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  l_image = (*p_j2k).m_private_image;
-  l_nb_tiles = (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw);
-  l_tcp = (*p_j2k).m_cp.tcps;
+  l_image = p_j2k.m_private_image;
+  l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
+  l_tcp = p_j2k.m_cp.tcps;
   l_tccp_size = (*l_image)
     .numcomps
     .wrapping_mul(core::mem::size_of::<opj_tccp_t>() as OPJ_UINT32);
-  l_default_tcp = (*p_j2k).m_specific_param.m_decoder.m_default_tcp;
+  l_default_tcp = p_j2k.m_specific_param.m_decoder.m_default_tcp;
   l_mct_size = (*l_image)
     .numcomps
     .wrapping_mul((*l_image).numcomps)
@@ -8952,19 +8912,19 @@ unsafe fn opj_j2k_copy_default_tcp_and_create_tcd(
     memcpy(
       l_tcp as *mut core::ffi::c_void,
       l_default_tcp as *const core::ffi::c_void,
-      core::mem::size_of::<opj_tcp_t>() as usize,
+      core::mem::size_of::<opj_tcp_t>(),
     );
     /* Initialize some values of the current tile coding parameters*/
     (*l_tcp).set_cod(0 as OPJ_BITFIELD);
     (*l_tcp).set_ppt(0 as OPJ_BITFIELD);
-    (*l_tcp).ppt_data = 0 as *mut OPJ_BYTE;
+    (*l_tcp).ppt_data = std::ptr::null_mut::<OPJ_BYTE>();
     (*l_tcp).m_current_tile_part_number = -(1i32);
     /* Remove memory not owned by this tile in case of early error return. */
-    (*l_tcp).m_mct_decoding_matrix = 0 as *mut OPJ_FLOAT32;
+    (*l_tcp).m_mct_decoding_matrix = std::ptr::null_mut::<OPJ_FLOAT32>();
     (*l_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
-    (*l_tcp).m_mct_records = 0 as *mut opj_mct_data_t;
+    (*l_tcp).m_mct_records = std::ptr::null_mut::<opj_mct_data_t>();
     (*l_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
-    (*l_tcp).m_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
+    (*l_tcp).m_mcc_records = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
     /* Reconnect the tile-compo coding parameters pointer to the current tile coding parameters*/
     (*l_tcp).tccps = l_current_tccp;
     /* Get the mct_decoding_matrix of the dflt_tile_cp and copy them into the current tile cp*/
@@ -9065,17 +9025,17 @@ unsafe fn opj_j2k_copy_default_tcp_and_create_tcd(
     i += 1;
   }
   /* Create the current tile decoder*/
-  (*p_j2k).m_tcd = opj_tcd_create(1i32);
-  if (*p_j2k).m_tcd.is_null() {
+  p_j2k.m_tcd = opj_tcd_create(1i32);
+  if p_j2k.m_tcd.is_null() {
     return 0i32;
   }
-  if opj_tcd_init((*p_j2k).m_tcd, l_image, &mut (*p_j2k).m_cp, (*p_j2k).m_tp) == 0 {
-    opj_tcd_destroy((*p_j2k).m_tcd);
-    (*p_j2k).m_tcd = 0 as *mut opj_tcd;
+  if opj_tcd_init(p_j2k.m_tcd, l_image, &mut p_j2k.m_cp, p_j2k.m_tp) == 0 {
+    opj_tcd_destroy(p_j2k.m_tcd);
+    p_j2k.m_tcd = std::ptr::null_mut::<opj_tcd>();
     event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 
 impl Drop for opj_j2k {
@@ -9085,17 +9045,17 @@ impl Drop for opj_j2k {
         if !self.m_specific_param.m_decoder.m_default_tcp.is_null() {
           opj_j2k_tcp_destroy(self.m_specific_param.m_decoder.m_default_tcp);
           opj_free(self.m_specific_param.m_decoder.m_default_tcp as *mut core::ffi::c_void);
-          self.m_specific_param.m_decoder.m_default_tcp = 0 as *mut opj_tcp_t
+          self.m_specific_param.m_decoder.m_default_tcp = std::ptr::null_mut::<opj_tcp_t>()
         }
         if !self.m_specific_param.m_decoder.m_header_data.is_null() {
           opj_free(self.m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void);
-          self.m_specific_param.m_decoder.m_header_data = 0 as *mut OPJ_BYTE;
+          self.m_specific_param.m_decoder.m_header_data = std::ptr::null_mut::<OPJ_BYTE>();
           self.m_specific_param.m_decoder.m_header_data_size = 0 as OPJ_UINT32
         }
         opj_free(
           self.m_specific_param.m_decoder.m_comps_indices_to_decode as *mut core::ffi::c_void,
         );
-        self.m_specific_param.m_decoder.m_comps_indices_to_decode = 0 as *mut OPJ_UINT32;
+        self.m_specific_param.m_decoder.m_comps_indices_to_decode = std::ptr::null_mut::<OPJ_UINT32>();
         self.m_specific_param.m_decoder.m_numcomps_to_decode = 0 as OPJ_UINT32
       } else {
         if !self
@@ -9105,7 +9065,7 @@ impl Drop for opj_j2k {
           .is_null()
         {
           opj_free(self.m_specific_param.m_encoder.m_encoded_tile_data as *mut core::ffi::c_void);
-          self.m_specific_param.m_encoder.m_encoded_tile_data = 0 as *mut OPJ_BYTE
+          self.m_specific_param.m_encoder.m_encoded_tile_data = std::ptr::null_mut::<OPJ_BYTE>()
         }
         if !self
           .m_specific_param
@@ -9116,12 +9076,12 @@ impl Drop for opj_j2k {
           opj_free(
             self.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer as *mut core::ffi::c_void,
           );
-          self.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = 0 as *mut OPJ_BYTE;
-          self.m_specific_param.m_encoder.m_tlm_sot_offsets_current = 0 as *mut OPJ_BYTE
+          self.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = std::ptr::null_mut::<OPJ_BYTE>();
+          self.m_specific_param.m_encoder.m_tlm_sot_offsets_current = std::ptr::null_mut::<OPJ_BYTE>()
         }
         if !self.m_specific_param.m_encoder.m_header_tile_data.is_null() {
           opj_free(self.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-          self.m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE;
+          self.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>();
           self.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32
         }
       }
@@ -9130,20 +9090,20 @@ impl Drop for opj_j2k {
       memset(
         &mut self.m_cp as *mut opj_cp_t as *mut core::ffi::c_void,
         0i32,
-        core::mem::size_of::<opj_cp_t>() as usize,
+        core::mem::size_of::<opj_cp_t>(),
       );
       opj_procedure_list_destroy(self.m_procedure_list);
       self.m_procedure_list = std::ptr::null_mut();
       opj_procedure_list_destroy(self.m_validation_list);
       self.m_procedure_list = std::ptr::null_mut();
       j2k_destroy_cstr_index(self.cstr_index);
-      self.cstr_index = 0 as *mut opj_codestream_index_t;
+      self.cstr_index = std::ptr::null_mut::<opj_codestream_index_t>();
       opj_image_destroy(self.m_private_image);
-      self.m_private_image = 0 as *mut opj_image_t;
+      self.m_private_image = std::ptr::null_mut::<opj_image_t>();
       opj_image_destroy(self.m_output_image);
-      self.m_output_image = 0 as *mut opj_image_t;
+      self.m_output_image = std::ptr::null_mut::<opj_image_t>();
       opj_thread_pool_destroy(self.m_tp);
-      self.m_tp = 0 as *mut opj_thread_pool_t;
+      self.m_tp = std::ptr::null_mut::<opj_thread_pool_t>();
     }
   }
 }
@@ -9153,7 +9113,7 @@ pub(crate) unsafe fn j2k_destroy_cstr_index(mut p_cstr_ind: *mut opj_codestream_
   if !p_cstr_ind.is_null() {
     if !(*p_cstr_ind).marker.is_null() {
       opj_free((*p_cstr_ind).marker as *mut core::ffi::c_void);
-      (*p_cstr_ind).marker = 0 as *mut opj_marker_info_t
+      (*p_cstr_ind).marker = std::ptr::null_mut::<opj_marker_info_t>()
     }
     if !(*p_cstr_ind).tile_index.is_null() {
       let mut it_tile = 0 as OPJ_UINT32;
@@ -9167,8 +9127,8 @@ pub(crate) unsafe fn j2k_destroy_cstr_index(mut p_cstr_ind: *mut opj_codestream_
             (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).packet_index
               as *mut core::ffi::c_void,
           );
-          let ref mut fresh30 = (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).packet_index;
-          *fresh30 = 0 as *mut opj_packet_info_t
+          let fresh30 = &mut (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).packet_index;
+          *fresh30 = std::ptr::null_mut::<opj_packet_info_t>()
         }
         if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
           .tp_index
@@ -9177,8 +9137,8 @@ pub(crate) unsafe fn j2k_destroy_cstr_index(mut p_cstr_ind: *mut opj_codestream_
           opj_free(
             (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).tp_index as *mut core::ffi::c_void,
           );
-          let ref mut fresh31 = (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).tp_index;
-          *fresh31 = 0 as *mut opj_tp_index_t
+          let fresh31 = &mut (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).tp_index;
+          *fresh31 = std::ptr::null_mut::<opj_tp_index_t>()
         }
         if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
           .marker
@@ -9187,13 +9147,13 @@ pub(crate) unsafe fn j2k_destroy_cstr_index(mut p_cstr_ind: *mut opj_codestream_
           opj_free(
             (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
           );
-          let ref mut fresh32 = (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker;
-          *fresh32 = 0 as *mut opj_marker_info_t
+          let fresh32 = &mut (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker;
+          *fresh32 = std::ptr::null_mut::<opj_marker_info_t>()
         }
         it_tile += 1;
       }
       opj_free((*p_cstr_ind).tile_index as *mut core::ffi::c_void);
-      (*p_cstr_ind).tile_index = 0 as *mut opj_tile_index_t
+      (*p_cstr_ind).tile_index = std::ptr::null_mut::<opj_tile_index_t>()
     }
     opj_free(p_cstr_ind as *mut core::ffi::c_void);
   };
@@ -9218,27 +9178,27 @@ unsafe fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
     }
     (*p_tcp).ppt_markers_count = 0u32;
     opj_free((*p_tcp).ppt_markers as *mut core::ffi::c_void);
-    (*p_tcp).ppt_markers = 0 as *mut opj_ppx
+    (*p_tcp).ppt_markers = std::ptr::null_mut::<opj_ppx>()
   }
   if !(*p_tcp).ppt_buffer.is_null() {
     opj_free((*p_tcp).ppt_buffer as *mut core::ffi::c_void);
-    (*p_tcp).ppt_buffer = 0 as *mut OPJ_BYTE
+    (*p_tcp).ppt_buffer = std::ptr::null_mut::<OPJ_BYTE>()
   }
   if !(*p_tcp).tccps.is_null() {
     opj_free((*p_tcp).tccps as *mut core::ffi::c_void);
-    (*p_tcp).tccps = 0 as *mut opj_tccp_t
+    (*p_tcp).tccps = std::ptr::null_mut::<opj_tccp_t>()
   }
   if !(*p_tcp).m_mct_coding_matrix.is_null() {
     opj_free((*p_tcp).m_mct_coding_matrix as *mut core::ffi::c_void);
-    (*p_tcp).m_mct_coding_matrix = 0 as *mut OPJ_FLOAT32
+    (*p_tcp).m_mct_coding_matrix = std::ptr::null_mut::<OPJ_FLOAT32>()
   }
   if !(*p_tcp).m_mct_decoding_matrix.is_null() {
     opj_free((*p_tcp).m_mct_decoding_matrix as *mut core::ffi::c_void);
-    (*p_tcp).m_mct_decoding_matrix = 0 as *mut OPJ_FLOAT32
+    (*p_tcp).m_mct_decoding_matrix = std::ptr::null_mut::<OPJ_FLOAT32>()
   }
   if !(*p_tcp).m_mcc_records.is_null() {
     opj_free((*p_tcp).m_mcc_records as *mut core::ffi::c_void);
-    (*p_tcp).m_mcc_records = 0 as *mut opj_simple_mcc_decorrelation_data_t;
+    (*p_tcp).m_mcc_records = std::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
     (*p_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
     (*p_tcp).m_nb_mcc_records = 0 as OPJ_UINT32
   }
@@ -9249,17 +9209,17 @@ unsafe fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
     while i_0 < (*p_tcp).m_nb_mct_records {
       if !(*l_mct_data).m_data.is_null() {
         opj_free((*l_mct_data).m_data as *mut core::ffi::c_void);
-        (*l_mct_data).m_data = 0 as *mut OPJ_BYTE
+        (*l_mct_data).m_data = std::ptr::null_mut::<OPJ_BYTE>()
       }
       l_mct_data = l_mct_data.offset(1);
       i_0 += 1;
     }
     opj_free((*p_tcp).m_mct_records as *mut core::ffi::c_void);
-    (*p_tcp).m_mct_records = 0 as *mut opj_mct_data_t
+    (*p_tcp).m_mct_records = std::ptr::null_mut::<opj_mct_data_t>()
   }
   if !(*p_tcp).mct_norms.is_null() {
     opj_free((*p_tcp).mct_norms as *mut core::ffi::c_void);
-    (*p_tcp).mct_norms = 0 as *mut OPJ_FLOAT64
+    (*p_tcp).mct_norms = std::ptr::null_mut::<OPJ_FLOAT64>()
   }
   opj_j2k_tcp_data_destroy(p_tcp);
 }
@@ -9271,7 +9231,7 @@ unsafe fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
 unsafe fn opj_j2k_tcp_data_destroy(mut p_tcp: *mut opj_tcp_t) {
   if !(*p_tcp).m_data.is_null() {
     opj_free((*p_tcp).m_data as *mut core::ffi::c_void);
-    (*p_tcp).m_data = 0 as *mut OPJ_BYTE;
+    (*p_tcp).m_data = std::ptr::null_mut::<OPJ_BYTE>();
     (*p_tcp).m_data_size = 0 as OPJ_UINT32
   };
 }
@@ -9282,7 +9242,7 @@ unsafe fn opj_j2k_tcp_data_destroy(mut p_tcp: *mut opj_tcp_t) {
  */
 unsafe fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
   let mut l_nb_tiles: OPJ_UINT32 = 0; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
-  let mut l_current_tile = 0 as *mut opj_tcp_t;
+  let mut l_current_tile = std::ptr::null_mut::<opj_tcp_t>();
   if p_cp.is_null() {
     return;
   }
@@ -9297,7 +9257,7 @@ unsafe fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
       i += 1;
     }
     opj_free((*p_cp).tcps as *mut core::ffi::c_void);
-    (*p_cp).tcps = 0 as *mut opj_tcp_t
+    (*p_cp).tcps = std::ptr::null_mut::<opj_tcp_t>()
   }
   if !(*p_cp).ppm_markers.is_null() {
     let mut i_0: OPJ_UINT32 = 0;
@@ -9310,16 +9270,16 @@ unsafe fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
     }
     (*p_cp).ppm_markers_count = 0u32;
     opj_free((*p_cp).ppm_markers as *mut core::ffi::c_void);
-    (*p_cp).ppm_markers = 0 as *mut opj_ppx
+    (*p_cp).ppm_markers = std::ptr::null_mut::<opj_ppx>()
   }
   opj_free((*p_cp).ppm_buffer as *mut core::ffi::c_void);
-  (*p_cp).ppm_buffer = 0 as *mut OPJ_BYTE;
-  (*p_cp).ppm_data = 0 as *mut OPJ_BYTE;
+  (*p_cp).ppm_buffer = std::ptr::null_mut::<OPJ_BYTE>();
+  (*p_cp).ppm_data = std::ptr::null_mut::<OPJ_BYTE>();
   opj_free((*p_cp).comment as *mut core::ffi::c_void);
-  (*p_cp).comment = 0 as *mut OPJ_CHAR;
+  (*p_cp).comment = std::ptr::null_mut::<OPJ_CHAR>();
   if (*p_cp).m_is_decoder() == 0 {
     opj_free((*p_cp).m_specific_param.m_enc.m_matrice as *mut core::ffi::c_void);
-    (*p_cp).m_specific_param.m_enc.m_matrice = 0 as *mut OPJ_INT32
+    (*p_cp).m_specific_param.m_enc.m_matrice = std::ptr::null_mut::<OPJ_INT32>()
   };
 }
 /* *
@@ -9454,7 +9414,7 @@ unsafe fn opj_j2k_need_nb_tile_parts_correction(
   if opj_stream_seek(p_stream, l_stream_pos_backup, p_manager) == 0 {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_read_tile_header(
@@ -9472,32 +9432,32 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
 ) -> OPJ_BOOL {
   let mut l_current_marker = J2KMarker::SOT;
   let mut l_marker_size: OPJ_UINT32 = 0;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let l_nb_tiles = (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th);
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let l_nb_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   /* preconditions */
 
   assert!(!p_stream.is_null());
   /* Reach the End Of Codestream ?*/
-  if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::EOC {
+  if p_j2k.m_specific_param.m_decoder.m_state == J2KState::EOC {
     l_current_marker = J2KMarker::EOC;
-  } else if (*p_j2k).m_specific_param.m_decoder.m_state != J2KState::TPHSOT {
+  } else if p_j2k.m_specific_param.m_decoder.m_state != J2KState::TPHSOT {
     return 0i32;
   }
   /* We need to encounter a SOT marker (a new tile-part header) */
   /* Read into the codestream until reach the EOC or ! can_decode ??? FIXME */
-  while (*p_j2k).m_specific_param.m_decoder.m_can_decode() == 0
+  while p_j2k.m_specific_param.m_decoder.m_can_decode() == 0
     && l_current_marker != J2KMarker::EOC
   {
     /* Try to read until the Start Of Data is detected */
     while l_current_marker != J2KMarker::SOD {
       if opj_stream_get_number_byte_left(p_stream) == 0i64 {
-        (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC;
+        p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
         break;
       } else {
         /* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
         if opj_stream_read_data(
           p_stream,
-          (*p_j2k).m_specific_param.m_decoder.m_header_data,
+          p_j2k.m_specific_param.m_decoder.m_header_data,
           2 as OPJ_SIZE_T,
           p_manager,
         ) != 2
@@ -9507,7 +9467,7 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
         }
         /* Read 2 bytes from the buffer as the marker size */
         opj_read_bytes_LE(
-          (*p_j2k).m_specific_param.m_decoder.m_header_data,
+          p_j2k.m_specific_param.m_decoder.m_header_data,
           &mut l_marker_size,
           2 as OPJ_UINT32,
         );
@@ -9520,13 +9480,13 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
         if l_current_marker == J2KMarker::UNK(0x8080u32)
           && opj_stream_get_number_byte_left(p_stream) == 0i64
         {
-          (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC;
+          p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
           break;
         } else {
           /* Why this condition? FIXME */
-          if (*p_j2k).m_specific_param.m_decoder.m_state & J2KState::TPH != J2KState::NONE {
-            (*p_j2k).m_specific_param.m_decoder.m_sot_length =
-              ((*p_j2k).m_specific_param.m_decoder.m_sot_length as core::ffi::c_uint)
+          if p_j2k.m_specific_param.m_decoder.m_state & J2KState::TPH != J2KState::NONE {
+            p_j2k.m_specific_param.m_decoder.m_sot_length =
+              (p_j2k.m_specific_param.m_decoder.m_sot_length as core::ffi::c_uint)
                 .wrapping_sub(l_marker_size.wrapping_add(2u32)) as OPJ_UINT32
           } /* Subtract the size of the marker ID already read */
           l_marker_size =
@@ -9534,7 +9494,7 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
           /* Get the marker handler from the marker ID */
           let l_marker_handler = l_current_marker;
           /* Check if the marker is known and if it is the right place to find it */
-          if (*p_j2k).m_specific_param.m_decoder.m_state & l_marker_handler.states()
+          if p_j2k.m_specific_param.m_decoder.m_state & l_marker_handler.states()
             == J2KState::NONE
           {
             event_msg!(
@@ -9546,8 +9506,8 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
           }
           /* FIXME manage case of unknown marker as in the main header ? */
           /* Check if the marker size is compatible with the header data size */
-          if l_marker_size > (*p_j2k).m_specific_param.m_decoder.m_header_data_size {
-            let mut new_header_data = 0 as *mut OPJ_BYTE;
+          if l_marker_size > p_j2k.m_specific_param.m_decoder.m_header_data_size {
+            let mut new_header_data = std::ptr::null_mut::<OPJ_BYTE>();
             /* If we are here, this means we consider this marker as known & we will read it */
             /* Check enough bytes left in stream before allocation */
             if l_marker_size as OPJ_OFF_T > opj_stream_get_number_byte_left(p_stream) {
@@ -9559,23 +9519,23 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
               return 0i32;
             }
             new_header_data = opj_realloc(
-              (*p_j2k).m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void,
+              p_j2k.m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void,
               l_marker_size as size_t,
             ) as *mut OPJ_BYTE;
             if new_header_data.is_null() {
-              opj_free((*p_j2k).m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void);
-              (*p_j2k).m_specific_param.m_decoder.m_header_data = 0 as *mut OPJ_BYTE;
-              (*p_j2k).m_specific_param.m_decoder.m_header_data_size = 0 as OPJ_UINT32;
+              opj_free(p_j2k.m_specific_param.m_decoder.m_header_data as *mut core::ffi::c_void);
+              p_j2k.m_specific_param.m_decoder.m_header_data = std::ptr::null_mut::<OPJ_BYTE>();
+              p_j2k.m_specific_param.m_decoder.m_header_data_size = 0 as OPJ_UINT32;
               event_msg!(p_manager, EVT_ERROR, "Not enough memory to read header\n",);
               return 0i32;
             }
-            (*p_j2k).m_specific_param.m_decoder.m_header_data = new_header_data;
-            (*p_j2k).m_specific_param.m_decoder.m_header_data_size = l_marker_size
+            p_j2k.m_specific_param.m_decoder.m_header_data = new_header_data;
+            p_j2k.m_specific_param.m_decoder.m_header_data_size = l_marker_size
           }
           /* Try to read the rest of the marker segment from stream and copy them into the buffer */
           if opj_stream_read_data(
             p_stream,
-            (*p_j2k).m_specific_param.m_decoder.m_header_data,
+            p_j2k.m_specific_param.m_decoder.m_header_data,
             l_marker_size as OPJ_SIZE_T,
             p_manager,
           ) != l_marker_size as usize
@@ -9586,7 +9546,7 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
           /* Read the marker segment with the correct marker handler */
           if l_marker_handler.handler(
             p_j2k,
-            (*p_j2k).m_specific_param.m_decoder.m_header_data,
+            p_j2k.m_specific_param.m_decoder.m_header_data,
             l_marker_size,
             p_manager,
           ) == 0
@@ -9602,8 +9562,8 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
           /* Add the marker to the codestream index*/
           if 0i32
             == opj_j2k_add_tlmarker(
-              (*p_j2k).m_current_tile_number,
-              (*p_j2k).cstr_index,
+              p_j2k.m_current_tile_number,
+              p_j2k.cstr_index,
               l_marker_handler,
               (opj_stream_tell(p_stream) as OPJ_UINT32)
                 .wrapping_sub(l_marker_size)
@@ -9619,17 +9579,17 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
             let mut sot_pos = (opj_stream_tell(p_stream) as OPJ_UINT32)
               .wrapping_sub(l_marker_size)
               .wrapping_sub(4u32);
-            if sot_pos as i64 > (*p_j2k).m_specific_param.m_decoder.m_last_sot_read_pos {
-              (*p_j2k).m_specific_param.m_decoder.m_last_sot_read_pos = sot_pos as OPJ_OFF_T
+            if sot_pos as i64 > p_j2k.m_specific_param.m_decoder.m_last_sot_read_pos {
+              p_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = sot_pos as OPJ_OFF_T
             }
           }
-          if (*p_j2k).m_specific_param.m_decoder.m_skip_data() != 0 {
+          if p_j2k.m_specific_param.m_decoder.m_skip_data() != 0 {
             /* Skip the rest of the tile part header*/
             if opj_stream_skip(
               p_stream,
-              (*p_j2k).m_specific_param.m_decoder.m_sot_length as OPJ_OFF_T,
+              p_j2k.m_specific_param.m_decoder.m_sot_length as OPJ_OFF_T,
               p_manager,
-            ) != (*p_j2k).m_specific_param.m_decoder.m_sot_length as i64
+            ) != p_j2k.m_specific_param.m_decoder.m_sot_length as i64
             {
               event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
               return 0i32;
@@ -9640,7 +9600,7 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
             /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
             if opj_stream_read_data(
               p_stream,
-              (*p_j2k).m_specific_param.m_decoder.m_header_data,
+              p_j2k.m_specific_param.m_decoder.m_header_data,
               2 as OPJ_SIZE_T,
               p_manager,
             ) != 2
@@ -9650,24 +9610,24 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
             }
             /* Read 2 bytes from the buffer as the new marker ID */
             l_current_marker =
-              J2KMarker::from_buffer((*p_j2k).m_specific_param.m_decoder.m_header_data);
+              J2KMarker::from_buffer(p_j2k.m_specific_param.m_decoder.m_header_data);
           }
         }
       }
     }
     if opj_stream_get_number_byte_left(p_stream) == 0i64
-      && (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::NEOC
+      && p_j2k.m_specific_param.m_decoder.m_state == J2KState::NEOC
     {
       break;
     }
     /* If we didn't skip data before, we need to read the SOD marker*/
-    if (*p_j2k).m_specific_param.m_decoder.m_skip_data() == 0 {
+    if p_j2k.m_specific_param.m_decoder.m_skip_data() == 0 {
       /* Try to read the SOD marker and skip data ? FIXME */
       if opj_j2k_read_sod(p_j2k, p_stream, p_manager) == 0 {
         return 0i32;
       }
-      if (*p_j2k).m_specific_param.m_decoder.m_can_decode() as core::ffi::c_int != 0
-        && (*p_j2k)
+      if p_j2k.m_specific_param.m_decoder.m_can_decode() as core::ffi::c_int != 0
+        && p_j2k
           .m_specific_param
           .m_decoder
           .m_nb_tile_parts_correction_checked()
@@ -9675,13 +9635,13 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
       {
         /* Issue 254 */
         let mut l_correction_needed: OPJ_BOOL = 0;
-        (*p_j2k)
+        p_j2k
           .m_specific_param
           .m_decoder
           .set_m_nb_tile_parts_correction_checked(1 as OPJ_BITFIELD);
         if opj_j2k_need_nb_tile_parts_correction(
           p_stream,
-          (*p_j2k).m_current_tile_number,
+          p_j2k.m_current_tile_number,
           &mut l_correction_needed,
           p_manager,
         ) == 0
@@ -9695,20 +9655,19 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
         }
         if l_correction_needed != 0 {
           let mut l_tile_no: OPJ_UINT32 = 0;
-          (*p_j2k)
+          p_j2k
             .m_specific_param
             .m_decoder
             .set_m_can_decode(0 as OPJ_BITFIELD);
-          (*p_j2k)
+          p_j2k
             .m_specific_param
             .m_decoder
             .set_m_nb_tile_parts_correction(1 as OPJ_BITFIELD);
           /* correct tiles */
           l_tile_no = 0u32;
           while l_tile_no < l_nb_tiles {
-            if (*(*p_j2k).m_cp.tcps.offset(l_tile_no as isize)).m_nb_tile_parts != 0u32 {
-              let ref mut fresh33 =
-                (*(*p_j2k).m_cp.tcps.offset(l_tile_no as isize)).m_nb_tile_parts;
+            if (*p_j2k.m_cp.tcps.offset(l_tile_no as isize)).m_nb_tile_parts != 0u32 {
+              let fresh33 = &mut (*p_j2k.m_cp.tcps.offset(l_tile_no as isize)).m_nb_tile_parts;
               *fresh33 = (*fresh33 as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32
             }
             l_tile_no += 1;
@@ -9722,23 +9681,23 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
       }
     } else {
       /* Indicate we will try to read a new tile-part header*/
-      (*p_j2k)
+      p_j2k
         .m_specific_param
         .m_decoder
         .set_m_skip_data(0 as OPJ_BITFIELD);
-      (*p_j2k)
+      p_j2k
         .m_specific_param
         .m_decoder
         .set_m_can_decode(0 as OPJ_BITFIELD);
-      (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPHSOT
+      p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT
     }
-    if !((*p_j2k).m_specific_param.m_decoder.m_can_decode() == 0) {
+    if p_j2k.m_specific_param.m_decoder.m_can_decode() != 0 {
       continue;
     }
     /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
     if opj_stream_read_data(
       p_stream,
-      (*p_j2k).m_specific_param.m_decoder.m_header_data,
+      p_j2k.m_specific_param.m_decoder.m_header_data,
       2 as OPJ_SIZE_T,
       p_manager,
     ) != 2
@@ -9746,12 +9705,12 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
       /* Deal with likely non conformant SPOT6 files, where the last */
       /* row of tiles have TPsot == 0 and TNsot == 0, and missing EOC, */
       /* but no other tile-parts were found. */
-      if (*p_j2k).m_current_tile_number.wrapping_add(1u32) == l_nb_tiles {
+      if p_j2k.m_current_tile_number.wrapping_add(1u32) == l_nb_tiles {
         let mut l_tile_no_0: OPJ_UINT32 = 0;
         l_tile_no_0 = 0u32;
         while l_tile_no_0 < l_nb_tiles {
-          if (*(*p_j2k).m_cp.tcps.offset(l_tile_no_0 as isize)).m_current_tile_part_number == 0i32
-            && (*(*p_j2k).m_cp.tcps.offset(l_tile_no_0 as isize)).m_nb_tile_parts == 0u32
+          if (*p_j2k.m_cp.tcps.offset(l_tile_no_0 as isize)).m_current_tile_part_number == 0i32
+            && (*p_j2k.m_cp.tcps.offset(l_tile_no_0 as isize)).m_nb_tile_parts == 0u32
           {
             break;
           }
@@ -9761,9 +9720,9 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
           event_msg!(p_manager, EVT_INFO,
                                   "Tile %u has TPsot == 0 and TNsot == 0, but no other tile-parts were found. EOC is also missing.\n",
                                   l_tile_no_0);
-          (*p_j2k).m_current_tile_number = l_tile_no_0;
+          p_j2k.m_current_tile_number = l_tile_no_0;
           l_current_marker = J2KMarker::EOC;
-          (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::EOC;
+          p_j2k.m_specific_param.m_decoder.m_state = J2KState::EOC;
           break;
         }
       }
@@ -9771,36 +9730,34 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
       return 0i32;
     } else {
       /* Read 2 bytes from buffer as the new marker ID */
-      l_current_marker = J2KMarker::from_buffer((*p_j2k).m_specific_param.m_decoder.m_header_data);
+      l_current_marker = J2KMarker::from_buffer(p_j2k.m_specific_param.m_decoder.m_header_data);
     }
   }
   /* Current marker is the EOC marker ?*/
-  if l_current_marker == J2KMarker::EOC {
-    if (*p_j2k).m_specific_param.m_decoder.m_state != J2KState::EOC {
-      (*p_j2k).m_current_tile_number = 0 as OPJ_UINT32;
-      (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::EOC
-    }
+  if l_current_marker == J2KMarker::EOC && p_j2k.m_specific_param.m_decoder.m_state != J2KState::EOC {
+    p_j2k.m_current_tile_number = 0 as OPJ_UINT32;
+    p_j2k.m_specific_param.m_decoder.m_state = J2KState::EOC
   }
   /* Deal with tiles that have a single tile-part with TPsot == 0 and TNsot == 0 */
-  if (*p_j2k).m_specific_param.m_decoder.m_can_decode() == 0 {
-    l_tcp = (*p_j2k)
+  if p_j2k.m_specific_param.m_decoder.m_can_decode() == 0 {
+    l_tcp = p_j2k
       .m_cp
       .tcps
-      .offset((*p_j2k).m_current_tile_number as isize);
-    while (*p_j2k).m_current_tile_number < l_nb_tiles && (*l_tcp).m_data.is_null() {
-      (*p_j2k).m_current_tile_number = (*p_j2k).m_current_tile_number.wrapping_add(1);
+      .offset(p_j2k.m_current_tile_number as isize);
+    while p_j2k.m_current_tile_number < l_nb_tiles && (*l_tcp).m_data.is_null() {
+      p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);
       l_tcp = l_tcp.offset(1)
     }
-    if (*p_j2k).m_current_tile_number == l_nb_tiles {
+    if p_j2k.m_current_tile_number == l_nb_tiles {
       *p_go_on = 0i32;
       return 1i32;
     }
   }
   if opj_j2k_merge_ppt(
-    (*p_j2k)
+    p_j2k
       .m_cp
       .tcps
-      .offset((*p_j2k).m_current_tile_number as isize),
+      .offset(p_j2k.m_current_tile_number as isize),
     p_manager,
   ) == 0
   {
@@ -9808,7 +9765,7 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
     return 0i32;
   }
   /*FIXME ???*/
-  if opj_tcd_init_decode_tile((*p_j2k).m_tcd, (*p_j2k).m_current_tile_number, p_manager) == 0 {
+  if opj_tcd_init_decode_tile(p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager) == 0 {
     event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
     return 0i32;
   }
@@ -9816,26 +9773,26 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
     p_manager,
     EVT_INFO,
     "Header of tile %d / %d has been read.\n",
-    (*p_j2k).m_current_tile_number.wrapping_add(1u32),
-    (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw),
+    p_j2k.m_current_tile_number.wrapping_add(1u32),
+    p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
   );
-  *p_tile_index = (*p_j2k).m_current_tile_number;
+  *p_tile_index = p_j2k.m_current_tile_number;
   *p_go_on = 1i32;
   if !p_data_size.is_null() {
     /* For internal use in j2k.c, we don't need this */
     /* This is just needed for folks using the opj_read_tile_header() / opj_decode_tile_data() combo */
-    *p_data_size = opj_tcd_get_decoded_tile_size((*p_j2k).m_tcd, 0i32);
+    *p_data_size = opj_tcd_get_decoded_tile_size(p_j2k.m_tcd, 0i32);
     if *p_data_size == (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32) {
       return 0i32;
     }
   }
-  *p_tile_x0 = (*(*(*(*p_j2k).m_tcd).tcd_image).tiles).x0;
-  *p_tile_y0 = (*(*(*(*p_j2k).m_tcd).tcd_image).tiles).y0;
-  *p_tile_x1 = (*(*(*(*p_j2k).m_tcd).tcd_image).tiles).x1;
-  *p_tile_y1 = (*(*(*(*p_j2k).m_tcd).tcd_image).tiles).y1;
-  *p_nb_comps = (*(*(*(*p_j2k).m_tcd).tcd_image).tiles).numcomps;
-  (*p_j2k).m_specific_param.m_decoder.m_state |= J2KState::DATA;
-  return 1i32;
+  *p_tile_x0 = (*(*(*p_j2k.m_tcd).tcd_image).tiles).x0;
+  *p_tile_y0 = (*(*(*p_j2k.m_tcd).tcd_image).tiles).y0;
+  *p_tile_x1 = (*(*(*p_j2k.m_tcd).tcd_image).tiles).x1;
+  *p_tile_y1 = (*(*(*p_j2k.m_tcd).tcd_image).tiles).y1;
+  *p_nb_comps = (*(*(*p_j2k.m_tcd).tcd_image).tiles).numcomps;
+  p_j2k.m_specific_param.m_decoder.m_state |= J2KState::DATA;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_decode_tile(
@@ -9848,17 +9805,17 @@ pub(crate) unsafe fn opj_j2k_decode_tile(
 ) -> OPJ_BOOL {
   let mut l_current_marker = J2KMarker::UNK(0);
   let mut l_data: [OPJ_BYTE; 2] = [0; 2];
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_image_for_bounds = 0 as *mut opj_image_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_image_for_bounds = std::ptr::null_mut::<opj_image_t>();
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  if (*p_j2k).m_specific_param.m_decoder.m_state & J2KState::DATA == J2KState::NONE
-    || p_tile_index != (*p_j2k).m_current_tile_number
+  if p_j2k.m_specific_param.m_decoder.m_state & J2KState::DATA == J2KState::NONE
+    || p_tile_index != p_j2k.m_current_tile_number
   {
     return 0i32;
   }
-  l_tcp = &mut *(*p_j2k).m_cp.tcps.offset(p_tile_index as isize) as *mut opj_tcp_t;
+  l_tcp = &mut *p_j2k.m_cp.tcps.offset(p_tile_index as isize) as *mut opj_tcp_t;
   if (*l_tcp).m_data.is_null() {
     opj_j2k_tcp_destroy(l_tcp);
     return 0i32;
@@ -9868,31 +9825,31 @@ pub(crate) unsafe fn opj_j2k_decode_tile(
   /* to the full image dimension. This is a bit surprising that */
   /* opj_set_decode_area() is only used to determine intersecting tiles, */
   /* but full tile decoding is done */
-  l_image_for_bounds = if !(*p_j2k).m_output_image.is_null() {
-    (*p_j2k).m_output_image
+  l_image_for_bounds = if !p_j2k.m_output_image.is_null() {
+    p_j2k.m_output_image
   } else {
-    (*p_j2k).m_private_image
+    p_j2k.m_private_image
   };
   if opj_tcd_decode_tile(
-    (*p_j2k).m_tcd,
+    p_j2k.m_tcd,
     (*l_image_for_bounds).x0,
     (*l_image_for_bounds).y0,
     (*l_image_for_bounds).x1,
     (*l_image_for_bounds).y1,
-    (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode,
-    (*p_j2k)
+    p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode,
+    p_j2k
       .m_specific_param
       .m_decoder
       .m_comps_indices_to_decode,
     (*l_tcp).m_data,
     (*l_tcp).m_data_size,
     p_tile_index,
-    (*p_j2k).cstr_index,
+    p_j2k.cstr_index,
     p_manager,
   ) == 0
   {
     opj_j2k_tcp_destroy(l_tcp);
-    (*p_j2k).m_specific_param.m_decoder.m_state |= J2KState::ERR;
+    p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
     event_msg!(p_manager, EVT_ERROR, "Failed to decode.\n",);
     return 0i32;
   }
@@ -9900,7 +9857,7 @@ pub(crate) unsafe fn opj_j2k_decode_tile(
   /* itself the TCD data. This is typically the case for whole single */
   /* tile decoding optimization. */
   if !p_data.is_null() {
-    if opj_tcd_update_tile_data((*p_j2k).m_tcd, p_data, p_data_size) == 0 {
+    if opj_tcd_update_tile_data(p_j2k.m_tcd, p_data, p_data_size) == 0 {
       return 0i32;
     }
     /* To avoid to destroy the tcp which can be useful when we try to decode a tile decoded before (cf j2k_random_tile_access)
@@ -9909,28 +9866,28 @@ pub(crate) unsafe fn opj_j2k_decode_tile(
     p_j2k->m_tcd->tcp = 0;*/
     opj_j2k_tcp_data_destroy(l_tcp);
   }
-  (*p_j2k)
+  p_j2k
     .m_specific_param
     .m_decoder
     .set_m_can_decode(0 as OPJ_BITFIELD);
-  (*p_j2k).m_specific_param.m_decoder.m_state &= !(J2KState::DATA);
+  p_j2k.m_specific_param.m_decoder.m_state &= !(J2KState::DATA);
   if opj_stream_get_number_byte_left(p_stream) == 0i64
-    && (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::NEOC
+    && p_j2k.m_specific_param.m_decoder.m_state == J2KState::NEOC
   {
     return 1i32;
   }
-  if (*p_j2k).m_specific_param.m_decoder.m_state != J2KState::EOC {
+  if p_j2k.m_specific_param.m_decoder.m_state != J2KState::EOC {
     if opj_stream_read_data(p_stream, l_data.as_mut_ptr(), 2 as OPJ_SIZE_T, p_manager) != 2 {
       event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
       return 0i32;
     }
     l_current_marker = J2KMarker::from_buffer(l_data.as_mut_ptr());
     if l_current_marker == J2KMarker::EOC {
-      (*p_j2k).m_current_tile_number = 0 as OPJ_UINT32;
-      (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::EOC
+      p_j2k.m_current_tile_number = 0 as OPJ_UINT32;
+      p_j2k.m_specific_param.m_decoder.m_state = J2KState::EOC
     } else if l_current_marker != J2KMarker::SOT {
       if opj_stream_get_number_byte_left(p_stream) == 0i64 {
-        (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::NEOC;
+        p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
         event_msg!(p_manager, EVT_WARNING, "Stream does not end with EOC\n",);
         return 1i32;
       }
@@ -9938,7 +9895,7 @@ pub(crate) unsafe fn opj_j2k_decode_tile(
       return 0i32;
     }
   }
-  return 1i32;
+  1i32
 }
 unsafe fn opj_j2k_update_image_data(
   mut p_tcd: *mut opj_tcd_t,
@@ -9962,11 +9919,11 @@ unsafe fn opj_j2k_update_image_data(
   let mut l_x1_dest: OPJ_UINT32 = 0;
   let mut l_y1_dest: OPJ_UINT32 = 0;
   let mut l_start_offset_dest: OPJ_SIZE_T = 0;
-  let mut l_img_comp_src = 0 as *mut opj_image_comp_t;
-  let mut l_img_comp_dest = 0 as *mut opj_image_comp_t;
-  let mut l_tilec = 0 as *mut opj_tcd_tilecomp_t;
-  let mut l_image_src = 0 as *mut opj_image_t;
-  let mut l_dest_ptr = 0 as *mut OPJ_INT32;
+  let mut l_img_comp_src = std::ptr::null_mut::<opj_image_comp_t>();
+  let mut l_img_comp_dest = std::ptr::null_mut::<opj_image_comp_t>();
+  let mut l_tilec = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
+  let mut l_image_src = std::ptr::null_mut::<opj_image_t>();
+  let mut l_dest_ptr = std::ptr::null_mut::<OPJ_INT32>();
   l_tilec = (*(*(*p_tcd).tcd_image).tiles).comps;
   l_image_src = (*p_tcd).image;
   l_img_comp_src = (*l_image_src).comps;
@@ -9978,7 +9935,7 @@ unsafe fn opj_j2k_update_image_data(
     let mut res_y0: OPJ_INT32 = 0;
     let mut res_y1: OPJ_INT32 = 0;
     let mut src_data_stride: OPJ_UINT32 = 0;
-    let mut p_src_data = 0 as *const OPJ_INT32;
+    let mut p_src_data = std::ptr::null::<OPJ_INT32>();
     /* Copy info from decoded comp image to output image */
     (*l_img_comp_dest).resno_decoded = (*l_img_comp_src).resno_decoded;
     if (*p_tcd).whole_tile_decoding != 0 {
@@ -10109,10 +10066,10 @@ unsafe fn opj_j2k_update_image_data(
         /* directly to save a copy */
         if (*p_tcd).whole_tile_decoding != 0 {
           (*l_img_comp_dest).data = (*l_tilec).data;
-          (*l_tilec).data = 0 as *mut OPJ_INT32
+          (*l_tilec).data = std::ptr::null_mut::<OPJ_INT32>()
         } else {
           (*l_img_comp_dest).data = (*l_tilec).data_win;
-          (*l_tilec).data_win = 0 as *mut OPJ_INT32
+          (*l_tilec).data_win = std::ptr::null_mut::<OPJ_INT32>()
         }
       } else {
         if (*l_img_comp_dest).data.is_null() {
@@ -10121,7 +10078,7 @@ unsafe fn opj_j2k_update_image_data(
           if l_height == 0
             || l_width > (usize::MAX).wrapping_div(l_height)
             || l_width.wrapping_mul(l_height)
-              > (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_INT32>() as usize)
+              > (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_INT32>())
           {
             /* would overflow */
             return 0i32;
@@ -10129,7 +10086,7 @@ unsafe fn opj_j2k_update_image_data(
           (*l_img_comp_dest).data = opj_image_data_alloc(
             l_width
               .wrapping_mul(l_height)
-              .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+              .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
           ) as *mut OPJ_INT32;
           if (*l_img_comp_dest).data.is_null() {
             return 0i32;
@@ -10140,20 +10097,20 @@ unsafe fn opj_j2k_update_image_data(
               0i32,
               ((*l_img_comp_dest).w as OPJ_SIZE_T)
                 .wrapping_mul((*l_img_comp_dest).h as usize)
-                .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+                .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
             );
           }
         }
         /* Move the output buffer to the first place where we will write*/
-        l_dest_ptr = (*l_img_comp_dest).data.offset(l_start_offset_dest as isize);
+        l_dest_ptr = (*l_img_comp_dest).data.add(l_start_offset_dest);
         let mut l_src_ptr = p_src_data;
-        l_src_ptr = l_src_ptr.offset(l_start_offset_src as isize);
+        l_src_ptr = l_src_ptr.add(l_start_offset_src);
         j = 0 as OPJ_UINT32;
         while j < l_height_dest {
           memcpy(
             l_dest_ptr as *mut core::ffi::c_void,
             l_src_ptr as *const core::ffi::c_void,
-            (l_width_dest as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+            (l_width_dest as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
           );
           l_dest_ptr = l_dest_ptr.offset((*l_img_comp_dest).w as isize);
           l_src_ptr = l_src_ptr.offset(src_data_stride as isize);
@@ -10167,7 +10124,7 @@ unsafe fn opj_j2k_update_image_data(
     l_img_comp_src = l_img_comp_src.offset(1);
     l_tilec = l_tilec.offset(1)
   }
-  return 1i32;
+  1i32
 }
 
 unsafe fn opj_j2k_update_image_dimensions(
@@ -10177,7 +10134,7 @@ unsafe fn opj_j2k_update_image_dimensions(
   let mut it_comp: OPJ_UINT32 = 0;
   let mut l_comp_x1: OPJ_INT32 = 0;
   let mut l_comp_y1: OPJ_INT32 = 0;
-  let mut l_img_comp = 0 as *mut opj_image_comp_t;
+  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
   l_img_comp = (*p_image).comps;
   it_comp = 0 as OPJ_UINT32;
   while it_comp < (*p_image).numcomps {
@@ -10236,7 +10193,7 @@ unsafe fn opj_j2k_update_image_dimensions(
     l_img_comp = l_img_comp.offset(1);
     it_comp += 1;
   }
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_set_decoded_components(
@@ -10246,8 +10203,8 @@ pub(crate) unsafe fn opj_j2k_set_decoded_components(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
-  let mut already_mapped = 0 as *mut OPJ_BOOL;
-  if (*p_j2k).m_private_image.is_null() {
+  let mut already_mapped = std::ptr::null_mut::<OPJ_BOOL>();
+  if p_j2k.m_private_image.is_null() {
     event_msg!(
       p_manager,
       EVT_ERROR,
@@ -10256,15 +10213,15 @@ pub(crate) unsafe fn opj_j2k_set_decoded_components(
     return 0i32;
   }
   already_mapped = opj_calloc(
-    core::mem::size_of::<OPJ_BOOL>() as usize,
-    (*(*p_j2k).m_private_image).numcomps as size_t,
+    core::mem::size_of::<OPJ_BOOL>(),
+    (*p_j2k.m_private_image).numcomps as size_t,
   ) as *mut OPJ_BOOL;
   if already_mapped.is_null() {
     return 0i32;
   }
   i = 0 as OPJ_UINT32;
   while i < numcomps {
-    if *comps_indices.offset(i as isize) >= (*(*p_j2k).m_private_image).numcomps {
+    if *comps_indices.offset(i as isize) >= (*p_j2k.m_private_image).numcomps {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -10289,43 +10246,43 @@ pub(crate) unsafe fn opj_j2k_set_decoded_components(
   }
   opj_free(already_mapped as *mut core::ffi::c_void);
   opj_free(
-    (*p_j2k)
+    p_j2k
       .m_specific_param
       .m_decoder
       .m_comps_indices_to_decode as *mut core::ffi::c_void,
   );
   if numcomps != 0 {
-    (*p_j2k)
+    p_j2k
       .m_specific_param
       .m_decoder
       .m_comps_indices_to_decode =
-      opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize))
+      opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT32>()))
         as *mut OPJ_UINT32;
-    if (*p_j2k)
+    if p_j2k
       .m_specific_param
       .m_decoder
       .m_comps_indices_to_decode
       .is_null()
     {
-      (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode = 0 as OPJ_UINT32;
+      p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode = 0 as OPJ_UINT32;
       return 0i32;
     }
     memcpy(
-      (*p_j2k)
+      p_j2k
         .m_specific_param
         .m_decoder
         .m_comps_indices_to_decode as *mut core::ffi::c_void,
       comps_indices as *const core::ffi::c_void,
-      (numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize),
+      (numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT32>()),
     );
   } else {
-    (*p_j2k)
+    p_j2k
       .m_specific_param
       .m_decoder
-      .m_comps_indices_to_decode = 0 as *mut OPJ_UINT32
+      .m_comps_indices_to_decode = std::ptr::null_mut::<OPJ_UINT32>()
   }
-  (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode = numcomps;
-  return 1i32;
+  p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode = numcomps;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_set_decode_area(
@@ -10337,16 +10294,16 @@ pub(crate) unsafe fn opj_j2k_set_decode_area(
   mut p_end_y: OPJ_INT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_cp: *mut opj_cp_t = &mut (*p_j2k).m_cp;
-  let mut l_image = (*p_j2k).m_private_image;
+  let mut l_cp: *mut opj_cp_t = &mut p_j2k.m_cp;
+  let mut l_image = p_j2k.m_private_image;
   let mut ret: OPJ_BOOL = 0;
   let mut it_comp: OPJ_UINT32 = 0;
-  if !((*p_j2k).m_cp.tw == 1u32
-    && (*p_j2k).m_cp.th == 1u32
-    && !(*(*p_j2k).m_cp.tcps.offset(0)).m_data.is_null())
+  if !(p_j2k.m_cp.tw == 1u32
+    && p_j2k.m_cp.th == 1u32
+    && !(*p_j2k.m_cp.tcps.offset(0)).m_data.is_null())
   {
     /* Check if we are read the main header */
-    if (*p_j2k).m_specific_param.m_decoder.m_state != J2KState::TPHSOT {
+    if p_j2k.m_specific_param.m_decoder.m_state != J2KState::TPHSOT {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -10360,7 +10317,7 @@ pub(crate) unsafe fn opj_j2k_set_decode_area(
   it_comp = 0 as OPJ_UINT32;
   while it_comp < (*p_image).numcomps {
     (*(*p_image).comps.offset(it_comp as isize)).factor =
-      (*p_j2k).m_cp.m_specific_param.m_dec.m_reduce;
+      p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
     it_comp += 1;
   }
   if p_start_x == 0 && p_start_y == 0 && p_end_x == 0 && p_end_y == 0 {
@@ -10369,10 +10326,10 @@ pub(crate) unsafe fn opj_j2k_set_decode_area(
       EVT_INFO,
       "No decoded area parameters, set the decoded area to the whole image\n",
     );
-    (*p_j2k).m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
-    (*p_j2k).m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
-    (*p_j2k).m_specific_param.m_decoder.m_end_tile_x = (*l_cp).tw;
-    (*p_j2k).m_specific_param.m_decoder.m_end_tile_y = (*l_cp).th;
+    p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
+    p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
+    p_j2k.m_specific_param.m_decoder.m_end_tile_x = (*l_cp).tw;
+    p_j2k.m_specific_param.m_decoder.m_end_tile_y = (*l_cp).th;
     (*p_image).x0 = (*l_image).x0;
     (*p_image).y0 = (*l_image).y0;
     (*p_image).x1 = (*l_image).x1;
@@ -10390,30 +10347,26 @@ pub(crate) unsafe fn opj_j2k_set_decode_area(
       p_start_x,
     );
     return 0i32;
+  } else if p_start_x as OPJ_UINT32 > (*l_image).x1 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Left position of the decoded area (region_x0=%d) is outside the image area (Xsiz=%d).\n",
+      p_start_x,
+      (*l_image).x1
+    );
+    return 0i32;
+  } else if (p_start_x as OPJ_UINT32) < (*l_image).x0 {
+    event_msg!(p_manager, EVT_WARNING,
+                          "Left position of the decoded area (region_x0=%d) is outside the image area (XOsiz=%d).\n",
+                          p_start_x, (*l_image).x0);
+    p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
+    (*p_image).x0 = (*l_image).x0
   } else {
-    if p_start_x as OPJ_UINT32 > (*l_image).x1 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Left position of the decoded area (region_x0=%d) is outside the image area (Xsiz=%d).\n",
-        p_start_x,
-        (*l_image).x1
-      );
-      return 0i32;
-    } else {
-      if (p_start_x as OPJ_UINT32) < (*l_image).x0 {
-        event_msg!(p_manager, EVT_WARNING,
-                              "Left position of the decoded area (region_x0=%d) is outside the image area (XOsiz=%d).\n",
-                              p_start_x, (*l_image).x0);
-        (*p_j2k).m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
-        (*p_image).x0 = (*l_image).x0
-      } else {
-        (*p_j2k).m_specific_param.m_decoder.m_start_tile_x = (p_start_x as OPJ_UINT32)
-          .wrapping_sub((*l_cp).tx0)
-          .wrapping_div((*l_cp).tdx);
-        (*p_image).x0 = p_start_x as OPJ_UINT32
-      }
-    }
+    p_j2k.m_specific_param.m_decoder.m_start_tile_x = (p_start_x as OPJ_UINT32)
+      .wrapping_sub((*l_cp).tx0)
+      .wrapping_div((*l_cp).tdx);
+    (*p_image).x0 = p_start_x as OPJ_UINT32
   }
   /* Up */
   if p_start_y < 0i32 {
@@ -10424,34 +10377,30 @@ pub(crate) unsafe fn opj_j2k_set_decode_area(
       p_start_y,
     );
     return 0i32;
+  } else if p_start_y as OPJ_UINT32 > (*l_image).y1 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Up position of the decoded area (region_y0=%d) is outside the image area (Ysiz=%d).\n",
+      p_start_y,
+      (*l_image).y1,
+    );
+    return 0i32;
+  } else if (p_start_y as OPJ_UINT32) < (*l_image).y0 {
+    event_msg!(
+      p_manager,
+      EVT_WARNING,
+      "Up position of the decoded area (region_y0=%d) is outside the image area (YOsiz=%d).\n",
+      p_start_y,
+      (*l_image).y0
+    );
+    p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
+    (*p_image).y0 = (*l_image).y0
   } else {
-    if p_start_y as OPJ_UINT32 > (*l_image).y1 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Up position of the decoded area (region_y0=%d) is outside the image area (Ysiz=%d).\n",
-        p_start_y,
-        (*l_image).y1,
-      );
-      return 0i32;
-    } else {
-      if (p_start_y as OPJ_UINT32) < (*l_image).y0 {
-        event_msg!(
-          p_manager,
-          EVT_WARNING,
-          "Up position of the decoded area (region_y0=%d) is outside the image area (YOsiz=%d).\n",
-          p_start_y,
-          (*l_image).y0
-        );
-        (*p_j2k).m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
-        (*p_image).y0 = (*l_image).y0
-      } else {
-        (*p_j2k).m_specific_param.m_decoder.m_start_tile_y = (p_start_y as OPJ_UINT32)
-          .wrapping_sub((*l_cp).ty0)
-          .wrapping_div((*l_cp).tdy);
-        (*p_image).y0 = p_start_y as OPJ_UINT32
-      }
-    }
+    p_j2k.m_specific_param.m_decoder.m_start_tile_y = (p_start_y as OPJ_UINT32)
+      .wrapping_sub((*l_cp).ty0)
+      .wrapping_div((*l_cp).tdy);
+    (*p_image).y0 = p_start_y as OPJ_UINT32
   }
   /* Right */
   if p_end_x <= 0i32 {
@@ -10462,29 +10411,25 @@ pub(crate) unsafe fn opj_j2k_set_decode_area(
       p_end_x,
     );
     return 0i32;
+  } else if (p_end_x as OPJ_UINT32) < (*l_image).x0 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Right position of the decoded area (region_x1=%d) is outside the image area (XOsiz=%d).\n",
+      p_end_x,
+      (*l_image).x0
+    );
+    return 0i32;
+  } else if p_end_x as OPJ_UINT32 > (*l_image).x1 {
+    event_msg!(p_manager, EVT_WARNING,
+                          "Right position of the decoded area (region_x1=%d) is outside the image area (Xsiz=%d).\n",
+                          p_end_x, (*l_image).x1);
+    p_j2k.m_specific_param.m_decoder.m_end_tile_x = (*l_cp).tw;
+    (*p_image).x1 = (*l_image).x1
   } else {
-    if (p_end_x as OPJ_UINT32) < (*l_image).x0 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Right position of the decoded area (region_x1=%d) is outside the image area (XOsiz=%d).\n",
-        p_end_x,
-        (*l_image).x0
-      );
-      return 0i32;
-    } else {
-      if p_end_x as OPJ_UINT32 > (*l_image).x1 {
-        event_msg!(p_manager, EVT_WARNING,
-                              "Right position of the decoded area (region_x1=%d) is outside the image area (Xsiz=%d).\n",
-                              p_end_x, (*l_image).x1);
-        (*p_j2k).m_specific_param.m_decoder.m_end_tile_x = (*l_cp).tw;
-        (*p_image).x1 = (*l_image).x1
-      } else {
-        (*p_j2k).m_specific_param.m_decoder.m_end_tile_x =
-          opj_uint_ceildiv(p_end_x as OPJ_UINT32 - (*l_cp).tx0, (*l_cp).tdx);
-        (*p_image).x1 = p_end_x as OPJ_UINT32
-      }
-    }
+    p_j2k.m_specific_param.m_decoder.m_end_tile_x =
+      opj_uint_ceildiv(p_end_x as OPJ_UINT32 - (*l_cp).tx0, (*l_cp).tdx);
+    (*p_image).x1 = p_end_x as OPJ_UINT32
   }
   /* Bottom */
   if p_end_y <= 0i32 {
@@ -10495,13 +10440,11 @@ pub(crate) unsafe fn opj_j2k_set_decode_area(
       p_end_y,
     );
     return 0i32;
-  } else {
-    if (p_end_y as OPJ_UINT32) < (*l_image).y0 {
-      event_msg!(p_manager, EVT_ERROR,
-                          "Bottom position of the decoded area (region_y1=%d) is outside the image area (YOsiz=%d).\n", p_end_y,
-                          (*l_image).y0);
-      return 0i32;
-    }
+  } else if (p_end_y as OPJ_UINT32) < (*l_image).y0 {
+    event_msg!(p_manager, EVT_ERROR,
+                        "Bottom position of the decoded area (region_y1=%d) is outside the image area (YOsiz=%d).\n", p_end_y,
+                        (*l_image).y0);
+    return 0i32;
   }
   if p_end_y as OPJ_UINT32 > (*l_image).y1 {
     event_msg!(
@@ -10511,15 +10454,15 @@ pub(crate) unsafe fn opj_j2k_set_decode_area(
       p_end_y,
       (*l_image).y1
     );
-    (*p_j2k).m_specific_param.m_decoder.m_end_tile_y = (*l_cp).th;
+    p_j2k.m_specific_param.m_decoder.m_end_tile_y = (*l_cp).th;
     (*p_image).y1 = (*l_image).y1
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_end_tile_y =
+    p_j2k.m_specific_param.m_decoder.m_end_tile_y =
       opj_uint_ceildiv(p_end_y as OPJ_UINT32 - (*l_cp).ty0, (*l_cp).tdy);
     (*p_image).y1 = p_end_y as OPJ_UINT32
   }
   /* ----- */
-  (*p_j2k)
+  p_j2k
     .m_specific_param
     .m_decoder
     .set_m_discard_tiles(1 as OPJ_BITFIELD);
@@ -10535,7 +10478,7 @@ pub(crate) unsafe fn opj_j2k_set_decode_area(
       (*p_image).y1,
     );
   }
-  return ret;
+  ret
 }
 
 impl opj_j2k {
@@ -10572,7 +10515,7 @@ pub(crate) unsafe fn opj_j2k_create_decompress() -> Option<opj_j2k> {
   /* Default to using strict mode. */
   l_j2k.m_cp.strict = 1i32;
   l_j2k.m_specific_param.m_decoder.m_default_tcp =
-    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_tcp_t>() as usize) as *mut opj_tcp_t;
+    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_tcp_t>()) as *mut opj_tcp_t;
   if l_j2k.m_specific_param.m_decoder.m_default_tcp.is_null() {
     return None;
   }
@@ -10596,29 +10539,29 @@ pub(crate) unsafe fn opj_j2k_create_decompress() -> Option<opj_j2k> {
   if l_j2k.m_tp.is_null() {
     return None;
   }
-  return Some(l_j2k);
+  Some(l_j2k)
 }
 
 unsafe fn opj_j2k_create_cstr_index() -> *mut opj_codestream_index_t {
   let mut cstr_index = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_codestream_index_t>() as usize,
+    core::mem::size_of::<opj_codestream_index_t>(),
   ) as *mut opj_codestream_index_t;
   if cstr_index.is_null() {
-    return 0 as *mut opj_codestream_index_t;
+    return std::ptr::null_mut::<opj_codestream_index_t>();
   }
   (*cstr_index).maxmarknum = 100 as OPJ_UINT32;
   (*cstr_index).marknum = 0 as OPJ_UINT32;
   (*cstr_index).marker = opj_calloc(
     (*cstr_index).maxmarknum as size_t,
-    core::mem::size_of::<opj_marker_info_t>() as usize,
+    core::mem::size_of::<opj_marker_info_t>(),
   ) as *mut opj_marker_info_t;
   if (*cstr_index).marker.is_null() {
     opj_free(cstr_index as *mut core::ffi::c_void);
-    return 0 as *mut opj_codestream_index_t;
+    return std::ptr::null_mut::<opj_codestream_index_t>();
   }
-  (*cstr_index).tile_index = 0 as *mut opj_tile_index_t;
-  return cstr_index;
+  (*cstr_index).tile_index = std::ptr::null_mut::<opj_tile_index_t>();
+  cstr_index
 }
 /* *
  * Gets the size taken by writing a SPCod or SPCoc for the given tile and component.
@@ -10634,22 +10577,22 @@ unsafe fn opj_j2k_get_SPCod_SPCoc_size(
   mut p_tile_no: OPJ_UINT32,
   mut p_comp_no: OPJ_UINT32,
 ) -> OPJ_UINT32 {
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
   /* preconditions */
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   /* preconditions again */
 
   assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
-  assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps);
+  assert!(p_comp_no < (*p_j2k.m_private_image).numcomps);
   if (*l_tccp).csty & 0x1u32 != 0 {
-    return (5u32).wrapping_add((*l_tccp).numresolutions);
+    (5u32).wrapping_add((*l_tccp).numresolutions)
   } else {
-    return 5 as OPJ_UINT32;
-  };
+    5 as OPJ_UINT32
+  }
 }
 /* *
  * Compare 2 a SPCod/ SPCoc elements, i.e. the coding style of a given component of a tile.
@@ -10668,12 +10611,12 @@ unsafe fn opj_j2k_compare_SPCod_SPCoc(
   mut p_second_comp_no: OPJ_UINT32,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp0 = 0 as *mut opj_tccp_t;
-  let mut l_tccp1 = 0 as *mut opj_tccp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp0 = std::ptr::null_mut::<opj_tccp_t>();
+  let mut l_tccp1 = std::ptr::null_mut::<opj_tccp_t>();
   /* preconditions */
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp0 = &mut *(*l_tcp).tccps.offset(p_first_comp_no as isize) as *mut opj_tccp_t;
   l_tccp1 = &mut *(*l_tcp).tccps.offset(p_second_comp_no as isize) as *mut opj_tccp_t;
@@ -10705,7 +10648,7 @@ unsafe fn opj_j2k_compare_SPCod_SPCoc(
     }
     i += 1;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
@@ -10728,20 +10671,20 @@ unsafe fn opj_j2k_write_SPCod_SPCoc(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
   /* preconditions */
 
   assert!(!p_header_size.is_null());
   assert!(!p_data.is_null());
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   /* preconditions again */
   /* SPcoc (E) */
   assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
-  assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps); /* SPcoc (G) */
+  assert!(p_comp_no < (*p_j2k.m_private_image).numcomps); /* SPcoc (G) */
   if *p_header_size < 5u32 {
     event_msg!(p_manager, EVT_ERROR, "Error writing SPCod SPCoc element\n",); /* SPcoc (H) */
     return 0i32;
@@ -10778,7 +10721,7 @@ unsafe fn opj_j2k_write_SPCod_SPCoc(
     }
     *p_header_size = (*p_header_size).wrapping_sub((*l_tccp).numresolutions)
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
@@ -10797,21 +10740,21 @@ unsafe fn opj_j2k_read_SPCod_SPCoc(
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
   let mut l_tmp: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
-  let mut l_current_ptr = 0 as *mut OPJ_BYTE;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
+  let mut l_current_ptr = std::ptr::null_mut::<OPJ_BYTE>();
   /* preconditions */
 
   assert!(!p_header_data.is_null());
-  l_cp = &mut (*p_j2k).m_cp;
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+  l_cp = &mut p_j2k.m_cp;
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
   /* precondition again */
-  assert!(compno < (*(*p_j2k).m_private_image).numcomps);
+  assert!(compno < (*p_j2k.m_private_image).numcomps);
   l_tccp = &mut *(*l_tcp).tccps.offset(compno as isize) as *mut opj_tccp_t;
   l_current_ptr = p_header_data;
   /* make sure room is sufficient */
@@ -10843,7 +10786,7 @@ unsafe fn opj_j2k_read_SPCod_SPCoc(
                       "Error decoding component %d.\nThe number of resolutions to remove (%d) is greater or equal than the number of resolutions of this component (%d)\nModify the cp_reduce parameter.\n\n", compno,
                       (*l_cp).m_specific_param.m_dec.m_reduce,
                       (*l_tccp).numresolutions);
-    (*p_j2k).m_specific_param.m_decoder.m_state |= J2KState::ERR;
+    p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
     return 0i32;
   }
   /* SPcod (E) / SPcoc (B) */
@@ -10919,7 +10862,7 @@ unsafe fn opj_j2k_read_SPCod_SPCoc(
       i += 1;
     }
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Copies the tile component parameters of all the component from the first tile component.
@@ -10929,17 +10872,17 @@ unsafe fn opj_j2k_read_SPCod_SPCoc(
 unsafe fn opj_j2k_copy_tile_component_parameters(mut p_j2k: &mut opj_j2k) {
   /* loop */
   let mut i: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_ref_tccp = 0 as *mut opj_tccp_t;
-  let mut l_copied_tccp = 0 as *mut opj_tccp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_ref_tccp = std::ptr::null_mut::<opj_tccp_t>();
+  let mut l_copied_tccp = std::ptr::null_mut::<opj_tccp_t>();
   let mut l_prc_size: OPJ_UINT32 = 0;
   /* preconditions */
-  l_cp = &mut (*p_j2k).m_cp;
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+  l_cp = &mut p_j2k.m_cp;
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
   l_ref_tccp = &mut *(*l_tcp).tccps.offset(0) as *mut opj_tccp_t;
   l_copied_tccp = l_ref_tccp.offset(1);
@@ -10947,7 +10890,7 @@ unsafe fn opj_j2k_copy_tile_component_parameters(mut p_j2k: &mut opj_j2k) {
     .numresolutions
     .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32);
   i = 1 as OPJ_UINT32;
-  while i < (*(*p_j2k).m_private_image).numcomps {
+  while i < (*p_j2k.m_private_image).numcomps {
     (*l_copied_tccp).numresolutions = (*l_ref_tccp).numresolutions;
     (*l_copied_tccp).cblkw = (*l_ref_tccp).cblkw;
     (*l_copied_tccp).cblkh = (*l_ref_tccp).cblkh;
@@ -10982,17 +10925,17 @@ unsafe fn opj_j2k_get_SQcd_SQcc_size(
   mut p_comp_no: OPJ_UINT32,
 ) -> OPJ_UINT32 {
   let mut l_num_bands: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
   /* preconditions */
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   /* preconditions again */
 
   assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
-  assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps);
+  assert!(p_comp_no < (*p_j2k.m_private_image).numcomps);
   l_num_bands = if (*l_tccp).qntsty == 1u32 {
     1u32
   } else {
@@ -11002,10 +10945,10 @@ unsafe fn opj_j2k_get_SQcd_SQcc_size(
       .wrapping_sub(2u32)
   };
   if (*l_tccp).qntsty == 0u32 {
-    return (1u32).wrapping_add(l_num_bands);
+    (1u32).wrapping_add(l_num_bands)
   } else {
-    return (1u32).wrapping_add((2u32).wrapping_mul(l_num_bands));
-  };
+    (1u32).wrapping_add((2u32).wrapping_mul(l_num_bands))
+  }
 }
 /* *
  * Compares 2 SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
@@ -11023,14 +10966,14 @@ unsafe fn opj_j2k_compare_SQcd_SQcc(
   mut p_first_comp_no: OPJ_UINT32,
   mut p_second_comp_no: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp0 = 0 as *mut opj_tccp_t;
-  let mut l_tccp1 = 0 as *mut opj_tccp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp0 = std::ptr::null_mut::<opj_tccp_t>();
+  let mut l_tccp1 = std::ptr::null_mut::<opj_tccp_t>();
   let mut l_band_no: OPJ_UINT32 = 0;
   let mut l_num_bands: OPJ_UINT32 = 0;
   /* preconditions */
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp0 = &mut *(*l_tcp).tccps.offset(p_first_comp_no as isize) as *mut opj_tccp_t;
   l_tccp1 = &mut *(*l_tcp).tccps.offset(p_second_comp_no as isize) as *mut opj_tccp_t;
@@ -11076,7 +11019,7 @@ unsafe fn opj_j2k_compare_SQcd_SQcc(
       l_band_no += 1;
     }
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Writes a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
@@ -11102,20 +11045,20 @@ unsafe fn opj_j2k_write_SQcd_SQcc(
   let mut l_num_bands: OPJ_UINT32 = 0;
   let mut l_expn: OPJ_UINT32 = 0;
   let mut l_mant: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
   /* preconditions */
 
   assert!(!p_header_size.is_null());
   assert!(!p_data.is_null());
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   /* preconditions again */
   /* SPqcx_i */
   assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
-  assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps); /* SPqcx_i */
+  assert!(p_comp_no < (*p_j2k.m_private_image).numcomps); /* SPqcx_i */
   l_num_bands = if (*l_tccp).qntsty == 1u32 {
     1u32
   } else {
@@ -11169,7 +11112,7 @@ unsafe fn opj_j2k_write_SQcd_SQcc(
     }
   }
   *p_header_size = (*p_header_size).wrapping_sub(l_header_size);
-  return 1i32;
+  1i32
 }
 /* *
  * Reads a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
@@ -11190,24 +11133,24 @@ unsafe fn opj_j2k_read_SQcd_SQcc(
 ) -> OPJ_BOOL {
   /* loop*/
   let mut l_band_no: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *mut opj_tccp_t;
-  let mut l_current_ptr = 0 as *mut OPJ_BYTE;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
+  let mut l_current_ptr = std::ptr::null_mut::<OPJ_BYTE>();
   let mut l_tmp: OPJ_UINT32 = 0;
   let mut l_num_band: OPJ_UINT32 = 0;
   /* preconditions*/
 
   assert!(!p_header_data.is_null());
-  l_cp = &mut (*p_j2k).m_cp;
+  l_cp = &mut p_j2k.m_cp;
   /* come from tile part header or main header ?*/
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
   /* precondition again*/
-  assert!(p_comp_no < (*(*p_j2k).m_private_image).numcomps);
+  assert!(p_comp_no < (*p_j2k.m_private_image).numcomps);
   l_tccp = &mut *(*l_tcp).tccps.offset(p_comp_no as isize) as *mut opj_tccp_t;
   l_current_ptr = p_header_data;
   if *p_header_size < 1u32 {
@@ -11274,20 +11217,20 @@ unsafe fn opj_j2k_read_SQcd_SQcc(
   if (*l_tccp).qntsty == 1u32 {
     l_band_no = 1 as OPJ_UINT32;
     while l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
-      (*l_tccp).stepsizes[l_band_no as usize].expn = if (*l_tccp).stepsizes[0 as usize].expn
+      (*l_tccp).stepsizes[l_band_no as usize].expn = if (*l_tccp).stepsizes[0_usize].expn
         - l_band_no.wrapping_sub(1u32).wrapping_div(3u32) as OPJ_INT32
         > 0i32
       {
-        ((*l_tccp).stepsizes[0 as usize].expn)
+        ((*l_tccp).stepsizes[0_usize].expn)
           - l_band_no.wrapping_sub(1u32).wrapping_div(3u32) as OPJ_INT32
       } else {
         0i32
       };
-      (*l_tccp).stepsizes[l_band_no as usize].mant = (*l_tccp).stepsizes[0 as usize].mant;
+      (*l_tccp).stepsizes[l_band_no as usize].mant = (*l_tccp).stepsizes[0_usize].mant;
       l_band_no += 1;
     }
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Copies the tile quantization parameters of all the component from the first tile component.
@@ -11296,24 +11239,24 @@ unsafe fn opj_j2k_read_SQcd_SQcc(
  */
 unsafe fn opj_j2k_copy_tile_quantization_parameters(mut p_j2k: &mut opj_j2k) {
   let mut i: OPJ_UINT32 = 0;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_ref_tccp = 0 as *mut opj_tccp_t;
-  let mut l_copied_tccp = 0 as *mut opj_tccp_t;
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_ref_tccp = std::ptr::null_mut::<opj_tccp_t>();
+  let mut l_copied_tccp = std::ptr::null_mut::<opj_tccp_t>();
   let mut l_size: OPJ_UINT32 = 0;
   /* preconditions */
-  l_cp = &mut (*p_j2k).m_cp;
-  l_tcp = if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::TPH {
-    &mut *(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize) as *mut opj_tcp_t
+  l_cp = &mut p_j2k.m_cp;
+  l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
+    &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t
   } else {
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp
+    p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
   l_ref_tccp = &mut *(*l_tcp).tccps.offset(0) as *mut opj_tccp_t;
   l_copied_tccp = l_ref_tccp.offset(1);
   l_size = ((3i32 * 33i32 - 2i32) as usize)
-    .wrapping_mul(core::mem::size_of::<opj_stepsize_t>() as usize) as OPJ_UINT32;
+    .wrapping_mul(core::mem::size_of::<opj_stepsize_t>()) as OPJ_UINT32;
   i = 1 as OPJ_UINT32;
-  while i < (*(*p_j2k).m_private_image).numcomps {
+  while i < (*p_j2k.m_private_image).numcomps {
     (*l_copied_tccp).qntsty = (*l_ref_tccp).qntsty;
     (*l_copied_tccp).numgbits = (*l_ref_tccp).numgbits;
     memcpy(
@@ -11489,28 +11432,24 @@ pub(crate) unsafe fn j2k_dump(
     return;
   }
   /* Dump the image_header */
-  if flag & 1i32 != 0 {
-    if !(*p_j2k).m_private_image.is_null() {
-      j2k_dump_image_header((*p_j2k).m_private_image, 0i32, out_stream);
-    }
+  if flag & 1i32 != 0 && !p_j2k.m_private_image.is_null() {
+    j2k_dump_image_header(p_j2k.m_private_image, 0i32, out_stream);
   }
   /* Dump the codestream info from main header */
-  if flag & 2i32 != 0 {
-    if !(*p_j2k).m_private_image.is_null() {
-      opj_j2k_dump_MH_info(p_j2k, out_stream);
-    }
+  if flag & 2i32 != 0 && !p_j2k.m_private_image.is_null() {
+    opj_j2k_dump_MH_info(p_j2k, out_stream);
   }
   /* Dump all tile/codestream info */
   if flag & 8i32 != 0 {
-    let mut l_nb_tiles = (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw);
+    let mut l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
     let mut i: OPJ_UINT32 = 0;
-    let mut l_tcp = (*p_j2k).m_cp.tcps;
-    if !(*p_j2k).m_private_image.is_null() {
+    let mut l_tcp = p_j2k.m_cp.tcps;
+    if !p_j2k.m_private_image.is_null() {
       i = 0 as OPJ_UINT32;
       while i < l_nb_tiles {
         opj_j2k_dump_tile_info(
           l_tcp,
-          (*(*p_j2k).m_private_image).numcomps as OPJ_INT32,
+          (*p_j2k.m_private_image).numcomps as OPJ_INT32,
           out_stream,
         );
         l_tcp = l_tcp.offset(1);
@@ -11519,18 +11458,18 @@ pub(crate) unsafe fn j2k_dump(
     }
   }
   /* Dump the codestream info of the current tile */
-  if (flag & 4i32) != 0 {}
+  if flag & 4i32 != 0 {};
   /* Dump the codestream index from main header */
   if flag & 16i32 != 0 {
     opj_j2k_dump_MH_index(p_j2k, out_stream);
   }
   /* Dump the codestream index of the current tile */
-  if (flag & 32i32) != 0 {}
+  if flag & 32i32 != 0 {}
 }
 
 #[cfg(feature = "file-io")]
 unsafe fn opj_j2k_dump_MH_index(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FILE) {
-  let mut cstr_index = (*p_j2k).cstr_index;
+  let mut cstr_index = p_j2k.cstr_index;
   let mut it_marker: OPJ_UINT32 = 0;
   let mut it_tile: OPJ_UINT32 = 0;
   let mut it_tile_part: OPJ_UINT32 = 0;
@@ -11665,24 +11604,24 @@ unsafe fn opj_j2k_dump_MH_info(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FIL
   fprintf(
     out_stream,
     b"\t tx0=%u, ty0=%u\n\x00" as *const u8 as *const core::ffi::c_char,
-    (*p_j2k).m_cp.tx0,
-    (*p_j2k).m_cp.ty0,
+    p_j2k.m_cp.tx0,
+    p_j2k.m_cp.ty0,
   );
   fprintf(
     out_stream,
     b"\t tdx=%u, tdy=%u\n\x00" as *const u8 as *const core::ffi::c_char,
-    (*p_j2k).m_cp.tdx,
-    (*p_j2k).m_cp.tdy,
+    p_j2k.m_cp.tdx,
+    p_j2k.m_cp.tdy,
   );
   fprintf(
     out_stream,
     b"\t tw=%u, th=%u\n\x00" as *const u8 as *const core::ffi::c_char,
-    (*p_j2k).m_cp.tw,
-    (*p_j2k).m_cp.th,
+    p_j2k.m_cp.tw,
+    p_j2k.m_cp.th,
   );
   opj_j2k_dump_tile_info(
-    (*p_j2k).m_specific_param.m_decoder.m_default_tcp,
-    (*(*p_j2k).m_private_image).numcomps as OPJ_INT32,
+    p_j2k.m_specific_param.m_decoder.m_default_tcp,
+    (*p_j2k.m_private_image).numcomps as OPJ_INT32,
     out_stream,
   );
   fprintf(
@@ -11704,14 +11643,14 @@ pub(crate) unsafe fn j2k_dump_image_header(
       stdout,
       b"[DEV] Dump an image_header struct {\n\x00" as *const u8 as *const core::ffi::c_char,
     );
-    tab[0 as usize] = '\u{0}' as i32 as core::ffi::c_char
+    tab[0_usize] = '\u{0}' as i32 as core::ffi::c_char
   } else {
     fprintf(
       out_stream,
       b"Image info {\n\x00" as *const u8 as *const core::ffi::c_char,
     );
-    tab[0 as usize] = '\t' as i32 as core::ffi::c_char;
-    tab[1 as usize] = '\u{0}' as i32 as core::ffi::c_char
+    tab[0_usize] = '\t' as i32 as core::ffi::c_char;
+    tab[1_usize] = '\u{0}' as i32 as core::ffi::c_char
   }
   fprintf(
     out_stream,
@@ -11775,11 +11714,11 @@ pub(crate) unsafe fn j2k_dump_image_comp_header(
       stdout,
       b"[DEV] Dump an image_comp_header struct {\n\x00" as *const u8 as *const core::ffi::c_char,
     );
-    tab[0 as usize] = '\u{0}' as i32 as core::ffi::c_char
+    tab[0_usize] = '\u{0}' as i32 as core::ffi::c_char
   } else {
-    tab[0 as usize] = '\t' as i32 as core::ffi::c_char;
-    tab[1 as usize] = '\t' as i32 as core::ffi::c_char;
-    tab[2 as usize] = '\u{0}' as i32 as core::ffi::c_char
+    tab[0_usize] = '\t' as i32 as core::ffi::c_char;
+    tab[1_usize] = '\t' as i32 as core::ffi::c_char;
+    tab[2_usize] = '\u{0}' as i32 as core::ffi::c_char
   }
   fprintf(
     out_stream,
@@ -11810,35 +11749,35 @@ pub(crate) unsafe fn j2k_dump_image_comp_header(
 #[no_mangle]
 pub(crate) unsafe fn j2k_get_cstr_info(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream_info_v2_t {
   let mut compno: OPJ_UINT32 = 0;
-  let mut numcomps = (*(*p_j2k).m_private_image).numcomps;
-  let mut l_default_tile = 0 as *mut opj_tcp_t;
+  let mut numcomps = (*p_j2k.m_private_image).numcomps;
+  let mut l_default_tile = std::ptr::null_mut::<opj_tcp_t>();
   let mut cstr_info = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_codestream_info_v2_t>() as usize,
+    core::mem::size_of::<opj_codestream_info_v2_t>(),
   ) as *mut opj_codestream_info_v2_t;
   if cstr_info.is_null() {
-    return 0 as *mut opj_codestream_info_v2_t;
+    return std::ptr::null_mut::<opj_codestream_info_v2_t>();
   }
-  (*cstr_info).nbcomps = (*(*p_j2k).m_private_image).numcomps;
-  (*cstr_info).tx0 = (*p_j2k).m_cp.tx0;
-  (*cstr_info).ty0 = (*p_j2k).m_cp.ty0;
-  (*cstr_info).tdx = (*p_j2k).m_cp.tdx;
-  (*cstr_info).tdy = (*p_j2k).m_cp.tdy;
-  (*cstr_info).tw = (*p_j2k).m_cp.tw;
-  (*cstr_info).th = (*p_j2k).m_cp.th;
-  (*cstr_info).tile_info = 0 as *mut opj_tile_info_v2_t;
-  l_default_tile = (*p_j2k).m_specific_param.m_decoder.m_default_tcp;
+  (*cstr_info).nbcomps = (*p_j2k.m_private_image).numcomps;
+  (*cstr_info).tx0 = p_j2k.m_cp.tx0;
+  (*cstr_info).ty0 = p_j2k.m_cp.ty0;
+  (*cstr_info).tdx = p_j2k.m_cp.tdx;
+  (*cstr_info).tdy = p_j2k.m_cp.tdy;
+  (*cstr_info).tw = p_j2k.m_cp.tw;
+  (*cstr_info).th = p_j2k.m_cp.th;
+  (*cstr_info).tile_info = std::ptr::null_mut::<opj_tile_info_v2_t>();
+  l_default_tile = p_j2k.m_specific_param.m_decoder.m_default_tcp;
   (*cstr_info).m_default_tile_info.csty = (*l_default_tile).csty;
   (*cstr_info).m_default_tile_info.prg = (*l_default_tile).prg;
   (*cstr_info).m_default_tile_info.numlayers = (*l_default_tile).numlayers;
   (*cstr_info).m_default_tile_info.mct = (*l_default_tile).mct;
   (*cstr_info).m_default_tile_info.tccp_info = opj_calloc(
     (*cstr_info).nbcomps as size_t,
-    core::mem::size_of::<opj_tccp_info_t>() as usize,
+    core::mem::size_of::<opj_tccp_info_t>(),
   ) as *mut opj_tccp_info_t;
   if (*cstr_info).m_default_tile_info.tccp_info.is_null() {
     opj_destroy_cstr_info(&mut cstr_info);
-    return 0 as *mut opj_codestream_info_v2_t;
+    return std::ptr::null_mut::<opj_codestream_info_v2_t>();
   }
   compno = 0 as OPJ_UINT32;
   while compno < numcomps {
@@ -11892,64 +11831,64 @@ pub(crate) unsafe fn j2k_get_cstr_info(mut p_j2k: &mut opj_j2k) -> *mut opj_code
     (*l_tccp_info).roishift = (*l_tccp).roishift;
     compno += 1;
   }
-  return cstr_info;
+  cstr_info
 }
 #[no_mangle]
 pub(crate) unsafe fn j2k_get_cstr_index(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream_index_t {
   let mut l_cstr_index = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_codestream_index_t>() as usize,
+    core::mem::size_of::<opj_codestream_index_t>(),
   ) as *mut opj_codestream_index_t;
   if l_cstr_index.is_null() {
-    return 0 as *mut opj_codestream_index_t;
+    return std::ptr::null_mut::<opj_codestream_index_t>();
   }
-  (*l_cstr_index).main_head_start = (*(*p_j2k).cstr_index).main_head_start;
-  (*l_cstr_index).main_head_end = (*(*p_j2k).cstr_index).main_head_end;
-  (*l_cstr_index).codestream_size = (*(*p_j2k).cstr_index).codestream_size;
-  (*l_cstr_index).marknum = (*(*p_j2k).cstr_index).marknum;
+  (*l_cstr_index).main_head_start = (*p_j2k.cstr_index).main_head_start;
+  (*l_cstr_index).main_head_end = (*p_j2k.cstr_index).main_head_end;
+  (*l_cstr_index).codestream_size = (*p_j2k.cstr_index).codestream_size;
+  (*l_cstr_index).marknum = (*p_j2k.cstr_index).marknum;
   (*l_cstr_index).marker = opj_malloc(
     ((*l_cstr_index).marknum as usize)
-      .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
+      .wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
   ) as *mut opj_marker_info_t;
   if (*l_cstr_index).marker.is_null() {
     opj_free(l_cstr_index as *mut core::ffi::c_void);
-    return 0 as *mut opj_codestream_index_t;
+    return std::ptr::null_mut::<opj_codestream_index_t>();
   }
-  if !(*(*p_j2k).cstr_index).marker.is_null() {
+  if !(*p_j2k.cstr_index).marker.is_null() {
     memcpy(
       (*l_cstr_index).marker as *mut core::ffi::c_void,
-      (*(*p_j2k).cstr_index).marker as *const core::ffi::c_void,
+      (*p_j2k.cstr_index).marker as *const core::ffi::c_void,
       ((*l_cstr_index).marknum as usize)
-        .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
+        .wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
     );
   } else {
     opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
-    (*l_cstr_index).marker = 0 as *mut opj_marker_info_t
+    (*l_cstr_index).marker = std::ptr::null_mut::<opj_marker_info_t>()
   }
-  (*l_cstr_index).nb_of_tiles = (*(*p_j2k).cstr_index).nb_of_tiles;
+  (*l_cstr_index).nb_of_tiles = (*p_j2k.cstr_index).nb_of_tiles;
   (*l_cstr_index).tile_index = opj_calloc(
     (*l_cstr_index).nb_of_tiles as size_t,
-    core::mem::size_of::<opj_tile_index_t>() as usize,
+    core::mem::size_of::<opj_tile_index_t>(),
   ) as *mut opj_tile_index_t;
   if (*l_cstr_index).tile_index.is_null() {
     opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
     opj_free(l_cstr_index as *mut core::ffi::c_void);
-    return 0 as *mut opj_codestream_index_t;
+    return std::ptr::null_mut::<opj_codestream_index_t>();
   }
-  if (*(*p_j2k).cstr_index).tile_index.is_null() {
+  if (*p_j2k.cstr_index).tile_index.is_null() {
     opj_free((*l_cstr_index).tile_index as *mut core::ffi::c_void);
-    (*l_cstr_index).tile_index = 0 as *mut opj_tile_index_t
+    (*l_cstr_index).tile_index = std::ptr::null_mut::<opj_tile_index_t>()
   } else {
     let mut it_tile = 0 as OPJ_UINT32;
     it_tile = 0 as OPJ_UINT32;
     while it_tile < (*l_cstr_index).nb_of_tiles {
       /* Tile Marker*/
       (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marknum =
-        (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).marknum;
-      let ref mut fresh34 = (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker;
+        (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).marknum;
+      let fresh34 = &mut (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker;
       *fresh34 = opj_malloc(
         ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).marknum as usize)
-          .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
+          .wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
       ) as *mut opj_marker_info_t;
       if (*(*l_cstr_index).tile_index.offset(it_tile as isize))
         .marker
@@ -11967,33 +11906,33 @@ pub(crate) unsafe fn j2k_get_cstr_index(mut p_j2k: &mut opj_j2k) -> *mut opj_cod
         opj_free((*l_cstr_index).tile_index as *mut core::ffi::c_void);
         opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
         opj_free(l_cstr_index as *mut core::ffi::c_void);
-        return 0 as *mut opj_codestream_index_t;
+        return std::ptr::null_mut::<opj_codestream_index_t>();
       }
-      if !(*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize))
+      if !(*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize))
         .marker
         .is_null()
       {
         memcpy(
           (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
-          (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).marker
+          (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).marker
             as *const core::ffi::c_void,
           ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).marknum as usize)
-            .wrapping_mul(core::mem::size_of::<opj_marker_info_t>() as usize),
+            .wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
         );
       } else {
         opj_free(
           (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
         );
-        let ref mut fresh35 = (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker;
-        *fresh35 = 0 as *mut opj_marker_info_t
+        let fresh35 = &mut (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker;
+        *fresh35 = std::ptr::null_mut::<opj_marker_info_t>()
       }
       /* Tile part index*/
       (*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_tps =
-        (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).nb_tps;
-      let ref mut fresh36 = (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index;
+        (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).nb_tps;
+      let fresh36 = &mut (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index;
       *fresh36 = opj_malloc(
         ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_tps as usize)
-          .wrapping_mul(core::mem::size_of::<opj_tp_index_t>() as usize),
+          .wrapping_mul(core::mem::size_of::<opj_tp_index_t>()),
       ) as *mut opj_tp_index_t;
       if (*(*l_cstr_index).tile_index.offset(it_tile as isize))
         .tp_index
@@ -12015,55 +11954,55 @@ pub(crate) unsafe fn j2k_get_cstr_index(mut p_j2k: &mut opj_j2k) -> *mut opj_cod
         opj_free((*l_cstr_index).tile_index as *mut core::ffi::c_void);
         opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
         opj_free(l_cstr_index as *mut core::ffi::c_void);
-        return 0 as *mut opj_codestream_index_t;
+        return std::ptr::null_mut::<opj_codestream_index_t>();
       }
-      if !(*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize))
+      if !(*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize))
         .tp_index
         .is_null()
       {
         memcpy(
           (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index as *mut core::ffi::c_void,
-          (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).tp_index
+          (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).tp_index
             as *const core::ffi::c_void,
           ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_tps as usize)
-            .wrapping_mul(core::mem::size_of::<opj_tp_index_t>() as usize),
+            .wrapping_mul(core::mem::size_of::<opj_tp_index_t>()),
         );
       } else {
         opj_free(
           (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index as *mut core::ffi::c_void,
         );
-        let ref mut fresh37 = (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index;
-        *fresh37 = 0 as *mut opj_tp_index_t
+        let fresh37 = &mut (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index;
+        *fresh37 = std::ptr::null_mut::<opj_tp_index_t>()
       }
       /* Packet index (NOT USED)*/
       (*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_packet = 0 as OPJ_UINT32;
-      let ref mut fresh38 = (*(*l_cstr_index).tile_index.offset(it_tile as isize)).packet_index;
-      *fresh38 = 0 as *mut opj_packet_info_t;
+      let fresh38 = &mut (*(*l_cstr_index).tile_index.offset(it_tile as isize)).packet_index;
+      *fresh38 = std::ptr::null_mut::<opj_packet_info_t>();
       it_tile += 1;
     }
   }
-  return l_cstr_index;
+  l_cstr_index
 }
 unsafe fn opj_j2k_allocate_tile_element_cstr_index(mut p_j2k: &mut opj_j2k) -> OPJ_BOOL {
   let mut it_tile = 0 as OPJ_UINT32;
-  (*(*p_j2k).cstr_index).nb_of_tiles = (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th);
-  (*(*p_j2k).cstr_index).tile_index = opj_calloc(
-    (*(*p_j2k).cstr_index).nb_of_tiles as size_t,
-    core::mem::size_of::<opj_tile_index_t>() as usize,
+  (*p_j2k.cstr_index).nb_of_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
+  (*p_j2k.cstr_index).tile_index = opj_calloc(
+    (*p_j2k.cstr_index).nb_of_tiles as size_t,
+    core::mem::size_of::<opj_tile_index_t>(),
   ) as *mut opj_tile_index_t;
-  if (*(*p_j2k).cstr_index).tile_index.is_null() {
+  if (*p_j2k.cstr_index).tile_index.is_null() {
     return 0i32;
   }
   it_tile = 0 as OPJ_UINT32;
-  while it_tile < (*(*p_j2k).cstr_index).nb_of_tiles {
-    (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).maxmarknum = 100 as OPJ_UINT32;
-    (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).marknum = 0 as OPJ_UINT32;
-    let ref mut fresh39 = (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).marker;
+  while it_tile < (*p_j2k.cstr_index).nb_of_tiles {
+    (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).maxmarknum = 100 as OPJ_UINT32;
+    (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).marknum = 0 as OPJ_UINT32;
+    let fresh39 = &mut (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).marker;
     *fresh39 = opj_calloc(
-      (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize)).maxmarknum as size_t,
-      core::mem::size_of::<opj_marker_info_t>() as usize,
+      (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).maxmarknum as size_t,
+      core::mem::size_of::<opj_marker_info_t>(),
     ) as *mut opj_marker_info_t;
-    if (*(*(*p_j2k).cstr_index).tile_index.offset(it_tile as isize))
+    if (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize))
       .marker
       .is_null()
     {
@@ -12071,7 +12010,7 @@ unsafe fn opj_j2k_allocate_tile_element_cstr_index(mut p_j2k: &mut opj_j2k) -> O
     }
     it_tile += 1;
   }
-  return 1i32;
+  1i32
 }
 unsafe fn opj_j2k_are_all_used_components_decoded(
   mut p_j2k: &mut opj_j2k,
@@ -12079,15 +12018,15 @@ unsafe fn opj_j2k_are_all_used_components_decoded(
 ) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   let mut decoded_all_used_components = 1i32;
-  if (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode != 0 {
+  if p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode != 0 {
     compno = 0 as OPJ_UINT32;
-    while compno < (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode {
-      let mut dec_compno = *(*p_j2k)
+    while compno < p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode {
+      let mut dec_compno = *p_j2k
         .m_specific_param
         .m_decoder
         .m_comps_indices_to_decode
         .offset(compno as isize);
-      if (*(*(*p_j2k).m_output_image).comps.offset(dec_compno as isize))
+      if (*(*p_j2k.m_output_image).comps.offset(dec_compno as isize))
         .data
         .is_null()
       {
@@ -12103,8 +12042,8 @@ unsafe fn opj_j2k_are_all_used_components_decoded(
     }
   } else {
     compno = 0 as OPJ_UINT32;
-    while compno < (*(*p_j2k).m_output_image).numcomps {
-      if (*(*(*p_j2k).m_output_image).comps.offset(compno as isize))
+    while compno < (*p_j2k.m_output_image).numcomps {
+      if (*(*p_j2k.m_output_image).comps.offset(compno as isize))
         .data
         .is_null()
       {
@@ -12127,7 +12066,7 @@ unsafe fn opj_j2k_are_all_used_components_decoded(
     );
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Reads the tiles.
@@ -12147,20 +12086,20 @@ unsafe fn opj_j2k_decode_tiles(
   let mut nr_tiles = 0 as OPJ_UINT32;
   /* Particular case for whole single tile decoding */
   /* We can avoid allocating intermediate tile buffers */
-  if (*p_j2k).m_cp.tw == 1u32
-    && (*p_j2k).m_cp.th == 1u32
-    && (*p_j2k).m_cp.tx0 == 0u32
-    && (*p_j2k).m_cp.ty0 == 0u32
-    && (*(*p_j2k).m_output_image).x0 == 0u32
-    && (*(*p_j2k).m_output_image).y0 == 0u32
-    && (*(*p_j2k).m_output_image).x1 == (*p_j2k).m_cp.tdx
-    && (*(*p_j2k).m_output_image).y1 == (*p_j2k).m_cp.tdy
+  if p_j2k.m_cp.tw == 1u32
+    && p_j2k.m_cp.th == 1u32
+    && p_j2k.m_cp.tx0 == 0u32
+    && p_j2k.m_cp.ty0 == 0u32
+    && (*p_j2k.m_output_image).x0 == 0u32
+    && (*p_j2k.m_output_image).y0 == 0u32
+    && (*p_j2k.m_output_image).x1 == p_j2k.m_cp.tdx
+    && (*p_j2k.m_output_image).y1 == p_j2k.m_cp.tdy
   {
     let mut i: OPJ_UINT32 = 0;
     if opj_j2k_read_tile_header(
       p_j2k,
       &mut l_current_tile_no,
-      0 as *mut OPJ_UINT32,
+      std::ptr::null_mut::<OPJ_UINT32>(),
       &mut l_tile_x0,
       &mut l_tile_y0,
       &mut l_tile_x1,
@@ -12176,7 +12115,7 @@ unsafe fn opj_j2k_decode_tiles(
     if opj_j2k_decode_tile(
       p_j2k,
       l_current_tile_no,
-      0 as *mut OPJ_BYTE,
+      std::ptr::null_mut::<OPJ_BYTE>(),
       0 as OPJ_UINT32,
       p_stream,
       p_manager,
@@ -12187,39 +12126,39 @@ unsafe fn opj_j2k_decode_tiles(
     }
     /* Transfer TCD data to output image data */
     i = 0 as OPJ_UINT32;
-    while i < (*(*p_j2k).m_output_image).numcomps {
+    while i < (*p_j2k.m_output_image).numcomps {
       opj_image_data_free(
-        (*(*(*p_j2k).m_output_image).comps.offset(i as isize)).data as *mut core::ffi::c_void,
+        (*(*p_j2k.m_output_image).comps.offset(i as isize)).data as *mut core::ffi::c_void,
       );
-      let ref mut fresh40 = (*(*(*p_j2k).m_output_image).comps.offset(i as isize)).data;
-      *fresh40 = (*(*(*(*(*p_j2k).m_tcd).tcd_image).tiles)
+      let fresh40 = &mut (*(*p_j2k.m_output_image).comps.offset(i as isize)).data;
+      *fresh40 = (*(*(*(*p_j2k.m_tcd).tcd_image).tiles)
         .comps
         .offset(i as isize))
       .data;
-      (*(*(*p_j2k).m_output_image).comps.offset(i as isize)).resno_decoded =
-        (*(*(*(*p_j2k).m_tcd).image).comps.offset(i as isize)).resno_decoded;
-      let ref mut fresh41 = (*(*(*(*(*p_j2k).m_tcd).tcd_image).tiles)
+      (*(*p_j2k.m_output_image).comps.offset(i as isize)).resno_decoded =
+        (*(*(*p_j2k.m_tcd).image).comps.offset(i as isize)).resno_decoded;
+      let fresh41 = &mut (*(*(*(*p_j2k.m_tcd).tcd_image).tiles)
         .comps
         .offset(i as isize))
       .data;
-      *fresh41 = 0 as *mut OPJ_INT32;
+      *fresh41 = std::ptr::null_mut::<OPJ_INT32>();
       i += 1;
     }
     return 1i32;
   }
   loop {
-    if (*p_j2k).m_cp.tw == 1u32
-      && (*p_j2k).m_cp.th == 1u32
-      && !(*(*p_j2k).m_cp.tcps.offset(0)).m_data.is_null()
+    if p_j2k.m_cp.tw == 1u32
+      && p_j2k.m_cp.th == 1u32
+      && !(*p_j2k.m_cp.tcps.offset(0)).m_data.is_null()
     {
       l_current_tile_no = 0 as OPJ_UINT32;
-      (*p_j2k).m_current_tile_number = 0 as OPJ_UINT32;
-      (*p_j2k).m_specific_param.m_decoder.m_state |= J2KState::DATA
+      p_j2k.m_current_tile_number = 0 as OPJ_UINT32;
+      p_j2k.m_specific_param.m_decoder.m_state |= J2KState::DATA
     } else {
       if opj_j2k_read_tile_header(
         p_j2k,
         &mut l_current_tile_no,
-        0 as *mut OPJ_UINT32,
+        std::ptr::null_mut::<OPJ_UINT32>(),
         &mut l_tile_x0,
         &mut l_tile_y0,
         &mut l_tile_x1,
@@ -12239,7 +12178,7 @@ unsafe fn opj_j2k_decode_tiles(
     if opj_j2k_decode_tile(
       p_j2k,
       l_current_tile_no,
-      0 as *mut OPJ_BYTE,
+      std::ptr::null_mut::<OPJ_BYTE>(),
       0 as OPJ_UINT32,
       p_stream,
       p_manager,
@@ -12250,7 +12189,7 @@ unsafe fn opj_j2k_decode_tiles(
         EVT_ERROR,
         "Failed to decode tile %d/%d\n",
         l_current_tile_no.wrapping_add(1u32),
-        (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw),
+        p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
       );
       return 0i32;
     }
@@ -12259,19 +12198,19 @@ unsafe fn opj_j2k_decode_tiles(
       EVT_INFO,
       "Tile %d/%d has been decoded.\n",
       l_current_tile_no.wrapping_add(1u32),
-      (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw),
+      p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
     );
-    if opj_j2k_update_image_data((*p_j2k).m_tcd, (*p_j2k).m_output_image) == 0 {
+    if opj_j2k_update_image_data(p_j2k.m_tcd, p_j2k.m_output_image) == 0 {
       return 0i32;
     }
-    if !((*p_j2k).m_cp.tw == 1u32
-      && (*p_j2k).m_cp.th == 1u32
-      && !((*(*p_j2k).m_output_image).x0 == (*(*p_j2k).m_private_image).x0
-        && (*(*p_j2k).m_output_image).y0 == (*(*p_j2k).m_private_image).y0
-        && (*(*p_j2k).m_output_image).x1 == (*(*p_j2k).m_private_image).x1
-        && (*(*p_j2k).m_output_image).y1 == (*(*p_j2k).m_private_image).y1))
+    if !(p_j2k.m_cp.tw == 1u32
+      && p_j2k.m_cp.th == 1u32
+      && !((*p_j2k.m_output_image).x0 == (*p_j2k.m_private_image).x0
+        && (*p_j2k.m_output_image).y0 == (*p_j2k.m_private_image).y0
+        && (*p_j2k.m_output_image).x1 == (*p_j2k.m_private_image).x1
+        && (*p_j2k.m_output_image).y1 == (*p_j2k.m_private_image).y1))
     {
-      opj_j2k_tcp_data_destroy(&mut *(*p_j2k).m_cp.tcps.offset(l_current_tile_no as isize));
+      opj_j2k_tcp_data_destroy(&mut *p_j2k.m_cp.tcps.offset(l_current_tile_no as isize));
     }
     event_msg!(
       p_manager,
@@ -12280,19 +12219,19 @@ unsafe fn opj_j2k_decode_tiles(
       l_current_tile_no.wrapping_add(1u32),
     );
     if opj_stream_get_number_byte_left(p_stream) == 0i64
-      && (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::NEOC
+      && p_j2k.m_specific_param.m_decoder.m_state == J2KState::NEOC
     {
       break;
     }
     nr_tiles = nr_tiles.wrapping_add(1);
-    if nr_tiles == (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw) {
+    if nr_tiles == p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw) {
       break;
     }
   }
   if opj_j2k_are_all_used_components_decoded(p_j2k, p_manager) == 0 {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Sets up the procedures to do on decoding data. Developers wanting to extend the library can add their own reading procedures.
@@ -12303,13 +12242,13 @@ unsafe fn opj_j2k_setup_decoding(
 ) -> OPJ_BOOL {
   /* preconditions*/
 
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_decode_tiles, p_manager)
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_decode_tiles, p_manager)
     == 0
   {
     return 0i32;
   }
   /* DEVELOPER CORNER, add your custom procedures */
-  return 1i32;
+  1i32
 }
 /*
  * Read and decode one tile.
@@ -12330,68 +12269,64 @@ unsafe fn opj_j2k_decode_one_tile(
   let mut l_nb_tiles: OPJ_UINT32 = 0;
   let mut i: OPJ_UINT32 = 0;
   /*Allocate and initialize some elements of codestrem index if not already done*/
-  if (*(*p_j2k).cstr_index).tile_index.is_null() {
-    if opj_j2k_allocate_tile_element_cstr_index(p_j2k) == 0 {
-      return 0i32;
-    }
+  if (*p_j2k.cstr_index).tile_index.is_null() && opj_j2k_allocate_tile_element_cstr_index(p_j2k) == 0 {
+    return 0i32;
   }
   /* Move into the codestream to the first SOT used to decode the desired tile */
-  l_tile_no_to_dec = (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32;
-  if !(*(*p_j2k).cstr_index).tile_index.is_null() {
-    if !(*(*(*p_j2k).cstr_index).tile_index).tp_index.is_null() {
-      if (*(*(*p_j2k).cstr_index)
-        .tile_index
-        .offset(l_tile_no_to_dec as isize))
-      .nb_tps
-        == 0
-      {
-        /* the index for this tile has not been built,
-         *  so move to the last SOT read */
-        if opj_stream_read_seek(
-          p_stream,
-          (*p_j2k).m_specific_param.m_decoder.m_last_sot_read_pos + 2i64,
-          p_manager,
-        ) == 0
-        {
-          event_msg!(p_manager, EVT_ERROR, "Problem with seek function\n",);
-          return 0i32;
-        }
-      } else if opj_stream_read_seek(
+  l_tile_no_to_dec = p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32;
+  if !(*p_j2k.cstr_index).tile_index.is_null() && !(*(*p_j2k.cstr_index).tile_index).tp_index.is_null() {
+    if (*(*p_j2k.cstr_index)
+      .tile_index
+      .offset(l_tile_no_to_dec as isize))
+    .nb_tps
+      == 0
+    {
+      /* the index for this tile has not been built,
+       *  so move to the last SOT read */
+      if opj_stream_read_seek(
         p_stream,
-        (*(*(*(*p_j2k).cstr_index)
-          .tile_index
-          .offset(l_tile_no_to_dec as isize))
-        .tp_index
-        .offset(0))
-        .start_pos
-          + 2i64,
+        p_j2k.m_specific_param.m_decoder.m_last_sot_read_pos + 2i64,
         p_manager,
       ) == 0
       {
         event_msg!(p_manager, EVT_ERROR, "Problem with seek function\n",);
         return 0i32;
       }
-      /* Special case if we have previously read the EOC marker (if the previous tile getted is the last ) */
-      if (*p_j2k).m_specific_param.m_decoder.m_state == J2KState::EOC {
-        (*p_j2k).m_specific_param.m_decoder.m_state = J2KState::TPHSOT
-      }
+    } else if opj_stream_read_seek(
+      p_stream,
+      (*(*(*p_j2k.cstr_index)
+        .tile_index
+        .offset(l_tile_no_to_dec as isize))
+      .tp_index
+      .offset(0))
+      .start_pos
+        + 2i64,
+      p_manager,
+    ) == 0
+    {
+      event_msg!(p_manager, EVT_ERROR, "Problem with seek function\n",);
+      return 0i32;
+    }
+    /* Special case if we have previously read the EOC marker (if the previous tile getted is the last ) */
+    if p_j2k.m_specific_param.m_decoder.m_state == J2KState::EOC {
+      p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT
     }
   }
   /* Reset current tile part number for all tiles, and not only the one */
   /* of interest. */
   /* Not completely sure this is always correct but required for */
   /* ./build/bin/j2k_random_tile_access ./build/tests/tte1.j2k */
-  l_nb_tiles = (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th);
+  l_nb_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   i = 0 as OPJ_UINT32;
   while i < l_nb_tiles {
-    (*(*p_j2k).m_cp.tcps.offset(i as isize)).m_current_tile_part_number = -(1i32);
+    (*p_j2k.m_cp.tcps.offset(i as isize)).m_current_tile_part_number = -(1i32);
     i += 1;
   }
   loop {
     if opj_j2k_read_tile_header(
       p_j2k,
       &mut l_current_tile_no,
-      0 as *mut OPJ_UINT32,
+      std::ptr::null_mut::<OPJ_UINT32>(),
       &mut l_tile_x0,
       &mut l_tile_y0,
       &mut l_tile_x1,
@@ -12410,7 +12345,7 @@ unsafe fn opj_j2k_decode_one_tile(
     if opj_j2k_decode_tile(
       p_j2k,
       l_current_tile_no,
-      0 as *mut OPJ_BYTE,
+      std::ptr::null_mut::<OPJ_BYTE>(),
       0 as OPJ_UINT32,
       p_stream,
       p_manager,
@@ -12423,12 +12358,12 @@ unsafe fn opj_j2k_decode_one_tile(
       EVT_INFO,
       "Tile %d/%d has been decoded.\n",
       l_current_tile_no.wrapping_add(1u32),
-      (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw),
+      p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
     );
-    if opj_j2k_update_image_data((*p_j2k).m_tcd, (*p_j2k).m_output_image) == 0 {
+    if opj_j2k_update_image_data(p_j2k.m_tcd, p_j2k.m_output_image) == 0 {
       return 0i32;
     }
-    opj_j2k_tcp_data_destroy(&mut *(*p_j2k).m_cp.tcps.offset(l_current_tile_no as isize));
+    opj_j2k_tcp_data_destroy(&mut *p_j2k.m_cp.tcps.offset(l_current_tile_no as isize));
     event_msg!(
       p_manager,
       EVT_INFO,
@@ -12439,7 +12374,7 @@ unsafe fn opj_j2k_decode_one_tile(
       /* move into the codestream to the first SOT (FIXME or not move?)*/
       if opj_stream_read_seek(
         p_stream,
-        (*(*p_j2k).cstr_index).main_head_end + 2i64,
+        (*p_j2k.cstr_index).main_head_end + 2i64,
         p_manager,
       ) == 0
       {
@@ -12460,7 +12395,7 @@ unsafe fn opj_j2k_decode_one_tile(
   if opj_j2k_are_all_used_components_decoded(p_j2k, p_manager) == 0 {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Sets up the procedures to do on decoding one tile. Developers wanting to extend the library can add their own reading procedures.
@@ -12472,7 +12407,7 @@ unsafe fn opj_j2k_setup_decoding_tile(
   /* preconditions*/
 
   if opj_procedure_list_add_procedure(
-    (*p_j2k).m_procedure_list,
+    p_j2k.m_procedure_list,
     opj_j2k_decode_one_tile,
     p_manager,
   ) == 0
@@ -12480,7 +12415,7 @@ unsafe fn opj_j2k_setup_decoding_tile(
     return 0i32;
   }
   /* DEVELOPER CORNER, add your custom procedures */
-  return 1i32;
+  1i32
 }
 unsafe fn opj_j2k_move_data_from_codec_to_output_image(
   mut p_j2k: &mut opj_j2k,
@@ -12488,14 +12423,14 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
 ) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   /* Move data and copy one information from codec to output image*/
-  if (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode > 0u32 {
+  if p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode > 0u32 {
     let mut newcomps = opj_malloc(
-      ((*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode as usize)
-        .wrapping_mul(core::mem::size_of::<opj_image_comp_t>() as usize),
+      (p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode as usize)
+        .wrapping_mul(core::mem::size_of::<opj_image_comp_t>()),
     ) as *mut opj_image_comp_t;
     if newcomps.is_null() {
-      opj_image_destroy((*p_j2k).m_private_image);
-      (*p_j2k).m_private_image = 0 as *mut opj_image_t;
+      opj_image_destroy(p_j2k.m_private_image);
+      p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
       return 0i32;
     }
     compno = 0 as OPJ_UINT32;
@@ -12503,62 +12438,62 @@ unsafe fn opj_j2k_move_data_from_codec_to_output_image(
       opj_image_data_free(
         (*(*p_image).comps.offset(compno as isize)).data as *mut core::ffi::c_void,
       );
-      let ref mut fresh42 = (*(*p_image).comps.offset(compno as isize)).data;
-      *fresh42 = 0 as *mut OPJ_INT32;
+      let fresh42 = &mut (*(*p_image).comps.offset(compno as isize)).data;
+      *fresh42 = std::ptr::null_mut::<OPJ_INT32>();
       compno += 1;
     }
     compno = 0 as OPJ_UINT32;
-    while compno < (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode {
-      let mut src_compno = *(*p_j2k)
+    while compno < p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode {
+      let mut src_compno = *p_j2k
         .m_specific_param
         .m_decoder
         .m_comps_indices_to_decode
         .offset(compno as isize);
       memcpy(
         &mut *newcomps.offset(compno as isize) as *mut opj_image_comp_t as *mut core::ffi::c_void,
-        &mut *(*(*p_j2k).m_output_image).comps.offset(src_compno as isize) as *mut opj_image_comp_t
+        &mut *(*p_j2k.m_output_image).comps.offset(src_compno as isize) as *mut opj_image_comp_t
           as *const core::ffi::c_void,
-        core::mem::size_of::<opj_image_comp_t>() as usize,
+        core::mem::size_of::<opj_image_comp_t>(),
       );
       (*newcomps.offset(compno as isize)).resno_decoded =
-        (*(*(*p_j2k).m_output_image).comps.offset(src_compno as isize)).resno_decoded;
-      let ref mut fresh43 = (*newcomps.offset(compno as isize)).data;
-      *fresh43 = (*(*(*p_j2k).m_output_image).comps.offset(src_compno as isize)).data;
-      let ref mut fresh44 = (*(*(*p_j2k).m_output_image).comps.offset(src_compno as isize)).data;
-      *fresh44 = 0 as *mut OPJ_INT32;
+        (*(*p_j2k.m_output_image).comps.offset(src_compno as isize)).resno_decoded;
+      let fresh43 = &mut (*newcomps.offset(compno as isize)).data;
+      *fresh43 = (*(*p_j2k.m_output_image).comps.offset(src_compno as isize)).data;
+      let fresh44 = &mut (*(*p_j2k.m_output_image).comps.offset(src_compno as isize)).data;
+      *fresh44 = std::ptr::null_mut::<OPJ_INT32>();
       compno += 1;
     }
     compno = 0 as OPJ_UINT32;
     while compno < (*p_image).numcomps {
-      assert!((*(*(*p_j2k).m_output_image).comps.offset(compno as isize))
+      assert!((*(*p_j2k.m_output_image).comps.offset(compno as isize))
         .data
         .is_null());
       opj_image_data_free(
-        (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data as *mut core::ffi::c_void,
+        (*(*p_j2k.m_output_image).comps.offset(compno as isize)).data as *mut core::ffi::c_void,
       );
-      let ref mut fresh45 = (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data;
-      *fresh45 = 0 as *mut OPJ_INT32;
+      let fresh45 = &mut (*(*p_j2k.m_output_image).comps.offset(compno as isize)).data;
+      *fresh45 = std::ptr::null_mut::<OPJ_INT32>();
       compno += 1;
     }
-    (*p_image).numcomps = (*p_j2k).m_specific_param.m_decoder.m_numcomps_to_decode;
+    (*p_image).numcomps = p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode;
     opj_free((*p_image).comps as *mut core::ffi::c_void);
     (*p_image).comps = newcomps
   } else {
     compno = 0 as OPJ_UINT32;
     while compno < (*p_image).numcomps {
       (*(*p_image).comps.offset(compno as isize)).resno_decoded =
-        (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).resno_decoded;
+        (*(*p_j2k.m_output_image).comps.offset(compno as isize)).resno_decoded;
       opj_image_data_free(
         (*(*p_image).comps.offset(compno as isize)).data as *mut core::ffi::c_void,
       );
-      let ref mut fresh46 = (*(*p_image).comps.offset(compno as isize)).data;
-      *fresh46 = (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data;
-      let ref mut fresh47 = (*(*(*p_j2k).m_output_image).comps.offset(compno as isize)).data;
-      *fresh47 = 0 as *mut OPJ_INT32;
+      let fresh46 = &mut (*(*p_image).comps.offset(compno as isize)).data;
+      *fresh46 = (*(*p_j2k.m_output_image).comps.offset(compno as isize)).data;
+      let fresh47 = &mut (*(*p_j2k.m_output_image).comps.offset(compno as isize)).data;
+      *fresh47 = std::ptr::null_mut::<OPJ_INT32>();
       compno += 1;
     }
   }
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_decode(
@@ -12574,11 +12509,11 @@ pub(crate) unsafe fn opj_j2k_decode(
   /* and finally opj_decode_image() without manual setting of comps[].factor */
   /* We could potentially always execute it, if we don't allow people to do */
   /* opj_read_header(), modify x0,y0,x1,y1 of returned image an call opj_decode_image() */
-  if (*p_j2k).m_cp.m_specific_param.m_dec.m_reduce > 0u32
-    && !(*p_j2k).m_private_image.is_null()
-    && (*(*p_j2k).m_private_image).numcomps > 0u32
-    && (*(*(*p_j2k).m_private_image).comps.offset(0)).factor
-      == (*p_j2k).m_cp.m_specific_param.m_dec.m_reduce
+  if p_j2k.m_cp.m_specific_param.m_dec.m_reduce > 0u32
+    && !p_j2k.m_private_image.is_null()
+    && (*p_j2k.m_private_image).numcomps > 0u32
+    && (*(*p_j2k.m_private_image).comps.offset(0)).factor
+      == p_j2k.m_cp.m_specific_param.m_dec.m_reduce
     && (*p_image).numcomps > 0u32
     && (*(*p_image).comps.offset(0)).factor == 0u32
     && (*(*p_image).comps.offset(0)).data.is_null()
@@ -12589,32 +12524,32 @@ pub(crate) unsafe fn opj_j2k_decode(
     it_comp = 0 as OPJ_UINT32;
     while it_comp < (*p_image).numcomps {
       (*(*p_image).comps.offset(it_comp as isize)).factor =
-        (*p_j2k).m_cp.m_specific_param.m_dec.m_reduce;
+        p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
       it_comp += 1;
     }
     if opj_j2k_update_image_dimensions(p_image, p_manager) == 0 {
       return 0i32;
     }
   }
-  if (*p_j2k).m_output_image.is_null() {
-    (*p_j2k).m_output_image = opj_image_create0();
-    if (*p_j2k).m_output_image.is_null() {
+  if p_j2k.m_output_image.is_null() {
+    p_j2k.m_output_image = opj_image_create0();
+    if p_j2k.m_output_image.is_null() {
       return 0i32;
     }
   }
-  opj_copy_image_header(p_image, (*p_j2k).m_output_image);
+  opj_copy_image_header(p_image, p_j2k.m_output_image);
   /* customization of the decoding */
   if opj_j2k_setup_decoding(p_j2k, p_manager) == 0 {
     return 0i32;
   }
   /* Decode the codestream */
-  if opj_j2k_exec(p_j2k, (*p_j2k).m_procedure_list, p_stream, p_manager) == 0 {
-    opj_image_destroy((*p_j2k).m_private_image);
-    (*p_j2k).m_private_image = 0 as *mut opj_image_t;
+  if opj_j2k_exec(p_j2k, p_j2k.m_procedure_list, p_stream, p_manager) == 0 {
+    opj_image_destroy(p_j2k.m_private_image);
+    p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
     return 0i32;
   }
   /* Move data and copy one information from codec to output image*/
-  return opj_j2k_move_data_from_codec_to_output_image(p_j2k, p_image);
+  opj_j2k_move_data_from_codec_to_output_image(p_j2k, p_image)
 }
 
 #[no_mangle]
@@ -12628,7 +12563,7 @@ pub(crate) unsafe fn opj_j2k_get_tile(
   let mut compno: OPJ_UINT32 = 0;
   let mut l_tile_x: OPJ_UINT32 = 0;
   let mut l_tile_y: OPJ_UINT32 = 0;
-  let mut l_img_comp = 0 as *mut opj_image_comp_t;
+  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
   if p_image.is_null() {
     event_msg!(
       p_manager,
@@ -12637,7 +12572,7 @@ pub(crate) unsafe fn opj_j2k_get_tile(
     );
     return 0i32;
   }
-  if (*p_image).numcomps < (*(*p_j2k).m_private_image).numcomps {
+  if (*p_image).numcomps < (*p_j2k.m_private_image).numcomps {
     event_msg!(
       p_manager,
       EVT_ERROR,
@@ -12645,57 +12580,57 @@ pub(crate) unsafe fn opj_j2k_get_tile(
     );
     return 0i32;
   }
-  if tile_index >= (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th) {
+  if tile_index >= p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th) {
     event_msg!(
       p_manager,
       EVT_ERROR,
       "Tile index provided by the user is incorrect %d (max = %d) \n",
       tile_index,
-      (*p_j2k)
+      p_j2k
         .m_cp
         .tw
-        .wrapping_mul((*p_j2k).m_cp.th)
+        .wrapping_mul(p_j2k.m_cp.th)
         .wrapping_sub(1u32),
     );
     return 0i32;
   }
   /* Compute the dimension of the desired tile*/
-  l_tile_x = tile_index.wrapping_rem((*p_j2k).m_cp.tw);
-  l_tile_y = tile_index.wrapping_div((*p_j2k).m_cp.tw);
+  l_tile_x = tile_index.wrapping_rem(p_j2k.m_cp.tw);
+  l_tile_y = tile_index.wrapping_div(p_j2k.m_cp.tw);
   (*p_image).x0 = l_tile_x
-    .wrapping_mul((*p_j2k).m_cp.tdx)
-    .wrapping_add((*p_j2k).m_cp.tx0);
-  if (*p_image).x0 < (*(*p_j2k).m_private_image).x0 {
-    (*p_image).x0 = (*(*p_j2k).m_private_image).x0
+    .wrapping_mul(p_j2k.m_cp.tdx)
+    .wrapping_add(p_j2k.m_cp.tx0);
+  if (*p_image).x0 < (*p_j2k.m_private_image).x0 {
+    (*p_image).x0 = (*p_j2k.m_private_image).x0
   }
   (*p_image).x1 = l_tile_x
     .wrapping_add(1u32)
-    .wrapping_mul((*p_j2k).m_cp.tdx)
-    .wrapping_add((*p_j2k).m_cp.tx0);
-  if (*p_image).x1 > (*(*p_j2k).m_private_image).x1 {
-    (*p_image).x1 = (*(*p_j2k).m_private_image).x1
+    .wrapping_mul(p_j2k.m_cp.tdx)
+    .wrapping_add(p_j2k.m_cp.tx0);
+  if (*p_image).x1 > (*p_j2k.m_private_image).x1 {
+    (*p_image).x1 = (*p_j2k.m_private_image).x1
   }
   (*p_image).y0 = l_tile_y
-    .wrapping_mul((*p_j2k).m_cp.tdy)
-    .wrapping_add((*p_j2k).m_cp.ty0);
-  if (*p_image).y0 < (*(*p_j2k).m_private_image).y0 {
-    (*p_image).y0 = (*(*p_j2k).m_private_image).y0
+    .wrapping_mul(p_j2k.m_cp.tdy)
+    .wrapping_add(p_j2k.m_cp.ty0);
+  if (*p_image).y0 < (*p_j2k.m_private_image).y0 {
+    (*p_image).y0 = (*p_j2k.m_private_image).y0
   }
   (*p_image).y1 = l_tile_y
     .wrapping_add(1u32)
-    .wrapping_mul((*p_j2k).m_cp.tdy)
-    .wrapping_add((*p_j2k).m_cp.ty0);
-  if (*p_image).y1 > (*(*p_j2k).m_private_image).y1 {
-    (*p_image).y1 = (*(*p_j2k).m_private_image).y1
+    .wrapping_mul(p_j2k.m_cp.tdy)
+    .wrapping_add(p_j2k.m_cp.ty0);
+  if (*p_image).y1 > (*p_j2k.m_private_image).y1 {
+    (*p_image).y1 = (*p_j2k.m_private_image).y1
   }
 
   l_img_comp = (*p_image).comps;
   compno = 0 as OPJ_UINT32;
-  while compno < (*(*p_j2k).m_private_image).numcomps {
+  while compno < (*p_j2k.m_private_image).numcomps {
     let mut l_comp_x1: OPJ_INT32 = 0;
     let mut l_comp_y1: OPJ_INT32 = 0;
 
-    (*l_img_comp).factor = (*(*(*p_j2k).m_private_image).comps.offset(compno as isize)).factor;
+    (*l_img_comp).factor = (*(*p_j2k.m_private_image).comps.offset(compno as isize)).factor;
 
     (*l_img_comp).x0 = opj_uint_ceildiv((*p_image).x0, (*l_img_comp).dx);
     (*l_img_comp).y0 = opj_uint_ceildiv((*p_image).y0, (*l_img_comp).dy);
@@ -12715,44 +12650,44 @@ pub(crate) unsafe fn opj_j2k_get_tile(
     l_img_comp = l_img_comp.offset(1);
     compno += 1;
   }
-  if (*p_image).numcomps > (*(*p_j2k).m_private_image).numcomps {
+  if (*p_image).numcomps > (*p_j2k.m_private_image).numcomps {
     /* Can happen when calling repeatdly opj_get_decoded_tile() on an
      * image with a color palette, where color palette expansion is done
      * later in jp2.c */
-    compno = (*(*p_j2k).m_private_image).numcomps;
+    compno = (*p_j2k.m_private_image).numcomps;
     while compno < (*p_image).numcomps {
       opj_image_data_free(
         (*(*p_image).comps.offset(compno as isize)).data as *mut core::ffi::c_void,
       );
-      let ref mut fresh48 = (*(*p_image).comps.offset(compno as isize)).data;
-      *fresh48 = 0 as *mut OPJ_INT32;
+      let fresh48 = &mut (*(*p_image).comps.offset(compno as isize)).data;
+      *fresh48 = std::ptr::null_mut::<OPJ_INT32>();
       compno += 1;
     }
-    (*p_image).numcomps = (*(*p_j2k).m_private_image).numcomps
+    (*p_image).numcomps = (*p_j2k.m_private_image).numcomps
   }
   /* Destroy the previous output image*/
-  if !(*p_j2k).m_output_image.is_null() {
-    opj_image_destroy((*p_j2k).m_output_image);
+  if !p_j2k.m_output_image.is_null() {
+    opj_image_destroy(p_j2k.m_output_image);
   }
   /* Create the output image from the information previously computed*/
-  (*p_j2k).m_output_image = opj_image_create0();
-  if (*p_j2k).m_output_image.is_null() {
+  p_j2k.m_output_image = opj_image_create0();
+  if p_j2k.m_output_image.is_null() {
     return 0i32;
   }
-  opj_copy_image_header(p_image, (*p_j2k).m_output_image);
-  (*p_j2k).m_specific_param.m_decoder.m_tile_ind_to_dec = tile_index as OPJ_INT32;
+  opj_copy_image_header(p_image, p_j2k.m_output_image);
+  p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = tile_index as OPJ_INT32;
   /* customization of the decoding */
   if opj_j2k_setup_decoding_tile(p_j2k, p_manager) == 0 {
     return 0i32;
   }
   /* Decode the codestream */
-  if opj_j2k_exec(p_j2k, (*p_j2k).m_procedure_list, p_stream, p_manager) == 0 {
-    opj_image_destroy((*p_j2k).m_private_image);
-    (*p_j2k).m_private_image = 0 as *mut opj_image_t;
+  if opj_j2k_exec(p_j2k, p_j2k.m_procedure_list, p_stream, p_manager) == 0 {
+    opj_image_destroy(p_j2k.m_private_image);
+    p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
     return 0i32;
   }
   /* Move data and copy one information from codec to output image*/
-  return opj_j2k_move_data_from_codec_to_output_image(p_j2k, p_image);
+  opj_j2k_move_data_from_codec_to_output_image(p_j2k, p_image)
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_set_decoded_resolution_factor(
@@ -12761,37 +12696,30 @@ pub(crate) unsafe fn opj_j2k_set_decoded_resolution_factor(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut it_comp: OPJ_UINT32 = 0;
-  (*p_j2k).m_cp.m_specific_param.m_dec.m_reduce = res_factor;
-  if !(*p_j2k).m_private_image.is_null() {
-    if !(*(*p_j2k).m_private_image).comps.is_null() {
-      if !(*p_j2k).m_specific_param.m_decoder.m_default_tcp.is_null() {
-        if !(*(*p_j2k).m_specific_param.m_decoder.m_default_tcp)
+  p_j2k.m_cp.m_specific_param.m_dec.m_reduce = res_factor;
+  if !p_j2k.m_private_image.is_null() && !(*p_j2k.m_private_image).comps.is_null() && !p_j2k.m_specific_param.m_decoder.m_default_tcp.is_null() && !(*p_j2k.m_specific_param.m_decoder.m_default_tcp)
           .tccps
-          .is_null()
-        {
-          it_comp = 0 as OPJ_UINT32;
-          while it_comp < (*(*p_j2k).m_private_image).numcomps {
-            let mut max_res = (*(*(*p_j2k).m_specific_param.m_decoder.m_default_tcp)
-              .tccps
-              .offset(it_comp as isize))
-            .numresolutions;
-            if res_factor >= max_res {
-              event_msg!(
-                p_manager,
-                EVT_ERROR,
-                "Resolution factor is greater than the maximum resolution in the component.\n",
-              );
-              return 0i32;
-            }
-            (*(*(*p_j2k).m_private_image).comps.offset(it_comp as isize)).factor = res_factor;
-            it_comp += 1;
-          }
-          return 1i32;
-        }
+          .is_null() {
+    it_comp = 0 as OPJ_UINT32;
+    while it_comp < (*p_j2k.m_private_image).numcomps {
+      let mut max_res = (*(*p_j2k.m_specific_param.m_decoder.m_default_tcp)
+        .tccps
+        .offset(it_comp as isize))
+      .numresolutions;
+      if res_factor >= max_res {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "Resolution factor is greater than the maximum resolution in the component.\n",
+        );
+        return 0i32;
       }
+      (*(*p_j2k.m_private_image).comps.offset(it_comp as isize)).factor = res_factor;
+      it_comp += 1;
     }
+    return 1i32;
   }
-  return 0i32;
+  0i32
 }
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
@@ -12800,7 +12728,7 @@ pub(crate) unsafe fn opj_j2k_encoder_set_extra_options(
   mut p_options: *const *const core::ffi::c_char,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut p_option_iter = 0 as *const *const core::ffi::c_char;
+  let mut p_option_iter = std::ptr::null::<*const core::ffi::c_char>();
   if p_options.is_null() {
     return 1i32;
   }
@@ -12817,13 +12745,13 @@ pub(crate) unsafe fn opj_j2k_encoder_set_extra_options(
         b"PLT=YES\x00" as *const u8 as *const core::ffi::c_char,
       ) == 0i32
       {
-        (*p_j2k).m_specific_param.m_encoder.m_PLT = 1i32
+        p_j2k.m_specific_param.m_encoder.m_PLT = 1i32
       } else if strcmp(
         *p_option_iter,
         b"PLT=NO\x00" as *const u8 as *const core::ffi::c_char,
       ) == 0i32
       {
-        (*p_j2k).m_specific_param.m_encoder.m_PLT = 0i32
+        p_j2k.m_specific_param.m_encoder.m_PLT = 0i32
       } else {
         let tmp_str = unsafe { core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
         event_msg!(
@@ -12845,13 +12773,13 @@ pub(crate) unsafe fn opj_j2k_encoder_set_extra_options(
         b"TLM=YES\x00" as *const u8 as *const core::ffi::c_char,
       ) == 0i32
       {
-        (*p_j2k).m_specific_param.m_encoder.m_TLM = 1i32
+        p_j2k.m_specific_param.m_encoder.m_TLM = 1i32
       } else if strcmp(
         *p_option_iter,
         b"TLM=NO\x00" as *const u8 as *const core::ffi::c_char,
       ) == 0i32
       {
-        (*p_j2k).m_specific_param.m_encoder.m_TLM = 0i32
+        p_j2k.m_specific_param.m_encoder.m_TLM = 0i32
       } else {
         let tmp_str = unsafe { core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
         event_msg!(
@@ -12869,14 +12797,11 @@ pub(crate) unsafe fn opj_j2k_encoder_set_extra_options(
     ) == 0i32
     {
       let mut tileno: OPJ_UINT32 = 0;
-      let mut cp: *mut opj_cp_t = 0 as *mut opj_cp_t;
-      cp = &mut (*p_j2k).m_cp;
-      cp = cp;
+      let mut cp = &mut p_j2k.m_cp;
       let mut numgbits = atoi(
-        (*p_option_iter)
-          .offset(strlen(b"GUARD_BITS=\x00" as *const u8 as *const core::ffi::c_char) as isize),
+        (*p_option_iter).add(strlen(b"GUARD_BITS=\x00" as *const u8 as *const core::ffi::c_char)),
       );
-      if numgbits < 0i32 || numgbits > 7i32 {
+      if !(0i32..=7i32).contains(&numgbits) {
         let tmp_str = unsafe { core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap() };
         event_msg!(
           p_manager,
@@ -12887,11 +12812,11 @@ pub(crate) unsafe fn opj_j2k_encoder_set_extra_options(
         return 0i32;
       }
       tileno = 0 as OPJ_UINT32;
-      while tileno < (*cp).tw.wrapping_mul((*cp).th) {
+      while tileno < cp.tw.wrapping_mul(cp.th) {
         let mut i: OPJ_UINT32 = 0;
-        let mut tcp: *mut opj_tcp_t = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
+        let mut tcp: *mut opj_tcp_t = &mut *cp.tcps.offset(tileno as isize) as *mut opj_tcp_t;
         i = 0 as OPJ_UINT32;
-        while i < (*p_j2k).m_specific_param.m_encoder.m_nb_comps {
+        while i < p_j2k.m_specific_param.m_encoder.m_nb_comps {
           let mut tccp: *mut opj_tccp_t = &mut *(*tcp).tccps.offset(i as isize) as *mut opj_tccp_t;
           (*tccp).numgbits = numgbits as OPJ_UINT32;
           i += 1;
@@ -12905,7 +12830,7 @@ pub(crate) unsafe fn opj_j2k_encoder_set_extra_options(
     }
     p_option_iter = p_option_iter.offset(1)
   }
-  return 1i32;
+  1i32
 }
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
@@ -12919,14 +12844,14 @@ pub(crate) unsafe fn opj_j2k_encode(
   let mut l_nb_tiles: OPJ_UINT32 = 0;
   let mut l_max_tile_size = 0 as OPJ_SIZE_T;
   let mut l_current_tile_size: OPJ_SIZE_T = 0;
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   let mut l_reuse_data = 0i32;
-  let mut p_tcd = 0 as *mut opj_tcd_t;
+  let mut p_tcd = std::ptr::null_mut::<opj_tcd_t>();
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  p_tcd = (*p_j2k).m_tcd;
-  l_nb_tiles = (*p_j2k).m_cp.th.wrapping_mul((*p_j2k).m_cp.tw);
+  p_tcd = p_j2k.m_tcd;
+  l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
   if l_nb_tiles == 1u32 {
     l_reuse_data = 1i32
   }
@@ -12941,7 +12866,7 @@ pub(crate) unsafe fn opj_j2k_encode(
     /* if we only have one tile, then simply set tile component data equal to image component data */
     /* otherwise, allocate the data */
     j = 0 as OPJ_UINT32;
-    while j < (*(*(*p_j2k).m_tcd).image).numcomps {
+    while j < (*(*p_j2k.m_tcd).image).numcomps {
       let mut l_tilec = (*(*(*p_tcd).tcd_image).tiles).comps.offset(j as isize);
       if l_reuse_data != 0 {
         let mut l_img_comp = (*(*p_tcd).image).comps.offset(j as isize);
@@ -12960,7 +12885,7 @@ pub(crate) unsafe fn opj_j2k_encode(
       }
       j += 1;
     }
-    l_current_tile_size = opj_tcd_get_encoder_input_buffer_size((*p_j2k).m_tcd);
+    l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(p_j2k.m_tcd);
     if l_reuse_data == 0 {
       if l_current_tile_size > l_max_tile_size {
         let mut l_new_current_data = opj_realloc(
@@ -12990,9 +12915,9 @@ pub(crate) unsafe fn opj_j2k_encode(
       /* copy image data (32 bit) to l_current_data as contiguous, all-component, zero offset buffer */
       /* 32 bit components @ 8 bit precision get converted to 8 bit */
       /* 32 bit components @ 16 bit precision get converted to 16 bit */
-      opj_j2k_get_tile_data((*p_j2k).m_tcd, l_current_data);
+      opj_j2k_get_tile_data(p_j2k.m_tcd, l_current_data);
       /* now copy this data into the tile component */
-      if opj_tcd_copy_tile_data((*p_j2k).m_tcd, l_current_data, l_current_tile_size) == 0 {
+      if opj_tcd_copy_tile_data(p_j2k.m_tcd, l_current_data, l_current_tile_size) == 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -13013,7 +12938,7 @@ pub(crate) unsafe fn opj_j2k_encode(
   if !l_current_data.is_null() {
     opj_free(l_current_data as *mut core::ffi::c_void);
   }
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_end_compress(
@@ -13025,10 +12950,10 @@ pub(crate) unsafe fn opj_j2k_end_compress(
   if opj_j2k_setup_end_compress(p_j2k, p_manager) == 0 {
     return 0i32;
   }
-  if opj_j2k_exec(p_j2k, (*p_j2k).m_procedure_list, p_stream, p_manager) == 0 {
+  if opj_j2k_exec(p_j2k, p_j2k.m_procedure_list, p_stream, p_manager) == 0 {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_start_compress(
@@ -13040,22 +12965,22 @@ pub(crate) unsafe fn opj_j2k_start_compress(
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  (*p_j2k).m_private_image = opj_image_create0();
-  if (*p_j2k).m_private_image.is_null() {
+  p_j2k.m_private_image = opj_image_create0();
+  if p_j2k.m_private_image.is_null() {
     event_msg!(p_manager, EVT_ERROR, "Failed to allocate image header.",);
     return 0i32;
   }
-  opj_copy_image_header(p_image, (*p_j2k).m_private_image);
+  opj_copy_image_header(p_image, p_j2k.m_private_image);
   /* TODO_MSD: Find a better way */
   if !(*p_image).comps.is_null() {
     let mut it_comp: OPJ_UINT32 = 0;
     it_comp = 0 as OPJ_UINT32;
     while it_comp < (*p_image).numcomps {
       if !(*(*p_image).comps.offset(it_comp as isize)).data.is_null() {
-        let ref mut fresh49 = (*(*(*p_j2k).m_private_image).comps.offset(it_comp as isize)).data;
+        let fresh49 = &mut (*(*p_j2k.m_private_image).comps.offset(it_comp as isize)).data;
         *fresh49 = (*(*p_image).comps.offset(it_comp as isize)).data;
-        let ref mut fresh50 = (*(*p_image).comps.offset(it_comp as isize)).data;
-        *fresh50 = 0 as *mut OPJ_INT32
+        let fresh50 = &mut (*(*p_image).comps.offset(it_comp as isize)).data;
+        *fresh50 = std::ptr::null_mut::<OPJ_INT32>()
       }
       it_comp += 1;
     }
@@ -13065,7 +12990,7 @@ pub(crate) unsafe fn opj_j2k_start_compress(
     return 0i32;
   }
   /* validation of the parameters codec */
-  if opj_j2k_exec(p_j2k, (*p_j2k).m_validation_list, p_stream, p_manager) == 0 {
+  if opj_j2k_exec(p_j2k, p_j2k.m_validation_list, p_stream, p_manager) == 0 {
     return 0i32;
   }
   /* customization of the encoding */
@@ -13073,10 +12998,10 @@ pub(crate) unsafe fn opj_j2k_start_compress(
     return 0i32;
   }
   /* write header */
-  if opj_j2k_exec(p_j2k, (*p_j2k).m_procedure_list, p_stream, p_manager) == 0 {
+  if opj_j2k_exec(p_j2k, p_j2k.m_procedure_list, p_stream, p_manager) == 0 {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 unsafe fn opj_j2k_pre_write_tile(
   mut p_j2k: &mut opj_j2k,
@@ -13084,7 +13009,7 @@ unsafe fn opj_j2k_pre_write_tile(
   mut _p_stream: *mut opj_stream_private_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  if p_tile_index != (*p_j2k).m_current_tile_number {
+  if p_tile_index != p_j2k.m_current_tile_number {
     event_msg!(p_manager, EVT_ERROR, "The given tile index does not match.",);
     return 0i32;
   }
@@ -13092,24 +13017,24 @@ unsafe fn opj_j2k_pre_write_tile(
     p_manager,
     EVT_INFO,
     "tile number %d / %d\n",
-    (*p_j2k).m_current_tile_number.wrapping_add(1u32),
-    (*p_j2k).m_cp.tw.wrapping_mul((*p_j2k).m_cp.th),
+    p_j2k.m_current_tile_number.wrapping_add(1u32),
+    p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th),
   );
-  (*p_j2k)
+  p_j2k
     .m_specific_param
     .m_encoder
     .m_current_tile_part_number = 0 as OPJ_UINT32;
-  (*(*p_j2k).m_tcd).cur_totnum_tp =
-    (*(*p_j2k).m_cp.tcps.offset(p_tile_index as isize)).m_nb_tile_parts;
-  (*p_j2k)
+  (*p_j2k.m_tcd).cur_totnum_tp =
+    (*p_j2k.m_cp.tcps.offset(p_tile_index as isize)).m_nb_tile_parts;
+  p_j2k
     .m_specific_param
     .m_encoder
     .m_current_poc_tile_part_number = 0 as OPJ_UINT32;
   /* initialisation before tile encoding  */
-  if opj_tcd_init_encode_tile((*p_j2k).m_tcd, (*p_j2k).m_current_tile_number, p_manager) == 0 {
+  if opj_tcd_init_encode_tile(p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager) == 0 {
     return 0i32;
   } /* (/8) */
-  return 1i32; /* (%8) */
+  1i32/* (%8) */
 }
 
 unsafe fn opj_get_tile_dimensions(
@@ -13156,7 +13081,7 @@ unsafe fn opj_j2k_get_tile_data(mut p_tcd: *mut opj_tcd_t, mut p_data: *mut OPJ_
   i = 0 as OPJ_UINT32;
   while i < (*(*p_tcd).image).numcomps {
     let mut l_image = (*p_tcd).image;
-    let mut l_src_ptr = 0 as *mut OPJ_INT32;
+    let mut l_src_ptr = std::ptr::null_mut::<OPJ_INT32>();
     let mut l_tilec = (*(*(*p_tcd).tcd_image).tiles).comps.offset(i as isize);
     let mut l_img_comp = (*l_image).comps.offset(i as isize);
     let mut l_size_comp: OPJ_UINT32 = 0;
@@ -13277,18 +13202,18 @@ unsafe fn opj_j2k_post_write_tile(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_nb_bytes_written: OPJ_UINT32 = 0;
-  let mut l_current_data = 0 as *mut OPJ_BYTE;
+  let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
   let mut l_tile_size = 0 as OPJ_UINT32;
   let mut l_available_data: OPJ_UINT32 = 0;
   /* preconditions */
-  assert!(!(*p_j2k)
+  assert!(!p_j2k
     .m_specific_param
     .m_encoder
     .m_encoded_tile_data
     .is_null());
-  l_tile_size = (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_size;
+  l_tile_size = p_j2k.m_specific_param.m_encoder.m_encoded_tile_size;
   l_available_data = l_tile_size;
-  l_current_data = (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data;
+  l_current_data = p_j2k.m_specific_param.m_encoder.m_encoded_tile_data;
   l_nb_bytes_written = 0 as OPJ_UINT32;
   if opj_j2k_write_first_tile_part(
     p_j2k,
@@ -13321,15 +13246,15 @@ unsafe fn opj_j2k_post_write_tile(
   l_nb_bytes_written = l_tile_size.wrapping_sub(l_available_data);
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data,
+    p_j2k.m_specific_param.m_encoder.m_encoded_tile_data,
     l_nb_bytes_written as OPJ_SIZE_T,
     p_manager,
   ) != l_nb_bytes_written as usize
   {
     return 0i32;
   }
-  (*p_j2k).m_current_tile_number = (*p_j2k).m_current_tile_number.wrapping_add(1);
-  return 1i32;
+  p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);
+  1i32
 }
 /* *
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
@@ -13342,38 +13267,35 @@ unsafe fn opj_j2k_setup_end_compress(
   /* preconditions */
 
   /* DEVELOPER CORNER, insert your custom procedures */
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_eoc, p_manager) == 0
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_eoc, p_manager) == 0
   {
     return 0i32;
   }
-  if (*p_j2k).m_specific_param.m_encoder.m_TLM != 0 {
-    if opj_procedure_list_add_procedure(
-      (*p_j2k).m_procedure_list,
+  if p_j2k.m_specific_param.m_encoder.m_TLM != 0 && opj_procedure_list_add_procedure(
+      p_j2k.m_procedure_list,
       opj_j2k_write_updated_tlm,
       p_manager,
-    ) == 0
-    {
-      return 0i32;
-    }
+    ) == 0 {
+    return 0i32;
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_epc, p_manager) == 0
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_epc, p_manager) == 0
   {
     return 0i32;
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_end_encoding, p_manager)
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_end_encoding, p_manager)
     == 0
   {
     return 0i32;
   }
   if opj_procedure_list_add_procedure(
-    (*p_j2k).m_procedure_list,
+    p_j2k.m_procedure_list,
     opj_j2k_destroy_header_memory,
     p_manager,
   ) == 0
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
@@ -13385,13 +13307,13 @@ unsafe fn opj_j2k_setup_encoding_validation(
 ) -> OPJ_BOOL {
   /* preconditions */
 
-  if opj_procedure_list_add_procedure((*p_j2k).m_validation_list, opj_j2k_build_encoder, p_manager)
+  if opj_procedure_list_add_procedure(p_j2k.m_validation_list, opj_j2k_build_encoder, p_manager)
     == 0
   {
     return 0i32;
   }
   if opj_procedure_list_add_procedure(
-    (*p_j2k).m_validation_list,
+    p_j2k.m_validation_list,
     opj_j2k_encoding_validation,
     p_manager,
   ) == 0
@@ -13400,14 +13322,14 @@ unsafe fn opj_j2k_setup_encoding_validation(
   }
   /* DEVELOPER CORNER, add your custom validation procedure */
   if opj_procedure_list_add_procedure(
-    (*p_j2k).m_validation_list,
+    p_j2k.m_validation_list,
     opj_j2k_mct_validation,
     p_manager,
   ) == 0
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Sets up the procedures to do on writing header.
@@ -13419,94 +13341,80 @@ unsafe fn opj_j2k_setup_header_writing(
 ) -> OPJ_BOOL {
   /* preconditions */
 
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_init_info, p_manager) == 0
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_init_info, p_manager) == 0
   {
     return 0i32;
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_soc, p_manager) == 0
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_soc, p_manager) == 0
   {
     return 0i32;
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_siz, p_manager) == 0
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_siz, p_manager) == 0
   {
     return 0i32;
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_cod, p_manager) == 0
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_cod, p_manager) == 0
   {
     return 0i32;
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_qcd, p_manager) == 0
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_qcd, p_manager) == 0
   {
     return 0i32;
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_all_coc, p_manager)
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_all_coc, p_manager)
     == 0
   {
     return 0i32;
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_all_qcc, p_manager)
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_all_qcc, p_manager)
     == 0
   {
     return 0i32;
   }
-  if (*p_j2k).m_specific_param.m_encoder.m_TLM != 0 {
-    if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_tlm, p_manager)
+  if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
+    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_tlm, p_manager)
       == 0
     {
       return 0i32;
     }
-    if (*p_j2k).m_cp.rsiz as core::ffi::c_int == 0x4i32 {
-      if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_poc, p_manager)
-        == 0
-      {
-        return 0i32;
-      }
+    if p_j2k.m_cp.rsiz as core::ffi::c_int == 0x4i32 && opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_poc, p_manager) == 0 {
+      return 0i32;
     }
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_regions, p_manager)
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_regions, p_manager)
     == 0
   {
     return 0i32;
   }
-  if !(*p_j2k).m_cp.comment.is_null() {
-    if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_write_com, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
+  if !p_j2k.m_cp.comment.is_null() && opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_com, p_manager) == 0 {
+    return 0i32;
   }
   /* DEVELOPER CORNER, insert your custom procedures */
-  if (*p_j2k).m_cp.rsiz as core::ffi::c_int & (0x8000i32 | 0x100i32) == 0x8000i32 | 0x100i32 {
-    if opj_procedure_list_add_procedure(
-      (*p_j2k).m_procedure_list,
+  if p_j2k.m_cp.rsiz as core::ffi::c_int & (0x8000i32 | 0x100i32) == 0x8000i32 | 0x100i32 && opj_procedure_list_add_procedure(
+      p_j2k.m_procedure_list,
       opj_j2k_write_mct_data_group,
       p_manager,
-    ) == 0
-    {
-      return 0i32;
-    }
+    ) == 0 {
+    return 0i32;
   }
   /* End of Developer Corner */
-  if !(*p_j2k).cstr_index.is_null() {
-    if opj_procedure_list_add_procedure(
-      (*p_j2k).m_procedure_list,
+  if !p_j2k.cstr_index.is_null() && opj_procedure_list_add_procedure(
+      p_j2k.m_procedure_list,
       opj_j2k_get_end_header,
       p_manager,
-    ) == 0
-    {
-      return 0i32;
-    }
+    ) == 0 {
+    return 0i32;
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_create_tcd, p_manager) == 0
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_create_tcd, p_manager) == 0
   {
     return 0i32;
   }
-  if opj_procedure_list_add_procedure((*p_j2k).m_procedure_list, opj_j2k_update_rates, p_manager)
+  if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_update_rates, p_manager)
     == 0
   {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 unsafe fn opj_j2k_write_first_tile_part(
   mut p_j2k: &mut opj_j2k,
@@ -13518,14 +13426,14 @@ unsafe fn opj_j2k_write_first_tile_part(
 ) -> OPJ_BOOL {
   let mut l_nb_bytes_written = 0 as OPJ_UINT32;
   let mut l_current_nb_bytes_written: OPJ_UINT32 = 0;
-  let mut l_begin_data = 0 as *mut OPJ_BYTE;
-  let mut l_tcd = 0 as *mut opj_tcd_t;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  l_tcd = (*p_j2k).m_tcd;
-  l_cp = &mut (*p_j2k).m_cp;
+  let mut l_begin_data = std::ptr::null_mut::<OPJ_BYTE>();
+  let mut l_tcd = std::ptr::null_mut::<opj_tcd_t>();
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  l_tcd = p_j2k.m_tcd;
+  l_cp = &mut p_j2k.m_cp;
   (*l_tcd).cur_pino = 0 as OPJ_UINT32;
   /*Get number of tile parts*/
-  (*p_j2k)
+  p_j2k
     .m_specific_param
     .m_encoder
     .m_current_poc_tile_part_number = 0 as OPJ_UINT32;
@@ -13549,17 +13457,15 @@ unsafe fn opj_j2k_write_first_tile_part(
   p_data = p_data.offset(l_current_nb_bytes_written as isize);
   total_data_size =
     (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32;
-  if !((*l_cp).rsiz as core::ffi::c_int >= 0x3i32 && (*l_cp).rsiz as core::ffi::c_int <= 0x6i32) {
-    if (*(*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize)).POC() != 0 {
-      l_current_nb_bytes_written = 0 as OPJ_UINT32;
-      opj_j2k_write_poc_in_memory(p_j2k, p_data, &mut l_current_nb_bytes_written, p_manager);
-      l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
-        .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
-        as OPJ_UINT32;
-      p_data = p_data.offset(l_current_nb_bytes_written as isize);
-      total_data_size = (total_data_size as core::ffi::c_uint)
-        .wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32
-    }
+  if !((*l_cp).rsiz as core::ffi::c_int >= 0x3i32 && (*l_cp).rsiz as core::ffi::c_int <= 0x6i32) && (*(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize)).POC() != 0 {
+    l_current_nb_bytes_written = 0 as OPJ_UINT32;
+    opj_j2k_write_poc_in_memory(p_j2k, p_data, &mut l_current_nb_bytes_written, p_manager);
+    l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
+      .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
+      as OPJ_UINT32;
+    p_data = p_data.offset(l_current_nb_bytes_written as isize);
+    total_data_size = (total_data_size as core::ffi::c_uint)
+      .wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32
   }
   l_current_nb_bytes_written = 0 as OPJ_UINT32;
   if opj_j2k_write_sod(
@@ -13579,10 +13485,10 @@ unsafe fn opj_j2k_write_first_tile_part(
   *p_data_written = l_nb_bytes_written;
   /* Writing Psot in SOT marker */
   opj_write_bytes_LE(l_begin_data.offset(6), l_nb_bytes_written, 4 as OPJ_UINT32); /* PSOT */
-  if (*p_j2k).m_specific_param.m_encoder.m_TLM != 0 {
+  if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
     opj_j2k_update_tlm(p_j2k, l_nb_bytes_written);
   }
-  return 1i32;
+  1i32
 }
 unsafe fn opj_j2k_write_all_tile_parts(
   mut p_j2k: &mut opj_j2k,
@@ -13598,27 +13504,27 @@ unsafe fn opj_j2k_write_all_tile_parts(
   let mut l_part_tile_size: OPJ_UINT32 = 0;
   let mut tot_num_tp: OPJ_UINT32 = 0;
   let mut pino: OPJ_UINT32 = 0;
-  let mut l_begin_data = 0 as *mut OPJ_BYTE;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tcd = 0 as *mut opj_tcd_t;
-  let mut l_cp = 0 as *mut opj_cp_t;
-  l_tcd = (*p_j2k).m_tcd;
-  l_cp = &mut (*p_j2k).m_cp;
-  l_tcp = (*l_cp).tcps.offset((*p_j2k).m_current_tile_number as isize);
+  let mut l_begin_data = std::ptr::null_mut::<OPJ_BYTE>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tcd = std::ptr::null_mut::<opj_tcd_t>();
+  let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
+  l_tcd = p_j2k.m_tcd;
+  l_cp = &mut p_j2k.m_cp;
+  l_tcp = (*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize);
   /*Get number of tile parts*/
-  tot_num_tp = opj_j2k_get_num_tp(l_cp, 0 as OPJ_UINT32, (*p_j2k).m_current_tile_number);
+  tot_num_tp = opj_j2k_get_num_tp(l_cp, 0 as OPJ_UINT32, p_j2k.m_current_tile_number);
   /* start writing remaining tile parts */
-  (*p_j2k)
+  p_j2k
     .m_specific_param
     .m_encoder
-    .m_current_tile_part_number = (*p_j2k)
+    .m_current_tile_part_number = p_j2k
     .m_specific_param
     .m_encoder
     .m_current_tile_part_number
     .wrapping_add(1);
   tilepartno = 1 as OPJ_UINT32;
   while tilepartno < tot_num_tp {
-    (*p_j2k)
+    p_j2k
       .m_specific_param
       .m_encoder
       .m_current_poc_tile_part_number = tilepartno;
@@ -13667,13 +13573,13 @@ unsafe fn opj_j2k_write_all_tile_parts(
       .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32;
     /* Writing Psot in SOT marker */
     opj_write_bytes_LE(l_begin_data.offset(6), l_part_tile_size, 4 as OPJ_UINT32); /* PSOT */
-    if (*p_j2k).m_specific_param.m_encoder.m_TLM != 0 {
+    if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
       opj_j2k_update_tlm(p_j2k, l_part_tile_size);
     }
-    (*p_j2k)
+    p_j2k
       .m_specific_param
       .m_encoder
-      .m_current_tile_part_number = (*p_j2k)
+      .m_current_tile_part_number = p_j2k
       .m_specific_param
       .m_encoder
       .m_current_tile_part_number
@@ -13684,10 +13590,10 @@ unsafe fn opj_j2k_write_all_tile_parts(
   while pino <= (*l_tcp).numpocs {
     (*l_tcd).cur_pino = pino;
     /*Get number of tile parts*/
-    tot_num_tp = opj_j2k_get_num_tp(l_cp, pino, (*p_j2k).m_current_tile_number);
+    tot_num_tp = opj_j2k_get_num_tp(l_cp, pino, p_j2k.m_current_tile_number);
     tilepartno = 0 as OPJ_UINT32;
     while tilepartno < tot_num_tp {
-      (*p_j2k)
+      p_j2k
         .m_specific_param
         .m_encoder
         .m_current_poc_tile_part_number = tilepartno;
@@ -13736,13 +13642,13 @@ unsafe fn opj_j2k_write_all_tile_parts(
         .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32;
       /* Writing Psot in SOT marker */
       opj_write_bytes_LE(l_begin_data.offset(6), l_part_tile_size, 4 as OPJ_UINT32); /* PSOT */
-      if (*p_j2k).m_specific_param.m_encoder.m_TLM != 0 {
+      if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
         opj_j2k_update_tlm(p_j2k, l_part_tile_size);
       }
-      (*p_j2k)
+      p_j2k
         .m_specific_param
         .m_encoder
-        .m_current_tile_part_number = (*p_j2k)
+        .m_current_tile_part_number = p_j2k
         .m_specific_param
         .m_encoder
         .m_current_tile_part_number
@@ -13752,7 +13658,7 @@ unsafe fn opj_j2k_write_all_tile_parts(
     pino += 1;
   }
   *p_data_written = l_nb_bytes_written;
-  return 1i32;
+  1i32
 }
 /* *
  * Writes the updated tlm.
@@ -13773,21 +13679,21 @@ unsafe fn opj_j2k_write_updated_tlm(
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  size_per_tile_part = if (*p_j2k).m_specific_param.m_encoder.m_Ttlmi_is_byte != 0 {
+  size_per_tile_part = if p_j2k.m_specific_param.m_encoder.m_Ttlmi_is_byte != 0 {
     5i32
   } else {
     6i32
   } as OPJ_UINT32;
   l_tlm_size =
-    size_per_tile_part.wrapping_mul((*p_j2k).m_specific_param.m_encoder.m_total_tile_parts);
-  l_tlm_position = 6i64 + (*p_j2k).m_specific_param.m_encoder.m_tlm_start;
+    size_per_tile_part.wrapping_mul(p_j2k.m_specific_param.m_encoder.m_total_tile_parts);
+  l_tlm_position = 6i64 + p_j2k.m_specific_param.m_encoder.m_tlm_start;
   l_current_position = opj_stream_tell(p_stream);
   if opj_stream_seek(p_stream, l_tlm_position, p_manager) == 0 {
     return 0i32;
   }
   if opj_stream_write_data(
     p_stream,
-    (*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer,
+    p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer,
     l_tlm_size as OPJ_SIZE_T,
     p_manager,
   ) != l_tlm_size as usize
@@ -13797,7 +13703,7 @@ unsafe fn opj_j2k_write_updated_tlm(
   if opj_stream_seek(p_stream, l_current_position, p_manager) == 0 {
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 /* *
  * Ends the encoding, i.e. frees memory.
@@ -13814,34 +13720,34 @@ unsafe fn opj_j2k_end_encoding(
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  opj_tcd_destroy((*p_j2k).m_tcd);
-  (*p_j2k).m_tcd = 0 as *mut opj_tcd;
-  if !(*p_j2k)
+  opj_tcd_destroy(p_j2k.m_tcd);
+  p_j2k.m_tcd = std::ptr::null_mut::<opj_tcd>();
+  if !p_j2k
     .m_specific_param
     .m_encoder
     .m_tlm_sot_offsets_buffer
     .is_null()
   {
     opj_free(
-      (*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer as *mut core::ffi::c_void,
+      p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer as *mut core::ffi::c_void,
     );
-    (*p_j2k).m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = 0 as *mut OPJ_BYTE;
-    (*p_j2k)
+    p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = std::ptr::null_mut::<OPJ_BYTE>();
+    p_j2k
       .m_specific_param
       .m_encoder
-      .m_tlm_sot_offsets_current = 0 as *mut OPJ_BYTE
+      .m_tlm_sot_offsets_current = std::ptr::null_mut::<OPJ_BYTE>()
   }
-  if !(*p_j2k)
+  if !p_j2k
     .m_specific_param
     .m_encoder
     .m_encoded_tile_data
     .is_null()
   {
-    opj_free((*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data as *mut core::ffi::c_void);
-    (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_data = 0 as *mut OPJ_BYTE
+    opj_free(p_j2k.m_specific_param.m_encoder.m_encoded_tile_data as *mut core::ffi::c_void);
+    p_j2k.m_specific_param.m_encoder.m_encoded_tile_data = std::ptr::null_mut::<OPJ_BYTE>()
   }
-  (*p_j2k).m_specific_param.m_encoder.m_encoded_tile_size = 0 as OPJ_UINT32;
-  return 1i32;
+  p_j2k.m_specific_param.m_encoder.m_encoded_tile_size = 0 as OPJ_UINT32;
+  1i32
 }
 /* *
  * Destroys the memory associated with the decoding of headers.
@@ -13857,17 +13763,17 @@ unsafe fn opj_j2k_destroy_header_memory(
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  if !(*p_j2k)
+  if !p_j2k
     .m_specific_param
     .m_encoder
     .m_header_tile_data
     .is_null()
   {
-    opj_free((*p_j2k).m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
-    (*p_j2k).m_specific_param.m_encoder.m_header_tile_data = 0 as *mut OPJ_BYTE
+    opj_free(p_j2k.m_specific_param.m_encoder.m_header_tile_data as *mut core::ffi::c_void);
+    p_j2k.m_specific_param.m_encoder.m_header_tile_data = std::ptr::null_mut::<OPJ_BYTE>()
   }
-  (*p_j2k).m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
-  return 1i32;
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32;
+  1i32
 }
 /* *
  * Inits the Info
@@ -13927,12 +13833,12 @@ unsafe fn opj_j2k_init_info(
   l_cstr_info->marker = (opj_marker_info_t *) opj_malloc(l_cstr_info->maxmarknum * sizeof(opj_marker_info_t));
   l_cstr_info->marknum = 0;
   }*/
-  return opj_j2k_calculate_tp(
+  opj_j2k_calculate_tp(
     &mut p_j2k.m_cp,
     &mut p_j2k.m_specific_param.m_encoder.m_total_tile_parts,
     p_j2k.m_private_image,
     p_manager,
-  );
+  )
 }
 /* *
  * Creates a tile-coder encoder.
@@ -13956,8 +13862,8 @@ unsafe fn opj_j2k_create_tcd(
   /* preconditions */
 
   assert!(!p_stream.is_null());
-  (*p_j2k).m_tcd = opj_tcd_create(0i32);
-  if (*p_j2k).m_tcd.is_null() {
+  p_j2k.m_tcd = opj_tcd_create(0i32);
+  if p_j2k.m_tcd.is_null() {
     event_msg!(
       p_manager,
       EVT_ERROR,
@@ -13966,17 +13872,17 @@ unsafe fn opj_j2k_create_tcd(
     return 0i32;
   }
   if opj_tcd_init(
-    (*p_j2k).m_tcd,
-    (*p_j2k).m_private_image,
-    &mut (*p_j2k).m_cp,
-    (*p_j2k).m_tp,
+    p_j2k.m_tcd,
+    p_j2k.m_private_image,
+    &mut p_j2k.m_cp,
+    p_j2k.m_tp,
   ) == 0
   {
-    opj_tcd_destroy((*p_j2k).m_tcd);
-    (*p_j2k).m_tcd = 0 as *mut opj_tcd;
+    opj_tcd_destroy(p_j2k.m_tcd);
+    p_j2k.m_tcd = std::ptr::null_mut::<opj_tcd>();
     return 0i32;
   }
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_j2k_write_tile(
@@ -13999,8 +13905,8 @@ pub(crate) unsafe fn opj_j2k_write_tile(
     let mut j: OPJ_UINT32 = 0;
     /* Allocate data */
     j = 0 as OPJ_UINT32;
-    while j < (*(*(*p_j2k).m_tcd).image).numcomps {
-      let mut l_tilec = (*(*(*(*p_j2k).m_tcd).tcd_image).tiles)
+    while j < (*(*p_j2k.m_tcd).image).numcomps {
+      let mut l_tilec = (*(*(*p_j2k.m_tcd).tcd_image).tiles)
         .comps
         .offset(j as isize);
       if opj_alloc_tile_component_data(l_tilec) == 0 {
@@ -14014,7 +13920,7 @@ pub(crate) unsafe fn opj_j2k_write_tile(
       j += 1;
     }
     /* now copy data into the tile component */
-    if opj_tcd_copy_tile_data((*p_j2k).m_tcd, p_data, p_data_size as OPJ_SIZE_T) == 0 {
+    if opj_tcd_copy_tile_data(p_j2k.m_tcd, p_data, p_data_size as OPJ_SIZE_T) == 0 {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -14032,5 +13938,5 @@ pub(crate) unsafe fn opj_j2k_write_tile(
       return 0i32;
     }
   }
-  return 1i32;
+  1i32
 }

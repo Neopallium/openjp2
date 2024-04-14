@@ -215,7 +215,7 @@ pub mod opj {
   /**< Maximum number of JPWL markers: increase at your will */
   pub const JPWL_MAX_NO_MARKERS: u32 = 512;
   /**< index file name used when JPWL is on */
-  pub const JPWL_PRIVATEINDEX_NAME: &'static str = "jpwl_index_privatefilename";
+  pub const JPWL_PRIVATEINDEX_NAME: &str = "jpwl_index_privatefilename";
   /**< Expect this number of components, so you'll find better the first EPB */
   pub const JPWL_EXPECTED_COMPONENTS: u32 = 3;
   /**< Expect this maximum number of tiles, to avoid some crashes */
@@ -283,7 +283,7 @@ pub mod opj {
   pub const OPJ_EXTENSION_MCT: u32 = 0x0100;
 
   pub fn opj_is_cinema(v: u32) -> bool {
-    v >= OPJ_PROFILE_CINEMA_2K && v <= OPJ_PROFILE_CINEMA_S4K
+    (OPJ_PROFILE_CINEMA_2K..=OPJ_PROFILE_CINEMA_S4K).contains(&v)
   }
 
   pub fn opj_is_storage(v: u32) -> bool {
@@ -291,11 +291,11 @@ pub mod opj {
   }
 
   pub fn opj_is_broadcast(v: u32) -> bool {
-    v >= OPJ_PROFILE_BC_SINGLE && v <= (OPJ_PROFILE_BC_MULTI_R | 0x000b)
+    (OPJ_PROFILE_BC_SINGLE..=(OPJ_PROFILE_BC_MULTI_R | 0x000b)).contains(&v)
   }
 
   pub fn opj_is_imf(v: u32) -> bool {
-    v >= OPJ_PROFILE_IMF_2K && v <= (OPJ_PROFILE_IMF_8K_R | 0x009b)
+    (OPJ_PROFILE_IMF_2K..=(OPJ_PROFILE_IMF_8K_R | 0x009b)).contains(&v)
   }
 
   pub fn opj_is_part2(v: u32) -> bool {
@@ -390,11 +390,11 @@ pub mod t1 {
   pub const T1_NUMCTXS_AGG: u8 = 1;
   pub const T1_NUMCTXS_UNI: u8 = 1;
   pub const T1_CTXNO_ZC: u8 = 0;
-  pub const T1_CTXNO_SC: u8 = (T1_CTXNO_ZC + T1_NUMCTXS_ZC) as u8;
-  pub const T1_CTXNO_MAG: u8 = (T1_CTXNO_SC + T1_NUMCTXS_SC) as u8;
-  pub const T1_CTXNO_AGG: u8 = (T1_CTXNO_MAG + T1_NUMCTXS_MAG) as u8;
-  pub const T1_CTXNO_UNI: u8 = (T1_CTXNO_AGG + T1_NUMCTXS_AGG) as u8;
-  pub const T1_NUMCTXS: u8 = (T1_CTXNO_UNI + T1_NUMCTXS_UNI) as u8;
+  pub const T1_CTXNO_SC: u8 = T1_CTXNO_ZC + T1_NUMCTXS_ZC;
+  pub const T1_CTXNO_MAG: u8 = T1_CTXNO_SC + T1_NUMCTXS_SC;
+  pub const T1_CTXNO_AGG: u8 = T1_CTXNO_MAG + T1_NUMCTXS_MAG;
+  pub const T1_CTXNO_UNI: u8 = T1_CTXNO_AGG + T1_NUMCTXS_AGG;
+  pub const T1_NUMCTXS: u8 = T1_CTXNO_UNI + T1_NUMCTXS_UNI;
   pub const T1_NMSEDEC_FRACBITS: i32 = (T1_NMSEDEC_BITS - 1) as i32;
   /**< Normal coding using entropy coder */
   pub const T1_TYPE_MQ: u8 = 0;

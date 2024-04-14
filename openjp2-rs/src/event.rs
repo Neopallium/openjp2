@@ -52,9 +52,9 @@ pub struct opj_event_mgr {
 impl Default for opj_event_mgr {
   fn default() -> Self {
     Self {
-      m_error_data: 0 as *mut core::ffi::c_void,
-      m_warning_data: 0 as *mut core::ffi::c_void,
-      m_info_data: 0 as *mut core::ffi::c_void,
+      m_error_data: std::ptr::null_mut::<core::ffi::c_void>(),
+      m_warning_data: std::ptr::null_mut::<core::ffi::c_void>(),
+      m_info_data: std::ptr::null_mut::<core::ffi::c_void>(),
       error_handler: None,
       info_handler: None,
       warning_handler: None,
@@ -64,9 +64,9 @@ impl Default for opj_event_mgr {
 
 impl opj_event_mgr {
   pub fn set_default_event_handler(&mut self) {
-    self.m_error_data = 0 as *mut core::ffi::c_void;
-    self.m_warning_data = 0 as *mut core::ffi::c_void;
-    self.m_info_data = 0 as *mut core::ffi::c_void;
+    self.m_error_data = std::ptr::null_mut::<core::ffi::c_void>();
+    self.m_warning_data = std::ptr::null_mut::<core::ffi::c_void>();
+    self.m_info_data = std::ptr::null_mut::<core::ffi::c_void>();
     self.error_handler = None;
     self.info_handler = None;
     self.warning_handler = None;

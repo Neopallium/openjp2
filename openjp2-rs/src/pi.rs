@@ -122,8 +122,8 @@ Get next packet in layer-resolution-component-precinct order.
 */
 unsafe fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   let mut current_block: u64;
-  let mut comp = 0 as *mut opj_pi_comp_t;
-  let mut res = 0 as *mut opj_pi_resolution_t;
+  let mut comp = std::ptr::null_mut::<opj_pi_comp_t>();
+  let mut res = std::ptr::null_mut::<opj_pi_resolution_t>();
   let mut index = 0 as OPJ_UINT32;
   if (*pi).poc.compno0 >= (*pi).numcomps || (*pi).poc.compno1 >= (*pi).numcomps.wrapping_add(1u32) {
     event_msg!(
@@ -149,7 +149,7 @@ unsafe fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         current_block = 1109700713171191020;
       }
       _ => {
-        if !((*pi).layno < (*pi).poc.layno1) {
+        if (*pi).layno >= (*pi).poc.layno1 {
           break;
         }
         (*pi).resno = (*pi).poc.resno0;
@@ -228,7 +228,7 @@ unsafe fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       }
     }
   }
-  return 0i32;
+  0i32
 }
 /* *
 Get next packet in resolution-layer-component-precinct order.
@@ -237,8 +237,8 @@ Get next packet in resolution-layer-component-precinct order.
 */
 unsafe fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   let mut current_block: u64;
-  let mut comp = 0 as *mut opj_pi_comp_t;
-  let mut res = 0 as *mut opj_pi_resolution_t;
+  let mut comp = std::ptr::null_mut::<opj_pi_comp_t>();
+  let mut res = std::ptr::null_mut::<opj_pi_resolution_t>();
   let mut index = 0 as OPJ_UINT32;
   if (*pi).poc.compno0 >= (*pi).numcomps || (*pi).poc.compno1 >= (*pi).numcomps.wrapping_add(1u32) {
     event_msg!(
@@ -264,7 +264,7 @@ unsafe fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         current_block = 1109700713171191020;
       }
       _ => {
-        if !((*pi).resno < (*pi).poc.resno1) {
+        if (*pi).resno >= (*pi).poc.resno1 {
           break;
         }
         (*pi).layno = (*pi).poc.layno0;
@@ -337,7 +337,7 @@ unsafe fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       }
     }
   }
-  return 0i32;
+  0i32
 }
 /* *
 Get next packet in resolution-precinct-component-layer order.
@@ -355,8 +355,8 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   let mut prci: OPJ_UINT32 = 0;
   let mut prcj: OPJ_UINT32 = 0;
   let mut current_block: u64;
-  let mut comp = 0 as *mut opj_pi_comp_t;
-  let mut res = 0 as *mut opj_pi_resolution_t;
+  let mut comp = std::ptr::null_mut::<opj_pi_comp_t>();
+  let mut res = std::ptr::null_mut::<opj_pi_resolution_t>();
   let mut index = 0 as OPJ_UINT32;
   if (*pi).poc.compno0 >= (*pi).numcomps || (*pi).poc.compno1 >= (*pi).numcomps.wrapping_add(1u32) {
     event_msg!(
@@ -471,7 +471,7 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         current_block = 2606304779496145856;
       }
       _ => {
-        if !((*pi).resno < (*pi).poc.resno1) {
+        if (*pi).resno >= (*pi).poc.resno1 {
           break;
         }
         (*pi).y = (*pi).poc.ty0;
@@ -609,7 +609,7 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       }
     }
   }
-  return 0i32;
+  0i32
 }
 /* *
 Get next packet in precinct-component-resolution-layer order.
@@ -627,8 +627,8 @@ unsafe fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   let mut prci: OPJ_UINT32 = 0;
   let mut prcj: OPJ_UINT32 = 0;
   let mut current_block: u64;
-  let mut comp = 0 as *mut opj_pi_comp_t;
-  let mut res = 0 as *mut opj_pi_resolution_t;
+  let mut comp = std::ptr::null_mut::<opj_pi_comp_t>();
+  let mut res = std::ptr::null_mut::<opj_pi_resolution_t>();
   let mut index = 0 as OPJ_UINT32;
   if (*pi).poc.compno0 >= (*pi).numcomps || (*pi).poc.compno1 >= (*pi).numcomps.wrapping_add(1u32) {
     event_msg!(
@@ -744,7 +744,7 @@ unsafe fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         current_block = 6281126495347172768;
       }
       _ => {
-        if !((*pi).y < (*pi).poc.ty1) {
+        if (*pi).y >= (*pi).poc.ty1 {
           break;
         }
         (*pi).x = (*pi).poc.tx0;
@@ -877,7 +877,7 @@ unsafe fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       }
     }
   }
-  return 0i32;
+  0i32
 }
 /* *
 Get next packet in component-precinct-resolution-layer order.
@@ -896,8 +896,8 @@ unsafe fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
   let mut prci: OPJ_UINT32 = 0;
   let mut prcj: OPJ_UINT32 = 0;
   let mut current_block: u64;
-  let mut comp = 0 as *mut opj_pi_comp_t;
-  let mut res = 0 as *mut opj_pi_resolution_t;
+  let mut comp = std::ptr::null_mut::<opj_pi_comp_t>();
+  let mut res = std::ptr::null_mut::<opj_pi_resolution_t>();
   let mut index = 0 as OPJ_UINT32;
   if (*pi).poc.compno0 >= (*pi).numcomps || (*pi).poc.compno1 >= (*pi).numcomps.wrapping_add(1u32) {
     event_msg!(
@@ -922,7 +922,7 @@ unsafe fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         current_block = 15594839951440953787;
       }
       _ => {
-        if !((*pi).compno < (*pi).poc.compno1) {
+        if (*pi).compno >= (*pi).poc.compno1 {
           break;
         }
         resno = 0;
@@ -1140,7 +1140,7 @@ unsafe fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       }
     }
   }
-  return 0i32;
+  0i32
 }
 /* *
  * Gets the encoding parameters needed to update the coding parameters and all the pocs.
@@ -1174,9 +1174,9 @@ unsafe fn opj_get_encoding_parameters(
   let mut compno: OPJ_UINT32 = 0;
   let mut resno: OPJ_UINT32 = 0;
   /* pointers */
-  let mut l_tcp = 0 as *const opj_tcp_t;
-  let mut l_tccp = 0 as *const opj_tccp_t;
-  let mut l_img_comp = 0 as *const opj_image_comp_t;
+  let mut l_tcp = std::ptr::null::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null::<opj_tccp_t>();
+  let mut l_img_comp = std::ptr::null::<opj_image_comp_t>();
   /* position in x and y of tile */
   let mut p: OPJ_UINT32 = 0;
   let mut q: OPJ_UINT32 = 0;
@@ -1247,7 +1247,7 @@ unsafe fn opj_get_encoding_parameters(
       l_pdy = (*l_tccp).prch[resno as usize];
 
       l_dx = (*l_img_comp).dx as u64 * ((1u64) << (l_pdx + (*l_tccp).numresolutions - 1 - resno));
-      l_dy = (*l_img_comp).dy as u64 * ((1u64) << l_pdy + (*l_tccp).numresolutions - 1u32 - resno);
+      l_dy = (*l_img_comp).dy as u64 * ((1u64) << (l_pdy + (*l_tccp).numresolutions - 1u32 - resno));
       /* take the minimum size for dx for each comp and resolution */
       if l_dx < u32::MAX as u64 {
         *p_dx_min = opj_uint_min(*p_dx_min, l_dx as u32);
@@ -1328,11 +1328,11 @@ unsafe fn opj_get_all_encoding_parameters(
   let mut compno: OPJ_UINT32 = 0;
   let mut resno: OPJ_UINT32 = 0;
   /* pointers*/
-  let mut tcp = 0 as *const opj_tcp_t;
-  let mut l_tccp = 0 as *const opj_tccp_t;
-  let mut l_img_comp = 0 as *const opj_image_comp_t;
+  let mut tcp = std::ptr::null::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null::<opj_tccp_t>();
+  let mut l_img_comp = std::ptr::null::<opj_image_comp_t>();
   /* to store l_dx, l_dy, w and h for each resolution and component.*/
-  let mut lResolutionPtr = 0 as *mut OPJ_UINT32;
+  let mut lResolutionPtr = std::ptr::null_mut::<OPJ_UINT32>();
   /* position in x and y of tile*/
   let mut p: OPJ_UINT32 = 0;
   let mut q: OPJ_UINT32 = 0;
@@ -1388,7 +1388,7 @@ unsafe fn opj_get_all_encoding_parameters(
     lResolutionPtr = if !p_resolutions.is_null() {
       *p_resolutions.offset(compno as isize)
     } else {
-      0 as *mut OPJ_UINT32
+      std::ptr::null_mut::<OPJ_UINT32>()
     };
     l_tcx0 = opj_uint_ceildiv(*p_tx0, (*l_img_comp).dx);
     l_tcy0 = opj_uint_ceildiv(*p_ty0, (*l_img_comp).dy);
@@ -1500,11 +1500,11 @@ unsafe fn opj_pi_create(
   /* number of poc in the p_pi*/
   let mut l_poc_bound: OPJ_UINT32 = 0;
   /* pointers to tile coding parameters and components.*/
-  let mut l_pi = 0 as *mut opj_pi_iterator_t;
-  let mut tcp = 0 as *mut opj_tcp_t;
-  let mut tccp = 0 as *const opj_tccp_t;
+  let mut l_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
+  let mut tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut tccp = std::ptr::null::<opj_tccp_t>();
   /* current packet iterator being allocated*/
-  let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
+  let mut l_current_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
   /* preconditions in debug*/
 
   assert!(!cp.is_null());
@@ -1516,22 +1516,22 @@ unsafe fn opj_pi_create(
   /* memory allocations*/
   l_pi = opj_calloc(
     l_poc_bound as size_t,
-    core::mem::size_of::<opj_pi_iterator_t>() as usize,
+    core::mem::size_of::<opj_pi_iterator_t>(),
   ) as *mut opj_pi_iterator_t;
   if l_pi.is_null() {
-    return 0 as *mut opj_pi_iterator_t;
+    return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
   l_current_pi = l_pi;
   pino = 0 as OPJ_UINT32;
   while pino < l_poc_bound {
-    (*l_current_pi).manager = manager.clone();
+    (*l_current_pi).manager = *manager;
     (*l_current_pi).comps = opj_calloc(
       (*image).numcomps as size_t,
-      core::mem::size_of::<opj_pi_comp_t>() as usize,
+      core::mem::size_of::<opj_pi_comp_t>(),
     ) as *mut opj_pi_comp_t;
     if (*l_current_pi).comps.is_null() {
       opj_pi_destroy(l_pi, l_poc_bound);
-      return 0 as *mut opj_pi_iterator_t;
+      return std::ptr::null_mut::<opj_pi_iterator_t>();
     }
     (*l_current_pi).numcomps = (*image).numcomps;
     compno = 0 as OPJ_UINT32;
@@ -1541,11 +1541,11 @@ unsafe fn opj_pi_create(
       tccp = &mut *(*tcp).tccps.offset(compno as isize) as *mut opj_tccp_t;
       (*comp).resolutions = opj_calloc(
         (*tccp).numresolutions as size_t,
-        core::mem::size_of::<opj_pi_resolution_t>() as usize,
+        core::mem::size_of::<opj_pi_resolution_t>(),
       ) as *mut opj_pi_resolution_t;
       if (*comp).resolutions.is_null() {
         opj_pi_destroy(l_pi, l_poc_bound);
-        return 0 as *mut opj_pi_iterator_t;
+        return std::ptr::null_mut::<opj_pi_iterator_t>();
       }
       (*comp).numresolutions = (*tccp).numresolutions;
       compno += 1;
@@ -1553,7 +1553,7 @@ unsafe fn opj_pi_create(
     l_current_pi = l_current_pi.offset(1);
     pino += 1;
   }
-  return l_pi;
+  l_pi
 }
 /* *
  * Updates the coding parameters if the encoding is used with Progression order changes and final (or cinema parameters are used).
@@ -1584,9 +1584,9 @@ unsafe fn opj_pi_update_encode_poc_and_final(
   /* loop*/
   let mut pino: OPJ_UINT32 = 0;
   /* tile coding parameter*/
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   /* current poc being updated*/
-  let mut l_current_poc = 0 as *mut opj_poc_t;
+  let mut l_current_poc = std::ptr::null_mut::<opj_poc_t>();
   /* number of pocs*/
   let mut l_poc_bound: OPJ_UINT32 = 0;
   /* preconditions in debug*/
@@ -1674,9 +1674,9 @@ unsafe fn opj_pi_update_encode_not_poc(
   /* loop*/
   let mut pino: OPJ_UINT32 = 0;
   /* tile coding parameter*/
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   /* current poc being updated*/
-  let mut l_current_poc = 0 as *mut opj_poc_t;
+  let mut l_current_poc = std::ptr::null_mut::<opj_poc_t>();
   /* number of pocs*/
   let mut l_poc_bound: OPJ_UINT32 = 0;
   /* preconditions in debug*/
@@ -1724,8 +1724,8 @@ unsafe fn opj_pi_update_decode_poc(
   let mut pino: OPJ_UINT32 = 0;
   /* encoding parameters to set*/
   let mut l_bound: OPJ_UINT32 = 0;
-  let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
-  let mut l_current_poc = 0 as *mut opj_poc_t;
+  let mut l_current_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
+  let mut l_current_poc = std::ptr::null_mut::<opj_poc_t>();
   /* preconditions in debug*/
 
   assert!(!p_pi.is_null());
@@ -1764,7 +1764,7 @@ unsafe fn opj_pi_update_decode_not_poc(
   let mut pino: OPJ_UINT32 = 0;
   /* encoding parameters to set*/
   let mut l_bound: OPJ_UINT32 = 0;
-  let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
+  let mut l_current_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
   /* preconditions in debug*/
 
   assert!(!p_tcp.is_null());
@@ -1880,7 +1880,7 @@ unsafe fn opj_pi_check_next_level(
     }
     /*end for*/
   }
-  return 0i32;
+  0i32
 }
 /*
 ==========================================================
@@ -1900,8 +1900,8 @@ pub(crate) unsafe fn opj_pi_create_decode(
   let mut compno: OPJ_UINT32 = 0;
   let mut resno: OPJ_UINT32 = 0;
   /* to store w, h, dx and dy for all components and resolutions */
-  let mut l_tmp_data = 0 as *mut OPJ_UINT32;
-  let mut l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
+  let mut l_tmp_data = std::ptr::null_mut::<OPJ_UINT32>();
+  let mut l_tmp_ptr = std::ptr::null_mut::<*mut OPJ_UINT32>();
   /* encoding parameters to set */
   let mut l_max_res: OPJ_UINT32 = 0;
   let mut l_max_prec: OPJ_UINT32 = 0;
@@ -1918,13 +1918,13 @@ pub(crate) unsafe fn opj_pi_create_decode(
   let mut l_step_l: OPJ_UINT32 = 0;
   let mut l_data_stride: OPJ_UINT32 = 0;
   /* pointers */
-  let mut l_pi = 0 as *mut opj_pi_iterator_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *const opj_tccp_t;
-  let mut l_current_comp = 0 as *mut opj_pi_comp_t;
-  let mut l_img_comp = 0 as *mut opj_image_comp_t;
-  let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
-  let mut l_encoding_value_ptr = 0 as *mut OPJ_UINT32;
+  let mut l_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null::<opj_tccp_t>();
+  let mut l_current_comp = std::ptr::null_mut::<opj_pi_comp_t>();
+  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
+  let mut l_current_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
+  let mut l_encoding_value_ptr = std::ptr::null_mut::<OPJ_UINT32>();
   /* preconditions in debug */
 
   assert!(!p_cp.is_null());
@@ -1936,30 +1936,30 @@ pub(crate) unsafe fn opj_pi_create_decode(
   l_data_stride = (4i32 * 33i32) as OPJ_UINT32;
   l_tmp_data = opj_malloc(
     (l_data_stride.wrapping_mul(numcomps) as usize)
-      .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize),
+      .wrapping_mul(core::mem::size_of::<OPJ_UINT32>()),
   ) as *mut OPJ_UINT32;
   if l_tmp_data.is_null() {
-    return 0 as *mut opj_pi_iterator_t;
+    return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
   l_tmp_ptr =
-    opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>() as usize))
+    opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>()))
       as *mut *mut OPJ_UINT32;
   if l_tmp_ptr.is_null() {
     opj_free(l_tmp_data as *mut core::ffi::c_void);
-    return 0 as *mut opj_pi_iterator_t;
+    return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
   /* memory allocation for pi */
   l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
   if l_pi.is_null() {
     opj_free(l_tmp_data as *mut core::ffi::c_void);
     opj_free(l_tmp_ptr as *mut core::ffi::c_void);
-    return 0 as *mut opj_pi_iterator_t;
+    return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
   l_encoding_value_ptr = l_tmp_data;
   /* update pointer array */
   compno = 0 as OPJ_UINT32;
   while compno < numcomps {
-    let ref mut fresh4 = *l_tmp_ptr.offset(compno as isize);
+    let fresh4 = &mut (*l_tmp_ptr.offset(compno as isize));
     *fresh4 = l_encoding_value_ptr;
     l_encoding_value_ptr = l_encoding_value_ptr.offset(l_data_stride as isize);
     compno += 1;
@@ -1989,7 +1989,7 @@ pub(crate) unsafe fn opj_pi_create_decode(
   /* memory allocation for include */
   /* prevent an integer overflow issue */
   /* 0 < l_tcp->numlayers < 65536 c.f. opj_j2k_read_cod in j2k.c */
-  (*l_current_pi).include = 0 as *mut OPJ_INT16;
+  (*l_current_pi).include = std::ptr::null_mut::<OPJ_INT16>();
   if l_step_l
     <= (2147483647u32)
       .wrapping_mul(2u32)
@@ -1999,14 +1999,14 @@ pub(crate) unsafe fn opj_pi_create_decode(
     (*l_current_pi).include_size = (*l_tcp).numlayers.wrapping_add(1u32).wrapping_mul(l_step_l);
     (*l_current_pi).include = opj_calloc(
       (*l_current_pi).include_size as size_t,
-      core::mem::size_of::<OPJ_INT16>() as usize,
+      core::mem::size_of::<OPJ_INT16>(),
     ) as *mut OPJ_INT16
   }
   if (*l_current_pi).include.is_null() {
     opj_free(l_tmp_data as *mut core::ffi::c_void);
     opj_free(l_tmp_ptr as *mut core::ffi::c_void);
     opj_pi_destroy(l_pi, l_bound);
-    return 0 as *mut opj_pi_iterator_t;
+    return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
   /* special treatment for the first packet iterator */
   l_current_comp = (*l_current_pi).comps;
@@ -2105,15 +2105,15 @@ pub(crate) unsafe fn opj_pi_create_decode(
     pino += 1;
   }
   opj_free(l_tmp_data as *mut core::ffi::c_void);
-  l_tmp_data = 0 as *mut OPJ_UINT32;
+  l_tmp_data = std::ptr::null_mut::<OPJ_UINT32>();
   opj_free(l_tmp_ptr as *mut core::ffi::c_void);
-  l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
+  l_tmp_ptr = std::ptr::null_mut::<*mut OPJ_UINT32>();
   if (*l_tcp).POC() != 0 {
     opj_pi_update_decode_poc(l_pi, l_tcp, l_max_prec, l_max_res);
   } else {
     opj_pi_update_decode_not_poc(l_pi, l_tcp, l_max_prec, l_max_res);
   }
-  return l_pi;
+  l_pi
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_get_encoding_packet_count(
@@ -2147,13 +2147,13 @@ pub(crate) unsafe fn opj_get_encoding_packet_count(
     &mut l_dy_min,
     &mut l_max_prec,
     &mut l_max_res,
-    0 as *mut *mut OPJ_UINT32,
+    std::ptr::null_mut::<*mut OPJ_UINT32>(),
   );
-  return (*(*p_cp).tcps.offset(p_tile_no as isize))
+  (*(*p_cp).tcps.offset(p_tile_no as isize))
     .numlayers
     .wrapping_mul(l_max_prec)
     .wrapping_mul((*p_image).numcomps)
-    .wrapping_mul(l_max_res);
+    .wrapping_mul(l_max_res)
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_pi_initialise_encode(
@@ -2169,8 +2169,8 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
   let mut compno: OPJ_UINT32 = 0;
   let mut resno: OPJ_UINT32 = 0;
   /* to store w, h, dx and dy for all components and resolutions*/
-  let mut l_tmp_data = 0 as *mut OPJ_UINT32;
-  let mut l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
+  let mut l_tmp_data = std::ptr::null_mut::<OPJ_UINT32>();
+  let mut l_tmp_ptr = std::ptr::null_mut::<*mut OPJ_UINT32>();
   /* encoding parameters to set*/
   let mut l_max_res: OPJ_UINT32 = 0;
   let mut l_max_prec: OPJ_UINT32 = 0;
@@ -2187,13 +2187,13 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
   let mut l_step_l: OPJ_UINT32 = 0;
   let mut l_data_stride: OPJ_UINT32 = 0;
   /* pointers*/
-  let mut l_pi = 0 as *mut opj_pi_iterator_t;
-  let mut l_tcp = 0 as *mut opj_tcp_t;
-  let mut l_tccp = 0 as *const opj_tccp_t;
-  let mut l_current_comp = 0 as *mut opj_pi_comp_t;
-  let mut l_img_comp = 0 as *mut opj_image_comp_t;
-  let mut l_current_pi = 0 as *mut opj_pi_iterator_t;
-  let mut l_encoding_value_ptr = 0 as *mut OPJ_UINT32;
+  let mut l_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
+  let mut l_tccp = std::ptr::null::<opj_tccp_t>();
+  let mut l_current_comp = std::ptr::null_mut::<opj_pi_comp_t>();
+  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
+  let mut l_current_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
+  let mut l_encoding_value_ptr = std::ptr::null_mut::<OPJ_UINT32>();
   /* preconditions in debug*/
 
   assert!(!p_cp.is_null());
@@ -2205,30 +2205,30 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
   l_data_stride = (4i32 * 33i32) as OPJ_UINT32;
   l_tmp_data = opj_malloc(
     (l_data_stride.wrapping_mul(numcomps) as usize)
-      .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize),
+      .wrapping_mul(core::mem::size_of::<OPJ_UINT32>()),
   ) as *mut OPJ_UINT32;
   if l_tmp_data.is_null() {
-    return 0 as *mut opj_pi_iterator_t;
+    return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
   l_tmp_ptr =
-    opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>() as usize))
+    opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>()))
       as *mut *mut OPJ_UINT32;
   if l_tmp_ptr.is_null() {
     opj_free(l_tmp_data as *mut core::ffi::c_void);
-    return 0 as *mut opj_pi_iterator_t;
+    return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
   /* memory allocation for pi*/
   l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
   if l_pi.is_null() {
     opj_free(l_tmp_data as *mut core::ffi::c_void);
     opj_free(l_tmp_ptr as *mut core::ffi::c_void);
-    return 0 as *mut opj_pi_iterator_t;
+    return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
   l_encoding_value_ptr = l_tmp_data;
   /* update pointer array*/
   compno = 0 as OPJ_UINT32;
   while compno < numcomps {
-    let ref mut fresh13 = *l_tmp_ptr.offset(compno as isize);
+    let fresh13 = &mut (*l_tmp_ptr.offset(compno as isize));
     *fresh13 = l_encoding_value_ptr;
     l_encoding_value_ptr = l_encoding_value_ptr.offset(l_data_stride as isize);
     compno += 1;
@@ -2260,13 +2260,13 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
   (*l_current_pi).include_size = (*l_tcp).numlayers.wrapping_mul(l_step_l);
   (*l_current_pi).include = opj_calloc(
     (*l_current_pi).include_size as size_t,
-    core::mem::size_of::<OPJ_INT16>() as usize,
+    core::mem::size_of::<OPJ_INT16>(),
   ) as *mut OPJ_INT16;
   if (*l_current_pi).include.is_null() {
     opj_free(l_tmp_data as *mut core::ffi::c_void);
     opj_free(l_tmp_ptr as *mut core::ffi::c_void);
     opj_pi_destroy(l_pi, l_bound);
-    return 0 as *mut opj_pi_iterator_t;
+    return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
   /* special treatment for the first packet iterator*/
   l_current_comp = (*l_current_pi).comps;
@@ -2365,9 +2365,9 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
     pino += 1;
   }
   opj_free(l_tmp_data as *mut core::ffi::c_void);
-  l_tmp_data = 0 as *mut OPJ_UINT32;
+  l_tmp_data = std::ptr::null_mut::<OPJ_UINT32>();
   opj_free(l_tmp_ptr as *mut core::ffi::c_void);
-  l_tmp_ptr = 0 as *mut *mut OPJ_UINT32;
+  l_tmp_ptr = std::ptr::null_mut::<*mut OPJ_UINT32>();
   if (*l_tcp).POC() as core::ffi::c_int != 0
     && ((*p_cp).rsiz as core::ffi::c_int >= 0x3i32 && (*p_cp).rsiz as core::ffi::c_int <= 0x6i32
       || p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint)
@@ -2381,7 +2381,7 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
       l_dy_min,
     );
   }
-  return l_pi;
+  l_pi
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_pi_create_encode(
@@ -2689,7 +2689,7 @@ pub(crate) unsafe fn opj_pi_destroy(
   if !p_pi.is_null() {
     if !(*p_pi).include.is_null() {
       opj_free((*p_pi).include as *mut core::ffi::c_void);
-      (*p_pi).include = 0 as *mut OPJ_INT16
+      (*p_pi).include = std::ptr::null_mut::<OPJ_INT16>()
     }
     pino = 0 as OPJ_UINT32;
     while pino < p_nb_elements {
@@ -2699,13 +2699,13 @@ pub(crate) unsafe fn opj_pi_destroy(
         while compno < (*l_current_pi).numcomps {
           if !(*l_current_component).resolutions.is_null() {
             opj_free((*l_current_component).resolutions as *mut core::ffi::c_void);
-            (*l_current_component).resolutions = 0 as *mut opj_pi_resolution_t
+            (*l_current_component).resolutions = std::ptr::null_mut::<opj_pi_resolution_t>()
           }
           l_current_component = l_current_component.offset(1);
           compno += 1;
         }
         opj_free((*l_current_pi).comps as *mut core::ffi::c_void);
-        (*l_current_pi).comps = 0 as *mut opj_pi_comp_t
+        (*l_current_pi).comps = std::ptr::null_mut::<opj_pi_comp_t>()
       }
       l_current_pi = l_current_pi.offset(1);
       pino += 1;
@@ -2729,7 +2729,7 @@ pub(crate) unsafe fn opj_pi_update_encoding_parameters(
   let mut l_dx_min: OPJ_UINT32 = 0;
   let mut l_dy_min: OPJ_UINT32 = 0;
   /* pointers */
-  let mut l_tcp = 0 as *mut opj_tcp_t;
+  let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
   /* preconditions */
 
   assert!(!p_cp.is_null());
@@ -2781,5 +2781,5 @@ pub(crate) unsafe fn opj_pi_next(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
     -1 => return 0i32,
     _ => {}
   }
-  return 0i32;
+  0i32
 }

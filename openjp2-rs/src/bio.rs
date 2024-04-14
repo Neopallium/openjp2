@@ -33,7 +33,7 @@ unsafe fn opj_bio_byteout(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   let fresh0 = (*bio).bp;
   (*bio).bp = (*bio).bp.offset(1);
   *fresh0 = ((*bio).buf >> 8i32) as OPJ_BYTE;
-  return 1i32;
+  1i32
 }
 /* *
 Read a byte
@@ -49,7 +49,7 @@ unsafe fn opj_bio_bytein(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   let fresh1 = (*bio).bp;
   (*bio).bp = (*bio).bp.offset(1);
   (*bio).buf |= *fresh1 as core::ffi::c_uint;
-  return 1i32;
+  1i32
 }
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -102,7 +102,7 @@ unsafe fn opj_bio_getbit(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
     /* MSD: why not check the return value of this function ? */
   }
   (*bio).ct = (*bio).ct.wrapping_sub(1);
-  return (*bio).buf >> (*bio).ct & 1u32;
+  (*bio).buf >> (*bio).ct & 1u32
 }
 /*
 ==========================================================
@@ -111,8 +111,8 @@ unsafe fn opj_bio_getbit(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
 */
 #[no_mangle]
 pub(crate) unsafe fn opj_bio_create() -> *mut opj_bio_t {
-  let mut bio = opj_malloc(core::mem::size_of::<opj_bio_t>() as usize) as *mut opj_bio_t; /* && (n <= 32U)*/
-  return bio;
+   /* && (n <= 32U)*/
+  opj_malloc(core::mem::size_of::<opj_bio_t>()) as *mut opj_bio_t
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_bio_destroy(mut bio: *mut opj_bio_t) {
@@ -184,27 +184,23 @@ pub(crate) unsafe fn opj_bio_read(mut bio: *mut opj_bio_t, mut n: OPJ_UINT32) ->
     i -= 1
     /* can't overflow, opj_bio_getbit returns 0 or 1 */
   }
-  return v;
+  v
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_bio_flush(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   if opj_bio_byteout(bio) == 0 {
     return 0i32;
   }
-  if (*bio).ct == 7u32 {
-    if opj_bio_byteout(bio) == 0 {
-      return 0i32;
-    }
+  if (*bio).ct == 7u32 && opj_bio_byteout(bio) == 0 {
+    return 0i32;
   }
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_bio_inalign(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
-  if (*bio).buf & 0xffu32 == 0xffu32 {
-    if opj_bio_bytein(bio) == 0 {
-      return 0i32;
-    }
+  if (*bio).buf & 0xffu32 == 0xffu32 && opj_bio_bytein(bio) == 0 {
+    return 0i32;
   }
   (*bio).ct = 0 as OPJ_UINT32;
-  return 1i32;
+  1i32
 }

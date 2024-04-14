@@ -153,12 +153,12 @@ pub struct opj_dwt97_decode_h_job_t {
 /* end coord in high pass band */
 
 /* From table F.4 from the standard */
-const opj_dwt_alpha: f32 = -1.586134342;
+const opj_dwt_alpha: f32 = -1.586_134_3;
 const opj_dwt_beta: f32 = -0.052980118;
-const opj_dwt_gamma: f32 = 0.882911075;
-const opj_dwt_delta: f32 = 0.443506852;
-const opj_K: f32 = 1.230174105;
-const opj_invK: f32 = 1.0 / 1.230174105;
+const opj_dwt_gamma: f32 = 0.882_911_1;
+const opj_dwt_delta: f32 = 0.443_506_87;
+const opj_K: f32 = 1.230_174_1;
+const opj_invK: f32 = 1.0 / 1.230_174_1;
 
 /* <summary>                                                              */
 /* This table contains the norms of the 5-3 wavelets for different bands. */
@@ -251,8 +251,8 @@ unsafe fn opj_dwt_interleave_h(mut h: *const opj_dwt_t, mut a: *mut OPJ_INT32) {
   let mut i = (*h).sn;
   loop {
     let fresh2 = i;
-    i = i - 1;
-    if !(fresh2 != 0) {
+    i -= 1;
+    if fresh2 == 0 {
       break;
     }
     let fresh3 = ai;
@@ -265,8 +265,8 @@ unsafe fn opj_dwt_interleave_h(mut h: *const opj_dwt_t, mut a: *mut OPJ_INT32) {
   i = (*h).dn;
   loop {
     let fresh4 = i;
-    i = i - 1;
-    if !(fresh4 != 0) {
+    i -= 1;
+    if fresh4 == 0 {
       break;
     }
     let fresh5 = ai;
@@ -284,21 +284,21 @@ unsafe fn opj_dwt_interleave_v(mut v: *const opj_dwt_t, mut a: *mut OPJ_INT32, m
   let mut i = (*v).sn;
   loop {
     let fresh6 = i;
-    i = i - 1;
-    if !(fresh6 != 0) {
+    i -= 1;
+    if fresh6 == 0 {
       break;
     }
     *bi = *ai;
     bi = bi.offset(2);
     ai = ai.offset(x as isize)
   }
-  ai = a.offset(((*v).sn as usize).wrapping_mul(x as OPJ_SIZE_T) as isize);
+  ai = a.add(((*v).sn as usize).wrapping_mul(x as OPJ_SIZE_T));
   bi = (*v).mem.offset(1).offset(-((*v).cas as isize));
   i = (*v).dn;
   loop {
     let fresh7 = i;
-    i = i - 1;
-    if !(fresh7 != 0) {
+    i -= 1;
+    if fresh7 == 0 {
       break;
     }
     *bi = *ai;
@@ -322,98 +322,80 @@ unsafe fn opj_dwt_decode_1_(
       /* NEW :  CASE ONE ELEMENT */
       i = 0i32;
       while i < sn {
-        let ref mut fresh8 = *a.offset((i * 2i32) as isize);
-        *fresh8 -= (if (i - 1i32) < 0i32 {
-          *a.offset((1i32 + 0i32 * 2i32) as isize)
+        let fresh8 = &mut (*a.offset((i * 2i32) as isize));
+        *fresh8 -= ((if (i - 1i32) < 0i32 {
+          *a.offset(1i32 as isize)
+        } else if i > dn {
+          *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
         } else {
-          if i - 1i32 >= dn {
-            *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
-          } else {
-            *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
-          }
+          *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
         }) + (if i < 0i32 {
-          *a.offset((1i32 + 0i32 * 2i32) as isize)
+          *a.offset(1i32 as isize)
+        } else if i >= dn {
+          *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
         } else {
-          if i >= dn {
-            *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
-          } else {
-            *a.offset((1i32 + i * 2i32) as isize)
-          }
-        }) + 2i32
-          >> 2i32;
+          *a.offset((1i32 + i * 2i32) as isize)
+        }) + 2i32) >> 2i32;
         i += 1
       }
       i = 0i32;
       while i < dn {
-        let ref mut fresh9 = *a.offset((1i32 + i * 2i32) as isize);
-        *fresh9 += (if i < 0i32 {
+        let fresh9 = &mut (*a.offset((1i32 + i * 2i32) as isize));
+        *fresh9 += ((if i < 0i32 {
           *a.offset((0i32 * 2i32) as isize)
+        } else if i >= sn {
+          *a.offset(((sn - 1i32) * 2i32) as isize)
         } else {
-          if i >= sn {
-            *a.offset(((sn - 1i32) * 2i32) as isize)
-          } else {
-            *a.offset((i * 2i32) as isize)
-          }
+          *a.offset((i * 2i32) as isize)
         }) + (if (i + 1i32) < 0i32 {
           *a.offset((0i32 * 2i32) as isize)
+        } else if i + 1i32 >= sn {
+          *a.offset(((sn - 1i32) * 2i32) as isize)
         } else {
-          if i + 1i32 >= sn {
-            *a.offset(((sn - 1i32) * 2i32) as isize)
-          } else {
-            *a.offset(((i + 1i32) * 2i32) as isize)
-          }
-        }) >> 1i32;
+          *a.offset(((i + 1i32) * 2i32) as isize)
+        })) >> 1i32;
         i += 1
       }
     }
   } else if sn == 0 && dn == 1i32 {
     /* NEW :  CASE ONE ELEMENT */
-    let ref mut fresh10 = *a.offset((0i32 * 2i32) as isize);
+    let fresh10 = &mut (*a.offset((0i32 * 2i32) as isize));
     *fresh10 /= 2i32
   } else {
     i = 0i32;
     while i < sn {
-      let ref mut fresh11 = *a.offset((1i32 + i * 2i32) as isize);
-      *fresh11 -= (if i < 0i32 {
+      let fresh11 = &mut (*a.offset((1i32 + i * 2i32) as isize));
+      *fresh11 -= ((if i < 0i32 {
         *a.offset((0i32 * 2i32) as isize)
+      } else if i >= dn {
+        *a.offset(((dn - 1i32) * 2i32) as isize)
       } else {
-        if i >= dn {
-          *a.offset(((dn - 1i32) * 2i32) as isize)
-        } else {
-          *a.offset((i * 2i32) as isize)
-        }
+        *a.offset((i * 2i32) as isize)
       }) + (if (i + 1i32) < 0i32 {
         *a.offset((0i32 * 2i32) as isize)
+      } else if i + 1i32 >= dn {
+        *a.offset(((dn - 1i32) * 2i32) as isize)
       } else {
-        if i + 1i32 >= dn {
-          *a.offset(((dn - 1i32) * 2i32) as isize)
-        } else {
-          *a.offset(((i + 1i32) * 2i32) as isize)
-        }
-      }) + 2i32
-        >> 2i32;
+        *a.offset(((i + 1i32) * 2i32) as isize)
+      }) + 2i32) >> 2i32;
       i += 1
     }
     i = 0i32;
     while i < dn {
-      let ref mut fresh12 = *a.offset((i * 2i32) as isize);
-      *fresh12 += (if i < 0i32 {
-        *a.offset((1i32 + 0i32 * 2i32) as isize)
+      let fresh12 = &mut (*a.offset((i * 2i32) as isize));
+      *fresh12 += ((if i < 0i32 {
+        *a.offset(1i32 as isize)
+      } else if i >= sn {
+        *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
       } else {
-        if i >= sn {
-          *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
-        } else {
-          *a.offset((1i32 + i * 2i32) as isize)
-        }
+        *a.offset((1i32 + i * 2i32) as isize)
       }) + (if (i - 1i32) < 0i32 {
-        *a.offset((1i32 + 0i32 * 2i32) as isize)
+        *a.offset(1i32 as isize)
+      } else if i > sn {
+        *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
       } else {
-        if i - 1i32 >= sn {
-          *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
-        } else {
-          *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
-        }
-      }) >> 1i32;
+        *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
+      })) >> 1i32;
       i += 1
     }
   };
@@ -435,7 +417,7 @@ unsafe fn opj_idwt53_h(mut dwt: *const opj_dwt_t, mut tiledp: *mut OPJ_INT32) {
     tiledp as *mut core::ffi::c_void,
     (*dwt).mem as *const core::ffi::c_void,
     (((*dwt).sn + (*dwt).dn) as OPJ_UINT32 as usize)
-      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
   );
 }
 /* (defined(__SSE2__) || defined(__AVX2__)) && !defined(STANDARD_SLOW_VERSION) */
@@ -458,7 +440,7 @@ unsafe fn opj_idwt53_v(
     opj_dwt_decode_1(dwt);
     k = 0;
     while k < (*dwt).sn + (*dwt).dn {
-      *tiledp_col.offset((c as usize).wrapping_add((k as usize).wrapping_mul(stride)) as isize) =
+      *tiledp_col.add((c as usize).wrapping_add((k as usize).wrapping_mul(stride))) =
         *(*dwt).mem.offset(k as isize);
       k += 1
     }
@@ -478,38 +460,38 @@ unsafe fn opj_dwt_encode_step1_combined(
   assert!(fw as OPJ_SIZE_T & 0xfusize == 0usize);
   assert!(opj_int_abs(iters_c1 as OPJ_INT32 - iters_c2 as OPJ_INT32) <= 1i32);
   while i.wrapping_add(3u32) < iters_common {
-    let ref mut fresh13 = *fw.offset(0);
+    let fresh13 = &mut (*fw.offset(0));
     *fresh13 *= c1;
-    let ref mut fresh14 = *fw.offset(1);
+    let fresh14 = &mut (*fw.offset(1));
     *fresh14 *= c2;
-    let ref mut fresh15 = *fw.offset(2);
+    let fresh15 = &mut (*fw.offset(2));
     *fresh15 *= c1;
-    let ref mut fresh16 = *fw.offset(3);
+    let fresh16 = &mut (*fw.offset(3));
     *fresh16 *= c2;
-    let ref mut fresh17 = *fw.offset(4);
+    let fresh17 = &mut (*fw.offset(4));
     *fresh17 *= c1;
-    let ref mut fresh18 = *fw.offset(5);
+    let fresh18 = &mut (*fw.offset(5));
     *fresh18 *= c2;
-    let ref mut fresh19 = *fw.offset(6);
+    let fresh19 = &mut (*fw.offset(6));
     *fresh19 *= c1;
-    let ref mut fresh20 = *fw.offset(7);
+    let fresh20 = &mut (*fw.offset(7));
     *fresh20 *= c2;
     fw = fw.offset(8);
     i = (i as core::ffi::c_uint).wrapping_add(4u32) as OPJ_UINT32
   }
   while i < iters_common {
-    let ref mut fresh21 = *fw.offset(0);
+    let fresh21 = &mut (*fw.offset(0));
     *fresh21 *= c1;
-    let ref mut fresh22 = *fw.offset(1);
+    let fresh22 = &mut (*fw.offset(1));
     *fresh22 *= c2;
     fw = fw.offset(2);
     i += 1;
   }
   if i < iters_c1 {
-    let ref mut fresh23 = *fw.offset(0);
+    let fresh23 = &mut (*fw.offset(0));
     *fresh23 *= c1
   } else if i < iters_c2 {
-    let ref mut fresh24 = *fw.offset(1);
+    let fresh24 = &mut (*fw.offset(1));
     *fresh24 *= c2
   };
 }
@@ -523,24 +505,24 @@ unsafe fn opj_dwt_encode_step2(
   let mut i: OPJ_UINT32 = 0;
   let mut imax = opj_uint_min(end, m);
   if imax > 0u32 {
-    let ref mut fresh25 = *fw.offset(-(1i32) as isize);
+    let fresh25 = &mut (*fw.offset(-(1i32) as isize));
     *fresh25 += (*fl.offset(0) + *fw.offset(0)) * c;
     fw = fw.offset(2);
     i = 1 as OPJ_UINT32;
     while i.wrapping_add(3u32) < imax {
-      let ref mut fresh26 = *fw.offset(-(1i32) as isize);
+      let fresh26 = &mut (*fw.offset(-(1i32) as isize));
       *fresh26 += (*fw.offset(-(2i32) as isize) + *fw.offset(0)) * c;
-      let ref mut fresh27 = *fw.offset(1);
+      let fresh27 = &mut (*fw.offset(1));
       *fresh27 += (*fw.offset(0) + *fw.offset(2)) * c;
-      let ref mut fresh28 = *fw.offset(3);
+      let fresh28 = &mut (*fw.offset(3));
       *fresh28 += (*fw.offset(2) + *fw.offset(4)) * c;
-      let ref mut fresh29 = *fw.offset(5);
+      let fresh29 = &mut (*fw.offset(5));
       *fresh29 += (*fw.offset(4) + *fw.offset(6)) * c;
       fw = fw.offset(8);
       i = (i as core::ffi::c_uint).wrapping_add(4u32) as OPJ_UINT32 as OPJ_UINT32
     }
     while i < imax {
-      let ref mut fresh30 = *fw.offset(-(1i32) as isize);
+      let fresh30 = &mut (*fw.offset(-(1i32) as isize));
       *fresh30 += (*fw.offset(-(2i32) as isize) + *fw.offset(0)) * c;
       fw = fw.offset(2);
       i += 1;
@@ -548,7 +530,7 @@ unsafe fn opj_dwt_encode_step2(
   }
   if m < end {
     assert!(m.wrapping_add(1u32) == end);
-    let ref mut fresh31 = *fw.offset(-(1i32) as isize);
+    let fresh31 = &mut (*fw.offset(-(1i32) as isize));
     *fresh31 += 2 as core::ffi::c_float * *fw.offset(-(2i32) as isize) * c
   };
 }
@@ -647,47 +629,44 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row(
       i = 0i32;
       while i < sn - 1i32 {
         *tmp.offset((sn + i) as isize) = *row.offset((2i32 * i + 1i32) as isize)
-          - (*row.offset((i * 2i32) as isize) + *row.offset(((i + 1i32) * 2i32) as isize) >> 1i32);
+          - ((*row.offset((i * 2i32) as isize) + *row.offset(((i + 1i32) * 2i32) as isize)) >> 1i32);
         i += 1
       }
       if width.wrapping_rem(2u32) == 0u32 {
         *tmp.offset((sn + i) as isize) =
           *row.offset((2i32 * i + 1i32) as isize) - *row.offset((i * 2i32) as isize)
       }
-      let ref mut fresh32 = *row.offset(0);
-      *fresh32 += *tmp.offset(sn as isize) + *tmp.offset(sn as isize) + 2i32 >> 2i32;
+      let fresh32 = &mut (*row.offset(0));
+      *fresh32 += (*tmp.offset(sn as isize) + *tmp.offset(sn as isize) + 2i32) >> 2i32;
       i = 1i32;
       while i < dn {
         *row.offset(i as isize) = *row.offset((2i32 * i) as isize)
-          + (*tmp.offset((sn + (i - 1i32)) as isize) + *tmp.offset((sn + i) as isize) + 2i32
-            >> 2i32);
+          + ((*tmp.offset((sn + (i - 1i32)) as isize) + *tmp.offset((sn + i) as isize) + 2i32) >> 2i32);
         i += 1
       }
       if width.wrapping_rem(2u32) == 1u32 {
         *row.offset(i as isize) = *row.offset((2i32 * i) as isize)
-          + (*tmp.offset((sn + (i - 1i32)) as isize)
+          + ((*tmp.offset((sn + (i - 1i32)) as isize)
             + *tmp.offset((sn + (i - 1i32)) as isize)
-            + 2i32
-            >> 2i32)
+            + 2i32) >> 2i32)
       }
       memcpy(
         row.offset(sn as isize) as *mut core::ffi::c_void,
         tmp.offset(sn as isize) as *const core::ffi::c_void,
-        (dn as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+        (dn as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
       );
     }
   } else if width == 1u32 {
-    let ref mut fresh33 = *row.offset(0);
+    let fresh33 = &mut (*row.offset(0));
     *fresh33 *= 2i32
   } else {
     let mut i_0: OPJ_INT32 = 0;
-    *tmp.offset((sn + 0i32) as isize) = *row.offset(0) - *row.offset(1);
+    *tmp.offset(sn as isize) = *row.offset(0) - *row.offset(1);
     i_0 = 1i32;
     while i_0 < sn {
       *tmp.offset((sn + i_0) as isize) = *row.offset((2i32 * i_0) as isize)
-        - (*row.offset((2i32 * i_0 + 1i32) as isize)
-          + *row.offset((2i32 * (i_0 - 1i32) + 1i32) as isize)
-          >> 1i32);
+        - ((*row.offset((2i32 * i_0 + 1i32) as isize)
+          + *row.offset((2i32 * (i_0 - 1i32) + 1i32) as isize)) >> 1i32);
       i_0 += 1
     }
     if width.wrapping_rem(2u32) == 1u32 {
@@ -697,18 +676,17 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row(
     i_0 = 0i32;
     while i_0 < dn - 1i32 {
       *row.offset(i_0 as isize) = *row.offset((2i32 * i_0 + 1i32) as isize)
-        + (*tmp.offset((sn + i_0) as isize) + *tmp.offset((sn + i_0 + 1i32) as isize) + 2i32
-          >> 2i32);
+        + ((*tmp.offset((sn + i_0) as isize) + *tmp.offset((sn + i_0 + 1i32) as isize) + 2i32) >> 2i32);
       i_0 += 1
     }
     if width.wrapping_rem(2u32) == 0u32 {
       *row.offset(i_0 as isize) = *row.offset((2i32 * i_0 + 1i32) as isize)
-        + (*tmp.offset((sn + i_0) as isize) + *tmp.offset((sn + i_0) as isize) + 2i32 >> 2i32)
+        + ((*tmp.offset((sn + i_0) as isize) + *tmp.offset((sn + i_0) as isize) + 2i32) >> 2i32)
     }
     memcpy(
       row.offset(sn as isize) as *mut core::ffi::c_void,
       tmp.offset(sn as isize) as *const core::ffi::c_void,
-      (dn as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+      (dn as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
     );
   };
 }
@@ -729,7 +707,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row_real(
   memcpy(
     tmp as *mut core::ffi::c_void,
     row as *const core::ffi::c_void,
-    (width as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
+    (width as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
   );
   opj_dwt_encode_1_real(
     tmp as *mut core::ffi::c_void,
@@ -747,12 +725,12 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row_real(
 }
 unsafe extern "C" fn opj_dwt_encode_h_func(mut user_data: *mut core::ffi::c_void) {
   let mut j: OPJ_UINT32 = 0;
-  let mut job = 0 as *mut opj_dwt_encode_h_job_t;
+  let mut job = std::ptr::null_mut::<opj_dwt_encode_h_job_t>();
   job = user_data as *mut opj_dwt_encode_h_job_t;
   j = (*job).min_j;
   while j < (*job).max_j {
     let mut aj = (*job).tiledp.offset(j.wrapping_mul((*job).w) as isize);
-    Some((*job).p_function.expect("non-null function pointer")).expect("non-null function pointer")(
+    (*job).p_function.expect("non-null function pointer")(
       aj as *mut core::ffi::c_void,
       (*job).h.mem as *mut core::ffi::c_void,
       (*job).rw,
@@ -769,12 +747,9 @@ unsafe extern "C" fn opj_dwt_encode_v_func(mut user_data: *mut core::ffi::c_void
   let job = &mut *(user_data as *mut opj_dwt_encode_v_job_t);
   j = job.min_j;
   while j + NB_ELTS_V8 - 1 < job.max_j {
-    Some(
-      job
+    job
         .p_encode_and_deinterleave_v
-        .expect("non-null function pointer"),
-    )
-    .expect("non-null function pointer")(
+        .expect("non-null function pointer")(
       job.tiledp.offset(j as isize) as *mut core::ffi::c_void,
       job.v.mem as *mut core::ffi::c_void,
       job.rh,
@@ -785,12 +760,9 @@ unsafe extern "C" fn opj_dwt_encode_v_func(mut user_data: *mut core::ffi::c_void
     j += NB_ELTS_V8;
   }
   if j < job.max_j {
-    Some(
-      job
+    job
         .p_encode_and_deinterleave_v
-        .expect("non-null function pointer"),
-    )
-    .expect("non-null function pointer")(
+        .expect("non-null function pointer")(
       job.tiledp.offset(j as isize) as *mut core::ffi::c_void,
       job.v.mem as *mut core::ffi::c_void,
       job.rh,
@@ -883,7 +855,7 @@ unsafe fn opj_dwt_deinterleave_v_cols(
       l_dest = l_dest.offset(stride_width as isize);
       l_src = l_src.offset((2 * NB_ELTS_V8) as isize)
     }
-    l_dest = dst.offset((sn as OPJ_SIZE_T).wrapping_mul(stride_width as OPJ_SIZE_T) as isize);
+    l_dest = dst.add((sn as OPJ_SIZE_T).wrapping_mul(stride_width as OPJ_SIZE_T));
     l_src = src.offset(((1 - cas) * NB_ELTS_V8 as i32) as isize);
     i = dn;
     k += 1
@@ -901,7 +873,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v(
   mut cols: OPJ_UINT32,
 ) {
   let mut array = arrayIn as *mut OPJ_INT32;
-  let sn = height + if even != 0 { 1 } else { 0 } >> 1;
+  let sn = (height + if even != 0 { 1 } else { 0 }) >> 1;
   let dn = height - sn;
   opj_dwt_fetch_cols_vertical_pass(arrayIn, tmpIn, height, stride_width, cols);
 
@@ -960,50 +932,48 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v(
         }
       }
     }
+  } else if height == 1 {
+    c = 0 as OPJ_UINT32;
+    while c < NB_ELTS_V8 {
+      *_sc_mut(0, c) *= 2;
+      c += 1
+    }
   } else {
-    if height == 1 {
+    c = 0 as OPJ_UINT32;
+    while c < NB_ELTS_V8 {
+      *_sc_mut(0, c) -= _dc(0, c);
+      c += 1
+    }
+    i = 1 as OPJ_UINT32;
+    while i < sn {
       c = 0 as OPJ_UINT32;
       while c < NB_ELTS_V8 {
-        *_sc_mut(0, c) *= 2;
+        *_sc_mut(i, c) -= (_dc(i, c) + _dc(i - 1, c)) >> 1;
         c += 1
       }
-    } else {
+      i += 1
+    }
+    if height % 2 == 1 {
       c = 0 as OPJ_UINT32;
       while c < NB_ELTS_V8 {
-        *_sc_mut(0, c) -= _dc(0, c);
+        *_sc_mut(i, c) -= _dc(i - 1, c);
         c += 1
       }
-      i = 1 as OPJ_UINT32;
-      while i < sn {
-        c = 0 as OPJ_UINT32;
-        while c < NB_ELTS_V8 {
-          *_sc_mut(i, c) -= (_dc(i, c) + _dc(i - 1, c)) >> 1;
-          c += 1
-        }
-        i += 1
+    }
+    i = 0 as OPJ_UINT32;
+    while i + 1 < dn {
+      c = 0 as OPJ_UINT32;
+      while c < NB_ELTS_V8 {
+        *_dc_mut(i, c) += (_sc(i, c) + _sc(i + 1, c) + 2) >> 2;
+        c += 1
       }
-      if height % 2 == 1 {
-        c = 0 as OPJ_UINT32;
-        while c < NB_ELTS_V8 {
-          *_sc_mut(i, c) -= _dc(i - 1, c);
-          c += 1
-        }
-      }
-      i = 0 as OPJ_UINT32;
-      while i + 1 < dn {
-        c = 0 as OPJ_UINT32;
-        while c < NB_ELTS_V8 {
-          *_dc_mut(i, c) += (_sc(i, c) + _sc(i + 1, c) + 2) >> 2;
-          c += 1
-        }
-        i += 1
-      }
-      if height % 2 == 0 {
-        c = 0 as OPJ_UINT32;
-        while c < NB_ELTS_V8 {
-          *_dc_mut(i, c) += (_sc(i, c) + _sc(i, c) + 2) >> 2;
-          c += 1
-        }
+      i += 1
+    }
+    if height % 2 == 0 {
+      c = 0 as OPJ_UINT32;
+      while c < NB_ELTS_V8 {
+        *_dc_mut(i, c) += (_sc(i, c) + _sc(i, c) + 2) >> 2;
+        c += 1
       }
     }
   }
@@ -1037,7 +1007,7 @@ unsafe fn opj_v8dwt_encode_step1(mut fw: *mut OPJ_FLOAT32, mut end: OPJ_UINT32, 
   while i < end {
     c = 0 as OPJ_UINT32;
     while c < NB_ELTS_V8 {
-      let ref mut fresh46 = *fw.offset((i * 2 * NB_ELTS_V8 + c) as isize);
+      let fresh46 = &mut (*fw.offset((i * 2 * NB_ELTS_V8 + c) as isize));
       *fresh46 *= cst;
       c += 1
     }
@@ -1058,7 +1028,7 @@ unsafe fn opj_v8dwt_encode_step2(
   if imax > 0u32 {
     c = 0;
     while c < NB_ELTS_V8 as i32 {
-      let ref mut fresh47 = *fw.offset((-1 * NB_ELTS_V8 as i32 + c) as isize);
+      let fresh47 = &mut (*fw.offset((-(NB_ELTS_V8 as i32) + c) as isize));
       *fresh47 += (*fl.offset((0 * NB_ELTS_V8 as i32 + c) as isize)
         + *fw.offset((0 * NB_ELTS_V8 as i32 + c) as isize))
         * cst;
@@ -1069,7 +1039,7 @@ unsafe fn opj_v8dwt_encode_step2(
     while i < imax {
       c = 0;
       while c < NB_ELTS_V8 as i32 {
-        let ref mut fresh48 = *fw.offset((-1 * NB_ELTS_V8 as i32 + c) as isize);
+        let fresh48 = &mut (*fw.offset((-(NB_ELTS_V8 as i32) + c) as isize));
         *fresh48 += (*fw.offset((-2 * NB_ELTS_V8 as i32 + c) as isize)
           + *fw.offset((0 * NB_ELTS_V8 as i32 + c) as isize))
           * cst;
@@ -1083,7 +1053,7 @@ unsafe fn opj_v8dwt_encode_step2(
     assert!(m.wrapping_add(1u32) == end);
     c = 0;
     while c < NB_ELTS_V8 as i32 {
-      let ref mut fresh49 = *fw.offset((-1 * NB_ELTS_V8 as i32 + c) as isize);
+      let fresh49 = &mut (*fw.offset((-(NB_ELTS_V8 as i32) + c) as isize));
       *fresh49 += 2 as core::ffi::c_float * *fw.offset((-2 * NB_ELTS_V8 as i32 + c) as isize) * cst;
       c += 1
     }
@@ -1189,12 +1159,12 @@ unsafe fn opj_dwt_encode_procedure(
   mut p_encode_and_deinterleave_h_one_row: opj_encode_and_deinterleave_h_one_row_fnptr_type,
 ) -> OPJ_BOOL {
   let mut i: OPJ_INT32 = 0;
-  let mut bj = 0 as *mut OPJ_INT32;
+  let mut bj = std::ptr::null_mut::<OPJ_INT32>();
   let mut w: OPJ_UINT32 = 0;
   let mut l: OPJ_INT32 = 0;
   let mut l_data_size: OPJ_SIZE_T = 0;
-  let mut l_cur_res = 0 as *mut opj_tcd_resolution_t;
-  let mut l_last_res = 0 as *mut opj_tcd_resolution_t;
+  let mut l_cur_res = std::ptr::null_mut::<opj_tcd_resolution_t>();
+  let mut l_last_res = std::ptr::null_mut::<opj_tcd_resolution_t>();
   let num_threads = opj_thread_pool_get_thread_count(tp);
   let mut tiledp = (*tilec).data;
   w = ((*tilec).x1 - (*tilec).x0) as OPJ_UINT32;
@@ -1219,8 +1189,8 @@ unsafe fn opj_dwt_encode_procedure(
   i = l; /* height of the resolution level computed  */
   loop {
     let fresh50 = i; /* width of the resolution level once lower than computed one                                       */
-    i = i - 1; /* height of the resolution level once lower than computed one                                      */
-    if !(fresh50 != 0) {
+    i -= 1; /* height of the resolution level once lower than computed one                                      */
+    if fresh50 == 0 {
       break; /* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
     } /* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
     let mut j: OPJ_UINT32 = 0;
@@ -1273,8 +1243,8 @@ unsafe fn opj_dwt_encode_procedure(
       step_j = ((rw / num_jobs) / NB_ELTS_V8) * NB_ELTS_V8;
       j = 0 as OPJ_UINT32;
       while j < num_jobs {
-        let mut job = 0 as *mut opj_dwt_encode_v_job_t;
-        job = opj_malloc(core::mem::size_of::<opj_dwt_encode_v_job_t>() as usize)
+        let mut job = std::ptr::null_mut::<opj_dwt_encode_v_job_t>();
+        job = opj_malloc(core::mem::size_of::<opj_dwt_encode_v_job_t>())
           as *mut opj_dwt_encode_v_job_t;
         if job.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -1317,8 +1287,7 @@ unsafe fn opj_dwt_encode_procedure(
       j = 0 as OPJ_UINT32; /* this can overflow */
       while j < rh {
         let mut aj = tiledp.offset(j.wrapping_mul(w) as isize);
-        Some(p_encode_and_deinterleave_h_one_row.expect("non-null function pointer"))
-          .expect("non-null function pointer")(
+        p_encode_and_deinterleave_h_one_row.expect("non-null function pointer")(
           aj as *mut core::ffi::c_void,
           bj as *mut core::ffi::c_void,
           rw,
@@ -1335,8 +1304,8 @@ unsafe fn opj_dwt_encode_procedure(
       step_j_0 = rh.wrapping_div(num_jobs_0);
       j = 0 as OPJ_UINT32;
       while j < num_jobs_0 {
-        let mut job_0 = 0 as *mut opj_dwt_encode_h_job_t;
-        job_0 = opj_malloc(core::mem::size_of::<opj_dwt_encode_h_job_t>() as usize)
+        let mut job_0 = std::ptr::null_mut::<opj_dwt_encode_h_job_t>();
+        job_0 = opj_malloc(core::mem::size_of::<opj_dwt_encode_h_job_t>())
           as *mut opj_dwt_encode_h_job_t;
         if job_0.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -1376,7 +1345,7 @@ unsafe fn opj_dwt_encode_procedure(
     l_last_res = l_last_res.offset(-1)
   }
   opj_aligned_free(bj as *mut core::ffi::c_void);
-  return 1i32;
+  1i32
 }
 
 /* Forward 5-3 wavelet transform in 2-D. */
@@ -1386,7 +1355,7 @@ pub(crate) unsafe fn opj_dwt_encode(
   mut p_tcd: *mut opj_tcd_t,
   mut tilec: *mut opj_tcd_tilecomp_t,
 ) -> OPJ_BOOL {
-  return opj_dwt_encode_procedure(
+  opj_dwt_encode_procedure(
     (*p_tcd).thread_pool,
     tilec,
     Some(
@@ -1409,7 +1378,7 @@ pub(crate) unsafe fn opj_dwt_encode(
           _: OPJ_BOOL,
         ) -> (),
     ),
-  );
+  )
 }
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 2-D. */
@@ -1421,10 +1390,10 @@ pub(crate) unsafe fn opj_dwt_decode(
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
   if (*p_tcd).whole_tile_decoding != 0 {
-    return opj_dwt_decode_tile((*p_tcd).thread_pool, tilec, numres);
+    opj_dwt_decode_tile((*p_tcd).thread_pool, tilec, numres)
   } else {
-    return opj_dwt_decode_partial_tile(tilec, numres);
-  };
+    opj_dwt_decode_partial_tile(tilec, numres)
+  }
 }
 
 /* <summary>                */
@@ -1440,7 +1409,7 @@ pub fn opj_dwt_getnorm(mut level: OPJ_UINT32, orient: OPJ_UINT32) -> OPJ_FLOAT64
   } else if orient > 0 && level >= 9 {
     level = 8
   }
-  return opj_dwt_norms[orient as usize][level as usize];
+  opj_dwt_norms[orient as usize][level as usize]
 }
 
 /* <summary>                             */
@@ -1451,7 +1420,7 @@ pub(crate) unsafe fn opj_dwt_encode_real(
   mut p_tcd: *mut opj_tcd_t,
   mut tilec: *mut opj_tcd_tilecomp_t,
 ) -> OPJ_BOOL {
-  return opj_dwt_encode_procedure(
+  opj_dwt_encode_procedure(
     (*p_tcd).thread_pool,
     tilec,
     Some(
@@ -1474,7 +1443,7 @@ pub(crate) unsafe fn opj_dwt_encode_real(
           _: OPJ_BOOL,
         ) -> (),
     ),
-  );
+  )
 }
 
 /* <summary>                */
@@ -1490,7 +1459,7 @@ pub fn opj_dwt_getnorm_real(mut level: OPJ_UINT32, orient: OPJ_UINT32) -> OPJ_FL
   } else if orient > 0 && level >= 9 {
     level = 8
   }
-  return opj_dwt_norms_real[orient as usize][level as usize];
+  opj_dwt_norms_real[orient as usize][level as usize]
 }
 
 #[no_mangle]
@@ -1564,7 +1533,7 @@ unsafe fn opj_dwt_max_resolution(
   let mut w: OPJ_UINT32 = 0;
   loop {
     i = i.wrapping_sub(1);
-    if !(i != 0) {
+    if i == 0 {
       break;
     }
     r = r.offset(1);
@@ -1577,11 +1546,11 @@ unsafe fn opj_dwt_max_resolution(
       mr = w
     }
   }
-  return mr;
+  mr
 }
 unsafe extern "C" fn opj_dwt_decode_h_func(mut user_data: *mut core::ffi::c_void) {
   let mut j: OPJ_UINT32 = 0;
-  let mut job = 0 as *mut opj_dwt_decode_h_job_t;
+  let mut job = std::ptr::null_mut::<opj_dwt_decode_h_job_t>();
   job = user_data as *mut opj_dwt_decode_h_job_t;
   j = (*job).min_j;
   while j < (*job).max_j {
@@ -1596,7 +1565,7 @@ unsafe extern "C" fn opj_dwt_decode_h_func(mut user_data: *mut core::ffi::c_void
 }
 unsafe extern "C" fn opj_dwt_decode_v_func(mut user_data: *mut core::ffi::c_void) {
   let mut j: OPJ_UINT32 = 0;
-  let mut job = 0 as *mut opj_dwt_decode_v_job_t;
+  let mut job = std::ptr::null_mut::<opj_dwt_decode_v_job_t>();
   job = user_data as *mut opj_dwt_decode_v_job_t;
   j = (*job).min_j;
   while j.wrapping_add((2i32 * 4i32) as core::ffi::c_uint) <= (*job).max_j {
@@ -1631,13 +1600,13 @@ unsafe fn opj_dwt_decode_tile(
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
   let mut h = opj_dwt_t {
-    mem: 0 as *mut OPJ_INT32,
+    mem: std::ptr::null_mut::<OPJ_INT32>(),
     dn: 0,
     sn: 0,
     cas: 0,
   }; /* width of the resolution level computed */
   let mut v = opj_dwt_t {
-    mem: 0 as *mut OPJ_INT32,
+    mem: std::ptr::null_mut::<OPJ_INT32>(),
     dn: 0,
     sn: 0,
     cas: 0,
@@ -1680,7 +1649,7 @@ unsafe fn opj_dwt_decode_tile(
   v.mem = h.mem;
   loop {
     numres = numres.wrapping_sub(1);
-    if !(numres != 0) {
+    if numres == 0 {
       break;
     }
     let mut tiledp = (*tilec).data;
@@ -1697,7 +1666,7 @@ unsafe fn opj_dwt_decode_tile(
       while j < rh {
         opj_idwt53_h(
           &mut h,
-          &mut *tiledp.offset((j as OPJ_SIZE_T).wrapping_mul(w as usize) as isize),
+          &mut *tiledp.add((j as OPJ_SIZE_T).wrapping_mul(w as usize)),
         );
         j += 1;
       }
@@ -1710,8 +1679,8 @@ unsafe fn opj_dwt_decode_tile(
       step_j = rh.wrapping_div(num_jobs);
       j = 0 as OPJ_UINT32;
       while j < num_jobs {
-        let mut job = 0 as *mut opj_dwt_decode_h_job_t;
-        job = opj_malloc(core::mem::size_of::<opj_dwt_decode_h_job_t>() as usize)
+        let mut job = std::ptr::null_mut::<opj_dwt_decode_h_job_t>();
+        job = opj_malloc(core::mem::size_of::<opj_dwt_decode_h_job_t>())
           as *mut opj_dwt_decode_h_job_t;
         if job.is_null() {
           /* It would be nice to fallback to single thread case, but */
@@ -1779,8 +1748,8 @@ unsafe fn opj_dwt_decode_tile(
       step_j_0 = rw.wrapping_div(num_jobs_0);
       j = 0 as OPJ_UINT32;
       while j < num_jobs_0 {
-        let mut job_0 = 0 as *mut opj_dwt_decode_v_job_t;
-        job_0 = opj_malloc(core::mem::size_of::<opj_dwt_decode_v_job_t>() as usize)
+        let mut job_0 = std::ptr::null_mut::<opj_dwt_decode_v_job_t>();
+        job_0 = opj_malloc(core::mem::size_of::<opj_dwt_decode_v_job_t>())
           as *mut opj_dwt_decode_v_job_t;
         if job_0.is_null() {
           /* It would be nice to fallback to single thread case, but */
@@ -1820,7 +1789,7 @@ unsafe fn opj_dwt_decode_tile(
     }
   }
   opj_aligned_free(h.mem as *mut core::ffi::c_void);
-  return 1i32;
+  1i32
 }
 unsafe fn opj_dwt_interleave_partial_h(
   mut dest: *mut OPJ_INT32,
@@ -1934,25 +1903,20 @@ unsafe fn opj_dwt_decode_partial_1(
       if i < win_l_x1 {
         let mut i_max: OPJ_INT32 = 0;
         /* Left-most case */
-        let ref mut fresh51 = *a.offset((i * 2i32) as isize);
-        *fresh51 -= if (i - 1i32) < 0i32 {
-          *a.offset((1i32 + 0i32 * 2i32) as isize)
+        let fresh51 = &mut (*a.offset((i * 2i32) as isize));
+        *fresh51 -= (if (i - 1i32) < 0i32 {
+          *a.offset(1i32 as isize)
+        } else if i > dn {
+          *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
         } else {
-          if i - 1i32 >= dn {
-            *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
-          } else {
-            *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
-          }
+          *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
         } + if i < 0i32 {
-          *a.offset((1i32 + 0i32 * 2i32) as isize)
+          *a.offset(1i32 as isize)
+        } else if i >= dn {
+          *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
         } else {
-          if i >= dn {
-            *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
-          } else {
-            *a.offset((1i32 + i * 2i32) as isize)
-          }
-        } + 2i32
-          >> 2i32;
+          *a.offset((1i32 + i * 2i32) as isize)
+        } + 2i32) >> 2i32;
         i += 1;
         i_max = win_l_x1;
         if i_max > dn {
@@ -1960,34 +1924,28 @@ unsafe fn opj_dwt_decode_partial_1(
         }
         while i < i_max {
           /* No bound checking */
-          let ref mut fresh52 = *a.offset((i * 2i32) as isize);
-          *fresh52 -= *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
+          let fresh52 = &mut (*a.offset((i * 2i32) as isize));
+          *fresh52 -= (*a.offset((1i32 + (i - 1i32) * 2i32) as isize)
             + *a.offset((1i32 + i * 2i32) as isize)
-            + 2i32
-            >> 2i32;
+            + 2i32) >> 2i32;
           i += 1
         }
         while i < win_l_x1 {
           /* Right-most case */
-          let ref mut fresh53 = *a.offset((i * 2i32) as isize);
-          *fresh53 -= if (i - 1i32) < 0i32 {
-            *a.offset((1i32 + 0i32 * 2i32) as isize)
+          let fresh53 = &mut (*a.offset((i * 2i32) as isize));
+          *fresh53 -= (if (i - 1i32) < 0i32 {
+            *a.offset(1i32 as isize)
+          } else if i > dn {
+            *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
           } else {
-            if i - 1i32 >= dn {
-              *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
-            } else {
-              *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
-            }
+            *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
           } + if i < 0i32 {
-            *a.offset((1i32 + 0i32 * 2i32) as isize)
+            *a.offset(1i32 as isize)
+          } else if i >= dn {
+            *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
           } else {
-            if i >= dn {
-              *a.offset((1i32 + (dn - 1i32) * 2i32) as isize)
-            } else {
-              *a.offset((1i32 + i * 2i32) as isize)
-            }
-          } + 2i32
-            >> 2i32;
+            *a.offset((1i32 + i * 2i32) as isize)
+          } + 2i32) >> 2i32;
           i += 1
         }
       }
@@ -1999,38 +1957,34 @@ unsafe fn opj_dwt_decode_partial_1(
         }
         while i < i_max_0 {
           /* No bound checking */
-          let ref mut fresh54 = *a.offset((1i32 + i * 2i32) as isize);
+          let fresh54 = &mut (*a.offset((1i32 + i * 2i32) as isize));
           *fresh54 +=
-            *a.offset((i * 2i32) as isize) + *a.offset(((i + 1i32) * 2i32) as isize) >> 1i32;
+            (*a.offset((i * 2i32) as isize) + *a.offset(((i + 1i32) * 2i32) as isize)) >> 1i32;
           i += 1
         }
         while i < win_h_x1 {
           /* Right-most case */
-          let ref mut fresh55 = *a.offset((1i32 + i * 2i32) as isize);
-          *fresh55 += if i < 0i32 {
+          let fresh55 = &mut (*a.offset((1i32 + i * 2i32) as isize));
+          *fresh55 += (if i < 0i32 {
             *a.offset((0i32 * 2i32) as isize)
+          } else if i >= sn {
+            *a.offset(((sn - 1i32) * 2i32) as isize)
           } else {
-            if i >= sn {
-              *a.offset(((sn - 1i32) * 2i32) as isize)
-            } else {
-              *a.offset((i * 2i32) as isize)
-            }
+            *a.offset((i * 2i32) as isize)
           } + if (i + 1i32) < 0i32 {
             *a.offset((0i32 * 2i32) as isize)
+          } else if i + 1i32 >= sn {
+            *a.offset(((sn - 1i32) * 2i32) as isize)
           } else {
-            if i + 1i32 >= sn {
-              *a.offset(((sn - 1i32) * 2i32) as isize)
-            } else {
-              *a.offset(((i + 1i32) * 2i32) as isize)
-            }
-          } >> 1i32;
+            *a.offset(((i + 1i32) * 2i32) as isize)
+          }) >> 1i32;
           i += 1
         }
       }
     }
   } else if sn == 0 && dn == 1i32 {
     /* NEW :  CASE ONE ELEMENT */
-    let ref mut fresh56 = *a.offset((0i32 * 2i32) as isize);
+    let fresh56 = &mut (*a.offset((0i32 * 2i32) as isize));
     *fresh56 /= 2i32
   } else {
     i = win_l_x0;
@@ -2041,21 +1995,17 @@ unsafe fn opj_dwt_decode_partial_1(
           opj_int_add_no_overflow(
             if i < 0i32 {
               *a.offset((0i32 * 2i32) as isize)
+            } else if i >= dn {
+              *a.offset(((dn - 1i32) * 2i32) as isize)
             } else {
-              if i >= dn {
-                *a.offset(((dn - 1i32) * 2i32) as isize)
-              } else {
-                *a.offset((i * 2i32) as isize)
-              }
+              *a.offset((i * 2i32) as isize)
             },
             if (i + 1i32) < 0i32 {
               *a.offset((0i32 * 2i32) as isize)
+            } else if i + 1i32 >= dn {
+              *a.offset(((dn - 1i32) * 2i32) as isize)
             } else {
-              if i + 1i32 >= dn {
-                *a.offset(((dn - 1i32) * 2i32) as isize)
-              } else {
-                *a.offset(((i + 1i32) * 2i32) as isize)
-              }
+              *a.offset(((i + 1i32) * 2i32) as isize)
             },
           ),
           2i32,
@@ -2069,22 +2019,18 @@ unsafe fn opj_dwt_decode_partial_1(
         *a.offset((i * 2i32) as isize),
         opj_int_add_no_overflow(
           if i < 0i32 {
-            *a.offset((1i32 + 0i32 * 2i32) as isize)
+            *a.offset(1i32 as isize)
+          } else if i >= sn {
+            *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
           } else {
-            if i >= sn {
-              *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
-            } else {
-              *a.offset((1i32 + i * 2i32) as isize)
-            }
+            *a.offset((1i32 + i * 2i32) as isize)
           },
           if (i - 1i32) < 0i32 {
-            *a.offset((1i32 + 0i32 * 2i32) as isize)
+            *a.offset(1i32 as isize)
+          } else if i > sn {
+            *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
           } else {
-            if i - 1i32 >= sn {
-              *a.offset((1i32 + (sn - 1i32) * 2i32) as isize)
-            } else {
-              *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
-            }
+            *a.offset((1i32 + (i - 1i32) * 2i32) as isize)
           },
         ) >> 1i32,
       );
@@ -2124,21 +2070,105 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
         /* Left-most case */
         off = 0 as OPJ_UINT32;
         while off < 4u32 {
-          let ref mut fresh57 = *a.offset(
+          let fresh57 = &mut (*a.offset(
             (i as OPJ_UINT32)
               .wrapping_mul(2u32)
               .wrapping_mul(4u32)
               .wrapping_add(off) as isize,
-          );
-          *fresh57 -= (if (i - 1i32) < 0i32 {
+          ));
+          *fresh57 -= ((if (i - 1i32) < 0i32 {
             *a.offset(
               (1u32)
                 .wrapping_add((0 as OPJ_UINT32).wrapping_mul(2u32))
                 .wrapping_mul(4u32)
                 .wrapping_add(off) as isize,
             )
+          } else if i > dn {
+            *a.offset(
+              (1u32)
+                .wrapping_add(((dn - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
+                .wrapping_mul(4u32)
+                .wrapping_add(off) as isize,
+            )
           } else {
-            if i - 1i32 >= dn {
+            *a.offset(
+              (1u32)
+                .wrapping_add(((i - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
+                .wrapping_mul(4u32)
+                .wrapping_add(off) as isize,
+            )
+          }) + if i < 0i32 {
+            *a.offset(
+              (1u32)
+                .wrapping_add((0 as OPJ_UINT32).wrapping_mul(2u32))
+                .wrapping_mul(4u32)
+                .wrapping_add(off) as isize,
+            )
+          } else if i >= dn {
+            *a.offset(
+              (1u32)
+                .wrapping_add(((dn - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
+                .wrapping_mul(4u32)
+                .wrapping_add(off) as isize,
+            )
+          } else {
+            *a.offset(
+              (1u32)
+                .wrapping_add((i as OPJ_UINT32).wrapping_mul(2u32))
+                .wrapping_mul(4u32)
+                .wrapping_add(off) as isize,
+            )
+          } + 2i32) >> 2i32;
+          off += 1;
+        }
+        i += 1;
+        i_max = win_l_x1;
+        if i_max > dn {
+          i_max = dn
+        }
+        while i < i_max {
+          /* No bound checking */
+          off = 0 as OPJ_UINT32;
+          while off < 4u32 {
+            let fresh58 = &mut (*a.offset(
+              (i as OPJ_UINT32)
+                .wrapping_mul(2u32)
+                .wrapping_mul(4u32)
+                .wrapping_add(off) as isize,
+            ));
+            *fresh58 -= (*a.offset(
+              (1u32)
+                .wrapping_add(((i - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
+                .wrapping_mul(4u32)
+                .wrapping_add(off) as isize,
+            ) + *a.offset(
+              (1u32)
+                .wrapping_add((i as OPJ_UINT32).wrapping_mul(2u32))
+                .wrapping_mul(4u32)
+                .wrapping_add(off) as isize,
+            ) + 2i32) >> 2i32;
+            off += 1;
+          }
+          i += 1
+        }
+        while i < win_l_x1 {
+          /* Right-most case */
+          off = 0 as OPJ_UINT32;
+          while off < 4u32 {
+            let fresh59 = &mut (*a.offset(
+              (i as OPJ_UINT32)
+                .wrapping_mul(2u32)
+                .wrapping_mul(4u32)
+                .wrapping_add(off) as isize,
+            ));
+            *fresh59 -= (if (i - 1i32) < 0i32 {
+              *a.offset(
+                (1u32)
+                  .wrapping_add((0 as OPJ_UINT32).wrapping_mul(2u32))
+                  .wrapping_mul(4u32)
+                  .wrapping_add(off) as isize,
+              )
+            } else if i > dn {
               *a.offset(
                 (1u32)
                   .wrapping_add(((dn - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
@@ -2152,16 +2182,14 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_mul(4u32)
                   .wrapping_add(off) as isize,
               )
-            }
-          }) + if i < 0i32 {
-            *a.offset(
-              (1u32)
-                .wrapping_add((0 as OPJ_UINT32).wrapping_mul(2u32))
-                .wrapping_mul(4u32)
-                .wrapping_add(off) as isize,
-            )
-          } else {
-            if i >= dn {
+            } + if i < 0i32 {
+              *a.offset(
+                (1u32)
+                  .wrapping_add((0 as OPJ_UINT32).wrapping_mul(2u32))
+                  .wrapping_mul(4u32)
+                  .wrapping_add(off) as isize,
+              )
+            } else if i >= dn {
               *a.offset(
                 (1u32)
                   .wrapping_add(((dn - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
@@ -2175,100 +2203,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_mul(4u32)
                   .wrapping_add(off) as isize,
               )
-            }
-          } + 2i32
-            >> 2i32;
-          off += 1;
-        }
-        i += 1;
-        i_max = win_l_x1;
-        if i_max > dn {
-          i_max = dn
-        }
-        while i < i_max {
-          /* No bound checking */
-          off = 0 as OPJ_UINT32;
-          while off < 4u32 {
-            let ref mut fresh58 = *a.offset(
-              (i as OPJ_UINT32)
-                .wrapping_mul(2u32)
-                .wrapping_mul(4u32)
-                .wrapping_add(off) as isize,
-            );
-            *fresh58 -= *a.offset(
-              (1u32)
-                .wrapping_add(((i - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
-                .wrapping_mul(4u32)
-                .wrapping_add(off) as isize,
-            ) + *a.offset(
-              (1u32)
-                .wrapping_add((i as OPJ_UINT32).wrapping_mul(2u32))
-                .wrapping_mul(4u32)
-                .wrapping_add(off) as isize,
-            ) + 2i32
-              >> 2i32;
-            off += 1;
-          }
-          i += 1
-        }
-        while i < win_l_x1 {
-          /* Right-most case */
-          off = 0 as OPJ_UINT32;
-          while off < 4u32 {
-            let ref mut fresh59 = *a.offset(
-              (i as OPJ_UINT32)
-                .wrapping_mul(2u32)
-                .wrapping_mul(4u32)
-                .wrapping_add(off) as isize,
-            );
-            *fresh59 -= if (i - 1i32) < 0i32 {
-              *a.offset(
-                (1u32)
-                  .wrapping_add((0 as OPJ_UINT32).wrapping_mul(2u32))
-                  .wrapping_mul(4u32)
-                  .wrapping_add(off) as isize,
-              )
-            } else {
-              if i - 1i32 >= dn {
-                *a.offset(
-                  (1u32)
-                    .wrapping_add(((dn - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              } else {
-                *a.offset(
-                  (1u32)
-                    .wrapping_add(((i - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              }
-            } + if i < 0i32 {
-              *a.offset(
-                (1u32)
-                  .wrapping_add((0 as OPJ_UINT32).wrapping_mul(2u32))
-                  .wrapping_mul(4u32)
-                  .wrapping_add(off) as isize,
-              )
-            } else {
-              if i >= dn {
-                *a.offset(
-                  (1u32)
-                    .wrapping_add(((dn - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              } else {
-                *a.offset(
-                  (1u32)
-                    .wrapping_add((i as OPJ_UINT32).wrapping_mul(2u32))
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              }
-            } + 2i32
-              >> 2i32;
+            } + 2i32) >> 2i32;
             off += 1;
           }
           i += 1
@@ -2284,13 +2219,13 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
           /* No bound checking */
           off = 0 as OPJ_UINT32;
           while off < 4u32 {
-            let ref mut fresh60 = *a.offset(
+            let fresh60 = &mut (*a.offset(
               (1u32)
                 .wrapping_add((i as OPJ_UINT32).wrapping_mul(2u32))
                 .wrapping_mul(4u32)
                 .wrapping_add(off) as isize,
-            );
-            *fresh60 += *a.offset(
+            ));
+            *fresh60 += (*a.offset(
               (i as OPJ_UINT32)
                 .wrapping_mul(2u32)
                 .wrapping_mul(4u32)
@@ -2300,7 +2235,7 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                 .wrapping_mul(2u32)
                 .wrapping_mul(4u32)
                 .wrapping_add(off) as isize,
-            ) >> 1i32;
+            )) >> 1i32;
             off += 1;
           }
           i += 1
@@ -2309,35 +2244,33 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
           /* Right-most case */
           off = 0 as OPJ_UINT32;
           while off < 4u32 {
-            let ref mut fresh61 = *a.offset(
+            let fresh61 = &mut (*a.offset(
               (1u32)
                 .wrapping_add((i as OPJ_UINT32).wrapping_mul(2u32))
                 .wrapping_mul(4u32)
                 .wrapping_add(off) as isize,
-            );
-            *fresh61 += if i < 0i32 {
+            ));
+            *fresh61 += (if i < 0i32 {
               *a.offset(
                 (0 as OPJ_UINT32)
                   .wrapping_mul(2u32)
                   .wrapping_mul(4u32)
                   .wrapping_add(off) as isize,
               )
+            } else if i >= sn {
+              *a.offset(
+                ((sn - 1i32) as OPJ_UINT32)
+                  .wrapping_mul(2u32)
+                  .wrapping_mul(4u32)
+                  .wrapping_add(off) as isize,
+              )
             } else {
-              if i >= sn {
-                *a.offset(
-                  ((sn - 1i32) as OPJ_UINT32)
-                    .wrapping_mul(2u32)
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              } else {
-                *a.offset(
-                  (i as OPJ_UINT32)
-                    .wrapping_mul(2u32)
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              }
+              *a.offset(
+                (i as OPJ_UINT32)
+                  .wrapping_mul(2u32)
+                  .wrapping_mul(4u32)
+                  .wrapping_add(off) as isize,
+              )
             } + if (i + 1i32) < 0i32 {
               *a.offset(
                 (0 as OPJ_UINT32)
@@ -2345,23 +2278,21 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_mul(4u32)
                   .wrapping_add(off) as isize,
               )
+            } else if i + 1i32 >= sn {
+              *a.offset(
+                ((sn - 1i32) as OPJ_UINT32)
+                  .wrapping_mul(2u32)
+                  .wrapping_mul(4u32)
+                  .wrapping_add(off) as isize,
+              )
             } else {
-              if i + 1i32 >= sn {
-                *a.offset(
-                  ((sn - 1i32) as OPJ_UINT32)
-                    .wrapping_mul(2u32)
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              } else {
-                *a.offset(
-                  ((i + 1i32) as OPJ_UINT32)
-                    .wrapping_mul(2u32)
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              }
-            } >> 1i32;
+              *a.offset(
+                ((i + 1i32) as OPJ_UINT32)
+                  .wrapping_mul(2u32)
+                  .wrapping_mul(4u32)
+                  .wrapping_add(off) as isize,
+              )
+            }) >> 1i32;
             off += 1;
           }
           i += 1
@@ -2372,12 +2303,12 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
     /* NEW :  CASE ONE ELEMENT */
     off = 0 as OPJ_UINT32;
     while off < 4u32 {
-      let ref mut fresh62 = *a.offset(
+      let fresh62 = &mut (*a.offset(
         (0 as OPJ_UINT32)
           .wrapping_mul(2u32)
           .wrapping_mul(4u32)
           .wrapping_add(off) as isize,
-      );
+      ));
       *fresh62 /= 2i32;
       off += 1;
     }
@@ -2407,22 +2338,20 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                     .wrapping_mul(4u32)
                     .wrapping_add(off) as isize,
                 )
+              } else if i >= dn {
+                *a.offset(
+                  ((dn - 1i32) as OPJ_UINT32)
+                    .wrapping_mul(2u32)
+                    .wrapping_mul(4u32)
+                    .wrapping_add(off) as isize,
+                )
               } else {
-                if i >= dn {
-                  *a.offset(
-                    ((dn - 1i32) as OPJ_UINT32)
-                      .wrapping_mul(2u32)
-                      .wrapping_mul(4u32)
-                      .wrapping_add(off) as isize,
-                  )
-                } else {
-                  *a.offset(
-                    (i as OPJ_UINT32)
-                      .wrapping_mul(2u32)
-                      .wrapping_mul(4u32)
-                      .wrapping_add(off) as isize,
-                  )
-                }
+                *a.offset(
+                  (i as OPJ_UINT32)
+                    .wrapping_mul(2u32)
+                    .wrapping_mul(4u32)
+                    .wrapping_add(off) as isize,
+                )
               },
               if (i + 1i32) < 0i32 {
                 *a.offset(
@@ -2431,22 +2360,20 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                     .wrapping_mul(4u32)
                     .wrapping_add(off) as isize,
                 )
+              } else if i + 1i32 >= dn {
+                *a.offset(
+                  ((dn - 1i32) as OPJ_UINT32)
+                    .wrapping_mul(2u32)
+                    .wrapping_mul(4u32)
+                    .wrapping_add(off) as isize,
+                )
               } else {
-                if i + 1i32 >= dn {
-                  *a.offset(
-                    ((dn - 1i32) as OPJ_UINT32)
-                      .wrapping_mul(2u32)
-                      .wrapping_mul(4u32)
-                      .wrapping_add(off) as isize,
-                  )
-                } else {
-                  *a.offset(
-                    ((i + 1i32) as OPJ_UINT32)
-                      .wrapping_mul(2u32)
-                      .wrapping_mul(4u32)
-                      .wrapping_add(off) as isize,
-                  )
-                }
+                *a.offset(
+                  ((i + 1i32) as OPJ_UINT32)
+                    .wrapping_mul(2u32)
+                    .wrapping_mul(4u32)
+                    .wrapping_add(off) as isize,
+                )
               },
             ),
             2i32,
@@ -2480,22 +2407,20 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_mul(4u32)
                   .wrapping_add(off) as isize,
               )
+            } else if i >= sn {
+              *a.offset(
+                (1u32)
+                  .wrapping_add(((sn - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
+                  .wrapping_mul(4u32)
+                  .wrapping_add(off) as isize,
+              )
             } else {
-              if i >= sn {
-                *a.offset(
-                  (1u32)
-                    .wrapping_add(((sn - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              } else {
-                *a.offset(
-                  (1u32)
-                    .wrapping_add((i as OPJ_UINT32).wrapping_mul(2u32))
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              }
+              *a.offset(
+                (1u32)
+                  .wrapping_add((i as OPJ_UINT32).wrapping_mul(2u32))
+                  .wrapping_mul(4u32)
+                  .wrapping_add(off) as isize,
+              )
             },
             if (i - 1i32) < 0i32 {
               *a.offset(
@@ -2504,22 +2429,20 @@ unsafe fn opj_dwt_decode_partial_1_parallel(
                   .wrapping_mul(4u32)
                   .wrapping_add(off) as isize,
               )
+            } else if i > sn {
+              *a.offset(
+                (1u32)
+                  .wrapping_add(((sn - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
+                  .wrapping_mul(4u32)
+                  .wrapping_add(off) as isize,
+              )
             } else {
-              if i - 1i32 >= sn {
-                *a.offset(
-                  (1u32)
-                    .wrapping_add(((sn - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              } else {
-                *a.offset(
-                  (1u32)
-                    .wrapping_add(((i - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
-                    .wrapping_mul(4u32)
-                    .wrapping_add(off) as isize,
-                )
-              }
+              *a.offset(
+                (1u32)
+                  .wrapping_add(((i - 1i32) as OPJ_UINT32).wrapping_mul(2u32))
+                  .wrapping_mul(4u32)
+                  .wrapping_add(off) as isize,
+              )
             },
           ) >> 1i32,
         );
@@ -2632,7 +2555,7 @@ unsafe fn opj_dwt_init_sparse_array(
     opj_uint_min(h, 64 as OPJ_UINT32),
   );
   if sa.is_null() {
-    return 0 as *mut opj_sparse_array_int32_t;
+    return std::ptr::null_mut::<opj_sparse_array_int32_t>();
   }
   resno = 0 as OPJ_UINT32;
   while resno < numres {
@@ -2683,7 +2606,7 @@ unsafe fn opj_dwt_init_sparse_array(
             ) == 0
             {
               opj_sparse_array_int32_free(sa);
-              return 0 as *mut opj_sparse_array_int32_t;
+              return std::ptr::null_mut::<opj_sparse_array_int32_t>();
             }
           }
           cblkno += 1;
@@ -2694,21 +2617,21 @@ unsafe fn opj_dwt_init_sparse_array(
     }
     resno += 1;
   }
-  return sa;
+  sa
 }
 unsafe fn opj_dwt_decode_partial_tile(
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  let mut sa = 0 as *mut opj_sparse_array_int32_t;
+  let mut sa = std::ptr::null_mut::<opj_sparse_array_int32_t>();
   let mut h = opj_dwt_t {
-    mem: 0 as *mut OPJ_INT32,
+    mem: std::ptr::null_mut::<OPJ_INT32>(),
     dn: 0,
     sn: 0,
     cas: 0,
   };
   let mut v = opj_dwt_t {
-    mem: 0 as *mut OPJ_INT32,
+    mem: std::ptr::null_mut::<OPJ_INT32>(),
     dn: 0,
     sn: 0,
     cas: 0,
@@ -2827,9 +2750,9 @@ unsafe fn opj_dwt_decode_partial_tile(
       win_tcx1,
       win_tcy1,
       &mut win_hl_x0,
-      0 as *mut OPJ_UINT32,
+      std::ptr::null_mut::<OPJ_UINT32>(),
       &mut win_hl_x1,
-      0 as *mut OPJ_UINT32,
+      std::ptr::null_mut::<OPJ_UINT32>(),
     );
     /* LH band */
     opj_dwt_get_band_coordinates(
@@ -2840,16 +2763,16 @@ unsafe fn opj_dwt_decode_partial_tile(
       win_tcy0,
       win_tcx1,
       win_tcy1,
-      0 as *mut OPJ_UINT32,
+      std::ptr::null_mut::<OPJ_UINT32>(),
       &mut win_lh_y0,
-      0 as *mut OPJ_UINT32,
+      std::ptr::null_mut::<OPJ_UINT32>(),
       &mut win_lh_y1,
     );
     /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
-    tr_ll_x0 = (*tr).bands[1 as usize].x0 as OPJ_UINT32;
-    tr_ll_y0 = (*tr).bands[0 as usize].y0 as OPJ_UINT32;
-    tr_hl_x0 = (*tr).bands[0 as usize].x0 as OPJ_UINT32;
-    tr_lh_y0 = (*tr).bands[1 as usize].y0 as OPJ_UINT32;
+    tr_ll_x0 = (*tr).bands[1_usize].x0 as OPJ_UINT32;
+    tr_ll_y0 = (*tr).bands[0_usize].y0 as OPJ_UINT32;
+    tr_hl_x0 = (*tr).bands[0_usize].x0 as OPJ_UINT32;
+    tr_lh_y0 = (*tr).bands[1_usize].y0 as OPJ_UINT32;
     /* Subtract the origin of the bands for this tile, to the subwindow */
     /* of interest band coordinates, so as to get them relative to the */
     /* tile */
@@ -3055,7 +2978,7 @@ unsafe fn opj_dwt_decode_partial_tile(
   );
   assert!(ret_0 != 0);
   opj_sparse_array_int32_free(sa);
-  return 1i32;
+  1i32
 }
 
 unsafe fn opj_v8dwt_interleave_h(
@@ -3102,25 +3025,25 @@ unsafe fn opj_v8dwt_interleave_h(
         let mut dst = bi.offset((i * 2 * NB_ELTS_V8) as isize);
         *dst.offset(0) = *a.offset(j as isize);
         j += width;
-        if !(remaining_height == 1u32) {
+        if remaining_height != 1u32 {
           *dst.offset(1) = *a.offset(j as isize);
           j += width;
-          if !(remaining_height == 2u32) {
+          if remaining_height != 2u32 {
             *dst.offset(2) = *a.offset(j as isize);
             j += width;
-            if !(remaining_height == 3u32) {
+            if remaining_height != 3u32 {
               *dst.offset(3) = *a.offset(j as isize);
               j += width;
-              if !(remaining_height == 4u32) {
+              if remaining_height != 4u32 {
                 *dst.offset(4) = *a.offset(j as isize);
                 j += width;
-                if !(remaining_height == 5u32) {
+                if remaining_height != 5u32 {
                   *dst.offset(5) = *a.offset(j as isize);
                   j += width;
-                  if !(remaining_height == 6u32) {
+                  if remaining_height != 6u32 {
                     *dst.offset(6) = *a.offset(j as isize);
                     j += width;
-                    if !(remaining_height == 7u32) {
+                    if remaining_height != 7u32 {
                       *dst.offset(7) = *a.offset(j as isize)
                     }
                   }
@@ -3200,21 +3123,21 @@ unsafe fn opj_v8dwt_interleave_v(
   while i < (*dwt).win_l_x1 {
     memcpy(
       &mut *bi.offset(i.wrapping_mul(2u32) as isize) as *mut opj_v8_t as *mut core::ffi::c_void,
-      &mut *a.offset((i as usize).wrapping_mul(width as OPJ_SIZE_T) as isize) as *mut OPJ_FLOAT32
+      &mut *a.add((i as usize).wrapping_mul(width as OPJ_SIZE_T)) as *mut OPJ_FLOAT32
         as *const core::ffi::c_void,
-      (nb_elts_read as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
+      (nb_elts_read as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
     );
     i += 1;
   }
-  a = a.offset(((*dwt).sn as OPJ_UINT32 as usize).wrapping_mul(width as OPJ_SIZE_T) as isize);
+  a = a.add(((*dwt).sn as OPJ_UINT32 as usize).wrapping_mul(width as OPJ_SIZE_T));
   bi = (*dwt).wavelet.offset(1).offset(-((*dwt).cas as isize));
   i = (*dwt).win_h_x0;
   while i < (*dwt).win_h_x1 {
     memcpy(
       &mut *bi.offset(i.wrapping_mul(2u32) as isize) as *mut opj_v8_t as *mut core::ffi::c_void,
-      &mut *a.offset((i as usize).wrapping_mul(width as OPJ_SIZE_T) as isize) as *mut OPJ_FLOAT32
+      &mut *a.add((i as usize).wrapping_mul(width as OPJ_SIZE_T)) as *mut OPJ_FLOAT32
         as *const core::ffi::c_void,
-      (nb_elts_read as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
+      (nb_elts_read as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
     );
     i += 1;
   }
@@ -3355,7 +3278,7 @@ unsafe fn opj_v8dwt_decode(mut dwt: *mut opj_v8dwt_t) {
   /* accepted value */
   /* Due to using two_invK instead of invK, we have to compensate in tcd.c */
   /* the computation of the stepsize for the non LL subbands */
-  let two_invK = 1.625732422f32;
+  let two_invK = 1.625_732_4_f32;
   if (*dwt).cas == 0i32 {
     if !((*dwt).dn > 0i32 || (*dwt).sn > 1i32) {
       return;
@@ -3417,8 +3340,8 @@ unsafe fn opj_v8dwt_decode(mut dwt: *mut opj_v8dwt_t) {
 
 unsafe extern "C" fn opj_dwt97_decode_h_func(mut user_data: *mut core::ffi::c_void) {
   let mut j: OPJ_UINT32 = 0;
-  let mut job = 0 as *mut opj_dwt97_decode_h_job_t;
-  let mut aj = 0 as *mut OPJ_FLOAT32;
+  let mut job = std::ptr::null_mut::<opj_dwt97_decode_h_job_t>();
+  let mut aj = std::ptr::null_mut::<OPJ_FLOAT32>();
   let mut w: OPJ_UINT32 = 0;
   job = user_data as *mut opj_dwt97_decode_h_job_t;
   w = (*job).w;
@@ -3432,25 +3355,25 @@ unsafe extern "C" fn opj_dwt97_decode_h_func(mut user_data: *mut core::ffi::c_vo
     /* To be adapted if NB_ELTS_V8 changes */
     k = 0 as OPJ_UINT32;
     while k < (*job).rw {
-      *aj.offset(k as isize) = (*(*job).h.wavelet.offset(k as isize)).f[0 as usize];
-      *aj.offset((k as usize).wrapping_add(w as OPJ_SIZE_T) as isize) =
-        (*(*job).h.wavelet.offset(k as isize)).f[1 as usize];
-      *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(2)) as isize) =
-        (*(*job).h.wavelet.offset(k as isize)).f[2 as usize];
-      *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3)) as isize) =
-        (*(*job).h.wavelet.offset(k as isize)).f[3 as usize];
+      *aj.offset(k as isize) = (*(*job).h.wavelet.offset(k as isize)).f[0_usize];
+      *aj.add((k as usize).wrapping_add(w as OPJ_SIZE_T)) =
+        (*(*job).h.wavelet.offset(k as isize)).f[1_usize];
+      *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(2))) =
+        (*(*job).h.wavelet.offset(k as isize)).f[2_usize];
+      *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3))) =
+        (*(*job).h.wavelet.offset(k as isize)).f[3_usize];
       k += 1;
     }
     k = 0 as OPJ_UINT32;
     while k < (*job).rw {
-      *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(4)) as isize) =
-        (*(*job).h.wavelet.offset(k as isize)).f[4 as usize];
-      *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(5)) as isize) =
-        (*(*job).h.wavelet.offset(k as isize)).f[5 as usize];
-      *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(6)) as isize) =
-        (*(*job).h.wavelet.offset(k as isize)).f[6 as usize];
-      *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7)) as isize) =
-        (*(*job).h.wavelet.offset(k as isize)).f[7 as usize];
+      *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(4))) =
+        (*(*job).h.wavelet.offset(k as isize)).f[4_usize];
+      *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(5))) =
+        (*(*job).h.wavelet.offset(k as isize)).f[5_usize];
+      *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(6))) =
+        (*(*job).h.wavelet.offset(k as isize)).f[6_usize];
+      *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7))) =
+        (*(*job).h.wavelet.offset(k as isize)).f[7_usize];
       k += 1;
     }
     aj = aj.offset((w * NB_ELTS_V8) as isize);
@@ -3462,8 +3385,8 @@ unsafe extern "C" fn opj_dwt97_decode_h_func(mut user_data: *mut core::ffi::c_vo
 
 unsafe extern "C" fn opj_dwt97_decode_v_func(mut user_data: *mut core::ffi::c_void) {
   let mut j: OPJ_UINT32 = 0;
-  let mut job = 0 as *mut opj_dwt97_decode_v_job_t;
-  let mut aj = 0 as *mut OPJ_FLOAT32;
+  let mut job = std::ptr::null_mut::<opj_dwt97_decode_v_job_t>();
+  let mut aj = std::ptr::null_mut::<OPJ_FLOAT32>();
   job = user_data as *mut opj_dwt97_decode_v_job_t;
   assert!((*job).nb_columns % NB_ELTS_V8 == 0);
   aj = (*job).aj;
@@ -3475,7 +3398,7 @@ unsafe extern "C" fn opj_dwt97_decode_v_func(mut user_data: *mut core::ffi::c_vo
     k = 0 as OPJ_UINT32;
     while k < (*job).rh {
       memcpy(
-        &mut *aj.offset((k as usize).wrapping_mul((*job).w as OPJ_SIZE_T) as isize)
+        &mut *aj.add((k as usize).wrapping_mul((*job).w as OPJ_SIZE_T))
           as *mut OPJ_FLOAT32 as *mut core::ffi::c_void,
         &mut *(*job).v.wavelet.offset(k as isize) as *mut opj_v8_t as *const core::ffi::c_void,
         NB_ELTS_V8 as usize * core::mem::size_of::<OPJ_FLOAT32>(),
@@ -3498,7 +3421,7 @@ unsafe fn opj_dwt_decode_tile_97(
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
   let mut h = opj_v8dwt_t {
-    wavelet: 0 as *mut opj_v8_t,
+    wavelet: std::ptr::null_mut::<opj_v8_t>(),
     dn: 0,
     sn: 0,
     cas: 0,
@@ -3508,7 +3431,7 @@ unsafe fn opj_dwt_decode_tile_97(
     win_h_x1: 0,
   }; /* width of the resolution level computed */
   let mut v = opj_v8dwt_t {
-    wavelet: 0 as *mut opj_v8_t,
+    wavelet: std::ptr::null_mut::<opj_v8_t>(),
     dn: 0,
     sn: 0,
     cas: 0,
@@ -3535,12 +3458,12 @@ unsafe fn opj_dwt_decode_tile_97(
   }
   l_data_size = opj_dwt_max_resolution(res, numres) as OPJ_SIZE_T;
   /* overflow check */
-  if l_data_size > (usize::MAX).wrapping_div(core::mem::size_of::<opj_v8_t>() as usize) {
+  if l_data_size > (usize::MAX).wrapping_div(core::mem::size_of::<opj_v8_t>()) {
     /* FIXME event manager error callback */
     return 0i32;
   }
   h.wavelet =
-    opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as usize))
+    opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()))
       as *mut opj_v8_t;
   if h.wavelet.is_null() {
     /* FIXME event manager error callback */
@@ -3549,7 +3472,7 @@ unsafe fn opj_dwt_decode_tile_97(
   v.wavelet = h.wavelet; /* height of the resolution level computed */
   loop {
     numres = numres.wrapping_sub(1);
-    if !(numres != 0) {
+    if numres == 0 {
       break;
     }
     let mut aj = (*tilec).data as *mut OPJ_FLOAT32;
@@ -3574,24 +3497,24 @@ unsafe fn opj_dwt_decode_tile_97(
         /* To be adapted if NB_ELTS_V8 changes */
         k = 0 as OPJ_UINT32;
         while k < rw {
-          *aj.offset(k as isize) = (*h.wavelet.offset(k as isize)).f[0 as usize];
-          *aj.offset((k as usize).wrapping_add(w as OPJ_SIZE_T) as isize) =
+          *aj.offset(k as isize) = (*h.wavelet.offset(k as isize)).f[0_usize];
+          *aj.add((k as usize).wrapping_add(w as OPJ_SIZE_T)) =
             (*h.wavelet.offset(k as isize)).f[1];
-          *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(2)) as isize) =
+          *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(2))) =
             (*h.wavelet.offset(k as isize)).f[2];
-          *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3)) as isize) =
+          *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3))) =
             (*h.wavelet.offset(k as isize)).f[3];
           k += 1;
         }
         k = 0 as OPJ_UINT32;
         while k < rw {
-          *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(4)) as isize) =
+          *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(4))) =
             (*h.wavelet.offset(k as isize)).f[4];
-          *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(5)) as isize) =
+          *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(5))) =
             (*h.wavelet.offset(k as isize)).f[5];
-          *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(6)) as isize) =
+          *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(6))) =
             (*h.wavelet.offset(k as isize)).f[6];
-          *aj.offset((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7)) as isize) =
+          *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7))) =
             (*h.wavelet.offset(k as isize)).f[7];
           k += 1;
         }
@@ -3607,8 +3530,8 @@ unsafe fn opj_dwt_decode_tile_97(
       step_j = ((rh / num_jobs) / NB_ELTS_V8) * NB_ELTS_V8;
       j = 0 as OPJ_UINT32;
       while j < num_jobs {
-        let mut job = 0 as *mut opj_dwt97_decode_h_job_t;
-        job = opj_malloc(core::mem::size_of::<opj_dwt97_decode_h_job_t>() as usize)
+        let mut job = std::ptr::null_mut::<opj_dwt97_decode_h_job_t>();
+        job = opj_malloc(core::mem::size_of::<opj_dwt97_decode_h_job_t>())
           as *mut opj_dwt97_decode_h_job_t;
         if job.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -3616,7 +3539,7 @@ unsafe fn opj_dwt_decode_tile_97(
           return 0i32;
         }
         (*job).h.wavelet =
-          opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as usize))
+          opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()))
             as *mut opj_v8_t;
         if (*job).h.wavelet.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -3659,9 +3582,7 @@ unsafe fn opj_dwt_decode_tile_97(
         let mut l: OPJ_UINT32 = 0;
         l = 0 as OPJ_UINT32;
         while l < rh.wrapping_sub(j) {
-          *aj.offset(
-            (k_0 as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(l as usize)) as isize,
-          ) = (*h.wavelet.offset(k_0 as isize)).f[l as usize];
+          *aj.add((k_0 as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(l as usize))) = (*h.wavelet.offset(k_0 as isize)).f[l as usize];
           l += 1;
         }
         k_0 += 1;
@@ -3683,7 +3604,7 @@ unsafe fn opj_dwt_decode_tile_97(
         k_1 = 0 as OPJ_UINT32;
         while k_1 < rh {
           memcpy(
-            &mut *aj.offset((k_1 as usize).wrapping_mul(w as OPJ_SIZE_T) as isize)
+            &mut *aj.add((k_1 as usize).wrapping_mul(w as OPJ_SIZE_T))
               as *mut OPJ_FLOAT32 as *mut core::ffi::c_void,
             &mut *v.wavelet.offset(k_1 as isize) as *mut opj_v8_t as *const core::ffi::c_void,
             NB_ELTS_V8 as usize * core::mem::size_of::<OPJ_FLOAT32>(),
@@ -3706,8 +3627,8 @@ unsafe fn opj_dwt_decode_tile_97(
       step_j_0 = ((rw / num_jobs_0) / NB_ELTS_V8) * NB_ELTS_V8;
       j = 0 as OPJ_UINT32;
       while j < num_jobs_0 {
-        let mut job_0 = 0 as *mut opj_dwt97_decode_v_job_t;
-        job_0 = opj_malloc(core::mem::size_of::<opj_dwt97_decode_v_job_t>() as usize)
+        let mut job_0 = std::ptr::null_mut::<opj_dwt97_decode_v_job_t>();
+        job_0 = opj_malloc(core::mem::size_of::<opj_dwt97_decode_v_job_t>())
           as *mut opj_dwt97_decode_v_job_t;
         if job_0.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -3715,7 +3636,7 @@ unsafe fn opj_dwt_decode_tile_97(
           return 0i32;
         }
         (*job_0).v.wavelet =
-          opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as usize))
+          opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()))
             as *mut opj_v8_t;
         if (*job_0).v.wavelet.is_null() {
           opj_thread_pool_wait_completion(tp, 0i32);
@@ -3756,25 +3677,25 @@ unsafe fn opj_dwt_decode_tile_97(
       k_2 = 0 as OPJ_UINT32;
       while k_2 < rh {
         memcpy(
-          &mut *aj.offset((k_2 as usize).wrapping_mul(w as OPJ_SIZE_T) as isize) as *mut OPJ_FLOAT32
+          &mut *aj.add((k_2 as usize).wrapping_mul(w as OPJ_SIZE_T)) as *mut OPJ_FLOAT32
             as *mut core::ffi::c_void,
           &mut *v.wavelet.offset(k_2 as isize) as *mut opj_v8_t as *const core::ffi::c_void,
-          (j as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
+          (j as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
         );
         k_2 += 1;
       }
     }
   }
   opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
-  return 1i32;
+  1i32
 }
 unsafe fn opj_dwt_decode_partial_97(
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  let mut sa = 0 as *mut opj_sparse_array_int32_t;
+  let mut sa = std::ptr::null_mut::<opj_sparse_array_int32_t>();
   let mut h = opj_v8dwt_t {
-    wavelet: 0 as *mut opj_v8_t,
+    wavelet: std::ptr::null_mut::<opj_v8_t>(),
     dn: 0,
     sn: 0,
     cas: 0,
@@ -3784,7 +3705,7 @@ unsafe fn opj_dwt_decode_partial_97(
     win_h_x1: 0,
   };
   let mut v = opj_v8dwt_t {
-    wavelet: 0 as *mut opj_v8_t,
+    wavelet: std::ptr::null_mut::<opj_v8_t>(),
     dn: 0,
     sn: 0,
     cas: 0,
@@ -3837,13 +3758,13 @@ unsafe fn opj_dwt_decode_partial_97(
   }
   l_data_size = opj_dwt_max_resolution(tr, numres) as OPJ_SIZE_T;
   /* overflow check */
-  if l_data_size > (usize::MAX).wrapping_div(core::mem::size_of::<opj_v8_t>() as usize) {
+  if l_data_size > (usize::MAX).wrapping_div(core::mem::size_of::<opj_v8_t>()) {
     /* FIXME event manager error callback */
     opj_sparse_array_int32_free(sa);
     return 0i32;
   }
   h.wavelet =
-    opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>() as usize))
+    opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()))
       as *mut opj_v8_t;
   if h.wavelet.is_null() {
     /* FIXME event manager error callback */
@@ -3907,9 +3828,9 @@ unsafe fn opj_dwt_decode_partial_97(
       win_tcx1,
       win_tcy1,
       &mut win_hl_x0,
-      0 as *mut OPJ_UINT32,
+      std::ptr::null_mut::<OPJ_UINT32>(),
       &mut win_hl_x1,
-      0 as *mut OPJ_UINT32,
+      std::ptr::null_mut::<OPJ_UINT32>(),
     );
     /* LH band */
     opj_dwt_get_band_coordinates(
@@ -3920,16 +3841,16 @@ unsafe fn opj_dwt_decode_partial_97(
       win_tcy0,
       win_tcx1,
       win_tcy1,
-      0 as *mut OPJ_UINT32,
+      std::ptr::null_mut::<OPJ_UINT32>(),
       &mut win_lh_y0,
-      0 as *mut OPJ_UINT32,
+      std::ptr::null_mut::<OPJ_UINT32>(),
       &mut win_lh_y1,
     );
     /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
-    tr_ll_x0 = (*tr).bands[1 as usize].x0 as OPJ_UINT32;
-    tr_ll_y0 = (*tr).bands[0 as usize].y0 as OPJ_UINT32;
-    tr_hl_x0 = (*tr).bands[0 as usize].x0 as OPJ_UINT32;
-    tr_lh_y0 = (*tr).bands[1 as usize].y0 as OPJ_UINT32;
+    tr_ll_x0 = (*tr).bands[1_usize].x0 as OPJ_UINT32;
+    tr_ll_y0 = (*tr).bands[0_usize].y0 as OPJ_UINT32;
+    tr_hl_x0 = (*tr).bands[0_usize].x0 as OPJ_UINT32;
+    tr_lh_y0 = (*tr).bands[1_usize].y0 as OPJ_UINT32;
     /* Subtract the origin of the bands for this tile, to the subwindow */
     /* of interest band coordinates, so as to get them relative to the */
     /* tile */
@@ -4126,7 +4047,7 @@ unsafe fn opj_dwt_decode_partial_97(
   assert!(ret_0 != 0);
   opj_sparse_array_int32_free(sa);
   opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_dwt_decode_real(
@@ -4135,8 +4056,8 @@ pub(crate) unsafe fn opj_dwt_decode_real(
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
   if (*p_tcd).whole_tile_decoding != 0 {
-    return opj_dwt_decode_tile_97((*p_tcd).thread_pool, tilec, numres);
+    opj_dwt_decode_tile_97((*p_tcd).thread_pool, tilec, numres)
   } else {
-    return opj_dwt_decode_partial_97(tilec, numres);
-  };
+    opj_dwt_decode_partial_97(tilec, numres)
+  }
 }

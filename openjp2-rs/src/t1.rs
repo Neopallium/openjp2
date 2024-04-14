@@ -68,7 +68,7 @@ impl IndexMut<isize> for FlagsPtr {
 impl AddAssign<usize> for FlagsPtr {
   fn add_assign(&mut self, n: usize) {
     unsafe {
-      self.flags = self.flags.offset(n as isize);
+      self.flags = self.flags.add(n);
     }
   }
 }
@@ -84,7 +84,7 @@ impl FlagsPtr {
 
   pub fn inc(&mut self, n: usize) {
     unsafe {
-      self.flags = self.flags.offset(n as isize);
+      self.flags = self.flags.add(n);
     }
   }
 }
@@ -158,7 +158,7 @@ impl IndexMut<isize> for DataPtr {
 impl AddAssign<usize> for DataPtr {
   fn add_assign(&mut self, n: usize) {
     unsafe {
-      self.data = self.data.offset(n as isize);
+      self.data = self.data.add(n);
     }
   }
 }
@@ -174,7 +174,7 @@ impl DataPtr {
 
   pub fn inc(&mut self, n: usize) {
     unsafe {
-      self.data = self.data.offset(n as isize);
+      self.data = self.data.add(n);
     }
   }
 }
@@ -340,7 +340,7 @@ fn opj_to_smr(x: i32) -> u32 {
 
 #[inline]
 fn opj_t1_getctxno_zc(mut mqc: &mut opj_mqc_t, f: OPJ_UINT32) -> OPJ_BYTE {
-  return mqc.lut_ctxno_zc_orient[(f & T1_SIGMA_NEIGHBOURS) as usize];
+  mqc.lut_ctxno_zc_orient[(f & T1_SIGMA_NEIGHBOURS) as usize]
 }
 
 #[inline]
@@ -371,12 +371,12 @@ fn opj_t1_getctxtno_sc_or_spb_index(
     lu |= (fX >> (T1_CHI_1_I - 4).wrapping_add(ci.wrapping_sub(1).wrapping_mul(3))) & (1 << 4);
   }
   lu |= (fX >> (T1_CHI_2_I - 6).wrapping_add(ci.wrapping_mul(3))) & (1 << 6);
-  return lu;
+  lu
 }
 
 #[inline]
 fn opj_t1_getctxno_sc(mut lu: OPJ_UINT32) -> OPJ_BYTE {
-  return lut_ctxno_sc[lu as usize];
+  lut_ctxno_sc[lu as usize]
 }
 
 #[inline]
@@ -386,31 +386,31 @@ fn opj_t1_getctxno_mag(mut f: OPJ_UINT32) -> u8 {
   } else {
     T1_CTXNO_MAG
   };
-  let tmp2 = if f & T1_MU_0 != 0 {
+  
+  if f & T1_MU_0 != 0 {
     T1_CTXNO_MAG + 2
   } else {
     tmp
-  };
-  return tmp2;
+  }
 }
 
 #[inline]
 fn opj_t1_getspb(mut lu: OPJ_UINT32) -> OPJ_BYTE {
-  return lut_spb[lu as usize];
+  lut_spb[lu as usize]
 }
 
 fn opj_t1_getnmsedec_sig(mut x: OPJ_UINT32, mut bitpos: OPJ_UINT32) -> OPJ_INT16 {
   if bitpos > 0 {
     return lut_nmsedec_sig[((x >> bitpos) & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
   }
-  return lut_nmsedec_sig0[(x & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
+  lut_nmsedec_sig0[(x & ((1 << T1_NMSEDEC_BITS) - 1)) as usize]
 }
 
 fn opj_t1_getnmsedec_ref(mut x: OPJ_UINT32, mut bitpos: OPJ_UINT32) -> OPJ_INT16 {
   if bitpos > 0 {
     return lut_nmsedec_ref[((x >> bitpos) & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
   }
-  return lut_nmsedec_ref0[(x & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
+  lut_nmsedec_ref0[(x & ((1 << T1_NMSEDEC_BITS) - 1)) as usize]
 }
 
 #[inline]
@@ -570,7 +570,7 @@ fn opj_t1_dec_sigpass_step_mqc_macro(
       let mut spb = opj_t1_getspb(lu) as OPJ_UINT32;
       opj_t1_setcurctx(mqc, ctxt2);
       opj_mqc_decode_macro(&mut v, mqc);
-      v = v ^ spb;
+      v ^= spb;
       *datap.offset(ci.wrapping_mul(data_stride) as isize) =
         if v != 0 { -oneplushalf } else { oneplushalf };
       opj_t1_update_flags_macro(flagsp, ci, v, flags_stride, vsc);
@@ -1366,7 +1366,7 @@ fn opj_t1_dec_clnpass_step_macro(
     let mut lu = opj_t1_getctxtno_sc_or_spb_index(flags, flagsp[-1], flagsp[1], ci);
     opj_t1_setcurctx(mqc, opj_t1_getctxno_sc(lu));
     opj_mqc_decode_macro(&mut v, mqc);
-    v = v ^ opj_t1_getspb(lu) as u32;
+    v ^= opj_t1_getspb(lu) as u32;
     *datap.offset(ci.wrapping_mul(data_stride) as isize) =
       if v != 0 { -oneplushalf } else { oneplushalf };
     opj_t1_update_flags_macro(flagsp, ci, v, flags_stride, vsc);
@@ -1774,7 +1774,7 @@ fn opj_t1_getwmsedec(
   }
   wmsedec = w1 * w2 * stepsize * (1 << bpno) as f64;
   wmsedec *= wmsedec * nmsedec as f64 / 8192.0f64;
-  return wmsedec;
+  wmsedec
 }
 
 fn opj_t1_allocate_buffers(
@@ -1832,7 +1832,7 @@ fn opj_t1_allocate_buffers(
     }
     t1.w = w;
     t1.h = h;
-    return 1i32;
+    1i32
   }
 }
 
@@ -1841,18 +1841,18 @@ fn opj_t1_allocate_buffers(
 
 extern "C" fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
   unsafe {
-    let mut cblk = 0 as *mut opj_tcd_cblk_dec_t;
-    let mut band = 0 as *mut opj_tcd_band_t;
-    let mut tilec = 0 as *mut opj_tcd_tilecomp_t;
-    let mut tccp = 0 as *mut opj_tccp_t;
-    let mut datap = 0 as *mut OPJ_INT32;
+    let mut cblk = std::ptr::null_mut::<opj_tcd_cblk_dec_t>();
+    let mut band = std::ptr::null_mut::<opj_tcd_band_t>();
+    let mut tilec = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
+    let mut tccp = std::ptr::null_mut::<opj_tccp_t>();
+    let mut datap = std::ptr::null_mut::<OPJ_INT32>();
     let mut cblk_w: OPJ_UINT32 = 0;
     let mut cblk_h: OPJ_UINT32 = 0;
     let mut x: OPJ_INT32 = 0;
     let mut y: OPJ_INT32 = 0;
     let mut i: OPJ_UINT32 = 0;
     let mut j: OPJ_UINT32 = 0;
-    let mut job = 0 as *mut opj_t1_cblk_decode_processing_job_t;
+    let mut job = std::ptr::null_mut::<opj_t1_cblk_decode_processing_job_t>();
     let mut resno: OPJ_UINT32 = 0;
     let mut tile_w: OPJ_UINT32 = 0;
     job = user_data as *mut opj_t1_cblk_decode_processing_job_t;
@@ -1861,7 +1861,7 @@ extern "C" fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void
       cblk_w = ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32;
       cblk_h = ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32;
       (*cblk).decoded_data = opj_aligned_malloc(
-        (core::mem::size_of::<OPJ_INT32>() as usize)
+        core::mem::size_of::<OPJ_INT32>()
           .wrapping_mul(cblk_w as usize)
           .wrapping_mul(cblk_h as usize),
       ) as *mut OPJ_INT32;
@@ -1893,7 +1893,7 @@ extern "C" fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void
       /* Not sure if that code path can happen, but better be */
       /* safe than sorry */
       opj_aligned_free((*cblk).decoded_data as *mut core::ffi::c_void);
-      (*cblk).decoded_data = 0 as *mut OPJ_INT32
+      (*cblk).decoded_data = std::ptr::null_mut::<OPJ_INT32>()
     }
     resno = (*job).resno;
     band = (*job).band;
@@ -2031,11 +2031,9 @@ extern "C" fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void
           }
         }
       } else if (*tccp).qmfbid == 1 {
-        let mut tiledp: *mut OPJ_INT32 = &mut *(*tilec).data.offset(
-          (y as OPJ_SIZE_T)
+        let mut tiledp: *mut OPJ_INT32 = &mut *(*tilec).data.add((y as OPJ_SIZE_T)
             .wrapping_mul(tile_w as usize)
-            .wrapping_add(x as OPJ_SIZE_T) as isize,
-        ) as *mut OPJ_INT32;
+            .wrapping_add(x as OPJ_SIZE_T)) as *mut OPJ_INT32;
         j = 0 as OPJ_UINT32;
         while j < cblk_h {
           i = 0 as OPJ_UINT32;
@@ -2060,50 +2058,38 @@ extern "C" fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void
                 .wrapping_add(i)
                 .wrapping_add(3u32) as isize,
             );
-            *tiledp.offset(
-              (j as usize)
+            *tiledp.add((j as usize)
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
                 .wrapping_add(i as usize)
-                .wrapping_add(0) as isize,
-            ) = tmp0 / 2i32;
-            *tiledp.offset(
-              (j as usize)
+                .wrapping_add(0)) = tmp0 / 2i32;
+            *tiledp.add((j as usize)
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
                 .wrapping_add(i as usize)
-                .wrapping_add(1) as isize,
-            ) = tmp1 / 2i32;
-            *tiledp.offset(
-              (j as usize)
+                .wrapping_add(1)) = tmp1 / 2i32;
+            *tiledp.add((j as usize)
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
                 .wrapping_add(i as usize)
-                .wrapping_add(2) as isize,
-            ) = tmp2 / 2i32;
-            *tiledp.offset(
-              (j as usize)
+                .wrapping_add(2)) = tmp2 / 2i32;
+            *tiledp.add((j as usize)
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
                 .wrapping_add(i as usize)
-                .wrapping_add(3) as isize,
-            ) = tmp3 / 2i32;
+                .wrapping_add(3)) = tmp3 / 2i32;
             i = (i as core::ffi::c_uint).wrapping_add(4u32)
           }
           while i < cblk_w {
             let mut tmp_0 = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
-            *tiledp.offset(
-              (j as usize)
+            *tiledp.add((j as usize)
                 .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as usize) as isize,
-            ) = tmp_0 / 2i32;
+                .wrapping_add(i as usize)) = tmp_0 / 2i32;
             i += 1
           }
           j += 1
         }
       } else {
         let stepsize_0 = 0.5f32 * (*band).stepsize;
-        let mut tiledp_0 = &mut *(*tilec).data.offset(
-          (y as OPJ_SIZE_T)
+        let mut tiledp_0 = &mut *(*tilec).data.add((y as OPJ_SIZE_T)
             .wrapping_mul(tile_w as usize)
-            .wrapping_add(x as OPJ_SIZE_T) as isize,
-        ) as *mut OPJ_INT32 as *mut OPJ_FLOAT32;
+            .wrapping_add(x as OPJ_SIZE_T)) as *mut OPJ_INT32 as *mut OPJ_FLOAT32;
         j = 0 as OPJ_UINT32;
         while j < cblk_h {
           let mut tiledp2 = tiledp_0;
@@ -2168,7 +2154,7 @@ pub(crate) fn opj_t1_decode_cblks(
                 &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
               if !(*cblk).decoded_data.is_null() {
                 opj_aligned_free((*cblk).decoded_data as *mut core::ffi::c_void);
-                (*cblk).decoded_data = 0 as *mut OPJ_INT32
+                (*cblk).decoded_data = std::ptr::null_mut::<OPJ_INT32>()
               }
               cblkno += 1;
             }
@@ -2178,7 +2164,7 @@ pub(crate) fn opj_t1_decode_cblks(
             while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
               let mut cblk_0: *mut opj_tcd_cblk_dec_t =
                 &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
-              let mut job = 0 as *mut opj_t1_cblk_decode_processing_job_t;
+              let mut job = std::ptr::null_mut::<opj_t1_cblk_decode_processing_job_t>();
               if opj_tcd_is_subband_area_of_interest(
                 tcd,
                 (*tilec).compno,
@@ -2192,7 +2178,7 @@ pub(crate) fn opj_t1_decode_cblks(
               {
                 if !(*cblk_0).decoded_data.is_null() {
                   opj_aligned_free((*cblk_0).decoded_data as *mut core::ffi::c_void);
-                  (*cblk_0).decoded_data = 0 as *mut OPJ_INT32
+                  (*cblk_0).decoded_data = std::ptr::null_mut::<OPJ_INT32>()
                 }
               } else {
                 if (*tcd).whole_tile_decoding == 0 {
@@ -2213,7 +2199,7 @@ pub(crate) fn opj_t1_decode_cblks(
                   _ => {
                     job = opj_calloc(
                       1i32 as size_t,
-                      core::mem::size_of::<opj_t1_cblk_decode_processing_job_t>() as usize,
+                      core::mem::size_of::<opj_t1_cblk_decode_processing_job_t>(),
                     ) as *mut opj_t1_cblk_decode_processing_job_t;
                     if job.is_null() {
                       core::ptr::write_volatile(pret, 0i32);
@@ -2227,7 +2213,7 @@ pub(crate) fn opj_t1_decode_cblks(
                     (*job).tccp = tccp;
                     (*job).pret = pret;
                     (*job).p_manager_mutex = p_manager_mutex;
-                    (*job).p_manager = p_manager.clone();
+                    (*job).p_manager = *p_manager;
                     (*job).check_pterm = check_pterm;
                     (*job).mustuse_cblkdatabuffer =
                       (opj_thread_pool_get_thread_count(tp) > 1i32) as core::ffi::c_int;
@@ -2286,7 +2272,7 @@ fn opj_t1_decode_cblk(
     let mut passtype: OPJ_UINT32 = 0;
     let mut segno: OPJ_UINT32 = 0;
     let mut passno: OPJ_UINT32 = 0;
-    let mut cblkdata = 0 as *mut OPJ_BYTE;
+    let mut cblkdata = std::ptr::null_mut::<OPJ_BYTE>();
     let mut cblkdataindex = 0 as OPJ_UINT32;
     let mut type_0 = 0 as OPJ_BYTE;
     t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
@@ -2447,7 +2433,7 @@ fn opj_t1_decode_cblk(
     }
     if check_pterm != 0 {
       let mqc = &mut t1.mqc; /* MQC component */
-      if (*mqc).bp.offset(2) < (*mqc).end {
+      if mqc.bp.offset(2) < mqc.end {
         if !p_manager_mutex.is_null() {
           opj_mutex_lock(p_manager_mutex);
         }
@@ -2455,14 +2441,14 @@ fn opj_t1_decode_cblk(
           p_manager,
           EVT_WARNING,
           "PTERM check failure: %d remaining bytes in code block (%d used / %d)\n",
-          (*mqc).end.offset_from((*mqc).bp) as core::ffi::c_int - 2i32,
-          (*mqc).bp.offset_from((*mqc).start) as core::ffi::c_int,
-          (*mqc).end.offset_from((*mqc).start) as core::ffi::c_int,
+          mqc.end.offset_from(mqc.bp) as core::ffi::c_int - 2i32,
+          mqc.bp.offset_from(mqc.start) as core::ffi::c_int,
+          mqc.end.offset_from(mqc.start) as core::ffi::c_int,
         );
         if !p_manager_mutex.is_null() {
           opj_mutex_unlock(p_manager_mutex);
         }
-      } else if (*mqc).end_of_byte_stream_counter > 2 {
+      } else if mqc.end_of_byte_stream_counter > 2 {
         if !p_manager_mutex.is_null() {
           opj_mutex_lock(p_manager_mutex);
         }
@@ -2470,7 +2456,7 @@ fn opj_t1_decode_cblk(
           p_manager,
           EVT_WARNING,
           "PTERM check failure: %d synthetized 0xFF markers read\n",
-          (*mqc).end_of_byte_stream_counter,
+          mqc.end_of_byte_stream_counter,
         );
         if !p_manager_mutex.is_null() {
           opj_mutex_unlock(p_manager_mutex);
@@ -2481,7 +2467,7 @@ fn opj_t1_decode_cblk(
     if !(*cblk).decoded_data.is_null() {
       t1.reset_decoded_data();
     }
-    return 1i32;
+    1i32
   }
 }
 
@@ -2499,7 +2485,7 @@ extern "C" fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void
     let mut tccp: *const opj_tccp_t = (*job).tccp;
     let resno = (*job).resno;
     let tile_w = ((*tilec).x1 - (*tilec).x0) as OPJ_UINT32;
-    let mut tiledp = 0 as *mut OPJ_INT32;
+    let mut tiledp = std::ptr::null_mut::<OPJ_INT32>();
     let mut cblk_w: OPJ_UINT32 = 0;
     let mut cblk_h: OPJ_UINT32 = 0;
     let mut i: OPJ_UINT32 = 0;
@@ -2540,11 +2526,9 @@ extern "C" fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void
       }
       cblk_w = t1.w;
       cblk_h = t1.h;
-      tiledp = &mut *(*tilec).data.offset(
-        (y as OPJ_SIZE_T)
+      tiledp = &mut *(*tilec).data.add((y as OPJ_SIZE_T)
           .wrapping_mul(tile_w as usize)
-          .wrapping_add(x as OPJ_SIZE_T) as isize,
-      ) as *mut OPJ_INT32;
+          .wrapping_add(x as OPJ_SIZE_T)) as *mut OPJ_INT32;
       if (*tccp).qmfbid == 1 {
         let mut tiledp_u = tiledp as *mut OPJ_UINT32;
         let mut t1data = t1.data.as_mut_ptr() as *mut OPJ_UINT32;
@@ -2561,17 +2545,13 @@ extern "C" fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void
           i = 0 as OPJ_UINT32;
           while i < cblk_w {
             *t1data.offset(0) = *tiledp_u
-              .offset(j.wrapping_add(0).wrapping_mul(tile_w).wrapping_add(i) as isize)
-              << 7i32 - 1i32;
+              .offset(j.wrapping_add(0).wrapping_mul(tile_w).wrapping_add(i) as isize) << (7i32 - 1i32);
             *t1data.offset(1) = *tiledp_u
-              .offset(j.wrapping_add(1).wrapping_mul(tile_w).wrapping_add(i) as isize)
-              << 7i32 - 1i32;
+              .offset(j.wrapping_add(1).wrapping_mul(tile_w).wrapping_add(i) as isize) << (7i32 - 1i32);
             *t1data.offset(2) = *tiledp_u
-              .offset(j.wrapping_add(2).wrapping_mul(tile_w).wrapping_add(i) as isize)
-              << 7i32 - 1i32;
+              .offset(j.wrapping_add(2).wrapping_mul(tile_w).wrapping_add(i) as isize) << (7i32 - 1i32);
             *t1data.offset(3) = *tiledp_u
-              .offset(j.wrapping_add(3).wrapping_mul(tile_w).wrapping_add(i) as isize)
-              << 7i32 - 1i32;
+              .offset(j.wrapping_add(3).wrapping_mul(tile_w).wrapping_add(i) as isize) << (7i32 - 1i32);
             t1data = t1data.offset(4);
             i += 1
           }
@@ -2584,7 +2564,7 @@ extern "C" fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void
             k = j;
             while k < cblk_h {
               *t1data.offset(0) =
-                *tiledp_u.offset(k.wrapping_mul(tile_w).wrapping_add(i) as isize) << 7i32 - 1i32;
+                *tiledp_u.offset(k.wrapping_mul(tile_w).wrapping_add(i) as isize) << (7i32 - 1i32);
               t1data = t1data.offset(1);
               k += 1
             }
@@ -2603,22 +2583,22 @@ extern "C" fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void
             *t1data_0.offset(0) = opj_lrintf(
               *tiledp_f.offset(j.wrapping_add(0).wrapping_mul(tile_w).wrapping_add(i) as isize)
                 / (*band).stepsize
-                * ((1i32) << 7i32 - 1i32) as core::ffi::c_float,
+                * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as OPJ_INT32;
             *t1data_0.offset(1) = opj_lrintf(
               *tiledp_f.offset(j.wrapping_add(1).wrapping_mul(tile_w).wrapping_add(i) as isize)
                 / (*band).stepsize
-                * ((1i32) << 7i32 - 1i32) as core::ffi::c_float,
+                * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as OPJ_INT32;
             *t1data_0.offset(2) = opj_lrintf(
               *tiledp_f.offset(j.wrapping_add(2).wrapping_mul(tile_w).wrapping_add(i) as isize)
                 / (*band).stepsize
-                * ((1i32) << 7i32 - 1i32) as core::ffi::c_float,
+                * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as OPJ_INT32;
             *t1data_0.offset(3) = opj_lrintf(
               *tiledp_f.offset(j.wrapping_add(3).wrapping_mul(tile_w).wrapping_add(i) as isize)
                 / (*band).stepsize
-                * ((1i32) << 7i32 - 1i32) as core::ffi::c_float,
+                * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as OPJ_INT32;
             t1data_0 = t1data_0.offset(4);
             i += 1
@@ -2634,7 +2614,7 @@ extern "C" fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void
               *t1data_0.offset(0) = opj_lrintf(
                 *tiledp_f.offset(k_0.wrapping_mul(tile_w).wrapping_add(i) as isize)
                   / (*band).stepsize
-                  * ((1i32) << 7i32 - 1i32) as core::ffi::c_float,
+                  * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
               ) as OPJ_INT32;
               t1data_0 = t1data_0.offset(1);
               k_0 += 1;
@@ -2702,7 +2682,7 @@ pub(crate) fn opj_t1_encode_cblks(
           /* bandno */
           /* precno */
           /* Skip empty bands */
-          if !(opj_tcd_is_band_empty(band) != 0) {
+          if opj_tcd_is_band_empty(band) == 0 {
             precno = 0 as OPJ_UINT32;
             while precno < (*res).pw.wrapping_mul((*res).ph) {
               let mut prc: *mut opj_tcd_precinct_t =
@@ -2713,7 +2693,7 @@ pub(crate) fn opj_t1_encode_cblks(
                   &mut *(*prc).cblks.enc.offset(cblkno as isize) as *mut opj_tcd_cblk_enc_t;
                 let mut job = opj_calloc(
                   1i32 as size_t,
-                  core::mem::size_of::<opj_t1_cblk_encode_processing_job_t>() as usize,
+                  core::mem::size_of::<opj_t1_cblk_encode_processing_job_t>(),
                 ) as *mut opj_t1_cblk_encode_processing_job_t;
                 if job.is_null() {
                   core::ptr::write_volatile(&mut ret as *mut OPJ_BOOL, 0i32);
@@ -2755,7 +2735,7 @@ pub(crate) fn opj_t1_encode_cblks(
     if !mutex.is_null() {
       opj_mutex_destroy(mutex);
     }
-    return ret;
+    ret
   }
 }
 
@@ -2785,7 +2765,7 @@ fn opj_t1_enc_is_term_pass(
         return 1i32;
       }
     }
-    return 0i32;
+    0i32
   }
 }
 
@@ -2989,6 +2969,6 @@ fn opj_t1_encode_cblk(
       });
       passno += 1;
     }
-    return cumwmsedec;
+    cumwmsedec
   }
 }

@@ -22,25 +22,25 @@ pub(crate) unsafe fn opj_matrix_inversion_f(
   src_tmp.resize(nb_compo, 0.0);
   dest_tmp.resize(nb_compo, 0.0);
   swap_area.resize(nb_compo, 0.0);
-  if opj_lupDecompose(
+  if !opj_lupDecompose(
     pSrcMatrix,
     lPermutations.as_mut_slice(),
     swap_area.as_mut_slice(),
-    nb_compo as usize,
-  ) == false
+    nb_compo,
+  )
   {
     return false;
   }
   opj_lupInvert(
     pSrcMatrix,
     pDestMatrix,
-    nb_compo as usize,
+    nb_compo,
     lPermutations.as_slice(),
     src_tmp.as_mut_slice(),
     dest_tmp.as_mut_slice(),
     swap_area.as_mut_slice(),
   );
-  return true;
+  true
 }
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -125,9 +125,7 @@ fn opj_lupDecompose(
       // k2 > k
       let dst_p = tmp_permutations + k2 - k;
       // swap indices
-      let t = permutations[tmp_permutations];
-      permutations[tmp_permutations] = permutations[dst_p];
-      permutations[dst_p] = t;
+      permutations.swap(tmp_permutations, dst_p);
       // and swap entire line.
       l_column_matrix = l_tmp_matrix + (k2 - k) * nb_compo;
       p_swap_area.copy_from_slice(&matrix[l_column_matrix..l_column_matrix + l_swap_size]);
@@ -248,7 +246,7 @@ fn opj_lupInvert(
   p_dest_temp: &mut [f32],
   p_swap_area: &mut [f32],
 ) {
-  let nb_compo_usize = nb_compo as usize;
+  let nb_compo_usize = nb_compo;
   let mut lLineMatrix = pDestMatrix;
   for j in 0..nb_compo {
     let lCurrentPtr = &mut lLineMatrix[j + 1..];

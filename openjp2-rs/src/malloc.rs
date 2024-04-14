@@ -55,25 +55,25 @@ extern "C" {
  */
 #[inline]
 unsafe fn opj_aligned_alloc_n(mut alignment: size_t, mut size: size_t) -> *mut core::ffi::c_void {
-  let mut ptr = 0 as *mut core::ffi::c_void;
+  let mut ptr = std::ptr::null_mut::<core::ffi::c_void>();
   /* alignment shall be power of 2 */
 
   /* alignment shall be at least sizeof(void*) */
   assert!(alignment != 0 && alignment & alignment.wrapping_sub(1) == 0);
-  assert!(alignment >= core::mem::size_of::<*mut core::ffi::c_void>() as usize);
+  assert!(alignment >= core::mem::size_of::<*mut core::ffi::c_void>());
   if size == 0 {
     /* prevent implementation defined behavior of realloc */
-    return 0 as *mut core::ffi::c_void;
+    return std::ptr::null_mut::<core::ffi::c_void>();
   }
   /* aligned_alloc requires c11, restrict to posix_memalign for now. Quote:
    * This function was introduced in POSIX 1003.1d. Although this function is
    * superseded by aligned_alloc, it is more portable to older POSIX systems
    * that do not support ISO C11.  */
   if posix_memalign(&mut ptr, alignment, size) != 0 {
-    ptr = 0 as *mut core::ffi::c_void
+    ptr = std::ptr::null_mut::<core::ffi::c_void>()
   }
   /* older linux */
-  return ptr;
+  ptr
 }
 #[inline]
 unsafe fn opj_aligned_realloc_n(
@@ -81,15 +81,15 @@ unsafe fn opj_aligned_realloc_n(
   mut alignment: size_t,
   mut new_size: size_t,
 ) -> *mut core::ffi::c_void {
-  let mut r_ptr = 0 as *mut core::ffi::c_void;
+  let mut r_ptr = std::ptr::null_mut::<core::ffi::c_void>();
   /* alignment shall be power of 2 */
 
   /* alignment shall be at least sizeof(void*) */
   assert!(alignment != 0 && alignment & alignment.wrapping_sub(1) == 0);
-  assert!(alignment >= core::mem::size_of::<*mut core::ffi::c_void>() as usize);
+  assert!(alignment >= core::mem::size_of::<*mut core::ffi::c_void>());
   if new_size == 0 {
     /* prevent implementation defined behavior of realloc */
-    return 0 as *mut core::ffi::c_void;
+    return std::ptr::null_mut::<core::ffi::c_void>();
   }
   /* no portable aligned realloc */
   /* glibc doc states one can mix aligned malloc with realloc */
@@ -109,45 +109,45 @@ unsafe fn opj_aligned_realloc_n(
     r_ptr = a_ptr
   }
   /* _MSC_VER */
-  return r_ptr;
+  r_ptr
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_malloc(mut size: size_t) -> *mut core::ffi::c_void {
   if size == 0 {
     /* prevent implementation defined behavior of realloc */
-    return 0 as *mut core::ffi::c_void;
+    return std::ptr::null_mut::<core::ffi::c_void>();
   }
-  return malloc(size);
+  malloc(size)
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_calloc(mut num: size_t, mut size: size_t) -> *mut core::ffi::c_void {
   if num == 0 || size == 0 {
     /* prevent implementation defined behavior of realloc */
-    return 0 as *mut core::ffi::c_void;
+    return std::ptr::null_mut::<core::ffi::c_void>();
   }
-  return calloc(num, size);
+  calloc(num, size)
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_aligned_malloc(mut size: size_t) -> *mut core::ffi::c_void {
-  return opj_aligned_alloc_n(16u32 as size_t, size);
+  opj_aligned_alloc_n(16u32 as size_t, size)
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_aligned_realloc(
   mut ptr: *mut core::ffi::c_void,
   mut size: size_t,
 ) -> *mut core::ffi::c_void {
-  return opj_aligned_realloc_n(ptr, 16u32 as size_t, size);
+  opj_aligned_realloc_n(ptr, 16u32 as size_t, size)
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_aligned_32_malloc(mut size: size_t) -> *mut core::ffi::c_void {
-  return opj_aligned_alloc_n(32u32 as size_t, size);
+  opj_aligned_alloc_n(32u32 as size_t, size)
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_aligned_32_realloc(
   mut ptr: *mut core::ffi::c_void,
   mut size: size_t,
 ) -> *mut core::ffi::c_void {
-  return opj_aligned_realloc_n(ptr, 32u32 as size_t, size);
+  opj_aligned_realloc_n(ptr, 32u32 as size_t, size)
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_aligned_free(mut ptr: *mut core::ffi::c_void) {
@@ -160,9 +160,9 @@ pub(crate) unsafe fn opj_realloc(
 ) -> *mut core::ffi::c_void {
   if new_size == 0 {
     /* prevent implementation defined behavior of realloc */
-    return 0 as *mut core::ffi::c_void;
+    return std::ptr::null_mut::<core::ffi::c_void>();
   }
-  return realloc(ptr, new_size);
+  realloc(ptr, new_size)
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_free(mut ptr: *mut core::ffi::c_void) {
