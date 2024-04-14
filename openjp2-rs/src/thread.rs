@@ -96,15 +96,6 @@ pub const OPJWTS_OK: opj_worker_thread_state = 0;
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-/* Stub implementation */
-#[no_mangle]
-pub fn opj_has_thread_support() -> OPJ_BOOL {
-  0i32
-}
-#[no_mangle]
-pub fn opj_get_num_cpus() -> core::ffi::c_int {
-  1i32
-}
 
 pub(crate) fn opj_mutex_create() -> *mut opj_mutex_t {
   std::ptr::null_mut::<opj_mutex_t>()
