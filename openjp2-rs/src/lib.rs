@@ -27,14 +27,14 @@ mod event;
 
 // Public OpenJpeg interface.
 pub mod openjpeg;
+pub mod image;
+pub mod cio;
 
 mod bio;
-mod cio;
 mod codec;
 mod dwt;
 mod function_list;
 mod ht_dec;
-mod image;
 mod invert;
 mod j2k;
 mod jp2;

@@ -32,17 +32,13 @@
  */
 
 pub use super::c_api_types::*;
+use super::event::opj_event_mgr;
 use super::j2k::*;
 use super::jp2::*;
 pub(crate) use super::types::*;
-use super::event::opj_event_mgr;
 
-pub use super::image::{
-  opj_image_create,
-  opj_image_destroy,
-  opj_image_tile_create,
-};
 use super::codec::*;
+pub use super::image::{opj_image_create, opj_image_destroy, opj_image_tile_create};
 use super::malloc::*;
 
 #[cfg(feature = "file-io")]
@@ -183,7 +179,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
   match p_format as core::ffi::c_int {
     0 => {
       if let Some(codec) = opj_j2k_create_decompress() {
-        l_codec.m_codec = Codec::Decoder(CodecDecoder::J2K(codec));
+        l_codec.m_codec = Codec::Decoder(CodecFormat::J2K(codec));
       } else {
         return std::ptr::null_mut();
       }
@@ -191,7 +187,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
     2 => {
       /* get a JP2 decoder handle */
       if let Some(codec) = opj_jp2_create(1i32) {
-        l_codec.m_codec = Codec::Decoder(CodecDecoder::JP2(codec));
+        l_codec.m_codec = Codec::Decoder(CodecFormat::JP2(codec));
       } else {
         return std::ptr::null_mut();
       }
@@ -394,7 +390,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
   match p_format as core::ffi::c_int {
     0 => {
       if let Some(codec) = opj_j2k_create_compress() {
-        l_codec.m_codec = Codec::Encoder(CodecEncoder::J2K(codec));
+        l_codec.m_codec = Codec::Encoder(CodecFormat::J2K(codec));
       } else {
         return std::ptr::null_mut();
       }
@@ -402,7 +398,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
     2 => {
       /* get a JP2 decoder handle */
       if let Some(codec) = opj_jp2_create(0i32) {
-        l_codec.m_codec = Codec::Encoder(CodecEncoder::JP2(codec));
+        l_codec.m_codec = Codec::Encoder(CodecFormat::JP2(codec));
       } else {
         return std::ptr::null_mut();
       }
