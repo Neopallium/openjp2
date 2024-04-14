@@ -18,31 +18,36 @@ extern crate std as alloc;
 extern crate c2rust_bitfields;
 extern crate libc;
 
+mod c_api_types;
 mod consts;
+mod types;
 
 #[macro_use]
-pub mod event;
+mod event;
 
-pub mod bio;
-pub mod cio;
-pub mod dwt;
-pub mod function_list;
-pub mod ht_dec;
-pub mod image;
-pub mod invert;
-pub mod j2k;
-pub mod jp2;
-pub mod malloc;
-mod math;
-pub mod mct;
-pub mod mqc;
+// Public OpenJpeg interface.
 pub mod openjpeg;
-pub mod pi;
-pub mod sparse_array;
-pub mod t1;
-pub mod t1_ht_luts;
-pub mod t1_luts;
-pub mod t2;
-pub mod tcd;
-pub mod tgt;
-pub mod thread;
+
+mod bio;
+mod cio;
+mod codec;
+mod dwt;
+mod function_list;
+mod ht_dec;
+mod image;
+mod invert;
+mod j2k;
+mod jp2;
+mod malloc;
+mod math;
+mod mct;
+mod mqc;
+mod pi;
+mod sparse_array;
+mod t1;
+mod t1_ht_luts;
+mod t1_luts;
+mod t2;
+mod tcd;
+mod tgt;
+mod thread;

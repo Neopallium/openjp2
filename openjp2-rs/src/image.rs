@@ -57,10 +57,13 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#[no_mangle]
-pub unsafe fn opj_image_create0() -> *mut opj_image_t {
-  opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t
+
+pub(crate) fn opj_image_create0() -> *mut opj_image_t {
+  unsafe {
+    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t
+  }
 }
+
 #[no_mangle]
 pub unsafe fn opj_image_create(
   mut numcmpts: OPJ_UINT32,
@@ -210,8 +213,7 @@ pub(crate) unsafe fn opj_image_comp_header_update(
  * @param   p_image_dest    the dest image
  *
  */
-#[no_mangle]
-pub unsafe fn opj_copy_image_header(
+pub(crate) unsafe fn opj_copy_image_header(
   mut p_image_src: *const opj_image_t,
   mut p_image_dest: *mut opj_image_t,
 ) {
