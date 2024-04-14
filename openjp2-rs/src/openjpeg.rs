@@ -34,7 +34,6 @@
 pub use super::c_api_types::*;
 use super::event::opj_event_mgr;
 use super::j2k::*;
-use super::jp2::*;
 pub(crate) use super::types::*;
 
 use super::codec::*;
@@ -175,30 +174,14 @@ pub unsafe fn opj_version() -> *const core::ffi::c_char {
 /* DECOMPRESSION FUNCTIONS*/
 #[no_mangle]
 pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
-  let mut l_codec = Box::<opj_codec_private_t>::new_zeroed().assume_init();
-  match p_format as core::ffi::c_int {
-    0 => {
-      if let Some(codec) = opj_j2k_create_decompress() {
-        l_codec.m_codec = Codec::Decoder(CodecFormat::J2K(codec));
-      } else {
-        return std::ptr::null_mut();
-      }
-    }
-    2 => {
-      /* get a JP2 decoder handle */
-      if let Some(codec) = opj_jp2_create(1i32) {
-        l_codec.m_codec = Codec::Decoder(CodecFormat::JP2(codec));
-      } else {
-        return std::ptr::null_mut();
-      }
-    }
-    -1 | 1 | _ => {
-      return std::ptr::null_mut::<opj_codec_t>();
-    }
+  if let Some(codec) = opj_codec_private_t::new_decoder(p_format) {
+    let mut l_codec = Box::new(codec);
+    Box::into_raw(l_codec) as *mut opj_codec_t
+  } else {
+    std::ptr::null_mut()
   }
-  l_codec.m_event_mgr.set_default_event_handler();
-  Box::into_raw(l_codec) as *mut opj_codec_t
 }
+
 #[no_mangle]
 pub unsafe fn opj_set_default_decoder_parameters(mut parameters: *mut opj_dparameters_t) {
   if !parameters.is_null() {
@@ -386,29 +369,12 @@ pub unsafe fn opj_set_decoded_resolution_factor(
 /* COMPRESSION FUNCTIONS*/
 #[no_mangle]
 pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
-  let mut l_codec = Box::<opj_codec_private_t>::new_zeroed().assume_init();
-  match p_format as core::ffi::c_int {
-    0 => {
-      if let Some(codec) = opj_j2k_create_compress() {
-        l_codec.m_codec = Codec::Encoder(CodecFormat::J2K(codec));
-      } else {
-        return std::ptr::null_mut();
-      }
-    }
-    2 => {
-      /* get a JP2 decoder handle */
-      if let Some(codec) = opj_jp2_create(0i32) {
-        l_codec.m_codec = Codec::Encoder(CodecFormat::JP2(codec));
-      } else {
-        return std::ptr::null_mut();
-      }
-    }
-    -1 | 1 | _ => {
-      return std::ptr::null_mut::<opj_codec_t>();
-    }
+  if let Some(codec) = opj_codec_private_t::new_encoder(p_format) {
+    let mut l_codec = Box::new(codec);
+    Box::into_raw(l_codec) as *mut opj_codec_t
+  } else {
+    std::ptr::null_mut()
   }
-  l_codec.m_event_mgr.set_default_event_handler();
-  Box::into_raw(l_codec) as *mut opj_codec_t
 }
 
 /* default coding parameters */

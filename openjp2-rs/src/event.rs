@@ -64,12 +64,7 @@ impl Default for opj_event_mgr {
 
 impl opj_event_mgr {
   pub fn set_default_event_handler(&mut self) {
-    self.m_error_data = std::ptr::null_mut::<core::ffi::c_void>();
-    self.m_warning_data = std::ptr::null_mut::<core::ffi::c_void>();
-    self.m_info_data = std::ptr::null_mut::<core::ffi::c_void>();
-    self.error_handler = None;
-    self.info_handler = None;
-    self.warning_handler = None;
+    *self = Self::default();
   }
 
   pub fn set_info_handler(

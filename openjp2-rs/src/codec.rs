@@ -37,7 +37,7 @@ use super::c_api_types::*;
 use super::consts::*;
 use super::types::*;
 
-use super::event::opj_event_mgr;
+use super::event::*;
 
 #[cfg(feature = "file-io")]
 use ::libc::FILE;
@@ -47,19 +47,53 @@ pub(crate) enum CodecFormat {
   JP2(opj_jp2),
 }
 
-pub(crate) enum Codec {
+pub(crate) enum CodecType {
   Encoder(CodecFormat),
   Decoder(CodecFormat),
 }
 
 #[repr(C)]
 pub(crate) struct opj_codec_private {
-  pub m_codec: Codec,
+  pub m_codec: CodecType,
   pub m_event_mgr: opj_event_mgr,
 }
 pub(crate) type opj_codec_private_t = opj_codec_private;
 
 impl opj_codec_private {
+  pub fn new_encoder(format: CODEC_FORMAT) -> Option<Self> {
+    let m_codec = match format {
+      OPJ_CODEC_J2K => CodecType::Encoder(CodecFormat::J2K(opj_j2k_create_compress()?)),
+      OPJ_CODEC_JP2 => {
+        /* get a JP2 encoder handle */
+        CodecType::Encoder(CodecFormat::JP2(opj_jp2_create(0i32)?))
+      }
+      _ => {
+        return None;
+      }
+    };
+    Some(opj_codec_private {
+      m_codec,
+      m_event_mgr: Default::default(),
+    })
+  }
+
+  pub fn new_decoder(format: CODEC_FORMAT) -> Option<Self> {
+    let m_codec = match format {
+      OPJ_CODEC_J2K => CodecType::Decoder(CodecFormat::J2K(opj_j2k_create_decompress()?)),
+      OPJ_CODEC_JP2 => {
+        /* get a JP2 decoder handle */
+        CodecType::Decoder(CodecFormat::JP2(opj_jp2_create(1i32)?))
+      }
+      _ => {
+        return None;
+      }
+    };
+    Some(opj_codec_private {
+      m_codec,
+      m_event_mgr: Default::default(),
+    })
+  }
+
   pub fn set_info_handler(
     &mut self,
     mut p_callback: opj_msg_callback,
@@ -92,10 +126,10 @@ impl opj_codec_private {
   pub unsafe fn set_threads(&mut self, mut num_threads: core::ffi::c_int) -> OPJ_BOOL {
     if num_threads >= 0i32 {
       match &mut self.m_codec {
-        Codec::Encoder(CodecFormat::J2K(j2k)) | Codec::Decoder(CodecFormat::J2K(j2k)) => {
+        CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
           opj_j2k_set_threads(j2k, num_threads as _)
         }
-        Codec::Encoder(CodecFormat::JP2(jp2)) | Codec::Decoder(CodecFormat::JP2(jp2)) => {
+        CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
           opj_jp2_set_threads(jp2, num_threads as _)
         }
       }
@@ -107,10 +141,10 @@ impl opj_codec_private {
   #[cfg(feature = "file-io")]
   pub unsafe fn dump_codec(&mut self, mut info_flag: OPJ_INT32, mut output_stream: *mut FILE) {
     match &mut self.m_codec {
-      Codec::Encoder(CodecFormat::J2K(j2k)) | Codec::Decoder(CodecFormat::J2K(j2k)) => {
+      CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
         j2k_dump(j2k, info_flag, output_stream)
       }
-      Codec::Encoder(CodecFormat::JP2(jp2)) | Codec::Decoder(CodecFormat::JP2(jp2)) => {
+      CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
         jp2_dump(jp2, info_flag, output_stream)
       }
     }
@@ -118,10 +152,10 @@ impl opj_codec_private {
 
   pub unsafe fn get_cstr_info(&mut self) -> *mut opj_codestream_info_v2_t {
     match &mut self.m_codec {
-      Codec::Encoder(CodecFormat::J2K(j2k)) | Codec::Decoder(CodecFormat::J2K(j2k)) => {
+      CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
         j2k_get_cstr_info(j2k)
       }
-      Codec::Encoder(CodecFormat::JP2(jp2)) | Codec::Decoder(CodecFormat::JP2(jp2)) => {
+      CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
         jp2_get_cstr_info(jp2)
       }
     }
@@ -129,10 +163,10 @@ impl opj_codec_private {
 
   pub unsafe fn get_cstr_index(&mut self) -> *mut opj_codestream_index_t {
     match &mut self.m_codec {
-      Codec::Encoder(CodecFormat::J2K(j2k)) | Codec::Decoder(CodecFormat::J2K(j2k)) => {
+      CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
         j2k_get_cstr_index(j2k)
       }
-      Codec::Encoder(CodecFormat::JP2(jp2)) | Codec::Decoder(CodecFormat::JP2(jp2)) => {
+      CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
         jp2_get_cstr_index(jp2)
       }
     }
@@ -143,14 +177,14 @@ impl opj_codec_private {
 impl opj_codec_private {
   pub unsafe fn setup_decoder(&mut self, mut parameters: *mut opj_dparameters_t) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => {
+      CodecType::Encoder(_) => {
         event_msg!(
           &mut self.m_event_mgr,
           EVT_ERROR,
           "Codec provided to the opj_setup_decoder function is not a decompressor handler.\n",
         );
       }
-      Codec::Decoder(dec) => {
+      CodecType::Decoder(dec) => {
         if !parameters.is_null() {
           match dec {
             CodecFormat::J2K(dec) => {
@@ -169,13 +203,13 @@ impl opj_codec_private {
 
   pub unsafe fn decoder_set_strict_mode(&mut self, mut strict: OPJ_BOOL) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => {
+      CodecType::Encoder(_) => {
         event_msg!(&mut self.m_event_mgr,
                       EVT_ERROR,
                       "Codec provided to the opj_decoder_set_strict_mode function is not a decompressor handler.\n",);
         0
       }
-      Codec::Decoder(dec) => {
+      CodecType::Decoder(dec) => {
         match dec {
           CodecFormat::J2K(dec) => {
             opj_j2k_decoder_set_strict_mode(dec, strict);
@@ -195,14 +229,14 @@ impl opj_codec_private {
     mut p_image: *mut *mut opj_image_t,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => {
+      CodecType::Encoder(_) => {
         event_msg!(
           &mut self.m_event_mgr,
           EVT_ERROR,
           "Codec provided to the opj_read_header function is not a decompressor handler.\n",
         );
       }
-      Codec::Decoder(dec) => {
+      CodecType::Decoder(dec) => {
         if !p_stream.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return match dec {
@@ -226,14 +260,14 @@ impl opj_codec_private {
     mut apply_color_transforms: OPJ_BOOL,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => {
+      CodecType::Encoder(_) => {
         event_msg!(&mut self.m_event_mgr,
                       EVT_ERROR,
                       "Codec provided to the opj_set_decoded_components function is not a decompressor handler.\n",
                       );
         0
       }
-      Codec::Decoder(dec) => {
+      CodecType::Decoder(dec) => {
         if apply_color_transforms != 0 {
           event_msg!(
             &mut self.m_event_mgr,
@@ -260,8 +294,8 @@ impl opj_codec_private {
     mut p_image: *mut opj_image_t,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => (),
-      Codec::Decoder(dec) => {
+      CodecType::Encoder(_) => (),
+      CodecType::Decoder(dec) => {
         if !p_stream.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return match dec {
@@ -276,8 +310,8 @@ impl opj_codec_private {
 
   pub unsafe fn end_decompress(&mut self, mut p_stream: *mut opj_stream_t) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => (),
-      Codec::Decoder(dec) => {
+      CodecType::Encoder(_) => (),
+      CodecType::Decoder(dec) => {
         if !p_stream.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return match dec {
@@ -299,8 +333,8 @@ impl opj_codec_private {
     mut p_end_y: OPJ_INT32,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => (),
-      Codec::Decoder(dec) => {
+      CodecType::Encoder(_) => (),
+      CodecType::Decoder(dec) => {
         return match dec {
           CodecFormat::J2K(dec) => opj_j2k_set_decode_area(
             dec,
@@ -339,8 +373,8 @@ impl opj_codec_private {
     mut p_should_go_on: *mut OPJ_BOOL,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => (),
-      Codec::Decoder(dec) => {
+      CodecType::Encoder(_) => (),
+      CodecType::Decoder(dec) => {
         if !p_stream.is_null() && !p_data_size.is_null() && !p_tile_index.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return match dec {
@@ -385,8 +419,8 @@ impl opj_codec_private {
     mut p_data_size: OPJ_UINT32,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => (),
-      Codec::Decoder(dec) => {
+      CodecType::Encoder(_) => (),
+      CodecType::Decoder(dec) => {
         if !p_data.is_null() && !p_stream.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return match dec {
@@ -420,8 +454,8 @@ impl opj_codec_private {
     mut tile_index: OPJ_UINT32,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => (),
-      Codec::Decoder(dec) => {
+      CodecType::Encoder(_) => (),
+      CodecType::Decoder(dec) => {
         if !p_stream.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return match dec {
@@ -440,11 +474,11 @@ impl opj_codec_private {
 
   pub unsafe fn set_decoded_resolution_factor(&mut self, mut res_factor: OPJ_UINT32) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(_) => 0,
-      Codec::Decoder(CodecFormat::J2K(dec)) => {
+      CodecType::Encoder(_) => 0,
+      CodecType::Decoder(CodecFormat::J2K(dec)) => {
         opj_j2k_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr)
       }
-      Codec::Decoder(CodecFormat::JP2(dec)) => {
+      CodecType::Decoder(CodecFormat::JP2(dec)) => {
         opj_jp2_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr)
       }
     }
@@ -459,7 +493,7 @@ impl opj_codec_private {
     mut p_image: *mut opj_image_t,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(enc) => {
+      CodecType::Encoder(enc) => {
         if !parameters.is_null() && !p_image.is_null() {
           return match enc {
             CodecFormat::J2K(enc) => {
@@ -471,7 +505,7 @@ impl opj_codec_private {
           };
         }
       }
-      Codec::Decoder(_) => (),
+      CodecType::Decoder(_) => (),
     }
     0i32
   }
@@ -481,7 +515,7 @@ impl opj_codec_private {
     mut options: *const *const core::ffi::c_char,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(enc) => match enc {
+      CodecType::Encoder(enc) => match enc {
         CodecFormat::J2K(enc) => {
           opj_j2k_encoder_set_extra_options(enc, options, &mut self.m_event_mgr)
         }
@@ -489,7 +523,7 @@ impl opj_codec_private {
           opj_jp2_encoder_set_extra_options(enc, options, &mut self.m_event_mgr)
         }
       },
-      Codec::Decoder(_) => 0,
+      CodecType::Decoder(_) => 0,
     }
   }
 
@@ -499,7 +533,7 @@ impl opj_codec_private {
     mut p_stream: *mut opj_stream_t,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(enc) => {
+      CodecType::Encoder(enc) => {
         if !p_stream.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return match enc {
@@ -512,14 +546,14 @@ impl opj_codec_private {
           };
         }
       }
-      Codec::Decoder(_) => (),
+      CodecType::Decoder(_) => (),
     }
     0i32
   }
 
   pub unsafe fn encode(&mut self, mut p_stream: *mut opj_stream_t) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(enc) => {
+      CodecType::Encoder(enc) => {
         if !p_stream.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return match enc {
@@ -528,14 +562,14 @@ impl opj_codec_private {
           };
         }
       }
-      Codec::Decoder(_) => (),
+      CodecType::Decoder(_) => (),
     }
     0i32
   }
 
   pub unsafe fn end_compress(&mut self, mut p_stream: *mut opj_stream_t) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(enc) => {
+      CodecType::Encoder(enc) => {
         if !p_stream.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return match enc {
@@ -544,7 +578,7 @@ impl opj_codec_private {
           };
         }
       }
-      Codec::Decoder(_) => (),
+      CodecType::Decoder(_) => (),
     }
     0i32
   }
@@ -557,7 +591,7 @@ impl opj_codec_private {
     mut p_stream: *mut opj_stream_t,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      Codec::Encoder(enc) => {
+      CodecType::Encoder(enc) => {
         if !p_stream.is_null() && !p_data.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return match enc {
@@ -580,7 +614,7 @@ impl opj_codec_private {
           };
         }
       }
-      Codec::Decoder(_) => (),
+      CodecType::Decoder(_) => (),
     }
     0i32
   }
