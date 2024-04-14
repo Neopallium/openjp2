@@ -26,9 +26,9 @@ mod types;
 mod event;
 
 // Public OpenJpeg interface.
-pub mod openjpeg;
-pub mod image;
 pub mod cio;
+pub mod image;
+pub mod openjpeg;
 
 mod bio;
 mod codec;

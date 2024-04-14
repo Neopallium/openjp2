@@ -1,32 +1,3 @@
-use super::math::*;
-use super::openjpeg::*;
-
-use super::malloc::*;
-
-extern "C" {
-  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
-
-  fn memcpy(
-    _: *mut core::ffi::c_void,
-    _: *const core::ffi::c_void,
-    _: usize,
-  ) -> *mut core::ffi::c_void;
-}
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_image_comptparm {
-  pub dx: OPJ_UINT32,
-  pub dy: OPJ_UINT32,
-  pub w: OPJ_UINT32,
-  pub h: OPJ_UINT32,
-  pub x0: OPJ_UINT32,
-  pub y0: OPJ_UINT32,
-  pub prec: OPJ_UINT32,
-  pub bpp: OPJ_UINT32,
-  pub sgnd: OPJ_UINT32,
-}
-pub type opj_image_cmptparm_t = opj_image_comptparm;
-
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
@@ -57,6 +28,36 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+use super::math::*;
+use super::openjpeg::*;
+
+use super::malloc::*;
+
+extern "C" {
+  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
+
+  fn memcpy(
+    _: *mut core::ffi::c_void,
+    _: *const core::ffi::c_void,
+    _: usize,
+  ) -> *mut core::ffi::c_void;
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct opj_image_comptparm {
+  pub dx: OPJ_UINT32,
+  pub dy: OPJ_UINT32,
+  pub w: OPJ_UINT32,
+  pub h: OPJ_UINT32,
+  pub x0: OPJ_UINT32,
+  pub y0: OPJ_UINT32,
+  pub prec: OPJ_UINT32,
+  pub bpp: OPJ_UINT32,
+  pub sgnd: OPJ_UINT32,
+}
+pub type opj_image_cmptparm_t = opj_image_comptparm;
 
 pub(crate) fn opj_image_create0() -> *mut opj_image_t {
   unsafe { opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t }
@@ -131,6 +132,7 @@ pub unsafe fn opj_image_create(
   }
   image
 }
+
 #[no_mangle]
 pub unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
   if !image.is_null() {
@@ -154,6 +156,7 @@ pub unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
     opj_free(image as *mut core::ffi::c_void);
   };
 }
+
 /* *
  * Updates the components characteristics of the image from the coding parameters.
  *
@@ -203,6 +206,7 @@ pub(crate) unsafe fn opj_image_comp_header_update(
     i += 1;
   }
 }
+
 /* *
  * Copy only header of image and its component header (no data are copied)
  * if dest image have data, they will be freed
@@ -278,6 +282,7 @@ pub(crate) unsafe fn opj_copy_image_header(
     (*p_image_dest).icc_profile_buf = std::ptr::null_mut::<OPJ_BYTE>()
   };
 }
+
 #[no_mangle]
 pub unsafe fn opj_image_tile_create(
   mut numcmpts: OPJ_UINT32,
