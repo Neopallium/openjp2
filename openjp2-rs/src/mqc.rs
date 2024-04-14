@@ -173,7 +173,7 @@ pub(crate) fn opj_mqc_raw_decode(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
     }
   }
   mqc.ct = mqc.ct.wrapping_sub(1);
-  
+
   mqc.c >> mqc.ct & 0x1
 }
 

@@ -111,7 +111,7 @@ unsafe fn opj_bio_getbit(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
 */
 #[no_mangle]
 pub(crate) unsafe fn opj_bio_create() -> *mut opj_bio_t {
-   /* && (n <= 32U)*/
+  /* && (n <= 32U)*/
   opj_malloc(core::mem::size_of::<opj_bio_t>()) as *mut opj_bio_t
 }
 #[no_mangle]

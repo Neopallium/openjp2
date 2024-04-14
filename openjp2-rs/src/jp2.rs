@@ -59,7 +59,6 @@ pub(crate) struct opj_jp2_img_header_writer_handler {
 pub(crate) type opj_jp2_img_header_writer_handler_t = opj_jp2_img_header_writer_handler;
 static mut jp2_header: [opj_jp2_header_handler_t; 3] = [
   {
-    
     opj_jp2_header_handler {
       id: 0x6a502020 as OPJ_UINT32,
       handler: Some(
@@ -74,7 +73,6 @@ static mut jp2_header: [opj_jp2_header_handler_t; 3] = [
     }
   },
   {
-    
     opj_jp2_header_handler {
       id: 0x66747970 as OPJ_UINT32,
       handler: Some(
@@ -89,7 +87,6 @@ static mut jp2_header: [opj_jp2_header_handler_t; 3] = [
     }
   },
   {
-    
     opj_jp2_header_handler {
       id: 0x6a703268 as OPJ_UINT32,
       handler: Some(
@@ -106,7 +103,6 @@ static mut jp2_header: [opj_jp2_header_handler_t; 3] = [
 ];
 static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
   {
-    
     opj_jp2_header_handler {
       id: 0x69686472 as OPJ_UINT32,
       handler: Some(
@@ -121,7 +117,6 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
     }
   },
   {
-    
     opj_jp2_header_handler {
       id: 0x636f6c72 as OPJ_UINT32,
       handler: Some(
@@ -136,7 +131,6 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
     }
   },
   {
-    
     opj_jp2_header_handler {
       id: 0x62706363 as OPJ_UINT32,
       handler: Some(
@@ -151,7 +145,6 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
     }
   },
   {
-    
     opj_jp2_header_handler {
       id: 0x70636c72 as OPJ_UINT32,
       handler: Some(
@@ -166,7 +159,6 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
     }
   },
   {
-    
     opj_jp2_header_handler {
       id: 0x636d6170 as OPJ_UINT32,
       handler: Some(
@@ -181,7 +173,6 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
     }
   },
   {
-    
     opj_jp2_header_handler {
       id: 0x63646566 as OPJ_UINT32,
       handler: Some(
@@ -692,8 +683,10 @@ unsafe fn opj_jp2_check_color(
         );
         return 0i32;
       }
-      if (*info.offset(i as isize)).asoc as core::ffi::c_uint != 65535u32 && (*info.offset(i as isize)).asoc as core::ffi::c_int > 0i32 && ((*info.offset(i as isize)).asoc as core::ffi::c_int - 1i32) as OPJ_UINT32
-            >= nr_channels {
+      if (*info.offset(i as isize)).asoc as core::ffi::c_uint != 65535u32
+        && (*info.offset(i as isize)).asoc as core::ffi::c_int > 0i32
+        && ((*info.offset(i as isize)).asoc as core::ffi::c_int - 1i32) as OPJ_UINT32 >= nr_channels
+      {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -744,10 +737,8 @@ unsafe fn opj_jp2_check_color(
       }
       i += 1;
     }
-    pcol_usage = opj_calloc(
-      nr_channels_0 as size_t,
-      core::mem::size_of::<OPJ_BOOL>(),
-    ) as *mut OPJ_BOOL;
+    pcol_usage =
+      opj_calloc(nr_channels_0 as size_t, core::mem::size_of::<OPJ_BOOL>()) as *mut OPJ_BOOL;
     if pcol_usage.is_null() {
       event_msg!(p_manager, EVT_ERROR, "Unexpected OOM.\n",);
       return 0i32;
@@ -908,9 +899,9 @@ unsafe fn opj_jp2_apply_pclr(
     i += 1;
   }
   old_comps = (*image).comps;
-  new_comps = opj_malloc(
-    (nr_channels as usize).wrapping_mul(core::mem::size_of::<opj_image_comp_t>()),
-  ) as *mut opj_image_comp_t;
+  new_comps =
+    opj_malloc((nr_channels as usize).wrapping_mul(core::mem::size_of::<opj_image_comp_t>()))
+      as *mut opj_image_comp_t;
   if new_comps.is_null() {
     event_msg!(
       p_manager,
@@ -1181,9 +1172,9 @@ unsafe fn opj_jp2_read_cmap(
     event_msg!(p_manager, EVT_ERROR, "Insufficient data for CMAP box.\n",);
     return 0i32;
   }
-  cmap = opj_malloc(
-    (nr_channels as usize).wrapping_mul(core::mem::size_of::<opj_jp2_cmap_comp_t>()),
-  ) as *mut opj_jp2_cmap_comp_t;
+  cmap =
+    opj_malloc((nr_channels as usize).wrapping_mul(core::mem::size_of::<opj_jp2_cmap_comp_t>()))
+      as *mut opj_jp2_cmap_comp_t;
   if cmap.is_null() {
     return 0i32;
   }
@@ -1343,14 +1334,13 @@ unsafe fn opj_jp2_read_cdef(
     event_msg!(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n",); /* Asoc^i */
     return 0i32;
   }
-  cdef_info = opj_malloc(
-    (l_value as usize).wrapping_mul(core::mem::size_of::<opj_jp2_cdef_info_t>()),
-  ) as *mut opj_jp2_cdef_info_t;
+  cdef_info =
+    opj_malloc((l_value as usize).wrapping_mul(core::mem::size_of::<opj_jp2_cdef_info_t>()))
+      as *mut opj_jp2_cdef_info_t;
   if cdef_info.is_null() {
     return 0i32;
   }
-  jp2.color.jp2_cdef =
-    opj_malloc(core::mem::size_of::<opj_jp2_cdef_t>()) as *mut opj_jp2_cdef_t;
+  jp2.color.jp2_cdef = opj_malloc(core::mem::size_of::<opj_jp2_cdef_t>()) as *mut opj_jp2_cdef_t;
   if jp2.color.jp2_cdef.is_null() {
     opj_free(cdef_info as *mut core::ffi::c_void);
     return 0i32;
@@ -1942,9 +1932,8 @@ pub(crate) unsafe fn opj_jp2_setup_encoder(
   jp2.brand = 0x6a703220 as OPJ_UINT32; /* BR */
   jp2.minversion = 0 as OPJ_UINT32; /* MinV */
   jp2.numcl = 1 as OPJ_UINT32; /* CL0 : JP2 */
-  jp2.cl =
-    opj_malloc((jp2.numcl as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT32>()))
-      as *mut OPJ_UINT32;
+  jp2.cl = opj_malloc((jp2.numcl as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT32>()))
+    as *mut OPJ_UINT32;
   if jp2.cl.is_null() {
     event_msg!(
       p_manager,
@@ -1956,9 +1945,9 @@ pub(crate) unsafe fn opj_jp2_setup_encoder(
   *jp2.cl.offset(0) = 0x6a703220 as OPJ_UINT32;
   /* Image Header box */
   jp2.numcomps = (*image).numcomps; /* NC */
-  jp2.comps = opj_malloc(
-    (jp2.numcomps as usize).wrapping_mul(core::mem::size_of::<opj_jp2_comps_t>()),
-  ) as *mut opj_jp2_comps_t;
+  jp2.comps =
+    opj_malloc((jp2.numcomps as usize).wrapping_mul(core::mem::size_of::<opj_jp2_comps_t>()))
+      as *mut opj_jp2_comps_t;
   if jp2.comps.is_null() {
     event_msg!(
       p_manager,
@@ -2058,8 +2047,7 @@ pub(crate) unsafe fn opj_jp2_setup_encoder(
   }
   if alpha_count == 1u32 {
     /* if here, we know what we can do */
-    jp2.color.jp2_cdef =
-      opj_malloc(core::mem::size_of::<opj_jp2_cdef_t>()) as *mut opj_jp2_cdef_t;
+    jp2.color.jp2_cdef = opj_malloc(core::mem::size_of::<opj_jp2_cdef_t>()) as *mut opj_jp2_cdef_t;
     if jp2.color.jp2_cdef.is_null() {
       event_msg!(
         p_manager,
@@ -2071,8 +2059,7 @@ pub(crate) unsafe fn opj_jp2_setup_encoder(
     /* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
     /* in which case jp2->color.jp2_cdef->info will be NULL => valid for destruction */
     (*jp2.color.jp2_cdef).info = opj_malloc(
-      ((*image).numcomps as usize)
-        .wrapping_mul(core::mem::size_of::<opj_jp2_cdef_info_t>()),
+      ((*image).numcomps as usize).wrapping_mul(core::mem::size_of::<opj_jp2_cdef_info_t>()),
     ) as *mut opj_jp2_cdef_info_t;
     if (*jp2.color.jp2_cdef).info.is_null() {
       /* memory will be freed by opj_jp2_destroy */
@@ -2213,8 +2200,7 @@ unsafe fn opj_jp2_default_validation(
   /* make sure the state is at 0 */
   l_is_valid &= (jp2.jp2_state == JP2_STATE_NONE as core::ffi::c_uint) as core::ffi::c_int;
   /* make sure not reading a jp2h ???? WEIRD */
-  l_is_valid &=
-    (jp2.jp2_img_state == JP2_IMG_STATE_NONE as core::ffi::c_uint) as core::ffi::c_int;
+  l_is_valid &= (jp2.jp2_img_state == JP2_IMG_STATE_NONE as core::ffi::c_uint) as core::ffi::c_int;
   /* POINTER validation */
   /* make sure a procedure list is present */
   l_is_valid &= (!jp2.m_procedure_list.is_null()) as core::ffi::c_int;
@@ -2685,10 +2671,7 @@ unsafe fn opj_jp2_read_ftyp(
   /* div by 4 */
   jp2.numcl = l_remaining_bytes >> 2i32; /* CLi */
   if jp2.numcl != 0 {
-    jp2.cl = opj_calloc(
-      jp2.numcl as size_t,
-      core::mem::size_of::<OPJ_UINT32>(),
-    ) as *mut OPJ_UINT32;
+    jp2.cl = opj_calloc(jp2.numcl as size_t, core::mem::size_of::<OPJ_UINT32>()) as *mut OPJ_UINT32;
     if jp2.cl.is_null() {
       event_msg!(p_manager, EVT_ERROR, "Not enough memory with FTYP Box\n",);
       return 0i32;
@@ -3006,11 +2989,8 @@ unsafe fn opj_jp2_setup_encoding_validation(
 ) -> OPJ_BOOL {
   /* preconditions */
 
-  if opj_procedure_list_add_procedure(
-    jp2.m_validation_list,
-    opj_jp2_default_validation,
-    p_manager,
-  ) == 0
+  if opj_procedure_list_add_procedure(jp2.m_validation_list, opj_jp2_default_validation, p_manager)
+    == 0
   {
     return 0i32;
   }
@@ -3048,7 +3028,9 @@ unsafe fn opj_jp2_setup_header_writing(
   if opj_procedure_list_add_procedure(jp2.m_procedure_list, opj_jp2_write_jp2h, p_manager) == 0 {
     return 0i32;
   }
-  if jp2.jpip_on != 0 && opj_procedure_list_add_procedure(jp2.m_procedure_list, opj_jpip_skip_iptr, p_manager) == 0 {
+  if jp2.jpip_on != 0
+    && opj_procedure_list_add_procedure(jp2.m_procedure_list, opj_jpip_skip_iptr, p_manager) == 0
+  {
     return 0i32;
   }
   if opj_procedure_list_add_procedure(jp2.m_procedure_list, opj_jp2_skip_jp2c, p_manager) == 0 {

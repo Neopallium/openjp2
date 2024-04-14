@@ -52,10 +52,7 @@ pub(crate) fn opj_uint_floorlog2(mut a: u32) -> u32 {
 
 #[inline]
 pub(crate) fn opj_uint_ceildivpow2(mut a: u32, mut b: u32) -> u32 {
-  ((a as u64)
-    .wrapping_add(1_u64 << b)
-    .wrapping_sub(1_u64)
-    >> b) as u32
+  ((a as u64).wrapping_add(1_u64 << b).wrapping_sub(1_u64) >> b) as u32
 }
 
 #[inline]

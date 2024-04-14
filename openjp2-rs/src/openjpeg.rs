@@ -760,12 +760,8 @@ impl Codec {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::Encoder(_) => {
-        0
-      }
-      Self::Decoder(dec) => {
-        dec.set_decoded_resolution_factor(res_factor, p_manager)
-      }
+      Self::Encoder(_) => 0,
+      Self::Decoder(dec) => dec.set_decoded_resolution_factor(res_factor, p_manager),
     }
   }
 }
@@ -2736,7 +2732,6 @@ pub unsafe fn opj_stream_create_file_stream(
 }
 #[no_mangle]
 pub unsafe fn opj_image_data_alloc(mut size: OPJ_SIZE_T) -> *mut core::ffi::c_void {
-  
   /* printf("opj_image_data_alloc %p\n", ret); */
   opj_aligned_malloc(size)
 }

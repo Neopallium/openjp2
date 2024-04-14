@@ -68,10 +68,7 @@ pub(crate) unsafe fn opj_tgt_create(
   let mut k: OPJ_INT32 = 0;
   let mut numlvls: OPJ_UINT32 = 0;
   let mut n: OPJ_UINT32 = 0;
-  tree = opj_calloc(
-    1i32 as size_t,
-    core::mem::size_of::<opj_tgt_tree_t>(),
-  ) as *mut opj_tgt_tree_t;
+  tree = opj_calloc(1i32 as size_t, core::mem::size_of::<opj_tgt_tree_t>()) as *mut opj_tgt_tree_t;
   if tree.is_null() {
     event_msg!(
       p_manager,

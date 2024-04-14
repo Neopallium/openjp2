@@ -27,8 +27,7 @@ pub(crate) unsafe fn opj_matrix_inversion_f(
     lPermutations.as_mut_slice(),
     swap_area.as_mut_slice(),
     nb_compo,
-  )
-  {
+  ) {
     return false;
   }
   opj_lupInvert(
