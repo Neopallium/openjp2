@@ -1,13 +1,13 @@
-use super::openjpeg::*;
 use super::consts::*;
-use super::math::*;
 use super::dwt::*;
+use super::event::*;
+use super::math::*;
 use super::mct::*;
-use super::tgt::*;
+use super::openjpeg::*;
 use super::pi::*;
 use super::t1::*;
 use super::t2::*;
-use super::event::*;
+use super::tgt::*;
 use super::thread::*;
 
 use super::malloc::*;
@@ -19,7 +19,11 @@ extern "C" {
 
   fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
 
-  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
+  fn memcpy(
+    _: *mut core::ffi::c_void,
+    _: *const core::ffi::c_void,
+    _: usize,
+  ) -> *mut core::ffi::c_void;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -30,18 +34,11 @@ Create a new TCD handle
 pub(crate) unsafe fn opj_tcd_create(mut p_is_decoder: OPJ_BOOL) -> *mut opj_tcd_t {
   let mut l_tcd = 0 as *mut opj_tcd_t;
   /* create the tcd structure */
-  l_tcd = opj_calloc(
-    1i32 as size_t,
-    core::mem::size_of::<opj_tcd_t>() as usize,
-  ) as *mut opj_tcd_t;
+  l_tcd = opj_calloc(1i32 as size_t, core::mem::size_of::<opj_tcd_t>() as usize) as *mut opj_tcd_t;
   if l_tcd.is_null() {
     return 0 as *mut opj_tcd_t;
   }
-  (*l_tcd).set_m_is_decoder(if p_is_decoder != 0 {
-    1i32
-  } else {
-    0i32
-  } as OPJ_BITFIELD);
+  (*l_tcd).set_m_is_decoder(if p_is_decoder != 0 { 1i32 } else { 0i32 } as OPJ_BITFIELD);
   (*l_tcd).tcd_image = opj_calloc(
     1i32 as size_t,
     core::mem::size_of::<opj_tcd_image_t>() as usize,
@@ -122,17 +119,11 @@ unsafe fn opj_tcd_makelayer(
                     dr = (*pass).rate;
                     dd = (*pass).distortiondec
                   } else {
-                    dr = (*pass).rate.wrapping_sub(
-                      (*(*cblk)
-                        .passes
-                        .offset(n.wrapping_sub(1u32) as isize))
-                      .rate,
-                    );
+                    dr = (*pass)
+                      .rate
+                      .wrapping_sub((*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize)).rate);
                     dd = (*pass).distortiondec
-                      - (*(*cblk)
-                        .passes
-                        .offset(n.wrapping_sub(1u32) as isize))
-                      .distortiondec
+                      - (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize)).distortiondec
                   }
                   if dr == 0 {
                     if dd != 0 as core::ffi::c_double {
@@ -154,48 +145,30 @@ unsafe fn opj_tcd_makelayer(
                 (*layer).disto = 0 as OPJ_FLOAT64
               } else {
                 if (*cblk).numpassesinlayers == 0u32 {
-                  (*layer).len = (*(*cblk)
-                    .passes
-                    .offset(n.wrapping_sub(1u32) as isize))
-                  .rate;
+                  (*layer).len = (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize)).rate;
                   (*layer).data = (*cblk).data;
-                  (*layer).disto = (*(*cblk)
-                    .passes
-                    .offset(n.wrapping_sub(1u32) as isize))
-                  .distortiondec
+                  (*layer).disto =
+                    (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize)).distortiondec
                 } else {
-                  (*layer).len = (*(*cblk)
-                    .passes
-                    .offset(n.wrapping_sub(1u32) as isize))
-                  .rate
-                  .wrapping_sub(
-                    (*(*cblk).passes.offset(
-                      (*cblk)
-                        .numpassesinlayers
-                        .wrapping_sub(1u32)
-                        as isize,
-                    ))
-                    .rate,
-                  );
+                  (*layer).len = (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize))
+                    .rate
+                    .wrapping_sub(
+                      (*(*cblk)
+                        .passes
+                        .offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
+                      .rate,
+                    );
                   (*layer).data = (*cblk).data.offset(
-                    (*(*cblk).passes.offset(
-                      (*cblk)
-                        .numpassesinlayers
-                        .wrapping_sub(1u32)
-                        as isize,
-                    ))
+                    (*(*cblk)
+                      .passes
+                      .offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
                     .rate as isize,
                   );
-                  (*layer).disto = (*(*cblk)
-                    .passes
-                    .offset(n.wrapping_sub(1u32) as isize))
-                  .distortiondec
-                    - (*(*cblk).passes.offset(
-                      (*cblk)
-                        .numpassesinlayers
-                        .wrapping_sub(1u32)
-                        as isize,
-                    ))
+                  (*layer).disto = (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize))
+                    .distortiondec
+                    - (*(*cblk)
+                      .passes
+                      .offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
                     .distortiondec
                 }
                 (*tcd_tile).distolayer[layno as usize] += (*layer).disto;
@@ -228,8 +201,10 @@ unsafe fn opj_tcd_makelayer_fixed(
   let mut precno: OPJ_UINT32 = 0;
   let mut cblkno: OPJ_UINT32 = 0;
   let mut value: OPJ_INT32 = 0;
-  let mut matrice: [[[OPJ_INT32; 3]; j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT as usize]; j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT as usize] =
-    [[[0; 3]; j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT as usize]; j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT as usize];
+  let mut matrice: [[[OPJ_INT32; 3]; j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT as usize];
+    j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT as usize] = [[[0; 3];
+    j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT as usize];
+    j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT as usize];
   let mut i: OPJ_UINT32 = 0;
   let mut j: OPJ_UINT32 = 0;
   let mut k: OPJ_UINT32 = 0;
@@ -253,8 +228,8 @@ unsafe fn opj_tcd_makelayer_fixed(
                 .wrapping_add(j.wrapping_mul(3u32))
                 .wrapping_add(k) as isize,
             ) as OPJ_FLOAT32
-              * ((*(*(*tcd).image).comps.offset(compno as isize)).prec as core::ffi::c_double / 16.0f64)
-                as OPJ_FLOAT32) as OPJ_INT32;
+              * ((*(*(*tcd).image).comps.offset(compno as isize)).prec as core::ffi::c_double
+                / 16.0f64) as OPJ_FLOAT32) as OPJ_INT32;
           k += 1;
         }
         j += 1;
@@ -295,15 +270,12 @@ unsafe fn opj_tcd_makelayer_fixed(
                 }
               } else {
                 value = matrice[layno as usize][resno as usize][bandno as usize]
-                  - matrice[layno.wrapping_sub(1u32) as usize]
-                    [resno as usize][bandno as usize]; /* 1.1; fixed_quality */
+                  - matrice[layno.wrapping_sub(1u32) as usize][resno as usize][bandno as usize]; /* 1.1; fixed_quality */
                 if imsb
-                  >= matrice[layno.wrapping_sub(1u32) as usize]
-                    [resno as usize][bandno as usize]
+                  >= matrice[layno.wrapping_sub(1u32) as usize][resno as usize][bandno as usize]
                 {
                   value -= imsb
-                    - matrice[layno.wrapping_sub(1u32) as usize]
-                      [resno as usize][bandno as usize]; /* fixed_quality */
+                    - matrice[layno.wrapping_sub(1u32) as usize][resno as usize][bandno as usize]; /* fixed_quality */
                   if value < 0i32 {
                     value = 0i32
                   }
@@ -330,32 +302,21 @@ unsafe fn opj_tcd_makelayer_fixed(
               (*layer).numpasses = n.wrapping_sub((*cblk).numpassesinlayers);
               if !((*layer).numpasses == 0) {
                 if (*cblk).numpassesinlayers == 0u32 {
-                  (*layer).len = (*(*cblk)
-                    .passes
-                    .offset(n.wrapping_sub(1u32) as isize))
-                  .rate;
+                  (*layer).len = (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize)).rate;
                   (*layer).data = (*cblk).data
                 } else {
-                  (*layer).len = (*(*cblk)
-                    .passes
-                    .offset(n.wrapping_sub(1u32) as isize))
-                  .rate
-                  .wrapping_sub(
-                    (*(*cblk).passes.offset(
-                      (*cblk)
-                        .numpassesinlayers
-                        .wrapping_sub(1u32)
-                        as isize,
-                    ))
-                    .rate,
-                  );
+                  (*layer).len = (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize))
+                    .rate
+                    .wrapping_sub(
+                      (*(*cblk)
+                        .passes
+                        .offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
+                      .rate,
+                    );
                   (*layer).data = (*cblk).data.offset(
-                    (*(*cblk).passes.offset(
-                      (*cblk)
-                        .numpassesinlayers
-                        .wrapping_sub(1u32)
-                        as isize,
-                    ))
+                    (*(*cblk)
+                      .passes
+                      .offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
                     .rate as isize,
                   )
                 }
@@ -443,17 +404,12 @@ unsafe fn opj_tcd_rateallocate(
                   dr = (*pass).rate as OPJ_INT32;
                   dd = (*pass).distortiondec
                 } else {
-                  dr = (*pass).rate.wrapping_sub(
-                    (*(*cblk)
-                      .passes
-                      .offset(passno.wrapping_sub(1u32) as isize))
-                    .rate,
-                  ) as OPJ_INT32;
+                  dr = (*pass)
+                    .rate
+                    .wrapping_sub((*(*cblk).passes.offset(passno.wrapping_sub(1u32) as isize)).rate)
+                    as OPJ_INT32;
                   dd = (*pass).distortiondec
-                    - (*(*cblk)
-                      .passes
-                      .offset(passno.wrapping_sub(1u32) as isize))
-                    .distortiondec
+                    - (*(*cblk).passes.offset(passno.wrapping_sub(1u32) as isize)).distortiondec
                 }
                 if !(dr == 0i32) {
                   rdslope = dd / dr as core::ffi::c_double;
@@ -481,12 +437,9 @@ unsafe fn opj_tcd_rateallocate(
       }
       resno += 1;
     }
-    maxSE += (((1i32) << (*(*(*tcd).image).comps.offset(compno as isize)).prec)
-      as OPJ_FLOAT64
+    maxSE += (((1i32) << (*(*(*tcd).image).comps.offset(compno as isize)).prec) as OPJ_FLOAT64
       - 1.0f64)
-      * (((1i32) << (*(*(*tcd).image).comps.offset(compno as isize)).prec)
-        as OPJ_FLOAT64
-        - 1.0f64)
+      * (((1i32) << (*(*(*tcd).image).comps.offset(compno as isize)).prec) as OPJ_FLOAT64 - 1.0f64)
       * (*tilec).numpix as OPJ_FLOAT64;
     compno += 1;
   }
@@ -498,8 +451,7 @@ unsafe fn opj_tcd_rateallocate(
     (*tile_info).numpix = (*tcd_tile).numpix;
     (*tile_info).distotile = (*tcd_tile).distotile;
     (*tile_info).thresh = opj_malloc(
-      ((*tcd_tcp).numlayers as usize)
-        .wrapping_mul(core::mem::size_of::<OPJ_FLOAT64>() as usize),
+      ((*tcd_tcp).numlayers as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT64>() as usize),
     ) as *mut OPJ_FLOAT64;
     if (*tile_info).thresh.is_null() {
       /* FIXME event manager error callback */
@@ -528,17 +480,18 @@ unsafe fn opj_tcd_rateallocate(
       - K * maxSE
         / pow(
           10 as OPJ_FLOAT32 as core::ffi::c_double,
-          ((*tcd_tcp).distoratio[layno as usize] / 10 as core::ffi::c_float)
-            as core::ffi::c_double,
+          ((*tcd_tcp).distoratio[layno as usize] / 10 as core::ffi::c_float) as core::ffi::c_double,
         );
 
     /* Don't try to find an optimal threshold but rather take everything not included yet, if
     -r xx,yy,zz,0   (m_quality_layer_alloc_strategy == RATE_DISTORTION_RATIO and rates == NULL)
     -q xx,yy,zz,0   (m_quality_layer_alloc_strategy == FIXED_DISTORTION_RATIO and distoratio == NULL)
     ==> possible to have some lossy layers and the last layer for sure lossless */
-    if (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO
+    if (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy
+      == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO
       && (*tcd_tcp).rates[layno as usize] > 0.0f32
-      || (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
+      || (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy
+        == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
         && (*tcd_tcp).distoratio[layno as usize] as core::ffi::c_double > 0.0f64
     {
       let mut t2 = opj_t2_create((*tcd).image, cp); /* fixed_quality */
@@ -561,10 +514,12 @@ unsafe fn opj_tcd_rateallocate(
         }
         thresh = new_thresh;
 
-        let layer_allocation_is_same = opj_tcd_makelayer(tcd, layno, thresh, 0 as OPJ_UINT32) && i != 0;
-        if (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO {
-          if (*cp).rsiz as core::ffi::c_int >= 0x3i32
-            && (*cp).rsiz as core::ffi::c_int <= 0x6i32
+        let layer_allocation_is_same =
+          opj_tcd_makelayer(tcd, layno, thresh, 0 as OPJ_UINT32) && i != 0;
+        if (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy
+          == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
+        {
+          if (*cp).rsiz as core::ffi::c_int >= 0x3i32 && (*cp).rsiz as core::ffi::c_int <= 0x6i32
             || (*cp).rsiz as core::ffi::c_int >= 0x400i32
               && (*cp).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
           {
@@ -604,8 +559,7 @@ unsafe fn opj_tcd_rateallocate(
             distoachieved = if layno == 0u32 {
               (*tcd_tile).distolayer[0 as usize]
             } else {
-              (cumdisto[layno.wrapping_sub(1u32) as usize])
-                + (*tcd_tile).distolayer[layno as usize]
+              (cumdisto[layno.wrapping_sub(1u32) as usize]) + (*tcd_tile).distolayer[layno as usize]
             };
             if distoachieved < distotarget {
               hi = thresh;
@@ -614,7 +568,8 @@ unsafe fn opj_tcd_rateallocate(
               lo = thresh
             }
           }
-        } else { /* Disto/rate based optimization */
+        } else {
+          /* Disto/rate based optimization */
           /* Check if the layer allocation done by opj_tcd_makelayer()
            * is compatible of the maximum rate allocation. If not,
            * retry with a higher threshold.
@@ -622,24 +577,25 @@ unsafe fn opj_tcd_rateallocate(
            * Call opj_t2_encode_packets() only if opj_tcd_makelayer()
            * has resulted in different truncation points since its last
            * call. */
-          if (layer_allocation_is_same && !last_layer_allocation_ok) ||
-                  (!layer_allocation_is_same &&
-                   opj_t2_encode_packets(
-          t2,
-          (*tcd).tcd_tileno,
-          tcd_tile,
-          layno.wrapping_add(1u32),
-          dest,
-          p_data_written,
-          maxlen,
-          cstr_info,
-          0 as *mut opj_tcd_marker_info_t,
-          (*tcd).cur_tp_num,
-          (*tcd).tp_pos,
-          (*tcd).cur_pino,
-          THRESH_CALC,
-          p_manager,
-        ) == 0) {
+          if (layer_allocation_is_same && !last_layer_allocation_ok)
+            || (!layer_allocation_is_same
+              && opj_t2_encode_packets(
+                t2,
+                (*tcd).tcd_tileno,
+                tcd_tile,
+                layno.wrapping_add(1u32),
+                dest,
+                p_data_written,
+                maxlen,
+                cstr_info,
+                0 as *mut opj_tcd_marker_info_t,
+                (*tcd).cur_tp_num,
+                (*tcd).tp_pos,
+                (*tcd).cur_pino,
+                THRESH_CALC,
+                p_manager,
+              ) == 0)
+          {
             last_layer_allocation_ok = false;
             lo = thresh;
           } else {
@@ -672,8 +628,7 @@ unsafe fn opj_tcd_rateallocate(
     cumdisto[layno as usize] = if layno == 0u32 {
       (*tcd_tile).distolayer[0 as usize]
     } else {
-      (cumdisto[layno.wrapping_sub(1u32) as usize])
-        + (*tcd_tile).distolayer[layno as usize]
+      (cumdisto[layno.wrapping_sub(1u32) as usize]) + (*tcd_tile).distolayer[layno as usize]
     };
     layno += 1;
   }
@@ -730,8 +685,7 @@ pub(crate) unsafe fn opj_alloc_tile_component_data(
     || (*l_tilec).data_size_needed > (*l_tilec).data_size && (*l_tilec).ownsData == 0i32
   {
     (*l_tilec).data = opj_image_data_alloc((*l_tilec).data_size_needed) as *mut OPJ_INT32;
-    if (*l_tilec).data.is_null() && (*l_tilec).data_size_needed != 0
-    {
+    if (*l_tilec).data.is_null() && (*l_tilec).data_size_needed != 0 {
       return 0i32;
     }
     /*fprintf(stderr, "tAllocate data of tilec (int): %d x OPJ_UINT32n",l_data_size);*/
@@ -863,9 +817,7 @@ unsafe fn opj_tcd_init_tile(
   (*l_tile).x1 = opj_uint_min(opj_uint_adds(l_tx0, (*l_cp).tdx), (*l_image).x1) as OPJ_INT32;
   /* all those OPJ_UINT32 are casted to OPJ_INT32, let's do some sanity check */
   if (*l_tile).x0 < 0i32 || (*l_tile).x1 <= (*l_tile).x0 {
-    event_msg!(manager, EVT_ERROR,
-      "Tile X coordinates are not supported\n",
-    ); /* can't be greater than l_image->y1 so won't overflow */
+    event_msg!(manager, EVT_ERROR, "Tile X coordinates are not supported\n",); /* can't be greater than l_image->y1 so won't overflow */
     return 0i32;
   }
   l_ty0 = (*l_cp).ty0.wrapping_add(q.wrapping_mul((*l_cp).tdy));
@@ -873,14 +825,14 @@ unsafe fn opj_tcd_init_tile(
   (*l_tile).y1 = opj_uint_min(opj_uint_adds(l_ty0, (*l_cp).tdy), (*l_image).y1) as OPJ_INT32;
   /* all those OPJ_UINT32 are casted to OPJ_INT32, let's do some sanity check */
   if (*l_tile).y0 < 0i32 || (*l_tile).y1 <= (*l_tile).y0 {
-    event_msg!(manager, EVT_ERROR,
-      "Tile Y coordinates are not supported\n",
-    );
+    event_msg!(manager, EVT_ERROR, "Tile Y coordinates are not supported\n",);
     return 0i32;
   }
   /* testcase 1888.pdf.asan.35.988 */
   if (*l_tccp).numresolutions == 0u32 {
-    event_msg!(manager, EVT_ERROR,
+    event_msg!(
+      manager,
+      EVT_ERROR,
       "tiles require at least one resolution\n",
     );
     return 0i32;
@@ -912,26 +864,24 @@ unsafe fn opj_tcd_init_tile(
       let mut w = ((*l_tilec).x1 - (*l_tilec).x0) as OPJ_SIZE_T;
       let mut h = ((*l_tilec).y1 - (*l_tilec).y0) as OPJ_SIZE_T;
       /* issue 733, l_data_size == 0U, probably something wrong should be checked before getting here */
-      if h > 0
-        && w > (usize::MAX).wrapping_div(h)
-      {
-        event_msg!(manager, EVT_ERROR,
+      if h > 0 && w > (usize::MAX).wrapping_div(h) {
+        event_msg!(
+          manager,
+          EVT_ERROR,
           "Size of tile data exceeds system limits\n",
         );
         return 0i32;
       }
       l_tile_data_size = w.wrapping_mul(h);
-      if (usize::MAX)
-        .wrapping_div(core::mem::size_of::<OPJ_UINT32>() as usize)
-        < l_tile_data_size
-      {
-        event_msg!(manager, EVT_ERROR,
+      if (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_UINT32>() as usize) < l_tile_data_size {
+        event_msg!(
+          manager,
+          EVT_ERROR,
           "Size of tile data exceeds system limits\n",
         );
         return 0i32;
       }
-      l_tile_data_size =
-        l_tile_data_size.wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize);
+      l_tile_data_size = l_tile_data_size.wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as usize);
       (*l_tilec).data_size_needed = l_tile_data_size
     }
     l_data_size = (*l_tilec)
@@ -961,7 +911,9 @@ unsafe fn opj_tcd_init_tile(
         l_data_size as size_t,
       ) as *mut opj_tcd_resolution_t;
       if new_resolutions.is_null() {
-        event_msg!(manager, EVT_ERROR,
+        event_msg!(
+          manager,
+          EVT_ERROR,
           "Not enough memory for tile resolutions\n",
         );
         opj_free((*l_tilec).resolutions as *mut core::ffi::c_void);
@@ -1004,17 +956,13 @@ unsafe fn opj_tcd_init_tile(
       l_tl_prc_y_start = opj_int_floordivpow2((*l_res).y0, l_pdy as OPJ_INT32) << l_pdy;
       let mut tmp = (opj_int_ceildivpow2((*l_res).x1, l_pdx as OPJ_INT32) as OPJ_UINT32) << l_pdx;
       if tmp > 2147483647 as OPJ_UINT32 {
-        event_msg!(manager, EVT_ERROR,
-          "Integer overflow\n",
-        );
+        event_msg!(manager, EVT_ERROR, "Integer overflow\n",);
         return 0i32;
       }
       l_br_prc_x_end = tmp as OPJ_INT32;
       let mut tmp_0 = (opj_int_ceildivpow2((*l_res).y1, l_pdy as OPJ_INT32) as OPJ_UINT32) << l_pdy;
       if tmp_0 > 2147483647 as OPJ_UINT32 {
-        event_msg!(manager, EVT_ERROR,
-          "Integer overflow\n",
-        );
+        event_msg!(manager, EVT_ERROR, "Integer overflow\n",);
         return 0i32;
       }
       l_br_prc_y_end = tmp_0 as OPJ_INT32;
@@ -1028,10 +976,10 @@ unsafe fn opj_tcd_init_tile(
       } else {
         (l_br_prc_y_end - l_tl_prc_y_start >> l_pdy) as OPJ_UINT32
       };
-      if (*l_res).pw != 0u32
-        && (-(1i32) as OPJ_UINT32).wrapping_div((*l_res).pw) < (*l_res).ph
-      {
-        event_msg!(manager, EVT_ERROR,
+      if (*l_res).pw != 0u32 && (-(1i32) as OPJ_UINT32).wrapping_div((*l_res).pw) < (*l_res).ph {
+        event_msg!(
+          manager,
+          EVT_ERROR,
           "Size of tile data exceeds system limits\n",
         );
         return 0i32;
@@ -1041,13 +989,15 @@ unsafe fn opj_tcd_init_tile(
         .wrapping_div(core::mem::size_of::<opj_tcd_precinct_t>() as OPJ_UINT32)
         < l_nb_precincts
       {
-        event_msg!(manager, EVT_ERROR,
+        event_msg!(
+          manager,
+          EVT_ERROR,
           "Size of tile data exceeds system limits\n",
         );
         return 0i32;
       }
-      l_nb_precinct_size = l_nb_precincts
-        .wrapping_mul(core::mem::size_of::<opj_tcd_precinct_t>() as OPJ_UINT32);
+      l_nb_precinct_size =
+        l_nb_precincts.wrapping_mul(core::mem::size_of::<opj_tcd_precinct_t>() as OPJ_UINT32);
       if resno == 0u32 {
         tlcbgxstart = l_tl_prc_x_start;
         tlcbgystart = l_tl_prc_y_start;
@@ -1126,16 +1076,15 @@ unsafe fn opj_tcd_init_tile(
             /* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
             /* the test (!isEncoder && l_tccp->qmfbid == 0) is strongly */
             /* linked to the use of two_invK instead of invK */
-            let log2_gain =
-              if isEncoder == 0 && (*l_tccp).qmfbid == 0u32 {
-                0i32
-              } else if (*l_band).bandno == 0u32 {
-                0i32
-              } else if (*l_band).bandno == 3u32 {
-                2i32
-              } else {
-                1i32
-              };
+            let log2_gain = if isEncoder == 0 && (*l_tccp).qmfbid == 0u32 {
+              0i32
+            } else if (*l_band).bandno == 0u32 {
+              0i32
+            } else if (*l_band).bandno == 3u32 {
+              2i32
+            } else {
+              1i32
+            };
             /* Nominal dynamic range. Equation E-4 */
             let Rb = (*l_image_comp).prec as OPJ_INT32 + log2_gain;
             /* Delta_b value of Equation E-3 in "E.1 Inverse quantization
@@ -1145,13 +1094,14 @@ unsafe fn opj_tcd_init_tile(
               as OPJ_FLOAT32;
             /* Mb value of Equation E-2 in "E.1 Inverse quantization
              * procedure" of the standard */
-            (*l_band).numbps =
-              (*l_step_size).expn + (*l_tccp).numgbits as OPJ_INT32 - 1i32;
+            (*l_band).numbps = (*l_step_size).expn + (*l_tccp).numgbits as OPJ_INT32 - 1i32;
             if (*l_band).precincts.is_null() && l_nb_precincts > 0u32 {
               (*l_band).precincts =
                 opj_malloc(l_nb_precinct_size as size_t) as *mut opj_tcd_precinct_t;
               if (*l_band).precincts.is_null() {
-                event_msg!(manager, EVT_ERROR,
+                event_msg!(
+                  manager,
+                  EVT_ERROR,
                   "Not enough memory to handle band precints\n",
                 );
                 return 0i32;
@@ -1169,7 +1119,9 @@ unsafe fn opj_tcd_init_tile(
                 l_nb_precinct_size as size_t,
               ) as *mut opj_tcd_precinct_t;
               if new_precincts.is_null() {
-                event_msg!(manager, EVT_ERROR,
+                event_msg!(
+                  manager,
+                  EVT_ERROR,
                   "Not enough memory to handle band precints\n",
                 );
                 opj_free((*l_band).precincts as *mut core::ffi::c_void);
@@ -1196,11 +1148,9 @@ unsafe fn opj_tcd_init_tile(
               let mut brcblkxend: OPJ_INT32 = 0;
               let mut brcblkyend: OPJ_INT32 = 0;
               let mut cbgxstart = tlcbgxstart
-                + precno.wrapping_rem((*l_res).pw) as OPJ_INT32
-                  * ((1i32) << cbgwidthexpn);
+                + precno.wrapping_rem((*l_res).pw) as OPJ_INT32 * ((1i32) << cbgwidthexpn);
               let mut cbgystart = tlcbgystart
-                + precno.wrapping_div((*l_res).pw) as OPJ_INT32
-                  * ((1i32) << cbgheightexpn);
+                + precno.wrapping_div((*l_res).pw) as OPJ_INT32 * ((1i32) << cbgheightexpn);
               let mut cbgxend = cbgxstart + ((1i32) << cbgwidthexpn);
               let mut cbgyend = cbgystart + ((1i32) << cbgheightexpn);
               /*fprintf(stderr, "\t precno=%d; bandno=%d, resno=%d; compno=%d\n", precno, bandno , resno, compno);*/
@@ -1235,18 +1185,17 @@ unsafe fn opj_tcd_init_tile(
                 .cw
                 .wrapping_mul((*l_current_precinct).ch);
               /*fprintf(stderr, "\t\t\t\t precinct_cw = %d x recinct_ch = %d\n",l_current_precinct->cw, l_current_precinct->ch);      */
-              if (-(1i32) as OPJ_UINT32).wrapping_div(sizeof_block as OPJ_UINT32)
-                < l_nb_code_blocks
+              if (-(1i32) as OPJ_UINT32).wrapping_div(sizeof_block as OPJ_UINT32) < l_nb_code_blocks
               {
-                event_msg!(manager, EVT_ERROR,
+                event_msg!(
+                  manager,
+                  EVT_ERROR,
                   "Size of code block data exceeds system limits\n",
                 );
                 return 0i32;
               }
               l_nb_code_blocks_size = l_nb_code_blocks.wrapping_mul(sizeof_block as OPJ_UINT32);
-              if (*l_current_precinct).cblks.blocks.is_null()
-                && l_nb_code_blocks > 0u32
-              {
+              if (*l_current_precinct).cblks.blocks.is_null() && l_nb_code_blocks > 0u32 {
                 (*l_current_precinct).cblks.blocks = opj_malloc(l_nb_code_blocks_size as size_t);
                 if (*l_current_precinct).cblks.blocks.is_null() {
                   return 0i32;
@@ -1267,7 +1216,9 @@ unsafe fn opj_tcd_init_tile(
                   opj_free((*l_current_precinct).cblks.blocks);
                   (*l_current_precinct).cblks.blocks = 0 as *mut core::ffi::c_void;
                   (*l_current_precinct).block_size = 0 as OPJ_UINT32;
-                  event_msg!(manager, EVT_ERROR,
+                  event_msg!(
+                    manager,
+                    EVT_ERROR,
                     "Not enough memory for current precinct codeblock element\n",
                   );
                   return 0i32;
@@ -1279,8 +1230,7 @@ unsafe fn opj_tcd_init_tile(
                     .offset((*l_current_precinct).block_size as isize)
                     as *mut core::ffi::c_void,
                   0i32,
-                  l_nb_code_blocks_size.wrapping_sub((*l_current_precinct).block_size)
-                    as usize,
+                  l_nb_code_blocks_size.wrapping_sub((*l_current_precinct).block_size) as usize,
                 );
                 (*l_current_precinct).block_size = l_nb_code_blocks_size
               }
@@ -1399,9 +1349,7 @@ pub(crate) unsafe fn opj_tcd_init_decode_tile(
 /* *
  * Allocates memory for an encoding code block (but not data memory).
  */
-unsafe fn opj_tcd_code_block_enc_allocate(
-  mut p_code_block: *mut opj_tcd_cblk_enc_t,
-) -> OPJ_BOOL {
+unsafe fn opj_tcd_code_block_enc_allocate(mut p_code_block: *mut opj_tcd_cblk_enc_t) -> OPJ_BOOL {
   if (*p_code_block).layers.is_null() {
     /* no memset since data */
     (*p_code_block).layers = opj_calloc(
@@ -1453,9 +1401,7 @@ unsafe fn opj_tcd_code_block_enc_allocate_data(
       /* We refer to data - 1 since below we incremented it */
       opj_free((*p_code_block).data.offset(-1) as *mut core::ffi::c_void);
     }
-    (*p_code_block).data =
-      opj_malloc(l_data_size.wrapping_add(1u32) as size_t)
-        as *mut OPJ_BYTE;
+    (*p_code_block).data = opj_malloc(l_data_size.wrapping_add(1u32) as size_t) as *mut OPJ_BYTE;
     if (*p_code_block).data.is_null() {
       (*p_code_block).data_size = 0u32;
       return 0i32;
@@ -1485,9 +1431,7 @@ pub(crate) unsafe fn opj_tcd_reinit_segment(mut seg: *mut opj_tcd_seg_t) {
 /* *
  * Allocates memory for a decoding code block.
  */
-unsafe fn opj_tcd_code_block_dec_allocate(
-  mut p_code_block: *mut opj_tcd_cblk_dec_t,
-) -> OPJ_BOOL {
+unsafe fn opj_tcd_code_block_dec_allocate(mut p_code_block: *mut opj_tcd_cblk_dec_t) -> OPJ_BOOL {
   if (*p_code_block).segs.is_null() {
     (*p_code_block).segs = opj_calloc(
       10i32 as size_t,
@@ -1570,9 +1514,7 @@ pub(crate) unsafe fn opj_tcd_get_decoded_tile_size(
         .wrapping_div(w)
         < h
     {
-      return (2147483647u32)
-        .wrapping_mul(2u32)
-        .wrapping_add(1u32);
+      return (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32);
     }
     l_temp = w.wrapping_mul(h);
     if l_size_comp != 0
@@ -1582,9 +1524,7 @@ pub(crate) unsafe fn opj_tcd_get_decoded_tile_size(
         .wrapping_div(l_size_comp)
         < l_temp
     {
-      return (2147483647u32)
-        .wrapping_mul(2u32)
-        .wrapping_add(1u32);
+      return (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32);
     }
     l_temp = (l_temp as core::ffi::c_uint).wrapping_mul(l_size_comp) as OPJ_UINT32;
     if l_temp
@@ -1593,9 +1533,7 @@ pub(crate) unsafe fn opj_tcd_get_decoded_tile_size(
         .wrapping_add(1u32)
         .wrapping_sub(l_data_size)
     {
-      return (2147483647u32)
-        .wrapping_mul(2u32)
-        .wrapping_add(1u32);
+      return (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32);
     }
     l_data_size = (l_data_size as core::ffi::c_uint).wrapping_add(l_temp) as OPJ_UINT32;
     l_img_comp = l_img_comp.offset(1);
@@ -1623,10 +1561,8 @@ pub(crate) unsafe fn opj_tcd_encode_tile(
       let mut l_num_packs = 0 as OPJ_UINT32;
       let mut i: OPJ_UINT32 = 0;
       /* INDEX >> "Precinct_nb_X et Precinct_nb_Y" */
-      let mut l_tilec_idx: *mut opj_tcd_tilecomp_t = &mut *(*(*(*p_tcd).tcd_image).tiles)
-        .comps
-        .offset(0)
-        as *mut opj_tcd_tilecomp_t; /* based on component 0 */
+      let mut l_tilec_idx: *mut opj_tcd_tilecomp_t =
+        &mut *(*(*(*p_tcd).tcd_image).tiles).comps.offset(0) as *mut opj_tcd_tilecomp_t; /* based on component 0 */
       let mut l_tccp = (*(*p_tcd).tcp).tccps; /* based on component 0 */
       i = 0 as OPJ_UINT32;
       while i < (*l_tilec_idx).numresolutions {
@@ -1768,11 +1704,10 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
       let mut tilec: *mut opj_tcd_tilecomp_t =
         &mut *(*(*(*p_tcd).tcd_image).tiles).comps.offset(compno as isize)
           as *mut opj_tcd_tilecomp_t;
-      let mut l_res: *mut opj_tcd_resolution_t = &mut *(*tilec).resolutions.offset(
-        (*tilec)
-          .minimum_num_resolutions
-          .wrapping_sub(1u32) as isize,
-      ) as *mut opj_tcd_resolution_t;
+      let mut l_res: *mut opj_tcd_resolution_t = &mut *(*tilec)
+        .resolutions
+        .offset((*tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize)
+        as *mut opj_tcd_resolution_t;
       let mut l_data_size: OPJ_SIZE_T = 0;
       /* compute l_data_size with overflow check */
       let mut res_w = ((*l_res).x1 - (*l_res).x0) as OPJ_SIZE_T;
@@ -1781,20 +1716,19 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
         && *(*p_tcd).used_component.offset(compno as isize) == 0)
       {
         /* issue 733, l_data_size == 0U, probably something wrong should be checked before getting here */
-        if res_h > 0
-          && res_w > (usize::MAX).wrapping_div(res_h)
-        {
-          event_msg!(p_manager, EVT_ERROR,
+        if res_h > 0 && res_w > (usize::MAX).wrapping_div(res_h) {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
             "Size of tile data exceeds system limits\n",
           );
           return 0i32;
         }
         l_data_size = res_w.wrapping_mul(res_h);
-        if (usize::MAX)
-          .wrapping_div(core::mem::size_of::<OPJ_UINT32>() as usize)
-          < l_data_size
-        {
-          event_msg!(p_manager, EVT_ERROR,
+        if (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_UINT32>() as usize) < l_data_size {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
             "Size of tile data exceeds system limits\n",
           );
           return 0i32;
@@ -1804,7 +1738,9 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
           as OPJ_SIZE_T as OPJ_SIZE_T;
         (*tilec).data_size_needed = l_data_size;
         if opj_alloc_tile_component_data(tilec) == 0 {
-          event_msg!(p_manager, EVT_ERROR,
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
             "Size of tile data exceeds system limits\n",
           );
           return 0i32;
@@ -1849,9 +1785,7 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
           /* We should not normally go there. The circumstance is when */
           /* the tile coordinates do not intersect the area of interest */
           /* Upper level logic should not even try to decode that tile */
-          event_msg!(p_manager, EVT_ERROR,
-            "Invalid tilec->win_xxx values\n",
-          );
+          event_msg!(p_manager, EVT_ERROR, "Invalid tilec->win_xxx values\n",);
           return 0i32;
         }
         resno = 0 as OPJ_UINT32;
@@ -1936,17 +1870,18 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
       {
         if w > 0 && h > 0 {
           if w > (usize::MAX).wrapping_div(h) {
-            event_msg!(p_manager, EVT_ERROR,
+            event_msg!(
+              p_manager,
+              EVT_ERROR,
               "Size of tile data exceeds system limits\n",
             );
             return 0i32;
           }
           l_data_size_0 = w.wrapping_mul(h);
-          if l_data_size_0
-            > (usize::MAX)
-              .wrapping_div(core::mem::size_of::<OPJ_INT32>() as usize)
-          {
-            event_msg!(p_manager, EVT_ERROR,
+          if l_data_size_0 > (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_INT32>() as usize) {
+            event_msg!(
+              p_manager,
+              EVT_ERROR,
               "Size of tile data exceeds system limits\n",
             );
             return 0i32;
@@ -1956,7 +1891,9 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
             as OPJ_SIZE_T as OPJ_SIZE_T;
           (*tilec_1).data_win = opj_image_data_alloc(l_data_size_0) as *mut OPJ_INT32;
           if (*tilec_1).data_win.is_null() {
-            event_msg!(p_manager, EVT_ERROR,
+            event_msg!(
+              p_manager,
+              EVT_ERROR,
               "Size of tile data exceeds system limits\n",
             );
             return 0i32;
@@ -2005,10 +1942,7 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
   let mut l_width: OPJ_UINT32 = 0;
   let mut l_height: OPJ_UINT32 = 0;
   l_data_size = opj_tcd_get_decoded_tile_size(p_tcd, 1i32);
-  if l_data_size
-    == (2147483647u32)
-      .wrapping_mul(2u32)
-      .wrapping_add(1u32)
+  if l_data_size == (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32)
     || l_data_size > p_dest_length
   {
     return 0i32;
@@ -2026,17 +1960,13 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
     if (*p_tcd).whole_tile_decoding != 0 {
       l_width = ((*l_res).x1 - (*l_res).x0) as OPJ_UINT32;
       l_height = ((*l_res).y1 - (*l_res).y0) as OPJ_UINT32;
-      l_stride = (((*(*l_tilec).resolutions.offset(
-        (*l_tilec)
-          .minimum_num_resolutions
-          .wrapping_sub(1u32) as isize,
-      ))
+      l_stride = (((*(*l_tilec)
+        .resolutions
+        .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
       .x1
-        - (*(*l_tilec).resolutions.offset(
-          (*l_tilec)
-            .minimum_num_resolutions
-            .wrapping_sub(1u32) as isize,
-        ))
+        - (*(*l_tilec)
+          .resolutions
+          .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
         .x0) as OPJ_UINT32)
         .wrapping_sub(l_width);
       l_src_data = (*l_tilec).data
@@ -2141,8 +2071,7 @@ pub(crate) unsafe fn opj_tcd_update_tile_data(
           memcpy(
             l_dest_ptr_1 as *mut core::ffi::c_void,
             l_src_ptr_1 as *const core::ffi::c_void,
-            (l_width as usize)
-              .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+            (l_width as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
           );
           l_dest_ptr_1 = l_dest_ptr_1.offset(l_width as isize);
           l_src_ptr_1 = l_src_ptr_1.offset(l_width.wrapping_add(l_stride) as isize);
@@ -2174,9 +2103,7 @@ unsafe fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
   let mut l_precinct = 0 as *mut opj_tcd_precinct_t;
   let mut l_nb_resolutions: OPJ_UINT32 = 0;
   let mut l_nb_precincts: OPJ_UINT32 = 0;
-  let mut l_tcd_code_block_deallocate: Option<
-    unsafe fn(_: *mut opj_tcd_precinct_t) -> (),
-  > = None;
+  let mut l_tcd_code_block_deallocate: Option<unsafe fn(_: *mut opj_tcd_precinct_t) -> ()> = None;
   if p_tcd.is_null() {
     return;
   }
@@ -2184,13 +2111,11 @@ unsafe fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
     return;
   }
   if (*p_tcd).m_is_decoder() != 0 {
-    l_tcd_code_block_deallocate = Some(
-      opj_tcd_code_block_dec_deallocate as unsafe fn(_: *mut opj_tcd_precinct_t) -> (),
-    )
+    l_tcd_code_block_deallocate =
+      Some(opj_tcd_code_block_dec_deallocate as unsafe fn(_: *mut opj_tcd_precinct_t) -> ())
   } else {
-    l_tcd_code_block_deallocate = Some(
-      opj_tcd_code_block_enc_deallocate as unsafe fn(_: *mut opj_tcd_precinct_t) -> (),
-    )
+    l_tcd_code_block_deallocate =
+      Some(opj_tcd_code_block_enc_deallocate as unsafe fn(_: *mut opj_tcd_precinct_t) -> ())
   }
   l_tile = (*(*p_tcd).tcd_image).tiles;
   if l_tile.is_null() {
@@ -2211,10 +2136,9 @@ unsafe fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
         while bandno < 3u32 {
           l_precinct = (*l_band).precincts;
           if !l_precinct.is_null() {
-            l_nb_precincts =
-              (*l_band).precincts_data_size.wrapping_div(
-                core::mem::size_of::<opj_tcd_precinct_t>() as OPJ_UINT32,
-              );
+            l_nb_precincts = (*l_band)
+              .precincts_data_size
+              .wrapping_div(core::mem::size_of::<opj_tcd_precinct_t>() as OPJ_UINT32);
             precno = 0 as OPJ_UINT32;
             while precno < l_nb_precincts {
               opj_tgt_destroy((*l_precinct).incltree);
@@ -2347,9 +2271,7 @@ unsafe fn opj_tcd_dwt_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
         if opj_dwt_decode(
           p_tcd,
           l_tile_comp,
-          (*l_img_comp)
-            .resno_decoded
-            .wrapping_add(1u32),
+          (*l_img_comp).resno_decoded.wrapping_add(1u32),
         ) == 0
         {
           return 0i32;
@@ -2357,9 +2279,7 @@ unsafe fn opj_tcd_dwt_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
       } else if opj_dwt_decode_real(
         p_tcd,
         l_tile_comp,
-        (*l_img_comp)
-          .resno_decoded
-          .wrapping_add(1u32),
+        (*l_img_comp).resno_decoded.wrapping_add(1u32),
       ) == 0
       {
         return 0i32;
@@ -2400,7 +2320,9 @@ unsafe fn opj_tcd_mct_decode(
         || (*l_tile_comp).minimum_num_resolutions
           != (*(*l_tile).comps.offset(2)).minimum_num_resolutions
       {
-        event_msg!(p_manager, EVT_ERROR,
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
           "Tiles don\'t all have the same dimension. Skip the MCT step.\n",
         );
         return 0i32;
@@ -2427,7 +2349,9 @@ unsafe fn opj_tcd_mct_decode(
           .wrapping_mul(((*res_comp2).y1 - (*res_comp2).y0) as OPJ_SIZE_T)
           != l_samples
       {
-        event_msg!(p_manager, EVT_ERROR,
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
           "Tiles don\'t all have the same dimension. Skip the MCT step.\n",
         );
         return 0i32;
@@ -2442,14 +2366,10 @@ unsafe fn opj_tcd_mct_decode(
     if (*l_tile).numcomps >= 3u32 {
       let mut res_comp1_0 = (*(*l_tile).comps.offset(1))
         .resolutions
-        .offset(
-          (*(*(*p_tcd).image).comps.offset(1)).resno_decoded as isize,
-        );
+        .offset((*(*(*p_tcd).image).comps.offset(1)).resno_decoded as isize);
       let mut res_comp2_0 = (*(*l_tile).comps.offset(2))
         .resolutions
-        .offset(
-          (*(*(*p_tcd).image).comps.offset(2)).resno_decoded as isize,
-        );
+        .offset((*(*(*p_tcd).image).comps.offset(2)).resno_decoded as isize);
       /* testcase 1336.pdf.asan.47.376 */
       if (*(*(*p_tcd).image).comps.offset(0)).resno_decoded
         != (*(*(*p_tcd).image).comps.offset(1)).resno_decoded
@@ -2462,7 +2382,9 @@ unsafe fn opj_tcd_mct_decode(
           .wrapping_mul((*res_comp2_0).win_y1.wrapping_sub((*res_comp2_0).win_y0) as OPJ_SIZE_T)
           != l_samples
       {
-        event_msg!(p_manager, EVT_ERROR,
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
           "Tiles don\'t all have the same dimension. Skip the MCT step.\n",
         );
         return 0i32;
@@ -2476,8 +2398,7 @@ unsafe fn opj_tcd_mct_decode(
         return 1i32;
       }
       l_data = opj_malloc(
-        ((*l_tile).numcomps as usize)
-          .wrapping_mul(core::mem::size_of::<*mut OPJ_BYTE>() as usize),
+        ((*l_tile).numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_BYTE>() as usize),
       ) as *mut *mut OPJ_BYTE;
       if l_data.is_null() {
         return 0i32;
@@ -2538,7 +2459,9 @@ unsafe fn opj_tcd_mct_decode(
       );
     }
   } else {
-    event_msg!(p_manager, EVT_ERROR,
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
       "Number of components (%d) is inconsistent with a MCT. Skip the MCT step.\n",
       (*l_tile).numcomps,
     );
@@ -2580,45 +2503,31 @@ unsafe fn opj_tcd_dc_level_shift_decode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
       } else {
         l_width = ((*l_res).x1 - (*l_res).x0) as OPJ_UINT32;
         l_height = ((*l_res).y1 - (*l_res).y0) as OPJ_UINT32;
-        l_stride = (((*(*l_tile_comp).resolutions.offset(
-          (*l_tile_comp)
-            .minimum_num_resolutions
-            .wrapping_sub(1u32) as isize,
-        ))
+        l_stride = (((*(*l_tile_comp)
+          .resolutions
+          .offset((*l_tile_comp).minimum_num_resolutions.wrapping_sub(1u32) as isize))
         .x1
-          - (*(*l_tile_comp).resolutions.offset(
-            (*l_tile_comp)
-              .minimum_num_resolutions
-              .wrapping_sub(1u32) as isize,
-          ))
+          - (*(*l_tile_comp)
+            .resolutions
+            .offset((*l_tile_comp).minimum_num_resolutions.wrapping_sub(1u32) as isize))
           .x0) as OPJ_UINT32)
           .wrapping_sub(l_width);
         l_current_ptr = (*l_tile_comp).data;
         assert!(
           l_height == 0u32
             || l_width.wrapping_add(l_stride) as usize
-              <= (*l_tile_comp)
-                .data_size
-                .wrapping_div(l_height as usize)
+              <= (*l_tile_comp).data_size.wrapping_div(l_height as usize)
         );
         /*MUPDF*/
       }
 
       if l_width != 0 && l_height != 0 {
         if (*l_img_comp).sgnd != 0 {
-          l_min = -((1i32)
-            << (*l_img_comp)
-              .prec
-              .wrapping_sub(1u32));
-          l_max = ((1i32)
-            << (*l_img_comp)
-              .prec
-              .wrapping_sub(1u32))
-            - 1i32
+          l_min = -((1i32) << (*l_img_comp).prec.wrapping_sub(1u32));
+          l_max = ((1i32) << (*l_img_comp).prec.wrapping_sub(1u32)) - 1i32
         } else {
           l_min = 0i32;
-          l_max = ((1u32) << (*l_img_comp).prec)
-            .wrapping_sub(1u32) as OPJ_INT32
+          l_max = ((1u32) << (*l_img_comp).prec).wrapping_sub(1u32) as OPJ_INT32
         }
 
         if (*l_tccp).qmfbid == 1u32 {
@@ -2836,8 +2745,7 @@ unsafe fn opj_tcd_mct_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
       return 1i32;
     }
     l_data = opj_malloc(
-      ((*l_tile).numcomps as usize)
-        .wrapping_mul(core::mem::size_of::<*mut OPJ_BYTE>() as usize),
+      ((*l_tile).numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_BYTE>() as usize),
     ) as *mut *mut OPJ_BYTE;
     if l_data.is_null() {
       return 0i32;
@@ -2975,8 +2883,16 @@ unsafe fn opj_tcd_rate_allocate_encode(
     (*p_cstr_info).index_write = 0i32
   }
 
-  if (*l_cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO
-    || (*l_cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
+  if (*l_cp)
+    .m_specific_param
+    .m_enc
+    .m_quality_layer_alloc_strategy
+    == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO
+    || (*l_cp)
+      .m_specific_param
+      .m_enc
+      .m_quality_layer_alloc_strategy
+      == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
   {
     if opj_tcd_rateallocate(
       p_tcd,
@@ -3104,8 +3020,7 @@ pub(crate) unsafe fn opj_tcd_copy_tile_data(
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_tcd_is_band_empty(mut band: *mut opj_tcd_band_t) -> OPJ_BOOL {
-  return ((*band).x1 - (*band).x0 == 0i32
-    || (*band).y1 - (*band).y0 == 0i32) as core::ffi::c_int;
+  return ((*band).x1 - (*band).x0 == 0i32 || (*band).y1 - (*band).y0 == 0i32) as core::ffi::c_int;
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_tcd_is_subband_area_of_interest(
@@ -3126,12 +3041,11 @@ pub(crate) unsafe fn opj_tcd_is_subband_area_of_interest(
   /* needed to be bumped to 4, in case inconsistencies are found while */
   /* decoding parts of irreversible coded images. */
   /* See opj_dwt_decode_partial_53 and opj_dwt_decode_partial_97 as well */
-  let mut filter_margin =
-    if (*(*(*tcd).tcp).tccps.offset(compno as isize)).qmfbid == 1u32 {
-      2i32
-    } else {
-      3i32
-    } as OPJ_UINT32;
+  let mut filter_margin = if (*(*(*tcd).tcp).tccps.offset(compno as isize)).qmfbid == 1u32 {
+    2i32
+  } else {
+    3i32
+  } as OPJ_UINT32;
   let mut tilec: *mut opj_tcd_tilecomp_t =
     &mut *(*(*(*tcd).tcd_image).tiles).comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
   let mut image_comp: *mut opj_image_comp_t =
@@ -3156,9 +3070,7 @@ pub(crate) unsafe fn opj_tcd_is_subband_area_of_interest(
   );
   /* Compute number of decomposition for this band. See table F-1 */
   let mut nb = if resno == 0u32 {
-    (*tilec)
-      .numresolutions
-      .wrapping_sub(1u32)
+    (*tilec).numresolutions.wrapping_sub(1u32)
   } else {
     (*tilec).numresolutions.wrapping_sub(resno)
   };
@@ -3168,61 +3080,41 @@ pub(crate) unsafe fn opj_tcd_is_subband_area_of_interest(
   let mut y0b = bandno >> 1i32;
   let mut tbx0 = if nb == 0u32 {
     tcx0
-  } else if tcx0
-    <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(x0b)
-  {
+  } else if tcx0 <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(x0b) {
     0u32
   } else {
     opj_uint_ceildivpow2(
-      tcx0.wrapping_sub(
-        ((1u32) << nb.wrapping_sub(1u32))
-          .wrapping_mul(x0b),
-      ),
+      tcx0.wrapping_sub(((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(x0b)),
       nb,
     )
   };
   let mut tby0 = if nb == 0u32 {
     tcy0
-  } else if tcy0
-    <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(y0b)
-  {
+  } else if tcy0 <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(y0b) {
     0u32
   } else {
     opj_uint_ceildivpow2(
-      tcy0.wrapping_sub(
-        ((1u32) << nb.wrapping_sub(1u32))
-          .wrapping_mul(y0b),
-      ),
+      tcy0.wrapping_sub(((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(y0b)),
       nb,
     )
   };
   let mut tbx1 = if nb == 0u32 {
     tcx1
-  } else if tcx1
-    <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(x0b)
-  {
+  } else if tcx1 <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(x0b) {
     0u32
   } else {
     opj_uint_ceildivpow2(
-      tcx1.wrapping_sub(
-        ((1u32) << nb.wrapping_sub(1u32))
-          .wrapping_mul(x0b),
-      ),
+      tcx1.wrapping_sub(((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(x0b)),
       nb,
     )
   };
   let mut tby1 = if nb == 0u32 {
     tcy1
-  } else if tcy1
-    <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(y0b)
-  {
+  } else if tcy1 <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(y0b) {
     0u32
   } else {
     opj_uint_ceildivpow2(
-      tcy1.wrapping_sub(
-        ((1u32) << nb.wrapping_sub(1u32))
-          .wrapping_mul(y0b),
-      ),
+      tcy1.wrapping_sub(((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(y0b)),
       nb,
     )
   };
@@ -3287,12 +3179,10 @@ unsafe fn opj_tcd_is_whole_tilecomp_decoding(
     && tcy1 <= (*tilec).y1 as OPJ_UINT32
     && (shift >= 32u32
       || tcx0.wrapping_sub((*tilec).x0 as OPJ_UINT32) >> shift == 0u32
-        && tcy0.wrapping_sub((*tilec).y0 as OPJ_UINT32) >> shift
-          == 0u32
-        && ((*tilec).x1 as OPJ_UINT32).wrapping_sub(tcx1) >> shift
-          == 0u32
-        && ((*tilec).y1 as OPJ_UINT32).wrapping_sub(tcy1) >> shift
-          == 0u32)) as core::ffi::c_int;
+        && tcy0.wrapping_sub((*tilec).y0 as OPJ_UINT32) >> shift == 0u32
+        && ((*tilec).x1 as OPJ_UINT32).wrapping_sub(tcx1) >> shift == 0u32
+        && ((*tilec).y1 as OPJ_UINT32).wrapping_sub(tcy1) >> shift == 0u32))
+    as core::ffi::c_int;
 }
 /* ----------------------------------------------------------------------- */
 #[no_mangle]

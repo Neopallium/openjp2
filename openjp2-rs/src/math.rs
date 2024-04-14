@@ -69,15 +69,13 @@ pub(crate) fn opj_uint_ceildiv(mut a: u32, mut b: u32) -> u32 {
 
 #[inline]
 pub(crate) fn opj_int64_ceildivpow2(mut a: i64, mut b: i32) -> i32 {
-  return (a + ((1 as i64) << b) - 1 as i64 >> b)
-    as i32;
+  return (a + ((1 as i64) << b) - 1 as i64 >> b) as i32;
 }
 
 #[inline]
 pub(crate) fn opj_int_ceildiv(mut a: i32, mut b: i32) -> i32 {
   assert!(b != 0);
-  return ((a as i64 + b as i64 - 1 as i64)
-    / b as i64) as i32;
+  return ((a as i64 + b as i64 - 1 as i64) / b as i64) as i32;
 }
 
 #[inline]
@@ -88,9 +86,7 @@ pub(crate) fn opj_uint64_ceildiv_res_uint32(mut a: u64, mut b: u64) -> u32 {
 
 #[inline]
 pub(crate) fn opj_int_ceildivpow2(mut a: i32, mut b: i32) -> i32 {
-  return (a as i64 + ((1 as i64) << b)
-    - 1 as i64
-    >> b) as i32;
+  return (a as i64 + ((1 as i64) << b) - 1 as i64 >> b) as i32;
 }
 
 #[inline]

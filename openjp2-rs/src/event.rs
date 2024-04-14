@@ -1,5 +1,5 @@
-use super::openjpeg::*;
 pub use super::consts::event::*;
+use super::openjpeg::*;
 
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -72,7 +72,8 @@ impl opj_event_mgr {
     self.warning_handler = None;
   }
 
-  pub fn set_info_handler(&mut self,
+  pub fn set_info_handler(
+    &mut self,
     mut p_callback: opj_msg_callback,
     mut p_user_data: *mut core::ffi::c_void,
   ) {
@@ -80,7 +81,8 @@ impl opj_event_mgr {
     self.m_info_data = p_user_data;
   }
 
-  pub fn set_warning_handler(&mut self,
+  pub fn set_warning_handler(
+    &mut self,
     mut p_callback: opj_msg_callback,
     mut p_user_data: *mut core::ffi::c_void,
   ) {
@@ -88,7 +90,8 @@ impl opj_event_mgr {
     self.m_warning_data = p_user_data;
   }
 
-  pub fn set_error_handler(&mut self,
+  pub fn set_error_handler(
+    &mut self,
     mut p_callback: opj_msg_callback,
     mut p_user_data: *mut core::ffi::c_void,
   ) {
@@ -96,19 +99,14 @@ impl opj_event_mgr {
     self.m_error_data = p_user_data;
   }
 
-  pub fn get_handler(&self,
+  pub fn get_handler(
+    &self,
     event_type: EventType,
   ) -> Option<(opj_msg_callback_fn, *mut core::ffi::c_void)> {
     match event_type {
-      EventType::Error => {
-        self.error_handler.map(|h| (h, self.m_error_data))
-      }
-      EventType::Warning => {
-        self.warning_handler.map(|h| (h, self.m_warning_data))
-      }
-      EventType::Info => {
-        self.info_handler.map(|h| (h, self.m_info_data))
-      }
+      EventType::Error => self.error_handler.map(|h| (h, self.m_error_data)),
+      EventType::Warning => self.warning_handler.map(|h| (h, self.m_warning_data)),
+      EventType::Info => self.info_handler.map(|h| (h, self.m_info_data)),
     }
   }
 
@@ -116,10 +114,7 @@ impl opj_event_mgr {
     self.get_handler(event_type).is_some()
   }
 
-  pub fn msg_write(&self,
-    event_type: EventType,
-    msg: &str,
-  ) -> i32 {
+  pub fn msg_write(&self, event_type: EventType, msg: &str) -> i32 {
     let (msg_handler, l_data) = match self.get_handler(event_type) {
       Some(handler) => handler,
       None => {
