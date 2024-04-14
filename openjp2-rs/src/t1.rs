@@ -386,7 +386,7 @@ fn opj_t1_getctxno_mag(mut f: OPJ_UINT32) -> u8 {
   } else {
     T1_CTXNO_MAG
   };
-  
+
   if f & T1_MU_0 != 0 {
     T1_CTXNO_MAG + 2
   } else {
@@ -2526,9 +2526,11 @@ extern "C" fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void
       }
       cblk_w = t1.w;
       cblk_h = t1.h;
-      tiledp = &mut *(*tilec).data.add((y as OPJ_SIZE_T)
+      tiledp = &mut *(*tilec).data.add(
+        (y as OPJ_SIZE_T)
           .wrapping_mul(tile_w as usize)
-          .wrapping_add(x as OPJ_SIZE_T)) as *mut OPJ_INT32;
+          .wrapping_add(x as OPJ_SIZE_T),
+      ) as *mut OPJ_INT32;
       if (*tccp).qmfbid == 1 {
         let mut tiledp_u = tiledp as *mut OPJ_UINT32;
         let mut t1data = t1.data.as_mut_ptr() as *mut OPJ_UINT32;
@@ -2545,13 +2547,17 @@ extern "C" fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void
           i = 0 as OPJ_UINT32;
           while i < cblk_w {
             *t1data.offset(0) = *tiledp_u
-              .offset(j.wrapping_add(0).wrapping_mul(tile_w).wrapping_add(i) as isize) << (7i32 - 1i32);
+              .offset(j.wrapping_add(0).wrapping_mul(tile_w).wrapping_add(i) as isize)
+              << (7i32 - 1i32);
             *t1data.offset(1) = *tiledp_u
-              .offset(j.wrapping_add(1).wrapping_mul(tile_w).wrapping_add(i) as isize) << (7i32 - 1i32);
+              .offset(j.wrapping_add(1).wrapping_mul(tile_w).wrapping_add(i) as isize)
+              << (7i32 - 1i32);
             *t1data.offset(2) = *tiledp_u
-              .offset(j.wrapping_add(2).wrapping_mul(tile_w).wrapping_add(i) as isize) << (7i32 - 1i32);
+              .offset(j.wrapping_add(2).wrapping_mul(tile_w).wrapping_add(i) as isize)
+              << (7i32 - 1i32);
             *t1data.offset(3) = *tiledp_u
-              .offset(j.wrapping_add(3).wrapping_mul(tile_w).wrapping_add(i) as isize) << (7i32 - 1i32);
+              .offset(j.wrapping_add(3).wrapping_mul(tile_w).wrapping_add(i) as isize)
+              << (7i32 - 1i32);
             t1data = t1data.offset(4);
             i += 1
           }

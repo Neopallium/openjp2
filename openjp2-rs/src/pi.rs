@@ -1247,7 +1247,8 @@ unsafe fn opj_get_encoding_parameters(
       l_pdy = (*l_tccp).prch[resno as usize];
 
       l_dx = (*l_img_comp).dx as u64 * ((1u64) << (l_pdx + (*l_tccp).numresolutions - 1 - resno));
-      l_dy = (*l_img_comp).dy as u64 * ((1u64) << (l_pdy + (*l_tccp).numresolutions - 1u32 - resno));
+      l_dy =
+        (*l_img_comp).dy as u64 * ((1u64) << (l_pdy + (*l_tccp).numresolutions - 1u32 - resno));
       /* take the minimum size for dx for each comp and resolution */
       if l_dx < u32::MAX as u64 {
         *p_dx_min = opj_uint_min(*p_dx_min, l_dx as u32);
@@ -1941,9 +1942,8 @@ pub(crate) unsafe fn opj_pi_create_decode(
   if l_tmp_data.is_null() {
     return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
-  l_tmp_ptr =
-    opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>()))
-      as *mut *mut OPJ_UINT32;
+  l_tmp_ptr = opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>()))
+    as *mut *mut OPJ_UINT32;
   if l_tmp_ptr.is_null() {
     opj_free(l_tmp_data as *mut core::ffi::c_void);
     return std::ptr::null_mut::<opj_pi_iterator_t>();
@@ -2210,9 +2210,8 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
   if l_tmp_data.is_null() {
     return std::ptr::null_mut::<opj_pi_iterator_t>();
   }
-  l_tmp_ptr =
-    opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>()))
-      as *mut *mut OPJ_UINT32;
+  l_tmp_ptr = opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>()))
+    as *mut *mut OPJ_UINT32;
   if l_tmp_ptr.is_null() {
     opj_free(l_tmp_data as *mut core::ffi::c_void);
     return std::ptr::null_mut::<opj_pi_iterator_t>();

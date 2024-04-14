@@ -207,7 +207,9 @@ pub(crate) unsafe fn opj_t2_encode_packets(
               (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes) as OPJ_UINT32
           }
         }
-        if (*l_cp).m_specific_param.m_enc.m_max_comp_size != 0 && l_comp_len > (*l_cp).m_specific_param.m_enc.m_max_comp_size {
+        if (*l_cp).m_specific_param.m_enc.m_max_comp_size != 0
+          && l_comp_len > (*l_cp).m_specific_param.m_enc.m_max_comp_size
+        {
           opj_pi_destroy(l_pi, l_nb_pocs);
           return 0i32;
         }
@@ -350,9 +352,9 @@ pub(crate) unsafe fn opj_t2_decode_packets(
       opj_pi_destroy(l_pi, l_nb_pocs);
       return 0i32;
     }
-    first_pass_failed = opj_malloc(
-      ((*l_image).numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_BOOL>()),
-    ) as *mut OPJ_BOOL;
+    first_pass_failed =
+      opj_malloc(((*l_image).numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_BOOL>()))
+        as *mut OPJ_BOOL;
     if first_pass_failed.is_null() {
       opj_pi_destroy(l_pi, l_nb_pocs);
       return 0i32;
@@ -498,8 +500,7 @@ pub(crate) unsafe fn opj_t2_create(
   mut p_cp: *mut opj_cp_t,
 ) -> *mut opj_t2_t {
   /* create the t2 structure */
-  let mut l_t2 =
-    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_t2_t>()) as *mut opj_t2_t;
+  let mut l_t2 = opj_calloc(1i32 as size_t, core::mem::size_of::<opj_t2_t>()) as *mut opj_t2_t;
   if l_t2.is_null() {
     return std::ptr::null_mut::<opj_t2_t>();
   }
@@ -1027,7 +1028,8 @@ unsafe fn opj_t2_read_packet_header(
       if opj_tcd_is_band_empty(l_band) == 0 {
         let mut l_prc: *mut opj_tcd_precinct_t =
           &mut *(*l_band).precincts.offset((*p_pi).precno as isize) as *mut opj_tcd_precinct_t;
-        if ((*p_pi).precno as usize) >= ((*l_band).precincts_data_size as usize)
+        if ((*p_pi).precno as usize)
+          >= ((*l_band).precincts_data_size as usize)
             .wrapping_div(core::mem::size_of::<opj_tcd_precinct_t>())
         {
           event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);

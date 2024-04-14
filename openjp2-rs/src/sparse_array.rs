@@ -64,7 +64,11 @@ unsafe fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
 }
 #[inline]
 unsafe fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  if a < b { a } else { b }
+  if a < b {
+    a
+  } else {
+    b
+  }
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_sparse_array_int32_create(
@@ -193,7 +197,8 @@ unsafe fn opj_sparse_array_int32_read_or_write(
       if is_read_op != 0 {
         if src_block.is_null() {
           if buf_col_stride == 1u32 {
-            let mut dest_ptr = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
+            let mut dest_ptr = buf
+              .add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
               .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
             j = 0 as OPJ_UINT32;
             while j < y_incr {
@@ -206,7 +211,8 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               j += 1;
             }
           } else {
-            let mut dest_ptr_0 = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
+            let mut dest_ptr_0 = buf
+              .add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
               .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
             j = 0 as OPJ_UINT32;
             while j < y_incr {
@@ -221,10 +227,12 @@ unsafe fn opj_sparse_array_int32_read_or_write(
             }
           }
         } else {
-          let mut src_ptr: *const OPJ_INT32 = src_block.add((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T))
+          let mut src_ptr: *const OPJ_INT32 = src_block
+            .add((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T))
             .offset(block_x_offset as isize);
           if buf_col_stride == 1u32 {
-            let mut dest_ptr_1 = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
+            let mut dest_ptr_1 = buf
+              .add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
               .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
             if x_incr == 4u32 {
               /* Same code as general branch, but the compiler */
@@ -255,7 +263,8 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               }
             }
           } else {
-            let mut dest_ptr_2 = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
+            let mut dest_ptr_2 = buf
+              .add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
               .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
             if x_incr == 1u32 {
               j = 0 as OPJ_UINT32;
@@ -349,9 +358,11 @@ unsafe fn opj_sparse_array_int32_read_or_write(
           *fresh0 = src_block
         }
         if buf_col_stride == 1u32 {
-          let mut dest_ptr_3 = src_block.add((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T))
+          let mut dest_ptr_3 = src_block
+            .add((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T))
             .offset(block_x_offset as isize);
-          let mut src_ptr_0: *const OPJ_INT32 = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
+          let mut src_ptr_0: *const OPJ_INT32 = buf
+            .add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
             .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
           if x_incr == 4u32 {
             /* Same code as general branch, but the compiler */
@@ -382,9 +393,11 @@ unsafe fn opj_sparse_array_int32_read_or_write(
             }
           }
         } else {
-          let mut dest_ptr_4 = src_block.add((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T))
+          let mut dest_ptr_4 = src_block
+            .add((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T))
             .offset(block_x_offset as isize);
-          let mut src_ptr_1: *const OPJ_INT32 = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
+          let mut src_ptr_1: *const OPJ_INT32 = buf
+            .add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
             .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
           if x_incr == 1u32 {
             j = 0 as OPJ_UINT32;

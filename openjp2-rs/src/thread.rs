@@ -133,10 +133,8 @@ pub(crate) unsafe fn opj_thread_pool_create(
   mut num_threads: core::ffi::c_int,
 ) -> *mut opj_thread_pool_t {
   let mut tp = std::ptr::null_mut::<opj_thread_pool_t>();
-  tp = opj_calloc(
-    1i32 as size_t,
-    core::mem::size_of::<opj_thread_pool_t>(),
-  ) as *mut opj_thread_pool_t;
+  tp =
+    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_thread_pool_t>()) as *mut opj_thread_pool_t;
   if tp.is_null() {
     return std::ptr::null_mut::<opj_thread_pool_t>();
   }
@@ -320,8 +318,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
     job_fn.expect("non-null function pointer")(user_data);
     return 1i32;
   }
-  job = opj_malloc(core::mem::size_of::<opj_worker_thread_job_t>())
-    as *mut opj_worker_thread_job_t;
+  job = opj_malloc(core::mem::size_of::<opj_worker_thread_job_t>()) as *mut opj_worker_thread_job_t;
   if job.is_null() {
     return 0i32;
   }

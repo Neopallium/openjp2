@@ -1608,11 +1608,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                    // Is the run terminated in 1? if so, use decoded VLC code,
                    // otherwise, discard decoded data, since we will decoded again
                    // using a different context
-      qinf[0_usize] = if run == -(1i32) {
-        qinf[0_usize]
-      } else {
-        0u32
-      };
+      qinf[0_usize] = if run == -(1i32) { qinf[0_usize] } else { 0u32 };
       // is run -1 or -2? this means a run has been consumed
       if run < 0i32 {
         run = mel_get_run(&mut mel)
@@ -1637,8 +1633,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     //                               0 0 0 0 c c 0 0
     //                               0 0 0 0 0 0 0 0
     //                               0 0 0 0 0 0 0 0
-    *sip |=
-      ((qinf[0_usize] & 0x30u32) >> 4i32 | (qinf[0_usize] & 0xc0u32) >> 2i32) << sip_shift;
+    *sip |= ((qinf[0_usize] & 0x30u32) >> 4i32 | (qinf[0_usize] & 0xc0u32) >> 2i32) << sip_shift;
     //second quad
     qinf[1_usize] = 0 as OPJ_UINT32;
     if (x + 2i32) < width {
@@ -1650,11 +1645,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         //zero context
         run -= 2i32; //subtract 2, since events number if multiplied by 2
                      // if event is 0, discard decoded qinf
-        qinf[1_usize] = if run == -(1i32) {
-          qinf[1_usize]
-        } else {
-          0u32
-        };
+        qinf[1_usize] = if run == -(1i32) { qinf[1_usize] } else { 0u32 };
         if run < 0i32 {
           // have we consumed all events in a run
           run = mel_get_run(&mut mel)
@@ -1926,11 +1917,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       if c_q == 0u32 {
         //zero context
         run -= 2i32;
-        qinf[0_usize] = if run == -(1i32) {
-          qinf[0_usize]
-        } else {
-          0u32
-        };
+        qinf[0_usize] = if run == -(1i32) { qinf[0_usize] } else { 0u32 };
         if run < 0i32 {
           run = mel_get_run(&mut mel)
         }
@@ -1959,11 +1946,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         if c_q == 0u32 {
           //zero context
           run -= 2i32;
-          qinf[1_usize] = if run == -(1i32) {
-            qinf[1_usize]
-          } else {
-            0u32
-          };
+          qinf[1_usize] = if run == -(1i32) { qinf[1_usize] } else { 0u32 };
           if run < 0i32 {
             run = mel_get_run(&mut mel)
           }

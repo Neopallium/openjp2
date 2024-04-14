@@ -59,7 +59,6 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
  */
 #[no_mangle]
 pub unsafe fn opj_image_create0() -> *mut opj_image_t {
-  
   opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t
 }
 #[no_mangle]
@@ -70,8 +69,7 @@ pub unsafe fn opj_image_create(
 ) -> *mut opj_image_t {
   let mut compno: OPJ_UINT32 = 0;
   let mut image = std::ptr::null_mut::<opj_image_t>();
-  image =
-    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t;
+  image = opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t;
   if !image.is_null() {
     (*image).color_space = clrspc;
     (*image).numcomps = numcmpts;
@@ -241,8 +239,7 @@ pub unsafe fn opj_copy_image_header(
   }
   (*p_image_dest).numcomps = (*p_image_src).numcomps;
   (*p_image_dest).comps = opj_malloc(
-    ((*p_image_dest).numcomps as usize)
-      .wrapping_mul(core::mem::size_of::<opj_image_comp_t>()),
+    ((*p_image_dest).numcomps as usize).wrapping_mul(core::mem::size_of::<opj_image_comp_t>()),
   ) as *mut opj_image_comp_t;
   if (*p_image_dest).comps.is_null() {
     (*p_image_dest).comps = std::ptr::null_mut::<opj_image_comp_t>();
@@ -289,8 +286,7 @@ pub unsafe fn opj_image_tile_create(
 ) -> *mut opj_image_t {
   let mut compno: OPJ_UINT32 = 0;
   let mut image = std::ptr::null_mut::<opj_image_t>();
-  image =
-    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t;
+  image = opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t;
   if !image.is_null() {
     (*image).color_space = clrspc;
     (*image).numcomps = numcmpts;
