@@ -27,7 +27,7 @@ impl<P> ProcedureList<P> {
   }
 }
 
-pub(crate) unsafe fn opj_procedure_list_create<P>() -> *mut ProcedureList<P> {
+pub(crate) fn opj_procedure_list_create<P>() -> *mut ProcedureList<P> {
   /* memory allocation */
   let mut l_validation = Box::new(ProcedureList { list: Vec::new() });
   Box::into_raw(l_validation)

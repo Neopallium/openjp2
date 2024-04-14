@@ -6390,23 +6390,25 @@ unsafe fn opj_j2k_get_default_thread_count() -> core::ffi::c_int {
 /* ----------------------------------------------------------------------- */
 /* J2K encoder interface                                                       */
 /* ----------------------------------------------------------------------- */
-pub(crate) unsafe fn opj_j2k_create_compress() -> Option<opj_j2k> {
+pub(crate) fn opj_j2k_create_compress() -> Option<opj_j2k> {
   let mut l_j2k = opj_j2k::new(0);
   l_j2k.m_cp.set_m_is_decoder(0 as OPJ_BITFIELD);
-  l_j2k.m_specific_param.m_encoder.m_header_tile_data =
-    opj_malloc(1000i32 as size_t) as *mut OPJ_BYTE;
-  if l_j2k
-    .m_specific_param
-    .m_encoder
-    .m_header_tile_data
-    .is_null()
-  {
-    return None;
-  }
-  l_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 1000 as OPJ_UINT32;
-  l_j2k.m_tp = opj_thread_pool_create(opj_j2k_get_default_thread_count());
-  if l_j2k.m_tp.is_null() {
-    l_j2k.m_tp = opj_thread_pool_create(0i32)
+  unsafe {
+    l_j2k.m_specific_param.m_encoder.m_header_tile_data =
+      opj_malloc(1000i32 as size_t) as *mut OPJ_BYTE;
+    if l_j2k
+      .m_specific_param
+      .m_encoder
+      .m_header_tile_data
+      .is_null()
+    {
+      return None;
+    }
+    l_j2k.m_specific_param.m_encoder.m_header_tile_data_size = 1000 as OPJ_UINT32;
+    l_j2k.m_tp = opj_thread_pool_create(opj_j2k_get_default_thread_count());
+    if l_j2k.m_tp.is_null() {
+      l_j2k.m_tp = opj_thread_pool_create(0i32)
+    }
   }
   if l_j2k.m_tp.is_null() {
     return None;
@@ -10432,40 +10434,42 @@ impl opj_j2k {
   }
 }
 
-pub(crate) unsafe fn opj_j2k_create_decompress() -> Option<opj_j2k> {
+pub(crate) fn opj_j2k_create_decompress() -> Option<opj_j2k> {
   let mut l_j2k = opj_j2k::new(1);
   l_j2k.m_cp.set_m_is_decoder(1 as OPJ_BITFIELD);
   /* in the absence of JP2 boxes, consider different bit depth / sign */
   /* per component is allowed */
-  l_j2k
-    .m_cp
-    .set_allow_different_bit_depth_sign(1 as OPJ_BITFIELD);
-  /* Default to using strict mode. */
-  l_j2k.m_cp.strict = 1i32;
-  l_j2k.m_specific_param.m_decoder.m_default_tcp =
-    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_tcp_t>()) as *mut opj_tcp_t;
-  if l_j2k.m_specific_param.m_decoder.m_default_tcp.is_null() {
-    return None;
-  }
-  l_j2k.m_specific_param.m_decoder.m_header_data =
-    opj_calloc(1i32 as size_t, 1000i32 as size_t) as *mut OPJ_BYTE;
-  if l_j2k.m_specific_param.m_decoder.m_header_data.is_null() {
-    return None;
-  }
-  l_j2k.m_specific_param.m_decoder.m_header_data_size = 1000 as OPJ_UINT32;
-  l_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = -(1i32);
-  l_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = 0 as OPJ_OFF_T;
-  /* codestream index creation */
-  l_j2k.cstr_index = opj_j2k_create_cstr_index();
-  if l_j2k.cstr_index.is_null() {
-    return None;
-  }
-  l_j2k.m_tp = opj_thread_pool_create(opj_j2k_get_default_thread_count());
-  if l_j2k.m_tp.is_null() {
-    l_j2k.m_tp = opj_thread_pool_create(0i32)
-  }
-  if l_j2k.m_tp.is_null() {
-    return None;
+  unsafe {
+    l_j2k
+      .m_cp
+      .set_allow_different_bit_depth_sign(1 as OPJ_BITFIELD);
+    /* Default to using strict mode. */
+    l_j2k.m_cp.strict = 1i32;
+    l_j2k.m_specific_param.m_decoder.m_default_tcp =
+      opj_calloc(1i32 as size_t, core::mem::size_of::<opj_tcp_t>()) as *mut opj_tcp_t;
+    if l_j2k.m_specific_param.m_decoder.m_default_tcp.is_null() {
+      return None;
+    }
+    l_j2k.m_specific_param.m_decoder.m_header_data =
+      opj_calloc(1i32 as size_t, 1000i32 as size_t) as *mut OPJ_BYTE;
+    if l_j2k.m_specific_param.m_decoder.m_header_data.is_null() {
+      return None;
+    }
+    l_j2k.m_specific_param.m_decoder.m_header_data_size = 1000 as OPJ_UINT32;
+    l_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = -(1i32);
+    l_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = 0 as OPJ_OFF_T;
+    /* codestream index creation */
+    l_j2k.cstr_index = opj_j2k_create_cstr_index();
+    if l_j2k.cstr_index.is_null() {
+      return None;
+    }
+    l_j2k.m_tp = opj_thread_pool_create(opj_j2k_get_default_thread_count());
+    if l_j2k.m_tp.is_null() {
+      l_j2k.m_tp = opj_thread_pool_create(0i32)
+    }
+    if l_j2k.m_tp.is_null() {
+      return None;
+    }
   }
   Some(l_j2k)
 }

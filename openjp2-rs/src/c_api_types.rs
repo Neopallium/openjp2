@@ -116,6 +116,19 @@ pub enum CODEC_FORMAT {
 pub use CODEC_FORMAT as OPJ_CODEC_FORMAT;
 pub use CODEC_FORMAT::*;
 
+impl CODEC_FORMAT {
+  pub fn from_i32(num: i32) -> Self {
+    match num {
+      0 => OPJ_CODEC_J2K,
+      1 => OPJ_CODEC_JPT,
+      2 => OPJ_CODEC_JP2,
+      3 => OPJ_CODEC_JPP,
+      4 => OPJ_CODEC_JPX,
+      _ => OPJ_CODEC_UNKNOWN,
+    }
+  }
+}
+
 pub type opj_msg_callback_fn =
   unsafe extern "C" fn(_: *const core::ffi::c_char, _: *mut core::ffi::c_void) -> ();
 

@@ -3240,7 +3240,7 @@ pub(crate) unsafe fn opj_jp2_get_tile(
 /* ----------------------------------------------------------------------- */
 /* JP2 encoder interface                                             */
 /* ----------------------------------------------------------------------- */
-pub(crate) unsafe fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
+pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
   /* create the J2K codec */
   let mut jp2 = opj_jp2 {
     j2k: if p_is_decoder == 0 {
