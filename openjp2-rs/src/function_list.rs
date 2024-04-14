@@ -1,5 +1,5 @@
-use super::openjpeg::*;
 use super::event::*;
+use super::openjpeg::*;
 
 #[derive(Clone)]
 pub(crate) struct ProcedureList<P> {
@@ -9,7 +9,7 @@ pub(crate) struct ProcedureList<P> {
 impl<P> ProcedureList<P> {
   pub fn new() -> Self {
     Self {
-      list: Default::default()
+      list: Default::default(),
     }
   }
 
@@ -29,9 +29,7 @@ impl<P> ProcedureList<P> {
 
 pub(crate) unsafe fn opj_procedure_list_create<P>() -> *mut ProcedureList<P> {
   /* memory allocation */
-  let mut l_validation = Box::new(ProcedureList {
-    list: Vec::new(),
-  });
+  let mut l_validation = Box::new(ProcedureList { list: Vec::new() });
   return Box::into_raw(l_validation);
 }
 
@@ -63,13 +61,14 @@ pub(crate) unsafe fn opj_procedure_list_get_first_procedure<P>(
   return (*p_validation_list).list.as_mut_ptr();
 }
 
-pub(crate) unsafe fn opj_procedure_list_clear<P>(
-  mut p_validation_list: *mut ProcedureList<P>,
-) {
+pub(crate) unsafe fn opj_procedure_list_clear<P>(mut p_validation_list: *mut ProcedureList<P>) {
   (*p_validation_list).list.clear();
 }
 
-pub(crate) fn opj_procedure_list_execute<P, F: FnMut(P) -> bool>(mut p_validation_list: *mut ProcedureList<P>, mut eval: F) -> bool {
+pub(crate) fn opj_procedure_list_execute<P, F: FnMut(P) -> bool>(
+  mut p_validation_list: *mut ProcedureList<P>,
+  mut eval: F,
+) -> bool {
   let mut p_list = unsafe { &mut *p_validation_list };
   p_list.execute(eval)
 }

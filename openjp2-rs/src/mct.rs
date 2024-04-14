@@ -12,10 +12,7 @@ unsafe fn opj_int_fix_mul(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
   temp += 4096i64;
 
   assert!(temp >> 13i32 <= 0x7fffffff as OPJ_INT64);
-  assert!(
-    temp >> 13i32
-      >= -(0x7fffffff as OPJ_INT64) - 1 as OPJ_INT64
-  );
+  assert!(temp >> 13i32 >= -(0x7fffffff as OPJ_INT64) - 1 as OPJ_INT64);
   return (temp >> 13i32) as OPJ_INT32;
 }
 /*

@@ -1,6 +1,6 @@
 use super::bio::*;
-use super::openjpeg::*;
 use super::event::*;
+use super::openjpeg::*;
 
 use super::malloc::*;
 
@@ -73,7 +73,9 @@ pub(crate) unsafe fn opj_tgt_create(
     core::mem::size_of::<opj_tgt_tree_t>() as usize,
   ) as *mut opj_tgt_tree_t;
   if tree.is_null() {
-    event_msg!(p_manager, EVT_ERROR,
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
       "Not enough memory to create Tag-tree\n",
     );
     return 0 as *mut opj_tgt_tree_t;
@@ -86,12 +88,9 @@ pub(crate) unsafe fn opj_tgt_create(
   (*tree).numnodes = 0 as OPJ_UINT32;
   loop {
     n = (nplh[numlvls as usize] * nplv[numlvls as usize]) as OPJ_UINT32;
-    nplh[numlvls.wrapping_add(1u32) as usize] =
-      (nplh[numlvls as usize] + 1i32) / 2i32;
-    nplv[numlvls.wrapping_add(1u32) as usize] =
-      (nplv[numlvls as usize] + 1i32) / 2i32;
-    (*tree).numnodes =
-      ((*tree).numnodes as core::ffi::c_uint).wrapping_add(n) as OPJ_UINT32;
+    nplh[numlvls.wrapping_add(1u32) as usize] = (nplh[numlvls as usize] + 1i32) / 2i32;
+    nplv[numlvls.wrapping_add(1u32) as usize] = (nplv[numlvls as usize] + 1i32) / 2i32;
+    (*tree).numnodes = ((*tree).numnodes as core::ffi::c_uint).wrapping_add(n) as OPJ_UINT32;
     numlvls = numlvls.wrapping_add(1);
     if !(n > 1u32) {
       break;
@@ -107,7 +106,9 @@ pub(crate) unsafe fn opj_tgt_create(
     core::mem::size_of::<opj_tgt_node_t>() as usize,
   ) as *mut opj_tgt_node_t;
   if (*tree).nodes.is_null() {
-    event_msg!(p_manager, EVT_ERROR,
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
       "Not enough memory to create Tag-tree nodes\n",
     );
     opj_free(tree as *mut core::ffi::c_void);
@@ -197,8 +198,7 @@ pub(crate) unsafe fn opj_tgt_init(
         (l_nplh[l_num_levels as usize] + 1i32) / 2i32;
       l_nplv[l_num_levels.wrapping_add(1u32) as usize] =
         (l_nplv[l_num_levels as usize] + 1i32) / 2i32;
-      (*p_tree).numnodes =
-        ((*p_tree).numnodes as core::ffi::c_uint).wrapping_add(n) as OPJ_UINT32;
+      (*p_tree).numnodes = ((*p_tree).numnodes as core::ffi::c_uint).wrapping_add(n) as OPJ_UINT32;
       l_num_levels = l_num_levels.wrapping_add(1);
       if !(n > 1u32) {
         break;
@@ -213,10 +213,14 @@ pub(crate) unsafe fn opj_tgt_init(
       .numnodes
       .wrapping_mul(core::mem::size_of::<opj_tgt_node_t>() as OPJ_UINT32);
     if l_node_size > (*p_tree).nodes_size {
-      let mut new_nodes = opj_realloc((*p_tree).nodes as *mut core::ffi::c_void, l_node_size as size_t)
-        as *mut opj_tgt_node_t;
+      let mut new_nodes = opj_realloc(
+        (*p_tree).nodes as *mut core::ffi::c_void,
+        l_node_size as size_t,
+      ) as *mut opj_tgt_node_t;
       if new_nodes.is_null() {
-        event_msg!(p_manager, EVT_ERROR,
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
           "Not enough memory to reinitialize the tag tree\n",
         );
         opj_tgt_destroy(p_tree);

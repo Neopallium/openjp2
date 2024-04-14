@@ -1,9 +1,9 @@
-use super::thread::*;
-use super::jp2::*;
 use super::j2k::*;
+use super::jp2::*;
+use super::thread::*;
 
-use super::malloc::*;
 use super::consts::*;
+use super::malloc::*;
 
 use super::event::opj_event_mgr;
 
@@ -11,20 +11,16 @@ use super::event::opj_event_mgr;
 use super::cio::*;
 
 #[cfg(feature = "file-io")]
-use ::libc::{
-  FILE,
-  fclose,
-  fopen,
-  fread,
-  fwrite,
-  fseeko,
-  ftello,
-};
+use ::libc::{fclose, fopen, fread, fseeko, ftello, fwrite, FILE};
 
 extern "C" {
   fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
 
-  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
+  fn memcpy(
+    _: *mut core::ffi::c_void,
+    _: *const core::ffi::c_void,
+    _: usize,
+  ) -> *mut core::ffi::c_void;
 }
 
 pub type size_t = usize;
@@ -70,20 +66,20 @@ pub type OPJ_PROG_ORDER = PROG_ORDER;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(i32)]
 pub enum COLOR_SPACE {
-    ///< not supported by the library
-    OPJ_CLRSPC_UNKNOWN = -1,
-    ///< not specified in the codestream
-    OPJ_CLRSPC_UNSPECIFIED = 0,
-    ///< sRGB
-    OPJ_CLRSPC_SRGB = 1,
-    ///< grayscale
-    OPJ_CLRSPC_GRAY = 2,
-    ///< YUV
-    OPJ_CLRSPC_SYCC = 3,
-    ///< e-YCC
-    OPJ_CLRSPC_EYCC = 4,
-    ///< CMYK
-    OPJ_CLRSPC_CMYK = 5,
+  ///< not supported by the library
+  OPJ_CLRSPC_UNKNOWN = -1,
+  ///< not specified in the codestream
+  OPJ_CLRSPC_UNSPECIFIED = 0,
+  ///< sRGB
+  OPJ_CLRSPC_SRGB = 1,
+  ///< grayscale
+  OPJ_CLRSPC_GRAY = 2,
+  ///< YUV
+  OPJ_CLRSPC_SYCC = 3,
+  ///< e-YCC
+  OPJ_CLRSPC_EYCC = 4,
+  ///< CMYK
+  OPJ_CLRSPC_CMYK = 5,
 }
 /// Supported image color spaces
 pub use COLOR_SPACE as OPJ_COLOR_SPACE;
@@ -93,18 +89,18 @@ pub use COLOR_SPACE::*;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(i32)]
 pub enum CODEC_FORMAT {
-    ///< place-holder
-    OPJ_CODEC_UNKNOWN = -1,
-    ///< JPEG-2000 codestream : read/write
-    OPJ_CODEC_J2K = 0,
-    ///< JPT-stream (JPEG 2000, JPIP) : read only
-    OPJ_CODEC_JPT = 1,
-    ///< JP2 file format : read/write
-    OPJ_CODEC_JP2 = 2,
-    ///< JPP-stream (JPEG 2000, JPIP) : to be coded
-    OPJ_CODEC_JPP = 3,
-    ///< JPX file format (JPEG 2000 Part-2) : to be coded
-    OPJ_CODEC_JPX = 4,
+  ///< place-holder
+  OPJ_CODEC_UNKNOWN = -1,
+  ///< JPEG-2000 codestream : read/write
+  OPJ_CODEC_J2K = 0,
+  ///< JPT-stream (JPEG 2000, JPIP) : read only
+  OPJ_CODEC_JPT = 1,
+  ///< JP2 file format : read/write
+  OPJ_CODEC_JP2 = 2,
+  ///< JPP-stream (JPEG 2000, JPIP) : to be coded
+  OPJ_CODEC_JPP = 3,
+  ///< JPX file format (JPEG 2000 Part-2) : to be coded
+  OPJ_CODEC_JPX = 4,
 }
 /// Supported codec
 pub use CODEC_FORMAT as OPJ_CODEC_FORMAT;
@@ -247,16 +243,25 @@ pub struct opj_dparameters {
 pub type opj_dparameters_t = opj_dparameters;
 pub type opj_codec_t = *mut core::ffi::c_void;
 pub type opj_stream_read_fn = Option<
-  unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_SIZE_T, _: *mut core::ffi::c_void) -> OPJ_SIZE_T,
+  unsafe extern "C" fn(
+    _: *mut core::ffi::c_void,
+    _: OPJ_SIZE_T,
+    _: *mut core::ffi::c_void,
+  ) -> OPJ_SIZE_T,
 >;
 pub type opj_stream_write_fn = Option<
-  unsafe extern "C" fn(_: *mut core::ffi::c_void, _: OPJ_SIZE_T, _: *mut core::ffi::c_void) -> OPJ_SIZE_T,
+  unsafe extern "C" fn(
+    _: *mut core::ffi::c_void,
+    _: OPJ_SIZE_T,
+    _: *mut core::ffi::c_void,
+  ) -> OPJ_SIZE_T,
 >;
 pub type opj_stream_skip_fn =
   Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_OFF_T>;
 pub type opj_stream_seek_fn =
   Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL>;
-pub type opj_stream_free_user_data_fn = Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>;
+pub type opj_stream_free_user_data_fn =
+  Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>;
 pub type opj_stream_t = *mut core::ffi::c_void;
 
 #[repr(C)]
@@ -475,10 +480,7 @@ pub(crate) enum Codec {
 }
 
 impl Codec {
-  pub unsafe fn set_threads(
-    &mut self,
-    mut num_threads: core::ffi::c_int,
-  ) -> OPJ_BOOL {
+  pub unsafe fn set_threads(&mut self, mut num_threads: core::ffi::c_int) -> OPJ_BOOL {
     if num_threads >= 0i32 {
       match self {
         Self::Encoder(CodecEncoder::J2K(j2k)) | Self::Decoder(CodecDecoder::J2K(j2k)) => {
@@ -486,7 +488,7 @@ impl Codec {
         }
         Self::Encoder(CodecEncoder::JP2(jp2)) | Self::Decoder(CodecDecoder::JP2(jp2)) => {
           opj_jp2_set_threads(jp2, num_threads as _)
-        },
+        }
       }
     } else {
       0
@@ -494,44 +496,36 @@ impl Codec {
   }
 
   #[cfg(feature = "file-io")]
-  pub unsafe fn dump_codec(
-    &mut self,
-    mut info_flag: OPJ_INT32,
-    mut output_stream: *mut FILE,
-  ) {
+  pub unsafe fn dump_codec(&mut self, mut info_flag: OPJ_INT32, mut output_stream: *mut FILE) {
     match self {
       Self::Encoder(CodecEncoder::J2K(j2k)) | Self::Decoder(CodecDecoder::J2K(j2k)) => {
         j2k_dump(j2k, info_flag, output_stream)
       }
       Self::Encoder(CodecEncoder::JP2(jp2)) | Self::Decoder(CodecDecoder::JP2(jp2)) => {
         jp2_dump(jp2, info_flag, output_stream)
-      },
+      }
     }
   }
 
-  pub unsafe fn get_cstr_info(
-    &mut self,
-  ) -> *mut opj_codestream_info_v2_t {
+  pub unsafe fn get_cstr_info(&mut self) -> *mut opj_codestream_info_v2_t {
     match self {
       Self::Encoder(CodecEncoder::J2K(j2k)) | Self::Decoder(CodecDecoder::J2K(j2k)) => {
         j2k_get_cstr_info(j2k)
       }
       Self::Encoder(CodecEncoder::JP2(jp2)) | Self::Decoder(CodecDecoder::JP2(jp2)) => {
         jp2_get_cstr_info(jp2)
-      },
+      }
     }
   }
 
-  pub unsafe fn get_cstr_index(
-    &mut self,
-  ) -> *mut opj_codestream_index_t {
+  pub unsafe fn get_cstr_index(&mut self) -> *mut opj_codestream_index_t {
     match self {
       Self::Encoder(CodecEncoder::J2K(j2k)) | Self::Decoder(CodecDecoder::J2K(j2k)) => {
         j2k_get_cstr_index(j2k)
       }
       Self::Encoder(CodecEncoder::JP2(jp2)) | Self::Decoder(CodecDecoder::JP2(jp2)) => {
         jp2_get_cstr_index(jp2)
-      },
+      }
     }
   }
 }
@@ -555,7 +549,7 @@ impl Codec {
         if !parameters.is_null() {
           return dec.setup_decoder(parameters);
         }
-      },
+      }
     }
     return 0i32;
   }
@@ -575,7 +569,7 @@ impl Codec {
       Self::Decoder(dec) => {
         dec.decoder_set_strict_mode(strict);
         1
-      },
+      }
     }
   }
 
@@ -587,7 +581,8 @@ impl Codec {
   ) -> OPJ_BOOL {
     match self {
       Self::Encoder(_) => {
-        event_msg!(p_manager,
+        event_msg!(
+          p_manager,
           EVT_ERROR,
           "Codec provided to the opj_read_header function is not a decompressor handler.\n",
         );
@@ -597,7 +592,7 @@ impl Codec {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return dec.read_header(l_stream, p_image, p_manager);
         }
-      },
+      }
     }
     0
   }
@@ -619,14 +614,15 @@ impl Codec {
       }
       Self::Decoder(dec) => {
         if apply_color_transforms != 0 {
-          event_msg!(p_manager,
+          event_msg!(
+            p_manager,
             EVT_ERROR,
             "apply_color_transforms = OPJ_TRUE is not supported.\n",
           );
           return 0i32;
         }
         return dec.set_decoded_components(numcomps, comps_indices, p_manager);
-      },
+      }
     }
   }
 
@@ -643,7 +639,7 @@ impl Codec {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return dec.decode(l_stream, p_image, p_manager);
         }
-      },
+      }
     }
     return 0i32;
   }
@@ -660,7 +656,7 @@ impl Codec {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return dec.end_decompress(l_stream, p_manager);
         }
-      },
+      }
     }
     0
   }
@@ -678,7 +674,7 @@ impl Codec {
       Self::Encoder(_) => (),
       Self::Decoder(dec) => {
         return dec.set_decode_area(p_image, p_start_x, p_start_y, p_end_x, p_end_y, p_manager);
-      },
+      }
     }
     return 0i32;
   }
@@ -701,9 +697,20 @@ impl Codec {
       Self::Decoder(dec) => {
         if !p_stream.is_null() && !p_data_size.is_null() && !p_tile_index.is_null() {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
-          return dec.read_tile_header(l_stream, p_tile_index, p_data_size, p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on, p_manager);
+          return dec.read_tile_header(
+            l_stream,
+            p_tile_index,
+            p_data_size,
+            p_tile_x0,
+            p_tile_y0,
+            p_tile_x1,
+            p_tile_y1,
+            p_nb_comps,
+            p_should_go_on,
+            p_manager,
+          );
         }
-      },
+      }
     }
     return 0i32;
   }
@@ -723,7 +730,7 @@ impl Codec {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return dec.decode_tile_data(l_stream, p_tile_index, p_data, p_data_size, p_manager);
         }
-      },
+      }
     }
     return 0i32;
   }
@@ -742,7 +749,7 @@ impl Codec {
           let mut l_stream = p_stream as *mut opj_stream_private_t;
           return dec.get_decoded_tile(l_stream, p_image, tile_index, p_manager);
         }
-      },
+      }
     }
     return 0;
   }
@@ -758,7 +765,7 @@ impl Codec {
       }
       Self::Decoder(dec) => {
         return dec.set_decoded_resolution_factor(res_factor, p_manager);
-      },
+      }
     }
   }
 }
@@ -883,12 +890,8 @@ impl CodecEncoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(enc) => {
-        opj_j2k_setup_encoder(enc, parameters, p_image, p_manager)
-      }
-      Self::JP2(enc) => {
-        opj_jp2_setup_encoder(enc, parameters, p_image, p_manager)
-      },
+      Self::J2K(enc) => opj_j2k_setup_encoder(enc, parameters, p_image, p_manager),
+      Self::JP2(enc) => opj_jp2_setup_encoder(enc, parameters, p_image, p_manager),
     }
   }
 
@@ -898,12 +901,8 @@ impl CodecEncoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(enc) => {
-        opj_j2k_encoder_set_extra_options(enc, options, p_manager)
-      }
-      Self::JP2(enc) => {
-        opj_jp2_encoder_set_extra_options(enc, options, p_manager)
-      },
+      Self::J2K(enc) => opj_j2k_encoder_set_extra_options(enc, options, p_manager),
+      Self::JP2(enc) => opj_jp2_encoder_set_extra_options(enc, options, p_manager),
     }
   }
 
@@ -914,12 +913,8 @@ impl CodecEncoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(enc) => {
-        opj_j2k_start_compress(enc, l_stream, p_image, p_manager)
-      }
-      Self::JP2(enc) => {
-        opj_jp2_start_compress(enc, l_stream, p_image, p_manager)
-      },
+      Self::J2K(enc) => opj_j2k_start_compress(enc, l_stream, p_image, p_manager),
+      Self::JP2(enc) => opj_jp2_start_compress(enc, l_stream, p_image, p_manager),
     }
   }
 
@@ -929,12 +924,8 @@ impl CodecEncoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(enc) => {
-        opj_j2k_encode(enc, l_stream, p_manager)
-      }
-      Self::JP2(enc) => {
-        opj_jp2_encode(enc, l_stream, p_manager)
-      },
+      Self::J2K(enc) => opj_j2k_encode(enc, l_stream, p_manager),
+      Self::JP2(enc) => opj_jp2_encode(enc, l_stream, p_manager),
     }
   }
 
@@ -944,12 +935,8 @@ impl CodecEncoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(enc) => {
-        opj_j2k_end_compress(enc, l_stream, p_manager)
-      }
-      Self::JP2(enc) => {
-        opj_jp2_end_compress(enc, l_stream, p_manager)
-      },
+      Self::J2K(enc) => opj_j2k_end_compress(enc, l_stream, p_manager),
+      Self::JP2(enc) => opj_jp2_end_compress(enc, l_stream, p_manager),
     }
   }
 
@@ -967,11 +954,10 @@ impl CodecEncoder {
       }
       Self::JP2(enc) => {
         opj_jp2_write_tile(enc, p_tile_index, p_data, p_data_size, l_stream, p_manager)
-      },
+      }
     }
   }
 }
-
 
 pub(crate) enum CodecDecoder {
   J2K(opj_j2k),
@@ -982,39 +968,31 @@ pub(crate) enum CodecDecoder {
 impl CodecDecoder {
   pub unsafe fn destroy(&mut self) {
     match self {
-      Self::J2K(_enc) => {
-      }
-      Self::JP2(_enc) => {
-      },
+      Self::J2K(_enc) => {}
+      Self::JP2(_enc) => {}
     }
   }
 
-  pub unsafe fn setup_decoder(
-    &mut self,
-    mut parameters: *mut opj_dparameters_t,
-  ) -> OPJ_BOOL {
+  pub unsafe fn setup_decoder(&mut self, mut parameters: *mut opj_dparameters_t) -> OPJ_BOOL {
     match self {
       Self::J2K(dec) => {
         opj_j2k_setup_decoder(dec, parameters);
       }
       Self::JP2(dec) => {
         opj_jp2_setup_decoder(dec, parameters);
-      },
+      }
     }
     1
   }
 
-  pub unsafe fn decoder_set_strict_mode(
-    &mut self,
-    mut strict: OPJ_BOOL,
-  ) -> OPJ_BOOL {
+  pub unsafe fn decoder_set_strict_mode(&mut self, mut strict: OPJ_BOOL) -> OPJ_BOOL {
     match self {
       Self::J2K(dec) => {
         opj_j2k_decoder_set_strict_mode(dec, strict);
       }
       Self::JP2(dec) => {
         opj_jp2_decoder_set_strict_mode(dec, strict);
-      },
+      }
     }
     0
   }
@@ -1026,12 +1004,8 @@ impl CodecDecoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(dec) => {
-        opj_j2k_read_header(l_stream, dec, p_image, p_manager)
-      }
-      Self::JP2(dec) => {
-        opj_jp2_read_header(l_stream, dec, p_image, p_manager)
-      },
+      Self::J2K(dec) => opj_j2k_read_header(l_stream, dec, p_image, p_manager),
+      Self::JP2(dec) => opj_jp2_read_header(l_stream, dec, p_image, p_manager),
     }
   }
 
@@ -1042,12 +1016,8 @@ impl CodecDecoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(dec) => {
-        opj_j2k_set_decoded_components(dec, numcomps, comps_indices, p_manager)
-      }
-      Self::JP2(dec) => {
-        opj_jp2_set_decoded_components(dec, numcomps, comps_indices, p_manager)
-      },
+      Self::J2K(dec) => opj_j2k_set_decoded_components(dec, numcomps, comps_indices, p_manager),
+      Self::JP2(dec) => opj_jp2_set_decoded_components(dec, numcomps, comps_indices, p_manager),
     }
   }
 
@@ -1058,12 +1028,8 @@ impl CodecDecoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(dec) => {
-        opj_j2k_decode(dec, l_stream, p_image, p_manager)
-      }
-      Self::JP2(dec) => {
-        opj_jp2_decode(dec, l_stream, p_image, p_manager)
-      },
+      Self::J2K(dec) => opj_j2k_decode(dec, l_stream, p_image, p_manager),
+      Self::JP2(dec) => opj_jp2_decode(dec, l_stream, p_image, p_manager),
     }
   }
 
@@ -1073,12 +1039,8 @@ impl CodecDecoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(dec) => {
-        opj_j2k_end_decompress(dec, l_stream, p_manager)
-      }
-      Self::JP2(dec) => {
-        opj_jp2_end_decompress(dec, l_stream, p_manager)
-      },
+      Self::J2K(dec) => opj_j2k_end_decompress(dec, l_stream, p_manager),
+      Self::JP2(dec) => opj_jp2_end_decompress(dec, l_stream, p_manager),
     }
   }
 
@@ -1092,12 +1054,12 @@ impl CodecDecoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(dec) => {
-        opj_j2k_set_decode_area(dec, p_image, p_start_x, p_start_y, p_end_x, p_end_y, p_manager)
-      }
-      Self::JP2(dec) => {
-        opj_jp2_set_decode_area(dec, p_image, p_start_x, p_start_y, p_end_x, p_end_y, p_manager)
-      },
+      Self::J2K(dec) => opj_j2k_set_decode_area(
+        dec, p_image, p_start_x, p_start_y, p_end_x, p_end_y, p_manager,
+      ),
+      Self::JP2(dec) => opj_jp2_set_decode_area(
+        dec, p_image, p_start_x, p_start_y, p_end_x, p_end_y, p_manager,
+      ),
     }
   }
 
@@ -1115,12 +1077,32 @@ impl CodecDecoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(dec) => {
-        opj_j2k_read_tile_header(dec, p_tile_index, p_data_size, p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on, l_stream, p_manager)
-      }
-      Self::JP2(dec) => {
-        opj_jp2_read_tile_header(dec, p_tile_index, p_data_size, p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on, l_stream, p_manager)
-      },
+      Self::J2K(dec) => opj_j2k_read_tile_header(
+        dec,
+        p_tile_index,
+        p_data_size,
+        p_tile_x0,
+        p_tile_y0,
+        p_tile_x1,
+        p_tile_y1,
+        p_nb_comps,
+        p_should_go_on,
+        l_stream,
+        p_manager,
+      ),
+      Self::JP2(dec) => opj_jp2_read_tile_header(
+        dec,
+        p_tile_index,
+        p_data_size,
+        p_tile_x0,
+        p_tile_y0,
+        p_tile_x1,
+        p_tile_y1,
+        p_nb_comps,
+        p_should_go_on,
+        l_stream,
+        p_manager,
+      ),
     }
   }
 
@@ -1138,7 +1120,7 @@ impl CodecDecoder {
       }
       Self::JP2(dec) => {
         opj_jp2_decode_tile(dec, p_tile_index, p_data, p_data_size, l_stream, p_manager)
-      },
+      }
     }
   }
 
@@ -1150,12 +1132,8 @@ impl CodecDecoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(dec) => {
-        opj_j2k_get_tile(dec, l_stream, p_image, p_manager, tile_index)
-      }
-      Self::JP2(dec) => {
-        opj_jp2_get_tile(dec, l_stream, p_image, p_manager, tile_index)
-      },
+      Self::J2K(dec) => opj_j2k_get_tile(dec, l_stream, p_image, p_manager, tile_index),
+      Self::JP2(dec) => opj_jp2_get_tile(dec, l_stream, p_image, p_manager, tile_index),
     }
   }
 
@@ -1165,16 +1143,11 @@ impl CodecDecoder {
     mut p_manager: &mut opj_event_mgr,
   ) -> OPJ_BOOL {
     match self {
-      Self::J2K(dec) => {
-        opj_j2k_set_decoded_resolution_factor(dec, res_factor, p_manager)
-      }
-      Self::JP2(dec) => {
-        opj_jp2_set_decoded_resolution_factor(dec, res_factor, p_manager)
-      },
+      Self::J2K(dec) => opj_j2k_set_decoded_resolution_factor(dec, res_factor, p_manager),
+      Self::JP2(dec) => opj_jp2_set_decoded_resolution_factor(dec, res_factor, p_manager),
     }
   }
 }
-
 
 #[repr(C)]
 pub(crate) struct opj_codec_private {
@@ -1198,7 +1171,9 @@ impl opj_codec_private {
     mut p_callback: opj_msg_callback,
     mut p_user_data: *mut core::ffi::c_void,
   ) -> OPJ_BOOL {
-    self.m_event_mgr.set_warning_handler(p_callback, p_user_data);
+    self
+      .m_event_mgr
+      .set_warning_handler(p_callback, p_user_data);
     return 1i32;
   }
 
@@ -1211,25 +1186,20 @@ impl opj_codec_private {
     return 1i32;
   }
 
-  pub unsafe fn set_threads(
-    &mut self,
-    mut num_threads: core::ffi::c_int,
-  ) -> OPJ_BOOL {
+  pub unsafe fn set_threads(&mut self, mut num_threads: core::ffi::c_int) -> OPJ_BOOL {
     return self.m_codec.set_threads(num_threads);
   }
 
-  pub unsafe fn setup_decoder(
-    &mut self,
-    mut parameters: *mut opj_dparameters_t,
-  ) -> OPJ_BOOL {
-    return self.m_codec.setup_decoder(parameters, &mut self.m_event_mgr);
+  pub unsafe fn setup_decoder(&mut self, mut parameters: *mut opj_dparameters_t) -> OPJ_BOOL {
+    return self
+      .m_codec
+      .setup_decoder(parameters, &mut self.m_event_mgr);
   }
 
-  pub unsafe fn decoder_set_strict_mode(
-    &mut self,
-    mut strict: OPJ_BOOL,
-  ) -> OPJ_BOOL {
-    return self.m_codec.decoder_set_strict_mode(strict, &mut self.m_event_mgr);
+  pub unsafe fn decoder_set_strict_mode(&mut self, mut strict: OPJ_BOOL) -> OPJ_BOOL {
+    return self
+      .m_codec
+      .decoder_set_strict_mode(strict, &mut self.m_event_mgr);
   }
 
   pub unsafe fn read_header(
@@ -1237,7 +1207,9 @@ impl opj_codec_private {
     mut p_stream: *mut opj_stream_t,
     mut p_image: *mut *mut opj_image_t,
   ) -> OPJ_BOOL {
-    return self.m_codec.read_header(p_stream, p_image, &mut self.m_event_mgr);
+    return self
+      .m_codec
+      .read_header(p_stream, p_image, &mut self.m_event_mgr);
   }
 
   pub unsafe fn set_decoded_components(
@@ -1246,7 +1218,12 @@ impl opj_codec_private {
     mut comps_indices: *const OPJ_UINT32,
     mut apply_color_transforms: OPJ_BOOL,
   ) -> OPJ_BOOL {
-    return self.m_codec.set_decoded_components(numcomps, comps_indices, apply_color_transforms, &mut self.m_event_mgr);
+    return self.m_codec.set_decoded_components(
+      numcomps,
+      comps_indices,
+      apply_color_transforms,
+      &mut self.m_event_mgr,
+    );
   }
 
   pub unsafe fn decode(
@@ -1254,13 +1231,12 @@ impl opj_codec_private {
     mut p_stream: *mut opj_stream_t,
     mut p_image: *mut opj_image_t,
   ) -> OPJ_BOOL {
-    return self.m_codec.decode(p_stream, p_image, &mut self.m_event_mgr);
+    return self
+      .m_codec
+      .decode(p_stream, p_image, &mut self.m_event_mgr);
   }
 
-  pub unsafe fn end_decompress(
-    &mut self,
-    mut p_stream: *mut opj_stream_t,
-  ) -> OPJ_BOOL {
+  pub unsafe fn end_decompress(&mut self, mut p_stream: *mut opj_stream_t) -> OPJ_BOOL {
     return self.m_codec.end_decompress(p_stream, &mut self.m_event_mgr);
   }
 
@@ -1272,7 +1248,14 @@ impl opj_codec_private {
     mut p_end_x: OPJ_INT32,
     mut p_end_y: OPJ_INT32,
   ) -> OPJ_BOOL {
-    return self.m_codec.set_decode_area(p_image, p_start_x, p_start_y, p_end_x, p_end_y, &mut self.m_event_mgr);
+    return self.m_codec.set_decode_area(
+      p_image,
+      p_start_x,
+      p_start_y,
+      p_end_x,
+      p_end_y,
+      &mut self.m_event_mgr,
+    );
   }
 
   pub unsafe fn read_tile_header(
@@ -1287,7 +1270,18 @@ impl opj_codec_private {
     mut p_nb_comps: *mut OPJ_UINT32,
     mut p_should_go_on: *mut OPJ_BOOL,
   ) -> OPJ_BOOL {
-    return self.m_codec.read_tile_header(p_stream, p_tile_index, p_data_size, p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on, &mut self.m_event_mgr);
+    return self.m_codec.read_tile_header(
+      p_stream,
+      p_tile_index,
+      p_data_size,
+      p_tile_x0,
+      p_tile_y0,
+      p_tile_x1,
+      p_tile_y1,
+      p_nb_comps,
+      p_should_go_on,
+      &mut self.m_event_mgr,
+    );
   }
 
   pub unsafe fn decode_tile_data(
@@ -1297,7 +1291,13 @@ impl opj_codec_private {
     mut p_data: *mut OPJ_BYTE,
     mut p_data_size: OPJ_UINT32,
   ) -> OPJ_BOOL {
-    return self.m_codec.decode_tile_data(p_stream, p_tile_index, p_data, p_data_size, &mut self.m_event_mgr);
+    return self.m_codec.decode_tile_data(
+      p_stream,
+      p_tile_index,
+      p_data,
+      p_data_size,
+      &mut self.m_event_mgr,
+    );
   }
 
   pub unsafe fn get_decoded_tile(
@@ -1306,14 +1306,15 @@ impl opj_codec_private {
     mut p_image: *mut opj_image_t,
     mut tile_index: OPJ_UINT32,
   ) -> OPJ_BOOL {
-    return self.m_codec.get_decoded_tile(p_stream, p_image, tile_index, &mut self.m_event_mgr);
+    return self
+      .m_codec
+      .get_decoded_tile(p_stream, p_image, tile_index, &mut self.m_event_mgr);
   }
 
-  pub unsafe fn set_decoded_resolution_factor(
-    &mut self,
-    mut res_factor: OPJ_UINT32,
-  ) -> OPJ_BOOL {
-    return self.m_codec.set_decoded_resolution_factor(res_factor, &mut self.m_event_mgr);
+  pub unsafe fn set_decoded_resolution_factor(&mut self, mut res_factor: OPJ_UINT32) -> OPJ_BOOL {
+    return self
+      .m_codec
+      .set_decoded_resolution_factor(res_factor, &mut self.m_event_mgr);
   }
 }
 
@@ -1324,14 +1325,18 @@ impl opj_codec_private {
     mut parameters: *mut opj_cparameters_t,
     mut p_image: *mut opj_image_t,
   ) -> OPJ_BOOL {
-    self.m_codec.setup_encoder(parameters, p_image, &mut self.m_event_mgr)
+    self
+      .m_codec
+      .setup_encoder(parameters, p_image, &mut self.m_event_mgr)
   }
 
   pub unsafe fn encoder_set_extra_options(
     &mut self,
     mut options: *const *const core::ffi::c_char,
   ) -> OPJ_BOOL {
-    self.m_codec.set_extra_options(options, &mut self.m_event_mgr)
+    self
+      .m_codec
+      .set_extra_options(options, &mut self.m_event_mgr)
   }
 
   pub unsafe fn start_compress(
@@ -1339,20 +1344,16 @@ impl opj_codec_private {
     mut p_image: *mut opj_image_t,
     mut p_stream: *mut opj_stream_t,
   ) -> OPJ_BOOL {
-    self.m_codec.start_compress(p_image, p_stream, &mut self.m_event_mgr)
+    self
+      .m_codec
+      .start_compress(p_image, p_stream, &mut self.m_event_mgr)
   }
 
-  pub unsafe fn encode(
-    &mut self,
-    mut p_stream: *mut opj_stream_t,
-  ) -> OPJ_BOOL {
+  pub unsafe fn encode(&mut self, mut p_stream: *mut opj_stream_t) -> OPJ_BOOL {
     self.m_codec.encode(p_stream, &mut self.m_event_mgr)
   }
 
-  pub unsafe fn end_compress(
-    &mut self,
-    mut p_stream: *mut opj_stream_t,
-  ) -> OPJ_BOOL {
+  pub unsafe fn end_compress(&mut self, mut p_stream: *mut opj_stream_t) -> OPJ_BOOL {
     self.m_codec.end_compress(p_stream, &mut self.m_event_mgr)
   }
 
@@ -1363,27 +1364,25 @@ impl opj_codec_private {
     mut p_data_size: OPJ_UINT32,
     mut p_stream: *mut opj_stream_t,
   ) -> OPJ_BOOL {
-    self.m_codec.write_tile(p_tile_index, p_data, p_data_size, p_stream, &mut self.m_event_mgr)
+    self.m_codec.write_tile(
+      p_tile_index,
+      p_data,
+      p_data_size,
+      p_stream,
+      &mut self.m_event_mgr,
+    )
   }
 
   #[cfg(feature = "file-io")]
-  pub unsafe fn dump_codec(
-    &mut self,
-    mut info_flag: OPJ_INT32,
-    mut output_stream: *mut FILE,
-  ) {
+  pub unsafe fn dump_codec(&mut self, mut info_flag: OPJ_INT32, mut output_stream: *mut FILE) {
     self.m_codec.dump_codec(info_flag, output_stream)
   }
 
-  pub unsafe fn get_cstr_info(
-    &mut self,
-  ) -> *mut opj_codestream_info_v2_t {
+  pub unsafe fn get_cstr_info(&mut self) -> *mut opj_codestream_info_v2_t {
     self.m_codec.get_cstr_info()
   }
 
-  pub unsafe fn get_cstr_index(
-    &mut self,
-  ) -> *mut opj_codestream_index_t {
+  pub unsafe fn get_cstr_index(&mut self) -> *mut opj_codestream_index_t {
     self.m_codec.get_cstr_index()
   }
 }
@@ -1421,11 +1420,8 @@ pub struct opj_stream_private {
 }
 pub type opj_stream_private_t = opj_stream_private;
 
-pub(crate) type opj_jp2_proc = unsafe fn(
-    _: &mut opj_jp2,
-    _: *mut opj_stream_private_t,
-    _: &mut opj_event_mgr,
-  ) -> OPJ_BOOL;
+pub(crate) type opj_jp2_proc =
+  unsafe fn(_: &mut opj_jp2, _: *mut opj_stream_private_t, _: &mut opj_event_mgr) -> OPJ_BOOL;
 pub(crate) type opj_jp2_proc_list_t = super::function_list::ProcedureList<opj_jp2_proc>;
 
 #[repr(C)]
@@ -1519,11 +1515,8 @@ pub(crate) struct opj_jp2_comps {
 }
 pub(crate) type opj_jp2_comps_t = opj_jp2_comps;
 
-pub(crate) type opj_j2k_proc = unsafe fn(
-    _: &mut opj_j2k,
-    _: *mut opj_stream_private_t,
-    _: &mut opj_event_mgr,
-  ) -> OPJ_BOOL;
+pub(crate) type opj_j2k_proc =
+  unsafe fn(_: &mut opj_j2k, _: *mut opj_stream_private_t, _: &mut opj_event_mgr) -> OPJ_BOOL;
 pub(crate) type opj_j2k_proc_list_t = super::function_list::ProcedureList<opj_j2k_proc>;
 
 #[repr(C)]
@@ -2115,12 +2108,7 @@ unsafe extern "C" fn opj_read_from_file(
   mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_SIZE_T {
   let mut p_file = p_user_data as *mut FILE;
-  let l_nb_read = fread(
-    p_buffer,
-    1,
-    p_nb_bytes as usize,
-    p_file,
-  );
+  let l_nb_read = fread(p_buffer, 1, p_nb_bytes as usize, p_file);
   return if l_nb_read != 0 {
     l_nb_read
   } else {
@@ -2145,12 +2133,7 @@ unsafe extern "C" fn opj_write_from_file(
   mut p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_SIZE_T {
   let mut p_file = p_user_data as *mut FILE;
-  return fwrite(
-    p_buffer,
-    1,
-    p_nb_bytes as usize,
-    p_file,
-  );
+  return fwrite(p_buffer, 1, p_nb_bytes as usize, p_file);
 }
 #[cfg(feature = "file-io")]
 unsafe extern "C" fn opj_skip_from_file(
@@ -2219,9 +2202,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
   return Box::into_raw(l_codec) as *mut opj_codec_t;
 }
 #[no_mangle]
-pub unsafe fn opj_set_default_decoder_parameters(
-  mut parameters: *mut opj_dparameters_t,
-) {
+pub unsafe fn opj_set_default_decoder_parameters(mut parameters: *mut opj_dparameters_t) {
   if !parameters.is_null() {
     memset(
       parameters as *mut core::ffi::c_void,
@@ -2348,7 +2329,17 @@ pub unsafe fn opj_read_tile_header(
     return 0i32;
   }
   let mut l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.read_tile_header(p_stream, p_tile_index, p_data_size, p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on)
+  l_codec.read_tile_header(
+    p_stream,
+    p_tile_index,
+    p_data_size,
+    p_tile_x0,
+    p_tile_y0,
+    p_tile_x1,
+    p_tile_y1,
+    p_nb_comps,
+    p_should_go_on,
+  )
 }
 
 #[no_mangle]
@@ -2424,9 +2415,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
 
 /* default coding parameters */
 #[no_mangle]
-pub unsafe fn opj_set_default_encoder_parameters(
-  mut parameters: *mut opj_cparameters_t,
-) {
+pub unsafe fn opj_set_default_encoder_parameters(mut parameters: *mut opj_cparameters_t) {
   if !parameters.is_null() {
     memset(
       parameters as *mut core::ffi::c_void,
@@ -2545,8 +2534,7 @@ pub unsafe fn opj_set_MCT(
   let mut l_matrix_size = pNbComp
     .wrapping_mul(pNbComp)
     .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
-  let mut l_dc_shift_size =
-    pNbComp.wrapping_mul(core::mem::size_of::<OPJ_INT32>() as OPJ_UINT32);
+  let mut l_dc_shift_size = pNbComp.wrapping_mul(core::mem::size_of::<OPJ_INT32>() as OPJ_UINT32);
   let mut l_mct_total_size = l_matrix_size.wrapping_add(l_dc_shift_size);
   /* add MCT capability */
   if (*parameters).rsiz as core::ffi::c_int & 0x8000i32 != 0 {
@@ -2567,7 +2555,8 @@ pub unsafe fn opj_set_MCT(
     l_matrix_size as usize,
   );
   memcpy(
-    ((*parameters).mct_data as *mut OPJ_BYTE).offset(l_matrix_size as isize) as *mut core::ffi::c_void,
+    ((*parameters).mct_data as *mut OPJ_BYTE).offset(l_matrix_size as isize)
+      as *mut core::ffi::c_void,
     p_dc_shift as *const core::ffi::c_void,
     l_dc_shift_size as usize,
   );
@@ -2614,9 +2603,7 @@ pub unsafe fn opj_dump_codec(
 }
 
 #[no_mangle]
-pub unsafe fn opj_get_cstr_info(
-  mut p_codec: *mut opj_codec_t,
-) -> *mut opj_codestream_info_v2_t {
+pub unsafe fn opj_get_cstr_info(mut p_codec: *mut opj_codec_t) -> *mut opj_codestream_info_v2_t {
   if p_codec.is_null() {
     return 0 as *mut opj_codestream_info_v2_t;
   }
@@ -2639,9 +2626,7 @@ pub unsafe fn opj_destroy_cstr_info(mut cstr_info: *mut *mut opj_codestream_info
 }
 
 #[no_mangle]
-pub unsafe fn opj_get_cstr_index(
-  mut p_codec: *mut opj_codec_t,
-) -> *mut opj_codestream_index_t {
+pub unsafe fn opj_get_cstr_index(mut p_codec: *mut opj_codec_t) -> *mut opj_codestream_index_t {
   if p_codec.is_null() {
     return 0 as *mut opj_codestream_index_t;
   }
@@ -2650,9 +2635,7 @@ pub unsafe fn opj_get_cstr_index(
 }
 
 #[no_mangle]
-pub unsafe fn opj_destroy_cstr_index(
-  mut p_cstr_index: *mut *mut opj_codestream_index_t,
-) {
+pub unsafe fn opj_destroy_cstr_index(mut p_cstr_index: *mut *mut opj_codestream_index_t) {
   if !(*p_cstr_index).is_null() {
     j2k_destroy_cstr_index(*p_cstr_index);
     *p_cstr_index = 0 as *mut opj_codestream_index_t
@@ -2665,11 +2648,7 @@ pub unsafe fn opj_stream_create_default_file_stream(
   mut fname: *const core::ffi::c_char,
   mut p_is_read_stream: OPJ_BOOL,
 ) -> *mut opj_stream_t {
-  return opj_stream_create_file_stream(
-    fname,
-    0x100000 as OPJ_SIZE_T,
-    p_is_read_stream,
-  );
+  return opj_stream_create_file_stream(fname, 0x100000 as OPJ_SIZE_T, p_is_read_stream);
 }
 
 #[cfg(feature = "file-io")]
@@ -2742,13 +2721,15 @@ pub unsafe fn opj_stream_create_file_stream(
   opj_stream_set_skip_function(
     l_stream,
     Some(
-      opj_skip_from_file as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_OFF_T,
+      opj_skip_from_file
+        as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_OFF_T,
     ),
   );
   opj_stream_set_seek_function(
     l_stream,
     Some(
-      opj_seek_from_file as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL,
+      opj_seek_from_file
+        as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL,
     ),
   );
   return l_stream;

@@ -1,6 +1,6 @@
+use super::consts::*;
 use super::openjpeg::*;
 use super::t1_luts::*;
-use super::consts::*;
 
 pub struct opj_mqc_state {
   pub qeval: u32,
@@ -96,16 +96,12 @@ impl opj_mqc {
   }
 
   pub(crate) fn bp_offset(&mut self, offset: isize) {
-    unsafe {
-      self.bp = self.bp.offset(offset)
-    }
+    unsafe { self.bp = self.bp.offset(offset) }
   }
 
   pub(crate) fn backup_extra(&mut self) {
     let len = self.backup.len();
-    let extra = unsafe {
-      core::slice::from_raw_parts_mut(self.end, len)
-    };
+    let extra = unsafe { core::slice::from_raw_parts_mut(self.end, len) };
     // Backup extra bytes and replace with `0xff`
     for idx in 0..len {
       self.backup[idx] = extra[idx];
@@ -115,9 +111,7 @@ impl opj_mqc {
 
   pub(crate) fn restore_extra(&mut self) {
     let len = self.backup.len();
-    let extra = unsafe {
-      core::slice::from_raw_parts_mut(self.end, len)
-    };
+    let extra = unsafe { core::slice::from_raw_parts_mut(self.end, len) };
     extra.copy_from_slice(&self.backup[..]);
   }
 }
@@ -335,100 +329,570 @@ pub(crate) fn opj_mqc_bypass_enc_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
 /* This array defines all the possible states for a context. */
 /* </summary> */
 const mqc_states: [opj_mqc_state_t; 47 * 2] = [
-    opj_mqc_state_t { qeval: 0x5601, mps: 0, nmps: 2, nlps: 3 },
-    opj_mqc_state_t { qeval: 0x5601, mps: 1, nmps: 3, nlps: 2 },
-    opj_mqc_state_t { qeval: 0x3401, mps: 0, nmps: 4, nlps: 12 },
-    opj_mqc_state_t { qeval: 0x3401, mps: 1, nmps: 5, nlps: 13 },
-    opj_mqc_state_t { qeval: 0x1801, mps: 0, nmps: 6, nlps: 18 },
-    opj_mqc_state_t { qeval: 0x1801, mps: 1, nmps: 7, nlps: 19 },
-    opj_mqc_state_t { qeval: 0x0ac1, mps: 0, nmps: 8, nlps: 24 },
-    opj_mqc_state_t { qeval: 0x0ac1, mps: 1, nmps: 9, nlps: 25 },
-    opj_mqc_state_t { qeval: 0x0521, mps: 0, nmps: 10, nlps: 58 },
-    opj_mqc_state_t { qeval: 0x0521, mps: 1, nmps: 11, nlps: 59 },
-    opj_mqc_state_t { qeval: 0x0221, mps: 0, nmps: 76, nlps: 66 },
-    opj_mqc_state_t { qeval: 0x0221, mps: 1, nmps: 77, nlps: 67 },
-    opj_mqc_state_t { qeval: 0x5601, mps: 0, nmps: 14, nlps: 13 },
-    opj_mqc_state_t { qeval: 0x5601, mps: 1, nmps: 15, nlps: 12 },
-    opj_mqc_state_t { qeval: 0x5401, mps: 0, nmps: 16, nlps: 28 },
-    opj_mqc_state_t { qeval: 0x5401, mps: 1, nmps: 17, nlps: 29 },
-    opj_mqc_state_t { qeval: 0x4801, mps: 0, nmps: 18, nlps: 28 },
-    opj_mqc_state_t { qeval: 0x4801, mps: 1, nmps: 19, nlps: 29 },
-    opj_mqc_state_t { qeval: 0x3801, mps: 0, nmps: 20, nlps: 28 },
-    opj_mqc_state_t { qeval: 0x3801, mps: 1, nmps: 21, nlps: 29 },
-    opj_mqc_state_t { qeval: 0x3001, mps: 0, nmps: 22, nlps: 34 },
-    opj_mqc_state_t { qeval: 0x3001, mps: 1, nmps: 23, nlps: 35 },
-    opj_mqc_state_t { qeval: 0x2401, mps: 0, nmps: 24, nlps: 36 },
-    opj_mqc_state_t { qeval: 0x2401, mps: 1, nmps: 25, nlps: 37 },
-    opj_mqc_state_t { qeval: 0x1c01, mps: 0, nmps: 26, nlps: 40 },
-    opj_mqc_state_t { qeval: 0x1c01, mps: 1, nmps: 27, nlps: 41 },
-    opj_mqc_state_t { qeval: 0x1601, mps: 0, nmps: 58, nlps: 42 },
-    opj_mqc_state_t { qeval: 0x1601, mps: 1, nmps: 59, nlps: 43 },
-    opj_mqc_state_t { qeval: 0x5601, mps: 0, nmps: 30, nlps: 29 },
-    opj_mqc_state_t { qeval: 0x5601, mps: 1, nmps: 31, nlps: 28 },
-    opj_mqc_state_t { qeval: 0x5401, mps: 0, nmps: 32, nlps: 28 },
-    opj_mqc_state_t { qeval: 0x5401, mps: 1, nmps: 33, nlps: 29 },
-    opj_mqc_state_t { qeval: 0x5101, mps: 0, nmps: 34, nlps: 30 },
-    opj_mqc_state_t { qeval: 0x5101, mps: 1, nmps: 35, nlps: 31 },
-    opj_mqc_state_t { qeval: 0x4801, mps: 0, nmps: 36, nlps: 32 },
-    opj_mqc_state_t { qeval: 0x4801, mps: 1, nmps: 37, nlps: 33 },
-    opj_mqc_state_t { qeval: 0x3801, mps: 0, nmps: 38, nlps: 34 },
-    opj_mqc_state_t { qeval: 0x3801, mps: 1, nmps: 39, nlps: 35 },
-    opj_mqc_state_t { qeval: 0x3401, mps: 0, nmps: 40, nlps: 36 },
-    opj_mqc_state_t { qeval: 0x3401, mps: 1, nmps: 41, nlps: 37 },
-    opj_mqc_state_t { qeval: 0x3001, mps: 0, nmps: 42, nlps: 38 },
-    opj_mqc_state_t { qeval: 0x3001, mps: 1, nmps: 43, nlps: 39 },
-    opj_mqc_state_t { qeval: 0x2801, mps: 0, nmps: 44, nlps: 38 },
-    opj_mqc_state_t { qeval: 0x2801, mps: 1, nmps: 45, nlps: 39 },
-    opj_mqc_state_t { qeval: 0x2401, mps: 0, nmps: 46, nlps: 40 },
-    opj_mqc_state_t { qeval: 0x2401, mps: 1, nmps: 47, nlps: 41 },
-    opj_mqc_state_t { qeval: 0x2201, mps: 0, nmps: 48, nlps: 42 },
-    opj_mqc_state_t { qeval: 0x2201, mps: 1, nmps: 49, nlps: 43 },
-    opj_mqc_state_t { qeval: 0x1c01, mps: 0, nmps: 50, nlps: 44 },
-    opj_mqc_state_t { qeval: 0x1c01, mps: 1, nmps: 51, nlps: 45 },
-    opj_mqc_state_t { qeval: 0x1801, mps: 0, nmps: 52, nlps: 46 },
-    opj_mqc_state_t { qeval: 0x1801, mps: 1, nmps: 53, nlps: 47 },
-    opj_mqc_state_t { qeval: 0x1601, mps: 0, nmps: 54, nlps: 48 },
-    opj_mqc_state_t { qeval: 0x1601, mps: 1, nmps: 55, nlps: 49 },
-    opj_mqc_state_t { qeval: 0x1401, mps: 0, nmps: 56, nlps: 50 },
-    opj_mqc_state_t { qeval: 0x1401, mps: 1, nmps: 57, nlps: 51 },
-    opj_mqc_state_t { qeval: 0x1201, mps: 0, nmps: 58, nlps: 52 },
-    opj_mqc_state_t { qeval: 0x1201, mps: 1, nmps: 59, nlps: 53 },
-    opj_mqc_state_t { qeval: 0x1101, mps: 0, nmps: 60, nlps: 54 },
-    opj_mqc_state_t { qeval: 0x1101, mps: 1, nmps: 61, nlps: 55 },
-    opj_mqc_state_t { qeval: 0x0ac1, mps: 0, nmps: 62, nlps: 56 },
-    opj_mqc_state_t { qeval: 0x0ac1, mps: 1, nmps: 63, nlps: 57 },
-    opj_mqc_state_t { qeval: 0x09c1, mps: 0, nmps: 64, nlps: 58 },
-    opj_mqc_state_t { qeval: 0x09c1, mps: 1, nmps: 65, nlps: 59 },
-    opj_mqc_state_t { qeval: 0x08a1, mps: 0, nmps: 66, nlps: 60 },
-    opj_mqc_state_t { qeval: 0x08a1, mps: 1, nmps: 67, nlps: 61 },
-    opj_mqc_state_t { qeval: 0x0521, mps: 0, nmps: 68, nlps: 62 },
-    opj_mqc_state_t { qeval: 0x0521, mps: 1, nmps: 69, nlps: 63 },
-    opj_mqc_state_t { qeval: 0x0441, mps: 0, nmps: 70, nlps: 64 },
-    opj_mqc_state_t { qeval: 0x0441, mps: 1, nmps: 71, nlps: 65 },
-    opj_mqc_state_t { qeval: 0x02a1, mps: 0, nmps: 72, nlps: 66 },
-    opj_mqc_state_t { qeval: 0x02a1, mps: 1, nmps: 73, nlps: 67 },
-    opj_mqc_state_t { qeval: 0x0221, mps: 0, nmps: 74, nlps: 68 },
-    opj_mqc_state_t { qeval: 0x0221, mps: 1, nmps: 75, nlps: 69 },
-    opj_mqc_state_t { qeval: 0x0141, mps: 0, nmps: 76, nlps: 70 },
-    opj_mqc_state_t { qeval: 0x0141, mps: 1, nmps: 77, nlps: 71 },
-    opj_mqc_state_t { qeval: 0x0111, mps: 0, nmps: 78, nlps: 72 },
-    opj_mqc_state_t { qeval: 0x0111, mps: 1, nmps: 79, nlps: 73 },
-    opj_mqc_state_t { qeval: 0x0085, mps: 0, nmps: 80, nlps: 74 },
-    opj_mqc_state_t { qeval: 0x0085, mps: 1, nmps: 81, nlps: 75 },
-    opj_mqc_state_t { qeval: 0x0049, mps: 0, nmps: 82, nlps: 76 },
-    opj_mqc_state_t { qeval: 0x0049, mps: 1, nmps: 83, nlps: 77 },
-    opj_mqc_state_t { qeval: 0x0025, mps: 0, nmps: 84, nlps: 78 },
-    opj_mqc_state_t { qeval: 0x0025, mps: 1, nmps: 85, nlps: 79 },
-    opj_mqc_state_t { qeval: 0x0015, mps: 0, nmps: 86, nlps: 80 },
-    opj_mqc_state_t { qeval: 0x0015, mps: 1, nmps: 87, nlps: 81 },
-    opj_mqc_state_t { qeval: 0x0009, mps: 0, nmps: 88, nlps: 82 },
-    opj_mqc_state_t { qeval: 0x0009, mps: 1, nmps: 89, nlps: 83 },
-    opj_mqc_state_t { qeval: 0x0005, mps: 0, nmps: 90, nlps: 84 },
-    opj_mqc_state_t { qeval: 0x0005, mps: 1, nmps: 91, nlps: 85 },
-    opj_mqc_state_t { qeval: 0x0001, mps: 0, nmps: 90, nlps: 86 },
-    opj_mqc_state_t { qeval: 0x0001, mps: 1, nmps: 91, nlps: 87 },
-    opj_mqc_state_t { qeval: 0x5601, mps: 0, nmps: 92, nlps: 92 },
-    opj_mqc_state_t { qeval: 0x5601, mps: 1, nmps: 93, nlps: 93 },
+  opj_mqc_state_t {
+    qeval: 0x5601,
+    mps: 0,
+    nmps: 2,
+    nlps: 3,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5601,
+    mps: 1,
+    nmps: 3,
+    nlps: 2,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3401,
+    mps: 0,
+    nmps: 4,
+    nlps: 12,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3401,
+    mps: 1,
+    nmps: 5,
+    nlps: 13,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1801,
+    mps: 0,
+    nmps: 6,
+    nlps: 18,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1801,
+    mps: 1,
+    nmps: 7,
+    nlps: 19,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0ac1,
+    mps: 0,
+    nmps: 8,
+    nlps: 24,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0ac1,
+    mps: 1,
+    nmps: 9,
+    nlps: 25,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0521,
+    mps: 0,
+    nmps: 10,
+    nlps: 58,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0521,
+    mps: 1,
+    nmps: 11,
+    nlps: 59,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0221,
+    mps: 0,
+    nmps: 76,
+    nlps: 66,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0221,
+    mps: 1,
+    nmps: 77,
+    nlps: 67,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5601,
+    mps: 0,
+    nmps: 14,
+    nlps: 13,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5601,
+    mps: 1,
+    nmps: 15,
+    nlps: 12,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5401,
+    mps: 0,
+    nmps: 16,
+    nlps: 28,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5401,
+    mps: 1,
+    nmps: 17,
+    nlps: 29,
+  },
+  opj_mqc_state_t {
+    qeval: 0x4801,
+    mps: 0,
+    nmps: 18,
+    nlps: 28,
+  },
+  opj_mqc_state_t {
+    qeval: 0x4801,
+    mps: 1,
+    nmps: 19,
+    nlps: 29,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3801,
+    mps: 0,
+    nmps: 20,
+    nlps: 28,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3801,
+    mps: 1,
+    nmps: 21,
+    nlps: 29,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3001,
+    mps: 0,
+    nmps: 22,
+    nlps: 34,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3001,
+    mps: 1,
+    nmps: 23,
+    nlps: 35,
+  },
+  opj_mqc_state_t {
+    qeval: 0x2401,
+    mps: 0,
+    nmps: 24,
+    nlps: 36,
+  },
+  opj_mqc_state_t {
+    qeval: 0x2401,
+    mps: 1,
+    nmps: 25,
+    nlps: 37,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1c01,
+    mps: 0,
+    nmps: 26,
+    nlps: 40,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1c01,
+    mps: 1,
+    nmps: 27,
+    nlps: 41,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1601,
+    mps: 0,
+    nmps: 58,
+    nlps: 42,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1601,
+    mps: 1,
+    nmps: 59,
+    nlps: 43,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5601,
+    mps: 0,
+    nmps: 30,
+    nlps: 29,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5601,
+    mps: 1,
+    nmps: 31,
+    nlps: 28,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5401,
+    mps: 0,
+    nmps: 32,
+    nlps: 28,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5401,
+    mps: 1,
+    nmps: 33,
+    nlps: 29,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5101,
+    mps: 0,
+    nmps: 34,
+    nlps: 30,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5101,
+    mps: 1,
+    nmps: 35,
+    nlps: 31,
+  },
+  opj_mqc_state_t {
+    qeval: 0x4801,
+    mps: 0,
+    nmps: 36,
+    nlps: 32,
+  },
+  opj_mqc_state_t {
+    qeval: 0x4801,
+    mps: 1,
+    nmps: 37,
+    nlps: 33,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3801,
+    mps: 0,
+    nmps: 38,
+    nlps: 34,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3801,
+    mps: 1,
+    nmps: 39,
+    nlps: 35,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3401,
+    mps: 0,
+    nmps: 40,
+    nlps: 36,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3401,
+    mps: 1,
+    nmps: 41,
+    nlps: 37,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3001,
+    mps: 0,
+    nmps: 42,
+    nlps: 38,
+  },
+  opj_mqc_state_t {
+    qeval: 0x3001,
+    mps: 1,
+    nmps: 43,
+    nlps: 39,
+  },
+  opj_mqc_state_t {
+    qeval: 0x2801,
+    mps: 0,
+    nmps: 44,
+    nlps: 38,
+  },
+  opj_mqc_state_t {
+    qeval: 0x2801,
+    mps: 1,
+    nmps: 45,
+    nlps: 39,
+  },
+  opj_mqc_state_t {
+    qeval: 0x2401,
+    mps: 0,
+    nmps: 46,
+    nlps: 40,
+  },
+  opj_mqc_state_t {
+    qeval: 0x2401,
+    mps: 1,
+    nmps: 47,
+    nlps: 41,
+  },
+  opj_mqc_state_t {
+    qeval: 0x2201,
+    mps: 0,
+    nmps: 48,
+    nlps: 42,
+  },
+  opj_mqc_state_t {
+    qeval: 0x2201,
+    mps: 1,
+    nmps: 49,
+    nlps: 43,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1c01,
+    mps: 0,
+    nmps: 50,
+    nlps: 44,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1c01,
+    mps: 1,
+    nmps: 51,
+    nlps: 45,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1801,
+    mps: 0,
+    nmps: 52,
+    nlps: 46,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1801,
+    mps: 1,
+    nmps: 53,
+    nlps: 47,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1601,
+    mps: 0,
+    nmps: 54,
+    nlps: 48,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1601,
+    mps: 1,
+    nmps: 55,
+    nlps: 49,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1401,
+    mps: 0,
+    nmps: 56,
+    nlps: 50,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1401,
+    mps: 1,
+    nmps: 57,
+    nlps: 51,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1201,
+    mps: 0,
+    nmps: 58,
+    nlps: 52,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1201,
+    mps: 1,
+    nmps: 59,
+    nlps: 53,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1101,
+    mps: 0,
+    nmps: 60,
+    nlps: 54,
+  },
+  opj_mqc_state_t {
+    qeval: 0x1101,
+    mps: 1,
+    nmps: 61,
+    nlps: 55,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0ac1,
+    mps: 0,
+    nmps: 62,
+    nlps: 56,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0ac1,
+    mps: 1,
+    nmps: 63,
+    nlps: 57,
+  },
+  opj_mqc_state_t {
+    qeval: 0x09c1,
+    mps: 0,
+    nmps: 64,
+    nlps: 58,
+  },
+  opj_mqc_state_t {
+    qeval: 0x09c1,
+    mps: 1,
+    nmps: 65,
+    nlps: 59,
+  },
+  opj_mqc_state_t {
+    qeval: 0x08a1,
+    mps: 0,
+    nmps: 66,
+    nlps: 60,
+  },
+  opj_mqc_state_t {
+    qeval: 0x08a1,
+    mps: 1,
+    nmps: 67,
+    nlps: 61,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0521,
+    mps: 0,
+    nmps: 68,
+    nlps: 62,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0521,
+    mps: 1,
+    nmps: 69,
+    nlps: 63,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0441,
+    mps: 0,
+    nmps: 70,
+    nlps: 64,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0441,
+    mps: 1,
+    nmps: 71,
+    nlps: 65,
+  },
+  opj_mqc_state_t {
+    qeval: 0x02a1,
+    mps: 0,
+    nmps: 72,
+    nlps: 66,
+  },
+  opj_mqc_state_t {
+    qeval: 0x02a1,
+    mps: 1,
+    nmps: 73,
+    nlps: 67,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0221,
+    mps: 0,
+    nmps: 74,
+    nlps: 68,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0221,
+    mps: 1,
+    nmps: 75,
+    nlps: 69,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0141,
+    mps: 0,
+    nmps: 76,
+    nlps: 70,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0141,
+    mps: 1,
+    nmps: 77,
+    nlps: 71,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0111,
+    mps: 0,
+    nmps: 78,
+    nlps: 72,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0111,
+    mps: 1,
+    nmps: 79,
+    nlps: 73,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0085,
+    mps: 0,
+    nmps: 80,
+    nlps: 74,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0085,
+    mps: 1,
+    nmps: 81,
+    nlps: 75,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0049,
+    mps: 0,
+    nmps: 82,
+    nlps: 76,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0049,
+    mps: 1,
+    nmps: 83,
+    nlps: 77,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0025,
+    mps: 0,
+    nmps: 84,
+    nlps: 78,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0025,
+    mps: 1,
+    nmps: 85,
+    nlps: 79,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0015,
+    mps: 0,
+    nmps: 86,
+    nlps: 80,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0015,
+    mps: 1,
+    nmps: 87,
+    nlps: 81,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0009,
+    mps: 0,
+    nmps: 88,
+    nlps: 82,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0009,
+    mps: 1,
+    nmps: 89,
+    nlps: 83,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0005,
+    mps: 0,
+    nmps: 90,
+    nlps: 84,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0005,
+    mps: 1,
+    nmps: 91,
+    nlps: 85,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0001,
+    mps: 0,
+    nmps: 90,
+    nlps: 86,
+  },
+  opj_mqc_state_t {
+    qeval: 0x0001,
+    mps: 1,
+    nmps: 91,
+    nlps: 87,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5601,
+    mps: 0,
+    nmps: 92,
+    nlps: 92,
+  },
+  opj_mqc_state_t {
+    qeval: 0x5601,
+    mps: 1,
+    nmps: 93,
+    nlps: 93,
+  },
 ];
 
 /*
@@ -568,8 +1032,7 @@ pub(crate) fn opj_mqc_bypass_get_extra_bytes(
   mut mqc: &mut opj_mqc_t,
   mut erterm: OPJ_BOOL,
 ) -> OPJ_UINT32 {
-  if mqc.ct < 7 ||
-     mqc.ct == 7 && (erterm != 0 || mqc.bp_peek_offset(-1) != 0xff) {
+  if mqc.ct < 7 || mqc.ct == 7 && (erterm != 0 || mqc.bp_peek_offset(-1) != 0xff) {
     1
   } else {
     0
@@ -601,8 +1064,11 @@ pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut opj_mqc_t, mut erterm: OPJ_
     /* Discard last 0xff */
     assert!(erterm == 0);
     mqc.bp_offset(-1)
-  } else if mqc.ct == 8 && erterm == 0 &&
-            mqc.bp_peek_offset(-1) == 0x7f && mqc.bp_peek_offset(-2) == 0xff {
+  } else if mqc.ct == 8
+    && erterm == 0
+    && mqc.bp_peek_offset(-1) == 0x7f
+    && mqc.bp_peek_offset(-2) == 0xff
+  {
     /* Tiny optimization: discard terminating 0xff 0x7f since it is */
     /* interpreted as 0xff 0x7f [0xff 0xff] by the decoder, and given */
     /* the bit stuffing, in fact as 0xff 0xff [0xff ..] */
@@ -640,9 +1106,7 @@ pub(crate) fn opj_mqc_restart_init_enc(mut mqc: &mut opj_mqc_t) {
 }
 
 pub(crate) fn opj_mqc_erterm_enc(mut mqc: &mut opj_mqc_t) {
-  let mut k = (11_i32)
-    .wrapping_sub(mqc.ct as i32)
-    .wrapping_add(1);
+  let mut k = (11_i32).wrapping_sub(mqc.ct as i32).wrapping_add(1);
   while k > 0 {
     mqc.c <<= mqc.ct;
     mqc.ct = 0;
@@ -756,12 +1220,7 @@ pub(crate) fn opj_mqc_resetstates(mqc: &mut opj_mqc_t) {
   }
 }
 
-pub(crate) fn opj_mqc_setstate(
-  mqc: &mut opj_mqc_t,
-  ctxno: u8,
-  msb: OPJ_UINT32,
-  prob: OPJ_INT32,
-) {
+pub(crate) fn opj_mqc_setstate(mqc: &mut opj_mqc_t, ctxno: u8, msb: OPJ_UINT32, prob: OPJ_INT32) {
   mqc.ctxs[ctxno as usize] = &mqc_states[msb.wrapping_add((prob << 1) as OPJ_UINT32) as usize];
 }
 

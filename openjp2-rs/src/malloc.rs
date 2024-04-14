@@ -16,7 +16,11 @@ extern "C" {
     __size: size_t,
   ) -> core::ffi::c_int;
 
-  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
+  fn memcpy(
+    _: *mut core::ffi::c_void,
+    _: *const core::ffi::c_void,
+    _: usize,
+  ) -> *mut core::ffi::c_void;
 }
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -50,19 +54,12 @@ extern "C" {
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #[inline]
-unsafe fn opj_aligned_alloc_n(
-  mut alignment: size_t,
-  mut size: size_t,
-) -> *mut core::ffi::c_void {
+unsafe fn opj_aligned_alloc_n(mut alignment: size_t, mut size: size_t) -> *mut core::ffi::c_void {
   let mut ptr = 0 as *mut core::ffi::c_void;
   /* alignment shall be power of 2 */
 
   /* alignment shall be at least sizeof(void*) */
-  assert!(
-    alignment != 0
-      && alignment & alignment.wrapping_sub(1)
-        == 0
-  );
+  assert!(alignment != 0 && alignment & alignment.wrapping_sub(1) == 0);
   assert!(alignment >= core::mem::size_of::<*mut core::ffi::c_void>() as usize);
   if size == 0 {
     /* prevent implementation defined behavior of realloc */
@@ -88,11 +85,7 @@ unsafe fn opj_aligned_realloc_n(
   /* alignment shall be power of 2 */
 
   /* alignment shall be at least sizeof(void*) */
-  assert!(
-    alignment != 0
-      && alignment & alignment.wrapping_sub(1)
-        == 0
-  );
+  assert!(alignment != 0 && alignment & alignment.wrapping_sub(1) == 0);
   assert!(alignment >= core::mem::size_of::<*mut core::ffi::c_void>() as usize);
   if new_size == 0 {
     /* prevent implementation defined behavior of realloc */
@@ -103,9 +96,7 @@ unsafe fn opj_aligned_realloc_n(
   r_ptr = realloc(ptr, new_size); /* fast path */
   /* we simply use `size_t` to cast, since we are only interest in binary AND
    * operator */
-  if r_ptr as size_t & alignment.wrapping_sub(1)
-    != 0
-  {
+  if r_ptr as size_t & alignment.wrapping_sub(1) != 0 {
     /* this is non-trivial to implement a portable aligned realloc, so use a
      * simple approach where we do not need a function that return the size of an
      * allocated array (eg. _msize on Windows, malloc_size on MacOS,

@@ -22,7 +22,13 @@ pub(crate) unsafe fn opj_matrix_inversion_f(
   src_tmp.resize(nb_compo, 0.0);
   dest_tmp.resize(nb_compo, 0.0);
   swap_area.resize(nb_compo, 0.0);
-  if opj_lupDecompose(pSrcMatrix, lPermutations.as_mut_slice(), swap_area.as_mut_slice(), nb_compo as usize) == false {
+  if opj_lupDecompose(
+    pSrcMatrix,
+    lPermutations.as_mut_slice(),
+    swap_area.as_mut_slice(),
+    nb_compo as usize,
+  ) == false
+  {
     return false;
   }
   opj_lupInvert(
@@ -124,9 +130,9 @@ fn opj_lupDecompose(
       permutations[dst_p] = t;
       // and swap entire line.
       l_column_matrix = l_tmp_matrix + (k2 - k) * nb_compo;
-      p_swap_area.copy_from_slice(&matrix[l_column_matrix.. l_column_matrix + l_swap_size]);
-      matrix.copy_within(l_tmp_matrix..l_tmp_matrix+l_swap_size, l_column_matrix);
-      matrix[l_tmp_matrix.. l_tmp_matrix + l_swap_size].copy_from_slice(&p_swap_area[..l_swap_size]);
+      p_swap_area.copy_from_slice(&matrix[l_column_matrix..l_column_matrix + l_swap_size]);
+      matrix.copy_within(l_tmp_matrix..l_tmp_matrix + l_swap_size, l_column_matrix);
+      matrix[l_tmp_matrix..l_tmp_matrix + l_swap_size].copy_from_slice(&p_swap_area[..l_swap_size]);
     }
     // now update data in the rest of the line and line after
     l_dest_matrix = l_tmp_matrix + k;

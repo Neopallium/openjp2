@@ -258,8 +258,9 @@ unsafe fn opj_thread_pool_get_next_job(
       signal_job_finished = 0i32;
       core::ptr::write_volatile(
         &mut (*tp).pending_jobs_count as *mut core::ffi::c_int,
-        core::ptr::read_volatile::<core::ffi::c_int>(&(*tp).pending_jobs_count as *const core::ffi::c_int)
-          - 1,
+        core::ptr::read_volatile::<core::ffi::c_int>(
+          &(*tp).pending_jobs_count as *const core::ffi::c_int,
+        ) - 1,
       );
       /* printf("got job\n"); */
       /*printf("tp=%p, remaining jobs: %d\n", tp, tp->pending_jobs_count);*/
@@ -326,8 +327,7 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
   }
   (*job).job_fn = job_fn;
   (*job).user_data = user_data;
-  item =
-    opj_malloc(core::mem::size_of::<opj_job_list_t>() as usize) as *mut opj_job_list_t;
+  item = opj_malloc(core::mem::size_of::<opj_job_list_t>() as usize) as *mut opj_job_list_t;
   if item.is_null() {
     opj_free(job as *mut core::ffi::c_void);
     return 0i32;
@@ -347,7 +347,9 @@ pub(crate) unsafe fn opj_thread_pool_submit_job(
   (*tp).job_queue = item;
   core::ptr::write_volatile(
     &mut (*tp).pending_jobs_count as *mut core::ffi::c_int,
-    core::ptr::read_volatile::<core::ffi::c_int>(&(*tp).pending_jobs_count as *const core::ffi::c_int) + 1,
+    core::ptr::read_volatile::<core::ffi::c_int>(
+      &(*tp).pending_jobs_count as *const core::ffi::c_int,
+    ) + 1,
   );
   if !(*tp).waiting_worker_thread_list.is_null() {
     let mut worker_thread = 0 as *mut opj_worker_thread_t;

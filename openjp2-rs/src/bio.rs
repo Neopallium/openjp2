@@ -26,11 +26,7 @@ Write a byte
 */
 unsafe fn opj_bio_byteout(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   (*bio).buf = (*bio).buf << 8i32 & 0xffffu32;
-  (*bio).ct = if (*bio).buf == 0xff00u32 {
-    7i32
-  } else {
-    8i32
-  } as OPJ_UINT32;
+  (*bio).ct = if (*bio).buf == 0xff00u32 { 7i32 } else { 8i32 } as OPJ_UINT32;
   if (*bio).bp as OPJ_SIZE_T >= (*bio).end as OPJ_SIZE_T {
     return 0i32;
   }
@@ -46,11 +42,7 @@ Read a byte
 */
 unsafe fn opj_bio_bytein(mut bio: *mut opj_bio_t) -> OPJ_BOOL {
   (*bio).buf = (*bio).buf << 8i32 & 0xffffu32;
-  (*bio).ct = if (*bio).buf == 0xff00u32 {
-    7i32
-  } else {
-    8i32
-  } as OPJ_UINT32;
+  (*bio).ct = if (*bio).buf == 0xff00u32 { 7i32 } else { 8i32 } as OPJ_UINT32;
   if (*bio).bp as OPJ_SIZE_T >= (*bio).end as OPJ_SIZE_T {
     return 0i32;
   }
@@ -171,11 +163,7 @@ pub(crate) unsafe fn opj_bio_putbit(mut bio: *mut opj_bio_t, mut b: OPJ_UINT32) 
   (*bio).buf |= b << (*bio).ct;
 }
 #[no_mangle]
-pub(crate) unsafe fn opj_bio_write(
-  mut bio: *mut opj_bio_t,
-  mut v: OPJ_UINT32,
-  mut n: OPJ_UINT32,
-) {
+pub(crate) unsafe fn opj_bio_write(mut bio: *mut opj_bio_t, mut v: OPJ_UINT32, mut n: OPJ_UINT32) {
   let mut i: OPJ_INT32 = 0;
   assert!(n > 0u32 && n <= 32u32);
   i = n as OPJ_INT32 - 1i32;

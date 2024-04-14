@@ -6,7 +6,11 @@ use super::malloc::*;
 extern "C" {
   fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
 
-  fn memcpy(_: *mut core::ffi::c_void, _: *const core::ffi::c_void, _: usize) -> *mut core::ffi::c_void;
+  fn memcpy(
+    _: *mut core::ffi::c_void,
+    _: *const core::ffi::c_void,
+    _: usize,
+  ) -> *mut core::ffi::c_void;
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -55,10 +59,8 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
  */
 #[no_mangle]
 pub unsafe fn opj_image_create0() -> *mut opj_image_t {
-  let mut image = opj_calloc(
-    1i32 as size_t,
-    core::mem::size_of::<opj_image_t>() as usize,
-  ) as *mut opj_image_t;
+  let mut image =
+    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>() as usize) as *mut opj_image_t;
   return image;
 }
 #[no_mangle]
@@ -69,10 +71,8 @@ pub unsafe fn opj_image_create(
 ) -> *mut opj_image_t {
   let mut compno: OPJ_UINT32 = 0;
   let mut image = 0 as *mut opj_image_t;
-  image = opj_calloc(
-    1i32 as size_t,
-    core::mem::size_of::<opj_image_t>() as usize,
-  ) as *mut opj_image_t;
+  image =
+    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>() as usize) as *mut opj_image_t;
   if !image.is_null() {
     (*image).color_space = clrspc;
     (*image).numcomps = numcmpts;
@@ -180,18 +180,12 @@ pub(crate) unsafe fn opj_image_comp_header_update(
   let mut l_img_comp = 0 as *mut opj_image_comp_t;
   l_x0 = opj_uint_max((*p_cp).tx0, (*p_image_header).x0);
   l_y0 = opj_uint_max((*p_cp).ty0, (*p_image_header).y0);
-  l_x1 = (*p_cp).tx0.wrapping_add(
-    (*p_cp)
-      .tw
-      .wrapping_sub(1u32)
-      .wrapping_mul((*p_cp).tdx),
-  );
-  l_y1 = (*p_cp).ty0.wrapping_add(
-    (*p_cp)
-      .th
-      .wrapping_sub(1u32)
-      .wrapping_mul((*p_cp).tdy),
-  );
+  l_x1 = (*p_cp)
+    .tx0
+    .wrapping_add((*p_cp).tw.wrapping_sub(1u32).wrapping_mul((*p_cp).tdx));
+  l_y1 = (*p_cp)
+    .ty0
+    .wrapping_add((*p_cp).th.wrapping_sub(1u32).wrapping_mul((*p_cp).tdy));
   l_x1 = opj_uint_min(opj_uint_adds(l_x1, (*p_cp).tdx), (*p_image_header).x1);
   l_y1 = opj_uint_min(opj_uint_adds(l_y1, (*p_cp).tdy), (*p_image_header).y1);
   l_img_comp = (*p_image_header).comps;
@@ -296,10 +290,8 @@ pub unsafe fn opj_image_tile_create(
 ) -> *mut opj_image_t {
   let mut compno: OPJ_UINT32 = 0;
   let mut image = 0 as *mut opj_image_t;
-  image = opj_calloc(
-    1i32 as size_t,
-    core::mem::size_of::<opj_image_t>() as usize,
-  ) as *mut opj_image_t;
+  image =
+    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>() as usize) as *mut opj_image_t;
   if !image.is_null() {
     (*image).color_space = clrspc;
     (*image).numcomps = numcmpts;
