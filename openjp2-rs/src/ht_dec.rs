@@ -163,7 +163,7 @@ fn count_leading_zeros(mut val: OPJ_UINT32) -> OPJ_UINT32 {
  */
 #[inline]
 unsafe fn read_le_uint32(mut dataIn: *const core::ffi::c_void) -> OPJ_UINT32 {
-  return *(dataIn as *mut OPJ_UINT32);
+  *(dataIn as *mut OPJ_UINT32)
 }
 //* ***********************************************************************/
 /* * @brief Reads and unstuffs the MEL bitstream
@@ -227,21 +227,21 @@ unsafe fn mel_read(mut melp: *mut dec_mel_t) {
   t = val & 0xffu32; // true if the byte needs unstuffing
   unstuff = (val & 0xffu32 == 0xffu32) as core::ffi::c_int; // there is one less bit in t if unstuffing is needed
   bits -= unstuff; // move up to make room for the next byte
-  t = t << 8i32 - unstuff;
+  t <<= 8i32 - unstuff;
   //this is a repeat of the above
   t |= val >> 8i32 & 0xffu32;
   unstuff = (val >> 8i32 & 0xffu32 == 0xffu32) as core::ffi::c_int;
   bits -= unstuff;
-  t = t << 8i32 - unstuff;
+  t <<= 8i32 - unstuff;
   t |= val >> 16i32 & 0xffu32;
   unstuff = (val >> 16i32 & 0xffu32 == 0xffu32) as core::ffi::c_int;
   bits -= unstuff;
-  t = t << 8i32 - unstuff;
+  t <<= 8i32 - unstuff;
   t |= val >> 24i32 & 0xffu32;
   (*melp).unstuff = (val >> 24i32 & 0xffu32 == 0xffu32) as core::ffi::c_int;
   // move t to tmp, and push the result all the way up, so we read from
   // the MSB
-  (*melp).tmp |= (t as OPJ_UINT64) << 64i32 - bits - (*melp).bits;
+  (*melp).tmp |= (t as OPJ_UINT64) << (64i32 - bits - (*melp).bits);
   (*melp).bits += bits;
   //increment the number of bits in tmp
 }
@@ -287,10 +287,10 @@ unsafe fn mel_decode(mut melp: *mut dec_mel_t) {
       }; //increment, max is 12
       (*melp).tmp <<= 1i32; // consume one bit from tmp
       (*melp).bits -= 1i32;
-      run = run << 1i32
+      run <<= 1i32
     } else {
       //0 is found
-      run = ((*melp).tmp >> 63i32 - eval) as core::ffi::c_int & ((1i32) << eval) - 1i32;
+      run = ((*melp).tmp >> (63i32 - eval)) as core::ffi::c_int & (((1i32) << eval) - 1i32);
       // a stretch of zeros terminating with one
       (*melp).k = if (*melp).k - 1i32 > 0i32 {
         ((*melp).k) - 1i32
@@ -358,7 +358,7 @@ unsafe fn mel_init(
     }
     // see the standard
     let fresh2 = (*melp).size; //increment if the end is not reached
-    (*melp).size = (*melp).size - 1; //if unstuffing is needed, reduce by 1
+    (*melp).size -= 1; //if unstuffing is needed, reduce by 1
     (*melp).data = (*melp).data.offset((fresh2 > 0i32) as isize); //store bits in tmp
     d_bits = 8i32 - (*melp).unstuff; //increment tmp by number of bits
     (*melp).tmp = (*melp).tmp << d_bits | d;
@@ -369,7 +369,7 @@ unsafe fn mel_init(
   (*melp).tmp <<= 64i32 - (*melp).bits;
   //push all the way up so the first bit
   // is the MSB
-  return true;
+  true
 }
 //* ***********************************************************************/
 /* * @brief Retrieves one run from dec_mel_t; if there are no runs stored
@@ -387,7 +387,7 @@ unsafe fn mel_get_run(mut melp: *mut dec_mel_t) -> core::ffi::c_int {
   t = ((*melp).runs & 0x7fu64) as core::ffi::c_int;
   (*melp).runs >>= 7i32;
   (*melp).num_runs -= 1;
-  return t;
+  t
   // return run
 }
 //* ***********************************************************************/
@@ -575,7 +575,7 @@ unsafe fn rev_fetch(mut vlcp: *mut rev_struct_t) -> OPJ_UINT32 {
       // read another 32
     }
   }
-  return (*vlcp).tmp as OPJ_UINT32;
+  (*vlcp).tmp as OPJ_UINT32
   // return the head (bottom-most) of vlcp->tmp
 }
 //* ***********************************************************************/
@@ -589,7 +589,7 @@ unsafe fn rev_advance(mut vlcp: *mut rev_struct_t, mut num_bits: OPJ_UINT32) -> 
   assert!(num_bits <= (*vlcp).bits); // remove bits
   (*vlcp).tmp >>= num_bits; // decrement the number of bits
   (*vlcp).bits = ((*vlcp).bits as core::ffi::c_uint).wrapping_sub(num_bits) as OPJ_UINT32;
-  return (*vlcp).tmp as OPJ_UINT32;
+  (*vlcp).tmp as OPJ_UINT32
 }
 //* ***********************************************************************/
 /* * @brief Reads and unstuffs from rev_struct
@@ -715,7 +715,7 @@ unsafe fn rev_init_mrp(
     let mut d_bits: OPJ_UINT32 = 0;
     // for next byte
     let fresh7 = (*mrp).size;
-    (*mrp).size = (*mrp).size - 1;
+    (*mrp).size -= 1;
     d = if fresh7 > 0i32 {
       let fresh8 = (*mrp).data;
       (*mrp).data = (*mrp).data.offset(-1);
@@ -756,7 +756,7 @@ unsafe fn rev_fetch_mrp(mut mrp: *mut rev_struct_t) -> OPJ_UINT32 {
       // read more
     }
   }
-  return (*mrp).tmp as OPJ_UINT32;
+  (*mrp).tmp as OPJ_UINT32
   // return the head of mrp->tmp
 }
 //* ***********************************************************************/
@@ -770,7 +770,7 @@ unsafe fn rev_advance_mrp(mut mrp: *mut rev_struct_t, mut num_bits: OPJ_UINT32) 
   assert!(num_bits <= (*mrp).bits); // discard the lowest num_bits bits
   (*mrp).tmp >>= num_bits;
   (*mrp).bits = ((*mrp).bits as core::ffi::c_uint).wrapping_sub(num_bits) as OPJ_UINT32;
-  return (*mrp).tmp as OPJ_UINT32;
+  (*mrp).tmp as OPJ_UINT32
   // return data after consumption
 }
 //* ***********************************************************************/
@@ -798,18 +798,18 @@ unsafe fn decode_init_uvlc(
   // 3 bits in the MSB for prefix value (u_pfx in Table 3 of ITU T.814)
   static mut dec: [OPJ_UINT8; 8] = [
     (3i32 | (5i32) << 2i32 | (5i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (0i32) << 2i32 | (1i32) << 5i32) as OPJ_UINT8,
-    (2i32 | (0i32) << 2i32 | (2i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (0i32) << 2i32 | (1i32) << 5i32) as OPJ_UINT8,
+    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
+    (2i32 | (2i32) << 5i32) as OPJ_UINT8,
+    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
     (3i32 | (1i32) << 2i32 | (3i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (0i32) << 2i32 | (1i32) << 5i32) as OPJ_UINT8,
-    (2i32 | (0i32) << 2i32 | (2i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (0i32) << 2i32 | (1i32) << 5i32) as OPJ_UINT8,
+    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
+    (2i32 | (2i32) << 5i32) as OPJ_UINT8,
+    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
   ];
   let mut consumed_bits = 0 as OPJ_UINT32;
   if mode == 0u32 {
     // both u_off are 0
-    let ref mut fresh9 = *u.offset(1);
+    let fresh9 = &mut (*u.offset(1));
     *fresh9 = 1 as OPJ_UINT32;
     *u.offset(0) = *fresh9
   //Kappa is 1 for initial line
@@ -894,7 +894,7 @@ unsafe fn decode_init_uvlc(
     d2_0 = (d2_0 >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len_2).wrapping_sub(1u32));
     *u.offset(1) = d2_0.wrapping_add(3u32)
   }
-  return consumed_bits;
+  consumed_bits
 }
 //* ***********************************************************************/
 /* * @brief Decode non-initial UVLC to get the u value (or u_q)
@@ -919,17 +919,17 @@ unsafe fn decode_noninit_uvlc(
   // 3 bits in the MSB for prefix value (u_pfx in Table 3 of ITU T.814)
   static mut dec: [OPJ_UINT8; 8] = [
     (3i32 | (5i32) << 2i32 | (5i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (0i32) << 2i32 | (1i32) << 5i32) as OPJ_UINT8,
-    (2i32 | (0i32) << 2i32 | (2i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (0i32) << 2i32 | (1i32) << 5i32) as OPJ_UINT8,
+    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
+    (2i32 | (2i32) << 5i32) as OPJ_UINT8,
+    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
     (3i32 | (1i32) << 2i32 | (3i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (0i32) << 2i32 | (1i32) << 5i32) as OPJ_UINT8,
-    (2i32 | (0i32) << 2i32 | (2i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (0i32) << 2i32 | (1i32) << 5i32) as OPJ_UINT8,
+    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
+    (2i32 | (2i32) << 5i32) as OPJ_UINT8,
+    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
   ];
   let mut consumed_bits = 0 as OPJ_UINT32;
   if mode == 0u32 {
-    let ref mut fresh10 = *u.offset(1);
+    let fresh10 = &mut (*u.offset(1));
     *fresh10 = 1 as OPJ_UINT32;
     *u.offset(0) = *fresh10
   //for kappa
@@ -977,7 +977,7 @@ unsafe fn decode_noninit_uvlc(
     d2 = (d2 >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len_0).wrapping_sub(1u32));
     *u.offset(1) = d2.wrapping_add(1u32)
   }
-  return consumed_bits;
+  consumed_bits
 }
 //* ***********************************************************************/
 /* * @brief Read and unstuffs 32 bits from forward-growing bitstream
@@ -1095,7 +1095,7 @@ unsafe fn frwd_init(
     let mut d: OPJ_UINT64 = 0;
     // unstuffing for next byte
     let fresh12 = (*msp).size;
-    (*msp).size = (*msp).size - 1;
+    (*msp).size -= 1;
     d = if fresh12 > 0i32 {
       let fresh13 = (*msp).data;
       (*msp).data = (*msp).data.offset(1);
@@ -1142,7 +1142,7 @@ unsafe fn frwd_fetch(mut msp: *mut frwd_struct_t) -> OPJ_UINT32 {
       frwd_read(msp);
     }
   }
-  return (*msp).tmp as OPJ_UINT32;
+  (*msp).tmp as OPJ_UINT32
 }
 //* ***********************************************************************/
 /* * @brief Allocates T1 buffers
@@ -1174,7 +1174,7 @@ unsafe fn opj_t1_allocate_buffers(
   t1.flags.resize(flagssize);
   t1.w = w;
   t1.h = h;
-  return 1i32;
+  1i32
 }
 //* ***********************************************************************/
 /* * @brief Decodes one codeblock, processing the cleanup, siginificance
@@ -1199,9 +1199,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   mut p_manager_mutex: *mut opj_mutex_t,
   mut _check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
-  let mut cblkdata = 0 as *mut OPJ_BYTE; // fetched data from VLC bitstream
-  let mut coded_data = 0 as *mut OPJ_UINT8; // loop indices
-  let mut decoded_data = 0 as *mut OPJ_UINT32;
+  let mut cblkdata = std::ptr::null_mut::<OPJ_BYTE>(); // fetched data from VLC bitstream
+  let mut coded_data = std::ptr::null_mut::<OPJ_UINT8>(); // loop indices
+  let mut decoded_data = std::ptr::null_mut::<OPJ_UINT32>();
   let mut zero_bplanes: OPJ_UINT32 = 0;
   let mut num_passes: OPJ_UINT32 = 0;
   let mut lengths1: OPJ_UINT32 = 0;
@@ -1209,19 +1209,19 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   let mut width: OPJ_INT32 = 0;
   let mut height: OPJ_INT32 = 0;
   let mut stride: OPJ_INT32 = 0;
-  let mut pflags = 0 as *mut OPJ_UINT32;
-  let mut sigma1 = 0 as *mut OPJ_UINT32;
-  let mut sigma2 = 0 as *mut OPJ_UINT32;
-  let mut mbr1 = 0 as *mut OPJ_UINT32;
-  let mut mbr2 = 0 as *mut OPJ_UINT32;
-  let mut sip = 0 as *mut OPJ_UINT32;
+  let mut pflags = std::ptr::null_mut::<OPJ_UINT32>();
+  let mut sigma1 = std::ptr::null_mut::<OPJ_UINT32>();
+  let mut sigma2 = std::ptr::null_mut::<OPJ_UINT32>();
+  let mut mbr1 = std::ptr::null_mut::<OPJ_UINT32>();
+  let mut mbr2 = std::ptr::null_mut::<OPJ_UINT32>();
+  let mut sip = std::ptr::null_mut::<OPJ_UINT32>();
   let mut sip_shift: OPJ_UINT32 = 0;
   let mut p: OPJ_UINT32 = 0;
   let mut zero_bplanes_p1: OPJ_UINT32 = 0;
   let mut lcup: core::ffi::c_int = 0;
   let mut scup: core::ffi::c_int = 0;
   let mut mel = dec_mel_t {
-    data: 0 as *mut OPJ_UINT8,
+    data: std::ptr::null_mut::<OPJ_UINT8>(),
     tmp: 0,
     bits: 0,
     size: 0,
@@ -1231,14 +1231,14 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     runs: 0,
   };
   let mut vlc = rev_struct_t {
-    data: 0 as *mut OPJ_UINT8,
+    data: std::ptr::null_mut::<OPJ_UINT8>(),
     tmp: 0,
     bits: 0,
     size: 0,
     unstuff: 0,
   };
   let mut magsgn = frwd_struct_t {
-    data: 0 as *const OPJ_UINT8,
+    data: std::ptr::null::<OPJ_UINT8>(),
     tmp: 0,
     bits: 0,
     unstuff: 0,
@@ -1246,7 +1246,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     X: 0,
   };
   let mut sigprop = frwd_struct_t {
-    data: 0 as *const OPJ_UINT8,
+    data: std::ptr::null::<OPJ_UINT8>(),
     tmp: 0,
     bits: 0,
     unstuff: 0,
@@ -1254,19 +1254,19 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     X: 0,
   };
   let mut magref = rev_struct_t {
-    data: 0 as *mut OPJ_UINT8,
+    data: std::ptr::null_mut::<OPJ_UINT8>(),
     tmp: 0,
     bits: 0,
     size: 0,
     unstuff: 0,
   };
-  let mut lsp = 0 as *mut OPJ_UINT8;
-  let mut line_state = 0 as *mut OPJ_UINT8;
+  let mut lsp = std::ptr::null_mut::<OPJ_UINT8>();
+  let mut line_state = std::ptr::null_mut::<OPJ_UINT8>();
   let mut run: core::ffi::c_int = 0;
   let mut vlc_val: OPJ_UINT32 = 0;
   let mut qinf: [OPJ_UINT32; 2] = [0; 2];
   let mut c_q: OPJ_UINT32 = 0;
-  let mut sp = 0 as *mut OPJ_UINT32;
+  let mut sp = std::ptr::null_mut::<OPJ_UINT32>();
   let mut x: OPJ_INT32 = 0;
   let mut y: OPJ_INT32 = 0;
   let mut stripe_causal = (cblksty & 0x8u32 != 0u32) as core::ffi::c_int;
@@ -1465,30 +1465,28 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       opj_mutex_unlock(p_manager_mutex);
     }
     return 0i32;
-  } else {
-    if zero_bplanes == (*cblk).Mb && num_passes > 1u32 {
-      /* When the number of zero bitplanes is equal to the number of bitplanes,
-      only the cleanup pass makes sense*/
-      if only_cleanup_pass_is_decoded == 0i32 {
-        if !p_manager_mutex.is_null() {
-          opj_mutex_lock(p_manager_mutex);
-        }
-        /* We have a second check to prevent the possibility of an overrun condition,
-        in the very unlikely event of a second thread discovering that
-        only_cleanup_pass_is_decoded is false before the first thread changing
-        the condition. */
-        if only_cleanup_pass_is_decoded == 0i32 {
-          only_cleanup_pass_is_decoded = 1i32;
-          event_msg!(p_manager, EVT_WARNING,
-                                  "Malformed HT codeblock. When the number of zero planes bitplanes is equal to the number of bitplanes, only the cleanup pass makes sense, but we have %d passes in this codeblock. Therefore, only the cleanup pass will be decoded. This message will not be displayed again.\n",
-                                  num_passes);
-        }
-        if !p_manager_mutex.is_null() {
-          opj_mutex_unlock(p_manager_mutex);
-        }
+  } else if zero_bplanes == (*cblk).Mb && num_passes > 1u32 {
+    /* When the number of zero bitplanes is equal to the number of bitplanes,
+    only the cleanup pass makes sense*/
+    if only_cleanup_pass_is_decoded == 0i32 {
+      if !p_manager_mutex.is_null() {
+        opj_mutex_lock(p_manager_mutex);
       }
-      num_passes = 1 as OPJ_UINT32
+      /* We have a second check to prevent the possibility of an overrun condition,
+      in the very unlikely event of a second thread discovering that
+      only_cleanup_pass_is_decoded is false before the first thread changing
+      the condition. */
+      if only_cleanup_pass_is_decoded == 0i32 {
+        only_cleanup_pass_is_decoded = 1i32;
+        event_msg!(p_manager, EVT_WARNING,
+                                "Malformed HT codeblock. When the number of zero planes bitplanes is equal to the number of bitplanes, only the cleanup pass makes sense, but we have %d passes in this codeblock. Therefore, only the cleanup pass will be decoded. This message will not be displayed again.\n",
+                                num_passes);
+      }
+      if !p_manager_mutex.is_null() {
+        opj_mutex_unlock(p_manager_mutex);
+      }
     }
+    num_passes = 1 as OPJ_UINT32
   }
   /* OPJ_UINT32 */
   p = (*cblk).numbps;
@@ -1578,8 +1576,8 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   run = mel_get_run(&mut mel); // decode runs of events from MEL bitstrm
                                // data represented as runs of 0 events
                                // See mel_decode description
-  qinf[1 as usize] = 0 as OPJ_UINT32; // quad info decoded from VLC bitstream
-  qinf[0 as usize] = qinf[1 as usize]; // context for quad q
+  qinf[1_usize] = 0 as OPJ_UINT32; // quad info decoded from VLC bitstream
+  qinf[0_usize] = qinf[1_usize]; // context for quad q
   c_q = 0 as OPJ_UINT32; // decoded codeblock samples
   sp = decoded_data;
   // vlc_val;                 // fetched data from VLC bitstream
@@ -1603,15 +1601,15 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     // a maximum of one stuffing per two bytes)
     vlc_val = rev_fetch(&mut vlc);
     //decode VLC using the context c_q and the head of the VLC bitstream
-    qinf[0 as usize] = vlc_tbl0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
+    qinf[0_usize] = vlc_tbl0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
     if c_q == 0u32 {
       // if zero context, we need to use one MEL event
       run -= 2i32; //the number of 0 events is multiplied by 2, so subtract 2
                    // Is the run terminated in 1? if so, use decoded VLC code,
                    // otherwise, discard decoded data, since we will decoded again
                    // using a different context
-      qinf[0 as usize] = if run == -(1i32) {
-        qinf[0 as usize]
+      qinf[0_usize] = if run == -(1i32) {
+        qinf[0_usize]
       } else {
         0u32
       };
@@ -1622,9 +1620,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       }
     }
     // prepare context for the next quad; eqn. 1 in ITU T.814
-    c_q = (qinf[0 as usize] & 0x10u32) >> 4i32 | (qinf[0 as usize] & 0xe0u32) >> 5i32;
+    c_q = (qinf[0_usize] & 0x10u32) >> 4i32 | (qinf[0_usize] & 0xe0u32) >> 5i32;
     //remove data from vlc stream (0 bits are removed if qinf is not used)
-    vlc_val = rev_advance(&mut vlc, qinf[0 as usize] & 0x7u32);
+    vlc_val = rev_advance(&mut vlc, qinf[0_usize] & 0x7u32);
     //update sigma
     // The update depends on the value of x; consider one OPJ_UINT32
     // if x is 0, 8, 16 and so on, then this line update c locations
@@ -1640,20 +1638,20 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     //                               0 0 0 0 0 0 0 0
     //                               0 0 0 0 0 0 0 0
     *sip |=
-      ((qinf[0 as usize] & 0x30u32) >> 4i32 | (qinf[0 as usize] & 0xc0u32) >> 2i32) << sip_shift;
+      ((qinf[0_usize] & 0x30u32) >> 4i32 | (qinf[0_usize] & 0xc0u32) >> 2i32) << sip_shift;
     //second quad
-    qinf[1 as usize] = 0 as OPJ_UINT32;
+    qinf[1_usize] = 0 as OPJ_UINT32;
     if (x + 2i32) < width {
       // do not run if codeblock is narrower
       //decode VLC using the context c_q and the head of the VLC bitstream
-      qinf[1 as usize] = vlc_tbl0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
+      qinf[1_usize] = vlc_tbl0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
       // if context is zero, use one MEL event
       if c_q == 0u32 {
         //zero context
         run -= 2i32; //subtract 2, since events number if multiplied by 2
                      // if event is 0, discard decoded qinf
-        qinf[1 as usize] = if run == -(1i32) {
-          qinf[1 as usize]
+        qinf[1_usize] = if run == -(1i32) {
+          qinf[1_usize]
         } else {
           0u32
         };
@@ -1664,9 +1662,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         }
       }
       //prepare context for the next quad, eqn. 1 in ITU T.814
-      c_q = (qinf[1 as usize] & 0x10u32) >> 4i32 | (qinf[1 as usize] & 0xe0u32) >> 5i32;
+      c_q = (qinf[1_usize] & 0x10u32) >> 4i32 | (qinf[1_usize] & 0xe0u32) >> 5i32;
       //remove data from vlc stream, if qinf is not used, cwdlen is 0
-      vlc_val = rev_advance(&mut vlc, qinf[1 as usize] & 0x7u32)
+      vlc_val = rev_advance(&mut vlc, qinf[1_usize] & 0x7u32)
     }
     //update sigma
     // The update depends on the value of x; consider one OPJ_UINT32
@@ -1682,14 +1680,14 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     //                               0 0 0 0 0 0 c c
     //                               0 0 0 0 0 0 0 0
     //                               0 0 0 0 0 0 0 0
-    *sip |= (qinf[1 as usize] & 0x30u32 | (qinf[1 as usize] & 0xc0u32) << 2i32)
+    *sip |= (qinf[1_usize] & 0x30u32 | (qinf[1_usize] & 0xc0u32) << 2i32)
       << (4u32).wrapping_add(sip_shift); // move sigma pointer to next entry
     sip = sip.offset(if x & 0x7i32 != 0 { 1i32 } else { 0i32 } as isize); // increment/decrement sip_shift by 16
     sip_shift ^= 0x10u32;
     // retrieve u
     // ///////////
     // uvlc_mode is made up of u_offset bits from the quad pair
-    uvlc_mode = (qinf[0 as usize] & 0x8u32) >> 3i32 | (qinf[1 as usize] & 0x8u32) >> 2i32;
+    uvlc_mode = (qinf[0_usize] & 0x8u32) >> 3i32 | (qinf[1_usize] & 0x8u32) >> 2i32;
     if uvlc_mode == 3u32 {
       // if both u_offset are set, get an event from
       // the MEL run of events
@@ -1705,7 +1703,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     }
     //decode uvlc_mode to get u for both quads
     consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, U_q.as_mut_ptr());
-    if U_q[0 as usize] > zero_bplanes_p1 || U_q[1 as usize] > zero_bplanes_p1 {
+    if U_q[0_usize] > zero_bplanes_p1 || U_q[1_usize] > zero_bplanes_p1 {
       if !p_manager_mutex.is_null() {
         opj_mutex_lock(p_manager_mutex);
       }
@@ -1723,7 +1721,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     //We obtain a mask for the samples locations that needs evaluation
     locs = 0xff as OPJ_UINT32;
     if x + 4i32 > width {
-      locs >>= x + 4i32 - width << 1i32
+      locs >>= (x + 4i32 - width) << 1i32
       // limits width
     } // limits height
     locs = if height > 1i32 {
@@ -1731,7 +1729,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     } else {
       (locs) & 0x55u32
     };
-    if ((qinf[0 as usize] & 0xf0u32) >> 4i32 | qinf[1 as usize] & 0xf0u32) & !locs != 0 {
+    if ((qinf[0_usize] & 0xf0u32) >> 4i32 | qinf[1_usize] & 0xf0u32) & !locs != 0 {
       if !p_manager_mutex.is_null() {
         opj_mutex_lock(p_manager_mutex);
       }
@@ -1743,16 +1741,16 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       return 0i32;
     }
     //first quad, starting at first sample in quad and moving on
-    if qinf[0 as usize] & 0x10u32 != 0 {
+    if qinf[0_usize] & 0x10u32 != 0 {
       //is it significant? (sigma_n)
       let mut val: OPJ_UINT32 = 0; //get 32 bits of magsgn data
       ms_val = frwd_fetch(&mut magsgn); //evaluate m_n (number of bits
-      m_n = U_q[0 as usize].wrapping_sub(qinf[0 as usize] >> 12i32 & 1u32);
+      m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 12i32 & 1u32);
       // to read from bitstream), using EMB e_k
       frwd_advance(&mut magsgn, m_n); //consume m_n
       val = ms_val << 31i32; //get sign bit
       v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32); //keep only m_n bits
-      v_n |= ((qinf[0 as usize] & 0x100u32) >> 8i32) << m_n; //add EMB e_1 as MSB
+      v_n |= ((qinf[0_usize] & 0x100u32) >> 8i32) << m_n; //add EMB e_1 as MSB
       v_n |= 1u32; //add center of bin
                    //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
                    //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
@@ -1762,16 +1760,16 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       *sp.offset(0) = 0 as OPJ_UINT32
       // sample to zero
     }
-    if qinf[0 as usize] & 0x20u32 != 0 {
+    if qinf[0_usize] & 0x20u32 != 0 {
       //sigma_n
       let mut val_0: OPJ_UINT32 = 0; //get 32 bits
       let mut t: OPJ_UINT32 = 0; //m_n, uses EMB e_k
       ms_val = frwd_fetch(&mut magsgn); //consume m_n
-      m_n = U_q[0 as usize].wrapping_sub(qinf[0 as usize] >> 13i32 & 1u32); //get sign bit
+      m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 13i32 & 1u32); //get sign bit
       frwd_advance(&mut magsgn, m_n); //keep only m_n bits
       val_0 = ms_val << 31i32; //add EMB e_1
       v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32); //bin center
-      v_n |= ((qinf[0 as usize] & 0x200u32) >> 9i32) << m_n;
+      v_n |= ((qinf[0_usize] & 0x200u32) >> 9i32) << m_n;
       v_n |= 1u32;
       //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
       //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
@@ -1788,28 +1786,28 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     lsp = lsp.offset(1); // move to next column of samples
     sp = sp.offset(1);
     //this is similar to the above two samples
-    if qinf[0 as usize] & 0x40u32 != 0 {
+    if qinf[0_usize] & 0x40u32 != 0 {
       let mut val_1: OPJ_UINT32 = 0; //m_n
       ms_val = frwd_fetch(&mut magsgn); //center of bin
-      m_n = U_q[0 as usize].wrapping_sub(qinf[0 as usize] >> 14i32 & 1u32);
+      m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 14i32 & 1u32);
       frwd_advance(&mut magsgn, m_n);
       val_1 = ms_val << 31i32;
       v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
-      v_n |= ((qinf[0 as usize] & 0x400u32) >> 10i32) << m_n;
+      v_n |= ((qinf[0_usize] & 0x400u32) >> 10i32) << m_n;
       v_n |= 1u32;
       *sp.offset(0) = val_1 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
     } else if locs & 0x4u32 != 0 {
       *sp.offset(0) = 0 as OPJ_UINT32
     }
     *lsp.offset(0) = 0 as OPJ_UINT8;
-    if qinf[0 as usize] & 0x80u32 != 0 {
+    if qinf[0_usize] & 0x80u32 != 0 {
       let mut val_2: OPJ_UINT32 = 0;
       ms_val = frwd_fetch(&mut magsgn);
-      m_n = U_q[0 as usize].wrapping_sub(qinf[0 as usize] >> 15i32 & 1u32);
+      m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 15i32 & 1u32);
       frwd_advance(&mut magsgn, m_n);
       val_2 = ms_val << 31i32;
       v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
-      v_n |= ((qinf[0 as usize] & 0x800u32) >> 11i32) << m_n;
+      v_n |= ((qinf[0_usize] & 0x800u32) >> 11i32) << m_n;
       v_n |= 1u32;
       *sp.offset(stride as isize) = val_2 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
       //line_state: bit 7 (\sigma^NW), and E^NW for next quad
@@ -1820,29 +1818,29 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     } //move to next column
     sp = sp.offset(1);
     //second quad
-    if qinf[1 as usize] & 0x10u32 != 0 {
+    if qinf[1_usize] & 0x10u32 != 0 {
       let mut val_3: OPJ_UINT32 = 0; //m_n
       ms_val = frwd_fetch(&mut magsgn);
-      m_n = U_q[1 as usize].wrapping_sub(qinf[1 as usize] >> 12i32 & 1u32);
+      m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 12i32 & 1u32);
       frwd_advance(&mut magsgn, m_n);
       val_3 = ms_val << 31i32;
       v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
-      v_n |= ((qinf[1 as usize] & 0x100u32) >> 8i32) << m_n;
+      v_n |= ((qinf[1_usize] & 0x100u32) >> 8i32) << m_n;
       v_n |= 1u32;
       *sp.offset(0) = val_3 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
     } else if locs & 0x10u32 != 0 {
       *sp.offset(0) = 0 as OPJ_UINT32
     }
-    if qinf[1 as usize] & 0x20u32 != 0 {
+    if qinf[1_usize] & 0x20u32 != 0 {
       let mut val_4: OPJ_UINT32 = 0;
       let mut t_0: OPJ_UINT32 = 0;
       ms_val = frwd_fetch(&mut magsgn);
       //max(E^NW, E^N) | s
-      m_n = U_q[1 as usize].wrapping_sub(qinf[1 as usize] >> 13i32 & 1u32); //m_n
+      m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 13i32 & 1u32); //m_n
       frwd_advance(&mut magsgn, m_n);
       val_4 = ms_val << 31i32;
       v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
-      v_n |= ((qinf[1 as usize] & 0x200u32) >> 9i32) << m_n;
+      v_n |= ((qinf[1_usize] & 0x200u32) >> 9i32) << m_n;
       v_n |= 1u32;
       *sp.offset(stride as isize) = val_4 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
       t_0 = (*lsp.offset(0) as core::ffi::c_int & 0x7fi32) as OPJ_UINT32;
@@ -1857,28 +1855,28 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     } //move line state to next quad
     lsp = lsp.offset(1); //move to next sample
     sp = sp.offset(1); //m_n
-    if qinf[1 as usize] & 0x40u32 != 0 {
+    if qinf[1_usize] & 0x40u32 != 0 {
       let mut val_5: OPJ_UINT32 = 0; //m_n
       ms_val = frwd_fetch(&mut magsgn); //center of bin
-      m_n = U_q[1 as usize].wrapping_sub(qinf[1 as usize] >> 14i32 & 1u32);
+      m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 14i32 & 1u32);
       frwd_advance(&mut magsgn, m_n);
       val_5 = ms_val << 31i32;
       v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
-      v_n |= ((qinf[1 as usize] & 0x400u32) >> 10i32) << m_n;
+      v_n |= ((qinf[1_usize] & 0x400u32) >> 10i32) << m_n;
       v_n |= 1u32;
       *sp.offset(0) = val_5 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
     } else if locs & 0x40u32 != 0 {
       *sp.offset(0) = 0 as OPJ_UINT32
     }
     *lsp.offset(0) = 0 as OPJ_UINT8;
-    if qinf[1 as usize] & 0x80u32 != 0 {
+    if qinf[1_usize] & 0x80u32 != 0 {
       let mut val_6: OPJ_UINT32 = 0;
       ms_val = frwd_fetch(&mut magsgn);
-      m_n = U_q[1 as usize].wrapping_sub(qinf[1 as usize] >> 15i32 & 1u32);
+      m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 15i32 & 1u32);
       frwd_advance(&mut magsgn, m_n);
       val_6 = ms_val << 31i32;
       v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
-      v_n |= ((qinf[1 as usize] & 0x800u32) >> 11i32) << m_n;
+      v_n |= ((qinf[1_usize] & 0x800u32) >> 11i32) << m_n;
       v_n |= 1u32;
       *sp.offset(stride as isize) = val_6 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
       //line_state: bit 7 (\sigma^NW), and E^NW for next quad
@@ -1894,7 +1892,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   y = 2i32;
   while y < height {
     /*done at the end of loop*/
-    let mut sip_0 = 0 as *mut OPJ_UINT32; // shift sigma to the upper half od the nibble
+    let mut sip_0 = std::ptr::null_mut::<OPJ_UINT32>(); // shift sigma to the upper half od the nibble
     let mut ls0: OPJ_UINT8 = 0; //move back to 0 (it might have been at 0x10)
     let mut x_0: OPJ_INT32 = 0; //choose sigma array
     sip_shift ^= 0x2u32; // read the line state value
@@ -1924,12 +1922,12 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                                                                                          //the following is very similar to previous code, so please refer to
                                                                                          // that
       vlc_val = rev_fetch(&mut vlc);
-      qinf[0 as usize] = vlc_tbl1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
+      qinf[0_usize] = vlc_tbl1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
       if c_q == 0u32 {
         //zero context
         run -= 2i32;
-        qinf[0 as usize] = if run == -(1i32) {
-          qinf[0 as usize]
+        qinf[0_usize] = if run == -(1i32) {
+          qinf[0_usize]
         } else {
           0u32
         };
@@ -1938,9 +1936,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         }
       }
       //prepare context for the next quad, \sigma^W | \sigma^SW
-      c_q = (qinf[0 as usize] & 0x40u32) >> 5i32 | (qinf[0 as usize] & 0x80u32) >> 6i32;
+      c_q = (qinf[0_usize] & 0x40u32) >> 5i32 | (qinf[0_usize] & 0x80u32) >> 6i32;
       //remove data from vlc stream
-      vlc_val = rev_advance(&mut vlc, qinf[0 as usize] & 0x7u32);
+      vlc_val = rev_advance(&mut vlc, qinf[0_usize] & 0x7u32);
       //update sigma
       // The update depends on the value of x and y; consider one OPJ_UINT32
       // if x is 0, 8, 16 and so on, and y is 2, 6, etc., then this
@@ -1951,18 +1949,18 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       //                               c c 0 0 0 0 0 0
       //                               c c 0 0 0 0 0 0
       *sip_0 |=
-        ((qinf[0 as usize] & 0x30u32) >> 4i32 | (qinf[0 as usize] & 0xc0u32) >> 2i32) << sip_shift;
+        ((qinf[0_usize] & 0x30u32) >> 4i32 | (qinf[0_usize] & 0xc0u32) >> 2i32) << sip_shift;
       //second quad
-      qinf[1 as usize] = 0 as OPJ_UINT32;
+      qinf[1_usize] = 0 as OPJ_UINT32;
       if (x_0 + 2i32) < width {
         c_q |= (*lsp.offset(1) as core::ffi::c_int >> 7i32) as core::ffi::c_uint;
         c_q |= (*lsp.offset(2) as core::ffi::c_int >> 5i32 & 0x4i32) as core::ffi::c_uint;
-        qinf[1 as usize] = vlc_tbl1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
+        qinf[1_usize] = vlc_tbl1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
         if c_q == 0u32 {
           //zero context
           run -= 2i32;
-          qinf[1 as usize] = if run == -(1i32) {
-            qinf[1 as usize]
+          qinf[1_usize] = if run == -(1i32) {
+            qinf[1_usize]
           } else {
             0u32
           };
@@ -1971,22 +1969,22 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
           }
         }
         //prepare context for the next quad
-        c_q = (qinf[1 as usize] & 0x40u32) >> 5i32 | (qinf[1 as usize] & 0x80u32) >> 6i32;
+        c_q = (qinf[1_usize] & 0x40u32) >> 5i32 | (qinf[1_usize] & 0x80u32) >> 6i32;
         //remove data from vlc stream
-        vlc_val = rev_advance(&mut vlc, qinf[1 as usize] & 0x7u32)
+        vlc_val = rev_advance(&mut vlc, qinf[1_usize] & 0x7u32)
       }
       //update sigma
-      *sip_0 |= (qinf[1 as usize] & 0x30u32 | (qinf[1 as usize] & 0xc0u32) << 2i32)
+      *sip_0 |= (qinf[1_usize] & 0x30u32 | (qinf[1_usize] & 0xc0u32) << 2i32)
         << (4u32).wrapping_add(sip_shift);
       sip_0 = sip_0.offset(if x_0 & 0x7i32 != 0 { 1i32 } else { 0i32 } as isize);
       sip_shift ^= 0x10u32;
       //retrieve u
       // //////////
-      uvlc_mode_0 = (qinf[0 as usize] & 0x8u32) >> 3i32 | (qinf[1 as usize] & 0x8u32) >> 2i32;
+      uvlc_mode_0 = (qinf[0_usize] & 0x8u32) >> 3i32 | (qinf[1_usize] & 0x8u32) >> 2i32;
       consumed_bits_0 = decode_noninit_uvlc(vlc_val, uvlc_mode_0, U_q_0.as_mut_ptr());
       vlc_val = rev_advance(&mut vlc, consumed_bits_0);
       //calculate E^max and add it to U_q, eqns 5 and 6 in ITU T.814
-      if qinf[0 as usize] & 0xf0u32 & (qinf[0 as usize] & 0xf0u32).wrapping_sub(1u32) != 0 {
+      if qinf[0_usize] & 0xf0u32 & (qinf[0_usize] & 0xf0u32).wrapping_sub(1u32) != 0 {
         // is \gamma_q 1?
         let mut E = ls0 as core::ffi::c_uint & 0x7fu32; //max(E, E^NE, E^NF)
         E = if E > *lsp.offset(1) as core::ffi::c_uint & 0x7fu32 {
@@ -1995,13 +1993,13 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
           (*lsp.offset(1) as core::ffi::c_uint) & 0x7fu32
         };
         //since U_q already has u_q + 1, we subtract 2 instead of 1
-        U_q_0[0 as usize] = (U_q_0[0 as usize] as core::ffi::c_uint).wrapping_add(if E > 2u32 {
+        U_q_0[0_usize] = (U_q_0[0_usize] as core::ffi::c_uint).wrapping_add(if E > 2u32 {
           E.wrapping_sub(2u32)
         } else {
           0u32
         }) as OPJ_UINT32
       }
-      if qinf[1 as usize] & 0xf0u32 & (qinf[1 as usize] & 0xf0u32).wrapping_sub(1u32) != 0 {
+      if qinf[1_usize] & 0xf0u32 & (qinf[1_usize] & 0xf0u32).wrapping_sub(1u32) != 0 {
         //is \gamma_q 1?
         let mut E_0 = *lsp.offset(1) as core::ffi::c_uint & 0x7fu32; //max(E, E^NE, E^NF)
         E_0 = if E_0 > *lsp.offset(2) as core::ffi::c_uint & 0x7fu32 {
@@ -2010,13 +2008,13 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
           (*lsp.offset(2) as core::ffi::c_uint) & 0x7fu32
         };
         //since U_q already has u_q + 1, we subtract 2 instead of 1
-        U_q_0[1 as usize] = (U_q_0[1 as usize] as core::ffi::c_uint).wrapping_add(if E_0 > 2u32 {
+        U_q_0[1_usize] = (U_q_0[1_usize] as core::ffi::c_uint).wrapping_add(if E_0 > 2u32 {
           E_0.wrapping_sub(2u32)
         } else {
           0u32
         }) as OPJ_UINT32
       } //for next double quad
-      if U_q_0[0 as usize] > zero_bplanes_p1 || U_q_0[1 as usize] > zero_bplanes_p1 {
+      if U_q_0[0_usize] > zero_bplanes_p1 || U_q_0[1_usize] > zero_bplanes_p1 {
         if !p_manager_mutex.is_null() {
           opj_mutex_lock(p_manager_mutex);
         }
@@ -2028,7 +2026,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         return 0i32;
       }
       ls0 = *lsp.offset(2);
-      let ref mut fresh14 = *lsp.offset(2);
+      let fresh14 = &mut (*lsp.offset(2));
       *fresh14 = 0 as OPJ_UINT8;
       *lsp.offset(1) = *fresh14;
       //decode magsgn and update line_state
@@ -2036,14 +2034,14 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       //locations where samples need update
       locs_0 = 0xff as OPJ_UINT32;
       if x_0 + 4i32 > width {
-        locs_0 >>= x_0 + 4i32 - width << 1i32
+        locs_0 >>= (x_0 + 4i32 - width) << 1i32
       }
       locs_0 = if y + 2i32 <= height {
         locs_0
       } else {
         (locs_0) & 0x55u32
       };
-      if ((qinf[0 as usize] & 0xf0u32) >> 4i32 | qinf[1 as usize] & 0xf0u32) & !locs_0 != 0 {
+      if ((qinf[0_usize] & 0xf0u32) >> 4i32 | qinf[1_usize] & 0xf0u32) & !locs_0 != 0 {
         if !p_manager_mutex.is_null() {
           opj_mutex_lock(p_manager_mutex);
         }
@@ -2054,30 +2052,30 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         }
         return 0i32;
       }
-      if qinf[0 as usize] & 0x10u32 != 0 {
+      if qinf[0_usize] & 0x10u32 != 0 {
         //sigma_n
         let mut val_7: OPJ_UINT32 = 0; //m_n
         ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-        m_n_0 = U_q_0[0 as usize].wrapping_sub(qinf[0 as usize] >> 12i32 & 1u32);
+        m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 12i32 & 1u32);
         frwd_advance(&mut magsgn, m_n_0);
         val_7 = ms_val_0 << 31i32;
         v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
-        v_n_0 |= ((qinf[0 as usize] & 0x100u32) >> 8i32) << m_n_0;
+        v_n_0 |= ((qinf[0_usize] & 0x100u32) >> 8i32) << m_n_0;
         v_n_0 |= 1u32;
         *sp.offset(0) = val_7 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs_0 & 0x1u32 != 0 {
         *sp.offset(0) = 0 as OPJ_UINT32
       }
-      if qinf[0 as usize] & 0x20u32 != 0 {
+      if qinf[0_usize] & 0x20u32 != 0 {
         //sigma_n
         let mut val_8: OPJ_UINT32 = 0; //m_n
         let mut t_1: OPJ_UINT32 = 0; //center of bin
         ms_val_0 = frwd_fetch(&mut magsgn);
-        m_n_0 = U_q_0[0 as usize].wrapping_sub(qinf[0 as usize] >> 13i32 & 1u32);
+        m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 13i32 & 1u32);
         frwd_advance(&mut magsgn, m_n_0);
         val_8 = ms_val_0 << 31i32;
         v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
-        v_n_0 |= ((qinf[0 as usize] & 0x200u32) >> 9i32) << m_n_0;
+        v_n_0 |= ((qinf[0_usize] & 0x200u32) >> 9i32) << m_n_0;
         v_n_0 |= 1u32;
         *sp.offset(stride as isize) = val_8 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
         //update line_state: bit 7 (\sigma^N), and E^N
@@ -2090,29 +2088,29 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       }
       lsp = lsp.offset(1);
       sp = sp.offset(1);
-      if qinf[0 as usize] & 0x40u32 != 0 {
+      if qinf[0_usize] & 0x40u32 != 0 {
         //sigma_n
         let mut val_9: OPJ_UINT32 = 0; //m_n
         ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-        m_n_0 = U_q_0[0 as usize].wrapping_sub(qinf[0 as usize] >> 14i32 & 1u32);
+        m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 14i32 & 1u32);
         frwd_advance(&mut magsgn, m_n_0);
         val_9 = ms_val_0 << 31i32;
         v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
-        v_n_0 |= ((qinf[0 as usize] & 0x400u32) >> 10i32) << m_n_0;
+        v_n_0 |= ((qinf[0_usize] & 0x400u32) >> 10i32) << m_n_0;
         v_n_0 |= 1u32;
         *sp.offset(0) = val_9 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs_0 & 0x4u32 != 0 {
         *sp.offset(0) = 0 as OPJ_UINT32
       }
-      if qinf[0 as usize] & 0x80u32 != 0 {
+      if qinf[0_usize] & 0x80u32 != 0 {
         //sigma_n
         let mut val_10: OPJ_UINT32 = 0; //m_n
         ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-        m_n_0 = U_q_0[0 as usize].wrapping_sub(qinf[0 as usize] >> 15i32 & 1u32);
+        m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 15i32 & 1u32);
         frwd_advance(&mut magsgn, m_n_0);
         val_10 = ms_val_0 << 31i32;
         v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
-        v_n_0 |= ((qinf[0 as usize] & 0x800u32) >> 11i32) << m_n_0;
+        v_n_0 |= ((qinf[0_usize] & 0x800u32) >> 11i32) << m_n_0;
         v_n_0 |= 1u32;
         *sp.offset(stride as isize) = val_10 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
         //update line_state: bit 7 (\sigma^NW), and E^NW for next quad
@@ -2121,30 +2119,30 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         *sp.offset(stride as isize) = 0 as OPJ_UINT32
       }
       sp = sp.offset(1);
-      if qinf[1 as usize] & 0x10u32 != 0 {
+      if qinf[1_usize] & 0x10u32 != 0 {
         //sigma_n
         let mut val_11: OPJ_UINT32 = 0; //m_n
         ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-        m_n_0 = U_q_0[1 as usize].wrapping_sub(qinf[1 as usize] >> 12i32 & 1u32);
+        m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 12i32 & 1u32);
         frwd_advance(&mut magsgn, m_n_0);
         val_11 = ms_val_0 << 31i32;
         v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
-        v_n_0 |= ((qinf[1 as usize] & 0x100u32) >> 8i32) << m_n_0;
+        v_n_0 |= ((qinf[1_usize] & 0x100u32) >> 8i32) << m_n_0;
         v_n_0 |= 1u32;
         *sp.offset(0) = val_11 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs_0 & 0x10u32 != 0 {
         *sp.offset(0) = 0 as OPJ_UINT32
       }
-      if qinf[1 as usize] & 0x20u32 != 0 {
+      if qinf[1_usize] & 0x20u32 != 0 {
         //sigma_n
         let mut val_12: OPJ_UINT32 = 0; //m_n
         let mut t_2: OPJ_UINT32 = 0; //center of bin
         ms_val_0 = frwd_fetch(&mut magsgn);
-        m_n_0 = U_q_0[1 as usize].wrapping_sub(qinf[1 as usize] >> 13i32 & 1u32);
+        m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 13i32 & 1u32);
         frwd_advance(&mut magsgn, m_n_0);
         val_12 = ms_val_0 << 31i32;
         v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
-        v_n_0 |= ((qinf[1 as usize] & 0x200u32) >> 9i32) << m_n_0;
+        v_n_0 |= ((qinf[1_usize] & 0x200u32) >> 9i32) << m_n_0;
         v_n_0 |= 1u32;
         *sp.offset(stride as isize) = val_12 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
         //update line_state: bit 7 (\sigma^N), and E^N
@@ -2157,29 +2155,29 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       }
       lsp = lsp.offset(1);
       sp = sp.offset(1);
-      if qinf[1 as usize] & 0x40u32 != 0 {
+      if qinf[1_usize] & 0x40u32 != 0 {
         //sigma_n
         let mut val_13: OPJ_UINT32 = 0; //m_n
         ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-        m_n_0 = U_q_0[1 as usize].wrapping_sub(qinf[1 as usize] >> 14i32 & 1u32);
+        m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 14i32 & 1u32);
         frwd_advance(&mut magsgn, m_n_0);
         val_13 = ms_val_0 << 31i32;
         v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
-        v_n_0 |= ((qinf[1 as usize] & 0x400u32) >> 10i32) << m_n_0;
+        v_n_0 |= ((qinf[1_usize] & 0x400u32) >> 10i32) << m_n_0;
         v_n_0 |= 1u32;
         *sp.offset(0) = val_13 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs_0 & 0x40u32 != 0 {
         *sp.offset(0) = 0 as OPJ_UINT32
       }
-      if qinf[1 as usize] & 0x80u32 != 0 {
+      if qinf[1_usize] & 0x80u32 != 0 {
         //sigma_n
         let mut val_14: OPJ_UINT32 = 0; //m_n
         ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-        m_n_0 = U_q_0[1 as usize].wrapping_sub(qinf[1 as usize] >> 15i32 & 1u32);
+        m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 15i32 & 1u32);
         frwd_advance(&mut magsgn, m_n_0);
         val_14 = ms_val_0 << 31i32;
         v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
-        v_n_0 |= ((qinf[1 as usize] & 0x800u32) >> 11i32) << m_n_0;
+        v_n_0 |= ((qinf[1_usize] & 0x800u32) >> 11i32) << m_n_0;
         v_n_0 |= 1u32;
         *sp.offset(stride as isize) = val_14 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
         //update line_state: bit 7 (\sigma^NW), and E^NW for next quad
@@ -2228,9 +2226,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                   assert!(*dp.offset(0) != 0u32);
                   sym = cwd & 1u32;
                   // remove center of bin if sym is 0
-                  let ref mut fresh16 = *dp.offset(0); // put half the center of bin
+                  let fresh16 = &mut (*dp.offset(0)); // put half the center of bin
                   *fresh16 ^= (1u32).wrapping_sub(sym) << p.wrapping_sub(1u32); //next row
-                  let ref mut fresh17 = *dp.offset(0);
+                  let fresh17 = &mut (*dp.offset(0));
                   *fresh17 |= half;
                   cwd >>= 1i32
                 }
@@ -2240,9 +2238,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                   let mut sym_0: OPJ_UINT32 = 0;
                   assert!(*dp.offset(stride as isize) != 0u32);
                   sym_0 = cwd & 1u32;
-                  let ref mut fresh18 = *dp.offset(stride as isize);
+                  let fresh18 = &mut (*dp.offset(stride as isize));
                   *fresh18 ^= (1u32).wrapping_sub(sym_0) << p.wrapping_sub(1u32);
-                  let ref mut fresh19 = *dp.offset(stride as isize);
+                  let fresh19 = &mut (*dp.offset(stride as isize));
                   *fresh19 |= half;
                   cwd >>= 1i32
                 }
@@ -2252,9 +2250,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                   let mut sym_1: OPJ_UINT32 = 0;
                   assert!(*dp.offset((2i32 * stride) as isize) != 0u32);
                   sym_1 = cwd & 1u32;
-                  let ref mut fresh20 = *dp.offset((2i32 * stride) as isize);
+                  let fresh20 = &mut (*dp.offset((2i32 * stride) as isize));
                   *fresh20 ^= (1u32).wrapping_sub(sym_1) << p.wrapping_sub(1u32);
-                  let ref mut fresh21 = *dp.offset((2i32 * stride) as isize);
+                  let fresh21 = &mut (*dp.offset((2i32 * stride) as isize));
                   *fresh21 |= half;
                   cwd >>= 1i32
                 }
@@ -2264,9 +2262,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                   let mut sym_2: OPJ_UINT32 = 0;
                   assert!(*dp.offset((3i32 * stride) as isize) != 0u32);
                   sym_2 = cwd & 1u32;
-                  let ref mut fresh22 = *dp.offset((3i32 * stride) as isize);
+                  let fresh22 = &mut (*dp.offset((3i32 * stride) as isize));
                   *fresh22 ^= (1u32).wrapping_sub(sym_2) << p.wrapping_sub(1u32);
-                  let ref mut fresh23 = *dp.offset((3i32 * stride) as isize);
+                  let fresh23 = &mut (*dp.offset((3i32 * stride) as isize));
                   *fresh23 |= half;
                   cwd >>= 1i32
                 }
@@ -2300,13 +2298,13 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
           let mut z: OPJ_UINT32 = 0;
           //remove already significance samples
           *mbr.offset(0) = *sig_0.offset(0); //start with significant samples
-          let ref mut fresh24 = *mbr.offset(0); //for first column, left neighbors
+          let fresh24 = &mut (*mbr.offset(0)); //for first column, left neighbors
           *fresh24 |= prev >> 28i32; //left neighbors
-          let ref mut fresh25 = *mbr.offset(0); //right neighbors
+          let fresh25 = &mut (*mbr.offset(0)); //right neighbors
           *fresh25 |= *sig_0.offset(0) << 4i32; //for last column, right neighbors
-          let ref mut fresh26 = *mbr.offset(0); // for next group of columns
+          let fresh26 = &mut (*mbr.offset(0)); // for next group of columns
           *fresh26 |= *sig_0.offset(0) >> 4i32;
-          let ref mut fresh27 = *mbr.offset(0);
+          let fresh27 = &mut (*mbr.offset(0));
           *fresh27 |= *sig_0.offset(1) << 28i32;
           prev = *sig_0.offset(0);
           t_3 = *mbr.offset(0);
@@ -2324,10 +2322,10 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         //above neighbors
         //below neighbors
         //wait until 8 rows has been processed
-        let mut cur_sig_0 = 0 as *mut OPJ_UINT32;
-        let mut cur_mbr = 0 as *mut OPJ_UINT32;
-        let mut nxt_sig = 0 as *mut OPJ_UINT32;
-        let mut nxt_mbr = 0 as *mut OPJ_UINT32;
+        let mut cur_sig_0 = std::ptr::null_mut::<OPJ_UINT32>();
+        let mut cur_mbr = std::ptr::null_mut::<OPJ_UINT32>();
+        let mut nxt_sig = std::ptr::null_mut::<OPJ_UINT32>();
+        let mut nxt_mbr = std::ptr::null_mut::<OPJ_UINT32>();
         let mut prev_0: OPJ_UINT32 = 0;
         let mut val_15: OPJ_UINT32 = 0;
         let mut i_3: OPJ_INT32 = 0;
@@ -2346,11 +2344,11 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
           t_4 |= *nxt_sig.offset(1) << 28i32; //for last column, right neighbors
           prev_0 = *nxt_sig.offset(0); // for next group of columns
           if stripe_causal == 0 {
-            let ref mut fresh28 = *cur_mbr.offset(0);
+            let fresh28 = &mut (*cur_mbr.offset(0));
             *fresh28 |= (t_4 & 0x11111111u32) << 3i32
             //propagate up to cur_mbr
           }
-          let ref mut fresh29 = *cur_mbr.offset(0);
+          let fresh29 = &mut (*cur_mbr.offset(0));
           *fresh29 &= !*cur_sig_0.offset(0);
           i_3 += 8i32;
           cur_mbr = cur_mbr.offset(1);
@@ -2383,7 +2381,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
               let mut cnt = 0 as OPJ_UINT32;
               let mut dp_0 = decoded_data.offset(((y - 8i32) * stride) as isize);
               dp_0 = dp_0.offset((i_3 + n) as isize);
-              col_mask_0 = (0xfu32) << 4i32 * n;
+              col_mask_0 = (0xfu32) << (4i32 * n);
               inv_sig = !*cur_sig_0.offset(0);
               //find the last sample we operate on
               end = if n + 4i32 + i_3 < width {
@@ -2394,7 +2392,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
               j_0 = n;
               while j_0 < end {
                 let mut sample_mask_0: OPJ_UINT32 = 0;
-                if !(col_mask_0 & mbr_0 == 0u32) {
+                if col_mask_0 & mbr_0 != 0u32 {
                   //scan mbr to find a new significant sample
                   sample_mask_0 = 0x11111111u32 & col_mask_0; // LSB
                   if mbr_0 & sample_mask_0 != 0 {
@@ -2406,7 +2404,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       // must propagate it to nearby samples
                       let mut t_5: OPJ_UINT32 = 0; // new significant samples
                       new_sig |= sample_mask_0; // propagation to neighbors
-                      t_5 = (0x32u32) << j_0 * 4i32; // next row
+                      t_5 = (0x32u32) << (j_0 * 4i32); // next row
                       mbr_0 |= t_5 & inv_sig
                     }
                     cwd_0 >>= 1i32;
@@ -2419,7 +2417,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     if cwd_0 & 1u32 != 0 {
                       let mut t_6: OPJ_UINT32 = 0;
                       new_sig |= sample_mask_0;
-                      t_6 = (0x74u32) << j_0 * 4i32;
+                      t_6 = (0x74u32) << (j_0 * 4i32);
                       mbr_0 |= t_6 & inv_sig
                     }
                     cwd_0 >>= 1i32;
@@ -2432,7 +2430,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     if cwd_0 & 1u32 != 0 {
                       let mut t_7: OPJ_UINT32 = 0;
                       new_sig |= sample_mask_0;
-                      t_7 = (0xe8u32) << j_0 * 4i32;
+                      t_7 = (0xe8u32) << (j_0 * 4i32);
                       mbr_0 |= t_7 & inv_sig
                     }
                     cwd_0 >>= 1i32;
@@ -2445,7 +2443,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     if cwd_0 & 1u32 != 0 {
                       let mut t_8: OPJ_UINT32 = 0;
                       new_sig |= sample_mask_0;
-                      t_8 = (0xc0u32) << j_0 * 4i32;
+                      t_8 = (0xc0u32) << (j_0 * 4i32);
                       mbr_0 |= t_8 & inv_sig
                     }
                     cwd_0 >>= 1i32;
@@ -2458,24 +2456,24 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                 col_mask_0 <<= 4i32
               }
               //obtain signs here
-              if new_sig & (0xffffu32) << 4i32 * n != 0 {
+              if new_sig & (0xffffu32) << (4i32 * n) != 0 {
                 //if any
                 let mut col_mask_1: OPJ_UINT32 = 0; // decoded samples address
                 let mut j_1: OPJ_INT32 = 0; //mask to select a column
                 let mut dp_1 = decoded_data.offset(((y - 8i32) * stride) as isize);
                 dp_1 = dp_1.offset((i_3 + n) as isize);
-                col_mask_1 = (0xfu32) << 4i32 * n;
+                col_mask_1 = (0xfu32) << (4i32 * n);
                 j_1 = n;
                 while j_1 < end {
                   let mut sample_mask_1: OPJ_UINT32 = 0;
-                  if !(col_mask_1 & new_sig == 0u32) {
+                  if col_mask_1 & new_sig != 0u32 {
                     //scan 4 signs
                     sample_mask_1 = 0x11111111u32 & col_mask_1;
                     if new_sig & sample_mask_1 != 0 {
                       assert!(*dp_1.offset(0) == 0u32);
                       //consume bit and increment number
                       //of consumed bits
-                      let ref mut fresh30 = *dp_1.offset(0); //put value and sign
+                      let fresh30 = &mut (*dp_1.offset(0)); //put value and sign
                       *fresh30 |= (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
                       cnt += 1;
@@ -2484,7 +2482,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       as OPJ_UINT32;
                     if new_sig & sample_mask_1 != 0 {
                       assert!(*dp_1.offset(stride as isize) == 0u32);
-                      let ref mut fresh31 = *dp_1.offset(stride as isize);
+                      let fresh31 = &mut (*dp_1.offset(stride as isize));
                       *fresh31 |= (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
                       cnt += 1;
@@ -2493,7 +2491,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       as OPJ_UINT32;
                     if new_sig & sample_mask_1 != 0 {
                       assert!(*dp_1.offset((2i32 * stride) as isize) == 0u32);
-                      let ref mut fresh32 = *dp_1.offset((2i32 * stride) as isize);
+                      let fresh32 = &mut (*dp_1.offset((2i32 * stride) as isize));
                       *fresh32 |= (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
                       cnt += 1;
@@ -2502,7 +2500,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                       as OPJ_UINT32;
                     if new_sig & sample_mask_1 != 0 {
                       assert!(*dp_1.offset((3i32 * stride) as isize) == 0u32);
-                      let ref mut fresh33 = *dp_1.offset((3i32 * stride) as isize);
+                      let fresh33 = &mut (*dp_1.offset((3i32 * stride) as isize));
                       *fresh33 |= (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
                       cnt += 1;
@@ -2521,7 +2519,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                 //horizontally
                 let mut t_9 = new_sig >> 28i32;
                 t_9 |= (t_9 & 0xeu32) >> 1i32 | (t_9 & 7u32) << 1i32;
-                let ref mut fresh34 = *cur_mbr.offset(1);
+                let fresh34 = &mut (*cur_mbr.offset(1));
                 *fresh34 |= t_9 & !*cur_sig_0.offset(1)
               }
               n += 4i32
@@ -2532,12 +2530,12 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
           ux = (new_sig & 0x88888888u32) >> 3i32;
           tx = ux | ux << 4i32 | ux >> 4i32;
           if i_3 > 0i32 {
-            let ref mut fresh35 = *nxt_mbr.offset(-(1i32) as isize);
+            let fresh35 = &mut (*nxt_mbr.offset(-(1i32) as isize));
             *fresh35 |= ux << 28i32 & !*nxt_sig.offset(-(1i32) as isize)
           }
-          let ref mut fresh36 = *nxt_mbr.offset(0);
+          let fresh36 = &mut (*nxt_mbr.offset(0));
           *fresh36 |= tx & !*nxt_sig.offset(0);
-          let ref mut fresh37 = *nxt_mbr.offset(1);
+          let fresh37 = &mut (*nxt_mbr.offset(1));
           *fresh37 |= ux >> 28i32 & !*nxt_sig.offset(1);
           i_3 += 8i32;
           cur_sig_0 = cur_sig_0.offset(1);
@@ -2584,9 +2582,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                 let mut sym_3: OPJ_UINT32 = 0;
                 assert!(*dp_2.offset(0) != 0u32);
                 sym_3 = cwd_1 & 1u32;
-                let ref mut fresh39 = *dp_2.offset(0);
+                let fresh39 = &mut (*dp_2.offset(0));
                 *fresh39 ^= (1u32).wrapping_sub(sym_3) << p.wrapping_sub(1u32);
-                let ref mut fresh40 = *dp_2.offset(0);
+                let fresh40 = &mut (*dp_2.offset(0));
                 *fresh40 |= half_0;
                 cwd_1 >>= 1i32
               }
@@ -2596,9 +2594,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                 let mut sym_4: OPJ_UINT32 = 0;
                 assert!(*dp_2.offset(stride as isize) != 0u32);
                 sym_4 = cwd_1 & 1u32;
-                let ref mut fresh41 = *dp_2.offset(stride as isize);
+                let fresh41 = &mut (*dp_2.offset(stride as isize));
                 *fresh41 ^= (1u32).wrapping_sub(sym_4) << p.wrapping_sub(1u32);
-                let ref mut fresh42 = *dp_2.offset(stride as isize);
+                let fresh42 = &mut (*dp_2.offset(stride as isize));
                 *fresh42 |= half_0;
                 cwd_1 >>= 1i32
               }
@@ -2608,9 +2606,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                 let mut sym_5: OPJ_UINT32 = 0;
                 assert!(*dp_2.offset((2i32 * stride) as isize) != 0u32);
                 sym_5 = cwd_1 & 1u32;
-                let ref mut fresh43 = *dp_2.offset((2i32 * stride) as isize);
+                let fresh43 = &mut (*dp_2.offset((2i32 * stride) as isize));
                 *fresh43 ^= (1u32).wrapping_sub(sym_5) << p.wrapping_sub(1u32);
-                let ref mut fresh44 = *dp_2.offset((2i32 * stride) as isize);
+                let fresh44 = &mut (*dp_2.offset((2i32 * stride) as isize));
                 *fresh44 |= half_0;
                 cwd_1 >>= 1i32
               }
@@ -2620,9 +2618,9 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                 let mut sym_6: OPJ_UINT32 = 0;
                 assert!(*dp_2.offset((3i32 * stride) as isize) != 0u32);
                 sym_6 = cwd_1 & 1u32;
-                let ref mut fresh45 = *dp_2.offset((3i32 * stride) as isize);
+                let fresh45 = &mut (*dp_2.offset((3i32 * stride) as isize));
                 *fresh45 ^= (1u32).wrapping_sub(sym_6) << p.wrapping_sub(1u32);
-                let ref mut fresh46 = *dp_2.offset((3i32 * stride) as isize);
+                let fresh46 = &mut (*dp_2.offset((3i32 * stride) as isize));
                 *fresh46 |= half_0;
                 cwd_1 >>= 1i32
               }
@@ -2654,13 +2652,13 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         let mut z_0: OPJ_UINT32 = 0;
         *mbr_1.offset(0) = *sig_2.offset(0);
         //remove already significance samples
-        let ref mut fresh47 = *mbr_1.offset(0); //for first column, left neighbors
+        let fresh47 = &mut (*mbr_1.offset(0)); //for first column, left neighbors
         *fresh47 |= prev_1 >> 28i32; //left neighbors
-        let ref mut fresh48 = *mbr_1.offset(0); //left neighbors
+        let fresh48 = &mut (*mbr_1.offset(0)); //left neighbors
         *fresh48 |= *sig_2.offset(0) << 4i32; //for last column, right neighbors
-        let ref mut fresh49 = *mbr_1.offset(0);
+        let fresh49 = &mut (*mbr_1.offset(0));
         *fresh49 |= *sig_2.offset(0) >> 4i32;
-        let ref mut fresh50 = *mbr_1.offset(0);
+        let fresh50 = &mut (*mbr_1.offset(0));
         *fresh50 |= *sig_2.offset(1) << 28i32;
         prev_1 = *sig_2.offset(0);
         t_10 = *mbr_1.offset(0);
@@ -2675,16 +2673,16 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     }
     st = height;
     st -= if height > 6i32 {
-      (height + 1i32 & 3i32) + 3i32
+      ((height + 1i32) & 3i32) + 3i32
     } else {
       height
     };
     y_0 = st;
     while y_0 < height {
-      let mut cur_sig_2 = 0 as *mut OPJ_UINT32;
-      let mut cur_mbr_0 = 0 as *mut OPJ_UINT32;
-      let mut nxt_sig_0 = 0 as *mut OPJ_UINT32;
-      let mut nxt_mbr_0 = 0 as *mut OPJ_UINT32;
+      let mut cur_sig_2 = std::ptr::null_mut::<OPJ_UINT32>();
+      let mut cur_mbr_0 = std::ptr::null_mut::<OPJ_UINT32>();
+      let mut nxt_sig_0 = std::ptr::null_mut::<OPJ_UINT32>();
+      let mut nxt_mbr_0 = std::ptr::null_mut::<OPJ_UINT32>();
       let mut val_16: OPJ_UINT32 = 0;
       let mut i_6: OPJ_INT32 = 0;
       //integrate vertically
@@ -2714,11 +2712,11 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
           t_11 |= *nxt_sig_0.offset(1) << 28i32;
           prev_2 = *nxt_sig_0.offset(0);
           if stripe_causal == 0 {
-            let ref mut fresh51 = *cur_mbr_0.offset(0);
+            let fresh51 = &mut (*cur_mbr_0.offset(0));
             *fresh51 |= (t_11 & 0x11111111u32) << 3i32
           }
           //remove already significance samples
-          let ref mut fresh52 = *cur_mbr_0.offset(0);
+          let fresh52 = &mut (*cur_mbr_0.offset(0));
           *fresh52 &= !*cur_sig_2.offset(0);
           i_7 += 8i32;
           cur_mbr_0 = cur_mbr_0.offset(1);
@@ -2750,7 +2748,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
             let mut cnt_0 = 0 as OPJ_UINT32;
             let mut dp_3 = decoded_data.offset((y_0 * stride) as isize);
             dp_3 = dp_3.offset((i_6 + n_0) as isize);
-            col_mask_3 = (0xfu32) << 4i32 * n_0;
+            col_mask_3 = (0xfu32) << (4i32 * n_0);
             inv_sig_0 = !*cur_sig_2.offset(0) & pattern;
             end_0 = if n_0 + 4i32 + i_6 < width {
               (n_0) + 4i32
@@ -2760,7 +2758,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
             j_3 = n_0;
             while j_3 < end_0 {
               let mut sample_mask_3: OPJ_UINT32 = 0;
-              if !(col_mask_3 & mbr_2 == 0u32) {
+              if col_mask_3 & mbr_2 != 0u32 {
                 //scan 4 mbr
                 sample_mask_3 = 0x11111111u32 & col_mask_3;
                 if mbr_2 & sample_mask_3 != 0 {
@@ -2768,7 +2766,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                   if cwd_2 & 1u32 != 0 {
                     let mut t_12: OPJ_UINT32 = 0;
                     new_sig_0 |= sample_mask_3;
-                    t_12 = (0x32u32) << j_3 * 4i32;
+                    t_12 = (0x32u32) << (j_3 * 4i32);
                     mbr_2 |= t_12 & inv_sig_0
                   }
                   cwd_2 >>= 1i32;
@@ -2781,7 +2779,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                   if cwd_2 & 1u32 != 0 {
                     let mut t_13: OPJ_UINT32 = 0;
                     new_sig_0 |= sample_mask_3;
-                    t_13 = (0x74u32) << j_3 * 4i32;
+                    t_13 = (0x74u32) << (j_3 * 4i32);
                     mbr_2 |= t_13 & inv_sig_0
                   }
                   cwd_2 >>= 1i32;
@@ -2794,7 +2792,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                   if cwd_2 & 1u32 != 0 {
                     let mut t_14: OPJ_UINT32 = 0;
                     new_sig_0 |= sample_mask_3;
-                    t_14 = (0xe8u32) << j_3 * 4i32;
+                    t_14 = (0xe8u32) << (j_3 * 4i32);
                     mbr_2 |= t_14 & inv_sig_0
                   }
                   cwd_2 >>= 1i32;
@@ -2807,7 +2805,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                   if cwd_2 & 1u32 != 0 {
                     let mut t_15: OPJ_UINT32 = 0;
                     new_sig_0 |= sample_mask_3;
-                    t_15 = (0xc0u32) << j_3 * 4i32;
+                    t_15 = (0xc0u32) << (j_3 * 4i32);
                     mbr_2 |= t_15 & inv_sig_0
                   }
                   cwd_2 >>= 1i32;
@@ -2819,21 +2817,21 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
               col_mask_3 <<= 4i32
             }
             //signs here
-            if new_sig_0 & (0xffffu32) << 4i32 * n_0 != 0 {
+            if new_sig_0 & (0xffffu32) << (4i32 * n_0) != 0 {
               let mut col_mask_4: OPJ_UINT32 = 0;
               let mut j_4: OPJ_INT32 = 0;
               let mut dp_4 = decoded_data.offset((y_0 * stride) as isize);
               dp_4 = dp_4.offset((i_6 + n_0) as isize);
-              col_mask_4 = (0xfu32) << 4i32 * n_0;
+              col_mask_4 = (0xfu32) << (4i32 * n_0);
               j_4 = n_0;
               while j_4 < end_0 {
                 let mut sample_mask_4: OPJ_UINT32 = 0;
-                if !(col_mask_4 & new_sig_0 == 0u32) {
+                if col_mask_4 & new_sig_0 != 0u32 {
                   //scan 4 signs
                   sample_mask_4 = 0x11111111u32 & col_mask_4;
                   if new_sig_0 & sample_mask_4 != 0 {
                     assert!(*dp_4.offset(0) == 0u32);
-                    let ref mut fresh53 = *dp_4.offset(0);
+                    let fresh53 = &mut (*dp_4.offset(0));
                     *fresh53 |= (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
                     cnt_0 += 1;
@@ -2842,7 +2840,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4) as OPJ_UINT32;
                   if new_sig_0 & sample_mask_4 != 0 {
                     assert!(*dp_4.offset(stride as isize) == 0u32);
-                    let ref mut fresh54 = *dp_4.offset(stride as isize);
+                    let fresh54 = &mut (*dp_4.offset(stride as isize));
                     *fresh54 |= (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
                     cnt_0 += 1;
@@ -2851,7 +2849,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4) as OPJ_UINT32;
                   if new_sig_0 & sample_mask_4 != 0 {
                     assert!(*dp_4.offset((2i32 * stride) as isize) == 0u32);
-                    let ref mut fresh55 = *dp_4.offset((2i32 * stride) as isize);
+                    let fresh55 = &mut (*dp_4.offset((2i32 * stride) as isize));
                     *fresh55 |= (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
                     cnt_0 += 1;
@@ -2860,7 +2858,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                     (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4) as OPJ_UINT32;
                   if new_sig_0 & sample_mask_4 != 0 {
                     assert!(*dp_4.offset((3i32 * stride) as isize) == 0u32);
-                    let ref mut fresh56 = *dp_4.offset((3i32 * stride) as isize);
+                    let fresh56 = &mut (*dp_4.offset((3i32 * stride) as isize));
                     *fresh56 |= (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
                     cnt_0 += 1;
@@ -2878,7 +2876,7 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
               //horizontally
               let mut t_16 = new_sig_0 >> 28i32;
               t_16 |= (t_16 & 0xeu32) >> 1i32 | (t_16 & 7u32) << 1i32;
-              let ref mut fresh57 = *cur_mbr_0.offset(1);
+              let fresh57 = &mut (*cur_mbr_0.offset(1));
               *fresh57 |= t_16 & !*cur_sig_2.offset(1)
             }
             n_0 += 4i32
@@ -2889,12 +2887,12 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         ux_0 = (new_sig_0 & 0x88888888u32) >> 3i32;
         tx_0 = ux_0 | ux_0 << 4i32 | ux_0 >> 4i32;
         if i_6 > 0i32 {
-          let ref mut fresh58 = *nxt_mbr_0.offset(-(1i32) as isize);
+          let fresh58 = &mut (*nxt_mbr_0.offset(-(1i32) as isize));
           *fresh58 |= ux_0 << 28i32 & !*nxt_sig_0.offset(-(1i32) as isize)
         }
-        let ref mut fresh59 = *nxt_mbr_0.offset(0);
+        let fresh59 = &mut (*nxt_mbr_0.offset(0));
         *fresh59 |= tx_0 & !*nxt_sig_0.offset(0);
-        let ref mut fresh60 = *nxt_mbr_0.offset(1);
+        let fresh60 = &mut (*nxt_mbr_0.offset(1));
         *fresh60 |= ux_0 >> 28i32 & !*nxt_sig_0.offset(1);
         i_6 += 8i32;
         cur_sig_2 = cur_sig_2.offset(1);
@@ -2923,5 +2921,5 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     }
     y_1 += 1
   }
-  return 1i32;
+  1i32
 }

@@ -173,8 +173,8 @@ pub(crate) fn opj_mqc_raw_decode(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
     }
   }
   mqc.ct = mqc.ct.wrapping_sub(1);
-  let d = mqc.c >> mqc.ct & 0x1;
-  return d;
+  
+  mqc.c >> mqc.ct & 0x1
 }
 
 #[inline]
@@ -215,7 +215,7 @@ fn opj_mqc_renormd_macro(mqc: &mut opj_mqc_t) {
     mqc.a <<= 1;
     mqc.c <<= 1;
     mqc.ct = mqc.ct.wrapping_sub(1);
-    if !(mqc.a < 0x8000) {
+    if mqc.a >= 0x8000 {
       break;
     }
   }
@@ -256,12 +256,9 @@ fn opj_mqc_renorme_macro(mqc: &mut opj_mqc_t) {
     mqc.c <<= 1;
     mqc.ct = mqc.ct.wrapping_sub(1);
     if mqc.ct == 0 {
-      mqc.c = mqc.c;
       opj_mqc_byteout(mqc);
-      mqc.c = mqc.c;
-      mqc.ct = mqc.ct
     }
-    if !(mqc.a & 0x8000 == 0) {
+    if mqc.a & 0x8000 != 0 {
       break;
     }
   }
@@ -965,7 +962,7 @@ fn opj_mqc_setbits(mut mqc: &mut opj_mqc_t) {
 
 pub(crate) fn opj_mqc_numbytes(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
   let diff = unsafe { mqc.bp.offset_from(mqc.start) };
-  return diff as OPJ_UINT32;
+  diff as OPJ_UINT32
 }
 
 pub(crate) fn opj_mqc_init_enc(mut mqc: &mut opj_mqc_t, mut bp: *mut OPJ_BYTE) {

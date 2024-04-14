@@ -30,7 +30,7 @@ impl<P> ProcedureList<P> {
 pub(crate) unsafe fn opj_procedure_list_create<P>() -> *mut ProcedureList<P> {
   /* memory allocation */
   let mut l_validation = Box::new(ProcedureList { list: Vec::new() });
-  return Box::into_raw(l_validation);
+  Box::into_raw(l_validation)
 }
 
 pub(crate) unsafe fn opj_procedure_list_destroy<P>(mut p_list: *mut ProcedureList<P>) {
@@ -46,19 +46,19 @@ pub(crate) unsafe fn opj_procedure_list_add_procedure<P>(
   mut _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   (*p_validation_list).list.push(p_procedure);
-  return 1i32;
+  1i32
 }
 
 pub(crate) unsafe fn opj_procedure_list_get_nb_procedures<P>(
   mut p_validation_list: *mut ProcedureList<P>,
 ) -> OPJ_UINT32 {
-  return (*p_validation_list).list.len() as u32;
+  (*p_validation_list).list.len() as u32
 }
 
 pub(crate) unsafe fn opj_procedure_list_get_first_procedure<P>(
   mut p_validation_list: *mut ProcedureList<P>,
 ) -> *mut P {
-  return (*p_validation_list).list.as_mut_ptr();
+  (*p_validation_list).list.as_mut_ptr()
 }
 
 pub(crate) unsafe fn opj_procedure_list_clear<P>(mut p_validation_list: *mut ProcedureList<P>) {

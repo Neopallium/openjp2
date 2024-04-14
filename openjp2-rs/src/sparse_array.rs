@@ -64,7 +64,7 @@ unsafe fn opj_uint_ceildiv(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
 }
 #[inline]
 unsafe fn opj_uint_min(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
-  return if a < b { a } else { b };
+  if a < b { a } else { b }
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_sparse_array_int32_create(
@@ -73,19 +73,19 @@ pub(crate) unsafe fn opj_sparse_array_int32_create(
   mut block_width: OPJ_UINT32,
   mut block_height: OPJ_UINT32,
 ) -> *mut opj_sparse_array_int32_t {
-  let mut sa = 0 as *mut opj_sparse_array_int32_t;
+  let mut sa = std::ptr::null_mut::<opj_sparse_array_int32_t>();
   if width == 0u32 || height == 0u32 || block_width == 0u32 || block_height == 0u32 {
-    return 0 as *mut opj_sparse_array_int32_t;
+    return std::ptr::null_mut::<opj_sparse_array_int32_t>();
   }
   if block_width as usize
     > ((!(0u32)).wrapping_div(block_height) as usize)
-      .wrapping_div(core::mem::size_of::<OPJ_INT32>() as usize)
+      .wrapping_div(core::mem::size_of::<OPJ_INT32>())
   {
-    return 0 as *mut opj_sparse_array_int32_t;
+    return std::ptr::null_mut::<opj_sparse_array_int32_t>();
   }
   sa = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_sparse_array_int32_t>() as usize,
+    core::mem::size_of::<opj_sparse_array_int32_t>(),
   ) as *mut opj_sparse_array_int32_t;
   (*sa).width = width;
   (*sa).height = height;
@@ -95,17 +95,17 @@ pub(crate) unsafe fn opj_sparse_array_int32_create(
   (*sa).block_count_ver = opj_uint_ceildiv(height, block_height);
   if (*sa).block_count_hor > (!(0u32)).wrapping_div((*sa).block_count_ver) {
     opj_free(sa as *mut core::ffi::c_void);
-    return 0 as *mut opj_sparse_array_int32_t;
+    return std::ptr::null_mut::<opj_sparse_array_int32_t>();
   }
   (*sa).data_blocks = opj_calloc(
-    core::mem::size_of::<*mut OPJ_INT32>() as usize,
+    core::mem::size_of::<*mut OPJ_INT32>(),
     ((*sa).block_count_hor as size_t).wrapping_mul((*sa).block_count_ver as usize),
   ) as *mut *mut OPJ_INT32;
   if (*sa).data_blocks.is_null() {
     opj_free(sa as *mut core::ffi::c_void);
-    return 0 as *mut opj_sparse_array_int32_t;
+    return std::ptr::null_mut::<opj_sparse_array_int32_t>();
   }
-  return sa;
+  sa
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_sparse_array_int32_free(mut sa: *mut opj_sparse_array_int32_t) {
@@ -130,12 +130,12 @@ pub(crate) unsafe fn opj_sparse_array_is_region_valid(
   mut x1: OPJ_UINT32,
   mut y1: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  return !(x0 >= (*sa).width
+  !(x0 >= (*sa).width
     || x1 <= x0
     || x1 > (*sa).width
     || y0 >= (*sa).height
     || y1 <= y0
-    || y1 > (*sa).height) as core::ffi::c_int;
+    || y1 > (*sa).height) as core::ffi::c_int
 }
 unsafe fn opj_sparse_array_int32_read_or_write(
   mut sa: *const opj_sparse_array_int32_t,
@@ -177,7 +177,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
     while x < x1 {
       let mut j: OPJ_UINT32 = 0;
       let mut block_x_offset: OPJ_UINT32 = 0;
-      let mut src_block = 0 as *mut OPJ_INT32;
+      let mut src_block = std::ptr::null_mut::<OPJ_INT32>();
       x_incr = if x == x0 {
         block_width.wrapping_sub(x0.wrapping_rem(block_width))
       } else {
@@ -193,26 +193,20 @@ unsafe fn opj_sparse_array_int32_read_or_write(
       if is_read_op != 0 {
         if src_block.is_null() {
           if buf_col_stride == 1u32 {
-            let mut dest_ptr = buf
-              .offset(
-                (y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T) as isize,
-              )
+            let mut dest_ptr = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
               .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
             j = 0 as OPJ_UINT32;
             while j < y_incr {
               memset(
                 dest_ptr as *mut core::ffi::c_void,
                 0i32,
-                (core::mem::size_of::<OPJ_INT32>() as usize).wrapping_mul(x_incr as usize),
+                core::mem::size_of::<OPJ_INT32>().wrapping_mul(x_incr as usize),
               );
               dest_ptr = dest_ptr.offset(buf_line_stride as isize);
               j += 1;
             }
           } else {
-            let mut dest_ptr_0 = buf
-              .offset(
-                (y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T) as isize,
-              )
+            let mut dest_ptr_0 = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
               .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
             j = 0 as OPJ_UINT32;
             while j < y_incr {
@@ -227,14 +221,10 @@ unsafe fn opj_sparse_array_int32_read_or_write(
             }
           }
         } else {
-          let mut src_ptr: *const OPJ_INT32 = src_block
-            .offset((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T) as isize)
+          let mut src_ptr: *const OPJ_INT32 = src_block.add((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T))
             .offset(block_x_offset as isize);
           if buf_col_stride == 1u32 {
-            let mut dest_ptr_1 = buf
-              .offset(
-                (y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T) as isize,
-              )
+            let mut dest_ptr_1 = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
               .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
             if x_incr == 4u32 {
               /* Same code as general branch, but the compiler */
@@ -245,7 +235,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
                 memcpy(
                   dest_ptr_1 as *mut core::ffi::c_void,
                   src_ptr as *const core::ffi::c_void,
-                  (core::mem::size_of::<OPJ_INT32>() as usize).wrapping_mul(x_incr as usize),
+                  core::mem::size_of::<OPJ_INT32>().wrapping_mul(x_incr as usize),
                 );
                 dest_ptr_1 = dest_ptr_1.offset(buf_line_stride as isize);
                 src_ptr = src_ptr.offset(block_width as isize);
@@ -257,7 +247,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
                 memcpy(
                   dest_ptr_1 as *mut core::ffi::c_void,
                   src_ptr as *const core::ffi::c_void,
-                  (core::mem::size_of::<OPJ_INT32>() as usize).wrapping_mul(x_incr as usize),
+                  core::mem::size_of::<OPJ_INT32>().wrapping_mul(x_incr as usize),
                 );
                 dest_ptr_1 = dest_ptr_1.offset(buf_line_stride as isize);
                 src_ptr = src_ptr.offset(block_width as isize);
@@ -265,10 +255,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               }
             }
           } else {
-            let mut dest_ptr_2 = buf
-              .offset(
-                (y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T) as isize,
-              )
+            let mut dest_ptr_2 = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
               .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
             if x_incr == 1u32 {
               j = 0 as OPJ_UINT32;
@@ -349,26 +336,22 @@ unsafe fn opj_sparse_array_int32_read_or_write(
             1i32 as size_t,
             ((*sa).block_width as size_t)
               .wrapping_mul((*sa).block_height as usize)
-              .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+              .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
           ) as *mut OPJ_INT32;
           if src_block.is_null() {
             return 0i32;
           }
-          let ref mut fresh0 = *(*sa).data_blocks.offset(
+          let fresh0 = &mut (*(*sa).data_blocks.offset(
             block_y
               .wrapping_mul((*sa).block_count_hor)
               .wrapping_add(block_x) as isize,
-          );
+          ));
           *fresh0 = src_block
         }
         if buf_col_stride == 1u32 {
-          let mut dest_ptr_3 = src_block
-            .offset((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T) as isize)
+          let mut dest_ptr_3 = src_block.add((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T))
             .offset(block_x_offset as isize);
-          let mut src_ptr_0: *const OPJ_INT32 = buf
-            .offset(
-              (y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T) as isize,
-            )
+          let mut src_ptr_0: *const OPJ_INT32 = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
             .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
           if x_incr == 4u32 {
             /* Same code as general branch, but the compiler */
@@ -379,7 +362,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               memcpy(
                 dest_ptr_3 as *mut core::ffi::c_void,
                 src_ptr_0 as *const core::ffi::c_void,
-                (core::mem::size_of::<OPJ_INT32>() as usize).wrapping_mul(x_incr as usize),
+                core::mem::size_of::<OPJ_INT32>().wrapping_mul(x_incr as usize),
               );
               dest_ptr_3 = dest_ptr_3.offset(block_width as isize);
               src_ptr_0 = src_ptr_0.offset(buf_line_stride as isize);
@@ -391,7 +374,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
               memcpy(
                 dest_ptr_3 as *mut core::ffi::c_void,
                 src_ptr_0 as *const core::ffi::c_void,
-                (core::mem::size_of::<OPJ_INT32>() as usize).wrapping_mul(x_incr as usize),
+                core::mem::size_of::<OPJ_INT32>().wrapping_mul(x_incr as usize),
               );
               dest_ptr_3 = dest_ptr_3.offset(block_width as isize);
               src_ptr_0 = src_ptr_0.offset(buf_line_stride as isize);
@@ -399,13 +382,9 @@ unsafe fn opj_sparse_array_int32_read_or_write(
             }
           }
         } else {
-          let mut dest_ptr_4 = src_block
-            .offset((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T) as isize)
+          let mut dest_ptr_4 = src_block.add((block_y_offset as usize).wrapping_mul(block_width as OPJ_SIZE_T))
             .offset(block_x_offset as isize);
-          let mut src_ptr_1: *const OPJ_INT32 = buf
-            .offset(
-              (y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T) as isize,
-            )
+          let mut src_ptr_1: *const OPJ_INT32 = buf.add((y.wrapping_sub(y0) as usize).wrapping_mul(buf_line_stride as OPJ_SIZE_T))
             .offset(x.wrapping_sub(x0).wrapping_mul(buf_col_stride) as isize);
           if x_incr == 1u32 {
             j = 0 as OPJ_UINT32;
@@ -464,7 +443,7 @@ unsafe fn opj_sparse_array_int32_read_or_write(
     block_y = block_y.wrapping_add(1);
     y = (y as core::ffi::c_uint).wrapping_add(y_incr) as OPJ_UINT32
   }
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_sparse_array_int32_read(
@@ -478,7 +457,7 @@ pub(crate) unsafe fn opj_sparse_array_int32_read(
   mut dest_line_stride: OPJ_UINT32,
   mut forgiving: OPJ_BOOL,
 ) -> OPJ_BOOL {
-  return opj_sparse_array_int32_read_or_write(
+  opj_sparse_array_int32_read_or_write(
     sa as *mut opj_sparse_array_int32_t,
     x0,
     y0,
@@ -489,7 +468,7 @@ pub(crate) unsafe fn opj_sparse_array_int32_read(
     dest_line_stride,
     forgiving,
     1i32,
-  );
+  )
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_sparse_array_int32_write(
@@ -503,7 +482,7 @@ pub(crate) unsafe fn opj_sparse_array_int32_write(
   mut src_line_stride: OPJ_UINT32,
   mut forgiving: OPJ_BOOL,
 ) -> OPJ_BOOL {
-  return opj_sparse_array_int32_read_or_write(
+  opj_sparse_array_int32_read_or_write(
     sa,
     x0,
     y0,
@@ -514,5 +493,5 @@ pub(crate) unsafe fn opj_sparse_array_int32_write(
     src_line_stride,
     forgiving,
     0i32,
-  );
+  )
 }

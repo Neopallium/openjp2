@@ -57,10 +57,9 @@ pub unsafe extern "C" fn opj_write_bytes_BE(
   mut p_value: OPJ_UINT32,
   mut p_nb_bytes: OPJ_UINT32,
 ) {
-  let mut l_data_ptr = (&mut p_value as *mut OPJ_UINT32 as *const OPJ_BYTE)
-    .offset(core::mem::size_of::<OPJ_UINT32>() as isize)
+  let mut l_data_ptr = (&mut p_value as *mut OPJ_UINT32 as *const OPJ_BYTE).add(core::mem::size_of::<OPJ_UINT32>())
     .offset(-(p_nb_bytes as isize));
-  assert!(p_nb_bytes > 0u32 && p_nb_bytes as usize <= core::mem::size_of::<OPJ_UINT32>() as usize);
+  assert!(p_nb_bytes > 0u32 && p_nb_bytes as usize <= core::mem::size_of::<OPJ_UINT32>());
   memcpy(
     p_buffer as *mut core::ffi::c_void,
     l_data_ptr as *const core::ffi::c_void,
@@ -77,7 +76,7 @@ pub unsafe extern "C" fn opj_write_bytes_LE(
     .offset(p_nb_bytes as isize)
     .offset(-1);
   let mut i: OPJ_UINT32 = 0;
-  assert!(p_nb_bytes > 0u32 && p_nb_bytes as usize <= core::mem::size_of::<OPJ_UINT32>() as usize);
+  assert!(p_nb_bytes > 0u32 && p_nb_bytes as usize <= core::mem::size_of::<OPJ_UINT32>());
   i = 0 as OPJ_UINT32;
   while i < p_nb_bytes {
     let fresh0 = l_data_ptr;
@@ -95,11 +94,10 @@ pub unsafe extern "C" fn opj_read_bytes_BE(
   mut p_nb_bytes: OPJ_UINT32,
 ) {
   let mut l_data_ptr = p_value as *mut OPJ_BYTE;
-  assert!(p_nb_bytes > 0u32 && p_nb_bytes as usize <= core::mem::size_of::<OPJ_UINT32>() as usize);
+  assert!(p_nb_bytes > 0u32 && p_nb_bytes as usize <= core::mem::size_of::<OPJ_UINT32>());
   *p_value = 0 as OPJ_UINT32;
   memcpy(
-    l_data_ptr
-      .offset(core::mem::size_of::<OPJ_UINT32>() as isize)
+    l_data_ptr.add(core::mem::size_of::<OPJ_UINT32>())
       .offset(-(p_nb_bytes as isize)) as *mut core::ffi::c_void,
     p_buffer as *const core::ffi::c_void,
     p_nb_bytes as usize,
@@ -115,7 +113,7 @@ pub unsafe extern "C" fn opj_read_bytes_LE(
     .offset(p_nb_bytes as isize)
     .offset(-1);
   let mut i: OPJ_UINT32 = 0;
-  assert!(p_nb_bytes > 0u32 && p_nb_bytes as usize <= core::mem::size_of::<OPJ_UINT32>() as usize);
+  assert!(p_nb_bytes > 0u32 && p_nb_bytes as usize <= core::mem::size_of::<OPJ_UINT32>());
   *p_value = 0 as OPJ_UINT32;
   i = 0 as OPJ_UINT32;
   while i < p_nb_bytes {
@@ -136,7 +134,7 @@ pub unsafe extern "C" fn opj_write_double_BE(
   memcpy(
     p_buffer as *mut core::ffi::c_void,
     l_data_ptr as *const core::ffi::c_void,
-    core::mem::size_of::<OPJ_FLOAT64>() as usize,
+    core::mem::size_of::<OPJ_FLOAT64>(),
   );
 }
 #[no_mangle]
@@ -144,12 +142,11 @@ pub unsafe extern "C" fn opj_write_double_LE(
   mut p_buffer: *mut OPJ_BYTE,
   mut p_value: OPJ_FLOAT64,
 ) {
-  let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT64 as *const OPJ_BYTE)
-    .offset(core::mem::size_of::<OPJ_FLOAT64>() as isize)
+  let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT64 as *const OPJ_BYTE).add(core::mem::size_of::<OPJ_FLOAT64>())
     .offset(-1);
   let mut i: OPJ_UINT32 = 0;
   i = 0 as OPJ_UINT32;
-  while (i as usize) < core::mem::size_of::<OPJ_FLOAT64>() as usize {
+  while (i as usize) < core::mem::size_of::<OPJ_FLOAT64>() {
     let fresh4 = l_data_ptr;
     l_data_ptr = l_data_ptr.offset(-1);
     let fresh5 = p_buffer;
@@ -167,7 +164,7 @@ pub unsafe extern "C" fn opj_read_double_BE(
   memcpy(
     l_data_ptr as *mut core::ffi::c_void,
     p_buffer as *const core::ffi::c_void,
-    core::mem::size_of::<OPJ_FLOAT64>() as usize,
+    core::mem::size_of::<OPJ_FLOAT64>(),
   );
 }
 #[no_mangle]
@@ -175,12 +172,11 @@ pub unsafe extern "C" fn opj_read_double_LE(
   mut p_buffer: *const OPJ_BYTE,
   mut p_value: *mut OPJ_FLOAT64,
 ) {
-  let mut l_data_ptr = (p_value as *mut OPJ_BYTE)
-    .offset(core::mem::size_of::<OPJ_FLOAT64>() as isize)
+  let mut l_data_ptr = (p_value as *mut OPJ_BYTE).add(core::mem::size_of::<OPJ_FLOAT64>())
     .offset(-1);
   let mut i: OPJ_UINT32 = 0;
   i = 0 as OPJ_UINT32;
-  while (i as usize) < core::mem::size_of::<OPJ_FLOAT64>() as usize {
+  while (i as usize) < core::mem::size_of::<OPJ_FLOAT64>() {
     let fresh6 = p_buffer;
     p_buffer = p_buffer.offset(1);
     let fresh7 = l_data_ptr;
@@ -195,17 +191,16 @@ pub unsafe extern "C" fn opj_write_float_BE(mut p_buffer: *mut OPJ_BYTE, mut p_v
   memcpy(
     p_buffer as *mut core::ffi::c_void,
     l_data_ptr as *const core::ffi::c_void,
-    core::mem::size_of::<OPJ_FLOAT32>() as usize,
+    core::mem::size_of::<OPJ_FLOAT32>(),
   );
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_write_float_LE(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT32) {
-  let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT32 as *const OPJ_BYTE)
-    .offset(core::mem::size_of::<OPJ_FLOAT32>() as isize)
+  let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT32 as *const OPJ_BYTE).add(core::mem::size_of::<OPJ_FLOAT32>())
     .offset(-1);
   let mut i: OPJ_UINT32 = 0;
   i = 0 as OPJ_UINT32;
-  while (i as usize) < core::mem::size_of::<OPJ_FLOAT32>() as usize {
+  while (i as usize) < core::mem::size_of::<OPJ_FLOAT32>() {
     let fresh8 = l_data_ptr;
     l_data_ptr = l_data_ptr.offset(-1);
     let fresh9 = p_buffer;
@@ -223,7 +218,7 @@ pub unsafe extern "C" fn opj_read_float_BE(
   memcpy(
     l_data_ptr as *mut core::ffi::c_void,
     p_buffer as *const core::ffi::c_void,
-    core::mem::size_of::<OPJ_FLOAT32>() as usize,
+    core::mem::size_of::<OPJ_FLOAT32>(),
   );
 }
 #[no_mangle]
@@ -231,12 +226,11 @@ pub unsafe extern "C" fn opj_read_float_LE(
   mut p_buffer: *const OPJ_BYTE,
   mut p_value: *mut OPJ_FLOAT32,
 ) {
-  let mut l_data_ptr = (p_value as *mut OPJ_BYTE)
-    .offset(core::mem::size_of::<OPJ_FLOAT32>() as isize)
+  let mut l_data_ptr = (p_value as *mut OPJ_BYTE).add(core::mem::size_of::<OPJ_FLOAT32>())
     .offset(-1);
   let mut i: OPJ_UINT32 = 0;
   i = 0 as OPJ_UINT32;
-  while (i as usize) < core::mem::size_of::<OPJ_FLOAT32>() as usize {
+  while (i as usize) < core::mem::size_of::<OPJ_FLOAT32>() {
     let fresh10 = p_buffer;
     p_buffer = p_buffer.offset(1);
     let fresh11 = l_data_ptr;
@@ -250,19 +244,19 @@ pub unsafe extern "C" fn opj_stream_create(
   mut p_buffer_size: OPJ_SIZE_T,
   mut l_is_input: OPJ_BOOL,
 ) -> *mut opj_stream_t {
-  let mut l_stream = 0 as *mut opj_stream_private_t;
+  let mut l_stream = std::ptr::null_mut::<opj_stream_private_t>();
   l_stream = opj_calloc(
     1i32 as size_t,
-    core::mem::size_of::<opj_stream_private_t>() as usize,
+    core::mem::size_of::<opj_stream_private_t>(),
   ) as *mut opj_stream_private_t;
   if l_stream.is_null() {
-    return 0 as *mut opj_stream_t;
+    return std::ptr::null_mut::<opj_stream_t>();
   }
   (*l_stream).m_buffer_size = p_buffer_size;
   (*l_stream).m_stored_data = opj_malloc(p_buffer_size) as *mut OPJ_BYTE;
   if (*l_stream).m_stored_data.is_null() {
     opj_free(l_stream as *mut core::ffi::c_void);
-    return 0 as *mut opj_stream_t;
+    return std::ptr::null_mut::<opj_stream_t>();
   }
   (*l_stream).m_current_data = (*l_stream).m_stored_data;
   if l_is_input != 0 {
@@ -326,11 +320,11 @@ pub unsafe extern "C" fn opj_stream_create(
     opj_stream_default_seek
       as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL,
   );
-  return l_stream as *mut opj_stream_t;
+  l_stream as *mut opj_stream_t
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_create(mut l_is_input: OPJ_BOOL) -> *mut opj_stream_t {
-  return opj_stream_create(0x100000 as OPJ_SIZE_T, l_is_input);
+  opj_stream_create(0x100000 as OPJ_SIZE_T, l_is_input)
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_destroy(mut p_stream: *mut opj_stream_t) {
@@ -342,7 +336,7 @@ pub unsafe extern "C" fn opj_stream_destroy(mut p_stream: *mut opj_stream_t) {
         .expect("non-null function pointer")((*l_stream).m_user_data);
     }
     opj_free((*l_stream).m_stored_data as *mut core::ffi::c_void);
-    (*l_stream).m_stored_data = 0 as *mut OPJ_BYTE;
+    (*l_stream).m_stored_data = std::ptr::null_mut::<OPJ_BYTE>();
     opj_free(l_stream as *mut core::ffi::c_void);
   };
 }
@@ -428,9 +422,9 @@ pub unsafe extern "C" fn opj_stream_read_data(
       (*p_stream).m_current_data as *const core::ffi::c_void,
       p_size,
     );
-    (*p_stream).m_current_data = (*p_stream).m_current_data.offset(p_size as isize);
+    (*p_stream).m_current_data = (*p_stream).m_current_data.add(p_size);
     (*p_stream).m_bytes_in_buffer =
-      ((*p_stream).m_bytes_in_buffer as usize).wrapping_sub(p_size) as OPJ_SIZE_T as OPJ_SIZE_T;
+      (*p_stream).m_bytes_in_buffer.wrapping_sub(p_size) as OPJ_SIZE_T as OPJ_SIZE_T;
     l_read_nb_bytes = (l_read_nb_bytes as usize).wrapping_add(p_size) as OPJ_SIZE_T as OPJ_SIZE_T;
     (*p_stream).m_byte_offset += p_size as OPJ_OFF_T;
     return l_read_nb_bytes;
@@ -445,8 +439,7 @@ pub unsafe extern "C" fn opj_stream_read_data(
       (*p_stream).m_bytes_in_buffer,
     );
     (*p_stream).m_current_data = (*p_stream)
-      .m_current_data
-      .offset((*p_stream).m_bytes_in_buffer as isize);
+      .m_current_data.add((*p_stream).m_bytes_in_buffer);
     (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
     (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
     return if l_read_nb_bytes != 0 {
@@ -465,9 +458,9 @@ pub unsafe extern "C" fn opj_stream_read_data(
       (*p_stream).m_bytes_in_buffer,
     );
     (*p_stream).m_current_data = (*p_stream).m_stored_data;
-    p_buffer = p_buffer.offset((*p_stream).m_bytes_in_buffer as isize);
+    p_buffer = p_buffer.add((*p_stream).m_bytes_in_buffer);
     p_size =
-      (p_size as usize).wrapping_sub((*p_stream).m_bytes_in_buffer) as OPJ_SIZE_T as OPJ_SIZE_T;
+      p_size.wrapping_sub((*p_stream).m_bytes_in_buffer) as OPJ_SIZE_T as OPJ_SIZE_T;
     (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
     (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T
   } else {
@@ -496,37 +489,35 @@ pub unsafe extern "C" fn opj_stream_read_data(
         } else {
           -(1i32) as OPJ_SIZE_T
         };
+      } else if (*p_stream).m_bytes_in_buffer < p_size {
+        /* not enough data */
+        l_read_nb_bytes = (l_read_nb_bytes as usize).wrapping_add((*p_stream).m_bytes_in_buffer)
+          as OPJ_SIZE_T as OPJ_SIZE_T;
+        memcpy(
+          p_buffer as *mut core::ffi::c_void,
+          (*p_stream).m_current_data as *const core::ffi::c_void,
+          (*p_stream).m_bytes_in_buffer,
+        );
+        (*p_stream).m_current_data = (*p_stream).m_stored_data;
+        p_buffer = p_buffer.add((*p_stream).m_bytes_in_buffer);
+        p_size = p_size.wrapping_sub((*p_stream).m_bytes_in_buffer) as OPJ_SIZE_T
+          as OPJ_SIZE_T;
+        (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
+        (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T
       } else {
-        if (*p_stream).m_bytes_in_buffer < p_size {
-          /* not enough data */
-          l_read_nb_bytes = (l_read_nb_bytes as usize).wrapping_add((*p_stream).m_bytes_in_buffer)
-            as OPJ_SIZE_T as OPJ_SIZE_T;
-          memcpy(
-            p_buffer as *mut core::ffi::c_void,
-            (*p_stream).m_current_data as *const core::ffi::c_void,
-            (*p_stream).m_bytes_in_buffer,
-          );
-          (*p_stream).m_current_data = (*p_stream).m_stored_data;
-          p_buffer = p_buffer.offset((*p_stream).m_bytes_in_buffer as isize);
-          p_size = (p_size as usize).wrapping_sub((*p_stream).m_bytes_in_buffer) as OPJ_SIZE_T
-            as OPJ_SIZE_T;
-          (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
-          (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T
-        } else {
-          l_read_nb_bytes =
-            (l_read_nb_bytes as usize).wrapping_add(p_size) as OPJ_SIZE_T as OPJ_SIZE_T;
-          memcpy(
-            p_buffer as *mut core::ffi::c_void,
-            (*p_stream).m_current_data as *const core::ffi::c_void,
-            p_size,
-          );
-          (*p_stream).m_current_data = (*p_stream).m_current_data.offset(p_size as isize);
-          (*p_stream).m_bytes_in_buffer = ((*p_stream).m_bytes_in_buffer as usize)
-            .wrapping_sub(p_size) as OPJ_SIZE_T
-            as OPJ_SIZE_T;
-          (*p_stream).m_byte_offset += p_size as OPJ_OFF_T;
-          return l_read_nb_bytes;
-        }
+        l_read_nb_bytes =
+          (l_read_nb_bytes as usize).wrapping_add(p_size) as OPJ_SIZE_T as OPJ_SIZE_T;
+        memcpy(
+          p_buffer as *mut core::ffi::c_void,
+          (*p_stream).m_current_data as *const core::ffi::c_void,
+          p_size,
+        );
+        (*p_stream).m_current_data = (*p_stream).m_current_data.add(p_size);
+        (*p_stream).m_bytes_in_buffer = (*p_stream).m_bytes_in_buffer
+          .wrapping_sub(p_size) as OPJ_SIZE_T
+          as OPJ_SIZE_T;
+        (*p_stream).m_byte_offset += p_size as OPJ_OFF_T;
+        return l_read_nb_bytes;
       }
     } else {
       /* direct read on the dest buffer */
@@ -546,26 +537,24 @@ pub unsafe extern "C" fn opj_stream_read_data(
         } else {
           -(1i32) as OPJ_SIZE_T
         };
+      } else if (*p_stream).m_bytes_in_buffer < p_size {
+        /* not enough data */
+        l_read_nb_bytes = (l_read_nb_bytes as usize).wrapping_add((*p_stream).m_bytes_in_buffer)
+          as OPJ_SIZE_T as OPJ_SIZE_T;
+        (*p_stream).m_current_data = (*p_stream).m_stored_data;
+        p_buffer = p_buffer.add((*p_stream).m_bytes_in_buffer);
+        p_size = p_size.wrapping_sub((*p_stream).m_bytes_in_buffer) as OPJ_SIZE_T
+          as OPJ_SIZE_T;
+        (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
+        (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T
       } else {
-        if (*p_stream).m_bytes_in_buffer < p_size {
-          /* not enough data */
-          l_read_nb_bytes = (l_read_nb_bytes as usize).wrapping_add((*p_stream).m_bytes_in_buffer)
-            as OPJ_SIZE_T as OPJ_SIZE_T;
-          (*p_stream).m_current_data = (*p_stream).m_stored_data;
-          p_buffer = p_buffer.offset((*p_stream).m_bytes_in_buffer as isize);
-          p_size = (p_size as usize).wrapping_sub((*p_stream).m_bytes_in_buffer) as OPJ_SIZE_T
-            as OPJ_SIZE_T;
-          (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
-          (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T
-        } else {
-          /* we have read the exact size */
-          l_read_nb_bytes = (l_read_nb_bytes as usize).wrapping_add((*p_stream).m_bytes_in_buffer)
-            as OPJ_SIZE_T as OPJ_SIZE_T;
-          (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
-          (*p_stream).m_current_data = (*p_stream).m_stored_data;
-          (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
-          return l_read_nb_bytes;
-        }
+        /* we have read the exact size */
+        l_read_nb_bytes = (l_read_nb_bytes as usize).wrapping_add((*p_stream).m_bytes_in_buffer)
+          as OPJ_SIZE_T as OPJ_SIZE_T;
+        (*p_stream).m_byte_offset += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
+        (*p_stream).m_current_data = (*p_stream).m_stored_data;
+        (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
+        return l_read_nb_bytes;
       }
     }
   }
@@ -593,9 +582,9 @@ pub unsafe extern "C" fn opj_stream_write_data(
         p_buffer as *const core::ffi::c_void,
         p_size,
       );
-      (*p_stream).m_current_data = (*p_stream).m_current_data.offset(p_size as isize);
+      (*p_stream).m_current_data = (*p_stream).m_current_data.add(p_size);
       (*p_stream).m_bytes_in_buffer =
-        ((*p_stream).m_bytes_in_buffer as usize).wrapping_add(p_size) as OPJ_SIZE_T as OPJ_SIZE_T;
+        (*p_stream).m_bytes_in_buffer.wrapping_add(p_size) as OPJ_SIZE_T as OPJ_SIZE_T;
       l_write_nb_bytes =
         (l_write_nb_bytes as usize).wrapping_add(p_size) as OPJ_SIZE_T as OPJ_SIZE_T;
       (*p_stream).m_byte_offset += p_size as OPJ_OFF_T;
@@ -611,9 +600,9 @@ pub unsafe extern "C" fn opj_stream_write_data(
         l_remaining_bytes,
       );
       (*p_stream).m_current_data = (*p_stream).m_stored_data;
-      p_buffer = p_buffer.offset(l_remaining_bytes as isize);
-      p_size = (p_size as usize).wrapping_sub(l_remaining_bytes) as OPJ_SIZE_T as OPJ_SIZE_T;
-      (*p_stream).m_bytes_in_buffer = ((*p_stream).m_bytes_in_buffer as usize)
+      p_buffer = p_buffer.add(l_remaining_bytes);
+      p_size = p_size.wrapping_sub(l_remaining_bytes) as OPJ_SIZE_T as OPJ_SIZE_T;
+      (*p_stream).m_bytes_in_buffer = (*p_stream).m_bytes_in_buffer
         .wrapping_add(l_remaining_bytes) as OPJ_SIZE_T
         as OPJ_SIZE_T;
       (*p_stream).m_byte_offset += l_remaining_bytes as OPJ_OFF_T
@@ -644,14 +633,13 @@ pub unsafe extern "C" fn opj_stream_flush(
       return 0i32;
     }
     (*p_stream).m_current_data = (*p_stream)
-      .m_current_data
-      .offset(l_current_write_nb_bytes as isize);
-    (*p_stream).m_bytes_in_buffer = ((*p_stream).m_bytes_in_buffer as usize)
+      .m_current_data.add(l_current_write_nb_bytes);
+    (*p_stream).m_bytes_in_buffer = (*p_stream).m_bytes_in_buffer
       .wrapping_sub(l_current_write_nb_bytes) as OPJ_SIZE_T
       as OPJ_SIZE_T
   }
   (*p_stream).m_current_data = (*p_stream).m_stored_data;
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_read_skip(
@@ -666,7 +654,7 @@ pub unsafe extern "C" fn opj_stream_read_skip(
     (*p_stream).m_current_data = (*p_stream).m_current_data.offset(p_size as isize);
     /* it is safe to cast p_size to OPJ_SIZE_T since it is <= m_bytes_in_buffer
     which is of type OPJ_SIZE_T */
-    (*p_stream).m_bytes_in_buffer = ((*p_stream).m_bytes_in_buffer as usize)
+    (*p_stream).m_bytes_in_buffer = (*p_stream).m_bytes_in_buffer
       .wrapping_sub(p_size as OPJ_SIZE_T) as OPJ_SIZE_T
       as OPJ_SIZE_T;
     l_skip_nb_bytes += p_size;
@@ -677,8 +665,7 @@ pub unsafe extern "C" fn opj_stream_read_skip(
   if (*p_stream).m_status & 0x4u32 != 0 {
     l_skip_nb_bytes += (*p_stream).m_bytes_in_buffer as OPJ_OFF_T;
     (*p_stream).m_current_data = (*p_stream)
-      .m_current_data
-      .offset((*p_stream).m_bytes_in_buffer as isize);
+      .m_current_data.add((*p_stream).m_bytes_in_buffer);
     (*p_stream).m_bytes_in_buffer = 0 as OPJ_SIZE_T;
     (*p_stream).m_byte_offset += l_skip_nb_bytes;
     return if l_skip_nb_bytes != 0 {
@@ -738,7 +725,7 @@ pub unsafe extern "C" fn opj_stream_read_skip(
     l_skip_nb_bytes += l_current_skip_nb_bytes
   }
   (*p_stream).m_byte_offset += l_skip_nb_bytes;
-  return l_skip_nb_bytes;
+  l_skip_nb_bytes
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_write_skip(
@@ -779,11 +766,11 @@ pub unsafe extern "C" fn opj_stream_write_skip(
     l_skip_nb_bytes += l_current_skip_nb_bytes
   }
   (*p_stream).m_byte_offset += l_skip_nb_bytes;
-  return l_skip_nb_bytes;
+  l_skip_nb_bytes
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_tell(mut p_stream: *const opj_stream_private_t) -> OPJ_OFF_T {
-  return (*p_stream).m_byte_offset;
+  (*p_stream).m_byte_offset
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_get_number_byte_left(
@@ -791,11 +778,11 @@ pub unsafe extern "C" fn opj_stream_get_number_byte_left(
 ) -> OPJ_OFF_T {
   assert!((*p_stream).m_byte_offset >= 0i64);
   assert!((*p_stream).m_user_data_length >= (*p_stream).m_byte_offset as OPJ_UINT64);
-  return if (*p_stream).m_user_data_length != 0 {
+  if (*p_stream).m_user_data_length != 0 {
     ((*p_stream).m_user_data_length as OPJ_OFF_T) - (*p_stream).m_byte_offset
   } else {
     0i64
-  };
+  }
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_skip(
@@ -804,7 +791,7 @@ pub unsafe extern "C" fn opj_stream_skip(
   mut p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_OFF_T {
   assert!(p_size >= 0i64);
-  return (*p_stream).m_opj_skip.expect("non-null function pointer")(p_stream, p_size, p_event_mgr);
+  (*p_stream).m_opj_skip.expect("non-null function pointer")(p_stream, p_size, p_event_mgr)
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_read_seek(
@@ -823,7 +810,7 @@ pub unsafe extern "C" fn opj_stream_read_seek(
     (*p_stream).m_status &= !(0x4u32);
     (*p_stream).m_byte_offset = p_size
   }
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_write_seek(
@@ -844,7 +831,7 @@ pub unsafe extern "C" fn opj_stream_write_seek(
   } else {
     (*p_stream).m_byte_offset = p_size
   }
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_seek(
@@ -853,17 +840,17 @@ pub unsafe extern "C" fn opj_stream_seek(
   mut p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   assert!(p_size >= 0i64);
-  return (*p_stream).m_opj_seek.expect("non-null function pointer")(p_stream, p_size, p_event_mgr);
+  (*p_stream).m_opj_seek.expect("non-null function pointer")(p_stream, p_size, p_event_mgr)
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_has_seek(
   mut p_stream: *const opj_stream_private_t,
 ) -> OPJ_BOOL {
-  return ((*p_stream).m_seek_fn
+  ((*p_stream).m_seek_fn
     != Some(
       opj_stream_default_seek
         as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL,
-    )) as core::ffi::c_int;
+    )) as core::ffi::c_int
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_read(
@@ -871,7 +858,7 @@ pub unsafe extern "C" fn opj_stream_default_read(
   mut _p_nb_bytes: OPJ_SIZE_T,
   mut _p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_SIZE_T {
-  return -(1i32) as OPJ_SIZE_T;
+  -(1i32) as OPJ_SIZE_T
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_write(
@@ -879,19 +866,19 @@ pub unsafe extern "C" fn opj_stream_default_write(
   mut _p_nb_bytes: OPJ_SIZE_T,
   mut _p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_SIZE_T {
-  return -(1i32) as OPJ_SIZE_T;
+  -(1i32) as OPJ_SIZE_T
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_skip(
   mut _p_nb_bytes: OPJ_OFF_T,
   mut _p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_OFF_T {
-  return -(1i32) as OPJ_OFF_T;
+  -(1i32) as OPJ_OFF_T
 }
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_seek(
   mut _p_nb_bytes: OPJ_OFF_T,
   mut _p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
-  return 0i32;
+  0i32
 }

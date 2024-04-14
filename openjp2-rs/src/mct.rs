@@ -13,7 +13,7 @@ unsafe fn opj_int_fix_mul(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
 
   assert!(temp >> 13i32 <= 0x7fffffff as OPJ_INT64);
   assert!(temp >> 13i32 >= -(0x7fffffff as OPJ_INT64) - 1 as OPJ_INT64);
-  return (temp >> 13i32) as OPJ_INT32;
+  (temp >> 13i32) as OPJ_INT32
 }
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -63,11 +63,11 @@ static mut opj_mct_norms: [OPJ_FLOAT64; 3] = [1.732f64, 0.8292f64, 0.8292f64];
 static mut opj_mct_norms_real: [OPJ_FLOAT64; 3] = [1.732f64, 1.805f64, 1.573f64];
 #[no_mangle]
 pub(crate) unsafe fn opj_mct_get_mct_norms() -> *const OPJ_FLOAT64 {
-  return opj_mct_norms.as_ptr();
+  opj_mct_norms.as_ptr()
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_mct_get_mct_norms_real() -> *const OPJ_FLOAT64 {
-  return opj_mct_norms_real.as_ptr();
+  opj_mct_norms_real.as_ptr()
 }
 /* <summary> */
 /* Forward reversible MCT. */
@@ -83,15 +83,15 @@ pub(crate) unsafe fn opj_mct_encode(
   let len = n;
   i = 0 as OPJ_SIZE_T;
   while i < len {
-    let mut r = *c0.offset(i as isize);
-    let mut g = *c1.offset(i as isize);
-    let mut b = *c2.offset(i as isize);
-    let mut y = r + g * 2i32 + b >> 2i32;
+    let mut r = *c0.add(i);
+    let mut g = *c1.add(i);
+    let mut b = *c2.add(i);
+    let mut y = (r + g * 2i32 + b) >> 2i32;
     let mut u = b - g;
     let mut v = r - g;
-    *c0.offset(i as isize) = y;
-    *c1.offset(i as isize) = u;
-    *c2.offset(i as isize) = v;
+    *c0.add(i) = y;
+    *c1.add(i) = u;
+    *c2.add(i) = v;
     i += 1;
   }
 }
@@ -108,15 +108,15 @@ pub(crate) unsafe fn opj_mct_decode(
   let mut i: OPJ_SIZE_T = 0;
   i = 0 as OPJ_SIZE_T;
   while i < n {
-    let mut y = *c0.offset(i as isize);
-    let mut u = *c1.offset(i as isize);
-    let mut v = *c2.offset(i as isize);
-    let mut g = y - (u + v >> 2i32);
+    let mut y = *c0.add(i);
+    let mut u = *c1.add(i);
+    let mut v = *c2.add(i);
+    let mut g = y - ((u + v) >> 2i32);
     let mut r = v + g;
     let mut b = u + g;
-    *c0.offset(i as isize) = r;
-    *c1.offset(i as isize) = g;
-    *c2.offset(i as isize) = b;
+    *c0.add(i) = r;
+    *c1.add(i) = g;
+    *c2.add(i) = b;
     i += 1;
   }
 }
@@ -125,7 +125,7 @@ pub(crate) unsafe fn opj_mct_decode(
 /* </summary> */
 #[no_mangle]
 pub(crate) unsafe fn opj_mct_getnorm(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
-  return opj_mct_norms[compno as usize];
+  opj_mct_norms[compno as usize]
 }
 /* <summary> */
 /* Forward irreversible MCT. */
@@ -140,15 +140,15 @@ pub(crate) unsafe fn opj_mct_encode_real(
   let mut i: OPJ_SIZE_T = 0;
   i = 0 as OPJ_SIZE_T;
   while i < n {
-    let mut r = *c0.offset(i as isize);
-    let mut g = *c1.offset(i as isize);
-    let mut b = *c2.offset(i as isize);
+    let mut r = *c0.add(i);
+    let mut g = *c1.add(i);
+    let mut b = *c2.add(i);
     let mut y = 0.299f32 * r + 0.587f32 * g + 0.114f32 * b;
     let mut u = -0.16875f32 * r - 0.331260f32 * g + 0.5f32 * b;
     let mut v = 0.5f32 * r - 0.41869f32 * g - 0.08131f32 * b;
-    *c0.offset(i as isize) = y;
-    *c1.offset(i as isize) = u;
-    *c2.offset(i as isize) = v;
+    *c0.add(i) = y;
+    *c1.add(i) = u;
+    *c2.add(i) = v;
     i += 1;
   }
 }
@@ -165,15 +165,15 @@ pub(crate) unsafe fn opj_mct_decode_real(
   let mut i: OPJ_SIZE_T = 0;
   i = 0 as OPJ_SIZE_T;
   while i < n {
-    let mut y = *c0.offset(i as isize);
-    let mut u = *c1.offset(i as isize);
-    let mut v = *c2.offset(i as isize);
+    let mut y = *c0.add(i);
+    let mut u = *c1.add(i);
+    let mut v = *c2.add(i);
     let mut r = y + v * 1.402f32;
     let mut g = y - u * 0.34413f32 - v * 0.71414f32;
     let mut b = y + u * 1.772f32;
-    *c0.offset(i as isize) = r;
-    *c1.offset(i as isize) = g;
-    *c2.offset(i as isize) = b;
+    *c0.add(i) = r;
+    *c1.add(i) = g;
+    *c2.add(i) = b;
     i += 1;
   }
 }
@@ -182,7 +182,7 @@ pub(crate) unsafe fn opj_mct_decode_real(
 /* </summary> */
 #[no_mangle]
 pub(crate) unsafe fn opj_mct_getnorm_real(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
-  return opj_mct_norms_real[compno as usize];
+  opj_mct_norms_real[compno as usize]
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_mct_encode_custom(
@@ -197,14 +197,14 @@ pub(crate) unsafe fn opj_mct_encode_custom(
   let mut j: OPJ_UINT32 = 0;
   let mut k: OPJ_UINT32 = 0;
   let mut lNbMatCoeff = pNbComp.wrapping_mul(pNbComp);
-  let mut lCurrentData = 0 as *mut OPJ_INT32;
-  let mut lCurrentMatrix = 0 as *mut OPJ_INT32;
+  let mut lCurrentData = std::ptr::null_mut::<OPJ_INT32>();
+  let mut lCurrentMatrix = std::ptr::null_mut::<OPJ_INT32>();
   let mut lData = pData as *mut *mut OPJ_INT32;
   let mut lMultiplicator = ((1i32) << 13i32) as OPJ_UINT32;
-  let mut lMctPtr = 0 as *mut OPJ_INT32;
+  let mut lMctPtr = std::ptr::null_mut::<OPJ_INT32>();
   lCurrentData = opj_malloc(
     (pNbComp.wrapping_add(lNbMatCoeff) as usize)
-      .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+      .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
   ) as *mut OPJ_INT32;
   if lCurrentData.is_null() {
     return 0i32;
@@ -214,7 +214,7 @@ pub(crate) unsafe fn opj_mct_encode_custom(
   while i < lNbMatCoeff as usize {
     let fresh0 = lMct;
     lMct = lMct.offset(1);
-    *lCurrentMatrix.offset(i as isize) = (*fresh0 * lMultiplicator as OPJ_FLOAT32) as OPJ_INT32;
+    *lCurrentMatrix.add(i) = (*fresh0 * lMultiplicator as OPJ_FLOAT32) as OPJ_INT32;
     i += 1;
   }
   i = 0 as OPJ_SIZE_T;
@@ -230,19 +230,19 @@ pub(crate) unsafe fn opj_mct_encode_custom(
       **lData.offset(j as isize) = 0i32;
       k = 0 as OPJ_UINT32;
       while k < pNbComp {
-        let ref mut fresh1 = **lData.offset(j as isize);
+        let fresh1 = &mut (**lData.offset(j as isize));
         *fresh1 += opj_int_fix_mul(*lMctPtr, *lCurrentData.offset(k as isize));
         lMctPtr = lMctPtr.offset(1);
         k += 1;
       }
-      let ref mut fresh2 = *lData.offset(j as isize);
+      let fresh2 = &mut (*lData.offset(j as isize));
       *fresh2 = (*fresh2).offset(1);
       j += 1;
     }
     i += 1;
   }
   opj_free(lCurrentData as *mut core::ffi::c_void);
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_mct_decode_custom(
@@ -252,16 +252,16 @@ pub(crate) unsafe fn opj_mct_decode_custom(
   mut pNbComp: OPJ_UINT32,
   mut _isSigned: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  let mut lMct = 0 as *mut OPJ_FLOAT32;
+  let mut lMct = std::ptr::null_mut::<OPJ_FLOAT32>();
   let mut i: OPJ_SIZE_T = 0;
   let mut j: OPJ_UINT32 = 0;
   let mut k: OPJ_UINT32 = 0;
-  let mut lCurrentData = 0 as *mut OPJ_FLOAT32;
-  let mut lCurrentResult = 0 as *mut OPJ_FLOAT32;
+  let mut lCurrentData = std::ptr::null_mut::<OPJ_FLOAT32>();
+  let mut lCurrentResult = std::ptr::null_mut::<OPJ_FLOAT32>();
   let mut lData = pData as *mut *mut OPJ_FLOAT32;
   lCurrentData = opj_malloc(
     ((2u32).wrapping_mul(pNbComp) as usize)
-      .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as usize),
+      .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
   ) as *mut OPJ_FLOAT32;
   if lCurrentData.is_null() {
     return 0i32;
@@ -282,11 +282,11 @@ pub(crate) unsafe fn opj_mct_decode_custom(
       while k < pNbComp {
         let fresh3 = lMct;
         lMct = lMct.offset(1);
-        let ref mut fresh4 = *lCurrentResult.offset(j as isize);
+        let fresh4 = &mut (*lCurrentResult.offset(j as isize));
         *fresh4 += *fresh3 * *lCurrentData.offset(k as isize);
         k += 1;
       }
-      let ref mut fresh5 = *lData.offset(j as isize);
+      let fresh5 = &mut (*lData.offset(j as isize));
       let fresh6 = *fresh5;
       *fresh5 = (*fresh5).offset(1);
       *fresh6 = *lCurrentResult.offset(j as isize);
@@ -295,7 +295,7 @@ pub(crate) unsafe fn opj_mct_decode_custom(
     i += 1;
   }
   opj_free(lCurrentData as *mut core::ffi::c_void);
-  return 1i32;
+  1i32
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_calculate_norms(
@@ -317,7 +317,7 @@ pub(crate) unsafe fn opj_calculate_norms(
     while j < pNbComps {
       lCurrentValue = *lMatrix.offset(lIndex as isize);
       lIndex = (lIndex as core::ffi::c_uint).wrapping_add(pNbComps) as OPJ_UINT32;
-      let ref mut fresh7 = *lNorms.offset(i as isize);
+      let fresh7 = &mut (*lNorms.offset(i as isize));
       *fresh7 += lCurrentValue as OPJ_FLOAT64 * lCurrentValue as core::ffi::c_double;
       j += 1;
     }

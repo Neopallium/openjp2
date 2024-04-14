@@ -1,6 +1,6 @@
 [toolchain]
 channel = "nightly"
 targets = [ "x86_64-pc-windows-msvc" ]
-#components = [ "rustfmt" ]
-#profile = "minimal"
+components = [ "rustfmt", "clippy" ]
+profile = "minimal"
 

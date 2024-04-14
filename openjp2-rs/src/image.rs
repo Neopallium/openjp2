@@ -59,9 +59,8 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
  */
 #[no_mangle]
 pub unsafe fn opj_image_create0() -> *mut opj_image_t {
-  let mut image =
-    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>() as usize) as *mut opj_image_t;
-  return image;
+  
+  opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t
 }
 #[no_mangle]
 pub unsafe fn opj_image_create(
@@ -70,22 +69,22 @@ pub unsafe fn opj_image_create(
   mut clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
   let mut compno: OPJ_UINT32 = 0;
-  let mut image = 0 as *mut opj_image_t;
+  let mut image = std::ptr::null_mut::<opj_image_t>();
   image =
-    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>() as usize) as *mut opj_image_t;
+    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t;
   if !image.is_null() {
     (*image).color_space = clrspc;
     (*image).numcomps = numcmpts;
     /* allocate memory for the per-component information */
     (*image).comps = opj_calloc(
       (*image).numcomps as size_t,
-      core::mem::size_of::<opj_image_comp_t>() as usize,
+      core::mem::size_of::<opj_image_comp_t>(),
     ) as *mut opj_image_comp_t;
     if (*image).comps.is_null() {
       /* TODO replace with event manager, breaks API */
       /* fprintf(stderr,"Unable to allocate memory for image.\n"); */
       opj_image_destroy(image);
-      return 0 as *mut opj_image_t;
+      return std::ptr::null_mut::<opj_image_t>();
     }
     /* create the individual image components */
     compno = 0 as OPJ_UINT32;
@@ -104,34 +103,34 @@ pub unsafe fn opj_image_create(
         && (*comp).w as OPJ_SIZE_T
           > (usize::MAX)
             .wrapping_div((*comp).h as usize)
-            .wrapping_div(core::mem::size_of::<OPJ_INT32>() as usize)
+            .wrapping_div(core::mem::size_of::<OPJ_INT32>())
       {
         /* TODO event manager */
         opj_image_destroy(image);
-        return 0 as *mut opj_image_t;
+        return std::ptr::null_mut::<opj_image_t>();
       }
       (*comp).data = opj_image_data_alloc(
         ((*comp).w as size_t)
           .wrapping_mul((*comp).h as usize)
-          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+          .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
       ) as *mut OPJ_INT32;
       if (*comp).data.is_null() {
         /* TODO replace with event manager, breaks API */
         /* fprintf(stderr,"Unable to allocate memory for image.\n"); */
         opj_image_destroy(image);
-        return 0 as *mut opj_image_t;
+        return std::ptr::null_mut::<opj_image_t>();
       }
       memset(
         (*comp).data as *mut core::ffi::c_void,
         0i32,
         ((*comp).w as size_t)
           .wrapping_mul((*comp).h as usize)
-          .wrapping_mul(core::mem::size_of::<OPJ_INT32>() as usize),
+          .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
       );
       compno += 1;
     }
   }
-  return image;
+  image
 }
 #[no_mangle]
 pub unsafe fn opj_image_destroy(mut image: *mut opj_image_t) {
@@ -177,7 +176,7 @@ pub(crate) unsafe fn opj_image_comp_header_update(
   let mut l_comp_y0: OPJ_UINT32 = 0;
   let mut l_comp_x1: OPJ_UINT32 = 0;
   let mut l_comp_y1: OPJ_UINT32 = 0;
-  let mut l_img_comp = 0 as *mut opj_image_comp_t;
+  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
   l_x0 = opj_uint_max((*p_cp).tx0, (*p_image_header).x0);
   l_y0 = opj_uint_max((*p_cp).ty0, (*p_image_header).y0);
   l_x1 = (*p_cp)
@@ -238,15 +237,15 @@ pub unsafe fn opj_copy_image_header(
       compno += 1;
     }
     opj_free((*p_image_dest).comps as *mut core::ffi::c_void);
-    (*p_image_dest).comps = 0 as *mut opj_image_comp_t
+    (*p_image_dest).comps = std::ptr::null_mut::<opj_image_comp_t>()
   }
   (*p_image_dest).numcomps = (*p_image_src).numcomps;
   (*p_image_dest).comps = opj_malloc(
     ((*p_image_dest).numcomps as usize)
-      .wrapping_mul(core::mem::size_of::<opj_image_comp_t>() as usize),
+      .wrapping_mul(core::mem::size_of::<opj_image_comp_t>()),
   ) as *mut opj_image_comp_t;
   if (*p_image_dest).comps.is_null() {
-    (*p_image_dest).comps = 0 as *mut opj_image_comp_t;
+    (*p_image_dest).comps = std::ptr::null_mut::<opj_image_comp_t>();
     (*p_image_dest).numcomps = 0 as OPJ_UINT32;
     return;
   }
@@ -257,10 +256,10 @@ pub unsafe fn opj_copy_image_header(
         as *mut core::ffi::c_void,
       &mut *(*p_image_src).comps.offset(compno as isize) as *mut opj_image_comp_t
         as *const core::ffi::c_void,
-      core::mem::size_of::<opj_image_comp_t>() as usize,
+      core::mem::size_of::<opj_image_comp_t>(),
     );
-    let ref mut fresh0 = (*(*p_image_dest).comps.offset(compno as isize)).data;
-    *fresh0 = 0 as *mut OPJ_INT32;
+    let fresh0 = &mut (*(*p_image_dest).comps.offset(compno as isize)).data;
+    *fresh0 = std::ptr::null_mut::<OPJ_INT32>();
     compno += 1;
   }
   (*p_image_dest).color_space = (*p_image_src).color_space;
@@ -269,7 +268,7 @@ pub unsafe fn opj_copy_image_header(
     (*p_image_dest).icc_profile_buf =
       opj_malloc((*p_image_dest).icc_profile_len as size_t) as *mut OPJ_BYTE;
     if (*p_image_dest).icc_profile_buf.is_null() {
-      (*p_image_dest).icc_profile_buf = 0 as *mut OPJ_BYTE;
+      (*p_image_dest).icc_profile_buf = std::ptr::null_mut::<OPJ_BYTE>();
       (*p_image_dest).icc_profile_len = 0 as OPJ_UINT32;
       return;
     }
@@ -279,7 +278,7 @@ pub unsafe fn opj_copy_image_header(
       (*p_image_src).icc_profile_len as usize,
     );
   } else {
-    (*p_image_dest).icc_profile_buf = 0 as *mut OPJ_BYTE
+    (*p_image_dest).icc_profile_buf = std::ptr::null_mut::<OPJ_BYTE>()
   };
 }
 #[no_mangle]
@@ -289,20 +288,20 @@ pub unsafe fn opj_image_tile_create(
   mut clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
   let mut compno: OPJ_UINT32 = 0;
-  let mut image = 0 as *mut opj_image_t;
+  let mut image = std::ptr::null_mut::<opj_image_t>();
   image =
-    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>() as usize) as *mut opj_image_t;
+    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t;
   if !image.is_null() {
     (*image).color_space = clrspc;
     (*image).numcomps = numcmpts;
     /* allocate memory for the per-component information */
     (*image).comps = opj_calloc(
       (*image).numcomps as size_t,
-      core::mem::size_of::<opj_image_comp_t>() as usize,
+      core::mem::size_of::<opj_image_comp_t>(),
     ) as *mut opj_image_comp_t;
     if (*image).comps.is_null() {
       opj_image_destroy(image);
-      return 0 as *mut opj_image_t;
+      return std::ptr::null_mut::<opj_image_t>();
     }
     /* create the individual image components */
     compno = 0 as OPJ_UINT32;
@@ -317,9 +316,9 @@ pub unsafe fn opj_image_tile_create(
       (*comp).y0 = (*cmptparms.offset(compno as isize)).y0;
       (*comp).prec = (*cmptparms.offset(compno as isize)).prec;
       (*comp).sgnd = (*cmptparms.offset(compno as isize)).sgnd;
-      (*comp).data = 0 as *mut OPJ_INT32;
+      (*comp).data = std::ptr::null_mut::<OPJ_INT32>();
       compno += 1;
     }
   }
-  return image;
+  image
 }
