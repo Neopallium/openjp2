@@ -2108,7 +2108,7 @@ pub(crate) unsafe fn opj_pi_create_decode(
   l_tmp_data = std::ptr::null_mut::<OPJ_UINT32>();
   opj_free(l_tmp_ptr as *mut core::ffi::c_void);
   l_tmp_ptr = std::ptr::null_mut::<*mut OPJ_UINT32>();
-  if (*l_tcp).POC() != 0 {
+  if (*l_tcp).POC {
     opj_pi_update_decode_poc(l_pi, l_tcp, l_max_prec, l_max_res);
   } else {
     opj_pi_update_decode_not_poc(l_pi, l_tcp, l_max_prec, l_max_res);
@@ -2367,7 +2367,7 @@ pub(crate) unsafe fn opj_pi_initialise_encode(
   l_tmp_data = std::ptr::null_mut::<OPJ_UINT32>();
   opj_free(l_tmp_ptr as *mut core::ffi::c_void);
   l_tmp_ptr = std::ptr::null_mut::<*mut OPJ_UINT32>();
-  if (*l_tcp).POC() as core::ffi::c_int != 0
+  if (*l_tcp).POC
     && ((*p_cp).rsiz as core::ffi::c_int >= 0x3i32 && (*p_cp).rsiz as core::ffi::c_int <= 0x6i32
       || p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint)
   {
@@ -2749,7 +2749,7 @@ pub(crate) unsafe fn opj_pi_update_encoding_parameters(
     &mut l_max_prec,
     &mut l_max_res,
   );
-  if (*l_tcp).POC() != 0 {
+  if (*l_tcp).POC {
     opj_pi_update_encode_poc_and_final(
       p_cp, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min,
     );

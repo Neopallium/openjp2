@@ -280,18 +280,17 @@ pub(crate) unsafe fn opj_t2_encode_packets(
             if (*cstr_info).packno == 0 {
               (*info_PK).start_pos = ((*info_TL).end_header + 1i32) as OPJ_OFF_T
             } else {
-              (*info_PK).start_pos =
-                if ((*l_cp).m_specific_param.m_enc.m_tp_on as u32 | (*l_tcp).POC()) != 0
-                  && (*info_PK).start_pos != 0
-                {
-                  (*info_PK).start_pos
-                } else {
-                  ((*(*info_TL)
-                    .packet
-                    .offset(((*cstr_info).packno - 1i32) as isize))
-                  .end_pos)
-                    + 1i64
-                }
+              (*info_PK).start_pos = if ((*l_cp).m_specific_param.m_enc.m_tp_on || (*l_tcp).POC)
+                && (*info_PK).start_pos != 0
+              {
+                (*info_PK).start_pos
+              } else {
+                ((*(*info_TL)
+                  .packet
+                  .offset(((*cstr_info).packno - 1i32) as isize))
+                .end_pos)
+                  + 1i64
+              }
             }
             (*info_PK).end_pos = (*info_PK).start_pos + l_nb_bytes as i64 - 1;
             (*info_PK).end_ph_pos += (*info_PK).start_pos - 1i64
@@ -771,7 +770,7 @@ unsafe fn opj_t2_encode_packet(
           while passno < l_nb_passes {
             nump = nump.wrapping_add(1);
             len = (len as core::ffi::c_uint).wrapping_add((*pass).len) as OPJ_UINT32;
-            if (*pass).term() as core::ffi::c_int != 0
+            if (*pass).term
               || passno
                 == (*cblk)
                   .numpasses
@@ -799,7 +798,7 @@ unsafe fn opj_t2_encode_packet(
           while passno < l_nb_passes {
             nump = nump.wrapping_add(1);
             len = (len as core::ffi::c_uint).wrapping_add((*pass).len) as OPJ_UINT32;
-            if (*pass).term() as core::ffi::c_int != 0
+            if (*pass).term
               || passno
                 == (*cblk)
                   .numpasses
@@ -1081,12 +1080,12 @@ unsafe fn opj_t2_read_packet_header(
     return 0i32;
   }
 
-  if (*l_cp).ppm() as core::ffi::c_int == 1i32 {
+  if (*l_cp).ppm {
     /* PPM */
     l_header_data_start = &mut (*l_cp).ppm_data; /* Normal Case */
     l_header_data = *l_header_data_start;
     l_modified_length_ptr = &mut (*l_cp).ppm_len
-  } else if (*p_tcp).ppt() as core::ffi::c_int == 1i32 {
+  } else if (*p_tcp).ppt {
     /* PPT */
     l_header_data_start = &mut (*p_tcp).ppt_data;
     l_header_data = *l_header_data_start;

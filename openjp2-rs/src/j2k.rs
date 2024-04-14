@@ -1445,7 +1445,7 @@ unsafe fn opj_j2k_read_siz(
       if i == 0u32 {
         l_prec0 = (*l_img_comp).prec;
         l_sgnd0 = (*l_img_comp).sgnd
-      } else if (*l_cp).allow_different_bit_depth_sign() == 0
+      } else if !(*l_cp).allow_different_bit_depth_sign
         && ((*l_img_comp).prec != l_prec0 || (*l_img_comp).sgnd != l_sgnd0)
       {
         event_msg!(p_manager, EVT_WARNING,
@@ -1506,7 +1506,7 @@ unsafe fn opj_j2k_read_siz(
   }
   l_nb_tiles = (*l_cp).tw.wrapping_mul((*l_cp).th);
   /* Define the tiles which will be decoded */
-  if p_j2k.m_specific_param.m_decoder.m_discard_tiles() != 0 {
+  if p_j2k.m_specific_param.m_decoder.m_discard_tiles {
     p_j2k.m_specific_param.m_decoder.m_start_tile_x = p_j2k
       .m_specific_param
       .m_decoder
@@ -1853,7 +1853,7 @@ unsafe fn opj_j2k_read_cod(
   } else {
     p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
-  (*l_tcp).set_cod(1 as OPJ_BITFIELD);
+  (*l_tcp).cod = true;
   /* Make sure room is sufficient */
   if p_header_size < 5u32 {
     event_msg!(p_manager, EVT_ERROR, "Error reading COD marker\n",); /* Scod */
@@ -2876,7 +2876,7 @@ unsafe fn opj_j2k_read_poc(
   } else {
     p_j2k.m_specific_param.m_decoder.m_default_tcp
   };
-  l_old_poc_nb = if (*l_tcp).POC() as core::ffi::c_int != 0 {
+  l_old_poc_nb = if (*l_tcp).POC {
     (*l_tcp).numpocs.wrapping_add(1u32)
   } else {
     0u32
@@ -2888,7 +2888,7 @@ unsafe fn opj_j2k_read_poc(
     return 0i32;
   }
   /* now poc is in use.*/
-  (*l_tcp).set_POC(1 as OPJ_BITFIELD); /* RSpoc_i */
+  (*l_tcp).POC = true; /* RSpoc_i */
   l_current_poc = &mut *(*l_tcp).pocs.as_mut_ptr().offset(l_old_poc_nb as isize) as *mut opj_poc_t; /* CSpoc_i */
   i = l_old_poc_nb; /* LYEpoc_i */
   while i < l_current_poc_nb {
@@ -3187,7 +3187,7 @@ unsafe fn opj_j2k_read_ppm(
     return 0i32;
   }
   l_cp = &mut p_j2k.m_cp;
-  (*l_cp).set_ppm(1 as OPJ_BITFIELD);
+  (*l_cp).ppm = true;
   opj_read_bytes_LE(p_header_data, &mut l_Z_ppm, 1 as OPJ_UINT32);
   p_header_data = p_header_data.offset(1);
   p_header_size = p_header_size.wrapping_sub(1);
@@ -3287,7 +3287,7 @@ unsafe fn opj_j2k_merge_ppm(
 
   assert!(!p_cp.is_null());
   assert!((*p_cp).ppm_buffer.is_null());
-  if (*p_cp).ppm() == 0u32 {
+  if !(*p_cp).ppm {
     return 1i32;
   }
 
@@ -3477,13 +3477,13 @@ unsafe fn opj_j2k_read_ppt(
     return 0i32;
   }
   l_cp = &mut p_j2k.m_cp;
-  if (*l_cp).ppm() != 0 {
+  if (*l_cp).ppm {
     event_msg!(p_manager, EVT_ERROR,
                       "Error reading PPT marker: packet header have been previously found in the main header (PPM marker).\n");
     return 0i32;
   }
   l_tcp = &mut *(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize) as *mut opj_tcp_t;
-  (*l_tcp).set_ppt(1 as OPJ_BITFIELD);
+  (*l_tcp).ppt = true;
   opj_read_bytes_LE(p_header_data, &mut l_Z_ppt, 1 as OPJ_UINT32);
   p_header_data = p_header_data.offset(1);
   p_header_size = p_header_size.wrapping_sub(1);
@@ -3589,7 +3589,7 @@ unsafe fn opj_j2k_merge_ppt(
     );
     return 0i32;
   }
-  if (*p_tcp).ppt() == 0u32 {
+  if !(*p_tcp).ppt {
     return 1i32;
   }
   l_ppt_data_size = 0u32;
@@ -3952,12 +3952,9 @@ unsafe fn opj_j2k_read_sot(
   }
   if l_num_parts != 0u32 {
     /* Number of tile-part header is provided by this tile-part header */
-    l_num_parts = (l_num_parts as core::ffi::c_uint).wrapping_add(
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_nb_tile_parts_correction(),
-    ) as OPJ_UINT32;
+    l_num_parts = (l_num_parts as core::ffi::c_uint)
+      .wrapping_add(p_j2k.m_specific_param.m_decoder.m_nb_tile_parts_correction as _)
+      as OPJ_UINT32;
     /* Useful to manage the case of textGBR.jp2 file because two values of TNSot are allowed: the correct numbers of
      * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
     if (*l_tcp).m_nb_tile_parts != 0 && l_current_part >= (*l_tcp).m_nb_tile_parts {
@@ -3980,10 +3977,7 @@ unsafe fn opj_j2k_read_sot(
   /* If know the number of tile part header we will check if we didn't read the last*/
   if (*l_tcp).m_nb_tile_parts != 0 && (*l_tcp).m_nb_tile_parts == l_current_part.wrapping_add(1u32)
   {
-    p_j2k
-      .m_specific_param
-      .m_decoder
-      .set_m_can_decode(1 as OPJ_BITFIELD)
+    p_j2k.m_specific_param.m_decoder.m_can_decode = true;
     /* Process the last tile-part header*/
   }
   if p_j2k.m_specific_param.m_decoder.m_last_tile_part == 0 {
@@ -3997,20 +3991,15 @@ unsafe fn opj_j2k_read_sot(
   p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPH;
   /* Check if the current tile is outside the area we want decode or not corresponding to the tile index*/
   if p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec == -(1i32) {
-    p_j2k.m_specific_param.m_decoder.set_m_skip_data(
-      (l_tile_x < p_j2k.m_specific_param.m_decoder.m_start_tile_x
-        || l_tile_x >= p_j2k.m_specific_param.m_decoder.m_end_tile_x
-        || l_tile_y < p_j2k.m_specific_param.m_decoder.m_start_tile_y
-        || l_tile_y >= p_j2k.m_specific_param.m_decoder.m_end_tile_y) as core::ffi::c_int
-        as OPJ_BITFIELD,
-    )
+    p_j2k.m_specific_param.m_decoder.m_skip_data = l_tile_x
+      < p_j2k.m_specific_param.m_decoder.m_start_tile_x
+      || l_tile_x >= p_j2k.m_specific_param.m_decoder.m_end_tile_x
+      || l_tile_y < p_j2k.m_specific_param.m_decoder.m_start_tile_y
+      || l_tile_y >= p_j2k.m_specific_param.m_decoder.m_end_tile_y;
   } else {
     assert!(p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec >= 0i32);
-    p_j2k.m_specific_param.m_decoder.set_m_skip_data(
-      (p_j2k.m_current_tile_number
-        != p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32)
-        as core::ffi::c_int as OPJ_BITFIELD,
-    )
+    p_j2k.m_specific_param.m_decoder.m_skip_data = p_j2k.m_current_tile_number
+      != p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32;
   }
   /* Index */
   if !p_j2k.cstr_index.is_null() {
@@ -5605,7 +5594,7 @@ unsafe fn opj_j2k_write_mcc_record(
     l_current_data = l_current_data.offset(l_nb_bytes_for_comp as isize);
     i += 1;
   }
-  l_tmcc = (((*p_mcc_record).m_is_irreversible() == 0) as core::ffi::c_uint & 1u32) << 16i32;
+  l_tmcc = ((!(*p_mcc_record).m_is_irreversible) as core::ffi::c_uint & 1u32) << 16i32;
   if !(*p_mcc_record).m_decorrelation_array.is_null() {
     l_tmcc |= (*(*p_mcc_record).m_decorrelation_array).m_index
   }
@@ -5841,8 +5830,7 @@ unsafe fn opj_j2k_read_mcc(
     }
     opj_read_bytes_LE(p_header_data, &mut l_tmp, 3 as OPJ_UINT32);
     p_header_data = p_header_data.offset(3);
-    (*l_mcc_record)
-      .set_m_is_irreversible((l_tmp >> 16i32 & 1u32 == 0) as core::ffi::c_int as OPJ_BITFIELD);
+    (*l_mcc_record).m_is_irreversible = l_tmp >> 16i32 & 1u32 == 0;
     (*l_mcc_record).m_decorrelation_array = std::ptr::null_mut::<opj_mct_data_t>();
     (*l_mcc_record).m_offset_array = std::ptr::null_mut::<opj_mct_data_t>();
     l_indix = l_tmp & 0xffu32;
@@ -6351,7 +6339,7 @@ pub(crate) unsafe fn opj_j2k_set_threads(
 /* ----------------------------------------------------------------------- */
 pub(crate) fn opj_j2k_create_compress() -> Option<opj_j2k> {
   let mut l_j2k = opj_j2k::new(0);
-  l_j2k.m_cp.set_m_is_decoder(0 as OPJ_BITFIELD);
+  l_j2k.m_cp.m_is_decoder = false;
   unsafe {
     l_j2k.m_specific_param.m_encoder.m_header_tile_data =
       opj_malloc(1000i32 as size_t) as *mut OPJ_BYTE;
@@ -7610,7 +7598,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
     (*tcp).prg = (*parameters).prog_order;
     (*tcp).mct = (*parameters).tcp_mct as OPJ_UINT32;
     numpocs_tile = 0 as OPJ_UINT32;
-    (*tcp).set_POC(0 as OPJ_BITFIELD);
+    (*tcp).POC = false;
     if (*parameters).numpocs != 0 {
       /* initialisation of POC */
       i = 0 as OPJ_UINT32;
@@ -7647,7 +7635,7 @@ pub(crate) unsafe fn opj_j2k_setup_encoder(
           (*parameters).tcp_numlayers as OPJ_UINT32,
           p_manager,
         );
-        (*tcp).set_POC(1 as OPJ_BITFIELD);
+        (*tcp).POC = true;
         (*tcp).numpocs = numpocs_tile.wrapping_sub(1u32)
       }
     } else {
@@ -8383,7 +8371,7 @@ pub(crate) unsafe fn opj_j2k_setup_mct_encoding(
     .m_mcc_records
     .offset((*p_tcp).m_nb_mcc_records as isize);
   (*l_mcc_data).m_decorrelation_array = l_mct_deco_data;
-  (*l_mcc_data).set_m_is_irreversible(1 as OPJ_BITFIELD);
+  (*l_mcc_data).m_is_irreversible = true;
   (*l_mcc_data).m_nb_comps = (*p_image).numcomps;
   let fresh29 = l_indix;
   l_indix = l_indix.wrapping_add(1);
@@ -8807,8 +8795,8 @@ unsafe fn opj_j2k_copy_default_tcp_and_create_tcd(
       core::mem::size_of::<opj_tcp_t>(),
     );
     /* Initialize some values of the current tile coding parameters*/
-    (*l_tcp).set_cod(0 as OPJ_BITFIELD);
-    (*l_tcp).set_ppt(0 as OPJ_BITFIELD);
+    (*l_tcp).cod = false;
+    (*l_tcp).ppt = false;
     (*l_tcp).ppt_data = std::ptr::null_mut::<OPJ_BYTE>();
     (*l_tcp).m_current_tile_part_number = -(1i32);
     /* Remove memory not owned by this tile in case of early error return. */
@@ -9170,7 +9158,7 @@ unsafe fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
   (*p_cp).ppm_data = std::ptr::null_mut::<OPJ_BYTE>();
   opj_free((*p_cp).comment as *mut core::ffi::c_void);
   (*p_cp).comment = std::ptr::null_mut::<OPJ_CHAR>();
-  if (*p_cp).m_is_decoder() == 0 {
+  if !(*p_cp).m_is_decoder {
     opj_free((*p_cp).m_specific_param.m_enc.m_matrice as *mut core::ffi::c_void);
     (*p_cp).m_specific_param.m_enc.m_matrice = std::ptr::null_mut::<OPJ_INT32>()
   };
@@ -9338,7 +9326,7 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
   }
   /* We need to encounter a SOT marker (a new tile-part header) */
   /* Read into the codestream until reach the EOC or ! can_decode ??? FIXME */
-  while p_j2k.m_specific_param.m_decoder.m_can_decode() == 0 && l_current_marker != J2KMarker::EOC {
+  while !p_j2k.m_specific_param.m_decoder.m_can_decode && l_current_marker != J2KMarker::EOC {
     /* Try to read until the Start Of Data is detected */
     while l_current_marker != J2KMarker::SOD {
       if opj_stream_get_number_byte_left(p_stream) == 0i64 {
@@ -9473,7 +9461,7 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
               p_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = sot_pos as OPJ_OFF_T
             }
           }
-          if p_j2k.m_specific_param.m_decoder.m_skip_data() != 0 {
+          if p_j2k.m_specific_param.m_decoder.m_skip_data {
             /* Skip the rest of the tile part header*/
             if opj_stream_skip(
               p_stream,
@@ -9511,24 +9499,23 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
       break;
     }
     /* If we didn't skip data before, we need to read the SOD marker*/
-    if p_j2k.m_specific_param.m_decoder.m_skip_data() == 0 {
+    if !p_j2k.m_specific_param.m_decoder.m_skip_data {
       /* Try to read the SOD marker and skip data ? FIXME */
       if opj_j2k_read_sod(p_j2k, p_stream, p_manager) == 0 {
         return 0i32;
       }
-      if p_j2k.m_specific_param.m_decoder.m_can_decode() as core::ffi::c_int != 0
-        && p_j2k
+      if p_j2k.m_specific_param.m_decoder.m_can_decode
+        && !p_j2k
           .m_specific_param
           .m_decoder
-          .m_nb_tile_parts_correction_checked()
-          == 0
+          .m_nb_tile_parts_correction_checked
       {
         /* Issue 254 */
         let mut l_correction_needed: OPJ_BOOL = 0;
         p_j2k
           .m_specific_param
           .m_decoder
-          .set_m_nb_tile_parts_correction_checked(1 as OPJ_BITFIELD);
+          .m_nb_tile_parts_correction_checked = true;
         if opj_j2k_need_nb_tile_parts_correction(
           p_stream,
           p_j2k.m_current_tile_number,
@@ -9545,14 +9532,8 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
         }
         if l_correction_needed != 0 {
           let mut l_tile_no: OPJ_UINT32 = 0;
-          p_j2k
-            .m_specific_param
-            .m_decoder
-            .set_m_can_decode(0 as OPJ_BITFIELD);
-          p_j2k
-            .m_specific_param
-            .m_decoder
-            .set_m_nb_tile_parts_correction(1 as OPJ_BITFIELD);
+          p_j2k.m_specific_param.m_decoder.m_can_decode = false;
+          p_j2k.m_specific_param.m_decoder.m_nb_tile_parts_correction = true;
           /* correct tiles */
           l_tile_no = 0u32;
           while l_tile_no < l_nb_tiles {
@@ -9571,17 +9552,11 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
       }
     } else {
       /* Indicate we will try to read a new tile-part header*/
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .set_m_skip_data(0 as OPJ_BITFIELD);
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .set_m_can_decode(0 as OPJ_BITFIELD);
+      p_j2k.m_specific_param.m_decoder.m_skip_data = false;
+      p_j2k.m_specific_param.m_decoder.m_can_decode = false;
       p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT
     }
-    if p_j2k.m_specific_param.m_decoder.m_can_decode() != 0 {
+    if p_j2k.m_specific_param.m_decoder.m_can_decode {
       continue;
     }
     /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
@@ -9630,7 +9605,7 @@ pub(crate) unsafe fn opj_j2k_read_tile_header(
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::EOC
   }
   /* Deal with tiles that have a single tile-part with TPsot == 0 and TNsot == 0 */
-  if p_j2k.m_specific_param.m_decoder.m_can_decode() == 0 {
+  if !p_j2k.m_specific_param.m_decoder.m_can_decode {
     l_tcp = p_j2k.m_cp.tcps.offset(p_j2k.m_current_tile_number as isize);
     while p_j2k.m_current_tile_number < l_nb_tiles && (*l_tcp).m_data.is_null() {
       p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);
@@ -9748,10 +9723,7 @@ pub(crate) unsafe fn opj_j2k_decode_tile(
     p_j2k->m_tcd->tcp = 0;*/
     opj_j2k_tcp_data_destroy(l_tcp);
   }
-  p_j2k
-    .m_specific_param
-    .m_decoder
-    .set_m_can_decode(0 as OPJ_BITFIELD);
+  p_j2k.m_specific_param.m_decoder.m_can_decode = false;
   p_j2k.m_specific_param.m_decoder.m_state &= !(J2KState::DATA);
   if opj_stream_get_number_byte_left(p_stream) == 0i64
     && p_j2k.m_specific_param.m_decoder.m_state == J2KState::NEOC
@@ -10342,10 +10314,7 @@ pub(crate) unsafe fn opj_j2k_set_decode_area(
     (*p_image).y1 = p_end_y as OPJ_UINT32
   }
   /* ----- */
-  p_j2k
-    .m_specific_param
-    .m_decoder
-    .set_m_discard_tiles(1 as OPJ_BITFIELD);
+  p_j2k.m_specific_param.m_decoder.m_discard_tiles = true;
   ret = opj_j2k_update_image_dimensions(p_image, p_manager);
   if ret != 0 {
     event_msg!(
@@ -10385,13 +10354,11 @@ impl opj_j2k {
 
 pub(crate) fn opj_j2k_create_decompress() -> Option<opj_j2k> {
   let mut l_j2k = opj_j2k::new(1);
-  l_j2k.m_cp.set_m_is_decoder(1 as OPJ_BITFIELD);
+  l_j2k.m_cp.m_is_decoder = true;
   /* in the absence of JP2 boxes, consider different bit depth / sign */
   /* per component is allowed */
   unsafe {
-    l_j2k
-      .m_cp
-      .set_allow_different_bit_depth_sign(1 as OPJ_BITFIELD);
+    l_j2k.m_cp.allow_different_bit_depth_sign = true;
     /* Default to using strict mode. */
     l_j2k.m_cp.strict = 1i32;
     l_j2k.m_specific_param.m_decoder.m_default_tcp =
@@ -13315,7 +13282,7 @@ unsafe fn opj_j2k_write_first_tile_part(
   total_data_size =
     (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32;
   if !((*l_cp).rsiz as core::ffi::c_int >= 0x3i32 && (*l_cp).rsiz as core::ffi::c_int <= 0x6i32)
-    && (*(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize)).POC() != 0
+    && (*(*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize)).POC
   {
     l_current_nb_bytes_written = 0 as OPJ_UINT32;
     opj_j2k_write_poc_in_memory(p_j2k, p_data, &mut l_current_nb_bytes_written, p_manager);

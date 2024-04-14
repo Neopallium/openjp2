@@ -37,7 +37,7 @@ pub(crate) unsafe fn opj_tcd_create(mut p_is_decoder: OPJ_BOOL) -> *mut opj_tcd_
   if l_tcd.is_null() {
     return std::ptr::null_mut::<opj_tcd_t>();
   }
-  (*l_tcd).set_m_is_decoder(if p_is_decoder != 0 { 1i32 } else { 0i32 } as OPJ_BITFIELD);
+  (*l_tcd).m_is_decoder = p_is_decoder != 0;
   (*l_tcd).tcd_image =
     opj_calloc(1i32 as size_t, core::mem::size_of::<opj_tcd_image_t>()) as *mut opj_tcd_image_t;
   if (*l_tcd).tcd_image.is_null() {
@@ -2097,7 +2097,7 @@ unsafe fn opj_tcd_free_tile(mut p_tcd: *mut opj_tcd_t) {
   if (*p_tcd).tcd_image.is_null() {
     return;
   }
-  if (*p_tcd).m_is_decoder() != 0 {
+  if (*p_tcd).m_is_decoder {
     l_tcd_code_block_deallocate =
       Some(opj_tcd_code_block_dec_deallocate as unsafe fn(_: *mut opj_tcd_precinct_t) -> ())
   } else {
