@@ -59,9 +59,7 @@ pub type opj_image_cmptparm_t = opj_image_comptparm;
  */
 
 pub(crate) fn opj_image_create0() -> *mut opj_image_t {
-  unsafe {
-    opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t
-  }
+  unsafe { opj_calloc(1i32 as size_t, core::mem::size_of::<opj_image_t>()) as *mut opj_image_t }
 }
 
 #[no_mangle]
