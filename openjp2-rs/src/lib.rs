@@ -1,4 +1,3 @@
-#![feature(new_uninit)]
 #![allow(dead_code)]
 #![allow(mutable_transmutes)]
 #![allow(non_camel_case_types)]
@@ -14,8 +13,6 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std as alloc;
 
-#[macro_use]
-extern crate c2rust_bitfields;
 extern crate libc;
 
 mod c_api_types;

@@ -369,10 +369,7 @@ unsafe fn opj_jp2_read_ihdr(
   p_image_header_data = p_image_header_data.offset(1);
   opj_read_bytes_LE(p_image_header_data, &mut jp2.IPR, 1 as OPJ_UINT32);
   p_image_header_data = p_image_header_data.offset(1);
-  jp2
-    .j2k
-    .m_cp
-    .set_allow_different_bit_depth_sign((jp2.bpc == 255u32) as OPJ_BITFIELD);
+  jp2.j2k.m_cp.allow_different_bit_depth_sign = jp2.bpc == 255u32;
   jp2.j2k.ihdr_w = jp2.w;
   jp2.j2k.ihdr_h = jp2.h;
   jp2.has_ihdr = 1 as OPJ_BYTE;

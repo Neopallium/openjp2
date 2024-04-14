@@ -2803,9 +2803,7 @@ fn opj_t1_encode_cblk(
         0i32
       } as OPJ_BYTE;
       /* If the previous pass was terminating, we need to reset the encoder */
-      if passno > 0
-        && (*(*cblk).passes.offset(passno.wrapping_sub(1) as isize)).term() as core::ffi::c_int != 0
-      {
+      if passno > 0 && (*(*cblk).passes.offset(passno.wrapping_sub(1) as isize)).term {
         if type_0 as core::ffi::c_int == 1i32 {
           opj_mqc_bypass_init_enc(&mut t1.mqc);
         } else {
@@ -2852,7 +2850,7 @@ fn opj_t1_encode_cblk(
         } else {
           opj_mqc_flush(&mut t1.mqc);
         }
-        (*pass).set_term(1 as OPJ_BITFIELD);
+        (*pass).term = true;
         (*pass).rate = opj_mqc_numbytes(&mut t1.mqc)
       } else {
         /* Non terminated pass */
@@ -2863,7 +2861,7 @@ fn opj_t1_encode_cblk(
         } else {
           rate_extra_bytes = 3 as OPJ_UINT32
         }
-        (*pass).set_term(0 as OPJ_BITFIELD);
+        (*pass).term = false;
         (*pass).rate = opj_mqc_numbytes(&mut t1.mqc).wrapping_add(rate_extra_bytes)
       }
       passtype = passtype.wrapping_add(1);

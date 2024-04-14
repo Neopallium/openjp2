@@ -196,7 +196,7 @@ pub(crate) struct opj_j2k {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, BitfieldStruct)]
+#[derive(Copy, Clone)]
 pub(crate) struct opj_tcd {
   pub tp_pos: OPJ_INT32,
   pub tp_num: OPJ_UINT32,
@@ -208,10 +208,7 @@ pub(crate) struct opj_tcd {
   pub cp: *mut opj_cp_t,
   pub tcp: *mut opj_tcp_t,
   pub tcd_tileno: OPJ_UINT32,
-  #[bitfield(name = "m_is_decoder", ty = "OPJ_BITFIELD", bits = "0..=0")]
-  pub m_is_decoder: [u8; 1],
-  #[bitfield(padding)]
-  pub c2rust_padding: [u8; 3],
+  pub m_is_decoder: bool,
   pub win_x0: OPJ_UINT32,
   pub win_y0: OPJ_UINT32,
   pub win_x1: OPJ_UINT32,
@@ -222,7 +219,7 @@ pub(crate) struct opj_tcd {
 pub(crate) type opj_tcd_t = opj_tcd;
 
 #[repr(C)]
-#[derive(Copy, Clone, BitfieldStruct)]
+#[derive(Copy, Clone)]
 pub(crate) struct opj_tcp {
   pub csty: OPJ_UINT32,
   pub prg: OPJ_PROG_ORDER,
@@ -253,26 +250,20 @@ pub(crate) struct opj_tcp {
   pub m_mcc_records: *mut opj_simple_mcc_decorrelation_data_t,
   pub m_nb_mcc_records: OPJ_UINT32,
   pub m_nb_max_mcc_records: OPJ_UINT32,
-  #[bitfield(name = "cod", ty = "OPJ_BITFIELD", bits = "0..=0")]
-  #[bitfield(name = "ppt", ty = "OPJ_BITFIELD", bits = "1..=1")]
-  #[bitfield(name = "POC", ty = "OPJ_BITFIELD", bits = "2..=2")]
-  pub cod_ppt_POC: [u8; 1],
-  #[bitfield(padding)]
-  pub c2rust_padding: [u8; 7],
+  pub cod: bool,
+  pub ppt: bool,
+  pub POC: bool,
 }
 pub(crate) type opj_tcp_t = opj_tcp;
 
 #[repr(C)]
-#[derive(Copy, Clone, BitfieldStruct)]
+#[derive(Copy, Clone)]
 pub(crate) struct opj_simple_mcc_decorrelation_data {
   pub m_index: OPJ_UINT32,
   pub m_nb_comps: OPJ_UINT32,
   pub m_decorrelation_array: *mut opj_mct_data_t,
   pub m_offset_array: *mut opj_mct_data_t,
-  #[bitfield(name = "m_is_irreversible", ty = "OPJ_BITFIELD", bits = "0..=0")]
-  pub m_is_irreversible: [u8; 1],
-  #[bitfield(padding)]
-  pub c2rust_padding: [u8; 7],
+  pub m_is_irreversible: bool,
 }
 pub(crate) type opj_simple_mcc_decorrelation_data_t = opj_simple_mcc_decorrelation_data;
 
@@ -329,7 +320,7 @@ pub(crate) struct opj_ppx_struct {
 pub(crate) type opj_ppx = opj_ppx_struct;
 
 #[repr(C)]
-#[derive(Copy, Clone, BitfieldStruct)]
+#[derive(Copy, Clone)]
 pub(crate) struct opj_cp {
   pub rsiz: OPJ_UINT16,
   pub tx0: OPJ_UINT32,
@@ -353,16 +344,9 @@ pub(crate) struct opj_cp {
   pub tcps: *mut opj_tcp_t,
   pub m_specific_param: C2RustUnnamed_0,
   pub strict: OPJ_BOOL,
-  #[bitfield(name = "ppm", ty = "OPJ_BITFIELD", bits = "0..=0")]
-  #[bitfield(name = "m_is_decoder", ty = "OPJ_BITFIELD", bits = "1..=1")]
-  #[bitfield(
-    name = "allow_different_bit_depth_sign",
-    ty = "OPJ_BITFIELD",
-    bits = "2..=2"
-  )]
-  pub ppm_m_is_decoder_allow_different_bit_depth_sign: [u8; 1],
-  #[bitfield(padding)]
-  pub c2rust_padding: [u8; 3],
+  pub ppm: bool,
+  pub m_is_decoder: bool,
+  pub allow_different_bit_depth_sign: bool,
 }
 pub(crate) type opj_cp_t = opj_cp;
 
@@ -388,7 +372,7 @@ pub(crate) enum J2K_QUALITY_LAYER_ALLOCATION_STRATEGY {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, BitfieldStruct)]
+#[derive(Copy, Clone)]
 pub(crate) struct opj_encoding_param {
   pub m_max_comp_size: OPJ_UINT32,
   pub m_tp_pos: OPJ_INT32,
@@ -595,15 +579,12 @@ pub(crate) struct opj_tcd_cblk_enc {
 pub(crate) type opj_tcd_cblk_enc_t = opj_tcd_cblk_enc;
 
 #[repr(C)]
-#[derive(Copy, Clone, BitfieldStruct)]
+#[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_pass {
   pub rate: OPJ_UINT32,
   pub distortiondec: OPJ_FLOAT64,
   pub len: OPJ_UINT32,
-  #[bitfield(name = "term", ty = "OPJ_BITFIELD", bits = "0..=0")]
-  pub term: [u8; 1],
-  #[bitfield(padding)]
-  pub c2rust_padding: [u8; 3],
+  pub term: bool,
 }
 pub(crate) type opj_tcd_pass_t = opj_tcd_pass;
 
@@ -646,7 +627,7 @@ pub(crate) struct opj_j2k_enc {
 pub(crate) type opj_j2k_enc_t = opj_j2k_enc;
 
 #[repr(C)]
-#[derive(Copy, Clone, BitfieldStruct)]
+#[derive(Copy, Clone)]
 pub(crate) struct opj_j2k_dec {
   pub m_state: J2KState,
   pub m_default_tcp: *mut opj_tcp_t,
@@ -662,22 +643,10 @@ pub(crate) struct opj_j2k_dec {
   pub m_last_tile_part: OPJ_BOOL,
   pub m_numcomps_to_decode: OPJ_UINT32,
   pub m_comps_indices_to_decode: *mut OPJ_UINT32,
-  #[bitfield(name = "m_can_decode", ty = "OPJ_BITFIELD", bits = "0..=0")]
-  #[bitfield(name = "m_discard_tiles", ty = "OPJ_BITFIELD", bits = "1..=1")]
-  #[bitfield(name = "m_skip_data", ty = "OPJ_BITFIELD", bits = "2..=2")]
-  #[bitfield(
-    name = "m_nb_tile_parts_correction_checked",
-    ty = "OPJ_BITFIELD",
-    bits = "3..=3"
-  )]
-  #[bitfield(
-    name = "m_nb_tile_parts_correction",
-    ty = "OPJ_BITFIELD",
-    bits = "4..=4"
-  )]
-  pub m_can_decode_m_discard_tiles_m_skip_data_m_nb_tile_parts_correction_checked_m_nb_tile_parts_correction:
-    [u8; 1],
-  #[bitfield(padding)]
-  pub c2rust_padding: [u8; 7],
+  pub m_can_decode: bool,
+  pub m_discard_tiles: bool,
+  pub m_skip_data: bool,
+  pub m_nb_tile_parts_correction_checked: bool,
+  pub m_nb_tile_parts_correction: bool,
 }
 pub(crate) type opj_j2k_dec_t = opj_j2k_dec;
