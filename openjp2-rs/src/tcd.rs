@@ -8,7 +8,6 @@ use super::pi::*;
 use super::t1::*;
 use super::t2::*;
 use super::tgt::*;
-use super::thread::*;
 
 use super::malloc::*;
 
@@ -639,7 +638,6 @@ pub(crate) unsafe fn opj_tcd_init(
   mut p_tcd: *mut opj_tcd_t,
   mut p_image: *mut opj_image_t,
   mut p_cp: *mut opj_cp_t,
-  mut p_tp: *mut opj_thread_pool_t,
 ) -> OPJ_BOOL {
   (*p_tcd).image = p_image;
   (*p_tcd).cp = p_cp;
@@ -657,7 +655,6 @@ pub(crate) unsafe fn opj_tcd_init(
   }
   (*(*(*p_tcd).tcd_image).tiles).numcomps = (*p_image).numcomps;
   (*p_tcd).tp_pos = (*p_cp).m_specific_param.m_enc.m_tp_pos;
-  (*p_tcd).thread_pool = p_tp;
   1i32
 }
 /* *
@@ -2209,8 +2206,6 @@ unsafe fn opj_tcd_t1_decode(
   let mut l_tccp = (*(*p_tcd).tcp).tccps;
   let mut ret = 1i32;
   let mut check_pterm = 0i32;
-  let mut p_manager_mutex = std::ptr::null_mut::<opj_mutex_t>();
-  p_manager_mutex = opj_mutex_create();
   /* Only enable PTERM check if we decode all layers */
   if (*(*p_tcd).tcp).num_layers_to_decode == (*(*p_tcd).tcp).numlayers
     && (*l_tccp).cblksty & 0x10u32 != 0u32
@@ -2222,15 +2217,7 @@ unsafe fn opj_tcd_t1_decode(
     if !(!(*p_tcd).used_component.is_null()
       && *(*p_tcd).used_component.offset(compno as isize) == 0)
     {
-      opj_t1_decode_cblks(
-        p_tcd,
-        &mut ret,
-        l_tile_comp,
-        l_tccp,
-        p_manager,
-        p_manager_mutex,
-        check_pterm,
-      );
+      opj_t1_decode_cblks(p_tcd, &mut ret, l_tile_comp, l_tccp, p_manager, check_pterm);
       if ret == 0 {
         break;
       }
@@ -2238,10 +2225,6 @@ unsafe fn opj_tcd_t1_decode(
     compno = compno.wrapping_add(1);
     l_tile_comp = l_tile_comp.offset(1);
     l_tccp = l_tccp.offset(1)
-  }
-  opj_thread_pool_wait_completion((*p_tcd).thread_pool, 0i32);
-  if !p_manager_mutex.is_null() {
-    opj_mutex_destroy(p_manager_mutex);
   }
   ret
 }
@@ -2782,10 +2765,10 @@ unsafe fn opj_tcd_dwt_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   compno = 0 as OPJ_UINT32;
   while compno < (*l_tile).numcomps {
     if (*l_tccp).qmfbid == 1u32 {
-      if opj_dwt_encode(p_tcd, l_tile_comp) == 0 {
+      if opj_dwt_encode(l_tile_comp) == 0 {
         return 0i32;
       }
-    } else if (*l_tccp).qmfbid == 0u32 && opj_dwt_encode_real(p_tcd, l_tile_comp) == 0 {
+    } else if (*l_tccp).qmfbid == 0u32 && opj_dwt_encode_real(l_tile_comp) == 0 {
       return 0i32;
     }
     l_tile_comp = l_tile_comp.offset(1);
@@ -2811,7 +2794,6 @@ unsafe fn opj_tcd_t1_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
     l_mct_norms = (*l_tcp).mct_norms as *const OPJ_FLOAT64
   }
   opj_t1_encode_cblks(
-    p_tcd,
     (*(*p_tcd).tcd_image).tiles,
     l_tcp,
     l_mct_norms,

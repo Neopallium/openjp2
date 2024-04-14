@@ -7,7 +7,6 @@ use super::mqc::*;
 use super::openjpeg::*;
 use super::t1_luts::*;
 use super::tcd::*;
-use super::thread::*;
 
 use core::{
   cell::RefCell,
@@ -289,7 +288,6 @@ pub(crate) struct opj_t1_cblk_encode_processing_job_t {
   pub mct_norms: *const OPJ_FLOAT64,
   pub mct_numcomps: OPJ_UINT32,
   pub pret: *mut OPJ_BOOL,
-  pub mutex: *mut opj_mutex_t,
 }
 
 pub(crate) struct opj_t1_cblk_decode_processing_job_t {
@@ -302,7 +300,6 @@ pub(crate) struct opj_t1_cblk_decode_processing_job_t {
   pub mustuse_cblkdatabuffer: OPJ_BOOL,
   pub pret: *mut OPJ_BOOL,
   pub p_manager: opj_event_mgr,
-  pub p_manager_mutex: *mut opj_mutex_t,
   pub check_pterm: OPJ_BOOL,
 }
 
@@ -1839,7 +1836,7 @@ fn opj_t1_allocate_buffers(
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */
 
-extern "C" fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
+fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
   unsafe {
     let mut cblk = std::ptr::null_mut::<opj_tcd_cblk_dec_t>();
     let mut band = std::ptr::null_mut::<opj_tcd_band_t>();
@@ -1866,17 +1863,11 @@ extern "C" fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void
           .wrapping_mul(cblk_h as usize),
       ) as *mut OPJ_INT32;
       if (*cblk).decoded_data.is_null() {
-        if !(*job).p_manager_mutex.is_null() {
-          opj_mutex_lock((*job).p_manager_mutex);
-        }
         event_msg!(
           (*job).p_manager,
           EVT_ERROR,
           "Cannot allocate cblk->decoded_data\n",
         );
-        if !(*job).p_manager_mutex.is_null() {
-          opj_mutex_unlock((*job).p_manager_mutex);
-        }
         core::ptr::write_volatile((*job).pret, 0i32);
         opj_free(job as *mut core::ffi::c_void);
         return;
@@ -1927,7 +1918,6 @@ extern "C" fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void
             (*tccp).roishift as OPJ_UINT32,
             (*tccp).cblksty,
             &mut (*job).p_manager,
-            (*job).p_manager_mutex,
             (*job).check_pterm,
           )
         {
@@ -1943,7 +1933,6 @@ extern "C" fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void
           (*tccp).roishift as OPJ_UINT32,
           (*tccp).cblksty,
           &mut (*job).p_manager,
-          (*job).p_manager_mutex,
           (*job).check_pterm,
         )
       {
@@ -2116,11 +2105,9 @@ pub(crate) fn opj_t1_decode_cblks(
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut tccp: *mut opj_tccp_t,
   mut p_manager: &mut opj_event_mgr,
-  mut p_manager_mutex: *mut opj_mutex_t,
   mut check_pterm: OPJ_BOOL,
 ) {
   unsafe {
-    let mut tp = (*tcd).thread_pool;
     let mut resno: OPJ_UINT32 = 0;
     let mut bandno: OPJ_UINT32 = 0;
     let mut precno: OPJ_UINT32 = 0;
@@ -2212,19 +2199,10 @@ pub(crate) fn opj_t1_decode_cblks(
                     (*job).tilec = tilec;
                     (*job).tccp = tccp;
                     (*job).pret = pret;
-                    (*job).p_manager_mutex = p_manager_mutex;
                     (*job).p_manager = *p_manager;
                     (*job).check_pterm = check_pterm;
-                    (*job).mustuse_cblkdatabuffer =
-                      (opj_thread_pool_get_thread_count(tp) > 1i32) as core::ffi::c_int;
-                    opj_thread_pool_submit_job(
-                      tp,
-                      Some(
-                        opj_t1_clbl_decode_processor
-                          as unsafe extern "C" fn(_: *mut core::ffi::c_void) -> (),
-                      ),
-                      job as *mut core::ffi::c_void,
-                    );
+                    (*job).mustuse_cblkdatabuffer = 0;
+                    opj_t1_clbl_decode_processor(job as _);
                     if *pret == 0 {
                       return;
                     }
@@ -2254,7 +2232,6 @@ Decode 1 code-block
 @param roishift Region of interest shifting value
 @param cblksty Code-block style
 @param p_manager the event manager
-@param p_manager_mutex mutex for the event manager
 @param check_pterm whether PTERM correct termination should be checked
 */
 fn opj_t1_decode_cblk(
@@ -2264,7 +2241,6 @@ fn opj_t1_decode_cblk(
   mut roishift: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
-  mut p_manager_mutex: *mut opj_mutex_t,
   mut check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
   unsafe {
@@ -2286,18 +2262,12 @@ fn opj_t1_decode_cblk(
     }
     bpno_plus_one = roishift.wrapping_add((*cblk).numbps) as OPJ_INT32;
     if bpno_plus_one >= 31i32 {
-      if !p_manager_mutex.is_null() {
-        opj_mutex_lock(p_manager_mutex);
-      }
       event_msg!(
         p_manager,
         EVT_WARNING,
         "opj_t1_decode_cblk(): unsupported bpno_plus_one = %d >= 31\n",
         bpno_plus_one,
       );
-      if !p_manager_mutex.is_null() {
-        opj_mutex_unlock(p_manager_mutex);
-      }
       return 0i32;
     }
     passtype = 2;
@@ -2434,9 +2404,6 @@ fn opj_t1_decode_cblk(
     if check_pterm != 0 {
       let mqc = &mut t1.mqc; /* MQC component */
       if mqc.bp.offset(2) < mqc.end {
-        if !p_manager_mutex.is_null() {
-          opj_mutex_lock(p_manager_mutex);
-        }
         event_msg!(
           p_manager,
           EVT_WARNING,
@@ -2445,22 +2412,13 @@ fn opj_t1_decode_cblk(
           mqc.bp.offset_from(mqc.start) as core::ffi::c_int,
           mqc.end.offset_from(mqc.start) as core::ffi::c_int,
         );
-        if !p_manager_mutex.is_null() {
-          opj_mutex_unlock(p_manager_mutex);
-        }
       } else if mqc.end_of_byte_stream_counter > 2 {
-        if !p_manager_mutex.is_null() {
-          opj_mutex_lock(p_manager_mutex);
-        }
         event_msg!(
           p_manager,
           EVT_WARNING,
           "PTERM check failure: %d synthetized 0xFF markers read\n",
           mqc.end_of_byte_stream_counter,
         );
-        if !p_manager_mutex.is_null() {
-          opj_mutex_unlock(p_manager_mutex);
-        }
       }
     }
     /* Restore original t1->data is needed */
@@ -2476,7 +2434,7 @@ fn opj_t1_decode_cblk(
  * @param user_data Pointer to a opj_t1_cblk_encode_processing_job_t* structure
  * @param tls       TLS handle.
  */
-extern "C" fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
+fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
   unsafe {
     let mut job = user_data as *mut opj_t1_cblk_encode_processing_job_t; /* OPJ_TRUE == T1 for encoding */
     let mut cblk = (*job).cblk; /* if (tccp->qmfbid == 0) */
@@ -2642,20 +2600,13 @@ extern "C" fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void
         (*job).mct_norms,
         (*job).mct_numcomps,
       );
-      if !(*job).mutex.is_null() {
-        opj_mutex_lock((*job).mutex);
-      }
       (*(*job).tile).distotile += cumwmsedec;
-      if !(*job).mutex.is_null() {
-        opj_mutex_unlock((*job).mutex);
-      }
       opj_free(job as *mut core::ffi::c_void);
     })
   }
 }
 
 pub(crate) fn opj_t1_encode_cblks(
-  mut tcd: *mut opj_tcd_t,
   mut tile: *mut opj_tcd_tile_t,
   mut tcp: *mut opj_tcp_t,
   mut mct_norms: *const OPJ_FLOAT64,
@@ -2663,13 +2614,11 @@ pub(crate) fn opj_t1_encode_cblks(
 ) -> OPJ_BOOL {
   unsafe {
     let mut ret = 1i32;
-    let mut tp = (*tcd).thread_pool;
     let mut compno: OPJ_UINT32 = 0;
     let mut resno: OPJ_UINT32 = 0;
     let mut bandno: OPJ_UINT32 = 0;
     let mut precno: OPJ_UINT32 = 0;
     let mut cblkno: OPJ_UINT32 = 0;
-    let mut mutex = opj_mutex_create();
     (*tile).distotile = 0 as OPJ_FLOAT64;
     compno = 0 as OPJ_UINT32;
     's_19: while compno < (*tile).numcomps {
@@ -2715,15 +2664,7 @@ pub(crate) fn opj_t1_encode_cblks(
                   (*job).mct_norms = mct_norms;
                   (*job).mct_numcomps = mct_numcomps;
                   (*job).pret = &mut ret;
-                  (*job).mutex = mutex;
-                  opj_thread_pool_submit_job(
-                    tp,
-                    Some(
-                      opj_t1_cblk_encode_processor
-                        as unsafe extern "C" fn(_: *mut core::ffi::c_void) -> (),
-                    ),
-                    job as *mut core::ffi::c_void,
-                  );
+                  opj_t1_cblk_encode_processor(job as _);
                   cblkno += 1;
                 }
               }
@@ -2736,10 +2677,6 @@ pub(crate) fn opj_t1_encode_cblks(
         resno += 1;
       }
       compno += 1;
-    }
-    opj_thread_pool_wait_completion((*tcd).thread_pool, 0i32);
-    if !mutex.is_null() {
-      opj_mutex_destroy(mutex);
     }
     ret
   }

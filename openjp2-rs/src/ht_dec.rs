@@ -2,7 +2,6 @@ use super::event::*;
 use super::openjpeg::*;
 use super::t1::*;
 use super::t1_ht_luts::*;
-use super::thread::*;
 
 use super::malloc::*;
 
@@ -1186,7 +1185,6 @@ unsafe fn opj_t1_allocate_buffers(
  *  @param [in]       roishift is region of interest shift
  *  @param [in]       cblksty is codeblock style
  *  @param [in]       p_manager is events print manager
- *  @param [in]       p_manager_mutex a mutex to control access to p_manager
  *  @param [in]       check_pterm: check termination (not used)
  */
 pub(crate) unsafe fn opj_t1_ht_decode_cblk(
@@ -1196,7 +1194,6 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   mut roishift: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
-  mut p_manager_mutex: *mut opj_mutex_t,
   mut _check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
   let mut cblkdata = std::ptr::null_mut::<OPJ_BYTE>(); // fetched data from VLC bitstream
@@ -1276,17 +1273,11 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   // We ignor orient, because the same decoder is used for all subbands
   // We also ignore check_pterm, because I am not sure how it applies
   if roishift != 0u32 {
-    if !p_manager_mutex.is_null() {
-      opj_mutex_lock(p_manager_mutex);
-    }
     event_msg!(
       p_manager,
       EVT_ERROR,
       "We do not support ROI in decoding HT codeblocks\n",
     );
-    if !p_manager_mutex.is_null() {
-      opj_mutex_unlock(p_manager_mutex);
-    }
     return 0i32;
   }
   if opj_t1_allocate_buffers(
@@ -1409,25 +1400,13 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   sip = sigma1; //pointers to arrays to be used interchangeably
   sip_shift = 0 as OPJ_UINT32; //the amount of shift needed for sigma
   if num_passes > 1u32 && lengths2 == 0u32 {
-    if !p_manager_mutex.is_null() {
-      opj_mutex_lock(p_manager_mutex);
-    }
     event_msg!(p_manager, EVT_WARNING,
                       "A malformed codeblock that has more than one coding pass, but zero length for 2nd and potentially the 3rd pass in an HT codeblock.\n");
-    if !p_manager_mutex.is_null() {
-      opj_mutex_unlock(p_manager_mutex);
-    }
     num_passes = 1 as OPJ_UINT32
   }
   if num_passes > 3u32 {
-    if !p_manager_mutex.is_null() {
-      opj_mutex_lock(p_manager_mutex);
-    }
     event_msg!(p_manager, EVT_ERROR,
                       "We do not support more than 3 coding passes in an HT codeblock; This codeblocks has %d passes.\n", num_passes);
-    if !p_manager_mutex.is_null() {
-      opj_mutex_unlock(p_manager_mutex);
-    }
     return 0i32;
   }
   if (*cblk).Mb > 30u32 {
@@ -1440,14 +1419,8 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       bit 0 is for the center of the quantization bin
       Therefore we can only do values of cblk->Mb <= 30
     */
-    if !p_manager_mutex.is_null() {
-      opj_mutex_lock(p_manager_mutex);
-    }
     event_msg!(p_manager, EVT_ERROR,
                       "32 bits are not enough to decode this codeblock, since the number of bitplane, %d, is larger than 30.\n", (*cblk).Mb);
-    if !p_manager_mutex.is_null() {
-      opj_mutex_unlock(p_manager_mutex);
-    }
     return 0i32;
   }
   if zero_bplanes > (*cblk).Mb {
@@ -1455,23 +1428,14 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     in the line "l_cblk->numbps = (OPJ_UINT32)l_band->numbps + 1 - i;"
     where i is the zero bitplanes, and should be no larger than cblk->Mb
     We cannot have more zero bitplanes than there are planes. */
-    if !p_manager_mutex.is_null() {
-      opj_mutex_lock(p_manager_mutex);
-    }
     event_msg!(p_manager, EVT_ERROR,
                       "Malformed HT codeblock. Decoding this codeblock is stopped. There are %d zero bitplanes in %d bitplanes.\n", zero_bplanes,
                       (*cblk).Mb);
-    if !p_manager_mutex.is_null() {
-      opj_mutex_unlock(p_manager_mutex);
-    }
     return 0i32;
   } else if zero_bplanes == (*cblk).Mb && num_passes > 1u32 {
     /* When the number of zero bitplanes is equal to the number of bitplanes,
     only the cleanup pass makes sense*/
     if only_cleanup_pass_is_decoded == 0i32 {
-      if !p_manager_mutex.is_null() {
-        opj_mutex_lock(p_manager_mutex);
-      }
       /* We have a second check to prevent the possibility of an overrun condition,
       in the very unlikely event of a second thread discovering that
       only_cleanup_pass_is_decoded is false before the first thread changing
@@ -1482,9 +1446,6 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
                                 "Malformed HT codeblock. When the number of zero planes bitplanes is equal to the number of bitplanes, only the cleanup pass makes sense, but we have %d passes in this codeblock. Therefore, only the cleanup pass will be decoded. This message will not be displayed again.\n",
                                 num_passes);
       }
-      if !p_manager_mutex.is_null() {
-        opj_mutex_unlock(p_manager_mutex);
-      }
     }
     num_passes = 1 as OPJ_UINT32
   }
@@ -1493,17 +1454,11 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   // OPJ_UINT32 zero planes plus 1
   zero_bplanes_p1 = zero_bplanes.wrapping_add(1u32);
   if lengths1 < 2u32 || lengths1 > cblk_len || lengths1.wrapping_add(lengths2) > cblk_len {
-    if !p_manager_mutex.is_null() {
-      opj_mutex_lock(p_manager_mutex);
-    }
     event_msg!(
       p_manager,
       EVT_ERROR,
       "Malformed HT codeblock. Invalid codeblock length values.\n",
     );
-    if !p_manager_mutex.is_null() {
-      opj_mutex_unlock(p_manager_mutex);
-    }
     return 0i32;
   }
   // read scup and fix the bytes there
@@ -1514,29 +1469,17 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
   if scup < 2i32 || scup > lcup || scup > 4079i32 {
     //something is wrong
     /* The standard stipulates 2 <= Scup <= min(Lcup, 4079) */
-    if !p_manager_mutex.is_null() {
-      opj_mutex_lock(p_manager_mutex);
-    }
     event_msg!(p_manager, EVT_ERROR,
                       "Malformed HT codeblock. One of the following condition is not met: 2 <= Scup <= min(Lcup, 4079)\n");
-    if !p_manager_mutex.is_null() {
-      opj_mutex_unlock(p_manager_mutex);
-    }
     return 0i32;
   }
   // init structures
   if !mel_init(&mut mel, coded_data, lcup, scup) {
-    if !p_manager_mutex.is_null() {
-      opj_mutex_lock(p_manager_mutex);
-    }
     event_msg!(
       p_manager,
       EVT_ERROR,
       "Malformed HT codeblock.  Incorrect MEL segment sequence.\n"
     );
-    if !p_manager_mutex.is_null() {
-      opj_mutex_unlock(p_manager_mutex);
-    }
     return 0i32;
   }
   rev_init(&mut vlc, coded_data, lcup, scup);
@@ -1695,14 +1638,8 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
     //decode uvlc_mode to get u for both quads
     consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, U_q.as_mut_ptr());
     if U_q[0_usize] > zero_bplanes_p1 || U_q[1_usize] > zero_bplanes_p1 {
-      if !p_manager_mutex.is_null() {
-        opj_mutex_lock(p_manager_mutex);
-      }
       event_msg!(p_manager, EVT_ERROR,
                           "Malformed HT codeblock. Decoding this codeblock is stopped. U_q is larger than zero bitplanes + 1 \n");
-      if !p_manager_mutex.is_null() {
-        opj_mutex_unlock(p_manager_mutex);
-      }
       return 0i32;
     }
     //consume u bits in the VLC code
@@ -1721,14 +1658,8 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
       (locs) & 0x55u32
     };
     if ((qinf[0_usize] & 0xf0u32) >> 4i32 | qinf[1_usize] & 0xf0u32) & !locs != 0 {
-      if !p_manager_mutex.is_null() {
-        opj_mutex_lock(p_manager_mutex);
-      }
       event_msg!(p_manager, EVT_ERROR,
                           "Malformed HT codeblock. VLC code produces significant samples outside the codeblock area.\n");
-      if !p_manager_mutex.is_null() {
-        opj_mutex_unlock(p_manager_mutex);
-      }
       return 0i32;
     }
     //first quad, starting at first sample in quad and moving on
@@ -1998,14 +1929,8 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         }) as OPJ_UINT32
       } //for next double quad
       if U_q_0[0_usize] > zero_bplanes_p1 || U_q_0[1_usize] > zero_bplanes_p1 {
-        if !p_manager_mutex.is_null() {
-          opj_mutex_lock(p_manager_mutex);
-        }
         event_msg!(p_manager, EVT_ERROR,
                               "Malformed HT codeblock. Decoding this codeblock is stopped. U_q islarger than bitplanes + 1 \n");
-        if !p_manager_mutex.is_null() {
-          opj_mutex_unlock(p_manager_mutex);
-        }
         return 0i32;
       }
       ls0 = *lsp.offset(2);
@@ -2025,14 +1950,8 @@ pub(crate) unsafe fn opj_t1_ht_decode_cblk(
         (locs_0) & 0x55u32
       };
       if ((qinf[0_usize] & 0xf0u32) >> 4i32 | qinf[1_usize] & 0xf0u32) & !locs_0 != 0 {
-        if !p_manager_mutex.is_null() {
-          opj_mutex_lock(p_manager_mutex);
-        }
         event_msg!(p_manager, EVT_ERROR,
                               "Malformed HT codeblock. VLC code produces significant samples outside the codeblock area.\n");
-        if !p_manager_mutex.is_null() {
-          opj_mutex_unlock(p_manager_mutex);
-        }
         return 0i32;
       }
       if qinf[0_usize] & 0x10u32 != 0 {
