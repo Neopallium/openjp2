@@ -3,6 +3,7 @@ use super::event::*;
 use super::function_list::*;
 use super::j2k::*;
 use super::openjpeg::*;
+use super::stream::*;
 #[cfg(feature = "file-io")]
 use ::libc::FILE;
 
