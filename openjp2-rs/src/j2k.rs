@@ -9,6 +9,7 @@ use super::math::*;
 use super::mct::*;
 use super::openjpeg::*;
 use super::pi::*;
+use super::stream::*;
 use super::tcd::*;
 
 use super::malloc::*;
