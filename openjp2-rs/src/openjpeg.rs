@@ -32,15 +32,12 @@
  */
 
 pub use super::c_api_types::*;
-use super::event::opj_event_mgr;
 use super::j2k::*;
 pub(crate) use super::types::*;
 
 use super::codec::*;
 pub use super::image::{opj_image_create, opj_image_destroy, opj_image_tile_create};
 use super::malloc::*;
-
-use super::stream::*;
 
 #[cfg(feature = "file-io")]
 use ::libc::FILE;
@@ -628,81 +625,12 @@ pub unsafe extern "C" fn opj_stream_create(
   mut p_buffer_size: OPJ_SIZE_T,
   mut l_is_input: OPJ_BOOL,
 ) -> *mut opj_stream_t {
-  let mut l_stream = std::ptr::null_mut::<opj_stream_private_t>();
-  l_stream = opj_calloc(1i32 as size_t, core::mem::size_of::<opj_stream_private_t>())
-    as *mut opj_stream_private_t;
-  if l_stream.is_null() {
-    return std::ptr::null_mut::<opj_stream_t>();
-  }
-  (*l_stream).m_buffer_size = p_buffer_size;
-  (*l_stream).m_stored_data = opj_malloc(p_buffer_size) as *mut OPJ_BYTE;
-  if (*l_stream).m_stored_data.is_null() {
-    opj_free(l_stream as *mut core::ffi::c_void);
-    return std::ptr::null_mut::<opj_stream_t>();
-  }
-  (*l_stream).m_current_data = (*l_stream).m_stored_data;
-  if l_is_input != 0 {
-    (*l_stream).m_status |= 0x2u32;
-    (*l_stream).m_opj_skip = Some(
-      opj_stream_read_skip
-        as unsafe extern "C" fn(
-          _: *mut opj_stream_private_t,
-          _: OPJ_OFF_T,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_OFF_T,
-    );
-    (*l_stream).m_opj_seek = Some(
-      opj_stream_read_seek
-        as unsafe extern "C" fn(
-          _: *mut opj_stream_private_t,
-          _: OPJ_OFF_T,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )
-  } else {
-    (*l_stream).m_status |= 0x1u32;
-    (*l_stream).m_opj_skip = Some(
-      opj_stream_write_skip
-        as unsafe extern "C" fn(
-          _: *mut opj_stream_private_t,
-          _: OPJ_OFF_T,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_OFF_T,
-    );
-    (*l_stream).m_opj_seek = Some(
-      opj_stream_write_seek
-        as unsafe extern "C" fn(
-          _: *mut opj_stream_private_t,
-          _: OPJ_OFF_T,
-          _: &mut opj_event_mgr,
-        ) -> OPJ_BOOL,
-    )
-  }
-  (*l_stream).m_read_fn = Some(
-    opj_stream_default_read
-      as unsafe extern "C" fn(
-        _: *mut core::ffi::c_void,
-        _: OPJ_SIZE_T,
-        _: *mut core::ffi::c_void,
-      ) -> OPJ_SIZE_T,
-  );
-  (*l_stream).m_write_fn = Some(
-    opj_stream_default_write
-      as unsafe extern "C" fn(
-        _: *mut core::ffi::c_void,
-        _: OPJ_SIZE_T,
-        _: *mut core::ffi::c_void,
-      ) -> OPJ_SIZE_T,
-  );
-  (*l_stream).m_skip_fn = Some(
-    opj_stream_default_skip
-      as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_OFF_T,
-  );
-  (*l_stream).m_seek_fn = Some(
-    opj_stream_default_seek
-      as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL,
-  );
-  l_stream as *mut opj_stream_t
+  let l_stream = match opj_stream_private::new(p_buffer_size, l_is_input != 0) {
+    Some(stream) => Box::into_raw(Box::new(stream)) as *mut opj_stream_t,
+    None => std::ptr::null_mut::<opj_stream_t>(),
+  };
+  log::trace!("-- create stream: {:?}", l_stream);
+  l_stream
 }
 
 #[no_mangle]
@@ -712,17 +640,9 @@ pub unsafe extern "C" fn opj_stream_default_create(mut l_is_input: OPJ_BOOL) -> 
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_destroy(mut p_stream: *mut opj_stream_t) {
-  let mut l_stream = p_stream as *mut opj_stream_private_t;
-  if !l_stream.is_null() {
-    if (*l_stream).m_free_user_data_fn.is_some() {
-      (*l_stream)
-        .m_free_user_data_fn
-        .expect("non-null function pointer")((*l_stream).m_user_data);
-    }
-    opj_free((*l_stream).m_stored_data as *mut core::ffi::c_void);
-    (*l_stream).m_stored_data = std::ptr::null_mut::<OPJ_BYTE>();
-    opj_free(l_stream as *mut core::ffi::c_void);
-  };
+  if !p_stream.is_null() {
+    let _ = Box::from_raw(p_stream as *mut opj_stream_private_t);
+  }
 }
 
 #[no_mangle]
@@ -838,7 +758,7 @@ pub unsafe fn opj_stream_create_file_stream(
   let (file, len) = if p_is_read_stream != 0 {
     let file = File::open(&path).and_then(|f| f.metadata().map(|m| (f, m.len())));
     match file {
-      Ok((file, len)) => (Box::new(file), len),
+      Ok((file, len)) => (file, len),
       Err(err) => {
         log::error!("Failed open file for reading: {err}");
         return std::ptr::null_mut::<opj_stream_t>();
@@ -846,18 +766,36 @@ pub unsafe fn opj_stream_create_file_stream(
     }
   } else {
     match File::create(&path) {
-      Ok(file) => (Box::new(file), 0),
+      Ok(file) => (file, 0),
       Err(err) => {
         log::error!("Failed open file for writing: {err}");
         return std::ptr::null_mut::<opj_stream_t>();
       }
     }
   };
-  let p_file = Box::into_raw(file);
   l_stream = opj_stream_create(p_size, p_is_read_stream);
   if l_stream.is_null() {
     return std::ptr::null_mut::<opj_stream_t>();
   }
+  if p_is_read_stream != 0 {
+    //*
+    use std::io::BufReader;
+    let p_stream = unsafe { &mut *(l_stream as *mut opj_stream_private) };
+    p_stream.m_inner = Some(StreamInner::Reader(BufReader::with_capacity(p_size, file)));
+    p_stream.m_user_data_length = len;
+    return l_stream;
+    // */
+  } else {
+    //*
+    use std::io::BufWriter;
+    let p_stream = unsafe { &mut *(l_stream as *mut opj_stream_private) };
+    p_stream.m_inner = Some(StreamInner::Writer(BufWriter::with_capacity(p_size, file)));
+    p_stream.m_user_data_length = len;
+    return l_stream;
+    // */
+  }
+  /*
+  let p_file = Box::into_raw(Box::new(file));
   opj_stream_set_user_data(
     l_stream,
     p_file as *mut core::ffi::c_void,
@@ -910,7 +848,9 @@ pub unsafe fn opj_stream_create_file_stream(
     ),
   );
   l_stream
+  // */
 }
+
 #[no_mangle]
 pub unsafe fn opj_image_data_alloc(mut size: OPJ_SIZE_T) -> *mut core::ffi::c_void {
   /* printf("opj_image_data_alloc %p\n", ret); */

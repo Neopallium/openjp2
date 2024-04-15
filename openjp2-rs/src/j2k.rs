@@ -12126,7 +12126,7 @@ unsafe fn opj_j2k_decode_one_tile(
     {
       /* the index for this tile has not been built,
        *  so move to the last SOT read */
-      if opj_stream_read_seek(
+      if opj_stream_seek(
         p_stream,
         p_j2k.m_specific_param.m_decoder.m_last_sot_read_pos + 2i64,
         p_manager,
@@ -12135,7 +12135,7 @@ unsafe fn opj_j2k_decode_one_tile(
         event_msg!(p_manager, EVT_ERROR, "Problem with seek function\n",);
         return 0i32;
       }
-    } else if opj_stream_read_seek(
+    } else if opj_stream_seek(
       p_stream,
       (*(*(*p_j2k.cstr_index)
         .tile_index
@@ -12215,7 +12215,7 @@ unsafe fn opj_j2k_decode_one_tile(
     );
     if l_current_tile_no == l_tile_no_to_dec {
       /* move into the codestream to the first SOT (FIXME or not move?)*/
-      if opj_stream_read_seek(
+      if opj_stream_seek(
         p_stream,
         (*p_j2k.cstr_index).main_head_end + 2i64,
         p_manager,
