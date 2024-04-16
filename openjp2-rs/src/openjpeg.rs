@@ -51,7 +51,6 @@ extern "C" {
     _: usize,
   ) -> *mut core::ffi::c_void;
 }
-/* _WIN32 */
 /* ---------------------------------------------------------------------- */
 /* Functions to set the message handlers */
 #[no_mangle]
@@ -93,88 +92,6 @@ pub unsafe fn opj_set_error_handler(
   l_codec.set_error_handler(p_callback, p_user_data)
 }
 
-/* ---------------------------------------------------------------------- */
-#[cfg(feature = "file-io")]
-unsafe extern "C" fn opj_read_from_file(
-  mut p_buffer: *mut core::ffi::c_void,
-  mut p_nb_bytes: OPJ_SIZE_T,
-  mut p_user_data: *mut core::ffi::c_void,
-) -> OPJ_SIZE_T {
-  use std::io::Read;
-  let (file, buf) = unsafe {
-    let file = &mut *(p_user_data as *mut std::fs::File);
-    let buf = std::slice::from_raw_parts_mut(p_buffer as *mut u8, p_nb_bytes);
-    (file, buf)
-  };
-  match file.read(buf) {
-    Ok(0) => -1i32 as OPJ_SIZE_T,
-    Ok(nb) => nb as OPJ_SIZE_T,
-    Err(err) => {
-      log::error!("Failed to read from file: {err}");
-      -1i32 as OPJ_SIZE_T
-    }
-  }
-}
-
-#[cfg(feature = "file-io")]
-unsafe extern "C" fn opj_write_from_file(
-  mut p_buffer: *mut core::ffi::c_void,
-  mut p_nb_bytes: OPJ_SIZE_T,
-  mut p_user_data: *mut core::ffi::c_void,
-) -> OPJ_SIZE_T {
-  use std::io::Write;
-  let (file, buf) = unsafe {
-    let file = &mut *(p_user_data as *mut std::fs::File);
-    let buf = std::slice::from_raw_parts(p_buffer as *const u8, p_nb_bytes);
-    (file, buf)
-  };
-  match file.write(buf) {
-    Ok(nb) => nb as OPJ_SIZE_T,
-    Err(err) => {
-      log::error!("Failed to write to file: {err}");
-      -1i32 as OPJ_SIZE_T
-    }
-  }
-}
-
-#[cfg(feature = "file-io")]
-unsafe extern "C" fn opj_skip_from_file(
-  mut p_nb_bytes: OPJ_OFF_T,
-  mut p_user_data: *mut core::ffi::c_void,
-) -> OPJ_OFF_T {
-  use std::io::{Seek, SeekFrom};
-  let file = unsafe { &mut *(p_user_data as *mut std::fs::File) };
-  match file.seek(SeekFrom::Current(p_nb_bytes)) {
-    Ok(_) => p_nb_bytes,
-    Err(err) => {
-      log::error!("Failed to write to file: {err}");
-      -1i32 as OPJ_OFF_T
-    }
-  }
-}
-
-#[cfg(feature = "file-io")]
-unsafe extern "C" fn opj_seek_from_file(
-  mut p_nb_bytes: OPJ_OFF_T,
-  mut p_user_data: *mut core::ffi::c_void,
-) -> OPJ_BOOL {
-  use std::io::{Seek, SeekFrom};
-  let file = unsafe { &mut *(p_user_data as *mut std::fs::File) };
-  match file.seek(SeekFrom::Start(p_nb_bytes as _)) {
-    Ok(_) => 1,
-    Err(err) => {
-      log::error!("Failed to write to file: {err}");
-      0
-    }
-  }
-}
-
-#[cfg(feature = "file-io")]
-unsafe extern "C" fn opj_close_from_file(mut p_user_data: *mut core::ffi::c_void) {
-  let _file = unsafe { Box::from_raw(p_user_data as *mut std::fs::File) };
-}
-/* ---------------------------------------------------------------------- */
-/* _WIN32 */
 /* ---------------------------------------------------------------------- */
 pub const OPJ_VERSION: &str = "2.5.2";
 pub const OPJ_VERSION_C: *const u8 = b"2.5.2\x00" as *const u8;
@@ -625,7 +542,10 @@ pub unsafe extern "C" fn opj_stream_create(
   mut p_buffer_size: OPJ_SIZE_T,
   mut l_is_input: OPJ_BOOL,
 ) -> *mut opj_stream_t {
-  let l_stream = Box::new(opj_stream_private::new(p_buffer_size, l_is_input != 0));
+  let l_stream = Box::new(opj_stream_private::new_custom(
+    p_buffer_size,
+    l_is_input != 0,
+  ));
   let p_stream = Box::into_raw(l_stream) as *mut opj_stream_t;
   log::trace!("-- create stream: {:?}", p_stream);
   p_stream
@@ -748,138 +668,23 @@ pub unsafe fn opj_stream_create_file_stream(
   mut p_size: OPJ_SIZE_T,
   mut p_is_read_stream: OPJ_BOOL,
 ) -> *mut opj_stream_t {
-  use std::ffi::CStr;
-  use std::fs::*;
-  use std::path::*;
-
-  let mut l_stream = std::ptr::null_mut::<opj_stream_t>();
   if fname.is_null() {
     return std::ptr::null_mut::<opj_stream_t>();
   }
-  let mut path = PathBuf::new();
-  unsafe {
-    match CStr::from_ptr(fname).to_str() {
-      Ok(name) => {
-        path.push(name);
-      }
-      Err(err) => {
-        log::error!("Failed to convert C filename to Rust String: {err}");
-        return std::ptr::null_mut::<opj_stream_t>();
-      }
+  match std::ffi::CStr::from_ptr(fname).to_str() {
+    Ok(name) => {
+      let l_stream = Box::new(opj_stream_private::new_file(
+        name,
+        p_size,
+        p_is_read_stream != 0,
+      ));
+      Box::into_raw(l_stream) as *mut opj_stream_t
     }
-  };
-  let (file, len) = if p_is_read_stream != 0 {
-    let file = File::open(&path).and_then(|f| f.metadata().map(|m| (f, m.len())));
-    match file {
-      Ok((file, len)) => (file, len),
-      Err(err) => {
-        log::error!("Failed open file for reading: {err}");
-        return std::ptr::null_mut::<opj_stream_t>();
-      }
+    Err(err) => {
+      log::error!("Failed to convert C filename to Rust String: {err}");
+      return std::ptr::null_mut::<opj_stream_t>();
     }
-  } else {
-    match File::create(&path) {
-      Ok(file) => (file, 0),
-      Err(err) => {
-        log::error!("Failed open file for writing: {err}");
-        return std::ptr::null_mut::<opj_stream_t>();
-      }
-    }
-  };
-  l_stream = opj_stream_create(p_size, p_is_read_stream);
-  if l_stream.is_null() {
-    return std::ptr::null_mut::<opj_stream_t>();
   }
-  let p_stream = unsafe { &mut *(l_stream as *mut opj_stream_private) };
-  p_stream.m_stream_length = len;
-  if p_is_read_stream != 0 {
-    /*
-    let p_file = Box::into_raw(Box::new(file));
-    let custom = super::stream::CustomStream {
-      m_user_data: p_file as *mut core::ffi::c_void,
-      m_free_user_data_fn: Some(opj_close_from_file),
-      m_read_fn: Some(opj_read_from_file),
-      m_write_fn: Some(opj_write_from_file),
-      m_skip_fn: Some(opj_skip_from_file),
-      m_seek_fn: Some(opj_seek_from_file),
-      m_byte_offset: 0,
-    };
-    p_stream.m_inner = super::stream::StreamInner::new_custom_reader(p_size, custom);
-    // */
-    p_stream.m_inner = super::stream::StreamInner::new_reader(p_size, file);
-    return l_stream;
-  } else {
-    /*
-    let p_file = Box::into_raw(Box::new(file));
-    let custom = super::stream::CustomStream {
-      m_user_data: p_file as *mut core::ffi::c_void,
-      m_free_user_data_fn: Some(opj_close_from_file),
-      m_read_fn: Some(opj_read_from_file),
-      m_write_fn: Some(opj_write_from_file),
-      m_skip_fn: Some(opj_skip_from_file),
-      m_seek_fn: Some(opj_seek_from_file),
-      m_byte_offset: 0,
-    };
-    p_stream.m_inner = super::stream::StreamInner::new_custom_writer(p_size, custom);
-    // */
-    p_stream.m_inner = super::stream::StreamInner::new_writer(p_size, file);
-    return l_stream;
-  }
-  /*
-  let p_file = Box::into_raw(Box::new(file));
-  opj_stream_set_user_data(
-    l_stream,
-    p_file as *mut core::ffi::c_void,
-    Some(opj_close_from_file as unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()),
-  );
-  opj_stream_set_user_data_length(l_stream, len);
-  opj_stream_set_read_function(
-    l_stream,
-    Some(
-      opj_read_from_file
-        as unsafe extern "C" fn(
-          _: *mut core::ffi::c_void,
-          _: OPJ_SIZE_T,
-          _: *mut core::ffi::c_void,
-        ) -> OPJ_SIZE_T,
-    ),
-  );
-  opj_stream_set_write_function(
-    l_stream,
-    core::mem::transmute::<
-      Option<
-        unsafe extern "C" fn(
-          _: *mut core::ffi::c_void,
-          _: OPJ_SIZE_T,
-          _: *mut core::ffi::c_void,
-        ) -> OPJ_SIZE_T,
-      >,
-      opj_stream_write_fn,
-    >(Some(
-      opj_write_from_file
-        as unsafe extern "C" fn(
-          _: *mut core::ffi::c_void,
-          _: OPJ_SIZE_T,
-          _: *mut core::ffi::c_void,
-        ) -> OPJ_SIZE_T,
-    )),
-  );
-  opj_stream_set_skip_function(
-    l_stream,
-    Some(
-      opj_skip_from_file
-        as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_OFF_T,
-    ),
-  );
-  opj_stream_set_seek_function(
-    l_stream,
-    Some(
-      opj_seek_from_file
-        as unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL,
-    ),
-  );
-  l_stream
-  // */
 }
 
 #[no_mangle]
