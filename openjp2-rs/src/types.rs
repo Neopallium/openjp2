@@ -46,12 +46,13 @@ pub(crate) struct opj_tcd_marker_info {
 pub(crate) type opj_tcd_marker_info_t = opj_tcd_marker_info;
 
 #[repr(C)]
-pub(crate) struct opj_stream_private {
+pub(crate) struct Stream {
   pub m_inner: super::stream::StreamInner,
   pub m_stream_length: OPJ_UINT64,
   pub m_byte_offset: OPJ_OFF_T,
 }
-pub(crate) type opj_stream_private_t = opj_stream_private;
+pub(crate) type opj_stream_private = Stream;
+pub(crate) type opj_stream_private_t = Stream;
 
 pub(crate) type opj_jp2_proc =
   unsafe fn(_: &mut opj_jp2, _: *mut opj_stream_private_t, _: &mut opj_event_mgr) -> OPJ_BOOL;

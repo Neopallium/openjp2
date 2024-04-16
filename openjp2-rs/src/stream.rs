@@ -39,6 +39,9 @@
 
 use std::io::{BufReader, BufWriter, Error as IoError, Read, Seek, SeekFrom, Write};
 
+#[cfg(feature = "file-io")]
+use std::{fs::File, path::Path};
+
 use super::event::*;
 use super::openjpeg::*;
 
@@ -284,8 +287,32 @@ impl Seek for StreamInner {
   }
 }
 
-impl opj_stream_private {
-  pub fn new(buffer_size: usize, is_input: bool) -> Self {
+impl Stream {
+  #[cfg(feature = "file-io")]
+  pub fn new_file<P: AsRef<Path>>(
+    path: P,
+    buffer_size: usize,
+    is_input: bool,
+  ) -> std::io::Result<Self> {
+    if is_input {
+      let file = File::open(&path)?;
+      let m_stream_length = file.metadata().map(|m| m.len())?;
+      Ok(Self {
+        m_inner: super::stream::StreamInner::new_reader(buffer_size, file),
+        m_stream_length,
+        m_byte_offset: 0,
+      })
+    } else {
+      let file = File::create(&path)?;
+      Ok(Self {
+        m_inner: super::stream::StreamInner::new_writer(buffer_size, file),
+        m_stream_length: 0,
+        m_byte_offset: 0,
+      })
+    }
+  }
+
+  pub fn new_custom(buffer_size: usize, is_input: bool) -> Self {
     let custom = CustomStream {
       m_user_data: std::ptr::null_mut(),
       m_free_user_data_fn: None,
@@ -328,44 +355,125 @@ impl opj_stream_private {
   pub fn set_stream_length(&mut self, len: u64) {
     self.m_stream_length = len;
   }
+
+  pub fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+    let len = buf.len();
+    match self.m_inner.read_exact(buf) {
+      Ok(_) => {
+        self.m_byte_offset += len as i64;
+        Ok(len)
+      }
+      Err(_err) => {
+        // Maybe EOF, do a partial read.
+        match self.m_inner.read(buf) {
+          Ok(nb) => {
+            self.m_byte_offset += nb as i64;
+            Ok(nb)
+          }
+          Err(err) => {
+            log::trace!("Failed to read from stream: {err}");
+            Err(err)
+          }
+        }
+      }
+    }
+  }
+
+  pub fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+    let len = buf.len();
+    log::trace!("-- write({len}), offset={}", self.m_byte_offset);
+    match self.m_inner.write_all(buf) {
+      Ok(_) => {
+        self.m_byte_offset += len as i64;
+        Ok(len)
+      }
+      Err(err) => {
+        log::trace!("Failed to write to stream: {err}");
+        Err(err)
+      }
+    }
+  }
+
+  pub fn flush(&mut self) -> std::io::Result<()> {
+    log::trace!("-- flush(), offset={}", self.m_byte_offset);
+    self.m_inner.flush()
+  }
+
+  pub fn tell(&self) -> i64 {
+    log::trace!("-- tell() = {}", self.m_byte_offset);
+    self.m_byte_offset
+  }
+
+  pub fn get_bytes_left(&self) -> i64 {
+    log::trace!("-- byte_left(), offset={}", self.m_byte_offset);
+    assert!(self.m_byte_offset >= 0i64);
+    assert!(self.m_stream_length >= self.m_byte_offset as OPJ_UINT64);
+    let nb = if self.m_stream_length != 0 {
+      (self.m_stream_length as OPJ_OFF_T) - self.m_byte_offset
+    } else {
+      0i64
+    };
+    log::trace!("-- get_number_byte_left() = {}", nb);
+    nb
+  }
+
+  pub fn skip(&mut self, count: i64) -> std::io::Result<i64> {
+    let res = self
+      .m_inner
+      .seek_relative(count)
+      .map(|_| (self.m_byte_offset + count) as u64);
+    match res {
+      Ok(offset) => {
+        self.m_byte_offset = offset as i64;
+        // TODO: return number of bytes skipped.
+        log::trace!("-- skip({count}) = {offset}");
+        Ok(count)
+      }
+      Err(err) => {
+        log::trace!("Failed to skip stream: {err}");
+        Err(err)
+      }
+    }
+  }
+
+  pub fn seek(&mut self, offset: i64) -> std::io::Result<()> {
+    let res = self.m_inner.seek_relative(offset - self.m_byte_offset);
+    match res {
+      Ok(_) => {
+        self.m_byte_offset = offset;
+        log::trace!("-- seek({offset}) = Ok");
+        Ok(())
+      }
+      Err(err) => {
+        log::trace!("Failed to seek stream: {err}");
+        Err(err)
+      }
+    }
+  }
+
+  pub fn has_seek(&self) -> bool {
+    self.m_inner.has_seek()
+  }
 }
 
-pub(crate) unsafe fn opj_stream_read_data(
+pub(crate) fn opj_stream_read_data(
   mut p_stream: *mut opj_stream_private_t,
   mut p_buffer: *mut OPJ_BYTE,
   mut p_size: OPJ_SIZE_T,
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_SIZE_T {
   let p_stream = unsafe { &mut *p_stream };
-  let old_byte_offset = p_stream.m_byte_offset;
   let buf = unsafe { std::slice::from_raw_parts_mut(p_buffer as *mut u8, p_size) };
-  let res = match p_stream.m_inner.read_exact(buf) {
-    Ok(_) => {
-      p_stream.m_byte_offset += p_size as i64;
-      p_size as OPJ_SIZE_T
+  match p_stream.read(buf) {
+    Ok(nb) => nb as OPJ_SIZE_T,
+    Err(err) => {
+      log::trace!("Failed to read from stream: {err}");
+      -1i32 as OPJ_SIZE_T
     }
-    Err(_err) => {
-      // Maybe EOF, do a partial read.
-      match p_stream.m_inner.read(buf) {
-        Ok(nb) => {
-          p_stream.m_byte_offset += nb as i64;
-          nb as OPJ_SIZE_T
-        }
-        Err(err) => {
-          log::trace!("Failed to read from stream: {err}");
-          -1i32 as OPJ_SIZE_T
-        }
-      }
-    }
-  };
-  log::trace!(
-    "-- read_data({p_size}) = {res}, offset: old={old_byte_offset}, new={}, ptr={:?}",
-    p_stream.m_byte_offset,
-    p_stream as *const opj_stream_private
-  );
-  res
+  }
 }
-pub(crate) unsafe fn opj_stream_write_data(
+
+pub(crate) fn opj_stream_write_data(
   mut p_stream: *mut opj_stream_private_t,
   mut p_buffer: *const OPJ_BYTE,
   mut p_size: OPJ_SIZE_T,
@@ -374,25 +482,21 @@ pub(crate) unsafe fn opj_stream_write_data(
   let p_stream = unsafe { &mut *p_stream };
   log::trace!("-- write({p_size}), offset={}", p_stream.m_byte_offset);
   let buf = unsafe { std::slice::from_raw_parts(p_buffer as *const u8, p_size) };
-  return match p_stream.m_inner.write_all(buf) {
-    Ok(_) => {
-      p_stream.m_byte_offset += p_size as i64;
-      p_size as OPJ_SIZE_T
-    }
+  match p_stream.write(buf) {
+    Ok(nb) => nb,
     Err(err) => {
       log::trace!("Failed to write to stream: {err}");
       -1i32 as OPJ_SIZE_T
     }
-  };
+  }
 }
 
-pub(crate) unsafe fn opj_stream_flush(
+pub(crate) fn opj_stream_flush(
   mut p_stream: *mut opj_stream_private_t,
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let p_stream = unsafe { &mut *p_stream };
-  log::trace!("-- flush(), offset={}", p_stream.m_byte_offset);
-  return match p_stream.m_inner.flush() {
+  return match p_stream.flush() {
     Ok(_) => 1,
     Err(err) => {
       log::trace!("Failed to flush stream: {err}");
@@ -401,26 +505,16 @@ pub(crate) unsafe fn opj_stream_flush(
   };
 }
 
-pub(crate) unsafe fn opj_stream_tell(mut p_stream: *mut opj_stream_private_t) -> OPJ_OFF_T {
+pub(crate) fn opj_stream_tell(mut p_stream: *mut opj_stream_private_t) -> OPJ_OFF_T {
   let p_stream = unsafe { &mut *p_stream };
-  log::trace!("-- tell() = {}", p_stream.m_byte_offset);
-  p_stream.m_byte_offset
+  p_stream.tell()
 }
 
-pub(crate) unsafe fn opj_stream_get_number_byte_left(
+pub(crate) fn opj_stream_get_number_byte_left(
   mut p_stream: *mut opj_stream_private_t,
 ) -> OPJ_OFF_T {
   let p_stream = unsafe { &mut *p_stream };
-  log::trace!("-- byte_left(), offset={}", p_stream.m_byte_offset);
-  assert!(p_stream.m_byte_offset >= 0i64);
-  assert!(p_stream.m_stream_length >= p_stream.m_byte_offset as OPJ_UINT64);
-  let nb = if p_stream.m_stream_length != 0 {
-    (p_stream.m_stream_length as OPJ_OFF_T) - p_stream.m_byte_offset
-  } else {
-    0i64
-  };
-  log::trace!("-- get_number_byte_left() = {}", nb);
-  nb
+  p_stream.get_bytes_left()
 }
 
 pub(crate) fn opj_stream_skip(
@@ -429,16 +523,10 @@ pub(crate) fn opj_stream_skip(
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_OFF_T {
   let p_stream = unsafe { &mut *p_stream };
-  let res = p_stream
-    .m_inner
-    .seek_relative(p_size)
-    .map(|_| (p_stream.m_byte_offset + p_size) as u64);
-  match res {
+  match p_stream.skip(p_size) {
     Ok(offset) => {
-      p_stream.m_byte_offset = offset as i64;
-      // TODO: return number of bytes skipped.
-      log::trace!("-- skip({p_size}) = {}", p_size);
-      p_size
+      log::trace!("-- skip({p_size}) = {}", offset);
+      offset
     }
     Err(err) => {
       log::trace!("Failed to skip stream: {err}");
@@ -453,12 +541,8 @@ pub(crate) fn opj_stream_seek(
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let p_stream = unsafe { &mut *p_stream };
-  let res = p_stream
-    .m_inner
-    .seek_relative(p_size - p_stream.m_byte_offset);
-  match res {
+  match p_stream.seek(p_size) {
     Ok(_) => {
-      p_stream.m_byte_offset = p_size;
       log::trace!("-- seek({p_size}) = {}", 1);
       1
     }
@@ -471,5 +555,5 @@ pub(crate) fn opj_stream_seek(
 
 pub(crate) fn opj_stream_has_seek(mut p_stream: *const opj_stream_private_t) -> OPJ_BOOL {
   let p_stream = unsafe { &*p_stream };
-  p_stream.m_inner.has_seek() as _
+  p_stream.has_seek() as _
 }
