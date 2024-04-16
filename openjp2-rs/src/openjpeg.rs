@@ -625,12 +625,10 @@ pub unsafe extern "C" fn opj_stream_create(
   mut p_buffer_size: OPJ_SIZE_T,
   mut l_is_input: OPJ_BOOL,
 ) -> *mut opj_stream_t {
-  let l_stream = match opj_stream_private::new(p_buffer_size, l_is_input != 0) {
-    Some(stream) => Box::into_raw(Box::new(stream)) as *mut opj_stream_t,
-    None => std::ptr::null_mut::<opj_stream_t>(),
-  };
-  log::trace!("-- create stream: {:?}", l_stream);
-  l_stream
+  let l_stream = Box::new(opj_stream_private::new(p_buffer_size, l_is_input != 0));
+  let p_stream = Box::into_raw(l_stream) as *mut opj_stream_t;
+  log::trace!("-- create stream: {:?}", p_stream);
+  p_stream
 }
 
 #[no_mangle]
@@ -650,11 +648,16 @@ pub unsafe extern "C" fn opj_stream_set_read_function(
   mut p_stream: *mut opj_stream_t,
   mut p_function: opj_stream_read_fn,
 ) {
-  let mut l_stream = p_stream as *mut opj_stream_private_t;
-  if l_stream.is_null() || (*l_stream).m_status & 0x2u32 == 0 {
+  if p_stream.is_null() {
     return;
   }
-  (*l_stream).m_read_fn = p_function;
+  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
+  if !p_stream.is_input() {
+    return;
+  }
+  if let Some(custom) = p_stream.as_custom() {
+    custom.set_read(p_function);
+  }
 }
 
 #[no_mangle]
@@ -662,11 +665,13 @@ pub unsafe extern "C" fn opj_stream_set_seek_function(
   mut p_stream: *mut opj_stream_t,
   mut p_function: opj_stream_seek_fn,
 ) {
-  let mut l_stream = p_stream as *mut opj_stream_private_t;
-  if l_stream.is_null() {
+  if p_stream.is_null() {
     return;
   }
-  (*l_stream).m_seek_fn = p_function;
+  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
+  if let Some(custom) = p_stream.as_custom() {
+    custom.set_seek(p_function);
+  }
 }
 
 #[no_mangle]
@@ -674,11 +679,16 @@ pub unsafe extern "C" fn opj_stream_set_write_function(
   mut p_stream: *mut opj_stream_t,
   mut p_function: opj_stream_write_fn,
 ) {
-  let mut l_stream = p_stream as *mut opj_stream_private_t;
-  if l_stream.is_null() || (*l_stream).m_status & 0x1u32 == 0 {
+  if p_stream.is_null() {
     return;
   }
-  (*l_stream).m_write_fn = p_function;
+  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
+  if p_stream.is_input() {
+    return;
+  }
+  if let Some(custom) = p_stream.as_custom() {
+    custom.set_write(p_function);
+  }
 }
 
 #[no_mangle]
@@ -686,11 +696,13 @@ pub unsafe extern "C" fn opj_stream_set_skip_function(
   mut p_stream: *mut opj_stream_t,
   mut p_function: opj_stream_skip_fn,
 ) {
-  let mut l_stream = p_stream as *mut opj_stream_private_t;
-  if l_stream.is_null() {
+  if p_stream.is_null() {
     return;
   }
-  (*l_stream).m_skip_fn = p_function;
+  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
+  if let Some(custom) = p_stream.as_custom() {
+    custom.set_skip(p_function);
+  }
 }
 
 #[no_mangle]
@@ -699,12 +711,13 @@ pub unsafe extern "C" fn opj_stream_set_user_data(
   mut p_data: *mut core::ffi::c_void,
   mut p_function: opj_stream_free_user_data_fn,
 ) {
-  let mut l_stream = p_stream as *mut opj_stream_private_t;
-  if l_stream.is_null() {
+  if p_stream.is_null() {
     return;
   }
-  (*l_stream).m_user_data = p_data;
-  (*l_stream).m_free_user_data_fn = p_function;
+  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
+  if let Some(custom) = p_stream.as_custom() {
+    custom.set_user_data(p_data, p_function);
+  }
 }
 
 #[no_mangle]
@@ -712,11 +725,11 @@ pub unsafe extern "C" fn opj_stream_set_user_data_length(
   mut p_stream: *mut opj_stream_t,
   mut data_length: OPJ_UINT64,
 ) {
-  let mut l_stream = p_stream as *mut opj_stream_private_t;
-  if l_stream.is_null() {
+  if p_stream.is_null() {
     return;
   }
-  (*l_stream).m_user_data_length = data_length;
+  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
+  p_stream.set_stream_length(data_length);
 }
 
 #[cfg(feature = "file-io")]
@@ -777,22 +790,40 @@ pub unsafe fn opj_stream_create_file_stream(
   if l_stream.is_null() {
     return std::ptr::null_mut::<opj_stream_t>();
   }
+  let p_stream = unsafe { &mut *(l_stream as *mut opj_stream_private) };
+  p_stream.m_stream_length = len;
   if p_is_read_stream != 0 {
-    //*
-    use std::io::BufReader;
-    let p_stream = unsafe { &mut *(l_stream as *mut opj_stream_private) };
-    p_stream.m_inner = Some(StreamInner::Reader(BufReader::with_capacity(p_size, file)));
-    p_stream.m_user_data_length = len;
-    return l_stream;
+    /*
+    let p_file = Box::into_raw(Box::new(file));
+    let custom = super::stream::CustomStream {
+      m_user_data: p_file as *mut core::ffi::c_void,
+      m_free_user_data_fn: Some(opj_close_from_file),
+      m_read_fn: Some(opj_read_from_file),
+      m_write_fn: Some(opj_write_from_file),
+      m_skip_fn: Some(opj_skip_from_file),
+      m_seek_fn: Some(opj_seek_from_file),
+      m_byte_offset: 0,
+    };
+    p_stream.m_inner = super::stream::StreamInner::new_custom_reader(p_size, custom);
     // */
+    p_stream.m_inner = super::stream::StreamInner::new_reader(p_size, file);
+    return l_stream;
   } else {
-    //*
-    use std::io::BufWriter;
-    let p_stream = unsafe { &mut *(l_stream as *mut opj_stream_private) };
-    p_stream.m_inner = Some(StreamInner::Writer(BufWriter::with_capacity(p_size, file)));
-    p_stream.m_user_data_length = len;
-    return l_stream;
+    /*
+    let p_file = Box::into_raw(Box::new(file));
+    let custom = super::stream::CustomStream {
+      m_user_data: p_file as *mut core::ffi::c_void,
+      m_free_user_data_fn: Some(opj_close_from_file),
+      m_read_fn: Some(opj_read_from_file),
+      m_write_fn: Some(opj_write_from_file),
+      m_skip_fn: Some(opj_skip_from_file),
+      m_seek_fn: Some(opj_seek_from_file),
+      m_byte_offset: 0,
+    };
+    p_stream.m_inner = super::stream::StreamInner::new_custom_writer(p_size, custom);
     // */
+    p_stream.m_inner = super::stream::StreamInner::new_writer(p_size, file);
+    return l_stream;
   }
   /*
   let p_file = Box::into_raw(Box::new(file));
