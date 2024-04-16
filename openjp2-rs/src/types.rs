@@ -45,31 +45,11 @@ pub(crate) struct opj_tcd_marker_info {
 }
 pub(crate) type opj_tcd_marker_info_t = opj_tcd_marker_info;
 
-pub(crate) enum StreamInner {
-  Reader(std::io::BufReader<std::fs::File>),
-  Writer(std::io::BufWriter<std::fs::File>),
-}
-
 #[repr(C)]
 pub(crate) struct opj_stream_private {
-  pub m_inner: Option<StreamInner>,
-  pub m_user_data: *mut core::ffi::c_void,
-  pub m_free_user_data_fn: opj_stream_free_user_data_fn,
-  pub m_user_data_length: OPJ_UINT64,
-  pub m_read_fn: opj_stream_read_fn,
-  pub m_write_fn: opj_stream_write_fn,
-  pub m_skip_fn: opj_stream_skip_fn,
-  pub m_seek_fn: opj_stream_seek_fn,
-  pub m_stored_data: *mut OPJ_BYTE,
-  pub m_current_data: *mut OPJ_BYTE,
-  pub m_opj_skip:
-    Option<fn(_: &mut opj_stream_private, _: OPJ_OFF_T, _: &mut opj_event_mgr) -> OPJ_OFF_T>,
-  pub m_opj_seek:
-    Option<fn(_: &mut opj_stream_private, _: OPJ_OFF_T, _: &mut opj_event_mgr) -> OPJ_BOOL>,
-  pub m_bytes_in_buffer: OPJ_SIZE_T,
+  pub m_inner: super::stream::StreamInner,
+  pub m_stream_length: OPJ_UINT64,
   pub m_byte_offset: OPJ_OFF_T,
-  pub m_buffer_size: OPJ_SIZE_T,
-  pub m_status: OPJ_UINT32,
 }
 pub(crate) type opj_stream_private_t = opj_stream_private;
 
