@@ -55,7 +55,7 @@ pub(crate) type opj_stream_private = Stream;
 pub(crate) type opj_stream_private_t = Stream;
 
 pub(crate) type opj_jp2_proc =
-  unsafe fn(_: &mut opj_jp2, _: *mut opj_stream_private_t, _: &mut opj_event_mgr) -> OPJ_BOOL;
+  unsafe fn(_: &mut opj_jp2, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
 pub(crate) type opj_jp2_proc_list_t = super::function_list::ProcedureList<opj_jp2_proc>;
 
 #[repr(C)]
@@ -150,7 +150,7 @@ pub(crate) struct opj_jp2_comps {
 pub(crate) type opj_jp2_comps_t = opj_jp2_comps;
 
 pub(crate) type opj_j2k_proc =
-  unsafe fn(_: &mut opj_j2k, _: *mut opj_stream_private_t, _: &mut opj_event_mgr) -> OPJ_BOOL;
+  unsafe fn(_: &mut opj_j2k, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
 pub(crate) type opj_j2k_proc_list_t = super::function_list::ProcedureList<opj_j2k_proc>;
 
 #[repr(C)]
