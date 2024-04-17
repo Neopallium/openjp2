@@ -250,8 +250,7 @@ impl Codec {
 
   pub fn set_decoded_components(
     &mut self,
-    mut numcomps: OPJ_UINT32,
-    mut comps_indices: *const OPJ_UINT32,
+    mut components: &[u32],
     mut apply_color_transforms: OPJ_BOOL,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
@@ -273,10 +272,10 @@ impl Codec {
         }
         match dec {
           CodecFormat::J2K(dec) => {
-            opj_j2k_set_decoded_components(dec, numcomps, comps_indices, &mut self.m_event_mgr)
+            opj_j2k_set_decoded_components(dec, components, &mut self.m_event_mgr)
           }
           CodecFormat::JP2(dec) => {
-            opj_jp2_set_decoded_components(dec, numcomps, comps_indices, &mut self.m_event_mgr)
+            opj_jp2_set_decoded_components(dec, components, &mut self.m_event_mgr)
           }
         }
       }
@@ -345,54 +344,21 @@ impl Codec {
     0i32
   }
 
-  pub fn read_tile_header(
-    &mut self,
-    mut p_stream: &mut Stream,
-    mut p_tile_index: *mut OPJ_UINT32,
-    mut p_data_size: *mut OPJ_UINT32,
-    mut p_tile_x0: *mut OPJ_INT32,
-    mut p_tile_y0: *mut OPJ_INT32,
-    mut p_tile_x1: *mut OPJ_INT32,
-    mut p_tile_y1: *mut OPJ_INT32,
-    mut p_nb_comps: *mut OPJ_UINT32,
-    mut p_should_go_on: *mut OPJ_BOOL,
-  ) -> OPJ_BOOL {
+  pub fn read_tile_header(&mut self, mut p_stream: &mut Stream, tile_info: &mut TileInfo) -> bool {
     match &mut self.m_codec {
       CodecType::Encoder(_) => (),
       CodecType::Decoder(dec) => {
-        if !p_data_size.is_null() && !p_tile_index.is_null() {
-          return match dec {
-            CodecFormat::J2K(dec) => opj_j2k_read_tile_header(
-              dec,
-              p_tile_index,
-              p_data_size,
-              p_tile_x0,
-              p_tile_y0,
-              p_tile_x1,
-              p_tile_y1,
-              p_nb_comps,
-              p_should_go_on,
-              p_stream,
-              &mut self.m_event_mgr,
-            ),
-            CodecFormat::JP2(dec) => opj_jp2_read_tile_header(
-              dec,
-              p_tile_index,
-              p_data_size,
-              p_tile_x0,
-              p_tile_y0,
-              p_tile_x1,
-              p_tile_y1,
-              p_nb_comps,
-              p_should_go_on,
-              p_stream,
-              &mut self.m_event_mgr,
-            ),
-          };
-        }
+        return match dec {
+          CodecFormat::J2K(dec) => {
+            opj_j2k_read_tile_header(dec, p_stream, tile_info, &mut self.m_event_mgr)
+          }
+          CodecFormat::JP2(dec) => {
+            opj_jp2_read_tile_header(dec, p_stream, tile_info, &mut self.m_event_mgr)
+          }
+        };
       }
     }
-    0i32
+    false
   }
 
   pub fn decode_tile_data(

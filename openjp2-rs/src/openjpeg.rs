@@ -42,15 +42,6 @@ use super::malloc::*;
 #[cfg(feature = "file-io")]
 use ::libc::FILE;
 
-extern "C" {
-  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
-
-  fn memcpy(
-    _: *mut core::ffi::c_void,
-    _: *const core::ffi::c_void,
-    _: usize,
-  ) -> *mut core::ffi::c_void;
-}
 /* ---------------------------------------------------------------------- */
 /* Functions to set the message handlers */
 #[no_mangle]
@@ -97,14 +88,14 @@ pub const OPJ_VERSION: &str = "2.5.2";
 pub const OPJ_VERSION_C: *const u8 = b"2.5.2\x00" as *const u8;
 
 #[no_mangle]
-pub unsafe fn opj_version() -> *const core::ffi::c_char {
+pub fn opj_version() -> *const core::ffi::c_char {
   OPJ_VERSION_C as *const core::ffi::c_char
 }
 
 /* ---------------------------------------------------------------------- */
 /* DECOMPRESSION FUNCTIONS*/
 #[no_mangle]
-pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
+pub fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
   if let Some(codec) = opj_codec_private_t::new_decoder(p_format) {
     let l_codec = Box::new(codec);
     Box::into_raw(l_codec) as *mut opj_codec_t
@@ -115,21 +106,11 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
 
 #[no_mangle]
 pub unsafe fn opj_set_default_decoder_parameters(mut parameters: *mut opj_dparameters_t) {
-  if !parameters.is_null() {
-    memset(
-      parameters as *mut core::ffi::c_void,
-      0i32,
-      core::mem::size_of::<opj_dparameters_t>(),
-    );
-    /* UniPG>> */
-    /* USE_JPWL */
-    /* <<UniPG */
-    (*parameters).cp_layer = 0 as OPJ_UINT32;
-    (*parameters).cp_reduce = 0 as OPJ_UINT32;
-    (*parameters).decod_format = -(1i32);
-    (*parameters).cod_format = -(1i32);
-    (*parameters).flags = 0u32
-  };
+  if parameters.is_null() {
+    return;
+  }
+  let parameters = &mut *parameters;
+  parameters.set_defaults();
 }
 
 #[no_mangle]
@@ -194,7 +175,8 @@ pub unsafe fn opj_set_decoded_components(
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.set_decoded_components(numcomps, comps_indices, apply_color_transforms)
+  let components = unsafe { core::slice::from_raw_parts(comps_indices, numcomps as usize) };
+  l_codec.set_decoded_components(components, apply_color_transforms)
 }
 
 #[no_mangle]
@@ -247,17 +229,43 @@ pub unsafe fn opj_read_tile_header(
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.read_tile_header(
-    p_stream,
-    p_tile_index,
-    p_data_size,
-    p_tile_x0,
-    p_tile_y0,
-    p_tile_x1,
-    p_tile_y1,
-    p_nb_comps,
-    p_should_go_on,
-  )
+  // TODO: use a struct for tile header info.
+  let mut tile_info = TileInfo::default();
+  if !p_data_size.is_null() {
+    // Request the tile data size.
+    tile_info.data_size = Some(0);
+  }
+  if l_codec.read_tile_header(p_stream, &mut tile_info) {
+    unsafe {
+      if !p_tile_index.is_null() {
+        *p_tile_index = tile_info.index;
+      }
+      if !p_data_size.is_null() {
+        *p_data_size = tile_info.data_size.unwrap_or_default();
+      }
+      if !p_tile_x0.is_null() {
+        *p_tile_x0 = tile_info.x0;
+      }
+      if !p_tile_y0.is_null() {
+        *p_tile_y0 = tile_info.y0;
+      }
+      if !p_tile_x1.is_null() {
+        *p_tile_x1 = tile_info.x1;
+      }
+      if !p_tile_y1.is_null() {
+        *p_tile_y1 = tile_info.y1;
+      }
+      if !p_nb_comps.is_null() {
+        *p_nb_comps = tile_info.nb_comps;
+      }
+      if !p_should_go_on.is_null() {
+        *p_should_go_on = tile_info.go_on as _;
+      }
+    }
+    1
+  } else {
+    0
+  }
 }
 
 #[no_mangle]
@@ -273,6 +281,7 @@ pub unsafe fn opj_decode_tile_data(
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  // TODO: data.
   l_codec.decode_tile_data(p_stream, p_tile_index, p_data, p_data_size)
 }
 
@@ -320,36 +329,11 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
 /* default coding parameters */
 #[no_mangle]
 pub unsafe fn opj_set_default_encoder_parameters(mut parameters: *mut opj_cparameters_t) {
-  if !parameters.is_null() {
-    memset(
-      parameters as *mut core::ffi::c_void,
-      0i32,
-      core::mem::size_of::<opj_cparameters_t>(),
-    );
-    /* UniPG>> */
-    /* USE_JPWL */
-    /* <<UniPG */
-    (*parameters).cp_cinema = OPJ_OFF;
-    (*parameters).rsiz = 0 as OPJ_UINT16;
-    (*parameters).max_comp_size = 0i32;
-    (*parameters).numresolution = 6i32;
-    (*parameters).cp_rsiz = OPJ_STD_RSIZ;
-    (*parameters).cblockw_init = 64i32;
-    (*parameters).cblockh_init = 64i32;
-    (*parameters).prog_order = OPJ_LRCP;
-    (*parameters).roi_compno = -(1i32);
-    (*parameters).subsampling_dx = 1i32;
-    (*parameters).subsampling_dy = 1i32;
-    (*parameters).tp_on = 0 as core::ffi::c_char;
-    (*parameters).decod_format = -(1i32);
-    (*parameters).cod_format = -(1i32);
-    (*parameters).tcp_rates[0_usize] = 0 as core::ffi::c_float;
-    (*parameters).tcp_numlayers = 0i32;
-    (*parameters).cp_disto_alloc = 0i32;
-    (*parameters).cp_fixed_alloc = 0i32;
-    (*parameters).cp_fixed_quality = 0i32;
-    (*parameters).jpip_on = 0i32
-  };
+  if parameters.is_null() {
+    return;
+  }
+  let parameters = &mut *parameters;
+  parameters.set_defaults();
 }
 
 #[no_mangle]
@@ -377,6 +361,7 @@ pub unsafe fn opj_encoder_set_extra_options(
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  // TODO: Convert null-terminated array of c strings.
   l_codec.encoder_set_extra_options(options)
 }
 
@@ -440,38 +425,15 @@ pub unsafe fn opj_set_MCT(
   mut parameters: *mut opj_cparameters_t,
   mut pEncodingMatrix: *mut OPJ_FLOAT32,
   mut p_dc_shift: *mut OPJ_INT32,
-  mut pNbComp: OPJ_UINT32,
+  mut nb_comps: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  let mut l_matrix_size = pNbComp
-    .wrapping_mul(pNbComp)
-    .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
-  let mut l_dc_shift_size = pNbComp.wrapping_mul(core::mem::size_of::<OPJ_INT32>() as OPJ_UINT32);
-  let mut l_mct_total_size = l_matrix_size.wrapping_add(l_dc_shift_size);
-  /* add MCT capability */
-  if (*parameters).rsiz as core::ffi::c_int & 0x8000i32 != 0 {
-    (*parameters).rsiz = ((*parameters).rsiz as core::ffi::c_int | 0x100i32) as OPJ_UINT16
-  } else {
-    (*parameters).rsiz = (0x8000i32 | 0x100i32) as OPJ_UINT16
-  }
-  (*parameters).irreversible = 1i32;
-  /* use array based MCT */
-  (*parameters).tcp_mct = 2 as core::ffi::c_char;
-  (*parameters).mct_data = opj_malloc(l_mct_total_size as size_t);
-  if (*parameters).mct_data.is_null() {
-    return 0i32;
-  }
-  memcpy(
-    (*parameters).mct_data,
-    pEncodingMatrix as *const core::ffi::c_void,
-    l_matrix_size as usize,
-  );
-  memcpy(
-    ((*parameters).mct_data as *mut OPJ_BYTE).offset(l_matrix_size as isize)
-      as *mut core::ffi::c_void,
-    p_dc_shift as *const core::ffi::c_void,
-    l_dc_shift_size as usize,
-  );
-  1i32
+  let mut l_matrix_size = nb_comps * nb_comps;
+  let mut l_dc_shift_size = nb_comps;
+  let encoding_matrix =
+    unsafe { core::slice::from_raw_parts(pEncodingMatrix, l_matrix_size as usize) };
+  let dc_shift = unsafe { core::slice::from_raw_parts(p_dc_shift, l_dc_shift_size as usize) };
+  let parameters = &mut *parameters;
+  parameters.set_MCT(encoding_matrix, dc_shift, nb_comps) as _
 }
 
 #[no_mangle]
@@ -487,6 +449,7 @@ pub unsafe fn opj_write_tile(
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  // TODO: data
   l_codec.write_tile(p_tile_index, p_data, p_data_size, p_stream)
 }
 
@@ -526,6 +489,7 @@ pub unsafe fn opj_get_cstr_info(mut p_codec: *mut opj_codec_t) -> *mut opj_codes
 #[no_mangle]
 pub unsafe fn opj_destroy_cstr_info(mut cstr_info: *mut *mut opj_codestream_info_v2_t) {
   if !cstr_info.is_null() {
+    // TODO: use drop.
     if !(**cstr_info).m_default_tile_info.tccp_info.is_null() {
       opj_free((**cstr_info).m_default_tile_info.tccp_info as *mut core::ffi::c_void);
     }
@@ -549,6 +513,7 @@ pub unsafe fn opj_get_cstr_index(mut p_codec: *mut opj_codec_t) -> *mut opj_code
 #[no_mangle]
 pub unsafe fn opj_destroy_cstr_index(mut p_cstr_index: *mut *mut opj_codestream_index_t) {
   if !(*p_cstr_index).is_null() {
+    // TODO: use drop.
     j2k_destroy_cstr_index(*p_cstr_index);
     *p_cstr_index = std::ptr::null_mut::<opj_codestream_index_t>()
   };
@@ -709,6 +674,7 @@ pub unsafe fn opj_image_data_alloc(mut size: OPJ_SIZE_T) -> *mut core::ffi::c_vo
   /* printf("opj_image_data_alloc %p\n", ret); */
   opj_aligned_malloc(size)
 }
+
 #[no_mangle]
 pub unsafe fn opj_image_data_free(mut ptr: *mut core::ffi::c_void) {
   /* printf("opj_image_data_free %p\n", ptr); */
