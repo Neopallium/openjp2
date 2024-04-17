@@ -31,6 +31,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+use super::malloc::*;
+
 pub type size_t = usize;
 
 pub type OPJ_BOOL = i32;
@@ -135,7 +137,7 @@ pub type opj_msg_callback_fn =
 pub type opj_msg_callback = Option<opj_msg_callback_fn>;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct opj_poc {
   pub resno0: OPJ_UINT32,
   pub compno0: OPJ_UINT32,
@@ -242,6 +244,125 @@ pub struct opj_cparameters {
 }
 pub type opj_cparameters_t = opj_cparameters;
 
+impl Default for opj_cparameters_t {
+  fn default() -> Self {
+    Self {
+      tile_size_on: Default::default(),
+      cp_tx0: Default::default(),
+      cp_ty0: Default::default(),
+      cp_tdx: Default::default(),
+      cp_tdy: Default::default(),
+      cp_disto_alloc: Default::default(),
+      cp_fixed_alloc: Default::default(),
+      cp_fixed_quality: Default::default(),
+      cp_matrice: std::ptr::null_mut(),
+      cp_comment: std::ptr::null_mut(),
+      csty: Default::default(),
+      prog_order: OPJ_LRCP,
+      POC: Default::default(),
+      numpocs: Default::default(),
+      tcp_numlayers: Default::default(),
+      tcp_rates: [Default::default(); 100],
+      tcp_distoratio: [Default::default(); 100],
+      numresolution: 6i32,
+      cblockw_init: 64i32,
+      cblockh_init: 64i32,
+      mode: Default::default(),
+      irreversible: Default::default(),
+      roi_compno: -1,
+      roi_shift: Default::default(),
+      res_spec: Default::default(),
+      prcw_init: [Default::default(); 33],
+      prch_init: [Default::default(); 33],
+      infile: [0; 4096],
+      outfile: [0; 4096],
+      index_on: Default::default(),
+      index: [0; 4096],
+      image_offset_x0: Default::default(),
+      image_offset_y0: Default::default(),
+      subsampling_dx: 1,
+      subsampling_dy: 1,
+      decod_format: -1,
+      cod_format: -1,
+      jpwl_epc_on: 0,
+      jpwl_hprot_MH: 0,
+      jpwl_hprot_TPH_tileno: [0; 16],
+      jpwl_hprot_TPH: [0; 16],
+      jpwl_pprot_tileno: [0; 16],
+      jpwl_pprot_packno: [0; 16],
+      jpwl_pprot: [0; 16],
+      jpwl_sens_size: 0,
+      jpwl_sens_addr: 0,
+      jpwl_sens_range: 0,
+      jpwl_sens_MH: 0,
+      jpwl_sens_TPH_tileno: [0; 16],
+      jpwl_sens_TPH: [0; 16],
+      cp_cinema: OPJ_OFF,
+      max_comp_size: Default::default(),
+      cp_rsiz: OPJ_STD_RSIZ,
+      tp_on: Default::default(),
+      tp_flag: Default::default(),
+      tcp_mct: Default::default(),
+      jpip_on: Default::default(),
+      mct_data: std::ptr::null_mut(),
+      max_cs_size: Default::default(),
+      rsiz: Default::default(),
+    }
+  }
+}
+
+impl opj_cparameters_t {
+  pub fn set_defaults(&mut self) {
+    *self = Default::default()
+  }
+
+  pub fn set_MCT(
+    &mut self,
+    mut encoding_matrix: &[f32],
+    mut dc_shift: &[i32],
+    nb_comps: u32,
+  ) -> bool {
+    let mut l_matrix_size = encoding_matrix.len() * core::mem::size_of::<OPJ_FLOAT32>();
+    let mut l_dc_shift_size = dc_shift.len() * core::mem::size_of::<OPJ_INT32>();
+    let mut l_mct_total_size = l_matrix_size + l_dc_shift_size;
+    /* add MCT capability */
+    if self.rsiz as core::ffi::c_int & 0x8000i32 != 0 {
+      self.rsiz = (self.rsiz as core::ffi::c_int | 0x100i32) as OPJ_UINT16
+    } else {
+      self.rsiz = (0x8000i32 | 0x100i32) as OPJ_UINT16
+    }
+    self.irreversible = 1i32;
+    /* use array based MCT */
+    self.tcp_mct = 2 as core::ffi::c_char;
+    self.mct_data = unsafe { opj_malloc(l_mct_total_size) };
+    if self.mct_data.is_null() {
+      return false;
+    }
+    self
+      .get_matrix_mut(nb_comps as usize)
+      .copy_from_slice(encoding_matrix);
+    self
+      .get_dc_shift_mut(nb_comps as usize)
+      .copy_from_slice(dc_shift);
+    true
+  }
+
+  pub fn get_matrix_mut(&mut self, nb_comps: usize) -> &mut [f32] {
+    let mut l_matrix_size = nb_comps * nb_comps;
+    unsafe { core::slice::from_raw_parts_mut(self.mct_data as *mut f32, l_matrix_size) }
+  }
+
+  pub fn get_dc_shift_mut(&mut self, nb_comps: usize) -> &mut [i32] {
+    let mut l_matrix_byte_size = nb_comps * nb_comps * core::mem::size_of::<OPJ_FLOAT32>();
+    unsafe {
+      core::slice::from_raw_parts_mut(
+        self.mct_data.offset(l_matrix_byte_size as isize) as *mut i32,
+        nb_comps,
+      )
+    }
+  }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct opj_dparameters {
@@ -264,6 +385,37 @@ pub struct opj_dparameters {
   pub flags: core::ffi::c_uint,
 }
 pub type opj_dparameters_t = opj_dparameters;
+
+impl Default for opj_dparameters_t {
+  fn default() -> Self {
+    Self {
+      cp_reduce: Default::default(),
+      cp_layer: Default::default(),
+      infile: [Default::default(); 4096],
+      outfile: [Default::default(); 4096],
+      decod_format: -1,
+      cod_format: -1,
+      DA_x0: Default::default(),
+      DA_x1: Default::default(),
+      DA_y0: Default::default(),
+      DA_y1: Default::default(),
+      m_verbose: Default::default(),
+      tile_index: Default::default(),
+      nb_tile_to_decode: Default::default(),
+      jpwl_correct: Default::default(),
+      jpwl_exp_comps: Default::default(),
+      jpwl_max_tiles: Default::default(),
+      flags: Default::default(),
+    }
+  }
+}
+
+impl opj_dparameters_t {
+  pub fn set_defaults(&mut self) {
+    *self = Default::default()
+  }
+}
+
 pub type opj_codec_t = *mut core::ffi::c_void;
 pub type opj_stream_read_fn = Option<
   unsafe extern "C" fn(

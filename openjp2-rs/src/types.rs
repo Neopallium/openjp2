@@ -36,6 +36,191 @@ use super::j2k::*;
 
 use super::event::opj_event_mgr;
 
+#[derive(Clone)]
+pub(crate) struct EncoderParameters {
+  pub tile_size_on: OPJ_BOOL,
+  pub cp_tx0: core::ffi::c_int,
+  pub cp_ty0: core::ffi::c_int,
+  pub cp_tdx: core::ffi::c_int,
+  pub cp_tdy: core::ffi::c_int,
+  pub cp_disto_alloc: core::ffi::c_int,
+  pub cp_fixed_alloc: core::ffi::c_int,
+  pub cp_fixed_quality: core::ffi::c_int,
+  pub cp_matrice: *mut core::ffi::c_int,
+  pub cp_comment: *mut core::ffi::c_char,
+  pub csty: core::ffi::c_int,
+  pub prog_order: OPJ_PROG_ORDER,
+  pub POC: [opj_poc_t; 32],
+  pub numpocs: OPJ_UINT32,
+  pub tcp_numlayers: core::ffi::c_int,
+  pub tcp_rates: [core::ffi::c_float; 100],
+  pub tcp_distoratio: [core::ffi::c_float; 100],
+  pub numresolution: core::ffi::c_int,
+  pub cblockw_init: core::ffi::c_int,
+  pub cblockh_init: core::ffi::c_int,
+  pub mode: core::ffi::c_int,
+  pub irreversible: core::ffi::c_int,
+  pub roi_compno: core::ffi::c_int,
+  pub roi_shift: core::ffi::c_int,
+  pub res_spec: core::ffi::c_int,
+  pub prcw_init: [core::ffi::c_int; 33],
+  pub prch_init: [core::ffi::c_int; 33],
+  pub index_on: core::ffi::c_int,
+  pub image_offset_x0: core::ffi::c_int,
+  pub image_offset_y0: core::ffi::c_int,
+  pub subsampling_dx: core::ffi::c_int,
+  pub subsampling_dy: core::ffi::c_int,
+  pub decod_format: core::ffi::c_int,
+  pub cod_format: core::ffi::c_int,
+  pub cp_cinema: OPJ_CINEMA_MODE,
+  pub max_comp_size: core::ffi::c_int,
+  pub cp_rsiz: OPJ_RSIZ_CAPABILITIES,
+  pub tp_on: core::ffi::c_char,
+  pub tp_flag: core::ffi::c_char,
+  pub tcp_mct: core::ffi::c_char,
+  pub jpip_on: OPJ_BOOL,
+  pub mct_data: *mut core::ffi::c_void,
+  pub max_cs_size: core::ffi::c_int,
+  pub rsiz: OPJ_UINT16,
+}
+
+impl Default for EncoderParameters {
+  fn default() -> Self {
+    Self {
+      tile_size_on: Default::default(),
+      cp_tx0: Default::default(),
+      cp_ty0: Default::default(),
+      cp_tdx: Default::default(),
+      cp_tdy: Default::default(),
+      cp_disto_alloc: Default::default(),
+      cp_fixed_alloc: Default::default(),
+      cp_fixed_quality: Default::default(),
+      cp_matrice: std::ptr::null_mut(),
+      cp_comment: std::ptr::null_mut(),
+      csty: Default::default(),
+      prog_order: OPJ_LRCP,
+      POC: Default::default(),
+      numpocs: Default::default(),
+      tcp_numlayers: Default::default(),
+      tcp_rates: [Default::default(); 100],
+      tcp_distoratio: [Default::default(); 100],
+      numresolution: 6i32,
+      cblockw_init: 64i32,
+      cblockh_init: 64i32,
+      mode: Default::default(),
+      irreversible: Default::default(),
+      roi_compno: -1,
+      roi_shift: Default::default(),
+      res_spec: Default::default(),
+      prcw_init: [Default::default(); 33],
+      prch_init: [Default::default(); 33],
+      index_on: Default::default(),
+      image_offset_x0: Default::default(),
+      image_offset_y0: Default::default(),
+      subsampling_dx: 1,
+      subsampling_dy: 1,
+      decod_format: -1,
+      cod_format: -1,
+      cp_cinema: OPJ_OFF,
+      max_comp_size: Default::default(),
+      cp_rsiz: OPJ_STD_RSIZ,
+      tp_on: Default::default(),
+      tp_flag: Default::default(),
+      tcp_mct: Default::default(),
+      jpip_on: Default::default(),
+      mct_data: std::ptr::null_mut(),
+      max_cs_size: Default::default(),
+      rsiz: Default::default(),
+    }
+  }
+}
+
+impl EncoderParameters {
+  pub fn from_c(params: &mut opj_cparameters_t) -> Self {
+    Self {
+      tile_size_on: params.tile_size_on,
+      cp_tx0: params.cp_tx0,
+      cp_ty0: params.cp_ty0,
+      cp_tdx: params.cp_tdx,
+      cp_tdy: params.cp_tdy,
+      cp_disto_alloc: params.cp_disto_alloc,
+      cp_fixed_alloc: params.cp_fixed_alloc,
+      cp_fixed_quality: params.cp_fixed_quality,
+      cp_matrice: params.cp_matrice,
+      cp_comment: params.cp_comment,
+      csty: params.csty,
+      prog_order: params.prog_order,
+      POC: params.POC,
+      numpocs: params.numpocs,
+      tcp_numlayers: params.tcp_numlayers,
+      tcp_rates: params.tcp_rates,
+      tcp_distoratio: params.tcp_distoratio,
+      numresolution: params.numresolution,
+      cblockw_init: params.cblockw_init,
+      cblockh_init: params.cblockh_init,
+      mode: params.mode,
+      irreversible: params.irreversible,
+      roi_compno: params.roi_compno,
+      roi_shift: params.roi_shift,
+      res_spec: params.res_spec,
+      prcw_init: params.prcw_init,
+      prch_init: params.prch_init,
+      index_on: params.index_on,
+      image_offset_x0: params.image_offset_x0,
+      image_offset_y0: params.image_offset_y0,
+      subsampling_dx: params.subsampling_dx,
+      subsampling_dy: params.subsampling_dy,
+      decod_format: params.decod_format,
+      cod_format: params.cod_format,
+      cp_cinema: params.cp_cinema,
+      max_comp_size: params.max_comp_size,
+      cp_rsiz: params.cp_rsiz,
+      tp_on: params.tp_on,
+      tp_flag: params.tp_flag,
+      tcp_mct: params.tcp_mct,
+      jpip_on: params.jpip_on,
+      mct_data: params.mct_data,
+      max_cs_size: params.max_cs_size,
+      rsiz: params.rsiz,
+    }
+  }
+}
+
+#[derive(Clone)]
+pub(crate) struct DecoderParameters {
+  pub cp_reduce: OPJ_UINT32,
+  pub cp_layer: OPJ_UINT32,
+  pub decod_format: core::ffi::c_int,
+  pub cod_format: core::ffi::c_int,
+  pub DA_x0: OPJ_UINT32,
+  pub DA_x1: OPJ_UINT32,
+  pub DA_y0: OPJ_UINT32,
+  pub DA_y1: OPJ_UINT32,
+  pub m_verbose: OPJ_BOOL,
+  pub tile_index: OPJ_UINT32,
+  pub nb_tile_to_decode: OPJ_UINT32,
+  pub flags: core::ffi::c_uint,
+}
+
+impl Default for DecoderParameters {
+  fn default() -> Self {
+    Self {
+      cp_reduce: Default::default(),
+      cp_layer: Default::default(),
+      decod_format: -1,
+      cod_format: -1,
+      DA_x0: Default::default(),
+      DA_x1: Default::default(),
+      DA_y0: Default::default(),
+      DA_y1: Default::default(),
+      m_verbose: Default::default(),
+      tile_index: Default::default(),
+      nb_tile_to_decode: Default::default(),
+      flags: Default::default(),
+    }
+  }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_marker_info {
@@ -389,6 +574,18 @@ pub(crate) struct opj_tcd_tile {
   pub packno: OPJ_UINT32,
 }
 pub(crate) type opj_tcd_tile_t = opj_tcd_tile;
+
+#[derive(Clone, Default)]
+pub struct TileInfo {
+  pub index: u32,
+  pub data_size: Option<u32>,
+  pub x0: i32,
+  pub y0: i32,
+  pub x1: i32,
+  pub y1: i32,
+  pub nb_comps: u32,
+  pub go_on: bool,
+}
 
 #[repr(C)]
 #[derive(Copy, Clone)]

@@ -3126,31 +3126,12 @@ fn opj_jp2_setup_header_reading(
 }
 
 pub(crate) fn opj_jp2_read_tile_header(
-  mut p_jp2: &mut opj_jp2,
-  mut p_tile_index: *mut OPJ_UINT32,
-  mut p_data_size: *mut OPJ_UINT32,
-  mut p_tile_x0: *mut OPJ_INT32,
-  mut p_tile_y0: *mut OPJ_INT32,
-  mut p_tile_x1: *mut OPJ_INT32,
-  mut p_tile_y1: *mut OPJ_INT32,
-  mut p_nb_comps: *mut OPJ_UINT32,
-  mut p_go_on: *mut OPJ_BOOL,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  opj_j2k_read_tile_header(
-    &mut p_jp2.j2k,
-    p_tile_index,
-    p_data_size,
-    p_tile_x0,
-    p_tile_y0,
-    p_tile_x1,
-    p_tile_y1,
-    p_nb_comps,
-    p_go_on,
-    p_stream,
-    p_manager,
-  )
+  p_jp2: &mut opj_jp2,
+  p_stream: &mut Stream,
+  tile_info: &mut TileInfo,
+  p_manager: &mut opj_event_mgr,
+) -> bool {
+  opj_j2k_read_tile_header(&mut p_jp2.j2k, p_stream, tile_info, p_manager)
 }
 
 pub(crate) fn opj_jp2_write_tile(
@@ -3245,12 +3226,11 @@ impl Drop for opj_jp2 {
 }
 
 pub(crate) fn opj_jp2_set_decoded_components(
-  mut p_jp2: &mut opj_jp2,
-  mut numcomps: OPJ_UINT32,
-  mut comps_indices: *const OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_jp2: &mut opj_jp2,
+  components: &[u32],
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  opj_j2k_set_decoded_components(&mut p_jp2.j2k, numcomps, comps_indices, p_manager)
+  opj_j2k_set_decoded_components(&mut p_jp2.j2k, components, p_manager)
 }
 
 pub(crate) fn opj_jp2_set_decode_area(
