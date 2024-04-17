@@ -229,7 +229,6 @@ pub unsafe fn opj_read_tile_header(
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  // TODO: use a struct for tile header info.
   let mut tile_info = TileInfo::default();
   if !p_data_size.is_null() {
     // Request the tile data size.
@@ -357,12 +356,28 @@ pub unsafe fn opj_encoder_set_extra_options(
   mut p_codec: *mut opj_codec_t,
   mut options: *const *const core::ffi::c_char,
 ) -> OPJ_BOOL {
-  if p_codec.is_null() | options.is_null() {
-    return 0i32;
+  if options.is_null() {
+    return 1;
+  }
+  if p_codec.is_null() {
+    return 0;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  // TODO: Convert null-terminated array of c strings.
-  l_codec.encoder_set_extra_options(options)
+  let mut p_option_iter = options;
+  let mut options = Vec::new();
+  while !(*p_option_iter).is_null() {
+    match core::ffi::CStr::from_ptr(*p_option_iter).to_str() {
+      Ok(option) => {
+        options.push(option);
+      }
+      Err(err) => {
+        log::error!("Failed to convert C string to Rust string: {err}");
+        return 0;
+      }
+    }
+    p_option_iter = p_option_iter.offset(1);
+  }
+  l_codec.encoder_set_extra_options(options.as_slice()) as _
 }
 
 /* ----------------------------------------------------------------------- */

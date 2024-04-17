@@ -12697,94 +12697,53 @@ pub(crate) fn opj_j2k_set_decoded_resolution_factor(
 }
 
 pub(crate) fn opj_j2k_encoder_set_extra_options(
-  mut p_j2k: &mut opj_j2k,
-  mut p_options: *const *const core::ffi::c_char,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut p_option_iter = std::ptr::null::<*const core::ffi::c_char>();
-    if p_options.is_null() {
-      return 1i32;
-    }
-    p_option_iter = p_options;
-    while !(*p_option_iter).is_null() {
-      if strncmp(
-        *p_option_iter,
-        b"PLT=\x00" as *const u8 as *const core::ffi::c_char,
-        4,
-      ) == 0i32
-      {
-        if strcmp(
-          *p_option_iter,
-          b"PLT=YES\x00" as *const u8 as *const core::ffi::c_char,
-        ) == 0i32
-        {
-          p_j2k.m_specific_param.m_encoder.m_PLT = 1i32
-        } else if strcmp(
-          *p_option_iter,
-          b"PLT=NO\x00" as *const u8 as *const core::ffi::c_char,
-        ) == 0i32
-        {
-          p_j2k.m_specific_param.m_encoder.m_PLT = 0i32
-        } else {
-          let tmp_str = core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap();
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Invalid value for option: %s.\n",
-            tmp_str,
-          );
-          return 0i32;
-        }
-      } else if strncmp(
-        *p_option_iter,
-        b"TLM=\x00" as *const u8 as *const core::ffi::c_char,
-        4,
-      ) == 0i32
-      {
-        if strcmp(
-          *p_option_iter,
-          b"TLM=YES\x00" as *const u8 as *const core::ffi::c_char,
-        ) == 0i32
-        {
-          p_j2k.m_specific_param.m_encoder.m_TLM = 1i32
-        } else if strcmp(
-          *p_option_iter,
-          b"TLM=NO\x00" as *const u8 as *const core::ffi::c_char,
-        ) == 0i32
-        {
-          p_j2k.m_specific_param.m_encoder.m_TLM = 0i32
-        } else {
-          let tmp_str = core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap();
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Invalid value for option: %s.\n",
-            tmp_str,
-          );
-          return 0i32;
-        }
-      } else if strncmp(
-        *p_option_iter,
-        b"GUARD_BITS=\x00" as *const u8 as *const core::ffi::c_char,
-        strlen(b"GUARD_BITS=\x00" as *const u8 as *const core::ffi::c_char),
-      ) == 0i32
-      {
-        let mut tileno: OPJ_UINT32 = 0;
-        let mut cp = &mut p_j2k.m_cp;
-        let mut numgbits = atoi((*p_option_iter).add(strlen(
-          b"GUARD_BITS=\x00" as *const u8 as *const core::ffi::c_char,
-        )));
-        if !(0i32..=7i32).contains(&numgbits) {
-          let tmp_str = core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap();
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Invalid value for option: %s. Should be in [0,7]\n",
-            tmp_str,
-          );
-          return 0i32;
-        }
+  p_j2k: &mut opj_j2k,
+  options: &[&str],
+  p_manager: &mut opj_event_mgr,
+) -> bool {
+  for option in options {
+    if option.starts_with("PLT=") {
+      if *option == "PLT=YES" {
+        p_j2k.m_specific_param.m_encoder.m_PLT = 1i32
+      } else if *option == "PLT=NO" {
+        p_j2k.m_specific_param.m_encoder.m_PLT = 0i32
+      } else {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "Invalid value for option: %s.\n",
+          *option,
+        );
+        return false;
+      }
+    } else if option.starts_with("TLM=") {
+      if *option == "TLM=YES" {
+        p_j2k.m_specific_param.m_encoder.m_TLM = 1i32
+      } else if *option == "TLM=NO" {
+        p_j2k.m_specific_param.m_encoder.m_TLM = 0i32
+      } else {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "Invalid value for option: %s.\n",
+          *option,
+        );
+        return false;
+      }
+    } else if option.starts_with("GUARD_BITS=") {
+      let mut tileno: OPJ_UINT32 = 0;
+      let mut cp = &mut p_j2k.m_cp;
+      let mut numgbits = option[11..].parse::<i32>().unwrap_or_default();
+      if !(0..=7).contains(&numgbits) {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "Invalid value for option: %s. Should be in [0,7]\n",
+          *option,
+        );
+        return false;
+      }
+      unsafe {
         tileno = 0 as OPJ_UINT32;
         while tileno < cp.tw.wrapping_mul(cp.th) {
           let mut i: OPJ_UINT32 = 0;
@@ -12798,15 +12757,13 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
           }
           tileno += 1;
         }
-      } else {
-        let tmp_str = core::ffi::CStr::from_ptr(*p_option_iter).to_str().unwrap();
-        event_msg!(p_manager, EVT_ERROR, "Invalid option: %s.\n", tmp_str,);
-        return 0i32;
       }
-      p_option_iter = p_option_iter.offset(1)
+    } else {
+      event_msg!(p_manager, EVT_ERROR, "Invalid option: %s.\n", *option);
+      return false;
     }
-    1i32
   }
+  true
 }
 
 pub(crate) fn opj_j2k_encode(
