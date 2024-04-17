@@ -280,8 +280,12 @@ pub unsafe fn opj_decode_tile_data(
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  // TODO: data.
-  l_codec.decode_tile_data(p_stream, p_tile_index, p_data, p_data_size)
+  let p_data = if p_data.is_null() {
+    None
+  } else {
+    Some(unsafe { std::slice::from_raw_parts_mut(p_data as *mut u8, p_data_size as usize) })
+  };
+  l_codec.decode_tile_data(p_stream, p_tile_index, p_data)
 }
 
 #[no_mangle]
@@ -459,13 +463,13 @@ pub unsafe fn opj_write_tile(
   mut p_data_size: OPJ_UINT32,
   mut p_stream: *mut opj_stream_t,
 ) -> OPJ_BOOL {
-  if p_codec.is_null() | p_stream.is_null() {
+  if p_codec.is_null() | p_stream.is_null() | p_data.is_null() {
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  // TODO: data
-  l_codec.write_tile(p_tile_index, p_data, p_data_size, p_stream)
+  let p_data = unsafe { std::slice::from_raw_parts(p_data as *const u8, p_data_size as usize) };
+  l_codec.write_tile(p_tile_index, p_data, p_stream)
 }
 
 /* ---------------------------------------------------------------------- */

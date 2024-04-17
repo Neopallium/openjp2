@@ -9816,8 +9816,7 @@ pub(crate) fn opj_j2k_read_tile_header(
 pub(crate) fn opj_j2k_decode_tile(
   mut p_j2k: &mut opj_j2k,
   mut p_tile_index: OPJ_UINT32,
-  mut p_data: *mut OPJ_BYTE,
-  mut p_data_size: OPJ_UINT32,
+  mut p_data: Option<&mut [u8]>,
   mut p_stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -9871,8 +9870,8 @@ pub(crate) fn opj_j2k_decode_tile(
     /* p_data can be set to NULL when the call will take care of using */
     /* itself the TCD data. This is typically the case for whole single */
     /* tile decoding optimization. */
-    if !p_data.is_null() {
-      if opj_tcd_update_tile_data(p_j2k.m_tcd, p_data, p_data_size) == 0 {
+    if let Some(p_data) = p_data {
+      if opj_tcd_update_tile_data(&mut *p_j2k.m_tcd, p_data) == 0 {
         return 0i32;
       }
       /* To avoid to destroy the tcp which can be useful when we try to decode a tile decoded before (cf j2k_random_tile_access)
@@ -12118,15 +12117,7 @@ fn opj_j2k_decode_tiles(
       if !opj_j2k_read_tile_header(p_j2k, p_stream, &mut tile_info, p_manager) {
         return 0i32;
       }
-      if opj_j2k_decode_tile(
-        p_j2k,
-        tile_info.index,
-        std::ptr::null_mut::<OPJ_BYTE>(),
-        0 as OPJ_UINT32,
-        p_stream,
-        p_manager,
-      ) == 0
-      {
+      if opj_j2k_decode_tile(p_j2k, tile_info.index, None, p_stream, p_manager) == 0 {
         event_msg!(p_manager, EVT_ERROR, "Failed to decode tile 1/1\n",);
         return 0i32;
       }
@@ -12168,15 +12159,7 @@ fn opj_j2k_decode_tiles(
           break;
         }
       }
-      if opj_j2k_decode_tile(
-        p_j2k,
-        tile_info.index,
-        std::ptr::null_mut::<OPJ_BYTE>(),
-        0 as OPJ_UINT32,
-        p_stream,
-        p_manager,
-      ) == 0
-      {
+      if opj_j2k_decode_tile(p_j2k, tile_info.index, None, p_stream, p_manager) == 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -12320,15 +12303,7 @@ fn opj_j2k_decode_one_tile(
       if !tile_info.go_on {
         break;
       }
-      if opj_j2k_decode_tile(
-        p_j2k,
-        tile_info.index,
-        std::ptr::null_mut::<OPJ_BYTE>(),
-        0 as OPJ_UINT32,
-        p_stream,
-        p_manager,
-      ) == 0
-      {
+      if opj_j2k_decode_tile(p_j2k, tile_info.index, None, p_stream, p_manager) == 0 {
         return 0i32;
       }
       event_msg!(
@@ -12817,7 +12792,7 @@ pub(crate) fn opj_j2k_encode(
         }
         j += 1;
       }
-      l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(p_j2k.m_tcd);
+      l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(&mut *p_j2k.m_tcd);
       if l_reuse_data == 0 {
         if l_current_tile_size > l_max_tile_size {
           let mut l_new_current_data = opj_realloc(
@@ -12847,9 +12822,11 @@ pub(crate) fn opj_j2k_encode(
         /* copy image data (32 bit) to l_current_data as contiguous, all-component, zero offset buffer */
         /* 32 bit components @ 8 bit precision get converted to 8 bit */
         /* 32 bit components @ 16 bit precision get converted to 16 bit */
-        opj_j2k_get_tile_data(p_j2k.m_tcd, l_current_data);
+        let p_data =
+          std::slice::from_raw_parts_mut(l_current_data as *mut u8, l_current_tile_size as usize);
+        opj_j2k_get_tile_data(&mut *p_j2k.m_tcd, p_data);
         /* now copy this data into the tile component */
-        if opj_tcd_copy_tile_data(p_j2k.m_tcd, l_current_data, l_current_tile_size) == 0 {
+        if opj_tcd_copy_tile_data(&mut *p_j2k.m_tcd, p_data) == 0 {
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -12972,8 +12949,8 @@ fn opj_j2k_pre_write_tile(
 
 fn opj_get_tile_dimensions(
   mut l_image: &mut opj_image,
-  mut l_tilec: *mut opj_tcd_tilecomp_t,
-  mut l_img_comp: *mut opj_image_comp_t,
+  mut l_tilec: &opj_tcd_tilecomp_t,
+  mut l_img_comp: &opj_image_comp_t,
   mut l_size_comp: *mut OPJ_UINT32,
   mut l_width: *mut OPJ_UINT32,
   mut l_height: *mut OPJ_UINT32,
@@ -13010,17 +12987,13 @@ fn opj_get_tile_dimensions(
   }
 }
 
-fn opj_j2k_get_tile_data(mut p_tcd: *mut opj_tcd_t, mut p_data: *mut OPJ_BYTE) {
+fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd_t, mut p_data: &mut [u8]) {
   unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut k = 0 as OPJ_UINT32;
-    i = 0 as OPJ_UINT32;
-    while i < (*(*p_tcd).image).numcomps {
-      let mut l_image = (*p_tcd).image;
-      let mut l_src_ptr = std::ptr::null_mut::<OPJ_INT32>();
-      let mut l_tilec = (*(*(*p_tcd).tcd_image).tiles).comps.offset(i as isize);
-      let mut l_img_comp = (*l_image).comps.offset(i as isize);
+    let mut l_image = (*p_tcd).image;
+    let numcomps = (*p_tcd.image).numcomps as usize;
+    let mut l_tilec = std::slice::from_raw_parts((*(*p_tcd.tcd_image).tiles).comps, numcomps);
+    let mut l_img_comp = std::slice::from_raw_parts((*l_image).comps, numcomps);
+    for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
       let mut l_size_comp: OPJ_UINT32 = 0;
       let mut l_width: OPJ_UINT32 = 0;
       let mut l_height: OPJ_UINT32 = 0;
@@ -13042,95 +13015,80 @@ fn opj_j2k_get_tile_data(mut p_tcd: *mut opj_tcd_t, mut p_data: *mut OPJ_BYTE) {
         &mut l_stride,
         &mut l_tile_offset,
       );
-      l_src_ptr = (*l_img_comp).data.offset(l_tile_offset as isize);
+      let mut l_src_ptr = (*l_img_comp).data.offset(l_tile_offset as isize);
+      let l_height = l_height as usize;
+      let l_width = l_width as usize;
+      let l_stride = l_stride as usize;
+      let l_nb_elem = l_height * l_width;
+      let mut l_src = std::slice::from_raw_parts(l_src_ptr, l_nb_elem + (l_height * l_stride));
       match l_size_comp {
         1 => {
-          let mut l_dest_ptr = p_data as *mut OPJ_CHAR;
-          if (*l_img_comp).sgnd != 0 {
-            j = 0 as OPJ_UINT32;
-            while j < l_height {
-              k = 0 as OPJ_UINT32;
-              while k < l_width {
-                *l_dest_ptr = *l_src_ptr as OPJ_CHAR;
-                l_dest_ptr = l_dest_ptr.offset(1);
-                l_src_ptr = l_src_ptr.offset(1);
-                k += 1;
+          let (dest, remain) = p_data.split_at_mut(l_nb_elem);
+          p_data = remain;
+          if l_img_comp.sgnd != 0 {
+            for (src, dest) in l_src
+              .chunks_exact(l_width + l_stride)
+              .zip(dest.chunks_exact_mut(l_width))
+            {
+              let src = &src[0..l_width];
+              for (src, dest) in src.iter().zip(dest.iter_mut()) {
+                *dest = *src as i8 as u8;
               }
-              l_src_ptr = l_src_ptr.offset(l_stride as isize);
-              j += 1;
             }
           } else {
-            j = 0 as OPJ_UINT32;
-            while j < l_height {
-              k = 0 as OPJ_UINT32;
-              while k < l_width {
-                *l_dest_ptr = (*l_src_ptr & 0xffi32) as OPJ_CHAR;
-                l_dest_ptr = l_dest_ptr.offset(1);
-                l_src_ptr = l_src_ptr.offset(1);
-                k += 1;
+            for (src, dest) in l_src
+              .chunks_exact(l_width + l_stride)
+              .zip(dest.chunks_exact_mut(l_width))
+            {
+              let src = &src[0..l_width];
+              for (src, dest) in src.iter().zip(dest.iter_mut()) {
+                *dest = (*src & 0xffi32) as u8;
               }
-              l_src_ptr = l_src_ptr.offset(l_stride as isize);
-              j += 1;
             }
           }
-          p_data = l_dest_ptr as *mut OPJ_BYTE
         }
         2 => {
-          let mut l_dest_ptr_0 = p_data as *mut OPJ_INT16;
-          if (*l_img_comp).sgnd != 0 {
-            j = 0 as OPJ_UINT32;
-            while j < l_height {
-              k = 0 as OPJ_UINT32;
-              while k < l_width {
-                let fresh51 = l_src_ptr;
-                l_src_ptr = l_src_ptr.offset(1);
-                let fresh52 = l_dest_ptr_0;
-                l_dest_ptr_0 = l_dest_ptr_0.offset(1);
-                *fresh52 = *fresh51 as OPJ_INT16;
-                k += 1;
+          let (dest, remain) = p_data.split_at_mut(l_nb_elem as usize * 2);
+          p_data = remain;
+          if l_img_comp.sgnd != 0 {
+            for (src, dest) in l_src
+              .chunks_exact(l_width + l_stride)
+              .zip(dest.chunks_exact_mut(l_width * 2))
+            {
+              let src = &src[0..l_width];
+              for (src, dest) in src.iter().zip(dest.chunks_exact_mut(2)) {
+                let val = *src as i16;
+                dest.copy_from_slice(&val.to_ne_bytes());
               }
-              l_src_ptr = l_src_ptr.offset(l_stride as isize);
-              j += 1;
             }
           } else {
-            j = 0 as OPJ_UINT32;
-            while j < l_height {
-              k = 0 as OPJ_UINT32;
-              while k < l_width {
-                let fresh53 = l_src_ptr;
-                l_src_ptr = l_src_ptr.offset(1);
-                let fresh54 = l_dest_ptr_0;
-                l_dest_ptr_0 = l_dest_ptr_0.offset(1);
-                *fresh54 = (*fresh53 & 0xffffi32) as OPJ_INT16;
-                k += 1;
+            for (src, dest) in l_src
+              .chunks_exact(l_width + l_stride)
+              .zip(dest.chunks_exact_mut(l_width * 2))
+            {
+              let src = &src[0..l_width];
+              for (src, dest) in src.iter().zip(dest.chunks_exact_mut(2)) {
+                let val = (*src & 0xffffi32) as i16;
+                dest.copy_from_slice(&val.to_ne_bytes());
               }
-              l_src_ptr = l_src_ptr.offset(l_stride as isize);
-              j += 1;
             }
           }
-          p_data = l_dest_ptr_0 as *mut OPJ_BYTE
         }
         4 => {
-          let mut l_dest_ptr_1 = p_data as *mut OPJ_INT32;
-          j = 0 as OPJ_UINT32;
-          while j < l_height {
-            k = 0 as OPJ_UINT32;
-            while k < l_width {
-              let fresh55 = l_src_ptr;
-              l_src_ptr = l_src_ptr.offset(1);
-              let fresh56 = l_dest_ptr_1;
-              l_dest_ptr_1 = l_dest_ptr_1.offset(1);
-              *fresh56 = *fresh55;
-              k += 1;
+          let (dest, remain) = p_data.split_at_mut(l_nb_elem as usize * 4);
+          p_data = remain;
+          for (src, dest) in l_src
+            .chunks_exact(l_width + l_stride)
+            .zip(dest.chunks_exact_mut(l_width * 4))
+          {
+            let src = &src[0..l_width];
+            for (src, dest) in src.iter().zip(dest.chunks_exact_mut(4)) {
+              dest.copy_from_slice(&src.to_ne_bytes());
             }
-            l_src_ptr = l_src_ptr.offset(l_stride as isize);
-            j += 1;
           }
-          p_data = l_dest_ptr_1 as *mut OPJ_BYTE
         }
         _ => {}
       }
-      i += 1;
     }
   }
 }
@@ -13831,8 +13789,7 @@ fn opj_j2k_create_tcd(
 pub(crate) fn opj_j2k_write_tile(
   mut p_j2k: &mut opj_j2k,
   mut p_tile_index: OPJ_UINT32,
-  mut p_data: *mut OPJ_BYTE,
-  mut p_data_size: OPJ_UINT32,
+  mut p_data: &[u8],
   mut p_stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -13864,7 +13821,7 @@ pub(crate) fn opj_j2k_write_tile(
         j += 1;
       }
       /* now copy data into the tile component */
-      if opj_tcd_copy_tile_data(p_j2k.m_tcd, p_data, p_data_size as OPJ_SIZE_T) == 0 {
+      if opj_tcd_copy_tile_data(&mut *p_j2k.m_tcd, p_data) == 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,

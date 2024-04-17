@@ -3137,37 +3137,21 @@ pub(crate) fn opj_jp2_read_tile_header(
 pub(crate) fn opj_jp2_write_tile(
   mut p_jp2: &mut opj_jp2,
   mut p_tile_index: OPJ_UINT32,
-  mut p_data: *mut OPJ_BYTE,
-  mut p_data_size: OPJ_UINT32,
+  mut p_data: &[u8],
   mut p_stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  opj_j2k_write_tile(
-    &mut p_jp2.j2k,
-    p_tile_index,
-    p_data,
-    p_data_size,
-    p_stream,
-    p_manager,
-  )
+  opj_j2k_write_tile(&mut p_jp2.j2k, p_tile_index, p_data, p_stream, p_manager)
 }
 
 pub(crate) fn opj_jp2_decode_tile(
   mut p_jp2: &mut opj_jp2,
   mut p_tile_index: OPJ_UINT32,
-  mut p_data: *mut OPJ_BYTE,
-  mut p_data_size: OPJ_UINT32,
+  mut p_data: Option<&mut [u8]>,
   mut p_stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  opj_j2k_decode_tile(
-    &mut p_jp2.j2k,
-    p_tile_index,
-    p_data,
-    p_data_size,
-    p_stream,
-    p_manager,
-  )
+  opj_j2k_decode_tile(&mut p_jp2.j2k, p_tile_index, p_data, p_stream, p_manager)
 }
 
 impl Drop for opj_jp2 {
