@@ -365,32 +365,19 @@ impl Codec {
     &mut self,
     mut p_stream: &mut Stream,
     mut p_tile_index: OPJ_UINT32,
-    mut p_data: *mut OPJ_BYTE,
-    mut p_data_size: OPJ_UINT32,
+    p_data: Option<&mut [u8]>,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
       CodecType::Encoder(_) => (),
       CodecType::Decoder(dec) => {
-        if !p_data.is_null() {
-          return match dec {
-            CodecFormat::J2K(dec) => opj_j2k_decode_tile(
-              dec,
-              p_tile_index,
-              p_data,
-              p_data_size,
-              p_stream,
-              &mut self.m_event_mgr,
-            ),
-            CodecFormat::JP2(dec) => opj_jp2_decode_tile(
-              dec,
-              p_tile_index,
-              p_data,
-              p_data_size,
-              p_stream,
-              &mut self.m_event_mgr,
-            ),
-          };
-        }
+        return match dec {
+          CodecFormat::J2K(dec) => {
+            opj_j2k_decode_tile(dec, p_tile_index, p_data, p_stream, &mut self.m_event_mgr)
+          }
+          CodecFormat::JP2(dec) => {
+            opj_jp2_decode_tile(dec, p_tile_index, p_data, p_stream, &mut self.m_event_mgr)
+          }
+        };
       }
     }
     0i32
@@ -517,36 +504,20 @@ impl Codec {
 
   pub fn write_tile(
     &mut self,
-    mut p_tile_index: OPJ_UINT32,
-    mut p_data: *mut OPJ_BYTE,
-    mut p_data_size: OPJ_UINT32,
-    mut p_stream: &mut Stream,
+    p_tile_index: OPJ_UINT32,
+    p_data: &[u8],
+    p_stream: &mut Stream,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
-      CodecType::Encoder(enc) => {
-        if !p_data.is_null() {
-          return match enc {
-            CodecFormat::J2K(enc) => opj_j2k_write_tile(
-              enc,
-              p_tile_index,
-              p_data,
-              p_data_size,
-              p_stream,
-              &mut self.m_event_mgr,
-            ),
-            CodecFormat::JP2(enc) => opj_jp2_write_tile(
-              enc,
-              p_tile_index,
-              p_data,
-              p_data_size,
-              p_stream,
-              &mut self.m_event_mgr,
-            ),
-          };
+      CodecType::Encoder(enc) => match enc {
+        CodecFormat::J2K(enc) => {
+          opj_j2k_write_tile(enc, p_tile_index, p_data, p_stream, &mut self.m_event_mgr)
         }
-      }
-      CodecType::Decoder(_) => (),
+        CodecFormat::JP2(enc) => {
+          opj_jp2_write_tile(enc, p_tile_index, p_data, p_stream, &mut self.m_event_mgr)
+        }
+      },
+      CodecType::Decoder(_) => 0,
     }
-    0i32
   }
 }

@@ -1910,170 +1910,129 @@ pub(crate) unsafe fn opj_tcd_decode_tile(
   /*---------------TILE-------------------*/
   1i32 /*(/ 8)*/
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_tcd_update_tile_data(
-  mut p_tcd: *mut opj_tcd_t,
-  mut p_dest: *mut OPJ_BYTE,
-  mut p_dest_length: OPJ_UINT32,
-) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0; /* (%8) */
-  let mut j: OPJ_UINT32 = 0;
-  let mut k: OPJ_UINT32 = 0;
-  let mut l_data_size = 0 as OPJ_UINT32;
-  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
-  let mut l_tilec = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
-  let mut l_res = std::ptr::null_mut::<opj_tcd_resolution_t>();
-  let mut l_size_comp: OPJ_UINT32 = 0;
-  let mut l_remaining: OPJ_UINT32 = 0;
-  let mut l_stride: OPJ_UINT32 = 0;
-  let mut l_width: OPJ_UINT32 = 0;
-  let mut l_height: OPJ_UINT32 = 0;
-  l_data_size = opj_tcd_get_decoded_tile_size(p_tcd, 1i32);
-  if l_data_size == (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32)
-    || l_data_size > p_dest_length
-  {
-    return 0i32;
-  }
-  l_tilec = (*(*(*p_tcd).tcd_image).tiles).comps;
-  l_img_comp = (*(*p_tcd).image).comps;
-  i = 0 as OPJ_UINT32;
-  while i < (*(*p_tcd).image).numcomps {
-    let mut l_src_data = std::ptr::null::<OPJ_INT32>();
-    l_size_comp = (*l_img_comp).prec >> 3i32;
-    l_remaining = (*l_img_comp).prec & 7u32;
-    l_res = (*l_tilec)
-      .resolutions
-      .offset((*l_img_comp).resno_decoded as isize);
-    if (*p_tcd).whole_tile_decoding != 0 {
-      l_width = ((*l_res).x1 - (*l_res).x0) as OPJ_UINT32;
-      l_height = ((*l_res).y1 - (*l_res).y0) as OPJ_UINT32;
-      l_stride = (((*(*l_tilec)
+
+pub(crate) fn opj_tcd_update_tile_data(p_tcd: &mut opj_tcd_t, mut p_dest: &mut [u8]) -> OPJ_BOOL {
+  unsafe {
+    let mut p_dest_length = p_dest.len() as u32;
+    let mut l_data_size = 0 as OPJ_UINT32;
+    let mut l_stride = 0usize;
+    let mut l_width = 0usize;
+    let mut l_height = 0usize;
+    l_data_size = opj_tcd_get_decoded_tile_size(p_tcd, 1i32);
+    if l_data_size == (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32)
+      || l_data_size > p_dest_length
+    {
+      return 0i32;
+    }
+    let numcomps = (*p_tcd.image).numcomps as usize;
+    let mut l_tilec = std::slice::from_raw_parts((*(*p_tcd.tcd_image).tiles).comps, numcomps);
+    let mut l_img_comp = std::slice::from_raw_parts((*p_tcd.image).comps, numcomps);
+    for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
+      let mut l_size_comp = l_img_comp.prec >> 3i32;
+      let l_remaining = l_img_comp.prec & 7u32;
+      let l_res = l_tilec
         .resolutions
-        .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
-      .x1
-        - (*(*l_tilec)
+        .offset(l_img_comp.resno_decoded as isize);
+      let mut l_src_data = if p_tcd.whole_tile_decoding != 0 {
+        l_width = ((*l_res).x1 - (*l_res).x0) as usize;
+        l_height = ((*l_res).y1 - (*l_res).y0) as usize;
+        l_stride = (((*l_tilec
           .resolutions
           .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
-        .x0) as OPJ_UINT32)
-        .wrapping_sub(l_width);
-      l_src_data = (*l_tilec).data
-    } else {
-      l_width = (*l_res).win_x1.wrapping_sub((*l_res).win_x0);
-      l_height = (*l_res).win_y1.wrapping_sub((*l_res).win_y0);
-      l_stride = 0 as OPJ_UINT32;
-      l_src_data = (*l_tilec).data_win
-    }
-    if l_remaining != 0 {
-      l_size_comp += 1;
-    }
-    if l_size_comp == 3u32 {
-      l_size_comp = 4 as OPJ_UINT32
-    }
-    match l_size_comp {
-      1 => {
-        let mut l_dest_ptr = p_dest as *mut OPJ_CHAR;
-        let mut l_src_ptr = l_src_data;
-        if (*l_img_comp).sgnd != 0 {
-          j = 0 as OPJ_UINT32;
-          while j < l_height {
-            k = 0 as OPJ_UINT32;
-            while k < l_width {
-              let fresh1 = l_src_ptr;
-              l_src_ptr = l_src_ptr.offset(1);
-              let fresh2 = l_dest_ptr;
-              l_dest_ptr = l_dest_ptr.offset(1);
-              *fresh2 = *fresh1 as OPJ_CHAR;
-              k += 1;
+        .x1
+          - (*l_tilec
+            .resolutions
+            .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
+          .x0) as usize)
+          .wrapping_sub(l_width);
+        l_tilec.data
+      } else {
+        l_width = (*l_res).win_x1.wrapping_sub((*l_res).win_x0) as usize;
+        l_height = (*l_res).win_y1.wrapping_sub((*l_res).win_y0) as usize;
+        l_stride = 0 as usize;
+        l_tilec.data_win
+      };
+      if l_remaining != 0 {
+        l_size_comp += 1;
+      }
+      if l_size_comp == 3u32 {
+        l_size_comp = 4 as OPJ_UINT32
+      }
+      let l_nb_elem = l_height * l_width;
+      let mut l_src = std::slice::from_raw_parts(l_src_data, l_nb_elem + (l_height * l_stride));
+      match l_size_comp {
+        1 => {
+          let (dest, remain) = p_dest.split_at_mut(l_nb_elem);
+          p_dest = remain;
+          if l_img_comp.sgnd != 0 {
+            for (src, dest) in l_src
+              .chunks_exact(l_width + l_stride)
+              .zip(dest.chunks_exact_mut(l_width))
+            {
+              let src = &src[0..l_width];
+              for (src, dest) in src.iter().zip(dest.iter_mut()) {
+                *dest = *src as i8 as u8;
+              }
             }
-            l_src_ptr = l_src_ptr.offset(l_stride as isize);
-            j += 1;
-          }
-        } else {
-          j = 0 as OPJ_UINT32;
-          while j < l_height {
-            k = 0 as OPJ_UINT32;
-            while k < l_width {
-              let fresh3 = l_src_ptr;
-              l_src_ptr = l_src_ptr.offset(1);
-              let fresh4 = l_dest_ptr;
-              l_dest_ptr = l_dest_ptr.offset(1);
-              *fresh4 = (*fresh3 & 0xffi32) as OPJ_CHAR;
-              k += 1;
+          } else {
+            for (src, dest) in l_src
+              .chunks_exact(l_width + l_stride)
+              .zip(dest.chunks_exact_mut(l_width))
+            {
+              let src = &src[0..l_width];
+              for (src, dest) in src.iter().zip(dest.iter_mut()) {
+                *dest = (*src & 0xffi32) as u8;
+              }
             }
-            l_src_ptr = l_src_ptr.offset(l_stride as isize);
-            j += 1;
           }
         }
-        p_dest = l_dest_ptr as *mut OPJ_BYTE
-      }
-      2 => {
-        let mut l_src_ptr_0 = l_src_data;
-        let mut l_dest_ptr_0 = p_dest as *mut OPJ_INT16;
-        if (*l_img_comp).sgnd != 0 {
-          j = 0 as OPJ_UINT32;
-          while j < l_height {
-            k = 0 as OPJ_UINT32;
-            while k < l_width {
-              let fresh5 = l_src_ptr_0;
-              l_src_ptr_0 = l_src_ptr_0.offset(1);
-              let mut val = *fresh5 as OPJ_INT16;
-              memcpy(
-                l_dest_ptr_0 as *mut core::ffi::c_void,
-                &mut val as *mut OPJ_INT16 as *const core::ffi::c_void,
-                core::mem::size_of::<OPJ_INT16>(),
-              );
-              l_dest_ptr_0 = l_dest_ptr_0.offset(1);
-              k += 1;
+        2 => {
+          let (dest, remain) = p_dest.split_at_mut(l_nb_elem as usize * 2);
+          p_dest = remain;
+          if l_img_comp.sgnd != 0 {
+            for (src, dest) in l_src
+              .chunks_exact(l_width + l_stride)
+              .zip(dest.chunks_exact_mut(l_width * 2))
+            {
+              let src = &src[0..l_width];
+              for (src, dest) in src.iter().zip(dest.chunks_exact_mut(2)) {
+                let val = *src as i16;
+                dest.copy_from_slice(&val.to_ne_bytes());
+              }
             }
-            l_src_ptr_0 = l_src_ptr_0.offset(l_stride as isize);
-            j += 1;
-          }
-        } else {
-          j = 0 as OPJ_UINT32;
-          while j < l_height {
-            k = 0 as OPJ_UINT32;
-            while k < l_width {
-              let fresh6 = l_src_ptr_0;
-              l_src_ptr_0 = l_src_ptr_0.offset(1);
-              let mut val_0 = (*fresh6 & 0xffffi32) as OPJ_INT16;
-              memcpy(
-                l_dest_ptr_0 as *mut core::ffi::c_void,
-                &mut val_0 as *mut OPJ_INT16 as *const core::ffi::c_void,
-                core::mem::size_of::<OPJ_INT16>(),
-              );
-              l_dest_ptr_0 = l_dest_ptr_0.offset(1);
-              k += 1;
+          } else {
+            for (src, dest) in l_src
+              .chunks_exact(l_width + l_stride)
+              .zip(dest.chunks_exact_mut(l_width * 2))
+            {
+              let src = &src[0..l_width];
+              for (src, dest) in src.iter().zip(dest.chunks_exact_mut(2)) {
+                let val = (*src & 0xffffi32) as i16;
+                dest.copy_from_slice(&val.to_ne_bytes());
+              }
             }
-            l_src_ptr_0 = l_src_ptr_0.offset(l_stride as isize);
-            j += 1;
           }
         }
-        p_dest = l_dest_ptr_0 as *mut OPJ_BYTE
-      }
-      4 => {
-        let mut l_dest_ptr_1 = p_dest as *mut OPJ_INT32;
-        let mut l_src_ptr_1 = l_src_data;
-        j = 0 as OPJ_UINT32;
-        while j < l_height {
-          memcpy(
-            l_dest_ptr_1 as *mut core::ffi::c_void,
-            l_src_ptr_1 as *const core::ffi::c_void,
-            (l_width as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
-          );
-          l_dest_ptr_1 = l_dest_ptr_1.offset(l_width as isize);
-          l_src_ptr_1 = l_src_ptr_1.offset(l_width.wrapping_add(l_stride) as isize);
-          j += 1;
+        4 => {
+          let (dest, remain) = p_dest.split_at_mut(l_nb_elem as usize * 4);
+          p_dest = remain;
+          for (src, dest) in l_src
+            .chunks_exact(l_width + l_stride)
+            .zip(dest.chunks_exact_mut(l_width * 4))
+          {
+            let src = &src[0..l_width];
+            for (src, dest) in src.iter().zip(dest.chunks_exact_mut(4)) {
+              dest.copy_from_slice(&src.to_ne_bytes());
+            }
+          }
         }
-        p_dest = l_dest_ptr_1 as *mut OPJ_BYTE
+        _ => {}
       }
-      _ => {}
     }
-    l_img_comp = l_img_comp.offset(1);
-    l_tilec = l_tilec.offset(1);
-    i += 1;
+    1i32
   }
-  1i32
 }
+
 /* *
 Free the memory allocated for encoding
 @param tcd TCD handle
@@ -2625,22 +2584,20 @@ unsafe fn opj_tcd_code_block_enc_deallocate(mut p_precinct: *mut opj_tcd_precinc
     (*p_precinct).cblks.enc = std::ptr::null_mut::<opj_tcd_cblk_enc_t>()
   };
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_tcd_get_encoder_input_buffer_size(
-  mut p_tcd: *mut opj_tcd_t,
-) -> OPJ_SIZE_T {
-  let mut i: OPJ_UINT32 = 0;
+
+pub(crate) fn opj_tcd_get_encoder_input_buffer_size(mut p_tcd: &mut opj_tcd_t) -> OPJ_SIZE_T {
   let mut l_data_size = 0 as OPJ_SIZE_T;
-  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
-  let mut l_tilec = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
   let mut l_size_comp: OPJ_UINT32 = 0;
   let mut l_remaining: OPJ_UINT32 = 0;
-  l_tilec = (*(*(*p_tcd).tcd_image).tiles).comps;
-  l_img_comp = (*(*p_tcd).image).comps;
-  i = 0 as OPJ_UINT32;
-  while i < (*(*p_tcd).image).numcomps {
-    l_size_comp = (*l_img_comp).prec >> 3i32;
-    l_remaining = (*l_img_comp).prec & 7u32;
+  let (l_tilec, l_img_comp) = unsafe {
+    let numcomps = (*p_tcd.image).numcomps as usize;
+    let mut l_tilec = std::slice::from_raw_parts((*(*p_tcd.tcd_image).tiles).comps, numcomps);
+    let mut l_img_comp = std::slice::from_raw_parts((*p_tcd.image).comps, numcomps);
+    (l_tilec, l_img_comp)
+  };
+  for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
+    l_size_comp = l_img_comp.prec >> 3i32;
+    l_remaining = l_img_comp.prec & 7u32;
     if l_remaining != 0 {
       l_size_comp += 1;
     }
@@ -2649,16 +2606,14 @@ pub(crate) unsafe fn opj_tcd_get_encoder_input_buffer_size(
     }
     l_data_size = (l_data_size as usize).wrapping_add(
       (l_size_comp as usize).wrapping_mul(
-        (((*l_tilec).x1 - (*l_tilec).x0) as OPJ_SIZE_T)
-          .wrapping_mul(((*l_tilec).y1 - (*l_tilec).y0) as OPJ_SIZE_T),
+        ((l_tilec.x1 - l_tilec.x0) as OPJ_SIZE_T)
+          .wrapping_mul((l_tilec.y1 - l_tilec.y0) as OPJ_SIZE_T),
       ),
     ) as OPJ_SIZE_T as OPJ_SIZE_T;
-    l_img_comp = l_img_comp.offset(1);
-    l_tilec = l_tilec.offset(1);
-    i += 1;
   }
   l_data_size
 }
+
 unsafe fn opj_tcd_dc_level_shift_encode(mut p_tcd: *mut opj_tcd_t) -> OPJ_BOOL {
   let mut compno: OPJ_UINT32 = 0;
   let mut l_tile_comp = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
@@ -2879,117 +2834,78 @@ unsafe fn opj_tcd_rate_allocate_encode(
   } /* (%8) */
   1i32
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_tcd_copy_tile_data(
-  mut p_tcd: *mut opj_tcd_t,
-  mut p_src: *mut OPJ_BYTE,
-  mut p_src_length: OPJ_SIZE_T,
-) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_SIZE_T = 0;
-  let mut l_data_size = 0 as OPJ_SIZE_T;
-  let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
-  let mut l_tilec = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
-  let mut l_size_comp: OPJ_UINT32 = 0;
-  let mut l_remaining: OPJ_UINT32 = 0;
-  let mut l_nb_elem: OPJ_SIZE_T = 0;
-  l_data_size = opj_tcd_get_encoder_input_buffer_size(p_tcd);
-  if l_data_size != p_src_length {
-    return 0i32;
+
+pub(crate) fn opj_tcd_copy_tile_data(p_tcd: &mut opj_tcd_t, mut p_src: &[u8]) -> OPJ_BOOL {
+  unsafe {
+    let mut l_data_size = 0 as OPJ_SIZE_T;
+    let mut l_size_comp: OPJ_UINT32 = 0;
+    let mut l_remaining: OPJ_UINT32 = 0;
+    let mut l_nb_elem: OPJ_SIZE_T = 0;
+    l_data_size = opj_tcd_get_encoder_input_buffer_size(p_tcd);
+    if l_data_size != p_src.len() {
+      return 0i32;
+    }
+    let numcomps = (*p_tcd.image).numcomps as usize;
+    let mut l_tilec = std::slice::from_raw_parts((*(*p_tcd.tcd_image).tiles).comps, numcomps);
+    let mut l_img_comp = std::slice::from_raw_parts((*p_tcd.image).comps, numcomps);
+    for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
+      l_size_comp = l_img_comp.prec >> 3i32;
+      l_remaining = l_img_comp.prec & 7u32;
+      l_nb_elem = ((l_tilec.x1 - l_tilec.x0) as OPJ_SIZE_T)
+        .wrapping_mul((l_tilec.y1 - l_tilec.y0) as OPJ_SIZE_T);
+      if l_remaining != 0 {
+        l_size_comp += 1;
+      }
+      if l_size_comp == 3u32 {
+        l_size_comp = 4 as OPJ_UINT32
+      }
+      let l_dest = std::slice::from_raw_parts_mut(l_tilec.data, l_nb_elem as usize);
+      match l_size_comp {
+        1 => {
+          let (src, remain) = p_src.split_at(l_nb_elem);
+          if l_img_comp.sgnd != 0 {
+            for (src, dest) in src.iter().zip(l_dest.iter_mut()) {
+              *dest = *src as OPJ_INT32;
+            }
+          } else {
+            for (src, dest) in src.iter().zip(l_dest.iter_mut()) {
+              *dest = (*src as core::ffi::c_int) & 0xffi32;
+            }
+          }
+          p_src = remain;
+        }
+        2 => {
+          let (src, remain) = p_src.split_at(l_nb_elem * 2);
+          if l_img_comp.sgnd != 0 {
+            for (src, dest) in src.chunks_exact(2).zip(l_dest.iter_mut()) {
+              *dest = u16::from_ne_bytes([src[0], src[1]]) as OPJ_INT32;
+            }
+          } else {
+            for (src, dest) in src.chunks_exact(2).zip(l_dest.iter_mut()) {
+              *dest = u16::from_ne_bytes([src[0], src[1]]) as i32 & 0xffffi32;
+            }
+          }
+          p_src = remain;
+        }
+        4 => {
+          let (src, remain) = p_src.split_at(l_nb_elem * 4);
+          for (src, dest) in src.chunks_exact(4).zip(l_dest.iter_mut()) {
+            *dest = u32::from_ne_bytes([src[0], src[1], src[2], src[3]]) as OPJ_INT32;
+          }
+          p_src = remain;
+        }
+        _ => (),
+      }
+    }
+    1i32
   }
-  l_tilec = (*(*(*p_tcd).tcd_image).tiles).comps;
-  l_img_comp = (*(*p_tcd).image).comps;
-  i = 0 as OPJ_UINT32;
-  while i < (*(*p_tcd).image).numcomps {
-    l_size_comp = (*l_img_comp).prec >> 3i32;
-    l_remaining = (*l_img_comp).prec & 7u32;
-    l_nb_elem = (((*l_tilec).x1 - (*l_tilec).x0) as OPJ_SIZE_T)
-      .wrapping_mul(((*l_tilec).y1 - (*l_tilec).y0) as OPJ_SIZE_T);
-    if l_remaining != 0 {
-      l_size_comp += 1;
-    }
-    if l_size_comp == 3u32 {
-      l_size_comp = 4 as OPJ_UINT32
-    }
-    match l_size_comp {
-      1 => {
-        let mut l_src_ptr = p_src as *mut OPJ_CHAR;
-        let mut l_dest_ptr = (*l_tilec).data;
-        if (*l_img_comp).sgnd != 0 {
-          j = 0 as OPJ_SIZE_T;
-          while j < l_nb_elem {
-            let fresh10 = l_src_ptr;
-            l_src_ptr = l_src_ptr.offset(1);
-            let fresh11 = l_dest_ptr;
-            l_dest_ptr = l_dest_ptr.offset(1);
-            *fresh11 = *fresh10 as OPJ_INT32;
-            j += 1;
-          }
-        } else {
-          j = 0 as OPJ_SIZE_T;
-          while j < l_nb_elem {
-            let fresh12 = l_src_ptr;
-            l_src_ptr = l_src_ptr.offset(1);
-            let fresh13 = l_dest_ptr;
-            l_dest_ptr = l_dest_ptr.offset(1);
-            *fresh13 = *fresh12 as core::ffi::c_int & 0xffi32;
-            j += 1;
-          }
-        }
-        p_src = l_src_ptr as *mut OPJ_BYTE
-      }
-      2 => {
-        let mut l_dest_ptr_0 = (*l_tilec).data;
-        let mut l_src_ptr_0 = p_src as *mut OPJ_INT16;
-        if (*l_img_comp).sgnd != 0 {
-          j = 0 as OPJ_SIZE_T;
-          while j < l_nb_elem {
-            let fresh14 = l_src_ptr_0;
-            l_src_ptr_0 = l_src_ptr_0.offset(1);
-            let fresh15 = l_dest_ptr_0;
-            l_dest_ptr_0 = l_dest_ptr_0.offset(1);
-            *fresh15 = *fresh14 as OPJ_INT32;
-            j += 1;
-          }
-        } else {
-          j = 0 as OPJ_SIZE_T;
-          while j < l_nb_elem {
-            let fresh16 = l_src_ptr_0;
-            l_src_ptr_0 = l_src_ptr_0.offset(1);
-            let fresh17 = l_dest_ptr_0;
-            l_dest_ptr_0 = l_dest_ptr_0.offset(1);
-            *fresh17 = *fresh16 as core::ffi::c_int & 0xffffi32;
-            j += 1;
-          }
-        }
-        p_src = l_src_ptr_0 as *mut OPJ_BYTE
-      }
-      4 => {
-        let mut l_src_ptr_1 = p_src as *mut OPJ_INT32;
-        let mut l_dest_ptr_1 = (*l_tilec).data;
-        j = 0 as OPJ_SIZE_T;
-        while j < l_nb_elem {
-          let fresh18 = l_src_ptr_1;
-          l_src_ptr_1 = l_src_ptr_1.offset(1);
-          let fresh19 = l_dest_ptr_1;
-          l_dest_ptr_1 = l_dest_ptr_1.offset(1);
-          *fresh19 = *fresh18;
-          j += 1;
-        }
-        p_src = l_src_ptr_1 as *mut OPJ_BYTE
-      }
-      _ => {}
-    }
-    l_img_comp = l_img_comp.offset(1);
-    l_tilec = l_tilec.offset(1);
-    i += 1;
-  }
-  1i32
 }
+
 #[no_mangle]
 pub(crate) unsafe fn opj_tcd_is_band_empty(mut band: *mut opj_tcd_band_t) -> OPJ_BOOL {
   ((*band).x1 - (*band).x0 == 0i32 || (*band).y1 - (*band).y0 == 0i32) as core::ffi::c_int
 }
+
 #[no_mangle]
 pub(crate) unsafe fn opj_tcd_is_subband_area_of_interest(
   mut tcd: *mut opj_tcd_t,
