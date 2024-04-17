@@ -454,10 +454,7 @@ impl Codec {
     0i32
   }
 
-  pub fn encoder_set_extra_options(
-    &mut self,
-    mut options: *const *const core::ffi::c_char,
-  ) -> OPJ_BOOL {
+  pub fn encoder_set_extra_options(&mut self, options: &[&str]) -> bool {
     match &mut self.m_codec {
       CodecType::Encoder(enc) => match enc {
         CodecFormat::J2K(enc) => {
@@ -467,7 +464,7 @@ impl Codec {
           opj_jp2_encoder_set_extra_options(enc, options, &mut self.m_event_mgr)
         }
       },
-      CodecType::Decoder(_) => 0,
+      CodecType::Decoder(_) => false,
     }
   }
 

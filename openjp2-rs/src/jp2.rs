@@ -3358,10 +3358,10 @@ pub(crate) fn opj_jp2_set_decoded_resolution_factor(
 
 /* ----------------------------------------------------------------------- */
 pub(crate) fn opj_jp2_encoder_set_extra_options(
-  mut p_jp2: &mut opj_jp2,
-  mut p_options: *const *const core::ffi::c_char,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  opj_j2k_encoder_set_extra_options(&mut p_jp2.j2k, p_options, p_manager)
+  p_jp2: &mut opj_jp2,
+  options: &[&str],
+  p_manager: &mut opj_event_mgr,
+) -> bool {
+  opj_j2k_encoder_set_extra_options(&mut p_jp2.j2k, options, p_manager)
 }
 /* ----------------------------------------------------------------------- */
