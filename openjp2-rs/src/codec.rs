@@ -53,13 +53,13 @@ pub(crate) enum CodecType {
 }
 
 #[repr(C)]
-pub(crate) struct opj_codec_private {
+pub(crate) struct Codec {
   pub m_codec: CodecType,
   pub m_event_mgr: opj_event_mgr,
 }
-pub(crate) type opj_codec_private_t = opj_codec_private;
+pub(crate) type opj_codec_private_t = Codec;
 
-impl opj_codec_private {
+impl Codec {
   pub fn new_encoder(format: CODEC_FORMAT) -> Option<Self> {
     let m_codec = match format {
       OPJ_CODEC_J2K => CodecType::Encoder(CodecFormat::J2K(opj_j2k_create_compress()?)),
@@ -71,7 +71,7 @@ impl opj_codec_private {
         return None;
       }
     };
-    Some(opj_codec_private {
+    Some(Codec {
       m_codec,
       m_event_mgr: Default::default(),
     })
@@ -88,7 +88,7 @@ impl opj_codec_private {
         return None;
       }
     };
-    Some(opj_codec_private {
+    Some(Codec {
       m_codec,
       m_event_mgr: Default::default(),
     })
@@ -123,7 +123,7 @@ impl opj_codec_private {
     1i32
   }
 
-  pub unsafe fn set_threads(&mut self, mut num_threads: core::ffi::c_int) -> OPJ_BOOL {
+  pub fn set_threads(&mut self, mut num_threads: core::ffi::c_int) -> OPJ_BOOL {
     if num_threads >= 0i32 {
       match &mut self.m_codec {
         CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
@@ -174,7 +174,7 @@ impl opj_codec_private {
 }
 
 // Decoder
-impl opj_codec_private {
+impl Codec {
   pub unsafe fn setup_decoder(&mut self, mut parameters: *mut opj_dparameters_t) -> OPJ_BOOL {
     match &mut self.m_codec {
       CodecType::Encoder(_) => {
@@ -486,7 +486,7 @@ impl opj_codec_private {
 }
 
 // Encoder
-impl opj_codec_private {
+impl Codec {
   pub unsafe fn setup_encoder(
     &mut self,
     mut parameters: *mut opj_cparameters_t,

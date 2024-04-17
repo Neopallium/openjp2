@@ -1880,15 +1880,12 @@ pub(crate) unsafe fn opj_jp2_setup_decoder(
   jp2.color.jp2_has_colr = 0 as OPJ_BYTE;
   jp2.ignore_pclr_cmap_cdef = ((*parameters).flags & 0x1u32) as OPJ_BOOL;
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_jp2_decoder_set_strict_mode(mut jp2: &mut opj_jp2, mut strict: OPJ_BOOL) {
+
+pub(crate) fn opj_jp2_decoder_set_strict_mode(mut jp2: &mut opj_jp2, mut strict: OPJ_BOOL) {
   opj_j2k_decoder_set_strict_mode(&mut jp2.j2k, strict);
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_jp2_set_threads(
-  mut jp2: &mut opj_jp2,
-  mut num_threads: OPJ_UINT32,
-) -> OPJ_BOOL {
+
+pub(crate) fn opj_jp2_set_threads(mut jp2: &mut opj_jp2, mut num_threads: OPJ_UINT32) -> OPJ_BOOL {
   opj_j2k_set_threads(&mut jp2.j2k, num_threads)
 }
 /* ----------------------------------------------------------------------- */
@@ -3293,40 +3290,33 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
 }
 
 #[cfg(feature = "file-io")]
-#[no_mangle]
-pub(crate) unsafe fn jp2_dump(
-  mut p_jp2: &mut opj_jp2,
-  mut flag: OPJ_INT32,
-  mut out_stream: *mut FILE,
-) {
+pub(crate) fn jp2_dump(mut p_jp2: &mut opj_jp2, mut flag: OPJ_INT32, mut out_stream: *mut FILE) {
   /* preconditions */
   j2k_dump(&mut p_jp2.j2k, flag, out_stream);
 }
-#[no_mangle]
-pub(crate) unsafe fn jp2_get_cstr_index(mut p_jp2: &mut opj_jp2) -> *mut opj_codestream_index_t {
+
+pub(crate) fn jp2_get_cstr_index(mut p_jp2: &mut opj_jp2) -> *mut opj_codestream_index_t {
   j2k_get_cstr_index(&mut p_jp2.j2k)
 }
-#[no_mangle]
-pub(crate) unsafe fn jp2_get_cstr_info(mut p_jp2: &mut opj_jp2) -> *mut opj_codestream_info_v2_t {
+
+pub(crate) fn jp2_get_cstr_info(mut p_jp2: &mut opj_jp2) -> *mut opj_codestream_info_v2_t {
   j2k_get_cstr_info(&mut p_jp2.j2k)
 }
-#[no_mangle]
-pub(crate) unsafe fn opj_jp2_set_decoded_resolution_factor(
+
+pub(crate) fn opj_jp2_set_decoded_resolution_factor(
   mut p_jp2: &mut opj_jp2,
   mut res_factor: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   opj_j2k_set_decoded_resolution_factor(&mut p_jp2.j2k, res_factor, p_manager)
 }
+
 /* ----------------------------------------------------------------------- */
-#[no_mangle]
-pub(crate) unsafe fn opj_jp2_encoder_set_extra_options(
+pub(crate) fn opj_jp2_encoder_set_extra_options(
   mut p_jp2: &mut opj_jp2,
   mut p_options: *const *const core::ffi::c_char,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   opj_j2k_encoder_set_extra_options(&mut p_jp2.j2k, p_options, p_manager)
 }
-/* USE_JPIP */
-/* JPIP specific */
 /* ----------------------------------------------------------------------- */
