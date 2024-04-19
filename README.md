@@ -1,3 +1,4 @@
+[![Cargo Build & Test](https://github.com/Neopallium/openjp2/actions/workflows/rust.yml/badge.svg)](https://github.com/Neopallium/openjp2/actions/workflows/rust.yml)
 
 ## C2Rust port
 
