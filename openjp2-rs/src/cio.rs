@@ -125,10 +125,7 @@ pub(crate) unsafe fn opj_read_bytes_LE(
   }
 }
 
-pub(crate) unsafe fn opj_write_double_BE(
-  mut p_buffer: *mut OPJ_BYTE,
-  mut p_value: OPJ_FLOAT64,
-) {
+pub(crate) unsafe fn opj_write_double_BE(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT64) {
   let mut l_data_ptr = &mut p_value as *mut OPJ_FLOAT64 as *const OPJ_BYTE;
   memcpy(
     p_buffer as *mut core::ffi::c_void,
@@ -137,10 +134,7 @@ pub(crate) unsafe fn opj_write_double_BE(
   );
 }
 
-pub(crate) unsafe fn opj_write_double_LE(
-  mut p_buffer: *mut OPJ_BYTE,
-  mut p_value: OPJ_FLOAT64,
-) {
+pub(crate) unsafe fn opj_write_double_LE(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT64) {
   let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT64 as *const OPJ_BYTE)
     .add(core::mem::size_of::<OPJ_FLOAT64>())
     .offset(-1);
@@ -677,9 +671,7 @@ pub(crate) unsafe fn opj_stream_seek(
   (*p_stream).m_opj_seek.expect("non-null function pointer")(p_stream, p_size, p_event_mgr)
 }
 
-pub(crate) unsafe fn opj_stream_has_seek(
-  mut p_stream: *const opj_stream_private_t,
-) -> OPJ_BOOL {
+pub(crate) unsafe fn opj_stream_has_seek(mut p_stream: *const opj_stream_private_t) -> OPJ_BOOL {
   ((*p_stream).m_seek_fn
     != Some(
       opj_stream_default_seek

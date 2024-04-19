@@ -174,11 +174,10 @@ pub unsafe fn opj_version() -> *const core::ffi::c_char {
 /* DECOMPRESSION FUNCTIONS*/
 #[no_mangle]
 pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
-  let mut l_codec = Box::<opj_codec_private_t>::new_zeroed().assume_init();
-  match p_format as core::ffi::c_int {
+  let m_codec = match p_format as core::ffi::c_int {
     0 => {
       if let Some(codec) = opj_j2k_create_decompress() {
-        l_codec.m_codec = Codec::Decoder(CodecFormat::J2K(codec));
+        Codec::Decoder(CodecFormat::J2K(codec))
       } else {
         return std::ptr::null_mut();
       }
@@ -186,7 +185,7 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
     2 => {
       /* get a JP2 decoder handle */
       if let Some(codec) = opj_jp2_create(1i32) {
-        l_codec.m_codec = Codec::Decoder(CodecFormat::JP2(codec));
+        Codec::Decoder(CodecFormat::JP2(codec))
       } else {
         return std::ptr::null_mut();
       }
@@ -194,8 +193,11 @@ pub unsafe fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_
     -1 | 1 | _ => {
       return std::ptr::null_mut::<opj_codec_t>();
     }
-  }
-  l_codec.m_event_mgr.set_default_event_handler();
+  };
+  let mut l_codec = Box::new(opj_codec_private {
+    m_codec,
+    m_event_mgr: Default::default(),
+  });
   Box::into_raw(l_codec) as *mut opj_codec_t
 }
 #[no_mangle]
@@ -385,11 +387,10 @@ pub unsafe fn opj_set_decoded_resolution_factor(
 /* COMPRESSION FUNCTIONS*/
 #[no_mangle]
 pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
-  let mut l_codec = Box::<opj_codec_private_t>::new_zeroed().assume_init();
-  match p_format as core::ffi::c_int {
+  let m_codec = match p_format as core::ffi::c_int {
     0 => {
       if let Some(codec) = opj_j2k_create_compress() {
-        l_codec.m_codec = Codec::Encoder(CodecFormat::J2K(codec));
+        Codec::Encoder(CodecFormat::J2K(codec))
       } else {
         return std::ptr::null_mut();
       }
@@ -397,7 +398,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
     2 => {
       /* get a JP2 decoder handle */
       if let Some(codec) = opj_jp2_create(0i32) {
-        l_codec.m_codec = Codec::Encoder(CodecFormat::JP2(codec));
+        Codec::Encoder(CodecFormat::JP2(codec))
       } else {
         return std::ptr::null_mut();
       }
@@ -405,8 +406,11 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
     -1 | 1 | _ => {
       return std::ptr::null_mut::<opj_codec_t>();
     }
-  }
-  l_codec.m_event_mgr.set_default_event_handler();
+  };
+  let mut l_codec = Box::new(opj_codec_private {
+    m_codec,
+    m_event_mgr: Default::default(),
+  });
   Box::into_raw(l_codec) as *mut opj_codec_t
 }
 

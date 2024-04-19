@@ -1,4 +1,3 @@
-#![feature(new_uninit)]
 #![allow(dead_code)]
 #![allow(mutable_transmutes)]
 #![allow(non_camel_case_types)]
@@ -26,9 +25,9 @@ mod types;
 mod event;
 
 // Public OpenJpeg interface.
-pub mod openjpeg;
-pub mod image;
 pub mod cio;
+pub mod image;
+pub mod openjpeg;
 
 mod bio;
 mod codec;
