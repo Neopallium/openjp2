@@ -1,0 +1,39 @@
+name: Cargo Build & Test
+
+on:
+  push:
+  pull_request:
+
+env: 
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_test:
+    name: Rust project - latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+          - beta
+          - nightly
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - name: check default features.
+        working-directory: ./openjp2-rs
+        run: cargo check --verbose
+      - name: check features: std
+        working-directory: ./openjp2-rs
+        run: cargo check --no-default-features --features std
+      - name: check features: std,file-io
+        working-directory: ./openjp2-rs
+        run: cargo check --no-default-features --features std,file-io
+      - name: build
+        working-directory: ./openjp2-rs
+        run: cargo build --verbose
+      - name: test
+        working-directory: ./openjp2-rs
+        run: cargo test --verbose
+
