@@ -341,9 +341,7 @@ impl J2KMarker {
   pub fn from_buffer(p_buffer: *const OPJ_BYTE) -> Self {
     let mut marker: OPJ_UINT32 = 0;
     /* Read 2 bytes as the new marker ID */
-    unsafe {
-      opj_read_bytes(p_buffer, &mut marker, 2 as OPJ_UINT32);
-    }
+    opj_read_bytes(p_buffer, &mut marker, 2 as OPJ_UINT32);
     Self::from(marker)
   }
 
