@@ -41,7 +41,6 @@ use super::codec::*;
 pub use super::image::{opj_image_create, opj_image_destroy, opj_image_tile_create};
 use super::malloc::*;
 
-#[cfg(feature = "file-io")]
 use super::cio::*;
 
 #[cfg(feature = "file-io")]
