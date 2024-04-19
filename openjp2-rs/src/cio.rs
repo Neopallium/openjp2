@@ -47,9 +47,8 @@ extern "C" {
   ) -> *mut core::ffi::c_void;
 }
 
-/* ----------------------------------------------------------------------- */
-/* ----------------------------------------------------------------------- */
-pub(crate) unsafe fn opj_write_bytes_BE(
+#[cfg(target_endian = "big")]
+pub(crate) unsafe fn opj_write_bytes(
   mut p_buffer: *mut OPJ_BYTE,
   mut p_value: OPJ_UINT32,
   mut p_nb_bytes: OPJ_UINT32,
@@ -65,7 +64,8 @@ pub(crate) unsafe fn opj_write_bytes_BE(
   );
 }
 
-pub(crate) unsafe fn opj_write_bytes_LE(
+#[cfg(target_endian = "little")]
+pub(crate) unsafe fn opj_write_bytes(
   mut p_buffer: *mut OPJ_BYTE,
   mut p_value: OPJ_UINT32,
   mut p_nb_bytes: OPJ_UINT32,
@@ -86,7 +86,8 @@ pub(crate) unsafe fn opj_write_bytes_LE(
   }
 }
 
-pub(crate) unsafe fn opj_read_bytes_BE(
+#[cfg(target_endian = "big")]
+pub(crate) unsafe fn opj_read_bytes(
   mut p_buffer: *const OPJ_BYTE,
   mut p_value: *mut OPJ_UINT32,
   mut p_nb_bytes: OPJ_UINT32,
@@ -103,7 +104,8 @@ pub(crate) unsafe fn opj_read_bytes_BE(
   );
 }
 
-pub(crate) unsafe fn opj_read_bytes_LE(
+#[cfg(target_endian = "little")]
+pub(crate) unsafe fn opj_read_bytes(
   mut p_buffer: *const OPJ_BYTE,
   mut p_value: *mut OPJ_UINT32,
   mut p_nb_bytes: OPJ_UINT32,
@@ -125,7 +127,8 @@ pub(crate) unsafe fn opj_read_bytes_LE(
   }
 }
 
-pub(crate) unsafe fn opj_write_double_BE(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT64) {
+#[cfg(target_endian = "big")]
+pub(crate) unsafe fn opj_write_double(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT64) {
   let mut l_data_ptr = &mut p_value as *mut OPJ_FLOAT64 as *const OPJ_BYTE;
   memcpy(
     p_buffer as *mut core::ffi::c_void,
@@ -134,7 +137,8 @@ pub(crate) unsafe fn opj_write_double_BE(mut p_buffer: *mut OPJ_BYTE, mut p_valu
   );
 }
 
-pub(crate) unsafe fn opj_write_double_LE(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT64) {
+#[cfg(target_endian = "little")]
+pub(crate) unsafe fn opj_write_double(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT64) {
   let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT64 as *const OPJ_BYTE)
     .add(core::mem::size_of::<OPJ_FLOAT64>())
     .offset(-1);
@@ -150,10 +154,8 @@ pub(crate) unsafe fn opj_write_double_LE(mut p_buffer: *mut OPJ_BYTE, mut p_valu
   }
 }
 
-pub(crate) unsafe fn opj_read_double_BE(
-  mut p_buffer: *const OPJ_BYTE,
-  mut p_value: *mut OPJ_FLOAT64,
-) {
+#[cfg(target_endian = "big")]
+pub(crate) unsafe fn opj_read_double(mut p_buffer: *const OPJ_BYTE, mut p_value: *mut OPJ_FLOAT64) {
   let mut l_data_ptr = p_value as *mut OPJ_BYTE;
   memcpy(
     l_data_ptr as *mut core::ffi::c_void,
@@ -162,10 +164,8 @@ pub(crate) unsafe fn opj_read_double_BE(
   );
 }
 
-pub(crate) unsafe fn opj_read_double_LE(
-  mut p_buffer: *const OPJ_BYTE,
-  mut p_value: *mut OPJ_FLOAT64,
-) {
+#[cfg(target_endian = "little")]
+pub(crate) unsafe fn opj_read_double(mut p_buffer: *const OPJ_BYTE, mut p_value: *mut OPJ_FLOAT64) {
   let mut l_data_ptr = (p_value as *mut OPJ_BYTE)
     .add(core::mem::size_of::<OPJ_FLOAT64>())
     .offset(-1);
@@ -181,7 +181,8 @@ pub(crate) unsafe fn opj_read_double_LE(
   }
 }
 
-pub(crate) unsafe fn opj_write_float_BE(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT32) {
+#[cfg(target_endian = "big")]
+pub(crate) unsafe fn opj_write_float(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT32) {
   let mut l_data_ptr = &mut p_value as *mut OPJ_FLOAT32 as *const OPJ_BYTE;
   memcpy(
     p_buffer as *mut core::ffi::c_void,
@@ -190,7 +191,8 @@ pub(crate) unsafe fn opj_write_float_BE(mut p_buffer: *mut OPJ_BYTE, mut p_value
   );
 }
 
-pub(crate) unsafe fn opj_write_float_LE(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT32) {
+#[cfg(target_endian = "little")]
+pub(crate) unsafe fn opj_write_float(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT32) {
   let mut l_data_ptr = (&mut p_value as *mut OPJ_FLOAT32 as *const OPJ_BYTE)
     .add(core::mem::size_of::<OPJ_FLOAT32>())
     .offset(-1);
@@ -206,10 +208,8 @@ pub(crate) unsafe fn opj_write_float_LE(mut p_buffer: *mut OPJ_BYTE, mut p_value
   }
 }
 
-pub(crate) unsafe fn opj_read_float_BE(
-  mut p_buffer: *const OPJ_BYTE,
-  mut p_value: *mut OPJ_FLOAT32,
-) {
+#[cfg(target_endian = "big")]
+pub(crate) unsafe fn opj_read_float(mut p_buffer: *const OPJ_BYTE, mut p_value: *mut OPJ_FLOAT32) {
   let mut l_data_ptr = p_value as *mut OPJ_BYTE;
   memcpy(
     l_data_ptr as *mut core::ffi::c_void,
@@ -218,10 +218,8 @@ pub(crate) unsafe fn opj_read_float_BE(
   );
 }
 
-pub(crate) unsafe fn opj_read_float_LE(
-  mut p_buffer: *const OPJ_BYTE,
-  mut p_value: *mut OPJ_FLOAT32,
-) {
+#[cfg(target_endian = "little")]
+pub(crate) unsafe fn opj_read_float(mut p_buffer: *const OPJ_BYTE, mut p_value: *mut OPJ_FLOAT32) {
   let mut l_data_ptr = (p_value as *mut OPJ_BYTE)
     .add(core::mem::size_of::<OPJ_FLOAT32>())
     .offset(-1);

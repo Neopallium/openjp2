@@ -219,12 +219,12 @@ fn opj_jp2_read_boxhdr(
       return 0i32;
     }
     /* process read data */
-    opj_read_bytes_LE(
+    opj_read_bytes(
       l_data_header.as_mut_ptr(),
       &mut (*box_0).length,
       4 as OPJ_UINT32,
     );
-    opj_read_bytes_LE(
+    opj_read_bytes(
       l_data_header.as_mut_ptr().offset(4),
       &mut (*box_0).type_0,
       4 as OPJ_UINT32,
@@ -259,7 +259,7 @@ fn opj_jp2_read_boxhdr(
         return 0i32;
       }
       *p_number_bytes_read = 16 as OPJ_UINT32;
-      opj_read_bytes_LE(
+      opj_read_bytes(
         l_data_header.as_mut_ptr(),
         &mut l_xl_part_size,
         4 as OPJ_UINT32,
@@ -272,7 +272,7 @@ fn opj_jp2_read_boxhdr(
         );
         return 0i32;
       }
-      opj_read_bytes_LE(
+      opj_read_bytes(
         l_data_header.as_mut_ptr().offset(4),
         &mut (*box_0).length,
         4 as OPJ_UINT32,
@@ -318,11 +318,11 @@ fn opj_jp2_read_ihdr(
       event_msg!(p_manager, EVT_ERROR, "Bad image header box (bad size)\n",);
       return 0i32;
     }
-    opj_read_bytes_LE(p_image_header_data, &mut jp2.h, 4 as OPJ_UINT32);
+    opj_read_bytes(p_image_header_data, &mut jp2.h, 4 as OPJ_UINT32);
     p_image_header_data = p_image_header_data.offset(4);
-    opj_read_bytes_LE(p_image_header_data, &mut jp2.w, 4 as OPJ_UINT32);
+    opj_read_bytes(p_image_header_data, &mut jp2.w, 4 as OPJ_UINT32);
     p_image_header_data = p_image_header_data.offset(4);
-    opj_read_bytes_LE(p_image_header_data, &mut jp2.numcomps, 2 as OPJ_UINT32);
+    opj_read_bytes(p_image_header_data, &mut jp2.numcomps, 2 as OPJ_UINT32);
     p_image_header_data = p_image_header_data.offset(2);
     if jp2.h < 1u32 || jp2.w < 1u32 || jp2.numcomps < 1u32 {
       event_msg!(
@@ -357,9 +357,9 @@ fn opj_jp2_read_ihdr(
       ); /* C */
       return 0i32;
     }
-    opj_read_bytes_LE(p_image_header_data, &mut jp2.bpc, 1 as OPJ_UINT32);
+    opj_read_bytes(p_image_header_data, &mut jp2.bpc, 1 as OPJ_UINT32);
     p_image_header_data = p_image_header_data.offset(1);
-    opj_read_bytes_LE(p_image_header_data, &mut jp2.C, 1 as OPJ_UINT32);
+    opj_read_bytes(p_image_header_data, &mut jp2.C, 1 as OPJ_UINT32);
     p_image_header_data = p_image_header_data.offset(1);
     /* Should be equal to 7 cf. chapter about image header box of the norm */
     if jp2.C != 7u32 {
@@ -370,9 +370,9 @@ fn opj_jp2_read_ihdr(
       jp2.C
     ); /* UnkC */
     } /* IPR */
-    opj_read_bytes_LE(p_image_header_data, &mut jp2.UnkC, 1 as OPJ_UINT32);
+    opj_read_bytes(p_image_header_data, &mut jp2.UnkC, 1 as OPJ_UINT32);
     p_image_header_data = p_image_header_data.offset(1);
-    opj_read_bytes_LE(p_image_header_data, &mut jp2.IPR, 1 as OPJ_UINT32);
+    opj_read_bytes(p_image_header_data, &mut jp2.IPR, 1 as OPJ_UINT32);
     p_image_header_data = p_image_header_data.offset(1);
     jp2.j2k.m_cp.allow_different_bit_depth_sign = jp2.bpc == 255u32;
     jp2.j2k.ihdr_w = jp2.w;
@@ -406,27 +406,27 @@ fn opj_jp2_write_ihdr(
       return std::ptr::null_mut::<OPJ_BYTE>();
     } /* IHDR */
     l_current_ihdr_ptr = l_ihdr_data; /* HEIGHT */
-    opj_write_bytes_LE(l_current_ihdr_ptr, 22 as OPJ_UINT32, 4 as OPJ_UINT32); /* WIDTH */
+    opj_write_bytes(l_current_ihdr_ptr, 22 as OPJ_UINT32, 4 as OPJ_UINT32); /* WIDTH */
     l_current_ihdr_ptr = l_current_ihdr_ptr.offset(4); /* NC */
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_current_ihdr_ptr,
       0x69686472 as OPJ_UINT32,
       4 as OPJ_UINT32,
     ); /* BPC */
     l_current_ihdr_ptr = l_current_ihdr_ptr.offset(4); /* C : Always 7 */
-    opj_write_bytes_LE(l_current_ihdr_ptr, jp2.h, 4 as OPJ_UINT32); /* UnkC, colorspace unknown */
+    opj_write_bytes(l_current_ihdr_ptr, jp2.h, 4 as OPJ_UINT32); /* UnkC, colorspace unknown */
     l_current_ihdr_ptr = l_current_ihdr_ptr.offset(4); /* IPR, no intellectual property */
-    opj_write_bytes_LE(l_current_ihdr_ptr, jp2.w, 4 as OPJ_UINT32);
+    opj_write_bytes(l_current_ihdr_ptr, jp2.w, 4 as OPJ_UINT32);
     l_current_ihdr_ptr = l_current_ihdr_ptr.offset(4);
-    opj_write_bytes_LE(l_current_ihdr_ptr, jp2.numcomps, 2 as OPJ_UINT32);
+    opj_write_bytes(l_current_ihdr_ptr, jp2.numcomps, 2 as OPJ_UINT32);
     l_current_ihdr_ptr = l_current_ihdr_ptr.offset(2);
-    opj_write_bytes_LE(l_current_ihdr_ptr, jp2.bpc, 1 as OPJ_UINT32);
+    opj_write_bytes(l_current_ihdr_ptr, jp2.bpc, 1 as OPJ_UINT32);
     l_current_ihdr_ptr = l_current_ihdr_ptr.offset(1);
-    opj_write_bytes_LE(l_current_ihdr_ptr, jp2.C, 1 as OPJ_UINT32);
+    opj_write_bytes(l_current_ihdr_ptr, jp2.C, 1 as OPJ_UINT32);
     l_current_ihdr_ptr = l_current_ihdr_ptr.offset(1);
-    opj_write_bytes_LE(l_current_ihdr_ptr, jp2.UnkC, 1 as OPJ_UINT32);
+    opj_write_bytes(l_current_ihdr_ptr, jp2.UnkC, 1 as OPJ_UINT32);
     l_current_ihdr_ptr = l_current_ihdr_ptr.offset(1);
-    opj_write_bytes_LE(l_current_ihdr_ptr, jp2.IPR, 1 as OPJ_UINT32);
+    opj_write_bytes(l_current_ihdr_ptr, jp2.IPR, 1 as OPJ_UINT32);
     l_current_ihdr_ptr = l_current_ihdr_ptr.offset(1);
     *p_nb_bytes_written = 22 as OPJ_UINT32;
     l_ihdr_data
@@ -460,9 +460,9 @@ fn opj_jp2_write_bpcc(
       return std::ptr::null_mut::<OPJ_BYTE>();
     }
     l_current_bpcc_ptr = l_bpcc_data;
-    opj_write_bytes_LE(l_current_bpcc_ptr, l_bpcc_size, 4 as OPJ_UINT32);
+    opj_write_bytes(l_current_bpcc_ptr, l_bpcc_size, 4 as OPJ_UINT32);
     l_current_bpcc_ptr = l_current_bpcc_ptr.offset(4);
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_current_bpcc_ptr,
       0x62706363 as OPJ_UINT32,
       4 as OPJ_UINT32,
@@ -470,7 +470,7 @@ fn opj_jp2_write_bpcc(
     l_current_bpcc_ptr = l_current_bpcc_ptr.offset(4);
     i = 0 as OPJ_UINT32;
     while i < jp2.numcomps {
-      opj_write_bytes_LE(
+      opj_write_bytes(
         l_current_bpcc_ptr,
         (*jp2.comps.offset(i as isize)).bpcc,
         1 as OPJ_UINT32,
@@ -516,7 +516,7 @@ fn opj_jp2_read_bpcc(
     /* read info for each component */
     i = 0 as OPJ_UINT32; /* read each BPCC component */
     while i < jp2.numcomps {
-      opj_read_bytes_LE(
+      opj_read_bytes(
         p_bpc_header_data,
         &mut (*jp2.comps.offset(i as isize)).bpcc,
         1 as OPJ_UINT32,
@@ -564,27 +564,27 @@ fn opj_jp2_write_cdef(
       return std::ptr::null_mut::<OPJ_BYTE>();
     }
     l_current_cdef_ptr = l_cdef_data;
-    opj_write_bytes_LE(l_current_cdef_ptr, l_cdef_size, 4 as OPJ_UINT32);
+    opj_write_bytes(l_current_cdef_ptr, l_cdef_size, 4 as OPJ_UINT32);
     l_current_cdef_ptr = l_current_cdef_ptr.offset(4);
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_current_cdef_ptr,
       0x63646566 as OPJ_UINT32,
       4 as OPJ_UINT32,
     );
     l_current_cdef_ptr = l_current_cdef_ptr.offset(4);
     l_value = (*jp2.color.jp2_cdef).n as OPJ_UINT32;
-    opj_write_bytes_LE(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
+    opj_write_bytes(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
     l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
     i = 0 as OPJ_UINT16;
     while (i as core::ffi::c_int) < (*jp2.color.jp2_cdef).n as core::ffi::c_int {
       l_value = (*(*jp2.color.jp2_cdef).info.offset(i as isize)).cn as OPJ_UINT32;
-      opj_write_bytes_LE(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
+      opj_write_bytes(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
       l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
       l_value = (*(*jp2.color.jp2_cdef).info.offset(i as isize)).typ as OPJ_UINT32;
-      opj_write_bytes_LE(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
+      opj_write_bytes(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
       l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
       l_value = (*(*jp2.color.jp2_cdef).info.offset(i as isize)).asoc as OPJ_UINT32;
-      opj_write_bytes_LE(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
+      opj_write_bytes(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
       l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
       i += 1;
     }
@@ -629,29 +629,29 @@ fn opj_jp2_write_colr(
       return std::ptr::null_mut::<OPJ_BYTE>();
     }
     l_current_colr_ptr = l_colr_data;
-    opj_write_bytes_LE(l_current_colr_ptr, l_colr_size, 4 as OPJ_UINT32);
+    opj_write_bytes(l_current_colr_ptr, l_colr_size, 4 as OPJ_UINT32);
     l_current_colr_ptr = l_current_colr_ptr.offset(4);
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_current_colr_ptr,
       0x636f6c72 as OPJ_UINT32,
       4 as OPJ_UINT32,
     );
     l_current_colr_ptr = l_current_colr_ptr.offset(4);
-    opj_write_bytes_LE(l_current_colr_ptr, jp2.meth, 1 as OPJ_UINT32);
+    opj_write_bytes(l_current_colr_ptr, jp2.meth, 1 as OPJ_UINT32);
     l_current_colr_ptr = l_current_colr_ptr.offset(1);
-    opj_write_bytes_LE(l_current_colr_ptr, jp2.precedence, 1 as OPJ_UINT32);
+    opj_write_bytes(l_current_colr_ptr, jp2.precedence, 1 as OPJ_UINT32);
     l_current_colr_ptr = l_current_colr_ptr.offset(1);
-    opj_write_bytes_LE(l_current_colr_ptr, jp2.approx, 1 as OPJ_UINT32);
+    opj_write_bytes(l_current_colr_ptr, jp2.approx, 1 as OPJ_UINT32);
     l_current_colr_ptr = l_current_colr_ptr.offset(1);
     if jp2.meth == 1u32 {
       /* Meth value is restricted to 1 or 2 (Table I.9 of part 1) */
-      opj_write_bytes_LE(l_current_colr_ptr, jp2.enumcs, 4 as OPJ_UINT32);
+      opj_write_bytes(l_current_colr_ptr, jp2.enumcs, 4 as OPJ_UINT32);
     } else if jp2.meth == 2u32 {
       /* ICC profile */
       let mut i: OPJ_UINT32 = 0;
       i = 0 as OPJ_UINT32;
       while i < jp2.color.icc_profile_len {
-        opj_write_bytes_LE(
+        opj_write_bytes(
           l_current_colr_ptr,
           *jp2.color.icc_profile_buf.offset(i as isize) as OPJ_UINT32,
           1 as OPJ_UINT32,
@@ -1067,7 +1067,7 @@ fn opj_jp2_read_pclr(
     if p_pclr_header_size < 3u32 {
       return 0i32;
     }
-    opj_read_bytes_LE(p_pclr_header_data, &mut l_value, 2 as OPJ_UINT32);
+    opj_read_bytes(p_pclr_header_data, &mut l_value, 2 as OPJ_UINT32);
     p_pclr_header_data = p_pclr_header_data.offset(2);
     nr_entries = l_value as OPJ_UINT16;
     if nr_entries as core::ffi::c_uint == 0u32 || nr_entries as core::ffi::c_uint > 1024u32 {
@@ -1079,7 +1079,7 @@ fn opj_jp2_read_pclr(
       );
       return 0i32;
     }
-    opj_read_bytes_LE(p_pclr_header_data, &mut l_value, 1 as OPJ_UINT32);
+    opj_read_bytes(p_pclr_header_data, &mut l_value, 1 as OPJ_UINT32);
     p_pclr_header_data = p_pclr_header_data.offset(1);
     nr_channels = l_value as OPJ_UINT16;
     if nr_channels as core::ffi::c_uint == 0u32 {
@@ -1128,7 +1128,7 @@ fn opj_jp2_read_pclr(
     jp2.color.jp2_pclr = jp2_pclr;
     i = 0 as OPJ_UINT16;
     while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
-      opj_read_bytes_LE(p_pclr_header_data, &mut l_value, 1 as OPJ_UINT32);
+      opj_read_bytes(p_pclr_header_data, &mut l_value, 1 as OPJ_UINT32);
       p_pclr_header_data = p_pclr_header_data.offset(1);
       *channel_size.offset(i as isize) = (l_value & 0x7fu32).wrapping_add(1u32) as OPJ_BYTE;
       *channel_sign.offset(i as isize) =
@@ -1149,7 +1149,7 @@ fn opj_jp2_read_pclr(
         {
           return 0;
         }
-        opj_read_bytes_LE(p_pclr_header_data, &mut l_value, bytes_to_read);
+        opj_read_bytes(p_pclr_header_data, &mut l_value, bytes_to_read);
         p_pclr_header_data = p_pclr_header_data.offset(bytes_to_read as isize);
         *entries = l_value;
         entries = entries.offset(1);
@@ -1214,13 +1214,13 @@ fn opj_jp2_read_cmap(
     }
     i = 0 as OPJ_BYTE;
     while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
-      opj_read_bytes_LE(p_cmap_header_data, &mut l_value, 2 as OPJ_UINT32);
+      opj_read_bytes(p_cmap_header_data, &mut l_value, 2 as OPJ_UINT32);
       p_cmap_header_data = p_cmap_header_data.offset(2);
       (*cmap.offset(i as isize)).cmp = l_value as OPJ_UINT16;
-      opj_read_bytes_LE(p_cmap_header_data, &mut l_value, 1 as OPJ_UINT32);
+      opj_read_bytes(p_cmap_header_data, &mut l_value, 1 as OPJ_UINT32);
       p_cmap_header_data = p_cmap_header_data.offset(1);
       (*cmap.offset(i as isize)).mtyp = l_value as OPJ_BYTE;
-      opj_read_bytes_LE(p_cmap_header_data, &mut l_value, 1 as OPJ_UINT32);
+      opj_read_bytes(p_cmap_header_data, &mut l_value, 1 as OPJ_UINT32);
       p_cmap_header_data = p_cmap_header_data.offset(1);
       (*cmap.offset(i as isize)).pcol = l_value as OPJ_BYTE;
       i += 1;
@@ -1358,7 +1358,7 @@ fn opj_jp2_read_cdef(
       event_msg!(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n",);
       return 0i32;
     }
-    opj_read_bytes_LE(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
+    opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
     p_cdef_header_data = p_cdef_header_data.offset(2);
     if l_value as OPJ_UINT16 as core::ffi::c_int == 0i32 {
       /* szukw000: FIXME */
@@ -1390,13 +1390,13 @@ fn opj_jp2_read_cdef(
     (*jp2.color.jp2_cdef).n = l_value as OPJ_UINT16;
     i = 0 as OPJ_UINT16;
     while (i as core::ffi::c_int) < (*jp2.color.jp2_cdef).n as core::ffi::c_int {
-      opj_read_bytes_LE(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
+      opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
       p_cdef_header_data = p_cdef_header_data.offset(2);
       (*cdef_info.offset(i as isize)).cn = l_value as OPJ_UINT16;
-      opj_read_bytes_LE(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
+      opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
       p_cdef_header_data = p_cdef_header_data.offset(2);
       (*cdef_info.offset(i as isize)).typ = l_value as OPJ_UINT16;
-      opj_read_bytes_LE(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
+      opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
       p_cdef_header_data = p_cdef_header_data.offset(2);
       (*cdef_info.offset(i as isize)).asoc = l_value as OPJ_UINT16;
       i += 1;
@@ -1439,11 +1439,11 @@ fn opj_jp2_read_colr(
       p_colr_header_data = p_colr_header_data.offset(p_colr_header_size as isize); /* PRECEDENCE */
       return 1i32;
     } /* APPROX */
-    opj_read_bytes_LE(p_colr_header_data, &mut jp2.meth, 1 as OPJ_UINT32);
+    opj_read_bytes(p_colr_header_data, &mut jp2.meth, 1 as OPJ_UINT32);
     p_colr_header_data = p_colr_header_data.offset(1);
-    opj_read_bytes_LE(p_colr_header_data, &mut jp2.precedence, 1 as OPJ_UINT32);
+    opj_read_bytes(p_colr_header_data, &mut jp2.precedence, 1 as OPJ_UINT32);
     p_colr_header_data = p_colr_header_data.offset(1);
-    opj_read_bytes_LE(p_colr_header_data, &mut jp2.approx, 1 as OPJ_UINT32);
+    opj_read_bytes(p_colr_header_data, &mut jp2.approx, 1 as OPJ_UINT32);
     p_colr_header_data = p_colr_header_data.offset(1);
     if jp2.meth == 1u32 {
       if p_colr_header_size < 7u32 {
@@ -1465,7 +1465,7 @@ fn opj_jp2_read_colr(
           p_colr_header_size,
         ); /* EnumCS */
       }
-      opj_read_bytes_LE(p_colr_header_data, &mut jp2.enumcs, 4 as OPJ_UINT32);
+      opj_read_bytes(p_colr_header_data, &mut jp2.enumcs, 4 as OPJ_UINT32);
       p_colr_header_data = p_colr_header_data.offset(4);
       if jp2.enumcs == 14u32 {
         /* CIELab */
@@ -1493,19 +1493,19 @@ fn opj_jp2_read_colr(
         il = 0x443530 as OPJ_UINT32;
         *cielab.offset(1) = 0x44454600 as OPJ_UINT32;
         if p_colr_header_size == 35u32 {
-          opj_read_bytes_LE(p_colr_header_data, &mut rl, 4 as OPJ_UINT32);
+          opj_read_bytes(p_colr_header_data, &mut rl, 4 as OPJ_UINT32);
           p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes_LE(p_colr_header_data, &mut ol, 4 as OPJ_UINT32);
+          opj_read_bytes(p_colr_header_data, &mut ol, 4 as OPJ_UINT32);
           p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes_LE(p_colr_header_data, &mut ra, 4 as OPJ_UINT32);
+          opj_read_bytes(p_colr_header_data, &mut ra, 4 as OPJ_UINT32);
           p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes_LE(p_colr_header_data, &mut oa, 4 as OPJ_UINT32);
+          opj_read_bytes(p_colr_header_data, &mut oa, 4 as OPJ_UINT32);
           p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes_LE(p_colr_header_data, &mut rb, 4 as OPJ_UINT32);
+          opj_read_bytes(p_colr_header_data, &mut rb, 4 as OPJ_UINT32);
           p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes_LE(p_colr_header_data, &mut ob, 4 as OPJ_UINT32);
+          opj_read_bytes(p_colr_header_data, &mut ob, 4 as OPJ_UINT32);
           p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes_LE(p_colr_header_data, &mut il, 4 as OPJ_UINT32);
+          opj_read_bytes(p_colr_header_data, &mut il, 4 as OPJ_UINT32);
           p_colr_header_data = p_colr_header_data.offset(4);
           *cielab.offset(1) = 0 as OPJ_UINT32
         } else if p_colr_header_size != 7u32 {
@@ -1539,7 +1539,7 @@ fn opj_jp2_read_colr(
       }
       it_icc_value = 0i32;
       while it_icc_value < icc_len {
-        opj_read_bytes_LE(p_colr_header_data, &mut l_value, 1 as OPJ_UINT32);
+        opj_read_bytes(p_colr_header_data, &mut l_value, 1 as OPJ_UINT32);
         p_colr_header_data = p_colr_header_data.offset(1);
         *jp2.color.icc_profile_buf.offset(it_icc_value as isize) = l_value as OPJ_BYTE;
         it_icc_value += 1
@@ -1664,7 +1664,7 @@ fn opj_jp2_write_jp2h(
     }
     /* write box header */
     /* write JP2H type */
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_jp2h_data.as_mut_ptr().offset(4),
       0x6a703268 as OPJ_UINT32,
       4 as OPJ_UINT32,
@@ -1704,7 +1704,7 @@ fn opj_jp2_write_jp2h(
       return 0i32;
     }
     /* write super box size */
-    opj_write_bytes_LE(l_jp2h_data.as_mut_ptr(), l_jp2h_size, 4 as OPJ_UINT32);
+    opj_write_bytes(l_jp2h_data.as_mut_ptr(), l_jp2h_size, 4 as OPJ_UINT32);
     /* write super box data on stream */
     if opj_stream_write_data(stream, l_jp2h_data.as_mut_ptr(), 8 as OPJ_SIZE_T, p_manager) != 8 {
       event_msg!(
@@ -1786,21 +1786,21 @@ fn opj_jp2_write_ftyp(
       return 0i32;
     }
     l_current_data_ptr = l_ftyp_data;
-    opj_write_bytes_LE(l_current_data_ptr, l_ftyp_size, 4 as OPJ_UINT32);
+    opj_write_bytes(l_current_data_ptr, l_ftyp_size, 4 as OPJ_UINT32);
     l_current_data_ptr = l_current_data_ptr.offset(4);
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_current_data_ptr,
       0x66747970 as OPJ_UINT32,
       4 as OPJ_UINT32,
     );
     l_current_data_ptr = l_current_data_ptr.offset(4);
-    opj_write_bytes_LE(l_current_data_ptr, jp2.brand, 4 as OPJ_UINT32);
+    opj_write_bytes(l_current_data_ptr, jp2.brand, 4 as OPJ_UINT32);
     l_current_data_ptr = l_current_data_ptr.offset(4);
-    opj_write_bytes_LE(l_current_data_ptr, jp2.minversion, 4 as OPJ_UINT32);
+    opj_write_bytes(l_current_data_ptr, jp2.minversion, 4 as OPJ_UINT32);
     l_current_data_ptr = l_current_data_ptr.offset(4);
     i = 0 as OPJ_UINT32;
     while i < jp2.numcl {
-      opj_write_bytes_LE(
+      opj_write_bytes(
         l_current_data_ptr,
         *jp2.cl.offset(i as isize),
         4 as OPJ_UINT32,
@@ -1844,12 +1844,12 @@ fn opj_jp2_write_jp2c(
 
     assert!(opj_stream_has_seek(cio) != 0);
     j2k_codestream_exit = opj_stream_tell(cio);
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_data_header.as_mut_ptr(),
       (j2k_codestream_exit - jp2.j2k_codestream_offset) as OPJ_UINT32,
       4 as OPJ_UINT32,
     );
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_data_header.as_mut_ptr().offset(4),
       0x6a703263 as OPJ_UINT32,
       4 as OPJ_UINT32,
@@ -1890,19 +1890,19 @@ fn opj_jp2_write_jp(
     /* preconditions */
 
     /* write box length */
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_signature_data.as_mut_ptr(),
       12 as OPJ_UINT32,
       4 as OPJ_UINT32,
     );
     /* writes box type */
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_signature_data.as_mut_ptr().offset(4),
       0x6a502020 as OPJ_UINT32,
       4 as OPJ_UINT32,
     );
     /* writes magic number*/
-    opj_write_bytes_LE(
+    opj_write_bytes(
       l_signature_data.as_mut_ptr().offset(8),
       0xd0a870a as OPJ_UINT32,
       4 as OPJ_UINT32,
@@ -2653,7 +2653,7 @@ fn opj_jp2_read_jp(
       return 0i32;
     }
     /* rearrange data */
-    opj_read_bytes_LE(p_header_data, &mut l_magic_number, 4 as OPJ_UINT32);
+    opj_read_bytes(p_header_data, &mut l_magic_number, 4 as OPJ_UINT32);
     if l_magic_number != 0xd0a870au32 {
       event_msg!(
         p_manager,
@@ -2711,9 +2711,9 @@ fn opj_jp2_read_ftyp(
       event_msg!(p_manager, EVT_ERROR, "Error with FTYP signature Box size\n",); /* BR */
       return 0i32;
     } /* MinV */
-    opj_read_bytes_LE(p_header_data, &mut jp2.brand, 4 as OPJ_UINT32);
+    opj_read_bytes(p_header_data, &mut jp2.brand, 4 as OPJ_UINT32);
     p_header_data = p_header_data.offset(4);
-    opj_read_bytes_LE(p_header_data, &mut jp2.minversion, 4 as OPJ_UINT32);
+    opj_read_bytes(p_header_data, &mut jp2.minversion, 4 as OPJ_UINT32);
     p_header_data = p_header_data.offset(4);
     l_remaining_bytes = p_header_size.wrapping_sub(8u32);
     /* the number of remaining bytes should be a multiple of 4 */
@@ -2733,7 +2733,7 @@ fn opj_jp2_read_ftyp(
     }
     i = 0 as OPJ_UINT32;
     while i < jp2.numcl {
-      opj_read_bytes_LE(
+      opj_read_bytes(
         p_header_data,
         &mut *jp2.cl.offset(i as isize),
         4 as OPJ_UINT32,
@@ -2909,10 +2909,10 @@ fn opj_jp2_read_boxhdr_char(
       return 0i32;
     }
     /* process read data */
-    opj_read_bytes_LE(p_data, &mut l_value, 4 as OPJ_UINT32);
+    opj_read_bytes(p_data, &mut l_value, 4 as OPJ_UINT32);
     p_data = p_data.offset(4);
     (*box_0).length = l_value;
-    opj_read_bytes_LE(p_data, &mut l_value, 4 as OPJ_UINT32);
+    opj_read_bytes(p_data, &mut l_value, 4 as OPJ_UINT32);
     p_data = p_data.offset(4);
     (*box_0).type_0 = l_value;
     *p_number_bytes_read = 8 as OPJ_UINT32;
@@ -2928,7 +2928,7 @@ fn opj_jp2_read_boxhdr_char(
         );
         return 0i32;
       }
-      opj_read_bytes_LE(p_data, &mut l_xl_part_size, 4 as OPJ_UINT32);
+      opj_read_bytes(p_data, &mut l_xl_part_size, 4 as OPJ_UINT32);
       p_data = p_data.offset(4);
       *p_number_bytes_read =
         (*p_number_bytes_read as core::ffi::c_uint).wrapping_add(4u32) as OPJ_UINT32 as OPJ_UINT32;
@@ -2940,7 +2940,7 @@ fn opj_jp2_read_boxhdr_char(
         );
         return 0i32;
       }
-      opj_read_bytes_LE(p_data, &mut l_value, 4 as OPJ_UINT32);
+      opj_read_bytes(p_data, &mut l_value, 4 as OPJ_UINT32);
       *p_number_bytes_read =
         (*p_number_bytes_read as core::ffi::c_uint).wrapping_add(4u32) as OPJ_UINT32 as OPJ_UINT32;
       (*box_0).length = l_value;
