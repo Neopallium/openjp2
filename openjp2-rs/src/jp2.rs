@@ -2634,38 +2634,37 @@ fn opj_jp2_read_jp(
   mut p_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_magic_number: OPJ_UINT32 = 0;
-    /* preconditions */
+  let mut l_magic_number: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    if jp2.jp2_state != JP2_STATE_NONE as core::ffi::c_uint {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "The signature box must be the first box in the file.\n",
-      );
-      return 0i32;
-    }
-    /* assure length of data is correct (4 -> magic number) */
-    if p_header_size != 4u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error with JP signature Box size\n",);
-      return 0i32;
-    }
-    /* rearrange data */
-    opj_read_bytes(p_header_data, &mut l_magic_number, 4 as OPJ_UINT32);
-    if l_magic_number != 0xd0a870au32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Error with JP Signature : bad magic number\n",
-      );
-      return 0i32;
-    }
-    jp2.jp2_state |= JP2_STATE_SIGNATURE as core::ffi::c_uint;
-    1i32
+  assert!(!p_header_data.is_null());
+  if jp2.jp2_state != JP2_STATE_NONE as core::ffi::c_uint {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "The signature box must be the first box in the file.\n",
+    );
+    return 0i32;
   }
+  /* assure length of data is correct (4 -> magic number) */
+  if p_header_size != 4u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error with JP signature Box size\n",);
+    return 0i32;
+  }
+  /* rearrange data */
+  opj_read_bytes(p_header_data, &mut l_magic_number, 4 as OPJ_UINT32);
+  if l_magic_number != 0xd0a870au32 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error with JP Signature : bad magic number\n",
+    );
+    return 0i32;
+  }
+  jp2.jp2_state |= JP2_STATE_SIGNATURE as core::ffi::c_uint;
+  1i32
 }
+
 /* *
  * Reads a a FTYP box - File type box
  *
