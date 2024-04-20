@@ -10,6 +10,7 @@ extern "C" {
 
   fn free(_: *mut core::ffi::c_void);
 
+  fn memalign(align: usize, size: usize) -> *mut core::ffi::c_void;
   fn memcpy(
     _: *mut core::ffi::c_void,
     _: *const core::ffi::c_void,
@@ -57,7 +58,7 @@ unsafe fn opj_aligned_alloc_n(mut alignment: size_t, mut size: size_t) -> *mut c
     /* prevent implementation defined behavior of realloc */
     return std::ptr::null_mut::<core::ffi::c_void>();
   }
-  libc::memalign(alignment, size)
+  memalign(alignment, size)
 }
 #[inline]
 unsafe fn opj_aligned_realloc_n(
