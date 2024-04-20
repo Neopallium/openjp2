@@ -20,7 +20,7 @@ extern "C" {
 #[cfg(windows)]
 extern "C" {
   #[link_name = "_aligned_realloc"]
-  fn aligned_realloc(memblock: *mut ::c_void, size: size_t, alignment: size_t) -> *mut c_void;
+  fn aligned_realloc(memblock: *mut core::ffi::c_void, size: size_t, alignment: size_t) -> *mut core::ffi::c_void;
 }
 
 /*
