@@ -121,13 +121,13 @@ impl Read for CustomStream {
           buf.as_mut_ptr() as *mut core::ffi::c_void,
           len,
           self.m_user_data,
-        ) as i64
+        ) as isize
       }
     } else {
       return Err(IoError::other("Custom stream doesn't have a read function"));
     };
     if res >= 0 {
-      self.m_byte_offset += res;
+      self.m_byte_offset += res as i64;
       Ok(res as usize)
     } else {
       Err(IoError::other("read failed"))
@@ -144,7 +144,7 @@ impl Write for CustomStream {
           buf.as_ptr() as *mut core::ffi::c_void,
           len,
           self.m_user_data,
-        ) as i64
+        ) as isize
       }
     } else {
       return Err(IoError::other(
@@ -152,7 +152,7 @@ impl Write for CustomStream {
       ));
     };
     if res >= 0 {
-      self.m_byte_offset += res;
+      self.m_byte_offset += res as i64;
       Ok(res as usize)
     } else {
       Err(IoError::other("write failed"))
