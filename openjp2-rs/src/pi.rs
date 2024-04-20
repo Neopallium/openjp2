@@ -545,36 +545,38 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
           }
           res = &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
           levelno = (*comp).numresolutions - 1 - (*pi).resno;
+          let dx = (*comp).dx as u64;
+          let dy = (*comp).dy as u64;
 
-          if (((*comp).dx << levelno as u64) >> levelno) as u32 != (*comp).dx
-            || (((*comp).dy << levelno as u64) >> levelno) as u32 != (*comp).dy
+          if ((dx << levelno as u64) >> levelno) != dx
+            || ((dy << levelno as u64) >> levelno) != dy
           {
             current_block = 10891380440665537214;
             continue;
           }
 
-          trx0 = opj_uint64_ceildiv_res_uint32((*pi).tx0 as u64, ((*comp).dx as u64) << levelno);
-          try0 = opj_uint64_ceildiv_res_uint32((*pi).ty0 as u64, ((*comp).dy as u64) << levelno);
-          trx1 = opj_uint64_ceildiv_res_uint32((*pi).tx1 as u64, ((*comp).dx as u64) << levelno);
-          try1 = opj_uint64_ceildiv_res_uint32((*pi).ty1 as u64, ((*comp).dy as u64) << levelno);
+          trx0 = opj_uint64_ceildiv_res_uint32((*pi).tx0 as u64, dx << levelno);
+          try0 = opj_uint64_ceildiv_res_uint32((*pi).ty0 as u64, dy << levelno);
+          trx1 = opj_uint64_ceildiv_res_uint32((*pi).tx1 as u64, dx << levelno);
+          try1 = opj_uint64_ceildiv_res_uint32((*pi).ty1 as u64, dy << levelno);
           rpx = (*res).pdx.wrapping_add(levelno);
           rpy = (*res).pdy.wrapping_add(levelno);
 
-          if (((*comp).dx << rpx) as u64 >> rpx) as u32 != (*comp).dx
-            || (((*comp).dy << rpy) as u64 >> rpy) as u32 != (*comp).dy
+          if ((dx << rpx) >> rpx) != dx
+            || ((dy << rpy) >> rpy) != dy
           {
             current_block = 10891380440665537214;
             continue;
           }
 
           /* See ISO-15441. B.12.1.3 Resolution level-position-component-layer progression */
-          if !(((*pi).y as u64 % (((*comp).dy as u64) << rpy)) == 0
+          if !(((*pi).y as u64 % (dy << rpy)) == 0
             || ((*pi).y == (*pi).ty0 && (((try0 as u64) << levelno) % (1u64 << rpy)) != 0))
           {
             current_block = 10891380440665537214;
             continue;
           }
-          if !(((*pi).x as u64 % (((*comp).dx as u64) << rpx)) == 0
+          if !(((*pi).x as u64 % (dx << rpx)) == 0
             || ((*pi).x == (*pi).tx0 && (((trx0 as u64) << levelno) % (1u64 << rpx)) != 0))
           {
             current_block = 10891380440665537214;
@@ -589,11 +591,11 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             continue;
           }
           prci = opj_uint_floordivpow2(
-            opj_uint64_ceildiv_res_uint32((*pi).x as u64, ((*comp).dx as u64) << levelno),
+            opj_uint64_ceildiv_res_uint32((*pi).x as u64, dx << levelno),
             (*res).pdx,
           ) - opj_uint_floordivpow2(trx0, (*res).pdx);
           prcj = opj_uint_floordivpow2(
-            opj_uint64_ceildiv_res_uint32((*pi).y as u64, ((*comp).dy as u64) << levelno),
+            opj_uint64_ceildiv_res_uint32((*pi).y as u64, dy << levelno),
             (*res).pdy,
           ) - opj_uint_floordivpow2(try0, (*res).pdy);
           (*pi).precno = prci.wrapping_add(prcj.wrapping_mul((*res).pw));
