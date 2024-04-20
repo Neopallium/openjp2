@@ -15,7 +15,7 @@ use super::tcd::*;
 use super::malloc::*;
 
 #[cfg(feature = "file-io")]
-use ::libc::{fprintf, FILE};
+use ::libc::FILE;
 
 use bitflags::bitflags;
 
@@ -9980,7 +9980,7 @@ fn opj_j2k_update_image_data(
         l_height_src = (res_y1 - res_y0) as OPJ_UINT32;
         /* Current tile component size*/
         /*if (i == 0) {
-        fprintf(stdout, "SRC: l_res_x0=%d, l_res_x1=%d, l_res_y0=%d, l_res_y1=%d\n",
+        fprintf!(stdout, "SRC: l_res_x0=%d, l_res_x1=%d, l_res_y0=%d, l_res_y1=%d\n",
                         res_x0, res_x1, res_y0, res_y1);
         }*/
         /* Border of the current output component*/
@@ -9989,7 +9989,7 @@ fn opj_j2k_update_image_data(
         l_x1_dest = l_x0_dest.wrapping_add((*l_img_comp_dest).w);
         l_y1_dest = l_y0_dest.wrapping_add((*l_img_comp_dest).h);
         /*if (i == 0) {
-        fprintf(stdout, "DEST: l_x0_dest=%d, l_x1_dest=%d, l_y0_dest=%d, l_y1_dest=%d (%d)\n",
+        fprintf!(stdout, "DEST: l_x0_dest=%d, l_x1_dest=%d, l_y0_dest=%d, l_y1_dest=%d (%d)\n",
                         l_x0_dest, l_x1_dest, l_y0_dest, l_y1_dest, l_img_comp_dest->factor );
         }*/
         /*-----*/
@@ -11281,30 +11281,27 @@ fn opj_j2k_dump_tile_info(
   unsafe {
     if !l_default_tile.is_null() {
       let mut compno: OPJ_INT32 = 0;
-      fprintf(
+      fprintf!(out_stream, "\t default tile {\n",);
+      if (*l_default_tile).csty != 0 {
+        fprintf!(out_stream, "\t\t csty=%#x\n", (*l_default_tile).csty,);
+      } else {
+        fprintf!(out_stream, "\t\t csty=0\n",);
+      }
+      if (*l_default_tile).prg != 0 {
+        fprintf!(
+          out_stream,
+          "\t\t prg=%#x\n",
+          (*l_default_tile).prg as core::ffi::c_int,
+        );
+      } else {
+        fprintf!(out_stream, "\t\t prg=0\n",);
+      }
+      fprintf!(
         out_stream,
-        b"\t default tile {\n\x00" as *const u8 as *const core::ffi::c_char,
-      );
-      fprintf(
-        out_stream,
-        b"\t\t csty=%#x\n\x00" as *const u8 as *const core::ffi::c_char,
-        (*l_default_tile).csty,
-      );
-      fprintf(
-        out_stream,
-        b"\t\t prg=%#x\n\x00" as *const u8 as *const core::ffi::c_char,
-        (*l_default_tile).prg as core::ffi::c_int,
-      );
-      fprintf(
-        out_stream,
-        b"\t\t numlayers=%d\n\x00" as *const u8 as *const core::ffi::c_char,
+        "\t\t numlayers=%d\n",
         (*l_default_tile).numlayers,
       );
-      fprintf(
-        out_stream,
-        b"\t\t mct=%x\n\x00" as *const u8 as *const core::ffi::c_char,
-        (*l_default_tile).mct,
-      );
+      fprintf!(out_stream, "\t\t mct=%x\n", (*l_default_tile).mct,);
       /*end of default tile*/
       compno = 0i32; /*end of component of default tile*/
       while compno < numcomps {
@@ -11314,74 +11311,41 @@ fn opj_j2k_dump_tile_info(
         let mut bandno: OPJ_INT32 = 0;
         let mut numbands: OPJ_INT32 = 0;
         /* coding style*/
-        fprintf(
+        fprintf!(out_stream, "\t\t comp %d {\n", compno,);
+        if (*l_tccp).csty != 0 {
+          fprintf!(out_stream, "\t\t\t csty=%#x\n", (*l_tccp).csty,);
+        } else {
+          fprintf!(out_stream, "\t\t\t csty=0\n",);
+        }
+        fprintf!(
           out_stream,
-          b"\t\t comp %d {\n\x00" as *const u8 as *const core::ffi::c_char,
-          compno,
-        );
-        fprintf(
-          out_stream,
-          b"\t\t\t csty=%#x\n\x00" as *const u8 as *const core::ffi::c_char,
-          (*l_tccp).csty,
-        );
-        fprintf(
-          out_stream,
-          b"\t\t\t numresolutions=%d\n\x00" as *const u8 as *const core::ffi::c_char,
+          "\t\t\t numresolutions=%d\n",
           (*l_tccp).numresolutions,
         );
-        fprintf(
-          out_stream,
-          b"\t\t\t cblkw=2^%d\n\x00" as *const u8 as *const core::ffi::c_char,
-          (*l_tccp).cblkw,
-        );
-        fprintf(
-          out_stream,
-          b"\t\t\t cblkh=2^%d\n\x00" as *const u8 as *const core::ffi::c_char,
-          (*l_tccp).cblkh,
-        );
-        fprintf(
-          out_stream,
-          b"\t\t\t cblksty=%#x\n\x00" as *const u8 as *const core::ffi::c_char,
-          (*l_tccp).cblksty,
-        );
-        fprintf(
-          out_stream,
-          b"\t\t\t qmfbid=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-          (*l_tccp).qmfbid,
-        );
-        fprintf(
-          out_stream,
-          b"\t\t\t preccintsize (w,h)=\x00" as *const u8 as *const core::ffi::c_char,
-        );
+        fprintf!(out_stream, "\t\t\t cblkw=2^%d\n", (*l_tccp).cblkw,);
+        fprintf!(out_stream, "\t\t\t cblkh=2^%d\n", (*l_tccp).cblkh,);
+        if (*l_tccp).cblksty != 0 {
+          fprintf!(out_stream, "\t\t\t cblksty=%#x\n", (*l_tccp).cblksty,);
+        } else {
+          fprintf!(out_stream, "\t\t\t cblksty=0\n",);
+        }
+        fprintf!(out_stream, "\t\t\t qmfbid=%d\n", (*l_tccp).qmfbid,);
+        fprintf!(out_stream, "\t\t\t preccintsize (w,h)=",);
         resno = 0 as OPJ_UINT32;
         while resno < (*l_tccp).numresolutions {
-          fprintf(
+          fprintf!(
             out_stream,
-            b"(%d,%d) \x00" as *const u8 as *const core::ffi::c_char,
+            "(%d,%d) ",
             (*l_tccp).prcw[resno as usize],
             (*l_tccp).prch[resno as usize],
           );
           resno += 1;
         }
-        fprintf(
-          out_stream,
-          b"\n\x00" as *const u8 as *const core::ffi::c_char,
-        );
+        fprintf!(out_stream, "\n",);
         /* quantization style*/
-        fprintf(
-          out_stream,
-          b"\t\t\t qntsty=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-          (*l_tccp).qntsty,
-        );
-        fprintf(
-          out_stream,
-          b"\t\t\t numgbits=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-          (*l_tccp).numgbits,
-        );
-        fprintf(
-          out_stream,
-          b"\t\t\t stepsizes (m,e)=\x00" as *const u8 as *const core::ffi::c_char,
-        );
+        fprintf!(out_stream, "\t\t\t qntsty=%d\n", (*l_tccp).qntsty,);
+        fprintf!(out_stream, "\t\t\t numgbits=%d\n", (*l_tccp).numgbits,);
+        fprintf!(out_stream, "\t\t\t stepsizes (m,e)=",);
         numbands = if (*l_tccp).qntsty == 1u32 {
           1i32
         } else {
@@ -11389,34 +11353,21 @@ fn opj_j2k_dump_tile_info(
         };
         bandno = 0i32;
         while bandno < numbands {
-          fprintf(
+          fprintf!(
             out_stream,
-            b"(%d,%d) \x00" as *const u8 as *const core::ffi::c_char,
+            "(%d,%d) ",
             (*l_tccp).stepsizes[bandno as usize].mant,
             (*l_tccp).stepsizes[bandno as usize].expn,
           );
           bandno += 1
         }
-        fprintf(
-          out_stream,
-          b"\n\x00" as *const u8 as *const core::ffi::c_char,
-        );
+        fprintf!(out_stream, "\n",);
         /* RGN value*/
-        fprintf(
-          out_stream,
-          b"\t\t\t roishift=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-          (*l_tccp).roishift,
-        );
-        fprintf(
-          out_stream,
-          b"\t\t }\n\x00" as *const u8 as *const core::ffi::c_char,
-        );
+        fprintf!(out_stream, "\t\t\t roishift=%d\n", (*l_tccp).roishift,);
+        fprintf!(out_stream, "\t\t }\n",);
         compno += 1
       }
-      fprintf(
-        out_stream,
-        b"\t }\n\x00" as *const u8 as *const core::ffi::c_char,
-      );
+      fprintf!(out_stream, "\t }\n",);
     };
   }
 }
@@ -11426,10 +11377,7 @@ pub(crate) fn j2k_dump(mut p_j2k: &mut opj_j2k, mut flag: OPJ_INT32, mut out_str
   unsafe {
     /* Check if the flag is compatible with j2k file*/
     if flag & 128i32 != 0 || flag & 256i32 != 0 {
-      fprintf(
-        out_stream,
-        b"Wrong flag\n\x00" as *const u8 as *const core::ffi::c_char,
-      );
+      fprintf!(out_stream, "Wrong flag\n",);
       return;
     }
     /* Dump the image_header */
@@ -11476,38 +11424,40 @@ fn opj_j2k_dump_MH_index(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FILE) {
     let mut it_marker: OPJ_UINT32 = 0;
     let mut it_tile: OPJ_UINT32 = 0;
     let mut it_tile_part: OPJ_UINT32 = 0;
-    fprintf(
+    fprintf!(out_stream, "Codestream index from main header: {\n",);
+    fprintf!(
       out_stream,
-      b"Codestream index from main header: {\n\x00" as *const u8 as *const core::ffi::c_char,
-    );
-    fprintf(
-      out_stream,
-      b"\t Main header start position=%li\n\t Main header end position=%li\n\x00" as *const u8
-        as *const core::ffi::c_char,
+      "\t Main header start position=%li\n\t Main header end position=%li\n",
       (*cstr_index).main_head_start,
       (*cstr_index).main_head_end,
     );
-    fprintf(
-      out_stream,
-      b"\t Marker list: {\n\x00" as *const u8 as *const core::ffi::c_char,
-    );
+    fprintf!(out_stream, "\t Marker list: {\n",);
     if !(*cstr_index).marker.is_null() {
       it_marker = 0 as OPJ_UINT32;
       while it_marker < (*cstr_index).marknum {
-        fprintf(
-          out_stream,
-          b"\t\t type=%#x, pos=%li, len=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-          (*(*cstr_index).marker.offset(it_marker as isize)).type_ as core::ffi::c_int,
-          (*(*cstr_index).marker.offset(it_marker as isize)).pos,
-          (*(*cstr_index).marker.offset(it_marker as isize)).len,
-        );
+        let marker = *(*cstr_index).marker.offset(it_marker as isize);
+        let ty = marker.type_ as i32;
+        if ty != 0 {
+          fprintf!(
+            out_stream,
+            "\t\t type=%#x, pos=%li, len=%d\n",
+            ty,
+            marker.pos,
+            marker.len,
+          );
+        } else {
+          fprintf!(
+            out_stream,
+            "\t\t type=%x, pos=%li, len=%d\n",
+            ty,
+            marker.pos,
+            marker.len,
+          );
+        }
         it_marker += 1;
       }
     }
-    fprintf(
-      out_stream,
-      b"\t }\n\x00" as *const u8 as *const core::ffi::c_char,
-    );
+    fprintf!(out_stream, "\t }\n",);
     if !(*cstr_index).tile_index.is_null() {
       /* Simple test to avoid to write empty information*/
       let mut l_acc_nb_of_tile_part = 0 as OPJ_UINT32; /* Not fill from the main header*/
@@ -11519,16 +11469,13 @@ fn opj_j2k_dump_MH_index(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FILE) {
         it_tile += 1;
       }
       if l_acc_nb_of_tile_part != 0 {
-        fprintf(
-          out_stream,
-          b"\t Tile index: {\n\x00" as *const u8 as *const core::ffi::c_char,
-        );
+        fprintf!(out_stream, "\t Tile index: {\n",);
         it_tile = 0 as OPJ_UINT32;
         while it_tile < (*cstr_index).nb_of_tiles {
           let mut nb_of_tile_part = (*(*cstr_index).tile_index.offset(it_tile as isize)).nb_tps;
-          fprintf(
+          fprintf!(
             out_stream,
-            b"\t\t nb of tile-part in tile [%d]=%d\n\x00" as *const u8 as *const core::ffi::c_char,
+            "\t\t nb of tile-part in tile [%d]=%d\n",
             it_tile,
             nb_of_tile_part,
           );
@@ -11538,10 +11485,9 @@ fn opj_j2k_dump_MH_index(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FILE) {
           {
             it_tile_part = 0 as OPJ_UINT32;
             while it_tile_part < nb_of_tile_part {
-              fprintf(
+              fprintf!(
                 out_stream,
-                b"\t\t\t tile-part[%d]: star_pos=%li, end_header=%li, end_pos=%li.\n\x00"
-                  as *const u8 as *const core::ffi::c_char,
+                "\t\t\t tile-part[%d]: star_pos=%li, end_header=%li, end_pos=%li.\n",
                 it_tile_part,
                 (*(*(*cstr_index).tile_index.offset(it_tile as isize))
                   .tp_index
@@ -11565,9 +11511,9 @@ fn opj_j2k_dump_MH_index(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FILE) {
           {
             it_marker = 0 as OPJ_UINT32;
             while it_marker < (*(*cstr_index).tile_index.offset(it_tile as isize)).marknum {
-              fprintf(
+              fprintf!(
                 out_stream,
-                b"\t\t type=%#x, pos=%li, len=%d\n\x00" as *const u8 as *const core::ffi::c_char,
+                "\t\t type=%#x, pos=%li, len=%d\n",
                 (*(*(*cstr_index).tile_index.offset(it_tile as isize))
                   .marker
                   .offset(it_marker as isize))
@@ -11586,41 +11532,32 @@ fn opj_j2k_dump_MH_index(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FILE) {
           }
           it_tile += 1;
         }
-        fprintf(
-          out_stream,
-          b"\t }\n\x00" as *const u8 as *const core::ffi::c_char,
-        );
+        fprintf!(out_stream, "\t }\n",);
       }
     }
-    fprintf(
-      out_stream,
-      b"}\n\x00" as *const u8 as *const core::ffi::c_char,
-    );
+    fprintf!(out_stream, "}\n",);
   }
 }
 
 #[cfg(feature = "file-io")]
 fn opj_j2k_dump_MH_info(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FILE) {
   unsafe {
-    fprintf(
+    fprintf!(out_stream, "Codestream info from main header: {\n",);
+    fprintf!(
       out_stream,
-      b"Codestream info from main header: {\n\x00" as *const u8 as *const core::ffi::c_char,
-    );
-    fprintf(
-      out_stream,
-      b"\t tx0=%u, ty0=%u\n\x00" as *const u8 as *const core::ffi::c_char,
+      "\t tx0=%u, ty0=%u\n",
       p_j2k.m_cp.tx0,
       p_j2k.m_cp.ty0,
     );
-    fprintf(
+    fprintf!(
       out_stream,
-      b"\t tdx=%u, tdy=%u\n\x00" as *const u8 as *const core::ffi::c_char,
+      "\t tdx=%u, tdy=%u\n",
       p_j2k.m_cp.tdx,
       p_j2k.m_cp.tdy,
     );
-    fprintf(
+    fprintf!(
       out_stream,
-      b"\t tw=%u, th=%u\n\x00" as *const u8 as *const core::ffi::c_char,
+      "\t tw=%u, th=%u\n",
       p_j2k.m_cp.tw,
       p_j2k.m_cp.th,
     );
@@ -11629,10 +11566,7 @@ fn opj_j2k_dump_MH_info(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FILE) {
       (*p_j2k.m_private_image).numcomps as OPJ_INT32,
       out_stream,
     );
-    fprintf(
-      out_stream,
-      b"}\n\x00" as *const u8 as *const core::ffi::c_char,
-    );
+    fprintf!(out_stream, "}\n",);
   }
 }
 
@@ -11644,68 +11578,43 @@ pub(crate) fn j2k_dump_image_header(
   mut out_stream: *mut FILE,
 ) {
   unsafe {
-    let mut tab: [core::ffi::c_char; 2] = [0; 2];
+    let mut tab = "";
     if dev_dump_flag != 0 {
-      fprintf(
-        out_stream,
-        b"[DEV] Dump an image_header struct {\n\x00" as *const u8 as *const core::ffi::c_char,
-      );
-      tab[0_usize] = '\u{0}' as i32 as core::ffi::c_char
+      fprintf!(out_stream, "[DEV] Dump an image_header struct {\n",);
     } else {
-      fprintf(
-        out_stream,
-        b"Image info {\n\x00" as *const u8 as *const core::ffi::c_char,
-      );
-      tab[0_usize] = '\t' as i32 as core::ffi::c_char;
-      tab[1_usize] = '\u{0}' as i32 as core::ffi::c_char
+      fprintf!(out_stream, "Image info {\n",);
+      tab = "\t";
     }
-    fprintf(
+    fprintf!(
       out_stream,
-      b"%s x0=%d, y0=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-      tab.as_mut_ptr(),
+      "%s x0=%d, y0=%d\n",
+      tab,
       (*img_header).x0,
       (*img_header).y0,
     );
-    fprintf(
+    fprintf!(
       out_stream,
-      b"%s x1=%d, y1=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-      tab.as_mut_ptr(),
+      "%s x1=%d, y1=%d\n",
+      tab,
       (*img_header).x1,
       (*img_header).y1,
     );
-    fprintf(
-      out_stream,
-      b"%s numcomps=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-      tab.as_mut_ptr(),
-      (*img_header).numcomps,
-    );
+    fprintf!(out_stream, "%s numcomps=%d\n", tab, (*img_header).numcomps,);
     if !(*img_header).comps.is_null() {
       let mut compno: OPJ_UINT32 = 0;
       compno = 0 as OPJ_UINT32;
       while compno < (*img_header).numcomps {
-        fprintf(
-          out_stream,
-          b"%s\t component %d {\n\x00" as *const u8 as *const core::ffi::c_char,
-          tab.as_mut_ptr(),
-          compno,
-        );
+        fprintf!(out_stream, "%s\t component %d {\n", tab, compno,);
         j2k_dump_image_comp_header(
           &mut *(*img_header).comps.offset(compno as isize),
           dev_dump_flag,
           out_stream,
         );
-        fprintf(
-          out_stream,
-          b"%s}\n\x00" as *const u8 as *const core::ffi::c_char,
-          tab.as_mut_ptr(),
-        );
+        fprintf!(out_stream, "%s}\n", tab,);
         compno += 1;
       }
     }
-    fprintf(
-      out_stream,
-      b"}\n\x00" as *const u8 as *const core::ffi::c_char,
-    );
+    fprintf!(out_stream, "}\n",);
   }
 }
 
@@ -11717,42 +11626,23 @@ pub(crate) fn j2k_dump_image_comp_header(
   mut out_stream: *mut FILE,
 ) {
   unsafe {
-    let mut tab: [core::ffi::c_char; 3] = [0; 3];
+    let mut tab = "";
     if dev_dump_flag != 0 {
-      fprintf(
-        out_stream,
-        b"[DEV] Dump an image_comp_header struct {\n\x00" as *const u8 as *const core::ffi::c_char,
-      );
-      tab[0_usize] = '\u{0}' as i32 as core::ffi::c_char
+      fprintf!(out_stream, "[DEV] Dump an image_comp_header struct {\n",);
     } else {
-      tab[0_usize] = '\t' as i32 as core::ffi::c_char;
-      tab[1_usize] = '\t' as i32 as core::ffi::c_char;
-      tab[2_usize] = '\u{0}' as i32 as core::ffi::c_char
+      tab = "\t\t";
     }
-    fprintf(
+    fprintf!(
       out_stream,
-      b"%s dx=%d, dy=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-      tab.as_mut_ptr(),
+      "%s dx=%d, dy=%d\n",
+      tab,
       (*comp_header).dx,
       (*comp_header).dy,
     );
-    fprintf(
-      out_stream,
-      b"%s prec=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-      tab.as_mut_ptr(),
-      (*comp_header).prec,
-    );
-    fprintf(
-      out_stream,
-      b"%s sgnd=%d\n\x00" as *const u8 as *const core::ffi::c_char,
-      tab.as_mut_ptr(),
-      (*comp_header).sgnd,
-    );
+    fprintf!(out_stream, "%s prec=%d\n", tab, (*comp_header).prec,);
+    fprintf!(out_stream, "%s sgnd=%d\n", tab, (*comp_header).sgnd,);
     if dev_dump_flag != 0 {
-      fprintf(
-        out_stream,
-        b"}\n\x00" as *const u8 as *const core::ffi::c_char,
-      );
+      fprintf!(out_stream, "}\n",);
     };
   }
 }
