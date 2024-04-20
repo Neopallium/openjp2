@@ -31,7 +31,7 @@ dependencies = [
 
 [[package]]
 name = "openjp2"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "bitflags",
  "libc",
