@@ -16,6 +16,13 @@ extern "C" {
     _: usize,
   ) -> *mut core::ffi::c_void;
 }
+
+#[cfg(windows)]
+extern "C" {
+  #[link_name = "_aligned_realloc"]
+  fn aligned_realloc(memblock: *mut ::c_void, size: size_t, alignment: size_t) -> *mut c_void;
+}
+
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
@@ -93,8 +100,7 @@ unsafe fn opj_aligned_realloc_n(
   /* no portable aligned realloc */
   #[cfg(windows)]
   {
-    /* _MSC_VER */
-    r_ptr = libc::aligned_realloc(ptr, new_size, alignment)
+    r_ptr = aligned_realloc(ptr, new_size, alignment)
   }
   #[cfg(not(windows))]
   {
