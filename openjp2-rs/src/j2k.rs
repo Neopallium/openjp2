@@ -11720,7 +11720,7 @@ pub(crate) fn j2k_dump_image_comp_header(
     let mut tab: [core::ffi::c_char; 3] = [0; 3];
     if dev_dump_flag != 0 {
       fprintf(
-        stdout,
+        out_stream,
         b"[DEV] Dump an image_comp_header struct {\n\x00" as *const u8 as *const core::ffi::c_char,
       );
       tab[0_usize] = '\u{0}' as i32 as core::ffi::c_char
