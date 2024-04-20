@@ -14,7 +14,6 @@ jobs:
       matrix:
         toolchain:
           - stable
-          - nightly
         platform:
           - name: Linux-x86_64
             os: ubuntu-20.04

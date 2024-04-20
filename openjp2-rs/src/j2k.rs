@@ -37,8 +37,6 @@ extern "C" {
   fn getenv(__name: *const core::ffi::c_char) -> *mut core::ffi::c_char;
 
   fn floor(_: core::ffi::c_double) -> core::ffi::c_double;
-  #[cfg(feature = "file-io")]
-  static mut stdout: *mut FILE;
 
   fn memcpy(
     _: *mut core::ffi::c_void,
@@ -11649,7 +11647,7 @@ pub(crate) fn j2k_dump_image_header(
     let mut tab: [core::ffi::c_char; 2] = [0; 2];
     if dev_dump_flag != 0 {
       fprintf(
-        stdout,
+        out_stream,
         b"[DEV] Dump an image_header struct {\n\x00" as *const u8 as *const core::ffi::c_char,
       );
       tab[0_usize] = '\u{0}' as i32 as core::ffi::c_char
