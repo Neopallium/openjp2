@@ -10,12 +10,6 @@ extern "C" {
 
   fn free(_: *mut core::ffi::c_void);
 
-  fn posix_memalign(
-    __memptr: *mut *mut core::ffi::c_void,
-    __alignment: size_t,
-    __size: size_t,
-  ) -> core::ffi::c_int;
-
   fn memcpy(
     _: *mut core::ffi::c_void,
     _: *const core::ffi::c_void,
@@ -55,25 +49,15 @@ extern "C" {
  */
 #[inline]
 unsafe fn opj_aligned_alloc_n(mut alignment: size_t, mut size: size_t) -> *mut core::ffi::c_void {
-  let mut ptr = std::ptr::null_mut::<core::ffi::c_void>();
   /* alignment shall be power of 2 */
-
-  /* alignment shall be at least sizeof(void*) */
   assert!(alignment != 0 && alignment & alignment.wrapping_sub(1) == 0);
+  /* alignment shall be at least sizeof(void*) */
   assert!(alignment >= core::mem::size_of::<*mut core::ffi::c_void>());
   if size == 0 {
     /* prevent implementation defined behavior of realloc */
     return std::ptr::null_mut::<core::ffi::c_void>();
   }
-  /* aligned_alloc requires c11, restrict to posix_memalign for now. Quote:
-   * This function was introduced in POSIX 1003.1d. Although this function is
-   * superseded by aligned_alloc, it is more portable to older POSIX systems
-   * that do not support ISO C11.  */
-  if posix_memalign(&mut ptr, alignment, size) != 0 {
-    ptr = std::ptr::null_mut::<core::ffi::c_void>()
-  }
-  /* older linux */
-  ptr
+  libc::memalign(alignment, size)
 }
 #[inline]
 unsafe fn opj_aligned_realloc_n(
