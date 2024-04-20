@@ -38,8 +38,8 @@ jobs:
       - name: Install Rust
         run: |
             rustup update ${{ matrix.toolchain }}
-            rustup target add ${{ matrix.platform.target }}
             rustup default ${{ matrix.toolchain }}
+            rustup target add ${{ matrix.platform.target }}
       - name: check default features
         working-directory: ./openjp2-rs
         run: cargo check --target ${{ matrix.platform.target }} --verbose
