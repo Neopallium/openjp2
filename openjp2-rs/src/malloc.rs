@@ -94,7 +94,7 @@ unsafe fn opj_aligned_realloc_n(
   #[cfg(windows)]
   {
     /* _MSC_VER */
-    r_ptr = libc::aligned_malloc(ptr, new_size, alignment)
+    r_ptr = libc::aligned_realloc(ptr, new_size, alignment)
   }
   #[cfg(not(windows))]
   {
