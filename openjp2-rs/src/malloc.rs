@@ -59,7 +59,7 @@ unsafe fn opj_aligned_alloc_n(mut alignment: size_t, mut size: size_t) -> *mut c
   }
   #[cfg(windows)]
   {
-    libc::memalign(alignment, size)
+    libc::aligned_malloc(size, alignment)
   }
   #[cfg(not(windows))]
   {
