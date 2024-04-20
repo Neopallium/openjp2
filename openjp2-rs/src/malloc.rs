@@ -47,6 +47,7 @@ extern "C" {
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 #[inline]
 unsafe fn opj_aligned_alloc_n(mut alignment: size_t, mut size: size_t) -> *mut core::ffi::c_void {
   /* alignment shall be power of 2 */
@@ -70,6 +71,7 @@ unsafe fn opj_aligned_alloc_n(mut alignment: size_t, mut size: size_t) -> *mut c
     ptr
   }
 }
+
 #[inline]
 unsafe fn opj_aligned_realloc_n(
   mut ptr: *mut core::ffi::c_void,
@@ -83,30 +85,39 @@ unsafe fn opj_aligned_realloc_n(
   assert!(alignment != 0 && alignment & alignment.wrapping_sub(1) == 0);
   assert!(alignment >= core::mem::size_of::<*mut core::ffi::c_void>());
   if new_size == 0 {
+    // TODO: doesn't this leak memory?
     /* prevent implementation defined behavior of realloc */
     return std::ptr::null_mut::<core::ffi::c_void>();
   }
+
   /* no portable aligned realloc */
-  /* glibc doc states one can mix aligned malloc with realloc */
-  r_ptr = realloc(ptr, new_size); /* fast path */
-  /* we simply use `size_t` to cast, since we are only interest in binary AND
-   * operator */
-  if r_ptr as size_t & alignment.wrapping_sub(1) != 0 {
-    /* this is non-trivial to implement a portable aligned realloc, so use a
-     * simple approach where we do not need a function that return the size of an
-     * allocated array (eg. _msize on Windows, malloc_size on MacOS,
-     * malloc_usable_size on systems with glibc) */
-    let mut a_ptr = opj_aligned_alloc_n(alignment, new_size);
-    if !a_ptr.is_null() {
-      memcpy(a_ptr, r_ptr, new_size);
-    }
-    free(r_ptr);
-    r_ptr = a_ptr
+  #[cfg(windows)]
+  {
+    /* _MSC_VER */
+    r_ptr = libc::aligned_malloc(ptr, new_size, alignment)
   }
-  /* _MSC_VER */
+  #[cfg(not(windows))]
+  {
+    /* glibc doc states one can mix aligned malloc with realloc */
+    r_ptr = realloc(ptr, new_size); /* fast path */
+    /* we simply use `size_t` to cast, since we are only interest in binary AND
+     * operator */
+    if r_ptr as size_t & alignment.wrapping_sub(1) != 0 {
+      /* this is non-trivial to implement a portable aligned realloc, so use a
+       * simple approach where we do not need a function that return the size of an
+       * allocated array (eg. _msize on Windows, malloc_size on MacOS,
+       * malloc_usable_size on systems with glibc) */
+      let mut a_ptr = opj_aligned_alloc_n(alignment, new_size);
+      if !a_ptr.is_null() {
+        memcpy(a_ptr, r_ptr, new_size);
+      }
+      free(r_ptr);
+      r_ptr = a_ptr
+    }
+  }
   r_ptr
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_malloc(mut size: size_t) -> *mut core::ffi::c_void {
   if size == 0 {
     /* prevent implementation defined behavior of realloc */
@@ -114,7 +125,7 @@ pub(crate) unsafe fn opj_malloc(mut size: size_t) -> *mut core::ffi::c_void {
   }
   malloc(size)
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_calloc(mut num: size_t, mut size: size_t) -> *mut core::ffi::c_void {
   if num == 0 || size == 0 {
     /* prevent implementation defined behavior of realloc */
@@ -122,33 +133,40 @@ pub(crate) unsafe fn opj_calloc(mut num: size_t, mut size: size_t) -> *mut core:
   }
   calloc(num, size)
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_aligned_malloc(mut size: size_t) -> *mut core::ffi::c_void {
   opj_aligned_alloc_n(16u32 as size_t, size)
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_aligned_realloc(
   mut ptr: *mut core::ffi::c_void,
   mut size: size_t,
 ) -> *mut core::ffi::c_void {
   opj_aligned_realloc_n(ptr, 16u32 as size_t, size)
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_aligned_32_malloc(mut size: size_t) -> *mut core::ffi::c_void {
   opj_aligned_alloc_n(32u32 as size_t, size)
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_aligned_32_realloc(
   mut ptr: *mut core::ffi::c_void,
   mut size: size_t,
 ) -> *mut core::ffi::c_void {
   opj_aligned_realloc_n(ptr, 32u32 as size_t, size)
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_aligned_free(mut ptr: *mut core::ffi::c_void) {
-  free(ptr);
+  #[cfg(windows)]
+  {
+    libc::aligned_free(ptr);
+  }
+  #[cfg(not(windows))]
+  {
+    free(ptr);
+  }
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_realloc(
   mut ptr: *mut core::ffi::c_void,
   mut new_size: size_t,
@@ -159,7 +177,7 @@ pub(crate) unsafe fn opj_realloc(
   }
   realloc(ptr, new_size)
 }
-#[no_mangle]
+
 pub(crate) unsafe fn opj_free(mut ptr: *mut core::ffi::c_void) {
   free(ptr);
 }
