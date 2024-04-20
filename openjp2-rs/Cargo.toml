@@ -11,6 +11,11 @@ keywords = ["j2k", "jp2", "jpeg2000", "image"]
 edition = "2018"
 autobins = false
 
+exclude = [
+  "CMakeLists.txt",
+  "samples/*",
+]
+
 [lib]
 name = "openjp2"
 crate-type = ["cdylib", "staticlib", "rlib"]
