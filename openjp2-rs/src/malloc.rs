@@ -57,7 +57,18 @@ unsafe fn opj_aligned_alloc_n(mut alignment: size_t, mut size: size_t) -> *mut c
     /* prevent implementation defined behavior of realloc */
     return std::ptr::null_mut::<core::ffi::c_void>();
   }
-  libc::memalign(alignment, size)
+  #[cfg(windows)]
+  {
+    libc::memalign(alignment, size)
+  }
+  #[cfg(not(windows))]
+  {
+    let mut ptr = std::ptr::null_mut::<core::ffi::c_void>();
+    if libc::posix_memalign(&mut ptr, alignment, size) != 0 {
+      ptr = std::ptr::null_mut::<core::ffi::c_void>()
+    }
+    ptr
+  }
 }
 #[inline]
 unsafe fn opj_aligned_realloc_n(
