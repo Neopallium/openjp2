@@ -548,8 +548,7 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
           let dx = (*comp).dx as u64;
           let dy = (*comp).dy as u64;
 
-          if ((dx << levelno as u64) >> levelno) != dx
-            || ((dy << levelno as u64) >> levelno) != dy
+          if ((dx << levelno as u64) >> levelno) != dx || ((dy << levelno as u64) >> levelno) != dy
           {
             current_block = 10891380440665537214;
             continue;
@@ -562,9 +561,7 @@ unsafe fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
           rpx = (*res).pdx.wrapping_add(levelno);
           rpy = (*res).pdy.wrapping_add(levelno);
 
-          if ((dx << rpx) >> rpx) != dx
-            || ((dy << rpy) >> rpy) != dy
-          {
+          if ((dx << rpx) >> rpx) != dx || ((dy << rpy) >> rpy) != dy {
             current_block = 10891380440665537214;
             continue;
           }
