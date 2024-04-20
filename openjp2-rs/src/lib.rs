@@ -23,6 +23,10 @@ mod types;
 #[macro_use]
 mod event;
 
+#[cfg(feature = "file-io")]
+#[macro_use]
+mod fprintf;
+
 // Public OpenJpeg interface.
 pub mod image;
 pub mod openjpeg;

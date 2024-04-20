@@ -162,9 +162,7 @@ fn count_leading_zeros(mut val: OPJ_UINT32) -> OPJ_UINT32 {
  */
 #[inline]
 fn read_le_uint32(mut dataIn: *const core::ffi::c_void) -> OPJ_UINT32 {
-  let val = unsafe {
-    *(dataIn as *mut OPJ_UINT32)
-  };
+  let val = unsafe { *(dataIn as *mut OPJ_UINT32) };
   #[cfg(target_endian = "big")]
   {
     val.swap_bytes()
