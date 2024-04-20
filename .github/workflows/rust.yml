@@ -20,6 +20,10 @@ jobs:
             os: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
 
+          - name: Linux-i686
+            os: ubuntu-20.04
+            target: i686-unknown-linux-musl
+
           - name: Windows-x86_64-msvc
             os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -35,17 +39,17 @@ jobs:
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - name: check default features
         working-directory: ./openjp2-rs
-        run: cargo check --verbose
+        run: cargo check --target ${{ matrix.platform.target }} --verbose
       - name: check features std
         working-directory: ./openjp2-rs
-        run: cargo check --no-default-features --features std
+        run: cargo check --target ${{ matrix.platform.target }} --no-default-features --features std
       - name: check features std,file-io
         working-directory: ./openjp2-rs
-        run: cargo check --no-default-features --features std,file-io
+        run: cargo check --target ${{ matrix.platform.target }} --no-default-features --features std,file-io
       - name: build
         working-directory: ./openjp2-rs
-        run: cargo build --verbose
+        run: cargo build --target ${{ matrix.platform.target }} --verbose
       - name: test
         working-directory: ./openjp2-rs
-        run: cargo test --verbose
+        run: cargo test --target ${{ matrix.platform.target }} --verbose
 
