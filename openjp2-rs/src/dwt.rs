@@ -66,68 +66,68 @@ impl dwt_local {
     i.clamp(0, self.dn - 1)
   }
 
+  fn s_idx(&self, i: i32, chunk: isize) -> isize {
+    (i * 2) as isize * chunk
+  }
+
+  fn d_idx(&self, i: i32, chunk: isize) -> isize {
+    (1 + (i * 2)) as isize * chunk
+  }
+
+  fn s__idx(&self, i: i32, chunk: isize) -> isize {
+    self.s_idx(self.sn_idx(i), chunk)
+  }
+
+  fn d__idx(&self, i: i32, chunk: isize) -> isize {
+    self.d_idx(self.dn_idx(i), chunk)
+  }
+
+  fn ss__idx(&self, i: i32, chunk: isize) -> isize {
+    self.s_idx(self.dn_idx(i), chunk)
+  }
+
+  fn dd__idx(&self, i: i32, chunk: isize) -> isize {
+    self.d_idx(self.sn_idx(i), chunk)
+  }
+
+  fn m(&self, i: isize) -> i32 {
+    unsafe { *self.mem.offset(i) }
+  }
+
+  fn m_mut(&self, i: isize) -> &mut i32 {
+    unsafe { &mut *self.mem.offset(i) }
+  }
+
   fn s(&self, i: i32) -> i32 {
-    unsafe { *self.mem.offset((i * 2) as isize) }
+    self.m(self.s_idx(i, 1))
   }
 
   fn d(&self, i: i32) -> i32 {
-    unsafe { *self.mem.offset((1 + (i * 2)) as isize) }
+    self.m(self.d_idx(i, 1))
   }
 
   fn s_mut(&self, i: i32) -> &mut i32 {
-    unsafe { &mut *self.mem.offset((i * 2) as isize) }
+    self.m_mut(self.s_idx(i, 1))
   }
 
   fn d_mut(&self, i: i32) -> &mut i32 {
-    unsafe { &mut *self.mem.offset((1 + (i * 2)) as isize) }
+    self.m_mut(self.d_idx(i, 1))
   }
 
   fn s_(&self, i: i32) -> i32 {
-    self.s(self.sn_idx(i))
+    self.m(self.s__idx(i, 1))
   }
 
   fn d_(&self, i: i32) -> i32 {
-    self.d(self.dn_idx(i))
+    self.m(self.d__idx(i, 1))
   }
 
   fn ss_(&self, i: i32) -> i32 {
-    self.s(self.dn_idx(i))
+    self.m(self.ss__idx(i, 1))
   }
 
   fn dd_(&self, i: i32) -> i32 {
-    self.d(self.sn_idx(i))
-  }
-
-  fn s_off(&self, i: i32, off: isize) -> i32 {
-    unsafe { *self.mem.offset(((i as u32) * 2 * 4) as isize + off) }
-  }
-
-  fn d_off(&self, i: i32, off: isize) -> i32 {
-    unsafe { *self.mem.offset(((1 + (i as u32) * 2) * 4) as isize + off) }
-  }
-
-  fn s_off_mut(&self, i: i32, off: isize) -> &mut i32 {
-    unsafe { &mut *self.mem.offset(((i as u32) * 2 * 4) as isize + off) }
-  }
-
-  fn d_off_mut(&self, i: i32, off: isize) -> &mut i32 {
-    unsafe { &mut *self.mem.offset(((1 + (i as u32) * 2) * 4) as isize + off) }
-  }
-
-  fn s__off(&self, i: i32, off: isize) -> i32 {
-    self.s_off(self.sn_idx(i), off)
-  }
-
-  fn d__off(&self, i: i32, off: isize) -> i32 {
-    self.d_off(self.dn_idx(i), off)
-  }
-
-  fn ss__off(&self, i: i32, off: isize) -> i32 {
-    self.s_off(self.dn_idx(i), off)
-  }
-
-  fn dd__off(&self, i: i32, off: isize) -> i32 {
-    self.d_off(self.sn_idx(i), off)
+    self.m(self.dd__idx(i, 1))
   }
 
   /// Inverse 5-3 wavelet transform in 1-D.
@@ -203,34 +203,47 @@ impl dwt_local {
     if self.cas == 0 {
       if self.dn > 0 || self.sn > 1 {
         for i in win_l_x0..win_l_x1 {
+          let s_idx = self.s_idx(i, 4);
+          let d0_idx = self.d__idx(i - 1, 4);
+          let d1_idx = self.d__idx(i, 4);
           for off in 0..4 {
-            let val = self.s_off(i, off).wrapping_sub(self.d__off(i - 1, off).wrapping_add(self.d__off(i, off)).wrapping_add(2) >> 2);
-            *self.s_off_mut(i, off) = val;
+            let val = self.m(s_idx + off).wrapping_sub(self.m(d0_idx + off).wrapping_add(self.m(d1_idx + off)).wrapping_add(2) >> 2);
+            *self.m_mut(s_idx + off) = val;
           }
         }
         for i in win_h_x0..win_h_x1 {
+          let d_idx = self.d_idx(i, 4);
+          let s0_idx = self.s__idx(i, 4);
+          let s1_idx = self.s__idx(i + 1, 4);
           for off in 0..4 {
-            let val = self.d_off(i, off).wrapping_add(self.s__off(i, off).wrapping_add(self.s__off(i + 1, off)) >> 1);
-            *self.d_off_mut(i, off) = val;
+            let val = self.m(d_idx + off).wrapping_add(self.m(s0_idx + off).wrapping_add(self.m(s1_idx + off)) >> 1);
+            *self.m_mut(d_idx + off) = val;
           }
         }
       }
     } else {
       if self.sn == 0 && self.dn == 1 {
+        let s_idx = self.s_idx(0, 4);
         for off in 0..4 {
-          *self.s_off_mut(0, off) /= 2;
+          *self.m_mut(s_idx + off) /= 2;
         }
       } else {
         for i in win_l_x0..win_l_x1 {
+          let d_idx = self.d_idx(i, 4);
+          let s0_idx = self.ss__idx(i, 4);
+          let s1_idx = self.ss__idx(i + 1, 4);
           for off in 0..4 {
-            let val = self.d_off(i, off).wrapping_sub(self.ss__off(i, off).wrapping_add(self.ss__off(i + 1, off)).wrapping_add(2) >> 2);
-            *self.d_off_mut(i, off) = val;
+            let val = self.m(d_idx + off).wrapping_sub(self.m(s0_idx + off).wrapping_add(self.m(s1_idx + off)).wrapping_add(2) >> 2);
+            *self.m_mut(d_idx + off) = val;
           }
         }
         for i in win_h_x0..win_h_x1 {
+          let s_idx = self.s_idx(i, 4);
+          let d0_idx = self.dd__idx(i, 4);
+          let d1_idx = self.dd__idx(i - 1, 4);
           for off in 0..4 {
-            let val = self.s_off(i, off).wrapping_add(self.dd__off(i, off).wrapping_add(self.dd__off(i - 1, off)) >> 1);
-            *self.s_off_mut(i, off) = val;
+            let val = self.m(s_idx + off).wrapping_add(self.m(d0_idx + off).wrapping_add(self.m(d1_idx + off)) >> 1);
+            *self.m_mut(s_idx + off) = val;
           }
         }
       }
