@@ -44,12 +44,14 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y gcc g++ python-is-python3
+          rustup default nightly
 
       - name: Build and run tests
         run: |
             ./tools/travis-ci/install.sh
             ./tools/travis-ci/run.sh
         env:
+            RUSTFLAGS: "-Z sanitizer=address"
             OPJ_CI_ARCH: x86_64
             OPJ_CI_BUILD_CONFIGURATION: Debug
             OPJ_CI_ASAN: 1
