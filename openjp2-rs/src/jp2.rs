@@ -502,18 +502,17 @@ fn opj_jp2_read_bpcc(
  *
  */
 fn opj_jp2_write_cdef(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
-  let cdef = if !jp2.color.jp2_cdef.is_null() {
-    unsafe { &*jp2.color.jp2_cdef }
+  let info = if let Some(cdef) = &jp2.color.jp2_cdef {
+    &cdef.info
   } else {
     return false;
   };
-  assert!(!cdef.info.is_null());
-  assert!(cdef.n as core::ffi::c_uint > 0u32);
-  let info = unsafe { std::slice::from_raw_parts(cdef.info, cdef.n as usize) };
+  let len = info.len() as u32;
+  assert!(info.len() > 0);
   let mut header = Jp2BoxHeader::new(Jp2BoxType::CDEF);
-  header.length += 2 + (info.len() * 6) as u32;
+  header.length += 2 + (len * 6);
   header.write(buf);
-  buf.write_all(&(cdef.n as u16).to_be_bytes()).unwrap();
+  buf.write_all(&(len as u16).to_be_bytes()).unwrap();
   for info in info {
     buf.write_all(&(info.cn as u16).to_be_bytes()).unwrap();
     buf.write_all(&(info.typ as u16).to_be_bytes()).unwrap();
@@ -578,42 +577,39 @@ fn opj_jp2_free_pclr(mut color: *mut opj_jp2_color_t) {
 
 fn opj_jp2_check_color(
   mut image: &mut opj_image_t,
-  mut color: *mut opj_jp2_color_t,
+  mut color: &mut opj_jp2_color_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
     let mut i: OPJ_UINT16 = 0;
     /* testcase 4149.pdf.SIGSEGV.cf7.3501 */
-    if !(*color).jp2_cdef.is_null() {
-      let mut info = (*(*color).jp2_cdef).info; /* FIXME image->numcomps == jp2->numcomps before color is applied ??? */
-      let mut n = (*(*color).jp2_cdef).n;
+    if let Some(cdef) = &(*color).jp2_cdef {
+      /* FIXME image->numcomps == jp2->numcomps before color is applied ??? */
       let mut nr_channels = image.numcomps;
       /* cdef applies to cmap channels if any */
       if !(*color).jp2_pclr.is_null() && !(*(*color).jp2_pclr).cmap.is_null() {
-        nr_channels = (*(*color).jp2_pclr).nr_channels as OPJ_UINT32
+        nr_channels = (*(*color).jp2_pclr).nr_channels as u32
       }
-      i = 0 as OPJ_UINT16;
-      while (i as core::ffi::c_int) < n as core::ffi::c_int {
-        if (*info.offset(i as isize)).cn as core::ffi::c_uint >= nr_channels {
+      for info in &cdef.info {
+        if info.cn as u32 >= nr_channels {
           event_msg!(
             p_manager,
             EVT_ERROR,
             "Invalid component index %d (>= %d).\n",
-            (*info.offset(i as isize)).cn as core::ffi::c_int,
+            info.cn as i32,
             nr_channels,
           );
           return 0i32;
         }
-        if (*info.offset(i as isize)).asoc as core::ffi::c_uint != 65535u32
-          && (*info.offset(i as isize)).asoc as core::ffi::c_int > 0i32
-          && ((*info.offset(i as isize)).asoc as core::ffi::c_int - 1i32) as OPJ_UINT32
-            >= nr_channels
+        if info.asoc as core::ffi::c_uint != 65535u32
+          && info.asoc as core::ffi::c_int > 0i32
+          && (info.asoc as core::ffi::c_int - 1i32) as OPJ_UINT32 >= nr_channels
         {
           event_msg!(
             p_manager,
             EVT_ERROR,
             "Invalid component index %d (>= %d).\n",
-            (*info.offset(i as isize)).asoc as core::ffi::c_int - 1i32,
+            info.asoc as core::ffi::c_int - 1i32,
             nr_channels,
           );
           return 0i32;
@@ -622,19 +618,17 @@ fn opj_jp2_check_color(
       }
       /* issue 397 */
       /* ISO 15444-1 states that if cdef is present, it shall contain a complete list of channel definitions. */
-      while nr_channels > 0u32 {
-        i = 0 as OPJ_UINT16;
-        while (i as core::ffi::c_int) < n as core::ffi::c_int {
-          if (*info.offset(i as isize)).cn as OPJ_UINT32 == nr_channels.wrapping_sub(1u32) {
-            break;
-          }
-          i += 1;
-        }
-        if i as core::ffi::c_int == n as core::ffi::c_int {
+      while nr_channels > 0 {
+        nr_channels = nr_channels.wrapping_sub(1);
+        let has = cdef
+          .info
+          .iter()
+          .position(|&x| x.cn as u32 == nr_channels)
+          .is_some();
+        if !has {
           event_msg!(p_manager, EVT_ERROR, "Incomplete channel definitions.\n",);
           return 0i32;
         }
-        nr_channels = nr_channels.wrapping_sub(1)
       }
     }
     /* testcases 451.pdf.SIGSEGV.f4c.3723, 451.pdf.SIGSEGV.5b5.3723 and
@@ -1129,23 +1123,21 @@ fn opj_jp2_read_cmap(
 
 fn opj_jp2_apply_cdef(
   mut image: &mut opj_image_t,
-  mut color: *mut opj_jp2_color_t,
+  mut color: &mut opj_jp2_color_t,
   mut manager: &mut opj_event_mgr,
 ) {
+  let cdef = if let Some(cdef) = &mut color.jp2_cdef {
+    cdef
+  } else {
+    return;
+  };
   unsafe {
-    let mut info = std::ptr::null_mut::<opj_jp2_cdef_info_t>();
-    let mut i: OPJ_UINT16 = 0;
-    let mut n: OPJ_UINT16 = 0;
-    let mut cn: OPJ_UINT16 = 0;
-    let mut asoc: OPJ_UINT16 = 0;
-    let mut acn: OPJ_UINT16 = 0;
-    info = (*(*color).jp2_cdef).info;
-    n = (*(*color).jp2_cdef).n;
-    i = 0 as OPJ_UINT16;
-    while (i as core::ffi::c_int) < n as core::ffi::c_int {
+    let n = cdef.info.len();
+    for i in 0..n {
+      let info = cdef.info[i];
       /* WATCH: acn = asoc - 1 ! */
-      asoc = (*info.offset(i as isize)).asoc;
-      cn = (*info.offset(i as isize)).cn;
+      let asoc = info.asoc;
+      let cn = info.cn;
       if cn as core::ffi::c_uint >= image.numcomps {
         event_msg!(
           manager,
@@ -1155,10 +1147,10 @@ fn opj_jp2_apply_cdef(
           image.numcomps,
         );
       } else if asoc as core::ffi::c_int == 0i32 || asoc as core::ffi::c_int == 65535i32 {
-        (*image.comps.offset(cn as isize)).alpha = (*info.offset(i as isize)).typ
+        (*image.comps.offset(cn as isize)).alpha = info.typ
       } else {
-        acn = (asoc as core::ffi::c_int - 1i32) as OPJ_UINT16;
-        if acn as core::ffi::c_uint >= image.numcomps {
+        let acn = asoc - 1;
+        if acn as u32 >= image.numcomps {
           event_msg!(
             manager,
             EVT_WARNING,
@@ -1169,7 +1161,7 @@ fn opj_jp2_apply_cdef(
         } else {
           /* Swap only if color channel */
           if cn as core::ffi::c_int != acn as core::ffi::c_int
-            && (*info.offset(i as isize)).typ as core::ffi::c_int == 0i32
+            && info.typ as core::ffi::c_int == 0i32
           {
             let mut saved = opj_image_comp_t {
               dx: 0,
@@ -1186,7 +1178,6 @@ fn opj_jp2_apply_cdef(
               data: std::ptr::null_mut::<OPJ_INT32>(),
               alpha: 0,
             };
-            let mut j: OPJ_UINT16 = 0;
             memcpy(
               &mut saved as *mut opj_image_comp_t as *mut core::ffi::c_void,
               &mut *image.comps.offset(cn as isize) as *mut opj_image_comp_t
@@ -1207,28 +1198,22 @@ fn opj_jp2_apply_cdef(
               core::mem::size_of::<opj_image_comp_t>(),
             );
             /* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
-            j = (i as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT16;
-            while (j as core::ffi::c_int) < n as core::ffi::c_int {
-              if (*info.offset(j as isize)).cn as core::ffi::c_int == cn as core::ffi::c_int {
-                (*info.offset(j as isize)).cn = acn
-              } else if (*info.offset(j as isize)).cn as core::ffi::c_int == acn as core::ffi::c_int
-              {
-                (*info.offset(j as isize)).cn = cn
+            for j in i..n {
+              let info = &mut cdef.info[j];
+              if info.cn == cn {
+                info.cn = acn
+              } else if info.cn == acn {
+                info.cn = cn
               }
-              j += 1;
               /* asoc is related to color index. Do not update. */
             }
           }
-          (*image.comps.offset(cn as isize)).alpha = (*info.offset(i as isize)).typ
+          (*image.comps.offset(cn as isize)).alpha = info.typ
         }
       }
-      i += 1;
     }
-    if !(*(*color).jp2_cdef).info.is_null() {
-      opj_free((*(*color).jp2_cdef).info as *mut core::ffi::c_void);
-    }
-    opj_free((*color).jp2_cdef as *mut core::ffi::c_void);
-    (*color).jp2_cdef = std::ptr::null_mut::<opj_jp2_cdef_t>();
+    cdef.info.clear();
+    color.jp2_cdef = None;
   }
 }
 
@@ -1240,15 +1225,13 @@ fn opj_jp2_read_cdef(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut cdef_info = std::ptr::null_mut::<opj_jp2_cdef_info_t>();
-    let mut i: OPJ_UINT16 = 0;
     let mut l_value: OPJ_UINT32 = 0;
     /* preconditions */
 
     assert!(!p_cdef_header_data.is_null());
     /* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
      * inside a JP2 Header box.'*/
-    if !jp2.color.jp2_cdef.is_null() {
+    if jp2.color.jp2_cdef.is_some() {
       return 0i32;
     } /* N */
     if p_cdef_header_size < 2u32 {
@@ -1272,32 +1255,21 @@ fn opj_jp2_read_cdef(
       event_msg!(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n",); /* Asoc^i */
       return 0i32;
     }
-    cdef_info =
-      opj_malloc((l_value as usize).wrapping_mul(core::mem::size_of::<opj_jp2_cdef_info_t>()))
-        as *mut opj_jp2_cdef_info_t;
-    if cdef_info.is_null() {
-      return 0i32;
-    }
-    jp2.color.jp2_cdef = opj_malloc(core::mem::size_of::<opj_jp2_cdef_t>()) as *mut opj_jp2_cdef_t;
-    if jp2.color.jp2_cdef.is_null() {
-      opj_free(cdef_info as *mut core::ffi::c_void);
-      return 0i32;
-    }
-    (*jp2.color.jp2_cdef).info = cdef_info;
-    (*jp2.color.jp2_cdef).n = l_value as OPJ_UINT16;
-    i = 0 as OPJ_UINT16;
-    while (i as core::ffi::c_int) < (*jp2.color.jp2_cdef).n as core::ffi::c_int {
+    let n = l_value as usize;
+    let mut info = Vec::with_capacity(n);
+    for _i in 0..n {
       opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
       p_cdef_header_data = p_cdef_header_data.offset(2);
-      (*cdef_info.offset(i as isize)).cn = l_value as OPJ_UINT16;
+      let cn = l_value as OPJ_UINT16;
       opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
       p_cdef_header_data = p_cdef_header_data.offset(2);
-      (*cdef_info.offset(i as isize)).typ = l_value as OPJ_UINT16;
+      let typ = l_value as OPJ_UINT16;
       opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
       p_cdef_header_data = p_cdef_header_data.offset(2);
-      (*cdef_info.offset(i as isize)).asoc = l_value as OPJ_UINT16;
-      i += 1;
+      let asoc = l_value as OPJ_UINT16;
+      info.push(opj_jp2_cdef_info { cn, typ, asoc });
     }
+    jp2.color.jp2_cdef = Some(opj_jp2_cdef { info });
     1i32
   }
 }
@@ -1454,7 +1426,7 @@ pub(crate) fn opj_jp2_apply_color_postprocessing(
         }
       }
       /* Apply the color space if needed */
-      if !jp2.color.jp2_cdef.is_null() {
+      if jp2.color.jp2_cdef.is_some() {
         opj_jp2_apply_cdef(p_image, &mut jp2.color, p_manager);
       }
     }
@@ -1504,7 +1476,7 @@ fn opj_jp2_write_jp2h(
     writers.push(HeaderWriter::new(opj_jp2_write_bpcc));
   }
   writers.push(HeaderWriter::new(opj_jp2_write_colr));
-  if !jp2.color.jp2_cdef.is_null() {
+  if jp2.color.jp2_cdef.is_some() {
     writers.push(HeaderWriter::new(opj_jp2_write_cdef));
   }
   /* write box header */
@@ -1888,54 +1860,39 @@ pub(crate) fn opj_jp2_setup_encoder(
     }
     if alpha_count == 1u32 {
       /* if here, we know what we can do */
-      jp2.color.jp2_cdef =
-        opj_malloc(core::mem::size_of::<opj_jp2_cdef_t>()) as *mut opj_jp2_cdef_t;
-      if jp2.color.jp2_cdef.is_null() {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Not enough memory to setup the JP2 encoder\n",
-        );
-        return 0i32;
-      }
+      let len = image.numcomps as usize;
+      let mut cdef = opj_jp2_cdef {
+        info: Vec::with_capacity(len),
+      };
       /* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
       /* in which case jp2->color.jp2_cdef->info will be NULL => valid for destruction */
-      (*jp2.color.jp2_cdef).info = opj_malloc(
-        (image.numcomps as usize).wrapping_mul(core::mem::size_of::<opj_jp2_cdef_info_t>()),
-      ) as *mut opj_jp2_cdef_info_t;
-      if (*jp2.color.jp2_cdef).info.is_null() {
-        /* memory will be freed by opj_jp2_destroy */
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Not enough memory to setup the JP2 encoder\n",
-        ); /* cast is valid : image->numcomps [1,16384] */
-        return 0i32;
-      } /* cast is valid : image->numcomps [1,16384] */
-      (*jp2.color.jp2_cdef).n = image.numcomps as OPJ_UINT16;
-      i = 0u32;
-      while i < color_channels {
-        (*(*jp2.color.jp2_cdef).info.offset(i as isize)).cn = i as OPJ_UINT16;
-        (*(*jp2.color.jp2_cdef).info.offset(i as isize)).typ = 0 as OPJ_UINT16;
-        (*(*jp2.color.jp2_cdef).info.offset(i as isize)).asoc = i.wrapping_add(1u32) as OPJ_UINT16;
-        i += 1;
-        /* No overflow + cast is valid : image->numcomps [1,16384] */
-      }
-      while i < image.numcomps {
-        if (*image.comps.offset(i as isize)).alpha as core::ffi::c_int != 0i32 {
-          /* we'll be here exactly once */
-          (*(*jp2.color.jp2_cdef).info.offset(i as isize)).cn = i as OPJ_UINT16; /* cast is valid : image->numcomps [1,16384] */
-          /* Apply alpha channel to the whole image */
-          (*(*jp2.color.jp2_cdef).info.offset(i as isize)).typ = 1 as OPJ_UINT16; /* Opacity channel */
-          (*(*jp2.color.jp2_cdef).info.offset(i as isize)).asoc = 0 as OPJ_UINT16
+      for i in 0..len {
+        let cn = i as u16;
+        if i < color_channels as usize {
+          cdef.info.push(opj_jp2_cdef_info {
+            cn,
+            typ: 0,
+            asoc: cn + 1,
+          })
         } else {
-          /* Unknown channel */
-          (*(*jp2.color.jp2_cdef).info.offset(i as isize)).cn = i as OPJ_UINT16; /* cast is valid : image->numcomps [1,16384] */
-          (*(*jp2.color.jp2_cdef).info.offset(i as isize)).typ = 65535 as OPJ_UINT16; /* PRECEDENCE */
-          (*(*jp2.color.jp2_cdef).info.offset(i as isize)).asoc = 65535 as OPJ_UINT16
-        } /* APPROX */
-        i += 1;
+          if (*image.comps.offset(i as isize)).alpha != 0 {
+            /* we'll be here exactly once */
+            cdef.info.push(opj_jp2_cdef_info {
+              cn,
+              typ: 1,  /* Opacity channel */
+              asoc: 0, /* Apply alpha channel to the whole image */
+            })
+          } else {
+            /* Unknown channel */
+            cdef.info.push(opj_jp2_cdef_info {
+              cn,
+              typ: u16::MAX,
+              asoc: u16::MAX,
+            })
+          }
+        }
       }
+      jp2.color.jp2_cdef = Some(cdef);
     }
     jp2.precedence = 0 as OPJ_UINT32;
     jp2.approx = 0 as OPJ_UINT32;
@@ -2929,13 +2886,8 @@ impl Drop for opj_jp2 {
         opj_free(self.cl as *mut core::ffi::c_void);
         self.cl = std::ptr::null_mut::<OPJ_UINT32>()
       }
-      if !self.color.jp2_cdef.is_null() {
-        if !(*self.color.jp2_cdef).info.is_null() {
-          opj_free((*self.color.jp2_cdef).info as *mut core::ffi::c_void);
-          (*self.color.jp2_cdef).info = std::ptr::null_mut::<opj_jp2_cdef_info_t>()
-        }
-        opj_free(self.color.jp2_cdef as *mut core::ffi::c_void);
-        self.color.jp2_cdef = std::ptr::null_mut::<opj_jp2_cdef_t>()
+      if self.color.jp2_cdef.is_some() {
+        self.color.jp2_cdef = None;
       }
       if !self.color.jp2_pclr.is_null() {
         if !(*self.color.jp2_pclr).cmap.is_null() {
@@ -3058,7 +3010,7 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
     color: opj_jp2_color_t {
       icc_profile: None,
       icc_profile_len: 0 as OPJ_UINT32,
-      jp2_cdef: std::ptr::null_mut::<opj_jp2_cdef_t>(),
+      jp2_cdef: None,
       jp2_pclr: std::ptr::null_mut::<opj_jp2_pclr_t>(),
       jp2_has_colr: 0 as OPJ_BYTE,
     },

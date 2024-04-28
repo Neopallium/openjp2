@@ -277,7 +277,7 @@ pub(crate) struct opj_jp2 {
 pub(crate) struct opj_jp2_color {
   pub icc_profile: Option<Vec<u8>>,
   pub icc_profile_len: OPJ_UINT32,
-  pub jp2_cdef: *mut opj_jp2_cdef_t,
+  pub jp2_cdef: Option<opj_jp2_cdef>,
   pub jp2_pclr: *mut opj_jp2_pclr_t,
   pub jp2_has_colr: OPJ_BYTE,
 }
@@ -304,8 +304,7 @@ pub(crate) type opj_jp2_cmap_comp_t = opj_jp2_cmap_comp;
 
 #[derive(Clone)]
 pub(crate) struct opj_jp2_cdef {
-  pub info: *mut opj_jp2_cdef_info_t,
-  pub n: OPJ_UINT16,
+  pub info: Vec<opj_jp2_cdef_info>,
 }
 pub(crate) type opj_jp2_cdef_t = opj_jp2_cdef;
 
@@ -315,7 +314,6 @@ pub(crate) struct opj_jp2_cdef_info {
   pub typ: OPJ_UINT16,
   pub asoc: OPJ_UINT16,
 }
-pub(crate) type opj_jp2_cdef_info_t = opj_jp2_cdef_info;
 
 #[derive(Copy, Clone)]
 pub(crate) struct opj_jp2_comps {
