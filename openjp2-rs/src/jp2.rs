@@ -562,17 +562,21 @@ fn opj_jp2_write_colr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
   true
 }
 
-fn opj_jp2_free_pclr(mut color: *mut opj_jp2_color_t) {
-  unsafe {
-    opj_free((*(*color).jp2_pclr).channel_sign as *mut core::ffi::c_void);
-    opj_free((*(*color).jp2_pclr).channel_size as *mut core::ffi::c_void);
-    opj_free((*(*color).jp2_pclr).entries as *mut core::ffi::c_void);
-    if !(*(*color).jp2_pclr).cmap.is_null() {
-      opj_free((*(*color).jp2_pclr).cmap as *mut core::ffi::c_void);
+impl Drop for opj_jp2_pclr {
+  fn drop(&mut self) {
+    unsafe {
+      opj_free(self.channel_sign as *mut core::ffi::c_void);
+      opj_free(self.channel_size as *mut core::ffi::c_void);
+      opj_free(self.entries as *mut core::ffi::c_void);
+      if !self.cmap.is_null() {
+        opj_free(self.cmap as *mut core::ffi::c_void);
+      }
     }
-    opj_free((*color).jp2_pclr as *mut core::ffi::c_void);
-    (*color).jp2_pclr = std::ptr::null_mut::<opj_jp2_pclr_t>();
   }
+}
+
+fn opj_jp2_free_pclr(mut color: &mut opj_jp2_color_t) {
+  color.jp2_pclr = None;
 }
 
 fn opj_jp2_check_color(
@@ -583,12 +587,14 @@ fn opj_jp2_check_color(
   unsafe {
     let mut i: OPJ_UINT16 = 0;
     /* testcase 4149.pdf.SIGSEGV.cf7.3501 */
-    if let Some(cdef) = &(*color).jp2_cdef {
+    if let Some(cdef) = &color.jp2_cdef {
       /* FIXME image->numcomps == jp2->numcomps before color is applied ??? */
       let mut nr_channels = image.numcomps;
       /* cdef applies to cmap channels if any */
-      if !(*color).jp2_pclr.is_null() && !(*(*color).jp2_pclr).cmap.is_null() {
-        nr_channels = (*(*color).jp2_pclr).nr_channels as u32
+      if let Some(pclr) = &color.jp2_pclr {
+        if !pclr.cmap.is_null() {
+          nr_channels = pclr.nr_channels as u32
+        }
       }
       for info in &cdef.info {
         if info.cn as u32 >= nr_channels {
@@ -633,134 +639,136 @@ fn opj_jp2_check_color(
     }
     /* testcases 451.pdf.SIGSEGV.f4c.3723, 451.pdf.SIGSEGV.5b5.3723 and
     66ea31acbb0f23a2bbc91f64d69a03f5_signal_sigsegv_13937c0_7030_5725.pdf */
-    if !(*color).jp2_pclr.is_null() && !(*(*color).jp2_pclr).cmap.is_null() {
-      let mut nr_channels_0 = (*(*color).jp2_pclr).nr_channels as OPJ_UINT16;
-      let mut cmap = (*(*color).jp2_pclr).cmap;
-      let mut pcol_usage = std::ptr::null_mut::<OPJ_BOOL>();
-      let mut is_sane = 1i32;
-      /* verify that all original components match an existing one */
-      i = 0 as OPJ_UINT16;
-      while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
-        if (*cmap.offset(i as isize)).cmp as core::ffi::c_uint >= image.numcomps {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Invalid component index %d (>= %d).\n",
-            (*cmap.offset(i as isize)).cmp as core::ffi::c_int,
-            image.numcomps,
-          );
-          is_sane = 0i32
-        }
-        i += 1;
-      }
-      pcol_usage =
-        opj_calloc(nr_channels_0 as size_t, core::mem::size_of::<OPJ_BOOL>()) as *mut OPJ_BOOL;
-      if pcol_usage.is_null() {
-        event_msg!(p_manager, EVT_ERROR, "Unexpected OOM.\n",);
-        return 0i32;
-      }
-      /* verify that no component is targeted more than once */
-      i = 0 as OPJ_UINT16;
-      while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
-        let mut mtyp = (*cmap.offset(i as isize)).mtyp;
-        let mut pcol = (*cmap.offset(i as isize)).pcol;
-        /* See ISO 15444-1 Table I.14 – MTYPi field values */
-        if mtyp as core::ffi::c_int != 0i32 && mtyp as core::ffi::c_int != 1i32 {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Invalid value for cmap[%d].mtyp = %d.\n",
-            i as core::ffi::c_int,
-            mtyp as core::ffi::c_int,
-          );
-          is_sane = 0i32
-        } else if pcol as core::ffi::c_int >= nr_channels_0 as core::ffi::c_int {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Invalid component/palette index for direct mapping %d.\n",
-            pcol as core::ffi::c_int,
-          );
-          is_sane = 0i32
-        } else if *pcol_usage.offset(pcol as isize) != 0 && mtyp as core::ffi::c_int == 1i32 {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Component %d is mapped twice.\n",
-            pcol as core::ffi::c_int,
-          );
-          is_sane = 0i32
-        } else if mtyp as core::ffi::c_int == 0i32 && pcol as core::ffi::c_int != 0i32 {
-          /* I.5.3.5 PCOL: If the value of the MTYP field for this channel is 0, then
-           * the value of this field shall be 0. */
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Direct use at #%d however pcol=%d.\n",
-            i as core::ffi::c_int,
-            pcol as core::ffi::c_int,
-          );
-          is_sane = 0i32
-        } else if mtyp as core::ffi::c_int == 1i32
-          && pcol as core::ffi::c_int != i as core::ffi::c_int
-        {
-          /* OpenJPEG implementation limitation. See assert(i == pcol); */
-          /* in opj_jp2_apply_pclr() */
-          event_msg!(p_manager, EVT_ERROR,
-                              "Implementation limitation: for palette mapping, pcol[%d] should be equal to %d, but is equal to %d.\n",
-                              i as core::ffi::c_int, i as core::ffi::c_int,
-                              pcol as core::ffi::c_int);
-          is_sane = 0i32
-        } else {
-          *pcol_usage.offset(pcol as isize) = 1i32
-        }
-        i += 1;
-      }
-      /* verify that all components are targeted at least once */
-      i = 0 as OPJ_UINT16;
-      while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
-        if *pcol_usage.offset(i as isize) == 0
-          && (*cmap.offset(i as isize)).mtyp as core::ffi::c_int != 0i32
-        {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Component %d doesn\'t have a mapping.\n",
-            i as core::ffi::c_int,
-          );
-          is_sane = 0i32
-        }
-        i += 1;
-      }
-      /* Issue 235/447 weird cmap */
-      if 1i32 != 0 && is_sane != 0 && image.numcomps == 1u32 {
+    if let Some(pclr) = &color.jp2_pclr {
+      if !pclr.cmap.is_null() {
+        let mut nr_channels_0 = pclr.nr_channels as OPJ_UINT16;
+        let mut cmap = pclr.cmap;
+        let mut pcol_usage = std::ptr::null_mut::<OPJ_BOOL>();
+        let mut is_sane = 1i32;
+        /* verify that all original components match an existing one */
         i = 0 as OPJ_UINT16;
         while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
-          if *pcol_usage.offset(i as isize) == 0 {
-            is_sane = 0 as OPJ_BOOL;
+          if (*cmap.offset(i as isize)).cmp as core::ffi::c_uint >= image.numcomps {
             event_msg!(
               p_manager,
-              EVT_WARNING,
-              "Component mapping seems wrong. Trying to correct.\n",
+              EVT_ERROR,
+              "Invalid component index %d (>= %d).\n",
+              (*cmap.offset(i as isize)).cmp as core::ffi::c_int,
+              image.numcomps,
             );
-            break;
-          } else {
-            i += 1;
+            is_sane = 0i32
           }
+          i += 1;
         }
-        if is_sane == 0 {
-          is_sane = 1i32;
+        pcol_usage =
+          opj_calloc(nr_channels_0 as size_t, core::mem::size_of::<OPJ_BOOL>()) as *mut OPJ_BOOL;
+        if pcol_usage.is_null() {
+          event_msg!(p_manager, EVT_ERROR, "Unexpected OOM.\n",);
+          return 0i32;
+        }
+        /* verify that no component is targeted more than once */
+        i = 0 as OPJ_UINT16;
+        while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
+          let mut mtyp = (*cmap.offset(i as isize)).mtyp;
+          let mut pcol = (*cmap.offset(i as isize)).pcol;
+          /* See ISO 15444-1 Table I.14 – MTYPi field values */
+          if mtyp as core::ffi::c_int != 0i32 && mtyp as core::ffi::c_int != 1i32 {
+            event_msg!(
+              p_manager,
+              EVT_ERROR,
+              "Invalid value for cmap[%d].mtyp = %d.\n",
+              i as core::ffi::c_int,
+              mtyp as core::ffi::c_int,
+            );
+            is_sane = 0i32
+          } else if pcol as core::ffi::c_int >= nr_channels_0 as core::ffi::c_int {
+            event_msg!(
+              p_manager,
+              EVT_ERROR,
+              "Invalid component/palette index for direct mapping %d.\n",
+              pcol as core::ffi::c_int,
+            );
+            is_sane = 0i32
+          } else if *pcol_usage.offset(pcol as isize) != 0 && mtyp as core::ffi::c_int == 1i32 {
+            event_msg!(
+              p_manager,
+              EVT_ERROR,
+              "Component %d is mapped twice.\n",
+              pcol as core::ffi::c_int,
+            );
+            is_sane = 0i32
+          } else if mtyp as core::ffi::c_int == 0i32 && pcol as core::ffi::c_int != 0i32 {
+            /* I.5.3.5 PCOL: If the value of the MTYP field for this channel is 0, then
+             * the value of this field shall be 0. */
+            event_msg!(
+              p_manager,
+              EVT_ERROR,
+              "Direct use at #%d however pcol=%d.\n",
+              i as core::ffi::c_int,
+              pcol as core::ffi::c_int,
+            );
+            is_sane = 0i32
+          } else if mtyp as core::ffi::c_int == 1i32
+            && pcol as core::ffi::c_int != i as core::ffi::c_int
+          {
+            /* OpenJPEG implementation limitation. See assert(i == pcol); */
+            /* in opj_jp2_apply_pclr() */
+            event_msg!(p_manager, EVT_ERROR,
+                                "Implementation limitation: for palette mapping, pcol[%d] should be equal to %d, but is equal to %d.\n",
+                                i as core::ffi::c_int, i as core::ffi::c_int,
+                                pcol as core::ffi::c_int);
+            is_sane = 0i32
+          } else {
+            *pcol_usage.offset(pcol as isize) = 1i32
+          }
+          i += 1;
+        }
+        /* verify that all components are targeted at least once */
+        i = 0 as OPJ_UINT16;
+        while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
+          if *pcol_usage.offset(i as isize) == 0
+            && (*cmap.offset(i as isize)).mtyp as core::ffi::c_int != 0i32
+          {
+            event_msg!(
+              p_manager,
+              EVT_ERROR,
+              "Component %d doesn\'t have a mapping.\n",
+              i as core::ffi::c_int,
+            );
+            is_sane = 0i32
+          }
+          i += 1;
+        }
+        /* Issue 235/447 weird cmap */
+        if 1i32 != 0 && is_sane != 0 && image.numcomps == 1u32 {
           i = 0 as OPJ_UINT16;
           while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
-            (*cmap.offset(i as isize)).mtyp = 1 as OPJ_BYTE;
-            (*cmap.offset(i as isize)).pcol = i as OPJ_BYTE;
-            i += 1;
+            if *pcol_usage.offset(i as isize) == 0 {
+              is_sane = 0 as OPJ_BOOL;
+              event_msg!(
+                p_manager,
+                EVT_WARNING,
+                "Component mapping seems wrong. Trying to correct.\n",
+              );
+              break;
+            } else {
+              i += 1;
+            }
+          }
+          if is_sane == 0 {
+            is_sane = 1i32;
+            i = 0 as OPJ_UINT16;
+            while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
+              (*cmap.offset(i as isize)).mtyp = 1 as OPJ_BYTE;
+              (*cmap.offset(i as isize)).pcol = i as OPJ_BYTE;
+              i += 1;
+            }
           }
         }
-      }
-      opj_free(pcol_usage as *mut core::ffi::c_void);
-      if is_sane == 0 {
-        return 0i32;
+        opj_free(pcol_usage as *mut core::ffi::c_void);
+        if is_sane == 0 {
+          return 0i32;
+        }
       }
     }
     1i32
@@ -776,31 +784,25 @@ Apply collected palette data
 */
 fn opj_jp2_apply_pclr(
   mut image: &mut opj_image_t,
-  mut color: *mut opj_jp2_color_t,
+  mut pclr: &opj_jp2_pclr,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
     let mut old_comps = std::ptr::null_mut::<opj_image_comp_t>();
     let mut new_comps = std::ptr::null_mut::<opj_image_comp_t>();
-    let mut channel_size = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut channel_sign = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut entries = std::ptr::null_mut::<OPJ_UINT32>();
-    let mut cmap = std::ptr::null_mut::<opj_jp2_cmap_comp_t>();
     let mut src = std::ptr::null_mut::<OPJ_INT32>();
     let mut dst = std::ptr::null_mut::<OPJ_INT32>();
     let mut j: OPJ_UINT32 = 0;
     let mut max: OPJ_UINT32 = 0;
     let mut i: OPJ_UINT16 = 0;
-    let mut nr_channels: OPJ_UINT16 = 0;
     let mut cmp: OPJ_UINT16 = 0;
     let mut pcol: OPJ_UINT16 = 0;
     let mut k: OPJ_INT32 = 0;
-    let mut top_k: OPJ_INT32 = 0;
-    channel_size = (*(*color).jp2_pclr).channel_size;
-    channel_sign = (*(*color).jp2_pclr).channel_sign;
-    entries = (*(*color).jp2_pclr).entries;
-    cmap = (*(*color).jp2_pclr).cmap;
-    nr_channels = (*(*color).jp2_pclr).nr_channels as OPJ_UINT16;
+    let channel_size = pclr.channel_size;
+    let channel_sign = pclr.channel_sign;
+    let entries = pclr.entries;
+    let cmap = pclr.cmap;
+    let nr_channels = pclr.nr_channels as OPJ_UINT16;
     i = 0 as OPJ_UINT16;
     while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
       /* Palette mapping: */
@@ -864,7 +866,7 @@ fn opj_jp2_apply_pclr(
       (*new_comps.offset(i as isize)).sgnd = *channel_sign.offset(i as isize) as OPJ_UINT32;
       i += 1;
     }
-    top_k = (*(*color).jp2_pclr).nr_entries as core::ffi::c_int - 1i32;
+    let top_k = pclr.nr_entries as i32 - 1;
     i = 0 as OPJ_UINT16;
     while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
       /* Palette mapping: */
@@ -938,7 +940,6 @@ fn opj_jp2_read_pclr(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut jp2_pclr = std::ptr::null_mut::<opj_jp2_pclr_t>();
     let mut channel_size = std::ptr::null_mut::<OPJ_BYTE>();
     let mut channel_sign = std::ptr::null_mut::<OPJ_BYTE>();
     let mut entries = std::ptr::null_mut::<OPJ_UINT32>();
@@ -952,7 +953,7 @@ fn opj_jp2_read_pclr(
     /* NPC */
     /* Cji */
     assert!(!p_pclr_header_data.is_null());
-    if !jp2.color.jp2_pclr.is_null() {
+    if jp2.color.jp2_pclr.is_some() {
       return 0i32;
     }
     if p_pclr_header_size < 3u32 {
@@ -1003,20 +1004,15 @@ fn opj_jp2_read_pclr(
       opj_free(channel_size as *mut core::ffi::c_void);
       return 0i32;
     }
-    jp2_pclr = opj_malloc(core::mem::size_of::<opj_jp2_pclr_t>()) as *mut opj_jp2_pclr_t;
-    if jp2_pclr.is_null() {
-      opj_free(entries as *mut core::ffi::c_void);
-      opj_free(channel_size as *mut core::ffi::c_void);
-      opj_free(channel_sign as *mut core::ffi::c_void);
-      return 0i32;
-    }
-    (*jp2_pclr).channel_sign = channel_sign;
-    (*jp2_pclr).channel_size = channel_size;
-    (*jp2_pclr).entries = entries;
-    (*jp2_pclr).nr_entries = nr_entries;
-    (*jp2_pclr).nr_channels = l_value as OPJ_BYTE;
-    (*jp2_pclr).cmap = std::ptr::null_mut::<opj_jp2_cmap_comp_t>();
-    jp2.color.jp2_pclr = jp2_pclr;
+    let jp2_pclr = opj_jp2_pclr {
+      channel_sign: channel_sign,
+      channel_size: channel_size,
+      entries: entries,
+      nr_entries: nr_entries,
+      nr_channels: l_value as OPJ_BYTE,
+      cmap: std::ptr::null_mut::<opj_jp2_cmap_comp_t>(),
+    };
+    jp2.color.jp2_pclr = Some(jp2_pclr);
     i = 0 as OPJ_UINT16;
     while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
       opj_read_bytes(p_pclr_header_data, &mut l_value, 1 as OPJ_UINT32);
@@ -1077,22 +1073,24 @@ fn opj_jp2_read_cmap(
 
     assert!(!p_cmap_header_data.is_null());
     /* Need nr_channels: */
-    if jp2.color.jp2_pclr.is_null() {
+    let mut pclr = if let Some(pclr) = &mut jp2.color.jp2_pclr {
+      pclr
+    } else {
       event_msg!(
         p_manager,
         EVT_ERROR,
         "Need to read a PCLR box before the CMAP box.\n",
       );
       return 0i32;
-    }
+    };
     /* Part 1, I.5.3.5: 'There shall be at most one Component Mapping box
      * inside a JP2 Header box' :
      */
-    if !(*jp2.color.jp2_pclr).cmap.is_null() {
+    if !pclr.cmap.is_null() {
       event_msg!(p_manager, EVT_ERROR, "Only one CMAP box is allowed.\n",); /* CMP^i */
       return 0i32;
     } /* MTYP^i */
-    nr_channels = (*jp2.color.jp2_pclr).nr_channels; /* PCOL^i */
+    nr_channels = pclr.nr_channels; /* PCOL^i */
     if p_cmap_header_size < (nr_channels as OPJ_UINT32).wrapping_mul(4u32) {
       event_msg!(p_manager, EVT_ERROR, "Insufficient data for CMAP box.\n",);
       return 0i32;
@@ -1116,7 +1114,7 @@ fn opj_jp2_read_cmap(
       (*cmap.offset(i as isize)).pcol = l_value as OPJ_BYTE;
       i += 1;
     }
-    (*jp2.color.jp2_pclr).cmap = cmap;
+    pclr.cmap = cmap;
     1i32
   }
 }
@@ -1417,11 +1415,11 @@ pub(crate) fn opj_jp2_apply_color_postprocessing(
         return 0i32;
       }
 
-      if !jp2.color.jp2_pclr.is_null() {
+      if let Some(pclr) = &jp2.color.jp2_pclr {
         /* Part 1, I.5.3.4: Either both or none : */
-        if (*jp2.color.jp2_pclr).cmap.is_null() {
+        if pclr.cmap.is_null() {
           opj_jp2_free_pclr(&mut jp2.color);
-        } else if opj_jp2_apply_pclr(p_image, &mut jp2.color, p_manager) == 0 {
+        } else if opj_jp2_apply_pclr(p_image, pclr, p_manager) == 0 {
           return 0i32;
         }
       }
@@ -2889,26 +2887,7 @@ impl Drop for opj_jp2 {
       if self.color.jp2_cdef.is_some() {
         self.color.jp2_cdef = None;
       }
-      if !self.color.jp2_pclr.is_null() {
-        if !(*self.color.jp2_pclr).cmap.is_null() {
-          opj_free((*self.color.jp2_pclr).cmap as *mut core::ffi::c_void);
-          (*self.color.jp2_pclr).cmap = std::ptr::null_mut::<opj_jp2_cmap_comp_t>()
-        }
-        if !(*self.color.jp2_pclr).channel_sign.is_null() {
-          opj_free((*self.color.jp2_pclr).channel_sign as *mut core::ffi::c_void);
-          (*self.color.jp2_pclr).channel_sign = std::ptr::null_mut::<OPJ_BYTE>()
-        }
-        if !(*self.color.jp2_pclr).channel_size.is_null() {
-          opj_free((*self.color.jp2_pclr).channel_size as *mut core::ffi::c_void);
-          (*self.color.jp2_pclr).channel_size = std::ptr::null_mut::<OPJ_BYTE>()
-        }
-        if !(*self.color.jp2_pclr).entries.is_null() {
-          opj_free((*self.color.jp2_pclr).entries as *mut core::ffi::c_void);
-          (*self.color.jp2_pclr).entries = std::ptr::null_mut::<OPJ_UINT32>()
-        }
-        opj_free(self.color.jp2_pclr as *mut core::ffi::c_void);
-        self.color.jp2_pclr = std::ptr::null_mut::<opj_jp2_pclr_t>()
-      }
+      self.color.jp2_pclr.take();
       if !self.m_validation_list.is_null() {
         opj_procedure_list_destroy(self.m_validation_list);
         self.m_validation_list = std::ptr::null_mut();
@@ -3011,7 +2990,7 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
       icc_profile: None,
       icc_profile_len: 0 as OPJ_UINT32,
       jp2_cdef: None,
-      jp2_pclr: std::ptr::null_mut::<opj_jp2_pclr_t>(),
+      jp2_pclr: None,
       jp2_has_colr: 0 as OPJ_BYTE,
     },
     m_validation_list: opj_procedure_list_create(),
