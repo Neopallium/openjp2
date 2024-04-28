@@ -221,7 +221,6 @@ impl Default for DecoderParameters {
   }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_marker_info {
   pub need_PLT: OPJ_BOOL,
@@ -230,7 +229,6 @@ pub(crate) struct opj_tcd_marker_info {
 }
 pub(crate) type opj_tcd_marker_info_t = opj_tcd_marker_info;
 
-#[repr(C)]
 pub(crate) struct Stream {
   pub m_inner: super::stream::StreamInner,
   pub m_stream_length: OPJ_UINT64,
@@ -243,7 +241,6 @@ pub(crate) type opj_jp2_proc =
   unsafe fn(_: &mut opj_jp2, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
 pub(crate) type opj_jp2_proc_list_t = super::function_list::ProcedureList<opj_jp2_proc>;
 
-#[repr(C)]
 #[derive(Clone)]
 pub(crate) struct opj_jp2 {
   pub j2k: opj_j2k,
@@ -276,10 +273,9 @@ pub(crate) struct opj_jp2 {
   pub has_ihdr: OPJ_BYTE,
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_jp2_color {
-  pub icc_profile_buf: *mut OPJ_BYTE,
+  pub icc_profile: Option<Vec<u8>>,
   pub icc_profile_len: OPJ_UINT32,
   pub jp2_cdef: *mut opj_jp2_cdef_t,
   pub jp2_pclr: *mut opj_jp2_pclr_t,
@@ -287,8 +283,7 @@ pub(crate) struct opj_jp2_color {
 }
 pub(crate) type opj_jp2_color_t = opj_jp2_color;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_jp2_pclr {
   pub entries: *mut OPJ_UINT32,
   pub channel_sign: *mut OPJ_BYTE,
@@ -299,7 +294,6 @@ pub(crate) struct opj_jp2_pclr {
 }
 pub(crate) type opj_jp2_pclr_t = opj_jp2_pclr;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_jp2_cmap_comp {
   pub cmp: OPJ_UINT16,
@@ -308,15 +302,13 @@ pub(crate) struct opj_jp2_cmap_comp {
 }
 pub(crate) type opj_jp2_cmap_comp_t = opj_jp2_cmap_comp;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_jp2_cdef {
   pub info: *mut opj_jp2_cdef_info_t,
   pub n: OPJ_UINT16,
 }
 pub(crate) type opj_jp2_cdef_t = opj_jp2_cdef;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_jp2_cdef_info {
   pub cn: OPJ_UINT16,
@@ -325,7 +317,6 @@ pub(crate) struct opj_jp2_cdef_info {
 }
 pub(crate) type opj_jp2_cdef_info_t = opj_jp2_cdef_info;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_jp2_comps {
   pub depth: OPJ_UINT32,
@@ -338,7 +329,6 @@ pub(crate) type opj_j2k_proc =
   unsafe fn(_: &mut opj_j2k, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
 pub(crate) type opj_j2k_proc_list_t = super::function_list::ProcedureList<opj_j2k_proc>;
 
-#[repr(C)]
 #[derive(Clone)]
 pub(crate) struct opj_j2k {
   pub m_is_decoder: OPJ_BOOL,
@@ -356,7 +346,6 @@ pub(crate) struct opj_j2k {
   pub dump_state: core::ffi::c_uint,
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd {
   pub tp_pos: OPJ_INT32,
@@ -379,7 +368,6 @@ pub(crate) struct opj_tcd {
 }
 pub(crate) type opj_tcd_t = opj_tcd;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcp {
   pub csty: OPJ_UINT32,
@@ -417,7 +405,6 @@ pub(crate) struct opj_tcp {
 }
 pub(crate) type opj_tcp_t = opj_tcp;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_simple_mcc_decorrelation_data {
   pub m_index: OPJ_UINT32,
@@ -434,7 +421,6 @@ pub const MCT_TYPE_OFFSET: MCT_ARRAY_TYPE = 2;
 pub const MCT_TYPE_DECORRELATION: MCT_ARRAY_TYPE = 1;
 pub const MCT_TYPE_DEPENDENCY: MCT_ARRAY_TYPE = 0;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_mct_data {
   pub m_element_type: MCTElementType,
@@ -445,7 +431,6 @@ pub(crate) struct opj_mct_data {
 }
 pub(crate) type opj_mct_data_t = opj_mct_data;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tccp {
   pub csty: OPJ_UINT32,
@@ -464,7 +449,6 @@ pub(crate) struct opj_tccp {
 }
 pub(crate) type opj_tccp_t = opj_tccp;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_stepsize {
   pub expn: OPJ_INT32,
@@ -472,7 +456,6 @@ pub(crate) struct opj_stepsize {
 }
 pub(crate) type opj_stepsize_t = opj_stepsize;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_ppx_struct {
   pub m_data: *mut OPJ_BYTE,
@@ -480,7 +463,6 @@ pub(crate) struct opj_ppx_struct {
 }
 pub(crate) type opj_ppx = opj_ppx_struct;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_cp {
   pub rsiz: OPJ_UINT16,
@@ -532,7 +514,6 @@ pub(crate) enum J2K_QUALITY_LAYER_ALLOCATION_STRATEGY {
   FIXED_LAYER = 2,
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_encoding_param {
   pub m_max_comp_size: OPJ_UINT32,
@@ -544,7 +525,6 @@ pub(crate) struct opj_encoding_param {
 }
 pub(crate) type opj_encoding_param_t = opj_encoding_param;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_decoding_param {
   pub m_reduce: OPJ_UINT32,
@@ -552,14 +532,12 @@ pub(crate) struct opj_decoding_param {
 }
 pub(crate) type opj_decoding_param_t = opj_decoding_param;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_image {
   pub tiles: *mut opj_tcd_tile_t,
 }
 pub(crate) type opj_tcd_image_t = opj_tcd_image;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_tile {
   pub x0: OPJ_INT32,
@@ -587,7 +565,6 @@ pub struct TileInfo {
   pub go_on: bool,
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_tilecomp {
   pub x0: OPJ_INT32,
@@ -612,7 +589,6 @@ pub(crate) struct opj_tcd_tilecomp {
 }
 pub(crate) type opj_tcd_tilecomp_t = opj_tcd_tilecomp;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_resolution {
   pub x0: OPJ_INT32,
@@ -630,7 +606,6 @@ pub(crate) struct opj_tcd_resolution {
 }
 pub(crate) type opj_tcd_resolution_t = opj_tcd_resolution;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_band {
   pub x0: OPJ_INT32,
@@ -645,7 +620,6 @@ pub(crate) struct opj_tcd_band {
 }
 pub(crate) type opj_tcd_band_t = opj_tcd_band;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_precinct {
   pub x0: OPJ_INT32,
@@ -661,7 +635,6 @@ pub(crate) struct opj_tcd_precinct {
 }
 pub(crate) type opj_tcd_precinct_t = opj_tcd_precinct;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tgt_tree {
   pub numleafsh: OPJ_UINT32,
@@ -672,7 +645,6 @@ pub(crate) struct opj_tgt_tree {
 }
 pub(crate) type opj_tgt_tree_t = opj_tgt_tree;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tgt_node {
   pub parent: *mut opj_tgt_node,
@@ -690,7 +662,6 @@ pub(crate) union C2RustUnnamed_1 {
   pub blocks: *mut core::ffi::c_void,
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_cblk_dec {
   pub segs: *mut opj_tcd_seg_t,
@@ -712,7 +683,6 @@ pub(crate) struct opj_tcd_cblk_dec {
 }
 pub(crate) type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_seg_data_chunk {
   pub data: *mut OPJ_BYTE,
@@ -720,7 +690,6 @@ pub(crate) struct opj_tcd_seg_data_chunk {
 }
 pub(crate) type opj_tcd_seg_data_chunk_t = opj_tcd_seg_data_chunk;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_seg {
   pub len: OPJ_UINT32,
@@ -732,7 +701,6 @@ pub(crate) struct opj_tcd_seg {
 }
 pub(crate) type opj_tcd_seg_t = opj_tcd_seg;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_cblk_enc {
   pub data: *mut OPJ_BYTE,
@@ -751,7 +719,6 @@ pub(crate) struct opj_tcd_cblk_enc {
 }
 pub(crate) type opj_tcd_cblk_enc_t = opj_tcd_cblk_enc;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_pass {
   pub rate: OPJ_UINT32,
@@ -761,7 +728,6 @@ pub(crate) struct opj_tcd_pass {
 }
 pub(crate) type opj_tcd_pass_t = opj_tcd_pass;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_layer {
   pub numpasses: OPJ_UINT32,
