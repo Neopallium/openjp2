@@ -26,9 +26,7 @@ fn decode_sample_file_hadley_crater() {
 
   // Open file stream.
   let filename = b"samples/Hadley_Crater.jp2\x00";
-  let stream = unsafe {
-    opj_stream_create_default_file_stream(filename.as_ptr() as _, 1)
-  };
+  let stream = unsafe { opj_stream_create_default_file_stream(filename.as_ptr() as _, 1) };
 
   // Create decoder.
   let codec = opj_create_decompress(OPJ_CODEC_JP2);

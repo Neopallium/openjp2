@@ -182,11 +182,15 @@ impl dwt_local {
         *self.s_mut(0) /= 2;
       } else {
         for i in win_l_x0..win_l_x1 {
-          let val = self.d(i).wrapping_sub(self.ss_(i).wrapping_add(self.ss_(i + 1)).wrapping_add(2) >> 2);
+          let val = self
+            .d(i)
+            .wrapping_sub(self.ss_(i).wrapping_add(self.ss_(i + 1)).wrapping_add(2) >> 2);
           *self.d_mut(i) = val;
         }
         for i in win_h_x0..win_h_x1 {
-          let val = self.s(i).wrapping_add(self.dd_(i).wrapping_add(self.dd_(i - 1)) >> 1);
+          let val = self
+            .s(i)
+            .wrapping_add(self.dd_(i).wrapping_add(self.dd_(i - 1)) >> 1);
           *self.s_mut(i) = val;
         }
       }
@@ -207,7 +211,13 @@ impl dwt_local {
           let d0_idx = self.d__idx(i - 1, 4);
           let d1_idx = self.d__idx(i, 4);
           for off in 0..4 {
-            let val = self.m(s_idx + off).wrapping_sub(self.m(d0_idx + off).wrapping_add(self.m(d1_idx + off)).wrapping_add(2) >> 2);
+            let val = self.m(s_idx + off).wrapping_sub(
+              self
+                .m(d0_idx + off)
+                .wrapping_add(self.m(d1_idx + off))
+                .wrapping_add(2)
+                >> 2,
+            );
             *self.m_mut(s_idx + off) = val;
           }
         }
@@ -216,7 +226,9 @@ impl dwt_local {
           let s0_idx = self.s__idx(i, 4);
           let s1_idx = self.s__idx(i + 1, 4);
           for off in 0..4 {
-            let val = self.m(d_idx + off).wrapping_add(self.m(s0_idx + off).wrapping_add(self.m(s1_idx + off)) >> 1);
+            let val = self
+              .m(d_idx + off)
+              .wrapping_add(self.m(s0_idx + off).wrapping_add(self.m(s1_idx + off)) >> 1);
             *self.m_mut(d_idx + off) = val;
           }
         }
@@ -233,7 +245,13 @@ impl dwt_local {
           let s0_idx = self.ss__idx(i, 4);
           let s1_idx = self.ss__idx(i + 1, 4);
           for off in 0..4 {
-            let val = self.m(d_idx + off).wrapping_sub(self.m(s0_idx + off).wrapping_add(self.m(s1_idx + off)).wrapping_add(2) >> 2);
+            let val = self.m(d_idx + off).wrapping_sub(
+              self
+                .m(s0_idx + off)
+                .wrapping_add(self.m(s1_idx + off))
+                .wrapping_add(2)
+                >> 2,
+            );
             *self.m_mut(d_idx + off) = val;
           }
         }
@@ -242,7 +260,9 @@ impl dwt_local {
           let d0_idx = self.dd__idx(i, 4);
           let d1_idx = self.dd__idx(i - 1, 4);
           for off in 0..4 {
-            let val = self.m(s_idx + off).wrapping_add(self.m(d0_idx + off).wrapping_add(self.m(d1_idx + off)) >> 1);
+            let val = self
+              .m(s_idx + off)
+              .wrapping_add(self.m(d0_idx + off).wrapping_add(self.m(d1_idx + off)) >> 1);
             *self.m_mut(s_idx + off) = val;
           }
         }
@@ -280,7 +300,6 @@ pub struct v8dwt_local {
   /// end coord in high pass band
   pub win_h_x1: OPJ_UINT32,
 }
-
 
 /* From table F.4 from the standard */
 const opj_dwt_alpha: f32 = -1.586_134_3;
@@ -449,8 +468,7 @@ unsafe fn opj_idwt53_h(mut dwt: &opj_dwt_t, mut tiledp: *mut OPJ_INT32) {
   memcpy(
     tiledp as *mut core::ffi::c_void,
     dwt.mem as *const core::ffi::c_void,
-    ((dwt.sn + dwt.dn) as OPJ_UINT32 as usize)
-      .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
+    ((dwt.sn + dwt.dn) as OPJ_UINT32 as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
   );
 }
 
