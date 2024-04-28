@@ -13,8 +13,6 @@ use ::libc::FILE;
 use super::malloc::*;
 
 extern "C" {
-  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
-
   fn memcpy(
     _: *mut core::ffi::c_void,
     _: *const core::ffi::c_void,
@@ -36,27 +34,20 @@ pub const JP2_IMG_STATE_NONE: C2RustUnnamed_3 = 0;
 
 pub struct Jp2BoxHeader {
   pub length: u32,
-  pub type_0: u32,
+  pub ty: u32,
 }
 
 impl Jp2BoxHeader {
   fn new(ty: Jp2BoxType) -> Self {
     Self {
       length: 8,
-      type_0: ty.to_u32().unwrap(),
+      ty: ty.to_u32().unwrap(),
     }
   }
 
-  fn write(&self, stream: &mut Stream, manager: &mut opj_event_mgr) -> bool {
-    let mut header = [0u8; 8];
-    let mut buf = header.as_mut_slice();
-    buf
-      .write_all(&self.length.to_be_bytes()[..])
-      .expect("array should be long enough");
-    buf
-      .write_all(&self.type_0.to_be_bytes()[..])
-      .expect("array should be long enough");
-    opj_stream_write_data(stream, header.as_ptr(), 8, manager) == 8
+  fn write<W: Write>(&self, writer: &mut W) -> bool {
+    writer.write_all(&self.length.to_be_bytes()[..]).is_ok()
+      && writer.write_all(&self.ty.to_be_bytes()[..]).is_ok()
   }
 }
 
@@ -69,44 +60,29 @@ pub(crate) struct opj_jp2_header_handler {
 pub(crate) type opj_jp2_header_handler_t = opj_jp2_header_handler;
 
 pub(crate) struct HeaderWriter {
-  pub handler: Option<fn(_: &mut opj_jp2, _: *mut OPJ_UINT32) -> *mut OPJ_BYTE>,
-  pub m_data: *mut OPJ_BYTE,
-  pub m_size: OPJ_UINT32,
+  handler: fn(_: &mut opj_jp2, _: &mut Vec<u8>) -> bool,
+  m_data: Vec<u8>,
 }
 
 impl HeaderWriter {
-  fn new(handler: fn(_: &mut opj_jp2, _: *mut OPJ_UINT32) -> *mut OPJ_BYTE) -> Self {
+  fn new(handler: fn(_: &mut opj_jp2, _: &mut Vec<u8>) -> bool) -> Self {
     Self {
-      handler: Some(handler),
-      m_data: std::ptr::null_mut::<OPJ_BYTE>(),
-      m_size: 0,
+      handler: handler,
+      m_data: Default::default(),
     }
   }
 
   fn run(&mut self, jp2: &mut opj_jp2) -> Option<u32> {
-    let mut size = 0u32;
-    self.m_data = self.handler.expect("handler")(jp2, &mut size);
-    self.m_size = size;
-    if self.m_data.is_null() {
-      None
+    if (self.handler)(jp2, &mut self.m_data) {
+      Some(self.m_data.len() as u32)
     } else {
-      Some(size)
+      None
     }
   }
 
   fn write(&self, stream: &mut Stream, manager: &mut opj_event_mgr) -> bool {
-    opj_stream_write_data(stream, self.m_data, self.m_size as OPJ_SIZE_T, manager)
-      == self.m_size as usize
-  }
-}
-
-impl Drop for HeaderWriter {
-  fn drop(&mut self) {
-    if !self.m_data.is_null() {
-      unsafe {
-        opj_free(self.m_data as *mut core::ffi::c_void);
-      }
-    }
+    let size = self.m_data.len();
+    opj_stream_write_data(stream, self.m_data.as_ptr(), size, manager) == size
   }
 }
 
@@ -244,7 +220,7 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
 /* *
  * Reads a box header. The box is the way data is packed inside a jpeg2000 file structure.
  *
- * @param   cio                     the input stream to read data from.
+ * @param   stream                     the input stream to read data from.
  * @param   box                     the box structure to fill.
  * @param   p_number_bytes_read     pointer to an int that will store the number of bytes read from the stream (shoul usually be 2).
  * @param   p_manager               user event manager.
@@ -252,9 +228,9 @@ static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
  * @return  true if the box is recognized, false otherwise
 */
 fn opj_jp2_read_boxhdr(
-  mut box_0: *mut Jp2BoxHeader,
-  mut p_number_bytes_read: *mut OPJ_UINT32,
-  mut cio: &mut Stream,
+  mut box_0: &mut Jp2BoxHeader,
+  mut p_number_bytes_read: &mut OPJ_UINT32,
+  mut stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
@@ -262,11 +238,12 @@ fn opj_jp2_read_boxhdr(
     let mut l_data_header: [OPJ_BYTE; 8] = [0; 8];
     /* preconditions */
 
-    assert!(!box_0.is_null());
-    assert!(!p_number_bytes_read.is_null());
-    *p_number_bytes_read =
-      opj_stream_read_data(cio, l_data_header.as_mut_ptr(), 8 as OPJ_SIZE_T, p_manager)
-        as OPJ_UINT32;
+    *p_number_bytes_read = opj_stream_read_data(
+      stream,
+      l_data_header.as_mut_ptr(),
+      8 as OPJ_SIZE_T,
+      p_manager,
+    ) as OPJ_UINT32;
     if *p_number_bytes_read != 8u32 {
       return 0i32;
     }
@@ -278,12 +255,12 @@ fn opj_jp2_read_boxhdr(
     );
     opj_read_bytes(
       l_data_header.as_mut_ptr().offset(4),
-      &mut (*box_0).type_0,
+      &mut (*box_0).ty,
       4 as OPJ_UINT32,
     );
     if (*box_0).length == 0u32 {
       /* last box */
-      let bleft = opj_stream_get_number_byte_left(cio);
+      let bleft = opj_stream_get_number_byte_left(stream);
       if bleft > (0xffffffffu32).wrapping_sub(8u32) as OPJ_OFF_T {
         event_msg!(
           p_manager,
@@ -300,9 +277,12 @@ fn opj_jp2_read_boxhdr(
     /* read then the XLBox */
     if (*box_0).length == 1u32 {
       let mut l_xl_part_size: OPJ_UINT32 = 0;
-      let mut l_nb_bytes_read =
-        opj_stream_read_data(cio, l_data_header.as_mut_ptr(), 8 as OPJ_SIZE_T, p_manager)
-          as OPJ_UINT32;
+      let mut l_nb_bytes_read = opj_stream_read_data(
+        stream,
+        l_data_header.as_mut_ptr(),
+        8 as OPJ_SIZE_T,
+        p_manager,
+      ) as OPJ_UINT32;
       if l_nb_bytes_read != 8u32 {
         if l_nb_bytes_read > 0u32 {
           *p_number_bytes_read =
@@ -434,102 +414,42 @@ fn opj_jp2_read_ihdr(
 /* *
  * Writes the Image Header box - Image Header box.
  *
- * @param jp2                   jpeg2000 file codec.
- * @param p_nb_bytes_written    pointer to store the nb of bytes written by the function.
- *
- * @return  the data being copied.
 */
-fn opj_jp2_write_ihdr(
-  mut jp2: &mut opj_jp2,
-  mut p_nb_bytes_written: *mut OPJ_UINT32,
-) -> *mut OPJ_BYTE {
-  unsafe {
-    let mut l_ihdr_data = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut l_current_ihdr_ptr = std::ptr::null_mut::<OPJ_BYTE>();
-    /* preconditions */
-
-    assert!(!p_nb_bytes_written.is_null());
-    /* default image header is 22 bytes wide */
-    l_ihdr_data = opj_calloc(1i32 as size_t, 22i32 as size_t) as *mut OPJ_BYTE; /* write box size */
-    if l_ihdr_data.is_null() {
-      return std::ptr::null_mut::<OPJ_BYTE>();
-    } /* IHDR */
-    l_current_ihdr_ptr = l_ihdr_data; /* HEIGHT */
-    opj_write_bytes(l_current_ihdr_ptr, 22 as OPJ_UINT32, 4 as OPJ_UINT32); /* WIDTH */
-    l_current_ihdr_ptr = l_current_ihdr_ptr.offset(4); /* NC */
-    opj_write_bytes(
-      l_current_ihdr_ptr,
-      0x69686472 as OPJ_UINT32,
-      4 as OPJ_UINT32,
-    ); /* BPC */
-    l_current_ihdr_ptr = l_current_ihdr_ptr.offset(4); /* C : Always 7 */
-    opj_write_bytes(l_current_ihdr_ptr, jp2.h, 4 as OPJ_UINT32); /* UnkC, colorspace unknown */
-    l_current_ihdr_ptr = l_current_ihdr_ptr.offset(4); /* IPR, no intellectual property */
-    opj_write_bytes(l_current_ihdr_ptr, jp2.w, 4 as OPJ_UINT32);
-    l_current_ihdr_ptr = l_current_ihdr_ptr.offset(4);
-    opj_write_bytes(l_current_ihdr_ptr, jp2.numcomps, 2 as OPJ_UINT32);
-    l_current_ihdr_ptr = l_current_ihdr_ptr.offset(2);
-    opj_write_bytes(l_current_ihdr_ptr, jp2.bpc, 1 as OPJ_UINT32);
-    l_current_ihdr_ptr = l_current_ihdr_ptr.offset(1);
-    opj_write_bytes(l_current_ihdr_ptr, jp2.C, 1 as OPJ_UINT32);
-    l_current_ihdr_ptr = l_current_ihdr_ptr.offset(1);
-    opj_write_bytes(l_current_ihdr_ptr, jp2.UnkC, 1 as OPJ_UINT32);
-    l_current_ihdr_ptr = l_current_ihdr_ptr.offset(1);
-    opj_write_bytes(l_current_ihdr_ptr, jp2.IPR, 1 as OPJ_UINT32);
-    l_current_ihdr_ptr = l_current_ihdr_ptr.offset(1);
-    *p_nb_bytes_written = 22 as OPJ_UINT32;
-    l_ihdr_data
-  }
+fn opj_jp2_write_ihdr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
+  /* IHDR */
+  let mut header = Jp2BoxHeader::new(Jp2BoxType::IHDR);
+  header.length += 14;
+  header.write(buf);
+  /* HEIGHT */
+  buf.write_all(&jp2.h.to_be_bytes()).unwrap();
+  /* WIDTH */
+  buf.write_all(&jp2.w.to_be_bytes()).unwrap();
+  /* NC */
+  buf.write_all(&(jp2.numcomps as u16).to_be_bytes()).unwrap();
+  /* BPC */
+  buf.push(jp2.bpc as u8);
+  /* C : Always 7 */
+  buf.push(jp2.C as u8);
+  /* UnkC, colorspace unknown */
+  buf.push(jp2.UnkC as u8);
+  /* IPR, no intellectual property */
+  buf.push(jp2.IPR as u8);
+  true
 }
 
 /* *
  * Writes the Bit per Component box.
  *
- * @param   jp2                     jpeg2000 file codec.
- * @param   p_nb_bytes_written      pointer to store the nb of bytes written by the function.
- *
- * @return  the data being copied.
 */
-fn opj_jp2_write_bpcc(
-  mut jp2: &mut opj_jp2,
-  mut p_nb_bytes_written: *mut OPJ_UINT32,
-) -> *mut OPJ_BYTE {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    /* room for 8 bytes for box and 1 byte for each component */
-    let mut l_bpcc_size: OPJ_UINT32 = 0;
-    let mut l_bpcc_data = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut l_current_bpcc_ptr = std::ptr::null_mut::<OPJ_BYTE>();
-    /* preconditions */
-    /* BPCC */
-    assert!(!p_nb_bytes_written.is_null());
-    l_bpcc_size = (8u32).wrapping_add(jp2.numcomps);
-    l_bpcc_data = opj_calloc(1i32 as size_t, l_bpcc_size as size_t) as *mut OPJ_BYTE;
-    if l_bpcc_data.is_null() {
-      return std::ptr::null_mut::<OPJ_BYTE>();
-    }
-    l_current_bpcc_ptr = l_bpcc_data;
-    opj_write_bytes(l_current_bpcc_ptr, l_bpcc_size, 4 as OPJ_UINT32);
-    l_current_bpcc_ptr = l_current_bpcc_ptr.offset(4);
-    opj_write_bytes(
-      l_current_bpcc_ptr,
-      0x62706363 as OPJ_UINT32,
-      4 as OPJ_UINT32,
-    );
-    l_current_bpcc_ptr = l_current_bpcc_ptr.offset(4);
-    i = 0 as OPJ_UINT32;
-    while i < jp2.numcomps {
-      opj_write_bytes(
-        l_current_bpcc_ptr,
-        (*jp2.comps.offset(i as isize)).bpcc,
-        1 as OPJ_UINT32,
-      );
-      l_current_bpcc_ptr = l_current_bpcc_ptr.offset(1);
-      i += 1;
-    }
-    *p_nb_bytes_written = l_bpcc_size;
-    l_bpcc_data
+fn opj_jp2_write_bpcc(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
+  let comps = unsafe { std::slice::from_raw_parts(jp2.comps, jp2.numcomps as usize) };
+  let mut header = Jp2BoxHeader::new(Jp2BoxType::BPCC);
+  header.length += comps.len() as u32;
+  header.write(buf);
+  for comp in comps {
+    buf.push(comp.bpcc as u8);
   }
+  true
 }
 
 /* *
@@ -580,138 +500,67 @@ fn opj_jp2_read_bpcc(
 /* *
  * Writes the Channel Definition box.
  *
- * @param jp2                   jpeg2000 file codec.
- * @param p_nb_bytes_written    pointer to store the nb of bytes written by the function.
- *
- * @return  the data being copied.
  */
-fn opj_jp2_write_cdef(
-  mut jp2: &mut opj_jp2,
-  mut p_nb_bytes_written: *mut OPJ_UINT32,
-) -> *mut OPJ_BYTE {
-  unsafe {
-    /* room for 8 bytes for box, 2 for n */
-    let mut l_cdef_size = 10 as OPJ_UINT32;
-    let mut l_cdef_data = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut l_current_cdef_ptr = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut l_value: OPJ_UINT32 = 0;
-    let mut i: OPJ_UINT16 = 0;
-    /* preconditions */
-    /* BPCC */
-    /* Cni */
-    /* Asoci */
-
-    assert!(!p_nb_bytes_written.is_null());
-    assert!(!jp2.color.jp2_cdef.is_null());
-    assert!(!(*jp2.color.jp2_cdef).info.is_null());
-    assert!((*jp2.color.jp2_cdef).n as core::ffi::c_uint > 0u32);
-    l_cdef_size = (l_cdef_size as core::ffi::c_uint)
-      .wrapping_add((6u32).wrapping_mul((*jp2.color.jp2_cdef).n as core::ffi::c_uint))
-      as OPJ_UINT32;
-    l_cdef_data = opj_malloc(l_cdef_size as size_t) as *mut OPJ_BYTE;
-    if l_cdef_data.is_null() {
-      return std::ptr::null_mut::<OPJ_BYTE>();
-    }
-    l_current_cdef_ptr = l_cdef_data;
-    opj_write_bytes(l_current_cdef_ptr, l_cdef_size, 4 as OPJ_UINT32);
-    l_current_cdef_ptr = l_current_cdef_ptr.offset(4);
-    opj_write_bytes(
-      l_current_cdef_ptr,
-      0x63646566 as OPJ_UINT32,
-      4 as OPJ_UINT32,
-    );
-    l_current_cdef_ptr = l_current_cdef_ptr.offset(4);
-    l_value = (*jp2.color.jp2_cdef).n as OPJ_UINT32;
-    opj_write_bytes(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
-    l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
-    i = 0 as OPJ_UINT16;
-    while (i as core::ffi::c_int) < (*jp2.color.jp2_cdef).n as core::ffi::c_int {
-      l_value = (*(*jp2.color.jp2_cdef).info.offset(i as isize)).cn as OPJ_UINT32;
-      opj_write_bytes(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
-      l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
-      l_value = (*(*jp2.color.jp2_cdef).info.offset(i as isize)).typ as OPJ_UINT32;
-      opj_write_bytes(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
-      l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
-      l_value = (*(*jp2.color.jp2_cdef).info.offset(i as isize)).asoc as OPJ_UINT32;
-      opj_write_bytes(l_current_cdef_ptr, l_value, 2 as OPJ_UINT32);
-      l_current_cdef_ptr = l_current_cdef_ptr.offset(2);
-      i += 1;
-    }
-    *p_nb_bytes_written = l_cdef_size;
-    l_cdef_data
+fn opj_jp2_write_cdef(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
+  let cdef = if !jp2.color.jp2_cdef.is_null() {
+    unsafe { &*jp2.color.jp2_cdef }
+  } else {
+    return false;
+  };
+  assert!(!cdef.info.is_null());
+  assert!(cdef.n as core::ffi::c_uint > 0u32);
+  let info = unsafe { std::slice::from_raw_parts(cdef.info, cdef.n as usize) };
+  let mut header = Jp2BoxHeader::new(Jp2BoxType::CDEF);
+  header.length += 2 + (info.len() * 6) as u32;
+  header.write(buf);
+  buf.write_all(&(cdef.n as u16).to_be_bytes()).unwrap();
+  for info in info {
+    buf.write_all(&(info.cn as u16).to_be_bytes()).unwrap();
+    buf.write_all(&(info.typ as u16).to_be_bytes()).unwrap();
+    buf.write_all(&(info.asoc as u16).to_be_bytes()).unwrap();
   }
+  true
 }
 
 /* *
  * Writes the Colour Specification box.
  *
- * @param jp2                   jpeg2000 file codec.
- * @param p_nb_bytes_written    pointer to store the nb of bytes written by the function.
- *
- * @return  the data being copied.
 */
-fn opj_jp2_write_colr(
-  mut jp2: &mut opj_jp2,
-  mut p_nb_bytes_written: *mut OPJ_UINT32,
-) -> *mut OPJ_BYTE {
-  unsafe {
-    /* room for 8 bytes for box 3 for common data and variable upon profile*/
-    let mut l_colr_size = 11 as OPJ_UINT32;
-    let mut l_colr_data = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut l_current_colr_ptr = std::ptr::null_mut::<OPJ_BYTE>();
-    /* preconditions */
-    /* ICC profile */
-    /* BPCC */
-    assert!(!p_nb_bytes_written.is_null());
-    assert!(jp2.meth == 1u32 || jp2.meth == 2u32); /* PRECEDENCE */
-    match jp2.meth {
-      1 => l_colr_size = (l_colr_size as core::ffi::c_uint).wrapping_add(4u32) as OPJ_UINT32,
-      2 => {
-        assert!(jp2.color.icc_profile_len != 0); /* EnumCS */
-        l_colr_size =
-          (l_colr_size as core::ffi::c_uint).wrapping_add(jp2.color.icc_profile_len) as OPJ_UINT32
-      }
-      _ => return std::ptr::null_mut::<OPJ_BYTE>(),
+fn opj_jp2_write_colr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
+  let meth = jp2.meth as u8;
+  let mut header = Jp2BoxHeader::new(Jp2BoxType::COLR);
+  header.length += 3;
+  /* Meth value is restricted to 1 or 2 (Table I.9 of part 1) */
+  assert!(meth == 1 || meth == 2);
+  header.length += match meth {
+    1 => 4,
+    2 => {
+      assert!(jp2.color.icc_profile_len != 0); /* EnumCS */
+      jp2.color.icc_profile_len
     }
-    l_colr_data = opj_calloc(1i32 as size_t, l_colr_size as size_t) as *mut OPJ_BYTE;
-    if l_colr_data.is_null() {
-      return std::ptr::null_mut::<OPJ_BYTE>();
+    _ => return false,
+  };
+  header.write(buf);
+  buf.push(meth as u8);
+  buf.push(jp2.precedence as u8);
+  buf.push(jp2.approx as u8);
+  match meth {
+    1 => {
+      buf.write_all(&(jp2.enumcs as u32).to_be_bytes()).unwrap();
     }
-    l_current_colr_ptr = l_colr_data;
-    opj_write_bytes(l_current_colr_ptr, l_colr_size, 4 as OPJ_UINT32);
-    l_current_colr_ptr = l_current_colr_ptr.offset(4);
-    opj_write_bytes(
-      l_current_colr_ptr,
-      0x636f6c72 as OPJ_UINT32,
-      4 as OPJ_UINT32,
-    );
-    l_current_colr_ptr = l_current_colr_ptr.offset(4);
-    opj_write_bytes(l_current_colr_ptr, jp2.meth, 1 as OPJ_UINT32);
-    l_current_colr_ptr = l_current_colr_ptr.offset(1);
-    opj_write_bytes(l_current_colr_ptr, jp2.precedence, 1 as OPJ_UINT32);
-    l_current_colr_ptr = l_current_colr_ptr.offset(1);
-    opj_write_bytes(l_current_colr_ptr, jp2.approx, 1 as OPJ_UINT32);
-    l_current_colr_ptr = l_current_colr_ptr.offset(1);
-    if jp2.meth == 1u32 {
-      /* Meth value is restricted to 1 or 2 (Table I.9 of part 1) */
-      opj_write_bytes(l_current_colr_ptr, jp2.enumcs, 4 as OPJ_UINT32);
-    } else if jp2.meth == 2u32 {
+    2 => {
       /* ICC profile */
-      let mut i: OPJ_UINT32 = 0;
-      i = 0 as OPJ_UINT32;
-      while i < jp2.color.icc_profile_len {
-        opj_write_bytes(
-          l_current_colr_ptr,
-          *jp2.color.icc_profile_buf.offset(i as isize) as OPJ_UINT32,
-          1 as OPJ_UINT32,
-        );
-        l_current_colr_ptr = l_current_colr_ptr.offset(1);
-        i += 1;
-      }
+      let icc_profile = unsafe {
+        std::slice::from_raw_parts(
+          jp2.color.icc_profile_buf,
+          jp2.color.icc_profile_len as usize,
+        )
+      };
+      buf.write_all(icc_profile).unwrap();
     }
-    *p_nb_bytes_written = l_colr_size;
-    l_colr_data
+    _ => return false,
   }
+  true
 }
 
 fn opj_jp2_free_pclr(mut color: *mut opj_jp2_color_t) {
@@ -1697,7 +1546,7 @@ fn opj_jp2_write_jp2h(
     }
   }
   // write super box header to stream
-  if !jp2h.write(stream, p_manager) {
+  if !jp2h.write(stream) {
     event_msg!(
       p_manager,
       EVT_ERROR,
@@ -1721,7 +1570,7 @@ fn opj_jp2_write_jp2h(
 /* *
  * Writes a FTYP box - File type box
  *
- * @param   cio         the stream to write data to.
+ * @param   stream         the stream to write data to.
  * @param   jp2         the jpeg2000 file codec.
  * @param   p_manager   the user event manager.
  *
@@ -1729,7 +1578,7 @@ fn opj_jp2_write_jp2h(
  */
 fn opj_jp2_write_ftyp(
   mut jp2: &mut opj_jp2,
-  mut cio: &mut Stream,
+  mut stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
@@ -1774,7 +1623,7 @@ fn opj_jp2_write_ftyp(
       i += 1;
       /* CL */
     }
-    l_result = (opj_stream_write_data(cio, l_ftyp_data, l_ftyp_size as OPJ_SIZE_T, p_manager)
+    l_result = (opj_stream_write_data(stream, l_ftyp_data, l_ftyp_size as OPJ_SIZE_T, p_manager)
       == l_ftyp_size as usize) as core::ffi::c_int;
     if l_result == 0 {
       event_msg!(
@@ -1791,7 +1640,7 @@ fn opj_jp2_write_ftyp(
 /* *
  * Writes the Jpeg2000 codestream Header box - JP2C Header box. This function must be called AFTER the coding has been done.
  *
- * @param   cio         the stream to write data to.
+ * @param   stream         the stream to write data to.
  * @param   jp2         the jpeg2000 file codec.
  * @param   p_manager   user event manager.
  *
@@ -1799,7 +1648,7 @@ fn opj_jp2_write_ftyp(
 */
 fn opj_jp2_write_jp2c(
   mut jp2: &mut opj_jp2,
-  mut cio: &mut Stream,
+  mut stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
@@ -1808,8 +1657,8 @@ fn opj_jp2_write_jp2c(
     /* preconditions */
     /* JP2C */
 
-    assert!(opj_stream_has_seek(cio) != 0);
-    j2k_codestream_exit = opj_stream_tell(cio);
+    assert!(opj_stream_has_seek(stream) != 0);
+    j2k_codestream_exit = opj_stream_tell(stream);
     opj_write_bytes(
       l_data_header.as_mut_ptr(),
       (j2k_codestream_exit - jp2.j2k_codestream_offset) as OPJ_UINT32,
@@ -1820,15 +1669,21 @@ fn opj_jp2_write_jp2c(
       0x6a703263 as OPJ_UINT32,
       4 as OPJ_UINT32,
     );
-    if opj_stream_seek(cio, jp2.j2k_codestream_offset, p_manager) == 0 {
+    if opj_stream_seek(stream, jp2.j2k_codestream_offset, p_manager) == 0 {
       event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
       return 0i32;
     }
-    if opj_stream_write_data(cio, l_data_header.as_mut_ptr(), 8 as OPJ_SIZE_T, p_manager) != 8 {
+    if opj_stream_write_data(
+      stream,
+      l_data_header.as_mut_ptr(),
+      8 as OPJ_SIZE_T,
+      p_manager,
+    ) != 8
+    {
       event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
       return 0i32;
     }
-    if opj_stream_seek(cio, j2k_codestream_exit, p_manager) == 0 {
+    if opj_stream_seek(stream, j2k_codestream_exit, p_manager) == 0 {
       event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
       return 0i32;
     }
@@ -1839,7 +1694,7 @@ fn opj_jp2_write_jp2c(
 /* *
  * Writes a jpeg2000 file signature box.
  *
- * @param cio the stream to write data to.
+ * @param stream the stream to write data to.
  * @param   jp2         the jpeg2000 file codec.
  * @param p_manager the user event manager.
  *
@@ -1847,7 +1702,7 @@ fn opj_jp2_write_jp2c(
  */
 fn opj_jp2_write_jp(
   mut _jp2: &mut opj_jp2,
-  mut cio: &mut Stream,
+  mut stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
@@ -1874,7 +1729,7 @@ fn opj_jp2_write_jp(
       4 as OPJ_UINT32,
     );
     if opj_stream_write_data(
-      cio,
+      stream,
       l_signature_data.as_mut_ptr(),
       12 as OPJ_SIZE_T,
       p_manager,
@@ -2121,7 +1976,7 @@ pub(crate) fn opj_jp2_encode(
 
 pub(crate) fn opj_jp2_end_decompress(
   mut jp2: &mut opj_jp2,
-  mut cio: &mut Stream,
+  mut stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
@@ -2131,15 +1986,15 @@ pub(crate) fn opj_jp2_end_decompress(
     return 0i32;
   }
   /* write header */
-  if opj_jp2_exec(jp2, jp2.m_procedure_list, cio, p_manager) == 0 {
+  if opj_jp2_exec(jp2, jp2.m_procedure_list, stream, p_manager) == 0 {
     return 0i32;
   }
-  opj_j2k_end_decompress(&mut jp2.j2k, cio, p_manager)
+  opj_j2k_end_decompress(&mut jp2.j2k, stream, p_manager)
 }
 
 pub(crate) fn opj_jp2_end_compress(
   mut jp2: &mut opj_jp2,
-  mut cio: &mut Stream,
+  mut stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
@@ -2148,11 +2003,11 @@ pub(crate) fn opj_jp2_end_compress(
   if opj_jp2_setup_end_header_writing(jp2, p_manager) == 0 {
     return 0i32;
   }
-  if opj_j2k_end_compress(&mut jp2.j2k, cio, p_manager) == 0 {
+  if opj_j2k_end_compress(&mut jp2.j2k, stream, p_manager) == 0 {
     return 0i32;
   }
   /* write header */
-  opj_jp2_exec(jp2, jp2.m_procedure_list, cio, p_manager)
+  opj_jp2_exec(jp2, jp2.m_procedure_list, stream, p_manager)
 }
 
 /* *
@@ -2198,7 +2053,7 @@ fn opj_jp2_setup_end_header_reading(
 }
 fn opj_jp2_default_validation(
   mut jp2: &mut opj_jp2,
-  mut cio: &mut Stream,
+  mut stream: &mut Stream,
   mut _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
@@ -2236,7 +2091,7 @@ fn opj_jp2_default_validation(
     l_is_valid &= (jp2.meth > 0u32 && jp2.meth < 3u32) as core::ffi::c_int;
     /* stream validation */
     /* back and forth is needed */
-    l_is_valid &= opj_stream_has_seek(cio);
+    l_is_valid &= opj_stream_has_seek(stream);
     l_is_valid
   }
 }
@@ -2256,10 +2111,7 @@ fn opj_jp2_read_header_procedure(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut box_0 = Jp2BoxHeader {
-      length: 0,
-      type_0: 0,
-    };
+    let mut box_0 = Jp2BoxHeader { length: 0, ty: 0 };
     let mut l_nb_bytes_read: OPJ_UINT32 = 0;
     let mut l_current_handler = std::ptr::null::<opj_jp2_header_handler_t>();
     let mut l_current_handler_misplaced = std::ptr::null::<opj_jp2_header_handler_t>();
@@ -2279,7 +2131,7 @@ fn opj_jp2_read_header_procedure(
     }
     while opj_jp2_read_boxhdr(&mut box_0, &mut l_nb_bytes_read, stream, p_manager) != 0 {
       /* is it the codestream box ? */
-      if box_0.type_0 == 0x6a703263u32 {
+      if box_0.ty == 0x6a703263u32 {
         if jp2.jp2_state & JP2_STATE_HEADER as core::ffi::c_uint != 0 {
           jp2.jp2_state |= JP2_STATE_CODESTREAM as core::ffi::c_uint;
           opj_free(l_current_data as *mut core::ffi::c_void);
@@ -2305,14 +2157,14 @@ fn opj_jp2_read_header_procedure(
             EVT_ERROR,
             "invalid box size %d (%x)\n",
             box_0.length,
-            box_0.type_0,
+            box_0.ty,
           );
           opj_free(l_current_data as *mut core::ffi::c_void);
           return 0i32;
         }
       }
-      l_current_handler = opj_jp2_find_handler(box_0.type_0);
-      l_current_handler_misplaced = opj_jp2_img_find_handler(box_0.type_0);
+      l_current_handler = opj_jp2_find_handler(box_0.ty);
+      l_current_handler_misplaced = opj_jp2_img_find_handler(box_0.ty);
       l_current_data_size = box_0.length.wrapping_sub(l_nb_bytes_read);
       if !l_current_handler.is_null() || !l_current_handler_misplaced.is_null() {
         if l_current_handler.is_null() {
@@ -2320,10 +2172,10 @@ fn opj_jp2_read_header_procedure(
             p_manager,
             EVT_WARNING,
             "Found a misplaced \'%c%c%c%c\' box outside jp2h box\n",
-            (box_0.type_0 >> 24i32) as OPJ_BYTE as core::ffi::c_int,
-            (box_0.type_0 >> 16i32) as OPJ_BYTE as core::ffi::c_int,
-            (box_0.type_0 >> 8i32) as OPJ_BYTE as core::ffi::c_int,
-            box_0.type_0 as OPJ_BYTE as core::ffi::c_int,
+            (box_0.ty >> 24i32) as OPJ_BYTE as core::ffi::c_int,
+            (box_0.ty >> 16i32) as OPJ_BYTE as core::ffi::c_int,
+            (box_0.ty >> 8i32) as OPJ_BYTE as core::ffi::c_int,
+            box_0.ty as OPJ_BYTE as core::ffi::c_int,
           );
           if jp2.jp2_state & JP2_STATE_HEADER as core::ffi::c_uint != 0 {
             /* read anyway, we already have jp2h */
@@ -2333,10 +2185,10 @@ fn opj_jp2_read_header_procedure(
               p_manager,
               EVT_WARNING,
               "JPEG2000 Header box not read yet, \'%c%c%c%c\' box will be ignored\n",
-              (box_0.type_0 >> 24i32) as OPJ_BYTE as core::ffi::c_int,
-              (box_0.type_0 >> 16i32) as OPJ_BYTE as core::ffi::c_int,
-              (box_0.type_0 >> 8i32) as OPJ_BYTE as core::ffi::c_int,
-              box_0.type_0 as OPJ_BYTE as core::ffi::c_int,
+              (box_0.ty >> 24i32) as OPJ_BYTE as core::ffi::c_int,
+              (box_0.ty >> 16i32) as OPJ_BYTE as core::ffi::c_int,
+              (box_0.ty >> 8i32) as OPJ_BYTE as core::ffi::c_int,
+              box_0.ty as OPJ_BYTE as core::ffi::c_int,
             );
             jp2.jp2_state |= JP2_STATE_UNKNOWN as core::ffi::c_uint;
             if opj_stream_skip(stream, l_current_data_size as OPJ_OFF_T, p_manager)
@@ -2360,10 +2212,10 @@ fn opj_jp2_read_header_procedure(
             EVT_ERROR,
             "Invalid box size %d for box \'%c%c%c%c\'. Need %d bytes, %d bytes remaining \n",
             box_0.length,
-            (box_0.type_0 >> 24i32) as OPJ_BYTE as core::ffi::c_int,
-            (box_0.type_0 >> 16i32) as OPJ_BYTE as core::ffi::c_int,
-            (box_0.type_0 >> 8i32) as OPJ_BYTE as core::ffi::c_int,
-            box_0.type_0 as OPJ_BYTE as core::ffi::c_int,
+            (box_0.ty >> 24i32) as OPJ_BYTE as core::ffi::c_int,
+            (box_0.ty >> 16i32) as OPJ_BYTE as core::ffi::c_int,
+            (box_0.ty >> 8i32) as OPJ_BYTE as core::ffi::c_int,
+            box_0.ty as OPJ_BYTE as core::ffi::c_int,
             l_current_data_size,
             opj_stream_get_number_byte_left(stream) as OPJ_UINT32,
           );
@@ -2534,13 +2386,7 @@ fn opj_jp2_find_handler(mut p_id: OPJ_UINT32) -> *const opj_jp2_header_handler_t
     std::ptr::null::<opj_jp2_header_handler_t>()
   }
 }
-/* *
- * Finds the image execution function related to the given box id.
- *
- * @param   p_id    the id of the handler to fetch.
- *
- * @return  the given handler or NULL if it could not be found.
- */
+
 /* *
  * Finds the image execution function related to the given box id.
  *
@@ -2729,10 +2575,7 @@ fn opj_jp2_read_jp2h(
   unsafe {
     let mut l_box_size = 0 as OPJ_UINT32;
     let mut l_current_data_size = 0 as OPJ_UINT32;
-    let mut box_0 = Jp2BoxHeader {
-      length: 0,
-      type_0: 0,
-    };
+    let mut box_0 = Jp2BoxHeader { length: 0, ty: 0 };
     let mut l_current_handler = std::ptr::null::<opj_jp2_header_handler_t>();
     let mut l_has_ihdr = 0i32;
     /* preconditions */
@@ -2775,7 +2618,7 @@ fn opj_jp2_read_jp2h(
         );
         return 0i32;
       }
-      l_current_handler = opj_jp2_img_find_handler(box_0.type_0);
+      l_current_handler = opj_jp2_img_find_handler(box_0.ty);
       l_current_data_size = box_0.length.wrapping_sub(l_box_size);
       p_header_data = p_header_data.offset(l_box_size as isize);
       if !l_current_handler.is_null() {
@@ -2790,7 +2633,7 @@ fn opj_jp2_read_jp2h(
       } else {
         jp2.jp2_img_state |= JP2_IMG_STATE_UNKNOWN as core::ffi::c_uint
       }
-      if box_0.type_0 == 0x69686472u32 {
+      if box_0.ty == 0x69686472u32 {
         l_has_ihdr = 1i32
       }
       p_header_data = p_header_data.offset(l_current_data_size as isize);
@@ -2822,7 +2665,7 @@ fn opj_jp2_read_jp2h(
  * @return  true if the box is recognized, false otherwise
 */
 fn opj_jp2_read_boxhdr_char(
-  mut box_0: *mut Jp2BoxHeader,
+  mut box_0: &mut Jp2BoxHeader,
   mut p_data: *mut OPJ_BYTE,
   mut p_number_bytes_read: *mut OPJ_UINT32,
   mut p_box_max_size: OPJ_UINT32,
@@ -2833,7 +2676,6 @@ fn opj_jp2_read_boxhdr_char(
     /* preconditions */
 
     assert!(!p_data.is_null());
-    assert!(!box_0.is_null());
     assert!(!p_number_bytes_read.is_null());
     if p_box_max_size < 8u32 {
       event_msg!(
@@ -2849,7 +2691,7 @@ fn opj_jp2_read_boxhdr_char(
     (*box_0).length = l_value;
     opj_read_bytes(p_data, &mut l_value, 4 as OPJ_UINT32);
     p_data = p_data.offset(4);
-    (*box_0).type_0 = l_value;
+    (*box_0).ty = l_value;
     *p_number_bytes_read = 8 as OPJ_UINT32;
     /* do we have a "special very large box ?" */
     /* read then the XLBox */
@@ -3196,9 +3038,7 @@ pub(crate) fn opj_jp2_get_tile(
   opj_jp2_apply_color_postprocessing(p_jp2, p_image, p_manager)
 }
 
-/* ----------------------------------------------------------------------- */
-/* JP2 encoder interface                                             */
-/* ----------------------------------------------------------------------- */
+/// JP2 encoder interface
 pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
   /* create the J2K codec */
   let mut jp2 = opj_jp2 {
@@ -3275,7 +3115,6 @@ pub(crate) fn opj_jp2_set_decoded_resolution_factor(
   opj_j2k_set_decoded_resolution_factor(&mut p_jp2.j2k, res_factor, p_manager)
 }
 
-/* ----------------------------------------------------------------------- */
 pub(crate) fn opj_jp2_encoder_set_extra_options(
   p_jp2: &mut opj_jp2,
   options: &[&str],
@@ -3283,4 +3122,3 @@ pub(crate) fn opj_jp2_encoder_set_extra_options(
 ) -> bool {
   opj_j2k_encoder_set_extra_options(&mut p_jp2.j2k, options, p_manager)
 }
-/* ----------------------------------------------------------------------- */

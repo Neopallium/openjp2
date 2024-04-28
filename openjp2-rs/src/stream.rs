@@ -456,6 +456,22 @@ impl Stream {
   }
 }
 
+impl Read for Stream {
+  fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+    self.read(buf)
+  }
+}
+
+impl Write for Stream {
+  fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+    self.write(buf)
+  }
+
+  fn flush(&mut self) -> std::io::Result<()> {
+    self.flush()
+  }
+}
+
 pub(crate) fn opj_stream_read_data(
   mut p_stream: *mut opj_stream_private_t,
   mut p_buffer: *mut OPJ_BYTE,
