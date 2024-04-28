@@ -32,21 +32,86 @@ pub mod event {
   pub const EVT_INFO: EventType = EventType::Info;
 }
 
-pub mod jpip {
-  pub const JPIP_CIDX: u32 = 0x63696478; /* Codestream index                */
-  pub const JPIP_CPTR: u32 = 0x63707472; /* Codestream Finder Box           */
-  pub const JPIP_MANF: u32 = 0x6d616e66; /* Manifest Box                    */
-  pub const JPIP_FAIX: u32 = 0x66616978; /* Fragment array Index box        */
-  pub const JPIP_MHIX: u32 = 0x6d686978; /* Main Header Index Table         */
-  pub const JPIP_TPIX: u32 = 0x74706978; /* Tile-part Index Table box       */
-  pub const JPIP_THIX: u32 = 0x74686978; /* Tile header Index Table box     */
-  pub const JPIP_PPIX: u32 = 0x70706978; /* Precinct Packet Index Table box */
-  pub const JPIP_PHIX: u32 = 0x70686978; /* Packet Header index Table       */
-  pub const JPIP_FIDX: u32 = 0x66696478; /* File Index                      */
-  pub const JPIP_FPTR: u32 = 0x66707472; /* File Finder                     */
-  pub const JPIP_PRXY: u32 = 0x70727879; /* Proxy boxes                     */
-  pub const JPIP_IPTR: u32 = 0x69707472; /* Index finder box                */
-  pub const JPIP_PHLD: u32 = 0x70686c64; /* Place holder                    */
+/// Enum representing JPIP box types.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+pub enum JpipBoxType {
+  #[default]
+  None,
+  /// Codestream index
+  Cidx,
+  /// Codestream Finder Box
+  Cptr,
+  /// Manifest Box
+  Manf,
+  /// Fragment array Index box
+  Faix,
+  /// Main Header Index Table
+  Mhix,
+  /// Tile-part Index Table box
+  Tpix,
+  /// Tile header Index Table box
+  Thix,
+  /// Precinct Packet Index Table box
+  Ppix,
+  /// Packet Header index Table
+  Phix,
+  /// File Index
+  Fidx,
+  /// File Finder
+  Fptr,
+  /// Proxy boxes
+  Prxy,
+  /// Index finder box
+  Iptr,
+  /// Place holder
+  Phld,
+  /// Unknown box type
+  Unknown(u32),
+}
+
+impl From<u32> for JpipBoxType {
+  fn from(value: u32) -> Self {
+    match value {
+      0x63696478 => JpipBoxType::Cidx,
+      0x63707472 => JpipBoxType::Cptr,
+      0x6d616e66 => JpipBoxType::Manf,
+      0x66616978 => JpipBoxType::Faix,
+      0x6d686978 => JpipBoxType::Mhix,
+      0x74706978 => JpipBoxType::Tpix,
+      0x74686978 => JpipBoxType::Thix,
+      0x70706978 => JpipBoxType::Ppix,
+      0x70686978 => JpipBoxType::Phix,
+      0x66696478 => JpipBoxType::Fidx,
+      0x66707472 => JpipBoxType::Fptr,
+      0x70727879 => JpipBoxType::Prxy,
+      0x69707472 => JpipBoxType::Iptr,
+      0x70686c64 => JpipBoxType::Phld,
+      _ => JpipBoxType::Unknown(value),
+    }
+  }
+}
+
+impl JpipBoxType {
+  pub fn to_u32(&self) -> u32 {
+    match self {
+      JpipBoxType::None => 0x00000000,
+      JpipBoxType::Cidx => 0x63696478,
+      JpipBoxType::Cptr => 0x63707472,
+      JpipBoxType::Manf => 0x6d616e66,
+      JpipBoxType::Faix => 0x66616978,
+      JpipBoxType::Mhix => 0x6d686978,
+      JpipBoxType::Tpix => 0x74706978,
+      JpipBoxType::Thix => 0x74686978,
+      JpipBoxType::Ppix => 0x70706978,
+      JpipBoxType::Phix => 0x70686978,
+      JpipBoxType::Fidx => 0x66696478,
+      JpipBoxType::Fptr => 0x66707472,
+      JpipBoxType::Prxy => 0x70727879,
+      JpipBoxType::Iptr => 0x69707472,
+      JpipBoxType::Phld => 0x70686c64,
+      JpipBoxType::Unknown(value) => *value,
+    }
+  }
 }
 
 pub mod j2k {
@@ -146,47 +211,109 @@ pub mod j2k {
   pub const J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT: i32 = 10;
 }
 
-pub mod jp2 {
-  pub const JPIP_JPIP: u32 = 0x6a706970;
-  /**< JPEG 2000 signature box */
-  pub const JP2_JP: u32 = 0x6a502020;
-  /**< File type box */
-  pub const JP2_FTYP: u32 = 0x66747970;
-  /**< JP2 header box (super-box) */
-  pub const JP2_JP2H: u32 = 0x6a703268;
-  /**< Image header box */
-  pub const JP2_IHDR: u32 = 0x69686472;
-  /**< Colour specification box */
-  pub const JP2_COLR: u32 = 0x636f6c72;
-  /**< Contiguous codestream box */
-  pub const JP2_JP2C: u32 = 0x6a703263;
-  /**< Data entry URL box */
-  pub const JP2_URL: u32 = 0x75726c20;
-  /**< Palette box */
-  pub const JP2_PCLR: u32 = 0x70636c72;
-  /**< Component Mapping box */
-  pub const JP2_CMAP: u32 = 0x636d6170;
-  /**< Channel Definition box */
-  pub const JP2_CDEF: u32 = 0x63646566;
-  /**< Data Reference box */
-  pub const JP2_DTBL: u32 = 0x6474626c;
-  /**< Bits per component box */
-  pub const JP2_BPCC: u32 = 0x62706363;
-  /**< File type fields */
-  pub const JP2_JP2: u32 = 0x6a703220;
-  /**< Resolution box (super-box) */
-  pub const JP2_RES: u32 = 0x72657320;
-  /**< Intellectual property box */
-  pub const JP2_JP2I: u32 = 0x6a703269;
-  /**< XML box */
-  pub const JP2_XML: u32 = 0x786d6c20;
-  /**< UUID box */
-  pub const JP2_UUID: u32 = 0x75756994;
-  /**< UUID info box (super-box) */
-  pub const JP2_UINF: u32 = 0x75696e66;
-  /**< UUID list box */
-  pub const JP2_ULST: u32 = 0x756c7374;
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+pub enum Jp2BoxType {
+  /// No box type
+  #[default]
+  None,
+  /// JPEG 2000 signature box
+  JPIP,
+  /// File type box
+  JP,
+  /// JP2 header box (super-box)
+  FTYP,
+  /// Image header box
+  JP2H,
+  /// Colour specification box
+  IHDR,
+  /// Contiguous codestream box
+  COLR,
+  /// Data entry URL box
+  JP2C,
+  /// Palette box
+  URL,
+  /// Component Mapping box
+  PCLR,
+  /// Channel Definition box
+  CMAP,
+  /// Data Reference box
+  CDEF,
+  /// Bits per component box
+  DTBL,
+  /// File type fields
+  BPCC,
+  /// Resolution box (super-box)
+  JP2,
+  /// Intellectual property box
+  RES,
+  /// XML box
+  JP2I,
+  /// UUID box
+  XML,
+  /// UUID info box (super-box)
+  UUID,
+  /// UUID list box
+  UINF,
+  /// Unknown box type
+  Unknown(u32),
 }
+
+impl From<u32> for Jp2BoxType {
+  fn from(value: u32) -> Self {
+    match value {
+      0x6a706970 => Jp2BoxType::JPIP,
+      0x6a502020 => Jp2BoxType::JP,
+      0x66747970 => Jp2BoxType::FTYP,
+      0x6a703268 => Jp2BoxType::JP2H,
+      0x69686472 => Jp2BoxType::IHDR,
+      0x636f6c72 => Jp2BoxType::COLR,
+      0x6a703263 => Jp2BoxType::JP2C,
+      0x75726c20 => Jp2BoxType::URL,
+      0x70636c72 => Jp2BoxType::PCLR,
+      0x636d6170 => Jp2BoxType::CMAP,
+      0x63646566 => Jp2BoxType::CDEF,
+      0x6474626c => Jp2BoxType::DTBL,
+      0x62706363 => Jp2BoxType::BPCC,
+      0x6a703220 => Jp2BoxType::JP2,
+      0x72657320 => Jp2BoxType::RES,
+      0x6a703269 => Jp2BoxType::JP2I,
+      0x786d6c20 => Jp2BoxType::XML,
+      0x75756994 => Jp2BoxType::UUID,
+      0x75696e66 => Jp2BoxType::UINF,
+      _ => Jp2BoxType::Unknown(value),
+    }
+  }
+}
+
+impl Jp2BoxType {
+  /// Converts the enum variant back into a u32 value.
+  pub fn to_u32(&self) -> Option<u32> {
+    match self {
+      Jp2BoxType::None => None,
+      Jp2BoxType::JPIP => Some(0x6a706970),
+      Jp2BoxType::JP => Some(0x6a502020),
+      Jp2BoxType::FTYP => Some(0x66747970),
+      Jp2BoxType::JP2H => Some(0x6a703268),
+      Jp2BoxType::IHDR => Some(0x69686472),
+      Jp2BoxType::COLR => Some(0x636f6c72),
+      Jp2BoxType::JP2C => Some(0x6a703263),
+      Jp2BoxType::URL => Some(0x75726c20),
+      Jp2BoxType::PCLR => Some(0x70636c72),
+      Jp2BoxType::CMAP => Some(0x636d6170),
+      Jp2BoxType::CDEF => Some(0x63646566),
+      Jp2BoxType::DTBL => Some(0x6474626c),
+      Jp2BoxType::BPCC => Some(0x62706363),
+      Jp2BoxType::JP2 => Some(0x6a703220),
+      Jp2BoxType::RES => Some(0x72657320),
+      Jp2BoxType::JP2I => Some(0x6a703269),
+      Jp2BoxType::XML => Some(0x786d6c20),
+      Jp2BoxType::UUID => Some(0x75756994),
+      Jp2BoxType::UINF => Some(0x75696e66),
+      Jp2BoxType::Unknown(value) => Some(*value),
+    }
+  }
+}
+
 
 pub mod mqc {
   pub const MQC_NUMCTXS: usize = 19;
@@ -474,3 +601,67 @@ pub use j2k::*;
 pub use mqc::*;
 pub use opj::*;
 pub use t1::*;
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_jpip_box_type_roundtrip() {
+    let values = [
+      JpipBoxType::Cidx,
+      JpipBoxType::Cptr,
+      JpipBoxType::Manf,
+      JpipBoxType::Faix,
+      JpipBoxType::Mhix,
+      JpipBoxType::Tpix,
+      JpipBoxType::Thix,
+      JpipBoxType::Ppix,
+      JpipBoxType::Phix,
+      JpipBoxType::Fidx,
+      JpipBoxType::Fptr,
+      JpipBoxType::Prxy,
+      JpipBoxType::Iptr,
+      JpipBoxType::Phld,
+      JpipBoxType::Unknown(123),
+    ];
+
+    for value in values.iter() {
+      let u32_value = value.to_u32();
+      let converted_value = JpipBoxType::from(u32_value);
+      assert_eq!(*value, converted_value);
+    }
+  }
+
+  #[test]
+  fn test_jp2_box_type_roundtrip() {
+    let variants = [
+      Jp2BoxType::JPIP,
+      Jp2BoxType::JP,
+      Jp2BoxType::FTYP,
+      Jp2BoxType::JP2H,
+      Jp2BoxType::IHDR,
+      Jp2BoxType::COLR,
+      Jp2BoxType::JP2C,
+      Jp2BoxType::URL,
+      Jp2BoxType::PCLR,
+      Jp2BoxType::CMAP,
+      Jp2BoxType::CDEF,
+      Jp2BoxType::DTBL,
+      Jp2BoxType::BPCC,
+      Jp2BoxType::JP2,
+      Jp2BoxType::RES,
+      Jp2BoxType::JP2I,
+      Jp2BoxType::XML,
+      Jp2BoxType::UUID,
+      Jp2BoxType::UINF,
+      Jp2BoxType::Unknown(123),
+    ];
+
+    for variant in &variants {
+      let value = variant.to_u32().unwrap();
+      let roundtrip_variant = Jp2BoxType::from(value);
+      assert_eq!(*variant, roundtrip_variant);
+    }
+  }
+}

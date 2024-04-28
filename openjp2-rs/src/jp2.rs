@@ -2494,16 +2494,7 @@ fn opj_jp2_read_header_procedure(
     1i32
   }
 }
-/* *
- * Executes the given procedures on the given codec.
- *
- * @param   p_procedure_list    the list of procedures to execute
- * @param   jp2                 the jpeg2000 file codec to execute the procedures on.
- * @param   stream                  the stream to execute the procedures on.
- * @param   p_manager           the user manager.
- *
- * @return  true                if all the procedures were successfully executed.
- */
+
 /* *
  * Executes the given procedures on the given codec.
  *
