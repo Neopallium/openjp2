@@ -535,7 +535,7 @@ fn opj_jp2_write_colr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
   header.length += match meth {
     1 => 4,
     2 => {
-      assert!(jp2.color.icc_profile_len != 0); /* EnumCS */
+      assert!(jp2.color.icc_profile_len != 0);
       jp2.color.icc_profile_len
     }
     _ => return false,
@@ -546,17 +546,17 @@ fn opj_jp2_write_colr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
   buf.push(jp2.approx as u8);
   match meth {
     1 => {
+      /* EnumCS */
       buf.write_all(&(jp2.enumcs as u32).to_be_bytes()).unwrap();
+      // TODO: Support CIELab? (enumcs == 14).
     }
     2 => {
       /* ICC profile */
-      let icc_profile = unsafe {
-        std::slice::from_raw_parts(
-          jp2.color.icc_profile_buf,
-          jp2.color.icc_profile_len as usize,
-        )
-      };
-      buf.write_all(icc_profile).unwrap();
+      if let Some(icc_profile) = &jp2.color.icc_profile {
+        buf.extend_from_slice(icc_profile.as_slice());
+      } else {
+        log::error!("Missing ICC profile");
+      }
     }
     _ => return false,
   }
@@ -1319,7 +1319,6 @@ fn opj_jp2_read_colr(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut l_value: OPJ_UINT32 = 0;
     /* preconditions */
 
     assert!(!p_colr_header_data.is_null());
@@ -1366,29 +1365,16 @@ fn opj_jp2_read_colr(
       p_colr_header_data = p_colr_header_data.offset(4);
       if jp2.enumcs == 14u32 {
         /* CIELab */
-        let mut cielab = std::ptr::null_mut::<OPJ_UINT32>(); /* enumcs */
-        let mut rl: OPJ_UINT32 = 0;
-        let mut ol: OPJ_UINT32 = 0;
-        let mut ra: OPJ_UINT32 = 0;
-        let mut oa: OPJ_UINT32 = 0;
-        let mut rb: OPJ_UINT32 = 0;
-        let mut ob: OPJ_UINT32 = 0;
-        let mut il: OPJ_UINT32 = 0;
-        cielab = opj_malloc(9 * core::mem::size_of::<OPJ_UINT32>()) as *mut OPJ_UINT32;
-        if cielab.is_null() {
-          event_msg!(p_manager, EVT_ERROR, "Not enough memory for cielab\n",);
-          return 0i32;
-        }
-        *cielab.offset(0) = 14 as OPJ_UINT32;
         /* default values */
-        ob = 0 as OPJ_UINT32; /* D50 */
-        oa = ob; /* DEF */
-        ol = oa;
-        rb = ol;
-        ra = rb;
-        rl = ra;
-        il = 0x443530 as OPJ_UINT32;
-        *cielab.offset(1) = 0x44454600 as OPJ_UINT32;
+        let mut rl = 0u32;
+        let mut ol = 0u32;
+        let mut ra = 0u32;
+        let mut oa = 0u32;
+        let mut rb = 0u32;
+        let mut ob = 0u32;
+        let mut il = 0x443530u32;
+        let mut icc_profile = Vec::with_capacity(9 * core::mem::size_of::<OPJ_UINT32>());
+        icc_profile.write_all(&14u32.to_ne_bytes()).unwrap();
         if p_colr_header_size == 35u32 {
           opj_read_bytes(p_colr_header_data, &mut rl, 4 as OPJ_UINT32);
           p_colr_header_data = p_colr_header_data.offset(4);
@@ -1404,8 +1390,9 @@ fn opj_jp2_read_colr(
           p_colr_header_data = p_colr_header_data.offset(4);
           opj_read_bytes(p_colr_header_data, &mut il, 4 as OPJ_UINT32);
           p_colr_header_data = p_colr_header_data.offset(4);
-          *cielab.offset(1) = 0 as OPJ_UINT32
+          icc_profile.write_all(&0u32.to_ne_bytes()).unwrap();
         } else if p_colr_header_size != 7u32 {
+          icc_profile.write_all(&0x44454600u32.to_ne_bytes()).unwrap();
           event_msg!(
             p_manager,
             EVT_WARNING,
@@ -1413,34 +1400,25 @@ fn opj_jp2_read_colr(
             p_colr_header_size,
           );
         }
-        *cielab.offset(2) = rl;
-        *cielab.offset(4) = ra;
-        *cielab.offset(6) = rb;
-        *cielab.offset(3) = ol;
-        *cielab.offset(5) = oa;
-        *cielab.offset(7) = ob;
-        *cielab.offset(8) = il;
-        jp2.color.icc_profile_buf = cielab as *mut OPJ_BYTE;
+        icc_profile.write_all(&rl.to_ne_bytes()).unwrap();
+        icc_profile.write_all(&ol.to_ne_bytes()).unwrap();
+        icc_profile.write_all(&ra.to_ne_bytes()).unwrap();
+        icc_profile.write_all(&oa.to_ne_bytes()).unwrap();
+        icc_profile.write_all(&rb.to_ne_bytes()).unwrap();
+        icc_profile.write_all(&ob.to_ne_bytes()).unwrap();
+        icc_profile.write_all(&il.to_ne_bytes()).unwrap();
+        jp2.color.icc_profile = Some(icc_profile);
         jp2.color.icc_profile_len = 0 as OPJ_UINT32
       }
       jp2.color.jp2_has_colr = 1 as OPJ_BYTE
     } else if jp2.meth == 2u32 {
       /* ICC profile */
-      let mut it_icc_value = 0i32; /* icc values */
       let mut icc_len = p_colr_header_size as OPJ_INT32 - 3i32;
+      let mut icc_profile = Vec::with_capacity(icc_len as usize);
+      let buf = std::slice::from_raw_parts(p_colr_header_data, icc_len as usize);
       jp2.color.icc_profile_len = icc_len as OPJ_UINT32;
-      jp2.color.icc_profile_buf = opj_calloc(1i32 as size_t, icc_len as size_t) as *mut OPJ_BYTE;
-      if jp2.color.icc_profile_buf.is_null() {
-        jp2.color.icc_profile_len = 0 as OPJ_UINT32;
-        return 0i32;
-      }
-      it_icc_value = 0i32;
-      while it_icc_value < icc_len {
-        opj_read_bytes(p_colr_header_data, &mut l_value, 1 as OPJ_UINT32);
-        p_colr_header_data = p_colr_header_data.offset(1);
-        *jp2.color.icc_profile_buf.offset(it_icc_value as isize) = l_value as OPJ_BYTE;
-        it_icc_value += 1
-      }
+      icc_profile.extend_from_slice(buf);
+      jp2.color.icc_profile = Some(icc_profile);
       jp2.color.jp2_has_colr = 1 as OPJ_BYTE
     } else if jp2.meth > 2u32 {
       /*  ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
@@ -2751,61 +2729,70 @@ pub(crate) fn opj_jp2_read_header(
   mut p_image: *mut *mut opj_image_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    /* preconditions */
-
-    /* customization of the validation */
-    if opj_jp2_setup_decoding_validation(jp2, p_manager) == 0 {
-      return 0i32;
-    }
-    /* customization of the encoding */
-    if opj_jp2_setup_header_reading(jp2, p_manager) == 0 {
-      return 0i32;
-    }
-    /* validation of the parameters codec */
-    if opj_jp2_exec(jp2, jp2.m_validation_list, p_stream, p_manager) == 0 {
-      return 0i32;
-    }
-    /* read header */
-    if opj_jp2_exec(jp2, jp2.m_procedure_list, p_stream, p_manager) == 0 {
-      return 0i32;
-    }
-    if jp2.has_jp2h as core::ffi::c_int == 0i32 {
-      event_msg!(p_manager, EVT_ERROR, "JP2H box missing. Required.\n",);
-      return 0i32;
-    }
-    if jp2.has_ihdr as core::ffi::c_int == 0i32 {
-      event_msg!(p_manager, EVT_ERROR, "IHDR box_missing. Required.\n",);
-      return 0i32;
-    }
-
-    let ret = opj_j2k_read_header(p_stream, &mut jp2.j2k, p_image, p_manager);
-
-    if !p_image.is_null() && !(*p_image).is_null() {
-      let p_image = *p_image;
-      /* Set Image Color Space */
-      if jp2.enumcs == 16u32 {
-        (*p_image).color_space = OPJ_CLRSPC_SRGB
-      } else if jp2.enumcs == 17u32 {
-        (*p_image).color_space = OPJ_CLRSPC_GRAY
-      } else if jp2.enumcs == 18u32 {
-        (*p_image).color_space = OPJ_CLRSPC_SYCC
-      } else if jp2.enumcs == 24u32 {
-        (*p_image).color_space = OPJ_CLRSPC_EYCC
-      } else if jp2.enumcs == 12u32 {
-        (*p_image).color_space = OPJ_CLRSPC_CMYK
-      } else {
-        (*p_image).color_space = OPJ_CLRSPC_UNKNOWN
-      }
-
-      if !jp2.color.icc_profile_buf.is_null() {
-        (*p_image).icc_profile_buf = jp2.color.icc_profile_buf;
-        (*p_image).icc_profile_len = jp2.color.icc_profile_len;
-        jp2.color.icc_profile_buf = std::ptr::null_mut::<OPJ_BYTE>()
-      }
-    }
-    ret
+  /* customization of the validation */
+  if opj_jp2_setup_decoding_validation(jp2, p_manager) == 0 {
+    return 0i32;
   }
+  /* customization of the encoding */
+  if opj_jp2_setup_header_reading(jp2, p_manager) == 0 {
+    return 0i32;
+  }
+  /* validation of the parameters codec */
+  if opj_jp2_exec(jp2, jp2.m_validation_list, p_stream, p_manager) == 0 {
+    return 0i32;
+  }
+  /* read header */
+  if opj_jp2_exec(jp2, jp2.m_procedure_list, p_stream, p_manager) == 0 {
+    return 0i32;
+  }
+  if jp2.has_jp2h as core::ffi::c_int == 0i32 {
+    event_msg!(p_manager, EVT_ERROR, "JP2H box missing. Required.\n",);
+    return 0i32;
+  }
+  if jp2.has_ihdr as core::ffi::c_int == 0i32 {
+    event_msg!(p_manager, EVT_ERROR, "IHDR box_missing. Required.\n",);
+    return 0i32;
+  }
+
+  let ret = opj_j2k_read_header(p_stream, &mut jp2.j2k, p_image, p_manager);
+
+  let image = unsafe {
+    if !p_image.is_null() && !(*p_image).is_null() {
+      Some(&mut *(*p_image))
+    } else {
+      None
+    }
+  };
+  if let Some(image) = image {
+    /* Set Image Color Space */
+    if jp2.enumcs == 16u32 {
+      image.color_space = OPJ_CLRSPC_SRGB
+    } else if jp2.enumcs == 17u32 {
+      image.color_space = OPJ_CLRSPC_GRAY
+    } else if jp2.enumcs == 18u32 {
+      image.color_space = OPJ_CLRSPC_SYCC
+    } else if jp2.enumcs == 24u32 {
+      image.color_space = OPJ_CLRSPC_EYCC
+    } else if jp2.enumcs == 12u32 {
+      image.color_space = OPJ_CLRSPC_CMYK
+    } else {
+      image.color_space = OPJ_CLRSPC_UNKNOWN
+    }
+
+    if let Some(icc_profile) = &jp2.color.icc_profile {
+      let len = icc_profile.len();
+      // Allocate raw buffer and copy data from icc_profile.
+      let (icc_profile_buf, buf) = unsafe {
+        let icc_profile_buf = opj_malloc(len) as *mut OPJ_BYTE;
+        let mut buf = std::slice::from_raw_parts_mut(icc_profile_buf, len);
+        (icc_profile_buf, buf)
+      };
+      buf.copy_from_slice(icc_profile.as_slice());
+      image.icc_profile_buf = icc_profile_buf;
+      image.icc_profile_len = jp2.color.icc_profile_len;
+    }
+  }
+  ret
 }
 
 /* *
@@ -2942,10 +2929,6 @@ impl Drop for opj_jp2 {
         opj_free(self.cl as *mut core::ffi::c_void);
         self.cl = std::ptr::null_mut::<OPJ_UINT32>()
       }
-      if !self.color.icc_profile_buf.is_null() {
-        opj_free(self.color.icc_profile_buf as *mut core::ffi::c_void);
-        self.color.icc_profile_buf = std::ptr::null_mut::<OPJ_BYTE>()
-      }
       if !self.color.jp2_cdef.is_null() {
         if !(*self.color.jp2_cdef).info.is_null() {
           opj_free((*self.color.jp2_cdef).info as *mut core::ffi::c_void);
@@ -3073,7 +3056,7 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
     has_ihdr: 0,
     /* Color structure */
     color: opj_jp2_color_t {
-      icc_profile_buf: std::ptr::null_mut::<OPJ_BYTE>(),
+      icc_profile: None,
       icc_profile_len: 0 as OPJ_UINT32,
       jp2_cdef: std::ptr::null_mut::<opj_jp2_cdef_t>(),
       jp2_pclr: std::ptr::null_mut::<opj_jp2_pclr_t>(),
