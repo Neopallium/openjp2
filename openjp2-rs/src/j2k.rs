@@ -2,7 +2,6 @@ use super::cio::*;
 use super::consts::*;
 use super::dwt::*;
 use super::event::*;
-use super::function_list::*;
 use super::image::*;
 use super::invert::*;
 use super::math::*;
@@ -8128,6 +8127,8 @@ pub(crate) fn opj_j2k_read_header(
   mut p_image: *mut *mut opj_image_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
+  let mut validation_list = opj_j2k_proc_list_t::new();
+  let mut procedure_list = opj_j2k_proc_list_t::new();
   unsafe {
     /* preconditions */
 
@@ -8137,25 +8138,25 @@ pub(crate) fn opj_j2k_read_header(
       return 0i32;
     }
     /* customization of the validation */
-    if opj_j2k_setup_decoding_validation(p_j2k, p_manager) == 0 {
+    if opj_j2k_setup_decoding_validation(p_j2k, &mut validation_list, p_manager) == 0 {
       opj_image_destroy(p_j2k.m_private_image);
       p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
       return 0i32;
     }
     /* validation of the parameters codec */
-    if opj_j2k_exec(p_j2k, p_j2k.m_validation_list, p_stream, p_manager) == 0 {
+    if opj_j2k_exec(p_j2k, &mut validation_list, p_stream, p_manager) == 0 {
       opj_image_destroy(p_j2k.m_private_image);
       p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
       return 0i32;
     }
     /* customization of the encoding */
-    if opj_j2k_setup_header_reading(p_j2k, p_manager) == 0 {
+    if opj_j2k_setup_header_reading(p_j2k, &mut procedure_list, p_manager) == 0 {
       opj_image_destroy(p_j2k.m_private_image);
       p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
       return 0i32;
     }
     /* read header */
-    if opj_j2k_exec(p_j2k, p_j2k.m_procedure_list, p_stream, p_manager) == 0 {
+    if opj_j2k_exec(p_j2k, &mut procedure_list, p_stream, p_manager) == 0 {
       opj_image_destroy(p_j2k.m_private_image);
       p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
       return 0i32;
@@ -8225,60 +8226,30 @@ pub(crate) fn opj_j2k_read_header(
  * Sets up the procedures to do on reading header. Developers wanting to extend the library can add their own reading procedures.
  */
 fn opj_j2k_setup_header_reading(
-  mut p_j2k: &mut opj_j2k,
-  mut p_manager: &mut opj_event_mgr,
+  _p_j2k: &mut opj_j2k,
+  list: &mut opj_j2k_proc_list_t,
+  _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    /* preconditions*/
-
-    if opj_procedure_list_add_procedure(
-      p_j2k.m_procedure_list,
-      opj_j2k_read_header_procedure,
-      p_manager,
-    ) == 0
-    {
-      return 0i32;
-    }
-    /* DEVELOPER CORNER, add your custom procedures */
-    if opj_procedure_list_add_procedure(
-      p_j2k.m_procedure_list,
-      opj_j2k_copy_default_tcp_and_create_tcd,
-      p_manager,
-    ) == 0
-    {
-      return 0i32;
-    }
-    1i32
-  }
+  list.add(opj_j2k_read_header_procedure);
+  /* DEVELOPER CORNER, add your custom procedures */
+  list.add(opj_j2k_copy_default_tcp_and_create_tcd);
+  1i32
 }
 /* *
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 fn opj_j2k_setup_decoding_validation(
-  mut p_j2k: &mut opj_j2k,
-  mut p_manager: &mut opj_event_mgr,
+  _p_j2k: &mut opj_j2k,
+  list: &mut opj_j2k_proc_list_t,
+  _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    /* preconditions*/
-
-    if opj_procedure_list_add_procedure(p_j2k.m_validation_list, opj_j2k_build_decoder, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(
-      p_j2k.m_validation_list,
-      opj_j2k_decoding_validation,
-      p_manager,
-    ) == 0
-    {
-      return 0i32;
-    }
-    /* DEVELOPER CORNER, add your custom validation procedure */
-    1i32
-  }
+  list.add(opj_j2k_build_decoder);
+  list.add(opj_j2k_decoding_validation);
+  /* DEVELOPER CORNER, add your custom validation procedure */
+  1i32
 }
+
 /* *
  * The mct encoding validation procedure.
  *
@@ -8568,11 +8539,6 @@ fn opj_j2k_encoding_validation(
     /* STATE checking */
     /* make sure the state is at 0 */
     l_is_valid &= (p_j2k.m_specific_param.m_decoder.m_state == J2KState::NONE) as core::ffi::c_int;
-    /* POINTER validation */
-    /* make sure a p_j2k codec is present */
-    l_is_valid &= (!p_j2k.m_procedure_list.is_null()) as core::ffi::c_int;
-    /* make sure a validation list is present */
-    l_is_valid &= (!p_j2k.m_validation_list.is_null()) as core::ffi::c_int;
     /* ISO 15444-1:2004 states between 1 & 33 (0 -> 32) */
     /* 33 (32) would always fail the check below (if a cast to 64bits was done) */
     /* FIXME Shall we change OPJ_J2K_MAXRLVLS to 32 ? */
@@ -8637,12 +8603,6 @@ fn opj_j2k_decoding_validation(
     /* STATE checking */
     /* make sure the state is at 0 */
     l_is_valid &= (p_j2k.m_specific_param.m_decoder.m_state == J2KState::NONE) as core::ffi::c_int;
-    /* POINTER validation */
-    /* make sure a p_j2k codec is present */
-    /* make sure a procedure list is present */
-    l_is_valid &= (!p_j2k.m_procedure_list.is_null()) as core::ffi::c_int;
-    /* make sure a validation list is present */
-    l_is_valid &= (!p_j2k.m_validation_list.is_null()) as core::ffi::c_int;
     /* PARAMETER VALIDATION */
     l_is_valid
   }
@@ -8877,16 +8837,12 @@ fn opj_j2k_read_header_procedure(
  * @return      true                            if all the procedures were successfully executed.
  */
 fn opj_j2k_exec(
-  mut p_j2k: &mut opj_j2k,
-  mut p_procedure_list: *mut opj_j2k_proc_list_t,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  list: &mut opj_j2k_proc_list_t,
+  stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  assert!(!p_procedure_list.is_null());
-
-  opj_procedure_list_execute(p_procedure_list, |p| unsafe {
-    (p)(p_j2k, p_stream, p_manager) != 0
-  }) as i32
+  list.execute(|p| (p)(p_j2k, stream, p_manager) != 0) as i32
 }
 
 /* *
@@ -9122,10 +9078,6 @@ impl Drop for opj_j2k {
         0i32,
         core::mem::size_of::<opj_cp_t>(),
       );
-      opj_procedure_list_destroy(self.m_procedure_list);
-      self.m_procedure_list = std::ptr::null_mut();
-      opj_procedure_list_destroy(self.m_validation_list);
-      self.m_procedure_list = std::ptr::null_mut();
       j2k_destroy_cstr_index(self.cstr_index);
       self.cstr_index = std::ptr::null_mut::<opj_codestream_index_t>();
       opj_image_destroy(self.m_private_image);
@@ -10475,8 +10427,6 @@ impl opj_j2k {
     unsafe {
       Self {
         m_is_decoder,
-        m_validation_list: opj_procedure_list_create(),
-        m_procedure_list: opj_procedure_list_create(),
         m_specific_param: std::mem::zeroed(),
         m_private_image: std::ptr::null_mut(),
         m_output_image: std::ptr::null_mut(),
@@ -12096,22 +12046,20 @@ fn opj_j2k_decode_tiles(
     1i32
   }
 }
+
 /* *
  * Sets up the procedures to do on decoding data. Developers wanting to extend the library can add their own reading procedures.
  */
-fn opj_j2k_setup_decoding(mut p_j2k: &mut opj_j2k, mut p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  unsafe {
-    /* preconditions*/
-
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_decode_tiles, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
-    /* DEVELOPER CORNER, add your custom procedures */
-    1i32
-  }
+fn opj_j2k_setup_decoding(
+  _p_j2k: &mut opj_j2k,
+  list: &mut opj_j2k_proc_list_t,
+  _p_manager: &mut opj_event_mgr,
+) -> OPJ_BOOL {
+  list.add(opj_j2k_decode_tiles);
+  /* DEVELOPER CORNER, add your custom procedures */
+  1i32
 }
+
 /*
  * Read and decode one tile.
  */
@@ -12237,25 +12185,20 @@ fn opj_j2k_decode_one_tile(
     1i32
   }
 }
+
 /* *
  * Sets up the procedures to do on decoding one tile. Developers wanting to extend the library can add their own reading procedures.
  */
 fn opj_j2k_setup_decoding_tile(
-  mut p_j2k: &mut opj_j2k,
-  mut p_manager: &mut opj_event_mgr,
+  _p_j2k: &mut opj_j2k,
+  list: &mut opj_j2k_proc_list_t,
+  _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    /* preconditions*/
-
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_decode_one_tile, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
-    /* DEVELOPER CORNER, add your custom procedures */
-    1i32
-  }
+  list.add(opj_j2k_decode_one_tile);
+  /* DEVELOPER CORNER, add your custom procedures */
+  1i32
 }
+
 fn opj_j2k_move_data_from_codec_to_output_image(
   mut p_j2k: &mut opj_j2k,
   mut p_image: &mut opj_image,
@@ -12378,11 +12321,12 @@ pub(crate) fn opj_j2k_decode(
     }
     opj_copy_image_header(p_image, p_j2k.m_output_image);
     /* customization of the decoding */
-    if opj_j2k_setup_decoding(p_j2k, p_manager) == 0 {
+    let mut procedure_list = opj_j2k_proc_list_t::new();
+    if opj_j2k_setup_decoding(p_j2k, &mut procedure_list, p_manager) == 0 {
       return 0i32;
     }
     /* Decode the codestream */
-    if opj_j2k_exec(p_j2k, p_j2k.m_procedure_list, p_stream, p_manager) == 0 {
+    if opj_j2k_exec(p_j2k, &mut procedure_list, p_stream, p_manager) == 0 {
       opj_image_destroy(p_j2k.m_private_image);
       p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
       return 0i32;
@@ -12504,12 +12448,13 @@ pub(crate) fn opj_j2k_get_tile(
     }
     opj_copy_image_header(p_image, p_j2k.m_output_image);
     p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = tile_index as OPJ_INT32;
+    let mut procedure_list = opj_j2k_proc_list_t::new();
     /* customization of the decoding */
-    if opj_j2k_setup_decoding_tile(p_j2k, p_manager) == 0 {
+    if opj_j2k_setup_decoding_tile(p_j2k, &mut procedure_list, p_manager) == 0 {
       return 0i32;
     }
     /* Decode the codestream */
-    if opj_j2k_exec(p_j2k, p_j2k.m_procedure_list, p_stream, p_manager) == 0 {
+    if opj_j2k_exec(p_j2k, &mut procedure_list, p_stream, p_manager) == 0 {
       opj_image_destroy(p_j2k.m_private_image);
       p_j2k.m_private_image = std::ptr::null_mut::<opj_image_t>();
       return 0i32;
@@ -12742,11 +12687,12 @@ pub(crate) fn opj_j2k_end_compress(
   mut p_stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
+  let mut procedure_list = opj_j2k_proc_list_t::new();
   /* customization of the encoding */
-  if opj_j2k_setup_end_compress(p_j2k, p_manager) == 0 {
+  if opj_j2k_setup_end_compress(p_j2k, &mut procedure_list, p_manager) == 0 {
     return 0i32;
   }
-  if opj_j2k_exec(p_j2k, p_j2k.m_procedure_list, p_stream, p_manager) == 0 {
+  if opj_j2k_exec(p_j2k, &mut procedure_list, p_stream, p_manager) == 0 {
     return 0i32;
   }
   1i32
@@ -12758,6 +12704,8 @@ pub(crate) fn opj_j2k_start_compress(
   mut p_image: &mut opj_image,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
+  let mut validation_list = opj_j2k_proc_list_t::new();
+  let mut procedure_list = opj_j2k_proc_list_t::new();
   /* preconditions */
 
   unsafe {
@@ -12782,19 +12730,19 @@ pub(crate) fn opj_j2k_start_compress(
       }
     }
     /* customization of the validation */
-    if opj_j2k_setup_encoding_validation(p_j2k, p_manager) == 0 {
+    if opj_j2k_setup_encoding_validation(p_j2k, &mut validation_list, p_manager) == 0 {
       return 0i32;
     }
     /* validation of the parameters codec */
-    if opj_j2k_exec(p_j2k, p_j2k.m_validation_list, p_stream, p_manager) == 0 {
+    if opj_j2k_exec(p_j2k, &mut validation_list, p_stream, p_manager) == 0 {
       return 0i32;
     }
     /* customization of the encoding */
-    if opj_j2k_setup_header_writing(p_j2k, p_manager) == 0 {
+    if opj_j2k_setup_header_writing(p_j2k, &mut procedure_list, p_manager) == 0 {
       return 0i32;
     }
     /* write header */
-    if opj_j2k_exec(p_j2k, p_j2k.m_procedure_list, p_stream, p_manager) == 0 {
+    if opj_j2k_exec(p_j2k, &mut procedure_list, p_stream, p_manager) == 0 {
       return 0i32;
     }
     1i32
@@ -13047,43 +12995,19 @@ fn opj_j2k_post_write_tile(
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 fn opj_j2k_setup_end_compress(
-  mut p_j2k: &mut opj_j2k,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  list: &mut opj_j2k_proc_list_t,
+  _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  /* preconditions */
-
-  unsafe {
-    /* DEVELOPER CORNER, insert your custom procedures */
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_eoc, p_manager) == 0 {
-      return 0i32;
-    }
-    if p_j2k.m_specific_param.m_encoder.m_TLM != 0
-      && opj_procedure_list_add_procedure(
-        p_j2k.m_procedure_list,
-        opj_j2k_write_updated_tlm,
-        p_manager,
-      ) == 0
-    {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_epc, p_manager) == 0 {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_end_encoding, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(
-      p_j2k.m_procedure_list,
-      opj_j2k_destroy_header_memory,
-      p_manager,
-    ) == 0
-    {
-      return 0i32;
-    }
-    1i32
+  /* DEVELOPER CORNER, insert your custom procedures */
+  list.add(opj_j2k_write_eoc);
+  if unsafe { p_j2k.m_specific_param.m_encoder.m_TLM } != 0 {
+    list.add(opj_j2k_write_updated_tlm);
   }
+  list.add(opj_j2k_write_epc);
+  list.add(opj_j2k_end_encoding);
+  list.add(opj_j2k_destroy_header_memory);
+  1i32
 }
 
 /* *
@@ -13091,33 +13015,15 @@ fn opj_j2k_setup_end_compress(
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 fn opj_j2k_setup_encoding_validation(
-  mut p_j2k: &mut opj_j2k,
-  mut p_manager: &mut opj_event_mgr,
+  _p_j2k: &mut opj_j2k,
+  list: &mut opj_j2k_proc_list_t,
+  _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  /* preconditions */
-
-  unsafe {
-    if opj_procedure_list_add_procedure(p_j2k.m_validation_list, opj_j2k_build_encoder, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(
-      p_j2k.m_validation_list,
-      opj_j2k_encoding_validation,
-      p_manager,
-    ) == 0
-    {
-      return 0i32;
-    }
-    /* DEVELOPER CORNER, add your custom validation procedure */
-    if opj_procedure_list_add_procedure(p_j2k.m_validation_list, opj_j2k_mct_validation, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
-    1i32
-  }
+  list.add(opj_j2k_build_encoder);
+  list.add(opj_j2k_encoding_validation);
+  /* DEVELOPER CORNER, add your custom validation procedure */
+  list.add(opj_j2k_mct_validation);
+  1i32
 }
 
 /* *
@@ -13125,87 +13031,38 @@ fn opj_j2k_setup_encoding_validation(
  * Developers wanting to extend the library can add their own writing procedures.
  */
 fn opj_j2k_setup_header_writing(
-  mut p_j2k: &mut opj_j2k,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  list: &mut opj_j2k_proc_list_t,
+  _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  /* preconditions */
-
-  unsafe {
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_init_info, p_manager) == 0 {
-      return 0i32;
+  list.add(opj_j2k_init_info);
+  list.add(opj_j2k_write_soc);
+  list.add(opj_j2k_write_siz);
+  list.add(opj_j2k_write_cod);
+  list.add(opj_j2k_write_qcd);
+  list.add(opj_j2k_write_all_coc);
+  list.add(opj_j2k_write_all_qcc);
+  if unsafe { p_j2k.m_specific_param.m_encoder.m_TLM } != 0 {
+    list.add(opj_j2k_write_tlm);
+    if p_j2k.m_cp.rsiz as core::ffi::c_int == 0x4i32 {
+      list.add(opj_j2k_write_poc);
     }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_soc, p_manager) == 0 {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_siz, p_manager) == 0 {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_cod, p_manager) == 0 {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_qcd, p_manager) == 0 {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_all_coc, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_all_qcc, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
-    if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
-      if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_tlm, p_manager) == 0
-      {
-        return 0i32;
-      }
-      if p_j2k.m_cp.rsiz as core::ffi::c_int == 0x4i32
-        && opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_poc, p_manager)
-          == 0
-      {
-        return 0i32;
-      }
-    }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_regions, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
-    if !p_j2k.m_cp.comment.is_null()
-      && opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_write_com, p_manager) == 0
-    {
-      return 0i32;
-    }
-    /* DEVELOPER CORNER, insert your custom procedures */
-    if p_j2k.m_cp.rsiz as core::ffi::c_int & (0x8000i32 | 0x100i32) == 0x8000i32 | 0x100i32
-      && opj_procedure_list_add_procedure(
-        p_j2k.m_procedure_list,
-        opj_j2k_write_mct_data_group,
-        p_manager,
-      ) == 0
-    {
-      return 0i32;
-    }
-    /* End of Developer Corner */
-    if !p_j2k.cstr_index.is_null()
-      && opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_get_end_header, p_manager)
-        == 0
-    {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_create_tcd, p_manager) == 0
-    {
-      return 0i32;
-    }
-    if opj_procedure_list_add_procedure(p_j2k.m_procedure_list, opj_j2k_update_rates, p_manager)
-      == 0
-    {
-      return 0i32;
-    }
-    1i32
   }
+  list.add(opj_j2k_write_regions);
+  if !p_j2k.m_cp.comment.is_null() {
+    list.add(opj_j2k_write_com);
+  }
+  /* DEVELOPER CORNER, insert your custom procedures */
+  if p_j2k.m_cp.rsiz as core::ffi::c_int & (0x8000i32 | 0x100i32) == 0x8000i32 | 0x100i32 {
+    list.add(opj_j2k_write_mct_data_group);
+  }
+  /* End of Developer Corner */
+  if !p_j2k.cstr_index.is_null() {
+    list.add(opj_j2k_get_end_header);
+  }
+  list.add(opj_j2k_create_tcd);
+  list.add(opj_j2k_update_rates);
+  1i32
 }
 
 fn opj_j2k_write_first_tile_part(
