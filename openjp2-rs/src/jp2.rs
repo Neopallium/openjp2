@@ -51,13 +51,12 @@ impl Jp2BoxHeader {
   }
 }
 
+#[derive(Copy, Clone)]
 pub(crate) struct opj_jp2_header_handler {
   pub id: OPJ_UINT32,
-  pub handler: Option<
-    unsafe fn(_: &mut opj_jp2, _: *mut OPJ_BYTE, _: OPJ_UINT32, _: &mut opj_event_mgr) -> OPJ_BOOL,
-  >,
+  pub handler:
+    fn(_: &mut opj_jp2, _: *mut OPJ_BYTE, _: OPJ_UINT32, _: &mut opj_event_mgr) -> OPJ_BOOL,
 }
-pub(crate) type opj_jp2_header_handler_t = opj_jp2_header_handler;
 
 pub(crate) struct HeaderWriter {
   handler: fn(_: &mut opj_jp2, _: &mut Vec<u8>) -> bool,
@@ -86,133 +85,61 @@ impl HeaderWriter {
   }
 }
 
-static mut jp2_header: [opj_jp2_header_handler_t; 3] = [
+static jp2_header: [opj_jp2_header_handler; 3] = [
   {
     opj_jp2_header_handler {
-      id: 0x6a502020 as OPJ_UINT32,
-      handler: Some(
-        opj_jp2_read_jp
-          as unsafe fn(
-            _: &mut opj_jp2,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ),
+      id: 0x6a502020,
+      handler: opj_jp2_read_jp,
     }
   },
   {
     opj_jp2_header_handler {
-      id: 0x66747970 as OPJ_UINT32,
-      handler: Some(
-        opj_jp2_read_ftyp
-          as unsafe fn(
-            _: &mut opj_jp2,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ),
+      id: 0x66747970,
+      handler: opj_jp2_read_ftyp,
     }
   },
   {
     opj_jp2_header_handler {
-      id: 0x6a703268 as OPJ_UINT32,
-      handler: Some(
-        opj_jp2_read_jp2h
-          as unsafe fn(
-            _: &mut opj_jp2,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ),
+      id: 0x6a703268,
+      handler: opj_jp2_read_jp2h,
     }
   },
 ];
-static mut jp2_img_header: [opj_jp2_header_handler_t; 6] = [
+static jp2_img_header: [opj_jp2_header_handler; 6] = [
   {
     opj_jp2_header_handler {
-      id: 0x69686472 as OPJ_UINT32,
-      handler: Some(
-        opj_jp2_read_ihdr
-          as unsafe fn(
-            _: &mut opj_jp2,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ),
+      id: 0x69686472,
+      handler: opj_jp2_read_ihdr,
     }
   },
   {
     opj_jp2_header_handler {
-      id: 0x636f6c72 as OPJ_UINT32,
-      handler: Some(
-        opj_jp2_read_colr
-          as unsafe fn(
-            _: &mut opj_jp2,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ),
+      id: 0x636f6c72,
+      handler: opj_jp2_read_colr,
     }
   },
   {
     opj_jp2_header_handler {
-      id: 0x62706363 as OPJ_UINT32,
-      handler: Some(
-        opj_jp2_read_bpcc
-          as unsafe fn(
-            _: &mut opj_jp2,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ),
+      id: 0x62706363,
+      handler: opj_jp2_read_bpcc,
     }
   },
   {
     opj_jp2_header_handler {
-      id: 0x70636c72 as OPJ_UINT32,
-      handler: Some(
-        opj_jp2_read_pclr
-          as unsafe fn(
-            _: &mut opj_jp2,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ),
+      id: 0x70636c72,
+      handler: opj_jp2_read_pclr,
     }
   },
   {
     opj_jp2_header_handler {
-      id: 0x636d6170 as OPJ_UINT32,
-      handler: Some(
-        opj_jp2_read_cmap
-          as unsafe fn(
-            _: &mut opj_jp2,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ),
+      id: 0x636d6170,
+      handler: opj_jp2_read_cmap,
     }
   },
   {
     opj_jp2_header_handler {
-      id: 0x63646566 as OPJ_UINT32,
-      handler: Some(
-        opj_jp2_read_cdef
-          as unsafe fn(
-            _: &mut opj_jp2,
-            _: *mut OPJ_BYTE,
-            _: OPJ_UINT32,
-            _: &mut opj_event_mgr,
-          ) -> OPJ_BOOL,
-      ),
+      id: 0x63646566,
+      handler: opj_jp2_read_cdef,
     }
   },
 ];
@@ -1157,44 +1084,13 @@ fn opj_jp2_apply_cdef(
             image.numcomps,
           );
         } else {
+          let cn_comp = &mut *image.comps.offset(cn as isize);
           /* Swap only if color channel */
-          if cn as core::ffi::c_int != acn as core::ffi::c_int
-            && info.typ as core::ffi::c_int == 0i32
-          {
-            let mut saved = opj_image_comp_t {
-              dx: 0,
-              dy: 0,
-              w: 0,
-              h: 0,
-              x0: 0,
-              y0: 0,
-              prec: 0,
-              bpp: 0,
-              sgnd: 0,
-              resno_decoded: 0,
-              factor: 0,
-              data: std::ptr::null_mut::<OPJ_INT32>(),
-              alpha: 0,
-            };
-            memcpy(
-              &mut saved as *mut opj_image_comp_t as *mut core::ffi::c_void,
-              &mut *image.comps.offset(cn as isize) as *mut opj_image_comp_t
-                as *const core::ffi::c_void,
-              core::mem::size_of::<opj_image_comp_t>(),
-            );
-            memcpy(
-              &mut *image.comps.offset(cn as isize) as *mut opj_image_comp_t
-                as *mut core::ffi::c_void,
-              &mut *image.comps.offset(acn as isize) as *mut opj_image_comp_t
-                as *const core::ffi::c_void,
-              core::mem::size_of::<opj_image_comp_t>(),
-            );
-            memcpy(
-              &mut *image.comps.offset(acn as isize) as *mut opj_image_comp_t
-                as *mut core::ffi::c_void,
-              &mut saved as *mut opj_image_comp_t as *const core::ffi::c_void,
-              core::mem::size_of::<opj_image_comp_t>(),
-            );
+          if cn != acn && info.typ == 0 {
+            let acn_comp = &mut *image.comps.offset(acn as isize);
+            let saved = *cn_comp;
+            *cn_comp = *acn_comp;
+            *acn_comp = saved;
             /* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
             for j in i..n {
               let info = &mut cdef.info[j];
@@ -1206,7 +1102,7 @@ fn opj_jp2_apply_cdef(
               /* asoc is related to color index. Do not update. */
             }
           }
-          (*image.comps.offset(cn as isize)).alpha = info.typ
+          cn_comp.alpha = info.typ
         }
       }
     }
@@ -1717,7 +1613,6 @@ pub(crate) fn opj_jp2_setup_encoder(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut i: OPJ_UINT32 = 0;
     let mut depth_0: OPJ_UINT32 = 0;
     let mut sign: OPJ_UINT32 = 0;
     let mut alpha_count: OPJ_UINT32 = 0;
@@ -1774,26 +1669,22 @@ pub(crate) fn opj_jp2_setup_encoder(
     depth_0 = (*image.comps.offset(0)).prec.wrapping_sub(1u32); /* C : Always 7 */
     sign = (*image.comps.offset(0)).sgnd; /* UnkC, colorspace specified in colr box */
     jp2.bpc = depth_0.wrapping_add(sign << 7i32); /* IPR, no intellectual property */
-    i = 1 as OPJ_UINT32;
-    while i < image.numcomps {
+    for i in 1..image.numcomps {
       let mut depth = (*image.comps.offset(i as isize)).prec.wrapping_sub(1u32);
       sign = (*image.comps.offset(i as isize)).sgnd;
       if depth_0 != depth {
         jp2.bpc = 255 as OPJ_UINT32
       }
-      i += 1;
     }
     jp2.C = 7 as OPJ_UINT32;
     jp2.UnkC = 0 as OPJ_UINT32;
     jp2.IPR = 0 as OPJ_UINT32;
     /* BitsPerComponent box */
-    i = 0 as OPJ_UINT32;
-    while i < image.numcomps {
+    for i in 0..image.numcomps {
       (*jp2.comps.offset(i as isize)).bpcc = (*image.comps.offset(i as isize))
         .prec
         .wrapping_sub(1u32)
         .wrapping_add((*image.comps.offset(i as isize)).sgnd << 7i32);
-      i += 1;
     }
     /* Colour Specification box */
     if image.icc_profile_len != 0 {
@@ -1816,13 +1707,11 @@ pub(crate) fn opj_jp2_setup_encoder(
     /* FIXME not provided by parameters */
     /* We try to do what we can... */
     alpha_count = 0u32;
-    i = 0 as OPJ_UINT32;
-    while i < image.numcomps {
+    for i in 0..image.numcomps {
       if (*image.comps.offset(i as isize)).alpha as core::ffi::c_int != 0i32 {
         alpha_count = alpha_count.wrapping_add(1);
         alpha_channel = i
       }
-      i += 1;
     }
     if alpha_count == 1u32 {
       /* no way to deal with more than 1 alpha channel */
@@ -1991,7 +1880,6 @@ fn opj_jp2_default_validation(
 ) -> OPJ_BOOL {
   unsafe {
     let mut l_is_valid = 1i32;
-    let mut i: OPJ_UINT32 = 0;
     /* preconditions */
 
     /* JPEG2000 codec validation */
@@ -2014,10 +1902,8 @@ fn opj_jp2_default_validation(
     /* height */
     l_is_valid &= (jp2.w > 0u32) as core::ffi::c_int;
     /* precision */
-    i = 0 as OPJ_UINT32;
-    while i < jp2.numcomps {
+    for i in 0..jp2.numcomps {
       l_is_valid &= (((*jp2.comps.offset(i as isize)).bpcc & 0x7fu32) < 38u32) as core::ffi::c_int;
-      i += 1;
       /* 0 is valid, ignore sign for check */
     }
     /* METH */
@@ -2046,8 +1932,6 @@ fn opj_jp2_read_header_procedure(
   unsafe {
     let mut box_0 = Jp2BoxHeader { length: 0, ty: 0 };
     let mut l_nb_bytes_read: OPJ_UINT32 = 0;
-    let mut l_current_handler = std::ptr::null::<opj_jp2_header_handler_t>();
-    let mut l_current_handler_misplaced = std::ptr::null::<opj_jp2_header_handler_t>();
     let mut l_last_data_size = 1024 as OPJ_UINT32;
     let mut l_current_data_size: OPJ_UINT32 = 0;
     let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
@@ -2096,11 +1980,11 @@ fn opj_jp2_read_header_procedure(
           return 0i32;
         }
       }
-      l_current_handler = opj_jp2_find_handler(box_0.ty);
-      l_current_handler_misplaced = opj_jp2_img_find_handler(box_0.ty);
+      let mut l_current_handler = opj_jp2_find_handler(box_0.ty);
+      let l_current_handler_misplaced = opj_jp2_img_find_handler(box_0.ty);
       l_current_data_size = box_0.length.wrapping_sub(l_nb_bytes_read);
-      if !l_current_handler.is_null() || !l_current_handler_misplaced.is_null() {
-        if l_current_handler.is_null() {
+      if l_current_handler.is_some() || l_current_handler_misplaced.is_some() {
+        if l_current_handler.is_none() {
           event_msg!(
             p_manager,
             EVT_WARNING,
@@ -2187,11 +2071,8 @@ fn opj_jp2_read_header_procedure(
           opj_free(l_current_data as *mut core::ffi::c_void);
           return 0i32;
         }
-        if (*l_current_handler)
-          .handler
-          .expect("non-null function pointer")(
-          jp2, l_current_data, l_current_data_size, p_manager
-        ) == 0
+        if (l_current_handler.unwrap().handler)(jp2, l_current_data, l_current_data_size, p_manager)
+          == 0
         {
           opj_free(l_current_data as *mut core::ffi::c_void);
           return 0i32;
@@ -2303,21 +2184,13 @@ pub(crate) fn opj_jp2_start_compress(
  *
  * @return  the given handler or NULL if it could not be found.
  */
-fn opj_jp2_find_handler(mut p_id: OPJ_UINT32) -> *const opj_jp2_header_handler_t {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_handler_size = core::mem::size_of::<[opj_jp2_header_handler_t; 3]>()
-      .wrapping_div(core::mem::size_of::<opj_jp2_header_handler_t>())
-      as OPJ_UINT32;
-    i = 0 as OPJ_UINT32;
-    while i < l_handler_size {
-      if jp2_header[i as usize].id == p_id {
-        return &*jp2_header.as_ptr().offset(i as isize) as *const opj_jp2_header_handler_t;
-      }
-      i += 1;
+fn opj_jp2_find_handler(mut p_id: OPJ_UINT32) -> Option<opj_jp2_header_handler> {
+  for handler in jp2_header {
+    if handler.id == p_id {
+      return Some(handler);
     }
-    std::ptr::null::<opj_jp2_header_handler_t>()
   }
+  None
 }
 
 /* *
@@ -2327,21 +2200,13 @@ fn opj_jp2_find_handler(mut p_id: OPJ_UINT32) -> *const opj_jp2_header_handler_t
  *
  * @return  the given handler or 00 if it could not be found.
  */
-fn opj_jp2_img_find_handler(mut p_id: OPJ_UINT32) -> *const opj_jp2_header_handler_t {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_handler_size = core::mem::size_of::<[opj_jp2_header_handler_t; 6]>()
-      .wrapping_div(core::mem::size_of::<opj_jp2_header_handler_t>())
-      as OPJ_UINT32;
-    i = 0 as OPJ_UINT32;
-    while i < l_handler_size {
-      if jp2_img_header[i as usize].id == p_id {
-        return &*jp2_img_header.as_ptr().offset(i as isize) as *const opj_jp2_header_handler_t;
-      }
-      i += 1;
+fn opj_jp2_img_find_handler(mut p_id: OPJ_UINT32) -> Option<opj_jp2_header_handler> {
+  for handler in jp2_img_header {
+    if handler.id == p_id {
+      return Some(handler);
     }
-    std::ptr::null::<opj_jp2_header_handler_t>()
   }
+  None
 }
 
 /* *
@@ -2507,9 +2372,7 @@ fn opj_jp2_read_jp2h(
 ) -> OPJ_BOOL {
   unsafe {
     let mut l_box_size = 0 as OPJ_UINT32;
-    let mut l_current_data_size = 0 as OPJ_UINT32;
     let mut box_0 = Jp2BoxHeader { length: 0, ty: 0 };
-    let mut l_current_handler = std::ptr::null::<opj_jp2_header_handler_t>();
     let mut l_has_ihdr = 0i32;
     /* preconditions */
 
@@ -2551,16 +2414,11 @@ fn opj_jp2_read_jp2h(
         );
         return 0i32;
       }
-      l_current_handler = opj_jp2_img_find_handler(box_0.ty);
-      l_current_data_size = box_0.length.wrapping_sub(l_box_size);
+      let l_current_handler = opj_jp2_img_find_handler(box_0.ty);
+      let l_current_data_size = box_0.length.wrapping_sub(l_box_size);
       p_header_data = p_header_data.offset(l_box_size as isize);
-      if !l_current_handler.is_null() {
-        if (*l_current_handler)
-          .handler
-          .expect("non-null function pointer")(
-          jp2, p_header_data, l_current_data_size, p_manager
-        ) == 0
-        {
+      if let Some(handler) = l_current_handler {
+        if (handler.handler)(jp2, p_header_data, l_current_data_size, p_manager) == 0 {
           return 0i32;
         }
       } else {
@@ -2600,7 +2458,7 @@ fn opj_jp2_read_jp2h(
 fn opj_jp2_read_boxhdr_char(
   mut box_0: &mut Jp2BoxHeader,
   mut p_data: *mut OPJ_BYTE,
-  mut p_number_bytes_read: *mut OPJ_UINT32,
+  mut p_number_bytes_read: &mut OPJ_UINT32,
   mut p_box_max_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -2609,7 +2467,6 @@ fn opj_jp2_read_boxhdr_char(
     /* preconditions */
 
     assert!(!p_data.is_null());
-    assert!(!p_number_bytes_read.is_null());
     if p_box_max_size < 8u32 {
       event_msg!(
         p_manager,
