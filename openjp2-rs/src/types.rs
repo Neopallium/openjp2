@@ -238,14 +238,12 @@ pub(crate) type opj_stream_private = Stream;
 pub(crate) type opj_stream_private_t = Stream;
 
 pub(crate) type opj_jp2_proc =
-  unsafe fn(_: &mut opj_jp2, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
+  fn(_: &mut opj_jp2, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
 pub(crate) type opj_jp2_proc_list_t = super::function_list::ProcedureList<opj_jp2_proc>;
 
 #[derive(Clone)]
 pub(crate) struct opj_jp2 {
   pub j2k: opj_j2k,
-  pub m_validation_list: *mut opj_jp2_proc_list_t,
-  pub m_procedure_list: *mut opj_jp2_proc_list_t,
   pub w: OPJ_UINT32,
   pub h: OPJ_UINT32,
   pub numcomps: OPJ_UINT32,
@@ -323,7 +321,7 @@ pub(crate) struct opj_jp2_comps {
 pub(crate) type opj_jp2_comps_t = opj_jp2_comps;
 
 pub(crate) type opj_j2k_proc =
-  unsafe fn(_: &mut opj_j2k, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
+  fn(_: &mut opj_j2k, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
 pub(crate) type opj_j2k_proc_list_t = super::function_list::ProcedureList<opj_j2k_proc>;
 
 #[derive(Clone)]
@@ -333,8 +331,6 @@ pub(crate) struct opj_j2k {
   pub m_private_image: *mut opj_image_t,
   pub m_output_image: *mut opj_image_t,
   pub m_cp: opj_cp_t,
-  pub m_procedure_list: *mut opj_j2k_proc_list_t,
-  pub m_validation_list: *mut opj_j2k_proc_list_t,
   pub cstr_index: *mut opj_codestream_index_t,
   pub m_current_tile_number: OPJ_UINT32,
   pub m_tcd: *mut opj_tcd,
