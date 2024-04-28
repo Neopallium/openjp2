@@ -314,7 +314,6 @@ impl Jp2BoxType {
   }
 }
 
-
 pub mod mqc {
   pub const MQC_NUMCTXS: usize = 19;
   pub const BYPASS_CT_INIT: u32 = 0xDEADBEEF;
