@@ -1,3 +1,4 @@
+use byteorder::{BigEndian, WriteBytesExt};
 use std::io::Write;
 
 use super::cio::*;
@@ -45,8 +46,8 @@ impl Jp2BoxHeader {
   }
 
   fn write<W: Write>(&self, writer: &mut W) -> bool {
-    writer.write_all(&self.length.to_be_bytes()[..]).is_ok()
-      && writer.write_all(&self.ty.to_be_bytes()[..]).is_ok()
+    writer.write_u32::<BigEndian>(self.length).is_ok()
+      && writer.write_u32::<BigEndian>(self.ty).is_ok()
   }
 }
 
@@ -59,28 +60,27 @@ pub(crate) struct opj_jp2_header_handler {
 
 pub(crate) struct HeaderWriter {
   handler: fn(_: &mut opj_jp2, _: &mut Vec<u8>) -> bool,
-  m_data: Vec<u8>,
+  data: Vec<u8>,
 }
 
 impl HeaderWriter {
   fn new(handler: fn(_: &mut opj_jp2, _: &mut Vec<u8>) -> bool) -> Self {
     Self {
       handler: handler,
-      m_data: Default::default(),
+      data: Default::default(),
     }
   }
 
   fn run(&mut self, jp2: &mut opj_jp2) -> Option<u32> {
-    if (self.handler)(jp2, &mut self.m_data) {
-      Some(self.m_data.len() as u32)
+    if (self.handler)(jp2, &mut self.data) {
+      Some(self.data.len() as u32)
     } else {
       None
     }
   }
 
-  fn write(&self, stream: &mut Stream, manager: &mut opj_event_mgr) -> bool {
-    let size = self.m_data.len();
-    opj_stream_write_data(stream, self.m_data.as_ptr(), size, manager) == size
+  fn write<W: Write>(&self, writer: &mut W) -> bool {
+    writer.write_all(self.data.as_slice()).is_ok()
   }
 }
 
@@ -347,11 +347,11 @@ fn opj_jp2_write_ihdr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
   header.length += 14;
   header.write(buf);
   /* HEIGHT */
-  buf.write_all(&jp2.h.to_be_bytes()).unwrap();
+  buf.write_u32::<BigEndian>(jp2.h).unwrap();
   /* WIDTH */
-  buf.write_all(&jp2.w.to_be_bytes()).unwrap();
+  buf.write_u32::<BigEndian>(jp2.w).unwrap();
   /* NC */
-  buf.write_all(&(jp2.numcomps as u16).to_be_bytes()).unwrap();
+  buf.write_u16::<BigEndian>(jp2.numcomps as u16).unwrap();
   /* BPC */
   buf.push(jp2.bpc as u8);
   /* C : Always 7 */
@@ -438,11 +438,11 @@ fn opj_jp2_write_cdef(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
   let mut header = Jp2BoxHeader::new(Jp2BoxType::CDEF);
   header.length += 2 + (len * 6);
   header.write(buf);
-  buf.write_all(&(len as u16).to_be_bytes()).unwrap();
+  buf.write_u16::<BigEndian>(len as u16).unwrap();
   for info in info {
-    buf.write_all(&(info.cn as u16).to_be_bytes()).unwrap();
-    buf.write_all(&(info.typ as u16).to_be_bytes()).unwrap();
-    buf.write_all(&(info.asoc as u16).to_be_bytes()).unwrap();
+    buf.write_u16::<BigEndian>(info.cn as u16).unwrap();
+    buf.write_u16::<BigEndian>(info.typ as u16).unwrap();
+    buf.write_u16::<BigEndian>(info.asoc as u16).unwrap();
   }
   true
 }
@@ -472,7 +472,7 @@ fn opj_jp2_write_colr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
   match meth {
     1 => {
       /* EnumCS */
-      buf.write_all(&(jp2.enumcs as u32).to_be_bytes()).unwrap();
+      buf.write_u32::<BigEndian>(jp2.enumcs as u32).unwrap();
       // TODO: Support CIELab? (enumcs == 14).
     }
     2 => {
@@ -1398,7 +1398,7 @@ fn opj_jp2_write_jp2h(
     return 0;
   }
   for writer in &writers {
-    if !writer.write(stream, p_manager) {
+    if !writer.write(stream) {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -1424,60 +1424,28 @@ fn opj_jp2_write_ftyp(
   mut stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_ftyp_size: OPJ_UINT32 = 0;
-    let mut l_ftyp_data = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut l_current_data_ptr = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut l_result: OPJ_BOOL = 0;
-    /* preconditions */
-    /* FTYP */
-    /* MinV */
-    l_ftyp_size = (16u32).wrapping_add((4u32).wrapping_mul(jp2.numcl));
-    l_ftyp_data = opj_calloc(1i32 as size_t, l_ftyp_size as size_t) as *mut OPJ_BYTE;
-    if l_ftyp_data.is_null() {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory to handle ftyp data\n",
-      );
-      return 0i32;
-    }
-    l_current_data_ptr = l_ftyp_data;
-    opj_write_bytes(l_current_data_ptr, l_ftyp_size, 4 as OPJ_UINT32);
-    l_current_data_ptr = l_current_data_ptr.offset(4);
-    opj_write_bytes(
-      l_current_data_ptr,
-      0x66747970 as OPJ_UINT32,
-      4 as OPJ_UINT32,
-    );
-    l_current_data_ptr = l_current_data_ptr.offset(4);
-    opj_write_bytes(l_current_data_ptr, jp2.brand, 4 as OPJ_UINT32);
-    l_current_data_ptr = l_current_data_ptr.offset(4);
-    opj_write_bytes(l_current_data_ptr, jp2.minversion, 4 as OPJ_UINT32);
-    l_current_data_ptr = l_current_data_ptr.offset(4);
-    i = 0 as OPJ_UINT32;
-    while i < jp2.numcl {
-      opj_write_bytes(
-        l_current_data_ptr,
-        *jp2.cl.offset(i as isize),
-        4 as OPJ_UINT32,
-      );
-      i += 1;
-      /* CL */
-    }
-    l_result = (opj_stream_write_data(stream, l_ftyp_data, l_ftyp_size as OPJ_SIZE_T, p_manager)
-      == l_ftyp_size as usize) as core::ffi::c_int;
-    if l_result == 0 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Error while writing ftyp data to stream\n",
-      );
-    }
-    opj_free(l_ftyp_data as *mut core::ffi::c_void);
-    l_result
+  /* FTYP */
+  let mut header = Jp2BoxHeader::new(Jp2BoxType::FTYP);
+  header.length += 8 + (4 * jp2.numcl);
+  let mut buf = Vec::with_capacity(header.length as usize);
+  header.write(&mut buf);
+
+  buf.write_u32::<BigEndian>(jp2.brand).unwrap();
+  buf.write_u32::<BigEndian>(jp2.minversion).unwrap();
+  /* CL */
+  let cl = unsafe { std::slice::from_raw_parts(jp2.cl, jp2.numcl as usize) };
+  for cl in cl {
+    buf.write_u32::<BigEndian>(*cl).unwrap();
   }
+  if stream.write_all(buf.as_slice()).is_err() {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error while writing ftyp data to stream\n",
+    );
+    return 0;
+  }
+  1
 }
 
 /* *
@@ -1494,44 +1462,27 @@ fn opj_jp2_write_jp2c(
   mut stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut j2k_codestream_exit: OPJ_OFF_T = 0;
-    let mut l_data_header: [OPJ_BYTE; 8] = [0; 8];
-    /* preconditions */
-    /* JP2C */
-
-    assert!(opj_stream_has_seek(stream) != 0);
-    j2k_codestream_exit = opj_stream_tell(stream);
-    opj_write_bytes(
-      l_data_header.as_mut_ptr(),
-      (j2k_codestream_exit - jp2.j2k_codestream_offset) as OPJ_UINT32,
-      4 as OPJ_UINT32,
-    );
-    opj_write_bytes(
-      l_data_header.as_mut_ptr().offset(4),
-      0x6a703263 as OPJ_UINT32,
-      4 as OPJ_UINT32,
-    );
-    if opj_stream_seek(stream, jp2.j2k_codestream_offset, p_manager) == 0 {
-      event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
-      return 0i32;
-    }
-    if opj_stream_write_data(
-      stream,
-      l_data_header.as_mut_ptr(),
-      8 as OPJ_SIZE_T,
-      p_manager,
-    ) != 8
-    {
-      event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
-      return 0i32;
-    }
-    if opj_stream_seek(stream, j2k_codestream_exit, p_manager) == 0 {
-      event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
-      return 0i32;
-    }
-    1i32
+  assert!(opj_stream_has_seek(stream) != 0);
+  let j2k_codestream_exit = opj_stream_tell(stream);
+  let mut header = Jp2BoxHeader::new(Jp2BoxType::JP2C);
+  header.length = (j2k_codestream_exit - jp2.j2k_codestream_offset) as u32;
+  if opj_stream_seek(stream, jp2.j2k_codestream_offset, p_manager) == 0 {
+    event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
+    return 0;
   }
+  if !header.write(stream) {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error while writing jp2c header to stream\n",
+    );
+    return 0;
+  }
+  if opj_stream_seek(stream, j2k_codestream_exit, p_manager) == 0 {
+    event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
+    return 0;
+  }
+  1
 }
 
 /* *
@@ -1548,40 +1499,23 @@ fn opj_jp2_write_jp(
   mut stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    /* 12 bytes will be read */
-    let mut l_signature_data: [OPJ_BYTE; 12] = [0; 12];
-    /* preconditions */
+  let mut tmp_buf = [0u8; 12];
+  let mut buf = &mut tmp_buf[..];
+  let mut header = Jp2BoxHeader::new(Jp2BoxType::JP);
+  header.length += 4;
+  header.write(&mut buf);
+  // writes magic number
+  buf.write_u32::<BigEndian>(0xd0a870a).unwrap();
 
-    /* write box length */
-    opj_write_bytes(
-      l_signature_data.as_mut_ptr(),
-      12 as OPJ_UINT32,
-      4 as OPJ_UINT32,
-    );
-    /* writes box type */
-    opj_write_bytes(
-      l_signature_data.as_mut_ptr().offset(4),
-      0x6a502020 as OPJ_UINT32,
-      4 as OPJ_UINT32,
-    );
-    /* writes magic number*/
-    opj_write_bytes(
-      l_signature_data.as_mut_ptr().offset(8),
-      0xd0a870a as OPJ_UINT32,
-      4 as OPJ_UINT32,
-    );
-    if opj_stream_write_data(
-      stream,
-      l_signature_data.as_mut_ptr(),
-      12 as OPJ_SIZE_T,
+  if stream.write_all(&tmp_buf).is_err() {
+    event_msg!(
       p_manager,
-    ) != 12
-    {
-      return 0i32;
-    }
-    1i32
+      EVT_ERROR,
+      "Error while writing jp data to stream\n",
+    );
+    return 0;
   }
+  1
 }
 
 /* ----------------------------------------------------------------------- */
