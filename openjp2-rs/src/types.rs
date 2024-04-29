@@ -265,7 +265,7 @@ pub(crate) struct opj_jp2 {
   pub jpip_on: OPJ_BOOL,
   pub jp2_state: OPJ_UINT32,
   pub jp2_img_state: OPJ_UINT32,
-  pub color: opj_jp2_color_t,
+  pub color: opj_jp2_color,
   pub ignore_pclr_cmap_cdef: OPJ_BOOL,
   pub has_jp2h: OPJ_BYTE,
   pub has_ihdr: OPJ_BYTE,
@@ -279,25 +279,28 @@ pub(crate) struct opj_jp2_color {
   pub jp2_pclr: Option<opj_jp2_pclr>,
   pub jp2_has_colr: OPJ_BYTE,
 }
-pub(crate) type opj_jp2_color_t = opj_jp2_color;
+
+#[derive(Copy, Clone)]
+pub(crate) struct Jp2ChannelSign {
+  pub sign: u8,
+  pub size: u8,
+}
 
 #[derive(Clone)]
 pub(crate) struct opj_jp2_pclr {
-  pub entries: *mut OPJ_UINT32,
-  pub channel_sign: *mut OPJ_BYTE,
-  pub channel_size: *mut OPJ_BYTE,
-  pub cmap: *mut opj_jp2_cmap_comp_t,
-  pub nr_entries: OPJ_UINT16,
-  pub nr_channels: OPJ_BYTE,
+  pub entries: Vec<u32>,
+  pub channel: Vec<Jp2ChannelSign>,
+  pub cmap: Vec<opj_jp2_cmap_comp>,
+  pub nr_entries: u16,
+  pub nr_channels: u8,
 }
 
 #[derive(Copy, Clone)]
 pub(crate) struct opj_jp2_cmap_comp {
-  pub cmp: OPJ_UINT16,
-  pub mtyp: OPJ_BYTE,
-  pub pcol: OPJ_BYTE,
+  pub cmp: u16,
+  pub mtyp: u8,
+  pub pcol: u8,
 }
-pub(crate) type opj_jp2_cmap_comp_t = opj_jp2_cmap_comp;
 
 #[derive(Clone)]
 pub(crate) struct opj_jp2_cdef {
