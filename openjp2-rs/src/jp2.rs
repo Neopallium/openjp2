@@ -395,10 +395,9 @@ fn opj_jp2_read_bpcc(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut i: OPJ_UINT32 = 0;
     /* preconditions */
-
     assert!(!p_bpc_header_data.is_null());
+
     if jp2.bpc != 255u32 {
       event_msg!(p_manager, EVT_WARNING,
                       "A BPCC header box is available although BPC given by the IHDR box (%d) indicate components bit depth is constant\n", jp2.bpc);
@@ -409,15 +408,14 @@ fn opj_jp2_read_bpcc(
       return 0i32;
     }
     /* read info for each component */
-    i = 0 as OPJ_UINT32; /* read each BPCC component */
-    while i < jp2.numcomps {
+    for i in 0..jp2.numcomps {
+      /* read each BPCC component */
       opj_read_bytes(
         p_bpc_header_data,
         &mut (*jp2.comps.offset(i as isize)).bpcc,
         1 as OPJ_UINT32,
       );
       p_bpc_header_data = p_bpc_header_data.offset(1);
-      i += 1;
     }
     1i32
   }
@@ -488,37 +486,19 @@ fn opj_jp2_write_colr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
   true
 }
 
-impl Drop for opj_jp2_pclr {
-  fn drop(&mut self) {
-    unsafe {
-      opj_free(self.channel_sign as *mut core::ffi::c_void);
-      opj_free(self.channel_size as *mut core::ffi::c_void);
-      opj_free(self.entries as *mut core::ffi::c_void);
-      if !self.cmap.is_null() {
-        opj_free(self.cmap as *mut core::ffi::c_void);
-      }
-    }
-  }
-}
-
-fn opj_jp2_free_pclr(mut color: &mut opj_jp2_color_t) {
-  color.jp2_pclr = None;
-}
-
 fn opj_jp2_check_color(
   mut image: &mut opj_image_t,
-  mut color: &mut opj_jp2_color_t,
+  mut color: &mut opj_jp2_color,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut i: OPJ_UINT16 = 0;
     /* testcase 4149.pdf.SIGSEGV.cf7.3501 */
     if let Some(cdef) = &color.jp2_cdef {
       /* FIXME image->numcomps == jp2->numcomps before color is applied ??? */
       let mut nr_channels = image.numcomps;
       /* cdef applies to cmap channels if any */
       if let Some(pclr) = &color.jp2_pclr {
-        if !pclr.cmap.is_null() {
+        if !pclr.cmap.is_empty() {
           nr_channels = pclr.nr_channels as u32
         }
       }
@@ -546,16 +526,14 @@ fn opj_jp2_check_color(
           );
           return 0i32;
         }
-        i += 1;
       }
       /* issue 397 */
       /* ISO 15444-1 states that if cdef is present, it shall contain a complete list of channel definitions. */
-      while nr_channels > 0 {
-        nr_channels = nr_channels.wrapping_sub(1);
+      for chan in 1..nr_channels {
         let has = cdef
           .info
           .iter()
-          .position(|&x| x.cn as u32 == nr_channels)
+          .position(|&x| x.cn as u32 == chan)
           .is_some();
         if !has {
           event_msg!(p_manager, EVT_ERROR, "Incomplete channel definitions.\n",);
@@ -565,38 +543,34 @@ fn opj_jp2_check_color(
     }
     /* testcases 451.pdf.SIGSEGV.f4c.3723, 451.pdf.SIGSEGV.5b5.3723 and
     66ea31acbb0f23a2bbc91f64d69a03f5_signal_sigsegv_13937c0_7030_5725.pdf */
-    if let Some(pclr) = &color.jp2_pclr {
-      if !pclr.cmap.is_null() {
-        let mut nr_channels_0 = pclr.nr_channels as OPJ_UINT16;
-        let mut cmap = pclr.cmap;
-        let mut pcol_usage = std::ptr::null_mut::<OPJ_BOOL>();
+    if let Some(pclr) = &mut color.jp2_pclr {
+      let nr_channels = pclr.nr_channels as usize;
+      if pclr.cmap.len() == nr_channels {
         let mut is_sane = 1i32;
         /* verify that all original components match an existing one */
-        i = 0 as OPJ_UINT16;
-        while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
-          if (*cmap.offset(i as isize)).cmp as core::ffi::c_uint >= image.numcomps {
+        for cmap in &pclr.cmap {
+          if cmap.cmp as core::ffi::c_uint >= image.numcomps {
             event_msg!(
               p_manager,
               EVT_ERROR,
               "Invalid component index %d (>= %d).\n",
-              (*cmap.offset(i as isize)).cmp as core::ffi::c_int,
+              cmap.cmp as core::ffi::c_int,
               image.numcomps,
             );
             is_sane = 0i32
           }
-          i += 1;
         }
-        pcol_usage =
-          opj_calloc(nr_channels_0 as size_t, core::mem::size_of::<OPJ_BOOL>()) as *mut OPJ_BOOL;
+        let pcol_usage =
+          opj_calloc(nr_channels as size_t, core::mem::size_of::<OPJ_BOOL>()) as *mut OPJ_BOOL;
         if pcol_usage.is_null() {
           event_msg!(p_manager, EVT_ERROR, "Unexpected OOM.\n",);
-          return 0i32;
+          return 0;
         }
         /* verify that no component is targeted more than once */
-        i = 0 as OPJ_UINT16;
-        while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
-          let mut mtyp = (*cmap.offset(i as isize)).mtyp;
-          let mut pcol = (*cmap.offset(i as isize)).pcol;
+        for i in 0..nr_channels {
+          let cmap = pclr.cmap[i];
+          let mut mtyp = cmap.mtyp;
+          let mut pcol = cmap.pcol;
           /* See ISO 15444-1 Table I.14 – MTYPi field values */
           if mtyp as core::ffi::c_int != 0i32 && mtyp as core::ffi::c_int != 1i32 {
             event_msg!(
@@ -607,7 +581,7 @@ fn opj_jp2_check_color(
               mtyp as core::ffi::c_int,
             );
             is_sane = 0i32
-          } else if pcol as core::ffi::c_int >= nr_channels_0 as core::ffi::c_int {
+          } else if pcol as core::ffi::c_int >= nr_channels as core::ffi::c_int {
             event_msg!(
               p_manager,
               EVT_ERROR,
@@ -643,18 +617,15 @@ fn opj_jp2_check_color(
                                 "Implementation limitation: for palette mapping, pcol[%d] should be equal to %d, but is equal to %d.\n",
                                 i as core::ffi::c_int, i as core::ffi::c_int,
                                 pcol as core::ffi::c_int);
-            is_sane = 0i32
+            is_sane = 0
           } else {
             *pcol_usage.offset(pcol as isize) = 1i32
           }
-          i += 1;
         }
         /* verify that all components are targeted at least once */
-        i = 0 as OPJ_UINT16;
-        while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
-          if *pcol_usage.offset(i as isize) == 0
-            && (*cmap.offset(i as isize)).mtyp as core::ffi::c_int != 0i32
-          {
+        for i in 0..nr_channels {
+          let cmap = pclr.cmap[i];
+          if *pcol_usage.offset(i as isize) == 0 && cmap.mtyp as core::ffi::c_int != 0i32 {
             event_msg!(
               p_manager,
               EVT_ERROR,
@@ -663,12 +634,10 @@ fn opj_jp2_check_color(
             );
             is_sane = 0i32
           }
-          i += 1;
         }
         /* Issue 235/447 weird cmap */
         if 1i32 != 0 && is_sane != 0 && image.numcomps == 1u32 {
-          i = 0 as OPJ_UINT16;
-          while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
+          for i in 0..nr_channels {
             if *pcol_usage.offset(i as isize) == 0 {
               is_sane = 0 as OPJ_BOOL;
               event_msg!(
@@ -677,17 +646,14 @@ fn opj_jp2_check_color(
                 "Component mapping seems wrong. Trying to correct.\n",
               );
               break;
-            } else {
-              i += 1;
             }
           }
           if is_sane == 0 {
             is_sane = 1i32;
-            i = 0 as OPJ_UINT16;
-            while (i as core::ffi::c_int) < nr_channels_0 as core::ffi::c_int {
-              (*cmap.offset(i as isize)).mtyp = 1 as OPJ_BYTE;
-              (*cmap.offset(i as isize)).pcol = i as OPJ_BYTE;
-              i += 1;
+            for i in 0..nr_channels {
+              let cmap = &mut pclr.cmap[i];
+              cmap.mtyp = 1 as OPJ_BYTE;
+              cmap.pcol = i as OPJ_BYTE;
             }
           }
         }
@@ -718,21 +684,14 @@ fn opj_jp2_apply_pclr(
     let mut new_comps = std::ptr::null_mut::<opj_image_comp_t>();
     let mut src = std::ptr::null_mut::<OPJ_INT32>();
     let mut dst = std::ptr::null_mut::<OPJ_INT32>();
-    let mut j: OPJ_UINT32 = 0;
     let mut max: OPJ_UINT32 = 0;
-    let mut i: OPJ_UINT16 = 0;
     let mut cmp: OPJ_UINT16 = 0;
     let mut pcol: OPJ_UINT16 = 0;
     let mut k: OPJ_INT32 = 0;
-    let channel_size = pclr.channel_size;
-    let channel_sign = pclr.channel_sign;
-    let entries = pclr.entries;
-    let cmap = pclr.cmap;
-    let nr_channels = pclr.nr_channels as OPJ_UINT16;
-    i = 0 as OPJ_UINT16;
-    while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
+    let nr_channels = pclr.nr_channels as usize;
+    for i in 0..nr_channels {
       /* Palette mapping: */
-      cmp = (*cmap.offset(i as isize)).cmp;
+      let cmp = pclr.cmap[i].cmp;
       if (*image.comps.offset(cmp as isize)).data.is_null() {
         event_msg!(
           p_manager,
@@ -742,7 +701,6 @@ fn opj_jp2_apply_pclr(
         );
         return 0i32;
       }
-      i += 1;
     }
     old_comps = image.comps;
     new_comps =
@@ -756,12 +714,13 @@ fn opj_jp2_apply_pclr(
       );
       return 0i32;
     }
-    i = 0 as OPJ_UINT16;
-    while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
-      pcol = (*cmap.offset(i as isize)).pcol as OPJ_UINT16;
-      cmp = (*cmap.offset(i as isize)).cmp;
+    for i in 0..nr_channels {
+      let cmap = pclr.cmap[i];
+      let channel = pclr.channel[i as usize];
+      pcol = cmap.pcol as u16;
+      cmp = cmap.cmp;
       /* Direct use */
-      if (*cmap.offset(i as isize)).mtyp as core::ffi::c_int == 0i32 {
+      if cmap.mtyp as core::ffi::c_int == 0i32 {
         assert!(pcol as core::ffi::c_int == 0i32);
         *new_comps.offset(i as isize) = *old_comps.offset(cmp as isize)
       } else {
@@ -776,9 +735,8 @@ fn opj_jp2_apply_pclr(
           .wrapping_mul((*old_comps.offset(cmp as isize)).h as usize),
       ) as *mut OPJ_INT32;
       if (*new_comps.offset(i as isize)).data.is_null() {
-        while i as core::ffi::c_int > 0i32 {
-          i = i.wrapping_sub(1);
-          opj_image_data_free((*new_comps.offset(i as isize)).data as *mut core::ffi::c_void);
+        for x in 0..i {
+          opj_image_data_free((*new_comps.offset(x as isize)).data as *mut core::ffi::c_void);
         }
         opj_free(new_comps as *mut core::ffi::c_void);
         event_msg!(
@@ -786,37 +744,33 @@ fn opj_jp2_apply_pclr(
           EVT_ERROR,
           "Memory allocation failure in opj_jp2_apply_pclr().\n",
         );
-        return 0i32;
+        return 0;
       }
-      (*new_comps.offset(i as isize)).prec = *channel_size.offset(i as isize) as OPJ_UINT32;
-      (*new_comps.offset(i as isize)).sgnd = *channel_sign.offset(i as isize) as OPJ_UINT32;
-      i += 1;
+      (*new_comps.offset(i as isize)).prec = channel.size as OPJ_UINT32;
+      (*new_comps.offset(i as isize)).sgnd = channel.sign as OPJ_UINT32;
     }
     let top_k = pclr.nr_entries as i32 - 1;
-    i = 0 as OPJ_UINT16;
-    while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
+    for i in 0..nr_channels {
+      let cmap = pclr.cmap[i];
       /* Palette mapping: */
-      cmp = (*cmap.offset(i as isize)).cmp; /* verified above */
-      pcol = (*cmap.offset(i as isize)).pcol as OPJ_UINT16;
+      cmp = cmap.cmp; /* verified above */
+      pcol = cmap.pcol as OPJ_UINT16;
       src = (*old_comps.offset(cmp as isize)).data;
       assert!(!src.is_null());
       max = (*new_comps.offset(i as isize)).w * (*new_comps.offset(i as isize)).h;
 
       /* Direct use: */
-      if (*cmap.offset(i as isize)).mtyp as core::ffi::c_int == 0i32 {
+      if cmap.mtyp as core::ffi::c_int == 0i32 {
         dst = (*new_comps.offset(i as isize)).data;
         assert!(!dst.is_null());
-        j = 0 as OPJ_UINT32;
-        while j < max {
+        for j in 0..max {
           *dst.offset(j as isize) = *src.offset(j as isize);
-          j += 1;
         }
       } else {
         assert!(i as core::ffi::c_int == pcol as core::ffi::c_int);
         dst = (*new_comps.offset(pcol as isize)).data;
         assert!(!dst.is_null());
-        j = 0 as OPJ_UINT32;
-        while j < max {
+        for j in 0..max {
           /* The index */
           k = *src.offset(j as isize);
           if k < 0i32 {
@@ -825,21 +779,16 @@ fn opj_jp2_apply_pclr(
             k = top_k
           }
           /* The colour */
-          *dst.offset(j as isize) = *entries
-            .offset((k * nr_channels as core::ffi::c_int + pcol as core::ffi::c_int) as isize)
-            as OPJ_INT32;
-          j += 1;
+          *dst.offset(j as isize) =
+            pclr.entries[(k * nr_channels as i32 + pcol as i32) as usize] as i32;
         }
       }
-      i += 1;
     }
     max = image.numcomps;
-    j = 0 as OPJ_UINT32;
-    while j < max {
+    for j in 0..max {
       if !(*old_comps.offset(j as isize)).data.is_null() {
         opj_image_data_free((*old_comps.offset(j as isize)).data as *mut core::ffi::c_void);
       }
-      j += 1;
     }
     opj_free(old_comps as *mut core::ffi::c_void);
     image.comps = new_comps;
@@ -858,7 +807,6 @@ fn opj_jp2_apply_pclr(
  *
  * @return Returns true if successful, returns false otherwise
 */
-/* apply_pclr() */
 fn opj_jp2_read_pclr(
   mut jp2: &mut opj_jp2,
   mut p_pclr_header_data: *mut OPJ_BYTE,
@@ -866,94 +814,57 @@ fn opj_jp2_read_pclr(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut channel_size = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut channel_sign = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut entries = std::ptr::null_mut::<OPJ_UINT32>();
     let mut nr_entries: OPJ_UINT16 = 0;
     let mut nr_channels: OPJ_UINT16 = 0;
-    let mut i: OPJ_UINT16 = 0;
-    let mut j: OPJ_UINT16 = 0;
     let mut l_value: OPJ_UINT32 = 0;
     let mut orig_header_data = p_pclr_header_data;
     /* preconditions */
-    /* NPC */
-    /* Cji */
     assert!(!p_pclr_header_data.is_null());
     if jp2.color.jp2_pclr.is_some() {
-      return 0i32;
+      return 0;
     }
-    if p_pclr_header_size < 3u32 {
-      return 0i32;
+    if p_pclr_header_size < 3 {
+      return 0;
     }
     opj_read_bytes(p_pclr_header_data, &mut l_value, 2 as OPJ_UINT32);
     p_pclr_header_data = p_pclr_header_data.offset(2);
     nr_entries = l_value as OPJ_UINT16;
-    if nr_entries as core::ffi::c_uint == 0u32 || nr_entries as core::ffi::c_uint > 1024u32 {
+    if nr_entries == 0 || nr_entries > 1024 {
       event_msg!(
         p_manager,
         EVT_ERROR,
         "Invalid PCLR box. Reports %d entries\n",
         nr_entries as core::ffi::c_int,
       );
-      return 0i32;
+      return 0;
     }
     opj_read_bytes(p_pclr_header_data, &mut l_value, 1 as OPJ_UINT32);
     p_pclr_header_data = p_pclr_header_data.offset(1);
     nr_channels = l_value as OPJ_UINT16;
-    if nr_channels as core::ffi::c_uint == 0u32 {
+    if nr_channels == 0 {
       event_msg!(
         p_manager,
         EVT_ERROR,
         "Invalid PCLR box. Reports 0 palette columns\n",
       );
-      return 0i32;
+      return 0;
     }
     if p_pclr_header_size < (3u32).wrapping_add(nr_channels as OPJ_UINT32) {
-      return 0i32;
+      return 0;
     }
-    entries = opj_malloc(
-      core::mem::size_of::<OPJ_UINT32>()
-        .wrapping_mul(nr_channels as usize)
-        .wrapping_mul(nr_entries as usize),
-    ) as *mut OPJ_UINT32;
-    if entries.is_null() {
-      return 0i32;
-    }
-    channel_size = opj_malloc(nr_channels as size_t) as *mut OPJ_BYTE;
-    if channel_size.is_null() {
-      opj_free(entries as *mut core::ffi::c_void);
-      return 0i32;
-    }
-    channel_sign = opj_malloc(nr_channels as size_t) as *mut OPJ_BYTE;
-    if channel_sign.is_null() {
-      opj_free(entries as *mut core::ffi::c_void);
-      opj_free(channel_size as *mut core::ffi::c_void);
-      return 0i32;
-    }
-    let jp2_pclr = opj_jp2_pclr {
-      channel_sign: channel_sign,
-      channel_size: channel_size,
-      entries: entries,
-      nr_entries: nr_entries,
-      nr_channels: l_value as OPJ_BYTE,
-      cmap: std::ptr::null_mut::<opj_jp2_cmap_comp_t>(),
-    };
-    jp2.color.jp2_pclr = Some(jp2_pclr);
-    i = 0 as OPJ_UINT16;
-    while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
+    let mut entries = Vec::with_capacity((nr_channels * nr_channels) as usize);
+    let mut channel = Vec::with_capacity(nr_channels as usize);
+    for _ in 0..nr_channels {
       opj_read_bytes(p_pclr_header_data, &mut l_value, 1 as OPJ_UINT32);
       p_pclr_header_data = p_pclr_header_data.offset(1);
-      *channel_size.offset(i as isize) = (l_value & 0x7fu32).wrapping_add(1u32) as OPJ_BYTE;
-      *channel_sign.offset(i as isize) =
-        if l_value & 0x80u32 != 0 { 1i32 } else { 0i32 } as OPJ_BYTE;
-      i += 1;
+      let size = (l_value & 0x7fu32).wrapping_add(1u32) as u8;
+      let sign = if l_value & 0x80u32 != 0 { 1 } else { 0 } as u8;
+      channel.push(Jp2ChannelSign { size, sign });
     }
-    j = 0 as OPJ_UINT16;
-    while (j as core::ffi::c_int) < nr_entries as core::ffi::c_int {
-      i = 0 as OPJ_UINT16;
-      while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
-        let mut bytes_to_read =
-          ((*channel_size.offset(i as isize) as core::ffi::c_int + 7i32) >> 3i32) as OPJ_UINT32;
+    for _ in 0..nr_entries {
+      for i in 0..nr_channels {
+        let size = channel[i as usize].size;
+        let mut bytes_to_read = (size as u32 + 7) >> 3;
         if bytes_to_read as usize > core::mem::size_of::<OPJ_UINT32>() {
           bytes_to_read = core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32
         }
@@ -964,13 +875,18 @@ fn opj_jp2_read_pclr(
         }
         opj_read_bytes(p_pclr_header_data, &mut l_value, bytes_to_read);
         p_pclr_header_data = p_pclr_header_data.offset(bytes_to_read as isize);
-        *entries = l_value;
-        entries = entries.offset(1);
-        i += 1;
+        entries.push(l_value);
       }
-      j += 1;
     }
-    1i32
+    let jp2_pclr = opj_jp2_pclr {
+      channel,
+      entries,
+      nr_entries,
+      nr_channels: nr_channels as _,
+      cmap: Default::default(),
+    };
+    jp2.color.jp2_pclr = Some(jp2_pclr);
+    1
   }
 }
 
@@ -991,9 +907,6 @@ fn opj_jp2_read_cmap(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut cmap = std::ptr::null_mut::<opj_jp2_cmap_comp_t>();
-    let mut i: OPJ_BYTE = 0;
-    let mut nr_channels: OPJ_BYTE = 0;
     let mut l_value: OPJ_UINT32 = 0;
     /* preconditions */
 
@@ -1012,33 +925,30 @@ fn opj_jp2_read_cmap(
     /* Part 1, I.5.3.5: 'There shall be at most one Component Mapping box
      * inside a JP2 Header box' :
      */
-    if !pclr.cmap.is_null() {
+    if !pclr.cmap.is_empty() {
       event_msg!(p_manager, EVT_ERROR, "Only one CMAP box is allowed.\n",); /* CMP^i */
       return 0i32;
-    } /* MTYP^i */
-    nr_channels = pclr.nr_channels; /* PCOL^i */
+    }
+    let nr_channels = pclr.nr_channels as usize;
     if p_cmap_header_size < (nr_channels as OPJ_UINT32).wrapping_mul(4u32) {
       event_msg!(p_manager, EVT_ERROR, "Insufficient data for CMAP box.\n",);
       return 0i32;
     }
-    cmap =
-      opj_malloc((nr_channels as usize).wrapping_mul(core::mem::size_of::<opj_jp2_cmap_comp_t>()))
-        as *mut opj_jp2_cmap_comp_t;
-    if cmap.is_null() {
-      return 0i32;
-    }
-    i = 0 as OPJ_BYTE;
-    while (i as core::ffi::c_int) < nr_channels as core::ffi::c_int {
+    let mut cmap = Vec::with_capacity(nr_channels);
+    for _ in 0..nr_channels {
+      /* CMP^i */
       opj_read_bytes(p_cmap_header_data, &mut l_value, 2 as OPJ_UINT32);
       p_cmap_header_data = p_cmap_header_data.offset(2);
-      (*cmap.offset(i as isize)).cmp = l_value as OPJ_UINT16;
+      let cmp = l_value as OPJ_UINT16;
+      /* MTYP^i */
       opj_read_bytes(p_cmap_header_data, &mut l_value, 1 as OPJ_UINT32);
       p_cmap_header_data = p_cmap_header_data.offset(1);
-      (*cmap.offset(i as isize)).mtyp = l_value as OPJ_BYTE;
+      let mtyp = l_value as OPJ_BYTE;
+      /* PCOL^i */
       opj_read_bytes(p_cmap_header_data, &mut l_value, 1 as OPJ_UINT32);
       p_cmap_header_data = p_cmap_header_data.offset(1);
-      (*cmap.offset(i as isize)).pcol = l_value as OPJ_BYTE;
-      i += 1;
+      let pcol = l_value as OPJ_BYTE;
+      cmap.push(opj_jp2_cmap_comp { cmp, mtyp, pcol });
     }
     pclr.cmap = cmap;
     1i32
@@ -1047,7 +957,7 @@ fn opj_jp2_read_cmap(
 
 fn opj_jp2_apply_cdef(
   mut image: &mut opj_image_t,
-  mut color: &mut opj_jp2_color_t,
+  mut color: &mut opj_jp2_color,
   mut manager: &mut opj_event_mgr,
 ) {
   let cdef = if let Some(cdef) = &mut color.jp2_cdef {
@@ -1312,8 +1222,8 @@ pub(crate) fn opj_jp2_apply_color_postprocessing(
 
       if let Some(pclr) = &jp2.color.jp2_pclr {
         /* Part 1, I.5.3.4: Either both or none : */
-        if pclr.cmap.is_null() {
-          opj_jp2_free_pclr(&mut jp2.color);
+        if pclr.cmap.is_empty() {
+          jp2.color.jp2_pclr = None;
         } else if opj_jp2_apply_pclr(p_image, pclr, p_manager) == 0 {
           return 0i32;
         }
@@ -2188,7 +2098,6 @@ fn opj_jp2_read_ftyp(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut i: OPJ_UINT32 = 0;
     let mut l_remaining_bytes: OPJ_UINT32 = 0;
     /* preconditions */
 
@@ -2226,15 +2135,13 @@ fn opj_jp2_read_ftyp(
         return 0i32;
       }
     }
-    i = 0 as OPJ_UINT32;
-    while i < jp2.numcl {
+    for i in 0..jp2.numcl {
       opj_read_bytes(
         p_header_data,
         &mut *jp2.cl.offset(i as isize),
         4 as OPJ_UINT32,
       );
       p_header_data = p_header_data.offset(4);
-      i += 1;
     }
     jp2.jp2_state |= JP2_STATE_FILE_TYPE as core::ffi::c_uint;
     1i32
@@ -2717,7 +2624,7 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
     has_jp2h: 0,
     has_ihdr: 0,
     /* Color structure */
-    color: opj_jp2_color_t {
+    color: opj_jp2_color {
       icc_profile: None,
       icc_profile_len: 0 as OPJ_UINT32,
       jp2_cdef: None,
