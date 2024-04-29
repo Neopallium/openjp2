@@ -257,9 +257,8 @@ pub(crate) struct opj_jp2 {
   pub precedence: OPJ_UINT32,
   pub brand: OPJ_UINT32,
   pub minversion: OPJ_UINT32,
-  pub numcl: OPJ_UINT32,
-  pub cl: *mut OPJ_UINT32,
-  pub comps: *mut opj_jp2_comps_t,
+  pub cl: Vec<u32>,
+  pub comps: Vec<opj_jp2_comps>,
   pub j2k_codestream_offset: OPJ_OFF_T,
   pub jpip_iptr_offset: OPJ_OFF_T,
   pub jpip_on: OPJ_BOOL,
@@ -315,13 +314,12 @@ pub(crate) struct opj_jp2_cdef_info {
   pub asoc: OPJ_UINT16,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub(crate) struct opj_jp2_comps {
-  pub depth: OPJ_UINT32,
-  pub sgnd: OPJ_UINT32,
+  //pub depth: OPJ_UINT32,
+  //pub sgnd: OPJ_UINT32,
   pub bpcc: OPJ_UINT32,
 }
-pub(crate) type opj_jp2_comps_t = opj_jp2_comps;
 
 pub(crate) type opj_j2k_proc =
   fn(_: &mut opj_j2k, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
