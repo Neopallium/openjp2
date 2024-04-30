@@ -13,14 +13,6 @@ use ::libc::FILE;
 
 use super::malloc::*;
 
-extern "C" {
-  fn memcpy(
-    _: *mut core::ffi::c_void,
-    _: *const core::ffi::c_void,
-    _: usize,
-  ) -> *mut core::ffi::c_void;
-}
-
 pub type C2RustUnnamed_2 = core::ffi::c_uint;
 pub const JP2_STATE_UNKNOWN: C2RustUnnamed_2 = 2147483647;
 pub const JP2_STATE_END_CODESTREAM: C2RustUnnamed_2 = 16;
@@ -278,33 +270,34 @@ fn opj_jp2_read_ihdr(
     p_image_header_data = p_image_header_data.offset(4);
     opj_read_bytes(p_image_header_data, &mut jp2.w, 4 as OPJ_UINT32);
     p_image_header_data = p_image_header_data.offset(4);
-    opj_read_bytes(p_image_header_data, &mut jp2.numcomps, 2 as OPJ_UINT32);
+    let mut numcomps = 0u32;
+    opj_read_bytes(p_image_header_data, &mut numcomps, 2 as OPJ_UINT32);
     p_image_header_data = p_image_header_data.offset(2);
-    if jp2.h < 1u32 || jp2.w < 1u32 || jp2.numcomps < 1u32 {
+    if jp2.h < 1u32 || jp2.w < 1u32 || numcomps < 1u32 {
       event_msg!(
         p_manager,
         EVT_ERROR,
         "Wrong values for: w(%d) h(%d) numcomps(%d) (ihdr)\n",
         jp2.w,
         jp2.h,
-        jp2.numcomps,
+        numcomps,
       );
       return 0i32;
     }
-    if jp2.numcomps.wrapping_sub(1u32) >= 16384u32 {
+    if numcomps.wrapping_sub(1u32) >= 16384u32 {
       /* unsigned underflow is well defined: 1U <= jp2->numcomps <= 16384U */
       event_msg!(
         p_manager,
         EVT_ERROR,
         "Invalid number of components (ihdr)\n",
       );
-      return 0i32;
+      return 0;
     }
     /* allocate memory for components */
-    jp2.comps = Vec::with_capacity(jp2.numcomps as usize);
+    jp2.comps = Vec::with_capacity(numcomps as usize);
     jp2
       .comps
-      .resize(jp2.numcomps as usize, opj_jp2_comps::default());
+      .resize(numcomps as usize, opj_jp2_comps::default());
 
     /* BPC */
     opj_read_bytes(p_image_header_data, &mut jp2.bpc, 1 as OPJ_UINT32);
@@ -351,7 +344,7 @@ fn opj_jp2_write_ihdr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
   /* WIDTH */
   buf.write_u32::<BigEndian>(jp2.w).unwrap();
   /* NC */
-  buf.write_u16::<BigEndian>(jp2.numcomps as u16).unwrap();
+  buf.write_u16::<BigEndian>(jp2.comps.len() as u16).unwrap();
   /* BPC */
   buf.push(jp2.bpc as u8);
   /* C : Always 7 */
@@ -402,7 +395,7 @@ fn opj_jp2_read_bpcc(
                       "A BPCC header box is available although BPC given by the IHDR box (%d) indicate components bit depth is constant\n", jp2.bpc);
     }
     /* and length is relevant */
-    if p_bpc_header_size != jp2.numcomps {
+    if p_bpc_header_size as usize != jp2.comps.len() {
       event_msg!(p_manager, EVT_ERROR, "Bad BPCC header box (bad size)\n",);
       return 0i32;
     }
@@ -1469,11 +1462,11 @@ pub(crate) fn opj_jp2_setup_encoder(
     jp2.cl.push(Jp2BoxType::JP2.to_u32().unwrap());
 
     /* Image Header box */
-    jp2.numcomps = image.numcomps; /* NC */
-    jp2.comps = Vec::with_capacity(jp2.numcomps as usize);
+    let numcomps = image.numcomps; /* NC */
+    jp2.comps = Vec::with_capacity(numcomps as usize);
     jp2
       .comps
-      .resize(jp2.numcomps as usize, opj_jp2_comps::default());
+      .resize(numcomps as usize, opj_jp2_comps::default());
 
     /* HEIGHT */
     jp2.h = image.y1.wrapping_sub(image.y0);
@@ -1700,8 +1693,8 @@ fn opj_jp2_default_validation(
   /* height */
   l_is_valid &= (jp2.w > 0u32) as core::ffi::c_int;
   /* precision */
-  for i in 0..jp2.numcomps {
-    l_is_valid &= ((jp2.comps[i as usize].bpcc & 0x7fu32) < 38u32) as core::ffi::c_int;
+  for i in 0..jp2.comps.len() {
+    l_is_valid &= ((jp2.comps[i].bpcc & 0x7fu32) < 38u32) as core::ffi::c_int;
     /* 0 is valid, ignore sign for check */
   }
   /* METH */
@@ -2546,7 +2539,6 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
     },
     w: 0,
     h: 0,
-    numcomps: 0,
     bpc: 0,
     C: 0,
     UnkC: 0,

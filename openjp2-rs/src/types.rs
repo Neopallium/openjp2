@@ -246,7 +246,6 @@ pub(crate) struct opj_jp2 {
   pub j2k: opj_j2k,
   pub w: OPJ_UINT32,
   pub h: OPJ_UINT32,
-  pub numcomps: OPJ_UINT32,
   pub bpc: OPJ_UINT32,
   pub C: OPJ_UINT32,
   pub UnkC: OPJ_UINT32,
