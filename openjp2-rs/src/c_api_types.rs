@@ -31,6 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+pub use super::image::{opj_image, opj_image_t};
 use super::malloc::*;
 
 pub type size_t = usize;
@@ -75,12 +76,13 @@ pub type OPJ_PROG_ORDER = PROG_ORDER;
 pub type OPJ_BITFIELD = core::ffi::c_uint;
 
 /// Supported image color spaces
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(i32)]
 pub enum COLOR_SPACE {
   ///< not supported by the library
   OPJ_CLRSPC_UNKNOWN = -1,
   ///< not specified in the codestream
+  #[default]
   OPJ_CLRSPC_UNSPECIFIED = 0,
   ///< sRGB
   OPJ_CLRSPC_SRGB = 1,
@@ -457,21 +459,6 @@ pub struct opj_image_comp {
   pub alpha: OPJ_UINT16,
 }
 pub type opj_image_comp_t = opj_image_comp;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_image {
-  pub x0: OPJ_UINT32,
-  pub y0: OPJ_UINT32,
-  pub x1: OPJ_UINT32,
-  pub y1: OPJ_UINT32,
-  pub numcomps: OPJ_UINT32,
-  pub color_space: OPJ_COLOR_SPACE,
-  pub comps: *mut opj_image_comp_t,
-  pub icc_profile_buf: *mut OPJ_BYTE,
-  pub icc_profile_len: OPJ_UINT32,
-}
-pub type opj_image_t = opj_image;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
