@@ -1430,172 +1430,165 @@ pub(crate) fn opj_jp2_setup_encoder(
   mut image: &mut opj_image_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut depth_0: OPJ_UINT32 = 0;
-    let mut sign: OPJ_UINT32 = 0;
-    let mut alpha_count: OPJ_UINT32 = 0;
-    let mut color_channels = 0u32;
-    let mut alpha_channel = 0u32;
+  /* setup the J2K codec */
+  /* ------------------- */
+  /* Check if number of components respects standard */
+  let numcomps = image.numcomps;
+  if numcomps < 1 || numcomps > 16384 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid number of components specified while setting up JP2 encoder\n",
+    );
+    return 0;
+  }
+  if opj_j2k_setup_encoder(&mut jp2.j2k, parameters, image, p_manager) == 0 {
+    return 0;
+  }
+  /* setup the JP2 codec */
 
-    /* setup the J2K codec */
-    /* ------------------- */
-    /* Check if number of components respects standard */
-    if image.numcomps < 1u32 || image.numcomps > 16384u32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Invalid number of components specified while setting up JP2 encoder\n",
-      );
-      return 0i32;
+  /* Profile box */
+
+  jp2.brand = Jp2BoxType::JP2.to_u32().unwrap(); /* BR */
+  jp2.minversion = 0 as OPJ_UINT32; /* MinV */
+  jp2.cl = Vec::with_capacity(1);
+  /* CL0 : JP2 */
+  jp2.cl.push(Jp2BoxType::JP2.to_u32().unwrap());
+
+  /* Image Header box */
+  let comps = image.comps().unwrap();
+  jp2.comps = Vec::with_capacity(comps.len());
+  jp2.comps.resize(comps.len(), opj_jp2_comps::default());
+
+  /* HEIGHT */
+  jp2.h = image.y1.wrapping_sub(image.y0);
+  /* WIDTH */
+  jp2.w = image.x1.wrapping_sub(image.x0);
+
+  /* BPC */
+  let depth_0 = comps[0].prec.wrapping_sub(1);
+  let mut sign = comps[0].sgnd;
+  jp2.bpc = depth_0.wrapping_add(sign << 7);
+  for comp in &comps[1..] {
+    let mut depth = comp.prec.wrapping_sub(1);
+    sign = comp.sgnd;
+    if depth_0 != depth {
+      jp2.bpc = 255 as OPJ_UINT32
     }
-    if opj_j2k_setup_encoder(&mut jp2.j2k, parameters, image, p_manager) == 0i32 {
-      return 0i32;
+  }
+  /* C : Always 7 */
+  jp2.C = 7 as OPJ_UINT32;
+  /* UnkC, colorspace specified in colr box */
+  jp2.UnkC = 0 as OPJ_UINT32;
+  /* IPR, no intellectual property */
+  jp2.IPR = 0 as OPJ_UINT32;
+
+  /* BitsPerComponent box */
+  for (j_comp, comp) in jp2.comps.iter_mut().zip(&comps[..]) {
+    j_comp.bpcc = comp.prec.wrapping_sub(1).wrapping_add(comp.sgnd << 7);
+  }
+
+  /* Colour Specification box */
+  if image.icc_profile_len != 0 {
+    jp2.meth = 2 as OPJ_UINT32;
+    jp2.enumcs = 0 as OPJ_UINT32
+  } else {
+    jp2.meth = 1 as OPJ_UINT32;
+    if image.color_space as core::ffi::c_int == 1 {
+      jp2.enumcs = 16 as OPJ_UINT32
+    /* sRGB as defined by IEC 61966-2-1 */
+    } else if image.color_space as core::ffi::c_int == 2 {
+      jp2.enumcs = 17 as OPJ_UINT32
+    /* greyscale */
+    } else if image.color_space as core::ffi::c_int == 3 {
+      jp2.enumcs = 18 as OPJ_UINT32
+      /* YUV */
     }
-    /* setup the JP2 codec */
-
-    /* Profile box */
-
-    jp2.brand = Jp2BoxType::JP2.to_u32().unwrap(); /* BR */
-    jp2.minversion = 0 as OPJ_UINT32; /* MinV */
-    jp2.cl = Vec::with_capacity(1);
-    /* CL0 : JP2 */
-    jp2.cl.push(Jp2BoxType::JP2.to_u32().unwrap());
-
-    /* Image Header box */
-    let numcomps = image.numcomps; /* NC */
-    jp2.comps = Vec::with_capacity(numcomps as usize);
-    jp2
-      .comps
-      .resize(numcomps as usize, opj_jp2_comps::default());
-
-    /* HEIGHT */
-    jp2.h = image.y1.wrapping_sub(image.y0);
-    /* WIDTH */
-    jp2.w = image.x1.wrapping_sub(image.x0);
-
-    /* BPC */
-    depth_0 = (*image.comps.offset(0)).prec.wrapping_sub(1u32); /* C : Always 7 */
-    sign = (*image.comps.offset(0)).sgnd; /* UnkC, colorspace specified in colr box */
-    jp2.bpc = depth_0.wrapping_add(sign << 7i32); /* IPR, no intellectual property */
-    for i in 1..image.numcomps {
-      let mut depth = (*image.comps.offset(i as isize)).prec.wrapping_sub(1u32);
-      sign = (*image.comps.offset(i as isize)).sgnd;
-      if depth_0 != depth {
-        jp2.bpc = 255 as OPJ_UINT32
-      }
+  }
+  /* Channel Definition box */
+  /* FIXME not provided by parameters */
+  /* We try to do what we can... */
+  let mut alpha_count = 0;
+  let mut alpha_channel = 0;
+  let mut color_channels = 0u32;
+  for (i, comp) in comps.iter().enumerate() {
+    if comp.alpha != 0 {
+      alpha_count = alpha_count + 1;
+      alpha_channel = i as u32
     }
-    jp2.C = 7 as OPJ_UINT32;
-    jp2.UnkC = 0 as OPJ_UINT32;
-    jp2.IPR = 0 as OPJ_UINT32;
-
-    /* BitsPerComponent box */
-    for i in 0..image.numcomps {
-      jp2.comps[i as usize].bpcc = (*image.comps.offset(i as isize))
-        .prec
-        .wrapping_sub(1u32)
-        .wrapping_add((*image.comps.offset(i as isize)).sgnd << 7i32);
+  }
+  if alpha_count == 1 {
+    /* no way to deal with more than 1 alpha channel */
+    match jp2.enumcs {
+      16 | 18 => color_channels = 3,
+      17 => color_channels = 1,
+      _ => alpha_count = 0,
     }
-
-    /* Colour Specification box */
-    if image.icc_profile_len != 0 {
-      jp2.meth = 2 as OPJ_UINT32;
-      jp2.enumcs = 0 as OPJ_UINT32
-    } else {
-      jp2.meth = 1 as OPJ_UINT32;
-      if image.color_space as core::ffi::c_int == 1i32 {
-        jp2.enumcs = 16 as OPJ_UINT32
-      /* sRGB as defined by IEC 61966-2-1 */
-      } else if image.color_space as core::ffi::c_int == 2i32 {
-        jp2.enumcs = 17 as OPJ_UINT32
-      /* greyscale */
-      } else if image.color_space as core::ffi::c_int == 3i32 {
-        jp2.enumcs = 18 as OPJ_UINT32
-        /* YUV */
-      }
-    }
-    /* Channel Definition box */
-    /* FIXME not provided by parameters */
-    /* We try to do what we can... */
-    alpha_count = 0u32;
-    for i in 0..image.numcomps {
-      if (*image.comps.offset(i as isize)).alpha as core::ffi::c_int != 0i32 {
-        alpha_count = alpha_count.wrapping_add(1);
-        alpha_channel = i
-      }
-    }
-    if alpha_count == 1u32 {
-      /* no way to deal with more than 1 alpha channel */
-      match jp2.enumcs {
-        16 | 18 => color_channels = 3 as OPJ_UINT32,
-        17 => color_channels = 1 as OPJ_UINT32,
-        _ => alpha_count = 0u32,
-      }
-      if alpha_count == 0u32 {
-        event_msg!(
-          p_manager,
-          EVT_WARNING,
-          "Alpha channel specified but unknown enumcs. No cdef box will be created.\n",
-        );
-      } else if image.numcomps < color_channels.wrapping_add(1u32) {
-        event_msg!(p_manager, EVT_WARNING,
-                          "Alpha channel specified but not enough image components for an automatic cdef box creation.\n");
-        alpha_count = 0u32
-      } else if alpha_channel < color_channels {
-        event_msg!(
-          p_manager,
-          EVT_WARNING,
-          "Alpha channel position conflicts with color channel. No cdef box will be created.\n",
-        );
-        alpha_count = 0u32
-      }
-    } else if alpha_count > 1u32 {
+    if alpha_count == 0 {
       event_msg!(
         p_manager,
         EVT_WARNING,
-        "Multiple alpha channels specified. No cdef box will be created.\n",
+        "Alpha channel specified but unknown enumcs. No cdef box will be created.\n",
       );
+    } else if numcomps < color_channels + 1 {
+      event_msg!(p_manager, EVT_WARNING,
+                          "Alpha channel specified but not enough image components for an automatic cdef box creation.\n");
+      alpha_count = 0
+    } else if alpha_channel < color_channels {
+      event_msg!(
+        p_manager,
+        EVT_WARNING,
+        "Alpha channel position conflicts with color channel. No cdef box will be created.\n",
+      );
+      alpha_count = 0
     }
-    if alpha_count == 1u32 {
-      /* if here, we know what we can do */
-      let len = image.numcomps as usize;
-      let mut cdef = opj_jp2_cdef {
-        info: Vec::with_capacity(len),
-      };
-      /* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
-      /* in which case jp2->color.jp2_cdef->info will be NULL => valid for destruction */
-      for i in 0..len {
-        let cn = i as u16;
-        if i < color_channels as usize {
+  } else if alpha_count > 1 {
+    event_msg!(
+      p_manager,
+      EVT_WARNING,
+      "Multiple alpha channels specified. No cdef box will be created.\n",
+    );
+  }
+  if alpha_count == 1 {
+    /* if here, we know what we can do */
+    let len = numcomps as usize;
+    let mut cdef = opj_jp2_cdef {
+      info: Vec::with_capacity(len),
+    };
+    /* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
+    /* in which case jp2->color.jp2_cdef->info will be NULL => valid for destruction */
+    for i in 0..len {
+      let cn = i as u16;
+      if i < color_channels as usize {
+        cdef.info.push(opj_jp2_cdef_info {
+          cn,
+          typ: 0,
+          asoc: cn + 1,
+        })
+      } else {
+        if comps[i].alpha != 0 {
+          /* we'll be here exactly once */
           cdef.info.push(opj_jp2_cdef_info {
             cn,
-            typ: 0,
-            asoc: cn + 1,
+            typ: 1,  /* Opacity channel */
+            asoc: 0, /* Apply alpha channel to the whole image */
           })
         } else {
-          if (*image.comps.offset(i as isize)).alpha != 0 {
-            /* we'll be here exactly once */
-            cdef.info.push(opj_jp2_cdef_info {
-              cn,
-              typ: 1,  /* Opacity channel */
-              asoc: 0, /* Apply alpha channel to the whole image */
-            })
-          } else {
-            /* Unknown channel */
-            cdef.info.push(opj_jp2_cdef_info {
-              cn,
-              typ: u16::MAX,
-              asoc: u16::MAX,
-            })
-          }
+          /* Unknown channel */
+          cdef.info.push(opj_jp2_cdef_info {
+            cn,
+            typ: u16::MAX,
+            asoc: u16::MAX,
+          })
         }
       }
-      jp2.color.jp2_cdef = Some(cdef);
     }
-    jp2.precedence = 0 as OPJ_UINT32;
-    jp2.approx = 0 as OPJ_UINT32;
-    jp2.jpip_on = parameters.jpip_on;
-    1i32
+    jp2.color.jp2_cdef = Some(cdef);
   }
+  jp2.precedence = 0 as OPJ_UINT32;
+  jp2.approx = 0 as OPJ_UINT32;
+  jp2.jpip_on = parameters.jpip_on;
+  1
 }
 
 pub(crate) fn opj_jp2_encode(
@@ -2372,15 +2365,7 @@ pub(crate) fn opj_jp2_read_header(
     }
 
     if let Some(icc_profile) = &jp2.color.icc_profile {
-      let len = icc_profile.len();
-      // Allocate raw buffer and copy data from icc_profile.
-      let (icc_profile_buf, buf) = unsafe {
-        let icc_profile_buf = opj_malloc(len) as *mut OPJ_BYTE;
-        let mut buf = std::slice::from_raw_parts_mut(icc_profile_buf, len);
-        (icc_profile_buf, buf)
-      };
-      buf.copy_from_slice(icc_profile.as_slice());
-      image.icc_profile_buf = icc_profile_buf;
+      image.copy_icc_profile(icc_profile);
       image.icc_profile_len = jp2.color.icc_profile_len;
     }
   }
