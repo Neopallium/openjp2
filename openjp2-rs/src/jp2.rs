@@ -202,85 +202,86 @@ fn opj_jp2_read_ihdr(
   mut p_image_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
+  let mut buf = unsafe {
     /* preconditions */
-    /* WIDTH */
-
     assert!(!p_image_header_data.is_null());
-    if !jp2.comps.is_empty() {
-      event_msg!(
-        p_manager,
-        EVT_WARNING,
-        "Ignoring ihdr box. First ihdr box already read\n",
-      );
-      return 1i32;
-    }
-    if p_image_header_size != 14u32 {
-      event_msg!(p_manager, EVT_ERROR, "Bad image header box (bad size)\n",);
-      return 0i32;
-    }
-    opj_read_bytes(p_image_header_data, &mut jp2.h, 4 as OPJ_UINT32);
-    p_image_header_data = p_image_header_data.offset(4);
-    opj_read_bytes(p_image_header_data, &mut jp2.w, 4 as OPJ_UINT32);
-    p_image_header_data = p_image_header_data.offset(4);
-    let mut numcomps = 0u32;
-    opj_read_bytes(p_image_header_data, &mut numcomps, 2 as OPJ_UINT32);
-    p_image_header_data = p_image_header_data.offset(2);
-    if jp2.h < 1u32 || jp2.w < 1u32 || numcomps < 1u32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Wrong values for: w(%d) h(%d) numcomps(%d) (ihdr)\n",
-        jp2.w,
-        jp2.h,
-        numcomps,
-      );
-      return 0i32;
-    }
-    if numcomps.wrapping_sub(1u32) >= 16384u32 {
-      /* unsigned underflow is well defined: 1U <= jp2->numcomps <= 16384U */
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Invalid number of components (ihdr)\n",
-      );
-      return 0;
-    }
-    /* allocate memory for components */
-    jp2.comps = Vec::with_capacity(numcomps as usize);
-    jp2
-      .comps
-      .resize(numcomps as usize, opj_jp2_comps::default());
+    std::slice::from_raw_parts(p_image_header_data, p_image_header_size as usize)
+  };
 
-    /* BPC */
-    opj_read_bytes(p_image_header_data, &mut jp2.bpc, 1 as OPJ_UINT32);
-    p_image_header_data = p_image_header_data.offset(1);
-    /* C */
-    opj_read_bytes(p_image_header_data, &mut jp2.C, 1 as OPJ_UINT32);
-    p_image_header_data = p_image_header_data.offset(1);
-
-    /* Should be equal to 7 cf. chapter about image header box of the norm */
-    if jp2.C != 7u32 {
-      event_msg!(
-        p_manager,
-        EVT_INFO,
-        "JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) \n",
-        jp2.C
-      );
-    }
-    /* UnkC */
-    opj_read_bytes(p_image_header_data, &mut jp2.UnkC, 1 as OPJ_UINT32);
-    p_image_header_data = p_image_header_data.offset(1);
-    /* IPR */
-    opj_read_bytes(p_image_header_data, &mut jp2.IPR, 1 as OPJ_UINT32);
-    p_image_header_data = p_image_header_data.offset(1);
-
-    jp2.j2k.m_cp.allow_different_bit_depth_sign = jp2.bpc == 255u32;
-    jp2.j2k.ihdr_w = jp2.w;
-    jp2.j2k.ihdr_h = jp2.h;
-    jp2.has_ihdr = 1 as OPJ_BYTE;
-    1i32
+  if !jp2.comps.is_empty() {
+    event_msg!(
+      p_manager,
+      EVT_WARNING,
+      "Ignoring ihdr box. First ihdr box already read\n",
+    );
+    return 1;
   }
+  if buf.len() != 14 {
+    event_msg!(p_manager, EVT_ERROR, "Bad image header box (bad size)\n",);
+    return 0;
+  }
+  // Height
+  jp2.h = buf
+    .read_u32::<BigEndian>()
+    .expect("Buffer should have enough data");
+  // Width
+  jp2.w = buf
+    .read_u32::<BigEndian>()
+    .expect("Buffer should have enough data");
+  let numcomps = buf
+    .read_u16::<BigEndian>()
+    .expect("Buffer should have enough data");
+
+  if jp2.h < 1 || jp2.w < 1 || numcomps < 1 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Wrong values for: w(%d) h(%d) numcomps(%d) (ihdr)\n",
+      jp2.w,
+      jp2.h,
+      numcomps,
+    );
+    return 0;
+  }
+  if numcomps - 1 >= 16384 {
+    /* unsigned underflow is well defined: 1U <= jp2->numcomps <= 16384U */
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid number of components (ihdr)\n",
+    );
+    return 0;
+  }
+  /* allocate memory for components */
+  jp2.comps = Vec::with_capacity(numcomps as usize);
+  jp2
+    .comps
+    .resize(numcomps as usize, opj_jp2_comps::default());
+
+  // BPC
+  jp2.bpc = buf.read_u8().expect("Buffer should have enough data") as u32;
+  // C
+  jp2.C = buf.read_u8().expect("Buffer should have enough data") as u32;
+
+  /* Should be equal to 7 cf. chapter about image header box of the norm */
+  if jp2.C != 7 {
+    event_msg!(
+      p_manager,
+      EVT_INFO,
+      "JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) \n",
+      jp2.C
+    );
+  }
+  // UnkC
+  jp2.UnkC = buf.read_u8().expect("Buffer should have enough data") as u32;
+  // IPR
+  jp2.IPR = buf.read_u8().expect("Buffer should have enough data") as u32;
+
+  jp2.j2k.m_cp.allow_different_bit_depth_sign = jp2.bpc == 255;
+  jp2.j2k.ihdr_w = jp2.w;
+  jp2.j2k.ihdr_h = jp2.h;
+  jp2.has_ihdr = 1 as OPJ_BYTE;
+  1
 }
 
 /* *
@@ -339,27 +340,27 @@ fn opj_jp2_read_bpcc(
   mut p_bpc_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
+  let mut buf = unsafe {
     /* preconditions */
     assert!(!p_bpc_header_data.is_null());
+    std::slice::from_raw_parts(p_bpc_header_data, p_bpc_header_size as usize)
+  };
 
-    if jp2.bpc != 255u32 {
-      event_msg!(p_manager, EVT_WARNING,
+  if jp2.bpc != 255 {
+    event_msg!(p_manager, EVT_WARNING,
                       "A BPCC header box is available although BPC given by the IHDR box (%d) indicate components bit depth is constant\n", jp2.bpc);
-    }
-    /* and length is relevant */
-    if p_bpc_header_size as usize != jp2.comps.len() {
-      event_msg!(p_manager, EVT_ERROR, "Bad BPCC header box (bad size)\n",);
-      return 0i32;
-    }
-    /* read info for each component */
-    for comp in &mut jp2.comps {
-      /* read each BPCC component */
-      opj_read_bytes(p_bpc_header_data, &mut comp.bpcc, 1 as OPJ_UINT32);
-      p_bpc_header_data = p_bpc_header_data.offset(1);
-    }
-    1i32
   }
+  /* and length is relevant */
+  if buf.len() != jp2.comps.len() {
+    event_msg!(p_manager, EVT_ERROR, "Bad BPCC header box (bad size)\n",);
+    return 0;
+  }
+  /* read info for each component */
+  for comp in &mut jp2.comps {
+    /* read each BPCC component */
+    comp.bpcc = buf.read_u8().expect("Buffer should have enough data") as u32;
+  }
+  1
 }
 
 /* *
@@ -741,81 +742,77 @@ fn opj_jp2_read_pclr(
   mut p_pclr_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut nr_entries: OPJ_UINT16 = 0;
-    let mut nr_channels: OPJ_UINT16 = 0;
-    let mut l_value: OPJ_UINT32 = 0;
-    let mut orig_header_data = p_pclr_header_data;
+  let mut buf = unsafe {
     /* preconditions */
     assert!(!p_pclr_header_data.is_null());
-    if jp2.color.jp2_pclr.is_some() {
-      return 0;
-    }
-    if p_pclr_header_size < 3 {
-      return 0;
-    }
-    opj_read_bytes(p_pclr_header_data, &mut l_value, 2 as OPJ_UINT32);
-    p_pclr_header_data = p_pclr_header_data.offset(2);
-    nr_entries = l_value as OPJ_UINT16;
-    if nr_entries == 0 || nr_entries > 1024 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Invalid PCLR box. Reports %d entries\n",
-        nr_entries as core::ffi::c_int,
-      );
-      return 0;
-    }
-    opj_read_bytes(p_pclr_header_data, &mut l_value, 1 as OPJ_UINT32);
-    p_pclr_header_data = p_pclr_header_data.offset(1);
-    nr_channels = l_value as OPJ_UINT16;
-    if nr_channels == 0 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Invalid PCLR box. Reports 0 palette columns\n",
-      );
-      return 0;
-    }
-    if p_pclr_header_size < (3u32).wrapping_add(nr_channels as OPJ_UINT32) {
-      return 0;
-    }
-    let mut entries = Vec::with_capacity((nr_channels * nr_channels) as usize);
-    let mut channel = Vec::with_capacity(nr_channels as usize);
-    for _ in 0..nr_channels {
-      opj_read_bytes(p_pclr_header_data, &mut l_value, 1 as OPJ_UINT32);
-      p_pclr_header_data = p_pclr_header_data.offset(1);
-      let size = (l_value & 0x7fu32).wrapping_add(1u32) as u8;
-      let sign = if l_value & 0x80u32 != 0 { 1 } else { 0 } as u8;
-      channel.push(Jp2ChannelSign { size, sign });
-    }
-    for _ in 0..nr_entries {
-      for i in 0..nr_channels {
-        let size = channel[i as usize].size;
-        let mut bytes_to_read = (size as u32 + 7) >> 3;
-        if bytes_to_read as usize > core::mem::size_of::<OPJ_UINT32>() {
-          bytes_to_read = core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32
-        }
-        if (p_pclr_header_size as isize)
-          < p_pclr_header_data.offset_from(orig_header_data) + bytes_to_read as isize
-        {
-          return 0;
-        }
-        opj_read_bytes(p_pclr_header_data, &mut l_value, bytes_to_read);
-        p_pclr_header_data = p_pclr_header_data.offset(bytes_to_read as isize);
-        entries.push(l_value);
+    std::slice::from_raw_parts(p_pclr_header_data, p_pclr_header_size as usize)
+  };
+  if jp2.color.jp2_pclr.is_some() {
+    return 0;
+  }
+  if buf.len() < 3 {
+    return 0;
+  }
+  let nr_entries = buf
+    .read_u16::<BigEndian>()
+    .expect("Buffer should have enough data") as u16;
+  //opj_read_bytes(p_pclr_header_data, &mut l_value, 2 as OPJ_UINT32);
+  //p_pclr_header_data = p_pclr_header_data.offset(2);
+  //nr_entries = l_value as OPJ_UINT16;
+  if nr_entries == 0 || nr_entries > 1024 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid PCLR box. Reports %d entries\n",
+      nr_entries as core::ffi::c_int,
+    );
+    return 0;
+  }
+  let nr_channels = buf.read_u8().expect("Buffer should have enough data");
+  if nr_channels == 0 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid PCLR box. Reports 0 palette columns\n",
+    );
+    return 0;
+  }
+  if buf.len() < nr_channels as usize {
+    return 0;
+  }
+  let mut entries = Vec::with_capacity((nr_channels * nr_channels) as usize);
+  let mut channel = Vec::with_capacity(nr_channels as usize);
+  for _ in 0..nr_channels {
+    let value = buf.read_u8().expect("Buffer should have enough data");
+    let size = (value & 0x7f) + 1;
+    let sign = if value & 0x80 != 0 { 1 } else { 0 } as u8;
+    channel.push(Jp2ChannelSign { size, sign });
+  }
+  for _ in 0..nr_entries {
+    for channel in &channel {
+      let size = channel.size;
+      // Convert channel size in bits to bytes
+      let mut bytes_to_read = (size as usize + 7) >> 3;
+      if bytes_to_read > core::mem::size_of::<u32>() {
+        bytes_to_read = core::mem::size_of::<u32>()
+      }
+      if let Ok(value) = buf.read_uint::<BigEndian>(bytes_to_read) {
+        entries.push(value as u32);
+      } else {
+        // Truncated data.
+        return 0;
       }
     }
-    let jp2_pclr = opj_jp2_pclr {
-      channel,
-      entries,
-      nr_entries,
-      nr_channels: nr_channels as _,
-      cmap: Default::default(),
-    };
-    jp2.color.jp2_pclr = Some(jp2_pclr);
-    1
   }
+  let jp2_pclr = opj_jp2_pclr {
+    channel,
+    entries,
+    nr_entries,
+    nr_channels,
+    cmap: Default::default(),
+  };
+  jp2.color.jp2_pclr = Some(jp2_pclr);
+  1
 }
 
 /* *
@@ -834,53 +831,48 @@ fn opj_jp2_read_cmap(
   mut p_cmap_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_value: OPJ_UINT32 = 0;
+  let mut buf = unsafe {
     /* preconditions */
-
     assert!(!p_cmap_header_data.is_null());
-    /* Need nr_channels: */
-    let mut pclr = if let Some(pclr) = &mut jp2.color.jp2_pclr {
-      pclr
-    } else {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Need to read a PCLR box before the CMAP box.\n",
-      );
-      return 0i32;
-    };
-    /* Part 1, I.5.3.5: 'There shall be at most one Component Mapping box
-     * inside a JP2 Header box' :
-     */
-    if !pclr.cmap.is_empty() {
-      event_msg!(p_manager, EVT_ERROR, "Only one CMAP box is allowed.\n",); /* CMP^i */
-      return 0i32;
-    }
-    let nr_channels = pclr.nr_channels as usize;
-    if p_cmap_header_size < (nr_channels as OPJ_UINT32).wrapping_mul(4u32) {
-      event_msg!(p_manager, EVT_ERROR, "Insufficient data for CMAP box.\n",);
-      return 0i32;
-    }
-    let mut cmap = Vec::with_capacity(nr_channels);
-    for _ in 0..nr_channels {
-      /* CMP^i */
-      opj_read_bytes(p_cmap_header_data, &mut l_value, 2 as OPJ_UINT32);
-      p_cmap_header_data = p_cmap_header_data.offset(2);
-      let cmp = l_value as OPJ_UINT16;
-      /* MTYP^i */
-      opj_read_bytes(p_cmap_header_data, &mut l_value, 1 as OPJ_UINT32);
-      p_cmap_header_data = p_cmap_header_data.offset(1);
-      let mtyp = l_value as OPJ_BYTE;
-      /* PCOL^i */
-      opj_read_bytes(p_cmap_header_data, &mut l_value, 1 as OPJ_UINT32);
-      p_cmap_header_data = p_cmap_header_data.offset(1);
-      let pcol = l_value as OPJ_BYTE;
-      cmap.push(opj_jp2_cmap_comp { cmp, mtyp, pcol });
-    }
-    pclr.cmap = cmap;
-    1i32
+    std::slice::from_raw_parts(p_cmap_header_data, p_cmap_header_size as usize)
+  };
+  /* Need nr_channels: */
+  let mut pclr = if let Some(pclr) = &mut jp2.color.jp2_pclr {
+    pclr
+  } else {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Need to read a PCLR box before the CMAP box.\n",
+    );
+    return 0;
+  };
+  /* Part 1, I.5.3.5: 'There shall be at most one Component Mapping box
+   * inside a JP2 Header box' :
+   */
+  if !pclr.cmap.is_empty() {
+    event_msg!(p_manager, EVT_ERROR, "Only one CMAP box is allowed.\n",); /* CMP^i */
+    return 0;
   }
+  let nr_channels = pclr.nr_channels as usize;
+  if buf.len() < nr_channels * 4 {
+    event_msg!(p_manager, EVT_ERROR, "Insufficient data for CMAP box.\n",);
+    return 0;
+  }
+  let mut cmap = Vec::with_capacity(nr_channels);
+  for _ in 0..nr_channels {
+    // CMP^i
+    let cmp = buf
+      .read_u16::<BigEndian>()
+      .expect("buffer should have enough data");
+    // MTYP^i
+    let mtyp = buf.read_u8().expect("buffer should have enough data");
+    // PCOL^i
+    let pcol = buf.read_u8().expect("buffer should have enough data");
+    cmap.push(opj_jp2_cmap_comp { cmp, mtyp, pcol });
+  }
+  pclr.cmap = cmap;
+  1
 }
 
 fn opj_jp2_apply_cdef(
@@ -960,54 +952,55 @@ fn opj_jp2_read_cdef(
   mut p_cdef_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_value: OPJ_UINT32 = 0;
+  let mut buf = unsafe {
     /* preconditions */
-
     assert!(!p_cdef_header_data.is_null());
-    /* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
-     * inside a JP2 Header box.'*/
-    if jp2.color.jp2_cdef.is_some() {
-      return 0i32;
-    } /* N */
-    if p_cdef_header_size < 2u32 {
-      event_msg!(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n",);
-      return 0i32;
-    }
-    opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
-    p_cdef_header_data = p_cdef_header_data.offset(2);
-    if l_value as OPJ_UINT16 as core::ffi::c_int == 0i32 {
-      /* szukw000: FIXME */
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Number of channel description is equal to zero in CDEF box.\n",
-      ); /* Cn^i */
-      return 0i32;
-    } /* Typ^i */
-    if p_cdef_header_size
-      < (2u32).wrapping_add((l_value as OPJ_UINT16 as OPJ_UINT32).wrapping_mul(6u32))
-    {
-      event_msg!(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n",); /* Asoc^i */
-      return 0i32;
-    }
-    let n = l_value as usize;
-    let mut info = Vec::with_capacity(n);
-    for _i in 0..n {
-      opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
-      p_cdef_header_data = p_cdef_header_data.offset(2);
-      let cn = l_value as OPJ_UINT16;
-      opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
-      p_cdef_header_data = p_cdef_header_data.offset(2);
-      let typ = l_value as OPJ_UINT16;
-      opj_read_bytes(p_cdef_header_data, &mut l_value, 2 as OPJ_UINT32);
-      p_cdef_header_data = p_cdef_header_data.offset(2);
-      let asoc = l_value as OPJ_UINT16;
-      info.push(opj_jp2_cdef_info { cn, typ, asoc });
-    }
-    jp2.color.jp2_cdef = Some(opj_jp2_cdef { info });
-    1i32
+    std::slice::from_raw_parts(p_cdef_header_data, p_cdef_header_size as usize)
+  };
+  /* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
+   * inside a JP2 Header box.'*/
+  if jp2.color.jp2_cdef.is_some() {
+    return 0;
   }
+  if buf.len() < 2 {
+    event_msg!(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n",);
+    return 0;
+  }
+  // N
+  let n = buf
+    .read_u16::<BigEndian>()
+    .expect("Buffer should have enough data") as usize;
+  if n == 0 {
+    /* szukw000: FIXME */
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Number of channel description is equal to zero in CDEF box.\n",
+    );
+    return 0;
+  }
+  if buf.len() < n * 6 {
+    event_msg!(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n",);
+    return 0;
+  }
+  let mut info = Vec::with_capacity(n);
+  for _i in 0..n {
+    // Cn^i
+    let cn = buf
+      .read_u16::<BigEndian>()
+      .expect("Buffer should have enough data");
+    // Typ^i
+    let typ = buf
+      .read_u16::<BigEndian>()
+      .expect("Buffer should have enough data");
+    // Asoc^i
+    let asoc = buf
+      .read_u16::<BigEndian>()
+      .expect("Buffer should have enough data");
+    info.push(opj_jp2_cdef_info { cn, typ, asoc });
+  }
+  jp2.color.jp2_cdef = Some(opj_jp2_cdef { info });
+  1
 }
 
 /* *
@@ -1026,116 +1019,123 @@ fn opj_jp2_read_colr(
   mut p_colr_header_size: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
+  let mut buf = unsafe {
     /* preconditions */
-
     assert!(!p_colr_header_data.is_null());
-    if p_colr_header_size < 3u32 {
-      event_msg!(p_manager, EVT_ERROR, "Bad COLR header box (bad size)\n",);
+    std::slice::from_raw_parts(p_colr_header_data, p_colr_header_size as usize)
+  };
+  let total_size = buf.len() as u32;
+  if buf.len() < 3 {
+    event_msg!(p_manager, EVT_ERROR, "Bad COLR header box (bad size)\n",);
+    return 0;
+  }
+  /* Part 1, I.5.3.3 : 'A conforming JP2 reader shall ignore all Colour
+   * Specification boxes after the first.'
+   */
+  if jp2.color.jp2_has_colr != 0 {
+    event_msg!(p_manager, EVT_INFO,
+                      "A conforming JP2 reader shall ignore all Colour Specification boxes after the first, so we ignore this one.\n");
+    return 1;
+  }
+  // METH
+  jp2.meth = buf.read_u8().expect("Buffer should have enough data") as u32;
+  // PRECEDENCE
+  jp2.precedence = buf.read_u8().expect("Buffer should have enough data") as u32;
+  // APPROX
+  jp2.approx = buf.read_u8().expect("Buffer should have enough data") as u32;
+  if jp2.meth == 1 {
+    if buf.len() < 4 {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Bad COLR header box (bad size: %d)\n",
+        total_size,
+      );
       return 0i32;
     }
-    /* Part 1, I.5.3.3 : 'A conforming JP2 reader shall ignore all Colour
-     * Specification boxes after the first.'
-     */
-    if jp2.color.jp2_has_colr != 0 {
-      event_msg!(p_manager, EVT_INFO,
-                      "A conforming JP2 reader shall ignore all Colour Specification boxes after the first, so we ignore this one.\n"); /* METH */
-      p_colr_header_data = p_colr_header_data.offset(p_colr_header_size as isize); /* PRECEDENCE */
-      return 1i32;
-    } /* APPROX */
-    opj_read_bytes(p_colr_header_data, &mut jp2.meth, 1 as OPJ_UINT32);
-    p_colr_header_data = p_colr_header_data.offset(1);
-    opj_read_bytes(p_colr_header_data, &mut jp2.precedence, 1 as OPJ_UINT32);
-    p_colr_header_data = p_colr_header_data.offset(1);
-    opj_read_bytes(p_colr_header_data, &mut jp2.approx, 1 as OPJ_UINT32);
-    p_colr_header_data = p_colr_header_data.offset(1);
-    if jp2.meth == 1u32 {
-      if p_colr_header_size < 7u32 {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Bad COLR header box (bad size: %d)\n",
-          p_colr_header_size,
-        );
-        return 0i32;
-      }
-      if p_colr_header_size > 7u32 && jp2.enumcs != 14u32 {
-        /* handled below for CIELab) */
-        /* testcase Altona_Technical_v20_x4.pdf */
+    if buf.len() > 4 && jp2.enumcs != 14 {
+      /* handled below for CIELab) */
+      /* testcase Altona_Technical_v20_x4.pdf */
+      event_msg!(
+        p_manager,
+        EVT_WARNING,
+        "Bad COLR header box (bad size: %d)\n",
+        p_colr_header_size,
+      );
+    }
+    // EnumCS
+    jp2.enumcs = buf
+      .read_u32::<BigEndian>()
+      .expect("Buffer should have enough data");
+
+    // CIELab
+    if jp2.enumcs == 14 {
+      // default values
+      let mut rl = 0u32;
+      let mut ol = 0u32;
+      let mut ra = 0u32;
+      let mut oa = 0u32;
+      let mut rb = 0u32;
+      let mut ob = 0u32;
+      let mut il = 0x443530u32;
+      let mut icc_profile = Vec::with_capacity(9 * core::mem::size_of::<OPJ_UINT32>());
+      icc_profile.write_all(&14u32.to_ne_bytes()).unwrap();
+      if buf.len() == 28 {
+        rl = buf
+          .read_u32::<BigEndian>()
+          .expect("Buffer should have enough data");
+        ol = buf
+          .read_u32::<BigEndian>()
+          .expect("Buffer should have enough data");
+        ra = buf
+          .read_u32::<BigEndian>()
+          .expect("Buffer should have enough data");
+        oa = buf
+          .read_u32::<BigEndian>()
+          .expect("Buffer should have enough data");
+        rb = buf
+          .read_u32::<BigEndian>()
+          .expect("Buffer should have enough data");
+        ob = buf
+          .read_u32::<BigEndian>()
+          .expect("Buffer should have enough data");
+        il = buf
+          .read_u32::<BigEndian>()
+          .expect("Buffer should have enough data");
+        icc_profile.write_all(&0u32.to_ne_bytes()).unwrap();
+      } else if buf.len() != 0 {
+        icc_profile.write_all(&0x44454600u32.to_ne_bytes()).unwrap();
         event_msg!(
           p_manager,
           EVT_WARNING,
-          "Bad COLR header box (bad size: %d)\n",
-          p_colr_header_size,
-        ); /* EnumCS */
+          "Bad COLR header box (CIELab, bad size: %d)\n",
+          total_size,
+        );
       }
-      opj_read_bytes(p_colr_header_data, &mut jp2.enumcs, 4 as OPJ_UINT32);
-      p_colr_header_data = p_colr_header_data.offset(4);
-      if jp2.enumcs == 14u32 {
-        /* CIELab */
-        /* default values */
-        let mut rl = 0u32;
-        let mut ol = 0u32;
-        let mut ra = 0u32;
-        let mut oa = 0u32;
-        let mut rb = 0u32;
-        let mut ob = 0u32;
-        let mut il = 0x443530u32;
-        let mut icc_profile = Vec::with_capacity(9 * core::mem::size_of::<OPJ_UINT32>());
-        icc_profile.write_all(&14u32.to_ne_bytes()).unwrap();
-        if p_colr_header_size == 35u32 {
-          opj_read_bytes(p_colr_header_data, &mut rl, 4 as OPJ_UINT32);
-          p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes(p_colr_header_data, &mut ol, 4 as OPJ_UINT32);
-          p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes(p_colr_header_data, &mut ra, 4 as OPJ_UINT32);
-          p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes(p_colr_header_data, &mut oa, 4 as OPJ_UINT32);
-          p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes(p_colr_header_data, &mut rb, 4 as OPJ_UINT32);
-          p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes(p_colr_header_data, &mut ob, 4 as OPJ_UINT32);
-          p_colr_header_data = p_colr_header_data.offset(4);
-          opj_read_bytes(p_colr_header_data, &mut il, 4 as OPJ_UINT32);
-          p_colr_header_data = p_colr_header_data.offset(4);
-          icc_profile.write_all(&0u32.to_ne_bytes()).unwrap();
-        } else if p_colr_header_size != 7u32 {
-          icc_profile.write_all(&0x44454600u32.to_ne_bytes()).unwrap();
-          event_msg!(
-            p_manager,
-            EVT_WARNING,
-            "Bad COLR header box (CIELab, bad size: %d)\n",
-            p_colr_header_size,
-          );
-        }
-        icc_profile.write_all(&rl.to_ne_bytes()).unwrap();
-        icc_profile.write_all(&ol.to_ne_bytes()).unwrap();
-        icc_profile.write_all(&ra.to_ne_bytes()).unwrap();
-        icc_profile.write_all(&oa.to_ne_bytes()).unwrap();
-        icc_profile.write_all(&rb.to_ne_bytes()).unwrap();
-        icc_profile.write_all(&ob.to_ne_bytes()).unwrap();
-        icc_profile.write_all(&il.to_ne_bytes()).unwrap();
-        jp2.color.icc_profile = Some(icc_profile);
-        jp2.color.icc_profile_len = 0 as OPJ_UINT32
-      }
-      jp2.color.jp2_has_colr = 1 as OPJ_BYTE
-    } else if jp2.meth == 2u32 {
-      /* ICC profile */
-      let mut icc_len = p_colr_header_size as OPJ_INT32 - 3i32;
-      let mut icc_profile = Vec::with_capacity(icc_len as usize);
-      let buf = std::slice::from_raw_parts(p_colr_header_data, icc_len as usize);
-      jp2.color.icc_profile_len = icc_len as OPJ_UINT32;
-      icc_profile.extend_from_slice(buf);
+      icc_profile.write_all(&rl.to_ne_bytes()).unwrap();
+      icc_profile.write_all(&ol.to_ne_bytes()).unwrap();
+      icc_profile.write_all(&ra.to_ne_bytes()).unwrap();
+      icc_profile.write_all(&oa.to_ne_bytes()).unwrap();
+      icc_profile.write_all(&rb.to_ne_bytes()).unwrap();
+      icc_profile.write_all(&ob.to_ne_bytes()).unwrap();
+      icc_profile.write_all(&il.to_ne_bytes()).unwrap();
       jp2.color.icc_profile = Some(icc_profile);
-      jp2.color.jp2_has_colr = 1 as OPJ_BYTE
-    } else if jp2.meth > 2u32 {
-      /*  ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
-      conforming JP2 reader shall ignore the entire Colour Specification box.*/
-      event_msg!(p_manager, EVT_INFO,
-                      "COLR BOX meth value is not a regular value (%d), so we will ignore the entire Colour Specification box. \n", jp2.meth);
+      jp2.color.icc_profile_len = 0 as OPJ_UINT32
     }
-    1i32
+    jp2.color.jp2_has_colr = 1 as OPJ_BYTE
+  } else if jp2.meth == 2 {
+    /* ICC profile */
+    let mut icc_profile = Vec::from(buf);
+    jp2.color.icc_profile_len = icc_profile.len() as OPJ_UINT32;
+    jp2.color.icc_profile = Some(icc_profile);
+    jp2.color.jp2_has_colr = 1 as OPJ_BYTE
+  } else if jp2.meth > 2 {
+    /*  ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
+    conforming JP2 reader shall ignore the entire Colour Specification box.*/
+    event_msg!(p_manager, EVT_INFO,
+                      "COLR BOX meth value is not a regular value (%d), so we will ignore the entire Colour Specification box. \n", jp2.meth);
   }
+  1
 }
 
 pub(crate) fn opj_jp2_apply_color_postprocessing(
