@@ -1,4 +1,4 @@
-use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::BTreeSet;
 use std::io::{Read, Write};
 
@@ -50,12 +50,13 @@ impl Jp2BoxHeader {
   }
 
   /// Reads a box header. The box is the way data is packed inside a jpeg2000 file structure.
-  pub fn read(
-    &mut self,
-    reader: &mut Stream,
-  ) -> Result<(), String> {
-    self.length = reader.read_u32::<BigEndian>().map_err(|e| format!("Truncated JP2 Box header: {e:?}"))?;
-    self.ty = reader.read_u32::<BigEndian>().map_err(|e| format!("Truncated JP2 Box header: {e:?}"))?;
+  pub fn read(&mut self, reader: &mut Stream) -> Result<(), String> {
+    self.length = reader
+      .read_u32::<BigEndian>()
+      .map_err(|e| format!("Truncated JP2 Box header: {e:?}"))?;
+    self.ty = reader
+      .read_u32::<BigEndian>()
+      .map_err(|e| format!("Truncated JP2 Box header: {e:?}"))?;
     self.header_length = 8;
     if self.length == 0 {
       /* last box */
@@ -71,8 +72,12 @@ impl Jp2BoxHeader {
     /* do we have a "special very large box ?" */
     /* read then the XLBox */
     if self.length == 1 {
-      let xl_part_size = reader.read_u32::<BigEndian>().map_err(|e| format!("Truncated JP2 XLBox header: {e:?}"))?;
-      let length = reader.read_u32::<BigEndian>().map_err(|e| format!("Truncated JP2 XLBox header: {e:?}"))?;
+      let xl_part_size = reader
+        .read_u32::<BigEndian>()
+        .map_err(|e| format!("Truncated JP2 XLBox header: {e:?}"))?;
+      let length = reader
+        .read_u32::<BigEndian>()
+        .map_err(|e| format!("Truncated JP2 XLBox header: {e:?}"))?;
       self.header_length += 8;
       if xl_part_size != 0 {
         // TODO: Handle large boxes?
@@ -888,59 +893,64 @@ fn opj_jp2_apply_cdef(
   } else {
     return;
   };
-  unsafe {
-    let n = cdef.info.len();
-    for i in 0..n {
-      let info = cdef.info[i];
-      /* WATCH: acn = asoc - 1 ! */
-      let asoc = info.asoc;
-      let cn = info.cn;
-      if cn as core::ffi::c_uint >= image.numcomps {
+  let n = cdef.info.len();
+  let comps = if let Some(comps) = image.comps_mut() {
+    comps
+  } else {
+    return;
+  };
+  let numcomps = comps.len() as u32;
+  for i in 0..n {
+    let info = cdef.info[i];
+    /* WATCH: acn = asoc - 1 ! */
+    let asoc = info.asoc;
+    let cn = info.cn;
+    if cn as u32 >= numcomps {
+      event_msg!(
+        manager,
+        EVT_WARNING,
+        "opj_jp2_apply_cdef: cn=%d, numcomps=%d\n",
+        cn as core::ffi::c_int,
+        numcomps,
+      );
+    } else if asoc as core::ffi::c_int == 0i32 || asoc as core::ffi::c_int == 65535i32 {
+      comps[cn as usize].alpha = info.typ
+    } else {
+      let acn = asoc - 1;
+      if acn as u32 >= numcomps {
         event_msg!(
           manager,
           EVT_WARNING,
-          "opj_jp2_apply_cdef: cn=%d, numcomps=%d\n",
-          cn as core::ffi::c_int,
-          image.numcomps,
+          "opj_jp2_apply_cdef: acn=%d, numcomps=%d\n",
+          acn as core::ffi::c_int,
+          numcomps,
         );
-      } else if asoc as core::ffi::c_int == 0i32 || asoc as core::ffi::c_int == 65535i32 {
-        (*image.comps.offset(cn as isize)).alpha = info.typ
       } else {
-        let acn = asoc - 1;
-        if acn as u32 >= image.numcomps {
-          event_msg!(
-            manager,
-            EVT_WARNING,
-            "opj_jp2_apply_cdef: acn=%d, numcomps=%d\n",
-            acn as core::ffi::c_int,
-            image.numcomps,
-          );
-        } else {
-          let cn_comp = &mut *image.comps.offset(cn as isize);
-          /* Swap only if color channel */
-          if cn != acn && info.typ == 0 {
-            let acn_comp = &mut *image.comps.offset(acn as isize);
-            let saved = *cn_comp;
-            *cn_comp = *acn_comp;
-            *acn_comp = saved;
-            /* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
-            for j in i..n {
-              let info = &mut cdef.info[j];
-              if info.cn == cn {
-                info.cn = acn
-              } else if info.cn == acn {
-                info.cn = cn
-              }
-              /* asoc is related to color index. Do not update. */
+        let mut cn_comp = comps[cn as usize];
+        /* Swap only if color channel */
+        if cn != acn && info.typ == 0 {
+          let acn_comp = &mut comps[acn as usize];
+          let saved = cn_comp;
+          cn_comp = *acn_comp;
+          *acn_comp = saved;
+          /* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
+          for j in i..n {
+            let info = &mut cdef.info[j];
+            if info.cn == cn {
+              info.cn = acn
+            } else if info.cn == acn {
+              info.cn = cn
             }
+            /* asoc is related to color index. Do not update. */
           }
-          cn_comp.alpha = info.typ
         }
+        cn_comp.alpha = info.typ;
+        comps[cn as usize] = cn_comp;
       }
     }
-    cdef.info.clear();
-    color.jp2_cdef = None;
   }
+  cdef.info.clear();
+  color.jp2_cdef = None;
 }
 
 /* jp2_apply_cdef() */
@@ -2035,7 +2045,11 @@ fn opj_jp2_read_jp2h(
 ) -> OPJ_BOOL {
   unsafe {
     let mut l_box_size = 0 as OPJ_UINT32;
-    let mut box_0 = Jp2BoxHeader { length: 0, ty: 0, header_length: 0 };
+    let mut box_0 = Jp2BoxHeader {
+      length: 0,
+      ty: 0,
+      header_length: 0,
+    };
     let mut l_has_ihdr = 0i32;
     /* preconditions */
 
@@ -2450,7 +2464,11 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
 }
 
 #[cfg(feature = "file-io")]
-pub(crate) fn jp2_dump(mut p_jp2: &mut opj_jp2, mut flag: OPJ_INT32, mut out_stream: *mut ::libc::FILE) {
+pub(crate) fn jp2_dump(
+  mut p_jp2: &mut opj_jp2,
+  mut flag: OPJ_INT32,
+  mut out_stream: *mut ::libc::FILE,
+) {
   /* preconditions */
   j2k_dump(&mut p_jp2.j2k, flag, out_stream);
 }
