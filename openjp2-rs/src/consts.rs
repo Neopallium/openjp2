@@ -286,6 +286,27 @@ impl From<u32> for Jp2BoxType {
 }
 
 impl Jp2BoxType {
+  pub fn is_file_header(&self) -> bool {
+    match self {
+      Jp2BoxType::JP => true,
+      Jp2BoxType::FTYP => true,
+      Jp2BoxType::JP2H => true,
+      _ => false,
+    }
+  }
+
+  pub fn is_image_header(&self) -> bool {
+    match self {
+      Jp2BoxType::IHDR => true,
+      Jp2BoxType::COLR => true,
+      Jp2BoxType::BPCC => true,
+      Jp2BoxType::PCLR => true,
+      Jp2BoxType::CMAP => true,
+      Jp2BoxType::CDEF => true,
+      _ => false,
+    }
+  }
+
   /// Converts the enum variant back into a u32 value.
   pub fn to_u32(&self) -> Option<u32> {
     match self {
