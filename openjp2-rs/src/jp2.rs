@@ -2,7 +2,6 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::BTreeSet;
 use std::io::{Read, Write};
 
-use super::cio::*;
 use super::consts::*;
 use super::event::*;
 use super::j2k::*;
@@ -41,7 +40,11 @@ impl Jp2BoxHeader {
 
   pub fn from_stream(reader: &mut Stream) -> Option<Self> {
     let mut header = Self::default();
-    header.read(reader).ok()?;
+    let mut max_size = opj_stream_get_number_byte_left(reader);
+    if max_size < 0 {
+      max_size = 0;
+    }
+    header.read(reader, max_size as usize).ok()?;
     Some(header)
   }
 
@@ -54,7 +57,7 @@ impl Jp2BoxHeader {
   }
 
   /// Reads a box header. The box is the way data is packed inside a jpeg2000 file structure.
-  pub fn read(&mut self, reader: &mut Stream) -> Result<(), String> {
+  fn read<R: Read + ?Sized>(&mut self, reader: &mut R, max_size: usize) -> Result<(), String> {
     self.length = reader
       .read_u32::<BigEndian>()
       .map_err(|e| format!("Truncated JP2 Box header: {e:?}"))?;
@@ -64,19 +67,21 @@ impl Jp2BoxHeader {
       .into();
     self.header_length = 8;
     if self.length == 0 {
+      if max_size == 0 {
+        return Err(format!("Can't handle box of undefined size."));
+      }
       /* last box */
-      let bleft = opj_stream_get_number_byte_left(reader);
-      if bleft > (u32::MAX - 8) as i64 {
+      if max_size > u32::MAX as usize {
         // TODO: Handle large boxes?
         return Err(format!("Cannot handle box sizes higher than 2^32"));
       }
-      self.length = (bleft + 8) as u32;
-      assert!(self.length as i64 == bleft + 8);
+      self.length = max_size as u32;
+      assert!(self.length as usize == max_size);
       return Ok(());
     }
     /* do we have a "special very large box ?" */
-    /* read then the XLBox */
     if self.length == 1 {
+      /* read then the XLBox */
       let xl_part_size = reader
         .read_u32::<BigEndian>()
         .map_err(|e| format!("Truncated JP2 XLBox header: {e:?}"))?;
@@ -97,13 +102,40 @@ impl Jp2BoxHeader {
     writer.write_u32::<BigEndian>(self.length).is_ok()
       && writer.write_u32::<BigEndian>(self.ty_u32()).is_ok()
   }
-}
 
-#[derive(Copy, Clone)]
-pub(crate) struct opj_jp2_header_handler {
-  pub id: Jp2BoxType,
-  pub handler:
-    fn(_: &mut opj_jp2, _: *mut OPJ_BYTE, _: OPJ_UINT32, _: &mut opj_event_mgr) -> OPJ_BOOL,
+  fn read_content(
+    &self,
+    jp2: &mut opj_jp2,
+    buf: &[u8],
+    manager: &mut opj_event_mgr,
+  ) -> Result<(), String> {
+    let res = match self.ty {
+      // File boxes.
+      Jp2BoxType::JP => opj_jp2_read_jp(jp2, buf, manager),
+      Jp2BoxType::FTYP => opj_jp2_read_ftyp(jp2, buf, manager),
+      Jp2BoxType::JP2H => opj_jp2_read_jp2h(jp2, buf, manager),
+      // Image boxes.
+      Jp2BoxType::IHDR => opj_jp2_read_ihdr(jp2, buf, manager),
+      Jp2BoxType::COLR => opj_jp2_read_colr(jp2, buf, manager),
+      Jp2BoxType::BPCC => opj_jp2_read_bpcc(jp2, buf, manager),
+      Jp2BoxType::PCLR => opj_jp2_read_pclr(jp2, buf, manager),
+      Jp2BoxType::CDEF => opj_jp2_read_cdef(jp2, buf, manager),
+      Jp2BoxType::CMAP => opj_jp2_read_cmap(jp2, buf, manager),
+      _ => {
+        event_msg!(
+          manager,
+          EVT_WARNING,
+          &format!("Ignoring unsupported box type: {:?}\n", self.ty),
+        );
+        1
+      }
+    };
+    if res != 0 {
+      Ok(())
+    } else {
+      Err(format!("Failed to read box type: {:?}", self.ty))
+    }
+  }
 }
 
 pub(crate) struct HeaderWriter {
@@ -132,65 +164,6 @@ impl HeaderWriter {
   }
 }
 
-static jp2_header: [opj_jp2_header_handler; 3] = [
-  {
-    opj_jp2_header_handler {
-      id: Jp2BoxType::JP,
-      handler: opj_jp2_read_jp,
-    }
-  },
-  {
-    opj_jp2_header_handler {
-      id: Jp2BoxType::FTYP,
-      handler: opj_jp2_read_ftyp,
-    }
-  },
-  {
-    opj_jp2_header_handler {
-      id: Jp2BoxType::JP2H,
-      handler: opj_jp2_read_jp2h,
-    }
-  },
-];
-static jp2_img_header: [opj_jp2_header_handler; 6] = [
-  {
-    opj_jp2_header_handler {
-      id: Jp2BoxType::IHDR,
-      handler: opj_jp2_read_ihdr,
-    }
-  },
-  {
-    opj_jp2_header_handler {
-      id: Jp2BoxType::COLR,
-      handler: opj_jp2_read_colr,
-    }
-  },
-  {
-    opj_jp2_header_handler {
-      id: Jp2BoxType::BPCC,
-      handler: opj_jp2_read_bpcc,
-    }
-  },
-  {
-    opj_jp2_header_handler {
-      id: Jp2BoxType::PCLR,
-      handler: opj_jp2_read_pclr,
-    }
-  },
-  {
-    opj_jp2_header_handler {
-      id: Jp2BoxType::CMAP,
-      handler: opj_jp2_read_cmap,
-    }
-  },
-  {
-    opj_jp2_header_handler {
-      id: Jp2BoxType::CDEF,
-      handler: opj_jp2_read_cdef,
-    }
-  },
-];
-
 /* *
  * Reads a IHDR box - Image Header box
  *
@@ -201,18 +174,7 @@ static jp2_img_header: [opj_jp2_header_handler; 6] = [
  *
  * @return  true if the image header is valid, false else.
  */
-fn opj_jp2_read_ihdr(
-  jp2: &mut opj_jp2,
-  p_image_header_data: *mut OPJ_BYTE,
-  p_image_header_size: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  let mut buf = unsafe {
-    /* preconditions */
-    assert!(!p_image_header_data.is_null());
-    std::slice::from_raw_parts(p_image_header_data, p_image_header_size as usize)
-  };
-
+fn opj_jp2_read_ihdr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   if !jp2.comps.is_empty() {
     event_msg!(
       p_manager,
@@ -294,23 +256,23 @@ fn opj_jp2_read_ihdr(
  *
 */
 fn opj_jp2_write_ihdr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
-  /* IHDR */
+  // IHDR
   let mut header = Jp2BoxHeader::new(Jp2BoxType::IHDR);
   header.length += 14;
   header.write(buf);
-  /* HEIGHT */
+  // HEIGHT
   buf.write_u32::<BigEndian>(jp2.h).unwrap();
-  /* WIDTH */
+  // WIDTH
   buf.write_u32::<BigEndian>(jp2.w).unwrap();
-  /* NC */
+  // NC
   buf.write_u16::<BigEndian>(jp2.comps.len() as u16).unwrap();
-  /* BPC */
+  // BPC
   buf.push(jp2.bpc as u8);
-  /* C : Always 7 */
+  // C : Always 7
   buf.push(jp2.C as u8);
-  /* UnkC, colorspace unknown */
+  // UnkC, colorspace unknown
   buf.push(jp2.UnkC as u8);
-  /* IPR, no intellectual property */
+  // IPR, no intellectual property
   buf.push(jp2.IPR as u8);
   true
 }
@@ -339,18 +301,7 @@ fn opj_jp2_write_bpcc(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
  *
  * @return  true if the bpc header is valid, false else.
  */
-fn opj_jp2_read_bpcc(
-  jp2: &mut opj_jp2,
-  p_bpc_header_data: *mut OPJ_BYTE,
-  p_bpc_header_size: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  let mut buf = unsafe {
-    /* preconditions */
-    assert!(!p_bpc_header_data.is_null());
-    std::slice::from_raw_parts(p_bpc_header_data, p_bpc_header_size as usize)
-  };
-
+fn opj_jp2_read_bpcc(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   if jp2.bpc != 255 {
     event_msg!(p_manager, EVT_WARNING,
                       "A BPCC header box is available although BPC given by the IHDR box (%d) indicate components bit depth is constant\n", jp2.bpc);
@@ -741,17 +692,7 @@ fn opj_jp2_apply_pclr(
  *
  * @return Returns true if successful, returns false otherwise
 */
-fn opj_jp2_read_pclr(
-  jp2: &mut opj_jp2,
-  p_pclr_header_data: *mut OPJ_BYTE,
-  p_pclr_header_size: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  let mut buf = unsafe {
-    /* preconditions */
-    assert!(!p_pclr_header_data.is_null());
-    std::slice::from_raw_parts(p_pclr_header_data, p_pclr_header_size as usize)
-  };
+fn opj_jp2_read_pclr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   if jp2.color.jp2_pclr.is_some() {
     return 0;
   }
@@ -761,9 +702,6 @@ fn opj_jp2_read_pclr(
   let nr_entries = buf
     .read_u16::<BigEndian>()
     .expect("Buffer should have enough data") as u16;
-  //opj_read_bytes(p_pclr_header_data, &mut l_value, 2 as OPJ_UINT32);
-  //p_pclr_header_data = p_pclr_header_data.offset(2);
-  //nr_entries = l_value as OPJ_UINT16;
   if nr_entries == 0 || nr_entries > 1024 {
     event_msg!(
       p_manager,
@@ -830,17 +768,7 @@ fn opj_jp2_read_pclr(
  *
  * @return Returns true if successful, returns false otherwise
 */
-fn opj_jp2_read_cmap(
-  jp2: &mut opj_jp2,
-  p_cmap_header_data: *mut OPJ_BYTE,
-  p_cmap_header_size: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  let mut buf = unsafe {
-    /* preconditions */
-    assert!(!p_cmap_header_data.is_null());
-    std::slice::from_raw_parts(p_cmap_header_data, p_cmap_header_size as usize)
-  };
+fn opj_jp2_read_cmap(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   /* Need nr_channels: */
   let mut pclr = if let Some(pclr) = &mut jp2.color.jp2_pclr {
     pclr
@@ -951,17 +879,7 @@ fn opj_jp2_apply_cdef(
 }
 
 /* jp2_apply_cdef() */
-fn opj_jp2_read_cdef(
-  jp2: &mut opj_jp2,
-  p_cdef_header_data: *mut OPJ_BYTE,
-  p_cdef_header_size: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  let mut buf = unsafe {
-    /* preconditions */
-    assert!(!p_cdef_header_data.is_null());
-    std::slice::from_raw_parts(p_cdef_header_data, p_cdef_header_size as usize)
-  };
+fn opj_jp2_read_cdef(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   /* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
    * inside a JP2 Header box.'*/
   if jp2.color.jp2_cdef.is_some() {
@@ -1018,17 +936,7 @@ fn opj_jp2_read_cdef(
  *
  * @return  true if the bpc header is valid, false else.
 */
-fn opj_jp2_read_colr(
-  jp2: &mut opj_jp2,
-  p_colr_header_data: *mut OPJ_BYTE,
-  p_colr_header_size: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  let mut buf = unsafe {
-    /* preconditions */
-    assert!(!p_colr_header_data.is_null());
-    std::slice::from_raw_parts(p_colr_header_data, p_colr_header_size as usize)
-  };
+fn opj_jp2_read_colr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   let total_size = buf.len() as u32;
   if buf.len() < 3 {
     event_msg!(p_manager, EVT_ERROR, "Bad COLR header box (bad size)\n",);
@@ -1065,7 +973,7 @@ fn opj_jp2_read_colr(
         p_manager,
         EVT_WARNING,
         "Bad COLR header box (bad size: %d)\n",
-        p_colr_header_size,
+        total_size,
       );
     }
     // EnumCS
@@ -1433,11 +1341,11 @@ pub(crate) fn opj_jp2_setup_encoder(
 
   /* BPC */
   let depth_0 = comps[0].prec.wrapping_sub(1);
-  let mut sign = comps[0].sgnd;
+  let sign = comps[0].sgnd;
   jp2.bpc = depth_0.wrapping_add(sign << 7);
   for comp in &comps[1..] {
     let mut depth = comp.prec.wrapping_sub(1);
-    sign = comp.sgnd;
+    //sign = comp.sgnd;
     if depth_0 != depth {
       jp2.bpc = 255 as OPJ_UINT32
     }
@@ -1710,20 +1618,17 @@ fn opj_jp2_read_header_procedure(
         return 0i32;
       }
     }
-    let mut l_current_handler = opj_jp2_find_handler(header.ty);
-    let l_current_handler_misplaced = opj_jp2_img_find_handler(header.ty);
     let data_size = header.content_length() as usize;
-    if l_current_handler.is_some() || l_current_handler_misplaced.is_some() {
-      if l_current_handler.is_none() {
+    if header.ty.is_file_header() || header.ty.is_image_header() {
+      if !header.ty.is_file_header() {
         event_msg!(
           p_manager,
           EVT_WARNING,
           "Found a misplaced \'%x\' box outside jp2h box\n",
           header.ty_u32(),
         );
-        if jp2.jp2_state & JP2_STATE_HEADER as core::ffi::c_uint != 0 {
+        if jp2.jp2_state & JP2_STATE_HEADER != 0 {
           /* read anyway, we already have jp2h */
-          l_current_handler = l_current_handler_misplaced
         } else {
           event_msg!(
             p_manager,
@@ -1731,7 +1636,7 @@ fn opj_jp2_read_header_procedure(
             "JPEG2000 Header box not read yet, \'%x\' box will be ignored\n",
             header.ty_u32(),
           );
-          jp2.jp2_state |= JP2_STATE_UNKNOWN as core::ffi::c_uint;
+          jp2.jp2_state |= JP2_STATE_UNKNOWN;
           if opj_stream_skip(stream, data_size as OPJ_OFF_T, p_manager) != data_size as i64 {
             event_msg!(
               p_manager,
@@ -1765,13 +1670,11 @@ fn opj_jp2_read_header_procedure(
         );
         return 0i32;
       }
-      if (l_current_handler.unwrap().handler)(jp2, data.as_mut_ptr(), data_size as u32, p_manager)
-        == 0
-      {
-        return 0i32;
+      if header.read_content(jp2, &data, p_manager).is_err() {
+        return 0;
       }
     } else {
-      if jp2.jp2_state & JP2_STATE_SIGNATURE as core::ffi::c_uint == 0 {
+      if jp2.jp2_state & JP2_STATE_SIGNATURE == 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -1779,7 +1682,7 @@ fn opj_jp2_read_header_procedure(
         );
         return 0i32;
       }
-      if jp2.jp2_state & JP2_STATE_FILE_TYPE as core::ffi::c_uint == 0 {
+      if jp2.jp2_state & JP2_STATE_FILE_TYPE == 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -1787,9 +1690,9 @@ fn opj_jp2_read_header_procedure(
         );
         return 0i32;
       }
-      jp2.jp2_state |= JP2_STATE_UNKNOWN as core::ffi::c_uint;
+      jp2.jp2_state |= JP2_STATE_UNKNOWN;
       if opj_stream_skip(stream, data_size as OPJ_OFF_T, p_manager) != data_size as i64 {
-        if jp2.jp2_state & JP2_STATE_CODESTREAM as core::ffi::c_uint != 0 {
+        if jp2.jp2_state & JP2_STATE_CODESTREAM != 0 {
           /* If we already read the codestream, do not error out */
           /* Needed for data/input/nonregression/issue254.jp2 */
           event_msg!(
@@ -1861,38 +1764,6 @@ pub(crate) fn opj_jp2_start_compress(
 }
 
 /* *
- * Finds the execution function related to the given box id.
- *
- * @param   p_id    the id of the handler to fetch.
- *
- * @return  the given handler or NULL if it could not be found.
- */
-fn opj_jp2_find_handler(mut p_id: Jp2BoxType) -> Option<opj_jp2_header_handler> {
-  for handler in jp2_header {
-    if handler.id == p_id {
-      return Some(handler);
-    }
-  }
-  None
-}
-
-/* *
- * Finds the image execution function related to the given box id.
- *
- * @param   p_id    the id of the handler to fetch.
- *
- * @return  the given handler or 00 if it could not be found.
- */
-fn opj_jp2_img_find_handler(mut p_id: Jp2BoxType) -> Option<opj_jp2_header_handler> {
-  for handler in jp2_img_header {
-    if handler.id == p_id {
-      return Some(handler);
-    }
-  }
-  None
-}
-
-/* *
  * Reads a jpeg2000 file signature box.
  *
  * @param   p_header_data   the data contained in the signature box.
@@ -1902,18 +1773,7 @@ fn opj_jp2_img_find_handler(mut p_id: Jp2BoxType) -> Option<opj_jp2_header_handl
  *
  * @return true if the file signature box is valid.
  */
-fn opj_jp2_read_jp(
-  jp2: &mut opj_jp2,
-  p_header_data: *mut OPJ_BYTE,
-  p_header_size: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  let mut buf = unsafe {
-    /* preconditions */
-    assert!(!p_header_data.is_null());
-    std::slice::from_raw_parts(p_header_data, p_header_size as usize)
-  };
-
+fn opj_jp2_read_jp(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   if jp2.jp2_state != JP2_STATE_NONE {
     event_msg!(
       p_manager,
@@ -1953,18 +1813,7 @@ fn opj_jp2_read_jp(
  *
  * @return true if the FTYP box is valid.
  */
-fn opj_jp2_read_ftyp(
-  jp2: &mut opj_jp2,
-  p_header_data: *mut OPJ_BYTE,
-  p_header_size: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  let mut buf = unsafe {
-    /* preconditions */
-    assert!(!p_header_data.is_null());
-    std::slice::from_raw_parts(p_header_data, p_header_size as usize)
-  };
-
+fn opj_jp2_read_ftyp(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   if jp2.jp2_state != JP2_STATE_SIGNATURE {
     event_msg!(
       p_manager,
@@ -2043,175 +1892,65 @@ fn opj_jpip_skip_iptr(
  *
  * @return true if the JP2 Header box was successfully recognized.
 */
-fn opj_jp2_read_jp2h(
-  jp2: &mut opj_jp2,
-  mut p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut l_box_size = 0 as OPJ_UINT32;
-    let mut box_0 = Jp2BoxHeader::default();
-    let mut l_has_ihdr = 0i32;
-    /* preconditions */
+fn opj_jp2_read_jp2h(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  let mut header = Jp2BoxHeader::default();
+  let mut l_has_ihdr = false;
 
-    assert!(!p_header_data.is_null());
-    /* make sure the box is well placed */
-    if jp2.jp2_state & JP2_STATE_FILE_TYPE as core::ffi::c_uint
-      != JP2_STATE_FILE_TYPE as core::ffi::c_uint
-    {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "The  box must be the first box in the file.\n",
-      );
-      return 0i32;
-    }
-    jp2.jp2_img_state = JP2_IMG_STATE_NONE as OPJ_UINT32;
-    /* iterate while remaining data */
-    while p_header_size > 0u32 {
-      if opj_jp2_read_boxhdr_char(
-        &mut box_0,
-        p_header_data,
-        &mut l_box_size,
-        p_header_size,
-        p_manager,
-      ) == 0
-      {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Stream error while reading JP2 Header box\n",
-        );
-        return 0i32;
-      }
-      if box_0.length > p_header_size {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Stream error while reading JP2 Header box: box length is inconsistent.\n",
-        );
-        return 0i32;
-      }
-      let l_current_handler = opj_jp2_img_find_handler(box_0.ty);
-      let l_current_data_size = box_0.length.wrapping_sub(l_box_size);
-      p_header_data = p_header_data.offset(l_box_size as isize);
-      if let Some(handler) = l_current_handler {
-        if (handler.handler)(jp2, p_header_data, l_current_data_size, p_manager) == 0 {
-          return 0i32;
-        }
-      } else {
-        jp2.jp2_img_state |= JP2_IMG_STATE_UNKNOWN as core::ffi::c_uint
-      }
-      if box_0.ty == Jp2BoxType::IHDR {
-        l_has_ihdr = 1i32
-      }
-      p_header_data = p_header_data.offset(l_current_data_size as isize);
-      p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(box_0.length) as OPJ_UINT32
-    }
-    if l_has_ihdr == 0i32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Stream error while reading JP2 Header box: no \'ihdr\' box.\n",
-      );
-      return 0i32;
-    }
-    jp2.jp2_state |= JP2_STATE_HEADER as core::ffi::c_uint;
-    jp2.has_jp2h = 1 as OPJ_BYTE;
-    1i32
+  /* make sure the box is well placed */
+  if jp2.jp2_state & JP2_STATE_FILE_TYPE != JP2_STATE_FILE_TYPE {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "The  box must be the first box in the file.\n",
+    );
+    return 0;
   }
-}
-
-/* *
- * Reads a box header. The box is the way data is packed inside a jpeg2000 file structure. Data is read from a character string
- *
- * @param   box                     the box structure to fill.
- * @param   p_data                  the character string to read data from.
- * @param   p_number_bytes_read     pointer to an int that will store the number of bytes read from the stream (shoul usually be 2).
- * @param   p_box_max_size          the maximum number of bytes in the box.
- * @param   p_manager         FIXME DOC
- *
- * @return  true if the box is recognized, false otherwise
-*/
-fn opj_jp2_read_boxhdr_char(
-  box_0: &mut Jp2BoxHeader,
-  mut p_data: *mut OPJ_BYTE,
-  p_number_bytes_read: &mut OPJ_UINT32,
-  p_box_max_size: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut l_value: OPJ_UINT32 = 0;
-    /* preconditions */
-
-    assert!(!p_data.is_null());
-    if p_box_max_size < 8u32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Cannot handle box of less than 8 bytes\n",
-      );
-      return 0i32;
+  jp2.jp2_img_state = JP2_IMG_STATE_NONE;
+  /* iterate while remaining data */
+  while buf.len() > 0 {
+    // Try reading box header.
+    if let Err(e) = header.read(&mut buf, 0) {
+      let msg = format!("Stream error while reading JP2 Header box: {}", e);
+      event_msg!(p_manager, EVT_ERROR, &msg);
+      return 0;
     }
-    /* process read data */
-    opj_read_bytes(p_data, &mut l_value, 4 as OPJ_UINT32);
-    p_data = p_data.offset(4);
-    (*box_0).length = l_value;
-    opj_read_bytes(p_data, &mut l_value, 4 as OPJ_UINT32);
-    p_data = p_data.offset(4);
-    (*box_0).ty = l_value.into();
-    *p_number_bytes_read = 8 as OPJ_UINT32;
-    /* do we have a "special very large box ?" */
-    /* read then the XLBox */
-    if (*box_0).length == 1u32 {
-      let mut l_xl_part_size: OPJ_UINT32 = 0;
-      if p_box_max_size < 16u32 {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Cannot handle XL box of less than 16 bytes\n",
-        );
-        return 0i32;
-      }
-      opj_read_bytes(p_data, &mut l_xl_part_size, 4 as OPJ_UINT32);
-      p_data = p_data.offset(4);
-      *p_number_bytes_read =
-        (*p_number_bytes_read as core::ffi::c_uint).wrapping_add(4u32) as OPJ_UINT32 as OPJ_UINT32;
-      if l_xl_part_size != 0u32 {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Cannot handle box sizes higher than 2^32\n",
-        );
-        return 0i32;
-      }
-      opj_read_bytes(p_data, &mut l_value, 4 as OPJ_UINT32);
-      *p_number_bytes_read =
-        (*p_number_bytes_read as core::ffi::c_uint).wrapping_add(4u32) as OPJ_UINT32 as OPJ_UINT32;
-      (*box_0).length = l_value;
-      if (*box_0).length == 0u32 {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Cannot handle box of undefined sizes\n",
-        );
-        return 0i32;
-      }
-    } else if (*box_0).length == 0u32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Cannot handle box of undefined sizes\n",
-      );
-      return 0i32;
-    }
-    if (*box_0).length < *p_number_bytes_read {
+    if header.length < header.header_length {
       event_msg!(p_manager, EVT_ERROR, "Box length is inconsistent.\n",);
-      return 0i32;
+      return 0;
     }
-    1i32
+    let content_length = header.content_length() as usize;
+    if buf.len() < content_length {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Stream error while reading JP2 Header box: box length is inconsistent.\n",
+      );
+      return 0;
+    }
+    let (content, rest) = buf.split_at(content_length);
+    buf = rest;
+    if header.ty.is_image_header() {
+      if header.read_content(jp2, content, p_manager).is_err() {
+        return 0;
+      }
+    } else {
+      jp2.jp2_img_state |= JP2_IMG_STATE_UNKNOWN
+    }
+    if header.ty == Jp2BoxType::IHDR {
+      l_has_ihdr = true
+    }
   }
+  if !l_has_ihdr {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Stream error while reading JP2 Header box: no \'ihdr\' box.\n",
+    );
+    return 0;
+  }
+  jp2.jp2_state |= JP2_STATE_HEADER;
+  jp2.has_jp2h = 1 as OPJ_BYTE;
+  1
 }
 
 pub(crate) fn opj_jp2_read_header(
