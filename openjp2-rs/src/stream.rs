@@ -422,10 +422,12 @@ impl Stream {
       log::trace!("Can't skip with count < 0: {count}");
       return Err(std::io::Error::other(format!("Can't skip with count < 0: {count}")));
     }
-    let new_offset = self.m_byte_offset + count;
-    if (new_offset as u64) > self.m_stream_length {
-      log::trace!("Skip pass the end of the stream.");
-      return Err(std::io::Error::other(format!("Skip pass the end of the stream")));
+    if self.m_stream_length > 0 {
+      let new_offset = self.m_byte_offset + count;
+      if (new_offset as u64) > self.m_stream_length {
+        log::trace!("Skip pass the end of the stream.");
+        return Err(std::io::Error::other(format!("Skip pass the end of the stream")));
+      }
     }
     let res = self
       .m_inner
