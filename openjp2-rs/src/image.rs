@@ -34,10 +34,6 @@ use super::openjpeg::*;
 
 use super::malloc::*;
 
-extern "C" {
-  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
-}
-
 impl Default for opj_image_comp {
   fn default() -> Self {
     Self {
@@ -58,6 +54,95 @@ impl Default for opj_image_comp {
   }
 }
 
+impl opj_image_comp {
+  pub fn clear_data(&mut self) {
+    if !self.data.is_null() {
+      unsafe {
+        opj_image_data_free(self.data as *mut core::ffi::c_void);
+        self.data = std::ptr::null_mut();
+      }
+    }
+  }
+
+  pub fn alloc_data(&mut self) -> bool {
+    self.clear_data();
+    let data_len = (self.w as usize)
+      .checked_mul(self.h as usize)
+      .and_then(|len| len.checked_mul(core::mem::size_of::<OPJ_INT32>()));
+    match data_len {
+      None => false,
+      Some(data_len) => {
+        unsafe {
+          self.data = opj_image_data_alloc(data_len) as *mut OPJ_INT32;
+          if self.data.is_null() {
+            return false;
+          }
+          self
+            .data
+            .write_bytes(0, data_len / core::mem::size_of::<OPJ_INT32>());
+        }
+        true
+      }
+    }
+  }
+
+  pub fn data(&self) -> Option<&[i32]> {
+    if self.data.is_null() {
+      None
+    } else {
+      unsafe {
+        Some(std::slice::from_raw_parts(
+          self.data,
+          self.w as usize * self.h as usize,
+        ))
+      }
+    }
+  }
+
+  pub fn data_mut(&mut self) -> Option<&mut [i32]> {
+    if self.data.is_null() {
+      None
+    } else {
+      unsafe {
+        Some(std::slice::from_raw_parts_mut(
+          self.data,
+          self.w as usize * self.h as usize,
+        ))
+      }
+    }
+  }
+}
+
+impl Clone for opj_image_comp {
+  fn clone(&self) -> Self {
+    let mut comp = Self::default();
+    comp.dx = self.dx;
+    comp.dy = self.dy;
+    comp.w = self.w;
+    comp.h = self.h;
+    comp.x0 = self.x0;
+    comp.y0 = self.y0;
+    comp.prec = self.prec;
+    comp.bpp = self.bpp;
+    comp.sgnd = self.sgnd;
+    comp.resno_decoded = self.resno_decoded;
+    comp.factor = self.factor;
+    comp.alpha = self.alpha;
+    if !self.data.is_null() {
+      if comp.alloc_data() {
+        unsafe {
+          std::ptr::copy_nonoverlapping(
+            self.data as *const OPJ_INT32,
+            comp.data,
+            self.w as usize * self.h as usize,
+          );
+        }
+      }
+    }
+    comp
+  }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
 pub struct opj_image_comptparm {
@@ -74,7 +159,6 @@ pub struct opj_image_comptparm {
 pub type opj_image_cmptparm_t = opj_image_comptparm;
 
 #[repr(C)]
-#[derive(Clone)]
 pub struct opj_image {
   pub x0: OPJ_UINT32,
   pub y0: OPJ_UINT32,
@@ -88,9 +172,9 @@ pub struct opj_image {
 }
 pub type opj_image_t = opj_image;
 
-impl opj_image {
-  pub fn new() -> Box<Self> {
-    Box::new(Self {
+impl Default for opj_image {
+  fn default() -> Self {
+    Self {
       x0: 0,
       y0: 0,
       x1: 0,
@@ -100,7 +184,58 @@ impl opj_image {
       comps: std::ptr::null_mut(),
       icc_profile_buf: std::ptr::null_mut(),
       icc_profile_len: 0,
-    })
+    }
+  }
+}
+
+impl Clone for opj_image {
+  fn clone(&self) -> Self {
+    let mut image = Self::default();
+    image.x0 = self.x0;
+    image.y0 = self.y0;
+    image.x1 = self.x1;
+    image.y1 = self.y1;
+    image.numcomps = self.numcomps;
+    image.color_space = self.color_space;
+    if let Some(comps) = self.comps() {
+      if !image.alloc_comps(comps.len() as u32, true) {
+        return image;
+      }
+      if let Some(dest) = image.comps_mut() {
+        for (dest, src) in dest.iter_mut().zip(comps) {
+          *dest = src.clone();
+        }
+      }
+    }
+    if let Some(icc_profile) = self.icc_profile() {
+      if !image.copy_icc_profile(icc_profile) {
+        return image;
+      }
+    }
+    image
+  }
+}
+
+impl opj_image {
+  pub fn new() -> Box<Self> {
+    Box::new(Self::default())
+  }
+
+  pub fn take_comps(&mut self) -> Self {
+    let mut image = Self::default();
+    image.x0 = self.x0;
+    image.y0 = self.y0;
+    image.x1 = self.x1;
+    image.y1 = self.y1;
+    image.numcomps = self.numcomps;
+    image.color_space = self.color_space;
+    if !self.comps.is_null() {
+      image.comps = self.comps;
+      image.numcomps = self.numcomps;
+      self.comps = std::ptr::null_mut();
+      self.numcomps = 0;
+    }
+    image
   }
 
   pub fn comps(&self) -> Option<&[opj_image_comp]> {
@@ -263,33 +398,8 @@ pub fn opj_image_create(
     comp.y0 = params.y0;
     comp.prec = params.prec;
     comp.sgnd = params.sgnd;
-    if comp.h != 0u32
-      && comp.w as OPJ_SIZE_T
-        > (usize::MAX)
-          .wrapping_div(comp.h as usize)
-          .wrapping_div(core::mem::size_of::<OPJ_INT32>())
-    {
-      /* TODO event manager */
+    if !comp.alloc_data() {
       return std::ptr::null_mut::<opj_image_t>();
-    }
-    unsafe {
-      comp.data = opj_image_data_alloc(
-        (comp.w as size_t)
-          .wrapping_mul(comp.h as usize)
-          .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
-      ) as *mut OPJ_INT32;
-      if comp.data.is_null() {
-        /* TODO replace with event manager, breaks API */
-        /* fprintf(stderr,"Unable to allocate memory for image.\n"); */
-        return std::ptr::null_mut::<opj_image_t>();
-      }
-      memset(
-        comp.data as *mut core::ffi::c_void,
-        0i32,
-        (comp.w as size_t)
-          .wrapping_mul(comp.h as usize)
-          .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
-      );
     }
   }
   Box::into_raw(image)

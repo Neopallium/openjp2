@@ -8,8 +8,6 @@ use super::j2k::*;
 use super::openjpeg::*;
 use super::stream::*;
 
-use super::malloc::*;
-
 pub type C2RustUnnamed_2 = core::ffi::c_uint;
 pub const JP2_STATE_UNKNOWN: C2RustUnnamed_2 = 2147483647;
 pub const JP2_STATE_END_CODESTREAM: C2RustUnnamed_2 = 16;
@@ -564,122 +562,86 @@ fn opj_jp2_apply_pclr(
   pclr: &opj_jp2_pclr,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut old_comps = std::ptr::null_mut::<opj_image_comp_t>();
-    let mut new_comps = std::ptr::null_mut::<opj_image_comp_t>();
-    let mut src = std::ptr::null_mut::<OPJ_INT32>();
-    let mut dst = std::ptr::null_mut::<OPJ_INT32>();
-    let mut max: OPJ_UINT32 = 0;
-    let mut cmp: OPJ_UINT16 = 0;
-    let mut pcol: OPJ_UINT16 = 0;
-    let mut k: OPJ_INT32 = 0;
-    let nr_channels = pclr.nr_channels as usize;
-    for i in 0..nr_channels {
-      /* Palette mapping: */
-      let cmp = pclr.cmap[i].cmp;
-      if (*image.comps.offset(cmp as isize)).data.is_null() {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "image->comps[%d].data == NULL in opj_jp2_apply_pclr().\n",
-          i as core::ffi::c_int,
-        );
-        return 0i32;
-      }
-    }
-    old_comps = image.comps;
-    new_comps =
-      opj_malloc((nr_channels as usize).wrapping_mul(core::mem::size_of::<opj_image_comp_t>()))
-        as *mut opj_image_comp_t;
-    if new_comps.is_null() {
+  let nr_channels = pclr.nr_channels as usize;
+  let comps = if let Some(comps) = image.comps() {
+    comps
+  } else {
+    event_msg!(p_manager, EVT_ERROR, "No components in image.\n",);
+    return 0;
+  };
+  for (i, cmap) in pclr.cmap.iter().enumerate() {
+    // Ensure that the component data is not null.
+    if comps[cmap.cmp as usize].data.is_null() {
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Memory allocation failure in opj_jp2_apply_pclr().\n",
+        "image->comps[%d].data == NULL in opj_jp2_apply_pclr().\n",
+        i as core::ffi::c_int,
       );
-      return 0i32;
+      return 0;
     }
-    for i in 0..nr_channels {
-      let cmap = pclr.cmap[i];
-      let channel = pclr.channel[i as usize];
-      pcol = cmap.pcol as u16;
-      cmp = cmap.cmp;
-      /* Direct use */
-      if cmap.mtyp as core::ffi::c_int == 0i32 {
-        assert!(pcol as core::ffi::c_int == 0i32);
-        *new_comps.offset(i as isize) = *old_comps.offset(cmp as isize)
-      } else {
-        assert!(i as core::ffi::c_int == pcol as core::ffi::c_int);
-        *new_comps.offset(pcol as isize) = *old_comps.offset(cmp as isize)
-      }
-      /* Palette mapping: */
-      let fresh0 = &mut (*new_comps.offset(i as isize)).data;
-      *fresh0 = opj_image_data_alloc(
-        core::mem::size_of::<OPJ_INT32>()
-          .wrapping_mul((*old_comps.offset(cmp as isize)).w as usize)
-          .wrapping_mul((*old_comps.offset(cmp as isize)).h as usize),
-      ) as *mut OPJ_INT32;
-      if (*new_comps.offset(i as isize)).data.is_null() {
-        for x in 0..i {
-          opj_image_data_free((*new_comps.offset(x as isize)).data as *mut core::ffi::c_void);
-        }
-        opj_free(new_comps as *mut core::ffi::c_void);
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Memory allocation failure in opj_jp2_apply_pclr().\n",
-        );
-        return 0;
-      }
-      (*new_comps.offset(i as isize)).prec = channel.size as OPJ_UINT32;
-      (*new_comps.offset(i as isize)).sgnd = channel.sign as OPJ_UINT32;
+    // Ensure valid palette index.
+    if cmap.mtyp != 0 && i != cmap.pcol as usize {
+      event_msg!(p_manager, EVT_ERROR, "Invalid cmap: pcol != i.\n",);
+      return 0;
     }
-    let top_k = pclr.nr_entries as i32 - 1;
-    for i in 0..nr_channels {
-      let cmap = pclr.cmap[i];
-      /* Palette mapping: */
-      cmp = cmap.cmp; /* verified above */
-      pcol = cmap.pcol as OPJ_UINT16;
-      src = (*old_comps.offset(cmp as isize)).data;
-      assert!(!src.is_null());
-      max = (*new_comps.offset(i as isize)).w * (*new_comps.offset(i as isize)).h;
-
-      /* Direct use: */
-      if cmap.mtyp as core::ffi::c_int == 0i32 {
-        dst = (*new_comps.offset(i as isize)).data;
-        assert!(!dst.is_null());
-        for j in 0..max {
-          *dst.offset(j as isize) = *src.offset(j as isize);
-        }
-      } else {
-        assert!(i as core::ffi::c_int == pcol as core::ffi::c_int);
-        dst = (*new_comps.offset(pcol as isize)).data;
-        assert!(!dst.is_null());
-        for j in 0..max {
-          /* The index */
-          k = *src.offset(j as isize);
-          if k < 0i32 {
-            k = 0i32
-          } else if k > top_k {
-            k = top_k
-          }
-          /* The colour */
-          *dst.offset(j as isize) =
-            pclr.entries[(k * nr_channels as i32 + pcol as i32) as usize] as i32;
-        }
-      }
-    }
-    max = image.numcomps;
-    for j in 0..max {
-      if !(*old_comps.offset(j as isize)).data.is_null() {
-        opj_image_data_free((*old_comps.offset(j as isize)).data as *mut core::ffi::c_void);
-      }
-    }
-    opj_free(old_comps as *mut core::ffi::c_void);
-    image.comps = new_comps;
-    image.numcomps = nr_channels as OPJ_UINT32;
-    1i32
   }
+
+  // Take the components out of the image.
+  let old = image.take_comps();
+  let old_comps = old.comps().expect("Just taken");
+
+  // Allocate new components.
+  if !image.alloc_comps(nr_channels as u32, true) {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Memory allocation failure in opj_jp2_apply_pclr().\n",
+    );
+    return 0i32;
+  }
+  let new_comps = image.comps_mut().expect("Just allocated");
+
+  let top_k = pclr.nr_entries as i32 - 1;
+  for ((cmap, channel), new_comp) in pclr
+    .cmap
+    .iter()
+    .zip(&pclr.channel)
+    .zip(new_comps.iter_mut())
+  {
+    let old_comp = &old_comps[cmap.cmp as usize];
+
+    // Palette mapping:
+    *new_comp = old_comp.clone();
+    new_comp.prec = channel.size as OPJ_UINT32;
+    new_comp.sgnd = channel.sign as OPJ_UINT32;
+
+    // Palette mapping:
+    let src = old_comp.data().expect("Source data shouldn't be null"); // verified above
+    let dst = new_comp
+      .data_mut()
+      .expect("Destination data shouldn't be null");
+    let max = dst.len();
+
+    // Direct use:
+    if cmap.mtyp == 0 {
+      dst.copy_from_slice(&src[..max]);
+    } else {
+      let pcol = cmap.pcol as u16;
+      for (dst, src) in dst.iter_mut().zip(src.iter().take(max)) {
+        // The index
+        let mut k = *src as i32;
+        if k < 0 {
+          k = 0
+        } else if k > top_k {
+          k = top_k
+        }
+        // The colour
+        *dst = pclr.entries[(k * nr_channels as i32 + pcol as i32) as usize] as i32;
+      }
+    }
+  }
+  1
 }
 
 /* *

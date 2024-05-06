@@ -442,7 +442,7 @@ pub type opj_stream_free_user_data_fn =
 pub type opj_stream_t = *mut core::ffi::c_void;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy)]
 pub struct opj_image_comp {
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
