@@ -33,3 +33,6 @@ smallvec = "1.13"
 default = ["std", "file-io"]
 file-io = []
 std = ["log/std"]
+
+jpwl = []
+jpspec = []
