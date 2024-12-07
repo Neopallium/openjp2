@@ -336,7 +336,7 @@ impl opj_cparameters_t {
     self.irreversible = 1i32;
     /* use array based MCT */
     self.tcp_mct = 2 as core::ffi::c_char;
-    self.mct_data = unsafe { opj_malloc(l_mct_total_size) };
+    self.mct_data = opj_malloc(l_mct_total_size);
     if self.mct_data.is_null() {
       return false;
     }

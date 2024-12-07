@@ -282,16 +282,14 @@ impl opj_image {
 
   pub fn alloc_comps(&mut self, numcomps: u32, clear: bool) -> bool {
     self.clear_comps();
-    unsafe {
-      self.numcomps = numcomps;
-      self.comps = if clear {
-        opj_calloc(numcomps as size_t, core::mem::size_of::<opj_image_comp_t>())
-      } else {
-        opj_malloc(numcomps as size_t * core::mem::size_of::<opj_image_comp_t>())
-      } as *mut opj_image_comp_t;
-      if self.comps.is_null() {
-        return false;
-      }
+    self.numcomps = numcomps;
+    self.comps = if clear {
+      opj_calloc(numcomps as size_t, core::mem::size_of::<opj_image_comp_t>())
+    } else {
+      opj_malloc(numcomps as size_t * core::mem::size_of::<opj_image_comp_t>())
+    } as *mut opj_image_comp_t;
+    if self.comps.is_null() {
+      return false;
     }
     true
   }
@@ -323,24 +321,20 @@ impl opj_image {
   }
 
   pub fn clear_icc_profile(&mut self) {
-    unsafe {
-      if !self.icc_profile_buf.is_null() {
-        opj_free(self.icc_profile_buf as *mut core::ffi::c_void);
-        self.icc_profile_buf = std::ptr::null_mut();
-        self.icc_profile_len = 0;
-      }
+    if !self.icc_profile_buf.is_null() {
+      opj_free(self.icc_profile_buf as *mut core::ffi::c_void);
+      self.icc_profile_buf = std::ptr::null_mut();
+      self.icc_profile_len = 0;
     }
   }
 
   fn alloc_icc_profile(&mut self, len: u32) -> bool {
-    unsafe {
-      self.icc_profile_buf = opj_malloc(len as size_t) as *mut OPJ_BYTE;
-      if self.icc_profile_buf.is_null() {
-        self.icc_profile_len = 0 as OPJ_UINT32;
-        return false;
-      }
-      self.icc_profile_len = len;
+    self.icc_profile_buf = opj_malloc(len as size_t) as *mut OPJ_BYTE;
+    if self.icc_profile_buf.is_null() {
+      self.icc_profile_len = 0 as OPJ_UINT32;
+      return false;
     }
+    self.icc_profile_len = len;
     true
   }
 

@@ -241,9 +241,7 @@ impl Default for opj_t1 {
 
 impl Drop for opj_t1 {
   fn drop(&mut self) {
-    unsafe {
-      opj_free(self.cblkdatabuffer as *mut core::ffi::c_void);
-    }
+    opj_free(self.cblkdatabuffer as *mut core::ffi::c_void);
   }
 }
 
