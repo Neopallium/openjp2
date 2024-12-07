@@ -13478,12 +13478,10 @@ fn opj_j2k_create_tcd(
 ) -> OPJ_BOOL {
   /* preconditions */
 
-  unsafe {
-    if opj_tcd_init(&mut p_j2k.m_tcd, p_j2k.m_private_image, &mut p_j2k.m_cp) == 0 {
-      return 0i32;
-    }
-    1i32
+  if opj_tcd_init(&mut p_j2k.m_tcd, p_j2k.m_private_image, &mut p_j2k.m_cp) == 0 {
+    return 0i32;
   }
+  1i32
 }
 
 pub(crate) fn opj_j2k_write_tile(

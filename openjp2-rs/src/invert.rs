@@ -8,8 +8,7 @@ use smallvec::SmallVec;
 /* *
  * Matrix inversion.
  */
-#[no_mangle]
-pub(crate) unsafe fn opj_matrix_inversion_f(
+pub(crate) fn opj_matrix_inversion_f(
   mut pSrcMatrix: &mut [f32],
   mut pDestMatrix: &mut [f32],
   mut nb_compo: usize,
