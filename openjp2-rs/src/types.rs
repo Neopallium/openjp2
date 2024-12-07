@@ -333,20 +333,20 @@ pub(crate) struct opj_j2k {
   pub m_cp: opj_cp_t,
   pub cstr_index: *mut opj_codestream_index_t,
   pub m_current_tile_number: OPJ_UINT32,
-  pub m_tcd: *mut opj_tcd,
+  pub m_tcd: opj_tcd,
   pub ihdr_w: OPJ_UINT32,
   pub ihdr_h: OPJ_UINT32,
   pub dump_state: core::ffi::c_uint,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_tcd {
   pub tp_pos: OPJ_INT32,
   pub tp_num: OPJ_UINT32,
   pub cur_tp_num: OPJ_UINT32,
   pub cur_totnum_tp: OPJ_UINT32,
   pub cur_pino: OPJ_UINT32,
-  pub tcd_image: *mut opj_tcd_image_t,
+  pub tcd_image: opj_tcd_image,
   pub image: *mut opj_image_t,
   pub cp: *mut opj_cp_t,
   pub tcp: *mut opj_tcp_t,
@@ -359,7 +359,30 @@ pub(crate) struct opj_tcd {
   pub whole_tile_decoding: OPJ_BOOL,
   pub used_component: *mut OPJ_BOOL,
 }
-pub(crate) type opj_tcd_t = opj_tcd;
+
+impl Default for opj_tcd {
+  fn default() -> Self {
+    Self {
+      tp_pos: Default::default(),
+      tp_num: Default::default(),
+      cur_tp_num: Default::default(),
+      cur_totnum_tp: Default::default(),
+      cur_pino: Default::default(),
+      tcd_image: Default::default(),
+      image: std::ptr::null_mut(),
+      cp: std::ptr::null_mut(),
+      tcp: std::ptr::null_mut(),
+      tcd_tileno: Default::default(),
+      m_is_decoder: Default::default(),
+      win_x0: Default::default(),
+      win_y0: Default::default(),
+      win_x1: Default::default(),
+      win_y1: Default::default(),
+      whole_tile_decoding: Default::default(),
+      used_component: std::ptr::null_mut(),
+    }
+  }
+}
 
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcp {
@@ -525,13 +548,21 @@ pub(crate) struct opj_decoding_param {
 }
 pub(crate) type opj_decoding_param_t = opj_decoding_param;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_tcd_image {
-  pub tiles: *mut opj_tcd_tile_t,
+  pub tiles: opj_tcd_tile,
 }
 pub(crate) type opj_tcd_image_t = opj_tcd_image;
 
-#[derive(Copy, Clone)]
+impl Default for opj_tcd_image {
+  fn default() -> Self {
+    Self {
+      tiles: Default::default(),
+    }
+  }
+}
+
+#[derive(Clone)]
 pub(crate) struct opj_tcd_tile {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -545,6 +576,23 @@ pub(crate) struct opj_tcd_tile {
   pub packno: OPJ_UINT32,
 }
 pub(crate) type opj_tcd_tile_t = opj_tcd_tile;
+
+impl Default for opj_tcd_tile {
+  fn default() -> Self {
+    Self {
+      x0: Default::default(),
+      y0: Default::default(),
+      x1: Default::default(),
+      y1: Default::default(),
+      numcomps: Default::default(),
+      comps: std::ptr::null_mut(),
+      numpix: Default::default(),
+      distotile: Default::default(),
+      distolayer: [Default::default(); 100],
+      packno: Default::default(),
+    }
+  }
+}
 
 #[derive(Clone, Default)]
 pub struct TileInfo {

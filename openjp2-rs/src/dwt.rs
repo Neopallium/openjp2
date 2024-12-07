@@ -1280,11 +1280,11 @@ pub(crate) unsafe fn opj_dwt_encode(mut tilec: *mut opj_tcd_tilecomp_t) -> OPJ_B
 /* </summary>                           */
 #[no_mangle]
 pub(crate) unsafe fn opj_dwt_decode(
-  mut p_tcd: *mut opj_tcd_t,
+  p_tcd: &opj_tcd,
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  if (*p_tcd).whole_tile_decoding != 0 {
+  if p_tcd.whole_tile_decoding != 0 {
     opj_dwt_decode_tile(tilec, numres)
   } else {
     opj_dwt_decode_partial_tile(tilec, numres)
@@ -3027,11 +3027,11 @@ unsafe fn opj_dwt_decode_partial_97(
 }
 #[no_mangle]
 pub(crate) unsafe fn opj_dwt_decode_real(
-  mut p_tcd: *mut opj_tcd_t,
+  p_tcd: &opj_tcd,
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  if (*p_tcd).whole_tile_decoding != 0 {
+  if p_tcd.whole_tile_decoding != 0 {
     opj_dwt_decode_tile_97(tilec, numres)
   } else {
     opj_dwt_decode_partial_97(tilec, numres)
