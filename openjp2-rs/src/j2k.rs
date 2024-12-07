@@ -4380,7 +4380,6 @@ fn opj_j2k_write_plt_in_memory(
  * This also writes optional PLT markers (before SOD)
  *
  * @param       p_j2k               J2K codec.
- * @param       p_tile_coder        FIXME DOC
  * @param       p_data              FIXME DOC
  * @param       p_data_written      FIXME DOC
  * @param       total_data_size   FIXME DOC
@@ -4389,7 +4388,6 @@ fn opj_j2k_write_plt_in_memory(
 */
 fn opj_j2k_write_sod(
   mut p_j2k: &mut opj_j2k,
-  mut p_tile_coder: *mut opj_tcd_t,
   mut p_data: *mut OPJ_BYTE,
   mut p_data_written: *mut OPJ_UINT32,
   mut total_data_size: OPJ_UINT32,
@@ -4414,11 +4412,11 @@ fn opj_j2k_write_sod(
     /* make room for the EOF marker */
     l_remaining_data = total_data_size.wrapping_sub(4u32);
     /* update tile coder */
-    (*p_tile_coder).tp_num = p_j2k
+    p_j2k.m_tcd.tp_num = p_j2k
       .m_specific_param
       .m_encoder
       .m_current_poc_tile_part_number;
-    (*p_tile_coder).cur_tp_num = p_j2k.m_specific_param.m_encoder.m_current_tile_part_number;
+    p_j2k.m_tcd.cur_tp_num = p_j2k.m_specific_param.m_encoder.m_current_tile_part_number;
     /* INDEX >> */
     /* TODO mergeV2: check this part which use cstr_info */
     /*l_cstr_info = p_j2k->cstr_info;
@@ -4442,7 +4440,7 @@ fn opj_j2k_write_sod(
     /*}*/
     /* << INDEX */
     if p_j2k.m_specific_param.m_encoder.m_current_tile_part_number == 0u32 {
-      (*(*(*p_tile_coder).tcd_image).tiles).packno = 0 as OPJ_UINT32
+      p_j2k.m_tcd.tcd_image.tiles.packno = 0 as OPJ_UINT32
     }
     *p_data_written = 0 as OPJ_UINT32;
     if p_j2k.m_specific_param.m_encoder.m_PLT != 0 {
@@ -4469,7 +4467,7 @@ fn opj_j2k_write_sod(
       .wrapping_sub(p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT)
       as OPJ_UINT32;
     if opj_tcd_encode_tile(
-      p_tile_coder,
+      &mut p_j2k.m_tcd,
       p_j2k.m_current_tile_number,
       p_data.offset(2),
       p_data_written,
@@ -9006,14 +9004,8 @@ fn opj_j2k_copy_default_tcp_and_create_tcd(
       l_tcp = l_tcp.offset(1);
       i += 1;
     }
-    /* Create the current tile decoder*/
-    p_j2k.m_tcd = opj_tcd_create(1i32);
-    if p_j2k.m_tcd.is_null() {
-      return 0i32;
-    }
-    if opj_tcd_init(p_j2k.m_tcd, l_image, &mut p_j2k.m_cp) == 0 {
-      opj_tcd_destroy(p_j2k.m_tcd);
-      p_j2k.m_tcd = std::ptr::null_mut::<opj_tcd>();
+    // Init the current tile decoder
+    if opj_tcd_init(&mut p_j2k.m_tcd, l_image, &mut p_j2k.m_cp) == 0 {
       event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
       return 0i32;
     }
@@ -9071,7 +9063,6 @@ impl Drop for opj_j2k {
           self.m_specific_param.m_encoder.m_header_tile_data_size = 0 as OPJ_UINT32
         }
       }
-      opj_tcd_destroy(self.m_tcd);
       opj_j2k_cp_destroy(&mut self.m_cp);
       memset(
         &mut self.m_cp as *mut opj_cp_t as *mut core::ffi::c_void,
@@ -9730,7 +9721,7 @@ pub(crate) fn opj_j2k_read_tile_header(
       return false;
     }
     /*FIXME ???*/
-    if opj_tcd_init_decode_tile(p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager) == 0 {
+    if opj_tcd_init_decode_tile(&mut p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager) == 0 {
       event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
       return false;
     }
@@ -9746,16 +9737,16 @@ pub(crate) fn opj_j2k_read_tile_header(
     /* For internal use in j2k.c, we don't need this */
     /* This is just needed for folks using the opj_read_tile_header() / opj_decode_tile_data() combo */
     if let Some(data_size) = &mut tile_info.data_size {
-      *data_size = opj_tcd_get_decoded_tile_size(p_j2k.m_tcd, 0i32);
+      *data_size = opj_tcd_get_decoded_tile_size(&mut p_j2k.m_tcd, 0i32);
       if *data_size == (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32) {
         return false;
       }
     }
-    tile_info.x0 = (*(*(*p_j2k.m_tcd).tcd_image).tiles).x0;
-    tile_info.y0 = (*(*(*p_j2k.m_tcd).tcd_image).tiles).y0;
-    tile_info.x1 = (*(*(*p_j2k.m_tcd).tcd_image).tiles).x1;
-    tile_info.y1 = (*(*(*p_j2k.m_tcd).tcd_image).tiles).y1;
-    tile_info.nb_comps = (*(*(*p_j2k.m_tcd).tcd_image).tiles).numcomps;
+    tile_info.x0 = p_j2k.m_tcd.tcd_image.tiles.x0;
+    tile_info.y0 = p_j2k.m_tcd.tcd_image.tiles.y0;
+    tile_info.x1 = p_j2k.m_tcd.tcd_image.tiles.x1;
+    tile_info.y1 = p_j2k.m_tcd.tcd_image.tiles.y1;
+    tile_info.nb_comps = p_j2k.m_tcd.tcd_image.tiles.numcomps;
     p_j2k.m_specific_param.m_decoder.m_state |= J2KState::DATA;
     true
   }
@@ -9796,7 +9787,7 @@ pub(crate) fn opj_j2k_decode_tile(
       p_j2k.m_private_image
     };
     if opj_tcd_decode_tile(
-      p_j2k.m_tcd,
+      &mut p_j2k.m_tcd,
       (*l_image_for_bounds).x0,
       (*l_image_for_bounds).y0,
       (*l_image_for_bounds).x1,
@@ -9819,7 +9810,7 @@ pub(crate) fn opj_j2k_decode_tile(
     /* itself the TCD data. This is typically the case for whole single */
     /* tile decoding optimization. */
     if let Some(p_data) = p_data {
-      if opj_tcd_update_tile_data(&mut *p_j2k.m_tcd, p_data) == 0 {
+      if opj_tcd_update_tile_data(&mut p_j2k.m_tcd, p_data) == 0 {
         return 0i32;
       }
       /* To avoid to destroy the tcp which can be useful when we try to decode a tile decoded before (cf j2k_random_tile_access)
@@ -9858,7 +9849,7 @@ pub(crate) fn opj_j2k_decode_tile(
   }
 }
 fn opj_j2k_update_image_data(
-  mut p_tcd: *mut opj_tcd_t,
+  mut p_tcd: &mut opj_tcd,
   mut p_output_image: &mut opj_image,
 ) -> OPJ_BOOL {
   unsafe {
@@ -9885,7 +9876,7 @@ fn opj_j2k_update_image_data(
     let mut l_tilec = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
     let mut l_image_src = std::ptr::null_mut::<opj_image_t>();
     let mut l_dest_ptr = std::ptr::null_mut::<OPJ_INT32>();
-    l_tilec = (*(*(*p_tcd).tcd_image).tiles).comps;
+    l_tilec = p_tcd.tcd_image.tiles.comps;
     l_image_src = (*p_tcd).image;
     l_img_comp_src = (*l_image_src).comps;
     l_img_comp_dest = (*p_output_image).comps;
@@ -10433,7 +10424,7 @@ impl opj_j2k {
         m_cp: std::mem::zeroed(),
         cstr_index: std::ptr::null_mut(),
         m_current_tile_number: 0,
-        m_tcd: std::ptr::null_mut(),
+        m_tcd: opj_tcd::new(m_is_decoder != 0),
         ihdr_w: 0,
         ihdr_h: 0,
         dump_state: 0,
@@ -11964,16 +11955,10 @@ fn opj_j2k_decode_tiles(
           (*(*p_j2k.m_output_image).comps.offset(i as isize)).data as *mut core::ffi::c_void,
         );
         let fresh40 = &mut (*(*p_j2k.m_output_image).comps.offset(i as isize)).data;
-        *fresh40 = (*(*(*(*p_j2k.m_tcd).tcd_image).tiles)
-          .comps
-          .offset(i as isize))
-        .data;
+        *fresh40 = (*p_j2k.m_tcd.tcd_image.tiles.comps.offset(i as isize)).data;
         (*(*p_j2k.m_output_image).comps.offset(i as isize)).resno_decoded =
-          (*(*(*p_j2k.m_tcd).image).comps.offset(i as isize)).resno_decoded;
-        let fresh41 = &mut (*(*(*(*p_j2k.m_tcd).tcd_image).tiles)
-          .comps
-          .offset(i as isize))
-        .data;
+          (*(*p_j2k.m_tcd.image).comps.offset(i as isize)).resno_decoded;
+        let fresh41 = &mut (*p_j2k.m_tcd.tcd_image.tiles.comps.offset(i as isize)).data;
         *fresh41 = std::ptr::null_mut::<OPJ_INT32>();
         i += 1;
       }
@@ -12012,7 +11997,7 @@ fn opj_j2k_decode_tiles(
         tile_info.index.wrapping_add(1u32),
         p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
       );
-      if opj_j2k_update_image_data(p_j2k.m_tcd, &mut *p_j2k.m_output_image) == 0 {
+      if opj_j2k_update_image_data(&mut p_j2k.m_tcd, &mut *p_j2k.m_output_image) == 0 {
         return 0i32;
       }
       if !(p_j2k.m_cp.tw == 1u32
@@ -12147,7 +12132,7 @@ fn opj_j2k_decode_one_tile(
         tile_info.index.wrapping_add(1u32),
         p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
       );
-      if opj_j2k_update_image_data(p_j2k.m_tcd, &mut *p_j2k.m_output_image) == 0 {
+      if opj_j2k_update_image_data(&mut p_j2k.m_tcd, &mut *p_j2k.m_output_image) == 0 {
         return 0i32;
       }
       opj_j2k_tcp_data_destroy(&mut *p_j2k.m_cp.tcps.offset(tile_info.index as isize));
@@ -12585,10 +12570,8 @@ pub(crate) fn opj_j2k_encode(
     let mut l_current_tile_size: OPJ_SIZE_T = 0;
     let mut l_current_data = std::ptr::null_mut::<OPJ_BYTE>();
     let mut l_reuse_data = 0i32;
-    let mut p_tcd = std::ptr::null_mut::<opj_tcd_t>();
     /* preconditions */
 
-    p_tcd = p_j2k.m_tcd;
     l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
     if l_nb_tiles == 1u32 {
       l_reuse_data = 1i32
@@ -12604,10 +12587,10 @@ pub(crate) fn opj_j2k_encode(
       /* if we only have one tile, then simply set tile component data equal to image component data */
       /* otherwise, allocate the data */
       j = 0 as OPJ_UINT32;
-      while j < (*(*p_j2k.m_tcd).image).numcomps {
-        let mut l_tilec = (*(*(*p_tcd).tcd_image).tiles).comps.offset(j as isize);
+      while j < (*p_j2k.m_tcd.image).numcomps {
+        let mut l_tilec = p_j2k.m_tcd.tcd_image.tiles.comps.offset(j as isize);
         if l_reuse_data != 0 {
-          let mut l_img_comp = (*(*p_tcd).image).comps.offset(j as isize);
+          let mut l_img_comp = (*p_j2k.m_tcd.image).comps.offset(j as isize);
           (*l_tilec).data = (*l_img_comp).data;
           (*l_tilec).ownsData = 0i32
         } else if opj_alloc_tile_component_data(l_tilec) == 0 {
@@ -12623,7 +12606,7 @@ pub(crate) fn opj_j2k_encode(
         }
         j += 1;
       }
-      l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(&mut *p_j2k.m_tcd);
+      l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(&mut p_j2k.m_tcd);
       if l_reuse_data == 0 {
         if l_current_tile_size > l_max_tile_size {
           let mut l_new_current_data = opj_realloc(
@@ -12655,9 +12638,9 @@ pub(crate) fn opj_j2k_encode(
         /* 32 bit components @ 16 bit precision get converted to 16 bit */
         let p_data =
           std::slice::from_raw_parts_mut(l_current_data as *mut u8, l_current_tile_size as usize);
-        opj_j2k_get_tile_data(&mut *p_j2k.m_tcd, p_data);
+        opj_j2k_get_tile_data(&mut p_j2k.m_tcd, p_data);
         /* now copy this data into the tile component */
-        if opj_tcd_copy_tile_data(&mut *p_j2k.m_tcd, p_data) == 0 {
+        if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data) == 0 {
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -12768,13 +12751,13 @@ fn opj_j2k_pre_write_tile(
       p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th),
     );
     p_j2k.m_specific_param.m_encoder.m_current_tile_part_number = 0 as OPJ_UINT32;
-    (*p_j2k.m_tcd).cur_totnum_tp = (*p_j2k.m_cp.tcps.offset(p_tile_index as isize)).m_nb_tile_parts;
+    p_j2k.m_tcd.cur_totnum_tp = (*p_j2k.m_cp.tcps.offset(p_tile_index as isize)).m_nb_tile_parts;
     p_j2k
       .m_specific_param
       .m_encoder
       .m_current_poc_tile_part_number = 0 as OPJ_UINT32;
     /* initialisation before tile encoding  */
-    if opj_tcd_init_encode_tile(p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager) == 0 {
+    if opj_tcd_init_encode_tile(&mut p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager) == 0 {
       return 0i32;
     } /* (/8) */
     1i32 /* (%8) */
@@ -12821,11 +12804,11 @@ fn opj_get_tile_dimensions(
   }
 }
 
-fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd_t, mut p_data: &mut [u8]) {
+fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
   unsafe {
     let mut l_image = (*p_tcd).image;
     let numcomps = (*p_tcd.image).numcomps as usize;
-    let mut l_tilec = std::slice::from_raw_parts((*(*p_tcd.tcd_image).tiles).comps, numcomps);
+    let mut l_tilec = std::slice::from_raw_parts(p_tcd.tcd_image.tiles.comps, numcomps);
     let mut l_img_comp = std::slice::from_raw_parts((*l_image).comps, numcomps);
     for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
       let mut l_size_comp: OPJ_UINT32 = 0;
@@ -13077,11 +13060,9 @@ fn opj_j2k_write_first_tile_part(
     let mut l_nb_bytes_written = 0 as OPJ_UINT32;
     let mut l_current_nb_bytes_written: OPJ_UINT32 = 0;
     let mut l_begin_data = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut l_tcd = std::ptr::null_mut::<opj_tcd_t>();
     let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
-    l_tcd = p_j2k.m_tcd;
     l_cp = &mut p_j2k.m_cp;
-    (*l_tcd).cur_pino = 0 as OPJ_UINT32;
+    p_j2k.m_tcd.cur_pino = 0 as OPJ_UINT32;
     /*Get number of tile parts*/
     p_j2k
       .m_specific_param
@@ -13122,7 +13103,6 @@ fn opj_j2k_write_first_tile_part(
     l_current_nb_bytes_written = 0 as OPJ_UINT32;
     if opj_j2k_write_sod(
       p_j2k,
-      l_tcd,
       p_data,
       &mut l_current_nb_bytes_written,
       total_data_size,
@@ -13161,9 +13141,7 @@ fn opj_j2k_write_all_tile_parts(
     let mut pino: OPJ_UINT32 = 0;
     let mut l_begin_data = std::ptr::null_mut::<OPJ_BYTE>();
     let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tcd = std::ptr::null_mut::<opj_tcd_t>();
     let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
-    l_tcd = p_j2k.m_tcd;
     l_cp = &mut p_j2k.m_cp;
     l_tcp = (*l_cp).tcps.offset(p_j2k.m_current_tile_number as isize);
     /*Get number of tile parts*/
@@ -13205,7 +13183,6 @@ fn opj_j2k_write_all_tile_parts(
       l_current_nb_bytes_written = 0 as OPJ_UINT32;
       if opj_j2k_write_sod(
         p_j2k,
-        l_tcd,
         p_data,
         &mut l_current_nb_bytes_written,
         total_data_size,
@@ -13237,7 +13214,7 @@ fn opj_j2k_write_all_tile_parts(
     }
     pino = 1 as OPJ_UINT32;
     while pino <= (*l_tcp).numpocs {
-      (*l_tcd).cur_pino = pino;
+      p_j2k.m_tcd.cur_pino = pino;
       /*Get number of tile parts*/
       tot_num_tp = opj_j2k_get_num_tp(l_cp, pino, p_j2k.m_current_tile_number);
       tilepartno = 0 as OPJ_UINT32;
@@ -13271,7 +13248,6 @@ fn opj_j2k_write_all_tile_parts(
         l_current_nb_bytes_written = 0 as OPJ_UINT32;
         if opj_j2k_write_sod(
           p_j2k,
-          l_tcd,
           p_data,
           &mut l_current_nb_bytes_written,
           total_data_size,
@@ -13369,8 +13345,6 @@ fn opj_j2k_end_encoding(
 ) -> OPJ_BOOL {
   /* preconditions */
   unsafe {
-    opj_tcd_destroy(p_j2k.m_tcd);
-    p_j2k.m_tcd = std::ptr::null_mut::<opj_tcd>();
     if !p_j2k
       .m_specific_param
       .m_encoder
@@ -13489,6 +13463,7 @@ fn opj_j2k_init_info(
     )
   }
 }
+
 /* *
  * Creates a tile-coder encoder.
  *
@@ -13496,33 +13471,15 @@ fn opj_j2k_init_info(
  * @param       p_j2k                           J2K codec.
  * @param       p_manager                   the user event manager.
 */
-/* *
- * Creates a tile-coder encoder.
- *
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
 fn opj_j2k_create_tcd(
   mut p_j2k: &mut opj_j2k,
   mut _p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
   unsafe {
-    p_j2k.m_tcd = opj_tcd_create(0i32);
-    if p_j2k.m_tcd.is_null() {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory to create Tile Coder\n",
-      );
-      return 0i32;
-    }
-    if opj_tcd_init(p_j2k.m_tcd, p_j2k.m_private_image, &mut p_j2k.m_cp) == 0 {
-      opj_tcd_destroy(p_j2k.m_tcd);
-      p_j2k.m_tcd = std::ptr::null_mut::<opj_tcd>();
+    if opj_tcd_init(&mut p_j2k.m_tcd, p_j2k.m_private_image, &mut p_j2k.m_cp) == 0 {
       return 0i32;
     }
     1i32
@@ -13549,10 +13506,8 @@ pub(crate) fn opj_j2k_write_tile(
       let mut j: OPJ_UINT32 = 0;
       /* Allocate data */
       j = 0 as OPJ_UINT32;
-      while j < (*(*p_j2k.m_tcd).image).numcomps {
-        let mut l_tilec = (*(*(*p_j2k.m_tcd).tcd_image).tiles)
-          .comps
-          .offset(j as isize);
+      while j < (*p_j2k.m_tcd.image).numcomps {
+        let mut l_tilec = p_j2k.m_tcd.tcd_image.tiles.comps.offset(j as isize);
         if opj_alloc_tile_component_data(l_tilec) == 0 {
           event_msg!(
             p_manager,
@@ -13564,7 +13519,7 @@ pub(crate) fn opj_j2k_write_tile(
         j += 1;
       }
       /* now copy data into the tile component */
-      if opj_tcd_copy_tile_data(&mut *p_j2k.m_tcd, p_data) == 0 {
+      if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data) == 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,

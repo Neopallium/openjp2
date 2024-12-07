@@ -2100,7 +2100,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
 }
 
 pub(crate) fn opj_t1_decode_cblks(
-  mut tcd: *mut opj_tcd_t,
+  mut tcd: &mut opj_tcd,
   mut pret: *mut OPJ_BOOL,
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut tccp: *mut opj_tccp_t,

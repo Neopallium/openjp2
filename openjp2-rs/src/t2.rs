@@ -310,10 +310,9 @@ pub(crate) unsafe fn opj_t2_encode_packets(
 
 #[no_mangle]
 pub(crate) unsafe fn opj_t2_decode_packets(
-  mut tcd: *mut opj_tcd_t,
+  mut tcd: &mut opj_tcd,
   mut p_t2: *mut opj_t2_t,
   mut p_tile_no: OPJ_UINT32,
-  mut p_tile: *mut opj_tcd_tile_t,
   mut p_src: *mut OPJ_BYTE,
   mut p_data_read: *mut OPJ_UINT32,
   mut p_max_len: OPJ_UINT32,
@@ -378,7 +377,12 @@ pub(crate) unsafe fn opj_t2_decode_packets(
       if (*l_current_pi).layno >= (*l_tcp).num_layers_to_decode {
         skip_packet = 1i32
       } else if (*l_current_pi).resno
-        >= (*(*p_tile).comps.offset((*l_current_pi).compno as isize)).minimum_num_resolutions
+        >= (*tcd
+          .tcd_image
+          .tiles
+          .comps
+          .offset((*l_current_pi).compno as isize))
+        .minimum_num_resolutions
       {
         skip_packet = 1i32
       } else {
@@ -389,8 +393,12 @@ pub(crate) unsafe fn opj_t2_decode_packets(
         /* If no precincts of any band intersects the area of interest, */
         /* skip the packet */
         let mut bandno: OPJ_UINT32 = 0;
-        let mut tilec: *mut opj_tcd_tilecomp_t =
-          &mut *(*p_tile).comps.offset((*l_current_pi).compno as isize) as *mut opj_tcd_tilecomp_t;
+        let mut tilec: *mut opj_tcd_tilecomp_t = &mut *tcd
+          .tcd_image
+          .tiles
+          .comps
+          .offset((*l_current_pi).compno as isize)
+          as *mut opj_tcd_tilecomp_t;
         let mut res: *mut opj_tcd_resolution_t =
           &mut *(*tilec).resolutions.offset((*l_current_pi).resno as isize)
             as *mut opj_tcd_resolution_t;
@@ -425,7 +433,7 @@ pub(crate) unsafe fn opj_t2_decode_packets(
         *first_pass_failed.offset((*l_current_pi).compno as isize) = 0i32;
         if opj_t2_decode_packet(
           p_t2,
-          p_tile,
+          &mut tcd.tcd_image.tiles,
           l_tcp,
           l_current_pi,
           l_current_data,
@@ -447,7 +455,7 @@ pub(crate) unsafe fn opj_t2_decode_packets(
         l_nb_bytes_read = 0 as OPJ_UINT32;
         if opj_t2_skip_packet(
           p_t2,
-          p_tile,
+          &mut tcd.tcd_image.tiles,
           l_tcp,
           l_current_pi,
           l_current_data,
@@ -466,9 +474,13 @@ pub(crate) unsafe fn opj_t2_decode_packets(
         l_img_comp =
           &mut *(*l_image).comps.offset((*l_current_pi).compno as isize) as *mut opj_image_comp_t;
         if (*l_img_comp).resno_decoded == 0u32 {
-          (*l_img_comp).resno_decoded = (*(*p_tile).comps.offset((*l_current_pi).compno as isize))
-            .minimum_num_resolutions
-            .wrapping_sub(1u32)
+          (*l_img_comp).resno_decoded = (*tcd
+            .tcd_image
+            .tiles
+            .comps
+            .offset((*l_current_pi).compno as isize))
+          .minimum_num_resolutions
+          .wrapping_sub(1u32)
         }
       }
       l_current_data = l_current_data.offset(l_nb_bytes_read as isize);
