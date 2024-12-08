@@ -1,0 +1,16 @@
+[package]
+name = "openjp2-tools"
+
+[[bin]]
+name = "opj_dump"
+path = "src/bin/opj_dump.rs"
+
+[dependencies]
+openjp2 = { path = "../", features = ["file-io"] }
+clap = { version = "2.33" }
+log = "0.4"
+
+lcms2 = { version = "6.1", optional = true }
+
+[features]
+default = ["lcms2"]

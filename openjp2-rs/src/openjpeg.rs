@@ -31,13 +31,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-pub use super::c_api_types::*;
-use super::j2k::*;
-pub(crate) use super::types::*;
+pub use crate::c_api_types::*;
+pub use crate::consts::opj::*;
+pub use crate::image::{opj_image_create, opj_image_destroy, opj_image_tile_create};
 
-use super::codec::*;
-pub use super::image::{opj_image_create, opj_image_destroy, opj_image_tile_create};
-use super::malloc::*;
+use crate::j2k::*;
+pub(crate) use crate::types::*;
+
+use crate::codec::*;
+use crate::malloc::*;
 
 #[cfg(feature = "file-io")]
 use ::libc::FILE;
