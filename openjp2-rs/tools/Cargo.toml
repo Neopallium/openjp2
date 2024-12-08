@@ -1,5 +1,6 @@
 [package]
 name = "openjp2-tools"
+edition = "2018"
 
 [[bin]]
 name = "opj_dump"
@@ -7,10 +8,12 @@ path = "src/bin/opj_dump.rs"
 
 [dependencies]
 openjp2 = { path = "../", features = ["file-io"] }
-clap = { version = "2.33" }
+clap = { version = "4.0", features = ["derive"] }
 log = "0.4"
+libc = "0.2"
 
 lcms2 = { version = "6.1", optional = true }
+env_logger = "0.11.5"
 
 [features]
 default = ["lcms2"]
