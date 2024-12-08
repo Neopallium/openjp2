@@ -11,10 +11,10 @@ keywords = ["j2k", "jp2", "jpeg2000", "image"]
 edition = "2018"
 autobins = false
 
-exclude = [
-  "CMakeLists.txt",
-  "samples/*",
-]
+exclude = ["CMakeLists.txt", "samples/*"]
+
+[workspace]
+members = ["tools"]
 
 [lib]
 name = "openjp2"

@@ -111,6 +111,17 @@ impl opj_image_comp {
       }
     }
   }
+
+  pub fn set_data(&mut self, data: &[i32]) -> bool {
+    if self.data.is_null() {
+      if !self.alloc_data() {
+        return false;
+      }
+    }
+    let dest = self.data_mut().expect("We just allocated this data");
+    dest.copy_from_slice(data);
+    true
+  }
 }
 
 impl Clone for opj_image_comp {
@@ -219,6 +230,46 @@ impl Clone for opj_image {
 impl opj_image {
   pub fn new() -> Box<Self> {
     Box::new(Self::default())
+  }
+
+  pub fn comp0_dims_prec(&self) -> (usize, usize, i32) {
+    if let Some(comps) = self.comps() {
+      if comps.len() > 0 {
+        let comp = &comps[0];
+        return (comp.w as usize, comp.h as usize, comp.prec as i32);
+      }
+    }
+    (0, 0, 0)
+  }
+
+  pub fn comps_same_dims(&self) -> bool {
+    if let Some(comps) = self.comps() {
+      if comps.len() > 0 {
+        let (dx, dy) = (comps[0].dx, comps[0].dy);
+        for comp in comps {
+          if comp.dx != dx || comp.dy != dy {
+            return false;
+          }
+        }
+        return true;
+      }
+    }
+    false
+  }
+
+  pub fn comps_match(&self) -> bool {
+    if let Some(comps) = self.comps() {
+      if comps.len() > 0 {
+        let (dx, dy, prec, sgnd) = (comps[0].dx, comps[0].dy, comps[0].prec, comps[0].sgnd);
+        for comp in comps {
+          if comp.dx != dx || comp.dy != dy || comp.prec != prec || comp.sgnd != sgnd {
+            return false;
+          }
+        }
+        return true;
+      }
+    }
+    false
   }
 
   pub fn take_comps(&mut self) -> Self {
