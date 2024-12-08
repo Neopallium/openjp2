@@ -15,6 +15,7 @@ struct ImageFolder {
 
 // Basic compression parameters (subset of opj_cparameters_t)
 #[derive(Default)]
+#[allow(dead_code)]
 struct CompressionParameters {
   input_file: Option<PathBuf>,
   output_file: Option<PathBuf>,
@@ -85,6 +86,7 @@ enum ProgressionOrder {
 
 // For raw image parameters
 #[derive(Default)]
+#[allow(dead_code)]
 pub struct RawParameters {
   width: u32,
   height: u32,
@@ -95,6 +97,7 @@ pub struct RawParameters {
 }
 
 #[derive(Default, Clone)]
+#[allow(dead_code)]
 pub struct RawComponentParameters {
   dx: u32,
   dy: u32,
@@ -371,6 +374,7 @@ fn get_codec_format(filename: &str) -> Result<CodecFormat, Box<dyn std::error::E
 }
 
 // Helper structs for parameter parsing
+#[allow(dead_code)]
 struct POCMarker {
   tile: u32,
   resolution: u32,
@@ -379,6 +383,7 @@ struct POCMarker {
   prog_order: ProgressionOrder,
 }
 
+#[allow(dead_code)]
 struct IMFProfile {
   profile: u32,
   mainlevel: u32,
@@ -461,6 +466,7 @@ impl CompressionParameters {
       .collect()
   }
 
+  #[allow(dead_code)]
   fn parse_poc_markers(poc_str: &str) -> Result<Vec<POCMarker>, ParameterError> {
     poc_str
       .split('/')
