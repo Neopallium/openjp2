@@ -1,15 +1,10 @@
-#[cfg(feature = "lcms2")]
-extern crate lcms2;
-extern crate log;
 ///! Common code shared between the openjp2 CLI tools.
-extern crate openjp2;
-
 pub mod color;
 
 // Compression formats
-pub const J2K_CFMT: i32 = 0;
-pub const JP2_CFMT: i32 = 1;
-pub const JPT_CFMT: i32 = 2;
+pub const J2K_CFMT: u32 = 0;
+pub const JP2_CFMT: u32 = 1;
+pub const JPT_CFMT: u32 = 2;
 
 // Decompression formats
 pub const PXM_DFMT: i32 = 10;

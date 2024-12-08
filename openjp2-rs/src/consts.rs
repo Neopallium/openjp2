@@ -344,7 +344,7 @@ pub mod opj {
   pub const OPJ_TRUE: u32 = 1;
   pub const OPJ_FALSE: u32 = 0;
   /**< Maximum allowed size for filenames */
-  pub const OPJ_PATHN: u32 = 4096;
+  pub const OPJ_PATH_LEN: u32 = 4096;
   /**< Number of maximum resolution level authorized */
   pub const OPJ_J2K_MAXRLVLS: u32 = 33;
   /**< Number of maximum sub-band linked to number of resolution level */
