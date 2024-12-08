@@ -271,8 +271,6 @@ impl dwt_local {
   }
 }
 
-pub type opj_sparse_array_int32_t = opj_sparse_array_int32;
-
 pub const NB_ELTS_V8: u32 = 8;
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1568,19 +1566,18 @@ fn opj_dwt_decode_tile(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT3
   }
 }
 fn opj_dwt_interleave_partial_h(
-  mut dest: *mut OPJ_INT32,
-  mut cas: OPJ_INT32,
-  mut sa: *mut opj_sparse_array_int32_t,
-  mut sa_line: OPJ_UINT32,
-  mut sn: OPJ_UINT32,
-  mut win_l_x0: OPJ_UINT32,
-  mut win_l_x1: OPJ_UINT32,
-  mut win_h_x0: OPJ_UINT32,
-  mut win_h_x1: OPJ_UINT32,
+  dest: *mut OPJ_INT32,
+  cas: OPJ_INT32,
+  sa: &SparseArray,
+  sa_line: OPJ_UINT32,
+  sn: OPJ_UINT32,
+  win_l_x0: OPJ_UINT32,
+  win_l_x1: OPJ_UINT32,
+  win_h_x0: OPJ_UINT32,
+  win_h_x1: OPJ_UINT32,
 ) {
   unsafe {
-    let mut ret: OPJ_BOOL = 0;
-    ret = opj_sparse_array_int32_read(
+    let ret = sparse_array_read(
       sa,
       win_l_x0,
       sa_line,
@@ -1591,10 +1588,10 @@ fn opj_dwt_interleave_partial_h(
         .offset((2u32).wrapping_mul(win_l_x0) as isize),
       2 as OPJ_UINT32,
       0 as OPJ_UINT32,
-      1i32,
+      true,
     );
-    assert!(ret != 0);
-    ret = opj_sparse_array_int32_read(
+    assert!(ret);
+    let ret = sparse_array_read(
       sa,
       sn.wrapping_add(win_h_x0),
       sa_line,
@@ -1606,26 +1603,25 @@ fn opj_dwt_interleave_partial_h(
         .offset((2u32).wrapping_mul(win_h_x0) as isize),
       2 as OPJ_UINT32,
       0 as OPJ_UINT32,
-      1i32,
+      true,
     );
-    assert!(ret != 0);
+    assert!(ret);
   }
 }
 fn opj_dwt_interleave_partial_v(
-  mut dest: *mut OPJ_INT32,
-  mut cas: OPJ_INT32,
-  mut sa: *mut opj_sparse_array_int32_t,
-  mut sa_col: OPJ_UINT32,
-  mut nb_cols: OPJ_UINT32,
-  mut sn: OPJ_UINT32,
-  mut win_l_y0: OPJ_UINT32,
-  mut win_l_y1: OPJ_UINT32,
-  mut win_h_y0: OPJ_UINT32,
-  mut win_h_y1: OPJ_UINT32,
+  dest: *mut OPJ_INT32,
+  cas: OPJ_INT32,
+  sa: &SparseArray,
+  sa_col: OPJ_UINT32,
+  nb_cols: OPJ_UINT32,
+  sn: OPJ_UINT32,
+  win_l_y0: OPJ_UINT32,
+  win_l_y1: OPJ_UINT32,
+  win_h_y0: OPJ_UINT32,
+  win_h_y1: OPJ_UINT32,
 ) {
   unsafe {
-    let mut ret: OPJ_BOOL = 0;
-    ret = opj_sparse_array_int32_read(
+    let ret = sparse_array_read(
       sa,
       sa_col,
       win_l_y0,
@@ -1636,10 +1632,10 @@ fn opj_dwt_interleave_partial_v(
         .offset(((2i32 * 4i32) as core::ffi::c_uint).wrapping_mul(win_l_y0) as isize),
       1 as OPJ_UINT32,
       (2i32 * 4i32) as OPJ_UINT32,
-      1i32,
+      true,
     );
-    assert!(ret != 0);
-    ret = opj_sparse_array_int32_read(
+    assert!(ret);
+    let ret = sparse_array_read(
       sa,
       sa_col,
       sn.wrapping_add(win_h_y0),
@@ -1650,9 +1646,9 @@ fn opj_dwt_interleave_partial_v(
         .offset(((2i32 * 4i32) as core::ffi::c_uint).wrapping_mul(win_h_y0) as isize),
       1 as OPJ_UINT32,
       (2i32 * 4i32) as OPJ_UINT32,
-      1i32,
+      true,
     );
-    assert!(ret != 0);
+    assert!(ret);
   }
 }
 
@@ -1745,7 +1741,7 @@ fn opj_dwt_segment_grow(
 fn opj_dwt_init_sparse_array(
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
-) -> *mut opj_sparse_array_int32_t {
+) -> Option<SparseArray> {
   unsafe {
     let mut tr_max: *mut opj_tcd_resolution_t = &mut *(*tilec)
       .resolutions
@@ -1757,15 +1753,12 @@ fn opj_dwt_init_sparse_array(
     let mut bandno: OPJ_UINT32 = 0;
     let mut precno: OPJ_UINT32 = 0;
     let mut cblkno: OPJ_UINT32 = 0;
-    let mut sa = opj_sparse_array_int32_create(
+    let mut sa = SparseArray::new(
       w,
       h,
       opj_uint_min(w, 64 as OPJ_UINT32),
       opj_uint_min(h, 64 as OPJ_UINT32),
-    );
-    if sa.is_null() {
-      return std::ptr::null_mut::<opj_sparse_array_int32_t>();
-    }
+    )?;
     resno = 0 as OPJ_UINT32;
     while resno < numres {
       let mut res: *mut opj_tcd_resolution_t =
@@ -1803,8 +1796,8 @@ fn opj_dwt_init_sparse_array(
                   .wrapping_add(((*pres_0).y1 - (*pres_0).y0) as OPJ_UINT32)
                   as OPJ_UINT32
               }
-              if opj_sparse_array_int32_write(
-                sa,
+              if !sparse_array_write(
+                &mut sa,
                 x,
                 y,
                 x.wrapping_add(cblk_w),
@@ -1812,11 +1805,9 @@ fn opj_dwt_init_sparse_array(
                 (*cblk).decoded_data,
                 1 as OPJ_UINT32,
                 cblk_w,
-                1i32,
-              ) == 0
-              {
-                opj_sparse_array_int32_free(sa);
-                return std::ptr::null_mut::<opj_sparse_array_int32_t>();
+                true,
+              ) {
+                return None;
               }
             }
             cblkno += 1;
@@ -1827,15 +1818,15 @@ fn opj_dwt_init_sparse_array(
       }
       resno += 1;
     }
-    sa
+    Some(sa)
   }
 }
+
 fn opj_dwt_decode_partial_tile(
   mut tilec: *mut opj_tcd_tilecomp_t,
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut sa = std::ptr::null_mut::<opj_sparse_array_int32_t>();
     let mut h = opj_dwt_t {
       mem: std::ptr::null_mut::<OPJ_INT32>(),
       dn: 0,
@@ -1869,13 +1860,14 @@ fn opj_dwt_decode_partial_tile(
     if (*tr_max).x0 == (*tr_max).x1 || (*tr_max).y0 == (*tr_max).y1 {
       return 1i32;
     }
-    sa = opj_dwt_init_sparse_array(tilec, numres);
-    if sa.is_null() {
+    let mut sa = if let Some(sa) = opj_dwt_init_sparse_array(tilec, numres) {
+      sa
+    } else {
       return 0i32;
-    }
+    };
     if numres == 1u32 {
-      let mut ret = opj_sparse_array_int32_read(
-        sa,
+      let mut ret = sparse_array_read(
+        &sa,
         (*tr_max).win_x0.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
         (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
         (*tr_max).win_x1.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
@@ -1883,10 +1875,9 @@ fn opj_dwt_decode_partial_tile(
         (*tilec).data_win,
         1 as OPJ_UINT32,
         (*tr_max).win_x1.wrapping_sub((*tr_max).win_x0),
-        1i32,
+        true,
       );
-      assert!(ret != 0);
-      opj_sparse_array_int32_free(sa);
+      assert!(ret);
       return 1i32;
     }
     h_mem_size = opj_dwt_max_resolution(tr, numres) as OPJ_SIZE_T;
@@ -1894,14 +1885,12 @@ fn opj_dwt_decode_partial_tile(
     /* in vertical pass, we process 4 columns at a time */
     if h_mem_size > (usize::MAX / 4 * core::mem::size_of::<OPJ_INT32>()) {
       /* FIXME event manager error callback */
-      opj_sparse_array_int32_free(sa);
       return 0i32;
     }
     h_mem_size *= 4 * core::mem::size_of::<OPJ_INT32>();
     h.mem = opj_aligned_32_malloc(h_mem_size) as *mut OPJ_INT32;
     if h.mem.is_null() {
       /* FIXME event manager error callback */
-      opj_sparse_array_int32_free(sa);
       return 0i32;
     }
     v.mem = h.mem;
@@ -2091,7 +2080,7 @@ fn opj_dwt_decode_partial_tile(
           opj_dwt_interleave_partial_h(
             h.mem,
             h.cas,
-            sa,
+            &sa,
             j,
             h.sn as OPJ_UINT32,
             win_ll_x0,
@@ -2105,8 +2094,8 @@ fn opj_dwt_decode_partial_tile(
             win_hl_x0 as OPJ_INT32,
             win_hl_x1 as OPJ_INT32,
           );
-          if opj_sparse_array_int32_write(
-            sa,
+          if !sparse_array_write(
+            &mut sa,
             win_tr_x0,
             j,
             win_tr_x1,
@@ -2114,11 +2103,9 @@ fn opj_dwt_decode_partial_tile(
             h.mem.offset(win_tr_x0 as isize),
             1 as OPJ_UINT32,
             0 as OPJ_UINT32,
-            1i32,
-          ) == 0
-          {
+            true,
+          ) {
             /* FIXME event manager error callback */
-            opj_sparse_array_int32_free(sa);
             opj_aligned_free(h.mem as *mut core::ffi::c_void);
             return 0i32;
           }
@@ -2131,7 +2118,7 @@ fn opj_dwt_decode_partial_tile(
         opj_dwt_interleave_partial_v(
           v.mem,
           v.cas,
-          sa,
+          &sa,
           i,
           nb_cols,
           v.sn as OPJ_UINT32,
@@ -2146,8 +2133,8 @@ fn opj_dwt_decode_partial_tile(
           win_lh_y0 as OPJ_INT32,
           win_lh_y1 as OPJ_INT32,
         );
-        if opj_sparse_array_int32_write(
-          sa,
+        if !sparse_array_write(
+          &mut sa,
           i,
           win_tr_y0,
           i.wrapping_add(nb_cols),
@@ -2155,11 +2142,9 @@ fn opj_dwt_decode_partial_tile(
           v.mem.offset((4u32).wrapping_mul(win_tr_y0) as isize),
           1 as OPJ_UINT32,
           4 as OPJ_UINT32,
-          1i32,
-        ) == 0
-        {
+          true,
+        ) {
           /* FIXME event manager error callback */
-          opj_sparse_array_int32_free(sa);
           opj_aligned_free(h.mem as *mut core::ffi::c_void);
           return 0i32;
         }
@@ -2168,8 +2153,8 @@ fn opj_dwt_decode_partial_tile(
       resno += 1;
     }
     opj_aligned_free(h.mem as *mut core::ffi::c_void);
-    let mut ret_0 = opj_sparse_array_int32_read(
-      sa,
+    let mut ret_0 = sparse_array_read(
+      &sa,
       (*tr_max).win_x0.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
       (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
       (*tr_max).win_x1.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
@@ -2177,10 +2162,9 @@ fn opj_dwt_decode_partial_tile(
       (*tilec).data_win,
       1 as OPJ_UINT32,
       (*tr_max).win_x1.wrapping_sub((*tr_max).win_x0),
-      1i32,
+      true,
     );
-    assert!(ret_0 != 0);
-    opj_sparse_array_int32_free(sa);
+    assert!(ret_0);
     1i32
   }
 }
@@ -2272,16 +2256,15 @@ fn opj_v8dwt_interleave_h(
 
 fn opj_v8dwt_interleave_partial_h(
   mut dwt: &opj_v8dwt_t,
-  mut sa: *mut opj_sparse_array_int32_t,
-  mut sa_line: OPJ_UINT32,
-  mut remaining_height: OPJ_UINT32,
+  sa: &SparseArray,
+  sa_line: OPJ_UINT32,
+  remaining_height: OPJ_UINT32,
 ) {
   unsafe {
     let mut i: OPJ_UINT32 = 0;
     i = 0 as OPJ_UINT32;
     while i < remaining_height {
-      let mut ret: OPJ_BOOL = 0;
-      ret = opj_sparse_array_int32_read(
+      let ret = sparse_array_read(
         sa,
         (*dwt).win_l_x0,
         sa_line.wrapping_add(i),
@@ -2294,10 +2277,10 @@ fn opj_v8dwt_interleave_partial_h(
           .offset(i as isize),
         2 * NB_ELTS_V8,
         0 as OPJ_UINT32,
-        1i32,
+        true,
       );
-      assert!(ret != 0);
-      ret = opj_sparse_array_int32_read(
+      assert!(ret);
+      let ret = sparse_array_read(
         sa,
         ((*dwt).sn as OPJ_UINT32).wrapping_add((*dwt).win_h_x0),
         sa_line.wrapping_add(i),
@@ -2311,9 +2294,9 @@ fn opj_v8dwt_interleave_partial_h(
           .offset(i as isize),
         2 * NB_ELTS_V8,
         0 as OPJ_UINT32,
-        1i32,
+        true,
       );
-      assert!(ret != 0);
+      assert!(ret);
       i += 1;
     }
   }
@@ -2355,13 +2338,12 @@ fn opj_v8dwt_interleave_v(
 }
 fn opj_v8dwt_interleave_partial_v(
   mut dwt: &opj_v8dwt_t,
-  mut sa: *mut opj_sparse_array_int32_t,
-  mut sa_col: OPJ_UINT32,
-  mut nb_elts_read: OPJ_UINT32,
+  sa: &SparseArray,
+  sa_col: OPJ_UINT32,
+  nb_elts_read: OPJ_UINT32,
 ) {
   unsafe {
-    let mut ret: OPJ_BOOL = 0;
-    ret = opj_sparse_array_int32_read(
+    let ret = sparse_array_read(
       sa,
       sa_col,
       (*dwt).win_l_x0,
@@ -2373,10 +2355,10 @@ fn opj_v8dwt_interleave_partial_v(
         .offset((2u32).wrapping_mul((*dwt).win_l_x0) as isize) as *mut OPJ_INT32,
       1 as OPJ_UINT32,
       2 * NB_ELTS_V8,
-      1i32,
+      true,
     );
-    assert!(ret != 0);
-    ret = opj_sparse_array_int32_read(
+    assert!(ret);
+    let ret = sparse_array_read(
       sa,
       sa_col,
       ((*dwt).sn as OPJ_UINT32).wrapping_add((*dwt).win_h_x0),
@@ -2389,9 +2371,9 @@ fn opj_v8dwt_interleave_partial_v(
         .offset((2u32).wrapping_mul((*dwt).win_h_x0) as isize) as *mut OPJ_INT32,
       1 as OPJ_UINT32,
       2 * NB_ELTS_V8,
-      1i32,
+      true,
     );
-    assert!(ret != 0);
+    assert!(ret);
   }
 }
 
@@ -2727,7 +2709,6 @@ fn opj_dwt_decode_partial_97(
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut sa = std::ptr::null_mut::<opj_sparse_array_int32_t>();
     let mut h = opj_v8dwt_t {
       wavelet: std::ptr::null_mut::<opj_v8_t>(),
       dn: 0,
@@ -2770,13 +2751,14 @@ fn opj_dwt_decode_partial_97(
     if (*tr_max).x0 == (*tr_max).x1 || (*tr_max).y0 == (*tr_max).y1 {
       return 1i32;
     }
-    sa = opj_dwt_init_sparse_array(tilec, numres);
-    if sa.is_null() {
+    let mut sa = if let Some(sa) = opj_dwt_init_sparse_array(tilec, numres) {
+      sa
+    } else {
       return 0i32;
-    }
+    };
     if numres == 1u32 {
-      let mut ret = opj_sparse_array_int32_read(
-        sa,
+      let ret = sparse_array_read(
+        &sa,
         (*tr_max).win_x0.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
         (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
         (*tr_max).win_x1.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
@@ -2784,24 +2766,21 @@ fn opj_dwt_decode_partial_97(
         (*tilec).data_win,
         1 as OPJ_UINT32,
         (*tr_max).win_x1.wrapping_sub((*tr_max).win_x0),
-        1i32,
+        true,
       );
-      assert!(ret != 0);
-      opj_sparse_array_int32_free(sa);
+      assert!(ret);
       return 1i32;
     }
     l_data_size = opj_dwt_max_resolution(tr, numres) as OPJ_SIZE_T;
     /* overflow check */
     if l_data_size > (usize::MAX).wrapping_div(core::mem::size_of::<opj_v8_t>()) {
       /* FIXME event manager error callback */
-      opj_sparse_array_int32_free(sa);
       return 0i32;
     }
     h.wavelet = opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()))
       as *mut opj_v8_t;
     if h.wavelet.is_null() {
       /* FIXME event manager error callback */
-      opj_sparse_array_int32_free(sa);
       return 0i32;
     }
     v.wavelet = h.wavelet;
@@ -2980,10 +2959,10 @@ fn opj_dwt_decode_partial_97(
           || j + (NB_ELTS_V8 - 1) >= win_lh_y0.wrapping_add(v.sn as OPJ_UINT32)
             && j < win_lh_y1.wrapping_add(v.sn as OPJ_UINT32)
         {
-          opj_v8dwt_interleave_partial_h(&h, sa, j, opj_uint_min(NB_ELTS_V8, rh.wrapping_sub(j)));
+          opj_v8dwt_interleave_partial_h(&h, &sa, j, opj_uint_min(NB_ELTS_V8, rh.wrapping_sub(j)));
           opj_v8dwt_decode(&h);
-          if opj_sparse_array_int32_write(
-            sa,
+          if !sparse_array_write(
+            &mut sa,
             win_tr_x0,
             j,
             win_tr_x1,
@@ -2994,11 +2973,9 @@ fn opj_dwt_decode_partial_97(
               .offset(0) as *mut OPJ_FLOAT32 as *mut OPJ_INT32,
             NB_ELTS_V8,
             1 as OPJ_UINT32,
-            1i32,
-          ) == 0
-          {
+            true,
+          ) {
             /* FIXME event manager error callback */
-            opj_sparse_array_int32_free(sa);
             opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
             return 0i32;
           }
@@ -3010,10 +2987,10 @@ fn opj_dwt_decode_partial_97(
           || j + (NB_ELTS_V8 - 1) >= win_lh_y0.wrapping_add(v.sn as OPJ_UINT32)
             && j < win_lh_y1.wrapping_add(v.sn as OPJ_UINT32))
       {
-        opj_v8dwt_interleave_partial_h(&h, sa, j, rh.wrapping_sub(j));
+        opj_v8dwt_interleave_partial_h(&h, &sa, j, rh.wrapping_sub(j));
         opj_v8dwt_decode(&h);
-        if opj_sparse_array_int32_write(
-          sa,
+        if !sparse_array_write(
+          &mut sa,
           win_tr_x0,
           j,
           win_tr_x1,
@@ -3024,11 +3001,9 @@ fn opj_dwt_decode_partial_97(
             .offset(0) as *mut OPJ_FLOAT32 as *mut OPJ_INT32,
           NB_ELTS_V8,
           1 as OPJ_UINT32,
-          1i32,
-        ) == 0
-        {
+          true,
+        ) {
           /* FIXME event manager error callback */
-          opj_sparse_array_int32_free(sa);
           opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
           return 0i32;
         }
@@ -3040,10 +3015,10 @@ fn opj_dwt_decode_partial_97(
       j = win_tr_x0;
       while j < win_tr_x1 {
         let mut nb_elts = opj_uint_min(NB_ELTS_V8, win_tr_x1.wrapping_sub(j));
-        opj_v8dwt_interleave_partial_v(&v, sa, j, nb_elts);
+        opj_v8dwt_interleave_partial_v(&v, &sa, j, nb_elts);
         opj_v8dwt_decode(&v);
-        if opj_sparse_array_int32_write(
-          sa,
+        if !sparse_array_write(
+          &mut sa,
           j,
           win_tr_y0,
           j.wrapping_add(nb_elts),
@@ -3054,11 +3029,9 @@ fn opj_dwt_decode_partial_97(
             .offset(0) as *mut OPJ_FLOAT32 as *mut OPJ_INT32,
           1 as OPJ_UINT32,
           NB_ELTS_V8,
-          1i32,
-        ) == 0
-        {
+          true,
+        ) {
           /* FIXME event manager error callback */
-          opj_sparse_array_int32_free(sa);
           opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
           return 0i32;
         }
@@ -3066,8 +3039,8 @@ fn opj_dwt_decode_partial_97(
       }
       resno += 1;
     }
-    let mut ret_0 = opj_sparse_array_int32_read(
-      sa,
+    let ret_0 = sparse_array_read(
+      &sa,
       (*tr_max).win_x0.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
       (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
       (*tr_max).win_x1.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
@@ -3075,10 +3048,9 @@ fn opj_dwt_decode_partial_97(
       (*tilec).data_win,
       1 as OPJ_UINT32,
       (*tr_max).win_x1.wrapping_sub((*tr_max).win_x0),
-      1i32,
+      true,
     );
-    assert!(ret_0 != 0);
-    opj_sparse_array_int32_free(sa);
+    assert!(ret_0);
     opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
     1i32
   }
