@@ -1,9 +1,188 @@
-use clap::Parser;
 use image::{self, DynamicImage};
 use openjp2::{detect_format_from_file, image::opj_image, openjpeg::*};
+use openjp2_tools::getopt::{GetOpts, OptDef, ParsedOpt};
 use std::ffi::CString;
 use std::io;
 use std::path::{Path, PathBuf};
+
+// New struct to hold parsed CLI options
+struct CLIOptions {
+  compression_params: CompressionParameters,
+  img_folder: ImageFolder,
+}
+
+// Add function to create option definitions
+fn create_option_defs() -> Vec<OptDef> {
+  vec![
+    OptDef::both('i', "input", true),
+    OptDef::both('o', "output", true),
+    OptDef::both('h', "help", false),
+    OptDef::long("ImgDir", 'z', true),
+    OptDef::long("OutFor", 'O', true),
+    OptDef::both('B', "threads", true),
+    OptDef::short('n', true),
+    OptDef::short('r', true),
+    OptDef::short('p', true),
+    OptDef::short('t', true),
+    OptDef::short('I', false),
+    OptDef::long("GuardBits", 'G', true),
+    OptDef::long("mct", 'Y', true),
+    OptDef::short('m', true),
+    OptDef::short('F', true),
+    OptDef::short('s', true),
+    OptDef::short('b', true),
+    OptDef::short('c', true),
+    OptDef::long("ROI", 'R', true),
+    OptDef::short('q', true),
+    OptDef::long("SOP", 'S', false),
+    OptDef::long("EPH", 'E', false),
+    OptDef::long("PLT", 'A', false),
+    OptDef::long("TLM", 'D', false),
+    OptDef::short('M', true),
+    OptDef::long("POC", 'P', true),
+    OptDef::long("cinema2K", 'w', true),
+    OptDef::long("cinema4K", 'y', false),
+    OptDef::long("IMF", 'Z', true),
+    OptDef::long("jpip", 'J', false),
+    OptDef::short('C', true),
+    OptDef::short('d', true),
+    OptDef::short('T', true),
+    OptDef::long("TP", 'u', true),
+  ]
+}
+
+fn parse_cli_options(args: Vec<String>) -> Result<CLIOptions, Box<dyn std::error::Error>> {
+  let mut compression_params = CompressionParameters::default();
+  let mut img_folder = ImageFolder {
+    img_dir_path: None,
+    out_format: None,
+    set_img_dir: false,
+    set_out_format: false,
+  };
+
+  let parser = GetOpts::new(&create_option_defs());
+
+  for opt in parser.parse_args(args) {
+    match opt {
+      ParsedOpt::Program(_) => continue,
+      ParsedOpt::Opt(c, arg) => match c {
+        'i' => {
+          let input = PathBuf::from(arg.unwrap());
+          compression_params.decode_format =
+            get_file_format(input.to_str().ok_or("Invalid input path")?)?;
+          compression_params.input_file = Some(input);
+        }
+        'o' => {
+          let output = PathBuf::from(arg.unwrap());
+          compression_params.codec_format =
+            get_codec_format(output.to_str().ok_or("Invalid output path")?)?;
+          compression_params.output_file = Some(output);
+        }
+        'z' => {
+          img_folder.img_dir_path = Some(PathBuf::from(arg.unwrap()));
+          img_folder.set_img_dir = true;
+        }
+        'O' => {
+          img_folder.out_format = Some(arg.unwrap());
+          img_folder.set_out_format = true;
+        }
+        'n' => compression_params.num_resolutions = arg.unwrap().parse()?,
+        'r' => {
+          compression_params.rates = CompressionParameters::parse_quality_layers(&arg.unwrap())?
+        }
+        'p' => compression_params.prog_order = parse_progression_order(&arg.unwrap())?,
+        't' => {
+          let (w, h) = parse_dimensions(&arg.unwrap())?;
+          compression_params.tile_size = (w, h);
+          compression_params.tile_size_on = true;
+        }
+        'I' => compression_params.irreversible = true,
+        'G' => compression_params.guard_bits = arg.unwrap().parse()?,
+        'Y' => compression_params.mct_mode = arg.unwrap().parse()?,
+        'S' => compression_params.csty |= 0x02,
+        'E' => compression_params.csty |= 0x04,
+        'M' => compression_params.mode_switch = arg.unwrap().parse()?,
+        _ => return Err(format!("Unhandled option: {}", c).into()),
+      },
+      ParsedOpt::InvalidOpt(opt) => {
+        return Err(format!("Invalid option: {}", opt).into());
+      }
+    }
+  }
+
+  // Validate parameters
+  if img_folder.set_img_dir {
+    if compression_params.input_file.is_some() {
+      return Err("Cannot use -ImgDir with -i".into());
+    }
+    if !img_folder.set_out_format {
+      return Err("Must specify -OutFor when using -ImgDir".into());
+    }
+  } else if compression_params.input_file.is_none() || compression_params.output_file.is_none() {
+    return Err("Must specify input (-i) and output (-o) files".into());
+  }
+
+  Ok(CLIOptions {
+    compression_params,
+    img_folder,
+  })
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+  // Parse command line options
+  let cli_opts = parse_cli_options(std::env::args().collect())?;
+
+  // Process files
+  let start_time = std::time::Instant::now();
+  let mut num_compressed = 0;
+
+  if let Some(dir) = cli_opts.img_folder.img_dir_path.as_ref() {
+    // Process directory
+    let dir_contents = DirContents::new(dir)?;
+
+    for file in dir_contents.files {
+      if let Ok(_format) = detect_format_from_file(&file) {
+        println!("\nProcessing: {}", file.display());
+
+        // Update parameters for this file
+        let mut params = cli_opts.compression_params.clone();
+        params.input_file = Some(file.clone());
+        params.decode_format = get_file_format(file.to_str().ok_or("Invalid path")?)?;
+
+        // Generate output filename
+        let output = generate_output_path(&file, &cli_opts.img_folder)?;
+        params.output_file = Some(output.clone());
+
+        // Process file
+        let image = load_image(&file, &params)?;
+        compress_image(image, &params, &output)?;
+
+        num_compressed += 1;
+      }
+    }
+  } else if let Some(input) = cli_opts.compression_params.input_file.as_ref() {
+    // Process single file
+    let image = load_image(input, &cli_opts.compression_params)?;
+    let output = cli_opts
+      .compression_params
+      .output_file
+      .as_ref()
+      .ok_or("No output file specified")?;
+    compress_image(image, &cli_opts.compression_params, output)?;
+    num_compressed += 1;
+  }
+
+  let elapsed = start_time.elapsed();
+  if num_compressed > 0 {
+    println!(
+      "Compressed {} files in {:.2} seconds",
+      num_compressed,
+      elapsed.as_secs_f64()
+    );
+  }
+
+  Ok(())
+}
 
 // Equivalent to img_fol_t
 struct ImageFolder {
@@ -14,8 +193,7 @@ struct ImageFolder {
 }
 
 // Basic compression parameters (subset of opj_cparameters_t)
-#[derive(Default)]
-#[allow(dead_code)]
+#[derive(Clone, Debug, Default)]
 struct CompressionParameters {
   input_file: Option<PathBuf>,
   output_file: Option<PathBuf>,
@@ -52,7 +230,7 @@ struct CompressionParameters {
   // ... add more parameters as needed
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 enum CodecFormat {
   #[default]
   Unknown,
@@ -60,7 +238,7 @@ enum CodecFormat {
   JP2,
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 enum DecodeFormat {
   #[default]
   Unknown,
@@ -74,7 +252,7 @@ enum DecodeFormat {
   PNG,
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 enum ProgressionOrder {
   #[default]
   LRCP,
@@ -85,8 +263,7 @@ enum ProgressionOrder {
 }
 
 // For raw image parameters
-#[derive(Default)]
-#[allow(dead_code)]
+#[derive(Clone, Debug, Default)]
 pub struct RawParameters {
   width: u32,
   height: u32,
@@ -96,253 +273,10 @@ pub struct RawParameters {
   components: Vec<RawComponentParameters>,
 }
 
-#[derive(Default, Clone)]
-#[allow(dead_code)]
+#[derive(Clone, Debug, Default)]
 pub struct RawComponentParameters {
   dx: u32,
   dy: u32,
-}
-
-#[derive(Parser)]
-#[command(name = "opj_compress")]
-#[command(version = "3.0.0")]
-#[command(about = "JPEG 2000 compression utility")]
-struct Args {
-  /// Input file
-  #[arg(short = 'i', long = "input")]
-  input: Option<PathBuf>,
-
-  /// Output file (.j2k, .jp2)
-  #[arg(short = 'o', long = "output")]
-  output: Option<PathBuf>,
-
-  /// Image directory path
-  #[arg(long = "ImgDir")]
-  img_dir: Option<PathBuf>,
-
-  /// Output format (J2K, JP2)
-  #[arg(long = "OutFor")]
-  out_format: Option<String>,
-
-  /// Number of threads (or ALL_CPUS)
-  #[arg(short = 'B', long = "threads")]
-  threads: Option<String>,
-
-  /// Number of resolutions
-  #[arg(short = 'n')]
-  resolutions: Option<u32>,
-
-  /// Compression ratios
-  #[arg(short = 'r')]
-  compression: Option<String>,
-
-  /// Progression order (LRCP, RLCP, RPCL, PCRL, CPRL)
-  #[arg(short = 'p')]
-  progression: Option<String>,
-
-  /// Tile size (width,height)
-  #[arg(short = 't')]
-  tile_size: Option<String>,
-
-  /// Use irreversible DWT 9-7
-  #[arg(short = 'I')]
-  irreversible: bool,
-
-  /// Guard bits (0-7)
-  #[arg(long = "GuardBits")]
-  guard_bits: Option<u32>,
-
-  /// Color transform: 0=none, 1=RGB->YCC, 2=custom
-  #[arg(long = "mct")]
-  mct_mode: Option<u32>,
-
-  /// Custom MCT transform file
-  #[arg(short = 'm')]
-  mct_file: Option<PathBuf>,
-
-  /// Raw image parameters - width,height,ncomp,bitdepth,[s|u],dx1,dy1:...:dxn,dyn
-  #[arg(short = 'F')]
-  raw_params: Option<String>,
-
-  /// Subsampling factors
-  #[arg(short = 's')]
-  subsampling: Option<String>,
-
-  /// Code-block size
-  #[arg(short = 'b')]
-  codeblock_size: Option<String>,
-
-  /// Precinct size
-  #[arg(short = 'c')]
-  precinct_size: Option<String>,
-
-  /// ROI: c=component,U=shift
-  #[arg(long = "ROI")]
-  roi: Option<String>,
-
-  /// Quality layers (PSNR/rates)
-  #[arg(short = 'q')]
-  quality_layers: Option<String>,
-
-  /// Enable SOP marker
-  #[arg(long = "SOP")]
-  sop: bool,
-
-  /// Enable EPH marker
-  #[arg(long = "EPH")]
-  eph: bool,
-
-  /// Enable PLT marker
-  #[arg(long = "PLT")]
-  plt: bool,
-
-  /// Enable TLM marker
-  #[arg(long = "TLM")]
-  tlm: bool,
-
-  /// Mode switches [1=BYPASS, 2=RESET, 4=RESTART, 8=VSC, 16=ERTERM, 32=SEGMARK]
-  #[arg(short = 'M')]
-  mode: Option<u32>,
-
-  /// Progression order change.
-  /// The syntax of a progression order change is the following:
-  /// T<tile>=<resStart>,<compStart>,<layerEnd>,<resEnd>,<compEnd>,<progOrder>
-  /// Example: -POC T1=0,0,1,5,3,CPRL/T1=5,0,1,6,3,CPRL
-  #[arg(long = "POC")]
-  poc: Option<String>,
-
-  /// Digital Cinema 2K profile (24/48 fps)
-  #[arg(long = "cinema2K")]
-  cinema2k: Option<u32>,
-
-  /// Digital Cinema 4K profile
-  #[arg(long = "cinema4K")]
-  cinema4k: bool,
-
-  /// IMF profile
-  #[arg(long = "IMF")]
-  imf: Option<String>,
-
-  /// JPIP indexing
-  #[arg(long = "jpip")]
-  jpip: bool,
-
-  /// Comment to add
-  #[arg(short = 'C')]
-  comment: Option<String>,
-
-  /// Image/tile origin offset
-  #[arg(short = 'd')]
-  offset: Option<String>,
-
-  /// Tile offset
-  #[arg(short = 'T')]
-  tile_offset: Option<String>,
-
-  /// Tile parts: R=resolution, L=layer, C=component
-  #[arg(long = "TP")]
-  tile_parts: Option<String>,
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-  let args = Args::parse();
-
-  // Initialize parameters
-  let mut compression_params = CompressionParameters::default();
-  let mut img_folder = ImageFolder {
-    img_dir_path: None,
-    out_format: None,
-    set_img_dir: false,
-    set_out_format: false,
-  };
-
-  // Parse input file/directory
-  if let Some(input) = args.input.clone() {
-    compression_params.decode_format =
-      get_file_format(input.to_str().ok_or("Invalid input path")?)?;
-    compression_params.input_file = Some(input);
-  }
-
-  if let Some(imgdir) = args.img_dir.clone() {
-    img_folder.img_dir_path = Some(imgdir);
-    img_folder.set_img_dir = true;
-  }
-
-  // Parse output file/format
-  if let Some(output) = args.output.clone() {
-    compression_params.codec_format =
-      get_codec_format(output.to_str().ok_or("Invalid output path")?)?;
-    compression_params.output_file = Some(output);
-  }
-
-  if let Some(format) = args.out_format.clone() {
-    img_folder.out_format = Some(format);
-    img_folder.set_out_format = true;
-  }
-
-  // Validate parameters
-  if img_folder.set_img_dir {
-    if compression_params.input_file.is_some() {
-      return Err("Cannot use -ImgDir with -i".into());
-    }
-    if !img_folder.set_out_format {
-      return Err("Must specify -OutFor when using -ImgDir".into());
-    }
-  } else if compression_params.input_file.is_none() || compression_params.output_file.is_none() {
-    return Err("Must specify input (-i) and output (-o) files".into());
-  }
-
-  // Update compression parameters from args
-  compression_params.update_from_args(&args)?;
-
-  // Process files
-  let start_time = std::time::Instant::now();
-  let mut num_compressed = 0;
-
-  if let Some(dir) = args.img_dir.as_ref() {
-    // Process directory
-    let dir_contents = DirContents::new(dir)?;
-
-    for file in dir_contents.files {
-      if let Ok(_format) = detect_format_from_file(&file) {
-        println!("\nProcessing: {}", file.display());
-
-        // Update parameters for this file
-        compression_params.input_file = Some(file.clone());
-        compression_params.decode_format = get_file_format(file.to_str().ok_or("Invalid path")?)?;
-
-        // Generate output filename
-        let output = generate_output_path(&file, &img_folder)?;
-        compression_params.output_file = Some(output.clone());
-
-        // Process file
-        let image = load_image(&file, &compression_params)?;
-        compress_image(image, &compression_params, &output)?;
-
-        num_compressed += 1;
-      }
-    }
-  } else if let Some(input) = compression_params.input_file.as_ref() {
-    // Process single file
-    let image = load_image(input, &compression_params)?;
-    let output = compression_params
-      .output_file
-      .as_ref()
-      .ok_or("No output file specified")?;
-    compress_image(image, &compression_params, output)?;
-    num_compressed += 1;
-  }
-
-  let elapsed = start_time.elapsed();
-  if num_compressed > 0 {
-    println!(
-      "Compressed {} files in {:.2} seconds",
-      num_compressed,
-      elapsed.as_secs_f64()
-    );
-  }
-
-  Ok(())
 }
 
 fn get_file_format(filename: &str) -> Result<DecodeFormat, Box<dyn std::error::Error>> {
@@ -374,7 +308,7 @@ fn get_codec_format(filename: &str) -> Result<CodecFormat, Box<dyn std::error::E
 }
 
 // Helper structs for parameter parsing
-#[allow(dead_code)]
+#[derive(Clone, Debug, Default)]
 struct POCMarker {
   tile: u32,
   resolution: u32,
@@ -383,7 +317,7 @@ struct POCMarker {
   prog_order: ProgressionOrder,
 }
 
-#[allow(dead_code)]
+#[derive(Clone, Debug, Default)]
 struct IMFProfile {
   profile: u32,
   mainlevel: u32,
@@ -466,7 +400,6 @@ impl CompressionParameters {
       .collect()
   }
 
-  #[allow(dead_code)]
   fn parse_poc_markers(poc_str: &str) -> Result<Vec<POCMarker>, ParameterError> {
     poc_str
       .split('/')
@@ -507,67 +440,6 @@ impl CompressionParameters {
         })
       })
       .collect()
-  }
-
-  fn update_from_args(&mut self, args: &Args) -> Result<(), Box<dyn std::error::Error>> {
-    // Handle resolutions
-    if let Some(res) = args.resolutions {
-      self.num_resolutions = res;
-    }
-
-    // Handle compression ratios
-    if let Some(ref comp) = args.compression {
-      self.rates = Self::parse_quality_layers(comp)?;
-    }
-
-    // Handle progression order
-    if let Some(ref prog) = args.progression {
-      self.prog_order = parse_progression_order(prog)?;
-    }
-
-    // Handle tile size
-    if let Some(ref tile_size) = args.tile_size {
-      let (w, h) = parse_dimensions(tile_size)?;
-      self.tile_size = (w, h);
-      self.tile_size_on = true;
-    }
-
-    // Handle raw parameters
-    if let Some(ref raw) = args.raw_params {
-      let _raw_params = Self::parse_raw_params(raw)?;
-      // TODO: Update compression params with raw params
-    }
-
-    // Handle code block size
-    if let Some(ref block_size) = args.codeblock_size {
-      let (w, h) = parse_dimensions(block_size)?;
-      self.codeblock_width = w;
-      self.codeblock_height = h;
-    }
-
-    // Handle markers
-    self.csty |= if args.sop { 0x02 } else { 0 };
-    self.csty |= if args.eph { 0x04 } else { 0 };
-
-    // Handle mode switches
-    if let Some(mode) = args.mode {
-      self.mode_switch = mode;
-    }
-
-    // Handle ROI
-    if let Some(ref roi) = args.roi {
-      let (comp, shift) = parse_roi(roi)?;
-      self.roi_comp = comp;
-      self.roi_shift = shift;
-    }
-
-    // Handle other parameters
-    self.guard_bits = args.guard_bits.unwrap_or(2);
-    self.mct_mode = args.mct_mode.unwrap_or(1); // Default to RGB->YCC
-    self.jpip_on = args.jpip;
-    self.comment = args.comment.clone();
-
-    Ok(())
   }
 }
 
