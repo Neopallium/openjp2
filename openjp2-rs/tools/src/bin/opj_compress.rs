@@ -25,6 +25,7 @@ enum CompressOpt {
   TileSize,
   Irreversible,
   GuardBits,
+  TargetBitDepth,
   MCT,
   ROI,
   Quality,
@@ -41,43 +42,270 @@ enum CompressOpt {
   CodeBlockSize,
   PrecinctSize,
   TileParts,
+  RawFormat,
+  Comment,
+  SubsamplingFactor,
+  IndexFile,
+  ImageOffset,
+  TileOffset,
+  FixedLayer,
+}
+
+fn encode_help_display() {
+  println!("\nThis is the opj_compress utility from the OpenJPEG project.");
+  println!("It compresses various image formats with the JPEG 2000 algorithm.");
+  println!(
+    "It has been compiled against openjp2 library v{}.\n",
+    OPJ_VERSION,
+  );
+
+  println!("Default encoding options:");
+  println!("-------------------------");
+  println!("");
+  println!(" * Lossless");
+  println!(" * 1 tile");
+  println!(" * RGB->YCC conversion if at least 3 components");
+  println!(" * Size of precinct : 2^15 x 2^15 (means 1 precinct)");
+  println!(" * Size of code-block : 64 x 64");
+  println!(" * Number of resolutions: 6");
+  println!(" * No SOP marker in the codestream");
+  println!(" * No EPH marker in the codestream");
+  println!(" * No sub-sampling in x or y direction");
+  println!(" * No mode switch activated");
+  println!(" * Progression order: LRCP");
+  println!(" * No ROI upshifted");
+  println!(" * No offset of the origin of the image");
+  println!(" * No offset of the origin of the tiles");
+  println!(" * Reversible DWT 5-3");
+  println!("");
+
+  println!("Note:");
+  println!("-----");
+  println!("");
+  println!("The markers written to the main_header are : SOC SIZ COD QCD COM.");
+  println!("COD and QCD never appear in the tile_header.");
+  println!("");
+
+  println!("Parameters:");
+  println!("-----------");
+  println!("");
+  println!("Required Parameters (except with -h):");
+  println!("One of the two options -ImgDir or -i must be used");
+  println!("");
+  println!("-i <file>");
+  println!("    Input file");
+  println!("    Known extensions are <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|TIFF|RAW|YUV|RAWL|TGA>");
+  println!("    If used, '-o <file>' must be provided");
+  println!("-o <compressed file>");
+  println!("    Output file (accepted extensions are j2k or jp2).");
+  println!("-ImgDir <dir>");
+  println!("    Image file Directory path (example ../Images) ");
+  println!("    When using this option -OutFor must be used");
+  println!("-OutFor <J2K|J2C|JP2>");
+  println!("    Output format for compressed files.");
+  println!("    Required only if -ImgDir is used");
+  println!("-F <width>,<height>,<ncomp>,<bitdepth>,{{s,u}}@<dx1>x<dy1>:...:<dxn>x<dyn>");
+  println!("    Characteristics of the raw or yuv input image");
+  println!("    If subsampling is omitted, 1x1 is assumed for all components");
+  println!("     Example: -F 512,512,3,8,u@1x1:2x2:2x2");
+  println!("              for raw or yuv 512x512 size with 4:2:0 subsampling");
+  println!("    Required only if RAW or RAWL input file is provided.");
+  println!("");
+  println!("Optional Parameters:");
+  println!("");
+  println!("-h");
+  println!("    Display the help information.");
+  println!("-r <compression ratio>,<compression ratio>,...");
+  println!("    Different compression ratios for successive layers.");
+  println!("    The rate specified for each quality level is the desired");
+  println!("    compression factor (use 1 for lossless)");
+  println!("    Decreasing ratios required.");
+  println!("      Example: -r 20,10,1 means ");
+  println!("            quality layer 1: compress 20x, ");
+  println!("            quality layer 2: compress 10x ");
+  println!("            quality layer 3: compress lossless");
+  println!("    Options -r and -q cannot be used together.");
+  println!("-q <psnr value>,<psnr value>,<psnr value>,...");
+  println!("    Different psnr for successive layers (-q 30,40,50).");
+  println!("    Increasing PSNR values required, except 0 which can");
+  println!("    be used for the last layer to indicate it is lossless.");
+  println!("    Options -r and -q cannot be used together.");
+  println!("-n <number of resolutions>");
+  println!("    Number of resolutions.");
+  println!("    It corresponds to the number of DWT decompositions +1. ");
+  println!("    Default: 6.");
+  println!("-TargetBitDepth <target bit depth>");
+  println!("    Target bit depth.");
+  println!("    Number of bits per component to use from input image");
+  println!("    if all bits are unwanted.");
+  println!("    (Currently only implemented for TIF.)");
+  println!("-b <cblk width>,<cblk height>");
+  println!("    Code-block size. The dimension must respect the constraint ");
+  println!("    defined in the JPEG-2000 standard (no dimension smaller than 4 ");
+  println!("    or greater than 1024, no code-block with more than 4096 coefficients).");
+  println!("    The maximum value authorized is 64x64. ");
+  println!("    Default: 64x64.");
+  println!("-c [<prec width>,<prec height>],[<prec width>,<prec height>],...");
+  println!("    Precinct size. Values specified must be power of 2. ");
+  println!("    Multiple records may be supplied, in which case the first record refers");
+  println!("    to the highest resolution level and subsequent records to lower ");
+  println!("    resolution levels. The last specified record is halved successively for each ");
+  println!("    remaining lower resolution levels.");
+  println!("    Default: 2^15x2^15 at each resolution.");
+  println!("-t <tile width>,<tile height>");
+  println!("    Tile size.");
+  println!("    Default: the dimension of the whole image, thus only one tile.");
+  println!("-p <LRCP|RLCP|RPCL|PCRL|CPRL>");
+  println!("    Progression order.");
+  println!("    Default: LRCP.");
+  println!("-s  <subX,subY>");
+  println!("    Subsampling factor.");
+  println!("    Subsampling bigger than 2 can produce error");
+  println!("    Default: no subsampling.");
+  println!("-POC <progression order change>/<progression order change>/...");
+  println!("    Progression order change.");
+  println!("    The syntax of a progression order change is the following:");
+  println!("    T<tile>=<resStart>,<compStart>,<layerEnd>,<resEnd>,<compEnd>,<progOrder>");
+  println!("      Example: -POC T1=0,0,1,5,3,CPRL/T1=5,0,1,6,3,CPRL");
+  println!("-SOP");
+  println!("    Write SOP marker before each packet.");
+  println!("-EPH");
+  println!("    Write EPH marker after each header packet.");
+  println!("-PLT");
+  println!("    Write PLT marker in tile-part header.");
+  println!("-TLM");
+  println!("    Write TLM marker in main header.");
+  println!("-M <key value>");
+  println!("    Mode switch.");
+  println!("    [1=BYPASS(LAZY) 2=RESET 4=RESTART(TERMALL)");
+  println!("    8=VSC 16=ERTERM(SEGTERM) 32=SEGMARK(SEGSYM)]");
+  println!("    Indicate multiple modes by adding their values.");
+  println!("      Example: RESTART(4) + RESET(2) + SEGMARK(32) => -M 38");
+  println!("-TP <R|L|C>");
+  println!("    Divide packets of every tile into tile-parts.");
+  println!("    Division is made by grouping Resolutions (R), Layers (L)");
+  println!("    or Components (C).");
+  println!("-ROI c=<component index>,U=<upshifting value>");
+  println!("    Quantization indices upshifted for a component. ");
+  println!("    Warning: This option does not implement the usual ROI (Region of Interest).");
+  println!("    It should be understood as a 'Component of Interest'. It offers the ");
+  println!("    possibility to upshift the value of a component during quantization step.");
+  println!("    The value after c= is the component number [0, 1, 2, ...] and the value ");
+  println!("    after U= is the value of upshifting. U must be in the range [0, 37].");
+  println!("-d <image offset X,image offset Y>");
+  println!("    Offset of the origin of the image.");
+  println!("-T <tile offset X,tile offset Y>");
+  println!("    Offset of the origin of the tiles.");
+  println!("-I");
+  println!("    Use the irreversible DWT 9-7.");
+  println!("-mct <0|1|2>");
+  println!("    Explicitly specifies if a Multiple Component Transform has to be used.");
+  println!("    0: no MCT ; 1: RGB->YCC conversion ; 2: custom MCT.");
+  println!("    If custom MCT, \"-m\" option has to be used (see hereunder).");
+  println!("    By default, RGB->YCC conversion is used if there are 3 components or more,");
+  println!("    no conversion otherwise.");
+  println!("-m <file>");
+  println!("    Use array-based MCT, values are coma separated, line by line");
+  println!("    No specific separators between lines, no space allowed between values.");
+  println!("    If this option is used, it automatically sets \"-mct\" option to 2.");
+  println!("-cinema2K <24|48>");
+  println!("    Digital Cinema 2K profile compliant codestream.");
+  println!("	Need to specify the frames per second for a 2K resolution.");
+  println!("    Only 24 or 48 fps are currently allowed.");
+  println!("-cinema4K");
+  println!("    Digital Cinema 4K profile compliant codestream.");
+  println!("	Frames per second not required. Default value is 24fps.");
+  println!("-IMF <PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS]");
+  println!("    Interoperable Master Format compliant codestream.");
+  println!("    <PROFILE>=2K, 4K, 8K, 2K_R, 4K_R or 8K_R.");
+  println!("    X >= 0 and X <= 11.");
+  println!("    Y >= 0 and Y <= 9.");
+  println!(
+    "    framerate > 0 may be specified to enhance checks and set maximum bit rate when Y > 0."
+  );
+  println!("-GuardBits value");
+  println!("    Number of guard bits in [0,7] range. Usually 1 or 2 (default value).");
+  println!("-jpip");
+  println!("    Write jpip codestream index box in JP2 output file.");
+  println!("    Currently supports only RPCL order.");
+  println!("-C <comment>");
+  println!("    Add <comment> in the comment marker segment.");
+  /*
+  if (opj_has_thread_support()) {
+    println!("-threads <num_threads|ALL_CPUS>");
+    println!("    Number of threads to use for encoding or ALL_CPUS for all available cores.");
+  }
+  */
+  println!("");
 }
 
 // Replace create_option_defs() with:
-fn create_option_defs() -> Vec<OptDef<CompressOpt>> {
-  vec![
-    OptDef::both('i', "input", CompressOpt::Input, true),
-    OptDef::both('o', "output", CompressOpt::Output, true),
-    OptDef::both('h', "help", CompressOpt::Help, false),
-    OptDef::long("ImgDir", CompressOpt::ImgDir, true),
-    OptDef::long("OutFor", CompressOpt::OutFormat, true),
-    OptDef::both('B', "threads", CompressOpt::Threads, true),
-    OptDef::short('n', CompressOpt::NumResolutions, true),
+fn validate_args(args: Vec<String>) -> Option<Vec<(CompressOpt, Option<String>)>> {
+  let parser = GetOpts::new(&[
+    OptDef::short('i', CompressOpt::Input, true),
+    OptDef::short('o', CompressOpt::Output, true),
     OptDef::short('r', CompressOpt::CompressionRatio, true),
-    OptDef::short('p', CompressOpt::ProgressionOrder, true),
-    OptDef::short('t', CompressOpt::TileSize, true),
-    OptDef::short('I', CompressOpt::Irreversible, false),
-    OptDef::long("GuardBits", CompressOpt::GuardBits, true),
-    OptDef::long("mct", CompressOpt::MCT, true),
-    OptDef::long("ROI", CompressOpt::ROI, true),
     OptDef::short('q', CompressOpt::Quality, true),
-    OptDef::long("SOP", CompressOpt::SOP, false),
-    OptDef::long("EPH", CompressOpt::EPH, false),
-    OptDef::long("PLT", CompressOpt::PLT, false),
-    OptDef::long("TLM", CompressOpt::TLM, false),
+    OptDef::short('n', CompressOpt::NumResolutions, true),
+    OptDef::short('b', CompressOpt::CodeBlockSize, true),
+    OptDef::short('c', CompressOpt::PrecinctSize, true),
+    OptDef::short('t', CompressOpt::TileSize, true),
+    OptDef::short('p', CompressOpt::ProgressionOrder, true),
+    OptDef::short('s', CompressOpt::SubsamplingFactor, true),
     OptDef::short('M', CompressOpt::ModeSwitch, true),
-    OptDef::long("POC", CompressOpt::POC, true),
-    OptDef::long("cinema2K", CompressOpt::Cinema2K, true),
-    OptDef::long("cinema4K", CompressOpt::Cinema4K, false),
-    OptDef::long("IMF", CompressOpt::IMF, true),
-    OptDef::long("jpip", CompressOpt::JPIP, false),
-    OptDef::short('C', CompressOpt::CodeBlockSize, true),
-    OptDef::short('P', CompressOpt::PrecinctSize, true),
-    OptDef::long("TP", CompressOpt::TileParts, true),
-  ]
+    OptDef::short('x', CompressOpt::IndexFile, true),
+    OptDef::short('d', CompressOpt::ImageOffset, true),
+    OptDef::short('T', CompressOpt::TileOffset, true),
+    OptDef::short('I', CompressOpt::Irreversible, false),
+    OptDef::short('f', CompressOpt::FixedLayer, true),
+    OptDef::short('C', CompressOpt::Comment, true),
+    OptDef::short('F', CompressOpt::RawFormat, true),
+    OptDef::short('h', CompressOpt::Help, false),
+    OptDef::both('w', "cinema2K", CompressOpt::Cinema2K, true),
+    OptDef::both('y', "cinema4K", CompressOpt::Cinema4K, false),
+    OptDef::both('z', "ImgDir", CompressOpt::ImgDir, true),
+    OptDef::both('u', "TP", CompressOpt::TileParts, true),
+    OptDef::both('S', "SOP", CompressOpt::SOP, false),
+    OptDef::both('E', "EPH", CompressOpt::EPH, false),
+    OptDef::both('O', "OutFor", CompressOpt::OutFormat, true),
+    OptDef::both('P', "POC", CompressOpt::POC, true),
+    OptDef::both('R', "ROI", CompressOpt::ROI, true),
+    OptDef::both('J', "jpip", CompressOpt::JPIP, false),
+    OptDef::both('Y', "mct", CompressOpt::MCT, true),
+    OptDef::both('Z', "IMF", CompressOpt::IMF, true),
+    OptDef::both('A', "PLT", CompressOpt::PLT, false),
+    OptDef::both('B', "threads", CompressOpt::Threads, true),
+    OptDef::both('D', "TLM", CompressOpt::TLM, false),
+    OptDef::both('X', "TargetBitDepth", CompressOpt::TargetBitDepth, true),
+    OptDef::both('G', "GuardBits", CompressOpt::GuardBits, true),
+  ]);
+
+  let args = parser.parse_args(args);
+  let mut valid_args = Vec::new();
+  let mut show_help = false;
+  for arg in args {
+    match arg {
+      ParsedOpt::Program(_) => (),
+      ParsedOpt::Opt(CompressOpt::Help, _) => show_help = true,
+      ParsedOpt::Opt(opt, arg) => valid_args.push((opt, arg)),
+      ParsedOpt::InvalidOpt(invalid) => {
+        println!("Invalid option: {}", invalid);
+        show_help = true;
+      }
+      ParsedOpt::MissingArgument(opt, _) => {
+        println!("Missing argument for option: {:?}", opt);
+        show_help = true;
+      }
+    }
+  }
+  if show_help {
+    encode_help_display();
+    return None;
+  }
+  Some(valid_args)
 }
 
-fn parse_cli_options(args: Vec<String>) -> Result<CLIOptions, Box<dyn std::error::Error>> {
+fn parse_cli_options(args: Vec<String>) -> Result<Option<CLIOptions>, Box<dyn std::error::Error>> {
   let mut compression_params = CompressionParameters::default();
   let mut img_folder = ImageFolder {
     img_dir_path: None,
@@ -86,58 +314,54 @@ fn parse_cli_options(args: Vec<String>) -> Result<CLIOptions, Box<dyn std::error
     set_out_format: false,
   };
 
-  let parser = GetOpts::new(&create_option_defs());
+  let args = match validate_args(args) {
+    Some(args) => args,
+    None => return Ok(None),
+  };
 
-  for opt in parser.parse_args(args) {
-    match opt {
-      ParsedOpt::Program(_) => continue,
-      ParsedOpt::Opt(opt, arg) => match opt {
-        CompressOpt::Input => {
-          let input = PathBuf::from(arg.unwrap());
-          compression_params.decode_format =
-            get_file_format(input.to_str().ok_or("Invalid input path")?)?;
-          compression_params.input_file = Some(input);
-        }
-        CompressOpt::Output => {
-          let output = PathBuf::from(arg.unwrap());
-          compression_params.codec_format =
-            get_codec_format(output.to_str().ok_or("Invalid output path")?)?;
-          compression_params.output_file = Some(output);
-        }
-        CompressOpt::ImgDir => {
-          img_folder.img_dir_path = Some(PathBuf::from(arg.unwrap()));
-          img_folder.set_img_dir = true;
-        }
-        CompressOpt::OutFormat => {
-          img_folder.out_format = Some(arg.unwrap());
-          img_folder.set_out_format = true;
-        }
-        CompressOpt::NumResolutions => compression_params.num_resolutions = arg.unwrap().parse()?,
-        CompressOpt::CompressionRatio => {
-          compression_params.rates = CompressionParameters::parse_quality_layers(&arg.unwrap())?
-        }
-        CompressOpt::ProgressionOrder => {
-          compression_params.prog_order = parse_progression_order(&arg.unwrap())?
-        }
-        CompressOpt::TileSize => {
-          let (w, h) = parse_dimensions(&arg.unwrap())?;
-          compression_params.tile_size = (w, h);
-          compression_params.tile_size_on = true;
-        }
-        CompressOpt::Irreversible => compression_params.irreversible = true,
-        CompressOpt::GuardBits => compression_params.guard_bits = arg.unwrap().parse()?,
-        CompressOpt::MCT => compression_params.mct_mode = arg.unwrap().parse()?,
-        CompressOpt::SOP => compression_params.csty |= 0x02,
-        CompressOpt::EPH => compression_params.csty |= 0x04,
-        CompressOpt::ModeSwitch => compression_params.mode_switch = arg.unwrap().parse()?,
-        _ => return Err(format!("Unhandled option: {:?}", opt).into()),
-      },
-      ParsedOpt::InvalidOpt(opt) => {
-        return Err(format!("Invalid option: {}", opt).into());
+  for arg in args {
+    match arg {
+      (CompressOpt::Input, Some(arg)) => {
+        let input = PathBuf::from(arg);
+        compression_params.decode_format =
+          get_file_format(input.to_str().ok_or("Invalid input path")?)?;
+        compression_params.input_file = Some(input);
       }
-      ParsedOpt::MissingArgument(opt, _) => {
-        return Err(format!("Missing argument for option: {:?}", opt).into());
+      (CompressOpt::Output, Some(arg)) => {
+        let output = PathBuf::from(arg);
+        compression_params.codec_format =
+          get_codec_format(output.to_str().ok_or("Invalid output path")?)?;
+        compression_params.output_file = Some(output);
       }
+      (CompressOpt::ImgDir, Some(arg)) => {
+        img_folder.img_dir_path = Some(PathBuf::from(arg));
+        img_folder.set_img_dir = true;
+      }
+      (CompressOpt::OutFormat, Some(arg)) => {
+        img_folder.out_format = Some(arg);
+        img_folder.set_out_format = true;
+      }
+      (CompressOpt::NumResolutions, Some(arg)) => {
+        compression_params.num_resolutions = arg.parse()?
+      }
+      (CompressOpt::CompressionRatio, Some(arg)) => {
+        compression_params.rates = CompressionParameters::parse_quality_layers(&arg)?
+      }
+      (CompressOpt::ProgressionOrder, Some(arg)) => {
+        compression_params.prog_order = parse_progression_order(&arg)?
+      }
+      (CompressOpt::TileSize, Some(arg)) => {
+        let (w, h) = parse_dimensions(&arg)?;
+        compression_params.tile_size = (w, h);
+        compression_params.tile_size_on = true;
+      }
+      (CompressOpt::Irreversible, None) => compression_params.irreversible = true,
+      (CompressOpt::GuardBits, Some(arg)) => compression_params.guard_bits = arg.parse()?,
+      (CompressOpt::MCT, Some(arg)) => compression_params.mct_mode = arg.parse()?,
+      (CompressOpt::SOP, None) => compression_params.csty |= 0x02,
+      (CompressOpt::EPH, None) => compression_params.csty |= 0x04,
+      (CompressOpt::ModeSwitch, Some(arg)) => compression_params.mode_switch = arg.parse()?,
+      (opt, arg) => return Err(format!("TODO: Unhandled option: {:?}, arg={:?}", opt, arg).into()),
     }
   }
 
@@ -153,15 +377,21 @@ fn parse_cli_options(args: Vec<String>) -> Result<CLIOptions, Box<dyn std::error
     return Err("Must specify input (-i) and output (-o) files".into());
   }
 
-  Ok(CLIOptions {
+  Ok(Some(CLIOptions {
     compression_params,
     img_folder,
-  })
+  }))
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Parse command line options
-  let cli_opts = parse_cli_options(std::env::args().collect())?;
+  let cli_opts = match parse_cli_options(std::env::args().collect())? {
+    Some(opts) => opts,
+    None => {
+      // Show help
+      return Ok(());
+    }
+  };
 
   // Process files
   let start_time = std::time::Instant::now();
