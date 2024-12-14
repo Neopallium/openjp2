@@ -211,43 +211,9 @@ impl<V: Clone> OptDef<V> {
 /// let opts = vec![OptDef::short('h', Opt::Help, false)];
 /// let parser = GetOpts::new(&opts);
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct GetOpts<V> {
   opt_map: HashMap<String, OptDef<V>>,
-}
-
-/// An iterator that processes command line arguments and yields parsed options.
-///
-/// Created by [`GetOpts::parse_args`].
-///
-/// # Type Parameters
-///
-/// * `V` - The type of value associated with options
-#[derive(Debug)]
-pub struct GetOptsIterator<V> {
-  program: Option<String>,
-  args: Peekable<std::vec::IntoIter<String>>,
-  opt_map: HashMap<String, OptDef<V>>,
-}
-
-/// Represents a parsed command line option or related value.
-///
-/// # Type Parameters
-///
-/// * `V` - The type of value associated with options
-///
-/// # Variants
-///
-/// * `Program` - The program name (first argument)
-/// * `Opt` - A matched option with its optional argument
-/// * `InvalidOpt` - An unrecognized option
-/// * `MissingArgument` - An option that requires an argument but didn't receive one
-#[derive(Debug, Clone)]
-pub enum ParsedOpt<V> {
-  Program(String),
-  Opt(V, Option<String>),
-  InvalidOpt(String),
-  MissingArgument(V, Option<String>),
 }
 
 impl<V: Clone> GetOpts<V> {
@@ -326,12 +292,54 @@ impl<V: Clone> GetOpts<V> {
     GetOptsIterator {
       program: args.next(),
       args: args.peekable(),
-      opt_map: self.opt_map.clone(),
+      opts: self,
     }
+  }
+
+  fn get_opt(&self, opt: &str) -> Option<&OptDef<V>> {
+    self.opt_map.get(opt)
+  }
+
+  fn has_opt(&self, opt: &str) -> bool {
+    self.opt_map.contains_key(opt)
   }
 }
 
-impl<V: Clone> Iterator for GetOptsIterator<V> {
+/// An iterator that processes command line arguments and yields parsed options.
+///
+/// Created by [`GetOpts::parse_args`].
+///
+/// # Type Parameters
+///
+/// * `V` - The type of value associated with options
+#[derive(Debug)]
+pub struct GetOptsIterator<'a, V> {
+  program: Option<String>,
+  args: Peekable<std::vec::IntoIter<String>>,
+  opts: &'a GetOpts<V>,
+}
+
+/// Represents a parsed command line option or related value.
+///
+/// # Type Parameters
+///
+/// * `V` - The type of value associated with options
+///
+/// # Variants
+///
+/// * `Program` - The program name (first argument)
+/// * `Opt` - A matched option with its optional argument
+/// * `InvalidOpt` - An unrecognized option
+/// * `MissingArgument` - An option that requires an argument but didn't receive one
+#[derive(Debug, Clone)]
+pub enum ParsedOpt<V> {
+  Program(String),
+  Opt(V, Option<String>),
+  InvalidOpt(String),
+  MissingArgument(V, Option<String>),
+}
+
+impl<V: Clone> Iterator for GetOptsIterator<'_, V> {
   type Item = ParsedOpt<V>;
 
   fn next(&mut self) -> Option<Self::Item> {
@@ -343,13 +351,13 @@ impl<V: Clone> Iterator for GetOptsIterator<V> {
         continue;
       }
 
-      if let Some(opt) = self.opt_map.get(&opt_str) {
+      if let Some(opt) = self.opts.get_opt(&opt_str) {
         if opt.has_arg {
           let val = opt.val.clone();
           return match self.args.peek() {
             Some(arg) => {
               // Detect if the argument is another option.
-              if self.opt_map.contains_key(arg) {
+              if self.opts.has_opt(arg) {
                 Some(ParsedOpt::MissingArgument(val, Some(arg.clone())))
               } else {
                 let arg = self.args.next().unwrap();
