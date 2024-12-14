@@ -8,7 +8,7 @@
 //!
 //! Basic usage with short options:
 //! ```rust
-//! use crate::getopt::{GetOpts, OptionDef, ParsedOpt};
+//! use openjp2_tools::getopt::{GetOpts, OptionDef, ParsedOpt};
 //!
 //! // Define options: -v (verbose), -o <file> (output file)
 //! let opts = vec![
@@ -32,7 +32,7 @@
 //!
 //! Using both short and long options:
 //! ```rust
-//! use crate::getopt::{GetOpts, OptionDef};
+//! use openjp2_tools::getopt::{GetOpts, OptionDef};
 //!
 //! let opts = vec![
 //!     OptionDef::both('h', "help", false),
@@ -40,9 +40,9 @@
 //!     OptionDef::long("verbose", 'v', false),
 //! ];
 //!
-//! // Will match both "-h" and "--help"
-//! // Will match both "-o file.txt" and "--output file.txt"
-//! // Will match "--verbose"
+//! // Will match both "-h" and "-help"
+//! // Will match both "-o file.txt" and "-output file.txt"
+//! // Will match "-verbose"
 //! ```
 //!
 //! # Error Handling
@@ -52,7 +52,7 @@
 //! - Missing required arguments
 //!
 //! ```rust
-//! use crate::getopt::{GetOpts, OptionDef, ParsedOpt};
+//! use openjp2_tools::getopt::{GetOpts, OptionDef, ParsedOpt};
 //!
 //! let opts = vec![OptionDef::short('a', true)];
 //! let parser = GetOpts::new(&opts);
@@ -66,7 +66,7 @@
 use std::collections::HashMap;
 
 /// Represents a command line option definition that can have a short form (-h),
-/// long form (--help), and optionally take an argument.
+/// long form (-help), and optionally take an argument.
 #[derive(Debug, Clone)]
 pub struct OptionDef {
   pub short: Option<char>,
@@ -89,7 +89,7 @@ impl OptionDef {
     }
   }
 
-  /// Creates a new option definition with only a long form (e.g., --help).
+  /// Creates a new option definition with only a long form (e.g., -help).
   ///
   /// * `long` - The string used for the long option
   /// * `val` - The character to return when this option is matched
@@ -262,7 +262,7 @@ mod tests {
 
   #[test]
   fn test_invalid_options() {
-    let args = vec!["prog", "-x", "-y", "val", "--unknown"];
+    let args = vec!["prog", "-x", "-y", "val", "-unknown"];
     let opts = vec![OptionDef::short('a', false), OptionDef::short('b', true)];
 
     let parser = GetOpts::new(&opts);
@@ -272,6 +272,6 @@ mod tests {
     assert!(matches!(parsed[0], ParsedOpt::Program(ref s) if s == "prog"));
     assert!(matches!(parsed[1], ParsedOpt::InvalidOpt(ref s) if s == "-x"));
     assert!(matches!(parsed[2], ParsedOpt::InvalidOpt(ref s) if s == "-y"));
-    assert!(matches!(parsed[3], ParsedOpt::InvalidOpt(ref s) if s == "--unknown"));
+    assert!(matches!(parsed[3], ParsedOpt::InvalidOpt(ref s) if s == "-unknown"));
   }
 }
