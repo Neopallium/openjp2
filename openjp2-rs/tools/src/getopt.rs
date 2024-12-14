@@ -8,12 +8,12 @@
 //!
 //! Basic usage with short options:
 //! ```rust
-//! use openjp2_tools::getopt::{GetOpts, OptionDef, ParsedOpt};
+//! use openjp2_tools::getopt::{GetOpts, OptDef, ParsedOpt};
 //!
 //! // Define options: -v (verbose), -o <file> (output file)
 //! let opts = vec![
-//!     OptionDef::short('v', false),     // no argument
-//!     OptionDef::short('o', true),      // requires argument
+//!     OptDef::short('v', false),     // no argument
+//!     OptDef::short('o', true),      // requires argument
 //! ];
 //!
 //! let parser = GetOpts::new(&opts);
@@ -32,12 +32,12 @@
 //!
 //! Using both short and long options:
 //! ```rust
-//! use openjp2_tools::getopt::{GetOpts, OptionDef};
+//! use openjp2_tools::getopt::{GetOpts, OptDef};
 //!
 //! let opts = vec![
-//!     OptionDef::both('h', "help", false),
-//!     OptionDef::both('o', "output", true),
-//!     OptionDef::long("verbose", 'v', false),
+//!     OptDef::both('h', "help", false),
+//!     OptDef::both('o', "output", true),
+//!     OptDef::long("verbose", 'v', false),
 //! ];
 //!
 //! // Will match both "-h" and "-help"
@@ -52,9 +52,9 @@
 //! - Missing required arguments
 //!
 //! ```rust
-//! use openjp2_tools::getopt::{GetOpts, OptionDef, ParsedOpt};
+//! use openjp2_tools::getopt::{GetOpts, OptDef, ParsedOpt};
 //!
-//! let opts = vec![OptionDef::short('a', true)];
+//! let opts = vec![OptDef::short('a', true)];
 //! let parser = GetOpts::new(&opts);
 //!
 //! // Missing argument for -a
@@ -68,14 +68,14 @@ use std::collections::HashMap;
 /// Represents a command line option definition that can have a short form (-h),
 /// long form (-help), and optionally take an argument.
 #[derive(Debug, Clone)]
-pub struct OptionDef {
+pub struct OptDef {
   pub short: Option<char>,
   pub long: Option<String>,
   pub has_arg: bool,
   pub val: char,
 }
 
-impl OptionDef {
+impl OptDef {
   /// Creates a new option definition with only a short form (e.g., -h).
   ///
   /// * `name` - The single character used for the short option
@@ -122,7 +122,7 @@ impl OptionDef {
 /// over command line arguments.
 #[derive(Debug)]
 pub struct GetOpts {
-  opt_map: HashMap<String, OptionDef>,
+  opt_map: HashMap<String, OptDef>,
 }
 
 /// An iterator that processes command line arguments and yields parsed options.
@@ -130,7 +130,7 @@ pub struct GetOpts {
 pub struct GetOptsIterator {
   program: Option<String>,
   args: std::vec::IntoIter<String>,
-  opt_map: HashMap<String, OptionDef>,
+  opt_map: HashMap<String, OptDef>,
 }
 
 /// Represents a parsed command line option or related value.
@@ -148,7 +148,7 @@ impl GetOpts {
   /// Creates a new option parser with the given option definitions.
   ///
   /// * `opts` - Slice of option definitions that will be recognized by the parser
-  pub fn new(opts: &[OptionDef]) -> Self {
+  pub fn new(opts: &[OptDef]) -> Self {
     let mut opt_map = HashMap::new();
     for opt in opts {
       if let Some(ref long) = opt.long {
@@ -226,9 +226,9 @@ mod tests {
   fn test_separate_options() {
     let args = vec!["prog", "-a", "-b", "val", "-c"];
     let opts = vec![
-      OptionDef::short('a', false),
-      OptionDef::short('b', true),
-      OptionDef::short('c', false),
+      OptDef::short('a', false),
+      OptDef::short('b', true),
+      OptDef::short('c', false),
     ];
 
     let parser = GetOpts::new(&opts);
@@ -245,9 +245,9 @@ mod tests {
   fn test_mixed_options() {
     let args = vec!["prog", "-h", "-verbose", "-o", "file.txt"];
     let opts = vec![
-      OptionDef::both('h', "help", false),
-      OptionDef::long("verbose", 'v', false),
-      OptionDef::both('o', "output", true),
+      OptDef::both('h', "help", false),
+      OptDef::long("verbose", 'v', false),
+      OptDef::both('o', "output", true),
     ];
 
     let parser = GetOpts::new(&opts);
@@ -263,7 +263,7 @@ mod tests {
   #[test]
   fn test_invalid_options() {
     let args = vec!["prog", "-x", "-y", "val", "-unknown"];
-    let opts = vec![OptionDef::short('a', false), OptionDef::short('b', true)];
+    let opts = vec![OptDef::short('a', false), OptDef::short('b', true)];
 
     let parser = GetOpts::new(&opts);
     let parsed: Vec<_> = parser.parse_args(args).collect();
