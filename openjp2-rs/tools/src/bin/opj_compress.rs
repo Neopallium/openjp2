@@ -11,43 +11,69 @@ struct CLIOptions {
   img_folder: ImageFolder,
 }
 
-// Add function to create option definitions
-fn create_option_defs() -> Vec<OptDef> {
+#[derive(Debug, Clone, PartialEq)]
+enum CompressOpt {
+  Input,
+  Output,
+  Help,
+  ImgDir,
+  OutFormat,
+  Threads,
+  NumResolutions,
+  CompressionRatio,
+  ProgressionOrder,
+  TileSize,
+  Irreversible,
+  GuardBits,
+  MCT,
+  ROI,
+  Quality,
+  SOP,
+  EPH,
+  PLT,
+  TLM,
+  ModeSwitch,
+  POC,
+  Cinema2K,
+  Cinema4K,
+  IMF,
+  JPIP,
+  CodeBlockSize,
+  PrecinctSize,
+  TileParts,
+}
+
+// Replace create_option_defs() with:
+fn create_option_defs() -> Vec<OptDef<CompressOpt>> {
   vec![
-    OptDef::both('i', "input", true),
-    OptDef::both('o', "output", true),
-    OptDef::both('h', "help", false),
-    OptDef::long("ImgDir", 'z', true),
-    OptDef::long("OutFor", 'O', true),
-    OptDef::both('B', "threads", true),
-    OptDef::short('n', true),
-    OptDef::short('r', true),
-    OptDef::short('p', true),
-    OptDef::short('t', true),
-    OptDef::short('I', false),
-    OptDef::long("GuardBits", 'G', true),
-    OptDef::long("mct", 'Y', true),
-    OptDef::short('m', true),
-    OptDef::short('F', true),
-    OptDef::short('s', true),
-    OptDef::short('b', true),
-    OptDef::short('c', true),
-    OptDef::long("ROI", 'R', true),
-    OptDef::short('q', true),
-    OptDef::long("SOP", 'S', false),
-    OptDef::long("EPH", 'E', false),
-    OptDef::long("PLT", 'A', false),
-    OptDef::long("TLM", 'D', false),
-    OptDef::short('M', true),
-    OptDef::long("POC", 'P', true),
-    OptDef::long("cinema2K", 'w', true),
-    OptDef::long("cinema4K", 'y', false),
-    OptDef::long("IMF", 'Z', true),
-    OptDef::long("jpip", 'J', false),
-    OptDef::short('C', true),
-    OptDef::short('d', true),
-    OptDef::short('T', true),
-    OptDef::long("TP", 'u', true),
+    OptDef::both('i', "input", CompressOpt::Input, true),
+    OptDef::both('o', "output", CompressOpt::Output, true),
+    OptDef::both('h', "help", CompressOpt::Help, false),
+    OptDef::long("ImgDir", CompressOpt::ImgDir, true),
+    OptDef::long("OutFor", CompressOpt::OutFormat, true),
+    OptDef::both('B', "threads", CompressOpt::Threads, true),
+    OptDef::short('n', CompressOpt::NumResolutions, true),
+    OptDef::short('r', CompressOpt::CompressionRatio, true),
+    OptDef::short('p', CompressOpt::ProgressionOrder, true),
+    OptDef::short('t', CompressOpt::TileSize, true),
+    OptDef::short('I', CompressOpt::Irreversible, false),
+    OptDef::long("GuardBits", CompressOpt::GuardBits, true),
+    OptDef::long("mct", CompressOpt::MCT, true),
+    OptDef::long("ROI", CompressOpt::ROI, true),
+    OptDef::short('q', CompressOpt::Quality, true),
+    OptDef::long("SOP", CompressOpt::SOP, false),
+    OptDef::long("EPH", CompressOpt::EPH, false),
+    OptDef::long("PLT", CompressOpt::PLT, false),
+    OptDef::long("TLM", CompressOpt::TLM, false),
+    OptDef::short('M', CompressOpt::ModeSwitch, true),
+    OptDef::long("POC", CompressOpt::POC, true),
+    OptDef::long("cinema2K", CompressOpt::Cinema2K, true),
+    OptDef::long("cinema4K", CompressOpt::Cinema4K, false),
+    OptDef::long("IMF", CompressOpt::IMF, true),
+    OptDef::long("jpip", CompressOpt::JPIP, false),
+    OptDef::short('C', CompressOpt::CodeBlockSize, true),
+    OptDef::short('P', CompressOpt::PrecinctSize, true),
+    OptDef::long("TP", CompressOpt::TileParts, true),
   ]
 }
 
@@ -65,47 +91,52 @@ fn parse_cli_options(args: Vec<String>) -> Result<CLIOptions, Box<dyn std::error
   for opt in parser.parse_args(args) {
     match opt {
       ParsedOpt::Program(_) => continue,
-      ParsedOpt::Opt(c, arg) => match c {
-        'i' => {
+      ParsedOpt::Opt(opt, arg) => match opt {
+        CompressOpt::Input => {
           let input = PathBuf::from(arg.unwrap());
           compression_params.decode_format =
             get_file_format(input.to_str().ok_or("Invalid input path")?)?;
           compression_params.input_file = Some(input);
         }
-        'o' => {
+        CompressOpt::Output => {
           let output = PathBuf::from(arg.unwrap());
           compression_params.codec_format =
             get_codec_format(output.to_str().ok_or("Invalid output path")?)?;
           compression_params.output_file = Some(output);
         }
-        'z' => {
+        CompressOpt::ImgDir => {
           img_folder.img_dir_path = Some(PathBuf::from(arg.unwrap()));
           img_folder.set_img_dir = true;
         }
-        'O' => {
+        CompressOpt::OutFormat => {
           img_folder.out_format = Some(arg.unwrap());
           img_folder.set_out_format = true;
         }
-        'n' => compression_params.num_resolutions = arg.unwrap().parse()?,
-        'r' => {
+        CompressOpt::NumResolutions => compression_params.num_resolutions = arg.unwrap().parse()?,
+        CompressOpt::CompressionRatio => {
           compression_params.rates = CompressionParameters::parse_quality_layers(&arg.unwrap())?
         }
-        'p' => compression_params.prog_order = parse_progression_order(&arg.unwrap())?,
-        't' => {
+        CompressOpt::ProgressionOrder => {
+          compression_params.prog_order = parse_progression_order(&arg.unwrap())?
+        }
+        CompressOpt::TileSize => {
           let (w, h) = parse_dimensions(&arg.unwrap())?;
           compression_params.tile_size = (w, h);
           compression_params.tile_size_on = true;
         }
-        'I' => compression_params.irreversible = true,
-        'G' => compression_params.guard_bits = arg.unwrap().parse()?,
-        'Y' => compression_params.mct_mode = arg.unwrap().parse()?,
-        'S' => compression_params.csty |= 0x02,
-        'E' => compression_params.csty |= 0x04,
-        'M' => compression_params.mode_switch = arg.unwrap().parse()?,
-        _ => return Err(format!("Unhandled option: {}", c).into()),
+        CompressOpt::Irreversible => compression_params.irreversible = true,
+        CompressOpt::GuardBits => compression_params.guard_bits = arg.unwrap().parse()?,
+        CompressOpt::MCT => compression_params.mct_mode = arg.unwrap().parse()?,
+        CompressOpt::SOP => compression_params.csty |= 0x02,
+        CompressOpt::EPH => compression_params.csty |= 0x04,
+        CompressOpt::ModeSwitch => compression_params.mode_switch = arg.unwrap().parse()?,
+        _ => return Err(format!("Unhandled option: {:?}", opt).into()),
       },
       ParsedOpt::InvalidOpt(opt) => {
         return Err(format!("Invalid option: {}", opt).into());
+      }
+      ParsedOpt::MissingArgument(opt, _) => {
+        return Err(format!("Missing argument for option: {:?}", opt).into());
       }
     }
   }
