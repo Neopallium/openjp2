@@ -1,8 +1,104 @@
-use crate::compress::CompressionParameters;
+use crate::compress::{CompressionParameters, DecodeFormat};
+use crate::params::ParameterError;
 use image::{self, DynamicImage};
 use openjp2::{image::opj_image, openjpeg::*};
 use std::io;
 use std::path::Path;
+use std::str::FromStr;
+
+// For raw image parameters
+#[derive(Clone, Debug, Default)]
+pub struct RawParameters {
+  pub width: u32,
+  pub height: u32,
+  pub num_comps: u32,
+  pub bit_depth: u32,
+  pub signed: bool,
+  pub components: Vec<RawComponentParameters>,
+}
+
+impl FromStr for RawParameters {
+  type Err = ParameterError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let parts: Vec<&str> = s.split(&[',', '@', ':']).collect();
+    if parts.len() < 5 {
+      return Err(ParameterError::InvalidFormat(
+        "Raw params format: width,height,ncomp,bitdepth,[s|u]@dx1,dy1:...:dxn,dyn".into(),
+      ));
+    }
+
+    let width = parts[0]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid width".into()))?;
+    let height = parts[1]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid height".into()))?;
+    let num_comps = parts[2]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid component count".into()))?;
+    let bit_depth = parts[3]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid bit depth".into()))?;
+    let signed = match parts[4] {
+      "s" => true,
+      "u" => false,
+      _ => {
+        return Err(ParameterError::InvalidValue(
+          "Signed flag must be 's' or 'u'".into(),
+        ))
+      }
+    };
+
+    let mut components = Vec::new();
+    if parts.len() > 5 {
+      // Parse subsampling factors
+      for comp in parts[5..].iter() {
+        components.push(comp.parse()?);
+      }
+    } else {
+      // Default 1x1 subsampling for all components
+      components = vec![RawComponentParameters { dx: 1, dy: 1 }; num_comps as usize];
+    }
+
+    Ok(RawParameters {
+      width,
+      height,
+      num_comps,
+      bit_depth,
+      signed,
+      components,
+    })
+  }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct RawComponentParameters {
+  pub dx: u32,
+  pub dy: u32,
+}
+
+impl FromStr for RawComponentParameters {
+  type Err = ParameterError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let factors: Vec<&str> = s.split('x').collect();
+    if factors.len() != 2 {
+      return Err(ParameterError::InvalidFormat(
+        "Subsampling format: dx x dy".into(),
+      ));
+    }
+
+    let dx = factors[0]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid dx".into()))?;
+    let dy = factors[1]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid dy".into()))?;
+
+    Ok(RawComponentParameters { dx, dy })
+  }
+}
 
 // Add error types
 #[derive(Debug)]
@@ -49,123 +145,226 @@ pub fn load_image(
   path: &Path,
   params: &CompressionParameters,
 ) -> Result<Box<opj_image>, ImageError> {
-  let img = match params.decode_format {
-    // TODO: handle raw
-    //DecodeFormat::RAW | DecodeFormat::RAWL => load_raw_image(path, params)?,
-    _ => load_regular_image(path)?,
-  };
-
   // Convert the loaded image to OpenJPEG format
-  convert_to_opj_image(img, params)
+  match params.decode_format {
+    Some(DecodeFormat::RAW | DecodeFormat::RAWL) => {
+      todo!("Implement loading raw image data");
+    }
+    _ => {
+      let image = read_image(path)?;
+      convert_image(image, params)
+    }
+  }
 }
 
-fn load_regular_image(path: &Path) -> Result<Vec<ImageComponent>, ImageError> {
-  let img = image::open(path).map_err(|e| ImageError::ReadError(e.to_string()))?;
+fn read_image(path: &Path) -> Result<DynamicImage, ImageError> {
+  Ok(image::open(path).map_err(|e| ImageError::ReadError(e.to_string()))?)
+}
 
-  match img {
-    DynamicImage::ImageRgb8(img) => {
-      let (width, height) = img.dimensions();
-      let mut components = Vec::new();
-
-      // Extract R, G, B components
-      for c in 0..3 {
-        let mut data = Vec::with_capacity((width * height) as usize);
-        for y in 0..height {
-          for x in 0..width {
-            let pixel = img.get_pixel(x, y);
-            data.push(pixel[c] as i32);
-          }
-        }
-
-        components.push(ImageComponent {
-          data,
-          width,
-          height,
-          precision: 8,
-          signed: false,
-          dx: 1,
-          dy: 1,
-        });
-      }
-
-      Ok(components)
-    }
+fn convert_image(
+  in_img: DynamicImage,
+  params: &CompressionParameters,
+) -> Result<Box<opj_image>, ImageError> {
+  // Get information from input image.
+  let (width, height, numcomps, color_space, bit_depth, sgnd) = match &in_img {
     DynamicImage::ImageLuma8(img) => {
       let (width, height) = img.dimensions();
-      let mut data = Vec::with_capacity((width * height) as usize);
-
-      for y in 0..height {
-        for x in 0..width {
-          let pixel = img.get_pixel(x, y);
-          data.push(pixel[0] as i32);
-        }
-      }
-
-      Ok(vec![ImageComponent {
-        data,
-        width,
-        height,
-        precision: 8,
-        signed: false,
-        dx: 1,
-        dy: 1,
-      }])
+      (width, height, 1, OPJ_CLRSPC_GRAY, 8, false)
     }
-    _ => Err(ImageError::InvalidFormat(
-      "Unsupported image format - convert to RGB8 or Luma8 first".into(),
-    )),
-  }
-}
+    DynamicImage::ImageLumaA8(img) => {
+      let (width, height) = img.dimensions();
+      (width, height, 2, OPJ_CLRSPC_GRAY, 8, false)
+    }
+    DynamicImage::ImageRgb8(img) => {
+      let (width, height) = img.dimensions();
+      (width, height, 3, OPJ_CLRSPC_SRGB, 8, false)
+    }
+    DynamicImage::ImageRgba8(img) => {
+      let (width, height) = img.dimensions();
+      (width, height, 4, OPJ_CLRSPC_SRGB, 8, false)
+    }
+    DynamicImage::ImageRgb16(img) => {
+      let (width, height) = img.dimensions();
+      (width, height, 3, OPJ_CLRSPC_SRGB, 16, false)
+    }
+    DynamicImage::ImageRgba16(img) => {
+      let (width, height) = img.dimensions();
+      (width, height, 4, OPJ_CLRSPC_SRGB, 16, false)
+    }
+    DynamicImage::ImageLuma16(img) => {
+      let (width, height) = img.dimensions();
+      (width, height, 1, OPJ_CLRSPC_GRAY, 16, false)
+    }
+    DynamicImage::ImageLumaA16(img) => {
+      let (width, height) = img.dimensions();
+      (width, height, 2, OPJ_CLRSPC_GRAY, 16, false)
+    }
+    DynamicImage::ImageRgb32F(img) => {
+      let (width, height) = img.dimensions();
+      (width, height, 3, OPJ_CLRSPC_SRGB, 32, true)
+    }
+    DynamicImage::ImageRgba32F(img) => {
+      let (width, height) = img.dimensions();
+      (width, height, 4, OPJ_CLRSPC_SRGB, 32, true)
+    }
+    _ => {
+      return Err(ImageError::InvalidFormat(
+        "Unsupported image format".to_string(),
+      ))
+    }
+  };
 
-fn convert_to_opj_image(
-  components: Vec<ImageComponent>,
-  _params: &CompressionParameters,
-) -> Result<Box<opj_image>, ImageError> {
-  if components.is_empty() {
-    return Err(ImageError::InvalidFormat("No image components".into()));
-  }
-
-  let reference = &components[0];
   let mut image = opj_image::new();
 
-  image.x0 = 0;
-  image.y0 = 0;
-  image.x1 = reference.width;
-  image.y1 = reference.height;
-  image.numcomps = components.len() as u32;
-  image.color_space = if components.len() >= 3 {
-    OPJ_CLRSPC_SRGB
-  } else {
-    OPJ_CLRSPC_GRAY
-  };
-  image.alloc_comps(image.numcomps, false);
+  let offset = params.image_offset();
+  let subsampling = params.subsampling();
+
+  image.x0 = offset.x;
+  image.y0 = offset.y;
+  image.x1 = offset.x + (width - 1) * subsampling.width + 1;
+  image.y1 = offset.y + (height - 1) * subsampling.height + 1;
+  image.color_space = color_space;
+  image.alloc_comps(numcomps);
 
   let comps = image.comps_mut().expect("We just allocated them");
-
-  for (i, comp) in components.iter().enumerate() {
-    let c = &mut comps[i];
-    c.dx = comp.dx;
-    c.dy = comp.dy;
-    c.w = comp.width;
-    c.h = comp.height;
-    c.x0 = 0;
-    c.y0 = 0;
-    c.prec = comp.precision;
-    c.bpp = comp.precision;
-    c.sgnd = comp.signed as u32;
-
-    let data_size = (comp.width * comp.height) as usize;
-    let data = unsafe {
-      std::slice::from_raw_parts_mut(
-        std::alloc::alloc(std::alloc::Layout::array::<i32>(data_size).unwrap()) as *mut i32,
-        data_size,
-      )
-    };
-    data.copy_from_slice(&comp.data);
-    c.data = data.as_mut_ptr();
+  // Initialize components
+  for comps in comps.iter_mut() {
+    comps.dx = subsampling.width;
+    comps.dy = subsampling.height;
+    comps.w = width;
+    comps.h = height;
+    comps.x0 = 0;
+    comps.y0 = 0;
+    comps.prec = bit_depth;
+    comps.sgnd = sgnd as u32;
+    if !comps.alloc_data() {
+      return Err(ImageError::InvalidFormat(
+        "Failed to allocate component data".into(),
+      ));
+    }
   }
 
-  image.comps = comps.as_mut_ptr();
+  // Get mutable references to component data.
+  let mut data = comps
+    .into_iter()
+    .map(|c| c.data_mut().expect("We just allocated it"));
 
+  match in_img {
+    DynamicImage::ImageLuma8(img) => {
+      let grey = data.next().expect("We just allocated all the components");
+      for (grey, pixel) in grey.into_iter().zip(img.pixels()) {
+        *grey = pixel[0] as i32;
+      }
+    }
+    DynamicImage::ImageLumaA8(img) => {
+      // get each components data.
+      let grey = data.next().expect("We just allocated all the components");
+      let alpha = data.next().expect("We just allocated all the components");
+      // zip the components data to access them together.
+      let data = grey.into_iter().zip(alpha.into_iter());
+
+      // iterate over the pixels and assign the pixel values to the components data.
+      for ((grey, alpha), pixel) in data.zip(img.pixels()) {
+        *grey = pixel[0] as i32;
+        *alpha = pixel[1] as i32;
+      }
+    }
+    DynamicImage::ImageRgb8(img) => {
+      // get each components data.
+      let r = data.next().expect("We just allocated all the components");
+      let g = data.next().expect("We just allocated all the components");
+      let b = data.next().expect("We just allocated all the components");
+      // zip the components data to access them together.
+      let data = r.into_iter().zip(g.into_iter()).zip(b.into_iter());
+
+      // iterate over the pixels and assign the pixel values to the components data.
+      for (((r, g), b), pixel) in data.zip(img.pixels()) {
+        *r = pixel[0] as i32;
+        *g = pixel[1] as i32;
+        *b = pixel[2] as i32;
+      }
+    }
+    DynamicImage::ImageRgba8(img) => {
+      // get each components data.
+      let r = data.next().expect("We just allocated all the components");
+      let g = data.next().expect("We just allocated all the components");
+      let b = data.next().expect("We just allocated all the components");
+      let a = data.next().expect("We just allocated all the components");
+      // zip the components data to access them together.
+      let data = r
+        .into_iter()
+        .zip(g.into_iter())
+        .zip(b.into_iter())
+        .zip(a.into_iter());
+
+      // iterate over the pixels and assign the pixel values to the components data.
+      for ((((r, g), b), a), pixel) in data.zip(img.pixels()) {
+        *r = pixel[0] as i32;
+        *g = pixel[1] as i32;
+        *b = pixel[2] as i32;
+        *a = pixel[3] as i32;
+      }
+    }
+    DynamicImage::ImageLuma16(img) => {
+      let grey = data.next().expect("We just allocated all the components");
+      for (grey, pixel) in grey.into_iter().zip(img.pixels()) {
+        *grey = pixel[0] as i32;
+      }
+    }
+    DynamicImage::ImageLumaA16(img) => {
+      // get each components data.
+      let grey = data.next().expect("We just allocated all the components");
+      let alpha = data.next().expect("We just allocated all the components");
+      // zip the components data to access them together.
+      let data = grey.into_iter().zip(alpha.into_iter());
+
+      // iterate over the pixels and assign the pixel values to the components data.
+      for ((grey, alpha), pixel) in data.zip(img.pixels()) {
+        *grey = pixel[0] as i32;
+        *alpha = pixel[1] as i32;
+      }
+    }
+    DynamicImage::ImageRgb16(img) => {
+      // get each components data.
+      let r = data.next().expect("We just allocated all the components");
+      let g = data.next().expect("We just allocated all the components");
+      let b = data.next().expect("We just allocated all the components");
+      // zip the components data to access them together.
+      let data = r.into_iter().zip(g.into_iter()).zip(b.into_iter());
+
+      // iterate over the pixels and assign the pixel values to the components data.
+      for (((r, g), b), pixel) in data.zip(img.pixels()) {
+        *r = pixel[0] as i32;
+        *g = pixel[1] as i32;
+        *b = pixel[2] as i32;
+      }
+    }
+    DynamicImage::ImageRgba16(img) => {
+      // get each components data.
+      let r = data.next().expect("We just allocated all the components");
+      let g = data.next().expect("We just allocated all the components");
+      let b = data.next().expect("We just allocated all the components");
+      let a = data.next().expect("We just allocated all the components");
+      // zip the components data to access them together.
+      let data = r
+        .into_iter()
+        .zip(g.into_iter())
+        .zip(b.into_iter())
+        .zip(a.into_iter());
+
+      // iterate over the pixels and assign the pixel values to the components data.
+      for ((((r, g), b), a), pixel) in data.zip(img.pixels()) {
+        *r = pixel[0] as i32;
+        *g = pixel[1] as i32;
+        *b = pixel[2] as i32;
+        *a = pixel[3] as i32;
+      }
+    }
+    _ => {
+      return Err(ImageError::InvalidFormat(
+        "Unsupported image format - convert to RGB8 or Luma8 first".into(),
+      ));
+    }
+  }
   Ok(image)
 }
