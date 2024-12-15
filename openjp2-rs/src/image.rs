@@ -209,7 +209,7 @@ impl Clone for opj_image {
     image.numcomps = self.numcomps;
     image.color_space = self.color_space;
     if let Some(comps) = self.comps() {
-      if !image.alloc_comps(comps.len() as u32, true) {
+      if !image.alloc_comps(comps.len() as u32) {
         return image;
       }
       if let Some(dest) = image.comps_mut() {
@@ -331,14 +331,11 @@ impl opj_image {
     }
   }
 
-  pub fn alloc_comps(&mut self, numcomps: u32, clear: bool) -> bool {
+  pub fn alloc_comps(&mut self, numcomps: u32) -> bool {
     self.clear_comps();
     self.numcomps = numcomps;
-    self.comps = if clear {
-      opj_calloc(numcomps as size_t, core::mem::size_of::<opj_image_comp_t>())
-    } else {
-      opj_malloc(numcomps as size_t * core::mem::size_of::<opj_image_comp_t>())
-    } as *mut opj_image_comp_t;
+    self.comps = opj_calloc(numcomps as size_t, core::mem::size_of::<opj_image_comp_t>())
+      as *mut opj_image_comp_t;
     if self.comps.is_null() {
       return false;
     }
@@ -427,7 +424,7 @@ pub fn opj_image_create(
   let cmptparms = unsafe { std::slice::from_raw_parts(cmptparms, numcmpts as usize) };
   image.color_space = clrspc;
   /* allocate memory for the per-component information */
-  if !image.alloc_comps(numcmpts, true) {
+  if !image.alloc_comps(numcmpts) {
     /* TODO replace with event manager, breaks API */
     /* fprintf(stderr,"Unable to allocate memory for image.\n"); */
     return std::ptr::null_mut::<opj_image_t>();
@@ -522,7 +519,7 @@ pub(crate) fn opj_copy_image_header(
   p_image_dest.y0 = p_image_src.y0;
   p_image_dest.x1 = p_image_src.x1;
   p_image_dest.y1 = p_image_src.y1;
-  if !p_image_dest.alloc_comps(p_image_src.numcomps, false) {
+  if !p_image_dest.alloc_comps(p_image_src.numcomps) {
     p_image_dest.comps = std::ptr::null_mut::<opj_image_comp_t>();
     p_image_dest.numcomps = 0 as OPJ_UINT32;
     return;
@@ -554,7 +551,7 @@ pub fn opj_image_tile_create(
   let cmptparms = unsafe { std::slice::from_raw_parts(cmptparms, numcmpts as usize) };
   image.color_space = clrspc;
   /* allocate memory for the per-component information */
-  if !image.alloc_comps(numcmpts, true) {
+  if !image.alloc_comps(numcmpts) {
     return std::ptr::null_mut::<opj_image_t>();
   }
   /* create the individual image components */
