@@ -1,3 +1,4 @@
+use crate::convert::*;
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
 use crate::params::*;
 use openjp2::openjpeg::*;
@@ -702,6 +703,19 @@ impl Default for CompressionParameters {
   }
 }
 
+impl CompressionParameters {
+  pub fn image_offset(&self) -> Offset2D {
+    self.image_offset.clone().unwrap_or_default()
+  }
+
+  pub fn subsampling(&self) -> Size2D {
+    self.subsampling.clone().unwrap_or_else(|| Size2D {
+      width: 1,
+      height: 1,
+    })
+  }
+}
+
 /// Size2D
 #[derive(Clone, Debug, PartialEq)]
 pub struct Size2D {
@@ -732,10 +746,10 @@ impl FromStr for Size2D {
 }
 
 /// Offset2D
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Offset2D {
-  pub x: i32,
-  pub y: i32,
+  pub x: u32,
+  pub y: u32,
 }
 
 impl FromStr for Offset2D {
@@ -876,100 +890,6 @@ impl FromStr for ProgressionOrder {
         "Invalid progression order".into(),
       )),
     }
-  }
-}
-
-// For raw image parameters
-#[derive(Clone, Debug, Default)]
-pub struct RawParameters {
-  pub width: u32,
-  pub height: u32,
-  pub num_comps: u32,
-  pub bit_depth: u32,
-  pub signed: bool,
-  pub components: Vec<RawComponentParameters>,
-}
-
-impl FromStr for RawParameters {
-  type Err = ParameterError;
-
-  fn from_str(s: &str) -> Result<Self, Self::Err> {
-    let parts: Vec<&str> = s.split(&[',', '@', ':']).collect();
-    if parts.len() < 5 {
-      return Err(ParameterError::InvalidFormat(
-        "Raw params format: width,height,ncomp,bitdepth,[s|u]@dx1,dy1:...:dxn,dyn".into(),
-      ));
-    }
-
-    let width = parts[0]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid width".into()))?;
-    let height = parts[1]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid height".into()))?;
-    let num_comps = parts[2]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid component count".into()))?;
-    let bit_depth = parts[3]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid bit depth".into()))?;
-    let signed = match parts[4] {
-      "s" => true,
-      "u" => false,
-      _ => {
-        return Err(ParameterError::InvalidValue(
-          "Signed flag must be 's' or 'u'".into(),
-        ))
-      }
-    };
-
-    let mut components = Vec::new();
-    if parts.len() > 5 {
-      // Parse subsampling factors
-      for comp in parts[5..].iter() {
-        components.push(comp.parse()?);
-      }
-    } else {
-      // Default 1x1 subsampling for all components
-      components = vec![RawComponentParameters { dx: 1, dy: 1 }; num_comps as usize];
-    }
-
-    Ok(RawParameters {
-      width,
-      height,
-      num_comps,
-      bit_depth,
-      signed,
-      components,
-    })
-  }
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct RawComponentParameters {
-  pub dx: u32,
-  pub dy: u32,
-}
-
-impl FromStr for RawComponentParameters {
-  type Err = ParameterError;
-
-  fn from_str(s: &str) -> Result<Self, Self::Err> {
-    let factors: Vec<&str> = s.split('x').collect();
-    if factors.len() != 2 {
-      return Err(ParameterError::InvalidFormat(
-        "Subsampling format: dx x dy".into(),
-      ));
-    }
-
-    let dx = factors[0]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid dx".into()))?;
-    let dy = factors[1]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid dy".into()))?;
-
-    Ok(RawComponentParameters { dx, dy })
   }
 }
 
