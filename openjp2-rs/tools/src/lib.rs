@@ -1,6 +1,9 @@
 ///! Common code shared between the openjp2 CLI tools.
 pub mod color;
+pub mod compress;
+pub mod convert;
 pub mod getopt;
+pub mod params;
 
 // Compression formats
 pub const J2K_CFMT: u32 = 0;
