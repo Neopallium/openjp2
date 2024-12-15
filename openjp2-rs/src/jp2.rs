@@ -592,7 +592,7 @@ fn opj_jp2_apply_pclr(
   let old_comps = old.comps().expect("Just taken");
 
   // Allocate new components.
-  if !image.alloc_comps(nr_channels as u32, true) {
+  if !image.alloc_comps(nr_channels as u32) {
     event_msg!(
       p_manager,
       EVT_ERROR,
