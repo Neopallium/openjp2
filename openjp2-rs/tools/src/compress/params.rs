@@ -373,7 +373,6 @@ pub fn parse_cli_options(
           .collect::<Result<_, _>>()?;
       }
       (CompressOpt::RawFormat, Some(arg)) => {
-        c_params.decode_format = Some(DecodeFormat::RAW);
         c_params.raw_params = Some(arg.parse()?);
       }
       (CompressOpt::Irreversible, _) => c_params.irreversible = true,

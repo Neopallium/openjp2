@@ -1,8 +1,8 @@
-use crate::compress::{CompressionParameters, DecodeFormat};
+use crate::compress::{CompressionParameters, DecodeFormat, MCTMode};
 use crate::params::ParameterError;
 use image::{self, DynamicImage};
 use openjp2::{image::opj_image, openjpeg::*};
-use std::io;
+use std::io::{self, Read};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -145,16 +145,154 @@ pub fn load_image(
   path: &Path,
   params: &CompressionParameters,
 ) -> Result<Box<opj_image>, ImageError> {
-  // Convert the loaded image to OpenJPEG format
   match params.decode_format {
-    Some(DecodeFormat::RAW | DecodeFormat::RAWL) => {
-      todo!("Implement loading raw image data");
-    }
+    Some(DecodeFormat::RAW) => load_raw_image(path, params, true),
+    Some(DecodeFormat::RAWL) => load_raw_image(path, params, false),
     _ => {
       let image = read_image(path)?;
       convert_image(image, params)
     }
   }
+}
+
+fn load_raw_image(
+  path: &Path,
+  params: &CompressionParameters,
+  big_endian: bool,
+) -> Result<Box<opj_image>, ImageError> {
+  // Get raw parameters from compression parameters
+  let raw_params = params.raw_params.as_ref().ok_or_else(|| {
+    ImageError::InvalidFormat("Raw parameters required for RAW/RAWL format".into())
+  })?;
+
+  // Validate parameters
+  if raw_params.width == 0
+    || raw_params.height == 0
+    || raw_params.num_comps == 0
+    || raw_params.bit_depth == 0
+  {
+    return Err(ImageError::InvalidFormat(
+      "Invalid raw image parameters. Use -F option.".into(),
+    ));
+  }
+
+  // Calculate buffer size needed for one component
+  let bytes_per_sample = match raw_params.bit_depth {
+    bd if bd <= 8 => 1,
+    bd if bd <= 16 => 2,
+    bd if bd <= 32 => 4,
+    _ => {
+      return Err(ImageError::InvalidFormat(
+        "Bit depth > 32 not supported".into(),
+      ))
+    }
+  };
+
+  let num_pixels = (raw_params.width * raw_params.height) as usize;
+  let buffer_size = num_pixels * bytes_per_sample;
+
+  // Create image and initialize components
+  let mut image = opj_image::new();
+  image.color_space = if raw_params.num_comps == 1 {
+    OPJ_CLRSPC_GRAY
+  } else if raw_params.num_comps >= 3 {
+    match &params.mct_mode {
+      Some(MCTMode::None) => OPJ_CLRSPC_SYCC,
+      None | Some(MCTMode::RGB2YCC) => OPJ_CLRSPC_SRGB,
+      _ => OPJ_CLRSPC_UNKNOWN,
+    }
+  } else {
+    OPJ_CLRSPC_UNKNOWN
+  };
+
+  // Set image parameters
+  let offset = params.image_offset();
+  let subsampling = params.subsampling();
+
+  image.x0 = offset.x;
+  image.y0 = offset.y;
+  image.x1 = offset.x + (raw_params.width - 1) * subsampling.width + 1;
+  image.y1 = offset.y + (raw_params.height - 1) * subsampling.height + 1;
+
+  // Allocate components
+  image.alloc_comps(raw_params.num_comps);
+  let comps = image.comps_mut().expect("We just allocated the components");
+
+  // Initialize components
+  for (i, comp) in comps.iter_mut().enumerate() {
+    let raw_comp = raw_params
+      .components
+      .get(i)
+      .unwrap_or(&RawComponentParameters { dx: 1, dy: 1 });
+
+    comp.dx = subsampling.width * raw_comp.dx;
+    comp.dy = subsampling.height * raw_comp.dy;
+    comp.w = raw_params.width;
+    comp.h = raw_params.height;
+    comp.x0 = 0;
+    comp.y0 = 0;
+    comp.prec = raw_params.bit_depth;
+    comp.sgnd = raw_params.signed as u32;
+
+    if !comp.alloc_data() {
+      return Err(ImageError::InvalidFormat(
+        "Failed to allocate component data".into(),
+      ));
+    }
+  }
+
+  // Allocate single reusable buffer for reading component data
+  let mut buffer = vec![0u8; buffer_size];
+  let mut file = std::fs::File::open(path)?;
+
+  // Read and process one component at a time
+  for comp in comps.iter_mut() {
+    // Read data for this component
+    file.read_exact(&mut buffer)?;
+
+    let data = comp.data_mut().expect("We just allocated it");
+
+    match raw_params.bit_depth {
+      bd if bd <= 8 => {
+        for (dst, &src) in data.iter_mut().zip(buffer.iter()) {
+          *dst = if raw_params.signed {
+            src as i8 as i32
+          } else {
+            src as i32
+          };
+        }
+      }
+      bd if bd <= 16 => {
+        let from_bytes = if big_endian {
+          u16::from_be_bytes
+        } else {
+          u16::from_le_bytes
+        };
+        for (dst, bytes) in data.iter_mut().zip(buffer.chunks_exact(2)) {
+          let value = from_bytes([bytes[0], bytes[1]]);
+          *dst = if raw_params.signed {
+            value as i16 as i32
+          } else {
+            value as i32
+          };
+        }
+      }
+      bd if bd <= 32 => {
+        let from_bytes = if big_endian {
+          u32::from_be_bytes
+        } else {
+          u32::from_le_bytes
+        };
+        for (dst, bytes) in data.iter_mut().zip(buffer.chunks_exact(4)) {
+          let value = from_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+          *dst = value as i32;
+        }
+      }
+      _ => unreachable!(),
+    }
+  }
+
+  Ok(image)
 }
 
 fn read_image(path: &Path) -> Result<DynamicImage, ImageError> {
