@@ -4,11 +4,13 @@ use openjp2_tools::getopt::{GetOpts, OptDef, ParsedOpt};
 use std::ffi::CString;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 // New struct to hold parsed CLI options
+#[derive(Clone, Debug)]
 struct CLIOptions {
-  compression_params: CompressionParameters,
-  img_folder: ImageFolder,
+  pub compression_params: CompressionParameters,
+  pub img_folder: ImageFolder,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,6 +29,7 @@ enum CompressOpt {
   GuardBits,
   TargetBitDepth,
   MCT,
+  MCTData,
   ROI,
   Quality,
   SOP,
@@ -253,6 +256,7 @@ fn validate_args(args: Vec<String>) -> Option<Vec<(CompressOpt, Option<String>)>
     OptDef::short('p', CompressOpt::ProgressionOrder, true),
     OptDef::short('s', CompressOpt::SubsamplingFactor, true),
     OptDef::short('M', CompressOpt::ModeSwitch, true),
+    OptDef::short('m', CompressOpt::MCTData, true),
     OptDef::short('x', CompressOpt::IndexFile, true),
     OptDef::short('d', CompressOpt::ImageOffset, true),
     OptDef::short('T', CompressOpt::TileOffset, true),
@@ -306,7 +310,7 @@ fn validate_args(args: Vec<String>) -> Option<Vec<(CompressOpt, Option<String>)>
 }
 
 fn parse_cli_options(args: Vec<String>) -> Result<Option<CLIOptions>, Box<dyn std::error::Error>> {
-  let mut compression_params = CompressionParameters::default();
+  let mut c_params = CompressionParameters::default();
   let mut img_folder = ImageFolder {
     img_dir_path: None,
     out_format: None,
@@ -323,15 +327,14 @@ fn parse_cli_options(args: Vec<String>) -> Result<Option<CLIOptions>, Box<dyn st
     match arg {
       (CompressOpt::Input, Some(arg)) => {
         let input = PathBuf::from(arg);
-        compression_params.decode_format =
-          get_file_format(input.to_str().ok_or("Invalid input path")?)?;
-        compression_params.input_file = Some(input);
+        c_params.decode_format = get_file_format(input.to_str().ok_or("Invalid input path")?).ok();
+        c_params.input_file = Some(input);
       }
       (CompressOpt::Output, Some(arg)) => {
         let output = PathBuf::from(arg);
-        compression_params.codec_format =
-          get_codec_format(output.to_str().ok_or("Invalid output path")?)?;
-        compression_params.output_file = Some(output);
+        c_params.codec_format =
+          get_codec_format(output.to_str().ok_or("Invalid output path")?).ok();
+        c_params.output_file = Some(output);
       }
       (CompressOpt::ImgDir, Some(arg)) => {
         img_folder.img_dir_path = Some(PathBuf::from(arg));
@@ -342,167 +345,469 @@ fn parse_cli_options(args: Vec<String>) -> Result<Option<CLIOptions>, Box<dyn st
         img_folder.set_out_format = true;
       }
       (CompressOpt::NumResolutions, Some(arg)) => {
-        compression_params.num_resolutions = arg.parse()?
+        c_params.num_resolutions = arg.parse()?;
       }
       (CompressOpt::CompressionRatio, Some(arg)) => {
-        compression_params.rates = CompressionParameters::parse_quality_layers(&arg)?
+        c_params.rates = arg
+          .split(',')
+          .map(|s| s.parse())
+          .collect::<Result<_, _>>()
+          .map_err(|e| ParameterError::InvalidValue(format!("Invalid compression ratio: {}", e)))?;
+        c_params.cp_disto_alloc = true;
       }
       (CompressOpt::ProgressionOrder, Some(arg)) => {
-        compression_params.prog_order = parse_progression_order(&arg)?
+        c_params.prog_order = arg.parse()?;
       }
       (CompressOpt::TileSize, Some(arg)) => {
-        let (w, h) = parse_dimensions(&arg)?;
-        compression_params.tile_size = (w, h);
-        compression_params.tile_size_on = true;
+        c_params.tile_size = Some(arg.parse()?);
       }
-      (CompressOpt::Irreversible, None) => compression_params.irreversible = true,
-      (CompressOpt::GuardBits, Some(arg)) => compression_params.guard_bits = arg.parse()?,
-      (CompressOpt::MCT, Some(arg)) => compression_params.mct_mode = arg.parse()?,
-      (CompressOpt::SOP, None) => compression_params.csty |= 0x02,
-      (CompressOpt::EPH, None) => compression_params.csty |= 0x04,
-      (CompressOpt::ModeSwitch, Some(arg)) => compression_params.mode_switch = arg.parse()?,
-      (opt, arg) => return Err(format!("TODO: Unhandled option: {:?}, arg={:?}", opt, arg).into()),
+      (CompressOpt::ROI, Some(arg)) => {
+        c_params.roi = Some(arg.parse()?);
+      }
+      (CompressOpt::POC, Some(arg)) => {
+        c_params.poc_markers = arg
+          .split('/')
+          .map(POCMarker::from_str)
+          .collect::<Result<_, _>>()?;
+      }
+      (CompressOpt::RawFormat, Some(arg)) => {
+        c_params.decode_format = Some(DecodeFormat::RAW);
+        c_params.raw_params = Some(arg.parse()?);
+      }
+      (CompressOpt::Irreversible, _) => c_params.irreversible = true,
+      (CompressOpt::GuardBits, Some(arg)) => c_params.guard_bits = arg.parse()?,
+      (CompressOpt::MCT, Some(arg)) => c_params.mct_mode = Some(arg.parse()?),
+      (CompressOpt::SOP, _) => c_params.csty |= 0x02,
+      (CompressOpt::EPH, _) => c_params.csty |= 0x04,
+      (CompressOpt::ModeSwitch, Some(arg)) => c_params.mode_switch = arg.parse()?,
+      // Add missing option handlers:
+      (CompressOpt::Threads, Some(arg)) => {
+        if arg == "ALL_CPUS" {
+          // TODO: Use num_cpus crate
+          c_params.num_threads = 4; //num_cpus::get() as i32;
+          if c_params.num_threads == 1 {
+            c_params.num_threads = 0;
+          }
+        } else {
+          c_params.num_threads = arg.parse()?;
+        }
+      }
+      (CompressOpt::PLT, _) => c_params.write_plt = true,
+      (CompressOpt::TLM, _) => c_params.write_tlm = true,
+      (CompressOpt::Quality, Some(arg)) => {
+        c_params.psnrs = arg
+          .split(',')
+          .map(|s| s.parse())
+          .collect::<Result<_, _>>()?;
+        c_params.cp_fixed_quality = true;
+      }
+      (CompressOpt::FixedLayer, Some(arg)) => {
+        // Parse fixed layer parameters
+        let layer_params: Vec<&str> = arg.split(',').collect();
+        if layer_params.len() < 1 {
+          return Err("Invalid fixed layer parameters".into());
+        }
+        c_params.num_layers = layer_params[0].parse()?;
+        c_params.cp_fixed_alloc = true;
+        todo!("Parse fixed layer parameters to cp_matrice.");
+      }
+      (CompressOpt::Comment, Some(arg)) => c_params.comment = Some(arg),
+      (CompressOpt::Cinema2K, Some(arg)) => {
+        let fps: u32 = arg.parse()?;
+        c_params.cinema_mode = match fps {
+          24 => Some(CinemaMode::Cinema2K24),
+          48 => Some(CinemaMode::Cinema2K48),
+          _ => return Err("Cinema 2K fps must be 24 or 48".into()),
+        };
+      }
+      (CompressOpt::Cinema4K, _) => {
+        c_params.cinema_mode = Some(CinemaMode::Cinema4K24);
+      }
+      (CompressOpt::IMF, Some(arg)) => {
+        let parts: Vec<&str> = arg.split(',').collect();
+        let profile = match parts[0] {
+          "2K" => IMFProfile::new(OPJ_PROFILE_IMF_2K),
+          "4K" => IMFProfile::new(OPJ_PROFILE_IMF_4K),
+          "8K" => IMFProfile::new(OPJ_PROFILE_IMF_8K),
+          "2K_R" => IMFProfile::new(OPJ_PROFILE_IMF_2K_R),
+          "4K_R" => IMFProfile::new(OPJ_PROFILE_IMF_4K_R),
+          "8K_R" => IMFProfile::new(OPJ_PROFILE_IMF_8K_R),
+          _ => return Err("Invalid IMF profile".into()),
+        };
+        c_params.imf_profile = Some(profile);
+
+        // Parse optional parameters
+        for param in parts.iter().skip(1) {
+          if let Some(val) = param.strip_prefix("mainlevel=") {
+            let level: u32 = val.parse()?;
+            if level > 11 {
+              return Err("IMF mainlevel must be <= 11".into());
+            }
+            c_params.imf_profile.as_mut().unwrap().mainlevel = level;
+          } else if let Some(val) = param.strip_prefix("sublevel=") {
+            let level: u32 = val.parse()?;
+            if level > 9 {
+              return Err("IMF sublevel must be <= 9".into());
+            }
+            c_params.imf_profile.as_mut().unwrap().sublevel = level;
+          } else if let Some(val) = param.strip_prefix("framerate=") {
+            let fps: u32 = val.parse()?;
+            if fps == 0 {
+              return Err("IMF framerate must be > 0".into());
+            }
+            c_params.imf_profile.as_mut().unwrap().framerate = Some(fps);
+          }
+        }
+      }
+      (CompressOpt::TileParts, Some(arg)) => {
+        c_params.tp_flag = match arg.as_str() {
+          "R" => Some(TPFlag::R),
+          "L" => Some(TPFlag::L),
+          "C" => Some(TPFlag::C),
+          _ => return Err("Invalid tile part flag - must be R, L or C".into()),
+        }
+      }
+      (CompressOpt::IndexFile, Some(arg)) => c_params.indexfile = Some(arg),
+      (CompressOpt::ImageOffset, Some(arg)) => c_params.image_offset = Some(arg.parse()?),
+      (CompressOpt::TileOffset, Some(arg)) => c_params.tile_offset = Some(arg.parse()?),
+      (CompressOpt::SubsamplingFactor, Some(arg)) => c_params.subsampling = Some(arg.parse()?),
+      (CompressOpt::JPIP, _) => c_params.jpip_on = true,
+      (CompressOpt::MCTData, Some(_arg)) => {
+        todo!("Parse MCT data from file");
+        // Read MCT data from file
+        //let mct_data = read_mct_data(arg)?;
+        //compression_params.mct_data = Some(mct_data);
+      }
+      (CompressOpt::TargetBitDepth, Some(arg)) => {
+        c_params.target_bit_depth = Some(arg.parse()?);
+      }
+      (CompressOpt::CodeBlockSize, Some(arg)) => {
+        c_params.codeblock = Some(arg.parse()?);
+      }
+      (CompressOpt::PrecinctSize, Some(arg)) => {
+        c_params.precinct = arg
+          .split(',')
+          .map(|s| s.parse())
+          .collect::<Result<_, _>>()
+          .map_err(|e| ParameterError::InvalidValue(format!("Invalid precinct size: {}", e)))?;
+        c_params.csty |= 0x01;
+      }
+      (CompressOpt::Help, _) => {
+        encode_help_display();
+        return Ok(None);
+      }
+      (opt, None) => return Err(format!("Missing argument for option: {:?}", opt).into()),
     }
   }
 
   // Validate parameters
   if img_folder.set_img_dir {
-    if compression_params.input_file.is_some() {
+    if c_params.input_file.is_some() {
       return Err("Cannot use -ImgDir with -i".into());
     }
     if !img_folder.set_out_format {
       return Err("Must specify -OutFor when using -ImgDir".into());
     }
-  } else if compression_params.input_file.is_none() || compression_params.output_file.is_none() {
+  } else if c_params.input_file.is_none() || c_params.output_file.is_none() {
     return Err("Must specify input (-i) and output (-o) files".into());
   }
 
+  // Validate raw format parameters
+  if matches!(
+    c_params.decode_format,
+    Some(DecodeFormat::RAW | DecodeFormat::RAWL)
+  ) && c_params.raw_params.is_none()
+  {
+    return Err("Must specify raw format parameters with -F option".into());
+  }
+
+  match (
+    c_params.cp_disto_alloc,
+    c_params.cp_fixed_quality,
+    c_params.cp_fixed_alloc,
+  ) {
+    (true, true, _) => return Err("Options -r and -q cannot be used together".into()),
+    (true, _, true) => return Err("Options -r and -f cannot be used together".into()),
+    (_, true, true) => return Err("Options -r and -f cannot be used together".into()),
+    _ => (),
+  }
+
+  // Default to lossless if no rate specified
+  if c_params.num_layers == 0 {
+    c_params.rates = vec![0.0];
+    c_params.num_layers = 1;
+    c_params.cp_disto_alloc = true;
+  }
+
+  // Validate tile offsets
+  if let Some(tile_offset) = &c_params.tile_offset {
+    if let Some(image_offset) = &c_params.image_offset {
+      if tile_offset.x > image_offset.x || tile_offset.y > image_offset.y {
+        return Err("Tile offset must be <= image offset".into());
+      }
+    }
+  }
+
+  // Validate POC markers
+  for poc in &c_params.poc_markers {
+    if matches!(poc.prog_order, ProgressionOrder::UNKNOWN) {
+      return Err("Invalid progression order in POC".into());
+    }
+  }
+
+  // Validate ROI upshift
+  if let Some(roi) = &c_params.roi {
+    if roi.shift > 37 {
+      return Err("ROI upshift value must be <= 37".into());
+    }
+  }
+
   Ok(Some(CLIOptions {
-    compression_params,
+    compression_params: c_params,
     img_folder,
   }))
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-  // Parse command line options
-  let cli_opts = match parse_cli_options(std::env::args().collect())? {
-    Some(opts) => opts,
-    None => {
-      // Show help
-      return Ok(());
-    }
-  };
-
-  // Process files
-  let start_time = std::time::Instant::now();
-  let mut num_compressed = 0;
-
-  if let Some(dir) = cli_opts.img_folder.img_dir_path.as_ref() {
-    // Process directory
-    let dir_contents = DirContents::new(dir)?;
-
-    for file in dir_contents.files {
-      if let Ok(_format) = detect_format_from_file(&file) {
-        println!("\nProcessing: {}", file.display());
-
-        // Update parameters for this file
-        let mut params = cli_opts.compression_params.clone();
-        params.input_file = Some(file.clone());
-        params.decode_format = get_file_format(file.to_str().ok_or("Invalid path")?)?;
-
-        // Generate output filename
-        let output = generate_output_path(&file, &cli_opts.img_folder)?;
-        params.output_file = Some(output.clone());
-
-        // Process file
-        let image = load_image(&file, &params)?;
-        compress_image(image, &params, &output)?;
-
-        num_compressed += 1;
-      }
-    }
-  } else if let Some(input) = cli_opts.compression_params.input_file.as_ref() {
-    // Process single file
-    let image = load_image(input, &cli_opts.compression_params)?;
-    let output = cli_opts
-      .compression_params
-      .output_file
-      .as_ref()
-      .ok_or("No output file specified")?;
-    compress_image(image, &cli_opts.compression_params, output)?;
-    num_compressed += 1;
-  }
-
-  let elapsed = start_time.elapsed();
-  if num_compressed > 0 {
-    println!(
-      "Compressed {} files in {:.2} seconds",
-      num_compressed,
-      elapsed.as_secs_f64()
-    );
-  }
-
-  Ok(())
+// Equivalent to img_fol_t
+#[derive(Clone, Debug)]
+pub struct ImageFolder {
+  pub img_dir_path: Option<PathBuf>,
+  pub out_format: Option<String>,
+  pub set_img_dir: bool,
+  pub set_out_format: bool,
 }
 
-// Equivalent to img_fol_t
-struct ImageFolder {
-  img_dir_path: Option<PathBuf>,
-  out_format: Option<String>,
-  set_img_dir: bool,
-  set_out_format: bool,
+/// MCT Mode
+#[derive(Clone, Debug, PartialEq)]
+pub enum MCTMode {
+  None,
+  RGB2YCC,
+  Custom,
+}
+
+impl FromStr for MCTMode {
+  type Err = String;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s {
+      "0" => Ok(MCTMode::None),
+      "1" => Ok(MCTMode::RGB2YCC),
+      "2" => Ok(MCTMode::Custom),
+      _ => Err("Invalid MCT mode".into()),
+    }
+  }
+}
+
+/// TPFlag
+#[derive(Clone, Debug, PartialEq)]
+pub enum TPFlag {
+  R,
+  L,
+  C,
 }
 
 // Basic compression parameters (subset of opj_cparameters_t)
-#[derive(Clone, Debug, Default)]
-struct CompressionParameters {
-  input_file: Option<PathBuf>,
-  output_file: Option<PathBuf>,
-  codec_format: CodecFormat,
-  decode_format: DecodeFormat,
-  num_threads: i32,
-  num_resolutions: u32,
-  prog_order: ProgressionOrder,
-  irreversible: bool,
-  tile_size_on: bool,
-  tile_size: (u32, u32),
-  // New fields
-  guard_bits: u32,
-  mct_mode: u32,
-  poc_markers: Vec<POCMarker>,
-  csty: u32,        // Coding style
-  mode_switch: u32, // Mode switches
-  num_layers: u32,  // Number of quality layers
-  rates: Vec<f32>,  // Target compression ratios
-  comment: Option<String>,
-  roi_comp: i32,        // ROI component number
-  roi_shift: u32,       // ROI upshift value
-  codeblock_width: u32, // Code-block dimensions
-  codeblock_height: u32,
-  precinct_width: Vec<u32>, // Precinct dimensions per resolution
-  precinct_height: Vec<u32>,
-  image_offset: (i32, i32), // Image origin offset
-  tile_offset: (i32, i32),  // Tile origin offset
-  tile_parts: Option<char>, // Tile parts division mode
-  jp2_mode: bool,           // JP2 file format
-  jpip_on: bool,            // JPIP indexing
-  cinema_mode: u32,         // Digital Cinema profile
-  imf_profile: Option<IMFProfile>,
-  // ... add more parameters as needed
+#[derive(Clone, Debug)]
+pub struct CompressionParameters {
+  pub input_file: Option<PathBuf>,
+  pub output_file: Option<PathBuf>,
+  pub codec_format: Option<CodecFormat>,
+  pub decode_format: Option<DecodeFormat>,
+  pub num_threads: i32,
+  pub num_resolutions: u32,
+  pub max_comp_size: usize,
+  pub max_cs_size: usize,
+  pub prog_order: ProgressionOrder,
+  pub irreversible: bool,
+  // cp_tdx, cp_tdy and tile_sizes_on.
+  pub tile_size: Option<Size2D>,
+  // cp_tx0, cp_ty0.
+  pub tile_offset: Option<Offset2D>, // Tile origin offset
+  pub guard_bits: u32,
+  pub mct_mode: Option<MCTMode>,
+  pub mct_data: Option<Vec<f32>>,
+  pub poc_markers: Vec<POCMarker>,
+  // tp_on, tp_flag.  Tile parts division mode
+  pub tp_flag: Option<TPFlag>,
+  pub csty: u32,        // Coding style
+  pub mode_switch: u32, // Mode switches
+  pub num_layers: u32,  // Number of quality layers
+  pub rates: Vec<f32>,  // Target compression ratios
+  pub psnrs: Vec<f32>,  // Target PSNR values
+  pub comment: Option<String>,
+  // roi_comp and roi_shift.
+  pub roi: Option<RegionOfInterest>,
+  // cblockw_init, cblockh_init.
+  pub codeblock: Option<Size2D>,       // Code-block dimensions
+  pub precinct: Vec<Size2D>,           // Precinct dimensions per resolution
+  pub image_offset: Option<Offset2D>,  // Image origin offset
+  pub jpip_on: bool,                   // JPIP indexing
+  pub cinema_mode: Option<CinemaMode>, // Digital Cinema profile
+  pub imf_profile: Option<IMFProfile>,
+  pub raw_params: Option<RawParameters>,
+  pub indexfile: Option<String>,
+  pub subsampling: Option<Size2D>,
+  pub write_plt: bool,
+  pub write_tlm: bool,
+  pub target_bit_depth: Option<u32>,
+  pub cp_disto_alloc: bool,
+  pub cp_fixed_alloc: bool,
+  pub cp_fixed_quality: bool,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
-enum CodecFormat {
-  #[default]
-  Unknown,
+impl Default for CompressionParameters {
+  fn default() -> Self {
+    CompressionParameters {
+      input_file: None,
+      output_file: None,
+      codec_format: None,
+      decode_format: None,
+      num_threads: 1,
+      num_resolutions: 6,
+      max_comp_size: 0,
+      max_cs_size: 0,
+      prog_order: ProgressionOrder::LRCP,
+      irreversible: false,
+      tile_size: None,
+      tile_offset: None,
+      guard_bits: 2,
+      mct_mode: None,
+      mct_data: None,
+      poc_markers: Vec::new(),
+      tp_flag: None,
+      csty: 0,
+      mode_switch: 0,
+      num_layers: 0,
+      rates: Vec::new(),
+      psnrs: Vec::new(),
+      comment: None,
+      roi: None,
+      codeblock: None,
+      precinct: Vec::new(),
+      image_offset: None,
+      jpip_on: false,
+      cinema_mode: None,
+      imf_profile: None,
+      raw_params: None,
+      indexfile: None,
+      subsampling: None,
+      write_plt: false,
+      write_tlm: false,
+      target_bit_depth: None,
+      cp_disto_alloc: false,
+      cp_fixed_alloc: false,
+      cp_fixed_quality: false,
+    }
+  }
+}
+
+/// Size2D
+#[derive(Clone, Debug, PartialEq)]
+pub struct Size2D {
+  pub width: u32,
+  pub height: u32,
+}
+
+impl FromStr for Size2D {
+  type Err = ParameterError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let parts: Vec<&str> = s.split(',').collect();
+    if parts.len() != 2 {
+      return Err(ParameterError::InvalidFormat(
+        "Size format: width,height".into(),
+      ));
+    }
+
+    let width = parts[0]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid width".into()))?;
+    let height = parts[1]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid height".into()))?;
+
+    Ok(Size2D { width, height })
+  }
+}
+
+/// Offset2D
+#[derive(Clone, Debug, PartialEq)]
+pub struct Offset2D {
+  pub x: i32,
+  pub y: i32,
+}
+
+impl FromStr for Offset2D {
+  type Err = ParameterError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let parts: Vec<&str> = s.split(',').collect();
+    if parts.len() != 2 {
+      return Err(ParameterError::InvalidFormat("Offset format: x,y".into()));
+    }
+
+    let x = parts[0]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid x offset".into()))?;
+    let y = parts[1]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid y offset".into()))?;
+
+    Ok(Offset2D { x, y })
+  }
+}
+
+/// RegionOfInterest
+#[derive(Clone, Debug, PartialEq)]
+pub struct RegionOfInterest {
+  pub comp: u32,
+  pub shift: u32,
+}
+
+impl FromStr for RegionOfInterest {
+  type Err = ParameterError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let parts: Vec<&str> = s.split(',').collect();
+    if parts.len() != 2 {
+      return Err(ParameterError::InvalidFormat(
+        "ROI format should be: c=comp,U=shift".into(),
+      ));
+    }
+
+    let comp = parts[0]
+      .trim_start_matches("c=")
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid component number".into()))?;
+
+    let shift = parts[1]
+      .trim_start_matches("U=")
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid shift value".into()))?;
+
+    Ok(RegionOfInterest { comp, shift })
+  }
+}
+
+/// CinemaMode
+#[derive(Clone, Debug, PartialEq)]
+pub enum CinemaMode {
+  Cinema2K24,
+  Cinema2K48,
+  Cinema4K24,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum CodecFormat {
   J2K,
+  JPT,
   JP2,
+  JPP,
+  JPX,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
-enum DecodeFormat {
-  #[default]
-  Unknown,
+#[derive(Clone, Debug, PartialEq)]
+pub enum DecodeFormat {
   PGX,
   PXM,
   BMP,
@@ -514,30 +819,125 @@ enum DecodeFormat {
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-enum ProgressionOrder {
+pub enum ProgressionOrder {
   #[default]
   LRCP,
   RLCP,
   RPCL,
   PCRL,
   CPRL,
+  UNKNOWN,
+}
+
+impl FromStr for ProgressionOrder {
+  type Err = ParameterError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s {
+      "LRCP" => Ok(ProgressionOrder::LRCP),
+      "RLCP" => Ok(ProgressionOrder::RLCP),
+      "RPCL" => Ok(ProgressionOrder::RPCL),
+      "PCRL" => Ok(ProgressionOrder::PCRL),
+      "CPRL" => Ok(ProgressionOrder::CPRL),
+      _ => Err(ParameterError::InvalidValue(
+        "Invalid progression order".into(),
+      )),
+    }
+  }
 }
 
 // For raw image parameters
 #[derive(Clone, Debug, Default)]
 pub struct RawParameters {
-  width: u32,
-  height: u32,
-  num_comps: u32,
-  bit_depth: u32,
-  signed: bool,
-  components: Vec<RawComponentParameters>,
+  pub width: u32,
+  pub height: u32,
+  pub num_comps: u32,
+  pub bit_depth: u32,
+  pub signed: bool,
+  pub components: Vec<RawComponentParameters>,
+}
+
+impl FromStr for RawParameters {
+  type Err = ParameterError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let parts: Vec<&str> = s.split(&[',', '@', ':']).collect();
+    if parts.len() < 5 {
+      return Err(ParameterError::InvalidFormat(
+        "Raw params format: width,height,ncomp,bitdepth,[s|u]@dx1,dy1:...:dxn,dyn".into(),
+      ));
+    }
+
+    let width = parts[0]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid width".into()))?;
+    let height = parts[1]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid height".into()))?;
+    let num_comps = parts[2]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid component count".into()))?;
+    let bit_depth = parts[3]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid bit depth".into()))?;
+    let signed = match parts[4] {
+      "s" => true,
+      "u" => false,
+      _ => {
+        return Err(ParameterError::InvalidValue(
+          "Signed flag must be 's' or 'u'".into(),
+        ))
+      }
+    };
+
+    let mut components = Vec::new();
+    if parts.len() > 5 {
+      // Parse subsampling factors
+      for comp in parts[5..].iter() {
+        components.push(comp.parse()?);
+      }
+    } else {
+      // Default 1x1 subsampling for all components
+      components = vec![RawComponentParameters { dx: 1, dy: 1 }; num_comps as usize];
+    }
+
+    Ok(RawParameters {
+      width,
+      height,
+      num_comps,
+      bit_depth,
+      signed,
+      components,
+    })
+  }
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct RawComponentParameters {
-  dx: u32,
-  dy: u32,
+  pub dx: u32,
+  pub dy: u32,
+}
+
+impl FromStr for RawComponentParameters {
+  type Err = ParameterError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let factors: Vec<&str> = s.split('x').collect();
+    if factors.len() != 2 {
+      return Err(ParameterError::InvalidFormat(
+        "Subsampling format: dx x dy".into(),
+      ));
+    }
+
+    let dx = factors[0]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid dx".into()))?;
+    let dy = factors[1]
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid dy".into()))?;
+
+    Ok(RawComponentParameters { dx, dy })
+  }
 }
 
 fn get_file_format(filename: &str) -> Result<DecodeFormat, Box<dyn std::error::Error>> {
@@ -570,194 +970,76 @@ fn get_codec_format(filename: &str) -> Result<CodecFormat, Box<dyn std::error::E
 
 // Helper structs for parameter parsing
 #[derive(Clone, Debug, Default)]
-struct POCMarker {
-  tile: u32,
-  resolution: u32,
-  component: u32,
-  layer: u32,
-  prog_order: ProgressionOrder,
+pub struct POCMarker {
+  pub tile: u32,
+  pub resolution: u32,
+  pub component: u32,
+  pub layer: u32,
+  pub prog_order: ProgressionOrder,
 }
 
-#[derive(Clone, Debug, Default)]
-struct IMFProfile {
-  profile: u32,
-  mainlevel: u32,
-  sublevel: u32,
-  framerate: Option<u32>,
-}
+impl FromStr for POCMarker {
+  type Err = ParameterError;
 
-// Add parameter parsing functions
-impl CompressionParameters {
-  fn parse_raw_params(raw_str: &str) -> Result<RawParameters, ParameterError> {
-    let parts: Vec<&str> = raw_str.split(',').collect();
-    if parts.len() < 5 {
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let mut parts = s.split('=');
+    let tile_str = parts
+      .next()
+      .ok_or_else(|| ParameterError::InvalidFormat("Missing tile spec".into()))?;
+    let params_str = parts
+      .next()
+      .ok_or_else(|| ParameterError::InvalidFormat("Missing POC parameters".into()))?;
+
+    let tile = tile_str
+      .trim_start_matches('T')
+      .parse()
+      .map_err(|_| ParameterError::ParseError("Invalid tile number".into()))?;
+
+    let params: Vec<&str> = params_str.split(',').collect();
+    if params.len() != 5 {
       return Err(ParameterError::InvalidFormat(
-        "Raw params format: width,height,ncomp,bitdepth,[s|u],dx1,dy1:...:dxn,dyn".into(),
+        "POC format: T<tile>=<resStart>,<compStart>,<layerEnd>,<resEnd>,<compEnd>,<progOrder>"
+          .into(),
       ));
     }
 
-    let width = parts[0]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid width".into()))?;
-    let height = parts[1]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid height".into()))?;
-    let num_comps = parts[2]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid component count".into()))?;
-    let bit_depth = parts[3]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid bit depth".into()))?;
-    let signed = match parts[4] {
-      "s" => true,
-      "u" => false,
-      _ => {
-        return Err(ParameterError::InvalidValue(
-          "Signed flag must be 's' or 'u'".into(),
-        ))
-      }
-    };
-
-    let mut components = Vec::new();
-    if parts.len() > 5 {
-      // Parse subsampling factors
-      for comp in parts[5..].iter() {
-        let factors: Vec<&str> = comp.split('x').collect();
-        if factors.len() != 2 {
-          return Err(ParameterError::InvalidFormat(
-            "Subsampling format: dx1xdy1:dx2xdy2...".into(),
-          ));
-        }
-        let dx = factors[0]
-          .parse()
-          .map_err(|_| ParameterError::ParseError("Invalid dx".into()))?;
-        let dy = factors[1]
-          .parse()
-          .map_err(|_| ParameterError::ParseError("Invalid dy".into()))?;
-        components.push(RawComponentParameters { dx, dy });
-      }
-    } else {
-      // Default 1x1 subsampling for all components
-      components = vec![RawComponentParameters { dx: 1, dy: 1 }; num_comps as usize];
-    }
-
-    Ok(RawParameters {
-      width,
-      height,
-      num_comps,
-      bit_depth,
-      signed,
-      components,
+    Ok(POCMarker {
+      tile,
+      resolution: params[0]
+        .parse()
+        .map_err(|_| ParameterError::ParseError("Invalid resolution".into()))?,
+      component: params[1]
+        .parse()
+        .map_err(|_| ParameterError::ParseError("Invalid component".into()))?,
+      layer: params[2]
+        .parse()
+        .map_err(|_| ParameterError::ParseError("Invalid layer".into()))?,
+      prog_order: params[5].parse()?,
     })
   }
-
-  fn parse_quality_layers(layers_str: &str) -> Result<Vec<f32>, ParameterError> {
-    layers_str
-      .split(',')
-      .map(|s| {
-        s.parse::<f32>()
-          .map_err(|_| ParameterError::ParseError("Invalid quality value".into()))
-      })
-      .collect()
-  }
-
-  fn parse_poc_markers(poc_str: &str) -> Result<Vec<POCMarker>, ParameterError> {
-    poc_str
-      .split('/')
-      .map(|prog| {
-        let mut parts = prog.split('=');
-        let tile_str = parts
-          .next()
-          .ok_or_else(|| ParameterError::InvalidFormat("Missing tile spec".into()))?;
-        let params_str = parts
-          .next()
-          .ok_or_else(|| ParameterError::InvalidFormat("Missing POC parameters".into()))?;
-
-        let tile = tile_str
-          .trim_start_matches('T')
-          .parse()
-          .map_err(|_| ParameterError::ParseError("Invalid tile number".into()))?;
-
-        let params: Vec<&str> = params_str.split(',').collect();
-        if params.len() != 5 {
-          return Err(ParameterError::InvalidFormat(
-            "POC format: T<tile>=<resStart>,<compStart>,<layerEnd>,<resEnd>,<compEnd>,<progOrder>"
-              .into(),
-          ));
-        }
-
-        Ok(POCMarker {
-          tile,
-          resolution: params[0]
-            .parse()
-            .map_err(|_| ParameterError::ParseError("Invalid resolution".into()))?,
-          component: params[1]
-            .parse()
-            .map_err(|_| ParameterError::ParseError("Invalid component".into()))?,
-          layer: params[2]
-            .parse()
-            .map_err(|_| ParameterError::ParseError("Invalid layer".into()))?,
-          prog_order: parse_progression_order(params[4])?,
-        })
-      })
-      .collect()
-  }
 }
 
-fn parse_dimensions(dim_str: &str) -> Result<(u32, u32), ParameterError> {
-  let parts: Vec<&str> = dim_str.split(',').collect();
-  if parts.len() != 2 {
-    return Err(ParameterError::InvalidFormat(
-      "Format should be: width,height".into(),
-    ));
-  }
-
-  Ok((
-    parts[0]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid width".into()))?,
-    parts[1]
-      .parse()
-      .map_err(|_| ParameterError::ParseError("Invalid height".into()))?,
-  ))
+#[derive(Clone, Debug, Default)]
+pub struct IMFProfile {
+  pub profile: u32,
+  pub mainlevel: u32,
+  pub sublevel: u32,
+  pub framerate: Option<u32>,
 }
 
-fn parse_progression_order(order: &str) -> Result<ProgressionOrder, ParameterError> {
-  match order {
-    "LRCP" => Ok(ProgressionOrder::LRCP),
-    "RLCP" => Ok(ProgressionOrder::RLCP),
-    "RPCL" => Ok(ProgressionOrder::RPCL),
-    "PCRL" => Ok(ProgressionOrder::PCRL),
-    "CPRL" => Ok(ProgressionOrder::CPRL),
-    _ => Err(ParameterError::InvalidValue(
-      "Invalid progression order".into(),
-    )),
+impl IMFProfile {
+  pub fn new(profile: u32) -> Self {
+    IMFProfile {
+      profile,
+      mainlevel: 0,
+      sublevel: 0,
+      framerate: None,
+    }
   }
-}
-
-fn parse_roi(roi_str: &str) -> Result<(i32, u32), ParameterError> {
-  let parts: Vec<&str> = roi_str.split(',').collect();
-  if parts.len() != 2 {
-    return Err(ParameterError::InvalidFormat(
-      "ROI format should be: c=comp,U=shift".into(),
-    ));
-  }
-
-  let comp = parts[0]
-    .trim_start_matches("c=")
-    .parse()
-    .map_err(|_| ParameterError::ParseError("Invalid component number".into()))?;
-
-  let shift = parts[1]
-    .trim_start_matches("U=")
-    .parse()
-    .map_err(|_| ParameterError::ParseError("Invalid shift value".into()))?;
-
-  Ok((comp, shift))
 }
 
 #[derive(Debug)]
-enum ParameterError {
+pub enum ParameterError {
   InvalidFormat(String),
   InvalidValue(String),
   ParseError(String),
@@ -776,8 +1058,8 @@ impl std::fmt::Display for ParameterError {
 impl std::error::Error for ParameterError {}
 
 // Add Directory handling
-struct DirContents {
-  files: Vec<PathBuf>,
+pub struct DirContents {
+  pub files: Vec<PathBuf>,
 }
 
 impl DirContents {
@@ -796,7 +1078,7 @@ impl DirContents {
 
 // Add error types
 #[derive(Debug)]
-enum ImageError {
+pub enum ImageError {
   InvalidFormat(String),
   ReadError(String),
   EncodeError(String),
@@ -824,14 +1106,14 @@ impl From<io::Error> for ImageError {
 
 // Add this struct to represent our image data
 #[derive(Debug)]
-struct ImageComponent {
-  data: Vec<i32>,
-  width: u32,
-  height: u32,
-  precision: u32,
-  signed: bool,
-  dx: u32,
-  dy: u32,
+pub struct ImageComponent {
+  pub data: Vec<i32>,
+  pub width: u32,
+  pub height: u32,
+  pub precision: u32,
+  pub signed: bool,
+  pub dx: u32,
+  pub dy: u32,
 }
 
 // Replace existing load_image function
@@ -965,8 +1247,9 @@ fn compress_image(
   // Create encoder based on codec format
   let codec = unsafe {
     match params.codec_format {
-      CodecFormat::J2K => opj_create_compress(OPJ_CODEC_J2K),
-      CodecFormat::JP2 => opj_create_compress(OPJ_CODEC_JP2),
+      Some(CodecFormat::J2K) => opj_create_compress(OPJ_CODEC_J2K),
+      Some(CodecFormat::JP2) => opj_create_compress(OPJ_CODEC_JP2),
+      None => return Err(ImageError::InvalidFormat("No codec format".into())),
       _ => return Err(ImageError::InvalidFormat("Unknown output format".into())),
     }
   };
@@ -1038,4 +1321,67 @@ fn generate_output_path(input: &Path, img_folder: &ImageFolder) -> Result<PathBu
   }
 
   Ok(output)
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+  // Parse command line options
+  let cli_opts = match parse_cli_options(std::env::args().collect())? {
+    Some(opts) => opts,
+    None => {
+      // Show help
+      return Ok(());
+    }
+  };
+  eprintln!("{cli_opts:?}");
+
+  // Process files
+  let start_time = std::time::Instant::now();
+  let mut num_compressed = 0;
+
+  if let Some(dir) = cli_opts.img_folder.img_dir_path.as_ref() {
+    // Process directory
+    let dir_contents = DirContents::new(dir)?;
+
+    for file in dir_contents.files {
+      if let Ok(_format) = detect_format_from_file(&file) {
+        println!("\nProcessing: {}", file.display());
+
+        // Update parameters for this file
+        let mut params = cli_opts.compression_params.clone();
+        params.input_file = Some(file.clone());
+        params.decode_format = get_file_format(file.to_str().ok_or("Invalid path")?).ok();
+
+        // Generate output filename
+        let output = generate_output_path(&file, &cli_opts.img_folder)?;
+        params.output_file = Some(output.clone());
+
+        // Process file
+        let image = load_image(&file, &params)?;
+        compress_image(image, &params, &output)?;
+
+        num_compressed += 1;
+      }
+    }
+  } else if let Some(input) = cli_opts.compression_params.input_file.as_ref() {
+    // Process single file
+    let image = load_image(input, &cli_opts.compression_params)?;
+    let output = cli_opts
+      .compression_params
+      .output_file
+      .as_ref()
+      .ok_or("No output file specified")?;
+    compress_image(image, &cli_opts.compression_params, output)?;
+    num_compressed += 1;
+  }
+
+  let elapsed = start_time.elapsed();
+  if num_compressed > 0 {
+    println!(
+      "Compressed {} files in {:.2} seconds",
+      num_compressed,
+      elapsed.as_secs_f64()
+    );
+  }
+
+  Ok(())
 }
