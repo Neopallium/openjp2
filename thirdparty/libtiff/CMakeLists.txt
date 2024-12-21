@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.5)
 project(libtiff C)
 # This convenient copy of libtiff does not support encapsulated zlib or jpeg
 # stream. see ZIP_SUPPORT and JPEG_SUPPORT values
