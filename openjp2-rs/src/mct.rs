@@ -56,18 +56,18 @@ fn opj_int_fix_mul(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
 /* <summary> */
 /* This table contains the norms of the basis function of the reversible MCT. */
 /* </summary> */
-static mut opj_mct_norms: [OPJ_FLOAT64; 3] = [1.732f64, 0.8292f64, 0.8292f64];
+static opj_mct_norms: [OPJ_FLOAT64; 3] = [1.732f64, 0.8292f64, 0.8292f64];
 /* <summary> */
 /* This table contains the norms of the basis function of the irreversible MCT. */
 /* </summary> */
-static mut opj_mct_norms_real: [OPJ_FLOAT64; 3] = [1.732f64, 1.805f64, 1.573f64];
+static opj_mct_norms_real: [OPJ_FLOAT64; 3] = [1.732f64, 1.805f64, 1.573f64];
 
 pub(crate) fn opj_mct_get_mct_norms() -> *const OPJ_FLOAT64 {
-  unsafe { opj_mct_norms.as_ptr() }
+  opj_mct_norms.as_ptr()
 }
 
 pub(crate) fn opj_mct_get_mct_norms_real() -> *const OPJ_FLOAT64 {
-  unsafe { opj_mct_norms_real.as_ptr() }
+  opj_mct_norms_real.as_ptr()
 }
 /* <summary> */
 /* Forward reversible MCT. */
@@ -129,7 +129,7 @@ pub(crate) fn opj_mct_decode(
 /* </summary> */
 
 pub(crate) fn opj_mct_getnorm(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
-  unsafe { opj_mct_norms[compno as usize] }
+  opj_mct_norms[compno as usize]
 }
 /* <summary> */
 /* Forward irreversible MCT. */
@@ -190,7 +190,7 @@ pub(crate) fn opj_mct_decode_real(
 /* </summary> */
 
 pub(crate) fn opj_mct_getnorm_real(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
-  unsafe { opj_mct_norms_real[compno as usize] }
+  opj_mct_norms_real[compno as usize]
 }
 
 pub(crate) fn opj_mct_encode_custom(
