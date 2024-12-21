@@ -2,7 +2,7 @@ use crate::convert::*;
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
 use crate::params::*;
 use openjp2::openjpeg::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 // New struct to hold parsed CLI options
@@ -329,7 +329,7 @@ pub fn parse_cli_options(
       (CompressOpt::Input, Some(arg)) => {
         let input = PathBuf::from(arg);
         c_params.decode_format =
-          DecodeFormat::get_file_format(input.to_str().ok_or("Invalid input path")?).ok();
+          ImageFileFormat::get_file_format(input.to_str().ok_or("Invalid input path")?).ok();
         c_params.input_file = Some(input);
       }
       (CompressOpt::Output, Some(arg)) => {
@@ -516,7 +516,7 @@ pub fn parse_cli_options(
   // Validate raw format parameters
   if matches!(
     c_params.decode_format,
-    Some(DecodeFormat::RAW | DecodeFormat::RAWL)
+    Some(ImageFileFormat::RAW | ImageFileFormat::RAWL)
   ) && c_params.raw_params.is_none()
   {
     return Err("Must specify raw format parameters with -F option".into());
@@ -613,7 +613,7 @@ pub struct CompressionParameters {
   pub input_file: Option<PathBuf>,
   pub output_file: Option<PathBuf>,
   pub codec_format: Option<CodecFormat>,
-  pub decode_format: Option<DecodeFormat>,
+  pub decode_format: Option<ImageFileFormat>,
   pub num_threads: i32,
   pub num_resolutions: u32,
   pub max_comp_size: usize,
@@ -834,7 +834,7 @@ impl CodecFormat {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum DecodeFormat {
+pub enum ImageFileFormat {
   PGX,
   PXM,
   BMP,
@@ -843,20 +843,34 @@ pub enum DecodeFormat {
   RAWL,
   TGA,
   PNG,
+  J2K,
+  JPT,
+  JP2,
+  JPP,
+  JPX,
 }
 
-impl DecodeFormat {
-  pub fn get_file_format(filename: &str) -> Result<Self, Box<dyn std::error::Error>> {
-    match filename.rsplit('.').next().map(|s| s.to_lowercase()) {
+impl ImageFileFormat {
+  pub fn get_file_format<P: AsRef<Path>>(filename: P) -> Result<Self, Box<dyn std::error::Error>> {
+    let filename = filename.as_ref();
+    let ext = filename
+      .extension()
+      .and_then(|s| s.to_ascii_lowercase().into_string().ok());
+    match ext {
       Some(ext) => match ext.as_str() {
-        "pgx" => Ok(DecodeFormat::PGX),
-        "pnm" | "pgm" | "ppm" => Ok(DecodeFormat::PXM),
-        "bmp" => Ok(DecodeFormat::BMP),
-        "tif" | "tiff" => Ok(DecodeFormat::TIF),
-        "raw" | "yuv" => Ok(DecodeFormat::RAW),
-        "rawl" => Ok(DecodeFormat::RAWL),
-        "tga" => Ok(DecodeFormat::TGA),
-        "png" => Ok(DecodeFormat::PNG),
+        "pgx" => Ok(ImageFileFormat::PGX),
+        "pnm" | "pgm" | "ppm" => Ok(ImageFileFormat::PXM),
+        "bmp" => Ok(ImageFileFormat::BMP),
+        "tif" | "tiff" => Ok(ImageFileFormat::TIF),
+        "raw" | "yuv" => Ok(ImageFileFormat::RAW),
+        "rawl" => Ok(ImageFileFormat::RAWL),
+        "tga" => Ok(ImageFileFormat::TGA),
+        "png" => Ok(ImageFileFormat::PNG),
+        "j2k" | "j2c" | "jpc" | "jhc" => Ok(ImageFileFormat::J2K),
+        "jp2" | "jph" => Ok(ImageFileFormat::JP2),
+        "jpt" => Ok(ImageFileFormat::JPT),
+        "jpp" => Ok(ImageFileFormat::JPP),
+        "jpx" => Ok(ImageFileFormat::JPX),
         _ => Err("Unknown input format".into()),
       },
       None => Err("Missing file extension".into()),

@@ -302,6 +302,24 @@ impl opj_image {
     }
   }
 
+  pub fn comps_data_iter(&self) -> Option<impl Iterator<Item = ImageCompRef<'_>>> {
+    if let Some(comps) = self.comps() {
+      Some(comps.iter().filter_map(|comp| {
+        comp.data().map(|data| ImageCompRef {
+          comp,
+          adjust: if comp.sgnd != 0 {
+            1 << (comp.prec - 1)
+          } else {
+            0
+          },
+          data,
+        })
+      }))
+    } else {
+      None
+    }
+  }
+
   pub fn comps_mut(&mut self) -> Option<&mut [opj_image_comp]> {
     if self.comps.is_null() {
       None
@@ -399,6 +417,15 @@ impl opj_image {
     }
     false
   }
+}
+
+pub struct ImageCompRef<'a> {
+  /// Component.
+  pub comp: &'a opj_image_comp,
+  /// Adjustment value to convert from signed to unsigned.
+  pub adjust: i32,
+  /// Component data.
+  pub data: &'a [i32],
 }
 
 impl Drop for opj_image {

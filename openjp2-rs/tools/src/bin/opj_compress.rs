@@ -114,7 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut params = cli_opts.compression_params.clone();
         params.input_file = Some(file.clone());
         params.decode_format =
-          DecodeFormat::get_file_format(file.to_str().ok_or("Invalid path")?).ok();
+          ImageFileFormat::get_file_format(file.to_str().ok_or("Invalid path")?).ok();
 
         // Generate output filename
         let output = generate_output_path(&file, &cli_opts.img_folder)?;
