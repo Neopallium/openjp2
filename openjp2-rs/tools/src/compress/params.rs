@@ -713,6 +713,193 @@ impl CompressionParameters {
       height: 1,
     })
   }
+
+  pub fn to_c_params(&self) -> opj_cparameters_t {
+    // Start with defaults
+    let mut c_params = opj_cparameters_t::default();
+
+    // Input/output files are handled separately
+
+    // Set codec format
+    c_params.cod_format = match self.codec_format {
+      Some(CodecFormat::J2K) => OPJ_CODEC_FORMAT::OPJ_CODEC_J2K as i32,
+      Some(CodecFormat::JP2) => OPJ_CODEC_FORMAT::OPJ_CODEC_JP2 as i32,
+      _ => -1,
+    };
+
+    // Set decode format
+    c_params.decod_format = match self.decode_format {
+      Some(ImageFileFormat::PGX) => 0,
+      Some(ImageFileFormat::PXM) => 1,
+      Some(ImageFileFormat::BMP) => 2,
+      Some(ImageFileFormat::TIF) => 3,
+      Some(ImageFileFormat::RAW) => 4,
+      Some(ImageFileFormat::RAWL) => 5,
+      Some(ImageFileFormat::TGA) => 6,
+      Some(ImageFileFormat::PNG) => 7,
+      _ => -1,
+    };
+
+    // Tile parameters
+    if let Some(tile_size) = &self.tile_size {
+      c_params.tile_size_on = 1;
+      c_params.cp_tdx = tile_size.width as i32;
+      c_params.cp_tdy = tile_size.height as i32;
+    }
+
+    if let Some(offset) = &self.tile_offset {
+      c_params.cp_tx0 = offset.x as i32;
+      c_params.cp_ty0 = offset.y as i32;
+    }
+
+    // Rate allocation
+    if self.cp_disto_alloc {
+      c_params.cp_disto_alloc = 1;
+      for (i, &rate) in self.rates.iter().enumerate() {
+        c_params.tcp_rates[i] = rate;
+      }
+    }
+    if self.cp_fixed_alloc {
+      c_params.cp_fixed_alloc = 1;
+    }
+    if self.cp_fixed_quality {
+      c_params.cp_fixed_quality = 1;
+      for (i, &distortion) in self.psnrs.iter().enumerate() {
+        c_params.tcp_distoratio[i] = distortion;
+      }
+    }
+
+    // Comment
+    if let Some(comment) = &self.comment {
+      c_params.set_comment(comment);
+    }
+
+    // Various parameters
+    c_params.csty = self.csty as i32;
+    c_params.prog_order = match self.prog_order {
+      ProgressionOrder::LRCP => OPJ_LRCP,
+      ProgressionOrder::RLCP => OPJ_RLCP,
+      ProgressionOrder::RPCL => OPJ_RPCL,
+      ProgressionOrder::PCRL => OPJ_PCRL,
+      ProgressionOrder::CPRL => OPJ_CPRL,
+      _ => OPJ_PROG_UNKNOWN,
+    };
+
+    // POC markers
+    c_params.numpocs = self.poc_markers.len() as u32;
+    for (i, poc) in self.poc_markers.iter().enumerate() {
+      if i >= c_params.POC.len() {
+        break;
+      }
+      c_params.POC[i].tile = poc.tile;
+      c_params.POC[i].resno0 = poc.resolution;
+      c_params.POC[i].compno0 = poc.component;
+      c_params.POC[i].layno1 = poc.layer;
+      c_params.POC[i].prg = match poc.prog_order {
+        ProgressionOrder::LRCP => OPJ_LRCP,
+        ProgressionOrder::RLCP => OPJ_RLCP,
+        ProgressionOrder::RPCL => OPJ_RPCL,
+        ProgressionOrder::PCRL => OPJ_PCRL,
+        ProgressionOrder::CPRL => OPJ_CPRL,
+        _ => OPJ_PROG_UNKNOWN,
+      };
+    }
+
+    // Layers and resolutions
+    c_params.tcp_numlayers = self.num_layers as i32;
+    c_params.numresolution = self.num_resolutions as i32;
+
+    // Code-block size
+    if let Some(codeblock) = &self.codeblock {
+      c_params.cblockw_init = codeblock.width as i32;
+      c_params.cblockh_init = codeblock.height as i32;
+    }
+
+    // Mode switches
+    c_params.mode = self.mode_switch as i32;
+    c_params.irreversible = self.irreversible as i32;
+
+    // ROI
+    if let Some(roi) = &self.roi {
+      c_params.roi_compno = roi.comp as i32;
+      c_params.roi_shift = roi.shift as i32;
+    }
+
+    // Precinct sizes
+    c_params.res_spec = self.precinct.len() as i32;
+    for (i, size) in self.precinct.iter().enumerate() {
+      if i >= c_params.prcw_init.len() {
+        break;
+      }
+      c_params.prcw_init[i] = size.width as i32;
+      c_params.prch_init[i] = size.height as i32;
+    }
+
+    // Image offset
+    let offset = self.image_offset();
+    c_params.image_offset_x0 = offset.x as i32;
+    c_params.image_offset_y0 = offset.y as i32;
+
+    // Subsampling
+    let subsampling = self.subsampling();
+    c_params.subsampling_dx = subsampling.width as i32;
+    c_params.subsampling_dy = subsampling.height as i32;
+
+    // Cinema profiles
+    if let Some(mode) = &self.cinema_mode {
+      c_params.cp_cinema = match mode {
+        CinemaMode::Cinema2K24 => OPJ_CINEMA2K_24,
+        CinemaMode::Cinema2K48 => OPJ_CINEMA2K_48,
+        CinemaMode::Cinema4K24 => OPJ_CINEMA4K_24,
+      };
+    }
+
+    // IMF profile
+    if let Some(imf) = &self.imf_profile {
+      c_params.rsiz = ((imf.profile as u32) | (imf.sublevel << 4) | imf.mainlevel) as u16;
+
+      if imf.sublevel > 0 && imf.sublevel <= 9 {
+        if let Some(fps) = imf.framerate {
+          let limit_mbits_sec = match imf.sublevel {
+            1 => 200,
+            2 => 400,
+            3 => 800,
+            4 => 1600,
+            5 => 3200,
+            6 => 6400,
+            7 => 12800,
+            8 => 25600,
+            9 => 51200,
+            _ => 0,
+          };
+          c_params.max_cs_size = (limit_mbits_sec * 1000000 / 8 / fps) as i32;
+        }
+      }
+    }
+
+    // MCT mode
+    if let Some(mode) = &self.mct_mode {
+      c_params.tcp_mct = match mode {
+        MCTMode::None => 0,
+        MCTMode::RGB2YCC => 1,
+        MCTMode::Custom => 2,
+      };
+    }
+
+    // Various flags
+    c_params.jpip_on = self.jpip_on as i32;
+
+    if let Some(flag) = &self.tp_flag {
+      c_params.tp_on = 1;
+      c_params.tp_flag = match flag {
+        TPFlag::R => b'R' as i8,
+        TPFlag::L => b'L' as i8,
+        TPFlag::C => b'C' as i8,
+      };
+    }
+
+    c_params
+  }
 }
 
 /// Size2D
