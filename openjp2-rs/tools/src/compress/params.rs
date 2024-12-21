@@ -713,6 +713,10 @@ impl Default for CompressionParameters {
 }
 
 impl CompressionParameters {
+  pub fn is_cinema(&self) -> bool {
+    self.cinema_mode.is_some()
+  }
+
   pub fn image_offset(&self) -> Offset2D {
     self.image_offset.clone().unwrap_or_default()
   }

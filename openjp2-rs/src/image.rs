@@ -122,6 +122,71 @@ impl opj_image_comp {
     dest.copy_from_slice(data);
     true
   }
+
+  /// Clip component data values to the allowed range for the given precision
+  pub fn clip(&mut self, precision: u32) {
+    let signed = self.sgnd != 0;
+    if let Some(data) = self.data_mut() {
+      let (min, max) = match (precision, signed) {
+        (0..=31, false) => (0, (1i64 << precision) - 1),
+        (0..=31, true) => {
+          let max = (1i64 << (precision - 1)) - 1;
+          let min = -max - 1;
+          (min, max)
+        }
+        _ => (0, i64::MAX),
+      };
+
+      for val in data.iter_mut() {
+        *val = (*val as i64).clamp(min, max) as i32;
+      }
+      self.prec = precision;
+    }
+  }
+
+  /// Scale component data values to the target precision
+  pub fn scale(&mut self, precision: u32) {
+    if self.prec == precision {
+      return;
+    }
+
+    if self.prec < precision {
+      self.scale_up(precision);
+      return;
+    }
+
+    let shift = self.prec - precision;
+    if let Some(data) = self.data_mut() {
+      for val in data.iter_mut() {
+        *val >>= shift;
+      }
+      self.prec = precision;
+    }
+  }
+
+  // Scale up component values.
+  fn scale_up(&mut self, precision: u32) {
+    let signed = self.sgnd != 0;
+    let old_prec = self.prec;
+    if let Some(data) = self.data_mut() {
+      if signed {
+        let new_max = 1i64 << (precision - 1);
+        let old_max = 1i64 << (old_prec - 1);
+
+        for val in data.iter_mut() {
+          *val = (((*val as i64) * new_max) / old_max) as i32;
+        }
+      } else {
+        let new_max = (1u64 << precision) - 1;
+        let old_max = (1u64 << old_prec) - 1;
+
+        for val in data.iter_mut() {
+          *val = (((*val as u64) * new_max) / old_max) as i32;
+        }
+      }
+      self.prec = precision;
+    }
+  }
 }
 
 impl Clone for opj_image_comp {
