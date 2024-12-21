@@ -181,7 +181,6 @@ pub struct opj_poc {
 pub type opj_poc_t = opj_poc;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
 pub struct opj_cparameters {
   pub tile_size_on: OPJ_BOOL,
   pub cp_tx0: core::ffi::c_int,
@@ -245,6 +244,23 @@ pub struct opj_cparameters {
   pub rsiz: OPJ_UINT16,
 }
 pub type opj_cparameters_t = opj_cparameters;
+
+impl Drop for opj_cparameters {
+  fn drop(&mut self) {
+    if !self.cp_matrice.is_null() {
+      opj_free(self.cp_matrice as *mut core::ffi::c_void);
+      self.cp_matrice = std::ptr::null_mut();
+    }
+    if !self.cp_comment.is_null() {
+      opj_free(self.cp_comment as *mut core::ffi::c_void);
+      self.cp_comment = std::ptr::null_mut();
+    }
+    if !self.mct_data.is_null() {
+      opj_free(self.mct_data);
+      self.mct_data = std::ptr::null_mut();
+    }
+  }
+}
 
 impl Default for opj_cparameters_t {
   fn default() -> Self {
@@ -316,6 +332,18 @@ impl Default for opj_cparameters_t {
 impl opj_cparameters_t {
   pub fn set_defaults(&mut self) {
     *self = Default::default()
+  }
+
+  pub fn set_comment(&mut self, comment: &str) {
+    let len = comment.len();
+    if !self.cp_comment.is_null() {
+      opj_free(self.cp_comment as *mut core::ffi::c_void);
+    }
+    self.cp_comment = opj_malloc(len + 1) as *mut core::ffi::c_char;
+    unsafe {
+      std::ptr::copy_nonoverlapping(comment.as_ptr(), self.cp_comment as *mut u8, len);
+      *self.cp_comment.offset(len as isize) = 0;
+    }
   }
 
   pub fn set_MCT(
