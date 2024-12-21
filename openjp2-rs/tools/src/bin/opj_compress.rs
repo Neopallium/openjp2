@@ -24,8 +24,8 @@ fn compress_image(
 
   // Set compression parameters
   let status = unsafe {
-    let mut c_params = opj_cparameters::default();
     // Set parameters from CompressionParameters
+    let mut c_params = params.to_c_params();
 
     opj_setup_encoder(codec, &mut c_params, image.as_mut())
   };
