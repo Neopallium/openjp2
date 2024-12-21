@@ -10,6 +10,39 @@ fn compress_image(
 ) -> Result<(), ImageError> {
   let mut params = params.clone();
 
+  // If the image was a TIFF handle scaling the components.
+  if params.decode_format == Some(ImageFileFormat::TIF) {
+    let scaled = if params.is_cinema() {
+      // If Cinematic mode was set and the image is RGB(A) rescale
+      // to 12 bits per component to comply with cinema profiles.
+      let comps = image
+        .comps_mut()
+        .ok_or_else(|| ImageError::EncodeError("Failed to get image components".into()))?;
+      if comps[0].prec != 12 {
+        for comp in comps {
+          comp.scale(12);
+        }
+        true
+      } else {
+        // It was already 12 bits per component.
+        false
+      }
+    } else {
+      false
+    };
+    // If it wasn't scale for Cinematic mode, check if the CLI requested a target bit depth.
+    if !scaled {
+      if let Some(target_bit_depth) = params.target_bit_depth {
+        let comps = image
+          .comps_mut()
+          .ok_or_else(|| ImageError::EncodeError("Failed to get image components".into()))?;
+        for comp in comps {
+          comp.scale(target_bit_depth);
+        }
+      }
+    }
+  }
+
   // If MCT mode wasn't set in CLI and image has 3+ components, enable MCT
   match (&params.mct_mode, image.numcomps) {
     (None, ncomps) if ncomps >= 3 => {
