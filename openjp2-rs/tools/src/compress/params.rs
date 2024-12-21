@@ -355,6 +355,7 @@ pub fn parse_cli_options(
           .map(|s| s.parse())
           .collect::<Result<_, _>>()
           .map_err(|e| ParameterError::InvalidValue(format!("Invalid compression ratio: {}", e)))?;
+        c_params.num_layers = c_params.rates.len() as u32;
         c_params.cp_disto_alloc = true;
       }
       (CompressOpt::ProgressionOrder, Some(arg)) => {
@@ -400,6 +401,7 @@ pub fn parse_cli_options(
           .split(',')
           .map(|s| s.parse())
           .collect::<Result<_, _>>()?;
+        c_params.num_layers = c_params.psnrs.len() as u32;
         c_params.cp_fixed_quality = true;
       }
       (CompressOpt::FixedLayer, Some(arg)) => {
@@ -415,11 +417,19 @@ pub fn parse_cli_options(
       (CompressOpt::Comment, Some(arg)) => c_params.comment = Some(arg),
       (CompressOpt::Cinema2K, Some(arg)) => {
         let fps: u32 = arg.parse()?;
-        c_params.cinema_mode = match fps {
-          24 => Some(CinemaMode::Cinema2K24),
-          48 => Some(CinemaMode::Cinema2K48),
+        match fps {
+          24 => {
+            c_params.cinema_mode = Some(CinemaMode::Cinema2K24);
+            c_params.max_comp_size = OPJ_CINEMA_24_COMP as usize;
+            c_params.max_cs_size = OPJ_CINEMA_24_CS as usize;
+          }
+          48 => {
+            c_params.cinema_mode = Some(CinemaMode::Cinema2K48);
+            c_params.max_comp_size = OPJ_CINEMA_24_COMP as usize;
+            c_params.max_cs_size = OPJ_CINEMA_24_CS as usize;
+          }
           _ => return Err("Cinema 2K fps must be 24 or 48".into()),
-        };
+        }
       }
       (CompressOpt::Cinema4K, _) => {
         c_params.cinema_mode = Some(CinemaMode::Cinema4K24);
@@ -718,7 +728,8 @@ impl CompressionParameters {
     // Start with defaults
     let mut c_params = opj_cparameters_t::default();
 
-    // Input/output files are handled separately
+    c_params.max_comp_size = self.max_comp_size as i32;
+    c_params.max_cs_size = self.max_cs_size as i32;
 
     // Set codec format
     c_params.cod_format = match self.codec_format {
