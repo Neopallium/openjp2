@@ -8,6 +8,28 @@ fn compress_image(
   params: &CompressionParameters,
   output: &Path,
 ) -> Result<(), ImageError> {
+  let mut params = params.clone();
+
+  // If MCT mode wasn't set in CLI and image has 3+ components, enable MCT
+  match (&params.mct_mode, image.numcomps) {
+    (None, ncomps) if ncomps >= 3 => {
+      // Default to RGB->YCC if image has at least 3 components.
+      params.mct_mode = Some(MCTMode::RGB2YCC);
+    }
+    (Some(MCTMode::RGB2YCC), ncomps) if ncomps < 3 => {
+      return Err(ImageError::EncodeError(
+        "RGB->YCC conversion requires at least 3 components".into(),
+      ));
+    }
+    (Some(MCTMode::Custom), _) if params.mct_data.is_none() => {
+      return Err(ImageError::EncodeError(
+        "Custom MCT selected but no MCT data provided".into(),
+      ));
+    }
+    _ => {}
+  }
+  eprintln!("{params:#?}");
+
   // Create encoder based on codec format
   let codec = unsafe {
     match params.codec_format {
@@ -96,7 +118,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       return Ok(());
     }
   };
-  eprintln!("{cli_opts:?}");
 
   // Process files
   let start_time = std::time::Instant::now();
