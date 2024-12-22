@@ -1,6 +1,6 @@
 use super::ImageError;
-use crate::compress::{CompressionParameters, MCTMode};
 use crate::params::ParameterError;
+use crate::params::{CompressionParameters, MCTMode};
 use openjp2::{image::opj_image, openjpeg::*};
 use std::fs::File;
 use std::io::Read;

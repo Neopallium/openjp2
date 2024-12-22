@@ -1,5 +1,5 @@
 use super::ImageError;
-use crate::compress::ImageFileFormat;
+use crate::params::ImageFileFormat;
 use image::{self, DynamicImage};
 use openjp2::{image::opj_image, openjpeg::*};
 use std::io::{BufWriter, Write};
