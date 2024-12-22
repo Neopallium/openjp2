@@ -61,7 +61,7 @@ fn compress_image(
     }
     _ => {}
   }
-  eprintln!("{params:#?}");
+  //eprintln!("{params:#?}");
 
   // Create encoder based on codec format
   let codec = unsafe {
