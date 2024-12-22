@@ -1,6 +1,7 @@
 ///! Common code shared between the openjp2 CLI tools.
 pub mod color;
 pub mod compress;
+pub mod decompress;
 pub mod convert;
 pub mod getopt;
 pub mod params;
