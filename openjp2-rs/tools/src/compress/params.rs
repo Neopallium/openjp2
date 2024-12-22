@@ -497,7 +497,8 @@ pub fn parse_cli_options(
       }
       (CompressOpt::PrecinctSize, Some(arg)) => {
         c_params.precinct = arg
-          .split(',')
+          .trim_matches(&['[', ']'])
+          .split("],[")
           .map(|s| s.parse())
           .collect::<Result<_, _>>()
           .map_err(|e| ParameterError::InvalidValue(format!("Invalid precinct size: {}", e)))?;
