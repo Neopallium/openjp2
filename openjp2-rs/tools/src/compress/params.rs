@@ -807,9 +807,11 @@ impl CompressionParameters {
         break;
       }
       c_params.POC[i].tile = poc.tile;
-      c_params.POC[i].resno0 = poc.resolution;
-      c_params.POC[i].compno0 = poc.component;
-      c_params.POC[i].layno1 = poc.layer;
+      c_params.POC[i].resno0 = poc.resolution_start;
+      c_params.POC[i].compno0 = poc.component_start;
+      c_params.POC[i].layno1 = poc.layer_end;
+      c_params.POC[i].resno1 = poc.resolution_end;
+      c_params.POC[i].compno1 = poc.component_end;
       c_params.POC[i].prg = match poc.prog_order {
         ProgressionOrder::LRCP => OPJ_LRCP,
         ProgressionOrder::RLCP => OPJ_RLCP,
@@ -1112,9 +1114,11 @@ impl FromStr for ProgressionOrder {
 #[derive(Clone, Debug, Default)]
 pub struct POCMarker {
   pub tile: u32,
-  pub resolution: u32,
-  pub component: u32,
-  pub layer: u32,
+  pub resolution_start: u32,
+  pub component_start: u32,
+  pub layer_end: u32,
+  pub resolution_end: u32,
+  pub component_end: u32,
   pub prog_order: ProgressionOrder,
 }
 
@@ -1136,7 +1140,8 @@ impl FromStr for POCMarker {
       .map_err(|_| ParameterError::ParseError("Invalid tile number".into()))?;
 
     let params: Vec<&str> = params_str.split(',').collect();
-    if params.len() != 5 {
+    if params.len() != 6 {
+      eprintln!("Invalid POC parameters: {:?}", params);
       return Err(ParameterError::InvalidFormat(
         "POC format: T<tile>=<resStart>,<compStart>,<layerEnd>,<resEnd>,<compEnd>,<progOrder>"
           .into(),
@@ -1145,15 +1150,21 @@ impl FromStr for POCMarker {
 
     Ok(POCMarker {
       tile,
-      resolution: params[0]
+      resolution_start: params[0]
         .parse()
         .map_err(|_| ParameterError::ParseError("Invalid resolution".into()))?,
-      component: params[1]
+      component_start: params[1]
         .parse()
         .map_err(|_| ParameterError::ParseError("Invalid component".into()))?,
-      layer: params[2]
+      layer_end: params[2]
         .parse()
         .map_err(|_| ParameterError::ParseError("Invalid layer".into()))?,
+      resolution_end: params[3]
+        .parse()
+        .map_err(|_| ParameterError::ParseError("Invalid resolution".into()))?,
+      component_end: params[4]
+        .parse()
+        .map_err(|_| ParameterError::ParseError("Invalid component".into()))?,
       prog_order: params[5].parse()?,
     })
   }
