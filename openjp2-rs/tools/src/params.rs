@@ -1,6 +1,11 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
+mod compress;
+pub use compress::*;
+mod decompress;
+pub use decompress::*;
+
 #[derive(Debug)]
 pub enum ParameterError {
   InvalidFormat(String),

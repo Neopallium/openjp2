@@ -1,5 +1,5 @@
 use super::ImageError;
-use crate::compress::{CompressionParameters, ImageFileFormat};
+use crate::params::{CompressionParameters, ImageFileFormat};
 use image::{self, DynamicImage};
 use openjp2::{image::opj_image, openjpeg::*};
 use std::fs::File;

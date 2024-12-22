@@ -1,6 +1,6 @@
 use super::convert_from_dynamic_image;
 use super::ImageError;
-use crate::compress::CompressionParameters;
+use crate::params::CompressionParameters;
 use openjp2::image::opj_image;
 use std::convert::TryInto;
 use std::fs::File;

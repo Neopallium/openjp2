@@ -1,5 +1,5 @@
 use openjp2::{detect_format_from_file, image::opj_image, openjpeg::*};
-use openjp2_tools::{compress::*, convert::*, params::*};
+use openjp2_tools::{convert::*, params::*};
 use std::ffi::CString;
 use std::path::{Path, PathBuf};
 
