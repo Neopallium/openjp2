@@ -248,6 +248,21 @@ pub struct opj_image {
 }
 pub type opj_image_t = opj_image;
 
+impl std::fmt::Debug for opj_image {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("opj_image")
+      .field("x0", &self.x0)
+      .field("y0", &self.y0)
+      .field("x1", &self.x1)
+      .field("y1", &self.y1)
+      .field("numcomps", &self.numcomps)
+      .field("color_space", &self.color_space)
+      .field("comps", &self.comps())
+      .field("icc_profile", &self.icc_profile())
+      .finish()
+  }
+}
+
 impl Default for opj_image {
   fn default() -> Self {
     Self {
