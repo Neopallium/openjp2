@@ -179,6 +179,13 @@ fn load_raw_image(
   image.alloc_comps(raw_params.num_comps);
   let comps = image.comps_mut().expect("We just allocated the components");
 
+  // Detect alpha channel.
+  let alpha = match raw_params.num_comps {
+    2 => Some(1),
+    4 => Some(3),
+    _ => None,
+  };
+
   // Initialize components
   for (i, comp) in comps.iter_mut().enumerate() {
     let raw_comp = raw_params
@@ -194,6 +201,7 @@ fn load_raw_image(
     comp.y0 = 0;
     comp.prec = raw_params.bit_depth;
     comp.sgnd = raw_params.signed as u32;
+    comp.alpha = (Some(i as u32) == alpha) as u16;
 
     if !comp.alloc_data() {
       return Err(ImageError::InvalidFormat(
@@ -265,46 +273,46 @@ fn convert_from_dynamic_image(
   params: &CompressionParameters,
 ) -> Result<Box<opj_image>, ImageError> {
   // Get information from input image.
-  let (width, height, numcomps, color_space, bit_depth, sgnd) = match &in_img {
+  let (width, height, numcomps, color_space, bit_depth, sgnd, alpha) = match &in_img {
     DynamicImage::ImageLuma8(img) => {
       let (width, height) = img.dimensions();
-      (width, height, 1, OPJ_CLRSPC_GRAY, 8, false)
+      (width, height, 1, OPJ_CLRSPC_GRAY, 8, false, None)
     }
     DynamicImage::ImageLumaA8(img) => {
       let (width, height) = img.dimensions();
-      (width, height, 2, OPJ_CLRSPC_GRAY, 8, false)
+      (width, height, 2, OPJ_CLRSPC_GRAY, 8, false, Some(1))
     }
     DynamicImage::ImageRgb8(img) => {
       let (width, height) = img.dimensions();
-      (width, height, 3, OPJ_CLRSPC_SRGB, 8, false)
+      (width, height, 3, OPJ_CLRSPC_SRGB, 8, false, None)
     }
     DynamicImage::ImageRgba8(img) => {
       let (width, height) = img.dimensions();
-      (width, height, 4, OPJ_CLRSPC_SRGB, 8, false)
+      (width, height, 4, OPJ_CLRSPC_SRGB, 8, false, Some(3))
     }
     DynamicImage::ImageRgb16(img) => {
       let (width, height) = img.dimensions();
-      (width, height, 3, OPJ_CLRSPC_SRGB, 16, false)
+      (width, height, 3, OPJ_CLRSPC_SRGB, 16, false, None)
     }
     DynamicImage::ImageRgba16(img) => {
       let (width, height) = img.dimensions();
-      (width, height, 4, OPJ_CLRSPC_SRGB, 16, false)
+      (width, height, 4, OPJ_CLRSPC_SRGB, 16, false, Some(3))
     }
     DynamicImage::ImageLuma16(img) => {
       let (width, height) = img.dimensions();
-      (width, height, 1, OPJ_CLRSPC_GRAY, 16, false)
+      (width, height, 1, OPJ_CLRSPC_GRAY, 16, false, None)
     }
     DynamicImage::ImageLumaA16(img) => {
       let (width, height) = img.dimensions();
-      (width, height, 2, OPJ_CLRSPC_GRAY, 16, false)
+      (width, height, 2, OPJ_CLRSPC_GRAY, 16, false, Some(1))
     }
     DynamicImage::ImageRgb32F(img) => {
       let (width, height) = img.dimensions();
-      (width, height, 3, OPJ_CLRSPC_SRGB, 32, true)
+      (width, height, 3, OPJ_CLRSPC_SRGB, 32, true, None)
     }
     DynamicImage::ImageRgba32F(img) => {
       let (width, height) = img.dimensions();
-      (width, height, 4, OPJ_CLRSPC_SRGB, 32, true)
+      (width, height, 4, OPJ_CLRSPC_SRGB, 32, true, Some(3))
     }
     _ => {
       return Err(ImageError::InvalidFormat(
@@ -327,16 +335,17 @@ fn convert_from_dynamic_image(
 
   let comps = image.comps_mut().expect("We just allocated them");
   // Initialize components
-  for comps in comps.iter_mut() {
-    comps.dx = subsampling.width;
-    comps.dy = subsampling.height;
-    comps.w = width;
-    comps.h = height;
-    comps.x0 = 0;
-    comps.y0 = 0;
-    comps.prec = bit_depth;
-    comps.sgnd = sgnd as u32;
-    if !comps.alloc_data() {
+  for (i, comp) in comps.iter_mut().enumerate() {
+    comp.dx = subsampling.width;
+    comp.dy = subsampling.height;
+    comp.w = width;
+    comp.h = height;
+    comp.x0 = 0;
+    comp.y0 = 0;
+    comp.prec = bit_depth;
+    comp.sgnd = sgnd as u32;
+    comp.alpha = (Some(i as u32) == alpha) as u16;
+    if !comp.alloc_data() {
       return Err(ImageError::InvalidFormat(
         "Failed to allocate component data".into(),
       ));
