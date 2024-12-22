@@ -139,7 +139,7 @@ pub type opj_msg_callback_fn =
 pub type opj_msg_callback = Option<opj_msg_callback_fn>;
 
 #[repr(C)]
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct opj_poc {
   pub resno0: OPJ_UINT32,
   pub compno0: OPJ_UINT32,
@@ -181,6 +181,7 @@ pub struct opj_poc {
 pub type opj_poc_t = opj_poc;
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct opj_cparameters {
   pub tile_size_on: OPJ_BOOL,
   pub cp_tx0: core::ffi::c_int,
@@ -470,7 +471,7 @@ pub type opj_stream_free_user_data_fn =
 pub type opj_stream_t = *mut core::ffi::c_void;
 
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Debug)]
 pub struct opj_image_comp {
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
