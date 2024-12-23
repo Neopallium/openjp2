@@ -1,6 +1,5 @@
-use openjp2::{detect_format_from_file, image::opj_image, openjpeg::*};
+use openjp2::{detect_format_from_file, openjpeg::*, opj_image, Codec, Stream};
 use openjp2_tools::{convert::*, params::*};
-use std::ffi::CString;
 use std::path::{Path, PathBuf};
 
 fn compress_image(
@@ -64,61 +63,35 @@ fn compress_image(
   //eprintln!("{params:#?}");
 
   // Create encoder based on codec format
-  let codec = unsafe {
-    match params.codec_format {
-      Some(CodecFormat::J2K) => opj_create_compress(OPJ_CODEC_J2K),
-      Some(CodecFormat::JP2) => opj_create_compress(OPJ_CODEC_JP2),
-      None => return Err(ImageError::InvalidFormat("No codec format".into())),
-      _ => return Err(ImageError::InvalidFormat("Unknown output format".into())),
+  let cod_format = match params.codec_format {
+    Some(CodecFormat::J2K) => OPJ_CODEC_J2K,
+    Some(CodecFormat::JP2) => OPJ_CODEC_JP2,
+    None => {
+      return Err(ImageError::InvalidFormat(
+        "No codec format specified".into(),
+      ));
+    }
+    _ => {
+      return Err(ImageError::InvalidFormat("Unknown codec format".into()));
     }
   };
-
-  if codec.is_null() {
-    return Err(ImageError::EncodeError("Failed to create codec".into()));
-  }
+  let mut codec = Codec::new_encoder(cod_format)
+    .ok_or_else(|| ImageError::EncodeError("Failed to create codec".into()))?;
 
   // Set compression parameters
-  let status = unsafe {
-    // Set parameters from CompressionParameters
-    let mut c_params = params.to_c_params();
-
-    opj_setup_encoder(codec, &mut c_params, image.as_mut())
-  };
-
+  let mut c_params = params.to_c_params();
+  let status = codec.setup_encoder(&mut c_params, &mut image);
   if status == 0 {
-    unsafe {
-      opj_destroy_codec(codec);
-    }
     return Err(ImageError::EncodeError("Failed to setup encoder".into()));
   }
 
   // Create output stream
-  let stream = unsafe {
-    let path_str = CString::new(output.to_str().unwrap()).unwrap();
-    opj_stream_create_default_file_stream(path_str.as_ptr(), 0)
-  };
-
-  if stream.is_null() {
-    unsafe {
-      opj_destroy_codec(codec);
-    }
-    return Err(ImageError::EncodeError(
-      "Failed to create output stream".into(),
-    ));
-  }
+  let mut stream = Stream::new_file(output, 1_000_000, false)?;
 
   // Compress image
-  let result = unsafe {
-    let success = opj_start_compress(codec, image.as_mut(), stream) != 0
-      && opj_encode(codec, stream) != 0
-      && opj_end_compress(codec, stream) != 0;
-
-    opj_stream_destroy(stream);
-    opj_destroy_codec(codec);
-
-    success
-  };
-
+  let result = codec.start_compress(&mut image, &mut stream) == 1
+    && codec.encode(&mut stream) == 1
+    && codec.end_compress(&mut stream) == 1;
   if !result {
     return Err(ImageError::EncodeError("Compression failed".into()));
   }

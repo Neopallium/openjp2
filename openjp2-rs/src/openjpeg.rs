@@ -163,7 +163,13 @@ pub unsafe fn opj_read_header(
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.read_header(p_stream, p_image)
+  match l_codec.read_header(p_stream) {
+    Some(image) => {
+      *p_image = Box::into_raw(image);
+      1
+    }
+    None => 0,
+  }
 }
 
 #[no_mangle]

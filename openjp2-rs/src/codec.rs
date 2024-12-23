@@ -221,11 +221,7 @@ impl Codec {
     }
   }
 
-  pub fn read_header(
-    &mut self,
-    mut p_stream: &mut Stream,
-    mut p_image: *mut *mut opj_image_t,
-  ) -> OPJ_BOOL {
+  pub fn read_header(&mut self, mut p_stream: &mut Stream) -> Option<Box<opj_image>> {
     match &mut self.m_codec {
       CodecType::Encoder(_) => {
         event_msg!(
@@ -233,19 +229,30 @@ impl Codec {
           EVT_ERROR,
           "Codec provided to the opj_read_header function is not a decompressor handler.\n",
         );
+        None
       }
       CodecType::Decoder(dec) => {
-        return match dec {
+        let mut image: *mut opj_image_t = std::ptr::null_mut();
+        let res = match dec {
           CodecFormat::J2K(dec) => {
-            opj_j2k_read_header(p_stream, dec, p_image, &mut self.m_event_mgr)
+            opj_j2k_read_header(p_stream, dec, &mut image, &mut self.m_event_mgr)
           }
           CodecFormat::JP2(dec) => {
-            opj_jp2_read_header(p_stream, dec, p_image, &mut self.m_event_mgr)
+            opj_jp2_read_header(p_stream, dec, &mut image, &mut self.m_event_mgr)
           }
         };
+        let image = if image.is_null() {
+          None
+        } else {
+          Some(unsafe { Box::from_raw(image) })
+        };
+        if res == 1 {
+          image
+        } else {
+          None
+        }
       }
     }
-    0
   }
 
   pub fn set_decoded_components(
