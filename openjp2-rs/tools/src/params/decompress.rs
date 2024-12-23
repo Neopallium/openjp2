@@ -360,16 +360,75 @@ pub fn parse_decompress_options(
 }
 
 fn decode_help_display() {
-  println!("\nThis is the opj_decompress utility from the OpenJPEG project.\n");
-  println!("It decompresses JPEG 2000 codestreams to various image formats.\n");
-  println!("Parameters:\n");
-  println!("  -i <file>");
-  println!("    Input file");
-  println!("  -o <file>");
-  println!("    Output file (PGX, PNM, BMP, TIF, RAW, RAWL, TGA, PNG)");
-  println!("  -r <reduce>");
-  println!("    Number of highest resolution levels to discard");
-  println!("  -l <layers>");
-  println!("    Maximum number of quality layers to decode");
-  // ... Add more help text as needed ...
+  println!("\nThis is the opj_decompress utility from the OpenJPEG project.");
+  println!("It decompresses JPEG 2000 codestreams to various image formats.");
+  println!(
+    "It has been compiled against openjp2 library v{}.\n",
+    OPJ_VERSION,
+  );
+
+  println!("Parameters:");
+  println!("-----------\n");
+  println!("  -ImgDir <directory>");
+  println!("\tImage file Directory path");
+  println!("  -OutFor <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|TIFF|RAW|YUV|RAWL|TGA>");
+  println!("    REQUIRED only if -ImgDir is used");
+  println!("\tOutput format for decompressed images.");
+  println!("  -i <compressed file>");
+  println!("    REQUIRED only if an Input image directory is not specified");
+  println!("    Currently accepts J2K-files, JP2-files and JPT-files. The file type");
+  println!("    is identified based on its suffix.");
+  println!("  -o <decompressed file>");
+  println!("    REQUIRED");
+  println!("    Currently accepts formats specified above (see OutFor option)");
+  println!("    Binary data is written to the file (not ascii). If a PGX");
+  println!("    filename is given, there will be as many output files as there are");
+  println!("    components: an indice starting from 0 will then be appended to the");
+  println!("    output filename, just before the \"pgx\" extension. If a PGM filename");
+  println!("    is given and there are more than one component, only the first component");
+  println!("    will be written to the file.");
+  println!("  -r <reduce factor>");
+  println!("    Set the number of highest resolution levels to be discarded. The");
+  println!("    image resolution is effectively divided by 2 to the power of the");
+  println!("    number of discarded levels. The reduce factor is limited by the");
+  println!("    smallest total number of decomposition levels among tiles.");
+  println!("  -l <number of quality layers to decode>");
+  println!("    Set the maximum number of quality layers to decode. If there are");
+  println!("    less quality layers than the specified number, all the quality layers");
+  println!("    are decoded.");
+  println!("  -x");
+  println!("    Create an index file *.Idx (-x index_name.Idx)");
+  println!("  -d <x0,y0,x1,y1>");
+  println!("    OPTIONAL");
+  println!("    Decoding area");
+  println!("    By default all the image is decoded.");
+  println!("  -t <tile_number>");
+  println!("    OPTIONAL");
+  println!("    Set the tile number of the decoded tile. Follow the JPEG2000 convention from left-up to bottom-up");
+  println!("    By default all tiles are decoded.");
+  println!("  -p <comp 0 precision>[C|S][,<comp 1 precision>[C|S][,...]]");
+  println!("    OPTIONAL");
+  println!("    Force the precision (bit depth) of components.");
+  println!("    There shall be at least 1 value. There is no limit on the number of values (comma separated, last values ignored if too much values).");
+  println!("    If there are less values than components, the last value is used for remaining components.");
+  println!("    If 'C' is specified (default), values are clipped.");
+  println!("    If 'S' is specified, values are scaled.");
+  println!("    A 0 value can be specified (meaning original bit depth).");
+  println!("  -c first_comp_index[,second_comp_index][,...]");
+  println!("    OPTIONAL");
+  println!("    To limit the number of components to decode.");
+  println!("    Component indices are numbered starting at 0.");
+  println!("  -force-rgb");
+  println!("    Force output image colorspace to RGB");
+  println!("  -upsample");
+  println!("    Downsampled components will be upsampled to image size");
+  println!("  -split-pnm");
+  println!("    Split output components to different files when writing to PNM");
+  println!("  -threads <num_threads|ALL_CPUS>");
+  println!("    Number of threads to use for decoding or ALL_CPUS for all available cores.");
+  println!("  -allow-partial");
+  println!("    Disable strict mode to allow decoding partial codestreams.");
+  println!("  -quiet");
+  println!("    Disable output from the library and other output.");
+  println!();
 }
