@@ -14,7 +14,7 @@ autobins = false
 exclude = ["CMakeLists.txt", "samples/*"]
 
 [workspace]
-members = ["tools"]
+members = ["tools", "libtiff-sys"]
 
 [lib]
 name = "openjp2"
