@@ -312,6 +312,30 @@ impl opj_image {
     Box::new(Self::default())
   }
 
+  pub fn create(cmptparms: &[opj_image_comptparm], clrspc: OPJ_COLOR_SPACE) -> Box<Self> {
+    let mut image = Self::new();
+    image.color_space = clrspc;
+    if !image.alloc_comps(cmptparms.len() as u32) {
+      return image;
+    }
+    if let Some(comps) = image.comps_mut() {
+      for (comp, params) in comps.iter_mut().zip(cmptparms) {
+        comp.dx = params.dx;
+        comp.dy = params.dy;
+        comp.w = params.w;
+        comp.h = params.h;
+        comp.x0 = params.x0;
+        comp.y0 = params.y0;
+        comp.prec = params.prec;
+        comp.sgnd = params.sgnd;
+        if !comp.alloc_data() {
+          return image;
+        }
+      }
+    }
+    image
+  }
+
   pub fn comp0_dims_prec(&self) -> (usize, usize, i32) {
     if let Some(comps) = self.comps() {
       if comps.len() > 0 {
@@ -527,30 +551,8 @@ pub fn opj_image_create(
   mut clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
   assert!(!cmptparms.is_null());
-  let mut image = opj_image::new();
   let cmptparms = unsafe { std::slice::from_raw_parts(cmptparms, numcmpts as usize) };
-  image.color_space = clrspc;
-  /* allocate memory for the per-component information */
-  if !image.alloc_comps(numcmpts) {
-    /* TODO replace with event manager, breaks API */
-    /* fprintf(stderr,"Unable to allocate memory for image.\n"); */
-    return std::ptr::null_mut::<opj_image_t>();
-  }
-  /* create the individual image components */
-  let comps = image.comps_mut().unwrap();
-  for (comp, params) in comps.iter_mut().zip(cmptparms) {
-    comp.dx = params.dx;
-    comp.dy = params.dy;
-    comp.w = params.w;
-    comp.h = params.h;
-    comp.x0 = params.x0;
-    comp.y0 = params.y0;
-    comp.prec = params.prec;
-    comp.sgnd = params.sgnd;
-    if !comp.alloc_data() {
-      return std::ptr::null_mut::<opj_image_t>();
-    }
-  }
+  let mut image = opj_image::create(cmptparms, clrspc);
   Box::into_raw(image)
 }
 
