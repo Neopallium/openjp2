@@ -53,9 +53,9 @@ pub(crate) enum CodecType {
 }
 
 #[repr(C)]
-pub(crate) struct Codec {
-  pub m_codec: CodecType,
-  pub m_event_mgr: opj_event_mgr,
+pub struct Codec {
+  pub(crate) m_codec: CodecType,
+  pub(crate) m_event_mgr: opj_event_mgr,
 }
 pub(crate) type opj_codec_private_t = Codec;
 

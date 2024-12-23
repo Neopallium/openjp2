@@ -229,10 +229,10 @@ pub(crate) struct opj_tcd_marker_info {
 }
 pub(crate) type opj_tcd_marker_info_t = opj_tcd_marker_info;
 
-pub(crate) struct Stream {
-  pub m_inner: super::stream::StreamInner,
-  pub m_stream_length: OPJ_UINT64,
-  pub m_byte_offset: OPJ_OFF_T,
+pub struct Stream {
+  pub(crate) m_inner: super::stream::StreamInner,
+  pub(crate) m_stream_length: OPJ_UINT64,
+  pub(crate) m_byte_offset: OPJ_OFF_T,
 }
 pub(crate) type opj_stream_private = Stream;
 pub(crate) type opj_stream_private_t = Stream;
