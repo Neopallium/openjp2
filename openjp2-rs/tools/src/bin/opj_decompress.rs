@@ -1,6 +1,27 @@
 use openjp2::{detect_format_from_file, openjpeg::*, opj_image_comptparm, Codec, Stream};
 use openjp2_tools::{color::*, convert::*, params::*};
+use std::ffi::CStr;
+use std::os::raw::{c_char, c_void};
+use std::ptr;
 use std::{env, path::Path};
+
+extern "C" fn info_callback(msg: *const c_char, _data: *mut c_void) {
+  unsafe {
+    print!("[INFO] {}", CStr::from_ptr(msg).to_string_lossy());
+  }
+}
+
+extern "C" fn warning_callback(msg: *const c_char, _data: *mut c_void) {
+  unsafe {
+    print!("[WARNING] {}", CStr::from_ptr(msg).to_string_lossy());
+  }
+}
+
+extern "C" fn error_callback(msg: *const c_char, _data: *mut c_void) {
+  unsafe {
+    print!("[ERROR] {}", CStr::from_ptr(msg).to_string_lossy());
+  }
+}
 
 fn decompress_image<P: AsRef<Path>>(
   input: P,
@@ -39,6 +60,13 @@ fn decompress_image<P: AsRef<Path>>(
         d_params.cp_reduce = 0;
         cp_reduce
       });
+
+  /* catch events using our callbacks and give a local context */
+  if !params.quiet {
+    codec.set_info_handler(Some(info_callback), ptr::null_mut());
+    codec.set_warning_handler(Some(warning_callback), ptr::null_mut());
+    codec.set_error_handler(Some(error_callback), ptr::null_mut());
+  }
 
   let status = codec.setup_decoder(&mut d_params);
   if status == 0 {
