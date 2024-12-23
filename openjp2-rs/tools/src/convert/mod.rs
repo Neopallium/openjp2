@@ -25,6 +25,7 @@ pub fn load_image(
     Some(ImageFileFormat::RAWL) => load_raw_image(path, params, false),
     Some(ImageFileFormat::BMP) => load_bmp_image(path, params),
     Some(ImageFileFormat::PNG) => load_png_image(path, params),
+    Some(ImageFileFormat::TIF) => load_tiff_image(path, params),
     _ => {
       let image = read_image(path)?;
       convert_from_dynamic_image(image, params)
@@ -32,11 +33,49 @@ pub fn load_image(
   }
 }
 
+pub fn load_tiff_image(
+  path: &Path,
+  params: &CompressionParameters,
+) -> Result<Box<opj_image>, ImageError> {
+  let tif_image = read_image(path)?;
+  let mut image = convert_from_dynamic_image(tif_image, params)?;
+  let scaled = if params.is_cinema() {
+    // If Cinematic mode was set and the image is RGB(A) rescale
+    // to 12 bits per component to comply with cinema profiles.
+    let comps = image
+      .comps_mut()
+      .ok_or_else(|| ImageError::EncodeError("Failed to get image components".into()))?;
+    if comps[0].prec != 12 {
+      for comp in comps {
+        comp.scale(12);
+      }
+      true
+    } else {
+      // It was already 12 bits per component.
+      false
+    }
+  } else {
+    false
+  };
+  // If it wasn't scale for Cinematic mode, check if the CLI requested a target bit depth.
+  if !scaled {
+    if let Some(target_bit_depth) = params.target_bit_depth {
+      let comps = image
+        .comps_mut()
+        .ok_or_else(|| ImageError::EncodeError("Failed to get image components".into()))?;
+      for comp in comps {
+        comp.scale(target_bit_depth);
+      }
+    }
+  }
+  Ok(image)
+}
+
 pub fn read_image(path: &Path) -> Result<DynamicImage, ImageError> {
   Ok(image::open(path).map_err(|e| ImageError::ReadError(e.to_string()))?)
 }
 
-pub fn save_image(image: &opj_image, path: &Path) -> Result<(), ImageError> {
+pub fn save_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
   let format = ImageFileFormat::get_file_format(path)
     .map_err(|_| ImageError::InvalidFormat("Unknown file format".into()))?;
 
@@ -44,6 +83,8 @@ pub fn save_image(image: &opj_image, path: &Path) -> Result<(), ImageError> {
     ImageFileFormat::RAW => save_raw_image(image, path, true),
     ImageFileFormat::RAWL => save_raw_image(image, path, false),
     ImageFileFormat::PGX => save_pgx_image(image, path),
+    ImageFileFormat::PNG => save_png_image(image, path),
+    ImageFileFormat::TIF => save_tif_image(image, path),
     _ => {
       let dynamic_img = convert_to_dynamic_image(image)?;
 
@@ -53,6 +94,73 @@ pub fn save_image(image: &opj_image, path: &Path) -> Result<(), ImageError> {
         .map_err(|e| ImageError::EncodeError(e.to_string()))
     }
   }
+}
+
+pub fn save_png_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+  {
+    let comps = image
+      .comps_mut()
+      .ok_or_else(|| ImageError::EncodeError("Failed to get image components".into()))?;
+    let numcomps = comps.len();
+    if numcomps == 0 {
+      return Err(ImageError::EncodeError("No components found".into()));
+    }
+
+    let prec = comps[0].prec;
+
+    // Clip components.
+    for comp in comps.iter_mut() {
+      comp.clip(prec);
+    }
+
+    // Scale components.
+    if prec > 8 && prec < 16 {
+      for comp in comps {
+        comp.scale(16);
+      }
+    } else if prec < 8 && numcomps > 1 {
+      for comp in comps {
+        comp.scale(8);
+      }
+    } else if prec > 1 && prec < 8 && (prec == 6 || (prec & 1) == 1) {
+      let prec = match prec {
+        5 | 6 => 8,
+        _ => prec + 1,
+      };
+      for comp in comps {
+        comp.scale(prec);
+      }
+    }
+  }
+
+  let dynamic_img = convert_to_dynamic_image(image)?;
+  dynamic_img
+    .save(path)
+    .map_err(|e| ImageError::EncodeError(e.to_string()))
+}
+
+pub fn save_tif_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+  {
+    let comps = image
+      .comps_mut()
+      .ok_or_else(|| ImageError::EncodeError("Failed to get image components".into()))?;
+    let numcomps = comps.len();
+    if numcomps == 0 {
+      return Err(ImageError::EncodeError("No components found".into()));
+    }
+
+    let prec = comps[0].prec;
+
+    // Clip components.
+    for comp in comps.iter_mut() {
+      comp.clip(prec);
+    }
+  }
+
+  let dynamic_img = convert_to_dynamic_image(image)?;
+  dynamic_img
+    .save(path)
+    .map_err(|e| ImageError::EncodeError(e.to_string()))
 }
 
 // Add error types
