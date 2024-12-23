@@ -12,6 +12,7 @@ pub fn save_image(image: &opj_image, path: &Path) -> Result<(), ImageError> {
   match format {
     ImageFileFormat::RAW => save_raw_image(image, path, true),
     ImageFileFormat::RAWL => save_raw_image(image, path, false),
+    ImageFileFormat::PGX => save_pgx_image(image, path),
     _ => {
       let dynamic_img = convert_to_dynamic_image(image)?;
 
@@ -100,6 +101,71 @@ pub fn save_raw_image(image: &opj_image, path: &Path, big_endian: bool) -> Resul
   Ok(())
 }
 
+pub fn save_pgx_image(image: &opj_image, path: &Path) -> Result<(), ImageError> {
+  // For multi-component images we need to save each component as a separate file
+  let need_suffix = image.numcomps > 1;
+  let stem = path
+    .file_stem()
+    .and_then(|s| s.to_str())
+    .ok_or_else(|| ImageError::InvalidFormat("Invalid path".into()))?;
+  let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("pgx");
+
+  for (comp_idx, comp_data) in image
+    .comps_data_iter()
+    .ok_or_else(|| ImageError::InvalidFormat("Missing components".into()))?
+    .enumerate()
+  {
+    // Create filename with component suffix if needed
+    let comp_path = if need_suffix {
+      path.with_file_name(format!("{}_{}.{}", stem, comp_idx, ext))
+    } else {
+      path.to_path_buf()
+    };
+
+    let file = std::fs::File::create(&comp_path)?;
+    let mut writer = BufWriter::new(file);
+
+    // Write PGX header
+    let sign_char = if comp_data.comp.sgnd != 0 { '-' } else { '+' };
+    write!(
+      writer,
+      "PG ML {} {} {} {}\n",
+      sign_char, comp_data.comp.prec, comp_data.comp.w, comp_data.comp.h
+    )?;
+
+    let precision = comp_data.comp.prec;
+    let signed = comp_data.comp.sgnd != 0;
+    let adjust = comp_data.adjust;
+
+    if precision <= 8 {
+      // Write 8-bit values
+      let (min, max) = if signed { (-128, 127) } else { (0, 255) };
+
+      for &value in comp_data.data.iter() {
+        let value = (value + adjust).clamp(min, max) as u8;
+        writer.write_all(&[value])?;
+      }
+    } else if precision <= 16 {
+      // Write 16-bit values in big-endian order
+      let (min, max) = if signed { (-32768, 32767) } else { (0, 65535) };
+
+      for &value in comp_data.data.iter() {
+        let value = (value + adjust).clamp(min, max) as u16;
+        writer.write_all(&value.to_be_bytes())?;
+      }
+    } else {
+      return Err(ImageError::InvalidFormat(
+        "PGX format only supports up to 16 bits per component".into(),
+      ));
+    }
+
+    // Ensure all data is written
+    writer.flush()?;
+  }
+
+  Ok(())
+}
+
 pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, ImageError> {
   let mut comps = image
     .comps_data_iter()
@@ -132,7 +198,7 @@ pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, Image
   let adjust = c0.adjust;
   // Convert to DynamicImage based on components
   let dynamic_img = match (c0, c1, c2, c3, image.color_space) {
-    (c0, None, None, None, OPJ_CLRSPC_GRAY) => {
+    (c0, None, None, None, OPJ_CLRSPC_GRAY | OPJ_CLRSPC_UNSPECIFIED) => {
       // Grayscale image
 
       let pixels = c0.data.iter().map(|&x| x + adjust);
@@ -150,7 +216,7 @@ pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, Image
         DynamicImage::ImageLuma16(img_buf)
       }
     }
-    (gray, Some(alpha), None, None, OPJ_CLRSPC_GRAY) => {
+    (gray, Some(alpha), None, None, OPJ_CLRSPC_GRAY | OPJ_CLRSPC_UNSPECIFIED) => {
       // Grayscale with alpha
 
       let pixels = gray
@@ -173,7 +239,7 @@ pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, Image
         DynamicImage::ImageLumaA16(img_buf)
       }
     }
-    (r, Some(g), Some(b), None, OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC) => {
+    (r, Some(g), Some(b), None, OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC | OPJ_CLRSPC_UNSPECIFIED) => {
       // RGB image
 
       let pixels = r
@@ -197,7 +263,7 @@ pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, Image
         DynamicImage::ImageRgb16(img_buf)
       }
     }
-    (r, Some(g), Some(b), Some(a), OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC) => {
+    (r, Some(g), Some(b), Some(a), OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC | OPJ_CLRSPC_UNSPECIFIED) => {
       // RGBA image
 
       let pixels = r
