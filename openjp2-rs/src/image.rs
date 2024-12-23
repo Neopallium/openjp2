@@ -55,6 +55,27 @@ impl Default for opj_image_comp {
 }
 
 impl opj_image_comp {
+  pub fn copy(&mut self, other: &opj_image_comp) -> bool {
+    self.clear_data();
+    self.dx = other.dx;
+    self.dy = other.dy;
+    self.w = other.w;
+    self.h = other.h;
+    self.x0 = other.x0;
+    self.y0 = other.y0;
+    self.prec = other.prec;
+    self.bpp = other.bpp;
+    self.sgnd = other.sgnd;
+    self.resno_decoded = other.resno_decoded;
+    self.factor = other.factor;
+    self.alpha = other.alpha;
+    if let Some(o_data) = other.data() {
+      self.set_data(o_data)
+    } else {
+      true
+    }
+  }
+
   pub fn clear_data(&mut self) {
     if !self.data.is_null() {
       unsafe {
