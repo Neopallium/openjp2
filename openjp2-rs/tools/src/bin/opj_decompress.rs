@@ -83,42 +83,44 @@ fn decompress_image<P: AsRef<Path>>(
     return Err(ImageError::DecodeError("Failed to decode image".into()));
   }
 
-  /*
+  // Close input stream
+  unsafe {
+    opj_stream_destroy(stream);
+  }
+
+  // Get image components
+  let comps = image
+    .comps()
+    .ok_or_else(|| ImageError::DecodeError("No components".into()))?;
   // Handle color space conversion
   if image.color_space != OPJ_CLRSPC_SYCC
     && image.numcomps == 3
-    && image.comps[0].dx == image.comps[0].dy
-    && image.comps[1].dx != 1
+    && comps[0].dx == comps[0].dy
+    && comps[1].dx != 1
   {
     image.color_space = OPJ_CLRSPC_SYCC;
   } else if image.numcomps <= 2 {
     image.color_space = OPJ_CLRSPC_GRAY;
   }
-  */
 
   // Handle color conversions
   if image.color_space == OPJ_CLRSPC_SYCC {
     color_sycc_to_rgb(&mut image);
   } else if image.color_space == OPJ_CLRSPC_CMYK {
     color_cmyk_to_rgb(&mut image);
+  } else if image.color_space == OPJ_CLRSPC_EYCC {
+    color_esycc_to_rgb(&mut image);
   }
 
-  // Handle forcing RGB output
-  /*
-  if params.force_rgb {
-    match image.color_space {
-      OPJ_CLRSPC_SRGB => (),
-      OPJ_CLRSPC_GRAY => {
-        image = convert_gray_to_rgb(image)?;
-      }
-      _ => {
-        return Err(ImageError::DecodeError(
-          "Don't know how to convert image to RGB colorspace".into(),
-        ))
-      }
+  // Apply ICC profile if present
+  if let Some(profile) = image.icc_profile() {
+    if profile.len() > 0 {
+      color_apply_icc_profile(&mut image);
+    } else {
+      color_cielab_to_rgb(image);
     }
+    image.clear_icc_profile();
   }
-  */
 
   // Handle precision parameters
   if !params.precision.is_empty() {
@@ -141,6 +143,22 @@ fn decompress_image<P: AsRef<Path>>(
   if params.upsample {
     todo!("Handle upsampling");
     //image = upsample_components(image)?;
+  }
+
+  // Handle forcing RGB output
+  if params.force_rgb {
+    match image.color_space {
+      OPJ_CLRSPC_SRGB => (),
+      OPJ_CLRSPC_GRAY => {
+        todo!("Handle gray to RGB conversion");
+        //image = convert_gray_to_rgb(image)?;
+      }
+      _ => {
+        return Err(ImageError::DecodeError(
+          "Don't know how to convert image to RGB colorspace".into(),
+        ))
+      }
+    }
   }
 
   // Write output file based on format
