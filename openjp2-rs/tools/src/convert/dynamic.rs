@@ -1,123 +1,139 @@
 use super::ImageError;
-use crate::params::{CompressionParameters, ImageFileFormat};
+use crate::params::CompressionParameters;
 use image::{self, DynamicImage};
 use openjp2::{image::opj_image, openjpeg::*};
-use std::fs::File;
-use std::io::{self, Read, Seek};
-use std::path::Path;
 
-mod raw;
-pub use raw::*;
-mod bmp;
-pub use bmp::*;
+pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, ImageError> {
+  let mut comps = image
+    .comps_data_iter()
+    .ok_or_else(|| ImageError::InvalidFormat("Missing components".into()))?;
 
-// Replace existing load_image function
-pub fn load_image(
-  path: &Path,
-  params: &CompressionParameters,
-) -> Result<Box<opj_image>, ImageError> {
-  match params.decode_format {
-    Some(ImageFileFormat::RAW) => load_raw_image(path, params, true),
-    Some(ImageFileFormat::RAWL) => load_raw_image(path, params, false),
-    Some(ImageFileFormat::BMP) => load_bmp_image(path, params),
-    Some(ImageFileFormat::PNG) => load_png_image(path, params),
+  // Must have at least one component
+  let c0 = comps
+    .next()
+    .ok_or_else(|| ImageError::InvalidFormat("Missing components".into()))?;
+  let c1 = comps.next();
+  let c2 = comps.next();
+  let c3 = comps.next();
+
+  // Only support 1-4 component images
+  if comps.next().is_some() {
+    return Err(ImageError::InvalidFormat(
+      "Unsupported number of components".into(),
+    ));
+  }
+
+  // The components must have matching parameters.
+  if !image.comps_match() {
+    return Err(ImageError::InvalidFormat(
+      "Mismatched component parameters".into(),
+    ));
+  }
+
+  let width = c0.comp.w;
+  let height = c0.comp.h;
+  let adjust = c0.adjust;
+  // Convert to DynamicImage based on components
+  let dynamic_img = match (c0, c1, c2, c3, image.color_space) {
+    (c0, None, None, None, OPJ_CLRSPC_GRAY | OPJ_CLRSPC_UNSPECIFIED) => {
+      // Grayscale image
+
+      let pixels = c0.data.iter().map(|&x| x + adjust);
+      if c0.comp.prec <= 8 {
+        // Convert to ImageLuma8
+        let img_buf =
+          image::ImageBuffer::from_raw(width, height, pixels.map(|x| x as u8).collect())
+            .ok_or_else(|| ImageError::EncodeError("Failed to create image buffer".into()))?;
+        DynamicImage::ImageLuma8(img_buf)
+      } else {
+        // Convert to ImageLuma16
+        let img_buf =
+          image::ImageBuffer::from_raw(width, height, pixels.map(|x| x as u16).collect())
+            .ok_or_else(|| ImageError::EncodeError("Failed to create image buffer".into()))?;
+        DynamicImage::ImageLuma16(img_buf)
+      }
+    }
+    (gray, Some(alpha), None, None, OPJ_CLRSPC_GRAY | OPJ_CLRSPC_UNSPECIFIED) => {
+      // Grayscale with alpha
+
+      let pixels = gray
+        .data
+        .iter()
+        .zip(alpha.data.iter())
+        .map(|(g, a)| [g + adjust, a + adjust])
+        .flatten();
+      if gray.comp.prec <= 8 {
+        // Convert to ImageLumaA8
+        let img_buf =
+          image::ImageBuffer::from_raw(width, height, pixels.map(|p| p as u8).collect())
+            .ok_or_else(|| ImageError::EncodeError("Failed to create image buffer".into()))?;
+        DynamicImage::ImageLumaA8(img_buf)
+      } else {
+        // Convert to ImageLumaA16
+        let img_buf =
+          image::ImageBuffer::from_raw(width, height, pixels.map(|p| p as u16).collect())
+            .ok_or_else(|| ImageError::EncodeError("Failed to create image buffer".into()))?;
+        DynamicImage::ImageLumaA16(img_buf)
+      }
+    }
+    (r, Some(g), Some(b), None, OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC | OPJ_CLRSPC_UNSPECIFIED) => {
+      // RGB image
+
+      let pixels = r
+        .data
+        .iter()
+        .zip(g.data.iter())
+        .zip(b.data.iter())
+        .map(|((r, g), b)| [r + adjust, g + adjust, b + adjust])
+        .flatten();
+      if r.comp.prec <= 8 {
+        // Convert to ImageRgb8
+        let img_buf =
+          image::ImageBuffer::from_raw(width, height, pixels.map(|p| p as u8).collect())
+            .ok_or_else(|| ImageError::EncodeError("Failed to create image buffer".into()))?;
+        DynamicImage::ImageRgb8(img_buf)
+      } else {
+        // Convert to ImageRgb16
+        let img_buf =
+          image::ImageBuffer::from_raw(width, height, pixels.map(|p| p as u16).collect())
+            .ok_or_else(|| ImageError::EncodeError("Failed to create image buffer".into()))?;
+        DynamicImage::ImageRgb16(img_buf)
+      }
+    }
+    (r, Some(g), Some(b), Some(a), OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC | OPJ_CLRSPC_UNSPECIFIED) => {
+      // RGBA image
+
+      let pixels = r
+        .data
+        .iter()
+        .zip(g.data.iter())
+        .zip(b.data.iter())
+        .zip(a.data.iter())
+        .map(|(((r, g), b), a)| [r + adjust, g + adjust, b + adjust, a + adjust])
+        .flatten();
+      if r.comp.prec <= 8 {
+        // Convert to ImageRgba8
+        let img_buf =
+          image::ImageBuffer::from_raw(width, height, pixels.map(|p| p as u8).collect())
+            .ok_or_else(|| ImageError::EncodeError("Failed to create image buffer".into()))?;
+        DynamicImage::ImageRgba8(img_buf)
+      } else {
+        // Convert to ImageRgba16
+        let img_buf =
+          image::ImageBuffer::from_raw(width, height, pixels.map(|p| p as u16).collect())
+            .ok_or_else(|| ImageError::EncodeError("Failed to create image buffer".into()))?;
+        DynamicImage::ImageRgba16(img_buf)
+      }
+    }
     _ => {
-      let image = read_image(path)?;
-      convert_from_dynamic_image(image, params)
+      return Err(ImageError::InvalidFormat(format!(
+        "Unsupported image format: {} components, colorspace {:?}",
+        image.numcomps, image.color_space
+      )))
     }
-  }
-}
+  };
 
-pub fn load_png_image(
-  path: &Path,
-  params: &CompressionParameters,
-) -> Result<Box<opj_image>, ImageError> {
-  let image = read_image(path)?;
-  let mut img = convert_from_dynamic_image(image, params)?;
-
-  // Read PNG header to determine bit depth and color type
-  let (bit_depth, color_type) = parse_png_header(path)?;
-
-  // Set precision based on bit depth and color type
-  if color_type == 0 && bit_depth < 8 {
-    // Grayscale with bit depth < 8
-    img
-      .comps_mut()
-      .expect("We just allocated them")
-      .iter_mut()
-      .for_each(|comp| {
-        comp.prec = bit_depth as u32;
-      });
-  }
-
-  Ok(img)
-}
-
-pub fn read_image(path: &Path) -> Result<DynamicImage, ImageError> {
-  Ok(image::open(path).map_err(|e| ImageError::ReadError(e.to_string()))?)
-}
-
-fn parse_png_header(path: &Path) -> Result<(u8, u8), ImageError> {
-  let mut file = File::open(path).map_err(|e| ImageError::ReadError(e.to_string()))?;
-  let mut header = [0u8; 29]; // PNG signature (8) + IHDR length (4) + "IHDR" (4) + IHDR data (13)
-
-  file
-    .read_exact(&mut header)
-    .map_err(|e| ImageError::ReadError(e.to_string()))?;
-
-  // Verify PNG signature
-  if &header[0..8] != [137, 80, 78, 71, 13, 10, 26, 10] {
-    return Err(ImageError::InvalidFormat("Not a valid PNG file".into()));
-  }
-
-  // IHDR chunk starts at offset 8
-  // Verify IHDR chunk type
-  if &header[12..16] != b"IHDR" {
-    return Err(ImageError::InvalidFormat("Invalid PNG header".into()));
-  }
-
-  // Extract bit depth and color type from IHDR
-  let mut bit_depth = header[24]; // 8th byte of IHDR data
-  let color_type = header[25]; // 9th byte of IHDR data
-
-  // Skip IHDR CRC
-  file
-    .seek(io::SeekFrom::Current(4))
-    .map_err(|e| ImageError::ReadError(e.to_string()))?;
-
-  // Read chunks until we find tRNS or IDAT
-  let mut chunk_length = [0u8; 4];
-  let mut chunk_type = [0u8; 4];
-
-  loop {
-    // Read chunk length
-    if file.read_exact(&mut chunk_length).is_err() {
-      break;
-    }
-    let length = u32::from_be_bytes(chunk_length);
-
-    // Read chunk type
-    if file.read_exact(&mut chunk_type).is_err() {
-      break;
-    }
-
-    if &chunk_type == b"IDAT" {
-      break;
-    }
-
-    if &chunk_type == b"tRNS" {
-      // If we find tRNS chunk, force bit depth to 8
-      bit_depth = 8;
-      break;
-    }
-
-    // Skip chunk data and CRC
-    file
-      .seek(io::SeekFrom::Current(length as i64 + 4))
-      .map_err(|e| ImageError::ReadError(e.to_string()))?;
-  }
-
-  Ok((bit_depth, color_type))
+  Ok(dynamic_img)
 }
 
 pub fn convert_from_dynamic_image(
