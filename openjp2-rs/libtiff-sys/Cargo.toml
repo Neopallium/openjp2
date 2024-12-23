@@ -16,5 +16,6 @@ libc = "0.2"
 bindgen = "0.69"
 pkg-config = "0.3"
 
-[lib]
-crate-type = ["cdylib"]
+[[bin]]
+name = "tiffinfo"
+path = "src/bin/tiffinfo.rs"
