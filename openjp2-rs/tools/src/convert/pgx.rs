@@ -135,8 +135,6 @@ pub fn load_pgx_image(
 }
 
 pub fn save_pgx_image(image: &opj_image, path: &Path) -> Result<(), ImageError> {
-  // For multi-component images we need to save each component as a separate file
-  let need_suffix = image.numcomps > 1;
   let stem = path
     .file_stem()
     .and_then(|s| s.to_str())
@@ -149,11 +147,7 @@ pub fn save_pgx_image(image: &opj_image, path: &Path) -> Result<(), ImageError> 
     .enumerate()
   {
     // Create filename with component suffix if needed
-    let comp_path = if need_suffix {
-      path.with_file_name(format!("{}_{}.{}", stem, comp_idx, ext))
-    } else {
-      path.to_path_buf()
-    };
+    let comp_path = path.with_file_name(format!("{}_{}.{}", stem, comp_idx, ext));
 
     let file = std::fs::File::create(&comp_path)?;
     let mut writer = BufWriter::new(file);
