@@ -9,7 +9,6 @@ pub struct DecompressParameters {
   // Core parameters
   pub num_threads: i32,
   pub tile_index: Option<u32>,
-  pub nb_tile_to_decode: u32,
   pub core: CoreParameters,
 
   // Input/output files
@@ -89,7 +88,6 @@ impl Default for DecompressParameters {
     Self {
       num_threads: 1,
       tile_index: None,
-      nb_tile_to_decode: 0,
       core: CoreParameters {
         cp_reduce: 0,
         cp_layer: 0,
@@ -212,7 +210,7 @@ impl DecompressParameters {
     // Set tile parameters
     if let Some(idx) = self.tile_index {
       params.tile_index = idx;
-      params.nb_tile_to_decode = self.nb_tile_to_decode;
+      params.nb_tile_to_decode = 1;
     }
 
     // Set other flags
@@ -326,7 +324,6 @@ pub fn parse_decompress_options(
       (DecompressOpt::DecodingArea, Some(arg)) => params.parse_decoding_area(&arg)?,
       (DecompressOpt::TileIndex, Some(arg)) => {
         params.tile_index = Some(arg.parse()?);
-        params.nb_tile_to_decode = 1;
       }
       (DecompressOpt::IndexFile, Some(arg)) => params.core.indexfilename = Some(arg),
       (DecompressOpt::Precision, Some(arg)) => params.parse_precision(&arg)?,
