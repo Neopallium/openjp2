@@ -10,20 +10,6 @@ mod tests {
   use std::ffi::CString;
 
   #[test]
-  fn test_tiff_open() {
-    unsafe {
-      // Try to open a non-existent file in read mode
-      let filename = CString::new("nonexistent.tiff").unwrap();
-      let mode = CString::new("r").unwrap();
-
-      let tiff = TIFFOpen(filename.as_ptr(), mode.as_ptr());
-
-      // Should return null since file doesn't exist
-      assert!(tiff.is_null());
-    }
-  }
-
-  #[test]
   fn test_tiff_functions() {
     unsafe {
       // Test TIFFOpen
