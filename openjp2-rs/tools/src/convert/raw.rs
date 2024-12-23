@@ -3,7 +3,7 @@ use crate::params::ParameterError;
 use crate::params::{CompressionParameters, MCTMode};
 use openjp2::{image::opj_image, openjpeg::*};
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufWriter, Read, Write};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -247,4 +247,81 @@ pub fn load_raw_image(
   }
 
   Ok(image)
+}
+
+pub fn save_raw_image(image: &opj_image, path: &Path, big_endian: bool) -> Result<(), ImageError> {
+  let file = std::fs::File::create(path)?;
+  let mut writer = BufWriter::new(file);
+
+  // Check that the image components have matching dimensions, sampling factors, bit depth and signedness.
+  if !image.comps_match() {
+    return Err(ImageError::InvalidFormat(
+      "Mismatched component parameters".into(),
+    ));
+  }
+
+  let Some(comps) = image.comps_data_iter() else {
+    return Err(ImageError::InvalidFormat("Missing components".into()));
+  };
+
+  // Write each component's data
+  for comp in comps {
+    let precision = comp.comp.prec;
+    let mask = (1 << precision) - 1;
+    let signed = comp.comp.sgnd != 0;
+
+    match precision {
+      p if p <= 8 => {
+        let (min, max) = if signed {
+          (i8::MIN as i32, i8::MAX as i32)
+        } else {
+          (0, 255)
+        };
+        // Write 8-bit values
+        for &value in comp.data.iter() {
+          let value = (value.clamp(min, max) & mask) as u8;
+          writer.write_all(&[value])?;
+        }
+      }
+      p if p <= 16 => {
+        let (min, max) = if signed {
+          (i16::MIN as i32, i16::MAX as i32)
+        } else {
+          (0, 65535)
+        };
+        // Write 16-bit values
+        for &value in comp.data.iter() {
+          let value = (value.clamp(min, max) & mask) as u16;
+
+          let bytes = if big_endian {
+            value.to_be_bytes()
+          } else {
+            value.to_le_bytes()
+          };
+          writer.write_all(&bytes)?;
+        }
+      }
+      p if p <= 32 => {
+        // Write 32-bit values
+        for &value in comp.data.iter() {
+          let bytes = if big_endian {
+            value.to_be_bytes()
+          } else {
+            value.to_le_bytes()
+          };
+          writer.write_all(&bytes)?;
+        }
+      }
+      _ => {
+        return Err(ImageError::InvalidFormat(format!(
+          "Unsupported bit depth: {}",
+          precision
+        )));
+      }
+    }
+  }
+
+  // Ensure all data is flushed
+  writer.flush()?;
+  Ok(())
 }
