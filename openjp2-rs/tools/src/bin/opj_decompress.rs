@@ -10,6 +10,8 @@ fn decompress_image<P: AsRef<Path>>(
   let input = input.as_ref();
   let output = output.as_ref();
 
+  //eprintln!("params: {:?}", params);
+
   // Create decompression codec
   let cod_format = match params.codec_format {
     Some(CodecFormat::J2K) => OPJ_CODEC_J2K,
@@ -158,11 +160,15 @@ fn decompress_image<P: AsRef<Path>>(
         let prec_idx = std::cmp::min(i, params.precision.len() - 1);
         let param = &params.precision[prec_idx];
 
-        if param.prec != 0 {
-          match param.mode {
-            PrecisionMode::Clip => comp.clip(param.prec),
-            PrecisionMode::Scale => comp.scale(param.prec),
-          }
+        let prec = if param.prec > 0 {
+          param.prec
+        } else {
+          comp.prec
+        };
+
+        match param.mode {
+          PrecisionMode::Clip => comp.clip(prec),
+          PrecisionMode::Scale => comp.scale(prec),
         }
       }
     }
@@ -193,7 +199,7 @@ fn decompress_image<P: AsRef<Path>>(
   }
 
   // Write output file based on format
-  save_image(&image, output)?;
+  save_image(&mut image, output)?;
 
   Ok(())
 }

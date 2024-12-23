@@ -176,10 +176,17 @@ impl opj_image_comp {
       return;
     }
 
+    let sgnd = self.sgnd != 0;
     let shift = self.prec - precision;
     if let Some(data) = self.data_mut() {
-      for val in data.iter_mut() {
-        *val >>= shift;
+      if sgnd {
+        for val in data.iter_mut() {
+          *val >>= shift;
+        }
+      } else {
+        for val in data.iter_mut() {
+          *val = ((*val as u32) >> shift) as i32;
+        }
       }
       self.prec = precision;
     }
