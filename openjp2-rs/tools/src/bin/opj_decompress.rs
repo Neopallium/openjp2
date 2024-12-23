@@ -1,4 +1,4 @@
-use openjp2::{detect_format_from_file, openjpeg::*};
+use openjp2::{detect_format_from_file, openjpeg::*, Codec, Stream};
 use openjp2_tools::{color::*, convert::*, params::*};
 use std::path::Path;
 
@@ -11,59 +11,38 @@ fn decompress_image<P: AsRef<Path>>(
   let output = output.as_ref();
 
   // Create decompression codec
-  let codec = match params.codec_format {
-    Some(CodecFormat::J2K) => opj_create_decompress(OPJ_CODEC_J2K),
-    Some(CodecFormat::JP2) => opj_create_decompress(OPJ_CODEC_JP2),
-    None => return Err(ImageError::InvalidFormat("No codec format".into())),
-    _ => return Err(ImageError::InvalidFormat("Unknown output format".into())),
+  let cod_format = match params.codec_format {
+    Some(CodecFormat::J2K) => OPJ_CODEC_J2K,
+    Some(CodecFormat::JP2) => OPJ_CODEC_JP2,
+    None => {
+      return Err(ImageError::InvalidFormat(
+        "No codec format specified".into(),
+      ));
+    }
+    _ => {
+      return Err(ImageError::InvalidFormat("Unknown codec format".into()));
+    }
   };
-
-  if codec.is_null() {
-    return Err(ImageError::EncodeError("Failed to create codec".into()));
-  }
+  let mut codec = Codec::new_decoder(cod_format)
+    .ok_or_else(|| ImageError::EncodeError("Failed to create codec".into()))?;
 
   // setup the decoder with the provided parameters.
-  let status = unsafe {
-    let mut d_params = params.to_c_params();
-    opj_setup_decoder(codec, &mut d_params)
-  };
-
+  let mut d_params = params.to_c_params();
+  let status = codec.setup_decoder(&mut d_params);
   if status == 0 {
-    unsafe {
-      opj_destroy_codec(codec);
-    }
-    return Err(ImageError::DecodeError("Failed to setup decoder".into()));
+    return Err(ImageError::EncodeError("Failed to setup decoder".into()));
   }
 
   // TODO: set strict mode.
   // TODO: set the number of threads.
 
   // Create input stream
-  let stream = unsafe {
-    let path_str = std::ffi::CString::new(input.to_str().unwrap()).unwrap();
-    opj_stream_create_default_file_stream(path_str.as_ptr(), 1)
-  };
-
-  if stream.is_null() {
-    unsafe {
-      opj_destroy_codec(codec);
-    }
-    return Err(ImageError::DecodeError(
-      "Failed to create input stream".into(),
-    ));
-  }
+  let mut stream = Stream::new_file(input, 1_000_000, true)?;
 
   // Decode image header and create image.
-  let mut image = unsafe {
-    let mut image: *mut opj_image_t = std::ptr::null_mut();
-    let status = opj_read_header(stream, codec, &mut image);
-    if status == 0 {
-      opj_destroy_codec(codec);
-      opj_stream_destroy(stream);
-      return Err(ImageError::DecodeError("Failed to read header".into()));
-    }
-    &mut (*image)
-  };
+  let mut image = codec
+    .read_header(&mut stream)
+    .ok_or_else(|| ImageError::DecodeError("Failed to read header".into()))?;
 
   // TODO: set decoded components.
   // TODO: set decoded resolution factors.
@@ -71,22 +50,14 @@ fn decompress_image<P: AsRef<Path>>(
   // TODO: Handle decode area and decode tile.
 
   // Decode image
-  let status = unsafe {
-    let status = opj_decode(codec, stream, image) == 1 && opj_end_decompress(codec, stream) == 1;
-    opj_destroy_codec(codec);
-    opj_stream_destroy(stream);
-    status
-  };
+  let status = codec.decode(&mut stream, &mut image) == 1 && codec.end_decompress(&mut stream) == 1;
 
   if !status {
-    opj_image_destroy(image);
     return Err(ImageError::DecodeError("Failed to decode image".into()));
   }
 
   // Close input stream
-  unsafe {
-    opj_stream_destroy(stream);
-  }
+  drop(stream);
 
   // Get image components
   let comps = image
@@ -117,7 +88,7 @@ fn decompress_image<P: AsRef<Path>>(
     if profile.len() > 0 {
       color_apply_icc_profile(&mut image);
     } else {
-      color_cielab_to_rgb(image);
+      color_cielab_to_rgb(&mut image);
     }
     image.clear_icc_profile();
   }
