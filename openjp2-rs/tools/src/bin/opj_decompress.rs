@@ -1,4 +1,4 @@
-use openjp2::{detect_format_from_file, openjpeg::*, Codec, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, opj_image_comptparm, Codec, Stream};
 use openjp2_tools::{color::*, convert::*, params::*};
 use std::path::Path;
 
@@ -112,8 +112,14 @@ fn decompress_image<P: AsRef<Path>>(
 
   // Handle upsampling if requested
   if params.upsample {
-    todo!("Handle upsampling");
-    //image = upsample_components(image)?;
+    match upsample_image_components(&image)? {
+      Some(new_image) => image = new_image,
+      None => {
+        if !params.quiet {
+          println!("Image is already upsampled");
+        }
+      }
+    }
   }
 
   // Handle forcing RGB output
@@ -132,6 +138,177 @@ fn decompress_image<P: AsRef<Path>>(
   save_image(&image, output)?;
 
   Ok(())
+}
+
+fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>, ImageError> {
+  let mut upsample_needed = false;
+
+  // Check if upsampling is needed
+  for comp in orig.comps().unwrap().iter() {
+    if comp.dx > 1 || comp.dy > 1 {
+      upsample_needed = true;
+      break;
+    }
+  }
+
+  if !upsample_needed {
+    return Ok(None);
+  }
+
+  // Create parameters for new components
+  let mut new_components = Vec::with_capacity(orig.numcomps as usize);
+
+  let orig_comps = orig
+    .comps()
+    .ok_or_else(|| ImageError::DecodeError("No components".into()))?;
+
+  for comp in orig_comps {
+    let mut new_comp = opj_image_comptparm {
+      dx: 1,
+      dy: 1,
+      w: comp.w,
+      h: comp.h,
+      x0: orig.x0,
+      y0: orig.y0,
+      prec: comp.prec,
+      bpp: 0,
+      sgnd: comp.sgnd,
+    };
+
+    if comp.dx > 1 {
+      new_comp.w = orig.x1 - orig.x0;
+    }
+    if comp.dy > 1 {
+      new_comp.h = orig.y1 - orig.y0;
+    }
+
+    new_components.push(new_comp);
+  }
+
+  // Create new image
+  let mut image = opj_image::new();
+  image.x0 = orig.x0;
+  image.y0 = orig.y0;
+  image.x1 = orig.x1;
+  image.y1 = orig.y1;
+  image.color_space = orig.color_space;
+
+  // Allocate new components.
+  if !image.alloc_comps(orig.numcomps) {
+    return Err(ImageError::DecodeError(
+      "Failed to allocate components".into(),
+    ));
+  }
+
+  // Get the original and new components.
+  let orig_comps = orig
+    .comps()
+    .ok_or_else(|| ImageError::DecodeError("No components".into()))?;
+  let new_comps = image
+    .comps_mut()
+    .ok_or_else(|| ImageError::DecodeError("No components".into()))?;
+
+  // Copy and upsample components
+  for (new_comp, org_comp) in new_comps.iter_mut().zip(orig_comps.iter()) {
+    // Check if the component doesn't need upsampling.
+    if org_comp.dx <= 1 && org_comp.dy <= 1 {
+      new_comp.copy(org_comp);
+      continue;
+    }
+    new_comp.dx = 1;
+    new_comp.dy = 1;
+    new_comp.w = org_comp.w;
+    new_comp.h = org_comp.h;
+    new_comp.x0 = org_comp.x0;
+    new_comp.y0 = org_comp.y0;
+    new_comp.prec = org_comp.prec;
+    new_comp.bpp = 0;
+    new_comp.sgnd = org_comp.sgnd;
+    new_comp.factor = org_comp.factor;
+    new_comp.alpha = org_comp.alpha;
+    new_comp.resno_decoded = org_comp.resno_decoded;
+
+    if org_comp.dx > 1 {
+      new_comp.w = orig.x1 - orig.x0;
+    }
+    if org_comp.dy > 1 {
+      new_comp.h = orig.y1 - orig.y0;
+    }
+    if !new_comp.alloc_data() {
+      return Err(ImageError::DecodeError(
+        "Failed to allocate component data".into(),
+      ));
+    }
+    let new_w = new_comp.w;
+    let new_h = new_comp.h;
+
+    let src = org_comp
+      .data()
+      .ok_or_else(|| ImageError::DecodeError("No component data".into()))?;
+    let dst = new_comp
+      .data_mut()
+      .ok_or_else(|| ImageError::DecodeError("No component data".into()))?;
+
+    // Need to take into account dx and dy.
+    let xoff = org_comp.dx * org_comp.x0 - orig.x0;
+    let yoff = org_comp.dy * org_comp.y0 - orig.y0;
+    if xoff >= org_comp.dx || yoff >= org_comp.dy {
+      return Err(ImageError::DecodeError(
+        "Invalid image/component parameters found when upsampling".into(),
+      ));
+    }
+
+    // Zero out initial rows for yoff
+    for y in 0..yoff {
+      let start = (y * new_w) as usize;
+      let end = start + new_w as usize;
+      dst[start..end].fill(0);
+    }
+
+    let mut src_idx = 0;
+    let mut y = yoff;
+
+    while y < new_h - (org_comp.dy - 1) {
+      for dy in 0..org_comp.dy {
+        let dst_row = &mut dst[(y + dy) as usize * new_w as usize..];
+
+        // Handle initial xoff pixels
+        for x in 0..xoff {
+          dst_row[x as usize] = 0;
+        }
+
+        // Copy and replicate pixels
+        let mut x = xoff;
+        let mut src_x = 0;
+        while x < new_w - (org_comp.dx - 1) {
+          let val = src[src_idx + src_x as usize];
+          for dx in 0..org_comp.dx {
+            dst_row[(x + dx) as usize] = val;
+          }
+          x += org_comp.dx;
+          src_x += 1;
+        }
+
+        // Handle remaining pixels
+        while x < new_w {
+          dst_row[x as usize] = src[src_idx + src_x as usize - 1];
+          x += 1;
+        }
+      }
+      y += org_comp.dy;
+      src_idx += org_comp.w as usize;
+    }
+
+    // Handle remaining rows
+    while y < new_h {
+      let src_row = &src[(y - org_comp.dy) as usize * new_w as usize..];
+      let dst_row = &mut dst[y as usize * new_w as usize..];
+      dst_row[..new_w as usize].copy_from_slice(&src_row[..new_w as usize]);
+      y += 1;
+    }
+  }
+
+  Ok(Some(image))
 }
 
 fn convert_gray_to_rgb(orig: &opj_image) -> Result<Option<Box<opj_image>>, ImageError> {
