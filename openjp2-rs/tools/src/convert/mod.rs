@@ -9,6 +9,7 @@ pub enum ImageError {
   InvalidFormat(String),
   ReadError(String),
   EncodeError(String),
+  DecodeError(String),
   IOError(std::io::Error),
 }
 
@@ -18,6 +19,7 @@ impl std::fmt::Display for ImageError {
       Self::InvalidFormat(s) => write!(f, "Invalid format: {}", s),
       Self::ReadError(s) => write!(f, "Read error: {}", s),
       Self::EncodeError(s) => write!(f, "Encode error: {}", s),
+      Self::DecodeError(s) => write!(f, "Decode error: {}", s),
       Self::IOError(e) => write!(f, "IO error: {}", e),
     }
   }

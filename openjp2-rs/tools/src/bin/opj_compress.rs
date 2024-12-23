@@ -86,6 +86,9 @@ fn compress_image(
   };
 
   if status == 0 {
+    unsafe {
+      opj_destroy_codec(codec);
+    }
     return Err(ImageError::EncodeError("Failed to setup encoder".into()));
   }
 
@@ -96,6 +99,9 @@ fn compress_image(
   };
 
   if stream.is_null() {
+    unsafe {
+      opj_destroy_codec(codec);
+    }
     return Err(ImageError::EncodeError(
       "Failed to create output stream".into(),
     ));
