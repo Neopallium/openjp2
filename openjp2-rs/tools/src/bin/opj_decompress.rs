@@ -118,16 +118,12 @@ fn decompress_image<P: AsRef<Path>>(
 
   // Handle forcing RGB output
   if params.force_rgb {
-    match image.color_space {
-      OPJ_CLRSPC_SRGB => (),
-      OPJ_CLRSPC_GRAY => {
-        todo!("Handle gray to RGB conversion");
-        //image = convert_gray_to_rgb(image)?;
-      }
-      _ => {
-        return Err(ImageError::DecodeError(
-          "Don't know how to convert image to RGB colorspace".into(),
-        ))
+    match convert_gray_to_rgb(&image)? {
+      Some(new_image) => image = new_image,
+      None => {
+        if !params.quiet {
+          println!("Image is already in RGB colorspace");
+        }
       }
     }
   }
@@ -136,6 +132,62 @@ fn decompress_image<P: AsRef<Path>>(
   save_image(&image, output)?;
 
   Ok(())
+}
+
+fn convert_gray_to_rgb(orig: &opj_image) -> Result<Option<Box<opj_image>>, ImageError> {
+  // Check if image needs to be converted.
+  match orig.color_space {
+    OPJ_CLRSPC_SRGB => {
+      return Ok(None);
+    }
+    OPJ_CLRSPC_GRAY => (),
+    _ => {
+      return Err(ImageError::DecodeError(
+        "Don't know how to convert image to RGB colorspace".into(),
+      ))
+    }
+  }
+
+  // Create new image.
+  let mut image = opj_image::new();
+  image.x0 = orig.x0;
+  image.y0 = orig.y0;
+  image.x1 = orig.x1;
+  image.y1 = orig.y1;
+  image.color_space = OPJ_CLRSPC_SRGB;
+
+  // Allocate new components.
+  let num_new_comp = orig.numcomps + 2;
+  if !image.alloc_comps(num_new_comp) {
+    return Err(ImageError::DecodeError(
+      "Failed to allocate components".into(),
+    ));
+  }
+
+  // Get the original and new components.
+  let orig_comps = orig
+    .comps()
+    .ok_or_else(|| ImageError::DecodeError("No components".into()))?;
+  let new_comps = image
+    .comps_mut()
+    .ok_or_else(|| ImageError::DecodeError("No components".into()))?;
+
+  // Split the components into gray, RGB, and remaining.
+  let (gray, old_remain) = orig_comps
+    .split_first()
+    .ok_or_else(|| ImageError::DecodeError("No components".into()))?;
+  let (rgb, new_remain) = new_comps.split_at_mut(3);
+
+  // Copy the gray component to the RGB components.
+  for comp in rgb.iter_mut() {
+    comp.copy(gray);
+  }
+  // Copy the remaining components.
+  for (old, new) in old_remain.iter().zip(new_remain.iter_mut()) {
+    new.copy(old);
+  }
+
+  Ok(Some(image))
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
