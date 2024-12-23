@@ -1,6 +1,6 @@
 use openjp2::{detect_format_from_file, openjpeg::*, opj_image_comptparm, Codec, Stream};
 use openjp2_tools::{color::*, convert::*, params::*};
-use std::path::Path;
+use std::{env, path::Path};
 
 fn decompress_image<P: AsRef<Path>>(
   input: P,
@@ -28,12 +28,28 @@ fn decompress_image<P: AsRef<Path>>(
 
   // setup the decoder with the provided parameters.
   let mut d_params = params.to_c_params();
+
+  let set_decoded_resolution_factor =
+    env::var("USE_OPJ_SET_DECODED_RESOLUTION_FACTOR")
+      .ok()
+      .map(|_| {
+        let cp_reduce = d_params.cp_reduce;
+        d_params.cp_reduce = 0;
+        cp_reduce
+      });
+
   let status = codec.setup_decoder(&mut d_params);
   if status == 0 {
     return Err(ImageError::EncodeError("Failed to setup decoder".into()));
   }
 
-  // TODO: set strict mode.
+  // Disable strict mode if we want to decode partial codestreams.
+  if params.allow_partial {
+    if codec.decoder_set_strict_mode(0) == 0 {
+      return Err(ImageError::EncodeError("Failed to set strict mode".into()));
+    }
+  }
+
   // TODO: set the number of threads.
 
   // Create input stream
@@ -44,16 +60,58 @@ fn decompress_image<P: AsRef<Path>>(
     .read_header(&mut stream)
     .ok_or_else(|| ImageError::DecodeError("Failed to read header".into()))?;
 
-  // TODO: set decoded components.
-  // TODO: set decoded resolution factors.
+  // Set the components to decode.
+  if params.numcomps > 0 {
+    if codec.set_decoded_components(&params.comps_indices, 0) == 0 {
+      return Err(ImageError::DecodeError(
+        "Failed to set decoded components".into(),
+      ));
+    }
+  }
+  if let Some(cp_reduce) = set_decoded_resolution_factor {
+    // For debuging/testing purposes.
+    if codec.set_decoded_resolution_factor(cp_reduce) == 0 {
+      return Err(ImageError::DecodeError(
+        "Failed to set decoded resolution factor".into(),
+      ));
+    }
+  }
 
-  // TODO: Handle decode area and decode tile.
+  let no_decode_area =
+    params.da_x0 == 0 && params.da_y0 == 0 && params.da_x1 == 0 && params.da_y1 == 0;
 
-  // Decode image
-  let status = codec.decode(&mut stream, &mut image) == 1 && codec.end_decompress(&mut stream) == 1;
+  if let Some(tile_index) = params.tile_index {
+    // Decode a tile.
+    if !no_decode_area {
+      if !params.quiet {
+        eprintln!("WARNING: -d option is ignored when decoding tiles");
+      }
+    }
+    if codec.get_decoded_tile(&mut stream, &mut image, tile_index) == 0 {
+      return Err(ImageError::DecodeError(
+        "Failed to set decoded tiles".into(),
+      ));
+    }
+  } else {
+    if env::var("SKIP_OPJ_SET_DECODE_AREA").is_ok() && no_decode_area {
+      // For debuging/testing purposes.
+    } else if codec.set_decode_area(
+      &mut image,
+      params.da_x0 as i32,
+      params.da_y0 as i32,
+      params.da_x1 as i32,
+      params.da_y1 as i32,
+    ) == 0
+    {
+      return Err(ImageError::DecodeError("Failed to set decode area".into()));
+    }
 
-  if !status {
-    return Err(ImageError::DecodeError("Failed to decode image".into()));
+    // Decode image
+    let status =
+      codec.decode(&mut stream, &mut image) == 1 && codec.end_decompress(&mut stream) == 1;
+    if !status {
+      return Err(ImageError::DecodeError("Failed to decode image".into()));
+    }
   }
 
   // Close input stream
