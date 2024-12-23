@@ -32,6 +32,12 @@ pub mod image;
 pub mod openjpeg;
 pub mod stream;
 
+// Export safe API
+pub use c_api_types::*;
+pub use codec::Codec;
+pub use image::{opj_image, opj_image_comptparm};
+pub use types::Stream;
+
 /// Magic bytes for JP2 RFC3745.
 pub const JP2_RFC3745_MAGIC: &'static [u8] = &[
   0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20, 0x0d, 0x0a, 0x87, 0x0a,

@@ -343,7 +343,7 @@ impl Stream {
     }
   }
 
-  pub fn as_custom(&mut self) -> Option<&mut CustomStream> {
+  pub(crate) fn as_custom(&mut self) -> Option<&mut CustomStream> {
     match &mut self.m_inner {
       StreamInner::Reader(_) => None,
       StreamInner::Writer(_) => None,
