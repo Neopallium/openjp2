@@ -23,5 +23,7 @@ image = { version = "0.25", features = [
 lcms2 = { version = "6.1", optional = true }
 env_logger = "0.11.5"
 
+libtiff-sys = { path = "../libtiff-sys", optional = true }
+
 [features]
-default = ["lcms2"]
+default = ["lcms2", "libtiff-sys"]

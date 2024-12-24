@@ -13,6 +13,11 @@ fn main() {
     .allowlist_type("TIFF.*")
     .allowlist_function("TIFF.*")
     .allowlist_var("TIFF.*")
+    .allowlist_var("PHOTOMETRIC.*")
+    .allowlist_var("PLANARCONFIG_.*")
+    .allowlist_var("ORIENTATION_.*")
+    .allowlist_var(".*FORMAT_.*")
+    .allowlist_var(".*TAG_.*")
     // Additional common libtiff functions
     .allowlist_function("_TIFF.*")
     .allowlist_function(".*tiff.*")
