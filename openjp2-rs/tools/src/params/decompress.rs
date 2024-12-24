@@ -7,9 +7,11 @@ use std::path::PathBuf;
 #[derive(Clone, Debug)]
 pub struct DecompressParameters {
   // Core parameters
+  pub core: opj_dparameters_t,
+  pub index_file: Option<PathBuf>,
+
   pub num_threads: i32,
   pub tile_index: Option<u32>,
-  pub core: CoreParameters,
 
   // Input/output files
   pub input_file: Option<PathBuf>,
@@ -36,14 +38,6 @@ pub struct DecompressParameters {
 
   // Precision parameters
   pub precision: Vec<PrecisionParameter>,
-}
-
-// Core parameters
-#[derive(Clone, Debug)]
-pub struct CoreParameters {
-  pub cp_reduce: u32,
-  pub cp_layer: u32,
-  pub indexfilename: Option<String>,
 }
 
 // Precision mode enum
@@ -86,15 +80,12 @@ enum DecompressOpt {
 impl Default for DecompressParameters {
   fn default() -> Self {
     Self {
+      core: opj_dparameters_t::default(),
       num_threads: 1,
       tile_index: None,
-      core: CoreParameters {
-        cp_reduce: 0,
-        cp_layer: 0,
-        indexfilename: None,
-      },
       input_file: None,
       output_file: None,
+      index_file: None,
       codec_format: None,
       decode_format: None,
       da_x0: 0,
@@ -169,58 +160,7 @@ impl DecompressParameters {
   }
 
   pub fn to_c_params(&self) -> opj_dparameters_t {
-    let mut params = opj_dparameters_t::default();
-
-    // Core parameters
-    params.cp_reduce = self.core.cp_reduce;
-    params.cp_layer = self.core.cp_layer;
-
-    // Set decoding parameters
-    if let Some(ref fmt) = self.decode_format {
-      params.decod_format = match fmt {
-        ImageFileFormat::PGX => 0,
-        ImageFileFormat::PXM => 1,
-        ImageFileFormat::BMP => 2,
-        ImageFileFormat::TIF => 3,
-        ImageFileFormat::RAW => 4,
-        ImageFileFormat::RAWL => 5,
-        ImageFileFormat::TGA => 6,
-        ImageFileFormat::PNG => 7,
-        _ => -1,
-      };
-    }
-
-    // Set codec format
-    if let Some(ref fmt) = self.codec_format {
-      params.cod_format = match fmt {
-        CodecFormat::J2K => OPJ_CODEC_J2K as i32,
-        CodecFormat::JP2 => OPJ_CODEC_JP2 as i32,
-        CodecFormat::JPT => OPJ_CODEC_JPT as i32,
-        CodecFormat::JPP => OPJ_CODEC_JPP as i32,
-        CodecFormat::JPX => OPJ_CODEC_JPX as i32,
-      };
-    }
-
-    // Set decoding area
-    params.DA_x0 = self.da_x0;
-    params.DA_y0 = self.da_y0;
-    params.DA_x1 = self.da_x1;
-    params.DA_y1 = self.da_y1;
-
-    // Set tile parameters
-    if let Some(idx) = self.tile_index {
-      params.tile_index = idx;
-      params.nb_tile_to_decode = 1;
-    }
-
-    // Set other flags
-    params.m_verbose = (!self.quiet) as i32;
-    params.flags = if self.force_rgb { 1 } else { 0 }
-      | if self.upsample { 2 } else { 0 }
-      | if self.split_pnm { 4 } else { 0 }
-      | if self.allow_partial { 8 } else { 0 };
-
-    params
+    self.core.clone()
   }
 }
 
@@ -325,7 +265,9 @@ pub fn parse_decompress_options(
       (DecompressOpt::TileIndex, Some(arg)) => {
         params.tile_index = Some(arg.parse()?);
       }
-      (DecompressOpt::IndexFile, Some(arg)) => params.core.indexfilename = Some(arg),
+      (DecompressOpt::IndexFile, Some(arg)) => {
+        params.index_file = Some(PathBuf::from(arg));
+      }
       (DecompressOpt::Precision, Some(arg)) => params.parse_precision(&arg)?,
       (DecompressOpt::Components, Some(arg)) => params.parse_components(&arg)?,
       (DecompressOpt::ForceRGB, _) => params.force_rgb = true,

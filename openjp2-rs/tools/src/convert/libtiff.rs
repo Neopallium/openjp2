@@ -1,5 +1,6 @@
 use super::*;
 use crate::params::CompressionParameters;
+use libtiff_sys::*;
 use openjp2::image::opj_image;
 use std::path::Path;
 
