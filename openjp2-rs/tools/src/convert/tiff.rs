@@ -41,7 +41,7 @@ pub fn load_tiff_image(
   Ok(image)
 }
 
-pub fn save_tif_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+pub fn save_tiff_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
   {
     let comps = image
       .comps_mut()

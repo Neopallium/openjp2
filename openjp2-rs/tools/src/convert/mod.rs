@@ -6,10 +6,17 @@ mod pgx;
 pub use pgx::*;
 mod png;
 pub use png::*;
-mod tiff;
-pub use tiff::*;
 mod dynamic;
 pub use dynamic::*;
+
+#[cfg(not(feature = "libtiff-sys"))]
+mod tiff;
+#[cfg(not(feature = "libtiff-sys"))]
+pub use tiff::*;
+#[cfg(feature = "libtiff-sys")]
+mod libtiff;
+#[cfg(feature = "libtiff-sys")]
+pub use libtiff::*;
 
 use crate::params::CompressionParameters;
 use crate::params::ImageFileFormat;
@@ -48,7 +55,7 @@ pub fn save_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> 
     ImageFileFormat::RAWL => save_raw_image(image, path, false),
     ImageFileFormat::PGX => save_pgx_image(image, path),
     ImageFileFormat::PNG => save_png_image(image, path),
-    ImageFileFormat::TIF => save_tif_image(image, path),
+    ImageFileFormat::TIF => save_tiff_image(image, path),
     _ => {
       let dynamic_img = convert_to_dynamic_image(image)?;
 

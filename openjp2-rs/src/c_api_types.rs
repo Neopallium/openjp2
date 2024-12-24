@@ -395,7 +395,7 @@ impl opj_cparameters_t {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone, Debug)]
 pub struct opj_dparameters {
   pub cp_reduce: OPJ_UINT32,
   pub cp_layer: OPJ_UINT32,
