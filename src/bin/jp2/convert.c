@@ -1159,7 +1159,6 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
     OPJ_COLOR_SPACE color_space;
     opj_image_cmptparm_t cmptparm;  /* maximum of 1 component  */
     opj_image_t * image = NULL;
-    int adjustS, ushift, dshift, force8;
     OPJ_UINT64 expected_file_size;
 
     char endian1, endian2, sign;
@@ -1190,6 +1189,8 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
                 "ERROR: Failed to read the right number of element from the fscanf() function!\n");
         return NULL;
     }
+    fprintf(stderr, "endian1=%c, endina2=%c, sign='%s', prec=%d, w=%d, h=%d\n",
+        endian1, endian2, signtmp, prec, w, h);
 
     i = 0;
     sign = '+';
@@ -1250,20 +1251,6 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
     } else {
         cmptparm.sgnd = 0;
     }
-    if (prec < 8) {
-        force8 = 1;
-        ushift = 8 - prec;
-        dshift = prec - ushift;
-        if (cmptparm.sgnd) {
-            adjustS = (1 << (prec - 1));
-        } else {
-            adjustS = 0;
-        }
-        cmptparm.sgnd = 0;
-        prec = 8;
-    } else {
-        ushift = dshift = force8 = adjustS = 0;
-    }
 
     cmptparm.prec = (OPJ_UINT32)prec;
     cmptparm.dx = (OPJ_UINT32)parameters->subsampling_dx;
@@ -1287,18 +1274,7 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
 
     for (i = 0; i < w * h; i++) {
         int v;
-        if (force8) {
-            v = readuchar(f) + adjustS;
-            v = (v << ushift) + (v >> dshift);
-            comp->data[i] = (unsigned char)v;
-
-            if (v > max) {
-                max = v;
-            }
-
-            continue;
-        }
-        if (comp->prec == 8) {
+        if (comp->prec <= 8) {
             if (!comp->sgnd) {
                 v = readuchar(f);
             } else {
