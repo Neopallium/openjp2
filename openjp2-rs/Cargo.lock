@@ -799,6 +799,7 @@ dependencies = [
  "image",
  "lcms2",
  "libc",
+ "libtiff-sys",
  "log",
  "openjp2",
 ]
