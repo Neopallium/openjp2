@@ -452,6 +452,14 @@ impl opj_image {
     }
   }
 
+  pub fn comps_data_mut_iter(&mut self) -> Option<impl Iterator<Item = &'_ mut [i32]>> {
+    if let Some(comps) = self.comps_mut() {
+      Some(comps.iter_mut().filter_map(|comp| comp.data_mut()))
+    } else {
+      None
+    }
+  }
+
   pub fn comps_mut(&mut self) -> Option<&mut [opj_image_comp]> {
     if self.comps.is_null() {
       None
