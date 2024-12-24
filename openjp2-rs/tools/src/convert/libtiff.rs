@@ -6,66 +6,76 @@ use std::ffi::{c_void, CString};
 use std::os::raw::c_char;
 use std::path::Path;
 
-// Bit depth conversion functions
-fn convert_32s_to_bits<const N: u32>(src: &[i32], signed: bool) -> Vec<u8> {
-  let mut dst = Vec::new();
-  let mask = (1u32 << N) - 1;
-
-  match N {
-    1..=8 => {
-      for &value in src {
-        let v = if signed {
-          value.clamp(i8::MIN as i32, i8::MAX as i32)
-        } else {
-          value.clamp(0, 255)
-        };
-        dst.push((v & (mask as i32)) as u8);
-      }
-    }
-    9..=16 => {
-      for &value in src {
-        let v = if signed {
-          value.clamp(i16::MIN as i32, i16::MAX as i32)
-        } else {
-          value.clamp(0, 65535)
-        };
-        let bytes = ((v & (mask as i32)) as u16).to_ne_bytes();
-        dst.extend_from_slice(&bytes);
-      }
-    }
-    _ => panic!("Unsupported bit depth: {}", N),
-  }
-  dst
+/// BitBuffer is a simple bit buffer for reading or writing bits.
+/// It is used to read or write bits from a byte buffer.
+pub struct BitBuffer {
+  buffer: Vec<u8>,
+  /// Current bit index in the buffer.
+  index: usize,
 }
 
-fn convert_bits_to_32s<const N: u32>(src: &[u8], signed: bool) -> Vec<i32> {
-  let mut dst = Vec::new();
-
-  match N {
-    1..=8 => {
-      for &byte in src {
-        let value = if signed {
-          byte as i8 as i32
-        } else {
-          byte as i32
-        };
-        dst.push(value);
-      }
+impl BitBuffer {
+  pub fn new(len: usize) -> Self {
+    BitBuffer {
+      buffer: vec![0; len],
+      index: 0,
     }
-    9..=16 => {
-      for chunk in src.chunks_exact(2) {
-        let value = u16::from_ne_bytes([chunk[0], chunk[1]]);
-        let value = if signed {
-          value as i16 as i32
-        } else {
-          value as i32
-        };
-        dst.push(value);
-      }
-    }
-    _ => panic!("Unsupported bit depth: {}", N),
   }
-  dst
+
+  pub fn reset(&mut self) {
+    self.index = 0;
+    self.buffer.fill(0)
+  }
+
+  pub fn write(&mut self, bits: u32, value: u32) {
+    for i in 0..bits {
+      let bit = (value >> (bits - i - 1)) & 1;
+      self.write_bit(bit);
+    }
+  }
+
+  pub fn write_bit(&mut self, bit: u32) {
+    if bit == 0 {
+      self.index += 1;
+      return;
+    }
+    let byte_index = self.index / 8;
+    let bit_index = self.index % 8;
+    self.buffer[byte_index] |= 1 << (7 - bit_index);
+    self.index += 1;
+  }
+
+  pub fn read(&mut self, bits: u32) -> u32 {
+    let mut value = 0;
+    for _ in 0..bits {
+      value = (value << 1) | self.read_bit();
+    }
+    value
+  }
+
+  pub fn read_bit(&mut self) -> u32 {
+    let byte_index = self.index / 8;
+    let bit_index = self.index % 8;
+    let bit = (self.buffer[byte_index] >> (7 - bit_index)) & 1;
+    self.index += 1;
+    bit as u32
+  }
+
+  pub fn as_slice(&self) -> &[u8] {
+    &self.buffer
+  }
+
+  pub fn as_mut_slice(&mut self) -> &mut [u8] {
+    &mut self.buffer
+  }
+
+  pub fn as_ptr(&self) -> *const u8 {
+    self.buffer.as_ptr()
+  }
+
+  pub fn as_mut_ptr(&mut self) -> *mut u8 {
+    self.buffer.as_mut_ptr()
+  }
 }
 
 pub fn load_tiff_image(
@@ -102,19 +112,19 @@ pub fn load_tiff_image(
     TIFFGetField(tiff, TIFFTAG_PLANARCONFIG, &mut planar_config);
   }
   let photometric = photometric as u32;
-  let samples_per_pixel = samples_per_pixel as u32;
-  let bits_per_sample = bits_per_sample as u32;
+  let numcomps = samples_per_pixel as u32;
+  let prec = bits_per_sample as u32;
   let planar_config = planar_config as u32;
 
   // Validate parameters
-  if samples_per_pixel == 0 || samples_per_pixel > 4 {
+  if numcomps == 0 || numcomps > 4 {
     unsafe { TIFFClose(tiff) };
     return Err(ImageError::InvalidFormat(
       "Invalid samples per pixel".into(),
     ));
   }
 
-  if bits_per_sample > 16 || bits_per_sample == 0 {
+  if prec > 16 || prec == 0 {
     unsafe { TIFFClose(tiff) };
     return Err(ImageError::InvalidFormat(
       "Unsupported bits per sample".into(),
@@ -128,15 +138,16 @@ pub fn load_tiff_image(
     ));
   }
 
+  if width == 0 || height == 0 {
+    unsafe { TIFFClose(tiff) };
+    return Err(ImageError::InvalidFormat("Invalid image dimensions".into()));
+  }
+
   // Create OpenJPEG image
-  let color_space = if samples_per_pixel == 1 {
+  let color_space = if photometric == PHOTOMETRIC_RGB {
+    OPJ_CLRSPC_SRGB
+  } else if photometric == PHOTOMETRIC_MINISBLACK {
     OPJ_CLRSPC_GRAY
-  } else if samples_per_pixel >= 3 {
-    if photometric == PHOTOMETRIC_RGB {
-      OPJ_CLRSPC_SRGB
-    } else {
-      OPJ_CLRSPC_UNKNOWN
-    }
   } else {
     OPJ_CLRSPC_UNKNOWN
   };
@@ -149,97 +160,198 @@ pub fn load_tiff_image(
   image.color_space = color_space;
 
   // Allocate components
-  image.alloc_comps(samples_per_pixel);
-  let comps = image.comps_mut().unwrap();
+  image.alloc_comps(numcomps);
 
+  // Detect alpha channel
+  let alpha_idx = match numcomps {
+    2 => Some(1),
+    4 => Some(3),
+    _ => None,
+  };
   // Initialize components
-  for comp in comps.iter_mut() {
+  let comps = image.comps_mut().expect("We just allocated the components");
+  for (idx, comp) in comps.iter_mut().enumerate() {
     comp.dx = params.subsampling().width;
     comp.dy = params.subsampling().height;
     comp.w = width;
     comp.h = height;
     comp.x0 = 0;
     comp.y0 = 0;
-    comp.prec = bits_per_sample as u32;
+    comp.prec = prec;
     comp.sgnd = 0;
-    comp.alpha = 0;
+    comp.alpha = if alpha_idx == Some(idx) { 1 } else { 0 };
     comp.alloc_data();
   }
 
-  // Detect alpha channel
-  if let Some(comp) = comps.get_mut(samples_per_pixel as usize - 1) {
-    comp.alpha = if samples_per_pixel == 2 || samples_per_pixel == 4 {
-      1
-    } else {
-      0
-    };
-  }
-
-  // Read image data
   let strip_size = unsafe { TIFFStripSize(tiff) as usize };
-  let mut buffer = vec![0u8; strip_size];
-
-  if planar_config == PLANARCONFIG_CONTIG {
-    // Contiguous data - all samples in each strip
-    for y in 0..height {
-      let strip = unsafe { TIFFComputeStrip(tiff, y, 0) };
-      let read = unsafe {
-        TIFFReadEncodedStrip(
-          tiff,
-          strip,
-          buffer.as_mut_ptr() as *mut c_void,
-          strip_size as i64,
-        )
-      };
-      if read < 0 {
-        unsafe { TIFFClose(tiff) };
-        return Err(ImageError::DecodeError("Failed to read strip".into()));
-      }
-
-      let row_data =
-        &buffer[..(width * samples_per_pixel as u32 * (bits_per_sample as u32 / 8)) as usize];
-      let values = convert_bits_to_32s::<16>(row_data, false);
-
-      // Deinterleave samples into components
-      for (i, comp) in comps.iter_mut().enumerate() {
-        let data = comp.data_mut().unwrap();
-        let offset = y * width;
-        for (j, value) in values
-          .iter()
-          .skip(i)
-          .step_by(samples_per_pixel as usize)
-          .enumerate()
-        {
-          data[offset as usize + j] = *value;
-        }
-      }
+  let read_strip = |buf: &mut BitBuffer, strip| {
+    buf.reset();
+    let read = unsafe {
+      TIFFReadEncodedStrip(
+        tiff,
+        strip,
+        buf.as_mut_ptr() as *mut c_void,
+        strip_size as i64,
+      )
+    };
+    if read < 0 {
+      unsafe { TIFFClose(tiff) };
+      return Err(ImageError::DecodeError("Failed to read strip".into()));
     }
-  } else {
-    // Separate planes
-    for comp_idx in 0..samples_per_pixel {
-      let comp = &mut comps[comp_idx as usize];
-      let data = comp.data_mut().unwrap();
+    Ok(read as usize)
+  };
 
-      for y in 0..height {
-        let strip = unsafe { TIFFComputeStrip(tiff, y, comp_idx as u16) };
-        let read = unsafe {
-          TIFFReadEncodedStrip(
-            tiff,
-            strip,
-            buffer.as_mut_ptr() as *mut c_void,
-            strip_size as i64,
-          )
-        };
-        if read < 0 {
-          unsafe { TIFFClose(tiff) };
-          return Err(ImageError::DecodeError("Failed to read strip".into()));
+  let num_strip = unsafe { TIFFNumberOfStrips(tiff) };
+  {
+    let mut comps = image
+      .comps_data_mut_iter()
+      .expect("We just allocated the components");
+    // Read image data
+    let mut buffer = BitBuffer::new(strip_size);
+    if planar_config == PLANARCONFIG_CONTIG {
+      let row_bit_size = width as usize * numcomps as usize * prec as usize;
+      let row_size = (row_bit_size + 7) / 8;
+      let row_bit_padding = row_size * 8 - row_bit_size;
+      // Must have at least one component.
+      // Only 1-4 components are supported.  Any additional components are ignored.
+      let c0 = comps.next().expect("We just allocated the components");
+      let c1 = comps.next();
+      let c2 = comps.next();
+      let c3 = comps.next();
+
+      // Chunk the component data by the image width.
+      // This is necessary because the TIFF library requires the data to be in strips.
+      let d0 = c0.chunks_exact_mut(width as usize);
+      let d1 = c1.map(|c| c.chunks_exact_mut(width as usize));
+      let d2 = c2.map(|c| c.chunks_exact_mut(width as usize));
+      let d3 = c3.map(|c| c.chunks_exact_mut(width as usize));
+
+      // Contiguous data - all samples in each strip
+      match (d0, d1, d2, d3) {
+        (mut gray, None, None, None) => {
+          // Gray
+          for strip in 0..num_strip {
+            let mut strip_len = read_strip(&mut buffer, strip)?;
+
+            while strip_len >= row_size {
+              let Some(gray_row) = gray.next() else {
+                unsafe { TIFFClose(tiff) };
+                return Err(ImageError::DecodeError("Too many rows".into()));
+              };
+              for gray in gray_row {
+                *gray = buffer.read(prec) as i32;
+              }
+              buffer.read(row_bit_padding as u32);
+              strip_len -= row_size;
+            }
+          }
         }
+        (mut gray, Some(mut alpha), None, None) => {
+          // Gray + Alpha
+          for strip in 0..num_strip {
+            let mut strip_len = read_strip(&mut buffer, strip)?;
 
-        let row_data = &buffer[..(width * (bits_per_sample as u32 / 8)) as usize];
-        let values = convert_bits_to_32s::<16>(row_data, false);
+            while strip_len >= row_size {
+              let (Some(gray_row), Some(alpha_row)) = (gray.next(), alpha.next()) else {
+                unsafe { TIFFClose(tiff) };
+                return Err(ImageError::DecodeError("Too many rows".into()));
+              };
+              for (gray, alpha) in gray_row.iter_mut().zip(alpha_row.iter_mut()) {
+                *gray = buffer.read(prec) as i32;
+                *alpha = buffer.read(prec) as i32;
+              }
+              buffer.read(row_bit_padding as u32);
+              strip_len -= row_size;
+            }
+          }
+        }
+        (mut red, Some(mut green), Some(mut blue), None) => {
+          // RGB
+          for strip in 0..num_strip {
+            let mut strip_len = read_strip(&mut buffer, strip)?;
 
-        let offset = y * width;
-        data[offset as usize..(offset + width) as usize].copy_from_slice(&values);
+            while strip_len >= row_size {
+              let (Some(red_row), Some(green_row), Some(blue_row)) =
+                (red.next(), green.next(), blue.next())
+              else {
+                unsafe { TIFFClose(tiff) };
+                return Err(ImageError::DecodeError("Too many rows".into()));
+              };
+              for ((red, green), blue) in red_row
+                .iter_mut()
+                .zip(green_row.iter_mut())
+                .zip(blue_row.iter_mut())
+              {
+                *red = buffer.read(prec) as i32;
+                *green = buffer.read(prec) as i32;
+                *blue = buffer.read(prec) as i32;
+              }
+              buffer.read(row_bit_padding as u32);
+              strip_len -= row_size;
+            }
+          }
+        }
+        (mut red, Some(mut green), Some(mut blue), Some(mut alpha)) => {
+          // RGBA
+          for strip in 0..num_strip {
+            let mut strip_len = read_strip(&mut buffer, strip)?;
+
+            while strip_len >= row_size {
+              let (Some(red_row), Some(green_row), Some(blue_row), Some(alpha_row)) =
+                (red.next(), green.next(), blue.next(), alpha.next())
+              else {
+                unsafe { TIFFClose(tiff) };
+                return Err(ImageError::DecodeError("Too many rows".into()));
+              };
+              for (((red, green), blue), alpha) in red_row
+                .iter_mut()
+                .zip(green_row.iter_mut())
+                .zip(blue_row.iter_mut())
+                .zip(alpha_row.iter_mut())
+              {
+                *red = buffer.read(prec) as i32;
+                *green = buffer.read(prec) as i32;
+                *blue = buffer.read(prec) as i32;
+                *alpha = buffer.read(prec) as i32;
+              }
+              buffer.read(row_bit_padding as u32);
+              strip_len -= row_size;
+            }
+          }
+        }
+        _ => {
+          unsafe { TIFFClose(tiff) };
+          return Err(ImageError::EncodeError(
+            "Invalid number of components".into(),
+          ));
+        }
+      }
+    } else {
+      let row_bit_size = width as usize * prec as usize;
+      let row_size = (row_bit_size + 7) / 8;
+      let row_bit_padding = row_size * 8 - row_bit_size;
+      let mut strip = 0;
+      // Separate planes
+      for data in comps {
+        let mut rows = data.chunks_exact_mut(width as usize);
+
+        let mut y = height;
+        while strip < num_strip && y > 0 {
+          let mut strip_len = read_strip(&mut buffer, strip)?;
+          strip += 1;
+          while strip_len >= row_size {
+            let Some(row) = rows.next() else {
+              unsafe { TIFFClose(tiff) };
+              return Err(ImageError::DecodeError("Too many rows".into()));
+            };
+            for dst in row {
+              *dst = buffer.read(prec) as i32;
+            }
+            buffer.read(row_bit_padding as u32);
+            strip_len -= row_size;
+            y -= 1;
+          }
+        }
       }
     }
   }
@@ -247,6 +359,7 @@ pub fn load_tiff_image(
   unsafe { TIFFClose(tiff) };
 
   // Scale for cinema mode if needed
+  let comps = image.comps_mut().expect("We just allocated the components");
   if params.is_cinema() && color_space == OPJ_CLRSPC_SRGB {
     for comp in comps.iter_mut() {
       comp.scale(12);
@@ -297,14 +410,28 @@ pub fn save_tiff_image(image: &mut opj_image, path: &Path) -> Result<(), ImageEr
       comp.clip(prec);
     }
   }
-  let (comp0_w, comp0_h, comp0_prec) = image.comp0_dims_prec();
-  let comp0 = image.comps().unwrap().first().unwrap();
 
-  let sgnd = comp0.sgnd;
-  let adjust = if sgnd != 0 { 1 << (comp0_prec - 1) } else { 0 };
+  let mut comps = image
+    .comps_data_iter()
+    .ok_or_else(|| ImageError::InvalidFormat("Missing components".into()))?;
+
+  // Must have at least one component.
+  // Only 1-4 components are supported.  Any additional components are ignored.
+  let c0 = comps
+    .next()
+    .ok_or_else(|| ImageError::InvalidFormat("Missing components".into()))?;
+  let c1 = comps.next();
+  let c2 = comps.next();
+  let c3 = comps.next();
+
+  let width = c0.comp.w;
+  let height = c0.comp.h;
+  let prec = c0.comp.prec;
+  let sgnd = c0.comp.sgnd;
+  let adjust = c0.adjust;
   eprintln!(
-    "comp0_w: {}, comp0_h: {}, comp0_prec: {}, sgnd: {}, adjust: {}, numcomps: {}",
-    comp0_w, comp0_h, comp0_prec, comp0.sgnd, adjust, numcomps
+    "width: {}, height: {}, prec: {}, sgnd: {}, adjust: {}, numcomps: {}",
+    width, height, prec, sgnd, adjust, numcomps
   );
   let photometric = if image.color_space == OPJ_CLRSPC_CMYK {
     if numcomps < 4 {
@@ -326,60 +453,112 @@ pub fn save_tiff_image(image: &mut opj_image, path: &Path) -> Result<(), ImageEr
   };
   // Set TIFF tags
   unsafe {
-    TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, comp0_w);
-    TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, comp0_h);
+    TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, width);
+    TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, height);
     TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, numcomps);
-    TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, comp0_prec);
+    TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, prec);
     TIFFSetField(tiff, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
     TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
     TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, photometric);
     TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, 1u32);
   }
 
-  let Some(comps) = image.comps_data_iter() else {
-    unsafe { TIFFClose(tiff) };
-    return Err(ImageError::EncodeError("No image components".into()));
-  };
-  let comps = comps.collect::<Vec<_>>();
+  // Chunk the component data by the image width.
+  // This is necessary because the TIFF library requires the data to be in strips.
+  let d0 = c0.data.chunks_exact(width as usize);
+  let d1 = c1.map(|c| c.data.chunks_exact(width as usize));
+  let d2 = c2.map(|c| c.data.chunks_exact(width as usize));
+  let d3 = c3.map(|c| c.data.chunks_exact(width as usize));
 
   let strip_size = unsafe { TIFFStripSize(tiff) as usize };
-  let row_size = (comp0_w as usize * numcomps as usize * comp0_prec as usize + 7) / 8;
+  let row_size = (width as usize * numcomps as usize * prec as usize + 7) / 8;
   if strip_size != row_size {
     unsafe { TIFFClose(tiff) };
     return Err(ImageError::EncodeError("Invalid TIFF strip size".into()));
   }
-  // Write image data
-  let mut buffer = vec![0u8; strip_size];
-
-  for y in 0..comp0_h {
-    // Interleave component data for the row
-    let mut idx = 0;
-    for x in 0..comp0_w {
-      for comp in &comps {
-        let value = comp.data[y as usize * comp0_w as usize + x as usize];
-        if comp0_prec <= 8 {
-          buffer[idx] = value as u8;
-          idx += 1;
-        } else {
-          let bytes = (value as u16).to_ne_bytes();
-          buffer[idx..idx + 2].copy_from_slice(&bytes);
-          idx += 2;
-        }
-      }
-    }
-
+  let write_strip = |buf: &mut BitBuffer, y| {
     // Write row
     let written = unsafe {
       TIFFWriteEncodedStrip(
         tiff,
         y as u32,
-        buffer.as_ptr() as *mut c_void,
+        buf.as_ptr() as *mut c_void,
         strip_size as i64,
       )
     };
+    buf.reset();
     if written < 0 {
       unsafe { TIFFClose(tiff) };
       return Err(ImageError::EncodeError("Failed to write strip".into()));
+    }
+    Ok(())
+  };
+
+  // Write image data using BitBuffer
+  let mut buffer = BitBuffer::new(strip_size);
+  match (d0, d1, d2, d3) {
+    (d0, None, None, None) => {
+      // Write image data with a single component
+      for (y, row) in d0.enumerate() {
+        for gray in row {
+          let gray = (gray - adjust) as u32;
+          buffer.write(prec, gray);
+        }
+        write_strip(&mut buffer, y as u32)?;
+      }
+    }
+    (d0, Some(d1), None, None) => {
+      // Write image data with two components
+      for (y, (row0, row1)) in d0.zip(d1).enumerate() {
+        for (gray, alpha) in row0.iter().zip(row1.iter()) {
+          let gray = (gray - adjust) as u32;
+          let alpha = (alpha - adjust) as u32;
+          buffer.write(prec, gray);
+          buffer.write(prec, alpha);
+        }
+        write_strip(&mut buffer, y as u32)?;
+      }
+    }
+    (d0, Some(d1), Some(d2), None) => {
+      // Write image data with three components
+      for (y, (row0, (row1, row2))) in d0.zip(d1.zip(d2)).enumerate() {
+        for ((red, green), blue) in row0.iter().zip(row1.iter()).zip(row2.iter()) {
+          let red = (red - adjust) as u32;
+          let green = (green - adjust) as u32;
+          let blue = (blue - adjust) as u32;
+          buffer.write(prec, red);
+          buffer.write(prec, green);
+          buffer.write(prec, blue);
+        }
+        write_strip(&mut buffer, y as u32)?;
+      }
+    }
+    (d0, Some(d1), Some(d2), Some(d3)) => {
+      // Write image data with four components
+      for (y, (row0, (row1, (row2, row3)))) in d0.zip(d1.zip(d2.zip(d3))).enumerate() {
+        for (((red, green), blue), alpha) in row0
+          .iter()
+          .zip(row1.iter())
+          .zip(row2.iter())
+          .zip(row3.iter())
+        {
+          let red = (red - adjust) as u32;
+          let green = (green - adjust) as u32;
+          let blue = (blue - adjust) as u32;
+          let alpha = (alpha - adjust) as u32;
+          buffer.write(prec, red);
+          buffer.write(prec, green);
+          buffer.write(prec, blue);
+          buffer.write(prec, alpha);
+        }
+        write_strip(&mut buffer, y as u32)?;
+      }
+    }
+    _ => {
+      unsafe { TIFFClose(tiff) };
+      return Err(ImageError::EncodeError(
+        "Invalid number of components".into(),
+      ));
     }
   }
 
