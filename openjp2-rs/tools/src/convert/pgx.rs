@@ -162,22 +162,41 @@ pub fn save_pgx_image(image: &opj_image, path: &Path) -> Result<(), ImageError> 
 
     let precision = comp_data.comp.prec;
     let signed = comp_data.comp.sgnd != 0;
-    let adjust = comp_data.adjust;
 
     if precision <= 8 {
       // Write 8-bit values
-      let (min, max) = if signed { (-128, 127) } else { (0, 255) };
+      let (min, max) = if signed {
+        (i8::MIN as i32, i8::MAX as i32)
+      } else {
+        (u8::MIN as i32, u8::MAX as i32)
+      };
 
       for &value in comp_data.data.iter() {
-        let value = (value + adjust).clamp(min, max) as u8;
+        let value = value.clamp(min, max) as u8;
         writer.write_all(&[value])?;
       }
     } else if precision <= 16 {
       // Write 16-bit values in big-endian order
-      let (min, max) = if signed { (-32768, 32767) } else { (0, 65535) };
+      let (min, max) = if signed {
+        (i16::MIN as i32, i16::MAX as i32)
+      } else {
+        (u16::MIN as i32, u16::MAX as i32)
+      };
 
       for &value in comp_data.data.iter() {
-        let value = (value + adjust).clamp(min, max) as u16;
+        let value = value.clamp(min, max) as u16;
+        writer.write_all(&value.to_be_bytes())?;
+      }
+    } else if precision <= 32 {
+      // Write 32-bit values in big-endian order
+      let (min, max) = if signed {
+        (i32::MIN as i64, i32::MAX as i64)
+      } else {
+        (u32::MIN as i64, u32::MAX as i64)
+      };
+
+      for &value in comp_data.data.iter() {
+        let value = (value as i64).clamp(min, max) as u32;
         writer.write_all(&value.to_be_bytes())?;
       }
     } else {
