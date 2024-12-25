@@ -1,6 +1,7 @@
 use super::ImageError;
 use crate::convert::*;
 use crate::params::CompressionParameters;
+use image::codecs::png::{CompressionType, FilterType, PngEncoder};
 use openjp2::image::opj_image;
 use std::fs::File;
 use std::io::{self, Read, Seek};
@@ -92,4 +93,49 @@ fn parse_png_header(path: &Path) -> Result<(u8, u8), ImageError> {
   }
 
   Ok((bit_depth, color_type))
+}
+
+pub fn save_png_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+  {
+    let comps = image
+      .comps_mut()
+      .ok_or_else(|| ImageError::EncodeError("Failed to get image components".into()))?;
+    let numcomps = comps.len();
+    if numcomps == 0 {
+      return Err(ImageError::EncodeError("No components found".into()));
+    }
+
+    let prec = comps[0].prec;
+
+    // Clip components.
+    for comp in comps.iter_mut() {
+      comp.clip(prec);
+    }
+
+    // Scale components.
+    if prec > 8 && prec < 16 {
+      for comp in comps {
+        comp.scale(16);
+      }
+    } else if prec < 8 && numcomps > 1 {
+      for comp in comps {
+        comp.scale(8);
+      }
+    } else if prec > 1 && prec < 8 && (prec == 6 || (prec & 1) == 1) {
+      let prec = match prec {
+        5 | 6 => 8,
+        _ => prec + 1,
+      };
+      for comp in comps {
+        comp.scale(prec);
+      }
+    }
+  }
+
+  let dynamic_img = convert_to_dynamic_image(image)?;
+  let file = File::create(path).map_err(|e| ImageError::EncodeError(e.to_string()))?;
+  let encoder = PngEncoder::new_with_quality(file, CompressionType::Best, FilterType::NoFilter);
+  dynamic_img
+    .write_with_encoder(encoder)
+    .map_err(|e| ImageError::EncodeError(e.to_string()))
 }

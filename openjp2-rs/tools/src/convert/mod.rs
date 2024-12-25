@@ -67,49 +67,6 @@ pub fn save_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> 
   }
 }
 
-pub fn save_png_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
-  {
-    let comps = image
-      .comps_mut()
-      .ok_or_else(|| ImageError::EncodeError("Failed to get image components".into()))?;
-    let numcomps = comps.len();
-    if numcomps == 0 {
-      return Err(ImageError::EncodeError("No components found".into()));
-    }
-
-    let prec = comps[0].prec;
-
-    // Clip components.
-    for comp in comps.iter_mut() {
-      comp.clip(prec);
-    }
-
-    // Scale components.
-    if prec > 8 && prec < 16 {
-      for comp in comps {
-        comp.scale(16);
-      }
-    } else if prec < 8 && numcomps > 1 {
-      for comp in comps {
-        comp.scale(8);
-      }
-    } else if prec > 1 && prec < 8 && (prec == 6 || (prec & 1) == 1) {
-      let prec = match prec {
-        5 | 6 => 8,
-        _ => prec + 1,
-      };
-      for comp in comps {
-        comp.scale(prec);
-      }
-    }
-  }
-
-  let dynamic_img = convert_to_dynamic_image(image)?;
-  dynamic_img
-    .save(path)
-    .map_err(|e| ImageError::EncodeError(e.to_string()))
-}
-
 // Add error types
 #[derive(Debug)]
 pub enum ImageError {
