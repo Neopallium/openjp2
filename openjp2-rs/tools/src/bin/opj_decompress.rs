@@ -1,6 +1,4 @@
-use openjp2::{
-  detect_format_from_file, openjpeg::*, opj_image_comptparm, Codec, J2KFormat, Stream,
-};
+use openjp2::{detect_format_from_file, openjpeg::*, Codec, J2KFormat, Stream};
 use openjp2_tools::{color::*, convert::*, params::*};
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_void};
@@ -249,36 +247,6 @@ fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>,
     return Ok(None);
   }
 
-  // Create parameters for new components
-  let mut new_components = Vec::with_capacity(orig.numcomps as usize);
-
-  let orig_comps = orig
-    .comps()
-    .ok_or_else(|| ImageError::DecodeError("No components".into()))?;
-
-  for comp in orig_comps {
-    let mut new_comp = opj_image_comptparm {
-      dx: 1,
-      dy: 1,
-      w: comp.w,
-      h: comp.h,
-      x0: orig.x0,
-      y0: orig.y0,
-      prec: comp.prec,
-      bpp: 0,
-      sgnd: comp.sgnd,
-    };
-
-    if comp.dx > 1 {
-      new_comp.w = orig.x1 - orig.x0;
-    }
-    if comp.dy > 1 {
-      new_comp.h = orig.y1 - orig.y0;
-    }
-
-    new_components.push(new_comp);
-  }
-
   // Create new image
   let mut image = opj_image::new();
   image.x0 = orig.x0;
@@ -307,14 +275,16 @@ fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>,
     // Check if the component doesn't need upsampling.
     if org_comp.dx <= 1 && org_comp.dy <= 1 {
       new_comp.copy(org_comp);
+      new_comp.x0 = orig.x0;
+      new_comp.y0 = orig.y0;
       continue;
     }
     new_comp.dx = 1;
     new_comp.dy = 1;
     new_comp.w = org_comp.w;
     new_comp.h = org_comp.h;
-    new_comp.x0 = org_comp.x0;
-    new_comp.y0 = org_comp.y0;
+    new_comp.x0 = orig.x0;
+    new_comp.y0 = orig.y0;
     new_comp.prec = org_comp.prec;
     new_comp.bpp = 0;
     new_comp.sgnd = org_comp.sgnd;
@@ -333,8 +303,8 @@ fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>,
         "Failed to allocate component data".into(),
       ));
     }
-    let new_w = new_comp.w;
-    let new_h = new_comp.h;
+    let new_w = new_comp.w as usize;
+    let new_h = new_comp.h as usize;
 
     let src = org_comp
       .data()
@@ -344,61 +314,106 @@ fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>,
       .ok_or_else(|| ImageError::DecodeError("No component data".into()))?;
 
     // Need to take into account dx and dy.
-    let xoff = org_comp.dx * org_comp.x0 - orig.x0;
-    let yoff = org_comp.dy * org_comp.y0 - orig.y0;
-    if xoff >= org_comp.dx || yoff >= org_comp.dy {
+    let xoff = (org_comp.dx * org_comp.x0 - orig.x0) as usize;
+    let yoff = (org_comp.dy * org_comp.y0 - orig.y0) as usize;
+    let orig_dx = org_comp.dx as usize;
+    let orig_dy = org_comp.dy as usize;
+    if xoff >= orig_dx || yoff >= orig_dy {
       return Err(ImageError::DecodeError(
         "Invalid image/component parameters found when upsampling".into(),
       ));
     }
 
-    // Zero out initial rows for yoff
-    for y in 0..yoff {
-      let start = (y * new_w) as usize;
-      let end = start + new_w as usize;
-      dst[start..end].fill(0);
-    }
-
     let mut src_idx = 0;
     let mut y = yoff;
+    let max_y = if new_h > (orig_dy - 1) {
+      new_h - orig_dy - 1
+    } else {
+      // For small images, we need to handle the case where max_y is less than dy.
+      0
+    };
+    let max_x = if new_w > (orig_dx - 1) {
+      new_w - orig_dx - 1
+    } else {
+      // For small images, we need to handle the case where max_x is less than dx.
+      0
+    };
 
-    while y < new_h - (org_comp.dy - 1) {
-      for dy in 0..org_comp.dy {
-        let dst_row = &mut dst[(y + dy) as usize * new_w as usize..];
+    // Zero out initial rows for yoff
+    let mut dst_idx = 0;
+    for _ in 0..yoff {
+      let end = dst_idx + new_w as usize;
+      dst[dst_idx..end].fill(0);
+      dst_idx += new_w as usize;
+    }
 
-        // Handle initial xoff pixels
-        for x in 0..xoff {
-          dst_row[x as usize] = 0;
-        }
-
-        // Copy and replicate pixels
-        let mut x = xoff;
-        let mut src_x = 0;
-        while x < new_w - (org_comp.dx - 1) {
-          let val = src[src_idx + src_x as usize];
-          for dx in 0..org_comp.dx {
-            dst_row[(x + dx) as usize] = val;
-          }
-          x += org_comp.dx;
-          src_x += 1;
-        }
-
-        // Handle remaining pixels
-        while x < new_w {
-          dst_row[x as usize] = src[src_idx + src_x as usize - 1];
-          x += 1;
-        }
+    while y < max_y {
+      // Handle initial xoff pixels
+      for x in 0..xoff {
+        dst[dst_idx + x] = 0;
       }
-      y += org_comp.dy;
+
+      // Copy and replicate pixels
+      let mut x = xoff;
+      let mut src_x = 0; // `xorg` in original code
+      while x < max_x {
+        let val = src[src_idx + src_x];
+        for dx in 0..orig_dx {
+          dst[dst_idx + (x + dx)] = val;
+        }
+        x += orig_dx;
+        src_x += 1;
+      }
+
+      // Handle remaining pixels on the row.
+      while x < new_w {
+        dst[dst_idx + x] = src[src_idx + src_x - 1];
+        x += 1;
+      }
+      dst_idx += new_w;
+
+      // Copy and replicate rows
+      for _ in 1..org_comp.dy {
+        dst.copy_within(dst_idx - new_w..dst_idx, dst_idx);
+        dst_idx += new_w;
+      }
+
+      y += orig_dy;
       src_idx += org_comp.w as usize;
     }
 
     // Handle remaining rows
-    while y < new_h {
-      let src_row = &src[(y - org_comp.dy) as usize * new_w as usize..];
-      let dst_row = &mut dst[y as usize * new_w as usize..];
-      dst_row[..new_w as usize].copy_from_slice(&src_row[..new_w as usize]);
+    if y < new_h {
+      // Handle initial xoff pixels
+      for x in 0..xoff {
+        dst[dst_idx + x] = 0;
+      }
+
+      // Copy and replicate pixels
+      let mut x = xoff;
+      let mut src_x = 0; // `xorg` in original code
+      while x < max_x {
+        let val = src[src_idx + src_x];
+        for dx in 0..orig_dx {
+          dst[dst_idx + x + dx] = val;
+        }
+        x += orig_dx;
+        src_x += 1;
+      }
+
+      // Handle remaining pixels on the row.
+      while x < new_w {
+        dst[dst_idx + x as usize] = src[src_idx + src_x as usize - 1];
+        x += 1;
+      }
+      dst_idx += new_w as usize;
       y += 1;
+
+      // Copy and replicate rows
+      for _ in y..new_h {
+        dst.copy_within(dst_idx - new_w as usize..dst_idx, dst_idx);
+        dst_idx += new_w as usize;
+      }
     }
   }
 
