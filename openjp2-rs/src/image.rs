@@ -55,7 +55,8 @@ impl Default for opj_image_comp {
 }
 
 impl opj_image_comp {
-  pub fn copy(&mut self, other: &opj_image_comp) -> bool {
+  /// Copy just the component properties, not the data.
+  pub fn copy_props(&mut self, other: &opj_image_comp) {
     self.clear_data();
     self.dx = other.dx;
     self.dy = other.dy;
@@ -69,6 +70,11 @@ impl opj_image_comp {
     self.resno_decoded = other.resno_decoded;
     self.factor = other.factor;
     self.alpha = other.alpha;
+  }
+
+  /// Copy another component and its data.
+  pub fn copy(&mut self, other: &opj_image_comp) -> bool {
+    self.copy_props(other);
     if let Some(o_data) = other.data() {
       self.set_data(o_data)
     } else {
@@ -384,12 +390,12 @@ impl opj_image {
     (0, 0, 0)
   }
 
+  /// Check if all components have the same dimensions.
   pub fn comps_same_dims(&self) -> bool {
     if let Some(comps) = self.comps() {
-      if comps.len() > 0 {
-        let (dx, dy) = (comps[0].dx, comps[0].dy);
+      if let Some((c0, comps)) = comps.split_first() {
         for comp in comps {
-          if comp.dx != dx || comp.dy != dy {
+          if comp.w != c0.w || comp.h != c0.h || comp.dx != c0.dx || comp.dy != c0.dy {
             return false;
           }
         }
@@ -399,12 +405,18 @@ impl opj_image {
     false
   }
 
+  /// Check if all components have the same dimensions and precision.
   pub fn comps_match(&self) -> bool {
     if let Some(comps) = self.comps() {
-      if comps.len() > 0 {
-        let (dx, dy, prec, sgnd) = (comps[0].dx, comps[0].dy, comps[0].prec, comps[0].sgnd);
+      if let Some((c0, comps)) = comps.split_first() {
         for comp in comps {
-          if comp.dx != dx || comp.dy != dy || comp.prec != prec || comp.sgnd != sgnd {
+          if comp.w != c0.w
+            || comp.h != c0.h
+            || comp.dx != c0.dx
+            || comp.dy != c0.dy
+            || comp.prec != c0.prec
+            || comp.sgnd != c0.sgnd
+          {
             return false;
           }
         }

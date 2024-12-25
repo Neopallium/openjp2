@@ -326,6 +326,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
   };
 
   let out_space = in_profile.color_space();
+  let out_profile = Profile::new_srgb();
   let intent = in_profile.header_rendering_intent();
 
   let (maxw, maxh, prec) = image.comp0_dims_prec();
@@ -372,97 +373,161 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
     return;
   };
 
-  let out_profile = Profile::new_srgb();
-  let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
-    Ok(t) => t,
-    Err(_) => return,
+  // Take ownership of the old components.
+  let orig = image.take_comps();
+  let Some(mut orig_comps) = orig.comps_data_iter() else {
+    eprintln!("color_apply_icc_profile: missing components");
+    return;
   };
-
-  let max = maxw * maxh;
-
-  let comps = match image.comps_mut() {
-    Some(c) => c,
-    None => return,
+  // Should always have at least one component
+  let Some(o_red) = orig_comps.next() else {
+    eprintln!("color_apply_icc_profile: missing component 0");
+    return;
   };
+  // if RGB(A) then we have two more components
+  let (o_green, o_blue) = if orig.numcomps >= 3 {
+    let o_green = orig_comps.next();
+    let o_blue = orig_comps.next();
+    (o_green, o_blue)
+  } else {
+    (None, None)
+  };
+  // if RGBA or GRAYA then we have one more component
+  let o_alpha = orig_comps.next();
 
-  // TODO: this is missing some cases and logic.  (See the original color.c file)
-  if comps.len() >= 3 {
-    let comps = match comps {
-      [r, g, b, ..] => (r, g, b),
-      _ => return,
-    };
-    // Assume RGB
-    let (r_data, g_data, b_data) = match (comps.0.data(), comps.1.data(), comps.2.data()) {
-      (Some(r), Some(g), Some(b)) => (r, g, b),
-      _ => return,
-    };
-
-    let mut rgb_data: Vec<u8> = Vec::with_capacity(max * 3);
-    for i in 0..max {
-      rgb_data.push(r_data[i] as u8);
-      rgb_data.push(g_data[i] as u8);
-      rgb_data.push(b_data[i] as u8);
+  // Allocate new components
+  let numcomps = match orig.numcomps {
+    1 | 3 => 3,
+    2 | 4 => 4,
+    _ => {
+      eprintln!(
+        "color_apply_icc_profile: invalid numcomps {}",
+        orig.numcomps
+      );
+      return;
     }
+  };
+  if !image.alloc_comps(numcomps) {
+    eprintln!("color_apply_icc_profile: failed to allocate components");
+    return;
+  }
+  image.color_space = OPJ_CLRSPC_SRGB;
 
-    let mut out_rgb_data = vec![0u8; max * 3];
-    transform.transform_pixels(&rgb_data, &mut out_rgb_data);
+  // Copy the original components details to the new components
+  let mut comps = image
+    .comps_mut()
+    .expect("We just allocated this")
+    .iter_mut();
+  // There must be at least 3 components (RGB).  Get and initialize them.
+  let red = comps.next().expect("We just allocated this");
+  red.copy_props(o_red.comp);
+  let green = comps.next().expect("We just allocated this");
+  green.copy_props(o_red.comp);
+  let blue = comps.next().expect("We just allocated this");
+  blue.copy_props(o_red.comp);
 
-    let (r_data, g_data, b_data) =
-      match (comps.0.data_mut(), comps.1.data_mut(), comps.2.data_mut()) {
-        (Some(r), Some(g), Some(b)) => (r, g, b),
-        _ => return,
-      };
-
-    for i in 0..max {
-      r_data[i] = out_rgb_data[i * 3 + 0] as i32;
-      g_data[i] = out_rgb_data[i * 3 + 1] as i32;
-      b_data[i] = out_rgb_data[i * 3 + 2] as i32;
-    }
-  } else if comps.len() == 1 {
-    // Assume grayscale
-    let gray_data = match comps[0].data() {
-      Some(d) => d,
-      None => return,
-    };
-
-    let mut gray_data_u8: Vec<u8> = Vec::with_capacity(max);
-    for &v in gray_data {
-      gray_data_u8.push(v as u8);
-    }
-
-    let mut out_rgb_data = vec![0u8; max * 3];
-    transform.transform_pixels(&gray_data_u8, &mut out_rgb_data);
-
-    let mut r = vec![0i32; max];
-    let mut g = vec![0i32; max];
-    let mut b = vec![0i32; max];
-    for i in 0..max {
-      r[i] = out_rgb_data[i * 3 + 0] as i32;
-      g[i] = out_rgb_data[i * 3 + 1] as i32;
-      b[i] = out_rgb_data[i * 3 + 2] as i32;
-    }
-
-    /* TODO:
-    image.comps_mut().unwrap().extend_from_slice(&[
-      opj_image_comp_t {
-        data: r.as_mut_ptr(),
-        ..comps[0]
-      },
-      opj_image_comp_t {
-        data: g.as_mut_ptr(),
-        ..comps[0]
-      },
-      opj_image_comp_t {
-        data: b.as_mut_ptr(),
-        ..comps[0]
-      },
-    ]);
-     */
-
-    image.numcomps = 3;
+  // Allocate data for the new components
+  if !red.alloc_data() || !green.alloc_data() || !blue.alloc_data() {
+    eprintln!("color_apply_icc_profile: failed to allocate data");
+    return;
   }
 
-  image.color_space = OPJ_CLRSPC_SRGB;
+  // Just copy the alpha channel if it exists
+  if let Some(o_alpha) = o_alpha {
+    let alpha = comps.next().expect("We just allocated this");
+    alpha.copy(o_alpha.comp);
+  }
+
+  // Get the component data
+  let red = red.data_mut().expect("We just allocated this");
+  let green = green.data_mut().expect("We just allocated this");
+  let blue = blue.data_mut().expect("We just allocated this");
+  let comp_pixels = red.iter_mut().zip(green.iter_mut()).zip(blue.iter_mut());
+
+  let num_pixels = maxw * maxh;
+  if prec <= 8 {
+    let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
+      Ok(t) => t,
+      Err(e) => {
+        eprintln!("color_apply_icc_profile: {:?}", e);
+        return;
+      }
+    };
+
+    // Copy the original component data to a single buffer
+    let mut in_data: Vec<u8> = Vec::with_capacity(num_pixels * 3);
+    match (o_red, o_green, o_blue) {
+      (red, Some(green), Some(blue)) => {
+        for ((r, g), b) in red.data.iter().zip(green.data.iter()).zip(blue.data.iter()) {
+          in_data.push(*r as u8);
+          in_data.push(*g as u8);
+          in_data.push(*b as u8);
+        }
+      }
+      (gray, None, None) => {
+        for v in gray.data.iter() {
+          in_data.push(*v as u8);
+        }
+      }
+      _ => {
+        eprintln!("color_apply_icc_profile: invalid components");
+        return;
+      }
+    }
+
+    // Transform the pixels
+    let mut out_data = vec![0u8; num_pixels * 3];
+    transform.transform_pixels(&in_data, &mut out_data);
+
+    // Copy the transformed data back to the components
+    let src_pixels = out_data.chunks_exact(3);
+    for (src, ((r, g), b)) in src_pixels.zip(comp_pixels) {
+      *r = src[0] as i32;
+      *g = src[1] as i32;
+      *b = src[2] as i32;
+    }
+  } else {
+    let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
+      Ok(t) => t,
+      Err(e) => {
+        eprintln!("color_apply_icc_profile: {:?}", e);
+        return;
+      }
+    };
+
+    // Copy the original component data to a single buffer
+    let mut in_data: Vec<u16> = Vec::with_capacity(num_pixels * 3);
+    match (o_red, o_green, o_blue) {
+      (red, Some(green), Some(blue)) => {
+        for ((r, g), b) in red.data.iter().zip(green.data.iter()).zip(blue.data.iter()) {
+          in_data.push(*r as u16);
+          in_data.push(*g as u16);
+          in_data.push(*b as u16);
+        }
+      }
+      (gray, None, None) => {
+        for v in gray.data.iter() {
+          in_data.push(*v as u16);
+        }
+      }
+      _ => {
+        eprintln!("color_apply_icc_profile: invalid components");
+        return;
+      }
+    }
+
+    // Transform the pixels
+    let mut out_data = vec![0u16; num_pixels * 3];
+    transform.transform_pixels(&in_data, &mut out_data);
+
+    // Copy the transformed data back to the components
+    let src_pixels = out_data.chunks_exact(3);
+    for (src, ((r, g), b)) in src_pixels.zip(comp_pixels) {
+      *r = src[0] as i32;
+      *g = src[1] as i32;
+      *b = src[2] as i32;
+    }
+  }
 }
 
 #[cfg(feature = "lcms2")]
