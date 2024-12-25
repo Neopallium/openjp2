@@ -70,12 +70,7 @@ fn sycc444_to_rgb(image: &mut opj_image_t) {
     b.push(bd);
   }
 
-  if let Some(comps) = image.comps_mut() {
-    comps[0].set_data(&r);
-    comps[1].set_data(&g);
-    comps[2].set_data(&b);
-  }
-  image.color_space = OPJ_CLRSPC_SRGB;
+  image.set_rgb(maxw, maxh, &r, &g, &b);
 }
 
 fn sycc422_to_rgb(image: &mut opj_image_t) {
@@ -149,22 +144,8 @@ fn sycc422_to_rgb(image: &mut opj_image_t) {
     }
   }
 
-  if let Some(comps) = image.comps_mut() {
-    comps[0].set_data(&r);
-    comps[1].set_data(&g);
-    comps[2].set_data(&b);
-
-    // Update component dimensions
-    comps[1].w = comps[0].w;
-    comps[2].w = comps[0].w;
-    comps[1].h = comps[0].h;
-    comps[2].h = comps[0].h;
-    comps[1].dx = comps[0].dx;
-    comps[2].dx = comps[0].dx;
-    comps[1].dy = comps[0].dy;
-    comps[2].dy = comps[0].dy;
-  }
-  image.color_space = OPJ_CLRSPC_SRGB;
+  // Update image data
+  image.set_rgb(maxw, maxh, &r, &g, &b);
 }
 
 fn sycc420_to_rgb(image: &mut opj_image_t) {
@@ -281,22 +262,8 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
     }
   }
 
-  if let Some(comps) = image.comps_mut() {
-    comps[0].set_data(&r);
-    comps[1].set_data(&g);
-    comps[2].set_data(&b);
-
-    // Update component dimensions
-    comps[1].w = comps[0].w;
-    comps[2].w = comps[0].w;
-    comps[1].h = comps[0].h;
-    comps[2].h = comps[0].h;
-    comps[1].dx = comps[0].dx;
-    comps[2].dx = comps[0].dx;
-    comps[1].dy = comps[0].dy;
-    comps[2].dy = comps[0].dy;
-  }
-  image.color_space = OPJ_CLRSPC_SRGB;
+  // Update image data
+  image.set_rgb(maxw, maxh, &r, &g, &b);
 }
 
 pub fn color_sycc_to_rgb(image: &mut opj_image_t) {
@@ -619,17 +586,12 @@ pub fn color_cielab_to_rgb(image: &mut opj_image_t) {
     }
 
     // Update image data
+    image.set_rgb(w as usize, h as usize, &r, &g, &b);
     if let Some(comps) = image.comps_mut() {
-      comps[0].set_data(&r);
-      comps[1].set_data(&g);
-      comps[2].set_data(&b);
-
       comps[0].prec = 16;
       comps[1].prec = 16;
       comps[2].prec = 16;
     }
-
-    image.color_space = OPJ_CLRSPC_SRGB;
     return;
   }
 
