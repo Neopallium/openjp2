@@ -174,16 +174,13 @@ fn decompress_image<P: AsRef<Path>>(
   }
 
   // Apply ICC profile if present
-  if let Some(_profile) = image.icc_profile() {
-    /*
-    TODO: Broken.
+  if let Some(profile) = image.icc_profile() {
     if profile.len() > 0 {
       color_apply_icc_profile(&mut image);
     } else {
       color_cielab_to_rgb(&mut image);
     }
     image.clear_icc_profile();
-    */
   }
 
   // Handle precision parameters
