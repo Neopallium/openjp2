@@ -99,48 +99,58 @@ fn sycc422_to_rgb(image: &mut opj_image_t) {
   let offx = image.x0 & 1;
   let loopmaxw = maxw - (offx as usize);
 
-  for i in 0..maxh {
-    let row_offset = i * maxw;
-
+  let mut y_off = 0;
+  let mut cb_off = 0;
+  let mut cr_off = 0;
+  for _ in 0..maxh {
     // Handle first pixel if offset
     if offx > 0 {
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_data[row_offset], 0, 0);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_data[y_off], 0, 0);
       r.push(rd);
       g.push(gd);
       b.push(bd);
+      y_off += 1;
     }
 
     // Handle pairs of pixels
     let mut j = 0;
     while j < (loopmaxw & !1) {
-      let y1 = y_data[row_offset + (j as usize) + offx as usize];
-      let y2 = y_data[row_offset + (j as usize) + 1 + offx as usize];
-      let cb = cb_data[row_offset / 2 + (j / 2) as usize];
-      let cr = cr_data[row_offset / 2 + (j / 2) as usize];
+      let y = y_data[y_off];
+      let cb = cb_data[cb_off];
+      let cr = cr_data[cr_off];
 
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y1, cb, cr);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y, cb, cr);
       r.push(rd);
       g.push(gd);
       b.push(bd);
 
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y2, cb, cr);
+      y_off += 1;
+      let y = y_data[y_off];
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y, cb, cr);
       r.push(rd);
       g.push(gd);
       b.push(bd);
 
+      y_off += 1;
+      cb_off += 1;
+      cr_off += 1;
       j += 2;
     }
 
     // Handle last pixel if needed
     if j < loopmaxw {
-      let y1 = y_data[row_offset + j as usize + offx as usize];
-      let cb = cb_data[row_offset / 2 + (j / 2) as usize];
-      let cr = cr_data[row_offset / 2 + (j / 2) as usize];
+      let y1 = y_data[y_off];
+      let cb = cb_data[cb_off];
+      let cr = cr_data[cr_off];
 
       let (rd, gd, bd) = sycc_to_rgb(offset, upb, y1, cb, cr);
       r.push(rd);
       g.push(gd);
       b.push(bd);
+
+      y_off += 1;
+      cb_off += 1;
+      cr_off += 1;
     }
   }
 
@@ -161,11 +171,12 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
   let upb = (1 << prec) - 1;
   let offset = 1 << (prec - 1);
 
-  let (y_data, cb_data, cr_data) = match (comps[0].data(), comps[1].data(), comps[2].data()) {
+  let (y_d, cb_d, cr_d) = match (comps[0].data(), comps[1].data(), comps[2].data()) {
     (Some(y), Some(cb), Some(cr)) => (y, cb, cr),
     _ => return,
   };
 
+  // TODO: need to fill with zeros to write to next row.
   let mut r = Vec::with_capacity(max);
   let mut g = Vec::with_capacity(max);
   let mut b = Vec::with_capacity(max);
@@ -180,26 +191,27 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
   // Handle first row if offset
   if offy > 0 {
     for j in 0..maxw {
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_data[j], 0, 0);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[j], 0, 0);
       r.push(rd);
       g.push(gd);
       b.push(bd);
     }
   }
 
-  for i in (0..loopmaxh - (offy as usize)).step_by(2) {
-    let row_offset = i * maxw;
-    let next_row = row_offset + maxw;
+  for i in (0..(loopmaxh & !1)).step_by(2) {
+    let row_off = i * maxw;
+    let next_row = row_off + maxw;
     let cbcr_row = (i / 2) * (maxw / 2);
 
     // Handle first pixel if offset
     if offx > 0 {
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_data[row_offset], 0, 0);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[row_off], 0, 0);
       r.push(rd);
       g.push(gd);
       b.push(bd);
 
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_data[next_row], 0, 0);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[next_row], cb_d[row_off], cr_d[row_off]);
+      // TODO: broken.  need to write to next row.
       r.push(rd);
       g.push(gd);
       b.push(bd);
@@ -208,12 +220,12 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
     // Handle pixel pairs
     let mut j = 0;
     while j < (loopmaxw & !1) {
-      let cb = cb_data[cbcr_row + j / 2];
-      let cr = cr_data[cbcr_row + j / 2];
+      let cb = cb_d[cbcr_row + j / 2];
+      let cr = cr_d[cbcr_row + j / 2];
 
       // Current row
-      let y1 = y_data[row_offset + j + offx as usize];
-      let y2 = y_data[row_offset + j + 1 + offx as usize];
+      let y1 = y_d[row_off + j + offx as usize];
+      let y2 = y_d[row_off + j + 1 + offx as usize];
 
       let (rd, gd, bd) = sycc_to_rgb(offset, upb, y1, cb, cr);
       r.push(rd);
@@ -226,8 +238,8 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
       b.push(bd);
 
       // Next row
-      let y1 = y_data[next_row + j + offx as usize];
-      let y2 = y_data[next_row + j + 1 + offx as usize];
+      let y1 = y_d[next_row + j + offx as usize];
+      let y2 = y_d[next_row + j + 1 + offx as usize];
 
       let (rd, gd, bd) = sycc_to_rgb(offset, upb, y1, cb, cr);
       r.push(rd);
@@ -244,11 +256,11 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
 
     // Handle last pixel if needed
     if j < loopmaxw {
-      let cb = cb_data[cbcr_row + j / 2];
-      let cr = cr_data[cbcr_row + j / 2];
+      let cb = cb_d[cbcr_row + j / 2];
+      let cr = cr_d[cbcr_row + j / 2];
 
-      let y1 = y_data[row_offset + j + offx as usize];
-      let y2 = y_data[next_row + j + offx as usize];
+      let y1 = y_d[row_off + j + offx as usize];
+      let y2 = y_d[next_row + j + offx as usize];
 
       let (rd, gd, bd) = sycc_to_rgb(offset, upb, y1, cb, cr);
       r.push(rd);
