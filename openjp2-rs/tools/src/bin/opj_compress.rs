@@ -1,4 +1,4 @@
-use openjp2::{detect_format_from_file, openjpeg::*, opj_image, Codec, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, opj_image, Codec, J2KFormat, Stream};
 use openjp2_tools::{convert::*, params::*};
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_void};
@@ -85,8 +85,8 @@ fn compress_image(
 
   // Create encoder based on codec format
   let cod_format = match params.codec_format {
-    Some(CodecFormat::J2K) => OPJ_CODEC_J2K,
-    Some(CodecFormat::JP2) => OPJ_CODEC_JP2,
+    Some(J2KFormat::J2K) => OPJ_CODEC_J2K,
+    Some(J2KFormat::JP2) => OPJ_CODEC_JP2,
     None => {
       return Err(ImageError::InvalidFormat(
         "No codec format specified".into(),

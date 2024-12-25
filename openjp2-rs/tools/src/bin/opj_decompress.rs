@@ -1,4 +1,6 @@
-use openjp2::{detect_format_from_file, openjpeg::*, opj_image_comptparm, Codec, Stream};
+use openjp2::{
+  detect_format_from_file, openjpeg::*, opj_image_comptparm, Codec, J2KFormat, Stream,
+};
 use openjp2_tools::{color::*, convert::*, params::*};
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_void};
@@ -35,8 +37,8 @@ fn decompress_image<P: AsRef<Path>>(
 
   // Create decompression codec
   let cod_format = match params.codec_format {
-    Some(CodecFormat::J2K) => OPJ_CODEC_J2K,
-    Some(CodecFormat::JP2) => OPJ_CODEC_JP2,
+    Some(J2KFormat::J2K) => OPJ_CODEC_J2K,
+    Some(J2KFormat::JP2) => OPJ_CODEC_JP2,
     None => {
       return Err(ImageError::InvalidFormat(
         "No codec format specified".into(),
@@ -172,7 +174,7 @@ fn decompress_image<P: AsRef<Path>>(
   }
 
   // Apply ICC profile if present
-  if let Some(profile) = image.icc_profile() {
+  if let Some(_profile) = image.icc_profile() {
     /*
     TODO: Broken.
     if profile.len() > 0 {

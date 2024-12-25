@@ -1,6 +1,6 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
 use crate::params::*;
-use openjp2::openjpeg::*;
+use openjp2::{detect_format_from_file, openjpeg::*, J2KFormat};
 use std::path::PathBuf;
 
 // Parameters struct similar to opj_decompress_parameters
@@ -16,7 +16,7 @@ pub struct DecompressParameters {
   // Input/output files
   pub input_file: Option<PathBuf>,
   pub output_file: Option<PathBuf>,
-  pub codec_format: Option<CodecFormat>,
+  pub codec_format: Option<J2KFormat>,
   pub decode_format: Option<ImageFileFormat>,
 
   // Decoding area parameters
@@ -232,7 +232,7 @@ pub fn parse_decompress_options(
     match arg {
       (DecompressOpt::Input, Some(arg)) => {
         let input = PathBuf::from(arg);
-        params.codec_format = CodecFormat::get_file_format(input.to_str().unwrap()).ok();
+        params.codec_format = detect_format_from_file(input.to_str().unwrap()).ok();
         params.input_file = Some(input);
       }
       (DecompressOpt::Output, Some(arg)) => {
