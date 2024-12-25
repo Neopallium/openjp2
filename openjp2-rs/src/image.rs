@@ -76,6 +76,15 @@ impl opj_image_comp {
     }
   }
 
+  pub fn set_dims(&mut self, w: u32, h: u32) {
+    if self.w == w && self.h == h {
+      return;
+    }
+    self.w = w;
+    self.h = h;
+    self.clear_data();
+  }
+
   pub fn clear_data(&mut self) {
     if !self.data.is_null() {
       unsafe {
@@ -134,6 +143,7 @@ impl opj_image_comp {
   }
 
   pub fn set_data(&mut self, data: &[i32]) -> bool {
+    // If the data is null, we need to allocate it.
     if self.data.is_null() {
       if !self.alloc_data() {
         return false;
@@ -471,6 +481,32 @@ impl opj_image {
         ))
       }
     }
+  }
+
+  pub fn set_rgb(&mut self, w: usize, h: usize, r: &[i32], g: &[i32], b: &[i32]) -> bool {
+    let len = w * h;
+    if r.len() != len || g.len() != len || b.len() != len {
+      return false;
+    }
+    if let Some(comps) = self.comps_mut() {
+      let w = w as u32;
+      let h = h as u32;
+      comps[0].set_dims(w, h);
+      comps[1].set_dims(w, h);
+      comps[2].set_dims(w, h);
+
+      // Update component.
+      comps[1].dx = comps[0].dx;
+      comps[2].dx = comps[0].dx;
+      comps[1].dy = comps[0].dy;
+      comps[2].dy = comps[0].dy;
+
+      comps[0].set_data(&r);
+      comps[1].set_data(&g);
+      comps[2].set_data(&b);
+    }
+    self.color_space = OPJ_CLRSPC_SRGB;
+    true
   }
 
   pub fn clear_comps(&mut self) {
