@@ -1,7 +1,7 @@
 use crate::convert::*;
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
 use crate::params::*;
-use openjp2::openjpeg::*;
+use openjp2::{detect_format_from_file, openjpeg::*, J2KFormat};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -335,7 +335,7 @@ pub fn parse_cli_options(
       (CompressOpt::Output, Some(arg)) => {
         let output = PathBuf::from(arg);
         c_params.codec_format =
-          CodecFormat::get_file_format(output.to_str().ok_or("Invalid output path")?).ok();
+          detect_format_from_file(output.to_str().ok_or("Invalid output path")?).ok();
         c_params.output_file = Some(output);
       }
       (CompressOpt::ImgDir, Some(arg)) => {
@@ -623,7 +623,7 @@ pub enum TPFlag {
 pub struct CompressionParameters {
   pub input_file: Option<PathBuf>,
   pub output_file: Option<PathBuf>,
-  pub codec_format: Option<CodecFormat>,
+  pub codec_format: Option<J2KFormat>,
   pub decode_format: Option<ImageFileFormat>,
   pub num_threads: i32,
   pub num_resolutions: u32,
@@ -738,8 +738,8 @@ impl CompressionParameters {
 
     // Set codec format
     c_params.cod_format = match self.codec_format {
-      Some(CodecFormat::J2K) => OPJ_CODEC_FORMAT::OPJ_CODEC_J2K as i32,
-      Some(CodecFormat::JP2) => OPJ_CODEC_FORMAT::OPJ_CODEC_JP2 as i32,
+      Some(J2KFormat::J2K) => OPJ_CODEC_FORMAT::OPJ_CODEC_J2K as i32,
+      Some(J2KFormat::JP2) => OPJ_CODEC_FORMAT::OPJ_CODEC_JP2 as i32,
       _ => -1,
     };
 
@@ -1029,8 +1029,8 @@ impl CodecFormat {
   pub fn get_file_format(filename: &str) -> Result<Self, Box<dyn std::error::Error>> {
     match filename.rsplit('.').next().map(|s| s.to_lowercase()) {
       Some(ext) => match ext.as_str() {
-        "j2k" | "j2c" => Ok(CodecFormat::J2K),
-        "jp2" => Ok(CodecFormat::JP2),
+        "j2k" | "j2c" | "jpc" | "jhc" => Ok(CodecFormat::J2K),
+        "jp2" | "jph" => Ok(CodecFormat::JP2),
         _ => Err("Unknown output format - must be .j2k, .j2c or .jp2".into()),
       },
       None => Err("Missing file extension".into()),
