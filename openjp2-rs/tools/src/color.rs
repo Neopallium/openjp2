@@ -499,28 +499,42 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
       *b = src[2] as i32;
     }
   } else {
-    let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
-      Ok(t) => t,
-      Err(e) => {
-        eprintln!("color_apply_icc_profile: {:?}", e);
-        return;
-      }
-    };
+    let mut out_data = vec![[0u16, 0u16, 0u16]; num_pixels];
 
     // Copy the original component data to a single buffer
-    let mut in_data: Vec<u16> = Vec::with_capacity(num_pixels * 3);
     match (o_red, o_green, o_blue) {
       (red, Some(green), Some(blue)) => {
+        let mut in_data = vec![[0u16, 0u16, 0u16]; num_pixels];
         for ((r, g), b) in red.data.iter().zip(green.data.iter()).zip(blue.data.iter()) {
-          in_data.push(*r as u16);
-          in_data.push(*g as u16);
-          in_data.push(*b as u16);
+          in_data.push([*r as u16, *g as u16, *b as u16]);
         }
+        let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
+          Ok(t) => t,
+          Err(e) => {
+            eprintln!("color_apply_icc_profile: {:?}", e);
+            return;
+          }
+        };
+
+        // Transform the pixels
+        transform.transform_pixels(&in_data, &mut out_data);
       }
       (gray, None, None) => {
+        let mut in_data: Vec<u16> = Vec::with_capacity(num_pixels);
         for v in gray.data.iter() {
           in_data.push(*v as u16);
         }
+
+        let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
+          Ok(t) => t,
+          Err(e) => {
+            eprintln!("color_apply_icc_profile: {:?}", e);
+            return;
+          }
+        };
+
+        // Transform the pixels
+        transform.transform_pixels(&in_data, &mut out_data);
       }
       _ => {
         eprintln!("color_apply_icc_profile: invalid components");
@@ -528,13 +542,8 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
       }
     }
 
-    // Transform the pixels
-    let mut out_data = vec![0u16; num_pixels * 3];
-    transform.transform_pixels(&in_data, &mut out_data);
-
     // Copy the transformed data back to the components
-    let src_pixels = out_data.chunks_exact(3);
-    for (src, ((r, g), b)) in src_pixels.zip(comp_pixels) {
+    for (src, ((r, g), b)) in out_data.iter().zip(comp_pixels) {
       *r = src[0] as i32;
       *g = src[1] as i32;
       *b = src[2] as i32;
