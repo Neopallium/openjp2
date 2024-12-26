@@ -7,8 +7,6 @@ use openjp2::openjpeg::*;
 #[cfg(feature = "lcms2")]
 use lcms2::*;
 
-// ...existing code...
-
 // --------------------------------------------------------
 // Matrix for sYCC, Amendment 1 to IEC 61966-2-1
 //
@@ -27,9 +25,9 @@ fn sycc_to_rgb(offset: i32, upb: i32, y: i32, cb: i32, cr: i32) -> (i32, i32, i3
   let cb = cb - offset;
   let cr = cr - offset;
 
-  let mut r = y + (1.402 * cr as f32) as i32;
-  let mut g = y - (0.34413 * cb as f32 + 0.71414 * cr as f32) as i32;
-  let mut b = y + (1.772 * cb as f32) as i32;
+  let mut r = y + (1.402 * cr as f64) as i32;
+  let mut g = y - (0.344 * cb as f64 + 0.714 * cr as f64) as i32;
+  let mut b = y + (1.772 * cb as f64) as i32;
 
   r = min(max(r, 0), upb);
   g = min(max(g, 0), upb);
@@ -176,10 +174,9 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
     _ => return,
   };
 
-  // TODO: need to fill with zeros to write to next row.
-  let mut r = Vec::with_capacity(max);
-  let mut g = Vec::with_capacity(max);
-  let mut b = Vec::with_capacity(max);
+  let mut r = vec![0; max];
+  let mut g = vec![0; max];
+  let mut b = vec![0; max];
 
   // if img->x0 is odd, then first column shall use Cb/Cr = 0
   let offx = image.x0 & 1;
@@ -189,88 +186,138 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
   let loopmaxh = maxh - (offy as usize);
 
   // Handle first row if offset
+  let mut off = 0;
   if offy > 0 {
     for j in 0..maxw {
       let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[j], 0, 0);
-      r.push(rd);
-      g.push(gd);
-      b.push(bd);
+      r[j] = rd;
+      g[j] = gd;
+      b[j] = bd;
     }
+    off = maxw;
   }
 
-  for i in (0..(loopmaxh & !1)).step_by(2) {
-    let row_off = i * maxw;
-    let next_row = row_off + maxw;
-    let cbcr_row = (i / 2) * (maxw / 2);
+  let mut c_off = 0;
+  let mut i = 0;
+  while i < loopmaxh & !1 {
+    let mut next_off = off + maxw;
 
     // Handle first pixel if offset
     if offx > 0 {
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[row_off], 0, 0);
-      r.push(rd);
-      g.push(gd);
-      b.push(bd);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[off], 0, 0);
+      r[off] = rd;
+      g[off] = gd;
+      b[off] = bd;
+      off += 1;
 
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[next_row], cb_d[row_off], cr_d[row_off]);
-      // TODO: broken.  need to write to next row.
-      r.push(rd);
-      g.push(gd);
-      b.push(bd);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[next_off], cb_d[c_off], cr_d[c_off]);
+      r[next_off] = rd;
+      g[next_off] = gd;
+      b[next_off] = bd;
+      next_off += 1;
     }
 
     // Handle pixel pairs
     let mut j = 0;
     while j < (loopmaxw & !1) {
-      let cb = cb_d[cbcr_row + j / 2];
-      let cr = cr_d[cbcr_row + j / 2];
+      let cb = cb_d[c_off];
+      let cr = cr_d[c_off];
 
       // Current row
-      let y1 = y_d[row_off + j + offx as usize];
-      let y2 = y_d[row_off + j + 1 + offx as usize];
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[off], cb, cr);
+      r[off] = rd;
+      g[off] = gd;
+      b[off] = bd;
+      off += 1;
 
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y1, cb, cr);
-      r.push(rd);
-      g.push(gd);
-      b.push(bd);
-
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y2, cb, cr);
-      r.push(rd);
-      g.push(gd);
-      b.push(bd);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[off], cb, cr);
+      r[off] = rd;
+      g[off] = gd;
+      b[off] = bd;
+      off += 1;
 
       // Next row
-      let y1 = y_d[next_row + j + offx as usize];
-      let y2 = y_d[next_row + j + 1 + offx as usize];
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[next_off], cb, cr);
+      r[next_off] = rd;
+      g[next_off] = gd;
+      b[next_off] = bd;
+      next_off += 1;
 
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y1, cb, cr);
-      r.push(rd);
-      g.push(gd);
-      b.push(bd);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[next_off], cb, cr);
+      r[next_off] = rd;
+      g[next_off] = gd;
+      b[next_off] = bd;
+      next_off += 1;
 
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y2, cb, cr);
-      r.push(rd);
-      g.push(gd);
-      b.push(bd);
-
+      c_off += 1;
       j += 2;
     }
 
     // Handle last pixel if needed
     if j < loopmaxw {
-      let cb = cb_d[cbcr_row + j / 2];
-      let cr = cr_d[cbcr_row + j / 2];
+      let cb = cb_d[c_off];
+      let cr = cr_d[c_off];
 
-      let y1 = y_d[row_off + j + offx as usize];
-      let y2 = y_d[next_row + j + offx as usize];
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[off], cb, cr);
+      r[off] = rd;
+      g[off] = gd;
+      b[off] = bd;
+      off += 1;
 
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y1, cb, cr);
-      r.push(rd);
-      g.push(gd);
-      b.push(bd);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[off], cb, cr);
+      r[next_off] = rd;
+      g[next_off] = gd;
+      b[next_off] = bd;
+      next_off += 1;
 
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y2, cb, cr);
-      r.push(rd);
-      g.push(gd);
-      b.push(bd);
+      c_off += 1;
+    }
+    off = next_off;
+    i += 2;
+  }
+
+  if i < loopmaxh {
+    // Handle first pixel if offset
+    if offx > 0 {
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[off], 0, 0);
+      r[off] = rd;
+      g[off] = gd;
+      b[off] = bd;
+      off += 1;
+    }
+
+    // Handle pixel pairs
+    let mut j = 0;
+    while j < (loopmaxw & !1) {
+      let cb = cb_d[c_off];
+      let cr = cr_d[c_off];
+
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[off], cb, cr);
+      r[off] = rd;
+      g[off] = gd;
+      b[off] = bd;
+      off += 1;
+
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[off], cb, cr);
+      r[off] = rd;
+      g[off] = gd;
+      b[off] = bd;
+      off += 1;
+
+      c_off += 1;
+      j += 2;
+    }
+
+    // Handle last pixel if needed
+    if j < loopmaxw {
+      let cb = cb_d[c_off];
+      let cr = cr_d[c_off];
+
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[off], cb, cr);
+      r[off] = rd;
+      g[off] = gd;
+      b[off] = bd;
+      off += 1;
     }
   }
 
