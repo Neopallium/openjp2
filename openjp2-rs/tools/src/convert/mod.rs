@@ -46,7 +46,7 @@ pub fn read_image(path: &Path) -> Result<DynamicImage, ImageError> {
   Ok(image::open(path).map_err(|e| ImageError::ReadError(e.to_string()))?)
 }
 
-pub fn save_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+pub fn save_image(image: &mut opj_image, path: &Path, split_comps: bool) -> Result<(), ImageError> {
   let format = ImageFileFormat::get_file_format(path)
     .map_err(|_| ImageError::InvalidFormat("Unknown file format".into()))?;
 
@@ -56,6 +56,7 @@ pub fn save_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> 
     ImageFileFormat::PGX => save_pgx_image(image, path),
     ImageFileFormat::PNG => save_png_image(image, path),
     ImageFileFormat::TIF => save_tiff_image(image, path),
+    ImageFileFormat::PXM => save_pxm_image(image, path, split_comps),
     _ => {
       let dynamic_img = convert_to_dynamic_image(image)?;
 
@@ -65,6 +66,47 @@ pub fn save_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> 
         .map_err(|e| ImageError::EncodeError(e.to_string()))
     }
   }
+}
+
+pub fn save_pxm_image(
+  image: &mut opj_image,
+  path: &Path,
+  split_comps: bool,
+) -> Result<(), ImageError> {
+  let single_file = !split_comps && image.comps_match();
+  if single_file {
+    save_pxm_image_single(image, path)
+  } else {
+    save_pxm_image_multi(image, path)
+  }
+}
+
+pub fn save_pxm_image_single(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+  let dynamic_img = convert_to_dynamic_image(image)?;
+
+  // Save the image based on file extension
+  dynamic_img
+    .save(path)
+    .map_err(|e| ImageError::EncodeError(e.to_string()))
+}
+
+pub fn save_pxm_image_multi(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+  let Some(comps) = image.comps() else {
+    return Err(ImageError::InvalidFormat("No components found".into()));
+  };
+  let Some(stem) = path.file_stem() else {
+    return Err(ImageError::InvalidFormat("Invalid file path".into()));
+  };
+  let stem = stem.to_string_lossy();
+  // Save each component as a separate file
+  for (idx, comp) in comps.iter().enumerate() {
+    let comp_path = path.with_file_name(format!("{}_{}.pgm", stem, idx));
+    let comp_img = convert_comp_to_dynamic_grayscale(comp)?;
+    comp_img
+      .save(comp_path)
+      .map_err(|e| ImageError::EncodeError(e.to_string()))?;
+  }
+  Ok(())
 }
 
 // Add error types
