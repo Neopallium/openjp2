@@ -568,7 +568,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
     // Copy the original component data to a single buffer
     match (o_red, o_green, o_blue) {
       (red, Some(green), Some(blue)) => {
-        let mut in_data = vec![[0u16, 0u16, 0u16]; num_pixels];
+        let mut in_data = Vec::with_capacity(num_pixels);
         for ((r, g), b) in red.data.iter().zip(green.data.iter()).zip(blue.data.iter()) {
           in_data.push([*r as u16, *g as u16, *b as u16]);
         }
