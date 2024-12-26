@@ -264,15 +264,14 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
       b[off] = bd;
       off += 1;
 
-      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[off], cb, cr);
+      let (rd, gd, bd) = sycc_to_rgb(offset, upb, y_d[next_off], cb, cr);
       r[next_off] = rd;
       g[next_off] = gd;
       b[next_off] = bd;
-      next_off += 1;
 
       c_off += 1;
     }
-    off = next_off;
+    off += maxw;
     i += 2;
   }
 
