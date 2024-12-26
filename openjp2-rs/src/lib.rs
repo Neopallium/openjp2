@@ -84,9 +84,19 @@ pub fn detect_format_from_extension(ext: Option<&std::ffi::OsStr>) -> Result<J2K
 }
 
 #[cfg(feature = "file-io")]
-pub fn detect_format_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<J2KFormat, String> {
+fn detect_from_file_magic<P: AsRef<std::path::Path>>(path: P) -> Result<J2KFormat, String> {
   use alloc::io::Read;
+  // Read magic bytes from file
+  let mut buf = [0; 12];
+  let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+  file.read_exact(&mut buf).map_err(|e| e.to_string())?;
 
+  // Detect format from magic bytes
+  detect_format(&buf)
+}
+
+#[cfg(feature = "file-io")]
+pub fn detect_format_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<J2KFormat, String> {
   let path = path.as_ref();
   let ext = path.extension();
   let ext_format = detect_format_from_extension(ext)?;
@@ -94,13 +104,10 @@ pub fn detect_format_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<J2K
     return Ok(J2KFormat::JPT);
   }
 
-  // Read magic bytes from file
-  let mut buf = [0; 12];
-  let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
-  file.read_exact(&mut buf).map_err(|e| e.to_string())?;
-
   // Detect format from magic bytes
-  let magic_format = detect_format(&buf)?;
+  let Ok(magic_format) = detect_from_file_magic(path) else {
+    return Ok(ext_format);
+  };
 
   // Log warning if magic bytes and file extension don't match
   if ext_format != magic_format {
