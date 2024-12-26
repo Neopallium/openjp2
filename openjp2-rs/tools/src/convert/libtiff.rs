@@ -56,6 +56,10 @@ impl BitBuffer {
     for _ in 0..bits {
       value = (value << 1) | self.read_bit();
     }
+    // swap bytes for 16-bit values
+    if bits == 16 {
+      value = (value >> 8) | ((value & 0xff) << 8);
+    }
     value
   }
 
