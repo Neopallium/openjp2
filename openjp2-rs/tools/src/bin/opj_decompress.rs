@@ -244,7 +244,7 @@ fn decompress_image<P: AsRef<Path>>(
   }
 
   // Write output file based on format
-  save_image(&mut image, output)?;
+  save_image(&mut image, output, params.split_pnm)?;
 
   Ok(())
 }
@@ -344,13 +344,13 @@ fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>,
     let mut src_idx = 0;
     let mut y = yoff;
     let max_y = if new_h > (orig_dy - 1) {
-      new_h - orig_dy - 1
+      new_h - (orig_dy - 1)
     } else {
       // For small images, we need to handle the case where max_y is less than dy.
       0
     };
     let max_x = if new_w > (orig_dx - 1) {
-      new_w - orig_dx - 1
+      new_w - (orig_dx - 1)
     } else {
       // For small images, we need to handle the case where max_x is less than dx.
       0
@@ -384,7 +384,7 @@ fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>,
 
       // Handle remaining pixels on the row.
       while x < new_w {
-        dst[dst_idx + x] = src[src_idx + src_x - 1];
+        dst[dst_idx + x] = src[src_idx + src_x];
         x += 1;
       }
       dst_idx += new_w;
@@ -420,16 +420,16 @@ fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>,
 
       // Handle remaining pixels on the row.
       while x < new_w {
-        dst[dst_idx + x as usize] = src[src_idx + src_x as usize - 1];
+        dst[dst_idx + x] = src[src_idx + src_x];
         x += 1;
       }
-      dst_idx += new_w as usize;
+      dst_idx += new_w;
       y += 1;
 
       // Copy and replicate rows
       for _ in y..new_h {
-        dst.copy_within(dst_idx - new_w as usize..dst_idx, dst_idx);
-        dst_idx += new_w as usize;
+        dst.copy_within(dst_idx - new_w..dst_idx, dst_idx);
+        dst_idx += new_w;
       }
     }
   }

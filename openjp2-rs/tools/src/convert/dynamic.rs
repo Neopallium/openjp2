@@ -3,6 +3,35 @@ use crate::params::CompressionParameters;
 use image::{self, DynamicImage};
 use openjp2::{image::opj_image, openjpeg::*};
 
+pub fn convert_comp_to_dynamic_grayscale(
+  comp: &opj_image_comp,
+) -> Result<DynamicImage, ImageError> {
+  let width = comp.w;
+  let height = comp.h;
+  let adjust = if comp.sgnd != 0 {
+    1 << (comp.prec - 1)
+  } else {
+    0
+  };
+  let Some(data) = comp.data() else {
+    return Err(ImageError::InvalidFormat("Missing component data".into()));
+  };
+
+  // Convert one component to GrayScale image
+  let pixels = data.iter().map(|&x| x + adjust);
+  if comp.prec <= 8 {
+    // Convert to ImageLuma8
+    let img_buf = image::ImageBuffer::from_raw(width, height, pixels.map(|x| x as u8).collect())
+      .ok_or_else(|| ImageError::EncodeError("Failed to create image buffer".into()))?;
+    Ok(DynamicImage::ImageLuma8(img_buf))
+  } else {
+    // Convert to ImageLuma16
+    let img_buf = image::ImageBuffer::from_raw(width, height, pixels.map(|x| x as u16).collect())
+      .ok_or_else(|| ImageError::EncodeError("Failed to create image buffer".into()))?;
+    Ok(DynamicImage::ImageLuma16(img_buf))
+  }
+}
+
 pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, ImageError> {
   let mut comps = image
     .comps_data_iter()
