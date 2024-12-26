@@ -147,6 +147,11 @@ fn decompress_image<P: AsRef<Path>>(
   // Close input stream
   drop(stream);
 
+  log::debug!(
+    "Image: color_space: {:?}, numcomps: {}",
+    image.color_space,
+    image.numcomps
+  );
   // Get image components
   let comps = image
     .comps()
@@ -162,22 +167,34 @@ fn decompress_image<P: AsRef<Path>>(
     image.color_space = OPJ_CLRSPC_GRAY;
   }
 
+  log::debug!(
+    "Image: 1 color_space: {:?}, numcomps: {}",
+    image.color_space,
+    image.numcomps
+  );
+
   // Handle color conversions
   if image.color_space == OPJ_CLRSPC_SYCC {
+    log::debug!("Converting SYCC to RGB");
     color_sycc_to_rgb(&mut image);
   } else if image.color_space == OPJ_CLRSPC_CMYK {
+    log::debug!("Converting CMYK to RGB");
     color_cmyk_to_rgb(&mut image);
   } else if image.color_space == OPJ_CLRSPC_EYCC {
+    log::debug!("Converting eYCC to RGB");
     color_esycc_to_rgb(&mut image);
   }
 
   // Apply ICC profile if present
   if let Some(profile) = image.icc_profile() {
     if profile.len() > 0 {
+      log::debug!("Applying ICC profile");
       color_apply_icc_profile(&mut image);
     } else {
+      log::debug!("Apply cielab to RGB");
       color_cielab_to_rgb(&mut image);
     }
+    log::debug!("Clear ICC profile");
     image.clear_icc_profile();
   }
 
@@ -477,6 +494,7 @@ fn convert_gray_to_rgb(orig: &opj_image) -> Result<Option<Box<opj_image>>, Image
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+  env_logger::init();
   // Parse command line options
   let (params, img_folder) = match parse_decompress_options(std::env::args().collect())? {
     Some(opts) => opts,

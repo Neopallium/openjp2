@@ -148,6 +148,8 @@ fn generate_output_path(input: &Path, img_folder: &ImageFolder) -> Result<PathBu
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+  env_logger::init();
+
   // Parse command line options
   let cli_opts = match parse_cli_options(std::env::args().collect())? {
     Some(opts) => opts,

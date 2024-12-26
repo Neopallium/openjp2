@@ -320,6 +320,9 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
       off += 1;
     }
   }
+  if off != max {
+    log::warn!("sycc420_to_rgb: off {} != max {}", off, max);
+  }
 
   // Update image data
   image.set_rgb(maxw, maxh, &r, &g, &b);
@@ -344,6 +347,7 @@ pub fn color_sycc_to_rgb(image: &mut opj_image_t) {
     && comps[2].dy == 2
   {
     // horizontal and vertical sub-sample
+    log::debug!("sycc420_to_rgb");
     sycc420_to_rgb(image);
   } else if comps[0].dx == 1
     && comps[1].dx == 2
@@ -353,6 +357,7 @@ pub fn color_sycc_to_rgb(image: &mut opj_image_t) {
     && comps[2].dy == 1
   {
     // horizontal sub-sample only
+    log::debug!("sycc422_to_rgb");
     sycc422_to_rgb(image);
   } else if comps[0].dx == 1
     && comps[1].dx == 1
@@ -362,6 +367,7 @@ pub fn color_sycc_to_rgb(image: &mut opj_image_t) {
     && comps[2].dy == 1
   {
     // no sub-sample
+    log::debug!("sycc444_to_rgb");
     sycc444_to_rgb(image);
   } else {
     eprintln!(
@@ -405,18 +411,22 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
     }
 
     if prec <= 8 {
+      log::debug!("color_apply_icc_profile: RGB_8 -> RGB_8");
       (PixelFormat::RGB_8, PixelFormat::RGB_8)
     } else {
+      log::debug!("color_apply_icc_profile: RGB_16 -> RGB_16");
       (PixelFormat::RGB_16, PixelFormat::RGB_16)
     }
   } else if out_space == ColorSpaceSignature::GrayData {
     // enumCS 17
+    log::debug!("color_apply_icc_profile: GRAY_8 -> RGB_8");
     (PixelFormat::GRAY_8, PixelFormat::RGB_8)
   } else if out_space == ColorSpaceSignature::YCbCrData {
     // enumCS 18
     if image.numcomps < 3 {
       return;
     }
+    log::debug!("color_apply_icc_profile: YCbCr_8 -> RGB_8");
     (PixelFormat::YCbCr_16, PixelFormat::RGB_16)
   } else {
     log::debug!(
@@ -435,12 +445,12 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
   // Take ownership of the old components.
   let orig = image.take_comps();
   let Some(mut orig_comps) = orig.comps_data_iter() else {
-    eprintln!("color_apply_icc_profile: missing components");
+    log::error!("color_apply_icc_profile: missing components");
     return;
   };
   // Should always have at least one component
   let Some(o_red) = orig_comps.next() else {
-    eprintln!("color_apply_icc_profile: missing component 0");
+    log::error!("color_apply_icc_profile: missing component 0");
     return;
   };
   // if RGB(A) then we have two more components
@@ -459,15 +469,22 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
     1 | 3 => 3,
     2 | 4 => 4,
     _ => {
-      eprintln!(
+      log::error!(
         "color_apply_icc_profile: invalid numcomps {}",
         orig.numcomps
       );
       return;
     }
   };
+  log::debug!(
+    "color_apply_icc_profile: numcomps {} -> {}",
+    orig.numcomps,
+    numcomps
+  );
+
+  // Allocate new components
   if !image.alloc_comps(numcomps) {
-    eprintln!("color_apply_icc_profile: failed to allocate components");
+    log::error!("color_apply_icc_profile: failed to allocate components");
     return;
   }
   image.color_space = OPJ_CLRSPC_SRGB;
@@ -487,7 +504,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
 
   // Allocate data for the new components
   if !red.alloc_data() || !green.alloc_data() || !blue.alloc_data() {
-    eprintln!("color_apply_icc_profile: failed to allocate data");
+    log::error!("color_apply_icc_profile: failed to allocate data");
     return;
   }
 
@@ -508,7 +525,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
     let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
       Ok(t) => t,
       Err(e) => {
-        eprintln!("color_apply_icc_profile: {:?}", e);
+        log::error!("color_apply_icc_profile: {:?}", e);
         return;
       }
     };
@@ -529,7 +546,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
         }
       }
       _ => {
-        eprintln!("color_apply_icc_profile: invalid components");
+        log::error!("color_apply_icc_profile: invalid components");
         return;
       }
     }
@@ -558,7 +575,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
         let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
           Ok(t) => t,
           Err(e) => {
-            eprintln!("color_apply_icc_profile: {:?}", e);
+            log::error!("color_apply_icc_profile: {:?}", e);
             return;
           }
         };
@@ -575,7 +592,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
         let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
           Ok(t) => t,
           Err(e) => {
-            eprintln!("color_apply_icc_profile: {:?}", e);
+            log::error!("color_apply_icc_profile: {:?}", e);
             return;
           }
         };
@@ -584,7 +601,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
         transform.transform_pixels(&in_data, &mut out_data);
       }
       _ => {
-        eprintln!("color_apply_icc_profile: invalid components");
+        log::error!("color_apply_icc_profile: invalid components");
         return;
       }
     }
