@@ -111,6 +111,30 @@ fn compress_image(
     return Err(ImageError::EncodeError("Failed to setup encoder".into()));
   }
 
+  // Setup extra options.
+  {
+    let mut options = Vec::new();
+    let guard_bits = params.guard_bits.map(|bits| format!("GUARD_BITS={}", bits));
+
+    if params.write_plt {
+      options.push("PLT=YES");
+    }
+    if params.write_tlm {
+      options.push("TLM=YES");
+    }
+    if let Some(bits) = guard_bits.as_ref() {
+      options.push(bits.as_str());
+    }
+
+    if options.len() > 0 {
+      if !codec.encoder_set_extra_options(&options) {
+        return Err(ImageError::EncodeError(
+          "Failed to set encoder options".into(),
+        ));
+      }
+    }
+  }
+
   // Create output stream
   let mut stream = Stream::new_file(output, 1_000_000, false)?;
 
