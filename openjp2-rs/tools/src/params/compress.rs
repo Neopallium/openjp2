@@ -377,7 +377,7 @@ pub fn parse_cli_options(
         c_params.raw_params = Some(arg.parse()?);
       }
       (CompressOpt::Irreversible, _) => c_params.irreversible = true,
-      (CompressOpt::GuardBits, Some(arg)) => c_params.guard_bits = arg.parse()?,
+      (CompressOpt::GuardBits, Some(arg)) => c_params.guard_bits = Some(arg.parse()?),
       (CompressOpt::MCT, Some(arg)) => c_params.mct_mode = Some(arg.parse()?),
       (CompressOpt::SOP, _) => c_params.csty |= 0x02,
       (CompressOpt::EPH, _) => c_params.csty |= 0x04,
@@ -635,7 +635,7 @@ pub struct CompressionParameters {
   pub tile_size: Option<Size2D>,
   // cp_tx0, cp_ty0.
   pub tile_offset: Option<Offset2D>, // Tile origin offset
-  pub guard_bits: u32,
+  pub guard_bits: Option<u32>,
   pub mct_mode: Option<MCTMode>,
   pub mct_data: Option<Vec<f32>>,
   pub poc_markers: Vec<POCMarker>,
@@ -682,7 +682,7 @@ impl Default for CompressionParameters {
       irreversible: false,
       tile_size: None,
       tile_offset: None,
-      guard_bits: 2,
+      guard_bits: None,
       mct_mode: None,
       mct_data: None,
       poc_markers: Vec::new(),
