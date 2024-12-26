@@ -59,12 +59,18 @@ pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, Image
     ));
   }
 
+  let color_space = match (image.numcomps, image.color_space) {
+    (1 | 2, OPJ_CLRSPC_UNKNOWN | OPJ_CLRSPC_UNSPECIFIED) => OPJ_CLRSPC_GRAY,
+    (3 | 4, OPJ_CLRSPC_UNKNOWN | OPJ_CLRSPC_UNSPECIFIED) => OPJ_CLRSPC_SRGB,
+    (_, color_space) => color_space,
+  };
+
   let width = c0.comp.w;
   let height = c0.comp.h;
   let adjust = c0.adjust;
   // Convert to DynamicImage based on components
-  let dynamic_img = match (c0, c1, c2, c3, image.color_space) {
-    (c0, None, None, None, OPJ_CLRSPC_GRAY | OPJ_CLRSPC_UNSPECIFIED) => {
+  let dynamic_img = match (c0, c1, c2, c3, color_space) {
+    (c0, None, None, None, OPJ_CLRSPC_GRAY) => {
       // Grayscale image
 
       let pixels = c0.data.iter().map(|&x| x + adjust);
@@ -82,7 +88,7 @@ pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, Image
         DynamicImage::ImageLuma16(img_buf)
       }
     }
-    (gray, Some(alpha), None, None, OPJ_CLRSPC_GRAY | OPJ_CLRSPC_UNSPECIFIED) => {
+    (gray, Some(alpha), None, None, OPJ_CLRSPC_GRAY) => {
       // Grayscale with alpha
 
       let pixels = gray
@@ -105,7 +111,7 @@ pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, Image
         DynamicImage::ImageLumaA16(img_buf)
       }
     }
-    (r, Some(g), Some(b), None, OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC | OPJ_CLRSPC_UNSPECIFIED) => {
+    (r, Some(g), Some(b), None, OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC) => {
       // RGB image
 
       let pixels = r
@@ -129,7 +135,7 @@ pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, Image
         DynamicImage::ImageRgb16(img_buf)
       }
     }
-    (r, Some(g), Some(b), Some(a), OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC | OPJ_CLRSPC_UNSPECIFIED) => {
+    (r, Some(g), Some(b), Some(a), OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC) => {
       // RGBA image
 
       let pixels = r
