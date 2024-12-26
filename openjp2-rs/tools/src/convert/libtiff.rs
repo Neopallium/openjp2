@@ -429,9 +429,14 @@ pub fn save_tiff_image(image: &mut opj_image, path: &Path) -> Result<(), ImageEr
   let prec = c0.comp.prec;
   let sgnd = c0.comp.sgnd;
   let adjust = c0.adjust;
-  eprintln!(
-    "width: {}, height: {}, prec: {}, sgnd: {}, adjust: {}, numcomps: {}",
-    width, height, prec, sgnd, adjust, numcomps
+  log::debug!(
+    "save_tiff: width: {}, height: {}, prec: {}, sgnd: {}, adjust: {}, numcomps: {}",
+    width,
+    height,
+    prec,
+    sgnd,
+    adjust,
+    numcomps
   );
   let photometric = if image.color_space == OPJ_CLRSPC_CMYK {
     if numcomps < 4 {
