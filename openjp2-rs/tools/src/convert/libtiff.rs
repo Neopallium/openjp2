@@ -28,6 +28,12 @@ impl BitBuffer {
   }
 
   pub fn write(&mut self, bits: u32, value: u32) {
+    // swap bytes for 16-bit values
+    let value = if bits == 16 {
+      (value >> 8) | ((value & 0xff) << 8)
+    } else {
+      value
+    };
     for i in 0..bits {
       let bit = (value >> (bits - i - 1)) & 1;
       self.write_bit(bit);
