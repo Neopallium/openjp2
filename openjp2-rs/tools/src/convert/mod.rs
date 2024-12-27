@@ -9,13 +9,13 @@ pub use png::*;
 mod dynamic;
 pub use dynamic::*;
 
-#[cfg(not(feature = "libtiff-sys"))]
+#[cfg(not(feature = "libtiff"))]
 mod tiff;
-#[cfg(not(feature = "libtiff-sys"))]
+#[cfg(not(feature = "libtiff"))]
 pub use tiff::*;
-#[cfg(feature = "libtiff-sys")]
+#[cfg(feature = "libtiff")]
 mod libtiff;
-#[cfg(feature = "libtiff-sys")]
+#[cfg(feature = "libtiff")]
 pub use libtiff::*;
 
 use crate::params::CompressionParameters;

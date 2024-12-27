@@ -11,9 +11,7 @@ openjp2 = { path = "../", features = ["file-io"] }
 log = "0.4"
 libc = "0.2"
 
-image = { version = "0.25", features = [
-    "png",
-    "tiff",
+image = { version = "0.25", default-features = false, features = [
     "jpeg",
     "pnm",
     "bmp",
@@ -24,6 +22,29 @@ lcms2 = { version = "6.1", optional = true }
 env_logger = "0.11.5"
 
 libtiff-sys = { path = "../libtiff-sys", optional = true }
+lodepng = { version = "3.10.7", default-features = false, optional = true }
+rgb = { version = "0.8.50", optional = true }
+flate2 = { version = "1.0.17", features = ["zlib"], default-features = false }
 
 [features]
-default = ["lcms2", "libtiff-sys"]
+default = ["lcms2", "testing"]
+#default = ["lcms2"]
+
+rust_backend = [
+  "image/png",
+  "image/tiff",
+]
+
+libtiff = [
+  "libtiff-sys",
+]
+
+lodepng = [
+  "dep:lodepng",
+  "rgb",
+]
+
+testing = [
+  "libtiff",
+  "lodepng",
+]
