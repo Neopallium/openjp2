@@ -12,6 +12,7 @@ log = "0.4"
 libc = "0.2"
 
 image = { version = "0.25", default-features = false, features = [
+    "png",
     "jpeg",
     "pnm",
     "bmp",
@@ -22,6 +23,9 @@ lcms2 = { version = "6.1", optional = true }
 env_logger = "0.11.5"
 
 libtiff-sys = { path = "../libtiff-sys", optional = true }
+
+libpng-sys = { version = "1.1.10", optional = true }
+
 lodepng = { version = "3.10.7", default-features = false, optional = true }
 rgb = { version = "0.8.50", optional = true }
 flate2 = { version = "1.0.17", features = ["zlib"], default-features = false }
@@ -31,12 +35,15 @@ default = ["lcms2", "testing"]
 #default = ["lcms2"]
 
 rust_backend = [
-  "image/png",
   "image/tiff",
 ]
 
 libtiff = [
   "libtiff-sys",
+]
+
+libpng = [
+  "libpng-sys",
 ]
 
 lodepng = [
@@ -46,5 +53,6 @@ lodepng = [
 
 testing = [
   "libtiff",
-  "lodepng",
+  #"lodepng",
+  "libpng",
 ]

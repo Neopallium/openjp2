@@ -109,6 +109,88 @@ pub fn save_pxm_image_multi(image: &mut opj_image, path: &Path) -> Result<(), Im
   Ok(())
 }
 
+/// BitBuffer is a simple bit buffer for reading or writing bits.
+/// It is used to read or write bits from a byte buffer.
+pub struct BitBuffer {
+  buffer: Vec<u8>,
+  /// Current bit index in the buffer.
+  index: usize,
+}
+
+impl BitBuffer {
+  pub fn new(len: usize) -> Self {
+    BitBuffer {
+      buffer: vec![0; len],
+      index: 0,
+    }
+  }
+
+  pub fn reset(&mut self) {
+    self.index = 0;
+    self.buffer.fill(0)
+  }
+
+  pub fn write(&mut self, bits: u32, value: u32) {
+    // swap bytes for 16-bit values
+    let value = if bits == 16 {
+      (value >> 8) | ((value & 0xff) << 8)
+    } else {
+      value
+    };
+    for i in 0..bits {
+      let bit = (value >> (bits - i - 1)) & 1;
+      self.write_bit(bit);
+    }
+  }
+
+  pub fn write_bit(&mut self, bit: u32) {
+    if bit == 0 {
+      self.index += 1;
+      return;
+    }
+    let byte_index = self.index / 8;
+    let bit_index = self.index % 8;
+    self.buffer[byte_index] |= 1 << (7 - bit_index);
+    self.index += 1;
+  }
+
+  pub fn read(&mut self, bits: u32) -> u32 {
+    let mut value = 0;
+    for _ in 0..bits {
+      value = (value << 1) | self.read_bit();
+    }
+    // swap bytes for 16-bit values
+    if bits == 16 {
+      value = (value >> 8) | ((value & 0xff) << 8);
+    }
+    value
+  }
+
+  pub fn read_bit(&mut self) -> u32 {
+    let byte_index = self.index / 8;
+    let bit_index = self.index % 8;
+    let bit = (self.buffer[byte_index] >> (7 - bit_index)) & 1;
+    self.index += 1;
+    bit as u32
+  }
+
+  pub fn as_slice(&self) -> &[u8] {
+    &self.buffer
+  }
+
+  pub fn as_mut_slice(&mut self) -> &mut [u8] {
+    &mut self.buffer
+  }
+
+  pub fn as_ptr(&self) -> *const u8 {
+    self.buffer.as_ptr()
+  }
+
+  pub fn as_mut_ptr(&mut self) -> *mut u8 {
+    self.buffer.as_mut_ptr()
+  }
+}
+
 // Add error types
 #[derive(Debug)]
 pub enum ImageError {
