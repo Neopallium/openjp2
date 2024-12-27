@@ -36,7 +36,7 @@ pub mod stream;
 pub use c_api_types::*;
 pub use codec::Codec;
 pub use image::{opj_image, opj_image_comptparm};
-pub use types::Stream;
+pub use types::{ICCProfile, ICCProfileMut, ICCProfileRef, Stream};
 
 /// Magic bytes for JP2 RFC3745.
 pub const JP2_RFC3745_MAGIC: &'static [u8] = &[

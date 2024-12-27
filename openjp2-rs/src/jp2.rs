@@ -354,8 +354,9 @@ fn opj_jp2_write_colr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
   header.length += match meth {
     1 => 4,
     2 => {
-      assert!(jp2.color.icc_profile_len != 0);
-      jp2.color.icc_profile_len
+      let len = jp2.color.icc_profile_len();
+      assert!(len != 0);
+      len as u32
     }
     _ => return false,
   };
@@ -928,6 +929,11 @@ fn opj_jp2_read_colr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
       );
       return 0i32;
     }
+    // EnumCS
+    jp2.enumcs = buf
+      .read_u32::<BigEndian>()
+      .expect("Buffer should have enough data");
+
     if buf.len() > 4 && jp2.enumcs != 14 {
       /* handled below for CIELab) */
       /* testcase Altona_Technical_v20_x4.pdf */
@@ -938,10 +944,6 @@ fn opj_jp2_read_colr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
         total_size,
       );
     }
-    // EnumCS
-    jp2.enumcs = buf
-      .read_u32::<BigEndian>()
-      .expect("Buffer should have enough data");
 
     // CIELab
     if jp2.enumcs == 14 {
@@ -994,15 +996,13 @@ fn opj_jp2_read_colr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
       icc_profile.write_all(&rb.to_ne_bytes()).unwrap();
       icc_profile.write_all(&ob.to_ne_bytes()).unwrap();
       icc_profile.write_all(&il.to_ne_bytes()).unwrap();
-      jp2.color.icc_profile = Some(icc_profile);
-      jp2.color.icc_profile_len = 0 as OPJ_UINT32
+      jp2.color.set_cielab_profile(icc_profile);
     }
     jp2.color.jp2_has_colr = 1 as OPJ_BYTE
   } else if jp2.meth == 2 {
     /* ICC profile */
     let mut icc_profile = Vec::from(buf);
-    jp2.color.icc_profile_len = icc_profile.len() as OPJ_UINT32;
-    jp2.color.icc_profile = Some(icc_profile);
+    jp2.color.set_icc_profile(icc_profile);
     jp2.color.jp2_has_colr = 1 as OPJ_BYTE
   } else if jp2.meth > 2 {
     /*  ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
@@ -1974,9 +1974,8 @@ pub(crate) fn opj_jp2_read_header(
       image.color_space = OPJ_CLRSPC_UNKNOWN
     }
 
-    if let Some(icc_profile) = &jp2.color.icc_profile {
+    if let Some(icc_profile) = jp2.color.icc_profile() {
       image.copy_icc_profile(icc_profile);
-      image.icc_profile_len = jp2.color.icc_profile_len;
     }
   }
   ret
@@ -2157,7 +2156,6 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
     /* Color structure */
     color: opj_jp2_color {
       icc_profile: None,
-      icc_profile_len: 0 as OPJ_UINT32,
       jp2_cdef: None,
       jp2_pclr: None,
       jp2_has_colr: 0 as OPJ_BYTE,

@@ -378,12 +378,7 @@ pub fn color_sycc_to_rgb(image: &mut opj_image_t) {
 }
 
 #[cfg(feature = "lcms2")]
-pub fn color_apply_icc_profile(image: &mut opj_image_t) {
-  let icc_profile = match image.icc_profile() {
-    Some(p) => p,
-    None => return,
-  };
-
+pub fn color_apply_icc_profile(image: &mut opj_image_t, icc_profile: &[u8]) {
   let in_profile = match Profile::new_icc(icc_profile) {
     Ok(p) => p,
     Err(_) => return,
@@ -615,21 +610,24 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t) {
 }
 
 #[cfg(feature = "lcms2")]
-pub fn color_cielab_to_rgb(image: &mut opj_image_t) {
+pub fn color_cielab_to_rgb(image: &mut opj_image_t, cielab_data: &[u8]) {
   // Check dimensions match
   if !image.comps_same_dims() {
     log::error!("color_cielab_to_rgb: components are not all of the same dimension");
     return;
   }
 
-  let icc_profile = image.icc_profile().map(|icc| icc.to_owned());
-  let (profile_data, comps) = match (icc_profile, image.comps_mut()) {
-    (Some(p), Some(c)) => (p, c),
-    _ => return,
+  let Some(comps) = image.comps_mut() else {
+    log::error!("color_cielab_to_rgb: missing components");
+    return;
   };
+  log::debug!(
+    "color_cielab_to_rgb: cielab_data.len() {}",
+    cielab_data.len()
+  );
 
   if comps.len() != 3 {
-    eprintln!(
+    log::warn!(
       "{}:{}: color_cielab_to_rgb\n\tnumcomps {} not handled",
       file!(),
       line!(),
@@ -639,19 +637,26 @@ pub fn color_cielab_to_rgb(image: &mut opj_image_t) {
   }
 
   // Get color space enum from ICC profile
-  let enumcs = match profile_data
+  let enumcs = match cielab_data
     .get(0..4)
     .map(|b| i32::from_ne_bytes(b.try_into().unwrap()))
   {
     Some(cs) => cs,
-    None => return,
+    None => {
+      log::error!("color_cielab_to_rgb: missing enumCS");
+      return;
+    }
   };
 
+  log::info!("color_cielab_to_rgb: enumcs {}", enumcs);
   if enumcs == 14 {
     // CIELab
     let in_profile = match Profile::new_lab4_context(GlobalContext::new(), &Default::default()) {
       Ok(p) => p,
-      Err(_) => return,
+      Err(e) => {
+        log::error!("color_cielab_to_rgb: {:?}", e);
+        return;
+      }
     };
 
     let out_profile = Profile::new_srgb();
@@ -664,7 +669,10 @@ pub fn color_cielab_to_rgb(image: &mut opj_image_t) {
       Intent::Perceptual,
     ) {
       Ok(t) => t,
-      Err(_) => return,
+      Err(e) => {
+        log::error!("color_cielab_to_rgb: {:?}", e);
+        return;
+      }
     };
 
     let w = comps[0].w;
@@ -672,8 +680,8 @@ pub fn color_cielab_to_rgb(image: &mut opj_image_t) {
     let max = (w * h) as usize;
 
     // Get range info from ICC profile
-    let (rl, ra, rb, ol, oa, ob) = if profile_data.len() >= 8 {
-      let default_type = i32::from_ne_bytes(profile_data[4..8].try_into().unwrap());
+    let (rl, ra, rb, ol, oa, ob) = if cielab_data.len() >= 8 {
+      let default_type = i32::from_ne_bytes(cielab_data[4..8].try_into().unwrap());
       if default_type == 0x44454600 {
         // DEF : default
         (
@@ -684,18 +692,20 @@ pub fn color_cielab_to_rgb(image: &mut opj_image_t) {
           2f64.powi(comps[1].prec as i32 - 1),
           2f64.powi(comps[2].prec as i32 - 2) + 2f64.powi(comps[2].prec as i32 - 3),
         )
-      } else if profile_data.len() >= 32 {
-        let values = profile_data[8..32]
+      } else if cielab_data.len() >= 32 {
+        let values = cielab_data[8..32]
           .chunks(4)
-          .map(|b| f64::from_bits(u64::from_ne_bytes([0, 0, 0, 0, b[0], b[1], b[2], b[3]])))
+          .map(|b| u32::from_ne_bytes([b[0], b[1], b[2], b[3]]) as f64)
           .collect::<Vec<_>>();
         (
           values[0], values[2], values[4], values[1], values[3], values[5],
         )
       } else {
+        log::error!("color_cielab_to_rgb: invalid DEF");
         return;
       }
     } else {
+      log::error!("color_cielab_to_rgb: missing DEF");
       return;
     };
 
@@ -726,12 +736,12 @@ pub fn color_cielab_to_rgb(image: &mut opj_image_t) {
         minb + (src_b[i] as f64) * (maxb - minb) / (2f64.powi(prec2 as i32) - 1.0),
       ];
 
-      let mut rgb = [0u16; 3];
+      let mut rgb = [[0u16; 3]];
       transform.transform_pixels(&[lab], &mut rgb);
 
-      r[i] = rgb[0] as i32;
-      g[i] = rgb[1] as i32;
-      b[i] = rgb[2] as i32;
+      r[i] = rgb[0][0] as i32;
+      g[i] = rgb[0][1] as i32;
+      b[i] = rgb[0][2] as i32;
     }
 
     // Update image data

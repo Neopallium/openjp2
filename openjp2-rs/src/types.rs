@@ -271,11 +271,112 @@ pub(crate) struct opj_jp2 {
 
 #[derive(Clone)]
 pub(crate) struct opj_jp2_color {
-  pub icc_profile: Option<Vec<u8>>,
-  pub icc_profile_len: OPJ_UINT32,
+  pub icc_profile: Option<ICCProfile>,
   pub jp2_cdef: Option<opj_jp2_cdef>,
   pub jp2_pclr: Option<opj_jp2_pclr>,
   pub jp2_has_colr: OPJ_BYTE,
+}
+
+impl opj_jp2_color {
+  pub fn icc_profile_len(&self) -> usize {
+    match &self.icc_profile {
+      Some(ICCProfile::ICC(data)) => data.len(),
+      Some(ICCProfile::CIELab(data)) => data.len(),
+      None => 0,
+    }
+  }
+
+  pub fn icc_profile(&self) -> Option<ICCProfileRef> {
+    self.icc_profile.as_ref().map(|profile| match profile {
+      ICCProfile::ICC(data) => ICCProfileRef::ICC(data),
+      ICCProfile::CIELab(data) => ICCProfileRef::CIELab(data),
+    })
+  }
+
+  pub fn set_cielab_profile(&mut self, data: Vec<u8>) {
+    self.icc_profile = Some(ICCProfile::CIELab(data));
+  }
+
+  pub fn set_icc_profile(&mut self, data: Vec<u8>) {
+    self.icc_profile = Some(ICCProfile::ICC(data));
+  }
+}
+
+#[derive(Clone)]
+pub enum ICCProfile {
+  ICC(Vec<u8>),
+  CIELab(Vec<u8>),
+}
+pub const CIE_LAB_BYTE_SIZE: usize = 36;
+
+impl ICCProfile {
+  pub fn new_icc(data: &[u8]) -> Self {
+    ICCProfile::ICC(data.to_vec())
+  }
+
+  pub fn new_cielab(data: &[u8]) -> Self {
+    ICCProfile::CIELab(data.to_vec())
+  }
+}
+
+#[derive(Debug)]
+pub enum ICCProfileRef<'a> {
+  ICC(&'a [u8]),
+  CIELab(&'a [u8]),
+}
+
+impl<'a> ICCProfileRef<'a> {
+  pub fn as_slice(&self) -> &[u8] {
+    match self {
+      ICCProfileRef::ICC(data) => data,
+      ICCProfileRef::CIELab(data) => data,
+    }
+  }
+
+  pub fn is_cielab(&self) -> bool {
+    match self {
+      ICCProfileRef::CIELab(_) => true,
+      _ => false,
+    }
+  }
+
+  pub fn len(&self) -> usize {
+    match self {
+      ICCProfileRef::ICC(data) => data.len(),
+      ICCProfileRef::CIELab(data) => data.len(),
+    }
+  }
+}
+
+#[derive(Debug)]
+pub enum ICCProfileMut<'a> {
+  ICC(&'a mut [u8]),
+  CIELab(&'a mut [u8]),
+}
+
+impl<'a> ICCProfileMut<'a> {
+  pub fn as_mut_slice(&mut self) -> &mut [u8] {
+    match self {
+      ICCProfileMut::ICC(data) => data,
+      ICCProfileMut::CIELab(data) => data,
+    }
+  }
+
+  pub fn is_cielab(&self) -> bool {
+    match self {
+      ICCProfileMut::CIELab(_) => true,
+      _ => false,
+    }
+  }
+}
+
+impl ICCProfile {
+  pub fn as_slice(&self) -> &[u8] {
+    match self {
+      ICCProfile::ICC(data) => data,
+      ICCProfile::CIELab(data) => data,
+    }
+  }
 }
 
 #[derive(Copy, Clone)]
