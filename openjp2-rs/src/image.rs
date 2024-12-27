@@ -548,28 +548,74 @@ impl opj_image {
     true
   }
 
-  pub fn icc_profile(&self) -> Option<&[u8]> {
+  pub fn has_icc_profile(&self) -> bool {
+    !self.icc_profile_buf.is_null()
+  }
+
+  pub fn take_icc_profile(&mut self) -> Option<ICCProfile> {
     if self.icc_profile_buf.is_null() {
       None
     } else {
       unsafe {
-        Some(std::slice::from_raw_parts(
-          self.icc_profile_buf,
-          self.icc_profile_len as usize,
-        ))
+        // A non-Null ICC Profile buffer with a length of 0 indicates that the ICC Profile is CIELab.
+        let profile = if self.icc_profile_len == 0 {
+          // ICC Profile is CIELab.
+          Some(ICCProfile::new_cielab(std::slice::from_raw_parts(
+            self.icc_profile_buf,
+            CIE_LAB_BYTE_SIZE,
+          )))
+        } else {
+          Some(ICCProfile::new_icc(std::slice::from_raw_parts(
+            self.icc_profile_buf,
+            self.icc_profile_len as usize,
+          )))
+        };
+        self.clear_icc_profile();
+        profile
       }
     }
   }
 
-  pub fn icc_profile_mut(&self) -> Option<&mut [u8]> {
+  pub fn icc_profile(&self) -> Option<ICCProfileRef<'_>> {
     if self.icc_profile_buf.is_null() {
       None
     } else {
       unsafe {
-        Some(std::slice::from_raw_parts_mut(
-          self.icc_profile_buf,
-          self.icc_profile_len as usize,
-        ))
+        // A non-Null ICC Profile buffer with a length of 0 indicates that the ICC Profile is CIELab.
+        if self.icc_profile_len == 0 {
+          // ICC Profile is CIELab.
+          Some(ICCProfileRef::CIELab(std::slice::from_raw_parts(
+            self.icc_profile_buf,
+            CIE_LAB_BYTE_SIZE,
+          )))
+        } else {
+          Some(ICCProfileRef::ICC(std::slice::from_raw_parts(
+            self.icc_profile_buf,
+            self.icc_profile_len as usize,
+          )))
+        }
+      }
+    }
+  }
+
+  pub fn icc_profile_mut(&self) -> Option<ICCProfileMut<'_>> {
+    if self.icc_profile_buf.is_null() {
+      None
+    } else {
+      unsafe {
+        // A non-Null ICC Profile buffer with a length of 0 indicates that the ICC Profile is CIELab.
+        if self.icc_profile_len == 0 {
+          // ICC Profile is CIELab.
+          Some(ICCProfileMut::CIELab(std::slice::from_raw_parts_mut(
+            self.icc_profile_buf,
+            CIE_LAB_BYTE_SIZE,
+          )))
+        } else {
+          Some(ICCProfileMut::ICC(std::slice::from_raw_parts_mut(
+            self.icc_profile_buf,
+            self.icc_profile_len as usize,
+          )))
+        }
       }
     }
   }
@@ -582,26 +628,32 @@ impl opj_image {
     }
   }
 
-  fn alloc_icc_profile(&mut self, len: u32) -> bool {
+  fn alloc_icc_profile(&mut self, len: usize) -> Option<&mut [u8]> {
     self.icc_profile_buf = opj_malloc(len as size_t) as *mut OPJ_BYTE;
     if self.icc_profile_buf.is_null() {
       self.icc_profile_len = 0 as OPJ_UINT32;
-      return false;
+      return None;
     }
-    self.icc_profile_len = len;
-    true
+    self.icc_profile_len = len as u32;
+    Some(unsafe { std::slice::from_raw_parts_mut(self.icc_profile_buf, len) })
   }
 
-  pub fn copy_icc_profile(&mut self, icc_profile: &[u8]) -> bool {
+  pub fn copy_icc_profile<'a>(&mut self, icc_profile: ICCProfileRef<'a>) -> bool {
     if icc_profile.len() == 0 {
       self.clear_icc_profile();
       return true;
     }
-    if self.alloc_icc_profile(icc_profile.len() as u32) {
-      if let Some(dest) = self.icc_profile_mut() {
-        dest.copy_from_slice(icc_profile);
-        return true;
+    if let Some(dest) = self.alloc_icc_profile(icc_profile.len()) {
+      match icc_profile {
+        ICCProfileRef::CIELab(src) => {
+          dest.copy_from_slice(src);
+          self.icc_profile_len = 0;
+        }
+        ICCProfileRef::ICC(src) => {
+          dest.copy_from_slice(src);
+        }
       }
+      return true;
     }
     false
   }

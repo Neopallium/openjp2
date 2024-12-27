@@ -1,4 +1,4 @@
-use openjp2::{detect_format_from_file, openjpeg::*, Codec, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, Codec, ICCProfile, J2KFormat, Stream};
 use openjp2_tools::{color::*, convert::*, params::*};
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_void};
@@ -186,16 +186,17 @@ fn decompress_image<P: AsRef<Path>>(
   }
 
   // Apply ICC profile if present
-  if let Some(profile) = image.icc_profile() {
-    if profile.len() > 0 {
-      log::debug!("Applying ICC profile");
-      color_apply_icc_profile(&mut image);
-    } else {
-      log::debug!("Apply cielab to RGB");
-      color_cielab_to_rgb(&mut image);
+  if let Some(profile) = image.take_icc_profile() {
+    match profile {
+      ICCProfile::ICC(profile) => {
+        log::debug!("Applying ICC profile");
+        color_apply_icc_profile(&mut image, &profile);
+      }
+      ICCProfile::CIELab(profile) => {
+        log::debug!("Applying cielab to RGB");
+        color_cielab_to_rgb(&mut image, &profile);
+      }
     }
-    log::debug!("Clear ICC profile");
-    image.clear_icc_profile();
   }
 
   // Handle precision parameters
