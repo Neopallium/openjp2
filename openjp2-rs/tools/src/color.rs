@@ -369,7 +369,7 @@ pub fn color_sycc_to_rgb(image: &mut opj_image_t) {
     log::debug!("sycc444_to_rgb");
     sycc444_to_rgb(image);
   } else {
-    eprintln!(
+    log::error!(
       "{}:{}: color_sycc_to_rgb\n\tCAN NOT CONVERT",
       file!(),
       line!()
@@ -381,7 +381,10 @@ pub fn color_sycc_to_rgb(image: &mut opj_image_t) {
 pub fn color_apply_icc_profile(image: &mut opj_image_t, icc_profile: &[u8]) {
   let in_profile = match Profile::new_icc(icc_profile) {
     Ok(p) => p,
-    Err(_) => return,
+    Err(e) => {
+      log::error!("color_apply_icc_profile: {:?}", e);
+      return;
+    }
   };
 
   let out_space = in_profile.color_space();
@@ -467,6 +470,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t, icc_profile: &[u8]) {
         "color_apply_icc_profile: invalid numcomps {}",
         orig.numcomps
       );
+      *image = orig.clone();
       return;
     }
   };
@@ -519,7 +523,8 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t, icc_profile: &[u8]) {
     let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
       Ok(t) => t,
       Err(e) => {
-        log::error!("color_apply_icc_profile: {:?}", e);
+        log::error!("color_apply_icc_profile: new transform<u8, u8>: {:?}", e);
+        *image = orig.clone();
         return;
       }
     };
@@ -541,6 +546,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t, icc_profile: &[u8]) {
       }
       _ => {
         log::error!("color_apply_icc_profile: invalid components");
+        *image = orig.clone();
         return;
       }
     }
@@ -569,7 +575,11 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t, icc_profile: &[u8]) {
         let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
           Ok(t) => t,
           Err(e) => {
-            log::error!("color_apply_icc_profile: {:?}", e);
+            log::error!(
+              "color_apply_icc_profile: new transform<[u16; 3], [u16; 3]>: {:?}",
+              e
+            );
+            *image = orig.clone();
             return;
           }
         };
@@ -586,7 +596,11 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t, icc_profile: &[u8]) {
         let transform = match Transform::new(&in_profile, in_type, &out_profile, out_type, intent) {
           Ok(t) => t,
           Err(e) => {
-            log::error!("color_apply_icc_profile: {:?}", e);
+            log::error!(
+              "color_apply_icc_profile: new transform<u16, [u16; 3]>: {:?}",
+              e
+            );
+            *image = orig.clone();
             return;
           }
         };
@@ -596,6 +610,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t, icc_profile: &[u8]) {
       }
       _ => {
         log::error!("color_apply_icc_profile: invalid components");
+        *image = orig.clone();
         return;
       }
     }
@@ -754,7 +769,7 @@ pub fn color_cielab_to_rgb(image: &mut opj_image_t, cielab_data: &[u8]) {
     return;
   }
 
-  eprintln!(
+  log::warn!(
     "{}:{}: color_cielab_to_rgb\n\tenumCS {} not handled",
     file!(),
     line!(),
@@ -775,7 +790,7 @@ pub fn color_cmyk_to_rgb(image: &mut opj_image_t) {
     || comps.0.dy != comps.2.dy
     || comps.0.dy != comps.3.dy
   {
-    eprintln!(
+    log::error!(
       "{}:{}: color_cmyk_to_rgb\n\tCAN NOT CONVERT",
       file!(),
       line!()
@@ -835,7 +850,7 @@ pub fn color_esycc_to_rgb(image: &mut opj_image_t) {
     || comps.0.dy != comps.1.dy
     || comps.0.dy != comps.2.dy
   {
-    eprintln!(
+    log::error!(
       "{}:{}: color_esycc_to_rgb\n\tCAN NOT CONVERT",
       file!(),
       line!()
