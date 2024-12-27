@@ -387,6 +387,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "libpng-sys"
+version = "1.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff0ac1dfc54fa2c925fe9440d2a8a1714d5e48612a5e5d582bf00274a7b78f96"
+dependencies = [
+ "cc",
+ "dunce",
+ "libc",
+ "libz-sys",
+ "pkg-config",
+]
+
+[[package]]
 name = "libtiff-sys"
 version = "0.1.0"
 dependencies = [
@@ -402,6 +415,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2d16453e800a8cf6dd2fc3eb4bc99b786a9b90c663b8559a5b1a041bf89e472"
 dependencies = [
  "cc",
+ "libc",
  "pkg-config",
  "vcpkg",
 ]
@@ -497,6 +511,7 @@ dependencies = [
  "image",
  "lcms2",
  "libc",
+ "libpng-sys",
  "libtiff-sys",
  "lodepng",
  "log",
