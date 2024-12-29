@@ -33,6 +33,7 @@ pub fn load_image(
     Some(ImageFileFormat::RAW) => load_raw_image(path, params, true),
     Some(ImageFileFormat::RAWL) => load_raw_image(path, params, false),
     Some(ImageFileFormat::BMP) => load_bmp_image(path, params),
+    Some(ImageFileFormat::PGX) => load_pgx_image(path, params),
     Some(ImageFileFormat::PNG) => load_png_image(path, params),
     Some(ImageFileFormat::TIF) => load_tiff_image(path, params),
     _ => {

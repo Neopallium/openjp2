@@ -10,30 +10,66 @@ pub fn load_pgx_image(
   path: &Path,
   params: &CompressionParameters,
 ) -> Result<Box<opj_image>, ImageError> {
-  let mut file = File::open(path)?;
+  let file = File::open(path)?;
+  let file_size = file
+    .metadata()
+    .map_err(|e| ImageError::InvalidFormat(format!("Failed to get file size: {}", e)))?
+    .len();
+
+  let mut reader = std::io::BufReader::new(file);
+
+  // Read header
   let mut header = String::new();
-  std::io::BufReader::new(&file)
+  reader
     .read_line(&mut header)
     .map_err(|e| ImageError::InvalidFormat(format!("Failed to read PGX header: {}", e)))?;
 
   // Parse PGX header format: "PG <endian> <+/-> <precision> <width> <height>"
-  let parts: Vec<&str> = header.trim().split_whitespace().collect();
-  if parts.len() != 6 || parts[0] != "PG" || parts[1] != "ML" {
+  let mut parts: Vec<&str> = header.trim().split_whitespace().collect();
+  log::debug!("PGX header: {:?}", parts);
+  if parts.len() < 5 || parts[0] != "PG" || parts[1] != "ML" {
     return Err(ImageError::InvalidFormat(
       "Invalid PGX header format".into(),
     ));
   }
 
-  let signed = parts[2] == "-";
-  let precision: u32 = parts[3]
+  let bigendian = match parts[1] {
+    "ML" => true,
+    "LM" => false,
+    _ => {
+      return Err(ImageError::InvalidFormat(
+        "Invalid PGX header format: endian".into(),
+      ))
+    }
+  };
+
+  let mut signed = false;
+  match parts[2] {
+    "+" | "-" => {
+      signed = parts[2] == "-";
+      parts.remove(2);
+    }
+    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => {
+      // No sign, precision is first
+    }
+    sign_and_prec => {
+      let (sign, prec) = sign_and_prec.split_at(1);
+      if sign == "+" || sign == "-" {
+        signed = sign == "-";
+        parts[2] = prec;
+      }
+    }
+  }
+  let precision: u32 = parts[2]
     .parse()
     .map_err(|_| ImageError::InvalidFormat("Invalid precision value".into()))?;
-  let width: u32 = parts[4]
+  let width: u32 = parts[3]
     .parse()
     .map_err(|_| ImageError::InvalidFormat("Invalid width value".into()))?;
-  let height: u32 = parts[5]
+  let height: u32 = parts[4]
     .parse()
     .map_err(|_| ImageError::InvalidFormat("Invalid height value".into()))?;
+  log::debug!("PGX dimensions: {}x{}x{}", width, height, precision);
 
   if width < 1 || height < 1 || precision < 1 || precision > 31 {
     return Err(ImageError::InvalidFormat(
@@ -49,11 +85,6 @@ pub fn load_pgx_image(
   } else {
     width * height * 4
   };
-
-  let file_size = file
-    .metadata()
-    .map_err(|e| ImageError::InvalidFormat(format!("Failed to get file size: {}", e)))?
-    .len();
 
   if file_size < expected_data_size as u64 + header.len() as u64 {
     return Err(ImageError::InvalidFormat("File too small".into()));
@@ -100,7 +131,7 @@ pub fn load_pgx_image(
   // Read pixel data based on precision
   if precision <= 8 {
     let mut buffer = vec![0u8; (width * height) as usize];
-    file.read_exact(&mut buffer)?;
+    reader.read_exact(&mut buffer)?;
 
     for (i, &value) in buffer.iter().enumerate() {
       data[i] = if signed {
@@ -111,10 +142,14 @@ pub fn load_pgx_image(
     }
   } else if precision <= 16 {
     let mut buffer = vec![0u8; (width * height * 2) as usize];
-    file.read_exact(&mut buffer)?;
+    reader.read_exact(&mut buffer)?;
 
     for (i, chunk) in buffer.chunks_exact(2).enumerate() {
-      let value = u16::from_be_bytes([chunk[0], chunk[1]]);
+      let value = if bigendian {
+        u16::from_be_bytes([chunk[0], chunk[1]])
+      } else {
+        u16::from_le_bytes([chunk[0], chunk[1]])
+      };
       data[i] = if signed {
         value as i16 as i32
       } else {
@@ -123,10 +158,14 @@ pub fn load_pgx_image(
     }
   } else {
     let mut buffer = vec![0u8; (width * height * 4) as usize];
-    file.read_exact(&mut buffer)?;
+    reader.read_exact(&mut buffer)?;
 
     for (i, chunk) in buffer.chunks_exact(4).enumerate() {
-      let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+      let value = if bigendian {
+        u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
+      } else {
+        u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
+      };
       data[i] = value as i32;
     }
   }
