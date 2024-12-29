@@ -212,7 +212,7 @@ impl ProgressionOrder {
   }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum J2KMarker {
   /// UNKNOWN marker value
   UNK(u32),
@@ -9835,12 +9835,24 @@ pub(crate) fn opj_j2k_decode_tile(
       if l_current_marker == J2KMarker::EOC {
         p_j2k.m_current_tile_number = 0 as OPJ_UINT32;
         p_j2k.m_specific_param.m_decoder.m_state = J2KState::EOC
+      } else if l_current_marker == J2KMarker::UNK(0x8080u32) {
+        /* cf. https://code.google.com/p/openjpeg/issues/detail?id=226 */
+        if opj_stream_get_number_byte_left(p_stream) == 2i64 {
+          p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
+          event_msg!(p_manager, EVT_WARNING, "Expected EOC or SOT marker, got unknown marker 0x8080.  Stream does not end with EOC\n",);
+          return 1i32;
+        }
       } else if l_current_marker != J2KMarker::SOT {
         if opj_stream_get_number_byte_left(p_stream) == 0i64 {
           p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
           event_msg!(p_manager, EVT_WARNING, "Stream does not end with EOC\n",);
           return 1i32;
         }
+        log::error!(
+          "Expected SOT marker: got {:?}, bytes left: {}",
+          l_current_marker,
+          opj_stream_get_number_byte_left(p_stream)
+        );
         event_msg!(p_manager, EVT_ERROR, "Stream too short, expected SOT\n",);
         return 0i32;
       }
