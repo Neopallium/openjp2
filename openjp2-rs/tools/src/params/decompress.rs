@@ -194,12 +194,12 @@ fn validate_args(args: Vec<String>) -> Option<Vec<(DecompressOpt, Option<String>
       ParsedOpt::Program(_) => (),
       ParsedOpt::Opt(DecompressOpt::Help, _) => show_help = true,
       ParsedOpt::Opt(opt, arg) => valid_args.push((opt, arg)),
-      ParsedOpt::InvalidOpt(invalid) => {
-        println!("Invalid option: {}", invalid);
+      ParsedOpt::Positional(_, _) => {
+        println!("Positional arguments are not supported");
         show_help = true;
       }
-      ParsedOpt::MissingArgument(opt, _) => {
-        println!("Missing argument for option: {:?}", opt);
+      ParsedOpt::ParseError(err) => {
+        println!("{err}");
         show_help = true;
       }
     }
