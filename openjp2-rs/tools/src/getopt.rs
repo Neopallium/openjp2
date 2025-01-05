@@ -2,86 +2,83 @@
 //!
 //! This module provides functionality to parse command line arguments in a way that's
 //! familiar to users of the traditional Unix getopt library, while providing a more
-//! Rust-friendly interface.
+//! Rust-friendly interface. It supports both options (with short/long forms) and
+//! positional arguments.
+//!
+//! # Features
+//!
+//! - Short (-h) and long (-help) option forms
+//! - Required option arguments (-o file)
+//! - Positional arguments with fixed counts
+//! - Comprehensive error reporting
 //!
 //! # Examples
 //!
-//! Basic usage with short options:
+//! Basic usage with options and positional arguments:
 //! ```rust
-//! use openjp2_tools::getopt::{GetOpts, OptDef, ParsedOpt};
+//! use openjp2_tools::getopt::{GetOpts, OptDef, PositionalArg, ParsedOpt};
 //!
-//! // Define our custom option types
+//! // Define our option types
 //! #[derive(Debug, Clone, PartialEq)]
 //! enum Opt {
 //!     Verbose,
+//!     Help,
+//! }
+//!
+//! // Define our positional argument types
+//! #[derive(Debug, Clone, PartialEq)]
+//! enum PosArg {
+//!     Input,
 //!     Output,
 //! }
 //!
-//! // Define options: -v (verbose), -o <file> (output file)
+//! // Define options and positional args
 //! let opts = vec![
-//!     OptDef::short('v', Opt::Verbose, false),     // no argument
-//!     OptDef::short('o', Opt::Output, true),      // requires argument
+//!     OptDef::short('v', Opt::Verbose, false),
+//!     OptDef::short('h', Opt::Help, false),
 //! ];
 //!
-//! let parser = GetOpts::new(&opts);
-//! let args = vec!["myapp", "-v", "-o", "output.txt"];
+//! let pos_args = vec![
+//!     PositionalArg::new("input", PosArg::Input),
+//!     PositionalArg::new("output", PosArg::Output),
+//! ];
+//!
+//! let parser = GetOpts::new_with_positionals(&opts, &pos_args);
+//! let args = vec!["myapp", "-v", "input.txt", "output.txt"];
 //!
 //! for opt in parser.parse_args(args) {
 //!     match opt {
 //!         ParsedOpt::Program(name) => println!("Program: {}", name),
 //!         ParsedOpt::Opt(Opt::Verbose, None) => println!("Verbose mode enabled"),
-//!         ParsedOpt::Opt(Opt::Output, Some(file)) => println!("Output file: {}", file),
-//!         ParsedOpt::InvalidOpt(opt) => println!("Invalid option: {}", opt),
+//!         ParsedOpt::Positional(PosArg::Input, args) => println!("Input file: {}", args[0]),
+//!         ParsedOpt::Positional(PosArg::Output, args) => println!("Output file: {}", args[0]),
+//!         ParsedOpt::ParseError(err) => eprintln!("Error: {}", err),
 //!         _ => {}
 //!     }
 //! }
 //! ```
 //!
-//! Using both short and long options:
-//! ```rust
-//! use openjp2_tools::getopt::{GetOpts, OptDef};
-//!
-//! #[derive(Debug, Clone, PartialEq)]
-//! enum Opt {
-//!     Help,
-//!     Output,
-//!     Verbose,
-//! }
-//!
-//! let opts = vec![
-//!     OptDef::both('h', "help", Opt::Help, false),
-//!     OptDef::both('o', "output", Opt::Output, true),
-//!     OptDef::long("verbose", Opt::Verbose, false),
-//! ];
-//!
-//! // Will match both "-h" and "-help" returning Opt::Help
-//! // Will match both "-o file.txt" and "-output file.txt" returning Opt::Output
-//! // Will match "-verbose" returning Opt::Verbose
-//! ```
-//!
 //! # Error Handling
 //!
-//! Invalid options are returned as `ParsedOpt::InvalidOpt` variants:
+//! All errors are returned as `ParsedOpt::ParseError` variants including:
 //! - Unknown options
 //! - Missing required arguments
+//! - Insufficient positional arguments
 //!
 //! ```rust
-//! use openjp2_tools::getopt::{GetOpts, OptDef, ParsedOpt};
-//!
-//! #[derive(Debug, Clone, PartialEq)]
-//! enum Opt {
-//!     RequiredArg,
-//! }
-//!
-//! let opts = vec![OptDef::short('a', Opt::RequiredArg, true)];
+//! # use openjp2_tools::getopt::{GetOpts, OptDef, ParsedOpt};
+//! # #[derive(Debug, Clone, PartialEq)]
+//! # enum Opt { Output }
+//! let opts = vec![OptDef::short('o', Opt::Output, true)];
 //! let parser = GetOpts::new(&opts);
 //!
-//! // Missing argument for -a
-//! let args = vec!["prog", "-a"];
+//! // Missing argument for -o
+//! let args = vec!["prog", "-o"];
 //! let parsed: Vec<_> = parser.parse_args(args).collect();
-//! assert!(matches!(parsed[1], ParsedOpt::MissingArgument(_, _)));
+//! assert!(matches!(parsed[1], ParsedOpt::ParseError(_)));
 //! ```
 
+use std::fmt;
 use std::{collections::HashMap, iter::Peekable};
 
 /// Represents a command line option definition that can have a short form (-h),
@@ -113,7 +110,7 @@ pub struct OptDef<V> {
   pub val: V,
 }
 
-impl<V: Clone> OptDef<V> {
+impl<V: Clone + fmt::Debug> OptDef<V> {
   /// Creates a new option definition with only a short form (e.g., -h).
   ///
   /// # Arguments
@@ -194,29 +191,121 @@ impl<V: Clone> OptDef<V> {
   }
 }
 
-/// The main parser struct that holds option definitions and creates iterators
-/// over command line arguments.
+/// A positional argument that doesn't have an associated option.
 ///
-/// # Type Parameters
-///
-/// * `V` - The type of value associated with options, typically an enum
+/// Positional arguments are processed in the order they are defined after
+/// all options have been parsed. Each positional argument can require one
+/// or more values.
 ///
 /// # Examples
 ///
 /// ```rust
-/// # use openjp2_tools::getopt::{GetOpts, OptDef};
-/// #[derive(Debug, Clone)]
-/// enum Opt { Help }
+/// # use openjp2_tools::getopt::PositionalArg;
+/// #[derive(Debug, Clone, PartialEq)]
+/// enum PosArg {
+///     Files,
+///     Output,
+/// }
 ///
-/// let opts = vec![OptDef::short('h', Opt::Help, false)];
-/// let parser = GetOpts::new(&opts);
+/// // Single argument
+/// let input = PositionalArg::new("input", PosArg::Files);
+///
+/// // Multiple arguments
+/// let files = PositionalArg::new_multi("files", 3, PosArg::Files);
 /// ```
-#[derive(Clone, Debug)]
-pub struct GetOpts<V> {
-  opt_map: HashMap<String, OptDef<V>>,
+#[derive(Debug, Clone)]
+pub struct PositionalArg<V> {
+  /// The name of the positional argument
+  pub name: String,
+  /// The number of arguments this positional argument expects
+  pub arg_count: usize,
+  /// The value associated with this positional argument
+  pub val: V,
 }
 
-impl<V: Clone> GetOpts<V> {
+impl<V> PositionalArg<V> {
+  /// Creates a new positional argument definition.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of the positional argument
+  /// * `val` - The value to associate with this positional argument
+  ///
+  /// # Examples
+  ///
+  /// ```rust
+  /// # use openjp2_tools::getopt::PositionalArg;
+  /// #[derive(Debug, Clone)]
+  /// enum Opt { Input }
+  ///
+  /// let arg = PositionalArg::new("input", Opt::Input);
+  /// ```
+  pub fn new(name: &str, val: V) -> Self {
+    Self {
+      name: name.to_string(),
+      arg_count: 1,
+      val,
+    }
+  }
+
+  /// Create a new positional argument definition that expects multiple arguments.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of the positional argument
+  /// * `arg_count` - The number of arguments this positional argument expects
+  /// * `val` - The value to associate with this positional argument
+  ///
+  /// # Examples
+  ///
+  /// ```rust
+  /// # use openjp2_tools::getopt::PositionalArg;
+  /// #[derive(Debug, Clone)]
+  /// enum Opt { Input }
+  ///
+  /// let arg = PositionalArg::new_multi("input", 2, Opt::Input);
+  /// ```
+  pub fn new_multi(name: &str, arg_count: usize, val: V) -> Self {
+    Self {
+      name: name.to_string(),
+      arg_count,
+      val,
+    }
+  }
+}
+
+/// The main parser struct that holds option and positional argument definitions.
+///
+/// # Type Parameters
+///
+/// * `V` - The type of value associated with options, typically an enum
+/// * `P` - The type of value associated with positional arguments, typically an enum
+///
+/// # Examples
+///
+/// ```rust
+/// # use openjp2_tools::getopt::{GetOpts, OptDef, PositionalArg};
+/// #[derive(Debug, Clone, PartialEq)]
+/// enum Opt { Help }
+///
+/// #[derive(Debug, Clone, PartialEq)]
+/// enum PosArg { Input }
+///
+/// // Parser with only options
+/// let opts = vec![OptDef::short('h', Opt::Help, false)];
+/// let parser = GetOpts::new(&opts);
+///
+/// // Parser with options and positional arguments
+/// let pos_args = vec![PositionalArg::new("input", PosArg::Input)];
+/// let parser = GetOpts::new_with_positionals(&opts, &pos_args);
+/// ```
+#[derive(Clone, Debug)]
+pub struct GetOpts<V, P = ()> {
+  opt_map: HashMap<String, OptDef<V>>,
+  positionals: Vec<PositionalArg<P>>,
+}
+
+impl<V: Clone + fmt::Debug> GetOpts<V, ()> {
   /// Creates a new option parser with the given option definitions.
   ///
   /// # Arguments
@@ -246,7 +335,51 @@ impl<V: Clone> GetOpts<V> {
         opt_map.insert(format!("-{short}"), opt.clone());
       }
     }
-    Self { opt_map }
+    Self {
+      opt_map,
+      positionals: vec![],
+    }
+  }
+}
+
+impl<V: Clone + fmt::Debug, P: Clone + fmt::Debug> GetOpts<V, P> {
+  /// Creates a new option parser with the given option definitions and positional arguments.
+  ///
+  /// # Arguments
+  ///
+  /// * `opts` - Slice of option definitions that will be recognized by the parser
+  /// * `positionals` - Slice of positional argument definitions
+  ///
+  /// # Examples
+  ///
+  /// ```rust
+  /// # use openjp2_tools::getopt::{GetOpts, OptDef, PositionalArg};
+  /// #[derive(Debug, Clone, PartialEq)]
+  /// enum Opt { Help }
+  ///
+  /// #[derive(Debug, Clone, PartialEq)]
+  /// enum PosArg { Input, Output }
+  ///
+  /// let opts = vec![OptDef::short('h', Opt::Help, false)];
+  /// let parser = GetOpts::new_with_positionals(&opts, &[
+  ///   PositionalArg::new("input", PosArg::Input),
+  ///   PositionalArg::new("output", PosArg::Output),
+  /// ]);
+  /// ```
+  pub fn new_with_positionals(opts: &[OptDef<V>], positionals: &[PositionalArg<P>]) -> Self {
+    let mut opt_map = HashMap::new();
+    for opt in opts {
+      if let Some(ref long) = opt.long {
+        opt_map.insert(format!("-{long}"), opt.clone());
+      }
+      if let Some(short) = opt.short {
+        opt_map.insert(format!("-{short}"), opt.clone());
+      }
+    }
+    Self {
+      opt_map,
+      positionals: positionals.to_vec(),
+    }
   }
 
   /// Creates an iterator that will parse the given command line arguments.
@@ -279,7 +412,7 @@ impl<V: Clone> GetOpts<V> {
   ///     }
   /// }
   /// ```
-  pub fn parse_args<T, I>(&self, args: I) -> GetOptsIterator<V>
+  pub fn parse_args<T, I>(&self, args: I) -> GetOptsIterator<V, P>
   where
     T: Into<String>,
     I: IntoIterator<Item = T>,
@@ -292,6 +425,7 @@ impl<V: Clone> GetOpts<V> {
     GetOptsIterator {
       program: args.next(),
       args: args.peekable(),
+      parse_positional: None,
       opts: self,
     }
   }
@@ -303,6 +437,36 @@ impl<V: Clone> GetOpts<V> {
   fn has_opt(&self, opt: &str) -> bool {
     self.opt_map.contains_key(opt)
   }
+
+  fn handle_positional(
+    &self,
+    idx: usize,
+    first: Option<String>,
+    args: &mut impl Iterator<Item = String>,
+  ) -> Option<ParsedOpt<V, P>> {
+    if let Some(pos_arg) = self.positionals.get(idx) {
+      let mut values = Vec::with_capacity(pos_arg.arg_count);
+      if let Some(first) = first {
+        values.push(first);
+      }
+      for _ in values.len()..pos_arg.arg_count {
+        if let Some(arg) = args.next() {
+          values.push(arg);
+        } else {
+          break;
+        }
+      }
+      if values.len() < pos_arg.arg_count {
+        return Some(ParsedOpt::ParseError(format!(
+          "Expected {} arguments for {}",
+          pos_arg.arg_count, pos_arg.name
+        )));
+      }
+      Some(ParsedOpt::Positional(pos_arg.val.clone(), values))
+    } else {
+      None
+    }
+  }
 }
 
 /// An iterator that processes command line arguments and yields parsed options.
@@ -313,42 +477,77 @@ impl<V: Clone> GetOpts<V> {
 ///
 /// * `V` - The type of value associated with options
 #[derive(Debug)]
-pub struct GetOptsIterator<'a, V> {
+pub struct GetOptsIterator<'a, V, P> {
   program: Option<String>,
   args: Peekable<std::vec::IntoIter<String>>,
-  opts: &'a GetOpts<V>,
+  parse_positional: Option<usize>,
+  opts: &'a GetOpts<V, P>,
 }
 
-/// Represents a parsed command line option or related value.
+/// Represents the result of parsing a command line argument.
 ///
 /// # Type Parameters
 ///
 /// * `V` - The type of value associated with options
+/// * `P` - The type of value associated with positional arguments
 ///
 /// # Variants
 ///
 /// * `Program` - The program name (first argument)
 /// * `Opt` - A matched option with its optional argument
-/// * `InvalidOpt` - An unrecognized option
-/// * `MissingArgument` - An option that requires an argument but didn't receive one
+/// * `Positional` - A matched positional argument with its values
+/// * `ParseError` - Any parsing error with a description
+///
+/// # Examples
+///
+/// ```rust
+/// # use openjp2_tools::getopt::{GetOpts, OptDef, ParsedOpt};
+/// #[derive(Debug, Clone, PartialEq)]
+/// enum Opt { Help }
+///
+/// let opts = vec![OptDef::short('h', Opt::Help, false)];
+/// let parser = GetOpts::new(&opts);
+///
+/// for result in parser.parse_args(vec!["prog", "-h"]) {
+///     match result {
+///         ParsedOpt::Program(name) => assert_eq!(name, "prog"),
+///         ParsedOpt::Opt(Opt::Help, None) => println!("Help requested"),
+///         ParsedOpt::ParseError(err) => eprintln!("Error: {}", err),
+///         _ => {}
+///     }
+/// }
+/// ```
 #[derive(Debug, Clone)]
-pub enum ParsedOpt<V> {
+pub enum ParsedOpt<V, P> {
   Program(String),
   Opt(V, Option<String>),
-  InvalidOpt(String),
-  MissingArgument(V, Option<String>),
+  Positional(P, Vec<String>),
+  ParseError(String),
 }
 
-impl<V: Clone> Iterator for GetOptsIterator<'_, V> {
-  type Item = ParsedOpt<V>;
+impl<V: Clone + fmt::Debug, P: Clone + fmt::Debug> Iterator for GetOptsIterator<'_, V, P> {
+  type Item = ParsedOpt<V, P>;
 
   fn next(&mut self) -> Option<Self::Item> {
     if let Some(program) = self.program.take() {
       return Some(ParsedOpt::Program(program));
     }
+    if let Some(idx) = self.parse_positional {
+      self.parse_positional = None;
+      let positional = self.opts.handle_positional(idx, None, &mut self.args)?;
+      self.parse_positional = Some(idx + 1);
+      return Some(positional);
+    }
     while let Some(opt_str) = self.args.next() {
       if !opt_str.starts_with('-') || opt_str == "-" {
-        continue;
+        if let Some(positional) = self
+          .opts
+          .handle_positional(0, Some(opt_str), &mut self.args)
+        {
+          self.parse_positional = Some(1);
+          return Some(positional);
+        }
+        break;
       }
 
       if let Some(opt) = self.opts.get_opt(&opt_str) {
@@ -358,19 +557,30 @@ impl<V: Clone> Iterator for GetOptsIterator<'_, V> {
             Some(arg) => {
               // Detect if the argument is another option.
               if self.opts.has_opt(arg) {
-                Some(ParsedOpt::MissingArgument(val, Some(arg.clone())))
+                Some(ParsedOpt::ParseError(format!(
+                  "Expected argument for option {val:?}, got another option {arg}"
+                )))
               } else {
                 let arg = self.args.next().unwrap();
                 Some(ParsedOpt::Opt(val, Some(arg)))
               }
             }
-            None => Some(ParsedOpt::MissingArgument(val, None)),
+            None => Some(ParsedOpt::ParseError(format!(
+              "Missing argument for option {val:?}"
+            ))),
           };
         } else {
           return Some(ParsedOpt::Opt(opt.val.clone(), None));
         }
+      } else if let Some(positional) =
+        self
+          .opts
+          .handle_positional(0, Some(opt_str.clone()), &mut self.args)
+      {
+        self.parse_positional = Some(1);
+        return Some(positional);
       } else {
-        return Some(ParsedOpt::InvalidOpt(opt_str));
+        return Some(ParsedOpt::ParseError(format!("Invalid option: {opt_str}")));
       }
     }
     None
@@ -386,6 +596,13 @@ mod tests {
   enum Opt {
     Help,
     Verbose,
+    Output,
+  }
+
+  // Example enum for testing positional arguments
+  #[derive(Debug, Clone, PartialEq)]
+  enum PosArg {
+    Input,
     Output,
   }
 
@@ -428,7 +645,7 @@ mod tests {
 
   #[test]
   fn test_unknown_option() {
-    let args = vec!["prog", "-x", "-y", "--unknown"];
+    let args = vec!["prog", "-x", "-y", "-unknown"];
     let opts = vec![
       OptDef::short('a', Opt::Help, false),
       OptDef::both('b', "beta", Opt::Output, true),
@@ -439,9 +656,9 @@ mod tests {
 
     assert_eq!(parsed.len(), 4);
     assert!(matches!(parsed[0], ParsedOpt::Program(ref s) if s == "prog"));
-    assert!(matches!(parsed[1], ParsedOpt::InvalidOpt(ref s) if s == "-x"));
-    assert!(matches!(parsed[2], ParsedOpt::InvalidOpt(ref s) if s == "-y"));
-    assert!(matches!(parsed[3], ParsedOpt::InvalidOpt(ref s) if s == "--unknown"));
+    assert!(matches!(parsed[1], ParsedOpt::ParseError(ref s) if s == "Invalid option: -x"));
+    assert!(matches!(parsed[2], ParsedOpt::ParseError(ref s) if s == "Invalid option: -y"));
+    assert!(matches!(parsed[3], ParsedOpt::ParseError(ref s) if s == "Invalid option: -unknown"));
   }
 
   #[test]
@@ -454,11 +671,13 @@ mod tests {
 
     let parser = GetOpts::new(&opts);
     let parsed: Vec<_> = parser.parse_args(args).collect();
+    eprintln!("{:?}", parsed);
 
     assert_eq!(parsed.len(), 3);
-    eprintln!("{:?}", parsed);
     assert!(matches!(parsed[0], ParsedOpt::Program(ref s) if s == "prog"));
-    assert!(matches!(parsed[1], ParsedOpt::MissingArgument(Opt::Output, Some(ref s)) if s == "-v"));
+    assert!(
+      matches!(parsed[1], ParsedOpt::ParseError(ref s) if s == "Expected argument for option Output, got another option -v")
+    );
     assert!(matches!(parsed[2], ParsedOpt::Opt(Opt::Verbose, None)));
   }
 
@@ -471,5 +690,51 @@ mod tests {
     let parsed: Vec<_> = parser.parse_args(args).collect();
 
     assert_eq!(parsed.len(), 0);
+  }
+
+  #[test]
+  fn test_positional_args() {
+    let args = vec!["prog", "input.txt", "output.txt"];
+    let opts = vec![OptDef::short('h', Opt::Help, false)];
+    let positionals = vec![
+      PositionalArg::new("input", PosArg::Input),
+      PositionalArg::new("output", PosArg::Output),
+    ];
+
+    let parser = GetOpts::new_with_positionals(&opts, &positionals);
+    let parsed: Vec<_> = parser.parse_args(args).collect();
+    eprintln!("{:?}", parsed);
+
+    assert_eq!(parsed.len(), 3);
+    assert!(matches!(parsed[0], ParsedOpt::Program(ref s) if s == "prog"));
+    assert!(
+      matches!(parsed[1], ParsedOpt::Positional(PosArg::Input, ref v) if v == &["input.txt".to_string()])
+    );
+    assert!(
+      matches!(parsed[2], ParsedOpt::Positional(PosArg::Output, ref v) if v == &["output.txt".to_string()])
+    );
+  }
+
+  #[test]
+  fn test_multi_positional_args() {
+    let args = vec!["prog", "input.txt", "output.txt", "extra.txt"];
+    let opts = vec![OptDef::short('h', Opt::Help, false)];
+    let positionals = vec![
+      PositionalArg::new("input", PosArg::Input),
+      PositionalArg::new_multi("output", 2, PosArg::Output),
+    ];
+
+    let parser = GetOpts::new_with_positionals(&opts, &positionals);
+    let parsed: Vec<_> = parser.parse_args(args).collect();
+    eprintln!("{:?}", parsed);
+
+    assert_eq!(parsed.len(), 3);
+    assert!(matches!(parsed[0], ParsedOpt::Program(ref s) if s == "prog"));
+    assert!(
+      matches!(parsed[1], ParsedOpt::Positional(PosArg::Input, ref v) if v == &["input.txt".to_string()])
+    );
+    assert!(
+      matches!(parsed[2], ParsedOpt::Positional(PosArg::Output, ref v) if v == &["output.txt".to_string(), "extra.txt".to_string()])
+    );
   }
 }

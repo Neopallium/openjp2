@@ -54,6 +54,5 @@ lodepng = [
 
 testing = [
   "libtiff",
-  #"lodepng",
   "libpng",
 ]

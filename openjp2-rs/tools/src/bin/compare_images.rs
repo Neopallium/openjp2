@@ -101,11 +101,11 @@ fn parse_args() -> Result<Args, String> {
           std::process::exit(0);
         }
       },
-      ParsedOpt::InvalidOpt(opt) => {
-        return Err(format!("Invalid option: {}", opt));
+      ParsedOpt::Positional(_, _) => {
+        return Err("Positional arguments are not supported".into());
       }
-      ParsedOpt::MissingArgument(opt, _) => {
-        return Err(format!("Missing argument for option: {:?}", opt));
+      ParsedOpt::ParseError(err) => {
+        return Err(err);
       }
     }
   }
