@@ -71,6 +71,8 @@ fn create_codec_and_stream<P: AsRef<Path>>(input: P) -> Result<(Codec, Stream), 
 fn main() -> Result<(), String> {
   let mut tile_info = TileInfo::default();
   let mut args = std::env::args();
+  // Skip program name.
+  args.next();
 
   let area = DecodeArea {
     x0: args.next().and_then(|s| s.parse().ok()).unwrap_or(0),

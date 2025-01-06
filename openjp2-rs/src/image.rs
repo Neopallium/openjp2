@@ -356,11 +356,15 @@ impl opj_image {
     Box::new(Self::default())
   }
 
-  pub fn create(cmptparms: &[opj_image_comptparm], clrspc: OPJ_COLOR_SPACE) -> Box<Self> {
+  fn create_internal(
+    cmptparms: &[opj_image_comptparm],
+    clrspc: OPJ_COLOR_SPACE,
+    alloc_data: bool,
+  ) -> Option<Box<Self>> {
     let mut image = Self::new();
     image.color_space = clrspc;
     if !image.alloc_comps(cmptparms.len() as u32) {
-      return image;
+      return None;
     }
     if let Some(comps) = image.comps_mut() {
       for (comp, params) in comps.iter_mut().zip(cmptparms) {
@@ -372,12 +376,25 @@ impl opj_image {
         comp.y0 = params.y0;
         comp.prec = params.prec;
         comp.sgnd = params.sgnd;
-        if !comp.alloc_data() {
-          return image;
+        if alloc_data {
+          if !comp.alloc_data() {
+            return None;
+          }
         }
       }
     }
-    image
+    Some(image)
+  }
+
+  pub fn create(cmptparms: &[opj_image_comptparm], clrspc: OPJ_COLOR_SPACE) -> Option<Box<Self>> {
+    Self::create_internal(cmptparms, clrspc, true)
+  }
+
+  pub fn tile_create(
+    cmptparms: &[opj_image_comptparm],
+    clrspc: OPJ_COLOR_SPACE,
+  ) -> Option<Box<Self>> {
+    Self::create_internal(cmptparms, clrspc, false)
   }
 
   pub fn comp0_dims_prec(&self) -> (usize, usize, i32) {
@@ -688,8 +705,11 @@ pub fn opj_image_create(
 ) -> *mut opj_image_t {
   assert!(!cmptparms.is_null());
   let cmptparms = unsafe { std::slice::from_raw_parts(cmptparms, numcmpts as usize) };
-  let mut image = opj_image::create(cmptparms, clrspc);
-  Box::into_raw(image)
+  if let Some(mut image) = opj_image::create(cmptparms, clrspc) {
+    Box::into_raw(image)
+  } else {
+    std::ptr::null_mut()
+  }
 }
 
 #[no_mangle]
@@ -792,25 +812,10 @@ pub fn opj_image_tile_create(
   mut clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
   assert!(!cmptparms.is_null());
-  let mut image = opj_image::new();
   let cmptparms = unsafe { std::slice::from_raw_parts(cmptparms, numcmpts as usize) };
-  image.color_space = clrspc;
-  /* allocate memory for the per-component information */
-  if !image.alloc_comps(numcmpts) {
-    return std::ptr::null_mut::<opj_image_t>();
+  if let Some(mut image) = opj_image::tile_create(cmptparms, clrspc) {
+    Box::into_raw(image)
+  } else {
+    std::ptr::null_mut()
   }
-  /* create the individual image components */
-  let comps = image.comps_mut().unwrap();
-  for (comp, params) in comps.iter_mut().zip(cmptparms) {
-    comp.dx = params.dx;
-    comp.dy = params.dy;
-    comp.w = params.w;
-    comp.h = params.h;
-    comp.x0 = params.x0;
-    comp.y0 = params.y0;
-    comp.prec = params.prec;
-    comp.sgnd = params.sgnd;
-    comp.data = std::ptr::null_mut::<OPJ_INT32>();
-  }
-  Box::into_raw(image)
 }
