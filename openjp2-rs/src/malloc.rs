@@ -1,5 +1,3 @@
-use core::alloc::Layout;
-
 use super::openjpeg::*;
 
 extern "C" {
@@ -72,8 +70,18 @@ fn opj_aligned_alloc_n(mut alignment: size_t, mut size: size_t) -> *mut core::ff
       /* prevent implementation defined behavior of realloc */
       return core::ptr::null_mut::<core::ffi::c_void>();
     }
-    let layout = Layout::from_size_align_unchecked(size, alignment);
-    alloc::alloc::alloc(layout) as *mut core::ffi::c_void
+    #[cfg(windows)]
+    {
+      libc::aligned_malloc(size, alignment)
+    }
+    #[cfg(not(windows))]
+    {
+      let mut ptr = std::ptr::null_mut::<core::ffi::c_void>();
+      if libc::posix_memalign(&mut ptr, alignment, size) != 0 {
+        ptr = std::ptr::null_mut::<core::ffi::c_void>()
+      }
+      ptr
+    }
   }
 }
 
