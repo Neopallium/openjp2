@@ -8,13 +8,13 @@ use super::openjpeg::*;
 use super::t1_luts::*;
 use super::tcd::*;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 use core::{
   cell::RefCell,
   ops::{AddAssign, Deref, DerefMut, Index, IndexMut},
   ptr::null_mut,
 };
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
 
 use super::malloc::*;
 
