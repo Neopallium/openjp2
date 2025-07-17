@@ -48,7 +48,7 @@ impl Default for opj_image_comp {
       sgnd: 0,
       resno_decoded: 0,
       factor: 0,
-      data: std::ptr::null_mut(),
+      data: core::ptr::null_mut(),
       alpha: 0,
     }
   }
@@ -95,7 +95,7 @@ impl opj_image_comp {
     if !self.data.is_null() {
       unsafe {
         opj_image_data_free(self.data as *mut core::ffi::c_void);
-        self.data = std::ptr::null_mut();
+        self.data = core::ptr::null_mut();
       }
     }
   }
@@ -251,7 +251,7 @@ impl Clone for opj_image_comp {
     if !self.data.is_null() {
       if comp.alloc_data() {
         unsafe {
-          std::ptr::copy_nonoverlapping(
+          core::ptr::copy_nonoverlapping(
             self.data as *const OPJ_INT32,
             comp.data,
             self.w as usize * self.h as usize,
@@ -316,8 +316,8 @@ impl Default for opj_image {
       y1: 0,
       numcomps: 0,
       color_space: Default::default(),
-      comps: std::ptr::null_mut(),
-      icc_profile_buf: std::ptr::null_mut(),
+      comps: core::ptr::null_mut(),
+      icc_profile_buf: core::ptr::null_mut(),
       icc_profile_len: 0,
     }
   }
@@ -454,7 +454,7 @@ impl opj_image {
     if !self.comps.is_null() {
       image.comps = self.comps;
       image.numcomps = self.numcomps;
-      self.comps = std::ptr::null_mut();
+      self.comps = core::ptr::null_mut();
       self.numcomps = 0;
     }
     image
@@ -548,7 +548,7 @@ impl opj_image {
           }
         }
         opj_free(self.comps as *mut core::ffi::c_void);
-        self.comps = std::ptr::null_mut();
+        self.comps = core::ptr::null_mut();
         self.numcomps = 0;
       }
     }
@@ -640,7 +640,7 @@ impl opj_image {
   pub fn clear_icc_profile(&mut self) {
     if !self.icc_profile_buf.is_null() {
       opj_free(self.icc_profile_buf as *mut core::ffi::c_void);
-      self.icc_profile_buf = std::ptr::null_mut();
+      self.icc_profile_buf = core::ptr::null_mut();
       self.icc_profile_len = 0;
     }
   }
@@ -708,7 +708,7 @@ pub fn opj_image_create(
   if let Some(mut image) = opj_image::create(cmptparms, clrspc) {
     Box::into_raw(image)
   } else {
-    std::ptr::null_mut()
+    core::ptr::null_mut()
   }
 }
 
@@ -785,7 +785,7 @@ pub(crate) fn opj_copy_image_header(
   p_image_dest.x1 = p_image_src.x1;
   p_image_dest.y1 = p_image_src.y1;
   if !p_image_dest.alloc_comps(p_image_src.numcomps) {
-    p_image_dest.comps = std::ptr::null_mut::<opj_image_comp_t>();
+    p_image_dest.comps = core::ptr::null_mut::<opj_image_comp_t>();
     p_image_dest.numcomps = 0 as OPJ_UINT32;
     return;
   }
@@ -793,7 +793,7 @@ pub(crate) fn opj_copy_image_header(
     if let Some(dest) = p_image_dest.comps_mut() {
       for (src, dest) in src.iter().zip(dest) {
         *dest = *src;
-        dest.data = std::ptr::null_mut::<OPJ_INT32>();
+        dest.data = core::ptr::null_mut::<OPJ_INT32>();
       }
     }
   }
@@ -816,6 +816,6 @@ pub fn opj_image_tile_create(
   if let Some(mut image) = opj_image::tile_create(cmptparms, clrspc) {
     Box::into_raw(image)
   } else {
-    std::ptr::null_mut()
+    core::ptr::null_mut()
   }
 }

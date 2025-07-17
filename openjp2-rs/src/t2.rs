@@ -144,8 +144,8 @@ pub(crate) fn opj_t2_encode_packets(
     let mut l_nb_bytes = 0 as OPJ_UINT32;
     let mut compno: OPJ_UINT32 = 0;
     let mut poc: OPJ_UINT32 = 0;
-    let mut l_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
-    let mut l_current_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
+    let mut l_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
+    let mut l_current_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_image = (*p_t2).image;
     let mut l_cp = (*p_t2).cp;
     let mut l_tcp: *mut opj_tcp_t = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
@@ -322,7 +322,7 @@ pub(crate) fn opj_t2_decode_packets(
 ) -> OPJ_BOOL {
   unsafe {
     let mut l_current_data = p_src;
-    let mut l_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
+    let mut l_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut pino: OPJ_UINT32 = 0;
     let mut l_image = (*p_t2).image;
     let mut l_cp = (*p_t2).cp;
@@ -330,9 +330,9 @@ pub(crate) fn opj_t2_decode_packets(
       &mut *(*(*p_t2).cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
     let mut l_nb_bytes_read: OPJ_UINT32 = 0;
     let mut l_nb_pocs = (*l_tcp).numpocs.wrapping_add(1u32);
-    let mut l_current_pi = std::ptr::null_mut::<opj_pi_iterator_t>();
-    let mut l_pack_info = std::ptr::null_mut::<opj_packet_info_t>();
-    let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_current_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
+    let mut l_pack_info = core::ptr::null_mut::<opj_packet_info_t>();
+    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
     /* create a packet iterator */
     l_pi = opj_pi_create_decode(l_image, l_cp, p_tile_no, p_manager);
     if l_pi.is_null() {
@@ -346,7 +346,7 @@ pub(crate) fn opj_t2_decode_packets(
        * l_current_pi->resno is always >= p_tile->comps[l_current_pi->compno].minimum_num_resolutions
        * and no l_img_comp->resno_decoded are computed
        */
-      let mut first_pass_failed = std::ptr::null_mut::<OPJ_BOOL>();
+      let mut first_pass_failed = core::ptr::null_mut::<OPJ_BOOL>();
       if (*l_current_pi).poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
         /* TODO ADE : add an error */
         opj_pi_destroy(l_pi, l_nb_pocs);
@@ -517,7 +517,7 @@ pub(crate) fn opj_t2_create(
     /* create the t2 structure */
     let mut l_t2 = opj_calloc(1i32 as size_t, core::mem::size_of::<opj_t2_t>()) as *mut opj_t2_t;
     if l_t2.is_null() {
-      return std::ptr::null_mut::<opj_t2_t>();
+      return core::ptr::null_mut::<opj_t2_t>();
     }
     (*l_t2).image = p_image;
     (*l_t2).cp = p_cp;
@@ -638,14 +638,14 @@ fn opj_t2_encode_packet(
     let mut precno = (*pi).precno;
     let mut layno = (*pi).layno;
     let mut l_nb_blocks: OPJ_UINT32 = 0;
-    let mut band = std::ptr::null_mut::<opj_tcd_band_t>();
-    let mut cblk = std::ptr::null_mut::<opj_tcd_cblk_enc_t>();
-    let mut pass = std::ptr::null_mut::<opj_tcd_pass_t>();
+    let mut band = core::ptr::null_mut::<opj_tcd_band_t>();
+    let mut cblk = core::ptr::null_mut::<opj_tcd_cblk_enc_t>();
+    let mut pass = core::ptr::null_mut::<opj_tcd_pass_t>();
     let mut tilec: *mut opj_tcd_tilecomp_t =
       &mut *(*tile).comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
     let mut res: *mut opj_tcd_resolution_t =
       &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
-    let mut bio = std::ptr::null_mut::<opj_bio_t>();
+    let mut bio = core::ptr::null_mut::<opj_bio_t>();
     let mut packet_empty = 0i32;
     /* <SOP 0xff91> */
     if (*tcp).csty & 0x2u32 != 0 {
@@ -675,7 +675,7 @@ fn opj_t2_encode_packet(
       band = (*res).bands.as_mut_ptr();
       bandno = 0 as OPJ_UINT32;
       while bandno < (*res).numbands {
-        let mut prc = std::ptr::null_mut::<opj_tcd_precinct_t>();
+        let mut prc = core::ptr::null_mut::<opj_tcd_precinct_t>();
         /* Skip empty bands */
         if opj_tcd_is_band_empty(band) == 0 {
           /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1294 */
@@ -723,7 +723,7 @@ fn opj_t2_encode_packet(
     band = (*res).bands.as_mut_ptr();
     bandno = 0 as OPJ_UINT32;
     while packet_empty == 0 && bandno < (*res).numbands {
-      let mut prc_0 = std::ptr::null_mut::<opj_tcd_precinct_t>();
+      let mut prc_0 = core::ptr::null_mut::<opj_tcd_precinct_t>();
       /* Skip empty bands */
       if opj_tcd_is_band_empty(band) == 0 {
         /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1297 */
@@ -890,7 +890,7 @@ fn opj_t2_encode_packet(
     band = (*res).bands.as_mut_ptr();
     bandno = 0 as OPJ_UINT32;
     while packet_empty == 0 && bandno < (*res).numbands {
-      let mut prc_1 = std::ptr::null_mut::<opj_tcd_precinct_t>();
+      let mut prc_1 = core::ptr::null_mut::<opj_tcd_precinct_t>();
       /* Skip empty bands */
       if opj_tcd_is_band_empty(band) == 0 {
         prc_1 = &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
@@ -1030,18 +1030,18 @@ fn opj_t2_read_packet_header(
     let mut l_nb_code_blocks: OPJ_UINT32 = 0;
     let mut l_remaining_length: OPJ_UINT32 = 0;
     let mut l_header_length: OPJ_UINT32 = 0;
-    let mut l_modified_length_ptr = std::ptr::null_mut::<OPJ_UINT32>();
+    let mut l_modified_length_ptr = core::ptr::null_mut::<OPJ_UINT32>();
     let mut l_current_data = p_src_data;
     let mut l_cp = (*p_t2).cp;
-    let mut l_bio = std::ptr::null_mut::<opj_bio_t>();
-    let mut l_band = std::ptr::null_mut::<opj_tcd_band_t>();
-    let mut l_cblk = std::ptr::null_mut::<opj_tcd_cblk_dec_t>();
+    let mut l_bio = core::ptr::null_mut::<opj_bio_t>();
+    let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
+    let mut l_cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
     let mut l_res: *mut opj_tcd_resolution_t =
       &mut *(*(*p_tile).comps.offset((*p_pi).compno as isize))
         .resolutions
         .offset((*p_pi).resno as isize) as *mut opj_tcd_resolution_t;
-    let mut l_header_data = std::ptr::null_mut::<OPJ_BYTE>();
-    let mut l_header_data_start = std::ptr::null_mut::<*mut OPJ_BYTE>();
+    let mut l_header_data = core::ptr::null_mut::<OPJ_BYTE>();
+    let mut l_header_data_start = core::ptr::null_mut::<*mut OPJ_BYTE>();
     let mut l_present: OPJ_UINT32 = 0;
     if (*p_pi).layno == 0u32 {
       l_band = (*l_res).bands.as_mut_ptr();
@@ -1422,8 +1422,8 @@ fn opj_t2_read_packet_data(
     let mut cblkno: OPJ_UINT32 = 0;
     let mut l_nb_code_blocks: OPJ_UINT32 = 0;
     let mut l_current_data = p_src_data;
-    let mut l_band = std::ptr::null_mut::<opj_tcd_band_t>();
-    let mut l_cblk = std::ptr::null_mut::<opj_tcd_cblk_dec_t>();
+    let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
+    let mut l_cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
     let mut l_res: *mut opj_tcd_resolution_t =
       &mut *(*(*p_tile).comps.offset((*p_pi).compno as isize))
         .resolutions
@@ -1441,7 +1441,7 @@ fn opj_t2_read_packet_data(
         l_cblk = (*l_prc).cblks.dec;
         cblkno = 0 as OPJ_UINT32;
         while cblkno < l_nb_code_blocks {
-          let mut l_seg = std::ptr::null_mut::<opj_tcd_seg_t>();
+          let mut l_seg = core::ptr::null_mut::<opj_tcd_seg_t>();
           // if we have a partial data stream, set numchunks to zero
           // since we have no data to actually decode.
           if partial_buffer != 0 {
@@ -1579,8 +1579,8 @@ fn opj_t2_skip_packet_data(
     let mut bandno: OPJ_UINT32 = 0;
     let mut cblkno: OPJ_UINT32 = 0;
     let mut l_nb_code_blocks: OPJ_UINT32 = 0;
-    let mut l_band = std::ptr::null_mut::<opj_tcd_band_t>();
-    let mut l_cblk = std::ptr::null_mut::<opj_tcd_cblk_dec_t>();
+    let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
+    let mut l_cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
     let mut l_res: *mut opj_tcd_resolution_t =
       &mut *(*(*p_tile).comps.offset((*p_pi).compno as isize))
         .resolutions
@@ -1598,7 +1598,7 @@ fn opj_t2_skip_packet_data(
         l_cblk = (*l_prc).cblks.dec;
         cblkno = 0 as OPJ_UINT32;
         while cblkno < l_nb_code_blocks {
-          let mut l_seg = std::ptr::null_mut::<opj_tcd_seg_t>();
+          let mut l_seg = core::ptr::null_mut::<opj_tcd_seg_t>();
           if (*l_cblk).numnewpasses == 0 {
             /* nothing to do */
             l_cblk = l_cblk.offset(1)
@@ -1683,10 +1683,10 @@ fn opj_t2_init_seg(
   mut first: OPJ_UINT32,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut seg = std::ptr::null_mut::<opj_tcd_seg_t>();
+    let mut seg = core::ptr::null_mut::<opj_tcd_seg_t>();
     let mut l_nb_segs = index.wrapping_add(1u32);
     if l_nb_segs > (*cblk).m_current_max_segs {
-      let mut new_segs = std::ptr::null_mut::<opj_tcd_seg_t>();
+      let mut new_segs = core::ptr::null_mut::<opj_tcd_seg_t>();
       let mut l_m_current_max_segs = (*cblk).m_current_max_segs.wrapping_add(10u32);
       new_segs = opj_realloc(
         (*cblk).segs as *mut core::ffi::c_void,

@@ -1226,9 +1226,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
   mut _check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut cblkdata = std::ptr::null_mut::<OPJ_BYTE>(); // fetched data from VLC bitstream
-    let mut coded_data = std::ptr::null_mut::<OPJ_UINT8>(); // loop indices
-    let mut decoded_data = std::ptr::null_mut::<OPJ_UINT32>();
+    let mut cblkdata = core::ptr::null_mut::<OPJ_BYTE>(); // fetched data from VLC bitstream
+    let mut coded_data = core::ptr::null_mut::<OPJ_UINT8>(); // loop indices
+    let mut decoded_data = core::ptr::null_mut::<OPJ_UINT32>();
     let mut zero_bplanes: OPJ_UINT32 = 0;
     let mut num_passes: OPJ_UINT32 = 0;
     let mut lengths1: OPJ_UINT32 = 0;
@@ -1236,19 +1236,19 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     let mut width: OPJ_INT32 = 0;
     let mut height: OPJ_INT32 = 0;
     let mut stride: OPJ_INT32 = 0;
-    let mut pflags = std::ptr::null_mut::<OPJ_UINT32>();
-    let mut sigma1 = std::ptr::null_mut::<OPJ_UINT32>();
-    let mut sigma2 = std::ptr::null_mut::<OPJ_UINT32>();
-    let mut mbr1 = std::ptr::null_mut::<OPJ_UINT32>();
-    let mut mbr2 = std::ptr::null_mut::<OPJ_UINT32>();
-    let mut sip = std::ptr::null_mut::<OPJ_UINT32>();
+    let mut pflags = core::ptr::null_mut::<OPJ_UINT32>();
+    let mut sigma1 = core::ptr::null_mut::<OPJ_UINT32>();
+    let mut sigma2 = core::ptr::null_mut::<OPJ_UINT32>();
+    let mut mbr1 = core::ptr::null_mut::<OPJ_UINT32>();
+    let mut mbr2 = core::ptr::null_mut::<OPJ_UINT32>();
+    let mut sip = core::ptr::null_mut::<OPJ_UINT32>();
     let mut sip_shift: OPJ_UINT32 = 0;
     let mut p: OPJ_UINT32 = 0;
     let mut zero_bplanes_p1: OPJ_UINT32 = 0;
     let mut lcup: core::ffi::c_int = 0;
     let mut scup: core::ffi::c_int = 0;
     let mut mel = dec_mel_t {
-      data: std::ptr::null_mut::<OPJ_UINT8>(),
+      data: core::ptr::null_mut::<OPJ_UINT8>(),
       tmp: 0,
       bits: 0,
       size: 0,
@@ -1258,14 +1258,14 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       runs: 0,
     };
     let mut vlc = rev_struct_t {
-      data: std::ptr::null_mut::<OPJ_UINT8>(),
+      data: core::ptr::null_mut::<OPJ_UINT8>(),
       tmp: 0,
       bits: 0,
       size: 0,
       unstuff: 0,
     };
     let mut magsgn = frwd_struct_t {
-      data: std::ptr::null::<OPJ_UINT8>(),
+      data: core::ptr::null::<OPJ_UINT8>(),
       tmp: 0,
       bits: 0,
       unstuff: 0,
@@ -1273,7 +1273,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       X: 0,
     };
     let mut sigprop = frwd_struct_t {
-      data: std::ptr::null::<OPJ_UINT8>(),
+      data: core::ptr::null::<OPJ_UINT8>(),
       tmp: 0,
       bits: 0,
       unstuff: 0,
@@ -1281,19 +1281,19 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       X: 0,
     };
     let mut magref = rev_struct_t {
-      data: std::ptr::null_mut::<OPJ_UINT8>(),
+      data: core::ptr::null_mut::<OPJ_UINT8>(),
       tmp: 0,
       bits: 0,
       size: 0,
       unstuff: 0,
     };
-    let mut lsp = std::ptr::null_mut::<OPJ_UINT8>();
-    let mut line_state = std::ptr::null_mut::<OPJ_UINT8>();
+    let mut lsp = core::ptr::null_mut::<OPJ_UINT8>();
+    let mut line_state = core::ptr::null_mut::<OPJ_UINT8>();
     let mut run: core::ffi::c_int = 0;
     let mut vlc_val: OPJ_UINT32 = 0;
     let mut qinf: [OPJ_UINT32; 2] = [0; 2];
     let mut c_q: OPJ_UINT32 = 0;
-    let mut sp = std::ptr::null_mut::<OPJ_UINT32>();
+    let mut sp = core::ptr::null_mut::<OPJ_UINT32>();
     let mut x: OPJ_INT32 = 0;
     let mut y: OPJ_INT32 = 0;
     let mut stripe_causal = (cblksty & 0x8u32 != 0u32) as core::ffi::c_int;
@@ -1845,7 +1845,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     y = 2i32;
     while y < height {
       /*done at the end of loop*/
-      let mut sip_0 = std::ptr::null_mut::<OPJ_UINT32>(); // shift sigma to the upper half od the nibble
+      let mut sip_0 = core::ptr::null_mut::<OPJ_UINT32>(); // shift sigma to the upper half od the nibble
       let mut ls0: OPJ_UINT8 = 0; //move back to 0 (it might have been at 0x10)
       let mut x_0: OPJ_INT32 = 0; //choose sigma array
       sip_shift ^= 0x2u32; // read the line state value
@@ -2255,10 +2255,10 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           //above neighbors
           //below neighbors
           //wait until 8 rows has been processed
-          let mut cur_sig_0 = std::ptr::null_mut::<OPJ_UINT32>();
-          let mut cur_mbr = std::ptr::null_mut::<OPJ_UINT32>();
-          let mut nxt_sig = std::ptr::null_mut::<OPJ_UINT32>();
-          let mut nxt_mbr = std::ptr::null_mut::<OPJ_UINT32>();
+          let mut cur_sig_0 = core::ptr::null_mut::<OPJ_UINT32>();
+          let mut cur_mbr = core::ptr::null_mut::<OPJ_UINT32>();
+          let mut nxt_sig = core::ptr::null_mut::<OPJ_UINT32>();
+          let mut nxt_mbr = core::ptr::null_mut::<OPJ_UINT32>();
           let mut prev_0: OPJ_UINT32 = 0;
           let mut val_15: OPJ_UINT32 = 0;
           let mut i_3: OPJ_INT32 = 0;
@@ -2616,10 +2616,10 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       };
       y_0 = st;
       while y_0 < height {
-        let mut cur_sig_2 = std::ptr::null_mut::<OPJ_UINT32>();
-        let mut cur_mbr_0 = std::ptr::null_mut::<OPJ_UINT32>();
-        let mut nxt_sig_0 = std::ptr::null_mut::<OPJ_UINT32>();
-        let mut nxt_mbr_0 = std::ptr::null_mut::<OPJ_UINT32>();
+        let mut cur_sig_2 = core::ptr::null_mut::<OPJ_UINT32>();
+        let mut cur_mbr_0 = core::ptr::null_mut::<OPJ_UINT32>();
+        let mut nxt_sig_0 = core::ptr::null_mut::<OPJ_UINT32>();
+        let mut nxt_mbr_0 = core::ptr::null_mut::<OPJ_UINT32>();
         let mut val_16: OPJ_UINT32 = 0;
         let mut i_6: OPJ_INT32 = 0;
         //integrate vertically

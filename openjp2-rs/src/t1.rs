@@ -1836,18 +1836,18 @@ fn opj_t1_allocate_buffers(
 
 fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
   unsafe {
-    let mut cblk = std::ptr::null_mut::<opj_tcd_cblk_dec_t>();
-    let mut band = std::ptr::null_mut::<opj_tcd_band_t>();
-    let mut tilec = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
-    let mut tccp = std::ptr::null_mut::<opj_tccp_t>();
-    let mut datap = std::ptr::null_mut::<OPJ_INT32>();
+    let mut cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
+    let mut band = core::ptr::null_mut::<opj_tcd_band_t>();
+    let mut tilec = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
+    let mut tccp = core::ptr::null_mut::<opj_tccp_t>();
+    let mut datap = core::ptr::null_mut::<OPJ_INT32>();
     let mut cblk_w: OPJ_UINT32 = 0;
     let mut cblk_h: OPJ_UINT32 = 0;
     let mut x: OPJ_INT32 = 0;
     let mut y: OPJ_INT32 = 0;
     let mut i: OPJ_UINT32 = 0;
     let mut j: OPJ_UINT32 = 0;
-    let mut job = std::ptr::null_mut::<opj_t1_cblk_decode_processing_job_t>();
+    let mut job = core::ptr::null_mut::<opj_t1_cblk_decode_processing_job_t>();
     let mut resno: OPJ_UINT32 = 0;
     let mut tile_w: OPJ_UINT32 = 0;
     job = user_data as *mut opj_t1_cblk_decode_processing_job_t;
@@ -1882,7 +1882,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
       /* Not sure if that code path can happen, but better be */
       /* safe than sorry */
       opj_aligned_free((*cblk).decoded_data as *mut core::ffi::c_void);
-      (*cblk).decoded_data = std::ptr::null_mut::<OPJ_INT32>()
+      (*cblk).decoded_data = core::ptr::null_mut::<OPJ_INT32>()
     }
     resno = (*job).resno;
     band = (*job).band;
@@ -2139,7 +2139,7 @@ pub(crate) fn opj_t1_decode_cblks(
                 &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
               if !(*cblk).decoded_data.is_null() {
                 opj_aligned_free((*cblk).decoded_data as *mut core::ffi::c_void);
-                (*cblk).decoded_data = std::ptr::null_mut::<OPJ_INT32>()
+                (*cblk).decoded_data = core::ptr::null_mut::<OPJ_INT32>()
               }
               cblkno += 1;
             }
@@ -2149,7 +2149,7 @@ pub(crate) fn opj_t1_decode_cblks(
             while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
               let mut cblk_0: *mut opj_tcd_cblk_dec_t =
                 &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
-              let mut job = std::ptr::null_mut::<opj_t1_cblk_decode_processing_job_t>();
+              let mut job = core::ptr::null_mut::<opj_t1_cblk_decode_processing_job_t>();
               if opj_tcd_is_subband_area_of_interest(
                 tcd,
                 (*tilec).compno,
@@ -2163,7 +2163,7 @@ pub(crate) fn opj_t1_decode_cblks(
               {
                 if !(*cblk_0).decoded_data.is_null() {
                   opj_aligned_free((*cblk_0).decoded_data as *mut core::ffi::c_void);
-                  (*cblk_0).decoded_data = std::ptr::null_mut::<OPJ_INT32>()
+                  (*cblk_0).decoded_data = core::ptr::null_mut::<OPJ_INT32>()
                 }
               } else {
                 if (*tcd).whole_tile_decoding == 0 {
@@ -2246,7 +2246,7 @@ fn opj_t1_decode_cblk(
     let mut passtype: OPJ_UINT32 = 0;
     let mut segno: OPJ_UINT32 = 0;
     let mut passno: OPJ_UINT32 = 0;
-    let mut cblkdata = std::ptr::null_mut::<OPJ_BYTE>();
+    let mut cblkdata = core::ptr::null_mut::<OPJ_BYTE>();
     let mut cblkdataindex = 0 as OPJ_UINT32;
     let mut type_0 = 0 as OPJ_BYTE;
     t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
@@ -2441,7 +2441,7 @@ fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
     let mut tccp: *const opj_tccp_t = (*job).tccp;
     let resno = (*job).resno;
     let tile_w = ((*tilec).x1 - (*tilec).x0) as OPJ_UINT32;
-    let mut tiledp = std::ptr::null_mut::<OPJ_INT32>();
+    let mut tiledp = core::ptr::null_mut::<OPJ_INT32>();
     let mut cblk_w: OPJ_UINT32 = 0;
     let mut cblk_h: OPJ_UINT32 = 0;
     let mut i: OPJ_UINT32 = 0;

@@ -70,7 +70,7 @@ fn opj_aligned_alloc_n(mut alignment: size_t, mut size: size_t) -> *mut core::ff
     assert!(alignment >= core::mem::size_of::<*mut core::ffi::c_void>());
     if size == 0 {
       /* prevent implementation defined behavior of realloc */
-      return std::ptr::null_mut::<core::ffi::c_void>();
+      return core::ptr::null_mut::<core::ffi::c_void>();
     }
     let layout = Layout::from_size_align_unchecked(size, alignment);
     alloc::alloc::alloc(layout) as *mut core::ffi::c_void
@@ -84,7 +84,7 @@ fn opj_aligned_realloc_n(
   mut new_size: size_t,
 ) -> *mut core::ffi::c_void {
   unsafe {
-    let mut r_ptr = std::ptr::null_mut::<core::ffi::c_void>();
+    let mut r_ptr = core::ptr::null_mut::<core::ffi::c_void>();
     /* alignment shall be power of 2 */
 
     /* alignment shall be at least sizeof(void*) */
@@ -93,7 +93,7 @@ fn opj_aligned_realloc_n(
     if new_size == 0 {
       // TODO: doesn't this leak memory?
       /* prevent implementation defined behavior of realloc */
-      return std::ptr::null_mut::<core::ffi::c_void>();
+      return core::ptr::null_mut::<core::ffi::c_void>();
     }
 
     /* no portable aligned realloc */
@@ -128,7 +128,7 @@ pub(crate) fn opj_malloc(mut size: size_t) -> *mut core::ffi::c_void {
   unsafe {
     if size == 0 {
       /* prevent implementation defined behavior of realloc */
-      return std::ptr::null_mut::<core::ffi::c_void>();
+      return core::ptr::null_mut::<core::ffi::c_void>();
     }
     malloc(size)
   }
@@ -138,7 +138,7 @@ pub(crate) fn opj_calloc(mut num: size_t, mut size: size_t) -> *mut core::ffi::c
   unsafe {
     if num == 0 || size == 0 {
       /* prevent implementation defined behavior of realloc */
-      return std::ptr::null_mut::<core::ffi::c_void>();
+      return core::ptr::null_mut::<core::ffi::c_void>();
     }
     calloc(num, size)
   }
@@ -186,7 +186,7 @@ pub(crate) fn opj_realloc(
   unsafe {
     if new_size == 0 {
       /* prevent implementation defined behavior of realloc */
-      return std::ptr::null_mut::<core::ffi::c_void>();
+      return core::ptr::null_mut::<core::ffi::c_void>();
     }
     realloc(ptr, new_size)
   }

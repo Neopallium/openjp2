@@ -60,10 +60,10 @@ pub(crate) fn opj_tgt_create(
   unsafe {
     let mut nplh: [OPJ_INT32; 32] = [0; 32];
     let mut nplv: [OPJ_INT32; 32] = [0; 32];
-    let mut node = std::ptr::null_mut::<opj_tgt_node_t>();
-    let mut l_parent_node = std::ptr::null_mut::<opj_tgt_node_t>();
-    let mut l_parent_node0 = std::ptr::null_mut::<opj_tgt_node_t>();
-    let mut tree = std::ptr::null_mut::<opj_tgt_tree_t>();
+    let mut node = core::ptr::null_mut::<opj_tgt_node_t>();
+    let mut l_parent_node = core::ptr::null_mut::<opj_tgt_node_t>();
+    let mut l_parent_node0 = core::ptr::null_mut::<opj_tgt_node_t>();
+    let mut tree = core::ptr::null_mut::<opj_tgt_tree_t>();
     let mut i: OPJ_UINT32 = 0;
     let mut j: OPJ_INT32 = 0;
     let mut k: OPJ_INT32 = 0;
@@ -77,7 +77,7 @@ pub(crate) fn opj_tgt_create(
         EVT_ERROR,
         "Not enough memory to create Tag-tree\n",
       );
-      return std::ptr::null_mut::<opj_tgt_tree_t>();
+      return core::ptr::null_mut::<opj_tgt_tree_t>();
     }
     (*tree).numleafsh = numleafsh;
     (*tree).numleafsv = numleafsv;
@@ -98,7 +98,7 @@ pub(crate) fn opj_tgt_create(
     /* ADD */
     if (*tree).numnodes == 0u32 {
       opj_free(tree as *mut core::ffi::c_void);
-      return std::ptr::null_mut::<opj_tgt_tree_t>();
+      return core::ptr::null_mut::<opj_tgt_tree_t>();
     }
     (*tree).nodes = opj_calloc(
       (*tree).numnodes as size_t,
@@ -111,7 +111,7 @@ pub(crate) fn opj_tgt_create(
         "Not enough memory to create Tag-tree nodes\n",
       );
       opj_free(tree as *mut core::ffi::c_void);
-      return std::ptr::null_mut::<opj_tgt_tree_t>();
+      return core::ptr::null_mut::<opj_tgt_tree_t>();
     }
     (*tree).nodes_size = (*tree)
       .numnodes
@@ -151,7 +151,7 @@ pub(crate) fn opj_tgt_create(
       }
       i += 1;
     }
-    (*node).parent = std::ptr::null_mut::<opj_tgt_node>();
+    (*node).parent = core::ptr::null_mut::<opj_tgt_node>();
     opj_tgt_reset(tree);
     tree
   }
@@ -174,9 +174,9 @@ pub(crate) fn opj_tgt_init(
   unsafe {
     let mut l_nplh: [OPJ_INT32; 32] = [0; 32];
     let mut l_nplv: [OPJ_INT32; 32] = [0; 32];
-    let mut l_node = std::ptr::null_mut::<opj_tgt_node_t>();
-    let mut l_parent_node = std::ptr::null_mut::<opj_tgt_node_t>();
-    let mut l_parent_node0 = std::ptr::null_mut::<opj_tgt_node_t>();
+    let mut l_node = core::ptr::null_mut::<opj_tgt_node_t>();
+    let mut l_parent_node = core::ptr::null_mut::<opj_tgt_node_t>();
+    let mut l_parent_node0 = core::ptr::null_mut::<opj_tgt_node_t>();
     let mut i: OPJ_UINT32 = 0;
     let mut j: OPJ_INT32 = 0;
     let mut k: OPJ_INT32 = 0;
@@ -184,7 +184,7 @@ pub(crate) fn opj_tgt_init(
     let mut n: OPJ_UINT32 = 0;
     let mut l_node_size: OPJ_UINT32 = 0;
     if p_tree.is_null() {
-      return std::ptr::null_mut::<opj_tgt_tree_t>();
+      return core::ptr::null_mut::<opj_tgt_tree_t>();
     }
     if (*p_tree).numleafsh != p_num_leafs_h || (*p_tree).numleafsv != p_num_leafs_v {
       (*p_tree).numleafsh = p_num_leafs_h;
@@ -209,7 +209,7 @@ pub(crate) fn opj_tgt_init(
       /* ADD */
       if (*p_tree).numnodes == 0u32 {
         opj_tgt_destroy(p_tree);
-        return std::ptr::null_mut::<opj_tgt_tree_t>();
+        return core::ptr::null_mut::<opj_tgt_tree_t>();
       }
       l_node_size = (*p_tree)
         .numnodes
@@ -226,7 +226,7 @@ pub(crate) fn opj_tgt_init(
             "Not enough memory to reinitialize the tag tree\n",
           );
           opj_tgt_destroy(p_tree);
-          return std::ptr::null_mut::<opj_tgt_tree_t>();
+          return core::ptr::null_mut::<opj_tgt_tree_t>();
         }
         (*p_tree).nodes = new_nodes;
         memset(
@@ -272,7 +272,7 @@ pub(crate) fn opj_tgt_init(
         }
         i += 1;
       }
-      (*l_node).parent = std::ptr::null_mut::<opj_tgt_node>()
+      (*l_node).parent = core::ptr::null_mut::<opj_tgt_node>()
     }
     opj_tgt_reset(p_tree);
     p_tree
@@ -286,7 +286,7 @@ pub(crate) fn opj_tgt_destroy(mut p_tree: *mut opj_tgt_tree_t) {
     }
     if !(*p_tree).nodes.is_null() {
       opj_free((*p_tree).nodes as *mut core::ffi::c_void);
-      (*p_tree).nodes = std::ptr::null_mut::<opj_tgt_node_t>()
+      (*p_tree).nodes = core::ptr::null_mut::<opj_tgt_node_t>()
     }
     opj_free(p_tree as *mut core::ffi::c_void);
   }
@@ -295,7 +295,7 @@ pub(crate) fn opj_tgt_destroy(mut p_tree: *mut opj_tgt_tree_t) {
 pub(crate) fn opj_tgt_reset(mut p_tree: *mut opj_tgt_tree_t) {
   unsafe {
     let mut i: OPJ_UINT32 = 0;
-    let mut l_current_node = std::ptr::null_mut::<opj_tgt_node_t>();
+    let mut l_current_node = core::ptr::null_mut::<opj_tgt_node_t>();
     if p_tree.is_null() {
       return;
     }
@@ -313,7 +313,7 @@ pub(crate) fn opj_tgt_reset(mut p_tree: *mut opj_tgt_tree_t) {
 
 pub(crate) fn opj_tgt_setvalue(tree: *mut opj_tgt_tree_t, leafno: OPJ_UINT32, value: OPJ_INT32) {
   unsafe {
-    let mut node = std::ptr::null_mut::<opj_tgt_node_t>();
+    let mut node = core::ptr::null_mut::<opj_tgt_node_t>();
     node = &mut *(*tree).nodes.offset(leafno as isize) as *mut opj_tgt_node_t;
     while !node.is_null() && (*node).value > value {
       (*node).value = value;
@@ -329,9 +329,9 @@ pub(crate) fn opj_tgt_encode(
   threshold: OPJ_INT32,
 ) {
   unsafe {
-    let mut stk: [*mut opj_tgt_node_t; 31] = [std::ptr::null_mut::<opj_tgt_node_t>(); 31];
-    let mut stkptr = std::ptr::null_mut::<*mut opj_tgt_node_t>();
-    let mut node = std::ptr::null_mut::<opj_tgt_node_t>();
+    let mut stk: [*mut opj_tgt_node_t; 31] = [core::ptr::null_mut::<opj_tgt_node_t>(); 31];
+    let mut stkptr = core::ptr::null_mut::<*mut opj_tgt_node_t>();
+    let mut node = core::ptr::null_mut::<opj_tgt_node_t>();
     let mut low: OPJ_INT32 = 0;
     stkptr = stk.as_mut_ptr();
     node = &mut *(*tree).nodes.offset(leafno as isize) as *mut opj_tgt_node_t;
@@ -377,9 +377,9 @@ pub(crate) fn opj_tgt_decode(
   threshold: OPJ_INT32,
 ) -> OPJ_UINT32 {
   unsafe {
-    let mut stk: [*mut opj_tgt_node_t; 31] = [std::ptr::null_mut::<opj_tgt_node_t>(); 31];
-    let mut stkptr = std::ptr::null_mut::<*mut opj_tgt_node_t>();
-    let mut node = std::ptr::null_mut::<opj_tgt_node_t>();
+    let mut stk: [*mut opj_tgt_node_t; 31] = [core::ptr::null_mut::<opj_tgt_node_t>(); 31];
+    let mut stkptr = core::ptr::null_mut::<*mut opj_tgt_node_t>();
+    let mut node = core::ptr::null_mut::<opj_tgt_node_t>();
     let mut low: OPJ_INT32 = 0;
     stkptr = stk.as_mut_ptr();
     node = &mut *(*tree).nodes.offset(leafno as isize) as *mut opj_tgt_node_t;

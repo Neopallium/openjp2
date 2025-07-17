@@ -102,7 +102,7 @@ pub fn opj_create_decompress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t
     let l_codec = Box::new(codec);
     Box::into_raw(l_codec) as *mut opj_codec_t
   } else {
-    std::ptr::null_mut()
+    core::ptr::null_mut()
   }
 }
 
@@ -333,7 +333,7 @@ pub unsafe fn opj_create_compress(mut p_format: OPJ_CODEC_FORMAT) -> *mut opj_co
     let l_codec = Box::new(codec);
     Box::into_raw(l_codec) as *mut opj_codec_t
   } else {
-    std::ptr::null_mut()
+    core::ptr::null_mut()
   }
 }
 
@@ -510,7 +510,7 @@ pub unsafe fn opj_dump_codec(
 #[no_mangle]
 pub unsafe fn opj_get_cstr_info(mut p_codec: *mut opj_codec_t) -> *mut opj_codestream_info_v2_t {
   if p_codec.is_null() {
-    return std::ptr::null_mut::<opj_codestream_info_v2_t>();
+    return core::ptr::null_mut::<opj_codestream_info_v2_t>();
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.get_cstr_info()
@@ -527,14 +527,14 @@ pub unsafe fn opj_destroy_cstr_info(mut cstr_info: *mut *mut opj_codestream_info
       opj_free((**cstr_info).tile_info as *mut core::ffi::c_void);
     }
     opj_free(*cstr_info as *mut core::ffi::c_void);
-    *cstr_info = std::ptr::null_mut::<opj_codestream_info_v2_t>()
+    *cstr_info = core::ptr::null_mut::<opj_codestream_info_v2_t>()
   };
 }
 
 #[no_mangle]
 pub unsafe fn opj_get_cstr_index(mut p_codec: *mut opj_codec_t) -> *mut opj_codestream_index_t {
   if p_codec.is_null() {
-    return std::ptr::null_mut::<opj_codestream_index_t>();
+    return core::ptr::null_mut::<opj_codestream_index_t>();
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.get_cstr_index()
@@ -545,7 +545,7 @@ pub unsafe fn opj_destroy_cstr_index(mut p_cstr_index: *mut *mut opj_codestream_
   if !(*p_cstr_index).is_null() {
     // TODO: use drop.
     j2k_destroy_cstr_index(*p_cstr_index);
-    *p_cstr_index = std::ptr::null_mut::<opj_codestream_index_t>()
+    *p_cstr_index = core::ptr::null_mut::<opj_codestream_index_t>()
   };
 }
 
@@ -681,7 +681,7 @@ pub unsafe fn opj_stream_create_file_stream(
   mut p_is_read_stream: OPJ_BOOL,
 ) -> *mut opj_stream_t {
   if fname.is_null() {
-    return std::ptr::null_mut::<opj_stream_t>();
+    return core::ptr::null_mut::<opj_stream_t>();
   }
   match std::ffi::CStr::from_ptr(fname).to_str() {
     Ok(name) => {
@@ -694,7 +694,7 @@ pub unsafe fn opj_stream_create_file_stream(
     }
     Err(err) => {
       log::error!("Failed to convert C filename to Rust String: {err}");
-      return std::ptr::null_mut::<opj_stream_t>();
+      return core::ptr::null_mut::<opj_stream_t>();
     }
   }
 }

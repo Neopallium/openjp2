@@ -250,15 +250,15 @@ impl Drop for opj_cparameters {
   fn drop(&mut self) {
     if !self.cp_matrice.is_null() {
       opj_free(self.cp_matrice as *mut core::ffi::c_void);
-      self.cp_matrice = std::ptr::null_mut();
+      self.cp_matrice = core::ptr::null_mut();
     }
     if !self.cp_comment.is_null() {
       opj_free(self.cp_comment as *mut core::ffi::c_void);
-      self.cp_comment = std::ptr::null_mut();
+      self.cp_comment = core::ptr::null_mut();
     }
     if !self.mct_data.is_null() {
       opj_free(self.mct_data);
-      self.mct_data = std::ptr::null_mut();
+      self.mct_data = core::ptr::null_mut();
     }
   }
 }
@@ -274,8 +274,8 @@ impl Default for opj_cparameters_t {
       cp_disto_alloc: Default::default(),
       cp_fixed_alloc: Default::default(),
       cp_fixed_quality: Default::default(),
-      cp_matrice: std::ptr::null_mut(),
-      cp_comment: std::ptr::null_mut(),
+      cp_matrice: core::ptr::null_mut(),
+      cp_comment: core::ptr::null_mut(),
       csty: Default::default(),
       prog_order: OPJ_LRCP,
       POC: Default::default(),
@@ -323,7 +323,7 @@ impl Default for opj_cparameters_t {
       tp_flag: Default::default(),
       tcp_mct: Default::default(),
       jpip_on: Default::default(),
-      mct_data: std::ptr::null_mut(),
+      mct_data: core::ptr::null_mut(),
       max_cs_size: Default::default(),
       rsiz: Default::default(),
     }
@@ -342,7 +342,7 @@ impl opj_cparameters_t {
     }
     self.cp_comment = opj_malloc(len + 1) as *mut core::ffi::c_char;
     unsafe {
-      std::ptr::copy_nonoverlapping(comment.as_ptr(), self.cp_comment as *mut u8, len);
+      core::ptr::copy_nonoverlapping(comment.as_ptr(), self.cp_comment as *mut u8, len);
       *self.cp_comment.offset(len as isize) = 0;
     }
   }
