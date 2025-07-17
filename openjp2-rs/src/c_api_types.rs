@@ -181,7 +181,7 @@ pub struct opj_poc {
 pub type opj_poc_t = opj_poc;
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct opj_cparameters {
   pub tile_size_on: OPJ_BOOL,
   pub cp_tx0: core::ffi::c_int,
