@@ -1,5 +1,5 @@
 use openjp2::image::opj_image_cmptparm_t;
-use openjp2::{detect_format_from_extension, openjpeg::*, Codec, J2KFormat, Stream};
+use openjp2::{detect_format_from_extension_os_str, openjpeg::*, Codec, J2KFormat, Stream};
 use rand::prelude::*;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_void};
@@ -150,7 +150,7 @@ fn main() -> Result<(), String> {
   }
 
   // Create compression codec
-  let codec_format = detect_format_from_extension(output_ext)?;
+  let codec_format = detect_format_from_extension_os_str(output_ext)?;
   let cod_format = match codec_format {
     J2KFormat::J2K => OPJ_CODEC_J2K,
     J2KFormat::JP2 => OPJ_CODEC_JP2,

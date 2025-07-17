@@ -86,6 +86,14 @@ pub fn detect_format_from_extension(ext: Option<&str>) -> Result<J2KFormat, Stri
   }
 }
 
+#[cfg(feature = "std")]
+pub fn detect_format_from_extension_os_str(
+  ext: Option<&std::ffi::OsStr>,
+) -> Result<J2KFormat, String> {
+  let ext = ext.map(|ext| ext.to_string_lossy());
+  detect_format_from_extension(ext.as_deref())
+}
+
 #[cfg(feature = "file-io")]
 fn detect_from_file_magic<P: AsRef<std::path::Path>>(path: P) -> Result<J2KFormat, String> {
   use alloc::io::Read;
