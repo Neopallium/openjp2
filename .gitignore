@@ -16,3 +16,9 @@ scripts/opjstyle*
 
 # Ignore directories made by `make`.
 /bin/
+
+/data
+/build/
+/build_c/
+*.log
+/partial_tests
