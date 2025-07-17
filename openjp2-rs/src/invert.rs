@@ -88,7 +88,7 @@ fn opj_lupDecompose(
   let mut k2 = 0;
   let mut temp = 0.0;
   let l_last_column = nb_compo - 1;
-  let l_swap_size = nb_compo * std::mem::size_of::<f32>();
+  let l_swap_size = nb_compo * core::mem::size_of::<f32>();
   let mut l_tmp_matrix = 0;
   let mut l_column_matrix = 0;
   let mut l_dest_matrix = 0;

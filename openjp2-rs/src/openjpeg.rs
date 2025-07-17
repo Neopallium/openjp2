@@ -41,6 +41,9 @@ pub(crate) use crate::types::*;
 use crate::codec::*;
 use crate::malloc::*;
 
+#[cfg(not(feature = "std"))]
+use alloc::{boxed::Box, vec::Vec};
+
 #[cfg(feature = "file-io")]
 use ::libc::FILE;
 
@@ -291,7 +294,7 @@ pub unsafe fn opj_decode_tile_data(
   let p_data = if p_data.is_null() {
     None
   } else {
-    Some(unsafe { std::slice::from_raw_parts_mut(p_data as *mut u8, p_data_size as usize) })
+    Some(unsafe { core::slice::from_raw_parts_mut(p_data as *mut u8, p_data_size as usize) })
   };
   l_codec.decode_tile_data(p_stream, p_tile_index, p_data)
 }
@@ -479,7 +482,7 @@ pub unsafe fn opj_write_tile(
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  let p_data = unsafe { std::slice::from_raw_parts(p_data as *const u8, p_data_size as usize) };
+  let p_data = unsafe { core::slice::from_raw_parts(p_data as *const u8, p_data_size as usize) };
   l_codec.write_tile(p_tile_index, p_data, p_stream)
 }
 
@@ -683,7 +686,7 @@ pub unsafe fn opj_stream_create_file_stream(
   if fname.is_null() {
     return core::ptr::null_mut::<opj_stream_t>();
   }
-  match std::ffi::CStr::from_ptr(fname).to_str() {
+  match core::ffi::CStr::from_ptr(fname).to_str() {
     Ok(name) => {
       let l_stream = Box::new(opj_stream_private::new_file(
         name,

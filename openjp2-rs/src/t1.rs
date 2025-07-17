@@ -13,6 +13,8 @@ use core::{
   ops::{AddAssign, Deref, DerefMut, Index, IndexMut},
   ptr::null_mut,
 };
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 use super::malloc::*;
 

@@ -48,7 +48,7 @@ pub(crate) fn opj_write_bytes(
   const SIZE: usize = core::mem::size_of::<OPJ_UINT32>();
   assert!(nb > 0 && nb <= SIZE);
   let value = p_value as u32;
-  let dest = unsafe { std::slice::from_raw_parts_mut(p_buffer, nb) };
+  let dest = unsafe { core::slice::from_raw_parts_mut(p_buffer, nb) };
   let offset = SIZE - nb;
   let buf = value.to_be_bytes();
   dest.copy_from_slice(&buf[offset..]);
@@ -62,7 +62,7 @@ pub(crate) fn opj_read_bytes(
   let nb = p_nb_bytes as usize;
   const SIZE: usize = core::mem::size_of::<OPJ_UINT32>();
   assert!(nb > 0 && nb <= SIZE);
-  let (src, value) = unsafe { (std::slice::from_raw_parts(p_buffer, nb), &mut *p_value) };
+  let (src, value) = unsafe { (core::slice::from_raw_parts(p_buffer, nb), &mut *p_value) };
   let offset = SIZE - nb;
   let mut buf = [0u8; SIZE];
   buf[offset..].copy_from_slice(src);
@@ -72,14 +72,14 @@ pub(crate) fn opj_read_bytes(
 pub(crate) fn opj_write_double(mut p_buffer: *mut OPJ_BYTE, mut p_value: OPJ_FLOAT64) {
   let value = p_value as f64;
   let dest =
-    unsafe { std::slice::from_raw_parts_mut(p_buffer, core::mem::size_of::<OPJ_FLOAT64>()) };
+    unsafe { core::slice::from_raw_parts_mut(p_buffer, core::mem::size_of::<OPJ_FLOAT64>()) };
   dest.copy_from_slice(&value.to_be_bytes());
 }
 
 pub(crate) fn opj_read_double(mut p_buffer: *const OPJ_BYTE, mut p_value: *mut OPJ_FLOAT64) {
   let (src, value) = unsafe {
     (
-      std::slice::from_raw_parts(p_buffer, core::mem::size_of::<OPJ_FLOAT64>()),
+      core::slice::from_raw_parts(p_buffer, core::mem::size_of::<OPJ_FLOAT64>()),
       &mut *p_value,
     )
   };
@@ -91,14 +91,14 @@ pub(crate) fn opj_read_double(mut p_buffer: *const OPJ_BYTE, mut p_value: *mut O
 pub(crate) fn opj_write_float(p_buffer: *mut OPJ_BYTE, p_value: OPJ_FLOAT32) {
   let value = p_value as f32;
   let dest =
-    unsafe { std::slice::from_raw_parts_mut(p_buffer, core::mem::size_of::<OPJ_FLOAT32>()) };
+    unsafe { core::slice::from_raw_parts_mut(p_buffer, core::mem::size_of::<OPJ_FLOAT32>()) };
   dest.copy_from_slice(&value.to_be_bytes());
 }
 
 pub(crate) fn opj_read_float(mut p_buffer: *const OPJ_BYTE, mut p_value: *mut OPJ_FLOAT32) {
   let (src, value) = unsafe {
     (
-      std::slice::from_raw_parts(p_buffer, core::mem::size_of::<OPJ_FLOAT32>()),
+      core::slice::from_raw_parts(p_buffer, core::mem::size_of::<OPJ_FLOAT32>()),
       &mut *p_value,
     )
   };

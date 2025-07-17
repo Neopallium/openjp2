@@ -1,3 +1,6 @@
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 #[derive(Clone)]
 pub(crate) struct ProcedureList<P> {
   list: Vec<P>,

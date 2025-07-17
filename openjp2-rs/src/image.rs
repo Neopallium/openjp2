@@ -29,6 +29,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#[cfg(not(feature = "std"))]
+use alloc::boxed::Box;
+
 use super::math::*;
 use super::openjpeg::*;
 
@@ -127,7 +130,7 @@ impl opj_image_comp {
       None
     } else {
       unsafe {
-        Some(std::slice::from_raw_parts(
+        Some(core::slice::from_raw_parts(
           self.data,
           self.w as usize * self.h as usize,
         ))
@@ -140,7 +143,7 @@ impl opj_image_comp {
       None
     } else {
       unsafe {
-        Some(std::slice::from_raw_parts_mut(
+        Some(core::slice::from_raw_parts_mut(
           self.data,
           self.w as usize * self.h as usize,
         ))
@@ -292,8 +295,8 @@ pub struct opj_image {
 }
 pub type opj_image_t = opj_image;
 
-impl std::fmt::Debug for opj_image {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for opj_image {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     f.debug_struct("opj_image")
       .field("x0", &self.x0)
       .field("y0", &self.y0)
@@ -465,7 +468,7 @@ impl opj_image {
       None
     } else {
       unsafe {
-        Some(std::slice::from_raw_parts(
+        Some(core::slice::from_raw_parts(
           self.comps,
           self.numcomps as usize,
         ))
@@ -504,7 +507,7 @@ impl opj_image {
       None
     } else {
       unsafe {
-        Some(std::slice::from_raw_parts_mut(
+        Some(core::slice::from_raw_parts_mut(
           self.comps,
           self.numcomps as usize,
         ))
@@ -577,12 +580,12 @@ impl opj_image {
         // A non-Null ICC Profile buffer with a length of 0 indicates that the ICC Profile is CIELab.
         let profile = if self.icc_profile_len == 0 {
           // ICC Profile is CIELab.
-          Some(ICCProfile::new_cielab(std::slice::from_raw_parts(
+          Some(ICCProfile::new_cielab(core::slice::from_raw_parts(
             self.icc_profile_buf,
             CIE_LAB_BYTE_SIZE,
           )))
         } else {
-          Some(ICCProfile::new_icc(std::slice::from_raw_parts(
+          Some(ICCProfile::new_icc(core::slice::from_raw_parts(
             self.icc_profile_buf,
             self.icc_profile_len as usize,
           )))
@@ -601,12 +604,12 @@ impl opj_image {
         // A non-Null ICC Profile buffer with a length of 0 indicates that the ICC Profile is CIELab.
         if self.icc_profile_len == 0 {
           // ICC Profile is CIELab.
-          Some(ICCProfileRef::CIELab(std::slice::from_raw_parts(
+          Some(ICCProfileRef::CIELab(core::slice::from_raw_parts(
             self.icc_profile_buf,
             CIE_LAB_BYTE_SIZE,
           )))
         } else {
-          Some(ICCProfileRef::ICC(std::slice::from_raw_parts(
+          Some(ICCProfileRef::ICC(core::slice::from_raw_parts(
             self.icc_profile_buf,
             self.icc_profile_len as usize,
           )))
@@ -623,12 +626,12 @@ impl opj_image {
         // A non-Null ICC Profile buffer with a length of 0 indicates that the ICC Profile is CIELab.
         if self.icc_profile_len == 0 {
           // ICC Profile is CIELab.
-          Some(ICCProfileMut::CIELab(std::slice::from_raw_parts_mut(
+          Some(ICCProfileMut::CIELab(core::slice::from_raw_parts_mut(
             self.icc_profile_buf,
             CIE_LAB_BYTE_SIZE,
           )))
         } else {
-          Some(ICCProfileMut::ICC(std::slice::from_raw_parts_mut(
+          Some(ICCProfileMut::ICC(core::slice::from_raw_parts_mut(
             self.icc_profile_buf,
             self.icc_profile_len as usize,
           )))
@@ -652,7 +655,7 @@ impl opj_image {
       return None;
     }
     self.icc_profile_len = len as u32;
-    Some(unsafe { std::slice::from_raw_parts_mut(self.icc_profile_buf, len) })
+    Some(unsafe { core::slice::from_raw_parts_mut(self.icc_profile_buf, len) })
   }
 
   pub fn copy_icc_profile<'a>(&mut self, icc_profile: ICCProfileRef<'a>) -> bool {
@@ -704,7 +707,7 @@ pub fn opj_image_create(
   mut clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
   assert!(!cmptparms.is_null());
-  let cmptparms = unsafe { std::slice::from_raw_parts(cmptparms, numcmpts as usize) };
+  let cmptparms = unsafe { core::slice::from_raw_parts(cmptparms, numcmpts as usize) };
   if let Some(mut image) = opj_image::create(cmptparms, clrspc) {
     Box::into_raw(image)
   } else {
@@ -812,7 +815,7 @@ pub fn opj_image_tile_create(
   mut clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
   assert!(!cmptparms.is_null());
-  let cmptparms = unsafe { std::slice::from_raw_parts(cmptparms, numcmpts as usize) };
+  let cmptparms = unsafe { core::slice::from_raw_parts(cmptparms, numcmpts as usize) };
   if let Some(mut image) = opj_image::tile_create(cmptparms, clrspc) {
     Box::into_raw(image)
   } else {

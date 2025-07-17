@@ -39,6 +39,9 @@
 
 use std::io::{BufReader, BufWriter, Error as IoError, Read, Seek, SeekFrom, Write};
 
+#[cfg(not(feature = "std"))]
+use alloc::boxed::Box;
+
 #[cfg(feature = "file-io")]
 use std::{fs::File, path::Path};
 
@@ -494,7 +497,7 @@ pub(crate) fn opj_stream_read_data(
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_SIZE_T {
   let p_stream = unsafe { &mut *p_stream };
-  let buf = unsafe { std::slice::from_raw_parts_mut(p_buffer as *mut u8, p_size) };
+  let buf = unsafe { core::slice::from_raw_parts_mut(p_buffer as *mut u8, p_size) };
   match p_stream.read(buf) {
     Ok(nb) => nb as OPJ_SIZE_T,
     Err(err) => {
@@ -512,7 +515,7 @@ pub(crate) fn opj_stream_write_data(
 ) -> OPJ_SIZE_T {
   let p_stream = unsafe { &mut *p_stream };
   log::trace!("-- write({p_size}), offset={}", p_stream.m_byte_offset);
-  let buf = unsafe { std::slice::from_raw_parts(p_buffer as *const u8, p_size) };
+  let buf = unsafe { core::slice::from_raw_parts(p_buffer as *const u8, p_size) };
   match p_stream.write(buf) {
     Ok(nb) => nb,
     Err(err) => {

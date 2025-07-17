@@ -1,6 +1,8 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::collections::BTreeSet;
+use alloc::collections::BTreeSet;
 use std::io::{Read, Write};
+#[cfg(not(feature = "std"))]
+use alloc::{string::String, vec::Vec};
 
 use super::consts::*;
 use super::event::*;
