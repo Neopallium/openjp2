@@ -16,6 +16,9 @@ extern crate std as alloc;
 #[cfg(feature = "file-io")]
 extern crate libc;
 
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
+
 mod c_api_types;
 mod consts;
 mod types;
@@ -68,9 +71,9 @@ pub fn detect_format(buf: &[u8]) -> Result<J2KFormat, String> {
 }
 
 /// Detect Jpeg 2000 format from file extension.
-pub fn detect_format_from_extension(ext: Option<&std::ffi::OsStr>) -> Result<J2KFormat, String> {
-  let lower_ext = ext.and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase());
-  match lower_ext.as_ref().map(|s| s.as_str()) {
+pub fn detect_format_from_extension(ext: Option<&str>) -> Result<J2KFormat, String> {
+  let lower_ext = ext.map(|e| e.to_ascii_lowercase());
+  match lower_ext.as_deref() {
     Some("jp2") => Ok(J2KFormat::JP2),
     Some("jpt") => Ok(J2KFormat::JPT),
     Some("j2k") | Some("j2c") | Some("jpc") => Ok(J2KFormat::J2K),
@@ -98,8 +101,8 @@ fn detect_from_file_magic<P: AsRef<std::path::Path>>(path: P) -> Result<J2KForma
 #[cfg(feature = "file-io")]
 pub fn detect_format_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<J2KFormat, String> {
   let path = path.as_ref();
-  let ext = path.extension();
-  let ext_format = detect_format_from_extension(ext)?;
+  let ext = path.extension().map(|ext| ext.to_string_lossy());
+  let ext_format = detect_format_from_extension(ext.as_deref())?;
   if ext_format == J2KFormat::JPT {
     return Ok(J2KFormat::JPT);
   }

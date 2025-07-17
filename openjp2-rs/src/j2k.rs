@@ -7821,8 +7821,8 @@ pub(crate) fn opj_j2k_setup_encoder(
           return 0i32;
         }
         if !opj_matrix_inversion_f(
-          std::slice::from_raw_parts_mut(lTmpBuf as *mut f32, lMctLen as usize),
-          std::slice::from_raw_parts_mut(
+          core::slice::from_raw_parts_mut(lTmpBuf as *mut f32, lMctLen as usize),
+          core::slice::from_raw_parts_mut(
             (*tcp).m_mct_decoding_matrix as *mut f32,
             lMctLen as usize,
           ),
@@ -10180,7 +10180,7 @@ pub(crate) fn opj_j2k_set_decoded_components(
       );
       return 0i32;
     }
-    let mut already_mapped = std::collections::BTreeSet::new();
+    let mut already_mapped = alloc::collections::BTreeSet::new();
     for comp in compenents {
       if *comp >= (*p_j2k.m_private_image).numcomps {
         event_msg!(p_manager, EVT_ERROR, "Invalid component index: %u\n", *comp,);
@@ -10430,10 +10430,10 @@ impl opj_j2k {
     unsafe {
       Self {
         m_is_decoder,
-        m_specific_param: std::mem::zeroed(),
+        m_specific_param: core::mem::zeroed(),
         m_private_image: core::ptr::null_mut(),
         m_output_image: core::ptr::null_mut(),
-        m_cp: std::mem::zeroed(),
+        m_cp: core::mem::zeroed(),
         cstr_index: core::ptr::null_mut(),
         m_current_tile_number: 0,
         m_tcd: opj_tcd::new(m_is_decoder != 0),
@@ -12649,7 +12649,7 @@ pub(crate) fn opj_j2k_encode(
         /* 32 bit components @ 8 bit precision get converted to 8 bit */
         /* 32 bit components @ 16 bit precision get converted to 16 bit */
         let p_data =
-          std::slice::from_raw_parts_mut(l_current_data as *mut u8, l_current_tile_size as usize);
+          core::slice::from_raw_parts_mut(l_current_data as *mut u8, l_current_tile_size as usize);
         opj_j2k_get_tile_data(&mut p_j2k.m_tcd, p_data);
         /* now copy this data into the tile component */
         if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data) == 0 {
@@ -12820,8 +12820,8 @@ fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
   unsafe {
     let mut l_image = (*p_tcd).image;
     let numcomps = (*p_tcd.image).numcomps as usize;
-    let mut l_tilec = std::slice::from_raw_parts(p_tcd.tcd_image.tiles.comps, numcomps);
-    let mut l_img_comp = std::slice::from_raw_parts((*l_image).comps, numcomps);
+    let mut l_tilec = core::slice::from_raw_parts(p_tcd.tcd_image.tiles.comps, numcomps);
+    let mut l_img_comp = core::slice::from_raw_parts((*l_image).comps, numcomps);
     for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
       let mut l_size_comp: OPJ_UINT32 = 0;
       let mut l_width: OPJ_UINT32 = 0;
@@ -12849,7 +12849,7 @@ fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
       let l_width = l_width as usize;
       let l_stride = l_stride as usize;
       let l_nb_elem = l_height * l_width;
-      let mut l_src = std::slice::from_raw_parts(l_src_ptr, l_nb_elem + (l_height * l_stride));
+      let mut l_src = core::slice::from_raw_parts(l_src_ptr, l_nb_elem + (l_height * l_stride));
       match l_size_comp {
         1 => {
           let (dest, remain) = p_data.split_at_mut(l_nb_elem);

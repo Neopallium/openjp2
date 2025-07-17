@@ -31,6 +31,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 use super::c_api_types::*;
 use super::j2k::*;
 

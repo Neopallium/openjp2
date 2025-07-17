@@ -30,6 +30,8 @@
  */
 
 use crate::math::*;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 extern "C" {
   fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
