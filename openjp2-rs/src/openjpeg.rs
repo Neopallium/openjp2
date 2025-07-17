@@ -705,13 +705,13 @@ pub unsafe fn opj_stream_create_file_stream(
 #[no_mangle]
 pub unsafe fn opj_image_data_alloc(mut size: OPJ_SIZE_T) -> *mut core::ffi::c_void {
   /* printf("opj_image_data_alloc %p\n", ret); */
-  opj_aligned_malloc(size)
+  opj_malloc(size)
 }
 
 #[no_mangle]
 pub unsafe fn opj_image_data_free(mut ptr: *mut core::ffi::c_void) {
   /* printf("opj_image_data_free %p\n", ptr); */
-  opj_aligned_free(ptr);
+  opj_free(ptr);
 }
 
 /* Stub implementation */

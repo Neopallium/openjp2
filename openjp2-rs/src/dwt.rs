@@ -1,8 +1,8 @@
+use std::alloc::{alloc, dealloc, Layout};
+
 use super::math::*;
 use super::openjpeg::*;
 use super::sparse_array::*;
-
-use super::malloc::*;
 
 extern "C" {
   fn floor(_: core::ffi::c_double) -> core::ffi::c_double;
@@ -1212,7 +1212,8 @@ fn opj_dwt_encode_procedure(
       return 0i32;
     }
     l_data_size *= NB_ELTS_V8 as usize * core::mem::size_of::<OPJ_INT32>();
-    bj = opj_aligned_32_malloc(l_data_size) as *mut OPJ_INT32;
+    let layout = Layout::from_size_align_unchecked(l_data_size, 32);
+    bj = alloc(layout) as *mut OPJ_INT32;
     /* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
     /* in that case, so do not error out */
     if l_data_size != 0 && bj.is_null() {
@@ -1272,7 +1273,7 @@ fn opj_dwt_encode_procedure(
       l_cur_res = l_last_res;
       l_last_res = l_last_res.offset(-1)
     }
-    opj_aligned_free(bj as *mut core::ffi::c_void);
+    dealloc(bj as _, layout);
     1i32
   }
 }
@@ -1512,7 +1513,8 @@ fn opj_dwt_decode_tile(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT3
     /* since for the vertical pass */
     /* we process PARALLEL_COLS_53 columns at a time */
     h_mem_size *= PARALLEL_COLS_53 * core::mem::size_of::<OPJ_INT32>();
-    h.mem = opj_aligned_32_malloc(h_mem_size) as *mut OPJ_INT32;
+    let layout = Layout::from_size_align_unchecked(h_mem_size, 32);
+    h.mem = alloc(layout) as *mut OPJ_INT32;
     if h.mem.is_null() {
       /* FIXME event manager error callback */
       return 0i32;
@@ -1561,7 +1563,7 @@ fn opj_dwt_decode_tile(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT3
         );
       }
     }
-    opj_aligned_free(h.mem as *mut core::ffi::c_void);
+    dealloc(h.mem as _, layout);
     1i32
   }
 }
@@ -1888,7 +1890,8 @@ fn opj_dwt_decode_partial_tile(
       return 0i32;
     }
     h_mem_size *= 4 * core::mem::size_of::<OPJ_INT32>();
-    h.mem = opj_aligned_32_malloc(h_mem_size) as *mut OPJ_INT32;
+    let layout = Layout::from_size_align_unchecked(h_mem_size, 32);
+    h.mem = alloc(layout) as *mut OPJ_INT32;
     if h.mem.is_null() {
       /* FIXME event manager error callback */
       return 0i32;
@@ -2106,7 +2109,7 @@ fn opj_dwt_decode_partial_tile(
             true,
           ) {
             /* FIXME event manager error callback */
-            opj_aligned_free(h.mem as *mut core::ffi::c_void);
+            dealloc(h.mem as _, layout);
             return 0i32;
           }
         }
@@ -2145,14 +2148,14 @@ fn opj_dwt_decode_partial_tile(
           true,
         ) {
           /* FIXME event manager error callback */
-          opj_aligned_free(h.mem as *mut core::ffi::c_void);
+          dealloc(h.mem as _, layout);
           return 0i32;
         }
         i = (i as core::ffi::c_uint).wrapping_add(nb_cols) as OPJ_UINT32
       }
       resno += 1;
     }
-    opj_aligned_free(h.mem as *mut core::ffi::c_void);
+    dealloc(h.mem as _, layout);
     let mut ret_0 = sparse_array_read(
       &sa,
       (*tr_max).win_x0.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
@@ -2585,8 +2588,11 @@ fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UI
       /* FIXME event manager error callback */
       return 0i32;
     }
-    h.wavelet = opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()))
-      as *mut opj_v8_t;
+    let layout = Layout::from_size_align_unchecked(
+      l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()),
+      16,
+    );
+    h.wavelet = alloc(layout) as *mut opj_v8_t;
     if h.wavelet.is_null() {
       /* FIXME event manager error callback */
       return 0i32;
@@ -2700,7 +2706,7 @@ fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UI
         }
       }
     }
-    opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
+    dealloc(h.wavelet as _, layout);
     1i32
   }
 }
@@ -2777,8 +2783,11 @@ fn opj_dwt_decode_partial_97(
       /* FIXME event manager error callback */
       return 0i32;
     }
-    h.wavelet = opj_aligned_malloc(l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()))
-      as *mut opj_v8_t;
+    let layout = Layout::from_size_align_unchecked(
+      l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()),
+      16,
+    );
+    h.wavelet = alloc(layout) as *mut opj_v8_t;
     if h.wavelet.is_null() {
       /* FIXME event manager error callback */
       return 0i32;
@@ -2976,7 +2985,7 @@ fn opj_dwt_decode_partial_97(
             true,
           ) {
             /* FIXME event manager error callback */
-            opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
+            dealloc(h.wavelet as _, layout);
             return 0i32;
           }
         }
@@ -3004,7 +3013,7 @@ fn opj_dwt_decode_partial_97(
           true,
         ) {
           /* FIXME event manager error callback */
-          opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
+          dealloc(h.wavelet as _, layout);
           return 0i32;
         }
       }
@@ -3032,7 +3041,7 @@ fn opj_dwt_decode_partial_97(
           true,
         ) {
           /* FIXME event manager error callback */
-          opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
+          dealloc(h.wavelet as _, layout);
           return 0i32;
         }
         j += NB_ELTS_V8;
@@ -3051,7 +3060,7 @@ fn opj_dwt_decode_partial_97(
       true,
     );
     assert!(ret_0);
-    opj_aligned_free(h.wavelet as *mut core::ffi::c_void);
+    dealloc(h.wavelet as _, layout);
     1i32
   }
 }
