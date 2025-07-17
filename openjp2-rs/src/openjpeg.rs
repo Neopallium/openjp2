@@ -344,11 +344,7 @@ pub unsafe fn opj_set_default_encoder_parameters(mut parameters: *mut opj_cparam
     return;
   }
   unsafe {
-    libc::memset(
-      parameters as *mut core::ffi::c_void,
-      0,
-      core::mem::size_of::<opj_cparameters_t>(),
-    );
+    parameters.write_bytes(0, 1);
   }
   let parameters = &mut *parameters;
   parameters.set_defaults();
