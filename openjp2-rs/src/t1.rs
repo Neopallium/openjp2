@@ -10,11 +10,13 @@ use super::tcd::*;
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
+
 use core::{
   cell::RefCell,
   ops::{AddAssign, Deref, DerefMut, Index, IndexMut},
   ptr::null_mut,
 };
+use std::alloc::{alloc, dealloc, Layout};
 
 use super::malloc::*;
 
@@ -1857,11 +1859,12 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
     if (*job).whole_tile_decoding == 0 {
       cblk_w = ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32;
       cblk_h = ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32;
-      (*cblk).decoded_data = opj_aligned_malloc(
-        core::mem::size_of::<OPJ_INT32>()
-          .wrapping_mul(cblk_w as usize)
-          .wrapping_mul(cblk_h as usize),
-      ) as *mut OPJ_INT32;
+      let layout = Layout::from_size_align_unchecked(
+        core::mem::size_of::<OPJ_INT32>() * cblk_w as usize * cblk_h as usize,
+        16,
+      );
+      (*cblk).decoded_data = alloc(layout) as *mut OPJ_INT32;
+      (*cblk).decoded_data_layout = layout;
       if (*cblk).decoded_data.is_null() {
         event_msg!(
           (*job).p_manager,
@@ -1883,7 +1886,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
     } else if !(*cblk).decoded_data.is_null() {
       /* Not sure if that code path can happen, but better be */
       /* safe than sorry */
-      opj_aligned_free((*cblk).decoded_data as *mut core::ffi::c_void);
+      dealloc((*cblk).decoded_data as _, (*cblk).decoded_data_layout);
       (*cblk).decoded_data = core::ptr::null_mut::<OPJ_INT32>()
     }
     resno = (*job).resno;
@@ -2140,7 +2143,7 @@ pub(crate) fn opj_t1_decode_cblks(
               let mut cblk: *mut opj_tcd_cblk_dec_t =
                 &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
               if !(*cblk).decoded_data.is_null() {
-                opj_aligned_free((*cblk).decoded_data as *mut core::ffi::c_void);
+                dealloc((*cblk).decoded_data as _, (*cblk).decoded_data_layout);
                 (*cblk).decoded_data = core::ptr::null_mut::<OPJ_INT32>()
               }
               cblkno += 1;
@@ -2164,7 +2167,7 @@ pub(crate) fn opj_t1_decode_cblks(
               ) == 0
               {
                 if !(*cblk_0).decoded_data.is_null() {
-                  opj_aligned_free((*cblk_0).decoded_data as *mut core::ffi::c_void);
+                  dealloc((*cblk_0).decoded_data as _, (*cblk_0).decoded_data_layout);
                   (*cblk_0).decoded_data = core::ptr::null_mut::<OPJ_INT32>()
                 }
               } else {

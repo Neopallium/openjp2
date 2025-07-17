@@ -31,6 +31,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+use core::alloc::Layout;
+
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
@@ -825,6 +827,7 @@ pub(crate) struct opj_tcd_cblk_dec {
   pub numchunks: OPJ_UINT32,
   pub numchunksalloc: OPJ_UINT32,
   pub decoded_data: *mut OPJ_INT32,
+  pub decoded_data_layout: Layout,
 }
 pub(crate) type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
 

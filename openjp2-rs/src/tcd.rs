@@ -11,6 +11,8 @@ use super::tgt::*;
 
 use super::malloc::*;
 
+use std::alloc::dealloc;
+
 extern "C" {
   fn pow(_: core::ffi::c_double, _: core::ffi::c_double) -> core::ffi::c_double;
 
@@ -1427,7 +1429,10 @@ fn opj_tcd_code_block_dec_allocate(mut p_code_block: *mut opj_tcd_cblk_dec_t) ->
       let mut l_chunks = (*p_code_block).chunks;
       let mut l_numchunksalloc = (*p_code_block).numchunksalloc;
       let mut i: OPJ_UINT32 = 0;
-      opj_aligned_free((*p_code_block).decoded_data as *mut core::ffi::c_void);
+      dealloc(
+        (*p_code_block).decoded_data as _,
+        (*p_code_block).decoded_data_layout,
+      );
       (*p_code_block).decoded_data = core::ptr::null_mut::<OPJ_INT32>();
       memset(
         p_code_block as *mut core::ffi::c_void,
@@ -2502,7 +2507,10 @@ fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
           opj_free((*l_code_block).chunks as *mut core::ffi::c_void);
           (*l_code_block).chunks = core::ptr::null_mut::<opj_tcd_seg_data_chunk_t>()
         }
-        opj_aligned_free((*l_code_block).decoded_data as *mut core::ffi::c_void);
+        dealloc(
+          (*l_code_block).decoded_data as _,
+          (*l_code_block).decoded_data_layout,
+        );
         (*l_code_block).decoded_data = core::ptr::null_mut::<OPJ_INT32>();
         l_code_block = l_code_block.offset(1);
         cblkno += 1;
