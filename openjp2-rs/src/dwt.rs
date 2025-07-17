@@ -1191,12 +1191,12 @@ fn opj_dwt_encode_procedure(
 ) -> OPJ_BOOL {
   unsafe {
     let mut i: OPJ_INT32 = 0;
-    let mut bj = std::ptr::null_mut::<OPJ_INT32>();
+    let mut bj = core::ptr::null_mut::<OPJ_INT32>();
     let mut w: OPJ_UINT32 = 0;
     let mut l: OPJ_INT32 = 0;
     let mut l_data_size: OPJ_SIZE_T = 0;
-    let mut l_cur_res = std::ptr::null_mut::<opj_tcd_resolution_t>();
-    let mut l_last_res = std::ptr::null_mut::<opj_tcd_resolution_t>();
+    let mut l_cur_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
+    let mut l_last_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
     let mut tiledp = (*tilec).data;
     w = ((*tilec).x1 - (*tilec).x0) as OPJ_UINT32;
     l = (*tilec).numresolutions as OPJ_INT32 - 1i32;
@@ -1473,13 +1473,13 @@ fn opj_dwt_max_resolution(mut r: *mut opj_tcd_resolution_t, mut i: OPJ_UINT32) -
 fn opj_dwt_decode_tile(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32) -> OPJ_BOOL {
   unsafe {
     let mut h = opj_dwt_t {
-      mem: std::ptr::null_mut::<OPJ_INT32>(),
+      mem: core::ptr::null_mut::<OPJ_INT32>(),
       dn: 0,
       sn: 0,
       cas: 0,
     }; /* width of the resolution level computed */
     let mut v = opj_dwt_t {
-      mem: std::ptr::null_mut::<OPJ_INT32>(),
+      mem: core::ptr::null_mut::<OPJ_INT32>(),
       dn: 0,
       sn: 0,
       cas: 0,
@@ -1828,13 +1828,13 @@ fn opj_dwt_decode_partial_tile(
 ) -> OPJ_BOOL {
   unsafe {
     let mut h = opj_dwt_t {
-      mem: std::ptr::null_mut::<OPJ_INT32>(),
+      mem: core::ptr::null_mut::<OPJ_INT32>(),
       dn: 0,
       sn: 0,
       cas: 0,
     };
     let mut v = opj_dwt_t {
-      mem: std::ptr::null_mut::<OPJ_INT32>(),
+      mem: core::ptr::null_mut::<OPJ_INT32>(),
       dn: 0,
       sn: 0,
       cas: 0,
@@ -1951,9 +1951,9 @@ fn opj_dwt_decode_partial_tile(
         win_tcx1,
         win_tcy1,
         &mut win_hl_x0,
-        std::ptr::null_mut::<OPJ_UINT32>(),
+        core::ptr::null_mut::<OPJ_UINT32>(),
         &mut win_hl_x1,
-        std::ptr::null_mut::<OPJ_UINT32>(),
+        core::ptr::null_mut::<OPJ_UINT32>(),
       );
       /* LH band */
       opj_dwt_get_band_coordinates(
@@ -1964,9 +1964,9 @@ fn opj_dwt_decode_partial_tile(
         win_tcy0,
         win_tcx1,
         win_tcy1,
-        std::ptr::null_mut::<OPJ_UINT32>(),
+        core::ptr::null_mut::<OPJ_UINT32>(),
         &mut win_lh_y0,
-        std::ptr::null_mut::<OPJ_UINT32>(),
+        core::ptr::null_mut::<OPJ_UINT32>(),
         &mut win_lh_y1,
       );
       /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
@@ -2545,7 +2545,7 @@ fn opj_v8dwt_decode(mut dwt: &opj_v8dwt_t) {
 fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32) -> OPJ_BOOL {
   unsafe {
     let mut h = opj_v8dwt_t {
-      wavelet: std::ptr::null_mut::<opj_v8_t>(),
+      wavelet: core::ptr::null_mut::<opj_v8_t>(),
       dn: 0,
       sn: 0,
       cas: 0,
@@ -2555,7 +2555,7 @@ fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UI
       win_h_x1: 0,
     }; /* width of the resolution level computed */
     let mut v = opj_v8dwt_t {
-      wavelet: std::ptr::null_mut::<opj_v8_t>(),
+      wavelet: core::ptr::null_mut::<opj_v8_t>(),
       dn: 0,
       sn: 0,
       cas: 0,
@@ -2710,7 +2710,7 @@ fn opj_dwt_decode_partial_97(
 ) -> OPJ_BOOL {
   unsafe {
     let mut h = opj_v8dwt_t {
-      wavelet: std::ptr::null_mut::<opj_v8_t>(),
+      wavelet: core::ptr::null_mut::<opj_v8_t>(),
       dn: 0,
       sn: 0,
       cas: 0,
@@ -2720,7 +2720,7 @@ fn opj_dwt_decode_partial_97(
       win_h_x1: 0,
     };
     let mut v = opj_v8dwt_t {
-      wavelet: std::ptr::null_mut::<opj_v8_t>(),
+      wavelet: core::ptr::null_mut::<opj_v8_t>(),
       dn: 0,
       sn: 0,
       cas: 0,
@@ -2840,9 +2840,9 @@ fn opj_dwt_decode_partial_97(
         win_tcx1,
         win_tcy1,
         &mut win_hl_x0,
-        std::ptr::null_mut::<OPJ_UINT32>(),
+        core::ptr::null_mut::<OPJ_UINT32>(),
         &mut win_hl_x1,
-        std::ptr::null_mut::<OPJ_UINT32>(),
+        core::ptr::null_mut::<OPJ_UINT32>(),
       );
       /* LH band */
       opj_dwt_get_band_coordinates(
@@ -2853,9 +2853,9 @@ fn opj_dwt_decode_partial_97(
         win_tcy0,
         win_tcx1,
         win_tcy1,
-        std::ptr::null_mut::<OPJ_UINT32>(),
+        core::ptr::null_mut::<OPJ_UINT32>(),
         &mut win_lh_y0,
-        std::ptr::null_mut::<OPJ_UINT32>(),
+        core::ptr::null_mut::<OPJ_UINT32>(),
         &mut win_lh_y1,
       );
       /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */

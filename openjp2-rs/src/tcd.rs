@@ -523,7 +523,7 @@ fn opj_tcd_rateallocate(
                 p_data_written,
                 maxlen,
                 cstr_info,
-                std::ptr::null_mut::<opj_tcd_marker_info_t>(),
+                core::ptr::null_mut::<opj_tcd_marker_info_t>(),
                 (*tcd).cur_tp_num,
                 (*tcd).tp_pos,
                 (*tcd).cur_pino,
@@ -580,7 +580,7 @@ fn opj_tcd_rateallocate(
                   p_data_written,
                   maxlen,
                   cstr_info,
-                  std::ptr::null_mut::<opj_tcd_marker_info_t>(),
+                  core::ptr::null_mut::<opj_tcd_marker_info_t>(),
                   tcd.cur_tp_num,
                   tcd.tp_pos,
                   tcd.cur_pino,
@@ -738,16 +738,16 @@ pub(crate) fn opj_tcd_init_tile(
     let mut bandno: OPJ_UINT32 = 0;
     let mut precno: OPJ_UINT32 = 0;
     let mut cblkno: OPJ_UINT32 = 0;
-    let mut l_tcp = std::ptr::null_mut::<opj_tcp_t>();
-    let mut l_cp = std::ptr::null_mut::<opj_cp_t>();
-    let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
-    let mut l_tilec = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
-    let mut l_image_comp = std::ptr::null_mut::<opj_image_comp_t>();
-    let mut l_res = std::ptr::null_mut::<opj_tcd_resolution_t>();
-    let mut l_band = std::ptr::null_mut::<opj_tcd_band_t>();
-    let mut l_step_size = std::ptr::null_mut::<opj_stepsize_t>();
-    let mut l_current_precinct = std::ptr::null_mut::<opj_tcd_precinct_t>();
-    let mut l_image = std::ptr::null_mut::<opj_image_t>();
+    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
+    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
+    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
+    let mut l_tilec = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
+    let mut l_image_comp = core::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
+    let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
+    let mut l_step_size = core::ptr::null_mut::<opj_stepsize_t>();
+    let mut l_current_precinct = core::ptr::null_mut::<opj_tcd_precinct_t>();
+    let mut l_image = core::ptr::null_mut::<opj_image_t>();
     let mut p: OPJ_UINT32 = 0;
     let mut q: OPJ_UINT32 = 0;
     let mut l_level_no: OPJ_UINT32 = 0;
@@ -860,7 +860,7 @@ pub(crate) fn opj_tcd_init_tile(
         .numresolutions
         .wrapping_mul(core::mem::size_of::<opj_tcd_resolution_t>() as OPJ_UINT32);
       opj_image_data_free((*l_tilec).data_win as *mut core::ffi::c_void);
-      (*l_tilec).data_win = std::ptr::null_mut::<OPJ_INT32>();
+      (*l_tilec).data_win = core::ptr::null_mut::<OPJ_INT32>();
       (*l_tilec).win_x0 = 0 as OPJ_UINT32;
       (*l_tilec).win_y0 = 0 as OPJ_UINT32;
       (*l_tilec).win_x1 = 0 as OPJ_UINT32;
@@ -889,7 +889,7 @@ pub(crate) fn opj_tcd_init_tile(
             "Not enough memory for tile resolutions\n",
           );
           opj_free((*l_tilec).resolutions as *mut core::ffi::c_void);
-          (*l_tilec).resolutions = std::ptr::null_mut::<opj_tcd_resolution_t>();
+          (*l_tilec).resolutions = core::ptr::null_mut::<opj_tcd_resolution_t>();
           (*l_tilec).resolutions_size = 0 as OPJ_UINT32;
           return 0i32;
         }
@@ -1099,7 +1099,7 @@ pub(crate) fn opj_tcd_init_tile(
                     "Not enough memory to handle band precints\n",
                   );
                   opj_free((*l_band).precincts as *mut core::ffi::c_void);
-                  (*l_band).precincts = std::ptr::null_mut::<opj_tcd_precinct_t>();
+                  (*l_band).precincts = core::ptr::null_mut::<opj_tcd_precinct_t>();
                   (*l_band).precincts_data_size = 0 as OPJ_UINT32;
                   return 0i32;
                 }
@@ -1190,7 +1190,7 @@ pub(crate) fn opj_tcd_init_tile(
                   );
                   if new_blocks.is_null() {
                     opj_free((*l_current_precinct).cblks.blocks);
-                    (*l_current_precinct).cblks.blocks = std::ptr::null_mut::<core::ffi::c_void>();
+                    (*l_current_precinct).cblks.blocks = core::ptr::null_mut::<core::ffi::c_void>();
                     (*l_current_precinct).block_size = 0 as OPJ_UINT32;
                     event_msg!(
                       manager,
@@ -1428,7 +1428,7 @@ fn opj_tcd_code_block_dec_allocate(mut p_code_block: *mut opj_tcd_cblk_dec_t) ->
       let mut l_numchunksalloc = (*p_code_block).numchunksalloc;
       let mut i: OPJ_UINT32 = 0;
       opj_aligned_free((*p_code_block).decoded_data as *mut core::ffi::c_void);
-      (*p_code_block).decoded_data = std::ptr::null_mut::<OPJ_INT32>();
+      (*p_code_block).decoded_data = core::ptr::null_mut::<OPJ_INT32>();
       memset(
         p_code_block as *mut core::ffi::c_void,
         0i32,
@@ -1455,9 +1455,9 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
   unsafe {
     let mut i: OPJ_UINT32 = 0;
     let mut l_data_size = 0 as OPJ_UINT32;
-    let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
-    let mut l_tile_comp = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
-    let mut l_res = std::ptr::null_mut::<opj_tcd_resolution_t>();
+    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_tile_comp = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
+    let mut l_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
     let mut l_size_comp: OPJ_UINT32 = 0;
     let mut l_remaining: OPJ_UINT32 = 0;
     let mut l_temp: OPJ_UINT32 = 0;
@@ -1653,7 +1653,7 @@ pub(crate) fn opj_tcd_decode_tile(
     p_tcd.win_y1 = win_y1;
     p_tcd.whole_tile_decoding = 1i32;
     opj_free(p_tcd.used_component as *mut core::ffi::c_void);
-    p_tcd.used_component = std::ptr::null_mut::<OPJ_BOOL>();
+    p_tcd.used_component = core::ptr::null_mut::<OPJ_BOOL>();
     if numcomps_to_decode != 0 {
       let mut used_component = opj_calloc(
         core::mem::size_of::<OPJ_BOOL>(),
@@ -1839,7 +1839,7 @@ pub(crate) fn opj_tcd_decode_tile(
         let mut h = (*res_0).win_y1.wrapping_sub((*res_0).win_y0) as OPJ_SIZE_T;
         let mut l_data_size_0: OPJ_SIZE_T = 0;
         opj_image_data_free((*tilec_1).data_win as *mut core::ffi::c_void);
-        (*tilec_1).data_win = std::ptr::null_mut::<OPJ_INT32>();
+        (*tilec_1).data_win = core::ptr::null_mut::<OPJ_INT32>();
         if !(!p_tcd.used_component.is_null() && *p_tcd.used_component.offset(compno as isize) == 0)
           && w > 0
           && h > 0
@@ -2030,10 +2030,10 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
     let mut resno: OPJ_UINT32 = 0;
     let mut bandno: OPJ_UINT32 = 0;
     let mut precno: OPJ_UINT32 = 0;
-    let mut l_tile_comp = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
-    let mut l_res = std::ptr::null_mut::<opj_tcd_resolution_t>();
-    let mut l_band = std::ptr::null_mut::<opj_tcd_band_t>();
-    let mut l_precinct = std::ptr::null_mut::<opj_tcd_precinct_t>();
+    let mut l_tile_comp = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
+    let mut l_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
+    let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
+    let mut l_precinct = core::ptr::null_mut::<opj_tcd_precinct_t>();
     let mut l_nb_resolutions: OPJ_UINT32 = 0;
     let mut l_nb_precincts: OPJ_UINT32 = 0;
     let l_tcd_code_block_deallocate = if p_tcd.m_is_decoder {
@@ -2062,15 +2062,15 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
               precno = 0 as OPJ_UINT32;
               while precno < l_nb_precincts {
                 opj_tgt_destroy((*l_precinct).incltree);
-                (*l_precinct).incltree = std::ptr::null_mut::<opj_tgt_tree_t>();
+                (*l_precinct).incltree = core::ptr::null_mut::<opj_tgt_tree_t>();
                 opj_tgt_destroy((*l_precinct).imsbtree);
-                (*l_precinct).imsbtree = std::ptr::null_mut::<opj_tgt_tree_t>();
+                (*l_precinct).imsbtree = core::ptr::null_mut::<opj_tgt_tree_t>();
                 l_tcd_code_block_deallocate(l_precinct);
                 l_precinct = l_precinct.offset(1);
                 precno += 1;
               }
               opj_free((*l_band).precincts as *mut core::ffi::c_void);
-              (*l_band).precincts = std::ptr::null_mut::<opj_tcd_precinct_t>()
+              (*l_band).precincts = core::ptr::null_mut::<opj_tcd_precinct_t>()
             }
             l_band = l_band.offset(1);
             bandno += 1;
@@ -2079,11 +2079,11 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
           resno += 1;
         }
         opj_free((*l_tile_comp).resolutions as *mut core::ffi::c_void);
-        (*l_tile_comp).resolutions = std::ptr::null_mut::<opj_tcd_resolution_t>()
+        (*l_tile_comp).resolutions = core::ptr::null_mut::<opj_tcd_resolution_t>()
       }
       if (*l_tile_comp).ownsData != 0 && !(*l_tile_comp).data.is_null() {
         opj_image_data_free((*l_tile_comp).data as *mut core::ffi::c_void);
-        (*l_tile_comp).data = std::ptr::null_mut::<OPJ_INT32>();
+        (*l_tile_comp).data = core::ptr::null_mut::<OPJ_INT32>();
         (*l_tile_comp).ownsData = 0i32;
         (*l_tile_comp).data_size = 0i32 as size_t;
         (*l_tile_comp).data_size_needed = 0i32 as size_t
@@ -2093,7 +2093,7 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
       compno += 1;
     }
     opj_free(p_tcd.tcd_image.tiles.comps as *mut core::ffi::c_void);
-    p_tcd.tcd_image.tiles.comps = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
+    p_tcd.tcd_image.tiles.comps = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
   }
 }
 
@@ -2105,7 +2105,7 @@ fn opj_tcd_t2_decode(
   mut p_cstr_index: *mut opj_codestream_index_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let mut l_t2 = std::ptr::null_mut::<opj_t2_t>();
+  let mut l_t2 = core::ptr::null_mut::<opj_t2_t>();
   l_t2 = opj_t2_create(p_tcd.image, p_tcd.cp);
   if l_t2.is_null() {
     return 0i32;
@@ -2288,7 +2288,7 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
     }
     if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
       if (*l_tcp).mct == 2u32 {
-        let mut l_data = std::ptr::null_mut::<*mut OPJ_BYTE>();
+        let mut l_data = core::ptr::null_mut::<*mut OPJ_BYTE>();
         if (*l_tcp).m_mct_decoding_matrix.is_null() {
           return 1i32;
         }
@@ -2368,15 +2368,15 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
 fn opj_tcd_dc_level_shift_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   unsafe {
     let mut compno: OPJ_UINT32 = 0;
-    let mut l_tile_comp = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
-    let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
-    let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
-    let mut l_res = std::ptr::null_mut::<opj_tcd_resolution_t>();
+    let mut l_tile_comp = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
+    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
+    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
     let mut l_width: OPJ_UINT32 = 0;
     let mut l_height: OPJ_UINT32 = 0;
     let mut i: OPJ_UINT32 = 0;
     let mut j: OPJ_UINT32 = 0;
-    let mut l_current_ptr = std::ptr::null_mut::<OPJ_INT32>();
+    let mut l_current_ptr = core::ptr::null_mut::<OPJ_INT32>();
     let mut l_min: OPJ_INT32 = 0;
     let mut l_max: OPJ_INT32 = 0;
     let mut l_stride: OPJ_UINT32 = 0;
@@ -2496,19 +2496,19 @@ fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
       while cblkno < l_nb_code_blocks {
         if !(*l_code_block).segs.is_null() {
           opj_free((*l_code_block).segs as *mut core::ffi::c_void);
-          (*l_code_block).segs = std::ptr::null_mut::<opj_tcd_seg_t>()
+          (*l_code_block).segs = core::ptr::null_mut::<opj_tcd_seg_t>()
         }
         if !(*l_code_block).chunks.is_null() {
           opj_free((*l_code_block).chunks as *mut core::ffi::c_void);
-          (*l_code_block).chunks = std::ptr::null_mut::<opj_tcd_seg_data_chunk_t>()
+          (*l_code_block).chunks = core::ptr::null_mut::<opj_tcd_seg_data_chunk_t>()
         }
         opj_aligned_free((*l_code_block).decoded_data as *mut core::ffi::c_void);
-        (*l_code_block).decoded_data = std::ptr::null_mut::<OPJ_INT32>();
+        (*l_code_block).decoded_data = core::ptr::null_mut::<OPJ_INT32>();
         l_code_block = l_code_block.offset(1);
         cblkno += 1;
       }
       opj_free((*p_precinct).cblks.dec as *mut core::ffi::c_void);
-      (*p_precinct).cblks.dec = std::ptr::null_mut::<opj_tcd_cblk_dec_t>()
+      (*p_precinct).cblks.dec = core::ptr::null_mut::<opj_tcd_cblk_dec_t>()
     };
   }
 }
@@ -2531,21 +2531,21 @@ fn opj_tcd_code_block_enc_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
           /* We refer to data - 1 since below we incremented it */
           /* in opj_tcd_code_block_enc_allocate_data() */
           opj_free((*l_code_block).data.offset(-1) as *mut core::ffi::c_void); /*(/ 8)*/
-          (*l_code_block).data = std::ptr::null_mut::<OPJ_BYTE>()
+          (*l_code_block).data = core::ptr::null_mut::<OPJ_BYTE>()
         } /* (%8) */
         if !(*l_code_block).layers.is_null() {
           opj_free((*l_code_block).layers as *mut core::ffi::c_void);
-          (*l_code_block).layers = std::ptr::null_mut::<opj_tcd_layer_t>()
+          (*l_code_block).layers = core::ptr::null_mut::<opj_tcd_layer_t>()
         }
         if !(*l_code_block).passes.is_null() {
           opj_free((*l_code_block).passes as *mut core::ffi::c_void);
-          (*l_code_block).passes = std::ptr::null_mut::<opj_tcd_pass_t>()
+          (*l_code_block).passes = core::ptr::null_mut::<opj_tcd_pass_t>()
         }
         l_code_block = l_code_block.offset(1);
         cblkno += 1;
       }
       opj_free((*p_precinct).cblks.enc as *mut core::ffi::c_void);
-      (*p_precinct).cblks.enc = std::ptr::null_mut::<opj_tcd_cblk_enc_t>()
+      (*p_precinct).cblks.enc = core::ptr::null_mut::<opj_tcd_cblk_enc_t>()
     };
   }
 }
@@ -2582,12 +2582,12 @@ pub(crate) fn opj_tcd_get_encoder_input_buffer_size(mut p_tcd: &mut opj_tcd) -> 
 fn opj_tcd_dc_level_shift_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   unsafe {
     let mut compno: OPJ_UINT32 = 0;
-    let mut l_tile_comp = std::ptr::null_mut::<opj_tcd_tilecomp_t>();
-    let mut l_tccp = std::ptr::null_mut::<opj_tccp_t>();
-    let mut l_img_comp = std::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_tile_comp = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
+    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
+    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
     let mut l_nb_elem: OPJ_SIZE_T = 0;
     let mut i: OPJ_SIZE_T = 0;
-    let mut l_current_ptr = std::ptr::null_mut::<OPJ_INT32>();
+    let mut l_current_ptr = core::ptr::null_mut::<OPJ_INT32>();
     l_tile_comp = p_tcd.tcd_image.tiles.comps;
     l_tccp = (*p_tcd.tcp).tccps;
     l_img_comp = (*p_tcd.image).comps;
@@ -2626,7 +2626,7 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     let mut samples = (((*l_tile_comp).x1 - (*l_tile_comp).x0) as OPJ_SIZE_T)
       .wrapping_mul(((*l_tile_comp).y1 - (*l_tile_comp).y0) as OPJ_SIZE_T);
     let mut i: OPJ_UINT32 = 0;
-    let mut l_data = std::ptr::null_mut::<*mut OPJ_BYTE>();
+    let mut l_data = core::ptr::null_mut::<*mut OPJ_BYTE>();
     let mut l_tcp = p_tcd.tcp;
     if (*p_tcd.tcp).mct == 0 {
       return 1i32;
@@ -2702,7 +2702,7 @@ fn opj_tcd_dwt_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
 }
 fn opj_tcd_t1_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   unsafe {
-    let mut l_mct_norms = std::ptr::null::<OPJ_FLOAT64>();
+    let mut l_mct_norms = core::ptr::null::<OPJ_FLOAT64>();
     let mut l_mct_numcomps = 0u32;
     let mut l_tcp = p_tcd.tcp;
     if (*l_tcp).mct == 1u32 {
@@ -2735,7 +2735,7 @@ fn opj_tcd_t2_encode(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut l_t2 = std::ptr::null_mut::<opj_t2_t>();
+    let mut l_t2 = core::ptr::null_mut::<opj_t2_t>();
     l_t2 = opj_t2_create(p_tcd.image, p_tcd.cp);
     if l_t2.is_null() {
       return 0i32;
@@ -3052,7 +3052,7 @@ pub(crate) fn opj_tcd_marker_info_create(mut need_PLT: OPJ_BOOL) -> *mut opj_tcd
       core::mem::size_of::<opj_tcd_marker_info_t>(),
     ) as *mut opj_tcd_marker_info_t;
     if l_tcd_marker_info.is_null() {
-      return std::ptr::null_mut::<opj_tcd_marker_info_t>();
+      return core::ptr::null_mut::<opj_tcd_marker_info_t>();
     }
     (*l_tcd_marker_info).need_PLT = need_PLT;
     l_tcd_marker_info

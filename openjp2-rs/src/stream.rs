@@ -314,7 +314,7 @@ impl Stream {
 
   pub fn new_custom(buffer_size: usize, is_input: bool) -> Self {
     let custom = CustomStream {
-      m_user_data: std::ptr::null_mut(),
+      m_user_data: core::ptr::null_mut(),
       m_free_user_data_fn: None,
       m_read_fn: None,
       m_write_fn: None,

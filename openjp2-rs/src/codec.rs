@@ -232,7 +232,7 @@ impl Codec {
         None
       }
       CodecType::Decoder(dec) => {
-        let mut image: *mut opj_image_t = std::ptr::null_mut();
+        let mut image: *mut opj_image_t = core::ptr::null_mut();
         let res = match dec {
           CodecFormat::J2K(dec) => {
             opj_j2k_read_header(p_stream, dec, &mut image, &mut self.m_event_mgr)
