@@ -2,10 +2,6 @@ use super::openjpeg::*;
 
 use super::malloc::*;
 
-extern "C" {
-  fn sqrt(_: core::ffi::c_double) -> core::ffi::c_double;
-}
-
 #[inline]
 fn opj_int_fix_mul(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
   let mut temp = a as OPJ_INT64 * b as OPJ_INT64;
@@ -332,7 +328,7 @@ pub(crate) fn opj_calculate_norms(
         *fresh7 += lCurrentValue as OPJ_FLOAT64 * lCurrentValue as core::ffi::c_double;
         j += 1;
       }
-      *lNorms.offset(i as isize) = sqrt(*lNorms.offset(i as isize));
+      *lNorms.offset(i as isize) = (*lNorms.offset(i as isize)).sqrt();
       i += 1;
     }
   }

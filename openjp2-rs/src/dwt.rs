@@ -5,10 +5,6 @@ use super::math::*;
 use super::openjpeg::*;
 use super::sparse_array::*;
 
-extern "C" {
-  fn floor(_: core::ffi::c_double) -> core::ffi::c_double;
-}
-
 /* Where void* is a OPJ_INT32* for 5x3 and OPJ_FLOAT32* for 9x7 */
 pub type opj_encode_and_deinterleave_h_one_row_fnptr_type = Option<
   unsafe extern "C" fn(
@@ -1427,7 +1423,7 @@ pub(crate) fn opj_dwt_calc_explicit_stepsizes(mut tccp: *mut opj_tccp_t, mut pre
         stepsize = ((1i32) << gain) as core::ffi::c_double / norm
       }
       opj_dwt_encode_stepsize(
-        floor(stepsize * 8192.0f64) as OPJ_INT32,
+        (stepsize * 8192.0f64).floor() as OPJ_INT32,
         prec.wrapping_add(gain) as OPJ_INT32,
         &mut *(*tccp).stepsizes.as_mut_ptr().offset(bandno as isize),
       );
