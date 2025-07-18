@@ -207,9 +207,8 @@ pub(crate) fn opj_mct_encode_custom(
     let mut lData = pData as *mut *mut OPJ_INT32;
     let mut lMultiplicator = ((1i32) << 13i32) as OPJ_UINT32;
     let mut lMctPtr = core::ptr::null_mut::<OPJ_INT32>();
-    lCurrentData = opj_malloc(
-      (pNbComp.wrapping_add(lNbMatCoeff) as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
-    ) as *mut OPJ_INT32;
+    let data_count = pNbComp.wrapping_add(lNbMatCoeff) as usize;
+    lCurrentData = opj_alloc_type_array(data_count) as *mut OPJ_INT32;
     if lCurrentData.is_null() {
       return 0i32;
     }
@@ -245,7 +244,7 @@ pub(crate) fn opj_mct_encode_custom(
       }
       i += 1;
     }
-    opj_free(lCurrentData as *mut core::ffi::c_void);
+    opj_free_type_array(lCurrentData, data_count);
     1i32
   }
 }
@@ -265,9 +264,8 @@ pub(crate) fn opj_mct_decode_custom(
     let mut lCurrentData = core::ptr::null_mut::<OPJ_FLOAT32>();
     let mut lCurrentResult = core::ptr::null_mut::<OPJ_FLOAT32>();
     let mut lData = pData as *mut *mut OPJ_FLOAT32;
-    lCurrentData = opj_malloc(
-      ((2u32).wrapping_mul(pNbComp) as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
-    ) as *mut OPJ_FLOAT32;
+    let data_count = 2u32.wrapping_mul(pNbComp) as usize;
+    lCurrentData = opj_alloc_type_array(data_count) as *mut OPJ_FLOAT32;
     if lCurrentData.is_null() {
       return 0i32;
     }
@@ -299,7 +297,7 @@ pub(crate) fn opj_mct_decode_custom(
       }
       i += 1;
     }
-    opj_free(lCurrentData as *mut core::ffi::c_void);
+    opj_free_type_array(lCurrentData, data_count);
     1i32
   }
 }

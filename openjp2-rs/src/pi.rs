@@ -1972,25 +1972,21 @@ pub(crate) fn opj_pi_create_decode(
     l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
     l_bound = (*l_tcp).numpocs.wrapping_add(1u32);
     l_data_stride = (4i32 * 33i32) as OPJ_UINT32;
-    l_tmp_data = opj_malloc(
-      (l_data_stride.wrapping_mul(numcomps) as usize)
-        .wrapping_mul(core::mem::size_of::<OPJ_UINT32>()),
-    ) as *mut OPJ_UINT32;
+    let l_tmp_data_count = l_data_stride.wrapping_mul(numcomps) as usize;
+    l_tmp_data = opj_alloc_type_array(l_tmp_data_count);
     if l_tmp_data.is_null() {
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
-    l_tmp_ptr =
-      opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>()))
-        as *mut *mut OPJ_UINT32;
+    l_tmp_ptr = opj_alloc_type_array(numcomps as usize);
     if l_tmp_ptr.is_null() {
-      opj_free(l_tmp_data as *mut core::ffi::c_void);
+      opj_free_type_array(l_tmp_data, l_tmp_data_count);
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
     /* memory allocation for pi */
     l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
     if l_pi.is_null() {
-      opj_free(l_tmp_data as *mut core::ffi::c_void);
-      opj_free(l_tmp_ptr as *mut core::ffi::c_void);
+      opj_free_type_array(l_tmp_data, l_tmp_data_count);
+      opj_free_type_array(l_tmp_ptr, numcomps as usize);
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
     l_encoding_value_ptr = l_tmp_data;
@@ -2041,8 +2037,8 @@ pub(crate) fn opj_pi_create_decode(
       ) as *mut OPJ_INT16
     }
     if (*l_current_pi).include.is_null() {
-      opj_free(l_tmp_data as *mut core::ffi::c_void);
-      opj_free(l_tmp_ptr as *mut core::ffi::c_void);
+      opj_free_type_array(l_tmp_data, l_tmp_data_count);
+      opj_free_type_array(l_tmp_ptr, numcomps as usize);
       opj_pi_destroy(l_pi, l_bound);
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
@@ -2142,9 +2138,9 @@ pub(crate) fn opj_pi_create_decode(
       l_current_pi = l_current_pi.offset(1);
       pino += 1;
     }
-    opj_free(l_tmp_data as *mut core::ffi::c_void);
+    opj_free_type_array(l_tmp_data, l_tmp_data_count);
     l_tmp_data = core::ptr::null_mut::<OPJ_UINT32>();
-    opj_free(l_tmp_ptr as *mut core::ffi::c_void);
+    opj_free_type_array(l_tmp_ptr, numcomps as usize);
     l_tmp_ptr = core::ptr::null_mut::<*mut OPJ_UINT32>();
     if (*l_tcp).POC {
       opj_pi_update_decode_poc(l_pi, l_tcp, l_max_prec, l_max_res);
@@ -2245,25 +2241,21 @@ pub(crate) fn opj_pi_initialise_encode(
     l_tcp = &mut *(*p_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
     l_bound = (*l_tcp).numpocs.wrapping_add(1u32);
     l_data_stride = (4i32 * 33i32) as OPJ_UINT32;
-    l_tmp_data = opj_malloc(
-      (l_data_stride.wrapping_mul(numcomps) as usize)
-        .wrapping_mul(core::mem::size_of::<OPJ_UINT32>()),
-    ) as *mut OPJ_UINT32;
+    let l_tmp_data_count = l_data_stride.wrapping_mul(numcomps) as usize;
+    l_tmp_data = opj_alloc_type_array(l_tmp_data_count);
     if l_tmp_data.is_null() {
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
-    l_tmp_ptr =
-      opj_malloc((numcomps as usize).wrapping_mul(core::mem::size_of::<*mut OPJ_UINT32>()))
-        as *mut *mut OPJ_UINT32;
+    l_tmp_ptr = opj_alloc_type_array(numcomps as usize);
     if l_tmp_ptr.is_null() {
-      opj_free(l_tmp_data as *mut core::ffi::c_void);
+      opj_free_type_array(l_tmp_data, l_tmp_data_count);
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
     /* memory allocation for pi*/
     l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
     if l_pi.is_null() {
-      opj_free(l_tmp_data as *mut core::ffi::c_void);
-      opj_free(l_tmp_ptr as *mut core::ffi::c_void);
+      opj_free_type_array(l_tmp_data, l_tmp_data_count);
+      opj_free_type_array(l_tmp_ptr, numcomps as usize);
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
     l_encoding_value_ptr = l_tmp_data;
@@ -2305,8 +2297,8 @@ pub(crate) fn opj_pi_initialise_encode(
       core::mem::size_of::<OPJ_INT16>(),
     ) as *mut OPJ_INT16;
     if (*l_current_pi).include.is_null() {
-      opj_free(l_tmp_data as *mut core::ffi::c_void);
-      opj_free(l_tmp_ptr as *mut core::ffi::c_void);
+      opj_free_type_array(l_tmp_data, l_tmp_data_count);
+      opj_free_type_array(l_tmp_ptr, numcomps as usize);
       opj_pi_destroy(l_pi, l_bound);
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
@@ -2406,9 +2398,9 @@ pub(crate) fn opj_pi_initialise_encode(
       l_current_pi = l_current_pi.offset(1);
       pino += 1;
     }
-    opj_free(l_tmp_data as *mut core::ffi::c_void);
+    opj_free_type_array(l_tmp_data, l_tmp_data_count);
     l_tmp_data = core::ptr::null_mut::<OPJ_UINT32>();
-    opj_free(l_tmp_ptr as *mut core::ffi::c_void);
+    opj_free_type_array(l_tmp_ptr, numcomps as usize);
     l_tmp_ptr = core::ptr::null_mut::<*mut OPJ_UINT32>();
     if (*l_tcp).POC
       && ((*p_cp).rsiz as core::ffi::c_int >= 0x3i32 && (*p_cp).rsiz as core::ffi::c_int <= 0x6i32

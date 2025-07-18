@@ -118,13 +118,11 @@ fn opj_bio_getbit(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
 
 pub(crate) fn opj_bio_create() -> *mut opj_bio_t {
   /* && (n <= 32U)*/
-  opj_malloc(core::mem::size_of::<opj_bio_t>()) as *mut opj_bio_t
+  opj_alloc_type() as *mut opj_bio_t
 }
 
 pub(crate) fn opj_bio_destroy(mut bio: *mut opj_bio_t) {
-  if !bio.is_null() {
-    opj_free(bio as *mut core::ffi::c_void);
-  };
+  opj_free_type(bio);
 }
 
 pub(crate) fn opj_bio_numbytes(mut bio: *mut opj_bio_t) -> isize {
