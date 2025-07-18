@@ -207,10 +207,9 @@ pub(crate) fn opj_tgt_init(
         .numnodes
         .wrapping_mul(core::mem::size_of::<opj_tgt_node_t>() as OPJ_UINT32);
       if l_node_size > (*p_tree).nodes_size {
-        let mut new_nodes = opj_realloc(
-          (*p_tree).nodes as *mut core::ffi::c_void,
-          l_node_size as size_t,
-        ) as *mut opj_tgt_node_t;
+        let old_num_nodes = (*p_tree).nodes_size as usize / core::mem::size_of::<opj_tgt_node_t>();
+        let mut new_nodes =
+          opj_realloc_type_array((*p_tree).nodes, old_num_nodes, (*p_tree).numnodes as usize);
         if new_nodes.is_null() {
           event_msg!(
             p_manager,
@@ -277,7 +276,8 @@ pub(crate) fn opj_tgt_destroy(mut p_tree: *mut opj_tgt_tree_t) {
       return;
     }
     if !(*p_tree).nodes.is_null() {
-      opj_free_type_array((*p_tree).nodes, (*p_tree).numnodes as usize);
+      let num_nodes = (*p_tree).nodes_size as usize / core::mem::size_of::<opj_tgt_node_t>();
+      opj_free_type_array((*p_tree).nodes, num_nodes);
       (*p_tree).nodes = core::ptr::null_mut::<opj_tgt_node_t>()
     }
     opj_free_type(p_tree);

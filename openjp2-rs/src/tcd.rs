@@ -1403,8 +1403,7 @@ pub(crate) fn opj_tcd_reinit_segment(mut seg: *mut opj_tcd_seg_t) {
 fn opj_tcd_code_block_dec_allocate(mut p_code_block: *mut opj_tcd_cblk_dec_t) -> OPJ_BOOL {
   unsafe {
     if (*p_code_block).segs.is_null() {
-      (*p_code_block).segs =
-        opj_calloc(10i32 as size_t, core::mem::size_of::<opj_tcd_seg_t>()) as *mut opj_tcd_seg_t;
+      (*p_code_block).segs = opj_calloc_type_array(10i32 as size_t);
       if (*p_code_block).segs.is_null() {
         return 0i32;
       }
@@ -2489,11 +2488,17 @@ fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
       cblkno = 0 as OPJ_UINT32;
       while cblkno < l_nb_code_blocks {
         if !(*l_code_block).segs.is_null() {
-          opj_free((*l_code_block).segs as *mut core::ffi::c_void);
+          opj_free_type_array(
+            (*l_code_block).segs,
+            (*l_code_block).m_current_max_segs as usize,
+          );
           (*l_code_block).segs = core::ptr::null_mut::<opj_tcd_seg_t>()
         }
         if !(*l_code_block).chunks.is_null() {
-          opj_free((*l_code_block).chunks as *mut core::ffi::c_void);
+          opj_free_type_array(
+            (*l_code_block).chunks,
+            (*l_code_block).numchunksalloc as usize,
+          );
           (*l_code_block).chunks = core::ptr::null_mut::<opj_tcd_seg_data_chunk_t>()
         }
         dealloc(

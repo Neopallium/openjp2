@@ -1494,11 +1494,11 @@ fn opj_t2_read_packet_data(
                     .numchunksalloc
                     .wrapping_mul(2u32)
                     .wrapping_add(1u32);
-                  let mut l_chunks = opj_realloc(
-                    (*l_cblk).chunks as *mut core::ffi::c_void,
-                    (l_numchunksalloc as usize)
-                      .wrapping_mul(core::mem::size_of::<opj_tcd_seg_data_chunk_t>()),
-                  ) as *mut opj_tcd_seg_data_chunk_t;
+                  let mut l_chunks: *mut opj_tcd_seg_data_chunk = opj_realloc_type_array(
+                    (*l_cblk).chunks,
+                    (*l_cblk).numchunksalloc as usize,
+                    l_numchunksalloc as usize,
+                  );
                   if l_chunks.is_null() {
                     event_msg!(
                       p_manager,
@@ -1674,10 +1674,11 @@ fn opj_t2_init_seg(
     if l_nb_segs > (*cblk).m_current_max_segs {
       let mut new_segs = core::ptr::null_mut::<opj_tcd_seg_t>();
       let mut l_m_current_max_segs = (*cblk).m_current_max_segs.wrapping_add(10u32);
-      new_segs = opj_realloc(
-        (*cblk).segs as *mut core::ffi::c_void,
-        (l_m_current_max_segs as usize).wrapping_mul(core::mem::size_of::<opj_tcd_seg_t>()),
-      ) as *mut opj_tcd_seg_t;
+      new_segs = opj_realloc_type_array(
+        (*cblk).segs,
+        (*cblk).m_current_max_segs as usize,
+        l_m_current_max_segs as usize,
+      );
       if new_segs.is_null() {
         /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to initialize segment %d\n", l_nb_segs); */
         return 0i32;
