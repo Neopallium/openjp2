@@ -463,7 +463,7 @@ pub(crate) struct opj_tcd {
   pub win_x1: OPJ_UINT32,
   pub win_y1: OPJ_UINT32,
   pub whole_tile_decoding: OPJ_BOOL,
-  pub used_component: *mut OPJ_BOOL,
+  pub used_component: Vec<bool>,
 }
 
 impl Default for opj_tcd {
@@ -485,7 +485,7 @@ impl Default for opj_tcd {
       win_x1: Default::default(),
       win_y1: Default::default(),
       whole_tile_decoding: Default::default(),
-      used_component: core::ptr::null_mut(),
+      used_component: Vec::new(),
     }
   }
 }
