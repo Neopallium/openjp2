@@ -1540,10 +1540,7 @@ pub(crate) fn opj_pi_create(
     tcp = &mut *(*cp).tcps.offset(tileno as isize) as *mut opj_tcp_t;
     l_poc_bound = (*tcp).numpocs.wrapping_add(1u32);
     /* memory allocations*/
-    l_pi = opj_calloc(
-      l_poc_bound as size_t,
-      core::mem::size_of::<opj_pi_iterator_t>(),
-    ) as *mut opj_pi_iterator_t;
+    l_pi = opj_calloc_type_array(l_poc_bound as size_t);
     if l_pi.is_null() {
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
@@ -1551,10 +1548,7 @@ pub(crate) fn opj_pi_create(
     pino = 0 as OPJ_UINT32;
     while pino < l_poc_bound {
       (*l_current_pi).manager = *manager;
-      (*l_current_pi).comps = opj_calloc(
-        (*image).numcomps as size_t,
-        core::mem::size_of::<opj_pi_comp_t>(),
-      ) as *mut opj_pi_comp_t;
+      (*l_current_pi).comps = opj_calloc_type_array((*image).numcomps as size_t);
       if (*l_current_pi).comps.is_null() {
         opj_pi_destroy(l_pi, l_poc_bound);
         return core::ptr::null_mut::<opj_pi_iterator_t>();
@@ -1565,10 +1559,7 @@ pub(crate) fn opj_pi_create(
         let mut comp: *mut opj_pi_comp_t =
           &mut *(*l_current_pi).comps.offset(compno as isize) as *mut opj_pi_comp_t;
         tccp = &mut *(*tcp).tccps.offset(compno as isize) as *mut opj_tccp_t;
-        (*comp).resolutions = opj_calloc(
-          (*tccp).numresolutions as size_t,
-          core::mem::size_of::<opj_pi_resolution_t>(),
-        ) as *mut opj_pi_resolution_t;
+        (*comp).resolutions = opj_calloc_type_array((*tccp).numresolutions as size_t);
         if (*comp).resolutions.is_null() {
           opj_pi_destroy(l_pi, l_poc_bound);
           return core::ptr::null_mut::<opj_pi_iterator_t>();
@@ -2031,10 +2022,7 @@ pub(crate) fn opj_pi_create_decode(
         .wrapping_div((*l_tcp).numlayers.wrapping_add(1u32))
     {
       (*l_current_pi).include_size = (*l_tcp).numlayers.wrapping_add(1u32).wrapping_mul(l_step_l);
-      (*l_current_pi).include = opj_calloc(
-        (*l_current_pi).include_size as size_t,
-        core::mem::size_of::<OPJ_INT16>(),
-      ) as *mut OPJ_INT16
+      (*l_current_pi).include = opj_calloc_type_array((*l_current_pi).include_size as size_t);
     }
     if (*l_current_pi).include.is_null() {
       opj_free_type_array(l_tmp_data, l_tmp_data_count);
@@ -2292,10 +2280,7 @@ pub(crate) fn opj_pi_initialise_encode(
     l_current_pi = l_pi;
     /* memory allocation for include*/
     (*l_current_pi).include_size = (*l_tcp).numlayers.wrapping_mul(l_step_l);
-    (*l_current_pi).include = opj_calloc(
-      (*l_current_pi).include_size as size_t,
-      core::mem::size_of::<OPJ_INT16>(),
-    ) as *mut OPJ_INT16;
+    (*l_current_pi).include = opj_calloc_type_array((*l_current_pi).include_size as size_t);
     if (*l_current_pi).include.is_null() {
       opj_free_type_array(l_tmp_data, l_tmp_data_count);
       opj_free_type_array(l_tmp_ptr, numcomps as usize);
@@ -2725,7 +2710,7 @@ pub(crate) fn opj_pi_destroy(mut p_pi: *mut opj_pi_iterator_t, mut p_nb_elements
     let mut l_current_pi = p_pi;
     if !p_pi.is_null() {
       if !(*p_pi).include.is_null() {
-        opj_free((*p_pi).include as *mut core::ffi::c_void);
+        opj_free_type_array((*p_pi).include, (*p_pi).include_size as usize);
         (*p_pi).include = core::ptr::null_mut::<OPJ_INT16>()
       }
       pino = 0 as OPJ_UINT32;
@@ -2735,19 +2720,22 @@ pub(crate) fn opj_pi_destroy(mut p_pi: *mut opj_pi_iterator_t, mut p_nb_elements
           compno = 0 as OPJ_UINT32;
           while compno < (*l_current_pi).numcomps {
             if !(*l_current_component).resolutions.is_null() {
-              opj_free((*l_current_component).resolutions as *mut core::ffi::c_void);
+              opj_free_type_array(
+                (*l_current_component).resolutions,
+                (*l_current_component).numresolutions as usize,
+              );
               (*l_current_component).resolutions = core::ptr::null_mut::<opj_pi_resolution_t>()
             }
             l_current_component = l_current_component.offset(1);
             compno += 1;
           }
-          opj_free((*l_current_pi).comps as *mut core::ffi::c_void);
+          opj_free_type_array((*l_current_pi).comps, (*l_current_pi).numcomps as usize);
           (*l_current_pi).comps = core::ptr::null_mut::<opj_pi_comp_t>()
         }
         l_current_pi = l_current_pi.offset(1);
         pino += 1;
       }
-      opj_free(p_pi as *mut core::ffi::c_void);
+      opj_free_type_array(p_pi, p_nb_elements as usize);
     };
   }
 }

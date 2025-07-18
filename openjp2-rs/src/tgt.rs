@@ -65,8 +65,7 @@ pub(crate) fn opj_tgt_create(
     let mut k: OPJ_INT32 = 0;
     let mut numlvls: OPJ_UINT32 = 0;
     let mut n: OPJ_UINT32 = 0;
-    tree =
-      opj_calloc(1i32 as size_t, core::mem::size_of::<opj_tgt_tree_t>()) as *mut opj_tgt_tree_t;
+    tree = opj_calloc_type();
     if tree.is_null() {
       event_msg!(
         p_manager,
@@ -93,20 +92,17 @@ pub(crate) fn opj_tgt_create(
     }
     /* ADD */
     if (*tree).numnodes == 0u32 {
-      opj_free(tree as *mut core::ffi::c_void);
+      opj_free_type(tree);
       return core::ptr::null_mut::<opj_tgt_tree_t>();
     }
-    (*tree).nodes = opj_calloc(
-      (*tree).numnodes as size_t,
-      core::mem::size_of::<opj_tgt_node_t>(),
-    ) as *mut opj_tgt_node_t;
+    (*tree).nodes = opj_calloc_type_array((*tree).numnodes as size_t);
     if (*tree).nodes.is_null() {
       event_msg!(
         p_manager,
         EVT_ERROR,
         "Not enough memory to create Tag-tree nodes\n",
       );
-      opj_free(tree as *mut core::ffi::c_void);
+      opj_free_type(tree);
       return core::ptr::null_mut::<opj_tgt_tree_t>();
     }
     (*tree).nodes_size = (*tree)
@@ -281,10 +277,10 @@ pub(crate) fn opj_tgt_destroy(mut p_tree: *mut opj_tgt_tree_t) {
       return;
     }
     if !(*p_tree).nodes.is_null() {
-      opj_free((*p_tree).nodes as *mut core::ffi::c_void);
+      opj_free_type_array((*p_tree).nodes, (*p_tree).numnodes as usize);
       (*p_tree).nodes = core::ptr::null_mut::<opj_tgt_node_t>()
     }
-    opj_free(p_tree as *mut core::ffi::c_void);
+    opj_free_type(p_tree);
   }
 }
 

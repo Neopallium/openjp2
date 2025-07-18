@@ -550,7 +550,7 @@ impl opj_image {
             opj_image_data_free(comp.data as *mut core::ffi::c_void);
           }
         }
-        opj_free(self.comps as *mut core::ffi::c_void);
+        opj_free_type_array(self.comps, self.numcomps as usize);
         self.comps = core::ptr::null_mut();
         self.numcomps = 0;
       }
@@ -560,8 +560,7 @@ impl opj_image {
   pub fn alloc_comps(&mut self, numcomps: u32) -> bool {
     self.clear_comps();
     self.numcomps = numcomps;
-    self.comps = opj_calloc(numcomps as size_t, core::mem::size_of::<opj_image_comp_t>())
-      as *mut opj_image_comp_t;
+    self.comps = opj_calloc_type_array(numcomps as usize);
     if self.comps.is_null() {
       return false;
     }
@@ -642,14 +641,14 @@ impl opj_image {
 
   pub fn clear_icc_profile(&mut self) {
     if !self.icc_profile_buf.is_null() {
-      opj_free(self.icc_profile_buf as *mut core::ffi::c_void);
+      opj_free_type_array(self.icc_profile_buf, self.icc_profile_len as usize);
       self.icc_profile_buf = core::ptr::null_mut();
       self.icc_profile_len = 0;
     }
   }
 
   fn alloc_icc_profile(&mut self, len: usize) -> Option<&mut [u8]> {
-    self.icc_profile_buf = opj_malloc(len as size_t) as *mut OPJ_BYTE;
+    self.icc_profile_buf = opj_alloc_type_array(len as usize);
     if self.icc_profile_buf.is_null() {
       self.icc_profile_len = 0 as OPJ_UINT32;
       return None;

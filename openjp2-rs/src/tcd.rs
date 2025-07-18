@@ -3044,10 +3044,7 @@ fn opj_tcd_is_whole_tilecomp_decoding(mut p_tcd: &mut opj_tcd, mut compno: OPJ_U
 
 pub(crate) fn opj_tcd_marker_info_create(mut need_PLT: OPJ_BOOL) -> *mut opj_tcd_marker_info_t {
   unsafe {
-    let mut l_tcd_marker_info = opj_calloc(
-      1i32 as size_t,
-      core::mem::size_of::<opj_tcd_marker_info_t>(),
-    ) as *mut opj_tcd_marker_info_t;
+    let mut l_tcd_marker_info: *mut opj_tcd_marker_info_t = opj_calloc_type();
     if l_tcd_marker_info.is_null() {
       return core::ptr::null_mut::<opj_tcd_marker_info_t>();
     }
@@ -3060,8 +3057,11 @@ pub(crate) fn opj_tcd_marker_info_create(mut need_PLT: OPJ_BOOL) -> *mut opj_tcd
 pub(crate) fn opj_tcd_marker_info_destroy(mut p_tcd_marker_info: *mut opj_tcd_marker_info_t) {
   unsafe {
     if !p_tcd_marker_info.is_null() {
-      opj_free((*p_tcd_marker_info).p_packet_size as *mut core::ffi::c_void);
-      opj_free(p_tcd_marker_info as *mut core::ffi::c_void);
+      opj_free_type_array(
+        (*p_tcd_marker_info).p_packet_size,
+        (*p_tcd_marker_info).packet_count as usize,
+      );
+      opj_free_type(p_tcd_marker_info);
     };
   }
 }
