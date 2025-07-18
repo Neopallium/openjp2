@@ -123,8 +123,13 @@ pub(crate) fn opj_realloc_type_array<T>(mut ptr: *mut T, old_num: usize, mut num
     /* prevent implementation defined behavior of realloc */
     return core::ptr::null_mut::<T>();
   }
-  let layout = Layout::array::<T>(old_num).expect("Failed to create layout for array");
-  unsafe { alloc::alloc::realloc(ptr as *mut u8, layout, num) as *mut T }
+  if old_num != 0 {
+    let layout = Layout::array::<T>(old_num).expect("Failed to create layout for array");
+    unsafe { alloc::alloc::realloc(ptr as *mut u8, layout, num) as *mut T }
+  } else {
+    let layout = Layout::array::<T>(num).expect("Failed to create layout for array");
+    unsafe { alloc(layout) as *mut T }
+  }
 }
 
 pub(crate) fn opj_free(mut ptr: *mut core::ffi::c_void) {

@@ -1862,7 +1862,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
           "Cannot allocate cblk->decoded_data\n",
         );
         core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free(job as *mut core::ffi::c_void);
+        opj_free_type(job);
         return;
       }
       /* Zero-init required */
@@ -1892,7 +1892,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
         .offset((*tilec).minimum_num_resolutions.wrapping_sub(1) as isize))
       .x0) as OPJ_UINT32;
     if *(*job).pret == 0 {
-      opj_free(job as *mut core::ffi::c_void);
+      opj_free_type(job);
       return;
     }
 
@@ -1915,7 +1915,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
           )
         {
           core::ptr::write_volatile((*job).pret, 0i32);
-          opj_free(job as *mut core::ffi::c_void);
+          opj_free_type(job);
           return;
         }
       } else if 0i32
@@ -1930,7 +1930,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
         )
       {
         core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free(job as *mut core::ffi::c_void);
+        opj_free_type(job);
         return;
       }
       x = (*cblk).x0 - (*band).x0;
@@ -2087,7 +2087,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
           j += 1
         }
       }
-      opj_free(job as *mut core::ffi::c_void);
+      opj_free_type(job);
     })
   }
 }
@@ -2177,10 +2177,7 @@ pub(crate) fn opj_t1_decode_cblks(
                 match current_block_34 {
                   2370887241019905314 => {}
                   _ => {
-                    job = opj_calloc(
-                      1i32 as size_t,
-                      core::mem::size_of::<opj_t1_cblk_decode_processing_job_t>(),
-                    ) as *mut opj_t1_cblk_decode_processing_job_t;
+                    job = opj_calloc_type();
                     if job.is_null() {
                       core::ptr::write_volatile(pret, 0i32);
                       return;
@@ -2444,7 +2441,7 @@ fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
     let mut x = (*cblk).x0 - (*band).x0;
     let mut y = (*cblk).y0 - (*band).y0;
     if *(*job).pret == 0 {
-      opj_free(job as *mut core::ffi::c_void);
+      opj_free_type(job);
       return;
     }
 
@@ -2472,7 +2469,7 @@ fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
       ) == 0
       {
         core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free(job as *mut core::ffi::c_void);
+        opj_free_type(job);
         return;
       }
       cblk_w = t1.w;
@@ -2594,7 +2591,7 @@ fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
         (*job).mct_numcomps,
       );
       (*(*job).tile).distotile += cumwmsedec;
-      opj_free(job as *mut core::ffi::c_void);
+      opj_free_type(job);
     })
   }
 }
@@ -2639,10 +2636,7 @@ pub(crate) fn opj_t1_encode_cblks(
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
                   &mut *(*prc).cblks.enc.offset(cblkno as isize) as *mut opj_tcd_cblk_enc_t;
-                let mut job = opj_calloc(
-                  1i32 as size_t,
-                  core::mem::size_of::<opj_t1_cblk_encode_processing_job_t>(),
-                ) as *mut opj_t1_cblk_encode_processing_job_t;
+                let mut job: *mut opj_t1_cblk_encode_processing_job_t = opj_calloc_type();
                 if job.is_null() {
                   core::ptr::write_volatile(&mut ret as *mut OPJ_BOOL, 0i32);
                   break 's_19;

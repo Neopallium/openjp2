@@ -222,10 +222,8 @@ pub(crate) fn opj_t2_encode_packets(
 
         assert!((*p_marker_info).packet_count == 0u32);
         assert!((*p_marker_info).p_packet_size.is_null());
-        (*p_marker_info).p_packet_size = opj_malloc(
-          (opj_get_encoding_packet_count(l_image, l_cp, p_tile_no) as usize)
-            .wrapping_mul(core::mem::size_of::<OPJ_UINT32>()),
-        ) as *mut OPJ_UINT32;
+        (*p_marker_info).p_packet_size =
+          opj_alloc_type_array(opj_get_encoding_packet_count(l_image, l_cp, p_tile_no) as usize);
         if (*p_marker_info).p_packet_size.is_null() {
           opj_pi_destroy(l_pi, l_nb_pocs);
           return 0i32;
@@ -342,9 +340,7 @@ pub(crate) fn opj_t2_decode_packets(
         opj_pi_destroy(l_pi, l_nb_pocs);
         return 0i32;
       }
-      first_pass_failed =
-        opj_malloc(((*l_image).numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_BOOL>()))
-          as *mut OPJ_BOOL;
+      first_pass_failed = opj_alloc_type_array((*l_image).numcomps as usize);
       if first_pass_failed.is_null() {
         opj_pi_destroy(l_pi, l_nb_pocs);
         return 0i32;
@@ -436,7 +432,7 @@ pub(crate) fn opj_t2_decode_packets(
           ) == 0
           {
             opj_pi_destroy(l_pi, l_nb_pocs);
-            opj_free(first_pass_failed as *mut core::ffi::c_void);
+            opj_free_type_array(first_pass_failed, (*l_image).numcomps as usize);
             return 0i32;
           }
           l_img_comp =
@@ -458,7 +454,7 @@ pub(crate) fn opj_t2_decode_packets(
           ) == 0
           {
             opj_pi_destroy(l_pi, l_nb_pocs);
-            opj_free(first_pass_failed as *mut core::ffi::c_void);
+            opj_free_type_array(first_pass_failed, (*l_image).numcomps as usize);
             return 0i32;
           }
         }
@@ -479,7 +475,7 @@ pub(crate) fn opj_t2_decode_packets(
         p_max_len = (p_max_len as core::ffi::c_uint).wrapping_sub(l_nb_bytes_read) as OPJ_UINT32
       }
       l_current_pi = l_current_pi.offset(1);
-      opj_free(first_pass_failed as *mut core::ffi::c_void);
+      opj_free_type_array(first_pass_failed, (*l_image).numcomps as usize);
       pino += 1;
     }
     /* INDEX >> */
@@ -505,7 +501,7 @@ pub(crate) fn opj_t2_create(
 ) -> *mut opj_t2_t {
   unsafe {
     /* create the t2 structure */
-    let mut l_t2 = opj_calloc(1i32 as size_t, core::mem::size_of::<opj_t2_t>()) as *mut opj_t2_t;
+    let mut l_t2: *mut opj_t2_t = opj_calloc_type();
     if l_t2.is_null() {
       return core::ptr::null_mut::<opj_t2_t>();
     }
@@ -517,7 +513,7 @@ pub(crate) fn opj_t2_create(
 
 pub(crate) fn opj_t2_destroy(mut t2: *mut opj_t2_t) {
   if !t2.is_null() {
-    opj_free(t2 as *mut core::ffi::c_void);
+    opj_free_type(t2);
   };
 }
 /* *
