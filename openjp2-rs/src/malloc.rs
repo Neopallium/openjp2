@@ -1,4 +1,4 @@
-use super::openjpeg::*;
+use alloc::alloc::{alloc, alloc_zeroed, dealloc, Layout};
 
 extern "C" {
 
@@ -50,7 +50,7 @@ pub(crate) fn strlen(s: *const i8) -> usize {
   }
 }
 
-pub(crate) fn opj_malloc(mut size: size_t) -> *mut core::ffi::c_void {
+pub(crate) fn opj_malloc(mut size: usize) -> *mut core::ffi::c_void {
   if size == 0 {
     /* prevent implementation defined behavior of malloc */
     return core::ptr::null_mut::<core::ffi::c_void>();
@@ -63,10 +63,11 @@ pub(crate) fn opj_alloc_type<T>() -> *mut T {
   if size == 0 {
     return core::ptr::null_mut::<T>();
   }
-  opj_malloc(size) as *mut T
+  let layout = Layout::new::<T>();
+  unsafe { alloc(layout) as *mut T }
 }
 
-pub(crate) fn opj_calloc(mut num: size_t, mut size: size_t) -> *mut core::ffi::c_void {
+pub(crate) fn opj_calloc(mut num: usize, mut size: usize) -> *mut core::ffi::c_void {
   if num == 0 || size == 0 {
     /* prevent implementation defined behavior of calloc */
     return core::ptr::null_mut::<core::ffi::c_void>();
@@ -74,30 +75,38 @@ pub(crate) fn opj_calloc(mut num: size_t, mut size: size_t) -> *mut core::ffi::c
   unsafe { calloc(num, size) }
 }
 
-pub(crate) fn opj_calloc_type<T>(num: size_t) -> *mut T {
+pub(crate) fn opj_calloc_type<T>() -> *mut T {
+  let size = core::mem::size_of::<T>();
+  if size == 0 {
+    /* prevent implementation defined behavior of calloc */
+    return core::ptr::null_mut::<T>();
+  }
+  let layout = Layout::new::<T>();
+  unsafe { alloc_zeroed(layout) as *mut T }
+}
+
+pub(crate) fn opj_alloc_type_array<T>(num: usize) -> *mut T {
+  let size = core::mem::size_of::<T>();
+  if num == 0 || size == 0 {
+    return core::ptr::null_mut::<T>();
+  }
+  let layout = Layout::array::<T>(num).expect("Failed to create layout for array");
+  unsafe { alloc(layout) as *mut T }
+}
+
+pub(crate) fn opj_calloc_type_array<T>(num: usize) -> *mut T {
   let size = core::mem::size_of::<T>();
   if num == 0 || size == 0 {
     /* prevent implementation defined behavior of calloc */
     return core::ptr::null_mut::<T>();
   }
-  opj_calloc(num, size) as *mut T
-}
-
-pub(crate) fn opj_alloc_type_array<T>(num: size_t) -> *mut T {
-  let size = core::mem::size_of::<T>();
-  if num == 0 || size == 0 {
-    return core::ptr::null_mut::<T>();
-  }
-  opj_malloc(size) as *mut T
-}
-
-pub(crate) fn opj_calloc_type_array<T>(num: size_t) -> *mut T {
-  opj_calloc_type(num)
+  let layout = Layout::array::<T>(num).expect("Failed to create layout for array");
+  unsafe { alloc_zeroed(layout) as *mut T }
 }
 
 pub(crate) fn opj_realloc(
   mut ptr: *mut core::ffi::c_void,
-  mut new_size: size_t,
+  mut new_size: usize,
 ) -> *mut core::ffi::c_void {
   if new_size == 0 {
     opj_free(ptr);
@@ -105,6 +114,17 @@ pub(crate) fn opj_realloc(
     return core::ptr::null_mut::<core::ffi::c_void>();
   }
   unsafe { realloc(ptr, new_size) }
+}
+
+pub(crate) fn opj_realloc_type_array<T>(mut ptr: *mut T, old_num: usize, mut num: usize) -> *mut T {
+  let size = core::mem::size_of::<T>();
+  if num == 0 || size == 0 {
+    opj_free_type_array(ptr, old_num);
+    /* prevent implementation defined behavior of realloc */
+    return core::ptr::null_mut::<T>();
+  }
+  let layout = Layout::array::<T>(old_num).expect("Failed to create layout for array");
+  unsafe { alloc::alloc::realloc(ptr as *mut u8, layout, num) as *mut T }
 }
 
 pub(crate) fn opj_free(mut ptr: *mut core::ffi::c_void) {
@@ -117,12 +137,14 @@ pub(crate) fn opj_free(mut ptr: *mut core::ffi::c_void) {
 
 pub(crate) fn opj_free_type<T>(mut ptr: *mut T) {
   if !ptr.is_null() {
-    opj_free(ptr as *mut core::ffi::c_void);
+    let layout = Layout::new::<T>();
+    unsafe { dealloc(ptr as *mut u8, layout) }
   }
 }
 
-pub(crate) fn opj_free_type_array<T>(mut ptr: *mut T, _num: size_t) {
+pub(crate) fn opj_free_type_array<T>(mut ptr: *mut T, num: usize) {
   if !ptr.is_null() {
-    opj_free(ptr as *mut core::ffi::c_void);
+    let layout = Layout::array::<T>(num).expect("Failed to create layout for array");
+    unsafe { dealloc(ptr as *mut u8, layout) }
   }
 }
