@@ -20,16 +20,6 @@ use std::alloc::{alloc, dealloc, Layout};
 
 use super::malloc::*;
 
-extern "C" {
-  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
-
-  fn memcpy(
-    _: *mut core::ffi::c_void,
-    _: *const core::ffi::c_void,
-    _: usize,
-  ) -> *mut core::ffi::c_void;
-}
-
 #[derive(Default)]
 pub(crate) struct T1Flags {
   flags: Vec<opj_flag_t>,

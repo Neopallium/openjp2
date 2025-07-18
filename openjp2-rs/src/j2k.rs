@@ -18,40 +18,6 @@ use ::libc::FILE;
 
 use bitflags::bitflags;
 
-extern "C" {
-  fn strcpy(_: *mut core::ffi::c_char, _: *const core::ffi::c_char) -> *mut core::ffi::c_char;
-
-  fn strcmp(_: *const core::ffi::c_char, _: *const core::ffi::c_char) -> core::ffi::c_int;
-
-  fn strncmp(
-    _: *const core::ffi::c_char,
-    _: *const core::ffi::c_char,
-    _: usize,
-  ) -> core::ffi::c_int;
-
-  fn strlen(_: *const core::ffi::c_char) -> usize;
-
-  fn atoi(__nptr: *const core::ffi::c_char) -> core::ffi::c_int;
-
-  fn getenv(__name: *const core::ffi::c_char) -> *mut core::ffi::c_char;
-
-  fn floor(_: core::ffi::c_double) -> core::ffi::c_double;
-
-  fn memcpy(
-    _: *mut core::ffi::c_void,
-    _: *const core::ffi::c_void,
-    _: usize,
-  ) -> *mut core::ffi::c_void;
-
-  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
-
-  fn memmove(
-    _: *mut core::ffi::c_void,
-    _: *const core::ffi::c_void,
-    _: usize,
-  ) -> *mut core::ffi::c_void;
-}
-
 bitflags! {
   pub struct J2KState: u32 {
     const ERR = 32768;
@@ -7457,7 +7423,7 @@ pub(crate) fn opj_j2k_setup_encoder(
         if temp_size > 2147483647 as core::ffi::c_float {
           parameters.max_cs_size = 2147483647i32
         } else {
-          parameters.max_cs_size = floor(temp_size as core::ffi::c_double) as core::ffi::c_int
+          parameters.max_cs_size = temp_size.floor() as core::ffi::c_int
         }
       } else {
         parameters.max_cs_size = 0i32
@@ -7612,8 +7578,8 @@ pub(crate) fn opj_j2k_setup_encoder(
     (*cp).ty0 = parameters.cp_ty0 as OPJ_UINT32;
     /* comment string */
     if !parameters.cp_comment.is_null() {
-      (*cp).comment =
-        opj_malloc(strlen(parameters.cp_comment).wrapping_add(1)) as *mut core::ffi::c_char;
+      let len = strlen(parameters.cp_comment).wrapping_add(1);
+      (*cp).comment = opj_malloc(len) as *mut core::ffi::c_char;
       if (*cp).comment.is_null() {
         event_msg!(
           p_manager,
@@ -7622,7 +7588,7 @@ pub(crate) fn opj_j2k_setup_encoder(
         );
         return 0i32;
       }
-      strcpy((*cp).comment, parameters.cp_comment);
+      memcpy((*cp).comment as _, parameters.cp_comment as _, len);
     } else {
       /* Create default comment for codestream */
       let comment = format!("Created by OpenJPEG version {}", OPJ_VERSION);

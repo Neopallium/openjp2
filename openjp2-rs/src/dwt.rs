@@ -1,17 +1,12 @@
 use std::alloc::{alloc, dealloc, Layout};
 
+use super::malloc::*;
 use super::math::*;
 use super::openjpeg::*;
 use super::sparse_array::*;
 
 extern "C" {
   fn floor(_: core::ffi::c_double) -> core::ffi::c_double;
-
-  fn memcpy(
-    _: *mut core::ffi::c_void,
-    _: *const core::ffi::c_void,
-    _: usize,
-  ) -> *mut core::ffi::c_void;
 }
 
 /* Where void* is a OPJ_INT32* for 5x3 and OPJ_FLOAT32* for 9x7 */
@@ -466,16 +461,14 @@ fn opj_dwt_interleave_v(mut v: &opj_dwt_t, mut a: *mut OPJ_INT32, mut x: OPJ_INT
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
 fn opj_idwt53_h(mut dwt: &opj_dwt_t, mut tiledp: *mut OPJ_INT32) {
-  unsafe {
-    /* For documentation purpose */
-    opj_dwt_interleave_h(dwt, tiledp);
-    dwt.decode_1();
-    memcpy(
-      tiledp as *mut core::ffi::c_void,
-      dwt.mem as *const core::ffi::c_void,
-      ((dwt.sn + dwt.dn) as OPJ_UINT32 as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
-    );
-  }
+  /* For documentation purpose */
+  opj_dwt_interleave_h(dwt, tiledp);
+  dwt.decode_1();
+  memcpy(
+    tiledp as *mut core::ffi::c_void,
+    dwt.mem as *const core::ffi::c_void,
+    ((dwt.sn + dwt.dn) as OPJ_UINT32 as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
+  );
 }
 
 /* <summary>                            */
