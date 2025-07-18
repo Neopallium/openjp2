@@ -4,10 +4,6 @@ use super::openjpeg::*;
 
 use super::malloc::*;
 
-extern "C" {
-  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
-}
-
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third

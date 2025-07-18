@@ -17,8 +17,6 @@ extern "C" {
   fn pow(_: core::ffi::c_double, _: core::ffi::c_double) -> core::ffi::c_double;
 
   fn ceil(_: core::ffi::c_double) -> core::ffi::c_double;
-
-  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1393,13 +1391,11 @@ fn opj_tcd_code_block_enc_allocate_data(mut p_code_block: *mut opj_tcd_cblk_enc_
 }
 
 pub(crate) fn opj_tcd_reinit_segment(mut seg: *mut opj_tcd_seg_t) {
-  unsafe {
-    memset(
-      seg as *mut core::ffi::c_void,
-      0i32,
-      core::mem::size_of::<opj_tcd_seg_t>(),
-    );
-  }
+  memset(
+    seg as *mut core::ffi::c_void,
+    0i32,
+    core::mem::size_of::<opj_tcd_seg_t>(),
+  );
 }
 /* We reserve the initial byte as a fake byte to a non-FF value */
 /* and increment the data pointer, so that opj_mqc_init_enc() */

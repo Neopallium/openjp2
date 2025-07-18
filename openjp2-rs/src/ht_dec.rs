@@ -5,16 +5,6 @@ use super::t1_ht_luts::*;
 
 use super::malloc::*;
 
-extern "C" {
-  fn memcpy(
-    _: *mut core::ffi::c_void,
-    _: *const core::ffi::c_void,
-    _: usize,
-  ) -> *mut core::ffi::c_void;
-
-  fn memset(_: *mut core::ffi::c_void, _: core::ffi::c_int, _: usize) -> *mut core::ffi::c_void;
-}
-
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct dec_mel {

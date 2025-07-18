@@ -48,14 +48,6 @@ use std::{fs::File, path::Path};
 use super::event::*;
 use super::openjpeg::*;
 
-extern "C" {
-  fn memcpy(
-    _: *mut core::ffi::c_void,
-    _: *const core::ffi::c_void,
-    _: usize,
-  ) -> *mut core::ffi::c_void;
-}
-
 pub(crate) trait ReadSeek: Read + Seek {}
 
 impl<R: Read + Seek> ReadSeek for R {}
