@@ -13,12 +13,6 @@ use super::malloc::*;
 
 use std::alloc::dealloc;
 
-extern "C" {
-  fn pow(_: core::ffi::c_double, _: core::ffi::c_double) -> core::ffi::c_double;
-
-  fn ceil(_: core::ffi::c_double) -> core::ffi::c_double;
-}
-
 /* ----------------------------------------------------------------------- */
 impl opj_tcd {
   pub fn new(m_is_decoder: bool) -> Self {
@@ -455,7 +449,7 @@ fn opj_tcd_rateallocate(
       let mut hi = max;
       let mut maxlen = if (*tcd_tcp).rates[layno as usize] > 0.0f32 {
         opj_uint_min(
-          ceil((*tcd_tcp).rates[layno as usize] as core::ffi::c_double) as OPJ_UINT32,
+          ((*tcd_tcp).rates[layno as usize] as core::ffi::c_double).ceil() as OPJ_UINT32,
           len,
         )
       } else {
@@ -468,8 +462,7 @@ fn opj_tcd_rateallocate(
 
       distotarget = tcd.tcd_image.tiles.distotile
         - K * maxSE
-          / pow(
-            10 as OPJ_FLOAT32 as core::ffi::c_double,
+          / (10 as OPJ_FLOAT32 as core::ffi::c_double).powf(
             ((*tcd_tcp).distoratio[layno as usize] / 10 as core::ffi::c_float)
               as core::ffi::c_double,
           );
@@ -1064,7 +1057,7 @@ pub(crate) fn opj_tcd_init_tile(
                * procedure" of the standard */
               (*l_band).stepsize = ((1.0f64
                 + (*l_step_size).mant as core::ffi::c_double / 2048.0f64)
-                * pow(2.0f64, (Rb - (*l_step_size).expn) as core::ffi::c_double))
+                * 2.0f64.powf((Rb - (*l_step_size).expn) as core::ffi::c_double))
                 as OPJ_FLOAT32;
               /* Mb value of Equation E-2 in "E.1 Inverse quantization
                * procedure" of the standard */
