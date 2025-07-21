@@ -14,7 +14,6 @@ use alloc::vec::Vec;
 use core::{
   cell::RefCell,
   ops::{AddAssign, Deref, DerefMut, Index, IndexMut},
-  ptr::null_mut,
 };
 use std::alloc::{alloc, dealloc, Layout};
 
@@ -210,8 +209,7 @@ pub(crate) struct opj_t1 {
   pub datasize: OPJ_UINT32,
   pub encoder: OPJ_BOOL,
   pub mustuse_cblkdatabuffer: OPJ_BOOL,
-  pub cblkdatabuffer: *mut OPJ_BYTE,
-  pub cblkdatabuffersize: OPJ_UINT32,
+  pub cblkdatabuffer: Vec<u8>,
 }
 pub(crate) type opj_t1_t = opj_t1;
 
@@ -227,21 +225,24 @@ impl Default for opj_t1 {
       datasize: 0,
       encoder: 0,
       mustuse_cblkdatabuffer: 0,
-      cblkdatabuffer: null_mut(),
-      cblkdatabuffersize: 0,
+      cblkdatabuffer: Vec::new(),
     }
-  }
-}
-
-impl Drop for opj_t1 {
-  fn drop(&mut self) {
-    opj_free(self.cblkdatabuffer as *mut core::ffi::c_void);
   }
 }
 
 impl opj_t1 {
   fn new() -> Self {
     Self::default()
+  }
+
+  pub fn grow_cblkdatabuffer(&mut self, size: usize) {
+    if self.cblkdatabuffer.len() < size {
+      self.cblkdatabuffer.resize(size, 0);
+    }
+  }
+
+  pub fn cblkdatabuffer(&mut self) -> &mut [u8] {
+    self.cblkdatabuffer.as_mut_slice()
   }
 
   fn set_decoded_data(&mut self, decoded_data: *mut OPJ_INT32) {
@@ -2282,38 +2283,22 @@ fn opj_t1_decode_cblk(
         i += 1
       }
       /* Allocate temporary memory if needed */
-      if cblk_len.wrapping_add(2) > t1.cblkdatabuffersize {
-        cblkdata = opj_realloc(
-          t1.cblkdatabuffer as *mut core::ffi::c_void,
-          cblk_len.wrapping_add(2) as size_t,
-        ) as *mut OPJ_BYTE;
-        if cblkdata.is_null() {
-          return 0i32;
-        }
-        t1.cblkdatabuffer = cblkdata;
-        memset(
-          t1.cblkdatabuffer.offset(cblk_len as isize) as *mut core::ffi::c_void,
-          0,
-          OPJ_COMMON_CBLK_DATA_EXTRA as usize,
-        );
-        t1.cblkdatabuffersize = cblk_len.wrapping_add(2)
-      }
+      t1.grow_cblkdatabuffer((cblk_len + OPJ_COMMON_CBLK_DATA_EXTRA) as usize);
       /* Concatenate all chunks */
-      cblkdata = t1.cblkdatabuffer;
+      let buf = t1.cblkdatabuffer();
       cblk_len = 0 as OPJ_UINT32;
       i = 0 as OPJ_UINT32;
       while i < (*cblk).numchunks {
-        memcpy(
-          cblkdata.offset(cblk_len as isize) as *mut core::ffi::c_void,
-          (*(*cblk).chunks.offset(i as isize)).data as *const core::ffi::c_void,
-          (*(*cblk).chunks.offset(i as isize)).len as usize,
-        );
+        let chunk = (*(*cblk).chunks.offset(i as isize)).as_slice();
+        let off = cblk_len as usize;
+        buf[off..off + chunk.len()].copy_from_slice(chunk);
         cblk_len = (cblk_len as core::ffi::c_uint)
           .wrapping_add((*(*cblk).chunks.offset(i as isize)).len) as OPJ_UINT32;
         i += 1
       }
+      cblkdata = buf.as_mut_ptr();
     } else if (*cblk).numchunks == 1 {
-      cblkdata = (*(*cblk).chunks.offset(0)).data
+      cblkdata = (*(*cblk).chunks).as_mut_slice().as_mut_ptr();
     } else {
       /* Not sure if that can happen in practice, but avoid Coverity to */
       /* think we will dereference a null cblkdta pointer */

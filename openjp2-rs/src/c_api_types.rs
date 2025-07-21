@@ -253,7 +253,10 @@ impl Drop for opj_cparameters {
       self.cp_matrice = core::ptr::null_mut();
     }
     if !self.cp_comment.is_null() {
-      opj_free(self.cp_comment as *mut core::ffi::c_void);
+      let _old_comment = unsafe {
+        // Convert the old comment back into a CString and drop it.
+        alloc::ffi::CString::from_raw(self.cp_comment as *mut core::ffi::c_char)
+      };
       self.cp_comment = core::ptr::null_mut();
     }
     if !self.mct_data.is_null() {
@@ -336,15 +339,14 @@ impl opj_cparameters_t {
   }
 
   pub fn set_comment(&mut self, comment: &str) {
-    let len = comment.len();
+    let comment = alloc::ffi::CString::new(comment).expect("CString::new failed");
     if !self.cp_comment.is_null() {
-      opj_free(self.cp_comment as *mut core::ffi::c_void);
+      unsafe {
+        // Convert the old comment back into a CString and drop it.
+        let _old_comment = alloc::ffi::CString::from_raw(self.cp_comment as *mut core::ffi::c_char);
+      }
     }
-    self.cp_comment = opj_malloc(len + 1) as *mut core::ffi::c_char;
-    unsafe {
-      core::ptr::copy_nonoverlapping(comment.as_ptr(), self.cp_comment as *mut u8, len);
-      *self.cp_comment.offset(len as isize) = 0;
-    }
+    self.cp_comment = comment.into_raw() as *mut i8;
   }
 
   pub fn set_MCT(
