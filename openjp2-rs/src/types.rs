@@ -833,10 +833,20 @@ pub(crate) type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
 
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_seg_data_chunk {
-  pub data: *mut OPJ_BYTE,
+  pub data: *mut u8,
   pub len: OPJ_UINT32,
 }
 pub(crate) type opj_tcd_seg_data_chunk_t = opj_tcd_seg_data_chunk;
+
+impl opj_tcd_seg_data_chunk {
+  pub fn as_slice(&self) -> &[u8] {
+    unsafe { core::slice::from_raw_parts(self.data, self.len as usize) }
+  }
+
+  pub fn as_mut_slice(&mut self) -> &mut [u8] {
+    unsafe { core::slice::from_raw_parts_mut(self.data, self.len as usize) }
+  }
+}
 
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_seg {

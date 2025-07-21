@@ -1216,7 +1216,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
   mut _check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut cblkdata = core::ptr::null_mut::<OPJ_BYTE>(); // fetched data from VLC bitstream
+    let mut cblkdata = &mut [][..]; // fetched data from VLC bitstream
     let mut coded_data = core::ptr::null_mut::<OPJ_UINT8>(); // loop indices
     let mut decoded_data = core::ptr::null_mut::<OPJ_UINT32>();
     let mut zero_bplanes: OPJ_UINT32 = 0;
@@ -1325,45 +1325,30 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     if (*cblk).numchunks > 1u32 || t1.mustuse_cblkdatabuffer != 0 {
       let mut i_0: OPJ_UINT32 = 0;
       /* Allocate temporary memory if needed */
-      if cblk_len > t1.cblkdatabuffersize {
-        cblkdata = opj_realloc(
-          t1.cblkdatabuffer as *mut core::ffi::c_void,
-          cblk_len as size_t,
-        ) as *mut OPJ_BYTE;
-        if cblkdata.is_null() {
-          return 0i32;
-        }
-        t1.cblkdatabuffer = cblkdata;
-        t1.cblkdatabuffersize = cblk_len
-      }
+      t1.grow_cblkdatabuffer(cblk_len as usize);
 
       /* Concatenate all chunks */
-      cblkdata = t1.cblkdatabuffer;
-      if cblkdata.is_null() {
-        return 0i32;
-      }
+      cblkdata = t1.cblkdatabuffer();
       cblk_len = 0 as OPJ_UINT32;
       i_0 = 0 as OPJ_UINT32;
       while i_0 < (*cblk).numchunks {
-        memcpy(
-          cblkdata.offset(cblk_len as isize) as *mut core::ffi::c_void,
-          (*(*cblk).chunks.offset(i_0 as isize)).data as *const core::ffi::c_void,
-          (*(*cblk).chunks.offset(i_0 as isize)).len as usize,
-        );
+        let chunk = (*(*cblk).chunks.offset(i_0 as isize)).as_slice();
+        let off = cblk_len as usize;
+        cblkdata[off..off + chunk.len()].copy_from_slice(chunk);
         cblk_len = (cblk_len as core::ffi::c_uint)
           .wrapping_add((*(*cblk).chunks.offset(i_0 as isize)).len)
           as OPJ_UINT32;
         i_0 += 1;
       }
     } else if (*cblk).numchunks == 1u32 {
-      cblkdata = (*(*cblk).chunks.offset(0)).data
+      cblkdata = (*(*cblk).chunks).as_mut_slice();
     } else {
       /* Not sure if that can happen in practice, but avoid Coverity to */
       /* think we will dereference a null cblkdta pointer */
       return 1i32;
     }
     // OPJ_BYTE* coded_data is a pointer to bitstream
-    coded_data = cblkdata;
+    coded_data = cblkdata.as_mut_ptr();
     // OPJ_UINT32* decoded_data is a pointer to decoded codeblock data buf.
     decoded_data = t1.data.as_mut_ptr() as *mut OPJ_UINT32;
     // OPJ_UINT32 num_passes is the number of passes: 1 if CUP only, 2 for

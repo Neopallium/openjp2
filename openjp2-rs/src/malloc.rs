@@ -1,3 +1,4 @@
+#[cfg(not(feature = "c_api"))]
 use alloc::alloc::{alloc, alloc_zeroed, dealloc, Layout};
 
 extern "C" {
@@ -63,8 +64,15 @@ pub(crate) fn opj_alloc_type<T>() -> *mut T {
   if size == 0 {
     return core::ptr::null_mut::<T>();
   }
-  let layout = Layout::new::<T>();
-  unsafe { alloc(layout) as *mut T }
+  #[cfg(feature = "c_api")]
+  {
+    opj_malloc(size) as *mut T
+  }
+  #[cfg(not(feature = "c_api"))]
+  {
+    let layout = Layout::new::<T>();
+    unsafe { alloc(layout) as *mut T }
+  }
 }
 
 pub(crate) fn opj_calloc(mut num: usize, mut size: usize) -> *mut core::ffi::c_void {
@@ -81,8 +89,15 @@ pub(crate) fn opj_calloc_type<T>() -> *mut T {
     /* prevent implementation defined behavior of calloc */
     return core::ptr::null_mut::<T>();
   }
-  let layout = Layout::new::<T>();
-  unsafe { alloc_zeroed(layout) as *mut T }
+  #[cfg(feature = "c_api")]
+  {
+    opj_calloc(1, size) as *mut T
+  }
+  #[cfg(not(feature = "c_api"))]
+  {
+    let layout = Layout::new::<T>();
+    unsafe { alloc_zeroed(layout) as *mut T }
+  }
 }
 
 pub(crate) fn opj_alloc_type_array<T>(num: usize) -> *mut T {
@@ -90,8 +105,15 @@ pub(crate) fn opj_alloc_type_array<T>(num: usize) -> *mut T {
   if num == 0 || size == 0 {
     return core::ptr::null_mut::<T>();
   }
-  let layout = Layout::array::<T>(num).expect("Failed to create layout for array");
-  unsafe { alloc(layout) as *mut T }
+  #[cfg(feature = "c_api")]
+  {
+    opj_malloc(num * size) as *mut T
+  }
+  #[cfg(not(feature = "c_api"))]
+  {
+    let layout = Layout::array::<T>(num).expect("Failed to create layout for array");
+    unsafe { alloc(layout) as *mut T }
+  }
 }
 
 pub(crate) fn opj_calloc_type_array<T>(num: usize) -> *mut T {
@@ -100,8 +122,15 @@ pub(crate) fn opj_calloc_type_array<T>(num: usize) -> *mut T {
     /* prevent implementation defined behavior of calloc */
     return core::ptr::null_mut::<T>();
   }
-  let layout = Layout::array::<T>(num).expect("Failed to create layout for array");
-  unsafe { alloc_zeroed(layout) as *mut T }
+  #[cfg(feature = "c_api")]
+  {
+    opj_calloc(num, size) as *mut T
+  }
+  #[cfg(not(feature = "c_api"))]
+  {
+    let layout = Layout::array::<T>(num).expect("Failed to create layout for array");
+    unsafe { alloc_zeroed(layout) as *mut T }
+  }
 }
 
 pub(crate) fn opj_realloc(
@@ -124,13 +153,20 @@ pub(crate) fn opj_realloc_type_array<T>(mut ptr: *mut T, old_num: usize, mut num
     return core::ptr::null_mut::<T>();
   }
   let new_size = num * size;
-  if old_num != 0 {
-    let old_size = old_num * size;
-    let layout = Layout::array::<T>(old_size).expect("Failed to create layout for array");
-    unsafe { alloc::alloc::realloc(ptr as *mut u8, layout, new_size) as *mut T }
-  } else {
-    let layout = Layout::array::<T>(new_size).expect("Failed to create layout for array");
-    unsafe { alloc(layout) as *mut T }
+  #[cfg(feature = "c_api")]
+  {
+    opj_realloc(ptr as *mut core::ffi::c_void, new_size) as *mut T
+  }
+  #[cfg(not(feature = "c_api"))]
+  {
+    if old_num != 0 {
+      let old_size = old_num * size;
+      let layout = Layout::array::<T>(old_size).expect("Failed to create layout for array");
+      unsafe { alloc::alloc::realloc(ptr as *mut u8, layout, new_size) as *mut T }
+    } else {
+      let layout = Layout::array::<T>(new_size).expect("Failed to create layout for array");
+      unsafe { alloc(layout) as *mut T }
+    }
   }
 }
 
@@ -144,14 +180,28 @@ pub(crate) fn opj_free(mut ptr: *mut core::ffi::c_void) {
 
 pub(crate) fn opj_free_type<T>(mut ptr: *mut T) {
   if !ptr.is_null() {
-    let layout = Layout::new::<T>();
-    unsafe { dealloc(ptr as *mut u8, layout) }
+    #[cfg(feature = "c_api")]
+    {
+      opj_free(ptr as *mut core::ffi::c_void);
+    }
+    #[cfg(not(feature = "c_api"))]
+    {
+      let layout = Layout::new::<T>();
+      unsafe { dealloc(ptr as *mut u8, layout) }
+    }
   }
 }
 
-pub(crate) fn opj_free_type_array<T>(mut ptr: *mut T, num: usize) {
+pub(crate) fn opj_free_type_array<T>(mut ptr: *mut T, _num: usize) {
   if !ptr.is_null() {
-    let layout = Layout::array::<T>(num).expect("Failed to create layout for array");
-    unsafe { dealloc(ptr as *mut u8, layout) }
+    #[cfg(feature = "c_api")]
+    {
+      opj_free(ptr as *mut core::ffi::c_void);
+    }
+    #[cfg(not(feature = "c_api"))]
+    {
+      let layout = Layout::array::<T>(_num).expect("Failed to create layout for array");
+      unsafe { dealloc(ptr as *mut u8, layout) }
+    }
   }
 }
