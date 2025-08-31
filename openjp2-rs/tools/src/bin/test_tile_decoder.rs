@@ -99,6 +99,8 @@ fn main() -> Result<(), String> {
   let mut data = vec![0; 1000];
   let mut go_on = true;
   while go_on {
+    // We need to set this to some value before calling read_tile_header.
+    tile_info.data_size = Some(0);
     // Decode tile
     if !codec.read_tile_header(&mut stream, &mut tile_info) {
       Err("Failed to read tile header")?;
@@ -115,11 +117,6 @@ fn main() -> Result<(), String> {
         Err("Failed to decode tile")?;
       }
     }
-  }
-
-  // Decode image
-  if codec.decode(&mut stream, &mut image) != 1 {
-    Err("Failed to decode image")?;
   }
 
   // End decompression
