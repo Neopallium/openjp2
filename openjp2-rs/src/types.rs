@@ -700,7 +700,7 @@ impl Default for opj_tcd_tile {
   }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct TileInfo {
   pub index: u32,
   pub data_size: Option<u32>,
