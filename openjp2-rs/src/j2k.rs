@@ -1416,12 +1416,8 @@ fn opj_j2k_read_siz(
     }
     /* USE_JPWL */
     /* Allocate the resulting image components */
-    (*l_image).comps = opj_calloc(
-      (*l_image).numcomps as size_t,
-      core::mem::size_of::<opj_image_comp_t>(),
-    ) as *mut opj_image_comp_t;
-    if (*l_image).comps.is_null() {
-      (*l_image).numcomps = 0 as OPJ_UINT32;
+    let numcomps = (*l_image).numcomps;
+    if !(*l_image).alloc_comps(numcomps) {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -12167,76 +12163,39 @@ fn opj_j2k_move_data_from_codec_to_output_image(
   mut p_image: &mut opj_image,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut compno: OPJ_UINT32 = 0;
     /* Move data and copy one information from codec to output image*/
-    if p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode > 0u32 {
-      let mut newcomps = opj_malloc(
-        (p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode as usize)
-          .wrapping_mul(core::mem::size_of::<opj_image_comp_t>()),
-      ) as *mut opj_image_comp_t;
-      if newcomps.is_null() {
+    let numcomps_to_decode = p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode;
+    if numcomps_to_decode > 0u32 {
+      if !p_image.alloc_comps(numcomps_to_decode) {
         opj_image_destroy(p_j2k.m_private_image);
         p_j2k.m_private_image = core::ptr::null_mut::<opj_image_t>();
         return 0i32;
       }
-      compno = 0 as OPJ_UINT32;
-      while compno < p_image.numcomps {
-        opj_image_data_free(
-          (*p_image.comps.offset(compno as isize)).data as *mut core::ffi::c_void,
-        );
-        let fresh42 = &mut (*p_image.comps.offset(compno as isize)).data;
-        *fresh42 = core::ptr::null_mut::<OPJ_INT32>();
-        compno += 1;
-      }
-      compno = 0 as OPJ_UINT32;
-      while compno < p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode {
+      let comps = p_image.comps_mut().expect("We just allocated them");
+      let src_comps = (*p_j2k.m_output_image)
+        .comps_mut()
+        .expect("We should have an output image with components");
+      for (compno, comp) in comps.into_iter().enumerate() {
         let mut src_compno = *p_j2k
           .m_specific_param
           .m_decoder
           .m_comps_indices_to_decode
           .offset(compno as isize);
-        memcpy(
-          &mut *newcomps.offset(compno as isize) as *mut opj_image_comp_t as *mut core::ffi::c_void,
-          &mut *(*p_j2k.m_output_image).comps.offset(src_compno as isize) as *mut opj_image_comp_t
-            as *const core::ffi::c_void,
-          core::mem::size_of::<opj_image_comp_t>(),
-        );
-        (*newcomps.offset(compno as isize)).resno_decoded =
-          (*(*p_j2k.m_output_image).comps.offset(src_compno as isize)).resno_decoded;
-        let fresh43 = &mut (*newcomps.offset(compno as isize)).data;
-        *fresh43 = (*(*p_j2k.m_output_image).comps.offset(src_compno as isize)).data;
-        let fresh44 = &mut (*(*p_j2k.m_output_image).comps.offset(src_compno as isize)).data;
-        *fresh44 = core::ptr::null_mut::<OPJ_INT32>();
-        compno += 1;
+        let src_comp = &mut src_comps[src_compno as usize];
+        comp.copy_props(src_comp);
+        comp.move_data(src_comp);
       }
-      compno = 0 as OPJ_UINT32;
-      while compno < p_image.numcomps {
-        assert!((*(*p_j2k.m_output_image).comps.offset(compno as isize))
-          .data
-          .is_null());
-        opj_image_data_free(
-          (*(*p_j2k.m_output_image).comps.offset(compno as isize)).data as *mut core::ffi::c_void,
-        );
-        let fresh45 = &mut (*(*p_j2k.m_output_image).comps.offset(compno as isize)).data;
-        *fresh45 = core::ptr::null_mut::<OPJ_INT32>();
-        compno += 1;
+      for comp in src_comps {
+        comp.clear_data();
       }
-      p_image.numcomps = p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode;
-      opj_free(p_image.comps as *mut core::ffi::c_void);
-      p_image.comps = newcomps
     } else {
-      compno = 0 as OPJ_UINT32;
-      while compno < p_image.numcomps {
-        (*p_image.comps.offset(compno as isize)).resno_decoded =
-          (*(*p_j2k.m_output_image).comps.offset(compno as isize)).resno_decoded;
-        opj_image_data_free(
-          (*p_image.comps.offset(compno as isize)).data as *mut core::ffi::c_void,
-        );
-        let fresh46 = &mut (*p_image.comps.offset(compno as isize)).data;
-        *fresh46 = (*(*p_j2k.m_output_image).comps.offset(compno as isize)).data;
-        let fresh47 = &mut (*(*p_j2k.m_output_image).comps.offset(compno as isize)).data;
-        *fresh47 = core::ptr::null_mut::<OPJ_INT32>();
-        compno += 1;
+      if let Some(comps) = p_image.comps_mut() {
+        if let Some(src_comps) = (*p_j2k.m_output_image).comps_mut() {
+          for (comp, src_comp) in comps.into_iter().zip(src_comps.into_iter()) {
+            comp.resno_decoded = src_comp.resno_decoded;
+            comp.move_data(src_comp);
+          }
+        }
       }
     }
     1i32
