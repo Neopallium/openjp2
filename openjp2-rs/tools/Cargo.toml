@@ -36,6 +36,10 @@ rand = "0.8.5"
 default = ["lcms2", "testing"]
 #default = ["lcms2"]
 
+test_malloc = [
+  "openjp2/test_malloc"
+]
+
 rust_backend = [
   "image/tiff",
 ]
