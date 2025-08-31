@@ -17,7 +17,7 @@ pub struct DecompressParameters {
   pub input_file: Option<PathBuf>,
   pub output_file: Option<PathBuf>,
   pub codec_format: Option<J2KFormat>,
-  pub decode_format: Option<ImageFileFormat>,
+  pub output_format: Option<ImageFileFormat>,
 
   // Decoding area parameters
   pub da_x0: u32,
@@ -87,7 +87,7 @@ impl Default for DecompressParameters {
       output_file: None,
       index_file: None,
       codec_format: None,
-      decode_format: None,
+      output_format: None,
       da_x0: 0,
       da_y0: 0,
       da_x1: 0,
@@ -237,7 +237,7 @@ pub fn parse_decompress_options(
       }
       (DecompressOpt::Output, Some(arg)) => {
         let output = PathBuf::from(arg);
-        params.decode_format = ImageFileFormat::get_file_format(&output).ok();
+        params.output_format = ImageFileFormat::get_file_format(&output).ok();
         params.output_file = Some(output);
       }
       (DecompressOpt::ImgDir, Some(arg)) => {
