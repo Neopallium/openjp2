@@ -825,9 +825,9 @@ pub fn color_cmyk_to_rgb(image: &mut opj_image_t) {
     let k = 1.0 - (k_data[i] as f32 * sk);
 
     // CMYK -> RGB
-    c_data[i] = (255.0 * c * k) as i32; // R
-    m_data[i] = (255.0 * m * k) as i32; // G
-    y_data[i] = (255.0 * y * k) as i32; // B
+    c_data[i] = (255.0 * c * k).round() as i32; // R
+    m_data[i] = (255.0 * m * k).round() as i32; // G
+    y_data[i] = (255.0 * y * k).round() as i32; // B
   }
 
   // Update component properties

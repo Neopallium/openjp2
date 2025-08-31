@@ -177,7 +177,9 @@ fn decompress_image<P: AsRef<Path>>(
   if image.color_space == OPJ_CLRSPC_SYCC {
     log::debug!("Converting SYCC to RGB");
     color_sycc_to_rgb(&mut image);
-  } else if image.color_space == OPJ_CLRSPC_CMYK {
+  } else if image.color_space == OPJ_CLRSPC_CMYK
+    && params.output_format != Some(ImageFileFormat::TIF)
+  {
     log::debug!("Converting CMYK to RGB");
     color_cmyk_to_rgb(&mut image);
   } else if image.color_space == OPJ_CLRSPC_EYCC {
@@ -516,7 +518,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Update parameters for this file
         let mut file_params = params.clone();
         file_params.input_file = Some(file.clone());
-        file_params.decode_format = ImageFileFormat::get_file_format(&file).ok();
+        file_params.output_format = ImageFileFormat::get_file_format(&file).ok();
 
         // Generate output filename
         let stem = file.file_stem().ok_or("Invalid filename")?;
