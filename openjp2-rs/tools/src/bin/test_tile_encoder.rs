@@ -102,7 +102,8 @@ fn main() -> Result<(), String> {
   };
 
   let is_random = if let Some(is_random) = args.next() {
-    is_random.parse().expect("Invalid random flag")
+    let num: u32 = is_random.parse().expect("Invalid random flag");
+    num == 1
   } else {
     false
   };

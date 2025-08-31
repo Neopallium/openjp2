@@ -81,7 +81,7 @@ fn parse_args() -> Result<Args, String> {
     &opts,
     &[
       PositionalArg::new("input_file", PosArg::InputFile),
-      PositionalArg::new_multi("x0 y0 x1 y1", 4, PosArg::DecodeArea),
+      PositionalArg::new_multi("x0 y0 x1 y1", 4, PosArg::DecodeArea).optional(),
     ],
   );
   let mut args = Args::default();
@@ -99,7 +99,6 @@ fn parse_args() -> Result<Args, String> {
       ParsedOpt::Opt(Opt::StripCheck, _) => args.strip_check = true,
       ParsedOpt::Opt(Opt::Help, _) => {
         print_help();
-        std::process::exit(0);
       }
       ParsedOpt::Positional(PosArg::InputFile, arg) => {
         args.input_file = Some(PathBuf::from(&arg[0]));
@@ -127,6 +126,11 @@ fn parse_args() -> Result<Args, String> {
     }
   }
 
+  if args.input_file.is_none() {
+    println!("Error: input_file is required");
+    print_help();
+  }
+
   Ok(args)
 }
 
@@ -141,6 +145,7 @@ fn print_help() {
   println!("\nArguments:");
   println!("  input_file          Input JPEG2000 file");
   println!("  x0 y0 x1 y1         Optional decode area coordinates");
+  std::process::exit(0);
 }
 
 fn create_codec_and_stream(input: &PathBuf) -> Result<(Codec, Stream), String> {
