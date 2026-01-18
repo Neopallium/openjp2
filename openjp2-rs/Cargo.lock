@@ -503,7 +503,7 @@ checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "openjp2"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "bitflags 1.3.2",
  "byteorder",
