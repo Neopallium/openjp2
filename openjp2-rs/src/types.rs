@@ -291,7 +291,7 @@ impl opj_jp2_color {
     }
   }
 
-  pub fn icc_profile(&self) -> Option<ICCProfileRef> {
+  pub fn icc_profile(&self) -> Option<ICCProfileRef<'_>> {
     self.icc_profile.as_ref().map(|profile| match profile {
       ICCProfile::ICC(data) => ICCProfileRef::ICC(data),
       ICCProfile::CIELab(data) => ICCProfileRef::CIELab(data),

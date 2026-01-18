@@ -425,7 +425,7 @@ impl<V: Clone + fmt::Debug, P: Clone + fmt::Debug> GetOpts<V, P> {
   ///     }
   /// }
   /// ```
-  pub fn parse_args<T, I>(&self, args: I) -> GetOptsIterator<V, P>
+  pub fn parse_args<T, I>(&self, args: I) -> GetOptsIterator<'_, V, P>
   where
     T: Into<String>,
     I: IntoIterator<Item = T>,
