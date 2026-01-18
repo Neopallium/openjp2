@@ -1,3 +1,4 @@
+pub mod cli;
 ///! Common code shared between the openjp2 CLI tools.
 pub mod color;
 pub mod convert;
