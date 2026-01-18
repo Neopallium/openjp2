@@ -7588,7 +7588,7 @@ pub(crate) fn opj_j2k_setup_encoder(
     } else {
       /* Create default comment for codestream */
       let comment = format!("Created by OpenJPEG version {}", OPJ_VERSION);
-      let c_comment = alloc::ffi::CString::new(comment).unwrap();
+      let c_comment = std::ffi::CString::new(comment).unwrap();
       /* UniPG>> */
       (*cp).comment = c_comment.into_raw();
       if (*cp).comment.is_null() {
@@ -10142,7 +10142,7 @@ pub(crate) fn opj_j2k_set_decoded_components(
       );
       return 0i32;
     }
-    let mut already_mapped = alloc::collections::BTreeSet::new();
+    let mut already_mapped = std::collections::BTreeSet::new();
     for comp in compenents {
       if *comp >= (*p_j2k.m_private_image).numcomps {
         event_msg!(p_manager, EVT_ERROR, "Invalid component index: %u\n", *comp,);

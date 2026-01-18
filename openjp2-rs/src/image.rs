@@ -29,9 +29,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#[cfg(not(feature = "std"))]
-use alloc::boxed::Box;
-
 use super::math::*;
 use super::openjpeg::*;
 

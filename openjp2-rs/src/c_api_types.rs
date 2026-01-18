@@ -255,7 +255,7 @@ impl Drop for opj_cparameters {
     if !self.cp_comment.is_null() {
       let _old_comment = unsafe {
         // Convert the old comment back into a CString and drop it.
-        alloc::ffi::CString::from_raw(self.cp_comment as *mut core::ffi::c_char)
+        std::ffi::CString::from_raw(self.cp_comment as *mut core::ffi::c_char)
       };
       self.cp_comment = core::ptr::null_mut();
     }
@@ -339,11 +339,11 @@ impl opj_cparameters_t {
   }
 
   pub fn set_comment(&mut self, comment: &str) {
-    let comment = alloc::ffi::CString::new(comment).expect("CString::new failed");
+    let comment = std::ffi::CString::new(comment).expect("CString::new failed");
     if !self.cp_comment.is_null() {
       unsafe {
         // Convert the old comment back into a CString and drop it.
-        let _old_comment = alloc::ffi::CString::from_raw(self.cp_comment as *mut core::ffi::c_char);
+        let _old_comment = std::ffi::CString::from_raw(self.cp_comment as *mut core::ffi::c_char);
       }
     }
     self.cp_comment = comment.into_raw() as *mut i8;

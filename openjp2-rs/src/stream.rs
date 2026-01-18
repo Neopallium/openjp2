@@ -37,10 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-use std::io::{BufReader, BufWriter, Error as IoError, Read, Seek, SeekFrom, Write};
-
-#[cfg(not(feature = "std"))]
-use alloc::boxed::Box;
+use std::io::{self as io, BufReader, BufWriter, Error as IoError, Read, Seek, SeekFrom, Write};
 
 #[cfg(feature = "file-io")]
 use std::{fs::File, path::Path};
@@ -108,7 +105,7 @@ impl Drop for CustomStream {
 }
 
 impl Read for CustomStream {
-  fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+  fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
     let len = buf.len();
     let res = if let Some(read) = &self.m_read_fn {
       unsafe {
@@ -131,7 +128,7 @@ impl Read for CustomStream {
 }
 
 impl Write for CustomStream {
-  fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
     let len = buf.len();
     let res = if let Some(write) = &self.m_write_fn {
       unsafe {
@@ -154,13 +151,13 @@ impl Write for CustomStream {
     }
   }
 
-  fn flush(&mut self) -> std::io::Result<()> {
+  fn flush(&mut self) -> io::Result<()> {
     Ok(())
   }
 }
 
 impl Seek for CustomStream {
-  fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+  fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
     log::trace!("-- CustomStream.seek({pos:?})");
     match pos {
       SeekFrom::Start(offset) => {
@@ -218,7 +215,7 @@ impl StreamInner {
     Self::CustomWriter(BufWriter::with_capacity(capacity, writer))
   }
 
-  pub fn seek_relative(&mut self, offset: i64) -> std::io::Result<()> {
+  pub fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
     match self {
       StreamInner::Reader(reader) => reader.seek_relative(offset),
       StreamInner::Writer(writer) => {
@@ -244,7 +241,7 @@ impl StreamInner {
 }
 
 impl Read for StreamInner {
-  fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+  fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
     match self {
       StreamInner::Reader(reader) => reader.read(buf),
       StreamInner::CustomReader(reader) => reader.read(buf),
@@ -254,7 +251,7 @@ impl Read for StreamInner {
 }
 
 impl Write for StreamInner {
-  fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
     match self {
       StreamInner::Writer(writer) => writer.write(buf),
       StreamInner::CustomWriter(writer) => writer.write(buf),
@@ -262,7 +259,7 @@ impl Write for StreamInner {
     }
   }
 
-  fn flush(&mut self) -> std::io::Result<()> {
+  fn flush(&mut self) -> io::Result<()> {
     match self {
       StreamInner::Writer(writer) => writer.flush(),
       StreamInner::CustomWriter(writer) => writer.flush(),
@@ -272,7 +269,7 @@ impl Write for StreamInner {
 }
 
 impl Seek for StreamInner {
-  fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+  fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
     match self {
       StreamInner::Reader(reader) => reader.seek(pos),
       StreamInner::Writer(writer) => writer.seek(pos),
@@ -284,11 +281,7 @@ impl Seek for StreamInner {
 
 impl Stream {
   #[cfg(feature = "file-io")]
-  pub fn new_file<P: AsRef<Path>>(
-    path: P,
-    buffer_size: usize,
-    is_input: bool,
-  ) -> std::io::Result<Self> {
+  pub fn new_file<P: AsRef<Path>>(path: P, buffer_size: usize, is_input: bool) -> io::Result<Self> {
     if is_input {
       let file = File::open(&path)?;
       let m_stream_length = file.metadata().map(|m| m.len())?;
@@ -351,7 +344,7 @@ impl Stream {
     self.m_stream_length = len;
   }
 
-  pub fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+  pub fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
     let len = buf.len();
     match self.m_inner.read_exact(buf) {
       Ok(_) => {
@@ -374,7 +367,7 @@ impl Stream {
     }
   }
 
-  pub fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+  pub fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
     let len = buf.len();
     log::trace!("-- write({len}), offset={}", self.m_byte_offset);
     match self.m_inner.write_all(buf) {
@@ -389,7 +382,7 @@ impl Stream {
     }
   }
 
-  pub fn flush(&mut self) -> std::io::Result<()> {
+  pub fn flush(&mut self) -> io::Result<()> {
     log::trace!("-- flush(), offset={}", self.m_byte_offset);
     self.m_inner.flush()
   }
@@ -412,10 +405,10 @@ impl Stream {
     nb
   }
 
-  pub fn skip(&mut self, count: i64) -> std::io::Result<i64> {
+  pub fn skip(&mut self, count: i64) -> io::Result<i64> {
     if count < 0 {
       log::trace!("Can't skip with count < 0: {count}");
-      return Err(std::io::Error::other(format!(
+      return Err(io::Error::other(format!(
         "Can't skip with count < 0: {count}"
       )));
     }
@@ -423,9 +416,7 @@ impl Stream {
       let new_offset = self.m_byte_offset + count;
       if (new_offset as u64) > self.m_stream_length {
         log::trace!("Skip pass the end of the stream.");
-        return Err(std::io::Error::other(format!(
-          "Skip pass the end of the stream"
-        )));
+        return Err(io::Error::other(format!("Skip pass the end of the stream")));
       }
     }
     let res = self
@@ -446,7 +437,7 @@ impl Stream {
     }
   }
 
-  pub fn seek(&mut self, offset: i64) -> std::io::Result<()> {
+  pub fn seek(&mut self, offset: i64) -> io::Result<()> {
     let res = self.m_inner.seek_relative(offset - self.m_byte_offset);
     match res {
       Ok(_) => {
@@ -467,17 +458,17 @@ impl Stream {
 }
 
 impl Read for Stream {
-  fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+  fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
     self.read(buf)
   }
 }
 
 impl Write for Stream {
-  fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
     self.write(buf)
   }
 
-  fn flush(&mut self) -> std::io::Result<()> {
+  fn flush(&mut self) -> io::Result<()> {
     self.flush()
   }
 }
