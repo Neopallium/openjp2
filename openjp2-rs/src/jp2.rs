@@ -1,7 +1,5 @@
-use alloc::collections::BTreeSet;
-#[cfg(not(feature = "std"))]
-use alloc::{string::String, vec::Vec};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use std::collections::BTreeSet;
 use std::io::{Read, Write};
 
 use super::consts::*;

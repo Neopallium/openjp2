@@ -32,9 +32,6 @@
 use crate::malloc::*;
 use crate::math::*;
 
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
-
 #[derive(Clone)]
 pub struct SparseArray {
   pub width: u32,

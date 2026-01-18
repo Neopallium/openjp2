@@ -38,8 +38,6 @@ use super::consts::*;
 use super::types::*;
 
 use super::event::*;
-#[cfg(not(feature = "std"))]
-use alloc::boxed::Box;
 
 #[cfg(feature = "file-io")]
 use ::libc::FILE;

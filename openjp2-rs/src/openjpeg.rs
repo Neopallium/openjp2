@@ -41,9 +41,6 @@ pub(crate) use crate::types::*;
 use crate::codec::*;
 use crate::malloc::*;
 
-#[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, vec::Vec};
-
 #[cfg(feature = "file-io")]
 use ::libc::FILE;
 

@@ -5,19 +5,9 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused_assignments)]
 #![allow(unused_mut)]
-#![cfg_attr(not(feature = "std"), no_std)]
-
-#[cfg(not(feature = "std"))]
-#[macro_use]
-extern crate alloc;
-#[cfg(feature = "std")]
-extern crate std as alloc;
 
 #[cfg(feature = "file-io")]
 extern crate libc;
-
-#[cfg(not(feature = "std"))]
-use alloc::string::String;
 
 mod c_api_types;
 mod consts;
@@ -86,7 +76,6 @@ pub fn detect_format_from_extension(ext: Option<&str>) -> Result<J2KFormat, Stri
   }
 }
 
-#[cfg(feature = "std")]
 pub fn detect_format_from_extension_os_str(
   ext: Option<&std::ffi::OsStr>,
 ) -> Result<J2KFormat, String> {
@@ -96,7 +85,7 @@ pub fn detect_format_from_extension_os_str(
 
 #[cfg(feature = "file-io")]
 fn detect_from_file_magic<P: AsRef<std::path::Path>>(path: P) -> Result<J2KFormat, String> {
-  use alloc::io::Read;
+  use std::io::Read;
   // Read magic bytes from file
   let mut buf = [0; 12];
   let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
