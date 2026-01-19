@@ -273,7 +273,7 @@ fn read_image_from_file(
   Ok(image)
 }
 
-pub fn run_compare_images(args: Vec<String>) -> Result<(), String> {
+pub fn run_compare_images(args: Vec<String>) -> Result<bool, String> {
   let args = match parse_args(args) {
     Ok(args) => args,
     Err(e) => {
@@ -496,5 +496,5 @@ pub fn run_compare_images(args: Vec<String>) -> Result<(), String> {
     println!("---- TEST SUCCEED ----");
   }
 
-  std::process::exit(if !failed { 0 } else { 1 });
+  Ok(!failed)
 }
