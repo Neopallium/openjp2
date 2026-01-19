@@ -109,13 +109,11 @@ fn compare_files(base_path: &PathBuf, test_path: &PathBuf) -> Result<bool, Strin
   Ok(true)
 }
 
-pub fn run_compare_dump_files(args: Vec<String>) -> Result<(), String> {
+pub fn run_compare_dump_files(args: Vec<String>) -> Result<bool, String> {
   let args = parse_args(args)?;
 
   let base_path = args.base_filename.unwrap();
   let test_path = args.test_filename.unwrap();
 
-  let success = compare_files(&base_path, &test_path)?;
-
-  std::process::exit(if success { 0 } else { 1 });
+  compare_files(&base_path, &test_path)
 }

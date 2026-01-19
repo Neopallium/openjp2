@@ -110,7 +110,7 @@ fn compare_files(base_path: &PathBuf, test_path: &PathBuf) -> IoResult<bool> {
   }
 }
 
-pub fn run_compare_raw_files(args: Vec<String>) -> Result<(), String> {
+pub fn run_compare_raw_files(args: Vec<String>) -> Result<bool, String> {
   let args = parse_args(args)?;
 
   let success = compare_files(
@@ -119,5 +119,5 @@ pub fn run_compare_raw_files(args: Vec<String>) -> Result<(), String> {
   )
   .map_err(|e| format!("Error comparing files: {}", e))?;
 
-  std::process::exit(if success { 0 } else { 1 });
+  Ok(success)
 }
