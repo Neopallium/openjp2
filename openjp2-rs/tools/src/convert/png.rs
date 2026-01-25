@@ -474,6 +474,11 @@ fn libpng_save(image: &mut opj_image, prec: u32, path: &Path) -> Result<(), Imag
   // write end
   unsafe { png_write_end(png, info) };
 
+  // Close file
+  unsafe {
+    libc::fclose(file);
+  }
+
   Ok(())
 }
 
