@@ -24,7 +24,7 @@ extern "C" fn error_callback(msg: *const c_char, _data: *mut c_void) {
   }
 }
 
-pub fn run_test_tile_encoder(args: Vec<String>) -> Result<(), String> {
+pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<(), String> {
   let mut params = opj_cparameters_t::default();
   let mut args = args.into_iter();
 
@@ -69,7 +69,7 @@ pub fn run_test_tile_encoder(args: Vec<String>) -> Result<(), String> {
     .unwrap_or_else(|| "1".to_string())
     .parse()
     .expect("Invalid irreversible flag");
-  let output_file = PathBuf::from(args.next().unwrap_or_else(|| "test.j2k".to_string()));
+  let output_file = PathBuf::from(args.next().unwrap_or_else(|| default_file.to_string()));
   let output_ext = output_file.extension();
 
   params.cblockw_init = 64;

@@ -68,7 +68,7 @@ fn create_codec_and_stream<P: AsRef<Path>>(input: P) -> Result<(Codec, Stream), 
   Ok((codec, stream))
 }
 
-pub fn run_test_tile_decoder(args: Vec<String>) -> Result<(), String> {
+pub fn run_test_tile_decoder(args: Vec<String>, default_file: &str) -> Result<(), String> {
   let mut tile_info = TileInfo::default();
   let mut args = args.into_iter();
   // Skip program name.
@@ -81,7 +81,7 @@ pub fn run_test_tile_decoder(args: Vec<String>) -> Result<(), String> {
     y1: args.next().and_then(|s| s.parse().ok()).unwrap_or(1_000),
   };
 
-  let input_file = args.next().unwrap_or_else(|| "test.j2k".to_string());
+  let input_file = args.next().unwrap_or_else(|| default_file.to_string());
 
   // Create code and stream
   let (mut codec, mut stream) = create_codec_and_stream(input_file)?;

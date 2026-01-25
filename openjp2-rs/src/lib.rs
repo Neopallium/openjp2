@@ -112,8 +112,8 @@ pub fn detect_format_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<J2K
   // Log warning if magic bytes and file extension don't match
   if ext_format != magic_format {
     eprintln!(
-      "Warning: File extension format ({:?}) doesn't match magic bytes format ({:?})",
-      ext_format, magic_format
+      "Warning: File {:?} extension format ({:?}) doesn't match magic bytes format ({:?})",
+      path, ext_format, magic_format
     );
   }
 
