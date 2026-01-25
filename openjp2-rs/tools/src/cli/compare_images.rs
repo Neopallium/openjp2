@@ -279,7 +279,7 @@ pub fn run_compare_images(args: Vec<String>) -> Result<bool, String> {
     Err(e) => {
       eprintln!("Error: {}", e);
       print_help();
-      std::process::exit(1);
+      return Err(e);
     }
   };
 

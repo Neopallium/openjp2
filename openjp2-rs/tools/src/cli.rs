@@ -4,6 +4,9 @@ pub mod compare_raw_files;
 pub mod compress;
 pub mod decompress;
 pub mod dump;
+pub mod test_decode_area;
+pub mod test_tile_decoder;
+pub mod test_tile_encoder;
 
 pub use compare_dump_files::run_compare_dump_files;
 pub use compare_images::run_compare_images;
@@ -11,3 +14,6 @@ pub use compare_raw_files::run_compare_raw_files;
 pub use compress::run_compress;
 pub use decompress::run_decompress;
 pub use dump::run_dump;
+pub use test_decode_area::run_test_decode_area;
+pub use test_tile_decoder::run_test_tile_decoder;
+pub use test_tile_encoder::run_test_tile_encoder;

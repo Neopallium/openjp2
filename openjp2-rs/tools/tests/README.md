@@ -5,6 +5,7 @@ This directory contains integration tests for the OpenJPEG tools, ported from th
 ## Overview
 
 The tests use the CLI library functions directly instead of spawning subprocesses:
+
 - `run_compress()` - Compress images to JPEG 2000
 - `run_decompress()` - Decompress JPEG 2000 to images
 - `run_dump()` - Dump codestream information
@@ -14,10 +15,10 @@ The tests use the CLI library functions directly instead of spawning subprocesse
 
 ## Test Structure
 
-```
+```txt
+src/testing.rs          # Shared test utilities (MD5, paths, etc.)
 tests/
 ├── common/
-│   └── mod.rs          # Shared test utilities (MD5, paths, etc.)
 └── README.md           # This file
 ```
 
@@ -50,12 +51,14 @@ let args = args!["-i", "input.ppm"];
 ### Common Test Utilities
 
 #### Path Helpers
+
 - `get_test_data_root()` - Root test data directory
 - `get_input_dir()` - Input test files (`data/input/`)
 - `get_baseline_dir()` - Baseline reference files (`data/baseline/`)
 - `get_temp_dir()` - Temporary output directory
 
 #### File Comparison
+
 - `md5_file(path)` - Compute MD5 hash of a file
 - `files_match_md5(file1, file2)` - Compare two files by MD5
 
@@ -67,7 +70,7 @@ cd openjp2-rs/tools
 cargo test
 
 # Run specific test file
-cargo test --test nonreg_encode
+cargo test --test nonreg
 
 # Run with output
 cargo test -- --nocapture
@@ -78,8 +81,5 @@ OPJ_DATA_ROOT=/path/to/data cargo test
 
 ## Test Organization
 
-- **nonreg_encode.rs** - Non-regression encode tests (NR-ENC-*)
-- **nonreg_decode.rs** - Non-regression decode tests (NR-DEC-*)
+- **nonreg.rs** - Non-regression encode & decode tests (NR-ENC-*, NR-DEC-*)
 - **conformance.rs** - Conformance tests
-- **dump.rs** - Dump tool tests
-- **compare.rs** - Comparison tool tests
