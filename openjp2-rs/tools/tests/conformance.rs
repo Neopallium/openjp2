@@ -5,8 +5,6 @@ use openjp2_tools::{
   skip_without_test_data,
   testing::*,
 };
-#[cfg(feature = "parallel-tests")]
-use rayon::prelude::*;
 
 const CP0_NBC_LIST: &[&str] = &[
   "not_used", "1", "1", "1", "3", "4", "4", "3", "3", "1", "3", "1", "1", "4", "3", "1", "1",
