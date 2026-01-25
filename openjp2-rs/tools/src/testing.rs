@@ -1,17 +1,17 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 /// Common test utilities for integration tests
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use openjp2_tools::cli::{
+use crate::cli::{
   run_compare_dump_files, run_compare_images, run_compress, run_decompress, run_dump,
 };
 
-use crate::{args, common};
+use crate::args;
 
-const OPJ_TEST_CMD_LIST: &str = include_str!("../../../../tests/nonregression/test_suite.ctest.in");
-const OPJ_TEST_MD5_LIST: &str = include_str!("../../../../tests/nonregression/md5refs.txt");
+const OPJ_TEST_CMD_LIST: &str = include_str!("../../../tests/nonregression/test_suite.ctest.in");
+const OPJ_TEST_MD5_LIST: &str = include_str!("../../../tests/nonregression/md5refs.txt");
 const LIBTIFF_4_1: &str = "libtiff_4_1:";
 
 pub struct MD5References {
@@ -84,7 +84,7 @@ impl MD5References {
   pub fn check_output_md5(&self, output: PathBuf) -> Result<(), String> {
     let output_name = output.file_name().unwrap().to_string_lossy().to_string();
     // Calculate MD5 of output file.
-    let file_md5 = common::md5_file(&output).expect("Failed to compute MD5 of output file");
+    let file_md5 = md5_file(&output).expect("Failed to compute MD5 of output file");
 
     // Get expected MD5 from references.
     let expected_md5 = self.refs.get(&output_name);
@@ -178,7 +178,6 @@ impl TestCommand {
     // Get the output filename without path or extension.
     let output_name_we = self.output_file_name();
     let output_filename = self.output_file.clone();
-    eprintln!("Running test: {:?}", self);
     let is_lossless = self.command[0].contains("_lossless");
     let command_arg_n = self.command.len() - 1;
 
@@ -206,7 +205,7 @@ impl TestCommand {
       "-b",
       format!(
         "{}/opj_v2_{}-ENC-{}.txt",
-        common::get_baseline_nr_dir().to_string_lossy(),
+        get_baseline_nr_dir().to_string_lossy(),
         output_name_we,
         test_index
       ),
@@ -260,7 +259,6 @@ impl TestCommand {
   pub fn run_nonreg_decode(self, test_index: usize, md5_refs: &Arc<MD5References>) {
     // Get the input filename without path.
     let input_filename = self.input_file_name();
-    eprintln!("Running test: {:?}", self);
     println!("NR-DEC-{}-{}-decode", input_filename, test_index);
     let result = run_decompress(self.command.clone());
 
@@ -299,7 +297,7 @@ impl TestCommand {
 /// Input and temp paths should be replaced before returning the commands.
 ///
 /// Example test commands file snippet:
-/// ```
+/// ```txt
 /// # issue 843 Crash with invalid ppm file
 /// !opj_compress -i @INPUT_NR_PATH@/issue843.ppm -o @TEMP_PATH@/issue843.ppm.jp2
 ///
@@ -318,7 +316,7 @@ pub fn parse_test_commands() -> Vec<TestCommand> {
   let lines = OPJ_TEST_CMD_LIST.lines();
 
   let input_nr_path = get_input_nr_dir().to_string_lossy().to_string();
-  let input_conformance_path = get_input_conformance_dir().to_string_lossy().to_string();
+  let input_conformance_path = get_input_conf_dir().to_string_lossy().to_string();
   let temp_path = get_temp_dir().to_string_lossy().to_string();
 
   let mut lines_iter = lines.peekable();
@@ -442,7 +440,7 @@ pub fn has_test_data() -> bool {
 #[macro_export]
 macro_rules! skip_without_test_data {
   () => {
-    if !common::has_test_data() {
+    if !$crate::testing::has_test_data() {
       eprintln!("Skipping test: OPJ_DATA_ROOT not set or data directory not found");
       eprintln!("Set OPJ_DATA_ROOT environment variable to enable these tests");
       return;
@@ -461,7 +459,7 @@ pub fn get_input_nr_dir() -> PathBuf {
 }
 
 /// Get input conformance test data directory
-pub fn get_input_conformance_dir() -> PathBuf {
+pub fn get_input_conf_dir() -> PathBuf {
   get_input_dir().join("conformance")
 }
 
@@ -475,11 +473,38 @@ pub fn get_baseline_nr_dir() -> PathBuf {
   get_baseline_dir().join("nonregression")
 }
 
+/// Get baseline conformance test data directory
+pub fn get_baseline_conf_dir() -> PathBuf {
+  get_baseline_dir().join("conformance")
+}
+
 /// Get temporary output directory for tests
 pub fn get_temp_dir() -> PathBuf {
   let temp = env::temp_dir().join("openjpeg_tests");
   std::fs::create_dir_all(&temp).unwrap();
   temp
+}
+
+/// Recursively find all files with given extensions in a directory
+/// adding them to the provided set
+pub fn find_files_with_extensions<P: AsRef<Path>>(
+  dir: P,
+  extensions: &BTreeSet<String>,
+  file_set: &mut BTreeSet<PathBuf>,
+) {
+  for entry in std::fs::read_dir(dir).expect("Reading directory failed") {
+    let entry = entry.expect("Reading directory entry failed");
+    let path = entry.path();
+    if path.is_dir() {
+      find_files_with_extensions(&path, extensions, file_set);
+    } else if path.is_file() {
+      if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+        if extensions.contains(ext) {
+          file_set.insert(path);
+        }
+      }
+    }
+  }
 }
 
 /// Compute MD5 hash of a file

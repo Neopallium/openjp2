@@ -20,3 +20,7 @@ pub const RAW_DFMT: i32 = 15; // MSB / Big Endian
 pub const TGA_DFMT: i32 = 16;
 pub const PNG_DFMT: i32 = 17;
 pub const RAWL_DFMT: i32 = 18; // LSB / Little Endian
+
+#[cfg(feature = "testing")]
+#[macro_use]
+pub mod testing;
