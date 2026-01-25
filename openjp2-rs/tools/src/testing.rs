@@ -163,18 +163,16 @@ impl TestCommand {
       .to_string()
   }
 
-  pub fn run_nonreg(self, md5_refs: &Arc<MD5References>) {
-    let index = self.index;
+  pub fn run_nonreg(&self, md5_refs: &Arc<MD5References>) {
     if self.is_encode {
-      self.run_nonreg_encode(index);
+      self.run_nonreg_encode();
     } else {
-      self.run_nonreg_decode(index, md5_refs);
+      self.run_nonreg_decode(md5_refs);
     }
   }
 
-  pub fn run_nonreg_encode(self, test_index: usize) {
-    // Get the input filename without path or extension.
-    let input_filename = self.input_file_name();
+  pub fn run_nonreg_encode(&self) {
+    let name = format!("NR-ENC-{}-{}", self.input_file_name(), self.index);
     // Get the output filename without path or extension.
     let output_name_we = self.output_file_name();
     let output_filename = self.output_file.clone();
@@ -182,7 +180,7 @@ impl TestCommand {
     let command_arg_n = self.command.len() - 1;
 
     // Encode an image into the jpeg2000 format
-    println!("NR-ENC-{}-{}-encode", input_filename, test_index);
+    println!("{name}-encode");
     let result = run_compress(self.command.clone());
 
     if self.should_fail {
@@ -193,21 +191,20 @@ impl TestCommand {
     }
 
     // Dump the encoding file
-    println!("NR-ENC-{}-{}-dump", input_filename, test_index);
-    let dump_file = format!("{}-ENC-{}.txt", &output_filename, test_index);
+    println!("{name}-dump");
+    let dump_file = format!("{}-ENC-{}.txt", &output_filename, self.index);
     run_dump(args!["-i", &self.output_file, "-o", &dump_file])
       .expect("Dumping failed unexpectedly");
 
     // Compare the dump file with the baseline
-    println!("NR-ENC-{}-{}-compare_dump2base", input_filename, test_index);
-
+    println!("{name}-compare_dump2base");
     run_compare_dump_files(args![
       "-b",
       format!(
         "{}/opj_v2_{}-ENC-{}.txt",
         get_baseline_nr_dir().to_string_lossy(),
         output_name_we,
-        test_index
+        self.index
       ),
       "-t",
       &dump_file
@@ -215,18 +212,15 @@ impl TestCommand {
     .expect("Dump file comparison with baseline failed");
 
     // Do lossy check by decoding the encoded file and comparing with the original
-    if let Some(lossy_check) = self.lossy_check {
+    if let Some(lossy_check) = self.lossy_check.clone() {
       // Decode the encoded file
-      println!("NR-ENC-{}-{}-decode-ref", input_filename, test_index);
+      println!("{name}-decode-ref");
       let decoded_file = format!("{}.tif", &output_filename);
       run_decompress(args!["-i", &self.output_file, "-o", &decoded_file])
         .expect("Decompression failed unexpectedly");
 
       // Compare the decoded file with the original input file
-      println!(
-        "NR-ENC-{}-{}-compare_dec-ref-out2base",
-        input_filename, test_index
-      );
+      println!("{name}-compare_dec-ref-out2base",);
       let mut args = args!["-b", &self.input_file, "-t", &decoded_file, "-s", "bXtY"];
       args.extend(lossy_check.into_iter());
       run_compare_images(args).expect("Image comparison failed unexpectedly");
@@ -237,11 +231,11 @@ impl TestCommand {
       // can we compare with the input image ?
       if self.input_file.ends_with(".tif") {
         // Lossless: decode and compare with original
-        println!("NR-ENC-{}-{}-lossless-decode", input_filename, test_index);
+        println!("{name}-lossless-decode");
         let output = format!("{}-lossless.tif", &output_filename);
         run_decompress(args!["-i", &self.output_file, "-o", &output])
           .expect("Decompression failed unexpectedly");
-        println!("NR-ENC-{}-{}-lossless-compare", input_filename, test_index);
+        println!("{name}-lossless-compare");
         run_compare_images(args![
           "-b",
           &self.input_file,
@@ -256,10 +250,11 @@ impl TestCommand {
     }
   }
 
-  pub fn run_nonreg_decode(self, test_index: usize, md5_refs: &Arc<MD5References>) {
+  pub fn run_nonreg_decode(&self, md5_refs: &Arc<MD5References>) {
+    let name = format!("NR-DEC-{}-{}", self.input_file_name(), self.index);
     // Get the input filename without path.
     let input_filename = self.input_file_name();
-    println!("NR-DEC-{}-{}-decode", input_filename, test_index);
+    println!("{name}-decode");
     let result = run_decompress(self.command.clone());
 
     if self.should_fail {
@@ -270,7 +265,7 @@ impl TestCommand {
     }
 
     // Check MD5 of output file against reference
-    println!("NR-DEC-{}-{}-decode-md5", input_filename, test_index);
+    println!("{name}-decode-md5");
     let result = md5_refs.check_output_files_md5(self.output_file());
 
     if let Err(err) = result {

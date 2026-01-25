@@ -687,7 +687,6 @@ mod tests {
 
     let parser = GetOpts::new(&opts);
     let parsed: Vec<_> = parser.parse_args(args).collect();
-    eprintln!("{:?}", parsed);
 
     assert_eq!(parsed.len(), 3);
     assert!(matches!(parsed[0], ParsedOpt::Program(ref s) if s == "prog"));
@@ -719,7 +718,6 @@ mod tests {
 
     let parser = GetOpts::new_with_positionals(&opts, &positionals);
     let parsed: Vec<_> = parser.parse_args(args).collect();
-    eprintln!("{:?}", parsed);
 
     assert_eq!(parsed.len(), 3);
     assert!(matches!(parsed[0], ParsedOpt::Program(ref s) if s == "prog"));
@@ -742,7 +740,6 @@ mod tests {
 
     let parser = GetOpts::new_with_positionals(&opts, &positionals);
     let parsed: Vec<_> = parser.parse_args(args).collect();
-    eprintln!("{:?}", parsed);
 
     assert_eq!(parsed.len(), 3);
     assert!(matches!(parsed[0], ParsedOpt::Program(ref s) if s == "prog"));
