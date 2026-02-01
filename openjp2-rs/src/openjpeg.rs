@@ -504,7 +504,10 @@ pub unsafe fn opj_dump_codec(
     return;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.dump_codec(info_flag, output_stream)
+  if output_stream.is_null() {
+    return;
+  }
+  l_codec.dump_codec(info_flag, &mut *output_stream)
 }
 
 #[no_mangle]

@@ -2165,9 +2165,13 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
 }
 
 #[cfg(feature = "file-io")]
-pub(crate) fn jp2_dump(p_jp2: &mut opj_jp2, flag: OPJ_INT32, out_stream: *mut ::libc::FILE) {
+pub(crate) fn jp2_dump<W: crate::fprintf::StringWriter>(
+  p_jp2: &opj_jp2,
+  flag: OPJ_INT32,
+  out_stream: &mut W,
+) {
   /* preconditions */
-  j2k_dump(&mut p_jp2.j2k, flag, out_stream);
+  j2k_dump(&p_jp2.j2k, flag, out_stream);
 }
 
 pub(crate) fn jp2_get_cstr_index(mut p_jp2: &mut opj_jp2) -> *mut opj_codestream_index_t {

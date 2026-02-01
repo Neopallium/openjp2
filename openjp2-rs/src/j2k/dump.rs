@@ -1,13 +1,14 @@
+use crate::fprintf::StringWriter;
 use crate::image::*;
 use crate::openjpeg::*;
 
-#[cfg(feature = "file-io")]
-use ::libc::FILE;
-
 use super::*;
 
-#[cfg(feature = "file-io")]
-fn opj_j2k_dump_tile_info(l_default_tile: &opj_tcp_t, numcomps: OPJ_INT32, out_stream: *mut FILE) {
+fn opj_j2k_dump_tile_info<W: StringWriter>(
+  l_default_tile: &opj_tcp_t,
+  numcomps: OPJ_INT32,
+  out_stream: &mut W,
+) {
   unsafe {
     let mut compno: OPJ_INT32 = 0;
     fprintf!(out_stream, "\t default tile {{\n");
@@ -100,8 +101,7 @@ fn opj_j2k_dump_tile_info(l_default_tile: &opj_tcp_t, numcomps: OPJ_INT32, out_s
   };
 }
 
-#[cfg(feature = "file-io")]
-pub(crate) fn j2k_dump(p_j2k: &opj_j2k, flag: OPJ_INT32, out_stream: *mut FILE) {
+pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &opj_j2k, flag: OPJ_INT32, out_stream: &mut W) {
   unsafe {
     /* Check if the flag is compatible with j2k file*/
     if flag & 128i32 != 0 || flag & 256i32 != 0 {
@@ -147,8 +147,7 @@ pub(crate) fn j2k_dump(p_j2k: &opj_j2k, flag: OPJ_INT32, out_stream: *mut FILE) 
   }
 }
 
-#[cfg(feature = "file-io")]
-fn opj_j2k_dump_MH_index(p_j2k: &opj_j2k, out_stream: *mut FILE) {
+fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
   unsafe {
     let mut cstr_index = p_j2k.cstr_index;
     let mut it_marker: OPJ_UINT32 = 0;
@@ -269,8 +268,7 @@ fn opj_j2k_dump_MH_index(p_j2k: &opj_j2k, out_stream: *mut FILE) {
   }
 }
 
-#[cfg(feature = "file-io")]
-fn opj_j2k_dump_MH_info(p_j2k: &opj_j2k, out_stream: *mut FILE) {
+fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
   unsafe {
     fprintf!(out_stream, "Codestream info from main header: {{\n");
     fprintf!(
@@ -302,12 +300,10 @@ fn opj_j2k_dump_MH_info(p_j2k: &opj_j2k, out_stream: *mut FILE) {
   }
 }
 
-#[cfg(feature = "file-io")]
-
-pub(crate) fn j2k_dump_image_header(
+pub(crate) fn j2k_dump_image_header<W: StringWriter>(
   img_header: &opj_image,
   dev_dump_flag: OPJ_BOOL,
-  out_stream: *mut FILE,
+  out_stream: &mut W,
 ) {
   unsafe {
     let mut tab = "";
@@ -350,31 +346,27 @@ pub(crate) fn j2k_dump_image_header(
   }
 }
 
-#[cfg(feature = "file-io")]
-
-pub(crate) fn j2k_dump_image_comp_header(
+pub(crate) fn j2k_dump_image_comp_header<W: StringWriter>(
   comp_header: &opj_image_comp_t,
   dev_dump_flag: OPJ_BOOL,
-  out_stream: *mut FILE,
+  out_stream: &mut W,
 ) {
-  unsafe {
-    let mut tab = "";
-    if dev_dump_flag != 0 {
-      fprintf!(out_stream, "[DEV] Dump an image_comp_header struct {{\n");
-    } else {
-      tab = "\t\t";
-    }
-    fprintf!(
-      out_stream,
-      "{} dx={}, dy={}\n",
-      tab,
-      (*comp_header).dx,
-      (*comp_header).dy,
-    );
-    fprintf!(out_stream, "{} prec={}\n", tab, (*comp_header).prec);
-    fprintf!(out_stream, "{} sgnd={}\n", tab, (*comp_header).sgnd);
-    if dev_dump_flag != 0 {
-      fprintf!(out_stream, "}}\n");
-    };
+  let mut tab = "";
+  if dev_dump_flag != 0 {
+    fprintf!(out_stream, "[DEV] Dump an image_comp_header struct {{\n");
+  } else {
+    tab = "\t\t";
   }
+  fprintf!(
+    out_stream,
+    "{} dx={}, dy={}\n",
+    tab,
+    (*comp_header).dx,
+    (*comp_header).dy,
+  );
+  fprintf!(out_stream, "{} prec={}\n", tab, (*comp_header).prec);
+  fprintf!(out_stream, "{} sgnd={}\n", tab, (*comp_header).sgnd);
+  if dev_dump_flag != 0 {
+    fprintf!(out_stream, "}}\n");
+  };
 }

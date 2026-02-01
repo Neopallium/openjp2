@@ -196,13 +196,6 @@ fn process_file(
     };
     let mut codec = Codec::new_decoder(cod_format).ok_or("Failed to create codec")?;
 
-    // Open output file.
-    let output_file = if output.is_some() {
-      libc::fopen(parameters.outfile.as_ptr(), b"w\0".as_ptr() as *const i8)
-    } else {
-      libc::fdopen(libc::STDOUT_FILENO, b"w\0".as_ptr() as *const i8)
-    };
-
     /* catch events using our callbacks and give a local context */
     codec.set_info_handler(Some(info_callback), ptr::null_mut());
     codec.set_warning_handler(Some(warning_callback), ptr::null_mut());
@@ -221,8 +214,16 @@ fn process_file(
       .ok_or("Failed to read header")?;
 
     // Dump codec info
-    codec.dump_codec(flag as i32, output_file);
-    libc::fflush(output_file);
+    if let Some(output) = output {
+      // Dump to file
+      let mut file = std::fs::File::create(output)
+        .map_err(|e| format!("Failed to create output file: {}", e))?;
+      codec.dump_codec(flag as i32, &mut file);
+    } else {
+      // Dump to stdout
+      let mut stdout = std::io::stdout();
+      codec.dump_codec(flag as i32, &mut stdout);
+    }
 
     Ok(())
   }

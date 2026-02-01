@@ -38,9 +38,7 @@ use super::consts::*;
 use super::types::*;
 
 use super::event::*;
-
-#[cfg(feature = "file-io")]
-use ::libc::FILE;
+use super::fprintf::StringWriter;
 
 pub(crate) enum CodecFormat {
   J2K(opj_j2k),
@@ -139,8 +137,8 @@ impl Codec {
   }
 
   #[cfg(feature = "file-io")]
-  pub fn dump_codec(&mut self, mut info_flag: OPJ_INT32, mut output_stream: *mut FILE) {
-    match &mut self.m_codec {
+  pub fn dump_codec<W: StringWriter>(&self, mut info_flag: OPJ_INT32, mut output_stream: &mut W) {
+    match &self.m_codec {
       CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
         j2k_dump(j2k, info_flag, output_stream)
       }
