@@ -2334,7 +2334,7 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Number of components (%d) is inconsistent with a MCT. Skip the MCT step.\n",
+        "Number of components ({}) is inconsistent with a MCT. Skip the MCT step.\n",
         p_tcd.tcd_image.tiles.numcomps,
       );
     }

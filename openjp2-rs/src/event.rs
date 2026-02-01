@@ -138,16 +138,10 @@ macro_rules! event_msg {
   ($event_mgr:expr, $event_type:expr, $fmt:expr, $($arg:expr,)*) => {
     event_msg!(internal $event_mgr, $event_type, $fmt, $($arg,)*)
   };
-  (internal $event_mgr:expr, $event_type:expr, $fmt:expr, $($arg:expr,)*) => {
+  (internal $event_mgr:expr, $event_type:expr, $($fmt:expr,)*) => {
     if $event_mgr.is_enabled($event_type) {
-      let s = ::sprintf::sprintf!($fmt, $($arg),*);
-      match &s {
-        Ok(s) => $event_mgr.msg_write($event_type, s),
-        Err(err) => {
-          log::error!("sprintf failed: {err:?}");
-          0i32
-        }
-      }
+      let s = format!($($fmt),*);
+      $event_mgr.msg_write($event_type, &s)
     } else {
       0i32
     }

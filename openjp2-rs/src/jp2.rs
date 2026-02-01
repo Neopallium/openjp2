@@ -201,7 +201,7 @@ fn opj_jp2_read_ihdr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
     event_msg!(
       p_manager,
       EVT_ERROR,
-      "Wrong values for: w(%d) h(%d) numcomps(%d) (ihdr)\n",
+      "Wrong values for: w({}) h({}) numcomps({}) (ihdr)\n",
       jp2.w,
       jp2.h,
       numcomps,
@@ -233,7 +233,7 @@ fn opj_jp2_read_ihdr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
     event_msg!(
       p_manager,
       EVT_INFO,
-      "JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) \n",
+      "JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file ({}) \n",
       jp2.C
     );
   }
@@ -302,7 +302,7 @@ fn opj_jp2_write_bpcc(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
 fn opj_jp2_read_bpcc(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   if jp2.bpc != 255 {
     event_msg!(p_manager, EVT_WARNING,
-                      "A BPCC header box is available although BPC given by the IHDR box (%d) indicate components bit depth is constant\n", jp2.bpc);
+                      "A BPCC header box is available although BPC given by the IHDR box ({}) indicate components bit depth is constant\n", jp2.bpc);
   }
   /* and length is relevant */
   if buf.len() != jp2.comps.len() {
@@ -403,7 +403,7 @@ fn opj_jp2_check_color(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Invalid component index %d (>= %d).\n",
+          "Invalid component index {} (>= {}).\n",
           info.cn as i32,
           nr_channels,
         );
@@ -413,7 +413,7 @@ fn opj_jp2_check_color(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Invalid component index %d (>= %d).\n",
+          "Invalid component index {} (>= {}).\n",
           info.asoc as core::ffi::c_int - 1i32,
           nr_channels,
         );
@@ -446,7 +446,7 @@ fn opj_jp2_check_color(
           event_msg!(
             p_manager,
             EVT_ERROR,
-            "Invalid component index %d (>= %d).\n",
+            "Invalid component index {} (>= {}).\n",
             cmap.cmp as core::ffi::c_int,
             image.numcomps,
           );
@@ -464,7 +464,7 @@ fn opj_jp2_check_color(
           event_msg!(
             p_manager,
             EVT_ERROR,
-            "Invalid value for cmap[%d].mtyp = %d.\n",
+            "Invalid value for cmap[{}].mtyp = {}.\n",
             i as core::ffi::c_int,
             mtyp as core::ffi::c_int,
           );
@@ -473,7 +473,7 @@ fn opj_jp2_check_color(
           event_msg!(
             p_manager,
             EVT_ERROR,
-            "Invalid component/palette index for direct mapping %d.\n",
+            "Invalid component/palette index for direct mapping {}.\n",
             pcol as core::ffi::c_int,
           );
           is_sane = false
@@ -481,7 +481,7 @@ fn opj_jp2_check_color(
           event_msg!(
             p_manager,
             EVT_ERROR,
-            "Component %d is mapped twice.\n",
+            "Component {} is mapped twice.\n",
             pcol as core::ffi::c_int,
           );
           is_sane = false
@@ -491,7 +491,7 @@ fn opj_jp2_check_color(
           event_msg!(
             p_manager,
             EVT_ERROR,
-            "Direct use at #%d however pcol=%d.\n",
+            "Direct use at #{} however pcol={}.\n",
             i as core::ffi::c_int,
             pcol as core::ffi::c_int,
           );
@@ -500,7 +500,7 @@ fn opj_jp2_check_color(
           /* OpenJPEG implementation limitation. See assert(i == pcol); */
           /* in opj_jp2_apply_pclr() */
           event_msg!(p_manager, EVT_ERROR,
-                              "Implementation limitation: for palette mapping, pcol[%d] should be equal to %d, but is equal to %d.\n",
+                              "Implementation limitation: for palette mapping, pcol[{}] should be equal to {}, but is equal to {}.\n",
                               i as core::ffi::c_int, i as core::ffi::c_int,
                               pcol as core::ffi::c_int);
           is_sane = false
@@ -515,7 +515,7 @@ fn opj_jp2_check_color(
           event_msg!(
             p_manager,
             EVT_ERROR,
-            "Component %d doesn\'t have a mapping.\n",
+            "Component {} doesn\'t have a mapping.\n",
             i as core::ffi::c_int,
           );
           is_sane = false
@@ -576,7 +576,7 @@ fn opj_jp2_apply_pclr(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "image->comps[%d].data == NULL in opj_jp2_apply_pclr().\n",
+        "image->comps[{}].data == NULL in opj_jp2_apply_pclr().\n",
         i as core::ffi::c_int,
       );
       return 0;
@@ -669,7 +669,7 @@ fn opj_jp2_read_pclr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
     event_msg!(
       p_manager,
       EVT_ERROR,
-      "Invalid PCLR box. Reports %d entries\n",
+      "Invalid PCLR box. Reports {} entries\n",
       nr_entries as core::ffi::c_int,
     );
     return 0;
@@ -797,7 +797,7 @@ fn opj_jp2_apply_cdef(
       event_msg!(
         manager,
         EVT_WARNING,
-        "opj_jp2_apply_cdef: cn=%d, numcomps=%d\n",
+        "opj_jp2_apply_cdef: cn={}, numcomps={}\n",
         cn as core::ffi::c_int,
         numcomps,
       );
@@ -809,7 +809,7 @@ fn opj_jp2_apply_cdef(
         event_msg!(
           manager,
           EVT_WARNING,
-          "opj_jp2_apply_cdef: acn=%d, numcomps=%d\n",
+          "opj_jp2_apply_cdef: acn={}, numcomps={}\n",
           acn as core::ffi::c_int,
           numcomps,
         );
@@ -924,7 +924,7 @@ fn opj_jp2_read_colr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Bad COLR header box (bad size: %d)\n",
+        "Bad COLR header box (bad size: {})\n",
         total_size,
       );
       return 0i32;
@@ -940,7 +940,7 @@ fn opj_jp2_read_colr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
       event_msg!(
         p_manager,
         EVT_WARNING,
-        "Bad COLR header box (bad size: %d)\n",
+        "Bad COLR header box (bad size: {})\n",
         total_size,
       );
     }
@@ -985,7 +985,7 @@ fn opj_jp2_read_colr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
         event_msg!(
           p_manager,
           EVT_WARNING,
-          "Bad COLR header box (CIELab, bad size: %d)\n",
+          "Bad COLR header box (CIELab, bad size: {})\n",
           total_size,
         );
       }
@@ -1008,7 +1008,7 @@ fn opj_jp2_read_colr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
     /*  ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
     conforming JP2 reader shall ignore the entire Colour Specification box.*/
     event_msg!(p_manager, EVT_INFO,
-                      "COLR BOX meth value is not a regular value (%d), so we will ignore the entire Colour Specification box. \n", jp2.meth);
+                      "COLR BOX meth value is not a regular value ({}), so we will ignore the entire Colour Specification box. \n", jp2.meth);
   }
   1
 }
@@ -1573,7 +1573,7 @@ fn opj_jp2_read_header_procedure(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "invalid box size %d (%x)\n",
+          "invalid box size {} ({:x})\n",
           header.length,
           header.ty_u32(),
         );
@@ -1586,7 +1586,7 @@ fn opj_jp2_read_header_procedure(
         event_msg!(
           p_manager,
           EVT_WARNING,
-          "Found a misplaced \'%x\' box outside jp2h box\n",
+          "Found a misplaced \'{:x}\' box outside jp2h box\n",
           header.ty_u32(),
         );
         if jp2.jp2_state & JP2_STATE_HEADER != 0 {
@@ -1595,7 +1595,7 @@ fn opj_jp2_read_header_procedure(
           event_msg!(
             p_manager,
             EVT_WARNING,
-            "JPEG2000 Header box not read yet, \'%x\' box will be ignored\n",
+            "JPEG2000 Header box not read yet, \'{:x}\' box will be ignored\n",
             header.ty_u32(),
           );
           jp2.jp2_state |= JP2_STATE_UNKNOWN;
@@ -1615,7 +1615,7 @@ fn opj_jp2_read_header_procedure(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Invalid box size %d for box \'%x\'. Need %d bytes, %d bytes remaining \n",
+          "Invalid box size {} for box \'{:x}\'. Need {} bytes, {} bytes remaining \n",
           header.length,
           header.ty_u32(),
           data_size,

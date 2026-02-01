@@ -640,7 +640,7 @@ fn opj_t2_encode_packet(
           event_msg!(
             p_manager,
             EVT_ERROR,
-            "opj_t2_encode_packet(): only %u bytes remaining in output buffer. %u needed.\n",
+            "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
             length,
             6i32,
           ); /* packno is uint32_t */
@@ -670,7 +670,7 @@ fn opj_t2_encode_packet(
             event_msg!(
               p_manager,
               EVT_ERROR,
-              "opj_t2_encode_packet(): accessing precno=%u >= %u\n",
+              "opj_t2_encode_packet(): accessing precno={} >= {}\n",
               precno,
               (*res).pw.wrapping_mul((*res).ph),
             );
@@ -718,7 +718,7 @@ fn opj_t2_encode_packet(
           event_msg!(
             p_manager,
             EVT_ERROR,
-            "opj_t2_encode_packet(): accessing precno=%u >= %u\n",
+            "opj_t2_encode_packet(): accessing precno={} >= {}\n",
             precno,
             (*res).pw.wrapping_mul((*res).ph),
           );
@@ -848,7 +848,7 @@ fn opj_t2_encode_packet(
           event_msg!(
             p_manager,
             EVT_ERROR,
-            "opj_t2_encode_packet(): only %u bytes remaining in output buffer. %u needed.\n",
+            "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
             length,
             2i32,
           );
@@ -894,7 +894,7 @@ fn opj_t2_encode_packet(
                 event_msg!(
                   p_manager,
                   EVT_ERROR,
-                  "opj_t2_encode_packet(): only %u bytes remaining in output buffer. %u needed.\n",
+                  "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
                   length,
                   (*layer_1).len
                 );
@@ -1258,7 +1258,7 @@ fn opj_t2_read_packet_header(
                   event_msg!(
                     p_manager,
                     EVT_ERROR,
-                    "Invalid bit number %d in opj_t2_read_packet_header()\n",
+                    "Invalid bit number {} in opj_t2_read_packet_header()\n",
                     bit_number,
                   );
                   opj_bio_destroy(l_bio);
@@ -1308,7 +1308,7 @@ fn opj_t2_read_packet_header(
                   event_msg!(
                     p_manager,
                     EVT_ERROR,
-                    "Invalid bit number %d in opj_t2_read_packet_header()\n",
+                    "Invalid bit number {} in opj_t2_read_packet_header()\n",
                     bit_number_0,
                   );
                   opj_bio_destroy(l_bio);
@@ -1461,14 +1461,14 @@ fn opj_t2_read_packet_data(
               {
                 if (*(*p_t2).cp).strict != 0 {
                   event_msg!(p_manager, EVT_ERROR,
-                                                "read: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
+                                                "read: segment too long ({}) with max ({}) for codeblock {} (p={}, b={}, r={}, c={})\n",
                                                 (*l_seg).newlen, p_max_length,
                                                 cblkno, (*p_pi).precno, bandno,
                                                 (*p_pi).resno, (*p_pi).compno);
                   return 0i32;
                 } else {
                   event_msg!(p_manager, EVT_WARNING,
-                                                "read: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
+                                                "read: segment too long ({}) with max ({}) for codeblock {} (p={}, b={}, r={}, c={})\n",
                                                 (*l_seg).newlen, p_max_length,
                                                 cblkno, (*p_pi).precno, bandno,
                                                 (*p_pi).resno, (*p_pi).compno);
@@ -1609,14 +1609,14 @@ fn opj_t2_skip_packet_data(
               {
                 if (*(*p_t2).cp).strict != 0 {
                   event_msg!(p_manager, EVT_ERROR,
-                                                "skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
+                                                "skip: segment too long ({}) with max ({}) for codeblock {} (p={}, b={}, r={}, c={})\n",
                                                 (*l_seg).newlen, p_max_length,
                                                 cblkno, (*p_pi).precno, bandno,
                                                 (*p_pi).resno, (*p_pi).compno);
                   return 0i32;
                 } else {
                   event_msg!(p_manager, EVT_WARNING,
-                                                "skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
+                                                "skip: segment too long ({}) with max ({}) for codeblock {} (p={}, b={}, r={}, c={})\n",
                                                 (*l_seg).newlen, p_max_length,
                                                 cblkno, (*p_pi).precno, bandno,
                                                 (*p_pi).resno, (*p_pi).compno);
@@ -1680,7 +1680,7 @@ fn opj_t2_init_seg(
         l_m_current_max_segs as usize,
       );
       if new_segs.is_null() {
-        /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to initialize segment %d\n", l_nb_segs); */
+        /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to initialize segment {}\n", l_nb_segs); */
         return 0i32;
       }
       (*cblk).segs = new_segs;

@@ -1412,7 +1412,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     }
     if num_passes > 3u32 {
       event_msg!(p_manager, EVT_ERROR,
-                        "We do not support more than 3 coding passes in an HT codeblock; This codeblocks has %d passes.\n", num_passes);
+                        "We do not support more than 3 coding passes in an HT codeblock; This codeblocks has {} passes.\n", num_passes);
       return 0i32;
     }
     if (*cblk).Mb > 30u32 {
@@ -1426,7 +1426,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         Therefore we can only do values of cblk->Mb <= 30
       */
       event_msg!(p_manager, EVT_ERROR,
-                        "32 bits are not enough to decode this codeblock, since the number of bitplane, %d, is larger than 30.\n", (*cblk).Mb);
+                        "32 bits are not enough to decode this codeblock, since the number of bitplane, {}, is larger than 30.\n", (*cblk).Mb);
       return 0i32;
     }
     if zero_bplanes > (*cblk).Mb {
@@ -1435,7 +1435,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       where i is the zero bitplanes, and should be no larger than cblk->Mb
       We cannot have more zero bitplanes than there are planes. */
       event_msg!(p_manager, EVT_ERROR,
-                        "Malformed HT codeblock. Decoding this codeblock is stopped. There are %d zero bitplanes in %d bitplanes.\n", zero_bplanes,
+                        "Malformed HT codeblock. Decoding this codeblock is stopped. There are {} zero bitplanes in {} bitplanes.\n", zero_bplanes,
                         (*cblk).Mb);
       return 0i32;
     } else if zero_bplanes == (*cblk).Mb && num_passes > 1u32 {
@@ -1449,7 +1449,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         if only_cleanup_pass_is_decoded == 0i32 {
           only_cleanup_pass_is_decoded = 1i32;
           event_msg!(p_manager, EVT_WARNING,
-                              "Malformed HT codeblock. When the number of zero planes bitplanes is equal to the number of bitplanes, only the cleanup pass makes sense, but we have %d passes in this codeblock. Therefore, only the cleanup pass will be decoded. This message will not be displayed again.\n",
+                              "Malformed HT codeblock. When the number of zero planes bitplanes is equal to the number of bitplanes, only the cleanup pass makes sense, but we have {} passes in this codeblock. Therefore, only the cleanup pass will be decoded. This message will not be displayed again.\n",
                               num_passes);
         }
       }

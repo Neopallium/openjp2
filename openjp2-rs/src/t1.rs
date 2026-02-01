@@ -2253,7 +2253,7 @@ fn opj_t1_decode_cblk(
       event_msg!(
         p_manager,
         EVT_WARNING,
-        "opj_t1_decode_cblk(): unsupported bpno_plus_one = %d >= 31\n",
+        "opj_t1_decode_cblk(): unsupported bpno_plus_one = {} >= 31\n",
         bpno_plus_one,
       );
       return 0i32;
@@ -2379,7 +2379,7 @@ fn opj_t1_decode_cblk(
         event_msg!(
           p_manager,
           EVT_WARNING,
-          "PTERM check failure: %d remaining bytes in code block (%d used / %d)\n",
+          "PTERM check failure: {} remaining bytes in code block ({} used / {})\n",
           mqc.end.offset_from(mqc.bp) as core::ffi::c_int - 2i32,
           mqc.bp.offset_from(mqc.start) as core::ffi::c_int,
           mqc.end.offset_from(mqc.start) as core::ffi::c_int,
@@ -2388,7 +2388,7 @@ fn opj_t1_decode_cblk(
         event_msg!(
           p_manager,
           EVT_WARNING,
-          "PTERM check failure: %d synthetized 0xFF markers read\n",
+          "PTERM check failure: {} synthetized 0xFF markers read\n",
           mqc.end_of_byte_stream_counter,
         );
       }

@@ -13,10 +13,10 @@ use super::tcd::*;
 
 use super::malloc::*;
 
-#[cfg(feature = "file-io")]
-use ::libc::FILE;
-
 use bitflags::bitflags;
+
+mod dump;
+pub(crate) use dump::*;
 
 bitflags! {
   pub struct J2KState: u32 {
@@ -1105,7 +1105,7 @@ fn opj_j2k_read_soc(
     event_msg!(
       p_manager,
       EVT_INFO,
-      "Start to read j2k main header (%ld).\n",
+      "Start to read j2k main header ({}).\n",
       (*p_j2k.cstr_index).main_head_start,
     );
     /* Add the marker to the codestream index*/
@@ -1344,14 +1344,14 @@ fn opj_j2k_read_siz(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Error with SIZ marker: number of component is illegal -> %d\n",
+        "Error with SIZ marker: number of component is illegal -> {}\n",
         l_tmp,
       );
       return 0i32;
     }
     if (*l_image).numcomps != l_nb_comp {
       event_msg!(p_manager, EVT_ERROR,
-                      "Error with SIZ marker: number of component is not compatible with the remaining number of parameters ( %d vs %d)\n",
+                      "Error with SIZ marker: number of component is not compatible with the remaining number of parameters ( {} vs {})\n",
                       (*l_image).numcomps, l_nb_comp);
       return 0i32;
     }
@@ -1361,7 +1361,7 @@ fn opj_j2k_read_siz(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Error with SIZ marker: negative or zero image size (%ld x %ld)\n",
+        "Error with SIZ marker: negative or zero image size ({} x {})\n",
         (*l_image).x1 as OPJ_INT64 - (*l_image).x0 as i64,
         (*l_image).y1 as OPJ_INT64 - (*l_image).y0 as i64,
       );
@@ -1372,7 +1372,7 @@ fn opj_j2k_read_siz(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Error with SIZ marker: invalid tile size (tdx: %d, tdy: %d)\n",
+        "Error with SIZ marker: invalid tile size (tdx: {}, tdy: {})\n",
         (*l_cp).tdx,
         (*l_cp).tdy,
       );
@@ -1405,7 +1405,7 @@ fn opj_j2k_read_siz(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Error with SIZ marker: IHDR w(%u) h(%u) vs. SIZ w(%u) h(%u)\n",
+          "Error with SIZ marker: IHDR w({}) h({}) vs. SIZ w({}) h({})\n",
           p_j2k.ihdr_w,
           p_j2k.ihdr_h,
           siz_w,
@@ -1444,7 +1444,7 @@ fn opj_j2k_read_siz(
           && ((*l_img_comp).prec != l_prec0 || (*l_img_comp).sgnd != l_sgnd0)
         {
           event_msg!(p_manager, EVT_WARNING,
-                              "Despite JP2 BPC!=255, precision and/or sgnd values for comp[%d] is different than comp[0]:\n        [0] prec(%d) sgnd(%d) [%d] prec(%d) sgnd(%d)\n", i,
+                              "Despite JP2 BPC!=255, precision and/or sgnd values for comp[{}] is different than comp[0]:\n        [0] prec({}) sgnd({}) [{}] prec({}) sgnd({})\n", i,
                               l_prec0, l_sgnd0, i, (*l_img_comp).prec,
                               (*l_img_comp).sgnd);
         }
@@ -1462,7 +1462,7 @@ fn opj_j2k_read_siz(
         || (*l_img_comp).dy > 255u32
       {
         event_msg!(p_manager, EVT_ERROR,
-                          "Invalid values for comp = %d : dx=%u dy=%u (should be between 1 and 255 according to the JPEG2000 norm)\n", i,
+                          "Invalid values for comp = {} : dx={} dy={} (should be between 1 and 255 according to the JPEG2000 norm)\n", i,
                           (*l_img_comp).dx, (*l_img_comp).dy);
         return 0i32;
       }
@@ -1471,7 +1471,7 @@ fn opj_j2k_read_siz(
       << (l_image->comps[i].prec - 1); */
       if (*l_img_comp).prec > 31u32 {
         event_msg!(p_manager, EVT_ERROR,
-                          "Invalid values for comp = %d : prec=%u (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n", i,
+                          "Invalid values for comp = {} : prec={} (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n", i,
                           (*l_img_comp).prec);
         return 0i32;
       }
@@ -1494,7 +1494,7 @@ fn opj_j2k_read_siz(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Invalid number of tiles : %u x %u (maximum fixed by jpeg2000 norm is 65535 tiles)\n",
+        "Invalid number of tiles : {} x {} (maximum fixed by jpeg2000 norm is 65535 tiles)\n",
         (*l_cp).tw,
         (*l_cp).th,
       );
@@ -1882,7 +1882,7 @@ fn opj_j2k_read_cod(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Invalid number of layers in COD marker : %d not in range [1-65535]\n",
+        "Invalid number of layers in COD marker : {} not in range [1-65535]\n",
         (*l_tcp).numlayers,
       );
       return 0i32;
@@ -2566,7 +2566,7 @@ fn opj_j2k_read_qcc(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Invalid component number: %d, regarding the number of components %d\n",
+        "Invalid component number: {}, regarding the number of components {}\n",
         l_comp_no,
         (*p_j2k.m_private_image).numcomps,
       );
@@ -2918,7 +2918,7 @@ fn opj_j2k_read_poc(
     l_current_poc_nb =
       (l_current_poc_nb as core::ffi::c_uint).wrapping_add(l_old_poc_nb) as OPJ_UINT32;
     if l_current_poc_nb >= 32u32 {
-      event_msg!(p_manager, EVT_ERROR, "Too many POCs %d\n", l_current_poc_nb,);
+      event_msg!(p_manager, EVT_ERROR, "Too many POCs {}\n", l_current_poc_nb,);
       return 0i32;
     }
     /* now poc is in use.*/
@@ -3283,7 +3283,7 @@ fn opj_j2k_read_ppm(
       .is_null()
     {
       /* clean up to be done on l_cp destruction */
-      event_msg!(p_manager, EVT_ERROR, "Zppm %u already read\n", l_Z_ppm,);
+      event_msg!(p_manager, EVT_ERROR, "Zppm {} already read\n", l_Z_ppm,);
       return 0i32;
     }
     let fresh12 = &mut (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize)).m_data;
@@ -3580,7 +3580,7 @@ fn opj_j2k_read_ppt(
       .is_null()
     {
       /* clean up to be done on l_tcp destruction */
-      event_msg!(p_manager, EVT_ERROR, "Zppt %u already read\n", l_Z_ppt,);
+      event_msg!(p_manager, EVT_ERROR, "Zppt {} already read\n", l_Z_ppt,);
       return 0i32;
     }
     let fresh14 = &mut (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize)).m_data;
@@ -3926,7 +3926,7 @@ fn opj_j2k_read_sot(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Invalid tile number %d\n",
+        "Invalid tile number {}\n",
         p_j2k.m_current_tile_number,
       );
       return 0i32;
@@ -3952,7 +3952,7 @@ fn opj_j2k_read_sot(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Invalid tile part index for tile number %d. Got %d, expected %d\n",
+          "Invalid tile part index for tile number {}. Got {}, expected {}\n",
           p_j2k.m_current_tile_number,
           l_current_part,
           (*l_tcp).m_current_tile_part_number + 1i32,
@@ -3972,14 +3972,14 @@ fn opj_j2k_read_sot(
         event_msg!(
           p_manager,
           EVT_WARNING,
-          "Empty SOT marker detected: Psot=%d.\n",
+          "Empty SOT marker detected: Psot={}.\n",
           l_tot_len,
         );
       } else {
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Psot value is not correct regards to the JPEG2000 norm: %d.\n",
+          "Psot value is not correct regards to the JPEG2000 norm: {}.\n",
           l_tot_len,
         );
         return 0i32;
@@ -3995,7 +3995,7 @@ fn opj_j2k_read_sot(
     if (*l_tcp).m_nb_tile_parts != 0u32 && l_current_part >= (*l_tcp).m_nb_tile_parts {
       /* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
       event_msg!(p_manager, EVT_ERROR,
-                      "In SOT marker, TPSot (%d) is not valid regards to the previous number of tile-part (%d), giving up\n", l_current_part,
+                      "In SOT marker, TPSot ({}) is not valid regards to the previous number of tile-part ({}), giving up\n", l_current_part,
                       (*l_tcp).m_nb_tile_parts);
       p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32;
       return 0i32;
@@ -4009,7 +4009,7 @@ fn opj_j2k_read_sot(
        * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
       if (*l_tcp).m_nb_tile_parts != 0 && l_current_part >= (*l_tcp).m_nb_tile_parts {
         event_msg!(p_manager, EVT_ERROR,
-                            "In SOT marker, TPSot (%d) is not valid regards to the current number of tile-part (%d), giving up\n",
+                            "In SOT marker, TPSot ({}) is not valid regards to the current number of tile-part ({}), giving up\n",
                             l_current_part, (*l_tcp).m_nb_tile_parts);
         p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32;
         return 0i32;
@@ -4017,7 +4017,7 @@ fn opj_j2k_read_sot(
       if l_current_part >= l_num_parts {
         /* testcase 451.pdf.SIGSEGV.ce9.3723 */
         event_msg!(p_manager, EVT_ERROR,
-                          "In SOT marker, TPSot (%d) is not valid regards to the current number of tile-part (header) (%d), giving up\n",
+                          "In SOT marker, TPSot ({}) is not valid regards to the current number of tile-part (header) ({}), giving up\n",
                           l_current_part, l_num_parts);
         p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32;
         return 0i32;
@@ -4833,7 +4833,7 @@ fn opj_j2k_read_rgn(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "bad component number in RGN (%d when there are only %d)\n",
+        "bad component number in RGN ({} when there are only {})\n",
         l_comp_no,
         l_nb_comp,
       ); /* SPrgn */
@@ -5031,7 +5031,7 @@ fn opj_j2k_update_rates(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Not enough memory to allocate m_encoded_tile_data. %u MB required\n",
+        "Not enough memory to allocate m_encoded_tile_data. {} MB required\n",
         l_tile_size.wrapping_div(1024u64).wrapping_div(1024u64) as OPJ_UINT32,
       );
       return 0i32;
@@ -6327,7 +6327,7 @@ fn opj_j2k_read_cbd(
       (*l_comp).prec = (l_comp_def & 0x7fu32).wrapping_add(1u32);
       if (*l_comp).prec > 31u32 {
         event_msg!(p_manager, EVT_ERROR,
-                          "Invalid values for comp = %d : prec=%u (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n", i,
+                          "Invalid values for comp = {} : prec={} (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n", i,
                           (*l_comp).prec);
         return 0i32;
       }
@@ -6492,7 +6492,7 @@ fn opj_j2k_set_cinema_parameters(
     /* Number of layers */
     if parameters.tcp_numlayers > 1i32 {
       event_msg!(p_manager, EVT_WARNING,
-                      "JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\n1 single quality layer-> Number of layers forced to 1 (rather than %d)\n-> Rate of the last layer (%3.1f) will be used",
+                      "JPEG 2000 Profile-3 and 4 (2k/4k dc profile) requires:\n1 single quality layer-> Number of layers forced to 1 (rather than {})\n-> Rate of the last layer ({:.1}) will be used",
                       parameters.tcp_numlayers,
                       parameters.tcp_rates[(parameters.tcp_numlayers -
                                                    1i32) as usize]
@@ -6506,7 +6506,7 @@ fn opj_j2k_set_cinema_parameters(
       3 => {
         if parameters.numresolution > 6i32 {
           event_msg!(p_manager, EVT_WARNING,
-                              "JPEG 2000 Profile-3 (2k dc profile) requires:\nNumber of decomposition levels <= 5\n-> Number of decomposition levels forced to 5 (rather than %d)\n",
+                              "JPEG 2000 Profile-3 (2k dc profile) requires:\nNumber of decomposition levels <= 5\n-> Number of decomposition levels forced to 5 (rather than {})\n",
                               parameters.numresolution + 1i32);
           parameters.numresolution = 6i32
         }
@@ -6514,12 +6514,12 @@ fn opj_j2k_set_cinema_parameters(
       4 => {
         if parameters.numresolution < 2i32 {
           event_msg!(p_manager, EVT_WARNING,
-                              "JPEG 2000 Profile-4 (4k dc profile) requires:\nNumber of decomposition levels >= 1 && <= 6\n-> Number of decomposition levels forced to 1 (rather than %d)\n",
+                              "JPEG 2000 Profile-4 (4k dc profile) requires:\nNumber of decomposition levels >= 1 && <= 6\n-> Number of decomposition levels forced to 1 (rather than {})\n",
                               parameters.numresolution + 1i32);
           parameters.numresolution = 1i32
         } else if parameters.numresolution > 7i32 {
           event_msg!(p_manager, EVT_WARNING,
-                              "JPEG 2000 Profile-4 (4k dc profile) requires:\nNumber of decomposition levels >= 1 && <= 6\n-> Number of decomposition levels forced to 6 (rather than %d)\n",
+                              "JPEG 2000 Profile-4 (4k dc profile) requires:\nNumber of decomposition levels >= 1 && <= 6\n-> Number of decomposition levels forced to 6 (rather than {})\n",
                               parameters.numresolution + 1i32);
           parameters.numresolution = 7i32
         }
@@ -6595,7 +6595,7 @@ fn opj_j2k_is_cinema_compliant(
     /* Number of components */
     if image.numcomps != 3u32 {
       event_msg!(p_manager, EVT_WARNING,
-                      "JPEG 2000 Profile-3 (2k dc profile) requires:\n3 components-> Number of components of input image (%d) is not compliant\n-> Non-profile-3 codestream will be generated\n",
+                      "JPEG 2000 Profile-3 (2k dc profile) requires:\n3 components-> Number of components of input image ({}) is not compliant\n-> Non-profile-3 codestream will be generated\n",
                       image.numcomps);
       return 0i32;
     }
@@ -6612,7 +6612,7 @@ fn opj_j2k_is_cinema_compliant(
           "unsigned"
         };
         event_msg!(p_manager, EVT_WARNING,
-                          "JPEG 2000 Profile-3 (2k dc profile) requires:\nPrecision of each component shall be 12 bits unsigned-> At least component %d of input image (%d bits, %s) is not compliant\n-> Non-profile-3 codestream will be generated\n", i,
+                          "JPEG 2000 Profile-3 (2k dc profile) requires:\nPrecision of each component shall be 12 bits unsigned-> At least component {} of input image ({} bits, {}) is not compliant\n-> Non-profile-3 codestream will be generated\n", i,
                           (*image.comps.offset(i as isize)).prec, tmp_str);
         return 0i32;
       }
@@ -6626,7 +6626,7 @@ fn opj_j2k_is_cinema_compliant(
           != 0
         {
           event_msg!(p_manager, EVT_WARNING,
-                              "JPEG 2000 Profile-3 (2k dc profile) requires:\nwidth <= 2048 and height <= 1080\n-> Input image size %d x %d is not compliant\n-> Non-profile-3 codestream will be generated\n",
+                              "JPEG 2000 Profile-3 (2k dc profile) requires:\nwidth <= 2048 and height <= 1080\n-> Input image size {} x {} is not compliant\n-> Non-profile-3 codestream will be generated\n",
                               (*image.comps.offset(0i32 as
                                                           isize)).w,
                               (*image.comps.offset(0i32 as
@@ -6640,7 +6640,7 @@ fn opj_j2k_is_cinema_compliant(
           != 0
         {
           event_msg!(p_manager, EVT_WARNING,
-                              "JPEG 2000 Profile-4 (4k dc profile) requires:\nwidth <= 4096 and height <= 2160\n-> Image size %d x %d is not compliant\n-> Non-profile-4 codestream will be generated\n",
+                              "JPEG 2000 Profile-4 (4k dc profile) requires:\nwidth <= 4096 and height <= 2160\n-> Image size {} x {} is not compliant\n-> Non-profile-4 codestream will be generated\n",
                               (*image.comps.offset(0i32 as
                                                           isize)).w,
                               (*image.comps.offset(0i32 as
@@ -6800,7 +6800,7 @@ fn opj_j2k_is_imf_compliant(
     /* Validate mainlevel */
     if mainlevel as core::ffi::c_int > 11i32 {
       event_msg!(p_manager, EVT_WARNING,
-                      "IMF profile require mainlevel <= 11.\n-> %d is thus not compliant\n-> Non-IMF codestream will be generated\n",
+                      "IMF profile require mainlevel <= 11.\n-> {} is thus not compliant\n-> Non-IMF codestream will be generated\n",
                       mainlevel as core::ffi::c_int);
       ret = 0i32
     } else {
@@ -6813,7 +6813,7 @@ fn opj_j2k_is_imf_compliant(
         > tabMaxSubLevelFromMainLevel[mainlevel as usize] as core::ffi::c_int
       {
         event_msg!(p_manager, EVT_WARNING,
-                          "IMF profile require sublevel <= %d for mainlevel = %d.\n-> %d is thus not compliant\n-> Non-IMF codestream will be generated\n",
+                          "IMF profile require sublevel <= {} for mainlevel = {}.\n-> {} is thus not compliant\n-> Non-IMF codestream will be generated\n",
                           tabMaxSubLevelFromMainLevel[mainlevel as usize] as
                               core::ffi::c_int, mainlevel as core::ffi::c_int,
                           sublevel as core::ffi::c_int);
@@ -6823,20 +6823,20 @@ fn opj_j2k_is_imf_compliant(
     /* Number of components */
     if image.numcomps > 3u32 {
       event_msg!(p_manager, EVT_WARNING,
-                      "IMF profiles require at most 3 components.\n-> Number of components of input image (%d) is not compliant\n-> Non-IMF codestream will be generated\n",
+                      "IMF profiles require at most 3 components.\n-> Number of components of input image ({}) is not compliant\n-> Non-IMF codestream will be generated\n",
                       image.numcomps);
       ret = 0i32
     }
     if image.x0 != 0u32 || image.y0 != 0u32 {
       event_msg!(p_manager, EVT_WARNING,
-                      "IMF profiles require image origin to be at 0,0.\n-> %d,%d is not compliant\n-> Non-IMF codestream will be generated\n", image.x0,
+                      "IMF profiles require image origin to be at 0,0.\n-> {},{} is not compliant\n-> Non-IMF codestream will be generated\n", image.x0,
                       (image.y0 != 0u32) as
                           core::ffi::c_int);
       ret = 0i32
     }
     if parameters.cp_tx0 != 0i32 || parameters.cp_ty0 != 0i32 {
       event_msg!(p_manager, EVT_WARNING,
-                      "IMF profiles require tile origin to be at 0,0.\n-> %d,%d is not compliant\n-> Non-IMF codestream will be generated\n",
+                      "IMF profiles require tile origin to be at 0,0.\n-> {},{} is not compliant\n-> Non-IMF codestream will be generated\n",
                       parameters.cp_tx0, parameters.cp_ty0);
       ret = 0i32
     }
@@ -6849,7 +6849,7 @@ fn opj_j2k_is_imf_compliant(
           || (parameters.cp_tdy as OPJ_UINT32) < image.y1
         {
           event_msg!(p_manager, EVT_WARNING,
-                              "IMF 2K/4K/8K single tile profiles require tile to be greater or equal to image size.\n-> %d,%d is lesser than %d,%d\n-> Non-IMF codestream will be generated\n",
+                              "IMF 2K/4K/8K single tile profiles require tile to be greater or equal to image size.\n-> {},{} is lesser than {},{}\n-> Non-IMF codestream will be generated\n",
                               parameters.cp_tdx, parameters.cp_tdy,
                               image.x1, image.y1);
           ret = 0i32
@@ -6865,7 +6865,7 @@ fn opj_j2k_is_imf_compliant(
           && profile as core::ffi::c_int == 0x600i32)
       {
         event_msg!(p_manager, EVT_WARNING,
-                                "IMF 2K_R/4K_R/8K_R single/multiple tile profiles require tile to be greater or equal to image size,\nor to be (1024,1024), or (2048,2048) for 4K_R/8K_R or (4096,4096) for 8K_R.\n-> %d,%d is non conformant\n-> Non-IMF codestream will be generated\n",
+                                "IMF 2K_R/4K_R/8K_R single/multiple tile profiles require tile to be greater or equal to image size,\nor to be (1024,1024), or (2048,2048) for 4K_R/8K_R or (4096,4096) for 8K_R.\n-> {},{} is non conformant\n-> Non-IMF codestream will be generated\n",
                                 parameters.cp_tdx,
                                 parameters.cp_tdy);
         ret = 0i32
@@ -6884,7 +6884,7 @@ fn opj_j2k_is_imf_compliant(
           "unsigned"
         };
         event_msg!(p_manager, EVT_WARNING,
-                          "IMF profiles require precision of each component to b in [8-16] bits unsigned-> At least component %d of input image (%d bits, %s) is not compliant\n-> Non-IMF codestream will be generated\n", i,
+                          "IMF profiles require precision of each component to b in [8-16] bits unsigned-> At least component {} of input image ({} bits, {}) is not compliant\n-> Non-IMF codestream will be generated\n", i,
                           (*image.comps.offset(i as isize)).prec, tmp_str);
         ret = 0i32
       }
@@ -6895,7 +6895,7 @@ fn opj_j2k_is_imf_compliant(
     while i < image.numcomps {
       if i == 0u32 && (*image.comps.offset(i as isize)).dx != 1u32 {
         event_msg!(p_manager, EVT_WARNING,
-                          "IMF profiles require XRSiz1 == 1. Here it is set to %d.\n-> Non-IMF codestream will be generated\n",
+                          "IMF profiles require XRSiz1 == 1. Here it is set to {}.\n-> Non-IMF codestream will be generated\n",
                           (*image.comps.offset(i as isize)).dx);
         ret = 0i32
       }
@@ -6904,7 +6904,7 @@ fn opj_j2k_is_imf_compliant(
         && (*image.comps.offset(i as isize)).dx != 2u32
       {
         event_msg!(p_manager, EVT_WARNING,
-                          "IMF profiles require XRSiz2 == 1 or 2. Here it is set to %d.\n-> Non-IMF codestream will be generated\n",
+                          "IMF profiles require XRSiz2 == 1 or 2. Here it is set to {}.\n-> Non-IMF codestream will be generated\n",
                           (*image.comps.offset(i as isize)).dx);
         ret = 0i32
       }
@@ -6913,7 +6913,7 @@ fn opj_j2k_is_imf_compliant(
           != (*image.comps.offset(i.wrapping_sub(1u32) as isize)).dx
       {
         event_msg!(p_manager, EVT_WARNING,
-                          "IMF profiles require XRSiz%d to be the same as XRSiz2. Here it is set to %d instead of %d.\n-> Non-IMF codestream will be generated\n",
+                          "IMF profiles require XRSiz{} to be the same as XRSiz2. Here it is set to {} instead of {}.\n-> Non-IMF codestream will be generated\n",
                           i.wrapping_add(1u32),
                           (*image.comps.offset(i as isize)).dx,
                           (*image.comps.offset(i.wrapping_sub(1 as
@@ -6925,7 +6925,7 @@ fn opj_j2k_is_imf_compliant(
       }
       if (*image.comps.offset(i as isize)).dy != 1u32 {
         event_msg!(p_manager, EVT_WARNING,
-                          "IMF profiles require YRsiz == 1. Here it is set to %d for component %d.\n-> Non-IMF codestream will be generated\n",
+                          "IMF profiles require YRsiz == 1. Here it is set to {} for component {}.\n-> Non-IMF codestream will be generated\n",
                           (*image.comps.offset(i as isize)).dy, i);
         ret = 0i32
       }
@@ -6939,7 +6939,7 @@ fn opj_j2k_is_imf_compliant(
           != 0
         {
           event_msg!(p_manager, EVT_WARNING,
-                              "IMF 2K/2K_R profile require:\nwidth <= 2048 and height <= 1556\n-> Input image size %d x %d is not compliant\n-> Non-IMF codestream will be generated\n",
+                              "IMF 2K/2K_R profile require:\nwidth <= 2048 and height <= 1556\n-> Input image size {} x {} is not compliant\n-> Non-IMF codestream will be generated\n",
                               (*image.comps.offset(0i32 as
                                                           isize)).w,
                               (*image.comps.offset(0i32 as
@@ -6953,7 +6953,7 @@ fn opj_j2k_is_imf_compliant(
           != 0
         {
           event_msg!(p_manager, EVT_WARNING,
-                              "IMF 4K/4K_R profile require:\nwidth <= 4096 and height <= 3112\n-> Input image size %d x %d is not compliant\n-> Non-IMF codestream will be generated\n",
+                              "IMF 4K/4K_R profile require:\nwidth <= 4096 and height <= 3112\n-> Input image size {} x {} is not compliant\n-> Non-IMF codestream will be generated\n",
                               (*image.comps.offset(0i32 as
                                                           isize)).w,
                               (*image.comps.offset(0i32 as
@@ -6967,7 +6967,7 @@ fn opj_j2k_is_imf_compliant(
           != 0
         {
           event_msg!(p_manager, EVT_WARNING,
-                              "IMF 8K/8K_R profile require:\nwidth <= 8192 and height <= 6224\n-> Input image size %d x %d is not compliant\n-> Non-IMF codestream will be generated\n",
+                              "IMF 8K/8K_R profile require:\nwidth <= 8192 and height <= 6224\n-> Input image size {} x {} is not compliant\n-> Non-IMF codestream will be generated\n",
                               (*image.comps.offset(0i32 as
                                                           isize)).w,
                               (*image.comps.offset(0i32 as
@@ -6987,26 +6987,26 @@ fn opj_j2k_is_imf_compliant(
     }
     if parameters.cblockw_init != 32i32 || parameters.cblockh_init != 32i32 {
       event_msg!(p_manager, EVT_WARNING,
-                      "IMF profile require code block size to be 32x32.\n-> Compression parameters set it to %dx%d.\n-> Non-IMF codestream will be generated\n",
+                      "IMF profile require code block size to be 32x32.\n-> Compression parameters set it to {}x{}.\n-> Non-IMF codestream will be generated\n",
                       parameters.cblockw_init, parameters.cblockh_init);
       ret = 0i32
     }
     if parameters.prog_order as core::ffi::c_int != OPJ_CPRL as core::ffi::c_int {
       event_msg!(p_manager, EVT_WARNING,
-                      "IMF profile require progression order to be CPRL.\n-> Compression parameters set it to %d.\n-> Non-IMF codestream will be generated\n",
+                      "IMF profile require progression order to be CPRL.\n-> Compression parameters set it to {}.\n-> Non-IMF codestream will be generated\n",
                       parameters.prog_order as core::ffi::c_int);
       ret = 0i32
     }
     if parameters.numpocs != 0u32 {
       event_msg!(p_manager, EVT_WARNING,
-                      "IMF profile forbid POC markers.\n-> Compression parameters set %d POC.\n-> Non-IMF codestream will be generated\n",
+                      "IMF profile forbid POC markers.\n-> Compression parameters set {} POC.\n-> Non-IMF codestream will be generated\n",
                       parameters.numpocs);
       ret = 0i32
     }
     /* Codeblock style: no mode switch enabled */
     if parameters.mode != 0i32 {
       event_msg!(p_manager, EVT_WARNING,
-                      "IMF profile forbid mode switch in code block style.\n-> Compression parameters set code block style to %d.\n-> Non-IMF codestream will be generated\n",
+                      "IMF profile forbid mode switch in code block style.\n-> Compression parameters set code block style to {}.\n-> Non-IMF codestream will be generated\n",
                       parameters.mode);
       ret = 0i32
     }
@@ -7029,7 +7029,7 @@ fn opj_j2k_is_imf_compliant(
     /* Number of layers */
     if parameters.tcp_numlayers != 1i32 {
       event_msg!(p_manager, EVT_WARNING,
-                      "IMF 2K/4K/8K profiles require 1 single quality layer.\n-> Number of layers is %d.\n-> Non-IMF codestream will be generated\n",
+                      "IMF 2K/4K/8K profiles require 1 single quality layer.\n-> Number of layers is {}.\n-> Non-IMF codestream will be generated\n",
                       parameters.tcp_numlayers);
       ret = 0i32
     }
@@ -7038,21 +7038,21 @@ fn opj_j2k_is_imf_compliant(
       1024 => {
         if !(1i32..=5i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
-                              "IMF 2K profile requires 1 <= NL <= 5:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n", NL);
+                              "IMF 2K profile requires 1 <= NL <= 5:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n", NL);
           ret = 0i32
         }
       }
       1280 => {
         if !(1i32..=6i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
-                              "IMF 4K profile requires 1 <= NL <= 6:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n", NL);
+                              "IMF 4K profile requires 1 <= NL <= 6:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n", NL);
           ret = 0i32
         }
       }
       1536 => {
         if !(1i32..=7i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
-                              "IMF 8K profile requires 1 <= NL <= 7:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n", NL);
+                              "IMF 8K profile requires 1 <= NL <= 7:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n", NL);
           ret = 0i32
         }
       }
@@ -7060,13 +7060,13 @@ fn opj_j2k_is_imf_compliant(
         if XTsiz >= 2048u32 {
           if !(1i32..=5i32).contains(&NL) {
             event_msg!(p_manager, EVT_WARNING,
-                                  "IMF 2K_R profile requires 1 <= NL <= 5 for XTsiz >= 2048:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                  "IMF 2K_R profile requires 1 <= NL <= 5 for XTsiz >= 2048:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n",
                                   NL);
             ret = 0i32
           }
         } else if XTsiz >= 1024u32 && !(1i32..=4i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
-                                "IMF 2K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                "IMF 2K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n",
                                 NL);
           ret = 0i32
         }
@@ -7075,20 +7075,20 @@ fn opj_j2k_is_imf_compliant(
         if XTsiz >= 4096u32 {
           if !(1i32..=6i32).contains(&NL) {
             event_msg!(p_manager, EVT_WARNING,
-                                  "IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz >= 4096:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                  "IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz >= 4096:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n",
                                   NL);
             ret = 0i32
           }
         } else if XTsiz >= 2048u32 {
           if !(1i32..=5i32).contains(&NL) {
             event_msg!(p_manager, EVT_WARNING,
-                                  "IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                  "IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n",
                                   NL);
             ret = 0i32
           }
         } else if XTsiz >= 1024u32 && !(1i32..=4i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
-                                "IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                "IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n",
                                 NL);
           ret = 0i32
         }
@@ -7097,27 +7097,27 @@ fn opj_j2k_is_imf_compliant(
         if XTsiz >= 8192u32 {
           if !(1i32..=7i32).contains(&NL) {
             event_msg!(p_manager, EVT_WARNING,
-                                  "IMF 4K_R profile requires 1 <= NL <= 7 for XTsiz >= 8192:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                  "IMF 4K_R profile requires 1 <= NL <= 7 for XTsiz >= 8192:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n",
                                   NL);
             ret = 0i32
           }
         } else if XTsiz >= 4096u32 {
           if !(1i32..=6i32).contains(&NL) {
             event_msg!(p_manager, EVT_WARNING,
-                                  "IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz in [4096,8192[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                  "IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz in [4096,8192[:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n",
                                   NL);
             ret = 0i32
           }
         } else if XTsiz >= 2048u32 {
           if !(1i32..=5i32).contains(&NL) {
             event_msg!(p_manager, EVT_WARNING,
-                                  "IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                  "IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n",
                                   NL);
             ret = 0i32
           }
         } else if XTsiz >= 1024u32 && !(1i32..=4i32).contains(&NL) {
           event_msg!(p_manager, EVT_WARNING,
-                                "IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is %d.\n-> Non-IMF codestream will be generated\n",
+                                "IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n-> Number of decomposition levels is {}.\n-> Non-IMF codestream will be generated\n",
                                 NL);
           ret = 0i32
         }
@@ -7169,7 +7169,7 @@ pub(crate) fn opj_j2k_setup_encoder(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Invalid number of resolutions : %d not in range [1,%d]\n",
+        "Invalid number of resolutions : {} not in range [1,{}]\n",
         parameters.numresolution,
         33i32,
       );
@@ -7179,7 +7179,7 @@ pub(crate) fn opj_j2k_setup_encoder(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Invalid value for cblockw_init: %d not a power of 2 in range [4,1024]\n",
+        "Invalid value for cblockw_init: {} not a power of 2 in range [4,1024]\n",
         parameters.cblockw_init,
       );
       return 0i32;
@@ -7188,7 +7188,7 @@ pub(crate) fn opj_j2k_setup_encoder(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Invalid value for cblockh_init: %d not a power of 2 not in range [4,1024]\n",
+        "Invalid value for cblockh_init: {} not a power of 2 not in range [4,1024]\n",
         parameters.cblockh_init,
       );
       return 0i32;
@@ -7207,7 +7207,7 @@ pub(crate) fn opj_j2k_setup_encoder(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Invalid value for cblockw_init: %d not a power of 2 in range [4,1024]\n",
+        "Invalid value for cblockw_init: {} not a power of 2 in range [4,1024]\n",
         parameters.cblockw_init,
       );
       return 0i32;
@@ -7216,7 +7216,7 @@ pub(crate) fn opj_j2k_setup_encoder(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Invalid value for cblockw_init: %d not a power of 2 in range [4,1024]\n",
+        "Invalid value for cblockw_init: {} not a power of 2 in range [4,1024]\n",
         parameters.cblockh_init,
       );
       return 0i32;
@@ -7236,7 +7236,7 @@ pub(crate) fn opj_j2k_setup_encoder(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "tcp_numlayers when cp_fixed_alloc set should not exceed %d\n",
+          "tcp_numlayers when cp_fixed_alloc set should not exceed {}\n",
           j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT
         );
         return 0;
@@ -7245,7 +7245,7 @@ pub(crate) fn opj_j2k_setup_encoder(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "numresolution when cp_fixed_alloc set should not exceed %d\n",
+          "numresolution when cp_fixed_alloc set should not exceed {}\n",
           j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT
         );
         return 0;
@@ -7326,7 +7326,7 @@ pub(crate) fn opj_j2k_setup_encoder(
             && rate_i_m_1_corr != parameters.tcp_rates[i.wrapping_sub(1u32) as usize]
           {
             event_msg!(p_manager, EVT_WARNING,
-                                  "tcp_rates[%d]=%f (corrected as %f) should be strictly lesser than tcp_rates[%d]=%f (corrected as %f)\n", i,
+                                  "tcp_rates[{}]={} (corrected as {}) should be strictly lesser than tcp_rates[{}]={} (corrected as {})\n", i,
                                   parameters.tcp_rates[i as usize] as
                                       core::ffi::c_double,
                                   rate_i_corr as core::ffi::c_double,
@@ -7343,7 +7343,7 @@ pub(crate) fn opj_j2k_setup_encoder(
             event_msg!(
             p_manager,
             EVT_WARNING,
-            "tcp_rates[%d]=%f (corrected as %f) should be strictly lesser than tcp_rates[%d]=%f\n",
+            "tcp_rates[{}]={} (corrected as {}) should be strictly lesser than tcp_rates[{}]={}\n",
             i,
             parameters.tcp_rates[i as usize] as core::ffi::c_double,
             rate_i_corr as core::ffi::c_double,
@@ -7356,7 +7356,7 @@ pub(crate) fn opj_j2k_setup_encoder(
             event_msg!(
             p_manager,
             EVT_WARNING,
-            "tcp_rates[%d]=%f should be strictly lesser than tcp_rates[%d]=%f (corrected as %f)\n",
+            "tcp_rates[{}]={} should be strictly lesser than tcp_rates[{}]={} (corrected as {})\n",
             i,
             parameters.tcp_rates[i as usize] as core::ffi::c_double,
             i.wrapping_sub(1i32 as core::ffi::c_uint),
@@ -7369,7 +7369,7 @@ pub(crate) fn opj_j2k_setup_encoder(
             event_msg!(
               p_manager,
               EVT_WARNING,
-              "tcp_rates[%d]=%f should be strictly lesser than tcp_rates[%d]=%f\n",
+              "tcp_rates[{}]={} should be strictly lesser than tcp_rates[{}]={}\n",
               i,
               parameters.tcp_rates[i as usize] as core::ffi::c_double,
               i.wrapping_sub(1u32),
@@ -7391,7 +7391,7 @@ pub(crate) fn opj_j2k_setup_encoder(
           event_msg!(
             p_manager,
             EVT_WARNING,
-            "tcp_distoratio[%d]=%f should be strictly greater than tcp_distoratio[%d]=%f\n",
+            "tcp_distoratio[{}]={} should be strictly greater than tcp_distoratio[{}]={}\n",
             i,
             parameters.tcp_distoratio[i as usize] as core::ffi::c_double,
             i.wrapping_sub(1u32),
@@ -7619,7 +7619,7 @@ pub(crate) fn opj_j2k_setup_encoder(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Invalid number of tiles : %u x %u (maximum fixed by jpeg2000 norm is 65535 tiles)\n",
+          "Invalid number of tiles : {} x {} (maximum fixed by jpeg2000 norm is 65535 tiles)\n",
           (*cp).tw,
           (*cp).th,
         );
@@ -7690,7 +7690,7 @@ pub(crate) fn opj_j2k_setup_encoder(
             let mut tcp_poc: *mut opj_poc_t =
               &mut *(*tcp).pocs.as_mut_ptr().offset(numpocs_tile as isize) as *mut opj_poc_t;
             if parameters.POC[numpocs_tile as usize].compno0 >= image.numcomps {
-              event_msg!(p_manager, EVT_ERROR, "Invalid compno0 for POC %d\n", i,);
+              event_msg!(p_manager, EVT_ERROR, "Invalid compno0 for POC {}\n", i,);
               return 0i32;
             }
             (*tcp_poc).resno0 = parameters.POC[numpocs_tile as usize].resno0;
@@ -7923,7 +7923,7 @@ pub(crate) fn opj_j2k_setup_encoder(
             }
             p += 1;
             it_res -= 1
-            /*printf("\nsize precinct for level %d : %d,%d\n", it_res,tccp->prcw[it_res], tccp->prch[it_res]); */
+            /*printf("\nsize precinct for level {} : {},{}\n", it_res,tccp->prcw[it_res], tccp->prch[it_res]); */
           }
         } else {
           j = 0 as OPJ_UINT32;
@@ -8610,7 +8610,7 @@ fn opj_j2k_read_header_procedure(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "A marker ID was expected (0xff--) instead of %.8x\n",
+          "A marker ID was expected (0xff--) instead of {:.8x}\n",
           l_current_marker.as_u32(),
         );
         return 0i32;
@@ -9489,7 +9489,7 @@ pub(crate) fn opj_j2k_read_tile_header(
               event_msg!(
                 p_manager,
                 EVT_ERROR,
-                "Fail to read the current marker segment (%#x)\n",
+                "Fail to read the current marker segment ({:X})\n",
                 l_current_marker.as_u32(),
               );
               return false;
@@ -9640,7 +9640,7 @@ pub(crate) fn opj_j2k_read_tile_header(
           }
           if l_tile_no_0 < l_nb_tiles {
             event_msg!(p_manager, EVT_INFO,
-                                  "Tile %u has TPsot == 0 and TNsot == 0, but no other tile-parts were found. EOC is also missing.\n",
+                                  "Tile {} has TPsot == 0 and TNsot == 0, but no other tile-parts were found. EOC is also missing.\n",
                                   l_tile_no_0);
             p_j2k.m_current_tile_number = l_tile_no_0;
             l_current_marker = J2KMarker::EOC;
@@ -9690,7 +9690,7 @@ pub(crate) fn opj_j2k_read_tile_header(
     event_msg!(
       p_manager,
       EVT_INFO,
-      "Header of tile %d / %d has been read.\n",
+      "Header of tile {} / {} has been read.\n",
       p_j2k.m_current_tile_number.wrapping_add(1u32),
       p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
     );
@@ -9897,7 +9897,7 @@ fn opj_j2k_update_image_data(
         l_height_src = (res_y1 - res_y0) as OPJ_UINT32;
         /* Current tile component size*/
         /*if (i == 0) {
-        fprintf!(stdout, "SRC: l_res_x0=%d, l_res_x1=%d, l_res_y0=%d, l_res_y1=%d\n",
+        fprintf!(stdout, "SRC: l_res_x0={}, l_res_x1={}, l_res_y0={}, l_res_y1={}\n",
                         res_x0, res_x1, res_y0, res_y1);
         }*/
         /* Border of the current output component*/
@@ -9906,7 +9906,7 @@ fn opj_j2k_update_image_data(
         l_x1_dest = l_x0_dest.wrapping_add((*l_img_comp_dest).w);
         l_y1_dest = l_y0_dest.wrapping_add((*l_img_comp_dest).h);
         /*if (i == 0) {
-        fprintf!(stdout, "DEST: l_x0_dest=%d, l_x1_dest=%d, l_y0_dest=%d, l_y1_dest=%d (%d)\n",
+        fprintf!(stdout, "DEST: l_x0_dest={}, l_x1_dest={}, l_y0_dest={}, l_y1_dest={} ({})\n",
                         l_x0_dest, l_x1_dest, l_y0_dest, l_y1_dest, l_img_comp_dest->factor );
         }*/
         /*-----*/
@@ -10096,7 +10096,7 @@ fn opj_j2k_update_image_dimensions(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Size x of the decoded component image is incorrect (comp[%d].w=%d).\n",
+          "Size x of the decoded component image is incorrect (comp[{}].w={}).\n",
           it_comp,
           l_w,
         );
@@ -10112,7 +10112,7 @@ fn opj_j2k_update_image_dimensions(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Size y of the decoded component image is incorrect (comp[%d].h=%d).\n",
+          "Size y of the decoded component image is incorrect (comp[{}].h={}).\n",
           it_comp,
           l_h,
         );
@@ -10145,14 +10145,14 @@ pub(crate) fn opj_j2k_set_decoded_components(
     let mut already_mapped = std::collections::BTreeSet::new();
     for comp in compenents {
       if *comp >= (*p_j2k.m_private_image).numcomps {
-        event_msg!(p_manager, EVT_ERROR, "Invalid component index: %u\n", *comp,);
+        event_msg!(p_manager, EVT_ERROR, "Invalid component index: {}\n", *comp,);
         return 0i32;
       }
       if !already_mapped.insert(*comp) {
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Component index %u used several times\n",
+          "Component index {} used several times\n",
           *comp,
         );
         return 0i32;
@@ -10239,7 +10239,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Left position of the decoded area (region_x0=%d) should be >= 0.\n",
+        "Left position of the decoded area (region_x0={}) should be >= 0.\n",
         p_start_x,
       );
       return 0i32;
@@ -10247,7 +10247,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Left position of the decoded area (region_x0=%d) is outside the image area (Xsiz=%d).\n",
+        "Left position of the decoded area (region_x0={}) is outside the image area (Xsiz={}).\n",
         p_start_x,
         (*l_image).x1
       );
@@ -10256,7 +10256,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_WARNING,
-        "Left position of the decoded area (region_x0=%d) is outside the image area (XOsiz=%d).\n",
+        "Left position of the decoded area (region_x0={}) is outside the image area (XOsiz={}).\n",
         p_start_x,
         (*l_image).x0
       );
@@ -10273,7 +10273,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Up position of the decoded area (region_y0=%d) should be >= 0.\n",
+        "Up position of the decoded area (region_y0={}) should be >= 0.\n",
         p_start_y,
       );
       return 0i32;
@@ -10281,7 +10281,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Up position of the decoded area (region_y0=%d) is outside the image area (Ysiz=%d).\n",
+        "Up position of the decoded area (region_y0={}) is outside the image area (Ysiz={}).\n",
         p_start_y,
         (*l_image).y1,
       );
@@ -10290,7 +10290,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_WARNING,
-        "Up position of the decoded area (region_y0=%d) is outside the image area (YOsiz=%d).\n",
+        "Up position of the decoded area (region_y0={}) is outside the image area (YOsiz={}).\n",
         p_start_y,
         (*l_image).y0
       );
@@ -10307,7 +10307,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Right position of the decoded area (region_x1=%d) should be > 0.\n",
+        "Right position of the decoded area (region_x1={}) should be > 0.\n",
         p_end_x,
       );
       return 0i32;
@@ -10315,7 +10315,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Right position of the decoded area (region_x1=%d) is outside the image area (XOsiz=%d).\n",
+        "Right position of the decoded area (region_x1={}) is outside the image area (XOsiz={}).\n",
         p_end_x,
         (*l_image).x0
       );
@@ -10324,7 +10324,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_WARNING,
-        "Right position of the decoded area (region_x1=%d) is outside the image area (Xsiz=%d).\n",
+        "Right position of the decoded area (region_x1={}) is outside the image area (Xsiz={}).\n",
         p_end_x,
         (*l_image).x1
       );
@@ -10340,7 +10340,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Bottom position of the decoded area (region_y1=%d) should be > 0.\n",
+        "Bottom position of the decoded area (region_y1={}) should be > 0.\n",
         p_end_y,
       );
       return 0i32;
@@ -10348,7 +10348,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
       p_manager,
       EVT_ERROR,
-      "Bottom position of the decoded area (region_y1=%d) is outside the image area (YOsiz=%d).\n",
+      "Bottom position of the decoded area (region_y1={}) is outside the image area (YOsiz={}).\n",
       p_end_y,
       (*l_image).y0
     );
@@ -10358,7 +10358,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_WARNING,
-        "Bottom position of the decoded area (region_y1=%d) is outside the image area (Ysiz=%d).\n",
+        "Bottom position of the decoded area (region_y1={}) is outside the image area (Ysiz={}).\n",
         p_end_y,
         (*l_image).y1
       );
@@ -10376,7 +10376,7 @@ pub(crate) fn opj_j2k_set_decode_area(
       event_msg!(
         p_manager,
         EVT_INFO,
-        "Setting decoding area to %d,%d,%d,%d\n",
+        "Setting decoding area to {},{},{},{}\n",
         p_image.x0,
         p_image.y0,
         p_image.x1,
@@ -10678,7 +10678,7 @@ fn opj_j2k_read_SPCod_SPCoc(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Invalid value for numresolutions : %d, max value is set in openjpeg.h at %d\n",
+        "Invalid value for numresolutions : {}, max value is set in openjpeg.h at {}\n",
         (*l_tccp).numresolutions,
         33i32,
       );
@@ -10688,7 +10688,7 @@ fn opj_j2k_read_SPCod_SPCoc(
     /* If user wants to remove more resolutions than the codestream contains, return error */
     if (*l_cp).m_specific_param.m_dec.m_reduce >= (*l_tccp).numresolutions {
       event_msg!(p_manager, EVT_ERROR,
-                      "Error decoding component %d.\nThe number of resolutions to remove (%d) is greater or equal than the number of resolutions of this component (%d)\nModify the cp_reduce parameter.\n\n", compno,
+                      "Error decoding component {}.\nThe number of resolutions to remove ({}) is greater or equal than the number of resolutions of this component ({})\nModify the cp_reduce parameter.\n\n", compno,
                       (*l_cp).m_specific_param.m_dec.m_reduce,
                       (*l_tccp).numresolutions);
       p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
@@ -11087,7 +11087,7 @@ fn opj_j2k_read_SQcd_SQcc(
       };
       if l_num_band > (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
         event_msg!(p_manager, EVT_WARNING,
-                          "While reading CCP_QNTSTY element inside QCD or QCC marker segment, number of subbands (%d) is greater to OPJ_J2K_MAXBANDS (%d). So we limit the number of elements stored to OPJ_J2K_MAXBANDS (%d) and skip the rest. \n", l_num_band,
+                          "While reading CCP_QNTSTY element inside QCD or QCC marker segment, number of subbands ({}) is greater to OPJ_J2K_MAXBANDS ({}). So we limit the number of elements stored to OPJ_J2K_MAXBANDS ({}) and skip the rest. \n", l_num_band,
                           3i32 * 33i32 -
                               2i32,
                           3i32 * 33i32 -
@@ -11184,381 +11184,6 @@ fn opj_j2k_copy_tile_quantization_parameters(mut p_j2k: &mut opj_j2k) {
       l_copied_tccp = l_copied_tccp.offset(1);
       i += 1;
     }
-  }
-}
-
-#[cfg(feature = "file-io")]
-fn opj_j2k_dump_tile_info(
-  mut l_default_tile: *mut opj_tcp_t,
-  mut numcomps: OPJ_INT32,
-  mut out_stream: *mut FILE,
-) {
-  unsafe {
-    if !l_default_tile.is_null() {
-      let mut compno: OPJ_INT32 = 0;
-      fprintf!(out_stream, "\t default tile {\n",);
-      if (*l_default_tile).csty != 0 {
-        fprintf!(out_stream, "\t\t csty=%#x\n", (*l_default_tile).csty,);
-      } else {
-        fprintf!(out_stream, "\t\t csty=0\n",);
-      }
-      if (*l_default_tile).prg != 0 {
-        fprintf!(
-          out_stream,
-          "\t\t prg=%#x\n",
-          (*l_default_tile).prg as core::ffi::c_int,
-        );
-      } else {
-        fprintf!(out_stream, "\t\t prg=0\n",);
-      }
-      fprintf!(
-        out_stream,
-        "\t\t numlayers=%d\n",
-        (*l_default_tile).numlayers,
-      );
-      fprintf!(out_stream, "\t\t mct=%x\n", (*l_default_tile).mct,);
-      /*end of default tile*/
-      compno = 0i32; /*end of component of default tile*/
-      while compno < numcomps {
-        let mut l_tccp: *mut opj_tccp_t =
-          &mut *(*l_default_tile).tccps.offset(compno as isize) as *mut opj_tccp_t;
-        let mut resno: OPJ_UINT32 = 0;
-        let mut bandno: OPJ_INT32 = 0;
-        let mut numbands: OPJ_INT32 = 0;
-        /* coding style*/
-        fprintf!(out_stream, "\t\t comp %d {\n", compno,);
-        if (*l_tccp).csty != 0 {
-          fprintf!(out_stream, "\t\t\t csty=%#x\n", (*l_tccp).csty,);
-        } else {
-          fprintf!(out_stream, "\t\t\t csty=0\n",);
-        }
-        fprintf!(
-          out_stream,
-          "\t\t\t numresolutions=%d\n",
-          (*l_tccp).numresolutions,
-        );
-        fprintf!(out_stream, "\t\t\t cblkw=2^%d\n", (*l_tccp).cblkw,);
-        fprintf!(out_stream, "\t\t\t cblkh=2^%d\n", (*l_tccp).cblkh,);
-        if (*l_tccp).cblksty != 0 {
-          fprintf!(out_stream, "\t\t\t cblksty=%#x\n", (*l_tccp).cblksty,);
-        } else {
-          fprintf!(out_stream, "\t\t\t cblksty=0\n",);
-        }
-        fprintf!(out_stream, "\t\t\t qmfbid=%d\n", (*l_tccp).qmfbid,);
-        fprintf!(out_stream, "\t\t\t preccintsize (w,h)=",);
-        resno = 0 as OPJ_UINT32;
-        while resno < (*l_tccp).numresolutions {
-          fprintf!(
-            out_stream,
-            "(%d,%d) ",
-            (*l_tccp).prcw[resno as usize],
-            (*l_tccp).prch[resno as usize],
-          );
-          resno += 1;
-        }
-        fprintf!(out_stream, "\n",);
-        /* quantization style*/
-        fprintf!(out_stream, "\t\t\t qntsty=%d\n", (*l_tccp).qntsty,);
-        fprintf!(out_stream, "\t\t\t numgbits=%d\n", (*l_tccp).numgbits,);
-        fprintf!(out_stream, "\t\t\t stepsizes (m,e)=",);
-        numbands = if (*l_tccp).qntsty == 1u32 {
-          1i32
-        } else {
-          ((*l_tccp).numresolutions as OPJ_INT32 * 3i32) - 2i32
-        };
-        bandno = 0i32;
-        while bandno < numbands {
-          fprintf!(
-            out_stream,
-            "(%d,%d) ",
-            (*l_tccp).stepsizes[bandno as usize].mant,
-            (*l_tccp).stepsizes[bandno as usize].expn,
-          );
-          bandno += 1
-        }
-        fprintf!(out_stream, "\n",);
-        /* RGN value*/
-        fprintf!(out_stream, "\t\t\t roishift=%d\n", (*l_tccp).roishift,);
-        fprintf!(out_stream, "\t\t }\n",);
-        compno += 1
-      }
-      fprintf!(out_stream, "\t }\n",);
-    };
-  }
-}
-
-#[cfg(feature = "file-io")]
-pub(crate) fn j2k_dump(mut p_j2k: &mut opj_j2k, mut flag: OPJ_INT32, mut out_stream: *mut FILE) {
-  unsafe {
-    /* Check if the flag is compatible with j2k file*/
-    if flag & 128i32 != 0 || flag & 256i32 != 0 {
-      fprintf!(out_stream, "Wrong flag\n",);
-      return;
-    }
-    /* Dump the image_header */
-    if flag & 1i32 != 0 && !p_j2k.m_private_image.is_null() {
-      j2k_dump_image_header(&mut *p_j2k.m_private_image, 0i32, out_stream);
-    }
-    /* Dump the codestream info from main header */
-    if flag & 2i32 != 0 && !p_j2k.m_private_image.is_null() {
-      opj_j2k_dump_MH_info(p_j2k, out_stream);
-    }
-    /* Dump all tile/codestream info */
-    if flag & 8i32 != 0 {
-      let mut l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
-      let mut i: OPJ_UINT32 = 0;
-      let mut l_tcp = p_j2k.m_cp.tcps;
-      if !p_j2k.m_private_image.is_null() {
-        i = 0 as OPJ_UINT32;
-        while i < l_nb_tiles {
-          opj_j2k_dump_tile_info(
-            l_tcp,
-            (*p_j2k.m_private_image).numcomps as OPJ_INT32,
-            out_stream,
-          );
-          l_tcp = l_tcp.offset(1);
-          i += 1;
-        }
-      }
-    }
-    /* Dump the codestream info of the current tile */
-    if flag & 4i32 != 0 {};
-    /* Dump the codestream index from main header */
-    if flag & 16i32 != 0 {
-      opj_j2k_dump_MH_index(p_j2k, out_stream);
-    }
-    /* Dump the codestream index of the current tile */
-    if flag & 32i32 != 0 {}
-  }
-}
-
-#[cfg(feature = "file-io")]
-fn opj_j2k_dump_MH_index(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FILE) {
-  unsafe {
-    let mut cstr_index = p_j2k.cstr_index;
-    let mut it_marker: OPJ_UINT32 = 0;
-    let mut it_tile: OPJ_UINT32 = 0;
-    let mut it_tile_part: OPJ_UINT32 = 0;
-    fprintf!(out_stream, "Codestream index from main header: {\n",);
-    fprintf!(
-      out_stream,
-      "\t Main header start position=%li\n\t Main header end position=%li\n",
-      (*cstr_index).main_head_start,
-      (*cstr_index).main_head_end,
-    );
-    fprintf!(out_stream, "\t Marker list: {\n",);
-    if !(*cstr_index).marker.is_null() {
-      it_marker = 0 as OPJ_UINT32;
-      while it_marker < (*cstr_index).marknum {
-        let marker = *(*cstr_index).marker.offset(it_marker as isize);
-        let ty = marker.type_ as i32;
-        if ty != 0 {
-          fprintf!(
-            out_stream,
-            "\t\t type=%#x, pos=%li, len=%d\n",
-            ty,
-            marker.pos,
-            marker.len,
-          );
-        } else {
-          fprintf!(
-            out_stream,
-            "\t\t type=%x, pos=%li, len=%d\n",
-            ty,
-            marker.pos,
-            marker.len,
-          );
-        }
-        it_marker += 1;
-      }
-    }
-    fprintf!(out_stream, "\t }\n",);
-    if !(*cstr_index).tile_index.is_null() {
-      /* Simple test to avoid to write empty information*/
-      let mut l_acc_nb_of_tile_part = 0 as OPJ_UINT32; /* Not fill from the main header*/
-      it_tile = 0 as OPJ_UINT32;
-      while it_tile < (*cstr_index).nb_of_tiles {
-        l_acc_nb_of_tile_part = (l_acc_nb_of_tile_part as core::ffi::c_uint)
-          .wrapping_add((*(*cstr_index).tile_index.offset(it_tile as isize)).nb_tps)
-          as OPJ_UINT32;
-        it_tile += 1;
-      }
-      if l_acc_nb_of_tile_part != 0 {
-        fprintf!(out_stream, "\t Tile index: {\n",);
-        it_tile = 0 as OPJ_UINT32;
-        while it_tile < (*cstr_index).nb_of_tiles {
-          let mut nb_of_tile_part = (*(*cstr_index).tile_index.offset(it_tile as isize)).nb_tps;
-          fprintf!(
-            out_stream,
-            "\t\t nb of tile-part in tile [%d]=%d\n",
-            it_tile,
-            nb_of_tile_part,
-          );
-          if !(*(*cstr_index).tile_index.offset(it_tile as isize))
-            .tp_index
-            .is_null()
-          {
-            it_tile_part = 0 as OPJ_UINT32;
-            while it_tile_part < nb_of_tile_part {
-              fprintf!(
-                out_stream,
-                "\t\t\t tile-part[%d]: star_pos=%li, end_header=%li, end_pos=%li.\n",
-                it_tile_part,
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .tp_index
-                  .offset(it_tile_part as isize))
-                .start_pos,
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .tp_index
-                  .offset(it_tile_part as isize))
-                .end_header,
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .tp_index
-                  .offset(it_tile_part as isize))
-                .end_pos,
-              );
-              it_tile_part += 1;
-            }
-          }
-          if !(*(*cstr_index).tile_index.offset(it_tile as isize))
-            .marker
-            .is_null()
-          {
-            it_marker = 0 as OPJ_UINT32;
-            while it_marker < (*(*cstr_index).tile_index.offset(it_tile as isize)).marknum {
-              fprintf!(
-                out_stream,
-                "\t\t type=%#x, pos=%li, len=%d\n",
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .marker
-                  .offset(it_marker as isize))
-                .type_ as core::ffi::c_int,
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .marker
-                  .offset(it_marker as isize))
-                .pos,
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .marker
-                  .offset(it_marker as isize))
-                .len,
-              );
-              it_marker += 1;
-            }
-          }
-          it_tile += 1;
-        }
-        fprintf!(out_stream, "\t }\n",);
-      }
-    }
-    fprintf!(out_stream, "}\n",);
-  }
-}
-
-#[cfg(feature = "file-io")]
-fn opj_j2k_dump_MH_info(mut p_j2k: &mut opj_j2k, mut out_stream: *mut FILE) {
-  unsafe {
-    fprintf!(out_stream, "Codestream info from main header: {\n",);
-    fprintf!(
-      out_stream,
-      "\t tx0=%u, ty0=%u\n",
-      p_j2k.m_cp.tx0,
-      p_j2k.m_cp.ty0,
-    );
-    fprintf!(
-      out_stream,
-      "\t tdx=%u, tdy=%u\n",
-      p_j2k.m_cp.tdx,
-      p_j2k.m_cp.tdy,
-    );
-    fprintf!(
-      out_stream,
-      "\t tw=%u, th=%u\n",
-      p_j2k.m_cp.tw,
-      p_j2k.m_cp.th,
-    );
-    opj_j2k_dump_tile_info(
-      p_j2k.m_specific_param.m_decoder.m_default_tcp,
-      (*p_j2k.m_private_image).numcomps as OPJ_INT32,
-      out_stream,
-    );
-    fprintf!(out_stream, "}\n",);
-  }
-}
-
-#[cfg(feature = "file-io")]
-
-pub(crate) fn j2k_dump_image_header(
-  mut img_header: &mut opj_image,
-  mut dev_dump_flag: OPJ_BOOL,
-  mut out_stream: *mut FILE,
-) {
-  unsafe {
-    let mut tab = "";
-    if dev_dump_flag != 0 {
-      fprintf!(out_stream, "[DEV] Dump an image_header struct {\n",);
-    } else {
-      fprintf!(out_stream, "Image info {\n",);
-      tab = "\t";
-    }
-    fprintf!(
-      out_stream,
-      "%s x0=%d, y0=%d\n",
-      tab,
-      (*img_header).x0,
-      (*img_header).y0,
-    );
-    fprintf!(
-      out_stream,
-      "%s x1=%d, y1=%d\n",
-      tab,
-      (*img_header).x1,
-      (*img_header).y1,
-    );
-    fprintf!(out_stream, "%s numcomps=%d\n", tab, (*img_header).numcomps,);
-    if !(*img_header).comps.is_null() {
-      let mut compno: OPJ_UINT32 = 0;
-      compno = 0 as OPJ_UINT32;
-      while compno < (*img_header).numcomps {
-        fprintf!(out_stream, "%s\t component %d {\n", tab, compno,);
-        j2k_dump_image_comp_header(
-          &mut *(*img_header).comps.offset(compno as isize),
-          dev_dump_flag,
-          out_stream,
-        );
-        fprintf!(out_stream, "%s}\n", tab,);
-        compno += 1;
-      }
-    }
-    fprintf!(out_stream, "}\n",);
-  }
-}
-
-#[cfg(feature = "file-io")]
-
-pub(crate) fn j2k_dump_image_comp_header(
-  mut comp_header: *mut opj_image_comp_t,
-  mut dev_dump_flag: OPJ_BOOL,
-  mut out_stream: *mut FILE,
-) {
-  unsafe {
-    let mut tab = "";
-    if dev_dump_flag != 0 {
-      fprintf!(out_stream, "[DEV] Dump an image_comp_header struct {\n",);
-    } else {
-      tab = "\t\t";
-    }
-    fprintf!(
-      out_stream,
-      "%s dx=%d, dy=%d\n",
-      tab,
-      (*comp_header).dx,
-      (*comp_header).dy,
-    );
-    fprintf!(out_stream, "%s prec=%d\n", tab, (*comp_header).prec,);
-    fprintf!(out_stream, "%s sgnd=%d\n", tab, (*comp_header).sgnd,);
-    if dev_dump_flag != 0 {
-      fprintf!(out_stream, "}\n",);
-    };
   }
 }
 
@@ -11834,6 +11459,7 @@ fn opj_j2k_allocate_tile_element_cstr_index(mut p_j2k: &mut opj_j2k) -> OPJ_BOOL
     1i32
   }
 }
+
 fn opj_j2k_are_all_used_components_decoded(
   mut p_j2k: &mut opj_j2k,
   mut p_manager: &mut opj_event_mgr,
@@ -11856,7 +11482,7 @@ fn opj_j2k_are_all_used_components_decoded(
           event_msg!(
             p_manager,
             EVT_WARNING,
-            "Failed to decode component %d\n",
+            "Failed to decode component {}\n",
             dec_compno,
           );
           decoded_all_used_components = 0i32
@@ -11873,7 +11499,7 @@ fn opj_j2k_are_all_used_components_decoded(
           event_msg!(
             p_manager,
             EVT_WARNING,
-            "Failed to decode component %d\n",
+            "Failed to decode component {}\n",
             compno,
           );
           decoded_all_used_components = 0i32
@@ -11892,6 +11518,7 @@ fn opj_j2k_are_all_used_components_decoded(
     1i32
   }
 }
+
 /* *
  * Reads the tiles.
  */
@@ -11958,7 +11585,7 @@ fn opj_j2k_decode_tiles(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Failed to decode tile %d/%d\n",
+          "Failed to decode tile {}/{}\n",
           tile_info.index.wrapping_add(1u32),
           p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
         );
@@ -11967,7 +11594,7 @@ fn opj_j2k_decode_tiles(
       event_msg!(
         p_manager,
         EVT_INFO,
-        "Tile %d/%d has been decoded.\n",
+        "Tile {}/{} has been decoded.\n",
         tile_info.index.wrapping_add(1u32),
         p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
       );
@@ -11986,7 +11613,7 @@ fn opj_j2k_decode_tiles(
       event_msg!(
         p_manager,
         EVT_INFO,
-        "Image data has been updated with tile %d.\n\n",
+        "Image data has been updated with tile {}.\n\n",
         tile_info.index.wrapping_add(1u32),
       );
       if opj_stream_get_number_byte_left(p_stream) == 0i64
@@ -12102,7 +11729,7 @@ fn opj_j2k_decode_one_tile(
       event_msg!(
         p_manager,
         EVT_INFO,
-        "Tile %d/%d has been decoded.\n",
+        "Tile {}/{} has been decoded.\n",
         tile_info.index.wrapping_add(1u32),
         p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
       );
@@ -12113,7 +11740,7 @@ fn opj_j2k_decode_one_tile(
       event_msg!(
         p_manager,
         EVT_INFO,
-        "Image data has been updated with tile %d.\n\n",
+        "Image data has been updated with tile {}.\n\n",
         tile_info.index.wrapping_add(1u32),
       );
       if tile_info.index == l_tile_no_to_dec {
@@ -12132,7 +11759,7 @@ fn opj_j2k_decode_one_tile(
         event_msg!(
           p_manager,
           EVT_WARNING,
-          "Tile read, decoded and updated is not the desired one (%d vs %d).\n",
+          "Tile read, decoded and updated is not the desired one ({} vs {}).\n",
           tile_info.index.wrapping_add(1u32),
           l_tile_no_to_dec.wrapping_add(1u32),
         );
@@ -12282,7 +11909,7 @@ pub(crate) fn opj_j2k_get_tile(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Tile index provided by the user is incorrect %d (max = %d) \n",
+        "Tile index provided by the user is incorrect {} (max = {}) \n",
         tile_index,
         p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th).wrapping_sub(1u32),
       );
@@ -12439,7 +12066,7 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Invalid value for option: %s.\n",
+          "Invalid value for option: {}.\n",
           *option,
         );
         return false;
@@ -12453,7 +12080,7 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Invalid value for option: %s.\n",
+          "Invalid value for option: {}.\n",
           *option,
         );
         return false;
@@ -12466,7 +12093,7 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Invalid value for option: %s. Should be in [0,7]\n",
+          "Invalid value for option: {}. Should be in [0,7]\n",
           *option,
         );
         return false;
@@ -12487,7 +12114,7 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
         }
       }
     } else {
-      event_msg!(p_manager, EVT_ERROR, "Invalid option: %s.\n", *option);
+      event_msg!(p_manager, EVT_ERROR, "Invalid option: {}.\n", *option);
       return false;
     }
   }
@@ -12683,7 +12310,7 @@ fn opj_j2k_pre_write_tile(
     event_msg!(
       p_manager,
       EVT_INFO,
-      "tile number %d / %d\n",
+      "tile number {} / {}\n",
       p_j2k.m_current_tile_number.wrapping_add(1u32),
       p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th),
     );
@@ -13433,7 +13060,7 @@ pub(crate) fn opj_j2k_write_tile(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Error while opj_j2k_pre_write_tile with tile index = %d\n",
+        "Error while opj_j2k_pre_write_tile with tile index = {}\n",
         p_tile_index,
       );
       return 0i32;
@@ -13466,7 +13093,7 @@ pub(crate) fn opj_j2k_write_tile(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Error while opj_j2k_post_write_tile with tile index = %d\n",
+          "Error while opj_j2k_post_write_tile with tile index = {}\n",
           p_tile_index,
         );
         return 0i32;
