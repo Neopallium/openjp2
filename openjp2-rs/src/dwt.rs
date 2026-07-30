@@ -1188,10 +1188,10 @@ fn opj_dwt_encode_procedure(
     let mut tiledp = (*tilec).data;
     w = ((*tilec).x1 - (*tilec).x0) as OPJ_UINT32;
     l = (*tilec).numresolutions as OPJ_INT32 - 1i32;
-    l_cur_res = (*tilec).resolutions.offset(l as isize);
+    l_cur_res = (*tilec).resolutions.as_mut_ptr().offset(l as isize);
     l_last_res = l_cur_res.offset(-1);
-    l_data_size =
-      opj_dwt_max_resolution((*tilec).resolutions, (*tilec).numresolutions) as OPJ_SIZE_T;
+    l_data_size = opj_dwt_max_resolution((*tilec).resolutions.as_mut_ptr(), (*tilec).numresolutions)
+      as OPJ_SIZE_T;
     /* overflow check */
     if l_data_size
       > (usize::MAX).wrapping_div(NB_ELTS_V8 as usize * core::mem::size_of::<OPJ_INT32>())
@@ -1445,15 +1445,17 @@ fn opj_dwt_max_resolution(mut r: *mut opj_tcd_resolution_t, mut i: OPJ_UINT32) -
 /* </summary>                           */
 fn opj_dwt_decode_tile(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32) -> OPJ_BOOL {
   unsafe {
-    let mut tr = (*tilec).resolutions;
+    let mut tr = (*tilec).resolutions.as_mut_ptr();
     let mut rw = ((*tr).x1 - (*tr).x0) as OPJ_UINT32;
     let mut rh = ((*tr).y1 - (*tr).y0) as OPJ_UINT32;
     let mut w = ((*(*tilec)
       .resolutions
+      .as_mut_ptr()
       .offset((*tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
     .x1
       - (*(*tilec)
         .resolutions
+        .as_mut_ptr()
         .offset((*tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
       .x0) as OPJ_UINT32;
 
@@ -1697,10 +1699,10 @@ fn opj_dwt_init_sparse_array(
   mut numres: OPJ_UINT32,
 ) -> Option<SparseArray> {
   unsafe {
-    let mut tr_max: *mut opj_tcd_resolution_t = &mut *(*tilec)
+    let mut tr_max: *mut opj_tcd_resolution_t = (*tilec)
       .resolutions
-      .offset(numres.wrapping_sub(1u32) as isize)
-      as *mut opj_tcd_resolution_t;
+      .as_mut_ptr()
+      .offset(numres.wrapping_sub(1u32) as isize);
     let mut w = ((*tr_max).x1 - (*tr_max).x0) as OPJ_UINT32;
     let mut h = ((*tr_max).y1 - (*tr_max).y0) as OPJ_UINT32;
     let mut resno: OPJ_UINT32 = 0;
@@ -1716,7 +1718,7 @@ fn opj_dwt_init_sparse_array(
     resno = 0 as OPJ_UINT32;
     while resno < numres {
       let mut res: *mut opj_tcd_resolution_t =
-        &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
+        (*tilec).resolutions.as_mut_ptr().offset(resno as isize);
       bandno = 0 as OPJ_UINT32;
       while bandno < (*res).numbands {
         let mut band: *mut opj_tcd_band_t =
@@ -1724,7 +1726,7 @@ fn opj_dwt_init_sparse_array(
         precno = 0 as OPJ_UINT32;
         while precno < (*res).pw.wrapping_mul((*res).ph) {
           let mut precinct: *mut opj_tcd_precinct_t =
-            &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
+            (*band).precincts.as_mut_ptr().offset(precno as isize);
           cblkno = 0 as OPJ_UINT32;
           while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
             let mut cblk: *mut opj_tcd_cblk_dec_t =
@@ -1735,17 +1737,17 @@ fn opj_dwt_init_sparse_array(
               let mut cblk_w = ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32;
               let mut cblk_h = ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32;
               if (*band).bandno & 1u32 != 0 {
-                let mut pres: *mut opj_tcd_resolution_t = &mut *(*tilec)
+                let mut pres: *mut opj_tcd_resolution_t = (*tilec)
                   .resolutions
-                  .offset(resno.wrapping_sub(1u32) as isize)
-                  as *mut opj_tcd_resolution_t;
+                  .as_mut_ptr()
+                  .offset(resno.wrapping_sub(1u32) as isize);
                 x = x.wrapping_add(((*pres).x1 - (*pres).x0) as OPJ_UINT32) as OPJ_UINT32
               }
               if (*band).bandno & 2u32 != 0 {
-                let mut pres_0: *mut opj_tcd_resolution_t = &mut *(*tilec)
+                let mut pres_0: *mut opj_tcd_resolution_t = (*tilec)
                   .resolutions
-                  .offset(resno.wrapping_sub(1u32) as isize)
-                  as *mut opj_tcd_resolution_t;
+                  .as_mut_ptr()
+                  .offset(resno.wrapping_sub(1u32) as isize);
                 y = (y as core::ffi::c_uint)
                   .wrapping_add(((*pres_0).y1 - (*pres_0).y0) as OPJ_UINT32)
                   as OPJ_UINT32
@@ -1785,11 +1787,11 @@ fn opj_dwt_decode_partial_tile(
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. */
     let filter_width = 2u32; /* width of the resolution level computed */
-    let mut tr = (*tilec).resolutions; /* height of the resolution level computed */
-    let mut tr_max: *mut opj_tcd_resolution_t = &mut *(*tilec)
+    let mut tr = (*tilec).resolutions.as_mut_ptr(); /* height of the resolution level computed */
+    let mut tr_max: *mut opj_tcd_resolution_t = (*tilec)
       .resolutions
-      .offset(numres.wrapping_sub(1u32) as isize)
-      as *mut opj_tcd_resolution_t;
+      .as_mut_ptr()
+      .offset(numres.wrapping_sub(1u32) as isize);
     let mut rw = ((*tr).x1 - (*tr).x0) as OPJ_UINT32;
     let mut rh = ((*tr).y1 - (*tr).y0) as OPJ_UINT32;
     let mut h_mem_size: OPJ_SIZE_T = 0;
@@ -2379,15 +2381,17 @@ fn opj_v8dwt_decode(mut dwt: &opj_v8dwt_t) {
 /* </summary>                            */
 fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32) -> OPJ_BOOL {
   unsafe {
-    let mut res = (*tilec).resolutions;
+    let mut res = (*tilec).resolutions.as_mut_ptr();
     let mut rw = ((*res).x1 - (*res).x0) as OPJ_UINT32;
     let mut rh = ((*res).y1 - (*res).y0) as OPJ_UINT32;
     let mut w = ((*(*tilec)
       .resolutions
+      .as_mut_ptr()
       .offset((*tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
     .x1
       - (*(*tilec)
         .resolutions
+        .as_mut_ptr()
         .offset((*tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
       .x0) as OPJ_UINT32;
     let mut l_data_size: OPJ_SIZE_T = 0;
@@ -2542,11 +2546,11 @@ fn opj_dwt_decode_partial_97(
     /* F.2 and F.3 of the standard. Note: in opj_tcd_is_subband_area_of_interest() */
     /* we currently use 3. */
     let filter_width = 4u32; /* width of the resolution level computed */
-    let mut tr = (*tilec).resolutions; /* height of the resolution level computed */
-    let mut tr_max: *mut opj_tcd_resolution_t = &mut *(*tilec)
+    let mut tr = (*tilec).resolutions.as_mut_ptr(); /* height of the resolution level computed */
+    let mut tr_max: *mut opj_tcd_resolution_t = (*tilec)
       .resolutions
-      .offset(numres.wrapping_sub(1u32) as isize)
-      as *mut opj_tcd_resolution_t;
+      .as_mut_ptr()
+      .offset(numres.wrapping_sub(1u32) as isize);
     let mut rw = ((*tr).x1 - (*tr).x0) as OPJ_UINT32;
     let mut rh = ((*tr).y1 - (*tr).y0) as OPJ_UINT32;
     let mut l_data_size: OPJ_SIZE_T = 0;

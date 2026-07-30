@@ -67,11 +67,11 @@ fn opj_tcd_makelayer(
     compno = 0 as OPJ_UINT32;
     while compno < tcd.tcd_image.tiles.numcomps {
       let mut tilec: *mut opj_tcd_tilecomp_t =
-        &mut *tcd.tcd_image.tiles.comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
+        &mut tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
       resno = 0 as OPJ_UINT32;
       while resno < (*tilec).numresolutions {
         let mut res: *mut opj_tcd_resolution_t =
-          &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
+          (*tilec).resolutions.as_mut_ptr().offset(resno as isize);
         bandno = 0 as OPJ_UINT32;
         while bandno < (*res).numbands {
           let mut band: *mut opj_tcd_band_t =
@@ -81,7 +81,7 @@ fn opj_tcd_makelayer(
             precno = 0 as OPJ_UINT32;
             while precno < (*res).pw.wrapping_mul((*res).ph) {
               let mut prc: *mut opj_tcd_precinct_t =
-                &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
+                (*band).precincts.as_mut_ptr().offset(precno as isize);
               cblkno = 0 as OPJ_UINT32;
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
@@ -201,7 +201,7 @@ fn opj_tcd_makelayer_fixed(mut tcd: &mut opj_tcd, mut layno: OPJ_UINT32, mut fin
     compno = 0 as OPJ_UINT32;
     while compno < tcd.tcd_image.tiles.numcomps {
       let mut tilec: *mut opj_tcd_tilecomp_t =
-        &mut *tcd.tcd_image.tiles.comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
+        &mut tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
       i = 0 as OPJ_UINT32;
       while i < (*tcd_tcp).numlayers {
         j = 0 as OPJ_UINT32;
@@ -226,7 +226,7 @@ fn opj_tcd_makelayer_fixed(mut tcd: &mut opj_tcd, mut layno: OPJ_UINT32, mut fin
       resno = 0 as OPJ_UINT32;
       while resno < (*tilec).numresolutions {
         let mut res: *mut opj_tcd_resolution_t =
-          &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
+          (*tilec).resolutions.as_mut_ptr().offset(resno as isize);
         bandno = 0 as OPJ_UINT32;
         while bandno < (*res).numbands {
           let mut band: *mut opj_tcd_band_t =
@@ -236,7 +236,7 @@ fn opj_tcd_makelayer_fixed(mut tcd: &mut opj_tcd, mut layno: OPJ_UINT32, mut fin
             precno = 0 as OPJ_UINT32; /* number of bit-plan equal to zero */
             while precno < (*res).pw.wrapping_mul((*res).ph) {
               let mut prc: *mut opj_tcd_precinct_t =
-                &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
+                (*band).precincts.as_mut_ptr().offset(precno as isize);
               cblkno = 0 as OPJ_UINT32;
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
@@ -358,12 +358,12 @@ fn opj_tcd_rateallocate(
     compno = 0 as OPJ_UINT32;
     while compno < tcd.tcd_image.tiles.numcomps {
       let mut tilec: *mut opj_tcd_tilecomp_t =
-        &mut *tcd.tcd_image.tiles.comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
+        &mut tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
       (*tilec).numpix = 0i32;
       resno = 0 as OPJ_UINT32;
       while resno < (*tilec).numresolutions {
         let mut res: *mut opj_tcd_resolution_t =
-          &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
+          (*tilec).resolutions.as_mut_ptr().offset(resno as isize);
         bandno = 0 as OPJ_UINT32;
         while bandno < (*res).numbands {
           let mut band: *mut opj_tcd_band_t =
@@ -375,7 +375,7 @@ fn opj_tcd_rateallocate(
             precno = 0 as OPJ_UINT32;
             while precno < (*res).pw.wrapping_mul((*res).ph) {
               let mut prc: *mut opj_tcd_precinct_t =
-                &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
+                (*band).precincts.as_mut_ptr().offset(precno as isize);
               cblkno = 0 as OPJ_UINT32;
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
@@ -632,13 +632,7 @@ pub(crate) fn opj_tcd_init(
   unsafe {
     p_tcd.image = p_image;
     p_tcd.cp = p_cp;
-    p_tcd.tcd_image.tiles.comps = opj_calloc(
-      (*p_image).numcomps as size_t,
-      core::mem::size_of::<opj_tcd_tilecomp_t>(),
-    ) as *mut opj_tcd_tilecomp_t;
-    if p_tcd.tcd_image.tiles.comps.is_null() {
-      return 0i32;
-    }
+    p_tcd.tcd_image.tiles.comps = vec![Default::default(); (*p_image).numcomps as usize];
     p_tcd.tcd_image.tiles.numcomps = (*p_image).numcomps;
     p_tcd.tp_pos = (*p_cp).m_specific_param.m_enc.m_tp_pos;
     1i32
@@ -759,18 +753,16 @@ pub(crate) fn opj_tcd_init_tile<T>(
     let mut l_br_prc_y_end: OPJ_INT32 = 0;
     /* number of precinct for a resolution */
     let mut l_nb_precincts: OPJ_UINT32 = 0;
-    /* room needed to store l_nb_precinct precinct for a resolution */
-    let mut l_nb_precinct_size: OPJ_UINT32 = 0;
     /* number of code blocks for a precinct*/
     let mut l_nb_code_blocks: OPJ_UINT32 = 0;
     /* room needed to store l_nb_code_blocks code blocks for a precinct*/
     let mut l_nb_code_blocks_size: OPJ_UINT32 = 0;
     /* size of data for a tile */
-    let mut l_data_size: OPJ_UINT32 = 0; /* tile coordinates */
+    /* tile coordinates */
     l_cp = p_tcd.cp;
     l_tcp = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
     l_tccp = (*l_tcp).tccps;
-    l_tilec = p_tcd.tcd_image.tiles.comps;
+    l_tilec = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     l_image = p_tcd.image;
     l_image_comp = (*p_tcd.image).comps;
     p = p_tile_no.wrapping_rem((*l_cp).tw);
@@ -851,58 +843,22 @@ pub(crate) fn opj_tcd_init_tile<T>(
         l_tile_data_size = l_tile_data_size.wrapping_mul(core::mem::size_of::<OPJ_UINT32>());
         (*l_tilec).data_size_needed = l_tile_data_size
       }
-      l_data_size = (*l_tilec)
-        .numresolutions
-        .wrapping_mul(core::mem::size_of::<opj_tcd_resolution_t>() as OPJ_UINT32);
       opj_image_data_free((*l_tilec).data_win as *mut core::ffi::c_void);
       (*l_tilec).data_win = core::ptr::null_mut::<OPJ_INT32>();
       (*l_tilec).win_x0 = 0 as OPJ_UINT32;
       (*l_tilec).win_y0 = 0 as OPJ_UINT32;
       (*l_tilec).win_x1 = 0 as OPJ_UINT32;
       (*l_tilec).win_y1 = 0 as OPJ_UINT32;
-      if (*l_tilec).resolutions.is_null() {
-        (*l_tilec).resolutions = opj_alloc_type_array((*l_tilec).numresolutions as size_t);
-        if (*l_tilec).resolutions.is_null() {
-          return 0i32;
+      /* Grow-only, like the C realloc path: existing entries (and the precinct
+       * buffers they own) are preserved, new entries are zeroed. */
+      {
+        let resolutions = &mut (*l_tilec).resolutions;
+        if resolutions.len() < (*l_tilec).numresolutions as usize {
+          resolutions.resize((*l_tilec).numresolutions as usize, Default::default());
         }
-        /*fprintf(stderr, "\tAllocate resolutions of tilec (opj_tcd_resolution_t): %d\n",l_data_size);*/
-        (*l_tilec).resolutions_size = l_data_size;
-        memset(
-          (*l_tilec).resolutions as *mut core::ffi::c_void,
-          0i32,
-          l_data_size as usize,
-        );
-      } else if l_data_size > (*l_tilec).resolutions_size {
-        let old_numresolutions =
-          (*l_tilec).resolutions_size as usize / core::mem::size_of::<opj_tcd_resolution_t>();
-        let mut new_resolutions = opj_realloc_type_array(
-          (*l_tilec).resolutions,
-          old_numresolutions,
-          (*l_tilec).numresolutions as size_t,
-        );
-        if new_resolutions.is_null() {
-          event_msg!(
-            manager,
-            EVT_ERROR,
-            "Not enough memory for tile resolutions\n",
-          );
-          opj_free_type_array((*l_tilec).resolutions, old_numresolutions);
-          (*l_tilec).resolutions = core::ptr::null_mut::<opj_tcd_resolution_t>();
-          (*l_tilec).resolutions_size = 0 as OPJ_UINT32;
-          return 0i32;
-        }
-        (*l_tilec).resolutions = new_resolutions;
-        /*fprintf(stderr, "\tReallocate data of tilec (int): from %d to %d x OPJ_UINT32\n", l_tilec->resolutions_size, l_data_size);*/
-        memset(
-          ((*l_tilec).resolutions as *mut OPJ_BYTE).offset((*l_tilec).resolutions_size as isize)
-            as *mut core::ffi::c_void,
-          0i32,
-          l_data_size.wrapping_sub((*l_tilec).resolutions_size) as usize,
-        );
-        (*l_tilec).resolutions_size = l_data_size
       }
       l_level_no = (*l_tilec).numresolutions;
-      l_res = (*l_tilec).resolutions;
+      l_res = (&mut (*l_tilec).resolutions).as_mut_ptr();
       l_step_size = (*l_tccp).stepsizes.as_mut_ptr();
       /*fprintf(stderr, "\tlevel_no=%d\n",l_level_no);*/
       resno = 0 as OPJ_UINT32; /* resno */
@@ -967,8 +923,6 @@ pub(crate) fn opj_tcd_init_tile<T>(
           );
           return 0i32;
         }
-        l_nb_precinct_size =
-          l_nb_precincts.wrapping_mul(core::mem::size_of::<opj_tcd_precinct_t>() as OPJ_UINT32);
         if resno == 0u32 {
           tlcbgxstart = l_tl_prc_x_start;
           tlcbgystart = l_tl_prc_y_start;
@@ -1067,52 +1021,15 @@ pub(crate) fn opj_tcd_init_tile<T>(
               /* Mb value of Equation E-2 in "E.1 Inverse quantization
                * procedure" of the standard */
               (*l_band).numbps = (*l_step_size).expn + (*l_tccp).numgbits as OPJ_INT32 - 1i32;
-              if (*l_band).precincts.is_null() && l_nb_precincts > 0u32 {
-                (*l_band).precincts =
-                  opj_malloc(l_nb_precinct_size as size_t) as *mut opj_tcd_precinct_t;
-                if (*l_band).precincts.is_null() {
-                  event_msg!(
-                    manager,
-                    EVT_ERROR,
-                    "Not enough memory to handle band precints\n",
-                  );
-                  return 0i32;
+              /* Grow-only, like the C realloc path: existing precincts (and the
+               * tag trees / code blocks they own) are preserved, new ones are zeroed. */
+              {
+                let precincts = &mut (*l_band).precincts;
+                if precincts.len() < l_nb_precincts as usize {
+                  precincts.resize(l_nb_precincts as usize, Default::default());
                 }
-                /*fprintf(stderr, "\t\t\t\tAllocate precincts of a band (opj_tcd_precinct_t): %d\n",l_nb_precinct_size);     */
-                memset(
-                  (*l_band).precincts as *mut core::ffi::c_void,
-                  0i32,
-                  l_nb_precinct_size as usize,
-                );
-                (*l_band).precincts_data_size = l_nb_precinct_size
-              } else if (*l_band).precincts_data_size < l_nb_precinct_size {
-                let mut new_precincts = opj_realloc(
-                  (*l_band).precincts as *mut core::ffi::c_void,
-                  l_nb_precinct_size as size_t,
-                ) as *mut opj_tcd_precinct_t;
-                if new_precincts.is_null() {
-                  event_msg!(
-                    manager,
-                    EVT_ERROR,
-                    "Not enough memory to handle band precints\n",
-                  );
-                  opj_free((*l_band).precincts as *mut core::ffi::c_void);
-                  (*l_band).precincts = core::ptr::null_mut::<opj_tcd_precinct_t>();
-                  (*l_band).precincts_data_size = 0 as OPJ_UINT32;
-                  return 0i32;
-                }
-                (*l_band).precincts = new_precincts;
-                /*fprintf(stderr, "\t\t\t\tReallocate precincts of a band (opj_tcd_precinct_t): from %d to %d\n",l_band->precincts_data_size, l_nb_precinct_size);*/
-                memset(
-                  ((*l_band).precincts as *mut OPJ_BYTE)
-                    .offset((*l_band).precincts_data_size as isize)
-                    as *mut core::ffi::c_void,
-                  0i32,
-                  l_nb_precinct_size.wrapping_sub((*l_band).precincts_data_size) as usize,
-                );
-                (*l_band).precincts_data_size = l_nb_precinct_size
               }
-              l_current_precinct = (*l_band).precincts;
+              l_current_precinct = (*l_band).precincts.as_mut_ptr();
               precno = 0 as OPJ_UINT32;
               while precno < l_nb_precincts {
                 let mut tlcblkxstart: OPJ_INT32 = 0;
@@ -1449,7 +1366,7 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
     let mut l_size_comp: OPJ_UINT32 = 0;
     let mut l_remaining: OPJ_UINT32 = 0;
     let mut l_temp: OPJ_UINT32 = 0;
-    l_tile_comp = p_tcd.tcd_image.tiles.comps;
+    l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     l_img_comp = (*p_tcd.image).comps;
     i = 0 as OPJ_UINT32;
     while i < (*p_tcd.image).numcomps {
@@ -1465,6 +1382,7 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
       }
       l_res = (*l_tile_comp)
         .resolutions
+        .as_mut_ptr()
         .offset((*l_tile_comp).minimum_num_resolutions as isize)
         .offset(-1);
       if take_into_account_partial_decoding != 0 && p_tcd.whole_tile_decoding == 0 {
@@ -1531,12 +1449,13 @@ pub(crate) fn opj_tcd_encode_tile(
         let mut i: OPJ_UINT32 = 0;
         /* INDEX >> "Precinct_nb_X et Precinct_nb_Y" */
         let mut l_tilec_idx: *mut opj_tcd_tilecomp_t =
-          &mut *p_tcd.tcd_image.tiles.comps.offset(0) as *mut opj_tcd_tilecomp_t; /* based on component 0 */
+          &mut p_tcd.tcd_image.tiles.comps[0] as *mut opj_tcd_tilecomp_t; /* based on component 0 */
         let mut l_tccp = (*p_tcd.tcp).tccps; /* based on component 0 */
         i = 0 as OPJ_UINT32;
         while i < (*l_tilec_idx).numresolutions {
           let mut l_res_idx: *mut opj_tcd_resolution_t =
-            &mut *(*l_tilec_idx).resolutions.offset(i as isize) as *mut opj_tcd_resolution_t;
+            &mut *(*l_tilec_idx).resolutions.as_mut_ptr().offset(i as isize)
+          as *mut opj_tcd_resolution_t;
           (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pw[i as usize] =
             (*l_res_idx).pw as core::ffi::c_int;
           (*(*p_cstr_info).tile.offset(p_tile_no as isize)).ph[i as usize] =
@@ -1663,11 +1582,11 @@ pub(crate) fn opj_tcd_decode_tile(
       compno = 0 as OPJ_UINT32;
       while compno < (*p_tcd.image).numcomps {
         let mut tilec: *mut opj_tcd_tilecomp_t =
-          &mut *p_tcd.tcd_image.tiles.comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
-        let mut l_res: *mut opj_tcd_resolution_t = &mut *(*tilec)
+          &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
+        let mut l_res: *mut opj_tcd_resolution_t = (*tilec)
           .resolutions
-          .offset((*tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize)
-          as *mut opj_tcd_resolution_t;
+          .as_mut_ptr()
+          .offset((*tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize);
         let mut l_data_size: OPJ_SIZE_T = 0;
         /* compute l_data_size with overflow check */
         let mut res_w = ((*l_res).x1 - (*l_res).x0) as OPJ_SIZE_T;
@@ -1713,7 +1632,7 @@ pub(crate) fn opj_tcd_decode_tile(
       while compno < (*p_tcd.image).numcomps {
         let mut resno: OPJ_UINT32 = 0;
         let mut tilec_0: *mut opj_tcd_tilecomp_t =
-          &mut *p_tcd.tcd_image.tiles.comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
+          &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
         let mut image_comp: *mut opj_image_comp_t =
           &mut *(*p_tcd.image).comps.offset(compno as isize) as *mut opj_image_comp_t;
         if p_tcd.used_component(compno) {
@@ -1744,7 +1663,7 @@ pub(crate) fn opj_tcd_decode_tile(
           }
           resno = 0 as OPJ_UINT32;
           while resno < (*tilec_0).numresolutions {
-            let mut res = (*tilec_0).resolutions.offset(resno as isize);
+            let mut res = (*tilec_0).resolutions.as_mut_ptr().offset(resno as isize);
             (*res).win_x0 = opj_uint_ceildivpow2(
               (*tilec_0).win_x0,
               (*tilec_0)
@@ -1807,11 +1726,12 @@ pub(crate) fn opj_tcd_decode_tile(
       compno = 0 as OPJ_UINT32;
       while compno < (*p_tcd.image).numcomps {
         let mut tilec_1: *mut opj_tcd_tilecomp_t =
-          &mut *p_tcd.tcd_image.tiles.comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
+          &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
         let mut image_comp_0: *mut opj_image_comp_t =
           &mut *(*p_tcd.image).comps.offset(compno as isize) as *mut opj_image_comp_t;
         let mut res_0 = (*tilec_1)
           .resolutions
+          .as_mut_ptr()
           .offset((*image_comp_0).resno_decoded as isize);
         let mut w = (*res_0).win_x1.wrapping_sub((*res_0).win_x0) as OPJ_SIZE_T;
         let mut h = (*res_0).win_y1.wrapping_sub((*res_0).win_y0) as OPJ_SIZE_T;
@@ -1887,23 +1807,26 @@ pub(crate) fn opj_tcd_update_tile_data(p_tcd: &mut opj_tcd, mut p_dest: &mut [u8
       return 0i32;
     }
     let numcomps = (*p_tcd.image).numcomps as usize;
-    let mut l_tilec = core::slice::from_raw_parts(p_tcd.tcd_image.tiles.comps, numcomps);
+    let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
     let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps, numcomps);
     for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
       let mut l_size_comp = l_img_comp.prec >> 3i32;
       let l_remaining = l_img_comp.prec & 7u32;
       let l_res = l_tilec
         .resolutions
+        .as_ptr()
         .offset(l_img_comp.resno_decoded as isize);
       let mut l_src_data = if p_tcd.whole_tile_decoding != 0 {
         l_width = ((*l_res).x1 - (*l_res).x0) as usize;
         l_height = ((*l_res).y1 - (*l_res).y0) as usize;
         l_stride = (((*l_tilec
           .resolutions
+          .as_ptr()
           .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
         .x1
           - (*l_tilec
             .resolutions
+            .as_ptr()
             .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
           .x0) as usize)
           .wrapping_sub(l_width);
@@ -2016,24 +1939,20 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
     } else {
       opj_tcd_code_block_enc_deallocate
     };
-    l_tile_comp = p_tcd.tcd_image.tiles.comps;
+    l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     compno = 0 as OPJ_UINT32;
     while compno < p_tcd.tcd_image.tiles.numcomps {
-      l_res = (*l_tile_comp).resolutions;
+      l_res = (&mut (*l_tile_comp).resolutions).as_mut_ptr();
       if !l_res.is_null() {
-        l_nb_resolutions = (*l_tile_comp)
-          .resolutions_size
-          .wrapping_div(core::mem::size_of::<opj_tcd_resolution_t>() as OPJ_UINT32);
+        l_nb_resolutions = (&(*l_tile_comp).resolutions).len() as OPJ_UINT32;
         resno = 0 as OPJ_UINT32;
         while resno < l_nb_resolutions {
           l_band = (*l_res).bands.as_mut_ptr();
           bandno = 0 as OPJ_UINT32;
           while bandno < 3u32 {
-            l_precinct = (*l_band).precincts;
+            l_precinct = (*l_band).precincts.as_mut_ptr();
             if !l_precinct.is_null() {
-              l_nb_precincts = (*l_band)
-                .precincts_data_size
-                .wrapping_div(core::mem::size_of::<opj_tcd_precinct_t>() as OPJ_UINT32);
+              l_nb_precincts = (*l_band).precincts.len() as OPJ_UINT32;
               precno = 0 as OPJ_UINT32;
               while precno < l_nb_precincts {
                 opj_tgt_destroy((*l_precinct).incltree);
@@ -2044,8 +1963,7 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
                 l_precinct = l_precinct.offset(1);
                 precno += 1;
               }
-              opj_free((*l_band).precincts as *mut core::ffi::c_void);
-              (*l_band).precincts = core::ptr::null_mut::<opj_tcd_precinct_t>()
+              (*l_band).precincts.clear();
             }
             l_band = l_band.offset(1);
             bandno += 1;
@@ -2053,8 +1971,7 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
           l_res = l_res.offset(1);
           resno += 1;
         }
-        opj_free_type_array((*l_tile_comp).resolutions, l_nb_resolutions as usize);
-        (*l_tile_comp).resolutions = core::ptr::null_mut::<opj_tcd_resolution_t>()
+        (&mut (*l_tile_comp).resolutions).clear();
       }
       if (*l_tile_comp).ownsData != 0 && !(*l_tile_comp).data.is_null() {
         opj_image_data_free((*l_tile_comp).data as *mut core::ffi::c_void);
@@ -2067,11 +1984,9 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
       l_tile_comp = l_tile_comp.offset(1);
       compno += 1;
     }
-    opj_free(p_tcd.tcd_image.tiles.comps as *mut core::ffi::c_void);
-    p_tcd.tcd_image.tiles.comps = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
+    p_tcd.tcd_image.tiles.comps.clear();
   }
 }
-
 fn opj_tcd_t2_decode(
   mut p_tcd: &mut opj_tcd,
   mut p_src_data: *mut OPJ_BYTE,
@@ -2106,7 +2021,7 @@ fn opj_tcd_t2_decode(
 fn opj_tcd_t1_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   unsafe {
     let mut compno: OPJ_UINT32 = 0;
-    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps;
+    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     let mut l_tccp = (*p_tcd.tcp).tccps;
     let mut ret = 1i32;
     let mut check_pterm = 0i32;
@@ -2134,7 +2049,7 @@ fn opj_tcd_t1_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr)
 fn opj_tcd_dwt_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   unsafe {
     let mut compno: OPJ_UINT32 = 0;
-    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps;
+    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     let mut l_tccp = (*p_tcd.tcp).tccps;
     let mut l_img_comp = (*p_tcd.image).comps;
     compno = 0 as OPJ_UINT32;
@@ -2169,14 +2084,15 @@ fn opj_tcd_dwt_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
 fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   unsafe {
     let mut l_tcp = p_tcd.tcp;
-    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps;
+    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     let mut l_samples: OPJ_SIZE_T = 0;
     if (*l_tcp).mct == 0u32 || p_tcd.used_component.len() > 0 {
       return 1i32;
     }
     if p_tcd.whole_tile_decoding != 0 {
-      let mut res_comp0 = (*p_tcd.tcd_image.tiles.comps.offset(0))
+      let mut res_comp0 = p_tcd.tcd_image.tiles.comps[0]
         .resolutions
+        .as_ptr()
         .offset((*l_tile_comp).minimum_num_resolutions as isize)
         .offset(-1);
       /* A bit inefficient: we process more data than needed if */
@@ -2186,9 +2102,9 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
         .wrapping_mul(((*res_comp0).y1 - (*res_comp0).y0) as OPJ_SIZE_T);
       if p_tcd.tcd_image.tiles.numcomps >= 3u32
         && ((*l_tile_comp).minimum_num_resolutions
-          != (*p_tcd.tcd_image.tiles.comps.offset(1)).minimum_num_resolutions
+          != p_tcd.tcd_image.tiles.comps[1].minimum_num_resolutions
           || (*l_tile_comp).minimum_num_resolutions
-            != (*p_tcd.tcd_image.tiles.comps.offset(2)).minimum_num_resolutions)
+            != p_tcd.tcd_image.tiles.comps[2].minimum_num_resolutions)
       {
         event_msg!(
           p_manager,
@@ -2198,12 +2114,14 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
         return 0i32;
       }
       if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
-        let mut res_comp1 = (*p_tcd.tcd_image.tiles.comps.offset(1))
+        let mut res_comp1 = p_tcd.tcd_image.tiles.comps[1]
           .resolutions
+          .as_ptr()
           .offset((*l_tile_comp).minimum_num_resolutions as isize)
           .offset(-1);
-        let mut res_comp2 = (*p_tcd.tcd_image.tiles.comps.offset(2))
+        let mut res_comp2 = p_tcd.tcd_image.tiles.comps[2]
           .resolutions
+          .as_ptr()
           .offset((*l_tile_comp).minimum_num_resolutions as isize)
           .offset(-1);
         /* testcase 1336.pdf.asan.47.376 */
@@ -2227,17 +2145,20 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
         }
       }
     } else {
-      let mut res_comp0_0 = (*p_tcd.tcd_image.tiles.comps.offset(0))
+      let mut res_comp0_0 = p_tcd.tcd_image.tiles.comps[0]
         .resolutions
+        .as_ptr()
         .offset((*(*p_tcd.image).comps.offset(0)).resno_decoded as isize);
       l_samples = ((*res_comp0_0).win_x1.wrapping_sub((*res_comp0_0).win_x0) as OPJ_SIZE_T)
         .wrapping_mul((*res_comp0_0).win_y1.wrapping_sub((*res_comp0_0).win_y0) as OPJ_SIZE_T);
       if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
-        let mut res_comp1_0 = (*p_tcd.tcd_image.tiles.comps.offset(1))
+        let mut res_comp1_0 = p_tcd.tcd_image.tiles.comps[1]
           .resolutions
+          .as_ptr()
           .offset((*(*p_tcd.image).comps.offset(1)).resno_decoded as isize);
-        let mut res_comp2_0 = (*p_tcd.tcd_image.tiles.comps.offset(2))
+        let mut res_comp2_0 = p_tcd.tcd_image.tiles.comps[2]
           .resolutions
+          .as_ptr()
           .offset((*(*p_tcd.image).comps.offset(2)).resno_decoded as isize);
         /* testcase 1336.pdf.asan.47.376 */
         if (*(*p_tcd.image).comps.offset(0)).resno_decoded
@@ -2263,7 +2184,7 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
     if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
       let numcomps = p_tcd.tcd_image.tiles.numcomps as usize;
       let comp_ptr = |i: usize| -> *mut OPJ_INT32 {
-        let comp = p_tcd.tcd_image.tiles.comps.add(i);
+        let comp = p_tcd.tcd_image.tiles.comps.as_ptr().add(i) as *mut opj_tcd_tilecomp_t;
         if p_tcd.whole_tile_decoding != 0 {
           (*comp).data
         } else {
@@ -2331,7 +2252,7 @@ fn opj_tcd_dc_level_shift_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     let mut l_min: OPJ_INT32 = 0;
     let mut l_max: OPJ_INT32 = 0;
     let mut l_stride: OPJ_UINT32 = 0;
-    l_tile_comp = p_tcd.tcd_image.tiles.comps;
+    l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     l_tccp = (*p_tcd.tcp).tccps;
     l_img_comp = (*p_tcd.image).comps;
     compno = 0 as OPJ_UINT32;
@@ -2339,6 +2260,7 @@ fn opj_tcd_dc_level_shift_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
       if p_tcd.used_component(compno) {
         l_res = (*l_tile_comp)
           .resolutions
+          .as_mut_ptr()
           .offset((*l_img_comp).resno_decoded as isize);
         if p_tcd.whole_tile_decoding == 0 {
           l_width = (*l_res).win_x1.wrapping_sub((*l_res).win_x0);
@@ -2350,10 +2272,12 @@ fn opj_tcd_dc_level_shift_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
           l_height = ((*l_res).y1 - (*l_res).y0) as OPJ_UINT32;
           l_stride = (((*(*l_tile_comp)
             .resolutions
+            .as_mut_ptr()
             .offset((*l_tile_comp).minimum_num_resolutions.wrapping_sub(1u32) as isize))
           .x1
             - (*(*l_tile_comp)
               .resolutions
+              .as_mut_ptr()
               .offset((*l_tile_comp).minimum_num_resolutions.wrapping_sub(1u32) as isize))
             .x0) as OPJ_UINT32)
             .wrapping_sub(l_width);
@@ -2519,7 +2443,7 @@ pub(crate) fn opj_tcd_get_encoder_input_buffer_size(mut p_tcd: &mut opj_tcd) -> 
   let mut l_remaining: OPJ_UINT32 = 0;
   let (l_tilec, l_img_comp) = unsafe {
     let numcomps = (*p_tcd.image).numcomps as usize;
-    let mut l_tilec = core::slice::from_raw_parts(p_tcd.tcd_image.tiles.comps, numcomps);
+    let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
     let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps, numcomps);
     (l_tilec, l_img_comp)
   };
@@ -2551,7 +2475,7 @@ fn opj_tcd_dc_level_shift_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     let mut l_nb_elem: OPJ_SIZE_T = 0;
     let mut i: OPJ_SIZE_T = 0;
     let mut l_current_ptr = core::ptr::null_mut::<OPJ_INT32>();
-    l_tile_comp = p_tcd.tcd_image.tiles.comps;
+    l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     l_tccp = (*p_tcd.tcp).tccps;
     l_img_comp = (*p_tcd.image).comps;
     compno = 0 as OPJ_UINT32;
@@ -2585,7 +2509,7 @@ fn opj_tcd_dc_level_shift_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
 }
 fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   unsafe {
-    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps;
+    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     let mut samples = (((*l_tile_comp).x1 - (*l_tile_comp).x0) as OPJ_SIZE_T)
       .wrapping_mul(((*l_tile_comp).y1 - (*l_tile_comp).y0) as OPJ_SIZE_T);
     let mut l_tcp = p_tcd.tcp;
@@ -2616,23 +2540,23 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     } else if (*(*l_tcp).tccps).qmfbid == 0u32 {
       opj_mct_encode_real(
         core::slice::from_raw_parts_mut(
-          (*p_tcd.tcd_image.tiles.comps.offset(0)).data as *mut OPJ_FLOAT32,
+          p_tcd.tcd_image.tiles.comps[0].data as *mut OPJ_FLOAT32,
           samples,
         ),
         core::slice::from_raw_parts_mut(
-          (*p_tcd.tcd_image.tiles.comps.offset(1)).data as *mut OPJ_FLOAT32,
+          p_tcd.tcd_image.tiles.comps[1].data as *mut OPJ_FLOAT32,
           samples,
         ),
         core::slice::from_raw_parts_mut(
-          (*p_tcd.tcd_image.tiles.comps.offset(2)).data as *mut OPJ_FLOAT32,
+          p_tcd.tcd_image.tiles.comps[2].data as *mut OPJ_FLOAT32,
           samples,
         ),
       );
     } else {
       opj_mct_encode(
-        core::slice::from_raw_parts_mut((*p_tcd.tcd_image.tiles.comps.offset(0)).data, samples),
-        core::slice::from_raw_parts_mut((*p_tcd.tcd_image.tiles.comps.offset(1)).data, samples),
-        core::slice::from_raw_parts_mut((*p_tcd.tcd_image.tiles.comps.offset(2)).data, samples),
+        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[0].data, samples),
+        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[1].data, samples),
+        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[2].data, samples),
       );
     }
     1i32
@@ -2640,7 +2564,7 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
 }
 fn opj_tcd_dwt_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   unsafe {
-    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps;
+    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     let mut l_tccp = (*p_tcd.tcp).tccps;
     let mut compno: OPJ_UINT32 = 0;
     compno = 0 as OPJ_UINT32;
@@ -2779,7 +2703,7 @@ pub(crate) fn opj_tcd_copy_tile_data(p_tcd: &mut opj_tcd, mut p_src: &[u8]) -> O
       return 0i32;
     }
     let numcomps = (*p_tcd.image).numcomps as usize;
-    let mut l_tilec = core::slice::from_raw_parts(p_tcd.tcd_image.tiles.comps, numcomps);
+    let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
     let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps, numcomps);
     for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
       l_size_comp = l_img_comp.prec >> 3i32;
@@ -2865,7 +2789,7 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
       3i32
     } as OPJ_UINT32;
     let mut tilec: *mut opj_tcd_tilecomp_t =
-      &mut *tcd.tcd_image.tiles.comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
+      &mut tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
     let mut image_comp: *mut opj_image_comp_t =
       &mut *(*(*tcd).image).comps.offset(compno as isize) as *mut opj_image_comp_t;
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
@@ -2964,7 +2888,7 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
 fn opj_tcd_is_whole_tilecomp_decoding(mut p_tcd: &mut opj_tcd, mut compno: OPJ_UINT32) -> OPJ_BOOL {
   unsafe {
     let mut tilec: *mut opj_tcd_tilecomp_t =
-      &mut *p_tcd.tcd_image.tiles.comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
+      &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
     let mut image_comp: *mut opj_image_comp_t =
       &mut *(*p_tcd.image).comps.offset(compno as isize) as *mut opj_image_comp_t;
     /* Compute the intersection of the area of interest, expressed in tile coordinates */

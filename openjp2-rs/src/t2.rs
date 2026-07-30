@@ -365,12 +365,7 @@ pub(crate) fn opj_t2_decode_packets(
         if (*l_current_pi).layno >= (*l_tcp).num_layers_to_decode {
           skip_packet = 1i32
         } else if (*l_current_pi).resno
-          >= (*tcd
-            .tcd_image
-            .tiles
-            .comps
-            .offset((*l_current_pi).compno as isize))
-          .minimum_num_resolutions
+          >= tcd.tcd_image.tiles.comps[(*l_current_pi).compno as usize].minimum_num_resolutions
         {
           skip_packet = 1i32
         } else {
@@ -381,23 +376,23 @@ pub(crate) fn opj_t2_decode_packets(
           /* If no precincts of any band intersects the area of interest, */
           /* skip the packet */
           let mut bandno: OPJ_UINT32 = 0;
-          let mut tilec: *mut opj_tcd_tilecomp_t = &mut *tcd
-            .tcd_image
-            .tiles
-            .comps
-            .offset((*l_current_pi).compno as isize)
-            as *mut opj_tcd_tilecomp_t;
-          let mut res: *mut opj_tcd_resolution_t =
-            &mut *(*tilec).resolutions.offset((*l_current_pi).resno as isize)
-              as *mut opj_tcd_resolution_t;
+          let mut tilec: *mut opj_tcd_tilecomp_t =
+            &mut tcd.tcd_image.tiles.comps[(*l_current_pi).compno as usize]
+              as *mut opj_tcd_tilecomp_t;
+          let mut res: *mut opj_tcd_resolution_t = (*tilec)
+            .resolutions
+            .as_mut_ptr()
+            .offset((*l_current_pi).resno as isize);
           skip_packet = 1i32;
           bandno = 0 as OPJ_UINT32;
           while bandno < (*res).numbands {
             let mut band: *mut opj_tcd_band_t =
               &mut *(*res).bands.as_mut_ptr().offset(bandno as isize) as *mut opj_tcd_band_t;
-            let mut prec: *mut opj_tcd_precinct_t =
-              &mut *(*band).precincts.offset((*l_current_pi).precno as isize)
-                as *mut opj_tcd_precinct_t;
+            let mut prec: *mut opj_tcd_precinct_t = (*band)
+              .precincts
+              .as_ptr()
+              .offset((*l_current_pi).precno as isize)
+              as *mut opj_tcd_precinct_t;
             if opj_tcd_is_subband_area_of_interest(
               tcd,
               (*l_current_pi).compno,
@@ -462,13 +457,10 @@ pub(crate) fn opj_t2_decode_packets(
           l_img_comp =
             &mut *(*l_image).comps.offset((*l_current_pi).compno as isize) as *mut opj_image_comp_t;
           if (*l_img_comp).resno_decoded == 0u32 {
-            (*l_img_comp).resno_decoded = (*tcd
-              .tcd_image
-              .tiles
-              .comps
-              .offset((*l_current_pi).compno as isize))
-            .minimum_num_resolutions
-            .wrapping_sub(1u32)
+            (*l_img_comp).resno_decoded = tcd.tcd_image.tiles.comps
+              [(*l_current_pi).compno as usize]
+              .minimum_num_resolutions
+              .wrapping_sub(1u32)
           }
         }
         l_current_data = l_current_data.offset(l_nb_bytes_read as isize);
@@ -628,9 +620,9 @@ fn opj_t2_encode_packet(
     let mut cblk = core::ptr::null_mut::<opj_tcd_cblk_enc_t>();
     let mut pass = core::ptr::null_mut::<opj_tcd_pass_t>();
     let mut tilec: *mut opj_tcd_tilecomp_t =
-      &mut *(*tile).comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
+      (&mut (*tile).comps).as_mut_ptr().add(compno as usize);
     let mut res: *mut opj_tcd_resolution_t =
-      &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
+      (*tilec).resolutions.as_mut_ptr().offset(resno as isize);
     let mut packet_empty = 0i32;
     /* <SOP 0xff91> */
     if (*tcp).csty & 0x2u32 != 0 {
@@ -675,7 +667,7 @@ fn opj_t2_encode_packet(
             );
             return 0i32;
           }
-          prc = &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
+          prc = (*band).precincts.as_mut_ptr().offset(precno as isize);
           /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
           if !(*prc).incltree.is_null() {
             opj_tgt_reset(&mut *(*prc).incltree);
@@ -724,7 +716,7 @@ fn opj_t2_encode_packet(
           );
           return 0i32;
         }
-        prc_0 = &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
+        prc_0 = (*band).precincts.as_mut_ptr().offset(precno as isize);
         l_nb_blocks = (*prc_0).cw.wrapping_mul((*prc_0).ch);
         cblk = (*prc_0).cblks.enc;
         cblkno = 0 as OPJ_UINT32;
@@ -877,7 +869,7 @@ fn opj_t2_encode_packet(
       let mut prc_1 = core::ptr::null_mut::<opj_tcd_precinct_t>();
       /* Skip empty bands */
       if opj_tcd_is_band_empty(band) == 0 {
-        prc_1 = &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
+        prc_1 = (*band).precincts.as_mut_ptr().offset(precno as isize);
         l_nb_blocks = (*prc_1).cw.wrapping_mul((*prc_1).ch);
         cblk = (*prc_1).cblks.enc;
         cblkno = 0 as OPJ_UINT32;
@@ -1019,10 +1011,12 @@ fn opj_t2_read_packet_header(
     let mut l_cp = (*p_t2).cp;
     let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
     let mut l_cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
-    let mut l_res: *mut opj_tcd_resolution_t =
-      &mut *(*(*p_tile).comps.offset((*p_pi).compno as isize))
-        .resolutions
-        .offset((*p_pi).resno as isize) as *mut opj_tcd_resolution_t;
+    let mut l_res: *mut opj_tcd_resolution_t = (*(&mut (*p_tile).comps)
+      .as_mut_ptr()
+      .add((*p_pi).compno as usize))
+    .resolutions
+    .as_mut_ptr()
+    .offset((*p_pi).resno as isize);
     let mut l_header_data = core::ptr::null_mut::<OPJ_BYTE>();
     let mut l_header_data_start = core::ptr::null_mut::<*mut OPJ_BYTE>();
     let mut l_present: OPJ_UINT32 = 0;
@@ -1033,11 +1027,8 @@ fn opj_t2_read_packet_header(
       while bandno < (*l_res).numbands {
         if opj_tcd_is_band_empty(l_band) == 0 {
           let mut l_prc: *mut opj_tcd_precinct_t =
-            &mut *(*l_band).precincts.offset((*p_pi).precno as isize) as *mut opj_tcd_precinct_t;
-          if ((*p_pi).precno as usize)
-            >= ((*l_band).precincts_data_size as usize)
-              .wrapping_div(core::mem::size_of::<opj_tcd_precinct_t>())
-          {
+            (*l_band).precincts.as_mut_ptr().offset((*p_pi).precno as isize);
+          if ((*p_pi).precno as usize) >= (*l_band).precincts.len() {
             event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
             return 0i32;
           }
@@ -1157,7 +1148,7 @@ fn opj_t2_read_packet_header(
     bandno = 0 as OPJ_UINT32;
     while bandno < (*l_res).numbands {
       let mut l_prc_0: *mut opj_tcd_precinct_t =
-        &mut *(*l_band).precincts.offset((*p_pi).precno as isize) as *mut opj_tcd_precinct_t;
+        (*l_band).precincts.as_mut_ptr().offset((*p_pi).precno as isize);
       if opj_tcd_is_band_empty(l_band) == 0 {
         l_nb_code_blocks = (*l_prc_0).cw.wrapping_mul((*l_prc_0).ch);
         l_cblk = (*l_prc_0).cblks.dec;
@@ -1402,16 +1393,18 @@ fn opj_t2_read_packet_data(
     let mut l_current_data = p_src_data;
     let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
     let mut l_cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
-    let mut l_res: *mut opj_tcd_resolution_t =
-      &mut *(*(*p_tile).comps.offset((*p_pi).compno as isize))
-        .resolutions
-        .offset((*p_pi).resno as isize) as *mut opj_tcd_resolution_t;
+    let mut l_res: *mut opj_tcd_resolution_t = (*(&mut (*p_tile).comps)
+      .as_mut_ptr()
+      .add((*p_pi).compno as usize))
+    .resolutions
+    .as_mut_ptr()
+    .offset((*p_pi).resno as isize);
     let mut partial_buffer = 0i32;
     l_band = (*l_res).bands.as_mut_ptr();
     bandno = 0 as OPJ_UINT32;
     while bandno < (*l_res).numbands {
       let mut l_prc: *mut opj_tcd_precinct_t =
-        &mut *(*l_band).precincts.offset((*p_pi).precno as isize) as *mut opj_tcd_precinct_t;
+        (*l_band).precincts.as_mut_ptr().offset((*p_pi).precno as isize);
       if (*l_band).x1 - (*l_band).x0 == 0i32 || (*l_band).y1 - (*l_band).y0 == 0i32 {
         l_band = l_band.offset(1)
       } else {
@@ -1559,16 +1552,18 @@ fn opj_t2_skip_packet_data(
     let mut l_nb_code_blocks: OPJ_UINT32 = 0;
     let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
     let mut l_cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
-    let mut l_res: *mut opj_tcd_resolution_t =
-      &mut *(*(*p_tile).comps.offset((*p_pi).compno as isize))
-        .resolutions
-        .offset((*p_pi).resno as isize) as *mut opj_tcd_resolution_t;
+    let mut l_res: *mut opj_tcd_resolution_t = (*(&mut (*p_tile).comps)
+      .as_mut_ptr()
+      .add((*p_pi).compno as usize))
+    .resolutions
+    .as_mut_ptr()
+    .offset((*p_pi).resno as isize);
     *p_data_read = 0 as OPJ_UINT32;
     l_band = (*l_res).bands.as_mut_ptr();
     bandno = 0 as OPJ_UINT32;
     while bandno < (*l_res).numbands {
       let mut l_prc: *mut opj_tcd_precinct_t =
-        &mut *(*l_band).precincts.offset((*p_pi).precno as isize) as *mut opj_tcd_precinct_t;
+        (*l_band).precincts.as_mut_ptr().offset((*p_pi).precno as isize);
       if (*l_band).x1 - (*l_band).x0 == 0i32 || (*l_band).y1 - (*l_band).y0 == 0i32 {
         l_band = l_band.offset(1)
       } else {

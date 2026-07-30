@@ -1917,10 +1917,12 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
     tccp = (*job).tccp;
     tile_w = ((*(*tilec)
       .resolutions
+      .as_mut_ptr()
       .offset((*tilec).minimum_num_resolutions.wrapping_sub(1) as isize))
     .x1
       - (*(*tilec)
         .resolutions
+        .as_mut_ptr()
         .offset((*tilec).minimum_num_resolutions.wrapping_sub(1) as isize))
       .x0) as OPJ_UINT32;
     if *(*job).pret == 0 {
@@ -1968,17 +1970,17 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
       x = (*cblk).x0 - (*band).x0;
       y = (*cblk).y0 - (*band).y0;
       if (*band).bandno & 1 != 0 {
-        let mut pres: *mut opj_tcd_resolution_t = &mut *(*tilec)
+        let mut pres: *mut opj_tcd_resolution_t = (*tilec)
           .resolutions
-          .offset(resno.wrapping_sub(1) as isize)
-          as *mut opj_tcd_resolution_t;
+          .as_mut_ptr()
+          .offset(resno.wrapping_sub(1) as isize);
         x += (*pres).x1 - (*pres).x0
       }
       if (*band).bandno & 2 != 0 {
-        let mut pres_0: *mut opj_tcd_resolution_t = &mut *(*tilec)
+        let mut pres_0: *mut opj_tcd_resolution_t = (*tilec)
           .resolutions
-          .offset(resno.wrapping_sub(1) as isize)
-          as *mut opj_tcd_resolution_t;
+          .as_mut_ptr()
+          .offset(resno.wrapping_sub(1) as isize);
         y += (*pres_0).y1 - (*pres_0).y0
       }
       datap = if !(*cblk).decoded_data.is_null() {
@@ -2140,7 +2142,7 @@ pub(crate) fn opj_t1_decode_cblks(
     resno = 0 as OPJ_UINT32;
     while resno < (*tilec).minimum_num_resolutions {
       let mut res: *mut opj_tcd_resolution_t =
-        &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
+        (*tilec).resolutions.as_mut_ptr().offset(resno as isize);
       bandno = 0 as OPJ_UINT32;
       while bandno < (*res).numbands {
         let mut band: *mut opj_tcd_band_t =
@@ -2148,7 +2150,7 @@ pub(crate) fn opj_t1_decode_cblks(
         precno = 0 as OPJ_UINT32;
         while precno < (*res).pw.wrapping_mul((*res).ph) {
           let mut precinct: *mut opj_tcd_precinct_t =
-            &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
+            (*band).precincts.as_ptr().offset(precno as isize) as *mut opj_tcd_precinct_t;
           if opj_tcd_is_subband_area_of_interest(
             tcd,
             (*tilec).compno,
@@ -2468,14 +2470,18 @@ fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
 
       if (*band).bandno & 1 != 0 {
         let mut pres: *mut opj_tcd_resolution_t =
-          &mut *(*tilec).resolutions.offset(resno.wrapping_sub(1) as isize)
-            as *mut opj_tcd_resolution_t;
+          (*tilec)
+            .resolutions
+            .as_ptr()
+            .offset(resno.wrapping_sub(1) as isize) as *mut opj_tcd_resolution_t;
         x += (*pres).x1 - (*pres).x0
       }
       if (*band).bandno & 2 != 0 {
         let mut pres_0: *mut opj_tcd_resolution_t =
-          &mut *(*tilec).resolutions.offset(resno.wrapping_sub(1) as isize)
-            as *mut opj_tcd_resolution_t;
+          (*tilec)
+            .resolutions
+            .as_ptr()
+            .offset(resno.wrapping_sub(1) as isize) as *mut opj_tcd_resolution_t;
         y += (*pres_0).y1 - (*pres_0).y0
       }
       if opj_t1_allocate_buffers(
@@ -2644,12 +2650,12 @@ pub(crate) fn opj_t1_encode_cblks(
     compno = 0 as OPJ_UINT32;
     's_19: while compno < (*tile).numcomps {
       let mut tilec: *mut opj_tcd_tilecomp_t =
-        &mut *(*tile).comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
+        (&mut (*tile).comps).as_mut_ptr().add(compno as usize);
       let mut tccp: *mut opj_tccp_t = &mut *(*tcp).tccps.offset(compno as isize) as *mut opj_tccp_t;
       resno = 0 as OPJ_UINT32;
       while resno < (*tilec).numresolutions {
         let mut res: *mut opj_tcd_resolution_t =
-          &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
+          (*tilec).resolutions.as_mut_ptr().offset(resno as isize);
         bandno = 0 as OPJ_UINT32;
         while bandno < (*res).numbands {
           let mut band: *mut opj_tcd_band_t =
@@ -2662,7 +2668,7 @@ pub(crate) fn opj_t1_encode_cblks(
             precno = 0 as OPJ_UINT32;
             while precno < (*res).pw.wrapping_mul((*res).ph) {
               let mut prc: *mut opj_tcd_precinct_t =
-                &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
+                (*band).precincts.as_mut_ptr().offset(precno as isize);
               cblkno = 0 as OPJ_UINT32;
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =

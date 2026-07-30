@@ -9860,7 +9860,7 @@ fn opj_j2k_update_image_data(
     let mut l_tilec = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
     let mut l_image_src = core::ptr::null_mut::<opj_image_t>();
     let mut l_dest_ptr = core::ptr::null_mut::<OPJ_INT32>();
-    l_tilec = p_tcd.tcd_image.tiles.comps;
+    l_tilec = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     l_image_src = (*p_tcd).image;
     l_img_comp_src = (*l_image_src).comps;
     l_img_comp_dest = (*p_output_image).comps;
@@ -9877,6 +9877,7 @@ fn opj_j2k_update_image_data(
       if (*p_tcd).whole_tile_decoding != 0 {
         let mut l_res = (*l_tilec)
           .resolutions
+          .as_mut_ptr()
           .offset((*l_img_comp_src).resno_decoded as isize);
         res_x0 = (*l_res).x0;
         res_y0 = (*l_res).y0;
@@ -9884,16 +9885,19 @@ fn opj_j2k_update_image_data(
         res_y1 = (*l_res).y1;
         src_data_stride = ((*(*l_tilec)
           .resolutions
+          .as_mut_ptr()
           .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
         .x1
           - (*(*l_tilec)
             .resolutions
+            .as_mut_ptr()
             .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
           .x0) as OPJ_UINT32;
         p_src_data = (*l_tilec).data
       } else {
         let mut l_res_0 = (*l_tilec)
           .resolutions
+          .as_mut_ptr()
           .offset((*l_img_comp_src).resno_decoded as isize);
         res_x0 = (*l_res_0).win_x0 as OPJ_INT32;
         res_y0 = (*l_res_0).win_y0 as OPJ_INT32;
@@ -11566,11 +11570,10 @@ fn opj_j2k_decode_tiles(
           (*(*p_j2k.m_output_image).comps.offset(i as isize)).data as *mut core::ffi::c_void,
         );
         let fresh40 = &mut (*(*p_j2k.m_output_image).comps.offset(i as isize)).data;
-        *fresh40 = (*p_j2k.m_tcd.tcd_image.tiles.comps.offset(i as isize)).data;
+        *fresh40 = p_j2k.m_tcd.tcd_image.tiles.comps[i as usize].data;
         (*(*p_j2k.m_output_image).comps.offset(i as isize)).resno_decoded =
           (*(*p_j2k.m_tcd.image).comps.offset(i as isize)).resno_decoded;
-        let fresh41 = &mut (*p_j2k.m_tcd.tcd_image.tiles.comps.offset(i as isize)).data;
-        *fresh41 = core::ptr::null_mut::<OPJ_INT32>();
+        p_j2k.m_tcd.tcd_image.tiles.comps[i as usize].data = core::ptr::null_mut::<OPJ_INT32>();
         i += 1;
       }
       return 1i32;
@@ -12162,7 +12165,8 @@ pub(crate) fn opj_j2k_encode(
       /* otherwise, allocate the data */
       j = 0 as OPJ_UINT32;
       while j < (*p_j2k.m_tcd.image).numcomps {
-        let mut l_tilec = p_j2k.m_tcd.tcd_image.tiles.comps.offset(j as isize);
+        let mut l_tilec =
+          &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize] as *mut opj_tcd_tilecomp_t;
         if l_reuse_data != 0 {
           let mut l_img_comp = (*p_j2k.m_tcd.image).comps.offset(j as isize);
           (*l_tilec).data = (*l_img_comp).data;
@@ -12382,7 +12386,7 @@ fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
   unsafe {
     let mut l_image = (*p_tcd).image;
     let numcomps = (*p_tcd.image).numcomps as usize;
-    let mut l_tilec = core::slice::from_raw_parts(p_tcd.tcd_image.tiles.comps, numcomps);
+    let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
     let mut l_img_comp = core::slice::from_raw_parts((*l_image).comps, numcomps);
     for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
       let mut l_size_comp: OPJ_UINT32 = 0;
@@ -13079,7 +13083,7 @@ pub(crate) fn opj_j2k_write_tile(
       /* Allocate data */
       j = 0 as OPJ_UINT32;
       while j < (*p_j2k.m_tcd.image).numcomps {
-        let mut l_tilec = p_j2k.m_tcd.tcd_image.tiles.comps.offset(j as isize);
+        let mut l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize] as *mut _;
         if opj_alloc_tile_component_data(l_tilec) == 0 {
           event_msg!(
             p_manager,

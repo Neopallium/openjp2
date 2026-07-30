@@ -672,7 +672,7 @@ pub(crate) struct opj_tcd_tile {
   pub x1: OPJ_INT32,
   pub y1: OPJ_INT32,
   pub numcomps: OPJ_UINT32,
-  pub comps: *mut opj_tcd_tilecomp_t,
+  pub comps: Vec<opj_tcd_tilecomp_t>,
   pub numpix: OPJ_INT32,
   pub distotile: OPJ_FLOAT64,
   pub distolayer: [OPJ_FLOAT64; 100],
@@ -688,7 +688,7 @@ impl Default for opj_tcd_tile {
       x1: Default::default(),
       y1: Default::default(),
       numcomps: Default::default(),
-      comps: core::ptr::null_mut(),
+      comps: Vec::new(),
       numpix: Default::default(),
       distotile: Default::default(),
       distolayer: [Default::default(); 100],
@@ -709,7 +709,7 @@ pub struct TileInfo {
   pub go_on: bool,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_tcd_tilecomp {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -718,8 +718,7 @@ pub(crate) struct opj_tcd_tilecomp {
   pub compno: OPJ_UINT32,
   pub numresolutions: OPJ_UINT32,
   pub minimum_num_resolutions: OPJ_UINT32,
-  pub resolutions: *mut opj_tcd_resolution_t,
-  pub resolutions_size: OPJ_UINT32,
+  pub resolutions: Vec<opj_tcd_resolution_t>,
   pub data: *mut OPJ_INT32,
   pub ownsData: OPJ_BOOL,
   pub data_size_needed: size_t,
@@ -733,7 +732,32 @@ pub(crate) struct opj_tcd_tilecomp {
 }
 pub(crate) type opj_tcd_tilecomp_t = opj_tcd_tilecomp;
 
-#[derive(Copy, Clone)]
+impl Default for opj_tcd_tilecomp {
+  fn default() -> Self {
+    Self {
+      x0: 0,
+      y0: 0,
+      x1: 0,
+      y1: 0,
+      compno: 0,
+      numresolutions: 0,
+      minimum_num_resolutions: 0,
+      resolutions: Vec::new(),
+      data: core::ptr::null_mut(),
+      ownsData: 0,
+      data_size_needed: 0,
+      data_size: 0,
+      data_win: core::ptr::null_mut(),
+      win_x0: 0,
+      win_y0: 0,
+      win_x1: 0,
+      win_y1: 0,
+      numpix: 0,
+    }
+  }
+}
+
+#[derive(Clone)]
 pub(crate) struct opj_tcd_resolution {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -750,17 +774,50 @@ pub(crate) struct opj_tcd_resolution {
 }
 pub(crate) type opj_tcd_resolution_t = opj_tcd_resolution;
 
-#[derive(Copy, Clone)]
+impl Default for opj_tcd_resolution {
+  fn default() -> Self {
+    Self {
+      x0: 0,
+      y0: 0,
+      x1: 0,
+      y1: 0,
+      pw: 0,
+      ph: 0,
+      numbands: 0,
+      bands: Default::default(),
+      win_x0: 0,
+      win_y0: 0,
+      win_x1: 0,
+      win_y1: 0,
+    }
+  }
+}
+
+#[derive(Clone)]
 pub(crate) struct opj_tcd_band {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
   pub x1: OPJ_INT32,
   pub y1: OPJ_INT32,
   pub bandno: OPJ_UINT32,
-  pub precincts: *mut opj_tcd_precinct_t,
-  pub precincts_data_size: OPJ_UINT32,
+  pub precincts: Vec<opj_tcd_precinct_t>,
   pub numbps: OPJ_INT32,
   pub stepsize: OPJ_FLOAT32,
+}
+
+impl Default for opj_tcd_band {
+  fn default() -> Self {
+    Self {
+      x0: 0,
+      y0: 0,
+      x1: 0,
+      y1: 0,
+      bandno: 0,
+      precincts: Vec::new(),
+      numbps: 0,
+      stepsize: 0.0,
+    }
+  }
 }
 pub(crate) type opj_tcd_band_t = opj_tcd_band;
 
@@ -778,6 +835,25 @@ pub(crate) struct opj_tcd_precinct {
   pub imsbtree: *mut opj_tgt_tree_t,
 }
 pub(crate) type opj_tcd_precinct_t = opj_tcd_precinct;
+
+impl Default for opj_tcd_precinct {
+  fn default() -> Self {
+    Self {
+      x0: 0,
+      y0: 0,
+      x1: 0,
+      y1: 0,
+      cw: 0,
+      ch: 0,
+      cblks: C2RustUnnamed_1 {
+        blocks: core::ptr::null_mut(),
+      },
+      block_size: 0,
+      incltree: core::ptr::null_mut(),
+      imsbtree: core::ptr::null_mut(),
+    }
+  }
+}
 
 pub(crate) struct opj_tgt_tree {
   pub numleafsh: OPJ_UINT32,
