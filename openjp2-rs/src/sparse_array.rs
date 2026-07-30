@@ -29,7 +29,42 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+use core::cell::Cell;
+
 use crate::math::*;
+
+/// Sample types a `SparseArray` region can be transferred to/from.
+///
+/// The array always stores raw 32-bit words, exactly like the C code, which memcpy's tile data
+/// through it regardless of whether the codestream is reversible (`i32` coefficients) or
+/// irreversible (`f32` coefficients). This trait makes that reinterpretation explicit and safe
+/// instead of casting pointers.
+pub(crate) trait SparseSample: Copy {
+  fn from_word(word: i32) -> Self;
+  fn to_word(self) -> i32;
+}
+
+impl SparseSample for i32 {
+  #[inline]
+  fn from_word(word: i32) -> Self {
+    word
+  }
+  #[inline]
+  fn to_word(self) -> i32 {
+    self
+  }
+}
+
+impl SparseSample for f32 {
+  #[inline]
+  fn from_word(word: i32) -> Self {
+    f32::from_bits(word as u32)
+  }
+  #[inline]
+  fn to_word(self) -> i32 {
+    self.to_bits() as i32
+  }
+}
 
 #[derive(Clone)]
 pub struct SparseArray {
@@ -101,13 +136,17 @@ fn region_extent(x0: u32, y0: u32, x1: u32, y1: u32, col_stride: u32, line_strid
   (h - 1) * line_stride as usize + (w - 1) * col_stride as usize + 1
 }
 
-pub(crate) fn sparse_array_read(
+/// Reads a region into `dest`.
+///
+/// `dest` is a slice of `Cell`s because DWT scratch buffers are shared between the horizontal and
+/// vertical views of a resolution level, which both hold them by shared reference.
+pub(crate) fn sparse_array_read<T: SparseSample>(
   sa: &SparseArray,
   x0: u32,
   y0: u32,
   x1: u32,
   y1: u32,
-  dest: &mut [i32],
+  dest: &[Cell<T>],
   dest_col_stride: u32,
   dest_line_stride: u32,
   forgiving: bool,
@@ -149,7 +188,7 @@ pub(crate) fn sparse_array_read(
           for _ in 0..y_incr {
             let src_row = src.next().unwrap();
             for k in 0..x_incr as usize {
-              dest[dest_base + k * col_stride] = src_row[k];
+              dest[dest_base + k * col_stride].set(T::from_word(src_row[k]));
             }
             dest_base += line_stride;
           }
@@ -157,7 +196,7 @@ pub(crate) fn sparse_array_read(
         None => {
           for _ in 0..y_incr {
             for k in 0..x_incr as usize {
-              dest[dest_base + k * col_stride] = 0i32;
+              dest[dest_base + k * col_stride].set(T::from_word(0i32));
             }
             dest_base += line_stride;
           }
@@ -172,13 +211,14 @@ pub(crate) fn sparse_array_read(
   true
 }
 
-pub(crate) fn sparse_array_write(
+/// Writes a region from `src`. See [`sparse_array_read`] for why `src` is a slice of `Cell`s.
+pub(crate) fn sparse_array_write<T: SparseSample>(
   sa: &mut SparseArray,
   x0: u32,
   y0: u32,
   x1: u32,
   y1: u32,
-  src: &[i32],
+  src: &[Cell<T>],
   src_col_stride: u32,
   src_line_stride: u32,
   forgiving: bool,
@@ -223,7 +263,7 @@ pub(crate) fn sparse_array_write(
         for _ in 0..y_incr {
           let dest_row = dest.next().unwrap();
           for k in 0..x_incr as usize {
-            dest_row[k] = src[src_base + k * col_stride];
+            dest_row[k] = src[src_base + k * col_stride].get().to_word();
           }
           src_base += line_stride;
         }
@@ -237,10 +277,11 @@ pub(crate) fn sparse_array_write(
   true
 }
 
-/* ------------------------------------------------------------------------- */
-/* Temporary raw-pointer shims for `dwt.rs`. Deleted in phase 2.b once the DWT */
-/* code paths carry slices of their own.                                       */
-/* ------------------------------------------------------------------------- */
+/* --------------------------------------------------------------------------- */
+/* Temporary raw-pointer shims for the tile-owned buffers (`tilec.data_win`,     */
+/* `cblk.decoded_data`) that `dwt.rs` still reaches through pointers.            */
+/* Deleted in phase 3, once those become `Vec`s.                                 */
+/* --------------------------------------------------------------------------- */
 
 /// # Safety
 /// `dest` must point to at least `region_extent(..)` writable `i32`s.
@@ -266,7 +307,7 @@ pub(crate) unsafe fn sparse_array_read_ptr(
     y0,
     x1,
     y1,
-    dest,
+    Cell::from_mut(dest).as_slice_of_cells(),
     dest_col_stride,
     dest_line_stride,
     forgiving,
@@ -274,14 +315,15 @@ pub(crate) unsafe fn sparse_array_read_ptr(
 }
 
 /// # Safety
-/// `src` must point to at least `region_extent(..)` readable `i32`s.
+/// `src` must point to at least `region_extent(..)` readable and writable `i32`s. It has to be
+/// writable too because the slice is handed on as `&[Cell<i32>]`.
 pub(crate) unsafe fn sparse_array_write_ptr(
   sa: &mut SparseArray,
   x0: u32,
   y0: u32,
   x1: u32,
   y1: u32,
-  src: *const i32,
+  src: *mut i32,
   src_col_stride: u32,
   src_line_stride: u32,
   forgiving: bool,
@@ -290,14 +332,14 @@ pub(crate) unsafe fn sparse_array_write_ptr(
     return forgiving;
   }
   let len = region_extent(x0, y0, x1, y1, src_col_stride, src_line_stride);
-  let src = unsafe { core::slice::from_raw_parts(src, len) };
+  let src = unsafe { core::slice::from_raw_parts_mut(src, len) };
   sparse_array_write(
     sa,
     x0,
     y0,
     x1,
     y1,
-    src,
+    Cell::from_mut(src).as_slice_of_cells(),
     src_col_stride,
     src_line_stride,
     forgiving,

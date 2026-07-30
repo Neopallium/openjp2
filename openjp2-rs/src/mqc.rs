@@ -1,6 +1,7 @@
 use super::consts::*;
 use super::openjpeg::*;
 use super::t1_luts::*;
+use core::cell::Cell;
 
 pub struct opj_mqc_state {
   pub qeval: u32,
@@ -16,9 +17,22 @@ pub struct opj_mqc {
   pub a: OPJ_UINT32,
   pub ct: OPJ_UINT32,
   pub end_of_byte_stream_counter: OPJ_UINT32,
-  pub bp: *mut OPJ_BYTE,
-  pub start: *mut OPJ_BYTE,
-  pub end: *mut OPJ_BYTE,
+  /// Base of the code-block byte buffer this coder reads from / writes to.
+  ///
+  /// TODO(phase 3.d): becomes a borrowed `&mut [u8]` once the code-block owns its bytes as a
+  /// `Vec`; the `buf()` seam below disappears with it.
+  base: *mut OPJ_BYTE,
+  /// Number of bytes addressable from `base`.
+  base_len: usize,
+  /// Index of the code-block's first byte within `base`. The encoder's buffer carries one
+  /// sentinel byte in front of it (see `opj_tcd_code_block_enc_allocate_data`), so `start` is
+  /// 1 there and the cursor may legally sit one byte before the code-block data.
+  start: usize,
+  /// Index one past the code-block's last byte within `base` (decoder only). The
+  /// `OPJ_COMMON_CBLK_DATA_EXTRA` scratch bytes live at `end..base_len`.
+  end: usize,
+  /// Read/write cursor, as an index into `base`.
+  cursor: usize,
   pub ctxs: [&'static opj_mqc_state_t; MQC_NUMCTXS],
   pub curctx: u8,
   pub lut_ctxno_zc_orient: &'static [OPJ_BYTE; 512],
@@ -35,9 +49,11 @@ impl Default for opj_mqc {
       a: 0,
       ct: 0,
       end_of_byte_stream_counter: 0,
-      bp: null_mut(),
-      start: null_mut(),
-      end: null_mut(),
+      base: null_mut(),
+      base_len: 0,
+      start: 0,
+      end: 0,
+      cursor: 0,
       ctxs: [ctx; MQC_NUMCTXS],
       curctx: 0,
       lut_ctxno_zc_orient: &lut_ctxno_zc[0],
@@ -65,26 +81,41 @@ impl opj_mqc {
     self.ctxs[self.curctx as usize]
   }
 
-  pub(crate) fn write_byte(&mut self, b: OPJ_BYTE) {
-    unsafe {
-      *self.bp = b;
-    }
+  /// The one remaining raw-pointer seam of this module: every byte read and write below goes
+  /// through here, bounds-checked against `base_len`. `Cell` lets a shared borrow still write,
+  /// which keeps the byte-out path free of `&mut` juggling.
+  #[inline]
+  fn buf(&self) -> &[Cell<OPJ_BYTE>] {
+    // SAFETY: `base`/`base_len` are set by `opj_mqc_init_enc` / `opj_mqc_init_dec_common` from
+    // a caller-owned code-block buffer that outlives the coding pass, and `Cell<u8>` is
+    // `repr(transparent)` over `u8`.
+    unsafe { core::slice::from_raw_parts(self.base as *const Cell<OPJ_BYTE>, self.base_len) }
   }
 
-  pub(crate) fn bp_mut(&mut self) -> &mut OPJ_BYTE {
-    unsafe { &mut *self.bp }
+  /// Points the coder at `base_len` bytes starting at `base`, with the code-block data running
+  /// from index `start` to index `end`, and the cursor placed at `start`.
+  fn attach(&mut self, base: *mut OPJ_BYTE, base_len: usize, start: usize, end: usize) {
+    self.base = base;
+    self.base_len = base_len;
+    self.start = start;
+    self.end = end;
+    self.cursor = start;
+  }
+
+  pub(crate) fn write_byte(&mut self, b: OPJ_BYTE) {
+    self.buf()[self.cursor].set(b);
   }
 
   pub(crate) fn check_start(&self, offset: isize) -> bool {
-    self.bp >= unsafe { self.start.offset(offset) }
+    self.cursor as isize >= self.start as isize + offset
   }
 
   pub(crate) fn bp(&self) -> OPJ_BYTE {
-    unsafe { *self.bp }
+    self.buf()[self.cursor].get()
   }
 
   pub(crate) fn bp_peek_offset(&self, offset: isize) -> OPJ_BYTE {
-    unsafe { *self.bp.offset(offset) }
+    self.buf()[self.cursor.wrapping_add_signed(offset)].get()
   }
 
   pub(crate) fn bp_peek(&self) -> OPJ_BYTE {
@@ -96,23 +127,42 @@ impl opj_mqc {
   }
 
   pub(crate) fn bp_offset(&mut self, offset: isize) {
-    unsafe { self.bp = self.bp.offset(offset) }
+    self.cursor = self.cursor.wrapping_add_signed(offset);
+  }
+
+  /// Bytes of the code-block still unread by the decoder, i.e. `end - cursor`.
+  pub(crate) fn remaining(&self) -> isize {
+    self.end as isize - self.cursor as isize
+  }
+
+  /// Bytes of the code-block consumed by the decoder so far.
+  pub(crate) fn consumed(&self) -> isize {
+    self.cursor as isize - self.start as isize
+  }
+
+  /// Total length of the code-block segment the decoder was handed.
+  pub(crate) fn seg_len(&self) -> isize {
+    self.end as isize - self.start as isize
   }
 
   pub(crate) fn backup_extra(&mut self) {
-    let len = self.backup.len();
-    let extra = unsafe { core::slice::from_raw_parts_mut(self.end, len) };
+    let mut backup = [0 as OPJ_BYTE; 2];
+    let buf = self.buf();
     // Backup extra bytes and replace with `0xff`
-    for idx in 0..len {
-      self.backup[idx] = extra[idx];
-      extra[idx] = 0xff;
+    for (idx, byte) in backup.iter_mut().enumerate() {
+      let cell = &buf[self.end + idx];
+      *byte = cell.get();
+      cell.set(0xff);
     }
+    self.backup = backup;
   }
 
   pub(crate) fn restore_extra(&mut self) {
-    let len = self.backup.len();
-    let extra = unsafe { core::slice::from_raw_parts_mut(self.end, len) };
-    extra.copy_from_slice(&self.backup[..]);
+    let backup = self.backup;
+    let buf = self.buf();
+    for (idx, byte) in backup.iter().enumerate() {
+      buf[self.end + idx].set(*byte);
+    }
   }
 }
 
@@ -961,11 +1011,13 @@ fn opj_mqc_setbits(mut mqc: &mut opj_mqc_t) {
 */
 
 pub(crate) fn opj_mqc_numbytes(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
-  let diff = unsafe { mqc.bp.offset_from(mqc.start) };
-  diff as OPJ_UINT32
+  mqc.consumed() as OPJ_UINT32
 }
 
-pub(crate) fn opj_mqc_init_enc(mut mqc: &mut opj_mqc_t, mut bp: *mut OPJ_BYTE) {
+/// `bp` is the code-block data buffer and `len` its usable length. The buffer is allocated with
+/// one extra sentinel byte in front of `bp` (see `opj_tcd_code_block_enc_allocate_data`), which
+/// is what lets the cursor start one byte before the code-block data.
+pub(crate) fn opj_mqc_init_enc(mut mqc: &mut opj_mqc_t, mut bp: *mut OPJ_BYTE, len: OPJ_UINT32) {
   /* To avoid the curctx pointer to be dangling, but not strictly */
   /* required as the current context is always set before encoding */
   opj_mqc_setcurctx(mqc, 0);
@@ -974,9 +1026,10 @@ pub(crate) fn opj_mqc_init_enc(mut mqc: &mut opj_mqc_t, mut bp: *mut OPJ_BYTE) {
   /* (C.2.8 Initialization of the encoder (INITENC)) */
   mqc.a = 0x8000;
   mqc.c = 0;
+  let base_len = (len as usize).wrapping_add(1);
+  mqc.attach(bp.wrapping_offset(-1), base_len, 1, base_len);
   /* Yes, we point before the start of the buffer, but this is safe */
   /* given opj_tcd_code_block_enc_allocate_data() */
-  mqc.bp = bp;
   mqc.bp_offset(-1);
   mqc.ct = 12;
   /* At this point we should test *(mqc->bp) against 0xFF, but this is not */
@@ -984,7 +1037,6 @@ pub(crate) fn opj_mqc_init_enc(mut mqc: &mut opj_mqc_t, mut bp: *mut OPJ_BYTE) {
   /* and our initial fake byte is set at 0 */
   assert!(mqc.bp() != 0xff);
 
-  mqc.start = bp;
   mqc.end_of_byte_stream_counter = 0;
 }
 
@@ -1158,16 +1210,13 @@ fn opj_mqc_init_dec_common(
   mut extra_writable_bytes: OPJ_UINT32,
 ) {
   assert!(extra_writable_bytes >= OPJ_COMMON_CBLK_DATA_EXTRA);
-  mqc.start = bp;
-  unsafe {
-    mqc.end = bp.offset(len as isize);
-  }
+  let len = len as usize;
+  mqc.attach(bp, len.wrapping_add(extra_writable_bytes as usize), 0, len);
   /* Insert an artificial 0xFF 0xFF marker at end of the code block */
   /* data so that the bytein routines stop on it. This saves us comparing */
   /* the bp and end pointers */
   /* But before inserting it, backup th bytes we will overwrite */
   mqc.backup_extra();
-  mqc.bp = bp;
 }
 
 pub(crate) fn opj_mqc_init_dec(

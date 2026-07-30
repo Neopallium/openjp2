@@ -1,38 +1,24 @@
+use core::cell::Cell;
 use std::alloc::{alloc, dealloc, Layout};
 
 use super::malloc::*;
 use super::math::*;
 use super::openjpeg::*;
-// Phase 1.e shims: these aliases keep the not-yet-converted DWT window code on its pointer
-// call sites. Replaced by the slice-based `sparse_array` functions in phase 2.b.
-use super::sparse_array::{
-  sparse_array_read_ptr as sparse_array_read, sparse_array_write_ptr as sparse_array_write,
-  SparseArray,
-};
+use super::sparse_array::{sparse_array_read, sparse_array_write, SparseArray};
+// Shims that keep the not-yet-converted 9-7 window code on its pointer call sites.
+use super::sparse_array::{sparse_array_read_ptr, sparse_array_write_ptr};
 
-/* Where void* is a OPJ_INT32* for 5x3 and OPJ_FLOAT32* for 9x7 */
-pub type opj_encode_and_deinterleave_h_one_row_fnptr_type = Option<
-  unsafe extern "C" fn(
-    _: *mut core::ffi::c_void,
-    _: *mut core::ffi::c_void,
-    _: OPJ_UINT32,
-    _: OPJ_BOOL,
-  ) -> (),
->;
-
-/* Forward transform, for the vertical pass, processing cols columns */
-/* where cols <= NB_ELTS_V8 */
-/* Where void* is a OPJ_INT32* for 5x3 and OPJ_FLOAT32* for 9x7 */
-pub type opj_encode_and_deinterleave_v_fnptr_type = Option<
-  unsafe extern "C" fn(
-    _: *mut core::ffi::c_void,
-    _: *mut core::ffi::c_void,
-    _: OPJ_UINT32,
-    _: OPJ_BOOL,
-    _: OPJ_UINT32,
-    _: OPJ_UINT32,
-  ) -> (),
->;
+/// Which wavelet a forward transform runs. This replaces the pair of
+/// `Option<unsafe extern "C" fn(*mut c_void, ...)>` tables the C code dispatches through, so the
+/// kernels can keep their real element types (`OPJ_INT32` for 5-3, `OPJ_FLOAT32` for 9-7)
+/// instead of being erased to `void*`.
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum ForwardWavelet {
+  /// Reversible 5-3, operating on `OPJ_INT32` samples.
+  Reversible53,
+  /// Irreversible 9-7, operating on `OPJ_FLOAT32` samples.
+  Irreversible97,
+}
 
 /* * @name Local data structures */
 /*@{*/
@@ -41,10 +27,15 @@ pub const VREG_INT_COUNT: usize = 4;
 
 pub const PARALLEL_COLS_53: usize = 2 * VREG_INT_COUNT;
 
-pub type opj_dwt_t = dwt_local;
+pub type opj_dwt_t<'a> = dwt_local<'a>;
+/// Scratch buffer plus band geometry for one 5-3 inverse pass.
+///
+/// The horizontal and vertical passes of a resolution level alias the *same* scratch buffer, so
+/// it is held as `&[Cell<i32>]`: that keeps `dwt_local` `Copy` and lets both views write through
+/// it without any `unsafe`.
 #[derive(Copy, Clone)]
-pub struct dwt_local {
-  pub mem: *mut OPJ_INT32,
+pub struct dwt_local<'a> {
+  pub mem: &'a [Cell<OPJ_INT32>],
   /// number of elements in high pass band
   pub dn: OPJ_INT32,
   /// number of elements in low pass band
@@ -53,7 +44,7 @@ pub struct dwt_local {
   pub cas: OPJ_INT32,
 }
 
-impl dwt_local {
+impl dwt_local<'_> {
   fn sn_idx(&self, i: i32) -> i32 {
     i.clamp(0, self.sn - 1)
   }
@@ -87,11 +78,21 @@ impl dwt_local {
   }
 
   fn m(&self, i: isize) -> i32 {
-    unsafe { *self.mem.offset(i) }
+    self.mem[i as usize].get()
   }
 
-  fn m_mut(&self, i: isize) -> &mut i32 {
-    unsafe { &mut *self.mem.offset(i) }
+  fn m_set(&self, i: isize, value: i32) {
+    self.mem[i as usize].set(value)
+  }
+
+  fn m_add(&self, i: isize, value: i32) {
+    let cell = &self.mem[i as usize];
+    cell.set(cell.get().wrapping_add(value))
+  }
+
+  fn m_sub(&self, i: isize, value: i32) {
+    let cell = &self.mem[i as usize];
+    cell.set(cell.get().wrapping_sub(value))
   }
 
   fn s(&self, i: i32) -> i32 {
@@ -100,14 +101,6 @@ impl dwt_local {
 
   fn d(&self, i: i32) -> i32 {
     self.m(self.d_idx(i, 1))
-  }
-
-  fn s_mut(&self, i: i32) -> &mut i32 {
-    self.m_mut(self.s_idx(i, 1))
-  }
-
-  fn d_mut(&self, i: i32) -> &mut i32 {
-    self.m_mut(self.d_idx(i, 1))
   }
 
   fn s_(&self, i: i32) -> i32 {
@@ -132,24 +125,24 @@ impl dwt_local {
       if self.dn > 0 || self.sn > 1 {
         for i in 0..self.sn {
           let val = (self.d_(i - 1) + self.d_(i) + 2) >> 2;
-          *self.s_mut(i) -= val;
+          self.m_sub(self.s_idx(i, 1), val);
         }
         for i in 0..self.dn {
           let val = (self.s_(i) + self.s_(i + 1)) >> 1;
-          *self.d_mut(i) += val;
+          self.m_add(self.d_idx(i, 1), val);
         }
       }
     } else {
       if self.sn == 0 && self.dn == 1 {
-        *self.s_mut(0) /= 2;
+        self.m_set(self.s_idx(0, 1), self.s(0) / 2);
       } else {
         for i in 0..self.sn {
           let val = (self.ss_(i) + self.ss_(i + 1) + 2) >> 2;
-          *self.d_mut(i) -= val;
+          self.m_sub(self.d_idx(i, 1), val);
         }
         for i in 0..self.dn {
           let val = (self.dd_(i) + self.dd_(i - 1)) >> 1;
-          *self.s_mut(i) += val;
+          self.m_add(self.s_idx(i, 1), val);
         }
       }
     }
@@ -166,28 +159,28 @@ impl dwt_local {
       if self.dn > 0 || self.sn > 1 {
         for i in win_l_x0..win_l_x1 {
           let val = (self.d_(i - 1) + self.d_(i) + 2) >> 2;
-          *self.s_mut(i) -= val;
+          self.m_sub(self.s_idx(i, 1), val);
         }
         for i in win_h_x0..win_h_x1 {
           let val = (self.s_(i) + self.s_(i + 1)) >> 1;
-          *self.d_mut(i) += val;
+          self.m_add(self.d_idx(i, 1), val);
         }
       }
     } else {
       if self.sn == 0 && self.dn == 1 {
-        *self.s_mut(0) /= 2;
+        self.m_set(self.s_idx(0, 1), self.s(0) / 2);
       } else {
         for i in win_l_x0..win_l_x1 {
           let val = self
             .d(i)
             .wrapping_sub(self.ss_(i).wrapping_add(self.ss_(i + 1)).wrapping_add(2) >> 2);
-          *self.d_mut(i) = val;
+          self.m_set(self.d_idx(i, 1), val);
         }
         for i in win_h_x0..win_h_x1 {
           let val = self
             .s(i)
             .wrapping_add(self.dd_(i).wrapping_add(self.dd_(i - 1)) >> 1);
-          *self.s_mut(i) = val;
+          self.m_set(self.s_idx(i, 1), val);
         }
       }
     }
@@ -214,7 +207,7 @@ impl dwt_local {
                 .wrapping_add(2)
                 >> 2,
             );
-            *self.m_mut(s_idx + off) = val;
+            self.m_set(s_idx + off, val);
           }
         }
         for i in win_h_x0..win_h_x1 {
@@ -225,7 +218,7 @@ impl dwt_local {
             let val = self
               .m(d_idx + off)
               .wrapping_add(self.m(s0_idx + off).wrapping_add(self.m(s1_idx + off)) >> 1);
-            *self.m_mut(d_idx + off) = val;
+            self.m_set(d_idx + off, val);
           }
         }
       }
@@ -233,7 +226,7 @@ impl dwt_local {
       if self.sn == 0 && self.dn == 1 {
         let s_idx = self.s_idx(0, 4);
         for off in 0..4 {
-          *self.m_mut(s_idx + off) /= 2;
+          self.m_set(s_idx + off, self.m(s_idx + off) / 2);
         }
       } else {
         for i in win_l_x0..win_l_x1 {
@@ -248,7 +241,7 @@ impl dwt_local {
                 .wrapping_add(2)
                 >> 2,
             );
-            *self.m_mut(d_idx + off) = val;
+            self.m_set(d_idx + off, val);
           }
         }
         for i in win_h_x0..win_h_x1 {
@@ -259,7 +252,7 @@ impl dwt_local {
             let val = self
               .m(s_idx + off)
               .wrapping_add(self.m(d0_idx + off).wrapping_add(self.m(d1_idx + off)) >> 1);
-            *self.m_mut(s_idx + off) = val;
+            self.m_set(s_idx + off, val);
           }
         }
       }
@@ -268,17 +261,19 @@ impl dwt_local {
 }
 
 pub const NB_ELTS_V8: u32 = 8;
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub union opj_v8_t {
-  pub f: [OPJ_FLOAT32; NB_ELTS_V8 as usize],
-}
+/// Size in bytes of what the C code calls an `opj_v8_t`: one group of `NB_ELTS_V8` floats.
+const V8_SIZE: usize = NB_ELTS_V8 as usize * core::mem::size_of::<OPJ_FLOAT32>();
 
-pub type opj_v8dwt_t = v8dwt_local;
-#[repr(C)]
+pub type opj_v8dwt_t<'a> = v8dwt_local<'a>;
+/// Scratch buffer plus band geometry for one 9-7 inverse pass.
+///
+/// `wavelet` is a *flat* run of `OPJ_FLOAT32`s viewed in groups of `NB_ELTS_V8`: what the C code
+/// calls `wavelet[k]` is `wavelet[NB_ELTS_V8 * k .. NB_ELTS_V8 * (k + 1)]` here. As with
+/// [`dwt_local`], the horizontal and vertical views of a resolution level share one buffer, hence
+/// `Cell`.
 #[derive(Copy, Clone)]
-pub struct v8dwt_local {
-  pub wavelet: *mut opj_v8_t,
+pub struct v8dwt_local<'a> {
+  pub wavelet: &'a [Cell<OPJ_FLOAT32>],
   /// number of elements in high pass band
   pub dn: OPJ_INT32,
   /// number of elements in low pass band
@@ -393,7 +388,7 @@ fn opj_dwt_deinterleave_h(
 fn opj_dwt_interleave_h(mut h: &opj_dwt_t, mut a: *mut OPJ_INT32) {
   unsafe {
     let mut ai: *const OPJ_INT32 = a;
-    let mut bi = h.mem.offset(h.cas as isize);
+    let mut bi = h.cas as usize;
     let mut i = h.sn;
     loop {
       let fresh2 = i;
@@ -403,11 +398,11 @@ fn opj_dwt_interleave_h(mut h: &opj_dwt_t, mut a: *mut OPJ_INT32) {
       }
       let fresh3 = ai;
       ai = ai.offset(1);
-      *bi = *fresh3;
-      bi = bi.offset(2)
+      h.mem[bi].set(*fresh3);
+      bi += 2
     }
     ai = a.offset(h.sn as isize);
-    bi = h.mem.offset(1).offset(-(h.cas as isize));
+    bi = (1 - h.cas) as usize;
     i = h.dn;
     loop {
       let fresh4 = i;
@@ -417,8 +412,8 @@ fn opj_dwt_interleave_h(mut h: &opj_dwt_t, mut a: *mut OPJ_INT32) {
       }
       let fresh5 = ai;
       ai = ai.offset(1);
-      *bi = *fresh5;
-      bi = bi.offset(2)
+      h.mem[bi].set(*fresh5);
+      bi += 2
     }
   }
 }
@@ -429,7 +424,7 @@ fn opj_dwt_interleave_h(mut h: &opj_dwt_t, mut a: *mut OPJ_INT32) {
 fn opj_dwt_interleave_v(mut v: &opj_dwt_t, mut a: *mut OPJ_INT32, mut x: OPJ_INT32) {
   unsafe {
     let mut ai: *const OPJ_INT32 = a;
-    let mut bi = v.mem.offset(v.cas as isize);
+    let mut bi = v.cas as usize;
     let mut i = v.sn;
     loop {
       let fresh6 = i;
@@ -437,12 +432,12 @@ fn opj_dwt_interleave_v(mut v: &opj_dwt_t, mut a: *mut OPJ_INT32, mut x: OPJ_INT
       if fresh6 == 0 {
         break;
       }
-      *bi = *ai;
-      bi = bi.offset(2);
+      v.mem[bi].set(*ai);
+      bi += 2;
       ai = ai.offset(x as isize)
     }
     ai = a.add((v.sn as usize).wrapping_mul(x as OPJ_SIZE_T));
-    bi = v.mem.offset(1).offset(-(v.cas as isize));
+    bi = (1 - v.cas) as usize;
     i = v.dn;
     loop {
       let fresh7 = i;
@@ -450,8 +445,8 @@ fn opj_dwt_interleave_v(mut v: &opj_dwt_t, mut a: *mut OPJ_INT32, mut x: OPJ_INT
       if fresh7 == 0 {
         break;
       }
-      *bi = *ai;
-      bi = bi.offset(2);
+      v.mem[bi].set(*ai);
+      bi += 2;
       ai = ai.offset(x as isize)
     }
   }
@@ -465,14 +460,11 @@ fn opj_idwt53_h(mut dwt: &opj_dwt_t, mut tiledp: *mut OPJ_INT32) {
   /* For documentation purpose */
   opj_dwt_interleave_h(dwt, tiledp);
   dwt.decode_1();
-  // SAFETY: `tiledp` and `dwt.mem` both cover at least `sn + dn` i32s; converted to slices in
-  // phase 2.b.
+  // SAFETY: `tiledp` covers at least `sn + dn` i32s (one resolution-level row).
   unsafe {
-    memcpy(
-      tiledp as *mut core::ffi::c_void,
-      dwt.mem as *const core::ffi::c_void,
-      ((dwt.sn + dwt.dn) as OPJ_UINT32 as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
-    );
+    for k in 0..(dwt.sn + dwt.dn) as usize {
+      *tiledp.add(k) = dwt.mem[k].get();
+    }
   }
 }
 
@@ -496,7 +488,7 @@ fn opj_idwt53_v(
       k = 0;
       while k < dwt.sn + dwt.dn {
         *tiledp_col.add((c as usize).wrapping_add((k as usize).wrapping_mul(stride))) =
-          *dwt.mem.offset(k as isize);
+          dwt.mem[k as usize].get();
         k += 1
       }
       c += 1
@@ -678,15 +670,13 @@ fn opj_dwt_encode_stepsize(
 ==========================================================
 */
 /* * Process one line for the horizontal pass of the 5x3 forward transform */
-unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row(
-  mut rowIn: *mut core::ffi::c_void,
-  mut tmpIn: *mut core::ffi::c_void,
+unsafe fn opj_dwt_encode_and_deinterleave_h_one_row(
+  mut row: *mut OPJ_INT32,
+  mut tmp: *mut OPJ_INT32,
   mut width: OPJ_UINT32,
   mut even: OPJ_BOOL,
 ) {
   unsafe {
-    let mut row = rowIn as *mut OPJ_INT32;
-    let mut tmp = tmpIn as *mut OPJ_INT32;
     let sn = (width.wrapping_add(if even != 0 { 1 } else { 0 }) >> 1i32) as OPJ_INT32;
     let dn = width.wrapping_sub(sn as OPJ_UINT32) as OPJ_INT32;
     if even != 0 {
@@ -763,14 +753,12 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row(
   }
 }
 /* * Process one line for the horizontal pass of the 9x7 forward transform */
-unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row_real(
-  mut rowIn: *mut core::ffi::c_void,
-  mut tmpIn: *mut core::ffi::c_void,
+unsafe fn opj_dwt_encode_and_deinterleave_h_one_row_real(
+  mut row: *mut OPJ_FLOAT32,
+  mut tmp: *mut OPJ_FLOAT32,
   mut width: OPJ_UINT32,
   mut even: OPJ_BOOL,
 ) {
-  let mut row = rowIn as *mut OPJ_FLOAT32;
-  let mut tmp = tmpIn as *mut OPJ_FLOAT32;
   let sn = (width.wrapping_add(if even != 0 { 1 } else { 0 }) >> 1i32) as OPJ_INT32;
   let dn = width.wrapping_sub(sn as OPJ_UINT32) as OPJ_INT32;
   if width == 1u32 {
@@ -801,24 +789,24 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row_real(
 
 /* * Fetch up to cols <= NB_ELTS_V8 for each line, and put them in tmpOut */
 /* that has a NB_ELTS_V8 interleave factor. */
-fn opj_dwt_fetch_cols_vertical_pass(
-  mut arrayIn: *const core::ffi::c_void,
-  mut tmpOut: *mut core::ffi::c_void,
+/// Generic over the sample type so the 5-3 (`OPJ_INT32`) and 9-7 (`OPJ_FLOAT32`) passes can share
+/// it without erasing their buffers to `void*`. Only moves and zero-fills samples.
+unsafe fn opj_dwt_fetch_cols_vertical_pass<T: Copy + Default>(
+  mut array: *const T,
+  mut tmp: *mut T,
   mut height: OPJ_UINT32,
   mut stride_width: OPJ_UINT32,
   mut cols: OPJ_UINT32,
 ) {
   unsafe {
-    let mut array = arrayIn as *const OPJ_INT32;
-    let mut tmp = tmpOut as *mut OPJ_INT32;
     if cols == NB_ELTS_V8 {
       let mut k: OPJ_UINT32 = 0;
       k = 0 as OPJ_UINT32;
       while k < height {
-        memcpy(
-          tmp.offset((NB_ELTS_V8 * k) as isize) as *mut core::ffi::c_void,
-          array.offset(k.wrapping_mul(stride_width) as isize) as *const core::ffi::c_void,
-          NB_ELTS_V8 as usize * core::mem::size_of::<OPJ_INT32>(),
+        core::ptr::copy_nonoverlapping(
+          array.offset(k.wrapping_mul(stride_width) as isize),
+          tmp.offset((NB_ELTS_V8 * k) as isize),
+          NB_ELTS_V8 as usize,
         );
         k += 1;
       }
@@ -834,7 +822,7 @@ fn opj_dwt_fetch_cols_vertical_pass(
           c += 1;
         }
         while c < NB_ELTS_V8 {
-          *tmp.offset((NB_ELTS_V8 * k_0 + c) as isize) = 0i32;
+          *tmp.offset((NB_ELTS_V8 * k_0 + c) as isize) = T::default();
           c += 1;
         }
         k_0 += 1;
@@ -892,20 +880,20 @@ fn opj_dwt_deinterleave_v_cols(
 
 /* Forward 5-3 transform, for the vertical pass, processing cols columns */
 /* where cols <= NB_ELTS_V8 */
-unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v(
-  mut arrayIn: *mut core::ffi::c_void,
-  mut tmpIn: *mut core::ffi::c_void,
+unsafe fn opj_dwt_encode_and_deinterleave_v(
+  mut array: *mut OPJ_INT32,
+  mut tmp: *mut OPJ_INT32,
   mut height: OPJ_UINT32,
   mut even: OPJ_BOOL,
   mut stride_width: OPJ_UINT32,
   mut cols: OPJ_UINT32,
 ) {
-  let mut array = arrayIn as *mut OPJ_INT32;
   let sn = (height + if even != 0 { 1 } else { 0 }) >> 1;
   let dn = height - sn;
-  opj_dwt_fetch_cols_vertical_pass(arrayIn, tmpIn, height, stride_width, cols);
+  // SAFETY: `array` covers `height` rows of `stride_width` samples and `tmp` is the caller's
+  // NB_ELTS_V8-interleaved scratch buffer, both sized by `opj_dwt_encode_procedure`.
+  unsafe { opj_dwt_fetch_cols_vertical_pass(array, tmp, height, stride_width, cols) };
 
-  let mut tmp = tmpIn as *mut OPJ_INT32;
   let mut c: OPJ_UINT32 = 0;
   let mut i: OPJ_UINT32 = 0;
 
@@ -1096,16 +1084,14 @@ fn opj_v8dwt_encode_step2(
 
 /* Forward 9-7 transform, for the vertical pass, processing cols columns */
 /* where cols <= NB_ELTS_V8 */
-unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v_real(
-  mut arrayIn: *mut core::ffi::c_void,
-  mut tmpIn: *mut core::ffi::c_void,
+unsafe fn opj_dwt_encode_and_deinterleave_v_real(
+  mut array: *mut OPJ_FLOAT32,
+  mut tmp: *mut OPJ_FLOAT32,
   mut height: OPJ_UINT32,
   mut even: OPJ_BOOL,
   mut stride_width: OPJ_UINT32,
   mut cols: OPJ_UINT32,
 ) {
-  let mut array = arrayIn as *mut OPJ_FLOAT32;
-  let mut tmp = tmpIn as *mut OPJ_FLOAT32;
   let sn = (height.wrapping_add(if even != 0 { 1 } else { 0 }) >> 1i32) as OPJ_INT32;
   let dn = height.wrapping_sub(sn as OPJ_UINT32) as OPJ_INT32;
   let mut a: OPJ_INT32 = 0;
@@ -1113,7 +1099,8 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v_real(
   if height == 1u32 {
     return;
   }
-  opj_dwt_fetch_cols_vertical_pass(arrayIn, tmpIn, height, stride_width, cols);
+  // SAFETY: same buffer contract as the 5-3 vertical pass above.
+  unsafe { opj_dwt_fetch_cols_vertical_pass(array, tmp, height, stride_width, cols) };
   if even != 0 {
     a = 0i32;
     b = 1i32
@@ -1188,8 +1175,7 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v_real(
 #[inline]
 fn opj_dwt_encode_procedure(
   mut tilec: *mut opj_tcd_tilecomp_t,
-  mut p_encode_and_deinterleave_v: opj_encode_and_deinterleave_v_fnptr_type,
-  mut p_encode_and_deinterleave_h_one_row: opj_encode_and_deinterleave_h_one_row_fnptr_type,
+  wavelet: ForwardWavelet,
 ) -> OPJ_BOOL {
   unsafe {
     let mut i: OPJ_INT32 = 0;
@@ -1240,36 +1226,64 @@ fn opj_dwt_encode_procedure(
       /* Perform vertical pass */
       j = 0 as OPJ_UINT32;
       while j + NB_ELTS_V8 - 1 < rw {
-        p_encode_and_deinterleave_v.expect("non-null function pointer")(
-          tiledp.offset(j as isize) as *mut core::ffi::c_void,
-          bj as *mut core::ffi::c_void,
-          rh,
-          (cas_col == 0i32) as core::ffi::c_int,
-          w,
-          NB_ELTS_V8,
-        );
+        let col = tiledp.offset(j as isize);
+        match wavelet {
+          ForwardWavelet::Reversible53 => opj_dwt_encode_and_deinterleave_v(
+            col,
+            bj,
+            rh,
+            (cas_col == 0i32) as core::ffi::c_int,
+            w,
+            NB_ELTS_V8,
+          ),
+          ForwardWavelet::Irreversible97 => opj_dwt_encode_and_deinterleave_v_real(
+            col as *mut OPJ_FLOAT32,
+            bj as *mut OPJ_FLOAT32,
+            rh,
+            (cas_col == 0i32) as core::ffi::c_int,
+            w,
+            NB_ELTS_V8,
+          ),
+        }
         j += NB_ELTS_V8;
       }
       if j < rw {
-        p_encode_and_deinterleave_v.expect("non-null function pointer")(
-          tiledp.offset(j as isize) as *mut core::ffi::c_void,
-          bj as *mut core::ffi::c_void,
-          rh,
-          (cas_col == 0i32) as core::ffi::c_int,
-          w,
-          rw.wrapping_sub(j),
-        );
+        let col = tiledp.offset(j as isize);
+        match wavelet {
+          ForwardWavelet::Reversible53 => opj_dwt_encode_and_deinterleave_v(
+            col,
+            bj,
+            rh,
+            (cas_col == 0i32) as core::ffi::c_int,
+            w,
+            rw.wrapping_sub(j),
+          ),
+          ForwardWavelet::Irreversible97 => opj_dwt_encode_and_deinterleave_v_real(
+            col as *mut OPJ_FLOAT32,
+            bj as *mut OPJ_FLOAT32,
+            rh,
+            (cas_col == 0i32) as core::ffi::c_int,
+            w,
+            rw.wrapping_sub(j),
+          ),
+        }
       }
       /* Perform horizontal pass */
       j = 0 as OPJ_UINT32; /* this can overflow */
       while j < rh {
         let mut aj = tiledp.offset(j.wrapping_mul(w) as isize);
-        p_encode_and_deinterleave_h_one_row.expect("non-null function pointer")(
-          aj as *mut core::ffi::c_void,
-          bj as *mut core::ffi::c_void,
-          rw,
-          if cas_row == 0i32 { 1i32 } else { 0i32 },
-        );
+        let even = if cas_row == 0i32 { 1i32 } else { 0i32 };
+        match wavelet {
+          ForwardWavelet::Reversible53 => {
+            opj_dwt_encode_and_deinterleave_h_one_row(aj, bj, rw, even)
+          }
+          ForwardWavelet::Irreversible97 => opj_dwt_encode_and_deinterleave_h_one_row_real(
+            aj as *mut OPJ_FLOAT32,
+            bj as *mut OPJ_FLOAT32,
+            rw,
+            even,
+          ),
+        }
         j += 1;
       }
       l_cur_res = l_last_res;
@@ -1284,29 +1298,7 @@ fn opj_dwt_encode_procedure(
 /* </summary>                           */
 
 pub(crate) fn opj_dwt_encode(mut tilec: *mut opj_tcd_tilecomp_t) -> OPJ_BOOL {
-  opj_dwt_encode_procedure(
-    tilec,
-    Some(
-      opj_dwt_encode_and_deinterleave_v
-        as unsafe extern "C" fn(
-          _: *mut core::ffi::c_void,
-          _: *mut core::ffi::c_void,
-          _: OPJ_UINT32,
-          _: OPJ_BOOL,
-          _: OPJ_UINT32,
-          _: OPJ_UINT32,
-        ) -> (),
-    ),
-    Some(
-      opj_dwt_encode_and_deinterleave_h_one_row
-        as unsafe extern "C" fn(
-          _: *mut core::ffi::c_void,
-          _: *mut core::ffi::c_void,
-          _: OPJ_UINT32,
-          _: OPJ_BOOL,
-        ) -> (),
-    ),
-  )
+  opj_dwt_encode_procedure(tilec, ForwardWavelet::Reversible53)
 }
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 2-D. */
@@ -1345,29 +1337,7 @@ pub fn opj_dwt_getnorm(mut level: OPJ_UINT32, orient: OPJ_UINT32) -> OPJ_FLOAT64
 /* </summary>                            */
 
 pub(crate) fn opj_dwt_encode_real(mut tilec: *mut opj_tcd_tilecomp_t) -> OPJ_BOOL {
-  opj_dwt_encode_procedure(
-    tilec,
-    Some(
-      opj_dwt_encode_and_deinterleave_v_real
-        as unsafe extern "C" fn(
-          _: *mut core::ffi::c_void,
-          _: *mut core::ffi::c_void,
-          _: OPJ_UINT32,
-          _: OPJ_BOOL,
-          _: OPJ_UINT32,
-          _: OPJ_UINT32,
-        ) -> (),
-    ),
-    Some(
-      opj_dwt_encode_and_deinterleave_h_one_row_real
-        as unsafe extern "C" fn(
-          _: *mut core::ffi::c_void,
-          _: *mut core::ffi::c_void,
-          _: OPJ_UINT32,
-          _: OPJ_BOOL,
-        ) -> (),
-    ),
-  )
+  opj_dwt_encode_procedure(tilec, ForwardWavelet::Irreversible97)
 }
 
 /* <summary>                */
@@ -1475,18 +1445,6 @@ fn opj_dwt_max_resolution(mut r: *mut opj_tcd_resolution_t, mut i: OPJ_UINT32) -
 /* </summary>                           */
 fn opj_dwt_decode_tile(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32) -> OPJ_BOOL {
   unsafe {
-    let mut h = opj_dwt_t {
-      mem: core::ptr::null_mut::<OPJ_INT32>(),
-      dn: 0,
-      sn: 0,
-      cas: 0,
-    }; /* width of the resolution level computed */
-    let mut v = opj_dwt_t {
-      mem: core::ptr::null_mut::<OPJ_INT32>(),
-      dn: 0,
-      sn: 0,
-      cas: 0,
-    }; /* height of the resolution level computed */
     let mut tr = (*tilec).resolutions;
     let mut rw = ((*tr).x1 - (*tr).x0) as OPJ_UINT32;
     let mut rh = ((*tr).y1 - (*tr).y0) as OPJ_UINT32;
@@ -1498,30 +1456,36 @@ fn opj_dwt_decode_tile(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT3
         .resolutions
         .offset((*tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
       .x0) as OPJ_UINT32;
-    let mut h_mem_size: OPJ_SIZE_T = 0;
 
     // Not entirely sure for the return code of w == 0 which is triggered per
     // https://github.com/uclouvain/openjpeg/issues/1505
     if numres == 1 || w == 0 {
       return 1i32;
     }
-    h_mem_size = opj_dwt_max_resolution(tr, numres) as OPJ_SIZE_T;
+    let mut h_mem_len = opj_dwt_max_resolution(tr, numres) as OPJ_SIZE_T;
     /* overflow check */
-    if h_mem_size > (usize::MAX / PARALLEL_COLS_53 / core::mem::size_of::<OPJ_INT32>()) {
+    if h_mem_len > (usize::MAX / PARALLEL_COLS_53 / core::mem::size_of::<OPJ_INT32>()) {
       /* FIXME event manager error callback */
       return 0i32;
     }
     /* We need PARALLEL_COLS_53 times the height of the array, */
     /* since for the vertical pass */
     /* we process PARALLEL_COLS_53 columns at a time */
-    h_mem_size *= PARALLEL_COLS_53 * core::mem::size_of::<OPJ_INT32>();
-    let layout = Layout::from_size_align_unchecked(h_mem_size, 32);
-    h.mem = alloc(layout) as *mut OPJ_INT32;
-    if h.mem.is_null() {
-      /* FIXME event manager error callback */
-      return 0i32;
-    }
-    v.mem = h.mem;
+    h_mem_len *= PARALLEL_COLS_53;
+    // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
+    let scratch = vec![Cell::new(0i32); h_mem_len];
+    let mut h = opj_dwt_t {
+      mem: &scratch,
+      dn: 0,
+      sn: 0,
+      cas: 0,
+    }; /* width of the resolution level computed */
+    let mut v = opj_dwt_t {
+      mem: &scratch,
+      dn: 0,
+      sn: 0,
+      cas: 0,
+    }; /* height of the resolution level computed */
     loop {
       numres = numres.wrapping_sub(1);
       if numres == 0 {
@@ -1565,12 +1529,11 @@ fn opj_dwt_decode_tile(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT3
         );
       }
     }
-    dealloc(h.mem as _, layout);
     1i32
   }
 }
 fn opj_dwt_interleave_partial_h(
-  dest: *mut OPJ_INT32,
+  dest: &[Cell<OPJ_INT32>],
   cas: OPJ_INT32,
   sa: &SparseArray,
   sa_line: OPJ_UINT32,
@@ -1580,40 +1543,33 @@ fn opj_dwt_interleave_partial_h(
   win_h_x0: OPJ_UINT32,
   win_h_x1: OPJ_UINT32,
 ) {
-  unsafe {
-    let ret = sparse_array_read(
-      sa,
-      win_l_x0,
-      sa_line,
-      win_l_x1,
-      sa_line.wrapping_add(1u32),
-      dest
-        .offset(cas as isize)
-        .offset((2u32).wrapping_mul(win_l_x0) as isize),
-      2 as OPJ_UINT32,
-      0 as OPJ_UINT32,
-      true,
-    );
-    assert!(ret);
-    let ret = sparse_array_read(
-      sa,
-      sn.wrapping_add(win_h_x0),
-      sa_line,
-      sn.wrapping_add(win_h_x1),
-      sa_line.wrapping_add(1u32),
-      dest
-        .offset(1)
-        .offset(-(cas as isize))
-        .offset((2u32).wrapping_mul(win_h_x0) as isize),
-      2 as OPJ_UINT32,
-      0 as OPJ_UINT32,
-      true,
-    );
-    assert!(ret);
-  }
+  let ret = sparse_array_read(
+    sa,
+    win_l_x0,
+    sa_line,
+    win_l_x1,
+    sa_line.wrapping_add(1u32),
+    &dest[cas as usize + 2 * win_l_x0 as usize..],
+    2 as OPJ_UINT32,
+    0 as OPJ_UINT32,
+    true,
+  );
+  assert!(ret);
+  let ret = sparse_array_read(
+    sa,
+    sn.wrapping_add(win_h_x0),
+    sa_line,
+    sn.wrapping_add(win_h_x1),
+    sa_line.wrapping_add(1u32),
+    &dest[(1 - cas) as usize + 2 * win_h_x0 as usize..],
+    2 as OPJ_UINT32,
+    0 as OPJ_UINT32,
+    true,
+  );
+  assert!(ret);
 }
 fn opj_dwt_interleave_partial_v(
-  dest: *mut OPJ_INT32,
+  dest: &[Cell<OPJ_INT32>],
   cas: OPJ_INT32,
   sa: &SparseArray,
   sa_col: OPJ_UINT32,
@@ -1624,36 +1580,30 @@ fn opj_dwt_interleave_partial_v(
   win_h_y0: OPJ_UINT32,
   win_h_y1: OPJ_UINT32,
 ) {
-  unsafe {
-    let ret = sparse_array_read(
-      sa,
-      sa_col,
-      win_l_y0,
-      sa_col.wrapping_add(nb_cols),
-      win_l_y1,
-      dest
-        .offset((cas * 4i32) as isize)
-        .offset(((2i32 * 4i32) as core::ffi::c_uint).wrapping_mul(win_l_y0) as isize),
-      1 as OPJ_UINT32,
-      (2i32 * 4i32) as OPJ_UINT32,
-      true,
-    );
-    assert!(ret);
-    let ret = sparse_array_read(
-      sa,
-      sa_col,
-      sn.wrapping_add(win_h_y0),
-      sa_col.wrapping_add(nb_cols),
-      sn.wrapping_add(win_h_y1),
-      dest
-        .offset(((1i32 - cas) * 4i32) as isize)
-        .offset(((2i32 * 4i32) as core::ffi::c_uint).wrapping_mul(win_h_y0) as isize),
-      1 as OPJ_UINT32,
-      (2i32 * 4i32) as OPJ_UINT32,
-      true,
-    );
-    assert!(ret);
-  }
+  let ret = sparse_array_read(
+    sa,
+    sa_col,
+    win_l_y0,
+    sa_col.wrapping_add(nb_cols),
+    win_l_y1,
+    &dest[(cas * 4) as usize + 8 * win_l_y0 as usize..],
+    1 as OPJ_UINT32,
+    (2i32 * 4i32) as OPJ_UINT32,
+    true,
+  );
+  assert!(ret);
+  let ret = sparse_array_read(
+    sa,
+    sa_col,
+    sn.wrapping_add(win_h_y0),
+    sa_col.wrapping_add(nb_cols),
+    sn.wrapping_add(win_h_y1),
+    &dest[((1i32 - cas) * 4) as usize + 8 * win_h_y0 as usize..],
+    1 as OPJ_UINT32,
+    (2i32 * 4i32) as OPJ_UINT32,
+    true,
+  );
+  assert!(ret);
 }
 
 fn opj_dwt_get_band_coordinates(
@@ -1800,7 +1750,7 @@ fn opj_dwt_init_sparse_array(
                   .wrapping_add(((*pres_0).y1 - (*pres_0).y0) as OPJ_UINT32)
                   as OPJ_UINT32
               }
-              if !sparse_array_write(
+              if !sparse_array_write_ptr(
                 &mut sa,
                 x,
                 y,
@@ -1831,18 +1781,6 @@ fn opj_dwt_decode_partial_tile(
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut h = opj_dwt_t {
-      mem: core::ptr::null_mut::<OPJ_INT32>(),
-      dn: 0,
-      sn: 0,
-      cas: 0,
-    };
-    let mut v = opj_dwt_t {
-      mem: core::ptr::null_mut::<OPJ_INT32>(),
-      dn: 0,
-      sn: 0,
-      cas: 0,
-    };
     let mut resno: OPJ_UINT32 = 0;
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. */
@@ -1870,7 +1808,7 @@ fn opj_dwt_decode_partial_tile(
       return 0i32;
     };
     if numres == 1u32 {
-      let mut ret = sparse_array_read(
+      let mut ret = sparse_array_read_ptr(
         &sa,
         (*tr_max).win_x0.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
         (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
@@ -1891,14 +1829,21 @@ fn opj_dwt_decode_partial_tile(
       /* FIXME event manager error callback */
       return 0i32;
     }
-    h_mem_size *= 4 * core::mem::size_of::<OPJ_INT32>();
-    let layout = Layout::from_size_align_unchecked(h_mem_size, 32);
-    h.mem = alloc(layout) as *mut OPJ_INT32;
-    if h.mem.is_null() {
-      /* FIXME event manager error callback */
-      return 0i32;
-    }
-    v.mem = h.mem;
+    h_mem_size *= 4;
+    // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
+    let scratch = vec![Cell::new(0i32); h_mem_size];
+    let mut h = opj_dwt_t {
+      mem: &scratch,
+      dn: 0,
+      sn: 0,
+      cas: 0,
+    };
+    let mut v = opj_dwt_t {
+      mem: &scratch,
+      dn: 0,
+      sn: 0,
+      cas: 0,
+    };
     resno = 1 as OPJ_UINT32;
     while resno < numres {
       let mut i: OPJ_UINT32 = 0;
@@ -2077,10 +2022,10 @@ fn opj_dwt_decode_partial_tile(
           /* This is less extreme than memsetting the whole buffer to 0 */
           /* although we could potentially do better with better handling of edge conditions */
           if win_tr_x1 >= 1u32 && win_tr_x1 < rw {
-            *h.mem.offset(win_tr_x1.wrapping_sub(1u32) as isize) = 0i32
+            h.m_set(win_tr_x1.wrapping_sub(1u32) as isize, 0i32)
           }
           if win_tr_x1 < rw {
-            *h.mem.offset(win_tr_x1 as isize) = 0i32
+            h.m_set(win_tr_x1 as isize, 0i32)
           }
           opj_dwt_interleave_partial_h(
             h.mem,
@@ -2105,13 +2050,12 @@ fn opj_dwt_decode_partial_tile(
             j,
             win_tr_x1,
             j.wrapping_add(1u32),
-            h.mem.offset(win_tr_x0 as isize),
+            &h.mem[win_tr_x0 as usize..],
             1 as OPJ_UINT32,
             0 as OPJ_UINT32,
             true,
           ) {
             /* FIXME event manager error callback */
-            dealloc(h.mem as _, layout);
             return 0i32;
           }
         }
@@ -2144,21 +2088,19 @@ fn opj_dwt_decode_partial_tile(
           win_tr_y0,
           i.wrapping_add(nb_cols),
           win_tr_y1,
-          v.mem.offset((4u32).wrapping_mul(win_tr_y0) as isize),
+          &v.mem[(4u32).wrapping_mul(win_tr_y0) as usize..],
           1 as OPJ_UINT32,
           4 as OPJ_UINT32,
           true,
         ) {
           /* FIXME event manager error callback */
-          dealloc(h.mem as _, layout);
           return 0i32;
         }
         i = (i as core::ffi::c_uint).wrapping_add(nb_cols) as OPJ_UINT32
       }
       resno += 1;
     }
-    dealloc(h.mem as _, layout);
-    let mut ret_0 = sparse_array_read(
+    let mut ret_0 = sparse_array_read_ptr(
       &sa,
       (*tr_max).win_x0.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
       (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
@@ -2180,82 +2122,27 @@ fn opj_v8dwt_interleave_h(
   mut width: OPJ_UINT32,
   mut remaining_height: OPJ_UINT32,
 ) {
-  unsafe {
-    let mut bi = (*dwt).wavelet.offset((*dwt).cas as isize) as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut k: OPJ_UINT32 = 0;
-    let mut x0 = (*dwt).win_l_x0;
-    let mut x1 = (*dwt).win_l_x1;
-    k = 0 as OPJ_UINT32;
-    while k < 2u32 {
-      if remaining_height >= NB_ELTS_V8 && a as OPJ_SIZE_T & 0xf == 0 && bi as OPJ_SIZE_T & 0xf == 0
-      {
-        /* Fast code path */
-        i = x0;
-        while i < x1 {
-          let mut j = i;
-          let mut dst = bi.offset((i * 2 * NB_ELTS_V8) as isize);
-          *dst.offset(0) = *a.offset(j as isize);
-          j += width;
-          *dst.offset(1) = *a.offset(j as isize);
-          j += width;
-          *dst.offset(2) = *a.offset(j as isize);
-          j += width;
-          *dst.offset(3) = *a.offset(j as isize);
-          j += width;
-          *dst.offset(4) = *a.offset(j as isize);
-          j += width;
-          *dst.offset(5) = *a.offset(j as isize);
-          j += width;
-          *dst.offset(6) = *a.offset(j as isize);
-          j += width;
-          *dst.offset(7) = *a.offset(j as isize);
-          i += 1;
-        }
-      } else {
-        /* Slow code path */
-        i = x0;
-        while i < x1 {
-          let mut j = i;
-          let mut dst = bi.offset((i * 2 * NB_ELTS_V8) as isize);
-          *dst.offset(0) = *a.offset(j as isize);
-          j += width;
-          if remaining_height != 1u32 {
-            *dst.offset(1) = *a.offset(j as isize);
-            j += width;
-            if remaining_height != 2u32 {
-              *dst.offset(2) = *a.offset(j as isize);
-              j += width;
-              if remaining_height != 3u32 {
-                *dst.offset(3) = *a.offset(j as isize);
-                j += width;
-                if remaining_height != 4u32 {
-                  *dst.offset(4) = *a.offset(j as isize);
-                  j += width;
-                  if remaining_height != 5u32 {
-                    *dst.offset(5) = *a.offset(j as isize);
-                    j += width;
-                    if remaining_height != 6u32 {
-                      *dst.offset(6) = *a.offset(j as isize);
-                      j += width;
-                      if remaining_height != 7u32 {
-                        *dst.offset(7) = *a.offset(j as isize)
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          i += 1;
-        }
+  let mut bi = (NB_ELTS_V8 * dwt.cas as OPJ_UINT32) as usize;
+  let mut x0 = dwt.win_l_x0;
+  let mut x1 = dwt.win_l_x1;
+  // The C code branches between a "fast" and a "slow" path here; both write exactly
+  // `min(remaining_height, NB_ELTS_V8)` values per column, so the branch is redundant.
+  let rows = remaining_height.min(NB_ELTS_V8) as usize;
+  for _ in 0..2 {
+    for i in x0..x1 {
+      let dst = bi + (i * 2 * NB_ELTS_V8) as usize;
+      let mut j = i;
+      for r in 0..rows {
+        // SAFETY: `a` addresses `remaining_height` rows of `width` floats of tile data.
+        dwt.wavelet[dst + r].set(unsafe { *a.offset(j as isize) });
+        j += width;
       }
-      bi = (*dwt).wavelet.offset(1).offset(-((*dwt).cas as isize)) as *mut OPJ_FLOAT32;
-      a = a.offset((*dwt).sn as isize);
-      x0 = (*dwt).win_h_x0;
-      x1 = (*dwt).win_h_x1;
-      k += 1;
     }
+    bi = (NB_ELTS_V8 * (1i32 - dwt.cas) as OPJ_UINT32) as usize;
+    // SAFETY: skipping the low-pass band keeps `a` inside the same tile-data row range.
+    a = unsafe { a.offset(dwt.sn as isize) };
+    x0 = dwt.win_h_x0;
+    x1 = dwt.win_h_x1;
   }
 }
 
@@ -2265,45 +2152,34 @@ fn opj_v8dwt_interleave_partial_h(
   sa_line: OPJ_UINT32,
   remaining_height: OPJ_UINT32,
 ) {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    i = 0 as OPJ_UINT32;
-    while i < remaining_height {
-      let ret = sparse_array_read(
-        sa,
-        (*dwt).win_l_x0,
-        sa_line.wrapping_add(i),
-        (*dwt).win_l_x1,
-        sa_line.wrapping_add(i).wrapping_add(1u32),
-        ((*dwt)
-          .wavelet
-          .offset((*dwt).cas as isize)
-          .offset((2u32).wrapping_mul((*dwt).win_l_x0) as isize) as *mut OPJ_INT32)
-          .offset(i as isize),
-        2 * NB_ELTS_V8,
-        0 as OPJ_UINT32,
-        true,
-      );
-      assert!(ret);
-      let ret = sparse_array_read(
-        sa,
-        ((*dwt).sn as OPJ_UINT32).wrapping_add((*dwt).win_h_x0),
-        sa_line.wrapping_add(i),
-        ((*dwt).sn as OPJ_UINT32).wrapping_add((*dwt).win_h_x1),
-        sa_line.wrapping_add(i).wrapping_add(1u32),
-        ((*dwt)
-          .wavelet
-          .offset(1)
-          .offset(-((*dwt).cas as isize))
-          .offset((2u32).wrapping_mul((*dwt).win_h_x0) as isize) as *mut OPJ_INT32)
-          .offset(i as isize),
-        2 * NB_ELTS_V8,
-        0 as OPJ_UINT32,
-        true,
-      );
-      assert!(ret);
-      i += 1;
-    }
+  let l_base = (NB_ELTS_V8 * dwt.cas as OPJ_UINT32 + 2 * NB_ELTS_V8 * dwt.win_l_x0) as usize;
+  let h_base =
+    (NB_ELTS_V8 * (1i32 - dwt.cas) as OPJ_UINT32 + 2 * NB_ELTS_V8 * dwt.win_h_x0) as usize;
+  for i in 0..remaining_height {
+    let ret = sparse_array_read(
+      sa,
+      dwt.win_l_x0,
+      sa_line.wrapping_add(i),
+      dwt.win_l_x1,
+      sa_line.wrapping_add(i).wrapping_add(1u32),
+      &dwt.wavelet[l_base + i as usize..],
+      2 * NB_ELTS_V8,
+      0 as OPJ_UINT32,
+      true,
+    );
+    assert!(ret);
+    let ret = sparse_array_read(
+      sa,
+      (dwt.sn as OPJ_UINT32).wrapping_add(dwt.win_h_x0),
+      sa_line.wrapping_add(i),
+      (dwt.sn as OPJ_UINT32).wrapping_add(dwt.win_h_x1),
+      sa_line.wrapping_add(i).wrapping_add(1u32),
+      &dwt.wavelet[h_base + i as usize..],
+      2 * NB_ELTS_V8,
+      0 as OPJ_UINT32,
+      true,
+    );
+    assert!(ret);
   }
 }
 
@@ -2315,28 +2191,27 @@ fn opj_v8dwt_interleave_v(
   mut nb_elts_read: OPJ_UINT32,
 ) {
   unsafe {
-    let mut bi = (*dwt).wavelet.offset((*dwt).cas as isize);
+    let mut bi = (NB_ELTS_V8 * dwt.cas as OPJ_UINT32) as usize;
     let mut i: OPJ_UINT32 = 0;
-    i = (*dwt).win_l_x0;
-    while i < (*dwt).win_l_x1 {
-      memcpy(
-        &mut *bi.offset(i.wrapping_mul(2u32) as isize) as *mut opj_v8_t as *mut core::ffi::c_void,
-        &mut *a.add((i as usize).wrapping_mul(width as OPJ_SIZE_T)) as *mut OPJ_FLOAT32
-          as *const core::ffi::c_void,
-        (nb_elts_read as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
-      );
+    i = dwt.win_l_x0;
+    while i < dwt.win_l_x1 {
+      let dst = bi + (2 * NB_ELTS_V8 * i) as usize;
+      let src = (i as usize).wrapping_mul(width as OPJ_SIZE_T);
+      for e in 0..nb_elts_read as usize {
+        // SAFETY: `a` addresses at least `sn + dn` rows of `width` floats of tile data.
+        dwt.wavelet[dst + e].set(*a.add(src + e));
+      }
       i += 1;
     }
-    a = a.add(((*dwt).sn as OPJ_UINT32 as usize).wrapping_mul(width as OPJ_SIZE_T));
-    bi = (*dwt).wavelet.offset(1).offset(-((*dwt).cas as isize));
-    i = (*dwt).win_h_x0;
-    while i < (*dwt).win_h_x1 {
-      memcpy(
-        &mut *bi.offset(i.wrapping_mul(2u32) as isize) as *mut opj_v8_t as *mut core::ffi::c_void,
-        &mut *a.add((i as usize).wrapping_mul(width as OPJ_SIZE_T)) as *mut OPJ_FLOAT32
-          as *const core::ffi::c_void,
-        (nb_elts_read as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
-      );
+    a = a.add((dwt.sn as OPJ_UINT32 as usize).wrapping_mul(width as OPJ_SIZE_T));
+    bi = (NB_ELTS_V8 * (1i32 - dwt.cas) as OPJ_UINT32) as usize;
+    i = dwt.win_h_x0;
+    while i < dwt.win_h_x1 {
+      let dst = bi + (2 * NB_ELTS_V8 * i) as usize;
+      let src = (i as usize).wrapping_mul(width as OPJ_SIZE_T);
+      for e in 0..nb_elts_read as usize {
+        dwt.wavelet[dst + e].set(*a.add(src + e));
+      }
       i += 1;
     }
   }
@@ -2347,201 +2222,156 @@ fn opj_v8dwt_interleave_partial_v(
   sa_col: OPJ_UINT32,
   nb_elts_read: OPJ_UINT32,
 ) {
-  unsafe {
-    let ret = sparse_array_read(
-      sa,
-      sa_col,
-      (*dwt).win_l_x0,
-      sa_col.wrapping_add(nb_elts_read),
-      (*dwt).win_l_x1,
-      (*dwt)
-        .wavelet
-        .offset((*dwt).cas as isize)
-        .offset((2u32).wrapping_mul((*dwt).win_l_x0) as isize) as *mut OPJ_INT32,
-      1 as OPJ_UINT32,
-      2 * NB_ELTS_V8,
-      true,
-    );
-    assert!(ret);
-    let ret = sparse_array_read(
-      sa,
-      sa_col,
-      ((*dwt).sn as OPJ_UINT32).wrapping_add((*dwt).win_h_x0),
-      sa_col.wrapping_add(nb_elts_read),
-      ((*dwt).sn as OPJ_UINT32).wrapping_add((*dwt).win_h_x1),
-      (*dwt)
-        .wavelet
-        .offset(1)
-        .offset(-((*dwt).cas as isize))
-        .offset((2u32).wrapping_mul((*dwt).win_h_x0) as isize) as *mut OPJ_INT32,
-      1 as OPJ_UINT32,
-      2 * NB_ELTS_V8,
-      true,
-    );
-    assert!(ret);
-  }
+  let l_base = (NB_ELTS_V8 * dwt.cas as OPJ_UINT32 + 2 * NB_ELTS_V8 * dwt.win_l_x0) as usize;
+  let h_base =
+    (NB_ELTS_V8 * (1i32 - dwt.cas) as OPJ_UINT32 + 2 * NB_ELTS_V8 * dwt.win_h_x0) as usize;
+  let ret = sparse_array_read(
+    sa,
+    sa_col,
+    dwt.win_l_x0,
+    sa_col.wrapping_add(nb_elts_read),
+    dwt.win_l_x1,
+    &dwt.wavelet[l_base..],
+    1 as OPJ_UINT32,
+    2 * NB_ELTS_V8,
+    true,
+  );
+  assert!(ret);
+  let ret = sparse_array_read(
+    sa,
+    sa_col,
+    (dwt.sn as OPJ_UINT32).wrapping_add(dwt.win_h_x0),
+    sa_col.wrapping_add(nb_elts_read),
+    (dwt.sn as OPJ_UINT32).wrapping_add(dwt.win_h_x1),
+    &dwt.wavelet[h_base..],
+    1 as OPJ_UINT32,
+    2 * NB_ELTS_V8,
+    true,
+  );
+  assert!(ret);
 }
 
+/// `w` is the flat wavelet buffer and `w_base` the float index the C code's `opj_v8_t*` argument
+/// pointed at (its `opj_v8_t` index times `NB_ELTS_V8`).
 fn opj_v8dwt_decode_step1(
-  mut w: *mut opj_v8_t,
+  w: &[Cell<OPJ_FLOAT32>],
+  w_base: usize,
   mut start: OPJ_UINT32,
   mut end: OPJ_UINT32,
   c: OPJ_FLOAT32,
 ) {
-  unsafe {
-    let mut fw = w as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    /* To be adapted if NB_ELTS_V8 changes */
-    i = start;
-    while i < end {
-      *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32) as isize) =
-        *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32) as isize) * c;
-      *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(1u32) as isize) =
-        *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(1u32) as isize) * c;
-      *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(2u32) as isize) =
-        *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(2u32) as isize) * c;
-      *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(3u32) as isize) =
-        *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(3u32) as isize) * c;
-      *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(4u32) as isize) =
-        *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(4u32) as isize) * c;
-      *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(5u32) as isize) =
-        *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(5u32) as isize) * c;
-      *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(6u32) as isize) =
-        *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(6u32) as isize) * c;
-      *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(7u32) as isize) =
-        *fw.offset(i.wrapping_mul(2u32).wrapping_mul(8u32).wrapping_add(7u32) as isize) * c;
-      i += 1;
+  /* To be adapted if NB_ELTS_V8 changes */
+  for i in start..end {
+    let base = w_base + (i * 2 * NB_ELTS_V8) as usize;
+    for e in 0..NB_ELTS_V8 as usize {
+      let cell = &w[base + e];
+      cell.set(cell.get() * c);
     }
   }
 }
 
+/// `l_base` / `w_base` are the float indices the C code's two `opj_v8_t*` arguments pointed at.
 fn opj_v8dwt_decode_step2(
-  mut l: *mut opj_v8_t,
-  mut w: *mut opj_v8_t,
+  w: &[Cell<OPJ_FLOAT32>],
+  mut l_base: usize,
+  mut w_base: usize,
   mut start: OPJ_UINT32,
   mut end: OPJ_UINT32,
   mut m: OPJ_UINT32,
   mut c: OPJ_FLOAT32,
 ) {
-  unsafe {
-    let mut fl = l as *mut OPJ_FLOAT32;
-    let mut fw = w as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut imax = opj_uint_min(end, m);
-    if start > 0u32 {
-      fw = fw.offset((2 * NB_ELTS_V8 * start) as isize);
-      fl = fw.offset(-((2 * NB_ELTS_V8) as isize))
-    }
-    /* To be adapted if NB_ELTS_V8 changes */
-    i = start;
-    while i < imax {
-      *fw.offset(-(8i32) as isize) =
-        *fw.offset(-(8i32) as isize) + (*fl.offset(0) + *fw.offset(0)) * c;
-      *fw.offset(-(7i32) as isize) =
-        *fw.offset(-(7i32) as isize) + (*fl.offset(1) + *fw.offset(1)) * c;
-      *fw.offset(-(6i32) as isize) =
-        *fw.offset(-(6i32) as isize) + (*fl.offset(2) + *fw.offset(2)) * c;
-      *fw.offset(-(5i32) as isize) =
-        *fw.offset(-(5i32) as isize) + (*fl.offset(3) + *fw.offset(3)) * c;
-      *fw.offset(-(4i32) as isize) =
-        *fw.offset(-(4i32) as isize) + (*fl.offset(4) + *fw.offset(4)) * c;
-      *fw.offset(-(3i32) as isize) =
-        *fw.offset(-(3i32) as isize) + (*fl.offset(5) + *fw.offset(5)) * c;
-      *fw.offset(-(2i32) as isize) =
-        *fw.offset(-(2i32) as isize) + (*fl.offset(6) + *fw.offset(6)) * c;
-      *fw.offset(-(1i32) as isize) =
-        *fw.offset(-(1i32) as isize) + (*fl.offset(7) + *fw.offset(7)) * c;
-      fl = fw;
-      fw = fw.offset((2 * NB_ELTS_V8) as isize);
-      i += 1;
-    }
-    if m < end {
-      assert!(m.wrapping_add(1u32) == end);
-      c += c;
-      *fw.offset(-(8i32) as isize) = *fw.offset(-(8i32) as isize) + *fl.offset(0) * c;
-      *fw.offset(-(7i32) as isize) = *fw.offset(-(7i32) as isize) + *fl.offset(1) * c;
-      *fw.offset(-(6i32) as isize) = *fw.offset(-(6i32) as isize) + *fl.offset(2) * c;
-      *fw.offset(-(5i32) as isize) = *fw.offset(-(5i32) as isize) + *fl.offset(3) * c;
-      *fw.offset(-(4i32) as isize) = *fw.offset(-(4i32) as isize) + *fl.offset(4) * c;
-      *fw.offset(-(3i32) as isize) = *fw.offset(-(3i32) as isize) + *fl.offset(5) * c;
-      *fw.offset(-(2i32) as isize) = *fw.offset(-(2i32) as isize) + *fl.offset(6) * c;
-      *fw.offset(-(1i32) as isize) = *fw.offset(-(1i32) as isize) + *fl.offset(7) * c
-    };
+  const STEP: usize = (2 * NB_ELTS_V8) as usize;
+  const N: usize = NB_ELTS_V8 as usize;
+  let mut imax = opj_uint_min(end, m);
+  if start > 0u32 {
+    w_base += STEP * start as usize;
+    l_base = w_base - STEP
   }
+  /* To be adapted if NB_ELTS_V8 changes */
+  for _ in start..imax {
+    for e in 0..N {
+      let cell = &w[w_base - N + e];
+      cell.set(cell.get() + (w[l_base + e].get() + w[w_base + e].get()) * c);
+    }
+    l_base = w_base;
+    w_base += STEP;
+  }
+  if m < end {
+    assert!(m.wrapping_add(1u32) == end);
+    c += c;
+    for e in 0..N {
+      let cell = &w[w_base - N + e];
+      cell.set(cell.get() + w[l_base + e].get() * c);
+    }
+  };
 }
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
 fn opj_v8dwt_decode(mut dwt: &opj_v8dwt_t) {
-  unsafe {
-    let mut a: OPJ_INT32 = 0;
-    let mut b: OPJ_INT32 = 0;
-    /* BUG_WEIRD_TWO_INVK (look for this identifier in tcd.c) */
-    /* Historic value for 2 / opj_invK */
-    /* Normally, we should use invK, but if we do so, we have failures in the */
-    /* conformance test, due to MSE and peak errors significantly higher than */
-    /* accepted value */
-    /* Due to using two_invK instead of invK, we have to compensate in tcd.c */
-    /* the computation of the stepsize for the non LL subbands */
-    let two_invK = 1.625_732_4_f32;
-    if (*dwt).cas == 0i32 {
-      if !((*dwt).dn > 0i32 || (*dwt).sn > 1i32) {
-        return;
-      }
-      a = 0i32;
-      b = 1i32
-    } else {
-      if !((*dwt).sn > 0i32 || (*dwt).dn > 1i32) {
-        return;
-      }
-      a = 1i32;
-      b = 0i32
+  let mut a: OPJ_INT32 = 0;
+  let mut b: OPJ_INT32 = 0;
+  /* BUG_WEIRD_TWO_INVK (look for this identifier in tcd.c) */
+  /* Historic value for 2 / opj_invK */
+  /* Normally, we should use invK, but if we do so, we have failures in the */
+  /* conformance test, due to MSE and peak errors significantly higher than */
+  /* accepted value */
+  /* Due to using two_invK instead of invK, we have to compensate in tcd.c */
+  /* the computation of the stepsize for the non LL subbands */
+  let two_invK = 1.625_732_4_f32;
+  if dwt.cas == 0i32 {
+    if !(dwt.dn > 0i32 || dwt.sn > 1i32) {
+      return;
     }
-    opj_v8dwt_decode_step1(
-      (*dwt).wavelet.offset(a as isize),
-      (*dwt).win_l_x0,
-      (*dwt).win_l_x1,
-      opj_K,
-    );
-    opj_v8dwt_decode_step1(
-      (*dwt).wavelet.offset(b as isize),
-      (*dwt).win_h_x0,
-      (*dwt).win_h_x1,
-      two_invK,
-    );
-    opj_v8dwt_decode_step2(
-      (*dwt).wavelet.offset(b as isize),
-      (*dwt).wavelet.offset(a as isize).offset(1),
-      (*dwt).win_l_x0,
-      (*dwt).win_l_x1,
-      opj_int_min((*dwt).sn, (*dwt).dn - a) as OPJ_UINT32,
-      -opj_dwt_delta,
-    );
-    opj_v8dwt_decode_step2(
-      (*dwt).wavelet.offset(a as isize),
-      (*dwt).wavelet.offset(b as isize).offset(1),
-      (*dwt).win_h_x0,
-      (*dwt).win_h_x1,
-      opj_int_min((*dwt).dn, (*dwt).sn - b) as OPJ_UINT32,
-      -opj_dwt_gamma,
-    );
-    opj_v8dwt_decode_step2(
-      (*dwt).wavelet.offset(b as isize),
-      (*dwt).wavelet.offset(a as isize).offset(1),
-      (*dwt).win_l_x0,
-      (*dwt).win_l_x1,
-      opj_int_min((*dwt).sn, (*dwt).dn - a) as OPJ_UINT32,
-      -opj_dwt_beta,
-    );
-    opj_v8dwt_decode_step2(
-      (*dwt).wavelet.offset(a as isize),
-      (*dwt).wavelet.offset(b as isize).offset(1),
-      (*dwt).win_h_x0,
-      (*dwt).win_h_x1,
-      opj_int_min((*dwt).dn, (*dwt).sn - b) as OPJ_UINT32,
-      -opj_dwt_alpha,
-    );
+    a = 0i32;
+    b = 1i32
+  } else {
+    if !(dwt.sn > 0i32 || dwt.dn > 1i32) {
+      return;
+    }
+    a = 1i32;
+    b = 0i32
   }
+  // The C code indexes `wavelet` in `opj_v8_t` units; here the buffer is flat floats.
+  let group = |k: i32| (NB_ELTS_V8 as i32 * k) as usize;
+  opj_v8dwt_decode_step1(dwt.wavelet, group(a), dwt.win_l_x0, dwt.win_l_x1, opj_K);
+  opj_v8dwt_decode_step1(dwt.wavelet, group(b), dwt.win_h_x0, dwt.win_h_x1, two_invK);
+  opj_v8dwt_decode_step2(
+    dwt.wavelet,
+    group(b),
+    group(a + 1),
+    dwt.win_l_x0,
+    dwt.win_l_x1,
+    opj_int_min(dwt.sn, dwt.dn - a) as OPJ_UINT32,
+    -opj_dwt_delta,
+  );
+  opj_v8dwt_decode_step2(
+    dwt.wavelet,
+    group(a),
+    group(b + 1),
+    dwt.win_h_x0,
+    dwt.win_h_x1,
+    opj_int_min(dwt.dn, dwt.sn - b) as OPJ_UINT32,
+    -opj_dwt_gamma,
+  );
+  opj_v8dwt_decode_step2(
+    dwt.wavelet,
+    group(b),
+    group(a + 1),
+    dwt.win_l_x0,
+    dwt.win_l_x1,
+    opj_int_min(dwt.sn, dwt.dn - a) as OPJ_UINT32,
+    -opj_dwt_beta,
+  );
+  opj_v8dwt_decode_step2(
+    dwt.wavelet,
+    group(a),
+    group(b + 1),
+    dwt.win_h_x0,
+    dwt.win_h_x1,
+    opj_int_min(dwt.dn, dwt.sn - b) as OPJ_UINT32,
+    -opj_dwt_alpha,
+  );
 }
 
 /* <summary>                             */
@@ -2549,26 +2379,6 @@ fn opj_v8dwt_decode(mut dwt: &opj_v8dwt_t) {
 /* </summary>                            */
 fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32) -> OPJ_BOOL {
   unsafe {
-    let mut h = opj_v8dwt_t {
-      wavelet: core::ptr::null_mut::<opj_v8_t>(),
-      dn: 0,
-      sn: 0,
-      cas: 0,
-      win_l_x0: 0,
-      win_l_x1: 0,
-      win_h_x0: 0,
-      win_h_x1: 0,
-    }; /* width of the resolution level computed */
-    let mut v = opj_v8dwt_t {
-      wavelet: core::ptr::null_mut::<opj_v8_t>(),
-      dn: 0,
-      sn: 0,
-      cas: 0,
-      win_l_x0: 0,
-      win_l_x1: 0,
-      win_h_x0: 0,
-      win_h_x1: 0,
-    }; /* height of the resolution level computed */
     let mut res = (*tilec).resolutions;
     let mut rw = ((*res).x1 - (*res).x0) as OPJ_UINT32;
     let mut rh = ((*res).y1 - (*res).y0) as OPJ_UINT32;
@@ -2586,20 +2396,32 @@ fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UI
     }
     l_data_size = opj_dwt_max_resolution(res, numres) as OPJ_SIZE_T;
     /* overflow check */
-    if l_data_size > (usize::MAX).wrapping_div(core::mem::size_of::<opj_v8_t>()) {
+    if l_data_size > (usize::MAX).wrapping_div(V8_SIZE) {
       /* FIXME event manager error callback */
       return 0i32;
     }
-    let layout = Layout::from_size_align_unchecked(
-      l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()),
-      16,
-    );
-    h.wavelet = alloc(layout) as *mut opj_v8_t;
-    if h.wavelet.is_null() {
-      /* FIXME event manager error callback */
-      return 0i32;
-    } /* width of the resolution level computed */
-    v.wavelet = h.wavelet; /* height of the resolution level computed */
+    // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
+    let scratch = vec![Cell::new(0f32); l_data_size * NB_ELTS_V8 as usize];
+    let mut h = opj_v8dwt_t {
+      wavelet: &scratch,
+      dn: 0,
+      sn: 0,
+      cas: 0,
+      win_l_x0: 0,
+      win_l_x1: 0,
+      win_h_x0: 0,
+      win_h_x1: 0,
+    }; /* width of the resolution level computed */
+    let mut v = opj_v8dwt_t {
+      wavelet: &scratch,
+      dn: 0,
+      sn: 0,
+      cas: 0,
+      win_l_x0: 0,
+      win_l_x1: 0,
+      win_h_x0: 0,
+      win_h_x1: 0,
+    }; /* height of the resolution level computed */
     loop {
       numres = numres.wrapping_sub(1);
       if numres == 0 {
@@ -2626,25 +2448,26 @@ fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UI
         /* To be adapted if NB_ELTS_V8 changes */
         k = 0 as OPJ_UINT32;
         while k < rw {
-          *aj.offset(k as isize) = (*h.wavelet.offset(k as isize)).f[0_usize];
-          *aj.add((k as usize).wrapping_add(w as OPJ_SIZE_T)) =
-            (*h.wavelet.offset(k as isize)).f[1];
+          let g = (k * NB_ELTS_V8) as usize;
+          *aj.offset(k as isize) = h.wavelet[g].get();
+          *aj.add((k as usize).wrapping_add(w as OPJ_SIZE_T)) = h.wavelet[g + 1].get();
           *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(2))) =
-            (*h.wavelet.offset(k as isize)).f[2];
+            h.wavelet[g + 2].get();
           *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(3))) =
-            (*h.wavelet.offset(k as isize)).f[3];
+            h.wavelet[g + 3].get();
           k += 1;
         }
         k = 0 as OPJ_UINT32;
         while k < rw {
+          let g = (k * NB_ELTS_V8) as usize;
           *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(4))) =
-            (*h.wavelet.offset(k as isize)).f[4];
+            h.wavelet[g + 4].get();
           *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(5))) =
-            (*h.wavelet.offset(k as isize)).f[5];
+            h.wavelet[g + 5].get();
           *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(6))) =
-            (*h.wavelet.offset(k as isize)).f[6];
+            h.wavelet[g + 6].get();
           *aj.add((k as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(7))) =
-            (*h.wavelet.offset(k as isize)).f[7];
+            h.wavelet[g + 7].get();
           k += 1;
         }
         aj = aj.offset((w * NB_ELTS_V8) as isize);
@@ -2660,7 +2483,7 @@ fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UI
           l = 0 as OPJ_UINT32;
           while l < rh.wrapping_sub(j) {
             *aj.add((k_0 as usize).wrapping_add((w as OPJ_SIZE_T).wrapping_mul(l as usize))) =
-              (*h.wavelet.offset(k_0 as isize)).f[l as usize];
+              h.wavelet[(k_0 * NB_ELTS_V8 + l) as usize].get();
             l += 1;
           }
           k_0 += 1;
@@ -2680,12 +2503,11 @@ fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UI
         opj_v8dwt_decode(&v);
         k_1 = 0 as OPJ_UINT32;
         while k_1 < rh {
-          memcpy(
-            &mut *aj.add((k_1 as usize).wrapping_mul(w as OPJ_SIZE_T)) as *mut OPJ_FLOAT32
-              as *mut core::ffi::c_void,
-            &mut *v.wavelet.offset(k_1 as isize) as *mut opj_v8_t as *const core::ffi::c_void,
-            NB_ELTS_V8 as usize * core::mem::size_of::<OPJ_FLOAT32>(),
-          );
+          let dst = (k_1 as usize).wrapping_mul(w as OPJ_SIZE_T);
+          let g = (k_1 * NB_ELTS_V8) as usize;
+          for e in 0..NB_ELTS_V8 as usize {
+            *aj.add(dst + e) = v.wavelet[g + e].get();
+          }
           k_1 += 1;
         }
         aj = aj.offset(8);
@@ -2698,17 +2520,15 @@ fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UI
         opj_v8dwt_decode(&v);
         k_2 = 0 as OPJ_UINT32;
         while k_2 < rh {
-          memcpy(
-            &mut *aj.add((k_2 as usize).wrapping_mul(w as OPJ_SIZE_T)) as *mut OPJ_FLOAT32
-              as *mut core::ffi::c_void,
-            &mut *v.wavelet.offset(k_2 as isize) as *mut opj_v8_t as *const core::ffi::c_void,
-            (j as OPJ_SIZE_T).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
-          );
+          let dst = (k_2 as usize).wrapping_mul(w as OPJ_SIZE_T);
+          let g = (k_2 * NB_ELTS_V8) as usize;
+          for e in 0..j as usize {
+            *aj.add(dst + e) = v.wavelet[g + e].get();
+          }
           k_2 += 1;
         }
       }
     }
-    dealloc(h.wavelet as _, layout);
     1i32
   }
 }
@@ -2717,26 +2537,6 @@ fn opj_dwt_decode_partial_97(
   mut numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut h = opj_v8dwt_t {
-      wavelet: core::ptr::null_mut::<opj_v8_t>(),
-      dn: 0,
-      sn: 0,
-      cas: 0,
-      win_l_x0: 0,
-      win_l_x1: 0,
-      win_h_x0: 0,
-      win_h_x1: 0,
-    };
-    let mut v = opj_v8dwt_t {
-      wavelet: core::ptr::null_mut::<opj_v8_t>(),
-      dn: 0,
-      sn: 0,
-      cas: 0,
-      win_l_x0: 0,
-      win_l_x1: 0,
-      win_h_x0: 0,
-      win_h_x1: 0,
-    };
     let mut resno: OPJ_UINT32 = 0;
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. Note: in opj_tcd_is_subband_area_of_interest() */
@@ -2765,7 +2565,7 @@ fn opj_dwt_decode_partial_97(
       return 0i32;
     };
     if numres == 1u32 {
-      let ret = sparse_array_read(
+      let ret = sparse_array_read_ptr(
         &sa,
         (*tr_max).win_x0.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
         (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
@@ -2781,20 +2581,32 @@ fn opj_dwt_decode_partial_97(
     }
     l_data_size = opj_dwt_max_resolution(tr, numres) as OPJ_SIZE_T;
     /* overflow check */
-    if l_data_size > (usize::MAX).wrapping_div(core::mem::size_of::<opj_v8_t>()) {
+    if l_data_size > (usize::MAX).wrapping_div(V8_SIZE) {
       /* FIXME event manager error callback */
       return 0i32;
     }
-    let layout = Layout::from_size_align_unchecked(
-      l_data_size.wrapping_mul(core::mem::size_of::<opj_v8_t>()),
-      16,
-    );
-    h.wavelet = alloc(layout) as *mut opj_v8_t;
-    if h.wavelet.is_null() {
-      /* FIXME event manager error callback */
-      return 0i32;
-    }
-    v.wavelet = h.wavelet;
+    // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
+    let scratch = vec![Cell::new(0f32); l_data_size * NB_ELTS_V8 as usize];
+    let mut h = opj_v8dwt_t {
+      wavelet: &scratch,
+      dn: 0,
+      sn: 0,
+      cas: 0,
+      win_l_x0: 0,
+      win_l_x1: 0,
+      win_h_x0: 0,
+      win_h_x1: 0,
+    };
+    let mut v = opj_v8dwt_t {
+      wavelet: &scratch,
+      dn: 0,
+      sn: 0,
+      cas: 0,
+      win_l_x0: 0,
+      win_l_x1: 0,
+      win_h_x0: 0,
+      win_h_x1: 0,
+    };
     resno = 1 as OPJ_UINT32;
     while resno < numres {
       let mut j: OPJ_UINT32 = 0;
@@ -2978,16 +2790,12 @@ fn opj_dwt_decode_partial_97(
             j,
             win_tr_x1,
             j.wrapping_add(8u32),
-            &mut *(*h.wavelet.offset(win_tr_x0 as isize))
-              .f
-              .as_mut_ptr()
-              .offset(0) as *mut OPJ_FLOAT32 as *mut OPJ_INT32,
+            &h.wavelet[(win_tr_x0 * NB_ELTS_V8) as usize..],
             NB_ELTS_V8,
             1 as OPJ_UINT32,
             true,
           ) {
             /* FIXME event manager error callback */
-            dealloc(h.wavelet as _, layout);
             return 0i32;
           }
         }
@@ -3006,16 +2814,12 @@ fn opj_dwt_decode_partial_97(
           j,
           win_tr_x1,
           rh,
-          &mut *(*h.wavelet.offset(win_tr_x0 as isize))
-            .f
-            .as_mut_ptr()
-            .offset(0) as *mut OPJ_FLOAT32 as *mut OPJ_INT32,
+          &h.wavelet[(win_tr_x0 * NB_ELTS_V8) as usize..],
           NB_ELTS_V8,
           1 as OPJ_UINT32,
           true,
         ) {
           /* FIXME event manager error callback */
-          dealloc(h.wavelet as _, layout);
           return 0i32;
         }
       }
@@ -3034,23 +2838,19 @@ fn opj_dwt_decode_partial_97(
           win_tr_y0,
           j.wrapping_add(nb_elts),
           win_tr_y1,
-          &mut *(*h.wavelet.offset(win_tr_y0 as isize))
-            .f
-            .as_mut_ptr()
-            .offset(0) as *mut OPJ_FLOAT32 as *mut OPJ_INT32,
+          &h.wavelet[(win_tr_y0 * NB_ELTS_V8) as usize..],
           1 as OPJ_UINT32,
           NB_ELTS_V8,
           true,
         ) {
           /* FIXME event manager error callback */
-          dealloc(h.wavelet as _, layout);
           return 0i32;
         }
         j += NB_ELTS_V8;
       }
       resno += 1;
     }
-    let ret_0 = sparse_array_read(
+    let ret_0 = sparse_array_read_ptr(
       &sa,
       (*tr_max).win_x0.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
       (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
@@ -3062,7 +2862,6 @@ fn opj_dwt_decode_partial_97(
       true,
     );
     assert!(ret_0);
-    dealloc(h.wavelet as _, layout);
     1i32
   }
 }
