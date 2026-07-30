@@ -2047,7 +2047,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
           }
         }
       } else if (*tccp).qmfbid == 1 {
-        let mut tiledp: *mut OPJ_INT32 = &mut *(*tilec).data.add((y as OPJ_SIZE_T)
+        let mut tiledp: *mut OPJ_INT32 = &mut *(*tilec).data.as_mut_ptr().add((y as OPJ_SIZE_T)
             .wrapping_mul(tile_w as usize)
             .wrapping_add(x as OPJ_SIZE_T)) as *mut OPJ_INT32;
         j = 0 as OPJ_UINT32;
@@ -2103,7 +2103,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
         }
       } else {
         let stepsize_0 = 0.5f32 * (*band).stepsize;
-        let mut tiledp_0 = &mut *(*tilec).data.add((y as OPJ_SIZE_T)
+        let mut tiledp_0 = &mut *(*tilec).data.as_mut_ptr().add((y as OPJ_SIZE_T)
             .wrapping_mul(tile_w as usize)
             .wrapping_add(x as OPJ_SIZE_T)) as *mut OPJ_INT32 as *mut OPJ_FLOAT32;
         j = 0 as OPJ_UINT32;
@@ -2165,7 +2165,7 @@ pub(crate) fn opj_t1_decode_cblks(
             cblkno = 0 as OPJ_UINT32;
             while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
               let mut cblk: *mut opj_tcd_cblk_dec_t =
-                &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
+                (&mut (*precinct).cblks).dec_ptr().offset(cblkno as isize);
               if !(*cblk).decoded_data.is_null() {
                 dealloc((*cblk).decoded_data as _, (*cblk).decoded_data_layout);
                 (*cblk).decoded_data = core::ptr::null_mut::<OPJ_INT32>()
@@ -2177,7 +2177,7 @@ pub(crate) fn opj_t1_decode_cblks(
             cblkno = 0 as OPJ_UINT32;
             while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
               let mut cblk_0: *mut opj_tcd_cblk_dec_t =
-                &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
+                (&mut (*precinct).cblks).dec_ptr().offset(cblkno as isize);
               let mut job = core::ptr::null_mut::<opj_t1_cblk_decode_processing_job_t>();
               if opj_tcd_is_subband_area_of_interest(
                 tcd,
@@ -2496,7 +2496,7 @@ fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
       }
       cblk_w = t1.w;
       cblk_h = t1.h;
-      tiledp = &mut *(*tilec).data.add(
+      tiledp = &mut *(*tilec).data.as_mut_ptr().add(
         (y as OPJ_SIZE_T)
           .wrapping_mul(tile_w as usize)
           .wrapping_add(x as OPJ_SIZE_T),
@@ -2672,7 +2672,7 @@ pub(crate) fn opj_t1_encode_cblks(
               cblkno = 0 as OPJ_UINT32;
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
-                  &mut *(*prc).cblks.enc.offset(cblkno as isize) as *mut opj_tcd_cblk_enc_t;
+                  (&mut (*prc).cblks).enc_ptr().offset(cblkno as isize);
                 let mut job: *mut opj_t1_cblk_encode_processing_job_t = opj_calloc_type();
                 if job.is_null() {
                   core::ptr::write_volatile(&mut ret as *mut OPJ_BOOL, 0i32);

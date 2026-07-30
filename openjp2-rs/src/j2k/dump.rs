@@ -2,8 +2,6 @@ use crate::fprintf::StringWriter;
 use crate::image::*;
 use crate::openjpeg::*;
 
-use super::*;
-
 fn opj_j2k_dump_tile_info<W: StringWriter>(
   l_default_tile: &opj_tcp_t,
   numcomps: OPJ_INT32,

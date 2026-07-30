@@ -1185,7 +1185,7 @@ fn opj_dwt_encode_procedure(
     let mut l_data_size: OPJ_SIZE_T = 0;
     let mut l_cur_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
     let mut l_last_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
-    let mut tiledp = (*tilec).data;
+    let mut tiledp = (*tilec).data.as_mut_ptr();
     w = ((*tilec).x1 - (*tilec).x0) as OPJ_UINT32;
     l = (*tilec).numresolutions as OPJ_INT32 - 1i32;
     l_cur_res = (*tilec).resolutions.as_mut_ptr().offset(l as isize);
@@ -1493,7 +1493,7 @@ fn opj_dwt_decode_tile(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT3
       if numres == 0 {
         break;
       }
-      let mut tiledp = (*tilec).data;
+      let mut tiledp = (*tilec).data.as_mut_ptr();
       let mut j: OPJ_UINT32 = 0;
       tr = tr.offset(1);
       h.sn = rw as OPJ_INT32;
@@ -1730,7 +1730,7 @@ fn opj_dwt_init_sparse_array(
           cblkno = 0 as OPJ_UINT32;
           while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
             let mut cblk: *mut opj_tcd_cblk_dec_t =
-              &mut *(*precinct).cblks.dec.offset(cblkno as isize) as *mut opj_tcd_cblk_dec_t;
+              (&mut (*precinct).cblks).dec_ptr().offset(cblkno as isize);
             if !(*cblk).decoded_data.is_null() {
               let mut x = ((*cblk).x0 - (*band).x0) as OPJ_UINT32;
               let mut y = ((*cblk).y0 - (*band).y0) as OPJ_UINT32;
@@ -1816,7 +1816,7 @@ fn opj_dwt_decode_partial_tile(
         (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
         (*tr_max).win_x1.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
         (*tr_max).win_y1.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
-        (*tilec).data_win,
+        (*tilec).data_win.as_mut_ptr(),
         1 as OPJ_UINT32,
         (*tr_max).win_x1.wrapping_sub((*tr_max).win_x0),
         true,
@@ -2108,7 +2108,7 @@ fn opj_dwt_decode_partial_tile(
       (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
       (*tr_max).win_x1.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
       (*tr_max).win_y1.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
-      (*tilec).data_win,
+      (*tilec).data_win.as_mut_ptr(),
       1 as OPJ_UINT32,
       (*tr_max).win_x1.wrapping_sub((*tr_max).win_x0),
       true,
@@ -2431,7 +2431,7 @@ fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UI
       if numres == 0 {
         break;
       }
-      let mut aj = (*tilec).data as *mut OPJ_FLOAT32;
+      let mut aj = (*tilec).data.as_mut_ptr() as *mut OPJ_FLOAT32;
       let mut j: OPJ_UINT32 = 0;
       h.sn = rw as OPJ_INT32;
       v.sn = rh as OPJ_INT32;
@@ -2499,7 +2499,7 @@ fn opj_dwt_decode_tile_97(mut tilec: *mut opj_tcd_tilecomp_t, mut numres: OPJ_UI
       v.win_l_x1 = v.sn as OPJ_UINT32;
       v.win_h_x0 = 0 as OPJ_UINT32;
       v.win_h_x1 = v.dn as OPJ_UINT32;
-      aj = (*tilec).data as *mut OPJ_FLOAT32;
+      aj = (*tilec).data.as_mut_ptr() as *mut OPJ_FLOAT32;
       j = rw;
       while j > (NB_ELTS_V8 - 1) {
         let mut k_1: OPJ_UINT32 = 0;
@@ -2575,7 +2575,7 @@ fn opj_dwt_decode_partial_97(
         (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
         (*tr_max).win_x1.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
         (*tr_max).win_y1.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
-        (*tilec).data_win,
+        (*tilec).data_win.as_mut_ptr(),
         1 as OPJ_UINT32,
         (*tr_max).win_x1.wrapping_sub((*tr_max).win_x0),
         true,
@@ -2860,7 +2860,7 @@ fn opj_dwt_decode_partial_97(
       (*tr_max).win_y0.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
       (*tr_max).win_x1.wrapping_sub((*tr_max).x0 as OPJ_UINT32),
       (*tr_max).win_y1.wrapping_sub((*tr_max).y0 as OPJ_UINT32),
-      (*tilec).data_win,
+      (*tilec).data_win.as_mut_ptr(),
       1 as OPJ_UINT32,
       (*tr_max).win_x1.wrapping_sub((*tr_max).win_x0),
       true,

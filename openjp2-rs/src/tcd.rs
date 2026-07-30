@@ -85,7 +85,7 @@ fn opj_tcd_makelayer(
               cblkno = 0 as OPJ_UINT32;
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
-                  &mut *(*prc).cblks.enc.offset(cblkno as isize) as *mut opj_tcd_cblk_enc_t;
+                  (&mut (*prc).cblks).enc_ptr().offset(cblkno as isize);
                 let mut layer: *mut opj_tcd_layer_t =
                   &mut *(*cblk).layers.offset(layno as isize) as *mut opj_tcd_layer_t;
                 let mut n: OPJ_UINT32 = 0;
@@ -240,7 +240,7 @@ fn opj_tcd_makelayer_fixed(mut tcd: &mut opj_tcd, mut layno: OPJ_UINT32, mut fin
               cblkno = 0 as OPJ_UINT32;
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
-                  &mut *(*prc).cblks.enc.offset(cblkno as isize) as *mut opj_tcd_cblk_enc_t;
+                  (&mut (*prc).cblks).enc_ptr().offset(cblkno as isize);
                 let mut layer: *mut opj_tcd_layer_t =
                   &mut *(*cblk).layers.offset(layno as isize) as *mut opj_tcd_layer_t;
                 let mut n: OPJ_UINT32 = 0;
@@ -379,7 +379,7 @@ fn opj_tcd_rateallocate(
               cblkno = 0 as OPJ_UINT32;
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
-                  &mut *(*prc).cblks.enc.offset(cblkno as isize) as *mut opj_tcd_cblk_enc_t;
+                  (&mut (*prc).cblks).enc_ptr().offset(cblkno as isize);
                 /* cbklno */
                 passno = 0 as OPJ_UINT32; /* passno */
                 while passno < (*cblk).totalpasses {
@@ -632,7 +632,9 @@ pub(crate) fn opj_tcd_init(
   unsafe {
     p_tcd.image = p_image;
     p_tcd.cp = p_cp;
-    p_tcd.tcd_image.tiles.comps = vec![Default::default(); (*p_image).numcomps as usize];
+    p_tcd.tcd_image.tiles.comps = (0..(*p_image).numcomps as usize)
+      .map(|_| Default::default())
+      .collect();
     p_tcd.tcd_image.tiles.numcomps = (*p_image).numcomps;
     p_tcd.tp_pos = (*p_cp).m_specific_param.m_enc.m_tp_pos;
     1i32
@@ -641,31 +643,13 @@ pub(crate) fn opj_tcd_init(
 
 pub(crate) fn opj_alloc_tile_component_data(mut l_tilec: *mut opj_tcd_tilecomp_t) -> OPJ_BOOL {
   unsafe {
-    if (*l_tilec).data.is_null()
-      || (*l_tilec).data_size_needed > (*l_tilec).data_size && (*l_tilec).ownsData == 0i32
-    {
-      (*l_tilec).data = opj_image_data_alloc((*l_tilec).data_size_needed) as *mut OPJ_INT32;
-      if (*l_tilec).data.is_null() && (*l_tilec).data_size_needed != 0 {
-        return 0i32;
-      }
-      /*fprintf(stderr, "tAllocate data of tilec (int): %d x OPJ_UINT32n",l_data_size);*/
-      (*l_tilec).data_size = (*l_tilec).data_size_needed;
-      (*l_tilec).ownsData = 1i32
-    } else if (*l_tilec).data_size_needed > (*l_tilec).data_size {
-      /* We don't need to keep old data */
-      opj_image_data_free((*l_tilec).data as *mut core::ffi::c_void);
-      (*l_tilec).data = opj_image_data_alloc((*l_tilec).data_size_needed) as *mut OPJ_INT32;
-      if (*l_tilec).data.is_null() {
-        (*l_tilec).data_size = 0i32 as size_t;
-        (*l_tilec).data_size_needed = 0i32 as size_t;
-        (*l_tilec).ownsData = 0i32;
-        return 0i32;
-      }
-      /*fprintf(stderr, "tReallocate data of tilec (int): from %d to %d x OPJ_UINT32n", l_tilec->data_size, l_data_size);*/
-      (*l_tilec).data_size = (*l_tilec).data_size_needed;
-      (*l_tilec).ownsData = 1i32
+    let needed = (*l_tilec).data_size_needed;
+    if (*l_tilec).data.ensure(needed) {
+      1i32
+    } else {
+      (*l_tilec).data_size_needed = 0i32 as size_t;
+      0i32
     }
-    1i32
   }
 }
 /*
@@ -714,13 +698,17 @@ pub(crate) fn opj_alloc_tile_component_data(mut l_tilec: *mut opj_tcd_tilecomp_t
  * Initializes tile coding/decoding
  */
 /* ----------------------------------------------------------------------- */
-pub(crate) fn opj_tcd_init_tile<T>(
+pub(crate) fn opj_tcd_init_tile(
   mut p_tcd: &mut opj_tcd,
   mut p_tile_no: OPJ_UINT32,
   mut isEncoder: OPJ_BOOL,
   mut manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let sizeof_block = core::mem::size_of::<T>();
+  let sizeof_block = if isEncoder != 0 {
+    core::mem::size_of::<opj_tcd_cblk_enc_t>()
+  } else {
+    core::mem::size_of::<opj_tcd_cblk_dec_t>()
+  };
   unsafe {
     let mut compno: OPJ_UINT32 = 0;
     let mut resno: OPJ_UINT32 = 0;
@@ -755,8 +743,6 @@ pub(crate) fn opj_tcd_init_tile<T>(
     let mut l_nb_precincts: OPJ_UINT32 = 0;
     /* number of code blocks for a precinct*/
     let mut l_nb_code_blocks: OPJ_UINT32 = 0;
-    /* room needed to store l_nb_code_blocks code blocks for a precinct*/
-    let mut l_nb_code_blocks_size: OPJ_UINT32 = 0;
     /* size of data for a tile */
     /* tile coordinates */
     l_cp = p_tcd.cp;
@@ -843,8 +829,7 @@ pub(crate) fn opj_tcd_init_tile<T>(
         l_tile_data_size = l_tile_data_size.wrapping_mul(core::mem::size_of::<OPJ_UINT32>());
         (*l_tilec).data_size_needed = l_tile_data_size
       }
-      opj_image_data_free((*l_tilec).data_win as *mut core::ffi::c_void);
-      (*l_tilec).data_win = core::ptr::null_mut::<OPJ_INT32>();
+      (*l_tilec).data_win.release();
       (*l_tilec).win_x0 = 0 as OPJ_UINT32;
       (*l_tilec).win_y0 = 0 as OPJ_UINT32;
       (*l_tilec).win_x1 = 0 as OPJ_UINT32;
@@ -1085,50 +1070,10 @@ pub(crate) fn opj_tcd_init_tile<T>(
                   );
                   return 0i32;
                 }
-                l_nb_code_blocks_size = l_nb_code_blocks.wrapping_mul(sizeof_block as OPJ_UINT32);
-                if (*l_current_precinct).cblks.blocks.is_null() && l_nb_code_blocks > 0u32 {
-                  (*l_current_precinct).cblks.blocks =
-                    opj_alloc_type_array::<u8>(l_nb_code_blocks_size as size_t) as _;
-                  if (*l_current_precinct).cblks.blocks.is_null() {
-                    return 0i32;
-                  }
-                  /*fprintf(stderr, "\t\t\t\tAllocate cblks of a precinct (opj_tcd_cblk_dec_t): %d\n",l_nb_code_blocks_size);*/
-                  memset(
-                    (*l_current_precinct).cblks.blocks,
-                    0i32,
-                    l_nb_code_blocks_size as usize,
-                  );
-                  (*l_current_precinct).block_size = l_nb_code_blocks_size
-                } else if l_nb_code_blocks_size > (*l_current_precinct).block_size {
-                  let mut new_blocks: *mut core::ffi::c_void = opj_realloc_type_array::<u8>(
-                    (*l_current_precinct).cblks.blocks as _,
-                    (*l_current_precinct).block_size as size_t,
-                    l_nb_code_blocks_size as size_t,
-                  ) as _;
-                  if new_blocks.is_null() {
-                    opj_free_type_array::<u8>(
-                      (*l_current_precinct).cblks.blocks as _,
-                      (*l_current_precinct).block_size as usize,
-                    );
-                    (*l_current_precinct).cblks.blocks = core::ptr::null_mut::<core::ffi::c_void>();
-                    (*l_current_precinct).block_size = 0 as OPJ_UINT32;
-                    event_msg!(
-                      manager,
-                      EVT_ERROR,
-                      "Not enough memory for current precinct codeblock element\n",
-                    );
-                    return 0i32;
-                  }
-                  (*l_current_precinct).cblks.blocks = new_blocks;
-                  /*fprintf(stderr, "\t\t\t\tReallocate cblks of a precinct (opj_tcd_cblk_dec_t): from %d to %d\n",l_current_precinct->block_size, l_nb_code_blocks_size);     */
-                  memset(
-                    ((*l_current_precinct).cblks.blocks as *mut OPJ_BYTE)
-                      .offset((*l_current_precinct).block_size as isize)
-                      as *mut core::ffi::c_void,
-                    0i32,
-                    l_nb_code_blocks_size.wrapping_sub((*l_current_precinct).block_size) as usize,
-                  );
-                  (*l_current_precinct).block_size = l_nb_code_blocks_size
+                if isEncoder != 0 {
+                  (&mut (*l_current_precinct).cblks).grow_enc(l_nb_code_blocks as usize);
+                } else {
+                  (&mut (*l_current_precinct).cblks).grow_dec(l_nb_code_blocks as usize);
                 }
                 if (*l_current_precinct).incltree.is_null() {
                   (*l_current_precinct).incltree =
@@ -1163,7 +1108,9 @@ pub(crate) fn opj_tcd_init_tile<T>(
                   let mut cblkxend = cblkxstart + ((1i32) << cblkwidthexpn);
                   let mut cblkyend = cblkystart + ((1i32) << cblkheightexpn);
                   if isEncoder != 0 {
-                    let mut l_code_block = (*l_current_precinct).cblks.enc.offset(cblkno as isize);
+                    let mut l_code_block = (&mut (*l_current_precinct).cblks)
+                      .enc_ptr()
+                      .offset(cblkno as isize);
                     if opj_tcd_code_block_enc_allocate(l_code_block) == 0 {
                       return 0i32;
                     }
@@ -1176,8 +1123,9 @@ pub(crate) fn opj_tcd_init_tile<T>(
                       return 0i32;
                     }
                   } else {
-                    let mut l_code_block_0 =
-                      (*l_current_precinct).cblks.dec.offset(cblkno as isize);
+                    let mut l_code_block_0 = (&mut (*l_current_precinct).cblks)
+                      .dec_ptr()
+                      .offset(cblkno as isize);
                     if opj_tcd_code_block_dec_allocate(l_code_block_0) == 0 {
                       return 0i32;
                     }
@@ -1219,7 +1167,7 @@ pub(crate) fn opj_tcd_init_encode_tile(
   mut p_tile_no: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  opj_tcd_init_tile::<opj_tcd_cblk_enc_t>(p_tcd, p_tile_no, 1i32, p_manager)
+  opj_tcd_init_tile(p_tcd, p_tile_no, 1i32, p_manager)
 }
 
 pub(crate) fn opj_tcd_init_decode_tile(
@@ -1227,7 +1175,7 @@ pub(crate) fn opj_tcd_init_decode_tile(
   mut p_tile_no: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  opj_tcd_init_tile::<opj_tcd_cblk_dec_t>(p_tcd, p_tile_no, 0i32, p_manager)
+  opj_tcd_init_tile(p_tcd, p_tile_no, 0i32, p_manager)
 }
 /* *
  * Allocates memory for an encoding code block (but not data).
@@ -1736,8 +1684,7 @@ pub(crate) fn opj_tcd_decode_tile(
         let mut w = (*res_0).win_x1.wrapping_sub((*res_0).win_x0) as OPJ_SIZE_T;
         let mut h = (*res_0).win_y1.wrapping_sub((*res_0).win_y0) as OPJ_SIZE_T;
         let mut l_data_size_0: OPJ_SIZE_T = 0;
-        opj_image_data_free((*tilec_1).data_win as *mut core::ffi::c_void);
-        (*tilec_1).data_win = core::ptr::null_mut::<OPJ_INT32>();
+        (*tilec_1).data_win.release();
         if p_tcd.used_component(compno) && w > 0 && h > 0 {
           if w > (usize::MAX).wrapping_div(h) {
             event_msg!(
@@ -1758,8 +1705,7 @@ pub(crate) fn opj_tcd_decode_tile(
           }
           l_data_size_0 = (l_data_size_0 as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>())
             as OPJ_SIZE_T as OPJ_SIZE_T;
-          (*tilec_1).data_win = opj_image_data_alloc(l_data_size_0) as *mut OPJ_INT32;
-          if (*tilec_1).data_win.is_null() {
+          if !(*tilec_1).data_win.alloc(l_data_size_0) {
             event_msg!(
               p_manager,
               EVT_ERROR,
@@ -1830,12 +1776,12 @@ pub(crate) fn opj_tcd_update_tile_data(p_tcd: &mut opj_tcd, mut p_dest: &mut [u8
             .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
           .x0) as usize)
           .wrapping_sub(l_width);
-        l_tilec.data
+        l_tilec.data.as_mut_ptr()
       } else {
         l_width = (*l_res).win_x1.wrapping_sub((*l_res).win_x0) as usize;
         l_height = (*l_res).win_y1.wrapping_sub((*l_res).win_y0) as usize;
         l_stride = 0 as usize;
-        l_tilec.data_win
+        l_tilec.data_win.as_mut_ptr()
       };
       if l_remaining != 0 {
         l_size_comp += 1;
@@ -1973,14 +1919,9 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
         }
         (&mut (*l_tile_comp).resolutions).clear();
       }
-      if (*l_tile_comp).ownsData != 0 && !(*l_tile_comp).data.is_null() {
-        opj_image_data_free((*l_tile_comp).data as *mut core::ffi::c_void);
-        (*l_tile_comp).data = core::ptr::null_mut::<OPJ_INT32>();
-        (*l_tile_comp).ownsData = 0i32;
-        (*l_tile_comp).data_size = 0i32 as size_t;
-        (*l_tile_comp).data_size_needed = 0i32 as size_t
-      }
-      opj_image_data_free((*l_tile_comp).data_win as *mut core::ffi::c_void);
+      (*l_tile_comp).data.release();
+      (*l_tile_comp).data_size_needed = 0i32 as size_t;
+      (*l_tile_comp).data_win.release();
       l_tile_comp = l_tile_comp.offset(1);
       compno += 1;
     }
@@ -2186,9 +2127,9 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
       let comp_ptr = |i: usize| -> *mut OPJ_INT32 {
         let comp = p_tcd.tcd_image.tiles.comps.as_ptr().add(i) as *mut opj_tcd_tilecomp_t;
         if p_tcd.whole_tile_decoding != 0 {
-          (*comp).data
+          (*comp).data.as_mut_ptr()
         } else {
-          (*comp).data_win
+          (*comp).data_win.as_mut_ptr()
         }
       };
       if (*l_tcp).mct == 2u32 {
@@ -2266,7 +2207,7 @@ fn opj_tcd_dc_level_shift_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
           l_width = (*l_res).win_x1.wrapping_sub((*l_res).win_x0);
           l_height = (*l_res).win_y1.wrapping_sub((*l_res).win_y0);
           l_stride = 0 as OPJ_UINT32;
-          l_current_ptr = (*l_tile_comp).data_win
+          l_current_ptr = (*l_tile_comp).data_win.as_mut_ptr()
         } else {
           l_width = ((*l_res).x1 - (*l_res).x0) as OPJ_UINT32;
           l_height = ((*l_res).y1 - (*l_res).y0) as OPJ_UINT32;
@@ -2281,11 +2222,11 @@ fn opj_tcd_dc_level_shift_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
               .offset((*l_tile_comp).minimum_num_resolutions.wrapping_sub(1u32) as isize))
             .x0) as OPJ_UINT32)
             .wrapping_sub(l_width);
-          l_current_ptr = (*l_tile_comp).data;
+          l_current_ptr = (*l_tile_comp).data.as_mut_ptr();
           assert!(
             l_height == 0u32
               || l_width.wrapping_add(l_stride) as usize
-                <= (*l_tile_comp).data_size.wrapping_div(l_height as usize)
+                <= (*l_tile_comp).data.bytes().wrapping_div(l_height as usize)
           );
           /*MUPDF*/
         }
@@ -2357,15 +2298,13 @@ fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
   unsafe {
     let mut cblkno: OPJ_UINT32 = 0;
     let mut l_nb_code_blocks: OPJ_UINT32 = 0;
-    let mut l_code_block = (*p_precinct).cblks.dec;
+    let mut l_code_block = (&mut (*p_precinct).cblks).dec_ptr();
     if !l_code_block.is_null() {
       /*fprintf(stderr,"deallocate codeblock:{\n");*/
       /*fprintf(stderr,"\t x0=%d, y0=%d, x1=%d, y1=%d\n",l_code_block->x0, l_code_block->y0, l_code_block->x1, l_code_block->y1);*/
       /*fprintf(stderr,"\t numbps=%d, numlenbits=%d, len=%d, numnewpasses=%d, real_num_segs=%d, m_current_max_segs=%d\n ",
       l_code_block->numbps, l_code_block->numlenbits, l_code_block->len, l_code_block->numnewpasses, l_code_block->real_num_segs, l_code_block->m_current_max_segs );*/
-      l_nb_code_blocks = (*p_precinct)
-        .block_size
-        .wrapping_div(core::mem::size_of::<opj_tcd_cblk_dec_t>() as OPJ_UINT32);
+      l_nb_code_blocks = (*p_precinct).cblks.len() as OPJ_UINT32;
       /*fprintf(stderr,"nb_code_blocks =%d\t}\n", l_nb_code_blocks);*/
       cblkno = 0 as OPJ_UINT32;
       while cblkno < l_nb_code_blocks {
@@ -2383,16 +2322,17 @@ fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
           );
           (*l_code_block).chunks = core::ptr::null_mut::<opj_tcd_seg_data_chunk_t>()
         }
-        dealloc(
-          (*l_code_block).decoded_data as _,
-          (*l_code_block).decoded_data_layout,
-        );
-        (*l_code_block).decoded_data = core::ptr::null_mut::<OPJ_INT32>();
+        if !(*l_code_block).decoded_data.is_null() {
+          dealloc(
+            (*l_code_block).decoded_data as _,
+            (*l_code_block).decoded_data_layout,
+          );
+          (*l_code_block).decoded_data = core::ptr::null_mut::<OPJ_INT32>();
+        }
         l_code_block = l_code_block.offset(1);
         cblkno += 1;
       }
-      opj_free_type((*p_precinct).cblks.dec);
-      (*p_precinct).cblks.dec = core::ptr::null_mut::<opj_tcd_cblk_dec_t>()
+      (*p_precinct).cblks = CodeBlocks::Empty;
     };
   }
 }
@@ -2404,11 +2344,9 @@ fn opj_tcd_code_block_enc_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
   unsafe {
     let mut cblkno: OPJ_UINT32 = 0;
     let mut l_nb_code_blocks: OPJ_UINT32 = 0;
-    let mut l_code_block = (*p_precinct).cblks.enc;
+    let mut l_code_block = (&mut (*p_precinct).cblks).enc_ptr();
     if !l_code_block.is_null() {
-      l_nb_code_blocks = (*p_precinct)
-        .block_size
-        .wrapping_div(core::mem::size_of::<opj_tcd_cblk_enc_t>() as OPJ_UINT32);
+      l_nb_code_blocks = (*p_precinct).cblks.len() as OPJ_UINT32;
       cblkno = 0 as OPJ_UINT32;
       while cblkno < l_nb_code_blocks {
         if !(*l_code_block).data.is_null() {
@@ -2431,8 +2369,7 @@ fn opj_tcd_code_block_enc_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
         l_code_block = l_code_block.offset(1);
         cblkno += 1;
       }
-      opj_free_type((*p_precinct).cblks.enc);
-      (*p_precinct).cblks.enc = core::ptr::null_mut::<opj_tcd_cblk_enc_t>()
+      (*p_precinct).cblks = CodeBlocks::Empty;
     };
   }
 }
@@ -2480,7 +2417,7 @@ fn opj_tcd_dc_level_shift_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     l_img_comp = (*p_tcd.image).comps;
     compno = 0 as OPJ_UINT32;
     while compno < p_tcd.tcd_image.tiles.numcomps {
-      l_current_ptr = (*l_tile_comp).data;
+      l_current_ptr = (*l_tile_comp).data.as_mut_ptr();
       l_nb_elem = (((*l_tile_comp).x1 - (*l_tile_comp).x0) as OPJ_SIZE_T)
         .wrapping_mul(((*l_tile_comp).y1 - (*l_tile_comp).y0) as OPJ_SIZE_T);
       if (*l_tccp).qmfbid == 1u32 {
@@ -2522,7 +2459,7 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
       }
       let numcomps = p_tcd.tcd_image.tiles.numcomps as usize;
       let mut l_data: Vec<&mut [OPJ_INT32]> = (0..numcomps)
-        .map(|i| core::slice::from_raw_parts_mut((*l_tile_comp.add(i)).data, samples))
+        .map(|i| core::slice::from_raw_parts_mut((*l_tile_comp.add(i)).data.as_mut_ptr(), samples))
         .collect();
       let matrix = core::slice::from_raw_parts(
         (*p_tcd.tcp).m_mct_coding_matrix as *const OPJ_FLOAT32,
@@ -2540,23 +2477,23 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     } else if (*(*l_tcp).tccps).qmfbid == 0u32 {
       opj_mct_encode_real(
         core::slice::from_raw_parts_mut(
-          p_tcd.tcd_image.tiles.comps[0].data as *mut OPJ_FLOAT32,
+          p_tcd.tcd_image.tiles.comps[0].data.as_mut_ptr() as *mut OPJ_FLOAT32,
           samples,
         ),
         core::slice::from_raw_parts_mut(
-          p_tcd.tcd_image.tiles.comps[1].data as *mut OPJ_FLOAT32,
+          p_tcd.tcd_image.tiles.comps[1].data.as_mut_ptr() as *mut OPJ_FLOAT32,
           samples,
         ),
         core::slice::from_raw_parts_mut(
-          p_tcd.tcd_image.tiles.comps[2].data as *mut OPJ_FLOAT32,
+          p_tcd.tcd_image.tiles.comps[2].data.as_mut_ptr() as *mut OPJ_FLOAT32,
           samples,
         ),
       );
     } else {
       opj_mct_encode(
-        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[0].data, samples),
-        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[1].data, samples),
-        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[2].data, samples),
+        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[0].data.as_mut_ptr(), samples),
+        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[1].data.as_mut_ptr(), samples),
+        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[2].data.as_mut_ptr(), samples),
       );
     }
     1i32
@@ -2716,7 +2653,7 @@ pub(crate) fn opj_tcd_copy_tile_data(p_tcd: &mut opj_tcd, mut p_src: &[u8]) -> O
       if l_size_comp == 3u32 {
         l_size_comp = 4 as OPJ_UINT32
       }
-      let l_dest = core::slice::from_raw_parts_mut(l_tilec.data, l_nb_elem as usize);
+      let l_dest = core::slice::from_raw_parts_mut(l_tilec.data.as_mut_ptr(), l_nb_elem as usize);
       match l_size_comp {
         1 => {
           let (src, remain) = p_src.split_at(l_nb_elem);

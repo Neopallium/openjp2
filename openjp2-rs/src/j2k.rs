@@ -9893,7 +9893,7 @@ fn opj_j2k_update_image_data(
             .as_mut_ptr()
             .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
           .x0) as OPJ_UINT32;
-        p_src_data = (*l_tilec).data
+        p_src_data = (*l_tilec).data.as_mut_ptr()
       } else {
         let mut l_res_0 = (*l_tilec)
           .resolutions
@@ -9904,7 +9904,7 @@ fn opj_j2k_update_image_data(
         res_x1 = (*l_res_0).win_x1 as OPJ_INT32;
         res_y1 = (*l_res_0).win_y1 as OPJ_INT32;
         src_data_stride = (*l_res_0).win_x1.wrapping_sub((*l_res_0).win_x0);
-        p_src_data = (*l_tilec).data_win
+        p_src_data = (*l_tilec).data_win.as_mut_ptr()
       }
       if !p_src_data.is_null() {
         l_width_src = (res_x1 - res_x0) as OPJ_UINT32;
@@ -10006,11 +10006,9 @@ fn opj_j2k_update_image_data(
           /* If the final image matches the tile buffer, then borrow it */
           /* directly to save a copy */
           if (*p_tcd).whole_tile_decoding != 0 {
-            (*l_img_comp_dest).data = (*l_tilec).data;
-            (*l_tilec).data = core::ptr::null_mut::<OPJ_INT32>()
+            (*l_img_comp_dest).data = (*l_tilec).data.take_raw();
           } else {
-            (*l_img_comp_dest).data = (*l_tilec).data_win;
-            (*l_tilec).data_win = core::ptr::null_mut::<OPJ_INT32>()
+            (*l_img_comp_dest).data = (*l_tilec).data_win.take_raw();
           }
         } else {
           if (*l_img_comp_dest).data.is_null() {
@@ -11570,10 +11568,11 @@ fn opj_j2k_decode_tiles(
           (*(*p_j2k.m_output_image).comps.offset(i as isize)).data as *mut core::ffi::c_void,
         );
         let fresh40 = &mut (*(*p_j2k.m_output_image).comps.offset(i as isize)).data;
-        *fresh40 = p_j2k.m_tcd.tcd_image.tiles.comps[i as usize].data;
+        *fresh40 = p_j2k.m_tcd.tcd_image.tiles.comps[i as usize]
+          .data
+          .take_raw();
         (*(*p_j2k.m_output_image).comps.offset(i as isize)).resno_decoded =
           (*(*p_j2k.m_tcd.image).comps.offset(i as isize)).resno_decoded;
-        p_j2k.m_tcd.tcd_image.tiles.comps[i as usize].data = core::ptr::null_mut::<OPJ_INT32>();
         i += 1;
       }
       return 1i32;
@@ -12169,8 +12168,7 @@ pub(crate) fn opj_j2k_encode(
           &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize] as *mut opj_tcd_tilecomp_t;
         if l_reuse_data != 0 {
           let mut l_img_comp = (*p_j2k.m_tcd.image).comps.offset(j as isize);
-          (*l_tilec).data = (*l_img_comp).data;
-          (*l_tilec).ownsData = 0i32
+          (*l_tilec).data = TileBuf::borrowed((*l_img_comp).data);
         } else if opj_alloc_tile_component_data(l_tilec) == 0 {
           event_msg!(
             p_manager,

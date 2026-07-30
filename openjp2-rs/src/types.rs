@@ -243,7 +243,6 @@ pub(crate) type opj_jp2_proc =
   fn(_: &mut opj_jp2, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
 pub(crate) type opj_jp2_proc_list_t = super::function_list::ProcedureList<opj_jp2_proc>;
 
-#[derive(Clone)]
 pub(crate) struct opj_jp2 {
   pub j2k: opj_j2k,
   pub w: OPJ_UINT32,
@@ -427,7 +426,6 @@ pub(crate) type opj_j2k_proc =
   fn(_: &mut opj_j2k, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
 pub(crate) type opj_j2k_proc_list_t = super::function_list::ProcedureList<opj_j2k_proc>;
 
-#[derive(Clone)]
 pub(crate) struct opj_j2k {
   pub m_is_decoder: OPJ_BOOL,
   pub m_specific_param: C2RustUnnamed_2,
@@ -442,7 +440,6 @@ pub(crate) struct opj_j2k {
   pub dump_state: core::ffi::c_uint,
 }
 
-#[derive(Clone)]
 pub(crate) struct opj_tcd {
   pub tp_pos: OPJ_INT32,
   pub tp_num: OPJ_UINT32,
@@ -651,7 +648,6 @@ pub(crate) struct opj_decoding_param {
 }
 pub(crate) type opj_decoding_param_t = opj_decoding_param;
 
-#[derive(Clone)]
 pub(crate) struct opj_tcd_image {
   pub tiles: opj_tcd_tile,
 }
@@ -665,7 +661,6 @@ impl Default for opj_tcd_image {
   }
 }
 
-#[derive(Clone)]
 pub(crate) struct opj_tcd_tile {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -709,7 +704,95 @@ pub struct TileInfo {
   pub go_on: bool,
 }
 
-#[derive(Clone)]
+/// Sample buffer of a tile component.
+///
+/// Owned buffers go through `opj_image_data_alloc`/`opj_image_data_free` rather than the
+/// Rust allocator, because they are handed over to `opj_image_comp::data`, which C callers
+/// (see `src/bin/common/color.c`) allocate and free with those same functions.
+pub(crate) enum TileBuf {
+  Empty,
+  Owned {
+    ptr: *mut OPJ_INT32,
+    bytes: OPJ_SIZE_T,
+  },
+  /// Aliases a caller-supplied image buffer; freeing it is not our business.
+  Borrowed {
+    ptr: *mut OPJ_INT32,
+  },
+}
+
+impl Default for TileBuf {
+  fn default() -> Self {
+    TileBuf::Empty
+  }
+}
+
+impl Drop for TileBuf {
+  fn drop(&mut self) {
+    if let TileBuf::Owned { ptr, .. } = *self {
+      unsafe { crate::openjpeg::opj_image_data_free(ptr as *mut core::ffi::c_void) }
+    }
+  }
+}
+
+impl TileBuf {
+  pub(crate) fn borrowed(ptr: *mut OPJ_INT32) -> Self {
+    TileBuf::Borrowed { ptr }
+  }
+
+  pub(crate) fn as_mut_ptr(&self) -> *mut OPJ_INT32 {
+    match *self {
+      TileBuf::Empty => core::ptr::null_mut(),
+      TileBuf::Owned { ptr, .. } | TileBuf::Borrowed { ptr } => ptr,
+    }
+  }
+
+  pub(crate) fn is_null(&self) -> bool {
+    self.as_mut_ptr().is_null()
+  }
+
+  /// Byte capacity of an owned buffer; 0 for empty or borrowed ones.
+  pub(crate) fn bytes(&self) -> OPJ_SIZE_T {
+    match *self {
+      TileBuf::Owned { bytes, .. } => bytes,
+      _ => 0,
+    }
+  }
+
+  pub(crate) fn release(&mut self) {
+    *self = TileBuf::Empty;
+  }
+
+  /// Drops any current buffer and allocates a fresh owned one. Contents are not preserved.
+  pub(crate) fn alloc(&mut self, bytes: OPJ_SIZE_T) -> bool {
+    self.release();
+    if bytes == 0 {
+      return true;
+    }
+    let ptr = unsafe { crate::openjpeg::opj_image_data_alloc(bytes) } as *mut OPJ_INT32;
+    if ptr.is_null() {
+      return false;
+    }
+    *self = TileBuf::Owned { ptr, bytes };
+    true
+  }
+
+  /// Reallocates only when the buffer is absent or too small, like the C grow path.
+  pub(crate) fn ensure(&mut self, bytes: OPJ_SIZE_T) -> bool {
+    if !self.is_null() && bytes <= self.bytes() {
+      return true;
+    }
+    self.alloc(bytes)
+  }
+
+  /// Hands the buffer over to the caller, who becomes responsible for freeing it.
+  pub(crate) fn take_raw(&mut self) -> *mut OPJ_INT32 {
+    let ptr = self.as_mut_ptr();
+    core::mem::forget(core::mem::replace(self, TileBuf::Empty));
+    ptr
+  }
+}
+
 pub(crate) struct opj_tcd_tilecomp {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -719,11 +802,9 @@ pub(crate) struct opj_tcd_tilecomp {
   pub numresolutions: OPJ_UINT32,
   pub minimum_num_resolutions: OPJ_UINT32,
   pub resolutions: Vec<opj_tcd_resolution_t>,
-  pub data: *mut OPJ_INT32,
-  pub ownsData: OPJ_BOOL,
+  pub data: TileBuf,
   pub data_size_needed: size_t,
-  pub data_size: size_t,
-  pub data_win: *mut OPJ_INT32,
+  pub data_win: TileBuf,
   pub win_x0: OPJ_UINT32,
   pub win_y0: OPJ_UINT32,
   pub win_x1: OPJ_UINT32,
@@ -743,11 +824,9 @@ impl Default for opj_tcd_tilecomp {
       numresolutions: 0,
       minimum_num_resolutions: 0,
       resolutions: Vec::new(),
-      data: core::ptr::null_mut(),
-      ownsData: 0,
+      data: TileBuf::Empty,
       data_size_needed: 0,
-      data_size: 0,
-      data_win: core::ptr::null_mut(),
+      data_win: TileBuf::Empty,
       win_x0: 0,
       win_y0: 0,
       win_x1: 0,
@@ -821,7 +900,7 @@ impl Default for opj_tcd_band {
 }
 pub(crate) type opj_tcd_band_t = opj_tcd_band;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_tcd_precinct {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -829,8 +908,7 @@ pub(crate) struct opj_tcd_precinct {
   pub y1: OPJ_INT32,
   pub cw: OPJ_UINT32,
   pub ch: OPJ_UINT32,
-  pub cblks: C2RustUnnamed_1,
-  pub block_size: OPJ_UINT32,
+  pub cblks: CodeBlocks,
   pub incltree: *mut opj_tgt_tree_t,
   pub imsbtree: *mut opj_tgt_tree_t,
 }
@@ -845,10 +923,7 @@ impl Default for opj_tcd_precinct {
       y1: 0,
       cw: 0,
       ch: 0,
-      cblks: C2RustUnnamed_1 {
-        blocks: core::ptr::null_mut(),
-      },
-      block_size: 0,
+      cblks: CodeBlocks::Empty,
       incltree: core::ptr::null_mut(),
       imsbtree: core::ptr::null_mut(),
     }
@@ -872,12 +947,67 @@ pub(crate) struct opj_tgt_node {
 }
 pub(crate) type opj_tgt_node_t = opj_tgt_node;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub(crate) union C2RustUnnamed_1 {
-  pub enc: *mut opj_tcd_cblk_enc_t,
-  pub dec: *mut opj_tcd_cblk_dec_t,
-  pub blocks: *mut core::ffi::c_void,
+/// Code blocks of a precinct. The variant is fixed by `opj_tcd::m_is_decoder` on first use.
+#[derive(Clone, Default)]
+pub(crate) enum CodeBlocks {
+  #[default]
+  Empty,
+  Enc(Vec<opj_tcd_cblk_enc_t>),
+  Dec(Vec<opj_tcd_cblk_dec_t>),
+}
+
+impl CodeBlocks {
+  pub(crate) fn len(&self) -> usize {
+    match self {
+      CodeBlocks::Empty => 0,
+      CodeBlocks::Enc(v) => v.len(),
+      CodeBlocks::Dec(v) => v.len(),
+    }
+  }
+
+  /// Grow-only, like the C realloc path: existing blocks keep the buffers they own.
+  pub(crate) fn grow_enc(&mut self, len: usize) {
+    if matches!(self, CodeBlocks::Empty) {
+      *self = CodeBlocks::Enc(Vec::new());
+    }
+    match self {
+      CodeBlocks::Enc(v) => {
+        if v.len() < len {
+          v.resize(len, Default::default());
+        }
+      }
+      _ => unreachable!("encoder precinct used as decoder precinct"),
+    }
+  }
+
+  /// Grow-only, like the C realloc path: existing blocks keep the buffers they own.
+  pub(crate) fn grow_dec(&mut self, len: usize) {
+    if matches!(self, CodeBlocks::Empty) {
+      *self = CodeBlocks::Dec(Vec::new());
+    }
+    match self {
+      CodeBlocks::Dec(v) => {
+        if v.len() < len {
+          v.resize(len, Default::default());
+        }
+      }
+      _ => unreachable!("decoder precinct used as encoder precinct"),
+    }
+  }
+
+  pub(crate) fn enc_ptr(&mut self) -> *mut opj_tcd_cblk_enc_t {
+    match self {
+      CodeBlocks::Enc(v) => v.as_mut_ptr(),
+      _ => core::ptr::null_mut(),
+    }
+  }
+
+  pub(crate) fn dec_ptr(&mut self) -> *mut opj_tcd_cblk_dec_t {
+    match self {
+      CodeBlocks::Dec(v) => v.as_mut_ptr(),
+      _ => core::ptr::null_mut(),
+    }
+  }
 }
 
 #[derive(Copy, Clone)]
@@ -901,6 +1031,30 @@ pub(crate) struct opj_tcd_cblk_dec {
   pub decoded_data_layout: Layout,
 }
 pub(crate) type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
+
+impl Default for opj_tcd_cblk_dec {
+  fn default() -> Self {
+    Self {
+      segs: core::ptr::null_mut(),
+      chunks: core::ptr::null_mut(),
+      x0: 0,
+      y0: 0,
+      x1: 0,
+      y1: 0,
+      Mb: 0,
+      numbps: 0,
+      numlenbits: 0,
+      numnewpasses: 0,
+      numsegs: 0,
+      real_num_segs: 0,
+      m_current_max_segs: 0,
+      numchunks: 0,
+      numchunksalloc: 0,
+      decoded_data: core::ptr::null_mut(),
+      decoded_data_layout: Layout::new::<OPJ_INT32>(),
+    }
+  }
+}
 
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_seg_data_chunk {
@@ -947,6 +1101,26 @@ pub(crate) struct opj_tcd_cblk_enc {
   pub totalpasses: OPJ_UINT32,
 }
 pub(crate) type opj_tcd_cblk_enc_t = opj_tcd_cblk_enc;
+
+impl Default for opj_tcd_cblk_enc {
+  fn default() -> Self {
+    Self {
+      data: core::ptr::null_mut(),
+      layers: core::ptr::null_mut(),
+      passes: core::ptr::null_mut(),
+      x0: 0,
+      y0: 0,
+      x1: 0,
+      y1: 0,
+      numbps: 0,
+      numlenbits: 0,
+      data_size: 0,
+      numpasses: 0,
+      numpassesinlayers: 0,
+      totalpasses: 0,
+    }
+  }
+}
 
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_pass {
