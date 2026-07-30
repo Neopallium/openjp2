@@ -31,8 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-use core::alloc::Layout;
-
 use super::c_api_types::*;
 use super::j2k::*;
 
@@ -1010,10 +1008,10 @@ impl CodeBlocks {
   }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_tcd_cblk_dec {
-  pub segs: *mut opj_tcd_seg_t,
-  pub chunks: *mut opj_tcd_seg_data_chunk_t,
+  pub segs: Vec<opj_tcd_seg_t>,
+  pub chunks: Vec<opj_tcd_seg_data_chunk_t>,
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
   pub x1: OPJ_INT32,
@@ -1024,19 +1022,16 @@ pub(crate) struct opj_tcd_cblk_dec {
   pub numnewpasses: OPJ_UINT32,
   pub numsegs: OPJ_UINT32,
   pub real_num_segs: OPJ_UINT32,
-  pub m_current_max_segs: OPJ_UINT32,
   pub numchunks: OPJ_UINT32,
-  pub numchunksalloc: OPJ_UINT32,
-  pub decoded_data: *mut OPJ_INT32,
-  pub decoded_data_layout: Layout,
+  pub decoded_data: Vec<OPJ_INT32>,
 }
 pub(crate) type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
 
 impl Default for opj_tcd_cblk_dec {
   fn default() -> Self {
     Self {
-      segs: core::ptr::null_mut(),
-      chunks: core::ptr::null_mut(),
+      segs: Vec::new(),
+      chunks: Vec::new(),
       x0: 0,
       y0: 0,
       x1: 0,
@@ -1047,11 +1042,8 @@ impl Default for opj_tcd_cblk_dec {
       numnewpasses: 0,
       numsegs: 0,
       real_num_segs: 0,
-      m_current_max_segs: 0,
       numchunks: 0,
-      numchunksalloc: 0,
-      decoded_data: core::ptr::null_mut(),
-      decoded_data_layout: Layout::new::<OPJ_INT32>(),
+      decoded_data: Vec::new(),
     }
   }
 }
@@ -1084,11 +1076,13 @@ pub(crate) struct opj_tcd_seg {
 }
 pub(crate) type opj_tcd_seg_t = opj_tcd_seg;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct opj_tcd_cblk_enc {
-  pub data: *mut OPJ_BYTE,
-  pub layers: *mut opj_tcd_layer_t,
-  pub passes: *mut opj_tcd_pass_t,
+  /// Compressed-data buffer. `buf[0]` is the sentinel byte the MQ coder reads through
+  /// `data[-1]`; the payload the C code called `data` starts at `buf[1]`.
+  pub data: Vec<OPJ_BYTE>,
+  pub layers: Vec<opj_tcd_layer_t>,
+  pub passes: Vec<opj_tcd_pass_t>,
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
   pub x1: OPJ_INT32,
@@ -1102,12 +1096,29 @@ pub(crate) struct opj_tcd_cblk_enc {
 }
 pub(crate) type opj_tcd_cblk_enc_t = opj_tcd_cblk_enc;
 
+impl opj_tcd_cblk_enc {
+  /// Start of the payload, i.e. what the C struct stored in its `data` member.
+  /// Null while no buffer has been allocated.
+  pub(crate) fn data_ptr(&mut self) -> *mut OPJ_BYTE {
+    if self.data.is_empty() {
+      core::ptr::null_mut()
+    } else {
+      self.data[1..].as_mut_ptr()
+    }
+  }
+
+  /// Payload byte at `index`, where index 0 is the first payload byte.
+  pub(crate) fn data_byte(&self, index: usize) -> OPJ_BYTE {
+    self.data[index + 1]
+  }
+}
+
 impl Default for opj_tcd_cblk_enc {
   fn default() -> Self {
     Self {
-      data: core::ptr::null_mut(),
-      layers: core::ptr::null_mut(),
-      passes: core::ptr::null_mut(),
+      data: Vec::new(),
+      layers: Vec::new(),
+      passes: Vec::new(),
       x0: 0,
       y0: 0,
       x1: 0,
@@ -1122,7 +1133,7 @@ impl Default for opj_tcd_cblk_enc {
   }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub(crate) struct opj_tcd_pass {
   pub rate: OPJ_UINT32,
   pub distortiondec: OPJ_FLOAT64,
@@ -1131,7 +1142,7 @@ pub(crate) struct opj_tcd_pass {
 }
 pub(crate) type opj_tcd_pass_t = opj_tcd_pass;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub(crate) struct opj_tcd_layer {
   pub numpasses: OPJ_UINT32,
   pub len: OPJ_UINT32,

@@ -719,8 +719,7 @@ fn opj_t2_encode_packet(
         cblk = (&mut (*prc_0).cblks).enc_ptr();
         cblkno = 0 as OPJ_UINT32;
         while cblkno < l_nb_blocks {
-          let mut layer: *mut opj_tcd_layer_t =
-            &mut *(*cblk).layers.offset(layno as isize) as *mut opj_tcd_layer_t;
+          let mut layer: *mut opj_tcd_layer_t = (*cblk).layers.as_mut_ptr().offset(layno as isize);
           if (*cblk).numpasses == 0 && (*layer).numpasses != 0 {
             opj_tgt_setvalue(&mut *(*prc_0).incltree, cblkno, layno as OPJ_INT32);
           }
@@ -731,7 +730,7 @@ fn opj_t2_encode_packet(
         cblkno = 0 as OPJ_UINT32;
         while cblkno < l_nb_blocks {
           let mut layer_0: *mut opj_tcd_layer_t =
-            &mut *(*cblk).layers.offset(layno as isize) as *mut opj_tcd_layer_t;
+            (*cblk).layers.as_mut_ptr().offset(layno as isize);
           let mut increment = 0 as OPJ_UINT32;
           let mut nump = 0 as OPJ_UINT32;
           let mut len = 0 as OPJ_UINT32;
@@ -760,7 +759,10 @@ fn opj_t2_encode_packet(
             /* number of coding passes included */
             opj_t2_putnumpasses(bio, (*layer_0).numpasses);
             l_nb_passes = (*cblk).numpasses.wrapping_add((*layer_0).numpasses);
-            pass = (*cblk).passes.offset((*cblk).numpasses as isize);
+            pass = (*cblk)
+              .passes
+              .as_mut_ptr()
+              .offset((*cblk).numpasses as isize);
             /* computation of the increase of the length indicator and insertion in the header     */
             passno = (*cblk).numpasses;
             while passno < l_nb_passes {
@@ -788,7 +790,10 @@ fn opj_t2_encode_packet(
             /* computation of the new Length indicator */
             (*cblk).numlenbits =
               ((*cblk).numlenbits as core::ffi::c_uint).wrapping_add(increment) as OPJ_UINT32;
-            pass = (*cblk).passes.offset((*cblk).numpasses as isize);
+            pass = (*cblk)
+              .passes
+              .as_mut_ptr()
+              .offset((*cblk).numpasses as isize);
             /* insertion of the codeword segment length */
             passno = (*cblk).numpasses;
             while passno < l_nb_passes {
@@ -873,7 +878,7 @@ fn opj_t2_encode_packet(
         cblkno = 0 as OPJ_UINT32;
         while cblkno < l_nb_blocks {
           let mut layer_1: *mut opj_tcd_layer_t =
-            &mut *(*cblk).layers.offset(layno as isize) as *mut opj_tcd_layer_t;
+            (*cblk).layers.as_mut_ptr().offset(layno as isize);
           if (*layer_1).numpasses == 0 {
             cblk = cblk.offset(1)
           } else {
@@ -1218,8 +1223,8 @@ fn opj_t2_read_packet_header(
               }
             } else {
               l_segno = (*l_cblk).numsegs.wrapping_sub(1u32);
-              if (*(*l_cblk).segs.offset(l_segno as isize)).numpasses
-                == (*(*l_cblk).segs.offset(l_segno as isize)).maxpasses
+              if (*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).numpasses
+                == (*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).maxpasses
               {
                 l_segno = l_segno.wrapping_add(1);
                 if opj_t2_init_seg(
@@ -1237,13 +1242,14 @@ fn opj_t2_read_packet_header(
             if (*(*p_tcp).tccps.offset((*p_pi).compno as isize)).cblksty & 0x40u32 != 0u32 {
               loop {
                 let mut bit_number: OPJ_UINT32 = 0;
-                (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses = if l_segno == 0u32 {
-                  1u32
-                } else {
-                  n as OPJ_UINT32
-                };
+                (*(*l_cblk).segs.as_mut_ptr().offset(l_segno as isize)).numnewpasses =
+                  if l_segno == 0u32 {
+                    1u32
+                  } else {
+                    n as OPJ_UINT32
+                  };
                 bit_number = (*l_cblk).numlenbits.wrapping_add(opj_uint_floorlog2(
-                  (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses,
+                  (*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).numnewpasses,
                 ));
                 if bit_number > 32u32 {
                   event_msg!(
@@ -1254,15 +1260,16 @@ fn opj_t2_read_packet_header(
                   );
                   return 0i32;
                 }
-                (*(*l_cblk).segs.offset(l_segno as isize)).newlen = opj_bio_read(l_bio, bit_number);
+                (*(*l_cblk).segs.as_mut_ptr().offset(l_segno as isize)).newlen =
+                  opj_bio_read(l_bio, bit_number);
                 log::debug!(
                   "included={} numnewpasses={} increment={} len={}",
                   l_included,
-                  (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses,
+                  (*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).numnewpasses,
                   l_increment,
-                  (*(*l_cblk).segs.offset(l_segno as isize)).newlen,
+                  (*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).newlen,
                 );
-                n -= (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses as OPJ_INT32;
+                n -= (*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).numnewpasses as OPJ_INT32;
                 if n > 0i32 {
                   l_segno = l_segno.wrapping_add(1);
                   if opj_t2_init_seg(
@@ -1282,16 +1289,16 @@ fn opj_t2_read_packet_header(
             } else {
               loop {
                 let mut bit_number_0: OPJ_UINT32 = 0;
-                (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses = opj_int_min(
-                  (*(*l_cblk).segs.offset(l_segno as isize))
+                (*(*l_cblk).segs.as_mut_ptr().offset(l_segno as isize)).numnewpasses = opj_int_min(
+                  (*(*l_cblk).segs.as_ptr().offset(l_segno as isize))
                     .maxpasses
-                    .wrapping_sub((*(*l_cblk).segs.offset(l_segno as isize)).numpasses)
+                    .wrapping_sub((*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).numpasses)
                     as OPJ_INT32,
                   n,
                 )
                   as OPJ_UINT32;
                 bit_number_0 = (*l_cblk).numlenbits.wrapping_add(opj_uint_floorlog2(
-                  (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses,
+                  (*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).numnewpasses,
                 ));
                 if bit_number_0 > 32u32 {
                   event_msg!(
@@ -1302,16 +1309,16 @@ fn opj_t2_read_packet_header(
                   );
                   return 0i32;
                 }
-                (*(*l_cblk).segs.offset(l_segno as isize)).newlen =
+                (*(*l_cblk).segs.as_mut_ptr().offset(l_segno as isize)).newlen =
                   opj_bio_read(l_bio, bit_number_0);
                 log::debug!(
                   "included={} numnewpasses={} increment={} len={}",
                   l_included,
-                  (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses,
+                  (*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).numnewpasses,
                   l_increment,
-                  (*(*l_cblk).segs.offset(l_segno as isize)).newlen,
+                  (*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).newlen,
                 );
-                n -= (*(*l_cblk).segs.offset(l_segno as isize)).numnewpasses as OPJ_INT32;
+                n -= (*(*l_cblk).segs.as_ptr().offset(l_segno as isize)).numnewpasses as OPJ_INT32;
                 if n > 0i32 {
                   l_segno = l_segno.wrapping_add(1);
                   if opj_t2_init_seg(
@@ -1427,13 +1434,13 @@ fn opj_t2_read_packet_data(
             l_cblk = l_cblk.offset(1)
           } else {
             if (*l_cblk).numsegs == 0 {
-              l_seg = (*l_cblk).segs;
+              l_seg = (*l_cblk).segs.as_mut_ptr();
               (*l_cblk).numsegs = (*l_cblk).numsegs.wrapping_add(1)
             } else {
-              l_seg = &mut *(*l_cblk)
+              l_seg = (*l_cblk)
                 .segs
-                .offset((*l_cblk).numsegs.wrapping_sub(1u32) as isize)
-                as *mut opj_tcd_seg_t;
+                .as_mut_ptr()
+                .offset((*l_cblk).numsegs.wrapping_sub(1u32) as isize);
               if (*l_seg).numpasses == (*l_seg).maxpasses {
                 l_seg = l_seg.offset(1);
                 (*l_cblk).numsegs = (*l_cblk).numsegs.wrapping_add(1)
@@ -1478,30 +1485,20 @@ fn opj_t2_read_packet_data(
                 }
               } else {
                 /* USE_JPWL */
-                if (*l_cblk).numchunks == (*l_cblk).numchunksalloc {
-                  let mut l_numchunksalloc = (*l_cblk)
-                    .numchunksalloc
-                    .wrapping_mul(2u32)
-                    .wrapping_add(1u32);
-                  let mut l_chunks: *mut opj_tcd_seg_data_chunk = opj_realloc_type_array(
-                    (*l_cblk).chunks,
-                    (*l_cblk).numchunksalloc as usize,
-                    l_numchunksalloc as usize,
+                if (*l_cblk).numchunks as usize == (*l_cblk).chunks.len() {
+                  let new_len = (*l_cblk).chunks.len() * 2 + 1;
+                  (&mut (*l_cblk).chunks).resize(
+                    new_len,
+                    opj_tcd_seg_data_chunk {
+                      data: core::ptr::null_mut(),
+                      len: 0,
+                    },
                   );
-                  if l_chunks.is_null() {
-                    event_msg!(
-                      p_manager,
-                      EVT_ERROR,
-                      "cannot allocate opj_tcd_seg_data_chunk_t* array",
-                    );
-                    return 0i32;
-                  }
-                  (*l_cblk).chunks = l_chunks;
-                  (*l_cblk).numchunksalloc = l_numchunksalloc
                 }
-                let fresh0 = &mut (*(*l_cblk).chunks.offset((*l_cblk).numchunks as isize)).data;
+                let chunks = (*l_cblk).chunks.as_mut_ptr();
+                let fresh0 = &mut (*chunks.offset((*l_cblk).numchunks as isize)).data;
                 *fresh0 = l_current_data;
-                (*(*l_cblk).chunks.offset((*l_cblk).numchunks as isize)).len = (*l_seg).newlen;
+                (*chunks.offset((*l_cblk).numchunks as isize)).len = (*l_seg).newlen;
                 (*l_cblk).numchunks = (*l_cblk).numchunks.wrapping_add(1);
                 l_current_data = l_current_data.offset((*l_seg).newlen as isize);
                 (*l_seg).len =
@@ -1583,13 +1580,13 @@ fn opj_t2_skip_packet_data(
             l_cblk = l_cblk.offset(1)
           } else {
             if (*l_cblk).numsegs == 0 {
-              l_seg = (*l_cblk).segs;
+              l_seg = (*l_cblk).segs.as_mut_ptr();
               (*l_cblk).numsegs = (*l_cblk).numsegs.wrapping_add(1)
             } else {
-              l_seg = &mut *(*l_cblk)
+              l_seg = (*l_cblk)
                 .segs
-                .offset((*l_cblk).numsegs.wrapping_sub(1u32) as isize)
-                as *mut opj_tcd_seg_t;
+                .as_mut_ptr()
+                .offset((*l_cblk).numsegs.wrapping_sub(1u32) as isize);
               if (*l_seg).numpasses == (*l_seg).maxpasses {
                 l_seg = l_seg.offset(1);
                 (*l_cblk).numsegs = (*l_cblk).numsegs.wrapping_add(1)
@@ -1664,27 +1661,11 @@ fn opj_t2_init_seg(
   unsafe {
     let mut seg = core::ptr::null_mut::<opj_tcd_seg_t>();
     let mut l_nb_segs = index.wrapping_add(1u32);
-    if l_nb_segs > (*cblk).m_current_max_segs {
-      let mut new_segs = core::ptr::null_mut::<opj_tcd_seg_t>();
-      let mut l_m_current_max_segs = (*cblk).m_current_max_segs.wrapping_add(10u32);
-      new_segs = opj_realloc_type_array(
-        (*cblk).segs,
-        (*cblk).m_current_max_segs as usize,
-        l_m_current_max_segs as usize,
-      );
-      if new_segs.is_null() {
-        /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to initialize segment {}\n", l_nb_segs); */
-        return 0i32;
-      }
-      (*cblk).segs = new_segs;
-      memset(
-        new_segs.offset((*cblk).m_current_max_segs as isize) as *mut core::ffi::c_void,
-        0i32,
-        10 * core::mem::size_of::<opj_tcd_seg_t>(),
-      );
-      (*cblk).m_current_max_segs = l_m_current_max_segs
+    if l_nb_segs as usize > (*cblk).segs.len() {
+      let new_len = (*cblk).segs.len() + 10;
+      (&mut (*cblk).segs).resize(new_len, Default::default());
     }
-    seg = &mut *(*cblk).segs.offset(index as isize) as *mut opj_tcd_seg_t;
+    seg = (*cblk).segs.as_mut_ptr().offset(index as isize);
     opj_tcd_reinit_segment(&mut *seg);
     if cblksty & 0x4u32 != 0 {
       (*seg).maxpasses = 1 as OPJ_UINT32

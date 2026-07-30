@@ -12,7 +12,6 @@ use core::{
   cell::{Cell, RefCell},
   ops::AddAssign,
 };
-use std::alloc::{alloc, dealloc, Layout};
 
 use super::malloc::*;
 
@@ -1881,35 +1880,12 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
     if (*job).whole_tile_decoding == 0 {
       cblk_w = ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32;
       cblk_h = ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32;
-      let layout = Layout::from_size_align_unchecked(
-        core::mem::size_of::<OPJ_INT32>() * cblk_w as usize * cblk_h as usize,
-        16,
-      );
-      (*cblk).decoded_data = alloc(layout) as *mut OPJ_INT32;
-      (*cblk).decoded_data_layout = layout;
-      if (*cblk).decoded_data.is_null() {
-        event_msg!(
-          (*job).p_manager,
-          EVT_ERROR,
-          "Cannot allocate cblk->decoded_data\n",
-        );
-        core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free_type(job);
-        return;
-      }
       /* Zero-init required */
-      memset(
-        (*cblk).decoded_data as *mut core::ffi::c_void,
-        0i32,
-        core::mem::size_of::<OPJ_INT32>()
-          .wrapping_mul(cblk_w as usize)
-          .wrapping_mul(cblk_h as usize),
-      );
-    } else if !(*cblk).decoded_data.is_null() {
+      (*cblk).decoded_data = vec![0i32; cblk_w as usize * cblk_h as usize];
+    } else if !(*cblk).decoded_data.is_empty() {
       /* Not sure if that code path can happen, but better be */
       /* safe than sorry */
-      dealloc((*cblk).decoded_data as _, (*cblk).decoded_data_layout);
-      (*cblk).decoded_data = core::ptr::null_mut::<OPJ_INT32>()
+      (*cblk).decoded_data = Vec::new();
     }
     resno = (*job).resno;
     band = (*job).band;
@@ -1983,8 +1959,8 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
           .offset(resno.wrapping_sub(1) as isize);
         y += (*pres_0).y1 - (*pres_0).y0
       }
-      datap = if !(*cblk).decoded_data.is_null() {
-        (*cblk).decoded_data
+      datap = if !(*cblk).decoded_data.is_empty() {
+        (*cblk).decoded_data.as_mut_ptr()
       } else {
         t1.data.as_mut_ptr()
       };
@@ -2023,8 +1999,8 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
       /* Both can be non NULL if for example decoding a full tile and then */
       /* partially a tile. In which case partial decoding should be the */
       /* priority */
-      assert!(!(*cblk).decoded_data.is_null() || !(*tilec).data.is_null()); /* if (tccp->qmfbid == 0) */
-      if !(*cblk).decoded_data.is_null() {
+      assert!(!(*cblk).decoded_data.is_empty() || !(*tilec).data.is_null()); /* if (tccp->qmfbid == 0) */
+      if !(*cblk).decoded_data.is_empty() {
         let mut cblk_size = cblk_w.wrapping_mul(cblk_h); /* resno */
         if (*tccp).qmfbid == 1 {
           i = 0 as OPJ_UINT32;
@@ -2166,9 +2142,8 @@ pub(crate) fn opj_t1_decode_cblks(
             while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
               let mut cblk: *mut opj_tcd_cblk_dec_t =
                 (&mut (*precinct).cblks).dec_ptr().offset(cblkno as isize);
-              if !(*cblk).decoded_data.is_null() {
-                dealloc((*cblk).decoded_data as _, (*cblk).decoded_data_layout);
-                (*cblk).decoded_data = core::ptr::null_mut::<OPJ_INT32>()
+              if !(*cblk).decoded_data.is_empty() {
+                (*cblk).decoded_data = Vec::new();
               }
               cblkno += 1;
             }
@@ -2190,15 +2165,14 @@ pub(crate) fn opj_t1_decode_cblks(
                 (*cblk_0).y1 as OPJ_UINT32,
               ) == 0
               {
-                if !(*cblk_0).decoded_data.is_null() {
-                  dealloc((*cblk_0).decoded_data as _, (*cblk_0).decoded_data_layout);
-                  (*cblk_0).decoded_data = core::ptr::null_mut::<OPJ_INT32>()
+                if !(*cblk_0).decoded_data.is_empty() {
+                  (*cblk_0).decoded_data = Vec::new();
                 }
               } else {
                 if (*tcd).whole_tile_decoding == 0 {
                   let mut cblk_w = ((*cblk_0).x1 - (*cblk_0).x0) as OPJ_UINT32;
                   let mut cblk_h = ((*cblk_0).y1 - (*cblk_0).y0) as OPJ_UINT32;
-                  if !(*cblk_0).decoded_data.is_null() {
+                  if !(*cblk_0).decoded_data.is_empty() {
                     current_block_34 = 2370887241019905314;
                   } else if cblk_w == 0 || cblk_h == 0 {
                     current_block_34 = 2370887241019905314;
@@ -2312,7 +2286,8 @@ fn opj_t1_decode_cblk(
       i = 0 as OPJ_UINT32;
       while i < (*cblk).numchunks {
         cblk_len = (cblk_len as core::ffi::c_uint)
-          .wrapping_add((*(*cblk).chunks.offset(i as isize)).len) as OPJ_UINT32;
+          .wrapping_add((*(*cblk).chunks.as_ptr().offset(i as isize)).len)
+          as OPJ_UINT32;
         i += 1
       }
       /* Allocate temporary memory if needed */
@@ -2322,16 +2297,17 @@ fn opj_t1_decode_cblk(
       cblk_len = 0 as OPJ_UINT32;
       i = 0 as OPJ_UINT32;
       while i < (*cblk).numchunks {
-        let chunk = (*(*cblk).chunks.offset(i as isize)).as_slice();
+        let chunk = (*(*cblk).chunks.as_ptr().offset(i as isize)).as_slice();
         let off = cblk_len as usize;
         buf[off..off + chunk.len()].copy_from_slice(chunk);
         cblk_len = (cblk_len as core::ffi::c_uint)
-          .wrapping_add((*(*cblk).chunks.offset(i as isize)).len) as OPJ_UINT32;
+          .wrapping_add((*(*cblk).chunks.as_ptr().offset(i as isize)).len)
+          as OPJ_UINT32;
         i += 1
       }
       cblkdata = buf.as_mut_ptr();
     } else if (*cblk).numchunks == 1 {
-      cblkdata = (*(*cblk).chunks).as_mut_slice().as_mut_ptr();
+      cblkdata = (*(*cblk).chunks.as_mut_ptr()).as_mut_slice().as_mut_ptr();
     } else {
       /* Not sure if that can happen in practice, but avoid Coverity to */
       /* think we will dereference a null cblkdta pointer */
@@ -2339,13 +2315,13 @@ fn opj_t1_decode_cblk(
     }
     /* For subtile decoding, directly decode in the decoded_data buffer of */
     /* the code-block. Hack t1->data to point to it, and restore it later */
-    if !(*cblk).decoded_data.is_null() {
-      t1.set_decoded_data((*cblk).decoded_data, (t1.w * t1.h) as usize);
+    if !(*cblk).decoded_data.is_empty() {
+      let len = (t1.w * t1.h) as usize;
+      t1.set_decoded_data((*cblk).decoded_data.as_mut_ptr(), len);
     }
     segno = 0 as OPJ_UINT32;
     while segno < (*cblk).real_num_segs {
-      let mut seg: *mut opj_tcd_seg_t =
-        &mut *(*cblk).segs.offset(segno as isize) as *mut opj_tcd_seg_t;
+      let mut seg: *mut opj_tcd_seg_t = (*cblk).segs.as_mut_ptr().offset(segno as isize);
       /* BYPASS mode */
       type_0 = if bpno_plus_one <= (*cblk).numbps as OPJ_INT32 - 4i32
         && passtype < 2
@@ -2430,7 +2406,7 @@ fn opj_t1_decode_cblk(
       }
     }
     /* Restore original t1->data is needed */
-    if !(*cblk).decoded_data.is_null() {
+    if !(*cblk).decoded_data.is_empty() {
       t1.reset_decoded_data();
     }
     1i32
@@ -2811,19 +2787,24 @@ fn opj_t1_encode_cblk(
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
-    opj_mqc_init_enc(&mut t1.mqc, (*cblk).data, (*cblk).data_size);
+    opj_mqc_init_enc(&mut t1.mqc, (&mut *cblk).data_ptr(), (*cblk).data_size);
 
     passno = 0 as OPJ_UINT32;
     while bpno >= 0i32 {
-      let mut pass: *mut opj_tcd_pass_t =
-        &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
+      let mut pass: *mut opj_tcd_pass_t = (*cblk).passes.as_mut_ptr().offset(passno as isize);
       type_0 = if bpno < (*cblk).numbps as OPJ_INT32 - 4i32 && passtype < 2 && cblksty & 0x1 != 0 {
         1i32
       } else {
         0i32
       } as OPJ_BYTE;
       /* If the previous pass was terminating, we need to reset the encoder */
-      if passno > 0 && (*(*cblk).passes.offset(passno.wrapping_sub(1) as isize)).term {
+      if passno > 0
+        && (*(*cblk)
+          .passes
+          .as_ptr()
+          .offset(passno.wrapping_sub(1) as isize))
+        .term
+      {
         if type_0 as core::ffi::c_int == 1i32 {
           opj_mqc_bypass_init_enc(&mut t1.mqc);
         } else {
@@ -2903,7 +2884,7 @@ fn opj_t1_encode_cblk(
       while passno > 0 {
         passno = passno.wrapping_sub(1);
         let mut pass_0: *mut opj_tcd_pass_t =
-          &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
+          (*cblk).passes.as_mut_ptr().offset(passno as isize);
         if (*pass_0).rate > last_pass_rate {
           (*pass_0).rate = last_pass_rate
         } else {
@@ -2913,12 +2894,11 @@ fn opj_t1_encode_cblk(
     }
     passno = 0 as OPJ_UINT32;
     while passno < (*cblk).totalpasses {
-      let mut pass_1: *mut opj_tcd_pass_t =
-        &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
+      let mut pass_1: *mut opj_tcd_pass_t = (*cblk).passes.as_mut_ptr().offset(passno as isize);
       /* Prevent generation of FF as last data byte of a pass*/
       /* For terminating passes, the flushing procedure ensured this already */
       assert!((*pass_1).rate > 0);
-      if *(*cblk).data.offset((*pass_1).rate.wrapping_sub(1) as isize) as core::ffi::c_int
+      if (&*cblk).data_byte((*pass_1).rate.wrapping_sub(1) as usize) as core::ffi::c_int
         == 0xffi32
       {
         (*pass_1).rate = (*pass_1).rate.wrapping_sub(1)
@@ -2926,7 +2906,11 @@ fn opj_t1_encode_cblk(
       (*pass_1).len = (*pass_1).rate.wrapping_sub(if passno == 0 {
         0
       } else {
-        (*(*cblk).passes.offset(passno.wrapping_sub(1) as isize)).rate
+        (*(*cblk)
+          .passes
+          .as_ptr()
+          .offset(passno.wrapping_sub(1) as isize))
+        .rate
       });
       passno += 1;
     }

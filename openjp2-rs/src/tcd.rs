@@ -11,8 +11,6 @@ use super::tgt::*;
 
 use super::malloc::*;
 
-use std::alloc::dealloc;
-
 /* ----------------------------------------------------------------------- */
 impl opj_tcd {
   pub fn new(m_is_decoder: bool) -> Self {
@@ -86,8 +84,9 @@ fn opj_tcd_makelayer(
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
                   (&mut (*prc).cblks).enc_ptr().offset(cblkno as isize);
+                let passes = (*cblk).passes.as_ptr();
                 let mut layer: *mut opj_tcd_layer_t =
-                  &mut *(*cblk).layers.offset(layno as isize) as *mut opj_tcd_layer_t;
+                  (*cblk).layers.as_mut_ptr().offset(layno as isize);
                 let mut n: OPJ_UINT32 = 0;
                 if layno == 0u32 {
                   (*cblk).numpassesinlayers = 0 as OPJ_UINT32
@@ -101,17 +100,16 @@ fn opj_tcd_makelayer(
                   while passno < (*cblk).totalpasses {
                     let mut dr: OPJ_UINT32 = 0;
                     let mut dd: OPJ_FLOAT64 = 0.;
-                    let mut pass: *mut opj_tcd_pass_t =
-                      &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
+                    let mut pass: *const opj_tcd_pass_t = passes.offset(passno as isize);
                     if n == 0u32 {
                       dr = (*pass).rate;
                       dd = (*pass).distortiondec
                     } else {
                       dr = (*pass)
                         .rate
-                        .wrapping_sub((*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize)).rate);
+                        .wrapping_sub((*passes.offset(n.wrapping_sub(1u32) as isize)).rate);
                       dd = (*pass).distortiondec
-                        - (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize)).distortiondec
+                        - (*passes.offset(n.wrapping_sub(1u32) as isize)).distortiondec
                     }
                     if dr == 0 {
                       if dd != 0 as core::ffi::c_double {
@@ -135,31 +133,24 @@ fn opj_tcd_makelayer(
                   (*layer).disto = 0 as OPJ_FLOAT64
                 } else {
                   if (*cblk).numpassesinlayers == 0u32 {
-                    (*layer).len = (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize)).rate;
-                    (*layer).data = (*cblk).data;
+                    (*layer).len = (*passes.offset(n.wrapping_sub(1u32) as isize)).rate;
+                    (*layer).data = (&mut *cblk).data_ptr();
                     (*layer).disto =
-                      (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize)).distortiondec
+                      (*passes.offset(n.wrapping_sub(1u32) as isize)).distortiondec
                   } else {
-                    (*layer).len = (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize))
+                    (*layer).len = (*passes.offset(n.wrapping_sub(1u32) as isize))
                       .rate
                       .wrapping_sub(
-                        (*(*cblk)
-                          .passes
-                          .offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
-                        .rate,
+                        (*passes.offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
+                          .rate,
                       );
-                    (*layer).data = (*cblk).data.offset(
-                      (*(*cblk)
-                        .passes
-                        .offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
-                      .rate as isize,
+                    (*layer).data = (&mut *cblk).data_ptr().offset(
+                      (*passes.offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize)).rate
+                        as isize,
                     );
-                    (*layer).disto = (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize))
-                      .distortiondec
-                      - (*(*cblk)
-                        .passes
-                        .offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
-                      .distortiondec
+                    (*layer).disto = (*passes.offset(n.wrapping_sub(1u32) as isize)).distortiondec
+                      - (*passes.offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
+                        .distortiondec
                   }
                   tcd.tcd_image.tiles.distolayer[layno as usize] += (*layer).disto;
                   if final_0 != 0 {
@@ -242,7 +233,8 @@ fn opj_tcd_makelayer_fixed(mut tcd: &mut opj_tcd, mut layno: OPJ_UINT32, mut fin
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
                   (&mut (*prc).cblks).enc_ptr().offset(cblkno as isize);
                 let mut layer: *mut opj_tcd_layer_t =
-                  &mut *(*cblk).layers.offset(layno as isize) as *mut opj_tcd_layer_t;
+                  (*cblk).layers.as_mut_ptr().offset(layno as isize);
+                let passes = (*cblk).passes.as_ptr();
                 let mut n: OPJ_UINT32 = 0;
                 let mut imsb = (*(*(*tcd).image).comps.offset(compno as isize))
                   .prec
@@ -289,22 +281,18 @@ fn opj_tcd_makelayer_fixed(mut tcd: &mut opj_tcd, mut layno: OPJ_UINT32, mut fin
                 (*layer).numpasses = n.wrapping_sub((*cblk).numpassesinlayers);
                 if (*layer).numpasses != 0 {
                   if (*cblk).numpassesinlayers == 0u32 {
-                    (*layer).len = (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize)).rate;
-                    (*layer).data = (*cblk).data
+                    (*layer).len = (*passes.offset(n.wrapping_sub(1u32) as isize)).rate;
+                    (*layer).data = (&mut *cblk).data_ptr()
                   } else {
-                    (*layer).len = (*(*cblk).passes.offset(n.wrapping_sub(1u32) as isize))
+                    (*layer).len = (*passes.offset(n.wrapping_sub(1u32) as isize))
                       .rate
                       .wrapping_sub(
-                        (*(*cblk)
-                          .passes
-                          .offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
-                        .rate,
+                        (*passes.offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
+                          .rate,
                       );
-                    (*layer).data = (*cblk).data.offset(
-                      (*(*cblk)
-                        .passes
-                        .offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize))
-                      .rate as isize,
+                    (*layer).data = (&mut *cblk).data_ptr().offset(
+                      (*passes.offset((*cblk).numpassesinlayers.wrapping_sub(1u32) as isize)).rate
+                        as isize,
                     )
                   }
                   if final_0 != 0 {
@@ -382,9 +370,9 @@ fn opj_tcd_rateallocate(
                   (&mut (*prc).cblks).enc_ptr().offset(cblkno as isize);
                 /* cbklno */
                 passno = 0 as OPJ_UINT32; /* passno */
+                let passes = (*cblk).passes.as_ptr();
                 while passno < (*cblk).totalpasses {
-                  let mut pass: *mut opj_tcd_pass_t =
-                    &mut *(*cblk).passes.offset(passno as isize) as *mut opj_tcd_pass_t;
+                  let mut pass: *const opj_tcd_pass_t = passes.offset(passno as isize);
                   let mut dr: OPJ_INT32 = 0;
                   let mut dd: OPJ_FLOAT64 = 0.;
                   let mut rdslope: OPJ_FLOAT64 = 0.;
@@ -392,11 +380,12 @@ fn opj_tcd_rateallocate(
                     dr = (*pass).rate as OPJ_INT32;
                     dd = (*pass).distortiondec
                   } else {
-                    dr = (*pass).rate.wrapping_sub(
-                      (*(*cblk).passes.offset(passno.wrapping_sub(1u32) as isize)).rate,
-                    ) as OPJ_INT32;
+                    dr = (*pass)
+                      .rate
+                      .wrapping_sub((*passes.offset(passno.wrapping_sub(1u32) as isize)).rate)
+                      as OPJ_INT32;
                     dd = (*pass).distortiondec
-                      - (*(*cblk).passes.offset(passno.wrapping_sub(1u32) as isize)).distortiondec
+                      - (*passes.offset(passno.wrapping_sub(1u32) as isize)).distortiondec
                   }
                   if dr != 0i32 {
                     rdslope = dd / dr as core::ffi::c_double;
@@ -1185,18 +1174,11 @@ pub(crate) fn opj_tcd_init_decode_tile(
  */
 fn opj_tcd_code_block_enc_allocate(mut p_code_block: *mut opj_tcd_cblk_enc_t) -> OPJ_BOOL {
   unsafe {
-    if (*p_code_block).layers.is_null() {
-      /* no memset since data */
-      (*p_code_block).layers = opj_calloc_type_array(100);
-      if (*p_code_block).layers.is_null() {
-        return 0i32;
-      }
+    if (*p_code_block).layers.is_empty() {
+      (&mut (*p_code_block).layers).resize(100, Default::default());
     }
-    if (*p_code_block).passes.is_null() {
-      (*p_code_block).passes = opj_calloc_type_array(100);
-      if (*p_code_block).passes.is_null() {
-        return 0i32;
-      }
+    if (*p_code_block).passes.is_empty() {
+      (&mut (*p_code_block).passes).resize(100, Default::default());
     }
     1i32
   }
@@ -1226,22 +1208,11 @@ fn opj_tcd_code_block_enc_allocate_data(mut p_code_block: *mut opj_tcd_cblk_enc_
         * core::mem::size_of::<OPJ_UINT32>() as OPJ_INT32) as OPJ_UINT32,
     );
     if l_data_size > (*p_code_block).data_size {
-      if !(*p_code_block).data.is_null() {
-        /* We refer to data - 1 since below we incremented it */
-        opj_free_type_array(
-          (*p_code_block).data.offset(-1),
-          (*p_code_block).data_size as usize + 1,
-        );
-      }
-      (*p_code_block).data = opj_alloc_type_array(l_data_size.wrapping_add(1u32) as usize);
-      if (*p_code_block).data.is_null() {
-        (*p_code_block).data_size = 0u32;
-        return 0i32;
-      }
+      let buf = &mut (*p_code_block).data;
+      buf.clear();
+      /* +1 for the leading sentinel byte the MQ coder reads through `data[-1]` */
+      buf.resize(l_data_size as usize + 1, 0);
       (*p_code_block).data_size = l_data_size;
-      /*why +1 ?*/
-      *(*p_code_block).data.offset(0) = 0 as OPJ_BYTE;
-      (*p_code_block).data = (*p_code_block).data.offset(1)
     }
     1i32
   }
@@ -1262,40 +1233,19 @@ pub(crate) fn opj_tcd_reinit_segment(seg: &mut opj_tcd_seg_t) {
  */
 fn opj_tcd_code_block_dec_allocate(mut p_code_block: *mut opj_tcd_cblk_dec_t) -> OPJ_BOOL {
   unsafe {
-    if (*p_code_block).segs.is_null() {
-      (*p_code_block).segs = opj_calloc_type_array(10i32 as size_t);
-      if (*p_code_block).segs.is_null() {
-        return 0i32;
-      }
-      /*fprintf(stderr, "m_current_max_segs of code_block->data = %d\n", p_code_block->m_current_max_segs);*/
-      (*p_code_block).m_current_max_segs = 10 as OPJ_UINT32
+    let p_code_block = &mut *p_code_block;
+    if p_code_block.segs.is_empty() {
+      p_code_block.segs.resize(10, Default::default());
     } else {
-      /*fprintf(stderr, "Allocate %d elements of code_block->data\n", OPJ_J2K_DEFAULT_NB_SEGS * sizeof(opj_tcd_seg_t));*/
-      /* sanitize */
-      let mut l_segs = (*p_code_block).segs; /*(/ 8)*/
-      let mut l_current_max_segs = (*p_code_block).m_current_max_segs; /* (%8) */
-      let mut l_chunks = (*p_code_block).chunks;
-      let mut l_numchunksalloc = (*p_code_block).numchunksalloc;
-      let mut i: OPJ_UINT32 = 0;
-      dealloc(
-        (*p_code_block).decoded_data as _,
-        (*p_code_block).decoded_data_layout,
-      );
-      (*p_code_block).decoded_data = core::ptr::null_mut::<OPJ_INT32>();
-      memset(
-        p_code_block as *mut core::ffi::c_void,
-        0i32,
-        core::mem::size_of::<opj_tcd_cblk_dec_t>(),
-      );
-      (*p_code_block).segs = l_segs;
-      (*p_code_block).m_current_max_segs = l_current_max_segs;
-      i = 0 as OPJ_UINT32;
-      while i < l_current_max_segs {
-        opj_tcd_reinit_segment(&mut *l_segs.offset(i as isize));
-        i += 1;
+      /* Reset every scalar but keep the seg/chunk buffers for reuse. */
+      let segs = core::mem::take(&mut p_code_block.segs);
+      let chunks = core::mem::take(&mut p_code_block.chunks);
+      *p_code_block = Default::default();
+      p_code_block.segs = segs;
+      p_code_block.chunks = chunks;
+      for seg in p_code_block.segs.iter_mut() {
+        opj_tcd_reinit_segment(seg);
       }
-      (*p_code_block).chunks = l_chunks;
-      (*p_code_block).numchunksalloc = l_numchunksalloc
     }
     1i32
   }
@@ -2296,44 +2246,7 @@ fn opj_tcd_dc_level_shift_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
  */
 fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
   unsafe {
-    let mut cblkno: OPJ_UINT32 = 0;
-    let mut l_nb_code_blocks: OPJ_UINT32 = 0;
-    let mut l_code_block = (&mut (*p_precinct).cblks).dec_ptr();
-    if !l_code_block.is_null() {
-      /*fprintf(stderr,"deallocate codeblock:{\n");*/
-      /*fprintf(stderr,"\t x0=%d, y0=%d, x1=%d, y1=%d\n",l_code_block->x0, l_code_block->y0, l_code_block->x1, l_code_block->y1);*/
-      /*fprintf(stderr,"\t numbps=%d, numlenbits=%d, len=%d, numnewpasses=%d, real_num_segs=%d, m_current_max_segs=%d\n ",
-      l_code_block->numbps, l_code_block->numlenbits, l_code_block->len, l_code_block->numnewpasses, l_code_block->real_num_segs, l_code_block->m_current_max_segs );*/
-      l_nb_code_blocks = (*p_precinct).cblks.len() as OPJ_UINT32;
-      /*fprintf(stderr,"nb_code_blocks =%d\t}\n", l_nb_code_blocks);*/
-      cblkno = 0 as OPJ_UINT32;
-      while cblkno < l_nb_code_blocks {
-        if !(*l_code_block).segs.is_null() {
-          opj_free_type_array(
-            (*l_code_block).segs,
-            (*l_code_block).m_current_max_segs as usize,
-          );
-          (*l_code_block).segs = core::ptr::null_mut::<opj_tcd_seg_t>()
-        }
-        if !(*l_code_block).chunks.is_null() {
-          opj_free_type_array(
-            (*l_code_block).chunks,
-            (*l_code_block).numchunksalloc as usize,
-          );
-          (*l_code_block).chunks = core::ptr::null_mut::<opj_tcd_seg_data_chunk_t>()
-        }
-        if !(*l_code_block).decoded_data.is_null() {
-          dealloc(
-            (*l_code_block).decoded_data as _,
-            (*l_code_block).decoded_data_layout,
-          );
-          (*l_code_block).decoded_data = core::ptr::null_mut::<OPJ_INT32>();
-        }
-        l_code_block = l_code_block.offset(1);
-        cblkno += 1;
-      }
-      (*p_precinct).cblks = CodeBlocks::Empty;
-    };
+    (*p_precinct).cblks = CodeBlocks::Empty;
   }
 }
 
@@ -2342,35 +2255,7 @@ fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
  */
 fn opj_tcd_code_block_enc_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
   unsafe {
-    let mut cblkno: OPJ_UINT32 = 0;
-    let mut l_nb_code_blocks: OPJ_UINT32 = 0;
-    let mut l_code_block = (&mut (*p_precinct).cblks).enc_ptr();
-    if !l_code_block.is_null() {
-      l_nb_code_blocks = (*p_precinct).cblks.len() as OPJ_UINT32;
-      cblkno = 0 as OPJ_UINT32;
-      while cblkno < l_nb_code_blocks {
-        if !(*l_code_block).data.is_null() {
-          /* We refer to data - 1 since below we incremented it */
-          /* in opj_tcd_code_block_enc_allocate_data() */
-          opj_free_type_array(
-            (*l_code_block).data.offset(-1),
-            (*l_code_block).data_size as usize,
-          ); /*(/ 8)*/
-          (*l_code_block).data = core::ptr::null_mut::<OPJ_BYTE>()
-        } /* (%8) */
-        if !(*l_code_block).layers.is_null() {
-          opj_free_type_array((*l_code_block).layers, 100);
-          (*l_code_block).layers = core::ptr::null_mut::<opj_tcd_layer_t>()
-        }
-        if !(*l_code_block).passes.is_null() {
-          opj_free_type_array((*l_code_block).passes, 100);
-          (*l_code_block).passes = core::ptr::null_mut::<opj_tcd_pass_t>()
-        }
-        l_code_block = l_code_block.offset(1);
-        cblkno += 1;
-      }
-      (*p_precinct).cblks = CodeBlocks::Empty;
-    };
+    (*p_precinct).cblks = CodeBlocks::Empty;
   }
 }
 

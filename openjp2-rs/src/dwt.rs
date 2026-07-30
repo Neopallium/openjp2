@@ -1731,7 +1731,7 @@ fn opj_dwt_init_sparse_array(
           while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
             let mut cblk: *mut opj_tcd_cblk_dec_t =
               (&mut (*precinct).cblks).dec_ptr().offset(cblkno as isize);
-            if !(*cblk).decoded_data.is_null() {
+            if !(*cblk).decoded_data.is_empty() {
               let mut x = ((*cblk).x0 - (*band).x0) as OPJ_UINT32;
               let mut y = ((*cblk).y0 - (*band).y0) as OPJ_UINT32;
               let mut cblk_w = ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32;
@@ -1758,7 +1758,7 @@ fn opj_dwt_init_sparse_array(
                 y,
                 x.wrapping_add(cblk_w),
                 y.wrapping_add(cblk_h),
-                (*cblk).decoded_data,
+                (*cblk).decoded_data.as_mut_ptr(),
                 1 as OPJ_UINT32,
                 cblk_w,
                 true,

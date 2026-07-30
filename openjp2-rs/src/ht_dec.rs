@@ -1282,7 +1282,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     i = 0 as OPJ_UINT32;
     while i < (*cblk).numchunks {
       cblk_len = (cblk_len as core::ffi::c_uint)
-        .wrapping_add((*(*cblk).chunks.offset(i as isize)).len) as OPJ_UINT32;
+        .wrapping_add((*(*cblk).chunks.as_ptr().offset(i as isize)).len)
+        as OPJ_UINT32;
       i += 1;
     }
     if (*cblk).numchunks > 1u32 || t1.mustuse_cblkdatabuffer != 0 {
@@ -1296,18 +1297,18 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         cblk_len = 0 as OPJ_UINT32;
         i_0 = 0 as OPJ_UINT32;
         while i_0 < (*cblk).numchunks {
-          let chunk = (*(*cblk).chunks.offset(i_0 as isize)).as_slice();
+          let chunk = (*(*cblk).chunks.as_ptr().offset(i_0 as isize)).as_slice();
           let off = cblk_len as usize;
           buffer[off..off + chunk.len()].copy_from_slice(chunk);
           cblk_len = (cblk_len as core::ffi::c_uint)
-            .wrapping_add((*(*cblk).chunks.offset(i_0 as isize)).len)
+            .wrapping_add((*(*cblk).chunks.as_ptr().offset(i_0 as isize)).len)
             as OPJ_UINT32;
           i_0 += 1;
         }
       }
       cblkdata = t1.cblkdatabuffer_ref();
     } else if (*cblk).numchunks == 1u32 {
-      cblkdata = (*(*cblk).chunks).as_slice();
+      cblkdata = (*(*cblk).chunks.as_ptr()).as_slice();
     } else {
       /* Not sure if that can happen in practice, but avoid Coverity to */
       /* think we will dereference a null cblkdta pointer */
@@ -1318,24 +1319,24 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     // OPJ_UINT32 num_passes is the number of passes: 1 if CUP only, 2 for
     // CUP+SPP, and 3 for CUP+SPP+MRP
     num_passes = if (*cblk).numsegs > 0u32 {
-      (*(*cblk).segs.offset(0)).real_num_passes
+      (*(*cblk).segs.as_ptr().offset(0)).real_num_passes
     } else {
       0u32
     };
     num_passes = (num_passes as core::ffi::c_uint).wrapping_add(if (*cblk).numsegs > 1u32 {
-      (*(*cblk).segs.offset(1)).real_num_passes
+      (*(*cblk).segs.as_ptr().offset(1)).real_num_passes
     } else {
       0u32
     }) as OPJ_UINT32;
     // OPJ_UINT32 lengths1 is the length of cleanup pass
     lengths1 = if num_passes > 0u32 {
-      (*(*cblk).segs.offset(0)).len
+      (*(*cblk).segs.as_ptr().offset(0)).len
     } else {
       0u32
     };
     // OPJ_UINT32 lengths2 is the length of refinement passes (either SPP only or SPP+MRP)
     lengths2 = if num_passes > 1u32 {
-      (*(*cblk).segs.offset(1)).len
+      (*(*cblk).segs.as_ptr().offset(1)).len
     } else {
       0u32
     };
