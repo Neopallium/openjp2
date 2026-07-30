@@ -31,6 +31,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+// This module is the C ABI shim; it moves wholesale to the `openjp2-capi` crate in phase 6.
+#![allow(unsafe_op_in_unsafe_fn)]
+
 pub use crate::c_api_types::*;
 pub use crate::consts::opj::*;
 pub use crate::image::{opj_image_create, opj_image_destroy, opj_image_tile_create};

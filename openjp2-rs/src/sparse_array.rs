@@ -29,7 +29,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-use crate::malloc::*;
 use crate::math::*;
 
 #[derive(Clone)]
@@ -91,13 +90,24 @@ pub(crate) fn is_region_valid(sa: &SparseArray, x0: u32, y0: u32, x1: u32, y1: u
   !(x0 >= sa.width || x1 <= x0 || x1 > sa.width || y0 >= sa.height || y1 <= y0 || y1 > sa.height)
 }
 
+/// Number of `i32` slots a caller buffer must expose for a `(x1-x0) x (y1-y0)` region
+/// laid out with the given strides. This is the index of the last touched element plus one.
+fn region_extent(x0: u32, y0: u32, x1: u32, y1: u32, col_stride: u32, line_stride: u32) -> usize {
+  if x1 <= x0 || y1 <= y0 {
+    return 0;
+  }
+  let w = (x1 - x0) as usize;
+  let h = (y1 - y0) as usize;
+  (h - 1) * line_stride as usize + (w - 1) * col_stride as usize + 1
+}
+
 pub(crate) fn sparse_array_read(
   sa: &SparseArray,
   x0: u32,
   y0: u32,
   x1: u32,
   y1: u32,
-  dest: *mut i32,
+  dest: &mut [i32],
   dest_col_stride: u32,
   dest_line_stride: u32,
   forgiving: bool,
@@ -106,100 +116,50 @@ pub(crate) fn sparse_array_read(
     return forgiving;
   }
 
+  let col_stride = dest_col_stride as usize;
+  let line_stride = dest_line_stride as usize;
   let mut y = y0;
   let mut block_y = y0 / sa.block_height;
   while y < y1 {
-    let mut x: u32 = 0;
-    let mut block_x: u32 = 0;
-    let mut x_incr = 0 as u32;
-    let mut block_y_offset: u32 = 0;
     let y_incr = if y == y0 {
       sa.block_height
         .wrapping_sub(y0.wrapping_rem(sa.block_height))
     } else {
       sa.block_height
     };
-    block_y_offset = sa.block_height.wrapping_sub(y_incr);
+    let block_y_offset = sa.block_height.wrapping_sub(y_incr);
     let y_incr = y_incr.min(y1.wrapping_sub(y));
-    block_x = x0.wrapping_div(sa.block_width);
-    x = x0;
+    let mut block_x = x0.wrapping_div(sa.block_width);
+    let mut x = x0;
     while x < x1 {
-      let mut block_x_offset = 0;
-      x_incr = if x == x0 {
+      let mut x_incr = if x == x0 {
         sa.block_width.wrapping_sub(x0.wrapping_rem(sa.block_width))
       } else {
         sa.block_width
       };
-      block_x_offset = sa.block_width.wrapping_sub(x_incr);
+      let block_x_offset = sa.block_width.wrapping_sub(x_incr);
       x_incr = x_incr.min(x1.wrapping_sub(x));
-      if let Some(src_block) = sa.data_block(block_x, block_y) {
-        let mut src = src_block[((block_y_offset * sa.block_width) + block_x_offset) as usize..]
-          .chunks(sa.block_width as usize);
-        if dest_col_stride == 1 {
-          let mut dest_ptr = unsafe {
-            dest
-              .add((y.wrapping_sub(y0) as usize).wrapping_mul(dest_line_stride as usize))
-              .offset(x.wrapping_sub(x0).wrapping_mul(dest_col_stride) as isize)
-          };
+      let mut dest_base = (y.wrapping_sub(y0) as usize)
+        .wrapping_mul(line_stride)
+        .wrapping_add((x.wrapping_sub(x0) as usize).wrapping_mul(col_stride));
+      match sa.data_block(block_x, block_y) {
+        Some(src_block) => {
+          let mut src = src_block[((block_y_offset * sa.block_width) + block_x_offset) as usize..]
+            .chunks(sa.block_width as usize);
           for _ in 0..y_incr {
-            let src_ptr = src.next().unwrap();
-            unsafe {
-              for k in 0..x_incr {
-                *dest_ptr.offset(k as isize) = src_ptr[k as usize];
-              }
-              dest_ptr = dest_ptr.offset(dest_line_stride as isize);
+            let src_row = src.next().unwrap();
+            for k in 0..x_incr as usize {
+              dest[dest_base + k * col_stride] = src_row[k];
             }
-          }
-        } else {
-          let mut dest_ptr = unsafe {
-            dest
-              .add((y.wrapping_sub(y0) as usize).wrapping_mul(dest_line_stride as usize))
-              .offset(x.wrapping_sub(x0).wrapping_mul(dest_col_stride) as isize)
-          };
-          for _ in 0..y_incr {
-            let src_ptr = src.next().unwrap();
-            for k in 0..x_incr {
-              unsafe {
-                *dest_ptr.offset(k.wrapping_mul(dest_col_stride) as isize) = src_ptr[k as usize];
-              }
-            }
-            unsafe {
-              dest_ptr = dest_ptr.offset(dest_line_stride as isize);
-            }
+            dest_base += line_stride;
           }
         }
-      } else {
-        if dest_col_stride == 1 {
-          let mut dest_ptr = unsafe {
-            dest
-              .add((y.wrapping_sub(y0) as usize).wrapping_mul(dest_line_stride as usize))
-              .offset(x.wrapping_sub(x0).wrapping_mul(dest_col_stride) as isize)
-          };
+        None => {
           for _ in 0..y_incr {
-            unsafe {
-              memset(
-                dest_ptr as *mut core::ffi::c_void,
-                0i32,
-                core::mem::size_of::<i32>().wrapping_mul(x_incr as usize),
-              );
-              dest_ptr = dest_ptr.offset(dest_line_stride as isize);
+            for k in 0..x_incr as usize {
+              dest[dest_base + k * col_stride] = 0i32;
             }
-          }
-        } else {
-          let mut dest_ptr = unsafe {
-            dest
-              .add((y.wrapping_sub(y0) as usize).wrapping_mul(dest_line_stride as usize))
-              .offset(x.wrapping_sub(x0).wrapping_mul(dest_col_stride) as isize)
-          };
-          for _ in 0..y_incr {
-            for k in 0..x_incr {
-              unsafe {
-                *dest_ptr.offset(k.wrapping_mul(dest_col_stride) as isize) = 0i32;
-              }
-            }
-            unsafe {
-              dest_ptr = dest_ptr.offset(dest_line_stride as isize);
-            }
+            dest_base += line_stride;
           }
         }
       }
@@ -218,7 +178,7 @@ pub(crate) fn sparse_array_write(
   y0: u32,
   x1: u32,
   y1: u32,
-  src: *const i32,
+  src: &[i32],
   src_col_stride: u32,
   src_line_stride: u32,
   forgiving: bool,
@@ -227,31 +187,28 @@ pub(crate) fn sparse_array_write(
     return forgiving;
   }
 
+  let col_stride = src_col_stride as usize;
+  let line_stride = src_line_stride as usize;
   let mut y = y0;
   let mut block_y = y0 / sa.block_height;
   while y < y1 {
-    let mut x: u32 = 0;
-    let mut block_x: u32 = 0;
-    let mut x_incr = 0 as u32;
-    let mut block_y_offset: u32 = 0;
     let y_incr = if y == y0 {
       sa.block_height
         .wrapping_sub(y0.wrapping_rem(sa.block_height))
     } else {
       sa.block_height
     };
-    block_y_offset = sa.block_height.wrapping_sub(y_incr);
+    let block_y_offset = sa.block_height.wrapping_sub(y_incr);
     let y_incr = y_incr.min(y1.wrapping_sub(y));
-    block_x = x0.wrapping_div(sa.block_width);
-    x = x0;
+    let mut block_x = x0.wrapping_div(sa.block_width);
+    let mut x = x0;
     while x < x1 {
-      let mut block_x_offset: u32 = 0;
-      x_incr = if x == x0 {
+      let mut x_incr = if x == x0 {
         sa.block_width.wrapping_sub(x0.wrapping_rem(sa.block_width))
       } else {
         sa.block_width
       };
-      block_x_offset = sa.block_width.wrapping_sub(x_incr);
+      let block_x_offset = sa.block_width.wrapping_sub(x_incr);
       x_incr = x_incr.min(x1.wrapping_sub(x));
       let index = sa.block_index(block_x, block_y);
       if sa.blocks[index].is_none() {
@@ -260,38 +217,15 @@ pub(crate) fn sparse_array_write(
       if let Some(ref mut dest_block) = sa.blocks[index] {
         let mut dest = dest_block[((block_y_offset * sa.block_width) + block_x_offset) as usize..]
           .chunks_mut(sa.block_width as usize);
-        if src_col_stride == 1 {
-          let mut src_ptr = unsafe {
-            src
-              .add((y.wrapping_sub(y0) as usize).wrapping_mul(src_line_stride as usize))
-              .offset(x.wrapping_sub(x0).wrapping_mul(src_col_stride) as isize)
-          };
-          for _ in 0..y_incr {
-            let dest_ptr = dest.next().unwrap();
-            unsafe {
-              for k in 0..x_incr {
-                dest_ptr[k as usize] = *src_ptr.offset(k as isize);
-              }
-              src_ptr = src_ptr.offset(src_line_stride as isize);
-            }
+        let mut src_base = (y.wrapping_sub(y0) as usize)
+          .wrapping_mul(line_stride)
+          .wrapping_add((x.wrapping_sub(x0) as usize).wrapping_mul(col_stride));
+        for _ in 0..y_incr {
+          let dest_row = dest.next().unwrap();
+          for k in 0..x_incr as usize {
+            dest_row[k] = src[src_base + k * col_stride];
           }
-        } else {
-          let mut src_ptr = unsafe {
-            src
-              .add((y.wrapping_sub(y0) as usize).wrapping_mul(src_line_stride as usize))
-              .offset(x.wrapping_sub(x0).wrapping_mul(src_col_stride) as isize)
-          };
-          for _ in 0..y_incr {
-            let dest_ptr = dest.next().unwrap();
-            for k in 0..x_incr {
-              unsafe {
-                dest_ptr[k as usize] = *src_ptr.offset(k.wrapping_mul(src_col_stride) as isize);
-              }
-            }
-            unsafe {
-              src_ptr = src_ptr.offset(src_line_stride as isize);
-            }
-          }
+          src_base += line_stride;
         }
       }
       block_x = block_x.wrapping_add(1);
@@ -301,4 +235,71 @@ pub(crate) fn sparse_array_write(
     y = y.wrapping_add(y_incr)
   }
   true
+}
+
+/* ------------------------------------------------------------------------- */
+/* Temporary raw-pointer shims for `dwt.rs`. Deleted in phase 2.b once the DWT */
+/* code paths carry slices of their own.                                       */
+/* ------------------------------------------------------------------------- */
+
+/// # Safety
+/// `dest` must point to at least `region_extent(..)` writable `i32`s.
+pub(crate) unsafe fn sparse_array_read_ptr(
+  sa: &SparseArray,
+  x0: u32,
+  y0: u32,
+  x1: u32,
+  y1: u32,
+  dest: *mut i32,
+  dest_col_stride: u32,
+  dest_line_stride: u32,
+  forgiving: bool,
+) -> bool {
+  if !is_region_valid(sa, x0, y0, x1, y1) {
+    return forgiving;
+  }
+  let len = region_extent(x0, y0, x1, y1, dest_col_stride, dest_line_stride);
+  let dest = unsafe { core::slice::from_raw_parts_mut(dest, len) };
+  sparse_array_read(
+    sa,
+    x0,
+    y0,
+    x1,
+    y1,
+    dest,
+    dest_col_stride,
+    dest_line_stride,
+    forgiving,
+  )
+}
+
+/// # Safety
+/// `src` must point to at least `region_extent(..)` readable `i32`s.
+pub(crate) unsafe fn sparse_array_write_ptr(
+  sa: &mut SparseArray,
+  x0: u32,
+  y0: u32,
+  x1: u32,
+  y1: u32,
+  src: *const i32,
+  src_col_stride: u32,
+  src_line_stride: u32,
+  forgiving: bool,
+) -> bool {
+  if !is_region_valid(sa, x0, y0, x1, y1) {
+    return forgiving;
+  }
+  let len = region_extent(x0, y0, x1, y1, src_col_stride, src_line_stride);
+  let src = unsafe { core::slice::from_raw_parts(src, len) };
+  sparse_array_write(
+    sa,
+    x0,
+    y0,
+    x1,
+    y1,
+    src,
+    src_col_stride,
+    src_line_stride,
+    forgiving,
+  )
 }

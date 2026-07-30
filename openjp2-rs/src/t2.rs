@@ -58,14 +58,14 @@ pub(crate) type opj_t2_t = opj_t2;
 /* * @defgroup T2 T2 - Implementation of a tier-2 coding */
 
 /* ----------------------------------------------------------------------- */
-fn opj_t2_putcommacode(mut bio: *mut opj_bio_t, mut n: OPJ_INT32) {
+fn opj_t2_putcommacode(bio: &mut opj_bio, mut n: OPJ_INT32) {
   for _ in 0..n {
     opj_bio_putbit(bio, 1);
   }
   opj_bio_putbit(bio, 0);
 }
 
-fn opj_t2_getcommacode(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
+fn opj_t2_getcommacode(bio: &mut opj_bio) -> OPJ_UINT32 {
   let mut n = 0 as OPJ_UINT32;
   while opj_bio_read(bio, 1 as OPJ_UINT32) != 0 {
     n += 1;
@@ -78,7 +78,7 @@ Variable length code for signalling delta Zil (truncation point)
 @param bio  Bit Input/Output component
 @param n    delta Zil
 */
-fn opj_t2_putnumpasses(mut bio: *mut opj_bio_t, mut n: OPJ_UINT32) {
+fn opj_t2_putnumpasses(bio: &mut opj_bio, mut n: OPJ_UINT32) {
   if n == 1u32 {
     opj_bio_putbit(bio, 0);
   } else if n == 2u32 {
@@ -92,7 +92,7 @@ fn opj_t2_putnumpasses(mut bio: *mut opj_bio_t, mut n: OPJ_UINT32) {
   };
 }
 
-fn opj_t2_getnumpasses(mut bio: *mut opj_bio_t) -> OPJ_UINT32 {
+fn opj_t2_getnumpasses(bio: &mut opj_bio) -> OPJ_UINT32 {
   let mut n: OPJ_UINT32 = 0;
   if opj_bio_read(bio, 1 as OPJ_UINT32) == 0 {
     return 1 as OPJ_UINT32;
@@ -631,7 +631,6 @@ fn opj_t2_encode_packet(
       &mut *(*tile).comps.offset(compno as isize) as *mut opj_tcd_tilecomp_t;
     let mut res: *mut opj_tcd_resolution_t =
       &mut *(*tilec).resolutions.offset(resno as isize) as *mut opj_tcd_resolution_t;
-    let mut bio = core::ptr::null_mut::<opj_bio_t>();
     let mut packet_empty = 0i32;
     /* <SOP 0xff91> */
     if (*tcp).csty & 0x2u32 != 0 {
@@ -677,15 +676,20 @@ fn opj_t2_encode_packet(
             return 0i32;
           }
           prc = &mut *(*band).precincts.offset(precno as isize) as *mut opj_tcd_precinct_t;
-          opj_tgt_reset((*prc).incltree);
-          opj_tgt_reset((*prc).imsbtree);
+          /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
+          if !(*prc).incltree.is_null() {
+            opj_tgt_reset(&mut *(*prc).incltree);
+          }
+          if !(*prc).imsbtree.is_null() {
+            opj_tgt_reset(&mut *(*prc).imsbtree);
+          }
           l_nb_blocks = (*prc).cw.wrapping_mul((*prc).ch);
           cblkno = 0 as OPJ_UINT32;
           while cblkno < l_nb_blocks {
             cblk = &mut *(*prc).cblks.enc.offset(cblkno as isize) as *mut opj_tcd_cblk_enc_t;
             (*cblk).numpasses = 0 as OPJ_UINT32;
             opj_tgt_setvalue(
-              (*prc).imsbtree,
+              &mut *(*prc).imsbtree,
               cblkno,
               (*band).numbps - (*cblk).numbps as OPJ_INT32,
             );
@@ -696,12 +700,8 @@ fn opj_t2_encode_packet(
         band = band.offset(1)
       }
     }
-    bio = opj_bio_create();
-    if bio.is_null() {
-      /* FIXME event manager error callback */
-      return 0i32;
-    }
-    opj_bio_init_enc(bio, c, length);
+    let mut bio = opj_bio::new_enc(core::slice::from_raw_parts_mut(c, length as usize));
+    let bio = &mut bio;
     /* Empty header bit */
     opj_bio_putbit(bio, if packet_empty != 0 { 0 } else { 1 });
 
@@ -732,7 +732,7 @@ fn opj_t2_encode_packet(
           let mut layer: *mut opj_tcd_layer_t =
             &mut *(*cblk).layers.offset(layno as isize) as *mut opj_tcd_layer_t;
           if (*cblk).numpasses == 0 && (*layer).numpasses != 0 {
-            opj_tgt_setvalue((*prc_0).incltree, cblkno, layno as OPJ_INT32);
+            opj_tgt_setvalue(&mut *(*prc_0).incltree, cblkno, layno as OPJ_INT32);
           }
           cblk = cblk.offset(1);
           cblkno += 1;
@@ -751,7 +751,7 @@ fn opj_t2_encode_packet(
           if (*cblk).numpasses == 0 {
             opj_tgt_encode(
               bio,
-              (*prc_0).incltree,
+              &mut *(*prc_0).incltree,
               cblkno,
               layno.wrapping_add(1u32) as OPJ_INT32,
             );
@@ -765,7 +765,7 @@ fn opj_t2_encode_packet(
             /* if first instance of cblk --> zero bit-planes information */
             if (*cblk).numpasses == 0 {
               (*cblk).numlenbits = 3 as OPJ_UINT32;
-              opj_tgt_encode(bio, (*prc_0).imsbtree, cblkno, 999i32);
+              opj_tgt_encode(bio, &mut *(*prc_0).imsbtree, cblkno, 999i32);
             }
             /* number of coding passes included */
             opj_t2_putnumpasses(bio, (*layer_0).numpasses);
@@ -833,14 +833,12 @@ fn opj_t2_encode_packet(
       band = band.offset(1)
     }
     if opj_bio_flush(bio) == 0 {
-      opj_bio_destroy(bio);
       return 0i32;
       /* modified to eliminate longjmp !! */
     }
     l_nb_bytes = opj_bio_numbytes(bio) as OPJ_UINT32;
     c = c.offset(l_nb_bytes as isize);
     length = (length as core::ffi::c_uint).wrapping_sub(l_nb_bytes) as OPJ_UINT32;
-    opj_bio_destroy(bio);
     /* <EPH 0xff92> */
     if (*tcp).csty & 0x4u32 != 0 {
       if length < 2u32 {
@@ -1019,7 +1017,6 @@ fn opj_t2_read_packet_header(
     let mut l_modified_length_ptr = core::ptr::null_mut::<OPJ_UINT32>();
     let mut l_current_data = p_src_data;
     let mut l_cp = (*p_t2).cp;
-    let mut l_bio = core::ptr::null_mut::<opj_bio_t>();
     let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
     let mut l_cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
     let mut l_res: *mut opj_tcd_resolution_t =
@@ -1044,8 +1041,13 @@ fn opj_t2_read_packet_header(
             event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
             return 0i32;
           }
-          opj_tgt_reset((*l_prc).incltree);
-          opj_tgt_reset((*l_prc).imsbtree);
+          /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
+          if !(*l_prc).incltree.is_null() {
+            opj_tgt_reset(&mut *(*l_prc).incltree);
+          }
+          if !(*l_prc).imsbtree.is_null() {
+            opj_tgt_reset(&mut *(*l_prc).imsbtree);
+          }
           l_cblk = (*l_prc).cblks.dec;
           l_nb_code_blocks = (*l_prc).cw.wrapping_mul((*l_prc).ch);
           cblkno = 0 as OPJ_UINT32;
@@ -1085,11 +1087,6 @@ fn opj_t2_read_packet_header(
     step 1: Read packet header in the saved structure
     step 2: Return to codestream for decoding
     */
-    l_bio = opj_bio_create();
-    if l_bio.is_null() {
-      return 0i32;
-    }
-
     if (*l_cp).ppm {
       /* PPM */
       l_header_data_start = &mut (*l_cp).ppm_data; /* Normal Case */
@@ -1109,7 +1106,11 @@ fn opj_t2_read_packet_header(
       l_modified_length_ptr = &mut l_remaining_length
     }
 
-    opj_bio_init_dec(l_bio, l_header_data, *l_modified_length_ptr);
+    let mut l_bio = opj_bio::new_dec(core::slice::from_raw_parts_mut(
+      l_header_data,
+      *l_modified_length_ptr as usize,
+    ));
+    let l_bio = &mut l_bio;
 
     l_present = opj_bio_read(l_bio, 1 as OPJ_UINT32);
     log::debug!("present={}", l_present);
@@ -1117,7 +1118,6 @@ fn opj_t2_read_packet_header(
       /* TODO MSD: no test to control the output of this function*/
       opj_bio_inalign(l_bio);
       l_header_data = l_header_data.offset(opj_bio_numbytes(l_bio));
-      opj_bio_destroy(l_bio);
       /* EPH markers */
       if (*p_tcp).csty & 0x4u32 != 0 {
         if (*l_modified_length_ptr)
@@ -1172,7 +1172,7 @@ fn opj_t2_read_packet_header(
           if (*l_cblk).numsegs == 0 {
             l_included = opj_tgt_decode(
               l_bio,
-              (*l_prc_0).incltree,
+              &mut *(*l_prc_0).incltree,
               cblkno,
               (*p_pi).layno.wrapping_add(1u32) as OPJ_INT32,
             )
@@ -1190,7 +1190,7 @@ fn opj_t2_read_packet_header(
             /* if cblk not yet included --> zero-bitplane tagtree */
             if (*l_cblk).numsegs == 0 {
               let mut i = 0 as OPJ_UINT32;
-              while opj_tgt_decode(l_bio, (*l_prc_0).imsbtree, cblkno, i as OPJ_INT32) == 0 {
+              while opj_tgt_decode(l_bio, &mut *(*l_prc_0).imsbtree, cblkno, i as OPJ_INT32) == 0 {
                 i += 1;
               }
               (*l_cblk).Mb = (*l_band).numbps as OPJ_UINT32;
@@ -1221,7 +1221,6 @@ fn opj_t2_read_packet_header(
                 1 as OPJ_UINT32,
               ) == 0
               {
-                opj_bio_destroy(l_bio);
                 return 0i32;
               }
             } else {
@@ -1237,7 +1236,6 @@ fn opj_t2_read_packet_header(
                   0 as OPJ_UINT32,
                 ) == 0
                 {
-                  opj_bio_destroy(l_bio);
                   return 0i32;
                 }
               }
@@ -1261,7 +1259,6 @@ fn opj_t2_read_packet_header(
                     "Invalid bit number {} in opj_t2_read_packet_header()\n",
                     bit_number,
                   );
-                  opj_bio_destroy(l_bio);
                   return 0i32;
                 }
                 (*(*l_cblk).segs.offset(l_segno as isize)).newlen = opj_bio_read(l_bio, bit_number);
@@ -1282,7 +1279,6 @@ fn opj_t2_read_packet_header(
                     0 as OPJ_UINT32,
                   ) == 0
                   {
-                    opj_bio_destroy(l_bio);
                     return 0i32;
                   }
                 }
@@ -1311,7 +1307,6 @@ fn opj_t2_read_packet_header(
                     "Invalid bit number {} in opj_t2_read_packet_header()\n",
                     bit_number_0,
                   );
-                  opj_bio_destroy(l_bio);
                   return 0i32;
                 }
                 (*(*l_cblk).segs.offset(l_segno as isize)).newlen =
@@ -1333,7 +1328,6 @@ fn opj_t2_read_packet_header(
                     0 as OPJ_UINT32,
                   ) == 0
                   {
-                    opj_bio_destroy(l_bio);
                     return 0i32;
                   }
                 }
@@ -1351,11 +1345,9 @@ fn opj_t2_read_packet_header(
       l_band = l_band.offset(1)
     }
     if opj_bio_inalign(l_bio) == 0 {
-      opj_bio_destroy(l_bio);
       return 0i32;
     }
     l_header_data = l_header_data.offset(opj_bio_numbytes(l_bio));
-    opj_bio_destroy(l_bio);
     /* EPH markers */
     if (*p_tcp).csty & 0x4u32 != 0 {
       if (*l_modified_length_ptr)
@@ -1692,7 +1684,7 @@ fn opj_t2_init_seg(
       (*cblk).m_current_max_segs = l_m_current_max_segs
     }
     seg = &mut *(*cblk).segs.offset(index as isize) as *mut opj_tcd_seg_t;
-    opj_tcd_reinit_segment(seg);
+    opj_tcd_reinit_segment(&mut *seg);
     if cblksty & 0x4u32 != 0 {
       (*seg).maxpasses = 1 as OPJ_UINT32
     } else if cblksty & 0x1u32 != 0 {

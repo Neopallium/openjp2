@@ -779,19 +779,17 @@ pub(crate) struct opj_tcd_precinct {
 }
 pub(crate) type opj_tcd_precinct_t = opj_tcd_precinct;
 
-#[derive(Copy, Clone)]
 pub(crate) struct opj_tgt_tree {
   pub numleafsh: OPJ_UINT32,
   pub numleafsv: OPJ_UINT32,
-  pub numnodes: OPJ_UINT32,
-  pub nodes: *mut opj_tgt_node_t,
-  pub nodes_size: OPJ_UINT32,
+  pub nodes: Vec<opj_tgt_node>,
 }
 pub(crate) type opj_tgt_tree_t = opj_tgt_tree;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub(crate) struct opj_tgt_node {
-  pub parent: *mut opj_tgt_node,
+  /// Index into `opj_tgt_tree::nodes`; `None` for the root.
+  pub parent: Option<OPJ_UINT32>,
   pub value: OPJ_INT32,
   pub low: OPJ_INT32,
   pub known: OPJ_UINT32,
@@ -845,7 +843,7 @@ impl opj_tcd_seg_data_chunk {
   }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub(crate) struct opj_tcd_seg {
   pub len: OPJ_UINT32,
   pub numpasses: OPJ_UINT32,

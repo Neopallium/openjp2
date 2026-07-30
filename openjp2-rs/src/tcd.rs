@@ -1382,12 +1382,8 @@ fn opj_tcd_code_block_enc_allocate_data(mut p_code_block: *mut opj_tcd_cblk_enc_
   }
 }
 
-pub(crate) fn opj_tcd_reinit_segment(mut seg: *mut opj_tcd_seg_t) {
-  memset(
-    seg as *mut core::ffi::c_void,
-    0i32,
-    core::mem::size_of::<opj_tcd_seg_t>(),
-  );
+pub(crate) fn opj_tcd_reinit_segment(seg: &mut opj_tcd_seg_t) {
+  *seg = opj_tcd_seg_t::default();
 }
 /* We reserve the initial byte as a fake byte to a non-FF value */
 /* and increment the data pointer, so that opj_mqc_init_enc() */
@@ -2175,7 +2171,6 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
     let mut l_tcp = p_tcd.tcp;
     let mut l_tile_comp = p_tcd.tcd_image.tiles.comps;
     let mut l_samples: OPJ_SIZE_T = 0;
-    let mut i: OPJ_UINT32 = 0;
     if (*l_tcp).mct == 0u32 || p_tcd.used_component.len() > 0 {
       return 1i32;
     }
@@ -2266,68 +2261,48 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
       }
     }
     if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
+      let numcomps = p_tcd.tcd_image.tiles.numcomps as usize;
+      let comp_ptr = |i: usize| -> *mut OPJ_INT32 {
+        let comp = p_tcd.tcd_image.tiles.comps.add(i);
+        if p_tcd.whole_tile_decoding != 0 {
+          (*comp).data
+        } else {
+          (*comp).data_win
+        }
+      };
       if (*l_tcp).mct == 2u32 {
-        let mut l_data = core::ptr::null_mut::<*mut OPJ_BYTE>();
         if (*l_tcp).m_mct_decoding_matrix.is_null() {
           return 1i32;
         }
-        l_data = opj_alloc_type_array(p_tcd.tcd_image.tiles.numcomps as usize);
-        if l_data.is_null() {
-          return 0i32;
-        }
-        i = 0 as OPJ_UINT32;
-        while i < p_tcd.tcd_image.tiles.numcomps {
-          if p_tcd.whole_tile_decoding != 0 {
-            let fresh7 = &mut (*l_data.offset(i as isize));
-            *fresh7 = (*l_tile_comp).data as *mut OPJ_BYTE
-          } else {
-            let fresh8 = &mut (*l_data.offset(i as isize));
-            *fresh8 = (*l_tile_comp).data_win as *mut OPJ_BYTE
-          }
-          l_tile_comp = l_tile_comp.offset(1);
-          i += 1;
-        }
+        let mut l_data: Vec<&mut [OPJ_FLOAT32]> = (0..numcomps)
+          .map(|i| core::slice::from_raw_parts_mut(comp_ptr(i) as *mut OPJ_FLOAT32, l_samples))
+          .collect();
+        let matrix = core::slice::from_raw_parts(
+          (*l_tcp).m_mct_decoding_matrix as *const OPJ_FLOAT32,
+          numcomps * numcomps,
+        );
         if opj_mct_decode_custom(
-          (*l_tcp).m_mct_decoding_matrix as *mut OPJ_BYTE,
+          matrix,
           l_samples,
-          l_data,
-          p_tcd.tcd_image.tiles.numcomps,
+          &mut l_data,
           (*(*p_tcd.image).comps).sgnd,
         ) == 0
         {
-          opj_free_type_array(l_data, p_tcd.tcd_image.tiles.numcomps as usize);
           return 0i32;
         }
-        opj_free_type_array(l_data, p_tcd.tcd_image.tiles.numcomps as usize);
       } else if (*(*l_tcp).tccps).qmfbid == 1u32 {
-        if p_tcd.whole_tile_decoding != 0 {
-          opj_mct_decode(
-            (*p_tcd.tcd_image.tiles.comps.offset(0)).data,
-            (*p_tcd.tcd_image.tiles.comps.offset(1)).data,
-            (*p_tcd.tcd_image.tiles.comps.offset(2)).data,
-            l_samples,
-          );
-        } else {
-          opj_mct_decode(
-            (*p_tcd.tcd_image.tiles.comps.offset(0)).data_win,
-            (*p_tcd.tcd_image.tiles.comps.offset(1)).data_win,
-            (*p_tcd.tcd_image.tiles.comps.offset(2)).data_win,
-            l_samples,
-          );
-        }
-      } else if p_tcd.whole_tile_decoding != 0 {
-        opj_mct_decode_real(
-          (*p_tcd.tcd_image.tiles.comps.offset(0)).data as *mut OPJ_FLOAT32,
-          (*p_tcd.tcd_image.tiles.comps.offset(1)).data as *mut OPJ_FLOAT32,
-          (*p_tcd.tcd_image.tiles.comps.offset(2)).data as *mut OPJ_FLOAT32,
-          l_samples,
+        let (c0, c1, c2) = (comp_ptr(0), comp_ptr(1), comp_ptr(2));
+        opj_mct_decode(
+          core::slice::from_raw_parts_mut(c0, l_samples),
+          core::slice::from_raw_parts_mut(c1, l_samples),
+          core::slice::from_raw_parts_mut(c2, l_samples),
         );
       } else {
+        let (c0, c1, c2) = (comp_ptr(0), comp_ptr(1), comp_ptr(2));
         opj_mct_decode_real(
-          (*p_tcd.tcd_image.tiles.comps.offset(0)).data_win as *mut OPJ_FLOAT32,
-          (*p_tcd.tcd_image.tiles.comps.offset(1)).data_win as *mut OPJ_FLOAT32,
-          (*p_tcd.tcd_image.tiles.comps.offset(2)).data_win as *mut OPJ_FLOAT32,
-          l_samples,
+          core::slice::from_raw_parts_mut(c0 as *mut OPJ_FLOAT32, l_samples),
+          core::slice::from_raw_parts_mut(c1 as *mut OPJ_FLOAT32, l_samples),
+          core::slice::from_raw_parts_mut(c2 as *mut OPJ_FLOAT32, l_samples),
         );
       }
     } else {
@@ -2613,8 +2588,6 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     let mut l_tile_comp = p_tcd.tcd_image.tiles.comps;
     let mut samples = (((*l_tile_comp).x1 - (*l_tile_comp).x0) as OPJ_SIZE_T)
       .wrapping_mul(((*l_tile_comp).y1 - (*l_tile_comp).y0) as OPJ_SIZE_T);
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_data = core::ptr::null_mut::<*mut OPJ_BYTE>();
     let mut l_tcp = p_tcd.tcp;
     if (*p_tcd.tcp).mct == 0 {
       return 1i32;
@@ -2623,42 +2596,43 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
       if (*p_tcd.tcp).m_mct_coding_matrix.is_null() {
         return 1i32;
       }
-      l_data = opj_alloc_type_array(p_tcd.tcd_image.tiles.numcomps as usize);
-      if l_data.is_null() {
-        return 0i32;
-      }
-      i = 0 as OPJ_UINT32;
-      while i < p_tcd.tcd_image.tiles.numcomps {
-        let fresh9 = &mut (*l_data.offset(i as isize));
-        *fresh9 = (*l_tile_comp).data as *mut OPJ_BYTE;
-        l_tile_comp = l_tile_comp.offset(1);
-        i += 1;
-      }
+      let numcomps = p_tcd.tcd_image.tiles.numcomps as usize;
+      let mut l_data: Vec<&mut [OPJ_INT32]> = (0..numcomps)
+        .map(|i| core::slice::from_raw_parts_mut((*l_tile_comp.add(i)).data, samples))
+        .collect();
+      let matrix = core::slice::from_raw_parts(
+        (*p_tcd.tcp).m_mct_coding_matrix as *const OPJ_FLOAT32,
+        numcomps * numcomps,
+      );
       if opj_mct_encode_custom(
-        (*p_tcd.tcp).m_mct_coding_matrix as *mut OPJ_BYTE,
+        matrix,
         samples,
-        l_data,
-        p_tcd.tcd_image.tiles.numcomps,
+        &mut l_data,
         (*(*p_tcd.image).comps).sgnd,
       ) == 0
       {
-        opj_free_type_array(l_data, p_tcd.tcd_image.tiles.numcomps as usize);
         return 0i32;
       }
-      opj_free_type_array(l_data, p_tcd.tcd_image.tiles.numcomps as usize);
     } else if (*(*l_tcp).tccps).qmfbid == 0u32 {
       opj_mct_encode_real(
-        (*p_tcd.tcd_image.tiles.comps.offset(0)).data as *mut OPJ_FLOAT32,
-        (*p_tcd.tcd_image.tiles.comps.offset(1)).data as *mut OPJ_FLOAT32,
-        (*p_tcd.tcd_image.tiles.comps.offset(2)).data as *mut OPJ_FLOAT32,
-        samples,
+        core::slice::from_raw_parts_mut(
+          (*p_tcd.tcd_image.tiles.comps.offset(0)).data as *mut OPJ_FLOAT32,
+          samples,
+        ),
+        core::slice::from_raw_parts_mut(
+          (*p_tcd.tcd_image.tiles.comps.offset(1)).data as *mut OPJ_FLOAT32,
+          samples,
+        ),
+        core::slice::from_raw_parts_mut(
+          (*p_tcd.tcd_image.tiles.comps.offset(2)).data as *mut OPJ_FLOAT32,
+          samples,
+        ),
       );
     } else {
       opj_mct_encode(
-        (*p_tcd.tcd_image.tiles.comps.offset(0)).data,
-        (*p_tcd.tcd_image.tiles.comps.offset(1)).data,
-        (*p_tcd.tcd_image.tiles.comps.offset(2)).data,
-        samples,
+        core::slice::from_raw_parts_mut((*p_tcd.tcd_image.tiles.comps.offset(0)).data, samples),
+        core::slice::from_raw_parts_mut((*p_tcd.tcd_image.tiles.comps.offset(1)).data, samples),
+        core::slice::from_raw_parts_mut((*p_tcd.tcd_image.tiles.comps.offset(2)).data, samples),
       );
     }
     1i32

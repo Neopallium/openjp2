@@ -3,8 +3,10 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
+// TODO(phase 7): drop these two once the c2rust residue is cleaned up.
 #![allow(unused_assignments)]
 #![allow(unused_mut)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[cfg(feature = "file-io")]
 extern crate libc;

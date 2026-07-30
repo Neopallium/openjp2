@@ -1,6 +1,5 @@
 use super::openjpeg::*;
 
-use super::malloc::*;
 
 #[inline]
 fn opj_int_fix_mul(mut a: OPJ_INT32, mut b: OPJ_INT32) -> OPJ_INT32 {
@@ -69,55 +68,31 @@ pub(crate) fn opj_mct_get_mct_norms_real() -> *const OPJ_FLOAT64 {
 /* Forward reversible MCT. */
 /* </summary> */
 
-pub(crate) fn opj_mct_encode(
-  mut c0: *mut OPJ_INT32,
-  mut c1: *mut OPJ_INT32,
-  mut c2: *mut OPJ_INT32,
-  mut n: OPJ_SIZE_T,
-) {
-  unsafe {
-    let mut i: OPJ_SIZE_T = 0;
-    let len = n;
-    i = 0 as OPJ_SIZE_T;
-    while i < len {
-      let mut r = *c0.add(i);
-      let mut g = *c1.add(i);
-      let mut b = *c2.add(i);
-      let mut y = (r + g * 2i32 + b) >> 2i32;
-      let mut u = b - g;
-      let mut v = r - g;
-      *c0.add(i) = y;
-      *c1.add(i) = u;
-      *c2.add(i) = v;
-      i += 1;
-    }
+pub(crate) fn opj_mct_encode(c0: &mut [OPJ_INT32], c1: &mut [OPJ_INT32], c2: &mut [OPJ_INT32]) {
+  let len = c0.len().min(c1.len()).min(c2.len());
+  for i in 0..len {
+    let r = c0[i];
+    let g = c1[i];
+    let b = c2[i];
+    c0[i] = (r + g * 2i32 + b) >> 2i32;
+    c1[i] = b - g;
+    c2[i] = r - g;
   }
 }
 /* <summary> */
 /* Inverse reversible MCT. */
 /* </summary> */
 
-pub(crate) fn opj_mct_decode(
-  mut c0: *mut OPJ_INT32,
-  mut c1: *mut OPJ_INT32,
-  mut c2: *mut OPJ_INT32,
-  mut n: OPJ_SIZE_T,
-) {
-  unsafe {
-    let mut i: OPJ_SIZE_T = 0;
-    i = 0 as OPJ_SIZE_T;
-    while i < n {
-      let mut y = *c0.add(i);
-      let mut u = *c1.add(i);
-      let mut v = *c2.add(i);
-      let mut g = y - ((u + v) >> 2i32);
-      let mut r = v + g;
-      let mut b = u + g;
-      *c0.add(i) = r;
-      *c1.add(i) = g;
-      *c2.add(i) = b;
-      i += 1;
-    }
+pub(crate) fn opj_mct_decode(c0: &mut [OPJ_INT32], c1: &mut [OPJ_INT32], c2: &mut [OPJ_INT32]) {
+  let len = c0.len().min(c1.len()).min(c2.len());
+  for i in 0..len {
+    let y = c0[i];
+    let u = c1[i];
+    let v = c2[i];
+    let g = y - ((u + v) >> 2i32);
+    c0[i] = v + g;
+    c1[i] = g;
+    c2[i] = u + g;
   }
 }
 /* <summary> */
@@ -132,26 +107,18 @@ pub(crate) fn opj_mct_getnorm(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
 /* </summary> */
 
 pub(crate) fn opj_mct_encode_real(
-  mut c0: *mut OPJ_FLOAT32,
-  mut c1: *mut OPJ_FLOAT32,
-  mut c2: *mut OPJ_FLOAT32,
-  mut n: OPJ_SIZE_T,
+  c0: &mut [OPJ_FLOAT32],
+  c1: &mut [OPJ_FLOAT32],
+  c2: &mut [OPJ_FLOAT32],
 ) {
-  unsafe {
-    let mut i: OPJ_SIZE_T = 0;
-    i = 0 as OPJ_SIZE_T;
-    while i < n {
-      let mut r = *c0.add(i);
-      let mut g = *c1.add(i);
-      let mut b = *c2.add(i);
-      let mut y = 0.299f32 * r + 0.587f32 * g + 0.114f32 * b;
-      let mut u = -0.16875f32 * r - 0.331260f32 * g + 0.5f32 * b;
-      let mut v = 0.5f32 * r - 0.41869f32 * g - 0.08131f32 * b;
-      *c0.add(i) = y;
-      *c1.add(i) = u;
-      *c2.add(i) = v;
-      i += 1;
-    }
+  let len = c0.len().min(c1.len()).min(c2.len());
+  for i in 0..len {
+    let r = c0[i];
+    let g = c1[i];
+    let b = c2[i];
+    c0[i] = 0.299f32 * r + 0.587f32 * g + 0.114f32 * b;
+    c1[i] = -0.16875f32 * r - 0.331260f32 * g + 0.5f32 * b;
+    c2[i] = 0.5f32 * r - 0.41869f32 * g - 0.08131f32 * b;
   }
 }
 /* <summary> */
@@ -159,26 +126,18 @@ pub(crate) fn opj_mct_encode_real(
 /* </summary> */
 
 pub(crate) fn opj_mct_decode_real(
-  mut c0: *mut OPJ_FLOAT32,
-  mut c1: *mut OPJ_FLOAT32,
-  mut c2: *mut OPJ_FLOAT32,
-  mut n: OPJ_SIZE_T,
+  c0: &mut [OPJ_FLOAT32],
+  c1: &mut [OPJ_FLOAT32],
+  c2: &mut [OPJ_FLOAT32],
 ) {
-  unsafe {
-    let mut i: OPJ_SIZE_T = 0;
-    i = 0 as OPJ_SIZE_T;
-    while i < n {
-      let mut y = *c0.add(i);
-      let mut u = *c1.add(i);
-      let mut v = *c2.add(i);
-      let mut r = y + v * 1.402f32;
-      let mut g = y - u * 0.34413f32 - v * 0.71414f32;
-      let mut b = y + u * 1.772f32;
-      *c0.add(i) = r;
-      *c1.add(i) = g;
-      *c2.add(i) = b;
-      i += 1;
-    }
+  let len = c0.len().min(c1.len()).min(c2.len());
+  for i in 0..len {
+    let y = c0[i];
+    let u = c1[i];
+    let v = c2[i];
+    c0[i] = y + v * 1.402f32;
+    c1[i] = y - u * 0.34413f32 - v * 0.71414f32;
+    c2[i] = y + u * 1.772f32;
   }
 }
 /* <summary> */
@@ -190,144 +149,71 @@ pub(crate) fn opj_mct_getnorm_real(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
 }
 
 pub(crate) fn opj_mct_encode_custom(
-  mut pCodingdata: *mut OPJ_BYTE,
-  mut n: OPJ_SIZE_T,
-  mut pData: *mut *mut OPJ_BYTE,
-  mut pNbComp: OPJ_UINT32,
-  mut _isSigned: OPJ_UINT32,
+  coding_matrix: &[OPJ_FLOAT32],
+  n: OPJ_SIZE_T,
+  data: &mut [&mut [OPJ_INT32]],
+  _is_signed: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut lMct = pCodingdata as *mut OPJ_FLOAT32;
-    let mut i: OPJ_SIZE_T = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut k: OPJ_UINT32 = 0;
-    let mut lNbMatCoeff = pNbComp.wrapping_mul(pNbComp);
-    let mut lCurrentData = core::ptr::null_mut::<OPJ_INT32>();
-    let mut lCurrentMatrix = core::ptr::null_mut::<OPJ_INT32>();
-    let mut lData = pData as *mut *mut OPJ_INT32;
-    let mut lMultiplicator = ((1i32) << 13i32) as OPJ_UINT32;
-    let mut lMctPtr = core::ptr::null_mut::<OPJ_INT32>();
-    let data_count = pNbComp.wrapping_add(lNbMatCoeff) as usize;
-    lCurrentData = opj_alloc_type_array(data_count) as *mut OPJ_INT32;
-    if lCurrentData.is_null() {
-      return 0i32;
+  let nb_comp = data.len();
+  let multiplicator = ((1i32) << 13i32) as OPJ_FLOAT32;
+  let matrix: Vec<OPJ_INT32> = coding_matrix[..nb_comp * nb_comp]
+    .iter()
+    .map(|&v| (v * multiplicator) as OPJ_INT32)
+    .collect();
+  let mut current = vec![0 as OPJ_INT32; nb_comp];
+  for i in 0..n {
+    for j in 0..nb_comp {
+      current[j] = data[j][i];
     }
-    lCurrentMatrix = lCurrentData.offset(pNbComp as isize);
-    i = 0 as OPJ_SIZE_T;
-    while i < lNbMatCoeff as usize {
-      let fresh0 = lMct;
-      lMct = lMct.offset(1);
-      *lCurrentMatrix.add(i) = (*fresh0 * lMultiplicator as OPJ_FLOAT32) as OPJ_INT32;
-      i += 1;
-    }
-    i = 0 as OPJ_SIZE_T;
-    while i < n {
-      lMctPtr = lCurrentMatrix;
-      j = 0 as OPJ_UINT32;
-      while j < pNbComp {
-        *lCurrentData.offset(j as isize) = **lData.offset(j as isize);
-        j += 1;
+    for j in 0..nb_comp {
+      let mut acc = 0i32;
+      for k in 0..nb_comp {
+        acc += opj_int_fix_mul(matrix[j * nb_comp + k], current[k]);
       }
-      j = 0 as OPJ_UINT32;
-      while j < pNbComp {
-        **lData.offset(j as isize) = 0i32;
-        k = 0 as OPJ_UINT32;
-        while k < pNbComp {
-          let fresh1 = &mut (**lData.offset(j as isize));
-          *fresh1 += opj_int_fix_mul(*lMctPtr, *lCurrentData.offset(k as isize));
-          lMctPtr = lMctPtr.offset(1);
-          k += 1;
-        }
-        let fresh2 = &mut (*lData.offset(j as isize));
-        *fresh2 = (*fresh2).offset(1);
-        j += 1;
-      }
-      i += 1;
+      data[j][i] = acc;
     }
-    opj_free_type_array(lCurrentData, data_count);
-    1i32
   }
+  1i32
 }
 
 pub(crate) fn opj_mct_decode_custom(
-  mut pDecodingData: *mut OPJ_BYTE,
-  mut n: OPJ_SIZE_T,
-  mut pData: *mut *mut OPJ_BYTE,
-  mut pNbComp: OPJ_UINT32,
-  mut _isSigned: OPJ_UINT32,
+  decoding_matrix: &[OPJ_FLOAT32],
+  n: OPJ_SIZE_T,
+  data: &mut [&mut [OPJ_FLOAT32]],
+  _is_signed: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut lMct = core::ptr::null_mut::<OPJ_FLOAT32>();
-    let mut i: OPJ_SIZE_T = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut k: OPJ_UINT32 = 0;
-    let mut lCurrentData = core::ptr::null_mut::<OPJ_FLOAT32>();
-    let mut lCurrentResult = core::ptr::null_mut::<OPJ_FLOAT32>();
-    let mut lData = pData as *mut *mut OPJ_FLOAT32;
-    let data_count = 2u32.wrapping_mul(pNbComp) as usize;
-    lCurrentData = opj_alloc_type_array(data_count) as *mut OPJ_FLOAT32;
-    if lCurrentData.is_null() {
-      return 0i32;
+  let nb_comp = data.len();
+  let mut current = vec![0 as OPJ_FLOAT32; nb_comp];
+  for i in 0..n {
+    for j in 0..nb_comp {
+      current[j] = data[j][i];
     }
-    lCurrentResult = lCurrentData.offset(pNbComp as isize);
-    i = 0 as OPJ_SIZE_T;
-    while i < n {
-      lMct = pDecodingData as *mut OPJ_FLOAT32;
-      j = 0 as OPJ_UINT32;
-      while j < pNbComp {
-        *lCurrentData.offset(j as isize) = **lData.offset(j as isize);
-        j += 1;
+    for j in 0..nb_comp {
+      let mut acc = 0 as OPJ_FLOAT32;
+      for k in 0..nb_comp {
+        acc += decoding_matrix[j * nb_comp + k] * current[k];
       }
-      j = 0 as OPJ_UINT32;
-      while j < pNbComp {
-        *lCurrentResult.offset(j as isize) = 0 as OPJ_FLOAT32;
-        k = 0 as OPJ_UINT32;
-        while k < pNbComp {
-          let fresh3 = lMct;
-          lMct = lMct.offset(1);
-          let fresh4 = &mut (*lCurrentResult.offset(j as isize));
-          *fresh4 += *fresh3 * *lCurrentData.offset(k as isize);
-          k += 1;
-        }
-        let fresh5 = &mut (*lData.offset(j as isize));
-        let fresh6 = *fresh5;
-        *fresh5 = (*fresh5).offset(1);
-        *fresh6 = *lCurrentResult.offset(j as isize);
-        j += 1;
-      }
-      i += 1;
+      data[j][i] = acc;
     }
-    opj_free_type_array(lCurrentData, data_count);
-    1i32
   }
+  1i32
 }
 
 pub(crate) fn opj_calculate_norms(
-  mut pNorms: *mut OPJ_FLOAT64,
-  mut pNbComps: OPJ_UINT32,
-  mut pMatrix: *mut OPJ_FLOAT32,
+  norms: &mut [OPJ_FLOAT64],
+  nb_comps: OPJ_UINT32,
+  matrix: &[OPJ_FLOAT32],
 ) {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut lIndex: OPJ_UINT32 = 0;
-    let mut lCurrentValue: OPJ_FLOAT32 = 0.;
-    let mut lNorms = pNorms;
-    let mut lMatrix = pMatrix;
-    i = 0 as OPJ_UINT32;
-    while i < pNbComps {
-      *lNorms.offset(i as isize) = 0 as OPJ_FLOAT64;
-      lIndex = i;
-      j = 0 as OPJ_UINT32;
-      while j < pNbComps {
-        lCurrentValue = *lMatrix.offset(lIndex as isize);
-        lIndex = (lIndex as core::ffi::c_uint).wrapping_add(pNbComps) as OPJ_UINT32;
-        let fresh7 = &mut (*lNorms.offset(i as isize));
-        *fresh7 += lCurrentValue as OPJ_FLOAT64 * lCurrentValue as core::ffi::c_double;
-        j += 1;
-      }
-      *lNorms.offset(i as isize) = (*lNorms.offset(i as isize)).sqrt();
-      i += 1;
+  let nb_comps = nb_comps as usize;
+  for i in 0..nb_comps {
+    let mut acc = 0 as OPJ_FLOAT64;
+    let mut index = i;
+    for _ in 0..nb_comps {
+      let value = matrix[index] as OPJ_FLOAT64;
+      index += nb_comps;
+      acc += value * value;
     }
+    norms[i] = acc.sqrt();
   }
 }
+

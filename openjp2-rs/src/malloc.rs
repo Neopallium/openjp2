@@ -12,7 +12,15 @@ extern "C" {
   fn free(_: *mut core::ffi::c_void);
 }
 
-pub(crate) fn memcpy(
+// TODO(phase 5): these four are deprecated internal helpers kept only for the not-yet-ported
+// c2rust call sites in dwt/j2k/t1/t2/tcd/ht_dec. They are `unsafe fn` so the unsafety stays
+// visible at the call site instead of being laundered through a safe wrapper. Every remaining
+// caller is replaced by slice operations (`copy_from_slice`, `fill`, `CStr`) during phases 2-5,
+// after which this block is deleted outright.
+
+/// # Safety
+/// `src`/`dest` must be valid, non-overlapping, and each cover at least `n` bytes.
+pub(crate) unsafe fn memcpy(
   dest: *mut core::ffi::c_void,
   src: *const core::ffi::c_void,
   n: usize,
@@ -23,7 +31,9 @@ pub(crate) fn memcpy(
   dest
 }
 
-pub(crate) fn memmove(
+/// # Safety
+/// `src`/`dest` must be valid and each cover at least `n` bytes. Overlap is permitted.
+pub(crate) unsafe fn memmove(
   dest: *mut core::ffi::c_void,
   src: *const core::ffi::c_void,
   n: usize,
@@ -34,14 +44,22 @@ pub(crate) fn memmove(
   dest
 }
 
-pub(crate) fn memset(s: *mut core::ffi::c_void, c: i32, n: usize) -> *mut core::ffi::c_void {
+/// # Safety
+/// `s` must be valid for writes of at least `n` bytes.
+pub(crate) unsafe fn memset(
+  s: *mut core::ffi::c_void,
+  c: i32,
+  n: usize,
+) -> *mut core::ffi::c_void {
   unsafe {
     core::ptr::write_bytes(s as *mut u8, c as u8, n);
   }
   s
 }
 
-pub(crate) fn strlen(s: *const i8) -> usize {
+/// # Safety
+/// `s` must point to a NUL-terminated string that stays valid for the whole scan.
+pub(crate) unsafe fn strlen(s: *const i8) -> usize {
   unsafe {
     let mut len = 0;
     while *s.add(len) != 0 {

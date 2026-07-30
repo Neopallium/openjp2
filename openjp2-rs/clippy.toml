@@ -1,0 +1,5 @@
+# c2rust-derived code carries deep nesting and long functions; those lints stay off
+# until the safe rewrite lands.
+cognitive-complexity-threshold = 200
+too-many-arguments-threshold = 12
+type-complexity-threshold = 500

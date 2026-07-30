@@ -3,7 +3,12 @@ use std::alloc::{alloc, dealloc, Layout};
 use super::malloc::*;
 use super::math::*;
 use super::openjpeg::*;
-use super::sparse_array::*;
+// Phase 1.e shims: these aliases keep the not-yet-converted DWT window code on its pointer
+// call sites. Replaced by the slice-based `sparse_array` functions in phase 2.b.
+use super::sparse_array::{
+  sparse_array_read_ptr as sparse_array_read, sparse_array_write_ptr as sparse_array_write,
+  SparseArray,
+};
 
 /* Where void* is a OPJ_INT32* for 5x3 and OPJ_FLOAT32* for 9x7 */
 pub type opj_encode_and_deinterleave_h_one_row_fnptr_type = Option<
@@ -460,11 +465,15 @@ fn opj_idwt53_h(mut dwt: &opj_dwt_t, mut tiledp: *mut OPJ_INT32) {
   /* For documentation purpose */
   opj_dwt_interleave_h(dwt, tiledp);
   dwt.decode_1();
-  memcpy(
-    tiledp as *mut core::ffi::c_void,
-    dwt.mem as *const core::ffi::c_void,
-    ((dwt.sn + dwt.dn) as OPJ_UINT32 as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
-  );
+  // SAFETY: `tiledp` and `dwt.mem` both cover at least `sn + dn` i32s; converted to slices in
+  // phase 2.b.
+  unsafe {
+    memcpy(
+      tiledp as *mut core::ffi::c_void,
+      dwt.mem as *const core::ffi::c_void,
+      ((dwt.sn + dwt.dn) as OPJ_UINT32 as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
+    );
+  }
 }
 
 /* <summary>                            */
@@ -767,11 +776,14 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_h_one_row_real(
   if width == 1u32 {
     return;
   }
-  memcpy(
-    tmp as *mut core::ffi::c_void,
-    row as *const core::ffi::c_void,
-    (width as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
-  );
+  // SAFETY: `row` and `tmp` both cover at least `width` f32s; converted to slices in phase 2.b.
+  unsafe {
+    memcpy(
+      tmp as *mut core::ffi::c_void,
+      row as *const core::ffi::c_void,
+      (width as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()),
+    );
+  }
   opj_dwt_encode_1_real(
     tmp as *mut core::ffi::c_void,
     dn,
@@ -897,13 +909,14 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v(
   let mut c: OPJ_UINT32 = 0;
   let mut i: OPJ_UINT32 = 0;
 
-  let _sc_mut =
-    |i: u32, c: u32| -> &'static mut i32 { &mut *(tmp.offset((i * 2 * NB_ELTS_V8 + c) as isize)) };
+  let _sc_mut = |i: u32, c: u32| -> &'static mut i32 {
+    unsafe { &mut *(tmp.offset((i * 2 * NB_ELTS_V8 + c) as isize)) }
+  };
 
   let _sc = |i: u32, c: u32| -> i32 { *_sc_mut(i, c) };
 
   let _dc_mut = |i: u32, c: u32| -> &'static mut i32 {
-    &mut *(tmp.offset(((1 + i * 2) * NB_ELTS_V8 + c) as isize))
+    unsafe { &mut *(tmp.offset(((1 + i * 2) * NB_ELTS_V8 + c) as isize)) }
   };
 
   let _dc = |i: u32, c: u32| -> i32 { *_dc_mut(i, c) };
@@ -1109,40 +1122,40 @@ unsafe extern "C" fn opj_dwt_encode_and_deinterleave_v_real(
     b = 0i32
   }
   opj_v8dwt_encode_step2(
-    tmp.offset((a * NB_ELTS_V8 as i32) as isize),
-    tmp.offset(((b + 1i32) * NB_ELTS_V8 as i32) as isize),
+    unsafe { tmp.offset((a * NB_ELTS_V8 as i32) as isize) },
+    unsafe { tmp.offset(((b + 1i32) * NB_ELTS_V8 as i32) as isize) },
     dn as OPJ_UINT32,
     opj_int_min(dn, sn - b) as OPJ_UINT32,
     opj_dwt_alpha,
   );
   opj_v8dwt_encode_step2(
-    tmp.offset((b * NB_ELTS_V8 as i32) as isize),
-    tmp.offset(((a + 1i32) * NB_ELTS_V8 as i32) as isize),
+    unsafe { tmp.offset((b * NB_ELTS_V8 as i32) as isize) },
+    unsafe { tmp.offset(((a + 1i32) * NB_ELTS_V8 as i32) as isize) },
     sn as OPJ_UINT32,
     opj_int_min(sn, dn - a) as OPJ_UINT32,
     opj_dwt_beta,
   );
   opj_v8dwt_encode_step2(
-    tmp.offset((a * NB_ELTS_V8 as i32) as isize),
-    tmp.offset(((b + 1i32) * NB_ELTS_V8 as i32) as isize),
+    unsafe { tmp.offset((a * NB_ELTS_V8 as i32) as isize) },
+    unsafe { tmp.offset(((b + 1i32) * NB_ELTS_V8 as i32) as isize) },
     dn as OPJ_UINT32,
     opj_int_min(dn, sn - b) as OPJ_UINT32,
     opj_dwt_gamma,
   );
   opj_v8dwt_encode_step2(
-    tmp.offset((b * NB_ELTS_V8 as i32) as isize),
-    tmp.offset(((a + 1i32) * NB_ELTS_V8 as i32) as isize),
+    unsafe { tmp.offset((b * NB_ELTS_V8 as i32) as isize) },
+    unsafe { tmp.offset(((a + 1i32) * NB_ELTS_V8 as i32) as isize) },
     sn as OPJ_UINT32,
     opj_int_min(sn, dn - a) as OPJ_UINT32,
     opj_dwt_delta,
   );
   opj_v8dwt_encode_step1(
-    tmp.offset((b * NB_ELTS_V8 as i32) as isize),
+    unsafe { tmp.offset((b * NB_ELTS_V8 as i32) as isize) },
     dn as OPJ_UINT32,
     opj_K,
   );
   opj_v8dwt_encode_step1(
-    tmp.offset((a * NB_ELTS_V8 as i32) as isize),
+    unsafe { tmp.offset((a * NB_ELTS_V8 as i32) as isize) },
     sn as OPJ_UINT32,
     opj_invK,
   );

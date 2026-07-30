@@ -1,4 +1,11 @@
-use super::cio::*;
+// Phase 1.a shims: these aliases keep the not-yet-converted marker handlers on their pointer
+// call sites. Replaced by the slice-based `cio` functions handler-family by handler-family in
+// phase 4.f.
+use super::cio::{
+  opj_read_bytes_ptr as opj_read_bytes, opj_read_double_ptr as opj_read_double,
+  opj_read_float_ptr as opj_read_float, opj_write_bytes_ptr as opj_write_bytes,
+  opj_write_double_ptr as opj_write_double, opj_write_float_ptr as opj_write_float,
+};
 use super::consts::*;
 use super::dwt::*;
 use super::event::*;
@@ -7813,9 +7820,12 @@ pub(crate) fn opj_j2k_setup_encoder(
           return 0i32;
         }
         opj_calculate_norms(
-          (*tcp).mct_norms,
+          core::slice::from_raw_parts_mut((*tcp).mct_norms, image.numcomps as usize),
           image.numcomps,
-          (*tcp).m_mct_decoding_matrix,
+          core::slice::from_raw_parts(
+            (*tcp).m_mct_decoding_matrix as *const OPJ_FLOAT32,
+            (image.numcomps as usize) * (image.numcomps as usize),
+          ),
         );
         opj_free(lTmpBuf as *mut core::ffi::c_void);
         i = 0 as OPJ_UINT32;
