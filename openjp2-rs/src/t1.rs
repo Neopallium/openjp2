@@ -49,6 +49,16 @@ impl<'a> FlagsPtr<'a> {
   }
 
   #[inline]
+  pub fn set_at(&self, offset: isize, value: opj_flag_t) {
+    self.cell(offset).set(value)
+  }
+
+  #[inline]
+  pub fn set(&self, value: opj_flag_t) {
+    self.set_at(0, value)
+  }
+
+  #[inline]
   pub fn or_at(&self, offset: isize, value: opj_flag_t) {
     let cell = self.cell(offset);
     cell.set(cell.get() | value);
@@ -97,13 +107,6 @@ impl T1Flags {
 
   pub fn as_slice(&self) -> &[Cell<opj_flag_t>] {
     &self.flags
-  }
-
-  /// Raw view of the flag buffer, kept only for `ht_dec`, which reinterprets it as four
-  /// `OPJ_UINT32` significance planes. Dropped in phase 2.c.
-  pub fn as_mut_ptr(&self) -> *mut opj_flag_t {
-    // `Cell<opj_flag_t>` is `repr(transparent)`, so this is a layout-preserving cast.
-    self.flags.as_ptr() as *mut opj_flag_t
   }
 
   pub fn offset(&self, offset: isize) -> FlagsPtr<'_> {
@@ -253,6 +256,10 @@ impl opj_t1 {
 
   pub fn cblkdatabuffer(&mut self) -> &mut [u8] {
     self.cblkdatabuffer.as_mut_slice()
+  }
+
+  pub fn cblkdatabuffer_ref(&self) -> &[u8] {
+    self.cblkdatabuffer.as_slice()
   }
 
   fn set_decoded_data(&mut self, decoded_data: *mut OPJ_INT32, len: usize) {
