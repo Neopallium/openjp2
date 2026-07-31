@@ -180,9 +180,8 @@ pub(crate) fn opj_t2_encode_packets(
                 p_tile,
                 l_tcp,
                 l_current_pi,
-                l_current_data,
+                core::slice::from_raw_parts_mut(l_current_data, p_max_len as usize),
                 &mut l_nb_bytes,
-                p_max_len,
                 cstr_info,
                 p_t2_mode,
                 p_manager,
@@ -237,9 +236,8 @@ pub(crate) fn opj_t2_encode_packets(
             p_tile,
             l_tcp,
             l_current_pi,
-            l_current_data,
+            core::slice::from_raw_parts_mut(l_current_data, p_max_len as usize),
             &mut l_nb_bytes,
-            p_max_len,
             cstr_info,
             p_t2_mode,
             p_manager,
@@ -543,9 +541,8 @@ fn opj_t2_decode_packet(
       p_tcp,
       p_pi,
       &mut l_read_data,
-      p_src,
+      core::slice::from_raw_parts_mut(p_src, p_max_length as usize),
       &mut l_nb_bytes_read,
-      p_max_length,
       p_pack_info,
       p_manager,
     ) == 0
@@ -563,9 +560,8 @@ fn opj_t2_decode_packet(
         p_t2,
         p_tile,
         p_pi,
-        p_src,
+        core::slice::from_raw_parts(p_src, p_max_length as usize),
         &mut l_nb_bytes_read,
-        p_max_length,
         p_pack_info,
         p_manager,
       ) == 0
@@ -598,9 +594,8 @@ fn opj_t2_encode_packet(
   mut tile: *mut opj_tcd_tile_t,
   mut tcp: *mut opj_tcp_t,
   mut pi: *mut opj_pi_iterator_t,
-  mut dest: *mut OPJ_BYTE,
+  mut dest: &mut [u8],
   mut p_data_written: *mut OPJ_UINT32,
-  mut length: OPJ_UINT32,
   mut cstr_info: *mut opj_codestream_info_t,
   mut p_t2_mode: J2K_T2_MODE,
   mut p_manager: &mut opj_event_mgr,
@@ -608,7 +603,8 @@ fn opj_t2_encode_packet(
   unsafe {
     let mut bandno: OPJ_UINT32 = 0; /* component value */
     let mut cblkno: OPJ_UINT32 = 0; /* resolution level value */
-    let mut c = dest; /* precinct value */
+    let mut pos = 0usize; /* precinct value */
+    let mut length = dest.len() as OPJ_UINT32;
     let mut l_nb_bytes: OPJ_UINT32 = 0; /* quality layer value */
     let mut compno = (*pi).compno; /* BIO component */
     let mut resno = (*pi).resno;
@@ -636,13 +632,13 @@ fn opj_t2_encode_packet(
         }
         return 0i32;
       }
-      *c.offset(0) = 255 as OPJ_BYTE;
-      *c.offset(1) = 145 as OPJ_BYTE;
-      *c.offset(2) = 0 as OPJ_BYTE;
-      *c.offset(3) = 4 as OPJ_BYTE;
-      *c.offset(4) = ((*tile).packno >> 8i32 & 0xffu32) as OPJ_BYTE;
-      *c.offset(5) = ((*tile).packno & 0xffu32) as OPJ_BYTE;
-      c = c.offset(6);
+      dest[0] = 255 as OPJ_BYTE;
+      dest[1] = 145 as OPJ_BYTE;
+      dest[2] = 0 as OPJ_BYTE;
+      dest[3] = 4 as OPJ_BYTE;
+      dest[4] = ((*tile).packno >> 8i32 & 0xffu32) as OPJ_BYTE;
+      dest[5] = ((*tile).packno & 0xffu32) as OPJ_BYTE;
+      pos += 6;
       length = (length as core::ffi::c_uint).wrapping_sub(6u32) as OPJ_UINT32 as OPJ_UINT32
     }
     /* </SOP> */
@@ -690,7 +686,7 @@ fn opj_t2_encode_packet(
         band = band.offset(1)
       }
     }
-    let mut bio = opj_bio::new_enc(core::slice::from_raw_parts_mut(c, length as usize));
+    let mut bio = opj_bio::new_enc(&mut dest[pos..]);
     let bio = &mut bio;
     /* Empty header bit */
     opj_bio_putbit(bio, if packet_empty != 0 { 0 } else { 1 });
@@ -832,7 +828,7 @@ fn opj_t2_encode_packet(
       /* modified to eliminate longjmp !! */
     }
     l_nb_bytes = opj_bio_numbytes(bio) as OPJ_UINT32;
-    c = c.offset(l_nb_bytes as isize);
+    pos += l_nb_bytes as usize;
     length = (length as core::ffi::c_uint).wrapping_sub(l_nb_bytes) as OPJ_UINT32;
     /* <EPH 0xff92> */
     if (*tcp).csty & 0x4u32 != 0 {
@@ -848,9 +844,9 @@ fn opj_t2_encode_packet(
         }
         return 0i32;
       }
-      *c.offset(0) = 255 as OPJ_BYTE;
-      *c.offset(1) = 146 as OPJ_BYTE;
-      c = c.offset(2);
+      dest[pos] = 255 as OPJ_BYTE;
+      dest[pos + 1] = 146 as OPJ_BYTE;
+      pos += 2;
       length = (length as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32 as OPJ_UINT32
     }
     /* </EPH> */
@@ -862,7 +858,7 @@ fn opj_t2_encode_packet(
         .packet
         .offset((*cstr_info).packno as isize)
         as *mut opj_packet_info_t;
-      (*info_PK).end_ph_pos = c.offset_from(dest) as OPJ_OFF_T
+      (*info_PK).end_ph_pos = pos as OPJ_OFF_T
     }
     /* INDEX >> */
     /* Writing the packet body */
@@ -896,15 +892,13 @@ fn opj_t2_encode_packet(
             }
 
             if p_t2_mode == FINAL_PASS {
-              memcpy(
-                c as *mut core::ffi::c_void,
-                (*layer_1).data as *const core::ffi::c_void,
-                (*layer_1).len as usize,
-              );
+              let len = (*layer_1).len as usize;
+              dest[pos..pos + len]
+                .copy_from_slice(core::slice::from_raw_parts((*layer_1).data, len));
             }
             (*cblk).numpasses = ((*cblk).numpasses as core::ffi::c_uint)
               .wrapping_add((*layer_1).numpasses) as OPJ_UINT32;
-            c = c.offset((*layer_1).len as isize);
+            pos += (*layer_1).len as usize;
             length = (length as core::ffi::c_uint).wrapping_sub((*layer_1).len) as OPJ_UINT32;
             /* INDEX >> */
             /* << INDEX */
@@ -926,9 +920,8 @@ fn opj_t2_encode_packet(
       bandno = bandno.wrapping_add(1);
       band = band.offset(1)
     }
-    assert!(c >= dest);
-    *p_data_written = (*p_data_written as core::ffi::c_uint)
-      .wrapping_add(c.offset_from(dest) as OPJ_UINT32) as OPJ_UINT32;
+    *p_data_written =
+      (*p_data_written as core::ffi::c_uint).wrapping_add(pos as OPJ_UINT32) as OPJ_UINT32;
     1i32
   }
 }
@@ -954,9 +947,8 @@ fn opj_t2_skip_packet(
       p_tcp,
       p_pi,
       &mut l_read_data,
-      p_src,
+      core::slice::from_raw_parts_mut(p_src, p_max_length as usize),
       &mut l_nb_bytes_read,
-      p_max_length,
       p_pack_info,
       p_manager,
     ) == 0
@@ -996,9 +988,8 @@ fn opj_t2_read_packet_header(
   mut p_tcp: *mut opj_tcp_t,
   mut p_pi: *mut opj_pi_iterator_t,
   mut p_is_data_present: *mut OPJ_BOOL,
-  mut p_src_data: *mut OPJ_BYTE,
+  p_src_data: &mut [u8],
   mut p_data_read: *mut OPJ_UINT32,
-  mut p_max_length: OPJ_UINT32,
   mut p_pack_info: *mut opj_packet_info_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -1007,10 +998,9 @@ fn opj_t2_read_packet_header(
     let mut bandno: OPJ_UINT32 = 0; /* BIO component */
     let mut cblkno: OPJ_UINT32 = 0;
     let mut l_nb_code_blocks: OPJ_UINT32 = 0;
-    let mut l_remaining_length: OPJ_UINT32 = 0;
     let mut l_header_length: OPJ_UINT32 = 0;
-    let mut l_modified_length_ptr = core::ptr::null_mut::<OPJ_UINT32>();
-    let mut l_current_data = p_src_data;
+    let p_max_length = p_src_data.len() as OPJ_UINT32;
+    let mut l_pos = 0usize;
     let mut l_cp = (*p_t2).cp;
     let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
     let mut l_cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
@@ -1020,8 +1010,6 @@ fn opj_t2_read_packet_header(
     .resolutions
     .as_mut_ptr()
     .offset((*p_pi).resno as isize);
-    let mut l_header_data = core::ptr::null_mut::<OPJ_BYTE>();
-    let mut l_header_data_start = core::ptr::null_mut::<*mut OPJ_BYTE>();
     let mut l_present: OPJ_UINT32 = 0;
     if (*p_pi).layno == 0u32 {
       l_band = (*l_res).bands.as_mut_ptr();
@@ -1067,12 +1055,12 @@ fn opj_t2_read_packet_header(
           EVT_WARNING,
           "Not enough space for expected SOP marker\n",
         );
-      } else if *l_current_data as core::ffi::c_int != 0xffi32
-        || *l_current_data.offset(1) as core::ffi::c_int != 0x91i32
+      } else if p_src_data[l_pos] as core::ffi::c_int != 0xffi32
+        || p_src_data[l_pos + 1] as core::ffi::c_int != 0x91i32
       {
         event_msg!(p_manager, EVT_WARNING, "Expected SOP marker\n",);
       } else {
-        l_current_data = l_current_data.offset(6)
+        l_pos += 6
       }
       /* * TODO : check the Nsop value */
     }
@@ -1083,29 +1071,19 @@ fn opj_t2_read_packet_header(
     step 1: Read packet header in the saved structure
     step 2: Return to codestream for decoding
     */
-    if (*l_cp).ppm {
-      /* PPM */
-      l_header_data_start = &mut (*l_cp).ppm_data; /* Normal Case */
-      l_header_data = *l_header_data_start;
-      l_modified_length_ptr = &mut (*l_cp).ppm_len
+    /* The header lives either in the PPM buffer, the PPT buffer, or inline in the codestream. */
+    let (l_header_base, l_header_avail) = if (*l_cp).ppm {
+      ((*l_cp).ppm_data, (*l_cp).ppm_len)
     } else if (*p_tcp).ppt {
-      /* PPT */
-      l_header_data_start = &mut (*p_tcp).ppt_data;
-      l_header_data = *l_header_data_start;
-      l_modified_length_ptr = &mut (*p_tcp).ppt_len
+      ((*p_tcp).ppt_data, (*p_tcp).ppt_len)
     } else {
-      l_header_data_start = &mut l_current_data;
-      l_header_data = *l_header_data_start;
-      l_remaining_length = p_src_data
-        .offset(p_max_length as isize)
-        .offset_from(l_header_data) as OPJ_UINT32;
-      l_modified_length_ptr = &mut l_remaining_length
-    }
+      let l_remaining_length = (p_src_data.len() - l_pos) as OPJ_UINT32;
+      (p_src_data[l_pos..].as_mut_ptr(), l_remaining_length)
+    };
+    let l_header = core::slice::from_raw_parts_mut(l_header_base, l_header_avail as usize);
+    let mut l_hdr_pos = 0usize;
 
-    let mut l_bio = opj_bio::new_dec(core::slice::from_raw_parts_mut(
-      l_header_data,
-      *l_modified_length_ptr as usize,
-    ));
+    let mut l_bio = opj_bio::new_dec(&mut l_header[..]);
     let l_bio = &mut l_bio;
 
     l_present = opj_bio_read(l_bio, 1 as OPJ_UINT32);
@@ -1113,39 +1091,42 @@ fn opj_t2_read_packet_header(
     if l_present == 0 {
       /* TODO MSD: no test to control the output of this function*/
       opj_bio_inalign(l_bio);
-      l_header_data = l_header_data.offset(opj_bio_numbytes(l_bio));
+      l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
       /* EPH markers */
       if (*p_tcp).csty & 0x4u32 != 0 {
-        if (*l_modified_length_ptr)
-          .wrapping_sub(l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32)
-          < 2u32
-        {
+        if l_header.len() - l_hdr_pos < 2usize {
           event_msg!(
             p_manager,
             EVT_WARNING,
             "Not enough space for expected EPH marker\n",
           );
-        } else if *l_header_data as core::ffi::c_int != 0xffi32
-          || *l_header_data.offset(1) as core::ffi::c_int != 0x92i32
+        } else if l_header[l_hdr_pos] as core::ffi::c_int != 0xffi32
+          || l_header[l_hdr_pos + 1] as core::ffi::c_int != 0x92i32
         {
           event_msg!(p_manager, EVT_WARNING, "Expected EPH marker\n",);
         } else {
-          l_header_data = l_header_data.offset(2)
+          l_hdr_pos += 2
         }
       }
-      l_header_length = l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32;
-      *l_modified_length_ptr =
-        (*l_modified_length_ptr as core::ffi::c_uint).wrapping_sub(l_header_length) as OPJ_UINT32;
-      *l_header_data_start = (*l_header_data_start).offset(l_header_length as isize);
+      l_header_length = l_hdr_pos as OPJ_UINT32;
+      if (*l_cp).ppm {
+        (*l_cp).ppm_data = (*l_cp).ppm_data.add(l_header_length as usize);
+        (*l_cp).ppm_len -= l_header_length;
+      } else if (*p_tcp).ppt {
+        (*p_tcp).ppt_data = (*p_tcp).ppt_data.add(l_header_length as usize);
+        (*p_tcp).ppt_len -= l_header_length;
+      } else {
+        l_pos += l_header_length as usize;
+      }
       /* << INDEX */
       /* End of packet header position. Currently only represents the distance to start of packet
       Will be updated later by incrementing with packet start value */
       if !p_pack_info.is_null() {
-        (*p_pack_info).end_ph_pos = l_current_data.offset_from(p_src_data) as OPJ_OFF_T
+        (*p_pack_info).end_ph_pos = l_pos as OPJ_OFF_T
       }
       /* INDEX >> */
       *p_is_data_present = 0i32;
-      *p_data_read = l_current_data.offset_from(p_src_data) as OPJ_UINT32;
+      *p_data_read = l_pos as OPJ_UINT32;
       return 1i32;
     }
 
@@ -1347,41 +1328,44 @@ fn opj_t2_read_packet_header(
     if opj_bio_inalign(l_bio) == 0 {
       return 0i32;
     }
-    l_header_data = l_header_data.offset(opj_bio_numbytes(l_bio));
+    l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
     /* EPH markers */
     if (*p_tcp).csty & 0x4u32 != 0 {
-      if (*l_modified_length_ptr)
-        .wrapping_sub(l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32)
-        < 2u32
-      {
+      if l_header.len() - l_hdr_pos < 2usize {
         event_msg!(
           p_manager,
           EVT_WARNING,
           "Not enough space for expected EPH marker\n",
         );
-      } else if *l_header_data as core::ffi::c_int != 0xffi32
-        || *l_header_data.offset(1) as core::ffi::c_int != 0x92i32
+      } else if l_header[l_hdr_pos] as core::ffi::c_int != 0xffi32
+        || l_header[l_hdr_pos + 1] as core::ffi::c_int != 0x92i32
       {
         event_msg!(p_manager, EVT_WARNING, "Expected EPH marker\n",);
       } else {
-        l_header_data = l_header_data.offset(2)
+        l_hdr_pos += 2
       }
     }
-    l_header_length = l_header_data.offset_from(*l_header_data_start) as OPJ_UINT32;
+    l_header_length = l_hdr_pos as OPJ_UINT32;
     log::debug!("hdrlen={}", l_header_length);
     log::debug!("packet body");
-    *l_modified_length_ptr =
-      (*l_modified_length_ptr as core::ffi::c_uint).wrapping_sub(l_header_length) as OPJ_UINT32;
-    *l_header_data_start = (*l_header_data_start).offset(l_header_length as isize);
+    if (*l_cp).ppm {
+      (*l_cp).ppm_data = (*l_cp).ppm_data.add(l_header_length as usize);
+      (*l_cp).ppm_len -= l_header_length;
+    } else if (*p_tcp).ppt {
+      (*p_tcp).ppt_data = (*p_tcp).ppt_data.add(l_header_length as usize);
+      (*p_tcp).ppt_len -= l_header_length;
+    } else {
+      l_pos += l_header_length as usize;
+    }
     /* << INDEX */
     /* End of packet header position. Currently only represents the distance to start of packet
     Will be updated later by incrementing with packet start value */
     if !p_pack_info.is_null() {
-      (*p_pack_info).end_ph_pos = l_current_data.offset_from(p_src_data) as OPJ_OFF_T
+      (*p_pack_info).end_ph_pos = l_pos as OPJ_OFF_T
     }
     /* INDEX >> */
     *p_is_data_present = 1i32; /* next code_block */
-    *p_data_read = l_current_data.offset_from(p_src_data) as OPJ_UINT32;
+    *p_data_read = l_pos as OPJ_UINT32;
     1i32
   }
 }
@@ -1389,9 +1373,8 @@ fn opj_t2_read_packet_data(
   mut p_t2: *mut opj_t2_t,
   mut p_tile: *mut opj_tcd_tile_t,
   mut p_pi: *mut opj_pi_iterator_t,
-  mut p_src_data: *mut OPJ_BYTE,
+  p_src_data: &[u8],
   mut p_data_read: *mut OPJ_UINT32,
-  mut p_max_length: OPJ_UINT32,
   mut _pack_info: *mut opj_packet_info_t,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -1399,7 +1382,8 @@ fn opj_t2_read_packet_data(
     let mut bandno: OPJ_UINT32 = 0;
     let mut cblkno: OPJ_UINT32 = 0;
     let mut l_nb_code_blocks: OPJ_UINT32 = 0;
-    let mut l_current_data = p_src_data;
+    let p_max_length = p_src_data.len() as OPJ_UINT32;
+    let mut l_pos = 0usize;
     let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
     let mut l_cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
     let mut l_res: *mut opj_tcd_resolution_t = (*(&mut (*p_tile).comps)
@@ -1447,14 +1431,9 @@ fn opj_t2_read_packet_data(
               }
             }
             loop
-            /* Check possible overflow (on l_current_data only, assumes input args already checked) then size */
+            /* Check the remaining size of the source buffer */
             {
-              if (l_current_data as OPJ_SIZE_T).wrapping_add((*l_seg).newlen as OPJ_SIZE_T)
-                < l_current_data as OPJ_SIZE_T
-                || l_current_data.offset((*l_seg).newlen as isize)
-                  > p_src_data.offset(p_max_length as isize)
-                || partial_buffer != 0
-              {
+              if (*l_seg).newlen as usize > p_src_data.len() - l_pos || partial_buffer != 0 {
                 if (*(*p_t2).cp).strict != 0 {
                   event_msg!(p_manager, EVT_ERROR,
                                                 "read: segment too long ({}) with max ({}) for codeblock {} (p={}, b={}, r={}, c={})\n",
@@ -1497,10 +1476,10 @@ fn opj_t2_read_packet_data(
                 }
                 let chunks = (*l_cblk).chunks.as_mut_ptr();
                 let fresh0 = &mut (*chunks.offset((*l_cblk).numchunks as isize)).data;
-                *fresh0 = l_current_data;
+                *fresh0 = p_src_data[l_pos..].as_ptr() as *mut OPJ_BYTE;
                 (*chunks.offset((*l_cblk).numchunks as isize)).len = (*l_seg).newlen;
                 (*l_cblk).numchunks = (*l_cblk).numchunks.wrapping_add(1);
-                l_current_data = l_current_data.offset((*l_seg).newlen as isize);
+                l_pos += (*l_seg).newlen as usize;
                 (*l_seg).len =
                   ((*l_seg).len as core::ffi::c_uint).wrapping_add((*l_seg).newlen) as OPJ_UINT32;
                 (*l_seg).numpasses = ((*l_seg).numpasses as core::ffi::c_uint)
@@ -1532,7 +1511,7 @@ fn opj_t2_read_packet_data(
     if partial_buffer != 0 {
       *p_data_read = p_max_length
     } else {
-      *p_data_read = l_current_data.offset_from(p_src_data) as OPJ_UINT32
+      *p_data_read = l_pos as OPJ_UINT32
     }
     1i32
   }
