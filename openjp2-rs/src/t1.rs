@@ -2627,7 +2627,7 @@ pub(crate) fn opj_t1_encode_cblks(
     's_19: while compno < (*tile).numcomps {
       let mut tilec: *mut opj_tcd_tilecomp_t =
         (&mut (*tile).comps).as_mut_ptr().add(compno as usize);
-      let mut tccp: *mut opj_tccp_t = &mut *(*tcp).tccps.offset(compno as isize) as *mut opj_tccp_t;
+      let mut tccp: *mut opj_tccp_t = (*tcp).tccps.as_mut_ptr().offset(compno as isize);
       resno = 0 as OPJ_UINT32;
       while resno < (*tilec).numresolutions {
         let mut res: *mut opj_tcd_resolution_t =

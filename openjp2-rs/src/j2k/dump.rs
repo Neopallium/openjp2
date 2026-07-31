@@ -33,8 +33,7 @@ fn opj_j2k_dump_tile_info<W: StringWriter>(
     /*end of default tile*/
     compno = 0i32; /*end of component of default tile*/
     while compno < numcomps {
-      let mut l_tccp: *mut opj_tccp_t =
-        &mut *(*l_default_tile).tccps.offset(compno as isize) as *mut opj_tccp_t;
+      let l_tccp: *const opj_tccp_t = (*l_default_tile).tccps.as_ptr().offset(compno as isize);
       let mut resno: OPJ_UINT32 = 0;
       let mut bandno: OPJ_INT32 = 0;
       let mut numbands: OPJ_INT32 = 0;
@@ -118,7 +117,7 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &opj_j2k, flag: OPJ_INT32, out_st
     if flag & 8i32 != 0 {
       let mut l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
       let mut i: OPJ_UINT32 = 0;
-      let mut l_tcp = p_j2k.m_cp.tcps;
+      let mut l_tcp = p_j2k.m_cp.tcps.as_ptr();
       if !p_j2k.m_private_image.is_null() {
         i = 0 as OPJ_UINT32;
         while i < l_nb_tiles {

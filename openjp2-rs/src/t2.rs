@@ -138,7 +138,7 @@ pub(crate) fn opj_t2_encode_packets(
     let mut l_current_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_image = (*p_t2).image;
     let mut l_cp = (*p_t2).cp;
-    let mut l_tcp: *mut opj_tcp_t = &mut *(*l_cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
+    let mut l_tcp: *mut opj_tcp_t = (*l_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
     let mut pocno = if (*l_cp).rsiz as core::ffi::c_int == 0x4i32 {
       2i32
     } else {
@@ -313,7 +313,7 @@ pub(crate) fn opj_t2_decode_packets(
     let mut l_image = (*p_t2).image;
     let mut l_cp = (*p_t2).cp;
     let mut l_tcp: *mut opj_tcp_t =
-      &mut *(*(*p_t2).cp).tcps.offset(p_tile_no as isize) as *mut opj_tcp_t;
+      (*(*p_t2).cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
     let mut l_nb_bytes_read: OPJ_UINT32 = 0;
     let mut l_nb_pocs = (*l_tcp).numpocs.wrapping_add(1u32);
     let mut l_current_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
@@ -1196,7 +1196,7 @@ fn opj_t2_read_packet_header(
               if opj_t2_init_seg(
                 l_cblk,
                 l_segno,
-                (*(*p_tcp).tccps.offset((*p_pi).compno as isize)).cblksty,
+                (&(*p_tcp).tccps)[(*p_pi).compno as usize].cblksty,
                 1 as OPJ_UINT32,
               ) == 0
               {
@@ -1211,7 +1211,7 @@ fn opj_t2_read_packet_header(
                 if opj_t2_init_seg(
                   l_cblk,
                   l_segno,
-                  (*(*p_tcp).tccps.offset((*p_pi).compno as isize)).cblksty,
+                  (&(*p_tcp).tccps)[(*p_pi).compno as usize].cblksty,
                   0 as OPJ_UINT32,
                 ) == 0
                 {
@@ -1220,7 +1220,7 @@ fn opj_t2_read_packet_header(
               }
             }
             n = (*l_cblk).numnewpasses as OPJ_INT32;
-            if (*(*p_tcp).tccps.offset((*p_pi).compno as isize)).cblksty & 0x40u32 != 0u32 {
+            if (&(*p_tcp).tccps)[(*p_pi).compno as usize].cblksty & 0x40u32 != 0u32 {
               loop {
                 let mut bit_number: OPJ_UINT32 = 0;
                 (*(*l_cblk).segs.as_mut_ptr().offset(l_segno as isize)).numnewpasses =
@@ -1256,7 +1256,7 @@ fn opj_t2_read_packet_header(
                   if opj_t2_init_seg(
                     l_cblk,
                     l_segno,
-                    (*(*p_tcp).tccps.offset((*p_pi).compno as isize)).cblksty,
+                    (&(*p_tcp).tccps)[(*p_pi).compno as usize].cblksty,
                     0 as OPJ_UINT32,
                   ) == 0
                   {
@@ -1305,7 +1305,7 @@ fn opj_t2_read_packet_header(
                   if opj_t2_init_seg(
                     l_cblk,
                     l_segno,
-                    (*(*p_tcp).tccps.offset((*p_pi).compno as isize)).cblksty,
+                    (&(*p_tcp).tccps)[(*p_pi).compno as usize].cblksty,
                     0 as OPJ_UINT32,
                   ) == 0
                   {

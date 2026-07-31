@@ -482,7 +482,6 @@ impl Default for opj_tcd {
   }
 }
 
-#[derive(Copy, Clone)]
 pub(crate) struct opj_tcp {
   pub csty: OPJ_UINT32,
   pub prg: OPJ_PROG_ORDER,
@@ -499,7 +498,7 @@ pub(crate) struct opj_tcp {
   pub ppt_data_size: OPJ_UINT32,
   pub ppt_len: OPJ_UINT32,
   pub distoratio: [OPJ_FLOAT32; 100],
-  pub tccps: *mut opj_tccp_t,
+  pub tccps: Vec<opj_tccp_t>,
   pub m_current_tile_part_number: OPJ_INT32,
   pub m_nb_tile_parts: OPJ_UINT32,
   pub m_data: *mut OPJ_BYTE,
@@ -518,6 +517,45 @@ pub(crate) struct opj_tcp {
   pub POC: bool,
 }
 pub(crate) type opj_tcp_t = opj_tcp;
+
+impl Default for opj_tcp {
+  fn default() -> Self {
+    Self {
+      csty: 0,
+      prg: Default::default(),
+      numlayers: 0,
+      num_layers_to_decode: 0,
+      mct: 0,
+      rates: [0.0; 100],
+      numpocs: 0,
+      pocs: [Default::default(); 32],
+      ppt_markers_count: 0,
+      ppt_markers: core::ptr::null_mut(),
+      ppt_data: core::ptr::null_mut(),
+      ppt_buffer: core::ptr::null_mut(),
+      ppt_data_size: 0,
+      ppt_len: 0,
+      distoratio: [0.0; 100],
+      tccps: Vec::new(),
+      m_current_tile_part_number: 0,
+      m_nb_tile_parts: 0,
+      m_data: core::ptr::null_mut(),
+      m_data_size: 0,
+      mct_norms: core::ptr::null_mut(),
+      m_mct_decoding_matrix: core::ptr::null_mut(),
+      m_mct_coding_matrix: core::ptr::null_mut(),
+      m_mct_records: core::ptr::null_mut(),
+      m_nb_mct_records: 0,
+      m_nb_max_mct_records: 0,
+      m_mcc_records: core::ptr::null_mut(),
+      m_nb_mcc_records: 0,
+      m_nb_max_mcc_records: 0,
+      cod: false,
+      ppt: false,
+      POC: false,
+    }
+  }
+}
 
 #[derive(Copy, Clone)]
 pub(crate) struct opj_simple_mcc_decorrelation_data {
@@ -563,7 +601,27 @@ pub(crate) struct opj_tccp {
 }
 pub(crate) type opj_tccp_t = opj_tccp;
 
-#[derive(Copy, Clone)]
+impl Default for opj_tccp {
+  fn default() -> Self {
+    Self {
+      csty: 0,
+      numresolutions: 0,
+      cblkw: 0,
+      cblkh: 0,
+      cblksty: 0,
+      qmfbid: 0,
+      qntsty: 0,
+      stepsizes: [Default::default(); 97],
+      numgbits: 0,
+      roishift: 0,
+      prcw: [0; 33],
+      prch: [0; 33],
+      m_dc_level_shift: 0,
+    }
+  }
+}
+
+#[derive(Copy, Clone, Default)]
 pub(crate) struct opj_stepsize {
   pub expn: OPJ_INT32,
   pub mant: OPJ_INT32,
@@ -577,7 +635,6 @@ pub(crate) struct opj_ppx_struct {
 }
 pub(crate) type opj_ppx = opj_ppx_struct;
 
-#[derive(Copy, Clone)]
 pub(crate) struct opj_cp {
   pub rsiz: OPJ_UINT16,
   pub tx0: OPJ_UINT32,
@@ -598,7 +655,7 @@ pub(crate) struct opj_cp {
   pub ppm_data_size: OPJ_UINT32,
   pub ppm_store: OPJ_INT32,
   pub ppm_previous: OPJ_INT32,
-  pub tcps: *mut opj_tcp_t,
+  pub tcps: Vec<opj_tcp_t>,
   pub m_specific_param: C2RustUnnamed_0,
   pub strict: OPJ_BOOL,
   pub ppm: bool,
@@ -607,9 +664,43 @@ pub(crate) struct opj_cp {
 }
 pub(crate) type opj_cp_t = opj_cp;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub(crate) union C2RustUnnamed_0 {
+impl Default for opj_cp {
+  fn default() -> Self {
+    Self {
+      rsiz: 0,
+      tx0: 0,
+      ty0: 0,
+      tdx: 0,
+      tdy: 0,
+      comment: core::ptr::null_mut(),
+      tw: 0,
+      th: 0,
+      ppm_markers_count: 0,
+      ppm_markers: core::ptr::null_mut(),
+      ppm_data: core::ptr::null_mut(),
+      ppm_len: 0,
+      ppm_data_read: 0,
+      ppm_data_current: core::ptr::null_mut(),
+      ppm_buffer: core::ptr::null_mut(),
+      ppm_data_first: core::ptr::null_mut(),
+      ppm_data_size: 0,
+      ppm_store: 0,
+      ppm_previous: 0,
+      tcps: Vec::new(),
+      m_specific_param: Default::default(),
+      strict: 0,
+      ppm: false,
+      m_is_decoder: false,
+      allow_different_bit_depth_sign: false,
+    }
+  }
+}
+
+/* This was a C union of the decoder-only and encoder-only coding parameters. A given
+`opj_cp` is either a decoder or an encoder one, so holding both costs a few bytes and
+lets the encoder side own its data instead of aliasing raw memory. */
+#[derive(Default)]
+pub(crate) struct C2RustUnnamed_0 {
   pub m_dec: opj_decoding_param_t,
   pub m_enc: opj_encoding_param_t,
 }
@@ -628,18 +719,30 @@ pub(crate) enum J2K_QUALITY_LAYER_ALLOCATION_STRATEGY {
   FIXED_LAYER = 2,
 }
 
-#[derive(Copy, Clone)]
 pub(crate) struct opj_encoding_param {
   pub m_max_comp_size: OPJ_UINT32,
   pub m_tp_pos: OPJ_INT32,
-  pub m_matrice: *mut OPJ_INT32,
+  pub m_matrice: Vec<OPJ_INT32>,
   pub m_tp_flag: OPJ_BYTE,
   pub m_quality_layer_alloc_strategy: J2K_QUALITY_LAYER_ALLOCATION_STRATEGY,
   pub m_tp_on: bool,
 }
 pub(crate) type opj_encoding_param_t = opj_encoding_param;
 
-#[derive(Copy, Clone)]
+impl Default for opj_encoding_param {
+  fn default() -> Self {
+    Self {
+      m_max_comp_size: 0,
+      m_tp_pos: 0,
+      m_matrice: Vec::new(),
+      m_tp_flag: 0,
+      m_quality_layer_alloc_strategy: J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO,
+      m_tp_on: false,
+    }
+  }
+}
+
+#[derive(Copy, Clone, Default)]
 pub(crate) struct opj_decoding_param {
   pub m_reduce: OPJ_UINT32,
   pub m_layer: OPJ_UINT32,
