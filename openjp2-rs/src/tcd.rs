@@ -135,8 +135,7 @@ fn opj_tcd_makelayer(
                   if (*cblk).numpassesinlayers == 0u32 {
                     (*layer).len = (*passes.offset(n.wrapping_sub(1u32) as isize)).rate;
                     (*layer).data = (&mut *cblk).data_ptr();
-                    (*layer).disto =
-                      (*passes.offset(n.wrapping_sub(1u32) as isize)).distortiondec
+                    (*layer).disto = (*passes.offset(n.wrapping_sub(1u32) as isize)).distortiondec
                   } else {
                     (*layer).len = (*passes.offset(n.wrapping_sub(1u32) as isize))
                       .rate
@@ -1097,27 +1096,21 @@ pub(crate) fn opj_tcd_init_tile(
                   let mut cblkxend = cblkxstart + ((1i32) << cblkwidthexpn);
                   let mut cblkyend = cblkystart + ((1i32) << cblkheightexpn);
                   if isEncoder != 0 {
-                    let mut l_code_block = (&mut (*l_current_precinct).cblks)
+                    let mut l_code_block = &mut *(&mut (*l_current_precinct).cblks)
                       .enc_ptr()
                       .offset(cblkno as isize);
-                    if opj_tcd_code_block_enc_allocate(l_code_block) == 0 {
-                      return 0i32;
-                    }
+                    opj_tcd_code_block_enc_allocate(l_code_block);
                     /* code-block size (global) */
                     (*l_code_block).x0 = opj_int_max(cblkxstart, (*l_current_precinct).x0);
                     (*l_code_block).y0 = opj_int_max(cblkystart, (*l_current_precinct).y0);
                     (*l_code_block).x1 = opj_int_min(cblkxend, (*l_current_precinct).x1);
                     (*l_code_block).y1 = opj_int_min(cblkyend, (*l_current_precinct).y1);
-                    if opj_tcd_code_block_enc_allocate_data(l_code_block) == 0 {
-                      return 0i32;
-                    }
+                    opj_tcd_code_block_enc_allocate_data(l_code_block);
                   } else {
-                    let mut l_code_block_0 = (&mut (*l_current_precinct).cblks)
+                    let mut l_code_block_0 = &mut *(&mut (*l_current_precinct).cblks)
                       .dec_ptr()
                       .offset(cblkno as isize);
-                    if opj_tcd_code_block_dec_allocate(l_code_block_0) == 0 {
-                      return 0i32;
-                    }
+                    opj_tcd_code_block_dec_allocate(l_code_block_0);
                     /* code-block size (global) */
                     (*l_code_block_0).x0 = opj_int_max(cblkxstart, (*l_current_precinct).x0);
                     (*l_code_block_0).y0 = opj_int_max(cblkystart, (*l_current_precinct).y0);
@@ -1172,15 +1165,12 @@ pub(crate) fn opj_tcd_init_decode_tile(
 /* *
  * Allocates memory for an encoding code block (but not data memory).
  */
-fn opj_tcd_code_block_enc_allocate(mut p_code_block: *mut opj_tcd_cblk_enc_t) -> OPJ_BOOL {
-  unsafe {
-    if (*p_code_block).layers.is_empty() {
-      (&mut (*p_code_block).layers).resize(100, Default::default());
-    }
-    if (*p_code_block).passes.is_empty() {
-      (&mut (*p_code_block).passes).resize(100, Default::default());
-    }
-    1i32
+fn opj_tcd_code_block_enc_allocate(p_code_block: &mut opj_tcd_cblk_enc_t) {
+  if p_code_block.layers.is_empty() {
+    p_code_block.layers.resize(100, Default::default());
+  }
+  if p_code_block.passes.is_empty() {
+    p_code_block.passes.resize(100, Default::default());
   }
 }
 /* *
@@ -1189,32 +1179,28 @@ fn opj_tcd_code_block_enc_allocate(mut p_code_block: *mut opj_tcd_cblk_enc_t) ->
 /* *
  * Allocates data memory for an encoding code block.
  */
-fn opj_tcd_code_block_enc_allocate_data(mut p_code_block: *mut opj_tcd_cblk_enc_t) -> OPJ_BOOL {
-  unsafe {
-    let mut l_data_size: OPJ_UINT32 = 0;
-    /* +1 is needed for https://github.com/uclouvain/openjpeg/issues/835 */
-    /* and actually +2 required for https://github.com/uclouvain/openjpeg/issues/982 */
-    /* and +7 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 3) */
-    /* and +26 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 7) */
-    /* and +28 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 44) */
-    /* and +33 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 4) */
-    /* and +63 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 4 -IMF 2K) */
-    /* and +74 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 4 -n 8 -s 7,7 -I) */
-    /* TODO: is there a theoretical upper-bound for the compressed code */
-    /* block size ? */
-    l_data_size = (74u32).wrapping_add(
-      (((*p_code_block).x1 - (*p_code_block).x0)
-        * ((*p_code_block).y1 - (*p_code_block).y0)
-        * core::mem::size_of::<OPJ_UINT32>() as OPJ_INT32) as OPJ_UINT32,
-    );
-    if l_data_size > (*p_code_block).data_size {
-      let buf = &mut (*p_code_block).data;
-      buf.clear();
-      /* +1 for the leading sentinel byte the MQ coder reads through `data[-1]` */
-      buf.resize(l_data_size as usize + 1, 0);
-      (*p_code_block).data_size = l_data_size;
-    }
-    1i32
+fn opj_tcd_code_block_enc_allocate_data(p_code_block: &mut opj_tcd_cblk_enc_t) {
+  let mut l_data_size: OPJ_UINT32 = 0;
+  /* +1 is needed for https://github.com/uclouvain/openjpeg/issues/835 */
+  /* and actually +2 required for https://github.com/uclouvain/openjpeg/issues/982 */
+  /* and +7 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 3) */
+  /* and +26 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 7) */
+  /* and +28 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 44) */
+  /* and +33 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 4) */
+  /* and +63 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 4 -IMF 2K) */
+  /* and +74 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 4 -n 8 -s 7,7 -I) */
+  /* TODO: is there a theoretical upper-bound for the compressed code */
+  /* block size ? */
+  l_data_size = (74u32).wrapping_add(
+    ((p_code_block.x1 - p_code_block.x0)
+      * (p_code_block.y1 - p_code_block.y0)
+      * core::mem::size_of::<OPJ_UINT32>() as OPJ_INT32) as OPJ_UINT32,
+  );
+  if l_data_size > p_code_block.data_size {
+    p_code_block.data.clear();
+    /* +1 for the leading sentinel byte the MQ coder reads through `data[-1]` */
+    p_code_block.data.resize(l_data_size as usize + 1, 0);
+    p_code_block.data_size = l_data_size;
   }
 }
 
@@ -1231,23 +1217,19 @@ pub(crate) fn opj_tcd_reinit_segment(seg: &mut opj_tcd_seg_t) {
 /* *
  * Allocates memory for a decoding code block.
  */
-fn opj_tcd_code_block_dec_allocate(mut p_code_block: *mut opj_tcd_cblk_dec_t) -> OPJ_BOOL {
-  unsafe {
-    let p_code_block = &mut *p_code_block;
-    if p_code_block.segs.is_empty() {
-      p_code_block.segs.resize(10, Default::default());
-    } else {
-      /* Reset every scalar but keep the seg/chunk buffers for reuse. */
-      let segs = core::mem::take(&mut p_code_block.segs);
-      let chunks = core::mem::take(&mut p_code_block.chunks);
-      *p_code_block = Default::default();
-      p_code_block.segs = segs;
-      p_code_block.chunks = chunks;
-      for seg in p_code_block.segs.iter_mut() {
-        opj_tcd_reinit_segment(seg);
-      }
+fn opj_tcd_code_block_dec_allocate(p_code_block: &mut opj_tcd_cblk_dec_t) {
+  if p_code_block.segs.is_empty() {
+    p_code_block.segs.resize(10, Default::default());
+  } else {
+    /* Reset every scalar but keep the seg/chunk buffers for reuse. */
+    let segs = core::mem::take(&mut p_code_block.segs);
+    let chunks = core::mem::take(&mut p_code_block.chunks);
+    *p_code_block = Default::default();
+    p_code_block.segs = segs;
+    p_code_block.chunks = chunks;
+    for seg in p_code_block.segs.iter_mut() {
+      opj_tcd_reinit_segment(seg);
     }
-    1i32
   }
 }
 
@@ -1353,7 +1335,7 @@ pub(crate) fn opj_tcd_encode_tile(
         while i < (*l_tilec_idx).numresolutions {
           let mut l_res_idx: *mut opj_tcd_resolution_t =
             &mut *(*l_tilec_idx).resolutions.as_mut_ptr().offset(i as isize)
-          as *mut opj_tcd_resolution_t;
+              as *mut opj_tcd_resolution_t;
           (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pw[i as usize] =
             (*l_res_idx).pw as core::ffi::c_int;
           (*(*p_cstr_info).tile.offset(p_tile_no as isize)).ph[i as usize] =
@@ -1819,64 +1801,25 @@ Free the memory allocated for encoding
 @param tcd TCD handle
 */
 fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
-  unsafe {
-    let mut compno: OPJ_UINT32 = 0; /* for (resno */
-    let mut resno: OPJ_UINT32 = 0;
-    let mut bandno: OPJ_UINT32 = 0;
-    let mut precno: OPJ_UINT32 = 0;
-    let mut l_tile_comp = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
-    let mut l_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
-    let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
-    let mut l_precinct = core::ptr::null_mut::<opj_tcd_precinct_t>();
-    let mut l_nb_resolutions: OPJ_UINT32 = 0;
-    let mut l_nb_precincts: OPJ_UINT32 = 0;
-    let l_tcd_code_block_deallocate = if p_tcd.m_is_decoder {
-      opj_tcd_code_block_dec_deallocate
-    } else {
-      opj_tcd_code_block_enc_deallocate
-    };
-    l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
-    compno = 0 as OPJ_UINT32;
-    while compno < p_tcd.tcd_image.tiles.numcomps {
-      l_res = (&mut (*l_tile_comp).resolutions).as_mut_ptr();
-      if !l_res.is_null() {
-        l_nb_resolutions = (&(*l_tile_comp).resolutions).len() as OPJ_UINT32;
-        resno = 0 as OPJ_UINT32;
-        while resno < l_nb_resolutions {
-          l_band = (*l_res).bands.as_mut_ptr();
-          bandno = 0 as OPJ_UINT32;
-          while bandno < 3u32 {
-            l_precinct = (*l_band).precincts.as_mut_ptr();
-            if !l_precinct.is_null() {
-              l_nb_precincts = (*l_band).precincts.len() as OPJ_UINT32;
-              precno = 0 as OPJ_UINT32;
-              while precno < l_nb_precincts {
-                opj_tgt_destroy((*l_precinct).incltree);
-                (*l_precinct).incltree = core::ptr::null_mut::<opj_tgt_tree_t>();
-                opj_tgt_destroy((*l_precinct).imsbtree);
-                (*l_precinct).imsbtree = core::ptr::null_mut::<opj_tgt_tree_t>();
-                l_tcd_code_block_deallocate(l_precinct);
-                l_precinct = l_precinct.offset(1);
-                precno += 1;
-              }
-              (*l_band).precincts.clear();
-            }
-            l_band = l_band.offset(1);
-            bandno += 1;
-          }
-          l_res = l_res.offset(1);
-          resno += 1;
+  for l_tile_comp in p_tcd.tcd_image.tiles.comps.iter_mut() {
+    for l_res in l_tile_comp.resolutions.iter_mut() {
+      for l_band in l_res.bands.iter_mut() {
+        for l_precinct in l_band.precincts.iter_mut() {
+          opj_tgt_destroy(l_precinct.incltree);
+          opj_tgt_destroy(l_precinct.imsbtree);
+          l_precinct.incltree = core::ptr::null_mut::<opj_tgt_tree_t>();
+          l_precinct.imsbtree = core::ptr::null_mut::<opj_tgt_tree_t>();
+          l_precinct.cblks = CodeBlocks::Empty;
         }
-        (&mut (*l_tile_comp).resolutions).clear();
+        l_band.precincts.clear();
       }
-      (*l_tile_comp).data.release();
-      (*l_tile_comp).data_size_needed = 0i32 as size_t;
-      (*l_tile_comp).data_win.release();
-      l_tile_comp = l_tile_comp.offset(1);
-      compno += 1;
     }
-    p_tcd.tcd_image.tiles.comps.clear();
+    l_tile_comp.resolutions.clear();
+    l_tile_comp.data.release();
+    l_tile_comp.data_size_needed = 0i32 as size_t;
+    l_tile_comp.data_win.release();
   }
+  p_tcd.tcd_image.tiles.comps.clear();
 }
 fn opj_tcd_t2_decode(
   mut p_tcd: &mut opj_tcd,
@@ -2093,12 +2036,7 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
           (*l_tcp).m_mct_decoding_matrix as *const OPJ_FLOAT32,
           numcomps * numcomps,
         );
-        if opj_mct_decode_custom(
-          matrix,
-          l_samples,
-          &mut l_data,
-          (*(*p_tcd.image).comps).sgnd,
-        ) == 0
+        if opj_mct_decode_custom(matrix, l_samples, &mut l_data, (*(*p_tcd.image).comps).sgnd) == 0
         {
           return 0i32;
         }
@@ -2241,24 +2179,6 @@ fn opj_tcd_dc_level_shift_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   }
 }
 
-/* *
- * Deallocates the encoding data of the given precinct.
- */
-fn opj_tcd_code_block_dec_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
-  unsafe {
-    (*p_precinct).cblks = CodeBlocks::Empty;
-  }
-}
-
-/* *
- * Deallocates the encoding data of the given precinct.
- */
-fn opj_tcd_code_block_enc_deallocate(mut p_precinct: *mut opj_tcd_precinct_t) {
-  unsafe {
-    (*p_precinct).cblks = CodeBlocks::Empty;
-  }
-}
-
 pub(crate) fn opj_tcd_get_encoder_input_buffer_size(mut p_tcd: &mut opj_tcd) -> OPJ_SIZE_T {
   let mut l_data_size = 0 as OPJ_SIZE_T;
   let mut l_size_comp: OPJ_UINT32 = 0;
@@ -2350,13 +2270,7 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
         (*p_tcd.tcp).m_mct_coding_matrix as *const OPJ_FLOAT32,
         numcomps * numcomps,
       );
-      if opj_mct_encode_custom(
-        matrix,
-        samples,
-        &mut l_data,
-        (*(*p_tcd.image).comps).sgnd,
-      ) == 0
-      {
+      if opj_mct_encode_custom(matrix, samples, &mut l_data, (*(*p_tcd.image).comps).sgnd) == 0 {
         return 0i32;
       }
     } else if (*(*l_tcp).tccps).qmfbid == 0u32 {
