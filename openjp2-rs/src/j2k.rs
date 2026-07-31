@@ -3211,76 +3211,18 @@ fn opj_j2k_read_ppm(
     p_header_data = p_header_data.offset(1);
     p_header_size = p_header_size.wrapping_sub(1);
     /* check allocation needed */
-    if (*l_cp).ppm_markers.is_null() {
-      /* first PPM marker */
-      let mut l_newCount = l_Z_ppm.wrapping_add(1u32); /* can't overflow, l_Z_ppm is UINT8 */
-      assert!((*l_cp).ppm_markers_count == 0u32);
-      (*l_cp).ppm_markers =
-        opj_calloc(l_newCount as size_t, core::mem::size_of::<opj_ppx>()) as *mut opj_ppx;
-      if (*l_cp).ppm_markers.is_null() {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Not enough memory to read PPM marker\n",
-        );
-        return 0i32;
-      }
-      (*l_cp).ppm_markers_count = l_newCount
-    } else if (*l_cp).ppm_markers_count <= l_Z_ppm {
-      let mut l_newCount_0 = l_Z_ppm.wrapping_add(1u32);
-      let mut new_ppm_markers = core::ptr::null_mut::<opj_ppx>();
-      new_ppm_markers = opj_realloc(
-        (*l_cp).ppm_markers as *mut core::ffi::c_void,
-        (l_newCount_0 as usize).wrapping_mul(core::mem::size_of::<opj_ppx>()),
-      ) as *mut opj_ppx;
-      if new_ppm_markers.is_null() {
-        /* clean up to be done on l_cp destruction */
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Not enough memory to read PPM marker\n",
-        );
-        return 0i32;
-      }
-      (*l_cp).ppm_markers = new_ppm_markers;
-      memset(
-        (*l_cp)
-          .ppm_markers
-          .offset((*l_cp).ppm_markers_count as isize) as *mut core::ffi::c_void,
-        0i32,
-        (l_newCount_0.wrapping_sub((*l_cp).ppm_markers_count) as usize)
-          .wrapping_mul(core::mem::size_of::<opj_ppx>()),
-      );
-      (*l_cp).ppm_markers_count = l_newCount_0
+    if ((*l_cp).ppm_markers.len() as OPJ_UINT32) <= l_Z_ppm {
+      /* grow-only; the tail is default-initialised, as in the C realloc+memset */
+      let l_newCount = l_Z_ppm.wrapping_add(1u32) as usize; /* can't overflow, l_Z_ppm is UINT8 */
+      (&mut (*l_cp).ppm_markers).resize_with(l_newCount, Default::default);
     }
-    if !(*(*l_cp).ppm_markers.offset(l_Z_ppm as isize))
-      .m_data
-      .is_null()
-    {
+    if !(&(*l_cp).ppm_markers)[l_Z_ppm as usize].m_data.is_empty() {
       /* clean up to be done on l_cp destruction */
       event_msg!(p_manager, EVT_ERROR, "Zppm {} already read\n", l_Z_ppm,);
       return 0i32;
     }
-    let fresh12 = &mut (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize)).m_data;
-    *fresh12 = opj_malloc(p_header_size as size_t) as *mut OPJ_BYTE;
-    if (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize))
-      .m_data
-      .is_null()
-    {
-      /* clean up to be done on l_cp destruction */
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory to read PPM marker\n",
-      );
-      return 0i32;
-    }
-    (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize)).m_data_size = p_header_size;
-    memcpy(
-      (*(*l_cp).ppm_markers.offset(l_Z_ppm as isize)).m_data as *mut core::ffi::c_void,
-      p_header_data as *const core::ffi::c_void,
-      p_header_size as usize,
-    );
+    (&mut (*l_cp).ppm_markers)[l_Z_ppm as usize].m_data =
+      core::slice::from_raw_parts(p_header_data, p_header_size as usize).to_vec();
     1i32
   }
 }
@@ -3304,57 +3246,48 @@ fn opj_j2k_merge_ppm(mut p_cp: *mut opj_cp_t, mut p_manager: &mut opj_event_mgr)
     /* preconditions */
 
     assert!(!p_cp.is_null());
-    assert!((*p_cp).ppm_buffer.is_null());
+    assert!((*p_cp).ppm_buffer.is_empty());
     if !(*p_cp).ppm {
       return 1i32;
     }
 
+    /* First pass: total up the Nppm payload lengths and validate. The logical stream is
+    [Nppm][Nppm bytes of packet headers]... and it may straddle marker boundaries, but an
+    Nppm field itself may not. */
     l_ppm_data_size = 0u32;
     l_N_ppm_remaining = 0u32;
     i = 0u32;
-    while i < (*p_cp).ppm_markers_count {
-      if !(*(*p_cp).ppm_markers.offset(i as isize)).m_data.is_null() {
+    while (i as usize) < (*p_cp).ppm_markers.len() {
+      if !(&(*p_cp).ppm_markers)[i as usize].m_data.is_empty() {
         /* standard doesn't seem to require contiguous Zppm */
-        let mut l_N_ppm: OPJ_UINT32 = 0;
-        let mut l_data_size = (*(*p_cp).ppm_markers.offset(i as isize)).m_data_size;
-        let mut l_data: *const OPJ_BYTE = (*(*p_cp).ppm_markers.offset(i as isize)).m_data;
-        if l_N_ppm_remaining >= l_data_size {
-          l_N_ppm_remaining =
-            (l_N_ppm_remaining as core::ffi::c_uint).wrapping_sub(l_data_size) as OPJ_UINT32;
-          l_data_size = 0u32
+        let mut l_data: &[OPJ_BYTE] = &(&(*p_cp).ppm_markers)[i as usize].m_data[..];
+        if l_N_ppm_remaining >= l_data.len() as OPJ_UINT32 {
+          l_N_ppm_remaining -= l_data.len() as OPJ_UINT32;
+          l_data = &[];
         } else {
-          l_data = l_data.offset(l_N_ppm_remaining as isize);
-          l_data_size =
-            (l_data_size as core::ffi::c_uint).wrapping_sub(l_N_ppm_remaining) as OPJ_UINT32;
+          l_data = &l_data[l_N_ppm_remaining as usize..];
           l_N_ppm_remaining = 0u32
         }
-        if l_data_size > 0u32 {
-          loop {
-            /* read Nppm */
-            if l_data_size < 4u32 {
-              /* clean up to be done on l_cp destruction */
-              event_msg!(p_manager, EVT_ERROR, "Not enough bytes to read Nppm\n",);
-              return 0i32;
-            }
-            opj_read_bytes(l_data, &mut l_N_ppm, 4 as OPJ_UINT32);
-            l_data = l_data.offset(4);
-            l_data_size -= 4;
+        while !l_data.is_empty() {
+          /* read Nppm */
+          if l_data.len() < 4 {
+            /* clean up to be done on l_cp destruction */
+            event_msg!(p_manager, EVT_ERROR, "Not enough bytes to read Nppm\n",);
+            return 0i32;
+          }
+          let l_N_ppm = crate::cio::opj_read_bytes(l_data, 4 as OPJ_UINT32);
+          l_data = &l_data[4..];
 
-            if l_ppm_data_size > u32::MAX - l_N_ppm {
-              event_msg!(p_manager, EVT_ERROR, "Too large value for Nppm\n",);
-              return 0i32;
-            }
-            l_ppm_data_size += l_N_ppm;
-            if l_data_size >= l_N_ppm {
-              l_data_size = (l_data_size as core::ffi::c_uint).wrapping_sub(l_N_ppm) as OPJ_UINT32;
-              l_data = l_data.offset(l_N_ppm as isize)
-            } else {
-              l_N_ppm_remaining = l_N_ppm.wrapping_sub(l_data_size);
-              l_data_size = 0u32
-            }
-            if l_data_size <= 0u32 {
-              break;
-            }
+          if l_ppm_data_size > u32::MAX - l_N_ppm {
+            event_msg!(p_manager, EVT_ERROR, "Too large value for Nppm\n",);
+            return 0i32;
+          }
+          l_ppm_data_size += l_N_ppm;
+          if l_data.len() as OPJ_UINT32 >= l_N_ppm {
+            l_data = &l_data[l_N_ppm as usize..]
+          } else {
+            l_N_ppm_remaining = l_N_ppm - l_data.len() as OPJ_UINT32;
+            l_data = &[]
           }
         }
       }
@@ -3365,100 +3298,49 @@ fn opj_j2k_merge_ppm(mut p_cp: *mut opj_cp_t, mut p_manager: &mut opj_event_mgr)
       event_msg!(p_manager, EVT_ERROR, "Corrupted PPM markers\n",);
       return 0i32;
     }
-    (*p_cp).ppm_buffer = opj_malloc(l_ppm_data_size as size_t) as *mut OPJ_BYTE;
-    if (*p_cp).ppm_buffer.is_null() {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory to read PPM marker\n",
-      );
-      return 0i32;
-    }
+    /* Second pass: concatenate the payloads, dropping the Nppm fields. */
+    let mut l_buffer: Vec<OPJ_BYTE> = Vec::with_capacity(l_ppm_data_size as usize);
     (*p_cp).ppm_len = l_ppm_data_size;
-    l_ppm_data_size = 0u32;
     l_N_ppm_remaining = 0u32;
     i = 0u32;
-    while i < (*p_cp).ppm_markers_count {
-      if !(*(*p_cp).ppm_markers.offset(i as isize)).m_data.is_null() {
+    while (i as usize) < (*p_cp).ppm_markers.len() {
+      if !(&(*p_cp).ppm_markers)[i as usize].m_data.is_empty() {
         /* standard doesn't seem to require contiguous Zppm */
-        let mut l_N_ppm_0: OPJ_UINT32 = 0;
-        let mut l_data_size_0 = (*(*p_cp).ppm_markers.offset(i as isize)).m_data_size;
-        let mut l_data_0: *const OPJ_BYTE = (*(*p_cp).ppm_markers.offset(i as isize)).m_data;
-        if l_N_ppm_remaining >= l_data_size_0 {
-          memcpy(
-            (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut core::ffi::c_void,
-            l_data_0 as *const core::ffi::c_void,
-            l_data_size_0 as usize,
-          );
-          l_ppm_data_size =
-            (l_ppm_data_size as core::ffi::c_uint).wrapping_add(l_data_size_0) as OPJ_UINT32;
-          l_N_ppm_remaining =
-            (l_N_ppm_remaining as core::ffi::c_uint).wrapping_sub(l_data_size_0) as OPJ_UINT32;
-          l_data_size_0 = 0u32
+        let mut l_data: &[OPJ_BYTE] = &(&(*p_cp).ppm_markers)[i as usize].m_data[..];
+        if l_N_ppm_remaining >= l_data.len() as OPJ_UINT32 {
+          l_buffer.extend_from_slice(l_data);
+          l_N_ppm_remaining -= l_data.len() as OPJ_UINT32;
+          l_data = &[];
         } else {
-          memcpy(
-            (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut core::ffi::c_void,
-            l_data_0 as *const core::ffi::c_void,
-            l_N_ppm_remaining as usize,
-          );
-          l_ppm_data_size =
-            (l_ppm_data_size as core::ffi::c_uint).wrapping_add(l_N_ppm_remaining) as OPJ_UINT32;
-          l_data_0 = l_data_0.offset(l_N_ppm_remaining as isize);
-          l_data_size_0 =
-            (l_data_size_0 as core::ffi::c_uint).wrapping_sub(l_N_ppm_remaining) as OPJ_UINT32;
+          l_buffer.extend_from_slice(&l_data[..l_N_ppm_remaining as usize]);
+          l_data = &l_data[l_N_ppm_remaining as usize..];
           l_N_ppm_remaining = 0u32
         }
-        if l_data_size_0 > 0u32 {
-          loop {
-            /* read Nppm */
-            if l_data_size_0 < 4u32 {
-              /* clean up to be done on l_cp destruction */
-              event_msg!(p_manager, EVT_ERROR, "Not enough bytes to read Nppm\n",);
-              return 0i32;
-            }
-            opj_read_bytes(l_data_0, &mut l_N_ppm_0, 4 as OPJ_UINT32);
-            l_data_0 = l_data_0.offset(4);
-            l_data_size_0 =
-              (l_data_size_0 as core::ffi::c_uint).wrapping_sub(4u32) as OPJ_UINT32 as OPJ_UINT32;
-            if l_data_size_0 >= l_N_ppm_0 {
-              memcpy(
-                (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut core::ffi::c_void,
-                l_data_0 as *const core::ffi::c_void,
-                l_N_ppm_0 as usize,
-              );
-              l_ppm_data_size =
-                (l_ppm_data_size as core::ffi::c_uint).wrapping_add(l_N_ppm_0) as OPJ_UINT32;
-              l_data_size_0 =
-                (l_data_size_0 as core::ffi::c_uint).wrapping_sub(l_N_ppm_0) as OPJ_UINT32;
-              l_data_0 = l_data_0.offset(l_N_ppm_0 as isize)
-            } else {
-              memcpy(
-                (*p_cp).ppm_buffer.offset(l_ppm_data_size as isize) as *mut core::ffi::c_void,
-                l_data_0 as *const core::ffi::c_void,
-                l_data_size_0 as usize,
-              );
-              l_ppm_data_size =
-                (l_ppm_data_size as core::ffi::c_uint).wrapping_add(l_data_size_0) as OPJ_UINT32;
-              l_N_ppm_remaining = l_N_ppm_0.wrapping_sub(l_data_size_0);
-              l_data_size_0 = 0u32
-            }
-            if l_data_size_0 <= 0u32 {
-              break;
-            }
+        while !l_data.is_empty() {
+          /* read Nppm */
+          if l_data.len() < 4 {
+            /* clean up to be done on l_cp destruction */
+            event_msg!(p_manager, EVT_ERROR, "Not enough bytes to read Nppm\n",);
+            return 0i32;
+          }
+          let l_N_ppm = crate::cio::opj_read_bytes(l_data, 4 as OPJ_UINT32);
+          l_data = &l_data[4..];
+          if l_data.len() as OPJ_UINT32 >= l_N_ppm {
+            l_buffer.extend_from_slice(&l_data[..l_N_ppm as usize]);
+            l_data = &l_data[l_N_ppm as usize..]
+          } else {
+            l_buffer.extend_from_slice(l_data);
+            l_N_ppm_remaining = l_N_ppm - l_data.len() as OPJ_UINT32;
+            l_data = &[]
           }
         }
-        opj_free((*(*p_cp).ppm_markers.offset(i as isize)).m_data as *mut core::ffi::c_void);
-        let fresh13 = &mut (*(*p_cp).ppm_markers.offset(i as isize)).m_data;
-        *fresh13 = core::ptr::null_mut::<OPJ_BYTE>();
-        (*(*p_cp).ppm_markers.offset(i as isize)).m_data_size = 0u32
+        (&mut (*p_cp).ppm_markers)[i as usize].m_data = Vec::new()
       }
       i += 1;
     }
-    (*p_cp).ppm_data = (*p_cp).ppm_buffer;
-    (*p_cp).ppm_data_size = (*p_cp).ppm_len;
-    (*p_cp).ppm_markers_count = 0u32;
-    opj_free((*p_cp).ppm_markers as *mut core::ffi::c_void);
-    (*p_cp).ppm_markers = core::ptr::null_mut::<opj_ppx>();
+    (*p_cp).ppm_data_pos = 0;
+    (*p_cp).ppm_buffer = l_buffer;
+    (*p_cp).ppm_markers = Vec::new();
     1i32
   }
 }
@@ -3508,76 +3390,18 @@ fn opj_j2k_read_ppt(
     p_header_data = p_header_data.offset(1);
     p_header_size = p_header_size.wrapping_sub(1);
     /* check allocation needed */
-    if (*l_tcp).ppt_markers.is_null() {
-      /* first PPT marker */
-      let mut l_newCount = l_Z_ppt.wrapping_add(1u32); /* can't overflow, l_Z_ppt is UINT8 */
-      assert!((*l_tcp).ppt_markers_count == 0u32);
-      (*l_tcp).ppt_markers =
-        opj_calloc(l_newCount as size_t, core::mem::size_of::<opj_ppx>()) as *mut opj_ppx;
-      if (*l_tcp).ppt_markers.is_null() {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Not enough memory to read PPT marker\n",
-        );
-        return 0i32;
-      }
-      (*l_tcp).ppt_markers_count = l_newCount
-    } else if (*l_tcp).ppt_markers_count <= l_Z_ppt {
-      let mut l_newCount_0 = l_Z_ppt.wrapping_add(1u32);
-      let mut new_ppt_markers = core::ptr::null_mut::<opj_ppx>();
-      new_ppt_markers = opj_realloc(
-        (*l_tcp).ppt_markers as *mut core::ffi::c_void,
-        (l_newCount_0 as usize).wrapping_mul(core::mem::size_of::<opj_ppx>()),
-      ) as *mut opj_ppx;
-      if new_ppt_markers.is_null() {
-        /* clean up to be done on l_tcp destruction */
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Not enough memory to read PPT marker\n",
-        );
-        return 0i32;
-      }
-      (*l_tcp).ppt_markers = new_ppt_markers;
-      memset(
-        (*l_tcp)
-          .ppt_markers
-          .offset((*l_tcp).ppt_markers_count as isize) as *mut core::ffi::c_void,
-        0i32,
-        (l_newCount_0.wrapping_sub((*l_tcp).ppt_markers_count) as usize)
-          .wrapping_mul(core::mem::size_of::<opj_ppx>()),
-      );
-      (*l_tcp).ppt_markers_count = l_newCount_0
+    if ((*l_tcp).ppt_markers.len() as OPJ_UINT32) <= l_Z_ppt {
+      /* grow-only; the tail is default-initialised, as in the C realloc+memset */
+      let l_newCount = l_Z_ppt.wrapping_add(1u32) as usize; /* can't overflow, l_Z_ppt is UINT8 */
+      (&mut (*l_tcp).ppt_markers).resize_with(l_newCount, Default::default);
     }
-    if !(*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize))
-      .m_data
-      .is_null()
-    {
+    if !(&(*l_tcp).ppt_markers)[l_Z_ppt as usize].m_data.is_empty() {
       /* clean up to be done on l_tcp destruction */
       event_msg!(p_manager, EVT_ERROR, "Zppt {} already read\n", l_Z_ppt,);
       return 0i32;
     }
-    let fresh14 = &mut (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize)).m_data;
-    *fresh14 = opj_malloc(p_header_size as size_t) as *mut OPJ_BYTE;
-    if (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize))
-      .m_data
-      .is_null()
-    {
-      /* clean up to be done on l_tcp destruction */
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory to read PPT marker\n",
-      );
-      return 0i32;
-    }
-    (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize)).m_data_size = p_header_size;
-    memcpy(
-      (*(*l_tcp).ppt_markers.offset(l_Z_ppt as isize)).m_data as *mut core::ffi::c_void,
-      p_header_data as *const core::ffi::c_void,
-      p_header_size as usize,
-    );
+    (&mut (*l_tcp).ppt_markers)[l_Z_ppt as usize].m_data =
+      core::slice::from_raw_parts(p_header_data, p_header_size as usize).to_vec();
     1i32
   }
 }
@@ -3595,12 +3419,10 @@ fn opj_j2k_read_ppt(
  */
 fn opj_j2k_merge_ppt(mut p_tcp: *mut opj_tcp_t, mut p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
   unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_ppt_data_size: OPJ_UINT32 = 0;
     /* preconditions */
 
     assert!(!p_tcp.is_null());
-    if !(*p_tcp).ppt_buffer.is_null() {
+    if !(*p_tcp).ppt_buffer.is_empty() {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -3611,50 +3433,16 @@ fn opj_j2k_merge_ppt(mut p_tcp: *mut opj_tcp_t, mut p_manager: &mut opj_event_mg
     if !(*p_tcp).ppt {
       return 1i32;
     }
-    l_ppt_data_size = 0u32;
-    i = 0u32;
-    while i < (*p_tcp).ppt_markers_count {
-      l_ppt_data_size = (l_ppt_data_size as core::ffi::c_uint)
-        .wrapping_add((*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size)
-        as OPJ_UINT32;
-      i += 1;
-      /* can't overflow, max 256 markers of max 65536 bytes */
+    /* concatenate in Zppt order; the standard doesn't seem to require contiguous Zppt,
+    and can't overflow, max 256 markers of max 65536 bytes */
+    let mut l_buffer = Vec::new();
+    for l_marker in (&mut (*p_tcp).ppt_markers).iter_mut() {
+      l_buffer.append(&mut l_marker.m_data);
     }
-    (*p_tcp).ppt_buffer = opj_malloc(l_ppt_data_size as size_t) as *mut OPJ_BYTE;
-    if (*p_tcp).ppt_buffer.is_null() {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory to read PPT marker\n",
-      );
-      return 0i32;
-    }
-    (*p_tcp).ppt_len = l_ppt_data_size;
-    l_ppt_data_size = 0u32;
-    i = 0u32;
-    while i < (*p_tcp).ppt_markers_count {
-      if !(*(*p_tcp).ppt_markers.offset(i as isize)).m_data.is_null() {
-        /* standard doesn't seem to require contiguous Zppt */
-        memcpy(
-          (*p_tcp).ppt_buffer.offset(l_ppt_data_size as isize) as *mut core::ffi::c_void,
-          (*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *const core::ffi::c_void,
-          (*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size as usize,
-        ); /* can't overflow, max 256 markers of max 65536 bytes */
-        l_ppt_data_size = (l_ppt_data_size as core::ffi::c_uint)
-          .wrapping_add((*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size)
-          as OPJ_UINT32;
-        opj_free((*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *mut core::ffi::c_void);
-        let fresh15 = &mut (*(*p_tcp).ppt_markers.offset(i as isize)).m_data;
-        *fresh15 = core::ptr::null_mut::<OPJ_BYTE>();
-        (*(*p_tcp).ppt_markers.offset(i as isize)).m_data_size = 0u32
-      }
-      i += 1;
-    }
-    (*p_tcp).ppt_markers_count = 0u32;
-    opj_free((*p_tcp).ppt_markers as *mut core::ffi::c_void);
-    (*p_tcp).ppt_markers = core::ptr::null_mut::<opj_ppx>();
-    (*p_tcp).ppt_data = (*p_tcp).ppt_buffer;
-    (*p_tcp).ppt_data_size = (*p_tcp).ppt_len;
+    (*p_tcp).ppt_markers = Vec::new();
+    (*p_tcp).ppt_len = l_buffer.len() as OPJ_UINT32;
+    (*p_tcp).ppt_data_pos = 0;
+    (*p_tcp).ppt_buffer = l_buffer;
     1i32
   }
 }
@@ -8792,6 +8580,10 @@ fn opj_j2k_copy_default_tcp_and_create_tcd(
     while i < l_nb_tiles {
       /* keep the tile-compo coding parameters of the current tile coding parameters*/
       let l_current_tccp = core::mem::take(&mut (*l_tcp).tccps);
+      /* the ppt_* fields are reset below, so drop this tile's own buffers before the
+      memcpy bit-copies (and so aliases) the default tcp's Vec headers */
+      (*l_tcp).ppt_markers = Vec::new();
+      (*l_tcp).ppt_buffer = Vec::new();
       /*Copy default coding parameters into the current tile coding parameters*/
       memcpy(
         l_tcp as *mut core::ffi::c_void,
@@ -8801,7 +8593,9 @@ fn opj_j2k_copy_default_tcp_and_create_tcd(
       /* Initialize some values of the current tile coding parameters*/
       (*l_tcp).cod = false;
       (*l_tcp).ppt = false;
-      (*l_tcp).ppt_data = core::ptr::null_mut::<OPJ_BYTE>();
+      core::ptr::write(&mut (*l_tcp).ppt_markers, Vec::new());
+      core::ptr::write(&mut (*l_tcp).ppt_buffer, Vec::new());
+      (*l_tcp).ppt_data_pos = 0;
       (*l_tcp).m_current_tile_part_number = -(1i32);
       /* Remove memory not owned by this tile in case of early error return. */
       (*l_tcp).m_mct_decoding_matrix = core::ptr::null_mut::<OPJ_FLOAT32>();
@@ -9044,23 +8838,8 @@ fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
     if p_tcp.is_null() {
       return;
     }
-    if !(*p_tcp).ppt_markers.is_null() {
-      let mut i: OPJ_UINT32 = 0;
-      i = 0u32;
-      while i < (*p_tcp).ppt_markers_count {
-        if !(*(*p_tcp).ppt_markers.offset(i as isize)).m_data.is_null() {
-          opj_free((*(*p_tcp).ppt_markers.offset(i as isize)).m_data as *mut core::ffi::c_void);
-        }
-        i += 1;
-      }
-      (*p_tcp).ppt_markers_count = 0u32;
-      opj_free((*p_tcp).ppt_markers as *mut core::ffi::c_void);
-      (*p_tcp).ppt_markers = core::ptr::null_mut::<opj_ppx>()
-    }
-    if !(*p_tcp).ppt_buffer.is_null() {
-      opj_free((*p_tcp).ppt_buffer as *mut core::ffi::c_void);
-      (*p_tcp).ppt_buffer = core::ptr::null_mut::<OPJ_BYTE>()
-    }
+    (*p_tcp).ppt_markers = Vec::new();
+    (*p_tcp).ppt_buffer = Vec::new();
     (*p_tcp).tccps = Vec::new();
     if !(*p_tcp).m_mct_coding_matrix.is_null() {
       opj_free((*p_tcp).m_mct_coding_matrix as *mut core::ffi::c_void);
@@ -9136,22 +8915,8 @@ fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
       }
       (*p_cp).tcps = Vec::new()
     }
-    if !(*p_cp).ppm_markers.is_null() {
-      let mut i_0: OPJ_UINT32 = 0;
-      i_0 = 0u32;
-      while i_0 < (*p_cp).ppm_markers_count {
-        if !(*(*p_cp).ppm_markers.offset(i_0 as isize)).m_data.is_null() {
-          opj_free((*(*p_cp).ppm_markers.offset(i_0 as isize)).m_data as *mut core::ffi::c_void);
-        }
-        i_0 += 1;
-      }
-      (*p_cp).ppm_markers_count = 0u32;
-      opj_free((*p_cp).ppm_markers as *mut core::ffi::c_void);
-      (*p_cp).ppm_markers = core::ptr::null_mut::<opj_ppx>()
-    }
-    opj_free((*p_cp).ppm_buffer as *mut core::ffi::c_void);
-    (*p_cp).ppm_buffer = core::ptr::null_mut::<OPJ_BYTE>();
-    (*p_cp).ppm_data = core::ptr::null_mut::<OPJ_BYTE>();
+    (*p_cp).ppm_markers = Vec::new();
+    (*p_cp).ppm_buffer = Vec::new();
     opj_free((*p_cp).comment as *mut core::ffi::c_void);
     (*p_cp).comment = core::ptr::null_mut::<OPJ_CHAR>();
     if !(*p_cp).m_is_decoder {

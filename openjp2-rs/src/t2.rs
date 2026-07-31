@@ -1073,9 +1073,15 @@ fn opj_t2_read_packet_header(
     */
     /* The header lives either in the PPM buffer, the PPT buffer, or inline in the codestream. */
     let (l_header_base, l_header_avail) = if (*l_cp).ppm {
-      ((*l_cp).ppm_data, (*l_cp).ppm_len)
+      (
+        (&mut (*l_cp).ppm_buffer)[(*l_cp).ppm_data_pos..].as_mut_ptr(),
+        (*l_cp).ppm_len,
+      )
     } else if (*p_tcp).ppt {
-      ((*p_tcp).ppt_data, (*p_tcp).ppt_len)
+      (
+        (&mut (*p_tcp).ppt_buffer)[(*p_tcp).ppt_data_pos..].as_mut_ptr(),
+        (*p_tcp).ppt_len,
+      )
     } else {
       let l_remaining_length = (p_src_data.len() - l_pos) as OPJ_UINT32;
       (p_src_data[l_pos..].as_mut_ptr(), l_remaining_length)
@@ -1110,10 +1116,10 @@ fn opj_t2_read_packet_header(
       }
       l_header_length = l_hdr_pos as OPJ_UINT32;
       if (*l_cp).ppm {
-        (*l_cp).ppm_data = (*l_cp).ppm_data.add(l_header_length as usize);
+        (*l_cp).ppm_data_pos += l_header_length as usize;
         (*l_cp).ppm_len -= l_header_length;
       } else if (*p_tcp).ppt {
-        (*p_tcp).ppt_data = (*p_tcp).ppt_data.add(l_header_length as usize);
+        (*p_tcp).ppt_data_pos += l_header_length as usize;
         (*p_tcp).ppt_len -= l_header_length;
       } else {
         l_pos += l_header_length as usize;
@@ -1349,10 +1355,10 @@ fn opj_t2_read_packet_header(
     log::debug!("hdrlen={}", l_header_length);
     log::debug!("packet body");
     if (*l_cp).ppm {
-      (*l_cp).ppm_data = (*l_cp).ppm_data.add(l_header_length as usize);
+      (*l_cp).ppm_data_pos += l_header_length as usize;
       (*l_cp).ppm_len -= l_header_length;
     } else if (*p_tcp).ppt {
-      (*p_tcp).ppt_data = (*p_tcp).ppt_data.add(l_header_length as usize);
+      (*p_tcp).ppt_data_pos += l_header_length as usize;
       (*p_tcp).ppt_len -= l_header_length;
     } else {
       l_pos += l_header_length as usize;
