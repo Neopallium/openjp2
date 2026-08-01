@@ -1237,41 +1237,51 @@ pub(crate) struct opj_tcd_layer {
 }
 pub(crate) type opj_tcd_layer_t = opj_tcd_layer;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub(crate) union C2RustUnnamed_2 {
+/* This was a C union of the decoder-only and encoder-only codec state. A given `opj_j2k` is
+either a decoder or an encoder one, so holding both costs a few bytes and lets each side own
+its scratch buffers instead of aliasing raw memory. */
+#[derive(Default)]
+pub(crate) struct C2RustUnnamed_2 {
   pub m_decoder: opj_j2k_dec_t,
   pub m_encoder: opj_j2k_enc_t,
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default)]
 pub(crate) struct opj_j2k_enc {
   pub m_current_poc_tile_part_number: OPJ_UINT32,
   pub m_current_tile_part_number: OPJ_UINT32,
   pub m_TLM: OPJ_BOOL,
   pub m_Ttlmi_is_byte: OPJ_BOOL,
   pub m_tlm_start: OPJ_OFF_T,
-  pub m_tlm_sot_offsets_buffer: *mut OPJ_BYTE,
-  pub m_tlm_sot_offsets_current: *mut OPJ_BYTE,
+  pub m_tlm_sot_offsets_buffer: Vec<OPJ_BYTE>,
+  /* write cursor into `m_tlm_sot_offsets_buffer` */
+  pub m_tlm_sot_offsets_current: usize,
   pub m_total_tile_parts: OPJ_UINT32,
-  pub m_encoded_tile_data: *mut OPJ_BYTE,
-  pub m_encoded_tile_size: OPJ_UINT32,
-  pub m_header_tile_data: *mut OPJ_BYTE,
-  pub m_header_tile_data_size: OPJ_UINT32,
+  pub m_encoded_tile_data: Vec<OPJ_BYTE>,
+  pub m_header_tile_data: Vec<OPJ_BYTE>,
   pub m_PLT: OPJ_BOOL,
   pub m_reserved_bytes_for_PLT: OPJ_UINT32,
   pub m_nb_comps: OPJ_UINT32,
 }
+
+impl opj_j2k_enc {
+  /* Grow-only scratch buffer used to assemble a marker segment before it is written out.
+  Mirrors the C `opj_realloc` of `m_header_tile_data`; the returned pointer is valid until
+  the next call. */
+  pub(crate) fn header_tile_data(&mut self, size: OPJ_UINT32) -> *mut OPJ_BYTE {
+    if size as usize > self.m_header_tile_data.len() {
+      self.m_header_tile_data.resize(size as usize, 0);
+    }
+    self.m_header_tile_data.as_mut_ptr()
+  }
+}
 pub(crate) type opj_j2k_enc_t = opj_j2k_enc;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default)]
 pub(crate) struct opj_j2k_dec {
   pub m_state: J2KState,
   pub m_default_tcp: *mut opj_tcp_t,
-  pub m_header_data: *mut OPJ_BYTE,
-  pub m_header_data_size: OPJ_UINT32,
+  pub m_header_data: Vec<OPJ_BYTE>,
   pub m_sot_length: OPJ_UINT32,
   pub m_start_tile_x: OPJ_UINT32,
   pub m_start_tile_y: OPJ_UINT32,
@@ -1281,11 +1291,22 @@ pub(crate) struct opj_j2k_dec {
   pub m_last_sot_read_pos: OPJ_OFF_T,
   pub m_last_tile_part: OPJ_BOOL,
   pub m_numcomps_to_decode: OPJ_UINT32,
-  pub m_comps_indices_to_decode: *mut OPJ_UINT32,
+  pub m_comps_indices_to_decode: Vec<OPJ_UINT32>,
   pub m_can_decode: bool,
   pub m_discard_tiles: bool,
   pub m_skip_data: bool,
   pub m_nb_tile_parts_correction_checked: bool,
   pub m_nb_tile_parts_correction: bool,
+}
+
+impl opj_j2k_dec {
+  /* Grow-only scratch buffer holding the marker segment currently being read. Mirrors the
+  C `opj_realloc` of `m_header_data`; the returned pointer is valid until the next call. */
+  pub(crate) fn header_data(&mut self, size: OPJ_UINT32) -> *mut OPJ_BYTE {
+    if size as usize > self.m_header_data.len() {
+      self.m_header_data.resize(size as usize, 0);
+    }
+    self.m_header_data.as_mut_ptr()
+  }
 }
 pub(crate) type opj_j2k_dec_t = opj_j2k_dec;

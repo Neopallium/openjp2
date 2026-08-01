@@ -1018,11 +1018,9 @@ pub(crate) fn opj_jp2_apply_color_postprocessing(
   p_image: &mut opj_image,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    if jp2.j2k.m_specific_param.m_decoder.m_numcomps_to_decode != 0 {
-      /* Bypass all JP2 component transforms */
-      return 1;
-    }
+  if jp2.j2k.m_specific_param.m_decoder.m_numcomps_to_decode != 0 {
+    /* Bypass all JP2 component transforms */
+    return 1;
   }
   if jp2.ignore_pclr_cmap_cdef == 0 {
     if opj_jp2_check_color(p_image, &mut jp2.color, p_manager) == 0 {
