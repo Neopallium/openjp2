@@ -280,6 +280,16 @@ impl Seek for StreamInner {
 }
 
 impl Stream {
+  /// Create a read stream from any `Read + Seek` source (e.g. `Cursor<Vec<u8>>`).
+  /// Works without the `file-io` feature, making it suitable for WASM.
+  pub fn from_reader<R: Read + Seek + 'static>(reader: R, length: u64) -> Self {
+    Self {
+      m_inner: StreamInner::new_reader(super::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize, reader),
+      m_stream_length: length,
+      m_byte_offset: 0,
+    }
+  }
+
   #[cfg(feature = "file-io")]
   pub fn new_file<P: AsRef<Path>>(path: P, buffer_size: usize, is_input: bool) -> io::Result<Self> {
     if is_input {

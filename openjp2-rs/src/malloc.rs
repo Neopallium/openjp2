@@ -1,6 +1,7 @@
 #[cfg(not(any(feature = "c_api", feature = "test_malloc")))]
 use std::alloc::{alloc, alloc_zeroed, dealloc, Layout};
 
+#[cfg(any(feature = "c_api", feature = "test_malloc"))]
 extern "C" {
 
   fn malloc(_: usize) -> *mut core::ffi::c_void;
@@ -41,7 +42,7 @@ pub(crate) fn memset(s: *mut core::ffi::c_void, c: i32, n: usize) -> *mut core::
   s
 }
 
-pub(crate) fn strlen(s: *const i8) -> usize {
+pub(crate) fn strlen(s: *const core::ffi::c_char) -> usize {
   unsafe {
     let mut len = 0;
     while *s.add(len) != 0 {
@@ -51,12 +52,72 @@ pub(crate) fn strlen(s: *const i8) -> usize {
   }
 }
 
+/// Header-based allocator for builds without C FFI (`c_api` / `test_malloc`).
+/// Prepends each allocation with a size so `opj_free` can reconstruct the `Layout`.
+#[cfg(not(any(feature = "c_api", feature = "test_malloc")))]
+mod header_alloc {
+  use std::alloc::{self, Layout};
+
+  // Align header to 16 bytes so the returned pointer keeps reasonable alignment.
+  const HEADER: usize = 16;
+
+  fn layout_for(size: usize) -> Layout {
+    Layout::from_size_align(size + HEADER, HEADER).expect("invalid alloc layout")
+  }
+
+  pub fn malloc(size: usize) -> *mut core::ffi::c_void {
+    unsafe {
+      let raw = alloc::alloc(layout_for(size));
+      if raw.is_null() {
+        return core::ptr::null_mut();
+      }
+      *(raw as *mut usize) = size;
+      raw.add(HEADER) as *mut core::ffi::c_void
+    }
+  }
+
+  pub fn calloc(total: usize) -> *mut core::ffi::c_void {
+    unsafe {
+      let raw = alloc::alloc_zeroed(layout_for(total));
+      if raw.is_null() {
+        return core::ptr::null_mut();
+      }
+      *(raw as *mut usize) = total;
+      raw.add(HEADER) as *mut core::ffi::c_void
+    }
+  }
+
+  pub fn realloc(ptr: *mut core::ffi::c_void, new_size: usize) -> *mut core::ffi::c_void {
+    unsafe {
+      let old_raw = (ptr as *mut u8).sub(HEADER);
+      let old_size = *(old_raw as *const usize);
+      let new_raw = alloc::realloc(old_raw, layout_for(old_size), new_size + HEADER);
+      if new_raw.is_null() {
+        return core::ptr::null_mut();
+      }
+      *(new_raw as *mut usize) = new_size;
+      new_raw.add(HEADER) as *mut core::ffi::c_void
+    }
+  }
+
+  pub fn free(ptr: *mut core::ffi::c_void) {
+    unsafe {
+      let raw = (ptr as *mut u8).sub(HEADER);
+      let size = *(raw as *const usize);
+      alloc::dealloc(raw, layout_for(size));
+    }
+  }
+}
+
 pub(crate) fn opj_malloc(mut size: usize) -> *mut core::ffi::c_void {
   if size == 0 {
     /* prevent implementation defined behavior of malloc */
     return core::ptr::null_mut::<core::ffi::c_void>();
   }
-  unsafe { malloc(size) }
+  #[cfg(any(feature = "c_api", feature = "test_malloc"))]
+  { unsafe { malloc(size) } }
+  #[cfg(not(any(feature = "c_api", feature = "test_malloc")))]
+  { header_alloc::malloc(size) }
 }
 
 #[cfg(feature = "test_malloc")]
@@ -174,7 +235,10 @@ pub(crate) fn opj_calloc(mut num: usize, mut size: usize) -> *mut core::ffi::c_v
     /* prevent implementation defined behavior of calloc */
     return core::ptr::null_mut::<core::ffi::c_void>();
   }
-  unsafe { calloc(num, size) }
+  #[cfg(any(feature = "c_api", feature = "test_malloc"))]
+  { unsafe { calloc(num, size) } }
+  #[cfg(not(any(feature = "c_api", feature = "test_malloc")))]
+  { header_alloc::calloc(num * size) }
 }
 
 pub(crate) fn opj_calloc_type<T>() -> *mut T {
@@ -260,7 +324,13 @@ pub(crate) fn opj_realloc(
     /* prevent implementation defined behavior of realloc */
     return core::ptr::null_mut::<core::ffi::c_void>();
   }
-  unsafe { realloc(ptr, new_size) }
+  if ptr.is_null() {
+    return opj_malloc(new_size);
+  }
+  #[cfg(any(feature = "c_api", feature = "test_malloc"))]
+  { unsafe { realloc(ptr, new_size) } }
+  #[cfg(not(any(feature = "c_api", feature = "test_malloc")))]
+  { header_alloc::realloc(ptr, new_size) }
 }
 
 pub(crate) fn opj_realloc_type_array<T>(mut ptr: *mut T, old_num: usize, mut num: usize) -> *mut T {
@@ -297,11 +367,13 @@ pub(crate) fn opj_realloc_type_array<T>(mut ptr: *mut T, old_num: usize, mut num
 }
 
 pub(crate) fn opj_free(mut ptr: *mut core::ffi::c_void) {
-  unsafe {
-    if !ptr.is_null() {
-      free(ptr);
-    }
+  if ptr.is_null() {
+    return;
   }
+  #[cfg(any(feature = "c_api", feature = "test_malloc"))]
+  { unsafe { free(ptr) } }
+  #[cfg(not(any(feature = "c_api", feature = "test_malloc")))]
+  { header_alloc::free(ptr) }
 }
 
 pub(crate) fn opj_free_type<T>(mut ptr: *mut T) {

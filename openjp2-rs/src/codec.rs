@@ -38,6 +38,7 @@ use super::consts::*;
 use super::types::*;
 
 use super::event::*;
+#[cfg(feature = "file-io")]
 use super::fprintf::StringWriter;
 
 pub(crate) enum CodecFormat {

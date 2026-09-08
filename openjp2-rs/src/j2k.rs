@@ -15,7 +15,9 @@ use super::malloc::*;
 
 use bitflags::bitflags;
 
+#[cfg(feature = "file-io")]
 mod dump;
+#[cfg(feature = "file-io")]
 pub(crate) use dump::*;
 
 bitflags! {
