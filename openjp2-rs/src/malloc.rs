@@ -42,7 +42,7 @@ pub(crate) fn memset(s: *mut core::ffi::c_void, c: i32, n: usize) -> *mut core::
   s
 }
 
-pub(crate) fn strlen(s: *const i8) -> usize {
+pub(crate) fn strlen(s: *const core::ffi::c_char) -> usize {
   unsafe {
     let mut len = 0;
     while *s.add(len) != 0 {

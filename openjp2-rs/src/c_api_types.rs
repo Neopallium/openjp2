@@ -346,7 +346,7 @@ impl opj_cparameters_t {
         let _old_comment = std::ffi::CString::from_raw(self.cp_comment as *mut core::ffi::c_char);
       }
     }
-    self.cp_comment = comment.into_raw() as *mut i8;
+    self.cp_comment = comment.into_raw() as *mut core::ffi::c_char;
   }
 
   pub fn set_MCT(
