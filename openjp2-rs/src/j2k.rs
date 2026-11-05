@@ -1444,45 +1444,44 @@ fn opj_j2k_read_cod(
  * @param       p_manager   the user event manager.
 */
 fn opj_j2k_write_coc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_comp_no: OPJ_UINT32,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_comp_no: OPJ_UINT32,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_coc_size: OPJ_UINT32 = 0;
-    let mut l_remaining_size: OPJ_UINT32 = 0;
-    let mut l_comp_room: OPJ_UINT32 = 0;
-    /* preconditions */
+  let mut l_coc_size: OPJ_UINT32 = 0;
+  let mut l_remaining_size: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    l_comp_room = if p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps <= 256u32 {
+  let l_comp_room =
+    if p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps <= 256u32 {
       1i32
     } else {
       2i32
     } as OPJ_UINT32;
-    l_coc_size = (5u32)
-      .wrapping_add(l_comp_room)
-      .wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
-        p_j2k,
-        p_j2k.m_current_tile_number,
-        p_comp_no,
-      ));
-    let mut l_coc_data = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
-    l_coc_data.resize(l_coc_size as usize, 0);
-    opj_j2k_write_coc_in_memory(
+  l_coc_size = (5u32)
+    .wrapping_add(l_comp_room)
+    .wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
       p_j2k,
+      p_j2k.m_current_tile_number,
       p_comp_no,
-      &mut l_coc_data[..],
-      &mut l_remaining_size,
-      p_manager,
-    );
-    if opj_stream_write_data(p_stream, &l_coc_data[..l_coc_size as usize], p_manager) != l_coc_size as usize
-    {
-      return 0i32;
-    }
-    p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_coc_data;
-    1i32
+    ));
+  let mut l_coc_data = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
+  l_coc_data.resize(l_coc_size as usize, 0);
+  opj_j2k_write_coc_in_memory(
+    p_j2k,
+    p_comp_no,
+    &mut l_coc_data[..],
+    &mut l_remaining_size,
+    p_manager,
+  );
+  if opj_stream_write_data(p_stream, &l_coc_data[..l_coc_size as usize], p_manager)
+    != l_coc_size as usize
+  {
+    return 0i32;
   }
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_coc_data;
+  1i32
 }
 
 /* *
@@ -1789,46 +1788,45 @@ fn opj_j2k_read_qcd(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_qcc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_comp_no: OPJ_UINT32,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_comp_no: OPJ_UINT32,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_qcc_size: OPJ_UINT32 = 0;
-    let mut l_remaining_size: OPJ_UINT32 = 0;
-    /* preconditions */
+  let mut l_qcc_size: OPJ_UINT32 = 0;
+  let mut l_remaining_size: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    l_qcc_size = (5u32).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
-      p_j2k,
-      p_j2k.m_current_tile_number,
-      p_comp_no,
-    ));
-    l_qcc_size =
-      (l_qcc_size as core::ffi::c_uint).wrapping_add(if p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps <= 256u32
-      {
-        0i32
-      } else {
-        1i32
-      } as core::ffi::c_uint) as OPJ_UINT32;
-    l_remaining_size = l_qcc_size;
-    let mut l_qcc_data = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
-    l_qcc_data.resize(l_qcc_size as usize, 0);
-    opj_j2k_write_qcc_in_memory(
-      p_j2k,
-      p_comp_no,
-      &mut l_qcc_data[..],
-      &mut l_remaining_size,
-      p_manager,
-    );
-    if opj_stream_write_data(p_stream, &l_qcc_data[..l_qcc_size as usize], p_manager) != l_qcc_size as usize
-    {
-      return 0i32;
-    }
-    p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_qcc_data;
+  l_qcc_size = (5u32).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
+    p_j2k,
+    p_j2k.m_current_tile_number,
+    p_comp_no,
+  ));
+  let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  l_qcc_size = l_qcc_size.wrapping_add(if numcomps <= 256u32 {
+    0i32
+  } else {
     1i32
+  } as core::ffi::c_uint);
+  l_remaining_size = l_qcc_size;
+  let mut l_qcc_data = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
+  l_qcc_data.resize(l_qcc_size as usize, 0);
+  opj_j2k_write_qcc_in_memory(
+    p_j2k,
+    p_comp_no,
+    &mut l_qcc_data[..],
+    &mut l_remaining_size,
+    p_manager,
+  );
+  if opj_stream_write_data(p_stream, &l_qcc_data[..l_qcc_size as usize], p_manager)
+    != l_qcc_size as usize
+  {
+    return 0i32;
   }
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_qcc_data;
+  1i32
 }
+
 /* *
  * Compare QCC markers (quantization component)
  *
