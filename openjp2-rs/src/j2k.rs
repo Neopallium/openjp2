@@ -2201,61 +2201,60 @@ fn opj_j2k_get_max_toc_size(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
  *
  * @param       p_j2k   the jpeg2000 codec to use.
  */
-fn opj_j2k_get_specific_header_sizes(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
-  unsafe {
-    let mut l_nb_bytes = 0 as OPJ_UINT32;
-    let mut l_nb_comps: OPJ_UINT32 = 0;
-    let mut l_coc_bytes: OPJ_UINT32 = 0;
-    let mut l_qcc_bytes: OPJ_UINT32 = 0;
-    l_nb_comps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps.wrapping_sub(1u32);
-    l_nb_bytes =
-      (l_nb_bytes as core::ffi::c_uint).wrapping_add(opj_j2k_get_max_toc_size(p_j2k)) as OPJ_UINT32;
-    if !(p_j2k.m_cp.rsiz as core::ffi::c_int >= 0x3i32
-      && p_j2k.m_cp.rsiz as core::ffi::c_int <= 0x6i32)
-    {
-      l_coc_bytes = opj_j2k_get_max_coc_size(p_j2k);
-      l_nb_bytes = (l_nb_bytes as core::ffi::c_uint)
-        .wrapping_add(l_nb_comps.wrapping_mul(l_coc_bytes)) as OPJ_UINT32;
-      l_qcc_bytes = opj_j2k_get_max_qcc_size(p_j2k);
-      l_nb_bytes = (l_nb_bytes as core::ffi::c_uint)
-        .wrapping_add(l_nb_comps.wrapping_mul(l_qcc_bytes)) as OPJ_UINT32
-    }
-    l_nb_bytes =
-      (l_nb_bytes as core::ffi::c_uint).wrapping_add(opj_j2k_get_max_poc_size(p_j2k)) as OPJ_UINT32;
-    if p_j2k.m_specific_param.m_encoder.m_PLT != 0 {
-      /* Reserve space for PLT markers */
-      let mut i: OPJ_UINT32 = 0;
-      let mut l_cp: *const opj_cp_t = &mut p_j2k.m_cp;
-      let mut l_max_packet_count = 0 as OPJ_UINT32;
-      i = 0 as OPJ_UINT32;
-      while i < (*l_cp).th.wrapping_mul((*l_cp).tw) {
-        l_max_packet_count = opj_uint_max(
-          l_max_packet_count,
-          opj_get_encoding_packet_count(p_j2k.m_private_image.as_deref_mut().expect("m_private_image"), l_cp, i),
-        );
-        i += 1;
-      }
-      /* Minimum 6 bytes per PLT marker, and at a minimum (taking a pessimistic */
-      /* estimate of 4 bytes for a packet size), one can write */
-      /* (65536-6) / 4 = 16382 paquet sizes per PLT marker */
-      p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
-        (6u32).wrapping_mul(opj_uint_ceildiv(l_max_packet_count, 16382 as OPJ_UINT32));
-      /* Maximum 5 bytes per packet to encode a full UINT32 */
-      l_nb_bytes = (l_nb_bytes as core::ffi::c_uint)
-        .wrapping_add((5u32).wrapping_mul(l_max_packet_count)) as OPJ_UINT32;
-      p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
-        (p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT as core::ffi::c_uint)
-          .wrapping_add(l_nb_bytes) as OPJ_UINT32;
-      p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
-        (p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT as core::ffi::c_uint)
-          .wrapping_add(1u32) as OPJ_UINT32;
-      l_nb_bytes = (l_nb_bytes as core::ffi::c_uint)
-        .wrapping_add(p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT)
-        as OPJ_UINT32
-    }
-    /* ** DEVELOPER CORNER, Add room for your headers ***/
-    l_nb_bytes
+fn opj_j2k_get_specific_header_sizes(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
+  let mut l_nb_bytes = 0 as OPJ_UINT32;
+  let mut l_coc_bytes: OPJ_UINT32 = 0;
+  let mut l_qcc_bytes: OPJ_UINT32 = 0;
+  let l_nb_comps: OPJ_UINT32 = p_j2k
+    .m_private_image
+    .as_deref()
+    .expect("m_private_image")
+    .numcomps
+    .wrapping_sub(1u32);
+  l_nb_bytes = l_nb_bytes.wrapping_add(opj_j2k_get_max_toc_size(p_j2k));
+  if !(p_j2k.m_cp.rsiz as core::ffi::c_int >= 0x3i32
+    && p_j2k.m_cp.rsiz as core::ffi::c_int <= 0x6i32)
+  {
+    l_coc_bytes = opj_j2k_get_max_coc_size(p_j2k);
+    l_nb_bytes = l_nb_bytes.wrapping_add(l_nb_comps.wrapping_mul(l_coc_bytes));
+    l_qcc_bytes = opj_j2k_get_max_qcc_size(p_j2k);
+    l_nb_bytes = l_nb_bytes.wrapping_add(l_nb_comps.wrapping_mul(l_qcc_bytes))
   }
+  l_nb_bytes = l_nb_bytes.wrapping_add(opj_j2k_get_max_poc_size(p_j2k));
+  if p_j2k.m_specific_param.m_encoder.m_PLT != 0 {
+    /* Reserve space for PLT markers */
+    let l_cp: &opj_cp_t = &p_j2k.m_cp;
+    let mut l_max_packet_count = 0 as OPJ_UINT32;
+    let mut i: OPJ_UINT32 = 0;
+    while i < l_cp.th.wrapping_mul(l_cp.tw) {
+      l_max_packet_count = opj_uint_max(
+        l_max_packet_count,
+        opj_get_encoding_packet_count(
+          p_j2k.m_private_image.as_deref_mut().expect("m_private_image"),
+          l_cp,
+          i,
+        ),
+      );
+      i += 1;
+    }
+    /* Minimum 6 bytes per PLT marker, and at a minimum (taking a pessimistic */
+    /* estimate of 4 bytes for a packet size), one can write */
+    /* (65536-6) / 4 = 16382 paquet sizes per PLT marker */
+    p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
+      (6u32).wrapping_mul(opj_uint_ceildiv(l_max_packet_count, 16382 as OPJ_UINT32));
+    /* Maximum 5 bytes per packet to encode a full UINT32 */
+    l_nb_bytes = l_nb_bytes.wrapping_add((5u32).wrapping_mul(l_max_packet_count));
+    p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT = p_j2k
+      .m_specific_param
+      .m_encoder
+      .m_reserved_bytes_for_PLT
+      .wrapping_add(l_nb_bytes)
+      .wrapping_add(1u32);
+    l_nb_bytes = l_nb_bytes
+      .wrapping_add(p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT)
+  }
+  /* ** DEVELOPER CORNER, Add room for your headers ***/
+  l_nb_bytes
 }
 /* *
  * Reads a POC marker (Progression Order Change)
@@ -3014,35 +3013,30 @@ fn opj_j2k_write_sot(
  * @param       p_manager       the user event manager.
  */
 fn opj_j2k_get_sot_values(
-  mut p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_tile_no: *mut OPJ_UINT32,
-  mut p_tot_len: *mut OPJ_UINT32,
-  mut p_current_part: *mut OPJ_UINT32,
-  mut p_num_parts: *mut OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  header_data: &[OPJ_BYTE],
+  p_tile_no: &mut OPJ_UINT32,
+  p_tot_len: &mut OPJ_UINT32,
+  p_current_part: &mut OPJ_UINT32,
+  p_num_parts: &mut OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    /* preconditions */
+  let mut cursor: usize = 0;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    /* Size of this marker is fixed = 12 (we have already read marker and its size)*/
-    if p_header_size != 8u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading SOT marker\n",); /* Isot */
-      return 0i32;
-    } /* Psot */
-    *p_tile_no = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* TPsot */
-    cursor += 2 as usize; /* TNsot */
-    *p_tot_len = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-    cursor += 4 as usize;
-    *p_current_part = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    *p_num_parts = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    1i32
-  }
+  /* Size of this marker is fixed = 12 (we have already read marker and its size)*/
+  if header_data.len() != 8u32 as usize {
+    event_msg!(p_manager, EVT_ERROR, "Error reading SOT marker\n",); /* Isot */
+    return 0i32;
+  } /* Psot */
+  *p_tile_no = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* TPsot */
+  cursor += 2 as usize; /* TNsot */
+  *p_tot_len = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cursor += 4 as usize;
+  *p_current_part = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  *p_num_parts = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  1i32
 }
 /* *
  * Reads a SOT marker (Start of tile-part)
@@ -3069,8 +3063,7 @@ fn opj_j2k_read_sot(
     /* preconditions */
 
     if opj_j2k_get_sot_values(
-      p_header_data,
-      p_header_size,
+      core::slice::from_raw_parts(p_header_data, p_header_size as usize),
       &mut p_j2k.m_current_tile_number,
       &mut l_tot_len,
       &mut l_current_part,
@@ -5063,36 +5056,31 @@ pub(crate) fn opj_j2k_create_compress() -> Option<opj_j2k> {
   Some(l_j2k)
 }
 
-fn opj_j2k_initialise_4K_poc(
-  mut POC: *mut opj_poc_t,
-  mut numres: core::ffi::c_int,
-) -> core::ffi::c_int {
-  unsafe {
-    (*POC.offset(0)).tile = 1 as OPJ_UINT32;
-    (*POC.offset(0)).resno0 = 0 as OPJ_UINT32;
-    (*POC.offset(0)).compno0 = 0 as OPJ_UINT32;
-    (*POC.offset(0)).layno1 = 1 as OPJ_UINT32;
-    (*POC.offset(0)).resno1 = (numres - 1i32) as OPJ_UINT32;
-    (*POC.offset(0)).compno1 = 3 as OPJ_UINT32;
-    (*POC.offset(0)).prg1 = OPJ_CPRL;
-    (*POC.offset(1)).tile = 1 as OPJ_UINT32;
-    (*POC.offset(1)).resno0 = (numres - 1i32) as OPJ_UINT32;
-    (*POC.offset(1)).compno0 = 0 as OPJ_UINT32;
-    (*POC.offset(1)).layno1 = 1 as OPJ_UINT32;
-    (*POC.offset(1)).resno1 = numres as OPJ_UINT32;
-    (*POC.offset(1)).compno1 = 3 as OPJ_UINT32;
-    (*POC.offset(1)).prg1 = OPJ_CPRL;
-    2i32
-  }
+fn opj_j2k_initialise_4K_poc(POC: &mut [opj_poc_t], numres: core::ffi::c_int) -> core::ffi::c_int {
+  POC[0].tile = 1 as OPJ_UINT32;
+  POC[0].resno0 = 0 as OPJ_UINT32;
+  POC[0].compno0 = 0 as OPJ_UINT32;
+  POC[0].layno1 = 1 as OPJ_UINT32;
+  POC[0].resno1 = (numres - 1i32) as OPJ_UINT32;
+  POC[0].compno1 = 3 as OPJ_UINT32;
+  POC[0].prg1 = OPJ_CPRL;
+  POC[1].tile = 1 as OPJ_UINT32;
+  POC[1].resno0 = (numres - 1i32) as OPJ_UINT32;
+  POC[1].compno0 = 0 as OPJ_UINT32;
+  POC[1].layno1 = 1 as OPJ_UINT32;
+  POC[1].resno1 = numres as OPJ_UINT32;
+  POC[1].compno1 = 3 as OPJ_UINT32;
+  POC[1].prg1 = OPJ_CPRL;
+  2i32
 }
 fn opj_j2k_set_cinema_parameters(
   mut parameters: &mut opj_cparameters_t,
-  mut image: &mut opj_image,
+  image: &mut opj_image,
   mut p_manager: &mut opj_event_mgr,
 ) {
-  unsafe {
-    /* Configure cinema parameters */
-    let mut i: core::ffi::c_int = 0;
+  let comps = image.comps().expect("comps");
+  /* Configure cinema parameters */
+  let mut i: core::ffi::c_int = 0;
     /* No tiling */
     parameters.tile_size_on = 0i32;
     parameters.cp_tdx = 1i32;
@@ -5174,7 +5162,7 @@ fn opj_j2k_set_cinema_parameters(
     /* Progression order changes for 4K, disallowed for 2K */
     if parameters.rsiz as core::ffi::c_int == 0x4i32 {
       parameters.numpocs =
-        opj_j2k_initialise_4K_poc(parameters.POC.as_mut_ptr(), parameters.numresolution)
+        opj_j2k_initialise_4K_poc(&mut parameters.POC[..2], parameters.numresolution)
           as OPJ_UINT32
     } else {
       parameters.numpocs = 0 as OPJ_UINT32
@@ -5203,23 +5191,22 @@ fn opj_j2k_set_cinema_parameters(
     }
     parameters.tcp_rates[0_usize] = image
       .numcomps
-      .wrapping_mul((*image.comps.offset(0)).w)
-      .wrapping_mul((*image.comps.offset(0)).h)
-      .wrapping_mul((*image.comps.offset(0)).prec)
+      .wrapping_mul(comps[0].w)
+      .wrapping_mul(comps[0].h)
+      .wrapping_mul(comps[0].prec)
       as OPJ_FLOAT32
       / (parameters.max_cs_size as OPJ_UINT32)
         .wrapping_mul(8u32)
-        .wrapping_mul((*image.comps.offset(0)).dx)
-        .wrapping_mul((*image.comps.offset(0)).dy) as OPJ_FLOAT32;
-  }
+        .wrapping_mul(comps[0].dx)
+        .wrapping_mul(comps[0].dy) as OPJ_FLOAT32;
 }
 fn opj_j2k_is_cinema_compliant(
   mut image: &mut opj_image,
   mut rsiz: OPJ_UINT16,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let comps = image.comps().expect("comps");
     /* Number of components */
     if image.numcomps != 3u32 {
       event_msg!(p_manager, EVT_WARNING,
@@ -5230,18 +5217,18 @@ fn opj_j2k_is_cinema_compliant(
     /* Bitdepth */
     i = 0 as OPJ_UINT32;
     while i < image.numcomps {
-      if ((*image.comps.offset(i as isize)).prec != 12u32) as core::ffi::c_uint
-        | (*image.comps.offset(i as isize)).sgnd
+      if (comps[i as usize].prec != 12u32) as core::ffi::c_uint
+        | comps[i as usize].sgnd
         != 0
       {
-        let tmp_str = if (*image.comps.offset(i as isize)).sgnd != 0 {
+        let tmp_str = if comps[i as usize].sgnd != 0 {
           "signed"
         } else {
           "unsigned"
         };
         event_msg!(p_manager, EVT_WARNING,
                           "JPEG 2000 Profile-3 (2k dc profile) requires:\nPrecision of each component shall be 12 bits unsigned-> At least component {} of input image ({} bits, {}) is not compliant\n-> Non-profile-3 codestream will be generated\n", i,
-                          (*image.comps.offset(i as isize)).prec, tmp_str);
+                          comps[i as usize].prec, tmp_str);
         return 0i32;
       }
       i += 1;
@@ -5249,37 +5236,32 @@ fn opj_j2k_is_cinema_compliant(
     /* Image size */
     match rsiz as core::ffi::c_int {
       3 => {
-        if ((*image.comps.offset(0)).w > 2048u32) as core::ffi::c_int
-          | ((*image.comps.offset(0)).h > 1080u32) as core::ffi::c_int
+        if (comps[0].w > 2048u32) as core::ffi::c_int
+          | (comps[0].h > 1080u32) as core::ffi::c_int
           != 0
         {
           event_msg!(p_manager, EVT_WARNING,
                               "JPEG 2000 Profile-3 (2k dc profile) requires:\nwidth <= 2048 and height <= 1080\n-> Input image size {} x {} is not compliant\n-> Non-profile-3 codestream will be generated\n",
-                              (*image.comps.offset(0i32 as
-                                                          isize)).w,
-                              (*image.comps.offset(0i32 as
-                                                          isize)).h);
+                              comps[0].w,
+                              comps[0].h);
           return 0i32;
         }
       }
       4 => {
-        if ((*image.comps.offset(0)).w > 4096u32) as core::ffi::c_int
-          | ((*image.comps.offset(0)).h > 2160u32) as core::ffi::c_int
+        if (comps[0].w > 4096u32) as core::ffi::c_int
+          | (comps[0].h > 2160u32) as core::ffi::c_int
           != 0
         {
           event_msg!(p_manager, EVT_WARNING,
                               "JPEG 2000 Profile-4 (4k dc profile) requires:\nwidth <= 4096 and height <= 2160\n-> Image size {} x {} is not compliant\n-> Non-profile-4 codestream will be generated\n",
-                              (*image.comps.offset(0i32 as
-                                                          isize)).w,
-                              (*image.comps.offset(0i32 as
-                                                          isize)).h);
+                              comps[0].w,
+                              comps[0].h);
           return 0i32;
         }
       }
       _ => {}
     }
     1i32
-  }
 }
 fn opj_j2k_get_imf_max_NL(
   mut parameters: &mut opj_cparameters_t,
@@ -5393,7 +5375,7 @@ fn opj_j2k_set_imf_parameters(
   };
 }
 /* Table A.53 from JPEG2000 standard */
-static mut tabMaxSubLevelFromMainLevel: [OPJ_UINT16; 12] = [
+static TAB_MAX_SUB_LEVEL_FROM_MAIN_LEVEL: [OPJ_UINT16; 12] = [
   15 as OPJ_UINT16,
   1 as OPJ_UINT16,
   1 as OPJ_UINT16,
@@ -5412,8 +5394,8 @@ fn opj_j2k_is_imf_compliant(
   mut image: &mut opj_image,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let comps = image.comps().expect("comps");
     let rsiz = parameters.rsiz;
     let profile = (rsiz as core::ffi::c_int & 0xff00i32) as OPJ_UINT16;
     let mainlevel = (rsiz as core::ffi::c_int & 0xfi32) as OPJ_UINT16;
@@ -5438,11 +5420,11 @@ fn opj_j2k_is_imf_compliant(
           == ((11i32 + 1i32) as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT16>())
       );
       if sublevel as core::ffi::c_int
-        > tabMaxSubLevelFromMainLevel[mainlevel as usize] as core::ffi::c_int
+        > TAB_MAX_SUB_LEVEL_FROM_MAIN_LEVEL[mainlevel as usize] as core::ffi::c_int
       {
         event_msg!(p_manager, EVT_WARNING,
                           "IMF profile require sublevel <= {} for mainlevel = {}.\n-> {} is thus not compliant\n-> Non-IMF codestream will be generated\n",
-                          tabMaxSubLevelFromMainLevel[mainlevel as usize] as
+                          TAB_MAX_SUB_LEVEL_FROM_MAIN_LEVEL[mainlevel as usize] as
                               core::ffi::c_int, mainlevel as core::ffi::c_int,
                           sublevel as core::ffi::c_int);
         ret = 0i32
@@ -5502,18 +5484,18 @@ fn opj_j2k_is_imf_compliant(
     /* Bitdepth */
     i = 0 as OPJ_UINT32;
     while i < image.numcomps {
-      if !((*image.comps.offset(i as isize)).prec >= 8u32
-        && (*image.comps.offset(i as isize)).prec <= 16u32)
-        || (*image.comps.offset(i as isize)).sgnd != 0
+      if !(comps[i as usize].prec >= 8u32
+        && comps[i as usize].prec <= 16u32)
+        || comps[i as usize].sgnd != 0
       {
-        let tmp_str = if (*image.comps.offset(i as isize)).sgnd != 0 {
+        let tmp_str = if comps[i as usize].sgnd != 0 {
           "signed"
         } else {
           "unsigned"
         };
         event_msg!(p_manager, EVT_WARNING,
                           "IMF profiles require precision of each component to b in [8-16] bits unsigned-> At least component {} of input image ({} bits, {}) is not compliant\n-> Non-IMF codestream will be generated\n", i,
-                          (*image.comps.offset(i as isize)).prec, tmp_str);
+                          comps[i as usize].prec, tmp_str);
         ret = 0i32
       }
       i += 1;
@@ -5521,40 +5503,33 @@ fn opj_j2k_is_imf_compliant(
     /* Sub-sampling */
     i = 0 as OPJ_UINT32;
     while i < image.numcomps {
-      if i == 0u32 && (*image.comps.offset(i as isize)).dx != 1u32 {
+      if i == 0u32 && comps[i as usize].dx != 1u32 {
         event_msg!(p_manager, EVT_WARNING,
                           "IMF profiles require XRSiz1 == 1. Here it is set to {}.\n-> Non-IMF codestream will be generated\n",
-                          (*image.comps.offset(i as isize)).dx);
+                          comps[i as usize].dx);
         ret = 0i32
       }
       if i == 1u32
-        && (*image.comps.offset(i as isize)).dx != 1u32
-        && (*image.comps.offset(i as isize)).dx != 2u32
+        && comps[i as usize].dx != 1u32
+        && comps[i as usize].dx != 2u32
       {
         event_msg!(p_manager, EVT_WARNING,
                           "IMF profiles require XRSiz2 == 1 or 2. Here it is set to {}.\n-> Non-IMF codestream will be generated\n",
-                          (*image.comps.offset(i as isize)).dx);
+                          comps[i as usize].dx);
         ret = 0i32
       }
-      if i > 1u32
-        && (*image.comps.offset(i as isize)).dx
-          != (*image.comps.offset(i.wrapping_sub(1u32) as isize)).dx
-      {
+      if i > 1u32 && comps[i as usize].dx != comps[i as usize - 1].dx {
         event_msg!(p_manager, EVT_WARNING,
                           "IMF profiles require XRSiz{} to be the same as XRSiz2. Here it is set to {} instead of {}.\n-> Non-IMF codestream will be generated\n",
                           i.wrapping_add(1u32),
-                          (*image.comps.offset(i as isize)).dx,
-                          (*image.comps.offset(i.wrapping_sub(1 as
-                                                                     core::ffi::c_int
-                                                                     as
-                                                                     core::ffi::c_uint)
-                                                      as isize)).dx);
+                          comps[i as usize].dx,
+                          comps[i as usize - 1].dx);
         ret = 0i32
       }
-      if (*image.comps.offset(i as isize)).dy != 1u32 {
+      if comps[i as usize].dy != 1u32 {
         event_msg!(p_manager, EVT_WARNING,
                           "IMF profiles require YRsiz == 1. Here it is set to {} for component {}.\n-> Non-IMF codestream will be generated\n",
-                          (*image.comps.offset(i as isize)).dy, i);
+                          comps[i as usize].dy, i);
         ret = 0i32
       }
       i += 1;
@@ -5562,44 +5537,38 @@ fn opj_j2k_is_imf_compliant(
     /* Image size */
     match profile as core::ffi::c_int {
       1024 | 1792 => {
-        if ((*image.comps.offset(0)).w > 2048u32) as core::ffi::c_int
-          | ((*image.comps.offset(0)).h > 1556u32) as core::ffi::c_int
+        if (comps[0].w > 2048u32) as core::ffi::c_int
+          | (comps[0].h > 1556u32) as core::ffi::c_int
           != 0
         {
           event_msg!(p_manager, EVT_WARNING,
                               "IMF 2K/2K_R profile require:\nwidth <= 2048 and height <= 1556\n-> Input image size {} x {} is not compliant\n-> Non-IMF codestream will be generated\n",
-                              (*image.comps.offset(0i32 as
-                                                          isize)).w,
-                              (*image.comps.offset(0i32 as
-                                                          isize)).h);
+                              comps[0].w,
+                              comps[0].h);
           ret = 0i32
         }
       }
       1280 | 2048 => {
-        if ((*image.comps.offset(0)).w > 4096u32) as core::ffi::c_int
-          | ((*image.comps.offset(0)).h > 3112u32) as core::ffi::c_int
+        if (comps[0].w > 4096u32) as core::ffi::c_int
+          | (comps[0].h > 3112u32) as core::ffi::c_int
           != 0
         {
           event_msg!(p_manager, EVT_WARNING,
                               "IMF 4K/4K_R profile require:\nwidth <= 4096 and height <= 3112\n-> Input image size {} x {} is not compliant\n-> Non-IMF codestream will be generated\n",
-                              (*image.comps.offset(0i32 as
-                                                          isize)).w,
-                              (*image.comps.offset(0i32 as
-                                                          isize)).h);
+                              comps[0].w,
+                              comps[0].h);
           ret = 0i32
         }
       }
       1536 | 2304 => {
-        if ((*image.comps.offset(0)).w > 8192u32) as core::ffi::c_int
-          | ((*image.comps.offset(0)).h > 6224u32) as core::ffi::c_int
+        if (comps[0].w > 8192u32) as core::ffi::c_int
+          | (comps[0].h > 6224u32) as core::ffi::c_int
           != 0
         {
           event_msg!(p_manager, EVT_WARNING,
                               "IMF 8K/8K_R profile require:\nwidth <= 8192 and height <= 6224\n-> Input image size {} x {} is not compliant\n-> Non-IMF codestream will be generated\n",
-                              (*image.comps.offset(0i32 as
-                                                          isize)).w,
-                              (*image.comps.offset(0i32 as
-                                                          isize)).h);
+                              comps[0].w,
+                              comps[0].h);
           ret = 0i32
         }
       }
@@ -5776,7 +5745,6 @@ fn opj_j2k_is_imf_compliant(
       }
     }
     ret
-  }
 }
 
 pub(crate) fn opj_j2k_setup_encoder(
@@ -6035,14 +6003,14 @@ pub(crate) fn opj_j2k_setup_encoder(
       {
         let mut temp_size: OPJ_FLOAT32 = 0.;
         temp_size = (image.numcomps as core::ffi::c_double
-          * (*image.comps.offset(0)).w as core::ffi::c_double
-          * (*image.comps.offset(0)).h as core::ffi::c_double
-          * (*image.comps.offset(0)).prec as core::ffi::c_double
+          * image.comps_mut().expect("comps")[0].w as core::ffi::c_double
+          * image.comps_mut().expect("comps")[0].h as core::ffi::c_double
+          * image.comps_mut().expect("comps")[0].prec as core::ffi::c_double
           / (parameters.tcp_rates[(parameters.tcp_numlayers - 1i32) as usize]
             as core::ffi::c_double
             * 8 as core::ffi::c_double
-            * (*image.comps.offset(0)).dx as core::ffi::c_double
-            * (*image.comps.offset(0)).dy as core::ffi::c_double))
+            * image.comps_mut().expect("comps")[0].dx as core::ffi::c_double
+            * image.comps_mut().expect("comps")[0].dy as core::ffi::c_double))
           as OPJ_FLOAT32;
         if temp_size > 2147483647 as core::ffi::c_float {
           parameters.max_cs_size = 2147483647i32
@@ -6063,23 +6031,23 @@ pub(crate) fn opj_j2k_setup_encoder(
       {
         parameters.tcp_rates[0_usize] = image
           .numcomps
-          .wrapping_mul((*image.comps.offset(0)).w)
-          .wrapping_mul((*image.comps.offset(0)).h)
-          .wrapping_mul((*image.comps.offset(0)).prec)
+          .wrapping_mul(image.comps_mut().expect("comps")[0].w)
+          .wrapping_mul(image.comps_mut().expect("comps")[0].h)
+          .wrapping_mul(image.comps_mut().expect("comps")[0].prec)
           as OPJ_FLOAT32
           / (parameters.max_cs_size as OPJ_UINT32)
             .wrapping_mul(8u32)
-            .wrapping_mul((*image.comps.offset(0)).dx)
-            .wrapping_mul((*image.comps.offset(0)).dy) as OPJ_FLOAT32
+            .wrapping_mul(image.comps_mut().expect("comps")[0].dx)
+            .wrapping_mul(image.comps_mut().expect("comps")[0].dy) as OPJ_FLOAT32
       }
       temp_rate = (image.numcomps as core::ffi::c_double
-        * (*image.comps.offset(0)).w as core::ffi::c_double
-        * (*image.comps.offset(0)).h as core::ffi::c_double
-        * (*image.comps.offset(0)).prec as core::ffi::c_double
+        * image.comps_mut().expect("comps")[0].w as core::ffi::c_double
+        * image.comps_mut().expect("comps")[0].h as core::ffi::c_double
+        * image.comps_mut().expect("comps")[0].prec as core::ffi::c_double
         / (parameters.max_cs_size as core::ffi::c_double
           * 8 as core::ffi::c_double
-          * (*image.comps.offset(0)).dx as core::ffi::c_double
-          * (*image.comps.offset(0)).dy as core::ffi::c_double)) as OPJ_FLOAT32;
+          * image.comps_mut().expect("comps")[0].dx as core::ffi::c_double
+          * image.comps_mut().expect("comps")[0].dy as core::ffi::c_double)) as OPJ_FLOAT32;
       i = 0 as OPJ_UINT32;
       while i < parameters.tcp_numlayers as OPJ_UINT32 {
         if parameters.tcp_rates[i as usize] < temp_rate {
@@ -6383,10 +6351,10 @@ pub(crate) fn opj_j2k_setup_encoder(
       } else {
         if (*tcp).mct == 1u32 && image.numcomps >= 3u32 {
           /* RGB->YCC MCT is enabled */
-          if (*image.comps.offset(0)).dx != (*image.comps.offset(1)).dx
-            || (*image.comps.offset(0)).dx != (*image.comps.offset(2)).dx
-            || (*image.comps.offset(0)).dy != (*image.comps.offset(1)).dy
-            || (*image.comps.offset(0)).dy != (*image.comps.offset(2)).dy
+          if image.comps_mut().expect("comps")[0].dx != image.comps_mut().expect("comps")[1].dx
+            || image.comps_mut().expect("comps")[0].dx != image.comps_mut().expect("comps")[2].dx
+            || image.comps_mut().expect("comps")[0].dy != image.comps_mut().expect("comps")[1].dy
+            || image.comps_mut().expect("comps")[0].dy != image.comps_mut().expect("comps")[2].dy
           {
             event_msg!(
               p_manager,
@@ -6483,7 +6451,7 @@ pub(crate) fn opj_j2k_setup_encoder(
             j += 1;
           }
         }
-        opj_dwt_calc_explicit_stepsizes(tccp_1, (*image.comps.offset(i as isize)).prec);
+        opj_dwt_calc_explicit_stepsizes(tccp_1, image.comps_mut().expect("comps")[i as usize].prec);
         i += 1;
       }
       tileno += 1;
@@ -7269,10 +7237,9 @@ fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
 fn opj_j2k_need_nb_tile_parts_correction(
   mut p_stream: &mut Stream,
   mut tile_no: OPJ_UINT32,
-  mut p_correction_needed: *mut OPJ_BOOL,
+  p_correction_needed: &mut OPJ_BOOL,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
     let mut l_header_data: [OPJ_BYTE; 10] = [0; 10];
     let mut l_stream_pos_backup: OPJ_OFF_T = 0;
     let mut l_current_marker = J2KMarker::UNK(0);
@@ -7332,8 +7299,7 @@ fn opj_j2k_need_nb_tile_parts_correction(
         return 0i32;
       }
       if opj_j2k_get_sot_values(
-        l_header_data.as_mut_ptr(),
-        l_marker_size,
+        &l_header_data[..l_marker_size as usize],
         &mut l_tile_no,
         &mut l_tot_len,
         &mut l_current_part,
@@ -7372,7 +7338,6 @@ fn opj_j2k_need_nb_tile_parts_correction(
       return 0i32;
     }
     1i32
-  }
 }
 
 pub(crate) fn opj_j2k_read_tile_header(
