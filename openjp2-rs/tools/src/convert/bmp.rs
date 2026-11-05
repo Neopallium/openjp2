@@ -267,9 +267,15 @@ impl BmpInfo {
 }
 
 fn bmp_mask_get_shift_and_prec(mask: u32) -> (u32, u32, bool) {
+  if mask == 0 {
+    return (0, 0, true);
+  }
   let shift = mask.trailing_zeros();
   let prec = (mask >> shift).trailing_ones();
-  let remain = mask >> (shift + prec);
+  // Avoid shifting by 32 when the run of ones reaches the top bit (e.g. the
+  // 0xff000000 alpha mask of 32bpp BI_ALPHABITFIELDS BMPs): `x >> 32` panics
+  // in debug builds. Such a mask is contiguous, so there are no leftover bits.
+  let remain = if shift + prec < 32 { mask >> (shift + prec) } else { 0 };
   (shift, prec, remain == 0)
 }
 
