@@ -1891,7 +1891,7 @@ fn opj_tcd_dwt_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
         if (*l_tccp).qmfbid == 1u32 {
           if opj_dwt_decode(
             p_tcd,
-            l_tile_comp,
+            &mut *l_tile_comp,
             (*l_img_comp).resno_decoded.wrapping_add(1u32),
           ) == 0
           {
@@ -1899,7 +1899,7 @@ fn opj_tcd_dwt_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
           }
         } else if opj_dwt_decode_real(
           p_tcd,
-          l_tile_comp,
+          &mut *l_tile_comp,
           (*l_img_comp).resno_decoded.wrapping_add(1u32),
         ) == 0
         {
@@ -2308,10 +2308,10 @@ fn opj_tcd_dwt_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     compno = 0 as OPJ_UINT32;
     while compno < p_tcd.tcd_image.tiles.numcomps {
       if (*l_tccp).qmfbid == 1u32 {
-        if opj_dwt_encode(l_tile_comp) == 0 {
+        if opj_dwt_encode(&mut *l_tile_comp) == 0 {
           return 0i32;
         }
-      } else if (*l_tccp).qmfbid == 0u32 && opj_dwt_encode_real(l_tile_comp) == 0 {
+      } else if (*l_tccp).qmfbid == 0u32 && opj_dwt_encode_real(&mut *l_tile_comp) == 0 {
         return 0i32;
       }
       l_tile_comp = l_tile_comp.offset(1);
