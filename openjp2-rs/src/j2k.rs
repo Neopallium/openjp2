@@ -1,10 +1,4 @@
-// Phase 1.a shims: the *_ptr aliases keep the not-yet-converted marker handlers on their pointer
-// call sites. Replaced by the slice-based `cio` functions handler-family by handler-family in
-// phase 4.f.
-use super::cio::{
-  opj_read_bytes, opj_read_bytes_ptr, opj_read_double_ptr, opj_read_float_ptr, opj_write_bytes,
-  opj_write_bytes_ptr, opj_write_double_ptr, opj_write_float_ptr,
-};
+use super::cio::{opj_read_bytes, opj_write_bytes};
 use super::consts::*;
 use super::dwt::*;
 use super::event::*;
@@ -99,45 +93,86 @@ impl MCTElementType {
     }
   }
 
-  pub fn read_to_float(
-    &self,
-    p_src_data: *const core::ffi::c_void,
-    p_dest_data: *mut core::ffi::c_void,
-    p_nb_elem: OPJ_UINT32,
-  ) {
+  /// Read big-endian MCT array data of this element type into `dest` floats.
+  pub fn read_to_float(&self, src: &[u8], dest: &mut [OPJ_FLOAT32]) {
     match self {
-      Self::INT16 => opj_j2k_read_int16_to_float(p_src_data, p_dest_data, p_nb_elem),
-      Self::INT32 => opj_j2k_read_int32_to_float(p_src_data, p_dest_data, p_nb_elem),
-      Self::FLOAT => opj_j2k_read_float32_to_float(p_src_data, p_dest_data, p_nb_elem),
-      Self::DOUBLE => opj_j2k_read_float64_to_float(p_src_data, p_dest_data, p_nb_elem),
+      Self::INT16 => {
+        for (i, d) in dest.iter_mut().enumerate() {
+          *d = OPJ_UINT16::from_be_bytes([src[2 * i], src[2 * i + 1]]) as OPJ_FLOAT32;
+        }
+      }
+      Self::INT32 => {
+        for (i, d) in dest.iter_mut().enumerate() {
+          *d = OPJ_UINT32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]) as OPJ_FLOAT32;
+        }
+      }
+      Self::FLOAT => {
+        for (i, d) in dest.iter_mut().enumerate() {
+          *d = OPJ_FLOAT32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]);
+        }
+      }
+      Self::DOUBLE => {
+        for (i, d) in dest.iter_mut().enumerate() {
+          *d = OPJ_FLOAT64::from_be_bytes([src[8 * i], src[8 * i + 1], src[8 * i + 2], src[8 * i + 3], src[8 * i + 4], src[8 * i + 5], src[8 * i + 6], src[8 * i + 7]]) as OPJ_FLOAT32;
+        }
+      }
     }
   }
 
-  pub fn read_to_int32(
-    &self,
-    p_src_data: *const core::ffi::c_void,
-    p_dest_data: *mut core::ffi::c_void,
-    p_nb_elem: OPJ_UINT32,
-  ) {
+  /// Read big-endian MCT array data of this element type into `dest` int32s.
+  pub fn read_to_int32(&self, src: &[u8], dest: &mut [OPJ_UINT32]) {
     match self {
-      Self::INT16 => opj_j2k_read_int16_to_int32(p_src_data, p_dest_data, p_nb_elem),
-      Self::INT32 => opj_j2k_read_int32_to_int32(p_src_data, p_dest_data, p_nb_elem),
-      Self::FLOAT => opj_j2k_read_float32_to_int32(p_src_data, p_dest_data, p_nb_elem),
-      Self::DOUBLE => opj_j2k_read_float64_to_int32(p_src_data, p_dest_data, p_nb_elem),
+      Self::INT16 => {
+        for (i, d) in dest.iter_mut().enumerate() {
+          *d = OPJ_UINT16::from_be_bytes([src[2 * i], src[2 * i + 1]]) as OPJ_UINT32;
+        }
+      }
+      Self::INT32 => {
+        for (i, d) in dest.iter_mut().enumerate() {
+          *d = OPJ_UINT32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]);
+        }
+      }
+      Self::FLOAT => {
+        for (i, d) in dest.iter_mut().enumerate() {
+          *d = OPJ_FLOAT32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]) as OPJ_INT32
+            as OPJ_UINT32;
+        }
+      }
+      Self::DOUBLE => {
+        for (i, d) in dest.iter_mut().enumerate() {
+          *d = OPJ_FLOAT64::from_be_bytes([src[8 * i], src[8 * i + 1], src[8 * i + 2], src[8 * i + 3], src[8 * i + 4], src[8 * i + 5], src[8 * i + 6], src[8 * i + 7]]) as OPJ_INT32
+            as OPJ_UINT32;
+        }
+      }
     }
   }
 
-  pub fn write_from_float(
-    &self,
-    p_src_data: *const core::ffi::c_void,
-    p_dest_data: *mut core::ffi::c_void,
-    p_nb_elem: OPJ_UINT32,
-  ) {
+  /// Write big-endian MCT array data of this element type from `src` floats.
+  pub fn write_from_float(&self, src: &[OPJ_FLOAT32], dest: &mut [u8]) {
     match self {
-      Self::INT16 => opj_j2k_write_float_to_int16(p_src_data, p_dest_data, p_nb_elem),
-      Self::INT32 => opj_j2k_write_float_to_int32(p_src_data, p_dest_data, p_nb_elem),
-      Self::FLOAT => opj_j2k_write_float_to_float(p_src_data, p_dest_data, p_nb_elem),
-      Self::DOUBLE => opj_j2k_write_float_to_float64(p_src_data, p_dest_data, p_nb_elem),
+      Self::INT16 => {
+        for (i, s) in src.iter().enumerate() {
+          let v = *s as OPJ_UINT32;
+          dest[2 * i..2 * i + 2].copy_from_slice(&(v as OPJ_UINT16).to_be_bytes());
+        }
+      }
+      Self::INT32 => {
+        for (i, s) in src.iter().enumerate() {
+          let v = *s as OPJ_UINT32;
+          dest[4 * i..4 * i + 4].copy_from_slice(&v.to_be_bytes());
+        }
+      }
+      Self::FLOAT => {
+        for (i, s) in src.iter().enumerate() {
+          dest[4 * i..4 * i + 4].copy_from_slice(&s.to_be_bytes());
+        }
+      }
+      Self::DOUBLE => {
+        for (i, s) in src.iter().enumerate() {
+          let v = *s as OPJ_FLOAT64;
+          dest[8 * i..8 * i + 8].copy_from_slice(&v.to_be_bytes());
+        }
+      }
     }
   }
 }
@@ -513,278 +548,6 @@ fn opj_j2k_update_tlm(mut p_j2k: &mut opj_j2k, mut p_tile_part_size: OPJ_UINT32)
     4 as OPJ_UINT32,
   );
   l_enc.m_tlm_sot_offsets_current += 4;
-}
-
-fn opj_j2k_read_int16_to_float(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_src_data = p_src_data as *mut OPJ_BYTE;
-    let mut l_dest_data = p_dest_data as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_UINT32 = 0;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      opj_read_bytes_ptr(l_src_data, &mut l_temp, 2 as OPJ_UINT32);
-      l_src_data = l_src_data.add(core::mem::size_of::<OPJ_INT16>());
-      let fresh0 = l_dest_data;
-      l_dest_data = l_dest_data.offset(1);
-      *fresh0 = l_temp as OPJ_FLOAT32;
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_read_int32_to_float(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_src_data = p_src_data as *mut OPJ_BYTE;
-    let mut l_dest_data = p_dest_data as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_UINT32 = 0;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      opj_read_bytes_ptr(l_src_data, &mut l_temp, 4 as OPJ_UINT32);
-      l_src_data = l_src_data.add(core::mem::size_of::<OPJ_INT32>());
-      let fresh1 = l_dest_data;
-      l_dest_data = l_dest_data.offset(1);
-      *fresh1 = l_temp as OPJ_FLOAT32;
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_read_float32_to_float(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_src_data = p_src_data as *mut OPJ_BYTE;
-    let mut l_dest_data = p_dest_data as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_FLOAT32 = 0.;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      opj_read_float_ptr(l_src_data, &mut l_temp);
-      l_src_data = l_src_data.add(core::mem::size_of::<OPJ_FLOAT32>());
-      let fresh2 = l_dest_data;
-      l_dest_data = l_dest_data.offset(1);
-      *fresh2 = l_temp;
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_read_float64_to_float(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_src_data = p_src_data as *mut OPJ_BYTE;
-    let mut l_dest_data = p_dest_data as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_FLOAT64 = 0.;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      opj_read_double_ptr(l_src_data, &mut l_temp);
-      l_src_data = l_src_data.add(core::mem::size_of::<OPJ_FLOAT64>());
-      let fresh3 = l_dest_data;
-      l_dest_data = l_dest_data.offset(1);
-      *fresh3 = l_temp as OPJ_FLOAT32;
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_read_int16_to_int32(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_src_data = p_src_data as *mut OPJ_BYTE;
-    let mut l_dest_data = p_dest_data as *mut OPJ_INT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_UINT32 = 0;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      opj_read_bytes_ptr(l_src_data, &mut l_temp, 2 as OPJ_UINT32);
-      l_src_data = l_src_data.add(core::mem::size_of::<OPJ_INT16>());
-      let fresh4 = l_dest_data;
-      l_dest_data = l_dest_data.offset(1);
-      *fresh4 = l_temp as OPJ_INT32;
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_read_int32_to_int32(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_src_data = p_src_data as *mut OPJ_BYTE;
-    let mut l_dest_data = p_dest_data as *mut OPJ_INT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_UINT32 = 0;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      opj_read_bytes_ptr(l_src_data, &mut l_temp, 4 as OPJ_UINT32);
-      l_src_data = l_src_data.add(core::mem::size_of::<OPJ_INT32>());
-      let fresh5 = l_dest_data;
-      l_dest_data = l_dest_data.offset(1);
-      *fresh5 = l_temp as OPJ_INT32;
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_read_float32_to_int32(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_src_data = p_src_data as *mut OPJ_BYTE;
-    let mut l_dest_data = p_dest_data as *mut OPJ_INT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_FLOAT32 = 0.;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      opj_read_float_ptr(l_src_data, &mut l_temp);
-      l_src_data = l_src_data.add(core::mem::size_of::<OPJ_FLOAT32>());
-      let fresh6 = l_dest_data;
-      l_dest_data = l_dest_data.offset(1);
-      *fresh6 = l_temp as OPJ_INT32;
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_read_float64_to_int32(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_src_data = p_src_data as *mut OPJ_BYTE;
-    let mut l_dest_data = p_dest_data as *mut OPJ_INT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_FLOAT64 = 0.;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      opj_read_double_ptr(l_src_data, &mut l_temp);
-      l_src_data = l_src_data.add(core::mem::size_of::<OPJ_FLOAT64>());
-      let fresh7 = l_dest_data;
-      l_dest_data = l_dest_data.offset(1);
-      *fresh7 = l_temp as OPJ_INT32;
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_write_float_to_int16(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_dest_data = p_dest_data as *mut OPJ_BYTE;
-    let mut l_src_data = p_src_data as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_UINT32 = 0;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      let fresh8 = l_src_data;
-      l_src_data = l_src_data.offset(1);
-      l_temp = *fresh8 as OPJ_UINT32;
-      opj_write_bytes_ptr(
-        l_dest_data,
-        l_temp,
-        core::mem::size_of::<OPJ_INT16>() as OPJ_UINT32,
-      );
-      l_dest_data = l_dest_data.add(core::mem::size_of::<OPJ_INT16>());
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_write_float_to_int32(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_dest_data = p_dest_data as *mut OPJ_BYTE;
-    let mut l_src_data = p_src_data as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_UINT32 = 0;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      let fresh9 = l_src_data;
-      l_src_data = l_src_data.offset(1);
-      l_temp = *fresh9 as OPJ_UINT32;
-      opj_write_bytes_ptr(
-        l_dest_data,
-        l_temp,
-        core::mem::size_of::<OPJ_INT32>() as OPJ_UINT32,
-      );
-      l_dest_data = l_dest_data.add(core::mem::size_of::<OPJ_INT32>());
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_write_float_to_float(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_dest_data = p_dest_data as *mut OPJ_BYTE;
-    let mut l_src_data = p_src_data as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_FLOAT32 = 0.;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      let fresh10 = l_src_data;
-      l_src_data = l_src_data.offset(1);
-      l_temp = *fresh10;
-      opj_write_float_ptr(l_dest_data, l_temp);
-      l_dest_data = l_dest_data.add(core::mem::size_of::<OPJ_FLOAT32>());
-      i += 1;
-    }
-  }
-}
-
-fn opj_j2k_write_float_to_float64(
-  mut p_src_data: *const core::ffi::c_void,
-  mut p_dest_data: *mut core::ffi::c_void,
-  mut p_nb_elem: OPJ_UINT32,
-) {
-  unsafe {
-    let mut l_dest_data = p_dest_data as *mut OPJ_BYTE;
-    let mut l_src_data = p_src_data as *mut OPJ_FLOAT32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_temp: OPJ_FLOAT64 = 0.;
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_elem {
-      let fresh11 = l_src_data;
-      l_src_data = l_src_data.offset(1);
-      l_temp = *fresh11 as OPJ_FLOAT64;
-      opj_write_double_ptr(l_dest_data, l_temp);
-      l_dest_data = l_dest_data.add(core::mem::size_of::<OPJ_FLOAT64>());
-      i += 1;
-    }
-  }
 }
 
 pub(crate) fn opj_j2k_convert_progression_order(prg_order: OPJ_PROG_ORDER) -> ProgressionOrder {
@@ -5185,11 +4948,9 @@ fn opj_j2k_add_mct(
       p_tcp_ref
         .m_mct_decoding_matrix
         .resize(l_nb_elem as usize, 0.0);
-      l_deco_array.m_element_type.read_to_float(
-        l_deco_array.m_data.as_ptr() as *const core::ffi::c_void,
-        p_tcp_ref.m_mct_decoding_matrix.as_mut_ptr() as *mut core::ffi::c_void,
-        l_nb_elem,
-      );
+      l_deco_array
+        .m_element_type
+        .read_to_float(l_deco_array.m_data.as_slice(), &mut p_tcp_ref.m_mct_decoding_matrix);
     }
     let l_offset_idx = p_tcp_ref.m_mcc_records[l_mcc_idx].m_offset_array;
     if let Some(l_offset_idx) = l_offset_idx {
@@ -5203,11 +4964,9 @@ fn opj_j2k_add_mct(
       }
       l_nb_elem = p_image.numcomps;
       let mut l_offset_data: Vec<OPJ_UINT32> = vec![0; l_nb_elem as usize];
-      l_offset_array.m_element_type.read_to_int32(
-        l_offset_array.m_data.as_ptr() as *const core::ffi::c_void,
-        l_offset_data.as_mut_ptr() as *mut core::ffi::c_void,
-        l_nb_elem,
-      );
+      l_offset_array
+        .m_element_type
+        .read_to_int32(l_offset_array.m_data.as_slice(), &mut l_offset_data);
       for i in 0..p_image.numcomps as usize {
         p_tcp_ref.tccps[i].m_dc_level_shift = l_offset_data[i] as OPJ_INT32;
       }
@@ -7099,9 +6858,8 @@ pub(crate) fn opj_j2k_setup_mct_encoding(
       l_mct_deco_data.m_data.clear();
       l_mct_deco_data.m_data.resize(l_mct_size as usize, 0);
       l_mct_deco_data.m_element_type.write_from_float(
-        p_tcp_ref.m_mct_decoding_matrix.as_ptr() as *const core::ffi::c_void,
-        l_mct_deco_data.m_data.as_mut_ptr() as *mut core::ffi::c_void,
-        l_nb_elem,
+        p_tcp_ref.m_mct_decoding_matrix.as_slice(),
+        l_mct_deco_data.m_data.as_mut_slice(),
       );
     }
     /* offset record holding the dc level shifts */
@@ -7122,9 +6880,8 @@ pub(crate) fn opj_j2k_setup_mct_encoding(
     l_mct_offset_data.m_data.clear();
     l_mct_offset_data.m_data.resize(l_mct_size as usize, 0);
     l_mct_offset_data.m_element_type.write_from_float(
-      l_data.as_ptr() as *const core::ffi::c_void,
-      l_mct_offset_data.m_data.as_mut_ptr() as *mut core::ffi::c_void,
-      l_nb_elem,
+      l_data.as_slice(),
+      l_mct_offset_data.m_data.as_mut_slice(),
     );
     /* mcc record linking the two */
     p_tcp_ref.m_mcc_records.push(Default::default());
