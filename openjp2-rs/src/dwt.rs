@@ -1758,7 +1758,7 @@ fn opj_dwt_init_sparse_array(
                 y,
                 x.wrapping_add(cblk_w),
                 y.wrapping_add(cblk_h),
-                (*cblk).decoded_data.as_mut_ptr(),
+                (*cblk).decoded_data.as_ptr() as *mut OPJ_INT32,
                 1 as OPJ_UINT32,
                 cblk_w,
                 true,

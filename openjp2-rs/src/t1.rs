@@ -214,7 +214,6 @@ impl T1Data {
 pub(crate) struct opj_t1 {
   pub mqc: opj_mqc_t,
   pub data: T1Data,
-  decoded_data: Option<(*mut OPJ_INT32, usize)>,
   pub flags: T1Flags,
   pub w: OPJ_UINT32,
   pub h: OPJ_UINT32,
@@ -230,7 +229,6 @@ impl Default for opj_t1 {
     Self {
       mqc: opj_mqc::default(),
       data: T1Data::default(),
-      decoded_data: None,
       flags: T1Flags::default(),
       w: 0,
       h: 0,
@@ -261,38 +259,22 @@ impl opj_t1 {
     self.cblkdatabuffer.as_slice()
   }
 
-  fn set_decoded_data(&mut self, decoded_data: *mut OPJ_INT32, len: usize) {
-    self.decoded_data = Some((decoded_data, len));
-  }
-
-  fn reset_decoded_data(&mut self) {
-    self.decoded_data = None;
-  }
-
-  fn data_offset(&self, offset: isize) -> DataPtr<'_> {
-    match self.decoded_data {
-      // SAFETY: set_decoded_data() records the cblk buffer's element count; it outlives the
-      // decode pass. Becomes a plain slice in phase 3 when the cblk owns its coefficients.
-      Some((ptr, len)) => {
-        let data = unsafe { core::slice::from_raw_parts(ptr as *const Cell<i32>, len) };
-        DataPtr {
-          data,
-          idx: offset as usize,
-        }
-      }
-      None => self.data.offset(offset),
-    }
-  }
-
   /// Disjoint borrows of the MQ coder and the coefficient/flag cursors, so a coding pass can
   /// drive the coder while walking both buffers.
-  fn split(&mut self, flags_stride: OPJ_UINT32) -> (&mut opj_mqc_t, DataPtr<'_>, FlagsPtr<'_>) {
-    let data = match self.decoded_data {
-      // SAFETY: see data_offset().
-      Some((ptr, len)) => DataPtr {
-        data: unsafe { core::slice::from_raw_parts(ptr as *const Cell<i32>, len) },
-        idx: 0,
-      },
+  fn split<'a>(&'a mut self, flags_stride: OPJ_UINT32) -> (&'a mut opj_mqc_t, DataPtr<'a>, FlagsPtr<'a>) {
+    self.split_with(flags_stride, None)
+  }
+
+  /// Like `split`, but the coefficient cursors walk `data` instead of the internal buffer.
+  /// The decode path passes the code-block's owned `decoded_data` cells here, which keeps the
+  /// thread-local T1 cache from holding any reference to the code-block.
+  fn split_with<'a>(
+    &'a mut self,
+    flags_stride: OPJ_UINT32,
+    data: Option<&'a [Cell<i32>]>,
+  ) -> (&'a mut opj_mqc_t, DataPtr<'a>, FlagsPtr<'a>) {
+    let data = match data {
+      Some(data) => DataPtr { data, idx: 0 },
       None => self.data.offset(0),
     };
     let flags = self.flags.offset(flags_stride as isize + 1);
@@ -749,7 +731,12 @@ fn opj_t1_enc_sigpass(
 /* *
 Decode significant pass
 */
-fn opj_t1_dec_sigpass_raw(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, mut cblksty: OPJ_INT32) {
+fn opj_t1_dec_sigpass_raw(
+  mut t1: &mut opj_t1_t,
+  mut bpno: OPJ_INT32,
+  mut cblksty: OPJ_INT32,
+  data_src: Option<&[Cell<i32>]>,
+) {
   let mut one = 0;
   let mut half = 0;
   let mut oneplushalf = 0;
@@ -757,7 +744,7 @@ fn opj_t1_dec_sigpass_raw(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, mut cblkst
   let mut j = 0;
   let mut k = 0;
   let (l_w, l_h) = (t1.w, t1.h);
-  let (mqc, mut data, mut flagsp) = t1.split(l_w + 2);
+  let (mqc, mut data, mut flagsp) = t1.split_with(l_w + 2, data_src);
   one = 1 << bpno;
   half = one >> 1;
   oneplushalf = one | half;
@@ -842,6 +829,7 @@ fn opj_t1_dec_sigpass_mqc_internal(
   w: OPJ_UINT32,
   h: OPJ_UINT32,
   flags_stride: OPJ_UINT32,
+  data_src: Option<&[Cell<i32>]>,
 ) {
   let mut one = 0;
   let mut half = 0;
@@ -849,7 +837,7 @@ fn opj_t1_dec_sigpass_mqc_internal(
   let mut i = 0;
   let mut j = 0;
   let mut k = 0;
-  let (mqc, mut data, mut flagsp) = t1.split(flags_stride);
+  let (mqc, mut data, mut flagsp) = t1.split_with(flags_stride, data_src);
   let l_w = w;
   let mut v = 0;
   one = 1 << bpno;
@@ -939,33 +927,38 @@ fn opj_t1_dec_sigpass_mqc_internal(
   }
 }
 
-fn opj_t1_dec_sigpass_mqc_64x64_novsc(t1: &mut opj_t1_t, bpno: OPJ_INT32) {
-  opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_FALSE, 64, 64, 66);
+fn opj_t1_dec_sigpass_mqc_64x64_novsc(t1: &mut opj_t1_t, bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+  opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_FALSE, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_sigpass_mqc_64x64_vsc(t1: &mut opj_t1_t, bpno: OPJ_INT32) {
-  opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_TRUE, 64, 64, 66);
+fn opj_t1_dec_sigpass_mqc_64x64_vsc(t1: &mut opj_t1_t, bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+  opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_TRUE, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_sigpass_mqc_generic_novsc(t1: &mut opj_t1_t, bpno: OPJ_INT32) {
-  opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_FALSE, t1.w, t1.h, t1.w + 2);
+fn opj_t1_dec_sigpass_mqc_generic_novsc(t1: &mut opj_t1_t, bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+  opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_FALSE, t1.w, t1.h, t1.w + 2, data_src);
 }
 
-fn opj_t1_dec_sigpass_mqc_generic_vsc(t1: &mut opj_t1_t, bpno: OPJ_INT32) {
-  opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_TRUE, t1.w, t1.h, t1.w + 2);
+fn opj_t1_dec_sigpass_mqc_generic_vsc(t1: &mut opj_t1_t, bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+  opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_TRUE, t1.w, t1.h, t1.w + 2, data_src);
 }
 
-fn opj_t1_dec_sigpass_mqc(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, mut cblksty: OPJ_INT32) {
+fn opj_t1_dec_sigpass_mqc(
+  mut t1: &mut opj_t1_t,
+  mut bpno: OPJ_INT32,
+  mut cblksty: OPJ_INT32,
+  data_src: Option<&[Cell<i32>]>,
+) {
   if t1.w == 64 && t1.h == 64 {
     if cblksty as u32 & J2K_CCP_CBLKSTY_VSC != 0 {
-      opj_t1_dec_sigpass_mqc_64x64_vsc(t1, bpno);
+      opj_t1_dec_sigpass_mqc_64x64_vsc(t1, bpno, data_src);
     } else {
-      opj_t1_dec_sigpass_mqc_64x64_novsc(t1, bpno);
+      opj_t1_dec_sigpass_mqc_64x64_novsc(t1, bpno, data_src);
     }
   } else if cblksty as u32 & J2K_CCP_CBLKSTY_VSC != 0 {
-    opj_t1_dec_sigpass_mqc_generic_vsc(t1, bpno);
+    opj_t1_dec_sigpass_mqc_generic_vsc(t1, bpno, data_src);
   } else {
-    opj_t1_dec_sigpass_mqc_generic_novsc(t1, bpno);
+    opj_t1_dec_sigpass_mqc_generic_novsc(t1, bpno, data_src);
   }
 }
 
@@ -1155,14 +1148,18 @@ fn opj_t1_enc_refpass(
 /* *
 Decode refinement pass
 */
-fn opj_t1_dec_refpass_raw(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
+fn opj_t1_dec_refpass_raw(
+  mut t1: &mut opj_t1_t,
+  mut bpno: OPJ_INT32,
+  data_src: Option<&[Cell<i32>]>,
+) {
   let mut one: OPJ_INT32 = 0;
   let mut poshalf: OPJ_INT32 = 0;
   let mut i: OPJ_UINT32 = 0;
   let mut j: OPJ_UINT32 = 0;
   let mut k: OPJ_UINT32 = 0;
   let (l_w, l_h) = (t1.w, t1.h);
-  let (mqc, mut data, mut flagsp) = t1.split(l_w + 2);
+  let (mqc, mut data, mut flagsp) = t1.split_with(l_w + 2, data_src);
   one = 1 << bpno;
   poshalf = one >> 1;
   k = 0;
@@ -1222,13 +1219,14 @@ fn opj_t1_dec_refpass_mqc_internal(
   w: OPJ_UINT32,
   h: OPJ_UINT32,
   flags_stride: OPJ_UINT32,
+  data_src: Option<&[Cell<i32>]>,
 ) {
   let mut one = 0;
   let mut poshalf = 0;
   let mut i = 0;
   let mut j = 0;
   let mut k = 0;
-  let (mqc, mut data, mut flagsp) = t1.split(flags_stride);
+  let (mqc, mut data, mut flagsp) = t1.split_with(flags_stride, data_src);
   let l_w = w;
   let mut v = 0;
   one = 1 << bpno;
@@ -1275,19 +1273,19 @@ fn opj_t1_dec_refpass_mqc_internal(
   }
 }
 
-fn opj_t1_dec_refpass_mqc_64x64(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
-  opj_t1_dec_refpass_mqc_internal(t1, bpno, 64, 64, 66);
+fn opj_t1_dec_refpass_mqc_64x64(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+  opj_t1_dec_refpass_mqc_internal(t1, bpno, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_refpass_mqc_generic(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
-  opj_t1_dec_refpass_mqc_internal(t1, bpno, t1.w, t1.h, t1.w + 2);
+fn opj_t1_dec_refpass_mqc_generic(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+  opj_t1_dec_refpass_mqc_internal(t1, bpno, t1.w, t1.h, t1.w + 2, data_src);
 }
 
-fn opj_t1_dec_refpass_mqc(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
+fn opj_t1_dec_refpass_mqc(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
   if t1.w == 64 && t1.h == 64 {
-    opj_t1_dec_refpass_mqc_64x64(t1, bpno);
+    opj_t1_dec_refpass_mqc_64x64(t1, bpno, data_src);
   } else {
-    opj_t1_dec_refpass_mqc_generic(t1, bpno);
+    opj_t1_dec_refpass_mqc_generic(t1, bpno, data_src);
   };
 }
 
@@ -1527,6 +1525,7 @@ fn opj_t1_dec_clnpass_internal(
   w: u32,
   h: u32,
   flags_stride: u32,
+  data_src: Option<&[Cell<i32>]>,
 ) {
   let mut one = 0;
   let mut half = 0;
@@ -1535,7 +1534,7 @@ fn opj_t1_dec_clnpass_internal(
   let mut i = 0;
   let mut j = 0;
   let mut k = 0;
-  let (mqc, mut data, mut flagsp) = t1.split(flags_stride);
+  let (mqc, mut data, mut flagsp) = t1.split_with(flags_stride, data_src);
   let l_w = w;
   let mut v = 0u32;
   one = 1 << bpno;
@@ -1733,33 +1732,33 @@ fn opj_t1_dec_clnpass_check_segsym(mut t1: &mut opj_t1_t, mut cblksty: OPJ_INT32
   }
 }
 
-fn opj_t1_dec_clnpass_64x64_novsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
-  opj_t1_dec_clnpass_internal(t1, bpno, false, 64, 64, 66);
+fn opj_t1_dec_clnpass_64x64_novsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+  opj_t1_dec_clnpass_internal(t1, bpno, false, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_clnpass_64x64_vsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
-  opj_t1_dec_clnpass_internal(t1, bpno, true, 64, 64, 66);
+fn opj_t1_dec_clnpass_64x64_vsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+  opj_t1_dec_clnpass_internal(t1, bpno, true, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_clnpass_generic_novsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
-  opj_t1_dec_clnpass_internal(t1, bpno, false, t1.w, t1.h, t1.w + 2);
+fn opj_t1_dec_clnpass_generic_novsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+  opj_t1_dec_clnpass_internal(t1, bpno, false, t1.w, t1.h, t1.w + 2, data_src);
 }
 
-fn opj_t1_dec_clnpass_generic_vsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32) {
-  opj_t1_dec_clnpass_internal(t1, bpno, true, t1.w, t1.h, t1.w + 2);
+fn opj_t1_dec_clnpass_generic_vsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+  opj_t1_dec_clnpass_internal(t1, bpno, true, t1.w, t1.h, t1.w + 2, data_src);
 }
 
-fn opj_t1_dec_clnpass(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, mut cblksty: OPJ_INT32) {
+fn opj_t1_dec_clnpass(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, mut cblksty: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
   if t1.w == 64 && t1.h == 64 {
     if (cblksty as u32 & J2K_CCP_CBLKSTY_VSC) != 0 {
-      opj_t1_dec_clnpass_64x64_vsc(t1, bpno);
+      opj_t1_dec_clnpass_64x64_vsc(t1, bpno, data_src);
     } else {
-      opj_t1_dec_clnpass_64x64_novsc(t1, bpno);
+      opj_t1_dec_clnpass_64x64_novsc(t1, bpno, data_src);
     }
   } else if (cblksty as u32 & J2K_CCP_CBLKSTY_VSC) != 0 {
-    opj_t1_dec_clnpass_generic_vsc(t1, bpno);
+    opj_t1_dec_clnpass_generic_vsc(t1, bpno, data_src);
   } else {
-    opj_t1_dec_clnpass_generic_novsc(t1, bpno);
+    opj_t1_dec_clnpass_generic_novsc(t1, bpno, data_src);
   }
   opj_t1_dec_clnpass_check_segsym(t1, cblksty);
 }
@@ -1881,7 +1880,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
       cblk_w = ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32;
       cblk_h = ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32;
       /* Zero-init required */
-      (*cblk).decoded_data = vec![0i32; cblk_w as usize * cblk_h as usize];
+      (*cblk).decoded_data = vec![Cell::new(0); cblk_w as usize * cblk_h as usize];
     } else if !(*cblk).decoded_data.is_empty() {
       /* Not sure if that code path can happen, but better be */
       /* safe than sorry */
@@ -1960,7 +1959,8 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
         y += (*pres_0).y1 - (*pres_0).y0
       }
       datap = if !(*cblk).decoded_data.is_empty() {
-        (*cblk).decoded_data.as_mut_ptr()
+        // Cell<i32> is repr(transparent) over i32, so this is layout-preserving.
+        (*cblk).decoded_data.as_ptr() as *mut OPJ_INT32
       } else {
         t1.data.as_mut_ptr()
       };
@@ -2315,10 +2315,11 @@ fn opj_t1_decode_cblk(
     }
     /* For subtile decoding, directly decode in the decoded_data buffer of */
     /* the code-block. Hack t1->data to point to it, and restore it later */
-    if !(*cblk).decoded_data.is_empty() {
-      let len = (t1.w * t1.h) as usize;
-      t1.set_decoded_data((*cblk).decoded_data.as_mut_ptr(), len);
-    }
+    let decoded_data_src: Option<&[Cell<i32>]> = if !(*cblk).decoded_data.is_empty() {
+      Some((*cblk).decoded_data.as_slice())
+    } else {
+      None
+    };
     segno = 0 as OPJ_UINT32;
     while segno < (*cblk).real_num_segs {
       let mut seg: *mut opj_tcd_seg_t = (*cblk).segs.as_mut_ptr().offset(segno as isize);
@@ -2352,20 +2353,20 @@ fn opj_t1_decode_cblk(
         match passtype {
           0 => {
             if type_0 as core::ffi::c_int == 1i32 {
-              opj_t1_dec_sigpass_raw(t1, bpno_plus_one, cblksty as OPJ_INT32);
+              opj_t1_dec_sigpass_raw(t1, bpno_plus_one, cblksty as OPJ_INT32, decoded_data_src);
             } else {
-              opj_t1_dec_sigpass_mqc(t1, bpno_plus_one, cblksty as OPJ_INT32);
+              opj_t1_dec_sigpass_mqc(t1, bpno_plus_one, cblksty as OPJ_INT32, decoded_data_src);
             }
           }
           1 => {
             if type_0 as core::ffi::c_int == 1i32 {
-              opj_t1_dec_refpass_raw(t1, bpno_plus_one);
+              opj_t1_dec_refpass_raw(t1, bpno_plus_one, decoded_data_src);
             } else {
-              opj_t1_dec_refpass_mqc(t1, bpno_plus_one);
+              opj_t1_dec_refpass_mqc(t1, bpno_plus_one, decoded_data_src);
             }
           }
           2 => {
-            opj_t1_dec_clnpass(t1, bpno_plus_one, cblksty as OPJ_INT32);
+            opj_t1_dec_clnpass(t1, bpno_plus_one, cblksty as OPJ_INT32, decoded_data_src);
           }
           _ => {}
         }
@@ -2404,10 +2405,6 @@ fn opj_t1_decode_cblk(
           mqc.end_of_byte_stream_counter,
         );
       }
-    }
-    /* Restore original t1->data is needed */
-    if !(*cblk).decoded_data.is_empty() {
-      t1.reset_decoded_data();
     }
     1i32
   }
@@ -2525,7 +2522,7 @@ fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
         }
       } else {
         let mut tiledp_f = tiledp as *mut OPJ_FLOAT32;
-        let mut t1data_0 = t1.data_offset(0);
+        let mut t1data_0 = t1.data.offset(0);
         /* Change from "natural" order to "zigzag" order of T1 passes */
         /* Change from "natural" order to "zigzag" order of T1 passes */
         j = 0 as OPJ_UINT32; /* fixed_quality */

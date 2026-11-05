@@ -1104,7 +1104,7 @@ pub(crate) struct opj_tcd_cblk_dec {
   pub numsegs: OPJ_UINT32,
   pub real_num_segs: OPJ_UINT32,
   pub numchunks: OPJ_UINT32,
-  pub decoded_data: Vec<OPJ_INT32>,
+  pub decoded_data: Vec<core::cell::Cell<OPJ_INT32>>,
 }
 pub(crate) type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
 
