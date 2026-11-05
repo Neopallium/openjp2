@@ -1915,7 +1915,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
         if 0i32
           == opj_t1_ht_decode_cblk(
             t1,
-            cblk,
+            &mut *cblk,
             (*band).bandno,
             (*tccp).roishift as OPJ_UINT32,
             (*tccp).cblksty,

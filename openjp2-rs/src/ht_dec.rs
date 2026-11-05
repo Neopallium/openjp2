@@ -4,6 +4,7 @@ use super::t1::*;
 use super::t1_ht_luts::*;
 
 use core::cell::Cell;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Copy, Clone)]
 pub struct dec_mel<'a> {
@@ -154,7 +155,9 @@ pub type frwd_struct_t<'a> = frwd_struct<'a>;
 /* * @brief Displays the error message for disabling the decoding of SPP and
  * MRP passes
  */
-static mut only_cleanup_pass_is_decoded: OPJ_BOOL = 0i32;
+/// Process-wide "message shown once" flag (the C code used a `static` local). An atomic keeps the
+/// double-checked claim logic without mutable-static UB.
+static ONLY_CLEANUP_PASS_DECODED: AtomicBool = AtomicBool::new(false);
 //* ***********************************************************************/
 /* * @brief Generates population count (i.e., the number of set bits)
  *
@@ -1165,16 +1168,14 @@ fn opj_t1_allocate_buffers(
  */
 pub(crate) fn opj_t1_ht_decode_cblk(
   mut t1: &mut opj_t1_t,
-  mut cblk: *mut opj_tcd_cblk_dec_t,
+  cblk: &mut opj_tcd_cblk_dec_t,
   mut _orient: OPJ_UINT32,
   mut roishift: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
   mut _check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
-  unsafe {
     let cblkdata: &[u8]; // fetched data from VLC bitstream
-    let mut decoded_data = core::ptr::null_mut::<OPJ_UINT32>(); // loop indices
     let mut zero_bplanes: OPJ_UINT32 = 0;
     let mut num_passes: OPJ_UINT32 = 0;
     let mut lengths1: OPJ_UINT32 = 0;
@@ -1246,7 +1247,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     let mut vlc_val: OPJ_UINT32 = 0;
     let mut qinf: [OPJ_UINT32; 2] = [0; 2];
     let mut c_q: OPJ_UINT32 = 0;
-    let mut sp = core::ptr::null_mut::<OPJ_UINT32>();
+    let mut sp: usize = 0;
     let mut x: OPJ_INT32 = 0;
     let mut y: OPJ_INT32 = 0;
     let mut stripe_causal = (cblksty & 0x8u32 != 0u32) as core::ffi::c_int;
@@ -1265,28 +1266,28 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     }
     if opj_t1_allocate_buffers(
       t1,
-      ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32,
-      ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32,
+      (cblk.x1 - cblk.x0) as OPJ_UINT32,
+      (cblk.y1 - cblk.y0) as OPJ_UINT32,
     ) == 0
     {
       return 0i32;
     }
-    if (*cblk).Mb == 0u32 {
+    if cblk.Mb == 0u32 {
       return 1i32;
     }
     /* numbps = Mb + 1 - zero_bplanes, Mb = Kmax, zero_bplanes = missing_msbs */
-    zero_bplanes = (*cblk).Mb.wrapping_add(1u32).wrapping_sub((*cblk).numbps);
+    zero_bplanes = cblk.Mb.wrapping_add(1u32).wrapping_sub(cblk.numbps);
     /* Compute whole codeblock length from chunk lengths */
     cblk_len = 0 as OPJ_UINT32;
     let mut i: OPJ_UINT32 = 0;
     i = 0 as OPJ_UINT32;
-    while i < (*cblk).numchunks {
+    while i < cblk.numchunks {
       cblk_len = (cblk_len as core::ffi::c_uint)
-        .wrapping_add((*(*cblk).chunks.as_ptr().offset(i as isize)).len)
+        .wrapping_add(cblk.chunks[i as usize].len)
         as OPJ_UINT32;
       i += 1;
     }
-    if (*cblk).numchunks > 1u32 || t1.mustuse_cblkdatabuffer != 0 {
+    if cblk.numchunks > 1u32 || t1.mustuse_cblkdatabuffer != 0 {
       let mut i_0: OPJ_UINT32 = 0;
       /* Allocate temporary memory if needed */
       t1.grow_cblkdatabuffer(cblk_len as usize);
@@ -1296,54 +1297,61 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         let buffer = t1.cblkdatabuffer();
         cblk_len = 0 as OPJ_UINT32;
         i_0 = 0 as OPJ_UINT32;
-        while i_0 < (*cblk).numchunks {
-          let chunk = (*(*cblk).chunks.as_ptr().offset(i_0 as isize)).as_slice();
+        while i_0 < cblk.numchunks {
+          let chunk = cblk.chunks[i_0 as usize].as_slice();
           let off = cblk_len as usize;
           buffer[off..off + chunk.len()].copy_from_slice(chunk);
           cblk_len = (cblk_len as core::ffi::c_uint)
-            .wrapping_add((*(*cblk).chunks.as_ptr().offset(i_0 as isize)).len)
+            .wrapping_add(cblk.chunks[i_0 as usize].len)
             as OPJ_UINT32;
           i_0 += 1;
         }
       }
       cblkdata = t1.cblkdatabuffer_ref();
-    } else if (*cblk).numchunks == 1u32 {
-      cblkdata = (*(*cblk).chunks.as_ptr()).as_slice();
+    } else if cblk.numchunks == 1u32 {
+      cblkdata = cblk.chunks[0].as_slice();
     } else {
       /* Not sure if that can happen in practice, but avoid Coverity to */
       /* think we will dereference a null cblkdta pointer */
       return 1i32;
     }
-    // OPJ_UINT32* decoded_data is a pointer to decoded codeblock data buf.
-    decoded_data = t1.data.as_mut_ptr() as *mut OPJ_UINT32;
+    // The C code writes the decoded samples through a `OPJ_UINT32*` alias of the T1 data
+    // buffer. Here that alias is one exclusive `&mut [u32]` view, created once at the boundary:
+    // the function holds the only `&mut` to `t1` and never touches `t1.data` otherwise.
+    let ht_data: &mut [OPJ_UINT32] = unsafe {
+      core::slice::from_raw_parts_mut(
+        t1.data.as_mut_ptr() as *mut OPJ_UINT32,
+        t1.data.as_slice().len(),
+      )
+    };
     // OPJ_UINT32 num_passes is the number of passes: 1 if CUP only, 2 for
     // CUP+SPP, and 3 for CUP+SPP+MRP
-    num_passes = if (*cblk).numsegs > 0u32 {
-      (*(*cblk).segs.as_ptr().offset(0)).real_num_passes
+    num_passes = if cblk.numsegs > 0u32 {
+      cblk.segs[0].real_num_passes
     } else {
       0u32
     };
-    num_passes = (num_passes as core::ffi::c_uint).wrapping_add(if (*cblk).numsegs > 1u32 {
-      (*(*cblk).segs.as_ptr().offset(1)).real_num_passes
+    num_passes = (num_passes as core::ffi::c_uint).wrapping_add(if cblk.numsegs > 1u32 {
+      cblk.segs[1].real_num_passes
     } else {
       0u32
     }) as OPJ_UINT32;
     // OPJ_UINT32 lengths1 is the length of cleanup pass
     lengths1 = if num_passes > 0u32 {
-      (*(*cblk).segs.as_ptr().offset(0)).len
+      cblk.segs[0].len
     } else {
       0u32
     };
     // OPJ_UINT32 lengths2 is the length of refinement passes (either SPP only or SPP+MRP)
     lengths2 = if num_passes > 1u32 {
-      (*(*cblk).segs.as_ptr().offset(1)).len
+      cblk.segs[1].len
     } else {
       0u32
     };
     // OPJ_INT32 width is the decoded codeblock width
-    width = (*cblk).x1 - (*cblk).x0;
+    width = cblk.x1 - cblk.x0;
     // OPJ_INT32 height is the decoded codeblock height
-    height = (*cblk).y1 - (*cblk).y0;
+    height = cblk.y1 - cblk.y0;
     // OPJ_INT32 stride is the decoded codeblock buffer stride
     stride = width;
     /*  sigma1 and sigma2 contains significant (i.e., non-zero) pixel
@@ -1379,7 +1387,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                         "We do not support more than 3 coding passes in an HT codeblock; This codeblocks has {} passes.\n", num_passes);
       return 0i32;
     }
-    if (*cblk).Mb > 30u32 {
+    if cblk.Mb > 30u32 {
       /* This check is better moved to opj_t2_read_packet_header() in t2.c
         We do not have enough precision to decode any passes
         The design of openjpeg assumes that the bits of a 32-bit integer are
@@ -1390,28 +1398,27 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         Therefore we can only do values of cblk->Mb <= 30
       */
       event_msg!(p_manager, EVT_ERROR,
-                        "32 bits are not enough to decode this codeblock, since the number of bitplane, {}, is larger than 30.\n", (*cblk).Mb);
+                        "32 bits are not enough to decode this codeblock, since the number of bitplane, {}, is larger than 30.\n", cblk.Mb);
       return 0i32;
     }
-    if zero_bplanes > (*cblk).Mb {
+    if zero_bplanes > cblk.Mb {
       /* This check is better moved to opj_t2_read_packet_header() in t2.c,
       in the line "l_cblk->numbps = (OPJ_UINT32)l_band->numbps + 1 - i;"
       where i is the zero bitplanes, and should be no larger than cblk->Mb
       We cannot have more zero bitplanes than there are planes. */
       event_msg!(p_manager, EVT_ERROR,
                         "Malformed HT codeblock. Decoding this codeblock is stopped. There are {} zero bitplanes in {} bitplanes.\n", zero_bplanes,
-                        (*cblk).Mb);
+                        cblk.Mb);
       return 0i32;
-    } else if zero_bplanes == (*cblk).Mb && num_passes > 1u32 {
+    } else if zero_bplanes == cblk.Mb && num_passes > 1u32 {
       /* When the number of zero bitplanes is equal to the number of bitplanes,
       only the cleanup pass makes sense*/
-      if only_cleanup_pass_is_decoded == 0i32 {
+      if !ONLY_CLEANUP_PASS_DECODED.load(Ordering::Relaxed) {
         /* We have a second check to prevent the possibility of an overrun condition,
         in the very unlikely event of a second thread discovering that
-        only_cleanup_pass_is_decoded is false before the first thread changing
+        ONLY_CLEANUP_PASS_DECODED is false before the first thread changing
         the condition. */
-        if only_cleanup_pass_is_decoded == 0i32 {
-          only_cleanup_pass_is_decoded = 1i32;
+        if !ONLY_CLEANUP_PASS_DECODED.swap(true, Ordering::Relaxed) {
           event_msg!(p_manager, EVT_WARNING,
                               "Malformed HT codeblock. When the number of zero planes bitplanes is equal to the number of bitplanes, only the cleanup pass makes sense, but we have {} passes in this codeblock. Therefore, only the cleanup pass will be decoded. This message will not be displayed again.\n",
                               num_passes);
@@ -1420,7 +1427,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       num_passes = 1 as OPJ_UINT32
     }
     /* OPJ_UINT32 */
-    p = (*cblk).numbps;
+    p = cblk.numbps;
     // OPJ_UINT32 zero planes plus 1
     zero_bplanes_p1 = zero_bplanes.wrapping_add(1u32);
     if lengths1 < 2u32 || lengths1 > cblk_len || lengths1.wrapping_add(lengths2) > cblk_len {
@@ -1491,7 +1498,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     qinf[1_usize] = 0 as OPJ_UINT32; // quad info decoded from VLC bitstream
     qinf[0_usize] = qinf[1_usize]; // context for quad q
     c_q = 0 as OPJ_UINT32; // decoded codeblock samples
-    sp = decoded_data;
+    sp = 0;
     // vlc_val;                 // fetched data from VLC bitstream
     x = 0i32;
     while x < width {
@@ -1647,10 +1654,10 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n |= 1u32; //add center of bin
                      //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
                      //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
-        *sp.offset(0) = val | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
+        ht_data[sp + (0) as usize] = val | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs & 0x1u32 != 0 {
         // if this is inside the codeblock, set the
-        *sp.offset(0) = 0 as OPJ_UINT32
+        ht_data[sp + (0) as usize] = 0 as OPJ_UINT32
         // sample to zero
       }
       if qinf[0_usize] & 0x20u32 != 0 {
@@ -1666,18 +1673,18 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n |= 1u32;
         //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
         //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
-        *sp.offset(stride as isize) = val_0 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
+        ht_data[sp + (stride) as usize] = val_0 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
         //update line_state: bit 7 (\sigma^N), and E^N
         t = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as OPJ_UINT32; // keep E^NW
         v_n = (32u32).wrapping_sub(count_leading_zeros(v_n));
         line_state[lsp].set((0x80u32 | (if t > v_n { t } else { v_n })) as OPJ_UINT8)
       } else if locs & 0x2u32 != 0 {
         // if this is inside the codeblock, set the
-        *sp.offset(stride as isize) = 0 as OPJ_UINT32
+        ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
         // sample to zero
       } // move to next quad information
       lsp += 1; // move to next column of samples
-      sp = sp.offset(1);
+      sp += (1) as usize;
       //this is similar to the above two samples
       if qinf[0_usize] & 0x40u32 != 0 {
         let mut val_1: OPJ_UINT32 = 0; //m_n
@@ -1688,9 +1695,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
         v_n |= ((qinf[0_usize] & 0x400u32) >> 10i32) << m_n;
         v_n |= 1u32;
-        *sp.offset(0) = val_1 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
+        ht_data[sp + (0) as usize] = val_1 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs & 0x4u32 != 0 {
-        *sp.offset(0) = 0 as OPJ_UINT32
+        ht_data[sp + (0) as usize] = 0 as OPJ_UINT32
       }
       line_state[lsp].set(0 as OPJ_UINT8);
       if qinf[0_usize] & 0x80u32 != 0 {
@@ -1702,14 +1709,14 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
         v_n |= ((qinf[0_usize] & 0x800u32) >> 11i32) << m_n;
         v_n |= 1u32;
-        *sp.offset(stride as isize) = val_2 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
+        ht_data[sp + (stride) as usize] = val_2 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
         //line_state: bit 7 (\sigma^NW), and E^NW for next quad
         line_state[lsp].set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n))) as OPJ_UINT8)
       } else if locs & 0x8u32 != 0 {
         //if outside set to 0
-        *sp.offset(stride as isize) = 0 as OPJ_UINT32
+        ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
       } //move to next column
-      sp = sp.offset(1);
+      sp += (1) as usize;
       //second quad
       if qinf[1_usize] & 0x10u32 != 0 {
         let mut val_3: OPJ_UINT32 = 0; //m_n
@@ -1720,9 +1727,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
         v_n |= ((qinf[1_usize] & 0x100u32) >> 8i32) << m_n;
         v_n |= 1u32;
-        *sp.offset(0) = val_3 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
+        ht_data[sp + (0) as usize] = val_3 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs & 0x10u32 != 0 {
-        *sp.offset(0) = 0 as OPJ_UINT32
+        ht_data[sp + (0) as usize] = 0 as OPJ_UINT32
       }
       if qinf[1_usize] & 0x20u32 != 0 {
         let mut val_4: OPJ_UINT32 = 0;
@@ -1735,19 +1742,19 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
         v_n |= ((qinf[1_usize] & 0x200u32) >> 9i32) << m_n;
         v_n |= 1u32;
-        *sp.offset(stride as isize) = val_4 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
+        ht_data[sp + (stride) as usize] = val_4 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
         t_0 = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as OPJ_UINT32;
         v_n = (32u32).wrapping_sub(count_leading_zeros(v_n));
         line_state[lsp].set((0x80u32 | (if t_0 > v_n { t_0 } else { v_n })) as OPJ_UINT8)
       } else if locs & 0x20u32 != 0 {
-        *sp.offset(stride as isize) = 0 as OPJ_UINT32
+        ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
         //update line_state: bit 7 (\sigma^N), and E^N
         //E^NW
         //E^N
         //no need to update line_state
       } //move line state to next quad
       lsp += 1; //move to next sample
-      sp = sp.offset(1); //m_n
+      sp += (1) as usize; //m_n
       if qinf[1_usize] & 0x40u32 != 0 {
         let mut val_5: OPJ_UINT32 = 0; //m_n
         ms_val = frwd_fetch(&mut magsgn); //center of bin
@@ -1757,9 +1764,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
         v_n |= ((qinf[1_usize] & 0x400u32) >> 10i32) << m_n;
         v_n |= 1u32;
-        *sp.offset(0) = val_5 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
+        ht_data[sp + (0) as usize] = val_5 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs & 0x40u32 != 0 {
-        *sp.offset(0) = 0 as OPJ_UINT32
+        ht_data[sp + (0) as usize] = 0 as OPJ_UINT32
       }
       line_state[lsp].set(0 as OPJ_UINT8);
       if qinf[1_usize] & 0x80u32 != 0 {
@@ -1771,13 +1778,13 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
         v_n |= ((qinf[1_usize] & 0x800u32) >> 11i32) << m_n;
         v_n |= 1u32;
-        *sp.offset(stride as isize) = val_6 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
+        ht_data[sp + (stride) as usize] = val_6 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
         //line_state: bit 7 (\sigma^NW), and E^NW for next quad
         line_state[lsp].set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n))) as OPJ_UINT8)
       } else if locs & 0x80u32 != 0 {
-        *sp.offset(stride as isize) = 0 as OPJ_UINT32
+        ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
       }
-      sp = sp.offset(1);
+      sp += (1) as usize;
       x += 4i32
     }
     //non-initial lines
@@ -1794,7 +1801,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       lsp = 0; // context
       ls0 = line_state[lsp].get();
       line_state[lsp].set(0 as OPJ_UINT8);
-      sp = decoded_data.offset((y * stride) as isize);
+      sp = ((y * stride)) as usize;
       c_q = 0 as OPJ_UINT32;
       x_0 = 0i32;
       while x_0 < width {
@@ -1938,9 +1945,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
           v_n_0 |= ((qinf[0_usize] & 0x100u32) >> 8i32) << m_n_0;
           v_n_0 |= 1u32;
-          *sp.offset(0) = val_7 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
+          ht_data[sp + (0) as usize] = val_7 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
         } else if locs_0 & 0x1u32 != 0 {
-          *sp.offset(0) = 0 as OPJ_UINT32
+          ht_data[sp + (0) as usize] = 0 as OPJ_UINT32
         }
         if qinf[0_usize] & 0x20u32 != 0 {
           //sigma_n
@@ -1953,17 +1960,17 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
           v_n_0 |= ((qinf[0_usize] & 0x200u32) >> 9i32) << m_n_0;
           v_n_0 |= 1u32;
-          *sp.offset(stride as isize) = val_8 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
+          ht_data[sp + (stride) as usize] = val_8 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
           //update line_state: bit 7 (\sigma^N), and E^N
           t_1 = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as OPJ_UINT32; //E^NW
           v_n_0 = (32u32).wrapping_sub(count_leading_zeros(v_n_0));
           line_state[lsp].set((0x80u32 | (if t_1 > v_n_0 { t_1 } else { v_n_0 })) as OPJ_UINT8)
         } else if locs_0 & 0x2u32 != 0 {
-          *sp.offset(stride as isize) = 0 as OPJ_UINT32
+          ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
           //no need to update line_state
         }
         lsp += 1;
-        sp = sp.offset(1);
+        sp += (1) as usize;
         if qinf[0_usize] & 0x40u32 != 0 {
           //sigma_n
           let mut val_9: OPJ_UINT32 = 0; //m_n
@@ -1974,9 +1981,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
           v_n_0 |= ((qinf[0_usize] & 0x400u32) >> 10i32) << m_n_0;
           v_n_0 |= 1u32;
-          *sp.offset(0) = val_9 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
+          ht_data[sp + (0) as usize] = val_9 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
         } else if locs_0 & 0x4u32 != 0 {
-          *sp.offset(0) = 0 as OPJ_UINT32
+          ht_data[sp + (0) as usize] = 0 as OPJ_UINT32
         }
         if qinf[0_usize] & 0x80u32 != 0 {
           //sigma_n
@@ -1988,14 +1995,14 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
           v_n_0 |= ((qinf[0_usize] & 0x800u32) >> 11i32) << m_n_0;
           v_n_0 |= 1u32;
-          *sp.offset(stride as isize) = val_10 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
+          ht_data[sp + (stride) as usize] = val_10 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
           //update line_state: bit 7 (\sigma^NW), and E^NW for next quad
           line_state[lsp]
             .set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n_0))) as OPJ_UINT8)
         } else if locs_0 & 0x8u32 != 0 {
-          *sp.offset(stride as isize) = 0 as OPJ_UINT32
+          ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
         }
-        sp = sp.offset(1);
+        sp += (1) as usize;
         if qinf[1_usize] & 0x10u32 != 0 {
           //sigma_n
           let mut val_11: OPJ_UINT32 = 0; //m_n
@@ -2006,9 +2013,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
           v_n_0 |= ((qinf[1_usize] & 0x100u32) >> 8i32) << m_n_0;
           v_n_0 |= 1u32;
-          *sp.offset(0) = val_11 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
+          ht_data[sp + (0) as usize] = val_11 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
         } else if locs_0 & 0x10u32 != 0 {
-          *sp.offset(0) = 0 as OPJ_UINT32
+          ht_data[sp + (0) as usize] = 0 as OPJ_UINT32
         }
         if qinf[1_usize] & 0x20u32 != 0 {
           //sigma_n
@@ -2021,17 +2028,17 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
           v_n_0 |= ((qinf[1_usize] & 0x200u32) >> 9i32) << m_n_0;
           v_n_0 |= 1u32;
-          *sp.offset(stride as isize) = val_12 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
+          ht_data[sp + (stride) as usize] = val_12 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
           //update line_state: bit 7 (\sigma^N), and E^N
           t_2 = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as OPJ_UINT32; //E^NW
           v_n_0 = (32u32).wrapping_sub(count_leading_zeros(v_n_0));
           line_state[lsp].set((0x80u32 | (if t_2 > v_n_0 { t_2 } else { v_n_0 })) as OPJ_UINT8)
         } else if locs_0 & 0x20u32 != 0 {
-          *sp.offset(stride as isize) = 0 as OPJ_UINT32
+          ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
           //no need to update line_state
         }
         lsp += 1;
-        sp = sp.offset(1);
+        sp += (1) as usize;
         if qinf[1_usize] & 0x40u32 != 0 {
           //sigma_n
           let mut val_13: OPJ_UINT32 = 0; //m_n
@@ -2042,9 +2049,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
           v_n_0 |= ((qinf[1_usize] & 0x400u32) >> 10i32) << m_n_0;
           v_n_0 |= 1u32;
-          *sp.offset(0) = val_13 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
+          ht_data[sp + (0) as usize] = val_13 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
         } else if locs_0 & 0x40u32 != 0 {
-          *sp.offset(0) = 0 as OPJ_UINT32
+          ht_data[sp + (0) as usize] = 0 as OPJ_UINT32
         }
         if qinf[1_usize] & 0x80u32 != 0 {
           //sigma_n
@@ -2056,14 +2063,14 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
           v_n_0 |= ((qinf[1_usize] & 0x800u32) >> 11i32) << m_n_0;
           v_n_0 |= 1u32;
-          *sp.offset(stride as isize) = val_14 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
+          ht_data[sp + (stride) as usize] = val_14 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
           //update line_state: bit 7 (\sigma^NW), and E^NW for next quad
           line_state[lsp]
             .set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n_0))) as OPJ_UINT8)
         } else if locs_0 & 0x80u32 != 0 {
-          *sp.offset(stride as isize) = 0 as OPJ_UINT32
+          ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
         }
-        sp = sp.offset(1);
+        sp += (1) as usize;
         x_0 += 4i32
       }
       y += 2i32;
@@ -2075,7 +2082,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           // select the current stripe
           let mut cur_sig = if y & 0x4i32 != 0 { sigma1 } else { sigma2 };
           // the address of the data that needs updating
-          let mut dpp = decoded_data.offset(((y - 4i32) * stride) as isize); // half the center of the bin
+          let mut dpp = (((y - 4i32) * stride)) as usize; // half the center of the bin
           let mut half = (1u32) << p.wrapping_sub(2u32);
           let mut i_1: OPJ_INT32 = 0;
           i_1 = 0i32;
@@ -2087,7 +2094,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
             let sig = cur_sig.get(); // 32 bit that will be processed now
             cur_sig = cur_sig.offset(1); // a mask for a column in sig
             let mut col_mask = 0xfu32; // next column in decode samples
-            let mut dp = dpp.offset(i_1 as isize);
+            let mut dp = dpp + (i_1) as usize;
             if sig != 0 {
               // if any of the 32 bits are set
               let mut j: core::ffi::c_int = 0;
@@ -2100,12 +2107,12 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   if sig & sample_mask != 0 {
                     //if LSB is set
                     let mut sym: OPJ_UINT32 = 0; // decoded value cannot be zero
-                    assert!(*dp.offset(0) != 0u32);
+                    assert!(ht_data[dp + (0) as usize] != 0u32);
                     sym = cwd & 1u32;
                     // remove center of bin if sym is 0
-                    let fresh16 = &mut (*dp.offset(0)); // put half the center of bin
+                    let fresh16 = &mut (ht_data[dp + (0) as usize]); // put half the center of bin
                     *fresh16 ^= (1u32).wrapping_sub(sym) << p.wrapping_sub(1u32); //next row
-                    let fresh17 = &mut (*dp.offset(0));
+                    let fresh17 = &mut (ht_data[dp + (0) as usize]);
                     *fresh17 |= half;
                     cwd >>= 1i32
                   }
@@ -2113,11 +2120,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     as OPJ_UINT32 as OPJ_UINT32;
                   if sig & sample_mask != 0 {
                     let mut sym_0: OPJ_UINT32 = 0;
-                    assert!(*dp.offset(stride as isize) != 0u32);
+                    assert!(ht_data[dp + (stride) as usize] != 0u32);
                     sym_0 = cwd & 1u32;
-                    let fresh18 = &mut (*dp.offset(stride as isize));
+                    let fresh18 = &mut (ht_data[dp + (stride) as usize]);
                     *fresh18 ^= (1u32).wrapping_sub(sym_0) << p.wrapping_sub(1u32);
-                    let fresh19 = &mut (*dp.offset(stride as isize));
+                    let fresh19 = &mut (ht_data[dp + (stride) as usize]);
                     *fresh19 |= half;
                     cwd >>= 1i32
                   }
@@ -2125,11 +2132,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     as OPJ_UINT32 as OPJ_UINT32;
                   if sig & sample_mask != 0 {
                     let mut sym_1: OPJ_UINT32 = 0;
-                    assert!(*dp.offset((2i32 * stride) as isize) != 0u32);
+                    assert!(ht_data[dp + ((2i32 * stride)) as usize] != 0u32);
                     sym_1 = cwd & 1u32;
-                    let fresh20 = &mut (*dp.offset((2i32 * stride) as isize));
+                    let fresh20 = &mut (ht_data[dp + ((2i32 * stride)) as usize]);
                     *fresh20 ^= (1u32).wrapping_sub(sym_1) << p.wrapping_sub(1u32);
-                    let fresh21 = &mut (*dp.offset((2i32 * stride) as isize));
+                    let fresh21 = &mut (ht_data[dp + ((2i32 * stride)) as usize]);
                     *fresh21 |= half;
                     cwd >>= 1i32
                   }
@@ -2137,11 +2144,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     as OPJ_UINT32 as OPJ_UINT32;
                   if sig & sample_mask != 0 {
                     let mut sym_2: OPJ_UINT32 = 0;
-                    assert!(*dp.offset((3i32 * stride) as isize) != 0u32);
+                    assert!(ht_data[dp + ((3i32 * stride)) as usize] != 0u32);
                     sym_2 = cwd & 1u32;
-                    let fresh22 = &mut (*dp.offset((3i32 * stride) as isize));
+                    let fresh22 = &mut (ht_data[dp + ((3i32 * stride)) as usize]);
                     *fresh22 ^= (1u32).wrapping_sub(sym_2) << p.wrapping_sub(1u32);
-                    let fresh23 = &mut (*dp.offset((3i32 * stride) as isize));
+                    let fresh23 = &mut (ht_data[dp + ((3i32 * stride)) as usize]);
                     *fresh23 |= half;
                     cwd >>= 1i32
                   }
@@ -2150,7 +2157,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                 }
                 col_mask <<= 4i32;
                 j += 1;
-                dp = dp.offset(1)
+                dp += (1) as usize;
                 //next column
               }
             }
@@ -2250,8 +2257,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                 let mut j_0: OPJ_INT32 = 0;
                 let mut cwd_0 = frwd_fetch(&mut sigprop);
                 let mut cnt = 0 as OPJ_UINT32;
-                let mut dp_0 = decoded_data.offset(((y - 8i32) * stride) as isize);
-                dp_0 = dp_0.offset((i_3 + n) as isize);
+                let mut dp_0 = (((y - 8i32) * stride)) as usize;
+                dp_0 += ((i_3 + n)) as usize;
                 col_mask_0 = (0xfu32) << (4i32 * n);
                 inv_sig = !cur_sig_0.get();
                 //find the last sample we operate on
@@ -2267,7 +2274,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     //scan mbr to find a new significant sample
                     sample_mask_0 = 0x11111111u32 & col_mask_0; // LSB
                     if mbr_0 & sample_mask_0 != 0 {
-                      assert!(*dp_0.offset(0) == 0u32);
+                      assert!(ht_data[dp_0 + (0) as usize] == 0u32);
                       if cwd_0 & 1u32 != 0 {
                         //consume bit and increment number of
                         //consumed bits
@@ -2284,7 +2291,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0)
                       as OPJ_UINT32;
                     if mbr_0 & sample_mask_0 != 0 {
-                      assert!(*dp_0.offset(stride as isize) == 0u32);
+                      assert!(ht_data[dp_0 + (stride) as usize] == 0u32);
                       if cwd_0 & 1u32 != 0 {
                         let mut t_6: OPJ_UINT32 = 0;
                         new_sig |= sample_mask_0;
@@ -2297,7 +2304,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0)
                       as OPJ_UINT32;
                     if mbr_0 & sample_mask_0 != 0 {
-                      assert!(*dp_0.offset((2i32 * stride) as isize) == 0u32);
+                      assert!(ht_data[dp_0 + ((2i32 * stride)) as usize] == 0u32);
                       if cwd_0 & 1u32 != 0 {
                         let mut t_7: OPJ_UINT32 = 0;
                         new_sig |= sample_mask_0;
@@ -2310,7 +2317,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0)
                       as OPJ_UINT32;
                     if mbr_0 & sample_mask_0 != 0 {
-                      assert!(*dp_0.offset((3i32 * stride) as isize) == 0u32);
+                      assert!(ht_data[dp_0 + ((3i32 * stride)) as usize] == 0u32);
                       if cwd_0 & 1u32 != 0 {
                         let mut t_8: OPJ_UINT32 = 0;
                         new_sig |= sample_mask_0;
@@ -2323,7 +2330,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   }
                   //no samples need checking
                   j_0 += 1;
-                  dp_0 = dp_0.offset(1);
+                  dp_0 += (1) as usize;
                   col_mask_0 <<= 4i32
                 }
                 //obtain signs here
@@ -2331,8 +2338,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   //if any
                   let mut col_mask_1: OPJ_UINT32 = 0; // decoded samples address
                   let mut j_1: OPJ_INT32 = 0; //mask to select a column
-                  let mut dp_1 = decoded_data.offset(((y - 8i32) * stride) as isize);
-                  dp_1 = dp_1.offset((i_3 + n) as isize);
+                  let mut dp_1 = (((y - 8i32) * stride)) as usize;
+                  dp_1 += ((i_3 + n)) as usize;
                   col_mask_1 = (0xfu32) << (4i32 * n);
                   j_1 = n;
                   while j_1 < end {
@@ -2341,10 +2348,10 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                       //scan 4 signs
                       sample_mask_1 = 0x11111111u32 & col_mask_1;
                       if new_sig & sample_mask_1 != 0 {
-                        assert!(*dp_1.offset(0) == 0u32);
+                        assert!(ht_data[dp_1 + (0) as usize] == 0u32);
                         //consume bit and increment number
                         //of consumed bits
-                        let fresh30 = &mut (*dp_1.offset(0)); //put value and sign
+                        let fresh30 = &mut (ht_data[dp_1 + (0) as usize]); //put value and sign
                         *fresh30 |= (cwd_0 & 1u32) << 31i32 | val_15;
                         cwd_0 >>= 1i32;
                         cnt += 1;
@@ -2353,8 +2360,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                         .wrapping_add(sample_mask_1)
                         as OPJ_UINT32;
                       if new_sig & sample_mask_1 != 0 {
-                        assert!(*dp_1.offset(stride as isize) == 0u32);
-                        let fresh31 = &mut (*dp_1.offset(stride as isize));
+                        assert!(ht_data[dp_1 + (stride) as usize] == 0u32);
+                        let fresh31 = &mut (ht_data[dp_1 + (stride) as usize]);
                         *fresh31 |= (cwd_0 & 1u32) << 31i32 | val_15;
                         cwd_0 >>= 1i32;
                         cnt += 1;
@@ -2363,8 +2370,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                         .wrapping_add(sample_mask_1)
                         as OPJ_UINT32;
                       if new_sig & sample_mask_1 != 0 {
-                        assert!(*dp_1.offset((2i32 * stride) as isize) == 0u32);
-                        let fresh32 = &mut (*dp_1.offset((2i32 * stride) as isize));
+                        assert!(ht_data[dp_1 + ((2i32 * stride)) as usize] == 0u32);
+                        let fresh32 = &mut (ht_data[dp_1 + ((2i32 * stride)) as usize]);
                         *fresh32 |= (cwd_0 & 1u32) << 31i32 | val_15;
                         cwd_0 >>= 1i32;
                         cnt += 1;
@@ -2373,8 +2380,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                         .wrapping_add(sample_mask_1)
                         as OPJ_UINT32;
                       if new_sig & sample_mask_1 != 0 {
-                        assert!(*dp_1.offset((3i32 * stride) as isize) == 0u32);
-                        let fresh33 = &mut (*dp_1.offset((3i32 * stride) as isize));
+                        assert!(ht_data[dp_1 + ((3i32 * stride)) as usize] == 0u32);
+                        let fresh33 = &mut (ht_data[dp_1 + ((3i32 * stride)) as usize]);
                         *fresh33 |= (cwd_0 & 1u32) << 31i32 | val_15;
                         cwd_0 >>= 1i32;
                         cnt += 1;
@@ -2382,7 +2389,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     }
                     //if non is significant
                     j_1 += 1; //consume the bits from bitstrm
-                    dp_1 = dp_1.offset(1);
+                    dp_1 += (1) as usize;
                     col_mask_1 <<= 4i32
                   }
                 }
@@ -2430,7 +2437,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       if num_passes > 2u32 && (height & 3i32 == 1i32 || height & 3i32 == 2i32) {
         //do magref
         let mut cur_sig_1 = if height & 0x4i32 != 0 { sigma2 } else { sigma1 }; //reversed
-        let mut dpp_0 = decoded_data.offset(((height & 0xfffffci32) * stride) as isize);
+        let mut dpp_0 = (((height & 0xfffffci32) * stride)) as usize;
         let mut half_0 = (1u32) << p.wrapping_sub(2u32);
         let mut i_4: OPJ_INT32 = 0;
         i_4 = 0i32;
@@ -2439,7 +2446,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           let sig_1 = cur_sig_1.get();
           cur_sig_1 = cur_sig_1.offset(1);
           let mut col_mask_2 = 0xf as OPJ_UINT32;
-          let mut dp_2 = dpp_0.offset(i_4 as isize);
+          let mut dp_2 = dpp_0 + (i_4) as usize;
           if sig_1 != 0 {
             let mut j_2: core::ffi::c_int = 0;
             j_2 = 0i32;
@@ -2448,11 +2455,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                 let mut sample_mask_2 = 0x11111111u32 & col_mask_2;
                 if sig_1 & sample_mask_2 != 0 {
                   let mut sym_3: OPJ_UINT32 = 0;
-                  assert!(*dp_2.offset(0) != 0u32);
+                  assert!(ht_data[dp_2 + (0) as usize] != 0u32);
                   sym_3 = cwd_1 & 1u32;
-                  let fresh39 = &mut (*dp_2.offset(0));
+                  let fresh39 = &mut (ht_data[dp_2 + (0) as usize]);
                   *fresh39 ^= (1u32).wrapping_sub(sym_3) << p.wrapping_sub(1u32);
-                  let fresh40 = &mut (*dp_2.offset(0));
+                  let fresh40 = &mut (ht_data[dp_2 + (0) as usize]);
                   *fresh40 |= half_0;
                   cwd_1 >>= 1i32
                 }
@@ -2460,11 +2467,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2) as OPJ_UINT32;
                 if sig_1 & sample_mask_2 != 0 {
                   let mut sym_4: OPJ_UINT32 = 0;
-                  assert!(*dp_2.offset(stride as isize) != 0u32);
+                  assert!(ht_data[dp_2 + (stride) as usize] != 0u32);
                   sym_4 = cwd_1 & 1u32;
-                  let fresh41 = &mut (*dp_2.offset(stride as isize));
+                  let fresh41 = &mut (ht_data[dp_2 + (stride) as usize]);
                   *fresh41 ^= (1u32).wrapping_sub(sym_4) << p.wrapping_sub(1u32);
-                  let fresh42 = &mut (*dp_2.offset(stride as isize));
+                  let fresh42 = &mut (ht_data[dp_2 + (stride) as usize]);
                   *fresh42 |= half_0;
                   cwd_1 >>= 1i32
                 }
@@ -2472,11 +2479,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2) as OPJ_UINT32;
                 if sig_1 & sample_mask_2 != 0 {
                   let mut sym_5: OPJ_UINT32 = 0;
-                  assert!(*dp_2.offset((2i32 * stride) as isize) != 0u32);
+                  assert!(ht_data[dp_2 + ((2i32 * stride)) as usize] != 0u32);
                   sym_5 = cwd_1 & 1u32;
-                  let fresh43 = &mut (*dp_2.offset((2i32 * stride) as isize));
+                  let fresh43 = &mut (ht_data[dp_2 + ((2i32 * stride)) as usize]);
                   *fresh43 ^= (1u32).wrapping_sub(sym_5) << p.wrapping_sub(1u32);
-                  let fresh44 = &mut (*dp_2.offset((2i32 * stride) as isize));
+                  let fresh44 = &mut (ht_data[dp_2 + ((2i32 * stride)) as usize]);
                   *fresh44 |= half_0;
                   cwd_1 >>= 1i32
                 }
@@ -2484,11 +2491,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2) as OPJ_UINT32;
                 if sig_1 & sample_mask_2 != 0 {
                   let mut sym_6: OPJ_UINT32 = 0;
-                  assert!(*dp_2.offset((3i32 * stride) as isize) != 0u32);
+                  assert!(ht_data[dp_2 + ((3i32 * stride)) as usize] != 0u32);
                   sym_6 = cwd_1 & 1u32;
-                  let fresh45 = &mut (*dp_2.offset((3i32 * stride) as isize));
+                  let fresh45 = &mut (ht_data[dp_2 + ((3i32 * stride)) as usize]);
                   *fresh45 ^= (1u32).wrapping_sub(sym_6) << p.wrapping_sub(1u32);
-                  let fresh46 = &mut (*dp_2.offset((3i32 * stride) as isize));
+                  let fresh46 = &mut (ht_data[dp_2 + ((3i32 * stride)) as usize]);
                   *fresh46 |= half_0;
                   cwd_1 >>= 1i32
                 }
@@ -2497,7 +2504,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
               }
               col_mask_2 <<= 4i32;
               j_2 += 1;
-              dp_2 = dp_2.offset(1)
+              dp_2 += (1) as usize;
             }
           }
           rev_advance_mrp(&mut magref, population_count(sig_1));
@@ -2608,8 +2615,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
               let mut j_3: OPJ_INT32 = 0;
               let mut cwd_2 = frwd_fetch(&mut sigprop);
               let mut cnt_0 = 0 as OPJ_UINT32;
-              let mut dp_3 = decoded_data.offset((y_0 * stride) as isize);
-              dp_3 = dp_3.offset((i_6 + n_0) as isize);
+              let mut dp_3 = ((y_0 * stride)) as usize;
+              dp_3 += ((i_6 + n_0)) as usize;
               col_mask_3 = (0xfu32) << (4i32 * n_0);
               inv_sig_0 = !cur_sig_2.get() & pattern;
               end_0 = if n_0 + 4i32 + i_6 < width {
@@ -2624,7 +2631,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   //scan 4 mbr
                   sample_mask_3 = 0x11111111u32 & col_mask_3;
                   if mbr_2 & sample_mask_3 != 0 {
-                    assert!(*dp_3.offset(0) == 0u32);
+                    assert!(ht_data[dp_3 + (0) as usize] == 0u32);
                     if cwd_2 & 1u32 != 0 {
                       let mut t_12: OPJ_UINT32 = 0;
                       new_sig_0 |= sample_mask_3;
@@ -2637,7 +2644,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   sample_mask_3 =
                     (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3) as OPJ_UINT32;
                   if mbr_2 & sample_mask_3 != 0 {
-                    assert!(*dp_3.offset(stride as isize) == 0u32);
+                    assert!(ht_data[dp_3 + (stride) as usize] == 0u32);
                     if cwd_2 & 1u32 != 0 {
                       let mut t_13: OPJ_UINT32 = 0;
                       new_sig_0 |= sample_mask_3;
@@ -2650,7 +2657,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   sample_mask_3 =
                     (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3) as OPJ_UINT32;
                   if mbr_2 & sample_mask_3 != 0 {
-                    assert!(*dp_3.offset((2i32 * stride) as isize) == 0u32);
+                    assert!(ht_data[dp_3 + ((2i32 * stride)) as usize] == 0u32);
                     if cwd_2 & 1u32 != 0 {
                       let mut t_14: OPJ_UINT32 = 0;
                       new_sig_0 |= sample_mask_3;
@@ -2663,7 +2670,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   sample_mask_3 =
                     (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3) as OPJ_UINT32;
                   if mbr_2 & sample_mask_3 != 0 {
-                    assert!(*dp_3.offset((3i32 * stride) as isize) == 0u32);
+                    assert!(ht_data[dp_3 + ((3i32 * stride)) as usize] == 0u32);
                     if cwd_2 & 1u32 != 0 {
                       let mut t_15: OPJ_UINT32 = 0;
                       new_sig_0 |= sample_mask_3;
@@ -2675,15 +2682,15 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   }
                 }
                 j_3 += 1;
-                dp_3 = dp_3.offset(1);
+                dp_3 += (1) as usize;
                 col_mask_3 <<= 4i32
               }
               //signs here
               if new_sig_0 & (0xffffu32) << (4i32 * n_0) != 0 {
                 let mut col_mask_4: OPJ_UINT32 = 0;
                 let mut j_4: OPJ_INT32 = 0;
-                let mut dp_4 = decoded_data.offset((y_0 * stride) as isize);
-                dp_4 = dp_4.offset((i_6 + n_0) as isize);
+                let mut dp_4 = ((y_0 * stride)) as usize;
+                dp_4 += ((i_6 + n_0)) as usize;
                 col_mask_4 = (0xfu32) << (4i32 * n_0);
                 j_4 = n_0;
                 while j_4 < end_0 {
@@ -2692,8 +2699,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     //scan 4 signs
                     sample_mask_4 = 0x11111111u32 & col_mask_4;
                     if new_sig_0 & sample_mask_4 != 0 {
-                      assert!(*dp_4.offset(0) == 0u32);
-                      let fresh53 = &mut (*dp_4.offset(0));
+                      assert!(ht_data[dp_4 + (0) as usize] == 0u32);
+                      let fresh53 = &mut (ht_data[dp_4 + (0) as usize]);
                       *fresh53 |= (cwd_2 & 1u32) << 31i32 | val_16;
                       cwd_2 >>= 1i32;
                       cnt_0 += 1;
@@ -2701,8 +2708,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4)
                       as OPJ_UINT32;
                     if new_sig_0 & sample_mask_4 != 0 {
-                      assert!(*dp_4.offset(stride as isize) == 0u32);
-                      let fresh54 = &mut (*dp_4.offset(stride as isize));
+                      assert!(ht_data[dp_4 + (stride) as usize] == 0u32);
+                      let fresh54 = &mut (ht_data[dp_4 + (stride) as usize]);
                       *fresh54 |= (cwd_2 & 1u32) << 31i32 | val_16;
                       cwd_2 >>= 1i32;
                       cnt_0 += 1;
@@ -2710,8 +2717,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4)
                       as OPJ_UINT32;
                     if new_sig_0 & sample_mask_4 != 0 {
-                      assert!(*dp_4.offset((2i32 * stride) as isize) == 0u32);
-                      let fresh55 = &mut (*dp_4.offset((2i32 * stride) as isize));
+                      assert!(ht_data[dp_4 + ((2i32 * stride)) as usize] == 0u32);
+                      let fresh55 = &mut (ht_data[dp_4 + ((2i32 * stride)) as usize]);
                       *fresh55 |= (cwd_2 & 1u32) << 31i32 | val_16;
                       cwd_2 >>= 1i32;
                       cnt_0 += 1;
@@ -2719,15 +2726,15 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4)
                       as OPJ_UINT32;
                     if new_sig_0 & sample_mask_4 != 0 {
-                      assert!(*dp_4.offset((3i32 * stride) as isize) == 0u32);
-                      let fresh56 = &mut (*dp_4.offset((3i32 * stride) as isize));
+                      assert!(ht_data[dp_4 + ((3i32 * stride)) as usize] == 0u32);
+                      let fresh56 = &mut (ht_data[dp_4 + ((3i32 * stride)) as usize]);
                       *fresh56 |= (cwd_2 & 1u32) << 31i32 | val_16;
                       cwd_2 >>= 1i32;
                       cnt_0 += 1;
                     }
                   }
                   j_4 += 1;
-                  dp_4 = dp_4.offset(1);
+                  dp_4 += (1) as usize;
                   col_mask_4 <<= 4i32
                 }
               }
@@ -2765,20 +2772,20 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     let mut y_1: OPJ_INT32 = 0;
     y_1 = 0i32;
     while y_1 < height {
-      let mut sp_0 = (decoded_data as *mut OPJ_INT32).offset((y_1 * stride) as isize);
+      let mut sp_0 = ((y_1 * stride)) as usize;
       x_1 = 0i32;
       while x_1 < width {
-        let mut val_17 = *sp_0 & 0x7fffffffi32;
-        *sp_0 = if *sp_0 as OPJ_UINT32 & 0x80000000u32 != 0 {
-          -val_17
+        let val_17 = ht_data[sp_0] & 0x7fffffffu32;
+        ht_data[sp_0] = if ht_data[sp_0] & 0x80000000u32 != 0 {
+          0u32.wrapping_sub(val_17)
         } else {
           val_17
         };
         x_1 += 1;
-        sp_0 = sp_0.offset(1)
+        sp_0 += (1) as usize;
       }
       y_1 += 1
     }
+
     1i32
-  }
 }
