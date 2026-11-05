@@ -8259,27 +8259,20 @@ fn opj_j2k_create_cstr_index() -> Box<CodestreamIndex> {
  * @return      the number of bytes taken by the SPCod element.
  */
 fn opj_j2k_get_SPCod_SPCoc_size(
-  mut p_j2k: &mut opj_j2k,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_comp_no: OPJ_UINT32,
+  p_j2k: &mut opj_j2k,
+  p_tile_no: OPJ_UINT32,
+  p_comp_no: OPJ_UINT32,
 ) -> OPJ_UINT32 {
-  unsafe {
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    /* preconditions */
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
-    l_tccp = (*l_tcp).tccps.as_mut_ptr().offset(p_comp_no as isize);
-    /* preconditions again */
+  /* preconditions */
+  let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
+  /* preconditions again */
 
-    assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
-    assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
-    if (*l_tccp).csty & 0x1u32 != 0 {
-      (5u32).wrapping_add((*l_tccp).numresolutions)
-    } else {
-      5 as OPJ_UINT32
-    }
+  assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
+  assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
+  if l_tccp.csty & 0x1u32 != 0 {
+    (5u32).wrapping_add(l_tccp.numresolutions)
+  } else {
+    5 as OPJ_UINT32
   }
 }
 /* *
@@ -8293,52 +8286,45 @@ fn opj_j2k_get_SPCod_SPCoc_size(
  * @return OPJ_TRUE if SPCdod are equals.
  */
 fn opj_j2k_compare_SPCod_SPCoc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_first_comp_no: OPJ_UINT32,
-  mut p_second_comp_no: OPJ_UINT32,
+  p_j2k: &mut opj_j2k,
+  p_tile_no: OPJ_UINT32,
+  p_first_comp_no: OPJ_UINT32,
+  p_second_comp_no: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tccp0 = core::ptr::null_mut::<opj_tccp_t>();
-    let mut l_tccp1 = core::ptr::null_mut::<opj_tccp_t>();
-    /* preconditions */
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
-    l_tccp0 = (*l_tcp).tccps.as_mut_ptr().offset(p_first_comp_no as isize);
-    l_tccp1 = (*l_tcp).tccps.as_mut_ptr().offset(p_second_comp_no as isize);
-    if (*l_tccp0).numresolutions != (*l_tccp1).numresolutions {
-      return 0i32;
-    }
-    if (*l_tccp0).cblkw != (*l_tccp1).cblkw {
-      return 0i32;
-    }
-    if (*l_tccp0).cblkh != (*l_tccp1).cblkh {
-      return 0i32;
-    }
-    if (*l_tccp0).cblksty != (*l_tccp1).cblksty {
-      return 0i32;
-    }
-    if (*l_tccp0).qmfbid != (*l_tccp1).qmfbid {
-      return 0i32;
-    }
-    if (*l_tccp0).csty & 0x1u32 != (*l_tccp1).csty & 0x1u32 {
-      return 0i32;
-    }
-    i = 0u32;
-    while i < (*l_tccp0).numresolutions {
-      if (*l_tccp0).prcw[i as usize] != (*l_tccp1).prcw[i as usize] {
-        return 0i32;
-      }
-      if (*l_tccp0).prch[i as usize] != (*l_tccp1).prch[i as usize] {
-        return 0i32;
-      }
-      i += 1;
-    }
-    1i32
+  let mut i: OPJ_UINT32 = 0;
+  /* preconditions */
+  let l_tcp = &p_j2k.m_cp.tcps[p_tile_no as usize];
+  let l_tccp0 = &l_tcp.tccps[p_first_comp_no as usize];
+  let l_tccp1 = &l_tcp.tccps[p_second_comp_no as usize];
+  if l_tccp0.numresolutions != l_tccp1.numresolutions {
+    return 0i32;
   }
+  if l_tccp0.cblkw != l_tccp1.cblkw {
+    return 0i32;
+  }
+  if l_tccp0.cblkh != l_tccp1.cblkh {
+    return 0i32;
+  }
+  if l_tccp0.cblksty != l_tccp1.cblksty {
+    return 0i32;
+  }
+  if l_tccp0.qmfbid != l_tccp1.qmfbid {
+    return 0i32;
+  }
+  if l_tccp0.csty & 0x1u32 != l_tccp1.csty & 0x1u32 {
+    return 0i32;
+  }
+  i = 0u32;
+  while i < l_tccp0.numresolutions {
+    if l_tccp0.prcw[i as usize] != l_tccp1.prcw[i as usize] {
+      return 0i32;
+    }
+    if l_tccp0.prch[i as usize] != l_tccp1.prch[i as usize] {
+      return 0i32;
+    }
+    i += 1;
+  }
+  1i32
 }
 /* *
  * Writes a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
@@ -8353,59 +8339,55 @@ fn opj_j2k_compare_SPCod_SPCoc(
  * @return FIXME DOC
 */
 fn opj_j2k_write_SPCod_SPCoc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_comp_no: OPJ_UINT32,
+  p_j2k: &mut opj_j2k,
+  p_tile_no: OPJ_UINT32,
+  p_comp_no: OPJ_UINT32,
   data: &mut [u8],
-  mut p_header_size: *mut OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_header_size: &mut OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut pos: usize = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    /* preconditions */
+  let mut pos: usize = 0;
+  let mut i: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    assert!(!p_header_size.is_null());
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
-    l_tccp = (*l_tcp).tccps.as_mut_ptr().offset(p_comp_no as isize);
-    /* preconditions again */
-    /* SPcoc (E) */
-    assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
-    assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps); /* SPcoc (G) */
-    if *p_header_size < 5u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error writing SPCod SPCoc element\n",); /* SPcoc (H) */
+  let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
+  /* preconditions again */
+  /* SPcoc (E) */
+  assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
+  assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps); /* SPcoc (G) */
+  if *p_header_size < 5u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error writing SPCod SPCoc element\n",); /* SPcoc (H) */
+    return 0i32;
+  } /* SPcoc (I_i) */
+  opj_write_bytes(&mut data[pos..], l_tccp.numresolutions.wrapping_sub(1u32), 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  opj_write_bytes(&mut data[pos..], l_tccp.cblkw.wrapping_sub(2u32), 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  opj_write_bytes(&mut data[pos..], l_tccp.cblkh.wrapping_sub(2u32), 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  opj_write_bytes(&mut data[pos..], l_tccp.cblksty, 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  opj_write_bytes(&mut data[pos..], l_tccp.qmfbid, 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  *p_header_size = (*p_header_size).wrapping_sub(5u32);
+  if l_tccp.csty & 0x1u32 != 0 {
+    if *p_header_size < l_tccp.numresolutions {
+      event_msg!(p_manager, EVT_ERROR, "Error writing SPCod SPCoc element\n",);
       return 0i32;
-    } /* SPcoc (I_i) */
-    opj_write_bytes(&mut data[pos..], (*l_tccp).numresolutions.wrapping_sub(1u32), 1 as OPJ_UINT32,);
-    pos += 1 as usize;
-    opj_write_bytes(&mut data[pos..], (*l_tccp).cblkw.wrapping_sub(2u32), 1 as OPJ_UINT32);
-    pos += 1 as usize;
-    opj_write_bytes(&mut data[pos..], (*l_tccp).cblkh.wrapping_sub(2u32), 1 as OPJ_UINT32);
-    pos += 1 as usize;
-    opj_write_bytes(&mut data[pos..], (*l_tccp).cblksty, 1 as OPJ_UINT32);
-    pos += 1 as usize;
-    opj_write_bytes(&mut data[pos..], (*l_tccp).qmfbid, 1 as OPJ_UINT32);
-    pos += 1 as usize;
-    *p_header_size = (*p_header_size).wrapping_sub(5u32);
-    if (*l_tccp).csty & 0x1u32 != 0 {
-      if *p_header_size < (*l_tccp).numresolutions {
-        event_msg!(p_manager, EVT_ERROR, "Error writing SPCod SPCoc element\n",);
-        return 0i32;
-      }
-      i = 0 as OPJ_UINT32;
-      while i < (*l_tccp).numresolutions {
-        opj_write_bytes(&mut data[pos..], (*l_tccp).prcw[i as usize].wrapping_add((*l_tccp).prch[i as usize] << 4i32), 1 as OPJ_UINT32,);
-        pos += 1 as usize;
-        i += 1;
-      }
-      *p_header_size = (*p_header_size).wrapping_sub((*l_tccp).numresolutions)
     }
-    1i32
+    i = 0 as OPJ_UINT32;
+    while i < l_tccp.numresolutions {
+      opj_write_bytes(
+        &mut data[pos..],
+        l_tccp.prcw[i as usize].wrapping_add(l_tccp.prch[i as usize] << 4i32),
+        1 as OPJ_UINT32,
+      );
+      pos += 1 as usize;
+      i += 1;
+    }
+    *p_header_size = (*p_header_size).wrapping_sub(l_tccp.numresolutions)
   }
+  1i32
 }
 /* *
  * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
@@ -8416,192 +8398,188 @@ fn opj_j2k_write_SPCod_SPCoc(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_read_SPCod_SPCoc(
-  mut p_j2k: &mut opj_j2k,
-  mut compno: OPJ_UINT32,
+  p_j2k: &mut opj_j2k,
+  compno: OPJ_UINT32,
   header_data: &[u8],
-  mut p_header_size: *mut OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_header_size: &mut OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut cursor: usize = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_tmp: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
-        /* preconditions */
+  let mut cursor: usize = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let mut l_tmp: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
-    } else {
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
-    };
-    /* precondition again */
-    assert!(compno < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
-    l_tccp = (*l_tcp).tccps.as_mut_ptr().offset(compno as isize);
-    /* make sure room is sufficient */
-    if *p_header_size < 5u32 {
+  /* If we are in the first tile-part header of the current tile */
+  let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+  let m_reduce = p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
+  /* precondition again */
+  assert!(compno < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
+  let l_tcp = if is_tph {
+    &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
+  } else {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set")
+  };
+  let mut reduce_err = false;
+  let l_tccp = &mut l_tcp.tccps[compno as usize];
+  /* make sure room is sufficient */
+  if *p_header_size < 5u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading SPCod SPCoc element\n",);
+    return 0i32;
+  }
+  /* SPcod (D) / SPcoc (A) */
+  l_tccp.numresolutions = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* tccp->numresolutions = read() + 1 */
+  l_tccp.numresolutions = l_tccp.numresolutions.wrapping_add(1);
+  if l_tccp.numresolutions > 33u32 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid value for numresolutions : {}, max value is set in openjpeg.h at {}\n",
+      l_tccp.numresolutions,
+      33i32,
+    );
+    return 0i32;
+  }
+  cursor += 1 as usize;
+  /* If user wants to remove more resolutions than the codestream contains, return error */
+  if m_reduce >= l_tccp.numresolutions {
+    event_msg!(p_manager, EVT_ERROR,
+                    "Error decoding component {}.\nThe number of resolutions to remove ({}) is greater or equal than the number of resolutions of this component ({})\nModify the cp_reduce parameter.\n\n", compno,
+                    m_reduce,
+                    l_tccp.numresolutions);
+    reduce_err = true;
+  }
+  /* SPcod (E) / SPcoc (B) */
+  l_tccp.cblkw = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  l_tccp.cblkw = l_tccp.cblkw.wrapping_add(2u32);
+  /* SPcod (F) / SPcoc (C) */
+  l_tccp.cblkh = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  l_tccp.cblkh = l_tccp.cblkh.wrapping_add(2u32);
+  if l_tccp.cblkw > 10u32
+    || l_tccp.cblkh > 10u32
+    || l_tccp.cblkw.wrapping_add(l_tccp.cblkh) > 12u32
+  {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error reading SPCod SPCoc element, Invalid cblkw/cblkh combination\n",
+    );
+    return 0i32;
+  }
+  /* SPcod (G) / SPcoc (D) */
+  l_tccp.cblksty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  if l_tccp.cblksty & 0x80u32 != 0u32 {
+    /* We do not support HT mixed mode yet.  For conformance, it should be supported.*/
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error reading SPCod SPCoc element. Unsupported Mixed HT code-block style found\n",
+    );
+    return 0i32;
+  }
+  /* SPcod (H) / SPcoc (E) */
+  l_tccp.qmfbid = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  if l_tccp.qmfbid > 1u32 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error reading SPCod SPCoc element, Invalid transformation found\n",
+    );
+    return 0i32;
+  }
+  *p_header_size = (*p_header_size).wrapping_sub(5u32);
+  /* use custom precinct size ? */
+  if l_tccp.csty & 0x1u32 != 0 {
+    if *p_header_size < l_tccp.numresolutions {
       event_msg!(p_manager, EVT_ERROR, "Error reading SPCod SPCoc element\n",);
       return 0i32;
     }
-    /* SPcod (D) / SPcoc (A) */
-    (*l_tccp).numresolutions = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32,); /* tccp->numresolutions = read() + 1 */
-    (*l_tccp).numresolutions = (*l_tccp).numresolutions.wrapping_add(1);
-    if (*l_tccp).numresolutions > 33u32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Invalid value for numresolutions : {}, max value is set in openjpeg.h at {}\n",
-        (*l_tccp).numresolutions,
-        33i32,
-      );
-      return 0i32;
-    }
-    cursor += 1 as usize;
-    /* If user wants to remove more resolutions than the codestream contains, return error */
-    if (*l_cp).m_specific_param.m_dec.m_reduce >= (*l_tccp).numresolutions {
-      event_msg!(p_manager, EVT_ERROR,
-                      "Error decoding component {}.\nThe number of resolutions to remove ({}) is greater or equal than the number of resolutions of this component ({})\nModify the cp_reduce parameter.\n\n", compno,
-                      (*l_cp).m_specific_param.m_dec.m_reduce,
-                      (*l_tccp).numresolutions);
-      p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
-      return 0i32;
-    }
-    /* SPcod (E) / SPcoc (B) */
-    (*l_tccp).cblkw = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    (*l_tccp).cblkw = ((*l_tccp).cblkw as core::ffi::c_uint).wrapping_add(2u32) as OPJ_UINT32;
-    /* SPcod (F) / SPcoc (C) */
-    (*l_tccp).cblkh = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    (*l_tccp).cblkh = ((*l_tccp).cblkh as core::ffi::c_uint).wrapping_add(2u32) as OPJ_UINT32;
-    if (*l_tccp).cblkw > 10u32
-      || (*l_tccp).cblkh > 10u32
-      || (*l_tccp).cblkw.wrapping_add((*l_tccp).cblkh) > 12u32
-    {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Error reading SPCod SPCoc element, Invalid cblkw/cblkh combination\n",
-      );
-      return 0i32;
-    }
-    /* SPcod (G) / SPcoc (D) */
-    (*l_tccp).cblksty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    if (*l_tccp).cblksty & 0x80u32 != 0u32 {
-      /* We do not support HT mixed mode yet.  For conformance, it should be supported.*/
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Error reading SPCod SPCoc element. Unsupported Mixed HT code-block style found\n",
-      );
-      return 0i32;
-    }
-    /* SPcod (H) / SPcoc (E) */
-    (*l_tccp).qmfbid = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    if (*l_tccp).qmfbid > 1u32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Error reading SPCod SPCoc element, Invalid transformation found\n",
-      );
-      return 0i32;
-    }
-    *p_header_size = (*p_header_size).wrapping_sub(5u32);
-    /* use custom precinct size ? */
-    if (*l_tccp).csty & 0x1u32 != 0 {
-      if *p_header_size < (*l_tccp).numresolutions {
-        event_msg!(p_manager, EVT_ERROR, "Error reading SPCod SPCoc element\n",);
+    /* SPcod (I_i) / SPcoc (F_i) */
+    i = 0 as OPJ_UINT32;
+    while i < l_tccp.numresolutions {
+      l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+      cursor += 1 as usize;
+      /* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
+      if i != 0u32 && (l_tmp & 0xfu32 == 0u32 || l_tmp >> 4i32 == 0u32) {
+        event_msg!(p_manager, EVT_ERROR, "Invalid precinct size\n",);
         return 0i32;
       }
-      /* SPcod (I_i) / SPcoc (F_i) */
-      i = 0 as OPJ_UINT32;
-      while i < (*l_tccp).numresolutions {
-        l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-        cursor += 1 as usize;
-        /* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
-        if i != 0u32 && (l_tmp & 0xfu32 == 0u32 || l_tmp >> 4i32 == 0u32) {
-          event_msg!(p_manager, EVT_ERROR, "Invalid precinct size\n",);
-          return 0i32;
-        }
-        (*l_tccp).prcw[i as usize] = l_tmp & 0xfu32;
-        (*l_tccp).prch[i as usize] = l_tmp >> 4i32;
-        i += 1;
-      }
-      *p_header_size = (*p_header_size).wrapping_sub((*l_tccp).numresolutions)
-    } else {
-      /* set default size for the precinct width and height */
-      i = 0 as OPJ_UINT32;
-      while i < (*l_tccp).numresolutions {
-        (*l_tccp).prcw[i as usize] = 15 as OPJ_UINT32;
-        (*l_tccp).prch[i as usize] = 15 as OPJ_UINT32;
-        i += 1;
-      }
+      l_tccp.prcw[i as usize] = l_tmp & 0xfu32;
+      l_tccp.prch[i as usize] = l_tmp >> 4i32;
+      i += 1;
     }
-    1i32
+    *p_header_size = (*p_header_size).wrapping_sub(l_tccp.numresolutions)
+  } else {
+    /* set default size for the precinct width and height */
+    i = 0 as OPJ_UINT32;
+    while i < l_tccp.numresolutions {
+      l_tccp.prcw[i as usize] = 15 as OPJ_UINT32;
+      l_tccp.prch[i as usize] = 15 as OPJ_UINT32;
+      i += 1;
+    }
   }
+  drop(l_tccp);
+  drop(l_tcp);
+  if reduce_err {
+    p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
+    return 0i32;
+  }
+  1i32
 }
+
 /* *
  * Copies the tile component parameters of all the component from the first tile component.
  *
  * @param               p_j2k           the J2k codec.
  */
-fn opj_j2k_copy_tile_component_parameters(mut p_j2k: &mut opj_j2k) {
-  unsafe {
-    /* loop */
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_ref_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    let mut l_copied_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    let mut l_prc_size: OPJ_UINT32 = 0;
-    /* preconditions */
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
-    } else {
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
-    };
-    l_ref_tccp = (*l_tcp).tccps.as_mut_ptr();
-    l_copied_tccp = l_ref_tccp.offset(1);
-    l_prc_size = (*l_ref_tccp)
-      .numresolutions
-      .wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32);
-    i = 1 as OPJ_UINT32;
-    while i < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
-      (*l_copied_tccp).numresolutions = (*l_ref_tccp).numresolutions;
-      (*l_copied_tccp).cblkw = (*l_ref_tccp).cblkw;
-      (*l_copied_tccp).cblkh = (*l_ref_tccp).cblkh;
-      (*l_copied_tccp).cblksty = (*l_ref_tccp).cblksty;
-      (*l_copied_tccp).qmfbid = (*l_ref_tccp).qmfbid;
-      memcpy(
-        (*l_copied_tccp).prcw.as_mut_ptr() as *mut core::ffi::c_void,
-        (*l_ref_tccp).prcw.as_mut_ptr() as *const core::ffi::c_void,
-        l_prc_size as usize,
-      );
-      memcpy(
-        (*l_copied_tccp).prch.as_mut_ptr() as *mut core::ffi::c_void,
-        (*l_ref_tccp).prch.as_mut_ptr() as *const core::ffi::c_void,
-        l_prc_size as usize,
-      );
-      l_copied_tccp = l_copied_tccp.offset(1);
-      i += 1;
-    }
+fn opj_j2k_copy_tile_component_parameters(p_j2k: &mut opj_j2k) {
+  /* loop */
+  let mut i: OPJ_UINT32 = 0;
+  /* preconditions */
+  let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+  let l_tcp = if is_tph {
+    &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
+  } else {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set")
+  };
+  i = 1 as OPJ_UINT32;
+  while i < numcomps {
+    let ref_ = &l_tcp.tccps[0];
+    let (numresolutions, cblkw, cblkh, cblksty, qmfbid, prcw, prch) = (
+      ref_.numresolutions,
+      ref_.cblkw,
+      ref_.cblkh,
+      ref_.cblksty,
+      ref_.qmfbid,
+      ref_.prcw,
+      ref_.prch,
+    );
+    let copied = &mut l_tcp.tccps[i as usize];
+    copied.numresolutions = numresolutions;
+    copied.cblkw = cblkw;
+    copied.cblkh = cblkh;
+    copied.cblksty = cblksty;
+    copied.qmfbid = qmfbid;
+    copied.prcw.copy_from_slice(&prcw[..]);
+    copied.prch.copy_from_slice(&prch[..]);
+    i += 1;
   }
 }
+
 /* *
  * Gets the size taken by writing SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
@@ -8612,36 +8590,26 @@ fn opj_j2k_copy_tile_component_parameters(mut p_j2k: &mut opj_j2k) {
  * @return      the number of bytes taken by the SPCod element.
  */
 fn opj_j2k_get_SQcd_SQcc_size(
-  mut p_j2k: &mut opj_j2k,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_comp_no: OPJ_UINT32,
+  p_j2k: &mut opj_j2k,
+  p_tile_no: OPJ_UINT32,
+  p_comp_no: OPJ_UINT32,
 ) -> OPJ_UINT32 {
-  unsafe {
-    let mut l_num_bands: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    /* preconditions */
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
-    l_tccp = (*l_tcp).tccps.as_mut_ptr().offset(p_comp_no as isize);
-    /* preconditions again */
+  let l_num_bands: OPJ_UINT32;
+  /* preconditions */
+  let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
+  /* preconditions again */
 
-    assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
-    assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
-    l_num_bands = if (*l_tccp).qntsty == 1u32 {
-      1u32
-    } else {
-      (*l_tccp)
-        .numresolutions
-        .wrapping_mul(3u32)
-        .wrapping_sub(2u32)
-    };
-    if (*l_tccp).qntsty == 0u32 {
-      (1u32).wrapping_add(l_num_bands)
-    } else {
-      (1u32).wrapping_add((2u32).wrapping_mul(l_num_bands))
-    }
+  assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
+  assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
+  l_num_bands = if l_tccp.qntsty == 1u32 {
+    1u32
+  } else {
+    l_tccp.numresolutions.wrapping_mul(3u32).wrapping_sub(2u32)
+  };
+  if l_tccp.qntsty == 0u32 {
+    (1u32).wrapping_add(l_num_bands)
+  } else {
+    (1u32).wrapping_add((2u32).wrapping_mul(l_num_bands))
   }
 }
 /* *
@@ -8655,68 +8623,50 @@ fn opj_j2k_get_SQcd_SQcc_size(
  * @return OPJ_TRUE if equals.
  */
 fn opj_j2k_compare_SQcd_SQcc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_first_comp_no: OPJ_UINT32,
-  mut p_second_comp_no: OPJ_UINT32,
+  p_j2k: &mut opj_j2k,
+  p_tile_no: OPJ_UINT32,
+  p_first_comp_no: OPJ_UINT32,
+  p_second_comp_no: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tccp0 = core::ptr::null_mut::<opj_tccp_t>();
-    let mut l_tccp1 = core::ptr::null_mut::<opj_tccp_t>();
-    let mut l_band_no: OPJ_UINT32 = 0;
-    let mut l_num_bands: OPJ_UINT32 = 0;
-    /* preconditions */
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
-    l_tccp0 = (*l_tcp).tccps.as_mut_ptr().offset(p_first_comp_no as isize);
-    l_tccp1 = (*l_tcp).tccps.as_mut_ptr().offset(p_second_comp_no as isize);
-    if (*l_tccp0).qntsty != (*l_tccp1).qntsty {
+  let mut l_band_no: OPJ_UINT32 = 0;
+  let mut l_num_bands: OPJ_UINT32 = 0;
+  /* preconditions */
+  let l_tcp = &p_j2k.m_cp.tcps[p_tile_no as usize];
+  let l_tccp0 = &l_tcp.tccps[p_first_comp_no as usize];
+  let l_tccp1 = &l_tcp.tccps[p_second_comp_no as usize];
+  if l_tccp0.qntsty != l_tccp1.qntsty {
+    return 0i32;
+  }
+  if l_tccp0.numgbits != l_tccp1.numgbits {
+    return 0i32;
+  }
+  if l_tccp0.qntsty == 1u32 {
+    l_num_bands = 1u32
+  } else {
+    l_num_bands = l_tccp0.numresolutions.wrapping_mul(3u32).wrapping_sub(2u32);
+    if l_num_bands != l_tccp1.numresolutions.wrapping_mul(3u32).wrapping_sub(2u32) {
       return 0i32;
     }
-    if (*l_tccp0).numgbits != (*l_tccp1).numgbits {
+  }
+  l_band_no = 0 as OPJ_UINT32;
+  while l_band_no < l_num_bands {
+    if l_tccp0.stepsizes[l_band_no as usize].expn != l_tccp1.stepsizes[l_band_no as usize].expn {
       return 0i32;
     }
-    if (*l_tccp0).qntsty == 1u32 {
-      l_num_bands = 1u32
-    } else {
-      l_num_bands = (*l_tccp0)
-        .numresolutions
-        .wrapping_mul(3u32)
-        .wrapping_sub(2u32);
-      if l_num_bands
-        != (*l_tccp1)
-          .numresolutions
-          .wrapping_mul(3u32)
-          .wrapping_sub(2u32)
-      {
-        return 0i32;
-      }
-    }
+    l_band_no += 1;
+  }
+  if l_tccp0.qntsty != 0u32 {
     l_band_no = 0 as OPJ_UINT32;
     while l_band_no < l_num_bands {
-      if (*l_tccp0).stepsizes[l_band_no as usize].expn
-        != (*l_tccp1).stepsizes[l_band_no as usize].expn
-      {
+      if l_tccp0.stepsizes[l_band_no as usize].mant != l_tccp1.stepsizes[l_band_no as usize].mant {
         return 0i32;
       }
       l_band_no += 1;
     }
-    if (*l_tccp0).qntsty != 0u32 {
-      l_band_no = 0 as OPJ_UINT32;
-      while l_band_no < l_num_bands {
-        if (*l_tccp0).stepsizes[l_band_no as usize].mant
-          != (*l_tccp1).stepsizes[l_band_no as usize].mant
-        {
-          return 0i32;
-        }
-        l_band_no += 1;
-      }
-    }
-    1i32
   }
+  1i32
 }
+
 /* *
  * Writes a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
@@ -8729,77 +8679,79 @@ fn opj_j2k_compare_SQcd_SQcc(
  *
 */
 fn opj_j2k_write_SQcd_SQcc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_comp_no: OPJ_UINT32,
+  p_j2k: &mut opj_j2k,
+  p_tile_no: OPJ_UINT32,
+  p_comp_no: OPJ_UINT32,
   data: &mut [u8],
-  mut p_header_size: *mut OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_header_size: &mut OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut pos: usize = 0;
-    let mut l_header_size: OPJ_UINT32 = 0;
-    let mut l_band_no: OPJ_UINT32 = 0;
-    let mut l_num_bands: OPJ_UINT32 = 0;
-    let mut l_expn: OPJ_UINT32 = 0;
-    let mut l_mant: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    /* preconditions */
+  let mut pos: usize = 0;
+  let mut l_header_size: OPJ_UINT32 = 0;
+  let mut l_band_no: OPJ_UINT32 = 0;
+  let mut l_num_bands: OPJ_UINT32 = 0;
+  let mut l_expn: OPJ_UINT32 = 0;
+  let mut l_mant: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    assert!(!p_header_size.is_null());
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
-    l_tccp = (*l_tcp).tccps.as_mut_ptr().offset(p_comp_no as isize);
-    /* preconditions again */
-    /* SPqcx_i */
-    assert!(p_tile_no < (*l_cp).tw.wrapping_mul((*l_cp).th));
-    assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps); /* SPqcx_i */
-    l_num_bands = if (*l_tccp).qntsty == 1u32 {
-      1u32
-    } else {
-      (*l_tccp)
-        .numresolutions
-        .wrapping_mul(3u32)
-        .wrapping_sub(2u32)
-    };
-    if (*l_tccp).qntsty == 0u32 {
-      l_header_size = (1u32).wrapping_add(l_num_bands);
-      if *p_header_size < l_header_size {
-        event_msg!(p_manager, EVT_ERROR, "Error writing SQcd SQcc element\n",);
-        return 0i32;
-      }
-      opj_write_bytes(&mut data[pos..], (*l_tccp).qntsty.wrapping_add((*l_tccp).numgbits << 5i32), 1 as OPJ_UINT32,);
-      pos += 1 as usize;
-      l_band_no = 0 as OPJ_UINT32;
-      while l_band_no < l_num_bands {
-        l_expn = (*l_tccp).stepsizes[l_band_no as usize].expn as OPJ_UINT32;
-        opj_write_bytes(&mut data[pos..], l_expn << 3i32, 1 as OPJ_UINT32);
-        pos += 1 as usize;
-        l_band_no += 1;
-      }
-    } else {
-      l_header_size = (1u32).wrapping_add((2u32).wrapping_mul(l_num_bands));
-      if *p_header_size < l_header_size {
-        event_msg!(p_manager, EVT_ERROR, "Error writing SQcd SQcc element\n",);
-        return 0i32;
-      }
-      opj_write_bytes(&mut data[pos..], (*l_tccp).qntsty.wrapping_add((*l_tccp).numgbits << 5i32), 1 as OPJ_UINT32,);
-      pos += 1 as usize;
-      l_band_no = 0 as OPJ_UINT32;
-      while l_band_no < l_num_bands {
-        l_expn = (*l_tccp).stepsizes[l_band_no as usize].expn as OPJ_UINT32;
-        l_mant = (*l_tccp).stepsizes[l_band_no as usize].mant as OPJ_UINT32;
-        opj_write_bytes(&mut data[pos..], (l_expn << 11i32).wrapping_add(l_mant), 2 as OPJ_UINT32,);
-        pos += 2 as usize;
-        l_band_no += 1;
-      }
+  let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
+  /* preconditions again */
+  /* SPqcx_i */
+  assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
+  assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps); /* SPqcx_i */
+  l_num_bands = if l_tccp.qntsty == 1u32 {
+    1u32
+  } else {
+    l_tccp.numresolutions.wrapping_mul(3u32).wrapping_sub(2u32)
+  };
+  if l_tccp.qntsty == 0u32 {
+    l_header_size = (1u32).wrapping_add(l_num_bands);
+    if *p_header_size < l_header_size {
+      event_msg!(p_manager, EVT_ERROR, "Error writing SQcd SQcc element\n",);
+      return 0i32;
     }
-    *p_header_size = (*p_header_size).wrapping_sub(l_header_size);
-    1i32
+    opj_write_bytes(
+      &mut data[pos..],
+      l_tccp.qntsty.wrapping_add(l_tccp.numgbits << 5i32),
+      1 as OPJ_UINT32,
+    );
+    pos += 1 as usize;
+    l_band_no = 0 as OPJ_UINT32;
+    while l_band_no < l_num_bands {
+      l_expn = l_tccp.stepsizes[l_band_no as usize].expn as OPJ_UINT32;
+      opj_write_bytes(&mut data[pos..], l_expn << 3i32, 1 as OPJ_UINT32);
+      pos += 1 as usize;
+      l_band_no += 1;
+    }
+  } else {
+    l_header_size = (1u32).wrapping_add((2u32).wrapping_mul(l_num_bands));
+    if *p_header_size < l_header_size {
+      event_msg!(p_manager, EVT_ERROR, "Error writing SQcd SQcc element\n",);
+      return 0i32;
+    }
+    opj_write_bytes(
+      &mut data[pos..],
+      l_tccp.qntsty.wrapping_add(l_tccp.numgbits << 5i32),
+      1 as OPJ_UINT32,
+    );
+    pos += 1 as usize;
+    l_band_no = 0 as OPJ_UINT32;
+    while l_band_no < l_num_bands {
+      l_expn = l_tccp.stepsizes[l_band_no as usize].expn as OPJ_UINT32;
+      l_mant = l_tccp.stepsizes[l_band_no as usize].mant as OPJ_UINT32;
+      opj_write_bytes(
+        &mut data[pos..],
+        (l_expn << 11i32).wrapping_add(l_mant),
+        2 as OPJ_UINT32,
+      );
+      pos += 2 as usize;
+      l_band_no += 1;
+    }
   }
+  *p_header_size = (*p_header_size).wrapping_sub(l_header_size);
+  1i32
 }
+
 /* *
  * Reads a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
@@ -8811,159 +8763,143 @@ fn opj_j2k_write_SQcd_SQcc(
  *
 */
 fn opj_j2k_read_SQcd_SQcc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_comp_no: OPJ_UINT32,
+  p_j2k: &mut opj_j2k,
+  p_comp_no: OPJ_UINT32,
   header_data: &[u8],
-  mut p_header_size: *mut OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_header_size: &mut OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut cursor: usize = 0;
-    /* loop*/
-    let mut l_band_no: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
-        let mut l_tmp: OPJ_UINT32 = 0;
-    let mut l_num_band: OPJ_UINT32 = 0;
-    /* preconditions*/
+  let mut cursor: usize = 0;
+  /* loop*/
+  let mut l_band_no: OPJ_UINT32 = 0;
+  let mut l_tmp: OPJ_UINT32 = 0;
+  let mut l_num_band: OPJ_UINT32 = 0;
+  /* preconditions*/
 
-    l_cp = &mut p_j2k.m_cp;
-    /* come from tile part header or main header ?*/
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
+  /* come from tile part header or main header ?*/
+  let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+  /* precondition again*/
+  assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
+  let l_tcp = if is_tph {
+    &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
+  } else {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set")
+  };
+  let l_tccp = &mut l_tcp.tccps[p_comp_no as usize];
+  if *p_header_size < 1u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading SQcd or SQcc element\n",);
+    return 0i32;
+  }
+  *p_header_size = (*p_header_size).wrapping_sub(1u32);
+  l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  l_tccp.qntsty = l_tmp & 0x1fu32;
+  l_tccp.numgbits = l_tmp >> 5i32;
+  if l_tccp.qntsty == 1u32 {
+    l_num_band = 1 as OPJ_UINT32
+  } else {
+    l_num_band = if l_tccp.qntsty == 0u32 {
+      *p_header_size
     } else {
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
+      (*p_header_size).wrapping_div(2u32)
     };
-    /* precondition again*/
-    assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
-    l_tccp = (*l_tcp).tccps.as_mut_ptr().offset(p_comp_no as isize);
-    if *p_header_size < 1u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading SQcd or SQcc element\n",);
+    if l_num_band > (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
+      event_msg!(p_manager, EVT_WARNING,
+                        "While reading CCP_QNTSTY element inside QCD or QCC marker segment, number of subbands ({}) is greater to OPJ_J2K_MAXBANDS ({}). So we limit the number of elements stored to OPJ_J2K_MAXBANDS ({}) and skip the rest. \n", l_num_band,
+                        3i32 * 33i32 -
+                            2i32,
+                        3i32 * 33i32 -
+                            2i32);
+      /*return OPJ_FALSE;*/
+    }
+  }
+  /* USE_JPWL */
+
+  if l_tccp.qntsty == 0u32 {
+    l_band_no = 0 as OPJ_UINT32; /* SPqcx_i */
+    while l_band_no < l_num_band {
+      l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* SPqcx_i */
+      cursor += 1 as usize;
+      if l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
+        l_tccp.stepsizes[l_band_no as usize].expn = (l_tmp >> 3i32) as OPJ_INT32;
+        l_tccp.stepsizes[l_band_no as usize].mant = 0i32
+      }
+      l_band_no += 1;
+    }
+    if *p_header_size < l_num_band {
       return 0i32;
     }
-    *p_header_size = (*p_header_size as core::ffi::c_uint).wrapping_sub(1u32) as OPJ_UINT32;
-    l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    (*l_tccp).qntsty = l_tmp & 0x1fu32;
-    (*l_tccp).numgbits = l_tmp >> 5i32;
-    if (*l_tccp).qntsty == 1u32 {
-      l_num_band = 1 as OPJ_UINT32
-    } else {
-      l_num_band = if (*l_tccp).qntsty == 0u32 {
-        *p_header_size
-      } else {
-        (*p_header_size).wrapping_div(2u32)
-      };
-      if l_num_band > (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
-        event_msg!(p_manager, EVT_WARNING,
-                          "While reading CCP_QNTSTY element inside QCD or QCC marker segment, number of subbands ({}) is greater to OPJ_J2K_MAXBANDS ({}). So we limit the number of elements stored to OPJ_J2K_MAXBANDS ({}) and skip the rest. \n", l_num_band,
-                          3i32 * 33i32 -
-                              2i32,
-                          3i32 * 33i32 -
-                              2i32);
-        /*return OPJ_FALSE;*/
+    *p_header_size = (*p_header_size).wrapping_sub(l_num_band)
+  } else {
+    l_band_no = 0 as OPJ_UINT32;
+    while l_band_no < l_num_band {
+      l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+      cursor += 2 as usize;
+      if l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
+        l_tccp.stepsizes[l_band_no as usize].expn = (l_tmp >> 11i32) as OPJ_INT32;
+        l_tccp.stepsizes[l_band_no as usize].mant = (l_tmp & 0x7ffu32) as OPJ_INT32
       }
+      l_band_no += 1;
     }
-    /* USE_JPWL */
-
-    if (*l_tccp).qntsty == 0u32 {
-      l_band_no = 0 as OPJ_UINT32; /* SPqcx_i */
-      while l_band_no < l_num_band {
-        l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* SPqcx_i */
-        cursor += 1 as usize;
-        if l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
-          (*l_tccp).stepsizes[l_band_no as usize].expn = (l_tmp >> 3i32) as OPJ_INT32;
-          (*l_tccp).stepsizes[l_band_no as usize].mant = 0i32
-        }
-        l_band_no += 1;
-      }
-      if *p_header_size < l_num_band {
-        return 0i32;
-      }
-      *p_header_size = (*p_header_size).wrapping_sub(l_num_band)
-    } else {
-      l_band_no = 0 as OPJ_UINT32;
-      while l_band_no < l_num_band {
-        l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-        cursor += 2 as usize;
-        if l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
-          (*l_tccp).stepsizes[l_band_no as usize].expn = (l_tmp >> 11i32) as OPJ_INT32;
-          (*l_tccp).stepsizes[l_band_no as usize].mant = (l_tmp & 0x7ffu32) as OPJ_INT32
-        }
-        l_band_no += 1;
-      }
-      if *p_header_size < 2 * l_num_band {
-        return 0i32;
-      }
-      *p_header_size = (*p_header_size).wrapping_sub((2u32).wrapping_mul(l_num_band))
+    if *p_header_size < 2 * l_num_band {
+      return 0i32;
     }
-    /* Add Antonin : if scalar_derived -> compute other stepsizes */
-    if (*l_tccp).qntsty == 1u32 {
-      l_band_no = 1 as OPJ_UINT32;
-      while l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
-        (*l_tccp).stepsizes[l_band_no as usize].expn = if (*l_tccp).stepsizes[0_usize].expn
-          - l_band_no.wrapping_sub(1u32).wrapping_div(3u32) as OPJ_INT32
-          > 0i32
-        {
-          ((*l_tccp).stepsizes[0_usize].expn)
-            - l_band_no.wrapping_sub(1u32).wrapping_div(3u32) as OPJ_INT32
-        } else {
-          0i32
-        };
-        (*l_tccp).stepsizes[l_band_no as usize].mant = (*l_tccp).stepsizes[0_usize].mant;
-        l_band_no += 1;
-      }
-    }
-    1i32
+    *p_header_size = (*p_header_size).wrapping_sub((2u32).wrapping_mul(l_num_band))
   }
+  /* Add Antonin : if scalar_derived -> compute other stepsizes */
+  if l_tccp.qntsty == 1u32 {
+    l_band_no = 1 as OPJ_UINT32;
+    while l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
+      l_tccp.stepsizes[l_band_no as usize].expn = if l_tccp.stepsizes[0_usize].expn
+        - l_band_no.wrapping_sub(1u32).wrapping_div(3u32) as OPJ_INT32
+        > 0i32
+      {
+        (l_tccp.stepsizes[0_usize].expn)
+          - l_band_no.wrapping_sub(1u32).wrapping_div(3u32) as OPJ_INT32
+      } else {
+        0i32
+      };
+      l_tccp.stepsizes[l_band_no as usize].mant = l_tccp.stepsizes[0_usize].mant;
+      l_band_no += 1;
+    }
+  }
+  1i32
 }
+
 /* *
  * Copies the tile quantization parameters of all the component from the first tile component.
  *
  * @param               p_j2k           the J2k codec.
  */
-fn opj_j2k_copy_tile_quantization_parameters(mut p_j2k: &mut opj_j2k) {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_ref_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    let mut l_copied_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    let mut l_size: OPJ_UINT32 = 0;
-    /* preconditions */
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
-    } else {
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
-    };
-    l_ref_tccp = (*l_tcp).tccps.as_mut_ptr();
-    l_copied_tccp = l_ref_tccp.offset(1);
-    l_size = ((3i32 * 33i32 - 2i32) as usize).wrapping_mul(core::mem::size_of::<opj_stepsize_t>())
-      as OPJ_UINT32;
-    i = 1 as OPJ_UINT32;
-    while i < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
-      (*l_copied_tccp).qntsty = (*l_ref_tccp).qntsty;
-      (*l_copied_tccp).numgbits = (*l_ref_tccp).numgbits;
-      memcpy(
-        (*l_copied_tccp).stepsizes.as_mut_ptr() as *mut core::ffi::c_void,
-        (*l_ref_tccp).stepsizes.as_mut_ptr() as *const core::ffi::c_void,
-        l_size as usize,
-      );
-      l_copied_tccp = l_copied_tccp.offset(1);
-      i += 1;
-    }
+fn opj_j2k_copy_tile_quantization_parameters(p_j2k: &mut opj_j2k) {
+  let mut i: OPJ_UINT32 = 0;
+  /* preconditions */
+  let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+  let l_tcp = if is_tph {
+    &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
+  } else {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set")
+  };
+  i = 1 as OPJ_UINT32;
+  while i < numcomps {
+    let ref_ = &l_tcp.tccps[0];
+    let (qntsty, numgbits, stepsizes) = (ref_.qntsty, ref_.numgbits, ref_.stepsizes);
+    let copied = &mut l_tcp.tccps[i as usize];
+    copied.qntsty = qntsty;
+    copied.numgbits = numgbits;
+    copied.stepsizes.copy_from_slice(&stepsizes[..]);
+    i += 1;
   }
 }
 
