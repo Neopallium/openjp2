@@ -10,8 +10,7 @@ pub const FINAL_PASS: T2_MODE = 1;
 pub const THRESH_CALC: T2_MODE = 0;
 pub type J2K_T2_MODE = T2_MODE;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Clone)]
 pub struct opj_pi_resolution {
   pub pdx: OPJ_UINT32,
   pub pdy: OPJ_UINT32,
@@ -20,20 +19,22 @@ pub struct opj_pi_resolution {
 }
 pub type opj_pi_resolution_t = opj_pi_resolution;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Clone)]
 pub struct opj_pi_comp {
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
   pub numresolutions: OPJ_UINT32,
-  pub resolutions: *mut opj_pi_resolution_t,
+  pub resolutions: Vec<opj_pi_resolution_t>,
 }
 pub type opj_pi_comp_t = opj_pi_comp;
 
-#[repr(C)]
 #[derive(Clone)]
 pub struct opj_pi_iterator {
   pub tp_on: OPJ_BYTE,
+  /* Raw for now: every pi element for a tile shares this one allocation
+  (opj_pi_create_decode chains `include = (prev)->include`), so it cannot be a
+  plain owned Vec per element yet. All accesses bounds-check against
+  include_size. */
   pub include: *mut OPJ_INT16,
   pub include_size: OPJ_UINT32,
   pub step_l: OPJ_UINT32,
@@ -47,7 +48,7 @@ pub struct opj_pi_iterator {
   pub first: OPJ_BOOL,
   pub poc: opj_poc_t,
   pub numcomps: OPJ_UINT32,
-  pub comps: *mut opj_pi_comp_t,
+  pub comps: Vec<opj_pi_comp_t>,
   pub tx0: OPJ_UINT32,
   pub ty0: OPJ_UINT32,
   pub tx1: OPJ_UINT32,
@@ -137,8 +138,8 @@ fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       return 0i32;
     }
     if (*pi).first == 0 {
-      comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
-      res = &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+      comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
+      res = (*comp).resolutions.as_mut_ptr().add((*pi).resno as usize) as *mut opj_pi_resolution_t;
       current_block = 5634871135123216486;
     } else {
       (*pi).first = 0i32;
@@ -208,12 +209,12 @@ fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             }
             _ => {
               if (*pi).compno < (*pi).poc.compno1 {
-                comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+                comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
                 if (*pi).resno >= (*comp).numresolutions {
                   current_block = 17860125682698302841;
                   continue;
                 }
-                res = &mut *(*comp).resolutions.offset((*pi).resno as isize)
+                res = (*comp).resolutions.as_mut_ptr().add((*pi).resno as usize)
                   as *mut opj_pi_resolution_t;
                 if (*pi).tp_on == 0 {
                   (*pi).poc.precno1 = (*res).pw.wrapping_mul((*res).ph)
@@ -255,8 +256,8 @@ fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       return 0i32;
     }
     if (*pi).first == 0 {
-      comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
-      res = &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+      comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
+      res = (*comp).resolutions.as_mut_ptr().add((*pi).resno as usize) as *mut opj_pi_resolution_t;
       current_block = 5634871135123216486;
     } else {
       (*pi).first = 0i32;
@@ -320,12 +321,12 @@ fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             }
             _ => {
               if (*pi).compno < (*pi).poc.compno1 {
-                comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+                comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
                 if (*pi).resno >= (*comp).numresolutions {
                   current_block = 17860125682698302841;
                   continue;
                 }
-                res = &mut *(*comp).resolutions.offset((*pi).resno as isize)
+                res = (*comp).resolutions.as_mut_ptr().add((*pi).resno as usize)
                   as *mut opj_pi_resolution_t;
                 if (*pi).tp_on == 0 {
                   (*pi).poc.precno1 = (*res).pw.wrapping_mul((*res).ph)
@@ -385,12 +386,12 @@ fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       (*pi).dy = 0 as OPJ_UINT32;
       compno = 0 as OPJ_UINT32;
       while compno < (*pi).numcomps {
-        comp = &mut *(*pi).comps.offset(compno as isize) as *mut opj_pi_comp_t;
+        comp = (*pi).comps.as_mut_ptr().add(compno as usize) as *mut opj_pi_comp_t;
         resno = 0 as OPJ_UINT32;
         while resno < (*comp).numresolutions {
           let mut dx: OPJ_UINT32 = 0;
           let mut dy: OPJ_UINT32 = 0;
-          res = &mut *(*comp).resolutions.offset(resno as isize) as *mut opj_pi_resolution_t;
+          res = (*comp).resolutions.as_mut_ptr().add(resno as usize) as *mut opj_pi_resolution_t;
           if (*res)
             .pdx
             .wrapping_add((*comp).numresolutions)
@@ -547,13 +548,15 @@ fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             rpy = 0;
             prci = 0;
             prcj = 0;
-            comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+            comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
             if (*pi).resno >= (*comp).numresolutions {
               current_block = 10891380440665537214;
               continue;
             }
-            res =
-              &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+            res = (*comp)
+              .resolutions
+              .as_mut_ptr()
+              .add((*pi).resno as usize) as *mut opj_pi_resolution_t;
             levelno = (*comp).numresolutions - 1 - (*pi).resno;
             let dx = (*comp).dx as u64;
             let dy = (*comp).dy as u64;
@@ -652,7 +655,7 @@ fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       return 0i32;
     }
     if (*pi).first == 0 {
-      comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+      comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
       current_block = 10853015579903106591;
     } else {
       let mut compno: OPJ_UINT32 = 0;
@@ -662,12 +665,12 @@ fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       (*pi).dy = 0 as OPJ_UINT32;
       compno = 0 as OPJ_UINT32;
       while compno < (*pi).numcomps {
-        comp = &mut *(*pi).comps.offset(compno as isize) as *mut opj_pi_comp_t;
+        comp = (*pi).comps.as_mut_ptr().add(compno as usize) as *mut opj_pi_comp_t;
         resno = 0 as OPJ_UINT32;
         while resno < (*comp).numresolutions {
           let mut dx: OPJ_UINT32 = 0;
           let mut dy: OPJ_UINT32 = 0;
-          res = &mut *(*comp).resolutions.offset(resno as isize) as *mut opj_pi_resolution_t;
+          res = (*comp).resolutions.as_mut_ptr().add(resno as usize) as *mut opj_pi_resolution_t;
           if (*res)
             .pdx
             .wrapping_add((*comp).numresolutions)
@@ -806,7 +809,7 @@ fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             15512526488502093901 => (*pi).resno = (*pi).resno.wrapping_add(1),
             _ => {
               if (*pi).compno < (*pi).poc.compno1 {
-                comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+                comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
                 (*pi).resno = (*pi).poc.resno0
               } else {
                 (*pi).x = ((*pi).x as core::ffi::c_uint)
@@ -827,8 +830,10 @@ fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             rpy = 0;
             prci = 0;
             prcj = 0;
-            res =
-              &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+            res = (*comp)
+              .resolutions
+              .as_mut_ptr()
+              .add((*pi).resno as usize) as *mut opj_pi_resolution_t;
             levelno = (*comp).numresolutions - 1 - (*pi).resno;
 
             if (((*comp).dx << levelno as u64) >> levelno) as u32 != (*comp).dx
@@ -925,7 +930,7 @@ fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       return 0i32;
     }
     if (*pi).first == 0 {
-      comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+      comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
       current_block = 13707613154239713890;
     } else {
       (*pi).first = 0i32;
@@ -943,14 +948,14 @@ fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             break;
           }
           resno = 0;
-          comp = &mut *(*pi).comps.offset((*pi).compno as isize) as *mut opj_pi_comp_t;
+          comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
           (*pi).dx = 0 as OPJ_UINT32;
           (*pi).dy = 0 as OPJ_UINT32;
           resno = 0 as OPJ_UINT32;
           while resno < (*comp).numresolutions {
             let mut dx: OPJ_UINT32 = 0;
             let mut dy: OPJ_UINT32 = 0;
-            res = &mut *(*comp).resolutions.offset(resno as isize) as *mut opj_pi_resolution_t;
+            res = (*comp).resolutions.as_mut_ptr().add(resno as usize) as *mut opj_pi_resolution_t;
             if (*res)
               .pdx
               .wrapping_add((*comp).numresolutions)
@@ -1092,8 +1097,10 @@ fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             rpy = 0;
             prci = 0;
             prcj = 0;
-            res =
-              &mut *(*comp).resolutions.offset((*pi).resno as isize) as *mut opj_pi_resolution_t;
+            res = (*comp)
+              .resolutions
+              .as_mut_ptr()
+              .add((*pi).resno as usize) as *mut opj_pi_resolution_t;
             levelno = (*comp).numresolutions - 1 - (*pi).resno;
 
             if (((*comp).dx << levelno as u64) >> levelno) as u32 != (*comp).dx
@@ -1548,23 +1555,15 @@ pub(crate) fn opj_pi_create(
     pino = 0 as OPJ_UINT32;
     while pino < l_poc_bound {
       (*l_current_pi).manager = *manager;
-      (*l_current_pi).comps = opj_calloc_type_array((*image).numcomps as size_t);
-      if (*l_current_pi).comps.is_null() {
-        opj_pi_destroy(l_pi, l_poc_bound);
-        return core::ptr::null_mut::<opj_pi_iterator_t>();
-      }
+      (*l_current_pi).comps = vec![Default::default(); (*image).numcomps as usize];
       (*l_current_pi).numcomps = (*image).numcomps;
       compno = 0 as OPJ_UINT32;
       while compno < (*image).numcomps {
-        let mut comp: *mut opj_pi_comp_t =
-          &mut *(*l_current_pi).comps.offset(compno as isize) as *mut opj_pi_comp_t;
+        let pi_ref = &mut *l_current_pi;
+        let comp = &mut pi_ref.comps[compno as usize];
         tccp = (*tcp).tccps.as_ptr().offset(compno as isize);
-        (*comp).resolutions = opj_calloc_type_array((*tccp).numresolutions as size_t);
-        if (*comp).resolutions.is_null() {
-          opj_pi_destroy(l_pi, l_poc_bound);
-          return core::ptr::null_mut::<opj_pi_iterator_t>();
-        }
-        (*comp).numresolutions = (*tccp).numresolutions;
+        comp.resolutions = vec![Default::default(); (*tccp).numresolutions as usize];
+        comp.numresolutions = (*tccp).numresolutions;
         compno += 1;
       }
       l_current_pi = l_current_pi.offset(1);
@@ -1950,7 +1949,6 @@ pub(crate) fn opj_pi_create_decode(
     let mut l_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
     let mut l_tccp = core::ptr::null::<opj_tccp_t>();
-    let mut l_current_comp = core::ptr::null_mut::<opj_pi_comp_t>();
     let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
     let mut l_current_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_encoding_value_ptr = core::ptr::null_mut::<OPJ_UINT32>();
@@ -2031,7 +2029,6 @@ pub(crate) fn opj_pi_create_decode(
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
     /* special treatment for the first packet iterator */
-    l_current_comp = (*l_current_pi).comps;
     l_img_comp = (*p_image).comps;
     l_tccp = (*l_tcp).tccps.as_ptr();
     (*l_current_pi).tx0 = l_tx0;
@@ -2047,29 +2044,29 @@ pub(crate) fn opj_pi_create_decode(
     /* allocation for components and number of components has already been calculated by opj_pi_create */
     compno = 0 as OPJ_UINT32;
     while compno < numcomps {
-      let mut l_res = (*l_current_comp).resolutions;
+      let pi_ref = &mut *l_current_pi;
+      let l_current_comp = &mut pi_ref.comps[compno as usize];
       l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
-      (*l_current_comp).dx = (*l_img_comp).dx;
-      (*l_current_comp).dy = (*l_img_comp).dy;
+      l_current_comp.dx = (*l_img_comp).dx;
+      l_current_comp.dy = (*l_img_comp).dy;
       /* resolutions have already been initialized */
       resno = 0 as OPJ_UINT32;
-      while resno < (*l_current_comp).numresolutions {
+      while resno < l_current_comp.numresolutions {
+        let l_res = &mut l_current_comp.resolutions[resno as usize];
         let fresh5 = l_encoding_value_ptr;
         l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-        (*l_res).pdx = *fresh5;
+        l_res.pdx = *fresh5;
         let fresh6 = l_encoding_value_ptr;
         l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-        (*l_res).pdy = *fresh6;
+        l_res.pdy = *fresh6;
         let fresh7 = l_encoding_value_ptr;
         l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-        (*l_res).pw = *fresh7;
+        l_res.pw = *fresh7;
         let fresh8 = l_encoding_value_ptr;
         l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-        (*l_res).ph = *fresh8;
-        l_res = l_res.offset(1);
+        l_res.ph = *fresh8;
         resno += 1;
       }
-      l_current_comp = l_current_comp.offset(1);
       l_img_comp = l_img_comp.offset(1);
       l_tccp = l_tccp.offset(1);
       compno += 1;
@@ -2077,7 +2074,6 @@ pub(crate) fn opj_pi_create_decode(
     l_current_pi = l_current_pi.offset(1);
     pino = 1 as OPJ_UINT32;
     while pino < l_bound {
-      l_current_comp = (*l_current_pi).comps;
       l_img_comp = (*p_image).comps;
       l_tccp = (*l_tcp).tccps.as_ptr();
       (*l_current_pi).tx0 = l_tx0;
@@ -2093,29 +2089,29 @@ pub(crate) fn opj_pi_create_decode(
       /* allocation for components and number of components has already been calculated by opj_pi_create */
       compno = 0 as OPJ_UINT32;
       while compno < numcomps {
-        let mut l_res_0 = (*l_current_comp).resolutions;
+        let pi_ref = &mut *l_current_pi;
+        let l_current_comp = &mut pi_ref.comps[compno as usize];
         l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
-        (*l_current_comp).dx = (*l_img_comp).dx;
-        (*l_current_comp).dy = (*l_img_comp).dy;
+        l_current_comp.dx = (*l_img_comp).dx;
+        l_current_comp.dy = (*l_img_comp).dy;
         /* resolutions have already been initialized */
         resno = 0 as OPJ_UINT32;
-        while resno < (*l_current_comp).numresolutions {
+        while resno < l_current_comp.numresolutions {
+          let l_res_0 = &mut l_current_comp.resolutions[resno as usize];
           let fresh9 = l_encoding_value_ptr;
           l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-          (*l_res_0).pdx = *fresh9;
+          l_res_0.pdx = *fresh9;
           let fresh10 = l_encoding_value_ptr;
           l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-          (*l_res_0).pdy = *fresh10;
+          l_res_0.pdy = *fresh10;
           let fresh11 = l_encoding_value_ptr;
           l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-          (*l_res_0).pw = *fresh11;
+          l_res_0.pw = *fresh11;
           let fresh12 = l_encoding_value_ptr;
           l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-          (*l_res_0).ph = *fresh12;
-          l_res_0 = l_res_0.offset(1);
+          l_res_0.ph = *fresh12;
           resno += 1;
         }
-        l_current_comp = l_current_comp.offset(1);
         l_img_comp = l_img_comp.offset(1);
         l_tccp = l_tccp.offset(1);
         compno += 1;
@@ -2216,7 +2212,6 @@ pub(crate) fn opj_pi_initialise_encode(
     let mut l_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
     let mut l_tccp = core::ptr::null::<opj_tccp_t>();
-    let mut l_current_comp = core::ptr::null_mut::<opj_pi_comp_t>();
     let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
     let mut l_current_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_encoding_value_ptr = core::ptr::null_mut::<OPJ_UINT32>();
@@ -2288,7 +2283,6 @@ pub(crate) fn opj_pi_initialise_encode(
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
     /* special treatment for the first packet iterator*/
-    l_current_comp = (*l_current_pi).comps;
     l_img_comp = (*p_image).comps;
     l_tccp = (*l_tcp).tccps.as_ptr();
     (*l_current_pi).tx0 = l_tx0;
@@ -2304,29 +2298,29 @@ pub(crate) fn opj_pi_initialise_encode(
     /* allocation for components and number of components has already been calculated by opj_pi_create */
     compno = 0 as OPJ_UINT32;
     while compno < numcomps {
-      let mut l_res = (*l_current_comp).resolutions;
+      let pi_ref = &mut *l_current_pi;
+      let l_current_comp = &mut pi_ref.comps[compno as usize];
       l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
-      (*l_current_comp).dx = (*l_img_comp).dx;
-      (*l_current_comp).dy = (*l_img_comp).dy;
+      l_current_comp.dx = (*l_img_comp).dx;
+      l_current_comp.dy = (*l_img_comp).dy;
       /* resolutions have already been initialized */
       resno = 0 as OPJ_UINT32;
-      while resno < (*l_current_comp).numresolutions {
+      while resno < l_current_comp.numresolutions {
+        let l_res = &mut l_current_comp.resolutions[resno as usize];
         let fresh14 = l_encoding_value_ptr;
         l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-        (*l_res).pdx = *fresh14;
+        l_res.pdx = *fresh14;
         let fresh15 = l_encoding_value_ptr;
         l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-        (*l_res).pdy = *fresh15;
+        l_res.pdy = *fresh15;
         let fresh16 = l_encoding_value_ptr;
         l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-        (*l_res).pw = *fresh16;
+        l_res.pw = *fresh16;
         let fresh17 = l_encoding_value_ptr;
         l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-        (*l_res).ph = *fresh17;
-        l_res = l_res.offset(1);
+        l_res.ph = *fresh17;
         resno += 1;
       }
-      l_current_comp = l_current_comp.offset(1);
       l_img_comp = l_img_comp.offset(1);
       l_tccp = l_tccp.offset(1);
       compno += 1;
@@ -2334,7 +2328,6 @@ pub(crate) fn opj_pi_initialise_encode(
     l_current_pi = l_current_pi.offset(1);
     pino = 1 as OPJ_UINT32;
     while pino < l_bound {
-      l_current_comp = (*l_current_pi).comps;
       l_img_comp = (*p_image).comps;
       l_tccp = (*l_tcp).tccps.as_ptr();
       (*l_current_pi).tx0 = l_tx0;
@@ -2350,29 +2343,29 @@ pub(crate) fn opj_pi_initialise_encode(
       /* allocation for components and number of components has already been calculated by opj_pi_create */
       compno = 0 as OPJ_UINT32;
       while compno < numcomps {
-        let mut l_res_0 = (*l_current_comp).resolutions;
+        let pi_ref = &mut *l_current_pi;
+        let l_current_comp = &mut pi_ref.comps[compno as usize];
         l_encoding_value_ptr = *l_tmp_ptr.offset(compno as isize);
-        (*l_current_comp).dx = (*l_img_comp).dx;
-        (*l_current_comp).dy = (*l_img_comp).dy;
+        l_current_comp.dx = (*l_img_comp).dx;
+        l_current_comp.dy = (*l_img_comp).dy;
         /* resolutions have already been initialized */
         resno = 0 as OPJ_UINT32;
-        while resno < (*l_current_comp).numresolutions {
+        while resno < l_current_comp.numresolutions {
+          let l_res_0 = &mut l_current_comp.resolutions[resno as usize];
           let fresh18 = l_encoding_value_ptr;
           l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-          (*l_res_0).pdx = *fresh18;
+          l_res_0.pdx = *fresh18;
           let fresh19 = l_encoding_value_ptr;
           l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-          (*l_res_0).pdy = *fresh19;
+          l_res_0.pdy = *fresh19;
           let fresh20 = l_encoding_value_ptr;
           l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-          (*l_res_0).pw = *fresh20;
+          l_res_0.pw = *fresh20;
           let fresh21 = l_encoding_value_ptr;
           l_encoding_value_ptr = l_encoding_value_ptr.offset(1);
-          (*l_res_0).ph = *fresh21;
-          l_res_0 = l_res_0.offset(1);
+          l_res_0.ph = *fresh21;
           resno += 1;
         }
-        l_current_comp = l_current_comp.offset(1);
         l_img_comp = l_img_comp.offset(1);
         l_tccp = l_tccp.offset(1);
         compno += 1;
@@ -2705,7 +2698,6 @@ pub(crate) fn opj_pi_create_encode(
 
 pub(crate) fn opj_pi_destroy(mut p_pi: *mut opj_pi_iterator_t, mut p_nb_elements: OPJ_UINT32) {
   unsafe {
-    let mut compno: OPJ_UINT32 = 0;
     let mut pino: OPJ_UINT32 = 0;
     let mut l_current_pi = p_pi;
     if !p_pi.is_null() {
@@ -2715,23 +2707,10 @@ pub(crate) fn opj_pi_destroy(mut p_pi: *mut opj_pi_iterator_t, mut p_nb_elements
       }
       pino = 0 as OPJ_UINT32;
       while pino < p_nb_elements {
-        if !(*l_current_pi).comps.is_null() {
-          let mut l_current_component = (*l_current_pi).comps;
-          compno = 0 as OPJ_UINT32;
-          while compno < (*l_current_pi).numcomps {
-            if !(*l_current_component).resolutions.is_null() {
-              opj_free_type_array(
-                (*l_current_component).resolutions,
-                (*l_current_component).numresolutions as usize,
-              );
-              (*l_current_component).resolutions = core::ptr::null_mut::<opj_pi_resolution_t>()
-            }
-            l_current_component = l_current_component.offset(1);
-            compno += 1;
-          }
-          opj_free_type_array((*l_current_pi).comps, (*l_current_pi).numcomps as usize);
-          (*l_current_pi).comps = core::ptr::null_mut::<opj_pi_comp_t>()
-        }
+        /* Assignment drops the element's own comps/resolutions Vecs. Elements
+        that were never reached by opj_pi_create hold a zeroed header, which
+        Vec::new() replaces safely (an empty Vec never dereferences its pointer). */
+        (*l_current_pi).comps = Vec::new();
         l_current_pi = l_current_pi.offset(1);
         pino += 1;
       }
