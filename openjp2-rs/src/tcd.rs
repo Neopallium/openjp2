@@ -2037,7 +2037,7 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
         let mut l_data: Vec<&mut [OPJ_FLOAT32]> = (0..numcomps)
           .map(|i| core::slice::from_raw_parts_mut(comp_ptr(i) as *mut OPJ_FLOAT32, l_samples))
           .collect();
-        let l_tcp_ref = unsafe { &*l_tcp };
+        let l_tcp_ref = &*l_tcp;
         let matrix = &l_tcp_ref.m_mct_decoding_matrix[..];
         if opj_mct_decode_custom(matrix, l_samples, &mut l_data, (*(*p_tcd.image).comps).sgnd) == 0
         {
@@ -2269,7 +2269,7 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
       let mut l_data: Vec<&mut [OPJ_INT32]> = (0..numcomps)
         .map(|i| core::slice::from_raw_parts_mut((*l_tile_comp.add(i)).data.as_mut_ptr(), samples))
         .collect();
-      let tcp_ref = unsafe { &*p_tcd.tcp };
+      let tcp_ref = &*p_tcd.tcp;
       let matrix = &tcp_ref.m_mct_coding_matrix[..];
       if opj_mct_encode_custom(matrix, samples, &mut l_data, (*(*p_tcd.image).comps).sgnd) == 0 {
         return 0i32;
