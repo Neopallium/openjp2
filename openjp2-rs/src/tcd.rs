@@ -2023,17 +2023,22 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
           (*comp).data_win.as_mut_ptr()
         }
       };
+      if comp_ptr(0).is_null() {
+        /* The tile component data was never allocated (e.g. a zero-sized
+        decode window); there is nothing to transform. The C code no-ops here
+        because `l_samples` happens to be 0, but constructing a slice from the
+        null pointer is UB in Rust. */
+        return 1i32;
+      }
       if (*l_tcp).mct == 2u32 {
-        if (*l_tcp).m_mct_decoding_matrix.is_null() {
+        if (*l_tcp).m_mct_decoding_matrix.is_empty() {
           return 1i32;
         }
         let mut l_data: Vec<&mut [OPJ_FLOAT32]> = (0..numcomps)
           .map(|i| core::slice::from_raw_parts_mut(comp_ptr(i) as *mut OPJ_FLOAT32, l_samples))
           .collect();
-        let matrix = core::slice::from_raw_parts(
-          (*l_tcp).m_mct_decoding_matrix as *const OPJ_FLOAT32,
-          numcomps * numcomps,
-        );
+        let l_tcp_ref = unsafe { &*l_tcp };
+        let matrix = &l_tcp_ref.m_mct_decoding_matrix[..];
         if opj_mct_decode_custom(matrix, l_samples, &mut l_data, (*(*p_tcd.image).comps).sgnd) == 0
         {
           return 0i32;
@@ -2257,17 +2262,15 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
       return 1i32;
     }
     if (*p_tcd.tcp).mct == 2u32 {
-      if (*p_tcd.tcp).m_mct_coding_matrix.is_null() {
+      if (*p_tcd.tcp).m_mct_coding_matrix.is_empty() {
         return 1i32;
       }
       let numcomps = p_tcd.tcd_image.tiles.numcomps as usize;
       let mut l_data: Vec<&mut [OPJ_INT32]> = (0..numcomps)
         .map(|i| core::slice::from_raw_parts_mut((*l_tile_comp.add(i)).data.as_mut_ptr(), samples))
         .collect();
-      let matrix = core::slice::from_raw_parts(
-        (*p_tcd.tcp).m_mct_coding_matrix as *const OPJ_FLOAT32,
-        numcomps * numcomps,
-      );
+      let tcp_ref = unsafe { &*p_tcd.tcp };
+      let matrix = &tcp_ref.m_mct_coding_matrix[..];
       if opj_mct_encode_custom(matrix, samples, &mut l_data, (*(*p_tcd.image).comps).sgnd) == 0 {
         return 0i32;
       }
@@ -2332,7 +2335,13 @@ fn opj_tcd_t1_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
       }
     } else {
       l_mct_numcomps = (*p_tcd.image).numcomps;
-      l_mct_norms = (*l_tcp).mct_norms as *const OPJ_FLOAT64
+      /* An empty norms Vec must stay a null pointer: callers test `is_null()`
+      to decide whether per-component norms apply. */
+      l_mct_norms = if (*l_tcp).mct_norms.is_empty() {
+        core::ptr::null()
+      } else {
+        (*l_tcp).mct_norms.as_ptr()
+      }
     }
     opj_t1_encode_cblks(
       &mut p_tcd.tcd_image.tiles,

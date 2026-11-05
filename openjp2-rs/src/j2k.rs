@@ -48,8 +48,9 @@ impl Default for J2KState {
 }
 
 #[repr(u32)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum MCTElementType {
+  #[default]
   DOUBLE = 3,
   FLOAT = 2,
   INT32 = 1,
@@ -1510,46 +1511,20 @@ fn opj_j2k_read_siz(
     /* memory allocations */
     (*l_cp).tcps = (0..l_nb_tiles).map(|_| Default::default()).collect();
     /* USE_JPWL */
-    (*p_j2k.m_specific_param.m_decoder.m_default_tcp)
-      .tccps
-      .resize((*l_image).numcomps as usize, Default::default());
-    (*p_j2k.m_specific_param.m_decoder.m_default_tcp).m_mct_records =
-      opj_calloc(10i32 as size_t, core::mem::size_of::<opj_mct_data_t>()) as *mut opj_mct_data_t;
-    if (*p_j2k.m_specific_param.m_decoder.m_default_tcp)
-      .m_mct_records
-      .is_null()
-    {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory to take in charge SIZ marker\n",
-      );
-      return 0i32;
-    }
-    (*p_j2k.m_specific_param.m_decoder.m_default_tcp).m_nb_max_mct_records = 10 as OPJ_UINT32;
-    (*p_j2k.m_specific_param.m_decoder.m_default_tcp).m_mcc_records = opj_calloc(
-      10i32 as size_t,
-      core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>(),
-    )
-      as *mut opj_simple_mcc_decorrelation_data_t;
-    if (*p_j2k.m_specific_param.m_decoder.m_default_tcp)
-      .m_mcc_records
-      .is_null()
-    {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory to take in charge SIZ marker\n",
-      );
-      return 0i32;
-    }
-    (*p_j2k.m_specific_param.m_decoder.m_default_tcp).m_nb_max_mcc_records = 10 as OPJ_UINT32;
+    let default_tcp = p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set");
+    default_tcp.tccps.resize((*l_image).numcomps as usize, Default::default());
+    default_tcp.m_mct_records = Vec::with_capacity(10);
+    default_tcp.m_mcc_records = Vec::with_capacity(10);
     /* set up default dc level shift */
     i = 0 as OPJ_UINT32;
     while i < (*l_image).numcomps {
       if (*(*l_image).comps.offset(i as isize)).sgnd == 0 {
-        (&mut (*p_j2k.m_specific_param.m_decoder.m_default_tcp).tccps)[i as usize]
-          .m_dc_level_shift = (1i32)
+        (&mut default_tcp.tccps)[i as usize].m_dc_level_shift = (1i32)
           << (*(*l_image).comps.offset(i as isize))
             .prec
             .wrapping_sub(1u32)
@@ -1762,7 +1737,12 @@ fn opj_j2k_read_cod(
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     (*l_tcp).cod = true;
     /* Make sure room is sufficient */
@@ -2068,7 +2048,12 @@ fn opj_j2k_read_coc(
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     l_image = p_j2k.m_private_image;
     l_comp_room = if (*l_image).numcomps <= 256u32 {
@@ -2750,7 +2735,12 @@ fn opj_j2k_read_poc(
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     l_old_poc_nb = if (*l_tcp).POC {
       (*l_tcp).numpocs.wrapping_add(1u32)
@@ -4430,7 +4420,12 @@ fn opj_j2k_read_rgn(
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     opj_read_bytes(p_header_data, &mut l_comp_no, l_comp_room);
     p_header_data = p_header_data.offset(l_comp_room as isize);
@@ -4687,9 +4682,6 @@ fn opj_j2k_write_mct_data_group(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_mcc_record = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-    let mut l_mct_record = core::ptr::null_mut::<opj_mct_data_t>();
     let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
     /* preconditions */
 
@@ -4697,23 +4689,25 @@ fn opj_j2k_write_mct_data_group(
       return 0i32;
     }
     l_tcp = p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize);
-    l_mct_record = (*l_tcp).m_mct_records;
-    i = 0 as OPJ_UINT32;
-    while i < (*l_tcp).m_nb_mct_records {
-      if opj_j2k_write_mct_record(p_j2k, l_mct_record, p_stream, p_manager) == 0 {
+    let l_tcp_ref = unsafe { &*l_tcp };
+    let nb_mct = l_tcp_ref.m_mct_records.len();
+    for i in 0..nb_mct {
+      if opj_j2k_write_mct_record(p_j2k, &l_tcp_ref.m_mct_records[i], p_stream, p_manager) == 0 {
         return 0i32;
       }
-      l_mct_record = l_mct_record.offset(1);
-      i += 1;
     }
-    l_mcc_record = (*l_tcp).m_mcc_records;
-    i = 0 as OPJ_UINT32;
-    while i < (*l_tcp).m_nb_mcc_records {
-      if opj_j2k_write_mcc_record(p_j2k, l_mcc_record, p_stream, p_manager) == 0 {
+    let nb_mcc = l_tcp_ref.m_mcc_records.len();
+    for i in 0..nb_mcc {
+      if opj_j2k_write_mcc_record(
+        p_j2k,
+        &l_tcp_ref.m_mcc_records[i],
+        &l_tcp_ref.m_mct_records,
+        p_stream,
+        p_manager,
+      ) == 0
+      {
         return 0i32;
       }
-      l_mcc_record = l_mcc_record.offset(1);
-      i += 1;
     }
     if opj_j2k_write_mco(p_j2k, p_stream, p_manager) == 0 {
       return 0i32;
@@ -4932,7 +4926,7 @@ fn opj_j2k_read_unk(
 */
 fn opj_j2k_write_mct_record(
   mut p_j2k: &mut opj_j2k,
-  mut p_mct_record: *mut opj_mct_data_t,
+  p_mct_record: &opj_mct_data,
   mut p_stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -4943,7 +4937,7 @@ fn opj_j2k_write_mct_record(
     /* preconditions */
     /* Lmct */
 
-    l_mct_size = (10u32).wrapping_add((*p_mct_record).m_data_size);
+    l_mct_size = (10u32).wrapping_add(p_mct_record.m_data.len() as OPJ_UINT32);
     l_current_data = p_j2k
       .m_specific_param
       .m_encoder
@@ -4959,17 +4953,17 @@ fn opj_j2k_write_mct_record(
     opj_write_bytes(l_current_data, 0 as OPJ_UINT32, 2 as OPJ_UINT32);
     l_current_data = l_current_data.offset(2);
     /* only one marker atm */
-    l_tmp = (*p_mct_record).m_index & 0xffu32
-      | ((*p_mct_record).m_array_type as core::ffi::c_uint) << 8i32
-      | ((*p_mct_record).m_element_type as core::ffi::c_uint) << 10i32; /* Ymct */
+    l_tmp = p_mct_record.m_index & 0xffu32
+      | (p_mct_record.m_array_type as core::ffi::c_uint) << 8i32
+      | (p_mct_record.m_element_type as core::ffi::c_uint) << 10i32; /* Ymct */
     opj_write_bytes(l_current_data, l_tmp, 2 as OPJ_UINT32);
     l_current_data = l_current_data.offset(2);
     opj_write_bytes(l_current_data, 0 as OPJ_UINT32, 2 as OPJ_UINT32);
     l_current_data = l_current_data.offset(2);
     memcpy(
       l_current_data as *mut core::ffi::c_void,
-      (*p_mct_record).m_data as *const core::ffi::c_void,
-      (*p_mct_record).m_data_size as usize,
+      p_mct_record.m_data.as_ptr() as *const core::ffi::c_void,
+      p_mct_record.m_data.len(),
     );
     if opj_stream_write_data(
       p_stream,
@@ -5006,18 +5000,21 @@ fn opj_j2k_read_mct(
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut i: OPJ_UINT32 = 0;
     let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
     let mut l_tmp: OPJ_UINT32 = 0;
     let mut l_indix: OPJ_UINT32 = 0;
-    let mut l_mct_data = core::ptr::null_mut::<opj_mct_data_t>();
     /* preconditions */
 
     assert!(!p_header_data.is_null());
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     if p_header_size < 2u32 {
       event_msg!(p_manager, EVT_ERROR, "Error reading MCT marker\n",);
@@ -5042,89 +5039,23 @@ fn opj_j2k_read_mct(
     opj_read_bytes(p_header_data, &mut l_tmp, 2 as OPJ_UINT32); /* Imct */
     p_header_data = p_header_data.offset(2);
     l_indix = l_tmp & 0xffu32;
-    l_mct_data = (*l_tcp).m_mct_records;
-    i = 0 as OPJ_UINT32;
-    while i < (*l_tcp).m_nb_mct_records {
-      if (*l_mct_data).m_index == l_indix {
+    /* find an existing record with this index, or append a fresh one */
+    let l_tcp_ref = unsafe { &mut *l_tcp };
+    let mut l_mct_idx: usize = 0;
+    while l_mct_idx < l_tcp_ref.m_mct_records.len() {
+      if l_tcp_ref.m_mct_records[l_mct_idx].m_index == l_indix {
         break;
       }
-      l_mct_data = l_mct_data.offset(1);
-      i += 1;
+      l_mct_idx += 1;
     }
     /* NOT FOUND */
-    if i == (*l_tcp).m_nb_mct_records {
-      if (*l_tcp).m_nb_mct_records == (*l_tcp).m_nb_max_mct_records {
-        let mut new_mct_records = core::ptr::null_mut::<opj_mct_data_t>();
-        (*l_tcp).m_nb_max_mct_records =
-          ((*l_tcp).m_nb_max_mct_records as core::ffi::c_uint).wrapping_add(10u32) as OPJ_UINT32;
-        new_mct_records = opj_realloc(
-          (*l_tcp).m_mct_records as *mut core::ffi::c_void,
-          ((*l_tcp).m_nb_max_mct_records as usize)
-            .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
-        ) as *mut opj_mct_data_t;
-        if new_mct_records.is_null() {
-          opj_free((*l_tcp).m_mct_records as *mut core::ffi::c_void);
-          (*l_tcp).m_mct_records = core::ptr::null_mut::<opj_mct_data_t>();
-          (*l_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
-          (*l_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Not enough memory to read MCT marker\n",
-          );
-          return 0i32;
-        }
-        /* Update m_mcc_records[].m_offset_array and m_decorrelation_array
-         * to point to the new addresses */
-        if new_mct_records != (*l_tcp).m_mct_records {
-          i = 0 as OPJ_UINT32; /* Ymct */
-          while i < (*l_tcp).m_nb_mcc_records {
-            let mut l_mcc_record: *mut opj_simple_mcc_decorrelation_data_t =
-              &mut *(*l_tcp).m_mcc_records.offset(i as isize)
-                as *mut opj_simple_mcc_decorrelation_data_t;
-            if !(*l_mcc_record).m_decorrelation_array.is_null() {
-              (*l_mcc_record).m_decorrelation_array = new_mct_records.offset(
-                (*l_mcc_record)
-                  .m_decorrelation_array
-                  .offset_from((*l_tcp).m_mct_records) as isize,
-              )
-            }
-            if !(*l_mcc_record).m_offset_array.is_null() {
-              (*l_mcc_record).m_offset_array = new_mct_records.offset(
-                (*l_mcc_record)
-                  .m_offset_array
-                  .offset_from((*l_tcp).m_mct_records) as isize,
-              )
-            }
-            i += 1;
-          }
-        }
-        (*l_tcp).m_mct_records = new_mct_records;
-        l_mct_data = (*l_tcp)
-          .m_mct_records
-          .offset((*l_tcp).m_nb_mct_records as isize);
-        memset(
-          l_mct_data as *mut core::ffi::c_void,
-          0i32,
-          ((*l_tcp)
-            .m_nb_max_mct_records
-            .wrapping_sub((*l_tcp).m_nb_mct_records) as usize)
-            .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
-        );
-      }
-      l_mct_data = (*l_tcp)
-        .m_mct_records
-        .offset((*l_tcp).m_nb_mct_records as isize);
-      (*l_tcp).m_nb_mct_records = (*l_tcp).m_nb_mct_records.wrapping_add(1)
+    if l_mct_idx == l_tcp_ref.m_mct_records.len() {
+      l_tcp_ref.m_mct_records.push(Default::default());
     }
-    if !(*l_mct_data).m_data.is_null() {
-      opj_free((*l_mct_data).m_data as *mut core::ffi::c_void);
-      (*l_mct_data).m_data = core::ptr::null_mut::<OPJ_BYTE>();
-      (*l_mct_data).m_data_size = 0 as OPJ_UINT32
-    }
-    (*l_mct_data).m_index = l_indix;
-    (*l_mct_data).m_array_type = (l_tmp >> 8i32 & 3u32) as J2K_MCT_ARRAY_TYPE;
-    (*l_mct_data).m_element_type = MCTElementType::new(l_tmp >> 10i32 & 3u32);
+    let l_mct_data = &mut l_tcp_ref.m_mct_records[l_mct_idx];
+    l_mct_data.m_index = l_indix;
+    l_mct_data.m_array_type = (l_tmp >> 8i32 & 3u32) as J2K_MCT_ARRAY_TYPE;
+    l_mct_data.m_element_type = MCTElementType::new(l_tmp >> 10i32 & 3u32);
     opj_read_bytes(p_header_data, &mut l_tmp, 2 as OPJ_UINT32);
     p_header_data = p_header_data.offset(2);
     if l_tmp != 0u32 {
@@ -5136,17 +5067,10 @@ fn opj_j2k_read_mct(
       return 1i32;
     }
     p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(6u32) as OPJ_UINT32;
-    (*l_mct_data).m_data = opj_malloc(p_header_size as size_t) as *mut OPJ_BYTE;
-    if (*l_mct_data).m_data.is_null() {
-      event_msg!(p_manager, EVT_ERROR, "Error reading MCT marker\n",);
-      return 0i32;
-    }
-    memcpy(
-      (*l_mct_data).m_data as *mut core::ffi::c_void,
-      p_header_data as *const core::ffi::c_void,
-      p_header_size as usize,
-    );
-    (*l_mct_data).m_data_size = p_header_size;
+    l_mct_data.m_data.clear();
+    l_mct_data
+      .m_data
+      .extend_from_slice(core::slice::from_raw_parts(p_header_data, p_header_size as usize));
     1i32
   }
 }
@@ -5160,7 +5084,8 @@ fn opj_j2k_read_mct(
 */
 fn opj_j2k_write_mcc_record(
   mut p_j2k: &mut opj_j2k,
-  mut p_mcc_record: *mut opj_simple_mcc_decorrelation_data,
+  p_mcc_record: &opj_simple_mcc_decorrelation_data,
+  mct_records: &[opj_mct_data],
   mut p_stream: &mut Stream,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -5174,14 +5099,14 @@ fn opj_j2k_write_mcc_record(
     /* preconditions */
     /* Lmcc */
 
-    if (*p_mcc_record).m_nb_comps > 255u32 {
+    if p_mcc_record.m_nb_comps > 255u32 {
       l_nb_bytes_for_comp = 2 as OPJ_UINT32;
       l_mask = 0x8000 as OPJ_UINT32
     } else {
       l_nb_bytes_for_comp = 1 as OPJ_UINT32;
       l_mask = 0 as OPJ_UINT32
     }
-    l_mcc_size = (*p_mcc_record)
+    l_mcc_size = p_mcc_record
       .m_nb_comps
       .wrapping_mul(2u32)
       .wrapping_mul(l_nb_bytes_for_comp)
@@ -5201,7 +5126,7 @@ fn opj_j2k_write_mcc_record(
     /* first marker */
     opj_write_bytes(l_current_data, 0 as OPJ_UINT32, 2 as OPJ_UINT32); /* Zmcc */
     l_current_data = l_current_data.offset(2); /* Imcc -> no need for other values, take the first */
-    opj_write_bytes(l_current_data, (*p_mcc_record).m_index, 1 as OPJ_UINT32);
+    opj_write_bytes(l_current_data, p_mcc_record.m_index, 1 as OPJ_UINT32);
     l_current_data = l_current_data.offset(1);
     /* only one marker atm */
     opj_write_bytes(l_current_data, 0 as OPJ_UINT32, 2 as OPJ_UINT32); /* Ymcc */
@@ -5212,34 +5137,34 @@ fn opj_j2k_write_mcc_record(
     l_current_data = l_current_data.offset(1); /* Mmcci number of output components involved and size for each component offset = 8 bits */
     opj_write_bytes(
       l_current_data,
-      (*p_mcc_record).m_nb_comps | l_mask,
+      p_mcc_record.m_nb_comps | l_mask,
       2 as OPJ_UINT32,
     ); /* Wmccij Component offset*/
     l_current_data = l_current_data.offset(2); /* Tmcci : use MCT defined as number 1 and irreversible array based. */
     i = 0 as OPJ_UINT32;
-    while i < (*p_mcc_record).m_nb_comps {
+    while i < p_mcc_record.m_nb_comps {
       opj_write_bytes(l_current_data, i, l_nb_bytes_for_comp);
       l_current_data = l_current_data.offset(l_nb_bytes_for_comp as isize);
       i += 1;
     }
     opj_write_bytes(
       l_current_data,
-      (*p_mcc_record).m_nb_comps | l_mask,
+      p_mcc_record.m_nb_comps | l_mask,
       2 as OPJ_UINT32,
     );
     l_current_data = l_current_data.offset(2);
     i = 0 as OPJ_UINT32;
-    while i < (*p_mcc_record).m_nb_comps {
+    while i < p_mcc_record.m_nb_comps {
       opj_write_bytes(l_current_data, i, l_nb_bytes_for_comp);
       l_current_data = l_current_data.offset(l_nb_bytes_for_comp as isize);
       i += 1;
     }
-    l_tmcc = ((!(*p_mcc_record).m_is_irreversible) as core::ffi::c_uint & 1u32) << 16i32;
-    if !(*p_mcc_record).m_decorrelation_array.is_null() {
-      l_tmcc |= (*(*p_mcc_record).m_decorrelation_array).m_index
+    l_tmcc = ((!p_mcc_record.m_is_irreversible) as core::ffi::c_uint & 1u32) << 16i32;
+    if let Some(deco_idx) = p_mcc_record.m_decorrelation_array {
+      l_tmcc |= mct_records[deco_idx].m_index
     }
-    if !(*p_mcc_record).m_offset_array.is_null() {
-      l_tmcc |= (*(*p_mcc_record).m_offset_array).m_index << 8i32
+    if let Some(offset_idx) = p_mcc_record.m_offset_array {
+      l_tmcc |= mct_records[offset_idx].m_index << 8i32
     }
     opj_write_bytes(l_current_data, l_tmcc, 3 as OPJ_UINT32);
     l_current_data = l_current_data.offset(3);
@@ -5275,19 +5200,21 @@ fn opj_j2k_read_mcc(
     let mut l_tmp: OPJ_UINT32 = 0;
     let mut l_indix: OPJ_UINT32 = 0;
     let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_mcc_record = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-    let mut l_mct_data = core::ptr::null_mut::<opj_mct_data_t>();
     let mut l_nb_collections: OPJ_UINT32 = 0;
     let mut l_nb_comps: OPJ_UINT32 = 0;
     let mut l_nb_bytes_by_comp: OPJ_UINT32 = 0;
-    let mut l_new_mcc = 0i32;
     /* preconditions */
 
     assert!(!p_header_data.is_null());
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     if p_header_size < 2u32 {
       event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
@@ -5310,57 +5237,21 @@ fn opj_j2k_read_mcc(
     }
     opj_read_bytes(p_header_data, &mut l_indix, 1 as OPJ_UINT32);
     p_header_data = p_header_data.offset(1);
-    l_mcc_record = (*l_tcp).m_mcc_records;
-    i = 0 as OPJ_UINT32;
-    while i < (*l_tcp).m_nb_mcc_records {
-      if (*l_mcc_record).m_index == l_indix {
+    /* find an existing record with this index, or append a fresh one */
+    let l_tcp_ref = unsafe { &mut *l_tcp };
+    let mut l_mcc_idx: usize = 0;
+    while l_mcc_idx < l_tcp_ref.m_mcc_records.len() {
+      if l_tcp_ref.m_mcc_records[l_mcc_idx].m_index == l_indix {
         break;
       }
-      l_mcc_record = l_mcc_record.offset(1);
-      i += 1;
+      l_mcc_idx += 1;
     }
     /* * NOT FOUND */
-    if i == (*l_tcp).m_nb_mcc_records {
-      if (*l_tcp).m_nb_mcc_records == (*l_tcp).m_nb_max_mcc_records {
-        let mut new_mcc_records = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-        (*l_tcp).m_nb_max_mcc_records =
-          ((*l_tcp).m_nb_max_mcc_records as core::ffi::c_uint).wrapping_add(10u32) as OPJ_UINT32;
-        new_mcc_records = opj_realloc(
-          (*l_tcp).m_mcc_records as *mut core::ffi::c_void,
-          ((*l_tcp).m_nb_max_mcc_records as usize)
-            .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>()),
-        ) as *mut opj_simple_mcc_decorrelation_data_t;
-        if new_mcc_records.is_null() {
-          opj_free((*l_tcp).m_mcc_records as *mut core::ffi::c_void);
-          (*l_tcp).m_mcc_records = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-          (*l_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
-          (*l_tcp).m_nb_mcc_records = 0 as OPJ_UINT32;
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Not enough memory to read MCC marker\n",
-          );
-          return 0i32;
-        }
-        (*l_tcp).m_mcc_records = new_mcc_records;
-        l_mcc_record = (*l_tcp)
-          .m_mcc_records
-          .offset((*l_tcp).m_nb_mcc_records as isize);
-        memset(
-          l_mcc_record as *mut core::ffi::c_void,
-          0i32,
-          ((*l_tcp)
-            .m_nb_max_mcc_records
-            .wrapping_sub((*l_tcp).m_nb_mcc_records) as usize)
-            .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>()),
-        );
-      }
-      l_mcc_record = (*l_tcp)
-        .m_mcc_records
-        .offset((*l_tcp).m_nb_mcc_records as isize);
-      l_new_mcc = 1i32
+    if l_mcc_idx == l_tcp_ref.m_mcc_records.len() {
+      l_tcp_ref.m_mcc_records.push(Default::default());
     }
-    (*l_mcc_record).m_index = l_indix;
+    let l_mcc_record = &mut l_tcp_ref.m_mcc_records[l_mcc_idx];
+    l_mcc_record.m_index = l_indix;
     /* only one marker atm */
     opj_read_bytes(p_header_data, &mut l_tmp, 2 as OPJ_UINT32); /* Ymcc */
     p_header_data = p_header_data.offset(2); /* Qmcc -> number of collections -> 1 */
@@ -5403,10 +5294,10 @@ fn opj_j2k_read_mcc(
       p_header_data = p_header_data.offset(2);
       p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(3u32) as OPJ_UINT32;
       l_nb_bytes_by_comp = (1u32).wrapping_add(l_nb_comps >> 15i32);
-      (*l_mcc_record).m_nb_comps = l_nb_comps & 0x7fffu32;
+      l_mcc_record.m_nb_comps = l_nb_comps & 0x7fffu32;
       if p_header_size
         < l_nb_bytes_by_comp
-          .wrapping_mul((*l_mcc_record).m_nb_comps)
+          .wrapping_mul(l_mcc_record.m_nb_comps)
           .wrapping_add(2u32)
       {
         event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
@@ -5414,11 +5305,11 @@ fn opj_j2k_read_mcc(
       }
       p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(
         l_nb_bytes_by_comp
-          .wrapping_mul((*l_mcc_record).m_nb_comps)
+          .wrapping_mul(l_mcc_record.m_nb_comps)
           .wrapping_add(2u32),
       ) as OPJ_UINT32;
       j = 0 as OPJ_UINT32;
-      while j < (*l_mcc_record).m_nb_comps {
+      while j < l_mcc_record.m_nb_comps {
         opj_read_bytes(p_header_data, &mut l_tmp, l_nb_bytes_by_comp);
         p_header_data = p_header_data.offset(l_nb_bytes_by_comp as isize);
         if l_tmp != j {
@@ -5435,7 +5326,7 @@ fn opj_j2k_read_mcc(
       p_header_data = p_header_data.offset(2);
       l_nb_bytes_by_comp = (1u32).wrapping_add(l_nb_comps >> 15i32);
       l_nb_comps &= 0x7fffu32;
-      if l_nb_comps != (*l_mcc_record).m_nb_comps {
+      if l_nb_comps != l_mcc_record.m_nb_comps {
         event_msg!(
           p_manager,
           EVT_WARNING,
@@ -5445,7 +5336,7 @@ fn opj_j2k_read_mcc(
       }
       if p_header_size
         < l_nb_bytes_by_comp
-          .wrapping_mul((*l_mcc_record).m_nb_comps)
+          .wrapping_mul(l_mcc_record.m_nb_comps)
           .wrapping_add(3u32)
       {
         event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
@@ -5453,11 +5344,11 @@ fn opj_j2k_read_mcc(
       }
       p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(
         l_nb_bytes_by_comp
-          .wrapping_mul((*l_mcc_record).m_nb_comps)
+          .wrapping_mul(l_mcc_record.m_nb_comps)
           .wrapping_add(3u32),
       ) as OPJ_UINT32;
       j = 0 as OPJ_UINT32;
-      while j < (*l_mcc_record).m_nb_comps {
+      while j < l_mcc_record.m_nb_comps {
         opj_read_bytes(p_header_data, &mut l_tmp, l_nb_bytes_by_comp);
         p_header_data = p_header_data.offset(l_nb_bytes_by_comp as isize);
         if l_tmp != j {
@@ -5472,43 +5363,35 @@ fn opj_j2k_read_mcc(
       }
       opj_read_bytes(p_header_data, &mut l_tmp, 3 as OPJ_UINT32);
       p_header_data = p_header_data.offset(3);
-      (*l_mcc_record).m_is_irreversible = l_tmp >> 16i32 & 1u32 == 0;
-      (*l_mcc_record).m_decorrelation_array = core::ptr::null_mut::<opj_mct_data_t>();
-      (*l_mcc_record).m_offset_array = core::ptr::null_mut::<opj_mct_data_t>();
+      l_mcc_record.m_is_irreversible = l_tmp >> 16i32 & 1u32 == 0;
+      l_mcc_record.m_decorrelation_array = None;
+      l_mcc_record.m_offset_array = None;
       l_indix = l_tmp & 0xffu32;
       if l_indix != 0u32 {
-        l_mct_data = (*l_tcp).m_mct_records;
-        j = 0 as OPJ_UINT32;
-        while j < (*l_tcp).m_nb_mct_records {
-          if (*l_mct_data).m_index == l_indix {
-            (*l_mcc_record).m_decorrelation_array = l_mct_data;
-            break;
-          } else {
-            l_mct_data = l_mct_data.offset(1);
-            j += 1;
+        match (*l_tcp)
+          .m_mct_records
+          .iter()
+          .position(|rec| rec.m_index == l_indix)
+        {
+          Some(pos) => l_mcc_record.m_decorrelation_array = Some(pos),
+          None => {
+            event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
+            return 0i32;
           }
-        }
-        if (*l_mcc_record).m_decorrelation_array.is_null() {
-          event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
-          return 0i32;
         }
       }
       l_indix = l_tmp >> 8i32 & 0xffu32;
       if l_indix != 0u32 {
-        l_mct_data = (*l_tcp).m_mct_records;
-        j = 0 as OPJ_UINT32;
-        while j < (*l_tcp).m_nb_mct_records {
-          if (*l_mct_data).m_index == l_indix {
-            (*l_mcc_record).m_offset_array = l_mct_data;
-            break;
-          } else {
-            l_mct_data = l_mct_data.offset(1);
-            j += 1;
+        match (*l_tcp)
+          .m_mct_records
+          .iter()
+          .position(|rec| rec.m_index == l_indix)
+        {
+          Some(pos) => l_mcc_record.m_offset_array = Some(pos),
+          None => {
+            event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
+            return 0i32;
           }
-        }
-        if (*l_mcc_record).m_offset_array.is_null() {
-          event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
-          return 0i32;
         }
       }
       i += 1;
@@ -5516,9 +5399,6 @@ fn opj_j2k_read_mcc(
     if p_header_size != 0u32 {
       event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
       return 0i32;
-    }
-    if l_new_mcc != 0 {
-      (*l_tcp).m_nb_mcc_records = (*l_tcp).m_nb_mcc_records.wrapping_add(1)
     }
     1i32
   }
@@ -5539,13 +5419,11 @@ fn opj_j2k_write_mco(
     let mut l_current_data = core::ptr::null_mut::<OPJ_BYTE>();
     let mut l_mco_size: OPJ_UINT32 = 0;
     let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_mcc_record = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-    let mut i: OPJ_UINT32 = 0;
     /* preconditions */
     /* Lmco */
     /* Imco -> use the mcc indicated by 1*/
     l_tcp = p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize);
-    l_mco_size = (5u32).wrapping_add((*l_tcp).m_nb_mcc_records);
+    l_mco_size = (5u32).wrapping_add((*l_tcp).m_mcc_records.len() as OPJ_UINT32);
     l_current_data = p_j2k
       .m_specific_param
       .m_encoder
@@ -5558,15 +5436,15 @@ fn opj_j2k_write_mco(
       2 as OPJ_UINT32,
     );
     l_current_data = l_current_data.offset(2);
-    opj_write_bytes(l_current_data, (*l_tcp).m_nb_mcc_records, 1 as OPJ_UINT32);
+    opj_write_bytes(
+      l_current_data,
+      (*l_tcp).m_mcc_records.len() as OPJ_UINT32,
+      1 as OPJ_UINT32,
+    );
     l_current_data = l_current_data.offset(1);
-    l_mcc_record = (*l_tcp).m_mcc_records;
-    i = 0 as OPJ_UINT32;
-    while i < (*l_tcp).m_nb_mcc_records {
-      opj_write_bytes(l_current_data, (*l_mcc_record).m_index, 1 as OPJ_UINT32);
+    for l_mcc_record in &(*l_tcp).m_mcc_records {
+      opj_write_bytes(l_current_data, l_mcc_record.m_index, 1 as OPJ_UINT32);
       l_current_data = l_current_data.offset(1);
-      l_mcc_record = l_mcc_record.offset(1);
-      i += 1;
     }
     if opj_stream_write_data(
       p_stream,
@@ -5616,7 +5494,12 @@ fn opj_j2k_read_mco(
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     if p_header_size < 1u32 {
       event_msg!(p_manager, EVT_ERROR, "Error reading MCO marker\n",);
@@ -5643,10 +5526,7 @@ fn opj_j2k_read_mco(
       l_tccp = l_tccp.offset(1);
       i += 1;
     }
-    if !(*l_tcp).m_mct_decoding_matrix.is_null() {
-      opj_free((*l_tcp).m_mct_decoding_matrix as *mut core::ffi::c_void);
-      (*l_tcp).m_mct_decoding_matrix = core::ptr::null_mut::<OPJ_FLOAT32>()
-    }
+    (*l_tcp).m_mct_decoding_matrix.clear();
     i = 0 as OPJ_UINT32;
     while i < l_nb_stages {
       opj_read_bytes(p_header_data, &mut l_tmp, 1 as OPJ_UINT32);
@@ -5665,88 +5545,66 @@ fn opj_j2k_add_mct(
   mut p_index: OPJ_UINT32,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_mcc_record = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-    let mut l_deco_array = core::ptr::null_mut::<opj_mct_data_t>();
-    let mut l_offset_array = core::ptr::null_mut::<opj_mct_data_t>();
     let mut l_data_size: OPJ_UINT32 = 0;
-    let mut l_mct_size: OPJ_UINT32 = 0;
-    let mut l_offset_size: OPJ_UINT32 = 0;
     let mut l_nb_elem: OPJ_UINT32 = 0;
-    let mut l_offset_data = core::ptr::null_mut::<OPJ_UINT32>();
-    let mut l_current_offset_data = core::ptr::null_mut::<OPJ_UINT32>();
-    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
     /* preconditions */
     assert!(!p_tcp.is_null());
-    l_mcc_record = (*p_tcp).m_mcc_records;
-    i = 0 as OPJ_UINT32;
-    while i < (*p_tcp).m_nb_mcc_records {
-      if (*l_mcc_record).m_index == p_index {
-        break;
-      }
-      i += 1;
-    }
-    if i == (*p_tcp).m_nb_mcc_records {
-      /* * element discarded **/
+    let p_tcp_ref = unsafe { &mut *p_tcp };
+    /* find the MCC record with this index */
+    let Some(l_mcc_idx) = p_tcp_ref
+      .m_mcc_records
+      .iter()
+      .position(|rec| rec.m_index == p_index)
+    else {
+      /* element discarded */
+      return 1i32;
+    };
+    if p_tcp_ref.m_mcc_records[l_mcc_idx].m_nb_comps != p_image.numcomps {
+      /* do not support number of comps != image */
       return 1i32;
     }
-    if (*l_mcc_record).m_nb_comps != p_image.numcomps {
-      /* * do not support number of comps != image */
-      return 1i32;
-    }
-    l_deco_array = (*l_mcc_record).m_decorrelation_array;
-    if !l_deco_array.is_null() {
-      l_data_size = (*l_deco_array)
+    let l_deco_idx = p_tcp_ref.m_mcc_records[l_mcc_idx].m_decorrelation_array;
+    if let Some(l_deco_idx) = l_deco_idx {
+      let l_deco_array = &p_tcp_ref.m_mct_records[l_deco_idx];
+      l_data_size = l_deco_array
         .m_element_type
         .size()
         .wrapping_mul(p_image.numcomps)
         .wrapping_mul(p_image.numcomps);
-      if (*l_deco_array).m_data_size != l_data_size {
+      if l_deco_array.m_data.len() as OPJ_UINT32 != l_data_size {
         return 0i32;
       }
       l_nb_elem = p_image.numcomps.wrapping_mul(p_image.numcomps);
-      l_mct_size = l_nb_elem.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
-      (*p_tcp).m_mct_decoding_matrix = opj_malloc(l_mct_size as size_t) as *mut OPJ_FLOAT32;
-      if (*p_tcp).m_mct_decoding_matrix.is_null() {
-        return 0i32;
-      }
-      (*l_deco_array).m_element_type.read_to_float(
-        (*l_deco_array).m_data as *const core::ffi::c_void,
-        (*p_tcp).m_mct_decoding_matrix as *mut core::ffi::c_void,
+      p_tcp_ref.m_mct_decoding_matrix.clear();
+      p_tcp_ref
+        .m_mct_decoding_matrix
+        .resize(l_nb_elem as usize, 0.0);
+      l_deco_array.m_element_type.read_to_float(
+        l_deco_array.m_data.as_ptr() as *const core::ffi::c_void,
+        p_tcp_ref.m_mct_decoding_matrix.as_mut_ptr() as *mut core::ffi::c_void,
         l_nb_elem,
       );
     }
-    l_offset_array = (*l_mcc_record).m_offset_array;
-    if !l_offset_array.is_null() {
-      l_data_size = (*l_offset_array)
+    let l_offset_idx = p_tcp_ref.m_mcc_records[l_mcc_idx].m_offset_array;
+    if let Some(l_offset_idx) = l_offset_idx {
+      let l_offset_array = &p_tcp_ref.m_mct_records[l_offset_idx];
+      l_data_size = l_offset_array
         .m_element_type
         .size()
         .wrapping_mul(p_image.numcomps);
-      if (*l_offset_array).m_data_size != l_data_size {
+      if l_offset_array.m_data.len() as OPJ_UINT32 != l_data_size {
         return 0i32;
       }
       l_nb_elem = p_image.numcomps;
-      l_offset_size = l_nb_elem.wrapping_mul(core::mem::size_of::<OPJ_UINT32>() as OPJ_UINT32);
-      l_offset_data = opj_malloc(l_offset_size as size_t) as *mut OPJ_UINT32;
-      if l_offset_data.is_null() {
-        return 0i32;
-      }
-      (*l_offset_array).m_element_type.read_to_int32(
-        (*l_offset_array).m_data as *const core::ffi::c_void,
-        l_offset_data as *mut core::ffi::c_void,
+      let mut l_offset_data: Vec<OPJ_UINT32> = vec![0; l_nb_elem as usize];
+      l_offset_array.m_element_type.read_to_int32(
+        l_offset_array.m_data.as_ptr() as *const core::ffi::c_void,
+        l_offset_data.as_mut_ptr() as *mut core::ffi::c_void,
         l_nb_elem,
       );
-      l_tccp = (*p_tcp).tccps.as_mut_ptr();
-      l_current_offset_data = l_offset_data;
-      i = 0 as OPJ_UINT32;
-      while i < p_image.numcomps {
-        let fresh22 = l_current_offset_data;
-        l_current_offset_data = l_current_offset_data.offset(1);
-        (*l_tccp).m_dc_level_shift = *fresh22 as OPJ_INT32;
-        l_tccp = l_tccp.offset(1);
-        i += 1;
+      for i in 0..p_image.numcomps as usize {
+        p_tcp_ref.tccps[i].m_dc_level_shift = l_offset_data[i] as OPJ_INT32;
       }
-      opj_free(l_offset_data as *mut core::ffi::c_void);
     }
     1i32
   }
@@ -7230,62 +7088,26 @@ pub(crate) fn opj_j2k_setup_encoder(
         .resize(image.numcomps as usize, Default::default());
       if !parameters.mct_data.is_null() {
         let numcomps = image.numcomps;
-        let mut lMctLen = numcomps * numcomps;
-        let mut lMctSize = lMctLen.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
-        let mut lTmpBuf = opj_malloc(lMctSize as size_t) as *mut OPJ_FLOAT32;
-        let mut l_dc_shift =
+        let lMctLen = numcomps * numcomps;
+        let lMctSize = lMctLen.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
+        let l_dc_shift =
           (parameters.mct_data as *mut OPJ_BYTE).offset(lMctSize as isize) as *mut OPJ_INT32;
-        if lTmpBuf.is_null() {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Not enough memory to allocate temp buffer\n",
-          );
-          return 0i32;
-        }
+        /* copy the caller-provided coding matrix into a scratch buffer */
+        let mut lTmpBuf: Vec<OPJ_FLOAT32> = core::slice::from_raw_parts(
+          parameters.mct_data as *const OPJ_FLOAT32,
+          lMctLen as usize,
+        )
+        .to_vec();
         (*tcp).mct = 2 as OPJ_UINT32;
-        (*tcp).m_mct_coding_matrix = opj_malloc(lMctSize as size_t) as *mut OPJ_FLOAT32;
-        if (*tcp).m_mct_coding_matrix.is_null() {
-          opj_free(lTmpBuf as *mut core::ffi::c_void);
-          lTmpBuf = core::ptr::null_mut::<OPJ_FLOAT32>();
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Not enough memory to allocate encoder MCT coding matrix \n",
-          );
-          return 0i32;
-        }
-        memcpy(
-          (*tcp).m_mct_coding_matrix as *mut core::ffi::c_void,
-          parameters.mct_data,
-          lMctSize as usize,
-        );
-        memcpy(
-          lTmpBuf as *mut core::ffi::c_void,
-          parameters.mct_data,
-          lMctSize as usize,
-        );
-        (*tcp).m_mct_decoding_matrix = opj_malloc(lMctSize as size_t) as *mut OPJ_FLOAT32;
-        if (*tcp).m_mct_decoding_matrix.is_null() {
-          opj_free(lTmpBuf as *mut core::ffi::c_void);
-          lTmpBuf = core::ptr::null_mut::<OPJ_FLOAT32>();
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Not enough memory to allocate encoder MCT decoding matrix \n",
-          );
-          return 0i32;
-        }
+        (*tcp).m_mct_coding_matrix.clear();
+        (*tcp).m_mct_coding_matrix.extend_from_slice(&lTmpBuf);
+        (*tcp).m_mct_decoding_matrix.clear();
+        (*tcp).m_mct_decoding_matrix.resize(lMctLen as usize, 0.0);
         if !opj_matrix_inversion_f(
-          core::slice::from_raw_parts_mut(lTmpBuf as *mut f32, lMctLen as usize),
-          core::slice::from_raw_parts_mut(
-            (*tcp).m_mct_decoding_matrix as *mut f32,
-            lMctLen as usize,
-          ),
+          &mut lTmpBuf,
+          &mut (*tcp).m_mct_decoding_matrix,
           numcomps as usize,
         ) {
-          opj_free(lTmpBuf as *mut core::ffi::c_void);
-          lTmpBuf = core::ptr::null_mut::<OPJ_FLOAT32>();
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -7293,28 +7115,13 @@ pub(crate) fn opj_j2k_setup_encoder(
           );
           return 0i32;
         }
-        (*tcp).mct_norms =
-          opj_malloc((image.numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT64>()))
-            as *mut OPJ_FLOAT64;
-        if (*tcp).mct_norms.is_null() {
-          opj_free(lTmpBuf as *mut core::ffi::c_void);
-          lTmpBuf = core::ptr::null_mut::<OPJ_FLOAT32>();
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Not enough memory to allocate encoder MCT norms \n",
-          );
-          return 0i32;
-        }
+        (*tcp).mct_norms.clear();
+        (*tcp).mct_norms.resize(image.numcomps as usize, 0.0);
         opj_calculate_norms(
-          core::slice::from_raw_parts_mut((*tcp).mct_norms, image.numcomps as usize),
+          &mut (*tcp).mct_norms,
           image.numcomps,
-          core::slice::from_raw_parts(
-            (*tcp).m_mct_decoding_matrix as *const OPJ_FLOAT32,
-            (image.numcomps as usize) * (image.numcomps as usize),
-          ),
+          &(*tcp).m_mct_decoding_matrix,
         );
-        opj_free(lTmpBuf as *mut core::ffi::c_void);
         i = 0 as OPJ_UINT32;
         while i < image.numcomps {
           let mut tccp: *mut opj_tccp_t = (*tcp).tccps.as_mut_ptr().offset(i as isize);
@@ -7733,8 +7540,7 @@ fn opj_j2k_mct_validation(
       while i < l_nb_tiles {
         if (*l_tcp).mct == 2u32 {
           let mut l_tccp = (*l_tcp).tccps.as_ptr();
-          l_is_valid &= ((*l_tcp).m_mct_coding_matrix != core::ptr::null_mut::<OPJ_FLOAT32>())
-            as core::ffi::c_int;
+          l_is_valid &= (!(*l_tcp).m_mct_coding_matrix.is_empty()) as core::ffi::c_int;
           j = 0 as OPJ_UINT32;
           while j < (*p_j2k.m_private_image).numcomps {
             l_is_valid &= ((*l_tccp).qmfbid & 1u32 == 0) as core::ffi::c_int;
@@ -7755,195 +7561,66 @@ pub(crate) fn opj_j2k_setup_mct_encoding(
   mut p_image: &mut opj_image,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut i: OPJ_UINT32 = 0;
     let mut l_indix = 1 as OPJ_UINT32;
-    let mut l_mct_deco_data = core::ptr::null_mut::<opj_mct_data_t>();
-    let mut l_mct_offset_data = core::ptr::null_mut::<opj_mct_data_t>();
-    let mut l_mcc_data = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-    let mut l_mct_size: OPJ_UINT32 = 0;
-    let mut l_nb_elem: OPJ_UINT32 = 0;
-    let mut l_data = core::ptr::null_mut::<OPJ_FLOAT32>();
-    let mut l_current_data = core::ptr::null_mut::<OPJ_FLOAT32>();
-    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
     /* preconditions */
     assert!(!p_tcp.is_null());
-    if (*p_tcp).mct != 2u32 {
+    let p_tcp_ref = unsafe { &mut *p_tcp };
+    if p_tcp_ref.mct != 2u32 {
       return 1i32;
     }
-    if !(*p_tcp).m_mct_decoding_matrix.is_null() {
-      if (*p_tcp).m_nb_mct_records == (*p_tcp).m_nb_max_mct_records {
-        let mut new_mct_records = core::ptr::null_mut::<opj_mct_data_t>();
-        (*p_tcp).m_nb_max_mct_records =
-          ((*p_tcp).m_nb_max_mct_records as core::ffi::c_uint).wrapping_add(10u32) as OPJ_UINT32;
-        new_mct_records = opj_realloc(
-          (*p_tcp).m_mct_records as *mut core::ffi::c_void,
-          ((*p_tcp).m_nb_max_mct_records as usize)
-            .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
-        ) as *mut opj_mct_data_t;
-        if new_mct_records.is_null() {
-          opj_free((*p_tcp).m_mct_records as *mut core::ffi::c_void);
-          (*p_tcp).m_mct_records = core::ptr::null_mut::<opj_mct_data_t>();
-          (*p_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
-          (*p_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
-          /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
-          return 0i32;
-        }
-        (*p_tcp).m_mct_records = new_mct_records;
-        l_mct_deco_data = (*p_tcp)
-          .m_mct_records
-          .offset((*p_tcp).m_nb_mct_records as isize);
-        memset(
-          l_mct_deco_data as *mut core::ffi::c_void,
-          0i32,
-          ((*p_tcp)
-            .m_nb_max_mct_records
-            .wrapping_sub((*p_tcp).m_nb_mct_records) as usize)
-            .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
-        );
-      }
-      l_mct_deco_data = (*p_tcp)
-        .m_mct_records
-        .offset((*p_tcp).m_nb_mct_records as isize);
-      if !(*l_mct_deco_data).m_data.is_null() {
-        opj_free((*l_mct_deco_data).m_data as *mut core::ffi::c_void);
-        (*l_mct_deco_data).m_data = core::ptr::null_mut::<OPJ_BYTE>()
-      }
+    /* decorrelation record, if a decoding matrix was provided */
+    let mut l_mct_deco_idx: Option<usize> = None;
+    if !p_tcp_ref.m_mct_decoding_matrix.is_empty() {
+      p_tcp_ref.m_mct_records.push(Default::default());
+      l_mct_deco_idx = Some(p_tcp_ref.m_mct_records.len() - 1);
+      let l_mct_deco_data = &mut p_tcp_ref.m_mct_records[l_mct_deco_idx.unwrap()];
       let fresh26 = l_indix;
       l_indix = l_indix.wrapping_add(1);
-      (*l_mct_deco_data).m_index = fresh26;
-      (*l_mct_deco_data).m_array_type = MCT_TYPE_DECORRELATION;
-      (*l_mct_deco_data).m_element_type = MCTElementType::FLOAT;
-      l_nb_elem = p_image.numcomps.wrapping_mul(p_image.numcomps);
-      l_mct_size = l_nb_elem.wrapping_mul((*l_mct_deco_data).m_element_type.size());
-      (*l_mct_deco_data).m_data = opj_malloc(l_mct_size as size_t) as *mut OPJ_BYTE;
-      if (*l_mct_deco_data).m_data.is_null() {
-        return 0i32;
-      }
-      (*l_mct_deco_data).m_element_type.write_from_float(
-        (*p_tcp).m_mct_decoding_matrix as *const core::ffi::c_void,
-        (*l_mct_deco_data).m_data as *mut core::ffi::c_void,
+      l_mct_deco_data.m_index = fresh26;
+      l_mct_deco_data.m_array_type = MCT_TYPE_DECORRELATION;
+      l_mct_deco_data.m_element_type = MCTElementType::FLOAT;
+      let l_nb_elem = p_image.numcomps.wrapping_mul(p_image.numcomps);
+      let l_mct_size = l_nb_elem.wrapping_mul(l_mct_deco_data.m_element_type.size());
+      l_mct_deco_data.m_data.clear();
+      l_mct_deco_data.m_data.resize(l_mct_size as usize, 0);
+      l_mct_deco_data.m_element_type.write_from_float(
+        p_tcp_ref.m_mct_decoding_matrix.as_ptr() as *const core::ffi::c_void,
+        l_mct_deco_data.m_data.as_mut_ptr() as *mut core::ffi::c_void,
         l_nb_elem,
       );
-      (*l_mct_deco_data).m_data_size = l_mct_size;
-      (*p_tcp).m_nb_mct_records = (*p_tcp).m_nb_mct_records.wrapping_add(1)
     }
-    if (*p_tcp).m_nb_mct_records == (*p_tcp).m_nb_max_mct_records {
-      let mut new_mct_records_0 = core::ptr::null_mut::<opj_mct_data_t>();
-      (*p_tcp).m_nb_max_mct_records =
-        ((*p_tcp).m_nb_max_mct_records as core::ffi::c_uint).wrapping_add(10u32) as OPJ_UINT32;
-      new_mct_records_0 = opj_realloc(
-        (*p_tcp).m_mct_records as *mut core::ffi::c_void,
-        ((*p_tcp).m_nb_max_mct_records as usize)
-          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
-      ) as *mut opj_mct_data_t;
-      if new_mct_records_0.is_null() {
-        opj_free((*p_tcp).m_mct_records as *mut core::ffi::c_void);
-        (*p_tcp).m_mct_records = core::ptr::null_mut::<opj_mct_data_t>();
-        (*p_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
-        (*p_tcp).m_nb_mct_records = 0 as OPJ_UINT32;
-        /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
-        return 0i32;
-      }
-      (*p_tcp).m_mct_records = new_mct_records_0;
-      l_mct_offset_data = (*p_tcp)
-        .m_mct_records
-        .offset((*p_tcp).m_nb_mct_records as isize);
-      memset(
-        l_mct_offset_data as *mut core::ffi::c_void,
-        0i32,
-        ((*p_tcp)
-          .m_nb_max_mct_records
-          .wrapping_sub((*p_tcp).m_nb_mct_records) as usize)
-          .wrapping_mul(core::mem::size_of::<opj_mct_data_t>()),
-      );
-      if !l_mct_deco_data.is_null() {
-        l_mct_deco_data = l_mct_offset_data.offset(-1)
-      }
-    }
-    l_mct_offset_data = (*p_tcp)
-      .m_mct_records
-      .offset((*p_tcp).m_nb_mct_records as isize);
-    if !(*l_mct_offset_data).m_data.is_null() {
-      opj_free((*l_mct_offset_data).m_data as *mut core::ffi::c_void);
-      (*l_mct_offset_data).m_data = core::ptr::null_mut::<OPJ_BYTE>()
-    }
+    /* offset record holding the dc level shifts */
+    p_tcp_ref.m_mct_records.push(Default::default());
+    let l_mct_offset_idx = p_tcp_ref.m_mct_records.len() - 1;
+    let l_mct_offset_data = &mut p_tcp_ref.m_mct_records[l_mct_offset_idx];
     let fresh27 = l_indix;
     l_indix = l_indix.wrapping_add(1);
-    (*l_mct_offset_data).m_index = fresh27;
-    (*l_mct_offset_data).m_array_type = MCT_TYPE_OFFSET;
-    (*l_mct_offset_data).m_element_type = MCTElementType::FLOAT;
-    l_nb_elem = p_image.numcomps;
-    l_mct_size = l_nb_elem.wrapping_mul((*l_mct_offset_data).m_element_type.size());
-    (*l_mct_offset_data).m_data = opj_malloc(l_mct_size as size_t) as *mut OPJ_BYTE;
-    if (*l_mct_offset_data).m_data.is_null() {
-      return 0i32;
+    l_mct_offset_data.m_index = fresh27;
+    l_mct_offset_data.m_array_type = MCT_TYPE_OFFSET;
+    l_mct_offset_data.m_element_type = MCTElementType::FLOAT;
+    let l_nb_elem = p_image.numcomps;
+    let l_mct_size = l_nb_elem.wrapping_mul(l_mct_offset_data.m_element_type.size());
+    let mut l_data: Vec<OPJ_FLOAT32> = vec![0.0; l_nb_elem as usize];
+    for (i, item) in l_data.iter_mut().enumerate() {
+      *item = p_tcp_ref.tccps[i].m_dc_level_shift as OPJ_FLOAT32;
     }
-    l_data = opj_malloc((l_nb_elem as usize).wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>()))
-      as *mut OPJ_FLOAT32;
-    if l_data.is_null() {
-      opj_free((*l_mct_offset_data).m_data as *mut core::ffi::c_void);
-      (*l_mct_offset_data).m_data = core::ptr::null_mut::<OPJ_BYTE>();
-      return 0i32;
-    }
-    l_tccp = (*p_tcp).tccps.as_mut_ptr();
-    l_current_data = l_data;
-    i = 0 as OPJ_UINT32;
-    while i < l_nb_elem {
-      let fresh28 = l_current_data;
-      l_current_data = l_current_data.offset(1);
-      *fresh28 = (*l_tccp).m_dc_level_shift as OPJ_FLOAT32;
-      l_tccp = l_tccp.offset(1);
-      i += 1;
-    }
-    (*l_mct_offset_data).m_element_type.write_from_float(
-      l_data as *const core::ffi::c_void,
-      (*l_mct_offset_data).m_data as *mut core::ffi::c_void,
+    l_mct_offset_data.m_data.clear();
+    l_mct_offset_data.m_data.resize(l_mct_size as usize, 0);
+    l_mct_offset_data.m_element_type.write_from_float(
+      l_data.as_ptr() as *const core::ffi::c_void,
+      l_mct_offset_data.m_data.as_mut_ptr() as *mut core::ffi::c_void,
       l_nb_elem,
     );
-    opj_free(l_data as *mut core::ffi::c_void);
-    (*l_mct_offset_data).m_data_size = l_mct_size;
-    (*p_tcp).m_nb_mct_records = (*p_tcp).m_nb_mct_records.wrapping_add(1);
-    if (*p_tcp).m_nb_mcc_records == (*p_tcp).m_nb_max_mcc_records {
-      let mut new_mcc_records = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-      (*p_tcp).m_nb_max_mcc_records =
-        ((*p_tcp).m_nb_max_mcc_records as core::ffi::c_uint).wrapping_add(10u32) as OPJ_UINT32;
-      new_mcc_records = opj_realloc(
-        (*p_tcp).m_mcc_records as *mut core::ffi::c_void,
-        ((*p_tcp).m_nb_max_mcc_records as usize)
-          .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>()),
-      ) as *mut opj_simple_mcc_decorrelation_data_t;
-      if new_mcc_records.is_null() {
-        opj_free((*p_tcp).m_mcc_records as *mut core::ffi::c_void);
-        (*p_tcp).m_mcc_records = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-        (*p_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
-        (*p_tcp).m_nb_mcc_records = 0 as OPJ_UINT32;
-        /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
-        return 0i32;
-      }
-      (*p_tcp).m_mcc_records = new_mcc_records;
-      l_mcc_data = (*p_tcp)
-        .m_mcc_records
-        .offset((*p_tcp).m_nb_mcc_records as isize);
-      memset(
-        l_mcc_data as *mut core::ffi::c_void,
-        0i32,
-        ((*p_tcp)
-          .m_nb_max_mcc_records
-          .wrapping_sub((*p_tcp).m_nb_mcc_records) as usize)
-          .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>()),
-      );
-    }
-    l_mcc_data = (*p_tcp)
-      .m_mcc_records
-      .offset((*p_tcp).m_nb_mcc_records as isize);
-    (*l_mcc_data).m_decorrelation_array = l_mct_deco_data;
-    (*l_mcc_data).m_is_irreversible = true;
-    (*l_mcc_data).m_nb_comps = p_image.numcomps;
-    let fresh29 = l_indix;
+    /* mcc record linking the two */
+    p_tcp_ref.m_mcc_records.push(Default::default());
+    let l_mcc_idx = p_tcp_ref.m_mcc_records.len() - 1;
+    let l_mcc_data = &mut p_tcp_ref.m_mcc_records[l_mcc_idx];
+    l_mcc_data.m_decorrelation_array = l_mct_deco_idx;
+    l_mcc_data.m_is_irreversible = true;
+    l_mcc_data.m_nb_comps = p_image.numcomps;
+    l_mcc_data.m_index = l_indix;
     l_indix = l_indix.wrapping_add(1);
-    (*l_mcc_data).m_index = fresh29;
-    (*l_mcc_data).m_offset_array = l_mct_offset_data;
-    (*p_tcp).m_nb_mcc_records = (*p_tcp).m_nb_mcc_records.wrapping_add(1);
+    l_mcc_data.m_offset_array = Some(l_mct_offset_idx);
     1i32
   }
 }
@@ -8293,145 +7970,36 @@ fn opj_j2k_copy_default_tcp_and_create_tcd(
     let mut l_default_tcp = core::ptr::null_mut::<opj_tcp_t>();
     let mut l_nb_tiles: OPJ_UINT32 = 0;
     let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut l_mct_size: OPJ_UINT32 = 0;
     let mut l_image = core::ptr::null_mut::<opj_image_t>();
-    let mut l_mcc_records_size: OPJ_UINT32 = 0;
-    let mut l_mct_records_size: OPJ_UINT32 = 0;
-    let mut l_src_mct_rec = core::ptr::null_mut::<opj_mct_data_t>();
-    let mut l_dest_mct_rec = core::ptr::null_mut::<opj_mct_data_t>();
-    let mut l_src_mcc_rec = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-    let mut l_dest_mcc_rec = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-    let mut l_offset: OPJ_UINT32 = 0;
     /* preconditions */
 
     l_image = p_j2k.m_private_image;
     l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
     l_tcp = p_j2k.m_cp.tcps.as_mut_ptr();
-    l_default_tcp = p_j2k.m_specific_param.m_decoder.m_default_tcp;
-    l_mct_size = (*l_image)
-      .numcomps
-      .wrapping_mul((*l_image).numcomps)
-      .wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
+    l_default_tcp = p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t;
     /* For each tile */
     i = 0 as OPJ_UINT32;
     while i < l_nb_tiles {
       /* keep the tile-compo coding parameters of the current tile coding parameters*/
       let l_current_tccp = core::mem::take(&mut (*l_tcp).tccps);
-      /* the ppt_* fields are reset below, so drop this tile's own buffers before the
-      memcpy bit-copies (and so aliases) the default tcp's Vec headers */
-      (*l_tcp).ppt_markers = Vec::new();
-      (*l_tcp).ppt_buffer = Vec::new();
-      /*Copy default coding parameters into the current tile coding parameters*/
-      memcpy(
-        l_tcp as *mut core::ffi::c_void,
-        l_default_tcp as *const core::ffi::c_void,
-        core::mem::size_of::<opj_tcp_t>(),
-      );
+      /* Deep-copy the default coding parameters into the current tile coding parameters.
+      (The C code memcpy's the whole struct and then rebuilds every owned buffer; clone()
+      does the deep copies directly.) */
+      (*l_tcp) = (*l_default_tcp).clone();
       /* Initialize some values of the current tile coding parameters*/
       (*l_tcp).cod = false;
       (*l_tcp).ppt = false;
-      core::ptr::write(&mut (*l_tcp).ppt_markers, Vec::new());
-      core::ptr::write(&mut (*l_tcp).ppt_buffer, Vec::new());
+      (*l_tcp).ppt_markers = Vec::new();
+      (*l_tcp).ppt_buffer = Vec::new();
       (*l_tcp).ppt_data_pos = 0;
       (*l_tcp).m_current_tile_part_number = -(1i32);
-      /* Remove memory not owned by this tile in case of early error return. */
-      (*l_tcp).m_mct_decoding_matrix = core::ptr::null_mut::<OPJ_FLOAT32>();
-      (*l_tcp).m_nb_max_mct_records = 0 as OPJ_UINT32;
-      (*l_tcp).m_mct_records = core::ptr::null_mut::<opj_mct_data_t>();
-      (*l_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
-      (*l_tcp).m_mcc_records = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-      /* Reconnect the tile-compo coding parameters to the current tile coding parameters.
-      The memcpy above bit-copied the default tcp's Vec header, so overwrite it without
-      dropping to avoid aliasing that allocation. */
-      core::ptr::write(&mut (*l_tcp).tccps, l_current_tccp);
-      /* Get the mct_decoding_matrix of the dflt_tile_cp and copy them into the current tile cp*/
-      if !(*l_default_tcp).m_mct_decoding_matrix.is_null() {
-        (*l_tcp).m_mct_decoding_matrix = opj_malloc(l_mct_size as size_t) as *mut OPJ_FLOAT32;
-        if (*l_tcp).m_mct_decoding_matrix.is_null() {
-          return 0i32;
-        }
-        memcpy(
-          (*l_tcp).m_mct_decoding_matrix as *mut core::ffi::c_void,
-          (*l_default_tcp).m_mct_decoding_matrix as *const core::ffi::c_void,
-          l_mct_size as usize,
-        );
-      }
-      /* Get the mct_record of the dflt_tile_cp and copy them into the current tile cp*/
-      l_mct_records_size = (*l_default_tcp)
-        .m_nb_max_mct_records
-        .wrapping_mul(core::mem::size_of::<opj_mct_data_t>() as OPJ_UINT32);
-      (*l_tcp).m_mct_records = opj_malloc(l_mct_records_size as size_t) as *mut opj_mct_data_t;
-      if (*l_tcp).m_mct_records.is_null() {
-        return 0i32;
-      }
-      memcpy(
-        (*l_tcp).m_mct_records as *mut core::ffi::c_void,
-        (*l_default_tcp).m_mct_records as *const core::ffi::c_void,
-        l_mct_records_size as usize,
-      );
-      /* Copy the mct record data from dflt_tile_cp to the current tile*/
-      l_src_mct_rec = (*l_default_tcp).m_mct_records;
-      l_dest_mct_rec = (*l_tcp).m_mct_records;
-      j = 0 as OPJ_UINT32;
-      while j < (*l_default_tcp).m_nb_mct_records {
-        if !(*l_src_mct_rec).m_data.is_null() {
-          (*l_dest_mct_rec).m_data =
-            opj_malloc((*l_src_mct_rec).m_data_size as size_t) as *mut OPJ_BYTE;
-          if (*l_dest_mct_rec).m_data.is_null() {
-            return 0i32;
-          }
-          memcpy(
-            (*l_dest_mct_rec).m_data as *mut core::ffi::c_void,
-            (*l_src_mct_rec).m_data as *const core::ffi::c_void,
-            (*l_src_mct_rec).m_data_size as usize,
-          );
-        }
-        l_src_mct_rec = l_src_mct_rec.offset(1);
-        l_dest_mct_rec = l_dest_mct_rec.offset(1);
-        /* Update with each pass to free exactly what has been allocated on early return. */
-        (*l_tcp).m_nb_max_mct_records =
-          ((*l_tcp).m_nb_max_mct_records as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32;
-        j += 1;
-      }
-      /* Get the mcc_record of the dflt_tile_cp and copy them into the current tile cp*/
-      l_mcc_records_size = (*l_default_tcp)
-        .m_nb_max_mcc_records
-        .wrapping_mul(core::mem::size_of::<opj_simple_mcc_decorrelation_data_t>() as OPJ_UINT32);
-      (*l_tcp).m_mcc_records =
-        opj_malloc(l_mcc_records_size as size_t) as *mut opj_simple_mcc_decorrelation_data_t;
-      if (*l_tcp).m_mcc_records.is_null() {
-        return 0i32;
-      }
-      memcpy(
-        (*l_tcp).m_mcc_records as *mut core::ffi::c_void,
-        (*l_default_tcp).m_mcc_records as *const core::ffi::c_void,
-        l_mcc_records_size as usize,
-      );
-      (*l_tcp).m_nb_max_mcc_records = (*l_default_tcp).m_nb_max_mcc_records;
-      /* Copy the mcc record data from dflt_tile_cp to the current tile*/
-      l_src_mcc_rec = (*l_default_tcp).m_mcc_records;
-      l_dest_mcc_rec = (*l_tcp).m_mcc_records;
-      j = 0 as OPJ_UINT32;
-      while j < (*l_default_tcp).m_nb_max_mcc_records {
-        if !(*l_src_mcc_rec).m_decorrelation_array.is_null() {
-          l_offset = (*l_src_mcc_rec)
-            .m_decorrelation_array
-            .offset_from((*l_default_tcp).m_mct_records) as core::ffi::c_long
-            as OPJ_UINT32;
-          (*l_dest_mcc_rec).m_decorrelation_array = (*l_tcp).m_mct_records.offset(l_offset as isize)
-        }
-        if !(*l_src_mcc_rec).m_offset_array.is_null() {
-          l_offset = (*l_src_mcc_rec)
-            .m_offset_array
-            .offset_from((*l_default_tcp).m_mct_records) as core::ffi::c_long
-            as OPJ_UINT32;
-          (*l_dest_mcc_rec).m_offset_array = (*l_tcp).m_mct_records.offset(l_offset as isize)
-        }
-        l_src_mcc_rec = l_src_mcc_rec.offset(1);
-        l_dest_mcc_rec = l_dest_mcc_rec.offset(1);
-        j += 1;
-      }
+      /* Reconnect this tile's own tccps allocation, to keep buffer reuse. */
+      (*l_tcp).tccps = l_current_tccp;
       /* Copy all the dflt_tile_compo_cp to the current tile cp */
       (&mut (*l_tcp).tccps).copy_from_slice(&(&(*l_default_tcp).tccps)[..]);
       /* Move to next tile cp*/
@@ -8451,10 +8019,8 @@ impl Drop for opj_j2k {
   fn drop(&mut self) {
     unsafe {
       if self.m_is_decoder != 0 {
-        if !self.m_specific_param.m_decoder.m_default_tcp.is_null() {
-          opj_j2k_tcp_destroy(self.m_specific_param.m_decoder.m_default_tcp);
-          opj_free(self.m_specific_param.m_decoder.m_default_tcp as *mut core::ffi::c_void);
-          self.m_specific_param.m_decoder.m_default_tcp = core::ptr::null_mut::<opj_tcp_t>()
+        if let Some(mut tcp) = self.m_specific_param.m_decoder.m_default_tcp.take() {
+          opj_j2k_tcp_destroy(tcp.as_mut() as *mut opj_tcp_t);
         }
         self.m_specific_param.m_decoder.m_header_data = Vec::new();
         self.m_specific_param.m_decoder.m_comps_indices_to_decode = Vec::new();
@@ -8547,39 +8113,11 @@ fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
     (*p_tcp).ppt_markers = Vec::new();
     (*p_tcp).ppt_buffer = Vec::new();
     (*p_tcp).tccps = Vec::new();
-    if !(*p_tcp).m_mct_coding_matrix.is_null() {
-      opj_free((*p_tcp).m_mct_coding_matrix as *mut core::ffi::c_void);
-      (*p_tcp).m_mct_coding_matrix = core::ptr::null_mut::<OPJ_FLOAT32>()
-    }
-    if !(*p_tcp).m_mct_decoding_matrix.is_null() {
-      opj_free((*p_tcp).m_mct_decoding_matrix as *mut core::ffi::c_void);
-      (*p_tcp).m_mct_decoding_matrix = core::ptr::null_mut::<OPJ_FLOAT32>()
-    }
-    if !(*p_tcp).m_mcc_records.is_null() {
-      opj_free((*p_tcp).m_mcc_records as *mut core::ffi::c_void);
-      (*p_tcp).m_mcc_records = core::ptr::null_mut::<opj_simple_mcc_decorrelation_data_t>();
-      (*p_tcp).m_nb_max_mcc_records = 0 as OPJ_UINT32;
-      (*p_tcp).m_nb_mcc_records = 0 as OPJ_UINT32
-    }
-    if !(*p_tcp).m_mct_records.is_null() {
-      let mut l_mct_data = (*p_tcp).m_mct_records;
-      let mut i_0: OPJ_UINT32 = 0;
-      i_0 = 0 as OPJ_UINT32;
-      while i_0 < (*p_tcp).m_nb_mct_records {
-        if !(*l_mct_data).m_data.is_null() {
-          opj_free((*l_mct_data).m_data as *mut core::ffi::c_void);
-          (*l_mct_data).m_data = core::ptr::null_mut::<OPJ_BYTE>()
-        }
-        l_mct_data = l_mct_data.offset(1);
-        i_0 += 1;
-      }
-      opj_free((*p_tcp).m_mct_records as *mut core::ffi::c_void);
-      (*p_tcp).m_mct_records = core::ptr::null_mut::<opj_mct_data_t>()
-    }
-    if !(*p_tcp).mct_norms.is_null() {
-      opj_free((*p_tcp).mct_norms as *mut core::ffi::c_void);
-      (*p_tcp).mct_norms = core::ptr::null_mut::<OPJ_FLOAT64>()
-    }
+    (*p_tcp).m_mct_coding_matrix = Vec::new();
+    (*p_tcp).m_mct_decoding_matrix = Vec::new();
+    (*p_tcp).m_mcc_records = Vec::new();
+    (*p_tcp).m_mct_records = Vec::new();
+    (*p_tcp).mct_norms = Vec::new();
     opj_j2k_tcp_data_destroy(p_tcp);
   }
 }
@@ -9792,29 +9330,17 @@ pub(crate) fn opj_j2k_create_decompress() -> Option<opj_j2k> {
   l_j2k.m_cp.m_is_decoder = true;
   /* in the absence of JP2 boxes, consider different bit depth / sign */
   /* per component is allowed */
-  unsafe {
-    l_j2k.m_cp.allow_different_bit_depth_sign = true;
-    /* Default to using strict mode. */
-    l_j2k.m_cp.strict = 1i32;
-    l_j2k.m_specific_param.m_decoder.m_default_tcp =
-      opj_calloc(1i32 as size_t, core::mem::size_of::<opj_tcp_t>()) as *mut opj_tcp_t;
-    if l_j2k.m_specific_param.m_decoder.m_default_tcp.is_null() {
-      return None;
-    }
-    /* The calloc'd storage is raw bytes; give it a real `opj_tcp` so its owning
-    fields (e.g. the `tccps` Vec) are valid before anyone touches them. */
-    core::ptr::write(
-      l_j2k.m_specific_param.m_decoder.m_default_tcp,
-      Default::default(),
-    );
-    l_j2k.m_specific_param.m_decoder.m_header_data = vec![0u8; 1000];
-    l_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = -(1i32);
-    l_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = 0 as OPJ_OFF_T;
-    /* codestream index creation */
-    l_j2k.cstr_index = opj_j2k_create_cstr_index();
-    if l_j2k.cstr_index.is_null() {
-      return None;
-    }
+  l_j2k.m_cp.allow_different_bit_depth_sign = true;
+  /* Default to using strict mode. */
+  l_j2k.m_cp.strict = 1i32;
+  l_j2k.m_specific_param.m_decoder.m_default_tcp = Some(Box::default());
+  l_j2k.m_specific_param.m_decoder.m_header_data = vec![0u8; 1000];
+  l_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = -(1i32);
+  l_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = 0 as OPJ_OFF_T;
+  /* codestream index creation */
+  l_j2k.cstr_index = opj_j2k_create_cstr_index();
+  if l_j2k.cstr_index.is_null() {
+    return None;
   }
   Some(l_j2k)
 }
@@ -10037,7 +9563,12 @@ fn opj_j2k_read_SPCod_SPCoc(
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     /* precondition again */
     assert!(compno < (*p_j2k.m_private_image).numcomps);
@@ -10170,7 +9701,12 @@ fn opj_j2k_copy_tile_component_parameters(mut p_j2k: &mut opj_j2k) {
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     l_ref_tccp = (*l_tcp).tccps.as_mut_ptr();
     l_copied_tccp = l_ref_tccp.offset(1);
@@ -10443,7 +9979,12 @@ fn opj_j2k_read_SQcd_SQcc(
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     /* precondition again*/
     assert!(p_comp_no < (*p_j2k.m_private_image).numcomps);
@@ -10547,7 +10088,12 @@ fn opj_j2k_copy_tile_quantization_parameters(mut p_j2k: &mut opj_j2k) {
     l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
       (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
     } else {
-      p_j2k.m_specific_param.m_decoder.m_default_tcp
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref_mut()
+        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
     };
     l_ref_tccp = (*l_tcp).tccps.as_mut_ptr();
     l_copied_tccp = l_ref_tccp.offset(1);
@@ -10588,7 +10134,12 @@ pub(crate) fn j2k_get_cstr_info(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream_
     (*cstr_info).tw = p_j2k.m_cp.tw;
     (*cstr_info).th = p_j2k.m_cp.th;
     (*cstr_info).tile_info = core::ptr::null_mut::<opj_tile_info_v2_t>();
-    l_default_tile = p_j2k.m_specific_param.m_decoder.m_default_tcp;
+    l_default_tile = p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t;
     (*cstr_info).m_default_tile_info.csty = (*l_default_tile).csty;
     (*cstr_info).m_default_tile_info.prg = (*l_default_tile).prg;
     (*cstr_info).m_default_tile_info.numlayers = (*l_default_tile).numlayers;
@@ -11395,18 +10946,16 @@ pub(crate) fn opj_j2k_set_decoded_resolution_factor(
   unsafe {
     let mut it_comp: OPJ_UINT32 = 0;
     p_j2k.m_cp.m_specific_param.m_dec.m_reduce = res_factor;
+    let Some(default_tcp) = p_j2k.m_specific_param.m_decoder.m_default_tcp.as_deref() else {
+      return 0i32;
+    };
     if !p_j2k.m_private_image.is_null()
       && !(*p_j2k.m_private_image).comps.is_null()
-      && !p_j2k.m_specific_param.m_decoder.m_default_tcp.is_null()
-      && !(*p_j2k.m_specific_param.m_decoder.m_default_tcp)
-        .tccps
-        .is_empty()
+      && !default_tcp.tccps.is_empty()
     {
       it_comp = 0 as OPJ_UINT32;
       while it_comp < (*p_j2k.m_private_image).numcomps {
-        let mut max_res = (&(*p_j2k.m_specific_param.m_decoder.m_default_tcp).tccps)
-          [it_comp as usize]
-          .numresolutions;
+        let mut max_res = default_tcp.tccps[it_comp as usize].numresolutions;
         if res_factor >= max_res {
           event_msg!(
             p_manager,

@@ -482,6 +482,7 @@ impl Default for opj_tcd {
   }
 }
 
+#[derive(Clone)]
 pub(crate) struct opj_tcp {
   pub csty: OPJ_UINT32,
   pub prg: OPJ_PROG_ORDER,
@@ -502,15 +503,11 @@ pub(crate) struct opj_tcp {
   pub m_nb_tile_parts: OPJ_UINT32,
   pub m_data: *mut OPJ_BYTE,
   pub m_data_size: OPJ_UINT32,
-  pub mct_norms: *mut OPJ_FLOAT64,
-  pub m_mct_decoding_matrix: *mut OPJ_FLOAT32,
-  pub m_mct_coding_matrix: *mut OPJ_FLOAT32,
-  pub m_mct_records: *mut opj_mct_data_t,
-  pub m_nb_mct_records: OPJ_UINT32,
-  pub m_nb_max_mct_records: OPJ_UINT32,
-  pub m_mcc_records: *mut opj_simple_mcc_decorrelation_data_t,
-  pub m_nb_mcc_records: OPJ_UINT32,
-  pub m_nb_max_mcc_records: OPJ_UINT32,
+  pub mct_norms: Vec<OPJ_FLOAT64>,
+  pub m_mct_decoding_matrix: Vec<OPJ_FLOAT32>,
+  pub m_mct_coding_matrix: Vec<OPJ_FLOAT32>,
+  pub m_mct_records: Vec<opj_mct_data_t>,
+  pub m_mcc_records: Vec<opj_simple_mcc_decorrelation_data_t>,
   pub cod: bool,
   pub ppt: bool,
   pub POC: bool,
@@ -538,15 +535,11 @@ impl Default for opj_tcp {
       m_nb_tile_parts: 0,
       m_data: core::ptr::null_mut(),
       m_data_size: 0,
-      mct_norms: core::ptr::null_mut(),
-      m_mct_decoding_matrix: core::ptr::null_mut(),
-      m_mct_coding_matrix: core::ptr::null_mut(),
-      m_mct_records: core::ptr::null_mut(),
-      m_nb_mct_records: 0,
-      m_nb_max_mct_records: 0,
-      m_mcc_records: core::ptr::null_mut(),
-      m_nb_mcc_records: 0,
-      m_nb_max_mcc_records: 0,
+      mct_norms: Vec::new(),
+      m_mct_decoding_matrix: Vec::new(),
+      m_mct_coding_matrix: Vec::new(),
+      m_mct_records: Vec::new(),
+      m_mcc_records: Vec::new(),
       cod: false,
       ppt: false,
       POC: false,
@@ -554,12 +547,14 @@ impl Default for opj_tcp {
   }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Default, Clone)]
 pub(crate) struct opj_simple_mcc_decorrelation_data {
   pub m_index: OPJ_UINT32,
   pub m_nb_comps: OPJ_UINT32,
-  pub m_decorrelation_array: *mut opj_mct_data_t,
-  pub m_offset_array: *mut opj_mct_data_t,
+  /* index into the owning tcp's `m_mct_records` */
+  pub m_decorrelation_array: Option<usize>,
+  /* index into the owning tcp's `m_mct_records` */
+  pub m_offset_array: Option<usize>,
   pub m_is_irreversible: bool,
 }
 pub(crate) type opj_simple_mcc_decorrelation_data_t = opj_simple_mcc_decorrelation_data;
@@ -570,13 +565,12 @@ pub const MCT_TYPE_OFFSET: MCT_ARRAY_TYPE = 2;
 pub const MCT_TYPE_DECORRELATION: MCT_ARRAY_TYPE = 1;
 pub const MCT_TYPE_DEPENDENCY: MCT_ARRAY_TYPE = 0;
 
-#[derive(Copy, Clone)]
+#[derive(Default, Clone)]
 pub(crate) struct opj_mct_data {
   pub m_element_type: MCTElementType,
   pub m_array_type: J2K_MCT_ARRAY_TYPE,
   pub m_index: OPJ_UINT32,
-  pub m_data: *mut OPJ_BYTE,
-  pub m_data_size: OPJ_UINT32,
+  pub m_data: Vec<OPJ_BYTE>,
 }
 pub(crate) type opj_mct_data_t = opj_mct_data;
 
@@ -625,7 +619,7 @@ pub(crate) struct opj_stepsize {
 }
 pub(crate) type opj_stepsize_t = opj_stepsize;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct opj_ppx_struct {
   pub m_data: Vec<OPJ_BYTE>,
 }
@@ -1280,7 +1274,7 @@ pub(crate) type opj_j2k_enc_t = opj_j2k_enc;
 #[derive(Default)]
 pub(crate) struct opj_j2k_dec {
   pub m_state: J2KState,
-  pub m_default_tcp: *mut opj_tcp_t,
+  pub m_default_tcp: Option<Box<opj_tcp_t>>,
   pub m_header_data: Vec<OPJ_BYTE>,
   pub m_sot_length: OPJ_UINT32,
   pub m_start_tile_x: OPJ_UINT32,

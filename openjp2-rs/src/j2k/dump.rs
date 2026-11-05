@@ -288,7 +288,12 @@ fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
     );
     if !p_j2k.m_private_image.is_null() {
       opj_j2k_dump_tile_info(
-        &*p_j2k.m_specific_param.m_decoder.m_default_tcp,
+        p_j2k
+          .m_specific_param
+          .m_decoder
+          .m_default_tcp
+          .as_deref()
+          .expect("decoder m_default_tcp is always set"),
         (*p_j2k.m_private_image).numcomps as OPJ_INT32,
         out_stream,
       );
