@@ -568,95 +568,80 @@ pub(crate) fn opj_j2k_convert_progression_order(prg_order: OPJ_PROG_ORDER) -> Pr
  * @return      true if the pocs are valid.
  */
 fn opj_j2k_check_poc_val(
-  mut p_pocs: *const opj_poc_t,
-  mut tileno: OPJ_UINT32,
-  mut p_nb_pocs: OPJ_UINT32,
-  mut p_nb_resolutions: OPJ_UINT32,
-  mut p_num_comps: OPJ_UINT32,
-  mut p_num_layers: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_pocs: &[opj_poc_t],
+  tileno: OPJ_UINT32,
+  p_nb_pocs: OPJ_UINT32,
+  p_nb_resolutions: OPJ_UINT32,
+  p_num_comps: OPJ_UINT32,
+  p_num_layers: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut packet_array = core::ptr::null_mut::<OPJ_UINT32>();
-    let mut index: OPJ_UINT32 = 0;
-    let mut resno: OPJ_UINT32 = 0;
-    let mut compno: OPJ_UINT32 = 0;
-    let mut layno: OPJ_UINT32 = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut step_c = 1 as OPJ_UINT32;
-    let mut step_r = p_num_comps.wrapping_mul(step_c);
-    let mut step_l = p_nb_resolutions.wrapping_mul(step_r);
-    let mut loss = 0i32;
-    assert!(p_nb_pocs > 0u32);
-    packet_array = opj_calloc(
-      (step_l as size_t).wrapping_mul(p_num_layers as usize),
-      core::mem::size_of::<OPJ_UINT32>(),
-    ) as *mut OPJ_UINT32;
-    if packet_array.is_null() {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory for checking the poc values.\n",
-      );
-      return 0i32;
-    }
-    /* iterate through all the pocs that match our tile of interest. */
-    i = 0 as OPJ_UINT32;
-    while i < p_nb_pocs {
-      let mut poc: *const opj_poc_t = &*p_pocs.offset(i as isize) as *const opj_poc_t;
-      if tileno.wrapping_add(1u32) == (*poc).tile {
-        index = step_r.wrapping_mul((*poc).resno0);
-        /* take each resolution for each poc */
-        resno = (*poc).resno0;
-        while resno < opj_uint_min((*poc).resno1, p_nb_resolutions) {
-          let mut res_index = index.wrapping_add((*poc).compno0.wrapping_mul(step_c));
-          /* take each comp of each resolution for each poc */
-          compno = (*poc).compno0;
-          while compno < opj_uint_min((*poc).compno1, p_num_comps) {
-            /* The layer index always starts at zero for every progression. */
-            let layno0 = 0 as OPJ_UINT32;
-            let mut comp_index = res_index.wrapping_add(layno0.wrapping_mul(step_l));
-            /* and finally take each layer of each res of ... */
-            layno = layno0;
-            while layno < opj_uint_min((*poc).layno1, p_num_layers) {
-              *packet_array.offset(comp_index as isize) = 1 as OPJ_UINT32;
-              comp_index = (comp_index as core::ffi::c_uint).wrapping_add(step_l) as OPJ_UINT32;
-              layno += 1;
-            }
-            res_index = (res_index as core::ffi::c_uint).wrapping_add(step_c) as OPJ_UINT32;
-            compno += 1;
+  let mut index: OPJ_UINT32 = 0;
+  let mut resno: OPJ_UINT32 = 0;
+  let mut compno: OPJ_UINT32 = 0;
+  let mut layno: OPJ_UINT32 = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let step_c = 1 as OPJ_UINT32;
+  let step_r = p_num_comps.wrapping_mul(step_c);
+  let step_l = p_nb_resolutions.wrapping_mul(step_r);
+  let mut loss = 0i32;
+  assert!(p_nb_pocs > 0u32);
+  let mut packet_array = vec![0u32; (step_l as usize).wrapping_mul(p_num_layers as usize)];
+  /* iterate through all the pocs that match our tile of interest. */
+  i = 0 as OPJ_UINT32;
+  while i < p_nb_pocs {
+    let poc = &p_pocs[i as usize];
+    if tileno.wrapping_add(1u32) == poc.tile {
+      index = step_r.wrapping_mul(poc.resno0);
+      /* take each resolution for each poc */
+      resno = poc.resno0;
+      while resno < opj_uint_min(poc.resno1, p_nb_resolutions) {
+        let mut res_index = index.wrapping_add(poc.compno0.wrapping_mul(step_c));
+        /* take each comp of each resolution for each poc */
+        compno = poc.compno0;
+        while compno < opj_uint_min(poc.compno1, p_num_comps) {
+          /* The layer index always starts at zero for every progression. */
+          let layno0 = 0 as OPJ_UINT32;
+          let mut comp_index = res_index.wrapping_add(layno0.wrapping_mul(step_l));
+          /* and finally take each layer of each res of ... */
+          layno = layno0;
+          while layno < opj_uint_min(poc.layno1, p_num_layers) {
+            packet_array[comp_index as usize] = 1 as OPJ_UINT32;
+            comp_index = comp_index.wrapping_add(step_l);
+            layno += 1;
           }
-          index = (index as core::ffi::c_uint).wrapping_add(step_r) as OPJ_UINT32;
-          resno += 1;
-        }
-      }
-      i += 1;
-    }
-    index = 0 as OPJ_UINT32;
-    layno = 0 as OPJ_UINT32;
-    while layno < p_num_layers {
-      resno = 0 as OPJ_UINT32;
-      while resno < p_nb_resolutions {
-        compno = 0 as OPJ_UINT32;
-        while compno < p_num_comps {
-          loss |= (*packet_array.offset(index as isize) != 1u32) as core::ffi::c_int;
-          index = (index as core::ffi::c_uint).wrapping_add(step_c) as OPJ_UINT32;
+          res_index = res_index.wrapping_add(step_c);
           compno += 1;
         }
+        index = index.wrapping_add(step_r);
         resno += 1;
       }
-      layno += 1;
     }
-    if loss != 0 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Missing packets possible loss of data\n",
-      );
-    }
-    opj_free(packet_array as *mut core::ffi::c_void);
-    (loss == 0) as core::ffi::c_int
+    i += 1;
   }
+  index = 0 as OPJ_UINT32;
+  layno = 0 as OPJ_UINT32;
+  while layno < p_num_layers {
+    resno = 0 as OPJ_UINT32;
+    while resno < p_nb_resolutions {
+      compno = 0 as OPJ_UINT32;
+      while compno < p_num_comps {
+        loss |= (packet_array[index as usize] != 1u32) as core::ffi::c_int;
+        index = index.wrapping_add(step_c);
+        compno += 1;
+      }
+      resno += 1;
+    }
+    layno += 1;
+  }
+  if loss != 0 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Missing packets possible loss of data\n",
+    );
+  }
+  (loss == 0) as core::ffi::c_int
 }
 
 /* *
@@ -669,65 +654,50 @@ fn opj_j2k_check_poc_val(
  * @return              the number of tile parts.
  */
 /* ----------------------------------------------------------------------- */
-fn opj_j2k_get_num_tp(
-  mut cp: *mut opj_cp_t,
-  mut pino: OPJ_UINT32,
-  mut tileno: OPJ_UINT32,
-) -> OPJ_UINT32 {
-  unsafe {
-    let mut i: OPJ_INT32 = 0;
-    let mut tpnum = 1 as OPJ_UINT32;
-    let mut tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_current_poc = core::ptr::null_mut::<opj_poc_t>();
-    /*  preconditions */
+fn opj_j2k_get_num_tp(cp: &mut opj_cp_t, pino: OPJ_UINT32, tileno: OPJ_UINT32) -> OPJ_UINT32 {
+  let mut tpnum = 1 as OPJ_UINT32;
+  /*  preconditions */
 
-    assert!(tileno < (*cp).tw.wrapping_mul((*cp).th));
-    assert!(
-      pino
-        < (*(*cp).tcps.as_ptr().offset(tileno as isize))
-          .numpocs
-          .wrapping_add(1u32)
-    );
-    /* get the given tile coding parameter */
-    tcp = (*cp).tcps.as_mut_ptr().offset(tileno as isize);
-    assert!(!tcp.is_null());
-    l_current_poc = &mut *(*tcp).pocs.as_mut_ptr().offset(pino as isize) as *mut opj_poc_t;
-    assert!(!l_current_poc.is_null());
-    /* get the progression order as a character string */
-    let prog = opj_j2k_convert_progression_order((*tcp).prg);
-    assert!(prog != ProgressionOrder::Unknown);
-    if (*cp).m_specific_param.m_enc.m_tp_on {
-      for step in prog.get_order() {
-        match step {
-          ProgressionStep::Component => {
-            /* component wise */
-            tpnum = (tpnum as core::ffi::c_uint).wrapping_mul((*l_current_poc).compE) as OPJ_UINT32
-          }
-          ProgressionStep::Resolution => {
-            /* resolution wise */
-            tpnum = (tpnum as core::ffi::c_uint).wrapping_mul((*l_current_poc).resE) as OPJ_UINT32
-          }
-          ProgressionStep::Precinct => {
-            /* precinct wise */
-            tpnum = (tpnum as core::ffi::c_uint).wrapping_mul((*l_current_poc).prcE) as OPJ_UINT32
-          }
-          ProgressionStep::Layer => {
-            /* layer wise */
-            tpnum = (tpnum as core::ffi::c_uint).wrapping_mul((*l_current_poc).layE) as OPJ_UINT32
-          }
-          ProgressionStep::Unknown => {}
+  assert!(tileno < cp.tw.wrapping_mul(cp.th));
+  assert!(pino < cp.tcps[tileno as usize].numpocs.wrapping_add(1u32));
+  /* get the given tile coding parameter */
+  let tcp = &cp.tcps[tileno as usize];
+  let l_current_poc = &tcp.pocs[pino as usize];
+  /* get the progression order as a character string */
+  let prog = opj_j2k_convert_progression_order(tcp.prg);
+  assert!(prog != ProgressionOrder::Unknown);
+  if cp.m_specific_param.m_enc.m_tp_on {
+    // C: for (i = 0; i < 4; ++i) — the index is also written to m_tp_pos on the split step.
+    for (i, step) in prog.get_order().iter().enumerate() {
+      match step {
+        ProgressionStep::Component => {
+          /* component wise */
+          tpnum = tpnum.wrapping_mul(l_current_poc.compE)
         }
-        /* would we split here ? */
-        if (*cp).m_specific_param.m_enc.m_tp_flag == *step as u8 {
-          (*cp).m_specific_param.m_enc.m_tp_pos = i;
-          break;
+        ProgressionStep::Resolution => {
+          /* resolution wise */
+          tpnum = tpnum.wrapping_mul(l_current_poc.resE)
         }
+        ProgressionStep::Precinct => {
+          /* precinct wise */
+          tpnum = tpnum.wrapping_mul(l_current_poc.prcE)
+        }
+        ProgressionStep::Layer => {
+          /* layer wise */
+          tpnum = tpnum.wrapping_mul(l_current_poc.layE)
+        }
+        ProgressionStep::Unknown => {}
       }
-    } else {
-      tpnum = 1 as OPJ_UINT32
+      /* would we split here ? */
+      if cp.m_specific_param.m_enc.m_tp_flag == *step as u8 {
+        cp.m_specific_param.m_enc.m_tp_pos = i as OPJ_INT32;
+        break;
+      }
     }
-    tpnum
+  } else {
+    tpnum = 1 as OPJ_UINT32
   }
+  tpnum
 }
 
 /* *
@@ -743,75 +713,32 @@ fn opj_j2k_get_num_tp(
  * @return true if the function was successful, false else.
  */
 fn opj_j2k_calculate_tp(
-  mut cp: *mut opj_cp_t,
-  mut p_nb_tiles: *mut OPJ_UINT32,
+  cp: &mut opj_cp_t,
+  p_nb_tiles: &mut OPJ_UINT32,
   image: &mut CoreImage,
-  mut _p_manager: &mut opj_event_mgr,
+  _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut pino: OPJ_UINT32 = 0;
-    let mut tileno: OPJ_UINT32 = 0;
-    let mut l_nb_tiles: OPJ_UINT32 = 0;
-    let mut tcp = core::ptr::null_mut::<opj_tcp_t>();
-    /* preconditions */
+  let mut pino: OPJ_UINT32 = 0;
+  let mut tileno: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    assert!(!p_nb_tiles.is_null());
-    assert!(!cp.is_null());
-    l_nb_tiles = (*cp).tw.wrapping_mul((*cp).th);
-    *p_nb_tiles = 0 as OPJ_UINT32;
-    tcp = (*cp).tcps.as_mut_ptr();
-    /* INDEX >> */
-    /* TODO mergeV2: check this part which use cstr_info */
-    /*if (p_j2k->cstr_info) {
-            opj_tile_info_t * l_info_tile_ptr = p_j2k->cstr_info->tile;
-
-            for (tileno = 0; tileno < l_nb_tiles; ++tileno) {
-                    OPJ_UINT32 cur_totnum_tp = 0;
-
-                    opj_pi_update_encoding_parameters(image,cp,tileno);
-
-                    for (pino = 0; pino <= tcp->numpocs; ++pino)
-                    {
-                            OPJ_UINT32 tp_num = opj_j2k_get_num_tp(cp,pino,tileno);
-
-                            *p_nb_tiles = *p_nb_tiles + tp_num;
-
-                            cur_totnum_tp += tp_num;
-                    }
-
-                    tcp->m_nb_tile_parts = cur_totnum_tp;
-
-                    l_info_tile_ptr->tp = (opj_tp_info_t *) opj_malloc(cur_totnum_tp * sizeof(opj_tp_info_t));
-                    if (l_info_tile_ptr->tp == 00) {
-                            return OPJ_FALSE;
-                    }
-
-                    memset(l_info_tile_ptr->tp,0,cur_totnum_tp * sizeof(opj_tp_info_t));
-
-                    l_info_tile_ptr->num_tps = cur_totnum_tp;
-
-                    ++l_info_tile_ptr;
-                    ++tcp;
-            }
+  let l_nb_tiles: OPJ_UINT32 = cp.tw.wrapping_mul(cp.th);
+  *p_nb_tiles = 0 as OPJ_UINT32;
+  tileno = 0 as OPJ_UINT32;
+  while tileno < l_nb_tiles {
+    let mut cur_totnum_tp = 0 as OPJ_UINT32;
+    opj_pi_update_encoding_parameters(image, cp, tileno);
+    pino = 0 as OPJ_UINT32;
+    while pino <= cp.tcps[tileno as usize].numpocs {
+      let tp_num = opj_j2k_get_num_tp(cp, pino, tileno);
+      *p_nb_tiles = (*p_nb_tiles).wrapping_add(tp_num);
+      cur_totnum_tp = cur_totnum_tp.wrapping_add(tp_num);
+      pino += 1;
     }
-    else */
-    tileno = 0 as OPJ_UINT32;
-    while tileno < l_nb_tiles {
-      let mut cur_totnum_tp = 0 as OPJ_UINT32;
-      opj_pi_update_encoding_parameters(image, cp, tileno);
-      pino = 0 as OPJ_UINT32;
-      while pino <= (*tcp).numpocs {
-        let mut tp_num = opj_j2k_get_num_tp(cp, pino, tileno);
-        *p_nb_tiles = (*p_nb_tiles).wrapping_add(tp_num);
-        cur_totnum_tp = (cur_totnum_tp as core::ffi::c_uint).wrapping_add(tp_num) as OPJ_UINT32;
-        pino += 1;
-      }
-      (*tcp).m_nb_tile_parts = cur_totnum_tp;
-      tcp = tcp.offset(1);
-      tileno += 1;
-    }
-    1i32
+    cp.tcps[tileno as usize].m_nb_tile_parts = cur_totnum_tp;
+    tileno += 1;
   }
+  1i32
 }
 
 /*
@@ -861,12 +788,11 @@ fn opj_j2k_write_soc(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_read_soc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_data: [OPJ_BYTE; 2] = [0; 2];
+  let mut l_data: [OPJ_BYTE; 2] = [0; 2];
     /* preconditions */
 
     if opj_stream_read_data(p_stream, &mut l_data[..2], p_manager) != 2 {
@@ -896,11 +822,10 @@ fn opj_j2k_read_soc(
         2 as OPJ_UINT32,
       )
     {
-      event_msg!(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n",);
-      return 0i32;
-    }
-    1i32
+    event_msg!(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n",);
+    return 0i32;
   }
+  1i32
 }
 
 /* *
@@ -3873,16 +3798,14 @@ fn opj_j2k_read_rgn(
     1i32
   }
 }
-fn opj_j2k_get_tp_stride(mut p_tcp: *mut opj_tcp_t) -> OPJ_FLOAT32 {
-  unsafe {
-    (*p_tcp)
-      .m_nb_tile_parts
-      .wrapping_sub(1u32)
-      .wrapping_mul(14u32) as OPJ_FLOAT32
-  }
+fn opj_j2k_get_tp_stride(p_tcp: &opj_tcp_t) -> OPJ_FLOAT32 {
+  p_tcp
+    .m_nb_tile_parts
+    .wrapping_sub(1u32)
+    .wrapping_mul(14u32) as OPJ_FLOAT32
 }
 
-fn opj_j2k_get_default_stride(mut _p_tcp: *mut opj_tcp_t) -> OPJ_FLOAT32 {
+fn opj_j2k_get_default_stride(_p_tcp: &opj_tcp_t) -> OPJ_FLOAT32 {
   0 as OPJ_FLOAT32
 }
 
@@ -3894,182 +3817,166 @@ fn opj_j2k_get_default_stride(mut _p_tcp: *mut opj_tcp_t) -> OPJ_FLOAT32 {
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_update_rates(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut k: OPJ_UINT32 = 0;
-    let mut l_x0: OPJ_INT32 = 0;
-    let mut l_y0: OPJ_INT32 = 0;
-    let mut l_x1: OPJ_INT32 = 0;
-    let mut l_y1: OPJ_INT32 = 0;
-    let mut l_rates = core::ptr::null_mut::<OPJ_FLOAT32>();
-    let mut l_sot_remove: OPJ_FLOAT32 = 0.;
-    let mut l_bits_empty: OPJ_UINT32 = 0;
-    let mut l_size_pixel: OPJ_UINT32 = 0;
-    let mut l_last_res: OPJ_UINT32 = 0;
-    let mut l_tp_stride_func: Option<fn(_: *mut opj_tcp_t) -> OPJ_FLOAT32> = None;
-    /* preconditions */
+  let mut i: OPJ_UINT32 = 0;
+  let mut j: OPJ_UINT32 = 0;
+  let mut k: OPJ_UINT32 = 0;
+  let mut l_x0: OPJ_INT32 = 0;
+  let mut l_y0: OPJ_INT32 = 0;
+  let mut l_x1: OPJ_INT32 = 0;
+  let mut l_y1: OPJ_INT32 = 0;
+  let mut l_last_res: OPJ_UINT32 = 0;
+  let l_tp_stride_func: fn(&opj_tcp_t) -> OPJ_FLOAT32;
+  /* preconditions */
 
-    l_cp = &mut p_j2k.m_cp;
-    let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-    l_tcp = (*l_cp).tcps.as_mut_ptr();
-    l_bits_empty = (8u32)
-      .wrapping_mul(l_image.comps[0].dx)
-      .wrapping_mul(l_image.comps[0].dy);
-    l_size_pixel = l_image.numcomps.wrapping_mul(l_image.comps[0].prec);
-    l_sot_remove =
-      opj_stream_tell(p_stream) as OPJ_FLOAT32 / (*l_cp).th.wrapping_mul((*l_cp).tw) as OPJ_FLOAT32;
-    if (*l_cp).m_specific_param.m_enc.m_tp_on {
-      l_tp_stride_func = Some(opj_j2k_get_tp_stride as fn(_: *mut opj_tcp_t) -> OPJ_FLOAT32)
-    } else {
-      l_tp_stride_func = Some(opj_j2k_get_default_stride as fn(_: *mut opj_tcp_t) -> OPJ_FLOAT32)
-    }
-    i = 0 as OPJ_UINT32;
-    while i < (*l_cp).th {
-      j = 0 as OPJ_UINT32;
-      while j < (*l_cp).tw {
-        let mut l_offset = l_tp_stride_func.expect("non-null function pointer")(l_tcp)
-          / (*l_tcp).numlayers as OPJ_FLOAT32;
-        /* 4 borders of the tile rescale on the image if necessary */
-        l_x0 = opj_int_max(
-          (*l_cp).tx0.wrapping_add(j.wrapping_mul((*l_cp).tdx)) as OPJ_INT32,
-          l_image.x0 as OPJ_INT32,
-        );
-        l_y0 = opj_int_max(
-          (*l_cp).ty0.wrapping_add(i.wrapping_mul((*l_cp).tdy)) as OPJ_INT32,
-          l_image.y0 as OPJ_INT32,
-        );
-        l_x1 = opj_int_min(
-          (*l_cp)
-            .tx0
-            .wrapping_add(j.wrapping_add(1u32).wrapping_mul((*l_cp).tdx)) as OPJ_INT32,
-          l_image.x1 as OPJ_INT32,
-        );
-        l_y1 = opj_int_min(
-          (*l_cp)
-            .ty0
-            .wrapping_add(i.wrapping_add(1u32).wrapping_mul((*l_cp).tdy)) as OPJ_INT32,
-          l_image.y1 as OPJ_INT32,
-        );
-        l_rates = (*l_tcp).rates.as_mut_ptr();
-        /* Modification of the RATE >> */
-        k = 0 as OPJ_UINT32;
-        while k < (*l_tcp).numlayers {
-          if *l_rates > 0.0f32 {
-            *l_rates = (l_size_pixel as OPJ_FLOAT64
-              * (l_x1 - l_x0) as OPJ_UINT32 as core::ffi::c_double
-              * (l_y1 - l_y0) as OPJ_UINT32 as core::ffi::c_double
-              / (*l_rates * l_bits_empty as OPJ_FLOAT32) as core::ffi::c_double)
-              as OPJ_FLOAT32
-              - l_offset
-          }
-          l_rates = l_rates.offset(1);
-          k += 1;
-        }
-        l_tcp = l_tcp.offset(1);
-        j += 1;
-      }
-      i += 1;
-    }
-    l_tcp = (*l_cp).tcps.as_mut_ptr();
-    i = 0 as OPJ_UINT32;
-    while i < (*l_cp).th {
-      j = 0 as OPJ_UINT32;
-      while j < (*l_cp).tw {
-        l_rates = (*l_tcp).rates.as_mut_ptr();
-        if *l_rates > 0.0f32 {
-          *l_rates -= l_sot_remove;
-          if *l_rates < 30.0f32 {
-            *l_rates = 30.0f32
-          }
-        }
-        l_rates = l_rates.offset(1);
-        l_last_res = (*l_tcp).numlayers.wrapping_sub(1u32);
-        k = 1 as OPJ_UINT32;
-        while k < l_last_res {
-          if *l_rates > 0.0f32 {
-            *l_rates -= l_sot_remove;
-            if *l_rates < *l_rates.offset(-1) + 10.0f32 {
-              *l_rates = *l_rates.offset(-1) + 20.0f32
-            }
-          }
-          l_rates = l_rates.offset(1);
-          k += 1;
-        }
-        if *l_rates > 0.0f32 {
-          *l_rates -= l_sot_remove + 2.0f32;
-          if *l_rates < *l_rates.offset(-1) + 10.0f32 {
-            *l_rates = *l_rates.offset(-1) + 20.0f32
-          }
-        }
-        l_tcp = l_tcp.offset(1);
-        j += 1;
-      }
-      i += 1;
-    }
-    l_img_comp = l_image.comps.as_ptr() as *mut CoreImageComp;
-    let mut l_tile_size = 0u64;
-    i = 0 as OPJ_UINT32;
-    while i < l_image.numcomps {
-      l_tile_size += opj_uint_ceildiv((*l_cp).tdx, (*l_img_comp).dx) as u64
-        * opj_uint_ceildiv((*l_cp).tdy, (*l_img_comp).dy) as u64
-        * (*l_img_comp).prec as u64;
-      l_img_comp = l_img_comp.offset(1);
-      i += 1;
-    }
-    /* TODO: where does this magic value come from ? */
-    /* This used to be 1.3 / 8, but with random data and very small code */
-    /* block sizes, this is not enough. For example with */
-    /* bin/test_tile_encoder 1 256 256 32 32 8 0 reversible_with_precinct.j2k 4 4 3 0 0 1 16 16 */
-    /* TODO revise this to take into account the overhead linked to the */
-    /* number of packets and number of code blocks in packets */
-    l_tile_size = (l_tile_size as f64 * 1.4 / 8.0) as u64;
-
-    /* Arbitrary amount to make the following work: */
-    /* bin/test_tile_encoder 1 256 256 17 16 8 0 reversible_no_precinct.j2k 4 4 3 0 0 1 */
-    l_tile_size += 500;
-
-    l_tile_size += opj_j2k_get_specific_header_sizes(p_j2k) as u64;
-
-    if l_tile_size > u32::MAX as u64 {
-      l_tile_size = u32::MAX as u64;
-    }
-
-    /* the tile buffer can be up to 4 GB, so keep the C code's out-of-memory diagnostic
-    rather than letting the allocator abort */
-    let l_encoded_tile_data = &mut p_j2k.m_specific_param.m_encoder.m_encoded_tile_data;
-    l_encoded_tile_data.clear();
-    if l_encoded_tile_data
-      .try_reserve_exact(l_tile_size as usize)
-      .is_err()
-    {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory to allocate m_encoded_tile_data. {} MB required\n",
-        l_tile_size.wrapping_div(1024u64).wrapping_div(1024u64) as OPJ_UINT32,
+  let l_cp = &mut p_j2k.m_cp;
+  let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
+  let l_bits_empty =
+    (8u32).wrapping_mul(l_image.comps[0].dx).wrapping_mul(l_image.comps[0].dy);
+  let l_size_pixel = l_image.numcomps.wrapping_mul(l_image.comps[0].prec);
+  let l_sot_remove =
+    opj_stream_tell(p_stream) as OPJ_FLOAT32 / l_cp.th.wrapping_mul(l_cp.tw) as OPJ_FLOAT32;
+  l_tp_stride_func = if l_cp.m_specific_param.m_enc.m_tp_on {
+    opj_j2k_get_tp_stride
+  } else {
+    opj_j2k_get_default_stride
+  };
+  let mut tcp_idx = 0usize;
+  i = 0 as OPJ_UINT32;
+  while i < l_cp.th {
+    j = 0 as OPJ_UINT32;
+    while j < l_cp.tw {
+      let l_offset = l_tp_stride_func(&l_cp.tcps[tcp_idx]) / l_cp.tcps[tcp_idx].numlayers as OPJ_FLOAT32;
+      /* 4 borders of the tile rescale on the image if necessary */
+      l_x0 = opj_int_max(
+        l_cp.tx0.wrapping_add(j.wrapping_mul(l_cp.tdx)) as OPJ_INT32,
+        l_image.x0 as OPJ_INT32,
       );
-      return 0i32;
+      l_y0 = opj_int_max(
+        l_cp.ty0.wrapping_add(i.wrapping_mul(l_cp.tdy)) as OPJ_INT32,
+        l_image.y0 as OPJ_INT32,
+      );
+      l_x1 = opj_int_min(
+        l_cp
+          .tx0
+          .wrapping_add(j.wrapping_add(1u32).wrapping_mul(l_cp.tdx)) as OPJ_INT32,
+        l_image.x1 as OPJ_INT32,
+      );
+      l_y1 = opj_int_min(
+        l_cp
+          .ty0
+          .wrapping_add(i.wrapping_add(1u32).wrapping_mul(l_cp.tdy)) as OPJ_INT32,
+        l_image.y1 as OPJ_INT32,
+      );
+      /* Modification of the RATE >> */
+      k = 0 as OPJ_UINT32;
+      while k < l_cp.tcps[tcp_idx].numlayers {
+        if l_cp.tcps[tcp_idx].rates[k as usize] > 0.0f32 {
+          l_cp.tcps[tcp_idx].rates[k as usize] = (l_size_pixel as OPJ_FLOAT64
+            * (l_x1 - l_x0) as OPJ_UINT32 as core::ffi::c_double
+            * (l_y1 - l_y0) as OPJ_UINT32 as core::ffi::c_double
+            / (l_cp.tcps[tcp_idx].rates[k as usize] * l_bits_empty as OPJ_FLOAT32) as core::ffi::c_double)
+            as OPJ_FLOAT32
+            - l_offset
+        }
+        k += 1;
+      }
+      tcp_idx += 1;
+      j += 1;
     }
-    l_encoded_tile_data.resize(l_tile_size as usize, 0);
-    if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
-      p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = vec![
-        0u8;
-        (6u32).wrapping_mul(p_j2k.m_specific_param.m_encoder.m_total_tile_parts)
-          as usize
-      ];
-      p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_current = 0
-    }
-    1i32
+    i += 1;
   }
+  tcp_idx = 0usize;
+  i = 0 as OPJ_UINT32;
+  while i < l_cp.th {
+    j = 0 as OPJ_UINT32;
+    while j < l_cp.tw {
+      if l_cp.tcps[tcp_idx].rates[0] > 0.0f32 {
+        l_cp.tcps[tcp_idx].rates[0] -= l_sot_remove;
+        if l_cp.tcps[tcp_idx].rates[0] < 30.0f32 {
+          l_cp.tcps[tcp_idx].rates[0] = 30.0f32
+        }
+      }
+      l_last_res = l_cp.tcps[tcp_idx].numlayers.wrapping_sub(1u32);
+      k = 1 as OPJ_UINT32;
+      while k < l_last_res {
+        if l_cp.tcps[tcp_idx].rates[k as usize] > 0.0f32 {
+          l_cp.tcps[tcp_idx].rates[k as usize] -= l_sot_remove;
+          if l_cp.tcps[tcp_idx].rates[k as usize] < l_cp.tcps[tcp_idx].rates[k as usize - 1] + 10.0f32
+          {
+            l_cp.tcps[tcp_idx].rates[k as usize] =
+              l_cp.tcps[tcp_idx].rates[k as usize - 1] + 20.0f32
+          }
+        }
+        k += 1;
+      }
+      if l_cp.tcps[tcp_idx].rates[k as usize] > 0.0f32 {
+        l_cp.tcps[tcp_idx].rates[k as usize] -= l_sot_remove + 2.0f32;
+        if l_cp.tcps[tcp_idx].rates[k as usize] < l_cp.tcps[tcp_idx].rates[k as usize - 1] + 10.0f32
+        {
+          l_cp.tcps[tcp_idx].rates[k as usize] = l_cp.tcps[tcp_idx].rates[k as usize - 1] + 20.0f32
+        }
+      }
+      tcp_idx += 1;
+      j += 1;
+    }
+    i += 1;
+  }
+  let mut l_tile_size = 0u64;
+  let mut comp_idx = 0usize;
+  i = 0 as OPJ_UINT32;
+  while i < l_image.numcomps {
+    l_tile_size += opj_uint_ceildiv(l_cp.tdx, l_image.comps[comp_idx].dx) as u64
+      * opj_uint_ceildiv(l_cp.tdy, l_image.comps[comp_idx].dy) as u64
+      * l_image.comps[comp_idx].prec as u64;
+    comp_idx += 1;
+    i += 1;
+  }
+  /* TODO: where does this magic value come from ? */
+  /* This used to be 1.3 / 8, but with random data and very small code */
+  /* block sizes, this is not enough. For example with */
+  /* bin/test_tile_encoder 1 256 256 32 32 8 0 reversible_with_precinct.j2k 4 4 3 0 0 1 16 16 */
+  /* TODO revise this to take into account the overhead linked to the */
+  /* number of packets and number of code blocks in packets */
+  l_tile_size = (l_tile_size as f64 * 1.4 / 8.0) as u64;
+
+  /* Arbitrary amount to make the following work: */
+  /* bin/test_tile_encoder 1 256 256 17 16 8 0 reversible_no_precinct.j2k 4 4 3 0 0 1 */
+  l_tile_size += 500;
+
+  l_tile_size += opj_j2k_get_specific_header_sizes(p_j2k) as u64;
+
+  if l_tile_size > u32::MAX as u64 {
+    l_tile_size = u32::MAX as u64;
+  }
+
+  /* the tile buffer can be up to 4 GB, so keep the C code's out-of-memory diagnostic
+  rather than letting the allocator abort */
+  let l_encoded_tile_data = &mut p_j2k.m_specific_param.m_encoder.m_encoded_tile_data;
+  l_encoded_tile_data.clear();
+  if l_encoded_tile_data.try_reserve_exact(l_tile_size as usize).is_err() {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Not enough memory to allocate m_encoded_tile_data. {} MB required\n",
+      l_tile_size.wrapping_div(1024u64).wrapping_div(1024u64) as OPJ_UINT32,
+    );
+    return 0i32;
+  }
+  l_encoded_tile_data.resize(l_tile_size as usize, 0);
+  if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
+    p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = vec![
+      0u8;
+      (6u32).wrapping_mul(p_j2k.m_specific_param.m_encoder.m_total_tile_parts) as usize
+    ];
+    p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_current = 0
+  }
+  1i32
 }
+
 /* *
  * Gets the offset of the header.
  *
@@ -4078,16 +3985,14 @@ fn opj_j2k_update_rates(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_get_end_header(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut _p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    /* preconditions */
+  /* preconditions */
 
-    p_j2k.cstr_index.as_deref_mut().expect("cstr_index").main_head_end = opj_stream_tell(p_stream);
-    1i32
-  }
+  p_j2k.cstr_index.as_deref_mut().expect("cstr_index").main_head_end = opj_stream_tell(p_stream);
+  1i32
 }
 /* *
  * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
@@ -4097,43 +4002,34 @@ fn opj_j2k_get_end_header(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_write_mct_data_group(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    /* preconditions */
+  /* preconditions */
 
-    if opj_j2k_write_cbd(p_j2k, p_stream, p_manager) == 0 {
-      return 0i32;
-    }
-    l_tcp = p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize);
-    let l_tcp_ref = &*l_tcp;
-    let nb_mct = l_tcp_ref.m_mct_records.len();
-    for i in 0..nb_mct {
-      if opj_j2k_write_mct_record(p_j2k, &l_tcp_ref.m_mct_records[i], p_stream, p_manager) == 0 {
-        return 0i32;
-      }
-    }
-    let nb_mcc = l_tcp_ref.m_mcc_records.len();
-    for i in 0..nb_mcc {
-      if opj_j2k_write_mcc_record(
-        p_j2k,
-        &l_tcp_ref.m_mcc_records[i],
-        &l_tcp_ref.m_mct_records,
-        p_stream,
-        p_manager,
-      ) == 0
-      {
-        return 0i32;
-      }
-    }
-    if opj_j2k_write_mco(p_j2k, p_stream, p_manager) == 0 {
-      return 0i32;
-    }
-    1i32
+  if opj_j2k_write_cbd(p_j2k, p_stream, p_manager) == 0 {
+    return 0i32;
   }
+  // The write helpers borrow all of `p_j2k`, so clone the (tiny) record lists upfront and
+  // release the borrow of `p_j2k.m_cp` before calling them.
+  let tile = p_j2k.m_current_tile_number as usize;
+  let mct_records = p_j2k.m_cp.tcps[tile].m_mct_records.clone();
+  let mcc_records = p_j2k.m_cp.tcps[tile].m_mcc_records.clone();
+  for record in &mct_records {
+    if opj_j2k_write_mct_record(p_j2k, record, p_stream, p_manager) == 0 {
+      return 0i32;
+    }
+  }
+  for record in &mcc_records {
+    if opj_j2k_write_mcc_record(p_j2k, record, &mct_records, p_stream, p_manager) == 0 {
+      return 0i32;
+    }
+  }
+  if opj_j2k_write_mco(p_j2k, p_stream, p_manager) == 0 {
+    return 0i32;
+  }
+  1i32
 }
 /* *
  * Writes COC marker for each component.
@@ -6420,7 +6316,7 @@ pub(crate) fn opj_j2k_setup_encoder(
         if numpocs_tile != 0 {
           /* TODO MSD use the return value*/
           opj_j2k_check_poc_val(
-            parameters.POC.as_mut_ptr(),
+            &parameters.POC[..parameters.numpocs as usize],
             tileno,
             parameters.numpocs,
             parameters.numresolution as OPJ_UINT32,
@@ -10631,7 +10527,7 @@ fn opj_j2k_write_all_tile_parts(
     l_cp = &mut p_j2k.m_cp;
     l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize);
     /*Get number of tile parts*/
-    tot_num_tp = opj_j2k_get_num_tp(l_cp, 0 as OPJ_UINT32, p_j2k.m_current_tile_number);
+    tot_num_tp = opj_j2k_get_num_tp(&mut *l_cp, 0 as OPJ_UINT32, p_j2k.m_current_tile_number);
     /* start writing remaining tile parts */
     p_j2k.m_specific_param.m_encoder.m_current_tile_part_number = p_j2k
       .m_specific_param
@@ -10700,7 +10596,7 @@ fn opj_j2k_write_all_tile_parts(
     while pino <= (*l_tcp).numpocs {
       p_j2k.m_tcd.cur_pino = pino;
       /*Get number of tile parts*/
-      tot_num_tp = opj_j2k_get_num_tp(l_cp, pino, p_j2k.m_current_tile_number);
+      tot_num_tp = opj_j2k_get_num_tp(&mut *l_cp, pino, p_j2k.m_current_tile_number);
       tilepartno = 0 as OPJ_UINT32;
       while tilepartno < tot_num_tp {
         p_j2k
