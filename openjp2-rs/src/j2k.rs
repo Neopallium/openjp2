@@ -1326,113 +1326,112 @@ fn opj_j2k_write_cod(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_cod(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
   mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    /* loop */
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_tmp: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    /* preconditions */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  /* loop */
+  let mut i: OPJ_UINT32 = 0;
+  let mut l_tmp: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-    l_cp = &mut p_j2k.m_cp;
-    /* If we are in the first tile-part header of the current tile */
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
-    } else {
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
-    };
-    (*l_tcp).cod = true;
-    /* Make sure room is sufficient */
-    if p_header_size < 5u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading COD marker\n",); /* Scod */
-      return 0i32;
-    }
-    (*l_tcp).csty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    /* Make sure we know how to decode this */
-    if (*l_tcp).csty & !((0x1i32 | 0x2i32 | 0x4i32) as OPJ_UINT32) != 0u32 {
-      event_msg!(p_manager, EVT_ERROR, "Unknown Scod value in COD marker\n",); /* SGcod (A) */
-      return 0i32;
-    }
-    l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    (*l_tcp).prg = l_tmp as OPJ_PROG_ORDER;
-    /* Make sure progression order is valid */
-    if (*l_tcp).prg as core::ffi::c_int > OPJ_CPRL as core::ffi::c_int {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Unknown progression order in COD marker\n",
-      ); /* SGcod (B) */
-      (*l_tcp).prg = OPJ_PROG_UNKNOWN
-    }
-    (*l_tcp).numlayers = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-    cursor += 2 as usize;
-    if (*l_tcp).numlayers < 1u32 || (*l_tcp).numlayers > 65535u32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Invalid number of layers in COD marker : {} not in range [1-65535]\n",
-        (*l_tcp).numlayers,
-      );
-      return 0i32;
-    }
-    /* If user didn't set a number layer to decode take the max specify in the codestream. */
-    if (*l_cp).m_specific_param.m_dec.m_layer != 0 {
-      (*l_tcp).num_layers_to_decode = (*l_cp).m_specific_param.m_dec.m_layer
-    } else {
-      (*l_tcp).num_layers_to_decode = (*l_tcp).numlayers
-    } /* SGcod (C) */
-    (*l_tcp).mct = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    if (*l_tcp).mct > 1u32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Invalid multiple component transformation\n",
-      );
-      return 0i32;
-    }
-    p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(5u32) as OPJ_UINT32;
-    i = 0 as OPJ_UINT32;
-    while i < l_image.numcomps {
-      (&mut (*l_tcp).tccps)[i as usize].csty = (*l_tcp).csty & 0x1u32;
-      i += 1;
-    }
-    if opj_j2k_read_SPCod_SPCoc(
-      p_j2k,
-      0 as OPJ_UINT32,
-      &header_data[cursor..],
-      &mut p_header_size,
-      p_manager,
-    ) == 0
-    {
-      event_msg!(p_manager, EVT_ERROR, "Error reading COD marker\n",);
-      return 0i32;
-    }
-    if p_header_size != 0u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading COD marker\n",);
-      return 0i32;
-    }
-    /* Apply the coding style to other components of the current tile or the m_default_tcp*/
-    opj_j2k_copy_tile_component_parameters(p_j2k);
-    /* Index */
-    1i32
+  assert!(!p_header_data.is_null());
+  let l_image_numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  /* If we are in the first tile-part header of the current tile */
+  let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+  let l_cp = &mut p_j2k.m_cp;
+  let l_tcp = if is_tph {
+    &mut l_cp.tcps[p_j2k.m_current_tile_number as usize]
+  } else {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set")
+  };
+  l_tcp.cod = true;
+  /* Make sure room is sufficient */
+  if p_header_size < 5u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading COD marker\n",); /* Scod */
+    return 0i32;
   }
+  l_tcp.csty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  /* Make sure we know how to decode this */
+  if l_tcp.csty & !((0x1i32 | 0x2i32 | 0x4i32) as OPJ_UINT32) != 0u32 {
+    event_msg!(p_manager, EVT_ERROR, "Unknown Scod value in COD marker\n",); /* SGcod (A) */
+    return 0i32;
+  }
+  l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  l_tcp.prg = l_tmp as OPJ_PROG_ORDER;
+  /* Make sure progression order is valid */
+  if l_tcp.prg as core::ffi::c_int > OPJ_CPRL as core::ffi::c_int {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Unknown progression order in COD marker\n",
+    ); /* SGcod (B) */
+    l_tcp.prg = OPJ_PROG_UNKNOWN
+  }
+  l_tcp.numlayers = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+  cursor += 2 as usize;
+  if l_tcp.numlayers < 1u32 || l_tcp.numlayers > 65535u32 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid number of layers in COD marker : {} not in range [1-65535]\n",
+      l_tcp.numlayers,
+    );
+    return 0i32;
+  }
+  /* If user didn't set a number layer to decode take the max specify in the codestream. */
+  if l_cp.m_specific_param.m_dec.m_layer != 0 {
+    l_tcp.num_layers_to_decode = l_cp.m_specific_param.m_dec.m_layer
+  } else {
+    l_tcp.num_layers_to_decode = l_tcp.numlayers
+  } /* SGcod (C) */
+  l_tcp.mct = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  if l_tcp.mct > 1u32 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid multiple component transformation\n",
+    );
+    return 0i32;
+  }
+  p_header_size = p_header_size.wrapping_sub(5u32);
+  i = 0 as OPJ_UINT32;
+  while i < l_image_numcomps {
+    l_tcp.tccps[i as usize].csty = l_tcp.csty & 0x1u32;
+    i += 1;
+  }
+  drop(l_tcp);
+  drop(l_cp);
+  if opj_j2k_read_SPCod_SPCoc(
+    p_j2k,
+    0 as OPJ_UINT32,
+    &header_data[cursor..],
+    &mut p_header_size,
+    p_manager,
+  ) == 0
+  {
+    event_msg!(p_manager, EVT_ERROR, "Error reading COD marker\n",);
+    return 0i32;
+  }
+  if p_header_size != 0u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading COD marker\n",);
+    return 0i32;
+  }
+  /* Apply the coding style to other components of the current tile or the m_default_tcp*/
+  opj_j2k_copy_tile_component_parameters(p_j2k);
+  /* Index */
+  1i32
 }
 
 /* *
@@ -1611,75 +1610,76 @@ fn opj_j2k_get_max_coc_size(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_coc(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
   mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_comp_room: OPJ_UINT32 = 0;
-    let mut l_comp_no: OPJ_UINT32 = 0;
-    /* preconditions */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let l_comp_room: OPJ_UINT32;
+  let l_comp_no: OPJ_UINT32;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
+  assert!(!p_header_data.is_null());
+  let l_image_numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  l_comp_room = if l_image_numcomps <= 256u32 {
+    1i32
+  } else {
+    2i32
+  } as OPJ_UINT32;
+  /* make sure room is sufficient*/
+  if p_header_size < l_comp_room.wrapping_add(1u32) {
+    event_msg!(p_manager, EVT_ERROR, "Error reading COC marker\n",); /* Ccoc */
+    return 0i32;
+  } /* Scoc */
+  p_header_size = p_header_size.wrapping_sub(l_comp_room.wrapping_add(1u32));
+  l_comp_no = opj_read_bytes(&header_data[cursor..], l_comp_room);
+  cursor += l_comp_room as usize;
+  if l_comp_no >= l_image_numcomps {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error reading COC marker (bad number of components)\n",
+    );
+    return 0i32;
+  }
+  {
+    /* If we are in the first tile-part header of the current tile, patch the tile's tcp,
+     * otherwise the default tcp. */
+    let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+    let l_cp = &mut p_j2k.m_cp;
+    let l_tcp = if is_tph {
+      &mut l_cp.tcps[p_j2k.m_current_tile_number as usize]
     } else {
       p_j2k
         .m_specific_param
         .m_decoder
         .m_default_tcp
         .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
+        .expect("decoder m_default_tcp is always set")
     };
-    let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-    l_comp_room = if l_image.numcomps <= 256u32 {
-      1i32
-    } else {
-      2i32
-    } as OPJ_UINT32;
-    /* make sure room is sufficient*/
-    if p_header_size < l_comp_room.wrapping_add(1u32) {
-      event_msg!(p_manager, EVT_ERROR, "Error reading COC marker\n",); /* Ccoc */
-      return 0i32;
-    } /* Scoc */
-    p_header_size = (p_header_size as core::ffi::c_uint)
-      .wrapping_sub(l_comp_room.wrapping_add(1u32)) as OPJ_UINT32;
-    l_comp_no = opj_read_bytes(&header_data[cursor..], l_comp_room);
-    cursor += l_comp_room as isize as usize;
-    if l_comp_no >= l_image.numcomps {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Error reading COC marker (bad number of components)\n",
-      );
-      return 0i32;
-    }
-    (&mut (*l_tcp).tccps)[l_comp_no as usize].csty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32,);
+    l_tcp.tccps[l_comp_no as usize].csty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
     cursor += 1 as usize;
-    if opj_j2k_read_SPCod_SPCoc(
-      p_j2k,
-      l_comp_no,
-      &header_data[cursor..],
-      &mut p_header_size,
-      p_manager,
-    ) == 0
-    {
-      event_msg!(p_manager, EVT_ERROR, "Error reading COC marker\n",);
-      return 0i32;
-    }
-    if p_header_size != 0u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading COC marker\n",);
-      return 0i32;
-    }
-    1i32
   }
+  if opj_j2k_read_SPCod_SPCoc(
+    p_j2k,
+    l_comp_no,
+    &header_data[cursor..],
+    &mut p_header_size,
+    p_manager,
+  ) == 0
+  {
+    event_msg!(p_manager, EVT_ERROR, "Error reading COC marker\n",);
+    return 0i32;
+  }
+  if p_header_size != 0u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading COC marker\n",);
+    return 0i32;
+  }
+  1i32
 }
+
 /* *
  * Writes the QCD marker (quantization default)
  *
@@ -1927,66 +1927,64 @@ fn opj_j2k_get_max_qcc_size(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_qcc(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
   mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut l_num_comp: OPJ_UINT32 = 0;
-    let mut l_comp_no: OPJ_UINT32 = 0;
-    /* preconditions */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let l_comp_no: OPJ_UINT32;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    l_num_comp = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-    if l_num_comp <= 256u32 {
-      if p_header_size < 1u32 {
-        event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
-        return 0i32;
-      }
-      l_comp_no = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  assert!(!p_header_data.is_null());
+  let l_num_comp = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  if l_num_comp <= 256u32 {
+    if p_header_size < 1u32 {
+      event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
+      return 0i32;
+    }
+    l_comp_no = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
     cursor += 1 as usize;
-      p_header_size = p_header_size.wrapping_sub(1)
-    } else {
-      if p_header_size < 2u32 {
-        event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
-        return 0i32;
-      }
-      l_comp_no = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+    p_header_size = p_header_size.wrapping_sub(1)
+  } else {
+    if p_header_size < 2u32 {
+      event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
+      return 0i32;
+    }
+    l_comp_no = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
     cursor += 2 as usize;
-      p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32
-    }
-    /* USE_JPWL */
-    if l_comp_no >= p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Invalid component number: {}, regarding the number of components {}\n",
-        l_comp_no,
-        p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps,
-      );
-      return 0i32;
-    }
-    if opj_j2k_read_SQcd_SQcc(
-      p_j2k,
-      l_comp_no,
-      &header_data[cursor..],
-      &mut p_header_size,
-      p_manager,
-    ) == 0
-    {
-      event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
-      return 0i32;
-    }
-    if p_header_size != 0u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
-      return 0i32;
-    }
-    1i32
+    p_header_size = p_header_size.wrapping_sub(2u32)
   }
+  /* USE_JPWL */
+  if l_comp_no >= l_num_comp {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid component number: {}, regarding the number of components {}\n",
+      l_comp_no,
+      l_num_comp,
+    );
+    return 0i32;
+  }
+  if opj_j2k_read_SQcd_SQcc(
+    p_j2k,
+    l_comp_no,
+    &header_data[cursor..],
+    &mut p_header_size,
+    p_manager,
+  ) == 0
+  {
+    event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
+    return 0i32;
+  }
+  if p_header_size != 0u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
+    return 0i32;
+  }
+  1i32
 }
+
 fn opj_j2k_write_poc(
   p_j2k: &mut opj_j2k,
   p_stream: &mut Stream,
