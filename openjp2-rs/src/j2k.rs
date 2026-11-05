@@ -835,73 +835,65 @@ fn opj_j2k_read_soc(
  * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
 */
-fn opj_j2k_write_siz(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_size_len: OPJ_UINT32 = 0;
-    let mut cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
-    /* preconditions */
+fn opj_j2k_write_siz(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  let mut i: OPJ_UINT32 = 0;
+  let l_size_len: OPJ_UINT32;
+  /* preconditions */
 
-    let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-    cp = &mut p_j2k.m_cp;
-    l_size_len = (40u32).wrapping_add((3u32).wrapping_mul(l_image.numcomps));
-    l_img_comp = l_image.comps.as_ptr() as *mut CoreImageComp;
-    let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
-    l_buf.resize(l_size_len as usize, 0);
-    let mut pos: usize = 0;
-    /* write SOC identifier */
-    opj_write_bytes(&mut l_buf[pos..], J2KMarker::SIZ.as_u32(), 2 as OPJ_UINT32); /* SIZ */
-    pos += 2 as usize; /* L_SIZ */
-    opj_write_bytes(&mut l_buf[pos..], l_size_len.wrapping_sub(2u32), 2 as OPJ_UINT32,); /* Rsiz (capabilities) */
-    pos += 2 as usize; /* Xsiz */
-    opj_write_bytes(&mut l_buf[pos..], (*cp).rsiz as OPJ_UINT32, 2 as OPJ_UINT32); /* Ysiz */
-    pos += 2 as usize; /* X0siz */
-    opj_write_bytes(&mut l_buf[pos..], l_image.x1, 4 as OPJ_UINT32); /* Y0siz */
-    pos += 4 as usize; /* XTsiz */
-    opj_write_bytes(&mut l_buf[pos..], l_image.y1, 4 as OPJ_UINT32); /* YTsiz */
-    pos += 4 as usize; /* XT0siz */
-    opj_write_bytes(&mut l_buf[pos..], l_image.x0, 4 as OPJ_UINT32); /* YT0siz */
-    pos += 4 as usize; /* Csiz */
-    opj_write_bytes(&mut l_buf[pos..], l_image.y0, 4 as OPJ_UINT32);
-    pos += 4 as usize;
-    opj_write_bytes(&mut l_buf[pos..], (*cp).tdx, 4 as OPJ_UINT32);
-    pos += 4 as usize;
-    opj_write_bytes(&mut l_buf[pos..], (*cp).tdy, 4 as OPJ_UINT32);
-    pos += 4 as usize;
-    opj_write_bytes(&mut l_buf[pos..], (*cp).tx0, 4 as OPJ_UINT32);
-    pos += 4 as usize;
-    opj_write_bytes(&mut l_buf[pos..], (*cp).ty0, 4 as OPJ_UINT32);
-    pos += 4 as usize;
-    opj_write_bytes(&mut l_buf[pos..], l_image.numcomps, 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    i = 0 as OPJ_UINT32;
-    while i < l_image.numcomps {
-      /* TODO here with MCT ? */
-      opj_write_bytes(&mut l_buf[pos..], (*l_img_comp)
-          .prec
-          .wrapping_sub(1u32)
-          .wrapping_add((*l_img_comp).sgnd << 7i32), 1 as OPJ_UINT32,); /* Ssiz_i */
-      pos += 1 as usize; /* XRsiz_i */
-      opj_write_bytes(&mut l_buf[pos..], (*l_img_comp).dx, 1 as OPJ_UINT32); /* YRsiz_i */
-      pos += 1 as usize;
-      opj_write_bytes(&mut l_buf[pos..], (*l_img_comp).dy, 1 as OPJ_UINT32);
-      pos += 1 as usize;
-      l_img_comp = l_img_comp.offset(1);
-      i += 1;
-    }
-    if opj_stream_write_data(p_stream, &l_buf[..l_size_len as usize], p_manager) != l_size_len as usize
-    {
-      return 0i32;
-    }
-    p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-    1i32
+  let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
+  let cp = &mut p_j2k.m_cp;
+  l_size_len = (40u32).wrapping_add((3u32).wrapping_mul(l_image.numcomps));
+  let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
+  l_buf.resize(l_size_len as usize, 0);
+  let mut pos: usize = 0;
+  /* write SOC identifier */
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::SIZ.as_u32(), 2 as OPJ_UINT32); /* SIZ */
+  pos += 2 as usize; /* L_SIZ */
+  opj_write_bytes(&mut l_buf[pos..], l_size_len.wrapping_sub(2u32), 2 as OPJ_UINT32); /* Rsiz (capabilities) */
+  pos += 2 as usize; /* Xsiz */
+  opj_write_bytes(&mut l_buf[pos..], cp.rsiz as OPJ_UINT32, 2 as OPJ_UINT32); /* Ysiz */
+  pos += 2 as usize; /* X0siz */
+  opj_write_bytes(&mut l_buf[pos..], l_image.x1, 4 as OPJ_UINT32); /* Y0siz */
+  pos += 4 as usize; /* XTsiz */
+  opj_write_bytes(&mut l_buf[pos..], l_image.y1, 4 as OPJ_UINT32); /* YTsiz */
+  pos += 4 as usize; /* XT0siz */
+  opj_write_bytes(&mut l_buf[pos..], l_image.x0, 4 as OPJ_UINT32); /* YT0siz */
+  pos += 4 as usize; /* Csiz */
+  opj_write_bytes(&mut l_buf[pos..], l_image.y0, 4 as OPJ_UINT32);
+  pos += 4 as usize;
+  opj_write_bytes(&mut l_buf[pos..], cp.tdx, 4 as OPJ_UINT32);
+  pos += 4 as usize;
+  opj_write_bytes(&mut l_buf[pos..], cp.tdy, 4 as OPJ_UINT32);
+  pos += 4 as usize;
+  opj_write_bytes(&mut l_buf[pos..], cp.tx0, 4 as OPJ_UINT32);
+  pos += 4 as usize;
+  opj_write_bytes(&mut l_buf[pos..], cp.ty0, 4 as OPJ_UINT32);
+  pos += 4 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_image.numcomps, 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  i = 0 as OPJ_UINT32;
+  while i < l_image.numcomps {
+    /* TODO here with MCT ? */
+    let comp = &l_image.comps[i as usize];
+    opj_write_bytes(
+      &mut l_buf[pos..],
+      comp.prec.wrapping_sub(1u32).wrapping_add(comp.sgnd << 7i32),
+      1 as OPJ_UINT32,
+    ); /* Ssiz_i */
+    pos += 1 as usize; /* XRsiz_i */
+    opj_write_bytes(&mut l_buf[pos..], comp.dx, 1 as OPJ_UINT32); /* YRsiz_i */
+    pos += 1 as usize;
+    opj_write_bytes(&mut l_buf[pos..], comp.dy, 1 as OPJ_UINT32);
+    pos += 1 as usize;
+    i += 1;
   }
+  if opj_stream_write_data(p_stream, &l_buf[..l_size_len as usize], p_manager) != l_size_len as usize {
+    return 0i32;
+  }
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
+  1i32
 }
+
 /* *
  * Reads a SIZ marker (image and tile size)
  * @param       p_j2k           the jpeg2000 file codec.
@@ -917,293 +909,275 @@ fn opj_j2k_write_siz(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_read_siz(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_header_size: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_nb_comp: OPJ_UINT32 = 0;
-    let mut l_nb_comp_remain: OPJ_UINT32 = 0;
-    let mut l_remaining_size: OPJ_UINT32 = 0;
-    let mut l_nb_tiles: OPJ_UINT32 = 0;
-    let mut l_tmp: OPJ_UINT32 = 0;
-    let mut l_tx1: OPJ_UINT32 = 0;
-    let mut l_ty1: OPJ_UINT32 = 0;
-    let mut l_prec0: OPJ_UINT32 = 0;
-    let mut l_sgnd0: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
-    let mut l_current_tile_param = core::ptr::null_mut::<opj_tcp_t>();
-    /* preconditions */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let l_nb_comp: OPJ_UINT32;
+  let l_nb_comp_remain: OPJ_UINT32;
+  let l_remaining_size: OPJ_UINT32;
+  let mut l_nb_tiles: OPJ_UINT32 = 0;
+  let mut l_tmp: OPJ_UINT32 = 0;
+  let mut l_tx1: OPJ_UINT32 = 0;
+  let mut l_ty1: OPJ_UINT32 = 0;
+  let mut l_prec0: OPJ_UINT32 = 0;
+  let mut l_sgnd0: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    let l_image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
-    l_cp = &mut p_j2k.m_cp;
-    /* minimum size == 39 - 3 (= minimum component parameter) */
-    if p_header_size < 36u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error with SIZ marker size\n",); /* Rsiz (capabilities) */
-      return 0i32;
-    } /* Xsiz */
-    l_remaining_size = p_header_size.wrapping_sub(36u32); /* Ysiz */
-    l_nb_comp = l_remaining_size.wrapping_div(3u32); /* X0siz */
-    l_nb_comp_remain = l_remaining_size.wrapping_rem(3u32); /* Y0siz */
-    if l_nb_comp_remain != 0u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error with SIZ marker size\n",); /* XTsiz */
-      return 0i32;
-    } /* YTsiz */
-    l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* XT0siz */
-    cursor += 2 as usize; /* YT0siz */
-    (*l_cp).rsiz = l_tmp as OPJ_UINT16; /* Csiz */
-    l_image.x1 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-    cursor += 4 as usize;
-    l_image.y1 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-    cursor += 4 as usize;
-    l_image.x0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-    cursor += 4 as usize;
-    l_image.y0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-    cursor += 4 as usize;
-    (*l_cp).tdx = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-    cursor += 4 as usize;
-    (*l_cp).tdy = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-    cursor += 4 as usize;
-    (*l_cp).tx0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-    cursor += 4 as usize;
-    (*l_cp).ty0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-    cursor += 4 as usize;
-    l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-    cursor += 2 as usize;
-    if l_tmp < 16385u32 {
-      l_image.numcomps = l_tmp as OPJ_UINT16 as OPJ_UINT32
-    } else {
+  assert!(!p_header_data.is_null());
+  let l_image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
+  let cp = &mut p_j2k.m_cp;
+  /* minimum size == 39 - 3 (= minimum component parameter) */
+  if p_header_size < 36u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error with SIZ marker size\n",); /* Rsiz (capabilities) */
+    return 0i32;
+  } /* Xsiz */
+  l_remaining_size = p_header_size.wrapping_sub(36u32); /* Ysiz */
+  l_nb_comp = l_remaining_size.wrapping_div(3u32); /* X0siz */
+  l_nb_comp_remain = l_remaining_size.wrapping_rem(3u32); /* Y0siz */
+  if l_nb_comp_remain != 0u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error with SIZ marker size\n",); /* XTsiz */
+    return 0i32;
+  } /* YTsiz */
+  l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* XT0siz */
+  cursor += 2 as usize; /* YT0siz */
+  cp.rsiz = l_tmp as OPJ_UINT16; /* Csiz */
+  l_image.x1 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cursor += 4 as usize;
+  l_image.y1 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cursor += 4 as usize;
+  l_image.x0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cursor += 4 as usize;
+  l_image.y0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cursor += 4 as usize;
+  cp.tdx = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cursor += 4 as usize;
+  cp.tdy = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cursor += 4 as usize;
+  cp.tx0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cursor += 4 as usize;
+  cp.ty0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cursor += 4 as usize;
+  l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+  cursor += 2 as usize;
+  if l_tmp < 16385u32 {
+    l_image.numcomps = l_tmp as OPJ_UINT16 as OPJ_UINT32
+  } else {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error with SIZ marker: number of component is illegal -> {}\n",
+      l_tmp,
+    );
+    return 0i32;
+  }
+  if l_image.numcomps != l_nb_comp {
+    event_msg!(p_manager, EVT_ERROR,
+                    "Error with SIZ marker: number of component is not compatible with the remaining number of parameters ( {} vs {})\n",
+                    l_image.numcomps, l_nb_comp);
+    return 0i32;
+  }
+  /* testcase 4035.pdf.SIGSEGV.d8b.3375 */
+  /* testcase issue427-null-image-size.jp2 */
+  if l_image.x0 >= l_image.x1 || l_image.y0 >= l_image.y1 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error with SIZ marker: negative or zero image size ({} x {})\n",
+      l_image.x1 as OPJ_INT64 - l_image.x0 as i64,
+      l_image.y1 as OPJ_INT64 - l_image.y0 as i64,
+    );
+    return 0i32;
+  }
+  /* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
+  if cp.tdx == 0u32 || cp.tdy == 0u32 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error with SIZ marker: invalid tile size (tdx: {}, tdy: {})\n",
+      cp.tdx,
+      cp.tdy,
+    );
+    return 0i32;
+  }
+  /* testcase issue427-illegal-tile-offset.jp2 */
+  l_tx1 = opj_uint_adds(cp.tx0, cp.tdx); /* manage overflow */
+  l_ty1 = opj_uint_adds(cp.ty0, cp.tdy); /* manage overflow */
+  if cp.tx0 > l_image.x0 || cp.ty0 > l_image.y0 || l_tx1 <= l_image.x0 || l_ty1 <= l_image.y0 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error with SIZ marker: illegal tile offset\n",
+    );
+    return 0i32;
+  }
+  if p_j2k.dump_state == 0 {
+    let mut siz_w: OPJ_UINT32 = 0;
+    let mut siz_h: OPJ_UINT32 = 0;
+    siz_w = l_image.x1.wrapping_sub(l_image.x0);
+    siz_h = l_image.y1.wrapping_sub(l_image.y0);
+    if p_j2k.ihdr_w > 0u32
+      && p_j2k.ihdr_h > 0u32
+      && (p_j2k.ihdr_w != siz_w || p_j2k.ihdr_h != siz_h)
+    {
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Error with SIZ marker: number of component is illegal -> {}\n",
-        l_tmp,
+        "Error with SIZ marker: IHDR w({}) h({}) vs. SIZ w({}) h({})\n",
+        p_j2k.ihdr_w,
+        p_j2k.ihdr_h,
+        siz_w,
+        siz_h,
       );
       return 0i32;
     }
-    if l_image.numcomps != l_nb_comp {
+  }
+  /* USE_JPWL */
+  /* Allocate the resulting image components */
+  let numcomps = l_image.numcomps;
+  if !l_image.alloc_comps(numcomps) {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Not enough memory to take in charge SIZ marker\n",
+    );
+    return 0i32;
+  }
+  l_prec0 = 0 as OPJ_UINT32;
+  l_sgnd0 = 0 as OPJ_UINT32;
+  /* Read the component information */
+  i = 0 as OPJ_UINT32; /* Ssiz_i */
+  while i < l_image.numcomps {
+    let tmp: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    cursor += 1 as usize;
+    l_image.comps[i as usize].prec = (tmp & 0x7fu32).wrapping_add(1u32);
+    l_image.comps[i as usize].sgnd = tmp >> 7i32;
+    if p_j2k.dump_state == 0u32 {
+      if i == 0u32 {
+        l_prec0 = l_image.comps[i as usize].prec;
+        l_sgnd0 = l_image.comps[i as usize].sgnd
+      } else if !cp.allow_different_bit_depth_sign
+        && (l_image.comps[i as usize].prec != l_prec0 || l_image.comps[i as usize].sgnd != l_sgnd0)
+      {
+        event_msg!(p_manager, EVT_WARNING,
+                            "Despite JP2 BPC!=255, precision and/or sgnd values for comp[{}] is different than comp[0]:\n        [0] prec({}) sgnd({}) [{}] prec({}) sgnd({})\n", i,
+                            l_prec0, l_sgnd0, i, l_image.comps[i as usize].prec,
+                            l_image.comps[i as usize].sgnd);
+      }
+      /* TODO: we should perhaps also check against JP2 BPCC values */
+    } /* XRsiz_i */
+    let tmp_0 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* should be between 1 and 255 */
+    cursor += 1 as usize; /* YRsiz_i */
+    l_image.comps[i as usize].dx = tmp_0; /* should be between 1 and 255 */
+    let tmp_1 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    cursor += 1 as usize;
+    l_image.comps[i as usize].dy = tmp_1;
+    if l_image.comps[i as usize].dx < 1u32
+      || l_image.comps[i as usize].dx > 255u32
+      || l_image.comps[i as usize].dy < 1u32
+      || l_image.comps[i as usize].dy > 255u32
+    {
       event_msg!(p_manager, EVT_ERROR,
-                      "Error with SIZ marker: number of component is not compatible with the remaining number of parameters ( {} vs {})\n",
-                      l_image.numcomps, l_nb_comp);
+                        "Invalid values for comp = {} : dx={} dy={} (should be between 1 and 255 according to the JPEG2000 norm)\n", i,
+                        l_image.comps[i as usize].dx, l_image.comps[i as usize].dy);
       return 0i32;
     }
-    /* testcase 4035.pdf.SIGSEGV.d8b.3375 */
-    /* testcase issue427-null-image-size.jp2 */
-    if l_image.x0 >= l_image.x1 || l_image.y0 >= l_image.y1 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Error with SIZ marker: negative or zero image size ({} x {})\n",
-        l_image.x1 as OPJ_INT64 - l_image.x0 as i64,
-        l_image.y1 as OPJ_INT64 - l_image.y0 as i64,
-      );
+    /* Avoids later undefined shift in computation of */
+    /* p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps[i].m_dc_level_shift = 1
+    << (l_image->comps[i].prec - 1); */
+    if l_image.comps[i as usize].prec > 31u32 {
+      event_msg!(p_manager, EVT_ERROR,
+                        "Invalid values for comp = {} : prec={} (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n", i,
+                        l_image.comps[i as usize].prec);
       return 0i32;
-    }
-    /* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
-    if (*l_cp).tdx == 0u32 || (*l_cp).tdy == 0u32 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Error with SIZ marker: invalid tile size (tdx: {}, tdy: {})\n",
-        (*l_cp).tdx,
-        (*l_cp).tdy,
-      );
-      return 0i32;
-    }
-    /* testcase issue427-illegal-tile-offset.jp2 */
-    l_tx1 = opj_uint_adds((*l_cp).tx0, (*l_cp).tdx); /* manage overflow */
-    l_ty1 = opj_uint_adds((*l_cp).ty0, (*l_cp).tdy); /* manage overflow */
-    if (*l_cp).tx0 > l_image.x0
-      || (*l_cp).ty0 > l_image.y0
-      || l_tx1 <= l_image.x0
-      || l_ty1 <= l_image.y0
-    {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Error with SIZ marker: illegal tile offset\n",
-      );
-      return 0i32;
-    }
-    if p_j2k.dump_state == 0 {
-      let mut siz_w: OPJ_UINT32 = 0;
-      let mut siz_h: OPJ_UINT32 = 0;
-      siz_w = l_image.x1.wrapping_sub(l_image.x0);
-      siz_h = l_image.y1.wrapping_sub(l_image.y0);
-      if p_j2k.ihdr_w > 0u32
-        && p_j2k.ihdr_h > 0u32
-        && (p_j2k.ihdr_w != siz_w || p_j2k.ihdr_h != siz_h)
-      {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Error with SIZ marker: IHDR w({}) h({}) vs. SIZ w({}) h({})\n",
-          p_j2k.ihdr_w,
-          p_j2k.ihdr_h,
-          siz_w,
-          siz_h,
-        );
-        return 0i32;
-      }
     }
     /* USE_JPWL */
-    /* Allocate the resulting image components */
-    let numcomps = l_image.numcomps;
-    if !l_image.alloc_comps(numcomps) {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough memory to take in charge SIZ marker\n",
-      );
-      return 0i32;
-    }
-    l_img_comp = l_image.comps.as_ptr() as *mut CoreImageComp;
-    l_prec0 = 0 as OPJ_UINT32;
-    l_sgnd0 = 0 as OPJ_UINT32;
-    /* Read the component information */
-    i = 0 as OPJ_UINT32; /* Ssiz_i */
-    while i < l_image.numcomps {
-      let mut tmp: OPJ_UINT32 = 0;
-      tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-      (*l_img_comp).prec = (tmp & 0x7fu32).wrapping_add(1u32);
-      (*l_img_comp).sgnd = tmp >> 7i32;
-      if p_j2k.dump_state == 0u32 {
-        if i == 0u32 {
-          l_prec0 = (*l_img_comp).prec;
-          l_sgnd0 = (*l_img_comp).sgnd
-        } else if !(*l_cp).allow_different_bit_depth_sign
-          && ((*l_img_comp).prec != l_prec0 || (*l_img_comp).sgnd != l_sgnd0)
-        {
-          event_msg!(p_manager, EVT_WARNING,
-                              "Despite JP2 BPC!=255, precision and/or sgnd values for comp[{}] is different than comp[0]:\n        [0] prec({}) sgnd({}) [{}] prec({}) sgnd({})\n", i,
-                              l_prec0, l_sgnd0, i, (*l_img_comp).prec,
-                              (*l_img_comp).sgnd);
-        }
-        /* TODO: we should perhaps also check against JP2 BPCC values */
-      } /* XRsiz_i */
-      tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* should be between 1 and 255 */
-      cursor += 1 as usize; /* YRsiz_i */
-      (*l_img_comp).dx = tmp; /* should be between 1 and 255 */
-      tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-      (*l_img_comp).dy = tmp;
-      if (*l_img_comp).dx < 1u32
-        || (*l_img_comp).dx > 255u32
-        || (*l_img_comp).dy < 1u32
-        || (*l_img_comp).dy > 255u32
-      {
-        event_msg!(p_manager, EVT_ERROR,
-                          "Invalid values for comp = {} : dx={} dy={} (should be between 1 and 255 according to the JPEG2000 norm)\n", i,
-                          (*l_img_comp).dx, (*l_img_comp).dy);
-        return 0i32;
-      }
-      /* Avoids later undefined shift in computation of */
-      /* p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps[i].m_dc_level_shift = 1
-      << (l_image->comps[i].prec - 1); */
-      if (*l_img_comp).prec > 31u32 {
-        event_msg!(p_manager, EVT_ERROR,
-                          "Invalid values for comp = {} : prec={} (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n", i,
-                          (*l_img_comp).prec);
-        return 0i32;
-      }
-      /* USE_JPWL */
-      (*l_img_comp).resno_decoded = 0 as OPJ_UINT32; /* number of resolution decoded */
-      (*l_img_comp).factor = (*l_cp).m_specific_param.m_dec.m_reduce; /* reducing factor per component */
-      l_img_comp = l_img_comp.offset(1);
-      i += 1;
-    }
-    if (*l_cp).tdx == 0u32 || (*l_cp).tdy == 0u32 {
-      return 0i32;
-    }
+    l_image.comps[i as usize].resno_decoded = 0 as OPJ_UINT32; /* number of resolution decoded */
+    l_image.comps[i as usize].factor = cp.m_specific_param.m_dec.m_reduce; /* reducing factor per component */
+    i += 1;
+  }
+  if cp.tdx == 0u32 || cp.tdy == 0u32 {
+    return 0i32;
+  }
 
-    /* Compute the number of tiles */
-    (*l_cp).tw = opj_uint_ceildiv(l_image.x1 - ((*l_cp).tx0), (*l_cp).tdx);
-    (*l_cp).th = opj_uint_ceildiv(l_image.y1 - ((*l_cp).ty0), (*l_cp).tdy);
-    /* Check that the number of tiles is valid */
-    if (*l_cp).tw == 0u32 || (*l_cp).th == 0u32 || (*l_cp).tw > (65535u32).wrapping_div((*l_cp).th)
-    {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Invalid number of tiles : {} x {} (maximum fixed by jpeg2000 norm is 65535 tiles)\n",
-        (*l_cp).tw,
-        (*l_cp).th,
-      );
-      return 0i32;
-    }
-    l_nb_tiles = (*l_cp).tw.wrapping_mul((*l_cp).th);
-    /* Define the tiles which will be decoded */
-    if p_j2k.m_specific_param.m_decoder.m_discard_tiles {
-      p_j2k.m_specific_param.m_decoder.m_start_tile_x = p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_start_tile_x
-        .wrapping_sub((*l_cp).tx0)
-        .wrapping_div((*l_cp).tdx);
-      p_j2k.m_specific_param.m_decoder.m_start_tile_y = p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_start_tile_y
-        .wrapping_sub((*l_cp).ty0)
-        .wrapping_div((*l_cp).tdy);
-      p_j2k.m_specific_param.m_decoder.m_end_tile_x = opj_uint_ceildiv(
-        p_j2k.m_specific_param.m_decoder.m_end_tile_x - ((*l_cp).tx0),
-        (*l_cp).tdx,
-      );
-      p_j2k.m_specific_param.m_decoder.m_end_tile_y = opj_uint_ceildiv(
-        p_j2k.m_specific_param.m_decoder.m_end_tile_y - ((*l_cp).ty0),
-        (*l_cp).tdy,
-      );
-    } else {
-      p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
-      p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
-      p_j2k.m_specific_param.m_decoder.m_end_tile_x = (*l_cp).tw;
-      p_j2k.m_specific_param.m_decoder.m_end_tile_y = (*l_cp).th
-    }
-    /* USE_JPWL */
-    /* memory allocations */
-    (*l_cp).tcps = (0..l_nb_tiles).map(|_| Default::default()).collect();
-    /* USE_JPWL */
-    let default_tcp = p_j2k
+  /* Compute the number of tiles */
+  cp.tw = opj_uint_ceildiv(l_image.x1 - cp.tx0, cp.tdx);
+  cp.th = opj_uint_ceildiv(l_image.y1 - cp.ty0, cp.tdy);
+  /* Check that the number of tiles is valid */
+  if cp.tw == 0u32 || cp.th == 0u32 || cp.tw > (65535u32).wrapping_div(cp.th) {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid number of tiles : {} x {} (maximum fixed by jpeg2000 norm is 65535 tiles)\n",
+      cp.tw,
+      cp.th,
+    );
+    return 0i32;
+  }
+  l_nb_tiles = cp.tw.wrapping_mul(cp.th);
+  /* Define the tiles which will be decoded */
+  if p_j2k.m_specific_param.m_decoder.m_discard_tiles {
+    p_j2k.m_specific_param.m_decoder.m_start_tile_x = p_j2k
       .m_specific_param
       .m_decoder
-      .m_default_tcp
-      .as_deref_mut()
-      .expect("decoder m_default_tcp is always set");
-    default_tcp.tccps.resize(l_image.numcomps as usize, Default::default());
-    default_tcp.m_mct_records = Vec::with_capacity(10);
-    default_tcp.m_mcc_records = Vec::with_capacity(10);
-    /* set up default dc level shift */
-    i = 0 as OPJ_UINT32;
-    while i < l_image.numcomps {
-      if l_image.comps[i as usize].sgnd == 0 {
-        (&mut default_tcp.tccps)[i as usize].m_dc_level_shift = (1i32)
-          << l_image.comps[i as usize]
-            .prec
-            .wrapping_sub(1u32)
-      }
-      i += 1;
-    }
-    l_current_tile_param = (*l_cp).tcps.as_mut_ptr();
-    i = 0 as OPJ_UINT32;
-    while i < l_nb_tiles {
-      (*l_current_tile_param)
-        .tccps
-        .resize(l_image.numcomps as usize, Default::default());
-      l_current_tile_param = l_current_tile_param.offset(1);
-      i += 1;
-    }
-    p_j2k.m_specific_param.m_decoder.m_state = J2KState::MH;
-    opj_image_comp_header_update(p_j2k.m_private_image.as_deref_mut().expect("m_private_image"), l_cp);
-    1i32
+      .m_start_tile_x
+      .wrapping_sub(cp.tx0)
+      .wrapping_div(cp.tdx);
+    p_j2k.m_specific_param.m_decoder.m_start_tile_y = p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_start_tile_y
+      .wrapping_sub(cp.ty0)
+      .wrapping_div(cp.tdy);
+    p_j2k.m_specific_param.m_decoder.m_end_tile_x =
+      opj_uint_ceildiv(p_j2k.m_specific_param.m_decoder.m_end_tile_x - cp.tx0, cp.tdx);
+    p_j2k.m_specific_param.m_decoder.m_end_tile_y =
+      opj_uint_ceildiv(p_j2k.m_specific_param.m_decoder.m_end_tile_y - cp.ty0, cp.tdy);
+  } else {
+    p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
+    p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
+    p_j2k.m_specific_param.m_decoder.m_end_tile_x = cp.tw;
+    p_j2k.m_specific_param.m_decoder.m_end_tile_y = cp.th
   }
+  /* USE_JPWL */
+  /* memory allocations */
+  cp.tcps = (0..l_nb_tiles).map(|_| Default::default()).collect();
+  /* USE_JPWL */
+  let default_tcp = p_j2k
+    .m_specific_param
+    .m_decoder
+    .m_default_tcp
+    .as_deref_mut()
+    .expect("decoder m_default_tcp is always set");
+  default_tcp.tccps.resize(l_image.numcomps as usize, Default::default());
+  default_tcp.m_mct_records = Vec::with_capacity(10);
+  default_tcp.m_mcc_records = Vec::with_capacity(10);
+  /* set up default dc level shift */
+  i = 0 as OPJ_UINT32;
+  while i < l_image.numcomps {
+    if l_image.comps[i as usize].sgnd == 0 {
+      (&mut default_tcp.tccps)[i as usize].m_dc_level_shift = (1i32)
+        << l_image.comps[i as usize].prec.wrapping_sub(1u32)
+    }
+    i += 1;
+  }
+  i = 0 as OPJ_UINT32;
+  while i < l_nb_tiles {
+    cp.tcps[i as usize]
+      .tccps
+      .resize(l_image.numcomps as usize, Default::default());
+    i += 1;
+  }
+  p_j2k.m_specific_param.m_decoder.m_state = J2KState::MH;
+  opj_image_comp_header_update(
+    p_j2k.m_private_image.as_deref_mut().expect("m_private_image"),
+    cp,
+  );
+  1i32
 }
 
 /* *
@@ -1213,39 +1187,39 @@ fn opj_j2k_read_siz(
  * @param       p_j2k                   J2K codec.
  * @param       p_manager       the user event manager.
 */
-fn opj_j2k_write_com(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut l_comment_size: OPJ_UINT32 = 0;
-    let mut l_total_com_size: OPJ_UINT32 = 0;
-    let mut l_comment = core::ptr::null::<OPJ_CHAR>();
-        /* preconditions */
-    /* L_COM */
+fn opj_j2k_write_com(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  let l_comment_size: OPJ_UINT32;
+  let l_total_com_size: OPJ_UINT32;
+  /* preconditions */
+  /* L_COM */
 
-    l_comment = p_j2k.m_cp.comment;
-    l_comment_size = strlen(l_comment) as OPJ_UINT32;
-    l_total_com_size = l_comment_size.wrapping_add(6u32);
-    let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
-    l_buf.resize(l_total_com_size as usize, 0);
-    let mut pos: usize = 0;
-    opj_write_bytes(&mut l_buf[pos..], J2KMarker::COM.as_u32(), 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], l_total_com_size.wrapping_sub(2u32), 2 as OPJ_UINT32,);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], 1 as OPJ_UINT32, 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    l_buf[pos..pos + l_comment_size as usize as usize].copy_from_slice(core::slice::from_raw_parts(l_comment as *const OPJ_BYTE, l_comment_size as usize));
-    pos += l_comment_size as usize as usize;
-    if opj_stream_write_data(p_stream, &l_buf[..l_total_com_size as usize], p_manager) != l_total_com_size as usize
-    {
-      return 0i32;
-    }
-    p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-    1i32
+  let l_comment = p_j2k.m_cp.comment;
+  // SAFETY: `comment` is a NUL-terminated C string owned by the coding parameters
+  // (copied from the encoder parameters); converted to bytes for the marker body.
+  let comment_bytes = if l_comment.is_null() {
+    &[][..]
+  } else {
+    unsafe { core::ffi::CStr::from_ptr(l_comment) }.to_bytes()
+  };
+  l_comment_size = comment_bytes.len() as OPJ_UINT32;
+  l_total_com_size = l_comment_size.wrapping_add(6u32);
+  let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
+  l_buf.resize(l_total_com_size as usize, 0);
+  let mut pos: usize = 0;
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::COM.as_u32(), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_total_com_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], 1 as OPJ_UINT32, 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  l_buf[pos..pos + l_comment_size as usize].copy_from_slice(comment_bytes);
+  pos += l_comment_size as usize;
+  if opj_stream_write_data(p_stream, &l_buf[..l_total_com_size as usize], p_manager) != l_total_com_size as usize
+  {
+    return 0i32;
   }
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
+  1i32
 }
 
 /* *

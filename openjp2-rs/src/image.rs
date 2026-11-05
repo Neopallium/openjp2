@@ -760,12 +760,7 @@ pub fn opj_image_destroy(mut image: *mut opj_image_t) {
  * @param p_image_header    the image header to update.
  * @param p_cp              the coding parameters from which to update the image.
  */
-pub(crate) fn opj_image_comp_header_update(
-  mut p_image_header: &mut CoreImage,
-  mut p_cp: *const opj_cp,
-) {
-  assert!(!p_cp.is_null());
-  let p_cp = unsafe { &*p_cp };
+pub(crate) fn opj_image_comp_header_update(p_image_header: &mut CoreImage, p_cp: &opj_cp) {
   let l_x0 = opj_uint_max(p_cp.tx0, p_image_header.x0);
   let l_y0 = opj_uint_max(p_cp.ty0, p_image_header.y0);
   let l_x1 = p_cp
