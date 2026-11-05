@@ -32,6 +32,7 @@
  */
 
 use super::c_api_types::*;
+use crate::image::CoreImage;
 use super::j2k::*;
 
 use super::event::opj_event_mgr;
@@ -427,7 +428,7 @@ pub(crate) type opj_j2k_proc_list_t = super::function_list::ProcedureList<opj_j2
 pub(crate) struct opj_j2k {
   pub m_is_decoder: OPJ_BOOL,
   pub m_specific_param: C2RustUnnamed_2,
-  pub m_private_image: *mut opj_image_t,
+  pub m_private_image: Option<Box<CoreImage>>,
   pub m_output_image: *mut opj_image_t,
   pub m_cp: opj_cp_t,
   pub cstr_index: *mut opj_codestream_index_t,
@@ -445,7 +446,7 @@ pub(crate) struct opj_tcd {
   pub cur_totnum_tp: OPJ_UINT32,
   pub cur_pino: OPJ_UINT32,
   pub tcd_image: opj_tcd_image,
-  pub image: *mut opj_image_t,
+  pub image: *mut CoreImage,
   pub cp: *mut opj_cp_t,
   pub tcp: *mut opj_tcp_t,
   pub tcd_tileno: OPJ_UINT32,

@@ -2,6 +2,7 @@ use super::bio::*;
 use super::event::*;
 use super::math::*;
 use super::openjpeg::*;
+use crate::image::{CoreImage, CoreImageComp};
 use super::pi::*;
 use super::tcd::*;
 use super::tgt::*;
@@ -11,7 +12,7 @@ use super::malloc::*;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct opj_t2 {
-  pub image: *mut opj_image_t,
+  pub image: *mut CoreImage,
   pub cp: *mut opj_cp_t,
 }
 pub(crate) type opj_t2_t = opj_t2;
@@ -150,7 +151,7 @@ pub(crate) fn opj_t2_encode_packets(
       1u32
     };
     let mut l_nb_pocs = (*l_tcp).numpocs.wrapping_add(1u32);
-    l_pi = opj_pi_initialise_encode(l_image, l_cp, p_tile_no, p_t2_mode, p_manager);
+    l_pi = opj_pi_initialise_encode(unsafe { &mut *l_image }, l_cp, p_tile_no, p_t2_mode, p_manager);
     if l_pi.is_null() {
       return 0i32;
     }
@@ -222,7 +223,7 @@ pub(crate) fn opj_t2_encode_packets(
         assert!((*p_marker_info).packet_count == 0u32);
         assert!((*p_marker_info).p_packet_size.is_null());
         (*p_marker_info).p_packet_size =
-          opj_alloc_type_array(opj_get_encoding_packet_count(l_image, l_cp, p_tile_no) as usize);
+          opj_alloc_type_array(opj_get_encoding_packet_count(unsafe { &mut *l_image }, l_cp, p_tile_no) as usize);
         if (*p_marker_info).p_packet_size.is_null() {
           opj_pi_destroy(l_pi, l_nb_pocs);
           return 0i32;
@@ -318,7 +319,7 @@ pub(crate) fn opj_t2_decode_packets(
     let mut l_nb_pocs = (*l_tcp).numpocs.wrapping_add(1u32);
     let mut l_current_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_pack_info = core::ptr::null_mut::<opj_packet_info_t>();
-    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
     /* create a packet iterator */
     l_pi = opj_pi_create_decode(l_image, l_cp, p_tile_no, p_manager);
     if l_pi.is_null() {
@@ -429,7 +430,7 @@ pub(crate) fn opj_t2_decode_packets(
             return 0i32;
           }
           l_img_comp =
-            &mut *(*l_image).comps.offset((*l_current_pi).compno as isize) as *mut opj_image_comp_t;
+            &mut *(*l_image).comps.as_mut_ptr().add((*l_current_pi).compno as usize) as *mut CoreImageComp;
           (*l_img_comp).resno_decoded =
             opj_uint_max((*l_current_pi).resno, (*l_img_comp).resno_decoded)
         } else {
@@ -453,7 +454,7 @@ pub(crate) fn opj_t2_decode_packets(
         }
         if *first_pass_failed.offset((*l_current_pi).compno as isize) != 0 {
           l_img_comp =
-            &mut *(*l_image).comps.offset((*l_current_pi).compno as isize) as *mut opj_image_comp_t;
+            &mut *(*l_image).comps.as_mut_ptr().add((*l_current_pi).compno as usize) as *mut CoreImageComp;
           if (*l_img_comp).resno_decoded == 0u32 {
             (*l_img_comp).resno_decoded = tcd.tcd_image.tiles.comps[(*l_current_pi).compno as usize]
               .minimum_num_resolutions
@@ -485,7 +486,7 @@ pub(crate) fn opj_t2_decode_packets(
 */
 
 pub(crate) fn opj_t2_create(
-  mut p_image: *mut opj_image_t,
+  mut p_image: *mut CoreImage,
   mut p_cp: *mut opj_cp_t,
 ) -> *mut opj_t2_t {
   unsafe {

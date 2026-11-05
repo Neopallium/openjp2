@@ -729,12 +729,11 @@ pub fn opj_image_destroy(mut image: *mut opj_image_t) {
  * @param p_cp              the coding parameters from which to update the image.
  */
 pub(crate) fn opj_image_comp_header_update(
-  mut p_image_header: *mut opj_image_t,
+  mut p_image_header: &mut CoreImage,
   mut p_cp: *const opj_cp,
 ) {
-  assert!(!p_image_header.is_null());
   assert!(!p_cp.is_null());
-  let (p_image_header, p_cp) = unsafe { (&mut *p_image_header, &*p_cp) };
+  let p_cp = unsafe { &*p_cp };
   let l_x0 = opj_uint_max(p_cp.tx0, p_image_header.x0);
   let l_y0 = opj_uint_max(p_cp.ty0, p_image_header.y0);
   let l_x1 = p_cp
@@ -745,19 +744,17 @@ pub(crate) fn opj_image_comp_header_update(
     .wrapping_add(p_cp.th.wrapping_sub(1u32).wrapping_mul(p_cp.tdy));
   let l_x1 = opj_uint_min(opj_uint_adds(l_x1, p_cp.tdx), p_image_header.x1);
   let l_y1 = opj_uint_min(opj_uint_adds(l_y1, p_cp.tdy), p_image_header.y1);
-  if let Some(comps) = p_image_header.comps_mut() {
-    for comp in comps {
-      let l_comp_x0 = opj_uint_ceildiv(l_x0, comp.dx);
-      let l_comp_y0 = opj_uint_ceildiv(l_y0, comp.dy);
-      let l_comp_x1 = opj_uint_ceildiv(l_x1, comp.dx);
-      let l_comp_y1 = opj_uint_ceildiv(l_y1, comp.dy);
-      let l_width = opj_uint_ceildivpow2(l_comp_x1.wrapping_sub(l_comp_x0), comp.factor);
-      let l_height = opj_uint_ceildivpow2(l_comp_y1.wrapping_sub(l_comp_y0), comp.factor);
-      comp.w = l_width;
-      comp.h = l_height;
-      comp.x0 = l_comp_x0;
-      comp.y0 = l_comp_y0;
-    }
+  for comp in &mut p_image_header.comps {
+    let l_comp_x0 = opj_uint_ceildiv(l_x0, comp.dx);
+    let l_comp_y0 = opj_uint_ceildiv(l_y0, comp.dy);
+    let l_comp_x1 = opj_uint_ceildiv(l_x1, comp.dx);
+    let l_comp_y1 = opj_uint_ceildiv(l_y1, comp.dy);
+    let l_width = opj_uint_ceildivpow2(l_comp_x1.wrapping_sub(l_comp_x0), comp.factor);
+    let l_height = opj_uint_ceildivpow2(l_comp_y1.wrapping_sub(l_comp_y0), comp.factor);
+    comp.w = l_width;
+    comp.h = l_height;
+    comp.x0 = l_comp_x0;
+    comp.y0 = l_comp_y0;
   }
 }
 
@@ -804,6 +801,82 @@ pub(crate) fn opj_copy_image_header(
     if !p_image_dest.copy_icc_profile(icc_profile) {
       return;
     }
+  }
+}
+
+/// Copy the header of an owned core image and its component headers into a
+/// C-ABI image (no data copied; dest component data are dropped).
+pub(crate) fn opj_copy_image_header_from_core(p_image_src: &CoreImage, p_image_dest: &mut opj_image) {
+  p_image_dest.x0 = p_image_src.x0;
+  p_image_dest.y0 = p_image_src.y0;
+  p_image_dest.x1 = p_image_src.x1;
+  p_image_dest.y1 = p_image_src.y1;
+  if !p_image_dest.alloc_comps(p_image_src.numcomps) {
+    p_image_dest.comps = core::ptr::null_mut::<opj_image_comp_t>();
+    p_image_dest.numcomps = 0 as OPJ_UINT32;
+    return;
+  }
+  if let Some(dest) = p_image_dest.comps_mut() {
+    for (src, dest) in p_image_src.comps.iter().zip(dest) {
+      dest.dx = src.dx;
+      dest.dy = src.dy;
+      dest.w = src.w;
+      dest.h = src.h;
+      dest.x0 = src.x0;
+      dest.y0 = src.y0;
+      dest.prec = src.prec;
+      dest.bpp = src.bpp;
+      dest.sgnd = src.sgnd;
+      dest.resno_decoded = src.resno_decoded;
+      dest.factor = src.factor;
+      dest.alpha = src.alpha;
+      dest.data = core::ptr::null_mut::<OPJ_INT32>();
+    }
+  }
+  p_image_dest.color_space = p_image_src.color_space;
+  if !p_image_src.icc_profile_buf.is_empty()
+    && !p_image_dest.copy_icc_profile(ICCProfileRef::ICC(&p_image_src.icc_profile_buf))
+  {
+    return;
+  }
+}
+
+/// Copy the header of a C-ABI image and its component headers into an owned
+/// core image (no data copied).
+pub(crate) fn opj_copy_image_header_to_core(p_image_src: &opj_image, p_image_dest: &mut CoreImage) {
+  p_image_dest.x0 = p_image_src.x0;
+  p_image_dest.y0 = p_image_src.y0;
+  p_image_dest.x1 = p_image_src.x1;
+  p_image_dest.y1 = p_image_src.y1;
+  p_image_dest.numcomps = p_image_src.numcomps;
+  p_image_dest.color_space = p_image_src.color_space;
+  p_image_dest.comps.clear();
+  if let Some(src) = p_image_src.comps() {
+    p_image_dest.comps.reserve(src.len());
+    for src in src {
+      p_image_dest.comps.push(CoreImageComp {
+        dx: src.dx,
+        dy: src.dy,
+        w: src.w,
+        h: src.h,
+        x0: src.x0,
+        y0: src.y0,
+        prec: src.prec,
+        bpp: src.bpp,
+        sgnd: src.sgnd,
+        resno_decoded: src.resno_decoded,
+        factor: src.factor,
+        alpha: src.alpha,
+        data: Vec::new(),
+      });
+    }
+  }
+  p_image_dest.icc_profile_buf.clear();
+  if !p_image_src.icc_profile_buf.is_null() {
+    p_image_dest.icc_profile_buf = unsafe {
+      core::slice::from_raw_parts(p_image_src.icc_profile_buf, p_image_src.icc_profile_len as usize)
+        .to_vec()
+    };
   }
 }
 

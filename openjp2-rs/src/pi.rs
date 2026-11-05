@@ -2,6 +2,7 @@ use super::event::*;
 use super::j2k::*;
 use super::math::*;
 use super::openjpeg::*;
+use crate::image::{CoreImage, CoreImageComp};
 
 use super::malloc::*;
 
@@ -1185,7 +1186,7 @@ fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
  * @param   p_dy_min            pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  */
 pub(crate) fn opj_get_encoding_parameters(
-  mut p_image: *const opj_image_t,
+  p_image: &mut CoreImage,
   mut p_cp: *const opj_cp_t,
   mut p_tileno: OPJ_UINT32,
   mut p_tx0: *mut OPJ_UINT32,
@@ -1204,7 +1205,7 @@ pub(crate) fn opj_get_encoding_parameters(
     /* pointers */
     let mut l_tcp = core::ptr::null::<opj_tcp_t>();
     let mut l_tccp = core::ptr::null::<opj_tccp_t>();
-    let mut l_img_comp = core::ptr::null::<opj_image_comp_t>();
+    let mut l_img_comp = core::ptr::null::<CoreImageComp>();
     /* position in x and y of tile */
     let mut p: OPJ_UINT32 = 0;
     let mut q: OPJ_UINT32 = 0;
@@ -1214,11 +1215,10 @@ pub(crate) fn opj_get_encoding_parameters(
     /* preconditions */
 
     assert!(!p_cp.is_null());
-    assert!(!p_image.is_null());
-    assert!(p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th));
+        assert!(p_tileno < (*p_cp).tw.wrapping_mul((*p_cp).th));
     /* initializations */
     l_tcp = (*p_cp).tcps.as_ptr().offset(p_tileno as isize);
-    l_img_comp = (*p_image).comps;
+    l_img_comp = (*p_image).comps.as_mut_ptr();
     l_tccp = (*l_tcp).tccps.as_ptr();
     /* here calculation of tx0, tx1, ty0, ty1, maxprec, dx and dy */
     p = p_tileno.wrapping_rem((*p_cp).tw);
@@ -1341,7 +1341,7 @@ pub(crate) fn opj_get_encoding_parameters(
  * @param   p_resolutions   pointer to an area corresponding to the one described above.
  */
 pub(crate) fn opj_get_all_encoding_parameters(
-  mut p_image: *const opj_image_t,
+  p_image: &mut CoreImage,
   mut p_cp: *const opj_cp_t,
   mut tileno: OPJ_UINT32,
   mut p_tx0: *mut OPJ_UINT32,
@@ -1361,7 +1361,7 @@ pub(crate) fn opj_get_all_encoding_parameters(
     /* pointers*/
     let mut tcp = core::ptr::null::<opj_tcp_t>();
     let mut l_tccp = core::ptr::null::<opj_tccp_t>();
-    let mut l_img_comp = core::ptr::null::<opj_image_comp_t>();
+    let mut l_img_comp = core::ptr::null::<CoreImageComp>();
     /* to store l_dx, l_dy, w and h for each resolution and component.*/
     let mut lResolutionPtr = core::ptr::null_mut::<OPJ_UINT32>();
     /* position in x and y of tile*/
@@ -1373,12 +1373,11 @@ pub(crate) fn opj_get_all_encoding_parameters(
     /* preconditions in debug*/
 
     assert!(!p_cp.is_null());
-    assert!(!p_image.is_null());
-    assert!(tileno < (*p_cp).tw.wrapping_mul((*p_cp).th));
+        assert!(tileno < (*p_cp).tw.wrapping_mul((*p_cp).th));
     /* initializations*/
     tcp = (*p_cp).tcps.as_ptr().offset(tileno as isize);
     l_tccp = (*tcp).tccps.as_ptr();
-    l_img_comp = (*p_image).comps;
+    l_img_comp = (*p_image).comps.as_mut_ptr();
     /* position in x and y of tile*/
     p = tileno.wrapping_rem((*p_cp).tw);
     q = tileno.wrapping_div((*p_cp).tw);
@@ -1521,7 +1520,7 @@ pub(crate) fn opj_get_all_encoding_parameters(
  * @param   manager Event manager
  */
 pub(crate) fn opj_pi_create(
-  mut image: *const opj_image_t,
+  image: &CoreImage,
   mut cp: *const opj_cp_t,
   mut tileno: OPJ_UINT32,
   mut manager: &mut opj_event_mgr,
@@ -1541,8 +1540,7 @@ pub(crate) fn opj_pi_create(
     /* preconditions in debug*/
 
     assert!(!cp.is_null());
-    assert!(!image.is_null());
-    assert!(tileno < (*cp).tw.wrapping_mul((*cp).th));
+        assert!(tileno < (*cp).tw.wrapping_mul((*cp).th));
     /* initializations*/
     tcp = (*cp).tcps.as_ptr().offset(tileno as isize);
     l_poc_bound = (*tcp).numpocs.wrapping_add(1u32);
@@ -1916,7 +1914,7 @@ fn opj_pi_check_next_level(
 */
 
 pub(crate) fn opj_pi_create_decode(
-  mut p_image: *mut opj_image_t,
+  mut p_image: *mut CoreImage,
   mut p_cp: *mut opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
   mut manager: &mut opj_event_mgr,
@@ -1949,14 +1947,13 @@ pub(crate) fn opj_pi_create_decode(
     let mut l_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
     let mut l_tccp = core::ptr::null::<opj_tccp_t>();
-    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
     let mut l_current_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_encoding_value_ptr = core::ptr::null_mut::<OPJ_UINT32>();
     /* preconditions in debug */
 
     assert!(!p_cp.is_null());
-    assert!(!p_image.is_null());
-    assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
+        assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
     /* initializations */
     l_tcp = (*p_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
     l_bound = (*l_tcp).numpocs.wrapping_add(1u32);
@@ -1972,7 +1969,7 @@ pub(crate) fn opj_pi_create_decode(
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
     /* memory allocation for pi */
-    l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
+    l_pi = opj_pi_create(unsafe { &*p_image }, p_cp, p_tile_no, manager);
     if l_pi.is_null() {
       opj_free_type_array(l_tmp_data, l_tmp_data_count);
       opj_free_type_array(l_tmp_ptr, numcomps as usize);
@@ -1989,7 +1986,7 @@ pub(crate) fn opj_pi_create_decode(
     }
     /* get encoding parameters */
     opj_get_all_encoding_parameters(
-      p_image,
+      unsafe { &mut *p_image },
       p_cp,
       p_tile_no,
       &mut l_tx0,
@@ -2029,7 +2026,7 @@ pub(crate) fn opj_pi_create_decode(
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
     /* special treatment for the first packet iterator */
-    l_img_comp = (*p_image).comps;
+    l_img_comp = (*p_image).comps.as_mut_ptr();
     l_tccp = (*l_tcp).tccps.as_ptr();
     (*l_current_pi).tx0 = l_tx0;
     (*l_current_pi).ty0 = l_ty0;
@@ -2074,7 +2071,7 @@ pub(crate) fn opj_pi_create_decode(
     l_current_pi = l_current_pi.offset(1);
     pino = 1 as OPJ_UINT32;
     while pino < l_bound {
-      l_img_comp = (*p_image).comps;
+      l_img_comp = (*p_image).comps.as_mut_ptr();
       l_tccp = (*l_tcp).tccps.as_ptr();
       (*l_current_pi).tx0 = l_tx0;
       (*l_current_pi).ty0 = l_ty0;
@@ -2136,7 +2133,7 @@ pub(crate) fn opj_pi_create_decode(
 }
 
 pub(crate) fn opj_get_encoding_packet_count(
-  mut p_image: *const opj_image_t,
+  p_image: &mut CoreImage,
   mut p_cp: *const opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
 ) -> OPJ_UINT32 {
@@ -2152,11 +2149,10 @@ pub(crate) fn opj_get_encoding_packet_count(
     /* preconditions in debug*/
 
     assert!(!p_cp.is_null());
-    assert!(!p_image.is_null());
-    assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
+        assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
     /* get encoding parameters*/
     opj_get_all_encoding_parameters(
-      p_image,
+      unsafe { &mut *p_image },
       p_cp,
       p_tile_no,
       &mut l_tx0,
@@ -2172,13 +2168,13 @@ pub(crate) fn opj_get_encoding_packet_count(
     (*(*p_cp).tcps.as_ptr().offset(p_tile_no as isize))
       .numlayers
       .wrapping_mul(l_max_prec)
-      .wrapping_mul((*p_image).numcomps)
+      .wrapping_mul(p_image.numcomps)
       .wrapping_mul(l_max_res)
   }
 }
 
 pub(crate) fn opj_pi_initialise_encode(
-  mut p_image: *const opj_image_t,
+  p_image: &mut CoreImage,
   mut p_cp: *mut opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
   mut p_t2_mode: J2K_T2_MODE,
@@ -2212,14 +2208,13 @@ pub(crate) fn opj_pi_initialise_encode(
     let mut l_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
     let mut l_tccp = core::ptr::null::<opj_tccp_t>();
-    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
     let mut l_current_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
     let mut l_encoding_value_ptr = core::ptr::null_mut::<OPJ_UINT32>();
     /* preconditions in debug*/
 
     assert!(!p_cp.is_null());
-    assert!(!p_image.is_null());
-    assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
+        assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
     /* initializations*/
     l_tcp = (*p_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
     l_bound = (*l_tcp).numpocs.wrapping_add(1u32);
@@ -2235,7 +2230,7 @@ pub(crate) fn opj_pi_initialise_encode(
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
     /* memory allocation for pi*/
-    l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
+    l_pi = opj_pi_create(unsafe { &*p_image }, p_cp, p_tile_no, manager);
     if l_pi.is_null() {
       opj_free_type_array(l_tmp_data, l_tmp_data_count);
       opj_free_type_array(l_tmp_ptr, numcomps as usize);
@@ -2252,7 +2247,7 @@ pub(crate) fn opj_pi_initialise_encode(
     }
     /* get encoding parameters*/
     opj_get_all_encoding_parameters(
-      p_image,
+      unsafe { &mut *p_image },
       p_cp,
       p_tile_no,
       &mut l_tx0,
@@ -2283,7 +2278,7 @@ pub(crate) fn opj_pi_initialise_encode(
       return core::ptr::null_mut::<opj_pi_iterator_t>();
     }
     /* special treatment for the first packet iterator*/
-    l_img_comp = (*p_image).comps;
+    l_img_comp = (*p_image).comps.as_mut_ptr();
     l_tccp = (*l_tcp).tccps.as_ptr();
     (*l_current_pi).tx0 = l_tx0;
     (*l_current_pi).ty0 = l_ty0;
@@ -2328,7 +2323,7 @@ pub(crate) fn opj_pi_initialise_encode(
     l_current_pi = l_current_pi.offset(1);
     pino = 1 as OPJ_UINT32;
     while pino < l_bound {
-      l_img_comp = (*p_image).comps;
+      l_img_comp = (*p_image).comps.as_mut_ptr();
       l_tccp = (*l_tcp).tccps.as_ptr();
       (*l_current_pi).tx0 = l_tx0;
       (*l_current_pi).ty0 = l_ty0;
@@ -2720,7 +2715,7 @@ pub(crate) fn opj_pi_destroy(mut p_pi: *mut opj_pi_iterator_t, mut p_nb_elements
 }
 
 pub(crate) fn opj_pi_update_encoding_parameters(
-  mut p_image: *const opj_image_t,
+  p_image: &mut CoreImage,
   mut p_cp: *mut opj_cp_t,
   mut p_tile_no: OPJ_UINT32,
 ) {
@@ -2739,8 +2734,7 @@ pub(crate) fn opj_pi_update_encoding_parameters(
     /* preconditions */
 
     assert!(!p_cp.is_null());
-    assert!(!p_image.is_null());
-    assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
+        assert!(p_tile_no < (*p_cp).tw.wrapping_mul((*p_cp).th));
     l_tcp = (*p_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
     /* get encoding parameters */
     opj_get_encoding_parameters(

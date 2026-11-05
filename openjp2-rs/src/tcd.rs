@@ -4,6 +4,7 @@ use super::event::*;
 use super::math::*;
 use super::mct::*;
 use super::openjpeg::*;
+use crate::image::{CoreImage, CoreImageComp};
 use super::pi::*;
 use super::t1::*;
 use super::t2::*;
@@ -203,7 +204,7 @@ fn opj_tcd_makelayer_fixed(mut tcd: &mut opj_tcd, mut layno: OPJ_UINT32, mut fin
                 .wrapping_mul(3u32)
                 .wrapping_add(j.wrapping_mul(3u32))
                 .wrapping_add(k) as usize] as OPJ_FLOAT32
-              * ((*(*(*tcd).image).comps.offset(compno as isize)).prec as core::ffi::c_double
+              * ((*(*tcd.image).comps.as_ptr().add(compno as usize)).prec as core::ffi::c_double
                 / 16.0f64) as OPJ_FLOAT32) as OPJ_INT32;
             k += 1;
           }
@@ -233,7 +234,7 @@ fn opj_tcd_makelayer_fixed(mut tcd: &mut opj_tcd, mut layno: OPJ_UINT32, mut fin
                   (*cblk).layers.as_mut_ptr().offset(layno as isize);
                 let passes = (*cblk).passes.as_ptr();
                 let mut n: OPJ_UINT32 = 0;
-                let mut imsb = (*(*(*tcd).image).comps.offset(compno as isize))
+                let mut imsb = (*(*tcd.image).comps.as_ptr().add(compno as usize))
                   .prec
                   .wrapping_sub((*cblk).numbps) as OPJ_INT32;
                 /* Correction of the matrix of coefficient to include the IMSB information */
@@ -410,9 +411,9 @@ fn opj_tcd_rateallocate(
         }
         resno += 1;
       }
-      maxSE += (((1i32) << (*(*(*tcd).image).comps.offset(compno as isize)).prec) as OPJ_FLOAT64
+      maxSE += (((1i32) << (*(*tcd.image).comps.as_ptr().add(compno as usize)).prec) as OPJ_FLOAT64
         - 1.0f64)
-        * (((1i32) << (*(*(*tcd).image).comps.offset(compno as isize)).prec) as OPJ_FLOAT64
+        * (((1i32) << (*(*tcd.image).comps.as_ptr().add(compno as usize)).prec) as OPJ_FLOAT64
           - 1.0f64)
         * (*tilec).numpix as OPJ_FLOAT64;
       compno += 1;
@@ -612,7 +613,7 @@ fn opj_tcd_rateallocate(
 
 pub(crate) fn opj_tcd_init(
   mut p_tcd: &mut opj_tcd,
-  mut p_image: *mut opj_image_t,
+  mut p_image: *mut CoreImage,
   mut p_cp: *mut opj_cp_t,
 ) -> OPJ_BOOL {
   unsafe {
@@ -705,12 +706,11 @@ pub(crate) fn opj_tcd_init_tile(
     let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
     let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
     let mut l_tilec = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
-    let mut l_image_comp = core::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_image_comp = core::ptr::null_mut::<CoreImageComp>();
     let mut l_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
     let mut l_band = core::ptr::null_mut::<opj_tcd_band_t>();
     let mut l_step_size = core::ptr::null_mut::<opj_stepsize_t>();
     let mut l_current_precinct = core::ptr::null_mut::<opj_tcd_precinct_t>();
-    let mut l_image = core::ptr::null_mut::<opj_image_t>();
     let mut p: OPJ_UINT32 = 0;
     let mut q: OPJ_UINT32 = 0;
     let mut l_level_no: OPJ_UINT32 = 0;
@@ -735,25 +735,25 @@ pub(crate) fn opj_tcd_init_tile(
     l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
     l_tccp = (*l_tcp).tccps.as_mut_ptr();
     l_tilec = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
-    l_image = p_tcd.image;
-    l_image_comp = (*p_tcd.image).comps;
+    let l_image = unsafe { &mut *p_tcd.image };
+    l_image_comp = (*p_tcd.image).comps.as_mut_ptr();
     p = p_tile_no.wrapping_rem((*l_cp).tw);
     q = p_tile_no.wrapping_div((*l_cp).tw);
     /*fprintf(stderr, "Tile coordinate = %d,%d\n", p, q);*/
     /* 4 borders of the tile rescale on the image if necessary */
     l_tx0 = (*l_cp).tx0.wrapping_add(p.wrapping_mul((*l_cp).tdx)); /* can't be greater than l_image->x1 so won't overflow */
-    p_tcd.tcd_image.tiles.x0 = opj_uint_max(l_tx0, (*l_image).x0) as OPJ_INT32;
+    p_tcd.tcd_image.tiles.x0 = opj_uint_max(l_tx0, l_image.x0) as OPJ_INT32;
     p_tcd.tcd_image.tiles.x1 =
-      opj_uint_min(opj_uint_adds(l_tx0, (*l_cp).tdx), (*l_image).x1) as OPJ_INT32;
+      opj_uint_min(opj_uint_adds(l_tx0, (*l_cp).tdx), l_image.x1) as OPJ_INT32;
     /* all those OPJ_UINT32 are casted to OPJ_INT32, let's do some sanity check */
     if p_tcd.tcd_image.tiles.x0 < 0i32 || p_tcd.tcd_image.tiles.x1 <= p_tcd.tcd_image.tiles.x0 {
       event_msg!(manager, EVT_ERROR, "Tile X coordinates are not supported\n",); /* can't be greater than l_image->y1 so won't overflow */
       return 0i32;
     }
     l_ty0 = (*l_cp).ty0.wrapping_add(q.wrapping_mul((*l_cp).tdy));
-    p_tcd.tcd_image.tiles.y0 = opj_uint_max(l_ty0, (*l_image).y0) as OPJ_INT32;
+    p_tcd.tcd_image.tiles.y0 = opj_uint_max(l_ty0, l_image.y0) as OPJ_INT32;
     p_tcd.tcd_image.tiles.y1 =
-      opj_uint_min(opj_uint_adds(l_ty0, (*l_cp).tdy), (*l_image).y1) as OPJ_INT32;
+      opj_uint_min(opj_uint_adds(l_ty0, (*l_cp).tdy), l_image.y1) as OPJ_INT32;
     /* all those OPJ_UINT32 are casted to OPJ_INT32, let's do some sanity check */
     if p_tcd.tcd_image.tiles.y0 < 0i32 || p_tcd.tcd_image.tiles.y1 <= p_tcd.tcd_image.tiles.y0 {
       event_msg!(manager, EVT_ERROR, "Tile Y coordinates are not supported\n",);
@@ -1238,14 +1238,14 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
   unsafe {
     let mut i: OPJ_UINT32 = 0;
     let mut l_data_size = 0 as OPJ_UINT32;
-    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
     let mut l_tile_comp = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
     let mut l_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
     let mut l_size_comp: OPJ_UINT32 = 0;
     let mut l_remaining: OPJ_UINT32 = 0;
     let mut l_temp: OPJ_UINT32 = 0;
     l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
-    l_img_comp = (*p_tcd.image).comps;
+    l_img_comp = (*p_tcd.image).comps.as_mut_ptr();
     i = 0 as OPJ_UINT32;
     while i < (*p_tcd.image).numcomps {
       let mut w: OPJ_UINT32 = 0;
@@ -1511,8 +1511,8 @@ pub(crate) fn opj_tcd_decode_tile(
         let mut resno: OPJ_UINT32 = 0;
         let mut tilec_0: *mut opj_tcd_tilecomp_t =
           &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
-        let mut image_comp: *mut opj_image_comp_t =
-          &mut *(*p_tcd.image).comps.offset(compno as isize) as *mut opj_image_comp_t;
+        let mut image_comp: *mut CoreImageComp =
+          &mut *(*p_tcd.image).comps.as_mut_ptr().add(compno as usize) as *mut CoreImageComp;
         if p_tcd.used_component(compno) {
           /* Compute the intersection of the area of interest, expressed in tile coordinates */
           /* with the tile coordinates */
@@ -1605,8 +1605,8 @@ pub(crate) fn opj_tcd_decode_tile(
       while compno < (*p_tcd.image).numcomps {
         let mut tilec_1: *mut opj_tcd_tilecomp_t =
           &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
-        let mut image_comp_0: *mut opj_image_comp_t =
-          &mut *(*p_tcd.image).comps.offset(compno as isize) as *mut opj_image_comp_t;
+        let mut image_comp_0: *mut CoreImageComp =
+          &mut *(*p_tcd.image).comps.as_mut_ptr().add(compno as usize) as *mut CoreImageComp;
         let mut res_0 = (*tilec_1)
           .resolutions
           .as_mut_ptr()
@@ -1684,7 +1684,7 @@ pub(crate) fn opj_tcd_update_tile_data(p_tcd: &mut opj_tcd, mut p_dest: &mut [u8
     }
     let numcomps = (*p_tcd.image).numcomps as usize;
     let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
-    let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps, numcomps);
+    let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps.as_ptr(), numcomps);
     for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
       let mut l_size_comp = l_img_comp.prec >> 3i32;
       let l_remaining = l_img_comp.prec & 7u32;
@@ -1883,7 +1883,7 @@ fn opj_tcd_dwt_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     let mut compno: OPJ_UINT32 = 0;
     let mut l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     let mut l_tccp = (*p_tcd.tcp).tccps.as_ptr();
-    let mut l_img_comp = (*p_tcd.image).comps;
+    let mut l_img_comp = (*p_tcd.image).comps.as_mut_ptr();
     compno = 0 as OPJ_UINT32;
     while compno < p_tcd.tcd_image.tiles.numcomps {
       if p_tcd.used_component(compno) {
@@ -1957,10 +1957,10 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
           .offset((*l_tile_comp).minimum_num_resolutions as isize)
           .offset(-1);
         /* testcase 1336.pdf.asan.47.376 */
-        if (*(*p_tcd.image).comps.offset(0)).resno_decoded
-          != (*(*p_tcd.image).comps.offset(1)).resno_decoded
-          || (*(*p_tcd.image).comps.offset(0)).resno_decoded
-            != (*(*p_tcd.image).comps.offset(2)).resno_decoded
+        if (*(*p_tcd.image).comps.as_ptr().add(0)).resno_decoded
+          != (*(*p_tcd.image).comps.as_ptr().add(1)).resno_decoded
+          || (*(*p_tcd.image).comps.as_ptr().add(0)).resno_decoded
+            != (*(*p_tcd.image).comps.as_ptr().add(2)).resno_decoded
           || (((*res_comp1).x1 - (*res_comp1).x0) as OPJ_SIZE_T)
             .wrapping_mul(((*res_comp1).y1 - (*res_comp1).y0) as OPJ_SIZE_T)
             != l_samples
@@ -1980,23 +1980,23 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
       let mut res_comp0_0 = p_tcd.tcd_image.tiles.comps[0]
         .resolutions
         .as_ptr()
-        .offset((*(*p_tcd.image).comps.offset(0)).resno_decoded as isize);
+        .offset((*(*p_tcd.image).comps.as_ptr().add(0)).resno_decoded as isize);
       l_samples = ((*res_comp0_0).win_x1.wrapping_sub((*res_comp0_0).win_x0) as OPJ_SIZE_T)
         .wrapping_mul((*res_comp0_0).win_y1.wrapping_sub((*res_comp0_0).win_y0) as OPJ_SIZE_T);
       if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
         let mut res_comp1_0 = p_tcd.tcd_image.tiles.comps[1]
           .resolutions
           .as_ptr()
-          .offset((*(*p_tcd.image).comps.offset(1)).resno_decoded as isize);
+          .offset((*(*p_tcd.image).comps.as_ptr().add(1)).resno_decoded as isize);
         let mut res_comp2_0 = p_tcd.tcd_image.tiles.comps[2]
           .resolutions
           .as_ptr()
-          .offset((*(*p_tcd.image).comps.offset(2)).resno_decoded as isize);
+          .offset((*(*p_tcd.image).comps.as_ptr().add(2)).resno_decoded as isize);
         /* testcase 1336.pdf.asan.47.376 */
-        if (*(*p_tcd.image).comps.offset(0)).resno_decoded
-          != (*(*p_tcd.image).comps.offset(1)).resno_decoded
-          || (*(*p_tcd.image).comps.offset(0)).resno_decoded
-            != (*(*p_tcd.image).comps.offset(2)).resno_decoded
+        if (*(*p_tcd.image).comps.as_ptr().add(0)).resno_decoded
+          != (*(*p_tcd.image).comps.as_ptr().add(1)).resno_decoded
+          || (*(*p_tcd.image).comps.as_ptr().add(0)).resno_decoded
+            != (*(*p_tcd.image).comps.as_ptr().add(2)).resno_decoded
           || ((*res_comp1_0).win_x1.wrapping_sub((*res_comp1_0).win_x0) as OPJ_SIZE_T)
             .wrapping_mul((*res_comp1_0).win_y1.wrapping_sub((*res_comp1_0).win_y0) as OPJ_SIZE_T)
             != l_samples
@@ -2039,7 +2039,7 @@ fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr
           .collect();
         let l_tcp_ref = &*l_tcp;
         let matrix = &l_tcp_ref.m_mct_decoding_matrix[..];
-        if opj_mct_decode_custom(matrix, l_samples, &mut l_data, (*(*p_tcd.image).comps).sgnd) == 0
+        if opj_mct_decode_custom(matrix, l_samples, &mut l_data, (*(*p_tcd.image).comps.as_ptr().add(0)).sgnd) == 0
         {
           return 0i32;
         }
@@ -2074,7 +2074,7 @@ fn opj_tcd_dc_level_shift_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     let mut compno: OPJ_UINT32 = 0;
     let mut l_tile_comp = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
     let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
     let mut l_res = core::ptr::null_mut::<opj_tcd_resolution_t>();
     let mut l_width: OPJ_UINT32 = 0;
     let mut l_height: OPJ_UINT32 = 0;
@@ -2086,7 +2086,7 @@ fn opj_tcd_dc_level_shift_decode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     let mut l_stride: OPJ_UINT32 = 0;
     l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     l_tccp = (*p_tcd.tcp).tccps.as_mut_ptr();
-    l_img_comp = (*p_tcd.image).comps;
+    l_img_comp = (*p_tcd.image).comps.as_mut_ptr();
     compno = 0 as OPJ_UINT32;
     while compno < p_tcd.tcd_image.tiles.numcomps {
       if p_tcd.used_component(compno) {
@@ -2189,7 +2189,7 @@ pub(crate) fn opj_tcd_get_encoder_input_buffer_size(mut p_tcd: &mut opj_tcd) -> 
   let (l_tilec, l_img_comp) = unsafe {
     let numcomps = (*p_tcd.image).numcomps as usize;
     let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
-    let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps, numcomps);
+    let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps.as_ptr(), numcomps);
     (l_tilec, l_img_comp)
   };
   for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
@@ -2216,13 +2216,13 @@ fn opj_tcd_dc_level_shift_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
     let mut compno: OPJ_UINT32 = 0;
     let mut l_tile_comp = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
     let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
+    let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
     let mut l_nb_elem: OPJ_SIZE_T = 0;
     let mut i: OPJ_SIZE_T = 0;
     let mut l_current_ptr = core::ptr::null_mut::<OPJ_INT32>();
     l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
     l_tccp = (*p_tcd.tcp).tccps.as_mut_ptr();
-    l_img_comp = (*p_tcd.image).comps;
+    l_img_comp = (*p_tcd.image).comps.as_mut_ptr();
     compno = 0 as OPJ_UINT32;
     while compno < p_tcd.tcd_image.tiles.numcomps {
       l_current_ptr = (*l_tile_comp).data.as_mut_ptr();
@@ -2271,7 +2271,7 @@ fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
         .collect();
       let tcp_ref = &*p_tcd.tcp;
       let matrix = &tcp_ref.m_mct_coding_matrix[..];
-      if opj_mct_encode_custom(matrix, samples, &mut l_data, (*(*p_tcd.image).comps).sgnd) == 0 {
+      if opj_mct_encode_custom(matrix, samples, &mut l_data, (*(*p_tcd.image).comps.as_ptr().add(0)).sgnd) == 0 {
         return 0i32;
       }
     } else if (&(*l_tcp).tccps)[0].qmfbid == 0u32 {
@@ -2447,7 +2447,7 @@ pub(crate) fn opj_tcd_copy_tile_data(p_tcd: &mut opj_tcd, mut p_src: &[u8]) -> O
     }
     let numcomps = (*p_tcd.image).numcomps as usize;
     let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
-    let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps, numcomps);
+    let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps.as_ptr(), numcomps);
     for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
       l_size_comp = l_img_comp.prec >> 3i32;
       l_remaining = l_img_comp.prec & 7u32;
@@ -2533,8 +2533,8 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
     } as OPJ_UINT32;
     let mut tilec: *mut opj_tcd_tilecomp_t =
       &mut tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
-    let mut image_comp: *mut opj_image_comp_t =
-      &mut *(*(*tcd).image).comps.offset(compno as isize) as *mut opj_image_comp_t;
+    let mut image_comp: *mut CoreImageComp =
+      &mut *(*tcd.image).comps.as_mut_ptr().add(compno as usize) as *mut CoreImageComp;
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
     let mut tcx0 = opj_uint_max(
@@ -2632,8 +2632,8 @@ fn opj_tcd_is_whole_tilecomp_decoding(mut p_tcd: &mut opj_tcd, mut compno: OPJ_U
   unsafe {
     let mut tilec: *mut opj_tcd_tilecomp_t =
       &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
-    let mut image_comp: *mut opj_image_comp_t =
-      &mut *(*p_tcd.image).comps.offset(compno as isize) as *mut opj_image_comp_t;
+    let mut image_comp: *mut CoreImageComp =
+      &mut *(*p_tcd.image).comps.as_mut_ptr().add(compno as usize) as *mut CoreImageComp;
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
     let mut tcx0 = opj_uint_max(
