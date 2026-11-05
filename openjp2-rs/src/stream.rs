@@ -53,149 +53,9 @@ pub(crate) trait WriteSeek: Write + Seek {}
 
 impl<R: Write + Seek> WriteSeek for R {}
 
-pub struct CustomStream {
-  pub m_user_data: *mut core::ffi::c_void,
-  pub m_free_user_data_fn: opj_stream_free_user_data_fn,
-  pub m_read_fn: opj_stream_read_fn,
-  pub m_write_fn: opj_stream_write_fn,
-  pub m_skip_fn: opj_stream_skip_fn,
-  pub m_seek_fn: opj_stream_seek_fn,
-  pub m_byte_offset: OPJ_OFF_T,
-}
-
-impl CustomStream {
-  pub fn set_read(&mut self, read: opj_stream_read_fn) {
-    self.m_read_fn = read;
-  }
-
-  pub fn set_write(&mut self, write: opj_stream_write_fn) {
-    self.m_write_fn = write;
-  }
-
-  pub fn set_skip(&mut self, skip: opj_stream_skip_fn) {
-    self.m_skip_fn = skip;
-  }
-
-  pub fn set_seek(&mut self, seek: opj_stream_seek_fn) {
-    self.m_seek_fn = seek;
-  }
-
-  pub fn set_user_data(
-    &mut self,
-    data: *mut core::ffi::c_void,
-    free: opj_stream_free_user_data_fn,
-  ) {
-    self.m_user_data = data;
-    self.m_free_user_data_fn = free;
-  }
-
-  pub fn has_seek(&self) -> bool {
-    self.m_seek_fn.is_some()
-  }
-}
-
-impl Drop for CustomStream {
-  fn drop(&mut self) {
-    if let Some(free) = self.m_free_user_data_fn {
-      unsafe {
-        free(self.m_user_data);
-      }
-    }
-  }
-}
-
-impl Read for CustomStream {
-  fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-    let len = buf.len();
-    let res = if let Some(read) = &self.m_read_fn {
-      unsafe {
-        read(
-          buf.as_mut_ptr() as *mut core::ffi::c_void,
-          len,
-          self.m_user_data,
-        ) as isize
-      }
-    } else {
-      return Err(IoError::other("Custom stream doesn't have a read function"));
-    };
-    if res >= 0 {
-      self.m_byte_offset += res as i64;
-      Ok(res as usize)
-    } else {
-      Err(IoError::other("read failed"))
-    }
-  }
-}
-
-impl Write for CustomStream {
-  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-    let len = buf.len();
-    let res = if let Some(write) = &self.m_write_fn {
-      unsafe {
-        write(
-          buf.as_ptr() as *mut core::ffi::c_void,
-          len,
-          self.m_user_data,
-        ) as isize
-      }
-    } else {
-      return Err(IoError::other(
-        "Custom stream doesn't have a write function",
-      ));
-    };
-    if res >= 0 {
-      self.m_byte_offset += res as i64;
-      Ok(res as usize)
-    } else {
-      Err(IoError::other("write failed"))
-    }
-  }
-
-  fn flush(&mut self) -> io::Result<()> {
-    Ok(())
-  }
-}
-
-impl Seek for CustomStream {
-  fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-    log::trace!("-- CustomStream.seek({pos:?})");
-    match pos {
-      SeekFrom::Start(offset) => {
-        let res = if let Some(seek) = &self.m_seek_fn {
-          unsafe { seek(offset as i64, self.m_user_data) }
-        } else {
-          return Err(IoError::other("Custom stream doesn't have a seek function"));
-        };
-        if res != 0 {
-          self.m_byte_offset = offset as i64;
-          Ok(offset)
-        } else {
-          Err(IoError::other("seek failed"))
-        }
-      }
-      SeekFrom::Current(offset) => {
-        let res = if let Some(skip) = &self.m_skip_fn {
-          unsafe { skip(offset, self.m_user_data) }
-        } else {
-          return Err(IoError::other("Custom stream doesn't have a skip function"));
-        };
-        if res != -1 {
-          self.m_byte_offset += offset;
-          Ok(self.m_byte_offset as u64)
-        } else {
-          Err(IoError::other("skip failed"))
-        }
-      }
-      SeekFrom::End(_offset) => Err(IoError::other("Unsupported seek from end")),
-    }
-  }
-}
-
 pub(crate) enum StreamInner {
   Reader(BufReader<Box<dyn ReadSeek>>),
   Writer(BufWriter<Box<dyn WriteSeek>>),
-  CustomReader(BufReader<CustomStream>),
-  CustomWriter(BufWriter<CustomStream>),
 }
 
 impl StreamInner {
@@ -207,23 +67,10 @@ impl StreamInner {
     Self::Writer(BufWriter::with_capacity(capacity, Box::new(writer)))
   }
 
-  pub fn new_custom_reader(capacity: usize, reader: CustomStream) -> Self {
-    Self::CustomReader(BufReader::with_capacity(capacity, reader))
-  }
-
-  pub fn new_custom_writer(capacity: usize, writer: CustomStream) -> Self {
-    Self::CustomWriter(BufWriter::with_capacity(capacity, writer))
-  }
-
   pub fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
     match self {
       StreamInner::Reader(reader) => reader.seek_relative(offset),
       StreamInner::Writer(writer) => {
-        writer.seek(SeekFrom::Current(offset))?;
-        Ok(())
-      }
-      StreamInner::CustomReader(reader) => reader.seek_relative(offset),
-      StreamInner::CustomWriter(writer) => {
         writer.seek(SeekFrom::Current(offset))?;
         Ok(())
       }
@@ -234,8 +81,6 @@ impl StreamInner {
     match self {
       StreamInner::Reader(_) => true,
       StreamInner::Writer(_) => true,
-      StreamInner::CustomReader(b) => b.get_ref().has_seek(),
-      StreamInner::CustomWriter(b) => b.get_ref().has_seek(),
     }
   }
 }
@@ -244,7 +89,6 @@ impl Read for StreamInner {
   fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
     match self {
       StreamInner::Reader(reader) => reader.read(buf),
-      StreamInner::CustomReader(reader) => reader.read(buf),
       _ => Err(IoError::other("Can't read from output stream.")),
     }
   }
@@ -254,7 +98,6 @@ impl Write for StreamInner {
   fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
     match self {
       StreamInner::Writer(writer) => writer.write(buf),
-      StreamInner::CustomWriter(writer) => writer.write(buf),
       _ => Err(IoError::other("Can't write to input stream.")),
     }
   }
@@ -262,7 +105,6 @@ impl Write for StreamInner {
   fn flush(&mut self) -> io::Result<()> {
     match self {
       StreamInner::Writer(writer) => writer.flush(),
-      StreamInner::CustomWriter(writer) => writer.flush(),
       _ => Err(IoError::other("Can't flush input stream.")),
     }
   }
@@ -273,8 +115,6 @@ impl Seek for StreamInner {
     match self {
       StreamInner::Reader(reader) => reader.seek(pos),
       StreamInner::Writer(writer) => writer.seek(pos),
-      StreamInner::CustomReader(reader) => reader.seek(pos),
-      StreamInner::CustomWriter(writer) => writer.seek(pos),
     }
   }
 }
@@ -285,59 +125,34 @@ impl Stream {
     if is_input {
       let file = File::open(&path)?;
       let m_stream_length = file.metadata().map(|m| m.len())?;
-      Ok(Self {
-        m_inner: super::stream::StreamInner::new_reader(buffer_size, file),
-        m_stream_length,
-        m_byte_offset: 0,
-      })
+      Ok(Self::new_input(buffer_size, file, m_stream_length))
     } else {
       let file = File::create(&path)?;
-      Ok(Self {
-        m_inner: super::stream::StreamInner::new_writer(buffer_size, file),
-        m_stream_length: 0,
-        m_byte_offset: 0,
-      })
+      Ok(Self::new_output(buffer_size, file))
     }
   }
 
-  pub fn new_custom(buffer_size: usize, is_input: bool) -> Self {
-    let custom = CustomStream {
-      m_user_data: core::ptr::null_mut(),
-      m_free_user_data_fn: None,
-      m_read_fn: None,
-      m_write_fn: None,
-      m_skip_fn: None,
-      m_seek_fn: None,
+  /// Wrap a `Read + Seek` source as an input stream. The capi crate uses this
+  /// to plug its C-callback adapter in without the core knowing about C.
+  pub fn new_input<R: Read + Seek + 'static>(buffer_size: usize, reader: R, stream_length: u64) -> Self {
+    Self {
+      m_inner: super::stream::StreamInner::new_reader(buffer_size, reader),
+      m_stream_length: stream_length,
       m_byte_offset: 0,
-    };
-    let mut l_stream = Self {
-      m_inner: if is_input {
-        StreamInner::CustomReader(BufReader::with_capacity(buffer_size, custom))
-      } else {
-        StreamInner::CustomWriter(BufWriter::with_capacity(buffer_size, custom))
-      },
-      m_stream_length: Default::default(),
+    }
+  }
+
+  /// Wrap a `Write + Seek` source as an output stream.
+  pub fn new_output<R: Write + Seek + 'static>(buffer_size: usize, writer: R) -> Self {
+    Self {
+      m_inner: super::stream::StreamInner::new_writer(buffer_size, writer),
+      m_stream_length: 0,
       m_byte_offset: 0,
-    };
-    l_stream
+    }
   }
 
   pub fn is_input(&self) -> bool {
-    match self.m_inner {
-      StreamInner::Reader(_) => true,
-      StreamInner::CustomReader(_) => true,
-      StreamInner::Writer(_) => false,
-      StreamInner::CustomWriter(_) => false,
-    }
-  }
-
-  pub fn as_custom(&mut self) -> Option<&mut CustomStream> {
-    match &mut self.m_inner {
-      StreamInner::Reader(_) => None,
-      StreamInner::Writer(_) => None,
-      StreamInner::CustomReader(reader) => Some(reader.get_mut()),
-      StreamInner::CustomWriter(writer) => Some(writer.get_mut()),
-    }
+    matches!(self.m_inner, StreamInner::Reader(_))
   }
 
   pub fn set_stream_length(&mut self, len: u64) {
@@ -474,13 +289,10 @@ impl Write for Stream {
 }
 
 pub(crate) fn opj_stream_read_data(
-  mut p_stream: *mut opj_stream_private_t,
-  mut p_buffer: *mut OPJ_BYTE,
-  mut p_size: OPJ_SIZE_T,
+  p_stream: &mut Stream,
+  buf: &mut [u8],
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_SIZE_T {
-  let p_stream = unsafe { &mut *p_stream };
-  let buf = unsafe { core::slice::from_raw_parts_mut(p_buffer as *mut u8, p_size) };
   match p_stream.read(buf) {
     Ok(nb) => nb as OPJ_SIZE_T,
     Err(err) => {
@@ -491,14 +303,11 @@ pub(crate) fn opj_stream_read_data(
 }
 
 pub(crate) fn opj_stream_write_data(
-  mut p_stream: *mut opj_stream_private_t,
-  mut p_buffer: *const OPJ_BYTE,
-  mut p_size: OPJ_SIZE_T,
+  p_stream: &mut Stream,
+  buf: &[u8],
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_SIZE_T {
-  let p_stream = unsafe { &mut *p_stream };
-  log::trace!("-- write({p_size}), offset={}", p_stream.m_byte_offset);
-  let buf = unsafe { core::slice::from_raw_parts(p_buffer as *const u8, p_size) };
+  log::trace!("-- write({}), offset={}", buf.len(), p_stream.m_byte_offset);
   match p_stream.write(buf) {
     Ok(nb) => nb,
     Err(err) => {
@@ -509,10 +318,9 @@ pub(crate) fn opj_stream_write_data(
 }
 
 pub(crate) fn opj_stream_flush(
-  mut p_stream: *mut opj_stream_private_t,
+  p_stream: &mut Stream,
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let p_stream = unsafe { &mut *p_stream };
   return match p_stream.flush() {
     Ok(_) => 1,
     Err(err) => {
@@ -522,24 +330,19 @@ pub(crate) fn opj_stream_flush(
   };
 }
 
-pub(crate) fn opj_stream_tell(mut p_stream: *mut opj_stream_private_t) -> OPJ_OFF_T {
-  let p_stream = unsafe { &mut *p_stream };
+pub(crate) fn opj_stream_tell(p_stream: &Stream) -> OPJ_OFF_T {
   p_stream.tell()
 }
 
-pub(crate) fn opj_stream_get_number_byte_left(
-  mut p_stream: *mut opj_stream_private_t,
-) -> OPJ_OFF_T {
-  let p_stream = unsafe { &mut *p_stream };
+pub(crate) fn opj_stream_get_number_byte_left(p_stream: &Stream) -> OPJ_OFF_T {
   p_stream.get_bytes_left()
 }
 
 pub(crate) fn opj_stream_skip(
-  mut p_stream: *mut opj_stream_private_t,
+  p_stream: &mut Stream,
   mut p_size: OPJ_OFF_T,
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_OFF_T {
-  let p_stream = unsafe { &mut *p_stream };
   match p_stream.skip(p_size) {
     Ok(offset) => {
       log::trace!("-- skip({p_size}) = {}", offset);
@@ -553,11 +356,10 @@ pub(crate) fn opj_stream_skip(
 }
 
 pub(crate) fn opj_stream_seek(
-  mut p_stream: *mut opj_stream_private_t,
+  p_stream: &mut Stream,
   mut p_size: OPJ_OFF_T,
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  let p_stream = unsafe { &mut *p_stream };
   match p_stream.seek(p_size) {
     Ok(_) => {
       log::trace!("-- seek({p_size}) = {}", 1);
@@ -570,7 +372,6 @@ pub(crate) fn opj_stream_seek(
   }
 }
 
-pub(crate) fn opj_stream_has_seek(mut p_stream: *const opj_stream_private_t) -> OPJ_BOOL {
-  let p_stream = unsafe { &*p_stream };
+pub(crate) fn opj_stream_has_seek(p_stream: &Stream) -> OPJ_BOOL {
   p_stream.has_seek() as _
 }

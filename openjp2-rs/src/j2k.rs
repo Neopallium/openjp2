@@ -1075,7 +1075,7 @@ fn opj_j2k_write_soc(
 
   /* write SOC identifier */
   opj_write_bytes(&mut l_buf[..], J2KMarker::SOC.as_u32(), 2 as OPJ_UINT32);
-  if opj_stream_write_data(p_stream, l_buf.as_ptr(), 2 as OPJ_SIZE_T, p_manager) != 2 {
+  if opj_stream_write_data(p_stream, &l_buf[..2], p_manager) != 2 {
     return 0i32;
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
@@ -1106,7 +1106,7 @@ fn opj_j2k_read_soc(
     let mut l_data: [OPJ_BYTE; 2] = [0; 2];
     /* preconditions */
 
-    if opj_stream_read_data(p_stream, l_data.as_mut_ptr(), 2 as OPJ_SIZE_T, p_manager) != 2 {
+    if opj_stream_read_data(p_stream, &mut l_data[..2], p_manager) != 2 {
       return 0i32;
     }
     let l_marker = J2KMarker::from_buffer(&l_data);
@@ -1206,12 +1206,7 @@ fn opj_j2k_write_siz(
       l_img_comp = l_img_comp.offset(1);
       i += 1;
     }
-    if opj_stream_write_data(
-      p_stream,
-      l_buf.as_ptr(),
-      l_size_len as OPJ_SIZE_T,
-      p_manager,
-    ) != l_size_len as usize
+    if opj_stream_write_data(p_stream, &l_buf[..l_size_len as usize], p_manager) != l_size_len as usize
     {
       return 0i32;
     }
@@ -1556,12 +1551,7 @@ fn opj_j2k_write_com(
     pos += 2 as usize;
     l_buf[pos..pos + l_comment_size as usize as usize].copy_from_slice(core::slice::from_raw_parts(l_comment as *const OPJ_BYTE, l_comment_size as usize));
     pos += l_comment_size as usize as usize;
-    if opj_stream_write_data(
-      p_stream,
-      l_buf.as_ptr(),
-      l_total_com_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_total_com_size as usize
+    if opj_stream_write_data(p_stream, &l_buf[..l_total_com_size as usize], p_manager) != l_total_com_size as usize
     {
       return 0i32;
     }
@@ -1658,12 +1648,7 @@ fn opj_j2k_write_cod(
       event_msg!(p_manager, EVT_ERROR, "Error writing COD marker\n",);
       return 0i32;
     }
-    if opj_stream_write_data(
-      p_stream,
-      l_buf.as_ptr(),
-      l_code_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_code_size as usize
+    if opj_stream_write_data(p_stream, &l_buf[..l_code_size as usize], p_manager) != l_code_size as usize
     {
       return 0i32;
     }
@@ -1829,12 +1814,7 @@ fn opj_j2k_write_coc(
       &mut l_remaining_size,
       p_manager,
     );
-    if opj_stream_write_data(
-      p_stream,
-      l_coc_data.as_ptr(),
-      l_coc_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_coc_size as usize
+    if opj_stream_write_data(p_stream, &l_coc_data[..l_coc_size as usize], p_manager) != l_coc_size as usize
     {
       return 0i32;
     }
@@ -2100,12 +2080,7 @@ fn opj_j2k_write_qcd(
       event_msg!(p_manager, EVT_ERROR, "Error writing QCD marker\n",);
       return 0i32;
     }
-    if opj_stream_write_data(
-      p_stream,
-      l_buf.as_ptr(),
-      l_qcd_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_qcd_size as usize
+    if opj_stream_write_data(p_stream, &l_buf[..l_qcd_size as usize], p_manager) != l_qcd_size as usize
     {
       return 0i32;
     }
@@ -2197,12 +2172,7 @@ fn opj_j2k_write_qcc(
       &mut l_remaining_size,
       p_manager,
     );
-    if opj_stream_write_data(
-      p_stream,
-      l_qcc_data.as_ptr(),
-      l_qcc_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_qcc_size as usize
+    if opj_stream_write_data(p_stream, &l_qcc_data[..l_qcc_size as usize], p_manager) != l_qcc_size as usize
     {
       return 0i32;
     }
@@ -2410,12 +2380,7 @@ fn opj_j2k_write_poc(
     let mut l_poc_data = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
     l_poc_data.resize(l_poc_size as usize, 0);
     opj_j2k_write_poc_in_memory(p_j2k, &mut l_poc_data[..], &mut l_written_size, p_manager);
-    if opj_stream_write_data(
-      p_stream,
-      l_poc_data.as_ptr(),
-      l_poc_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_poc_size as usize
+    if opj_stream_write_data(p_stream, &l_poc_data[..l_poc_size as usize], p_manager) != l_poc_size as usize
     {
       return 0i32;
     }
@@ -3292,12 +3257,7 @@ fn opj_j2k_write_tlm(
       } as OPJ_UINT32, 1 as OPJ_UINT32,);
     pos += 1 as usize;
     /* do nothing on the size_per_tile_part * l_j2k->m_specific_param.m_encoder.m_total_tile_parts remaining data */
-    if opj_stream_write_data(
-      p_stream,
-      l_buf.as_ptr(),
-      l_tlm_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_tlm_size as usize
+    if opj_stream_write_data(p_stream, &l_buf[..l_tlm_size as usize], p_manager) != l_tlm_size as usize
     {
       return 0i32;
     }
@@ -3973,12 +3933,7 @@ fn opj_j2k_read_sod(
     }
     /* Patch to support new PHR data */
     if l_sot_length_pb_detected == 0 {
-      l_current_read_size = opj_stream_read_data(
-        p_stream,
-        (*l_current_data).offset(*l_tile_len as isize),
-        p_j2k.m_specific_param.m_decoder.m_sot_length as OPJ_SIZE_T,
-        p_manager,
-      )
+      l_current_read_size = opj_stream_read_data(p_stream, unsafe { core::slice::from_raw_parts_mut((*l_current_data).offset(*l_tile_len as isize), p_j2k.m_specific_param.m_decoder.m_sot_length as usize) }, p_manager)
     } else {
       l_current_read_size = 0 as OPJ_SIZE_T
     }
@@ -4041,12 +3996,7 @@ fn opj_j2k_write_rgn(
     pos += 1 as usize;
     opj_write_bytes(&mut l_buf[pos..], (*l_tccp).roishift as OPJ_UINT32, 1 as OPJ_UINT32,);
     pos += 1 as usize;
-    if opj_stream_write_data(
-      p_stream,
-      l_buf.as_ptr(),
-      l_rgn_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_rgn_size as usize
+    if opj_stream_write_data(p_stream, &l_buf[..l_rgn_size as usize], p_manager) != l_rgn_size as usize
     {
       return 0i32;
     }
@@ -4073,12 +4023,7 @@ fn opj_j2k_write_eoc(
   opj_write_bytes(&mut l_buf[..], J2KMarker::EOC.as_u32(), 2 as OPJ_UINT32);
   /* UniPG>> */
   /* USE_JPWL */
-  if opj_stream_write_data(
-    p_stream,
-    l_buf.as_ptr(),
-    2 as OPJ_SIZE_T,
-    p_manager,
-  ) != 2
+  if opj_stream_write_data(p_stream, &l_buf[..2], p_manager) != 2
   {
     return 0i32;
   }
@@ -4575,12 +4520,7 @@ fn opj_j2k_read_unk(
   event_msg!(p_manager, EVT_WARNING, "Unknown marker\n",);
   loop {
     /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
-    if opj_stream_read_data(
-      p_stream,
-      p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr(),
-      2 as OPJ_SIZE_T,
-      p_manager,
-    ) != 2
+    if opj_stream_read_data(p_stream, &mut p_j2k.m_specific_param.m_decoder.m_header_data[..2], p_manager) != 2
     {
       event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
       return 0i32;
@@ -4662,12 +4602,7 @@ fn opj_j2k_write_mct_record(
     pos += 2 as usize;
     l_buf[pos..].copy_from_slice(&p_mct_record.m_data);
     pos += p_mct_record.m_data.len();
-    if opj_stream_write_data(
-      p_stream,
-      l_buf.as_ptr(),
-      l_mct_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_mct_size as usize
+    if opj_stream_write_data(p_stream, &l_buf[..l_mct_size as usize], p_manager) != l_mct_size as usize
     {
       return 0i32;
     }
@@ -4854,12 +4789,7 @@ fn opj_j2k_write_mcc_record(
     }
     opj_write_bytes(&mut l_buf[pos..], l_tmcc, 3 as OPJ_UINT32);
     pos += 3 as usize;
-    if opj_stream_write_data(
-      p_stream,
-      l_buf.as_ptr(),
-      l_mcc_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_mcc_size as usize
+    if opj_stream_write_data(p_stream, &l_buf[..l_mcc_size as usize], p_manager) != l_mcc_size as usize
     {
       return 0i32;
     }
@@ -5125,12 +5055,7 @@ fn opj_j2k_write_mco(
       opj_write_bytes(&mut l_buf[pos..], l_mcc_record.m_index, 1 as OPJ_UINT32);
       pos += 1 as usize;
     }
-    if opj_stream_write_data(
-      p_stream,
-      l_buf.as_ptr(),
-      l_mco_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_mco_size as usize
+    if opj_stream_write_data(p_stream, &l_buf[..l_mco_size as usize], p_manager) != l_mco_size as usize
     {
       return 0i32;
     }
@@ -5328,12 +5253,7 @@ fn opj_j2k_write_cbd(
       l_comp = l_comp.offset(1);
       i += 1;
     }
-    if opj_stream_write_data(
-      p_stream,
-      l_buf.as_ptr(),
-      l_cbd_size as OPJ_SIZE_T,
-      p_manager,
-    ) != l_cbd_size as usize
+    if opj_stream_write_data(p_stream, &l_buf[..l_cbd_size as usize], p_manager) != l_cbd_size as usize
     {
       return 0i32;
     }
@@ -7354,12 +7274,7 @@ fn opj_j2k_read_header_procedure(
       return 0i32;
     }
     /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
-    if opj_stream_read_data(
-      p_stream,
-      p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr(),
-      2 as OPJ_SIZE_T,
-      p_manager,
-    ) != 2
+    if opj_stream_read_data(p_stream, &mut p_j2k.m_specific_param.m_decoder.m_header_data[..2], p_manager) != 2
     {
       event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
       return 0i32;
@@ -7418,12 +7333,7 @@ fn opj_j2k_read_header_procedure(
         return 0i32;
       }
       /* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
-      if opj_stream_read_data(
-        p_stream,
-        p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr(),
-        2 as OPJ_SIZE_T,
-        p_manager,
-      ) != 2
+      if opj_stream_read_data(p_stream, &mut p_j2k.m_specific_param.m_decoder.m_header_data[..2], p_manager) != 2
       {
         event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
         return 0i32;
@@ -7438,12 +7348,7 @@ fn opj_j2k_read_header_procedure(
       /* Check if the marker size is compatible with the header data size */
       let l_header_data = p_j2k.m_specific_param.m_decoder.header_data(l_marker_size);
       /* Try to read the rest of the marker segment from stream and copy them into the buffer */
-      if opj_stream_read_data(
-        p_stream,
-        l_header_data,
-        l_marker_size as OPJ_SIZE_T,
-        p_manager,
-      ) != l_marker_size as usize
+      if opj_stream_read_data(p_stream, unsafe { core::slice::from_raw_parts_mut(l_header_data, l_marker_size as usize) }, p_manager) != l_marker_size as usize
       {
         event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
         return 0i32;
@@ -7472,12 +7377,7 @@ fn opj_j2k_read_header_procedure(
         return 0i32;
       }
       /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
-      if opj_stream_read_data(
-        p_stream,
-        p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr(),
-        2 as OPJ_SIZE_T,
-        p_manager,
-      ) != 2
+      if opj_stream_read_data(p_stream, &mut p_j2k.m_specific_param.m_decoder.m_header_data[..2], p_manager) != 2
       {
         event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
         return 0i32;
@@ -7742,12 +7642,7 @@ fn opj_j2k_need_nb_tile_parts_correction(
     }
     loop {
       /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
-      if opj_stream_read_data(
-        p_stream,
-        l_header_data.as_mut_ptr(),
-        2 as OPJ_SIZE_T,
-        p_manager,
-      ) != 2
+      if opj_stream_read_data(p_stream, &mut l_header_data[..2], p_manager) != 2
       {
         /* assume all is OK */
         if opj_stream_seek(p_stream, l_stream_pos_backup, p_manager) == 0 {
@@ -7765,12 +7660,7 @@ fn opj_j2k_need_nb_tile_parts_correction(
         return 1i32;
       }
       /* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
-      if opj_stream_read_data(
-        p_stream,
-        l_header_data.as_mut_ptr(),
-        2 as OPJ_SIZE_T,
-        p_manager,
-      ) != 2
+      if opj_stream_read_data(p_stream, &mut l_header_data[..2], p_manager) != 2
       {
         event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
         return 0i32;
@@ -7784,12 +7674,7 @@ fn opj_j2k_need_nb_tile_parts_correction(
         return 0i32;
       }
       l_marker_size = (l_marker_size as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32;
-      if opj_stream_read_data(
-        p_stream,
-        l_header_data.as_mut_ptr(),
-        l_marker_size as OPJ_SIZE_T,
-        p_manager,
-      ) != l_marker_size as usize
+      if opj_stream_read_data(p_stream, &mut l_header_data[..l_marker_size as usize], p_manager) != l_marker_size as usize
       {
         event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
         return 0i32;
@@ -7867,12 +7752,7 @@ pub(crate) fn opj_j2k_read_tile_header(
           break;
         } else {
           /* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
-          if opj_stream_read_data(
-            p_stream,
-            p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr(),
-            2 as OPJ_SIZE_T,
-            p_manager,
-          ) != 2
+          if opj_stream_read_data(p_stream, &mut p_j2k.m_specific_param.m_decoder.m_header_data[..2], p_manager) != 2
           {
             event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
             return false;
@@ -7928,12 +7808,7 @@ pub(crate) fn opj_j2k_read_tile_header(
             }
             let l_header_data = p_j2k.m_specific_param.m_decoder.header_data(l_marker_size);
             /* Try to read the rest of the marker segment from stream and copy them into the buffer */
-            if opj_stream_read_data(
-              p_stream,
-              l_header_data,
-              l_marker_size as OPJ_SIZE_T,
-              p_manager,
-            ) != l_marker_size as usize
+            if opj_stream_read_data(p_stream, unsafe { core::slice::from_raw_parts_mut(l_header_data, l_marker_size as usize) }, p_manager) != l_marker_size as usize
             {
               event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
               return false;
@@ -7987,12 +7862,7 @@ pub(crate) fn opj_j2k_read_tile_header(
             /* Normally we reached a SOD */
             } else {
               /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
-              if opj_stream_read_data(
-                p_stream,
-                p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr(),
-                2 as OPJ_SIZE_T,
-                p_manager,
-              ) != 2
+              if opj_stream_read_data(p_stream, &mut p_j2k.m_specific_param.m_decoder.m_header_data[..2], p_manager) != 2
               {
                 event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
                 return false;
@@ -8072,12 +7942,7 @@ pub(crate) fn opj_j2k_read_tile_header(
         continue;
       }
       /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
-      if opj_stream_read_data(
-        p_stream,
-        p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr(),
-        2 as OPJ_SIZE_T,
-        p_manager,
-      ) != 2
+      if opj_stream_read_data(p_stream, &mut p_j2k.m_specific_param.m_decoder.m_header_data[..2], p_manager) != 2
       {
         /* Deal with likely non conformant SPOT6 files, where the last */
         /* row of tiles have TPsot == 0 and TNsot == 0, and missing EOC, */
@@ -8256,7 +8121,7 @@ pub(crate) fn opj_j2k_decode_tile(
       return 1i32;
     }
     if p_j2k.m_specific_param.m_decoder.m_state != J2KState::EOC {
-      if opj_stream_read_data(p_stream, l_data.as_mut_ptr(), 2 as OPJ_SIZE_T, p_manager) != 2 {
+      if opj_stream_read_data(p_stream, &mut l_data[..2], p_manager) != 2 {
         event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
         return 0i32;
       }
@@ -10876,12 +10741,7 @@ fn opj_j2k_post_write_tile(
     l_available_data =
       (l_available_data as core::ffi::c_uint).wrapping_sub(l_nb_bytes_written) as OPJ_UINT32;
     l_nb_bytes_written = l_tile_size.wrapping_sub(l_available_data);
-    if opj_stream_write_data(
-      p_stream,
-      l_encoded_buf.as_ptr(),
-      l_nb_bytes_written as OPJ_SIZE_T,
-      p_manager,
-    ) != l_nb_bytes_written as usize
+    if opj_stream_write_data(p_stream, &l_encoded_buf[..l_nb_bytes_written as usize], p_manager) != l_nb_bytes_written as usize
     {
       return 0i32;
     }
@@ -11232,12 +11092,7 @@ fn opj_j2k_write_updated_tlm(
   if opj_stream_seek(p_stream, l_tlm_position, p_manager) == 0 {
     return 0i32;
   }
-  if opj_stream_write_data(
-    p_stream,
-    p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer.as_ptr(),
-    l_tlm_size as OPJ_SIZE_T,
-    p_manager,
-  ) != l_tlm_size as usize
+  if opj_stream_write_data(p_stream, &p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer[..l_tlm_size as usize], p_manager) != l_tlm_size as usize
   {
     return 0i32;
   }

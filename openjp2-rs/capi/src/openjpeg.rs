@@ -538,146 +538,319 @@ pub unsafe fn opj_destroy_cstr_index(mut p_cstr_index: *mut *mut opj_codestream_
   };
 }
 
+/* ----------------------------------------------------------------------- */
+/* C stream objects (Phase 5.e: the C-callback adapter lives here; the    */
+/* core Stream only knows about Read/Write/Seek sources).                 */
+
+use std::cell::RefCell;
+use std::io::{self as io, Error as IoError, Read, Seek, SeekFrom, Write};
+use std::rc::Rc;
+
+/// Shared, mutable C callback set for a C-created stream.
+#[derive(Default)]
+pub struct CustomCallbacks {
+  pub m_user_data: *mut core::ffi::c_void,
+  pub m_free_user_data_fn: opj_stream_free_user_data_fn,
+  pub m_read_fn: opj_stream_read_fn,
+  pub m_write_fn: opj_stream_write_fn,
+  pub m_skip_fn: opj_stream_skip_fn,
+  pub m_seek_fn: opj_stream_seek_fn,
+}
+
+/// Forwards core Stream I/O to the C callbacks held in a shared handle, so
+/// the opj_stream_set_* functions can mutate them after creation.
+pub struct CustomStream {
+  callbacks: Rc<RefCell<CustomCallbacks>>,
+  m_byte_offset: OPJ_OFF_T,
+}
+
+impl CustomStream {
+  pub fn has_seek(&self) -> bool {
+    self.callbacks.borrow().m_seek_fn.is_some()
+  }
+}
+
+impl Read for CustomStream {
+  fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    let callbacks = self.callbacks.borrow();
+    let res = if let Some(read) = callbacks.m_read_fn {
+      unsafe {
+        read(
+          buf.as_mut_ptr() as *mut core::ffi::c_void,
+          buf.len(),
+          callbacks.m_user_data,
+        ) as isize
+      }
+    } else {
+      return Err(IoError::other("Custom stream doesn't have a read function"));
+    };
+    drop(callbacks);
+    if res >= 0 {
+      self.m_byte_offset += res as i64;
+      Ok(res as usize)
+    } else {
+      Err(IoError::other("read failed"))
+    }
+  }
+}
+
+impl Write for CustomStream {
+  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    let callbacks = self.callbacks.borrow();
+    let res = if let Some(write) = callbacks.m_write_fn {
+      unsafe {
+        write(
+          buf.as_ptr() as *mut core::ffi::c_void,
+          buf.len(),
+          callbacks.m_user_data,
+        ) as isize
+      }
+    } else {
+      return Err(IoError::other(
+        "Custom stream doesn't have a write function",
+      ));
+    };
+    drop(callbacks);
+    if res >= 0 {
+      self.m_byte_offset += res as i64;
+      Ok(res as usize)
+    } else {
+      Err(IoError::other("write failed"))
+    }
+  }
+
+  fn flush(&mut self) -> io::Result<()> {
+    Ok(())
+  }
+}
+
+impl Seek for CustomStream {
+  fn seek(&mut self, pos: std::io::SeekFrom) -> io::Result<u64> {
+    log::trace!("-- CustomStream.seek({pos:?})");
+    match pos {
+      std::io::SeekFrom::Start(offset) => {
+        let callbacks = self.callbacks.borrow();
+        let res = if let Some(seek) = callbacks.m_seek_fn {
+          unsafe { seek(offset as i64, callbacks.m_user_data) }
+        } else {
+          return Err(IoError::other(
+            "Custom stream doesn't have a seek function",
+          ));
+        };
+        drop(callbacks);
+        if res != 0 {
+          self.m_byte_offset = offset as i64;
+          Ok(offset)
+        } else {
+          Err(IoError::other("seek failed"))
+        }
+      }
+      std::io::SeekFrom::Current(offset) => {
+        let callbacks = self.callbacks.borrow();
+        let res = if let Some(skip) = callbacks.m_skip_fn {
+          unsafe { skip(offset, callbacks.m_user_data) }
+        } else {
+          return Err(IoError::other(
+            "Custom stream doesn't have a skip function",
+          ));
+        };
+        drop(callbacks);
+        if res != -1 {
+          self.m_byte_offset += offset;
+          Ok(self.m_byte_offset as u64)
+        } else {
+          Err(IoError::other("skip failed"))
+        }
+      }
+      std::io::SeekFrom::End(_offset) => Err(IoError::other("Unsupported seek from end")),
+    }
+  }
+}
+
+/// A C-visible stream: the core `Stream` plus (for C-callback streams) the
+/// shared callback handle the opj_stream_set_* functions mutate.
+pub struct OpjStream {
+  stream: openjp2_core::Stream,
+  callbacks: Option<Rc<RefCell<CustomCallbacks>>>,
+  is_input: bool,
+}
+
+impl Drop for OpjStream {
+  fn drop(&mut self) {
+    if let Some(callbacks) = &self.callbacks {
+      let callbacks = callbacks.borrow();
+      if let Some(free) = callbacks.m_free_user_data_fn {
+        unsafe {
+          free(callbacks.m_user_data);
+        }
+      }
+    }
+  }
+}
+
+fn new_custom_stream(buffer_size: OPJ_SIZE_T, is_input: bool) -> Box<OpjStream> {
+  let callbacks = Rc::new(RefCell::new(CustomCallbacks::default()));
+  let custom = CustomStream {
+    callbacks: callbacks.clone(),
+    m_byte_offset: 0,
+  };
+  let stream = if is_input {
+    openjp2_core::Stream::new_input(buffer_size as usize, custom, 0)
+  } else {
+    openjp2_core::Stream::new_output(buffer_size as usize, custom)
+  };
+  Box::new(OpjStream {
+    stream,
+    callbacks: Some(callbacks),
+    is_input,
+  })
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_create(
-  mut p_buffer_size: OPJ_SIZE_T,
-  mut l_is_input: OPJ_BOOL,
+  p_buffer_size: OPJ_SIZE_T,
+  l_is_input: OPJ_BOOL,
 ) -> *mut opj_stream_t {
-  let l_stream = Box::new(Stream::new_custom(
-    p_buffer_size,
-    l_is_input != 0,
-  ));
-  let p_stream = Box::into_raw(l_stream) as *mut opj_stream_t;
+  let p_stream = Box::into_raw(new_custom_stream(p_buffer_size, l_is_input != 0)) as *mut opj_stream_t;
   log::trace!("-- create stream: {:?}", p_stream);
   p_stream
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn opj_stream_default_create(mut l_is_input: OPJ_BOOL) -> *mut opj_stream_t {
+pub unsafe extern "C" fn opj_stream_default_create(l_is_input: OPJ_BOOL) -> *mut opj_stream_t {
   opj_stream_create(0x100000 as OPJ_SIZE_T, l_is_input)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn opj_stream_destroy(mut p_stream: *mut opj_stream_t) {
+pub unsafe extern "C" fn opj_stream_destroy(p_stream: *mut opj_stream_t) {
   if !p_stream.is_null() {
-    let _ = Box::from_raw(p_stream as *mut opj_stream_private_t);
+    let _ = Box::from_raw(p_stream as *mut OpjStream);
   }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_read_function(
-  mut p_stream: *mut opj_stream_t,
-  mut p_function: opj_stream_read_fn,
+  p_stream: *mut opj_stream_t,
+  p_function: opj_stream_read_fn,
 ) {
   if p_stream.is_null() {
     return;
   }
-  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  if !p_stream.is_input() {
+  let p_stream = unsafe { &mut *(p_stream as *mut OpjStream) };
+  if !p_stream.is_input {
     return;
   }
-  if let Some(custom) = p_stream.as_custom() {
-    custom.set_read(p_function);
+  if let Some(callbacks) = &p_stream.callbacks {
+    callbacks.borrow_mut().m_read_fn = p_function;
   }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_seek_function(
-  mut p_stream: *mut opj_stream_t,
-  mut p_function: opj_stream_seek_fn,
+  p_stream: *mut opj_stream_t,
+  p_function: opj_stream_seek_fn,
 ) {
   if p_stream.is_null() {
     return;
   }
-  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  if let Some(custom) = p_stream.as_custom() {
-    custom.set_seek(p_function);
+  let p_stream = unsafe { &mut *(p_stream as *mut OpjStream) };
+  if let Some(callbacks) = &p_stream.callbacks {
+    callbacks.borrow_mut().m_seek_fn = p_function;
   }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_write_function(
-  mut p_stream: *mut opj_stream_t,
-  mut p_function: opj_stream_write_fn,
+  p_stream: *mut opj_stream_t,
+  p_function: opj_stream_write_fn,
 ) {
   if p_stream.is_null() {
     return;
   }
-  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  if p_stream.is_input() {
+  let p_stream = unsafe { &mut *(p_stream as *mut OpjStream) };
+  if p_stream.is_input {
     return;
   }
-  if let Some(custom) = p_stream.as_custom() {
-    custom.set_write(p_function);
+  if let Some(callbacks) = &p_stream.callbacks {
+    callbacks.borrow_mut().m_write_fn = p_function;
   }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_skip_function(
-  mut p_stream: *mut opj_stream_t,
-  mut p_function: opj_stream_skip_fn,
+  p_stream: *mut opj_stream_t,
+  p_function: opj_stream_skip_fn,
 ) {
   if p_stream.is_null() {
     return;
   }
-  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  if let Some(custom) = p_stream.as_custom() {
-    custom.set_skip(p_function);
+  let p_stream = unsafe { &mut *(p_stream as *mut OpjStream) };
+  if let Some(callbacks) = &p_stream.callbacks {
+    callbacks.borrow_mut().m_skip_fn = p_function;
   }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_user_data(
-  mut p_stream: *mut opj_stream_t,
-  mut p_data: *mut core::ffi::c_void,
-  mut p_function: opj_stream_free_user_data_fn,
+  p_stream: *mut opj_stream_t,
+  p_data: *mut core::ffi::c_void,
+  p_function: opj_stream_free_user_data_fn,
 ) {
   if p_stream.is_null() {
     return;
   }
-  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  if let Some(custom) = p_stream.as_custom() {
-    custom.set_user_data(p_data, p_function);
+  let p_stream = unsafe { &mut *(p_stream as *mut OpjStream) };
+  if let Some(callbacks) = &p_stream.callbacks {
+    let mut callbacks = callbacks.borrow_mut();
+    callbacks.m_user_data = p_data;
+    callbacks.m_free_user_data_fn = p_function;
   }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_user_data_length(
-  mut p_stream: *mut opj_stream_t,
-  mut data_length: OPJ_UINT64,
+  p_stream: *mut opj_stream_t,
+  data_length: OPJ_UINT64,
 ) {
   if p_stream.is_null() {
     return;
   }
-  let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  p_stream.set_stream_length(data_length);
+  let p_stream = unsafe { &mut *(p_stream as *mut OpjStream) };
+  p_stream.stream.set_stream_length(data_length);
 }
 
 #[no_mangle]
 pub unsafe fn opj_stream_create_default_file_stream(
-  mut fname: *const core::ffi::c_char,
-  mut p_is_read_stream: OPJ_BOOL,
+  fname: *const core::ffi::c_char,
+  p_is_read_stream: OPJ_BOOL,
 ) -> *mut opj_stream_t {
   opj_stream_create_file_stream(fname, 0x100000 as OPJ_SIZE_T, p_is_read_stream)
 }
 
 #[no_mangle]
 pub unsafe fn opj_stream_create_file_stream(
-  mut fname: *const core::ffi::c_char,
-  mut p_size: OPJ_SIZE_T,
-  mut p_is_read_stream: OPJ_BOOL,
+  fname: *const core::ffi::c_char,
+  p_size: OPJ_SIZE_T,
+  p_is_read_stream: OPJ_BOOL,
 ) -> *mut opj_stream_t {
   if fname.is_null() {
     return core::ptr::null_mut::<opj_stream_t>();
   }
   match core::ffi::CStr::from_ptr(fname).to_str() {
     Ok(name) => {
-      let l_stream = Box::new(Stream::new_file(
-        name,
-        p_size,
-        p_is_read_stream != 0,
-      ));
-      Box::into_raw(l_stream) as *mut opj_stream_t
+      let is_input = p_is_read_stream != 0;
+      let stream = match openjp2_core::Stream::new_file(name, p_size, is_input) {
+        Ok(stream) => stream,
+        Err(err) => {
+          log::error!("Failed to open file stream: {err}");
+          return core::ptr::null_mut::<opj_stream_t>();
+        }
+      };
+      Box::into_raw(Box::new(OpjStream {
+        stream,
+        callbacks: None,
+        is_input,
+      })) as *mut opj_stream_t
     }
     Err(err) => {
       log::error!("Failed to convert C filename to Rust String: {err}");
