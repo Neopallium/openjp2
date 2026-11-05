@@ -431,7 +431,7 @@ pub(crate) struct opj_j2k {
   pub m_private_image: Option<Box<CoreImage>>,
   pub m_output_image: *mut opj_image_t,
   pub m_cp: opj_cp_t,
-  pub cstr_index: *mut opj_codestream_index_t,
+  pub cstr_index: Option<Box<CodestreamIndex>>,
   pub m_current_tile_number: OPJ_UINT32,
   pub m_tcd: opj_tcd,
   pub ihdr_w: OPJ_UINT32,

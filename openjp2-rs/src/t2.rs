@@ -3,6 +3,7 @@ use super::event::*;
 use super::math::*;
 use super::openjpeg::*;
 use crate::image::{CoreImage, CoreImageComp};
+use crate::j2k::CodestreamIndex;
 use super::pi::*;
 use super::tcd::*;
 use super::tgt::*;
@@ -304,7 +305,7 @@ pub(crate) fn opj_t2_decode_packets(
   mut p_src: *mut OPJ_BYTE,
   mut p_data_read: *mut OPJ_UINT32,
   mut p_max_len: OPJ_UINT32,
-  mut _p_cstr_index: *mut opj_codestream_index_t,
+  mut _p_cstr_index: *mut CodestreamIndex,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {

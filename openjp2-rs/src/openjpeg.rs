@@ -550,7 +550,7 @@ pub unsafe fn opj_get_cstr_index(mut p_codec: *mut opj_codec_t) -> *mut opj_code
 pub unsafe fn opj_destroy_cstr_index(mut p_cstr_index: *mut *mut opj_codestream_index_t) {
   if !(*p_cstr_index).is_null() {
     // TODO: use drop.
-    j2k_destroy_cstr_index(*p_cstr_index);
+    free_cstr_index_mirror(*p_cstr_index);
     *p_cstr_index = core::ptr::null_mut::<opj_codestream_index_t>()
   };
 }

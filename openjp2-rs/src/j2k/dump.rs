@@ -145,125 +145,78 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &opj_j2k, flag: OPJ_INT32, out_st
 }
 
 fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
-  unsafe {
-    let mut cstr_index = p_j2k.cstr_index;
-    let mut it_marker: OPJ_UINT32 = 0;
-    let mut it_tile: OPJ_UINT32 = 0;
-    let mut it_tile_part: OPJ_UINT32 = 0;
-    fprintf!(out_stream, "Codestream index from main header: {{\n");
-    fprintf!(
-      out_stream,
-      "\t Main header start position={}\n\t Main header end position={}\n",
-      (*cstr_index).main_head_start,
-      (*cstr_index).main_head_end,
-    );
-    fprintf!(out_stream, "\t Marker list: {{\n");
-    if !(*cstr_index).marker.is_null() {
-      it_marker = 0 as OPJ_UINT32;
-      while it_marker < (*cstr_index).marknum {
-        let marker = *(*cstr_index).marker.offset(it_marker as isize);
-        let ty = marker.type_ as i32;
-        if ty != 0 {
-          fprintf!(
-            out_stream,
-            "\t\t type={:#x}, pos={}, len={}\n",
-            ty,
-            marker.pos,
-            marker.len,
-          );
-        } else {
-          fprintf!(
-            out_stream,
-            "\t\t type={:x}, pos={}, len={}\n",
-            ty,
-            marker.pos,
-            marker.len,
-          );
-        }
-        it_marker += 1;
-      }
+  let Some(cstr_index) = p_j2k.cstr_index.as_deref() else {
+    return;
+  };
+  fprintf!(out_stream, "Codestream index from main header: {{\n");
+  fprintf!(
+    out_stream,
+    "\t Main header start position={}\n\t Main header end position={}\n",
+    cstr_index.main_head_start,
+    cstr_index.main_head_end,
+  );
+  fprintf!(out_stream, "\t Marker list: {{\n");
+  for marker in &cstr_index.markers {
+    let ty = marker.type_ as i32;
+    if ty != 0 {
+      fprintf!(
+        out_stream,
+        "\t\t type={:#x}, pos={}, len={}\n",
+        ty,
+        marker.pos,
+        marker.len,
+      );
+    } else {
+      fprintf!(
+        out_stream,
+        "\t\t type={:x}, pos={}, len={}\n",
+        ty,
+        marker.pos,
+        marker.len,
+      );
     }
-    fprintf!(out_stream, "\t }}\n");
-    if !(*cstr_index).tile_index.is_null() {
-      /* Simple test to avoid to write empty information*/
-      let mut l_acc_nb_of_tile_part = 0 as OPJ_UINT32; /* Not fill from the main header*/
-      it_tile = 0 as OPJ_UINT32;
-      while it_tile < (*cstr_index).nb_of_tiles {
-        l_acc_nb_of_tile_part = (l_acc_nb_of_tile_part as core::ffi::c_uint)
-          .wrapping_add((*(*cstr_index).tile_index.offset(it_tile as isize)).nb_tps)
-          as OPJ_UINT32;
-        it_tile += 1;
-      }
-      if l_acc_nb_of_tile_part != 0 {
-        fprintf!(out_stream, "\t Tile index: {{\n");
-        it_tile = 0 as OPJ_UINT32;
-        while it_tile < (*cstr_index).nb_of_tiles {
-          let mut nb_of_tile_part = (*(*cstr_index).tile_index.offset(it_tile as isize)).nb_tps;
-          fprintf!(
-            out_stream,
-            "\t\t nb of tile-part in tile [{}]={}\n",
-            it_tile,
-            nb_of_tile_part,
-          );
-          if !(*(*cstr_index).tile_index.offset(it_tile as isize))
-            .tp_index
-            .is_null()
-          {
-            it_tile_part = 0 as OPJ_UINT32;
-            while it_tile_part < nb_of_tile_part {
-              fprintf!(
-                out_stream,
-                "\t\t\t tile-part[{}]: star_pos={}, end_header={}, end_pos={}.\n",
-                it_tile_part,
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .tp_index
-                  .offset(it_tile_part as isize))
-                .start_pos,
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .tp_index
-                  .offset(it_tile_part as isize))
-                .end_header,
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .tp_index
-                  .offset(it_tile_part as isize))
-                .end_pos,
-              );
-              it_tile_part += 1;
-            }
-          }
-          if !(*(*cstr_index).tile_index.offset(it_tile as isize))
-            .marker
-            .is_null()
-          {
-            it_marker = 0 as OPJ_UINT32;
-            while it_marker < (*(*cstr_index).tile_index.offset(it_tile as isize)).marknum {
-              fprintf!(
-                out_stream,
-                "\t\t type={:#x}, pos={}, len={}\n",
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .marker
-                  .offset(it_marker as isize))
-                .type_ as core::ffi::c_int,
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .marker
-                  .offset(it_marker as isize))
-                .pos,
-                (*(*(*cstr_index).tile_index.offset(it_tile as isize))
-                  .marker
-                  .offset(it_marker as isize))
-                .len,
-              );
-              it_marker += 1;
-            }
-          }
-          it_tile += 1;
-        }
-        fprintf!(out_stream, "\t }}\n");
-      }
-    }
-    fprintf!(out_stream, "}}\n");
   }
+  fprintf!(out_stream, "\t }}\n");
+  /* Simple test to avoid writing empty information */
+  let l_acc_nb_of_tile_part: OPJ_UINT32 = cstr_index
+    .tiles
+    .iter()
+    .map(|tile| tile.nb_tps)
+    .sum();
+  if l_acc_nb_of_tile_part != 0 {
+    fprintf!(out_stream, "\t Tile index: {{\n");
+    for (it_tile, tile) in cstr_index.tiles.iter().enumerate() {
+      let nb_of_tile_part = tile.nb_tps;
+      fprintf!(
+        out_stream,
+        "\t\t nb of tile-part in tile [{}]={}\n",
+        it_tile,
+        nb_of_tile_part,
+      );
+      for (it_tile_part, tp) in tile.tp_index.iter().enumerate().take(nb_of_tile_part as usize) {
+        fprintf!(
+          out_stream,
+          "\t\t\t tile-part[{}]: star_pos={}, end_header={}, end_pos={}.\n",
+          it_tile_part,
+          tp.start_pos,
+          tp.end_header,
+          tp.end_pos,
+        );
+      }
+      for marker in &tile.markers {
+        fprintf!(
+          out_stream,
+          "\t\t type={:#x}, pos={}, len={}\n",
+          marker.type_ as core::ffi::c_int,
+          marker.pos,
+          marker.len,
+        );
+      }
+    }
+  }
+  fprintf!(out_stream, "}}\n");
 }
+
 
 fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
   unsafe {

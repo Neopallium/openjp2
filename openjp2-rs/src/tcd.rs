@@ -5,6 +5,7 @@ use super::math::*;
 use super::mct::*;
 use super::openjpeg::*;
 use crate::image::{CoreImage, CoreImageComp};
+use crate::j2k::CodestreamIndex;
 use super::pi::*;
 use super::t1::*;
 use super::t2::*;
@@ -1423,7 +1424,7 @@ pub(crate) fn opj_tcd_decode_tile(
   mut p_src: *mut OPJ_BYTE,
   mut p_max_length: OPJ_UINT32,
   mut p_tile_no: OPJ_UINT32,
-  mut p_cstr_index: *mut opj_codestream_index_t,
+  mut p_cstr_index: *mut CodestreamIndex,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
@@ -1824,7 +1825,7 @@ fn opj_tcd_t2_decode(
   mut p_src_data: *mut OPJ_BYTE,
   mut p_data_read: *mut OPJ_UINT32,
   mut p_max_src_size: OPJ_UINT32,
-  mut p_cstr_index: *mut opj_codestream_index_t,
+  mut p_cstr_index: *mut CodestreamIndex,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_t2 = core::ptr::null_mut::<opj_t2_t>();

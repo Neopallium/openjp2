@@ -12,6 +12,29 @@ use super::image::*;
 use super::invert::*;
 use super::math::*;
 use super::mct::*;
+
+// Owned codestream index (Phase 5.d). The `#[repr(C)]` mirror in c_api_types.rs
+// is built only when a C caller asks for it via opj_get_cstr_index.
+#[derive(Default)]
+pub(crate) struct CodestreamIndex {
+  pub main_head_start: OPJ_OFF_T,
+  pub main_head_end: OPJ_OFF_T,
+  pub codestream_size: OPJ_UINT64,
+  pub markers: Vec<opj_marker_info>,
+  pub tiles: Vec<CodestreamTileIndex>,
+}
+
+#[derive(Clone, Default)]
+pub(crate) struct CodestreamTileIndex {
+  pub tileno: OPJ_UINT32,
+  pub nb_tps: OPJ_UINT32,
+  pub current_nb_tps: OPJ_UINT32,
+  pub current_tpsno: OPJ_UINT32,
+  pub tp_index: Vec<opj_tp_index>,
+  pub markers: Vec<opj_marker_info>,
+  pub nb_packet: OPJ_UINT32,
+  pub packet_index: Vec<opj_packet_info>,
+}
 use super::openjpeg::*;
 use super::pi::*;
 use super::stream::*;
@@ -1093,19 +1116,20 @@ fn opj_j2k_read_soc(
     /* Next marker should be a SIZ marker in the main header */
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::MHSIZ;
     /* FIXME move it in a index structure included in p_j2k*/
-    (*p_j2k.cstr_index).main_head_start = opj_stream_tell(p_stream) - 2i64;
+    p_j2k.cstr_index.as_deref_mut().expect("cstr_index").main_head_start = opj_stream_tell(p_stream) - 2i64;
     event_msg!(
       p_manager,
       EVT_INFO,
       "Start to read j2k main header ({}).\n",
-      (*p_j2k.cstr_index).main_head_start,
+      p_j2k.cstr_index.as_deref().expect("cstr_index").main_head_start,
     );
     /* Add the marker to the codestream index*/
+    let l_main_head_start = p_j2k.cstr_index.as_deref().expect("cstr_index").main_head_start;
     if 0i32
       == opj_j2k_add_mhmarker(
-        p_j2k.cstr_index,
+        p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
         J2KMarker::SOC,
-        (*p_j2k.cstr_index).main_head_start,
+        l_main_head_start,
         2 as OPJ_UINT32,
       )
     {
@@ -1135,6 +1159,7 @@ fn opj_j2k_write_siz(
     let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
     /* preconditions */
 
+    let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
     cp = &mut p_j2k.m_cp;
     l_size_len = (40u32).wrapping_add((3u32).wrapping_mul(l_image.numcomps));
     l_img_comp = l_image.comps.as_ptr() as *mut CoreImageComp;
@@ -3541,176 +3566,22 @@ fn opj_j2k_read_sot(
         != p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32;
     }
     /* Index */
-    if !p_j2k.cstr_index.is_null() {
-      assert!(!(*p_j2k.cstr_index).tile_index.is_null());
-      (*(*p_j2k.cstr_index)
-        .tile_index
-        .offset(p_j2k.m_current_tile_number as isize))
-      .tileno = p_j2k.m_current_tile_number;
-      (*(*p_j2k.cstr_index)
-        .tile_index
-        .offset(p_j2k.m_current_tile_number as isize))
-      .current_tpsno = l_current_part;
+    if let Some(cstr_index) = p_j2k.cstr_index.as_deref_mut() {
+      let tile = &mut cstr_index.tiles[p_j2k.m_current_tile_number as usize];
+      tile.tileno = p_j2k.m_current_tile_number;
+      tile.current_tpsno = l_current_part;
       if l_num_parts != 0u32 {
-        (*(*p_j2k.cstr_index)
-          .tile_index
-          .offset(p_j2k.m_current_tile_number as isize))
-        .nb_tps = l_num_parts;
-        (*(*p_j2k.cstr_index)
-          .tile_index
-          .offset(p_j2k.m_current_tile_number as isize))
-        .current_nb_tps = l_num_parts;
-        if (*(*p_j2k.cstr_index)
-          .tile_index
-          .offset(p_j2k.m_current_tile_number as isize))
-        .tp_index
-        .is_null()
-        {
-          let fresh16 = &mut (*(*p_j2k.cstr_index)
-            .tile_index
-            .offset(p_j2k.m_current_tile_number as isize))
-          .tp_index;
-          *fresh16 = opj_calloc(
-            l_num_parts as size_t,
-            core::mem::size_of::<opj_tp_index_t>(),
-          ) as *mut opj_tp_index_t;
-          if (*(*p_j2k.cstr_index)
-            .tile_index
-            .offset(p_j2k.m_current_tile_number as isize))
-          .tp_index
-          .is_null()
-          {
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "Not enough memory to read SOT marker. Tile index allocation failed\n",
-            );
-            return 0i32;
-          }
-        } else {
-          let mut new_tp_index = opj_realloc(
-            (*(*p_j2k.cstr_index)
-              .tile_index
-              .offset(p_j2k.m_current_tile_number as isize))
-            .tp_index as *mut core::ffi::c_void,
-            (l_num_parts as usize).wrapping_mul(core::mem::size_of::<opj_tp_index_t>()),
-          ) as *mut opj_tp_index_t;
-          if new_tp_index.is_null() {
-            opj_free(
-              (*(*p_j2k.cstr_index)
-                .tile_index
-                .offset(p_j2k.m_current_tile_number as isize))
-              .tp_index as *mut core::ffi::c_void,
-            );
-            let fresh17 = &mut (*(*p_j2k.cstr_index)
-              .tile_index
-              .offset(p_j2k.m_current_tile_number as isize))
-            .tp_index;
-            *fresh17 = core::ptr::null_mut::<opj_tp_index_t>();
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "Not enough memory to read SOT marker. Tile index allocation failed\n",
-            );
-            return 0i32;
-          }
-          let fresh18 = &mut (*(*p_j2k.cstr_index)
-            .tile_index
-            .offset(p_j2k.m_current_tile_number as isize))
-          .tp_index;
-          *fresh18 = new_tp_index
-        }
+        tile.nb_tps = l_num_parts;
+        tile.current_nb_tps = l_num_parts;
+        tile.tp_index.resize(l_num_parts as usize, Default::default());
       } else {
-        /*if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index)*/
-        if (*(*p_j2k.cstr_index)
-          .tile_index
-          .offset(p_j2k.m_current_tile_number as isize))
-        .tp_index
-        .is_null()
-        {
-          (*(*p_j2k.cstr_index)
-            .tile_index
-            .offset(p_j2k.m_current_tile_number as isize))
-          .current_nb_tps = 10 as OPJ_UINT32;
-          let fresh19 = &mut (*(*p_j2k.cstr_index)
-            .tile_index
-            .offset(p_j2k.m_current_tile_number as isize))
-          .tp_index;
-          *fresh19 = opj_calloc(
-            (*(*p_j2k.cstr_index)
-              .tile_index
-              .offset(p_j2k.m_current_tile_number as isize))
-            .current_nb_tps as size_t,
-            core::mem::size_of::<opj_tp_index_t>(),
-          ) as *mut opj_tp_index_t;
-          if (*(*p_j2k.cstr_index)
-            .tile_index
-            .offset(p_j2k.m_current_tile_number as isize))
-          .tp_index
-          .is_null()
-          {
-            (*(*p_j2k.cstr_index)
-              .tile_index
-              .offset(p_j2k.m_current_tile_number as isize))
-            .current_nb_tps = 0 as OPJ_UINT32;
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "Not enough memory to read SOT marker. Tile index allocation failed\n",
-            );
-            return 0i32;
-          }
+        if tile.tp_index.is_empty() {
+          tile.current_nb_tps = 10 as OPJ_UINT32;
+          tile.tp_index.resize(10, Default::default());
         }
-        if l_current_part
-          >= (*(*p_j2k.cstr_index)
-            .tile_index
-            .offset(p_j2k.m_current_tile_number as isize))
-          .current_nb_tps
-        {
-          let mut new_tp_index_0 = core::ptr::null_mut::<opj_tp_index_t>();
-          (*(*p_j2k.cstr_index)
-            .tile_index
-            .offset(p_j2k.m_current_tile_number as isize))
-          .current_nb_tps = l_current_part.wrapping_add(1u32);
-          new_tp_index_0 = opj_realloc(
-            (*(*p_j2k.cstr_index)
-              .tile_index
-              .offset(p_j2k.m_current_tile_number as isize))
-            .tp_index as *mut core::ffi::c_void,
-            ((*(*p_j2k.cstr_index)
-              .tile_index
-              .offset(p_j2k.m_current_tile_number as isize))
-            .current_nb_tps as usize)
-              .wrapping_mul(core::mem::size_of::<opj_tp_index_t>()),
-          ) as *mut opj_tp_index_t;
-          if new_tp_index_0.is_null() {
-            opj_free(
-              (*(*p_j2k.cstr_index)
-                .tile_index
-                .offset(p_j2k.m_current_tile_number as isize))
-              .tp_index as *mut core::ffi::c_void,
-            );
-            let fresh20 = &mut (*(*p_j2k.cstr_index)
-              .tile_index
-              .offset(p_j2k.m_current_tile_number as isize))
-            .tp_index;
-            *fresh20 = core::ptr::null_mut::<opj_tp_index_t>();
-            (*(*p_j2k.cstr_index)
-              .tile_index
-              .offset(p_j2k.m_current_tile_number as isize))
-            .current_nb_tps = 0 as OPJ_UINT32;
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "Not enough memory to read SOT marker. Tile index allocation failed\n",
-            );
-            return 0i32;
-          }
-          let fresh21 = &mut (*(*p_j2k.cstr_index)
-            .tile_index
-            .offset(p_j2k.m_current_tile_number as isize))
-          .tp_index;
-          *fresh21 = new_tp_index_0
+        if l_current_part >= tile.current_nb_tps {
+          tile.current_nb_tps = l_current_part.wrapping_add(1u32);
+          tile.tp_index.resize(l_current_part as usize + 1, Default::default());
         }
       }
     }
@@ -3968,7 +3839,6 @@ fn opj_j2k_read_sod(
 ) -> OPJ_BOOL {
   unsafe {
     let mut l_current_read_size: OPJ_SIZE_T = 0;
-    let mut l_cstr_index = core::ptr::null_mut::<opj_codestream_index_t>();
     let mut l_current_data = core::ptr::null_mut::<*mut OPJ_BYTE>();
     let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
     let mut l_tile_len = core::ptr::null_mut::<OPJ_UINT32>();
@@ -4076,29 +3946,17 @@ fn opj_j2k_read_sod(
       l_sot_length_pb_detected = 1i32
     }
     /* Index */
-    l_cstr_index = p_j2k.cstr_index;
-    if !l_cstr_index.is_null() {
+    if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
       let mut l_current_pos = opj_stream_tell(p_stream) - 2i64;
-      let mut l_current_tile_part = (*(*l_cstr_index)
-        .tile_index
-        .offset(p_j2k.m_current_tile_number as isize))
-      .current_tpsno;
-      (*(*(*l_cstr_index)
-        .tile_index
-        .offset(p_j2k.m_current_tile_number as isize))
-      .tp_index
-      .offset(l_current_tile_part as isize))
-      .end_header = l_current_pos;
-      (*(*(*l_cstr_index)
-        .tile_index
-        .offset(p_j2k.m_current_tile_number as isize))
-      .tp_index
-      .offset(l_current_tile_part as isize))
-      .end_pos = l_current_pos + p_j2k.m_specific_param.m_decoder.m_sot_length as i64 + 2i64;
+      let tile = &mut l_cstr_index.tiles[p_j2k.m_current_tile_number as usize];
+      let mut l_current_tile_part = tile.current_tpsno;
+      tile.tp_index[l_current_tile_part as usize].end_header = l_current_pos;
+      tile.tp_index[l_current_tile_part as usize].end_pos =
+        l_current_pos + p_j2k.m_specific_param.m_decoder.m_sot_length as i64 + 2i64;
       if 0i32
         == opj_j2k_add_tlmarker(
           p_j2k.m_current_tile_number,
-          l_cstr_index,
+          p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
           J2KMarker::SOD,
           l_current_pos,
           p_j2k
@@ -4519,7 +4377,7 @@ fn opj_j2k_get_end_header(
   unsafe {
     /* preconditions */
 
-    (*p_j2k.cstr_index).main_head_end = opj_stream_tell(p_stream);
+    p_j2k.cstr_index.as_deref_mut().expect("cstr_index").main_head_end = opj_stream_tell(p_stream);
     1i32
   }
 }
@@ -4678,17 +4536,15 @@ fn opj_j2k_write_epc(
   mut _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   unsafe {
-    let mut l_cstr_index = core::ptr::null_mut::<opj_codestream_index_t>();
     /* preconditions */
 
-    l_cstr_index = p_j2k.cstr_index;
-    if !l_cstr_index.is_null() {
-      (*l_cstr_index).codestream_size = opj_stream_tell(p_stream) as OPJ_UINT64;
+    if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
+      l_cstr_index.codestream_size = opj_stream_tell(p_stream) as OPJ_UINT64;
       /* UniPG>> */
       /* The following adjustment is done to adjust the codestream size */
       /* if SOD is not at 0 in the buffer. Useful in case of JP2, where */
       /* the first bunch of bytes is not in the codestream              */
-      (*l_cstr_index).codestream_size -= (*l_cstr_index).main_head_start as OPJ_UINT64;
+      l_cstr_index.codestream_size -= l_cstr_index.main_head_start as OPJ_UINT64;
       /* <<UniPG */
     }
     /* USE_JPWL */
@@ -4747,7 +4603,7 @@ fn opj_j2k_read_unk(
       /* Add the marker to the codestream index*/
       if l_marker_handler != J2KMarker::SOT {
         let mut res = opj_j2k_add_mhmarker(
-          p_j2k.cstr_index,
+          p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
           J2KMarker::UNK(0),
           (opj_stream_tell(p_stream) as OPJ_UINT32).wrapping_sub(l_size_unk) as OPJ_OFF_T,
           l_size_unk,
@@ -7072,40 +6928,17 @@ Add main header marker information
 @param len          length of marker segment
  */
 fn opj_j2k_add_mhmarker(
-  mut cstr_index: *mut opj_codestream_index_t,
-  mut marker: J2KMarker,
-  mut pos: OPJ_OFF_T,
-  mut len: OPJ_UINT32,
+  cstr_index: &mut CodestreamIndex,
+  marker: J2KMarker,
+  pos: OPJ_OFF_T,
+  len: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  unsafe {
-    assert!(!cstr_index.is_null());
-    /* expand the list? */
-    if (*cstr_index).marknum.wrapping_add(1u32) > (*cstr_index).maxmarknum {
-      let mut new_marker = core::ptr::null_mut::<opj_marker_info_t>();
-      (*cstr_index).maxmarknum =
-        (100 as core::ffi::c_float + (*cstr_index).maxmarknum as OPJ_FLOAT32) as OPJ_UINT32;
-      new_marker = opj_realloc(
-        (*cstr_index).marker as *mut core::ffi::c_void,
-        ((*cstr_index).maxmarknum as usize).wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
-      ) as *mut opj_marker_info_t;
-      if new_marker.is_null() {
-        opj_free((*cstr_index).marker as *mut core::ffi::c_void);
-        (*cstr_index).marker = core::ptr::null_mut::<opj_marker_info_t>();
-        (*cstr_index).maxmarknum = 0 as OPJ_UINT32;
-        (*cstr_index).marknum = 0 as OPJ_UINT32;
-        /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n"); */
-        return 0i32;
-      }
-      (*cstr_index).marker = new_marker
-    }
-    /* add the marker */
-    (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).type_ =
-      marker.as_u32() as OPJ_UINT16;
-    (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).pos = pos as OPJ_OFF_T;
-    (*(*cstr_index).marker.offset((*cstr_index).marknum as isize)).len = len as OPJ_INT32;
-    (*cstr_index).marknum = (*cstr_index).marknum.wrapping_add(1);
-    1i32
-  }
+  cstr_index.markers.push(opj_marker_info {
+    type_: marker.as_u32() as OPJ_UINT16,
+    pos: pos as OPJ_OFF_T,
+    len: len as OPJ_INT32,
+  });
+  1i32
 }
 /* *
 Add tile header marker information
@@ -7116,75 +6949,25 @@ Add tile header marker information
 @param len          length of marker segment
  */
 fn opj_j2k_add_tlmarker(
-  mut tileno: OPJ_UINT32,
-  mut cstr_index: *mut opj_codestream_index_t,
-  mut marker: J2KMarker,
-  mut pos: OPJ_OFF_T,
-  mut len: OPJ_UINT32,
+  tileno: OPJ_UINT32,
+  cstr_index: &mut CodestreamIndex,
+  marker: J2KMarker,
+  pos: OPJ_OFF_T,
+  len: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  unsafe {
-    assert!(!cstr_index.is_null());
-    assert!(!(*cstr_index).tile_index.is_null());
-    /* expand the list? */
-    if (*(*cstr_index).tile_index.offset(tileno as isize))
-      .marknum
-      .wrapping_add(1u32)
-      > (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum
-    {
-      let mut new_marker = core::ptr::null_mut::<opj_marker_info_t>();
-      (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum = (100i32
-        as core::ffi::c_float
-        + (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum as OPJ_FLOAT32)
-        as OPJ_UINT32;
-      new_marker = opj_realloc(
-        (*(*cstr_index).tile_index.offset(tileno as isize)).marker as *mut core::ffi::c_void,
-        ((*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum as usize)
-          .wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
-      ) as *mut opj_marker_info_t;
-      if new_marker.is_null() {
-        opj_free(
-          (*(*cstr_index).tile_index.offset(tileno as isize)).marker as *mut core::ffi::c_void,
-        );
-        let fresh23 = &mut (*(*cstr_index).tile_index.offset(tileno as isize)).marker;
-        *fresh23 = core::ptr::null_mut::<opj_marker_info_t>();
-        (*(*cstr_index).tile_index.offset(tileno as isize)).maxmarknum = 0 as OPJ_UINT32;
-        (*(*cstr_index).tile_index.offset(tileno as isize)).marknum = 0 as OPJ_UINT32;
-        /* event_msg!(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n"); */
-        return 0i32;
-      }
-      let fresh24 = &mut (*(*cstr_index).tile_index.offset(tileno as isize)).marker;
-      *fresh24 = new_marker
+  let tile = &mut cstr_index.tiles[tileno as usize];
+  tile.markers.push(opj_marker_info {
+    type_: marker.as_u32() as OPJ_UINT16,
+    pos: pos as OPJ_OFF_T,
+    len: len as OPJ_INT32,
+  });
+  if marker == J2KMarker::SOT {
+    let l_current_tile_part = tile.current_tpsno;
+    if !tile.tp_index.is_empty() {
+      tile.tp_index[l_current_tile_part as usize].start_pos = pos as OPJ_OFF_T;
     }
-    /* add the marker */
-    (*(*(*cstr_index).tile_index.offset(tileno as isize))
-      .marker
-      .offset((*(*cstr_index).tile_index.offset(tileno as isize)).marknum as isize))
-    .type_ = marker.as_u32() as OPJ_UINT16;
-    (*(*(*cstr_index).tile_index.offset(tileno as isize))
-      .marker
-      .offset((*(*cstr_index).tile_index.offset(tileno as isize)).marknum as isize))
-    .pos = pos as OPJ_OFF_T;
-    (*(*(*cstr_index).tile_index.offset(tileno as isize))
-      .marker
-      .offset((*(*cstr_index).tile_index.offset(tileno as isize)).marknum as isize))
-    .len = len as OPJ_INT32;
-    let fresh25 = &mut (*(*cstr_index).tile_index.offset(tileno as isize)).marknum;
-    *fresh25 = (*fresh25).wrapping_add(1);
-    if marker == J2KMarker::SOT {
-      let mut l_current_tile_part =
-        (*(*cstr_index).tile_index.offset(tileno as isize)).current_tpsno;
-      if !(*(*cstr_index).tile_index.offset(tileno as isize))
-        .tp_index
-        .is_null()
-      {
-        (*(*(*cstr_index).tile_index.offset(tileno as isize))
-          .tp_index
-          .offset(l_current_tile_part as isize))
-        .start_pos = pos
-      }
-    }
-    1i32
   }
+  1i32
 }
 /*
  * -----------------------------------------------------------------------
@@ -7677,7 +7460,7 @@ fn opj_j2k_read_header_procedure(
       /* Add the marker to the codestream index*/
       if 0i32
         == opj_j2k_add_mhmarker(
-          p_j2k.cstr_index,
+          p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
           l_marker_handler,
           (opj_stream_tell(p_stream) as OPJ_UINT32)
             .wrapping_sub(l_marker_size)
@@ -7737,7 +7520,7 @@ fn opj_j2k_read_header_procedure(
       "Main header has been correctly decoded.\n",
     );
     /* Position of the last element if the main header */
-    (*p_j2k.cstr_index).main_head_end =
+    p_j2k.cstr_index.as_deref_mut().expect("cstr_index").main_head_end =
       (opj_stream_tell(p_stream) as OPJ_UINT32).wrapping_sub(2u32) as OPJ_OFF_T;
     /* Next step: read a tile-part header */
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT;
@@ -7843,8 +7626,7 @@ impl Drop for opj_j2k {
         0i32,
         core::mem::size_of::<opj_cp_t>(),
       );
-      j2k_destroy_cstr_index(self.cstr_index);
-      self.cstr_index = core::ptr::null_mut::<opj_codestream_index_t>();
+      self.cstr_index = None;
       self.m_private_image = None;
       opj_image_destroy(self.m_output_image);
       self.m_output_image = core::ptr::null_mut::<opj_image_t>();
@@ -7852,58 +7634,7 @@ impl Drop for opj_j2k {
   }
 }
 
-pub(crate) fn j2k_destroy_cstr_index(mut p_cstr_ind: *mut opj_codestream_index_t) {
-  unsafe {
-    if !p_cstr_ind.is_null() {
-      if !(*p_cstr_ind).marker.is_null() {
-        opj_free((*p_cstr_ind).marker as *mut core::ffi::c_void);
-        (*p_cstr_ind).marker = core::ptr::null_mut::<opj_marker_info_t>()
-      }
-      if !(*p_cstr_ind).tile_index.is_null() {
-        let mut it_tile = 0 as OPJ_UINT32;
-        it_tile = 0 as OPJ_UINT32;
-        while it_tile < (*p_cstr_ind).nb_of_tiles {
-          if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
-            .packet_index
-            .is_null()
-          {
-            opj_free(
-              (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).packet_index
-                as *mut core::ffi::c_void,
-            );
-            let fresh30 = &mut (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).packet_index;
-            *fresh30 = core::ptr::null_mut::<opj_packet_info_t>()
-          }
-          if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
-            .tp_index
-            .is_null()
-          {
-            opj_free(
-              (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).tp_index
-                as *mut core::ffi::c_void,
-            );
-            let fresh31 = &mut (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).tp_index;
-            *fresh31 = core::ptr::null_mut::<opj_tp_index_t>()
-          }
-          if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
-            .marker
-            .is_null()
-          {
-            opj_free(
-              (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
-            );
-            let fresh32 = &mut (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker;
-            *fresh32 = core::ptr::null_mut::<opj_marker_info_t>()
-          }
-          it_tile += 1;
-        }
-        opj_free((*p_cstr_ind).tile_index as *mut core::ffi::c_void);
-        (*p_cstr_ind).tile_index = core::ptr::null_mut::<opj_tile_index_t>()
-      }
-      opj_free(p_cstr_ind as *mut core::ffi::c_void);
-    };
-  }
-}
+
 
 /* *
  * Destroys a tile coding parameter structure.
@@ -8221,7 +7952,7 @@ pub(crate) fn opj_j2k_read_tile_header(
             if 0i32
               == opj_j2k_add_tlmarker(
                 p_j2k.m_current_tile_number,
-                p_j2k.cstr_index,
+                p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
                 l_marker_handler,
                 (opj_stream_tell(p_stream) as OPJ_UINT32)
                   .wrapping_sub(l_marker_size)
@@ -8495,7 +8226,7 @@ pub(crate) fn opj_j2k_decode_tile(
       (*l_tcp).m_data,
       (*l_tcp).m_data_size,
       p_tile_index,
-      p_j2k.cstr_index,
+      p_j2k.cstr_index.as_deref_mut().map(|i| i as *mut CodestreamIndex).unwrap_or(core::ptr::null_mut()),
       p_manager,
     ) == 0
     {
@@ -9115,7 +8846,7 @@ impl opj_j2k {
       m_private_image: None,
       m_output_image: core::ptr::null_mut(),
       m_cp: Default::default(),
-      cstr_index: core::ptr::null_mut(),
+      cstr_index: None,
       m_current_tile_number: 0,
       m_tcd: opj_tcd::new(m_is_decoder != 0),
       ihdr_w: 0,
@@ -9138,35 +8869,15 @@ pub(crate) fn opj_j2k_create_decompress() -> Option<opj_j2k> {
   l_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = -(1i32);
   l_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = 0 as OPJ_OFF_T;
   /* codestream index creation */
-  l_j2k.cstr_index = opj_j2k_create_cstr_index();
-  if l_j2k.cstr_index.is_null() {
-    return None;
-  }
+  l_j2k.cstr_index = Some(Box::new(CodestreamIndex::default()));
   Some(l_j2k)
 }
 
-fn opj_j2k_create_cstr_index() -> *mut opj_codestream_index_t {
-  unsafe {
-    let mut cstr_index = opj_calloc(
-      1i32 as size_t,
-      core::mem::size_of::<opj_codestream_index_t>(),
-    ) as *mut opj_codestream_index_t;
-    if cstr_index.is_null() {
-      return core::ptr::null_mut::<opj_codestream_index_t>();
-    }
-    (*cstr_index).maxmarknum = 100 as OPJ_UINT32;
-    (*cstr_index).marknum = 0 as OPJ_UINT32;
-    (*cstr_index).marker = opj_calloc(
-      (*cstr_index).maxmarknum as size_t,
-      core::mem::size_of::<opj_marker_info_t>(),
-    ) as *mut opj_marker_info_t;
-    if (*cstr_index).marker.is_null() {
-      opj_free(cstr_index as *mut core::ffi::c_void);
-      return core::ptr::null_mut::<opj_codestream_index_t>();
-    }
-    (*cstr_index).tile_index = core::ptr::null_mut::<opj_tile_index_t>();
-    cstr_index
-  }
+fn opj_j2k_create_cstr_index() -> Box<CodestreamIndex> {
+  Box::new(CodestreamIndex {
+    markers: Vec::with_capacity(100),
+    ..Default::default()
+  })
 }
 /* *
  * Gets the size taken by writing a SPCod or SPCoc for the given tile and component.
@@ -9981,6 +9692,7 @@ pub(crate) fn j2k_get_cstr_info(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream_
 
 pub(crate) fn j2k_get_cstr_index(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream_index_t {
   unsafe {
+    let cstr_index = p_j2k.cstr_index.as_deref().expect("cstr_index");
     let mut l_cstr_index = opj_calloc(
       1i32 as size_t,
       core::mem::size_of::<opj_codestream_index_t>(),
@@ -9988,10 +9700,10 @@ pub(crate) fn j2k_get_cstr_index(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream
     if l_cstr_index.is_null() {
       return core::ptr::null_mut::<opj_codestream_index_t>();
     }
-    (*l_cstr_index).main_head_start = (*p_j2k.cstr_index).main_head_start;
-    (*l_cstr_index).main_head_end = (*p_j2k.cstr_index).main_head_end;
-    (*l_cstr_index).codestream_size = (*p_j2k.cstr_index).codestream_size;
-    (*l_cstr_index).marknum = (*p_j2k.cstr_index).marknum;
+    (*l_cstr_index).main_head_start = cstr_index.main_head_start;
+    (*l_cstr_index).main_head_end = cstr_index.main_head_end;
+    (*l_cstr_index).codestream_size = cstr_index.codestream_size;
+    (*l_cstr_index).marknum = cstr_index.markers.len() as OPJ_UINT32;
     (*l_cstr_index).marker = opj_malloc(
       ((*l_cstr_index).marknum as usize).wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
     ) as *mut opj_marker_info_t;
@@ -9999,17 +9711,17 @@ pub(crate) fn j2k_get_cstr_index(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream
       opj_free(l_cstr_index as *mut core::ffi::c_void);
       return core::ptr::null_mut::<opj_codestream_index_t>();
     }
-    if !(*p_j2k.cstr_index).marker.is_null() {
-      memcpy(
-        (*l_cstr_index).marker as *mut core::ffi::c_void,
-        (*p_j2k.cstr_index).marker as *const core::ffi::c_void,
-        ((*l_cstr_index).marknum as usize).wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
+    if !cstr_index.markers.is_empty() {
+      core::ptr::copy_nonoverlapping(
+        cstr_index.markers.as_ptr(),
+        (*l_cstr_index).marker,
+        cstr_index.markers.len(),
       );
     } else {
       opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
       (*l_cstr_index).marker = core::ptr::null_mut::<opj_marker_info_t>()
     }
-    (*l_cstr_index).nb_of_tiles = (*p_j2k.cstr_index).nb_of_tiles;
+    (*l_cstr_index).nb_of_tiles = cstr_index.tiles.len() as OPJ_UINT32;
     (*l_cstr_index).tile_index = opj_calloc(
       (*l_cstr_index).nb_of_tiles as size_t,
       core::mem::size_of::<opj_tile_index_t>(),
@@ -10019,145 +9731,106 @@ pub(crate) fn j2k_get_cstr_index(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream
       opj_free(l_cstr_index as *mut core::ffi::c_void);
       return core::ptr::null_mut::<opj_codestream_index_t>();
     }
-    if (*p_j2k.cstr_index).tile_index.is_null() {
+    if cstr_index.tiles.is_empty() {
       opj_free((*l_cstr_index).tile_index as *mut core::ffi::c_void);
       (*l_cstr_index).tile_index = core::ptr::null_mut::<opj_tile_index_t>()
     } else {
-      let mut it_tile = 0 as OPJ_UINT32;
-      it_tile = 0 as OPJ_UINT32;
-      while it_tile < (*l_cstr_index).nb_of_tiles {
-        /* Tile Marker*/
-        (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marknum =
-          (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).marknum;
-        let fresh34 = &mut (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker;
-        *fresh34 = opj_malloc(
-          ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).marknum as usize)
-            .wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
+      for (it_tile, tile) in cstr_index.tiles.iter().enumerate() {
+        let dest = &mut *(*l_cstr_index).tile_index.offset(it_tile as isize);
+        /* Tile markers */
+        dest.marknum = tile.markers.len() as OPJ_UINT32;
+        dest.marker = opj_malloc(
+          (dest.marknum as usize).wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
         ) as *mut opj_marker_info_t;
-        if (*(*l_cstr_index).tile_index.offset(it_tile as isize))
-          .marker
-          .is_null()
-        {
-          let mut it_tile_free: OPJ_UINT32 = 0;
-          it_tile_free = 0 as OPJ_UINT32;
-          while it_tile_free < it_tile {
-            opj_free(
-              (*(*l_cstr_index).tile_index.offset(it_tile_free as isize)).marker
-                as *mut core::ffi::c_void,
-            );
-            it_tile_free += 1;
-          }
-          opj_free((*l_cstr_index).tile_index as *mut core::ffi::c_void);
-          opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
-          opj_free(l_cstr_index as *mut core::ffi::c_void);
+        if dest.marker.is_null() {
+          free_cstr_index_mirror(l_cstr_index);
           return core::ptr::null_mut::<opj_codestream_index_t>();
         }
-        if !(*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize))
-          .marker
-          .is_null()
-        {
-          memcpy(
-            (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
-            (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).marker
-              as *const core::ffi::c_void,
-            ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).marknum as usize)
-              .wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
-          );
+        if !tile.markers.is_empty() {
+          core::ptr::copy_nonoverlapping(tile.markers.as_ptr(), dest.marker, tile.markers.len());
         } else {
-          opj_free(
-            (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
-          );
-          let fresh35 = &mut (*(*l_cstr_index).tile_index.offset(it_tile as isize)).marker;
-          *fresh35 = core::ptr::null_mut::<opj_marker_info_t>()
+          opj_free(dest.marker as *mut core::ffi::c_void);
+          dest.marker = core::ptr::null_mut::<opj_marker_info_t>()
         }
-        /* Tile part index*/
-        (*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_tps =
-          (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).nb_tps;
-        let fresh36 = &mut (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index;
-        *fresh36 = opj_malloc(
-          ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_tps as usize)
-            .wrapping_mul(core::mem::size_of::<opj_tp_index_t>()),
+        /* Tile part index */
+        dest.nb_tps = tile.nb_tps;
+        dest.tp_index = opj_malloc(
+          (dest.nb_tps as usize).wrapping_mul(core::mem::size_of::<opj_tp_index_t>()),
         ) as *mut opj_tp_index_t;
-        if (*(*l_cstr_index).tile_index.offset(it_tile as isize))
-          .tp_index
-          .is_null()
-        {
-          let mut it_tile_free_0: OPJ_UINT32 = 0;
-          it_tile_free_0 = 0 as OPJ_UINT32;
-          while it_tile_free_0 < it_tile {
-            opj_free(
-              (*(*l_cstr_index).tile_index.offset(it_tile_free_0 as isize)).marker
-                as *mut core::ffi::c_void,
-            );
-            opj_free(
-              (*(*l_cstr_index).tile_index.offset(it_tile_free_0 as isize)).tp_index
-                as *mut core::ffi::c_void,
-            );
-            it_tile_free_0 += 1;
-          }
-          opj_free((*l_cstr_index).tile_index as *mut core::ffi::c_void);
-          opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
-          opj_free(l_cstr_index as *mut core::ffi::c_void);
+        if dest.tp_index.is_null() {
+          free_cstr_index_mirror(l_cstr_index);
           return core::ptr::null_mut::<opj_codestream_index_t>();
         }
-        if !(*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize))
-          .tp_index
-          .is_null()
-        {
-          memcpy(
-            (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index
-              as *mut core::ffi::c_void,
-            (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).tp_index
-              as *const core::ffi::c_void,
-            ((*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_tps as usize)
-              .wrapping_mul(core::mem::size_of::<opj_tp_index_t>()),
-          );
+        if !tile.tp_index.is_empty() {
+          core::ptr::copy_nonoverlapping(tile.tp_index.as_ptr(), dest.tp_index, tile.tp_index.len());
         } else {
-          opj_free(
-            (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index
-              as *mut core::ffi::c_void,
-          );
-          let fresh37 = &mut (*(*l_cstr_index).tile_index.offset(it_tile as isize)).tp_index;
-          *fresh37 = core::ptr::null_mut::<opj_tp_index_t>()
+          opj_free(dest.tp_index as *mut core::ffi::c_void);
+          dest.tp_index = core::ptr::null_mut::<opj_tp_index_t>()
         }
-        /* Packet index (NOT USED)*/
-        (*(*l_cstr_index).tile_index.offset(it_tile as isize)).nb_packet = 0 as OPJ_UINT32;
-        let fresh38 = &mut (*(*l_cstr_index).tile_index.offset(it_tile as isize)).packet_index;
-        *fresh38 = core::ptr::null_mut::<opj_packet_info_t>();
-        it_tile += 1;
+        /* Packet index (NOT USED) */
+        dest.nb_packet = 0 as OPJ_UINT32;
+        dest.packet_index = core::ptr::null_mut::<opj_packet_info_t>();
       }
     }
     l_cstr_index
   }
 }
 
+/// Free a C-ABI codestream index mirror built by `j2k_get_cstr_index`.
+pub(crate) fn free_cstr_index_mirror(mut p_cstr_ind: *mut opj_codestream_index_t) {
+  unsafe {
+    if p_cstr_ind.is_null() {
+      return;
+    }
+    if !(*p_cstr_ind).marker.is_null() {
+      opj_free((*p_cstr_ind).marker as *mut core::ffi::c_void);
+      (*p_cstr_ind).marker = core::ptr::null_mut::<opj_marker_info_t>()
+    }
+    if !(*p_cstr_ind).tile_index.is_null() {
+      let mut it_tile = 0 as OPJ_UINT32;
+      while it_tile < (*p_cstr_ind).nb_of_tiles {
+        if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
+          .packet_index
+          .is_null()
+        {
+          opj_free(
+            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).packet_index
+              as *mut core::ffi::c_void,
+          );
+        }
+        if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
+          .tp_index
+          .is_null()
+        {
+          opj_free(
+            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).tp_index as *mut core::ffi::c_void,
+          );
+        }
+        if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
+          .marker
+          .is_null()
+        {
+          opj_free(
+            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
+          );
+        }
+        it_tile += 1;
+      }
+      opj_free((*p_cstr_ind).tile_index as *mut core::ffi::c_void);
+      (*p_cstr_ind).tile_index = core::ptr::null_mut::<opj_tile_index_t>()
+    }
+    opj_free(p_cstr_ind as *mut core::ffi::c_void);
+  }
+}
+
+
 fn opj_j2k_allocate_tile_element_cstr_index(mut p_j2k: &mut opj_j2k) -> OPJ_BOOL {
   unsafe {
-    let mut it_tile = 0 as OPJ_UINT32;
-    (*p_j2k.cstr_index).nb_of_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
-    (*p_j2k.cstr_index).tile_index = opj_calloc(
-      (*p_j2k.cstr_index).nb_of_tiles as size_t,
-      core::mem::size_of::<opj_tile_index_t>(),
-    ) as *mut opj_tile_index_t;
-    if (*p_j2k.cstr_index).tile_index.is_null() {
-      return 0i32;
-    }
-    it_tile = 0 as OPJ_UINT32;
-    while it_tile < (*p_j2k.cstr_index).nb_of_tiles {
-      (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).maxmarknum = 100 as OPJ_UINT32;
-      (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).marknum = 0 as OPJ_UINT32;
-      let fresh39 = &mut (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).marker;
-      *fresh39 = opj_calloc(
-        (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize)).maxmarknum as size_t,
-        core::mem::size_of::<opj_marker_info_t>(),
-      ) as *mut opj_marker_info_t;
-      if (*(*p_j2k.cstr_index).tile_index.offset(it_tile as isize))
-        .marker
-        .is_null()
-      {
-        return 0i32;
-      }
-      it_tile += 1;
+    let nb_of_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
+    let cstr_index = p_j2k.cstr_index.as_deref_mut().expect("cstr_index");
+    cstr_index.tiles.resize(nb_of_tiles as usize, CodestreamTileIndex::default());
+    for tile in &mut cstr_index.tiles {
+      tile.markers = Vec::with_capacity(100);
     }
     1i32
   }
@@ -10359,20 +10032,17 @@ fn opj_j2k_decode_one_tile(
     let mut l_nb_tiles: OPJ_UINT32 = 0;
     let mut i: OPJ_UINT32 = 0;
     /*Allocate and initialize some elements of codestrem index if not already done*/
-    if (*p_j2k.cstr_index).tile_index.is_null()
+    if p_j2k.cstr_index.as_deref().expect("cstr_index").tiles.is_empty()
       && opj_j2k_allocate_tile_element_cstr_index(p_j2k) == 0
     {
       return 0i32;
     }
     /* Move into the codestream to the first SOT used to decode the desired tile */
     let l_tile_no_to_dec = p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32;
-    if !(*p_j2k.cstr_index).tile_index.is_null()
-      && !(*(*p_j2k.cstr_index).tile_index).tp_index.is_null()
+    if !p_j2k.cstr_index.as_deref().expect("cstr_index").tiles.is_empty()
+      && !p_j2k.cstr_index.as_deref().expect("cstr_index").tiles[0].tp_index.is_empty()
     {
-      if (*(*p_j2k.cstr_index)
-        .tile_index
-        .offset(l_tile_no_to_dec as isize))
-      .nb_tps
+      if p_j2k.cstr_index.as_deref().expect("cstr_index").tiles[l_tile_no_to_dec as usize].nb_tps
         == 0
       {
         /* the index for this tile has not been built,
@@ -10388,12 +10058,9 @@ fn opj_j2k_decode_one_tile(
         }
       } else if opj_stream_seek(
         p_stream,
-        (*(*(*p_j2k.cstr_index)
-          .tile_index
-          .offset(l_tile_no_to_dec as isize))
-        .tp_index
-        .offset(0))
-        .start_pos
+        p_j2k.cstr_index.as_deref().expect("cstr_index").tiles[l_tile_no_to_dec as usize]
+          .tp_index[0]
+          .start_pos
           + 2i64,
         p_manager,
       ) == 0
@@ -10447,7 +10114,7 @@ fn opj_j2k_decode_one_tile(
         /* move into the codestream to the first SOT (FIXME or not move?)*/
         if opj_stream_seek(
           p_stream,
-          (*p_j2k.cstr_index).main_head_end + 2i64,
+          p_j2k.cstr_index.as_deref().expect("cstr_index").main_head_end + 2i64,
           p_manager,
         ) == 0
         {
@@ -11291,7 +10958,7 @@ fn opj_j2k_setup_header_writing(
     list.add(opj_j2k_write_mct_data_group);
   }
   /* End of Developer Corner */
-  if !p_j2k.cstr_index.is_null() {
+  if !p_j2k.cstr_index.is_none() {
     list.add(opj_j2k_get_end_header);
   }
   list.add(opj_j2k_create_tcd);

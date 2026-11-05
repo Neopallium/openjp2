@@ -492,7 +492,7 @@ pub struct opj_image_comp {
 pub type opj_image_comp_t = opj_image_comp;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct opj_packet_info {
   pub start_pos: OPJ_OFF_T,
   pub end_ph_pos: OPJ_OFF_T,
@@ -502,7 +502,7 @@ pub struct opj_packet_info {
 pub type opj_packet_info_t = opj_packet_info;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct opj_marker_info {
   pub type_: core::ffi::c_ushort,
   pub pos: OPJ_OFF_T,
@@ -620,7 +620,7 @@ pub struct opj_codestream_info {
 pub type opj_codestream_info_t = opj_codestream_info;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct opj_tp_index {
   pub start_pos: OPJ_OFF_T,
   pub end_header: OPJ_OFF_T,
