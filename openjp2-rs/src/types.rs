@@ -429,7 +429,7 @@ pub(crate) struct opj_j2k {
   pub m_is_decoder: OPJ_BOOL,
   pub m_specific_param: C2RustUnnamed_2,
   pub m_private_image: Option<Box<CoreImage>>,
-  pub m_output_image: *mut opj_image_t,
+  pub m_output_image: Option<Box<CoreImage>>,
   pub m_cp: opj_cp_t,
   pub cstr_index: Option<Box<CodestreamIndex>>,
   pub m_current_tile_number: OPJ_UINT32,
@@ -869,6 +869,23 @@ impl TileBuf {
     let ptr = self.as_mut_ptr();
     core::mem::forget(core::mem::replace(self, TileBuf::Empty));
     ptr
+  }
+
+  /// Hands the owned buffer over as a `Vec` of `len` samples; the caller owns it from then on.
+  /// Only valid for `Owned` buffers; returns an empty Vec for `Empty`/`Borrowed` ones.
+  ///
+  /// # Safety contract for the caller
+  /// `len` must not exceed the number of samples the buffer covers.
+  pub(crate) fn take_vec(&mut self, len: usize) -> Vec<OPJ_INT32> {
+    let ptr = self.as_mut_ptr();
+    core::mem::forget(core::mem::replace(self, TileBuf::Empty));
+    if ptr.is_null() || len == 0 {
+      return Vec::new();
+    }
+    // SAFETY: the buffer came from opj_image_data_alloc (malloc-backed, same allocator family
+    // as the system allocator Vec drops into), `len` samples are valid and the ownership is
+    // transferred exactly once.
+    unsafe { Vec::from_raw_parts(ptr, len, len) }
   }
 }
 

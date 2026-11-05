@@ -128,6 +128,40 @@ impl opj_image_comp {
     other.data = core::ptr::null_mut();
   }
 
+  /// Copy just the component properties from a core component, not the data.
+  pub fn copy_props_from_core(&mut self, other: &CoreImageComp) {
+    self.clear_data();
+    self.dx = other.dx;
+    self.dy = other.dy;
+    self.w = other.w;
+    self.h = other.h;
+    self.x0 = other.x0;
+    self.y0 = other.y0;
+    self.prec = other.prec;
+    self.bpp = other.bpp;
+    self.sgnd = other.sgnd;
+    self.resno_decoded = other.resno_decoded;
+    self.factor = other.factor;
+    self.alpha = other.alpha;
+  }
+
+  /// Move a core component's data into this C-ABI component (no copy); the source is left empty.
+  pub fn move_data_from_core(&mut self, other: &mut CoreImageComp) {
+    self.clear_data();
+    let v = core::mem::take(&mut other.data);
+    if v.is_empty() {
+      self.data = core::ptr::null_mut();
+      return;
+    }
+    let mut v = v;
+    self.data = v.as_mut_ptr();
+    // The Vec allocation is handed to the C ABI, which frees it with opj_image_data_free
+    // (malloc-backed, same allocator family as the system allocator).
+    // SAFETY: 0 is <= the current length; this just prevents the Vec drop from freeing `data`.
+    unsafe { v.set_len(0) };
+    core::mem::forget(v);
+  }
+
   pub fn data(&self) -> Option<&[i32]> {
     if self.data.is_null() {
       None

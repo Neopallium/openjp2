@@ -7528,8 +7528,7 @@ impl Drop for opj_j2k {
       );
       self.cstr_index = None;
       self.m_private_image = None;
-      opj_image_destroy(self.m_output_image);
-      self.m_output_image = core::ptr::null_mut::<opj_image_t>();
+      self.m_output_image = None;
     }
   }
 }
@@ -8073,8 +8072,7 @@ pub(crate) fn opj_j2k_decode_tile(
     /* opj_set_decode_area() is only used to determine intersecting tiles, */
     /* but full tile decoding is done */
     let (l_bounds_x0, l_bounds_y0, l_bounds_x1, l_bounds_y1) =
-      if !p_j2k.m_output_image.is_null() {
-        let image = unsafe { &*p_j2k.m_output_image };
+      if let Some(image) = p_j2k.m_output_image.as_ref() {
         (image.x0, image.y0, image.x1, image.y1)
       } else {
         let image = p_j2k.m_private_image.as_deref().expect("m_private_image");
@@ -8155,12 +8153,22 @@ pub(crate) fn opj_j2k_decode_tile(
   }
 }
 fn opj_j2k_update_image_data(
-  mut p_tcd: &mut opj_tcd,
-  mut p_output_image: &mut opj_image,
+  p_tcd: &mut opj_tcd,
+  p_output_image: &mut CoreImage,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
+  let l_tilec = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
+  // SAFETY: `p_tcd.image` is the codec's decoded source image (never null during decode);
+  // referenced exclusively here. The tile component vector is walked with raw pointers like the
+  // C code does; `l_tilec_i` below is the only reference into it at any time.
+  let l_image_src = unsafe { &mut *(*p_tcd).image };
+  let mut i: OPJ_UINT32 = 0;
+  while i < (*l_image_src).numcomps {
+    let mut res_x0: OPJ_INT32 = 0;
+    let mut res_x1: OPJ_INT32 = 0;
+    let mut res_y0: OPJ_INT32 = 0;
+    let mut res_y1: OPJ_INT32 = 0;
+    let mut src_data_stride: OPJ_UINT32 = 0;
+    let mut p_src_data = core::ptr::null::<OPJ_INT32>();
     let mut l_width_src: OPJ_UINT32 = 0;
     let mut l_height_src: OPJ_UINT32 = 0;
     let mut l_width_dest: OPJ_UINT32 = 0;
@@ -8177,218 +8185,174 @@ fn opj_j2k_update_image_data(
     let mut l_x1_dest: OPJ_UINT32 = 0;
     let mut l_y1_dest: OPJ_UINT32 = 0;
     let mut l_start_offset_dest: OPJ_SIZE_T = 0;
-    let mut l_img_comp_src = core::ptr::null_mut::<CoreImageComp>();
-    let mut l_img_comp_dest = core::ptr::null_mut::<opj_image_comp_t>();
-    let mut l_tilec = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
-    let mut l_image_src = core::ptr::null_mut::<CoreImage>();
-    let mut l_dest_ptr = core::ptr::null_mut::<OPJ_INT32>();
-    l_tilec = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
-    l_image_src = (*p_tcd).image;
-    l_img_comp_src = (*l_image_src).comps.as_ptr() as *mut CoreImageComp;
-    l_img_comp_dest = (*p_output_image).comps;
-    i = 0 as OPJ_UINT32;
-    while i < (*l_image_src).numcomps {
-      let mut res_x0: OPJ_INT32 = 0;
-      let mut res_x1: OPJ_INT32 = 0;
-      let mut res_y0: OPJ_INT32 = 0;
-      let mut res_y1: OPJ_INT32 = 0;
-      let mut src_data_stride: OPJ_UINT32 = 0;
-      let mut p_src_data = core::ptr::null::<OPJ_INT32>();
-      /* Copy info from decoded comp image to output image */
-      (*l_img_comp_dest).resno_decoded = (*l_img_comp_src).resno_decoded;
-      if (*p_tcd).whole_tile_decoding != 0 {
-        let mut l_res = (*l_tilec)
-          .resolutions
-          .as_mut_ptr()
-          .offset((*l_img_comp_src).resno_decoded as isize);
-        res_x0 = (*l_res).x0;
-        res_y0 = (*l_res).y0;
-        res_x1 = (*l_res).x1;
-        res_y1 = (*l_res).y1;
-        src_data_stride = ((*(*l_tilec)
-          .resolutions
-          .as_mut_ptr()
-          .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
-        .x1
-          - (*(*l_tilec)
-            .resolutions
-            .as_mut_ptr()
-            .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
-          .x0) as OPJ_UINT32;
-        p_src_data = (*l_tilec).data.as_mut_ptr()
-      } else {
-        let mut l_res_0 = (*l_tilec)
-          .resolutions
-          .as_mut_ptr()
-          .offset((*l_img_comp_src).resno_decoded as isize);
-        res_x0 = (*l_res_0).win_x0 as OPJ_INT32;
-        res_y0 = (*l_res_0).win_y0 as OPJ_INT32;
-        res_x1 = (*l_res_0).win_x1 as OPJ_INT32;
-        res_y1 = (*l_res_0).win_y1 as OPJ_INT32;
-        src_data_stride = (*l_res_0).win_x1.wrapping_sub((*l_res_0).win_x0);
-        p_src_data = (*l_tilec).data_win.as_mut_ptr()
-      }
-      if !p_src_data.is_null() {
-        l_width_src = (res_x1 - res_x0) as OPJ_UINT32;
-        l_height_src = (res_y1 - res_y0) as OPJ_UINT32;
-        /* Current tile component size*/
-        /*if (i == 0) {
-        fprintf!(stdout, "SRC: l_res_x0={}, l_res_x1={}, l_res_y0={}, l_res_y1={}\n",
-                        res_x0, res_x1, res_y0, res_y1);
-        }*/
-        /* Border of the current output component*/
-        l_x0_dest = opj_uint_ceildivpow2((*l_img_comp_dest).x0, (*l_img_comp_dest).factor); /* can't overflow given that image->x1 is uint32 */
-        l_y0_dest = opj_uint_ceildivpow2((*l_img_comp_dest).y0, (*l_img_comp_dest).factor);
-        l_x1_dest = l_x0_dest.wrapping_add((*l_img_comp_dest).w);
-        l_y1_dest = l_y0_dest.wrapping_add((*l_img_comp_dest).h);
-        /*if (i == 0) {
-        fprintf!(stdout, "DEST: l_x0_dest={}, l_x1_dest={}, l_y0_dest={}, l_y1_dest={} ({})\n",
-                        l_x0_dest, l_x1_dest, l_y0_dest, l_y1_dest, l_img_comp_dest->factor );
-        }*/
-        /*-----*/
-        /* Compute the area (l_offset_x0_src, l_offset_y0_src, l_offset_x1_src, l_offset_y1_src)
-         * of the input buffer (decoded tile component) which will be move
-         * in the output buffer. Compute the area of the output buffer (l_start_x_dest,
-         * l_start_y_dest, l_width_dest, l_height_dest)  which will be modified
-         * by this input area.
-         * */
-
-        assert!(res_x0 >= 0i32);
-        assert!(res_x1 >= 0i32);
-        if l_x0_dest < res_x0 as OPJ_UINT32 {
-          l_start_x_dest = (res_x0 as OPJ_UINT32).wrapping_sub(l_x0_dest);
-          l_offset_x0_src = 0i32;
-          if l_x1_dest >= res_x1 as OPJ_UINT32 {
-            l_width_dest = l_width_src;
-            l_offset_x1_src = 0i32
-          } else {
-            l_width_dest = l_x1_dest.wrapping_sub(res_x0 as OPJ_UINT32);
-            l_offset_x1_src = l_width_src.wrapping_sub(l_width_dest) as OPJ_INT32
-          }
-        } else {
-          l_start_x_dest = 0u32;
-          l_offset_x0_src = l_x0_dest as OPJ_INT32 - res_x0;
-          if l_x1_dest >= res_x1 as OPJ_UINT32 {
-            l_width_dest = l_width_src.wrapping_sub(l_offset_x0_src as OPJ_UINT32);
-            l_offset_x1_src = 0i32
-          } else {
-            l_width_dest = (*l_img_comp_dest).w;
-            l_offset_x1_src = res_x1 - l_x1_dest as OPJ_INT32
-          }
-        }
-        if l_y0_dest < res_y0 as OPJ_UINT32 {
-          l_start_y_dest = (res_y0 as OPJ_UINT32).wrapping_sub(l_y0_dest);
-          l_offset_y0_src = 0i32;
-          if l_y1_dest >= res_y1 as OPJ_UINT32 {
-            l_height_dest = l_height_src;
-            l_offset_y1_src = 0i32
-          } else {
-            l_height_dest = l_y1_dest.wrapping_sub(res_y0 as OPJ_UINT32);
-            l_offset_y1_src = l_height_src.wrapping_sub(l_height_dest) as OPJ_INT32
-          }
-        } else {
-          l_start_y_dest = 0u32;
-          l_offset_y0_src = l_y0_dest as OPJ_INT32 - res_y0;
-          if l_y1_dest >= res_y1 as OPJ_UINT32 {
-            l_height_dest = l_height_src.wrapping_sub(l_offset_y0_src as OPJ_UINT32);
-            l_offset_y1_src = 0i32
-          } else {
-            l_height_dest = (*l_img_comp_dest).h;
-            l_offset_y1_src = res_y1 - l_y1_dest as OPJ_INT32
-          }
-        }
-        if l_offset_x0_src < 0i32
-          || l_offset_y0_src < 0i32
-          || l_offset_x1_src < 0i32
-          || l_offset_y1_src < 0i32
-        {
-          return 0i32;
-        }
-        /* testcase 2977.pdf.asan.67.2198 */
-        if (l_width_dest as OPJ_INT32) < 0i32 || (l_height_dest as OPJ_INT32) < 0i32 {
-          return 0i32;
-        }
-        /*-----*/
-        /* Compute the input buffer offset */
-        l_start_offset_src = (l_offset_x0_src as OPJ_SIZE_T).wrapping_add(
-          (l_offset_y0_src as OPJ_SIZE_T).wrapping_mul(src_data_stride as OPJ_SIZE_T),
-        );
-        /* Compute the output buffer offset */
-        l_start_offset_dest = (l_start_x_dest as OPJ_SIZE_T).wrapping_add(
-          (l_start_y_dest as OPJ_SIZE_T).wrapping_mul((*l_img_comp_dest).w as OPJ_SIZE_T),
-        );
-        /* Allocate output component buffer if necessary */
-        if (*l_img_comp_dest).data.is_null()
-          && l_start_offset_src == 0
-          && l_start_offset_dest == 0
-          && src_data_stride == (*l_img_comp_dest).w
-          && l_width_dest == (*l_img_comp_dest).w
-          && l_height_dest == (*l_img_comp_dest).h
-        {
-          /* If the final image matches the tile buffer, then borrow it */
-          /* directly to save a copy */
-          if (*p_tcd).whole_tile_decoding != 0 {
-            (*l_img_comp_dest).data = (*l_tilec).data.take_raw();
-          } else {
-            (*l_img_comp_dest).data = (*l_tilec).data_win.take_raw();
-          }
-        } else {
-          if (*l_img_comp_dest).data.is_null() {
-            let mut l_width = (*l_img_comp_dest).w as OPJ_SIZE_T;
-            let mut l_height = (*l_img_comp_dest).h as OPJ_SIZE_T;
-            if l_height == 0
-              || l_width > (usize::MAX).wrapping_div(l_height)
-              || l_width.wrapping_mul(l_height)
-                > (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_INT32>())
-            {
-              /* would overflow */
-              return 0i32;
-            }
-            (*l_img_comp_dest).data = opj_image_data_alloc(
-              l_width
-                .wrapping_mul(l_height)
-                .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
-            ) as *mut OPJ_INT32;
-            if (*l_img_comp_dest).data.is_null() {
-              return 0i32;
-            }
-            if (*l_img_comp_dest).w != l_width_dest || (*l_img_comp_dest).h != l_height_dest {
-              memset(
-                (*l_img_comp_dest).data as *mut core::ffi::c_void,
-                0i32,
-                ((*l_img_comp_dest).w as OPJ_SIZE_T)
-                  .wrapping_mul((*l_img_comp_dest).h as usize)
-                  .wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
-              );
-            }
-          }
-          /* Move the output buffer to the first place where we will write*/
-          l_dest_ptr = (*l_img_comp_dest).data.add(l_start_offset_dest);
-          let mut l_src_ptr = p_src_data;
-          l_src_ptr = l_src_ptr.add(l_start_offset_src);
-          j = 0 as OPJ_UINT32;
-          while j < l_height_dest {
-            memcpy(
-              l_dest_ptr as *mut core::ffi::c_void,
-              l_src_ptr as *const core::ffi::c_void,
-              (l_width_dest as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>()),
-            );
-            l_dest_ptr = l_dest_ptr.offset((*l_img_comp_dest).w as isize);
-            l_src_ptr = l_src_ptr.offset(src_data_stride as isize);
-            j += 1;
-          }
-        }
-      }
-      /* Happens for partial component decoding */
-      i = i.wrapping_add(1);
-      l_img_comp_dest = l_img_comp_dest.offset(1);
-      l_img_comp_src = l_img_comp_src.offset(1);
-      l_tilec = l_tilec.offset(1)
+    let mut j: OPJ_UINT32 = 0;
+    let l_img_comp_src = &mut (*l_image_src).comps[i as usize];
+    let l_tilec_i = unsafe { &mut *l_tilec.add(i as usize) };
+    /* Copy info from decoded comp image to output image */
+    {
+      let dest = &mut p_output_image.comps[i as usize];
+      dest.resno_decoded = l_img_comp_src.resno_decoded;
     }
-    1i32
-  }
-}
+    if (*p_tcd).whole_tile_decoding != 0 {
+      let l_res = &(*l_tilec_i).resolutions[l_img_comp_src.resno_decoded as usize];
+      res_x0 = l_res.x0;
+      res_y0 = l_res.y0;
+      res_x1 = l_res.x1;
+      res_y1 = l_res.y1;
+      src_data_stride = ((*l_tilec_i).resolutions[(*l_tilec_i).minimum_num_resolutions as usize - 1]
+        .x1
+        - (*l_tilec_i).resolutions[(*l_tilec_i).minimum_num_resolutions as usize - 1].x0)
+        as OPJ_UINT32;
+      p_src_data = (*l_tilec_i).data.as_mut_ptr()
+    } else {
+      let l_res = &(*l_tilec_i).resolutions[l_img_comp_src.resno_decoded as usize];
+      res_x0 = l_res.win_x0 as OPJ_INT32;
+      res_y0 = l_res.win_y0 as OPJ_INT32;
+      res_x1 = l_res.win_x1 as OPJ_INT32;
+      res_y1 = l_res.win_y1 as OPJ_INT32;
+      src_data_stride = l_res.win_x1.wrapping_sub(l_res.win_x0);
+      p_src_data = (*l_tilec_i).data_win.as_mut_ptr()
+    }
+    if !p_src_data.is_null() {
+      l_width_src = (res_x1 - res_x0) as OPJ_UINT32;
+      l_height_src = (res_y1 - res_y0) as OPJ_UINT32;
+      /* Current tile component size*/
+      /* Border of the current output component*/
+      {
+        let dest = &mut p_output_image.comps[i as usize];
+        l_x0_dest = opj_uint_ceildivpow2(dest.x0, dest.factor); /* can't overflow given that image->x1 is uint32 */
+        l_y0_dest = opj_uint_ceildivpow2(dest.y0, dest.factor);
+        l_x1_dest = l_x0_dest.wrapping_add(dest.w);
+        l_y1_dest = l_y0_dest.wrapping_add(dest.h);
+      }
+      /*-----*/
+      /* Compute the area (l_offset_x0_src, l_offset_y0_src, l_offset_x1_src, l_offset_y1_src)
+       * of the input buffer (decoded tile component) which will be move
+       * in the output buffer. Compute the area of the output buffer (l_start_x_dest,
+       * l_start_y_dest, l_width_dest, l_height_dest)  which will be modified
+       * by this input area.
+       * */
 
+      assert!(res_x0 >= 0i32);
+      assert!(res_x1 >= 0i32);
+      if l_x0_dest < res_x0 as OPJ_UINT32 {
+        l_start_x_dest = (res_x0 as OPJ_UINT32).wrapping_sub(l_x0_dest);
+        l_offset_x0_src = 0i32;
+        if l_x1_dest >= res_x1 as OPJ_UINT32 {
+          l_width_dest = l_width_src;
+          l_offset_x1_src = 0i32
+        } else {
+          l_width_dest = l_x1_dest.wrapping_sub(res_x0 as OPJ_UINT32);
+          l_offset_x1_src = l_width_src.wrapping_sub(l_width_dest) as OPJ_INT32
+        }
+      } else {
+        l_start_x_dest = 0u32;
+        l_offset_x0_src = l_x0_dest as OPJ_INT32 - res_x0;
+        if l_x1_dest >= res_x1 as OPJ_UINT32 {
+          l_width_dest = l_width_src.wrapping_sub(l_offset_x0_src as OPJ_UINT32);
+          l_offset_x1_src = 0i32
+        } else {
+          l_width_dest = p_output_image.comps[i as usize].w;
+          l_offset_x1_src = res_x1 - l_x1_dest as OPJ_INT32
+        }
+      }
+      if l_y0_dest < res_y0 as OPJ_UINT32 {
+        l_start_y_dest = (res_y0 as OPJ_UINT32).wrapping_sub(l_y0_dest);
+        l_offset_y0_src = 0i32;
+        if l_y1_dest >= res_y1 as OPJ_UINT32 {
+          l_height_dest = l_height_src;
+          l_offset_y1_src = 0i32
+        } else {
+          l_height_dest = l_y1_dest.wrapping_sub(res_y0 as OPJ_UINT32);
+          l_offset_y1_src = l_height_src.wrapping_sub(l_height_dest) as OPJ_INT32
+        }
+      } else {
+        l_start_y_dest = 0u32;
+        l_offset_y0_src = l_y0_dest as OPJ_INT32 - res_y0;
+        if l_y1_dest >= res_y1 as OPJ_UINT32 {
+          l_height_dest = l_height_src.wrapping_sub(l_offset_y0_src as OPJ_UINT32);
+          l_offset_y1_src = 0i32
+        } else {
+          l_height_dest = p_output_image.comps[i as usize].h;
+          l_offset_y1_src = res_y1 - l_y1_dest as OPJ_INT32
+        }
+      }
+      if l_offset_x0_src < 0i32
+        || l_offset_y0_src < 0i32
+        || l_offset_x1_src < 0i32
+        || l_offset_y1_src < 0i32
+      {
+        return 0i32;
+      }
+      /* testcase 2977.pdf.asan.67.2198 */
+      if (l_width_dest as OPJ_INT32) < 0i32 || (l_height_dest as OPJ_INT32) < 0i32 {
+        return 0i32;
+      }
+      /*-----*/
+      /* Compute the input buffer offset */
+      l_start_offset_src = (l_offset_x0_src as OPJ_SIZE_T).wrapping_add(
+        (l_offset_y0_src as OPJ_SIZE_T).wrapping_mul(src_data_stride as OPJ_SIZE_T),
+      );
+      /* Compute the output buffer offset */
+      l_start_offset_dest = (l_start_x_dest as OPJ_SIZE_T).wrapping_add(
+        (l_start_y_dest as OPJ_SIZE_T).wrapping_mul(p_output_image.comps[i as usize].w as OPJ_SIZE_T),
+      );
+      let dest = &mut p_output_image.comps[i as usize];
+      /* Allocate output component buffer if necessary */
+      if dest.data.is_empty()
+        && l_start_offset_src == 0
+        && l_start_offset_dest == 0
+        && src_data_stride == dest.w
+        && l_width_dest == dest.w
+        && l_height_dest == dest.h
+      {
+        /* If the final image matches the tile buffer, then borrow it */
+        /* directly to save a copy */
+        let len = (dest.w as usize).wrapping_mul(dest.h as usize);
+        if (*p_tcd).whole_tile_decoding != 0 {
+          dest.data = (*l_tilec_i).data.take_vec(len);
+        } else {
+          dest.data = (*l_tilec_i).data_win.take_vec(len);
+        }
+      } else {
+        if dest.data.is_empty() {
+          let l_width = dest.w as OPJ_SIZE_T;
+          let l_height = dest.h as OPJ_SIZE_T;
+          if l_height == 0
+            || l_width > (usize::MAX).wrapping_div(l_height)
+            || l_width.wrapping_mul(l_height)
+              > (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_INT32>())
+          {
+            /* would overflow */
+            return 0i32;
+          }
+          dest.data = vec![0i32; (l_width * l_height) as usize];
+        }
+        /* Move the output buffer to the first place where we will write*/
+        // SAFETY: `p_src_data` covers `l_height_src` rows of `src_data_stride` samples (the tile
+        // or window buffer of this component); the slices below read only inside that region.
+        let src = unsafe {
+          core::slice::from_raw_parts(
+            p_src_data,
+            (l_offset_y0_src as usize + l_height_dest as usize) * src_data_stride as usize,
+          )
+        };
+        let dest_w = dest.w as usize;
+        j = 0 as OPJ_UINT32;
+        while j < l_height_dest {
+          let src_row = l_start_offset_src as usize + j as usize * src_data_stride as usize;
+          let dest_row = l_start_offset_dest as usize + j as usize * dest_w;
+          dest.data[dest_row..dest_row + l_width_dest as usize]
+            .copy_from_slice(&src[src_row..src_row + l_width_dest as usize]);
+          j += 1;
+        }
+      }
+    }
+    /* Happens for partial component decoding */
+    i = i.wrapping_add(1)
+  }
+  1i32
+}
 fn opj_j2k_update_image_dimensions(
   mut p_image: &mut opj_image,
   mut p_manager: &mut opj_event_mgr,
@@ -8709,7 +8673,7 @@ impl opj_j2k {
       m_is_decoder,
       m_specific_param: Default::default(),
       m_private_image: None,
-      m_output_image: core::ptr::null_mut(),
+      m_output_image: None,
       m_cp: Default::default(),
       cstr_index: None,
       m_current_tile_number: 0,
@@ -9708,41 +9672,37 @@ fn opj_j2k_are_all_used_components_decoded(
   unsafe {
     let mut compno: OPJ_UINT32 = 0;
     let mut decoded_all_used_components = 1i32;
-    if p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode != 0 {
-      compno = 0 as OPJ_UINT32;
-      while compno < p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode {
-        let mut dec_compno = (&p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode)
-          [compno as usize];
-        if (*(*p_j2k.m_output_image).comps.offset(dec_compno as isize))
-          .data
-          .is_null()
-        {
-          event_msg!(
-            p_manager,
-            EVT_WARNING,
-            "Failed to decode component {}\n",
-            dec_compno,
-          );
-          decoded_all_used_components = 0i32
+    if let Some(image) = p_j2k.m_output_image.as_ref() {
+      if p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode != 0 {
+        compno = 0 as OPJ_UINT32;
+        while compno < p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode {
+          let dec_compno = (&p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode)
+            [compno as usize];
+          if image.comps[dec_compno as usize].data.is_empty() {
+            event_msg!(
+              p_manager,
+              EVT_WARNING,
+              "Failed to decode component {}\n",
+              dec_compno,
+            );
+            decoded_all_used_components = 0i32
+          }
+          compno += 1;
         }
-        compno += 1;
-      }
-    } else {
-      compno = 0 as OPJ_UINT32;
-      while compno < (*p_j2k.m_output_image).numcomps {
-        if (*(*p_j2k.m_output_image).comps.offset(compno as isize))
-          .data
-          .is_null()
-        {
-          event_msg!(
-            p_manager,
-            EVT_WARNING,
-            "Failed to decode component {}\n",
-            compno,
-          );
-          decoded_all_used_components = 0i32
+      } else {
+        compno = 0 as OPJ_UINT32;
+        while compno < image.numcomps {
+          if image.comps[compno as usize].data.is_empty() {
+            event_msg!(
+              p_manager,
+              EVT_WARNING,
+              "Failed to decode component {}\n",
+              compno,
+            );
+            decoded_all_used_components = 0i32
+          }
+          compno += 1;
         }
-        compno += 1;
       }
     }
     if decoded_all_used_components == 0i32 {
@@ -9770,16 +9730,20 @@ fn opj_j2k_decode_tiles(
     let mut nr_tiles = 0 as OPJ_UINT32;
     /* Particular case for whole single tile decoding */
     /* We can avoid allocating intermediate tile buffers */
-    if p_j2k.m_cp.tw == 1u32
+    let single_tile_fast = p_j2k.m_cp.tw == 1u32
       && p_j2k.m_cp.th == 1u32
       && p_j2k.m_cp.tx0 == 0u32
       && p_j2k.m_cp.ty0 == 0u32
-      && (*p_j2k.m_output_image).x0 == 0u32
-      && (*p_j2k.m_output_image).y0 == 0u32
-      && (*p_j2k.m_output_image).x1 == p_j2k.m_cp.tdx
-      && (*p_j2k.m_output_image).y1 == p_j2k.m_cp.tdy
-    {
-      let mut i: OPJ_UINT32 = 0;
+      && p_j2k
+        .m_output_image
+        .as_ref()
+        .map_or(false, |image| {
+          image.x0 == 0u32
+            && image.y0 == 0u32
+            && image.x1 == p_j2k.m_cp.tdx
+            && image.y1 == p_j2k.m_cp.tdy
+        });
+    if single_tile_fast {
       if !opj_j2k_read_tile_header(p_j2k, p_stream, &mut tile_info, p_manager) {
         return 0i32;
       }
@@ -9788,17 +9752,15 @@ fn opj_j2k_decode_tiles(
         return 0i32;
       }
       /* Transfer TCD data to output image data */
-      i = 0 as OPJ_UINT32;
-      while i < (*p_j2k.m_output_image).numcomps {
-        opj_image_data_free(
-          (*(*p_j2k.m_output_image).comps.offset(i as isize)).data as *mut core::ffi::c_void,
-        );
-        let fresh40 = &mut (*(*p_j2k.m_output_image).comps.offset(i as isize)).data;
-        *fresh40 = p_j2k.m_tcd.tcd_image.tiles.comps[i as usize]
+      let image = p_j2k.m_output_image.as_mut().expect("m_output_image");
+      let mut i: OPJ_UINT32 = 0;
+      while i < image.numcomps {
+        let comp = &mut image.comps[i as usize];
+        let len = (comp.w as usize).wrapping_mul(comp.h as usize);
+        comp.data = p_j2k.m_tcd.tcd_image.tiles.comps[i as usize]
           .data
-          .take_raw();
-        (*(*p_j2k.m_output_image).comps.offset(i as isize)).resno_decoded =
-          (*(*p_j2k.m_tcd.image).comps.as_ptr().add(i as usize)).resno_decoded;
+          .take_vec(len);
+        comp.resno_decoded = (*(*p_j2k.m_tcd.image).comps.as_ptr().add(i as usize)).resno_decoded;
         i += 1;
       }
       return 1i32;
@@ -9836,16 +9798,17 @@ fn opj_j2k_decode_tiles(
         tile_info.index.wrapping_add(1u32),
         p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
       );
-      if opj_j2k_update_image_data(&mut p_j2k.m_tcd, &mut *p_j2k.m_output_image) == 0 {
+      if opj_j2k_update_image_data(&mut p_j2k.m_tcd, p_j2k.m_output_image.as_mut().expect("m_output_image")) == 0 {
         return 0i32;
       }
-      if !(p_j2k.m_cp.tw == 1u32
-        && p_j2k.m_cp.th == 1u32
-        && !((*p_j2k.m_output_image).x0 == p_j2k.m_private_image.as_deref().expect("m_private_image").x0
-          && (*p_j2k.m_output_image).y0 == p_j2k.m_private_image.as_deref().expect("m_private_image").y0
-          && (*p_j2k.m_output_image).x1 == p_j2k.m_private_image.as_deref().expect("m_private_image").x1
-          && (*p_j2k.m_output_image).y1 == p_j2k.m_private_image.as_deref().expect("m_private_image").y1))
-      {
+      let same_extent = p_j2k.m_output_image.as_ref().map_or(false, |image| {
+        let private = p_j2k.m_private_image.as_deref().expect("m_private_image");
+        image.x0 == private.x0
+          && image.y0 == private.y0
+          && image.x1 == private.x1
+          && image.y1 == private.y1
+      });
+      if !(p_j2k.m_cp.tw == 1u32 && p_j2k.m_cp.th == 1u32 && !same_extent) {
         opj_j2k_tcp_data_destroy(&mut p_j2k.m_cp.tcps[tile_info.index as usize]);
       }
       event_msg!(
@@ -9965,7 +9928,7 @@ fn opj_j2k_decode_one_tile(
         tile_info.index.wrapping_add(1u32),
         p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
       );
-      if opj_j2k_update_image_data(&mut p_j2k.m_tcd, &mut *p_j2k.m_output_image) == 0 {
+      if opj_j2k_update_image_data(&mut p_j2k.m_tcd, p_j2k.m_output_image.as_mut().expect("m_output_image")) == 0 {
         return 0i32;
       }
       opj_j2k_tcp_data_destroy(&mut p_j2k.m_cp.tcps[tile_info.index as usize]);
@@ -10018,43 +9981,35 @@ fn opj_j2k_setup_decoding_tile(
 }
 
 fn opj_j2k_move_data_from_codec_to_output_image(
-  mut p_j2k: &mut opj_j2k,
-  mut p_image: &mut opj_image,
+  p_j2k: &mut opj_j2k,
+  p_image: &mut opj_image,
 ) -> OPJ_BOOL {
-  unsafe {
-    /* Move data and copy one information from codec to output image*/
-    let numcomps_to_decode = p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode;
-    if numcomps_to_decode > 0u32 {
-      if !p_image.alloc_comps(numcomps_to_decode) {
-        p_j2k.m_private_image = None;
-        return 0i32;
-      }
-      let comps = p_image.comps_mut().expect("We just allocated them");
-      let src_comps = (*p_j2k.m_output_image)
-        .comps_mut()
-        .expect("We should have an output image with components");
-      for (compno, comp) in comps.into_iter().enumerate() {
-        let mut src_compno = (&p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode)
-          [compno];
-        let src_comp = &mut src_comps[src_compno as usize];
-        comp.copy_props(src_comp);
-        comp.move_data(src_comp);
-      }
-      for comp in src_comps {
-        comp.clear_data();
-      }
-    } else {
-      if let Some(comps) = p_image.comps_mut() {
-        if let Some(src_comps) = (*p_j2k.m_output_image).comps_mut() {
-          for (comp, src_comp) in comps.into_iter().zip(src_comps.into_iter()) {
-            comp.resno_decoded = src_comp.resno_decoded;
-            comp.move_data(src_comp);
-          }
-        }
-      }
+  /* Move data and copy one information from codec to output image. This is the C-ABI
+   * boundary: the core image's component data moves into the caller's opj_image buffers. */
+  let numcomps_to_decode = p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode;
+  let out_image = p_j2k.m_output_image.as_mut().expect("m_output_image");
+  if numcomps_to_decode > 0u32 {
+    if !p_image.alloc_comps(numcomps_to_decode) {
+      p_j2k.m_private_image = None;
+      return 0i32;
     }
-    1i32
+    let comps = p_image.comps_mut().expect("We just allocated them");
+    for (compno, comp) in comps.into_iter().enumerate() {
+      let src_compno = (&p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode)[compno];
+      let src_comp = &mut out_image.comps[src_compno as usize];
+      comp.copy_props_from_core(src_comp);
+      comp.move_data_from_core(src_comp);
+    }
+    for comp in &mut out_image.comps {
+      comp.data.clear();
+    }
+  } else if let Some(comps) = p_image.comps_mut() {
+    for (comp, src_comp) in comps.into_iter().zip(out_image.comps.iter_mut()) {
+      comp.resno_decoded = src_comp.resno_decoded;
+      comp.move_data_from_core(src_comp);
+    }
   }
+  1i32
 }
 
 pub(crate) fn opj_j2k_decode(
@@ -10090,13 +10045,10 @@ pub(crate) fn opj_j2k_decode(
         return 0i32;
       }
     }
-    if p_j2k.m_output_image.is_null() {
-      p_j2k.m_output_image = opj_image_create0();
-      if p_j2k.m_output_image.is_null() {
-        return 0i32;
-      }
+    if p_j2k.m_output_image.is_none() {
+      p_j2k.m_output_image = Some(Box::new(CoreImage::default()));
     }
-    opj_copy_image_header(p_image, p_j2k.m_output_image);
+    opj_copy_image_header_to_core(p_image, p_j2k.m_output_image.as_mut().expect("m_output_image"));
     /* customization of the decoding */
     let mut procedure_list = opj_j2k_proc_list_t::new();
     if opj_j2k_setup_decoding(p_j2k, &mut procedure_list, p_manager) == 0 {
@@ -10213,16 +10165,10 @@ pub(crate) fn opj_j2k_get_tile(
       }
       p_image.numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps
     }
-    /* Destroy the previous output image*/
-    if !p_j2k.m_output_image.is_null() {
-      opj_image_destroy(p_j2k.m_output_image);
-    }
-    /* Create the output image from the information previously computed*/
-    p_j2k.m_output_image = opj_image_create0();
-    if p_j2k.m_output_image.is_null() {
-      return 0i32;
-    }
-    opj_copy_image_header(p_image, p_j2k.m_output_image);
+    /* Destroy the previous output image and create a new one from the information
+     * previously computed */
+    p_j2k.m_output_image = Some(Box::new(CoreImage::default()));
+    opj_copy_image_header_to_core(p_image, p_j2k.m_output_image.as_mut().expect("m_output_image"));
     p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = tile_index as OPJ_INT32;
     let mut procedure_list = opj_j2k_proc_list_t::new();
     /* customization of the decoding */
