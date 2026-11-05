@@ -821,3 +821,204 @@ pub fn opj_image_tile_create(
     core::ptr::null_mut()
   }
 }
+
+/* ----------------------------------------------------------------------- */
+/* Phase 5.a: owned core image                                             */
+/*                                                                         */
+/* The `#[repr(C)]` `opj_image` above stays the C-ABI mirror (C callers     */
+/* index `comps[i].data` directly). These owned types are what the codec    */
+/* internals will carry; `from_opj`/`into_opj` copy across the boundary     */
+/* (component data included) until Phase 6 marshalling takes over.         */
+/* ----------------------------------------------------------------------- */
+
+#[derive(Clone, Default)]
+pub(crate) struct CoreImageComp {
+  pub dx: OPJ_UINT32,
+  pub dy: OPJ_UINT32,
+  pub w: OPJ_UINT32,
+  pub h: OPJ_UINT32,
+  pub x0: OPJ_UINT32,
+  pub y0: OPJ_UINT32,
+  pub prec: OPJ_UINT32,
+  pub bpp: OPJ_UINT32,
+  pub sgnd: OPJ_UINT32,
+  pub resno_decoded: OPJ_UINT32,
+  pub factor: OPJ_UINT32,
+  pub alpha: OPJ_UINT16,
+  pub data: Vec<OPJ_INT32>,
+}
+
+#[derive(Clone, Default)]
+pub(crate) struct CoreImage {
+  pub x0: OPJ_UINT32,
+  pub y0: OPJ_UINT32,
+  pub x1: OPJ_UINT32,
+  pub y1: OPJ_UINT32,
+  pub numcomps: OPJ_UINT32,
+  pub color_space: OPJ_COLOR_SPACE,
+  pub comps: Vec<CoreImageComp>,
+  pub icc_profile_buf: Vec<OPJ_BYTE>,
+}
+
+impl CoreImage {
+  /// Deep copy of a C-ABI image (header, component properties, data and ICC profile).
+  pub fn from_opj(image: &opj_image) -> Self {
+    let mut core = Self {
+      x0: image.x0,
+      y0: image.y0,
+      x1: image.x1,
+      y1: image.y1,
+      numcomps: image.numcomps,
+      color_space: image.color_space,
+      comps: Vec::with_capacity(image.numcomps as usize),
+      icc_profile_buf: Vec::new(),
+    };
+    if let Some(comps) = image.comps() {
+      for comp in comps {
+        core.comps.push(CoreImageComp {
+          dx: comp.dx,
+          dy: comp.dy,
+          w: comp.w,
+          h: comp.h,
+          x0: comp.x0,
+          y0: comp.y0,
+          prec: comp.prec,
+          bpp: comp.bpp,
+          sgnd: comp.sgnd,
+          resno_decoded: comp.resno_decoded,
+          factor: comp.factor,
+          alpha: comp.alpha,
+          data: comp.data().map(|data| data.to_vec()).unwrap_or_default(),
+        });
+      }
+    }
+    if !image.icc_profile_buf.is_null() {
+      core.icc_profile_buf = unsafe {
+        core::slice::from_raw_parts(image.icc_profile_buf, image.icc_profile_len as usize).to_vec()
+      };
+    }
+    core
+  }
+
+  /// Allocate a fresh C-ABI image. Component data uses `opj_image_data_alloc`
+  /// so C callers may free/replace it, mirroring `opj_image_create`.
+  pub fn into_opj(self) -> Box<opj_image> {
+    let mut image = opj_image::new();
+    image.x0 = self.x0;
+    image.y0 = self.y0;
+    image.x1 = self.x1;
+    image.y1 = self.y1;
+    image.numcomps = self.numcomps;
+    image.color_space = self.color_space;
+    if !image.alloc_comps(self.numcomps) {
+      return image;
+    }
+    if let Some(dest_comps) = image.comps_mut() {
+      for (dest, src) in dest_comps.iter_mut().zip(&self.comps) {
+        dest.dx = src.dx;
+        dest.dy = src.dy;
+        dest.w = src.w;
+        dest.h = src.h;
+        dest.x0 = src.x0;
+        dest.y0 = src.y0;
+        dest.prec = src.prec;
+        dest.bpp = src.bpp;
+        dest.sgnd = src.sgnd;
+        dest.resno_decoded = src.resno_decoded;
+        dest.factor = src.factor;
+        dest.alpha = src.alpha;
+        if !src.data.is_empty() && !dest.set_data(&src.data) {
+          return image;
+        }
+      }
+    }
+    if !self.icc_profile_buf.is_empty() {
+      image.copy_icc_profile(ICCProfileRef::ICC(&self.icc_profile_buf));
+    }
+    image
+  }
+
+  pub fn alloc_comps(&mut self, numcomps: u32) -> bool {
+    self.comps.clear();
+    self.numcomps = numcomps;
+    self.comps.resize(numcomps as usize, CoreImageComp::default());
+    true
+  }
+
+  pub fn comp0_dims_prec(&self) -> (usize, usize, i32) {
+    if let Some(comp) = self.comps.first() {
+      return (comp.w as usize, comp.h as usize, comp.prec as i32);
+    }
+    (0, 0, 0)
+  }
+
+  /// Check if all components have the same dimensions.
+  pub fn comps_same_dims(&self) -> bool {
+    if let Some((c0, comps)) = self.comps.split_first() {
+      for comp in comps {
+        if comp.w != c0.w || comp.h != c0.h || comp.dx != c0.dx || comp.dy != c0.dy {
+          return false;
+        }
+      }
+      return true;
+    }
+    false
+  }
+
+  /// Check if all components have the same dimensions and precision.
+  pub fn comps_match(&self) -> bool {
+    if let Some((c0, comps)) = self.comps.split_first() {
+      for comp in comps {
+        if comp.w != c0.w
+          || comp.h != c0.h
+          || comp.dx != c0.dx
+          || comp.dy != c0.dy
+          || comp.prec != c0.prec
+          || comp.sgnd != c0.sgnd
+        {
+          return false;
+        }
+      }
+      return true;
+    }
+    false
+  }
+}
+
+#[cfg(test)]
+mod core_image_tests {
+  use super::*;
+
+  #[test]
+  fn round_trip() {
+    let params = [
+      opj_image_comptparm { dx: 1, dy: 1, w: 4, h: 3, x0: 0, y0: 0, prec: 8, bpp: 8, sgnd: 0 },
+      opj_image_comptparm { dx: 1, dy: 1, w: 4, h: 3, x0: 0, y0: 0, prec: 8, bpp: 8, sgnd: 0 },
+      opj_image_comptparm { dx: 1, dy: 1, w: 4, h: 3, x0: 0, y0: 0, prec: 8, bpp: 8, sgnd: 0 },
+    ];
+    let mut image = opj_image::create(&params, OPJ_CLRSPC_SRGB).unwrap();
+    image.x0 = 0;
+    image.y0 = 0;
+    image.x1 = 4;
+    image.y1 = 3;
+    for (i, comp) in image.comps_mut().unwrap().iter_mut().enumerate() {
+      comp.set_data(&[i as i32; 12]);
+    }
+    image.copy_icc_profile(ICCProfileRef::ICC(&[1, 2, 3, 4]));
+
+    let core = CoreImage::from_opj(&image);
+    assert_eq!(core.numcomps, 3);
+    assert_eq!(core.comps[1].data, vec![1i32; 12]);
+    assert_eq!(core.icc_profile_buf, vec![1, 2, 3, 4]);
+
+    let back = core.clone().into_opj();
+    assert_eq!(back.x1, 4);
+    assert_eq!(back.y1, 3);
+    assert_eq!(back.color_space, OPJ_CLRSPC_SRGB);
+    let comps = back.comps().unwrap();
+    assert_eq!(comps.len(), 3);
+    assert_eq!(comps[2].data().unwrap(), &[2i32; 12]);
+    assert_eq!(back.icc_profile_len, 4);
+    assert!(back.comps_match());
+  }
+}

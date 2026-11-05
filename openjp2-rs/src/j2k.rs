@@ -8065,7 +8065,7 @@ fn opj_j2k_need_nb_tile_parts_correction(
       }
       /* Read 2 bytes from the buffer as the marker size */
       l_marker_size =
-        opj_read_bytes(unsafe { core::slice::from_raw_parts(l_header_data, 2) }, 2 as OPJ_UINT32);
+        opj_read_bytes(&l_header_data[..2], 2 as OPJ_UINT32);
       /* Check marker size for SOT Marker */
       if l_marker_size != 10u32 {
         event_msg!(p_manager, EVT_ERROR, "Inconsistent marker size\n",);
