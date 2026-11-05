@@ -1,1 +1,1 @@
-cargo_build(NAME ${OPENJPEG_LIBRARY_NAME})
+add_subdirectory(capi)

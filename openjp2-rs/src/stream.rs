@@ -53,7 +53,7 @@ pub(crate) trait WriteSeek: Write + Seek {}
 
 impl<R: Write + Seek> WriteSeek for R {}
 
-pub(crate) struct CustomStream {
+pub struct CustomStream {
   pub m_user_data: *mut core::ffi::c_void,
   pub m_free_user_data_fn: opj_stream_free_user_data_fn,
   pub m_read_fn: opj_stream_read_fn,
@@ -331,7 +331,7 @@ impl Stream {
     }
   }
 
-  pub(crate) fn as_custom(&mut self) -> Option<&mut CustomStream> {
+  pub fn as_custom(&mut self) -> Option<&mut CustomStream> {
     match &mut self.m_inner {
       StreamInner::Reader(_) => None,
       StreamInner::Writer(_) => None,

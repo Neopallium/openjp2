@@ -55,7 +55,7 @@ pub struct Codec {
   pub(crate) m_codec: CodecType,
   pub(crate) m_event_mgr: opj_event_mgr,
 }
-pub(crate) type opj_codec_private_t = Codec;
+pub type opj_codec_private_t = Codec;
 
 impl Codec {
   pub fn new_encoder(format: CODEC_FORMAT) -> Option<Self> {

@@ -9777,7 +9777,7 @@ pub(crate) fn j2k_get_cstr_index(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream
 }
 
 /// Free a C-ABI codestream index mirror built by `j2k_get_cstr_index`.
-pub(crate) fn free_cstr_index_mirror(mut p_cstr_ind: *mut opj_codestream_index_t) {
+pub fn free_cstr_index_mirror(mut p_cstr_ind: *mut opj_codestream_index_t) {
   unsafe {
     if p_cstr_ind.is_null() {
       return;

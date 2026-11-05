@@ -20,7 +20,7 @@ extern "C" {
 
 /// # Safety
 /// `src`/`dest` must be valid, non-overlapping, and each cover at least `n` bytes.
-pub(crate) unsafe fn memcpy(
+pub unsafe fn memcpy(
   dest: *mut core::ffi::c_void,
   src: *const core::ffi::c_void,
   n: usize,
@@ -33,7 +33,7 @@ pub(crate) unsafe fn memcpy(
 
 /// # Safety
 /// `src`/`dest` must be valid and each cover at least `n` bytes. Overlap is permitted.
-pub(crate) unsafe fn memmove(
+pub unsafe fn memmove(
   dest: *mut core::ffi::c_void,
   src: *const core::ffi::c_void,
   n: usize,
@@ -46,7 +46,7 @@ pub(crate) unsafe fn memmove(
 
 /// # Safety
 /// `s` must be valid for writes of at least `n` bytes.
-pub(crate) unsafe fn memset(
+pub unsafe fn memset(
   s: *mut core::ffi::c_void,
   c: i32,
   n: usize,
@@ -59,7 +59,7 @@ pub(crate) unsafe fn memset(
 
 /// # Safety
 /// `s` must point to a NUL-terminated string that stays valid for the whole scan.
-pub(crate) unsafe fn strlen(s: *const i8) -> usize {
+pub unsafe fn strlen(s: *const i8) -> usize {
   unsafe {
     let mut len = 0;
     while *s.add(len) != 0 {
@@ -69,7 +69,7 @@ pub(crate) unsafe fn strlen(s: *const i8) -> usize {
   }
 }
 
-pub(crate) fn opj_malloc(mut size: usize) -> *mut core::ffi::c_void {
+pub fn opj_malloc(mut size: usize) -> *mut core::ffi::c_void {
   if size == 0 {
     /* prevent implementation defined behavior of malloc */
     return core::ptr::null_mut::<core::ffi::c_void>();
@@ -187,7 +187,7 @@ pub(crate) fn opj_alloc_type<T>() -> *mut T {
   }
 }
 
-pub(crate) fn opj_calloc(mut num: usize, mut size: usize) -> *mut core::ffi::c_void {
+pub fn opj_calloc(mut num: usize, mut size: usize) -> *mut core::ffi::c_void {
   if num == 0 || size == 0 {
     /* prevent implementation defined behavior of calloc */
     return core::ptr::null_mut::<core::ffi::c_void>();
@@ -269,7 +269,7 @@ pub(crate) fn opj_calloc_type_array<T>(num: usize) -> *mut T {
   }
 }
 
-pub(crate) fn opj_realloc(
+pub fn opj_realloc(
   mut ptr: *mut core::ffi::c_void,
   mut new_size: usize,
 ) -> *mut core::ffi::c_void {
@@ -314,7 +314,7 @@ pub(crate) fn opj_realloc_type_array<T>(mut ptr: *mut T, old_num: usize, mut num
   }
 }
 
-pub(crate) fn opj_free(mut ptr: *mut core::ffi::c_void) {
+pub fn opj_free(mut ptr: *mut core::ffi::c_void) {
   unsafe {
     if !ptr.is_null() {
       free(ptr);

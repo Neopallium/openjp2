@@ -11,8 +11,8 @@
 #[cfg(feature = "file-io")]
 extern crate libc;
 
-mod c_api_types;
-mod consts;
+pub mod c_api_types;
+pub mod consts;
 mod types;
 
 #[macro_use]
@@ -29,8 +29,12 @@ pub mod stream;
 
 // Export safe API
 pub use c_api_types::*;
-pub use codec::Codec;
-pub use image::{opj_image, opj_image_comptparm};
+pub use codec::{opj_codec_private_t, Codec};
+pub use image::{opj_image, opj_image_cmptparm_t, opj_image_comptparm, opj_image_create, opj_image_destroy, opj_image_tile_create};
+pub use j2k::free_cstr_index_mirror;
+pub use openjpeg::{opj_destroy_cstr_info, opj_image_data_alloc, opj_image_data_free};
+pub use stream::CustomStream;
+pub use types::opj_stream_private_t;
 pub use types::{ICCProfile, ICCProfileMut, ICCProfileRef, Stream, TileInfo};
 
 /// Magic bytes for JP2 RFC3745.

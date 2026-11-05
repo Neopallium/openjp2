@@ -699,7 +699,6 @@ pub(crate) fn opj_image_create0() -> *mut opj_image_t {
   Box::into_raw(image)
 }
 
-#[no_mangle]
 pub fn opj_image_create(
   mut numcmpts: OPJ_UINT32,
   mut cmptparms: *mut opj_image_cmptparm_t,
@@ -714,7 +713,6 @@ pub fn opj_image_create(
   }
 }
 
-#[no_mangle]
 pub fn opj_image_destroy(mut image: *mut opj_image_t) {
   if !image.is_null() {
     // Convert back to a boxed value and drop it.
@@ -880,7 +878,6 @@ pub(crate) fn opj_copy_image_header_to_core(p_image_src: &opj_image, p_image_des
   }
 }
 
-#[no_mangle]
 pub fn opj_image_tile_create(
   mut numcmpts: OPJ_UINT32,
   mut cmptparms: *mut opj_image_cmptparm_t,

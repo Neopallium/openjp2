@@ -236,7 +236,7 @@ pub struct Stream {
   pub(crate) m_byte_offset: OPJ_OFF_T,
 }
 pub(crate) type opj_stream_private = Stream;
-pub(crate) type opj_stream_private_t = Stream;
+pub type opj_stream_private_t = Stream;
 
 pub(crate) type opj_jp2_proc =
   fn(_: &mut opj_jp2, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;

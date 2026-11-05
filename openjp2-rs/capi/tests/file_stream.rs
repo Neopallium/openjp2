@@ -1,6 +1,7 @@
 use std::ffi::*;
 
 use openjp2::openjpeg::*;
+use openjp2_core::{opj_dparameters_t, opj_image_t, OPJ_CODEC_JP2};
 
 extern "C" fn log_info(msg: *const c_char, _data: *mut c_void) {
   unsafe {
@@ -25,7 +26,7 @@ fn decode_sample_file_hadley_crater() {
   let mut params = opj_dparameters_t::default();
 
   // Open file stream.
-  let filename = b"samples/Hadley_Crater.jp2\x00";
+  let filename = b"../samples/Hadley_Crater.jp2\x00";
   let stream = unsafe { opj_stream_create_default_file_stream(filename.as_ptr() as _, 1) };
 
   // Create decoder.

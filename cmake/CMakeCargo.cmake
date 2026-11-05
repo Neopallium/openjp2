@@ -53,7 +53,7 @@ function(cargo_build)
         list(APPEND CARGO_ARGS "--release")
     endif()
 
-    file(GLOB_RECURSE LIB_SOURCES "*.rs")
+    file(GLOB_RECURSE LIB_SOURCES "*.rs" "../*.rs")
 
     set(CARGO_ENV_COMMAND ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CARGO_TARGET_DIR}")
 

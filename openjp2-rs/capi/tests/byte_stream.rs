@@ -3,6 +3,8 @@ use std::fs::*;
 use std::io::*;
 
 use openjp2::openjpeg::*;
+use openjp2_core::{opj_dparameters_t, opj_image_t, OPJ_CODEC_JP2};
+
 
 extern "C" fn log_info(msg: *const c_char, _data: *mut c_void) {
   unsafe {
@@ -109,7 +111,7 @@ fn decode_byte_stream() {
   let mut params = opj_dparameters_t::default();
 
   // Read file.
-  let mut file = File::open("samples/Hadley_Crater.jp2").expect("Open file");
+  let mut file = File::open("../samples/Hadley_Crater.jp2").expect("Open file");
   let mut bytes = Vec::new();
   file.read_to_end(&mut bytes).expect("Read file");
   let len = bytes.len();
