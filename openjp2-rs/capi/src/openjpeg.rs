@@ -43,43 +43,63 @@ use ::libc::FILE;
 
 /* ---------------------------------------------------------------------- */
 /* Functions to set the message handlers */
+
+/// The C `opj_msg_callback` type from openjpeg.h, declared here on the ABI side: the core only
+/// sees the Rust closures these functions wrap around it.
+pub type opj_msg_callback_fn =
+  unsafe extern "C" fn(_: *const core::ffi::c_char, _: *mut core::ffi::c_void) -> ();
+pub type opj_msg_callback = Option<opj_msg_callback_fn>;
+
+/// Wrap a C callback + user data in the core's `FnMut(&str)` sink.
+fn wrap_callback(callback: opj_msg_callback, user_data: *mut core::ffi::c_void) -> impl FnMut(&str) {
+  move |msg: &str| {
+    let Some(callback) = callback else {
+      return;
+    };
+    if let Ok(c_msg) = std::ffi::CString::new(msg) {
+      // SAFETY: the callback is the one the caller installed, invoked with the caller's data.
+      unsafe { callback(c_msg.as_ptr(), user_data) };
+    }
+  }
+}
+
 #[no_mangle]
 pub unsafe fn opj_set_info_handler(
-  mut p_codec: *mut opj_codec_t,
-  mut p_callback: opj_msg_callback,
-  mut p_user_data: *mut core::ffi::c_void,
+  p_codec: *mut opj_codec_t,
+  p_callback: opj_msg_callback,
+  p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
   if p_codec.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.set_info_handler(p_callback, p_user_data)
+  l_codec.set_info_handler(wrap_callback(p_callback, p_user_data))
 }
 
 #[no_mangle]
 pub unsafe fn opj_set_warning_handler(
-  mut p_codec: *mut opj_codec_t,
-  mut p_callback: opj_msg_callback,
-  mut p_user_data: *mut core::ffi::c_void,
+  p_codec: *mut opj_codec_t,
+  p_callback: opj_msg_callback,
+  p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
   if p_codec.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.set_warning_handler(p_callback, p_user_data)
+  l_codec.set_warning_handler(wrap_callback(p_callback, p_user_data))
 }
 
 #[no_mangle]
 pub unsafe fn opj_set_error_handler(
-  mut p_codec: *mut opj_codec_t,
-  mut p_callback: opj_msg_callback,
-  mut p_user_data: *mut core::ffi::c_void,
+  p_codec: *mut opj_codec_t,
+  p_callback: opj_msg_callback,
+  p_user_data: *mut core::ffi::c_void,
 ) -> OPJ_BOOL {
   if p_codec.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.set_error_handler(p_callback, p_user_data)
+  l_codec.set_error_handler(wrap_callback(p_callback, p_user_data))
 }
 
 /* ---------------------------------------------------------------------- */

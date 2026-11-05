@@ -1,28 +1,7 @@
 use openjp2::image::opj_image_cmptparm_t;
 use openjp2::{detect_format_from_extension_os_str, openjpeg::*, Codec, J2KFormat, Stream};
 use rand::prelude::*;
-use std::ffi::CStr;
-use std::os::raw::{c_char, c_void};
 use std::path::PathBuf;
-use std::ptr;
-
-extern "C" fn info_callback(msg: *const c_char, _data: *mut c_void) {
-  unsafe {
-    print!("[INFO] {}", CStr::from_ptr(msg).to_string_lossy());
-  }
-}
-
-extern "C" fn warning_callback(msg: *const c_char, _data: *mut c_void) {
-  unsafe {
-    print!("[WARNING] {}", CStr::from_ptr(msg).to_string_lossy());
-  }
-}
-
-extern "C" fn error_callback(msg: *const c_char, _data: *mut c_void) {
-  unsafe {
-    print!("[ERROR] {}", CStr::from_ptr(msg).to_string_lossy());
-  }
-}
 
 pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<(), String> {
   let mut params = opj_cparameters_t::default();
@@ -163,9 +142,9 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
     Codec::new_encoder(cod_format).ok_or_else(|| "Failed to create codec".to_string())?;
 
   /* catch events using our callbacks and give a local context */
-  codec.set_info_handler(Some(info_callback), ptr::null_mut());
-  codec.set_warning_handler(Some(warning_callback), ptr::null_mut());
-  codec.set_error_handler(Some(error_callback), ptr::null_mut());
+  codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));
+  codec.set_warning_handler(|msg: &str| print!("[WARNING] {}", msg));
+  codec.set_error_handler(|msg: &str| print!("[ERROR] {}", msg));
 
   // Create tile image
   let mut image = opj_image::tile_create(&image_components, OPJ_CLRSPC_SRGB)

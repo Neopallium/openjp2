@@ -1,5 +1,4 @@
 pub use super::consts::event::*;
-use super::openjpeg::*;
 
 /*
  * The copyright in this software is being made available under the 2-clauses
@@ -39,25 +38,21 @@ use super::openjpeg::*;
 
 /* ----------------------------------------------------------------------- */
 
-#[derive(Copy, Clone)]
+/// Core event manager: one optional `FnMut` sink per message level. The C-callback adapter
+/// (which wraps `opj_msg_callback` + user data in closures) lives in the capi crate; the core
+/// itself only formats Rust strings and dispatches them to the sinks.
 pub struct opj_event_mgr {
-  m_error_data: *mut core::ffi::c_void,
-  m_warning_data: *mut core::ffi::c_void,
-  m_info_data: *mut core::ffi::c_void,
-  error_handler: opj_msg_callback,
-  warning_handler: opj_msg_callback,
-  info_handler: opj_msg_callback,
+  error_handler: Option<Box<dyn FnMut(&str)>>,
+  warning_handler: Option<Box<dyn FnMut(&str)>>,
+  info_handler: Option<Box<dyn FnMut(&str)>>,
 }
 
 impl Default for opj_event_mgr {
   fn default() -> Self {
     Self {
-      m_error_data: core::ptr::null_mut::<core::ffi::c_void>(),
-      m_warning_data: core::ptr::null_mut::<core::ffi::c_void>(),
-      m_info_data: core::ptr::null_mut::<core::ffi::c_void>(),
       error_handler: None,
-      info_handler: None,
       warning_handler: None,
+      info_handler: None,
     }
   }
 }
@@ -67,61 +62,39 @@ impl opj_event_mgr {
     *self = Self::default();
   }
 
-  pub fn set_info_handler(
-    &mut self,
-    mut p_callback: opj_msg_callback,
-    mut p_user_data: *mut core::ffi::c_void,
-  ) {
-    self.info_handler = p_callback;
-    self.m_info_data = p_user_data;
+  pub fn set_info_handler(&mut self, handler: impl FnMut(&str) + 'static) {
+    self.info_handler = Some(Box::new(handler));
   }
 
-  pub fn set_warning_handler(
-    &mut self,
-    mut p_callback: opj_msg_callback,
-    mut p_user_data: *mut core::ffi::c_void,
-  ) {
-    self.warning_handler = p_callback;
-    self.m_warning_data = p_user_data;
+  pub fn set_warning_handler(&mut self, handler: impl FnMut(&str) + 'static) {
+    self.warning_handler = Some(Box::new(handler));
   }
 
-  pub fn set_error_handler(
-    &mut self,
-    mut p_callback: opj_msg_callback,
-    mut p_user_data: *mut core::ffi::c_void,
-  ) {
-    self.error_handler = p_callback;
-    self.m_error_data = p_user_data;
-  }
-
-  pub fn get_handler(
-    &self,
-    event_type: EventType,
-  ) -> Option<(opj_msg_callback_fn, *mut core::ffi::c_void)> {
-    match event_type {
-      EventType::Error => self.error_handler.map(|h| (h, self.m_error_data)),
-      EventType::Warning => self.warning_handler.map(|h| (h, self.m_warning_data)),
-      EventType::Info => self.info_handler.map(|h| (h, self.m_info_data)),
-    }
+  pub fn set_error_handler(&mut self, handler: impl FnMut(&str) + 'static) {
+    self.error_handler = Some(Box::new(handler));
   }
 
   pub fn is_enabled(&self, event_type: EventType) -> bool {
-    self.get_handler(event_type).is_some()
+    match event_type {
+      EventType::Error => self.error_handler.is_some(),
+      EventType::Warning => self.warning_handler.is_some(),
+      EventType::Info => self.info_handler.is_some(),
+    }
   }
 
-  pub fn msg_write(&self, event_type: EventType, msg: &str) -> i32 {
-    let (msg_handler, l_data) = match self.get_handler(event_type) {
-      Some(handler) => handler,
-      None => {
-        return 0;
-      }
+  pub fn msg_write(&mut self, event_type: EventType, msg: &str) -> i32 {
+    let handler = match event_type {
+      EventType::Error => &mut self.error_handler,
+      EventType::Warning => &mut self.warning_handler,
+      EventType::Info => &mut self.info_handler,
     };
-    let c_msg = std::ffi::CString::new(msg).unwrap();
-    /* output the message to the user program */
-    unsafe {
-      msg_handler(c_msg.as_ptr(), l_data);
+    match handler {
+      Some(handler) => {
+        handler(msg);
+        1
+      }
+      None => 0,
     }
-    1
   }
 }
 

@@ -133,10 +133,6 @@ impl CODEC_FORMAT {
   }
 }
 
-pub type opj_msg_callback_fn =
-  unsafe extern "C" fn(_: *const core::ffi::c_char, _: *mut core::ffi::c_void) -> ();
-
-pub type opj_msg_callback = Option<opj_msg_callback_fn>;
 
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug)]

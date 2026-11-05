@@ -1,10 +1,7 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
 use openjp2::{detect_format_from_file, openjpeg::*, Codec, J2KFormat, Stream};
-use std::ffi::CStr;
 use std::ffi::CString;
-use std::os::raw::{c_char, c_void};
 use std::path::{Path, PathBuf};
-use std::ptr;
 
 #[derive(Debug, Clone, PartialEq)]
 enum Opt {
@@ -137,24 +134,6 @@ impl DirContents {
   }
 }
 
-extern "C" fn info_callback(msg: *const c_char, _data: *mut c_void) {
-  unsafe {
-    print!("[INFO] {}", CStr::from_ptr(msg).to_string_lossy());
-  }
-}
-
-extern "C" fn warning_callback(msg: *const c_char, _data: *mut c_void) {
-  unsafe {
-    print!("[WARNING] {}", CStr::from_ptr(msg).to_string_lossy());
-  }
-}
-
-extern "C" fn error_callback(msg: *const c_char, _data: *mut c_void) {
-  unsafe {
-    print!("[ERROR] {}", CStr::from_ptr(msg).to_string_lossy());
-  }
-}
-
 fn process_file(
   input: &Path,
   output: Option<&Path>,
@@ -197,9 +176,9 @@ fn process_file(
     let mut codec = Codec::new_decoder(cod_format).ok_or("Failed to create codec")?;
 
     /* catch events using our callbacks and give a local context */
-    codec.set_info_handler(Some(info_callback), ptr::null_mut());
-    codec.set_warning_handler(Some(warning_callback), ptr::null_mut());
-    codec.set_error_handler(Some(error_callback), ptr::null_mut());
+    codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));
+    codec.set_warning_handler(|msg: &str| print!("[WARNING] {}", msg));
+    codec.set_error_handler(|msg: &str| print!("[ERROR] {}", msg));
 
     parameters.flags |= OPJ_DPARAMETERS_DUMP_FLAG;
 

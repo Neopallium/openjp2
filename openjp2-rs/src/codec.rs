@@ -92,32 +92,18 @@ impl Codec {
     })
   }
 
-  pub fn set_info_handler(
-    &mut self,
-    mut p_callback: opj_msg_callback,
-    mut p_user_data: *mut core::ffi::c_void,
-  ) -> OPJ_BOOL {
-    self.m_event_mgr.set_info_handler(p_callback, p_user_data);
+  pub fn set_info_handler(&mut self, handler: impl FnMut(&str) + 'static) -> OPJ_BOOL {
+    self.m_event_mgr.set_info_handler(handler);
     1i32
   }
 
-  pub fn set_warning_handler(
-    &mut self,
-    mut p_callback: opj_msg_callback,
-    mut p_user_data: *mut core::ffi::c_void,
-  ) -> OPJ_BOOL {
-    self
-      .m_event_mgr
-      .set_warning_handler(p_callback, p_user_data);
+  pub fn set_warning_handler(&mut self, handler: impl FnMut(&str) + 'static) -> OPJ_BOOL {
+    self.m_event_mgr.set_warning_handler(handler);
     1i32
   }
 
-  pub fn set_error_handler(
-    &mut self,
-    mut p_callback: opj_msg_callback,
-    mut p_user_data: *mut core::ffi::c_void,
-  ) -> OPJ_BOOL {
-    self.m_event_mgr.set_error_handler(p_callback, p_user_data);
+  pub fn set_error_handler(&mut self, handler: impl FnMut(&str) + 'static) -> OPJ_BOOL {
+    self.m_event_mgr.set_error_handler(handler);
     1i32
   }
 

@@ -308,7 +308,7 @@ pub(crate) struct opj_t1_cblk_decode_processing_job_t {
   pub tccp: *mut opj_tccp_t,
   pub mustuse_cblkdatabuffer: OPJ_BOOL,
   pub pret: *mut OPJ_BOOL,
-  pub p_manager: opj_event_mgr,
+  pub p_manager: *mut opj_event_mgr,
   pub check_pterm: OPJ_BOOL,
 }
 
@@ -1919,7 +1919,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
             (*band).bandno,
             (*tccp).roishift as OPJ_UINT32,
             (*tccp).cblksty,
-            &mut (*job).p_manager,
+            &mut *(*job).p_manager,
             (*job).check_pterm,
           )
         {
@@ -1934,7 +1934,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
           (*band).bandno,
           (*tccp).roishift as OPJ_UINT32,
           (*tccp).cblksty,
-          &mut (*job).p_manager,
+          &mut *(*job).p_manager,
           (*job).check_pterm,
         )
       {
@@ -2197,7 +2197,7 @@ pub(crate) fn opj_t1_decode_cblks(
                     (*job).tilec = tilec;
                     (*job).tccp = tccp;
                     (*job).pret = pret;
-                    (*job).p_manager = *p_manager;
+                    (*job).p_manager = p_manager;
                     (*job).check_pterm = check_pterm;
                     (*job).mustuse_cblkdatabuffer = 0;
                     opj_t1_clbl_decode_processor(job as _);
