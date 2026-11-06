@@ -584,7 +584,16 @@ impl opj_image {
       for comp in comps {
         comp.clear_data();
       }
-      opj_free_type_array(self.comps, self.numcomps as usize);
+      if !self.comps.is_null() {
+        // SAFETY: `comps` was built as a Vec of exactly `numcomps` components.
+        unsafe {
+          drop(Vec::from_raw_parts(
+            self.comps,
+            self.numcomps as usize,
+            self.numcomps as usize,
+          ))
+        };
+      }
       self.comps = core::ptr::null_mut();
       self.numcomps = 0;
     }
@@ -593,7 +602,11 @@ impl opj_image {
   pub fn alloc_comps(&mut self, numcomps: u32) -> bool {
     self.clear_comps();
     self.numcomps = numcomps;
-    self.comps = opj_calloc_type_array(numcomps as usize);
+    {
+      let mut v: Vec<opj_image_comp_t> = vec![Default::default(); numcomps as usize];
+      self.comps = v.as_mut_ptr();
+      core::mem::forget(v);
+    }
     if self.comps.is_null() {
       self.numcomps = 0;
       return false;
@@ -675,14 +688,25 @@ impl opj_image {
 
   pub fn clear_icc_profile(&mut self) {
     if !self.icc_profile_buf.is_null() {
-      opj_free_type_array(self.icc_profile_buf, self.icc_profile_len as usize);
+      // SAFETY: `icc_profile_buf` was built as a Vec of exactly `icc_profile_len` bytes.
+      unsafe {
+        drop(Vec::from_raw_parts(
+          self.icc_profile_buf,
+          self.icc_profile_len as usize,
+          self.icc_profile_len as usize,
+        ))
+      };
       self.icc_profile_buf = core::ptr::null_mut();
       self.icc_profile_len = 0;
     }
   }
 
   fn alloc_icc_profile(&mut self, len: usize) -> Option<&mut [u8]> {
-    self.icc_profile_buf = opj_alloc_type_array(len as usize);
+    {
+      let mut v: Vec<OPJ_BYTE> = vec![0; len];
+      self.icc_profile_buf = v.as_mut_ptr();
+      core::mem::forget(v);
+    }
     if self.icc_profile_buf.is_null() {
       self.icc_profile_len = 0 as OPJ_UINT32;
       return None;

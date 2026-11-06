@@ -8679,243 +8679,194 @@ fn opj_j2k_copy_tile_quantization_parameters(p_j2k: &mut opj_j2k) {
   }
 }
 
-pub(crate) fn j2k_get_cstr_info(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream_info_v2_t {
-  unsafe {
-    let mut compno: OPJ_UINT32 = 0;
-    let mut numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-    let mut l_default_tile = core::ptr::null_mut::<opj_tcp_t>();
-    let mut cstr_info = opj_calloc(
-      1i32 as size_t,
-      core::mem::size_of::<opj_codestream_info_v2_t>(),
-    ) as *mut opj_codestream_info_v2_t;
-    if cstr_info.is_null() {
-      return core::ptr::null_mut::<opj_codestream_info_v2_t>();
-    }
-    (*cstr_info).nbcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-    (*cstr_info).tx0 = p_j2k.m_cp.tx0;
-    (*cstr_info).ty0 = p_j2k.m_cp.ty0;
-    (*cstr_info).tdx = p_j2k.m_cp.tdx;
-    (*cstr_info).tdy = p_j2k.m_cp.tdy;
-    (*cstr_info).tw = p_j2k.m_cp.tw;
-    (*cstr_info).th = p_j2k.m_cp.th;
-    (*cstr_info).tile_info = core::ptr::null_mut::<opj_tile_info_v2_t>();
-    l_default_tile = p_j2k
-      .m_specific_param
-      .m_decoder
-      .m_default_tcp
-      .as_deref_mut()
-      .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t;
-    (*cstr_info).m_default_tile_info.csty = (*l_default_tile).csty;
-    (*cstr_info).m_default_tile_info.prg = (*l_default_tile).prg;
-    (*cstr_info).m_default_tile_info.numlayers = (*l_default_tile).numlayers;
-    (*cstr_info).m_default_tile_info.mct = (*l_default_tile).mct;
-    (*cstr_info).m_default_tile_info.tccp_info = opj_calloc(
-      (*cstr_info).nbcomps as size_t,
-      core::mem::size_of::<opj_tccp_info_t>(),
-    ) as *mut opj_tccp_info_t;
-    if (*cstr_info).m_default_tile_info.tccp_info.is_null() {
-      opj_destroy_cstr_info(&mut cstr_info);
-      return core::ptr::null_mut::<opj_codestream_info_v2_t>();
-    }
-    compno = 0 as OPJ_UINT32;
-    while compno < numcomps {
-      let mut l_tccp: *mut opj_tccp_t = (*l_default_tile).tccps.as_mut_ptr().offset(compno as isize);
-      let mut l_tccp_info: *mut opj_tccp_info_t = &mut *(*cstr_info)
-        .m_default_tile_info
-        .tccp_info
-        .offset(compno as isize)
-        as *mut opj_tccp_info_t;
-      let mut bandno: OPJ_INT32 = 0;
-      let mut numbands: OPJ_INT32 = 0;
-      /* coding style*/
-      (*l_tccp_info).csty = (*l_tccp).csty;
-      (*l_tccp_info).numresolutions = (*l_tccp).numresolutions;
-      (*l_tccp_info).cblkw = (*l_tccp).cblkw;
-      (*l_tccp_info).cblkh = (*l_tccp).cblkh;
-      (*l_tccp_info).cblksty = (*l_tccp).cblksty;
-      (*l_tccp_info).qmfbid = (*l_tccp).qmfbid;
-      if (*l_tccp).numresolutions < 33u32 {
-        memcpy(
-          (*l_tccp_info).prch.as_mut_ptr() as *mut core::ffi::c_void,
-          (*l_tccp).prch.as_mut_ptr() as *const core::ffi::c_void,
-          (*l_tccp).numresolutions as usize,
-        );
-        memcpy(
-          (*l_tccp_info).prcw.as_mut_ptr() as *mut core::ffi::c_void,
-          (*l_tccp).prcw.as_mut_ptr() as *const core::ffi::c_void,
-          (*l_tccp).numresolutions as usize,
-        );
-      }
-      /* quantization style*/
-      (*l_tccp_info).qntsty = (*l_tccp).qntsty;
-      (*l_tccp_info).numgbits = (*l_tccp).numgbits;
-      numbands = if (*l_tccp).qntsty == 1u32 {
-        1i32
-      } else {
-        ((*l_tccp).numresolutions as OPJ_INT32 * 3i32) - 2i32
-      };
-      if numbands < 3i32 * 33i32 - 2i32 {
-        bandno = 0i32;
-        while bandno < numbands {
-          (*l_tccp_info).stepsizes_mant[bandno as usize] =
-            (*l_tccp).stepsizes[bandno as usize].mant as OPJ_UINT32;
-          (*l_tccp_info).stepsizes_expn[bandno as usize] =
-            (*l_tccp).stepsizes[bandno as usize].expn as OPJ_UINT32;
-          bandno += 1
-        }
-      }
-      /* RGN value*/
-      (*l_tccp_info).roishift = (*l_tccp).roishift;
-      compno += 1;
-    }
-    cstr_info
+pub(crate) fn j2k_get_cstr_info(p_j2k: &mut opj_j2k) -> *mut opj_codestream_info_v2_t {
+  let mut compno: OPJ_UINT32 = 0;
+  let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  // SAFETY: zeroed is the C calloc state the callers expect for the pointer fields.
+  let mut cstr_info = Box::new(unsafe { core::mem::zeroed::<opj_codestream_info_v2_t>() });
+  cstr_info.nbcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  cstr_info.tx0 = p_j2k.m_cp.tx0;
+  cstr_info.ty0 = p_j2k.m_cp.ty0;
+  cstr_info.tdx = p_j2k.m_cp.tdx;
+  cstr_info.tdy = p_j2k.m_cp.tdy;
+  cstr_info.tw = p_j2k.m_cp.tw;
+  cstr_info.th = p_j2k.m_cp.th;
+  cstr_info.tile_info = core::ptr::null_mut::<opj_tile_info_v2_t>();
+  let l_default_tile = p_j2k
+    .m_specific_param
+    .m_decoder
+    .m_default_tcp
+    .as_deref()
+    .expect("decoder m_default_tcp is always set");
+  cstr_info.m_default_tile_info.csty = l_default_tile.csty;
+  cstr_info.m_default_tile_info.prg = l_default_tile.prg;
+  cstr_info.m_default_tile_info.numlayers = l_default_tile.numlayers;
+  cstr_info.m_default_tile_info.mct = l_default_tile.mct;
+  {
+    let mut v: Vec<opj_tccp_info_t> = vec![unsafe { core::mem::zeroed() }; cstr_info.nbcomps as usize];
+    cstr_info.m_default_tile_info.tccp_info = v.as_mut_ptr();
+    core::mem::forget(v);
   }
+  let tccp_infos = unsafe {
+    core::slice::from_raw_parts_mut(
+      cstr_info.m_default_tile_info.tccp_info,
+      numcomps as usize,
+    )
+  };
+  compno = 0 as OPJ_UINT32;
+  while compno < numcomps {
+    let l_tccp = &l_default_tile.tccps[compno as usize];
+    let l_tccp_info = &mut tccp_infos[compno as usize];
+    let mut bandno: OPJ_INT32 = 0;
+    let numbands: OPJ_INT32;
+    /* coding style*/
+    l_tccp_info.csty = l_tccp.csty;
+    l_tccp_info.numresolutions = l_tccp.numresolutions;
+    l_tccp_info.cblkw = l_tccp.cblkw;
+    l_tccp_info.cblkh = l_tccp.cblkh;
+    l_tccp_info.cblksty = l_tccp.cblksty;
+    l_tccp_info.qmfbid = l_tccp.qmfbid;
+    if l_tccp.numresolutions < 33u32 {
+      l_tccp_info.prch[..l_tccp.numresolutions as usize]
+        .copy_from_slice(&l_tccp.prch[..l_tccp.numresolutions as usize]);
+      l_tccp_info.prcw[..l_tccp.numresolutions as usize]
+        .copy_from_slice(&l_tccp.prcw[..l_tccp.numresolutions as usize]);
+    }
+    /* quantization style*/
+    l_tccp_info.qntsty = l_tccp.qntsty;
+    l_tccp_info.numgbits = l_tccp.numgbits;
+    numbands = if l_tccp.qntsty == 1u32 {
+      1i32
+    } else {
+      (l_tccp.numresolutions as OPJ_INT32 * 3i32) - 2i32
+    };
+    if numbands < 3i32 * 33i32 - 2i32 {
+      bandno = 0i32;
+      while bandno < numbands {
+        l_tccp_info.stepsizes_mant[bandno as usize] = l_tccp.stepsizes[bandno as usize].mant as OPJ_UINT32;
+        l_tccp_info.stepsizes_expn[bandno as usize] = l_tccp.stepsizes[bandno as usize].expn as OPJ_UINT32;
+        bandno += 1
+      }
+    }
+    /* RGN value*/
+    l_tccp_info.roishift = l_tccp.roishift;
+    compno += 1;
+  }
+  Box::into_raw(cstr_info)
 }
 
-pub(crate) fn j2k_get_cstr_index(mut p_j2k: &mut opj_j2k) -> *mut opj_codestream_index_t {
-  unsafe {
-    let cstr_index = p_j2k.cstr_index.as_deref().expect("cstr_index");
-    let mut l_cstr_index = opj_calloc(
-      1i32 as size_t,
-      core::mem::size_of::<opj_codestream_index_t>(),
-    ) as *mut opj_codestream_index_t;
-    if l_cstr_index.is_null() {
-      return core::ptr::null_mut::<opj_codestream_index_t>();
-    }
-    (*l_cstr_index).main_head_start = cstr_index.main_head_start;
-    (*l_cstr_index).main_head_end = cstr_index.main_head_end;
-    (*l_cstr_index).codestream_size = cstr_index.codestream_size;
-    (*l_cstr_index).marknum = cstr_index.markers.len() as OPJ_UINT32;
-    (*l_cstr_index).marker = opj_malloc(
-      ((*l_cstr_index).marknum as usize).wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
-    ) as *mut opj_marker_info_t;
-    if (*l_cstr_index).marker.is_null() {
-      opj_free(l_cstr_index as *mut core::ffi::c_void);
-      return core::ptr::null_mut::<opj_codestream_index_t>();
-    }
-    if !cstr_index.markers.is_empty() {
-      core::ptr::copy_nonoverlapping(
-        cstr_index.markers.as_ptr(),
-        (*l_cstr_index).marker,
-        cstr_index.markers.len(),
-      );
-    } else {
-      opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
-      (*l_cstr_index).marker = core::ptr::null_mut::<opj_marker_info_t>()
-    }
-    (*l_cstr_index).nb_of_tiles = cstr_index.tiles.len() as OPJ_UINT32;
-    (*l_cstr_index).tile_index = opj_calloc(
-      (*l_cstr_index).nb_of_tiles as size_t,
-      core::mem::size_of::<opj_tile_index_t>(),
-    ) as *mut opj_tile_index_t;
-    if (*l_cstr_index).tile_index.is_null() {
-      opj_free((*l_cstr_index).marker as *mut core::ffi::c_void);
-      opj_free(l_cstr_index as *mut core::ffi::c_void);
-      return core::ptr::null_mut::<opj_codestream_index_t>();
-    }
-    if cstr_index.tiles.is_empty() {
-      opj_free((*l_cstr_index).tile_index as *mut core::ffi::c_void);
-      (*l_cstr_index).tile_index = core::ptr::null_mut::<opj_tile_index_t>()
-    } else {
-      for (it_tile, tile) in cstr_index.tiles.iter().enumerate() {
-        let dest = &mut *(*l_cstr_index).tile_index.offset(it_tile as isize);
-        /* Tile markers */
-        dest.marknum = tile.markers.len() as OPJ_UINT32;
-        dest.marker = opj_malloc(
-          (dest.marknum as usize).wrapping_mul(core::mem::size_of::<opj_marker_info_t>()),
-        ) as *mut opj_marker_info_t;
-        if dest.marker.is_null() {
-          free_cstr_index_mirror(l_cstr_index);
-          return core::ptr::null_mut::<opj_codestream_index_t>();
-        }
-        if !tile.markers.is_empty() {
-          core::ptr::copy_nonoverlapping(tile.markers.as_ptr(), dest.marker, tile.markers.len());
-        } else {
-          opj_free(dest.marker as *mut core::ffi::c_void);
-          dest.marker = core::ptr::null_mut::<opj_marker_info_t>()
-        }
-        /* Tile part index */
-        dest.nb_tps = tile.nb_tps;
-        dest.tp_index = opj_malloc(
-          (dest.nb_tps as usize).wrapping_mul(core::mem::size_of::<opj_tp_index_t>()),
-        ) as *mut opj_tp_index_t;
-        if dest.tp_index.is_null() {
-          free_cstr_index_mirror(l_cstr_index);
-          return core::ptr::null_mut::<opj_codestream_index_t>();
-        }
-        if !tile.tp_index.is_empty() {
-          core::ptr::copy_nonoverlapping(tile.tp_index.as_ptr(), dest.tp_index, tile.tp_index.len());
-        } else {
-          opj_free(dest.tp_index as *mut core::ffi::c_void);
-          dest.tp_index = core::ptr::null_mut::<opj_tp_index_t>()
-        }
-        /* Packet index (NOT USED) */
-        dest.nb_packet = 0 as OPJ_UINT32;
-        dest.packet_index = core::ptr::null_mut::<opj_packet_info_t>();
-      }
-    }
-    l_cstr_index
+pub(crate) fn j2k_get_cstr_index(p_j2k: &mut opj_j2k) -> *mut opj_codestream_index_t {
+  let cstr_index = p_j2k.cstr_index.as_deref().expect("cstr_index");
+  let mut l_cstr_index = Box::new(unsafe { core::mem::zeroed::<opj_codestream_index_t>() });
+  l_cstr_index.main_head_start = cstr_index.main_head_start;
+  l_cstr_index.main_head_end = cstr_index.main_head_end;
+  l_cstr_index.codestream_size = cstr_index.codestream_size;
+  l_cstr_index.marknum = cstr_index.markers.len() as OPJ_UINT32;
+  if !cstr_index.markers.is_empty() {
+    let mut v = cstr_index.markers.clone();
+    l_cstr_index.marker = v.as_mut_ptr();
+    core::mem::forget(v);
+  } else {
+    l_cstr_index.marker = core::ptr::null_mut::<opj_marker_info_t>()
   }
+  l_cstr_index.nb_of_tiles = cstr_index.tiles.len() as OPJ_UINT32;
+  if cstr_index.tiles.is_empty() {
+    l_cstr_index.tile_index = core::ptr::null_mut::<opj_tile_index_t>()
+  } else {
+    let mut v: Vec<opj_tile_index_t> =
+      vec![unsafe { core::mem::zeroed() }; cstr_index.tiles.len()];
+    l_cstr_index.tile_index = v.as_mut_ptr();
+    let tile_indices = unsafe {
+      core::slice::from_raw_parts_mut(l_cstr_index.tile_index, cstr_index.tiles.len())
+    };
+    for (it_tile, tile) in cstr_index.tiles.iter().enumerate() {
+      let dest = &mut tile_indices[it_tile];
+      /* Tile markers */
+      dest.marknum = tile.markers.len() as OPJ_UINT32;
+      if !tile.markers.is_empty() {
+        let mut mv = tile.markers.clone();
+        dest.marker = mv.as_mut_ptr();
+        core::mem::forget(mv);
+      } else {
+        dest.marker = core::ptr::null_mut::<opj_marker_info_t>()
+      }
+      /* Tile part index */
+      dest.nb_tps = tile.nb_tps;
+      if !tile.tp_index.is_empty() {
+        let mut tv = tile.tp_index.clone();
+        dest.tp_index = tv.as_mut_ptr();
+        core::mem::forget(tv);
+      } else {
+        dest.tp_index = core::ptr::null_mut::<opj_tp_index_t>()
+      }
+      /* Packet index (NOT USED) */
+      dest.nb_packet = 0 as OPJ_UINT32;
+      dest.packet_index = core::ptr::null_mut::<opj_packet_info_t>();
+    }
+    core::mem::forget(v);
+  }
+  Box::into_raw(l_cstr_index)
 }
 
 /// Free a C-ABI codestream index mirror built by `j2k_get_cstr_index`.
-pub fn free_cstr_index_mirror(mut p_cstr_ind: *mut opj_codestream_index_t) {
-  unsafe {
-    if p_cstr_ind.is_null() {
-      return;
-    }
-    if !(*p_cstr_ind).marker.is_null() {
-      opj_free((*p_cstr_ind).marker as *mut core::ffi::c_void);
-      (*p_cstr_ind).marker = core::ptr::null_mut::<opj_marker_info_t>()
-    }
-    if !(*p_cstr_ind).tile_index.is_null() {
-      let mut it_tile = 0 as OPJ_UINT32;
-      while it_tile < (*p_cstr_ind).nb_of_tiles {
-        if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
-          .packet_index
-          .is_null()
-        {
-          opj_free(
-            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).packet_index
-              as *mut core::ffi::c_void,
-          );
-        }
-        if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
-          .tp_index
-          .is_null()
-        {
-          opj_free(
-            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).tp_index as *mut core::ffi::c_void,
-          );
-        }
-        if !(*(*p_cstr_ind).tile_index.offset(it_tile as isize))
-          .marker
-          .is_null()
-        {
-          opj_free(
-            (*(*p_cstr_ind).tile_index.offset(it_tile as isize)).marker as *mut core::ffi::c_void,
-          );
-        }
-        it_tile += 1;
+pub fn free_cstr_index_mirror(p_cstr_ind: *mut opj_codestream_index_t) {
+  if p_cstr_ind.is_null() {
+    return;
+  }
+  let cstr_ind = unsafe { Box::from_raw(p_cstr_ind) };
+  if !cstr_ind.marker.is_null() {
+    // SAFETY: built as a Vec of exactly `marknum` entries.
+    unsafe {
+      drop(Vec::from_raw_parts(
+        cstr_ind.marker,
+        cstr_ind.marknum as usize,
+        cstr_ind.marknum as usize,
+      ))
+    };
+  }
+  if !cstr_ind.tile_index.is_null() {
+    let n = cstr_ind.nb_of_tiles as usize;
+    for tile in unsafe { core::slice::from_raw_parts_mut(cstr_ind.tile_index, n) } {
+      if !tile.packet_index.is_null() {
+        // SAFETY: built as a Vec of exactly `nb_packet` entries.
+        unsafe {
+          drop(Vec::from_raw_parts(
+            tile.packet_index,
+            tile.nb_packet as usize,
+            tile.nb_packet as usize,
+          ))
+        };
       }
-      opj_free((*p_cstr_ind).tile_index as *mut core::ffi::c_void);
-      (*p_cstr_ind).tile_index = core::ptr::null_mut::<opj_tile_index_t>()
+      if !tile.tp_index.is_null() {
+        // SAFETY: built as a Vec of exactly `nb_tps` entries.
+        unsafe {
+          drop(Vec::from_raw_parts(tile.tp_index, tile.nb_tps as usize, tile.nb_tps as usize))
+        };
+      }
+      if !tile.marker.is_null() {
+        // SAFETY: built as a Vec of exactly `marknum` entries.
+        unsafe {
+          drop(Vec::from_raw_parts(
+            tile.marker,
+            tile.marknum as usize,
+            tile.marknum as usize,
+          ))
+        };
+      }
     }
-    opj_free(p_cstr_ind as *mut core::ffi::c_void);
+    // SAFETY: built as a Vec of exactly `nb_of_tiles` entries.
+    unsafe { drop(Vec::from_raw_parts(cstr_ind.tile_index, n, n)) };
   }
 }
 
-
-fn opj_j2k_allocate_tile_element_cstr_index(mut p_j2k: &mut opj_j2k) -> OPJ_BOOL {
-  unsafe {
-    let nb_of_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
-    let cstr_index = p_j2k.cstr_index.as_deref_mut().expect("cstr_index");
-    cstr_index.tiles.resize(nb_of_tiles as usize, CodestreamTileIndex::default());
-    for tile in &mut cstr_index.tiles {
-      tile.markers = Vec::with_capacity(100);
-    }
-    1i32
+fn opj_j2k_allocate_tile_element_cstr_index(p_j2k: &mut opj_j2k) -> OPJ_BOOL {
+  let nb_of_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
+  let cstr_index = p_j2k.cstr_index.as_deref_mut().expect("cstr_index");
+  cstr_index.tiles.resize(nb_of_tiles as usize, CodestreamTileIndex::default());
+  for tile in &mut cstr_index.tiles {
+    tile.markers = Vec::with_capacity(100);
   }
+  1i32
 }
 
 fn opj_j2k_are_all_used_components_decoded(
@@ -9542,17 +9493,16 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
 }
 
 pub(crate) fn opj_j2k_encode(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
     let mut i: OPJ_UINT32 = 0;
     let mut j: OPJ_UINT32 = 0;
     let mut l_nb_tiles: OPJ_UINT32 = 0;
     let mut l_max_tile_size = 0 as OPJ_SIZE_T;
     let mut l_current_tile_size: OPJ_SIZE_T = 0;
-    let mut l_current_data = core::ptr::null_mut::<OPJ_BYTE>();
+    let mut l_current_data: Vec<OPJ_BYTE> = Vec::new();
     let mut l_reuse_data = 0i32;
     /* preconditions */
 
@@ -9563,29 +9513,27 @@ pub(crate) fn opj_j2k_encode(
     i = 0 as OPJ_UINT32;
     while i < l_nb_tiles {
       if opj_j2k_pre_write_tile(p_j2k, i, p_stream, p_manager) == 0 {
-        if !l_current_data.is_null() {
-          opj_free(l_current_data as *mut core::ffi::c_void);
-        }
+        l_current_data.clear();
         return 0i32;
       }
       /* if we only have one tile, then simply set tile component data equal to image component data */
       /* otherwise, allocate the data */
       j = 0 as OPJ_UINT32;
-      while j < (*p_j2k.m_tcd.image).numcomps {
+      // SAFETY: `p_tcd.image` is the codec's private image, valid while the tcd is in use.
+      let image = unsafe { &mut *p_j2k.m_tcd.image };
+      while j < image.numcomps {
         let mut l_tilec =
           &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize] as *mut opj_tcd_tilecomp_t;
         if l_reuse_data != 0 {
-          let mut l_img_comp = (*p_j2k.m_tcd.image).comps.as_ptr().add(j as usize) as *mut CoreImageComp;
-          (*l_tilec).data = TileBuf::borrowed((*l_img_comp).data.as_mut_ptr());
+          let l_img_comp = &mut image.comps[j as usize];
+          unsafe { (*l_tilec).data = TileBuf::borrowed(l_img_comp.data.as_mut_ptr()) };
         } else if opj_alloc_tile_component_data(l_tilec) == 0 {
           event_msg!(
             p_manager,
             EVT_ERROR,
             "Error allocating tile component data.",
           );
-          if !l_current_data.is_null() {
-            opj_free(l_current_data as *mut core::ffi::c_void);
-          }
+          l_current_data.clear();
           return 0i32;
         }
         j += 1;
@@ -9593,14 +9541,8 @@ pub(crate) fn opj_j2k_encode(
       l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(&mut p_j2k.m_tcd);
       if l_reuse_data == 0 {
         if l_current_tile_size > l_max_tile_size {
-          let mut l_new_current_data = opj_realloc(
-            l_current_data as *mut core::ffi::c_void,
-            l_current_tile_size,
-          ) as *mut OPJ_BYTE;
-          if l_new_current_data.is_null() {
-            if !l_current_data.is_null() {
-              opj_free(l_current_data as *mut core::ffi::c_void);
-            }
+          if l_current_data.try_reserve_exact(l_current_tile_size as usize).is_err() {
+            l_current_data.clear();
             event_msg!(
               p_manager,
               EVT_ERROR,
@@ -9608,20 +9550,13 @@ pub(crate) fn opj_j2k_encode(
             );
             return 0i32;
           }
-          l_current_data = l_new_current_data;
+          l_current_data.resize(l_current_tile_size as usize, 0);
           l_max_tile_size = l_current_tile_size
-        }
-        if l_current_data.is_null() {
-          /* Should not happen in practice, but will avoid Coverity to */
-          /* complain about a null pointer dereference */
-          panic!("");
-          // C: assert(0);
         }
         /* copy image data (32 bit) to l_current_data as contiguous, all-component, zero offset buffer */
         /* 32 bit components @ 8 bit precision get converted to 8 bit */
         /* 32 bit components @ 16 bit precision get converted to 16 bit */
-        let p_data =
-          core::slice::from_raw_parts_mut(l_current_data as *mut u8, l_current_tile_size as usize);
+        let p_data = &mut l_current_data[..l_current_tile_size as usize];
         opj_j2k_get_tile_data(&mut p_j2k.m_tcd, p_data);
         /* now copy this data into the tile component */
         if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data) == 0 {
@@ -9630,23 +9565,18 @@ pub(crate) fn opj_j2k_encode(
             EVT_ERROR,
             "Size mismatch between tile data and sent data.",
           );
-          opj_free(l_current_data as *mut core::ffi::c_void);
+          l_current_data.clear();
           return 0i32;
         }
       }
       if opj_j2k_post_write_tile(p_j2k, p_stream, p_manager) == 0 {
-        if !l_current_data.is_null() {
-          opj_free(l_current_data as *mut core::ffi::c_void);
-        }
+        l_current_data.clear();
         return 0i32;
       }
       i += 1;
     }
-    if !l_current_data.is_null() {
-      opj_free(l_current_data as *mut core::ffi::c_void);
-    }
+    l_current_data.clear();
     1i32
-  }
 }
 
 pub(crate) fn opj_j2k_end_compress(

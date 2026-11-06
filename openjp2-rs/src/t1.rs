@@ -286,6 +286,7 @@ thread_local! {
   static T1: RefCell<opj_t1> = RefCell::new(opj_t1::new())
 }
 
+#[derive(Default)]
 pub(crate) struct opj_t1_cblk_encode_processing_job_t {
   pub compno: OPJ_UINT32,
   pub resno: OPJ_UINT32,
@@ -299,6 +300,7 @@ pub(crate) struct opj_t1_cblk_encode_processing_job_t {
   pub pret: *mut OPJ_BOOL,
 }
 
+#[derive(Default)]
 pub(crate) struct opj_t1_cblk_decode_processing_job_t {
   pub whole_tile_decoding: OPJ_BOOL,
   pub resno: OPJ_UINT32,
@@ -1901,7 +1903,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
         .offset((*tilec).minimum_num_resolutions.wrapping_sub(1) as isize))
       .x0) as OPJ_UINT32;
     if *(*job).pret == 0 {
-      opj_free_type(job);
+      drop(unsafe { Box::from_raw(job) });
       return;
     }
 
@@ -1924,7 +1926,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
           )
         {
           core::ptr::write_volatile((*job).pret, 0i32);
-          opj_free_type(job);
+          drop(unsafe { Box::from_raw(job) });
           return;
         }
       } else if 0i32
@@ -1939,7 +1941,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
         )
       {
         core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free_type(job);
+        drop(unsafe { Box::from_raw(job) });
         return;
       }
       x = (*cblk).x0 - (*band).x0;
@@ -2097,7 +2099,7 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
           j += 1
         }
       }
-      opj_free_type(job);
+      drop(unsafe { Box::from_raw(job) });
     })
   }
 }
@@ -2185,7 +2187,7 @@ pub(crate) fn opj_t1_decode_cblks(
                 match current_block_34 {
                   2370887241019905314 => {}
                   _ => {
-                    job = opj_calloc_type();
+                    job = Box::into_raw(Box::new(Default::default()));
                     if job.is_null() {
                       core::ptr::write_volatile(pret, 0i32);
                       return;
@@ -2432,7 +2434,7 @@ fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
     let mut x = (*cblk).x0 - (*band).x0;
     let mut y = (*cblk).y0 - (*band).y0;
     if *(*job).pret == 0 {
-      opj_free_type(job);
+      drop(unsafe { Box::from_raw(job) });
       return;
     }
 
@@ -2464,7 +2466,7 @@ fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
       ) == 0
       {
         core::ptr::write_volatile((*job).pret, 0i32);
-        opj_free_type(job);
+        drop(unsafe { Box::from_raw(job) });
         return;
       }
       cblk_w = t1.w;
@@ -2601,7 +2603,7 @@ fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
         (*job).mct_numcomps,
       );
       (*(*job).tile).distotile += cumwmsedec;
-      opj_free_type(job);
+      drop(unsafe { Box::from_raw(job) });
     })
   }
 }
@@ -2646,7 +2648,7 @@ pub(crate) fn opj_t1_encode_cblks(
               while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
                 let mut cblk: *mut opj_tcd_cblk_enc_t =
                   (&mut (*prc).cblks).enc_ptr().offset(cblkno as isize);
-                let mut job: *mut opj_t1_cblk_encode_processing_job_t = opj_calloc_type();
+                let mut job: *mut opj_t1_cblk_encode_processing_job_t = Box::into_raw(Box::new(Default::default()));
                 if job.is_null() {
                   core::ptr::write_volatile(&mut ret as *mut OPJ_BOOL, 0i32);
                   break 's_19;

@@ -223,11 +223,11 @@ pub(crate) fn opj_t2_encode_packets(
 
         assert!((*p_marker_info).packet_count == 0u32);
         assert!((*p_marker_info).p_packet_size.is_null());
-        (*p_marker_info).p_packet_size =
-          opj_alloc_type_array(opj_get_encoding_packet_count(unsafe { &mut *l_image }, l_cp, p_tile_no) as usize);
-        if (*p_marker_info).p_packet_size.is_null() {
-          opj_pi_destroy(l_pi, l_nb_pocs);
-          return 0i32;
+        {
+          let count = opj_get_encoding_packet_count(unsafe { &mut *l_image }, l_cp, p_tile_no) as usize;
+          let mut v: Vec<OPJ_UINT32> = vec![0; count];
+          (*p_marker_info).p_packet_size = v.as_mut_ptr();
+          core::mem::forget(v);
         }
       }
       while opj_pi_next(l_current_pi) != 0 {
@@ -334,22 +334,13 @@ pub(crate) fn opj_t2_decode_packets(
        * l_current_pi->resno is always >= p_tile->comps[l_current_pi->compno].minimum_num_resolutions
        * and no l_img_comp->resno_decoded are computed
        */
-      let mut first_pass_failed = core::ptr::null_mut::<OPJ_BOOL>();
+      let mut first_pass_failed: Vec<OPJ_BOOL> = Vec::new();
       if (*l_current_pi).poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
         /* TODO ADE : add an error */
         opj_pi_destroy(l_pi, l_nb_pocs);
         return 0i32;
       }
-      first_pass_failed = opj_alloc_type_array((*l_image).numcomps as usize);
-      if first_pass_failed.is_null() {
-        opj_pi_destroy(l_pi, l_nb_pocs);
-        return 0i32;
-      }
-      memset(
-        first_pass_failed as *mut core::ffi::c_void,
-        1i32,
-        ((*l_image).numcomps as usize).wrapping_mul(core::mem::size_of::<OPJ_BOOL>()),
-      );
+      first_pass_failed = vec![1i32; (*l_image).numcomps as usize];
       while opj_pi_next(l_current_pi) != 0 {
         let mut skip_packet = 0i32;
         log::debug!(
@@ -413,7 +404,7 @@ pub(crate) fn opj_t2_decode_packets(
         }
         if skip_packet == 0 {
           l_nb_bytes_read = 0 as OPJ_UINT32;
-          *first_pass_failed.offset((*l_current_pi).compno as isize) = 0i32;
+          first_pass_failed[(*l_current_pi).compno as usize] = 0i32;
           if opj_t2_decode_packet(
             p_t2,
             &mut tcd.tcd_image.tiles,
@@ -427,7 +418,7 @@ pub(crate) fn opj_t2_decode_packets(
           ) == 0
           {
             opj_pi_destroy(l_pi, l_nb_pocs);
-            opj_free_type_array(first_pass_failed, (*l_image).numcomps as usize);
+            
             return 0i32;
           }
           l_img_comp =
@@ -449,11 +440,11 @@ pub(crate) fn opj_t2_decode_packets(
           ) == 0
           {
             opj_pi_destroy(l_pi, l_nb_pocs);
-            opj_free_type_array(first_pass_failed, (*l_image).numcomps as usize);
+            
             return 0i32;
           }
         }
-        if *first_pass_failed.offset((*l_current_pi).compno as isize) != 0 {
+        if first_pass_failed[(*l_current_pi).compno as usize] != 0 {
           l_img_comp =
             &mut *(*l_image).comps.as_mut_ptr().add((*l_current_pi).compno as usize) as *mut CoreImageComp;
           if (*l_img_comp).resno_decoded == 0u32 {
@@ -466,7 +457,7 @@ pub(crate) fn opj_t2_decode_packets(
         p_max_len = (p_max_len as core::ffi::c_uint).wrapping_sub(l_nb_bytes_read) as OPJ_UINT32
       }
       l_current_pi = l_current_pi.offset(1);
-      opj_free_type_array(first_pass_failed, (*l_image).numcomps as usize);
+      
       pino += 1;
     }
     /* INDEX >> */
@@ -492,19 +483,17 @@ pub(crate) fn opj_t2_create(
 ) -> *mut opj_t2_t {
   unsafe {
     /* create the t2 structure */
-    let mut l_t2: *mut opj_t2_t = opj_calloc_type();
-    if l_t2.is_null() {
-      return core::ptr::null_mut::<opj_t2_t>();
-    }
-    (*l_t2).image = p_image;
-    (*l_t2).cp = p_cp;
-    l_t2
+    let l_t2 = Box::new(opj_t2 {
+      image: p_image,
+      cp: p_cp,
+    });
+    Box::into_raw(l_t2)
   }
 }
 
-pub(crate) fn opj_t2_destroy(mut t2: *mut opj_t2_t) {
+pub(crate) fn opj_t2_destroy(t2: *mut opj_t2_t) {
   if !t2.is_null() {
-    opj_free_type(t2);
+    drop(unsafe { Box::from_raw(t2) });
   };
 }
 /* *

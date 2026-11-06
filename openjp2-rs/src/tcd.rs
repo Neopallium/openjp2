@@ -426,10 +426,10 @@ fn opj_tcd_rateallocate(
         &mut *(*cstr_info).tile.offset((*tcd).tcd_tileno as isize) as *mut opj_tile_info_t;
       (*tile_info).numpix = tcd.tcd_image.tiles.numpix;
       (*tile_info).distotile = tcd.tcd_image.tiles.distotile;
-      (*tile_info).thresh = opj_alloc_type_array((*tcd_tcp).numlayers as usize);
-      if (*tile_info).thresh.is_null() {
-        /* FIXME event manager error callback */
-        return 0i32;
+      {
+        let mut v: Vec<core::ffi::c_double> = vec![0.0; (*tcd_tcp).numlayers as usize];
+        (*tile_info).thresh = v.as_mut_ptr();
+        core::mem::forget(v);
       }
     } /* fixed_quality */
 
@@ -1349,17 +1349,13 @@ pub(crate) fn opj_tcd_encode_tile(
           i += 1;
         }
         let p_packet = &mut (*(*p_cstr_info).tile.offset(p_tile_no as isize)).packet;
-        *p_packet = opj_calloc_type_array(
-          ((*p_cstr_info).numcomps as OPJ_SIZE_T)
-            .wrapping_mul((*p_cstr_info).numlayers as OPJ_SIZE_T)
-            .wrapping_mul(l_num_packs as usize),
-        );
-        if (*(*p_cstr_info).tile.offset(p_tile_no as isize))
-          .packet
-          .is_null()
         {
-          /* FIXME event manager error callback */
-          return 0i32;
+          let n = ((*p_cstr_info).numcomps as usize)
+            .wrapping_mul((*p_cstr_info).numlayers as usize)
+            .wrapping_mul(l_num_packs as usize);
+          let mut v: Vec<opj_packet_info_t> = vec![Default::default(); n];
+          *p_packet = v.as_mut_ptr();
+          core::mem::forget(v);
         }
       }
       if opj_tcd_dc_level_shift_encode(p_tcd) == 0 {
@@ -2672,27 +2668,29 @@ fn opj_tcd_is_whole_tilecomp_decoding(mut p_tcd: &mut opj_tcd, mut compno: OPJ_U
 }
 /* ----------------------------------------------------------------------- */
 
-pub(crate) fn opj_tcd_marker_info_create(mut need_PLT: OPJ_BOOL) -> *mut opj_tcd_marker_info_t {
-  unsafe {
-    let mut l_tcd_marker_info: *mut opj_tcd_marker_info_t = opj_calloc_type();
-    if l_tcd_marker_info.is_null() {
-      return core::ptr::null_mut::<opj_tcd_marker_info_t>();
-    }
-    (*l_tcd_marker_info).need_PLT = need_PLT;
-    l_tcd_marker_info
-  }
+pub(crate) fn opj_tcd_marker_info_create(need_PLT: OPJ_BOOL) -> *mut opj_tcd_marker_info_t {
+  Box::into_raw(Box::new(opj_tcd_marker_info {
+    need_PLT,
+    packet_count: 0,
+    p_packet_size: core::ptr::null_mut(),
+  }))
 }
 /* ----------------------------------------------------------------------- */
 
-pub(crate) fn opj_tcd_marker_info_destroy(mut p_tcd_marker_info: *mut opj_tcd_marker_info_t) {
-  unsafe {
-    if !p_tcd_marker_info.is_null() {
-      opj_free_type_array(
-        (*p_tcd_marker_info).p_packet_size,
-        (*p_tcd_marker_info).packet_count as usize,
-      );
-      opj_free_type(p_tcd_marker_info);
-    };
-  }
+pub(crate) fn opj_tcd_marker_info_destroy(p_tcd_marker_info: *mut opj_tcd_marker_info_t) {
+  if !p_tcd_marker_info.is_null() {
+    let info = unsafe { Box::from_raw(p_tcd_marker_info) };
+    if !info.p_packet_size.is_null() {
+      // SAFETY: the packet size array was built as a Vec of exactly packet_count u32s
+      // (vec![0; n] has capacity == length) and transferred into the raw field.
+      unsafe {
+        drop(Vec::from_raw_parts(
+          info.p_packet_size,
+          info.packet_count as usize,
+          info.packet_count as usize,
+        ))
+      };
+    }
+  };
 }
 /* ----------------------------------------------------------------------- */

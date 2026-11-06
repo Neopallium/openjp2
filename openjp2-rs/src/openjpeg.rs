@@ -25,16 +25,23 @@ pub const OPJ_VERSION: &str = "2.5.2";
 /// Free a codestream info v2 structure (core-side helper; the C ABI export
 /// lives in openjp2-capi).
 pub fn opj_destroy_cstr_info(cstr_info: *mut *mut opj_codestream_info_v2_t) {
-  unsafe {
-    if !cstr_info.is_null() {
-      if !(**cstr_info).m_default_tile_info.tccp_info.is_null() {
-        crate::malloc::opj_free((**cstr_info).m_default_tile_info.tccp_info as *mut core::ffi::c_void);
-      }
-      if !(**cstr_info).tile_info.is_null() {
-        crate::malloc::opj_free((**cstr_info).tile_info as *mut core::ffi::c_void);
-      }
-      crate::malloc::opj_free(*cstr_info as *mut core::ffi::c_void);
-      *cstr_info = core::ptr::null_mut::<opj_codestream_info_v2_t>();
+  if !cstr_info.is_null() {
+    let info = unsafe { Box::from_raw(*cstr_info) };
+    if !info.m_default_tile_info.tccp_info.is_null() {
+      // SAFETY: built as a Vec of exactly `nbcomps` entries (capacity == length).
+      unsafe {
+        drop(Vec::from_raw_parts(
+          info.m_default_tile_info.tccp_info,
+          info.nbcomps as usize,
+          info.nbcomps as usize,
+        ))
+      };
     }
+    if !info.tile_info.is_null() {
+      // SAFETY: built as a Vec of exactly `tw * th` entries.
+      let n = (info.tw as usize).wrapping_mul(info.th as usize);
+      unsafe { drop(Vec::from_raw_parts(info.tile_info, n, n)) };
+    }
+    unsafe { *cstr_info = core::ptr::null_mut::<opj_codestream_info_v2_t>() };
   }
 }
