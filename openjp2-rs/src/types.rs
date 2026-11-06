@@ -1313,12 +1313,12 @@ pub(crate) struct opj_j2k_dec {
 
 impl opj_j2k_dec {
   /* Grow-only scratch buffer holding the marker segment currently being read. Mirrors the
-  C `opj_realloc` of `m_header_data`; the returned pointer is valid until the next call. */
-  pub(crate) fn header_data(&mut self, size: OPJ_UINT32) -> *mut OPJ_BYTE {
+  C `opj_realloc` of `m_header_data`. */
+  pub(crate) fn header_data(&mut self, size: OPJ_UINT32) -> &mut [OPJ_BYTE] {
     if size as usize > self.m_header_data.len() {
       self.m_header_data.resize(size as usize, 0);
     }
-    self.m_header_data.as_mut_ptr()
+    &mut self.m_header_data[..size as usize]
   }
 }
 pub(crate) type opj_j2k_dec_t = opj_j2k_dec;

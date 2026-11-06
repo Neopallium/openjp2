@@ -6742,11 +6742,10 @@ fn opj_j2k_decoding_validation(
  * The read header procedure.
  */
 fn opj_j2k_read_header_procedure(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
     let mut l_marker_size: OPJ_UINT32 = 0;
     let mut l_has_siz = 0i32;
     let mut l_has_cod = 0i32;
@@ -6835,13 +6834,15 @@ fn opj_j2k_read_header_procedure(
       /* Check if the marker size is compatible with the header data size */
       let l_header_data = p_j2k.m_specific_param.m_decoder.header_data(l_marker_size);
       /* Try to read the rest of the marker segment from stream and copy them into the buffer */
-      if opj_stream_read_data(p_stream, unsafe { core::slice::from_raw_parts_mut(l_header_data, l_marker_size as usize) }, p_manager) != l_marker_size as usize
+      if opj_stream_read_data(p_stream, l_header_data, p_manager) != l_marker_size as usize
       {
         event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
         return 0i32;
       }
+      drop(l_header_data);
       /* Read the marker segment with the correct marker handler */
-      if l_marker_handler.handler(p_j2k, l_header_data, l_marker_size, p_manager) == 0 {
+      let l_header_ptr = p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr();
+      if l_marker_handler.handler(p_j2k, l_header_ptr, l_marker_size, p_manager) == 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -6912,18 +6913,7 @@ fn opj_j2k_read_header_procedure(
     /* Next step: read a tile-part header */
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT;
     1i32
-  }
 }
-/* *
- * Executes the given procedures on the given codec.
- *
- * @param       p_procedure_list        the list of procedures to execute
- * @param       p_j2k                           the jpeg2000 codec to execute the procedures on.
- * @param       p_stream                        the stream to execute the procedures on.
- * @param       p_manager                       the user manager.
- *
- * @return      true                            if all the procedures were successfully executed.
- */
 fn opj_j2k_exec(
   p_j2k: &mut opj_j2k,
   list: &mut opj_j2k_proc_list_t,
@@ -6996,7 +6986,7 @@ impl Drop for opj_j2k {
     unsafe {
       if self.m_is_decoder != 0 {
         if let Some(mut tcp) = self.m_specific_param.m_decoder.m_default_tcp.take() {
-          opj_j2k_tcp_destroy(tcp.as_mut() as *mut opj_tcp_t);
+          opj_j2k_tcp_destroy(tcp.as_mut());
         }
         self.m_specific_param.m_decoder.m_header_data = Vec::new();
         self.m_specific_param.m_decoder.m_comps_indices_to_decode = Vec::new();
@@ -7027,69 +7017,58 @@ impl Drop for opj_j2k {
  *
  * @param       p_tcp           the tile coding parameter to destroy.
  */
-fn opj_j2k_tcp_destroy(mut p_tcp: *mut opj_tcp_t) {
-  unsafe {
-    if p_tcp.is_null() {
-      return;
-    }
-    (*p_tcp).ppt_markers = Vec::new();
-    (*p_tcp).ppt_buffer = Vec::new();
-    (*p_tcp).tccps = Vec::new();
-    (*p_tcp).m_mct_coding_matrix = Vec::new();
-    (*p_tcp).m_mct_decoding_matrix = Vec::new();
-    (*p_tcp).m_mcc_records = Vec::new();
-    (*p_tcp).m_mct_records = Vec::new();
-    (*p_tcp).mct_norms = Vec::new();
-    opj_j2k_tcp_data_destroy(p_tcp);
-  }
+fn opj_j2k_tcp_destroy(p_tcp: &mut opj_tcp_t) {
+  p_tcp.ppt_markers = Vec::new();
+  p_tcp.ppt_buffer = Vec::new();
+  p_tcp.tccps = Vec::new();
+  p_tcp.m_mct_coding_matrix = Vec::new();
+  p_tcp.m_mct_decoding_matrix = Vec::new();
+  p_tcp.m_mcc_records = Vec::new();
+  p_tcp.m_mct_records = Vec::new();
+  p_tcp.mct_norms = Vec::new();
+  opj_j2k_tcp_data_destroy(p_tcp);
 }
+
 /* *
  * Destroys the data inside a tile coding parameter structure.
  *
  * @param       p_tcp           the tile coding parameter which contain data to destroy.
  */
-fn opj_j2k_tcp_data_destroy(mut p_tcp: *mut opj_tcp_t) {
-  unsafe {
-    if !(*p_tcp).m_data.is_null() {
-      opj_free((*p_tcp).m_data as *mut core::ffi::c_void);
-      (*p_tcp).m_data = core::ptr::null_mut::<OPJ_BYTE>();
-      (*p_tcp).m_data_size = 0 as OPJ_UINT32
-    };
-  }
+fn opj_j2k_tcp_data_destroy(p_tcp: &mut opj_tcp_t) {
+  if !p_tcp.m_data.is_null() {
+    // SAFETY: `m_data` is a malloc'd buffer owned by the tcp.
+    unsafe { opj_free(p_tcp.m_data as *mut core::ffi::c_void) };
+    p_tcp.m_data = core::ptr::null_mut::<OPJ_BYTE>();
+    p_tcp.m_data_size = 0 as OPJ_UINT32
+  };
 }
+
 /* *
  * Destroys a coding parameter structure.
  *
  * @param       p_cp            the coding parameter to destroy.
  */
-fn opj_j2k_cp_destroy(mut p_cp: *mut opj_cp_t) {
-  unsafe {
-    let mut l_nb_tiles: OPJ_UINT32 = 0; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
-    let mut l_current_tile = core::ptr::null_mut::<opj_tcp_t>();
-    if p_cp.is_null() {
-      return;
+fn opj_j2k_cp_destroy(p_cp: &mut opj_cp_t) {
+  let l_nb_tiles: OPJ_UINT32; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
+  if !p_cp.tcps.is_empty() {
+    l_nb_tiles = p_cp.th.wrapping_mul(p_cp.tw);
+    let mut i: OPJ_UINT32 = 0;
+    while i < l_nb_tiles {
+      opj_j2k_tcp_destroy(&mut p_cp.tcps[i as usize]);
+      i += 1;
     }
-    if !(*p_cp).tcps.is_empty() {
-      let mut i: OPJ_UINT32 = 0;
-      l_current_tile = (*p_cp).tcps.as_mut_ptr();
-      l_nb_tiles = (*p_cp).th.wrapping_mul((*p_cp).tw);
-      i = 0u32;
-      while i < l_nb_tiles {
-        opj_j2k_tcp_destroy(l_current_tile);
-        l_current_tile = l_current_tile.offset(1);
-        i += 1;
-      }
-      (*p_cp).tcps = Vec::new()
-    }
-    (*p_cp).ppm_markers = Vec::new();
-    (*p_cp).ppm_buffer = Vec::new();
-    opj_free((*p_cp).comment as *mut core::ffi::c_void);
-    (*p_cp).comment = core::ptr::null_mut::<OPJ_CHAR>();
-    if !(*p_cp).m_is_decoder {
-      (*p_cp).m_specific_param.m_enc.m_matrice = Vec::new()
-    };
+    p_cp.tcps = Vec::new()
   }
+  p_cp.ppm_markers = Vec::new();
+  p_cp.ppm_buffer = Vec::new();
+  // SAFETY: `comment` is a malloc'd C string owned by the cp (copied from the parameters).
+  unsafe { opj_free(p_cp.comment as *mut core::ffi::c_void) };
+  p_cp.comment = core::ptr::null_mut::<OPJ_CHAR>();
+  if !p_cp.m_is_decoder {
+    p_cp.m_specific_param.m_enc.m_matrice = Vec::new()
+  };
 }
+
 /* *
  * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
  *
@@ -7291,13 +7270,15 @@ pub(crate) fn opj_j2k_read_tile_header(
             }
             let l_header_data = p_j2k.m_specific_param.m_decoder.header_data(l_marker_size);
             /* Try to read the rest of the marker segment from stream and copy them into the buffer */
-            if opj_stream_read_data(p_stream, unsafe { core::slice::from_raw_parts_mut(l_header_data, l_marker_size as usize) }, p_manager) != l_marker_size as usize
+            if opj_stream_read_data(p_stream, l_header_data, p_manager) != l_marker_size as usize
             {
               event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
               return false;
             }
+            drop(l_header_data);
             /* Read the marker segment with the correct marker handler */
-            if l_marker_handler.handler(p_j2k, l_header_data, l_marker_size, p_manager) == 0 {
+            let l_header_ptr = p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr();
+            if l_marker_handler.handler(p_j2k, l_header_ptr, l_marker_size, p_manager) == 0 {
               event_msg!(
                 p_manager,
                 EVT_ERROR,
@@ -7543,7 +7524,7 @@ pub(crate) fn opj_j2k_decode_tile(
     }
     l_tcp = p_j2k.m_cp.tcps.as_mut_ptr().offset(p_tile_index as isize);
     if (*l_tcp).m_data.is_null() {
-      opj_j2k_tcp_destroy(l_tcp);
+      opj_j2k_tcp_destroy(&mut *l_tcp);
       return 0i32;
     }
     /* When using the opj_read_tile_header / opj_decode_tile_data API */
@@ -7573,7 +7554,7 @@ pub(crate) fn opj_j2k_decode_tile(
       p_manager,
     ) == 0
     {
-      opj_j2k_tcp_destroy(l_tcp);
+      opj_j2k_tcp_destroy(&mut *l_tcp);
       p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
       event_msg!(p_manager, EVT_ERROR, "Failed to decode.\n",);
       return 0i32;
@@ -7587,9 +7568,9 @@ pub(crate) fn opj_j2k_decode_tile(
       }
       /* To avoid to destroy the tcp which can be useful when we try to decode a tile decoded before (cf j2k_random_tile_access)
        * we destroy just the data which will be re-read in read_tile_header*/
-      /*opj_j2k_tcp_destroy(l_tcp);
+      /*opj_j2k_tcp_destroy(&mut *l_tcp);
       p_j2k->m_tcd->tcp = 0;*/
-      opj_j2k_tcp_data_destroy(l_tcp);
+      opj_j2k_tcp_data_destroy(&mut *l_tcp);
     }
     p_j2k.m_specific_param.m_decoder.m_can_decode = false;
     p_j2k.m_specific_param.m_decoder.m_state &= !(J2KState::DATA);
