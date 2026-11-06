@@ -1,5 +1,5 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt, PositionalArg};
-use openjp2::{detect_format_from_file, openjpeg::*, Codec, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, Codec, CoreImage, J2KFormat, Stream};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -171,7 +171,7 @@ fn decode(
   input_file: &PathBuf,
   area: Option<DecodeArea>,
   tile_info: Option<&mut TileInfo>,
-) -> Result<Box<opj_image>, String> {
+) -> Result<CoreImage, String> {
   if !quiet {
     match area {
       Some(area) => println!("Decoding {},{},{},{}", area.x0, area.y0, area.x1, area.y1),
@@ -221,7 +221,7 @@ fn decode_by_strip(
   input_file: &PathBuf,
   strip_height: u32,
   decode_area: Option<DecodeArea>,
-  full_image: Option<Box<opj_image>>,
+  full_image: Option<CoreImage>,
 ) -> Result<(), String> {
   if !quiet {
     println!("Decoding by strip with height {}", strip_height);
@@ -298,7 +298,7 @@ fn decode_by_strip(
   Ok(())
 }
 
-fn check_consistency(image: &opj_image, sub_image: &opj_image) -> bool {
+fn check_consistency(image: &CoreImage, sub_image: &CoreImage) -> bool {
   let image_comps = image.comps().expect("Failed to get image components");
   let sub_image_comps = sub_image
     .comps()

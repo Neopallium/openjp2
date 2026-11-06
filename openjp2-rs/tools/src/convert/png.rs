@@ -1,7 +1,7 @@
 use super::ImageError;
 use crate::convert::*;
 use crate::params::CompressionParameters;
-use openjp2::image::opj_image;
+use openjp2::CoreImage;
 use std::fs::File;
 use std::io::{self, Read, Seek};
 use std::path::Path;
@@ -9,7 +9,7 @@ use std::path::Path;
 pub fn load_png_image(
   path: &Path,
   params: &CompressionParameters,
-) -> Result<Box<opj_image>, ImageError> {
+) -> Result<CoreImage, ImageError> {
   let image = read_image(path)?;
   let mut img = convert_from_dynamic_image(image, params)?;
 
@@ -94,7 +94,7 @@ fn parse_png_header(path: &Path) -> Result<(u8, u8), ImageError> {
   Ok((bit_depth, color_type))
 }
 
-pub fn save_png_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+pub fn save_png_image(image: &mut CoreImage, path: &Path) -> Result<(), ImageError> {
   let prec = {
     let comps = image
       .comps_mut()
@@ -149,7 +149,7 @@ pub fn save_png_image(image: &mut opj_image, path: &Path) -> Result<(), ImageErr
 }
 
 #[cfg(feature = "libpng")]
-fn libpng_save(image: &mut opj_image, prec: u32, path: &Path) -> Result<(), ImageError> {
+fn libpng_save(image: &mut CoreImage, prec: u32, path: &Path) -> Result<(), ImageError> {
   use super::BitBuffer;
   use libpng_sys::ffi::*;
   use std::ffi::CString;
@@ -483,7 +483,7 @@ fn libpng_save(image: &mut opj_image, prec: u32, path: &Path) -> Result<(), Imag
 }
 
 #[cfg(feature = "lodepng")]
-fn lodepng_save(image: &mut opj_image, prec: u32, path: &Path) -> Result<(), ImageError> {
+fn lodepng_save(image: &mut CoreImage, prec: u32, path: &Path) -> Result<(), ImageError> {
   use lodepng::{ChunkPosition, ColorType, FilterStrategy, GreyAlpha};
   use rgb::{Rgb, Rgba};
 
@@ -668,7 +668,7 @@ fn lodepng_save(image: &mut opj_image, prec: u32, path: &Path) -> Result<(), Ima
 }
 
 #[cfg(not(any(feature = "testing", feature = "lodepng")))]
-fn image_crate_save(image: &mut opj_image, _prec: u32, path: &Path) -> Result<(), ImageError> {
+fn image_crate_save(image: &mut CoreImage, _prec: u32, path: &Path) -> Result<(), ImageError> {
   use image::codecs::png::{CompressionType, FilterType, PngEncoder};
 
   let dynamic_img = convert_to_dynamic_image(image)?;

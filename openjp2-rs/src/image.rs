@@ -513,19 +513,9 @@ impl opj_image {
     }
   }
 
-  pub fn comps_data_iter(&self) -> Option<impl Iterator<Item = ImageCompRef<'_>>> {
+  pub fn comps_data_iter(&self) -> Option<impl Iterator<Item = &[i32]>> {
     if let Some(comps) = self.comps() {
-      Some(comps.iter().filter_map(|comp| {
-        comp.data().map(|data| ImageCompRef {
-          comp,
-          adjust: if comp.sgnd != 0 {
-            1 << (comp.prec - 1)
-          } else {
-            0
-          },
-          data,
-        })
-      }))
+      Some(comps.iter().filter_map(|comp| comp.data()))
     } else {
       None
     }
@@ -738,7 +728,7 @@ impl opj_image {
 
 pub struct ImageCompRef<'a> {
   /// Component.
-  pub comp: &'a opj_image_comp,
+  pub comp: &'a CoreImageComp,
   /// Adjustment value to convert from signed to unsigned.
   pub adjust: i32,
   /// Component data.
@@ -894,41 +884,8 @@ pub(crate) fn opj_copy_image_header_from_core(p_image_src: &CoreImage, p_image_d
 
 /// Copy the header of a C-ABI image and its component headers into an owned
 /// core image (no data copied).
-pub(crate) fn opj_copy_image_header_to_core(p_image_src: &opj_image, p_image_dest: &mut CoreImage) {
-  p_image_dest.x0 = p_image_src.x0;
-  p_image_dest.y0 = p_image_src.y0;
-  p_image_dest.x1 = p_image_src.x1;
-  p_image_dest.y1 = p_image_src.y1;
-  p_image_dest.numcomps = p_image_src.numcomps;
-  p_image_dest.color_space = p_image_src.color_space;
-  p_image_dest.comps.clear();
-  if let Some(src) = p_image_src.comps() {
-    p_image_dest.comps.reserve(src.len());
-    for src in src {
-      p_image_dest.comps.push(CoreImageComp {
-        dx: src.dx,
-        dy: src.dy,
-        w: src.w,
-        h: src.h,
-        x0: src.x0,
-        y0: src.y0,
-        prec: src.prec,
-        bpp: src.bpp,
-        sgnd: src.sgnd,
-        resno_decoded: src.resno_decoded,
-        factor: src.factor,
-        alpha: src.alpha,
-        data: Vec::new(),
-      });
-    }
-  }
-  p_image_dest.icc_profile_buf.clear();
-  if !p_image_src.icc_profile_buf.is_null() {
-    p_image_dest.icc_profile_buf = unsafe {
-      core::slice::from_raw_parts(p_image_src.icc_profile_buf, p_image_src.icc_profile_len as usize)
-        .to_vec()
-    };
-  }
+pub(crate) fn opj_copy_image_header_to_core(p_image_src: &CoreImage, p_image_dest: &mut CoreImage) {
+  *p_image_dest = p_image_src.clone_header_only();
 }
 
 pub fn opj_image_tile_create(
@@ -955,7 +912,7 @@ pub fn opj_image_tile_create(
 /* ----------------------------------------------------------------------- */
 
 #[derive(Clone, Default)]
-pub(crate) struct CoreImageComp {
+pub struct CoreImageComp {
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
   pub w: OPJ_UINT32,
@@ -972,7 +929,7 @@ pub(crate) struct CoreImageComp {
 }
 
 #[derive(Clone, Default)]
-pub(crate) struct CoreImage {
+pub struct CoreImage {
   pub x0: OPJ_UINT32,
   pub y0: OPJ_UINT32,
   pub x1: OPJ_UINT32,
@@ -981,10 +938,268 @@ pub(crate) struct CoreImage {
   pub color_space: OPJ_COLOR_SPACE,
   pub comps: Vec<CoreImageComp>,
   pub icc_profile_buf: Vec<OPJ_BYTE>,
+  /// A non-empty profile buffer with this flag means the profile is CIELab
+  /// (mirrors the C ABI convention of icc_profile_len == 0).
+  pub icc_profile_is_cielab: bool,
+}
+
+impl CoreImageComp {
+  /// Data accessor kept for compatibility with the C-ABI image API.
+  pub fn data(&self) -> Option<&[i32]> {
+    Some(&self.data)
+  }
+
+  pub fn data_mut(&mut self) -> Option<&mut [i32]> {
+    Some(&mut self.data)
+  }
+
+  /// Allocate (zeroed) data for w * h samples.
+  pub fn alloc_data(&mut self) -> bool {
+    self.data = vec![0; (self.w as usize).wrapping_mul(self.h as usize)];
+    true
+  }
+
+  pub fn clear_data(&mut self) {
+    self.data.clear();
+  }
+
+  pub fn set_dims(&mut self, w: u32, h: u32) {
+    if self.w == w && self.h == h {
+      return;
+    }
+    self.w = w;
+    self.h = h;
+    self.data.clear();
+  }
+
+  pub fn set_data(&mut self, data: &[i32]) -> bool {
+    self.data = data.to_vec();
+    true
+  }
+
+  /// Copy component properties (not data).
+  pub fn copy_props(&mut self, other: &CoreImageComp) {
+    self.data.clear();
+    self.dx = other.dx;
+    self.dy = other.dy;
+    self.w = other.w;
+    self.h = other.h;
+    self.x0 = other.x0;
+    self.y0 = other.y0;
+    self.prec = other.prec;
+    self.bpp = other.bpp;
+    self.sgnd = other.sgnd;
+    self.resno_decoded = other.resno_decoded;
+    self.factor = other.factor;
+    self.alpha = other.alpha;
+  }
+
+  /// Copy properties and data from another core component.
+  pub fn copy(&mut self, other: &CoreImageComp) -> bool {
+    *self = other.clone();
+    true
+  }
+
+  /// Clip component samples to `precision` bits.
+  pub fn clip(&mut self, precision: u32) {
+    let signed = self.sgnd != 0;
+    let (min, max) = match (precision, signed) {
+      (0..=31, false) => (0, (1i64 << precision) - 1),
+      (0..=31, true) => {
+        let max = (1i64 << (precision - 1)) - 1;
+        let min = -max - 1;
+        (min, max)
+      }
+      _ => (0, i64::MAX),
+    };
+    for val in self.data.iter_mut() {
+      *val = (*val as i64).clamp(min, max) as i32;
+    }
+    self.prec = precision;
+  }
+
+  /// Scale component samples to `precision` bits.
+  pub fn scale(&mut self, precision: u32) {
+    if self.prec == precision {
+      return;
+    }
+    if self.prec < precision {
+      let signed = self.sgnd != 0;
+      let old_prec = self.prec;
+      if signed {
+        let new_max = 1i64 << (precision - 1);
+        let old_max = 1i64 << (old_prec - 1);
+        for val in self.data.iter_mut() {
+          *val = (((*val as i64) * new_max) / old_max) as i32;
+        }
+      } else {
+        let new_max = (1u64 << precision) - 1;
+        let old_max = (1u64 << old_prec) - 1;
+        for val in self.data.iter_mut() {
+          *val = (((*val as u64) * new_max) / old_max) as i32;
+        }
+      }
+      self.prec = precision;
+      return;
+    }
+    let sgnd = self.sgnd != 0;
+    let shift = self.prec - precision;
+    if sgnd {
+      for val in self.data.iter_mut() {
+        *val >>= shift;
+      }
+    } else {
+      for val in self.data.iter_mut() {
+        *val = ((*val as u32) >> shift) as i32;
+      }
+    }
+    self.prec = precision;
+  }
 }
 
 impl CoreImage {
+  pub fn new() -> CoreImage {
+    CoreImage::default()
+  }
+
+  /// Header-only image from component parameters (no data), like
+  /// opj_image_tile_create.
+  pub fn tile_create(
+    cmptparms: &[opj_image_comptparm],
+    clrspc: OPJ_COLOR_SPACE,
+  ) -> Option<CoreImage> {
+    let mut image = CoreImage::default();
+    image.color_space = clrspc;
+    if !image.alloc_comps(cmptparms.len() as u32) {
+      return None;
+    }
+    for (comp, params) in image.comps.iter_mut().zip(cmptparms) {
+      comp.dx = params.dx;
+      comp.dy = params.dy;
+      comp.w = params.w;
+      comp.h = params.h;
+      comp.x0 = params.x0;
+      comp.y0 = params.y0;
+      comp.prec = params.prec;
+      comp.sgnd = params.sgnd;
+    }
+    Some(image)
+  }
+
+  /// Compatibility accessors over the owned Vecs.
+  pub fn comps(&self) -> Option<&[CoreImageComp]> {
+    Some(&self.comps)
+  }
+
+  pub fn comps_mut(&mut self) -> Option<&mut [CoreImageComp]> {
+    Some(&mut self.comps)
+  }
+
+  pub fn comps_data_iter(&self) -> Option<impl Iterator<Item = ImageCompRef<'_>>> {
+    Some(self.comps.iter().map(|comp| ImageCompRef {
+      comp,
+      adjust: if comp.sgnd != 0 {
+        1 << (comp.prec - 1)
+      } else {
+        0
+      },
+      data: &comp.data,
+    }))
+  }
+
+  pub fn take_comps(&mut self) -> CoreImage {
+    let mut image = CoreImage::default();
+    image.x0 = self.x0;
+    image.y0 = self.y0;
+    image.x1 = self.x1;
+    image.y1 = self.y1;
+    image.numcomps = self.numcomps;
+    image.color_space = self.color_space;
+    image.comps = core::mem::take(&mut self.comps);
+    self.numcomps = 0;
+    image
+  }
+
+  pub fn set_rgb(&mut self, w: usize, h: usize, r: &[i32], g: &[i32], b: &[i32]) -> bool {
+    let len = w * h;
+    if r.len() != len || g.len() != len || b.len() != len || self.comps.len() < 3 {
+      return false;
+    }
+    let w = w as u32;
+    let h = h as u32;
+    self.comps[0].set_dims(w, h);
+    self.comps[1].set_dims(w, h);
+    self.comps[2].set_dims(w, h);
+    /* Update component. */
+    self.comps[1].dx = self.comps[0].dx;
+    self.comps[2].dx = self.comps[0].dx;
+    self.comps[1].dy = self.comps[0].dy;
+    self.comps[2].dy = self.comps[0].dy;
+    self.comps[0].set_data(&r);
+    self.comps[1].set_data(&g);
+    self.comps[2].set_data(&b);
+    self.color_space = OPJ_CLRSPC_SRGB;
+    true
+  }
+
+  pub fn comps_data_mut_iter(&mut self) -> Option<impl Iterator<Item = &mut [i32]>> {
+    Some(self.comps.iter_mut().map(|c| &mut c.data[..]))
+  }
+
+  pub fn take_icc_profile(&mut self) -> Option<ICCProfile> {
+    if self.icc_profile_buf.is_empty() && !self.icc_profile_is_cielab {
+      None
+    } else {
+      let buf = core::mem::take(&mut self.icc_profile_buf);
+      let profile = if self.icc_profile_is_cielab {
+        ICCProfile::new_cielab(&buf)
+      } else {
+        ICCProfile::new_icc(&buf)
+      };
+      self.icc_profile_is_cielab = false;
+      Some(profile)
+    }
+  }
+
+  pub fn clear_icc_profile(&mut self) {
+    self.icc_profile_buf.clear();
+    self.icc_profile_is_cielab = false;
+  }
+
   /// Deep copy of a C-ABI image (header, component properties, data and ICC profile).
+  /// Copy of the image header (component properties, empty data).
+  pub(crate) fn clone_header_only(&self) -> CoreImage {
+    CoreImage {
+      x0: self.x0,
+      y0: self.y0,
+      x1: self.x1,
+      y1: self.y1,
+      numcomps: self.numcomps,
+      color_space: self.color_space,
+      comps: self
+        .comps
+        .iter()
+        .map(|c| CoreImageComp {
+          dx: c.dx,
+          dy: c.dy,
+          w: c.w,
+          h: c.h,
+          x0: c.x0,
+          y0: c.y0,
+          prec: c.prec,
+          bpp: c.bpp,
+          sgnd: c.sgnd,
+          resno_decoded: c.resno_decoded,
+          factor: c.factor,
+          alpha: c.alpha,
+          data: Vec::new(),
+        })
+        .collect(),
+      icc_profile_buf: self.icc_profile_buf.clone(),
+      icc_profile_is_cielab: self.icc_profile_is_cielab,
+    }
+  }
+
   pub fn from_opj(image: &opj_image) -> Self {
     let mut core = Self {
       x0: image.x0,
@@ -995,6 +1210,7 @@ impl CoreImage {
       color_space: image.color_space,
       comps: Vec::with_capacity(image.numcomps as usize),
       icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
     };
     if let Some(comps) = image.comps() {
       for comp in comps {
@@ -1016,9 +1232,17 @@ impl CoreImage {
       }
     }
     if !image.icc_profile_buf.is_null() {
-      core.icc_profile_buf = unsafe {
-        core::slice::from_raw_parts(image.icc_profile_buf, image.icc_profile_len as usize).to_vec()
-      };
+      // A non-null buffer with a length of 0 is the C ABI's CIELab marker.
+      if image.icc_profile_len == 0 {
+        core.icc_profile_is_cielab = true;
+        core.icc_profile_buf = unsafe {
+          core::slice::from_raw_parts(image.icc_profile_buf, CIE_LAB_BYTE_SIZE).to_vec()
+        };
+      } else {
+        core.icc_profile_buf = unsafe {
+          core::slice::from_raw_parts(image.icc_profile_buf, image.icc_profile_len as usize).to_vec()
+        };
+      }
     }
     core
   }
@@ -1050,12 +1274,19 @@ impl CoreImage {
         dest.resno_decoded = src.resno_decoded;
         dest.factor = src.factor;
         dest.alpha = src.alpha;
-        if !src.data.is_empty() && !dest.set_data(&src.data) {
-          return image;
+        if !src.data.is_empty() {
+          // Drop any stale buffer the destination may hold (its size may not
+          // match the updated w/h) and allocate fresh from the new dims.
+          dest.clear_data();
+          if !dest.set_data(&src.data) {
+            return image;
+          }
         }
       }
     }
-    if !self.icc_profile_buf.is_empty() {
+    if self.icc_profile_is_cielab {
+      image.copy_icc_profile(ICCProfileRef::CIELab(&self.icc_profile_buf));
+    } else if !self.icc_profile_buf.is_empty() {
       image.copy_icc_profile(ICCProfileRef::ICC(&self.icc_profile_buf));
     }
     image

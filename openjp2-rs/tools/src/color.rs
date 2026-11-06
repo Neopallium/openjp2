@@ -2,7 +2,7 @@ use log;
 use std::cmp::{max, min};
 use std::convert::TryInto;
 
-use openjp2::openjpeg::*;
+use openjp2::{openjpeg::*, CoreImage, CoreImageComp};
 
 #[cfg(feature = "lcms2")]
 use lcms2::*;
@@ -36,7 +36,7 @@ fn sycc_to_rgb(offset: i32, upb: i32, y: i32, cb: i32, cr: i32) -> (i32, i32, i3
   (r, g, b)
 }
 
-fn sycc444_to_rgb(image: &mut opj_image_t) {
+fn sycc444_to_rgb(image: &mut CoreImage) {
   let (maxw, maxh, prec) = image.comp0_dims_prec();
   let comps = match image.comps_mut() {
     Some(c) => c,
@@ -71,7 +71,7 @@ fn sycc444_to_rgb(image: &mut opj_image_t) {
   image.set_rgb(maxw, maxh, &r, &g, &b);
 }
 
-fn sycc422_to_rgb(image: &mut opj_image_t) {
+fn sycc422_to_rgb(image: &mut CoreImage) {
   let (maxw, maxh, prec) = image.comp0_dims_prec();
 
   let comps = match image.comps() {
@@ -156,7 +156,7 @@ fn sycc422_to_rgb(image: &mut opj_image_t) {
   image.set_rgb(maxw, maxh, &r, &g, &b);
 }
 
-fn sycc420_to_rgb(image: &mut opj_image_t) {
+fn sycc420_to_rgb(image: &mut CoreImage) {
   let (maxw, maxh, prec) = image.comp0_dims_prec();
 
   let comps = match image.comps() {
@@ -327,7 +327,7 @@ fn sycc420_to_rgb(image: &mut opj_image_t) {
   image.set_rgb(maxw, maxh, &r, &g, &b);
 }
 
-pub fn color_sycc_to_rgb(image: &mut opj_image_t) {
+pub fn color_sycc_to_rgb(image: &mut CoreImage) {
   let comps = match image.comps() {
     Some(c) => c,
     None => return,
@@ -378,7 +378,7 @@ pub fn color_sycc_to_rgb(image: &mut opj_image_t) {
 }
 
 #[cfg(feature = "lcms2")]
-pub fn color_apply_icc_profile(image: &mut opj_image_t, icc_profile: &[u8]) {
+pub fn color_apply_icc_profile(image: &mut CoreImage, icc_profile: &[u8]) {
   let in_profile = match Profile::new_icc(icc_profile) {
     Ok(p) => p,
     Err(e) => {
@@ -625,7 +625,7 @@ pub fn color_apply_icc_profile(image: &mut opj_image_t, icc_profile: &[u8]) {
 }
 
 #[cfg(feature = "lcms2")]
-pub fn color_cielab_to_rgb(image: &mut opj_image_t, cielab_data: &[u8]) {
+pub fn color_cielab_to_rgb(image: &mut CoreImage, cielab_data: &[u8]) {
   // Check dimensions match
   if !image.comps_same_dims() {
     log::error!("color_cielab_to_rgb: components are not all of the same dimension");
@@ -777,9 +777,9 @@ pub fn color_cielab_to_rgb(image: &mut opj_image_t, cielab_data: &[u8]) {
   );
 }
 
-pub fn color_cmyk_to_rgb(image: &mut opj_image_t) {
+pub fn color_cmyk_to_rgb(image: &mut CoreImage) {
   let mut comps = match image.comps_mut() {
-    Some(&mut [c, m, y, k]) => (c, m, y, k),
+    Some([c, m, y, k]) => (c, m, y, k),
     _ => return,
   };
 
@@ -839,9 +839,9 @@ pub fn color_cmyk_to_rgb(image: &mut opj_image_t) {
   image.color_space = OPJ_CLRSPC_SRGB;
 }
 
-pub fn color_esycc_to_rgb(image: &mut opj_image_t) {
+pub fn color_esycc_to_rgb(image: &mut CoreImage) {
   let mut comps = match image.comps_mut() {
-    Some(&mut [y, cb, cr]) => (y, cb, cr),
+    Some([y, cb, cr]) => (y, cb, cr),
     _ => return,
   };
 

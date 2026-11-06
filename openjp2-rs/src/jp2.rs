@@ -4,6 +4,7 @@ use std::io::{Read, Write};
 
 use super::consts::*;
 use super::event::*;
+use super::image::*;
 use super::j2k::*;
 use super::openjpeg::*;
 use super::stream::*;
@@ -384,7 +385,7 @@ fn opj_jp2_write_colr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
 }
 
 fn opj_jp2_check_color(
-  image: &mut opj_image_t,
+  image: &mut CoreImage,
   color: &mut opj_jp2_color,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -559,20 +560,15 @@ Apply collected palette data
 @return true in case of success
 */
 fn opj_jp2_apply_pclr(
-  image: &mut opj_image_t,
+  image: &mut CoreImage,
   pclr: &opj_jp2_pclr,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let nr_channels = pclr.nr_channels as usize;
-  let comps = if let Some(comps) = image.comps() {
-    comps
-  } else {
-    event_msg!(p_manager, EVT_ERROR, "No components in image.\n",);
-    return 0;
-  };
+  let comps = &image.comps;
   for (i, cmap) in pclr.cmap.iter().enumerate() {
     // Ensure that the component data is not null.
-    if comps[cmap.cmp as usize].data.is_null() {
+    if comps[cmap.cmp as usize].data.is_empty() {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -589,8 +585,7 @@ fn opj_jp2_apply_pclr(
   }
 
   // Take the components out of the image.
-  let old = image.take_comps();
-  let old_comps = old.comps().expect("Just taken");
+  let old_comps = core::mem::take(&mut image.comps);
 
   // Allocate new components.
   if !image.alloc_comps(nr_channels as u32) {
@@ -601,7 +596,7 @@ fn opj_jp2_apply_pclr(
     );
     return 0i32;
   }
-  let new_comps = image.comps_mut().expect("Just allocated");
+  let new_comps = &mut image.comps;
 
   let top_k = pclr.nr_entries as i32 - 1;
   for ((cmap, channel), new_comp) in pclr
@@ -618,10 +613,8 @@ fn opj_jp2_apply_pclr(
     new_comp.sgnd = channel.sign as OPJ_UINT32;
 
     // Palette mapping:
-    let src = old_comp.data().expect("Source data shouldn't be null"); // verified above
-    let dst = new_comp
-      .data_mut()
-      .expect("Destination data shouldn't be null");
+    let src = &old_comp.data; // verified above
+    let dst = &mut new_comp.data;
     let max = dst.len();
 
     // Direct use:
@@ -772,7 +765,7 @@ fn opj_jp2_read_cmap(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
 }
 
 fn opj_jp2_apply_cdef(
-  image: &mut opj_image_t,
+  image: &mut CoreImage,
   color: &mut opj_jp2_color,
   manager: &mut opj_event_mgr,
 ) {
@@ -782,11 +775,7 @@ fn opj_jp2_apply_cdef(
     return;
   };
   let n = cdef.info.len();
-  let comps = if let Some(comps) = image.comps_mut() {
-    comps
-  } else {
-    return;
-  };
+  let comps = &mut image.comps;
   let numcomps = comps.len() as u32;
   for i in 0..n {
     let info = cdef.info[i];
@@ -814,13 +803,9 @@ fn opj_jp2_apply_cdef(
           numcomps,
         );
       } else {
-        let mut cn_comp = comps[cn as usize];
         /* Swap only if color channel */
         if cn != acn && info.typ == 0 {
-          let acn_comp = &mut comps[acn as usize];
-          let saved = cn_comp;
-          cn_comp = *acn_comp;
-          *acn_comp = saved;
+          comps.swap(cn as usize, acn as usize);
           /* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
           for j in i..n {
             let info = &mut cdef.info[j];
@@ -832,8 +817,7 @@ fn opj_jp2_apply_cdef(
             /* asoc is related to color index. Do not update. */
           }
         }
-        cn_comp.alpha = info.typ;
-        comps[cn as usize] = cn_comp;
+        comps[cn as usize].alpha = info.typ;
       }
     }
   }
@@ -1015,7 +999,7 @@ fn opj_jp2_read_colr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
 
 pub(crate) fn opj_jp2_apply_color_postprocessing(
   jp2: &mut opj_jp2,
-  p_image: &mut opj_image,
+  p_image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   if jp2.j2k.m_specific_param.m_decoder.m_numcomps_to_decode != 0 {
@@ -1046,7 +1030,7 @@ pub(crate) fn opj_jp2_apply_color_postprocessing(
 pub(crate) fn opj_jp2_decode(
   jp2: &mut opj_jp2,
   p_stream: &mut Stream,
-  p_image: &mut opj_image,
+  p_image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* J2K decoding */
@@ -1261,7 +1245,7 @@ pub(crate) fn opj_jp2_set_threads(mut jp2: &mut opj_jp2, mut num_threads: OPJ_UI
 pub(crate) fn opj_jp2_setup_encoder(
   jp2: &mut opj_jp2,
   parameters: &mut opj_cparameters_t,
-  image: &mut opj_image_t,
+  image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* setup the J2K codec */
@@ -1290,7 +1274,7 @@ pub(crate) fn opj_jp2_setup_encoder(
   jp2.cl.push(Jp2BoxType::JP2.to_u32().unwrap());
 
   /* Image Header box */
-  let comps = image.comps().unwrap();
+  let comps = &image.comps;
   jp2.comps = Vec::with_capacity(comps.len());
   jp2.comps.resize(comps.len(), opj_jp2_comps::default());
 
@@ -1323,7 +1307,7 @@ pub(crate) fn opj_jp2_setup_encoder(
   }
 
   /* Colour Specification box */
-  if image.icc_profile_len != 0 {
+  if !image.icc_profile_buf.is_empty() {
     jp2.meth = 2 as OPJ_UINT32;
     jp2.enumcs = 0 as OPJ_UINT32
   } else {
@@ -1697,7 +1681,7 @@ fn opj_jp2_exec(
 pub(crate) fn opj_jp2_start_compress(
   jp2: &mut opj_jp2,
   stream: &mut Stream,
-  p_image: &mut opj_image,
+  p_image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut validation_list = opj_jp2_proc_list_t::new();
@@ -1916,47 +1900,39 @@ fn opj_jp2_read_jp2h(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
 pub(crate) fn opj_jp2_read_header(
   p_stream: &mut Stream,
   jp2: &mut opj_jp2,
-  p_image: *mut *mut opj_image_t,
   p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
+) -> Option<CoreImage> {
   let mut validation_list = opj_jp2_proc_list_t::new();
   let mut procedure_list = opj_jp2_proc_list_t::new();
 
   /* customization of the validation */
   if opj_jp2_setup_decoding_validation(jp2, &mut validation_list, p_manager) == 0 {
-    return 0i32;
+    return None;
   }
   /* customization of the encoding */
   if opj_jp2_setup_header_reading(jp2, &mut procedure_list, p_manager) == 0 {
-    return 0i32;
+    return None;
   }
   /* validation of the parameters codec */
   if opj_jp2_exec(jp2, &mut validation_list, p_stream, p_manager) == 0 {
-    return 0i32;
+    return None;
   }
   /* read header */
   if opj_jp2_exec(jp2, &mut procedure_list, p_stream, p_manager) == 0 {
-    return 0i32;
+    return None;
   }
   if jp2.has_jp2h as core::ffi::c_int == 0i32 {
     event_msg!(p_manager, EVT_ERROR, "JP2H box missing. Required.\n",);
-    return 0i32;
+    return None;
   }
   if jp2.has_ihdr as core::ffi::c_int == 0i32 {
     event_msg!(p_manager, EVT_ERROR, "IHDR box_missing. Required.\n",);
-    return 0i32;
+    return None;
   }
 
-  let ret = opj_j2k_read_header(p_stream, &mut jp2.j2k, p_image, p_manager);
+  let mut image = opj_j2k_read_header(p_stream, &mut jp2.j2k, p_manager)?;
 
-  let image = unsafe {
-    if !p_image.is_null() && !(*p_image).is_null() {
-      Some(&mut *(*p_image))
-    } else {
-      None
-    }
-  };
-  if let Some(image) = image {
+  {
     /* Set Image Color Space */
     if jp2.enumcs == 16u32 {
       image.color_space = OPJ_CLRSPC_SRGB
@@ -1972,11 +1948,17 @@ pub(crate) fn opj_jp2_read_header(
       image.color_space = OPJ_CLRSPC_UNKNOWN
     }
 
-    if let Some(icc_profile) = jp2.color.icc_profile() {
-      image.copy_icc_profile(icc_profile);
+  }
+  if let Some(icc_profile) = jp2.color.icc_profile() {
+    match icc_profile {
+      ICCProfileRef::ICC(src) => image.icc_profile_buf = src.to_vec(),
+      ICCProfileRef::CIELab(src) => {
+        image.icc_profile_buf = src.to_vec();
+        image.icc_profile_is_cielab = true;
+      }
     }
   }
-  ret
+  Some(image)
 }
 
 /* *
@@ -2078,7 +2060,7 @@ pub(crate) fn opj_jp2_set_decoded_components(
 
 pub(crate) fn opj_jp2_set_decode_area(
   p_jp2: &mut opj_jp2,
-  p_image: &mut opj_image,
+  p_image: &mut CoreImage,
   p_start_x: OPJ_INT32,
   p_start_y: OPJ_INT32,
   p_end_x: OPJ_INT32,
@@ -2099,7 +2081,7 @@ pub(crate) fn opj_jp2_set_decode_area(
 pub(crate) fn opj_jp2_get_tile(
   p_jp2: &mut opj_jp2,
   p_stream: &mut Stream,
-  p_image: &mut opj_image,
+  p_image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
   tile_index: OPJ_UINT32,
 ) -> OPJ_BOOL {

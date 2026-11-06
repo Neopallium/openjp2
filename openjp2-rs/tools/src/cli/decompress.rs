@@ -1,5 +1,5 @@
 use crate::{color::*, convert::*, params::*};
-use openjp2::{detect_format_from_file, openjpeg::*, Codec, ICCProfile, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, Codec, CoreImage, ICCProfile, J2KFormat, Stream};
 use std::{env, path::Path};
 
 fn decompress_image<P: AsRef<Path>>(
@@ -231,7 +231,7 @@ fn decompress_image<P: AsRef<Path>>(
   Ok(())
 }
 
-fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>, ImageError> {
+fn upsample_image_components(orig: &CoreImage) -> Result<Option<CoreImage>, ImageError> {
   let mut upsample_needed = false;
 
   // Check if upsampling is needed
@@ -247,7 +247,7 @@ fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>,
   }
 
   // Create new image
-  let mut image = opj_image::new();
+  let mut image = CoreImage::new();
   image.x0 = orig.x0;
   image.y0 = orig.y0;
   image.x1 = orig.x1;
@@ -419,7 +419,7 @@ fn upsample_image_components(orig: &opj_image) -> Result<Option<Box<opj_image>>,
   Ok(Some(image))
 }
 
-fn convert_gray_to_rgb(orig: &opj_image) -> Result<Option<Box<opj_image>>, ImageError> {
+fn convert_gray_to_rgb(orig: &CoreImage) -> Result<Option<CoreImage>, ImageError> {
   // Check if image needs to be converted.
   match orig.color_space {
     OPJ_CLRSPC_SRGB => {
@@ -434,7 +434,7 @@ fn convert_gray_to_rgb(orig: &opj_image) -> Result<Option<Box<opj_image>>, Image
   }
 
   // Create new image.
-  let mut image = opj_image::new();
+  let mut image = CoreImage::new();
   image.x0 = orig.x0;
   image.y0 = orig.y0;
   image.x1 = orig.x1;

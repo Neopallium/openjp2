@@ -1,12 +1,12 @@
 use super::*;
 use crate::params::CompressionParameters;
-use openjp2::image::opj_image;
+use openjp2::CoreImage;
 use std::path::Path;
 
 pub fn load_tiff_image(
   path: &Path,
   params: &CompressionParameters,
-) -> Result<Box<opj_image>, ImageError> {
+) -> Result<CoreImage, ImageError> {
   let tif_image = read_image(path)?;
   let mut image = convert_from_dynamic_image(tif_image, params)?;
   let scaled = if params.is_cinema() {
@@ -41,7 +41,7 @@ pub fn load_tiff_image(
   Ok(image)
 }
 
-pub fn save_tiff_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+pub fn save_tiff_image(image: &mut CoreImage, path: &Path) -> Result<(), ImageError> {
   {
     let comps = image
       .comps_mut()

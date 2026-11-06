@@ -1,7 +1,7 @@
 use super::convert_from_dynamic_image;
 use super::ImageError;
 use crate::params::CompressionParameters;
-use openjp2::image::opj_image;
+use openjp2::CoreImage;
 use openjp2::COLOR_SPACE::OPJ_CLRSPC_SRGB;
 use std::convert::TryInto;
 use std::fs::File;
@@ -11,7 +11,7 @@ use std::path::Path;
 pub fn load_bmp_image(
   path: &Path,
   params: &CompressionParameters,
-) -> Result<Box<opj_image>, ImageError> {
+) -> Result<CoreImage, ImageError> {
   // Read BMP file into memory
   let mut f = File::open(path)?;
   let mut buf = Vec::new();
@@ -150,7 +150,7 @@ impl BmpInfo {
     }
   }
 
-  pub fn read_image(&self, data: &[u8]) -> Result<Box<opj_image>, ImageError> {
+  pub fn read_image(&self, data: &[u8]) -> Result<CoreImage, ImageError> {
     let len = self.height * self.stride;
     let src = match data.get(self.data_offset..self.data_offset + len) {
       Some(data) => data,
@@ -161,7 +161,7 @@ impl BmpInfo {
       }
     };
 
-    let mut image = opj_image::new();
+    let mut image = CoreImage::new();
     image.color_space = OPJ_CLRSPC_SRGB;
     image.x0 = 0;
     image.y0 = 0;

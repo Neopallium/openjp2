@@ -21,14 +21,14 @@ pub use libtiff::*;
 use crate::params::CompressionParameters;
 use crate::params::ImageFileFormat;
 use image::{self, DynamicImage};
-use openjp2::image::opj_image;
+use openjp2::CoreImage;
 use std::path::Path;
 
 // Replace existing load_image function
 pub fn load_image(
   path: &Path,
   params: &CompressionParameters,
-) -> Result<Box<opj_image>, ImageError> {
+) -> Result<CoreImage, ImageError> {
   match params.decode_format {
     Some(ImageFileFormat::RAW) => load_raw_image(path, params, true),
     Some(ImageFileFormat::RAWL) => load_raw_image(path, params, false),
@@ -47,7 +47,7 @@ pub fn read_image(path: &Path) -> Result<DynamicImage, ImageError> {
   Ok(image::open(path).map_err(|e| ImageError::ReadError(e.to_string()))?)
 }
 
-pub fn save_image(image: &mut opj_image, path: &Path, split_comps: bool) -> Result<(), ImageError> {
+pub fn save_image(image: &mut CoreImage, path: &Path, split_comps: bool) -> Result<(), ImageError> {
   let format = ImageFileFormat::get_file_format(path)
     .map_err(|_| ImageError::InvalidFormat("Unknown file format".into()))?;
 
@@ -70,7 +70,7 @@ pub fn save_image(image: &mut opj_image, path: &Path, split_comps: bool) -> Resu
 }
 
 pub fn save_pxm_image(
-  image: &mut opj_image,
+  image: &mut CoreImage,
   path: &Path,
   split_comps: bool,
 ) -> Result<(), ImageError> {
@@ -82,7 +82,7 @@ pub fn save_pxm_image(
   }
 }
 
-pub fn save_pxm_image_single(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+pub fn save_pxm_image_single(image: &mut CoreImage, path: &Path) -> Result<(), ImageError> {
   let dynamic_img = convert_to_dynamic_image(image)?;
 
   // Save the image based on file extension
@@ -91,7 +91,7 @@ pub fn save_pxm_image_single(image: &mut opj_image, path: &Path) -> Result<(), I
     .map_err(|e| ImageError::EncodeError(e.to_string()))
 }
 
-pub fn save_pxm_image_multi(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+pub fn save_pxm_image_multi(image: &mut CoreImage, path: &Path) -> Result<(), ImageError> {
   let Some(comps) = image.comps() else {
     return Err(ImageError::InvalidFormat("No components found".into()));
   };

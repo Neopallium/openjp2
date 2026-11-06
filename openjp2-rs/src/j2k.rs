@@ -4886,10 +4886,10 @@ fn opj_j2k_initialise_4K_poc(POC: &mut [opj_poc_t], numres: core::ffi::c_int) ->
 }
 fn opj_j2k_set_cinema_parameters(
   mut parameters: &mut opj_cparameters_t,
-  image: &mut opj_image,
+  image: &mut CoreImage,
   mut p_manager: &mut opj_event_mgr,
 ) {
-  let comps = image.comps().expect("comps");
+  let comps = &image.comps;
   /* Configure cinema parameters */
   let mut i: core::ffi::c_int = 0;
     /* No tiling */
@@ -5012,12 +5012,12 @@ fn opj_j2k_set_cinema_parameters(
         .wrapping_mul(comps[0].dy) as OPJ_FLOAT32;
 }
 fn opj_j2k_is_cinema_compliant(
-  mut image: &mut opj_image,
+  mut image: &mut CoreImage,
   mut rsiz: OPJ_UINT16,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
-  let comps = image.comps().expect("comps");
+  let comps = &image.comps;
     /* Number of components */
     if image.numcomps != 3u32 {
       event_msg!(p_manager, EVT_WARNING,
@@ -5076,7 +5076,7 @@ fn opj_j2k_is_cinema_compliant(
 }
 fn opj_j2k_get_imf_max_NL(
   mut parameters: &mut opj_cparameters_t,
-  mut image: &mut opj_image,
+  mut image: &mut CoreImage,
 ) -> core::ffi::c_int {
   /* Decomposition levels */
   let rsiz = parameters.rsiz;
@@ -5123,7 +5123,7 @@ fn opj_j2k_get_imf_max_NL(
 }
 fn opj_j2k_set_imf_parameters(
   mut parameters: &mut opj_cparameters_t,
-  mut image: &mut opj_image,
+  mut image: &mut CoreImage,
   mut _p_manager: &mut opj_event_mgr,
 ) {
   let rsiz = parameters.rsiz;
@@ -5202,11 +5202,11 @@ static TAB_MAX_SUB_LEVEL_FROM_MAIN_LEVEL: [OPJ_UINT16; 12] = [
 ];
 fn opj_j2k_is_imf_compliant(
   mut parameters: &mut opj_cparameters_t,
-  mut image: &mut opj_image,
+  mut image: &mut CoreImage,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut i: OPJ_UINT32 = 0;
-  let comps = image.comps().expect("comps");
+  let comps = &image.comps;
     let rsiz = parameters.rsiz;
     let profile = (rsiz as core::ffi::c_int & 0xff00i32) as OPJ_UINT16;
     let mainlevel = (rsiz as core::ffi::c_int & 0xfi32) as OPJ_UINT16;
@@ -5561,7 +5561,7 @@ fn opj_j2k_is_imf_compliant(
 pub(crate) fn opj_j2k_setup_encoder(
   p_j2k: &mut opj_j2k,
   parameters: &mut opj_cparameters_t,
-  image: &mut opj_image,
+  image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
     let mut i: OPJ_UINT32 = 0;
@@ -5812,14 +5812,14 @@ pub(crate) fn opj_j2k_setup_encoder(
       {
         let mut temp_size: OPJ_FLOAT32 = 0.;
         temp_size = (image.numcomps as core::ffi::c_double
-          * image.comps_mut().expect("comps")[0].w as core::ffi::c_double
-          * image.comps_mut().expect("comps")[0].h as core::ffi::c_double
-          * image.comps_mut().expect("comps")[0].prec as core::ffi::c_double
+          * image.comps[0].w as core::ffi::c_double
+          * image.comps[0].h as core::ffi::c_double
+          * image.comps[0].prec as core::ffi::c_double
           / (parameters.tcp_rates[(parameters.tcp_numlayers - 1i32) as usize]
             as core::ffi::c_double
             * 8 as core::ffi::c_double
-            * image.comps_mut().expect("comps")[0].dx as core::ffi::c_double
-            * image.comps_mut().expect("comps")[0].dy as core::ffi::c_double))
+            * image.comps[0].dx as core::ffi::c_double
+            * image.comps[0].dy as core::ffi::c_double))
           as OPJ_FLOAT32;
         if temp_size > 2147483647 as core::ffi::c_float {
           parameters.max_cs_size = 2147483647i32
@@ -5840,23 +5840,23 @@ pub(crate) fn opj_j2k_setup_encoder(
       {
         parameters.tcp_rates[0_usize] = image
           .numcomps
-          .wrapping_mul(image.comps_mut().expect("comps")[0].w)
-          .wrapping_mul(image.comps_mut().expect("comps")[0].h)
-          .wrapping_mul(image.comps_mut().expect("comps")[0].prec)
+          .wrapping_mul(image.comps[0].w)
+          .wrapping_mul(image.comps[0].h)
+          .wrapping_mul(image.comps[0].prec)
           as OPJ_FLOAT32
           / (parameters.max_cs_size as OPJ_UINT32)
             .wrapping_mul(8u32)
-            .wrapping_mul(image.comps_mut().expect("comps")[0].dx)
-            .wrapping_mul(image.comps_mut().expect("comps")[0].dy) as OPJ_FLOAT32
+            .wrapping_mul(image.comps[0].dx)
+            .wrapping_mul(image.comps[0].dy) as OPJ_FLOAT32
       }
       temp_rate = (image.numcomps as core::ffi::c_double
-        * image.comps_mut().expect("comps")[0].w as core::ffi::c_double
-        * image.comps_mut().expect("comps")[0].h as core::ffi::c_double
-        * image.comps_mut().expect("comps")[0].prec as core::ffi::c_double
+        * image.comps[0].w as core::ffi::c_double
+        * image.comps[0].h as core::ffi::c_double
+        * image.comps[0].prec as core::ffi::c_double
         / (parameters.max_cs_size as core::ffi::c_double
           * 8 as core::ffi::c_double
-          * image.comps_mut().expect("comps")[0].dx as core::ffi::c_double
-          * image.comps_mut().expect("comps")[0].dy as core::ffi::c_double)) as OPJ_FLOAT32;
+          * image.comps[0].dx as core::ffi::c_double
+          * image.comps[0].dy as core::ffi::c_double)) as OPJ_FLOAT32;
       i = 0 as OPJ_UINT32;
       while i < parameters.tcp_numlayers as OPJ_UINT32 {
         if parameters.tcp_rates[i as usize] < temp_rate {
@@ -6160,10 +6160,10 @@ pub(crate) fn opj_j2k_setup_encoder(
       } else {
         if tcp.mct == 1u32 && image.numcomps >= 3u32 {
           /* RGB->YCC MCT is enabled */
-          if image.comps_mut().expect("comps")[0].dx != image.comps_mut().expect("comps")[1].dx
-            || image.comps_mut().expect("comps")[0].dx != image.comps_mut().expect("comps")[2].dx
-            || image.comps_mut().expect("comps")[0].dy != image.comps_mut().expect("comps")[1].dy
-            || image.comps_mut().expect("comps")[0].dy != image.comps_mut().expect("comps")[2].dy
+          if image.comps[0].dx != image.comps[1].dx
+            || image.comps[0].dx != image.comps[2].dx
+            || image.comps[0].dy != image.comps[1].dy
+            || image.comps[0].dy != image.comps[2].dy
           {
             event_msg!(
               p_manager,
@@ -6175,7 +6175,7 @@ pub(crate) fn opj_j2k_setup_encoder(
         }
         i = 0 as OPJ_UINT32;
         while i < image.numcomps {
-          let comp = &image.comps_mut().expect("comps")[i as usize];
+          let comp = &image.comps[i as usize];
           if comp.sgnd == 0 {
             tcp.tccps[i as usize].m_dc_level_shift = (1i32) << comp.prec.wrapping_sub(1u32)
           }
@@ -6258,7 +6258,7 @@ pub(crate) fn opj_j2k_setup_encoder(
             j += 1;
           }
         }
-        opj_dwt_calc_explicit_stepsizes(tccp_1, image.comps_mut().expect("comps")[i as usize].prec);
+        opj_dwt_calc_explicit_stepsizes(tccp_1, image.comps[i as usize].prec);
         i += 1;
       }
       tileno += 1;
@@ -6333,55 +6333,50 @@ pub(crate) fn opj_j2k_end_decompress(
 }
 
 pub(crate) fn opj_j2k_read_header(
-  mut p_stream: &mut Stream,
-  mut p_j2k: &mut opj_j2k,
-  mut p_image: *mut *mut opj_image_t,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
+  p_stream: &mut Stream,
+  p_j2k: &mut opj_j2k,
+  p_manager: &mut opj_event_mgr,
+) -> Option<CoreImage> {
   let mut validation_list = opj_j2k_proc_list_t::new();
   let mut procedure_list = opj_j2k_proc_list_t::new();
-  unsafe {
-    /* preconditions */
+  /* preconditions */
 
-    /* create an empty image header */
-    p_j2k.m_private_image = Some(Box::new(CoreImage::default()));
-    /* customization of the validation */
-    if opj_j2k_setup_decoding_validation(p_j2k, &mut validation_list, p_manager) == 0 {
-      p_j2k.m_private_image = None;
-      return 0i32;
-    }
-    /* validation of the parameters codec */
-    if opj_j2k_exec(p_j2k, &mut validation_list, p_stream, p_manager) == 0 {
-      p_j2k.m_private_image = None;
-      return 0i32;
-    }
-    /* customization of the encoding */
-    if opj_j2k_setup_header_reading(p_j2k, &mut procedure_list, p_manager) == 0 {
-      p_j2k.m_private_image = None;
-      return 0i32;
-    }
-    /* read header */
-    if opj_j2k_exec(p_j2k, &mut procedure_list, p_stream, p_manager) == 0 {
-      p_j2k.m_private_image = None;
-      return 0i32;
-    }
-    *p_image = opj_image_create0();
-    if (*p_image).is_null() {
-      return 0i32;
-    }
-    /* Copy codestream image information to the output image */
-    opj_copy_image_header_from_core(
-      p_j2k.m_private_image.as_deref().expect("m_private_image"),
-      unsafe { &mut **p_image },
-    );
-    /*Allocate and initialize some elements of codestrem index*/
-    if opj_j2k_allocate_tile_element_cstr_index(p_j2k) == 0 {
-      opj_image_destroy(*p_image);
-      *p_image = core::ptr::null_mut::<opj_image_t>();
-      return 0i32;
-    }
-    1i32
+  /* create an empty image header */
+  p_j2k.m_private_image = Some(Box::new(CoreImage::default()));
+  /* customization of the validation */
+  if opj_j2k_setup_decoding_validation(p_j2k, &mut validation_list, p_manager) == 0 {
+    p_j2k.m_private_image = None;
+    return None;
   }
+  /* validation of the parameters codec */
+  if opj_j2k_exec(p_j2k, &mut validation_list, p_stream, p_manager) == 0 {
+    p_j2k.m_private_image = None;
+    return None;
+  }
+  /* customization of the encoding */
+  if opj_j2k_setup_header_reading(p_j2k, &mut procedure_list, p_manager) == 0 {
+    p_j2k.m_private_image = None;
+    return None;
+  }
+  /* read header */
+  if opj_j2k_exec(p_j2k, &mut procedure_list, p_stream, p_manager) == 0 {
+    p_j2k.m_private_image = None;
+    return None;
+  }
+  /*Allocate and initialize some elements of codestream index*/
+  if opj_j2k_allocate_tile_element_cstr_index(p_j2k) == 0 {
+    p_j2k.m_private_image = None;
+    return None;
+  }
+  /* The caller receives a header-only copy (component data empty), like the
+  C opj_read_header image; the codec keeps its own copy. */
+  Some(
+    p_j2k
+      .m_private_image
+      .as_deref()
+      .expect("m_private_image")
+      .clone_header_only(),
+  )
 }
 fn opj_j2k_setup_header_reading(
   _p_j2k: &mut opj_j2k,
@@ -6449,7 +6444,7 @@ fn opj_j2k_mct_validation(
 
 pub(crate) fn opj_j2k_setup_mct_encoding(
   p_tcp: &mut opj_tcp_t,
-  p_image: &mut opj_image,
+  p_image: &mut CoreImage,
 ) -> OPJ_BOOL {
     let mut l_indix = 1 as OPJ_UINT32;
     /* preconditions */
@@ -7680,7 +7675,7 @@ fn opj_j2k_update_image_data(
   1i32
 }
 fn opj_j2k_update_image_dimensions(
-  p_image: &mut opj_image,
+  p_image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut it_comp: OPJ_UINT32 = 0;
@@ -7707,7 +7702,7 @@ fn opj_j2k_update_image_dimensions(
       return 0i32;
     }
 
-    let comps = p_image.comps_mut().expect("comps");
+    let comps = &mut p_image.comps;
     let l_img_comp = &mut comps[it_comp as usize];
     l_img_comp.x0 = opj_uint_ceildiv(img_x0, l_img_comp.dx);
     l_img_comp.y0 = opj_uint_ceildiv(img_y0, l_img_comp.dy);
@@ -7782,7 +7777,7 @@ pub(crate) fn opj_j2k_set_decoded_components(
 
 pub(crate) fn opj_j2k_set_decode_area(
   p_j2k: &mut opj_j2k,
-  p_image: &mut opj_image,
+  p_image: &mut CoreImage,
   p_start_x: OPJ_INT32,
   p_start_y: OPJ_INT32,
   p_end_x: OPJ_INT32,
@@ -7811,7 +7806,7 @@ pub(crate) fn opj_j2k_set_decode_area(
     /* of m_reduce */
     it_comp = 0 as OPJ_UINT32;
     while it_comp < p_image.numcomps {
-      p_image.comps_mut().expect("comps")[it_comp as usize].factor = p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
+      p_image.comps[it_comp as usize].factor = p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
       it_comp += 1;
     }
     if p_start_x == 0 && p_start_y == 0 && p_end_x == 0 && p_end_y == 0 {
@@ -9183,43 +9178,36 @@ fn opj_j2k_setup_decoding_tile(
 
 fn opj_j2k_move_data_from_codec_to_output_image(
   p_j2k: &mut opj_j2k,
-  p_image: &mut opj_image,
+  p_image: &mut CoreImage,
 ) -> OPJ_BOOL {
-  /* Move data and copy one information from codec to output image. This is the C-ABI
-   * boundary: the core image's component data moves into the caller's opj_image buffers. */
+  /* Move data and copy one information from codec to output image. */
   let numcomps_to_decode = p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode;
   let out_image = p_j2k.m_output_image.as_mut().expect("m_output_image");
   if numcomps_to_decode > 0u32 {
-    if !p_image.alloc_comps(numcomps_to_decode) {
-      p_j2k.m_private_image = None;
-      return 0i32;
-    }
-    let comps = p_image.comps_mut().expect("We just allocated them");
-    for (compno, comp) in comps.into_iter().enumerate() {
-      let src_compno = (&p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode)[compno];
-      let src_comp = &mut out_image.comps[src_compno as usize];
-      comp.copy_props_from_core(src_comp);
-      comp.move_data_from_core(src_comp);
+    p_image.numcomps = numcomps_to_decode;
+    p_image.comps.clear();
+    for compno in 0..numcomps_to_decode as usize {
+      let src_compno = p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode[compno] as usize;
+      p_image.comps.push(out_image.comps[src_compno].clone());
     }
     for comp in &mut out_image.comps {
       comp.data.clear();
     }
-  } else if let Some(comps) = p_image.comps_mut() {
-    for (comp, src_comp) in comps.into_iter().zip(out_image.comps.iter_mut()) {
+  } else {
+    for (comp, src_comp) in p_image.comps.iter_mut().zip(out_image.comps.iter_mut()) {
       comp.resno_decoded = src_comp.resno_decoded;
-      comp.move_data_from_core(src_comp);
+      comp.data = core::mem::take(&mut src_comp.data);
     }
   }
   1i32
 }
 
 pub(crate) fn opj_j2k_decode(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_image: &mut opj_image,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_image: &mut CoreImage,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
     /* Heuristics to detect sequence opj_read_header(), opj_set_decoded_resolution_factor() */
     /* and finally opj_decode_image() without manual setting of comps[].factor */
     /* We could potentially always execute it, if we don't allow people to do */
@@ -9230,16 +9218,15 @@ pub(crate) fn opj_j2k_decode(
       && p_j2k.m_private_image.as_deref().expect("m_private_image").comps[0].factor
         == p_j2k.m_cp.m_specific_param.m_dec.m_reduce
       && p_image.numcomps > 0u32
-      && (*p_image.comps.offset(0)).factor == 0u32
-      && (*p_image.comps.offset(0)).data.is_null()
+      && p_image.comps[0].factor == 0u32
+      && p_image.comps[0].data.is_empty()
     {
       let mut it_comp: OPJ_UINT32 = 0;
       /* Update the comps[].factor member of the output image with the one */
       /* of m_reduce */
       it_comp = 0 as OPJ_UINT32;
       while it_comp < p_image.numcomps {
-        (*p_image.comps.offset(it_comp as isize)).factor =
-          p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
+        p_image.comps[it_comp as usize].factor = p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
         it_comp += 1;
       }
       if opj_j2k_update_image_dimensions(p_image, p_manager) == 0 {
@@ -9262,21 +9249,18 @@ pub(crate) fn opj_j2k_decode(
     }
     /* Move data and copy one information from codec to output image*/
     opj_j2k_move_data_from_codec_to_output_image(p_j2k, p_image)
-  }
 }
 
 pub(crate) fn opj_j2k_get_tile(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_image: &mut opj_image,
-  mut p_manager: &mut opj_event_mgr,
-  mut tile_index: OPJ_UINT32,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_image: &mut CoreImage,
+  p_manager: &mut opj_event_mgr,
+  tile_index: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut compno: OPJ_UINT32 = 0;
-    let mut l_tile_x: OPJ_UINT32 = 0;
-    let mut l_tile_y: OPJ_UINT32 = 0;
-    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
+  let mut compno: OPJ_UINT32 = 0;
+  let mut l_tile_x: OPJ_UINT32 = 0;
+  let mut l_tile_y: OPJ_UINT32 = 0;
     if p_image.numcomps < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
       event_msg!(
         p_manager,
@@ -9325,46 +9309,34 @@ pub(crate) fn opj_j2k_get_tile(
       p_image.y1 = p_j2k.m_private_image.as_deref().expect("m_private_image").y1
     }
 
-    l_img_comp = p_image.comps;
     compno = 0 as OPJ_UINT32;
     while compno < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
       let mut l_comp_x1: OPJ_INT32 = 0;
       let mut l_comp_y1: OPJ_INT32 = 0;
+      let l_img_comp = &mut p_image.comps[compno as usize];
 
-      (*l_img_comp).factor = p_j2k.m_private_image.as_deref().expect("m_private_image").comps[compno as usize].factor;
+      l_img_comp.factor = p_j2k.m_private_image.as_deref().expect("m_private_image").comps[compno as usize].factor;
 
-      (*l_img_comp).x0 = opj_uint_ceildiv(p_image.x0, (*l_img_comp).dx);
-      (*l_img_comp).y0 = opj_uint_ceildiv(p_image.y0, (*l_img_comp).dy);
-      l_comp_x1 = opj_int_ceildiv(p_image.x1 as OPJ_INT32, (*l_img_comp).dx as OPJ_INT32);
-      l_comp_y1 = opj_int_ceildiv(p_image.y1 as OPJ_INT32, (*l_img_comp).dy as OPJ_INT32);
+      l_img_comp.x0 = opj_uint_ceildiv(p_image.x0, l_img_comp.dx);
+      l_img_comp.y0 = opj_uint_ceildiv(p_image.y0, l_img_comp.dy);
+      l_comp_x1 = opj_int_ceildiv(p_image.x1 as OPJ_INT32, l_img_comp.dx as OPJ_INT32);
+      l_comp_y1 = opj_int_ceildiv(p_image.y1 as OPJ_INT32, l_img_comp.dy as OPJ_INT32);
 
-      (*l_img_comp).w = (opj_int_ceildivpow2(l_comp_x1, (*l_img_comp).factor as OPJ_INT32)
-        - opj_int_ceildivpow2(
-          (*l_img_comp).x0 as OPJ_INT32,
-          (*l_img_comp).factor as OPJ_INT32,
-        )) as OPJ_UINT32;
-      (*l_img_comp).h = (opj_int_ceildivpow2(l_comp_y1, (*l_img_comp).factor as OPJ_INT32)
-        - opj_int_ceildivpow2(
-          (*l_img_comp).y0 as OPJ_INT32,
-          (*l_img_comp).factor as OPJ_INT32,
-        )) as OPJ_UINT32;
-      l_img_comp = l_img_comp.offset(1);
+      l_img_comp.w = (opj_int_ceildivpow2(l_comp_x1, l_img_comp.factor as OPJ_INT32)
+        - opj_int_ceildivpow2(l_img_comp.x0 as OPJ_INT32, l_img_comp.factor as OPJ_INT32))
+        as OPJ_UINT32;
+      l_img_comp.h = (opj_int_ceildivpow2(l_comp_y1, l_img_comp.factor as OPJ_INT32)
+        - opj_int_ceildivpow2(l_img_comp.y0 as OPJ_INT32, l_img_comp.factor as OPJ_INT32))
+        as OPJ_UINT32;
       compno += 1;
     }
     if p_image.numcomps > p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
       /* Can happen when calling repeatdly opj_get_decoded_tile() on an
        * image with a color palette, where color palette expansion is done
        * later in jp2.c */
-      compno = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-      while compno < p_image.numcomps {
-        opj_image_data_free(
-          (*p_image.comps.offset(compno as isize)).data as *mut core::ffi::c_void,
-        );
-        let fresh48 = &mut (*p_image.comps.offset(compno as isize)).data;
-        *fresh48 = core::ptr::null_mut::<OPJ_INT32>();
-        compno += 1;
-      }
-      p_image.numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps
+      let n = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+      p_image.comps.truncate(n as usize);
+      p_image.numcomps = n
     }
     /* Destroy the previous output image and create a new one from the information
      * previously computed */
@@ -9383,7 +9355,6 @@ pub(crate) fn opj_j2k_get_tile(
     }
     /* Move data and copy one information from codec to output image*/
     opj_j2k_move_data_from_codec_to_output_image(p_j2k, p_image)
-  }
 }
 
 pub(crate) fn opj_j2k_set_decoded_resolution_factor(
@@ -9591,7 +9562,7 @@ pub(crate) fn opj_j2k_end_compress(
 pub(crate) fn opj_j2k_start_compress(
   p_j2k: &mut opj_j2k,
   p_stream: &mut Stream,
-  p_image: &mut opj_image,
+  p_image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut validation_list = opj_j2k_proc_list_t::new();
@@ -9599,34 +9570,21 @@ pub(crate) fn opj_j2k_start_compress(
   /* preconditions */
 
   {
-    p_j2k.m_private_image = Some(Box::new(CoreImage::default()));
-    opj_copy_image_header_to_core(p_image, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"));
-    /* TODO_MSD: Find a better way */
-    let numcomps = p_image.numcomps;
-    if let Some(comps) = p_image.comps_mut() {
-      let mut it_comp: OPJ_UINT32 = 0;
-      it_comp = 0 as OPJ_UINT32;
-      while it_comp < numcomps {
-        if !comps[it_comp as usize].data.is_null() {
-          let orig_data = comps[it_comp as usize].data;
-          // SAFETY: the comp data covers w * h samples owned by the caller.
-          let copied = unsafe {
-            core::slice::from_raw_parts(
-              orig_data,
-              (comps[it_comp as usize].w as usize) * (comps[it_comp as usize].h as usize),
-            )
-          }
-          .to_vec();
-          p_j2k.m_private_image.as_deref_mut().expect("m_private_image").comps[it_comp as usize].data =
-            copied;
-          /* The C code moves ownership of the data buffer into the codec; the
-          copy above keeps the core image self-contained, so free the original. */
-          opj_image_data_free(orig_data as *mut core::ffi::c_void);
-          comps[it_comp as usize].data = core::ptr::null_mut::<OPJ_INT32>()
-        }
-        it_comp += 1;
-      }
-    }
+    /* The C code moves ownership of the component data and ICC profile into
+    the codec but keeps the caller's header fields (x0/y0/x1/y1/numcomps)
+    readable, so only the owned buffers are taken. */
+    let mut private = CoreImage::default();
+    private.x0 = p_image.x0;
+    private.y0 = p_image.y0;
+    private.x1 = p_image.x1;
+    private.y1 = p_image.y1;
+    private.numcomps = p_image.numcomps;
+    private.color_space = p_image.color_space;
+    private.comps = core::mem::take(&mut p_image.comps);
+    private.icc_profile_buf = core::mem::take(&mut p_image.icc_profile_buf);
+    private.icc_profile_is_cielab = p_image.icc_profile_is_cielab;
+    p_image.icc_profile_is_cielab = false;
+    p_j2k.m_private_image = Some(Box::new(private));
     /* customization of the validation */
     if opj_j2k_setup_encoding_validation(p_j2k, &mut validation_list, p_manager) == 0 {
       return 0i32;

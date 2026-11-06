@@ -32,6 +32,7 @@
  */
 use super::j2k::*;
 use super::jp2::*;
+use super::image::*;
 
 use super::c_api_types::*;
 use super::consts::*;
@@ -205,7 +206,7 @@ impl Codec {
     }
   }
 
-  pub fn read_header(&mut self, mut p_stream: &mut Stream) -> Option<Box<opj_image>> {
+  pub fn read_header(&mut self, p_stream: &mut Stream) -> Option<CoreImage> {
     match &mut self.m_codec {
       CodecType::Encoder(_) => {
         event_msg!(
@@ -215,27 +216,10 @@ impl Codec {
         );
         None
       }
-      CodecType::Decoder(dec) => {
-        let mut image: *mut opj_image_t = core::ptr::null_mut();
-        let res = match dec {
-          CodecFormat::J2K(dec) => {
-            opj_j2k_read_header(p_stream, dec, &mut image, &mut self.m_event_mgr)
-          }
-          CodecFormat::JP2(dec) => {
-            opj_jp2_read_header(p_stream, dec, &mut image, &mut self.m_event_mgr)
-          }
-        };
-        let image = if image.is_null() {
-          None
-        } else {
-          Some(unsafe { Box::from_raw(image) })
-        };
-        if res == 1 {
-          image
-        } else {
-          None
-        }
-      }
+      CodecType::Decoder(dec) => match dec {
+        CodecFormat::J2K(dec) => opj_j2k_read_header(p_stream, dec, &mut self.m_event_mgr),
+        CodecFormat::JP2(dec) => opj_jp2_read_header(p_stream, dec, &mut self.m_event_mgr),
+      },
     }
   }
 
@@ -273,7 +257,7 @@ impl Codec {
     }
   }
 
-  pub fn decode(&mut self, mut p_stream: &mut Stream, mut p_image: &mut opj_image) -> OPJ_BOOL {
+  pub fn decode(&mut self, p_stream: &mut Stream, p_image: &mut CoreImage) -> OPJ_BOOL {
     match &mut self.m_codec {
       CodecType::Encoder(_) => (),
       CodecType::Decoder(dec) => {
@@ -301,7 +285,7 @@ impl Codec {
 
   pub fn set_decode_area(
     &mut self,
-    mut p_image: &mut opj_image,
+    p_image: &mut CoreImage,
     mut p_start_x: OPJ_INT32,
     mut p_start_y: OPJ_INT32,
     mut p_end_x: OPJ_INT32,
@@ -376,8 +360,8 @@ impl Codec {
 
   pub fn get_decoded_tile(
     &mut self,
-    mut p_stream: &mut Stream,
-    mut p_image: &mut opj_image,
+    p_stream: &mut Stream,
+    p_image: &mut CoreImage,
     mut tile_index: OPJ_UINT32,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
@@ -413,8 +397,8 @@ impl Codec {
 impl Codec {
   pub fn setup_encoder(
     &mut self,
-    mut parameters: &mut opj_cparameters_t,
-    mut p_image: &mut opj_image,
+    parameters: &mut opj_cparameters_t,
+    p_image: &mut CoreImage,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
       CodecType::Encoder(enc) => {
@@ -446,11 +430,7 @@ impl Codec {
     }
   }
 
-  pub fn start_compress(
-    &mut self,
-    mut p_image: &mut opj_image,
-    mut p_stream: &mut Stream,
-  ) -> OPJ_BOOL {
+  pub fn start_compress(&mut self, p_image: &mut CoreImage, p_stream: &mut Stream) -> OPJ_BOOL {
     match &mut self.m_codec {
       CodecType::Encoder(enc) => {
         return match enc {

@@ -1,9 +1,9 @@
 use crate::{convert::*, params::*};
-use openjp2::{detect_format_from_file, openjpeg::*, opj_image, Codec, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, CoreImage, Codec, J2KFormat, Stream};
 use std::path::{Path, PathBuf};
 
 fn compress_image(
-  mut image: Box<opj_image>,
+  mut image: CoreImage,
   params: &CompressionParameters,
   output: &Path,
 ) -> Result<(), ImageError> {

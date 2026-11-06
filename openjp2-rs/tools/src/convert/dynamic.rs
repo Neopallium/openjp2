@@ -1,10 +1,10 @@
 use super::ImageError;
 use crate::params::CompressionParameters;
 use image::{self, DynamicImage};
-use openjp2::{image::opj_image, openjpeg::*};
+use openjp2::{openjpeg::*, CoreImage, CoreImageComp};
 
 pub fn convert_comp_to_dynamic_grayscale(
-  comp: &opj_image_comp,
+  comp: &CoreImageComp,
 ) -> Result<DynamicImage, ImageError> {
   let width = comp.w;
   let height = comp.h;
@@ -32,7 +32,7 @@ pub fn convert_comp_to_dynamic_grayscale(
   }
 }
 
-pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, ImageError> {
+pub fn convert_to_dynamic_image(image: &CoreImage) -> Result<DynamicImage, ImageError> {
   let mut comps = image
     .comps_data_iter()
     .ok_or_else(|| ImageError::InvalidFormat("Missing components".into()))?;
@@ -174,7 +174,7 @@ pub fn convert_to_dynamic_image(image: &opj_image) -> Result<DynamicImage, Image
 pub fn convert_from_dynamic_image(
   in_img: DynamicImage,
   params: &CompressionParameters,
-) -> Result<Box<opj_image>, ImageError> {
+) -> Result<CoreImage, ImageError> {
   //eprintln!("-- input image={:?}", in_img);
   // Get information from input image.
   let (width, height, numcomps, color_space, bit_depth, sgnd, alpha) = match &in_img {
@@ -225,7 +225,7 @@ pub fn convert_from_dynamic_image(
     }
   };
 
-  let mut image = opj_image::new();
+  let mut image = CoreImage::new();
 
   let offset = params.image_offset();
   let subsampling = params.subsampling();

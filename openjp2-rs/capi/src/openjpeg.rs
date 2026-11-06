@@ -182,7 +182,7 @@ pub unsafe fn opj_read_header(
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   match l_codec.read_header(p_stream) {
     Some(image) => {
-      *p_image = Box::into_raw(image);
+      *p_image = Box::into_raw(image.into_opj());
       1
     }
     None => 0,
@@ -216,7 +216,16 @@ pub unsafe fn opj_decode(
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.decode(p_stream, p_image)
+  let mut core = openjp2_core::CoreImage::from_opj(p_image);
+  if l_codec.decode(p_stream, &mut core) == 1 {
+    let fresh = core.into_opj();
+    p_image.clear_comps();
+    p_image.clear_icc_profile();
+    *p_image = *fresh;
+    1
+  } else {
+    0
+  }
 }
 
 #[no_mangle]
@@ -233,7 +242,19 @@ pub unsafe fn opj_set_decode_area(
   }
   let p_image = unsafe { &mut *p_image };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.set_decode_area(p_image, p_start_x, p_start_y, p_end_x, p_end_y)
+  let mut core = openjp2_core::CoreImage::from_opj(p_image);
+  // set_decode_area only adjusts the component geometry; the caller's data
+  // buffers are stale at this point (C leaves them alone and opj_decode
+  // replaces them), so do not carry them through the round-trip.
+  for comp in &mut core.comps {
+    comp.data.clear();
+  }
+  let ret = l_codec.set_decode_area(&mut core, p_start_x, p_start_y, p_end_x, p_end_y);
+  let fresh = core.into_opj();
+  p_image.clear_comps();
+  p_image.clear_icc_profile();
+  *p_image = *fresh;
+  ret
 }
 
 #[no_mangle]
@@ -326,7 +347,13 @@ pub unsafe fn opj_get_decoded_tile(
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.get_decoded_tile(p_stream, p_image, tile_index)
+  let mut core = openjp2_core::CoreImage::from_opj(p_image);
+  let ret = l_codec.get_decoded_tile(p_stream, &mut core, tile_index);
+  let fresh = core.into_opj();
+  p_image.clear_comps();
+  p_image.clear_icc_profile();
+  *p_image = *fresh;
+  ret
 }
 
 #[no_mangle]
@@ -379,7 +406,13 @@ pub unsafe fn opj_setup_encoder(
   let p_image = unsafe { &mut *p_image };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   let parameters = &mut *parameters;
-  l_codec.setup_encoder(parameters, p_image)
+  let mut core = openjp2_core::CoreImage::from_opj(p_image);
+  let ret = l_codec.setup_encoder(parameters, &mut core);
+  let fresh = core.into_opj();
+  p_image.clear_comps();
+  p_image.clear_icc_profile();
+  *p_image = *fresh;
+  ret
 }
 
 /* ----------------------------------------------------------------------- */
@@ -425,7 +458,13 @@ pub unsafe fn opj_start_compress(
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.start_compress(p_image, p_stream)
+  let mut core = openjp2_core::CoreImage::from_opj(p_image);
+  let ret = l_codec.start_compress(&mut core, p_stream);
+  let fresh = core.into_opj();
+  p_image.clear_comps();
+  p_image.clear_icc_profile();
+  *p_image = *fresh;
+  ret
 }
 
 #[no_mangle]

@@ -1,7 +1,7 @@
 use super::ImageError;
 use crate::params::ParameterError;
 use crate::params::{CompressionParameters, MCTMode};
-use openjp2::{image::opj_image, openjpeg::*};
+use openjp2::{openjpeg::*, CoreImage};
 use std::fs::File;
 use std::io::{BufWriter, Read, Write};
 use std::path::Path;
@@ -105,7 +105,7 @@ pub fn load_raw_image(
   path: &Path,
   params: &CompressionParameters,
   big_endian: bool,
-) -> Result<Box<opj_image>, ImageError> {
+) -> Result<CoreImage, ImageError> {
   // Get raw parameters from compression parameters
   let raw_params = params.raw_params.as_ref().ok_or_else(|| {
     ImageError::InvalidFormat("Raw parameters required for RAW/RAWL format".into())
@@ -138,7 +138,7 @@ pub fn load_raw_image(
   let buffer_size = num_pixels * bytes_per_sample;
 
   // Create image and initialize components
-  let mut image = opj_image::new();
+  let mut image = CoreImage::new();
   image.color_space = if raw_params.num_comps == 1 {
     OPJ_CLRSPC_GRAY
   } else if raw_params.num_comps >= 3 {
@@ -249,7 +249,7 @@ pub fn load_raw_image(
   Ok(image)
 }
 
-pub fn save_raw_image(image: &opj_image, path: &Path, big_endian: bool) -> Result<(), ImageError> {
+pub fn save_raw_image(image: &CoreImage, path: &Path, big_endian: bool) -> Result<(), ImageError> {
   let file = std::fs::File::create(path)?;
   let mut writer = BufWriter::new(file);
 

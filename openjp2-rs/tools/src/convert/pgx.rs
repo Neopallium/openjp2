@@ -1,6 +1,6 @@
 use super::ImageError;
 use crate::params::CompressionParameters;
-use openjp2::image::opj_image;
+use openjp2::CoreImage;
 use openjp2::openjpeg::*;
 use std::fs::File;
 use std::io::{BufRead, BufWriter, Read, Write};
@@ -9,7 +9,7 @@ use std::path::Path;
 pub fn load_pgx_image(
   path: &Path,
   params: &CompressionParameters,
-) -> Result<Box<opj_image>, ImageError> {
+) -> Result<CoreImage, ImageError> {
   let file = File::open(path)?;
   let file_size = file
     .metadata()
@@ -91,7 +91,7 @@ pub fn load_pgx_image(
   }
 
   // Create image
-  let mut image = opj_image::new();
+  let mut image = CoreImage::new();
   image.color_space = OPJ_CLRSPC_GRAY;
 
   // Set image parameters
@@ -173,7 +173,7 @@ pub fn load_pgx_image(
   Ok(image)
 }
 
-pub fn save_pgx_image(image: &opj_image, path: &Path) -> Result<(), ImageError> {
+pub fn save_pgx_image(image: &CoreImage, path: &Path) -> Result<(), ImageError> {
   let stem = path
     .file_stem()
     .and_then(|s| s.to_str())

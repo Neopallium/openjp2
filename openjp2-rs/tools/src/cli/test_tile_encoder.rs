@@ -1,4 +1,5 @@
 use openjp2::image::opj_image_cmptparm_t;
+use openjp2::CoreImage;
 use openjp2::{detect_format_from_extension_os_str, openjpeg::*, Codec, J2KFormat, Stream};
 use rand::prelude::*;
 use std::path::PathBuf;
@@ -147,7 +148,7 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
   codec.set_error_handler(|msg: &str| print!("[ERROR] {}", msg));
 
   // Create tile image
-  let mut image = opj_image::tile_create(&image_components, OPJ_CLRSPC_SRGB)
+  let mut image = CoreImage::tile_create(&image_components, OPJ_CLRSPC_SRGB)
     .ok_or_else(|| "Failed to create image")?;
 
   image.x0 = offsetx;

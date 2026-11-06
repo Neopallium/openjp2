@@ -1,7 +1,7 @@
 use crate::convert::load_image;
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
 use crate::params::{CompressionParameters, ImageFileFormat};
-use openjp2::opj_image;
+use openjp2::CoreImage;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -202,7 +202,7 @@ fn read_image_from_multiple_files(
   params: CompressionParameters,
   nb_files: usize,
   separator: &str,
-) -> Result<Box<opj_image>, String> {
+) -> Result<CoreImage, String> {
   let stem = file
     .file_stem()
     .ok_or("Failed to get file stem")?
@@ -217,7 +217,7 @@ fn read_image_from_multiple_files(
       .to_string(),
   };
 
-  let mut image = opj_image::new();
+  let mut image = CoreImage::new();
   if !image.alloc_comps(nb_files as u32) {
     return Err("Failed to allocate memory for components".into());
   }
@@ -235,9 +235,9 @@ fn read_image_from_multiple_files(
     };
 
     // Copy the first component
-    let src_comp = src_comps[0];
+    let src_comp = &src_comps[0];
     let dst_comp = comps.next().expect("We just allocated the components");
-    dst_comp.copy(&src_comp);
+    *dst_comp = src_comp.clone();
     dst_comp.x0 = 0;
     dst_comp.y0 = 0;
     dst_comp.dx = 0;
@@ -251,7 +251,7 @@ fn read_image_from_file(
   file: &PathBuf,
   nb_files: usize,
   separator: &str,
-) -> Result<Box<opj_image>, String> {
+) -> Result<CoreImage, String> {
   let mut params = CompressionParameters::default();
   let format = ImageFileFormat::get_file_format(file)
     .map_err(|e| format!("Failed to get file format: {}", e))?;
@@ -341,7 +341,7 @@ pub fn run_compare_images(args: Vec<String>) -> Result<bool, String> {
   }
 
   // Create a new image to store the differences
-  let mut diff_image = opj_image::new();
+  let mut diff_image = CoreImage::new();
   diff_image.color_space = base_image.color_space;
   diff_image.x0 = base_image.x0;
   diff_image.y0 = base_image.y0;

@@ -1,7 +1,7 @@
 use super::{BitBuffer, ImageError};
 use crate::params::CompressionParameters;
 use libtiff_sys::*;
-use openjp2::{image::opj_image, openjpeg::*};
+use openjp2::{openjpeg::*, CoreImage};
 use std::ffi::{c_void, CString};
 use std::os::raw::c_char;
 use std::path::Path;
@@ -9,7 +9,7 @@ use std::path::Path;
 pub fn load_tiff_image(
   path: &Path,
   params: &CompressionParameters,
-) -> Result<Box<opj_image>, ImageError> {
+) -> Result<CoreImage, ImageError> {
   // Open TIFF file
   let path_str = path
     .to_str()
@@ -80,7 +80,7 @@ pub fn load_tiff_image(
     OPJ_CLRSPC_UNKNOWN
   };
 
-  let mut image = opj_image::new();
+  let mut image = CoreImage::new();
   image.x0 = params.image_offset().x;
   image.y0 = params.image_offset().y;
   image.x1 = image.x0 + (width - 1) * params.subsampling().width + 1;
@@ -301,7 +301,7 @@ pub fn load_tiff_image(
   Ok(image)
 }
 
-pub fn save_tiff_image(image: &mut opj_image, path: &Path) -> Result<(), ImageError> {
+pub fn save_tiff_image(image: &mut CoreImage, path: &Path) -> Result<(), ImageError> {
   // Open TIFF file
   let path_str = path
     .to_str()
