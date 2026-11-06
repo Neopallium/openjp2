@@ -634,7 +634,7 @@ pub(crate) struct opj_cp {
   pub ty0: OPJ_UINT32,
   pub tdx: OPJ_UINT32,
   pub tdy: OPJ_UINT32,
-  pub comment: *mut OPJ_CHAR,
+  pub comment: Vec<OPJ_BYTE>,
   pub tw: OPJ_UINT32,
   pub th: OPJ_UINT32,
   pub ppm_markers: Vec<opj_ppx>,
@@ -659,7 +659,7 @@ impl Default for opj_cp {
       ty0: 0,
       tdx: 0,
       tdy: 0,
-      comment: core::ptr::null_mut(),
+      comment: Vec::new(),
       tw: 0,
       th: 0,
       ppm_markers: Vec::new(),
@@ -807,6 +807,25 @@ impl Default for TileBuf {
 impl TileBuf {
   pub(crate) fn borrowed(ptr: *mut OPJ_INT32) -> Self {
     TileBuf::Borrowed { ptr }
+  }
+
+  /// Mutable slice over `len` samples of the buffer.
+  ///
+  /// # Safety contract for the caller
+  /// `len` must not exceed the number of samples the buffer covers. For
+  /// `Borrowed` buffers the pointer must stay valid for `len` samples.
+  pub(crate) fn as_mut_slice(&mut self, len: usize) -> &mut [OPJ_INT32] {
+    match self {
+      TileBuf::Owned { data, .. } => &mut data[..len],
+      TileBuf::Borrowed { ptr } => {
+        if len == 0 {
+          &mut []
+        } else {
+          unsafe { core::slice::from_raw_parts_mut(*ptr, len) }
+        }
+      }
+      TileBuf::Empty => &mut [],
+    }
   }
 
   pub(crate) fn as_mut_ptr(&self) -> *mut OPJ_INT32 {

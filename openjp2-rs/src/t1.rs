@@ -13,7 +13,6 @@ use core::{
   ops::AddAssign,
 };
 
-use super::malloc::*;
 
 // The T1 passes walk several aliasing cursors over the same coefficient and flag buffers, so the
 // backing stores hold `Cell`s: that keeps the cursors `Copy` and aliasable without any `unsafe`.
@@ -2014,12 +2013,9 @@ fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
           let stepsize = 0.5f32 * (*band).stepsize;
           i = 0 as OPJ_UINT32;
           while i < cblk_size {
-            let mut tmp = *datap as OPJ_FLOAT32 * stepsize;
-            memcpy(
-              datap as *mut core::ffi::c_void,
-              &mut tmp as *mut OPJ_FLOAT32 as *const core::ffi::c_void,
-              core::mem::size_of::<OPJ_FLOAT32>(),
-            );
+            let tmp = *datap as OPJ_FLOAT32 * stepsize;
+            // C reinterprets the f32 bits as an i32 via memcpy.
+            *datap = tmp.to_bits() as OPJ_INT32;
             datap = datap.offset(1);
             i += 1
           }

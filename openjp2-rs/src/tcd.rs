@@ -11,7 +11,6 @@ use super::t1::*;
 use super::t2::*;
 use super::tgt::*;
 
-use super::malloc::*;
 
 /* ----------------------------------------------------------------------- */
 impl opj_tcd {

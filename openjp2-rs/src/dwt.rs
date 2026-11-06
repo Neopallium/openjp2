@@ -1076,6 +1076,13 @@ fn opj_dwt_encode_and_deinterleave_v_real(
 /// scratch are viewed as slices for the duration of each row/column pass; the views are created
 /// from the raw allocation at the boundary only (see the SAFETY notes below).
 #[inline]
+/// Reinterpret an i32 sample buffer as f32 (the C code memcpy'd the words).
+fn as_f32_slice(data: &mut [OPJ_INT32]) -> &mut [OPJ_FLOAT32] {
+  // SAFETY: f32 and i32 share size and alignment; the buffer is a raw word
+  // array by contract of the DWT 9-7 transform.
+  unsafe { core::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut OPJ_FLOAT32, data.len()) }
+}
+
 fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWavelet) -> OPJ_BOOL {
   let w = (tilec.x1 - tilec.x0) as OPJ_UINT32;
   let h = (tilec.y1 - tilec.y0) as OPJ_UINT32;
@@ -1097,17 +1104,13 @@ fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWave
   let scratch_len = (l_data_size as usize)
     .wrapping_mul(NB_ELTS_V8 as usize * core::mem::size_of::<OPJ_INT32>())
     / core::mem::size_of::<OPJ_INT32>();
-  // SAFETY: `scratch_len * 4` cannot overflow (checked above) and 32 is a valid alignment.
-  let layout = unsafe {
-    Layout::from_size_align_unchecked(scratch_len * core::mem::size_of::<OPJ_INT32>(), 32)
-  };
-  // SAFETY: `layout` is a valid (non-zero when `l_data_size != 0`) allocation layout.
-  let bj = unsafe { alloc(layout) } as *mut OPJ_INT32;
   /* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
   /* in that case, so do not error out */
-  if l_data_size != 0 && bj.is_null() {
+  let mut bj: Vec<OPJ_INT32> = Vec::new();
+  if bj.try_reserve_exact(scratch_len).is_err() {
     return 0i32;
   }
+  bj.resize(scratch_len, 0);
   /* width of the resolution level computed   */
   let mut cur = l; /* height of the resolution level computed  */
   while cur > 0 {
@@ -1124,11 +1127,8 @@ fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWave
       let col = j as usize;
       match wavelet {
         ForwardWavelet::Reversible53 => {
-          // SAFETY: `tiledp` covers `total_len` samples (the tile component geometry) and `bj`
-          // covers `scratch_len` (max resolution times NB_ELTS_V8); the slices of the previous
-          // pass are dead before these are created, so the views never alias.
-          let data = unsafe { core::slice::from_raw_parts_mut(tiledp, total_len) };
-          let scratch = unsafe { core::slice::from_raw_parts_mut(bj, scratch_len) };
+          let data = &mut tilec.data.as_mut_slice(total_len);
+          let scratch = &mut bj[..];
           opj_dwt_encode_and_deinterleave_v(
             data,
             col,
@@ -1140,11 +1140,8 @@ fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWave
           )
         }
         ForwardWavelet::Irreversible97 => {
-          // SAFETY: same contract, viewed as floats.
-          let data =
-            unsafe { core::slice::from_raw_parts_mut(tiledp as *mut OPJ_FLOAT32, total_len) };
-          let scratch =
-            unsafe { core::slice::from_raw_parts_mut(bj as *mut OPJ_FLOAT32, scratch_len) };
+          let data = as_f32_slice(tilec.data.as_mut_slice(total_len));
+          let scratch = as_f32_slice(&mut bj[..]);
           opj_dwt_encode_and_deinterleave_v_real(
             data,
             col,
@@ -1162,9 +1159,8 @@ fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWave
       let col = j as usize;
       match wavelet {
         ForwardWavelet::Reversible53 => {
-          // SAFETY: see the vertical pass above.
-          let data = unsafe { core::slice::from_raw_parts_mut(tiledp, total_len) };
-          let scratch = unsafe { core::slice::from_raw_parts_mut(bj, scratch_len) };
+          let data = &mut tilec.data.as_mut_slice(total_len);
+          let scratch = &mut bj[..];
           opj_dwt_encode_and_deinterleave_v(
             data,
             col,
@@ -1176,11 +1172,8 @@ fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWave
           )
         }
         ForwardWavelet::Irreversible97 => {
-          // SAFETY: see the vertical pass above.
-          let data =
-            unsafe { core::slice::from_raw_parts_mut(tiledp as *mut OPJ_FLOAT32, total_len) };
-          let scratch =
-            unsafe { core::slice::from_raw_parts_mut(bj as *mut OPJ_FLOAT32, scratch_len) };
+          let data = as_f32_slice(tilec.data.as_mut_slice(total_len));
+          let scratch = as_f32_slice(&mut bj[..]);
           opj_dwt_encode_and_deinterleave_v_real(
             data,
             col,
@@ -1200,17 +1193,13 @@ fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWave
       let even = if cas_row == 0i32 { 1i32 } else { 0i32 };
       match wavelet {
         ForwardWavelet::Reversible53 => {
-          // SAFETY: see the vertical pass above.
-          let data = unsafe { core::slice::from_raw_parts_mut(tiledp, total_len) };
-          let scratch = unsafe { core::slice::from_raw_parts_mut(bj, scratch_len) };
+          let data = &mut tilec.data.as_mut_slice(total_len);
+          let scratch = &mut bj[..];
           opj_dwt_encode_and_deinterleave_h_one_row(data, row_start, scratch, rw, even)
         }
         ForwardWavelet::Irreversible97 => {
-          // SAFETY: see the vertical pass above.
-          let data =
-            unsafe { core::slice::from_raw_parts_mut(tiledp as *mut OPJ_FLOAT32, total_len) };
-          let scratch =
-            unsafe { core::slice::from_raw_parts_mut(bj as *mut OPJ_FLOAT32, scratch_len) };
+          let data = as_f32_slice(tilec.data.as_mut_slice(total_len));
+          let scratch = as_f32_slice(&mut bj[..]);
           opj_dwt_encode_and_deinterleave_h_one_row_real(data, row_start, scratch, rw, even)
         }
       }
@@ -1218,8 +1207,6 @@ fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWave
     }
     cur -= 1;
   }
-  // SAFETY: `bj` comes from the `alloc(layout)` above and is freed exactly once here.
-  unsafe { dealloc(bj as _, layout) };
   1i32
 }
 
@@ -1285,12 +1272,11 @@ pub fn opj_dwt_getnorm_real(mut level: OPJ_UINT32, orient: OPJ_UINT32) -> OPJ_FL
   opj_dwt_norms_real[orient as usize][level as usize]
 }
 
-pub(crate) fn opj_dwt_calc_explicit_stepsizes(mut tccp: *mut opj_tccp_t, mut prec: OPJ_UINT32) {
-  unsafe {
+pub(crate) fn opj_dwt_calc_explicit_stepsizes(tccp: &mut opj_tccp_t, mut prec: OPJ_UINT32) {
     let mut numbands: OPJ_UINT32 = 0;
     let mut bandno: OPJ_UINT32 = 0;
     numbands = (3u32)
-      .wrapping_mul((*tccp).numresolutions)
+      .wrapping_mul(tccp.numresolutions)
       .wrapping_sub(2u32);
     bandno = 0 as OPJ_UINT32;
     while bandno < numbands {
@@ -1319,7 +1305,7 @@ pub(crate) fn opj_dwt_calc_explicit_stepsizes(mut tccp: *mut opj_tccp_t, mut pre
         .numresolutions
         .wrapping_sub(1u32)
         .wrapping_sub(resno);
-      gain = if (*tccp).qmfbid == 0u32 {
+      gain = if tccp.qmfbid == 0u32 {
         0i32
       } else if orient == 0u32 {
         0i32
@@ -1328,7 +1314,7 @@ pub(crate) fn opj_dwt_calc_explicit_stepsizes(mut tccp: *mut opj_tccp_t, mut pre
       } else {
         2i32
       } as OPJ_UINT32;
-      if (*tccp).qntsty == 0u32 {
+      if tccp.qntsty == 0u32 {
         stepsize = 1.0f64
       } else {
         let mut norm = opj_dwt_getnorm_real(level, orient);
@@ -1337,11 +1323,10 @@ pub(crate) fn opj_dwt_calc_explicit_stepsizes(mut tccp: *mut opj_tccp_t, mut pre
       opj_dwt_encode_stepsize(
         (stepsize * 8192.0f64).floor() as OPJ_INT32,
         prec.wrapping_add(gain) as OPJ_INT32,
-        &mut *(*tccp).stepsizes.as_mut_ptr().offset(bandno as isize),
+        &mut tccp.stepsizes[bandno as usize],
       );
       bandno += 1;
     }
-  }
 }
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
@@ -1410,14 +1395,17 @@ fn opj_dwt_decode_tile(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32) -
     cas: 0,
   }; /* height of the resolution level computed */
 
-  let total_len = ((tilec.x1 - tilec.x0) as usize).wrapping_mul((tilec.y1 - tilec.y0) as usize);
-  let tiledp = tilec.data.as_mut_ptr();
-  if total_len > 0 && tiledp.is_null() {
+  /* The tile data buffer is allocated for the finest decoded resolution
+  (opj_tcd_decode_tile sizes it from resolutions[minimum_num_resolutions-1]),
+  so the slice covers exactly that geometry, like the C code's row stride. */
+  let total_len = (w as usize).wrapping_mul(
+    (tilec.resolutions[tilec.minimum_num_resolutions as usize - 1].y1
+      - tilec.resolutions[tilec.minimum_num_resolutions as usize - 1].y0) as usize,
+  );
+  if total_len > 0 && tilec.data.is_null() {
     return 0i32;
   }
-  // SAFETY: `tiledp` covers the whole tile component (`total_len` samples); the buffer is
-  // exclusively owned by `tilec` for the duration of this procedure.
-  let tile_data = unsafe { core::slice::from_raw_parts_mut(tiledp, total_len) };
+  let tile_data = tilec.data.as_mut_slice(total_len);
 
   let mut res_idx = 1usize;
   loop {
@@ -1705,12 +1693,8 @@ fn opj_dwt_decode_partial_tile(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_U
       // and `data_win` may be null, so skip the read entirely (the forgiving path did the same).
       return 1i32;
     }
-    let win_ptr = tilec.data_win.as_mut_ptr();
-    if win_ptr.is_null() {
-      return 0i32;
-    }
     // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
-    let win = unsafe { core::slice::from_raw_parts_mut(win_ptr, win_w.wrapping_mul(win_h)) };
+    let win = tilec.data_win.as_mut_slice(win_w.wrapping_mul(win_h));
     let ret = sparse_array_read(
       &sa,
       tr_max.win_x0.wrapping_sub(tr_max.x0 as OPJ_UINT32),
@@ -2011,12 +1995,8 @@ fn opj_dwt_decode_partial_tile(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_U
     // and `data_win` may be null, so skip the read entirely (the forgiving path did the same).
     return 1i32;
   }
-  let win_ptr = tilec.data_win.as_mut_ptr();
-  if win_ptr.is_null() {
-    return 0i32;
-  }
   // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
-  let win = unsafe { core::slice::from_raw_parts_mut(win_ptr, win_w.wrapping_mul(win_h)) };
+  let win = tilec.data_win.as_mut_slice(win_w.wrapping_mul(win_h));
   let ret_0 = sparse_array_read(
     &sa,
     tr_max.win_x0.wrapping_sub(tr_max.x0 as OPJ_UINT32),
@@ -2331,14 +2311,17 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
     win_h_x1: 0,
   }; /* height of the resolution level computed */
 
-  let total_len = ((tilec.x1 - tilec.x0) as usize).wrapping_mul((tilec.y1 - tilec.y0) as usize);
-  let tiledp = tilec.data.as_mut_ptr();
-  if total_len > 0 && tiledp.is_null() {
+  /* The tile data buffer is allocated for the finest decoded resolution
+  (opj_tcd_decode_tile sizes it from resolutions[minimum_num_resolutions-1]),
+  so the slice covers exactly that geometry, like the C code's row stride. */
+  let total_len = (w as usize).wrapping_mul(
+    (tilec.resolutions[tilec.minimum_num_resolutions as usize - 1].y1
+      - tilec.resolutions[tilec.minimum_num_resolutions as usize - 1].y0) as usize,
+  );
+  if total_len > 0 && tilec.data.is_null() {
     return 0i32;
   }
-  // SAFETY: `tiledp` covers the whole tile component (`total_len` floats for the 9-7 path);
-  // the buffer is exclusively owned by `tilec` for the duration of this procedure.
-  let tile_data = unsafe { core::slice::from_raw_parts_mut(tiledp as *mut OPJ_FLOAT32, total_len) };
+  let tile_data = as_f32_slice(tilec.data.as_mut_slice(total_len));
 
   let mut res_idx = 1usize;
   loop {
@@ -2463,12 +2446,8 @@ fn opj_dwt_decode_partial_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UIN
       // and `data_win` may be null, so skip the read entirely (the forgiving path did the same).
       return 1i32;
     }
-    let win_ptr = tilec.data_win.as_mut_ptr();
-    if win_ptr.is_null() {
-      return 0i32;
-    }
     // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
-    let win = unsafe { core::slice::from_raw_parts_mut(win_ptr, win_w.wrapping_mul(win_h)) };
+    let win = tilec.data_win.as_mut_slice(win_w.wrapping_mul(win_h));
     let ret = sparse_array_read(
       &sa,
       tr_max.win_x0.wrapping_sub(tr_max.x0 as OPJ_UINT32),
@@ -2762,12 +2741,8 @@ fn opj_dwt_decode_partial_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UIN
     // and `data_win` may be null, so skip the read entirely (the forgiving path did the same).
     return 1i32;
   }
-  let win_ptr = tilec.data_win.as_mut_ptr();
-  if win_ptr.is_null() {
-    return 0i32;
-  }
   // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
-  let win = unsafe { core::slice::from_raw_parts_mut(win_ptr, win_w.wrapping_mul(win_h)) };
+  let win = tilec.data_win.as_mut_slice(win_w.wrapping_mul(win_h));
   let ret_0 = sparse_array_read(
     &sa,
     tr_max.win_x0.wrapping_sub(tr_max.x0 as OPJ_UINT32),

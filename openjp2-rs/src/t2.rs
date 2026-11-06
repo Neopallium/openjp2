@@ -8,7 +8,6 @@ use super::pi::*;
 use super::tcd::*;
 use super::tgt::*;
 
-use super::malloc::*;
 
 #[repr(C)]
 #[derive(Copy, Clone)]

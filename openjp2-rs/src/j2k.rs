@@ -1193,14 +1193,7 @@ fn opj_j2k_write_com(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
   /* preconditions */
   /* L_COM */
 
-  let l_comment = p_j2k.m_cp.comment;
-  // SAFETY: `comment` is a NUL-terminated C string owned by the coding parameters
-  // (copied from the encoder parameters); converted to bytes for the marker body.
-  let comment_bytes = if l_comment.is_null() {
-    &[][..]
-  } else {
-    unsafe { core::ffi::CStr::from_ptr(l_comment) }.to_bytes()
-  };
+  let comment_bytes = &p_j2k.m_cp.comment[..];
   l_comment_size = comment_bytes.len() as OPJ_UINT32;
   l_total_com_size = l_comment_size.wrapping_add(6u32);
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
@@ -5967,31 +5960,13 @@ pub(crate) fn opj_j2k_setup_encoder(
     /* comment string */
     if !parameters.cp_comment.is_null() {
       // SAFETY: `cp_comment` is a caller-provided NUL-terminated string copied verbatim.
-      let len = unsafe { strlen(parameters.cp_comment) }.wrapping_add(1);
-      cp.comment = unsafe { opj_malloc(len) } as *mut core::ffi::c_char;
-      if cp.comment.is_null() {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Not enough memory to allocate copy of comment string\n",
-        );
-        return 0i32;
-      }
-      unsafe { memcpy(cp.comment as _, parameters.cp_comment as _, len) };
+      cp.comment = unsafe { core::ffi::CStr::from_ptr(parameters.cp_comment) }
+        .to_bytes()
+        .to_vec();
     } else {
       /* Create default comment for codestream */
-      let comment = format!("Created by OpenJPEG version {}", OPJ_VERSION);
-      let c_comment = std::ffi::CString::new(comment).unwrap();
       /* UniPG>> */
-      cp.comment = c_comment.into_raw();
-      if cp.comment.is_null() {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Not enough memory to allocate comment string\n",
-        );
-        return 0i32;
-      }
+      cp.comment = format!("Created by OpenJPEG version {}", OPJ_VERSION).into_bytes();
     }
     /*
     calculate other encoding parameters
@@ -6873,11 +6848,7 @@ impl Drop for opj_j2k {
         self.m_specific_param.m_encoder.m_header_tile_data = Vec::new();
       }
       opj_j2k_cp_destroy(&mut self.m_cp);
-      memset(
-        &mut self.m_cp as *mut opj_cp_t as *mut core::ffi::c_void,
-        0i32,
-        core::mem::size_of::<opj_cp_t>(),
-      );
+      self.m_cp = Default::default();
       self.cstr_index = None;
       self.m_private_image = None;
       self.m_output_image = None;
@@ -6932,9 +6903,7 @@ fn opj_j2k_cp_destroy(p_cp: &mut opj_cp_t) {
   }
   p_cp.ppm_markers = Vec::new();
   p_cp.ppm_buffer = Vec::new();
-  // SAFETY: `comment` is a malloc'd C string owned by the cp (copied from the parameters).
-  unsafe { opj_free(p_cp.comment as *mut core::ffi::c_void) };
-  p_cp.comment = core::ptr::null_mut::<OPJ_CHAR>();
+  p_cp.comment.clear();
   if !p_cp.m_is_decoder {
     p_cp.m_specific_param.m_enc.m_matrice = Vec::new()
   };
@@ -9893,7 +9862,7 @@ fn opj_j2k_setup_header_writing(
     }
   }
   list.add(opj_j2k_write_regions);
-  if !p_j2k.m_cp.comment.is_null() {
+  if !p_j2k.m_cp.comment.is_empty() {
     list.add(opj_j2k_write_com);
   }
   /* DEVELOPER CORNER, insert your custom procedures */
