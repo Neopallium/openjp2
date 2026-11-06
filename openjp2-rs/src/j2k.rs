@@ -4179,88 +4179,88 @@ fn opj_j2k_write_mct_record(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_mct(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
   mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tmp: OPJ_UINT32 = 0;
-    let mut l_indix: OPJ_UINT32 = 0;
-    /* preconditions */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let mut l_tmp: OPJ_UINT32 = 0;
+  let l_indix: OPJ_UINT32;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
-    } else {
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
-    };
-    if p_header_size < 2u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading MCT marker\n",);
-      return 0i32;
-    }
-    /* first marker */
-    l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Zmct */
-    cursor += 2 as usize;
-    if l_tmp != 0u32 {
-      event_msg!(
-        p_manager,
-        EVT_WARNING,
-        "Cannot take in charge mct data within multiple MCT records\n",
-      );
-      return 1i32;
-    }
-    if p_header_size <= 6u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading MCT marker\n",);
-      return 0i32;
-    }
-    /* Imct -> no need for other values, take the first, type is double with decorrelation x0000 1101 0000 0000*/
-    l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Imct */
-    cursor += 2 as usize;
-    l_indix = l_tmp & 0xffu32;
-    /* find an existing record with this index, or append a fresh one */
-    let l_tcp_ref = &mut *l_tcp;
-    let mut l_mct_idx: usize = 0;
-    while l_mct_idx < l_tcp_ref.m_mct_records.len() {
-      if l_tcp_ref.m_mct_records[l_mct_idx].m_index == l_indix {
-        break;
-      }
-      l_mct_idx += 1;
-    }
-    /* NOT FOUND */
-    if l_mct_idx == l_tcp_ref.m_mct_records.len() {
-      l_tcp_ref.m_mct_records.push(Default::default());
-    }
-    let l_mct_data = &mut l_tcp_ref.m_mct_records[l_mct_idx];
-    l_mct_data.m_index = l_indix;
-    l_mct_data.m_array_type = (l_tmp >> 8i32 & 3u32) as J2K_MCT_ARRAY_TYPE;
-    l_mct_data.m_element_type = MCTElementType::new(l_tmp >> 10i32 & 3u32);
-    l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-    cursor += 2 as usize;
-    if l_tmp != 0u32 {
-      event_msg!(
-        p_manager,
-        EVT_WARNING,
-        "Cannot take in charge multiple MCT markers\n",
-      );
-      return 1i32;
-    }
-    p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(6u32) as OPJ_UINT32;
-    l_mct_data.m_data.clear();
-    l_mct_data
-      .m_data
-      .extend_from_slice(core::slice::from_raw_parts(p_header_data, p_header_size as usize));
-    1i32
+  assert!(!p_header_data.is_null());
+  let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+  let l_tcp = if is_tph {
+    &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
+  } else {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set")
+  };
+  if p_header_size < 2u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading MCT marker\n",);
+    return 0i32;
   }
+  /* first marker */
+  l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Zmct */
+  cursor += 2 as usize;
+  if l_tmp != 0u32 {
+    event_msg!(
+      p_manager,
+      EVT_WARNING,
+      "Cannot take in charge mct data within multiple MCT records\n",
+    );
+    return 1i32;
+  }
+  if p_header_size <= 6u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading MCT marker\n",);
+    return 0i32;
+  }
+  /* Imct -> no need for other values, take the first, type is double with decorrelation x0000 1101 0000 0000*/
+  l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Imct */
+  cursor += 2 as usize;
+  l_indix = l_tmp & 0xffu32;
+  /* find an existing record with this index, or append a fresh one */
+  let mut l_mct_idx: usize = 0;
+  while l_mct_idx < l_tcp.m_mct_records.len() {
+    if l_tcp.m_mct_records[l_mct_idx].m_index == l_indix {
+      break;
+    }
+    l_mct_idx += 1;
+  }
+  /* NOT FOUND */
+  if l_mct_idx == l_tcp.m_mct_records.len() {
+    l_tcp.m_mct_records.push(Default::default());
+  }
+  let l_mct_data = &mut l_tcp.m_mct_records[l_mct_idx];
+  l_mct_data.m_index = l_indix;
+  l_mct_data.m_array_type = (l_tmp >> 8i32 & 3u32) as J2K_MCT_ARRAY_TYPE;
+  l_mct_data.m_element_type = MCTElementType::new(l_tmp >> 10i32 & 3u32);
+  l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Ymct */
+  cursor += 2 as usize;
+  if l_tmp != 0u32 {
+    event_msg!(
+      p_manager,
+      EVT_WARNING,
+      "Cannot take in charge multiple MCT markers\n",
+    );
+    return 1i32;
+  }
+  p_header_size = p_header_size.wrapping_sub(6u32);
+  l_mct_data.m_data.clear();
+  /* C: memcpy(m_data, p_header_data + 6, p_header_size - 6) — the payload starts after the
+   * Zmct/Imct/Ymct header fields. */
+  l_mct_data
+    .m_data
+    .extend_from_slice(&header_data[cursor..cursor + p_header_size as usize]);
+  1i32
 }
+
 /* *
  * Writes the MCC marker (Multiple Component Collection)
  *
@@ -4358,35 +4358,34 @@ fn opj_j2k_write_mcc_record(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_mcc(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
   mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut l_tmp: OPJ_UINT32 = 0;
-    let mut l_indix: OPJ_UINT32 = 0;
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_nb_collections: OPJ_UINT32 = 0;
-    let mut l_nb_comps: OPJ_UINT32 = 0;
-    let mut l_nb_bytes_by_comp: OPJ_UINT32 = 0;
-    /* preconditions */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let mut j: OPJ_UINT32 = 0;
+  let mut l_tmp: OPJ_UINT32 = 0;
+  let mut l_indix: OPJ_UINT32 = 0;
+  let mut l_nb_collections: OPJ_UINT32 = 0;
+  let mut l_nb_comps: OPJ_UINT32 = 0;
+  let mut l_nb_bytes_by_comp: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
-    } else {
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
-    };
+  assert!(!p_header_data.is_null());
+  let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+  let l_tcp = if is_tph {
+    &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
+  } else {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set")
+  };
     if p_header_size < 2u32 {
       event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
       return 0i32;
@@ -4409,19 +4408,18 @@ fn opj_j2k_read_mcc(
     l_indix = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
     cursor += 1 as usize;
     /* find an existing record with this index, or append a fresh one */
-    let l_tcp_ref = &mut *l_tcp;
     let mut l_mcc_idx: usize = 0;
-    while l_mcc_idx < l_tcp_ref.m_mcc_records.len() {
-      if l_tcp_ref.m_mcc_records[l_mcc_idx].m_index == l_indix {
+    while l_mcc_idx < l_tcp.m_mcc_records.len() {
+      if l_tcp.m_mcc_records[l_mcc_idx].m_index == l_indix {
         break;
       }
       l_mcc_idx += 1;
     }
     /* * NOT FOUND */
-    if l_mcc_idx == l_tcp_ref.m_mcc_records.len() {
-      l_tcp_ref.m_mcc_records.push(Default::default());
+    if l_mcc_idx == l_tcp.m_mcc_records.len() {
+      l_tcp.m_mcc_records.push(Default::default());
     }
-    let l_mcc_record = &mut l_tcp_ref.m_mcc_records[l_mcc_idx];
+    let l_mcc_record = &mut l_tcp.m_mcc_records[l_mcc_idx];
     l_mcc_record.m_index = l_indix;
     /* only one marker atm */
     l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Ymcc */
@@ -4539,7 +4537,7 @@ fn opj_j2k_read_mcc(
       l_mcc_record.m_offset_array = None;
       l_indix = l_tmp & 0xffu32;
       if l_indix != 0u32 {
-        match (*l_tcp)
+        match l_tcp
           .m_mct_records
           .iter()
           .position(|rec| rec.m_index == l_indix)
@@ -4553,7 +4551,7 @@ fn opj_j2k_read_mcc(
       }
       l_indix = l_tmp >> 8i32 & 0xffu32;
       if l_indix != 0u32 {
-        match (*l_tcp)
+        match l_tcp
           .m_mct_records
           .iter()
           .position(|rec| rec.m_index == l_indix)
@@ -4572,7 +4570,6 @@ fn opj_j2k_read_mcc(
       return 0i32;
     }
     1i32
-  }
 }
 /* *
  * Writes the MCO marker (Multiple component transformation ordering)
@@ -4626,81 +4623,76 @@ fn opj_j2k_write_mco(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_mco(
-  mut p_j2k: &mut opj_j2k,
-  mut p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_header_data: *mut OPJ_BYTE,
+  p_header_size: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut l_tmp: OPJ_UINT32 = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_nb_stages: OPJ_UINT32 = 0;
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    /* preconditions */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let mut l_tmp: OPJ_UINT32 = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let l_nb_stages: OPJ_UINT32;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
-    } else {
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
-    };
-    if p_header_size < 1u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading MCO marker\n",);
-      return 0i32;
-    }
-    l_nb_stages = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    if l_nb_stages > 1u32 {
-      event_msg!(
-        p_manager,
-        EVT_WARNING,
-        "Cannot take in charge multiple transformation stages.\n",
-      );
-      return 1i32;
-    }
-    if p_header_size != l_nb_stages.wrapping_add(1u32) {
-      event_msg!(p_manager, EVT_WARNING, "Error reading MCO marker\n",);
-      return 0i32;
-    }
-    l_tccp = (*l_tcp).tccps.as_mut_ptr();
-    i = 0 as OPJ_UINT32;
-    while i < l_image.numcomps {
-      (*l_tccp).m_dc_level_shift = 0i32;
-      l_tccp = l_tccp.offset(1);
-      i += 1;
-    }
-    (*l_tcp).m_mct_decoding_matrix.clear();
-    i = 0 as OPJ_UINT32;
-    while i < l_nb_stages {
-      l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-      cursor += 1 as usize;
-      if opj_j2k_add_mct(l_tcp, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"), l_tmp) == 0 {
-        return 0i32;
-      }
-      i += 1;
-    }
-    1i32
+  assert!(!p_header_data.is_null());
+  let l_image_numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+  let l_tcp = if is_tph {
+    &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
+  } else {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set")
+  };
+  if p_header_size < 1u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading MCO marker\n",);
+    return 0i32;
   }
+  l_nb_stages = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  if l_nb_stages > 1u32 {
+    event_msg!(
+      p_manager,
+      EVT_WARNING,
+      "Cannot take in charge multiple transformation stages.\n",
+    );
+    return 1i32;
+  }
+  if p_header_size != l_nb_stages.wrapping_add(1u32) {
+    event_msg!(p_manager, EVT_WARNING, "Error reading MCO marker\n",);
+    return 0i32;
+  }
+  i = 0 as OPJ_UINT32;
+  while i < l_image_numcomps {
+    l_tcp.tccps[i as usize].m_dc_level_shift = 0i32;
+    i += 1;
+  }
+  l_tcp.m_mct_decoding_matrix.clear();
+  i = 0 as OPJ_UINT32;
+  while i < l_nb_stages {
+    l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    cursor += 1 as usize;
+    if opj_j2k_add_mct(
+      l_tcp,
+      p_j2k.m_private_image.as_deref_mut().expect("m_private_image"),
+      l_tmp,
+    ) == 0
+    {
+      return 0i32;
+    }
+    i += 1;
+  }
+  1i32
 }
-fn opj_j2k_add_mct(
-  mut p_tcp: *mut opj_tcp_t,
-  mut p_image: &mut CoreImage,
-  mut p_index: OPJ_UINT32,
-) -> OPJ_BOOL {
-  unsafe {
+
+fn opj_j2k_add_mct(p_tcp: &mut opj_tcp_t, p_image: &mut CoreImage, p_index: OPJ_UINT32) -> OPJ_BOOL {
     let mut l_data_size: OPJ_UINT32 = 0;
     let mut l_nb_elem: OPJ_UINT32 = 0;
     /* preconditions */
-    assert!(!p_tcp.is_null());
     let p_tcp_ref = &mut *p_tcp;
     /* find the MCC record with this index */
     let Some(l_mcc_idx) = p_tcp_ref
@@ -4755,7 +4747,6 @@ fn opj_j2k_add_mct(
       }
     }
     1i32
-  }
 }
 /* *
  * Writes the CBD marker (Component bit depth definition)
@@ -4815,53 +4806,51 @@ fn opj_j2k_write_cbd(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_cbd(
-  mut p_j2k: &mut opj_j2k,
-  mut p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_header_data: *mut OPJ_BYTE,
+  p_header_size: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut l_nb_comp: OPJ_UINT32 = 0;
-    let mut l_num_comp: OPJ_UINT32 = 0;
-    let mut l_comp_def: OPJ_UINT32 = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_comp = core::ptr::null_mut::<CoreImageComp>();
-    /* preconditions */
-    /* Component bit depth */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let l_nb_comp: OPJ_UINT32;
+  let l_num_comp: OPJ_UINT32;
+  let mut l_comp_def: OPJ_UINT32 = 0;
+  let mut i: OPJ_UINT32 = 0;
+  /* preconditions */
+  /* Component bit depth */
 
-    assert!(!p_header_data.is_null());
-    l_num_comp = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-    if p_header_size != p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps.wrapping_add(2u32) {
-      event_msg!(p_manager, EVT_ERROR, "Crror reading CBD marker\n",);
-      return 0i32;
-    }
-    l_nb_comp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-    cursor += 2 as usize;
-    if l_nb_comp != l_num_comp {
-      event_msg!(p_manager, EVT_ERROR, "Crror reading CBD marker\n",);
-      return 0i32;
-    }
-    l_comp = p_j2k.m_private_image.as_deref().expect("m_private_image").comps.as_ptr() as *mut CoreImageComp;
-    i = 0 as OPJ_UINT32;
-    while i < l_num_comp {
-      l_comp_def = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-      cursor += 1 as usize;
-      (*l_comp).sgnd = l_comp_def >> 7i32 & 1u32;
-      (*l_comp).prec = (l_comp_def & 0x7fu32).wrapping_add(1u32);
-      if (*l_comp).prec > 31u32 {
-        event_msg!(p_manager, EVT_ERROR,
-                          "Invalid values for comp = {} : prec={} (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n", i,
-                          (*l_comp).prec);
-        return 0i32;
-      }
-      l_comp = l_comp.offset(1);
-      i += 1;
-    }
-    1i32
+  assert!(!p_header_data.is_null());
+  let l_image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
+  l_num_comp = l_image.numcomps;
+  if p_header_size != l_image.numcomps.wrapping_add(2u32) {
+    event_msg!(p_manager, EVT_ERROR, "Crror reading CBD marker\n",);
+    return 0i32;
   }
+  l_nb_comp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+  cursor += 2 as usize;
+  if l_nb_comp != l_num_comp {
+    event_msg!(p_manager, EVT_ERROR, "Crror reading CBD marker\n",);
+    return 0i32;
+  }
+  i = 0 as OPJ_UINT32;
+  while i < l_num_comp {
+    l_comp_def = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    cursor += 1 as usize;
+    let comp = &mut l_image.comps[i as usize];
+    comp.sgnd = l_comp_def >> 7i32 & 1u32;
+    comp.prec = (l_comp_def & 0x7fu32).wrapping_add(1u32);
+    if comp.prec > 31u32 {
+      event_msg!(p_manager, EVT_ERROR,
+                        "Invalid values for comp = {} : prec={} (should be between 1 and 38 according to the JPEG2000 norm. OpenJpeg only supports up to 31)\n", i,
+                        comp.prec);
+      return 0i32;
+    }
+    i += 1;
+  }
+  1i32
 }
+
 /* *
  * Reads a CAP marker (extended capabilities definition). Empty implementation.
  * Found in HTJ2K files
