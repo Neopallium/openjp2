@@ -152,10 +152,11 @@ pub(crate) fn opj_t2_encode_packets(
       1u32
     };
     let mut l_nb_pocs = (*l_tcp).numpocs.wrapping_add(1u32);
-    l_pi = opj_pi_initialise_encode(unsafe { &mut *l_image }, l_cp, p_tile_no, p_t2_mode, p_manager);
-    if l_pi.is_null() {
+    let mut l_pi_vec = opj_pi_initialise_encode(&mut *l_image, &mut *l_cp, p_tile_no, p_t2_mode, p_manager);
+    if l_pi_vec.is_empty() {
       return 0i32;
     }
+    l_pi = l_pi_vec.as_mut_ptr();
     *p_data_written = 0 as OPJ_UINT32;
     if p_t2_mode as core::ffi::c_uint == THRESH_CALC as core::ffi::c_uint {
       /* Calculating threshold */
@@ -168,10 +169,10 @@ pub(crate) fn opj_t2_encode_packets(
         while poc < pocno {
           let mut l_tp_num = compno;
           /* TODO MSD : check why this function cannot fail (cf. v1) */
-          opj_pi_create_encode(l_pi, l_cp, p_tile_no, poc, l_tp_num, p_tp_pos, p_t2_mode);
+          opj_pi_create_encode(l_pi_vec.as_mut_slice(), &mut *l_cp, p_tile_no, poc, l_tp_num, p_tp_pos, p_t2_mode);
           if (*l_current_pi).poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
             /* TODO ADE : add an error */
-            opj_pi_destroy(l_pi, l_nb_pocs);
+            opj_pi_destroy(&mut l_pi_vec);
             return 0i32;
           }
           while opj_pi_next(&mut *l_current_pi) != 0 {
@@ -189,7 +190,7 @@ pub(crate) fn opj_t2_encode_packets(
                 p_manager,
               ) == 0
               {
-                opj_pi_destroy(l_pi, l_nb_pocs);
+                opj_pi_destroy(&mut l_pi_vec);
                 return 0i32;
               }
               l_comp_len = (l_comp_len as core::ffi::c_uint).wrapping_add(l_nb_bytes) as OPJ_UINT32;
@@ -202,7 +203,7 @@ pub(crate) fn opj_t2_encode_packets(
           if (*l_cp).m_specific_param.m_enc.m_max_comp_size != 0
             && l_comp_len > (*l_cp).m_specific_param.m_enc.m_max_comp_size
           {
-            opj_pi_destroy(l_pi, l_nb_pocs);
+            opj_pi_destroy(&mut l_pi_vec);
             return 0i32;
           }
           l_current_pi = l_current_pi.offset(1);
@@ -211,11 +212,11 @@ pub(crate) fn opj_t2_encode_packets(
         compno += 1;
       }
     } else {
-      opj_pi_create_encode(l_pi, l_cp, p_tile_no, p_pino, p_tp_num, p_tp_pos, p_t2_mode);
+      opj_pi_create_encode(l_pi_vec.as_mut_slice(), &mut *l_cp, p_tile_no, p_pino, p_tp_num, p_tp_pos, p_t2_mode);
       l_current_pi = &mut *l_pi.offset(p_pino as isize) as *mut opj_pi_iterator_t;
       if (*l_current_pi).poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
         /* TODO ADE : add an error */
-        opj_pi_destroy(l_pi, l_nb_pocs);
+        opj_pi_destroy(&mut l_pi_vec);
         return 0i32;
       }
       if !p_marker_info.is_null() && (*p_marker_info).need_PLT != 0 {
@@ -224,7 +225,7 @@ pub(crate) fn opj_t2_encode_packets(
         assert!((*p_marker_info).packet_count == 0u32);
         assert!((*p_marker_info).p_packet_size.is_null());
         {
-          let count = opj_get_encoding_packet_count(unsafe { &mut *l_image }, l_cp, p_tile_no) as usize;
+          let count = opj_get_encoding_packet_count(&mut *l_image, &*l_cp, p_tile_no) as usize;
           let mut v: Vec<OPJ_UINT32> = vec![0; count];
           (*p_marker_info).p_packet_size = v.as_mut_ptr();
           core::mem::forget(v);
@@ -245,7 +246,7 @@ pub(crate) fn opj_t2_encode_packets(
             p_manager,
           ) == 0
           {
-            opj_pi_destroy(l_pi, l_nb_pocs);
+            opj_pi_destroy(&mut l_pi_vec);
             return 0i32;
           }
           l_current_data = l_current_data.offset(l_nb_bytes as isize);
@@ -293,7 +294,7 @@ pub(crate) fn opj_t2_encode_packets(
         }
       }
     }
-    opj_pi_destroy(l_pi, l_nb_pocs);
+    opj_pi_destroy(&mut l_pi_vec);
     1i32
   }
 }
@@ -322,10 +323,11 @@ pub(crate) fn opj_t2_decode_packets(
     let mut l_pack_info = core::ptr::null_mut::<opj_packet_info_t>();
     let mut l_img_comp = core::ptr::null_mut::<CoreImageComp>();
     /* create a packet iterator */
-    l_pi = opj_pi_create_decode(l_image, l_cp, p_tile_no, p_manager);
-    if l_pi.is_null() {
+    let mut l_pi_vec = opj_pi_create_decode(&mut *l_image, &mut *l_cp, p_tile_no, p_manager);
+    if l_pi_vec.is_empty() {
       return 0i32;
     }
+    l_pi = l_pi_vec.as_mut_ptr();
     l_current_pi = l_pi;
     pino = 0 as OPJ_UINT32;
     while pino <= (*l_tcp).numpocs {
@@ -337,7 +339,7 @@ pub(crate) fn opj_t2_decode_packets(
       let mut first_pass_failed: Vec<OPJ_BOOL> = Vec::new();
       if (*l_current_pi).poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
         /* TODO ADE : add an error */
-        opj_pi_destroy(l_pi, l_nb_pocs);
+        opj_pi_destroy(&mut l_pi_vec);
         return 0i32;
       }
       first_pass_failed = vec![1i32; (*l_image).numcomps as usize];
@@ -417,7 +419,7 @@ pub(crate) fn opj_t2_decode_packets(
             p_manager,
           ) == 0
           {
-            opj_pi_destroy(l_pi, l_nb_pocs);
+            opj_pi_destroy(&mut l_pi_vec);
             
             return 0i32;
           }
@@ -439,7 +441,7 @@ pub(crate) fn opj_t2_decode_packets(
             p_manager,
           ) == 0
           {
-            opj_pi_destroy(l_pi, l_nb_pocs);
+            opj_pi_destroy(&mut l_pi_vec);
             
             return 0i32;
           }
@@ -463,7 +465,7 @@ pub(crate) fn opj_t2_decode_packets(
     /* INDEX >> */
     /* << INDEX */
     /* don't forget to release pi */
-    opj_pi_destroy(l_pi, l_nb_pocs);
+    opj_pi_destroy(&mut l_pi_vec);
     *p_data_read = l_current_data.offset_from(p_src) as OPJ_UINT32;
     1i32
   }
