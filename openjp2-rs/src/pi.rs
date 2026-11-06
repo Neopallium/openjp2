@@ -123,76 +123,71 @@ Get next packet in layer-resolution-component-precinct order.
    local functions
 ==========================================================
 */
-fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
-  unsafe {
+fn opj_pi_next_lrcp(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
     let mut current_block: u64;
-    let mut comp = core::ptr::null_mut::<opj_pi_comp_t>();
-    let mut res = core::ptr::null_mut::<opj_pi_resolution_t>();
     let mut index = 0 as OPJ_UINT32;
-    if (*pi).poc.compno0 >= (*pi).numcomps || (*pi).poc.compno1 >= (*pi).numcomps.wrapping_add(1u32)
+    if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
-        &mut *(*pi).manager,
+        unsafe { &mut *pi.manager },
         EVT_ERROR,
         "opj_pi_next_lrcp(): invalid compno0/compno1\n",
       );
       return 0i32;
     }
-    if (*pi).first == 0 {
-      comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
-      res = (*comp).resolutions.as_mut_ptr().add((*pi).resno as usize) as *mut opj_pi_resolution_t;
-      current_block = 5634871135123216486;
+    if pi.first == 0 {
+                  current_block = 5634871135123216486;
     } else {
-      (*pi).first = 0i32;
-      (*pi).layno = (*pi).poc.layno0;
+      pi.first = 0i32;
+      pi.layno = pi.poc.layno0;
       current_block = 2868539653012386629;
     }
     loop {
       match current_block {
         5634871135123216486 => {
-          (*pi).precno = (*pi).precno.wrapping_add(1);
+          pi.precno = pi.precno.wrapping_add(1);
           current_block = 1109700713171191020;
         }
         _ => {
-          if (*pi).layno >= (*pi).poc.layno1 {
+          if pi.layno >= pi.poc.layno1 {
             break;
           }
-          (*pi).resno = (*pi).poc.resno0;
+          pi.resno = pi.poc.resno0;
           current_block = 1856101646708284338;
         }
       }
       loop {
         match current_block {
           1856101646708284338 => {
-            if (*pi).resno < (*pi).poc.resno1 {
-              (*pi).compno = (*pi).poc.compno0
+            if pi.resno < pi.poc.resno1 {
+              pi.compno = pi.poc.compno0
             } else {
-              (*pi).layno = (*pi).layno.wrapping_add(1);
+              pi.layno = pi.layno.wrapping_add(1);
               current_block = 2868539653012386629;
               break;
             }
             current_block = 10048703153582371463;
           }
           _ => {
-            if (*pi).precno < (*pi).poc.precno1 {
-              index = (*pi)
+            if pi.precno < pi.poc.precno1 {
+              index = pi
                 .layno
-                .wrapping_mul((*pi).step_l)
-                .wrapping_add((*pi).resno.wrapping_mul((*pi).step_r))
-                .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
-                .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
+                .wrapping_mul(pi.step_l)
+                .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
+                .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
+                .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
               /* Avoids index out of bounds access with */
               /* id_000098,sig_11,src_005411,op_havoc,rep_2 of */
               /* https://github.com/uclouvain/openjpeg/issues/938 */
               /* Not sure if this is the most clever fix. Perhaps */
               /* include should be resized when a POC arises, or */
               /* the POC should be rejected */
-              if index >= (*pi).include_size {
-                event_msg!(&mut *(*pi).manager, EVT_ERROR, "Invalid access to pi->include",);
+              if index >= pi.include_size {
+                event_msg!(unsafe { &mut *pi.manager }, EVT_ERROR, "Invalid access to pi->include",);
                 return 0i32;
               }
-              if *(*pi).include.offset(index as isize) == 0 {
-                *(*pi).include.offset(index as isize) = 1 as OPJ_INT16;
+              if unsafe { *pi.include.offset(index as isize) } == 0 {
+                unsafe { *pi.include.offset(index as isize) = 1 as OPJ_INT16 };
                 return 1i32;
               }
               current_block = 5634871135123216486;
@@ -205,26 +200,23 @@ fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         loop {
           match current_block {
             17860125682698302841 => {
-              (*pi).compno = (*pi).compno.wrapping_add(1);
+              pi.compno = pi.compno.wrapping_add(1);
               current_block = 10048703153582371463;
             }
             _ => {
-              if (*pi).compno < (*pi).poc.compno1 {
-                comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
-                if (*pi).resno >= (*comp).numresolutions {
+              if pi.compno < pi.poc.compno1 {
+                                if pi.resno >= pi.comps[pi.compno as usize].numresolutions {
                   current_block = 17860125682698302841;
                   continue;
                 }
-                res = (*comp).resolutions.as_mut_ptr().add((*pi).resno as usize)
-                  as *mut opj_pi_resolution_t;
-                if (*pi).tp_on == 0 {
-                  (*pi).poc.precno1 = (*res).pw.wrapping_mul((*res).ph)
+                                if pi.tp_on == 0 {
+                  pi.poc.precno1 = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph)
                 }
-                (*pi).precno = (*pi).poc.precno0;
+                pi.precno = pi.poc.precno0;
                 current_block = 1109700713171191020;
                 break;
               } else {
-                (*pi).resno = (*pi).resno.wrapping_add(1);
+                pi.resno = pi.resno.wrapping_add(1);
                 current_block = 1856101646708284338;
                 break;
               }
@@ -234,77 +226,71 @@ fn opj_pi_next_lrcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       }
     }
     0i32
-  }
 }
 /* *
 Get next packet in resolution-layer-component-precinct order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
-  unsafe {
+fn opj_pi_next_rlcp(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
     let mut current_block: u64;
-    let mut comp = core::ptr::null_mut::<opj_pi_comp_t>();
-    let mut res = core::ptr::null_mut::<opj_pi_resolution_t>();
     let mut index = 0 as OPJ_UINT32;
-    if (*pi).poc.compno0 >= (*pi).numcomps || (*pi).poc.compno1 >= (*pi).numcomps.wrapping_add(1u32)
+    if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
-        &mut *(*pi).manager,
+        unsafe { &mut *pi.manager },
         EVT_ERROR,
         "opj_pi_next_rlcp(): invalid compno0/compno1\n",
       );
       return 0i32;
     }
-    if (*pi).first == 0 {
-      comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
-      res = (*comp).resolutions.as_mut_ptr().add((*pi).resno as usize) as *mut opj_pi_resolution_t;
-      current_block = 5634871135123216486;
+    if pi.first == 0 {
+                  current_block = 5634871135123216486;
     } else {
-      (*pi).first = 0i32;
-      (*pi).resno = (*pi).poc.resno0;
+      pi.first = 0i32;
+      pi.resno = pi.poc.resno0;
       current_block = 2868539653012386629;
     }
     loop {
       match current_block {
         5634871135123216486 => {
-          (*pi).precno = (*pi).precno.wrapping_add(1);
+          pi.precno = pi.precno.wrapping_add(1);
           current_block = 1109700713171191020;
         }
         _ => {
-          if (*pi).resno >= (*pi).poc.resno1 {
+          if pi.resno >= pi.poc.resno1 {
             break;
           }
-          (*pi).layno = (*pi).poc.layno0;
+          pi.layno = pi.poc.layno0;
           current_block = 1856101646708284338;
         }
       }
       loop {
         match current_block {
           1856101646708284338 => {
-            if (*pi).layno < (*pi).poc.layno1 {
-              (*pi).compno = (*pi).poc.compno0
+            if pi.layno < pi.poc.layno1 {
+              pi.compno = pi.poc.compno0
             } else {
-              (*pi).resno = (*pi).resno.wrapping_add(1);
+              pi.resno = pi.resno.wrapping_add(1);
               current_block = 2868539653012386629;
               break;
             }
             current_block = 10048703153582371463;
           }
           _ => {
-            if (*pi).precno < (*pi).poc.precno1 {
-              index = (*pi)
+            if pi.precno < pi.poc.precno1 {
+              index = pi
                 .layno
-                .wrapping_mul((*pi).step_l)
-                .wrapping_add((*pi).resno.wrapping_mul((*pi).step_r))
-                .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
-                .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
-              if index >= (*pi).include_size {
-                event_msg!(&mut *(*pi).manager, EVT_ERROR, "Invalid access to pi->include",);
+                .wrapping_mul(pi.step_l)
+                .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
+                .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
+                .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
+              if index >= pi.include_size {
+                event_msg!(unsafe { &mut *pi.manager }, EVT_ERROR, "Invalid access to pi->include",);
                 return 0i32;
               }
-              if *(*pi).include.offset(index as isize) == 0 {
-                *(*pi).include.offset(index as isize) = 1 as OPJ_INT16;
+              if unsafe { *pi.include.offset(index as isize) } == 0 {
+                unsafe { *pi.include.offset(index as isize) = 1 as OPJ_INT16 };
                 return 1i32;
               }
               current_block = 5634871135123216486;
@@ -317,26 +303,23 @@ fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         loop {
           match current_block {
             17860125682698302841 => {
-              (*pi).compno = (*pi).compno.wrapping_add(1);
+              pi.compno = pi.compno.wrapping_add(1);
               current_block = 10048703153582371463;
             }
             _ => {
-              if (*pi).compno < (*pi).poc.compno1 {
-                comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
-                if (*pi).resno >= (*comp).numresolutions {
+              if pi.compno < pi.poc.compno1 {
+                                if pi.resno >= pi.comps[pi.compno as usize].numresolutions {
                   current_block = 17860125682698302841;
                   continue;
                 }
-                res = (*comp).resolutions.as_mut_ptr().add((*pi).resno as usize)
-                  as *mut opj_pi_resolution_t;
-                if (*pi).tp_on == 0 {
-                  (*pi).poc.precno1 = (*res).pw.wrapping_mul((*res).ph)
+                                if pi.tp_on == 0 {
+                  pi.poc.precno1 = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph)
                 }
-                (*pi).precno = (*pi).poc.precno0;
+                pi.precno = pi.poc.precno0;
                 current_block = 1109700713171191020;
                 break;
               } else {
-                (*pi).layno = (*pi).layno.wrapping_add(1);
+                pi.layno = pi.layno.wrapping_add(1);
                 current_block = 1856101646708284338;
                 break;
               }
@@ -346,15 +329,13 @@ fn opj_pi_next_rlcp(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       }
     }
     0i32
-  }
 }
 /* *
 Get next packet in resolution-precinct-component-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
-  unsafe {
+fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
     let mut levelno: OPJ_UINT32 = 0;
     let mut trx0: OPJ_UINT32 = 0;
     let mut try0: OPJ_UINT32 = 0;
@@ -365,156 +346,152 @@ fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
     let mut prci: OPJ_UINT32 = 0;
     let mut prcj: OPJ_UINT32 = 0;
     let mut current_block: u64;
-    let mut comp = core::ptr::null_mut::<opj_pi_comp_t>();
-    let mut res = core::ptr::null_mut::<opj_pi_resolution_t>();
     let mut index = 0 as OPJ_UINT32;
-    if (*pi).poc.compno0 >= (*pi).numcomps || (*pi).poc.compno1 >= (*pi).numcomps.wrapping_add(1u32)
+    if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
-        &mut *(*pi).manager,
+        unsafe { &mut *pi.manager },
         EVT_ERROR,
         "opj_pi_next_rpcl(): invalid compno0/compno1\n",
       );
       return 0i32;
     }
-    if (*pi).first == 0 {
+    if pi.first == 0 {
       current_block = 129780949503461575;
     } else {
       let mut compno: OPJ_UINT32 = 0;
       let mut resno: OPJ_UINT32 = 0;
-      (*pi).first = 0i32;
-      (*pi).dx = 0 as OPJ_UINT32;
-      (*pi).dy = 0 as OPJ_UINT32;
+      pi.first = 0i32;
+      pi.dx = 0 as OPJ_UINT32;
+      pi.dy = 0 as OPJ_UINT32;
       compno = 0 as OPJ_UINT32;
-      while compno < (*pi).numcomps {
-        comp = (*pi).comps.as_mut_ptr().add(compno as usize) as *mut opj_pi_comp_t;
-        resno = 0 as OPJ_UINT32;
-        while resno < (*comp).numresolutions {
+      while compno < pi.numcomps {
+                resno = 0 as OPJ_UINT32;
+        while resno < pi.comps[compno as usize].numresolutions {
           let mut dx: OPJ_UINT32 = 0;
           let mut dy: OPJ_UINT32 = 0;
-          res = (*comp).resolutions.as_mut_ptr().add(resno as usize) as *mut opj_pi_resolution_t;
-          if (*res)
+                    if pi.comps[compno as usize].resolutions[resno as usize]
             .pdx
-            .wrapping_add((*comp).numresolutions)
+            .wrapping_add(pi.comps[compno as usize].numresolutions)
             .wrapping_sub(1u32)
             .wrapping_sub(resno)
             < 32u32
-            && (*comp).dx
+            && pi.comps[compno as usize].dx
               <= (2147483647u32)
                 .wrapping_mul(2u32)
                 .wrapping_add(1u32)
                 .wrapping_div(
                   (1u32)
-                    << (*res)
+                    << pi.comps[compno as usize].resolutions[resno as usize]
                       .pdx
-                      .wrapping_add((*comp).numresolutions)
+                      .wrapping_add(pi.comps[compno as usize].numresolutions)
                       .wrapping_sub(1u32)
                       .wrapping_sub(resno),
                 )
           {
-            dx = (*comp).dx.wrapping_mul(
+            dx = pi.comps[compno as usize].dx.wrapping_mul(
               (1u32)
-                << (*res)
+                << pi.comps[compno as usize].resolutions[resno as usize]
                   .pdx
-                  .wrapping_add((*comp).numresolutions)
+                  .wrapping_add(pi.comps[compno as usize].numresolutions)
                   .wrapping_sub(1u32)
                   .wrapping_sub(resno),
             );
-            (*pi).dx = if (*pi).dx == 0 {
+            pi.dx = if pi.dx == 0 {
               dx
             } else {
-              opj_uint_min((*pi).dx, dx)
+              opj_uint_min(pi.dx, dx)
             }
           }
-          if (*res)
+          if pi.comps[compno as usize].resolutions[resno as usize]
             .pdy
-            .wrapping_add((*comp).numresolutions)
+            .wrapping_add(pi.comps[compno as usize].numresolutions)
             .wrapping_sub(1u32)
             .wrapping_sub(resno)
             < 32u32
-            && (*comp).dy
+            && pi.comps[compno as usize].dy
               <= (2147483647u32)
                 .wrapping_mul(2u32)
                 .wrapping_add(1u32)
                 .wrapping_div(
                   (1u32)
-                    << (*res)
+                    << pi.comps[compno as usize].resolutions[resno as usize]
                       .pdy
-                      .wrapping_add((*comp).numresolutions)
+                      .wrapping_add(pi.comps[compno as usize].numresolutions)
                       .wrapping_sub(1u32)
                       .wrapping_sub(resno),
                 )
           {
-            dy = (*comp).dy.wrapping_mul(
+            dy = pi.comps[compno as usize].dy.wrapping_mul(
               (1u32)
-                << (*res)
+                << pi.comps[compno as usize].resolutions[resno as usize]
                   .pdy
-                  .wrapping_add((*comp).numresolutions)
+                  .wrapping_add(pi.comps[compno as usize].numresolutions)
                   .wrapping_sub(1u32)
                   .wrapping_sub(resno),
             );
-            (*pi).dy = if (*pi).dy == 0 {
+            pi.dy = if pi.dy == 0 {
               dy
             } else {
-              opj_uint_min((*pi).dy, dy)
+              opj_uint_min(pi.dy, dy)
             }
           }
           resno += 1;
         }
         compno += 1;
       }
-      if (*pi).dx == 0u32 || (*pi).dy == 0u32 {
+      if pi.dx == 0u32 || pi.dy == 0u32 {
         return 0i32;
       }
-      if (*pi).tp_on == 0 {
-        (*pi).poc.ty0 = (*pi).ty0;
-        (*pi).poc.tx0 = (*pi).tx0;
-        (*pi).poc.ty1 = (*pi).ty1;
-        (*pi).poc.tx1 = (*pi).tx1
+      if pi.tp_on == 0 {
+        pi.poc.ty0 = pi.ty0;
+        pi.poc.tx0 = pi.tx0;
+        pi.poc.ty1 = pi.ty1;
+        pi.poc.tx1 = pi.tx1
       }
-      (*pi).resno = (*pi).poc.resno0;
+      pi.resno = pi.poc.resno0;
       current_block = 11385396242402735691;
     }
     loop {
       match current_block {
         129780949503461575 => {
-          (*pi).layno = (*pi).layno.wrapping_add(1);
+          pi.layno = pi.layno.wrapping_add(1);
           current_block = 2606304779496145856;
         }
         _ => {
-          if (*pi).resno >= (*pi).poc.resno1 {
+          if pi.resno >= pi.poc.resno1 {
             break;
           }
-          (*pi).y = (*pi).poc.ty0;
+          pi.y = pi.poc.ty0;
           current_block = 6450636197030046351;
         }
       }
       loop {
         match current_block {
           6450636197030046351 => {
-            if (*pi).y < (*pi).poc.ty1 {
-              (*pi).x = (*pi).poc.tx0
+            if pi.y < pi.poc.ty1 {
+              pi.x = pi.poc.tx0
             } else {
-              (*pi).resno = (*pi).resno.wrapping_add(1);
+              pi.resno = pi.resno.wrapping_add(1);
               current_block = 11385396242402735691;
               break;
             }
             current_block = 3123434771885419771;
           }
           _ => {
-            if (*pi).layno < (*pi).poc.layno1 {
-              index = (*pi)
+            if pi.layno < pi.poc.layno1 {
+              index = pi
                 .layno
-                .wrapping_mul((*pi).step_l)
-                .wrapping_add((*pi).resno.wrapping_mul((*pi).step_r))
-                .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
-                .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
-              if index >= (*pi).include_size {
-                event_msg!(&mut *(*pi).manager, EVT_ERROR, "Invalid access to pi->include",);
+                .wrapping_mul(pi.step_l)
+                .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
+                .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
+                .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
+              if index >= pi.include_size {
+                event_msg!(unsafe { &mut *pi.manager }, EVT_ERROR, "Invalid access to pi->include",);
                 return 0i32;
               }
-              if *(*pi).include.offset(index as isize) == 0 {
-                *(*pi).include.offset(index as isize) = 1 as OPJ_INT16;
+              if unsafe { *pi.include.offset(index as isize) } == 0 {
+                unsafe { *pi.include.offset(index as isize) = 1 as OPJ_INT16 };
                 return 1i32;
               }
               current_block = 129780949503461575;
@@ -526,20 +503,20 @@ fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         }
         loop {
           match current_block {
-            10891380440665537214 => (*pi).compno = (*pi).compno.wrapping_add(1),
+            10891380440665537214 => pi.compno = pi.compno.wrapping_add(1),
             _ => {
-              if (*pi).x < (*pi).poc.tx1 {
-                (*pi).compno = (*pi).poc.compno0
+              if pi.x < pi.poc.tx1 {
+                pi.compno = pi.poc.compno0
               } else {
-                (*pi).y = ((*pi).y as core::ffi::c_uint)
-                  .wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
+                pi.y = (pi.y as core::ffi::c_uint)
+                  .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)))
                   as OPJ_UINT32;
                 current_block = 6450636197030046351;
                 break;
               }
             }
           }
-          if (*pi).compno < (*pi).poc.compno1 {
+          if pi.compno < pi.poc.compno1 {
             levelno = 0;
             trx0 = 0;
             try0 = 0;
@@ -549,18 +526,13 @@ fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             rpy = 0;
             prci = 0;
             prcj = 0;
-            comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
-            if (*pi).resno >= (*comp).numresolutions {
+                        if pi.resno >= pi.comps[pi.compno as usize].numresolutions {
               current_block = 10891380440665537214;
               continue;
             }
-            res = (*comp)
-              .resolutions
-              .as_mut_ptr()
-              .add((*pi).resno as usize) as *mut opj_pi_resolution_t;
-            levelno = (*comp).numresolutions - 1 - (*pi).resno;
-            let dx = (*comp).dx as u64;
-            let dy = (*comp).dy as u64;
+                        levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
+            let dx = pi.comps[pi.compno as usize].dx as u64;
+            let dy = pi.comps[pi.compno as usize].dy as u64;
 
             if ((dx << levelno as u64) >> levelno) != dx
               || ((dy << levelno as u64) >> levelno) != dy
@@ -569,12 +541,12 @@ fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
               continue;
             }
 
-            trx0 = opj_uint64_ceildiv_res_uint32((*pi).tx0 as u64, dx << levelno);
-            try0 = opj_uint64_ceildiv_res_uint32((*pi).ty0 as u64, dy << levelno);
-            trx1 = opj_uint64_ceildiv_res_uint32((*pi).tx1 as u64, dx << levelno);
-            try1 = opj_uint64_ceildiv_res_uint32((*pi).ty1 as u64, dy << levelno);
-            rpx = (*res).pdx.wrapping_add(levelno);
-            rpy = (*res).pdy.wrapping_add(levelno);
+            trx0 = opj_uint64_ceildiv_res_uint32(pi.tx0 as u64, dx << levelno);
+            try0 = opj_uint64_ceildiv_res_uint32(pi.ty0 as u64, dy << levelno);
+            trx1 = opj_uint64_ceildiv_res_uint32(pi.tx1 as u64, dx << levelno);
+            try1 = opj_uint64_ceildiv_res_uint32(pi.ty1 as u64, dy << levelno);
+            rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx.wrapping_add(levelno);
+            rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy.wrapping_add(levelno);
 
             if ((dx << rpx) >> rpx) != dx || ((dy << rpy) >> rpy) != dy {
               current_block = 10891380440665537214;
@@ -582,19 +554,19 @@ fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             }
 
             /* See ISO-15441. B.12.1.3 Resolution level-position-component-layer progression */
-            if !(((*pi).y as u64 % (dy << rpy)) == 0
-              || ((*pi).y == (*pi).ty0 && (((try0 as u64) << levelno) % (1u64 << rpy)) != 0))
+            if !((pi.y as u64 % (dy << rpy)) == 0
+              || (pi.y == pi.ty0 && (((try0 as u64) << levelno) % (1u64 << rpy)) != 0))
             {
               current_block = 10891380440665537214;
               continue;
             }
-            if !(((*pi).x as u64 % (dx << rpx)) == 0
-              || ((*pi).x == (*pi).tx0 && (((trx0 as u64) << levelno) % (1u64 << rpx)) != 0))
+            if !((pi.x as u64 % (dx << rpx)) == 0
+              || (pi.x == pi.tx0 && (((trx0 as u64) << levelno) % (1u64 << rpx)) != 0))
             {
               current_block = 10891380440665537214;
               continue;
             }
-            if (*res).pw == 0u32 || (*res).ph == 0u32 {
+            if pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw == 0u32 || pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph == 0u32 {
               current_block = 10891380440665537214;
               continue;
             }
@@ -603,20 +575,20 @@ fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
               continue;
             }
             prci = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32((*pi).x as u64, dx << levelno),
-              (*res).pdx,
-            ) - opj_uint_floordivpow2(trx0, (*res).pdx);
+              opj_uint64_ceildiv_res_uint32(pi.x as u64, dx << levelno),
+              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
+            ) - opj_uint_floordivpow2(trx0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx);
             prcj = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32((*pi).y as u64, dy << levelno),
-              (*res).pdy,
-            ) - opj_uint_floordivpow2(try0, (*res).pdy);
-            (*pi).precno = prci.wrapping_add(prcj.wrapping_mul((*res).pw));
-            (*pi).layno = (*pi).poc.layno0;
+              opj_uint64_ceildiv_res_uint32(pi.y as u64, dy << levelno),
+              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
+            ) - opj_uint_floordivpow2(try0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy);
+            pi.precno = prci.wrapping_add(prcj.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw));
+            pi.layno = pi.poc.layno0;
             current_block = 2606304779496145856;
             break;
           } else {
-            (*pi).x = ((*pi).x as core::ffi::c_uint)
-              .wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
+            pi.x = (pi.x as core::ffi::c_uint)
+              .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)))
               as OPJ_UINT32;
             current_block = 3123434771885419771;
           }
@@ -624,15 +596,13 @@ fn opj_pi_next_rpcl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       }
     }
     0i32
-  }
 }
 /* *
 Get next packet in precinct-component-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
-  unsafe {
+fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
     let mut levelno: OPJ_UINT32 = 0;
     let mut trx0: OPJ_UINT32 = 0;
     let mut try0: OPJ_UINT32 = 0;
@@ -643,139 +613,134 @@ fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
     let mut prci: OPJ_UINT32 = 0;
     let mut prcj: OPJ_UINT32 = 0;
     let mut current_block: u64;
-    let mut comp = core::ptr::null_mut::<opj_pi_comp_t>();
-    let mut res = core::ptr::null_mut::<opj_pi_resolution_t>();
     let mut index = 0 as OPJ_UINT32;
-    if (*pi).poc.compno0 >= (*pi).numcomps || (*pi).poc.compno1 >= (*pi).numcomps.wrapping_add(1u32)
+    if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
-        &mut *(*pi).manager,
+        unsafe { &mut *pi.manager },
         EVT_ERROR,
         "opj_pi_next_pcrl(): invalid compno0/compno1\n",
       );
       return 0i32;
     }
-    if (*pi).first == 0 {
-      comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
-      current_block = 10853015579903106591;
+    if pi.first == 0 {
+            current_block = 10853015579903106591;
     } else {
       let mut compno: OPJ_UINT32 = 0;
       let mut resno: OPJ_UINT32 = 0;
-      (*pi).first = 0i32;
-      (*pi).dx = 0 as OPJ_UINT32;
-      (*pi).dy = 0 as OPJ_UINT32;
+      pi.first = 0i32;
+      pi.dx = 0 as OPJ_UINT32;
+      pi.dy = 0 as OPJ_UINT32;
       compno = 0 as OPJ_UINT32;
-      while compno < (*pi).numcomps {
-        comp = (*pi).comps.as_mut_ptr().add(compno as usize) as *mut opj_pi_comp_t;
-        resno = 0 as OPJ_UINT32;
-        while resno < (*comp).numresolutions {
+      while compno < pi.numcomps {
+                resno = 0 as OPJ_UINT32;
+        while resno < pi.comps[compno as usize].numresolutions {
           let mut dx: OPJ_UINT32 = 0;
           let mut dy: OPJ_UINT32 = 0;
-          res = (*comp).resolutions.as_mut_ptr().add(resno as usize) as *mut opj_pi_resolution_t;
-          if (*res)
+                    if pi.comps[compno as usize].resolutions[resno as usize]
             .pdx
-            .wrapping_add((*comp).numresolutions)
+            .wrapping_add(pi.comps[compno as usize].numresolutions)
             .wrapping_sub(1u32)
             .wrapping_sub(resno)
             < 32u32
-            && (*comp).dx
+            && pi.comps[compno as usize].dx
               <= (2147483647u32)
                 .wrapping_mul(2u32)
                 .wrapping_add(1u32)
                 .wrapping_div(
                   (1u32)
-                    << (*res)
+                    << pi.comps[compno as usize].resolutions[resno as usize]
                       .pdx
-                      .wrapping_add((*comp).numresolutions)
+                      .wrapping_add(pi.comps[compno as usize].numresolutions)
                       .wrapping_sub(1u32)
                       .wrapping_sub(resno),
                 )
           {
-            dx = (*comp).dx.wrapping_mul(
+            dx = pi.comps[compno as usize].dx.wrapping_mul(
               (1u32)
-                << (*res)
+                << pi.comps[compno as usize].resolutions[resno as usize]
                   .pdx
-                  .wrapping_add((*comp).numresolutions)
+                  .wrapping_add(pi.comps[compno as usize].numresolutions)
                   .wrapping_sub(1u32)
                   .wrapping_sub(resno),
             );
-            (*pi).dx = if (*pi).dx == 0 {
+            pi.dx = if pi.dx == 0 {
               dx
             } else {
-              opj_uint_min((*pi).dx, dx)
+              opj_uint_min(pi.dx, dx)
             }
           }
-          if (*res)
+          if pi.comps[compno as usize].resolutions[resno as usize]
             .pdy
-            .wrapping_add((*comp).numresolutions)
+            .wrapping_add(pi.comps[compno as usize].numresolutions)
             .wrapping_sub(1u32)
             .wrapping_sub(resno)
             < 32u32
-            && (*comp).dy
+            && pi.comps[compno as usize].dy
               <= (2147483647u32)
                 .wrapping_mul(2u32)
                 .wrapping_add(1u32)
                 .wrapping_div(
                   (1u32)
-                    << (*res)
+                    << pi.comps[compno as usize].resolutions[resno as usize]
                       .pdy
-                      .wrapping_add((*comp).numresolutions)
+                      .wrapping_add(pi.comps[compno as usize].numresolutions)
                       .wrapping_sub(1u32)
                       .wrapping_sub(resno),
                 )
           {
-            dy = (*comp).dy.wrapping_mul(
+            dy = pi.comps[compno as usize].dy.wrapping_mul(
               (1u32)
-                << (*res)
+                << pi.comps[compno as usize].resolutions[resno as usize]
                   .pdy
-                  .wrapping_add((*comp).numresolutions)
+                  .wrapping_add(pi.comps[compno as usize].numresolutions)
                   .wrapping_sub(1u32)
                   .wrapping_sub(resno),
             );
-            (*pi).dy = if (*pi).dy == 0 {
+            pi.dy = if pi.dy == 0 {
               dy
             } else {
-              opj_uint_min((*pi).dy, dy)
+              opj_uint_min(pi.dy, dy)
             }
           }
           resno += 1;
         }
         compno += 1;
       }
-      if (*pi).dx == 0u32 || (*pi).dy == 0u32 {
+      if pi.dx == 0u32 || pi.dy == 0u32 {
         return 0i32;
       }
-      if (*pi).tp_on == 0 {
-        (*pi).poc.ty0 = (*pi).ty0;
-        (*pi).poc.tx0 = (*pi).tx0;
-        (*pi).poc.ty1 = (*pi).ty1;
-        (*pi).poc.tx1 = (*pi).tx1
+      if pi.tp_on == 0 {
+        pi.poc.ty0 = pi.ty0;
+        pi.poc.tx0 = pi.tx0;
+        pi.poc.ty1 = pi.ty1;
+        pi.poc.tx1 = pi.tx1
       }
-      (*pi).y = (*pi).poc.ty0;
+      pi.y = pi.poc.ty0;
       current_block = 7245201122033322888;
     }
     loop {
       match current_block {
         10853015579903106591 => {
-          (*pi).layno = (*pi).layno.wrapping_add(1);
+          pi.layno = pi.layno.wrapping_add(1);
           current_block = 6281126495347172768;
         }
         _ => {
-          if (*pi).y >= (*pi).poc.ty1 {
+          if pi.y >= pi.poc.ty1 {
             break;
           }
-          (*pi).x = (*pi).poc.tx0;
+          pi.x = pi.poc.tx0;
           current_block = 8845338526596852646;
         }
       }
       loop {
         match current_block {
           8845338526596852646 => {
-            if (*pi).x < (*pi).poc.tx1 {
-              (*pi).compno = (*pi).poc.compno0
+            if pi.x < pi.poc.tx1 {
+              pi.compno = pi.poc.compno0
             } else {
-              (*pi).y = ((*pi).y as core::ffi::c_uint)
-                .wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
+              pi.y = (pi.y as core::ffi::c_uint)
+                .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)))
                 as OPJ_UINT32;
               current_block = 7245201122033322888;
               break;
@@ -783,19 +748,19 @@ fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             current_block = 980989089337379490;
           }
           _ => {
-            if (*pi).layno < (*pi).poc.layno1 {
-              index = (*pi)
+            if pi.layno < pi.poc.layno1 {
+              index = pi
                 .layno
-                .wrapping_mul((*pi).step_l)
-                .wrapping_add((*pi).resno.wrapping_mul((*pi).step_r))
-                .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
-                .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
-              if index >= (*pi).include_size {
-                event_msg!(&mut *(*pi).manager, EVT_ERROR, "Invalid access to pi->include",);
+                .wrapping_mul(pi.step_l)
+                .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
+                .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
+                .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
+              if index >= pi.include_size {
+                event_msg!(unsafe { &mut *pi.manager }, EVT_ERROR, "Invalid access to pi->include",);
                 return 0i32;
               }
-              if *(*pi).include.offset(index as isize) == 0 {
-                *(*pi).include.offset(index as isize) = 1 as OPJ_INT16;
+              if unsafe { *pi.include.offset(index as isize) } == 0 {
+                unsafe { *pi.include.offset(index as isize) = 1 as OPJ_INT16 };
                 return 1i32;
               }
               current_block = 10853015579903106591;
@@ -807,21 +772,20 @@ fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         }
         loop {
           match current_block {
-            15512526488502093901 => (*pi).resno = (*pi).resno.wrapping_add(1),
+            15512526488502093901 => pi.resno = pi.resno.wrapping_add(1),
             _ => {
-              if (*pi).compno < (*pi).poc.compno1 {
-                comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
-                (*pi).resno = (*pi).poc.resno0
+              if pi.compno < pi.poc.compno1 {
+                                pi.resno = pi.poc.resno0
               } else {
-                (*pi).x = ((*pi).x as core::ffi::c_uint)
-                  .wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
+                pi.x = (pi.x as core::ffi::c_uint)
+                  .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)))
                   as OPJ_UINT32;
                 current_block = 8845338526596852646;
                 break;
               }
             }
           }
-          if (*pi).resno < opj_uint_min((*pi).poc.resno1, (*comp).numresolutions) {
+          if pi.resno < opj_uint_min(pi.poc.resno1, pi.comps[pi.compno as usize].numresolutions) {
             levelno = 0;
             trx0 = 0;
             try0 = 0;
@@ -831,46 +795,42 @@ fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             rpy = 0;
             prci = 0;
             prcj = 0;
-            res = (*comp)
-              .resolutions
-              .as_mut_ptr()
-              .add((*pi).resno as usize) as *mut opj_pi_resolution_t;
-            levelno = (*comp).numresolutions - 1 - (*pi).resno;
+                        levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
 
-            if (((*comp).dx << levelno as u64) >> levelno) as u32 != (*comp).dx
-              || (((*comp).dy << levelno as u64) >> levelno) as u32 != (*comp).dy
+            if ((pi.comps[pi.compno as usize].dx << levelno as u64) >> levelno) as u32 != pi.comps[pi.compno as usize].dx
+              || ((pi.comps[pi.compno as usize].dy << levelno as u64) >> levelno) as u32 != pi.comps[pi.compno as usize].dy
             {
               current_block = 15512526488502093901;
               continue;
             }
 
-            trx0 = opj_uint64_ceildiv_res_uint32((*pi).tx0 as u64, ((*comp).dx as u64) << levelno);
-            try0 = opj_uint64_ceildiv_res_uint32((*pi).ty0 as u64, ((*comp).dy as u64) << levelno);
-            trx1 = opj_uint64_ceildiv_res_uint32((*pi).tx1 as u64, ((*comp).dx as u64) << levelno);
-            try1 = opj_uint64_ceildiv_res_uint32((*pi).ty1 as u64, ((*comp).dy as u64) << levelno);
-            rpx = (*res).pdx.wrapping_add(levelno);
-            rpy = (*res).pdy.wrapping_add(levelno);
+            trx0 = opj_uint64_ceildiv_res_uint32(pi.tx0 as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno);
+            try0 = opj_uint64_ceildiv_res_uint32(pi.ty0 as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno);
+            trx1 = opj_uint64_ceildiv_res_uint32(pi.tx1 as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno);
+            try1 = opj_uint64_ceildiv_res_uint32(pi.ty1 as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno);
+            rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx.wrapping_add(levelno);
+            rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy.wrapping_add(levelno);
 
-            if (((*comp).dx << rpx) as u64 >> rpx) as u32 != (*comp).dx
-              || (((*comp).dy << rpy) as u64 >> rpy) as u32 != (*comp).dy
+            if ((pi.comps[pi.compno as usize].dx << rpx) as u64 >> rpx) as u32 != pi.comps[pi.compno as usize].dx
+              || ((pi.comps[pi.compno as usize].dy << rpy) as u64 >> rpy) as u32 != pi.comps[pi.compno as usize].dy
             {
               current_block = 15512526488502093901;
               continue;
             }
             /* See ISO-15441. B.12.1.4 Position-component-resolution level-layer progression */
-            if !(((*pi).y as u64 % (((*comp).dy as u64) << rpy)) == 0
-              || ((*pi).y == (*pi).ty0 && (((try0 as u64) << levelno) % (1u64 << rpy)) != 0))
+            if !((pi.y as u64 % ((pi.comps[pi.compno as usize].dy as u64) << rpy)) == 0
+              || (pi.y == pi.ty0 && (((try0 as u64) << levelno) % (1u64 << rpy)) != 0))
             {
               current_block = 15512526488502093901;
               continue;
             }
-            if !(((*pi).x as u64 % (((*comp).dx as u64) << rpx)) == 0
-              || ((*pi).x == (*pi).tx0 && (((trx0 as u64) << levelno) % (1u64 << rpx)) != 0))
+            if !((pi.x as u64 % ((pi.comps[pi.compno as usize].dx as u64) << rpx)) == 0
+              || (pi.x == pi.tx0 && (((trx0 as u64) << levelno) % (1u64 << rpx)) != 0))
             {
               current_block = 15512526488502093901;
               continue;
             }
-            if (*res).pw == 0u32 || (*res).ph == 0u32 {
+            if pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw == 0u32 || pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph == 0u32 {
               current_block = 15512526488502093901;
               continue;
             }
@@ -879,34 +839,32 @@ fn opj_pi_next_pcrl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
               continue;
             }
             prci = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32((*pi).x as u64, ((*comp).dx as u64) << levelno),
-              (*res).pdx,
-            ) - opj_uint_floordivpow2(trx0, (*res).pdx);
+              opj_uint64_ceildiv_res_uint32(pi.x as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno),
+              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
+            ) - opj_uint_floordivpow2(trx0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx);
             prcj = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32((*pi).y as u64, ((*comp).dy as u64) << levelno),
-              (*res).pdy,
-            ) - opj_uint_floordivpow2(try0, (*res).pdy);
-            (*pi).precno = prci.wrapping_add(prcj.wrapping_mul((*res).pw));
-            (*pi).layno = (*pi).poc.layno0;
+              opj_uint64_ceildiv_res_uint32(pi.y as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno),
+              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
+            ) - opj_uint_floordivpow2(try0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy);
+            pi.precno = prci.wrapping_add(prcj.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw));
+            pi.layno = pi.poc.layno0;
             current_block = 6281126495347172768;
             break;
           } else {
-            (*pi).compno = (*pi).compno.wrapping_add(1);
+            pi.compno = pi.compno.wrapping_add(1);
             current_block = 980989089337379490;
           }
         }
       }
     }
     0i32
-  }
 }
 /* *
 Get next packet in component-precinct-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
-  unsafe {
+fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
     let mut resno: OPJ_UINT32 = 0;
     let mut levelno: OPJ_UINT32 = 0;
     let mut trx0: OPJ_UINT32 = 0;
@@ -918,152 +876,147 @@ fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
     let mut prci: OPJ_UINT32 = 0;
     let mut prcj: OPJ_UINT32 = 0;
     let mut current_block: u64;
-    let mut comp = core::ptr::null_mut::<opj_pi_comp_t>();
-    let mut res = core::ptr::null_mut::<opj_pi_resolution_t>();
     let mut index = 0 as OPJ_UINT32;
-    if (*pi).poc.compno0 >= (*pi).numcomps || (*pi).poc.compno1 >= (*pi).numcomps.wrapping_add(1u32)
+    if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
-        &mut *(*pi).manager,
+        unsafe { &mut *pi.manager },
         EVT_ERROR,
         "opj_pi_next_cprl(): invalid compno0/compno1\n",
       );
       return 0i32;
     }
-    if (*pi).first == 0 {
-      comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
-      current_block = 13707613154239713890;
+    if pi.first == 0 {
+            current_block = 13707613154239713890;
     } else {
-      (*pi).first = 0i32;
-      (*pi).compno = (*pi).poc.compno0;
+      pi.first = 0i32;
+      pi.compno = pi.poc.compno0;
       current_block = 3640593987805443782;
     }
     loop {
       match current_block {
         13707613154239713890 => {
-          (*pi).layno = (*pi).layno.wrapping_add(1);
+          pi.layno = pi.layno.wrapping_add(1);
           current_block = 15594839951440953787;
         }
         _ => {
-          if (*pi).compno >= (*pi).poc.compno1 {
+          if pi.compno >= pi.poc.compno1 {
             break;
           }
           resno = 0;
-          comp = (*pi).comps.as_mut_ptr().add((*pi).compno as usize) as *mut opj_pi_comp_t;
-          (*pi).dx = 0 as OPJ_UINT32;
-          (*pi).dy = 0 as OPJ_UINT32;
+                    pi.dx = 0 as OPJ_UINT32;
+          pi.dy = 0 as OPJ_UINT32;
           resno = 0 as OPJ_UINT32;
-          while resno < (*comp).numresolutions {
+          while resno < pi.comps[pi.compno as usize].numresolutions {
             let mut dx: OPJ_UINT32 = 0;
             let mut dy: OPJ_UINT32 = 0;
-            res = (*comp).resolutions.as_mut_ptr().add(resno as usize) as *mut opj_pi_resolution_t;
-            if (*res)
+                        if pi.comps[pi.compno as usize].resolutions[resno as usize]
               .pdx
-              .wrapping_add((*comp).numresolutions)
+              .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
               .wrapping_sub(1u32)
               .wrapping_sub(resno)
               < 32u32
-              && (*comp).dx
+              && pi.comps[pi.compno as usize].dx
                 <= (2147483647u32)
                   .wrapping_mul(2u32)
                   .wrapping_add(1u32)
                   .wrapping_div(
                     (1u32)
-                      << (*res)
+                      << pi.comps[pi.compno as usize].resolutions[resno as usize]
                         .pdx
-                        .wrapping_add((*comp).numresolutions)
+                        .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
                         .wrapping_sub(1u32)
                         .wrapping_sub(resno),
                   )
             {
-              dx = (*comp).dx.wrapping_mul(
+              dx = pi.comps[pi.compno as usize].dx.wrapping_mul(
                 (1u32)
-                  << (*res)
+                  << pi.comps[pi.compno as usize].resolutions[resno as usize]
                     .pdx
-                    .wrapping_add((*comp).numresolutions)
+                    .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
                     .wrapping_sub(1u32)
                     .wrapping_sub(resno),
               );
-              (*pi).dx = if (*pi).dx == 0 {
+              pi.dx = if pi.dx == 0 {
                 dx
               } else {
-                opj_uint_min((*pi).dx, dx)
+                opj_uint_min(pi.dx, dx)
               }
             }
-            if (*res)
+            if pi.comps[pi.compno as usize].resolutions[resno as usize]
               .pdy
-              .wrapping_add((*comp).numresolutions)
+              .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
               .wrapping_sub(1u32)
               .wrapping_sub(resno)
               < 32u32
-              && (*comp).dy
+              && pi.comps[pi.compno as usize].dy
                 <= (2147483647u32)
                   .wrapping_mul(2u32)
                   .wrapping_add(1u32)
                   .wrapping_div(
                     (1u32)
-                      << (*res)
+                      << pi.comps[pi.compno as usize].resolutions[resno as usize]
                         .pdy
-                        .wrapping_add((*comp).numresolutions)
+                        .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
                         .wrapping_sub(1u32)
                         .wrapping_sub(resno),
                   )
             {
-              dy = (*comp).dy.wrapping_mul(
+              dy = pi.comps[pi.compno as usize].dy.wrapping_mul(
                 (1u32)
-                  << (*res)
+                  << pi.comps[pi.compno as usize].resolutions[resno as usize]
                     .pdy
-                    .wrapping_add((*comp).numresolutions)
+                    .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
                     .wrapping_sub(1u32)
                     .wrapping_sub(resno),
               );
-              (*pi).dy = if (*pi).dy == 0 {
+              pi.dy = if pi.dy == 0 {
                 dy
               } else {
-                opj_uint_min((*pi).dy, dy)
+                opj_uint_min(pi.dy, dy)
               }
             }
             resno += 1;
           }
-          if (*pi).dx == 0u32 || (*pi).dy == 0u32 {
+          if pi.dx == 0u32 || pi.dy == 0u32 {
             return 0i32;
           }
-          if (*pi).tp_on == 0 {
-            (*pi).poc.ty0 = (*pi).ty0;
-            (*pi).poc.tx0 = (*pi).tx0;
-            (*pi).poc.ty1 = (*pi).ty1;
-            (*pi).poc.tx1 = (*pi).tx1
+          if pi.tp_on == 0 {
+            pi.poc.ty0 = pi.ty0;
+            pi.poc.tx0 = pi.tx0;
+            pi.poc.ty1 = pi.ty1;
+            pi.poc.tx1 = pi.tx1
           }
-          (*pi).y = (*pi).poc.ty0;
+          pi.y = pi.poc.ty0;
           current_block = 18153031941552419006;
         }
       }
       loop {
         match current_block {
           18153031941552419006 => {
-            if (*pi).y < (*pi).poc.ty1 {
-              (*pi).x = (*pi).poc.tx0
+            if pi.y < pi.poc.ty1 {
+              pi.x = pi.poc.tx0
             } else {
-              (*pi).compno = (*pi).compno.wrapping_add(1);
+              pi.compno = pi.compno.wrapping_add(1);
               current_block = 3640593987805443782;
               break;
             }
             current_block = 10692455896603418738;
           }
           _ => {
-            if (*pi).layno < (*pi).poc.layno1 {
-              index = (*pi)
+            if pi.layno < pi.poc.layno1 {
+              index = pi
                 .layno
-                .wrapping_mul((*pi).step_l)
-                .wrapping_add((*pi).resno.wrapping_mul((*pi).step_r))
-                .wrapping_add((*pi).compno.wrapping_mul((*pi).step_c))
-                .wrapping_add((*pi).precno.wrapping_mul((*pi).step_p));
-              if index >= (*pi).include_size {
-                event_msg!(&mut *(*pi).manager, EVT_ERROR, "Invalid access to pi->include",);
+                .wrapping_mul(pi.step_l)
+                .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
+                .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
+                .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
+              if index >= pi.include_size {
+                event_msg!(unsafe { &mut *pi.manager }, EVT_ERROR, "Invalid access to pi->include",);
                 return 0i32;
               }
-              if *(*pi).include.offset(index as isize) == 0 {
-                *(*pi).include.offset(index as isize) = 1 as OPJ_INT16;
+              if unsafe { *pi.include.offset(index as isize) } == 0 {
+                unsafe { *pi.include.offset(index as isize) = 1 as OPJ_INT16 };
                 return 1i32;
               }
               current_block = 13707613154239713890;
@@ -1075,20 +1028,20 @@ fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
         }
         loop {
           match current_block {
-            3123434771885419771 => (*pi).resno = (*pi).resno.wrapping_add(1),
+            3123434771885419771 => pi.resno = pi.resno.wrapping_add(1),
             _ => {
-              if (*pi).x < (*pi).poc.tx1 {
-                (*pi).resno = (*pi).poc.resno0
+              if pi.x < pi.poc.tx1 {
+                pi.resno = pi.poc.resno0
               } else {
-                (*pi).y = ((*pi).y as core::ffi::c_uint)
-                  .wrapping_add((*pi).dy.wrapping_sub((*pi).y.wrapping_rem((*pi).dy)))
+                pi.y = (pi.y as core::ffi::c_uint)
+                  .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)))
                   as OPJ_UINT32;
                 current_block = 18153031941552419006;
                 break;
               }
             }
           }
-          if (*pi).resno < opj_uint_min((*pi).poc.resno1, (*comp).numresolutions) {
+          if pi.resno < opj_uint_min(pi.poc.resno1, pi.comps[pi.compno as usize].numresolutions) {
             levelno = 0;
             trx0 = 0;
             try0 = 0;
@@ -1098,46 +1051,42 @@ fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
             rpy = 0;
             prci = 0;
             prcj = 0;
-            res = (*comp)
-              .resolutions
-              .as_mut_ptr()
-              .add((*pi).resno as usize) as *mut opj_pi_resolution_t;
-            levelno = (*comp).numresolutions - 1 - (*pi).resno;
+                        levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
 
-            if (((*comp).dx << levelno as u64) >> levelno) as u32 != (*comp).dx
-              || (((*comp).dy << levelno as u64) >> levelno) as u32 != (*comp).dy
+            if ((pi.comps[pi.compno as usize].dx << levelno as u64) >> levelno) as u32 != pi.comps[pi.compno as usize].dx
+              || ((pi.comps[pi.compno as usize].dy << levelno as u64) >> levelno) as u32 != pi.comps[pi.compno as usize].dy
             {
               current_block = 3123434771885419771;
               continue;
             }
 
-            trx0 = opj_uint64_ceildiv_res_uint32((*pi).tx0 as u64, ((*comp).dx as u64) << levelno);
-            try0 = opj_uint64_ceildiv_res_uint32((*pi).ty0 as u64, ((*comp).dy as u64) << levelno);
-            trx1 = opj_uint64_ceildiv_res_uint32((*pi).tx1 as u64, ((*comp).dx as u64) << levelno);
-            try1 = opj_uint64_ceildiv_res_uint32((*pi).ty1 as u64, ((*comp).dy as u64) << levelno);
-            rpx = (*res).pdx.wrapping_add(levelno);
-            rpy = (*res).pdy.wrapping_add(levelno);
+            trx0 = opj_uint64_ceildiv_res_uint32(pi.tx0 as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno);
+            try0 = opj_uint64_ceildiv_res_uint32(pi.ty0 as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno);
+            trx1 = opj_uint64_ceildiv_res_uint32(pi.tx1 as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno);
+            try1 = opj_uint64_ceildiv_res_uint32(pi.ty1 as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno);
+            rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx.wrapping_add(levelno);
+            rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy.wrapping_add(levelno);
 
-            if (((*comp).dx << rpx) as u64 >> rpx) as u32 != (*comp).dx
-              || (((*comp).dy << rpy) as u64 >> rpy) as u32 != (*comp).dy
+            if ((pi.comps[pi.compno as usize].dx << rpx) as u64 >> rpx) as u32 != pi.comps[pi.compno as usize].dx
+              || ((pi.comps[pi.compno as usize].dy << rpy) as u64 >> rpy) as u32 != pi.comps[pi.compno as usize].dy
             {
               current_block = 3123434771885419771;
               continue;
             }
             /* See ISO-15441. B.12.1.5 Component-position-resolution level-layer progression */
-            if !(((*pi).y as u64 % (((*comp).dy as u64) << rpy)) == 0
-              || ((*pi).y == (*pi).ty0 && (((try0 as u64) << levelno) % (1u64 << rpy)) != 0))
+            if !((pi.y as u64 % ((pi.comps[pi.compno as usize].dy as u64) << rpy)) == 0
+              || (pi.y == pi.ty0 && (((try0 as u64) << levelno) % (1u64 << rpy)) != 0))
             {
               current_block = 3123434771885419771;
               continue;
             }
-            if !(((*pi).x as u64 % (((*comp).dx as u64) << rpx)) == 0
-              || ((*pi).x == (*pi).tx0 && (((trx0 as u64) << levelno) % (1u64 << rpx)) != 0))
+            if !((pi.x as u64 % ((pi.comps[pi.compno as usize].dx as u64) << rpx)) == 0
+              || (pi.x == pi.tx0 && (((trx0 as u64) << levelno) % (1u64 << rpx)) != 0))
             {
               current_block = 3123434771885419771;
               continue;
             }
-            if (*res).pw == 0u32 || (*res).ph == 0u32 {
+            if pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw == 0u32 || pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph == 0u32 {
               current_block = 3123434771885419771;
               continue;
             }
@@ -1146,20 +1095,20 @@ fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
               continue;
             }
             prci = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32((*pi).x as u64, ((*comp).dx as u64) << levelno),
-              (*res).pdx,
-            ) - opj_uint_floordivpow2(trx0, (*res).pdx);
+              opj_uint64_ceildiv_res_uint32(pi.x as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno),
+              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
+            ) - opj_uint_floordivpow2(trx0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx);
             prcj = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32((*pi).y as u64, ((*comp).dy as u64) << levelno),
-              (*res).pdy,
-            ) - opj_uint_floordivpow2(try0, (*res).pdy);
-            (*pi).precno = prci.wrapping_add(prcj.wrapping_mul((*res).pw));
-            (*pi).layno = (*pi).poc.layno0;
+              opj_uint64_ceildiv_res_uint32(pi.y as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno),
+              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
+            ) - opj_uint_floordivpow2(try0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy);
+            pi.precno = prci.wrapping_add(prcj.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw));
+            pi.layno = pi.poc.layno0;
             current_block = 15594839951440953787;
             break;
           } else {
-            (*pi).x = ((*pi).x as core::ffi::c_uint)
-              .wrapping_add((*pi).dx.wrapping_sub((*pi).x.wrapping_rem((*pi).dx)))
+            pi.x = (pi.x as core::ffi::c_uint)
+              .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)))
               as OPJ_UINT32;
             current_block = 10692455896603418738;
           }
@@ -1167,7 +1116,6 @@ fn opj_pi_next_cprl(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       }
     }
     0i32
-  }
 }
 
 /* *
@@ -2772,9 +2720,8 @@ pub(crate) fn opj_pi_update_encoding_parameters(
   }
 }
 
-pub(crate) fn opj_pi_next(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
-  unsafe {
-    match (*pi).poc.prg as core::ffi::c_int {
+pub(crate) fn opj_pi_next(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
+  match pi.poc.prg as core::ffi::c_int {
       0 => return opj_pi_next_lrcp(pi),
       1 => return opj_pi_next_rlcp(pi),
       2 => return opj_pi_next_rpcl(pi),
@@ -2784,5 +2731,4 @@ pub(crate) fn opj_pi_next(mut pi: *mut opj_pi_iterator_t) -> OPJ_BOOL {
       _ => {}
     }
     0i32
-  }
 }

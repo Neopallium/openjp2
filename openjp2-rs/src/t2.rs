@@ -174,7 +174,7 @@ pub(crate) fn opj_t2_encode_packets(
             opj_pi_destroy(l_pi, l_nb_pocs);
             return 0i32;
           }
-          while opj_pi_next(l_current_pi) != 0 {
+          while opj_pi_next(&mut *l_current_pi) != 0 {
             if (*l_current_pi).layno < p_maxlayers {
               l_nb_bytes = 0 as OPJ_UINT32;
               if opj_t2_encode_packet(
@@ -230,7 +230,7 @@ pub(crate) fn opj_t2_encode_packets(
           core::mem::forget(v);
         }
       }
-      while opj_pi_next(l_current_pi) != 0 {
+      while opj_pi_next(&mut *l_current_pi) != 0 {
         if (*l_current_pi).layno < p_maxlayers {
           l_nb_bytes = 0 as OPJ_UINT32;
           if opj_t2_encode_packet(
@@ -341,7 +341,7 @@ pub(crate) fn opj_t2_decode_packets(
         return 0i32;
       }
       first_pass_failed = vec![1i32; (*l_image).numcomps as usize];
-      while opj_pi_next(l_current_pi) != 0 {
+      while opj_pi_next(&mut *l_current_pi) != 0 {
         let mut skip_packet = 0i32;
         log::debug!(
           "packet offset=00000166 prg={} cmptno={:02} rlvlno={:02} prcno={:03} lyrno={:02}",
