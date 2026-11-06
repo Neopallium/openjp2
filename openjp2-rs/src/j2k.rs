@@ -6220,7 +6220,7 @@ pub(crate) fn opj_j2k_setup_encoder(
           (*tccp).m_dc_level_shift = *l_dc_shift.offset(i as isize);
           i += 1;
         }
-        if opj_j2k_setup_mct_encoding(tcp, image) == 0i32 {
+        if opj_j2k_setup_mct_encoding(&mut *tcp, image) == 0i32 {
           /* free will be handled by opj_j2k_destroy */
           event_msg!(p_manager, EVT_ERROR, "Failed to setup j2k mct encoding\n",);
           return 0i32;
@@ -6538,47 +6538,41 @@ fn opj_j2k_setup_decoding_validation(
  * @return true if the parameters are correct.
  */
 fn opj_j2k_mct_validation(
-  mut p_j2k: &mut opj_j2k,
-  mut _p_stream: &mut Stream,
-  mut _p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  _p_stream: &mut Stream,
+  _p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_is_valid = 1i32;
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    /* preconditions */
+  let mut l_is_valid = 1i32;
+  let mut i: OPJ_UINT32 = 0;
+  let mut j: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    if p_j2k.m_cp.rsiz as core::ffi::c_int & 0x8200i32 == 0x8200i32 {
-      let mut l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
-      let mut l_tcp = p_j2k.m_cp.tcps.as_mut_ptr();
-      i = 0 as OPJ_UINT32;
-      while i < l_nb_tiles {
-        if (*l_tcp).mct == 2u32 {
-          let mut l_tccp = (*l_tcp).tccps.as_ptr();
-          l_is_valid &= (!(*l_tcp).m_mct_coding_matrix.is_empty()) as core::ffi::c_int;
-          j = 0 as OPJ_UINT32;
-          while j < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
-            l_is_valid &= ((*l_tccp).qmfbid & 1u32 == 0) as core::ffi::c_int;
-            l_tccp = l_tccp.offset(1);
-            j += 1;
-          }
+  if p_j2k.m_cp.rsiz as core::ffi::c_int & 0x8200i32 == 0x8200i32 {
+    let l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
+    let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+    i = 0 as OPJ_UINT32;
+    while i < l_nb_tiles {
+      let l_tcp = &p_j2k.m_cp.tcps[i as usize];
+      if l_tcp.mct == 2u32 {
+        l_is_valid &= (!l_tcp.m_mct_coding_matrix.is_empty()) as core::ffi::c_int;
+        j = 0 as OPJ_UINT32;
+        while j < numcomps {
+          l_is_valid &= (l_tcp.tccps[j as usize].qmfbid & 1u32 == 0) as core::ffi::c_int;
+          j += 1;
         }
-        l_tcp = l_tcp.offset(1);
-        i += 1;
       }
+      i += 1;
     }
-    l_is_valid
   }
+  l_is_valid
 }
 
 pub(crate) fn opj_j2k_setup_mct_encoding(
-  mut p_tcp: *mut opj_tcp_t,
-  mut p_image: &mut opj_image,
+  p_tcp: &mut opj_tcp_t,
+  p_image: &mut opj_image,
 ) -> OPJ_BOOL {
-  unsafe {
     let mut l_indix = 1 as OPJ_UINT32;
     /* preconditions */
-    assert!(!p_tcp.is_null());
     let p_tcp_ref = &mut *p_tcp;
     if p_tcp_ref.mct != 2u32 {
       return 1i32;
@@ -6635,12 +6629,7 @@ pub(crate) fn opj_j2k_setup_mct_encoding(
     l_indix = l_indix.wrapping_add(1);
     l_mcc_data.m_offset_array = Some(l_mct_offset_idx);
     1i32
-  }
 }
-
-/* *
- * Builds the tcd decoder to use to decode tile.
- */
 fn opj_j2k_build_decoder(
   mut _p_j2k: &mut opj_j2k,
   mut _p_stream: &mut Stream,
@@ -7845,74 +7834,69 @@ fn opj_j2k_update_image_data(
   1i32
 }
 fn opj_j2k_update_image_dimensions(
-  mut p_image: &mut opj_image,
-  mut p_manager: &mut opj_event_mgr,
+  p_image: &mut opj_image,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut it_comp: OPJ_UINT32 = 0;
-    let mut l_comp_x1: OPJ_INT32 = 0;
-    let mut l_comp_y1: OPJ_INT32 = 0;
-    let mut l_img_comp = core::ptr::null_mut::<opj_image_comp_t>();
-    l_img_comp = p_image.comps;
-    it_comp = 0 as OPJ_UINT32;
-    while it_comp < p_image.numcomps {
-      let mut l_h: OPJ_INT32 = 0;
-      let mut l_w: OPJ_INT32 = 0;
-      if p_image.x0 > 2147483647 as OPJ_UINT32
-        || p_image.y0 > 2147483647 as OPJ_UINT32
-        || p_image.x1 > 2147483647 as OPJ_UINT32
-        || p_image.y1 > 2147483647 as OPJ_UINT32
-      {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Image coordinates above INT_MAX are not supported\n",
-        );
-        return 0i32;
-      }
-
-      (*l_img_comp).x0 = opj_uint_ceildiv(p_image.x0, (*l_img_comp).dx);
-      (*l_img_comp).y0 = opj_uint_ceildiv(p_image.y0, (*l_img_comp).dy);
-      l_comp_x1 = opj_int_ceildiv(p_image.x1 as OPJ_INT32, (*l_img_comp).dx as OPJ_INT32);
-      l_comp_y1 = opj_int_ceildiv(p_image.y1 as OPJ_INT32, (*l_img_comp).dy as OPJ_INT32);
-
-      l_w = opj_int_ceildivpow2(l_comp_x1, (*l_img_comp).factor as OPJ_INT32)
-        - opj_int_ceildivpow2(
-          (*l_img_comp).x0 as OPJ_INT32,
-          (*l_img_comp).factor as OPJ_INT32,
-        );
-      if l_w < 0i32 {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Size x of the decoded component image is incorrect (comp[{}].w={}).\n",
-          it_comp,
-          l_w,
-        );
-        return 0i32;
-      }
-      (*l_img_comp).w = l_w as OPJ_UINT32;
-      l_h = opj_int_ceildivpow2(l_comp_y1, (*l_img_comp).factor as OPJ_INT32)
-        - opj_int_ceildivpow2(
-          (*l_img_comp).y0 as OPJ_INT32,
-          (*l_img_comp).factor as OPJ_INT32,
-        );
-      if l_h < 0i32 {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Size y of the decoded component image is incorrect (comp[{}].h={}).\n",
-          it_comp,
-          l_h,
-        );
-        return 0i32;
-      }
-      (*l_img_comp).h = l_h as OPJ_UINT32;
-      l_img_comp = l_img_comp.offset(1);
-      it_comp += 1;
+  let mut it_comp: OPJ_UINT32 = 0;
+  let mut l_comp_x1: OPJ_INT32 = 0;
+  let mut l_comp_y1: OPJ_INT32 = 0;
+  let img_x0 = p_image.x0;
+  let img_y0 = p_image.y0;
+  let img_x1 = p_image.x1;
+  let img_y1 = p_image.y1;
+  it_comp = 0 as OPJ_UINT32;
+  while it_comp < p_image.numcomps {
+    let mut l_h: OPJ_INT32 = 0;
+    let mut l_w: OPJ_INT32 = 0;
+    if img_x0 > 2147483647 as OPJ_UINT32
+      || img_y0 > 2147483647 as OPJ_UINT32
+      || img_x1 > 2147483647 as OPJ_UINT32
+      || img_y1 > 2147483647 as OPJ_UINT32
+    {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Image coordinates above INT_MAX are not supported\n",
+      );
+      return 0i32;
     }
-    1i32
+
+    let comps = p_image.comps_mut().expect("comps");
+    let l_img_comp = &mut comps[it_comp as usize];
+    l_img_comp.x0 = opj_uint_ceildiv(img_x0, l_img_comp.dx);
+    l_img_comp.y0 = opj_uint_ceildiv(img_y0, l_img_comp.dy);
+    l_comp_x1 = opj_int_ceildiv(img_x1 as OPJ_INT32, l_img_comp.dx as OPJ_INT32);
+    l_comp_y1 = opj_int_ceildiv(img_y1 as OPJ_INT32, l_img_comp.dy as OPJ_INT32);
+
+    l_w = opj_int_ceildivpow2(l_comp_x1, l_img_comp.factor as OPJ_INT32)
+      - opj_int_ceildivpow2(l_img_comp.x0 as OPJ_INT32, l_img_comp.factor as OPJ_INT32);
+    if l_w < 0i32 {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Size x of the decoded component image is incorrect (comp[{}].w={}).\n",
+        it_comp,
+        l_w,
+      );
+      return 0i32;
+    }
+    l_img_comp.w = l_w as OPJ_UINT32;
+    l_h = opj_int_ceildivpow2(l_comp_y1, l_img_comp.factor as OPJ_INT32)
+      - opj_int_ceildivpow2(l_img_comp.y0 as OPJ_INT32, l_img_comp.factor as OPJ_INT32);
+    if l_h < 0i32 {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Size y of the decoded component image is incorrect (comp[{}].h={}).\n",
+        it_comp,
+        l_h,
+      );
+      return 0i32;
+    }
+    l_img_comp.h = l_h as OPJ_UINT32;
+    it_comp += 1;
   }
+  1i32
 }
 
 pub(crate) fn opj_j2k_set_decoded_components(
@@ -7920,8 +7904,7 @@ pub(crate) fn opj_j2k_set_decoded_components(
   compenents: &[u32],
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let numcomps = compenents.len() as u32;
+  let numcomps = compenents.len() as u32;
     if p_j2k.m_private_image.is_none() {
       event_msg!(
         p_manager,
@@ -7949,20 +7932,18 @@ pub(crate) fn opj_j2k_set_decoded_components(
     p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode = compenents.to_vec();
     p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode = numcomps;
     1i32
-  }
 }
 
 pub(crate) fn opj_j2k_set_decode_area(
-  mut p_j2k: &mut opj_j2k,
-  mut p_image: &mut opj_image,
-  mut p_start_x: OPJ_INT32,
-  mut p_start_y: OPJ_INT32,
-  mut p_end_x: OPJ_INT32,
-  mut p_end_y: OPJ_INT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_image: &mut opj_image,
+  p_start_x: OPJ_INT32,
+  p_start_y: OPJ_INT32,
+  p_end_x: OPJ_INT32,
+  p_end_y: OPJ_INT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_cp: *mut opj_cp_t = &mut p_j2k.m_cp;
+  let l_cp = &p_j2k.m_cp;
     let mut l_image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
     let mut ret: OPJ_BOOL = 0;
     let mut it_comp: OPJ_UINT32 = 0;
@@ -7984,7 +7965,7 @@ pub(crate) fn opj_j2k_set_decode_area(
     /* of m_reduce */
     it_comp = 0 as OPJ_UINT32;
     while it_comp < p_image.numcomps {
-      (*p_image.comps.offset(it_comp as isize)).factor = p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
+      p_image.comps_mut().expect("comps")[it_comp as usize].factor = p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
       it_comp += 1;
     }
     if p_start_x == 0 && p_start_y == 0 && p_end_x == 0 && p_end_y == 0 {
@@ -7995,8 +7976,8 @@ pub(crate) fn opj_j2k_set_decode_area(
       );
       p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
       p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
-      p_j2k.m_specific_param.m_decoder.m_end_tile_x = (*l_cp).tw;
-      p_j2k.m_specific_param.m_decoder.m_end_tile_y = (*l_cp).th;
+      p_j2k.m_specific_param.m_decoder.m_end_tile_x = l_cp.tw;
+      p_j2k.m_specific_param.m_decoder.m_end_tile_y = l_cp.th;
       p_image.x0 = l_image.x0;
       p_image.y0 = l_image.y0;
       p_image.x1 = l_image.x1;
@@ -8035,8 +8016,8 @@ pub(crate) fn opj_j2k_set_decode_area(
       p_image.x0 = l_image.x0
     } else {
       p_j2k.m_specific_param.m_decoder.m_start_tile_x = (p_start_x as OPJ_UINT32)
-        .wrapping_sub((*l_cp).tx0)
-        .wrapping_div((*l_cp).tdx);
+        .wrapping_sub(l_cp.tx0)
+        .wrapping_div(l_cp.tdx);
       p_image.x0 = p_start_x as OPJ_UINT32
     }
     /* Up */
@@ -8069,8 +8050,8 @@ pub(crate) fn opj_j2k_set_decode_area(
       p_image.y0 = l_image.y0
     } else {
       p_j2k.m_specific_param.m_decoder.m_start_tile_y = (p_start_y as OPJ_UINT32)
-        .wrapping_sub((*l_cp).ty0)
-        .wrapping_div((*l_cp).tdy);
+        .wrapping_sub(l_cp.ty0)
+        .wrapping_div(l_cp.tdy);
       p_image.y0 = p_start_y as OPJ_UINT32
     }
     /* Right */
@@ -8099,11 +8080,11 @@ pub(crate) fn opj_j2k_set_decode_area(
         p_end_x,
         l_image.x1
       );
-      p_j2k.m_specific_param.m_decoder.m_end_tile_x = (*l_cp).tw;
+      p_j2k.m_specific_param.m_decoder.m_end_tile_x = l_cp.tw;
       p_image.x1 = l_image.x1
     } else {
       p_j2k.m_specific_param.m_decoder.m_end_tile_x =
-        opj_uint_ceildiv(p_end_x as OPJ_UINT32 - (*l_cp).tx0, (*l_cp).tdx);
+        opj_uint_ceildiv(p_end_x as OPJ_UINT32 - l_cp.tx0, l_cp.tdx);
       p_image.x1 = p_end_x as OPJ_UINT32
     }
     /* Bottom */
@@ -8133,11 +8114,11 @@ pub(crate) fn opj_j2k_set_decode_area(
         p_end_y,
         l_image.y1
       );
-      p_j2k.m_specific_param.m_decoder.m_end_tile_y = (*l_cp).th;
+      p_j2k.m_specific_param.m_decoder.m_end_tile_y = l_cp.th;
       p_image.y1 = l_image.y1
     } else {
       p_j2k.m_specific_param.m_decoder.m_end_tile_y =
-        opj_uint_ceildiv(p_end_y as OPJ_UINT32 - (*l_cp).ty0, (*l_cp).tdy);
+        opj_uint_ceildiv(p_end_y as OPJ_UINT32 - l_cp.ty0, l_cp.tdy);
       p_image.y1 = p_end_y as OPJ_UINT32
     }
     /* ----- */
@@ -8155,7 +8136,6 @@ pub(crate) fn opj_j2k_set_decode_area(
       );
     }
     ret
-  }
 }
 
 impl opj_j2k {
