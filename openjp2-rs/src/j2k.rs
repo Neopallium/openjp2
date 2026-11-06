@@ -8870,11 +8870,10 @@ fn opj_j2k_allocate_tile_element_cstr_index(p_j2k: &mut opj_j2k) -> OPJ_BOOL {
 }
 
 fn opj_j2k_are_all_used_components_decoded(
-  mut p_j2k: &mut opj_j2k,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut compno: OPJ_UINT32 = 0;
+  let mut compno: OPJ_UINT32 = 0;
     let mut decoded_all_used_components = 1i32;
     if let Some(image) = p_j2k.m_output_image.as_ref() {
       if p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode != 0 {
@@ -8918,7 +8917,6 @@ fn opj_j2k_are_all_used_components_decoded(
       return 0i32;
     }
     1i32
-  }
 }
 
 /* *
@@ -9596,32 +9594,40 @@ pub(crate) fn opj_j2k_end_compress(
 }
 
 pub(crate) fn opj_j2k_start_compress(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_image: &mut opj_image,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_image: &mut opj_image,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut validation_list = opj_j2k_proc_list_t::new();
   let mut procedure_list = opj_j2k_proc_list_t::new();
   /* preconditions */
 
-  unsafe {
+  {
     p_j2k.m_private_image = Some(Box::new(CoreImage::default()));
     opj_copy_image_header_to_core(p_image, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"));
     /* TODO_MSD: Find a better way */
-    if !p_image.comps.is_null() {
+    let numcomps = p_image.numcomps;
+    if let Some(comps) = p_image.comps_mut() {
       let mut it_comp: OPJ_UINT32 = 0;
       it_comp = 0 as OPJ_UINT32;
-      while it_comp < p_image.numcomps {
-        if !(*p_image.comps.offset(it_comp as isize)).data.is_null() {
-          let orig_data = (*p_image.comps.offset(it_comp as isize)).data;
+      while it_comp < numcomps {
+        if !comps[it_comp as usize].data.is_null() {
+          let orig_data = comps[it_comp as usize].data;
+          // SAFETY: the comp data covers w * h samples owned by the caller.
+          let copied = unsafe {
+            core::slice::from_raw_parts(
+              orig_data,
+              (comps[it_comp as usize].w as usize) * (comps[it_comp as usize].h as usize),
+            )
+          }
+          .to_vec();
           p_j2k.m_private_image.as_deref_mut().expect("m_private_image").comps[it_comp as usize].data =
-            core::slice::from_raw_parts(orig_data, ((*p_image.comps.offset(it_comp as isize)).w as usize) * ((*p_image.comps.offset(it_comp as isize)).h as usize)).to_vec();
+            copied;
           /* The C code moves ownership of the data buffer into the codec; the
           copy above keeps the core image self-contained, so free the original. */
           opj_image_data_free(orig_data as *mut core::ffi::c_void);
-          let fresh50 = &mut (*p_image.comps.offset(it_comp as isize)).data;
-          *fresh50 = core::ptr::null_mut::<OPJ_INT32>()
+          comps[it_comp as usize].data = core::ptr::null_mut::<OPJ_INT32>()
         }
         it_comp += 1;
       }
@@ -9821,12 +9827,11 @@ fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
 }
 
 fn opj_j2k_post_write_tile(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_nb_bytes_written: OPJ_UINT32 = 0;
+  let mut l_nb_bytes_written: OPJ_UINT32 = 0;
     let mut l_tile_size = 0 as OPJ_UINT32;
     let mut l_available_data: OPJ_UINT32 = 0;
     /* preconditions */
@@ -9874,7 +9879,6 @@ fn opj_j2k_post_write_tile(
     p_j2k.m_specific_param.m_encoder.m_encoded_tile_data = l_encoded_buf;
     p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);
     1i32
-  }
 }
 
 /* *
@@ -10187,14 +10191,6 @@ fn opj_j2k_write_all_tile_parts(
     1i32
   }
 }
-
-/* *
- * Writes the updated tlm.
- *
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
 fn opj_j2k_write_updated_tlm(
   mut p_j2k: &mut opj_j2k,
   mut p_stream: &mut Stream,
