@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-pub use super::image::{opj_image, opj_image_t};
 use super::malloc::*;
 
 pub type size_t = usize;
@@ -468,24 +467,6 @@ pub type opj_stream_free_user_data_fn =
   Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>;
 pub type opj_stream_t = *mut core::ffi::c_void;
 
-#[repr(C)]
-#[derive(Copy, Debug)]
-pub struct opj_image_comp {
-  pub dx: OPJ_UINT32,
-  pub dy: OPJ_UINT32,
-  pub w: OPJ_UINT32,
-  pub h: OPJ_UINT32,
-  pub x0: OPJ_UINT32,
-  pub y0: OPJ_UINT32,
-  pub prec: OPJ_UINT32,
-  pub bpp: OPJ_UINT32,
-  pub sgnd: OPJ_UINT32,
-  pub resno_decoded: OPJ_UINT32,
-  pub factor: OPJ_UINT32,
-  pub data: *mut OPJ_INT32,
-  pub alpha: OPJ_UINT16,
-}
-pub type opj_image_comp_t = opj_image_comp;
 
 #[repr(C)]
 #[derive(Copy, Clone, Default)]

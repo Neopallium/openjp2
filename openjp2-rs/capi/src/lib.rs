@@ -7,4 +7,5 @@
 // Re-export the core's public surface (FFI types, codec handle, image, stream).
 pub use openjp2_core::*;
 
+pub mod image;
 pub mod openjpeg;

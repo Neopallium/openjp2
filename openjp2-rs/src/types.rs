@@ -785,15 +785,11 @@ pub struct TileInfo {
   pub go_on: bool,
 }
 
-/// Sample buffer of a tile component.
-///
-/// Owned buffers go through `opj_image_data_alloc`/`opj_image_data_free` rather than the
-/// Rust allocator, because they are handed over to `opj_image_comp::data`, which C callers
-/// (see `src/bin/common/color.c`) allocate and free with those same functions.
+/// Sample buffer of a tile component, backed by an owned Vec.
 pub(crate) enum TileBuf {
   Empty,
   Owned {
-    ptr: *mut OPJ_INT32,
+    data: Vec<OPJ_INT32>,
     bytes: OPJ_SIZE_T,
   },
   /// Aliases a caller-supplied image buffer; freeing it is not our business.
@@ -808,23 +804,22 @@ impl Default for TileBuf {
   }
 }
 
-impl Drop for TileBuf {
-  fn drop(&mut self) {
-    if let TileBuf::Owned { ptr, .. } = *self {
-      unsafe { crate::openjpeg::opj_image_data_free(ptr as *mut core::ffi::c_void) }
-    }
-  }
-}
-
 impl TileBuf {
   pub(crate) fn borrowed(ptr: *mut OPJ_INT32) -> Self {
     TileBuf::Borrowed { ptr }
   }
 
   pub(crate) fn as_mut_ptr(&self) -> *mut OPJ_INT32 {
-    match *self {
+    match self {
       TileBuf::Empty => core::ptr::null_mut(),
-      TileBuf::Owned { ptr, .. } | TileBuf::Borrowed { ptr } => ptr,
+      TileBuf::Owned { data, .. } => {
+        if data.is_empty() {
+          core::ptr::null_mut()
+        } else {
+          data.as_ptr() as *mut OPJ_INT32
+        }
+      }
+      TileBuf::Borrowed { ptr } => *ptr,
     }
   }
 
@@ -850,11 +845,13 @@ impl TileBuf {
     if bytes == 0 {
       return true;
     }
-    let ptr = unsafe { crate::openjpeg::opj_image_data_alloc(bytes) } as *mut OPJ_INT32;
-    if ptr.is_null() {
+    let samples = (bytes as usize) / core::mem::size_of::<OPJ_INT32>();
+    let mut data: Vec<OPJ_INT32> = Vec::new();
+    if data.try_reserve_exact(samples).is_err() {
       return false;
     }
-    *self = TileBuf::Owned { ptr, bytes };
+    data.resize(samples, 0);
+    *self = TileBuf::Owned { data, bytes };
     true
   }
 
@@ -866,28 +863,19 @@ impl TileBuf {
     self.alloc(bytes)
   }
 
-  /// Hands the buffer over to the caller, who becomes responsible for freeing it.
-  pub(crate) fn take_raw(&mut self) -> *mut OPJ_INT32 {
-    let ptr = self.as_mut_ptr();
-    core::mem::forget(core::mem::replace(self, TileBuf::Empty));
-    ptr
-  }
-
   /// Hands the owned buffer over as a `Vec` of `len` samples; the caller owns it from then on.
   /// Only valid for `Owned` buffers; returns an empty Vec for `Empty`/`Borrowed` ones.
   ///
   /// # Safety contract for the caller
   /// `len` must not exceed the number of samples the buffer covers.
   pub(crate) fn take_vec(&mut self, len: usize) -> Vec<OPJ_INT32> {
-    let ptr = self.as_mut_ptr();
-    core::mem::forget(core::mem::replace(self, TileBuf::Empty));
-    if ptr.is_null() || len == 0 {
-      return Vec::new();
+    match core::mem::replace(self, TileBuf::Empty) {
+      TileBuf::Owned { mut data, .. } => {
+        data.truncate(len);
+        data
+      }
+      _ => Vec::new(),
     }
-    // SAFETY: the buffer came from opj_image_data_alloc (malloc-backed, same allocator family
-    // as the system allocator Vec drops into), `len` samples are valid and the ownership is
-    // transferred exactly once.
-    unsafe { Vec::from_raw_parts(ptr, len, len) }
   }
 }
 

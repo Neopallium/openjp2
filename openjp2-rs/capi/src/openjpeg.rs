@@ -34,6 +34,7 @@
 // This module is the C ABI shim; it moves wholesale to the `openjp2-capi` crate in phase 6.
 #![allow(unsafe_op_in_unsafe_fn)]
 
+use crate::image::*;
 use openjp2_core::c_api_types::*;
 use openjp2_core::consts::opj::*;
 
@@ -182,7 +183,7 @@ pub unsafe fn opj_read_header(
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   match l_codec.read_header(p_stream) {
     Some(image) => {
-      *p_image = Box::into_raw(image.into_opj());
+      *p_image = Box::into_raw(core_into_opj(image));
       1
     }
     None => 0,
@@ -216,9 +217,9 @@ pub unsafe fn opj_decode(
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  let mut core = openjp2_core::CoreImage::from_opj(p_image);
+  let mut core = core_from_opj(p_image);
   if l_codec.decode(p_stream, &mut core) == 1 {
-    let fresh = core.into_opj();
+    let fresh = core_into_opj(core);
     p_image.clear_comps();
     p_image.clear_icc_profile();
     *p_image = *fresh;
@@ -242,7 +243,7 @@ pub unsafe fn opj_set_decode_area(
   }
   let p_image = unsafe { &mut *p_image };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  let mut core = openjp2_core::CoreImage::from_opj(p_image);
+  let mut core = core_from_opj(p_image);
   // set_decode_area only adjusts the component geometry; the caller's data
   // buffers are stale at this point (C leaves them alone and opj_decode
   // replaces them), so do not carry them through the round-trip.
@@ -250,7 +251,7 @@ pub unsafe fn opj_set_decode_area(
     comp.data.clear();
   }
   let ret = l_codec.set_decode_area(&mut core, p_start_x, p_start_y, p_end_x, p_end_y);
-  let fresh = core.into_opj();
+  let fresh = core_into_opj(core);
   p_image.clear_comps();
   p_image.clear_icc_profile();
   *p_image = *fresh;
@@ -347,9 +348,9 @@ pub unsafe fn opj_get_decoded_tile(
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  let mut core = openjp2_core::CoreImage::from_opj(p_image);
+  let mut core = core_from_opj(p_image);
   let ret = l_codec.get_decoded_tile(p_stream, &mut core, tile_index);
-  let fresh = core.into_opj();
+  let fresh = core_into_opj(core);
   p_image.clear_comps();
   p_image.clear_icc_profile();
   *p_image = *fresh;
@@ -406,9 +407,9 @@ pub unsafe fn opj_setup_encoder(
   let p_image = unsafe { &mut *p_image };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   let parameters = &mut *parameters;
-  let mut core = openjp2_core::CoreImage::from_opj(p_image);
+  let mut core = core_from_opj(p_image);
   let ret = l_codec.setup_encoder(parameters, &mut core);
-  let fresh = core.into_opj();
+  let fresh = core_into_opj(core);
   p_image.clear_comps();
   p_image.clear_icc_profile();
   *p_image = *fresh;
@@ -458,9 +459,9 @@ pub unsafe fn opj_start_compress(
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  let mut core = openjp2_core::CoreImage::from_opj(p_image);
+  let mut core = core_from_opj(p_image);
   let ret = l_codec.start_compress(&mut core, p_stream);
-  let fresh = core.into_opj();
+  let fresh = core_into_opj(core);
   p_image.clear_comps();
   p_image.clear_icc_profile();
   *p_image = *fresh;
@@ -920,12 +921,12 @@ pub unsafe fn opj_stream_create_file_stream(
 
 #[no_mangle]
 pub unsafe fn opj_image_data_alloc(size: OPJ_SIZE_T) -> *mut core::ffi::c_void {
-  openjp2_core::opj_image_data_alloc(size)
+  crate::image::opj_image_data_alloc(size)
 }
 
 #[no_mangle]
 pub unsafe fn opj_image_data_free(ptr: *mut core::ffi::c_void) {
-  openjp2_core::opj_image_data_free(ptr);
+  crate::image::opj_image_data_free(ptr);
 }
 
 /* Stub implementation */
@@ -944,22 +945,22 @@ pub fn opj_get_num_cpus() -> core::ffi::c_int {
 #[no_mangle]
 pub fn opj_image_create(
   numcmpts: OPJ_UINT32,
-  cmptparms: *mut openjp2_core::image::opj_image_cmptparm_t,
+  cmptparms: *mut opj_image_cmptparm_t,
   clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
-  openjp2_core::opj_image_create(numcmpts, cmptparms, clrspc)
+  crate::image::opj_image_create(numcmpts, cmptparms, clrspc)
 }
 
 #[no_mangle]
 pub fn opj_image_destroy(image: *mut opj_image_t) {
-  openjp2_core::opj_image_destroy(image);
+  crate::image::opj_image_destroy(image);
 }
 
 #[no_mangle]
 pub fn opj_image_tile_create(
   numcmpts: OPJ_UINT32,
-  cmptparms: *mut openjp2_core::image::opj_image_cmptparm_t,
+  cmptparms: *mut opj_image_cmptparm_t,
   clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
-  openjp2_core::opj_image_tile_create(numcmpts, cmptparms, clrspc)
+  crate::image::opj_image_tile_create(numcmpts, cmptparms, clrspc)
 }

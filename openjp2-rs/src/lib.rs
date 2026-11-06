@@ -30,11 +30,11 @@ pub mod stream;
 // Export safe API
 pub use c_api_types::*;
 pub use codec::{opj_codec_private_t, Codec};
-pub use image::{opj_image, opj_image_cmptparm_t, opj_image_comptparm, opj_image_create, opj_image_destroy, opj_image_tile_create, CoreImage, CoreImageComp};
+pub use image::{opj_image_cmptparm_t, opj_image_comptparm, CoreImage, CoreImageComp};
 pub use j2k::free_cstr_index_mirror;
-pub use openjpeg::{opj_destroy_cstr_info, opj_image_data_alloc, opj_image_data_free};
+pub use openjpeg::opj_destroy_cstr_info;
 pub use types::opj_stream_private_t;
-pub use types::{ICCProfile, ICCProfileMut, ICCProfileRef, Stream, TileInfo};
+pub use types::{CIE_LAB_BYTE_SIZE, ICCProfile, ICCProfileMut, ICCProfileRef, Stream, TileInfo};
 
 /// Magic bytes for JP2 RFC3745.
 pub const JP2_RFC3745_MAGIC: &'static [u8] = &[

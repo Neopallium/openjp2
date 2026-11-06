@@ -8,18 +8,6 @@ pub use crate::c_api_types::*;
 pub use crate::consts::opj::*;
 pub use crate::types::*;
 
-/// Allocate `size` bytes for image component data. The C ABI export of this
-/// function lives in `openjp2-capi`; the codec uses it for the buffers the C
-/// callers may free or replace.
-pub fn opj_image_data_alloc(size: OPJ_SIZE_T) -> *mut core::ffi::c_void {
-  unsafe { crate::malloc::opj_malloc(size) }
-}
-
-/// Free an image component data buffer allocated by `opj_image_data_alloc`.
-pub fn opj_image_data_free(ptr: *mut core::ffi::c_void) {
-  unsafe { crate::malloc::opj_free(ptr) }
-}
-
 pub const OPJ_VERSION: &str = "2.5.2";
 
 /// Free a codestream info v2 structure (core-side helper; the C ABI export
