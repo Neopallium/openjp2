@@ -481,12 +481,11 @@ fn opj_t1_enc_sigpass_step_macro(
   l_datap: DataPtr,
   bpno: OPJ_INT32,
   one: OPJ_UINT32,
-  nmsedec: *mut OPJ_INT32,
+  nmsedec: &mut OPJ_INT32,
   type_0: OPJ_BYTE,
   ci: OPJ_UINT32,
   vsc: OPJ_UINT32,
 ) {
-  unsafe {
     let mut v = 0;
     let flags = flagsp.get();
     if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0
@@ -526,7 +525,6 @@ fn opj_t1_enc_sigpass_step_macro(
       }
       flagsp.or(T1_PI_THIS << ci.wrapping_mul(3));
     }
-  }
 }
 
 #[inline]
@@ -615,11 +613,10 @@ Encode significant pass
 fn opj_t1_enc_sigpass(
   mut t1: &mut opj_t1_t,
   mut bpno: OPJ_INT32,
-  mut nmsedec: *mut OPJ_INT32,
+  mut nmsedec: &mut OPJ_INT32,
   mut type_0: OPJ_BYTE,
   mut cblksty: OPJ_UINT32,
 ) {
-  unsafe {
     let mut i = 0;
     let mut k = 0;
     let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
@@ -727,7 +724,6 @@ fn opj_t1_enc_sigpass(
         f += 1
       }
     }
-  }
 }
 
 /* *
@@ -978,11 +974,10 @@ fn opj_t1_enc_refpass_step_macro(
   l_datap: DataPtr,
   bpno: OPJ_INT32,
   one: OPJ_UINT32,
-  nmsedec: *mut OPJ_INT32,
+  nmsedec: &mut OPJ_INT32,
   type_0: OPJ_BYTE,
   ci: OPJ_UINT32,
 ) {
-  unsafe {
     let mut v: OPJ_UINT32 = 0;
     let flags = flagsp.get();
     if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3)))
@@ -1004,7 +999,6 @@ fn opj_t1_enc_refpass_step_macro(
       }
       flagsp.or(T1_MU_THIS << ci.wrapping_mul(3));
     }
-  }
 }
 
 #[inline]
@@ -1082,10 +1076,9 @@ Encode refinement pass
 fn opj_t1_enc_refpass(
   mut t1: &mut opj_t1_t,
   mut bpno: OPJ_INT32,
-  mut nmsedec: *mut OPJ_INT32,
+  mut nmsedec: &mut OPJ_INT32,
   mut type_0: OPJ_BYTE,
 ) {
-  unsafe {
     let mut i: OPJ_UINT32 = 0;
     let mut k: OPJ_UINT32 = 0;
     let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
@@ -1144,7 +1137,6 @@ fn opj_t1_enc_refpass(
         f += 1
       }
     }
-  }
 }
 
 /* *
@@ -1302,7 +1294,7 @@ fn opj_t1_enc_clnpass_step_macro(
   mut l_datap: DataPtr,
   bpno: OPJ_INT32,
   one: OPJ_UINT32,
-  nmsedec: *mut OPJ_INT32,
+  nmsedec: &mut OPJ_INT32,
   agg: OPJ_BYTE,
   runlen: OPJ_UINT32,
   lim: OPJ_UINT32,
@@ -1310,7 +1302,7 @@ fn opj_t1_enc_clnpass_step_macro(
 ) {
   const CHECK: opj_flag_t =
     T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3;
-  unsafe {
+  {
     let mut v = 0;
     if (flagsp.get() & CHECK) == CHECK {
       if runlen == 0 {
@@ -1434,10 +1426,9 @@ Encode clean-up pass
 fn opj_t1_enc_clnpass(
   mut t1: &mut opj_t1_t,
   mut bpno: OPJ_INT32,
-  mut nmsedec: *mut OPJ_INT32,
+  mut nmsedec: &mut OPJ_INT32,
   mut cblksty: OPJ_UINT32,
 ) {
-  unsafe {
     let mut i: OPJ_UINT32 = 0;
     let mut k: OPJ_UINT32 = 0;
     let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
@@ -1517,7 +1508,6 @@ fn opj_t1_enc_clnpass(
         f += 1
       }
     }
-  }
 }
 
 fn opj_t1_dec_clnpass_internal(
@@ -1780,10 +1770,9 @@ fn opj_t1_getwmsedec(
   let mut w1 = 1.0;
   let mut w2 = 0.0;
   let mut wmsedec = 0.0;
-  unsafe {
-    if !mct_norms.is_null() && compno < mct_numcomps {
-      w1 = *mct_norms.offset(compno as isize)
-    }
+  // SAFETY: the norms pointer comes from the codec's mct_norms Vec (or null).
+  if !mct_norms.is_null() && compno < mct_numcomps {
+    w1 = unsafe { *mct_norms.offset(compno as isize) }
   }
   if qmfbid == 1 {
     w2 = opj_dwt_getnorm(level, orient)
@@ -2638,39 +2627,37 @@ pub(crate) fn opj_t1_encode_cblks(
   ret
 }
 fn opj_t1_enc_is_term_pass(
-  mut cblk: *mut opj_tcd_cblk_enc_t,
+  cblk: &opj_tcd_cblk_enc_t,
   mut cblksty: OPJ_UINT32,
   mut bpno: OPJ_INT32,
   mut passtype: OPJ_UINT32,
 ) -> core::ffi::c_int {
-  unsafe {
-    /* Is it the last cleanup pass ? */
-    if passtype == 2 && bpno == 0i32 {
-      return 1i32;
-    }
-    if cblksty & 0x4 != 0 {
-      return 1i32;
-    }
-    if cblksty & 0x1 != 0 {
-      /* For bypass arithmetic bypass, terminate the 4th cleanup pass */
-      if bpno == (*cblk).numbps as OPJ_INT32 - 4i32 && passtype == 2 {
-        return 1i32;
-      }
-      /* and beyond terminate all the magnitude refinement passes (in raw) */
-      /* and cleanup passes (in MQC) */
-      if bpno < (*cblk).numbps as OPJ_INT32 - 4i32 && passtype > 0 {
-        return 1i32;
-      }
-    }
-    0i32
+  /* Is it the last cleanup pass ? */
+  if passtype == 2 && bpno == 0i32 {
+    return 1i32;
   }
+  if cblksty & 0x4 != 0 {
+    return 1i32;
+  }
+  if cblksty & 0x1 != 0 {
+    /* For bypass arithmetic bypass, terminate the 4th cleanup pass */
+    if bpno == cblk.numbps as OPJ_INT32 - 4i32 && passtype == 2 {
+      return 1i32;
+    }
+    /* and beyond terminate all the magnitude refinement passes (in raw) */
+    /* and cleanup passes (in MQC) */
+    if bpno < cblk.numbps as OPJ_INT32 - 4i32 && passtype > 0 {
+      return 1i32;
+    }
+  }
+  0i32
 }
 
 /* * Return "cumwmsedec" that should be used to increase tile->distotile */
 /* * mod fixed_quality */
 fn opj_t1_encode_cblk(
-  mut t1: &mut opj_t1_t,
-  mut cblk: *mut opj_tcd_cblk_enc_t,
+  t1: &mut opj_t1_t,
+  cblk: &mut opj_tcd_cblk_enc_t,
   mut orient: OPJ_UINT32,
   mut compno: OPJ_UINT32,
   mut level: OPJ_UINT32,
@@ -2681,7 +2668,6 @@ fn opj_t1_encode_cblk(
   mut mct_norms: *const OPJ_FLOAT64,
   mut mct_numcomps: OPJ_UINT32,
 ) -> core::ffi::c_double {
-  unsafe {
     let mut cumwmsedec = 0.0f64; /* MQC component */
     let mut passno: OPJ_UINT32 = 0;
     let mut bpno: OPJ_INT32 = 0;
@@ -2725,39 +2711,34 @@ fn opj_t1_encode_cblk(
       }
       j += 1
     }
-    (*cblk).numbps = if max != 0 {
+    cblk.numbps = if max != 0 {
       (opj_int_floorlog2(max) + 1i32 - (7i32 - 1i32)) as OPJ_UINT32
     } else {
       0
     };
-    if (*cblk).numbps == 0 {
-      (*cblk).totalpasses = 0 as OPJ_UINT32;
+    if cblk.numbps == 0 {
+      cblk.totalpasses = 0 as OPJ_UINT32;
       return cumwmsedec;
     }
-    bpno = (*cblk).numbps.wrapping_sub(1) as OPJ_INT32;
+    bpno = cblk.numbps.wrapping_sub(1) as OPJ_INT32;
     passtype = 2 as OPJ_UINT32;
 
     opj_mqc_resetstates(&mut t1.mqc);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
-    opj_mqc_init_enc(&mut t1.mqc, (&mut *cblk).data_ptr(), (*cblk).data_size);
+    opj_mqc_init_enc(&mut t1.mqc, cblk.data_ptr(), cblk.data_size);
 
     passno = 0 as OPJ_UINT32;
     while bpno >= 0i32 {
-      let mut pass: *mut opj_tcd_pass_t = (*cblk).passes.as_mut_ptr().offset(passno as isize);
-      type_0 = if bpno < (*cblk).numbps as OPJ_INT32 - 4i32 && passtype < 2 && cblksty & 0x1 != 0 {
+      type_0 = if bpno < cblk.numbps as OPJ_INT32 - 4i32 && passtype < 2 && cblksty & 0x1 != 0 {
         1i32
       } else {
         0i32
       } as OPJ_BYTE;
       /* If the previous pass was terminating, we need to reset the encoder */
       if passno > 0
-        && (*(*cblk)
-          .passes
-          .as_ptr()
-          .offset(passno.wrapping_sub(1) as isize))
-        .term
+        && cblk.passes[passno.wrapping_sub(1) as usize].term
       {
         if type_0 as core::ffi::c_int == 1i32 {
           opj_mqc_bypass_init_enc(&mut t1.mqc);
@@ -2795,7 +2776,7 @@ fn opj_t1_encode_cblk(
         mct_numcomps,
       );
       cumwmsedec += tempwmsedec;
-      (*pass).distortiondec = cumwmsedec;
+      cblk.passes[passno as usize].distortiondec = cumwmsedec;
       if opj_t1_enc_is_term_pass(cblk, cblksty, bpno, passtype) != 0 {
         /* If it is a terminated pass, terminate it */
         if type_0 as core::ffi::c_int == 1i32 {
@@ -2805,8 +2786,8 @@ fn opj_t1_encode_cblk(
         } else {
           opj_mqc_flush(&mut t1.mqc);
         }
-        (*pass).term = true;
-        (*pass).rate = opj_mqc_numbytes(&mut t1.mqc)
+        cblk.passes[passno as usize].term = true;
+        cblk.passes[passno as usize].rate = opj_mqc_numbytes(&mut t1.mqc)
       } else {
         /* Non terminated pass */
         let mut rate_extra_bytes: OPJ_UINT32 = 0;
@@ -2816,8 +2797,8 @@ fn opj_t1_encode_cblk(
         } else {
           rate_extra_bytes = 3 as OPJ_UINT32
         }
-        (*pass).term = false;
-        (*pass).rate = opj_mqc_numbytes(&mut t1.mqc).wrapping_add(rate_extra_bytes)
+        cblk.passes[passno as usize].term = false;
+        cblk.passes[passno as usize].rate = opj_mqc_numbytes(&mut t1.mqc).wrapping_add(rate_extra_bytes)
       }
       passtype = passtype.wrapping_add(1);
       if passtype == 3 {
@@ -2830,44 +2811,37 @@ fn opj_t1_encode_cblk(
       }
       passno += 1;
     }
-    (*cblk).totalpasses = passno;
-    if (*cblk).totalpasses != 0 {
+    cblk.totalpasses = passno;
+    if cblk.totalpasses != 0 {
       /* Make sure that pass rates are increasing */
       let mut last_pass_rate = opj_mqc_numbytes(&mut t1.mqc);
-      passno = (*cblk).totalpasses;
+      passno = cblk.totalpasses;
       while passno > 0 {
         passno = passno.wrapping_sub(1);
-        let mut pass_0: *mut opj_tcd_pass_t =
-          (*cblk).passes.as_mut_ptr().offset(passno as isize);
-        if (*pass_0).rate > last_pass_rate {
-          (*pass_0).rate = last_pass_rate
+        if cblk.passes[passno as usize].rate > last_pass_rate {
+          cblk.passes[passno as usize].rate = last_pass_rate
         } else {
-          last_pass_rate = (*pass_0).rate
+          last_pass_rate = cblk.passes[passno as usize].rate
         }
       }
     }
     passno = 0 as OPJ_UINT32;
-    while passno < (*cblk).totalpasses {
-      let mut pass_1: *mut opj_tcd_pass_t = (*cblk).passes.as_mut_ptr().offset(passno as isize);
+    while passno < cblk.totalpasses {
       /* Prevent generation of FF as last data byte of a pass*/
       /* For terminating passes, the flushing procedure ensured this already */
-      assert!((*pass_1).rate > 0);
-      if (&*cblk).data_byte((*pass_1).rate.wrapping_sub(1) as usize) as core::ffi::c_int
+      assert!(cblk.passes[passno as usize].rate > 0);
+      if cblk.data_byte(cblk.passes[passno as usize].rate.wrapping_sub(1) as usize)
+        as core::ffi::c_int
         == 0xffi32
       {
-        (*pass_1).rate = (*pass_1).rate.wrapping_sub(1)
+        cblk.passes[passno as usize].rate = cblk.passes[passno as usize].rate.wrapping_sub(1)
       }
-      (*pass_1).len = (*pass_1).rate.wrapping_sub(if passno == 0 {
+      cblk.passes[passno as usize].len = cblk.passes[passno as usize].rate.wrapping_sub(if passno == 0 {
         0
       } else {
-        (*(*cblk)
-          .passes
-          .as_ptr()
-          .offset(passno.wrapping_sub(1) as isize))
-        .rate
+        cblk.passes[passno.wrapping_sub(1) as usize].rate
       });
       passno += 1;
     }
     cumwmsedec
-  }
 }

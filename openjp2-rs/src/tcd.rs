@@ -1896,161 +1896,145 @@ fn opj_tcd_dwt_decode(p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   }
   1i32
 }
-fn opj_tcd_mct_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  unsafe {
-    let mut l_tcp = p_tcd.tcp;
-    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
-    let mut l_samples: OPJ_SIZE_T = 0;
-    if (*l_tcp).mct == 0u32 || p_tcd.used_component.len() > 0 {
-      return 1i32;
+fn opj_tcd_mct_decode(p_tcd: &mut opj_tcd, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
+  let tcp = unsafe { &*p_tcd.tcp };
+  let image = unsafe { &*p_tcd.image };
+  let mut l_samples: OPJ_SIZE_T = 0;
+  if tcp.mct == 0u32 || p_tcd.used_component.len() > 0 {
+    return 1i32;
+  }
+  let min_num_res = p_tcd.tcd_image.tiles.comps[0].minimum_num_resolutions;
+  if p_tcd.whole_tile_decoding != 0 {
+    let res_comp0 = &p_tcd.tcd_image.tiles.comps[0].resolutions
+      [(min_num_res.wrapping_sub(1u32)) as usize];
+    /* A bit inefficient: we process more data than needed if */
+    /* resno_decoded < l_tile_comp->minimum_num_resolutions-1, */
+    /* but we would need to take into account a stride then */
+    l_samples = ((res_comp0.x1 - res_comp0.x0) as OPJ_SIZE_T)
+      .wrapping_mul((res_comp0.y1 - res_comp0.y0) as OPJ_SIZE_T);
+    if p_tcd.tcd_image.tiles.numcomps >= 3u32
+      && (min_num_res != p_tcd.tcd_image.tiles.comps[1].minimum_num_resolutions
+        || min_num_res != p_tcd.tcd_image.tiles.comps[2].minimum_num_resolutions)
+    {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Tiles don't all have the same dimension. Skip the MCT step.\n",
+      );
+      return 0i32;
     }
-    if p_tcd.whole_tile_decoding != 0 {
-      let mut res_comp0 = p_tcd.tcd_image.tiles.comps[0]
-        .resolutions
-        .as_ptr()
-        .offset((*l_tile_comp).minimum_num_resolutions as isize)
-        .offset(-1);
-      /* A bit inefficient: we process more data than needed if */
-      /* resno_decoded < l_tile_comp->minimum_num_resolutions-1, */
-      /* but we would need to take into account a stride then */
-      l_samples = (((*res_comp0).x1 - (*res_comp0).x0) as OPJ_SIZE_T)
-        .wrapping_mul(((*res_comp0).y1 - (*res_comp0).y0) as OPJ_SIZE_T);
-      if p_tcd.tcd_image.tiles.numcomps >= 3u32
-        && ((*l_tile_comp).minimum_num_resolutions
-          != p_tcd.tcd_image.tiles.comps[1].minimum_num_resolutions
-          || (*l_tile_comp).minimum_num_resolutions
-            != p_tcd.tcd_image.tiles.comps[2].minimum_num_resolutions)
+    if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
+      let res_comp1 = &p_tcd.tcd_image.tiles.comps[1].resolutions
+        [(min_num_res.wrapping_sub(1u32)) as usize];
+      let res_comp2 = &p_tcd.tcd_image.tiles.comps[2].resolutions
+        [(min_num_res.wrapping_sub(1u32)) as usize];
+      /* testcase 1336.pdf.asan.47.376 */
+      if image.comps[0].resno_decoded != image.comps[1].resno_decoded
+        || image.comps[0].resno_decoded != image.comps[2].resno_decoded
+        || ((res_comp1.x1 - res_comp1.x0) as OPJ_SIZE_T)
+          .wrapping_mul((res_comp1.y1 - res_comp1.y0) as OPJ_SIZE_T)
+          != l_samples
+        || ((res_comp2.x1 - res_comp2.x0) as OPJ_SIZE_T)
+          .wrapping_mul((res_comp2.y1 - res_comp2.y0) as OPJ_SIZE_T)
+          != l_samples
       {
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Tiles don\'t all have the same dimension. Skip the MCT step.\n",
+          "Tiles don't all have the same dimension. Skip the MCT step.\n",
         );
         return 0i32;
       }
-      if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
-        let mut res_comp1 = p_tcd.tcd_image.tiles.comps[1]
-          .resolutions
-          .as_ptr()
-          .offset((*l_tile_comp).minimum_num_resolutions as isize)
-          .offset(-1);
-        let mut res_comp2 = p_tcd.tcd_image.tiles.comps[2]
-          .resolutions
-          .as_ptr()
-          .offset((*l_tile_comp).minimum_num_resolutions as isize)
-          .offset(-1);
-        /* testcase 1336.pdf.asan.47.376 */
-        if (*(*p_tcd.image).comps.as_ptr().add(0)).resno_decoded
-          != (*(*p_tcd.image).comps.as_ptr().add(1)).resno_decoded
-          || (*(*p_tcd.image).comps.as_ptr().add(0)).resno_decoded
-            != (*(*p_tcd.image).comps.as_ptr().add(2)).resno_decoded
-          || (((*res_comp1).x1 - (*res_comp1).x0) as OPJ_SIZE_T)
-            .wrapping_mul(((*res_comp1).y1 - (*res_comp1).y0) as OPJ_SIZE_T)
-            != l_samples
-          || (((*res_comp2).x1 - (*res_comp2).x0) as OPJ_SIZE_T)
-            .wrapping_mul(((*res_comp2).y1 - (*res_comp2).y0) as OPJ_SIZE_T)
-            != l_samples
-        {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Tiles don\'t all have the same dimension. Skip the MCT step.\n",
-          );
-          return 0i32;
-        }
-      }
-    } else {
-      let mut res_comp0_0 = p_tcd.tcd_image.tiles.comps[0]
-        .resolutions
-        .as_ptr()
-        .offset((*(*p_tcd.image).comps.as_ptr().add(0)).resno_decoded as isize);
-      l_samples = ((*res_comp0_0).win_x1.wrapping_sub((*res_comp0_0).win_x0) as OPJ_SIZE_T)
-        .wrapping_mul((*res_comp0_0).win_y1.wrapping_sub((*res_comp0_0).win_y0) as OPJ_SIZE_T);
-      if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
-        let mut res_comp1_0 = p_tcd.tcd_image.tiles.comps[1]
-          .resolutions
-          .as_ptr()
-          .offset((*(*p_tcd.image).comps.as_ptr().add(1)).resno_decoded as isize);
-        let mut res_comp2_0 = p_tcd.tcd_image.tiles.comps[2]
-          .resolutions
-          .as_ptr()
-          .offset((*(*p_tcd.image).comps.as_ptr().add(2)).resno_decoded as isize);
-        /* testcase 1336.pdf.asan.47.376 */
-        if (*(*p_tcd.image).comps.as_ptr().add(0)).resno_decoded
-          != (*(*p_tcd.image).comps.as_ptr().add(1)).resno_decoded
-          || (*(*p_tcd.image).comps.as_ptr().add(0)).resno_decoded
-            != (*(*p_tcd.image).comps.as_ptr().add(2)).resno_decoded
-          || ((*res_comp1_0).win_x1.wrapping_sub((*res_comp1_0).win_x0) as OPJ_SIZE_T)
-            .wrapping_mul((*res_comp1_0).win_y1.wrapping_sub((*res_comp1_0).win_y0) as OPJ_SIZE_T)
-            != l_samples
-          || ((*res_comp2_0).win_x1.wrapping_sub((*res_comp2_0).win_x0) as OPJ_SIZE_T)
-            .wrapping_mul((*res_comp2_0).win_y1.wrapping_sub((*res_comp2_0).win_y0) as OPJ_SIZE_T)
-            != l_samples
-        {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Tiles don\'t all have the same dimension. Skip the MCT step.\n",
-          );
-          return 0i32;
-        }
+    }
+  } else {
+    let res_comp0_0 =
+      &p_tcd.tcd_image.tiles.comps[0].resolutions[image.comps[0].resno_decoded as usize];
+    l_samples = (res_comp0_0.win_x1.wrapping_sub(res_comp0_0.win_x0) as OPJ_SIZE_T)
+      .wrapping_mul(res_comp0_0.win_y1.wrapping_sub(res_comp0_0.win_y0) as OPJ_SIZE_T);
+    if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
+      let res_comp1_0 =
+        &p_tcd.tcd_image.tiles.comps[1].resolutions[image.comps[1].resno_decoded as usize];
+      let res_comp2_0 =
+        &p_tcd.tcd_image.tiles.comps[2].resolutions[image.comps[2].resno_decoded as usize];
+      /* testcase 1336.pdf.asan.47.376 */
+      if image.comps[0].resno_decoded != image.comps[1].resno_decoded
+        || image.comps[0].resno_decoded != image.comps[2].resno_decoded
+        || (res_comp1_0.win_x1.wrapping_sub(res_comp1_0.win_x0) as OPJ_SIZE_T)
+          .wrapping_mul(res_comp1_0.win_y1.wrapping_sub(res_comp1_0.win_y0) as OPJ_SIZE_T)
+          != l_samples
+        || (res_comp2_0.win_x1.wrapping_sub(res_comp2_0.win_x0) as OPJ_SIZE_T)
+          .wrapping_mul(res_comp2_0.win_y1.wrapping_sub(res_comp2_0.win_y0) as OPJ_SIZE_T)
+          != l_samples
+      {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "Tiles don't all have the same dimension. Skip the MCT step.\n",
+        );
+        return 0i32;
       }
     }
-    if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
-      let numcomps = p_tcd.tcd_image.tiles.numcomps as usize;
-      let comp_ptr = |i: usize| -> *mut OPJ_INT32 {
-        let comp = p_tcd.tcd_image.tiles.comps.as_ptr().add(i) as *mut opj_tcd_tilecomp_t;
-        if p_tcd.whole_tile_decoding != 0 {
-          (*comp).data.as_mut_ptr()
-        } else {
-          (*comp).data_win.as_mut_ptr()
-        }
-      };
-      if comp_ptr(0).is_null() {
-        /* The tile component data was never allocated (e.g. a zero-sized
-        decode window); there is nothing to transform. The C code no-ops here
-        because `l_samples` happens to be 0, but constructing a slice from the
-        null pointer is UB in Rust. */
+  }
+  if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
+    let comps = &mut p_tcd.tcd_image.tiles.comps[..];
+    if comps[0].data.is_null() && comps[0].data_win.is_null() {
+      /* The tile component data was never allocated (e.g. a zero-sized
+      decode window); there is nothing to transform. The C code no-ops here
+      because `l_samples` happens to be 0, but constructing a slice from the
+      null pointer is UB in Rust. */
+      return 1i32;
+    }
+    /* The whole-tile path targets `data`, the window path `data_win`. */
+    let whole = p_tcd.whole_tile_decoding != 0;
+    let numcomps = comps.len();
+    if tcp.mct == 2u32 {
+      if tcp.m_mct_decoding_matrix.is_empty() {
         return 1i32;
       }
-      if (*l_tcp).mct == 2u32 {
-        if (*l_tcp).m_mct_decoding_matrix.is_empty() {
-          return 1i32;
-        }
-        let mut l_data: Vec<&mut [OPJ_FLOAT32]> = (0..numcomps)
-          .map(|i| core::slice::from_raw_parts_mut(comp_ptr(i) as *mut OPJ_FLOAT32, l_samples))
-          .collect();
-        let l_tcp_ref = &*l_tcp;
-        let matrix = &l_tcp_ref.m_mct_decoding_matrix[..];
-        if opj_mct_decode_custom(matrix, l_samples, &mut l_data, (*(*p_tcd.image).comps.as_ptr().add(0)).sgnd) == 0
-        {
-          return 0i32;
-        }
-      } else if (&(*l_tcp).tccps)[0].qmfbid == 1u32 {
-        let (c0, c1, c2) = (comp_ptr(0), comp_ptr(1), comp_ptr(2));
-        opj_mct_decode(
-          core::slice::from_raw_parts_mut(c0, l_samples),
-          core::slice::from_raw_parts_mut(c1, l_samples),
-          core::slice::from_raw_parts_mut(c2, l_samples),
-        );
-      } else {
-        let (c0, c1, c2) = (comp_ptr(0), comp_ptr(1), comp_ptr(2));
-        opj_mct_decode_real(
-          core::slice::from_raw_parts_mut(c0 as *mut OPJ_FLOAT32, l_samples),
-          core::slice::from_raw_parts_mut(c1 as *mut OPJ_FLOAT32, l_samples),
-          core::slice::from_raw_parts_mut(c2 as *mut OPJ_FLOAT32, l_samples),
-        );
+      let mut l_data: Vec<&mut [OPJ_FLOAT32]> = Vec::with_capacity(numcomps);
+      let mut rest = comps;
+      for _ in 0..numcomps {
+        let (first, r) = rest.split_at_mut(1);
+        let c = &mut first[0];
+        let s = if whole {
+          c.data.as_mut_slice(l_samples as usize)
+        } else {
+          c.data_win.as_mut_slice(l_samples as usize)
+        };
+        l_data.push(as_f32_slice(s));
+        rest = r;
       }
+      let matrix = &tcp.m_mct_decoding_matrix[..];
+      if opj_mct_decode_custom(matrix, l_samples, &mut l_data, image.comps[0].sgnd) == 0 {
+        return 0i32;
+      }
+    } else if tcp.tccps[0].qmfbid == 1u32 {
+      let (c0, rest) = comps.split_at_mut(1);
+      let (c1, rest) = rest.split_at_mut(1);
+      let (c2, _) = rest.split_at_mut(1);
+      let s0 = if whole { c0[0].data.as_mut_slice(l_samples as usize) } else { c0[0].data_win.as_mut_slice(l_samples as usize) };
+      let s1 = if whole { c1[0].data.as_mut_slice(l_samples as usize) } else { c1[0].data_win.as_mut_slice(l_samples as usize) };
+      let s2 = if whole { c2[0].data.as_mut_slice(l_samples as usize) } else { c2[0].data_win.as_mut_slice(l_samples as usize) };
+      opj_mct_decode(s0, s1, s2);
     } else {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Number of components ({}) is inconsistent with a MCT. Skip the MCT step.\n",
-        p_tcd.tcd_image.tiles.numcomps,
-      );
+      let (c0, rest) = comps.split_at_mut(1);
+      let (c1, rest) = rest.split_at_mut(1);
+      let (c2, _) = rest.split_at_mut(1);
+      let s0 = if whole { c0[0].data.as_mut_slice(l_samples as usize) } else { c0[0].data_win.as_mut_slice(l_samples as usize) };
+      let s1 = if whole { c1[0].data.as_mut_slice(l_samples as usize) } else { c1[0].data_win.as_mut_slice(l_samples as usize) };
+      let s2 = if whole { c2[0].data.as_mut_slice(l_samples as usize) } else { c2[0].data_win.as_mut_slice(l_samples as usize) };
+      opj_mct_decode_real(as_f32_slice(s0), as_f32_slice(s1), as_f32_slice(s2));
     }
-    1i32
+  } else {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Number of components ({}) is inconsistent with a MCT. Skip the MCT step.\n",
+      p_tcd.tcd_image.tiles.numcomps,
+    );
   }
+  1i32
 }
 fn opj_tcd_dc_level_shift_decode(p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
@@ -2213,52 +2197,53 @@ fn opj_tcd_dc_level_shift_encode(p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   }
   1i32
 }
-fn opj_tcd_mct_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
-  unsafe {
-    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
-    let mut samples = (((*l_tile_comp).x1 - (*l_tile_comp).x0) as OPJ_SIZE_T)
-      .wrapping_mul(((*l_tile_comp).y1 - (*l_tile_comp).y0) as OPJ_SIZE_T);
-    let mut l_tcp = p_tcd.tcp;
-    if (*p_tcd.tcp).mct == 0 {
+fn opj_tcd_mct_encode(p_tcd: &mut opj_tcd) -> OPJ_BOOL {
+  // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
+  let tcp = unsafe { &*p_tcd.tcp };
+  let image = unsafe { &*p_tcd.image };
+  let samples = (((p_tcd.tcd_image.tiles.comps[0].x1 - p_tcd.tcd_image.tiles.comps[0].x0) as OPJ_SIZE_T)
+    .wrapping_mul((p_tcd.tcd_image.tiles.comps[0].y1 - p_tcd.tcd_image.tiles.comps[0].y0) as OPJ_SIZE_T))
+    as usize;
+  if tcp.mct == 0 {
+    return 1i32;
+  }
+  let comps = &mut p_tcd.tcd_image.tiles.comps[..];
+  if tcp.mct == 2u32 {
+    if tcp.m_mct_coding_matrix.is_empty() {
       return 1i32;
     }
-    if (*p_tcd.tcp).mct == 2u32 {
-      if (*p_tcd.tcp).m_mct_coding_matrix.is_empty() {
-        return 1i32;
-      }
-      let numcomps = p_tcd.tcd_image.tiles.numcomps as usize;
-      let mut l_data: Vec<&mut [OPJ_INT32]> = (0..numcomps)
-        .map(|i| core::slice::from_raw_parts_mut((*l_tile_comp.add(i)).data.as_mut_ptr(), samples))
-        .collect();
-      let tcp_ref = &*p_tcd.tcp;
-      let matrix = &tcp_ref.m_mct_coding_matrix[..];
-      if opj_mct_encode_custom(matrix, samples, &mut l_data, (*(*p_tcd.image).comps.as_ptr().add(0)).sgnd) == 0 {
-        return 0i32;
-      }
-    } else if (&(*l_tcp).tccps)[0].qmfbid == 0u32 {
-      opj_mct_encode_real(
-        core::slice::from_raw_parts_mut(
-          p_tcd.tcd_image.tiles.comps[0].data.as_mut_ptr() as *mut OPJ_FLOAT32,
-          samples,
-        ),
-        core::slice::from_raw_parts_mut(
-          p_tcd.tcd_image.tiles.comps[1].data.as_mut_ptr() as *mut OPJ_FLOAT32,
-          samples,
-        ),
-        core::slice::from_raw_parts_mut(
-          p_tcd.tcd_image.tiles.comps[2].data.as_mut_ptr() as *mut OPJ_FLOAT32,
-          samples,
-        ),
-      );
-    } else {
-      opj_mct_encode(
-        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[0].data.as_mut_ptr(), samples),
-        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[1].data.as_mut_ptr(), samples),
-        core::slice::from_raw_parts_mut(p_tcd.tcd_image.tiles.comps[2].data.as_mut_ptr(), samples),
-      );
+    let numcomps = comps.len();
+    let mut l_data: Vec<&mut [OPJ_INT32]> = Vec::with_capacity(numcomps);
+    let mut rest = comps;
+    for _ in 0..numcomps {
+      let (first, r) = rest.split_at_mut(1);
+      l_data.push(first[0].data.as_mut_slice(samples));
+      rest = r;
     }
-    1i32
+    let matrix = &tcp.m_mct_coding_matrix[..];
+    if opj_mct_encode_custom(matrix, samples as OPJ_SIZE_T, &mut l_data, image.comps[0].sgnd) == 0 {
+      return 0i32;
+    }
+  } else if tcp.tccps[0].qmfbid == 0u32 {
+    let (c0, rest) = comps.split_at_mut(1);
+    let (c1, rest) = rest.split_at_mut(1);
+    let (c2, _) = rest.split_at_mut(1);
+    opj_mct_encode_real(
+      as_f32_slice(c0[0].data.as_mut_slice(samples)),
+      as_f32_slice(c1[0].data.as_mut_slice(samples)),
+      as_f32_slice(c2[0].data.as_mut_slice(samples)),
+    );
+  } else {
+    let (c0, rest) = comps.split_at_mut(1);
+    let (c1, rest) = rest.split_at_mut(1);
+    let (c2, _) = rest.split_at_mut(1);
+    opj_mct_encode(
+      c0[0].data.as_mut_slice(samples),
+      c1[0].data.as_mut_slice(samples),
+      c2[0].data.as_mut_slice(samples),
+    );
   }
+  1i32
 }
 fn opj_tcd_dwt_encode(p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   // SAFETY: `tcp` is set by opj_tcd_init and valid here.

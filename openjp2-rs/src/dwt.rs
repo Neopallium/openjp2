@@ -1077,7 +1077,7 @@ fn opj_dwt_encode_and_deinterleave_v_real(
 /// from the raw allocation at the boundary only (see the SAFETY notes below).
 #[inline]
 /// Reinterpret an i32 sample buffer as f32 (the C code memcpy'd the words).
-fn as_f32_slice(data: &mut [OPJ_INT32]) -> &mut [OPJ_FLOAT32] {
+pub(crate) fn as_f32_slice(data: &mut [OPJ_INT32]) -> &mut [OPJ_FLOAT32] {
   // SAFETY: f32 and i32 share size and alignment; the buffer is a raw word
   // array by contract of the DWT 9-7 transform.
   unsafe { core::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut OPJ_FLOAT32, data.len()) }
