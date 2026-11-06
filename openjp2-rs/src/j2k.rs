@@ -2196,94 +2196,91 @@ fn opj_j2k_get_specific_header_sizes(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_poc(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_header_size: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_nb_comp: OPJ_UINT32 = 0;
-    let mut l_tmp: OPJ_UINT32 = 0;
-    let mut l_old_poc_nb: OPJ_UINT32 = 0;
-    let mut l_current_poc_nb: OPJ_UINT32 = 0;
-    let mut l_current_poc_remaining: OPJ_UINT32 = 0;
-    let mut l_chunk_size: OPJ_UINT32 = 0;
-    let mut l_comp_room: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_current_poc = core::ptr::null_mut::<opj_poc_t>();
-    /* preconditions */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let l_nb_comp: OPJ_UINT32;
+  let mut l_tmp: OPJ_UINT32 = 0;
+  let l_old_poc_nb: OPJ_UINT32;
+  let mut l_current_poc_nb: OPJ_UINT32 = 0;
+  let l_current_poc_remaining: OPJ_UINT32;
+  let l_chunk_size: OPJ_UINT32;
+  let l_comp_room: OPJ_UINT32;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-    l_nb_comp = l_image.numcomps;
-    if l_nb_comp <= 256u32 {
-      l_comp_room = 1 as OPJ_UINT32
-    } else {
-      l_comp_room = 2 as OPJ_UINT32
-    }
-    l_chunk_size = (5u32).wrapping_add((2u32).wrapping_mul(l_comp_room));
-    l_current_poc_nb = p_header_size.wrapping_div(l_chunk_size);
-    l_current_poc_remaining = p_header_size.wrapping_rem(l_chunk_size);
-    if l_current_poc_nb <= 0u32 || l_current_poc_remaining != 0u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading POC marker\n",);
-      return 0i32;
-    }
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
-    } else {
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
-    };
-    l_old_poc_nb = if (*l_tcp).POC {
-      (*l_tcp).numpocs.wrapping_add(1u32)
-    } else {
-      0u32
-    };
-    l_current_poc_nb =
-      (l_current_poc_nb as core::ffi::c_uint).wrapping_add(l_old_poc_nb) as OPJ_UINT32;
-    if l_current_poc_nb >= 32u32 {
-      event_msg!(p_manager, EVT_ERROR, "Too many POCs {}\n", l_current_poc_nb,);
-      return 0i32;
-    }
-    /* now poc is in use.*/
-    (*l_tcp).POC = true; /* RSpoc_i */
-    l_current_poc =
-      &mut *(*l_tcp).pocs.as_mut_ptr().offset(l_old_poc_nb as isize) as *mut opj_poc_t; /* CSpoc_i */
-    i = l_old_poc_nb; /* LYEpoc_i */
-    while i < l_current_poc_nb {
-      (*l_current_poc).resno0 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-      cursor += 1 as usize;
-      (*l_current_poc).compno0 = opj_read_bytes(&header_data[cursor..], l_comp_room);
-      cursor += l_comp_room as isize as usize;
-      (*l_current_poc).layno1 = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-      /* make sure layer end is in acceptable bounds */
-      (*l_current_poc).layno1 = opj_uint_min((*l_current_poc).layno1, (*l_tcp).numlayers); /* REpoc_i */
-      cursor += 2 as usize; /* CEpoc_i */
-      (*l_current_poc).resno1 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* Ppoc_i */
-      cursor += 1 as usize;
-      (*l_current_poc).compno1 = opj_read_bytes(&header_data[cursor..], l_comp_room);
-      cursor += l_comp_room as isize as usize;
-      l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-      (*l_current_poc).prg = l_tmp as OPJ_PROG_ORDER;
-      /* make sure comp is in acceptable bounds */
-      (*l_current_poc).compno1 = opj_uint_min((*l_current_poc).compno1, l_nb_comp);
-      l_current_poc = l_current_poc.offset(1);
-      i += 1;
-    }
-    (*l_tcp).numpocs = l_current_poc_nb.wrapping_sub(1u32);
-    1i32
+  assert!(!p_header_data.is_null());
+  let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
+  l_nb_comp = l_image.numcomps;
+  if l_nb_comp <= 256u32 {
+    l_comp_room = 1 as OPJ_UINT32
+  } else {
+    l_comp_room = 2 as OPJ_UINT32
   }
+  l_chunk_size = (5u32).wrapping_add((2u32).wrapping_mul(l_comp_room));
+  l_current_poc_nb = p_header_size.wrapping_div(l_chunk_size);
+  l_current_poc_remaining = p_header_size.wrapping_rem(l_chunk_size);
+  if l_current_poc_nb <= 0u32 || l_current_poc_remaining != 0u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading POC marker\n",);
+    return 0i32;
+  }
+  let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+  let l_tcp = if is_tph {
+    &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
+  } else {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set")
+  };
+  l_old_poc_nb = if l_tcp.POC {
+    l_tcp.numpocs.wrapping_add(1u32)
+  } else {
+    0u32
+  };
+  l_current_poc_nb = l_current_poc_nb.wrapping_add(l_old_poc_nb);
+  if l_current_poc_nb >= 32u32 {
+    event_msg!(p_manager, EVT_ERROR, "Too many POCs {}\n", l_current_poc_nb,);
+    return 0i32;
+  }
+  /* now poc is in use.*/
+  l_tcp.POC = true; /* RSpoc_i */
+  i = l_old_poc_nb; /* CSpoc_i */
+  while i < l_current_poc_nb {
+    /* LYEpoc_i */
+    let resno0 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    cursor += 1 as usize;
+    let compno0 = opj_read_bytes(&header_data[cursor..], l_comp_room);
+    cursor += l_comp_room as usize;
+    let layno1 = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+    cursor += 2 as usize;
+    let resno1 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    cursor += 1 as usize;
+    let compno1 = opj_read_bytes(&header_data[cursor..], l_comp_room);
+    cursor += l_comp_room as usize;
+    l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    cursor += 1 as usize;
+    let poc = &mut l_tcp.pocs[i as usize];
+    poc.resno0 = resno0;
+    poc.compno0 = compno0;
+    poc.layno1 = opj_uint_min(layno1, l_tcp.numlayers); /* REpoc_i */
+    poc.resno1 = resno1; /* CEpoc_i */
+    poc.compno1 = compno1; /* Ppoc_i */
+    poc.prg = l_tmp as OPJ_PROG_ORDER;
+    /* make sure comp is in acceptable bounds */
+    poc.compno1 = opj_uint_min(poc.compno1, l_nb_comp);
+    i += 1;
+  }
+  l_tcp.numpocs = l_current_poc_nb.wrapping_sub(1u32);
+  1i32
 }
+
 /* *
  * Reads a CRG marker (Component registration)
  *
@@ -2301,35 +2298,33 @@ fn opj_j2k_read_poc(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_crg(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_header_size: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_nb_comp: OPJ_UINT32 = 0;
-    /* preconditions */
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    l_nb_comp = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-    if p_header_size != l_nb_comp.wrapping_mul(4u32) {
-      event_msg!(p_manager, EVT_ERROR, "Error reading CRG marker\n",);
-      return 0i32;
-    }
-    /* Do not care of this at the moment since only local variables are set here */
-    /*
-    for
-            (i = 0; i < l_nb_comp; ++i)
-    {
-            opj_read_bytes(p_header_data,&l_Xcrg_i,2);                              // Xcrg_i
-            p_header_data+=2;
-            opj_read_bytes(p_header_data,&l_Ycrg_i,2);                              // Xcrg_i
-            p_header_data+=2;
-    }
-    */
-    1i32
+  assert!(!p_header_data.is_null());
+  let l_nb_comp = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  if p_header_size != l_nb_comp.wrapping_mul(4u32) {
+    event_msg!(p_manager, EVT_ERROR, "Error reading CRG marker\n",);
+    return 0i32;
   }
+  /* Do not care of this at the moment since only local variables are set here */
+  /*
+  for
+          (i = 0; i < l_nb_comp; ++i)
+  {
+          opj_read_bytes(p_header_data,&l_Xcrg_i,2);                              // Xcrg_i
+          p_header_data+=2;
+          opj_read_bytes(p_header_data,&l_Ycrg_i,2);                              // Xcrg_i
+          p_header_data+=2;
+  }
+  */
+  1i32
 }
+
 /* *
  * Reads a TLM marker (Tile Length Marker)
  *
@@ -2347,55 +2342,54 @@ fn opj_j2k_read_crg(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_tlm(
-  mut _p_j2k: &mut opj_j2k,
+  _p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_header_size: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut l_Stlm: OPJ_UINT32 = 0;
-    let mut l_ST: OPJ_UINT32 = 0;
-    let mut l_SP: OPJ_UINT32 = 0;
-    let mut l_tot_num_tp_remaining: OPJ_UINT32 = 0;
-    let mut l_quotient: OPJ_UINT32 = 0;
-    let mut l_Ptlm_size: OPJ_UINT32 = 0;
-    /* preconditions */
-    /* Stlm */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let mut l_Stlm: OPJ_UINT32 = 0;
+  let l_ST: OPJ_UINT32;
+  let l_SP: OPJ_UINT32;
+  let l_tot_num_tp_remaining: OPJ_UINT32;
+  let l_quotient: OPJ_UINT32;
+  let l_Ptlm_size: OPJ_UINT32;
+  /* preconditions */
+  /* Stlm */
 
-    assert!(!p_header_data.is_null());
-    if p_header_size < 2u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading TLM marker\n",);
-      return 0i32;
-    }
-    p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32;
-    let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    l_Stlm = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    l_ST = l_Stlm >> 4i32 & 0x3u32;
-    l_SP = l_Stlm >> 6i32 & 0x1u32;
-    l_Ptlm_size = l_SP.wrapping_add(1u32).wrapping_mul(2u32);
-    l_quotient = l_Ptlm_size.wrapping_add(l_ST);
-    l_tot_num_tp_remaining = p_header_size.wrapping_rem(l_quotient);
-    if l_tot_num_tp_remaining != 0u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading TLM marker\n",);
-      return 0i32;
-    }
-    /* FIXME Do not care of this at the moment since only local variables are set here */
-    /*
-    for
-            (i = 0; i < l_tot_num_tp; ++i)
-    {
-            opj_read_bytes(p_header_data,&l_Ttlm_i,l_ST);                           // Ttlm_i
-            p_header_data += l_ST;
-            opj_read_bytes(p_header_data,&l_Ptlm_i,l_Ptlm_size);            // Ptlm_i
-            p_header_data += l_Ptlm_size;
-    }*/
-    1i32
+  assert!(!p_header_data.is_null());
+  if p_header_size < 2u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading TLM marker\n",);
+    return 0i32;
   }
+  let remaining = p_header_size.wrapping_sub(2u32);
+  let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  l_Stlm = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  l_ST = l_Stlm >> 4i32 & 0x3u32;
+  l_SP = l_Stlm >> 6i32 & 0x1u32;
+  l_Ptlm_size = l_SP.wrapping_add(1u32).wrapping_mul(2u32);
+  l_quotient = l_Ptlm_size.wrapping_add(l_ST);
+  l_tot_num_tp_remaining = remaining.wrapping_rem(l_quotient);
+  if l_tot_num_tp_remaining != 0u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading TLM marker\n",);
+    return 0i32;
+  }
+  /* FIXME Do not care of this at the moment since only local variables are set here */
+  /*
+  for
+          (i = 0; i < l_tot_num_tp; ++i)
+  {
+          opj_read_bytes(p_header_data,&l_Ttlm_i,l_ST);                           // Ttlm_i
+          p_header_data += l_ST;
+          opj_read_bytes(p_header_data,&l_Ptlm_i,l_Ptlm_size);            // Ptlm_i
+          p_header_data += l_Ptlm_size;
+  }*/
+  1i32
 }
+
 /* *
  * Reads a PLM marker (Packet length, main header marker)
  *
@@ -2489,49 +2483,48 @@ fn opj_j2k_read_plm(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_plt(
-  mut _p_j2k: &mut opj_j2k,
+  _p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_header_size: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut l_tmp: OPJ_UINT32 = 0;
-    let mut l_packet_len = 0 as OPJ_UINT32;
-    let mut i: OPJ_UINT32 = 0;
-    /* preconditions */
-    /* Iplt_ij */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let mut l_tmp: OPJ_UINT32 = 0;
+  let mut l_packet_len = 0 as OPJ_UINT32;
+  let mut i: OPJ_UINT32 = 0;
+  /* preconditions */
+  /* Iplt_ij */
 
-    assert!(!p_header_data.is_null());
-    if p_header_size < 1u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading PLT marker\n",);
-      return 0i32;
-    }
-    let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    p_header_size = p_header_size.wrapping_sub(1);
-    i = 0 as OPJ_UINT32;
-    while i < p_header_size {
-      l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-      /* take only the last seven bytes */
-      l_packet_len |= l_tmp & 0x7fu32;
-      if l_tmp & 0x80u32 != 0 {
-        l_packet_len <<= 7i32
-      } else {
-        /* store packet length and proceed to next packet */
-        l_packet_len = 0 as OPJ_UINT32
-      }
-      i += 1;
-    }
-    if l_packet_len != 0u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading PLT marker\n",);
-      return 0i32;
-    }
-    1i32
+  assert!(!p_header_data.is_null());
+  if p_header_size < 1u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading PLT marker\n",);
+    return 0i32;
   }
+  let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  let remaining = p_header_size.wrapping_sub(1);
+  i = 0 as OPJ_UINT32;
+  while i < remaining {
+    l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    cursor += 1 as usize;
+    /* take only the last seven bytes */
+    l_packet_len |= l_tmp & 0x7fu32;
+    if l_tmp & 0x80u32 != 0 {
+      l_packet_len <<= 7i32
+    } else {
+      /* store packet length and proceed to next packet */
+      l_packet_len = 0 as OPJ_UINT32
+    }
+    i += 1;
+  }
+  if l_packet_len != 0u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading PLT marker\n",);
+    return 0i32;
+  }
+  1i32
 }
+
 /* *
  * Reads a PPM marker (Packed headers, main header)
  *
@@ -2549,66 +2542,61 @@ fn opj_j2k_read_plt(
  * @param       p_manager               the user event manager.
  */
 fn opj_j2k_read_ppm(
-  mut p_j2k: &mut opj_j2k,
-  mut p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_header_data: *mut OPJ_BYTE,
+  p_header_size: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-    let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
-    let mut cursor: usize = 0;
-  unsafe {
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_Z_ppm: OPJ_UINT32 = 0;
-    /* preconditions */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let l_Z_ppm: OPJ_UINT32;
+  /* preconditions */
 
-    assert!(!p_header_data.is_null());
-    /* We need to have the Z_ppm element + 1 byte of Nppm/Ippm at minimum */
-    if p_header_size < 2u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error reading PPM marker\n",); /* Z_ppm */
-      return 0i32;
-    }
-    l_cp = &mut p_j2k.m_cp;
-    (*l_cp).ppm = true;
-    l_Z_ppm = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    p_header_size = p_header_size.wrapping_sub(1);
-    /* check allocation needed */
-    if ((*l_cp).ppm_markers.len() as OPJ_UINT32) <= l_Z_ppm {
-      /* grow-only; the tail is default-initialised, as in the C realloc+memset */
-      let l_newCount = l_Z_ppm.wrapping_add(1u32) as usize; /* can't overflow, l_Z_ppm is UINT8 */
-      (&mut (*l_cp).ppm_markers).resize_with(l_newCount, Default::default);
-    }
-    if !(&(*l_cp).ppm_markers)[l_Z_ppm as usize].m_data.is_empty() {
-      /* clean up to be done on l_cp destruction */
-      event_msg!(p_manager, EVT_ERROR, "Zppm {} already read\n", l_Z_ppm,);
-      return 0i32;
-    }
-    (&mut (*l_cp).ppm_markers)[l_Z_ppm as usize].m_data = header_data[cursor..].to_vec();
-    1i32
+  assert!(!p_header_data.is_null());
+  /* We need to have the Z_ppm element + 1 byte of Nppm/Ippm at minimum */
+  if p_header_size < 2u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error reading PPM marker\n",); /* Z_ppm */
+    return 0i32;
   }
+  let l_cp = &mut p_j2k.m_cp;
+  l_cp.ppm = true;
+  l_Z_ppm = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  /* check allocation needed */
+  if l_cp.ppm_markers.len() as OPJ_UINT32 <= l_Z_ppm {
+    /* grow-only; the tail is default-initialised, as in the C realloc+memset */
+    let l_new_count = l_Z_ppm.wrapping_add(1u32) as usize; /* can't overflow, l_Z_ppm is UINT8 */
+    l_cp.ppm_markers.resize_with(l_new_count, Default::default);
+  }
+  if !l_cp.ppm_markers[l_Z_ppm as usize].m_data.is_empty() {
+    /* clean up to be done on l_cp destruction */
+    event_msg!(p_manager, EVT_ERROR, "Zppm {} already read\n", l_Z_ppm,);
+    return 0i32;
+  }
+  l_cp.ppm_markers[l_Z_ppm as usize].m_data = header_data[cursor..].to_vec();
+  1i32
 }
-/* *
- * Merges all PPM markers read (Packed headers, main header)
- *
- * @param       p_cp      main coding parameters.
- * @param       p_manager the user event manager.
- */
-/* *
- * Merges all PPM markers read (Packed headers, main header)
- *
- * @param       p_cp      main coding parameters.
- * @param       p_manager the user event manager.
- */
-fn opj_j2k_merge_ppm(mut p_cp: *mut opj_cp_t, mut p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_ppm_data_size: OPJ_UINT32 = 0;
-    let mut l_N_ppm_remaining: OPJ_UINT32 = 0;
-    /* preconditions */
 
-    assert!(!p_cp.is_null());
-    assert!((*p_cp).ppm_buffer.is_empty());
-    if !(*p_cp).ppm {
+/* *
+ * Merges all PPM markers read (Packed headers, main header)
+ *
+ * @param       p_cp      main coding parameters.
+ * @param       p_manager the user event manager.
+ */
+/* *
+ * Merges all PPM markers read (Packed headers, main header)
+ *
+ * @param       p_cp      main coding parameters.
+ * @param       p_manager the user event manager.
+ */
+fn opj_j2k_merge_ppm(p_cp: &mut opj_cp_t, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  let mut i: OPJ_UINT32 = 0;
+  let mut l_ppm_data_size: OPJ_UINT32 = 0;
+  let mut l_N_ppm_remaining: OPJ_UINT32 = 0;
+  /* preconditions */
+
+    assert!(p_cp.ppm_buffer.is_empty());
+    if !p_cp.ppm {
       return 1i32;
     }
 
@@ -2618,10 +2606,10 @@ fn opj_j2k_merge_ppm(mut p_cp: *mut opj_cp_t, mut p_manager: &mut opj_event_mgr)
     l_ppm_data_size = 0u32;
     l_N_ppm_remaining = 0u32;
     i = 0u32;
-    while (i as usize) < (*p_cp).ppm_markers.len() {
-      if !(&(*p_cp).ppm_markers)[i as usize].m_data.is_empty() {
+    while (i as usize) < p_cp.ppm_markers.len() {
+      if !(&p_cp.ppm_markers)[i as usize].m_data.is_empty() {
         /* standard doesn't seem to require contiguous Zppm */
-        let mut l_data: &[OPJ_BYTE] = &(&(*p_cp).ppm_markers)[i as usize].m_data[..];
+        let mut l_data: &[OPJ_BYTE] = &(&p_cp.ppm_markers)[i as usize].m_data[..];
         if l_N_ppm_remaining >= l_data.len() as OPJ_UINT32 {
           l_N_ppm_remaining -= l_data.len() as OPJ_UINT32;
           l_data = &[];
@@ -2661,13 +2649,13 @@ fn opj_j2k_merge_ppm(mut p_cp: *mut opj_cp_t, mut p_manager: &mut opj_event_mgr)
     }
     /* Second pass: concatenate the payloads, dropping the Nppm fields. */
     let mut l_buffer: Vec<OPJ_BYTE> = Vec::with_capacity(l_ppm_data_size as usize);
-    (*p_cp).ppm_len = l_ppm_data_size;
+    p_cp.ppm_len = l_ppm_data_size;
     l_N_ppm_remaining = 0u32;
     i = 0u32;
-    while (i as usize) < (*p_cp).ppm_markers.len() {
-      if !(&(*p_cp).ppm_markers)[i as usize].m_data.is_empty() {
+    while (i as usize) < p_cp.ppm_markers.len() {
+      if !(&p_cp.ppm_markers)[i as usize].m_data.is_empty() {
         /* standard doesn't seem to require contiguous Zppm */
-        let mut l_data: &[OPJ_BYTE] = &(&(*p_cp).ppm_markers)[i as usize].m_data[..];
+        let mut l_data: &[OPJ_BYTE] = &(&p_cp.ppm_markers)[i as usize].m_data[..];
         if l_N_ppm_remaining >= l_data.len() as OPJ_UINT32 {
           l_buffer.extend_from_slice(l_data);
           l_N_ppm_remaining -= l_data.len() as OPJ_UINT32;
@@ -2695,15 +2683,14 @@ fn opj_j2k_merge_ppm(mut p_cp: *mut opj_cp_t, mut p_manager: &mut opj_event_mgr)
             l_data = &[]
           }
         }
-        (&mut (*p_cp).ppm_markers)[i as usize].m_data = Vec::new()
+        (&mut p_cp.ppm_markers)[i as usize].m_data = Vec::new()
       }
       i += 1;
     }
-    (*p_cp).ppm_data_pos = 0;
-    (*p_cp).ppm_buffer = l_buffer;
-    (*p_cp).ppm_markers = Vec::new();
+    p_cp.ppm_data_pos = 0;
+    p_cp.ppm_buffer = l_buffer;
+    p_cp.ppm_markers = Vec::new();
     1i32
-  }
 }
 /* *
  * Reads a PPT marker (Packed packet headers, tile-part header)
@@ -2779,34 +2766,31 @@ fn opj_j2k_read_ppt(
  * @param       p_tcp   the tile.
  * @param       p_manager               the user event manager.
  */
-fn opj_j2k_merge_ppt(mut p_tcp: *mut opj_tcp_t, mut p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  unsafe {
-    /* preconditions */
+fn opj_j2k_merge_ppt(p_tcp: &mut opj_tcp_t, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  /* preconditions */
 
-    assert!(!p_tcp.is_null());
-    if !(*p_tcp).ppt_buffer.is_empty() {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "opj_j2k_merge_ppt() has already been called\n",
-      );
-      return 0i32;
-    }
-    if !(*p_tcp).ppt {
-      return 1i32;
-    }
-    /* concatenate in Zppt order; the standard doesn't seem to require contiguous Zppt,
-    and can't overflow, max 256 markers of max 65536 bytes */
-    let mut l_buffer = Vec::new();
-    for l_marker in (&mut (*p_tcp).ppt_markers).iter_mut() {
-      l_buffer.append(&mut l_marker.m_data);
-    }
-    (*p_tcp).ppt_markers = Vec::new();
-    (*p_tcp).ppt_len = l_buffer.len() as OPJ_UINT32;
-    (*p_tcp).ppt_data_pos = 0;
-    (*p_tcp).ppt_buffer = l_buffer;
-    1i32
+  if !p_tcp.ppt_buffer.is_empty() {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "opj_j2k_merge_ppt() has already been called\n",
+    );
+    return 0i32;
   }
+  if !p_tcp.ppt {
+    return 1i32;
+  }
+  /* concatenate in Zppt order; the standard doesn't seem to require contiguous Zppt,
+  and can't overflow, max 256 markers of max 65536 bytes */
+  let mut l_buffer = Vec::new();
+  for l_marker in p_tcp.ppt_markers.iter_mut() {
+    l_buffer.append(&mut l_marker.m_data);
+  }
+  p_tcp.ppt_markers = Vec::new();
+  p_tcp.ppt_len = l_buffer.len() as OPJ_UINT32;
+  p_tcp.ppt_data_pos = 0;
+  p_tcp.ppt_buffer = l_buffer;
+  1i32
 }
 /* *
  * Writes the TLM marker (Tile Length Marker)
@@ -7541,11 +7525,7 @@ pub(crate) fn opj_j2k_read_tile_header(
       }
     }
     if opj_j2k_merge_ppt(
-      p_j2k
-        .m_cp
-        .tcps
-        .as_mut_ptr()
-        .offset(p_j2k.m_current_tile_number as isize),
+      &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize],
       p_manager,
     ) == 0
     {
