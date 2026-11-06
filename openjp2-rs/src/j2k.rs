@@ -9468,19 +9468,15 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
         );
         return false;
       }
-      unsafe {
-        tileno = 0 as OPJ_UINT32;
-        while tileno < cp.tw.wrapping_mul(cp.th) {
-          let mut i: OPJ_UINT32 = 0;
-          let tcp = &mut cp.tcps[tileno as usize];
-          i = 0 as OPJ_UINT32;
-          while i < p_j2k.m_specific_param.m_encoder.m_nb_comps {
-            let mut tccp: *mut opj_tccp_t = (*tcp).tccps.as_mut_ptr().offset(i as isize);
-            (*tccp).numgbits = numgbits as OPJ_UINT32;
-            i += 1;
-          }
-          tileno += 1;
+      tileno = 0 as OPJ_UINT32;
+      while tileno < cp.tw.wrapping_mul(cp.th) {
+        let mut i: OPJ_UINT32 = 0;
+        i = 0 as OPJ_UINT32;
+        while i < p_j2k.m_specific_param.m_encoder.m_nb_comps {
+          cp.tcps[tileno as usize].tccps[i as usize].numgbits = numgbits as OPJ_UINT32;
+          i += 1;
         }
+        tileno += 1;
       }
     } else {
       event_msg!(p_manager, EVT_ERROR, "Invalid option: {}.\n", *option);
@@ -9957,20 +9953,17 @@ fn opj_j2k_setup_header_writing(
 }
 
 fn opj_j2k_write_first_tile_part(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   data: &mut [u8],
-  mut p_data_written: &mut OPJ_UINT32,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_data_written: &mut OPJ_UINT32,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut pos: usize = 0;
-    let mut l_begin_pos: usize = 0;
-    let mut total_data_size = data.len() as OPJ_UINT32;
-    let mut l_nb_bytes_written = 0 as OPJ_UINT32;
-    let mut l_current_nb_bytes_written: OPJ_UINT32 = 0;
-        let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    l_cp = &mut p_j2k.m_cp;
+  let mut pos: usize = 0;
+  let mut l_begin_pos: usize = 0;
+  let mut total_data_size = data.len() as OPJ_UINT32;
+  let mut l_nb_bytes_written = 0 as OPJ_UINT32;
+  let mut l_current_nb_bytes_written: OPJ_UINT32 = 0;
     p_j2k.m_tcd.cur_pino = 0 as OPJ_UINT32;
     /*Get number of tile parts*/
     p_j2k
@@ -9996,9 +9989,9 @@ fn opj_j2k_write_first_tile_part(
     pos += l_current_nb_bytes_written as usize;
     total_data_size =
       (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32;
-    if !((*l_cp).rsiz as core::ffi::c_int >= 0x3i32 && (*l_cp).rsiz as core::ffi::c_int <= 0x6i32)
-      && (*(*l_cp).tcps.as_ptr().offset(p_j2k.m_current_tile_number as isize)).POC
-    {
+    let rsiz = p_j2k.m_cp.rsiz as core::ffi::c_int;
+    let tile_has_poc = p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize].POC;
+    if !(rsiz >= 0x3i32 && rsiz <= 0x6i32) && tile_has_poc {
       l_current_nb_bytes_written = 0 as OPJ_UINT32;
       opj_j2k_write_poc_in_memory(
         p_j2k,
@@ -10033,31 +10026,25 @@ fn opj_j2k_write_first_tile_part(
       opj_j2k_update_tlm(p_j2k, l_nb_bytes_written);
     }
     1i32
-  }
 }
 fn opj_j2k_write_all_tile_parts(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   data: &mut [u8],
-  mut p_data_written: &mut OPJ_UINT32,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_data_written: &mut OPJ_UINT32,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut pos: usize = 0;
-    let mut l_begin_pos: usize = 0;
-    let mut total_data_size = data.len() as OPJ_UINT32;
-    let mut tilepartno = 0 as OPJ_UINT32;
-    let mut l_nb_bytes_written = 0 as OPJ_UINT32;
-    let mut l_current_nb_bytes_written: OPJ_UINT32 = 0;
-    let mut l_part_tile_size: OPJ_UINT32 = 0;
-    let mut tot_num_tp: OPJ_UINT32 = 0;
-    let mut pino: OPJ_UINT32 = 0;
-        let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize);
-    /*Get number of tile parts*/
-    tot_num_tp = opj_j2k_get_num_tp(&mut *l_cp, 0 as OPJ_UINT32, p_j2k.m_current_tile_number);
+  let mut pos: usize = 0;
+  let mut l_begin_pos: usize = 0;
+  let mut total_data_size = data.len() as OPJ_UINT32;
+  let mut tilepartno = 0 as OPJ_UINT32;
+  let mut l_nb_bytes_written = 0 as OPJ_UINT32;
+  let mut l_current_nb_bytes_written: OPJ_UINT32 = 0;
+  let mut l_part_tile_size: OPJ_UINT32 = 0;
+  let mut tot_num_tp: OPJ_UINT32 = 0;
+  let mut pino: OPJ_UINT32 = 0;
+  /*Get number of tile parts*/
+  tot_num_tp = opj_j2k_get_num_tp(&mut p_j2k.m_cp, 0 as OPJ_UINT32, p_j2k.m_current_tile_number);
     /* start writing remaining tile parts */
     p_j2k.m_specific_param.m_encoder.m_current_tile_part_number = p_j2k
       .m_specific_param
@@ -10123,10 +10110,10 @@ fn opj_j2k_write_all_tile_parts(
       tilepartno += 1;
     }
     pino = 1 as OPJ_UINT32;
-    while pino <= (*l_tcp).numpocs {
+    while pino <= p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize].numpocs {
       p_j2k.m_tcd.cur_pino = pino;
       /*Get number of tile parts*/
-      tot_num_tp = opj_j2k_get_num_tp(&mut *l_cp, pino, p_j2k.m_current_tile_number);
+      tot_num_tp = opj_j2k_get_num_tp(&mut p_j2k.m_cp, pino, p_j2k.m_current_tile_number);
       tilepartno = 0 as OPJ_UINT32;
       while tilepartno < tot_num_tp {
         p_j2k
@@ -10189,7 +10176,6 @@ fn opj_j2k_write_all_tile_parts(
     }
     *p_data_written = l_nb_bytes_written;
     1i32
-  }
 }
 fn opj_j2k_write_updated_tlm(
   mut p_j2k: &mut opj_j2k,
@@ -10267,14 +10253,13 @@ fn opj_j2k_destroy_header_memory(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_init_info(
-  mut p_j2k: &mut opj_j2k,
-  mut _p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  _p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
-  unsafe {
-    /* TODO mergeV2: check this part which use cstr_info */
+  /* TODO mergeV2: check this part which use cstr_info */
     /*
     let mut l_cstr_info = 0 as *mut opj_codestream_info_t;
     l_cstr_info = p_j2k->cstr_info;
@@ -10323,7 +10308,6 @@ fn opj_j2k_init_info(
       p_j2k.m_private_image.as_deref_mut().expect("m_private_image"),
       p_manager,
     )
-  }
 }
 
 /* *
