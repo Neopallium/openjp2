@@ -2446,16 +2446,16 @@ pub(crate) fn opj_tcd_is_band_empty(band: &opj_tcd_band_t) -> OPJ_BOOL {
 }
 
 pub(crate) fn opj_tcd_is_subband_area_of_interest(
-  mut tcd: &mut opj_tcd,
-  mut compno: OPJ_UINT32,
-  mut resno: OPJ_UINT32,
-  mut bandno: OPJ_UINT32,
-  mut band_x0: OPJ_UINT32,
-  mut band_y0: OPJ_UINT32,
-  mut band_x1: OPJ_UINT32,
-  mut band_y1: OPJ_UINT32,
+  tcd: &mut opj_tcd,
+  compno: OPJ_UINT32,
+  resno: OPJ_UINT32,
+  bandno: OPJ_UINT32,
+  band_x0: OPJ_UINT32,
+  band_y0: OPJ_UINT32,
+  band_x1: OPJ_UINT32,
+  band_y1: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  unsafe {
+  {
     /* Note: those values for filter_margin are in part the result of */
     /* experimentation. The value 2 for QMFBID=1 (5x3 filter) can be linked */
     /* to the maximum left/right extension given in tables F.2 and F.3 of the */
@@ -2464,38 +2464,39 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
     /* needed to be bumped to 4, in case inconsistencies are found while */
     /* decoding parts of irreversible coded images. */
     /* See opj_dwt_decode_partial_53 and opj_dwt_decode_partial_97 as well */
-    let mut filter_margin = if (&(*(*tcd).tcp).tccps)[compno as usize].qmfbid == 1u32 {
+    // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
+    let tccps = unsafe { &(*tcd.tcp).tccps };
+    let image = unsafe { &*tcd.image };
+    let image_comp = &image.comps[compno as usize];
+    let mut filter_margin = if tccps[compno as usize].qmfbid == 1u32 {
       2i32
     } else {
       3i32
     } as OPJ_UINT32;
-    let mut tilec: *mut opj_tcd_tilecomp_t =
-      &mut tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
-    let mut image_comp: *mut CoreImageComp =
-      &mut *(*tcd.image).comps.as_mut_ptr().add(compno as usize) as *mut CoreImageComp;
+    let tilec = &tcd.tcd_image.tiles.comps[compno as usize];
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
     let mut tcx0 = opj_uint_max(
-      (*tilec).x0 as OPJ_UINT32,
-      opj_uint_ceildiv((*tcd).win_x0, (*image_comp).dx),
+      tilec.x0 as OPJ_UINT32,
+      opj_uint_ceildiv(tcd.win_x0, image_comp.dx),
     );
     let mut tcy0 = opj_uint_max(
-      (*tilec).y0 as OPJ_UINT32,
-      opj_uint_ceildiv((*tcd).win_y0, (*image_comp).dy),
+      tilec.y0 as OPJ_UINT32,
+      opj_uint_ceildiv(tcd.win_y0, image_comp.dy),
     );
     let mut tcx1 = opj_uint_min(
-      (*tilec).x1 as OPJ_UINT32,
-      opj_uint_ceildiv((*tcd).win_x1, (*image_comp).dx),
+      tilec.x1 as OPJ_UINT32,
+      opj_uint_ceildiv(tcd.win_x1, image_comp.dx),
     );
     let mut tcy1 = opj_uint_min(
-      (*tilec).y1 as OPJ_UINT32,
-      opj_uint_ceildiv((*tcd).win_y1, (*image_comp).dy),
+      tilec.y1 as OPJ_UINT32,
+      opj_uint_ceildiv(tcd.win_y1, image_comp.dy),
     );
     /* Compute number of decomposition for this band. See table F-1 */
     let mut nb = if resno == 0u32 {
-      (*tilec).numresolutions.wrapping_sub(1u32)
+      tilec.numresolutions.wrapping_sub(1u32)
     } else {
-      (*tilec).numresolutions.wrapping_sub(resno)
+      tilec.numresolutions.wrapping_sub(resno)
     };
     /* Map above tile-based coordinates to sub-band-based coordinates per */
     /* equation B-15 of the standard */
@@ -2566,44 +2567,44 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
  * @param compno Component number
  * @return OPJ_TRUE whether the tile componenent is fully decoded
  */
-fn opj_tcd_is_whole_tilecomp_decoding(mut p_tcd: &mut opj_tcd, mut compno: OPJ_UINT32) -> OPJ_BOOL {
-  unsafe {
-    let mut tilec: *mut opj_tcd_tilecomp_t =
-      &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
-    let mut image_comp: *mut CoreImageComp =
-      &mut *(*p_tcd.image).comps.as_mut_ptr().add(compno as usize) as *mut CoreImageComp;
+fn opj_tcd_is_whole_tilecomp_decoding(p_tcd: &mut opj_tcd, compno: OPJ_UINT32) -> OPJ_BOOL {
+  {
+    let tilec = &p_tcd.tcd_image.tiles.comps[compno as usize];
+    // SAFETY: `image` is the codec's private image.
+    let image = unsafe { &*p_tcd.image };
+    let image_comp = &image.comps[compno as usize];
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
     let mut tcx0 = opj_uint_max(
-      (*tilec).x0 as OPJ_UINT32,
-      opj_uint_ceildiv(p_tcd.win_x0, (*image_comp).dx),
+      tilec.x0 as OPJ_UINT32,
+      opj_uint_ceildiv(p_tcd.win_x0, image_comp.dx),
     );
     let mut tcy0 = opj_uint_max(
-      (*tilec).y0 as OPJ_UINT32,
-      opj_uint_ceildiv(p_tcd.win_y0, (*image_comp).dy),
+      tilec.y0 as OPJ_UINT32,
+      opj_uint_ceildiv(p_tcd.win_y0, image_comp.dy),
     );
     let mut tcx1 = opj_uint_min(
-      (*tilec).x1 as OPJ_UINT32,
-      opj_uint_ceildiv(p_tcd.win_x1, (*image_comp).dx),
+      tilec.x1 as OPJ_UINT32,
+      opj_uint_ceildiv(p_tcd.win_x1, image_comp.dx),
     );
     let mut tcy1 = opj_uint_min(
-      (*tilec).y1 as OPJ_UINT32,
-      opj_uint_ceildiv(p_tcd.win_y1, (*image_comp).dy),
+      tilec.y1 as OPJ_UINT32,
+      opj_uint_ceildiv(p_tcd.win_y1, image_comp.dy),
     );
     let mut shift = (*tilec)
       .numresolutions
-      .wrapping_sub((*tilec).minimum_num_resolutions);
+      .wrapping_sub(tilec.minimum_num_resolutions);
     /* Tolerate small margin within the reduced resolution factor to consider if */
     /* the whole tile path must be taken */
-    (tcx0 >= (*tilec).x0 as OPJ_UINT32
-      && tcy0 >= (*tilec).y0 as OPJ_UINT32
-      && tcx1 <= (*tilec).x1 as OPJ_UINT32
-      && tcy1 <= (*tilec).y1 as OPJ_UINT32
+    (tcx0 >= tilec.x0 as OPJ_UINT32
+      && tcy0 >= tilec.y0 as OPJ_UINT32
+      && tcx1 <= tilec.x1 as OPJ_UINT32
+      && tcy1 <= tilec.y1 as OPJ_UINT32
       && (shift >= 32u32
-        || tcx0.wrapping_sub((*tilec).x0 as OPJ_UINT32) >> shift == 0u32
-          && tcy0.wrapping_sub((*tilec).y0 as OPJ_UINT32) >> shift == 0u32
-          && ((*tilec).x1 as OPJ_UINT32).wrapping_sub(tcx1) >> shift == 0u32
-          && ((*tilec).y1 as OPJ_UINT32).wrapping_sub(tcy1) >> shift == 0u32))
+        || tcx0.wrapping_sub(tilec.x0 as OPJ_UINT32) >> shift == 0u32
+          && tcy0.wrapping_sub(tilec.y0 as OPJ_UINT32) >> shift == 0u32
+          && (tilec.x1 as OPJ_UINT32).wrapping_sub(tcx1) >> shift == 0u32
+          && (tilec.y1 as OPJ_UINT32).wrapping_sub(tcy1) >> shift == 0u32))
       as core::ffi::c_int
   }
 }
