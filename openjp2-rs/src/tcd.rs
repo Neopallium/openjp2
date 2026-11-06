@@ -628,15 +628,13 @@ pub(crate) fn opj_tcd_init(
   }
 }
 
-pub(crate) fn opj_alloc_tile_component_data(mut l_tilec: *mut opj_tcd_tilecomp_t) -> OPJ_BOOL {
-  unsafe {
-    let needed = (*l_tilec).data_size_needed;
-    if (*l_tilec).data.ensure(needed) {
-      1i32
-    } else {
-      (*l_tilec).data_size_needed = 0i32 as size_t;
-      0i32
-    }
+pub(crate) fn opj_alloc_tile_component_data(l_tilec: &mut opj_tcd_tilecomp_t) -> OPJ_BOOL {
+  let needed = l_tilec.data_size_needed;
+  if l_tilec.data.ensure(needed) {
+    1i32
+  } else {
+    l_tilec.data_size_needed = 0i32 as size_t;
+    0i32
   }
 }
 /*
@@ -1455,17 +1453,15 @@ pub(crate) fn opj_tcd_decode_tile(
     if p_tcd.whole_tile_decoding != 0 {
       compno = 0 as OPJ_UINT32;
       while compno < (*p_tcd.image).numcomps {
-        let mut tilec: *mut opj_tcd_tilecomp_t =
-          &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
-        let mut l_res: *mut opj_tcd_resolution_t = (*tilec)
-          .resolutions
-          .as_mut_ptr()
-          .offset((*tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize);
-        let mut l_data_size: OPJ_SIZE_T = 0;
-        /* compute l_data_size with overflow check */
-        let mut res_w = ((*l_res).x1 - (*l_res).x0) as OPJ_SIZE_T;
-        let mut res_h = ((*l_res).y1 - (*l_res).y0) as OPJ_SIZE_T;
         if p_tcd.used_component(compno) {
+          let tilec = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
+          let res_idx = (tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize;
+          let mut l_data_size: OPJ_SIZE_T = 0;
+          /* compute l_data_size with overflow check */
+          let mut res_w = (tilec.resolutions[res_idx].x1 - tilec.resolutions[res_idx].x0)
+            as OPJ_SIZE_T;
+          let mut res_h = (tilec.resolutions[res_idx].y1 - tilec.resolutions[res_idx].y0)
+            as OPJ_SIZE_T;
           /* issue 733, l_data_size == 0U, probably something wrong should be checked before getting here */
           if res_h > 0 && res_w > (usize::MAX).wrapping_div(res_h) {
             event_msg!(
@@ -1486,7 +1482,7 @@ pub(crate) fn opj_tcd_decode_tile(
           }
           l_data_size = (l_data_size as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT32>())
             as OPJ_SIZE_T as OPJ_SIZE_T;
-          (*tilec).data_size_needed = l_data_size;
+          tilec.data_size_needed = l_data_size;
           if opj_alloc_tile_component_data(tilec) == 0 {
             event_msg!(
               p_manager,

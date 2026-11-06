@@ -9455,11 +9455,10 @@ pub(crate) fn opj_j2k_encode(
       // SAFETY: `p_tcd.image` is the codec's private image, valid while the tcd is in use.
       let image = unsafe { &mut *p_j2k.m_tcd.image };
       while j < image.numcomps {
-        let mut l_tilec =
-          &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize] as *mut opj_tcd_tilecomp_t;
+        let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
         if l_reuse_data != 0 {
           let l_img_comp = &mut image.comps[j as usize];
-          unsafe { (*l_tilec).data = TileBuf::borrowed(l_img_comp.data.as_mut_ptr()) };
+          l_tilec.data = TileBuf::borrowed(l_img_comp.data.as_mut_ptr());
         } else if opj_alloc_tile_component_data(l_tilec) == 0 {
           event_msg!(
             p_manager,
@@ -10278,7 +10277,7 @@ pub(crate) fn opj_j2k_write_tile(
     // SAFETY: `p_tcd.image` is the codec's private image, valid while the tcd is in use.
     let numcomps = unsafe { (*p_j2k.m_tcd.image).numcomps };
     while j < numcomps {
-      let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize] as *mut _;
+      let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
       if opj_alloc_tile_component_data(l_tilec) == 0 {
         event_msg!(
           p_manager,
