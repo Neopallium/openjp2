@@ -5559,17 +5559,16 @@ fn opj_j2k_is_imf_compliant(
 }
 
 pub(crate) fn opj_j2k_setup_encoder(
-  mut p_j2k: &mut opj_j2k,
-  mut parameters: &mut opj_cparameters_t,
-  mut image: &mut opj_image,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  parameters: &mut opj_cparameters_t,
+  image: &mut opj_image,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
     let mut i: OPJ_UINT32 = 0;
     let mut j: OPJ_UINT32 = 0;
     let mut tileno: OPJ_UINT32 = 0;
     let mut numpocs_tile: OPJ_UINT32 = 0;
-    let mut cp = core::ptr::null_mut::<opj_cp_t>();
+    let cp = &mut p_j2k.m_cp;
     let mut cblkw: OPJ_UINT32 = 0;
     let mut cblkh: OPJ_UINT32 = 0;
     if parameters.numresolution <= 0i32 || parameters.numresolution > 33i32 {
@@ -5661,10 +5660,9 @@ pub(crate) fn opj_j2k_setup_encoder(
 
     p_j2k.m_specific_param.m_encoder.m_nb_comps = image.numcomps;
     /* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
-    cp = &mut p_j2k.m_cp;
     /* set default values for cp */
-    (*cp).tw = 1 as OPJ_UINT32;
-    (*cp).th = 1 as OPJ_UINT32;
+    cp.tw = 1 as OPJ_UINT32;
+    cp.th = 1 as OPJ_UINT32;
     /* FIXME ADE: to be removed once deprecated cp_cinema and cp_rsiz have been removed */
     if parameters.rsiz as core::ffi::c_int == 0i32 {
       /* consider deprecated fields only if RSIZ has not been set */
@@ -5939,17 +5937,17 @@ pub(crate) fn opj_j2k_setup_encoder(
     /*
     copy user encoding parameters
     */
-    (*cp).m_specific_param.m_enc.m_max_comp_size = parameters.max_comp_size as OPJ_UINT32;
-    (*cp).rsiz = parameters.rsiz;
+    cp.m_specific_param.m_enc.m_max_comp_size = parameters.max_comp_size as OPJ_UINT32;
+    cp.rsiz = parameters.rsiz;
 
     if parameters.cp_fixed_alloc != 0 {
-      (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy =
+      cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy =
         J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_LAYER;
     } else if parameters.cp_fixed_quality != 0 {
-      (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy =
+      cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy =
         J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO;
     } else {
-      (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy =
+      cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy =
         J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO;
     }
 
@@ -5957,20 +5955,21 @@ pub(crate) fn opj_j2k_setup_encoder(
       let mut array_len = (parameters.tcp_numlayers as usize)
         .wrapping_mul(parameters.numresolution as usize)
         .wrapping_mul(3);
-      (*cp).m_specific_param.m_enc.m_matrice =
-        core::slice::from_raw_parts(parameters.cp_matrice, array_len).to_vec();
+      cp.m_specific_param.m_enc.m_matrice =
+        unsafe { core::slice::from_raw_parts(parameters.cp_matrice, array_len) }.to_vec();
     }
     /* tiles */
-    (*cp).tdx = parameters.cp_tdx as OPJ_UINT32;
-    (*cp).tdy = parameters.cp_tdy as OPJ_UINT32;
+    cp.tdx = parameters.cp_tdx as OPJ_UINT32;
+    cp.tdy = parameters.cp_tdy as OPJ_UINT32;
     /* tile offset */
-    (*cp).tx0 = parameters.cp_tx0 as OPJ_UINT32;
-    (*cp).ty0 = parameters.cp_ty0 as OPJ_UINT32;
+    cp.tx0 = parameters.cp_tx0 as OPJ_UINT32;
+    cp.ty0 = parameters.cp_ty0 as OPJ_UINT32;
     /* comment string */
     if !parameters.cp_comment.is_null() {
-      let len = strlen(parameters.cp_comment).wrapping_add(1);
-      (*cp).comment = opj_malloc(len) as *mut core::ffi::c_char;
-      if (*cp).comment.is_null() {
+      // SAFETY: `cp_comment` is a caller-provided NUL-terminated string copied verbatim.
+      let len = unsafe { strlen(parameters.cp_comment) }.wrapping_add(1);
+      cp.comment = unsafe { opj_malloc(len) } as *mut core::ffi::c_char;
+      if cp.comment.is_null() {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -5978,14 +5977,14 @@ pub(crate) fn opj_j2k_setup_encoder(
         );
         return 0i32;
       }
-      memcpy((*cp).comment as _, parameters.cp_comment as _, len);
+      unsafe { memcpy(cp.comment as _, parameters.cp_comment as _, len) };
     } else {
       /* Create default comment for codestream */
       let comment = format!("Created by OpenJPEG version {}", OPJ_VERSION);
       let c_comment = std::ffi::CString::new(comment).unwrap();
       /* UniPG>> */
-      (*cp).comment = c_comment.into_raw();
-      if (*cp).comment.is_null() {
+      cp.comment = c_comment.into_raw();
+      if cp.comment.is_null() {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -5998,96 +5997,95 @@ pub(crate) fn opj_j2k_setup_encoder(
     calculate other encoding parameters
     */
     if parameters.tile_size_on != 0 {
-      if (*cp).tdx == 0u32 {
+      if cp.tdx == 0u32 {
         event_msg!(p_manager, EVT_ERROR, "Invalid tile width\n",);
         return 0i32;
       }
-      if (*cp).tdy == 0u32 {
+      if cp.tdy == 0u32 {
         event_msg!(p_manager, EVT_ERROR, "Invalid tile height\n",);
         return 0i32;
       }
-      (*cp).tw = opj_uint_ceildiv(image.x1 - ((*cp).tx0), (*cp).tdx);
-      (*cp).th = opj_uint_ceildiv(image.y1 - ((*cp).ty0), (*cp).tdy);
+      cp.tw = opj_uint_ceildiv(image.x1 - (cp.tx0), cp.tdx);
+      cp.th = opj_uint_ceildiv(image.y1 - (cp.ty0), cp.tdy);
       /* Check that the number of tiles is valid */
-      if (*cp).tw > (65535u32).wrapping_div((*cp).th) {
+      if cp.tw > (65535u32).wrapping_div(cp.th) {
         event_msg!(
           p_manager,
           EVT_ERROR,
           "Invalid number of tiles : {} x {} (maximum fixed by jpeg2000 norm is 65535 tiles)\n",
-          (*cp).tw,
-          (*cp).th,
+          cp.tw,
+          cp.th,
         );
         return 0i32;
       }
     } else {
-      (*cp).tdx = image.x1.wrapping_sub((*cp).tx0);
-      (*cp).tdy = image.y1.wrapping_sub((*cp).ty0)
+      cp.tdx = image.x1.wrapping_sub(cp.tx0);
+      cp.tdy = image.y1.wrapping_sub(cp.ty0)
     }
     if parameters.tp_on != 0 {
-      (*cp).m_specific_param.m_enc.m_tp_flag = parameters.tp_flag as OPJ_BYTE;
-      (*cp).m_specific_param.m_enc.m_tp_on = true;
+      cp.m_specific_param.m_enc.m_tp_flag = parameters.tp_flag as OPJ_BYTE;
+      cp.m_specific_param.m_enc.m_tp_on = true;
     }
     /* USE_JPWL */
     /* initialize the multiple tiles */
     /* ---------------------------- */
-    (*cp).tcps = (0..(*cp).tw.wrapping_mul((*cp).th))
+    cp.tcps = (0..cp.tw.wrapping_mul(cp.th))
       .map(|_| Default::default())
       .collect();
     tileno = 0 as OPJ_UINT32;
-    while tileno < (*cp).tw.wrapping_mul((*cp).th) {
-      let mut tcp: *mut opj_tcp_t = (*cp).tcps.as_mut_ptr().offset(tileno as isize);
-      let fixed_distoratio = (*cp).m_specific_param.m_enc.m_quality_layer_alloc_strategy
+    while tileno < cp.tw.wrapping_mul(cp.th) {
+      let tcp = &mut cp.tcps[tileno as usize];
+      let fixed_distoratio = cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy
         == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO;
-      (*tcp).numlayers = parameters.tcp_numlayers as OPJ_UINT32;
+      tcp.numlayers = parameters.tcp_numlayers as OPJ_UINT32;
 
       j = 0 as OPJ_UINT32;
-      while j < (*tcp).numlayers {
-        if (*cp).rsiz as core::ffi::c_int >= 0x3i32 && (*cp).rsiz as core::ffi::c_int <= 0x6i32
-          || (*cp).rsiz as core::ffi::c_int >= 0x400i32
-            && (*cp).rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
+      while j < tcp.numlayers {
+        if cp.rsiz as core::ffi::c_int >= 0x3i32 && cp.rsiz as core::ffi::c_int <= 0x6i32
+          || cp.rsiz as core::ffi::c_int >= 0x400i32
+            && cp.rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
         {
           if fixed_distoratio {
-            (*tcp).distoratio[j as usize] = parameters.tcp_distoratio[j as usize]
+            tcp.distoratio[j as usize] = parameters.tcp_distoratio[j as usize]
           }
-          (*tcp).rates[j as usize] = parameters.tcp_rates[j as usize]
+          tcp.rates[j as usize] = parameters.tcp_rates[j as usize]
         } else if fixed_distoratio {
           /* add fixed_quality */
-          (*tcp).distoratio[j as usize] = parameters.tcp_distoratio[j as usize]
+          tcp.distoratio[j as usize] = parameters.tcp_distoratio[j as usize]
         } else {
-          (*tcp).rates[j as usize] = parameters.tcp_rates[j as usize]
+          tcp.rates[j as usize] = parameters.tcp_rates[j as usize]
         }
-        if !fixed_distoratio && (*tcp).rates[j as usize] as core::ffi::c_double <= 1.0f64 {
-          (*tcp).rates[j as usize] = 0.0f64 as OPJ_FLOAT32
+        if !fixed_distoratio && tcp.rates[j as usize] as core::ffi::c_double <= 1.0f64 {
+          tcp.rates[j as usize] = 0.0f64 as OPJ_FLOAT32
           /* force lossless */
         }
         j += 1;
       }
-      (*tcp).csty = parameters.csty as OPJ_UINT32;
-      (*tcp).prg = parameters.prog_order;
-      (*tcp).mct = parameters.tcp_mct as OPJ_UINT32;
+      tcp.csty = parameters.csty as OPJ_UINT32;
+      tcp.prg = parameters.prog_order;
+      tcp.mct = parameters.tcp_mct as OPJ_UINT32;
       numpocs_tile = 0 as OPJ_UINT32;
-      (*tcp).POC = false;
+      tcp.POC = false;
       if parameters.numpocs != 0 {
         /* initialisation of POC */
         i = 0 as OPJ_UINT32;
         while i < parameters.numpocs {
           if tileno.wrapping_add(1u32) == parameters.POC[i as usize].tile {
-            let mut tcp_poc: *mut opj_poc_t =
-              &mut *(*tcp).pocs.as_mut_ptr().offset(numpocs_tile as isize) as *mut opj_poc_t;
+            let tcp_poc = &mut tcp.pocs[numpocs_tile as usize];
             if parameters.POC[numpocs_tile as usize].compno0 >= image.numcomps {
               event_msg!(p_manager, EVT_ERROR, "Invalid compno0 for POC {}\n", i,);
               return 0i32;
             }
-            (*tcp_poc).resno0 = parameters.POC[numpocs_tile as usize].resno0;
-            (*tcp_poc).compno0 = parameters.POC[numpocs_tile as usize].compno0;
-            (*tcp_poc).layno1 = parameters.POC[numpocs_tile as usize].layno1;
-            (*tcp_poc).resno1 = parameters.POC[numpocs_tile as usize].resno1;
-            (*tcp_poc).compno1 = opj_uint_min(
+            tcp_poc.resno0 = parameters.POC[numpocs_tile as usize].resno0;
+            tcp_poc.compno0 = parameters.POC[numpocs_tile as usize].compno0;
+            tcp_poc.layno1 = parameters.POC[numpocs_tile as usize].layno1;
+            tcp_poc.resno1 = parameters.POC[numpocs_tile as usize].resno1;
+            tcp_poc.compno1 = opj_uint_min(
               parameters.POC[numpocs_tile as usize].compno1,
               image.numcomps,
             );
-            (*tcp_poc).prg1 = parameters.POC[numpocs_tile as usize].prg1;
-            (*tcp_poc).tile = parameters.POC[numpocs_tile as usize].tile;
+            tcp_poc.prg1 = parameters.POC[numpocs_tile as usize].prg1;
+            tcp_poc.tile = parameters.POC[numpocs_tile as usize].tile;
             numpocs_tile += 1;
           }
           i += 1;
@@ -6103,11 +6101,11 @@ pub(crate) fn opj_j2k_setup_encoder(
             parameters.tcp_numlayers as OPJ_UINT32,
             p_manager,
           );
-          (*tcp).POC = true;
-          (*tcp).numpocs = numpocs_tile.wrapping_sub(1u32)
+          tcp.POC = true;
+          tcp.numpocs = numpocs_tile.wrapping_sub(1u32)
         }
       } else {
-        (*tcp).numpocs = 0 as OPJ_UINT32
+        tcp.numpocs = 0 as OPJ_UINT32
       }
       (*tcp)
         .tccps
@@ -6116,22 +6114,22 @@ pub(crate) fn opj_j2k_setup_encoder(
         let numcomps = image.numcomps;
         let lMctLen = numcomps * numcomps;
         let lMctSize = lMctLen.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
-        let l_dc_shift =
-          (parameters.mct_data as *mut OPJ_BYTE).offset(lMctSize as isize) as *mut OPJ_INT32;
+        let l_dc_shift = unsafe {
+          (parameters.mct_data as *mut OPJ_BYTE).offset(lMctSize as isize) as *mut OPJ_INT32
+        };
         /* copy the caller-provided coding matrix into a scratch buffer */
-        let mut lTmpBuf: Vec<OPJ_FLOAT32> = core::slice::from_raw_parts(
-          parameters.mct_data as *const OPJ_FLOAT32,
-          lMctLen as usize,
-        )
+        let mut lTmpBuf: Vec<OPJ_FLOAT32> = unsafe {
+          core::slice::from_raw_parts(parameters.mct_data as *const OPJ_FLOAT32, lMctLen as usize)
+        }
         .to_vec();
-        (*tcp).mct = 2 as OPJ_UINT32;
-        (*tcp).m_mct_coding_matrix.clear();
-        (*tcp).m_mct_coding_matrix.extend_from_slice(&lTmpBuf);
-        (*tcp).m_mct_decoding_matrix.clear();
-        (*tcp).m_mct_decoding_matrix.resize(lMctLen as usize, 0.0);
+        tcp.mct = 2 as OPJ_UINT32;
+        tcp.m_mct_coding_matrix.clear();
+        tcp.m_mct_coding_matrix.extend_from_slice(&lTmpBuf);
+        tcp.m_mct_decoding_matrix.clear();
+        tcp.m_mct_decoding_matrix.resize(lMctLen as usize, 0.0);
         if !opj_matrix_inversion_f(
           &mut lTmpBuf,
-          &mut (*tcp).m_mct_decoding_matrix,
+          &mut tcp.m_mct_decoding_matrix,
           numcomps as usize,
         ) {
           event_msg!(
@@ -6141,26 +6139,26 @@ pub(crate) fn opj_j2k_setup_encoder(
           );
           return 0i32;
         }
-        (*tcp).mct_norms.clear();
-        (*tcp).mct_norms.resize(image.numcomps as usize, 0.0);
+        tcp.mct_norms.clear();
+        tcp.mct_norms.resize(image.numcomps as usize, 0.0);
         opj_calculate_norms(
-          &mut (*tcp).mct_norms,
+          &mut tcp.mct_norms,
           image.numcomps,
-          &(*tcp).m_mct_decoding_matrix,
+          &tcp.m_mct_decoding_matrix,
         );
         i = 0 as OPJ_UINT32;
         while i < image.numcomps {
-          let mut tccp: *mut opj_tccp_t = (*tcp).tccps.as_mut_ptr().offset(i as isize);
-          (*tccp).m_dc_level_shift = *l_dc_shift.offset(i as isize);
+          // SAFETY: `l_dc_shift` points at `numcomps` ints following the caller's MCT matrix.
+          tcp.tccps[i as usize].m_dc_level_shift = unsafe { *l_dc_shift.offset(i as isize) };
           i += 1;
         }
-        if opj_j2k_setup_mct_encoding(&mut *tcp, image) == 0i32 {
+        if opj_j2k_setup_mct_encoding(tcp, image) == 0i32 {
           /* free will be handled by opj_j2k_destroy */
           event_msg!(p_manager, EVT_ERROR, "Failed to setup j2k mct encoding\n",);
           return 0i32;
         }
       } else {
-        if (*tcp).mct == 1u32 && image.numcomps >= 3u32 {
+        if tcp.mct == 1u32 && image.numcomps >= 3u32 {
           /* RGB->YCC MCT is enabled */
           if image.comps_mut().expect("comps")[0].dx != image.comps_mut().expect("comps")[1].dx
             || image.comps_mut().expect("comps")[0].dx != image.comps_mut().expect("comps")[2].dx
@@ -6172,61 +6170,59 @@ pub(crate) fn opj_j2k_setup_encoder(
               EVT_WARNING,
               "Cannot perform MCT on components with different sizes. Disabling MCT.\n",
             ); /* 0 => one precinct || 1 => custom precinct  */
-            (*tcp).mct = 0 as OPJ_UINT32
+            tcp.mct = 0 as OPJ_UINT32
           }
         }
         i = 0 as OPJ_UINT32;
         while i < image.numcomps {
-          let mut tccp_0: *mut opj_tccp_t = (*tcp).tccps.as_mut_ptr().offset(i as isize);
-          let mut l_comp: *mut opj_image_comp_t =
-            &mut *image.comps.offset(i as isize) as *mut opj_image_comp_t;
-          if (*l_comp).sgnd == 0 {
-            (*tccp_0).m_dc_level_shift = (1i32) << (*l_comp).prec.wrapping_sub(1u32)
+          let comp = &image.comps_mut().expect("comps")[i as usize];
+          if comp.sgnd == 0 {
+            tcp.tccps[i as usize].m_dc_level_shift = (1i32) << comp.prec.wrapping_sub(1u32)
           }
           i += 1;
         }
       }
       i = 0 as OPJ_UINT32;
       while i < image.numcomps {
-        let mut tccp_1: *mut opj_tccp_t = (*tcp).tccps.as_mut_ptr().offset(i as isize);
-        (*tccp_1).csty = (parameters.csty & 0x1i32) as OPJ_UINT32;
-        (*tccp_1).numresolutions = parameters.numresolution as OPJ_UINT32;
-        (*tccp_1).cblkw = opj_int_floorlog2(parameters.cblockw_init) as OPJ_UINT32;
-        (*tccp_1).cblkh = opj_int_floorlog2(parameters.cblockh_init) as OPJ_UINT32;
-        (*tccp_1).cblksty = parameters.mode as OPJ_UINT32;
-        (*tccp_1).qmfbid = if parameters.irreversible != 0 {
+        let tccp_1 = &mut tcp.tccps[i as usize];
+        tccp_1.csty = (parameters.csty & 0x1i32) as OPJ_UINT32;
+        tccp_1.numresolutions = parameters.numresolution as OPJ_UINT32;
+        tccp_1.cblkw = opj_int_floorlog2(parameters.cblockw_init) as OPJ_UINT32;
+        tccp_1.cblkh = opj_int_floorlog2(parameters.cblockh_init) as OPJ_UINT32;
+        tccp_1.cblksty = parameters.mode as OPJ_UINT32;
+        tccp_1.qmfbid = if parameters.irreversible != 0 {
           0i32
         } else {
           1i32
         } as OPJ_UINT32;
-        (*tccp_1).qntsty = if parameters.irreversible != 0 {
+        tccp_1.qntsty = if parameters.irreversible != 0 {
           2i32
         } else {
           0i32
         } as OPJ_UINT32;
-        (*tccp_1).numgbits = 2 as OPJ_UINT32;
+        tccp_1.numgbits = 2 as OPJ_UINT32;
         if i as OPJ_INT32 == parameters.roi_compno {
-          (*tccp_1).roishift = parameters.roi_shift
+          tccp_1.roishift = parameters.roi_shift
         } else {
-          (*tccp_1).roishift = 0i32
+          tccp_1.roishift = 0i32
         }
         if parameters.csty & 0x1i32 != 0 {
           let mut p = 0i32;
           let mut it_res: OPJ_INT32 = 0;
-          assert!((*tccp_1).numresolutions > 0u32);
-          it_res = (*tccp_1).numresolutions as OPJ_INT32 - 1i32;
+          assert!(tccp_1.numresolutions > 0u32);
+          it_res = tccp_1.numresolutions as OPJ_INT32 - 1i32;
           while it_res >= 0i32 {
             if p < parameters.res_spec {
               if parameters.prcw_init[p as usize] < 1i32 {
-                (*tccp_1).prcw[it_res as usize] = 1 as OPJ_UINT32
+                tccp_1.prcw[it_res as usize] = 1 as OPJ_UINT32
               } else {
-                (*tccp_1).prcw[it_res as usize] =
+                tccp_1.prcw[it_res as usize] =
                   opj_int_floorlog2(parameters.prcw_init[p as usize]) as OPJ_UINT32
               }
               if parameters.prch_init[p as usize] < 1i32 {
-                (*tccp_1).prch[it_res as usize] = 1 as OPJ_UINT32
+                tccp_1.prch[it_res as usize] = 1 as OPJ_UINT32
               } else {
-                (*tccp_1).prch[it_res as usize] =
+                tccp_1.prch[it_res as usize] =
                   opj_int_floorlog2(parameters.prch_init[p as usize]) as OPJ_UINT32
               }
             } else {
@@ -6240,14 +6236,14 @@ pub(crate) fn opj_j2k_setup_encoder(
               size_prch =
                 parameters.prch_init[(res_spec - 1i32) as usize] >> (p - (res_spec - 1i32));
               if size_prcw < 1i32 {
-                (*tccp_1).prcw[it_res as usize] = 1 as OPJ_UINT32
+                tccp_1.prcw[it_res as usize] = 1 as OPJ_UINT32
               } else {
-                (*tccp_1).prcw[it_res as usize] = opj_int_floorlog2(size_prcw) as OPJ_UINT32
+                tccp_1.prcw[it_res as usize] = opj_int_floorlog2(size_prcw) as OPJ_UINT32
               }
               if size_prch < 1i32 {
-                (*tccp_1).prch[it_res as usize] = 1 as OPJ_UINT32
+                tccp_1.prch[it_res as usize] = 1 as OPJ_UINT32
               } else {
-                (*tccp_1).prch[it_res as usize] = opj_int_floorlog2(size_prch) as OPJ_UINT32
+                tccp_1.prch[it_res as usize] = opj_int_floorlog2(size_prch) as OPJ_UINT32
               }
             }
             p += 1;
@@ -6256,9 +6252,9 @@ pub(crate) fn opj_j2k_setup_encoder(
           }
         } else {
           j = 0 as OPJ_UINT32;
-          while j < (*tccp_1).numresolutions {
-            (*tccp_1).prcw[j as usize] = 15 as OPJ_UINT32;
-            (*tccp_1).prch[j as usize] = 15 as OPJ_UINT32;
+          while j < tccp_1.numresolutions {
+            tccp_1.prcw[j as usize] = 15 as OPJ_UINT32;
+            tccp_1.prch[j as usize] = 15 as OPJ_UINT32;
             j += 1;
           }
         }
@@ -6268,11 +6264,10 @@ pub(crate) fn opj_j2k_setup_encoder(
       tileno += 1;
     }
     if !parameters.mct_data.is_null() {
-      opj_free(parameters.mct_data);
+      unsafe { opj_free(parameters.mct_data) };
       parameters.mct_data = core::ptr::null_mut::<core::ffi::c_void>()
     }
     1i32
-  }
 }
 /* *
 Add main header marker information
@@ -6388,55 +6383,6 @@ pub(crate) fn opj_j2k_read_header(
     1i32
   }
 }
-/*
- * The copyright in this software is being made available under the 2-clauses
- * BSD License, included below. This software may be subject to other third
- * party and contributor rights, including patent rights, and no such rights
- * are granted under this license.
- *
- * Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
- * Copyright (c) 2002-2014, Professor Benoit Macq
- * Copyright (c) 2001-2003, David Janssens
- * Copyright (c) 2002-2003, Yannick Verschueren
- * Copyright (c) 2003-2007, Francois-Olivier Devaux
- * Copyright (c) 2003-2014, Antonin Descampe
- * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2008, Jerome Fimes, Communications & Systemes <jerome.fimes@c-s.fr>
- * Copyright (c) 2006-2007, Parvatha Elangovan
- * Copyright (c) 2010-2011, Kaori Hagihara
- * Copyright (c) 2011-2012, Centre National d'Etudes Spatiales (CNES), France
- * Copyright (c) 2012, CS Systemes d'Information, France
- * Copyright (c) 2017, IntoPIX SA <support@intopix.com>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-/* * @defgroup J2K J2K - JPEG-2000 codestream reader/writer */
-/*@{*/
-/* * @name Local static functions */
-/*@{*/
-/* *
- * Sets up the procedures to do on reading header. Developers wanting to extend the library can add their own reading procedures.
- */
 fn opj_j2k_setup_header_reading(
   _p_j2k: &mut opj_j2k,
   list: &mut opj_j2k_proc_list_t,
@@ -9577,7 +9523,7 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
         tileno = 0 as OPJ_UINT32;
         while tileno < cp.tw.wrapping_mul(cp.th) {
           let mut i: OPJ_UINT32 = 0;
-          let mut tcp: *mut opj_tcp_t = cp.tcps.as_mut_ptr().offset(tileno as isize);
+          let tcp = &mut cp.tcps[tileno as usize];
           i = 0 as OPJ_UINT32;
           while i < p_j2k.m_specific_param.m_encoder.m_nb_comps {
             let mut tccp: *mut opj_tccp_t = (*tcp).tccps.as_mut_ptr().offset(i as isize);
