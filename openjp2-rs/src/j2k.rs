@@ -2870,41 +2870,48 @@ fn opj_j2k_write_tlm(
  * @param       p_manager        the user event manager.
 */
 fn opj_j2k_write_sot(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   data: &mut [u8],
-  mut p_data_written: &mut OPJ_UINT32,
-  mut _p_stream: &Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_data_written: &mut OPJ_UINT32,
+  _p_stream: &Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut pos: usize = 0;
-    /* preconditions */
-    /* Lsot */
+  let mut pos: usize = 0;
+  /* preconditions */
+  /* Lsot */
 
-    if data.len() < 12 {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Not enough bytes in output buffer to write SOT marker\n",
-      );
-      return 0i32;
-    }
-    opj_write_bytes(&mut data[pos..], J2KMarker::SOT.as_u32(), 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut data[pos..], 10 as OPJ_UINT32, 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut data[pos..], p_j2k.m_current_tile_number, 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    /* Psot  */
-    pos += 4 as usize; /* TPsot */
-    opj_write_bytes(&mut data[pos..], p_j2k.m_specific_param.m_encoder.m_current_tile_part_number, 1 as OPJ_UINT32,); /* TNsot */
-    pos += 1 as usize;
-    opj_write_bytes(&mut data[pos..], (*p_j2k.m_cp.tcps.as_ptr().offset(p_j2k.m_current_tile_number as isize)).m_nb_tile_parts, 1 as OPJ_UINT32,);
-    pos += 1 as usize;
-    /* UniPG>> */
-    /* USE_JPWL */
-    *p_data_written = pos as OPJ_UINT32;
-    1i32  }
+  if data.len() < 12 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Not enough bytes in output buffer to write SOT marker\n",
+    );
+    return 0i32;
+  }
+  opj_write_bytes(&mut data[pos..], J2KMarker::SOT.as_u32(), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut data[pos..], 10 as OPJ_UINT32, 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut data[pos..], p_j2k.m_current_tile_number, 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  /* Psot  */
+  pos += 4 as usize; /* TPsot */
+  opj_write_bytes(
+    &mut data[pos..],
+    p_j2k.m_specific_param.m_encoder.m_current_tile_part_number,
+    1 as OPJ_UINT32,
+  ); /* TNsot */
+  pos += 1 as usize;
+  opj_write_bytes(
+    &mut data[pos..],
+    p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize].m_nb_tile_parts,
+    1 as OPJ_UINT32,
+  );
+  pos += 1 as usize;
+  /* UniPG>> */
+  /* USE_JPWL */
+  *p_data_written = pos as OPJ_UINT32;
+  1i32
 }
 /* *
  * Reads values from a SOT marker (Start of tile-part)
@@ -2954,14 +2961,11 @@ fn opj_j2k_get_sot_values(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_read_sot(
-  mut p_j2k: &mut opj_j2k,
-  mut p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_header_data: *mut OPJ_BYTE,
+  p_header_size: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
     let mut l_tot_len: OPJ_UINT32 = 0;
     let mut l_num_parts = 0 as OPJ_UINT32;
     let mut l_current_part: OPJ_UINT32 = 0;
@@ -2970,7 +2974,7 @@ fn opj_j2k_read_sot(
     /* preconditions */
 
     if opj_j2k_get_sot_values(
-      core::slice::from_raw_parts(p_header_data, p_header_size as usize),
+      unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) },
       &mut p_j2k.m_current_tile_number,
       &mut l_tot_len,
       &mut l_current_part,
@@ -2981,9 +2985,8 @@ fn opj_j2k_read_sot(
       event_msg!(p_manager, EVT_ERROR, "Error reading SOT marker\n",);
       return 0i32;
     }
-    l_cp = &mut p_j2k.m_cp;
     /* testcase 2.pdf.SIGFPE.706.1112 */
-    if p_j2k.m_current_tile_number >= (*l_cp).tw.wrapping_mul((*l_cp).th) {
+    if p_j2k.m_current_tile_number >= p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th) {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -2992,9 +2995,9 @@ fn opj_j2k_read_sot(
       );
       return 0i32;
     }
-    l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize);
-    l_tile_x = p_j2k.m_current_tile_number.wrapping_rem((*l_cp).tw);
-    l_tile_y = p_j2k.m_current_tile_number.wrapping_div((*l_cp).tw);
+    let l_tcp = &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
+    l_tile_x = p_j2k.m_current_tile_number.wrapping_rem(p_j2k.m_cp.tw);
+    l_tile_y = p_j2k.m_current_tile_number.wrapping_div(p_j2k.m_cp.tw);
     if p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec < 0i32
       || p_j2k.m_current_tile_number
         == p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32
@@ -3009,19 +3012,19 @@ fn opj_j2k_read_sot(
       /* several times. */
       /* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
       /* should appear in increasing order. */
-      if (*l_tcp).m_current_tile_part_number + 1i32 != l_current_part as OPJ_INT32 {
+      if l_tcp.m_current_tile_part_number + 1i32 != l_current_part as OPJ_INT32 {
         event_msg!(
           p_manager,
           EVT_ERROR,
           "Invalid tile part index for tile number {}. Got {}, expected {}\n",
           p_j2k.m_current_tile_number,
           l_current_part,
-          (*l_tcp).m_current_tile_part_number + 1i32,
+          l_tcp.m_current_tile_part_number + 1i32,
         );
         return 0i32;
       }
     }
-    (*l_tcp).m_current_tile_part_number = l_current_part as OPJ_INT32;
+    l_tcp.m_current_tile_part_number = l_current_part as OPJ_INT32;
     /* USE_JPWL */
     /* look for the tile in the list of already processed tile (in parts). */
     /* Optimization possible here with a more complex data structure and with the removing of tiles */
@@ -3053,11 +3056,11 @@ fn opj_j2k_read_sot(
                       "Psot value of the current tile-part is equal to zero, we assuming it is the last tile-part of the codestream.\n");
       p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32
     }
-    if (*l_tcp).m_nb_tile_parts != 0u32 && l_current_part >= (*l_tcp).m_nb_tile_parts {
+    if l_tcp.m_nb_tile_parts != 0u32 && l_current_part >= l_tcp.m_nb_tile_parts {
       /* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
       event_msg!(p_manager, EVT_ERROR,
                       "In SOT marker, TPSot ({}) is not valid regards to the previous number of tile-part ({}), giving up\n", l_current_part,
-                      (*l_tcp).m_nb_tile_parts);
+                      l_tcp.m_nb_tile_parts);
       p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32;
       return 0i32;
     }
@@ -3068,10 +3071,10 @@ fn opj_j2k_read_sot(
         as OPJ_UINT32;
       /* Useful to manage the case of textGBR.jp2 file because two values of TNSot are allowed: the correct numbers of
        * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
-      if (*l_tcp).m_nb_tile_parts != 0 && l_current_part >= (*l_tcp).m_nb_tile_parts {
+      if l_tcp.m_nb_tile_parts != 0 && l_current_part >= l_tcp.m_nb_tile_parts {
         event_msg!(p_manager, EVT_ERROR,
                             "In SOT marker, TPSot ({}) is not valid regards to the current number of tile-part ({}), giving up\n",
-                            l_current_part, (*l_tcp).m_nb_tile_parts);
+                            l_current_part, l_tcp.m_nb_tile_parts);
         p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32;
         return 0i32;
       }
@@ -3083,11 +3086,11 @@ fn opj_j2k_read_sot(
         p_j2k.m_specific_param.m_decoder.m_last_tile_part = 1i32;
         return 0i32;
       }
-      (*l_tcp).m_nb_tile_parts = l_num_parts
+      l_tcp.m_nb_tile_parts = l_num_parts
     }
     /* If know the number of tile part header we will check if we didn't read the last*/
-    if (*l_tcp).m_nb_tile_parts != 0
-      && (*l_tcp).m_nb_tile_parts == l_current_part.wrapping_add(1u32)
+    if l_tcp.m_nb_tile_parts != 0
+      && l_tcp.m_nb_tile_parts == l_current_part.wrapping_add(1u32)
     {
       p_j2k.m_specific_param.m_decoder.m_can_decode = true;
       /* Process the last tile-part header*/
@@ -3161,7 +3164,6 @@ fn opj_j2k_read_sot(
     p_j2k->cstr_info->tile[tileno].tp[partno].tp_start_pos + totlen - 1;
     }*/
     1i32
-  }
 }
 /* *
  * Write one or more PLT markers in the provided buffer
@@ -3253,14 +3255,13 @@ fn opj_j2k_write_plt_in_memory(
  * @param       p_manager           the user event manager.
 */
 fn opj_j2k_write_sod(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   data: &mut [u8],
-  mut p_data_written: &mut OPJ_UINT32,
-  mut _p_stream: &Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_data_written: &mut OPJ_UINT32,
+  _p_stream: &Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_cstr_info = core::ptr::null_mut::<opj_codestream_info_t>();
+  let l_cstr_info = core::ptr::null_mut::<opj_codestream_info_t>();
     let mut l_remaining_data: OPJ_UINT32 = 0;
     let mut marker_info = core::ptr::null_mut::<opj_tcd_marker_info_t>();
     /* preconditions */
@@ -3371,7 +3372,6 @@ fn opj_j2k_write_sod(
     }
     opj_tcd_marker_info_destroy(marker_info);
     1i32
-  }
 }
 /* *
  * Reads a SOD marker (Start Of Data)
@@ -3546,52 +3546,47 @@ fn opj_j2k_read_sod(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_rgn(
-  mut p_j2k: &mut opj_j2k,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_comp_no: OPJ_UINT32,
-  mut nb_comps: OPJ_UINT32,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_tile_no: OPJ_UINT32,
+  p_comp_no: OPJ_UINT32,
+  nb_comps: OPJ_UINT32,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-        let mut l_rgn_size: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tccp = core::ptr::null_mut::<opj_tccp_t>();
-    let mut l_comp_room: OPJ_UINT32 = 0;
-    /* preconditions */
-    /* Lrgn */
-    /* Srgn */
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
-    l_tccp = (*l_tcp).tccps.as_mut_ptr().offset(p_comp_no as isize);
-    if nb_comps <= 256u32 {
-      l_comp_room = 1 as OPJ_UINT32
-    } else {
-      l_comp_room = 2 as OPJ_UINT32
-    }
-    l_rgn_size = (6u32).wrapping_add(l_comp_room);
-    let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
-    l_buf.resize(l_rgn_size as usize, 0);
-    let mut pos: usize = 0;
-    opj_write_bytes(&mut l_buf[pos..], J2KMarker::RGN.as_u32(), 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], l_rgn_size.wrapping_sub(2u32), 2 as OPJ_UINT32,);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], p_comp_no, l_comp_room);
-    pos += l_comp_room as isize as usize;
-    opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 1 as OPJ_UINT32);
-    pos += 1 as usize;
-    opj_write_bytes(&mut l_buf[pos..], (*l_tccp).roishift as OPJ_UINT32, 1 as OPJ_UINT32,);
-    pos += 1 as usize;
-    if opj_stream_write_data(p_stream, &l_buf[..l_rgn_size as usize], p_manager) != l_rgn_size as usize
-    {
-      return 0i32;
-    }
-    p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-    1i32
+  let l_rgn_size: OPJ_UINT32;
+  let l_comp_room: OPJ_UINT32;
+  /* preconditions */
+  /* Lrgn */
+  /* Srgn */
+  let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
+  if nb_comps <= 256u32 {
+    l_comp_room = 1 as OPJ_UINT32
+  } else {
+    l_comp_room = 2 as OPJ_UINT32
   }
+  l_rgn_size = (6u32).wrapping_add(l_comp_room);
+  let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
+  l_buf.resize(l_rgn_size as usize, 0);
+  let mut pos: usize = 0;
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::RGN.as_u32(), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_rgn_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], p_comp_no, l_comp_room);
+  pos += l_comp_room as usize;
+  opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_tccp.roishift as OPJ_UINT32, 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  if opj_stream_write_data(p_stream, &l_buf[..l_rgn_size as usize], p_manager)
+    != l_rgn_size as usize
+  {
+    return 0i32;
+  }
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
+  1i32
 }
+
 /* *
  * Writes the EOC marker (End of Codestream)
  *
@@ -3638,66 +3633,64 @@ fn opj_j2k_write_eoc(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_rgn(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_header_data: *mut OPJ_BYTE,
-  mut p_header_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_header_size: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let header_data = core::slice::from_raw_parts(p_header_data, p_header_size as usize);
-    let mut cursor: usize = 0;
-    let mut l_nb_comp: OPJ_UINT32 = 0;
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_comp_room: OPJ_UINT32 = 0;
-    let mut l_comp_no: OPJ_UINT32 = 0;
-    /* preconditions*/
-    /* Srgn */
+  let header_data = unsafe { core::slice::from_raw_parts(p_header_data, p_header_size as usize) };
+  let mut cursor: usize = 0;
+  let l_nb_comp: OPJ_UINT32;
+  let l_comp_room: OPJ_UINT32;
+  let l_comp_no: OPJ_UINT32;
+  /* preconditions*/
+  /* Srgn */
 
-    assert!(!p_header_data.is_null());
-    let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-    l_nb_comp = l_image.numcomps;
-    if l_nb_comp <= 256u32 {
-      l_comp_room = 1 as OPJ_UINT32
-    } else {
-      l_comp_room = 2 as OPJ_UINT32
-    }
-    if p_header_size != (2u32).wrapping_add(l_comp_room) {
-      event_msg!(p_manager, EVT_ERROR, "Error reading RGN marker\n",);
-      return 0i32;
-    }
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = if p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH {
-      (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize)
-    } else {
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref_mut()
-        .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t
-    };
-    l_comp_no = opj_read_bytes(&header_data[cursor..], l_comp_room);
-    cursor += l_comp_room as isize as usize;
-    let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
-    /* USE_JPWL */
-    /* testcase 3635.pdf.asan.77.2930 */
-    if l_comp_no >= l_nb_comp {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "bad component number in RGN ({} when there are only {})\n",
-        l_comp_no,
-        l_nb_comp,
-      ); /* SPrgn */
-      return 0i32;
-    }
-    (&mut (*l_tcp).tccps)[l_comp_no as usize].roishift = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32) as OPJ_INT32;
-    cursor += 1 as usize;
-    1i32
+  assert!(!p_header_data.is_null());
+  let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
+  l_nb_comp = l_image.numcomps;
+  if l_nb_comp <= 256u32 {
+    l_comp_room = 1 as OPJ_UINT32
+  } else {
+    l_comp_room = 2 as OPJ_UINT32
   }
+  if p_header_size != (2u32).wrapping_add(l_comp_room) {
+    event_msg!(p_manager, EVT_ERROR, "Error reading RGN marker\n",);
+    return 0i32;
+  }
+  let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
+  let l_tcp = if is_tph {
+    &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
+  } else {
+    p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_default_tcp
+      .as_deref_mut()
+      .expect("decoder m_default_tcp is always set")
+  };
+  l_comp_no = opj_read_bytes(&header_data[cursor..], l_comp_room);
+  cursor += l_comp_room as usize;
+  let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  cursor += 1 as usize;
+  /* USE_JPWL */
+  /* testcase 3635.pdf.asan.77.2930 */
+  if l_comp_no >= l_nb_comp {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "bad component number in RGN ({} when there are only {})\n",
+      l_comp_no,
+      l_nb_comp,
+    ); /* SPrgn */
+    return 0i32;
+  }
+  l_tcp.tccps[l_comp_no as usize].roishift =
+    opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32) as OPJ_INT32;
+  cursor += 1 as usize;
+  1i32
 }
+
 fn opj_j2k_get_tp_stride(p_tcp: &opj_tcp_t) -> OPJ_FLOAT32 {
   p_tcp
     .m_nb_tile_parts
