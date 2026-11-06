@@ -9493,38 +9493,37 @@ pub(crate) fn opj_j2k_get_tile(
 }
 
 pub(crate) fn opj_j2k_set_decoded_resolution_factor(
-  mut p_j2k: &mut opj_j2k,
-  mut res_factor: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  res_factor: OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut it_comp: OPJ_UINT32 = 0;
-    p_j2k.m_cp.m_specific_param.m_dec.m_reduce = res_factor;
-    let Some(default_tcp) = p_j2k.m_specific_param.m_decoder.m_default_tcp.as_deref() else {
-      return 0i32;
-    };
-    if p_j2k.m_private_image.is_some()
-      && !p_j2k.m_private_image.as_deref().expect("m_private_image").comps.is_empty()
-      && !default_tcp.tccps.is_empty()
-    {
-      it_comp = 0 as OPJ_UINT32;
-      while it_comp < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
-        let mut max_res = default_tcp.tccps[it_comp as usize].numresolutions;
-        if res_factor >= max_res {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Resolution factor is greater than the maximum resolution in the component.\n",
-          );
-          return 0i32;
-        }
-        p_j2k.m_private_image.as_deref_mut().expect("m_private_image").comps[it_comp as usize].factor = res_factor;
-        it_comp += 1;
+  let mut it_comp: OPJ_UINT32 = 0;
+  p_j2k.m_cp.m_specific_param.m_dec.m_reduce = res_factor;
+  let Some(default_tcp) = p_j2k.m_specific_param.m_decoder.m_default_tcp.as_deref() else {
+    return 0i32;
+  };
+  if p_j2k.m_private_image.is_some()
+    && !p_j2k.m_private_image.as_deref().expect("m_private_image").comps.is_empty()
+    && !default_tcp.tccps.is_empty()
+  {
+    let image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
+    it_comp = 0 as OPJ_UINT32;
+    while it_comp < image.numcomps {
+      let max_res = default_tcp.tccps[it_comp as usize].numresolutions;
+      if res_factor >= max_res {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "Resolution factor is greater than the maximum resolution in the component.\n",
+        );
+        return 0i32;
       }
-      return 1i32;
+      image.comps[it_comp as usize].factor = res_factor;
+      it_comp += 1;
     }
-    0i32
+    return 1i32;
   }
+  0i32
 }
 
 pub(crate) fn opj_j2k_encoder_set_extra_options(
@@ -9805,83 +9804,82 @@ fn opj_get_tile_dimensions(
   l_image: &CoreImage,
   l_tilec: &opj_tcd_tilecomp_t,
   l_img_comp: &CoreImageComp,
-  mut l_size_comp: *mut OPJ_UINT32,
-  mut l_width: *mut OPJ_UINT32,
-  mut l_height: *mut OPJ_UINT32,
-  mut l_offset_x: *mut OPJ_UINT32,
-  mut l_offset_y: *mut OPJ_UINT32,
-  mut l_image_width: *mut OPJ_UINT32,
-  mut l_stride: *mut OPJ_UINT32,
-  mut l_tile_offset: *mut OPJ_UINT32,
+  l_size_comp: &mut OPJ_UINT32,
+  l_width: &mut OPJ_UINT32,
+  l_height: &mut OPJ_UINT32,
+  l_offset_x: &mut OPJ_UINT32,
+  l_offset_y: &mut OPJ_UINT32,
+  l_image_width: &mut OPJ_UINT32,
+  l_stride: &mut OPJ_UINT32,
+  l_tile_offset: &mut OPJ_UINT32,
 ) {
-  unsafe {
-    let mut l_remaining: OPJ_UINT32 = 0;
-    *l_size_comp = (*l_img_comp).prec >> 3i32;
-    l_remaining = (*l_img_comp).prec & 7u32;
-    if l_remaining != 0 {
-      *l_size_comp = (*l_size_comp as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32
-    }
-    if *l_size_comp == 3u32 {
-      *l_size_comp = 4 as OPJ_UINT32
-    }
-
-    *l_width = ((*l_tilec).x1 - (*l_tilec).x0) as OPJ_UINT32;
-    *l_height = ((*l_tilec).y1 - (*l_tilec).y0) as OPJ_UINT32;
-    *l_offset_x = opj_uint_ceildiv(l_image.x0, (*l_img_comp).dx);
-    *l_offset_y = opj_uint_ceildiv(l_image.y0, (*l_img_comp).dy);
-    *l_image_width = opj_uint_ceildiv(l_image.x1 - l_image.x0, (*l_img_comp).dx);
-    *l_stride = (*l_image_width).wrapping_sub(*l_width);
-    *l_tile_offset = ((*l_tilec).x0 as OPJ_UINT32)
-      .wrapping_sub(*l_offset_x)
-      .wrapping_add(
-        ((*l_tilec).y0 as OPJ_UINT32)
-          .wrapping_sub(*l_offset_y)
-          .wrapping_mul(*l_image_width),
-      );
+  let mut l_remaining: OPJ_UINT32 = 0;
+  *l_size_comp = l_img_comp.prec >> 3i32;
+  l_remaining = l_img_comp.prec & 7u32;
+  if l_remaining != 0 {
+    *l_size_comp = l_size_comp.wrapping_add(1u32)
   }
+  if *l_size_comp == 3u32 {
+    *l_size_comp = 4 as OPJ_UINT32
+  }
+
+  *l_width = (l_tilec.x1 - l_tilec.x0) as OPJ_UINT32;
+  *l_height = (l_tilec.y1 - l_tilec.y0) as OPJ_UINT32;
+  *l_offset_x = opj_uint_ceildiv(l_image.x0, l_img_comp.dx);
+  *l_offset_y = opj_uint_ceildiv(l_image.y0, l_img_comp.dy);
+  *l_image_width = opj_uint_ceildiv(l_image.x1 - l_image.x0, l_img_comp.dx);
+  *l_stride = l_image_width.wrapping_sub(*l_width);
+  *l_tile_offset = (l_tilec.x0 as OPJ_UINT32)
+    .wrapping_sub(*l_offset_x)
+    .wrapping_add(
+      (l_tilec.y0 as OPJ_UINT32)
+        .wrapping_sub(*l_offset_y)
+        .wrapping_mul(*l_image_width),
+    );
 }
 
-fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
-  unsafe {
-    let mut l_image = (*p_tcd).image;
-    let numcomps = (*p_tcd.image).numcomps as usize;
-    let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
-    let mut l_img_comp = core::slice::from_raw_parts((*l_image).comps.as_ptr(), numcomps);
-    for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
-      let mut l_size_comp: OPJ_UINT32 = 0;
-      let mut l_width: OPJ_UINT32 = 0;
-      let mut l_height: OPJ_UINT32 = 0;
-      let mut l_offset_x: OPJ_UINT32 = 0;
-      let mut l_offset_y: OPJ_UINT32 = 0;
-      let mut l_image_width: OPJ_UINT32 = 0;
-      let mut l_stride: OPJ_UINT32 = 0;
-      let mut l_tile_offset: OPJ_UINT32 = 0;
-      opj_get_tile_dimensions(
-        &mut *l_image,
-        l_tilec,
-        l_img_comp,
-        &mut l_size_comp,
-        &mut l_width,
-        &mut l_height,
-        &mut l_offset_x,
-        &mut l_offset_y,
-        &mut l_image_width,
-        &mut l_stride,
-        &mut l_tile_offset,
-      );
-      let mut l_src_ptr = (*l_img_comp).data.as_ptr().add(l_tile_offset as usize);
-      let l_height = l_height as usize;
-      let l_width = l_width as usize;
-      let l_stride = l_stride as usize;
-      let l_nb_elem = l_height * l_width;
-      let mut l_src = core::slice::from_raw_parts(l_src_ptr, l_nb_elem + (l_height * l_stride));
-      match l_size_comp {
+fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
+  let l_image = unsafe { &mut *p_tcd.image };
+  let numcomps = l_image.numcomps as usize;
+  let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
+  for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_image.comps.iter()) {
+    let mut l_size_comp: OPJ_UINT32 = 0;
+    let mut l_width: OPJ_UINT32 = 0;
+    let mut l_height: OPJ_UINT32 = 0;
+    let mut l_offset_x: OPJ_UINT32 = 0;
+    let mut l_offset_y: OPJ_UINT32 = 0;
+    let mut l_image_width: OPJ_UINT32 = 0;
+    let mut l_stride: OPJ_UINT32 = 0;
+    let mut l_tile_offset: OPJ_UINT32 = 0;
+    opj_get_tile_dimensions(
+      l_image,
+      l_tilec,
+      l_img_comp,
+      &mut l_size_comp,
+      &mut l_width,
+      &mut l_height,
+      &mut l_offset_x,
+      &mut l_offset_y,
+      &mut l_image_width,
+      &mut l_stride,
+      &mut l_tile_offset,
+    );
+    let l_height = l_height as usize;
+    let l_width = l_width as usize;
+    let l_stride = l_stride as usize;
+    let l_nb_elem = l_height * l_width;
+    /* The C reads `l_height` rows of `l_width` samples with `l_stride` between rows. The
+     * c2rust transcription modelled that as `chunks_exact(l_width + l_stride)`, which demands a
+     * full trailing stride that the C never reads (and the component buffer may not have, for
+     * bottom-edge tiles); `chunks` accepts the short final chunk instead. */
+    let l_src = &l_img_comp.data[l_tile_offset as usize..];
+    match l_size_comp {
         1 => {
           let (dest, remain) = p_data.split_at_mut(l_nb_elem);
           p_data = remain;
           if l_img_comp.sgnd != 0 {
             for (src, dest) in l_src
-              .chunks_exact(l_width + l_stride)
+              .chunks(l_width + l_stride)
               .zip(dest.chunks_exact_mut(l_width))
             {
               let src = &src[0..l_width];
@@ -9891,7 +9889,7 @@ fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
             }
           } else {
             for (src, dest) in l_src
-              .chunks_exact(l_width + l_stride)
+              .chunks(l_width + l_stride)
               .zip(dest.chunks_exact_mut(l_width))
             {
               let src = &src[0..l_width];
@@ -9906,7 +9904,7 @@ fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
           p_data = remain;
           if l_img_comp.sgnd != 0 {
             for (src, dest) in l_src
-              .chunks_exact(l_width + l_stride)
+              .chunks(l_width + l_stride)
               .zip(dest.chunks_exact_mut(l_width * 2))
             {
               let src = &src[0..l_width];
@@ -9917,7 +9915,7 @@ fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
             }
           } else {
             for (src, dest) in l_src
-              .chunks_exact(l_width + l_stride)
+              .chunks(l_width + l_stride)
               .zip(dest.chunks_exact_mut(l_width * 2))
             {
               let src = &src[0..l_width];
@@ -9932,7 +9930,7 @@ fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
           let (dest, remain) = p_data.split_at_mut(l_nb_elem as usize * 4);
           p_data = remain;
           for (src, dest) in l_src
-            .chunks_exact(l_width + l_stride)
+            .chunks(l_width + l_stride)
             .zip(dest.chunks_exact_mut(l_width * 4))
           {
             let src = &src[0..l_width];
@@ -9944,7 +9942,6 @@ fn opj_j2k_get_tile_data(mut p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
         _ => {}
       }
     }
-  }
 }
 
 fn opj_j2k_post_write_tile(
@@ -10158,7 +10155,6 @@ fn opj_j2k_write_first_tile_part(
     1i32
   }
 }
-
 fn opj_j2k_write_all_tile_parts(
   mut p_j2k: &mut opj_j2k,
   data: &mut [u8],
