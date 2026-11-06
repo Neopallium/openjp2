@@ -1255,67 +1255,58 @@ fn opj_j2k_read_com(
  * @param       p_j2k                   J2K codec.
  * @param       p_manager       the user event manager.
 */
-fn opj_j2k_write_cod(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut l_cp = core::ptr::null_mut::<opj_cp_t>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_code_size: OPJ_UINT32 = 0;
-    let mut l_remaining_size: OPJ_UINT32 = 0;
-        /* preconditions */
-    /* L_COD */
-    /* SGcod (A) */
-    /* SGcod (C) */
-    l_cp = &mut p_j2k.m_cp;
-    l_tcp = (*l_cp).tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize);
-    l_code_size = (9u32).wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
-      p_j2k,
-      p_j2k.m_current_tile_number,
-      0 as OPJ_UINT32,
-    ));
-    l_remaining_size = l_code_size;
-    let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
-    l_buf.resize(l_code_size as usize, 0);
-    let mut pos: usize = 0;
-    opj_write_bytes(&mut l_buf[pos..], J2KMarker::COD.as_u32(), 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], l_code_size.wrapping_sub(2u32), 2 as OPJ_UINT32,);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], (*l_tcp).csty, 1 as OPJ_UINT32);
-    pos += 1 as usize;
-    opj_write_bytes(&mut l_buf[pos..], (*l_tcp).prg as OPJ_UINT32, 1 as OPJ_UINT32);
-    pos += 1 as usize;
-    opj_write_bytes(&mut l_buf[pos..], (*l_tcp).numlayers, 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], (*l_tcp).mct, 1 as OPJ_UINT32);
-    pos += 1 as usize;
-    l_remaining_size =
-      (l_remaining_size as core::ffi::c_uint).wrapping_sub(9u32) as OPJ_UINT32 as OPJ_UINT32;
-    if opj_j2k_write_SPCod_SPCoc(
-      p_j2k,
-      p_j2k.m_current_tile_number,
-      0 as OPJ_UINT32,
-      &mut l_buf[pos..],
-      &mut l_remaining_size,
-      p_manager,
-    ) == 0
-    {
-      event_msg!(p_manager, EVT_ERROR, "Error writing COD marker\n",);
-      return 0i32;
-    }
-    if l_remaining_size != 0u32 {
-      event_msg!(p_manager, EVT_ERROR, "Error writing COD marker\n",);
-      return 0i32;
-    }
-    if opj_stream_write_data(p_stream, &l_buf[..l_code_size as usize], p_manager) != l_code_size as usize
-    {
-      return 0i32;
-    }
-    1i32
+fn opj_j2k_write_cod(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  let l_code_size: OPJ_UINT32;
+  let mut l_remaining_size: OPJ_UINT32 = 0;
+  /* preconditions */
+  /* L_COD */
+  /* SGcod (A) */
+  /* SGcod (C) */
+  l_code_size = (9u32).wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
+    p_j2k,
+    p_j2k.m_current_tile_number,
+    0 as OPJ_UINT32,
+  ));
+  l_remaining_size = l_code_size;
+  let l_tcp = &p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
+  let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
+  l_buf.resize(l_code_size as usize, 0);
+  let mut pos: usize = 0;
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::COD.as_u32(), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_code_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_tcp.csty, 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_tcp.prg as OPJ_UINT32, 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_tcp.numlayers, 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_tcp.mct, 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  l_remaining_size = l_remaining_size.wrapping_sub(9u32);
+  drop(l_tcp);
+  if opj_j2k_write_SPCod_SPCoc(
+    p_j2k,
+    p_j2k.m_current_tile_number,
+    0 as OPJ_UINT32,
+    &mut l_buf[pos..],
+    &mut l_remaining_size,
+    p_manager,
+  ) == 0
+  {
+    event_msg!(p_manager, EVT_ERROR, "Error writing COD marker\n",);
+    return 0i32;
   }
+  if l_remaining_size != 0u32 {
+    event_msg!(p_manager, EVT_ERROR, "Error writing COD marker\n",);
+    return 0i32;
+  }
+  if opj_stream_write_data(p_stream, &l_buf[..l_code_size as usize], p_manager) != l_code_size as usize
+  {
+    return 0i32;
+  }
+  1i32
 }
 
 /* *
@@ -2800,11 +2791,10 @@ fn opj_j2k_merge_ppt(p_tcp: &mut opj_tcp_t, p_manager: &mut opj_event_mgr) -> OP
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_tlm(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
         let mut l_tlm_size: OPJ_UINT32 = 0;
     let mut size_per_tile_part: OPJ_UINT32 = 0;
     /* preconditions */
@@ -2857,7 +2847,6 @@ fn opj_j2k_write_tlm(
     }
     p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
     1i32
-  }
 }
 /* *
  * Writes the SOT marker (Start of tile-part)
@@ -3169,79 +3158,86 @@ fn opj_j2k_read_sot(
  * Write one or more PLT markers in the provided buffer
  */
 fn opj_j2k_write_plt_in_memory(
-  mut _p_j2k: &mut opj_j2k,
-  mut marker_info: *mut opj_tcd_marker_info_t,
+  _p_j2k: &mut opj_j2k,
+  marker_info: &opj_tcd_marker_info_t,
   data: &mut [u8],
-  mut p_data_written: &mut OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_data_written: &mut OPJ_UINT32,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut Zplt = 0 as OPJ_BYTE;
-    let mut Lplt: OPJ_UINT16 = 0;
-    let pos_start: usize = 0;
-    let mut pos_Lplt: usize = 2;
-    let mut pos: usize = 0;
-    let mut i: OPJ_UINT32 = 0;
-    opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    /* Reserve space for Lplt */
-    pos += 2 as usize;
-    opj_write_bytes(&mut data[pos..], Zplt as OPJ_UINT32, 1 as OPJ_UINT32);
-    pos += 1 as usize;
-    Lplt = 3 as OPJ_UINT16;
-    i = 0 as OPJ_UINT32;
-    while i < (*marker_info).packet_count {
-      let mut var_bytes: [OPJ_BYTE; 5] = [0; 5];
-      let mut var_bytes_size = 0 as OPJ_UINT8;
-      let mut packet_size = *(*marker_info).p_packet_size.offset(i as isize);
-      /* Packet size written in variable-length way, starting with LSB */
-      var_bytes[var_bytes_size as usize] = (packet_size & 0x7fu32) as OPJ_BYTE;
+  let mut Zplt = 0 as OPJ_BYTE;
+  let mut Lplt: OPJ_UINT16 = 0;
+  let pos_start: usize = 0;
+  let mut pos_Lplt: usize = 2;
+  let mut pos: usize = 0;
+  let mut i: OPJ_UINT32 = 0;
+  // SAFETY: the marker info was filled by opj_tcd_encode_tile with packet_count sizes.
+  let packet_sizes = unsafe {
+    core::slice::from_raw_parts(marker_info.p_packet_size, marker_info.packet_count as usize)
+  };
+  opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  /* Reserve space for Lplt */
+  pos += 2 as usize;
+  opj_write_bytes(&mut data[pos..], Zplt as OPJ_UINT32, 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  Lplt = 3 as OPJ_UINT16;
+  i = 0 as OPJ_UINT32;
+  while i < marker_info.packet_count {
+    let mut var_bytes: [OPJ_BYTE; 5] = [0; 5];
+    let mut var_bytes_size = 0 as OPJ_UINT8;
+    let mut packet_size = packet_sizes[i as usize];
+    /* Packet size written in variable-length way, starting with LSB */
+    var_bytes[var_bytes_size as usize] = (packet_size & 0x7fu32) as OPJ_BYTE;
+    var_bytes_size = var_bytes_size.wrapping_add(1);
+    packet_size >>= 7i32;
+    while packet_size > 0u32 {
+      var_bytes[var_bytes_size as usize] = (packet_size & 0x7fu32 | 0x80u32) as OPJ_BYTE;
       var_bytes_size = var_bytes_size.wrapping_add(1);
-      packet_size >>= 7i32;
-      while packet_size > 0u32 {
-        var_bytes[var_bytes_size as usize] = (packet_size & 0x7fu32 | 0x80u32) as OPJ_BYTE;
-        var_bytes_size = var_bytes_size.wrapping_add(1);
-        packet_size >>= 7i32
-      }
-      /* Check if that can fit in the current PLT marker. If not, finish */
-      /* current one, and start a new one */
-      if Lplt as core::ffi::c_int + var_bytes_size as core::ffi::c_int > 65535i32 {
-        if Zplt as core::ffi::c_int == 255i32 {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "More than 255 PLT markers would be needed for current tile-part !\n",
-          );
-          return 0i32;
-        }
-        /* Patch Lplt */
-        opj_write_bytes(&mut data[pos_Lplt..], Lplt as OPJ_UINT32, 2 as OPJ_UINT32);
-        /* Start new segment */
-        opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2 as OPJ_UINT32);
-        pos += 2 as usize;
-        /* Reserve space for Lplt */
-        pos_Lplt = pos;
-        pos += 2 as usize;
-        Zplt = Zplt.wrapping_add(1);
-        opj_write_bytes(&mut data[pos..], Zplt as OPJ_UINT32, 1 as OPJ_UINT32);
-        pos += 1 as usize;
-        Lplt = 3 as OPJ_UINT16
-      }
-      Lplt = (Lplt as core::ffi::c_int + var_bytes_size as core::ffi::c_int) as OPJ_UINT16;
-      /* Serialize variable-length packet size, starting with MSB */
-      while var_bytes_size as core::ffi::c_int > 0i32 {
-        opj_write_bytes(&mut data[pos..], var_bytes[(var_bytes_size as core::ffi::c_int - 1i32) as usize] as OPJ_UINT32, 1 as OPJ_UINT32,);
-        pos += 1 as usize;
-        var_bytes_size = var_bytes_size.wrapping_sub(1)
-      }
-      i += 1;
+      packet_size >>= 7i32
     }
-    *p_data_written = (pos - pos_start) as OPJ_UINT32;
-    /* Patch Lplt */
-    opj_write_bytes(&mut data[pos_Lplt..], Lplt as OPJ_UINT32, 2 as OPJ_UINT32);
-    1i32
+    /* Check if that can fit in the current PLT marker. If not, finish */
+    /* current one, and start a new one */
+    if Lplt as core::ffi::c_int + var_bytes_size as core::ffi::c_int > 65535i32 {
+      if Zplt as core::ffi::c_int == 255i32 {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "More than 255 PLT markers would be needed for current tile-part !\n",
+        );
+        return 0i32;
+      }
+      /* Patch Lplt */
+      opj_write_bytes(&mut data[pos_Lplt..], Lplt as OPJ_UINT32, 2 as OPJ_UINT32);
+      /* Start new segment */
+      opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2 as OPJ_UINT32);
+      pos += 2 as usize;
+      /* Reserve space for Lplt */
+      pos_Lplt = pos;
+      pos += 2 as usize;
+      Zplt = Zplt.wrapping_add(1);
+      opj_write_bytes(&mut data[pos..], Zplt as OPJ_UINT32, 1 as OPJ_UINT32);
+      pos += 1 as usize;
+      Lplt = 3 as OPJ_UINT16
+    }
+    Lplt = (Lplt as core::ffi::c_int + var_bytes_size as core::ffi::c_int) as OPJ_UINT16;
+    /* Serialize variable-length packet size, starting with MSB */
+    while var_bytes_size as core::ffi::c_int > 0i32 {
+      opj_write_bytes(
+        &mut data[pos..],
+        var_bytes[(var_bytes_size as core::ffi::c_int - 1i32) as usize] as OPJ_UINT32,
+        1 as OPJ_UINT32,
+      );
+      pos += 1 as usize;
+      var_bytes_size = var_bytes_size.wrapping_sub(1)
+    }
+    i += 1;
   }
+  *p_data_written = (pos - pos_start) as OPJ_UINT32;
+  /* Patch Lplt */
+  opj_write_bytes(&mut data[pos_Lplt..], Lplt as OPJ_UINT32, 2 as OPJ_UINT32);
+  1i32
 }
+
 /* *
  * Writes the SOD marker (Start of data)
  *
@@ -3354,7 +3350,7 @@ fn opj_j2k_write_sod(
       let mut p_PLT_buffer = vec![0u8; p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT as usize];
       if opj_j2k_write_plt_in_memory(
         p_j2k,
-        marker_info,
+        unsafe { &*marker_info },
         &mut p_PLT_buffer[..],
         &mut l_data_written_PLT,
         p_manager,
