@@ -8923,11 +8923,10 @@ fn opj_j2k_are_all_used_components_decoded(
  * Reads the tiles.
  */
 fn opj_j2k_decode_tiles(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
     let mut tile_info = TileInfo::default();
     let mut nr_tiles = 0 as OPJ_UINT32;
     /* Particular case for whole single tile decoding */
@@ -8962,7 +8961,10 @@ fn opj_j2k_decode_tiles(
         comp.data = p_j2k.m_tcd.tcd_image.tiles.comps[i as usize]
           .data
           .take_vec(len);
-        comp.resno_decoded = (*(*p_j2k.m_tcd.image).comps.as_ptr().add(i as usize)).resno_decoded;
+        // SAFETY: `p_tcd.image` is the codec's private image.
+        comp.resno_decoded = unsafe {
+          (*(*p_j2k.m_tcd.image).comps.as_ptr().add(i as usize)).resno_decoded
+        };
         i += 1;
       }
       return 1i32;
@@ -9033,7 +9035,6 @@ fn opj_j2k_decode_tiles(
       return 0i32;
     }
     1i32
-  }
 }
 
 /* *
@@ -9053,11 +9054,10 @@ fn opj_j2k_setup_decoding(
  * Read and decode one tile.
  */
 fn opj_j2k_decode_one_tile(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
     let mut tile_info = TileInfo::default();
     let mut l_nb_tiles: OPJ_UINT32 = 0;
     let mut i: OPJ_UINT32 = 0;
@@ -9166,7 +9166,6 @@ fn opj_j2k_decode_one_tile(
       return 0i32;
     }
     1i32
-  }
 }
 
 /* *
@@ -10331,56 +10330,56 @@ fn opj_j2k_create_tcd(
 }
 
 pub(crate) fn opj_j2k_write_tile(
-  mut p_j2k: &mut opj_j2k,
-  mut p_tile_index: OPJ_UINT32,
-  mut p_data: &[u8],
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_tile_index: OPJ_UINT32,
+  p_data: &[u8],
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    if opj_j2k_pre_write_tile(p_j2k, p_tile_index, p_stream, p_manager) == 0 {
+  if opj_j2k_pre_write_tile(p_j2k, p_tile_index, p_stream, p_manager) == 0 {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Error while opj_j2k_pre_write_tile with tile index = {}\n",
+      p_tile_index,
+    );
+    return 0i32;
+  } else {
+    let mut j: OPJ_UINT32 = 0;
+    /* Allocate data */
+    j = 0 as OPJ_UINT32;
+    // SAFETY: `p_tcd.image` is the codec's private image, valid while the tcd is in use.
+    let numcomps = unsafe { (*p_j2k.m_tcd.image).numcomps };
+    while j < numcomps {
+      let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize] as *mut _;
+      if opj_alloc_tile_component_data(l_tilec) == 0 {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "Error allocating tile component data.",
+        );
+        return 0i32;
+      }
+      j += 1;
+    }
+    /* now copy data into the tile component */
+    if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data) == 0 {
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Error while opj_j2k_pre_write_tile with tile index = {}\n",
+        "Size mismatch between tile data and sent data.",
+      );
+      return 0i32;
+    }
+    if opj_j2k_post_write_tile(p_j2k, p_stream, p_manager) == 0 {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Error while opj_j2k_post_write_tile with tile index = {}\n",
         p_tile_index,
       );
       return 0i32;
-    } else {
-      let mut j: OPJ_UINT32 = 0;
-      /* Allocate data */
-      j = 0 as OPJ_UINT32;
-      while j < (*p_j2k.m_tcd.image).numcomps {
-        let mut l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize] as *mut _;
-        if opj_alloc_tile_component_data(l_tilec) == 0 {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Error allocating tile component data.",
-          );
-          return 0i32;
-        }
-        j += 1;
-      }
-      /* now copy data into the tile component */
-      if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data) == 0 {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Size mismatch between tile data and sent data.",
-        );
-        return 0i32;
-      }
-      if opj_j2k_post_write_tile(p_j2k, p_stream, p_manager) == 0 {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Error while opj_j2k_post_write_tile with tile index = {}\n",
-          p_tile_index,
-        );
-        return 0i32;
-      }
     }
-    1i32
   }
+  1i32
 }
