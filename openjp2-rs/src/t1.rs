@@ -2635,7 +2635,7 @@ pub(crate) fn opj_t1_encode_cblks(
           /* bandno */
           /* precno */
           /* Skip empty bands */
-          if opj_tcd_is_band_empty(band) == 0 {
+          if opj_tcd_is_band_empty(unsafe { &*band }) == 0 {
             precno = 0 as OPJ_UINT32;
             while precno < (*res).pw.wrapping_mul((*res).ph) {
               let mut prc: *mut opj_tcd_precinct_t =

@@ -640,7 +640,7 @@ fn opj_t2_encode_packet(
       while bandno < (*res).numbands {
         let mut prc = core::ptr::null_mut::<opj_tcd_precinct_t>();
         /* Skip empty bands */
-        if opj_tcd_is_band_empty(band) == 0 {
+        if opj_tcd_is_band_empty(unsafe { &*band }) == 0 {
           /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1294 */
           /* but likely not a proper fix. */
           if precno >= (*res).pw.wrapping_mul((*res).ph) {
@@ -689,7 +689,7 @@ fn opj_t2_encode_packet(
     while packet_empty == 0 && bandno < (*res).numbands {
       let mut prc_0 = core::ptr::null_mut::<opj_tcd_precinct_t>();
       /* Skip empty bands */
-      if opj_tcd_is_band_empty(band) == 0 {
+      if opj_tcd_is_band_empty(unsafe { &*band }) == 0 {
         /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1297 */
         /* but likely not a proper fix. */
         if precno >= (*res).pw.wrapping_mul((*res).ph) {
@@ -859,7 +859,7 @@ fn opj_t2_encode_packet(
     while packet_empty == 0 && bandno < (*res).numbands {
       let mut prc_1 = core::ptr::null_mut::<opj_tcd_precinct_t>();
       /* Skip empty bands */
-      if opj_tcd_is_band_empty(band) == 0 {
+      if opj_tcd_is_band_empty(unsafe { &*band }) == 0 {
         prc_1 = (*band).precincts.as_mut_ptr().offset(precno as isize);
         l_nb_blocks = (*prc_1).cw.wrapping_mul((*prc_1).ch);
         cblk = (&mut (*prc_1).cblks).enc_ptr();
@@ -1008,7 +1008,7 @@ fn opj_t2_read_packet_header(
       /* reset tagtrees */
       bandno = 0 as OPJ_UINT32;
       while bandno < (*l_res).numbands {
-        if opj_tcd_is_band_empty(l_band) == 0 {
+        if opj_tcd_is_band_empty(unsafe { &*l_band }) == 0 {
           let mut l_prc: *mut opj_tcd_precinct_t = (*l_band)
             .precincts
             .as_mut_ptr()
@@ -1135,7 +1135,7 @@ fn opj_t2_read_packet_header(
         .precincts
         .as_mut_ptr()
         .offset((*p_pi).precno as isize);
-      if opj_tcd_is_band_empty(l_band) == 0 {
+      if opj_tcd_is_band_empty(unsafe { &*l_band }) == 0 {
         l_nb_code_blocks = (*l_prc_0).cw.wrapping_mul((*l_prc_0).ch);
         l_cblk = (&mut (*l_prc_0).cblks).dec_ptr();
         cblkno = 0 as OPJ_UINT32;

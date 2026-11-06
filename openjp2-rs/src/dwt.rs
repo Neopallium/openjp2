@@ -1221,11 +1221,11 @@ pub(crate) fn opj_dwt_encode(tilec: &mut opj_tcd_tilecomp_t) -> OPJ_BOOL {
 /* </summary>                           */
 
 pub(crate) fn opj_dwt_decode(
-  p_tcd: &opj_tcd,
+  whole_tile_decoding: OPJ_BOOL,
   tilec: &mut opj_tcd_tilecomp_t,
   numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  if p_tcd.whole_tile_decoding != 0 {
+  if whole_tile_decoding != 0 {
     opj_dwt_decode_tile(tilec, numres)
   } else {
     opj_dwt_decode_partial_tile(tilec, numres)
@@ -2759,11 +2759,11 @@ fn opj_dwt_decode_partial_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UIN
 }
 
 pub(crate) fn opj_dwt_decode_real(
-  p_tcd: &opj_tcd,
+  whole_tile_decoding: OPJ_BOOL,
   tilec: &mut opj_tcd_tilecomp_t,
   numres: OPJ_UINT32,
 ) -> OPJ_BOOL {
-  if p_tcd.whole_tile_decoding != 0 {
+  if whole_tile_decoding != 0 {
     opj_dwt_decode_tile_97(tilec, numres)
   } else {
     opj_dwt_decode_partial_97(tilec, numres)

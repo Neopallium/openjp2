@@ -1113,6 +1113,20 @@ impl CodeBlocks {
       _ => core::ptr::null_mut(),
     }
   }
+
+  pub(crate) fn enc_mut(&mut self, i: usize) -> &mut opj_tcd_cblk_enc_t {
+    match self {
+      CodeBlocks::Enc(v) => &mut v[i],
+      _ => panic!("CodeBlocks::enc_mut on a non-Enc variant"),
+    }
+  }
+
+  pub(crate) fn dec_mut(&mut self, i: usize) -> &mut opj_tcd_cblk_dec_t {
+    match self {
+      CodeBlocks::Dec(v) => &mut v[i],
+      _ => panic!("CodeBlocks::dec_mut on a non-Dec variant"),
+    }
+  }
 }
 
 #[derive(Clone)]
@@ -1206,11 +1220,12 @@ pub(crate) type opj_tcd_cblk_enc_t = opj_tcd_cblk_enc;
 impl opj_tcd_cblk_enc {
   /// Start of the payload, i.e. what the C struct stored in its `data` member.
   /// Null while no buffer has been allocated.
-  pub(crate) fn data_ptr(&mut self) -> *mut OPJ_BYTE {
+  pub(crate) fn data_ptr(&self) -> *mut OPJ_BYTE {
     if self.data.is_empty() {
       core::ptr::null_mut()
     } else {
-      self.data[1..].as_mut_ptr()
+      // The leading byte is a sentinel; the payload starts at index 1.
+      self.data.as_ptr().wrapping_add(1) as *mut OPJ_BYTE
     }
   }
 
