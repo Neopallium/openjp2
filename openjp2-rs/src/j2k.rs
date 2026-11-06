@@ -7160,10 +7160,8 @@ pub(crate) fn opj_j2k_read_tile_header(
   tile_info: &mut TileInfo,
   p_manager: &mut opj_event_mgr,
 ) -> bool {
-  unsafe {
     let mut l_current_marker = J2KMarker::SOT;
     let mut l_marker_size: OPJ_UINT32 = 0;
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
     let l_nb_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
     /* preconditions */
 
@@ -7351,10 +7349,9 @@ pub(crate) fn opj_j2k_read_tile_header(
             /* correct tiles */
             l_tile_no = 0u32;
             while l_tile_no < l_nb_tiles {
-              if (*p_j2k.m_cp.tcps.as_ptr().offset(l_tile_no as isize)).m_nb_tile_parts != 0u32 {
-                let fresh33 =
-                  &mut (*p_j2k.m_cp.tcps.as_mut_ptr().offset(l_tile_no as isize)).m_nb_tile_parts;
-                *fresh33 = (*fresh33 as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32
+              if p_j2k.m_cp.tcps[l_tile_no as usize].m_nb_tile_parts != 0u32 {
+                p_j2k.m_cp.tcps[l_tile_no as usize].m_nb_tile_parts =
+                  p_j2k.m_cp.tcps[l_tile_no as usize].m_nb_tile_parts.wrapping_add(1u32)
               }
               l_tile_no += 1;
             }
@@ -7384,9 +7381,8 @@ pub(crate) fn opj_j2k_read_tile_header(
           let mut l_tile_no_0: OPJ_UINT32 = 0;
           l_tile_no_0 = 0u32;
           while l_tile_no_0 < l_nb_tiles {
-            if (*p_j2k.m_cp.tcps.as_ptr().offset(l_tile_no_0 as isize)).m_current_tile_part_number
-              == 0i32
-              && (*p_j2k.m_cp.tcps.as_ptr().offset(l_tile_no_0 as isize)).m_nb_tile_parts == 0u32
+            if p_j2k.m_cp.tcps[l_tile_no_0 as usize].m_current_tile_part_number == 0i32
+              && p_j2k.m_cp.tcps[l_tile_no_0 as usize].m_nb_tile_parts == 0u32
             {
               break;
             }
@@ -7419,14 +7415,12 @@ pub(crate) fn opj_j2k_read_tile_header(
     }
     /* Deal with tiles that have a single tile-part with TPsot == 0 and TNsot == 0 */
     if !p_j2k.m_specific_param.m_decoder.m_can_decode {
-      l_tcp = p_j2k
-        .m_cp
-        .tcps
-        .as_mut_ptr()
-        .offset(p_j2k.m_current_tile_number as isize);
-      while p_j2k.m_current_tile_number < l_nb_tiles && (*l_tcp).m_data.is_null() {
+      while p_j2k.m_current_tile_number < l_nb_tiles
+        && p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
+          .m_data
+          .is_null()
+      {
         p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);
-        l_tcp = l_tcp.offset(1)
       }
       if p_j2k.m_current_tile_number == l_nb_tiles {
         tile_info.go_on = false;
@@ -7470,32 +7464,28 @@ pub(crate) fn opj_j2k_read_tile_header(
     tile_info.nb_comps = p_j2k.m_tcd.tcd_image.tiles.numcomps;
     p_j2k.m_specific_param.m_decoder.m_state |= J2KState::DATA;
     true
-  }
 }
-
 pub(crate) fn opj_j2k_decode_tile(
-  mut p_j2k: &mut opj_j2k,
-  mut p_tile_index: OPJ_UINT32,
-  mut p_data: Option<&mut [u8]>,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_tile_index: OPJ_UINT32,
+  p_data: Option<&mut [u8]>,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_current_marker = J2KMarker::UNK(0);
-    let mut l_data: [OPJ_BYTE; 2] = [0; 2];
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    /* preconditions */
+  let mut l_current_marker = J2KMarker::UNK(0);
+  let mut l_data: [OPJ_BYTE; 2] = [0; 2];
+  /* preconditions */
 
-    if p_j2k.m_specific_param.m_decoder.m_state & J2KState::DATA == J2KState::NONE
-      || p_tile_index != p_j2k.m_current_tile_number
-    {
-      return 0i32;
-    }
-    l_tcp = p_j2k.m_cp.tcps.as_mut_ptr().offset(p_tile_index as isize);
-    if (*l_tcp).m_data.is_null() {
-      opj_j2k_tcp_destroy(&mut *l_tcp);
-      return 0i32;
-    }
+  if p_j2k.m_specific_param.m_decoder.m_state & J2KState::DATA == J2KState::NONE
+    || p_tile_index != p_j2k.m_current_tile_number
+  {
+    return 0i32;
+  }
+  let l_tcp = &mut p_j2k.m_cp.tcps[p_tile_index as usize];
+  if l_tcp.m_data.is_null() {
+    opj_j2k_tcp_destroy(l_tcp);
+    return 0i32;
+  }
     /* When using the opj_read_tile_header / opj_decode_tile_data API */
     /* such as in test_tile_decoder, m_output_image is NULL, so fall back */
     /* to the full image dimension. This is a bit surprising that */
@@ -7516,14 +7506,14 @@ pub(crate) fn opj_j2k_decode_tile(
       l_bounds_y1,
       p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode,
       p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode.as_ptr(),
-      (*l_tcp).m_data,
-      (*l_tcp).m_data_size,
+      l_tcp.m_data,
+      l_tcp.m_data_size,
       p_tile_index,
       p_j2k.cstr_index.as_deref_mut().map(|i| i as *mut CodestreamIndex).unwrap_or(core::ptr::null_mut()),
       p_manager,
     ) == 0
     {
-      opj_j2k_tcp_destroy(&mut *l_tcp);
+      opj_j2k_tcp_destroy(l_tcp);
       p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
       event_msg!(p_manager, EVT_ERROR, "Failed to decode.\n",);
       return 0i32;
@@ -7537,9 +7527,9 @@ pub(crate) fn opj_j2k_decode_tile(
       }
       /* To avoid to destroy the tcp which can be useful when we try to decode a tile decoded before (cf j2k_random_tile_access)
        * we destroy just the data which will be re-read in read_tile_header*/
-      /*opj_j2k_tcp_destroy(&mut *l_tcp);
+      /*opj_j2k_tcp_destroy(l_tcp);
       p_j2k->m_tcd->tcp = 0;*/
-      opj_j2k_tcp_data_destroy(&mut *l_tcp);
+      opj_j2k_tcp_data_destroy(l_tcp);
     }
     p_j2k.m_specific_param.m_decoder.m_can_decode = false;
     p_j2k.m_specific_param.m_decoder.m_state &= !(J2KState::DATA);
@@ -7580,7 +7570,6 @@ pub(crate) fn opj_j2k_decode_tile(
       }
     }
     1i32
-  }
 }
 fn opj_j2k_update_image_data(
   p_tcd: &mut opj_tcd,
