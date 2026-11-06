@@ -386,8 +386,22 @@ pub(crate) fn opj_t2_decode_packets(
               .offset((*l_current_pi).precno as isize)
               as *mut opj_tcd_precinct_t;
             if opj_tcd_is_subband_area_of_interest(
-              tcd,
-              (*l_current_pi).compno,
+              &TcdTilecView {
+                win: [tcd.win_x0, tcd.win_y0, tcd.win_x1, tcd.win_y1],
+                whole_tile_decoding: tcd.whole_tile_decoding,
+                x0: (*tilec).x0,
+                y0: (*tilec).y0,
+                x1: (*tilec).x1,
+                y1: (*tilec).y1,
+                numresolutions: (*tilec).numresolutions,
+                minimum_num_resolutions: (*tilec).minimum_num_resolutions,
+                compno: (*l_current_pi).compno,
+              },
+              unsafe {
+                let tcp = &*(*tcd).tcp;
+                &tcp.tccps[(*l_current_pi).compno as usize]
+              },
+              unsafe { &(*(*tcd).image).comps },
               (*l_current_pi).resno,
               (*band).bandno,
               (*prec).x0 as OPJ_UINT32,

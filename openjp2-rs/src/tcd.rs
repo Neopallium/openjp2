@@ -1821,33 +1821,49 @@ fn opj_tcd_t2_decode(
   /*---------------CLEAN-------------------*/
   1i32
 }
-fn opj_tcd_t1_decode(mut p_tcd: &mut opj_tcd, mut p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  unsafe {
-    let mut compno: OPJ_UINT32 = 0;
-    let mut l_tile_comp = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
-    let mut l_tccp = (*p_tcd.tcp).tccps.as_mut_ptr();
-    let mut ret = 1i32;
-    let mut check_pterm = 0i32;
-    /* Only enable PTERM check if we decode all layers */
-    if (*p_tcd.tcp).num_layers_to_decode == (*p_tcd.tcp).numlayers
-      && (*l_tccp).cblksty & 0x10u32 != 0u32
-    {
-      check_pterm = 1i32
-    }
-    compno = 0 as OPJ_UINT32;
-    while compno < p_tcd.tcd_image.tiles.numcomps {
-      if p_tcd.used_component(compno) {
-        opj_t1_decode_cblks(p_tcd, &mut ret, l_tile_comp, l_tccp, p_manager, check_pterm);
-        if ret == 0 {
-          break;
-        }
-      }
-      compno = compno.wrapping_add(1);
-      l_tile_comp = l_tile_comp.offset(1);
-      l_tccp = l_tccp.offset(1)
-    }
-    ret
+fn opj_tcd_t1_decode(p_tcd: &mut opj_tcd, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
+  let tcp = unsafe { &*p_tcd.tcp };
+  let image = unsafe { &*p_tcd.image };
+  let mut compno: OPJ_UINT32 = 0;
+  let mut ret = 1i32;
+  let mut check_pterm = 0i32;
+  /* Only enable PTERM check if we decode all layers */
+  if tcp.num_layers_to_decode == tcp.numlayers && tcp.tccps[0].cblksty & 0x10u32 != 0u32 {
+    check_pterm = 1i32
   }
+  compno = 0 as OPJ_UINT32;
+  while compno < p_tcd.tcd_image.tiles.numcomps {
+    if p_tcd.used_component(compno) {
+      let l_tilec = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
+      let view = TcdTilecView {
+        win: [p_tcd.win_x0, p_tcd.win_y0, p_tcd.win_x1, p_tcd.win_y1],
+        whole_tile_decoding: p_tcd.whole_tile_decoding,
+        x0: l_tilec.x0,
+        y0: l_tilec.y0,
+        x1: l_tilec.x1,
+        y1: l_tilec.y1,
+        numresolutions: l_tilec.numresolutions,
+        minimum_num_resolutions: l_tilec.minimum_num_resolutions,
+        compno: l_tilec.compno,
+      };
+      opj_t1_decode_cblks(
+        &view,
+        &tcp.tccps,
+        &image.comps,
+        &mut ret,
+        l_tilec,
+        &tcp.tccps[compno as usize],
+        p_manager,
+        check_pterm,
+      );
+      if ret == 0 {
+        break;
+      }
+    }
+    compno = compno.wrapping_add(1);
+  }
+  ret
 }
 fn opj_tcd_dwt_decode(p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
@@ -2288,7 +2304,7 @@ fn opj_tcd_t1_encode(p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   }
   opj_t1_encode_cblks(
     &mut p_tcd.tcd_image.tiles,
-    p_tcd.tcp,
+    l_tcp,
     l_mct_norms,
     l_mct_numcomps,
   )
@@ -2445,9 +2461,25 @@ pub(crate) fn opj_tcd_is_band_empty(band: &opj_tcd_band_t) -> OPJ_BOOL {
   (band.x1 - band.x0 == 0i32 || band.y1 - band.y0 == 0i32) as core::ffi::c_int
 }
 
+/// Read-only snapshot of the tile-component fields the area-of-interest
+/// predicates and the per-codeblock decoders need, so the &mut walks over
+/// the resolutions/bands/precincts never alias the codec-level structures.
+pub(crate) struct TcdTilecView {
+  pub win: [OPJ_UINT32; 4],
+  pub whole_tile_decoding: OPJ_BOOL,
+  pub x0: OPJ_INT32,
+  pub y0: OPJ_INT32,
+  pub x1: OPJ_INT32,
+  pub y1: OPJ_INT32,
+  pub numresolutions: OPJ_UINT32,
+  pub minimum_num_resolutions: OPJ_UINT32,
+  pub compno: OPJ_UINT32,
+}
+
 pub(crate) fn opj_tcd_is_subband_area_of_interest(
-  tcd: &mut opj_tcd,
-  compno: OPJ_UINT32,
+  tilec: &TcdTilecView,
+  tccp: &opj_tccp_t,
+  image_comps: &[CoreImageComp],
   resno: OPJ_UINT32,
   bandno: OPJ_UINT32,
   band_x0: OPJ_UINT32,
@@ -2464,33 +2496,30 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
     /* needed to be bumped to 4, in case inconsistencies are found while */
     /* decoding parts of irreversible coded images. */
     /* See opj_dwt_decode_partial_53 and opj_dwt_decode_partial_97 as well */
-    // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
-    let tccps = unsafe { &(*tcd.tcp).tccps };
-    let image = unsafe { &*tcd.image };
-    let image_comp = &image.comps[compno as usize];
-    let mut filter_margin = if tccps[compno as usize].qmfbid == 1u32 {
+    let compno = tilec.compno as usize;
+    let image_comp = &image_comps[compno];
+    let mut filter_margin = if tccp.qmfbid == 1u32 {
       2i32
     } else {
       3i32
     } as OPJ_UINT32;
-    let tilec = &tcd.tcd_image.tiles.comps[compno as usize];
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
     let mut tcx0 = opj_uint_max(
       tilec.x0 as OPJ_UINT32,
-      opj_uint_ceildiv(tcd.win_x0, image_comp.dx),
+      opj_uint_ceildiv(tilec.win[0], image_comp.dx),
     );
     let mut tcy0 = opj_uint_max(
       tilec.y0 as OPJ_UINT32,
-      opj_uint_ceildiv(tcd.win_y0, image_comp.dy),
+      opj_uint_ceildiv(tilec.win[1], image_comp.dy),
     );
     let mut tcx1 = opj_uint_min(
       tilec.x1 as OPJ_UINT32,
-      opj_uint_ceildiv(tcd.win_x1, image_comp.dx),
+      opj_uint_ceildiv(tilec.win[2], image_comp.dx),
     );
     let mut tcy1 = opj_uint_min(
       tilec.y1 as OPJ_UINT32,
-      opj_uint_ceildiv(tcd.win_y1, image_comp.dy),
+      opj_uint_ceildiv(tilec.win[3], image_comp.dy),
     );
     /* Compute number of decomposition for this band. See table F-1 */
     let mut nb = if resno == 0u32 {

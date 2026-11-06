@@ -5,6 +5,7 @@ use super::ht_dec::*;
 use super::math::*;
 use super::mqc::*;
 use super::openjpeg::*;
+use crate::image::CoreImageComp;
 use super::t1_luts::*;
 use super::tcd::*;
 
@@ -1859,387 +1860,335 @@ fn opj_t1_allocate_buffers(
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */
 
-fn opj_t1_clbl_decode_processor(mut user_data: *mut core::ffi::c_void) {
-  unsafe {
-    let mut cblk = core::ptr::null_mut::<opj_tcd_cblk_dec_t>();
-    let mut band = core::ptr::null_mut::<opj_tcd_band_t>();
-    let mut tilec = core::ptr::null_mut::<opj_tcd_tilecomp_t>();
-    let mut tccp = core::ptr::null_mut::<opj_tccp_t>();
-    let mut datap = core::ptr::null_mut::<OPJ_INT32>();
-    let mut cblk_w: OPJ_UINT32 = 0;
-    let mut cblk_h: OPJ_UINT32 = 0;
-    let mut x: OPJ_INT32 = 0;
-    let mut y: OPJ_INT32 = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut job = core::ptr::null_mut::<opj_t1_cblk_decode_processing_job_t>();
-    let mut resno: OPJ_UINT32 = 0;
-    let mut tile_w: OPJ_UINT32 = 0;
-    job = user_data as *mut opj_t1_cblk_decode_processing_job_t;
-    cblk = (*job).cblk;
-    if (*job).whole_tile_decoding == 0 {
-      cblk_w = ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32;
-      cblk_h = ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32;
-      /* Zero-init required */
-      (*cblk).decoded_data = vec![Cell::new(0); cblk_w as usize * cblk_h as usize];
-    } else if !(*cblk).decoded_data.is_empty() {
-      /* Not sure if that code path can happen, but better be */
-      /* safe than sorry */
-      (*cblk).decoded_data = Vec::new();
-    }
-    resno = (*job).resno;
-    band = (*job).band;
-    tilec = (*job).tilec;
-    tccp = (*job).tccp;
-    tile_w = ((*(*tilec)
-      .resolutions
-      .as_mut_ptr()
-      .offset((*tilec).minimum_num_resolutions.wrapping_sub(1) as isize))
-    .x1
-      - (*(*tilec)
-        .resolutions
-        .as_mut_ptr()
-        .offset((*tilec).minimum_num_resolutions.wrapping_sub(1) as isize))
-      .x0) as OPJ_UINT32;
-    if *(*job).pret == 0 {
-      drop(unsafe { Box::from_raw(job) });
-      return;
-    }
+fn opj_t1_clbl_decode_processor(
+  resno: OPJ_UINT32,
+  off_x: OPJ_UINT32,
+  off_y: OPJ_UINT32,
+  tile_data: &mut [OPJ_INT32],
+  tile_w: OPJ_UINT32,
+  whole_tile_decoding: OPJ_BOOL,
+  tccp: &opj_tccp_t,
+  bandno: OPJ_UINT32,
+  band_x0: OPJ_INT32,
+  band_y0: OPJ_INT32,
+  band_stepsize: OPJ_FLOAT32,
+  cblk: &mut opj_tcd_cblk_dec_t,
+  pret: &mut OPJ_BOOL,
+  p_manager: &mut opj_event_mgr,
+  check_pterm: OPJ_BOOL,
+  mustuse_cblkdatabuffer: OPJ_BOOL,
+) {
+  let mut cblk_w: OPJ_UINT32 = 0;
+  let mut cblk_h: OPJ_UINT32 = 0;
+  let mut x: OPJ_INT32 = 0;
+  let mut y: OPJ_INT32 = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let mut j: OPJ_UINT32 = 0;
+  if whole_tile_decoding == 0 {
+    cblk_w = (cblk.x1 - cblk.x0) as OPJ_UINT32;
+    cblk_h = (cblk.y1 - cblk.y0) as OPJ_UINT32;
+    /* Zero-init required */
+    cblk.decoded_data = vec![Cell::new(0); cblk_w as usize * cblk_h as usize];
+  } else if !cblk.decoded_data.is_empty() {
+    /* Not sure if that code path can happen, but better be */
+    /* safe than sorry */
+    cblk.decoded_data = Vec::new();
+  }
+  if *pret == 0 {
+    return;
+  }
 
-    // Use thread local t1 instance.
-    T1.with(|l_t1| {
-      let mut ref_t1 = l_t1.borrow_mut();
-      let t1 = &mut *ref_t1;
+  // Use thread local t1 instance.
+  T1.with(|l_t1| {
+    let mut ref_t1 = l_t1.borrow_mut();
+    let t1 = &mut *ref_t1;
 
-      t1.mustuse_cblkdatabuffer = (*job).mustuse_cblkdatabuffer;
-      if (*tccp).cblksty & J2K_CCP_CBLKSTY_HT != 0 {
-        if 0i32
-          == opj_t1_ht_decode_cblk(
-            t1,
-            &mut *cblk,
-            (*band).bandno,
-            (*tccp).roishift as OPJ_UINT32,
-            (*tccp).cblksty,
-            &mut *(*job).p_manager,
-            (*job).check_pterm,
-          )
-        {
-          core::ptr::write_volatile((*job).pret, 0i32);
-          drop(unsafe { Box::from_raw(job) });
-          return;
-        }
-      } else if 0i32
-        == opj_t1_decode_cblk(
+    t1.mustuse_cblkdatabuffer = mustuse_cblkdatabuffer;
+    if tccp.cblksty & J2K_CCP_CBLKSTY_HT != 0 {
+      if 0i32
+        == opj_t1_ht_decode_cblk(
           t1,
           cblk,
-          (*band).bandno,
-          (*tccp).roishift as OPJ_UINT32,
-          (*tccp).cblksty,
-          &mut *(*job).p_manager,
-          (*job).check_pterm,
+          bandno,
+          tccp.roishift as OPJ_UINT32,
+          tccp.cblksty,
+          p_manager,
+          check_pterm,
         )
       {
-        core::ptr::write_volatile((*job).pret, 0i32);
-        drop(unsafe { Box::from_raw(job) });
+        *pret = 0i32;
         return;
       }
-      x = (*cblk).x0 - (*band).x0;
-      y = (*cblk).y0 - (*band).y0;
-      if (*band).bandno & 1 != 0 {
-        let mut pres: *mut opj_tcd_resolution_t = (*tilec)
-          .resolutions
-          .as_mut_ptr()
-          .offset(resno.wrapping_sub(1) as isize);
-        x += (*pres).x1 - (*pres).x0
-      }
-      if (*band).bandno & 2 != 0 {
-        let mut pres_0: *mut opj_tcd_resolution_t = (*tilec)
-          .resolutions
-          .as_mut_ptr()
-          .offset(resno.wrapping_sub(1) as isize);
-        y += (*pres_0).y1 - (*pres_0).y0
-      }
-      datap = if !(*cblk).decoded_data.is_empty() {
-        // Cell<i32> is repr(transparent) over i32, so this is layout-preserving.
-        (*cblk).decoded_data.as_ptr() as *mut OPJ_INT32
-      } else {
-        t1.data.as_mut_ptr()
-      };
-      cblk_w = t1.w;
-      cblk_h = t1.h;
-      if (*tccp).roishift != 0 {
-        if (*tccp).roishift >= 31i32 {
-          j = 0 as OPJ_UINT32;
-          while j < cblk_h {
-            i = 0 as OPJ_UINT32;
-            while i < cblk_w {
-              *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) = 0i32;
-              i += 1
-            }
-            j += 1
-          }
-        } else {
-          let mut thresh = (1i32) << (*tccp).roishift;
-          j = 0 as OPJ_UINT32;
-          while j < cblk_h {
-            i = 0 as OPJ_UINT32;
-            while i < cblk_w {
-              let mut val = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
-              let mut mag = val.abs();
-              if mag >= thresh {
-                mag >>= (*tccp).roishift;
-                *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize) =
-                  if val < 0i32 { -mag } else { mag }
-              }
-              i += 1
-            }
-            j += 1
-          }
-        }
-      }
-      /* Both can be non NULL if for example decoding a full tile and then */
-      /* partially a tile. In which case partial decoding should be the */
-      /* priority */
-      assert!(!(*cblk).decoded_data.is_empty() || !(*tilec).data.is_null()); /* if (tccp->qmfbid == 0) */
-      if !(*cblk).decoded_data.is_empty() {
-        let mut cblk_size = cblk_w.wrapping_mul(cblk_h); /* resno */
-        if (*tccp).qmfbid == 1 {
-          i = 0 as OPJ_UINT32;
-          while i < cblk_size {
-            *datap.offset(i as isize) /= 2i32;
-            i += 1
-          }
-        } else {
-          let stepsize = 0.5f32 * (*band).stepsize;
-          i = 0 as OPJ_UINT32;
-          while i < cblk_size {
-            let tmp = *datap as OPJ_FLOAT32 * stepsize;
-            // C reinterprets the f32 bits as an i32 via memcpy.
-            *datap = tmp.to_bits() as OPJ_INT32;
-            datap = datap.offset(1);
-            i += 1
-          }
-        }
-      } else if (*tccp).qmfbid == 1 {
-        let mut tiledp: *mut OPJ_INT32 = &mut *(*tilec).data.as_mut_ptr().add((y as OPJ_SIZE_T)
-            .wrapping_mul(tile_w as usize)
-            .wrapping_add(x as OPJ_SIZE_T)) as *mut OPJ_INT32;
-        j = 0 as OPJ_UINT32;
-        while j < cblk_h {
-          i = 0 as OPJ_UINT32;
-          while i < cblk_w & !(3u32) {
-            let mut tmp0 = *datap.offset(
-              j.wrapping_mul(cblk_w)
-                .wrapping_add(i)
-                .wrapping_add(0u32) as isize,
-            );
-            let mut tmp1 = *datap.offset(
-              j.wrapping_mul(cblk_w)
-                .wrapping_add(i)
-                .wrapping_add(1u32) as isize,
-            );
-            let mut tmp2 = *datap.offset(
-              j.wrapping_mul(cblk_w)
-                .wrapping_add(i)
-                .wrapping_add(2u32) as isize,
-            );
-            let mut tmp3 = *datap.offset(
-              j.wrapping_mul(cblk_w)
-                .wrapping_add(i)
-                .wrapping_add(3u32) as isize,
-            );
-            *tiledp.add((j as usize)
-                .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as usize)
-                .wrapping_add(0)) = tmp0 / 2i32;
-            *tiledp.add((j as usize)
-                .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as usize)
-                .wrapping_add(1)) = tmp1 / 2i32;
-            *tiledp.add((j as usize)
-                .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as usize)
-                .wrapping_add(2)) = tmp2 / 2i32;
-            *tiledp.add((j as usize)
-                .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as usize)
-                .wrapping_add(3)) = tmp3 / 2i32;
-            i = (i as core::ffi::c_uint).wrapping_add(4u32)
-          }
-          while i < cblk_w {
-            let mut tmp_0 = *datap.offset(j.wrapping_mul(cblk_w).wrapping_add(i) as isize);
-            *tiledp.add((j as usize)
-                .wrapping_mul(tile_w as OPJ_SIZE_T)
-                .wrapping_add(i as usize)) = tmp_0 / 2i32;
-            i += 1
-          }
-          j += 1
-        }
-      } else {
-        let stepsize_0 = 0.5f32 * (*band).stepsize;
-        let mut tiledp_0 = &mut *(*tilec).data.as_mut_ptr().add((y as OPJ_SIZE_T)
-            .wrapping_mul(tile_w as usize)
-            .wrapping_add(x as OPJ_SIZE_T)) as *mut OPJ_INT32 as *mut OPJ_FLOAT32;
-        j = 0 as OPJ_UINT32;
-        while j < cblk_h {
-          let mut tiledp2 = tiledp_0;
-          i = 0 as OPJ_UINT32;
-          while i < cblk_w {
-            let mut tmp_1 = *datap as OPJ_FLOAT32 * stepsize_0;
-            *tiledp2 = tmp_1;
-            datap = datap.offset(1);
-            tiledp2 = tiledp2.offset(1);
-            i += 1
-          }
-          tiledp_0 = tiledp_0.offset(tile_w as isize);
-          j += 1
-        }
-      }
-      drop(unsafe { Box::from_raw(job) });
-    })
-  }
-}
-
-pub(crate) fn opj_t1_decode_cblks(
-  mut tcd: &mut opj_tcd,
-  mut pret: *mut OPJ_BOOL,
-  mut tilec: *mut opj_tcd_tilecomp_t,
-  mut tccp: *mut opj_tccp_t,
-  mut p_manager: &mut opj_event_mgr,
-  mut check_pterm: OPJ_BOOL,
-) {
-  unsafe {
-    let mut resno: OPJ_UINT32 = 0;
-    let mut bandno: OPJ_UINT32 = 0;
-    let mut precno: OPJ_UINT32 = 0;
-    let mut cblkno: OPJ_UINT32 = 0;
-    resno = 0 as OPJ_UINT32;
-    while resno < (*tilec).minimum_num_resolutions {
-      let mut res: *mut opj_tcd_resolution_t =
-        (*tilec).resolutions.as_mut_ptr().offset(resno as isize);
-      bandno = 0 as OPJ_UINT32;
-      while bandno < (*res).numbands {
-        let mut band: *mut opj_tcd_band_t =
-          &mut *(*res).bands.as_mut_ptr().offset(bandno as isize) as *mut opj_tcd_band_t;
-        precno = 0 as OPJ_UINT32;
-        while precno < (*res).pw.wrapping_mul((*res).ph) {
-          let mut precinct: *mut opj_tcd_precinct_t =
-            (*band).precincts.as_ptr().offset(precno as isize) as *mut opj_tcd_precinct_t;
-          if opj_tcd_is_subband_area_of_interest(
-            tcd,
-            (*tilec).compno,
-            resno,
-            (*band).bandno,
-            (*precinct).x0 as OPJ_UINT32,
-            (*precinct).y0 as OPJ_UINT32,
-            (*precinct).x1 as OPJ_UINT32,
-            (*precinct).y1 as OPJ_UINT32,
-          ) == 0
-          {
-            cblkno = 0 as OPJ_UINT32;
-            while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
-              let mut cblk: *mut opj_tcd_cblk_dec_t =
-                (&mut (*precinct).cblks).dec_ptr().offset(cblkno as isize);
-              if !(*cblk).decoded_data.is_empty() {
-                (*cblk).decoded_data = Vec::new();
-              }
-              cblkno += 1;
-            }
-          } else {
-            let mut current_block_34: u64;
-            cblkno = 0 as OPJ_UINT32;
-            while cblkno < (*precinct).cw.wrapping_mul((*precinct).ch) {
-              let mut cblk_0: *mut opj_tcd_cblk_dec_t =
-                (&mut (*precinct).cblks).dec_ptr().offset(cblkno as isize);
-              let mut job = core::ptr::null_mut::<opj_t1_cblk_decode_processing_job_t>();
-              if opj_tcd_is_subband_area_of_interest(
-                tcd,
-                (*tilec).compno,
-                resno,
-                (*band).bandno,
-                (*cblk_0).x0 as OPJ_UINT32,
-                (*cblk_0).y0 as OPJ_UINT32,
-                (*cblk_0).x1 as OPJ_UINT32,
-                (*cblk_0).y1 as OPJ_UINT32,
-              ) == 0
-              {
-                if !(*cblk_0).decoded_data.is_empty() {
-                  (*cblk_0).decoded_data = Vec::new();
-                }
-              } else {
-                if (*tcd).whole_tile_decoding == 0 {
-                  let mut cblk_w = ((*cblk_0).x1 - (*cblk_0).x0) as OPJ_UINT32;
-                  let mut cblk_h = ((*cblk_0).y1 - (*cblk_0).y0) as OPJ_UINT32;
-                  if !(*cblk_0).decoded_data.is_empty() {
-                    current_block_34 = 2370887241019905314;
-                  } else if cblk_w == 0 || cblk_h == 0 {
-                    current_block_34 = 2370887241019905314;
-                  } else {
-                    current_block_34 = 11913429853522160501;
-                  }
-                } else {
-                  current_block_34 = 11913429853522160501;
-                }
-                match current_block_34 {
-                  2370887241019905314 => {}
-                  _ => {
-                    job = Box::into_raw(Box::new(Default::default()));
-                    if job.is_null() {
-                      core::ptr::write_volatile(pret, 0i32);
-                      return;
-                    }
-                    (*job).whole_tile_decoding = (*tcd).whole_tile_decoding;
-                    (*job).resno = resno;
-                    (*job).cblk = cblk_0;
-                    (*job).band = band;
-                    (*job).tilec = tilec;
-                    (*job).tccp = tccp;
-                    (*job).pret = pret;
-                    (*job).p_manager = p_manager;
-                    (*job).check_pterm = check_pterm;
-                    (*job).mustuse_cblkdatabuffer = 0;
-                    opj_t1_clbl_decode_processor(job as _);
-                    if *pret == 0 {
-                      return;
-                    }
-                  }
-                }
-              }
-              cblkno += 1;
-            }
-          }
-          precno += 1;
-          /* bandno */
-          /* precno */
-          /* cblkno */
-        }
-        bandno += 1;
-      }
-      resno += 1;
+    } else if 0i32
+      == opj_t1_decode_cblk(
+        t1,
+        cblk,
+        bandno,
+        tccp.roishift as OPJ_UINT32,
+        tccp.cblksty,
+        p_manager,
+        check_pterm,
+      )
+    {
+      *pret = 0i32;
+      return;
     }
+    x = cblk.x0 - band_x0;
+    y = cblk.y0 - band_y0;
+    x += off_x as OPJ_INT32;
+    y += off_y as OPJ_INT32;
+    cblk_w = t1.w;
+    cblk_h = t1.h;
+    if tccp.roishift != 0 {
+      let thresh = if tccp.roishift >= 31i32 {
+        i32::MAX
+      } else {
+        (1i32) << tccp.roishift
+      };
+      j = 0 as OPJ_UINT32;
+      while j < cblk_h {
+        i = 0 as OPJ_UINT32;
+        while i < cblk_w {
+          let idx = j.wrapping_mul(cblk_w).wrapping_add(i) as usize;
+          if tccp.roishift >= 31i32 {
+            if !cblk.decoded_data.is_empty() {
+              cblk.decoded_data[idx].set(0);
+            } else {
+              t1.data.as_slice()[idx].set(0);
+            }
+          } else if !cblk.decoded_data.is_empty() {
+            let mut val = cblk.decoded_data[idx].get();
+            let mut mag = val.abs();
+            if mag >= thresh {
+              mag >>= tccp.roishift;
+              val = if val < 0i32 { -mag } else { mag };
+            }
+            cblk.decoded_data[idx].set(val);
+          } else {
+            let mut val = t1.data.as_slice()[idx].get();
+            let mut mag = val.abs();
+            if mag >= thresh {
+              mag >>= tccp.roishift;
+              val = if val < 0i32 { -mag } else { mag };
+            }
+            t1.data.as_slice()[idx].set(val);
+          }
+          i += 1
+        }
+        j += 1
+      }
+    }
+    /* Both can be non NULL if for example decoding a full tile and then */
+    /* partially a tile. In which case partial decoding should be the */
+    /* priority */
+    assert!(!cblk.decoded_data.is_empty() || !tile_data.is_empty()); /* if (tccp->qmfbid == 0) */
+    if !cblk.decoded_data.is_empty() {
+      let cblk_size = cblk_w.wrapping_mul(cblk_h); /* resno */
+      if tccp.qmfbid == 1 {
+        i = 0 as OPJ_UINT32;
+        while i < cblk_size {
+          let idx = i as usize;
+          cblk.decoded_data[idx].set(cblk.decoded_data[idx].get() / 2i32);
+          i += 1
+        }
+      } else {
+        let stepsize = 0.5f32 * band_stepsize;
+        i = 0 as OPJ_UINT32;
+        while i < cblk_size {
+          let idx = i as usize;
+          let tmp = cblk.decoded_data[idx].get() as OPJ_FLOAT32 * stepsize;
+          // C reinterprets the f32 bits as an i32 via memcpy.
+          cblk.decoded_data[idx].set(tmp.to_bits() as OPJ_INT32);
+          i += 1
+        }
+      }
+    } else if tccp.qmfbid == 1 {
+      let mut j = 0 as OPJ_UINT32;
+      while j < cblk_h {
+        i = 0 as OPJ_UINT32;
+        while i < cblk_w & !(3u32) {
+          let base = (y as OPJ_UINT32 + j).wrapping_mul(tile_w) + (x as OPJ_UINT32) + i;
+          let src = j.wrapping_mul(cblk_w).wrapping_add(i) as usize;
+          let (tmp0, tmp1, tmp2, tmp3) = (
+            t1.data.as_slice()[src].get(),
+            t1.data.as_slice()[src + 1].get(),
+            t1.data.as_slice()[src + 2].get(),
+            t1.data.as_slice()[src + 3].get(),
+          );
+          tile_data[base as usize] = tmp0 / 2i32;
+          tile_data[base as usize + 1] = tmp1 / 2i32;
+          tile_data[base as usize + 2] = tmp2 / 2i32;
+          tile_data[base as usize + 3] = tmp3 / 2i32;
+          i = (i as core::ffi::c_uint).wrapping_add(4u32)
+        }
+        while i < cblk_w {
+          let base = (y as OPJ_UINT32 + j).wrapping_mul(tile_w) + (x as OPJ_UINT32) + i;
+          let src = j.wrapping_mul(cblk_w).wrapping_add(i) as usize;
+          tile_data[base as usize] = t1.data.as_slice()[src].get() / 2i32;
+          i += 1
+        }
+        j += 1
+      }
+    } else {
+      let stepsize_0 = 0.5f32 * band_stepsize;
+      let mut j = 0 as OPJ_UINT32;
+      while j < cblk_h {
+        i = 0 as OPJ_UINT32;
+        while i < cblk_w {
+          let base = (y as OPJ_UINT32 + j).wrapping_mul(tile_w) + (x as OPJ_UINT32) + i;
+          let src = j.wrapping_mul(cblk_w).wrapping_add(i) as usize;
+          let tmp_1 = t1.data.as_slice()[src].get() as OPJ_FLOAT32 * stepsize_0;
+          tile_data[base as usize] = tmp_1.to_bits() as OPJ_INT32;
+          i += 1
+        }
+        j += 1
+      }
+    }
+  })
+}
+pub(crate) fn opj_t1_decode_cblks(
+  tilec_view: &TcdTilecView,
+  tccps: &[opj_tccp_t],
+  image_comps: &[CoreImageComp],
+  pret: &mut OPJ_BOOL,
+  tilec: &mut opj_tcd_tilecomp_t,
+  tccp: &opj_tccp_t,
+  p_manager: &mut opj_event_mgr,
+  check_pterm: OPJ_BOOL,
+) {
+  let mut resno: OPJ_UINT32 = 0;
+  let mut bandno: OPJ_UINT32 = 0;
+  let mut precno: OPJ_UINT32 = 0;
+  let mut cblkno: OPJ_UINT32 = 0;
+  /* Snapshot the tile geometry (values), so the walks below can borrow
+  tilec.resolutions without aliasing the data buffer. */
+  let tile_w = (tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].x1
+    - tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].x0) as usize;
+  let tile_h = (tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].y1
+    - tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].y0) as usize;
+  /* The write-back into the tile buffer only happens for whole-tile
+  decoding (partial decoding targets cblk.decoded_data); for the window
+  path the data buffer may not cover the full resolution geometry. */
+  let tile_data = if tilec_view.whole_tile_decoding != 0 {
+    tilec.data.as_mut_slice(tile_w.wrapping_mul(tile_h))
+  } else {
+    &mut []
+  };
+  resno = 0 as OPJ_UINT32;
+  while resno < tilec.minimum_num_resolutions {
+    /* The previous (coarser) resolution's extents feed the band offsets;
+    read them before the mutable walk starts. */
+    let (prev_w, prev_h) = if resno > 0 {
+      let p = &tilec.resolutions[(resno - 1) as usize];
+      (p.x1 - p.x0, p.y1 - p.y0)
+    } else {
+      (0, 0)
+    };
+    let res = &mut tilec.resolutions[resno as usize];
+    bandno = 0 as OPJ_UINT32;
+    while bandno < res.numbands {
+      /* Per-band offsets (band 0 is the LL band: no offset). */
+      let bandno_val = res.bands[bandno as usize].bandno;
+      let off_x = if bandno_val & 1 != 0 { prev_w } else { 0 };
+      let off_y = if bandno_val & 2 != 0 { prev_h } else { 0 };
+      let band = &mut res.bands[bandno as usize];
+      precno = 0 as OPJ_UINT32;
+      while precno < res.pw.wrapping_mul(res.ph) {
+        let precinct = &mut band.precincts[precno as usize];
+        if opj_tcd_is_subband_area_of_interest(
+          tilec_view,
+          tccp,
+          image_comps,
+          resno,
+          band.bandno,
+          precinct.x0 as OPJ_UINT32,
+          precinct.y0 as OPJ_UINT32,
+          precinct.x1 as OPJ_UINT32,
+          precinct.y1 as OPJ_UINT32,
+        ) == 0
+        {
+          cblkno = 0 as OPJ_UINT32;
+          while cblkno < precinct.cw.wrapping_mul(precinct.ch) {
+            let cblk = (&mut precinct.cblks).dec_mut(cblkno as usize);
+            if !cblk.decoded_data.is_empty() {
+              cblk.decoded_data = Vec::new();
+            }
+            cblkno += 1;
+          }
+        } else {
+          cblkno = 0 as OPJ_UINT32;
+          while cblkno < precinct.cw.wrapping_mul(precinct.ch) {
+            let cblk = (&mut precinct.cblks).dec_mut(cblkno as usize);
+            if opj_tcd_is_subband_area_of_interest(
+              tilec_view,
+              tccp,
+              image_comps,
+              resno,
+              band.bandno,
+              cblk.x0 as OPJ_UINT32,
+              cblk.y0 as OPJ_UINT32,
+              cblk.x1 as OPJ_UINT32,
+              cblk.y1 as OPJ_UINT32,
+            ) == 0
+            {
+              if !cblk.decoded_data.is_empty() {
+                cblk.decoded_data = Vec::new();
+              }
+            } else {
+              let mut do_decode = true;
+              if tilec_view.whole_tile_decoding == 0 {
+                let cblk_w = (cblk.x1 - cblk.x0) as OPJ_UINT32;
+                let cblk_h = (cblk.y1 - cblk.y0) as OPJ_UINT32;
+                if !cblk.decoded_data.is_empty() || cblk_w == 0 || cblk_h == 0 {
+                  do_decode = false;
+                }
+              }
+              if do_decode {
+                opj_t1_clbl_decode_processor(
+                  resno,
+                  off_x as OPJ_UINT32,
+                  off_y as OPJ_UINT32,
+                  tile_data,
+                  tile_w as OPJ_UINT32,
+                  tilec_view.whole_tile_decoding,
+                  tccp,
+                  band.bandno,
+                  band.x0,
+                  band.y0,
+                  band.stepsize,
+                  cblk,
+                  pret,
+                  p_manager,
+                  check_pterm,
+                  0,
+                );
+                if *pret == 0 {
+                  return;
+                }
+              }
+            }
+            cblkno += 1;
+          }
+        }
+        precno += 1;
+        /* bandno */
+        /* precno */
+        /* cblkno */
+      }
+      bandno += 1;
+    }
+    resno += 1;
   }
 }
-
-/* *
-Decode 1 code-block
-@param t1 T1 handle
-@param cblk Code-block coding parameters
-@param orient
-@param roishift Region of interest shifting value
-@param cblksty Code-block style
-@param p_manager the event manager
-@param check_pterm whether PTERM correct termination should be checked
-*/
 fn opj_t1_decode_cblk(
-  mut t1: &mut opj_t1_t,
-  mut cblk: *mut opj_tcd_cblk_dec_t,
+  t1: &mut opj_t1_t,
+  cblk: &mut opj_tcd_cblk_dec_t,
   mut orient: OPJ_UINT32,
   mut roishift: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
   mut check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
-  unsafe {
     let mut bpno_plus_one: OPJ_INT32 = 0; /* BYPASS mode */
     let mut passtype: OPJ_UINT32 = 0;
     let mut segno: OPJ_UINT32 = 0;
@@ -2250,13 +2199,13 @@ fn opj_t1_decode_cblk(
     t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
     if opj_t1_allocate_buffers(
       t1,
-      ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32,
-      ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32,
+      (cblk.x1 - cblk.x0) as OPJ_UINT32,
+      (cblk.y1 - cblk.y0) as OPJ_UINT32,
     ) == 0
     {
       return 0i32;
     }
-    bpno_plus_one = roishift.wrapping_add((*cblk).numbps) as OPJ_INT32;
+    bpno_plus_one = roishift.wrapping_add(cblk.numbps) as OPJ_INT32;
     if bpno_plus_one >= 31i32 {
       event_msg!(
         p_manager,
@@ -2276,15 +2225,15 @@ fn opj_t1_decode_cblk(
     /* Even if we have a single chunk, in multi-threaded decoding */
     /* the insertion of our synthetic marker might potentially override */
     /* valid codestream of other codeblocks decoded in parallel. */
-    if (*cblk).numchunks > 1 || t1.mustuse_cblkdatabuffer != 0 {
+    if cblk.numchunks > 1 || t1.mustuse_cblkdatabuffer != 0 {
       let mut i: OPJ_UINT32 = 0;
       let mut cblk_len: OPJ_UINT32 = 0;
       /* Compute whole codeblock length from chunk lengths */
       cblk_len = 0 as OPJ_UINT32;
       i = 0 as OPJ_UINT32;
-      while i < (*cblk).numchunks {
+      while i < cblk.numchunks {
         cblk_len = (cblk_len as core::ffi::c_uint)
-          .wrapping_add((*(*cblk).chunks.as_ptr().offset(i as isize)).len)
+          .wrapping_add(cblk.chunks[i as usize].len)
           as OPJ_UINT32;
         i += 1
       }
@@ -2294,18 +2243,18 @@ fn opj_t1_decode_cblk(
       let buf = t1.cblkdatabuffer();
       cblk_len = 0 as OPJ_UINT32;
       i = 0 as OPJ_UINT32;
-      while i < (*cblk).numchunks {
-        let chunk = (*(*cblk).chunks.as_ptr().offset(i as isize)).as_slice();
+      while i < cblk.numchunks {
+        let chunk = cblk.chunks[i as usize].as_slice();
         let off = cblk_len as usize;
         buf[off..off + chunk.len()].copy_from_slice(chunk);
         cblk_len = (cblk_len as core::ffi::c_uint)
-          .wrapping_add((*(*cblk).chunks.as_ptr().offset(i as isize)).len)
+          .wrapping_add(cblk.chunks[i as usize].len)
           as OPJ_UINT32;
         i += 1
       }
       cblkdata = buf.as_mut_ptr();
-    } else if (*cblk).numchunks == 1 {
-      cblkdata = (*(*cblk).chunks.as_mut_ptr()).as_mut_slice().as_mut_ptr();
+    } else if cblk.numchunks == 1 {
+      cblkdata = cblk.chunks[0].as_mut_slice().as_mut_ptr();
     } else {
       /* Not sure if that can happen in practice, but avoid Coverity to */
       /* think we will dereference a null cblkdta pointer */
@@ -2313,16 +2262,16 @@ fn opj_t1_decode_cblk(
     }
     /* For subtile decoding, directly decode in the decoded_data buffer of */
     /* the code-block. Hack t1->data to point to it, and restore it later */
-    let decoded_data_src: Option<&[Cell<i32>]> = if !(*cblk).decoded_data.is_empty() {
-      Some((*cblk).decoded_data.as_slice())
+    let decoded_data_src: Option<&[Cell<i32>]> = if !cblk.decoded_data.is_empty() {
+      Some(cblk.decoded_data.as_slice())
     } else {
       None
     };
     segno = 0 as OPJ_UINT32;
-    while segno < (*cblk).real_num_segs {
-      let mut seg: *mut opj_tcd_seg_t = (*cblk).segs.as_mut_ptr().offset(segno as isize);
+    while segno < cblk.real_num_segs {
+      let seg = &cblk.segs[segno as usize];
       /* BYPASS mode */
-      type_0 = if bpno_plus_one <= (*cblk).numbps as OPJ_INT32 - 4i32
+      type_0 = if bpno_plus_one <= cblk.numbps as OPJ_INT32 - 4i32
         && passtype < 2
         && cblksty & 0x1 != 0
       {
@@ -2331,23 +2280,30 @@ fn opj_t1_decode_cblk(
         0i32
       } as OPJ_BYTE;
       if type_0 as core::ffi::c_int == 1i32 {
-        opj_mqc_raw_init_dec(
-          &mut t1.mqc,
-          cblkdata.offset(cblkdataindex as isize),
-          (*seg).len,
-          2 as OPJ_UINT32,
-        );
+        // SAFETY: `cblkdata` points into a live chunk/t1 buffer; the offset
+        // stays within `seg.len` by the segment bookkeeping.
+        unsafe {
+          opj_mqc_raw_init_dec(
+            &mut t1.mqc,
+            cblkdata.offset(cblkdataindex as isize),
+            seg.len,
+            2 as OPJ_UINT32,
+          )
+        };
       } else {
-        opj_mqc_init_dec(
-          &mut t1.mqc,
-          cblkdata.offset(cblkdataindex as isize),
-          (*seg).len,
-          2 as OPJ_UINT32,
-        );
+        // SAFETY: see the raw path above.
+        unsafe {
+          opj_mqc_init_dec(
+            &mut t1.mqc,
+            cblkdata.offset(cblkdataindex as isize),
+            seg.len,
+            2 as OPJ_UINT32,
+          )
+        };
       }
-      cblkdataindex = (cblkdataindex as core::ffi::c_uint).wrapping_add((*seg).len);
+      cblkdataindex = (cblkdataindex as core::ffi::c_uint).wrapping_add(seg.len);
       passno = 0 as OPJ_UINT32;
-      while passno < (*seg).real_num_passes && bpno_plus_one >= 1i32 {
+      while passno < seg.real_num_passes && bpno_plus_one >= 1i32 {
         match passtype {
           0 => {
             if type_0 as core::ffi::c_int == 1i32 {
@@ -2405,7 +2361,6 @@ fn opj_t1_decode_cblk(
       }
     }
     1i32
-  }
 }
 
 /* * Procedure to deal with a asynchronous code-block encoding job.
@@ -2413,271 +2368,275 @@ fn opj_t1_decode_cblk(
  * @param user_data Pointer to a opj_t1_cblk_encode_processing_job_t* structure
  * @param tls       TLS handle.
  */
-fn opj_t1_cblk_encode_processor(mut user_data: *mut core::ffi::c_void) {
-  unsafe {
-    let mut job = user_data as *mut opj_t1_cblk_encode_processing_job_t; /* OPJ_TRUE == T1 for encoding */
-    let mut cblk = (*job).cblk; /* if (tccp->qmfbid == 0) */
-    let mut band: *const opj_tcd_band_t = (*job).band;
-    let mut tilec: *const opj_tcd_tilecomp_t = (*job).tilec;
-    let mut tccp: *const opj_tccp_t = (*job).tccp;
-    let resno = (*job).resno;
-    let tile_w = ((*tilec).x1 - (*tilec).x0) as OPJ_UINT32;
-    let mut tiledp = core::ptr::null_mut::<OPJ_INT32>();
-    let mut cblk_w: OPJ_UINT32 = 0;
-    let mut cblk_h: OPJ_UINT32 = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut x = (*cblk).x0 - (*band).x0;
-    let mut y = (*cblk).y0 - (*band).y0;
-    if *(*job).pret == 0 {
-      drop(unsafe { Box::from_raw(job) });
+fn opj_t1_cblk_encode_processor(
+  compno: OPJ_UINT32,
+  resno: OPJ_UINT32,
+  off_x: OPJ_UINT32,
+  off_y: OPJ_UINT32,
+  tile_data: &mut [OPJ_INT32],
+  tile_w: OPJ_UINT32,
+  tile_numcomps: OPJ_UINT32,
+  numresolutions_minus_resno: OPJ_UINT32,
+  bandno: OPJ_UINT32,
+  band_x0: OPJ_INT32,
+  band_y0: OPJ_INT32,
+  band_stepsize: OPJ_FLOAT32,
+  cblk: &mut opj_tcd_cblk_enc_t,
+  tccp: &opj_tccp_t,
+  mct_norms: *const OPJ_FLOAT64,
+  mct_numcomps: OPJ_UINT32,
+  pret: &mut OPJ_BOOL,
+  distotile: &mut OPJ_FLOAT64,
+) {
+  let mut cblk_w: OPJ_UINT32 = 0;
+  let mut cblk_h: OPJ_UINT32 = 0;
+  let mut i: OPJ_UINT32 = 0;
+  let mut j: OPJ_UINT32 = 0;
+  let mut x = cblk.x0 - band_x0;
+  let mut y = cblk.y0 - band_y0;
+  if *pret == 0 {
+    return;
+  }
+
+  // Use thread local t1 instance.
+  T1.with(|l_t1| {
+    let mut ref_t1 = l_t1.borrow_mut();
+    let t1 = &mut *ref_t1;
+
+    x += off_x as OPJ_INT32;
+    y += off_y as OPJ_INT32;
+    if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as OPJ_UINT32, (cblk.y1 - cblk.y0) as OPJ_UINT32)
+      == 0
+    {
+      *pret = 0i32;
       return;
     }
-
-    // Use thread local t1 instance.
-    T1.with(|l_t1| {
-      let mut ref_t1 = l_t1.borrow_mut();
-      let t1 = &mut *ref_t1;
-
-      if (*band).bandno & 1 != 0 {
-        let mut pres: *mut opj_tcd_resolution_t =
-          (*tilec)
-            .resolutions
-            .as_ptr()
-            .offset(resno.wrapping_sub(1) as isize) as *mut opj_tcd_resolution_t;
-        x += (*pres).x1 - (*pres).x0
-      }
-      if (*band).bandno & 2 != 0 {
-        let mut pres_0: *mut opj_tcd_resolution_t =
-          (*tilec)
-            .resolutions
-            .as_ptr()
-            .offset(resno.wrapping_sub(1) as isize) as *mut opj_tcd_resolution_t;
-        y += (*pres_0).y1 - (*pres_0).y0
-      }
-      if opj_t1_allocate_buffers(
-        t1,
-        ((*cblk).x1 - (*cblk).x0) as OPJ_UINT32,
-        ((*cblk).y1 - (*cblk).y0) as OPJ_UINT32,
-      ) == 0
-      {
-        core::ptr::write_volatile((*job).pret, 0i32);
-        drop(unsafe { Box::from_raw(job) });
-        return;
-      }
-      cblk_w = t1.w;
-      cblk_h = t1.h;
-      tiledp = &mut *(*tilec).data.as_mut_ptr().add(
-        (y as OPJ_SIZE_T)
-          .wrapping_mul(tile_w as usize)
-          .wrapping_add(x as OPJ_SIZE_T),
-      ) as *mut OPJ_INT32;
-      if (*tccp).qmfbid == 1 {
-        let mut tiledp_u = tiledp as *mut OPJ_UINT32;
-        let mut t1data = t1.data.as_mut_ptr() as *mut OPJ_UINT32;
-        /* Do multiplication on unsigned type, even if the
-         * underlying type is signed, to avoid potential
-         * int overflow on large value (the output will be
-         * incorrect in such situation, but whatever...)
-         * This assumes complement-to-2 signed integer
-         * representation
-         * Fixes https://github.com/uclouvain/openjpeg/issues/1053
-         */
-        j = 0 as OPJ_UINT32;
-        while j < cblk_h & !(3u32) {
-          i = 0 as OPJ_UINT32;
-          while i < cblk_w {
-            *t1data.offset(0) = *tiledp_u
-              .offset(j.wrapping_add(0).wrapping_mul(tile_w).wrapping_add(i) as isize)
-              << (7i32 - 1i32);
-            *t1data.offset(1) = *tiledp_u
-              .offset(j.wrapping_add(1).wrapping_mul(tile_w).wrapping_add(i) as isize)
-              << (7i32 - 1i32);
-            *t1data.offset(2) = *tiledp_u
-              .offset(j.wrapping_add(2).wrapping_mul(tile_w).wrapping_add(i) as isize)
-              << (7i32 - 1i32);
-            *t1data.offset(3) = *tiledp_u
-              .offset(j.wrapping_add(3).wrapping_mul(tile_w).wrapping_add(i) as isize)
-              << (7i32 - 1i32);
-            t1data = t1data.offset(4);
-            i += 1
-          }
-          j = (j as core::ffi::c_uint).wrapping_add(4) as OPJ_UINT32 as OPJ_UINT32
+    cblk_w = t1.w;
+    cblk_h = t1.h;
+    let base = (y as OPJ_UINT32).wrapping_mul(tile_w).wrapping_add(x as OPJ_UINT32);
+    if tccp.qmfbid == 1 {
+      let mut t1data = t1.data.offset(0);
+      /* Do multiplication on unsigned type, even if the
+       * underlying type is signed, to avoid potential
+       * int overflow on large value (the output will be
+       * incorrect in such situation, but whatever...)
+       * This assumes complement-to-2 signed integer
+       * representation
+       * Fixes https://github.com/uclouvain/openjpeg/issues/1053
+       */
+      j = 0 as OPJ_UINT32;
+      while j < cblk_h & !(3u32) {
+        i = 0 as OPJ_UINT32;
+        while i < cblk_w {
+          t1data.set_at(
+            0,
+            ((tile_data[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i) as usize] as OPJ_UINT32)
+              << (7i32 - 1i32)) as OPJ_INT32,
+          );
+          t1data.set_at(
+            1,
+            ((tile_data[base.wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w)).wrapping_add(i)
+              as usize] as OPJ_UINT32) << (7i32 - 1i32)) as OPJ_INT32,
+          );
+          t1data.set_at(
+            2,
+            ((tile_data[base.wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w)).wrapping_add(i)
+              as usize] as OPJ_UINT32) << (7i32 - 1i32)) as OPJ_INT32,
+          );
+          t1data.set_at(
+            3,
+            ((tile_data[base.wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w)).wrapping_add(i)
+              as usize] as OPJ_UINT32) << (7i32 - 1i32)) as OPJ_INT32,
+          );
+          t1data = t1data.offset(4);
+          i += 1
         }
-        if j < cblk_h {
-          i = 0 as OPJ_UINT32;
-          while i < cblk_w {
-            let mut k: OPJ_UINT32 = 0;
-            k = j;
-            while k < cblk_h {
-              *t1data.offset(0) =
-                *tiledp_u.offset(k.wrapping_mul(tile_w).wrapping_add(i) as isize) << (7i32 - 1i32);
-              t1data = t1data.offset(1);
-              k += 1
-            }
-            i += 1
+        j = (j as core::ffi::c_uint).wrapping_add(4) as OPJ_UINT32 as OPJ_UINT32
+      }
+      if j < cblk_h {
+        i = 0 as OPJ_UINT32;
+        while i < cblk_w {
+          let mut k: OPJ_UINT32 = 0;
+          k = j;
+          while k < cblk_h {
+            t1data.set_at(
+              0,
+              ((tile_data[base.wrapping_add(k.wrapping_mul(tile_w)).wrapping_add(i) as usize]
+                as OPJ_UINT32) << (7i32 - 1i32)) as OPJ_INT32,
+            );
+            t1data = t1data.offset(1);
+            k += 1
           }
+          i += 1
         }
-      } else {
-        let mut tiledp_f = tiledp as *mut OPJ_FLOAT32;
-        let mut t1data_0 = t1.data.offset(0);
-        /* Change from "natural" order to "zigzag" order of T1 passes */
-        /* Change from "natural" order to "zigzag" order of T1 passes */
-        j = 0 as OPJ_UINT32; /* fixed_quality */
-        while j < cblk_h & !(3u32) {
-          i = 0 as OPJ_UINT32; /* compno  */
-          while i < cblk_w {
+      }
+    } else {
+      let mut t1data_0 = t1.data.offset(0);
+      /* Change from "natural" order to "zigzag" order of T1 passes */
+      /* Change from "natural" order to "zigzag" order of T1 passes */
+      j = 0 as OPJ_UINT32; /* fixed_quality */
+      while j < cblk_h & !(3u32) {
+        i = 0 as OPJ_UINT32; /* compno  */
+        while i < cblk_w {
+          t1data_0.set_at(
+            0,
+            opj_lrintf(
+              f32::from_bits(tile_data[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i)
+                as usize] as OPJ_UINT32)
+                / band_stepsize
+                * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
+            ) as OPJ_INT32,
+          );
+          t1data_0.set_at(
+            1,
+            opj_lrintf(
+              f32::from_bits(tile_data[base.wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w)).wrapping_add(i)
+                as usize] as OPJ_UINT32)
+                / band_stepsize
+                * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
+            ) as OPJ_INT32,
+          );
+          t1data_0.set_at(
+            2,
+            opj_lrintf(
+              f32::from_bits(tile_data[base.wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w)).wrapping_add(i)
+                as usize] as OPJ_UINT32)
+                / band_stepsize
+                * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
+            ) as OPJ_INT32,
+          );
+          t1data_0.set_at(
+            3,
+            opj_lrintf(
+              f32::from_bits(tile_data[base.wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w)).wrapping_add(i)
+                as usize] as OPJ_UINT32)
+                / band_stepsize
+                * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
+            ) as OPJ_INT32,
+          );
+          t1data_0 = t1data_0.offset(4);
+          i += 1
+        }
+        j = (j as core::ffi::c_uint).wrapping_add(4) as OPJ_UINT32 as OPJ_UINT32
+      }
+      if j < cblk_h {
+        i = 0 as OPJ_UINT32;
+        while i < cblk_w {
+          let mut k_0: OPJ_UINT32 = 0;
+          k_0 = j;
+          while k_0 < cblk_h {
             t1data_0.set_at(
               0,
               opj_lrintf(
-                *tiledp_f.offset(j.wrapping_add(0).wrapping_mul(tile_w).wrapping_add(i) as isize)
-                  / (*band).stepsize
+                f32::from_bits(tile_data[base.wrapping_add(k_0.wrapping_mul(tile_w)).wrapping_add(i)
+                  as usize] as OPJ_UINT32)
+                  / band_stepsize
                   * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
               ) as OPJ_INT32,
             );
-            t1data_0.set_at(
-              1,
-              opj_lrintf(
-                *tiledp_f.offset(j.wrapping_add(1).wrapping_mul(tile_w).wrapping_add(i) as isize)
-                  / (*band).stepsize
-                  * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
-              ) as OPJ_INT32,
-            );
-            t1data_0.set_at(
-              2,
-              opj_lrintf(
-                *tiledp_f.offset(j.wrapping_add(2).wrapping_mul(tile_w).wrapping_add(i) as isize)
-                  / (*band).stepsize
-                  * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
-              ) as OPJ_INT32,
-            );
-            t1data_0.set_at(
-              3,
-              opj_lrintf(
-                *tiledp_f.offset(j.wrapping_add(3).wrapping_mul(tile_w).wrapping_add(i) as isize)
-                  / (*band).stepsize
-                  * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
-              ) as OPJ_INT32,
-            );
-            t1data_0 = t1data_0.offset(4);
-            i += 1
+            t1data_0 = t1data_0.offset(1);
+            k_0 += 1;
           }
-          j = (j as core::ffi::c_uint).wrapping_add(4) as OPJ_UINT32 as OPJ_UINT32
-        }
-        if j < cblk_h {
-          i = 0 as OPJ_UINT32;
-          while i < cblk_w {
-            let mut k_0: OPJ_UINT32 = 0;
-            k_0 = j;
-            while k_0 < cblk_h {
-              t1data_0.set_at(
-                0,
-                opj_lrintf(
-                  *tiledp_f.offset(k_0.wrapping_mul(tile_w).wrapping_add(i) as isize)
-                    / (*band).stepsize
-                    * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
-                ) as OPJ_INT32,
-              );
-              t1data_0 = t1data_0.offset(1);
-              k_0 += 1;
-            }
-            i += 1
-          }
+          i += 1
         }
       }
-      let mut cumwmsedec = opj_t1_encode_cblk(
-        t1,
-        cblk,
-        (*band).bandno,
-        (*job).compno,
-        (*tilec).numresolutions.wrapping_sub(1).wrapping_sub(resno),
-        (*tccp).qmfbid,
-        (*band).stepsize as OPJ_FLOAT64,
-        (*tccp).cblksty,
-        (*(*job).tile).numcomps,
-        (*job).mct_norms,
-        (*job).mct_numcomps,
-      );
-      (*(*job).tile).distotile += cumwmsedec;
-      drop(unsafe { Box::from_raw(job) });
-    })
-  }
-}
-
-pub(crate) fn opj_t1_encode_cblks(
-  mut tile: *mut opj_tcd_tile_t,
-  mut tcp: *mut opj_tcp_t,
-  mut mct_norms: *const OPJ_FLOAT64,
-  mut mct_numcomps: OPJ_UINT32,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut ret = 1i32;
-    let mut compno: OPJ_UINT32 = 0;
-    let mut resno: OPJ_UINT32 = 0;
-    let mut bandno: OPJ_UINT32 = 0;
-    let mut precno: OPJ_UINT32 = 0;
-    let mut cblkno: OPJ_UINT32 = 0;
-    (*tile).distotile = 0 as OPJ_FLOAT64;
-    compno = 0 as OPJ_UINT32;
-    's_19: while compno < (*tile).numcomps {
-      let mut tilec: *mut opj_tcd_tilecomp_t =
-        (&mut (*tile).comps).as_mut_ptr().add(compno as usize);
-      let mut tccp: *mut opj_tccp_t = (*tcp).tccps.as_mut_ptr().offset(compno as isize);
-      resno = 0 as OPJ_UINT32;
-      while resno < (*tilec).numresolutions {
-        let mut res: *mut opj_tcd_resolution_t =
-          (*tilec).resolutions.as_mut_ptr().offset(resno as isize);
-        bandno = 0 as OPJ_UINT32;
-        while bandno < (*res).numbands {
-          let mut band: *mut opj_tcd_band_t =
-            &mut *(*res).bands.as_mut_ptr().offset(bandno as isize) as *mut opj_tcd_band_t;
-          /* resno  */
-          /* bandno */
-          /* precno */
-          /* Skip empty bands */
-          if opj_tcd_is_band_empty(unsafe { &*band }) == 0 {
-            precno = 0 as OPJ_UINT32;
-            while precno < (*res).pw.wrapping_mul((*res).ph) {
-              let mut prc: *mut opj_tcd_precinct_t =
-                (*band).precincts.as_mut_ptr().offset(precno as isize);
-              cblkno = 0 as OPJ_UINT32;
-              while cblkno < (*prc).cw.wrapping_mul((*prc).ch) {
-                let mut cblk: *mut opj_tcd_cblk_enc_t =
-                  (&mut (*prc).cblks).enc_ptr().offset(cblkno as isize);
-                let mut job: *mut opj_t1_cblk_encode_processing_job_t = Box::into_raw(Box::new(Default::default()));
-                if job.is_null() {
-                  core::ptr::write_volatile(&mut ret as *mut OPJ_BOOL, 0i32);
-                  break 's_19;
-                } else {
-                  (*job).compno = compno;
-                  (*job).tile = tile;
-                  (*job).resno = resno;
-                  (*job).cblk = cblk;
-                  (*job).band = band;
-                  (*job).tilec = tilec;
-                  (*job).tccp = tccp;
-                  (*job).mct_norms = mct_norms;
-                  (*job).mct_numcomps = mct_numcomps;
-                  (*job).pret = &mut ret;
-                  opj_t1_cblk_encode_processor(job as _);
-                  cblkno += 1;
-                }
-              }
-              precno += 1;
-              /* cblkno */
-            }
-          }
-          bandno += 1;
-        }
-        resno += 1;
-      }
-      compno += 1;
     }
-    ret
-  }
+    let cumwmsedec = opj_t1_encode_cblk(
+      t1,
+      cblk,
+      bandno,
+      compno,
+      numresolutions_minus_resno,
+      tccp.qmfbid,
+      band_stepsize as OPJ_FLOAT64,
+      tccp.cblksty,
+      tile_numcomps,
+      mct_norms,
+      mct_numcomps,
+    );
+    *distotile += cumwmsedec;
+  })
 }
-
-/* Returns whether the pass (bpno, passtype) is terminated */
+pub(crate) fn opj_t1_encode_cblks(
+  tile: &mut opj_tcd_tile_t,
+  tcp: &opj_tcp_t,
+  mct_norms: *const OPJ_FLOAT64,
+  mct_numcomps: OPJ_UINT32,
+) -> OPJ_BOOL {
+  let mut ret = 1i32;
+  let mut compno: OPJ_UINT32 = 0;
+  tile.distotile = 0 as OPJ_FLOAT64;
+  compno = 0 as OPJ_UINT32;
+  's_19: while compno < tile.numcomps {
+    let tilec = &mut tile.comps[compno as usize];
+    let tccp = &tcp.tccps[compno as usize];
+    let tile_w = (tilec.x1 - tilec.x0) as OPJ_UINT32;
+    let tile_h = (tilec.y1 - tilec.y0) as OPJ_UINT32;
+    let tile_data = tilec.data.as_mut_slice((tile_w as usize).wrapping_mul(tile_h as usize));
+    let numresolutions_minus_1 = tilec.numresolutions.wrapping_sub(1u32);
+    let mut resno: OPJ_UINT32 = 0;
+    while resno < tilec.numresolutions {
+      let (prev_w, prev_h) = if resno > 0 {
+        let p = &tilec.resolutions[(resno - 1) as usize];
+        (p.x1 - p.x0, p.y1 - p.y0)
+      } else {
+        (0, 0)
+      };
+      let res = &mut tilec.resolutions[resno as usize];
+      let mut bandno: OPJ_UINT32 = 0;
+      while bandno < res.numbands {
+        let bandno_val = res.bands[bandno as usize].bandno;
+        let band_x0 = res.bands[bandno as usize].x0;
+        let band_y0 = res.bands[bandno as usize].y0;
+        let band_stepsize = res.bands[bandno as usize].stepsize;
+        let off_x = if bandno_val & 1 != 0 { prev_w } else { 0 };
+        let off_y = if bandno_val & 2 != 0 { prev_h } else { 0 };
+        let band = &mut res.bands[bandno as usize];
+        /* resno  */
+        /* bandno */
+        /* precno */
+        /* Skip empty bands */
+        if opj_tcd_is_band_empty(band) == 0 {
+          let mut precno: OPJ_UINT32 = 0;
+          while precno < res.pw.wrapping_mul(res.ph) {
+            let prc = &mut band.precincts[precno as usize];
+            let mut cblkno: OPJ_UINT32 = 0;
+            while cblkno < prc.cw.wrapping_mul(prc.ch) {
+              let cblk = (&mut prc.cblks).enc_mut(cblkno as usize);
+              opj_t1_cblk_encode_processor(
+                compno,
+                resno,
+                off_x as OPJ_UINT32,
+                off_y as OPJ_UINT32,
+                tile_data,
+                tile_w,
+                tile.numcomps,
+                numresolutions_minus_1.wrapping_sub(resno),
+                bandno_val,
+                band_x0,
+                band_y0,
+                band_stepsize,
+                cblk,
+                tccp,
+                mct_norms,
+                mct_numcomps,
+                &mut ret,
+                &mut tile.distotile,
+              );
+              cblkno += 1;
+            }
+            precno += 1;
+            /* cblkno */
+          }
+        }
+        bandno += 1;
+      }
+      resno += 1;
+    }
+    compno += 1;
+  }
+  ret
+}
 fn opj_t1_enc_is_term_pass(
   mut cblk: *mut opj_tcd_cblk_enc_t,
   mut cblksty: OPJ_UINT32,
