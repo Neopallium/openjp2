@@ -502,7 +502,9 @@ pub(crate) struct opj_tcp {
   pub tccps: Vec<opj_tccp_t>,
   pub m_current_tile_part_number: OPJ_INT32,
   pub m_nb_tile_parts: OPJ_UINT32,
-  pub m_data: *mut OPJ_BYTE,
+  /// Tile-part data buffer: `m_data_size` bytes of codestream data plus a 2-byte margin for the
+  /// MQ decoder's synthetic end marker.
+  pub m_data: Vec<OPJ_BYTE>,
   pub m_data_size: OPJ_UINT32,
   pub mct_norms: Vec<OPJ_FLOAT64>,
   pub m_mct_decoding_matrix: Vec<OPJ_FLOAT32>,
@@ -534,7 +536,7 @@ impl Default for opj_tcp {
       tccps: Vec::new(),
       m_current_tile_part_number: 0,
       m_nb_tile_parts: 0,
-      m_data: core::ptr::null_mut(),
+      m_data: Vec::new(),
       m_data_size: 0,
       mct_norms: Vec::new(),
       m_mct_decoding_matrix: Vec::new(),

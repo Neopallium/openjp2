@@ -3377,170 +3377,135 @@ fn opj_j2k_write_sod(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_sod(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_current_read_size: OPJ_SIZE_T = 0;
-    let mut l_current_data = core::ptr::null_mut::<*mut OPJ_BYTE>();
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_tile_len = core::ptr::null_mut::<OPJ_UINT32>();
-    let mut l_sot_length_pb_detected = 0i32;
-    /* preconditions */
+  let mut l_current_read_size: OPJ_SIZE_T = 0;
+  let mut l_sot_length_pb_detected = 0i32;
+  /* preconditions */
 
-    l_tcp = p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize);
-    if p_j2k.m_specific_param.m_decoder.m_last_tile_part != 0 {
-      /* opj_stream_get_number_byte_left returns OPJ_OFF_T
-      // but we are in the last tile part,
-      // so its result will fit on OPJ_UINT32 unless we find
-      // a file with a single tile part of more than 4 GB...*/
-      p_j2k.m_specific_param.m_decoder.m_sot_length =
-        (opj_stream_get_number_byte_left(p_stream) - 2i64) as OPJ_UINT32
-    } else if p_j2k.m_specific_param.m_decoder.m_sot_length >= 2u32 {
-      p_j2k.m_specific_param.m_decoder.m_sot_length = (p_j2k.m_specific_param.m_decoder.m_sot_length
-        as core::ffi::c_uint)
-        .wrapping_sub(2u32) as OPJ_UINT32
-    }
-    l_current_data = &mut (*l_tcp).m_data;
-    l_tile_len = &mut (*l_tcp).m_data_size;
-    /* Check to avoid pass the limit of OPJ_UINT32 */
-    /* Patch to support new PHR data */
-    if p_j2k.m_specific_param.m_decoder.m_sot_length != 0 {
-      /* If we are here, we'll try to read the data after allocation */
-      /* Check enough bytes left in stream before allocation */
-      if p_j2k.m_specific_param.m_decoder.m_sot_length as OPJ_OFF_T
-        > opj_stream_get_number_byte_left(p_stream)
-      {
-        if p_j2k.m_cp.strict != 0 {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "Tile part length size inconsistent with stream length\n",
-          );
-          return 0i32;
-        } else {
-          event_msg!(
-            p_manager,
-            EVT_WARNING,
-            "Tile part length size inconsistent with stream length\n",
-          );
-        }
-      }
-      if p_j2k.m_specific_param.m_decoder.m_sot_length
-        > (2147483647u32)
-          .wrapping_mul(2u32)
-          .wrapping_add(1u32)
-          .wrapping_sub(2u32)
-      {
+  let strict = p_j2k.m_cp.strict;
+  let l_tcp = &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
+  if p_j2k.m_specific_param.m_decoder.m_last_tile_part != 0 {
+    /* opj_stream_get_number_byte_left returns OPJ_OFF_T
+    // but we are in the last tile part,
+    // so its result will fit on OPJ_UINT32 unless we find
+    // a file with a single tile part of more than 4 GB...*/
+    p_j2k.m_specific_param.m_decoder.m_sot_length =
+      (opj_stream_get_number_byte_left(p_stream) - 2i64) as OPJ_UINT32
+  } else if p_j2k.m_specific_param.m_decoder.m_sot_length >= 2u32 {
+    p_j2k.m_specific_param.m_decoder.m_sot_length = (p_j2k.m_specific_param.m_decoder.m_sot_length
+      as core::ffi::c_uint)
+      .wrapping_sub(2u32) as OPJ_UINT32
+  }
+  /* Check to avoid pass the limit of OPJ_UINT32 */
+  /* Patch to support new PHR data */
+  if p_j2k.m_specific_param.m_decoder.m_sot_length != 0 {
+    /* If we are here, we'll try to read the data after allocation */
+    /* Check enough bytes left in stream before allocation */
+    if p_j2k.m_specific_param.m_decoder.m_sot_length as OPJ_OFF_T
+      > opj_stream_get_number_byte_left(p_stream)
+    {
+      if strict != 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "p_j2k->m_specific_param.m_decoder.m_sot_length > UINT_MAX - OPJ_COMMON_CBLK_DATA_EXTRA"
+          "Tile part length size inconsistent with stream length\n",
         );
         return 0i32;
-      }
-      /* Add a margin of OPJ_COMMON_CBLK_DATA_EXTRA to the allocation we */
-      /* do so that opj_mqc_init_dec_common() can safely add a synthetic */
-      /* 0xFFFF marker. */
-      if (*l_current_data).is_null() {
-        /* LH: oddly enough, in this path, l_tile_len!=0.
-         * TODO: If this was consistent, we could simplify the code to only use realloc(), as realloc(0,...) default to malloc(0,...).
-         */
-        *l_current_data = opj_malloc(
-          p_j2k
-            .m_specific_param
-            .m_decoder
-            .m_sot_length
-            .wrapping_add(2u32) as size_t,
-        ) as *mut OPJ_BYTE
       } else {
-        let mut l_new_current_data = core::ptr::null_mut::<OPJ_BYTE>();
-        if *l_tile_len
-          > (2147483647u32)
-            .wrapping_mul(2u32)
-            .wrapping_add(1u32)
-            .wrapping_sub(2u32)
-            .wrapping_sub(p_j2k.m_specific_param.m_decoder.m_sot_length)
-        {
-          event_msg!(p_manager, EVT_ERROR,
-                              "*l_tile_len > UINT_MAX - OPJ_COMMON_CBLK_DATA_EXTRA - p_j2k->m_specific_param.m_decoder.m_sot_length");
-          return 0i32;
-        }
-        l_new_current_data = opj_realloc(
-          *l_current_data as *mut core::ffi::c_void,
-          (*l_tile_len)
-            .wrapping_add(p_j2k.m_specific_param.m_decoder.m_sot_length)
-            .wrapping_add(2u32) as size_t,
-        ) as *mut OPJ_BYTE;
-        if l_new_current_data.is_null() {
-          opj_free(*l_current_data as *mut core::ffi::c_void);
-          /*nothing more is done as l_current_data will be set to null, and just
-          afterward we enter in the error path
-          and the actual tile_len is updated (committed) at the end of the
-          function. */
-        }
-        *l_current_data = l_new_current_data
+        event_msg!(
+          p_manager,
+          EVT_WARNING,
+          "Tile part length size inconsistent with stream length\n",
+        );
       }
-      if (*l_current_data).is_null() {
-        event_msg!(p_manager, EVT_ERROR, "Not enough memory to decode tile\n",);
-        return 0i32;
-      }
-    } else {
-      l_sot_length_pb_detected = 1i32
     }
-    /* Index */
-    if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
-      let mut l_current_pos = opj_stream_tell(p_stream) - 2i64;
-      let tile = &mut l_cstr_index.tiles[p_j2k.m_current_tile_number as usize];
-      let mut l_current_tile_part = tile.current_tpsno;
-      tile.tp_index[l_current_tile_part as usize].end_header = l_current_pos;
-      tile.tp_index[l_current_tile_part as usize].end_pos =
-        l_current_pos + p_j2k.m_specific_param.m_decoder.m_sot_length as i64 + 2i64;
-      if 0i32
-        == opj_j2k_add_tlmarker(
-          p_j2k.m_current_tile_number,
-          p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
-          J2KMarker::SOD,
-          l_current_pos,
-          p_j2k
-            .m_specific_param
-            .m_decoder
-            .m_sot_length
-            .wrapping_add(2u32),
-        )
-      {
-        event_msg!(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n",);
-        return 0i32;
-      }
-      /*l_cstr_index->packno = 0;*/
+    if p_j2k.m_specific_param.m_decoder.m_sot_length
+      > (2147483647u32)
+        .wrapping_mul(2u32)
+        .wrapping_add(1u32)
+        .wrapping_sub(2u32)
+    {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "p_j2k->m_specific_param.m_decoder.m_sot_length > UINT_MAX - OPJ_COMMON_CBLK_DATA_EXTRA"
+      );
+      return 0i32;
     }
-    /* Patch to support new PHR data */
-    if l_sot_length_pb_detected == 0 {
-      l_current_read_size = opj_stream_read_data(p_stream, unsafe { core::slice::from_raw_parts_mut((*l_current_data).offset(*l_tile_len as isize), p_j2k.m_specific_param.m_decoder.m_sot_length as usize) }, p_manager)
-    } else {
-      l_current_read_size = 0 as OPJ_SIZE_T
+    /* Add a margin of OPJ_COMMON_CBLK_DATA_EXTRA to the allocation we */
+    /* do so that opj_mqc_init_dec_common() can safely add a synthetic */
+    /* 0xFFFF marker. */
+    if l_tcp.m_data_size
+      > (2147483647u32)
+        .wrapping_mul(2u32)
+        .wrapping_add(1u32)
+        .wrapping_sub(2u32)
+        .wrapping_sub(p_j2k.m_specific_param.m_decoder.m_sot_length)
+    {
+      event_msg!(p_manager, EVT_ERROR,
+                          "*l_tile_len > UINT_MAX - OPJ_COMMON_CBLK_DATA_EXTRA - p_j2k->m_specific_param.m_decoder.m_sot_length");
+      return 0i32;
     }
-    if l_current_read_size != p_j2k.m_specific_param.m_decoder.m_sot_length as usize {
-      p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC
-    } else {
-      p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT
+    let new_len = l_tcp
+      .m_data_size
+      .wrapping_add(p_j2k.m_specific_param.m_decoder.m_sot_length) as usize;
+    if l_tcp.m_data.try_reserve_exact(new_len + 2 - l_tcp.m_data.len()).is_err() {
+      event_msg!(p_manager, EVT_ERROR, "Not enough memory to decode tile\n",);
+      return 0i32;
     }
-    *l_tile_len = (*l_tile_len as core::ffi::c_uint).wrapping_add(l_current_read_size as OPJ_UINT32)
-      as OPJ_UINT32;
-    1i32
+    l_tcp.m_data.resize(new_len + 2, 0);
+  } else {
+    l_sot_length_pb_detected = 1i32
   }
+  /* Index */
+  if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
+    let mut l_current_pos = opj_stream_tell(p_stream) - 2i64;
+    let tile = &mut l_cstr_index.tiles[p_j2k.m_current_tile_number as usize];
+    let mut l_current_tile_part = tile.current_tpsno;
+    tile.tp_index[l_current_tile_part as usize].end_header = l_current_pos;
+    tile.tp_index[l_current_tile_part as usize].end_pos =
+      l_current_pos + p_j2k.m_specific_param.m_decoder.m_sot_length as i64 + 2i64;
+    if 0i32
+      == opj_j2k_add_tlmarker(
+        p_j2k.m_current_tile_number,
+        p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
+        J2KMarker::SOD,
+        l_current_pos,
+        p_j2k
+          .m_specific_param
+          .m_decoder
+          .m_sot_length
+          .wrapping_add(2u32),
+      )
+    {
+      event_msg!(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n",);
+      return 0i32;
+    }
+    /*l_cstr_index->packno = 0;*/
+  }
+  /* Patch to support new PHR data */
+  if l_sot_length_pb_detected == 0 {
+    let tile_len = l_tcp.m_data_size as usize;
+    l_current_read_size = opj_stream_read_data(
+      p_stream,
+      &mut l_tcp.m_data[tile_len..tile_len + p_j2k.m_specific_param.m_decoder.m_sot_length as usize],
+      p_manager,
+    )
+  } else {
+    l_current_read_size = 0 as OPJ_SIZE_T
+  }
+  if l_current_read_size != p_j2k.m_specific_param.m_decoder.m_sot_length as usize {
+    p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC
+  } else {
+    p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT
+  }
+  l_tcp.m_data_size = l_tcp.m_data_size.wrapping_add(l_current_read_size as OPJ_UINT32);
+  1i32
 }
-/* *
- * Writes the RGN marker (Region Of Interest)
- *
- * @param       p_tile_no               the tile to output
- * @param       p_comp_no               the component to output
- * @param       nb_comps                the number of components
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
+
 fn opj_j2k_write_rgn(
   p_j2k: &mut opj_j2k,
   p_tile_no: OPJ_UINT32,
@@ -7004,12 +6969,8 @@ fn opj_j2k_tcp_destroy(p_tcp: &mut opj_tcp_t) {
  * @param       p_tcp           the tile coding parameter which contain data to destroy.
  */
 fn opj_j2k_tcp_data_destroy(p_tcp: &mut opj_tcp_t) {
-  if !p_tcp.m_data.is_null() {
-    // SAFETY: `m_data` is a malloc'd buffer owned by the tcp.
-    unsafe { opj_free(p_tcp.m_data as *mut core::ffi::c_void) };
-    p_tcp.m_data = core::ptr::null_mut::<OPJ_BYTE>();
-    p_tcp.m_data_size = 0 as OPJ_UINT32
-  };
+  p_tcp.m_data.clear();
+  p_tcp.m_data_size = 0 as OPJ_UINT32;
 }
 
 /* *
@@ -7418,7 +7379,7 @@ pub(crate) fn opj_j2k_read_tile_header(
       while p_j2k.m_current_tile_number < l_nb_tiles
         && p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]
           .m_data
-          .is_null()
+          .is_empty()
       {
         p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);
       }
@@ -7482,7 +7443,7 @@ pub(crate) fn opj_j2k_decode_tile(
     return 0i32;
   }
   let l_tcp = &mut p_j2k.m_cp.tcps[p_tile_index as usize];
-  if l_tcp.m_data.is_null() {
+  if l_tcp.m_data.is_empty() {
     opj_j2k_tcp_destroy(l_tcp);
     return 0i32;
   }
@@ -7506,7 +7467,7 @@ pub(crate) fn opj_j2k_decode_tile(
       l_bounds_y1,
       p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode,
       p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode.as_ptr(),
-      l_tcp.m_data,
+      l_tcp.m_data.as_mut_ptr(),
       l_tcp.m_data_size,
       p_tile_index,
       p_j2k.cstr_index.as_deref_mut().map(|i| i as *mut CodestreamIndex).unwrap_or(core::ptr::null_mut()),
@@ -7888,7 +7849,7 @@ pub(crate) fn opj_j2k_set_decode_area(
     let mut it_comp: OPJ_UINT32 = 0;
     if !(p_j2k.m_cp.tw == 1u32
       && p_j2k.m_cp.th == 1u32
-      && !p_j2k.m_cp.tcps[0].m_data.is_null())
+      && !p_j2k.m_cp.tcps[0].m_data.is_empty())
     {
       /* Check if we are read the main header */
       if p_j2k.m_specific_param.m_decoder.m_state != J2KState::TPHSOT {
@@ -9114,7 +9075,7 @@ fn opj_j2k_decode_tiles(
     loop {
       if p_j2k.m_cp.tw == 1u32
         && p_j2k.m_cp.th == 1u32
-        && !p_j2k.m_cp.tcps[0].m_data.is_null()
+        && !p_j2k.m_cp.tcps[0].m_data.is_empty()
       {
         tile_info.index = 0 as OPJ_UINT32;
         p_j2k.m_current_tile_number = 0 as OPJ_UINT32;
