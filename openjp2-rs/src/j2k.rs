@@ -4123,45 +4123,45 @@ fn opj_j2k_read_unk(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_write_mct_record(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_mct_record: &opj_mct_data,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_mct_size: OPJ_UINT32 = 0;
-    let mut l_tmp: OPJ_UINT32 = 0;
-    /* preconditions */
-    /* Lmct */
+  let l_mct_size: OPJ_UINT32;
+  let l_tmp: OPJ_UINT32;
+  /* preconditions */
+  /* Lmct */
 
-    l_mct_size = (10u32).wrapping_add(p_mct_record.m_data.len() as OPJ_UINT32);
-    let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
-    l_buf.resize(l_mct_size as usize, 0);
-    let mut pos: usize = 0;
-    opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCT.as_u32(), 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], l_mct_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    /* only one marker atm */
-    l_tmp = p_mct_record.m_index & 0xffu32
-      | (p_mct_record.m_array_type as core::ffi::c_uint) << 8i32
-      | (p_mct_record.m_element_type as core::ffi::c_uint) << 10i32; /* Ymct */
-    opj_write_bytes(&mut l_buf[pos..], l_tmp, 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    l_buf[pos..].copy_from_slice(&p_mct_record.m_data);
-    pos += p_mct_record.m_data.len();
-    if opj_stream_write_data(p_stream, &l_buf[..l_mct_size as usize], p_manager) != l_mct_size as usize
-    {
-      return 0i32;
-    }
-    p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-    1i32
+  l_mct_size = (10u32).wrapping_add(p_mct_record.m_data.len() as OPJ_UINT32);
+  let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
+  l_buf.resize(l_mct_size as usize, 0);
+  let mut pos: usize = 0;
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCT.as_u32(), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_mct_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  /* only one marker atm */
+  l_tmp = p_mct_record.m_index & 0xffu32
+    | (p_mct_record.m_array_type as core::ffi::c_uint) << 8i32
+    | (p_mct_record.m_element_type as core::ffi::c_uint) << 10i32; /* Ymct */
+  opj_write_bytes(&mut l_buf[pos..], l_tmp, 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  l_buf[pos..].copy_from_slice(&p_mct_record.m_data);
+  pos += p_mct_record.m_data.len();
+  if opj_stream_write_data(p_stream, &l_buf[..l_mct_size as usize], p_manager)
+    != l_mct_size as usize
+  {
+    return 0i32;
   }
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
+  1i32
 }
+
 /* *
  * Reads a MCT marker (Multiple Component Transform)
  *
@@ -4270,85 +4270,85 @@ fn opj_j2k_read_mct(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_mcc_record(
-  mut p_j2k: &mut opj_j2k,
+  p_j2k: &mut opj_j2k,
   p_mcc_record: &opj_simple_mcc_decorrelation_data,
   mct_records: &[opj_mct_data],
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_mcc_size: OPJ_UINT32 = 0;
-        let mut l_nb_bytes_for_comp: OPJ_UINT32 = 0;
-    let mut l_mask: OPJ_UINT32 = 0;
-    let mut l_tmcc: OPJ_UINT32 = 0;
-    /* preconditions */
-    /* Lmcc */
+  let mut i: OPJ_UINT32 = 0;
+  let l_mcc_size: OPJ_UINT32;
+  let l_nb_bytes_for_comp: OPJ_UINT32;
+  let l_mask: OPJ_UINT32;
+  let mut l_tmcc: OPJ_UINT32 = 0;
+  /* preconditions */
+  /* Lmcc */
 
-    if p_mcc_record.m_nb_comps > 255u32 {
-      l_nb_bytes_for_comp = 2 as OPJ_UINT32;
-      l_mask = 0x8000 as OPJ_UINT32
-    } else {
-      l_nb_bytes_for_comp = 1 as OPJ_UINT32;
-      l_mask = 0 as OPJ_UINT32
-    }
-    l_mcc_size = p_mcc_record
-      .m_nb_comps
-      .wrapping_mul(2u32)
-      .wrapping_mul(l_nb_bytes_for_comp)
-      .wrapping_add(19u32);
-    let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
-    l_buf.resize(l_mcc_size as usize, 0);
-    let mut pos: usize = 0;
-    opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCC.as_u32(), 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], l_mcc_size.wrapping_sub(2u32), 2 as OPJ_UINT32,);
-    pos += 2 as usize;
-    /* first marker */
-    opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32); /* Zmcc */
-    pos += 2 as usize; /* Imcc -> no need for other values, take the first */
-    opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_index, 1 as OPJ_UINT32);
-    pos += 1 as usize;
-    /* only one marker atm */
-    opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32); /* Ymcc */
-    pos += 2 as usize; /* Qmcc -> number of collections -> 1 */
-    opj_write_bytes(&mut l_buf[pos..], 1 as OPJ_UINT32, 2 as OPJ_UINT32); /* Xmcci type of component transformation -> array based decorrelation */
-    pos += 2 as usize; /* Nmcci number of input components involved and size for each component offset = 8 bits */
-    opj_write_bytes(&mut l_buf[pos..], 0x1 as OPJ_UINT32, 1 as OPJ_UINT32); /* Cmccij Component offset*/
-    pos += 1 as usize; /* Mmcci number of output components involved and size for each component offset = 8 bits */
-    opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_nb_comps | l_mask, 2 as OPJ_UINT32,); /* Wmccij Component offset*/
-    pos += 2 as usize; /* Tmcci : use MCT defined as number 1 and irreversible array based. */
-    i = 0 as OPJ_UINT32;
-    while i < p_mcc_record.m_nb_comps {
-      opj_write_bytes(&mut l_buf[pos..], i, l_nb_bytes_for_comp);
-      pos += l_nb_bytes_for_comp as isize as usize;
-      i += 1;
-    }
-    opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_nb_comps | l_mask, 2 as OPJ_UINT32,);
-    pos += 2 as usize;
-    i = 0 as OPJ_UINT32;
-    while i < p_mcc_record.m_nb_comps {
-      opj_write_bytes(&mut l_buf[pos..], i, l_nb_bytes_for_comp);
-      pos += l_nb_bytes_for_comp as isize as usize;
-      i += 1;
-    }
-    l_tmcc = ((!p_mcc_record.m_is_irreversible) as core::ffi::c_uint & 1u32) << 16i32;
-    if let Some(deco_idx) = p_mcc_record.m_decorrelation_array {
-      l_tmcc |= mct_records[deco_idx].m_index
-    }
-    if let Some(offset_idx) = p_mcc_record.m_offset_array {
-      l_tmcc |= mct_records[offset_idx].m_index << 8i32
-    }
-    opj_write_bytes(&mut l_buf[pos..], l_tmcc, 3 as OPJ_UINT32);
-    pos += 3 as usize;
-    if opj_stream_write_data(p_stream, &l_buf[..l_mcc_size as usize], p_manager) != l_mcc_size as usize
-    {
-      return 0i32;
-    }
-    p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-    1i32
+  if p_mcc_record.m_nb_comps > 255u32 {
+    l_nb_bytes_for_comp = 2 as OPJ_UINT32;
+    l_mask = 0x8000 as OPJ_UINT32
+  } else {
+    l_nb_bytes_for_comp = 1 as OPJ_UINT32;
+    l_mask = 0 as OPJ_UINT32
   }
+  l_mcc_size = p_mcc_record
+    .m_nb_comps
+    .wrapping_mul(2u32)
+    .wrapping_mul(l_nb_bytes_for_comp)
+    .wrapping_add(19u32);
+  let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
+  l_buf.resize(l_mcc_size as usize, 0);
+  let mut pos: usize = 0;
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCC.as_u32(), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_mcc_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  /* first marker */
+  opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32); /* Zmcc */
+  pos += 2 as usize; /* Imcc -> no need for other values, take the first */
+  opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_index, 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  /* only one marker atm */
+  opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32); /* Ymcc */
+  pos += 2 as usize; /* Qmcc -> number of collections -> 1 */
+  opj_write_bytes(&mut l_buf[pos..], 1 as OPJ_UINT32, 2 as OPJ_UINT32); /* Xmcci type of component transformation -> array based decorrelation */
+  pos += 2 as usize; /* Nmcci number of input components involved and size for each component offset = 8 bits */
+  opj_write_bytes(&mut l_buf[pos..], 0x1 as OPJ_UINT32, 1 as OPJ_UINT32); /* Cmccij Component offset*/
+  pos += 1 as usize; /* Mmcci number of output components involved and size for each component offset = 8 bits */
+  opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_nb_comps | l_mask, 2 as OPJ_UINT32); /* Wmccij Component offset*/
+  pos += 2 as usize; /* Tmcci : use MCT defined as number 1 and irreversible array based. */
+  i = 0 as OPJ_UINT32;
+  while i < p_mcc_record.m_nb_comps {
+    opj_write_bytes(&mut l_buf[pos..], i, l_nb_bytes_for_comp);
+    pos += l_nb_bytes_for_comp as usize;
+    i += 1;
+  }
+  opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_nb_comps | l_mask, 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  i = 0 as OPJ_UINT32;
+  while i < p_mcc_record.m_nb_comps {
+    opj_write_bytes(&mut l_buf[pos..], i, l_nb_bytes_for_comp);
+    pos += l_nb_bytes_for_comp as usize;
+    i += 1;
+  }
+  l_tmcc = ((!p_mcc_record.m_is_irreversible) as core::ffi::c_uint & 1u32) << 16i32;
+  if let Some(deco_idx) = p_mcc_record.m_decorrelation_array {
+    l_tmcc |= mct_records[deco_idx].m_index
+  }
+  if let Some(offset_idx) = p_mcc_record.m_offset_array {
+    l_tmcc |= mct_records[offset_idx].m_index << 8i32
+  }
+  opj_write_bytes(&mut l_buf[pos..], l_tmcc, 3 as OPJ_UINT32);
+  pos += 3 as usize;
+  if opj_stream_write_data(p_stream, &l_buf[..l_mcc_size as usize], p_manager)
+    != l_mcc_size as usize
+  {
+    return 0i32;
+  }
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
+  1i32
 }
+
 /* *
  * Reads a MCC marker (Multiple Component Collection)
  *
@@ -4581,40 +4581,34 @@ fn opj_j2k_read_mcc(
  * @param       p_j2k                           J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_mco(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-        let mut l_mco_size: OPJ_UINT32 = 0;
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    /* preconditions */
-    /* Lmco */
-    /* Imco -> use the mcc indicated by 1*/
-    l_tcp = p_j2k.m_cp.tcps.as_mut_ptr().offset(p_j2k.m_current_tile_number as isize);
-    l_mco_size = (5u32).wrapping_add((*l_tcp).m_mcc_records.len() as OPJ_UINT32);
-    let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
-    l_buf.resize(l_mco_size as usize, 0);
-    let mut pos: usize = 0;
-    opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCO.as_u32(), 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], l_mco_size.wrapping_sub(2u32), 2 as OPJ_UINT32,);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], (*l_tcp).m_mcc_records.len() as OPJ_UINT32, 1 as OPJ_UINT32,);
+fn opj_j2k_write_mco(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  let l_mco_size: OPJ_UINT32;
+  /* preconditions */
+  /* Lmco */
+  /* Imco -> use the mcc indicated by 1*/
+  let l_tcp = &p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
+  l_mco_size = (5u32).wrapping_add(l_tcp.m_mcc_records.len() as OPJ_UINT32);
+  let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
+  l_buf.resize(l_mco_size as usize, 0);
+  let mut pos: usize = 0;
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCO.as_u32(), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_mco_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_tcp.m_mcc_records.len() as OPJ_UINT32, 1 as OPJ_UINT32);
+  pos += 1 as usize;
+  for l_mcc_record in &l_tcp.m_mcc_records {
+    opj_write_bytes(&mut l_buf[pos..], l_mcc_record.m_index, 1 as OPJ_UINT32);
     pos += 1 as usize;
-    for l_mcc_record in &(*l_tcp).m_mcc_records {
-      opj_write_bytes(&mut l_buf[pos..], l_mcc_record.m_index, 1 as OPJ_UINT32);
-      pos += 1 as usize;
-    }
-    if opj_stream_write_data(p_stream, &l_buf[..l_mco_size as usize], p_manager) != l_mco_size as usize
-    {
-      return 0i32;
-    }
-    p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-    1i32
   }
+  if opj_stream_write_data(p_stream, &l_buf[..l_mco_size as usize], p_manager) != l_mco_size as usize
+  {
+    return 0i32;
+  }
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
+  1i32
 }
+
 /* *
  * Reads a MCO marker (Multiple Component Transform Ordering)
  *
@@ -4770,44 +4764,42 @@ fn opj_j2k_add_mct(
  * @param       p_j2k                           J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_cbd(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut i: OPJ_UINT32 = 0;
-    let mut l_cbd_size: OPJ_UINT32 = 0;
-    let mut l_comp = core::ptr::null_mut::<CoreImageComp>();
-    /* preconditions */
-    /* L_CBD */
-    /* Component bit depth */
-    let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-    l_cbd_size = (6u32).wrapping_add(p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
-    let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
-    l_buf.resize(l_cbd_size as usize, 0);
-    let mut pos: usize = 0;
-    opj_write_bytes(&mut l_buf[pos..], J2KMarker::CBD.as_u32(), 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], l_cbd_size.wrapping_sub(2u32), 2 as OPJ_UINT32,);
-    pos += 2 as usize;
-    opj_write_bytes(&mut l_buf[pos..], l_image.numcomps, 2 as OPJ_UINT32);
-    pos += 2 as usize;
-    l_comp = l_image.comps.as_ptr() as *mut CoreImageComp;
-    i = 0 as OPJ_UINT32;
-    while i < l_image.numcomps {
-      opj_write_bytes(&mut l_buf[pos..], (*l_comp).sgnd << 7i32 | (*l_comp).prec.wrapping_sub(1u32), 1 as OPJ_UINT32,);
-      pos += 1 as usize;
-      l_comp = l_comp.offset(1);
-      i += 1;
-    }
-    if opj_stream_write_data(p_stream, &l_buf[..l_cbd_size as usize], p_manager) != l_cbd_size as usize
-    {
-      return 0i32;
-    }
-    p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-    1i32  }
+fn opj_j2k_write_cbd(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  let mut i: OPJ_UINT32 = 0;
+  let l_cbd_size: OPJ_UINT32;
+  /* preconditions */
+  /* L_CBD */
+  /* Component bit depth */
+  let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
+  l_cbd_size = (6u32).wrapping_add(l_image.numcomps);
+  let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
+  l_buf.resize(l_cbd_size as usize, 0);
+  let mut pos: usize = 0;
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::CBD.as_u32(), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_cbd_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  opj_write_bytes(&mut l_buf[pos..], l_image.numcomps, 2 as OPJ_UINT32);
+  pos += 2 as usize;
+  i = 0 as OPJ_UINT32;
+  while i < l_image.numcomps {
+    let comp = &l_image.comps[i as usize];
+    opj_write_bytes(
+      &mut l_buf[pos..],
+      comp.sgnd << 7i32 | comp.prec.wrapping_sub(1u32),
+      1 as OPJ_UINT32,
+    );
+    pos += 1 as usize;
+    i += 1;
+  }
+  if opj_stream_write_data(p_stream, &l_buf[..l_cbd_size as usize], p_manager) != l_cbd_size as usize
+  {
+    return 0i32;
+  }
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
+  1i32
 }
+
 /* *
  * Reads a CBD marker (Component bit depth definition)
  * @param       p_header_data   the data contained in the CBD box.
