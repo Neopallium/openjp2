@@ -1652,10 +1652,11 @@ pub(crate) fn opj_tcd_update_tile_data(p_tcd: &mut opj_tcd, mut p_dest: &mut [u8
     {
       return 0i32;
     }
-    let numcomps = (*p_tcd.image).numcomps as usize;
+    // SAFETY: `image` is the codec's private image.
+    let image = unsafe { &*p_tcd.image };
+    let numcomps = image.numcomps as usize;
     let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
-    let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps.as_ptr(), numcomps);
-    for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
+    for (l_tilec, l_img_comp) in l_tilec.iter().zip(image.comps.iter()) {
       let mut l_size_comp = l_img_comp.prec >> 3i32;
       let l_remaining = l_img_comp.prec & 7u32;
       let l_res = l_tilec
@@ -2139,13 +2140,11 @@ pub(crate) fn opj_tcd_get_encoder_input_buffer_size(mut p_tcd: &mut opj_tcd) -> 
   let mut l_data_size = 0 as OPJ_SIZE_T;
   let mut l_size_comp: OPJ_UINT32 = 0;
   let mut l_remaining: OPJ_UINT32 = 0;
-  let (l_tilec, l_img_comp) = unsafe {
-    let numcomps = (*p_tcd.image).numcomps as usize;
-    let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
-    let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps.as_ptr(), numcomps);
-    (l_tilec, l_img_comp)
-  };
-  for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
+  // SAFETY: `image` is the codec's private image.
+  let image = unsafe { &*p_tcd.image };
+  let numcomps = image.numcomps as usize;
+  let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
+  for (l_tilec, l_img_comp) in l_tilec.iter().zip(image.comps.iter()) {
     l_size_comp = l_img_comp.prec >> 3i32;
     l_remaining = l_img_comp.prec & 7u32;
     if l_remaining != 0 {
@@ -2385,10 +2384,11 @@ pub(crate) fn opj_tcd_copy_tile_data(p_tcd: &mut opj_tcd, mut p_src: &[u8]) -> O
     if l_data_size != p_src.len() {
       return 0i32;
     }
-    let numcomps = (*p_tcd.image).numcomps as usize;
-    let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
-    let mut l_img_comp = core::slice::from_raw_parts((*p_tcd.image).comps.as_ptr(), numcomps);
-    for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_img_comp.iter()) {
+    // SAFETY: `image` is the codec's private image.
+    let image = unsafe { &*p_tcd.image };
+    let numcomps = image.numcomps as usize;
+    let l_tilec = &mut p_tcd.tcd_image.tiles.comps[..numcomps];
+    for (l_tilec, l_img_comp) in l_tilec.iter_mut().zip(image.comps.iter()) {
       l_size_comp = l_img_comp.prec >> 3i32;
       l_remaining = l_img_comp.prec & 7u32;
       l_nb_elem = ((l_tilec.x1 - l_tilec.x0) as OPJ_SIZE_T)
@@ -2399,7 +2399,7 @@ pub(crate) fn opj_tcd_copy_tile_data(p_tcd: &mut opj_tcd, mut p_src: &[u8]) -> O
       if l_size_comp == 3u32 {
         l_size_comp = 4 as OPJ_UINT32
       }
-      let l_dest = core::slice::from_raw_parts_mut(l_tilec.data.as_mut_ptr(), l_nb_elem as usize);
+      let l_dest = l_tilec.data.as_mut_slice(l_nb_elem as usize);
       match l_size_comp {
         1 => {
           let (src, remain) = p_src.split_at(l_nb_elem);
