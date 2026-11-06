@@ -2262,36 +2262,36 @@ fn opj_tcd_dwt_encode(p_tcd: &mut opj_tcd) -> OPJ_BOOL {
   }
   1i32
 }
-fn opj_tcd_t1_encode(mut p_tcd: &mut opj_tcd) -> OPJ_BOOL {
-  unsafe {
-    let mut l_mct_norms = core::ptr::null::<OPJ_FLOAT64>();
-    let mut l_mct_numcomps = 0u32;
-    let mut l_tcp = p_tcd.tcp;
-    if (*l_tcp).mct == 1u32 {
-      l_mct_numcomps = 3u32;
-      /* irreversible encoding */
-      if (&(*l_tcp).tccps)[0].qmfbid == 0u32 {
-        l_mct_norms = opj_mct_get_mct_norms_real()
-      } else {
-        l_mct_norms = opj_mct_get_mct_norms()
-      }
+fn opj_tcd_t1_encode(p_tcd: &mut opj_tcd) -> OPJ_BOOL {
+  // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
+  let l_tcp = unsafe { &*p_tcd.tcp };
+  let image = unsafe { &*p_tcd.image };
+  let mut l_mct_norms = core::ptr::null::<OPJ_FLOAT64>();
+  let mut l_mct_numcomps = 0u32;
+  if l_tcp.mct == 1u32 {
+    l_mct_numcomps = 3u32;
+    /* irreversible encoding */
+    if l_tcp.tccps[0].qmfbid == 0u32 {
+      l_mct_norms = opj_mct_get_mct_norms_real()
     } else {
-      l_mct_numcomps = (*p_tcd.image).numcomps;
-      /* An empty norms Vec must stay a null pointer: callers test `is_null()`
-      to decide whether per-component norms apply. */
-      l_mct_norms = if (*l_tcp).mct_norms.is_empty() {
-        core::ptr::null()
-      } else {
-        (*l_tcp).mct_norms.as_ptr()
-      }
+      l_mct_norms = opj_mct_get_mct_norms()
     }
-    opj_t1_encode_cblks(
-      &mut p_tcd.tcd_image.tiles,
-      l_tcp,
-      l_mct_norms,
-      l_mct_numcomps,
-    )
+  } else {
+    l_mct_numcomps = image.numcomps;
+    /* An empty norms Vec must stay a null pointer: callers test `is_null()`
+    to decide whether per-component norms apply. */
+    l_mct_norms = if l_tcp.mct_norms.is_empty() {
+      core::ptr::null()
+    } else {
+      l_tcp.mct_norms.as_ptr()
+    }
   }
+  opj_t1_encode_cblks(
+    &mut p_tcd.tcd_image.tiles,
+    p_tcd.tcp,
+    l_mct_norms,
+    l_mct_numcomps,
+  )
 }
 fn opj_tcd_t2_encode(
   mut p_tcd: &mut opj_tcd,
