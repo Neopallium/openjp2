@@ -3927,27 +3927,22 @@ fn opj_j2k_write_mct_data_group(
  * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_all_coc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut compno: OPJ_UINT32 = 0;
-    /* preconditions */
+fn opj_j2k_write_all_coc(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  let mut compno: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    compno = 1 as OPJ_UINT32;
-    while compno < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
-      /* cod is first component of first tile */
-      if opj_j2k_compare_coc(p_j2k, 0 as OPJ_UINT32, compno) == 0
-        && opj_j2k_write_coc(p_j2k, compno, p_stream, p_manager) == 0
-      {
-        return 0i32;
-      }
-      compno += 1;
+  compno = 1 as OPJ_UINT32;
+  let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  while compno < numcomps {
+    /* cod is first component of first tile */
+    if opj_j2k_compare_coc(p_j2k, 0 as OPJ_UINT32, compno) == 0
+      && opj_j2k_write_coc(p_j2k, compno, p_stream, p_manager) == 0
+    {
+      return 0i32;
     }
-    1i32
+    compno += 1;
   }
+  1i32
 }
 /* *
  * Writes QCC marker for each component.
@@ -3956,27 +3951,22 @@ fn opj_j2k_write_all_coc(
  * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_all_qcc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut compno: OPJ_UINT32 = 0;
-    /* preconditions */
+fn opj_j2k_write_all_qcc(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  let mut compno: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    compno = 1 as OPJ_UINT32;
-    while compno < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
-      /* qcd is first component of first tile */
-      if opj_j2k_compare_qcc(p_j2k, 0 as OPJ_UINT32, compno) == 0
-        && opj_j2k_write_qcc(p_j2k, compno, p_stream, p_manager) == 0
-      {
-        return 0i32;
-      }
-      compno += 1;
+  compno = 1 as OPJ_UINT32;
+  let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  while compno < numcomps {
+    /* qcd is first component of first tile */
+    if opj_j2k_compare_qcc(p_j2k, 0 as OPJ_UINT32, compno) == 0
+      && opj_j2k_write_qcc(p_j2k, compno, p_stream, p_manager) == 0
+    {
+      return 0i32;
     }
-    1i32
+    compno += 1;
   }
+  1i32
 }
 /* *
  * Writes regions of interests.
@@ -3985,36 +3975,21 @@ fn opj_j2k_write_all_qcc(
  * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_regions(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut compno: OPJ_UINT32 = 0;
-    let mut l_tccp = core::ptr::null::<opj_tccp_t>();
-    /* preconditions */
+fn opj_j2k_write_regions(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  let mut compno: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    l_tccp = p_j2k.m_cp.tcps[0].tccps.as_ptr();
-    compno = 0 as OPJ_UINT32;
-    while compno < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
-      if (*l_tccp).roishift != 0
-        && opj_j2k_write_rgn(
-          p_j2k,
-          0 as OPJ_UINT32,
-          compno,
-          p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps,
-          p_stream,
-          p_manager,
-        ) == 0
-      {
-        return 0i32;
-      }
-      l_tccp = l_tccp.offset(1);
-      compno += 1;
+  let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  compno = 0 as OPJ_UINT32;
+  while compno < numcomps {
+    if p_j2k.m_cp.tcps[0].tccps[compno as usize].roishift != 0
+      && opj_j2k_write_rgn(p_j2k, 0 as OPJ_UINT32, compno, numcomps, p_stream, p_manager) == 0
+    {
+      return 0i32;
     }
-    1i32
+    compno += 1;
   }
+  1i32
 }
 /* *
  * Writes EPC ????
@@ -4023,26 +3998,20 @@ fn opj_j2k_write_regions(
  * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_epc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_stream: &mut Stream,
-  mut _p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    /* preconditions */
+fn opj_j2k_write_epc(p_j2k: &mut opj_j2k, p_stream: &mut Stream, _p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+  /* preconditions */
 
-    if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
-      l_cstr_index.codestream_size = opj_stream_tell(p_stream) as OPJ_UINT64;
-      /* UniPG>> */
-      /* The following adjustment is done to adjust the codestream size */
-      /* if SOD is not at 0 in the buffer. Useful in case of JP2, where */
-      /* the first bunch of bytes is not in the codestream              */
-      l_cstr_index.codestream_size -= l_cstr_index.main_head_start as OPJ_UINT64;
-      /* <<UniPG */
-    }
-    /* USE_JPWL */
-    1i32
+  if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
+    l_cstr_index.codestream_size = opj_stream_tell(p_stream) as OPJ_UINT64;
+    /* UniPG>> */
+    /* The following adjustment is done to adjust the codestream size */
+    /* if SOD is not at 0 in the buffer. Useful in case of JP2, where */
+    /* the first bunch of bytes is not in the codestream              */
+    l_cstr_index.codestream_size -= l_cstr_index.main_head_start as OPJ_UINT64;
+    /* <<UniPG */
   }
+  /* USE_JPWL */
+  1i32
 }
 /* *
  * Reads an unknown marker
@@ -6929,56 +6898,56 @@ fn opj_j2k_exec(
  */
 /* FIXME DOC*/
 fn opj_j2k_copy_default_tcp_and_create_tcd(
-  mut p_j2k: &mut opj_j2k,
-  mut _p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  p_j2k: &mut opj_j2k,
+  _p_stream: &mut Stream,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_default_tcp = core::ptr::null_mut::<opj_tcp_t>();
-    let mut l_nb_tiles: OPJ_UINT32 = 0;
-    let mut i: OPJ_UINT32 = 0;
-    /* preconditions */
+  let l_nb_tiles: OPJ_UINT32;
+  let mut i: OPJ_UINT32 = 0;
+  /* preconditions */
 
-    l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
-    l_tcp = p_j2k.m_cp.tcps.as_mut_ptr();
-    l_default_tcp = p_j2k
-      .m_specific_param
-      .m_decoder
-      .m_default_tcp
-      .as_deref_mut()
-      .expect("decoder m_default_tcp is always set") as *mut opj_tcp_t;
-    /* For each tile */
-    i = 0 as OPJ_UINT32;
-    while i < l_nb_tiles {
-      /* keep the tile-compo coding parameters of the current tile coding parameters*/
-      let l_current_tccp = core::mem::take(&mut (*l_tcp).tccps);
-      /* Deep-copy the default coding parameters into the current tile coding parameters.
-      (The C code memcpy's the whole struct and then rebuilds every owned buffer; clone()
-      does the deep copies directly.) */
-      (*l_tcp) = (*l_default_tcp).clone();
-      /* Initialize some values of the current tile coding parameters*/
-      (*l_tcp).cod = false;
-      (*l_tcp).ppt = false;
-      (*l_tcp).ppt_markers = Vec::new();
-      (*l_tcp).ppt_buffer = Vec::new();
-      (*l_tcp).ppt_data_pos = 0;
-      (*l_tcp).m_current_tile_part_number = -(1i32);
-      /* Reconnect this tile's own tccps allocation, to keep buffer reuse. */
-      (*l_tcp).tccps = l_current_tccp;
-      /* Copy all the dflt_tile_compo_cp to the current tile cp */
-      (&mut (*l_tcp).tccps).copy_from_slice(&(&(*l_default_tcp).tccps)[..]);
-      /* Move to next tile cp*/
-      l_tcp = l_tcp.offset(1);
-      i += 1;
-    }
-    // Init the current tile decoder
-    if opj_tcd_init(&mut p_j2k.m_tcd, p_j2k.m_private_image.as_deref_mut().expect("m_private_image") as *mut CoreImage, &mut p_j2k.m_cp) == 0 {
-      event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
-      return 0i32;
-    }
-    1i32
+  l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
+  let l_default_tcp = p_j2k
+    .m_specific_param
+    .m_decoder
+    .m_default_tcp
+    .as_deref_mut()
+    .expect("decoder m_default_tcp is always set");
+  /* For each tile */
+  i = 0 as OPJ_UINT32;
+  while i < l_nb_tiles {
+    /* keep the tile-compo coding parameters of the current tile coding parameters*/
+    let l_current_tccp = core::mem::take(&mut p_j2k.m_cp.tcps[i as usize].tccps);
+    /* Deep-copy the default coding parameters into the current tile coding parameters.
+    (The C code memcpy's the whole struct and then rebuilds every owned buffer; clone()
+    does the deep copies directly.) */
+    p_j2k.m_cp.tcps[i as usize] = l_default_tcp.clone();
+    let l_tcp = &mut p_j2k.m_cp.tcps[i as usize];
+    /* Initialize some values of the current tile coding parameters*/
+    l_tcp.cod = false;
+    l_tcp.ppt = false;
+    l_tcp.ppt_markers = Vec::new();
+    l_tcp.ppt_buffer = Vec::new();
+    l_tcp.ppt_data_pos = 0;
+    l_tcp.m_current_tile_part_number = -(1i32);
+    /* Reconnect this tile's own tccps allocation, to keep buffer reuse. */
+    l_tcp.tccps = l_current_tccp;
+    /* Copy all the dflt_tile_compo_cp to the current tile cp */
+    l_tcp.tccps.copy_from_slice(&l_default_tcp.tccps[..]);
+    /* Move to next tile cp*/
+    i += 1;
   }
+  // Init the current tile decoder
+  if opj_tcd_init(
+    &mut p_j2k.m_tcd,
+    p_j2k.m_private_image.as_deref_mut().expect("m_private_image") as *mut CoreImage,
+    &mut p_j2k.m_cp,
+  ) == 0
+  {
+    event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
+    return 0i32;
+  }
+  1i32
 }
 
 impl Drop for opj_j2k {
