@@ -6239,7 +6239,7 @@ pub(crate) fn opj_j2k_setup_encoder(
       tileno += 1;
     }
     if !parameters.mct_data.is_null() {
-      unsafe { opj_free(parameters.mct_data) };
+      opj_free(parameters.mct_data);
       parameters.mct_data = core::ptr::null_mut::<core::ffi::c_void>()
     }
     1i32
@@ -6833,26 +6833,24 @@ fn opj_j2k_copy_default_tcp_and_create_tcd(
 
 impl Drop for opj_j2k {
   fn drop(&mut self) {
-    unsafe {
-      if self.m_is_decoder != 0 {
-        if let Some(mut tcp) = self.m_specific_param.m_decoder.m_default_tcp.take() {
-          opj_j2k_tcp_destroy(tcp.as_mut());
-        }
-        self.m_specific_param.m_decoder.m_header_data = Vec::new();
-        self.m_specific_param.m_decoder.m_comps_indices_to_decode = Vec::new();
-        self.m_specific_param.m_decoder.m_numcomps_to_decode = 0 as OPJ_UINT32
-      } else {
-        self.m_specific_param.m_encoder.m_encoded_tile_data = Vec::new();
-        self.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = Vec::new();
-        self.m_specific_param.m_encoder.m_tlm_sot_offsets_current = 0;
-        self.m_specific_param.m_encoder.m_header_tile_data = Vec::new();
+    if self.m_is_decoder != 0 {
+      if let Some(mut tcp) = self.m_specific_param.m_decoder.m_default_tcp.take() {
+        opj_j2k_tcp_destroy(tcp.as_mut());
       }
-      opj_j2k_cp_destroy(&mut self.m_cp);
-      self.m_cp = Default::default();
-      self.cstr_index = None;
-      self.m_private_image = None;
-      self.m_output_image = None;
+      self.m_specific_param.m_decoder.m_header_data = Vec::new();
+      self.m_specific_param.m_decoder.m_comps_indices_to_decode = Vec::new();
+      self.m_specific_param.m_decoder.m_numcomps_to_decode = 0 as OPJ_UINT32
+    } else {
+      self.m_specific_param.m_encoder.m_encoded_tile_data = Vec::new();
+      self.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = Vec::new();
+      self.m_specific_param.m_encoder.m_tlm_sot_offsets_current = 0;
+      self.m_specific_param.m_encoder.m_header_tile_data = Vec::new();
     }
+    opj_j2k_cp_destroy(&mut self.m_cp);
+    self.m_cp = Default::default();
+    self.cstr_index = None;
+    self.m_private_image = None;
+    self.m_output_image = None;
   }
 }
 

@@ -219,40 +219,38 @@ fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
 
 
 fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
-  unsafe {
-    fprintf!(out_stream, "Codestream info from main header: {{\n");
-    fprintf!(
+  fprintf!(out_stream, "Codestream info from main header: {{\n");
+  fprintf!(
+    out_stream,
+    "\t tx0={}, ty0={}\n",
+    p_j2k.m_cp.tx0,
+    p_j2k.m_cp.ty0,
+  );
+  fprintf!(
+    out_stream,
+    "\t tdx={}, tdy={}\n",
+    p_j2k.m_cp.tdx,
+    p_j2k.m_cp.tdy,
+  );
+  fprintf!(
+    out_stream,
+    "\t tw={}, th={}\n",
+    p_j2k.m_cp.tw,
+    p_j2k.m_cp.th,
+  );
+  if p_j2k.m_private_image.is_some() {
+    opj_j2k_dump_tile_info(
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_default_tcp
+        .as_deref()
+        .expect("decoder m_default_tcp is always set"),
+      p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps as OPJ_INT32,
       out_stream,
-      "\t tx0={}, ty0={}\n",
-      p_j2k.m_cp.tx0,
-      p_j2k.m_cp.ty0,
     );
-    fprintf!(
-      out_stream,
-      "\t tdx={}, tdy={}\n",
-      p_j2k.m_cp.tdx,
-      p_j2k.m_cp.tdy,
-    );
-    fprintf!(
-      out_stream,
-      "\t tw={}, th={}\n",
-      p_j2k.m_cp.tw,
-      p_j2k.m_cp.th,
-    );
-    if p_j2k.m_private_image.is_some() {
-      opj_j2k_dump_tile_info(
-        p_j2k
-          .m_specific_param
-          .m_decoder
-          .m_default_tcp
-          .as_deref()
-          .expect("decoder m_default_tcp is always set"),
-        p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps as OPJ_INT32,
-        out_stream,
-      );
-    }
-    fprintf!(out_stream, "}}\n");
   }
+  fprintf!(out_stream, "}}\n");
 }
 
 pub(crate) fn j2k_dump_image_header<W: StringWriter>(
@@ -260,42 +258,40 @@ pub(crate) fn j2k_dump_image_header<W: StringWriter>(
   dev_dump_flag: OPJ_BOOL,
   out_stream: &mut W,
 ) {
-  unsafe {
-    let mut tab = "";
-    if dev_dump_flag != 0 {
-      fprintf!(out_stream, "[DEV] Dump an image_header struct {{\n");
-    } else {
-      fprintf!(out_stream, "Image info {{\n");
-      tab = "\t";
-    }
-    fprintf!(
-      out_stream,
-      "{} x0={}, y0={}\n",
-      tab,
-      img_header.x0,
-      img_header.y0,
-    );
-    fprintf!(
-      out_stream,
-      "{} x1={}, y1={}\n",
-      tab,
-      img_header.x1,
-      img_header.y1,
-    );
-    fprintf!(out_stream, "{} numcomps={}\n", tab, img_header.numcomps);
-    if !img_header.comps.is_empty() {
-      let mut compno: OPJ_UINT32 = 0;
-      compno = 0 as OPJ_UINT32;
-      while compno < img_header.numcomps {
-        fprintf!(out_stream, "{}\t component {} {{\n", tab, compno);
-        j2k_dump_image_comp_header(
-          &img_header.comps[compno as usize],
-          dev_dump_flag,
-          out_stream,
-        );
-        fprintf!(out_stream, "{}}}\n", tab);
-        compno += 1;
-      }
+  let mut tab = "";
+  if dev_dump_flag != 0 {
+    fprintf!(out_stream, "[DEV] Dump an image_header struct {{\n");
+  } else {
+    fprintf!(out_stream, "Image info {{\n");
+    tab = "\t";
+  }
+  fprintf!(
+    out_stream,
+    "{} x0={}, y0={}\n",
+    tab,
+    img_header.x0,
+    img_header.y0,
+  );
+  fprintf!(
+    out_stream,
+    "{} x1={}, y1={}\n",
+    tab,
+    img_header.x1,
+    img_header.y1,
+  );
+  fprintf!(out_stream, "{} numcomps={}\n", tab, img_header.numcomps);
+  if !img_header.comps.is_empty() {
+    let mut compno: OPJ_UINT32 = 0;
+    compno = 0 as OPJ_UINT32;
+    while compno < img_header.numcomps {
+      fprintf!(out_stream, "{}\t component {} {{\n", tab, compno);
+      j2k_dump_image_comp_header(
+        &img_header.comps[compno as usize],
+        dev_dump_flag,
+        out_stream,
+      );
+      fprintf!(out_stream, "{}}}\n", tab);
+      compno += 1;
     }
     fprintf!(out_stream, "}}\n");
   }
