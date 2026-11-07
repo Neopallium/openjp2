@@ -34,7 +34,6 @@ use super::pi::*;
 use super::stream::*;
 use super::tcd::*;
 
-use super::malloc::*;
 
 use bitflags::bitflags;
 
@@ -3133,10 +3132,7 @@ fn opj_j2k_write_plt_in_memory(
   let mut pos_Lplt: usize = 2;
   let mut pos: usize = 0;
   let mut i: OPJ_UINT32 = 0;
-  // SAFETY: the marker info was filled by opj_tcd_encode_tile with packet_count sizes.
-  let packet_sizes = unsafe {
-    core::slice::from_raw_parts(marker_info.p_packet_size, marker_info.packet_count as usize)
-  };
+  let packet_sizes = &marker_info.p_packet_size[..];
   opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2 as OPJ_UINT32);
   pos += 2 as usize;
   /* Reserve space for Lplt */
@@ -3222,7 +3218,6 @@ fn opj_j2k_write_sod(
 ) -> OPJ_BOOL {
   let l_cstr_info = core::ptr::null_mut::<opj_codestream_info_t>();
     let mut l_remaining_data: OPJ_UINT32 = 0;
-    let mut marker_info = core::ptr::null_mut::<opj_tcd_marker_info_t>();
     /* preconditions */
 
     if data.len() < 4 {
@@ -3268,24 +3263,13 @@ fn opj_j2k_write_sod(
       p_j2k.m_tcd.tcd_image.tiles.packno = 0 as OPJ_UINT32
     }
     *p_data_written = 0 as OPJ_UINT32;
-    if p_j2k.m_specific_param.m_encoder.m_PLT != 0 {
-      marker_info = opj_tcd_marker_info_create(p_j2k.m_specific_param.m_encoder.m_PLT);
-      if marker_info.is_null() {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Cannot encode tile: opj_tcd_marker_info_create() failed\n",
-        );
-        return 0i32;
-      }
-    }
+    let mut marker_info = opj_tcd_marker_info::new(p_j2k.m_specific_param.m_encoder.m_PLT);
     if l_remaining_data < p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT {
       event_msg!(
         p_manager,
         EVT_ERROR,
         "Not enough bytes in output buffer to write SOD marker\n",
       );
-      opj_tcd_marker_info_destroy(marker_info);
       return 0i32;
     }
     l_remaining_data = (l_remaining_data as core::ffi::c_uint)
@@ -3294,18 +3278,17 @@ fn opj_j2k_write_sod(
     if opj_tcd_encode_tile(
       &mut p_j2k.m_tcd,
       p_j2k.m_current_tile_number,
-      data[2..].as_mut_ptr(),
+      &mut data[2..],
       p_data_written,
       l_remaining_data,
       l_cstr_info,
-      marker_info,
+      Some(&mut marker_info),
       p_manager,
       p_j2k.m_private_image.as_deref_mut().expect("m_private_image"),
       &mut p_j2k.m_cp,
     ) == 0
     {
       event_msg!(p_manager, EVT_ERROR, "Cannot encode tile\n",);
-      opj_tcd_marker_info_destroy(marker_info);
       return 0i32;
     }
     /* For SOD */
@@ -3315,13 +3298,12 @@ fn opj_j2k_write_sod(
       let mut p_PLT_buffer = vec![0u8; p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT as usize];
       if opj_j2k_write_plt_in_memory(
         p_j2k,
-        unsafe { &*marker_info },
+        &mut marker_info,
         &mut p_PLT_buffer[..],
         &mut l_data_written_PLT,
         p_manager,
       ) == 0
       {
-        opj_tcd_marker_info_destroy(marker_info);
         return 0i32;
       }
       assert!(l_data_written_PLT <= p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT);
@@ -3331,7 +3313,6 @@ fn opj_j2k_write_sod(
       *p_data_written =
         (*p_data_written as core::ffi::c_uint).wrapping_add(l_data_written_PLT) as OPJ_UINT32
     }
-    opj_tcd_marker_info_destroy(marker_info);
     1i32
 }
 /* *
@@ -5906,8 +5887,13 @@ pub(crate) fn opj_j2k_setup_encoder(
       let mut array_len = (parameters.tcp_numlayers as usize)
         .wrapping_mul(parameters.numresolution as usize)
         .wrapping_mul(3);
-      cp.m_specific_param.m_enc.m_matrice =
-        unsafe { core::slice::from_raw_parts(parameters.cp_matrice, array_len) }.to_vec();
+      #[cfg(feature = "c_api")]
+      #[allow(unsafe_code)]
+      #[allow(unsafe_code)]
+      {
+        cp.m_specific_param.m_enc.m_matrice =
+          unsafe { core::slice::from_raw_parts(parameters.cp_matrice, array_len) }.to_vec();
+      }
     }
     /* tiles */
     cp.tdx = parameters.cp_tdx as OPJ_UINT32;
@@ -5916,11 +5902,18 @@ pub(crate) fn opj_j2k_setup_encoder(
     cp.tx0 = parameters.cp_tx0 as OPJ_UINT32;
     cp.ty0 = parameters.cp_ty0 as OPJ_UINT32;
     /* comment string */
-    if !parameters.cp_comment.is_null() {
-      // SAFETY: `cp_comment` is a caller-provided NUL-terminated string copied verbatim.
-      cp.comment = unsafe { core::ffi::CStr::from_ptr(parameters.cp_comment) }
-        .to_bytes()
-        .to_vec();
+    if false && !parameters.cp_comment.is_null() {
+      #[cfg(feature = "c_api")]
+      #[allow(unsafe_code)]
+      #[allow(unsafe_code)]
+      {
+        // SAFETY: `cp_comment` is a caller-provided NUL-terminated string copied verbatim.
+        cp.comment = unsafe { core::ffi::CStr::from_ptr(parameters.cp_comment) }
+          .to_bytes()
+          .to_vec();
+      }
+      #[cfg(not(feature = "c_api"))]
+      unreachable!();
     } else {
       /* Create default comment for codestream */
       /* UniPG>> */
@@ -6043,7 +6036,10 @@ pub(crate) fn opj_j2k_setup_encoder(
       (*tcp)
         .tccps
         .resize(image.numcomps as usize, Default::default());
-      if !parameters.mct_data.is_null() {
+      if cfg!(feature = "c_api") && !parameters.mct_data.is_null() {
+        #[cfg(feature = "c_api")]
+        #[allow(unsafe_code)]
+        {
         let numcomps = image.numcomps;
         let lMctLen = numcomps * numcomps;
         let lMctSize = lMctLen.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
@@ -6089,6 +6085,7 @@ pub(crate) fn opj_j2k_setup_encoder(
           /* free will be handled by opj_j2k_destroy */
           event_msg!(p_manager, EVT_ERROR, "Failed to setup j2k mct encoding\n",);
           return 0i32;
+        }
         }
       } else {
         if tcp.mct == 1u32 && image.numcomps >= 3u32 {
@@ -6196,8 +6193,11 @@ pub(crate) fn opj_j2k_setup_encoder(
       }
       tileno += 1;
     }
+    #[cfg(feature = "c_api")]
+    #[allow(unsafe_code)]
+    #[allow(unsafe_code)]
     if !parameters.mct_data.is_null() {
-      opj_free(parameters.mct_data);
+      crate::cabi::opj_free(parameters.mct_data);
       parameters.mct_data = core::ptr::null_mut::<core::ffi::c_void>()
     }
     1i32
@@ -6649,11 +6649,9 @@ fn opj_j2k_read_header_procedure(
       }
       drop(l_header_data);
       /* Read the marker segment with the correct marker handler */
-      // SAFETY: the marker body of l_marker_size bytes was just read into
-      // m_header_data above; it stays valid for this handler call.
       let header_data =
-        unsafe { core::slice::from_raw_parts(p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr(), l_marker_size as usize) };
-      if l_marker_handler.handler(p_j2k, header_data, p_manager) == 0 {
+        p_j2k.m_specific_param.m_decoder.m_header_data[..l_marker_size as usize].to_vec();
+      if l_marker_handler.handler(p_j2k, &header_data, p_manager) == 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -7074,11 +7072,9 @@ pub(crate) fn opj_j2k_read_tile_header(
             }
             drop(l_header_data);
             /* Read the marker segment with the correct marker handler */
-            // SAFETY: the marker body of l_marker_size bytes was just read into
-            // m_header_data above; it stays valid for this handler call.
             let header_data =
-              unsafe { core::slice::from_raw_parts(p_j2k.m_specific_param.m_decoder.m_header_data.as_mut_ptr(), l_marker_size as usize) };
-            if l_marker_handler.handler(p_j2k, header_data, p_manager) == 0 {
+              p_j2k.m_specific_param.m_decoder.m_header_data[..l_marker_size as usize].to_vec();
+            if l_marker_handler.handler(p_j2k, &header_data, p_manager) == 0 {
               event_msg!(
                 p_manager,
                 EVT_ERROR,
@@ -7314,18 +7310,17 @@ pub(crate) fn opj_j2k_decode_tile(
   {
     return 0i32;
   }
-  let l_data_ptr;
-  let l_data_size;
+  let mut l_tile_data;
   {
     let l_tcp = &mut p_j2k.m_cp.tcps[p_tile_index as usize];
     if l_tcp.m_data.is_empty() {
       opj_j2k_tcp_destroy(l_tcp);
       return 0i32;
     }
-    // The m_data buffer stays alive for the whole decode; take its raw parts
-    // so the `&mut p_j2k.m_cp` borrow below does not conflict with l_tcp.
-    l_data_ptr = l_tcp.m_data.as_mut_ptr();
-    l_data_size = l_tcp.m_data_size;
+    // Take the tile data out so the `&mut p_j2k.m_cp` borrow below does not
+    // conflict with it; the decode reads through the local buffer and the
+    // data is destroyed afterwards anyway (opj_j2k_tcp_data_destroy).
+    l_tile_data = std::mem::take(&mut l_tcp.m_data);
   }
     /* When using the opj_read_tile_header / opj_decode_tile_data API */
     /* such as in test_tile_decoder, m_output_image is NULL, so fall back */
@@ -7346,11 +7341,9 @@ pub(crate) fn opj_j2k_decode_tile(
       l_bounds_x1,
       l_bounds_y1,
       p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode,
-      p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode.as_ptr(),
-      l_data_ptr,
-      l_data_size,
+      &p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode[..],
+      &mut l_tile_data[..],
       p_tile_index,
-      p_j2k.cstr_index.as_deref_mut().map(|i| i as *mut CodestreamIndex).unwrap_or(core::ptr::null_mut()),
       p_manager,
       p_j2k.m_private_image.as_deref_mut().expect("m_private_image"),
       &mut p_j2k.m_cp,
@@ -7373,6 +7366,10 @@ pub(crate) fn opj_j2k_decode_tile(
       /*opj_j2k_tcp_destroy(l_tcp);
       p_j2k->m_tcd->tcp = 0;*/
       opj_j2k_tcp_data_destroy(&mut p_j2k.m_cp.tcps[p_tile_index as usize]);
+    } else {
+      /* Strip decoding keeps the tile data for the next decode-area pass
+       * (the C skips tcp_data_destroy when p_data is NULL). */
+      p_j2k.m_cp.tcps[p_tile_index as usize].m_data = l_tile_data;
     }
     p_j2k.m_specific_param.m_decoder.m_can_decode = false;
     p_j2k.m_specific_param.m_decoder.m_state &= !(J2KState::DATA);
@@ -7412,7 +7409,7 @@ pub(crate) fn opj_j2k_decode_tile(
         return 0i32;
       }
     }
-    1i32
+  1i32
 }
 fn opj_j2k_update_image_data(
   p_tcd: &mut opj_tcd,
@@ -7462,7 +7459,7 @@ fn opj_j2k_update_image_data(
         .x1
         - l_tilec_i.resolutions[l_tilec_i.minimum_num_resolutions as usize - 1].x0)
         as OPJ_UINT32;
-      p_src_data = l_tilec_i.data.as_mut_ptr()
+      !l_tilec_i.data.is_null()
     } else {
       let l_res = &l_tilec_i.resolutions[l_img_comp_src.resno_decoded as usize];
       res_x0 = l_res.win_x0 as OPJ_INT32;
@@ -7470,9 +7467,14 @@ fn opj_j2k_update_image_data(
       res_x1 = l_res.win_x1 as OPJ_INT32;
       res_y1 = l_res.win_y1 as OPJ_INT32;
       src_data_stride = l_res.win_x1.wrapping_sub(l_res.win_x0);
-      p_src_data = l_tilec_i.data_win.as_mut_ptr()
-    }
-    if !p_src_data.is_null() {
+      !l_tilec_i.data_win.is_null()
+    };
+    let src_available = if p_tcd.whole_tile_decoding != 0 {
+      !l_tilec_i.data.is_null()
+    } else {
+      !l_tilec_i.data_win.is_null()
+    };
+    if src_available {
       l_width_src = (res_x1 - res_x0) as OPJ_UINT32;
       l_height_src = (res_y1 - res_y0) as OPJ_UINT32;
       /* Current tile component size*/
@@ -7588,13 +7590,11 @@ fn opj_j2k_update_image_data(
           dest.data = vec![0i32; (l_width * l_height) as usize];
         }
         /* Move the output buffer to the first place where we will write*/
-        // SAFETY: `p_src_data` covers `l_height_src` rows of `src_data_stride` samples (the tile
-        // or window buffer of this component); the slices below read only inside that region.
-        let src = unsafe {
-          core::slice::from_raw_parts(
-            p_src_data,
-            (l_offset_y0_src as usize + l_height_dest as usize) * src_data_stride as usize,
-          )
+        let src_len = (l_offset_y0_src as usize + l_height_dest as usize) * src_data_stride as usize;
+        let src = if p_tcd.whole_tile_decoding != 0 {
+          l_tilec_i.data.as_mut_slice(src_len)
+        } else {
+          l_tilec_i.data_win.as_mut_slice(src_len)
         };
         let dest_w = dest.w as usize;
         j = 0 as OPJ_UINT32;
@@ -8612,186 +8612,6 @@ fn opj_j2k_copy_tile_quantization_parameters(p_j2k: &mut opj_j2k) {
   }
 }
 
-pub(crate) fn j2k_get_cstr_info(p_j2k: &mut opj_j2k) -> *mut opj_codestream_info_v2_t {
-  let mut compno: OPJ_UINT32 = 0;
-  let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-  // SAFETY: zeroed is the C calloc state the callers expect for the pointer fields.
-  let mut cstr_info = Box::new(unsafe { core::mem::zeroed::<opj_codestream_info_v2_t>() });
-  cstr_info.nbcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-  cstr_info.tx0 = p_j2k.m_cp.tx0;
-  cstr_info.ty0 = p_j2k.m_cp.ty0;
-  cstr_info.tdx = p_j2k.m_cp.tdx;
-  cstr_info.tdy = p_j2k.m_cp.tdy;
-  cstr_info.tw = p_j2k.m_cp.tw;
-  cstr_info.th = p_j2k.m_cp.th;
-  cstr_info.tile_info = core::ptr::null_mut::<opj_tile_info_v2_t>();
-  let l_default_tile = p_j2k
-    .m_specific_param
-    .m_decoder
-    .m_default_tcp
-    .as_deref()
-    .expect("decoder m_default_tcp is always set");
-  cstr_info.m_default_tile_info.csty = l_default_tile.csty;
-  cstr_info.m_default_tile_info.prg = l_default_tile.prg;
-  cstr_info.m_default_tile_info.numlayers = l_default_tile.numlayers;
-  cstr_info.m_default_tile_info.mct = l_default_tile.mct;
-  {
-    let mut v: Vec<opj_tccp_info_t> = vec![unsafe { core::mem::zeroed() }; cstr_info.nbcomps as usize];
-    cstr_info.m_default_tile_info.tccp_info = v.as_mut_ptr();
-    core::mem::forget(v);
-  }
-  let tccp_infos = unsafe {
-    core::slice::from_raw_parts_mut(
-      cstr_info.m_default_tile_info.tccp_info,
-      numcomps as usize,
-    )
-  };
-  compno = 0 as OPJ_UINT32;
-  while compno < numcomps {
-    let l_tccp = &l_default_tile.tccps[compno as usize];
-    let l_tccp_info = &mut tccp_infos[compno as usize];
-    let mut bandno: OPJ_INT32 = 0;
-    let numbands: OPJ_INT32;
-    /* coding style*/
-    l_tccp_info.csty = l_tccp.csty;
-    l_tccp_info.numresolutions = l_tccp.numresolutions;
-    l_tccp_info.cblkw = l_tccp.cblkw;
-    l_tccp_info.cblkh = l_tccp.cblkh;
-    l_tccp_info.cblksty = l_tccp.cblksty;
-    l_tccp_info.qmfbid = l_tccp.qmfbid;
-    if l_tccp.numresolutions < 33u32 {
-      l_tccp_info.prch[..l_tccp.numresolutions as usize]
-        .copy_from_slice(&l_tccp.prch[..l_tccp.numresolutions as usize]);
-      l_tccp_info.prcw[..l_tccp.numresolutions as usize]
-        .copy_from_slice(&l_tccp.prcw[..l_tccp.numresolutions as usize]);
-    }
-    /* quantization style*/
-    l_tccp_info.qntsty = l_tccp.qntsty;
-    l_tccp_info.numgbits = l_tccp.numgbits;
-    numbands = if l_tccp.qntsty == 1u32 {
-      1i32
-    } else {
-      (l_tccp.numresolutions as OPJ_INT32 * 3i32) - 2i32
-    };
-    if numbands < 3i32 * 33i32 - 2i32 {
-      bandno = 0i32;
-      while bandno < numbands {
-        l_tccp_info.stepsizes_mant[bandno as usize] = l_tccp.stepsizes[bandno as usize].mant as OPJ_UINT32;
-        l_tccp_info.stepsizes_expn[bandno as usize] = l_tccp.stepsizes[bandno as usize].expn as OPJ_UINT32;
-        bandno += 1
-      }
-    }
-    /* RGN value*/
-    l_tccp_info.roishift = l_tccp.roishift;
-    compno += 1;
-  }
-  Box::into_raw(cstr_info)
-}
-
-pub(crate) fn j2k_get_cstr_index(p_j2k: &mut opj_j2k) -> *mut opj_codestream_index_t {
-  let cstr_index = p_j2k.cstr_index.as_deref().expect("cstr_index");
-  let mut l_cstr_index = Box::new(unsafe { core::mem::zeroed::<opj_codestream_index_t>() });
-  l_cstr_index.main_head_start = cstr_index.main_head_start;
-  l_cstr_index.main_head_end = cstr_index.main_head_end;
-  l_cstr_index.codestream_size = cstr_index.codestream_size;
-  l_cstr_index.marknum = cstr_index.markers.len() as OPJ_UINT32;
-  if !cstr_index.markers.is_empty() {
-    let mut v = cstr_index.markers.clone();
-    l_cstr_index.marker = v.as_mut_ptr();
-    core::mem::forget(v);
-  } else {
-    l_cstr_index.marker = core::ptr::null_mut::<opj_marker_info_t>()
-  }
-  l_cstr_index.nb_of_tiles = cstr_index.tiles.len() as OPJ_UINT32;
-  if cstr_index.tiles.is_empty() {
-    l_cstr_index.tile_index = core::ptr::null_mut::<opj_tile_index_t>()
-  } else {
-    let mut v: Vec<opj_tile_index_t> =
-      vec![unsafe { core::mem::zeroed() }; cstr_index.tiles.len()];
-    l_cstr_index.tile_index = v.as_mut_ptr();
-    let tile_indices = unsafe {
-      core::slice::from_raw_parts_mut(l_cstr_index.tile_index, cstr_index.tiles.len())
-    };
-    for (it_tile, tile) in cstr_index.tiles.iter().enumerate() {
-      let dest = &mut tile_indices[it_tile];
-      /* Tile markers */
-      dest.marknum = tile.markers.len() as OPJ_UINT32;
-      if !tile.markers.is_empty() {
-        let mut mv = tile.markers.clone();
-        dest.marker = mv.as_mut_ptr();
-        core::mem::forget(mv);
-      } else {
-        dest.marker = core::ptr::null_mut::<opj_marker_info_t>()
-      }
-      /* Tile part index */
-      dest.nb_tps = tile.nb_tps;
-      if !tile.tp_index.is_empty() {
-        let mut tv = tile.tp_index.clone();
-        dest.tp_index = tv.as_mut_ptr();
-        core::mem::forget(tv);
-      } else {
-        dest.tp_index = core::ptr::null_mut::<opj_tp_index_t>()
-      }
-      /* Packet index (NOT USED) */
-      dest.nb_packet = 0 as OPJ_UINT32;
-      dest.packet_index = core::ptr::null_mut::<opj_packet_info_t>();
-    }
-    core::mem::forget(v);
-  }
-  Box::into_raw(l_cstr_index)
-}
-
-/// Free a C-ABI codestream index mirror built by `j2k_get_cstr_index`.
-pub fn free_cstr_index_mirror(p_cstr_ind: *mut opj_codestream_index_t) {
-  if p_cstr_ind.is_null() {
-    return;
-  }
-  let cstr_ind = unsafe { Box::from_raw(p_cstr_ind) };
-  if !cstr_ind.marker.is_null() {
-    // SAFETY: built as a Vec of exactly `marknum` entries.
-    unsafe {
-      drop(Vec::from_raw_parts(
-        cstr_ind.marker,
-        cstr_ind.marknum as usize,
-        cstr_ind.marknum as usize,
-      ))
-    };
-  }
-  if !cstr_ind.tile_index.is_null() {
-    let n = cstr_ind.nb_of_tiles as usize;
-    for tile in unsafe { core::slice::from_raw_parts_mut(cstr_ind.tile_index, n) } {
-      if !tile.packet_index.is_null() {
-        // SAFETY: built as a Vec of exactly `nb_packet` entries.
-        unsafe {
-          drop(Vec::from_raw_parts(
-            tile.packet_index,
-            tile.nb_packet as usize,
-            tile.nb_packet as usize,
-          ))
-        };
-      }
-      if !tile.tp_index.is_null() {
-        // SAFETY: built as a Vec of exactly `nb_tps` entries.
-        unsafe {
-          drop(Vec::from_raw_parts(tile.tp_index, tile.nb_tps as usize, tile.nb_tps as usize))
-        };
-      }
-      if !tile.marker.is_null() {
-        // SAFETY: built as a Vec of exactly `marknum` entries.
-        unsafe {
-          drop(Vec::from_raw_parts(
-            tile.marker,
-            tile.marknum as usize,
-            tile.marknum as usize,
-          ))
-        };
-      }
-    }
-    // SAFETY: built as a Vec of exactly `nb_of_tiles` entries.
-    unsafe { drop(Vec::from_raw_parts(cstr_ind.tile_index, n, n)) };
-  }
-}
-
 fn opj_j2k_allocate_tile_element_cstr_index(p_j2k: &mut opj_j2k) -> OPJ_BOOL {
   let nb_of_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   let cstr_index = p_j2k.cstr_index.as_deref_mut().expect("cstr_index");
@@ -9402,13 +9222,9 @@ pub(crate) fn opj_j2k_encode(
     let mut l_max_tile_size = 0 as OPJ_SIZE_T;
     let mut l_current_tile_size: OPJ_SIZE_T = 0;
     let mut l_current_data: Vec<OPJ_BYTE> = Vec::new();
-    let mut l_reuse_data = 0i32;
     /* preconditions */
 
     l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
-    if l_nb_tiles == 1u32 {
-      l_reuse_data = 1i32
-    }
     i = 0 as OPJ_UINT32;
     while i < l_nb_tiles {
       if opj_j2k_pre_write_tile(p_j2k, i, p_stream, p_manager) == 0 {
@@ -9421,10 +9237,7 @@ pub(crate) fn opj_j2k_encode(
       let image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
       while j < image.numcomps {
         let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
-        if l_reuse_data != 0 {
-          let l_img_comp = &mut image.comps[j as usize];
-          l_tilec.data = TileBuf::borrowed(l_img_comp.data.as_mut_ptr());
-        } else if opj_alloc_tile_component_data(l_tilec) == 0 {
+        if opj_alloc_tile_component_data(l_tilec) == 0 {
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -9436,7 +9249,7 @@ pub(crate) fn opj_j2k_encode(
         j += 1;
       }
       l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(&mut p_j2k.m_tcd, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"));
-      if l_reuse_data == 0 {
+      {
         if l_current_tile_size > l_max_tile_size {
           if l_current_data.try_reserve_exact(l_current_tile_size as usize).is_err() {
             l_current_data.clear();

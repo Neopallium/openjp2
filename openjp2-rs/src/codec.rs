@@ -30,7 +30,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-use super::j2k::*;
 use super::jp2::*;
 use super::image::*;
 
@@ -40,6 +39,7 @@ use super::types::*;
 
 use super::event::*;
 use super::fprintf::StringWriter;
+use super::j2k::*;
 
 pub(crate) enum CodecFormat {
   J2K(opj_j2k),
@@ -135,24 +135,26 @@ impl Codec {
     }
   }
 
+  #[cfg(feature = "c_api")]
   pub fn get_cstr_info(&mut self) -> *mut opj_codestream_info_v2_t {
     match &mut self.m_codec {
       CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
-        j2k_get_cstr_info(j2k)
+        crate::cabi::j2k_get_cstr_info(j2k)
       }
       CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
-        jp2_get_cstr_info(jp2)
+        crate::cabi::jp2_get_cstr_info(jp2)
       }
     }
   }
 
+  #[cfg(feature = "c_api")]
   pub fn get_cstr_index(&mut self) -> *mut opj_codestream_index_t {
     match &mut self.m_codec {
       CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
-        j2k_get_cstr_index(j2k)
+        crate::cabi::j2k_get_cstr_index(j2k)
       }
       CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
-        jp2_get_cstr_index(jp2)
+        crate::cabi::jp2_get_cstr_index(jp2)
       }
     }
   }
@@ -395,6 +397,24 @@ impl Codec {
 
 // Encoder
 impl Codec {
+  /// Tile/code-block geometry of the codestream header: a safe subset of the
+  /// C-ABI codestream-info mirror (tile width/height and the code-block size
+  /// exponents).
+  pub fn get_tile_geometry(&self) -> (u32, u32, u32, u32) {
+    let j2k = match &self.m_codec {
+      CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => j2k,
+      CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
+        &jp2.j2k
+      }
+    };
+    let tcp = j2k.m_specific_param.m_decoder.m_default_tcp.as_deref();
+    let (cblkw, cblkh) = match tcp {
+      Some(t) => (t.tccps[0].cblkw, t.tccps[0].cblkh),
+      None => (0, 0),
+    };
+    (j2k.m_cp.tdx, j2k.m_cp.tdy, cblkw, cblkh)
+  }
+
   pub fn setup_encoder(
     &mut self,
     parameters: &mut opj_cparameters_t,

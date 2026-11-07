@@ -1169,6 +1169,7 @@ fn opj_t1_allocate_buffers(
 pub(crate) fn opj_t1_ht_decode_cblk(
   mut t1: &mut opj_t1_t,
   cblk: &mut opj_tcd_cblk_dec_t,
+  src: &mut [u8],
   mut _orient: OPJ_UINT32,
   mut roishift: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,
@@ -1298,9 +1299,10 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         cblk_len = 0 as OPJ_UINT32;
         i_0 = 0 as OPJ_UINT32;
         while i_0 < cblk.numchunks {
-          let chunk = cblk.chunks[i_0 as usize].as_slice();
+          let chunk = &cblk.chunks[i_0 as usize];
+          let src_chunk = &src[chunk.data_offset..chunk.data_offset + chunk.len as usize];
           let off = cblk_len as usize;
-          buffer[off..off + chunk.len()].copy_from_slice(chunk);
+          buffer[off..off + chunk.len as usize].copy_from_slice(src_chunk);
           cblk_len = (cblk_len as core::ffi::c_uint)
             .wrapping_add(cblk.chunks[i_0 as usize].len)
             as OPJ_UINT32;
@@ -1309,21 +1311,17 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       }
       cblkdata = t1.cblkdatabuffer_ref();
     } else if cblk.numchunks == 1u32 {
-      cblkdata = cblk.chunks[0].as_slice();
+      let chunk = &cblk.chunks[0];
+      cblkdata = &src[chunk.data_offset..chunk.data_offset + chunk.len as usize];
     } else {
       /* Not sure if that can happen in practice, but avoid Coverity to */
       /* think we will dereference a null cblkdta pointer */
       return 1i32;
     }
     // The C code writes the decoded samples through a `OPJ_UINT32*` alias of the T1 data
-    // buffer. Here that alias is one exclusive `&mut [u32]` view, created once at the boundary:
-    // the function holds the only `&mut` to `t1` and never touches `t1.data` otherwise.
-    let ht_data: &mut [OPJ_UINT32] = unsafe {
-      core::slice::from_raw_parts_mut(
-        t1.data.as_mut_ptr() as *mut OPJ_UINT32,
-        t1.data.as_slice().len(),
-      )
-    };
+    // buffer. Here we decode into a local u32 scratch and transfer it into the
+    // Cell-based T1 buffer at the end of the function.
+    let mut ht_data: Vec<OPJ_UINT32> = vec![0u32; t1.data.as_slice().len()];
     // OPJ_UINT32 num_passes is the number of passes: 1 if CUP only, 2 for
     // CUP+SPP, and 3 for CUP+SPP+MRP
     num_passes = if cblk.numsegs > 0u32 {
@@ -2787,5 +2785,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       y_1 += 1
     }
 
+    /* Transfer the decoded samples into the Cell-based T1 data buffer. */
+    for (cell, &v) in t1.data.as_slice().iter().zip(ht_data.iter()) {
+      cell.set(v as i32);
+    }
     1i32
 }

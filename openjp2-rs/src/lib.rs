@@ -7,6 +7,7 @@
 #![allow(unused_assignments)]
 #![allow(unused_mut)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(unsafe_code)]
 
 #[cfg(feature = "file-io")]
 extern crate libc;
@@ -31,8 +32,10 @@ pub mod stream;
 pub use c_api_types::*;
 pub use codec::{opj_codec_private_t, Codec};
 pub use image::{opj_image_cmptparm_t, opj_image_comptparm, CoreImage, CoreImageComp};
-pub use j2k::free_cstr_index_mirror;
-pub use openjpeg::opj_destroy_cstr_info;
+#[cfg(feature = "c_api")]
+pub use cabi::free_cstr_index_mirror;
+#[cfg(feature = "c_api")]
+pub use cabi::opj_destroy_cstr_info;
 pub use types::opj_stream_private_t;
 pub use types::{CIE_LAB_BYTE_SIZE, ICCProfile, ICCProfileMut, ICCProfileRef, Stream, TileInfo};
 
@@ -127,6 +130,8 @@ pub fn detect_format_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<J2K
 
 mod bio;
 mod cio;
+#[cfg(feature = "c_api")]
+mod cabi;
 mod codec;
 mod dwt;
 mod function_list;
@@ -134,6 +139,7 @@ mod ht_dec;
 mod invert;
 mod j2k;
 mod jp2;
+#[cfg(feature = "c_api")]
 mod malloc;
 mod math;
 mod mct;

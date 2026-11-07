@@ -118,21 +118,17 @@ pub(crate) fn opj_t2_encode_packets(
   mut p_tile_no: OPJ_UINT32,
   tile: &mut opj_tcd_tile_t,
   mut p_maxlayers: OPJ_UINT32,
-  mut p_dest: *mut OPJ_BYTE,
-  mut p_data_written: *mut OPJ_UINT32,
-  mut p_max_len: OPJ_UINT32,
+  mut dest: &mut [u8],
+  mut p_data_written: &mut OPJ_UINT32,
   mut cstr_info: *mut opj_codestream_info_t,
-  mut p_marker_info: *mut opj_tcd_marker_info_t,
+  mut p_marker_info: Option<&mut opj_tcd_marker_info_t>,
   mut p_tp_num: OPJ_UINT32,
   mut p_tp_pos: OPJ_INT32,
   mut p_pino: OPJ_UINT32,
   mut p_t2_mode: J2K_T2_MODE,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  // SAFETY: p_dest points to p_max_len bytes owned by the caller.
-  let mut dest = unsafe { core::slice::from_raw_parts_mut(p_dest, p_max_len as usize) };
-  // SAFETY: p_data_written is the caller's out-parameter.
-  let p_data_written = unsafe { &mut *p_data_written };
+  let mut dest = &mut dest[..];
   let image = &mut *t2.image;
   let cp = &mut *t2.cp;
   let mut l_nb_bytes = 0 as OPJ_UINT32;
@@ -230,21 +226,13 @@ pub(crate) fn opj_t2_encode_packets(
       opj_pi_destroy(&mut pi_vec);
       return 0i32;
     }
-    if !p_marker_info.is_null() && unsafe { (*p_marker_info).need_PLT } != 0 {
-      /* One time use intended */
-      unsafe {
-        assert!((*p_marker_info).packet_count == 0u32);
-        assert!((*p_marker_info).p_packet_size.is_null());
-      }
-      {
+    if let Some(marker_info) = p_marker_info.as_deref_mut() {
+      if marker_info.need_PLT != 0 {
+        /* One time use intended */
+        assert!(marker_info.packet_count == 0u32);
+        assert!(marker_info.p_packet_size.is_empty());
         let count = opj_get_encoding_packet_count(image, cp, p_tile_no) as usize;
-        let mut v: Vec<OPJ_UINT32> = vec![0; count];
-        // SAFETY: p_packet_size is the marker info's out-array; opj_tcd_marker_info_destroy
-        // frees it via Vec::from_raw_parts.
-        unsafe {
-          (*p_marker_info).p_packet_size = v.as_mut_ptr();
-        }
-        core::mem::forget(v);
+        marker_info.p_packet_size = vec![0; count];
       }
     }
     loop {
@@ -273,16 +261,15 @@ pub(crate) fn opj_t2_encode_packets(
         dest = rest;
         *p_data_written =
           (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes) as OPJ_UINT32;
-        if !p_marker_info.is_null() && unsafe { (*p_marker_info).need_PLT } != 0 {
-          // SAFETY: p_packet_size was allocated above with `count` entries.
-          unsafe {
-            *(*p_marker_info)
-              .p_packet_size
-              .offset((*p_marker_info).packet_count as isize) = l_nb_bytes;
-            (*p_marker_info).packet_count = (*p_marker_info).packet_count.wrapping_add(1)
+        if let Some(marker_info) = p_marker_info.as_deref_mut() {
+          if marker_info.need_PLT != 0 {
+            marker_info.p_packet_size[marker_info.packet_count as usize] = l_nb_bytes;
+            marker_info.packet_count = marker_info.packet_count.wrapping_add(1)
           }
         }
         /* INDEX >> */
+        #[cfg(feature = "c_api")]
+        #[allow(unsafe_code)]
         if !cstr_info.is_null() {
           // SAFETY: cstr_info is the caller's codestream-info structure.
           unsafe {
@@ -328,16 +315,14 @@ pub(crate) fn opj_t2_decode_packets(
   mut tcd: &mut opj_tcd,
   t2: &mut opj_t2_t,
   mut p_tile_no: OPJ_UINT32,
-  mut p_src: *mut OPJ_BYTE,
-  mut p_data_read: *mut OPJ_UINT32,
-  mut p_max_len: OPJ_UINT32,
-  mut _p_cstr_index: *mut CodestreamIndex,
+  mut src: &mut [u8],
+  mut p_data_read: &mut OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  // SAFETY: p_src points to p_max_len bytes of tile-part data owned by the caller.
-  let mut src = unsafe { core::slice::from_raw_parts_mut(p_src, p_max_len as usize) };
+  let p_data_read_initial = src.len();
   let image = &mut *t2.image;
   let cp = &mut *t2.cp;
+  let mut src_base: usize = 0;
   let mut pino: OPJ_UINT32 = 0;
   let mut l_nb_bytes_read: OPJ_UINT32 = 0;
   /* create a packet iterator */
@@ -443,6 +428,7 @@ pub(crate) fn opj_t2_decode_packets(
           &mut tcd.tcd_image.tiles,
           pi,
           &mut src[..],
+          src_base,
           &mut l_nb_bytes_read,
           core::ptr::null_mut::<opj_packet_info_t>(),
           p_manager,
@@ -482,6 +468,7 @@ pub(crate) fn opj_t2_decode_packets(
       }
       let (_, rest) = src.split_at_mut(l_nb_bytes_read as usize);
       src = rest;
+      src_base += l_nb_bytes_read as usize;
     }
     pino += 1;
   }
@@ -489,10 +476,7 @@ pub(crate) fn opj_t2_decode_packets(
   /* << INDEX */
   /* don't forget to release pi */
   opj_pi_destroy(&mut pi_vec);
-  // SAFETY: p_data_read is the caller's out-parameter.
-  unsafe {
-    *p_data_read = (p_max_len as usize - src.len()) as OPJ_UINT32
-  };
+  *p_data_read = (p_data_read_initial - src.len()) as OPJ_UINT32;
   1i32
 }
 pub(crate) fn opj_t2_create<'a>(image: &'a mut CoreImage, cp: &'a mut opj_cp_t) -> Box<opj_t2_t<'a>> {
@@ -519,6 +503,7 @@ fn opj_t2_decode_packet(
   tile: &mut opj_tcd_tile_t,
   pi: &mut opj_pi_iterator_t,
   src: &mut [u8],
+  src_base: usize,
   p_data_read: &mut OPJ_UINT32,
   pack_info: *mut opj_packet_info_t,
   p_manager: &mut opj_event_mgr,
@@ -542,6 +527,7 @@ fn opj_t2_decode_packet(
     return 0i32;
   }
   let src = &mut src[l_nb_bytes_read as usize..];
+  let src_base = src_base + l_nb_bytes_read as usize;
   l_nb_total_bytes_read =
     (l_nb_total_bytes_read as core::ffi::c_uint).wrapping_add(l_nb_bytes_read) as OPJ_UINT32;
   /* we should read data for the packet */
@@ -552,6 +538,7 @@ fn opj_t2_decode_packet(
       tile,
       pi,
       src,
+      src_base,
       &mut l_nb_bytes_read,
       pack_info,
       p_manager,
@@ -877,6 +864,9 @@ fn opj_t2_encode_packet(
   /* << INDEX */
   /* End of packet header position. Currently only represents the distance to start of packet
   Will be updated later by incrementing with packet start value*/
+  #[cfg(feature = "c_api")]
+  #[allow(unsafe_code)]
+  #[allow(unsafe_code)]
   if !cstr_info.is_null() && unsafe { (*cstr_info).index_write } != 0 {
     // SAFETY: cstr_info is the caller's codestream-info structure.
     unsafe {
@@ -916,11 +906,8 @@ fn opj_t2_encode_packet(
 
           if p_t2_mode == FINAL_PASS {
             let len = cblk.layers[layno as usize].len as usize;
-            // SAFETY: the layer payload was allocated by the rate allocator and
-            // is alive for the whole encode.
-            dest[pos..pos + len].copy_from_slice(unsafe {
-              core::slice::from_raw_parts(cblk.layers[layno as usize].data, len)
-            });
+            let off = cblk.layers[layno as usize].data_offset;
+            dest[pos..pos + len].copy_from_slice(&cblk.data[off..off + len]);
           }
           cblk.numpasses = (cblk.numpasses as core::ffi::c_uint)
             .wrapping_add(cblk.layers[layno as usize].numpasses) as OPJ_UINT32;
@@ -929,6 +916,9 @@ fn opj_t2_encode_packet(
             .wrapping_sub(cblk.layers[layno as usize].len) as OPJ_UINT32;
           /* INDEX >> */
           /* << INDEX */
+          #[cfg(feature = "c_api")]
+          #[allow(unsafe_code)]
+          #[allow(unsafe_code)]
           if !cstr_info.is_null() && unsafe { (*cstr_info).index_write } != 0 {
             // SAFETY: cstr_info is the caller's codestream-info structure.
             unsafe {
@@ -1085,6 +1075,8 @@ fn opj_t2_read_packet_header(
     /* << INDEX */
     /* End of packet header position. Currently only represents the distance to start of packet
     Will be updated later by incrementing with packet start value */
+    #[cfg(feature = "c_api")]
+    #[allow(unsafe_code)]
     if !p_pack_info.is_null() {
       // SAFETY: p_pack_info is the caller's packet-info slot.
       unsafe { (*p_pack_info).end_ph_pos = l_pos as OPJ_OFF_T }
@@ -1328,6 +1320,8 @@ fn opj_t2_read_packet_header(
   /* << INDEX */
   /* End of packet header position. Currently only represents the distance to start of packet
   Will be updated later by incrementing with packet start value */
+  #[cfg(feature = "c_api")]
+  #[allow(unsafe_code)]
   if !p_pack_info.is_null() {
     // SAFETY: p_pack_info is the caller's packet-info slot.
     unsafe { (*p_pack_info).end_ph_pos = l_pos as OPJ_OFF_T }
@@ -1342,6 +1336,7 @@ fn opj_t2_read_packet_data(
   tile: &mut opj_tcd_tile_t,
   pi: &mut opj_pi_iterator_t,
   p_src_data: &[u8],
+  src_base: usize,
   p_data_read: &mut OPJ_UINT32,
   _pack_info: *mut opj_packet_info_t,
   p_manager: &mut opj_event_mgr,
@@ -1428,19 +1423,14 @@ fn opj_t2_read_packet_data(
               cblk.chunks.resize(
                 new_len,
                 opj_tcd_seg_data_chunk {
-                  data: core::ptr::null_mut(),
+                  data_offset: 0,
                   len: 0,
                 },
               );
             }
-            let chunks = cblk.chunks.as_mut_ptr();
-            // SAFETY: the chunk stores a pointer into p_src_data; it is read
-            // by the t1 decoder before the source buffer is released.
-            unsafe {
-              (*chunks.offset(cblk.numchunks as isize)).data =
-                p_src_data[l_pos..].as_ptr() as *mut OPJ_BYTE;
-              (*chunks.offset(cblk.numchunks as isize)).len = seg.newlen;
-            }
+            let chunk = &mut cblk.chunks[cblk.numchunks as usize];
+            chunk.data_offset = src_base + l_pos;
+            chunk.len = seg.newlen;
             cblk.numchunks = cblk.numchunks.wrapping_add(1);
             l_pos += seg.newlen as usize;
             seg.len =

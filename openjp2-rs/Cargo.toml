@@ -29,7 +29,7 @@ log = "0.4.17"
 smallvec = "1.13"
 
 [features]
-default = ["file-io", "c_api"]
+default = ["file-io"]
 
 file-io = ["libc"]
 

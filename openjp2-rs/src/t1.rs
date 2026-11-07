@@ -1827,6 +1827,7 @@ fn opj_t1_clbl_decode_processor(
   off_x: OPJ_UINT32,
   off_y: OPJ_UINT32,
   tile_data: &mut [OPJ_INT32],
+  src: &mut [u8],
   tile_w: OPJ_UINT32,
   whole_tile_decoding: OPJ_BOOL,
   tccp: &opj_tccp_t,
@@ -1871,6 +1872,7 @@ fn opj_t1_clbl_decode_processor(
         == opj_t1_ht_decode_cblk(
           t1,
           cblk,
+          src,
           bandno,
           tccp.roishift as OPJ_UINT32,
           tccp.cblksty,
@@ -1885,6 +1887,7 @@ fn opj_t1_clbl_decode_processor(
       == opj_t1_decode_cblk(
         t1,
         cblk,
+        src,
         bandno,
         tccp.roishift as OPJ_UINT32,
         tccp.cblksty,
@@ -2017,6 +2020,7 @@ pub(crate) fn opj_t1_decode_cblks(
   tccp: &opj_tccp_t,
   p_manager: &mut opj_event_mgr,
   check_pterm: OPJ_BOOL,
+  src: &mut [u8],
 ) {
   let mut resno: OPJ_UINT32 = 0;
   let mut bandno: OPJ_UINT32 = 0;
@@ -2111,6 +2115,7 @@ pub(crate) fn opj_t1_decode_cblks(
                   off_x as OPJ_UINT32,
                   off_y as OPJ_UINT32,
                   tile_data,
+                  src,
                   tile_w as OPJ_UINT32,
                   tilec_view.whole_tile_decoding,
                   tccp,
@@ -2145,6 +2150,7 @@ pub(crate) fn opj_t1_decode_cblks(
 fn opj_t1_decode_cblk(
   t1: &mut opj_t1_t,
   cblk: &mut opj_tcd_cblk_dec_t,
+  src: &mut [u8],
   mut orient: OPJ_UINT32,
   mut roishift: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,
@@ -2155,7 +2161,6 @@ fn opj_t1_decode_cblk(
     let mut passtype: OPJ_UINT32 = 0;
     let mut segno: OPJ_UINT32 = 0;
     let mut passno: OPJ_UINT32 = 0;
-    let mut cblkdata = core::ptr::null_mut::<OPJ_BYTE>();
     let mut cblkdataindex = 0 as OPJ_UINT32;
     let mut type_0 = 0 as OPJ_BYTE;
     t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
@@ -2184,10 +2189,11 @@ fn opj_t1_decode_cblk(
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
 
-    /* Even if we have a single chunk, in multi-threaded decoding */
-    /* the insertion of our synthetic marker might potentially override */
-    /* valid codestream of other codeblocks decoded in parallel. */
-    if cblk.numchunks > 1 || t1.mustuse_cblkdatabuffer != 0 {
+    /* The C code reads the codeblock payload either in place (single chunk,
+    no cblkdatabuffer) or through a concatenation buffer (multi-chunk /
+    multi-threaded cases). Here the MQ coder owns its buffer, so we always
+    copy the chunks into it: one copy per codeblock. */
+    {
       let mut i: OPJ_UINT32 = 0;
       let mut cblk_len: OPJ_UINT32 = 0;
       /* Compute whole codeblock length from chunk lengths */
@@ -2200,27 +2206,20 @@ fn opj_t1_decode_cblk(
         i += 1
       }
       /* Allocate temporary memory if needed */
-      t1.grow_cblkdatabuffer((cblk_len + OPJ_COMMON_CBLK_DATA_EXTRA) as usize);
-      /* Concatenate all chunks */
-      let buf = t1.cblkdatabuffer();
-      cblk_len = 0 as OPJ_UINT32;
+      t1.mqc.grow_buf((cblk_len + OPJ_COMMON_CBLK_DATA_EXTRA) as usize);
+      /* Concatenate all chunks into the MQ coder's buffer */
+      let buf = t1.mqc.buf_mut();
+      let mut off = 0usize;
       i = 0 as OPJ_UINT32;
       while i < cblk.numchunks {
-        let chunk = cblk.chunks[i as usize].as_slice();
-        let off = cblk_len as usize;
-        buf[off..off + chunk.len()].copy_from_slice(chunk);
-        cblk_len = (cblk_len as core::ffi::c_uint)
-          .wrapping_add(cblk.chunks[i as usize].len)
-          as OPJ_UINT32;
+        let chunk = &cblk.chunks[i as usize];
+        let src_chunk = &src[chunk.data_offset..chunk.data_offset + chunk.len as usize];
+        for (dst, &b) in buf[off..off + chunk.len as usize].iter_mut().zip(src_chunk) {
+          dst.set(b);
+        }
+        off += chunk.len as usize;
         i += 1
       }
-      cblkdata = buf.as_mut_ptr();
-    } else if cblk.numchunks == 1 {
-      cblkdata = cblk.chunks[0].as_mut_slice().as_mut_ptr();
-    } else {
-      /* Not sure if that can happen in practice, but avoid Coverity to */
-      /* think we will dereference a null cblkdta pointer */
-      return 1i32;
     }
     /* For subtile decoding, directly decode in the decoded_data buffer of */
     /* the code-block. Hack t1->data to point to it, and restore it later */
@@ -2242,26 +2241,19 @@ fn opj_t1_decode_cblk(
         0i32
       } as OPJ_BYTE;
       if type_0 as core::ffi::c_int == 1i32 {
-        // SAFETY: `cblkdata` points into a live chunk/t1 buffer; the offset
-        // stays within `seg.len` by the segment bookkeeping.
-        unsafe {
-          opj_mqc_raw_init_dec(
-            &mut t1.mqc,
-            cblkdata.offset(cblkdataindex as isize),
-            seg.len,
-            2 as OPJ_UINT32,
-          )
-        };
+        opj_mqc_raw_init_dec(
+          &mut t1.mqc,
+          cblkdataindex as usize,
+          seg.len,
+          2 as OPJ_UINT32,
+        );
       } else {
-        // SAFETY: see the raw path above.
-        unsafe {
-          opj_mqc_init_dec(
-            &mut t1.mqc,
-            cblkdata.offset(cblkdataindex as isize),
-            seg.len,
-            2 as OPJ_UINT32,
-          )
-        };
+        opj_mqc_init_dec(
+          &mut t1.mqc,
+          cblkdataindex as usize,
+          seg.len,
+          2 as OPJ_UINT32,
+        );
       }
       cblkdataindex = (cblkdataindex as core::ffi::c_uint).wrapping_add(seg.len);
       passno = 0 as OPJ_UINT32;
@@ -2700,7 +2692,7 @@ fn opj_t1_encode_cblk(
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
-    opj_mqc_init_enc(&mut t1.mqc, cblk.data_ptr(), cblk.data_size);
+    opj_mqc_init_enc(&mut t1.mqc, cblk.data_size);
 
     passno = 0 as OPJ_UINT32;
     while bpno >= 0i32 {
@@ -2786,6 +2778,16 @@ fn opj_t1_encode_cblk(
     }
     cblk.totalpasses = passno;
     if cblk.totalpasses != 0 {
+      {
+        /* Copy the encoded bytes from the MQ coder's buffer into the codeblock
+         * data buffer (the C encoder wrote them in place through a pointer). */
+        let nb = opj_mqc_numbytes(&mut t1.mqc) as usize;
+        cblk.data.resize(nb.wrapping_add(1), 0);
+        let mq_buf = t1.mqc.buf_ref();
+        for (i, cell) in mq_buf[1..1 + nb].iter().enumerate() {
+          cblk.data[1 + i] = cell.get();
+        }
+      }
       /* Make sure that pass rates are increasing */
       let mut last_pass_rate = opj_mqc_numbytes(&mut t1.mqc);
       passno = cblk.totalpasses;

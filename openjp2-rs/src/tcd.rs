@@ -125,7 +125,7 @@ fn opj_tcd_makelayer(
               } else {
                 if cblk.numpassesinlayers == 0u32 {
                   cblk.layers[layno as usize].len = cblk.passes[n.wrapping_sub(1u32) as usize].rate;
-                  cblk.layers[layno as usize].data = cblk.data_ptr();
+                  cblk.layers[layno as usize].data_offset = 1;
                   cblk.layers[layno as usize].disto =
                     cblk.passes[n.wrapping_sub(1u32) as usize].distortiondec
                 } else {
@@ -136,12 +136,7 @@ fn opj_tcd_makelayer(
                     );
                   // The layer payload aliases the codeblock buffer at the
                   // pass offset, exactly like the C pointer arithmetic.
-                  cblk.layers[layno as usize].data = unsafe {
-                    cblk.data_ptr().offset(
-                      cblk.passes[cblk.numpassesinlayers.wrapping_sub(1u32) as usize].rate
-                        as isize,
-                    )
-                  };
+                  cblk.layers[layno as usize].data_offset = 1usize.wrapping_add(cblk.passes[cblk.numpassesinlayers.wrapping_sub(1u32) as usize].rate as usize);
                   cblk.layers[layno as usize].disto =
                     cblk.passes[n.wrapping_sub(1u32) as usize].distortiondec
                       - cblk.passes[cblk.numpassesinlayers.wrapping_sub(1u32) as usize]
@@ -272,7 +267,7 @@ fn opj_tcd_makelayer_fixed(
               if cblk.layers[layno as usize].numpasses != 0 {
                 if cblk.numpassesinlayers == 0u32 {
                   cblk.layers[layno as usize].len = cblk.passes[n.wrapping_sub(1u32) as usize].rate;
-                  cblk.layers[layno as usize].data = cblk.data_ptr()
+                  cblk.layers[layno as usize].data_offset = 1;
                 } else {
                   cblk.layers[layno as usize].len = cblk.passes[n.wrapping_sub(1u32) as usize]
                     .rate
@@ -281,12 +276,7 @@ fn opj_tcd_makelayer_fixed(
                     );
                   // The layer payload aliases the codeblock buffer at the
                   // pass offset, exactly like the C pointer arithmetic.
-                  cblk.layers[layno as usize].data = unsafe {
-                    cblk.data_ptr().offset(
-                      cblk.passes[cblk.numpassesinlayers.wrapping_sub(1u32) as usize].rate
-                        as isize,
-                    )
-                  }
+                  cblk.layers[layno as usize].data_offset = 1usize.wrapping_add(cblk.passes[cblk.numpassesinlayers.wrapping_sub(1u32) as usize].rate as usize);
                 }
                 if final_0 != 0 {
                   cblk.numpassesinlayers = n
@@ -306,8 +296,8 @@ fn opj_tcd_makelayer_fixed(
 }
 fn opj_tcd_rateallocate(
   tcd: &mut opj_tcd,
-  dest: *mut OPJ_BYTE,
-  p_data_written: *mut OPJ_UINT32,
+  dest: &mut [u8],
+  p_data_written: &mut OPJ_UINT32,
   len: OPJ_UINT32,
   cstr_info: *mut opj_codestream_info_t,
   p_manager: &mut opj_event_mgr,
@@ -404,6 +394,8 @@ fn opj_tcd_rateallocate(
     }
 
     /* index file */
+    #[cfg(feature = "c_api")]
+    #[allow(unsafe_code)]
     if !cstr_info.is_null() {
       // SAFETY: `cstr_info` is the C-ABI codestream info v1 mirror.
       let tile_info = unsafe {
@@ -484,11 +476,10 @@ fn opj_tcd_rateallocate(
                 tcd.tcd_tileno,
                 &mut tcd.tcd_image.tiles,
                 layno.wrapping_add(1u32),
-                dest,
+                &mut dest[..maxlen as usize],
                 p_data_written,
-                maxlen,
                 cstr_info,
-                core::ptr::null_mut::<opj_tcd_marker_info_t>(),
+                None,
                 tcd.cur_tp_num,
                 tcd.tp_pos,
                 tcd.cur_pino,
@@ -541,11 +532,10 @@ fn opj_tcd_rateallocate(
                   tcd.tcd_tileno,
                   &mut tcd.tcd_image.tiles,
                   layno.wrapping_add(1u32),
-                  dest,
+                  &mut dest[..maxlen as usize],
                   p_data_written,
-                  maxlen,
                   cstr_info,
-                  core::ptr::null_mut::<opj_tcd_marker_info_t>(),
+                  None,
                   tcd.cur_tp_num,
                   tcd.tp_pos,
                   tcd.cur_pino,
@@ -573,6 +563,8 @@ fn opj_tcd_rateallocate(
         /* Special value to indicate to use all passes */
         goodthresh = -(1i32) as OPJ_FLOAT64
       }
+      #[cfg(feature = "c_api")]
+      #[allow(unsafe_code)]
       if !cstr_info.is_null() {
         /* Threshold for Marcela Index */
         // SAFETY: the v1 C-ABI tile info was allocated above with a thresh
@@ -1249,11 +1241,11 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
 pub(crate) fn opj_tcd_encode_tile(
   p_tcd: &mut opj_tcd,
   p_tile_no: OPJ_UINT32,
-  p_dest: *mut OPJ_BYTE,
-  p_data_written: *mut OPJ_UINT32,
+  p_dest: &mut [u8],
+  p_data_written: &mut OPJ_UINT32,
   p_max_length: OPJ_UINT32,
   p_cstr_info: *mut opj_codestream_info_t,
-  p_marker_info: *mut opj_tcd_marker_info_t,
+  p_marker_info: Option<&mut opj_tcd_marker_info_t>,
   p_manager: &mut opj_event_mgr,
   image: &mut CoreImage,
   cp: &mut opj_cp_t,
@@ -1261,6 +1253,8 @@ pub(crate) fn opj_tcd_encode_tile(
   if p_tcd.cur_tp_num == 0u32 {
     p_tcd.tcd_tileno = p_tile_no;
     /* FIXME _ProfStop(PGROUP_RATE); */
+    #[cfg(feature = "c_api")]
+    #[allow(unsafe_code)]
     if !p_cstr_info.is_null() {
       let mut l_num_packs = 0 as OPJ_UINT32;
       let mut i: OPJ_UINT32 = 0;
@@ -1314,7 +1308,7 @@ pub(crate) fn opj_tcd_encode_tile(
     }
     if opj_tcd_rate_allocate_encode(
       p_tcd,
-      p_dest,
+      &mut p_dest[..p_max_length as usize],
       p_max_length,
       p_cstr_info,
       p_manager,
@@ -1338,6 +1332,8 @@ pub(crate) fn opj_tcd_encode_tile(
   /* FIXME _ProfStart(PGROUP_RATE); */
   /*--------------TIER2------------------*/
   /* INDEX */
+  #[cfg(feature = "c_api")]
+  #[allow(unsafe_code)]
   if !p_cstr_info.is_null() {
     // SAFETY: C-ABI v1 mirror write.
     unsafe { (*p_cstr_info).index_write = 1i32 }
@@ -1345,7 +1341,7 @@ pub(crate) fn opj_tcd_encode_tile(
   /* FIXME _ProfStart(PGROUP_T2); */
   if opj_tcd_t2_encode(
     p_tcd,
-    p_dest,
+    &mut p_dest[..p_max_length as usize],
     p_data_written,
     p_max_length,
     p_cstr_info,
@@ -1367,11 +1363,9 @@ pub(crate) fn opj_tcd_decode_tile(
   win_x1: OPJ_UINT32,
   win_y1: OPJ_UINT32,
   numcomps_to_decode: OPJ_UINT32,
-  comps_indices: *const OPJ_UINT32,
-  p_src: *mut OPJ_BYTE,
-  p_max_length: OPJ_UINT32,
+  comps_indices: &[OPJ_UINT32],
+  p_src: &mut [u8],
   p_tile_no: OPJ_UINT32,
-  p_cstr_index: *mut CodestreamIndex,
   p_manager: &mut opj_event_mgr,
   image: &mut CoreImage,
   cp: &mut opj_cp_t,
@@ -1388,7 +1382,7 @@ pub(crate) fn opj_tcd_decode_tile(
     let mut used_component = vec![false; image.numcomps as usize];
     compno = 0 as OPJ_UINT32;
     // SAFETY: the caller provides numcomps_to_decode valid component indices.
-    let indices = unsafe { core::slice::from_raw_parts(comps_indices, numcomps_to_decode as usize) };
+    let indices = comps_indices;
     for &idx in indices {
       used_component[idx as usize] = true;
     }
@@ -1492,8 +1486,6 @@ pub(crate) fn opj_tcd_decode_tile(
     p_tcd,
     p_src,
     &mut l_data_read,
-    p_max_length,
-    p_cstr_index,
     p_manager,
     image,
     cp,
@@ -1504,7 +1496,7 @@ pub(crate) fn opj_tcd_decode_tile(
   /* FIXME _ProfStop(PGROUP_T2); */
   /*------------------TIER1-----------------*/
   /* FIXME _ProfStart(PGROUP_T1); */
-  if opj_tcd_t1_decode(p_tcd, p_manager, image, cp) == 0 {
+  if opj_tcd_t1_decode(p_tcd, p_manager, image, cp, p_src) == 0 {
     return 0i32;
   }
   /* FIXME _ProfStop(PGROUP_T1); */
@@ -1721,10 +1713,8 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
 }
 fn opj_tcd_t2_decode(
   mut p_tcd: &mut opj_tcd,
-  mut p_src_data: *mut OPJ_BYTE,
-  mut p_data_read: *mut OPJ_UINT32,
-  mut p_max_src_size: OPJ_UINT32,
-  mut p_cstr_index: *mut CodestreamIndex,
+  p_src_data: &mut [u8],
+  p_data_read: &mut OPJ_UINT32,
   mut p_manager: &mut opj_event_mgr,
   image: &mut CoreImage,
   cp: &mut opj_cp_t,
@@ -1736,8 +1726,6 @@ fn opj_tcd_t2_decode(
     p_tcd.tcd_tileno,
     p_src_data,
     p_data_read,
-    p_max_src_size,
-    p_cstr_index,
     p_manager,
   ) == 0
   {
@@ -1752,6 +1740,7 @@ fn opj_tcd_t1_decode(
   p_manager: &mut opj_event_mgr,
   image: &mut CoreImage,
   cp: &mut opj_cp_t,
+  src: &mut [u8],
 ) -> OPJ_BOOL {
   let tcp = &cp.tcps[p_tcd.tcd_tileno as usize];
   let mut compno: OPJ_UINT32 = 0;
@@ -1785,6 +1774,7 @@ fn opj_tcd_t1_decode(
         &tcp.tccps[compno as usize],
         p_manager,
         check_pterm,
+        src,
       );
       if ret == 0 {
         break;
@@ -1825,6 +1815,18 @@ fn opj_tcd_dwt_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_c
   }
   1i32
 }
+/// Runs `f` on a bit-exact `&mut [f32]` view of the i32 buffer: the float MCT
+/// stores f32 bit patterns in the i32 component data (the C code reinterprets
+/// in place; here we convert per element).
+fn with_f32_view<R>(data: &mut [OPJ_INT32], f: impl FnOnce(&mut [OPJ_FLOAT32]) -> R) -> R {
+  let mut fdata: Vec<OPJ_FLOAT32> = data.iter().map(|&x| f32::from_bits(x as u32)).collect();
+  let r = f(&mut fdata);
+  for (d, &v) in data.iter_mut().zip(fdata.iter()) {
+    *d = v.to_bits() as i32;
+  }
+  r
+}
+
 fn opj_tcd_mct_decode(
   p_tcd: &mut opj_tcd,
   p_manager: &mut opj_event_mgr,
@@ -1924,22 +1926,43 @@ fn opj_tcd_mct_decode(
       if tcp.m_mct_decoding_matrix.is_empty() {
         return 1i32;
       }
-      let mut l_data: Vec<&mut [OPJ_FLOAT32]> = Vec::with_capacity(numcomps);
-      let mut rest = comps;
-      for _ in 0..numcomps {
-        let (first, r) = rest.split_at_mut(1);
-        let c = &mut first[0];
-        let s = if whole {
-          c.data.as_mut_slice(l_samples as usize)
-        } else {
-          c.data_win.as_mut_slice(l_samples as usize)
-        };
-        l_data.push(as_f32_slice(s));
-        rest = r;
+      let mut l_data: Vec<Vec<OPJ_FLOAT32>> = Vec::with_capacity(numcomps);
+      {
+        let mut rest = &mut *comps;
+        for _ in 0..numcomps {
+          let (first, r) = rest.split_at_mut(1);
+          let c = &mut first[0];
+          let s = if whole {
+            c.data.as_mut_slice(l_samples as usize)
+          } else {
+            c.data_win.as_mut_slice(l_samples as usize)
+          };
+          l_data.push(s.iter().map(|&x| f32::from_bits(x as u32)).collect());
+          rest = r;
+        }
       }
       let matrix = &tcp.m_mct_decoding_matrix[..];
-      if opj_mct_decode_custom(matrix, l_samples, &mut l_data, image.comps[0].sgnd) == 0 {
-        return 0i32;
+      {
+        let mut l_views: Vec<&mut [OPJ_FLOAT32]> = l_data.iter_mut().map(|v| &mut v[..]).collect();
+        if opj_mct_decode_custom(matrix, l_samples, &mut l_views, image.comps[0].sgnd) == 0 {
+          return 0i32;
+        }
+      }
+      {
+        let mut rest = &mut *comps;
+        for fdata in &l_data {
+          let (first, r) = rest.split_at_mut(1);
+          let c = &mut first[0];
+          let s = if whole {
+            c.data.as_mut_slice(l_samples as usize)
+          } else {
+            c.data_win.as_mut_slice(l_samples as usize)
+          };
+          for (d, &v) in s.iter_mut().zip(fdata.iter()) {
+            *d = v.to_bits() as i32;
+          }
+          rest = r;
+        }
       }
     } else if tcp.tccps[0].qmfbid == 1u32 {
       let (c0, rest) = comps.split_at_mut(1);
@@ -1956,7 +1979,11 @@ fn opj_tcd_mct_decode(
       let s0 = if whole { c0[0].data.as_mut_slice(l_samples as usize) } else { c0[0].data_win.as_mut_slice(l_samples as usize) };
       let s1 = if whole { c1[0].data.as_mut_slice(l_samples as usize) } else { c1[0].data_win.as_mut_slice(l_samples as usize) };
       let s2 = if whole { c2[0].data.as_mut_slice(l_samples as usize) } else { c2[0].data_win.as_mut_slice(l_samples as usize) };
-      opj_mct_decode_real(as_f32_slice(s0), as_f32_slice(s1), as_f32_slice(s2));
+      with_f32_view(s0, |f0| {
+        with_f32_view(s1, |f1| {
+          with_f32_view(s2, |f2| opj_mct_decode_real(f0, f1, f2))
+        })
+      });
     }
   } else {
     event_msg!(
@@ -2159,11 +2186,13 @@ fn opj_tcd_mct_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_c
     let (c0, rest) = comps.split_at_mut(1);
     let (c1, rest) = rest.split_at_mut(1);
     let (c2, _) = rest.split_at_mut(1);
-    opj_mct_encode_real(
-      as_f32_slice(c0[0].data.as_mut_slice(samples)),
-      as_f32_slice(c1[0].data.as_mut_slice(samples)),
-      as_f32_slice(c2[0].data.as_mut_slice(samples)),
-    );
+    with_f32_view(c0[0].data.as_mut_slice(samples), |f0| {
+      with_f32_view(c1[0].data.as_mut_slice(samples), |f1| {
+        with_f32_view(c2[0].data.as_mut_slice(samples), |f2| {
+          opj_mct_encode_real(f0, f1, f2)
+        })
+      })
+    });
   } else {
     let (c0, rest) = comps.split_at_mut(1);
     let (c1, rest) = rest.split_at_mut(1);
@@ -2224,11 +2253,11 @@ fn opj_tcd_t1_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_cp
 }
 fn opj_tcd_t2_encode(
   mut p_tcd: &mut opj_tcd,
-  mut p_dest_data: *mut OPJ_BYTE,
-  mut p_data_written: *mut OPJ_UINT32,
+  mut dest_data: &mut [u8],
+  mut p_data_written: &mut OPJ_UINT32,
   mut p_max_dest_size: OPJ_UINT32,
   mut p_cstr_info: *mut opj_codestream_info_t,
-  mut p_marker_info: *mut opj_tcd_marker_info_t,
+  mut p_marker_info: Option<&mut opj_tcd_marker_info_t>,
   mut p_manager: &mut opj_event_mgr,
   image: &mut CoreImage,
   cp: &mut opj_cp_t,
@@ -2240,9 +2269,8 @@ fn opj_tcd_t2_encode(
     p_tcd.tcd_tileno,
     &mut p_tcd.tcd_image.tiles,
     numlayers,
-    p_dest_data,
+    &mut dest_data[..p_max_dest_size as usize],
     p_data_written,
-    p_max_dest_size,
     p_cstr_info,
     p_marker_info,
     p_tcd.tp_num,
@@ -2260,7 +2288,7 @@ fn opj_tcd_t2_encode(
 }
 fn opj_tcd_rate_allocate_encode(
   mut p_tcd: &mut opj_tcd,
-  mut p_dest_data: *mut OPJ_BYTE,
+  mut dest_data: &mut [u8],
   mut p_max_dest_size: OPJ_UINT32,
   mut p_cstr_info: *mut opj_codestream_info_t,
   mut p_manager: &mut opj_event_mgr,
@@ -2269,6 +2297,8 @@ fn opj_tcd_rate_allocate_encode(
 ) -> OPJ_BOOL {
   {
     let mut l_nb_written = 0 as OPJ_UINT32;
+    #[cfg(feature = "c_api")]
+    #[allow(unsafe_code)]
     if !p_cstr_info.is_null() {
       unsafe { (*p_cstr_info).index_write = 0i32 }
     }
@@ -2280,7 +2310,7 @@ fn opj_tcd_rate_allocate_encode(
     {
       if opj_tcd_rateallocate(
         p_tcd,
-        p_dest_data,
+        &mut dest_data[..p_max_dest_size as usize],
         &mut l_nb_written,
         p_max_dest_size,
         p_cstr_info,
@@ -2550,29 +2580,6 @@ fn opj_tcd_is_whole_tilecomp_decoding(
 }
 /* ----------------------------------------------------------------------- */
 
-pub(crate) fn opj_tcd_marker_info_create(need_PLT: OPJ_BOOL) -> *mut opj_tcd_marker_info_t {
-  Box::into_raw(Box::new(opj_tcd_marker_info {
-    need_PLT,
-    packet_count: 0,
-    p_packet_size: core::ptr::null_mut(),
-  }))
-}
 /* ----------------------------------------------------------------------- */
 
-pub(crate) fn opj_tcd_marker_info_destroy(p_tcd_marker_info: *mut opj_tcd_marker_info_t) {
-  if !p_tcd_marker_info.is_null() {
-    let info = unsafe { Box::from_raw(p_tcd_marker_info) };
-    if !info.p_packet_size.is_null() {
-      // SAFETY: the packet size array was built as a Vec of exactly packet_count u32s
-      // (vec![0; n] has capacity == length) and transferred into the raw field.
-      unsafe {
-        drop(Vec::from_raw_parts(
-          info.p_packet_size,
-          info.packet_count as usize,
-          info.packet_count as usize,
-        ))
-      };
-    }
-  };
-}
 /* ----------------------------------------------------------------------- */

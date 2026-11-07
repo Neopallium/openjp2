@@ -1077,11 +1077,7 @@ fn opj_dwt_encode_and_deinterleave_v_real(
 /// from the raw allocation at the boundary only (see the SAFETY notes below).
 #[inline]
 /// Reinterpret an i32 sample buffer as f32 (the C code memcpy'd the words).
-pub(crate) fn as_f32_slice(data: &mut [OPJ_INT32]) -> &mut [OPJ_FLOAT32] {
-  // SAFETY: f32 and i32 share size and alignment; the buffer is a raw word
-  // array by contract of the DWT 9-7 transform.
-  unsafe { core::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut OPJ_FLOAT32, data.len()) }
-}
+
 
 fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWavelet) -> OPJ_BOOL {
   let w = (tilec.x1 - tilec.x0) as OPJ_UINT32;
@@ -1114,51 +1110,35 @@ fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWave
   /* width of the resolution level computed   */
   let mut cur = l; /* height of the resolution level computed  */
   while cur > 0 {
-    let mut j: OPJ_UINT32 = 0;
     let rw = (tilec.resolutions[cur as usize].x1 - tilec.resolutions[cur as usize].x0)
       as OPJ_UINT32;
     let rh = (tilec.resolutions[cur as usize].y1 - tilec.resolutions[cur as usize].y0)
       as OPJ_UINT32;
     let cas_row = tilec.resolutions[cur as usize].x0 & 1i32;
     let cas_col = tilec.resolutions[cur as usize].y0 & 1i32;
-    /* Perform vertical pass */
-    j = 0 as OPJ_UINT32;
-    while j + NB_ELTS_V8 - 1 < rw {
-      let col = j as usize;
-      match wavelet {
-        ForwardWavelet::Reversible53 => {
-          let data = &mut tilec.data.as_mut_slice(total_len);
-          let scratch = &mut bj[..];
-          opj_dwt_encode_and_deinterleave_v(
-            data,
-            col,
-            scratch,
-            rh,
-            (cas_col == 0i32) as core::ffi::c_int,
-            w,
-            NB_ELTS_V8,
-          )
+    match wavelet {
+      ForwardWavelet::Reversible53 => {
+        /* Perform vertical pass */
+        let mut j: OPJ_UINT32 = 0;
+        while j + NB_ELTS_V8 - 1 < rw {
+          let col = j as usize;
+          {
+            let data = &mut tilec.data.as_mut_slice(total_len);
+            let scratch = &mut bj[..];
+            opj_dwt_encode_and_deinterleave_v(
+              data,
+              col,
+              scratch,
+              rh,
+              (cas_col == 0i32) as core::ffi::c_int,
+              w,
+              NB_ELTS_V8,
+            )
+          }
+          j += NB_ELTS_V8;
         }
-        ForwardWavelet::Irreversible97 => {
-          let data = as_f32_slice(tilec.data.as_mut_slice(total_len));
-          let scratch = as_f32_slice(&mut bj[..]);
-          opj_dwt_encode_and_deinterleave_v_real(
-            data,
-            col,
-            scratch,
-            rh,
-            (cas_col == 0i32) as core::ffi::c_int,
-            w,
-            NB_ELTS_V8,
-          )
-        }
-      }
-      j += NB_ELTS_V8;
-    }
-    if j < rw {
-      let col = j as usize;
-      match wavelet {
-        ForwardWavelet::Reversible53 => {
+        if j < rw {
+          let col = j as usize;
           let data = &mut tilec.data.as_mut_slice(total_len);
           let scratch = &mut bj[..];
           opj_dwt_encode_and_deinterleave_v(
@@ -1171,39 +1151,72 @@ fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWave
             rw.wrapping_sub(j),
           )
         }
-        ForwardWavelet::Irreversible97 => {
-          let data = as_f32_slice(tilec.data.as_mut_slice(total_len));
-          let scratch = as_f32_slice(&mut bj[..]);
+        /* Perform horizontal pass */
+        j = 0 as OPJ_UINT32;
+        while j < rh {
+          let row_start = j.wrapping_mul(w) as usize;
+          let even = if cas_row == 0i32 { 1i32 } else { 0i32 };
+          {
+            let data = &mut tilec.data.as_mut_slice(total_len);
+            let scratch = &mut bj[..];
+            opj_dwt_encode_and_deinterleave_h_one_row(data, row_start, scratch, rw, even)
+          }
+          j += 1;
+        }
+      }
+      ForwardWavelet::Irreversible97 => {
+        /* Convert the buffer to its f32 bit-patterns once per level, run the
+         * vertical and horizontal passes, and write the words back. */
+        let mut data_f: Vec<OPJ_FLOAT32> = tilec.data.as_mut_slice(total_len)
+          .iter()
+          .map(|&x| f32::from_bits(x as u32))
+          .collect();
+        let mut scratch_f: Vec<OPJ_FLOAT32> = bj.iter().map(|&x| f32::from_bits(x as u32)).collect();
+        /* Perform vertical pass */
+        let mut j: OPJ_UINT32 = 0;
+        while j + NB_ELTS_V8 - 1 < rw {
+          let col = j as usize;
           opj_dwt_encode_and_deinterleave_v_real(
-            data,
+            &mut data_f,
             col,
-            scratch,
+            &mut scratch_f,
+            rh,
+            (cas_col == 0i32) as core::ffi::c_int,
+            w,
+            NB_ELTS_V8,
+          );
+          j += NB_ELTS_V8;
+        }
+        if j < rw {
+          let col = j as usize;
+          opj_dwt_encode_and_deinterleave_v_real(
+            &mut data_f,
+            col,
+            &mut scratch_f,
             rh,
             (cas_col == 0i32) as core::ffi::c_int,
             w,
             rw.wrapping_sub(j),
-          )
+          );
+        }
+        /* Perform horizontal pass */
+        j = 0 as OPJ_UINT32;
+        while j < rh {
+          let row_start = j.wrapping_mul(w) as usize;
+          let even = if cas_row == 0i32 { 1i32 } else { 0i32 };
+          opj_dwt_encode_and_deinterleave_h_one_row_real(
+            &mut data_f,
+            row_start,
+            &mut scratch_f,
+            rw,
+            even,
+          );
+          j += 1;
+        }
+        for (d, &v) in tilec.data.as_mut_slice(total_len).iter_mut().zip(data_f.iter()) {
+          *d = v.to_bits() as i32;
         }
       }
-    }
-    /* Perform horizontal pass */
-    j = 0 as OPJ_UINT32;
-    while j < rh {
-      let row_start = j.wrapping_mul(w) as usize;
-      let even = if cas_row == 0i32 { 1i32 } else { 0i32 };
-      match wavelet {
-        ForwardWavelet::Reversible53 => {
-          let data = &mut tilec.data.as_mut_slice(total_len);
-          let scratch = &mut bj[..];
-          opj_dwt_encode_and_deinterleave_h_one_row(data, row_start, scratch, rw, even)
-        }
-        ForwardWavelet::Irreversible97 => {
-          let data = as_f32_slice(tilec.data.as_mut_slice(total_len));
-          let scratch = as_f32_slice(&mut bj[..]);
-          opj_dwt_encode_and_deinterleave_h_one_row_real(data, row_start, scratch, rw, even)
-        }
-      }
-      j += 1;
     }
     cur -= 1;
   }
@@ -2321,7 +2334,10 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
   if total_len > 0 && tilec.data.is_null() {
     return 0i32;
   }
-  let tile_data = as_f32_slice(tilec.data.as_mut_slice(total_len));
+  let mut tile_data: Vec<OPJ_FLOAT32> = tilec.data.as_mut_slice(total_len)
+    .iter()
+    .map(|&x| f32::from_bits(x as u32))
+    .collect();
 
   let mut res_idx = 1usize;
   loop {
@@ -2343,7 +2359,7 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
     h.win_h_x1 = h.dn as OPJ_UINT32;
     j = 0 as OPJ_UINT32;
     while j + (NB_ELTS_V8 - 1) < rh {
-      opj_v8dwt_interleave_h(&h, tile_data, aj_start, w, NB_ELTS_V8);
+      opj_v8dwt_interleave_h(&h, &mut tile_data, aj_start, w, NB_ELTS_V8);
       opj_v8dwt_decode(&h);
       /* To be adapted if NB_ELTS_V8 changes */
       for k in 0..rw as usize {
@@ -2356,7 +2372,7 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
       j += NB_ELTS_V8;
     }
     if j < rh {
-      opj_v8dwt_interleave_h(&h, tile_data, aj_start, w, rh.wrapping_sub(j));
+      opj_v8dwt_interleave_h(&h, &mut tile_data, aj_start, w, rh.wrapping_sub(j));
       opj_v8dwt_decode(&h);
       let mut k_0: OPJ_UINT32 = 0;
       while k_0 < rw {
@@ -2378,7 +2394,7 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
     aj_start = 0usize;
     j = rw;
     while j > (NB_ELTS_V8 - 1) {
-      opj_v8dwt_interleave_v(&v, tile_data, aj_start, w, NB_ELTS_V8);
+      opj_v8dwt_interleave_v(&v, &mut tile_data, aj_start, w, NB_ELTS_V8);
       opj_v8dwt_decode(&v);
       let mut k_1: OPJ_UINT32 = 0;
       while k_1 < rh {
@@ -2395,7 +2411,7 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
     if rw & (NB_ELTS_V8 - 1) != 0 {
       let mut k_2: OPJ_UINT32 = 0;
       j = rw & (NB_ELTS_V8 - 1);
-      opj_v8dwt_interleave_v(&v, tile_data, aj_start, w, j);
+      opj_v8dwt_interleave_v(&v, &mut tile_data, aj_start, w, j);
       opj_v8dwt_decode(&v);
       k_2 = 0 as OPJ_UINT32;
       while k_2 < rh {
@@ -2408,6 +2424,9 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
       }
     }
     res_idx += 1;
+  }
+  for (d, &v) in tilec.data.as_mut_slice(total_len).iter_mut().zip(tile_data.iter()) {
+    *d = v.to_bits() as i32;
   }
   1i32
 }

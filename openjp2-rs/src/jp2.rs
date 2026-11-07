@@ -2154,14 +2154,6 @@ pub(crate) fn jp2_dump<W: crate::fprintf::StringWriter>(
   j2k_dump(&p_jp2.j2k, flag, out_stream);
 }
 
-pub(crate) fn jp2_get_cstr_index(mut p_jp2: &mut opj_jp2) -> *mut opj_codestream_index_t {
-  j2k_get_cstr_index(&mut p_jp2.j2k)
-}
-
-pub(crate) fn jp2_get_cstr_info(mut p_jp2: &mut opj_jp2) -> *mut opj_codestream_info_v2_t {
-  j2k_get_cstr_info(&mut p_jp2.j2k)
-}
-
 pub(crate) fn opj_jp2_set_decoded_resolution_factor(
   p_jp2: &mut opj_jp2,
   res_factor: OPJ_UINT32,

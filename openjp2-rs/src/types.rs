@@ -222,11 +222,20 @@ impl Default for DecoderParameters {
   }
 }
 
-#[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_marker_info {
   pub need_PLT: OPJ_BOOL,
   pub packet_count: OPJ_UINT32,
-  pub p_packet_size: *mut OPJ_UINT32,
+  pub p_packet_size: Vec<OPJ_UINT32>,
+}
+
+impl opj_tcd_marker_info {
+  pub(crate) fn new(need_PLT: OPJ_BOOL) -> Self {
+    Self {
+      need_PLT,
+      packet_count: 0,
+      p_packet_size: Vec::new(),
+    }
+  }
 }
 pub(crate) type opj_tcd_marker_info_t = opj_tcd_marker_info;
 
@@ -786,10 +795,6 @@ pub(crate) enum TileBuf {
     data: Vec<OPJ_INT32>,
     bytes: OPJ_SIZE_T,
   },
-  /// Aliases a caller-supplied image buffer; freeing it is not our business.
-  Borrowed {
-    ptr: *mut OPJ_INT32,
-  },
 }
 
 impl Default for TileBuf {
@@ -799,10 +804,6 @@ impl Default for TileBuf {
 }
 
 impl TileBuf {
-  pub(crate) fn borrowed(ptr: *mut OPJ_INT32) -> Self {
-    TileBuf::Borrowed { ptr }
-  }
-
   /// Mutable slice over `len` samples of the buffer.
   ///
   /// # Safety contract for the caller
@@ -811,13 +812,6 @@ impl TileBuf {
   pub(crate) fn as_mut_slice(&mut self, len: usize) -> &mut [OPJ_INT32] {
     match self {
       TileBuf::Owned { data, .. } => &mut data[..len],
-      TileBuf::Borrowed { ptr } => {
-        if len == 0 {
-          &mut []
-        } else {
-          unsafe { core::slice::from_raw_parts_mut(*ptr, len) }
-        }
-      }
       TileBuf::Empty => &mut [],
     }
   }
@@ -832,7 +826,6 @@ impl TileBuf {
           data.as_ptr() as *mut OPJ_INT32
         }
       }
-      TileBuf::Borrowed { ptr } => *ptr,
     }
   }
 
@@ -1162,20 +1155,11 @@ impl Default for opj_tcd_cblk_dec {
 
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_seg_data_chunk {
-  pub data: *mut u8,
+  /// Offset of the chunk into the tile's codestream data buffer.
+  pub data_offset: usize,
   pub len: OPJ_UINT32,
 }
 pub(crate) type opj_tcd_seg_data_chunk_t = opj_tcd_seg_data_chunk;
-
-impl opj_tcd_seg_data_chunk {
-  pub fn as_slice(&self) -> &[u8] {
-    unsafe { core::slice::from_raw_parts(self.data, self.len as usize) }
-  }
-
-  pub fn as_mut_slice(&mut self) -> &mut [u8] {
-    unsafe { core::slice::from_raw_parts_mut(self.data, self.len as usize) }
-  }
-}
 
 #[derive(Copy, Clone, Default)]
 pub(crate) struct opj_tcd_seg {
@@ -1260,7 +1244,9 @@ pub(crate) struct opj_tcd_layer {
   pub numpasses: OPJ_UINT32,
   pub len: OPJ_UINT32,
   pub disto: OPJ_FLOAT64,
-  pub data: *mut OPJ_BYTE,
+  /// Offset of the payload into `opj_tcd_cblk_enc.data` (the Vec holds a
+  /// leading sentinel byte, so a C `data` pointer equals offset 1).
+  pub data_offset: usize,
 }
 pub(crate) type opj_tcd_layer_t = opj_tcd_layer;
 

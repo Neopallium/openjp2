@@ -786,6 +786,7 @@ impl CompressionParameters {
     }
 
     // Comment
+    #[cfg(feature = "c_api")]
     if let Some(comment) = &self.comment {
       c_params.set_comment(comment);
     }

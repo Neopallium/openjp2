@@ -17,13 +17,9 @@ pub struct opj_mqc {
   pub a: OPJ_UINT32,
   pub ct: OPJ_UINT32,
   pub end_of_byte_stream_counter: OPJ_UINT32,
-  /// Base of the code-block byte buffer this coder reads from / writes to.
-  ///
-  /// TODO(phase 3.d): becomes a borrowed `&mut [u8]` once the code-block owns its bytes as a
-  /// `Vec`; the `buf()` seam below disappears with it.
-  base: *mut OPJ_BYTE,
-  /// Number of bytes addressable from `base`.
-  base_len: usize,
+  /// Owned byte buffer this coder reads from / writes to. The code-block data
+  /// sits at `start..end`; `Cell` lets the shared-borrow byte-out path write.
+  buf: Vec<Cell<OPJ_BYTE>>,
   /// Index of the code-block's first byte within `base`. The encoder's buffer carries one
   /// sentinel byte in front of it (see `opj_tcd_code_block_enc_allocate_data`), so `start` is
   /// 1 there and the cursor may legally sit one byte before the code-block data.
@@ -42,15 +38,13 @@ pub type opj_mqc_t = opj_mqc;
 
 impl Default for opj_mqc {
   fn default() -> Self {
-    use core::ptr::null_mut;
     let ctx = &mqc_states[0];
     Self {
       c: 0,
       a: 0,
       ct: 0,
       end_of_byte_stream_counter: 0,
-      base: null_mut(),
-      base_len: 0,
+      buf: Vec::new(),
       start: 0,
       end: 0,
       cursor: 0,
@@ -81,22 +75,33 @@ impl opj_mqc {
     self.ctxs[self.curctx as usize]
   }
 
-  /// The one remaining raw-pointer seam of this module: every byte read and write below goes
-  /// through here, bounds-checked against `base_len`. `Cell` lets a shared borrow still write,
+  /// Byte view over the owned buffer. `Cell` lets a shared borrow still write,
   /// which keeps the byte-out path free of `&mut` juggling.
   #[inline]
   fn buf(&self) -> &[Cell<OPJ_BYTE>] {
-    // SAFETY: `base`/`base_len` are set by `opj_mqc_init_enc` / `opj_mqc_init_dec_common` from
-    // a caller-owned code-block buffer that outlives the coding pass, and `Cell<u8>` is
-    // `repr(transparent)` over `u8`.
-    unsafe { core::slice::from_raw_parts(self.base as *const Cell<OPJ_BYTE>, self.base_len) }
+    &self.buf[..]
   }
 
-  /// Points the coder at `base_len` bytes starting at `base`, with the code-block data running
-  /// from index `start` to index `end`, and the cursor placed at `start`.
-  fn attach(&mut self, base: *mut OPJ_BYTE, base_len: usize, start: usize, end: usize) {
-    self.base = base;
-    self.base_len = base_len;
+  /// Grows the owned buffer (if needed) to `len` zero bytes.
+  pub(crate) fn grow_buf(&mut self, len: usize) {
+    if self.buf.len() < len {
+      self.buf.resize(len, Cell::new(0));
+    }
+  }
+
+  /// Public read view of the owned buffer.
+  pub(crate) fn buf_ref(&self) -> &[Cell<OPJ_BYTE>] {
+    &self.buf[..]
+  }
+
+  /// Public mutable view of the owned buffer.
+  pub(crate) fn buf_mut(&mut self) -> &mut [Cell<OPJ_BYTE>] {
+    &mut self.buf[..]
+  }
+
+  /// Points the coder at the code-block data running from index `start` to
+  /// index `end` (within the owned buffer), with the cursor at `start`.
+  fn attach(&mut self, start: usize, end: usize) {
     self.start = start;
     self.end = end;
     self.cursor = start;
@@ -1017,7 +1022,7 @@ pub(crate) fn opj_mqc_numbytes(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
 /// `bp` is the code-block data buffer and `len` its usable length. The buffer is allocated with
 /// one extra sentinel byte in front of `bp` (see `opj_tcd_code_block_enc_allocate_data`), which
 /// is what lets the cursor start one byte before the code-block data.
-pub(crate) fn opj_mqc_init_enc(mut mqc: &mut opj_mqc_t, mut bp: *mut OPJ_BYTE, len: OPJ_UINT32) {
+pub(crate) fn opj_mqc_init_enc(mut mqc: &mut opj_mqc_t, len: OPJ_UINT32) {
   /* To avoid the curctx pointer to be dangling, but not strictly */
   /* required as the current context is always set before encoding */
   opj_mqc_setcurctx(mqc, 0);
@@ -1027,7 +1032,8 @@ pub(crate) fn opj_mqc_init_enc(mut mqc: &mut opj_mqc_t, mut bp: *mut OPJ_BYTE, l
   mqc.a = 0x8000;
   mqc.c = 0;
   let base_len = (len as usize).wrapping_add(1);
-  mqc.attach(bp.wrapping_offset(-1), base_len, 1, base_len);
+  mqc.grow_buf(base_len);
+  mqc.attach(1, base_len);
   /* Yes, we point before the start of the buffer, but this is safe */
   /* given opj_tcd_code_block_enc_allocate_data() */
   mqc.bp_offset(-1);
@@ -1205,13 +1211,14 @@ pub(crate) fn opj_mqc_segmark_enc(mut mqc: &mut opj_mqc_t) {
 
 fn opj_mqc_init_dec_common(
   mut mqc: &mut opj_mqc_t,
-  mut bp: *mut OPJ_BYTE,
+  mut offset: usize,
   mut len: OPJ_UINT32,
   mut extra_writable_bytes: OPJ_UINT32,
 ) {
   assert!(extra_writable_bytes >= OPJ_COMMON_CBLK_DATA_EXTRA);
   let len = len as usize;
-  mqc.attach(bp, len.wrapping_add(extra_writable_bytes as usize), 0, len);
+  debug_assert!(mqc.buf.len() >= offset.wrapping_add(len).wrapping_add(extra_writable_bytes as usize));
+  mqc.attach(offset, offset + len);
   /* Insert an artificial 0xFF 0xFF marker at end of the code block */
   /* data so that the bytein routines stop on it. This saves us comparing */
   /* the bp and end pointers */
@@ -1221,7 +1228,7 @@ fn opj_mqc_init_dec_common(
 
 pub(crate) fn opj_mqc_init_dec(
   mut mqc: &mut opj_mqc_t,
-  mut bp: *mut OPJ_BYTE,
+  mut offset: usize,
   mut len: OPJ_UINT32,
   mut extra_writable_bytes: OPJ_UINT32,
 ) {
@@ -1230,7 +1237,7 @@ pub(crate) fn opj_mqc_init_dec(
   /* decoder" has been tried, but does */
   /* not bring any improvement. */
   /* See https://github.com/uclouvain/openjpeg/issues/921 */
-  opj_mqc_init_dec_common(mqc, bp, len, extra_writable_bytes);
+  opj_mqc_init_dec_common(mqc, offset, len, extra_writable_bytes);
   opj_mqc_setcurctx(mqc, 0);
   mqc.end_of_byte_stream_counter = 0;
   if len == 0 {
@@ -1246,11 +1253,11 @@ pub(crate) fn opj_mqc_init_dec(
 
 pub(crate) fn opj_mqc_raw_init_dec(
   mqc: &mut opj_mqc_t,
-  bp: *mut OPJ_BYTE,
+  offset: usize,
   len: OPJ_UINT32,
   extra_writable_bytes: OPJ_UINT32,
 ) {
-  opj_mqc_init_dec_common(mqc, bp, len, extra_writable_bytes);
+  opj_mqc_init_dec_common(mqc, offset, len, extra_writable_bytes);
   mqc.c = 0;
   mqc.ct = 0;
 }

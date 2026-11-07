@@ -21,6 +21,6 @@ name = "openjp2"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
-openjp2_core = { package = "openjp2", path = "..", default-features = false, features = ["file-io"] }
+openjp2_core = { package = "openjp2", path = "..", default-features = false, features = ["file-io", "c_api"] }
 libc = "0.2"
 log = "0.4.17"

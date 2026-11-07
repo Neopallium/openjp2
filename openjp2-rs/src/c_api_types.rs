@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-use super::malloc::*;
 
 pub type size_t = usize;
 
@@ -241,10 +240,12 @@ pub struct opj_cparameters {
 }
 pub type opj_cparameters_t = opj_cparameters;
 
+#[cfg(feature = "c_api")]
+#[allow(unsafe_code)]
 impl Drop for opj_cparameters {
   fn drop(&mut self) {
     if !self.cp_matrice.is_null() {
-      opj_free(self.cp_matrice as *mut core::ffi::c_void);
+      crate::cabi::opj_free(self.cp_matrice as *mut core::ffi::c_void);
       self.cp_matrice = core::ptr::null_mut();
     }
     if !self.cp_comment.is_null() {
@@ -255,7 +256,7 @@ impl Drop for opj_cparameters {
       self.cp_comment = core::ptr::null_mut();
     }
     if !self.mct_data.is_null() {
-      opj_free(self.mct_data);
+      crate::cabi::opj_free(self.mct_data);
       self.mct_data = core::ptr::null_mut();
     }
   }
@@ -333,6 +334,8 @@ impl opj_cparameters_t {
     *self = Default::default()
   }
 
+  #[cfg(feature = "c_api")]
+  #[allow(unsafe_code)]
   pub fn set_comment(&mut self, comment: &str) {
     let comment = std::ffi::CString::new(comment).expect("CString::new failed");
     if !self.cp_comment.is_null() {
@@ -344,6 +347,8 @@ impl opj_cparameters_t {
     self.cp_comment = comment.into_raw() as *mut i8;
   }
 
+  #[cfg(feature = "c_api")]
+  #[allow(unsafe_code)]
   pub fn set_MCT(
     &mut self,
     mut encoding_matrix: &[f32],
@@ -362,7 +367,7 @@ impl opj_cparameters_t {
     self.irreversible = 1i32;
     /* use array based MCT */
     self.tcp_mct = 2 as core::ffi::c_char;
-    self.mct_data = opj_malloc(l_mct_total_size);
+    self.mct_data = crate::cabi::opj_malloc(l_mct_total_size);
     if self.mct_data.is_null() {
       return false;
     }
@@ -375,11 +380,15 @@ impl opj_cparameters_t {
     true
   }
 
+  #[cfg(feature = "c_api")]
+  #[allow(unsafe_code)]
   pub fn get_matrix_mut(&mut self, nb_comps: usize) -> &mut [f32] {
     let mut l_matrix_size = nb_comps * nb_comps;
     unsafe { core::slice::from_raw_parts_mut(self.mct_data as *mut f32, l_matrix_size) }
   }
 
+  #[cfg(feature = "c_api")]
+  #[allow(unsafe_code)]
   pub fn get_dc_shift_mut(&mut self, nb_comps: usize) -> &mut [i32] {
     let mut l_matrix_byte_size = nb_comps * nb_comps * core::mem::size_of::<OPJ_FLOAT32>();
     unsafe {

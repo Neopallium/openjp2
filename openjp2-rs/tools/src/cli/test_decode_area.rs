@@ -187,19 +187,13 @@ fn decode(
     .read_header(&mut stream)
     .ok_or_else(|| "Failed to read header")?;
 
-  // Get the codestream info.
+  // Get the codestream geometry.
   if let Some(tile_info) = tile_info {
-    let mut cstr_info = codec.get_cstr_info();
-    if cstr_info.is_null() {
-      Err("Failed to get codestream info")?;
-    }
-    unsafe {
-      tile_info.tile_w = (*cstr_info).tdx;
-      tile_info.tile_h = (*cstr_info).tdy;
-      tile_info.cblk_w = (*(*cstr_info).m_default_tile_info.tccp_info).cblkw;
-      tile_info.cblk_h = (*(*cstr_info).m_default_tile_info.tccp_info).cblkh;
-      opj_destroy_cstr_info(&mut cstr_info);
-    }
+    let (tdx, tdy, cblkw, cblkh) = codec.get_tile_geometry();
+    tile_info.tile_w = tdx;
+    tile_info.tile_h = tdy;
+    tile_info.cblk_w = cblkw;
+    tile_info.cblk_h = cblkh;
   };
 
   // Set decode area if provided
