@@ -556,8 +556,8 @@ pub fn color_apply_icc_profile(image: &mut CoreImage, icc_profile: &[u8]) {
     transform.transform_pixels(&in_data, &mut out_data);
 
     // Copy the transformed data back to the components
-    let src_pixels = out_data.chunks_exact(3);
-    for (src, ((r, g), b)) in src_pixels.zip(comp_pixels) {
+    let src_pixels = out_data.as_chunks::<3>().0;
+    for (src, ((r, g), b)) in src_pixels.iter().zip(comp_pixels) {
       *r = src[0] as i32;
       *g = src[1] as i32;
       *b = src[2] as i32;

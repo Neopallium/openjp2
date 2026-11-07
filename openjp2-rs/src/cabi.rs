@@ -8,7 +8,6 @@
 #![allow(unsafe_code)]
 
 use crate::c_api_types::*;
-use crate::consts::opj::*;
 use crate::fprintf::StringWriter;
 use crate::types::*;
 
@@ -64,7 +63,11 @@ impl StringWriter for ::libc::FILE {
 
 /// Free a codestream info v2 structure (core-side helper; the C ABI export
 /// lives in openjp2-capi).
-pub fn opj_destroy_cstr_info(cstr_info: *mut *mut opj_codestream_info_v2_t) {
+///
+/// # Safety
+/// `cstr_info` must be NULL or point to a pointer previously filled by
+/// `j2k_get_cstr_info`.
+pub unsafe fn opj_destroy_cstr_info(cstr_info: *mut *mut opj_codestream_info_v2_t) {
   if !cstr_info.is_null() {
     let info = unsafe { Box::from_raw(*cstr_info) };
     if !info.m_default_tile_info.tccp_info.is_null() {
@@ -90,7 +93,6 @@ pub fn opj_destroy_cstr_info(cstr_info: *mut *mut opj_codestream_info_v2_t) {
 /* Codestream info builders (v1/v2 mirrors)                                 */
 
 pub(crate) fn j2k_get_cstr_info(p_j2k: &mut opj_j2k) -> *mut opj_codestream_info_v2_t {
-  let mut compno: OPJ_UINT32 = 0;
   let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
   // SAFETY: zeroed is the C calloc state the callers expect for the pointer fields.
   let mut cstr_info = Box::new(unsafe { core::mem::zeroed::<opj_codestream_info_v2_t>() });
@@ -123,12 +125,10 @@ pub(crate) fn j2k_get_cstr_info(p_j2k: &mut opj_j2k) -> *mut opj_codestream_info
       numcomps as usize,
     )
   };
-  compno = 0 as OPJ_UINT32;
+  let mut compno: OPJ_UINT32 = 0;
   while compno < numcomps {
     let l_tccp = &l_default_tile.tccps[compno as usize];
     let l_tccp_info = &mut tccp_infos[compno as usize];
-    let mut bandno: OPJ_INT32 = 0;
-    let numbands: OPJ_INT32;
     /* coding style*/
     l_tccp_info.csty = l_tccp.csty;
     l_tccp_info.numresolutions = l_tccp.numresolutions;
@@ -145,13 +145,13 @@ pub(crate) fn j2k_get_cstr_info(p_j2k: &mut opj_j2k) -> *mut opj_codestream_info
     /* quantization style*/
     l_tccp_info.qntsty = l_tccp.qntsty;
     l_tccp_info.numgbits = l_tccp.numgbits;
-    numbands = if l_tccp.qntsty == 1u32 {
+    let numbands: OPJ_INT32 = if l_tccp.qntsty == 1u32 {
       1i32
     } else {
       (l_tccp.numresolutions as OPJ_INT32 * 3i32) - 2i32
     };
     if numbands < 3i32 * 33i32 - 2i32 {
-      bandno = 0i32;
+      let mut bandno: OPJ_INT32 = 0;
       while bandno < numbands {
         l_tccp_info.stepsizes_mant[bandno as usize] = l_tccp.stepsizes[bandno as usize].mant as OPJ_UINT32;
         l_tccp_info.stepsizes_expn[bandno as usize] = l_tccp.stepsizes[bandno as usize].expn as OPJ_UINT32;
@@ -227,7 +227,11 @@ pub(crate) fn jp2_get_cstr_info(mut p_jp2: &mut opj_jp2) -> *mut opj_codestream_
 }
 
 /// Free a C-ABI codestream index mirror built by `j2k_get_cstr_index`.
-pub fn free_cstr_index_mirror(p_cstr_ind: *mut opj_codestream_index_t) {
+///
+/// # Safety
+/// `p_cstr_ind` must be NULL or point to a `Box` produced by
+/// `j2k_get_cstr_index`.
+pub unsafe fn free_cstr_index_mirror(p_cstr_ind: *mut opj_codestream_index_t) {
   if p_cstr_ind.is_null() {
     return;
   }

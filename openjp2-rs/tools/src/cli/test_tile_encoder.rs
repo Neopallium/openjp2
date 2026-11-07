@@ -118,15 +118,17 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
   // Image components
   let mut image_components = Vec::with_capacity(num_comps as usize);
   for _ in 0..num_comps {
-    let mut comp_param = opj_image_cmptparm_t::default();
-    comp_param.dx = 1;
-    comp_param.dy = 1;
-    comp_param.w = image_width;
-    comp_param.h = image_height;
-    comp_param.prec = comp_prec;
-    comp_param.sgnd = 0;
-    comp_param.x0 = offsetx;
-    comp_param.y0 = offsety;
+    let comp_param = opj_image_cmptparm_t {
+      dx: 1,
+      dy: 1,
+      w: image_width,
+      h: image_height,
+      prec: comp_prec,
+      sgnd: 0,
+      x0: offsetx,
+      y0: offsety,
+      ..Default::default()
+    };
     image_components.push(comp_param);
   }
 

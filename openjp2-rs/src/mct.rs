@@ -148,6 +148,7 @@ pub(crate) fn opj_mct_getnorm_real(mut compno: OPJ_UINT32) -> OPJ_FLOAT64 {
   opj_mct_norms_real[compno as usize]
 }
 
+#[allow(clippy::needless_range_loop)]
 pub(crate) fn opj_mct_encode_custom(
   coding_matrix: &[OPJ_FLOAT32],
   n: OPJ_SIZE_T,
@@ -176,6 +177,7 @@ pub(crate) fn opj_mct_encode_custom(
   1i32
 }
 
+#[allow(clippy::needless_range_loop)]
 pub(crate) fn opj_mct_decode_custom(
   decoding_matrix: &[OPJ_FLOAT32],
   n: OPJ_SIZE_T,

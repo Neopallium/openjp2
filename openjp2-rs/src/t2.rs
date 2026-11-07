@@ -112,6 +112,7 @@ fn opj_t2_getnumpasses(bio: &mut opj_bio) -> OPJ_UINT32 {
 
 /* ----------------------------------------------------------------------- */
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn opj_t2_encode_packets(
   t2: &mut opj_t2_t,
   mut p_tile_no: OPJ_UINT32,

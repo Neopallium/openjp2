@@ -1252,7 +1252,7 @@ pub(crate) fn opj_jp2_setup_encoder(
   /* ------------------- */
   /* Check if number of components respects standard */
   let numcomps = image.numcomps;
-  if numcomps < 1 || numcomps > 16384 {
+  if !(1..=16384).contains(&numcomps) {
     event_msg!(
       p_manager,
       EVT_ERROR,
@@ -1331,7 +1331,7 @@ pub(crate) fn opj_jp2_setup_encoder(
   let mut color_channels = 0u32;
   for (i, comp) in comps.iter().enumerate() {
     if comp.alpha != 0 {
-      alpha_count = alpha_count + 1;
+      alpha_count += 1;
       alpha_channel = i as u32
     }
   }

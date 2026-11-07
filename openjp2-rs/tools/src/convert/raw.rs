@@ -222,8 +222,9 @@ pub fn load_raw_image(
         } else {
           u16::from_le_bytes
         };
-        for (dst, bytes) in data.iter_mut().zip(buffer.chunks_exact(2)) {
-          let value = from_bytes([bytes[0], bytes[1]]);
+        let (chunks, _) = buffer.as_chunks::<2>();
+        for (dst, bytes) in data.iter_mut().zip(chunks) {
+          let value = from_bytes(*bytes);
           *dst = if raw_params.signed {
             value as i16 as i32
           } else {
@@ -237,8 +238,9 @@ pub fn load_raw_image(
         } else {
           u32::from_le_bytes
         };
-        for (dst, bytes) in data.iter_mut().zip(buffer.chunks_exact(4)) {
-          let value = from_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        let (chunks, _) = buffer.as_chunks::<4>();
+        for (dst, bytes) in data.iter_mut().zip(chunks) {
+          let value = from_bytes(*bytes);
           *dst = value as i32;
         }
       }

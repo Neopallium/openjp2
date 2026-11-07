@@ -344,7 +344,7 @@ impl opj_cparameters_t {
         let _old_comment = std::ffi::CString::from_raw(self.cp_comment as *mut core::ffi::c_char);
       }
     }
-    self.cp_comment = comment.into_raw() as *mut i8;
+    self.cp_comment = comment.into_raw();
   }
 
   #[cfg(feature = "c_api")]
@@ -355,9 +355,9 @@ impl opj_cparameters_t {
     mut dc_shift: &[i32],
     nb_comps: u32,
   ) -> bool {
-    let mut l_matrix_size = encoding_matrix.len() * core::mem::size_of::<OPJ_FLOAT32>();
-    let mut l_dc_shift_size = dc_shift.len() * core::mem::size_of::<OPJ_INT32>();
-    let mut l_mct_total_size = l_matrix_size + l_dc_shift_size;
+    let l_matrix_size = core::mem::size_of_val(encoding_matrix);
+    let l_dc_shift_size = core::mem::size_of_val(dc_shift);
+    let l_mct_total_size = l_matrix_size + l_dc_shift_size;
     /* add MCT capability */
     if self.rsiz as core::ffi::c_int & 0x8000i32 != 0 {
       self.rsiz = (self.rsiz as core::ffi::c_int | 0x100i32) as OPJ_UINT16
@@ -393,7 +393,7 @@ impl opj_cparameters_t {
     let mut l_matrix_byte_size = nb_comps * nb_comps * core::mem::size_of::<OPJ_FLOAT32>();
     unsafe {
       core::slice::from_raw_parts_mut(
-        self.mct_data.offset(l_matrix_byte_size as isize) as *mut i32,
+        self.mct_data.add(l_matrix_byte_size) as *mut i32,
         nb_comps,
       )
     }

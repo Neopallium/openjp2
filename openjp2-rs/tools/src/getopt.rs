@@ -554,50 +554,44 @@ impl<V: Clone + fmt::Debug, P: Clone + fmt::Debug> Iterator for GetOptsIterator<
       self.parse_positional = Some(idx + 1);
       return Some(positional);
     }
-    while let Some(opt_str) = self.args.next() {
-      if !opt_str.starts_with('-') || opt_str == "-" {
-        if let Some(positional) = self
-          .opts
-          .handle_positional(0, Some(opt_str), &mut self.args)
-        {
-          self.parse_positional = Some(1);
-          return Some(positional);
-        }
-        break;
-      }
-
-      if let Some(opt) = self.opts.get_opt(&opt_str) {
-        if opt.has_arg {
-          let val = opt.val.clone();
-          return match self.args.peek() {
-            Some(arg) => {
-              // Detect if the argument is another option.
-              if self.opts.has_opt(arg) {
-                Some(ParsedOpt::ParseError(format!(
-                  "Expected argument for option {val:?}, got another option {arg}"
-                )))
-              } else {
-                let arg = self.args.next().unwrap();
-                Some(ParsedOpt::Opt(val, Some(arg)))
-              }
-            }
-            None => Some(ParsedOpt::ParseError(format!(
-              "Missing argument for option {val:?}"
-            ))),
-          };
-        } else {
-          return Some(ParsedOpt::Opt(opt.val.clone(), None));
-        }
-      } else if let Some(positional) =
-        self
-          .opts
-          .handle_positional(0, Some(opt_str.clone()), &mut self.args)
+    let opt_str = self.args.next()?;
+    if !opt_str.starts_with('-') || opt_str == "-" {
+      if let Some(positional) = self
+        .opts
+        .handle_positional(0, Some(opt_str), &mut self.args)
       {
         self.parse_positional = Some(1);
         return Some(positional);
-      } else {
-        return Some(ParsedOpt::ParseError(format!("Invalid option: {opt_str}")));
       }
+    } else if let Some(opt) = self.opts.get_opt(&opt_str) {
+      if opt.has_arg {
+        let val = opt.val.clone();
+        return match self.args.peek() {
+          Some(arg) => {
+            // Detect if the argument is another option.
+            if self.opts.has_opt(arg) {
+              Some(ParsedOpt::ParseError(format!(
+                "Expected argument for option {val:?}, got another option {arg}"
+              )))
+            } else {
+              let arg = self.args.next().unwrap();
+              Some(ParsedOpt::Opt(val, Some(arg)))
+            }
+          }
+          None => Some(ParsedOpt::ParseError(format!(
+            "Missing argument for option {val:?}"
+          ))),
+        };
+      }
+      return Some(ParsedOpt::Opt(opt.val.clone(), None));
+    } else if let Some(positional) = self
+      .opts
+      .handle_positional(0, Some(opt_str.clone()), &mut self.args)
+    {
+      self.parse_positional = Some(1);
+      return Some(positional);
+    } else {
+      return Some(ParsedOpt::ParseError(format!("Invalid option: {opt_str}")));
     }
     None
   }

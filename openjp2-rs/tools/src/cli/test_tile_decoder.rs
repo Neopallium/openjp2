@@ -11,13 +11,13 @@ struct DecodeArea {
 
 fn create_codec_and_stream<P: AsRef<Path>>(input: P) -> Result<(Codec, Stream), String> {
   let input = input.as_ref();
-  let mut params = opj_dparameters_t::default();
-
-  // Do not use layer decoding limitations
-  params.cp_layer = 0;
-
-  // Do not use resolutions reductions
-  params.cp_reduce = 0;
+  let mut params = opj_dparameters_t {
+    // Do not use layer decoding limitations
+    cp_layer: 0,
+    // Do not use resolutions reductions
+    cp_reduce: 0,
+    ..Default::default()
+  };
 
   let codec_format = detect_format_from_file(input)?;
   let stream = Stream::new_file(input, 1_000_000, true).map_err(|e| format!("{e:?}"))?;

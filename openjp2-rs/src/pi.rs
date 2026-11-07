@@ -1460,8 +1460,7 @@ pub(crate) fn opj_pi_create(
   let tcp = &cp.tcps[tileno as usize];
   l_poc_bound = tcp.numpocs.wrapping_add(1u32);
   /* memory allocations*/
-  let mut l_pi: Vec<opj_pi_iterator_t> = Vec::new();
-  l_pi.reserve(l_poc_bound as usize);
+  let mut l_pi: Vec<opj_pi_iterator_t> = Vec::with_capacity(l_poc_bound as usize);
   pino = 0 as OPJ_UINT32;
   while pino < l_poc_bound {
     let mut current = opj_pi_iterator {

@@ -41,6 +41,7 @@ use super::event::*;
 use super::fprintf::StringWriter;
 use super::j2k::*;
 
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum CodecFormat {
   J2K(opj_j2k),
   JP2(opj_jp2),

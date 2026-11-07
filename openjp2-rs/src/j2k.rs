@@ -64,6 +64,7 @@ impl Default for J2KState {
   }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, Default)]
 pub enum MCTElementType {
@@ -200,6 +201,7 @@ impl ProgressionStep {
   }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum ProgressionOrder {
   Unknown = 0,
@@ -251,6 +253,7 @@ impl ProgressionOrder {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
 pub(crate) enum J2KMarker {
   /// UNKNOWN marker value
   UNK(u32),
@@ -3266,7 +3269,7 @@ fn opj_j2k_write_sod(
       let mut p_PLT_buffer = vec![0u8; p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT as usize];
       if opj_j2k_write_plt_in_memory(
         &*p_j2k,
-        &mut marker_info,
+        &marker_info,
         &mut p_PLT_buffer[..],
         &mut l_data_written_PLT,
         p_manager,
@@ -9640,7 +9643,7 @@ fn opj_j2k_write_first_tile_part(
       (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32;
     let rsiz = p_j2k.m_cp.rsiz as core::ffi::c_int;
     let tile_has_poc = p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize].POC;
-    if !(rsiz >= 0x3i32 && rsiz <= 0x6i32) && tile_has_poc {
+    if !(0x3i32..=0x6i32).contains(&rsiz) && tile_has_poc {
       l_current_nb_bytes_written = 0 as OPJ_UINT32;
       opj_j2k_write_poc_in_memory(
         p_j2k,

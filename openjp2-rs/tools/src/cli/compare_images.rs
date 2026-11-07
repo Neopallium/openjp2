@@ -1,10 +1,12 @@
 use crate::convert::load_image;
+use std::path::Path;
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
 use crate::params::{CompressionParameters, ImageFileFormat};
 use openjp2::CoreImage;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
 enum Opt {
   Base,
   Test,
@@ -184,7 +186,7 @@ fn print_help() {
 }
 
 fn read_image_from_multiple_files(
-  file: &PathBuf,
+  file: &Path,
   params: CompressionParameters,
   nb_files: usize,
   separator: &str,

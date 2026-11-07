@@ -13,6 +13,7 @@ pub struct CLIOptions {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
 enum CompressOpt {
   Input,
   Output,
@@ -731,10 +732,11 @@ impl CompressionParameters {
 
   pub fn to_c_params(&self) -> opj_cparameters_t {
     // Start with defaults
-    let mut c_params = opj_cparameters_t::default();
-
-    c_params.max_comp_size = self.max_comp_size as i32;
-    c_params.max_cs_size = self.max_cs_size as i32;
+    let mut c_params = opj_cparameters_t {
+      max_comp_size: self.max_comp_size as i32,
+      max_cs_size: self.max_cs_size as i32,
+      ..Default::default()
+    };
 
     // Set codec format
     c_params.cod_format = match self.codec_format {

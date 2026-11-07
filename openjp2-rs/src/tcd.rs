@@ -2563,7 +2563,7 @@ fn opj_tcd_is_whole_tilecomp_decoding(
       tilec.y1 as OPJ_UINT32,
       opj_uint_ceildiv(p_tcd.win_y1, image_comp.dy),
     );
-    let mut shift = (*tilec)
+    let mut shift = tilec
       .numresolutions
       .wrapping_sub(tilec.minimum_num_resolutions);
     /* Tolerate small margin within the reduced resolution factor to consider if */

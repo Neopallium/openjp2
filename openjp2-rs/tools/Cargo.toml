@@ -41,6 +41,9 @@ default = ["lcms2", "testing"]
 
 test_malloc = ["openjp2/test_malloc"]
 
+# Mirrors the core's C-ABI feature: only set_comment in the tools uses it.
+c_api = []
+
 rust_backend = ["image/tiff"]
 
 libtiff = ["libtiff-sys"]

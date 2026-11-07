@@ -1807,6 +1807,7 @@ fn opj_t1_allocate_buffers(
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */
 
+#[allow(clippy::too_many_arguments)]
 fn opj_t1_clbl_decode_processor(
   _resno: OPJ_UINT32,
   off_x: OPJ_UINT32,
@@ -2302,6 +2303,7 @@ fn opj_t1_decode_cblk(
     1i32
 }
 
+#[allow(clippy::too_many_arguments)]
 /* * Procedure to deal with a asynchronous code-block encoding job.
  *
  * @param user_data Pointer to a opj_t1_cblk_encode_processing_job_t* structure

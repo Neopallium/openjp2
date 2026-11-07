@@ -142,8 +142,10 @@ fn process_file(
 ) -> Result<(), String> {
   unsafe {
     // Set up decoder parameters
-    let mut parameters = opj_dparameters::default();
-    parameters.m_verbose = verbose as i32;
+    let mut parameters = opj_dparameters {
+      m_verbose: verbose as i32,
+      ..Default::default()
+    };
 
     // Determine input format
     let format = detect_format_from_file(input)?;
