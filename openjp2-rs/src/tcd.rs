@@ -20,7 +20,7 @@ impl opj_tcd {
   }
 
   pub fn used_component(&self, compno: OPJ_UINT32) -> bool {
-    if self.used_component.len() == 0 {
+    if self.used_component.is_empty() {
       return true;
     }
     self.used_component[compno as usize]
@@ -925,9 +925,7 @@ pub(crate) fn opj_tcd_init_tile(
           /* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
           /* the test (!isEncoder && l_tccp->qmfbid == 0) is strongly */
           /* linked to the use of two_invK instead of invK */
-          let log2_gain = if isEncoder == 0 && tccp.qmfbid == 0u32 {
-            0i32
-          } else if band.bandno == 0u32 {
+          let log2_gain = if (isEncoder == 0 && tccp.qmfbid == 0u32) || band.bandno == 0u32 {
             0i32
           } else if band.bandno == 3u32 {
             2i32
@@ -1834,7 +1832,7 @@ fn opj_tcd_mct_decode(
 ) -> OPJ_BOOL {
   let tcp = &cp.tcps[p_tcd.tcd_tileno as usize];
   let mut l_samples: OPJ_SIZE_T = 0;
-  if tcp.mct == 0u32 || p_tcd.used_component.len() > 0 {
+  if tcp.mct == 0u32 || !p_tcd.used_component.is_empty() {
     return 1i32;
   }
   let min_num_res = p_tcd.tcd_image.tiles.comps[0].minimum_num_resolutions;
@@ -2158,9 +2156,8 @@ fn opj_tcd_dc_level_shift_encode(p_tcd: &mut opj_tcd, cp: &mut opj_cp_t) -> OPJ_
 }
 fn opj_tcd_mct_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_cp_t) -> OPJ_BOOL {
   let tcp = &cp.tcps[p_tcd.tcd_tileno as usize];
-  let samples = (((p_tcd.tcd_image.tiles.comps[0].x1 - p_tcd.tcd_image.tiles.comps[0].x0) as OPJ_SIZE_T)
-    .wrapping_mul((p_tcd.tcd_image.tiles.comps[0].y1 - p_tcd.tcd_image.tiles.comps[0].y0) as OPJ_SIZE_T))
-    as usize;
+  let samples = ((p_tcd.tcd_image.tiles.comps[0].x1 - p_tcd.tcd_image.tiles.comps[0].x0) as usize)
+    .wrapping_mul((p_tcd.tcd_image.tiles.comps[0].y1 - p_tcd.tcd_image.tiles.comps[0].y0) as usize);
   if tcp.mct == 0 {
     return 1i32;
   }

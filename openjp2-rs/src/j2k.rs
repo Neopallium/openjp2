@@ -8634,7 +8634,7 @@ fn opj_j2k_decode_tiles(
       && p_j2k
         .m_output_image
         .as_ref()
-        .map_or(false, |image| {
+        .is_some_and(|image| {
           image.x0 == 0u32
             && image.y0 == 0u32
             && image.x1 == p_j2k.m_cp.tdx

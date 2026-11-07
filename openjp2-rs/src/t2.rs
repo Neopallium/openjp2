@@ -363,10 +363,8 @@ pub(crate) fn opj_t2_decode_packets(
       );
       /* INDEX >> */
       /* << INDEX */
-      if pi.layno >= num_layers_to_decode {
-        skip_packet = 1i32
-      } else if pi.resno
-        >= tcd.tcd_image.tiles.comps[pi.compno as usize].minimum_num_resolutions
+      if pi.layno >= num_layers_to_decode
+        || pi.resno >= tcd.tcd_image.tiles.comps[pi.compno as usize].minimum_num_resolutions
       {
         skip_packet = 1i32
       } else {
@@ -457,13 +455,13 @@ pub(crate) fn opj_t2_decode_packets(
           return 0i32;
         }
       }
-      if first_pass_failed[pi.compno as usize] != 0 {
-        if image.comps[pi.compno as usize].resno_decoded == 0u32 {
-          image.comps[pi.compno as usize].resno_decoded = tcd.tcd_image.tiles.comps
-            [pi.compno as usize]
-            .minimum_num_resolutions
-            .wrapping_sub(1u32)
-        }
+      if first_pass_failed[pi.compno as usize] != 0
+        && image.comps[pi.compno as usize].resno_decoded == 0u32
+      {
+        image.comps[pi.compno as usize].resno_decoded = tcd.tcd_image.tiles.comps
+          [pi.compno as usize]
+          .minimum_num_resolutions
+          .wrapping_sub(1u32)
       }
       let (_, rest) = src.split_at_mut(l_nb_bytes_read as usize);
       src = rest;

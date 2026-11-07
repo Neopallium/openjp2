@@ -2254,7 +2254,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                 let mut j_0: OPJ_INT32 = 0;
                 let mut cwd_0 = frwd_fetch(&mut sigprop);
                 let mut cnt = 0 as OPJ_UINT32;
-                let mut dp_0 = (((y - 8i32) * stride)) as usize;
+                let mut dp_0 = ((y - 8i32) * stride) as usize;
                 dp_0 += (i_3 + n) as usize;
                 col_mask_0 = (0xfu32) << (4i32 * n);
                 inv_sig = !cur_sig_0.get();
@@ -2335,7 +2335,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   //if any
                   let mut col_mask_1: OPJ_UINT32 = 0; // decoded samples address
                   let mut j_1: OPJ_INT32 = 0; //mask to select a column
-                  let mut dp_1 = (((y - 8i32) * stride)) as usize;
+                  let mut dp_1 = ((y - 8i32) * stride) as usize;
                   dp_1 += (i_3 + n) as usize;
                   col_mask_1 = (0xfu32) << (4i32 * n);
                   j_1 = n;

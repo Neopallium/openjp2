@@ -419,7 +419,7 @@ fn opj_idwt53_h(dwt: &opj_dwt_t, tiledp: &mut [OPJ_INT32], row_start: usize) {
   opj_dwt_interleave_h(dwt, &tiledp[row_start..row_start + len]);
   dwt.decode_1();
   for k in 0..len {
-    tiledp[row_start + k] = dwt.mem[k as usize].get();
+    tiledp[row_start + k] = dwt.mem[k].get();
   }
 }
 
@@ -1313,9 +1313,7 @@ pub(crate) fn opj_dwt_calc_explicit_stepsizes(tccp: &mut opj_tccp_t, mut prec: O
         .numresolutions
         .wrapping_sub(1u32)
         .wrapping_sub(resno);
-      gain = if tccp.qmfbid == 0u32 {
-        0i32
-      } else if orient == 0u32 {
+      gain = if tccp.qmfbid == 0u32 || orient == 0u32 {
         0i32
       } else if orient == 1u32 || orient == 2u32 {
         1i32
