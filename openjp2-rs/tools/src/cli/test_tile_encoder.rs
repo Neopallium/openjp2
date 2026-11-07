@@ -88,8 +88,8 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
     false
   };
 
-  let nb_tiles_width = (offsetx + image_width + tile_width - 1) / tile_width;
-  let nb_tiles_height = (offsety + image_height + tile_height - 1) / tile_height;
+  let nb_tiles_width = (offsetx + image_width).div_ceil(tile_width);
+  let nb_tiles_height = (offsety + image_height).div_ceil(tile_height);
   let nb_tiles = nb_tiles_width * nb_tiles_height;
   let data_size = (tile_width * tile_height * num_comps * comp_prec / 8) as usize;
 
@@ -136,7 +136,7 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
     J2KFormat::J2K => OPJ_CODEC_J2K,
     J2KFormat::JP2 => OPJ_CODEC_JP2,
     _ => {
-      return Err(format!("Unknown codec format"));
+      return Err("Unknown codec format".to_string());
     }
   };
   let mut codec =
@@ -149,7 +149,7 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
 
   // Create tile image
   let mut image = CoreImage::tile_create(&image_components, OPJ_CLRSPC_SRGB)
-    .ok_or_else(|| "Failed to create image")?;
+    .ok_or("Failed to create image")?;
 
   image.x0 = offsetx;
   image.y0 = offsety;
@@ -179,7 +179,7 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
     let tile_size = (tile_x1 - tile_x0) * (tile_y1 - tile_y0) * num_comps * comp_prec / 8;
     let data = &data[..tile_size as usize];
 
-    if codec.write_tile(i, &data, &mut stream) != 1 {
+    if codec.write_tile(i, data, &mut stream) != 1 {
       Err("Failed to write tile")?;
     }
   }

@@ -25,7 +25,7 @@ pub fn load_pgx_image(
     .map_err(|e| ImageError::InvalidFormat(format!("Failed to read PGX header: {}", e)))?;
 
   // Parse PGX header format: "PG <endian> <+/-> <precision> <width> <height>"
-  let mut parts: Vec<&str> = header.trim().split_whitespace().collect();
+  let mut parts: Vec<&str> = header.split_whitespace().collect();
   log::debug!("PGX header: {:?}", parts);
   if parts.len() < 5 || parts[0] != "PG" || parts[1] != "ML" {
     return Err(ImageError::InvalidFormat(
@@ -71,7 +71,7 @@ pub fn load_pgx_image(
     .map_err(|_| ImageError::InvalidFormat("Invalid height value".into()))?;
   log::debug!("PGX dimensions: {}x{}x{}", width, height, precision);
 
-  if width < 1 || height < 1 || precision < 1 || precision > 31 {
+  if width < 1 || height < 1 || !(1..=31).contains(&precision) {
     return Err(ImageError::InvalidFormat(
       "Invalid PGX dimensions or precision".into(),
     ));
@@ -144,7 +144,7 @@ pub fn load_pgx_image(
     let mut buffer = vec![0u8; (width * height * 2) as usize];
     reader.read_exact(&mut buffer)?;
 
-    for (i, chunk) in buffer.chunks_exact(2).enumerate() {
+    for (i, chunk) in buffer.as_chunks::<2>().0.iter().enumerate() {
       let value = if bigendian {
         u16::from_be_bytes([chunk[0], chunk[1]])
       } else {
@@ -160,7 +160,7 @@ pub fn load_pgx_image(
     let mut buffer = vec![0u8; (width * height * 4) as usize];
     reader.read_exact(&mut buffer)?;
 
-    for (i, chunk) in buffer.chunks_exact(4).enumerate() {
+    for (i, chunk) in buffer.as_chunks::<4>().0.iter().enumerate() {
       let value = if bigendian {
         u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
       } else {
@@ -193,9 +193,9 @@ pub fn save_pgx_image(image: &CoreImage, path: &Path) -> Result<(), ImageError> 
 
     // Write PGX header
     let sign_char = if comp_data.comp.sgnd != 0 { '-' } else { '+' };
-    write!(
+    writeln!(
       writer,
-      "PG ML {} {} {} {}\n",
+      "PG ML {} {} {} {}",
       sign_char, comp_data.comp.prec, comp_data.comp.w, comp_data.comp.h
     )?;
 

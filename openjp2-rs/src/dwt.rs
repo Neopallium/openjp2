@@ -1,5 +1,4 @@
 use core::cell::Cell;
-use std::alloc::{alloc, dealloc, Layout};
 
 use super::math::*;
 use super::openjpeg::*;

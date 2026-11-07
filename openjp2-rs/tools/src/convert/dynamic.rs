@@ -95,8 +95,7 @@ pub fn convert_to_dynamic_image(image: &CoreImage) -> Result<DynamicImage, Image
         .data
         .iter()
         .zip(alpha.data.iter())
-        .map(|(g, a)| [g + adjust, a + adjust])
-        .flatten();
+        .flat_map(|(g, a)| [g + adjust, a + adjust]);
       if gray.comp.prec <= 8 {
         // Convert to ImageLumaA8
         let img_buf =
@@ -119,8 +118,7 @@ pub fn convert_to_dynamic_image(image: &CoreImage) -> Result<DynamicImage, Image
         .iter()
         .zip(g.data.iter())
         .zip(b.data.iter())
-        .map(|((r, g), b)| [r + adjust, g + adjust, b + adjust])
-        .flatten();
+        .flat_map(|((r, g), b)| [r + adjust, g + adjust, b + adjust]);
       if r.comp.prec <= 8 {
         // Convert to ImageRgb8
         let img_buf =
@@ -144,8 +142,7 @@ pub fn convert_to_dynamic_image(image: &CoreImage) -> Result<DynamicImage, Image
         .zip(g.data.iter())
         .zip(b.data.iter())
         .zip(a.data.iter())
-        .map(|(((r, g), b), a)| [r + adjust, g + adjust, b + adjust, a + adjust])
-        .flatten();
+        .flat_map(|(((r, g), b), a)| [r + adjust, g + adjust, b + adjust, a + adjust]);
       if r.comp.prec <= 8 {
         // Convert to ImageRgba8
         let img_buf =
@@ -258,13 +255,13 @@ pub fn convert_from_dynamic_image(
 
   // Get mutable references to component data.
   let mut data = comps
-    .into_iter()
+    .iter_mut()
     .map(|c| c.data_mut().expect("We just allocated it"));
 
   match in_img {
     DynamicImage::ImageLuma8(img) => {
       let grey = data.next().expect("We just allocated all the components");
-      for (grey, pixel) in grey.into_iter().zip(img.pixels()) {
+      for (grey, pixel) in grey.iter_mut().zip(img.pixels()) {
         *grey = pixel[0] as i32;
       }
     }
@@ -273,7 +270,7 @@ pub fn convert_from_dynamic_image(
       let grey = data.next().expect("We just allocated all the components");
       let alpha = data.next().expect("We just allocated all the components");
       // zip the components data to access them together.
-      let data = grey.into_iter().zip(alpha.into_iter());
+      let data = grey.iter_mut().zip(&mut *alpha);
 
       // iterate over the pixels and assign the pixel values to the components data.
       for ((grey, alpha), pixel) in data.zip(img.pixels()) {
@@ -287,7 +284,7 @@ pub fn convert_from_dynamic_image(
       let g = data.next().expect("We just allocated all the components");
       let b = data.next().expect("We just allocated all the components");
       // zip the components data to access them together.
-      let data = r.into_iter().zip(g.into_iter()).zip(b.into_iter());
+      let data = r.iter_mut().zip(&mut *g).zip(&mut *b);
 
       // iterate over the pixels and assign the pixel values to the components data.
       for (((r, g), b), pixel) in data.zip(img.pixels()) {
@@ -304,10 +301,10 @@ pub fn convert_from_dynamic_image(
       let a = data.next().expect("We just allocated all the components");
       // zip the components data to access them together.
       let data = r
-        .into_iter()
-        .zip(g.into_iter())
-        .zip(b.into_iter())
-        .zip(a.into_iter());
+        .iter_mut()
+        .zip(&mut *g)
+        .zip(&mut *b)
+        .zip(&mut *a);
 
       // iterate over the pixels and assign the pixel values to the components data.
       for ((((r, g), b), a), pixel) in data.zip(img.pixels()) {
@@ -319,7 +316,7 @@ pub fn convert_from_dynamic_image(
     }
     DynamicImage::ImageLuma16(img) => {
       let grey = data.next().expect("We just allocated all the components");
-      for (grey, pixel) in grey.into_iter().zip(img.pixels()) {
+      for (grey, pixel) in grey.iter_mut().zip(img.pixels()) {
         *grey = pixel[0] as i32;
       }
     }
@@ -328,7 +325,7 @@ pub fn convert_from_dynamic_image(
       let grey = data.next().expect("We just allocated all the components");
       let alpha = data.next().expect("We just allocated all the components");
       // zip the components data to access them together.
-      let data = grey.into_iter().zip(alpha.into_iter());
+      let data = grey.iter_mut().zip(&mut *alpha);
 
       // iterate over the pixels and assign the pixel values to the components data.
       for ((grey, alpha), pixel) in data.zip(img.pixels()) {
@@ -342,7 +339,7 @@ pub fn convert_from_dynamic_image(
       let g = data.next().expect("We just allocated all the components");
       let b = data.next().expect("We just allocated all the components");
       // zip the components data to access them together.
-      let data = r.into_iter().zip(g.into_iter()).zip(b.into_iter());
+      let data = r.iter_mut().zip(&mut *g).zip(&mut *b);
 
       // iterate over the pixels and assign the pixel values to the components data.
       for (((r, g), b), pixel) in data.zip(img.pixels()) {
@@ -359,10 +356,10 @@ pub fn convert_from_dynamic_image(
       let a = data.next().expect("We just allocated all the components");
       // zip the components data to access them together.
       let data = r
-        .into_iter()
-        .zip(g.into_iter())
-        .zip(b.into_iter())
-        .zip(a.into_iter());
+        .iter_mut()
+        .zip(&mut *g)
+        .zip(&mut *b)
+        .zip(&mut *a);
 
       // iterate over the pixels and assign the pixel values to the components data.
       for ((((r, g), b), a), pixel) in data.zip(img.pixels()) {

@@ -105,13 +105,12 @@ fn compress_image(
       options.push(bits.as_str());
     }
 
-    if options.len() > 0 {
-      if !codec.encoder_set_extra_options(&options) {
+    if !options.is_empty()
+      && !codec.encoder_set_extra_options(&options) {
         return Err(ImageError::EncodeError(
           "Failed to set encoder options".into(),
         ));
       }
-    }
   }
 
   // Create output stream

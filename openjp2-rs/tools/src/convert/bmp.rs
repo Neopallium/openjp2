@@ -228,7 +228,7 @@ impl BmpInfo {
       let d_blue = comps.next().expect("We just allocated all components data");
 
       let src = src
-        .chunks_exact(4)
+        .as_chunks::<4>().0.iter()
         .map(|p| u32::from_le_bytes([p[0], p[1], p[2], p[3]]));
       match comps.next() {
         Some(d_alpha) => {
@@ -379,7 +379,7 @@ fn parse_bmp_header(data: &[u8]) -> Result<BmpInfo, ImageError> {
   }
 
   // Calculate row stride.
-  let stride = (width * bits_per_pixel as usize + 31) / 32 * 4;
+  let stride = (width * bits_per_pixel as usize).div_ceil(32) * 4;
 
   Ok(BmpInfo {
     width,

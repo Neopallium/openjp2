@@ -53,11 +53,10 @@ fn decompress_image<P: AsRef<Path>>(
   }
 
   // Disable strict mode if we want to decode partial codestreams.
-  if params.allow_partial {
-    if codec.decoder_set_strict_mode(0) == 0 {
+  if params.allow_partial
+    && codec.decoder_set_strict_mode(0) == 0 {
       return Err(ImageError::EncodeError("Failed to set strict mode".into()));
     }
-  }
 
   // TODO: set the number of threads.
 
@@ -70,13 +69,12 @@ fn decompress_image<P: AsRef<Path>>(
     .ok_or_else(|| ImageError::DecodeError("Failed to read header".into()))?;
 
   // Set the components to decode.
-  if params.numcomps > 0 {
-    if codec.set_decoded_components(&params.comps_indices, 0) == 0 {
+  if params.numcomps > 0
+    && codec.set_decoded_components(&params.comps_indices, 0) == 0 {
       return Err(ImageError::DecodeError(
         "Failed to set decoded components".into(),
       ));
     }
-  }
   if let Some(cp_reduce) = set_decoded_resolution_factor {
     // For debuging/testing purposes.
     if codec.set_decoded_resolution_factor(cp_reduce) == 0 {
@@ -91,11 +89,10 @@ fn decompress_image<P: AsRef<Path>>(
 
   if let Some(tile_index) = params.tile_index {
     // Decode a tile.
-    if !no_decode_area {
-      if !params.quiet {
+    if !no_decode_area
+      && !params.quiet {
         eprintln!("WARNING: -d option is ignored when decoding tiles");
       }
-    }
     if codec.get_decoded_tile(&mut stream, &mut image, tile_index) == 0 {
       return Err(ImageError::DecodeError(
         "Failed to set decoded tiles".into(),
@@ -325,25 +322,15 @@ fn upsample_image_components(orig: &CoreImage) -> Result<Option<CoreImage>, Imag
 
     let mut src_idx = 0;
     let mut y = yoff;
-    let max_y = if new_h > (orig_dy - 1) {
-      new_h - (orig_dy - 1)
-    } else {
-      // For small images, we need to handle the case where max_y is less than dy.
-      0
-    };
-    let max_x = if new_w > (orig_dx - 1) {
-      new_w - (orig_dx - 1)
-    } else {
-      // For small images, we need to handle the case where max_x is less than dx.
-      0
-    };
+    let max_y = new_h.saturating_sub(orig_dy - 1);
+    let max_x = new_w.saturating_sub(orig_dx - 1);
 
     // Zero out initial rows for yoff
     let mut dst_idx = 0;
     for _ in 0..yoff {
-      let end = dst_idx + new_w as usize;
+      let end = dst_idx + new_w;
       dst[dst_idx..end].fill(0);
-      dst_idx += new_w as usize;
+      dst_idx += new_w;
     }
 
     while y < max_y {

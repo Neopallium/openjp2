@@ -138,7 +138,7 @@ pub fn load_tiff_image(
     let mut buffer = BitBuffer::new(strip_size);
     if planar_config == PLANARCONFIG_CONTIG {
       let row_bit_size = width as usize * numcomps as usize * prec as usize;
-      let row_size = (row_bit_size + 7) / 8;
+      let row_size = row_bit_size.div_ceil(8);
       let row_bit_padding = row_size * 8 - row_bit_size;
       // Must have at least one component.
       // Only 1-4 components are supported.  Any additional components are ignored.
@@ -256,7 +256,7 @@ pub fn load_tiff_image(
       }
     } else {
       let row_bit_size = width as usize * prec as usize;
-      let row_size = (row_bit_size + 7) / 8;
+      let row_size = row_bit_size.div_ceil(8);
       let row_bit_padding = row_size * 8 - row_bit_size;
       let mut strip = 0;
       // Separate planes
@@ -404,7 +404,7 @@ pub fn save_tiff_image(image: &mut CoreImage, path: &Path) -> Result<(), ImageEr
   let d3 = c3.map(|c| c.data.chunks_exact(width as usize));
 
   let strip_size = unsafe { TIFFStripSize(tiff) as usize };
-  let row_size = (width as usize * numcomps as usize * prec as usize + 7) / 8;
+  let row_size = (width as usize * numcomps as usize * prec as usize).div_ceil(8);
   if strip_size != row_size {
     unsafe { TIFFClose(tiff) };
     return Err(ImageError::EncodeError("Invalid TIFF strip size".into()));
@@ -414,7 +414,7 @@ pub fn save_tiff_image(image: &mut CoreImage, path: &Path) -> Result<(), ImageEr
     let written = unsafe {
       TIFFWriteEncodedStrip(
         tiff,
-        y as u32,
+        y,
         buf.as_ptr() as *mut c_void,
         strip_size as i64,
       )

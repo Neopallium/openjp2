@@ -5,7 +5,6 @@ use super::math::*;
 use super::mct::*;
 use super::openjpeg::*;
 use crate::image::{CoreImage, CoreImageComp};
-use crate::j2k::CodestreamIndex;
 use super::pi::*;
 use super::t1::*;
 use super::t2::*;

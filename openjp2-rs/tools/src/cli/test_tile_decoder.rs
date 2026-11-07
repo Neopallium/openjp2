@@ -27,7 +27,7 @@ fn create_codec_and_stream<P: AsRef<Path>>(input: P) -> Result<(Codec, Stream), 
     J2KFormat::J2K => OPJ_CODEC_J2K,
     J2KFormat::JP2 => OPJ_CODEC_JP2,
     _ => {
-      return Err(format!("Unknown codec format"));
+      return Err("Unknown codec format".to_string());
     }
   };
 
@@ -68,7 +68,7 @@ pub fn run_test_tile_decoder(args: Vec<String>, default_file: &str) -> Result<()
   // Decode image header and create image.
   let mut image = codec
     .read_header(&mut stream)
-    .ok_or_else(|| "Failed to read header")?;
+    .ok_or("Failed to read header")?;
 
   // Set decode area
   if codec.set_decode_area(&mut image, area.x0, area.y0, area.x1, area.y1) != 1 {

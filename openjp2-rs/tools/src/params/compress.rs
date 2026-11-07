@@ -63,7 +63,7 @@ fn encode_help_display() {
 
   println!("Default encoding options:");
   println!("-------------------------");
-  println!("");
+  println!();
   println!(" * Lossless");
   println!(" * 1 tile");
   println!(" * RGB->YCC conversion if at least 3 components");
@@ -79,21 +79,21 @@ fn encode_help_display() {
   println!(" * No offset of the origin of the image");
   println!(" * No offset of the origin of the tiles");
   println!(" * Reversible DWT 5-3");
-  println!("");
+  println!();
 
   println!("Note:");
   println!("-----");
-  println!("");
+  println!();
   println!("The markers written to the main_header are : SOC SIZ COD QCD COM.");
   println!("COD and QCD never appear in the tile_header.");
-  println!("");
+  println!();
 
   println!("Parameters:");
   println!("-----------");
-  println!("");
+  println!();
   println!("Required Parameters (except with -h):");
   println!("One of the two options -ImgDir or -i must be used");
-  println!("");
+  println!();
   println!("-i <file>");
   println!("    Input file");
   println!("    Known extensions are <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|TIFF|RAW|YUV|RAWL|TGA>");
@@ -112,9 +112,9 @@ fn encode_help_display() {
   println!("     Example: -F 512,512,3,8,u@1x1:2x2:2x2");
   println!("              for raw or yuv 512x512 size with 4:2:0 subsampling");
   println!("    Required only if RAW or RAWL input file is provided.");
-  println!("");
+  println!();
   println!("Optional Parameters:");
-  println!("");
+  println!();
   println!("-h");
   println!("    Display the help information.");
   println!("-r <compression ratio>,<compression ratio>,...");
@@ -238,7 +238,7 @@ fn encode_help_display() {
     println!("    Number of threads to use for encoding or ALL_CPUS for all available cores.");
   }
   */
-  println!("");
+  println!();
 }
 
 // Replace create_option_defs() with:
@@ -407,7 +407,7 @@ pub fn parse_cli_options(
       (CompressOpt::FixedLayer, Some(arg)) => {
         // Parse fixed layer parameters
         let layer_params: Vec<&str> = arg.split(',').collect();
-        if layer_params.len() < 1 {
+        if layer_params.is_empty() {
           return Err("Invalid fixed layer parameters".into());
         }
         c_params.num_layers = layer_params[0].parse()?;
@@ -497,7 +497,7 @@ pub fn parse_cli_options(
       }
       (CompressOpt::PrecinctSize, Some(arg)) => {
         c_params.precinct = arg
-          .trim_matches(&['[', ']'])
+          .trim_matches(['[', ']'])
           .split("],[")
           .map(|s| s.parse())
           .collect::<Result<_, _>>()
@@ -723,7 +723,7 @@ impl CompressionParameters {
   }
 
   pub fn subsampling(&self) -> Size2D {
-    self.subsampling.clone().unwrap_or_else(|| Size2D {
+    self.subsampling.clone().unwrap_or(Size2D {
       width: 1,
       height: 1,
     })
@@ -875,7 +875,7 @@ impl CompressionParameters {
 
     // IMF profile
     if let Some(imf) = &self.imf_profile {
-      c_params.rsiz = ((imf.profile as u32) | (imf.sublevel << 4) | imf.mainlevel) as u16;
+      c_params.rsiz = (imf.profile | (imf.sublevel << 4) | imf.mainlevel) as u16;
 
       if imf.sublevel > 0 && imf.sublevel <= 9 {
         if let Some(fps) = imf.framerate {

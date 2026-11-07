@@ -3,9 +3,7 @@ use super::consts::*;
 use super::dwt::*;
 use super::event::*;
 use super::image::*;
-use super::invert::*;
 use super::math::*;
-use super::mct::*;
 
 // Owned codestream index (Phase 5.d). The `#[repr(C)]` mirror in c_api_types.rs
 // is built only when a C caller asks for it via opj_get_cstr_index.
@@ -5884,7 +5882,7 @@ pub(crate) fn opj_j2k_setup_encoder(
     }
 
     if parameters.cp_fixed_alloc != 0 {
-      let mut array_len = (parameters.tcp_numlayers as usize)
+      let _array_len = (parameters.tcp_numlayers as usize)
         .wrapping_mul(parameters.numresolution as usize)
         .wrapping_mul(3);
       #[cfg(feature = "c_api")]
@@ -7424,7 +7422,7 @@ fn opj_j2k_update_image_data(
     let mut res_y0: OPJ_INT32 = 0;
     let mut res_y1: OPJ_INT32 = 0;
     let mut src_data_stride: OPJ_UINT32 = 0;
-    let mut p_src_data = core::ptr::null::<OPJ_INT32>();
+    let _p_src_data = core::ptr::null::<OPJ_INT32>();
     let mut l_width_src: OPJ_UINT32 = 0;
     let mut l_height_src: OPJ_UINT32 = 0;
     let mut l_width_dest: OPJ_UINT32 = 0;

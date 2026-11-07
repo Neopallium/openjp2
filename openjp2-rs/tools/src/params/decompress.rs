@@ -127,7 +127,7 @@ impl DecompressParameters {
       }
 
       let prec: u32 = prec_str.parse()?;
-      if prec < 1 || prec > 32 {
+      if !(1..=32).contains(&prec) {
         return Err("Precision must be between 1 and 32".into());
       }
 

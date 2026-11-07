@@ -10,19 +10,12 @@ enum Opt {
   Help,
 }
 
+#[derive(Default)]
 struct Args {
   base_filename: Option<PathBuf>,
   test_filename: Option<PathBuf>,
 }
 
-impl Default for Args {
-  fn default() -> Self {
-    Self {
-      base_filename: None,
-      test_filename: None,
-    }
-  }
-}
 
 fn parse_args(arguments: Vec<String>) -> Result<Args, String> {
   let opts = vec![

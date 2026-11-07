@@ -192,7 +192,7 @@ impl TestCommand {
 
     // Dump the encoding file
     println!("{name}-dump");
-    let dump_file = format!("{}-ENC-{}.txt", &output_filename, self.index);
+    let dump_file = format!("{}-ENC-{}.txt", output_filename, self.index);
     run_dump(args!["-i", &self.output_file, "-o", &dump_file])
       .expect("Dumping failed unexpectedly");
 
@@ -215,14 +215,14 @@ impl TestCommand {
     if let Some(lossy_check) = self.lossy_check.clone() {
       // Decode the encoded file
       println!("{name}-decode-ref");
-      let decoded_file = format!("{}.tif", &output_filename);
+      let decoded_file = format!("{}.tif", output_filename);
       run_decompress(args!["-i", &self.output_file, "-o", &decoded_file])
         .expect("Decompression failed unexpectedly");
 
       // Compare the decoded file with the original input file
       println!("{name}-compare_dec-ref-out2base",);
       let mut args = args!["-b", &self.input_file, "-t", &decoded_file, "-s", "bXtY"];
-      args.extend(lossy_check.into_iter());
+      args.extend(lossy_check);
       run_compare_images(args).expect("Image comparison failed unexpectedly");
     }
 
@@ -232,7 +232,7 @@ impl TestCommand {
       if self.input_file.ends_with(".tif") {
         // Lossless: decode and compare with original
         println!("{name}-lossless-decode");
-        let output = format!("{}-lossless.tif", &output_filename);
+        let output = format!("{}-lossless.tif", output_filename);
         run_decompress(args!["-i", &self.output_file, "-o", &output])
           .expect("Decompression failed unexpectedly");
         println!("{name}-lossless-compare");
@@ -314,8 +314,8 @@ pub fn parse_test_commands() -> Vec<TestCommand> {
   let input_conformance_path = get_input_conf_dir().to_string_lossy().to_string();
   let temp_path = get_temp_dir().to_string_lossy().to_string();
 
-  let mut lines_iter = lines.peekable();
-  while let Some(line) = lines_iter.next() {
+  let lines_iter = lines.peekable();
+  for line in lines_iter {
     let line = line.trim();
     if line.is_empty() || line.starts_with('#') {
       continue;

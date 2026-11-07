@@ -65,7 +65,7 @@ fn parse_args(arguments: Vec<String>) -> Result<Args, String> {
   );
   let mut args = Args::default();
 
-  for opt in parser.parse_args(arguments.into_iter()) {
+  for opt in parser.parse_args(arguments) {
     match opt {
       ParsedOpt::Program(_) => {}
       ParsedOpt::Opt(Opt::Quiet, _) => args.quiet = true,
@@ -97,7 +97,7 @@ fn parse_args(arguments: Vec<String>) -> Result<Args, String> {
         }
       }
       ParsedOpt::Opt(opt, None) => {
-        return Err(format!("Missing argument for option: {opt:?}").into())
+        return Err(format!("Missing argument for option: {opt:?}"))
       }
       ParsedOpt::ParseError(err) => {
         return Err(err);
@@ -138,7 +138,7 @@ fn create_codec_and_stream(input: &PathBuf) -> Result<(Codec, Stream), String> {
     J2KFormat::J2K => OPJ_CODEC_J2K,
     J2KFormat::JP2 => OPJ_CODEC_JP2,
     _ => {
-      return Err(format!("Unknown codec format"));
+      return Err("Unknown codec format".to_string());
     }
   };
 
@@ -185,7 +185,7 @@ fn decode(
   // Decode image header and create image.
   let mut image = codec
     .read_header(&mut stream)
-    .ok_or_else(|| "Failed to read header")?;
+    .ok_or("Failed to read header")?;
 
   // Get the codestream geometry.
   if let Some(tile_info) = tile_info {
@@ -227,14 +227,14 @@ fn decode_by_strip(
   // Decode image header and create image.
   let mut image = codec
     .read_header(&mut stream)
-    .ok_or_else(|| "Failed to read header")?;
+    .ok_or("Failed to read header")?;
 
   let full_x0 = image.x0 as i32;
   let full_y0 = image.y0 as i32;
   let full_x1 = image.x1 as i32;
   let full_y1 = image.y1 as i32;
 
-  let area = decode_area.unwrap_or_else(|| DecodeArea {
+  let area = decode_area.unwrap_or(DecodeArea {
     x0: full_x0,
     y0: full_y0,
     x1: full_x1,
@@ -390,7 +390,7 @@ pub fn run_test_decode_area(args: Vec<String>) -> Result<(), String> {
       }
 
       if step_x > 1 || step_y > 1 {
-        let mut area = area.clone();
+        let mut area = area;
         if step_x > 1 {
           area.x0 = std::cmp::min(full_image.x1, area.x0 as u32 + 1) as i32;
           area.x1 = std::cmp::min(full_image.x1, area.x1 as u32 + 1) as i32;

@@ -40,7 +40,7 @@ fn parse_png_header(path: &Path) -> Result<(u8, u8), ImageError> {
     .map_err(|e| ImageError::ReadError(e.to_string()))?;
 
   // Verify PNG signature
-  if &header[0..8] != [137, 80, 78, 71, 13, 10, 26, 10] {
+  if header[0..8] != [137, 80, 78, 71, 13, 10, 26, 10] {
     return Err(ImageError::InvalidFormat("Not a valid PNG file".into()));
   }
 
@@ -312,7 +312,7 @@ fn libpng_save(image: &mut CoreImage, prec: u32, path: &Path) -> Result<(), Imag
   unsafe { png_write_info(png, info) };
 
   // setup write buffer
-  let row_stride = (width * numcomps * bit_depth as usize + 7) / 8;
+  let row_stride = (width * numcomps * bit_depth as usize).div_ceil(8);
   let png_row_size = unsafe { png_get_rowbytes(png, info) as usize };
   if row_stride != png_row_size {
     return Err(ImageError::EncodeError("Invalid row stride".into()));
@@ -328,7 +328,7 @@ fn libpng_save(image: &mut CoreImage, prec: u32, path: &Path) -> Result<(), Imag
 
     match (d0, d1, d2, d3) {
       (d0, None, None, None) => {
-        let buffer = d0.map(|d| d as u8).collect::<Vec<_>>();
+        let buffer = d0.collect::<Vec<_>>();
         if prec < 8 {
           let mut row = BitBuffer::new(row_stride);
           for row_pixels in buffer.chunks_exact(width) {

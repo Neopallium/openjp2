@@ -2,7 +2,7 @@ use log;
 use std::cmp::{max, min};
 use std::convert::TryInto;
 
-use openjp2::{openjpeg::*, CoreImage, CoreImageComp};
+use openjp2::{openjpeg::*, CoreImage};
 
 #[cfg(feature = "lcms2")]
 use lcms2::*;
@@ -778,7 +778,7 @@ pub fn color_cielab_to_rgb(image: &mut CoreImage, cielab_data: &[u8]) {
 }
 
 pub fn color_cmyk_to_rgb(image: &mut CoreImage) {
-  let mut comps = match image.comps_mut() {
+  let comps = match image.comps_mut() {
     Some([c, m, y, k]) => (c, m, y, k),
     _ => return,
   };
@@ -840,7 +840,7 @@ pub fn color_cmyk_to_rgb(image: &mut CoreImage) {
 }
 
 pub fn color_esycc_to_rgb(image: &mut CoreImage) {
-  let mut comps = match image.comps_mut() {
+  let comps = match image.comps_mut() {
     Some([y, cb, cr]) => (y, cb, cr),
     _ => return,
   };

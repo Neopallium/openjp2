@@ -1823,7 +1823,7 @@ fn opj_t1_allocate_buffers(
 /* ----------------------------------------------------------------------- */
 
 fn opj_t1_clbl_decode_processor(
-  resno: OPJ_UINT32,
+  _resno: OPJ_UINT32,
   off_x: OPJ_UINT32,
   off_y: OPJ_UINT32,
   tile_data: &mut [OPJ_INT32],
@@ -2013,7 +2013,7 @@ fn opj_t1_clbl_decode_processor(
 }
 pub(crate) fn opj_t1_decode_cblks(
   tilec_view: &TcdTilecView,
-  tccps: &[opj_tccp_t],
+  _tccps: &[opj_tccp_t],
   image_comps: &[CoreImageComp],
   pret: &mut OPJ_BOOL,
   tilec: &mut opj_tcd_tilecomp_t,
@@ -2324,7 +2324,7 @@ fn opj_t1_decode_cblk(
  */
 fn opj_t1_cblk_encode_processor(
   compno: OPJ_UINT32,
-  resno: OPJ_UINT32,
+  _resno: OPJ_UINT32,
   off_x: OPJ_UINT32,
   off_y: OPJ_UINT32,
   tile_data: &mut [OPJ_INT32],

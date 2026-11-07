@@ -17,6 +17,7 @@ enum Opt {
   Help,
 }
 
+#[derive(Default)]
 struct Args {
   base_file: Option<PathBuf>,
   test_file: Option<PathBuf>,
@@ -29,21 +30,6 @@ struct Args {
   ignore_prec: bool,
 }
 
-impl Default for Args {
-  fn default() -> Self {
-    Self {
-      base_file: None,
-      test_file: None,
-      num_components: 0,
-      mse_tolerances: vec![],
-      peak_tolerances: vec![],
-      base_separator: String::new(),
-      test_separator: String::new(),
-      non_regression: false,
-      ignore_prec: false,
-    }
-  }
-}
 
 fn parse_args(arguments: Vec<String>) -> Result<Args, String> {
   let opts = vec![
@@ -194,7 +180,7 @@ fn print_help() {
   println!("  -h");
   println!("    OPTIONAL");
   println!("    Display this help message.");
-  println!("");
+  println!();
 }
 
 fn read_image_from_multiple_files(
@@ -224,7 +210,7 @@ fn read_image_from_multiple_files(
   let mut comps = image
     .comps_mut()
     .expect("We just allocated the components")
-    .into_iter();
+    .iter_mut();
 
   for i in 0..nb_files {
     let file = file.with_file_name(format!("{}{}{}.{}", stem, separator, i, ext));
@@ -244,7 +230,7 @@ fn read_image_from_multiple_files(
     dst_comp.dy = 0;
   }
 
-  return Ok(image);
+  Ok(image)
 }
 
 fn read_image_from_file(
@@ -260,16 +246,13 @@ fn read_image_from_file(
   let nb_files = if separator.is_empty() { 1 } else { nb_files };
 
   if nb_files > 1 || !separator.is_empty() {
-    match &params.decode_format {
-      Some(ImageFileFormat::PGX | ImageFileFormat::PXM) => {
-        return read_image_from_multiple_files(file, params, nb_files, separator);
-      }
-      _ => (),
+    if let Some(ImageFileFormat::PGX | ImageFileFormat::PXM) = &params.decode_format {
+      return read_image_from_multiple_files(file, params, nb_files, separator);
     }
   }
 
   let image =
-    load_image(&file, &params).map_err(|e| format!("Failed to load image from file: {}", e))?;
+    load_image(file, &params).map_err(|e| format!("Failed to load image from file: {}", e))?;
   Ok(image)
 }
 

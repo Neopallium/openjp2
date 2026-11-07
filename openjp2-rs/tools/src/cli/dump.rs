@@ -112,7 +112,7 @@ fn print_help() {
   println!("    OPTIONAL");
   println!("    Enable informative messages");
   println!("    By default verbose mode is off.");
-  println!("");
+  println!();
 }
 
 #[derive(Debug)]
@@ -219,8 +219,8 @@ pub fn run_dump(args: Vec<String>) -> Result<(), String> {
     for (i, file) in dir_contents.files.iter().enumerate() {
       eprintln!();
       eprintln!("File Number {} {:?}", i, file.file_name().unwrap());
-      if detect_format_from_file(&file).is_ok() {
-        process_file(&file, args.output.as_deref(), args.verbose, args.flag)?;
+      if detect_format_from_file(file).is_ok() {
+        process_file(file, args.output.as_deref(), args.verbose, args.flag)?;
       } else {
         eprintln!("skipping file...");
       }

@@ -44,7 +44,7 @@ pub fn load_image(
 }
 
 pub fn read_image(path: &Path) -> Result<DynamicImage, ImageError> {
-  Ok(image::open(path).map_err(|e| ImageError::ReadError(e.to_string()))?)
+  image::open(path).map_err(|e| ImageError::ReadError(e.to_string()))
 }
 
 pub fn save_image(image: &mut CoreImage, path: &Path, split_comps: bool) -> Result<(), ImageError> {
