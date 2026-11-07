@@ -6,7 +6,6 @@
 //! here.
 
 use openjp2_core::c_api_types::*;
-use openjp2_core::consts::opj::*;
 pub use openjp2_core::{opj_image_cmptparm_t, opj_image_comptparm};
 use openjp2_core::{CoreImage, CoreImageComp, ICCProfile, ICCProfileMut, ICCProfileRef, CIE_LAB_BYTE_SIZE};
 
@@ -29,7 +28,7 @@ pub fn opj_image_data_free(ptr: *mut core::ffi::c_void) {
 /// Component of a C-ABI image (mirror of `CoreImageComp` with a raw data
 /// buffer, so C callers can index and free it directly).
 #[repr(C)]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct opj_image_comp {
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
@@ -106,10 +105,8 @@ impl opj_image_comp {
 
   pub fn clear_data(&mut self) {
     if !self.data.is_null() {
-      unsafe {
-        opj_image_data_free(self.data as *mut core::ffi::c_void);
-        self.data = core::ptr::null_mut();
-      }
+      opj_image_data_free(self.data as *mut core::ffi::c_void);
+      self.data = core::ptr::null_mut();
     }
   }
 
@@ -203,10 +200,8 @@ impl opj_image_comp {
 
   pub fn set_data(&mut self, data: &[i32]) -> bool {
     // If the data is null, we need to allocate it.
-    if self.data.is_null() {
-      if !self.alloc_data() {
-        return false;
-      }
+    if self.data.is_null() && !self.alloc_data() {
+      return false;
     }
     let dest = self.data_mut().expect("We just allocated this data");
     dest.copy_from_slice(data);
@@ -286,36 +281,6 @@ impl opj_image_comp {
   }
 }
 
-impl Clone for opj_image_comp {
-  fn clone(&self) -> Self {
-    let mut comp = Self::default();
-    comp.dx = self.dx;
-    comp.dy = self.dy;
-    comp.w = self.w;
-    comp.h = self.h;
-    comp.x0 = self.x0;
-    comp.y0 = self.y0;
-    comp.prec = self.prec;
-    comp.bpp = self.bpp;
-    comp.sgnd = self.sgnd;
-    comp.resno_decoded = self.resno_decoded;
-    comp.factor = self.factor;
-    comp.alpha = self.alpha;
-    if !self.data.is_null() {
-      if comp.alloc_data() {
-        unsafe {
-          core::ptr::copy_nonoverlapping(
-            self.data as *const OPJ_INT32,
-            comp.data,
-            self.w as usize * self.h as usize,
-          );
-        }
-      }
-    }
-    comp
-  }
-}
-
 
 #[repr(C)]
 pub struct opj_image {
@@ -364,20 +329,22 @@ impl Default for opj_image {
 
 impl Clone for opj_image {
   fn clone(&self) -> Self {
-    let mut image = Self::default();
-    image.x0 = self.x0;
-    image.y0 = self.y0;
-    image.x1 = self.x1;
-    image.y1 = self.y1;
-    image.numcomps = self.numcomps;
-    image.color_space = self.color_space;
+    let mut image = Self {
+      x0: self.x0,
+      y0: self.y0,
+      x1: self.x1,
+      y1: self.y1,
+      numcomps: self.numcomps,
+      color_space: self.color_space,
+      ..Default::default()
+    };
     if let Some(comps) = self.comps() {
       if !image.alloc_comps(comps.len() as u32) {
         return image;
       }
       if let Some(dest) = image.comps_mut() {
         for (dest, src) in dest.iter_mut().zip(comps) {
-          *dest = src.clone();
+          let _ = dest.copy(src);
         }
       }
     }
@@ -415,10 +382,8 @@ impl opj_image {
         comp.y0 = params.y0;
         comp.prec = params.prec;
         comp.sgnd = params.sgnd;
-        if alloc_data {
-          if !comp.alloc_data() {
-            return None;
-          }
+        if alloc_data && !comp.alloc_data() {
+          return None;
         }
       }
     }
@@ -438,7 +403,7 @@ impl opj_image {
 
   pub fn comp0_dims_prec(&self) -> (usize, usize, i32) {
     if let Some(comps) = self.comps() {
-      if comps.len() > 0 {
+      if !comps.is_empty() {
         let comp = &comps[0];
         return (comp.w as usize, comp.h as usize, comp.prec as i32);
       }
@@ -483,13 +448,15 @@ impl opj_image {
   }
 
   pub fn take_comps(&mut self) -> Self {
-    let mut image = Self::default();
-    image.x0 = self.x0;
-    image.y0 = self.y0;
-    image.x1 = self.x1;
-    image.y1 = self.y1;
-    image.numcomps = self.numcomps;
-    image.color_space = self.color_space;
+    let mut image = Self {
+      x0: self.x0,
+      y0: self.y0,
+      x1: self.x1,
+      y1: self.y1,
+      numcomps: self.numcomps,
+      color_space: self.color_space,
+      ..Default::default()
+    };
     if !self.comps.is_null() {
       image.comps = self.comps;
       image.numcomps = self.numcomps;
@@ -513,19 +480,13 @@ impl opj_image {
   }
 
   pub fn comps_data_iter(&self) -> Option<impl Iterator<Item = &[i32]>> {
-    if let Some(comps) = self.comps() {
-      Some(comps.iter().filter_map(|comp| comp.data()))
-    } else {
-      None
-    }
+    self.comps().map(|comps| comps.iter().filter_map(|comp| comp.data()))
   }
 
   pub fn comps_data_mut_iter(&mut self) -> Option<impl Iterator<Item = &'_ mut [i32]>> {
-    if let Some(comps) = self.comps_mut() {
-      Some(comps.iter_mut().filter_map(|comp| comp.data_mut()))
-    } else {
-      None
-    }
+    self
+      .comps_mut()
+      .map(|comps| comps.iter_mut().filter_map(|comp| comp.data_mut()))
   }
 
   pub fn comps_mut(&mut self) -> Option<&mut [opj_image_comp]> {
@@ -559,9 +520,9 @@ impl opj_image {
       comps[1].dy = comps[0].dy;
       comps[2].dy = comps[0].dy;
 
-      comps[0].set_data(&r);
-      comps[1].set_data(&g);
-      comps[2].set_data(&b);
+      comps[0].set_data(r);
+      comps[1].set_data(g);
+      comps[2].set_data(b);
     }
     self.color_space = OPJ_CLRSPC_SRGB;
     true
@@ -705,7 +666,7 @@ impl opj_image {
   }
 
   pub fn copy_icc_profile<'a>(&mut self, icc_profile: ICCProfileRef<'a>) -> bool {
-    if icc_profile.len() == 0 {
+    if icc_profile.is_empty() {
       self.clear_icc_profile();
       return true;
     }
@@ -734,26 +695,22 @@ impl Drop for opj_image {
 }
 
 
-pub(crate) fn opj_image_create0() -> *mut opj_image_t {
-  let image = opj_image::new();
-  Box::into_raw(image)
-}
 
 pub fn opj_image_create(
-  mut numcmpts: OPJ_UINT32,
-  mut cmptparms: *mut opj_image_cmptparm_t,
-  mut clrspc: OPJ_COLOR_SPACE,
+  numcmpts: OPJ_UINT32,
+  cmptparms: *mut opj_image_cmptparm_t,
+  clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
   assert!(!cmptparms.is_null());
   let cmptparms = unsafe { core::slice::from_raw_parts(cmptparms, numcmpts as usize) };
-  if let Some(mut image) = opj_image::create(cmptparms, clrspc) {
+  if let Some(image) = opj_image::create(cmptparms, clrspc) {
     Box::into_raw(image)
   } else {
     core::ptr::null_mut()
   }
 }
 
-pub fn opj_image_destroy(mut image: *mut opj_image_t) {
+pub fn opj_image_destroy(image: *mut opj_image_t) {
   if !image.is_null() {
     // Convert back to a boxed value and drop it.
     let _ = unsafe { Box::from_raw(image) };
@@ -774,55 +731,17 @@ pub fn opj_image_destroy(mut image: *mut opj_image_t) {
  * @param   p_image_dest    the dest image
  *
  */
-pub(crate) fn opj_copy_image_header(
-  mut p_image_src: *const opj_image_t,
-  mut p_image_dest: *mut opj_image_t,
-) {
-  let (p_image_src, p_image_dest) = unsafe {
-    /* preconditions */
-    assert!(!p_image_src.is_null());
-    assert!(!p_image_dest.is_null());
-
-    let p_image_src = &*p_image_src;
-    let p_image_dest = &mut *p_image_dest;
-    (p_image_src, p_image_dest)
-  };
-  p_image_dest.x0 = p_image_src.x0;
-  p_image_dest.y0 = p_image_src.y0;
-  p_image_dest.x1 = p_image_src.x1;
-  p_image_dest.y1 = p_image_src.y1;
-  if !p_image_dest.alloc_comps(p_image_src.numcomps) {
-    p_image_dest.comps = core::ptr::null_mut::<opj_image_comp_t>();
-    p_image_dest.numcomps = 0 as OPJ_UINT32;
-    return;
-  }
-  if let Some(src) = p_image_src.comps() {
-    if let Some(dest) = p_image_dest.comps_mut() {
-      for (src, dest) in src.iter().zip(dest) {
-        *dest = *src;
-        dest.data = core::ptr::null_mut::<OPJ_INT32>();
-      }
-    }
-  }
-  p_image_dest.color_space = p_image_src.color_space;
-  if let Some(icc_profile) = p_image_src.icc_profile() {
-    if !p_image_dest.copy_icc_profile(icc_profile) {
-      return;
-    }
-  }
-}
 
 /// Copy the header of an owned core image and its component headers into a
 /// C-ABI image (no data copied; dest component data are dropped).
-
 pub fn opj_image_tile_create(
-  mut numcmpts: OPJ_UINT32,
-  mut cmptparms: *mut opj_image_cmptparm_t,
-  mut clrspc: OPJ_COLOR_SPACE,
+  numcmpts: OPJ_UINT32,
+  cmptparms: *mut opj_image_cmptparm_t,
+  clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
   assert!(!cmptparms.is_null());
   let cmptparms = unsafe { core::slice::from_raw_parts(cmptparms, numcmpts as usize) };
-  if let Some(mut image) = opj_image::tile_create(cmptparms, clrspc) {
+  if let Some(image) = opj_image::tile_create(cmptparms, clrspc) {
     Box::into_raw(image)
   } else {
     core::ptr::null_mut()

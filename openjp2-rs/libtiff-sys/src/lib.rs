@@ -1,6 +1,9 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+// Generated bindings use transmutes for opaque types.
+#![allow(clippy::useless_transmute)]
+#![allow(unnecessary_transmutes)]
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 

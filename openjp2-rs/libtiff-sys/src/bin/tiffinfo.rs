@@ -12,7 +12,7 @@ fn main() {
 
   let filename = CString::new(args[1].as_str()).unwrap();
   unsafe {
-    let tiff = TIFFOpen(filename.as_ptr(), "r\0".as_ptr() as *const i8);
+    let tiff = TIFFOpen(filename.as_ptr(), c"r".as_ptr());
     if tiff.is_null() {
       eprintln!("Failed to open TIFF file: {}", args[1]);
       std::process::exit(1);
