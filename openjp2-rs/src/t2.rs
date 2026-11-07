@@ -180,7 +180,7 @@ pub(crate) fn opj_t2_encode_packets(
         }
         loop {
           let pi = &mut pi_vec[poc as usize];
-          if opj_pi_next(pi) == 0 {
+          if opj_pi_next(pi, p_manager) == 0 {
             break;
           }
           if pi.layno < p_maxlayers {
@@ -251,7 +251,7 @@ pub(crate) fn opj_t2_encode_packets(
     }
     loop {
       let pi = &mut pi_vec[p_pino as usize];
-      if opj_pi_next(pi) == 0 {
+      if opj_pi_next(pi, p_manager) == 0 {
         break;
       }
       if pi.layno < p_maxlayers {
@@ -370,7 +370,7 @@ pub(crate) fn opj_t2_decode_packets(
     first_pass_failed = vec![1i32; image.numcomps as usize];
     loop {
       let pi = &mut pi_vec[pino as usize];
-      if opj_pi_next(pi) == 0 {
+      if opj_pi_next(pi, p_manager) == 0 {
         break;
       }
       let mut skip_packet = 0i32;

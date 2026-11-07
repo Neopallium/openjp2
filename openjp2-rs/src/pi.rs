@@ -3,6 +3,8 @@ use super::j2k::*;
 use super::math::*;
 use super::openjpeg::*;
 use crate::image::CoreImage;
+use core::cell::Cell;
+use std::rc::Rc;
 
 
 pub type T2_MODE = core::ffi::c_uint;
@@ -31,11 +33,11 @@ pub type opj_pi_comp_t = opj_pi_comp;
 #[derive(Clone, Default)]
 pub struct opj_pi_iterator {
   pub tp_on: OPJ_BYTE,
-  /* Raw for now: every pi element for a tile shares this one allocation
-  (opj_pi_create_decode chains `include = (prev)->include`), so it cannot be a
-  plain owned Vec per element yet. All accesses bounds-check against
-  include_size. */
-  pub include: *mut OPJ_INT16,
+  /* Every pi element for a tile shares this one allocation
+  (opj_pi_create_decode chains `include = (prev)->include.clone()`); the Rc
+  refcount keeps it alive until the last element is dropped. All accesses
+  bounds-check against include_size. */
+  pub include: Rc<[Cell<OPJ_INT16>]>,
   pub include_size: OPJ_UINT32,
   pub step_l: OPJ_UINT32,
   pub step_r: OPJ_UINT32,
@@ -57,7 +59,6 @@ pub struct opj_pi_iterator {
   pub y: OPJ_UINT32,
   pub dx: OPJ_UINT32,
   pub dy: OPJ_UINT32,
-  pub manager: *mut opj_event_mgr,
 }
 pub type opj_pi_iterator_t = opj_pi_iterator;
 
@@ -122,13 +123,13 @@ Get next packet in layer-resolution-component-precinct order.
    local functions
 ==========================================================
 */
-fn opj_pi_next_lrcp(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
+fn opj_pi_next_lrcp(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> OPJ_BOOL {
     let mut current_block: u64;
     let mut index = 0 as OPJ_UINT32;
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
-        unsafe { &mut *pi.manager },
+        manager,
         EVT_ERROR,
         "opj_pi_next_lrcp(): invalid compno0/compno1\n",
       );
@@ -182,11 +183,11 @@ fn opj_pi_next_lrcp(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
               /* include should be resized when a POC arises, or */
               /* the POC should be rejected */
               if index >= pi.include_size {
-                event_msg!(unsafe { &mut *pi.manager }, EVT_ERROR, "Invalid access to pi->include",);
+                event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
                 return 0i32;
               }
-              if unsafe { *pi.include.offset(index as isize) } == 0 {
-                unsafe { *pi.include.offset(index as isize) = 1 as OPJ_INT16 };
+              if pi.include[index as usize].get() == 0 {
+                pi.include[index as usize].set(1 as OPJ_INT16);
                 return 1i32;
               }
               current_block = 5634871135123216486;
@@ -231,13 +232,13 @@ Get next packet in resolution-layer-component-precinct order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_rlcp(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
+fn opj_pi_next_rlcp(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> OPJ_BOOL {
     let mut current_block: u64;
     let mut index = 0 as OPJ_UINT32;
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
-        unsafe { &mut *pi.manager },
+        manager,
         EVT_ERROR,
         "opj_pi_next_rlcp(): invalid compno0/compno1\n",
       );
@@ -285,11 +286,11 @@ fn opj_pi_next_rlcp(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
                 .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
                 .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
               if index >= pi.include_size {
-                event_msg!(unsafe { &mut *pi.manager }, EVT_ERROR, "Invalid access to pi->include",);
+                event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
                 return 0i32;
               }
-              if unsafe { *pi.include.offset(index as isize) } == 0 {
-                unsafe { *pi.include.offset(index as isize) = 1 as OPJ_INT16 };
+              if pi.include[index as usize].get() == 0 {
+                pi.include[index as usize].set(1 as OPJ_INT16);
                 return 1i32;
               }
               current_block = 5634871135123216486;
@@ -334,7 +335,7 @@ Get next packet in resolution-precinct-component-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
+fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> OPJ_BOOL {
     let mut levelno: OPJ_UINT32 = 0;
     let mut trx0: OPJ_UINT32 = 0;
     let mut try0: OPJ_UINT32 = 0;
@@ -349,7 +350,7 @@ fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
-        unsafe { &mut *pi.manager },
+        manager,
         EVT_ERROR,
         "opj_pi_next_rpcl(): invalid compno0/compno1\n",
       );
@@ -486,11 +487,11 @@ fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
                 .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
                 .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
               if index >= pi.include_size {
-                event_msg!(unsafe { &mut *pi.manager }, EVT_ERROR, "Invalid access to pi->include",);
+                event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
                 return 0i32;
               }
-              if unsafe { *pi.include.offset(index as isize) } == 0 {
-                unsafe { *pi.include.offset(index as isize) = 1 as OPJ_INT16 };
+              if pi.include[index as usize].get() == 0 {
+                pi.include[index as usize].set(1 as OPJ_INT16);
                 return 1i32;
               }
               current_block = 129780949503461575;
@@ -601,7 +602,7 @@ Get next packet in precinct-component-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
+fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> OPJ_BOOL {
     let mut levelno: OPJ_UINT32 = 0;
     let mut trx0: OPJ_UINT32 = 0;
     let mut try0: OPJ_UINT32 = 0;
@@ -616,7 +617,7 @@ fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
-        unsafe { &mut *pi.manager },
+        manager,
         EVT_ERROR,
         "opj_pi_next_pcrl(): invalid compno0/compno1\n",
       );
@@ -755,11 +756,11 @@ fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
                 .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
                 .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
               if index >= pi.include_size {
-                event_msg!(unsafe { &mut *pi.manager }, EVT_ERROR, "Invalid access to pi->include",);
+                event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
                 return 0i32;
               }
-              if unsafe { *pi.include.offset(index as isize) } == 0 {
-                unsafe { *pi.include.offset(index as isize) = 1 as OPJ_INT16 };
+              if pi.include[index as usize].get() == 0 {
+                pi.include[index as usize].set(1 as OPJ_INT16);
                 return 1i32;
               }
               current_block = 10853015579903106591;
@@ -863,7 +864,7 @@ Get next packet in component-precinct-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
+fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> OPJ_BOOL {
     let mut resno: OPJ_UINT32 = 0;
     let mut levelno: OPJ_UINT32 = 0;
     let mut trx0: OPJ_UINT32 = 0;
@@ -879,7 +880,7 @@ fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
-        unsafe { &mut *pi.manager },
+        manager,
         EVT_ERROR,
         "opj_pi_next_cprl(): invalid compno0/compno1\n",
       );
@@ -1011,11 +1012,11 @@ fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
                 .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
                 .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
               if index >= pi.include_size {
-                event_msg!(unsafe { &mut *pi.manager }, EVT_ERROR, "Invalid access to pi->include",);
+                event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
                 return 0i32;
               }
-              if unsafe { *pi.include.offset(index as isize) } == 0 {
-                unsafe { *pi.include.offset(index as isize) = 1 as OPJ_INT16 };
+              if pi.include[index as usize].get() == 0 {
+                pi.include[index as usize].set(1 as OPJ_INT16);
                 return 1i32;
               }
               current_block = 13707613154239713890;
@@ -1444,7 +1445,6 @@ pub(crate) fn opj_pi_create(
   image: &CoreImage,
   cp: &opj_cp_t,
   tileno: OPJ_UINT32,
-  manager: &mut opj_event_mgr,
 ) -> Vec<opj_pi_iterator_t> {
   /* loop*/
   let mut pino: OPJ_UINT32 = 0;
@@ -1463,7 +1463,6 @@ pub(crate) fn opj_pi_create(
   pino = 0 as OPJ_UINT32;
   while pino < l_poc_bound {
     let mut current = opj_pi_iterator {
-      manager: manager as *mut opj_event_mgr,
       numcomps: image.numcomps,
       comps: vec![Default::default(); image.numcomps as usize],
       ..Default::default()
@@ -1797,7 +1796,7 @@ pub(crate) fn opj_pi_create_decode(
   let l_data_stride = (4i32 * 33i32) as usize;
   let mut l_tmp_data: Vec<OPJ_UINT32> = vec![0; l_data_stride.wrapping_mul(numcomps as usize)];
   /* memory allocation for pi */
-  let mut l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
+  let mut l_pi = opj_pi_create(p_image, p_cp, p_tile_no);
   if l_pi.is_empty() {
     return l_pi;
   }
@@ -1835,12 +1834,10 @@ pub(crate) fn opj_pi_create_decode(
     return Vec::new();
   }
   {
-    // The include bitmask outlives this function; opj_pi_destroy frees it
-    // through Vec::from_raw_parts (vec![..] has capacity == length).
-    // Elements 1.. share element 0's pointer, exactly like the C version.
-    let mut include_v: Vec<OPJ_INT16> = vec![0; include_size as usize];
-    l_pi[0].include = include_v.as_mut_ptr();
-    core::mem::forget(include_v);
+    // The include bitmask is shared across the pi elements of this tile:
+    // elements 1.. clone element 0's Rc, exactly like the C version.
+    let include: Rc<[Cell<OPJ_INT16>]> = vec![Cell::new(0i16); include_size as usize].into();
+    l_pi[0].include = include;
   }
   l_pi[0].include_size = include_size;
   /* special treatment for the first packet iterator */
@@ -1913,7 +1910,7 @@ pub(crate) fn opj_pi_create_decode(
       compno += 1;
     }
     /* special treatment */
-    l_pi[pino as usize].include = l_pi[(pino - 1) as usize].include;
+    l_pi[pino as usize].include = l_pi[(pino - 1) as usize].include.clone();
     l_pi[pino as usize].include_size = l_pi[(pino - 1) as usize].include_size;
     pino += 1;
   }
@@ -1996,7 +1993,7 @@ pub(crate) fn opj_pi_initialise_encode(
   let l_data_stride = (4i32 * 33i32) as usize;
   let mut l_tmp_data: Vec<OPJ_UINT32> = vec![0; l_data_stride.wrapping_mul(numcomps as usize)];
   /* memory allocation for pi*/
-  let mut l_pi = opj_pi_create(p_image, p_cp, p_tile_no, manager);
+  let mut l_pi = opj_pi_create(p_image, p_cp, p_tile_no);
   if l_pi.is_empty() {
     return l_pi;
   }
@@ -2025,11 +2022,9 @@ pub(crate) fn opj_pi_initialise_encode(
   /* memory allocation for include*/
   let include_size = p_cp.tcps[p_tile_no as usize].numlayers.wrapping_mul(l_step_l);
   {
-    // The include bitmask outlives this function; opj_pi_destroy frees it
-    // through Vec::from_raw_parts (vec![..] has capacity == length).
-    let mut include_v: Vec<OPJ_INT16> = vec![0; include_size as usize];
-    l_pi[0].include = include_v.as_mut_ptr();
-    core::mem::forget(include_v);
+    // The include bitmask is shared across the pi elements of this tile.
+    let include: Rc<[Cell<OPJ_INT16>]> = vec![Cell::new(0i16); include_size as usize].into();
+    l_pi[0].include = include;
   }
   l_pi[0].include_size = include_size;
   /* special treatment for the first packet iterator*/
@@ -2102,7 +2097,7 @@ pub(crate) fn opj_pi_initialise_encode(
       compno += 1;
     }
     /* special treatment*/
-    l_pi[pino as usize].include = l_pi[(pino - 1) as usize].include;
+    l_pi[pino as usize].include = l_pi[(pino - 1) as usize].include.clone();
     l_pi[pino as usize].include_size = l_pi[(pino - 1) as usize].include_size;
     pino += 1;
   }
@@ -2419,23 +2414,9 @@ pub(crate) fn opj_pi_create_encode(
 }
 
 pub(crate) fn opj_pi_destroy(p_pi: &mut Vec<opj_pi_iterator_t>) {
-  if !p_pi.is_empty() {
-    if !p_pi[0].include.is_null() {
-      // SAFETY: `include` was built as a Vec of exactly include_size i16s
-      // (vec![..] has capacity == length) and transferred into element 0 of
-      // the pi array; elements 1.. only share the pointer.
-      unsafe {
-        drop(Vec::from_raw_parts(
-          p_pi[0].include,
-          p_pi[0].include_size as usize,
-          p_pi[0].include_size as usize,
-        ))
-      };
-      p_pi[0].include = core::ptr::null_mut::<OPJ_INT16>();
-    }
-    /* Clearing drops each element's own comps/resolutions Vecs. */
-    p_pi.clear();
-  };
+  /* Clearing drops each element's own comps/resolutions Vecs and the
+   * shared include Rc. */
+  p_pi.clear();
 }
 pub(crate) fn opj_pi_update_encoding_parameters(
   p_image: &mut CoreImage,
@@ -2489,13 +2470,16 @@ pub(crate) fn opj_pi_update_encoding_parameters(
     };
 }
 
-pub(crate) fn opj_pi_next(pi: &mut opj_pi_iterator_t) -> OPJ_BOOL {
+pub(crate) fn opj_pi_next(
+  pi: &mut opj_pi_iterator_t,
+  manager: &mut opj_event_mgr,
+) -> OPJ_BOOL {
   match pi.poc.prg as core::ffi::c_int {
-      0 => return opj_pi_next_lrcp(pi),
-      1 => return opj_pi_next_rlcp(pi),
-      2 => return opj_pi_next_rpcl(pi),
-      3 => return opj_pi_next_pcrl(pi),
-      4 => return opj_pi_next_cprl(pi),
+      0 => return opj_pi_next_lrcp(pi, manager),
+      1 => return opj_pi_next_rlcp(pi, manager),
+      2 => return opj_pi_next_rpcl(pi, manager),
+      3 => return opj_pi_next_pcrl(pi, manager),
+      4 => return opj_pi_next_cprl(pi, manager),
       -1 => return 0i32,
       _ => {}
     }
