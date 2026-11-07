@@ -1,4 +1,5 @@
 use super::consts::*;
+use rayon::prelude::*;
 use super::dwt::*;
 use super::event::*;
 use super::math::*;
@@ -1788,30 +1789,32 @@ fn opj_tcd_dwt_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_c
   // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
   let img_comps = &image.comps;
-  let mut compno: OPJ_UINT32 = 0;
-  compno = 0 as OPJ_UINT32;
-  while compno < p_tcd.tcd_image.tiles.numcomps {
-    if p_tcd.used_component(compno) {
-      let l_tile_comp = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
-      if tccps[compno as usize].qmfbid == 1u32 {
-        if opj_dwt_decode(
-          p_tcd.whole_tile_decoding,
-          l_tile_comp,
-          img_comps[compno as usize].resno_decoded.wrapping_add(1u32),
-        ) == 0
-        {
-          return 0i32;
-        }
-      } else if opj_dwt_decode_real(
-        p_tcd.whole_tile_decoding,
-        l_tile_comp,
-        img_comps[compno as usize].resno_decoded.wrapping_add(1u32),
-      ) == 0
-      {
-        return 0i32;
+  /* Parallel across components: each tile component's inverse transform is
+  independent (the t1 pass already wrote disjoint buffers per component). */
+  let whole_tile = p_tcd.whole_tile_decoding;
+  let used: Vec<bool> = (0..p_tcd.tcd_image.tiles.numcomps)
+    .map(|c| p_tcd.used_component(c))
+    .collect();
+  let results: Vec<OPJ_BOOL> = p_tcd
+    .tcd_image
+    .tiles
+    .comps
+    .par_iter_mut()
+    .enumerate()
+    .map(|(compno, l_tile_comp)| {
+      if !used[compno] {
+        return 1i32;
       }
-    }
-    compno = compno.wrapping_add(1);
+      let resno_decoded = img_comps[compno].resno_decoded.wrapping_add(1u32);
+      if tccps[compno].qmfbid == 1u32 {
+        opj_dwt_decode(whole_tile, l_tile_comp, resno_decoded)
+      } else {
+        opj_dwt_decode_real(whole_tile, l_tile_comp, resno_decoded)
+      }
+    })
+    .collect();
+  if results.contains(&0) {
+    return 0i32;
   }
   1i32
 }
@@ -2207,18 +2210,26 @@ fn opj_tcd_mct_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_c
 fn opj_tcd_dwt_encode(p_tcd: &mut opj_tcd, cp: &mut opj_cp_t) -> OPJ_BOOL {
   // SAFETY: `tcp` is set by opj_tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
-  let mut compno: OPJ_UINT32 = 0;
-  compno = 0 as OPJ_UINT32;
-  while compno < p_tcd.tcd_image.tiles.numcomps {
-    let l_tile_comp = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
-    if tccps[compno as usize].qmfbid == 1u32 {
-      if opj_dwt_encode(l_tile_comp) == 0 {
-        return 0i32;
+  /* Parallel across components (each forward transform is independent). */
+  let results: Vec<OPJ_BOOL> = p_tcd
+    .tcd_image
+    .tiles
+    .comps
+    .par_iter_mut()
+    .enumerate()
+    .map(|(compno, l_tile_comp)| {
+      let qmfbid = tccps[compno].qmfbid;
+      if qmfbid == 1u32 {
+        opj_dwt_encode(l_tile_comp)
+      } else if qmfbid == 0u32 {
+        opj_dwt_encode_real(l_tile_comp)
+      } else {
+        1i32
       }
-    } else if tccps[compno as usize].qmfbid == 0u32 && opj_dwt_encode_real(l_tile_comp) == 0 {
-      return 0i32;
-    }
-    compno += 1;
+    })
+    .collect();
+  if results.contains(&0) {
+    return 0i32;
   }
   1i32
 }
