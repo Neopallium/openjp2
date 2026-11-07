@@ -2075,7 +2075,7 @@ pub(crate) fn opj_t1_decode_cblks(
         {
           cblkno = 0 as OPJ_UINT32;
           while cblkno < precinct.cw.wrapping_mul(precinct.ch) {
-            let cblk = (&mut precinct.cblks).dec_mut(cblkno as usize);
+            let cblk = precinct.cblks.dec_mut(cblkno as usize);
             if !cblk.decoded_data.is_empty() {
               cblk.decoded_data = Vec::new();
             }
@@ -2084,7 +2084,7 @@ pub(crate) fn opj_t1_decode_cblks(
         } else {
           cblkno = 0 as OPJ_UINT32;
           while cblkno < precinct.cw.wrapping_mul(precinct.ch) {
-            let cblk = (&mut precinct.cblks).dec_mut(cblkno as usize);
+            let cblk = precinct.cblks.dec_mut(cblkno as usize);
             if opj_tcd_is_subband_area_of_interest(
               tilec_view,
               tccp,
@@ -2556,7 +2556,7 @@ pub(crate) fn opj_t1_encode_cblks(
             let prc = &mut band.precincts[precno as usize];
             let mut cblkno: OPJ_UINT32 = 0;
             while cblkno < prc.cw.wrapping_mul(prc.ch) {
-              let cblk = (&mut prc.cblks).enc_mut(cblkno as usize);
+              let cblk = prc.cblks.enc_mut(cblkno as usize);
               opj_t1_cblk_encode_processor(
                 compno,
                 resno,

@@ -67,12 +67,12 @@ impl Jp2BoxHeader {
     self.header_length = 8;
     if self.length == 0 {
       if max_size == 0 {
-        return Err(format!("Can't handle box of undefined size."));
+        return Err("Can't handle box of undefined size.".to_string());
       }
       /* last box */
       if max_size > u32::MAX as usize {
         // TODO: Handle large boxes?
-        return Err(format!("Cannot handle box sizes higher than 2^32"));
+        return Err("Cannot handle box sizes higher than 2^32".to_string());
       }
       self.length = max_size as u32;
       assert!(self.length as usize == max_size);
@@ -90,7 +90,7 @@ impl Jp2BoxHeader {
       self.header_length += 8;
       if xl_part_size != 0 {
         // TODO: Handle large boxes?
-        return Err(format!("Cannot handle box sizes higher than 2^32"));
+        return Err("Cannot handle box sizes higher than 2^32".to_string());
       }
       self.length = length;
     }
@@ -1498,7 +1498,7 @@ fn opj_jp2_default_validation(
   l_is_valid &= (jp2.jp2_img_state == JP2_IMG_STATE_NONE as core::ffi::c_uint) as core::ffi::c_int;
   /* PARAMETER VALIDATION */
   /* number of components */
-  l_is_valid &= (jp2.cl.len() > 0) as core::ffi::c_int;
+  l_is_valid &= !jp2.cl.is_empty() as core::ffi::c_int;
   /* width */
   l_is_valid &= (jp2.h > 0u32) as core::ffi::c_int;
   /* height */

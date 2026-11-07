@@ -77,7 +77,7 @@ fn opj_tcd_makelayer(
             let prc = &mut band.precincts[precno as usize];
             cblkno = 0 as OPJ_UINT32;
             while cblkno < prc.cw.wrapping_mul(prc.ch) {
-              let cblk = (&mut prc.cblks).enc_mut(cblkno as usize);
+              let cblk = prc.cblks.enc_mut(cblkno as usize);
               let mut n: OPJ_UINT32 = 0;
               if layno == 0u32 {
                 cblk.numpassesinlayers = 0 as OPJ_UINT32
@@ -219,7 +219,7 @@ fn opj_tcd_makelayer_fixed(
             let prc = &mut band.precincts[precno as usize];
             cblkno = 0 as OPJ_UINT32;
             while cblkno < prc.cw.wrapping_mul(prc.ch) {
-              let cblk = (&mut prc.cblks).enc_mut(cblkno as usize);
+              let cblk = prc.cblks.enc_mut(cblkno as usize);
               let mut n: OPJ_UINT32 = 0;
               let mut imsb =
                 image.comps[compno as usize].prec.wrapping_sub(cblk.numbps) as OPJ_INT32;
@@ -341,7 +341,7 @@ fn opj_tcd_rateallocate(
               let prc = &mut band.precincts[precno as usize];
               cblkno = 0 as OPJ_UINT32;
               while cblkno < prc.cw.wrapping_mul(prc.ch) {
-                let cblk = (&mut prc.cblks).enc_mut(cblkno as usize);
+                let cblk = prc.cblks.enc_mut(cblkno as usize);
                 /* cbklno */
                 passno = 0 as OPJ_UINT32; /* passno */
                 while passno < cblk.totalpasses {

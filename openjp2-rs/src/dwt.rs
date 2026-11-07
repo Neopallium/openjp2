@@ -824,7 +824,7 @@ fn opj_dwt_encode_and_deinterleave_v(
         }
         i += 1
       }
-      if height % 2 == 0 {
+      if height.is_multiple_of(2) {
         c = 0 as OPJ_UINT32;
         while c < NB_ELTS_V8 {
           dc!(i, c) -= sc!(i, c);
@@ -890,7 +890,7 @@ fn opj_dwt_encode_and_deinterleave_v(
       }
       i += 1
     }
-    if height % 2 == 0 {
+    if height.is_multiple_of(2) {
       c = 0 as OPJ_UINT32;
       while c < NB_ELTS_V8 {
         dc!(i, c) += (sc!(i, c) + sc!(i, c) + 2) >> 2;

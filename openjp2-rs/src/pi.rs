@@ -556,14 +556,14 @@ fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
             /* See ISO-15441. B.12.1.3 Resolution level-position-component-layer progression */
             if !(pi.y as u64).is_multiple_of(dy << rpy)
               && !(pi.y == pi.ty0
-                && (((try0 as u64) << levelno) % (1u64 << rpy)) != 0)
+                && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy))
             {
               current_block = 10891380440665537214;
               continue;
             }
             if !(pi.x as u64).is_multiple_of(dx << rpx)
               && !(pi.x == pi.tx0
-                && (((trx0 as u64) << levelno) % (1u64 << rpx)) != 0)
+                && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx))
             {
               current_block = 10891380440665537214;
               continue;
@@ -821,13 +821,13 @@ fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
             }
             /* See ISO-15441. B.12.1.4 Position-component-resolution level-layer progression */
             if !((pi.y as u64 % ((pi.comps[pi.compno as usize].dy as u64) << rpy)) == 0
-              || (pi.y == pi.ty0 && (((try0 as u64) << levelno) % (1u64 << rpy)) != 0))
+              || (pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy)))
             {
               current_block = 15512526488502093901;
               continue;
             }
             if !((pi.x as u64 % ((pi.comps[pi.compno as usize].dx as u64) << rpx)) == 0
-              || (pi.x == pi.tx0 && (((trx0 as u64) << levelno) % (1u64 << rpx)) != 0))
+              || (pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx)))
             {
               current_block = 15512526488502093901;
               continue;
@@ -1077,13 +1077,13 @@ fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
             }
             /* See ISO-15441. B.12.1.5 Component-position-resolution level-layer progression */
             if !((pi.y as u64 % ((pi.comps[pi.compno as usize].dy as u64) << rpy)) == 0
-              || (pi.y == pi.ty0 && (((try0 as u64) << levelno) % (1u64 << rpy)) != 0))
+              || (pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy)))
             {
               current_block = 3123434771885419771;
               continue;
             }
             if !((pi.x as u64 % ((pi.comps[pi.compno as usize].dx as u64) << rpx)) == 0
-              || (pi.x == pi.tx0 && (((trx0 as u64) << levelno) % (1u64 << rpx)) != 0))
+              || (pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx)))
             {
               current_block = 3123434771885419771;
               continue;
