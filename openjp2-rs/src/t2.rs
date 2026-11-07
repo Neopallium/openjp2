@@ -10,12 +10,11 @@ use super::tgt::*;
 
 
 #[repr(C)]
-#[derive(Copy, Clone)]
-pub(crate) struct opj_t2 {
-  pub image: *mut CoreImage,
-  pub cp: *mut opj_cp_t,
+pub(crate) struct opj_t2<'a> {
+  pub image: &'a mut CoreImage,
+  pub cp: &'a mut opj_cp_t,
 }
-pub(crate) type opj_t2_t = opj_t2;
+pub(crate) type opj_t2_t<'a> = opj_t2<'a>;
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
@@ -134,9 +133,8 @@ pub(crate) fn opj_t2_encode_packets(
   let mut dest = unsafe { core::slice::from_raw_parts_mut(p_dest, p_max_len as usize) };
   // SAFETY: p_data_written is the caller's out-parameter.
   let p_data_written = unsafe { &mut *p_data_written };
-  // SAFETY: t2.image / t2.cp are the codec's structures set by opj_t2_create.
-  let image = unsafe { &mut *t2.image };
-  let cp = unsafe { &mut *t2.cp };
+  let image = &mut *t2.image;
+  let cp = &mut *t2.cp;
   let mut l_nb_bytes = 0 as OPJ_UINT32;
   let mut compno: OPJ_UINT32 = 0;
   let mut poc: OPJ_UINT32 = 0;
@@ -328,7 +326,7 @@ pub(crate) fn opj_t2_encode_packets(
 }
 pub(crate) fn opj_t2_decode_packets(
   mut tcd: &mut opj_tcd,
-  mut p_t2: *mut opj_t2_t,
+  t2: &mut opj_t2_t,
   mut p_tile_no: OPJ_UINT32,
   mut p_src: *mut OPJ_BYTE,
   mut p_data_read: *mut OPJ_UINT32,
@@ -336,13 +334,10 @@ pub(crate) fn opj_t2_decode_packets(
   mut _p_cstr_index: *mut CodestreamIndex,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  // SAFETY: p_t2 is the t2 handle created by opj_tcd_t2_decode for this call.
-  let t2 = unsafe { &mut *p_t2 };
   // SAFETY: p_src points to p_max_len bytes of tile-part data owned by the caller.
   let mut src = unsafe { core::slice::from_raw_parts_mut(p_src, p_max_len as usize) };
-  // SAFETY: t2.image / t2.cp are the codec's structures set by opj_t2_create.
-  let image = unsafe { &mut *t2.image };
-  let cp = unsafe { &mut *t2.cp };
+  let image = &mut *t2.image;
+  let cp = &mut *t2.cp;
   let mut pino: OPJ_UINT32 = 0;
   let mut l_nb_bytes_read: OPJ_UINT32 = 0;
   /* create a packet iterator */
@@ -500,22 +495,9 @@ pub(crate) fn opj_t2_decode_packets(
   };
   1i32
 }
-pub(crate) fn opj_t2_create(
-  mut p_image: *mut CoreImage,
-  mut p_cp: *mut opj_cp_t,
-) -> *mut opj_t2_t {
+pub(crate) fn opj_t2_create<'a>(image: &'a mut CoreImage, cp: &'a mut opj_cp_t) -> Box<opj_t2_t<'a>> {
   /* create the t2 structure */
-  let l_t2 = Box::new(opj_t2 {
-    image: p_image,
-    cp: p_cp,
-  });
-  Box::into_raw(l_t2)
-}
-
-pub(crate) fn opj_t2_destroy(t2: *mut opj_t2_t) {
-  if !t2.is_null() {
-    drop(unsafe { Box::from_raw(t2) });
-  };
+  Box::new(opj_t2 { image, cp })
 }
 /* *
 Decode a packet of a tile from a source buffer
@@ -1048,26 +1030,17 @@ fn opj_t2_read_packet_header(
   step 2: Return to codestream for decoding
   */
   /* The header lives either in the PPM buffer, the PPT buffer, or inline in the codestream. */
-  let (l_header_base, l_header_avail) = if l_cp.ppm {
-    (
-      (&mut l_cp.ppm_buffer)[l_cp.ppm_data_pos..].as_mut_ptr(),
-      l_cp.ppm_len,
-    )
+  let l_header: &mut [u8] = if l_cp.ppm {
+    &mut l_cp.ppm_buffer[l_cp.ppm_data_pos..][..l_cp.ppm_len as usize]
   } else if {
     let tcp = &mut l_cp.tcps[p_tile_no as usize];
     tcp.ppt
   } {
     let tcp = &mut l_cp.tcps[p_tile_no as usize];
-    (
-      (&mut tcp.ppt_buffer)[tcp.ppt_data_pos..].as_mut_ptr(),
-      tcp.ppt_len,
-    )
+    &mut tcp.ppt_buffer[tcp.ppt_data_pos..][..tcp.ppt_len as usize]
   } else {
-    let l_remaining_length = (p_src_data.len() - l_pos) as OPJ_UINT32;
-    (p_src_data[l_pos..].as_mut_ptr(), l_remaining_length)
+    &mut p_src_data[l_pos..]
   };
-  // SAFETY: l_header_base points to l_header_avail bytes owned by the codec.
-  let l_header = unsafe { core::slice::from_raw_parts_mut(l_header_base, l_header_avail as usize) };
   let mut l_hdr_pos = 0usize;
 
   let mut l_bio = opj_bio::new_dec(&mut l_header[..]);

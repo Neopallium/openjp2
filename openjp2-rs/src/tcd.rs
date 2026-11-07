@@ -453,13 +453,10 @@ fn opj_tcd_rateallocate(
           == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
           && tcd_tcp_distoratio[layno as usize] as core::ffi::c_double > 0.0f64
       {
-        let mut t2 = opj_t2_create(image, cp); /* fixed_quality */
+        /* fixed_quality */
         let mut thresh = 0 as OPJ_FLOAT64;
         let mut last_layer_allocation_ok = false;
 
-        if t2.is_null() {
-          return 0i32;
-        }
         i = 0 as OPJ_UINT32;
         while i < 128u32 {
           let mut distoachieved = 0 as OPJ_FLOAT64;
@@ -483,7 +480,7 @@ fn opj_tcd_rateallocate(
                 && cp.rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
             {
               if opj_t2_encode_packets(
-                unsafe { &mut *t2 },
+                &mut opj_t2_create(image, cp),
                 tcd.tcd_tileno,
                 &mut tcd.tcd_image.tiles,
                 layno.wrapping_add(1u32),
@@ -540,7 +537,7 @@ fn opj_tcd_rateallocate(
             if (layer_allocation_is_same && !last_layer_allocation_ok)
               || (!layer_allocation_is_same
                 && opj_t2_encode_packets(
-                  unsafe { &mut *t2 },
+                  &mut opj_t2_create(image, cp),
                   tcd.tcd_tileno,
                   &mut tcd.tcd_image.tiles,
                   layno.wrapping_add(1u32),
@@ -571,7 +568,7 @@ fn opj_tcd_rateallocate(
         } else {
           stable_thresh
         };
-        opj_t2_destroy(t2);
+
       } else {
         /* Special value to indicate to use all passes */
         goodthresh = -(1i32) as OPJ_FLOAT64
@@ -1732,14 +1729,10 @@ fn opj_tcd_t2_decode(
   image: &mut CoreImage,
   cp: &mut opj_cp_t,
 ) -> OPJ_BOOL {
-  let mut l_t2 = core::ptr::null_mut::<opj_t2_t>();
-  l_t2 = opj_t2_create(image, cp);
-  if l_t2.is_null() {
-    return 0i32;
-  }
+  let mut t2 = opj_t2_create(image, cp);
   if opj_t2_decode_packets(
     p_tcd,
-    l_t2,
+    &mut t2,
     p_tcd.tcd_tileno,
     p_src_data,
     p_data_read,
@@ -1748,10 +1741,9 @@ fn opj_tcd_t2_decode(
     p_manager,
   ) == 0
   {
-    opj_t2_destroy(l_t2);
     return 0i32;
   }
-  opj_t2_destroy(l_t2);
+
   /*---------------CLEAN-------------------*/
   1i32
 }
@@ -2243,14 +2235,10 @@ fn opj_tcd_t2_encode(
   image: &mut CoreImage,
   cp: &mut opj_cp_t,
 ) -> OPJ_BOOL {
-  let mut l_t2 = core::ptr::null_mut::<opj_t2_t>();
-  l_t2 = opj_t2_create(image, cp);
-  if l_t2.is_null() {
-    return 0i32;
-  }
   let numlayers = cp.tcps[p_tcd.tcd_tileno as usize].numlayers;
+  let mut t2 = opj_t2_create(image, cp);
   if opj_t2_encode_packets(
-    unsafe { &mut *l_t2 },
+    &mut t2,
     p_tcd.tcd_tileno,
     &mut p_tcd.tcd_image.tiles,
     numlayers,
@@ -2266,10 +2254,9 @@ fn opj_tcd_t2_encode(
     p_manager,
   ) == 0
   {
-    opj_t2_destroy(l_t2);
     return 0i32;
   }
-  opj_t2_destroy(l_t2);
+
   /*---------------CLEAN-------------------*/
   1i32
 }
