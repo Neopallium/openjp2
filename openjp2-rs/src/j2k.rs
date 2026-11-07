@@ -8,6 +8,7 @@ use super::invert::*;
 #[cfg(feature = "c_api")]
 use super::mct::*;
 use super::math::*;
+use rayon::prelude::*;
 
 // Owned codestream index (Phase 5.d). The `#[repr(C)]` mirror in c_api_types.rs
 // is built only when a C caller asks for it via opj_get_cstr_index.
@@ -7343,15 +7344,38 @@ fn opj_j2k_update_image_data(
   p_output_image: &mut CoreImage,
   p_image_src: &mut CoreImage,
 ) -> OPJ_BOOL {
-  let l_image_src = p_image_src;
-  let mut i: OPJ_UINT32 = 0;
-  while i < l_image_src.numcomps {
+  let whole_tile = p_tcd.whole_tile_decoding != 0;
+  let img_comps_src = &p_image_src.comps[..];
+  let numcomps = p_image_src.numcomps as usize;
+  let results: Vec<OPJ_BOOL> = p_tcd
+    .tcd_image
+    .tiles
+    .comps
+    .par_iter_mut()
+    .enumerate()
+    .take(numcomps)
+    .zip(p_output_image.comps.par_iter_mut())
+    .map(|((i, l_tilec_i), dest)| {
+      update_image_data_comp(l_tilec_i, &img_comps_src[i], dest, whole_tile)
+    })
+    .collect();
+  if results.contains(&0) {
+    return 0i32;
+  }
+  1i32
+}
+
+fn update_image_data_comp(
+  l_tilec_i: &mut opj_tcd_tilecomp_t,
+  l_img_comp_src: &CoreImageComp,
+  dest: &mut CoreImageComp,
+  whole_tile: bool,
+) -> OPJ_BOOL {
     let mut res_x0: OPJ_INT32 = 0;
     let mut res_x1: OPJ_INT32 = 0;
     let mut res_y0: OPJ_INT32 = 0;
     let mut res_y1: OPJ_INT32 = 0;
     let mut src_data_stride: OPJ_UINT32 = 0;
-    let _p_src_data = core::ptr::null::<OPJ_INT32>();
     let mut l_width_src: OPJ_UINT32 = 0;
     let mut l_height_src: OPJ_UINT32 = 0;
     let mut l_width_dest: OPJ_UINT32 = 0;
@@ -7369,14 +7393,9 @@ fn opj_j2k_update_image_data(
     let mut l_y1_dest: OPJ_UINT32 = 0;
     let mut l_start_offset_dest: OPJ_SIZE_T = 0;
     let mut j: OPJ_UINT32 = 0;
-    let l_img_comp_src = &mut l_image_src.comps[i as usize];
-    let l_tilec_i = &mut p_tcd.tcd_image.tiles.comps[i as usize];
     /* Copy info from decoded comp image to output image */
-    {
-      let dest = &mut p_output_image.comps[i as usize];
-      dest.resno_decoded = l_img_comp_src.resno_decoded;
-    }
-    if p_tcd.whole_tile_decoding != 0 {
+    dest.resno_decoded = l_img_comp_src.resno_decoded;
+    if whole_tile {
       let l_res = &l_tilec_i.resolutions[l_img_comp_src.resno_decoded as usize];
       res_x0 = l_res.x0;
       res_y0 = l_res.y0;
@@ -7396,7 +7415,7 @@ fn opj_j2k_update_image_data(
       src_data_stride = l_res.win_x1.wrapping_sub(l_res.win_x0);
       !l_tilec_i.data_win.is_null()
     };
-    let src_available = if p_tcd.whole_tile_decoding != 0 {
+    let src_available = if whole_tile {
       !l_tilec_i.data.is_null()
     } else {
       !l_tilec_i.data_win.is_null()
@@ -7406,13 +7425,10 @@ fn opj_j2k_update_image_data(
       l_height_src = (res_y1 - res_y0) as OPJ_UINT32;
       /* Current tile component size*/
       /* Border of the current output component*/
-      {
-        let dest = &mut p_output_image.comps[i as usize];
-        l_x0_dest = opj_uint_ceildivpow2(dest.x0, dest.factor); /* can't overflow given that image->x1 is uint32 */
-        l_y0_dest = opj_uint_ceildivpow2(dest.y0, dest.factor);
-        l_x1_dest = l_x0_dest.wrapping_add(dest.w);
-        l_y1_dest = l_y0_dest.wrapping_add(dest.h);
-      }
+      l_x0_dest = opj_uint_ceildivpow2(dest.x0, dest.factor); /* can't overflow given that image->x1 is uint32 */
+      l_y0_dest = opj_uint_ceildivpow2(dest.y0, dest.factor);
+      l_x1_dest = l_x0_dest.wrapping_add(dest.w);
+      l_y1_dest = l_y0_dest.wrapping_add(dest.h);
       /*-----*/
       /* Compute the area (l_offset_x0_src, l_offset_y0_src, l_offset_x1_src, l_offset_y1_src)
        * of the input buffer (decoded tile component) which will be move
@@ -7440,7 +7456,7 @@ fn opj_j2k_update_image_data(
           l_width_dest = l_width_src.wrapping_sub(l_offset_x0_src as OPJ_UINT32);
           l_offset_x1_src = 0i32
         } else {
-          l_width_dest = p_output_image.comps[i as usize].w;
+          l_width_dest = dest.w;
           l_offset_x1_src = res_x1 - l_x1_dest as OPJ_INT32
         }
       }
@@ -7461,7 +7477,7 @@ fn opj_j2k_update_image_data(
           l_height_dest = l_height_src.wrapping_sub(l_offset_y0_src as OPJ_UINT32);
           l_offset_y1_src = 0i32
         } else {
-          l_height_dest = p_output_image.comps[i as usize].h;
+          l_height_dest = dest.h;
           l_offset_y1_src = res_y1 - l_y1_dest as OPJ_INT32
         }
       }
@@ -7483,9 +7499,8 @@ fn opj_j2k_update_image_data(
       );
       /* Compute the output buffer offset */
       l_start_offset_dest = (l_start_x_dest as OPJ_SIZE_T).wrapping_add(
-        (l_start_y_dest as OPJ_SIZE_T).wrapping_mul(p_output_image.comps[i as usize].w as OPJ_SIZE_T),
+        (l_start_y_dest as OPJ_SIZE_T).wrapping_mul(dest.w as OPJ_SIZE_T),
       );
-      let dest = &mut p_output_image.comps[i as usize];
       /* Allocate output component buffer if necessary */
       if dest.data.is_empty()
         && l_start_offset_src == 0
@@ -7497,7 +7512,7 @@ fn opj_j2k_update_image_data(
         /* If the final image matches the tile buffer, then borrow it */
         /* directly to save a copy */
         let len = (dest.w as usize).wrapping_mul(dest.h as usize);
-        if p_tcd.whole_tile_decoding != 0 {
+        if whole_tile {
           dest.data = l_tilec_i.data.take_vec(len);
         } else {
           dest.data = l_tilec_i.data_win.take_vec(len);
@@ -7514,11 +7529,11 @@ fn opj_j2k_update_image_data(
             /* would overflow */
             return 0i32;
           }
-          dest.data = vec![0i32; (l_width * l_height) as usize];
+          dest.data = vec![0i32; l_width * l_height];
         }
         /* Move the output buffer to the first place where we will write*/
         let src_len = (l_offset_y0_src as usize + l_height_dest as usize) * src_data_stride as usize;
-        let src = if p_tcd.whole_tile_decoding != 0 {
+        let src = if whole_tile {
           l_tilec_i.data.as_mut_slice(src_len)
         } else {
           l_tilec_i.data_win.as_mut_slice(src_len)
@@ -7534,11 +7549,9 @@ fn opj_j2k_update_image_data(
         }
       }
     }
-    /* Happens for partial component decoding */
-    i = i.wrapping_add(1)
-  }
-  1i32
+    1i32
 }
+
 fn opj_j2k_update_image_dimensions(
   p_image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
