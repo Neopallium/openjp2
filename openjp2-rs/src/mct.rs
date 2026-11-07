@@ -205,15 +205,13 @@ pub(crate) fn opj_calculate_norms(
   matrix: &[OPJ_FLOAT32],
 ) {
   let nb_comps = nb_comps as usize;
-  for i in 0..nb_comps {
+  for (i, norm) in norms.iter_mut().enumerate().take(nb_comps) {
     let mut acc = 0 as OPJ_FLOAT64;
-    let mut index = i;
-    for _ in 0..nb_comps {
-      let value = matrix[index] as OPJ_FLOAT64;
-      index += nb_comps;
+    for k in 0..nb_comps {
+      let value = matrix[k * nb_comps + i] as OPJ_FLOAT64;
       acc += value * value;
     }
-    norms[i] = acc.sqrt();
+    *norm = acc.sqrt();
   }
 }
 

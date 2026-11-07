@@ -95,8 +95,8 @@ fn opj_lupDecompose(
   let mut offset = 1;
   let mut l_stride = nb_compo - 1;
   // initialize permutations
-  for i in 0..nb_compo {
-    permutations[i] = i as u32;
+  for (i, perm) in permutations.iter_mut().enumerate().take(nb_compo) {
+    *perm = i as u32;
   }
   // now make a pivot with column switch
   for k in 0..l_last_column {

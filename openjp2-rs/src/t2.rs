@@ -1022,10 +1022,7 @@ fn opj_t2_read_packet_header(
   /* The header lives either in the PPM buffer, the PPT buffer, or inline in the codestream. */
   let l_header: &mut [u8] = if l_cp.ppm {
     &mut l_cp.ppm_buffer[l_cp.ppm_data_pos..][..l_cp.ppm_len as usize]
-  } else if {
-    let tcp = &mut l_cp.tcps[p_tile_no as usize];
-    tcp.ppt
-  } {
+  } else if l_cp.tcps[p_tile_no as usize].ppt {
     let tcp = &mut l_cp.tcps[p_tile_no as usize];
     &mut tcp.ppt_buffer[tcp.ppt_data_pos..][..tcp.ppt_len as usize]
   } else {
@@ -1062,10 +1059,7 @@ fn opj_t2_read_packet_header(
     if l_cp.ppm {
       l_cp.ppm_data_pos += l_header_length as usize;
       l_cp.ppm_len -= l_header_length;
-    } else if {
-      let tcp = &mut l_cp.tcps[p_tile_no as usize];
-      tcp.ppt
-    } {
+    } else if l_cp.tcps[p_tile_no as usize].ppt {
       let tcp = &mut l_cp.tcps[p_tile_no as usize];
       tcp.ppt_data_pos += l_header_length as usize;
       tcp.ppt_len -= l_header_length;
@@ -1307,10 +1301,7 @@ fn opj_t2_read_packet_header(
   if l_cp.ppm {
     l_cp.ppm_data_pos += l_header_length as usize;
     l_cp.ppm_len -= l_header_length;
-  } else if {
-    let tcp = &mut l_cp.tcps[p_tile_no as usize];
-    tcp.ppt
-  } {
+  } else if l_cp.tcps[p_tile_no as usize].ppt {
     let tcp = &mut l_cp.tcps[p_tile_no as usize];
     tcp.ppt_data_pos += l_header_length as usize;
     tcp.ppt_len -= l_header_length;
@@ -1447,7 +1438,7 @@ fn opj_t2_read_packet_data(
               cblk.numsegs = cblk.numsegs.wrapping_add(1)
             }
           }
-          if cblk.numnewpasses <= 0u32 {
+          if cblk.numnewpasses == 0u32 {
             break;
           }
         }
@@ -1553,7 +1544,7 @@ fn opj_t2_skip_packet_data(
             l_segno += 1;
             cblk.numsegs = cblk.numsegs.wrapping_add(1)
           }
-          if cblk.numnewpasses <= 0u32 {
+          if cblk.numnewpasses == 0u32 {
             break;
           }
         }

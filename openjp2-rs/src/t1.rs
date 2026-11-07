@@ -1406,7 +1406,7 @@ fn opj_t1_enc_clnpass(
         let mut runlen = 0u32;
         agg = (f.get() == 0) as u8;
         log::debug!("   agg={}", agg);
-        loop {
+        'cln: {
           if agg != 0 {
             runlen = 0;
             while runlen < 4 {
@@ -1419,7 +1419,7 @@ fn opj_t1_enc_clnpass(
             opj_t1_setcurctx(mqc, T1_CTXNO_AGG);
             opj_mqc_encode_macro(mqc, (runlen != 4) as u32);
             if runlen == 4 {
-              break;
+              break 'cln;
             }
             opj_t1_setcurctx(mqc, T1_CTXNO_UNI);
             opj_mqc_encode_macro(mqc, runlen >> 1);
@@ -1431,7 +1431,6 @@ fn opj_t1_enc_clnpass(
             mqc, w, f, datap, bpno, one, nmsedec, agg, runlen, 4, cblksty,
           );
           datap = datap.offset(4_u32.wrapping_sub(runlen) as isize);
-          break;
         }
         i += 1;
         f += 1

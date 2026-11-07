@@ -1647,9 +1647,10 @@ pub(crate) fn opj_tcd_update_tile_data(
               .zip(dest.chunks_exact_mut(l_width * 2))
             {
               let src = &src[0..l_width];
-              for (src, dest) in src.iter().zip(dest.chunks_exact_mut(2)) {
+              let (chunks, _) = dest.as_chunks_mut::<2>();
+              for (src, dest) in src.iter().zip(chunks) {
                 let val = *src as i16;
-                dest.copy_from_slice(&val.to_ne_bytes());
+                *dest = val.to_ne_bytes();
               }
             }
           } else {
@@ -1658,9 +1659,10 @@ pub(crate) fn opj_tcd_update_tile_data(
               .zip(dest.chunks_exact_mut(l_width * 2))
             {
               let src = &src[0..l_width];
-              for (src, dest) in src.iter().zip(dest.chunks_exact_mut(2)) {
+              let (chunks, _) = dest.as_chunks_mut::<2>();
+              for (src, dest) in src.iter().zip(chunks) {
                 let val = (*src & 0xffffi32) as i16;
-                dest.copy_from_slice(&val.to_ne_bytes());
+                *dest = val.to_ne_bytes();
               }
             }
           }
@@ -1673,8 +1675,9 @@ pub(crate) fn opj_tcd_update_tile_data(
             .zip(dest.chunks_exact_mut(l_width * 4))
           {
             let src = &src[0..l_width];
-            for (src, dest) in src.iter().zip(dest.chunks_exact_mut(4)) {
-              dest.copy_from_slice(&src.to_ne_bytes());
+            let (chunks, _) = dest.as_chunks_mut::<4>();
+            for (src, dest) in src.iter().zip(chunks) {
+              *dest = src.to_ne_bytes();
             }
           }
         }
@@ -2369,20 +2372,23 @@ pub(crate) fn opj_tcd_copy_tile_data(
       2 => {
         let (src, remain) = p_src.split_at(l_nb_elem * 2);
         if l_img_comp.sgnd != 0 {
-          for (src, dest) in src.chunks_exact(2).zip(l_dest.iter_mut()) {
-            *dest = u16::from_ne_bytes([src[0], src[1]]) as OPJ_INT32;
+          let (chunks, _) = src.as_chunks::<2>();
+          for (src, dest) in chunks.iter().zip(l_dest.iter_mut()) {
+            *dest = u16::from_ne_bytes(*src) as OPJ_INT32;
           }
         } else {
-          for (src, dest) in src.chunks_exact(2).zip(l_dest.iter_mut()) {
-            *dest = u16::from_ne_bytes([src[0], src[1]]) as i32 & 0xffffi32;
+          let (chunks, _) = src.as_chunks::<2>();
+          for (src, dest) in chunks.iter().zip(l_dest.iter_mut()) {
+            *dest = u16::from_ne_bytes(*src) as i32 & 0xffffi32;
           }
         }
         p_src = remain;
       }
       4 => {
         let (src, remain) = p_src.split_at(l_nb_elem * 4);
-        for (src, dest) in src.chunks_exact(4).zip(l_dest.iter_mut()) {
-          *dest = u32::from_ne_bytes([src[0], src[1], src[2], src[3]]) as OPJ_INT32;
+        let (chunks, _) = src.as_chunks::<4>();
+        for (src, dest) in chunks.iter().zip(l_dest.iter_mut()) {
+          *dest = u32::from_ne_bytes(*src) as OPJ_INT32;
         }
         p_src = remain;
       }

@@ -530,7 +530,7 @@ fn rev_init<'a>(
   vlcp.pos -= 1; //check standard
   vlcp.tmp = (d >> 4i32) as OPJ_UINT64; //this is useful for the next byte
   vlcp.bits = (4i32 - (vlcp.tmp & 7u64 == 7u64) as core::ffi::c_int) as OPJ_UINT32;
-  vlcp.unstuff = (d | 0xfu32 > 0x8fu32) as core::ffi::c_int;
+  vlcp.unstuff = (d > 0x8fu32) as core::ffi::c_int;
   //This code is designed for an architecture that read address should
   // align to the read size (address multiple of 4 if read size is 4)
   //These few lines take care of the case where data is not at a multiple

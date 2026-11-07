@@ -1375,7 +1375,7 @@ pub(crate) fn opj_jp2_setup_encoder(
     };
     /* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
     /* in which case jp2->color.jp2_cdef->info will be NULL => valid for destruction */
-    for i in 0..len {
+    for (i, comp) in comps.iter().enumerate().take(len) {
       let cn = i as u16;
       if i < color_channels as usize {
         cdef.info.push(opj_jp2_cdef_info {
@@ -1384,7 +1384,7 @@ pub(crate) fn opj_jp2_setup_encoder(
           asoc: cn + 1,
         })
       } else {
-        if comps[i].alpha != 0 {
+        if comp.alpha != 0 {
           /* we'll be here exactly once */
           cdef.info.push(opj_jp2_cdef_info {
             cn,

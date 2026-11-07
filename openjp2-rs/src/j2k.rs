@@ -2166,7 +2166,7 @@ let l_nb_comp: OPJ_UINT32 = l_image.numcomps;
 let l_chunk_size: OPJ_UINT32 = (5u32).wrapping_add((2u32).wrapping_mul(l_comp_room));
   l_current_poc_nb = p_header_size.wrapping_div(l_chunk_size);
 let l_current_poc_remaining: OPJ_UINT32 = p_header_size.wrapping_rem(l_chunk_size);
-  if l_current_poc_nb <= 0u32 || l_current_poc_remaining != 0u32 {
+  if l_current_poc_nb == 0u32 || l_current_poc_remaining != 0u32 {
     event_msg!(p_manager, EVT_ERROR, "Error reading POC marker\n",);
     return 0i32;
   }
@@ -3088,7 +3088,7 @@ fn opj_j2k_read_sot(
  * Write one or more PLT markers in the provided buffer
  */
 fn opj_j2k_write_plt_in_memory(
-  _p_j2k: &mut opj_j2k,
+  _p_j2k: &opj_j2k,
   marker_info: &opj_tcd_marker_info_t,
   data: &mut [u8],
   p_data_written: &mut OPJ_UINT32,
@@ -3265,7 +3265,7 @@ fn opj_j2k_write_sod(
       let mut l_data_written_PLT = 0 as OPJ_UINT32;
       let mut p_PLT_buffer = vec![0u8; p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT as usize];
       if opj_j2k_write_plt_in_memory(
-        p_j2k,
+        &*p_j2k,
         &mut marker_info,
         &mut p_PLT_buffer[..],
         &mut l_data_written_PLT,
@@ -4563,8 +4563,8 @@ fn opj_j2k_add_mct(p_tcp: &mut opj_tcp_t, p_image: &mut CoreImage, p_index: OPJ_
       l_offset_array
         .m_element_type
         .read_to_int32(l_offset_array.m_data.as_slice(), &mut l_offset_data);
-      for i in 0..p_image.numcomps as usize {
-        p_tcp_ref.tccps[i].m_dc_level_shift = l_offset_data[i] as OPJ_INT32;
+      for (tccp, &offset) in p_tcp_ref.tccps.iter_mut().zip(l_offset_data.iter()) {
+        tccp.m_dc_level_shift = offset as OPJ_INT32;
       }
     }
     1i32
@@ -4940,18 +4940,14 @@ fn opj_j2k_is_cinema_compliant(
           return 0i32;
         }
       }
-      4 => {
-        if (comps[0].w > 4096u32) as core::ffi::c_int
-          | (comps[0].h > 2160u32) as core::ffi::c_int
-          != 0
-        {
-          event_msg!(p_manager, EVT_WARNING,
-                              "JPEG 2000 Profile-4 (4k dc profile) requires:\nwidth <= 4096 and height <= 2160\n-> Image size {} x {} is not compliant\n-> Non-profile-4 codestream will be generated\n",
-                              comps[0].w,
-                              comps[0].h);
-          return 0i32;
-        }
+      4 if comps[0].w > 4096u32 || comps[0].h > 2160u32 => {
+        event_msg!(p_manager, EVT_WARNING,
+                            "JPEG 2000 Profile-4 (4k dc profile) requires:\nwidth <= 4096 and height <= 2160\n-> Image size {} x {} is not compliant\n-> Non-profile-4 codestream will be generated\n",
+                            comps[0].w,
+                            comps[0].h);
+        return 0i32;
       }
+      4 => {}
       _ => {}
     }
     1i32
@@ -6433,7 +6429,7 @@ fn opj_j2k_encoding_validation(
   /* ISO 15444-1:2004 states between 1 & 33 (0 -> 32) */
   /* 33 (32) would always fail the check below (if a cast to 64bits was done) */
   /* FIXME Shall we change OPJ_J2K_MAXRLVLS to 32 ? */
-  if p_j2k.m_cp.tcps[0].tccps[0].numresolutions <= 0u32
+  if p_j2k.m_cp.tcps[0].tccps[0].numresolutions == 0u32
     || p_j2k.m_cp.tcps[0].tccps[0].numresolutions > 32u32
   {
     event_msg!(
@@ -8698,7 +8694,7 @@ fn opj_j2k_decode_tiles(
       if opj_j2k_update_image_data(&mut p_j2k.m_tcd, p_j2k.m_output_image.as_mut().expect("m_output_image"), p_j2k.m_private_image.as_deref_mut().expect("m_private_image")) == 0 {
         return 0i32;
       }
-      let same_extent = p_j2k.m_output_image.as_ref().map_or(false, |image| {
+      let same_extent = p_j2k.m_output_image.as_ref().is_some_and(|image| {
         let private = p_j2k.m_private_image.as_deref().expect("m_private_image");
         image.x0 == private.x0
           && image.y0 == private.y0
@@ -9126,7 +9122,11 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
     } else if option.starts_with("GUARD_BITS=") {
       let mut tileno: OPJ_UINT32 = 0;
       let mut cp = &mut p_j2k.m_cp;
-      let mut numgbits = option[11..].parse::<i32>().unwrap_or_default();
+      let mut numgbits = option
+        .strip_prefix("GUARD_BITS=")
+        .expect("starts_with check above")
+        .parse::<i32>()
+        .unwrap_or_default();
       if !(0..=7).contains(&numgbits) {
         event_msg!(
           p_manager,
@@ -9272,7 +9272,6 @@ pub(crate) fn opj_j2k_start_compress(
       comps: core::mem::take(&mut p_image.comps),
       icc_profile_buf: core::mem::take(&mut p_image.icc_profile_buf),
       icc_profile_is_cielab: p_image.icc_profile_is_cielab,
-      ..Default::default()
     };
     p_image.icc_profile_is_cielab = false;
     p_j2k.m_private_image = Some(Box::new(private));
@@ -9433,9 +9432,10 @@ fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8], l_image: &m
               .zip(dest.chunks_exact_mut(l_width * 2))
             {
               let src = &src[0..l_width];
-              for (src, dest) in src.iter().zip(dest.chunks_exact_mut(2)) {
+              let (chunks, _) = dest.as_chunks_mut::<2>();
+              for (src, dest) in src.iter().zip(chunks) {
                 let val = *src as i16;
-                dest.copy_from_slice(&val.to_ne_bytes());
+                *dest = val.to_ne_bytes();
               }
             }
           } else {
@@ -9444,9 +9444,10 @@ fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8], l_image: &m
               .zip(dest.chunks_exact_mut(l_width * 2))
             {
               let src = &src[0..l_width];
-              for (src, dest) in src.iter().zip(dest.chunks_exact_mut(2)) {
+              let (chunks, _) = dest.as_chunks_mut::<2>();
+              for (src, dest) in src.iter().zip(chunks) {
                 let val = (*src & 0xffffi32) as i16;
-                dest.copy_from_slice(&val.to_ne_bytes());
+                *dest = val.to_ne_bytes();
               }
             }
           }
@@ -9459,8 +9460,9 @@ fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8], l_image: &m
             .zip(dest.chunks_exact_mut(l_width * 4))
           {
             let src = &src[0..l_width];
-            for (src, dest) in src.iter().zip(dest.chunks_exact_mut(4)) {
-              dest.copy_from_slice(&src.to_ne_bytes());
+            let (chunks, _) = dest.as_chunks_mut::<4>();
+            for (src, dest) in src.iter().zip(chunks) {
+              *dest = src.to_ne_bytes();
             }
           }
         }
