@@ -299,7 +299,6 @@ fn opj_tcd_rateallocate(
   dest: &mut [u8],
   p_data_written: &mut OPJ_UINT32,
   len: OPJ_UINT32,
-  cstr_info: *mut opj_codestream_info_t,
   p_manager: &mut opj_event_mgr,
   image: &mut CoreImage,
   cp: &mut opj_cp_t,
@@ -394,14 +393,6 @@ fn opj_tcd_rateallocate(
     }
 
     /* index file */
-    #[cfg(feature = "c_api")]
-    crate::cabi::tcd_index_set_tile_stats(
-      cstr_info,
-      tcd.tcd_tileno,
-      tcd.tcd_image.tiles.numpix,
-      tcd.tcd_image.tiles.distotile,
-      tcd_tcp_numlayers,
-    ); /* fixed_quality */
 
     layno = 0 as OPJ_UINT32;
     while layno < tcd_tcp_numlayers {
@@ -469,8 +460,7 @@ fn opj_tcd_rateallocate(
                 layno.wrapping_add(1u32),
                 &mut dest[..maxlen as usize],
                 p_data_written,
-                cstr_info,
-                None,
+                          None,
                 tcd.cur_tp_num,
                 tcd.tp_pos,
                 tcd.cur_pino,
@@ -525,8 +515,7 @@ fn opj_tcd_rateallocate(
                   layno.wrapping_add(1u32),
                   &mut dest[..maxlen as usize],
                   p_data_written,
-                  cstr_info,
-                  None,
+                              None,
                   tcd.cur_tp_num,
                   tcd.tp_pos,
                   tcd.cur_pino,
@@ -555,8 +544,6 @@ fn opj_tcd_rateallocate(
         goodthresh = -(1i32) as OPJ_FLOAT64
       }
       /* Threshold for Marcela Index */
-      #[cfg(feature = "c_api")]
-      crate::cabi::tcd_index_set_thresh(cstr_info, tcd.tcd_tileno, layno, goodthresh);
 
       opj_tcd_makelayer(tcd, layno, goodthresh, 1 as OPJ_UINT32);
 
@@ -1224,7 +1211,6 @@ pub(crate) fn opj_tcd_encode_tile(
   p_dest: &mut [u8],
   p_data_written: &mut OPJ_UINT32,
   p_max_length: OPJ_UINT32,
-  p_cstr_info: *mut opj_codestream_info_t,
   p_marker_info: Option<&mut opj_tcd_marker_info_t>,
   p_manager: &mut opj_event_mgr,
   image: &mut CoreImage,
@@ -1233,26 +1219,6 @@ pub(crate) fn opj_tcd_encode_tile(
   if p_tcd.cur_tp_num == 0u32 {
     p_tcd.tcd_tileno = p_tile_no;
     /* FIXME _ProfStop(PGROUP_RATE); */
-    {
-      /* INDEX >> "Precinct_nb_X et Precinct_nb_Y" */
-      let l_tilec_idx = &p_tcd.tcd_image.tiles.comps[0]; /* based on component 0 */
-      #[cfg(feature = "c_api")]
-      let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps; /* based on component 0 */
-      let mut l_num_packs = 0 as OPJ_UINT32;
-      for l_res_idx in l_tilec_idx.resolutions.iter() {
-        l_num_packs = (l_num_packs as core::ffi::c_uint)
-          .wrapping_add(l_res_idx.pw.wrapping_mul(l_res_idx.ph))
-          as OPJ_UINT32;
-      }
-      #[cfg(feature = "c_api")]
-      crate::cabi::tcd_index_encode_tile_init(
-        p_cstr_info,
-        p_tile_no,
-        l_num_packs,
-        &l_tilec_idx.resolutions[..],
-        tccps,
-      );
-    }
     if opj_tcd_dc_level_shift_encode(p_tcd, cp) == 0 {
       return 0i32;
     }
@@ -1269,7 +1235,6 @@ pub(crate) fn opj_tcd_encode_tile(
       p_tcd,
       &mut p_dest[..p_max_length as usize],
       p_max_length,
-      p_cstr_info,
       p_manager,
       image,
       cp,
@@ -1291,15 +1256,12 @@ pub(crate) fn opj_tcd_encode_tile(
   /* FIXME _ProfStart(PGROUP_RATE); */
   /*--------------TIER2------------------*/
   /* INDEX */
-  #[cfg(feature = "c_api")]
-  crate::cabi::tcd_index_set_write(p_cstr_info, 1i32);
   /* FIXME _ProfStart(PGROUP_T2); */
   if opj_tcd_t2_encode(
     p_tcd,
     &mut p_dest[..p_max_length as usize],
     p_data_written,
     p_max_length,
-    p_cstr_info,
     p_marker_info,
     p_manager,
     image,
@@ -2216,7 +2178,6 @@ fn opj_tcd_t2_encode(
   mut dest_data: &mut [u8],
   mut p_data_written: &mut OPJ_UINT32,
   mut p_max_dest_size: OPJ_UINT32,
-  mut p_cstr_info: *mut opj_codestream_info_t,
   mut p_marker_info: Option<&mut opj_tcd_marker_info_t>,
   mut p_manager: &mut opj_event_mgr,
   image: &mut CoreImage,
@@ -2231,7 +2192,6 @@ fn opj_tcd_t2_encode(
     numlayers,
     &mut dest_data[..p_max_dest_size as usize],
     p_data_written,
-    p_cstr_info,
     p_marker_info,
     p_tcd.tp_num,
     p_tcd.tp_pos,
@@ -2250,15 +2210,12 @@ fn opj_tcd_rate_allocate_encode(
   mut p_tcd: &mut opj_tcd,
   mut dest_data: &mut [u8],
   mut p_max_dest_size: OPJ_UINT32,
-  mut p_cstr_info: *mut opj_codestream_info_t,
   mut p_manager: &mut opj_event_mgr,
   image: &mut CoreImage,
   cp: &mut opj_cp_t,
 ) -> OPJ_BOOL {
   {
     let mut l_nb_written = 0 as OPJ_UINT32;
-    #[cfg(feature = "c_api")]
-    crate::cabi::tcd_index_set_write(p_cstr_info, 0i32);
 
     if cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy
       == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO
@@ -2270,7 +2227,6 @@ fn opj_tcd_rate_allocate_encode(
         &mut dest_data[..p_max_dest_size as usize],
         &mut l_nb_written,
         p_max_dest_size,
-        p_cstr_info,
         p_manager,
         image,
         cp,

@@ -120,7 +120,6 @@ pub(crate) fn opj_t2_encode_packets(
   mut p_maxlayers: OPJ_UINT32,
   mut dest: &mut [u8],
   mut p_data_written: &mut OPJ_UINT32,
-  mut cstr_info: *mut opj_codestream_info_t,
   mut p_marker_info: Option<&mut opj_tcd_marker_info_t>,
   mut p_tp_num: OPJ_UINT32,
   mut p_tp_pos: OPJ_INT32,
@@ -186,7 +185,6 @@ pub(crate) fn opj_t2_encode_packets(
               pi,
               &mut dest[..],
               &mut l_nb_bytes,
-              cstr_info,
               p_t2_mode,
               p_manager,
             ) == 0
@@ -249,7 +247,6 @@ pub(crate) fn opj_t2_encode_packets(
           pi,
           &mut dest[..],
           &mut l_nb_bytes,
-          cstr_info,
           p_t2_mode,
           p_manager,
         ) == 0
@@ -268,14 +265,6 @@ pub(crate) fn opj_t2_encode_packets(
           }
         }
         /* INDEX >> */
-        #[cfg(feature = "c_api")]
-        crate::cabi::t2_write_packet_index(
-          cstr_info,
-          p_tile_no,
-          l_nb_bytes as i64,
-          cp.m_specific_param.m_enc.m_tp_on,
-          cp.tcps[p_tile_no as usize].POC,
-        );
         /* << INDEX */
         tile.packno = tile.packno.wrapping_add(1)
       }
@@ -401,7 +390,6 @@ pub(crate) fn opj_t2_decode_packets(
           &mut src[..],
           src_base,
           &mut l_nb_bytes_read,
-          core::ptr::null_mut::<opj_packet_info_t>(),
           p_manager,
         ) == 0
         {
@@ -420,7 +408,6 @@ pub(crate) fn opj_t2_decode_packets(
           pi,
           &mut src[..],
           &mut l_nb_bytes_read,
-          core::ptr::null_mut::<opj_packet_info_t>(),
           p_manager,
         ) == 0
         {
@@ -476,7 +463,6 @@ fn opj_t2_decode_packet(
   src: &mut [u8],
   src_base: usize,
   p_data_read: &mut OPJ_UINT32,
-  pack_info: *mut opj_packet_info_t,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_read_data: OPJ_BOOL = 0;
@@ -491,7 +477,6 @@ fn opj_t2_decode_packet(
     &mut l_read_data,
     src,
     &mut l_nb_bytes_read,
-    pack_info,
     p_manager,
   ) == 0
   {
@@ -511,7 +496,6 @@ fn opj_t2_decode_packet(
       src,
       src_base,
       &mut l_nb_bytes_read,
-      pack_info,
       p_manager,
     ) == 0
     {
@@ -544,7 +528,6 @@ fn opj_t2_skip_packet(
   pi: &mut opj_pi_iterator_t,
   src: &mut [u8],
   p_data_read: &mut OPJ_UINT32,
-  pack_info: *mut opj_packet_info_t,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut l_read_data: OPJ_BOOL = 0;
@@ -559,7 +542,6 @@ fn opj_t2_skip_packet(
     &mut l_read_data,
     src,
     &mut l_nb_bytes_read,
-    pack_info,
     p_manager,
   ) == 0
   {
@@ -578,7 +560,6 @@ fn opj_t2_skip_packet(
       pi,
       &mut l_nb_bytes_read,
       p_max_length,
-      pack_info,
       p_manager,
     ) == 0
     {
@@ -592,14 +573,12 @@ fn opj_t2_skip_packet(
 }
 fn opj_t2_encode_packet(
   #[cfg_attr(not(feature = "c_api"), allow(unused_variables))]
-  tileno: OPJ_UINT32,
+  _tileno: OPJ_UINT32,
   tile: &mut opj_tcd_tile_t,
   tcp: &mut opj_tcp_t,
   pi: &mut opj_pi_iterator_t,
   mut dest: &mut [u8],
   p_data_written: &mut OPJ_UINT32,
-  #[cfg_attr(not(feature = "c_api"), allow(unused_variables))]
-  cstr_info: *mut opj_codestream_info_t,
   mut p_t2_mode: J2K_T2_MODE,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -837,8 +816,6 @@ fn opj_t2_encode_packet(
   /* << INDEX */
   /* End of packet header position. Currently only represents the distance to start of packet
   Will be updated later by incrementing with packet start value*/
-  #[cfg(feature = "c_api")]
-  crate::cabi::t2_packet_index_end_ph(cstr_info, tileno, pos as OPJ_OFF_T);
   /* INDEX >> */
   /* Writing the packet body */
   bandno = 0 as OPJ_UINT32;
@@ -878,8 +855,6 @@ fn opj_t2_encode_packet(
             .wrapping_sub(cblk.layers[layno as usize].len) as OPJ_UINT32;
           /* INDEX >> */
           /* << INDEX */
-          #[cfg(feature = "c_api")]
-          crate::cabi::t2_packet_index_disto(cstr_info, tileno, cblk.layers[layno as usize].disto);
         }
         cblkno += 1;
       }
@@ -897,8 +872,6 @@ fn opj_t2_read_packet_header(
   p_is_data_present: &mut OPJ_BOOL,
   p_src_data: &mut [u8],
   p_data_read: &mut OPJ_UINT32,
-  #[cfg_attr(not(feature = "c_api"), allow(unused_variables))]
-  p_pack_info: *mut opj_packet_info_t,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* loop */
@@ -1018,8 +991,6 @@ fn opj_t2_read_packet_header(
     /* << INDEX */
     /* End of packet header position. Currently only represents the distance to start of packet
     Will be updated later by incrementing with packet start value */
-    #[cfg(feature = "c_api")]
-    crate::cabi::t2_pack_info_end_ph(p_pack_info, l_pos as OPJ_OFF_T);
     /* INDEX >> */
     *p_is_data_present = 0i32;
     *p_data_read = l_pos as OPJ_UINT32;
@@ -1256,8 +1227,6 @@ fn opj_t2_read_packet_header(
   /* << INDEX */
   /* End of packet header position. Currently only represents the distance to start of packet
   Will be updated later by incrementing with packet start value */
-  #[cfg(feature = "c_api")]
-  crate::cabi::t2_pack_info_end_ph(p_pack_info, l_pos as OPJ_OFF_T);
   /* INDEX >> */
   *p_is_data_present = 1i32; /* next code_block */
   *p_data_read = l_pos as OPJ_UINT32;
@@ -1270,7 +1239,6 @@ fn opj_t2_read_packet_data(
   p_src_data: &[u8],
   src_base: usize,
   p_data_read: &mut OPJ_UINT32,
-  _pack_info: *mut opj_packet_info_t,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut bandno: OPJ_UINT32 = 0;
@@ -1404,7 +1372,6 @@ fn opj_t2_skip_packet_data(
   pi: &mut opj_pi_iterator_t,
   p_data_read: &mut OPJ_UINT32,
   p_max_length: OPJ_UINT32,
-  _pack_info: *mut opj_packet_info_t,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   let mut bandno: OPJ_UINT32 = 0;

@@ -7,7 +7,7 @@
 #![allow(unused_assignments)]
 #![allow(unused_mut)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 #[cfg(feature = "file-io")]
 extern crate libc;
@@ -22,6 +22,7 @@ mod event;
 #[cfg(feature = "file-io")]
 #[macro_use]
 mod fprintf;
+pub use fprintf::StringWriter;
 
 // Public OpenJpeg interface.
 pub mod image;
@@ -128,8 +129,6 @@ pub fn detect_format_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<J2K
 
 mod bio;
 mod cio;
-#[cfg(feature = "c_api")]
-mod cabi;
 mod codec;
 mod dwt;
 mod function_list;

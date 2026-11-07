@@ -666,7 +666,34 @@ pub unsafe fn opj_dump_codec(
   if output_stream.is_null() {
     return;
   }
-  l_codec.dump_codec(info_flag, &mut *output_stream)
+  let mut writer = CFile(output_stream);
+  l_codec.dump_codec(info_flag, &mut writer)
+}
+
+/// A `Write` adapter over the caller's `FILE*` for opj_dump_codec.
+struct CFile(*mut FILE);
+
+impl std::io::Write for CFile {
+  fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+    // SAFETY: the FILE* is the caller's open output stream.
+    let n = unsafe { libc::fwrite(buf.as_ptr() as *const libc::c_void, 1, buf.len(), self.0) };
+    if n == libc::size_t::MAX {
+      Ok(0)
+    } else {
+      Ok(n)
+    }
+  }
+
+  fn flush(&mut self) -> std::io::Result<()> {
+    Ok(())
+  }
+}
+
+impl openjp2_core::StringWriter for CFile {
+  fn write_string(&mut self, s: &str) -> usize {
+    use std::io::Write;
+    self.write(s.as_bytes()).unwrap_or(0)
+  }
 }
 
 #[no_mangle]

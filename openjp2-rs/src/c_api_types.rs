@@ -271,62 +271,6 @@ pub struct opj_marker_info {
 pub type opj_marker_info_t = opj_marker_info;
 
 #[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_tp_info {
-  pub tp_start_pos: core::ffi::c_int,
-  pub tp_end_header: core::ffi::c_int,
-  pub tp_end_pos: core::ffi::c_int,
-  pub tp_start_pack: core::ffi::c_int,
-  pub tp_numpacks: core::ffi::c_int,
-}
-pub type opj_tp_info_t = opj_tp_info;
-pub struct opj_tile_info {
-  pub thresh: *mut core::ffi::c_double,
-  pub tileno: core::ffi::c_int,
-  pub start_pos: core::ffi::c_int,
-  pub end_header: core::ffi::c_int,
-  pub end_pos: core::ffi::c_int,
-  pub pw: [core::ffi::c_int; 33],
-  pub ph: [core::ffi::c_int; 33],
-  pub pdx: [core::ffi::c_int; 33],
-  pub pdy: [core::ffi::c_int; 33],
-  pub packet: *mut opj_packet_info_t,
-  pub numpix: core::ffi::c_int,
-  pub distotile: core::ffi::c_double,
-  pub marknum: core::ffi::c_int,
-  pub marker: *mut opj_marker_info_t,
-  pub maxmarknum: core::ffi::c_int,
-  pub num_tps: core::ffi::c_int,
-  pub tp: *mut opj_tp_info_t,
-}
-pub type opj_tile_info_t = opj_tile_info;
-pub struct opj_codestream_info {
-  pub D_max: core::ffi::c_double,
-  pub packno: core::ffi::c_int,
-  pub index_write: core::ffi::c_int,
-  pub image_w: core::ffi::c_int,
-  pub image_h: core::ffi::c_int,
-  pub prog: OPJ_PROG_ORDER,
-  pub tile_x: core::ffi::c_int,
-  pub tile_y: core::ffi::c_int,
-  pub tile_Ox: core::ffi::c_int,
-  pub tile_Oy: core::ffi::c_int,
-  pub tw: core::ffi::c_int,
-  pub th: core::ffi::c_int,
-  pub numcomps: core::ffi::c_int,
-  pub numlayers: core::ffi::c_int,
-  pub numdecompos: *mut core::ffi::c_int,
-  pub marknum: core::ffi::c_int,
-  pub marker: *mut opj_marker_info_t,
-  pub maxmarknum: core::ffi::c_int,
-  pub main_head_start: core::ffi::c_int,
-  pub main_head_end: core::ffi::c_int,
-  pub codestream_size: core::ffi::c_int,
-  pub tile: *mut opj_tile_info_t,
-}
-pub type opj_codestream_info_t = opj_codestream_info;
-
-#[repr(C)]
 #[derive(Copy, Clone, Default)]
 pub struct opj_tp_index {
   pub start_pos: OPJ_OFF_T,
