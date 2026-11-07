@@ -801,7 +801,7 @@ pub(crate) fn opj_tcd_init_tile(
     {
       let resolutions = &mut tilec.resolutions;
       if resolutions.len() < tilec.numresolutions as usize {
-        resolutions.resize(tilec.numresolutions as usize, Default::default());
+        resolutions.resize_with(tilec.numresolutions as usize, Default::default);
       }
     }
     l_level_no = tilec.numresolutions;
@@ -962,7 +962,7 @@ pub(crate) fn opj_tcd_init_tile(
           {
             let precincts = &mut band.precincts;
             if precincts.len() < l_nb_precincts as usize {
-              precincts.resize(l_nb_precincts as usize, Default::default());
+              precincts.resize_with(l_nb_precincts as usize, Default::default);
             }
           }
           let band_x0 = band.x0;
@@ -1036,17 +1036,13 @@ pub(crate) fn opj_tcd_init_tile(
             } else {
               precinct.cblks.grow_dec(l_nb_code_blocks as usize);
             }
-            let incltree = precinct.incltree;
-            precinct.incltree = if incltree.is_null() {
-              opj_tgt_create(precinct_cw, precinct_ch, manager)
-            } else {
-              opj_tgt_init(incltree, precinct_cw, precinct_ch, manager)
+            precinct.incltree = match precinct.incltree.take() {
+              Some(tree) => opj_tgt_init(tree, precinct_cw, precinct_ch, manager),
+              None => opj_tgt_create(precinct_cw, precinct_ch, manager),
             };
-            let imsbtree = precinct.imsbtree;
-            precinct.imsbtree = if imsbtree.is_null() {
-              opj_tgt_create(precinct_cw, precinct_ch, manager)
-            } else {
-              opj_tgt_init(imsbtree, precinct_cw, precinct_ch, manager)
+            precinct.imsbtree = match precinct.imsbtree.take() {
+              Some(tree) => opj_tgt_init(tree, precinct_cw, precinct_ch, manager),
+              None => opj_tgt_create(precinct_cw, precinct_ch, manager),
             };
             cblkno = 0 as OPJ_UINT32;
             while cblkno < l_nb_code_blocks {
@@ -1712,10 +1708,8 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
     for l_res in l_tile_comp.resolutions.iter_mut() {
       for l_band in l_res.bands.iter_mut() {
         for l_precinct in l_band.precincts.iter_mut() {
-          opj_tgt_destroy(l_precinct.incltree);
-          opj_tgt_destroy(l_precinct.imsbtree);
-          l_precinct.incltree = core::ptr::null_mut::<opj_tgt_tree_t>();
-          l_precinct.imsbtree = core::ptr::null_mut::<opj_tgt_tree_t>();
+          l_precinct.incltree = None;
+          l_precinct.imsbtree = None;
           l_precinct.cblks = CodeBlocks::Empty;
         }
         l_band.precincts.clear();

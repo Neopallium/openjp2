@@ -935,7 +935,6 @@ impl Default for opj_tcd_tilecomp {
   }
 }
 
-#[derive(Clone)]
 pub(crate) struct opj_tcd_resolution {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -971,7 +970,6 @@ impl Default for opj_tcd_resolution {
   }
 }
 
-#[derive(Clone)]
 pub(crate) struct opj_tcd_band {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -999,7 +997,6 @@ impl Default for opj_tcd_band {
 }
 pub(crate) type opj_tcd_band_t = opj_tcd_band;
 
-#[derive(Clone)]
 pub(crate) struct opj_tcd_precinct {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -1008,8 +1005,8 @@ pub(crate) struct opj_tcd_precinct {
   pub cw: OPJ_UINT32,
   pub ch: OPJ_UINT32,
   pub cblks: CodeBlocks,
-  pub incltree: *mut opj_tgt_tree_t,
-  pub imsbtree: *mut opj_tgt_tree_t,
+  pub incltree: Option<Box<opj_tgt_tree_t>>,
+  pub imsbtree: Option<Box<opj_tgt_tree_t>>,
 }
 pub(crate) type opj_tcd_precinct_t = opj_tcd_precinct;
 
@@ -1023,8 +1020,8 @@ impl Default for opj_tcd_precinct {
       cw: 0,
       ch: 0,
       cblks: CodeBlocks::Empty,
-      incltree: core::ptr::null_mut(),
-      imsbtree: core::ptr::null_mut(),
+      incltree: None,
+      imsbtree: None,
     }
   }
 }

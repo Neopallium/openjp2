@@ -115,11 +115,11 @@ pub(crate) fn opj_tgt_create(
   numleafsh: OPJ_UINT32,
   numleafsv: OPJ_UINT32,
   p_manager: &mut opj_event_mgr,
-) -> *mut opj_tgt_tree_t {
+) -> Option<Box<opj_tgt_tree_t>> {
   let (nplh, nplv, numlvls, numnodes) = opj_tgt_levels(numleafsh, numleafsv);
   /* ADD */
   if numnodes == 0 {
-    return core::ptr::null_mut::<opj_tgt_tree_t>();
+    return None;
   }
   let mut tree = Box::new(opj_tgt_tree_t {
     numleafsh,
@@ -132,12 +132,12 @@ pub(crate) fn opj_tgt_create(
       EVT_ERROR,
       "Not enough memory to create Tag-tree nodes\n",
     );
-    return core::ptr::null_mut::<opj_tgt_tree_t>();
+    return None;
   }
   tree.nodes.resize(numnodes, opj_tgt_node_t::default());
   opj_tgt_link_parents(&mut tree, &nplh, &nplv, numlvls);
   opj_tgt_reset(&mut tree);
-  Box::into_raw(tree)
+  Some(tree)
 }
 /* *
  * Reinitialises a tag-tree from an existing one.
@@ -149,23 +149,18 @@ pub(crate) fn opj_tgt_create(
 */
 
 pub(crate) fn opj_tgt_init(
-  p_tree: *mut opj_tgt_tree_t,
+  mut tree: Box<opj_tgt_tree_t>,
   p_num_leafs_h: OPJ_UINT32,
   p_num_leafs_v: OPJ_UINT32,
   p_manager: &mut opj_event_mgr,
-) -> *mut opj_tgt_tree_t {
-  if p_tree.is_null() {
-    return core::ptr::null_mut::<opj_tgt_tree_t>();
-  }
-  let tree = unsafe { &mut *p_tree };
+) -> Option<Box<opj_tgt_tree_t>> {
   if tree.numleafsh != p_num_leafs_h || tree.numleafsv != p_num_leafs_v {
     tree.numleafsh = p_num_leafs_h;
     tree.numleafsv = p_num_leafs_v;
     let (nplh, nplv, numlvls, numnodes) = opj_tgt_levels(p_num_leafs_h, p_num_leafs_v);
     /* ADD */
     if numnodes == 0 {
-      opj_tgt_destroy(p_tree);
-      return core::ptr::null_mut::<opj_tgt_tree_t>();
+      return None;
     }
     if numnodes > tree.nodes.len() {
       if tree
@@ -178,25 +173,17 @@ pub(crate) fn opj_tgt_init(
           EVT_ERROR,
           "Not enough memory to reinitialize the tag tree\n",
         );
-        opj_tgt_destroy(p_tree);
-        return core::ptr::null_mut::<opj_tgt_tree_t>();
+        return None;
       }
       tree.nodes.resize(numnodes, opj_tgt_node_t::default());
     } else {
       /* The C code keeps the over-sized buffer; truncating keeps `nodes.len()` authoritative. */
       tree.nodes.truncate(numnodes);
     }
-    opj_tgt_link_parents(tree, &nplh, &nplv, numlvls);
+    opj_tgt_link_parents(&mut tree, &nplh, &nplv, numlvls);
   }
-  opj_tgt_reset(tree);
-  p_tree
-}
-
-pub(crate) fn opj_tgt_destroy(p_tree: *mut opj_tgt_tree_t) {
-  if p_tree.is_null() {
-    return;
-  }
-  drop(unsafe { Box::from_raw(p_tree) });
+  opj_tgt_reset(&mut tree);
+  Some(tree)
 }
 
 pub(crate) fn opj_tgt_reset(tree: &mut opj_tgt_tree_t) {

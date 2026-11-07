@@ -719,13 +719,11 @@ fn opj_t2_encode_packet(
         }
         let prc = &mut band.precincts[precno as usize];
         /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
-        if !prc.incltree.is_null() {
-          // SAFETY: incltree is the precinct's tag tree, owned by the precinct.
-          opj_tgt_reset(unsafe { &mut *prc.incltree });
+        if let Some(tree) = prc.incltree.as_mut() {
+          opj_tgt_reset(tree);
         }
-        if !prc.imsbtree.is_null() {
-          // SAFETY: imsbtree is the precinct's tag tree, owned by the precinct.
-          opj_tgt_reset(unsafe { &mut *prc.imsbtree });
+        if let Some(tree) = prc.imsbtree.as_mut() {
+          opj_tgt_reset(tree);
         }
         l_nb_blocks = prc.cw.wrapping_mul(prc.ch);
         cblkno = 0 as OPJ_UINT32;
@@ -734,7 +732,7 @@ fn opj_t2_encode_packet(
           cblk.numpasses = 0 as OPJ_UINT32;
           // SAFETY: imsbtree is the precinct's tag tree, owned by the precinct.
           opj_tgt_setvalue(
-            unsafe { &mut *prc.imsbtree },
+            prc.imsbtree.as_mut().expect("imsbtree"),
             cblkno,
             band.numbps - cblk.numbps as OPJ_INT32,
           );
@@ -775,7 +773,7 @@ fn opj_t2_encode_packet(
         let layer = &mut cblk.layers[layno as usize];
         if cblk.numpasses == 0 && layer.numpasses != 0 {
           // SAFETY: incltree is the precinct's tag tree, owned by the precinct.
-          opj_tgt_setvalue(unsafe { &mut *prc.incltree }, cblkno, layno as OPJ_INT32);
+          opj_tgt_setvalue(prc.incltree.as_mut().expect("incltree"), cblkno, layno as OPJ_INT32);
         }
         cblkno += 1;
       }
@@ -789,10 +787,9 @@ fn opj_t2_encode_packet(
         let mut l_nb_passes: OPJ_UINT32 = 0;
         /* cblk inclusion bits */
         if cblk.numpasses == 0 {
-          // SAFETY: incltree is the precinct's tag tree, owned by the precinct.
           opj_tgt_encode(
             bio,
-            unsafe { &mut *prc.incltree },
+            prc.incltree.as_mut().expect("incltree"),
             cblkno,
             layno.wrapping_add(1u32) as OPJ_INT32,
           );
@@ -805,8 +802,7 @@ fn opj_t2_encode_packet(
           /* if first instance of cblk --> zero bit-planes information */
           if cblk.numpasses == 0 {
             cblk.numlenbits = 3 as OPJ_UINT32;
-            // SAFETY: imsbtree is the precinct's tag tree, owned by the precinct.
-            opj_tgt_encode(bio, unsafe { &mut *prc.imsbtree }, cblkno, 999i32);
+            opj_tgt_encode(bio, prc.imsbtree.as_mut().expect("imsbtree"), cblkno, 999i32);
           }
           /* number of coding passes included */
           opj_t2_putnumpasses(bio, cblk.layers[layno as usize].numpasses);
@@ -1008,13 +1004,11 @@ fn opj_t2_read_packet_header(
         }
         let prc = &mut band.precincts[pi.precno as usize];
         /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
-        if !prc.incltree.is_null() {
-          // SAFETY: incltree is the precinct's tag tree, owned by the precinct.
-          opj_tgt_reset(unsafe { &mut *prc.incltree });
+        if let Some(tree) = prc.incltree.as_mut() {
+          opj_tgt_reset(tree);
         }
-        if !prc.imsbtree.is_null() {
-          // SAFETY: imsbtree is the precinct's tag tree, owned by the precinct.
-          opj_tgt_reset(unsafe { &mut *prc.imsbtree });
+        if let Some(tree) = prc.imsbtree.as_mut() {
+          opj_tgt_reset(tree);
         }
         l_nb_code_blocks = prc.cw.wrapping_mul(prc.ch);
         cblkno = 0 as OPJ_UINT32;
@@ -1150,8 +1144,7 @@ fn opj_t2_read_packet_header(
         if cblk.numsegs == 0 {
           l_included = opj_tgt_decode(
             l_bio,
-            // SAFETY: incltree is the precinct's tag tree, owned by the precinct.
-            unsafe { &mut *prc.incltree },
+            prc.incltree.as_mut().expect("incltree"),
             cblkno,
             pi.layno.wrapping_add(1u32) as OPJ_INT32,
           )
@@ -1171,7 +1164,7 @@ fn opj_t2_read_packet_header(
             while opj_tgt_decode(
               l_bio,
               // SAFETY: imsbtree is the precinct's tag tree, owned by the precinct.
-              unsafe { &mut *prc.imsbtree },
+              prc.imsbtree.as_mut().expect("imsbtree"),
               cblkno,
               i as OPJ_INT32,
             ) == 0
