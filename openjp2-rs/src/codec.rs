@@ -136,26 +136,28 @@ impl Codec {
     }
   }
 
-  #[cfg(feature = "c_api")]
-  pub fn get_cstr_info(&mut self) -> *mut opj_codestream_info_v2_t {
-    match &mut self.m_codec {
+  /// Safe, owned codestream info v2 (header summary). The capi crate
+  /// marshals this into the C-ABI mirror for `opj_get_cstr_info`.
+  pub fn get_cstr_info_v2(&self) -> Option<crate::j2k::CstrInfoV2> {
+    match &self.m_codec {
       CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
-        crate::cabi::j2k_get_cstr_info(j2k)
+        Some(crate::j2k::j2k_get_cstr_info_owned(j2k))
       }
       CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
-        crate::cabi::jp2_get_cstr_info(jp2)
+        Some(crate::j2k::j2k_get_cstr_info_owned(&jp2.j2k))
       }
     }
   }
 
-  #[cfg(feature = "c_api")]
-  pub fn get_cstr_index(&mut self) -> *mut opj_codestream_index_t {
-    match &mut self.m_codec {
+  /// Safe, owned codestream index (the capi crate marshals this into the
+  /// C-ABI mirror for `opj_get_cstr_index`).
+  pub fn get_cstr_index_owned(&self) -> Option<crate::j2k::CodestreamIndex> {
+    match &self.m_codec {
       CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
-        crate::cabi::j2k_get_cstr_index(j2k)
+        j2k.cstr_index.as_deref().cloned()
       }
       CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
-        crate::cabi::jp2_get_cstr_index(jp2)
+        jp2.j2k.cstr_index.as_deref().cloned()
       }
     }
   }

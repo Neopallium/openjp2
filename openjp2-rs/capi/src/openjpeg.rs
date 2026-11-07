@@ -36,9 +36,10 @@
 
 use crate::image::*;
 use crate::params::opj_cparameters_t;
+use crate::cstr_info::{opj_codestream_index_t, opj_codestream_info_v2_t};
 use openjp2_core::c_api_types::*;
 
-use openjp2_core::{free_cstr_index_mirror, opj_codec_private_t, opj_stream_private_t, TileInfo};
+use openjp2_core::{opj_codec_private_t, opj_stream_private_t, TileInfo};
 
 use ::libc::FILE;
 
@@ -673,13 +674,16 @@ pub unsafe fn opj_get_cstr_info(p_codec: *mut opj_codec_t) -> *mut opj_codestrea
   if p_codec.is_null() {
     return core::ptr::null_mut::<opj_codestream_info_v2_t>();
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.get_cstr_info()
+  let l_codec = &*(p_codec as *mut opj_codec_private_t);
+  match l_codec.get_cstr_info_v2() {
+    Some(info) => crate::cstr_info::build_cstr_info_v2(&info),
+    None => core::ptr::null_mut::<opj_codestream_info_v2_t>(),
+  }
 }
 
 #[no_mangle]
 pub unsafe fn opj_destroy_cstr_info(cstr_info: *mut *mut opj_codestream_info_v2_t) {
-  openjp2_core::opj_destroy_cstr_info(cstr_info);
+  crate::cstr_info::destroy_cstr_info_v2(cstr_info);
 }
 
 #[no_mangle]
@@ -687,17 +691,20 @@ pub unsafe fn opj_get_cstr_index(p_codec: *mut opj_codec_t) -> *mut opj_codestre
   if p_codec.is_null() {
     return core::ptr::null_mut::<opj_codestream_index_t>();
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
-  l_codec.get_cstr_index()
+  let l_codec = &*(p_codec as *mut opj_codec_private_t);
+  match l_codec.get_cstr_index_owned() {
+    Some(index) => crate::cstr_info::build_cstr_index(&index),
+    None => core::ptr::null_mut::<opj_codestream_index_t>(),
+  }
 }
 
 #[no_mangle]
 pub unsafe fn opj_destroy_cstr_index(p_cstr_index: *mut *mut opj_codestream_index_t) {
-  if !(*p_cstr_index).is_null() {
-    // TODO: use drop.
-    free_cstr_index_mirror(*p_cstr_index);
-    *p_cstr_index = core::ptr::null_mut::<opj_codestream_index_t>()
-  };
+  if p_cstr_index.is_null() {
+    return;
+  }
+  crate::cstr_info::destroy_cstr_index(*p_cstr_index);
+  *p_cstr_index = core::ptr::null_mut::<opj_codestream_index_t>();
 }
 
 /* ----------------------------------------------------------------------- */

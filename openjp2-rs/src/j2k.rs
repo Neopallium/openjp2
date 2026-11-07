@@ -10,8 +10,8 @@ use rayon::prelude::*;
 
 // Owned codestream index (Phase 5.d). The `#[repr(C)]` mirror in c_api_types.rs
 // is built only when a C caller asks for it via opj_get_cstr_index.
-#[derive(Default)]
-pub(crate) struct CodestreamIndex {
+#[derive(Clone, Default)]
+pub struct CodestreamIndex {
   pub main_head_start: OPJ_OFF_T,
   pub main_head_end: OPJ_OFF_T,
   pub codestream_size: OPJ_UINT64,
@@ -20,7 +20,7 @@ pub(crate) struct CodestreamIndex {
 }
 
 #[derive(Clone, Default)]
-pub(crate) struct CodestreamTileIndex {
+pub struct CodestreamTileIndex {
   pub tileno: OPJ_UINT32,
   pub nb_tps: OPJ_UINT32,
   pub current_nb_tps: OPJ_UINT32,
@@ -29,6 +29,125 @@ pub(crate) struct CodestreamTileIndex {
   pub markers: Vec<opj_marker_info>,
   pub nb_packet: OPJ_UINT32,
   pub packet_index: Vec<opj_packet_info>,
+}
+
+/// Safe, owned codestream info v2 (the C mirror is built by the capi crate).
+#[derive(Clone, Default)]
+pub struct CstrInfoV2 {
+  pub nbcomps: OPJ_UINT32,
+  pub tx0: OPJ_UINT32,
+  pub ty0: OPJ_UINT32,
+  pub tdx: OPJ_UINT32,
+  pub tdy: OPJ_UINT32,
+  pub tw: OPJ_UINT32,
+  pub th: OPJ_UINT32,
+  pub default_tile: CstrTccpInfoV2,
+}
+
+/// Per-component default-tile coding parameters of the codestream header.
+#[derive(Clone, Default)]
+pub struct CstrTccpInfoV2 {
+  pub csty: OPJ_UINT32,
+  pub prg: OPJ_PROG_ORDER,
+  pub numlayers: OPJ_UINT32,
+  pub mct: OPJ_UINT32,
+  pub tccps: Vec<CstrCompInfoV2>,
+}
+
+/// Per-component tccp info of the codestream header.
+#[derive(Clone)]
+pub struct CstrCompInfoV2 {
+  pub csty: OPJ_UINT32,
+  pub numresolutions: OPJ_UINT32,
+  pub cblkw: OPJ_UINT32,
+  pub cblkh: OPJ_UINT32,
+  pub cblksty: OPJ_UINT32,
+  pub qmfbid: OPJ_UINT32,
+  pub qntsty: OPJ_UINT32,
+  pub stepsizes_mant: [OPJ_UINT32; 97],
+  pub stepsizes_expn: [OPJ_UINT32; 97],
+  pub numgbits: OPJ_UINT32,
+  pub roishift: OPJ_INT32,
+  pub prcw: [OPJ_UINT32; 33],
+  pub prch: [OPJ_UINT32; 33],
+}
+
+impl Default for CstrCompInfoV2 {
+  fn default() -> Self {
+    Self {
+      csty: 0,
+      numresolutions: 0,
+      cblkw: 0,
+      cblkh: 0,
+      cblksty: 0,
+      qmfbid: 0,
+      qntsty: 0,
+      stepsizes_mant: [0; 97],
+      stepsizes_expn: [0; 97],
+      numgbits: 0,
+      roishift: 0,
+      prcw: [0; 33],
+      prch: [0; 33],
+    }
+  }
+}
+
+/// Builds the owned codestream info v2 of a j2k codec (header summary).
+pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &opj_j2k) -> CstrInfoV2 {
+  let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+  let mut cstr_info = CstrInfoV2 {
+    nbcomps: numcomps,
+    tx0: p_j2k.m_cp.tx0,
+    ty0: p_j2k.m_cp.ty0,
+    tdx: p_j2k.m_cp.tdx,
+    tdy: p_j2k.m_cp.tdy,
+    tw: p_j2k.m_cp.tw,
+    th: p_j2k.m_cp.th,
+    ..Default::default()
+  };
+  let l_default_tile = p_j2k
+    .m_specific_param
+    .m_decoder
+    .m_default_tcp
+    .as_deref()
+    .expect("decoder m_default_tcp is always set");
+  cstr_info.default_tile.csty = l_default_tile.csty;
+  cstr_info.default_tile.prg = l_default_tile.prg;
+  cstr_info.default_tile.numlayers = l_default_tile.numlayers;
+  cstr_info.default_tile.mct = l_default_tile.mct;
+  for l_tccp in l_default_tile.tccps.iter() {
+    let mut info = CstrCompInfoV2 {
+      csty: l_tccp.csty,
+      numresolutions: l_tccp.numresolutions,
+      cblkw: l_tccp.cblkw,
+      cblkh: l_tccp.cblkh,
+      cblksty: l_tccp.cblksty,
+      qmfbid: l_tccp.qmfbid,
+      qntsty: l_tccp.qntsty,
+      numgbits: l_tccp.numgbits,
+      roishift: l_tccp.roishift,
+      ..Default::default()
+    };
+    if l_tccp.numresolutions < 33u32 {
+      info.prch[..l_tccp.numresolutions as usize]
+        .copy_from_slice(&l_tccp.prch[..l_tccp.numresolutions as usize]);
+      info.prcw[..l_tccp.numresolutions as usize]
+        .copy_from_slice(&l_tccp.prcw[..l_tccp.numresolutions as usize]);
+    }
+    let numbands: OPJ_INT32 = if l_tccp.qntsty == 1u32 {
+      1i32
+    } else {
+      (l_tccp.numresolutions as OPJ_INT32 * 3i32) - 2i32
+    };
+    if numbands < 3i32 * 33i32 - 2i32 {
+      for bandno in 0..numbands as usize {
+        info.stepsizes_mant[bandno] = l_tccp.stepsizes[bandno].mant as OPJ_UINT32;
+        info.stepsizes_expn[bandno] = l_tccp.stepsizes[bandno].expn as OPJ_UINT32;
+      }
+    }
+    cstr_info.default_tile.tccps.push(info);
+  }
+  cstr_info
 }
 use super::openjpeg::*;
 use super::pi::*;

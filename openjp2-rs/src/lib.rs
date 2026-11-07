@@ -32,10 +32,9 @@ pub mod stream;
 pub use c_api_types::*;
 pub use codec::{opj_codec_private_t, Codec};
 pub use image::{opj_image_cmptparm_t, opj_image_comptparm, CoreImage, CoreImageComp};
+pub use j2k::{CstrCompInfoV2, CstrInfoV2, CstrTccpInfoV2, CodestreamIndex, CodestreamTileIndex};
 #[cfg(feature = "c_api")]
-pub use cabi::free_cstr_index_mirror;
 #[cfg(feature = "c_api")]
-pub use cabi::opj_destroy_cstr_info;
 pub use types::EncoderParameters;
 pub use types::opj_stream_private_t;
 pub use types::{CIE_LAB_BYTE_SIZE, ICCProfile, ICCProfileMut, ICCProfileRef, Stream, TileInfo};

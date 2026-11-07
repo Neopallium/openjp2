@@ -272,53 +272,6 @@ pub type opj_marker_info_t = opj_marker_info;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct opj_tccp_info {
-  pub compno: OPJ_UINT32,
-  pub csty: OPJ_UINT32,
-  pub numresolutions: OPJ_UINT32,
-  pub cblkw: OPJ_UINT32,
-  pub cblkh: OPJ_UINT32,
-  pub cblksty: OPJ_UINT32,
-  pub qmfbid: OPJ_UINT32,
-  pub qntsty: OPJ_UINT32,
-  pub stepsizes_mant: [OPJ_UINT32; 97],
-  pub stepsizes_expn: [OPJ_UINT32; 97],
-  pub numgbits: OPJ_UINT32,
-  pub roishift: OPJ_INT32,
-  pub prcw: [OPJ_UINT32; 33],
-  pub prch: [OPJ_UINT32; 33],
-}
-pub type opj_tccp_info_t = opj_tccp_info;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_tile_v2_info {
-  pub tileno: core::ffi::c_int,
-  pub csty: OPJ_UINT32,
-  pub prg: OPJ_PROG_ORDER,
-  pub numlayers: OPJ_UINT32,
-  pub mct: OPJ_UINT32,
-  pub tccp_info: *mut opj_tccp_info_t,
-}
-pub type opj_tile_info_v2_t = opj_tile_v2_info;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_codestream_info_v2 {
-  pub tx0: OPJ_UINT32,
-  pub ty0: OPJ_UINT32,
-  pub tdx: OPJ_UINT32,
-  pub tdy: OPJ_UINT32,
-  pub tw: OPJ_UINT32,
-  pub th: OPJ_UINT32,
-  pub nbcomps: OPJ_UINT32,
-  pub m_default_tile_info: opj_tile_info_v2_t,
-  pub tile_info: *mut opj_tile_info_v2_t,
-}
-pub type opj_codestream_info_v2_t = opj_codestream_info_v2;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct opj_tp_info {
   pub tp_start_pos: core::ffi::c_int,
   pub tp_end_header: core::ffi::c_int,
@@ -327,9 +280,6 @@ pub struct opj_tp_info {
   pub tp_numpacks: core::ffi::c_int,
 }
 pub type opj_tp_info_t = opj_tp_info;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct opj_tile_info {
   pub thresh: *mut core::ffi::c_double,
   pub tileno: core::ffi::c_int,
@@ -350,9 +300,6 @@ pub struct opj_tile_info {
   pub tp: *mut opj_tp_info_t,
 }
 pub type opj_tile_info_t = opj_tile_info;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct opj_codestream_info {
   pub D_max: core::ffi::c_double,
   pub packno: core::ffi::c_int,
@@ -388,32 +335,3 @@ pub struct opj_tp_index {
 }
 pub type opj_tp_index_t = opj_tp_index;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_tile_index {
-  pub tileno: OPJ_UINT32,
-  pub nb_tps: OPJ_UINT32,
-  pub current_nb_tps: OPJ_UINT32,
-  pub current_tpsno: OPJ_UINT32,
-  pub tp_index: *mut opj_tp_index_t,
-  pub marknum: OPJ_UINT32,
-  pub marker: *mut opj_marker_info_t,
-  pub maxmarknum: OPJ_UINT32,
-  pub nb_packet: OPJ_UINT32,
-  pub packet_index: *mut opj_packet_info_t,
-}
-pub type opj_tile_index_t = opj_tile_index;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct opj_codestream_index {
-  pub main_head_start: OPJ_OFF_T,
-  pub main_head_end: OPJ_OFF_T,
-  pub codestream_size: OPJ_UINT64,
-  pub marknum: OPJ_UINT32,
-  pub marker: *mut opj_marker_info_t,
-  pub maxmarknum: OPJ_UINT32,
-  pub nb_of_tiles: OPJ_UINT32,
-  pub tile_index: *mut opj_tile_index_t,
-}
-pub type opj_codestream_index_t = opj_codestream_index;
