@@ -7,10 +7,7 @@ pub trait StringWriter {
 impl StringWriter for std::fs::File {
   fn write_string(&mut self, s: &str) -> usize {
     use std::io::Write;
-    match self.write(s.as_bytes()) {
-      Ok(n) => n,
-      Err(_) => 0,
-    }
+    self.write(s.as_bytes()).unwrap_or_default()
   }
 }
 
@@ -18,10 +15,7 @@ impl StringWriter for std::fs::File {
 impl StringWriter for std::io::Stdout {
   fn write_string(&mut self, s: &str) -> usize {
     use std::io::Write;
-    match self.write(s.as_bytes()) {
-      Ok(n) => n,
-      Err(_) => 0,
-    }
+    self.write(s.as_bytes()).unwrap_or_default()
   }
 }
 
@@ -29,10 +23,7 @@ impl StringWriter for std::io::Stdout {
 impl StringWriter for std::io::Stderr {
   fn write_string(&mut self, s: &str) -> usize {
     use std::io::Write;
-    match self.write(s.as_bytes()) {
-      Ok(n) => n,
-      Err(_) => 0,
-    }
+    self.write(s.as_bytes()).unwrap_or_default()
   }
 }
 

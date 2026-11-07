@@ -41,20 +41,11 @@ pub use super::consts::event::*;
 /// Core event manager: one optional `FnMut` sink per message level. The C-callback adapter
 /// (which wraps `opj_msg_callback` + user data in closures) lives in the capi crate; the core
 /// itself only formats Rust strings and dispatches them to the sinks.
+#[derive(Default)]
 pub struct opj_event_mgr {
   error_handler: Option<Box<dyn FnMut(&str)>>,
   warning_handler: Option<Box<dyn FnMut(&str)>>,
   info_handler: Option<Box<dyn FnMut(&str)>>,
-}
-
-impl Default for opj_event_mgr {
-  fn default() -> Self {
-    Self {
-      error_handler: None,
-      warning_handler: None,
-      info_handler: None,
-    }
-  }
 }
 
 impl opj_event_mgr {

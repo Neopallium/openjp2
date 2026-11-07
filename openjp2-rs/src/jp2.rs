@@ -145,7 +145,7 @@ pub(crate) struct HeaderWriter {
 impl HeaderWriter {
   fn new(handler: fn(_: &mut opj_jp2, _: &mut Vec<u8>) -> bool) -> Self {
     Self {
-      handler: handler,
+      handler,
       data: Default::default(),
     }
   }
@@ -209,7 +209,7 @@ fn opj_jp2_read_ihdr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
     );
     return 0;
   }
-  if numcomps - 1 >= 16384 {
+  if numcomps > 16384 {
     /* unsigned underflow is well defined: 1U <= jp2->numcomps <= 16384U */
     event_msg!(
       p_manager,

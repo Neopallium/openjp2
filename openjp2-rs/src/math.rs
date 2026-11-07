@@ -76,9 +76,9 @@ pub(crate) fn opj_int_ceildiv(mut a: i32, mut b: i32) -> i32 {
 }
 
 #[inline]
-pub(crate) fn opj_uint64_ceildiv_res_uint32(mut a: u64, mut b: u64) -> u32 {
+pub(crate) fn opj_uint64_ceildiv_res_uint32(a: u64, b: u64) -> u32 {
   assert!(b != 0);
-  ((a + b - 1) / b) as u32
+  a.div_ceil(b) as u32
 }
 
 #[inline]

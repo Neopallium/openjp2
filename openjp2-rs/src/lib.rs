@@ -40,12 +40,12 @@ pub use types::opj_stream_private_t;
 pub use types::{CIE_LAB_BYTE_SIZE, ICCProfile, ICCProfileMut, ICCProfileRef, Stream, TileInfo};
 
 /// Magic bytes for JP2 RFC3745.
-pub const JP2_RFC3745_MAGIC: &'static [u8] = &[
+pub const JP2_RFC3745_MAGIC: &[u8] = &[
   0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20, 0x0d, 0x0a, 0x87, 0x0a,
 ];
-pub const JP2_MAGIC: &'static [u8] = &[0x0d, 0x0a, 0x87, 0x0a];
+pub const JP2_MAGIC: &[u8] = &[0x0d, 0x0a, 0x87, 0x0a];
 /// Magic bytes for J2K Codestream.
-pub const J2K_CODESTREAM_MAGIC: &'static [u8] = &[0xff, 0x4f, 0xff, 0x51];
+pub const J2K_CODESTREAM_MAGIC: &[u8] = &[0xff, 0x4f, 0xff, 0x51];
 
 /// Supported Jpeg 2000 formats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

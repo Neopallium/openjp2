@@ -231,7 +231,7 @@ impl Stream {
       let new_offset = self.m_byte_offset + count;
       if (new_offset as u64) > self.m_stream_length {
         log::trace!("Skip pass the end of the stream.");
-        return Err(io::Error::other(format!("Skip pass the end of the stream")));
+        return Err(io::Error::other("Skip pass the end of the stream"));
       }
     }
     let res = self
@@ -321,13 +321,13 @@ pub(crate) fn opj_stream_flush(
   p_stream: &mut Stream,
   mut _p_event_mgr: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  return match p_stream.flush() {
+  match p_stream.flush() {
     Ok(_) => 1,
     Err(err) => {
       log::trace!("Failed to flush stream: {err}");
       0
     }
-  };
+  }
 }
 
 pub(crate) fn opj_stream_tell(p_stream: &Stream) -> OPJ_OFF_T {

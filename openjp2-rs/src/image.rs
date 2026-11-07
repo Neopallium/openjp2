@@ -309,9 +309,9 @@ impl CoreImage {
     self.comps[2].dx = self.comps[0].dx;
     self.comps[1].dy = self.comps[0].dy;
     self.comps[2].dy = self.comps[0].dy;
-    self.comps[0].set_data(&r);
-    self.comps[1].set_data(&g);
-    self.comps[2].set_data(&b);
+    self.comps[0].set_data(r);
+    self.comps[1].set_data(g);
+    self.comps[2].set_data(b);
     self.color_space = OPJ_CLRSPC_SRGB;
     true
   }
