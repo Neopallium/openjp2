@@ -2197,26 +2197,24 @@ fn opj_tcd_dwt_encode(p_tcd: &mut opj_tcd, cp: &mut opj_cp_t) -> OPJ_BOOL {
 fn opj_tcd_t1_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_cp_t) -> OPJ_BOOL {
   // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
   let l_tcp = &cp.tcps[p_tcd.tcd_tileno as usize];
-  let mut l_mct_norms = core::ptr::null::<OPJ_FLOAT64>();
   let mut l_mct_numcomps = 0u32;
-  if l_tcp.mct == 1u32 {
+  let l_mct_norms: Option<&[OPJ_FLOAT64]> = if l_tcp.mct == 1u32 {
     l_mct_numcomps = 3u32;
     /* irreversible encoding */
     if l_tcp.tccps[0].qmfbid == 0u32 {
-      l_mct_norms = opj_mct_get_mct_norms_real()
+      Some(opj_mct_get_mct_norms_real())
     } else {
-      l_mct_norms = opj_mct_get_mct_norms()
+      Some(opj_mct_get_mct_norms())
     }
   } else {
     l_mct_numcomps = image.numcomps;
-    /* An empty norms Vec must stay a null pointer: callers test `is_null()`
-    to decide whether per-component norms apply. */
-    l_mct_norms = if l_tcp.mct_norms.is_empty() {
-      core::ptr::null()
+    /* An empty norms Vec means no per-component norms apply. */
+    if l_tcp.mct_norms.is_empty() {
+      None
     } else {
-      l_tcp.mct_norms.as_ptr()
+      Some(&l_tcp.mct_norms[..])
     }
-  }
+  };
   opj_t1_encode_cblks(
     &mut p_tcd.tcd_image.tiles,
     l_tcp,

@@ -286,34 +286,6 @@ thread_local! {
   static T1: RefCell<opj_t1> = RefCell::new(opj_t1::new())
 }
 
-#[derive(Default)]
-pub(crate) struct opj_t1_cblk_encode_processing_job_t {
-  pub compno: OPJ_UINT32,
-  pub resno: OPJ_UINT32,
-  pub cblk: *mut opj_tcd_cblk_enc_t,
-  pub tile: *mut opj_tcd_tile_t,
-  pub band: *mut opj_tcd_band_t,
-  pub tilec: *mut opj_tcd_tilecomp_t,
-  pub tccp: *mut opj_tccp_t,
-  pub mct_norms: *const OPJ_FLOAT64,
-  pub mct_numcomps: OPJ_UINT32,
-  pub pret: *mut OPJ_BOOL,
-}
-
-#[derive(Default)]
-pub(crate) struct opj_t1_cblk_decode_processing_job_t {
-  pub whole_tile_decoding: OPJ_BOOL,
-  pub resno: OPJ_UINT32,
-  pub cblk: *mut opj_tcd_cblk_dec_t,
-  pub band: *mut opj_tcd_band_t,
-  pub tilec: *mut opj_tcd_tilecomp_t,
-  pub tccp: *mut opj_tccp_t,
-  pub mustuse_cblkdatabuffer: OPJ_BOOL,
-  pub pret: *mut OPJ_BOOL,
-  pub p_manager: *mut opj_event_mgr,
-  pub check_pterm: OPJ_BOOL,
-}
-
 #[inline]
 fn opj_t1_setcurctx(mqc: &mut opj_mqc_t, ctxno: u8) {
   mqc.set_curctx(ctxno);
@@ -1764,15 +1736,16 @@ fn opj_t1_getwmsedec(
   mut qmfbid: OPJ_UINT32,
   mut stepsize: OPJ_FLOAT64,
   mut _numcomps: OPJ_UINT32,
-  mut mct_norms: *const OPJ_FLOAT64,
+  mut mct_norms: Option<&[OPJ_FLOAT64]>,
   mut mct_numcomps: OPJ_UINT32,
 ) -> OPJ_FLOAT64 {
   let mut w1 = 1.0;
   let mut w2 = 0.0;
   let mut wmsedec = 0.0;
-  // SAFETY: the norms pointer comes from the codec's mct_norms Vec (or null).
-  if !mct_norms.is_null() && compno < mct_numcomps {
-    w1 = unsafe { *mct_norms.offset(compno as isize) }
+  if let Some(norms) = mct_norms {
+    if compno < mct_numcomps {
+      w1 = norms[compno as usize]
+    }
   }
   if qmfbid == 1 {
     w2 = opj_dwt_getnorm(level, orient)
@@ -2372,7 +2345,7 @@ fn opj_t1_cblk_encode_processor(
   band_stepsize: OPJ_FLOAT32,
   cblk: &mut opj_tcd_cblk_enc_t,
   tccp: &opj_tccp_t,
-  mct_norms: *const OPJ_FLOAT64,
+  mct_norms: Option<&[OPJ_FLOAT64]>,
   mct_numcomps: OPJ_UINT32,
   pret: &mut OPJ_BOOL,
   distotile: &mut OPJ_FLOAT64,
@@ -2549,7 +2522,7 @@ fn opj_t1_cblk_encode_processor(
 pub(crate) fn opj_t1_encode_cblks(
   tile: &mut opj_tcd_tile_t,
   tcp: &opj_tcp_t,
-  mct_norms: *const OPJ_FLOAT64,
+  mct_norms: Option<&[OPJ_FLOAT64]>,
   mct_numcomps: OPJ_UINT32,
 ) -> OPJ_BOOL {
   let mut ret = 1i32;
@@ -2665,7 +2638,7 @@ fn opj_t1_encode_cblk(
   mut stepsize: OPJ_FLOAT64,
   mut cblksty: OPJ_UINT32,
   mut numcomps: OPJ_UINT32,
-  mut mct_norms: *const OPJ_FLOAT64,
+  mut mct_norms: Option<&[OPJ_FLOAT64]>,
   mut mct_numcomps: OPJ_UINT32,
 ) -> core::ffi::c_double {
     let mut cumwmsedec = 0.0f64; /* MQC component */

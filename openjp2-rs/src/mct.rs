@@ -57,12 +57,12 @@ static opj_mct_norms: [OPJ_FLOAT64; 3] = [1.732f64, 0.8292f64, 0.8292f64];
 /* </summary> */
 static opj_mct_norms_real: [OPJ_FLOAT64; 3] = [1.732f64, 1.805f64, 1.573f64];
 
-pub(crate) fn opj_mct_get_mct_norms() -> *const OPJ_FLOAT64 {
-  opj_mct_norms.as_ptr()
+pub(crate) fn opj_mct_get_mct_norms() -> &'static [OPJ_FLOAT64] {
+  &opj_mct_norms
 }
 
-pub(crate) fn opj_mct_get_mct_norms_real() -> *const OPJ_FLOAT64 {
-  opj_mct_norms_real.as_ptr()
+pub(crate) fn opj_mct_get_mct_norms_real() -> &'static [OPJ_FLOAT64] {
+  &opj_mct_norms_real
 }
 /* <summary> */
 /* Forward reversible MCT. */
