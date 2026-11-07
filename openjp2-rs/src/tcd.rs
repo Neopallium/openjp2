@@ -1284,363 +1284,325 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
 }
 
 pub(crate) fn opj_tcd_encode_tile(
-  mut p_tcd: &mut opj_tcd,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_dest: *mut OPJ_BYTE,
-  mut p_data_written: *mut OPJ_UINT32,
-  mut p_max_length: OPJ_UINT32,
-  mut p_cstr_info: *mut opj_codestream_info_t,
-  mut p_marker_info: *mut opj_tcd_marker_info_t,
-  mut p_manager: &mut opj_event_mgr,
+  p_tcd: &mut opj_tcd,
+  p_tile_no: OPJ_UINT32,
+  p_dest: *mut OPJ_BYTE,
+  p_data_written: *mut OPJ_UINT32,
+  p_max_length: OPJ_UINT32,
+  p_cstr_info: *mut opj_codestream_info_t,
+  p_marker_info: *mut opj_tcd_marker_info_t,
+  p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    if p_tcd.cur_tp_num == 0u32 {
-      p_tcd.tcd_tileno = p_tile_no;
-      p_tcd.tcp = (*p_tcd.cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
-      /* FIXME _ProfStop(PGROUP_RATE); */
-      if !p_cstr_info.is_null() {
-        let mut l_num_packs = 0 as OPJ_UINT32;
-        let mut i: OPJ_UINT32 = 0;
-        /* INDEX >> "Precinct_nb_X et Precinct_nb_Y" */
-        let mut l_tilec_idx: *mut opj_tcd_tilecomp_t =
-          &mut p_tcd.tcd_image.tiles.comps[0] as *mut opj_tcd_tilecomp_t; /* based on component 0 */
-        let mut l_tccp = (*p_tcd.tcp).tccps.as_ptr(); /* based on component 0 */
-        i = 0 as OPJ_UINT32;
-        while i < (*l_tilec_idx).numresolutions {
-          let mut l_res_idx: *mut opj_tcd_resolution_t =
-            &mut *(*l_tilec_idx).resolutions.as_mut_ptr().offset(i as isize)
-              as *mut opj_tcd_resolution_t;
-          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pw[i as usize] =
-            (*l_res_idx).pw as core::ffi::c_int;
-          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).ph[i as usize] =
-            (*l_res_idx).ph as core::ffi::c_int;
-          l_num_packs = (l_num_packs as core::ffi::c_uint)
-            .wrapping_add((*l_res_idx).pw.wrapping_mul((*l_res_idx).ph))
-            as OPJ_UINT32;
-          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pdx[i as usize] =
-            (*l_tccp).prcw[i as usize] as core::ffi::c_int;
-          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pdy[i as usize] =
-            (*l_tccp).prch[i as usize] as core::ffi::c_int;
-          i += 1;
-        }
-        let p_packet = &mut (*(*p_cstr_info).tile.offset(p_tile_no as isize)).packet;
-        {
-          let n = ((*p_cstr_info).numcomps as usize)
-            .wrapping_mul((*p_cstr_info).numlayers as usize)
-            .wrapping_mul(l_num_packs as usize);
-          let mut v: Vec<opj_packet_info_t> = vec![Default::default(); n];
-          *p_packet = v.as_mut_ptr();
-          core::mem::forget(v);
-        }
-      }
-      if opj_tcd_dc_level_shift_encode(p_tcd) == 0 {
-        return 0i32;
-      }
-      if opj_tcd_mct_encode(p_tcd) == 0 {
-        return 0i32;
-      }
-      if opj_tcd_dwt_encode(p_tcd) == 0 {
-        return 0i32;
-      }
-      if opj_tcd_t1_encode(p_tcd) == 0 {
-        return 0i32;
-      }
-      if opj_tcd_rate_allocate_encode(p_tcd, p_dest, p_max_length, p_cstr_info, p_manager) == 0 {
-        return 0i32;
-      }
-    }
-    /* << INDEX */
-    /* FIXME _ProfStart(PGROUP_DC_SHIFT); */
-    /*---------------TILE-------------------*/
-    /* FIXME _ProfStop(PGROUP_DC_SHIFT); */
-    /* FIXME _ProfStart(PGROUP_MCT); */
-    /* FIXME _ProfStop(PGROUP_MCT); */
-    /* FIXME _ProfStart(PGROUP_DWT); */
-    /* FIXME  _ProfStop(PGROUP_DWT); */
-    /* FIXME  _ProfStart(PGROUP_T1); */
-    /* FIXME _ProfStop(PGROUP_T1); */
-    /* FIXME _ProfStart(PGROUP_RATE); */
-    /*--------------TIER2------------------*/
-    /* INDEX */
+  if p_tcd.cur_tp_num == 0u32 {
+    p_tcd.tcd_tileno = p_tile_no;
+    // SAFETY: `cp` is set by opj_tcd_init.
+    p_tcd.tcp = unsafe { (*p_tcd.cp).tcps.as_mut_ptr().offset(p_tile_no as isize) };
+    /* FIXME _ProfStop(PGROUP_RATE); */
     if !p_cstr_info.is_null() {
-      (*p_cstr_info).index_write = 1i32
+      let mut l_num_packs = 0 as OPJ_UINT32;
+      let mut i: OPJ_UINT32 = 0;
+      /* INDEX >> "Precinct_nb_X et Precinct_nb_Y" */
+      let l_tilec_idx = &p_tcd.tcd_image.tiles.comps[0]; /* based on component 0 */
+      // SAFETY: `tcp` was just set above.
+      let tccps = unsafe { &(*p_tcd.tcp).tccps }; /* based on component 0 */
+      i = 0 as OPJ_UINT32;
+      while i < l_tilec_idx.numresolutions {
+        let l_res_idx = &l_tilec_idx.resolutions[i as usize];
+        // SAFETY: `p_cstr_info` is the C-ABI codestream info v1 mirror.
+        unsafe {
+          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pw[i as usize] =
+            l_res_idx.pw as core::ffi::c_int;
+          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).ph[i as usize] =
+            l_res_idx.ph as core::ffi::c_int;
+        }
+        l_num_packs = (l_num_packs as core::ffi::c_uint)
+          .wrapping_add(l_res_idx.pw.wrapping_mul(l_res_idx.ph))
+          as OPJ_UINT32;
+        // SAFETY: see above.
+        unsafe {
+          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pdx[i as usize] =
+            tccps[i as usize].prcw[i as usize] as core::ffi::c_int;
+          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pdy[i as usize] =
+            tccps[i as usize].prch[i as usize] as core::ffi::c_int;
+        }
+        i += 1;
+      }
+      // SAFETY: see above; the packet array is a Vec transferred into the field.
+      unsafe {
+        let p_packet = &mut (*(*p_cstr_info).tile.offset(p_tile_no as isize)).packet;
+        let n = ((*p_cstr_info).numcomps as usize)
+          .wrapping_mul((*p_cstr_info).numlayers as usize)
+          .wrapping_mul(l_num_packs as usize);
+        let mut v: Vec<opj_packet_info_t> = vec![Default::default(); n];
+        *p_packet = v.as_mut_ptr();
+        core::mem::forget(v);
+      }
     }
-    /* FIXME _ProfStart(PGROUP_T2); */
-    if opj_tcd_t2_encode(
-      p_tcd,
-      p_dest,
-      p_data_written,
-      p_max_length,
-      p_cstr_info,
-      p_marker_info,
-      p_manager,
-    ) == 0
-    {
+    if opj_tcd_dc_level_shift_encode(p_tcd) == 0 {
       return 0i32;
     }
-    /* FIXME _ProfStop(PGROUP_T2); */
-    /*---------------CLEAN-------------------*/
-    1i32
-  }
-}
-
-pub(crate) fn opj_tcd_decode_tile(
-  mut p_tcd: &mut opj_tcd,
-  mut win_x0: OPJ_UINT32,
-  mut win_y0: OPJ_UINT32,
-  mut win_x1: OPJ_UINT32,
-  mut win_y1: OPJ_UINT32,
-  mut numcomps_to_decode: OPJ_UINT32,
-  mut comps_indices: *const OPJ_UINT32,
-  mut p_src: *mut OPJ_BYTE,
-  mut p_max_length: OPJ_UINT32,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_cstr_index: *mut CodestreamIndex,
-  mut p_manager: &mut opj_event_mgr,
-) -> OPJ_BOOL {
-  unsafe {
-    let mut l_data_read: OPJ_UINT32 = 0;
-    let mut compno: OPJ_UINT32 = 0;
-    p_tcd.tcd_tileno = p_tile_no;
-    p_tcd.tcp = (*p_tcd.cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
-    p_tcd.win_x0 = win_x0;
-    p_tcd.win_y0 = win_y0;
-    p_tcd.win_x1 = win_x1;
-    p_tcd.win_y1 = win_y1;
-    p_tcd.whole_tile_decoding = 1i32;
-    if numcomps_to_decode != 0 {
-      //let mut used_component = Vec::with_capacity((*p_tcd.image).numcomps as usize);
-      let mut used_component = vec![false; (*p_tcd.image).numcomps as usize];
-      compno = 0 as OPJ_UINT32;
-      while compno < numcomps_to_decode {
-        used_component[*comps_indices.offset(compno as isize) as usize] = true;
-        compno += 1;
-      }
-      p_tcd.used_component = used_component
-    } else {
-      p_tcd.used_component = vec![]
+    if opj_tcd_mct_encode(p_tcd) == 0 {
+      return 0i32;
     }
+    if opj_tcd_dwt_encode(p_tcd) == 0 {
+      return 0i32;
+    }
+    if opj_tcd_t1_encode(p_tcd) == 0 {
+      return 0i32;
+    }
+    if opj_tcd_rate_allocate_encode(p_tcd, p_dest, p_max_length, p_cstr_info, p_manager) == 0 {
+      return 0i32;
+    }
+  }
+  /* << INDEX */
+  /* FIXME _ProfStart(PGROUP_DC_SHIFT); */
+  /*---------------TILE-------------------*/
+  /* FIXME _ProfStop(PGROUP_DC_SHIFT); */
+  /* FIXME _ProfStart(PGROUP_MCT); */
+  /* FIXME _ProfStop(PGROUP_MCT); */
+  /* FIXME _ProfStart(PGROUP_DWT); */
+  /* FIXME  _ProfStop(PGROUP_DWT); */
+  /* FIXME  _ProfStart(PGROUP_T1); */
+  /* FIXME _ProfStop(PGROUP_T1); */
+  /* FIXME _ProfStart(PGROUP_RATE); */
+  /*--------------TIER2------------------*/
+  /* INDEX */
+  if !p_cstr_info.is_null() {
+    // SAFETY: C-ABI v1 mirror write.
+    unsafe { (*p_cstr_info).index_write = 1i32 }
+  }
+  /* FIXME _ProfStart(PGROUP_T2); */
+  if opj_tcd_t2_encode(
+    p_tcd,
+    p_dest,
+    p_data_written,
+    p_max_length,
+    p_cstr_info,
+    p_marker_info,
+    p_manager,
+  ) == 0
+  {
+    return 0i32;
+  }
+  /* FIXME _ProfStop(PGROUP_T2); */
+  1i32
+}
+pub(crate) fn opj_tcd_decode_tile(
+  p_tcd: &mut opj_tcd,
+  win_x0: OPJ_UINT32,
+  win_y0: OPJ_UINT32,
+  win_x1: OPJ_UINT32,
+  win_y1: OPJ_UINT32,
+  numcomps_to_decode: OPJ_UINT32,
+  comps_indices: *const OPJ_UINT32,
+  p_src: *mut OPJ_BYTE,
+  p_max_length: OPJ_UINT32,
+  p_tile_no: OPJ_UINT32,
+  p_cstr_index: *mut CodestreamIndex,
+  p_manager: &mut opj_event_mgr,
+) -> OPJ_BOOL {
+  let mut l_data_read: OPJ_UINT32 = 0;
+  let mut compno: OPJ_UINT32 = 0;
+  p_tcd.tcd_tileno = p_tile_no;
+  // SAFETY: `cp` is set by opj_tcd_init.
+  p_tcd.tcp = unsafe { (*p_tcd.cp).tcps.as_mut_ptr().offset(p_tile_no as isize) };
+  p_tcd.win_x0 = win_x0;
+  p_tcd.win_y0 = win_y0;
+  p_tcd.win_x1 = win_x1;
+  p_tcd.win_y1 = win_y1;
+  p_tcd.whole_tile_decoding = 1i32;
+  // SAFETY: `image` is the codec's private image.
+  let image = unsafe { &*p_tcd.image };
+  if numcomps_to_decode != 0 {
+    let mut used_component = vec![false; image.numcomps as usize];
     compno = 0 as OPJ_UINT32;
-    while compno < (*p_tcd.image).numcomps {
-      if p_tcd.used_component(compno) && opj_tcd_is_whole_tilecomp_decoding(p_tcd, compno) == 0 {
-        p_tcd.whole_tile_decoding = 0i32;
-        break;
+    // SAFETY: the caller provides numcomps_to_decode valid component indices.
+    let indices = unsafe { core::slice::from_raw_parts(comps_indices, numcomps_to_decode as usize) };
+    for &idx in indices {
+      used_component[idx as usize] = true;
+    }
+    p_tcd.used_component = used_component
+  } else {
+    p_tcd.used_component = vec![]
+  }
+  compno = 0 as OPJ_UINT32;
+  while compno < image.numcomps {
+    if p_tcd.used_component(compno) && opj_tcd_is_whole_tilecomp_decoding(p_tcd, compno) == 0 {
+      p_tcd.whole_tile_decoding = 0i32;
+      break;
+    }
+    compno += 1;
+  }
+  if p_tcd.whole_tile_decoding != 0 {
+    compno = 0 as OPJ_UINT32;
+    while compno < image.numcomps {
+      if p_tcd.used_component(compno) {
+        let tilec = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
+        let res_idx = (tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize;
+        let mut l_data_size: OPJ_SIZE_T = 0;
+        /* compute l_data_size with overflow check */
+        let mut res_w = (tilec.resolutions[res_idx].x1 - tilec.resolutions[res_idx].x0)
+          as OPJ_SIZE_T;
+        let mut res_h = (tilec.resolutions[res_idx].y1 - tilec.resolutions[res_idx].y0)
+          as OPJ_SIZE_T;
+        /* issue 733, l_data_size == 0U, probably something wrong should be checked before getting here */
+        if res_h > 0 && res_w > (usize::MAX).wrapping_div(res_h) {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
+            "Size of tile data exceeds system limits\n",
+          );
+          return 0i32;
+        }
+        l_data_size = res_w.wrapping_mul(res_h);
+        if (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_UINT32>()) < l_data_size {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
+            "Size of tile data exceeds system limits\n",
+          );
+          return 0i32;
+        }
+        l_data_size = (l_data_size as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT32>())
+          as OPJ_SIZE_T as OPJ_SIZE_T;
+        tilec.data_size_needed = l_data_size;
+        if opj_alloc_tile_component_data(tilec) == 0 {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
+            "Size of tile data exceeds system limits\n",
+          );
+          return 0i32;
+        }
       }
       compno += 1;
     }
-    if p_tcd.whole_tile_decoding != 0 {
-      compno = 0 as OPJ_UINT32;
-      while compno < (*p_tcd.image).numcomps {
-        if p_tcd.used_component(compno) {
-          let tilec = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
-          let res_idx = (tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize;
-          let mut l_data_size: OPJ_SIZE_T = 0;
-          /* compute l_data_size with overflow check */
-          let mut res_w = (tilec.resolutions[res_idx].x1 - tilec.resolutions[res_idx].x0)
-            as OPJ_SIZE_T;
-          let mut res_h = (tilec.resolutions[res_idx].y1 - tilec.resolutions[res_idx].y0)
-            as OPJ_SIZE_T;
-          /* issue 733, l_data_size == 0U, probably something wrong should be checked before getting here */
-          if res_h > 0 && res_w > (usize::MAX).wrapping_div(res_h) {
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "Size of tile data exceeds system limits\n",
-            );
-            return 0i32;
-          }
-          l_data_size = res_w.wrapping_mul(res_h);
-          if (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_UINT32>()) < l_data_size {
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "Size of tile data exceeds system limits\n",
-            );
-            return 0i32;
-          }
-          l_data_size = (l_data_size as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT32>())
-            as OPJ_SIZE_T as OPJ_SIZE_T;
-          tilec.data_size_needed = l_data_size;
-          if opj_alloc_tile_component_data(tilec) == 0 {
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "Size of tile data exceeds system limits\n",
-            );
-            return 0i32;
-          }
+  } else {
+    /* Compute restricted tile-component and tile-resolution coordinates */
+    /* of the window of interest, but defer the memory allocation until */
+    /* we know the resno_decoded */
+    compno = 0 as OPJ_UINT32;
+    while compno < image.numcomps {
+      let mut resno: OPJ_UINT32 = 0;
+      if p_tcd.used_component(compno) {
+        let tilec_0 = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
+        let image_comp = &image.comps[compno as usize];
+        /* Compute the intersection of the area of interest, expressed in tile coordinates */
+        /* with the tile coordinates */
+        tilec_0.win_x0 = opj_uint_max(tilec_0.x0 as OPJ_UINT32, opj_uint_ceildiv(p_tcd.win_x0, image_comp.dx));
+        tilec_0.win_y0 = opj_uint_max(tilec_0.y0 as OPJ_UINT32, opj_uint_ceildiv(p_tcd.win_y0, image_comp.dy));
+        tilec_0.win_x1 = opj_uint_min(tilec_0.x1 as OPJ_UINT32, opj_uint_ceildiv(p_tcd.win_x1, image_comp.dx));
+        tilec_0.win_y1 = opj_uint_min(tilec_0.y1 as OPJ_UINT32, opj_uint_ceildiv(p_tcd.win_y1, image_comp.dy));
+        if tilec_0.win_x1 < tilec_0.win_x0 || tilec_0.win_y1 < tilec_0.win_y0 {
+          /* We should not normally go there. The circumstance is when */
+          /* the tile coordinates do not intersect the area of interest */
+          /* Upper level logic should not even try to decode that tile */
+          event_msg!(p_manager, EVT_ERROR, "Invalid tilec->win_xxx values\n",);
+          return 0i32;
         }
-        compno += 1;
-      }
-    } else {
-      /* Compute restricted tile-component and tile-resolution coordinates */
-      /* of the window of interest, but defer the memory allocation until */
-      /* we know the resno_decoded */
-      compno = 0 as OPJ_UINT32;
-      while compno < (*p_tcd.image).numcomps {
-        let mut resno: OPJ_UINT32 = 0;
-        let mut tilec_0: *mut opj_tcd_tilecomp_t =
-          &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
-        let mut image_comp: *mut CoreImageComp =
-          &mut *(*p_tcd.image).comps.as_mut_ptr().add(compno as usize) as *mut CoreImageComp;
-        if p_tcd.used_component(compno) {
-          /* Compute the intersection of the area of interest, expressed in tile coordinates */
-          /* with the tile coordinates */
-          (*tilec_0).win_x0 = opj_uint_max(
-            (*tilec_0).x0 as OPJ_UINT32,
-            opj_uint_ceildiv(p_tcd.win_x0, (*image_comp).dx),
-          );
-          (*tilec_0).win_y0 = opj_uint_max(
-            (*tilec_0).y0 as OPJ_UINT32,
-            opj_uint_ceildiv(p_tcd.win_y0, (*image_comp).dy),
-          );
-          (*tilec_0).win_x1 = opj_uint_min(
-            (*tilec_0).x1 as OPJ_UINT32,
-            opj_uint_ceildiv(p_tcd.win_x1, (*image_comp).dx),
-          );
-          (*tilec_0).win_y1 = opj_uint_min(
-            (*tilec_0).y1 as OPJ_UINT32,
-            opj_uint_ceildiv(p_tcd.win_y1, (*image_comp).dy),
-          );
-          if (*tilec_0).win_x1 < (*tilec_0).win_x0 || (*tilec_0).win_y1 < (*tilec_0).win_y0 {
-            /* We should not normally go there. The circumstance is when */
-            /* the tile coordinates do not intersect the area of interest */
-            /* Upper level logic should not even try to decode that tile */
-            event_msg!(p_manager, EVT_ERROR, "Invalid tilec->win_xxx values\n",);
-            return 0i32;
-          }
-          resno = 0 as OPJ_UINT32;
-          while resno < (*tilec_0).numresolutions {
-            let mut res = (*tilec_0).resolutions.as_mut_ptr().offset(resno as isize);
-            (*res).win_x0 = opj_uint_ceildivpow2(
-              (*tilec_0).win_x0,
-              (*tilec_0)
-                .numresolutions
-                .wrapping_sub(1u32)
-                .wrapping_sub(resno),
-            );
-            (*res).win_y0 = opj_uint_ceildivpow2(
-              (*tilec_0).win_y0,
-              (*tilec_0)
-                .numresolutions
-                .wrapping_sub(1u32)
-                .wrapping_sub(resno),
-            );
-            (*res).win_x1 = opj_uint_ceildivpow2(
-              (*tilec_0).win_x1,
-              (*tilec_0)
-                .numresolutions
-                .wrapping_sub(1u32)
-                .wrapping_sub(resno),
-            );
-            (*res).win_y1 = opj_uint_ceildivpow2(
-              (*tilec_0).win_y1,
-              (*tilec_0)
-                .numresolutions
-                .wrapping_sub(1u32)
-                .wrapping_sub(resno),
-            );
-            resno += 1;
-          }
+        resno = 0 as OPJ_UINT32;
+        while resno < tilec_0.numresolutions {
+          let res = &mut tilec_0.resolutions[resno as usize];
+          res.win_x0 = opj_uint_ceildivpow2(tilec_0.win_x0, tilec_0.numresolutions.wrapping_sub(1u32).wrapping_sub(resno));
+          res.win_y0 = opj_uint_ceildivpow2(tilec_0.win_y0, tilec_0.numresolutions.wrapping_sub(1u32).wrapping_sub(resno));
+          res.win_x1 = opj_uint_ceildivpow2(tilec_0.win_x1, tilec_0.numresolutions.wrapping_sub(1u32).wrapping_sub(resno));
+          res.win_y1 = opj_uint_ceildivpow2(tilec_0.win_y1, tilec_0.numresolutions.wrapping_sub(1u32).wrapping_sub(resno));
+          resno += 1;
         }
-        compno += 1;
       }
+      compno += 1;
     }
-    /* FIXME */
-    /*--------------TIER2------------------*/
-    /* FIXME _ProfStart(PGROUP_T2); */
-    l_data_read = 0 as OPJ_UINT32;
-    if opj_tcd_t2_decode(
-      p_tcd,
-      p_src,
-      &mut l_data_read,
-      p_max_length,
-      p_cstr_index,
-      p_manager,
-    ) == 0
-    {
-      return 0i32;
-    }
-    /* FIXME _ProfStop(PGROUP_T2); */
-    /*------------------TIER1-----------------*/
-    /* FIXME _ProfStart(PGROUP_T1); */
-    if opj_tcd_t1_decode(p_tcd, p_manager) == 0 {
-      return 0i32;
-    }
-    /* FIXME _ProfStop(PGROUP_T1); */
-    /* For subtile decoding, now we know the resno_decoded, we can allocate */
-    /* the tile data buffer */
-    if p_tcd.whole_tile_decoding == 0 {
-      compno = 0 as OPJ_UINT32;
-      while compno < (*p_tcd.image).numcomps {
-        let mut tilec_1: *mut opj_tcd_tilecomp_t =
-          &mut p_tcd.tcd_image.tiles.comps[compno as usize] as *mut opj_tcd_tilecomp_t;
-        let mut image_comp_0: *mut CoreImageComp =
-          &mut *(*p_tcd.image).comps.as_mut_ptr().add(compno as usize) as *mut CoreImageComp;
-        let mut res_0 = (*tilec_1)
-          .resolutions
-          .as_mut_ptr()
-          .offset((*image_comp_0).resno_decoded as isize);
-        let mut w = (*res_0).win_x1.wrapping_sub((*res_0).win_x0) as OPJ_SIZE_T;
-        let mut h = (*res_0).win_y1.wrapping_sub((*res_0).win_y0) as OPJ_SIZE_T;
-        let mut l_data_size_0: OPJ_SIZE_T = 0;
-        (*tilec_1).data_win.release();
-        if p_tcd.used_component(compno) && w > 0 && h > 0 {
-          if w > (usize::MAX).wrapping_div(h) {
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "Size of tile data exceeds system limits\n",
-            );
-            return 0i32;
-          }
-          l_data_size_0 = w.wrapping_mul(h);
-          if l_data_size_0 > (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_INT32>()) {
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "Size of tile data exceeds system limits\n",
-            );
-            return 0i32;
-          }
-          l_data_size_0 = (l_data_size_0 as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>())
-            as OPJ_SIZE_T as OPJ_SIZE_T;
-          if !(*tilec_1).data_win.alloc(l_data_size_0) {
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "Size of tile data exceeds system limits\n",
-            );
-            return 0i32;
-          }
-        }
-        compno += 1;
-      }
-    }
-    /*----------------DWT---------------------*/
-    /* FIXME _ProfStart(PGROUP_DWT); */
-    if opj_tcd_dwt_decode(p_tcd) == 0 {
-      return 0i32;
-    }
-    /* FIXME _ProfStop(PGROUP_DWT); */
-    /*----------------MCT-------------------*/
-    /* FIXME _ProfStart(PGROUP_MCT); */
-    if opj_tcd_mct_decode(p_tcd, p_manager) == 0 {
-      return 0i32;
-    }
-    /* FIXME _ProfStop(PGROUP_MCT); */
-    /* FIXME _ProfStart(PGROUP_DC_SHIFT); */
-    if opj_tcd_dc_level_shift_decode(p_tcd) == 0 {
-      return 0i32;
-    }
-    /* FIXME _ProfStop(PGROUP_DC_SHIFT); */
-    /*---------------TILE-------------------*/
-    1i32 /*(/ 8)*/
   }
+  /* FIXME */
+  /*--------------TIER2------------------*/
+  /* FIXME _ProfStart(PGROUP_T2); */
+  l_data_read = 0 as OPJ_UINT32;
+  if opj_tcd_t2_decode(
+    p_tcd,
+    p_src,
+    &mut l_data_read,
+    p_max_length,
+    p_cstr_index,
+    p_manager,
+  ) == 0
+  {
+    return 0i32;
+  }
+  /* FIXME _ProfStop(PGROUP_T2); */
+  /*------------------TIER1-----------------*/
+  /* FIXME _ProfStart(PGROUP_T1); */
+  if opj_tcd_t1_decode(p_tcd, p_manager) == 0 {
+    return 0i32;
+  }
+  /* FIXME _ProfStop(PGROUP_T1); */
+  /* For subtile decoding, now we know the resno_decoded, we can allocate */
+  /* the tile data buffer */
+  if p_tcd.whole_tile_decoding == 0 {
+    compno = 0 as OPJ_UINT32;
+    while compno < image.numcomps {
+      if p_tcd.used_component(compno) {
+        let tilec_1 = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
+        let image_comp_0 = &image.comps[compno as usize];
+        let res_0 = &tilec_1.resolutions[image_comp_0.resno_decoded as usize];
+        let w = res_0.win_x1.wrapping_sub(res_0.win_x0) as OPJ_SIZE_T;
+        let h = res_0.win_y1.wrapping_sub(res_0.win_y0) as OPJ_SIZE_T;
+        let mut l_data_size_0: OPJ_SIZE_T = 0;
+        tilec_1.data_win.release();
+        if w > 0 && h > 0 {
+        if w > (usize::MAX).wrapping_div(h) {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
+            "Size of tile data exceeds system limits\n",
+          );
+          return 0i32;
+        }
+        l_data_size_0 = w.wrapping_mul(h);
+        if l_data_size_0 > (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_INT32>()) {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
+            "Size of tile data exceeds system limits\n",
+          );
+          return 0i32;
+        }
+        l_data_size_0 = (l_data_size_0 as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>())
+          as OPJ_SIZE_T as OPJ_SIZE_T;
+        if !tilec_1.data_win.alloc(l_data_size_0) {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
+            "Size of tile data exceeds system limits\n",
+          );
+          return 0i32;
+        }
+      }
+      }
+      compno += 1;
+    }
+  }
+  /*----------------DWT---------------------*/
+  /* FIXME _ProfStart(PGROUP_DWT); */
+  if opj_tcd_dwt_decode(p_tcd) == 0 {
+    return 0i32;
+  }
+  /* FIXME _ProfStop(PGROUP_DWT); */
+  /*----------------MCT-------------------*/
+  /* FIXME _ProfStart(PGROUP_MCT); */
+  if opj_tcd_mct_decode(p_tcd, p_manager) == 0 {
+    return 0i32;
+  }
+  /* FIXME _ProfStop(PGROUP_MCT); */
+  /* FIXME _ProfStart(PGROUP_DC_SHIFT); */
+  if opj_tcd_dc_level_shift_decode(p_tcd) == 0 {
+    return 0i32;
+  }
+  /* FIXME _ProfStop(PGROUP_DC_SHIFT); */
+  /*---------------TILE-------------------*/
+  1i32 /*(/ 8)*/
 }
-
 pub(crate) fn opj_tcd_update_tile_data(p_tcd: &mut opj_tcd, mut p_dest: &mut [u8]) -> OPJ_BOOL {
-  unsafe {
+  {
     let mut p_dest_length = p_dest.len() as u32;
     let mut l_data_size = 0 as OPJ_UINT32;
     let mut l_stride = 0usize;
@@ -1655,34 +1617,28 @@ pub(crate) fn opj_tcd_update_tile_data(p_tcd: &mut opj_tcd, mut p_dest: &mut [u8
     // SAFETY: `image` is the codec's private image.
     let image = unsafe { &*p_tcd.image };
     let numcomps = image.numcomps as usize;
-    let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
-    for (l_tilec, l_img_comp) in l_tilec.iter().zip(image.comps.iter()) {
+    let l_tilec = &mut p_tcd.tcd_image.tiles.comps[..numcomps];
+    for (l_tilec, l_img_comp) in l_tilec.iter_mut().zip(image.comps.iter()) {
       let mut l_size_comp = l_img_comp.prec >> 3i32;
       let l_remaining = l_img_comp.prec & 7u32;
-      let l_res = l_tilec
-        .resolutions
-        .as_ptr()
-        .offset(l_img_comp.resno_decoded as isize);
-      let mut l_src_data = if p_tcd.whole_tile_decoding != 0 {
-        l_width = ((*l_res).x1 - (*l_res).x0) as usize;
-        l_height = ((*l_res).y1 - (*l_res).y0) as usize;
-        l_stride = (((*l_tilec
-          .resolutions
-          .as_ptr()
-          .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
+      let l_res = &l_tilec.resolutions[l_img_comp.resno_decoded as usize];
+      let l_src_data = if p_tcd.whole_tile_decoding != 0 {
+        l_width = (l_res.x1 - l_res.x0) as usize;
+        l_height = (l_res.y1 - l_res.y0) as usize;
+        l_stride = ((l_tilec.resolutions
+          [(l_tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize]
         .x1
-          - (*l_tilec
-            .resolutions
-            .as_ptr()
-            .offset((*l_tilec).minimum_num_resolutions.wrapping_sub(1u32) as isize))
-          .x0) as usize)
+          - l_tilec.resolutions[(l_tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize]
+            .x0) as usize)
           .wrapping_sub(l_width);
-        l_tilec.data.as_mut_ptr()
+        l_tilec.data.as_mut_slice(
+          (l_width.wrapping_add(l_stride)).wrapping_mul(l_height),
+        )
       } else {
-        l_width = (*l_res).win_x1.wrapping_sub((*l_res).win_x0) as usize;
-        l_height = (*l_res).win_y1.wrapping_sub((*l_res).win_y0) as usize;
+        l_width = l_res.win_x1.wrapping_sub(l_res.win_x0) as usize;
+        l_height = l_res.win_y1.wrapping_sub(l_res.win_y0) as usize;
         l_stride = 0 as usize;
-        l_tilec.data_win.as_mut_ptr()
+        l_tilec.data_win.as_mut_slice(l_width.wrapping_mul(l_height))
       };
       if l_remaining != 0 {
         l_size_comp += 1;
@@ -1691,7 +1647,7 @@ pub(crate) fn opj_tcd_update_tile_data(p_tcd: &mut opj_tcd, mut p_dest: &mut [u8
         l_size_comp = 4 as OPJ_UINT32
       }
       let l_nb_elem = l_height * l_width;
-      let mut l_src = core::slice::from_raw_parts(l_src_data, l_nb_elem + (l_height * l_stride));
+      let mut l_src = l_src_data;
       match l_size_comp {
         1 => {
           let (dest, remain) = p_dest.split_at_mut(l_nb_elem);
