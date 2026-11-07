@@ -2291,7 +2291,7 @@ fn opj_t1_cblk_encode_processor(
   _resno: OPJ_UINT32,
   off_x: OPJ_UINT32,
   off_y: OPJ_UINT32,
-  tile_data: &mut [OPJ_INT32],
+  tile_data: &[OPJ_INT32],
   tile_w: OPJ_UINT32,
   tile_numcomps: OPJ_UINT32,
   numresolutions_minus_resno: OPJ_UINT32,
@@ -2303,31 +2303,26 @@ fn opj_t1_cblk_encode_processor(
   tccp: &opj_tccp_t,
   mct_norms: Option<&[OPJ_FLOAT64]>,
   mct_numcomps: OPJ_UINT32,
-  pret: &mut OPJ_BOOL,
-  distotile: &mut OPJ_FLOAT64,
-) {
+) -> (OPJ_BOOL, OPJ_FLOAT64) {
   let mut cblk_w: OPJ_UINT32 = 0;
   let mut cblk_h: OPJ_UINT32 = 0;
   let mut i: OPJ_UINT32 = 0;
   let mut j: OPJ_UINT32 = 0;
   let mut x = cblk.x0 - band_x0;
   let mut y = cblk.y0 - band_y0;
-  if *pret == 0 {
-    return;
-  }
 
   // Use thread local t1 instance.
-  T1.with(|l_t1| {
+  let (ret, cumwmsedec) = T1.with(|l_t1| {
     let mut ref_t1 = l_t1.borrow_mut();
     let t1 = &mut *ref_t1;
+    let mut ret = 0i32;
 
     x += off_x as OPJ_INT32;
     y += off_y as OPJ_INT32;
     if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as OPJ_UINT32, (cblk.y1 - cblk.y0) as OPJ_UINT32)
       == 0
     {
-      *pret = 0i32;
-      return;
+      return (0i32, 0.0);
     }
     cblk_w = t1.w;
     cblk_h = t1.h;
@@ -2472,8 +2467,10 @@ fn opj_t1_cblk_encode_processor(
       mct_norms,
       mct_numcomps,
     );
-    *distotile += cumwmsedec;
-  })
+    ret = 1i32;
+    (ret, cumwmsedec)
+  });
+  (ret, cumwmsedec)
 }
 pub(crate) fn opj_t1_encode_cblks(
   tile: &mut opj_tcd_tile_t,
@@ -2490,71 +2487,108 @@ pub(crate) fn opj_t1_encode_cblks(
     let tccp = &tcp.tccps[compno as usize];
     let tile_w = (tilec.x1 - tilec.x0) as OPJ_UINT32;
     let tile_h = (tilec.y1 - tilec.y0) as OPJ_UINT32;
-    let tile_data = tilec.data.as_mut_slice((tile_w as usize).wrapping_mul(tile_h as usize));
+    let tile_numcomps = tile.numcomps;
     let numresolutions_minus_1 = tilec.numresolutions.wrapping_sub(1u32);
-    let mut resno: OPJ_UINT32 = 0;
-    while resno < tilec.numresolutions {
-      let (prev_w, prev_h) = if resno > 0 {
-        let p = &tilec.resolutions[(resno - 1) as usize];
-        (p.x1 - p.x0, p.y1 - p.y0)
-      } else {
-        (0, 0)
-      };
-      let res = &mut tilec.resolutions[resno as usize];
-      let mut bandno: OPJ_UINT32 = 0;
-      while bandno < res.numbands {
-        let bandno_val = res.bands[bandno as usize].bandno;
-        let band_x0 = res.bands[bandno as usize].x0;
-        let band_y0 = res.bands[bandno as usize].y0;
-        let band_stepsize = res.bands[bandno as usize].stepsize;
+    /* Snapshot the coarser-resolution dims first (the collection walk only
+    needs `&mut`), then take the shared read-only view of the tile data. */
+    let prev_dims: Vec<(OPJ_INT32, OPJ_INT32)> = (0..tilec.numresolutions)
+      .map(|r| {
+        if r > 0 {
+          let p = &tilec.resolutions[(r - 1) as usize];
+          (p.x1 - p.x0, p.y1 - p.y0)
+        } else {
+          (0, 0)
+        }
+      })
+      .collect();
+    let tile_data = tilec.data.as_mut_slice((tile_w as usize).wrapping_mul(tile_h as usize));
+    let tile_data_shared: &[OPJ_INT32] = tile_data;
+    /* Collect the encode jobs (the codeblock walk mutates only the cblk
+    state, and each job writes only its own codeblock). */
+    let mut jobs: Vec<(
+      OPJ_UINT32,
+      OPJ_UINT32,
+      OPJ_UINT32,
+      OPJ_UINT32,
+      OPJ_UINT32,
+      OPJ_INT32,
+      OPJ_INT32,
+      OPJ_FLOAT32,
+      &mut opj_tcd_cblk_enc_t,
+    )> = Vec::new();
+    for (resno, res) in tilec.resolutions.iter_mut().enumerate().take(tilec.numresolutions as usize) {
+      let (prev_w, prev_h) = prev_dims[resno];
+      for band in res.bands.iter_mut().take(res.numbands as usize) {
+        let bandno_val = band.bandno;
+        let band_x0 = band.x0;
+        let band_y0 = band.y0;
+        let band_stepsize = band.stepsize;
         let off_x = if bandno_val & 1 != 0 { prev_w } else { 0 };
         let off_y = if bandno_val & 2 != 0 { prev_h } else { 0 };
-        let band = &mut res.bands[bandno as usize];
-        /* resno  */
-        /* bandno */
-        /* precno */
         /* Skip empty bands */
         if opj_tcd_is_band_empty(band) == 0 {
-          let mut precno: OPJ_UINT32 = 0;
-          while precno < res.pw.wrapping_mul(res.ph) {
-            let prc = &mut band.precincts[precno as usize];
-            let mut cblkno: OPJ_UINT32 = 0;
-            while cblkno < prc.cw.wrapping_mul(prc.ch) {
-              let cblk = prc.cblks.enc_mut(cblkno as usize);
-              opj_t1_cblk_encode_processor(
-                compno,
-                resno,
-                off_x as OPJ_UINT32,
-                off_y as OPJ_UINT32,
-                tile_data,
-                tile_w,
-                tile.numcomps,
-                numresolutions_minus_1.wrapping_sub(resno),
-                bandno_val,
-                band_x0,
-                band_y0,
-                band_stepsize,
-                cblk,
-                tccp,
-                mct_norms,
-                mct_numcomps,
-                &mut ret,
-                &mut tile.distotile,
-              );
-              cblkno += 1;
+          for prc in band
+            .precincts
+            .iter_mut()
+            .take((res.pw.wrapping_mul(res.ph)) as usize)
+          {
+            if let CodeBlocks::Enc(cblks) = &mut prc.cblks {
+              for cblk in cblks.iter_mut().take((prc.cw.wrapping_mul(prc.ch)) as usize) {
+                jobs.push((
+                  resno as OPJ_UINT32,
+                  off_x as OPJ_UINT32,
+                  off_y as OPJ_UINT32,
+                  bandno_val,
+                  numresolutions_minus_1.wrapping_sub(resno as OPJ_UINT32),
+                  band_x0,
+                  band_y0,
+                  band_stepsize,
+                  cblk,
+                ));
+              }
             }
-            precno += 1;
-            /* cblkno */
           }
         }
-        bandno += 1;
       }
-      resno += 1;
     }
+    /* Parallel encode: each job owns its codeblock; tile_data is read-only. */
+    let results: Vec<(OPJ_BOOL, OPJ_FLOAT64)> = jobs
+      .par_iter_mut()
+      .map(|(resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize, cblk)| {
+        opj_t1_cblk_encode_processor(
+          compno,
+          *resno,
+          *off_x,
+          *off_y,
+          tile_data_shared,
+          tile_w,
+          tile_numcomps,
+          *nrr,
+          *bandno,
+          *band_x0,
+          *band_y0,
+          *band_stepsize,
+          cblk,
+          tccp,
+          mct_norms,
+          mct_numcomps,
+        )
+      })
+      .collect();
+    let mut cumdisto: OPJ_FLOAT64 = 0.0;
+    for (ok, cumwmsedec) in results {
+      if ok == 0 {
+        ret = 0i32;
+      }
+      /* Same reduction order as the sequential walk. */
+      cumdisto += cumwmsedec;
+    }
+    tile.distotile += cumdisto;
     compno += 1;
   }
   ret
 }
+
 fn opj_t1_enc_is_term_pass(
   cblk: &opj_tcd_cblk_enc_t,
   mut cblksty: OPJ_UINT32,
