@@ -35,6 +35,7 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 use crate::image::*;
+use crate::params::opj_cparameters_t;
 use openjp2_core::c_api_types::*;
 
 use openjp2_core::{free_cstr_index_mirror, opj_codec_private_t, opj_stream_private_t, TileInfo};

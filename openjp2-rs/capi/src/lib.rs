@@ -14,4 +14,5 @@
 pub use openjp2_core::*;
 
 pub mod image;
+pub mod params;
 pub mod openjpeg;
