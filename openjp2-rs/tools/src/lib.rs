@@ -1,4 +1,23 @@
 pub mod cli;
+
+/// Installs the global rayon pool sized from `OPJ_NUM_THREADS` (the C tools'
+/// variable); `RAYON_NUM_THREADS`, when set, takes precedence and is read by
+/// rayon itself.
+pub fn configure_thread_pool() {
+  if std::env::var("RAYON_NUM_THREADS").is_ok() {
+    return;
+  }
+  let Ok(threads) = std::env::var("OPJ_NUM_THREADS") else {
+    return;
+  };
+  let Ok(n) = threads.parse::<usize>() else {
+    return;
+  };
+  if n > 0 {
+    // build_global only succeeds once per process; that is all we need.
+    let _ = rayon::ThreadPoolBuilder::new().num_threads(n).build_global();
+  }
+}
 // Common code shared between the openjp2 CLI tools.
 pub mod color;
 pub mod convert;

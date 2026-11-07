@@ -32,7 +32,7 @@ rgb = { version = "0.8.50", optional = true }
 flate2 = { version = "1.0.17", features = ["zlib"], default-features = false }
 rand = "0.8.5"
 
-rayon = { version = "1.11.0", optional = true }
+rayon = "1.11.0"
 md5 = { version = "0.8", optional = true }
 
 [features]
@@ -40,6 +40,9 @@ default = ["lcms2", "testing"]
 #default = ["lcms2"]
 
 test_malloc = ["openjp2/test_malloc"]
+
+# Kept for the cfg in tools/tests/nonreg.rs (rayon is now a hard dependency).
+parallel-tests = []
 
 # Mirrors the core's C-ABI feature: only set_comment in the tools uses it.
 c_api = []
@@ -54,4 +57,3 @@ lodepng = ["dep:lodepng", "rgb"]
 
 testing = ["libtiff", "libpng", "md5"]
 
-parallel-tests = ["rayon"]
