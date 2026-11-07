@@ -3,6 +3,10 @@ use super::consts::*;
 use super::dwt::*;
 use super::event::*;
 use super::image::*;
+#[cfg(feature = "c_api")]
+use super::invert::*;
+#[cfg(feature = "c_api")]
+use super::mct::*;
 use super::math::*;
 
 // Owned codestream index (Phase 5.d). The `#[repr(C)]` mirror in c_api_types.rs
@@ -844,29 +848,29 @@ fn opj_j2k_write_siz(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
   let mut pos: usize = 0;
   /* write SOC identifier */
   opj_write_bytes(&mut l_buf[pos..], J2KMarker::SIZ.as_u32(), 2 as OPJ_UINT32); /* SIZ */
-  pos += 2 as usize; /* L_SIZ */
+  pos += 2usize; /* L_SIZ */
   opj_write_bytes(&mut l_buf[pos..], l_size_len.wrapping_sub(2u32), 2 as OPJ_UINT32); /* Rsiz (capabilities) */
-  pos += 2 as usize; /* Xsiz */
+  pos += 2usize; /* Xsiz */
   opj_write_bytes(&mut l_buf[pos..], cp.rsiz as OPJ_UINT32, 2 as OPJ_UINT32); /* Ysiz */
-  pos += 2 as usize; /* X0siz */
+  pos += 2usize; /* X0siz */
   opj_write_bytes(&mut l_buf[pos..], l_image.x1, 4 as OPJ_UINT32); /* Y0siz */
-  pos += 4 as usize; /* XTsiz */
+  pos += 4usize; /* XTsiz */
   opj_write_bytes(&mut l_buf[pos..], l_image.y1, 4 as OPJ_UINT32); /* YTsiz */
-  pos += 4 as usize; /* XT0siz */
+  pos += 4usize; /* XT0siz */
   opj_write_bytes(&mut l_buf[pos..], l_image.x0, 4 as OPJ_UINT32); /* YT0siz */
-  pos += 4 as usize; /* Csiz */
+  pos += 4usize; /* Csiz */
   opj_write_bytes(&mut l_buf[pos..], l_image.y0, 4 as OPJ_UINT32);
-  pos += 4 as usize;
+  pos += 4usize;
   opj_write_bytes(&mut l_buf[pos..], cp.tdx, 4 as OPJ_UINT32);
-  pos += 4 as usize;
+  pos += 4usize;
   opj_write_bytes(&mut l_buf[pos..], cp.tdy, 4 as OPJ_UINT32);
-  pos += 4 as usize;
+  pos += 4usize;
   opj_write_bytes(&mut l_buf[pos..], cp.tx0, 4 as OPJ_UINT32);
-  pos += 4 as usize;
+  pos += 4usize;
   opj_write_bytes(&mut l_buf[pos..], cp.ty0, 4 as OPJ_UINT32);
-  pos += 4 as usize;
+  pos += 4usize;
   opj_write_bytes(&mut l_buf[pos..], l_image.numcomps, 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   i = 0 as OPJ_UINT32;
   while i < l_image.numcomps {
     /* TODO here with MCT ? */
@@ -876,11 +880,11 @@ fn opj_j2k_write_siz(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
       comp.prec.wrapping_sub(1u32).wrapping_add(comp.sgnd << 7i32),
       1 as OPJ_UINT32,
     ); /* Ssiz_i */
-    pos += 1 as usize; /* XRsiz_i */
+    pos += 1usize; /* XRsiz_i */
     opj_write_bytes(&mut l_buf[pos..], comp.dx, 1 as OPJ_UINT32); /* YRsiz_i */
-    pos += 1 as usize;
+    pos += 1usize;
     opj_write_bytes(&mut l_buf[pos..], comp.dy, 1 as OPJ_UINT32);
-    pos += 1 as usize;
+    pos += 1usize;
     i += 1;
   }
   if opj_stream_write_data(p_stream, &l_buf[..l_size_len as usize], p_manager) != l_size_len as usize {
@@ -938,26 +942,26 @@ fn opj_j2k_read_siz(
     return 0i32;
   } /* YTsiz */
   l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* XT0siz */
-  cursor += 2 as usize; /* YT0siz */
+  cursor += 2usize; /* YT0siz */
   cp.rsiz = l_tmp as OPJ_UINT16; /* Csiz */
   l_image.x1 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-  cursor += 4 as usize;
+  cursor += 4usize;
   l_image.y1 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-  cursor += 4 as usize;
+  cursor += 4usize;
   l_image.x0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-  cursor += 4 as usize;
+  cursor += 4usize;
   l_image.y0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-  cursor += 4 as usize;
+  cursor += 4usize;
   cp.tdx = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-  cursor += 4 as usize;
+  cursor += 4usize;
   cp.tdy = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-  cursor += 4 as usize;
+  cursor += 4usize;
   cp.tx0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-  cursor += 4 as usize;
+  cursor += 4usize;
   cp.ty0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-  cursor += 4 as usize;
+  cursor += 4usize;
   l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-  cursor += 2 as usize;
+  cursor += 2usize;
   if l_tmp < 16385u32 {
     l_image.numcomps = l_tmp as OPJ_UINT16 as OPJ_UINT32
   } else {
@@ -1047,7 +1051,7 @@ fn opj_j2k_read_siz(
   i = 0 as OPJ_UINT32; /* Ssiz_i */
   while i < l_image.numcomps {
     let tmp: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
     l_image.comps[i as usize].prec = (tmp & 0x7fu32).wrapping_add(1u32);
     l_image.comps[i as usize].sgnd = tmp >> 7i32;
     if p_j2k.dump_state == 0u32 {
@@ -1065,10 +1069,10 @@ fn opj_j2k_read_siz(
       /* TODO: we should perhaps also check against JP2 BPCC values */
     } /* XRsiz_i */
     let tmp_0 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* should be between 1 and 255 */
-    cursor += 1 as usize; /* YRsiz_i */
+    cursor += 1usize; /* YRsiz_i */
     l_image.comps[i as usize].dx = tmp_0; /* should be between 1 and 255 */
     let tmp_1 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
     l_image.comps[i as usize].dy = tmp_1;
     if l_image.comps[i as usize].dx < 1u32
       || l_image.comps[i as usize].dx > 255u32
@@ -1194,11 +1198,11 @@ fn opj_j2k_write_com(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
   l_buf.resize(l_total_com_size as usize, 0);
   let mut pos: usize = 0;
   opj_write_bytes(&mut l_buf[pos..], J2KMarker::COM.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_total_com_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], 1 as OPJ_UINT32, 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   l_buf[pos..pos + l_comment_size as usize].copy_from_slice(comment_bytes);
   pos += l_comment_size as usize;
   if opj_stream_write_data(p_stream, &l_buf[..l_total_com_size as usize], p_manager) != l_total_com_size as usize
@@ -1258,17 +1262,17 @@ fn opj_j2k_write_cod(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
   l_buf.resize(l_code_size as usize, 0);
   let mut pos: usize = 0;
   opj_write_bytes(&mut l_buf[pos..], J2KMarker::COD.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_code_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_tcp.csty, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   opj_write_bytes(&mut l_buf[pos..], l_tcp.prg as OPJ_UINT32, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   opj_write_bytes(&mut l_buf[pos..], l_tcp.numlayers, 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_tcp.mct, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   l_remaining_size = l_remaining_size.wrapping_sub(9u32);
   drop(l_tcp);
   if opj_j2k_write_SPCod_SPCoc(
@@ -1334,14 +1338,14 @@ fn opj_j2k_read_cod(
     return 0i32;
   }
   l_tcp.csty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   /* Make sure we know how to decode this */
   if l_tcp.csty & !((0x1i32 | 0x2i32 | 0x4i32) as OPJ_UINT32) != 0u32 {
     event_msg!(p_manager, EVT_ERROR, "Unknown Scod value in COD marker\n",); /* SGcod (A) */
     return 0i32;
   }
   l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   l_tcp.prg = l_tmp as OPJ_PROG_ORDER;
   /* Make sure progression order is valid */
   if l_tcp.prg as core::ffi::c_int > OPJ_CPRL as core::ffi::c_int {
@@ -1353,7 +1357,7 @@ fn opj_j2k_read_cod(
     l_tcp.prg = OPJ_PROG_UNKNOWN
   }
   l_tcp.numlayers = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-  cursor += 2 as usize;
+  cursor += 2usize;
   if l_tcp.numlayers < 1u32 || l_tcp.numlayers > 65535u32 {
     event_msg!(
       p_manager,
@@ -1370,7 +1374,7 @@ fn opj_j2k_read_cod(
     l_tcp.num_layers_to_decode = l_tcp.numlayers
   } /* SGcod (C) */
   l_tcp.mct = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   if l_tcp.mct > 1u32 {
     event_msg!(
       p_manager,
@@ -1525,13 +1529,13 @@ fn opj_j2k_write_coc_in_memory(
     ));
   let mut l_remaining_size = l_coc_size;
   opj_write_bytes(&mut data[pos..], J2KMarker::COC.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut data[pos..], l_coc_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut data[pos..], p_comp_no, l_comp_room);
   pos += l_comp_room as usize;
   opj_write_bytes(&mut data[pos..], l_csty, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   l_remaining_size = l_remaining_size.wrapping_sub((5u32).wrapping_add(l_comp_room));
   opj_j2k_write_SPCod_SPCoc(
     p_j2k,
@@ -1632,7 +1636,7 @@ fn opj_j2k_read_coc(
         .expect("decoder m_default_tcp is always set")
     };
     l_tcp.tccps[l_comp_no as usize].csty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
   }
   if opj_j2k_read_SPCod_SPCoc(
     p_j2k,
@@ -1679,9 +1683,9 @@ fn opj_j2k_write_qcd(
     l_buf.resize(l_qcd_size as usize, 0);
     let mut pos: usize = 0;
     opj_write_bytes(&mut l_buf[pos..], J2KMarker::QCD.as_u32(), 2 as OPJ_UINT32);
-    pos += 2 as usize;
+    pos += 2usize;
     opj_write_bytes(&mut l_buf[pos..], l_qcd_size.wrapping_sub(2u32), 2 as OPJ_UINT32,);
-    pos += 2 as usize;
+    pos += 2usize;
     l_remaining_size =
       (l_remaining_size as core::ffi::c_uint).wrapping_sub(4u32) as OPJ_UINT32 as OPJ_UINT32;
     if opj_j2k_write_SQcd_SQcc(
@@ -1846,21 +1850,21 @@ fn opj_j2k_write_qcc_in_memory(
   ));
   let mut l_remaining_size = l_qcc_size;
   opj_write_bytes(&mut data[pos..], J2KMarker::QCC.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
   if numcomps <= 256u32 {
     l_qcc_size = l_qcc_size.wrapping_sub(1);
     opj_write_bytes(&mut data[pos..], l_qcc_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-    pos += 2 as usize;
+    pos += 2usize;
     opj_write_bytes(&mut data[pos..], p_comp_no, 1 as OPJ_UINT32);
-    pos += 1 as usize;
+    pos += 1usize;
     /* in the case only one byte is sufficient the last byte allocated is useless -> still do -6 for available */
     l_remaining_size = l_remaining_size.wrapping_sub(6u32)
   } else {
     opj_write_bytes(&mut data[pos..], l_qcc_size.wrapping_sub(2u32), 2 as OPJ_UINT32); /* L_QCC */
-    pos += 2 as usize; /* Cqcc */
+    pos += 2usize; /* Cqcc */
     opj_write_bytes(&mut data[pos..], p_comp_no, 2 as OPJ_UINT32);
-    pos += 2 as usize;
+    pos += 2usize;
     l_remaining_size = l_remaining_size.wrapping_sub(6u32)
   }
   opj_j2k_write_SQcd_SQcc(
@@ -1913,7 +1917,7 @@ fn opj_j2k_read_qcc(
       return 0i32;
     }
     l_comp_no = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
     p_header_size = p_header_size.wrapping_sub(1)
   } else {
     if p_header_size < 2u32 {
@@ -1921,7 +1925,7 @@ fn opj_j2k_read_qcc(
       return 0i32;
     }
     l_comp_no = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-    cursor += 2 as usize;
+    cursor += 2usize;
     p_header_size = p_header_size.wrapping_sub(2u32)
   }
   /* USE_JPWL */
@@ -2028,24 +2032,24 @@ fn opj_j2k_write_poc_in_memory(
       .wrapping_mul(l_nb_poc),
   );
   opj_write_bytes(&mut data[pos..], J2KMarker::POC.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut data[pos..], l_poc_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   i = 0 as OPJ_UINT32;
   while i < l_nb_poc {
     let l_current_poc = &mut l_tcp.pocs[i as usize];
     opj_write_bytes(&mut data[pos..], l_current_poc.resno0, 1 as OPJ_UINT32);
-    pos += 1 as usize;
+    pos += 1usize;
     opj_write_bytes(&mut data[pos..], l_current_poc.compno0, l_poc_room);
     pos += l_poc_room as usize;
     opj_write_bytes(&mut data[pos..], l_current_poc.layno1, 2 as OPJ_UINT32);
-    pos += 2 as usize;
+    pos += 2usize;
     opj_write_bytes(&mut data[pos..], l_current_poc.resno1, 1 as OPJ_UINT32);
-    pos += 1 as usize;
+    pos += 1usize;
     opj_write_bytes(&mut data[pos..], l_current_poc.compno1, l_poc_room);
     pos += l_poc_room as usize;
     opj_write_bytes(&mut data[pos..], l_current_poc.prg as OPJ_UINT32, 1 as OPJ_UINT32);
-    pos += 1 as usize;
+    pos += 1usize;
     /* change the value of the max layer according to the actual number of layers in the file, components and resolutions*/
     l_current_poc.layno1 =
       opj_int_min(l_current_poc.layno1 as OPJ_INT32, l_tcp.numlayers as OPJ_INT32) as OPJ_UINT32;
@@ -2221,17 +2225,17 @@ fn opj_j2k_read_poc(
   while i < l_current_poc_nb {
     /* LYEpoc_i */
     let resno0 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
     let compno0 = opj_read_bytes(&header_data[cursor..], l_comp_room);
     cursor += l_comp_room as usize;
     let layno1 = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-    cursor += 2 as usize;
+    cursor += 2usize;
     let resno1 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
     let compno1 = opj_read_bytes(&header_data[cursor..], l_comp_room);
     cursor += l_comp_room as usize;
     l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
     let poc = &mut l_tcp.pocs[i as usize];
     poc.resno0 = resno0;
     poc.compno0 = compno0;
@@ -2328,9 +2332,9 @@ fn opj_j2k_read_tlm(
   }
   let remaining = p_header_size.wrapping_sub(2u32);
   let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   l_Stlm = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   l_ST = l_Stlm >> 4i32 & 0x3u32;
   l_SP = l_Stlm >> 6i32 & 0x1u32;
   l_Ptlm_size = l_SP.wrapping_add(1u32).wrapping_mul(2u32);
@@ -2462,12 +2466,12 @@ fn opj_j2k_read_plt(
     return 0i32;
   }
   let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   let remaining = p_header_size.wrapping_sub(1);
   i = 0 as OPJ_UINT32;
   while i < remaining {
     l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
     /* take only the last seven bytes */
     l_packet_len |= l_tmp & 0x7fu32;
     if l_tmp & 0x80u32 != 0 {
@@ -2519,7 +2523,7 @@ fn opj_j2k_read_ppm(
   let l_cp = &mut p_j2k.m_cp;
   l_cp.ppm = true;
   l_Z_ppm = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   /* check allocation needed */
   if l_cp.ppm_markers.len() as OPJ_UINT32 <= l_Z_ppm {
     /* grow-only; the tail is default-initialised, as in the C realloc+memset */
@@ -2690,7 +2694,7 @@ fn opj_j2k_read_ppt(
   let tcp = &mut cp.tcps[p_j2k.m_current_tile_number as usize];
   tcp.ppt = true;
   l_Z_ppt = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   p_header_size = p_header_size.wrapping_sub(1);
   /* check allocation needed */
   if (tcp.ppt_markers.len() as OPJ_UINT32) <= l_Z_ppt {
@@ -2788,11 +2792,11 @@ fn opj_j2k_write_tlm(
     /* TODO */
     p_j2k.m_specific_param.m_encoder.m_tlm_start = opj_stream_tell(p_stream); /* TLM */
     opj_write_bytes(&mut l_buf[pos..], J2KMarker::TLM.as_u32(), 2 as OPJ_UINT32); /* Lpoc */
-    pos += 2 as usize; /* Ztlm=0*/
+    pos += 2usize; /* Ztlm=0*/
     opj_write_bytes(&mut l_buf[pos..], l_tlm_size.wrapping_sub(2u32), 2 as OPJ_UINT32,);
-    pos += 2 as usize;
+    pos += 2usize;
     opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 1 as OPJ_UINT32);
-    pos += 1 as usize;
+    pos += 1usize;
     /* Stlm 0x50= ST=1(8bits-255 tiles max),SP=1(Ptlm=32bits) */
     /* Stlm 0x60= ST=2(16bits-65535 tiles max),SP=1(Ptlm=32bits) */
     opj_write_bytes(&mut l_buf[pos..], if size_per_tile_part == 5u32 {
@@ -2800,7 +2804,7 @@ fn opj_j2k_write_tlm(
       } else {
         0x60i32
       } as OPJ_UINT32, 1 as OPJ_UINT32,);
-    pos += 1 as usize;
+    pos += 1usize;
     /* do nothing on the size_per_tile_part * l_j2k->m_specific_param.m_encoder.m_total_tile_parts remaining data */
     if opj_stream_write_data(p_stream, &l_buf[..l_tlm_size as usize], p_manager) != l_tlm_size as usize
     {
@@ -2839,25 +2843,25 @@ fn opj_j2k_write_sot(
     return 0i32;
   }
   opj_write_bytes(&mut data[pos..], J2KMarker::SOT.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut data[pos..], 10 as OPJ_UINT32, 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut data[pos..], p_j2k.m_current_tile_number, 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   /* Psot  */
-  pos += 4 as usize; /* TPsot */
+  pos += 4usize; /* TPsot */
   opj_write_bytes(
     &mut data[pos..],
     p_j2k.m_specific_param.m_encoder.m_current_tile_part_number,
     1 as OPJ_UINT32,
   ); /* TNsot */
-  pos += 1 as usize;
+  pos += 1usize;
   opj_write_bytes(
     &mut data[pos..],
     p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize].m_nb_tile_parts,
     1 as OPJ_UINT32,
   );
-  pos += 1 as usize;
+  pos += 1usize;
   /* UniPG>> */
   /* USE_JPWL */
   *p_data_written = pos as OPJ_UINT32;
@@ -2893,13 +2897,13 @@ fn opj_j2k_get_sot_values(
     return 0i32;
   } /* Psot */
   *p_tile_no = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* TPsot */
-  cursor += 2 as usize; /* TNsot */
+  cursor += 2usize; /* TNsot */
   *p_tot_len = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
-  cursor += 4 as usize;
+  cursor += 4usize;
   *p_current_part = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   *p_num_parts = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   1i32
 }
 /* *
@@ -3132,11 +3136,11 @@ fn opj_j2k_write_plt_in_memory(
   let mut i: OPJ_UINT32 = 0;
   let packet_sizes = &marker_info.p_packet_size[..];
   opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   /* Reserve space for Lplt */
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut data[pos..], Zplt as OPJ_UINT32, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   Lplt = 3 as OPJ_UINT16;
   i = 0 as OPJ_UINT32;
   while i < marker_info.packet_count {
@@ -3167,13 +3171,13 @@ fn opj_j2k_write_plt_in_memory(
       opj_write_bytes(&mut data[pos_Lplt..], Lplt as OPJ_UINT32, 2 as OPJ_UINT32);
       /* Start new segment */
       opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2 as OPJ_UINT32);
-      pos += 2 as usize;
+      pos += 2usize;
       /* Reserve space for Lplt */
       pos_Lplt = pos;
-      pos += 2 as usize;
+      pos += 2usize;
       Zplt = Zplt.wrapping_add(1);
       opj_write_bytes(&mut data[pos..], Zplt as OPJ_UINT32, 1 as OPJ_UINT32);
-      pos += 1 as usize;
+      pos += 1usize;
       Lplt = 3 as OPJ_UINT16
     }
     Lplt = (Lplt as core::ffi::c_int + var_bytes_size as core::ffi::c_int) as OPJ_UINT16;
@@ -3184,7 +3188,7 @@ fn opj_j2k_write_plt_in_memory(
         var_bytes[(var_bytes_size as core::ffi::c_int - 1i32) as usize] as OPJ_UINT32,
         1 as OPJ_UINT32,
       );
-      pos += 1 as usize;
+      pos += 1usize;
       var_bytes_size = var_bytes_size.wrapping_sub(1)
     }
     i += 1;
@@ -3474,15 +3478,15 @@ fn opj_j2k_write_rgn(
   l_buf.resize(l_rgn_size as usize, 0);
   let mut pos: usize = 0;
   opj_write_bytes(&mut l_buf[pos..], J2KMarker::RGN.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_rgn_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], p_comp_no, l_comp_room);
   pos += l_comp_room as usize;
   opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   opj_write_bytes(&mut l_buf[pos..], l_tccp.roishift as OPJ_UINT32, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   if opj_stream_write_data(p_stream, &l_buf[..l_rgn_size as usize], p_manager)
     != l_rgn_size as usize
   {
@@ -3575,7 +3579,7 @@ fn opj_j2k_read_rgn(
   l_comp_no = opj_read_bytes(&header_data[cursor..], l_comp_room);
   cursor += l_comp_room as usize;
   let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   /* USE_JPWL */
   /* testcase 3635.pdf.asan.77.2930 */
   if l_comp_no >= l_nb_comp {
@@ -3590,7 +3594,7 @@ fn opj_j2k_read_rgn(
   }
   l_tcp.tccps[l_comp_no as usize].roishift =
     opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32) as OPJ_INT32;
-  cursor += 1 as usize;
+  cursor += 1usize;
   1i32
 }
 
@@ -4010,19 +4014,19 @@ fn opj_j2k_write_mct_record(
   l_buf.resize(l_mct_size as usize, 0);
   let mut pos: usize = 0;
   opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCT.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_mct_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   /* only one marker atm */
   l_tmp = p_mct_record.m_index & 0xffu32
     | (p_mct_record.m_array_type as core::ffi::c_uint) << 8i32
     | (p_mct_record.m_element_type as core::ffi::c_uint) << 10i32; /* Ymct */
   opj_write_bytes(&mut l_buf[pos..], l_tmp, 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   l_buf[pos..].copy_from_slice(&p_mct_record.m_data);
   pos += p_mct_record.m_data.len();
   if opj_stream_write_data(p_stream, &l_buf[..l_mct_size as usize], p_manager)
@@ -4078,7 +4082,7 @@ fn opj_j2k_read_mct(
   }
   /* first marker */
   l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Zmct */
-  cursor += 2 as usize;
+  cursor += 2usize;
   if l_tmp != 0u32 {
     event_msg!(
       p_manager,
@@ -4093,7 +4097,7 @@ fn opj_j2k_read_mct(
   }
   /* Imct -> no need for other values, take the first, type is double with decorrelation x0000 1101 0000 0000*/
   l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Imct */
-  cursor += 2 as usize;
+  cursor += 2usize;
   l_indix = l_tmp & 0xffu32;
   /* find an existing record with this index, or append a fresh one */
   let mut l_mct_idx: usize = 0;
@@ -4112,7 +4116,7 @@ fn opj_j2k_read_mct(
   l_mct_data.m_array_type = (l_tmp >> 8i32 & 3u32) as J2K_MCT_ARRAY_TYPE;
   l_mct_data.m_element_type = MCTElementType::new(l_tmp >> 10i32 & 3u32);
   l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Ymct */
-  cursor += 2 as usize;
+  cursor += 2usize;
   if l_tmp != 0u32 {
     event_msg!(
       p_manager,
@@ -4170,23 +4174,23 @@ fn opj_j2k_write_mcc_record(
   l_buf.resize(l_mcc_size as usize, 0);
   let mut pos: usize = 0;
   opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCC.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_mcc_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   /* first marker */
   opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32); /* Zmcc */
-  pos += 2 as usize; /* Imcc -> no need for other values, take the first */
+  pos += 2usize; /* Imcc -> no need for other values, take the first */
   opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_index, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   /* only one marker atm */
   opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32); /* Ymcc */
-  pos += 2 as usize; /* Qmcc -> number of collections -> 1 */
+  pos += 2usize; /* Qmcc -> number of collections -> 1 */
   opj_write_bytes(&mut l_buf[pos..], 1 as OPJ_UINT32, 2 as OPJ_UINT32); /* Xmcci type of component transformation -> array based decorrelation */
-  pos += 2 as usize; /* Nmcci number of input components involved and size for each component offset = 8 bits */
+  pos += 2usize; /* Nmcci number of input components involved and size for each component offset = 8 bits */
   opj_write_bytes(&mut l_buf[pos..], 0x1 as OPJ_UINT32, 1 as OPJ_UINT32); /* Cmccij Component offset*/
-  pos += 1 as usize; /* Mmcci number of output components involved and size for each component offset = 8 bits */
+  pos += 1usize; /* Mmcci number of output components involved and size for each component offset = 8 bits */
   opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_nb_comps | l_mask, 2 as OPJ_UINT32); /* Wmccij Component offset*/
-  pos += 2 as usize; /* Tmcci : use MCT defined as number 1 and irreversible array based. */
+  pos += 2usize; /* Tmcci : use MCT defined as number 1 and irreversible array based. */
   i = 0 as OPJ_UINT32;
   while i < p_mcc_record.m_nb_comps {
     opj_write_bytes(&mut l_buf[pos..], i, l_nb_bytes_for_comp);
@@ -4194,7 +4198,7 @@ fn opj_j2k_write_mcc_record(
     i += 1;
   }
   opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_nb_comps | l_mask, 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   i = 0 as OPJ_UINT32;
   while i < p_mcc_record.m_nb_comps {
     opj_write_bytes(&mut l_buf[pos..], i, l_nb_bytes_for_comp);
@@ -4209,7 +4213,7 @@ fn opj_j2k_write_mcc_record(
     l_tmcc |= mct_records[offset_idx].m_index << 8i32
   }
   opj_write_bytes(&mut l_buf[pos..], l_tmcc, 3 as OPJ_UINT32);
-  pos += 3 as usize;
+  pos += 3usize;
   if opj_stream_write_data(p_stream, &l_buf[..l_mcc_size as usize], p_manager)
     != l_mcc_size as usize
   {
@@ -4260,7 +4264,7 @@ fn opj_j2k_read_mcc(
     }
     /* first marker */
     l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Zmcc */
-    cursor += 2 as usize; /* Imcc -> no need for other values, take the first */
+    cursor += 2usize; /* Imcc -> no need for other values, take the first */
     if l_tmp != 0u32 {
       event_msg!(
         p_manager,
@@ -4274,7 +4278,7 @@ fn opj_j2k_read_mcc(
       return 0i32;
     }
     l_indix = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
     /* find an existing record with this index, or append a fresh one */
     let mut l_mcc_idx: usize = 0;
     while l_mcc_idx < l_tcp.m_mcc_records.len() {
@@ -4291,7 +4295,7 @@ fn opj_j2k_read_mcc(
     l_mcc_record.m_index = l_indix;
     /* only one marker atm */
     l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Ymcc */
-    cursor += 2 as usize; /* Qmcc -> number of collections -> 1 */
+    cursor += 2usize; /* Qmcc -> number of collections -> 1 */
     if l_tmp != 0u32 {
       event_msg!(
         p_manager,
@@ -4301,7 +4305,7 @@ fn opj_j2k_read_mcc(
       return 1i32;
     } /* Cmccij Component offset*/
     l_nb_collections = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Wmccij Component offset*/
-    cursor += 2 as usize; /* Wmccij Component offset*/
+    cursor += 2usize; /* Wmccij Component offset*/
     if l_nb_collections > 1u32 {
       event_msg!(
         p_manager,
@@ -4318,7 +4322,7 @@ fn opj_j2k_read_mcc(
         return 0i32;
       }
       l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
       if l_tmp != 1u32 {
         event_msg!(
           p_manager,
@@ -4328,7 +4332,7 @@ fn opj_j2k_read_mcc(
         return 1i32;
       }
       l_nb_comps = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-    cursor += 2 as usize;
+    cursor += 2usize;
       p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(3u32) as OPJ_UINT32;
       l_nb_bytes_by_comp = (1u32).wrapping_add(l_nb_comps >> 15i32);
       l_mcc_record.m_nb_comps = l_nb_comps & 0x7fffu32;
@@ -4360,7 +4364,7 @@ fn opj_j2k_read_mcc(
         j += 1;
       }
       l_nb_comps = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-    cursor += 2 as usize;
+    cursor += 2usize;
       l_nb_bytes_by_comp = (1u32).wrapping_add(l_nb_comps >> 15i32);
       l_nb_comps &= 0x7fffu32;
       if l_nb_comps != l_mcc_record.m_nb_comps {
@@ -4399,7 +4403,7 @@ fn opj_j2k_read_mcc(
         j += 1;
       }
       l_tmp = opj_read_bytes(&header_data[cursor..], 3 as OPJ_UINT32);
-    cursor += 3 as usize;
+    cursor += 3usize;
       l_mcc_record.m_is_irreversible = l_tmp >> 16i32 & 1u32 == 0;
       l_mcc_record.m_decorrelation_array = None;
       l_mcc_record.m_offset_array = None;
@@ -4457,14 +4461,14 @@ fn opj_j2k_write_mco(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
   l_buf.resize(l_mco_size as usize, 0);
   let mut pos: usize = 0;
   opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCO.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_mco_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_tcp.m_mcc_records.len() as OPJ_UINT32, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   for l_mcc_record in &l_tcp.m_mcc_records {
     opj_write_bytes(&mut l_buf[pos..], l_mcc_record.m_index, 1 as OPJ_UINT32);
-    pos += 1 as usize;
+    pos += 1usize;
   }
   if opj_stream_write_data(p_stream, &l_buf[..l_mco_size as usize], p_manager) != l_mco_size as usize
   {
@@ -4519,7 +4523,7 @@ fn opj_j2k_read_mco(
     return 0i32;
   }
   l_nb_stages = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   if l_nb_stages > 1u32 {
     event_msg!(
       p_manager,
@@ -4541,7 +4545,7 @@ fn opj_j2k_read_mco(
   i = 0 as OPJ_UINT32;
   while i < l_nb_stages {
     l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
     if opj_j2k_add_mct(
       l_tcp,
       p_j2k.m_private_image.as_deref_mut().expect("m_private_image"),
@@ -4633,11 +4637,11 @@ fn opj_j2k_write_cbd(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
   l_buf.resize(l_cbd_size as usize, 0);
   let mut pos: usize = 0;
   opj_write_bytes(&mut l_buf[pos..], J2KMarker::CBD.as_u32(), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_cbd_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], l_image.numcomps, 2 as OPJ_UINT32);
-  pos += 2 as usize;
+  pos += 2usize;
   i = 0 as OPJ_UINT32;
   while i < l_image.numcomps {
     let comp = &l_image.comps[i as usize];
@@ -4646,7 +4650,7 @@ fn opj_j2k_write_cbd(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
       comp.sgnd << 7i32 | comp.prec.wrapping_sub(1u32),
       1 as OPJ_UINT32,
     );
-    pos += 1 as usize;
+    pos += 1usize;
     i += 1;
   }
   if opj_stream_write_data(p_stream, &l_buf[..l_cbd_size as usize], p_manager) != l_cbd_size as usize
@@ -4692,7 +4696,7 @@ fn opj_j2k_read_cbd(
     return 0i32;
   }
   l_nb_comp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-  cursor += 2 as usize;
+  cursor += 2usize;
   if l_nb_comp != l_num_comp {
     event_msg!(p_manager, EVT_ERROR, "Crror reading CBD marker\n",);
     return 0i32;
@@ -4700,7 +4704,7 @@ fn opj_j2k_read_cbd(
   i = 0 as OPJ_UINT32;
   while i < l_num_comp {
     l_comp_def = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-    cursor += 1 as usize;
+    cursor += 1usize;
     let comp = &mut l_image.comps[i as usize];
     comp.sgnd = l_comp_def >> 7i32 & 1u32;
     comp.prec = (l_comp_def & 0x7fu32).wrapping_add(1u32);
@@ -5890,7 +5894,7 @@ pub(crate) fn opj_j2k_setup_encoder(
       #[allow(unsafe_code)]
       {
         cp.m_specific_param.m_enc.m_matrice =
-          unsafe { core::slice::from_raw_parts(parameters.cp_matrice, array_len) }.to_vec();
+          unsafe { core::slice::from_raw_parts(parameters.cp_matrice, _array_len) }.to_vec();
       }
     }
     /* tiles */
@@ -8067,15 +8071,15 @@ fn opj_j2k_write_SPCod_SPCoc(
     return 0i32;
   } /* SPcoc (I_i) */
   opj_write_bytes(&mut data[pos..], l_tccp.numresolutions.wrapping_sub(1u32), 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   opj_write_bytes(&mut data[pos..], l_tccp.cblkw.wrapping_sub(2u32), 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   opj_write_bytes(&mut data[pos..], l_tccp.cblkh.wrapping_sub(2u32), 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   opj_write_bytes(&mut data[pos..], l_tccp.cblksty, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   opj_write_bytes(&mut data[pos..], l_tccp.qmfbid, 1 as OPJ_UINT32);
-  pos += 1 as usize;
+  pos += 1usize;
   *p_header_size = (*p_header_size).wrapping_sub(5u32);
   if l_tccp.csty & 0x1u32 != 0 {
     if *p_header_size < l_tccp.numresolutions {
@@ -8089,7 +8093,7 @@ fn opj_j2k_write_SPCod_SPCoc(
         l_tccp.prcw[i as usize].wrapping_add(l_tccp.prch[i as usize] << 4i32),
         1 as OPJ_UINT32,
       );
-      pos += 1 as usize;
+      pos += 1usize;
       i += 1;
     }
     *p_header_size = (*p_header_size).wrapping_sub(l_tccp.numresolutions)
@@ -8151,7 +8155,7 @@ fn opj_j2k_read_SPCod_SPCoc(
     );
     return 0i32;
   }
-  cursor += 1 as usize;
+  cursor += 1usize;
   /* If user wants to remove more resolutions than the codestream contains, return error */
   if m_reduce >= l_tccp.numresolutions {
     event_msg!(p_manager, EVT_ERROR,
@@ -8162,11 +8166,11 @@ fn opj_j2k_read_SPCod_SPCoc(
   }
   /* SPcod (E) / SPcoc (B) */
   l_tccp.cblkw = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   l_tccp.cblkw = l_tccp.cblkw.wrapping_add(2u32);
   /* SPcod (F) / SPcoc (C) */
   l_tccp.cblkh = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   l_tccp.cblkh = l_tccp.cblkh.wrapping_add(2u32);
   if l_tccp.cblkw > 10u32
     || l_tccp.cblkh > 10u32
@@ -8181,7 +8185,7 @@ fn opj_j2k_read_SPCod_SPCoc(
   }
   /* SPcod (G) / SPcoc (D) */
   l_tccp.cblksty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   if l_tccp.cblksty & 0x80u32 != 0u32 {
     /* We do not support HT mixed mode yet.  For conformance, it should be supported.*/
     event_msg!(
@@ -8193,7 +8197,7 @@ fn opj_j2k_read_SPCod_SPCoc(
   }
   /* SPcod (H) / SPcoc (E) */
   l_tccp.qmfbid = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   if l_tccp.qmfbid > 1u32 {
     event_msg!(
       p_manager,
@@ -8213,7 +8217,7 @@ fn opj_j2k_read_SPCod_SPCoc(
     i = 0 as OPJ_UINT32;
     while i < l_tccp.numresolutions {
       l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-      cursor += 1 as usize;
+      cursor += 1usize;
       /* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
       if i != 0u32 && (l_tmp & 0xfu32 == 0u32 || l_tmp >> 4i32 == 0u32) {
         event_msg!(p_manager, EVT_ERROR, "Invalid precinct size\n",);
@@ -8422,12 +8426,12 @@ fn opj_j2k_write_SQcd_SQcc(
       l_tccp.qntsty.wrapping_add(l_tccp.numgbits << 5i32),
       1 as OPJ_UINT32,
     );
-    pos += 1 as usize;
+    pos += 1usize;
     l_band_no = 0 as OPJ_UINT32;
     while l_band_no < l_num_bands {
       l_expn = l_tccp.stepsizes[l_band_no as usize].expn as OPJ_UINT32;
       opj_write_bytes(&mut data[pos..], l_expn << 3i32, 1 as OPJ_UINT32);
-      pos += 1 as usize;
+      pos += 1usize;
       l_band_no += 1;
     }
   } else {
@@ -8441,7 +8445,7 @@ fn opj_j2k_write_SQcd_SQcc(
       l_tccp.qntsty.wrapping_add(l_tccp.numgbits << 5i32),
       1 as OPJ_UINT32,
     );
-    pos += 1 as usize;
+    pos += 1usize;
     l_band_no = 0 as OPJ_UINT32;
     while l_band_no < l_num_bands {
       l_expn = l_tccp.stepsizes[l_band_no as usize].expn as OPJ_UINT32;
@@ -8451,7 +8455,7 @@ fn opj_j2k_write_SQcd_SQcc(
         (l_expn << 11i32).wrapping_add(l_mant),
         2 as OPJ_UINT32,
       );
-      pos += 2 as usize;
+      pos += 2usize;
       l_band_no += 1;
     }
   }
@@ -8504,7 +8508,7 @@ fn opj_j2k_read_SQcd_SQcc(
   }
   *p_header_size = (*p_header_size).wrapping_sub(1u32);
   l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
-  cursor += 1 as usize;
+  cursor += 1usize;
   l_tccp.qntsty = l_tmp & 0x1fu32;
   l_tccp.numgbits = l_tmp >> 5i32;
   if l_tccp.qntsty == 1u32 {
@@ -8531,7 +8535,7 @@ fn opj_j2k_read_SQcd_SQcc(
     l_band_no = 0 as OPJ_UINT32; /* SPqcx_i */
     while l_band_no < l_num_band {
       l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* SPqcx_i */
-      cursor += 1 as usize;
+      cursor += 1usize;
       if l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
         l_tccp.stepsizes[l_band_no as usize].expn = (l_tmp >> 3i32) as OPJ_INT32;
         l_tccp.stepsizes[l_band_no as usize].mant = 0i32
@@ -8546,7 +8550,7 @@ fn opj_j2k_read_SQcd_SQcc(
     l_band_no = 0 as OPJ_UINT32;
     while l_band_no < l_num_band {
       l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
-      cursor += 2 as usize;
+      cursor += 2usize;
       if l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
         l_tccp.stepsizes[l_band_no as usize].expn = (l_tmp >> 11i32) as OPJ_INT32;
         l_tccp.stepsizes[l_band_no as usize].mant = (l_tmp & 0x7ffu32) as OPJ_INT32

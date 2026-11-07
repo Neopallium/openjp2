@@ -619,13 +619,15 @@ fn opj_t2_skip_packet(
   1i32
 }
 fn opj_t2_encode_packet(
-  _tileno: OPJ_UINT32,
+  #[cfg_attr(not(feature = "c_api"), allow(unused_variables))]
+  tileno: OPJ_UINT32,
   tile: &mut opj_tcd_tile_t,
   tcp: &mut opj_tcp_t,
   pi: &mut opj_pi_iterator_t,
   mut dest: &mut [u8],
   p_data_written: &mut OPJ_UINT32,
-  _cstr_info: *mut opj_codestream_info_t,
+  #[cfg_attr(not(feature = "c_api"), allow(unused_variables))]
+  cstr_info: *mut opj_codestream_info_t,
   mut p_t2_mode: J2K_T2_MODE,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -948,7 +950,8 @@ fn opj_t2_read_packet_header(
   p_is_data_present: &mut OPJ_BOOL,
   p_src_data: &mut [u8],
   p_data_read: &mut OPJ_UINT32,
-  _p_pack_info: *mut opj_packet_info_t,
+  #[cfg_attr(not(feature = "c_api"), allow(unused_variables))]
+  p_pack_info: *mut opj_packet_info_t,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
   /* loop */

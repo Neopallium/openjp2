@@ -1603,7 +1603,7 @@ pub(crate) fn opj_tcd_update_tile_data(
       } else {
         l_width = l_res.win_x1.wrapping_sub(l_res.win_x0) as usize;
         l_height = l_res.win_y1.wrapping_sub(l_res.win_y0) as usize;
-        l_stride = 0 as usize;
+        l_stride = 0usize;
         l_tilec.data_win.as_mut_slice(l_width.wrapping_mul(l_height))
       };
       if l_remaining != 0 {
