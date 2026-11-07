@@ -1176,7 +1176,6 @@ pub(crate) fn opj_t1_ht_decode_cblk(
   mut p_manager: &mut opj_event_mgr,
   mut _check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
-    let cblkdata: &[u8]; // fetched data from VLC bitstream
     let mut zero_bplanes: OPJ_UINT32 = 0;
     let mut num_passes: OPJ_UINT32 = 0;
     let mut lengths1: OPJ_UINT32 = 0;
@@ -1288,7 +1287,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         as OPJ_UINT32;
       i += 1;
     }
-    if cblk.numchunks > 1u32 || t1.mustuse_cblkdatabuffer != 0 {
+    let cblkdata: &[u8] = if cblk.numchunks > 1u32 || t1.mustuse_cblkdatabuffer != 0 {
       let mut i_0: OPJ_UINT32 = 0;
       /* Allocate temporary memory if needed */
       t1.grow_cblkdatabuffer(cblk_len as usize);
@@ -1309,15 +1308,15 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           i_0 += 1;
         }
       }
-      cblkdata = t1.cblkdatabuffer_ref();
+      t1.cblkdatabuffer_ref()
     } else if cblk.numchunks == 1u32 {
       let chunk = &cblk.chunks[0];
-      cblkdata = &src[chunk.data_offset..chunk.data_offset + chunk.len as usize];
+      &src[chunk.data_offset..chunk.data_offset + chunk.len as usize]
     } else {
       /* Not sure if that can happen in practice, but avoid Coverity to */
       /* think we will dereference a null cblkdta pointer */
       return 1i32;
-    }
+    };
     // The C code writes the decoded samples through a `OPJ_UINT32*` alias of the T1 data
     // buffer. Here we decode into a local u32 scratch and transfer it into the
     // Cell-based T1 buffer at the end of the function.
@@ -2080,7 +2079,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           // select the current stripe
           let mut cur_sig = if y & 0x4i32 != 0 { sigma1 } else { sigma2 };
           // the address of the data that needs updating
-          let mut dpp = (((y - 4i32) * stride)) as usize; // half the center of the bin
+          let mut dpp = ((y - 4i32) * stride) as usize; // half the center of the bin
           let mut half = (1u32) << p.wrapping_sub(2u32);
           let mut i_1: OPJ_INT32 = 0;
           i_1 = 0i32;
@@ -2435,7 +2434,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       if num_passes > 2u32 && (height & 3i32 == 1i32 || height & 3i32 == 2i32) {
         //do magref
         let mut cur_sig_1 = if height & 0x4i32 != 0 { sigma2 } else { sigma1 }; //reversed
-        let mut dpp_0 = (((height & 0xfffffci32) * stride)) as usize;
+        let mut dpp_0 = ((height & 0xfffffci32) * stride) as usize;
         let mut half_0 = (1u32) << p.wrapping_sub(2u32);
         let mut i_4: OPJ_INT32 = 0;
         i_4 = 0i32;
@@ -2453,11 +2452,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                 let mut sample_mask_2 = 0x11111111u32 & col_mask_2;
                 if sig_1 & sample_mask_2 != 0 {
                   let mut sym_3: OPJ_UINT32 = 0;
-                  assert!(ht_data[dp_2 + 0usize] != 0u32);
+                  assert!(ht_data[dp_2] != 0u32);
                   sym_3 = cwd_1 & 1u32;
-                  let fresh39 = &mut (ht_data[dp_2 + 0usize]);
+                  let fresh39 = &mut (ht_data[dp_2]);
                   *fresh39 ^= (1u32).wrapping_sub(sym_3) << p.wrapping_sub(1u32);
-                  let fresh40 = &mut (ht_data[dp_2 + 0usize]);
+                  let fresh40 = &mut (ht_data[dp_2]);
                   *fresh40 |= half_0;
                   cwd_1 >>= 1i32
                 }
@@ -2629,7 +2628,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   //scan 4 mbr
                   sample_mask_3 = 0x11111111u32 & col_mask_3;
                   if mbr_2 & sample_mask_3 != 0 {
-                    assert!(ht_data[dp_3 + 0usize] == 0u32);
+                    assert!(ht_data[dp_3] == 0u32);
                     if cwd_2 & 1u32 != 0 {
                       let mut t_12: OPJ_UINT32 = 0;
                       new_sig_0 |= sample_mask_3;
@@ -2697,8 +2696,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     //scan 4 signs
                     sample_mask_4 = 0x11111111u32 & col_mask_4;
                     if new_sig_0 & sample_mask_4 != 0 {
-                      assert!(ht_data[dp_4 + 0usize] == 0u32);
-                      let fresh53 = &mut (ht_data[dp_4 + 0usize]);
+                      assert!(ht_data[dp_4] == 0u32);
+                      let fresh53 = &mut (ht_data[dp_4]);
                       *fresh53 |= (cwd_2 & 1u32) << 31i32 | val_16;
                       cwd_2 >>= 1i32;
                       cnt_0 += 1;

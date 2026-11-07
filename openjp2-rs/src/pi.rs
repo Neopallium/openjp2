@@ -820,14 +820,14 @@ fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
               continue;
             }
             /* See ISO-15441. B.12.1.4 Position-component-resolution level-layer progression */
-            if !((pi.y as u64 % ((pi.comps[pi.compno as usize].dy as u64) << rpy)) == 0
-              || (pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy)))
+            if !(pi.y as u64).is_multiple_of((pi.comps[pi.compno as usize].dy as u64) << rpy)
+              && !(pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy))
             {
               current_block = 15512526488502093901;
               continue;
             }
-            if !((pi.x as u64 % ((pi.comps[pi.compno as usize].dx as u64) << rpx)) == 0
-              || (pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx)))
+            if !(pi.x as u64).is_multiple_of((pi.comps[pi.compno as usize].dx as u64) << rpx)
+              && !(pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx))
             {
               current_block = 15512526488502093901;
               continue;
@@ -1076,14 +1076,14 @@ fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
               continue;
             }
             /* See ISO-15441. B.12.1.5 Component-position-resolution level-layer progression */
-            if !((pi.y as u64 % ((pi.comps[pi.compno as usize].dy as u64) << rpy)) == 0
-              || (pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy)))
+            if !(pi.y as u64).is_multiple_of((pi.comps[pi.compno as usize].dy as u64) << rpy)
+              && !(pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy))
             {
               current_block = 3123434771885419771;
               continue;
             }
-            if !((pi.x as u64 % ((pi.comps[pi.compno as usize].dx as u64) << rpx)) == 0
-              || (pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx)))
+            if !(pi.x as u64).is_multiple_of((pi.comps[pi.compno as usize].dx as u64) << rpx)
+              && !(pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx))
             {
               current_block = 3123434771885419771;
               continue;
@@ -1229,7 +1229,7 @@ pub(crate) fn opj_get_encoding_parameters(
           *p_dy_min = opj_uint_min(*p_dy_min, l_dy as u32);
         }
         /* various calculations of extents */
-        l_level_no = (*l_tccp)
+        l_level_no = l_tccp
           .numresolutions
           .wrapping_sub(1u32)
           .wrapping_sub(resno);
@@ -1381,7 +1381,7 @@ pub(crate) fn opj_get_all_encoding_parameters(
               .wrapping_add(1u32)
               .wrapping_div((1u32) << l_pdx.wrapping_add(l_level_no))
         {
-          l_dx = (*l_img_comp)
+          l_dx = l_img_comp
             .dx
             .wrapping_mul((1u32) << l_pdx.wrapping_add(l_level_no));
           /* take the minimum size for l_dx for each comp and resolution*/
@@ -1394,7 +1394,7 @@ pub(crate) fn opj_get_all_encoding_parameters(
               .wrapping_add(1u32)
               .wrapping_div((1u32) << l_pdy.wrapping_add(l_level_no))
         {
-          l_dy = (*l_img_comp)
+          l_dy = l_img_comp
             .dy
             .wrapping_mul((1u32) << l_pdy.wrapping_add(l_level_no));
           *p_dy_min = opj_uint_min(*p_dy_min, l_dy)
@@ -2220,12 +2220,12 @@ pub(crate) fn opj_pi_create_encode(
                 tcp.tx0_t = tcp.txS;
                 tcp.ty0_t = tcp.tyS;
                 pi[pino as usize].poc.tx0 = tcp.tx0_t;
-                pi[pino as usize].poc.tx1 = (*tcp)
+                pi[pino as usize].poc.tx1 = tcp
                   .tx0_t
                   .wrapping_add(tcp.dx)
                   .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
                 pi[pino as usize].poc.ty0 = tcp.ty0_t;
-                pi[pino as usize].poc.ty1 = (*tcp)
+                pi[pino as usize].poc.ty1 = tcp
                   .ty0_t
                   .wrapping_add(tcp.dy)
                   .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
@@ -2260,12 +2260,12 @@ pub(crate) fn opj_pi_create_encode(
                 pi[pino as usize].poc.precno1 = tcp.prc_t
               }
               _ => {
-                pi[pino as usize].poc.tx0 = (*tcp)
+                pi[pino as usize].poc.tx0 = tcp
                   .tx0_t
                   .wrapping_sub(tcp.dx)
                   .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
                 pi[pino as usize].poc.tx1 = tcp.tx0_t;
-                pi[pino as usize].poc.ty0 = (*tcp)
+                pi[pino as usize].poc.ty0 = tcp
                   .ty0_t
                   .wrapping_sub(tcp.dy)
                   .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
@@ -2363,7 +2363,7 @@ pub(crate) fn opj_pi_create_encode(
                       if opj_pi_check_next_level(i - 1i32, &*tcp, prog) != 0 {
                         tcp.ty0_t = tcp.tyS;
                         pi[pino as usize].poc.ty0 = tcp.ty0_t;
-                        pi[pino as usize].poc.ty1 = (*tcp)
+                        pi[pino as usize].poc.ty1 = tcp
                           .ty0_t
                           .wrapping_add(tcp.dy)
                           .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
@@ -2376,7 +2376,7 @@ pub(crate) fn opj_pi_create_encode(
                       }
                     } else {
                       pi[pino as usize].poc.ty0 = tcp.ty0_t;
-                      pi[pino as usize].poc.ty1 = (*tcp)
+                      pi[pino as usize].poc.ty1 = tcp
                         .ty0_t
                         .wrapping_add(tcp.dy)
                         .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
@@ -2387,7 +2387,7 @@ pub(crate) fn opj_pi_create_encode(
                     if resetX == 1u32 {
                       tcp.tx0_t = tcp.txS;
                       pi[pino as usize].poc.tx0 = tcp.tx0_t;
-                      pi[pino as usize].poc.tx1 = (*tcp)
+                      pi[pino as usize].poc.tx1 = tcp
                         .tx0_t
                         .wrapping_add(tcp.dx)
                         .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
@@ -2395,7 +2395,7 @@ pub(crate) fn opj_pi_create_encode(
                     }
                   } else {
                     pi[pino as usize].poc.tx0 = tcp.tx0_t;
-                    pi[pino as usize].poc.tx1 = (*tcp)
+                    pi[pino as usize].poc.tx1 = tcp
                       .tx0_t
                       .wrapping_add(tcp.dx)
                       .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));

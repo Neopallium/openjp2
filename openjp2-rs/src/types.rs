@@ -343,10 +343,7 @@ impl<'a> ICCProfileRef<'a> {
   }
 
   pub fn is_cielab(&self) -> bool {
-    match self {
-      ICCProfileRef::CIELab(_) => true,
-      _ => false,
-    }
+    matches!(self, ICCProfileRef::CIELab(_))
   }
 
   pub fn len(&self) -> usize {
@@ -376,10 +373,7 @@ impl<'a> ICCProfileMut<'a> {
   }
 
   pub fn is_cielab(&self) -> bool {
-    match self {
-      ICCProfileMut::CIELab(_) => true,
-      _ => false,
-    }
+    matches!(self, ICCProfileMut::CIELab(_))
   }
 }
 
@@ -452,6 +446,7 @@ pub(crate) struct opj_j2k {
   pub dump_state: core::ffi::c_uint,
 }
 
+#[derive(Default)]
 pub(crate) struct opj_tcd {
   pub tp_pos: OPJ_INT32,
   pub tp_num: OPJ_UINT32,
@@ -469,26 +464,6 @@ pub(crate) struct opj_tcd {
   pub used_component: Vec<bool>,
 }
 
-impl Default for opj_tcd {
-  fn default() -> Self {
-    Self {
-      tp_pos: Default::default(),
-      tp_num: Default::default(),
-      cur_tp_num: Default::default(),
-      cur_totnum_tp: Default::default(),
-      cur_pino: Default::default(),
-      tcd_image: Default::default(),
-      tcd_tileno: Default::default(),
-      m_is_decoder: Default::default(),
-      win_x0: Default::default(),
-      win_y0: Default::default(),
-      win_x1: Default::default(),
-      win_y1: Default::default(),
-      whole_tile_decoding: Default::default(),
-      used_component: Vec::new(),
-    }
-  }
-}
 
 #[derive(Clone)]
 pub(crate) struct opj_tcp {
@@ -635,6 +610,7 @@ pub(crate) struct opj_ppx_struct {
 }
 pub(crate) type opj_ppx = opj_ppx_struct;
 
+#[derive(Default)]
 pub(crate) struct opj_cp {
   pub rsiz: OPJ_UINT16,
   pub tx0: OPJ_UINT32,
@@ -658,30 +634,6 @@ pub(crate) struct opj_cp {
 }
 pub(crate) type opj_cp_t = opj_cp;
 
-impl Default for opj_cp {
-  fn default() -> Self {
-    Self {
-      rsiz: 0,
-      tx0: 0,
-      ty0: 0,
-      tdx: 0,
-      tdy: 0,
-      comment: Vec::new(),
-      tw: 0,
-      th: 0,
-      ppm_markers: Vec::new(),
-      ppm_buffer: Vec::new(),
-      ppm_data_pos: 0,
-      ppm_len: 0,
-      tcps: Vec::new(),
-      m_specific_param: Default::default(),
-      strict: 0,
-      ppm: false,
-      m_is_decoder: false,
-      allow_different_bit_depth_sign: false,
-    }
-  }
-}
 
 /* This was a C union of the decoder-only and encoder-only coding parameters. A given
 `opj_cp` is either a decoder or an encoder one, so holding both costs a few bytes and
@@ -736,18 +688,11 @@ pub(crate) struct opj_decoding_param {
 }
 pub(crate) type opj_decoding_param_t = opj_decoding_param;
 
+#[derive(Default)]
 pub(crate) struct opj_tcd_image {
   pub tiles: opj_tcd_tile,
 }
 pub(crate) type opj_tcd_image_t = opj_tcd_image;
-
-impl Default for opj_tcd_image {
-  fn default() -> Self {
-    Self {
-      tiles: Default::default(),
-    }
-  }
-}
 
 pub(crate) struct opj_tcd_tile {
   pub x0: OPJ_INT32,
@@ -793,18 +738,14 @@ pub struct TileInfo {
 }
 
 /// Sample buffer of a tile component, backed by an owned Vec.
+#[derive(Default)]
 pub(crate) enum TileBuf {
+  #[default]
   Empty,
   Owned {
     data: Vec<OPJ_INT32>,
     bytes: OPJ_SIZE_T,
   },
-}
-
-impl Default for TileBuf {
-  fn default() -> Self {
-    TileBuf::Empty
-  }
 }
 
 impl TileBuf {
@@ -932,6 +873,7 @@ impl Default for opj_tcd_tilecomp {
   }
 }
 
+#[derive(Default)]
 pub(crate) struct opj_tcd_resolution {
   pub x0: OPJ_INT32,
   pub y0: OPJ_INT32,
@@ -948,24 +890,6 @@ pub(crate) struct opj_tcd_resolution {
 }
 pub(crate) type opj_tcd_resolution_t = opj_tcd_resolution;
 
-impl Default for opj_tcd_resolution {
-  fn default() -> Self {
-    Self {
-      x0: 0,
-      y0: 0,
-      x1: 0,
-      y1: 0,
-      pw: 0,
-      ph: 0,
-      numbands: 0,
-      bands: Default::default(),
-      win_x0: 0,
-      win_y0: 0,
-      win_x1: 0,
-      win_y1: 0,
-    }
-  }
-}
 
 pub(crate) struct opj_tcd_band {
   pub x0: OPJ_INT32,
@@ -1118,6 +1042,7 @@ impl CodeBlocks {
 }
 
 #[derive(Clone)]
+#[derive(Default)]
 pub(crate) struct opj_tcd_cblk_dec {
   pub segs: Vec<opj_tcd_seg_t>,
   pub chunks: Vec<opj_tcd_seg_data_chunk_t>,
@@ -1136,26 +1061,6 @@ pub(crate) struct opj_tcd_cblk_dec {
 }
 pub(crate) type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
 
-impl Default for opj_tcd_cblk_dec {
-  fn default() -> Self {
-    Self {
-      segs: Vec::new(),
-      chunks: Vec::new(),
-      x0: 0,
-      y0: 0,
-      x1: 0,
-      y1: 0,
-      Mb: 0,
-      numbps: 0,
-      numlenbits: 0,
-      numnewpasses: 0,
-      numsegs: 0,
-      real_num_segs: 0,
-      numchunks: 0,
-      decoded_data: Vec::new(),
-    }
-  }
-}
 
 #[derive(Copy, Clone)]
 pub(crate) struct opj_tcd_seg_data_chunk {
@@ -1177,6 +1082,7 @@ pub(crate) struct opj_tcd_seg {
 pub(crate) type opj_tcd_seg_t = opj_tcd_seg;
 
 #[derive(Clone)]
+#[derive(Default)]
 pub(crate) struct opj_tcd_cblk_enc {
   /// Compressed-data buffer. `buf[0]` is the sentinel byte the MQ coder reads through
   /// `data[-1]`; the payload the C code called `data` starts at `buf[1]`.
@@ -1214,25 +1120,6 @@ impl opj_tcd_cblk_enc {
   }
 }
 
-impl Default for opj_tcd_cblk_enc {
-  fn default() -> Self {
-    Self {
-      data: Vec::new(),
-      layers: Vec::new(),
-      passes: Vec::new(),
-      x0: 0,
-      y0: 0,
-      x1: 0,
-      y1: 0,
-      numbps: 0,
-      numlenbits: 0,
-      data_size: 0,
-      numpasses: 0,
-      numpassesinlayers: 0,
-      totalpasses: 0,
-    }
-  }
-}
 
 #[derive(Copy, Clone, Default)]
 pub(crate) struct opj_tcd_pass {

@@ -1309,7 +1309,7 @@ pub(crate) fn opj_dwt_calc_explicit_stepsizes(tccp: &mut opj_tccp_t, mut prec: O
           .wrapping_rem(3u32)
           .wrapping_add(1u32)
       };
-      level = (*tccp)
+      level = tccp
         .numresolutions
         .wrapping_sub(1u32)
         .wrapping_sub(resno);

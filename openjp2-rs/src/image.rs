@@ -242,8 +242,10 @@ impl CoreImage {
     cmptparms: &[opj_image_comptparm],
     clrspc: OPJ_COLOR_SPACE,
   ) -> Option<CoreImage> {
-    let mut image = CoreImage::default();
-    image.color_space = clrspc;
+    let mut image = CoreImage {
+      color_space: clrspc,
+      ..Default::default()
+    };
     if !image.alloc_comps(cmptparms.len() as u32) {
       return None;
     }
@@ -282,14 +284,16 @@ impl CoreImage {
   }
 
   pub fn take_comps(&mut self) -> CoreImage {
-    let mut image = CoreImage::default();
-    image.x0 = self.x0;
-    image.y0 = self.y0;
-    image.x1 = self.x1;
-    image.y1 = self.y1;
-    image.numcomps = self.numcomps;
-    image.color_space = self.color_space;
-    image.comps = core::mem::take(&mut self.comps);
+    let mut image = CoreImage {
+      x0: self.x0,
+      y0: self.y0,
+      x1: self.x1,
+      y1: self.y1,
+      numcomps: self.numcomps,
+      color_space: self.color_space,
+      comps: core::mem::take(&mut self.comps),
+      ..Default::default()
+    };
     self.numcomps = 0;
     image
   }

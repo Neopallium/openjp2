@@ -329,7 +329,7 @@ fn opj_jp2_write_cdef(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
     return false;
   };
   let len = info.len() as u32;
-  assert!(info.len() > 0);
+  assert!(!info.is_empty());
   let mut header = Jp2BoxHeader::new(Jp2BoxType::CDEF);
   header.length += 2 + (len * 6);
   header.write(buf);
@@ -964,7 +964,7 @@ fn opj_jp2_read_colr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
           .read_u32::<BigEndian>()
           .expect("Buffer should have enough data");
         icc_profile.write_all(&0u32.to_ne_bytes()).unwrap();
-      } else if buf.len() != 0 {
+      } else if !buf.is_empty() {
         icc_profile.write_all(&0x44454600u32.to_ne_bytes()).unwrap();
         event_msg!(
           p_manager,
@@ -1851,7 +1851,7 @@ fn opj_jp2_read_jp2h(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
   }
   jp2.jp2_img_state = JP2_IMG_STATE_NONE;
   /* iterate while remaining data */
-  while buf.len() > 0 {
+  while !buf.is_empty() {
     // Try reading box header.
     if let Err(e) = header.read(&mut buf, 0) {
       let msg = format!("Stream error while reading JP2 Header box: {}", e);

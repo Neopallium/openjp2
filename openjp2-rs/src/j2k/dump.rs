@@ -304,11 +304,11 @@ pub(crate) fn j2k_dump_image_comp_header<W: StringWriter>(
     out_stream,
     "{} dx={}, dy={}\n",
     tab,
-    (*comp_header).dx,
-    (*comp_header).dy,
+    comp_header.dx,
+    comp_header.dy,
   );
-  fprintf!(out_stream, "{} prec={}\n", tab, (*comp_header).prec);
-  fprintf!(out_stream, "{} sgnd={}\n", tab, (*comp_header).sgnd);
+  fprintf!(out_stream, "{} prec={}\n", tab, comp_header.prec);
+  fprintf!(out_stream, "{} sgnd={}\n", tab, comp_header.sgnd);
   if dev_dump_flag != 0 {
     fprintf!(out_stream, "}}\n");
   };

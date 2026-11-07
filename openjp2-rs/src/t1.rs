@@ -211,6 +211,7 @@ impl T1Data {
   }
 }
 
+#[derive(Default)]
 pub(crate) struct opj_t1 {
   pub mqc: opj_mqc_t,
   pub data: T1Data,
@@ -224,21 +225,6 @@ pub(crate) struct opj_t1 {
 }
 pub(crate) type opj_t1_t = opj_t1;
 
-impl Default for opj_t1 {
-  fn default() -> Self {
-    Self {
-      mqc: opj_mqc::default(),
-      data: T1Data::default(),
-      flags: T1Flags::default(),
-      w: 0,
-      h: 0,
-      datasize: 0,
-      encoder: 0,
-      mustuse_cblkdatabuffer: 0,
-      cblkdatabuffer: Vec::new(),
-    }
-  }
-}
 
 impl opj_t1 {
   fn new() -> Self {
@@ -1799,7 +1785,7 @@ fn opj_t1_allocate_buffers(
   for cell in &flags[base..base + stride] {
     cell.set(MAGIC);
   }
-  if h % 4 != 0 {
+  if !h.is_multiple_of(4) {
     let base = flags_height.wrapping_mul(flags_stride) as usize;
     let v = if h % 4 == 1 {
       T1_PI_1 | T1_PI_2 | T1_PI_3
