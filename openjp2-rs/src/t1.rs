@@ -2074,28 +2074,50 @@ pub(crate) fn opj_t1_decode_cblks(
   }
 
   /* Parallel decode: each job owns its codeblock (and the thread-local T1
-  state); the results land in cblk.decoded_data. */
+  state); the results land in cblk.decoded_data.  Small job sets stay
+  sequential: the rayon overhead would dominate. */
   let src_shared: &[u8] = &*src;
-  let ok_flags: Vec<OPJ_BOOL> = jobs
-    .par_iter_mut()
-    .map(|(bandno, band_x0, band_y0, band_stepsize, off_x, off_y, cblk)| {
-      opj_t1_clbl_decode_processor(
-        0,
-        *off_x,
-        *off_y,
-        src_shared,
-        tccp,
-        *bandno,
-        *band_x0,
-        *band_y0,
-        *band_stepsize,
-        cblk,
-        p_manager,
-        check_pterm,
-        0,
-      )
-    })
-    .collect();
+  let decode_job = |(bandno, band_x0, band_y0, band_stepsize, off_x, off_y): (
+    &OPJ_UINT32,
+    &OPJ_INT32,
+    &OPJ_INT32,
+    &OPJ_FLOAT32,
+    &OPJ_UINT32,
+    &OPJ_UINT32,
+  ),
+                    cblk: &mut opj_tcd_cblk_dec_t|
+   -> OPJ_BOOL {
+    opj_t1_clbl_decode_processor(
+      0,
+      *off_x,
+      *off_y,
+      src_shared,
+      tccp,
+      *bandno,
+      *band_x0,
+      *band_y0,
+      *band_stepsize,
+      cblk,
+      p_manager,
+      check_pterm,
+      0,
+    )
+  };
+  let ok_flags: Vec<OPJ_BOOL> = if jobs.len() >= 8 {
+    jobs
+      .par_iter_mut()
+      .map(|(bandno, band_x0, band_y0, band_stepsize, off_x, off_y, cblk)| {
+        decode_job((bandno, band_x0, band_y0, band_stepsize, off_x, off_y), cblk)
+      })
+      .collect()
+  } else {
+    jobs
+      .iter_mut()
+      .map(|(bandno, band_x0, band_y0, band_stepsize, off_x, off_y, cblk)| {
+        decode_job((bandno, band_x0, band_y0, band_stepsize, off_x, off_y), cblk)
+      })
+      .collect()
+  };
   if ok_flags.contains(&0) {
     *pret = 0;
     return;
@@ -2551,30 +2573,54 @@ pub(crate) fn opj_t1_encode_cblks(
         }
       }
     }
-    /* Parallel encode: each job owns its codeblock; tile_data is read-only. */
-    let results: Vec<(OPJ_BOOL, OPJ_FLOAT64)> = jobs
-      .par_iter_mut()
-      .map(|(resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize, cblk)| {
-        opj_t1_cblk_encode_processor(
-          compno,
-          *resno,
-          *off_x,
-          *off_y,
-          tile_data_shared,
-          tile_w,
-          tile_numcomps,
-          *nrr,
-          *bandno,
-          *band_x0,
-          *band_y0,
-          *band_stepsize,
-          cblk,
-          tccp,
-          mct_norms,
-          mct_numcomps,
-        )
-      })
-      .collect();
+    /* Parallel encode: each job owns its codeblock; tile_data is read-only.
+    Small job sets stay sequential (rayon overhead would dominate). */
+    let encode_job = |(resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize): (
+      &OPJ_UINT32,
+      &OPJ_UINT32,
+      &OPJ_UINT32,
+      &OPJ_UINT32,
+      &OPJ_UINT32,
+      &OPJ_INT32,
+      &OPJ_INT32,
+      &OPJ_FLOAT32,
+    ),
+                     cblk: &mut opj_tcd_cblk_enc_t|
+     -> (OPJ_BOOL, OPJ_FLOAT64) {
+      opj_t1_cblk_encode_processor(
+        compno,
+        *resno,
+        *off_x,
+        *off_y,
+        tile_data_shared,
+        tile_w,
+        tile_numcomps,
+        *nrr,
+        *bandno,
+        *band_x0,
+        *band_y0,
+        *band_stepsize,
+        cblk,
+        tccp,
+        mct_norms,
+        mct_numcomps,
+      )
+    };
+    let results: Vec<(OPJ_BOOL, OPJ_FLOAT64)> = if jobs.len() >= 8 {
+      jobs
+        .par_iter_mut()
+        .map(|(resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize, cblk)| {
+          encode_job((resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize), cblk)
+        })
+        .collect()
+    } else {
+      jobs
+        .iter_mut()
+        .map(|(resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize, cblk)| {
+          encode_job((resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize), cblk)
+        })
+        .collect()
+    };
     let mut cumdisto: OPJ_FLOAT64 = 0.0;
     for (ok, cumwmsedec) in results {
       if ok == 0 {
