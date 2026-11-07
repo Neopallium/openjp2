@@ -2002,29 +2002,34 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp:
   // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
   let img_comps = &image.comps;
-  let mut compno: OPJ_UINT32 = 0;
-  let mut l_width: OPJ_UINT32 = 0;
-  let mut l_height: OPJ_UINT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
-  let mut l_min: OPJ_INT32 = 0;
-  let mut l_max: OPJ_INT32 = 0;
-  let mut l_stride: OPJ_UINT32 = 0;
-  compno = 0 as OPJ_UINT32;
-  while compno < p_tcd.tcd_image.tiles.numcomps {
-    if p_tcd.used_component(compno) {
-      let l_tile_comp = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
-      let l_img_comp = &img_comps[compno as usize];
-      let l_tccp = &tccps[compno as usize];
+  let whole_tile = p_tcd.whole_tile_decoding;
+  let used: Vec<bool> = (0..p_tcd.tcd_image.tiles.numcomps)
+    .map(|c| p_tcd.used_component(c))
+    .collect();
+  /* Parallel across components (each shifts its own buffer). */
+  p_tcd
+    .tcd_image
+    .tiles
+    .comps
+    .par_iter_mut()
+    .enumerate()
+    .for_each(|(compno, l_tile_comp)| {
+      if !used[compno] {
+        return;
+      }
+      let l_img_comp = &img_comps[compno];
+      let l_tccp = &tccps[compno];
       let l_res = &l_tile_comp.resolutions[l_img_comp.resno_decoded as usize];
-      if p_tcd.whole_tile_decoding == 0 {
-        l_width = l_res.win_x1.wrapping_sub(l_res.win_x0);
-        l_height = l_res.win_y1.wrapping_sub(l_res.win_y0);
-        l_stride = 0 as OPJ_UINT32;
+      let (l_width, l_height, l_stride) = if whole_tile == 0 {
+        (
+          l_res.win_x1.wrapping_sub(l_res.win_x0),
+          l_res.win_y1.wrapping_sub(l_res.win_y0),
+          0 as OPJ_UINT32,
+        )
       } else {
-        l_width = (l_res.x1 - l_res.x0) as OPJ_UINT32;
-        l_height = (l_res.y1 - l_res.y0) as OPJ_UINT32;
-        l_stride = ((l_tile_comp.resolutions
+        let l_width = (l_res.x1 - l_res.x0) as OPJ_UINT32;
+        let l_height = (l_res.y1 - l_res.y0) as OPJ_UINT32;
+        let l_stride = ((l_tile_comp.resolutions
           [(l_tile_comp.minimum_num_resolutions.wrapping_sub(1u32)) as usize]
         .x1
           - l_tile_comp.resolutions
@@ -2036,42 +2041,37 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp:
             || l_width.wrapping_add(l_stride) as usize
               <= l_tile_comp.data.bytes().wrapping_div(l_height as usize)
         );
-        /*MUPDF*/
-      }
+        (l_width, l_height, l_stride)
+      };
 
       if l_width != 0 && l_height != 0 {
         let row_stride = (l_width.wrapping_add(l_stride)) as usize;
-        let data = if p_tcd.whole_tile_decoding == 0 {
+        let data = if whole_tile == 0 {
           l_tile_comp.data_win.as_mut_slice(row_stride * (l_height as usize))
         } else {
           l_tile_comp.data.as_mut_slice(row_stride * (l_height as usize))
         };
-        if l_img_comp.sgnd != 0 {
-          l_min = -((1i32) << l_img_comp.prec.wrapping_sub(1u32));
-          l_max = ((1i32) << l_img_comp.prec.wrapping_sub(1u32)) - 1i32
+        let (l_min, l_max) = if l_img_comp.sgnd != 0 {
+          (
+            -((1i32) << l_img_comp.prec.wrapping_sub(1u32)),
+            ((1i32) << l_img_comp.prec.wrapping_sub(1u32)) - 1i32,
+          )
         } else {
-          l_min = 0i32;
-          l_max = ((1u32) << l_img_comp.prec).wrapping_sub(1u32) as OPJ_INT32
-        }
+          (0i32, ((1u32) << l_img_comp.prec).wrapping_sub(1u32) as OPJ_INT32)
+        };
 
         if l_tccp.qmfbid == 1u32 {
-          j = 0 as OPJ_UINT32;
-          while j < l_height {
-            i = 0 as OPJ_UINT32;
-            while i < l_width {
+          for j in 0..l_height as usize {
+            for i in 0..l_width as usize {
               /* TODO: do addition on int64 ? */
-              let idx = (j as usize) * row_stride + (i as usize);
+              let idx = j * row_stride + i;
               data[idx] = opj_int_clamp(data[idx] + l_tccp.m_dc_level_shift, l_min, l_max);
-              i += 1;
             }
-            j += 1;
           }
         } else {
-          j = 0 as OPJ_UINT32;
-          while j < l_height {
-            i = 0 as OPJ_UINT32;
-            while i < l_width {
-              let idx = (j as usize) * row_stride + (i as usize);
+          for j in 0..l_height as usize {
+            for i in 0..l_width as usize {
+              let idx = j * row_stride + i;
               let l_value = f32::from_bits(data[idx] as OPJ_UINT32);
               if l_value > 2147483647 as core::ffi::c_float {
                 data[idx] = l_max
@@ -2086,17 +2086,14 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp:
                   l_max as OPJ_INT64,
                 ) as OPJ_INT32
               }
-              i += 1;
             }
-            j += 1;
           }
         }
       }
-    }
-    compno = compno.wrapping_add(1);
-  }
+    });
   1i32
 }
+
 
 pub(crate) fn opj_tcd_get_encoder_input_buffer_size(
   mut p_tcd: &mut opj_tcd,
