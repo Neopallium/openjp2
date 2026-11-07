@@ -1,4 +1,5 @@
 use super::consts::*;
+use rayon::prelude::*;
 use super::dwt::*;
 use super::event::*;
 use super::ht_dec::*;
@@ -1810,67 +1811,38 @@ fn opj_t1_allocate_buffers(
 #[allow(clippy::too_many_arguments)]
 fn opj_t1_clbl_decode_processor(
   _resno: OPJ_UINT32,
-  off_x: OPJ_UINT32,
-  off_y: OPJ_UINT32,
-  tile_data: &mut [OPJ_INT32],
-  src: &mut [u8],
-  tile_w: OPJ_UINT32,
-  whole_tile_decoding: OPJ_BOOL,
+  _off_x: OPJ_UINT32,
+  _off_y: OPJ_UINT32,
+  src: &[u8],
   tccp: &opj_tccp_t,
   bandno: OPJ_UINT32,
-  band_x0: OPJ_INT32,
-  band_y0: OPJ_INT32,
+  _band_x0: OPJ_INT32,
+  _band_y0: OPJ_INT32,
   band_stepsize: OPJ_FLOAT32,
   cblk: &mut opj_tcd_cblk_dec_t,
-  pret: &mut OPJ_BOOL,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &opj_event_mgr,
   check_pterm: OPJ_BOOL,
   mustuse_cblkdatabuffer: OPJ_BOOL,
-) {
+) -> OPJ_BOOL {
   let mut cblk_w: OPJ_UINT32 = 0;
   let mut cblk_h: OPJ_UINT32 = 0;
-  let mut x: OPJ_INT32 = 0;
-  let mut y: OPJ_INT32 = 0;
   let mut i: OPJ_UINT32 = 0;
   let mut j: OPJ_UINT32 = 0;
-  if whole_tile_decoding == 0 {
-    cblk_w = (cblk.x1 - cblk.x0) as OPJ_UINT32;
-    cblk_h = (cblk.y1 - cblk.y0) as OPJ_UINT32;
-    /* Zero-init required */
-    cblk.decoded_data = vec![Cell::new(0); cblk_w as usize * cblk_h as usize];
-  } else if !cblk.decoded_data.is_empty() {
-    /* Not sure if that code path can happen, but better be */
-    /* safe than sorry */
-    cblk.decoded_data = Vec::new();
-  }
-  if *pret == 0 {
-    return;
-  }
+  cblk_w = (cblk.x1 - cblk.x0) as OPJ_UINT32;
+  cblk_h = (cblk.y1 - cblk.y0) as OPJ_UINT32;
+  /* Always decode into the per-codeblock buffer: the parallel decode pass
+  writes here, and the sequential write-back (whole-tile) or the window
+  path (partial) consumes it afterwards. */
+  cblk.decoded_data = vec![Cell::new(0); cblk_w as usize * cblk_h as usize];
 
   // Use thread local t1 instance.
-  T1.with(|l_t1| {
+  let ret = T1.with(|l_t1| {
     let mut ref_t1 = l_t1.borrow_mut();
     let t1 = &mut *ref_t1;
 
     t1.mustuse_cblkdatabuffer = mustuse_cblkdatabuffer;
     if tccp.cblksty & J2K_CCP_CBLKSTY_HT != 0 {
-      if 0i32
-        == opj_t1_ht_decode_cblk(
-          t1,
-          cblk,
-          src,
-          bandno,
-          tccp.roishift as OPJ_UINT32,
-          tccp.cblksty,
-          p_manager,
-          check_pterm,
-        )
-      {
-        *pret = 0i32;
-        return;
-      }
-    } else if 0i32
-      == opj_t1_decode_cblk(
+      opj_t1_ht_decode_cblk(
         t1,
         cblk,
         src,
@@ -1880,123 +1852,103 @@ fn opj_t1_clbl_decode_processor(
         p_manager,
         check_pterm,
       )
-    {
-      *pret = 0i32;
-      return;
-    }
-    x = cblk.x0 - band_x0;
-    y = cblk.y0 - band_y0;
-    x += off_x as OPJ_INT32;
-    y += off_y as OPJ_INT32;
-    cblk_w = t1.w;
-    cblk_h = t1.h;
-    if tccp.roishift != 0 {
-      let thresh = if tccp.roishift >= 31i32 {
-        i32::MAX
-      } else {
-        (1i32) << tccp.roishift
-      };
-      j = 0 as OPJ_UINT32;
-      while j < cblk_h {
-        i = 0 as OPJ_UINT32;
-        while i < cblk_w {
-          let idx = j.wrapping_mul(cblk_w).wrapping_add(i) as usize;
-          if tccp.roishift >= 31i32 {
-            if !cblk.decoded_data.is_empty() {
-              cblk.decoded_data[idx].set(0);
-            } else {
-              t1.data.as_slice()[idx].set(0);
-            }
-          } else if !cblk.decoded_data.is_empty() {
-            let mut val = cblk.decoded_data[idx].get();
-            let mut mag = val.abs();
-            if mag >= thresh {
-              mag >>= tccp.roishift;
-              val = if val < 0i32 { -mag } else { mag };
-            }
-            cblk.decoded_data[idx].set(val);
-          } else {
-            let mut val = t1.data.as_slice()[idx].get();
-            let mut mag = val.abs();
-            if mag >= thresh {
-              mag >>= tccp.roishift;
-              val = if val < 0i32 { -mag } else { mag };
-            }
-            t1.data.as_slice()[idx].set(val);
-          }
-          i += 1
-        }
-        j += 1
-      }
-    }
-    /* Both can be non NULL if for example decoding a full tile and then */
-    /* partially a tile. In which case partial decoding should be the */
-    /* priority */
-    assert!(!cblk.decoded_data.is_empty() || !tile_data.is_empty()); /* if (tccp->qmfbid == 0) */
-    if !cblk.decoded_data.is_empty() {
-      let cblk_size = cblk_w.wrapping_mul(cblk_h); /* resno */
-      if tccp.qmfbid == 1 {
-        i = 0 as OPJ_UINT32;
-        while i < cblk_size {
-          let idx = i as usize;
-          cblk.decoded_data[idx].set(cblk.decoded_data[idx].get() / 2i32);
-          i += 1
-        }
-      } else {
-        let stepsize = 0.5f32 * band_stepsize;
-        i = 0 as OPJ_UINT32;
-        while i < cblk_size {
-          let idx = i as usize;
-          let tmp = cblk.decoded_data[idx].get() as OPJ_FLOAT32 * stepsize;
-          // C reinterprets the f32 bits as an i32 via memcpy.
-          cblk.decoded_data[idx].set(tmp.to_bits() as OPJ_INT32);
-          i += 1
-        }
-      }
-    } else if tccp.qmfbid == 1 {
-      let mut j = 0 as OPJ_UINT32;
-      while j < cblk_h {
-        i = 0 as OPJ_UINT32;
-        while i < cblk_w & !(3u32) {
-          let base = (y as OPJ_UINT32 + j).wrapping_mul(tile_w) + (x as OPJ_UINT32) + i;
-          let src = j.wrapping_mul(cblk_w).wrapping_add(i) as usize;
-          let (tmp0, tmp1, tmp2, tmp3) = (
-            t1.data.as_slice()[src].get(),
-            t1.data.as_slice()[src + 1].get(),
-            t1.data.as_slice()[src + 2].get(),
-            t1.data.as_slice()[src + 3].get(),
-          );
-          tile_data[base as usize] = tmp0 / 2i32;
-          tile_data[base as usize + 1] = tmp1 / 2i32;
-          tile_data[base as usize + 2] = tmp2 / 2i32;
-          tile_data[base as usize + 3] = tmp3 / 2i32;
-          i = (i as core::ffi::c_uint).wrapping_add(4u32)
-        }
-        while i < cblk_w {
-          let base = (y as OPJ_UINT32 + j).wrapping_mul(tile_w) + (x as OPJ_UINT32) + i;
-          let src = j.wrapping_mul(cblk_w).wrapping_add(i) as usize;
-          tile_data[base as usize] = t1.data.as_slice()[src].get() / 2i32;
-          i += 1
-        }
-        j += 1
-      }
     } else {
-      let stepsize_0 = 0.5f32 * band_stepsize;
-      let mut j = 0 as OPJ_UINT32;
-      while j < cblk_h {
-        i = 0 as OPJ_UINT32;
-        while i < cblk_w {
-          let base = (y as OPJ_UINT32 + j).wrapping_mul(tile_w) + (x as OPJ_UINT32) + i;
-          let src = j.wrapping_mul(cblk_w).wrapping_add(i) as usize;
-          let tmp_1 = t1.data.as_slice()[src].get() as OPJ_FLOAT32 * stepsize_0;
-          tile_data[base as usize] = tmp_1.to_bits() as OPJ_INT32;
-          i += 1
-        }
-        j += 1
-      }
+      opj_t1_decode_cblk(
+        t1,
+        cblk,
+        src,
+        bandno,
+        tccp.roishift as OPJ_UINT32,
+        tccp.cblksty,
+        p_manager,
+        check_pterm,
+      )
     }
-  })
+  });
+  if ret == 0 {
+    return 0i32;
+  }
+  cblk_w = (cblk.x1 - cblk.x0) as OPJ_UINT32;
+  cblk_h = (cblk.y1 - cblk.y0) as OPJ_UINT32;
+  if tccp.roishift != 0 {
+    let thresh = if tccp.roishift >= 31i32 {
+      i32::MAX
+    } else {
+      (1i32) << tccp.roishift
+    };
+    j = 0 as OPJ_UINT32;
+    while j < cblk_h {
+      i = 0 as OPJ_UINT32;
+      while i < cblk_w {
+        let idx = j.wrapping_mul(cblk_w).wrapping_add(i) as usize;
+        if tccp.roishift >= 31i32 {
+          cblk.decoded_data[idx].set(0);
+        } else {
+          let mut val = cblk.decoded_data[idx].get();
+          let mut mag = val.abs();
+          if mag >= thresh {
+            mag >>= tccp.roishift;
+            val = if val < 0i32 { -mag } else { mag };
+          }
+          cblk.decoded_data[idx].set(val);
+        }
+        i += 1
+      }
+      j += 1
+    }
+  }
+  let cblk_size = cblk_w.wrapping_mul(cblk_h);
+  if tccp.qmfbid == 1 {
+    i = 0 as OPJ_UINT32;
+    while i < cblk_size {
+      let idx = i as usize;
+      cblk.decoded_data[idx].set(cblk.decoded_data[idx].get() / 2i32);
+      i += 1
+    }
+  } else {
+    let stepsize = 0.5f32 * band_stepsize;
+    i = 0 as OPJ_UINT32;
+    while i < cblk_size {
+      let idx = i as usize;
+      let tmp = cblk.decoded_data[idx].get() as OPJ_FLOAT32 * stepsize;
+      // C reinterprets the f32 bits as an i32 via memcpy.
+      cblk.decoded_data[idx].set(tmp.to_bits() as OPJ_INT32);
+      i += 1
+    }
+  }
+  1i32
 }
+
+/// Copies a decoded codeblock into its rectangle of the tile buffer
+/// (whole-tile decoding only; the window path keeps `cblk.decoded_data`).
+fn opj_t1_cblk_writeback(
+  cblk: &opj_tcd_cblk_dec_t,
+  off_x: OPJ_UINT32,
+  off_y: OPJ_UINT32,
+  band_x0: OPJ_INT32,
+  band_y0: OPJ_INT32,
+  tile_data: &mut [OPJ_INT32],
+  tile_w: OPJ_UINT32,
+) {
+  let cblk_w = (cblk.x1 - cblk.x0) as OPJ_UINT32;
+  let cblk_h = (cblk.y1 - cblk.y0) as OPJ_UINT32;
+  if cblk.decoded_data.is_empty() {
+    return;
+  }
+  let x = (cblk.x0 - band_x0) as OPJ_UINT32 + off_x;
+  let y = (cblk.y0 - band_y0) as OPJ_UINT32 + off_y;
+  let mut j = 0 as OPJ_UINT32;
+  while j < cblk_h {
+    let base = (y + j).wrapping_mul(tile_w) + x;
+    let src = j.wrapping_mul(cblk_w) as usize;
+    for i in 0..cblk_w as usize {
+      tile_data[base as usize + i] = cblk.decoded_data[src + i].get();
+    }
+    j += 1
+  }
+}
+
+
 pub(crate) fn opj_t1_decode_cblks(
   tilec_view: &TcdTilecView,
   _tccps: &[opj_tccp_t],
@@ -2004,79 +1956,83 @@ pub(crate) fn opj_t1_decode_cblks(
   pret: &mut OPJ_BOOL,
   tilec: &mut opj_tcd_tilecomp_t,
   tccp: &opj_tccp_t,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &opj_event_mgr,
   check_pterm: OPJ_BOOL,
   src: &mut [u8],
 ) {
-  let mut resno: OPJ_UINT32 = 0;
-  let mut bandno: OPJ_UINT32 = 0;
-  let mut precno: OPJ_UINT32 = 0;
-  let mut cblkno: OPJ_UINT32 = 0;
   /* Snapshot the tile geometry (values), so the walks below can borrow
   tilec.resolutions without aliasing the data buffer. */
   let tile_w = (tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].x1
     - tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].x0) as usize;
   let tile_h = (tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].y1
     - tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].y0) as usize;
-  /* The write-back into the tile buffer only happens for whole-tile
-  decoding (partial decoding targets cblk.decoded_data); for the window
-  path the data buffer may not cover the full resolution geometry. */
-  let tile_data = if tilec_view.whole_tile_decoding != 0 {
-    tilec.data.as_mut_slice(tile_w.wrapping_mul(tile_h))
-  } else {
-    &mut []
-  };
-  resno = 0 as OPJ_UINT32;
-  while resno < tilec.minimum_num_resolutions {
-    /* The previous (coarser) resolution's extents feed the band offsets;
-    read them before the mutable walk starts. */
-    let (prev_w, prev_h) = if resno > 0 {
-      let p = &tilec.resolutions[(resno - 1) as usize];
-      (p.x1 - p.x0, p.y1 - p.y0)
-    } else {
-      (0, 0)
-    };
-    let res = &mut tilec.resolutions[resno as usize];
-    bandno = 0 as OPJ_UINT32;
-    while bandno < res.numbands {
+  /* Collect the decode jobs: every codeblock whose area is of interest.
+  The per-codeblock buffers carry the decoded coefficients so the decode
+  can run in parallel and the tile-buffer write-back stays sequential. */
+  let mut jobs: Vec<(OPJ_UINT32, OPJ_INT32, OPJ_INT32, OPJ_FLOAT32, OPJ_UINT32, OPJ_UINT32, &mut opj_tcd_cblk_dec_t)> =
+    Vec::new();
+
+  /* The previous (coarser) resolution's extents feed the band offsets;
+  snapshot them first so the collection walk only needs `&mut`. */
+  let prev_dims: Vec<(OPJ_INT32, OPJ_INT32)> = (0..tilec.minimum_num_resolutions)
+    .map(|r| {
+      if r > 0 {
+        let p = &tilec.resolutions[(r - 1) as usize];
+        (p.x1 - p.x0, p.y1 - p.y0)
+      } else {
+        (0, 0)
+      }
+    })
+    .collect();
+  for (resno, res) in tilec
+    .resolutions
+    .iter_mut()
+    .enumerate()
+    .take(tilec.minimum_num_resolutions as usize)
+  {
+    let (prev_w, prev_h) = prev_dims[resno];
+    for band in res.bands.iter_mut().take(res.numbands as usize) {
       /* Per-band offsets (band 0 is the LL band: no offset). */
-      let bandno_val = res.bands[bandno as usize].bandno;
+      let bandno_val = band.bandno;
+      let band_x0 = band.x0;
+      let band_y0 = band.y0;
+      let band_stepsize = band.stepsize;
       let off_x = if bandno_val & 1 != 0 { prev_w } else { 0 };
       let off_y = if bandno_val & 2 != 0 { prev_h } else { 0 };
-      let band = &mut res.bands[bandno as usize];
-      precno = 0 as OPJ_UINT32;
-      while precno < res.pw.wrapping_mul(res.ph) {
-        let precinct = &mut band.precincts[precno as usize];
+      for precinct in band.precincts.iter_mut().take((res.pw.wrapping_mul(res.ph)) as usize) {
         if opj_tcd_is_subband_area_of_interest(
           tilec_view,
           tccp,
           image_comps,
-          resno,
-          band.bandno,
+          resno as OPJ_UINT32,
+          bandno_val,
           precinct.x0 as OPJ_UINT32,
           precinct.y0 as OPJ_UINT32,
           precinct.x1 as OPJ_UINT32,
           precinct.y1 as OPJ_UINT32,
         ) == 0
         {
-          cblkno = 0 as OPJ_UINT32;
-          while cblkno < precinct.cw.wrapping_mul(precinct.ch) {
-            let cblk = precinct.cblks.dec_mut(cblkno as usize);
-            if !cblk.decoded_data.is_empty() {
-              cblk.decoded_data = Vec::new();
+          if let CodeBlocks::Dec(cblks) = &mut precinct.cblks {
+            for cblk in cblks
+              .iter_mut()
+              .take((precinct.cw.wrapping_mul(precinct.ch)) as usize)
+            {
+              if !cblk.decoded_data.is_empty() {
+                cblk.decoded_data = Vec::new();
+              }
             }
-            cblkno += 1;
           }
-        } else {
-          cblkno = 0 as OPJ_UINT32;
-          while cblkno < precinct.cw.wrapping_mul(precinct.ch) {
-            let cblk = precinct.cblks.dec_mut(cblkno as usize);
+        } else if let CodeBlocks::Dec(cblks) = &mut precinct.cblks {
+          for cblk in cblks
+            .iter_mut()
+            .take((precinct.cw.wrapping_mul(precinct.ch)) as usize)
+          {
             if opj_tcd_is_subband_area_of_interest(
               tilec_view,
               tccp,
               image_comps,
-              resno,
-              band.bandno,
+              resno as OPJ_UINT32,
+              bandno_val,
               cblk.x0 as OPJ_UINT32,
               cblk.y0 as OPJ_UINT32,
               cblk.x1 as OPJ_UINT32,
@@ -2096,51 +2052,72 @@ pub(crate) fn opj_t1_decode_cblks(
                 }
               }
               if do_decode {
-                opj_t1_clbl_decode_processor(
-                  resno,
+                jobs.push((
+                  bandno_val,
+                  band_x0,
+                  band_y0,
+                  band_stepsize,
                   off_x as OPJ_UINT32,
                   off_y as OPJ_UINT32,
-                  tile_data,
-                  src,
-                  tile_w as OPJ_UINT32,
-                  tilec_view.whole_tile_decoding,
-                  tccp,
-                  band.bandno,
-                  band.x0,
-                  band.y0,
-                  band.stepsize,
                   cblk,
-                  pret,
-                  p_manager,
-                  check_pterm,
-                  0,
-                );
-                if *pret == 0 {
-                  return;
-                }
+                ));
               }
             }
-            cblkno += 1;
           }
         }
-        precno += 1;
-        /* bandno */
-        /* precno */
-        /* cblkno */
       }
-      bandno += 1;
     }
-    resno += 1;
+  }
+
+  if *pret == 0 {
+    return;
+  }
+
+  /* Parallel decode: each job owns its codeblock (and the thread-local T1
+  state); the results land in cblk.decoded_data. */
+  let src_shared: &[u8] = &*src;
+  let ok_flags: Vec<OPJ_BOOL> = jobs
+    .par_iter_mut()
+    .map(|(bandno, band_x0, band_y0, band_stepsize, off_x, off_y, cblk)| {
+      opj_t1_clbl_decode_processor(
+        0,
+        *off_x,
+        *off_y,
+        src_shared,
+        tccp,
+        *bandno,
+        *band_x0,
+        *band_y0,
+        *band_stepsize,
+        cblk,
+        p_manager,
+        check_pterm,
+        0,
+      )
+    })
+    .collect();
+  if ok_flags.contains(&0) {
+    *pret = 0;
+    return;
+  }
+
+  /* Sequential write-back into the tile buffer (whole-tile decoding). */
+  if tilec_view.whole_tile_decoding != 0 {
+    let tile_data = tilec.data.as_mut_slice(tile_w.wrapping_mul(tile_h));
+    for (_bandno, band_x0, band_y0, _band_stepsize, off_x, off_y, cblk) in jobs {
+      opj_t1_cblk_writeback(cblk, off_x, off_y, band_x0, band_y0, tile_data, tile_w as OPJ_UINT32);
+    }
   }
 }
+
 fn opj_t1_decode_cblk(
   t1: &mut opj_t1_t,
   cblk: &mut opj_tcd_cblk_dec_t,
-  src: &mut [u8],
+  src: &[u8],
   mut orient: OPJ_UINT32,
   mut roishift: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_manager: &opj_event_mgr,
   mut check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
     let mut bpno_plus_one: OPJ_INT32 = 0; /* BYPASS mode */

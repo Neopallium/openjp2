@@ -1169,11 +1169,11 @@ fn opj_t1_allocate_buffers(
 pub(crate) fn opj_t1_ht_decode_cblk(
   mut t1: &mut opj_t1_t,
   cblk: &mut opj_tcd_cblk_dec_t,
-  src: &mut [u8],
+  src: &[u8],
   mut _orient: OPJ_UINT32,
   mut roishift: OPJ_UINT32,
   mut cblksty: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_manager: &opj_event_mgr,
   mut _check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
     let mut zero_bplanes: OPJ_UINT32 = 0;
@@ -2784,9 +2784,16 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       y_1 += 1
     }
 
-    /* Transfer the decoded samples into the Cell-based T1 data buffer. */
-    for (cell, &v) in t1.data.as_slice().iter().zip(ht_data.iter()) {
-      cell.set(v as i32);
+    /* Transfer the decoded samples: into the codeblock's own buffer when the
+    parallel decode path uses it, otherwise into the Cell-based T1 data buffer. */
+    if !cblk.decoded_data.is_empty() {
+      for (cell, &v) in cblk.decoded_data.iter().zip(ht_data.iter()) {
+        cell.set(v as i32);
+      }
+    } else {
+      for (cell, &v) in t1.data.as_slice().iter().zip(ht_data.iter()) {
+        cell.set(v as i32);
+      }
     }
     1i32
 }

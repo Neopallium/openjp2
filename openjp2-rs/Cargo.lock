@@ -540,6 +540,7 @@ dependencies = [
  "byteorder",
  "libc",
  "log",
+ "rayon",
  "smallvec",
 ]
 

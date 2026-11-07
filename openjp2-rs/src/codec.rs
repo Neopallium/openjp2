@@ -94,17 +94,17 @@ impl Codec {
     })
   }
 
-  pub fn set_info_handler(&mut self, handler: impl FnMut(&str) + 'static) -> OPJ_BOOL {
+  pub fn set_info_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) -> OPJ_BOOL {
     self.m_event_mgr.set_info_handler(handler);
     1i32
   }
 
-  pub fn set_warning_handler(&mut self, handler: impl FnMut(&str) + 'static) -> OPJ_BOOL {
+  pub fn set_warning_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) -> OPJ_BOOL {
     self.m_event_mgr.set_warning_handler(handler);
     1i32
   }
 
-  pub fn set_error_handler(&mut self, handler: impl FnMut(&str) + 'static) -> OPJ_BOOL {
+  pub fn set_error_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) -> OPJ_BOOL {
     self.m_event_mgr.set_error_handler(handler);
     1i32
   }

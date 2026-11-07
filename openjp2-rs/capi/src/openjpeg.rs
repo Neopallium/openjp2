@@ -50,15 +50,26 @@ pub type opj_msg_callback_fn =
   unsafe extern "C" fn(_: *const core::ffi::c_char, _: *mut core::ffi::c_void) -> ();
 pub type opj_msg_callback = Option<opj_msg_callback_fn>;
 
+/// A `Send` carrier for the C callback's user-data pointer: moving the address
+/// across threads is fine; using it is the C caller's responsibility.
+struct SendPtr(*mut core::ffi::c_void);
+// SAFETY: the pointer is only passed through to the C callback; the core's event
+// manager never dereferences it.
+unsafe impl Send for SendPtr {}
+
 /// Wrap a C callback + user data in the core's `FnMut(&str)` sink.
-fn wrap_callback(callback: opj_msg_callback, user_data: *mut core::ffi::c_void) -> impl FnMut(&str) {
+fn wrap_callback(
+  callback: opj_msg_callback,
+  user_data: *mut core::ffi::c_void,
+) -> impl FnMut(&str) + Send {
+  let user_data = SendPtr(user_data);
   move |msg: &str| {
     let Some(callback) = callback else {
       return;
     };
     if let Ok(c_msg) = std::ffi::CString::new(msg) {
       // SAFETY: the callback is the one the caller installed, invoked with the caller's data.
-      unsafe { callback(c_msg.as_ptr(), user_data) };
+      unsafe { callback(c_msg.as_ptr(), user_data.0) };
     }
   }
 }

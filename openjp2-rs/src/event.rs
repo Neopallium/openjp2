@@ -41,11 +41,14 @@ pub use super::consts::event::*;
 /// Core event manager: one optional `FnMut` sink per message level. The C-callback adapter
 /// (which wraps `opj_msg_callback` + user data in closures) lives in the capi crate; the core
 /// itself only formats Rust strings and dispatches them to the sinks.
+///
+/// The sinks sit behind `Mutex`es so the manager is `Sync`: the t1 codeblock jobs
+/// dispatch events from rayon worker threads.
 #[derive(Default)]
 pub struct opj_event_mgr {
-  error_handler: Option<Box<dyn FnMut(&str)>>,
-  warning_handler: Option<Box<dyn FnMut(&str)>>,
-  info_handler: Option<Box<dyn FnMut(&str)>>,
+  error_handler: Option<std::sync::Mutex<Box<dyn FnMut(&str) + Send>>>,
+  warning_handler: Option<std::sync::Mutex<Box<dyn FnMut(&str) + Send>>>,
+  info_handler: Option<std::sync::Mutex<Box<dyn FnMut(&str) + Send>>>,
 }
 
 impl opj_event_mgr {
@@ -53,16 +56,16 @@ impl opj_event_mgr {
     *self = Self::default();
   }
 
-  pub fn set_info_handler(&mut self, handler: impl FnMut(&str) + 'static) {
-    self.info_handler = Some(Box::new(handler));
+  pub fn set_info_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
+    self.info_handler = Some(std::sync::Mutex::new(Box::new(handler)));
   }
 
-  pub fn set_warning_handler(&mut self, handler: impl FnMut(&str) + 'static) {
-    self.warning_handler = Some(Box::new(handler));
+  pub fn set_warning_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
+    self.warning_handler = Some(std::sync::Mutex::new(Box::new(handler)));
   }
 
-  pub fn set_error_handler(&mut self, handler: impl FnMut(&str) + 'static) {
-    self.error_handler = Some(Box::new(handler));
+  pub fn set_error_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
+    self.error_handler = Some(std::sync::Mutex::new(Box::new(handler)));
   }
 
   pub fn is_enabled(&self, event_type: EventType) -> bool {
@@ -73,15 +76,15 @@ impl opj_event_mgr {
     }
   }
 
-  pub fn msg_write(&mut self, event_type: EventType, msg: &str) -> i32 {
+  pub fn msg_write(&self, event_type: EventType, msg: &str) -> i32 {
     let handler = match event_type {
-      EventType::Error => &mut self.error_handler,
-      EventType::Warning => &mut self.warning_handler,
-      EventType::Info => &mut self.info_handler,
+      EventType::Error => &self.error_handler,
+      EventType::Warning => &self.warning_handler,
+      EventType::Info => &self.info_handler,
     };
     match handler {
       Some(handler) => {
-        handler(msg);
+        handler.lock().expect("event handler lock poisoned")(msg);
         1
       }
       None => 0,
