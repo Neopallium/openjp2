@@ -115,9 +115,9 @@ fn opj_t2_getnumpasses(bio: &mut opj_bio) -> OPJ_UINT32 {
 /* ----------------------------------------------------------------------- */
 
 pub(crate) fn opj_t2_encode_packets(
-  mut p_t2: *mut opj_t2_t,
+  t2: &mut opj_t2_t,
   mut p_tile_no: OPJ_UINT32,
-  mut p_tile: *mut opj_tcd_tile_t,
+  tile: &mut opj_tcd_tile_t,
   mut p_maxlayers: OPJ_UINT32,
   mut p_dest: *mut OPJ_BYTE,
   mut p_data_written: *mut OPJ_UINT32,
@@ -130,136 +130,164 @@ pub(crate) fn opj_t2_encode_packets(
   mut p_t2_mode: J2K_T2_MODE,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut l_current_data = p_dest; /* t2_mode == FINAL_PASS  */
-    let mut l_nb_bytes = 0 as OPJ_UINT32;
-    let mut compno: OPJ_UINT32 = 0;
-    let mut poc: OPJ_UINT32 = 0;
-    let mut l_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
-    let mut l_current_pi = core::ptr::null_mut::<opj_pi_iterator_t>();
-    let mut l_image = (*p_t2).image;
-    let mut l_cp = (*p_t2).cp;
-    let mut l_tcp: *mut opj_tcp_t = (*l_cp).tcps.as_mut_ptr().offset(p_tile_no as isize);
-    let mut pocno = if (*l_cp).rsiz as core::ffi::c_int == 0x4i32 {
-      2i32
-    } else {
-      1i32
-    } as OPJ_UINT32;
-    let mut l_max_comp = if (*l_cp).m_specific_param.m_enc.m_max_comp_size > 0u32 {
-      (*l_image).numcomps
-    } else {
-      1u32
-    };
-    let mut l_nb_pocs = (*l_tcp).numpocs.wrapping_add(1u32);
-    let mut l_pi_vec = opj_pi_initialise_encode(&mut *l_image, &mut *l_cp, p_tile_no, p_t2_mode, p_manager);
-    if l_pi_vec.is_empty() {
+  // SAFETY: p_dest points to p_max_len bytes owned by the caller.
+  let mut dest = unsafe { core::slice::from_raw_parts_mut(p_dest, p_max_len as usize) };
+  // SAFETY: p_data_written is the caller's out-parameter.
+  let p_data_written = unsafe { &mut *p_data_written };
+  // SAFETY: t2.image / t2.cp are the codec's structures set by opj_t2_create.
+  let image = unsafe { &mut *t2.image };
+  let cp = unsafe { &mut *t2.cp };
+  let mut l_nb_bytes = 0 as OPJ_UINT32;
+  let mut compno: OPJ_UINT32 = 0;
+  let mut poc: OPJ_UINT32 = 0;
+  let pocno = if cp.rsiz as core::ffi::c_int == 0x4i32 {
+    2i32
+  } else {
+    1i32
+  } as OPJ_UINT32;
+  let l_max_comp = if cp.m_specific_param.m_enc.m_max_comp_size > 0u32 {
+    image.numcomps
+  } else {
+    1u32
+  };
+  let mut pi_vec = opj_pi_initialise_encode(image, cp, p_tile_no, p_t2_mode, p_manager);
+  if pi_vec.is_empty() {
+    return 0i32;
+  }
+  *p_data_written = 0 as OPJ_UINT32;
+  if p_t2_mode as core::ffi::c_uint == THRESH_CALC as core::ffi::c_uint {
+    /* Calculating threshold */
+    compno = 0 as OPJ_UINT32;
+    while compno < l_max_comp {
+      let mut l_comp_len = 0 as OPJ_UINT32;
+      poc = 0 as OPJ_UINT32;
+      while poc < pocno {
+        let mut l_tp_num = compno;
+        /* TODO MSD : check why this function cannot fail (cf. v1) */
+        opj_pi_create_encode(
+          pi_vec.as_mut_slice(),
+          cp,
+          p_tile_no,
+          poc,
+          l_tp_num,
+          p_tp_pos,
+          p_t2_mode,
+        );
+        if pi_vec[poc as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
+          /* TODO ADE : add an error */
+          opj_pi_destroy(&mut pi_vec);
+          return 0i32;
+        }
+        loop {
+          let pi = &mut pi_vec[poc as usize];
+          if opj_pi_next(pi) == 0 {
+            break;
+          }
+          if pi.layno < p_maxlayers {
+            l_nb_bytes = 0 as OPJ_UINT32;
+            if opj_t2_encode_packet(
+              p_tile_no,
+              tile,
+              &mut cp.tcps[p_tile_no as usize],
+              pi,
+              &mut dest[..],
+              &mut l_nb_bytes,
+              cstr_info,
+              p_t2_mode,
+              p_manager,
+            ) == 0
+            {
+              opj_pi_destroy(&mut pi_vec);
+              return 0i32;
+            }
+            l_comp_len = (l_comp_len as core::ffi::c_uint).wrapping_add(l_nb_bytes) as OPJ_UINT32;
+            let (_, rest) = dest.split_at_mut(l_nb_bytes as usize);
+            dest = rest;
+            *p_data_written =
+              (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes) as OPJ_UINT32
+          }
+        }
+        if cp.m_specific_param.m_enc.m_max_comp_size != 0
+          && l_comp_len > cp.m_specific_param.m_enc.m_max_comp_size
+        {
+          opj_pi_destroy(&mut pi_vec);
+          return 0i32;
+        }
+        poc += 1;
+      }
+      compno += 1;
+    }
+  } else {
+    opj_pi_create_encode(
+      pi_vec.as_mut_slice(),
+      cp,
+      p_tile_no,
+      p_pino,
+      p_tp_num,
+      p_tp_pos,
+      p_t2_mode,
+    );
+    if pi_vec[p_pino as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
+      /* TODO ADE : add an error */
+      opj_pi_destroy(&mut pi_vec);
       return 0i32;
     }
-    l_pi = l_pi_vec.as_mut_ptr();
-    *p_data_written = 0 as OPJ_UINT32;
-    if p_t2_mode as core::ffi::c_uint == THRESH_CALC as core::ffi::c_uint {
-      /* Calculating threshold */
-      l_current_pi = l_pi;
-      compno = 0 as OPJ_UINT32;
-      while compno < l_max_comp {
-        let mut l_comp_len = 0 as OPJ_UINT32;
-        l_current_pi = l_pi;
-        poc = 0 as OPJ_UINT32;
-        while poc < pocno {
-          let mut l_tp_num = compno;
-          /* TODO MSD : check why this function cannot fail (cf. v1) */
-          opj_pi_create_encode(l_pi_vec.as_mut_slice(), &mut *l_cp, p_tile_no, poc, l_tp_num, p_tp_pos, p_t2_mode);
-          if (*l_current_pi).poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
-            /* TODO ADE : add an error */
-            opj_pi_destroy(&mut l_pi_vec);
-            return 0i32;
-          }
-          while opj_pi_next(&mut *l_current_pi) != 0 {
-            if (*l_current_pi).layno < p_maxlayers {
-              l_nb_bytes = 0 as OPJ_UINT32;
-              if opj_t2_encode_packet(
-                p_tile_no,
-                p_tile,
-                l_tcp,
-                l_current_pi,
-                core::slice::from_raw_parts_mut(l_current_data, p_max_len as usize),
-                &mut l_nb_bytes,
-                cstr_info,
-                p_t2_mode,
-                p_manager,
-              ) == 0
-              {
-                opj_pi_destroy(&mut l_pi_vec);
-                return 0i32;
-              }
-              l_comp_len = (l_comp_len as core::ffi::c_uint).wrapping_add(l_nb_bytes) as OPJ_UINT32;
-              l_current_data = l_current_data.offset(l_nb_bytes as isize);
-              p_max_len = (p_max_len as core::ffi::c_uint).wrapping_sub(l_nb_bytes) as OPJ_UINT32;
-              *p_data_written =
-                (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes) as OPJ_UINT32
-            }
-          }
-          if (*l_cp).m_specific_param.m_enc.m_max_comp_size != 0
-            && l_comp_len > (*l_cp).m_specific_param.m_enc.m_max_comp_size
-          {
-            opj_pi_destroy(&mut l_pi_vec);
-            return 0i32;
-          }
-          l_current_pi = l_current_pi.offset(1);
-          poc += 1;
-        }
-        compno += 1;
-      }
-    } else {
-      opj_pi_create_encode(l_pi_vec.as_mut_slice(), &mut *l_cp, p_tile_no, p_pino, p_tp_num, p_tp_pos, p_t2_mode);
-      l_current_pi = &mut *l_pi.offset(p_pino as isize) as *mut opj_pi_iterator_t;
-      if (*l_current_pi).poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
-        /* TODO ADE : add an error */
-        opj_pi_destroy(&mut l_pi_vec);
-        return 0i32;
-      }
-      if !p_marker_info.is_null() && (*p_marker_info).need_PLT != 0 {
-        /* One time use intended */
-
+    if !p_marker_info.is_null() && unsafe { (*p_marker_info).need_PLT } != 0 {
+      /* One time use intended */
+      unsafe {
         assert!((*p_marker_info).packet_count == 0u32);
         assert!((*p_marker_info).p_packet_size.is_null());
-        {
-          let count = opj_get_encoding_packet_count(&mut *l_image, &*l_cp, p_tile_no) as usize;
-          let mut v: Vec<OPJ_UINT32> = vec![0; count];
-          (*p_marker_info).p_packet_size = v.as_mut_ptr();
-          core::mem::forget(v);
-        }
       }
-      while opj_pi_next(&mut *l_current_pi) != 0 {
-        if (*l_current_pi).layno < p_maxlayers {
-          l_nb_bytes = 0 as OPJ_UINT32;
-          if opj_t2_encode_packet(
-            p_tile_no,
-            p_tile,
-            l_tcp,
-            l_current_pi,
-            core::slice::from_raw_parts_mut(l_current_data, p_max_len as usize),
-            &mut l_nb_bytes,
-            cstr_info,
-            p_t2_mode,
-            p_manager,
-          ) == 0
-          {
-            opj_pi_destroy(&mut l_pi_vec);
-            return 0i32;
-          }
-          l_current_data = l_current_data.offset(l_nb_bytes as isize);
-          p_max_len = (p_max_len as core::ffi::c_uint).wrapping_sub(l_nb_bytes) as OPJ_UINT32;
-          *p_data_written =
-            (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes) as OPJ_UINT32;
-          if !p_marker_info.is_null() && (*p_marker_info).need_PLT != 0 {
+      {
+        let count = opj_get_encoding_packet_count(image, cp, p_tile_no) as usize;
+        let mut v: Vec<OPJ_UINT32> = vec![0; count];
+        // SAFETY: p_packet_size is the marker info's out-array; opj_tcd_marker_info_destroy
+        // frees it via Vec::from_raw_parts.
+        unsafe {
+          (*p_marker_info).p_packet_size = v.as_mut_ptr();
+        }
+        core::mem::forget(v);
+      }
+    }
+    loop {
+      let pi = &mut pi_vec[p_pino as usize];
+      if opj_pi_next(pi) == 0 {
+        break;
+      }
+      if pi.layno < p_maxlayers {
+        l_nb_bytes = 0 as OPJ_UINT32;
+        if opj_t2_encode_packet(
+          p_tile_no,
+          tile,
+          &mut cp.tcps[p_tile_no as usize],
+          pi,
+          &mut dest[..],
+          &mut l_nb_bytes,
+          cstr_info,
+          p_t2_mode,
+          p_manager,
+        ) == 0
+        {
+          opj_pi_destroy(&mut pi_vec);
+          return 0i32;
+        }
+        let (_, rest) = dest.split_at_mut(l_nb_bytes as usize);
+        dest = rest;
+        *p_data_written =
+          (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes) as OPJ_UINT32;
+        if !p_marker_info.is_null() && unsafe { (*p_marker_info).need_PLT } != 0 {
+          // SAFETY: p_packet_size was allocated above with `count` entries.
+          unsafe {
             *(*p_marker_info)
               .p_packet_size
               .offset((*p_marker_info).packet_count as isize) = l_nb_bytes;
             (*p_marker_info).packet_count = (*p_marker_info).packet_count.wrapping_add(1)
           }
-          /* INDEX >> */
-          if !cstr_info.is_null() {
+        }
+        /* INDEX >> */
+        if !cstr_info.is_null() {
+          // SAFETY: cstr_info is the caller's codestream-info structure.
+          unsafe {
             if (*cstr_info).index_write != 0 {
               let mut info_TL: *mut opj_tile_info_t =
                 &mut *(*cstr_info).tile.offset(p_tile_no as isize) as *mut opj_tile_info_t;
@@ -269,17 +297,18 @@ pub(crate) fn opj_t2_encode_packets(
               if (*cstr_info).packno == 0 {
                 (*info_PK).start_pos = ((*info_TL).end_header + 1i32) as OPJ_OFF_T
               } else {
-                (*info_PK).start_pos = if ((*l_cp).m_specific_param.m_enc.m_tp_on || (*l_tcp).POC)
-                  && (*info_PK).start_pos != 0
-                {
-                  (*info_PK).start_pos
-                } else {
-                  ((*(*info_TL)
-                    .packet
-                    .offset(((*cstr_info).packno - 1i32) as isize))
-                  .end_pos)
-                    + 1i64
-                }
+                (*info_PK).start_pos =
+                  if (cp.m_specific_param.m_enc.m_tp_on || cp.tcps[p_tile_no as usize].POC)
+                    && (*info_PK).start_pos != 0
+                  {
+                    (*info_PK).start_pos
+                  } else {
+                    ((*(*info_TL)
+                      .packet
+                      .offset(((*cstr_info).packno - 1i32) as isize))
+                    .end_pos)
+                      + 1i64
+                  }
               }
               (*info_PK).end_pos = (*info_PK).start_pos + l_nb_bytes as i64 - 1;
               (*info_PK).end_ph_pos += (*info_PK).start_pos - 1i64
@@ -288,16 +317,15 @@ pub(crate) fn opj_t2_encode_packets(
             }
             (*cstr_info).packno += 1
           }
-          /* << INDEX */
-          (*p_tile).packno = (*p_tile).packno.wrapping_add(1)
         }
+        /* << INDEX */
+        tile.packno = tile.packno.wrapping_add(1)
       }
     }
-    opj_pi_destroy(&mut l_pi_vec);
-    1i32
   }
+  opj_pi_destroy(&mut pi_vec);
+  1i32
 }
-
 pub(crate) fn opj_t2_decode_packets(
   mut tcd: &mut opj_tcd,
   mut p_t2: *mut opj_t2_t,
@@ -478,14 +506,12 @@ pub(crate) fn opj_t2_create(
   mut p_image: *mut CoreImage,
   mut p_cp: *mut opj_cp_t,
 ) -> *mut opj_t2_t {
-  unsafe {
-    /* create the t2 structure */
-    let l_t2 = Box::new(opj_t2 {
-      image: p_image,
-      cp: p_cp,
-    });
-    Box::into_raw(l_t2)
-  }
+  /* create the t2 structure */
+  let l_t2 = Box::new(opj_t2 {
+    image: p_image,
+    cp: p_cp,
+  });
+  Box::into_raw(l_t2)
 }
 
 pub(crate) fn opj_t2_destroy(t2: *mut opj_t2_t) {
@@ -628,339 +654,326 @@ fn opj_t2_skip_packet(
 }
 fn opj_t2_encode_packet(
   mut tileno: OPJ_UINT32,
-  mut tile: *mut opj_tcd_tile_t,
-  mut tcp: *mut opj_tcp_t,
-  mut pi: *mut opj_pi_iterator_t,
+  tile: &mut opj_tcd_tile_t,
+  tcp: &mut opj_tcp_t,
+  pi: &mut opj_pi_iterator_t,
   mut dest: &mut [u8],
-  mut p_data_written: *mut OPJ_UINT32,
+  p_data_written: &mut OPJ_UINT32,
   mut cstr_info: *mut opj_codestream_info_t,
   mut p_t2_mode: J2K_T2_MODE,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
-  unsafe {
-    let mut bandno: OPJ_UINT32 = 0; /* component value */
-    let mut cblkno: OPJ_UINT32 = 0; /* resolution level value */
-    let mut pos = 0usize; /* precinct value */
-    let mut length = dest.len() as OPJ_UINT32;
-    let mut l_nb_bytes: OPJ_UINT32 = 0; /* quality layer value */
-    let mut compno = (*pi).compno; /* BIO component */
-    let mut resno = (*pi).resno;
-    let mut precno = (*pi).precno;
-    let mut layno = (*pi).layno;
-    let mut l_nb_blocks: OPJ_UINT32 = 0;
-    let mut band = core::ptr::null_mut::<opj_tcd_band_t>();
-    let mut cblk = core::ptr::null_mut::<opj_tcd_cblk_enc_t>();
-    let mut pass = core::ptr::null_mut::<opj_tcd_pass_t>();
-    let mut tilec: *mut opj_tcd_tilecomp_t = (&mut (*tile).comps).as_mut_ptr().add(compno as usize);
-    let mut res: *mut opj_tcd_resolution_t =
-      (*tilec).resolutions.as_mut_ptr().offset(resno as isize);
-    let mut packet_empty = 0i32;
-    /* <SOP 0xff91> */
-    if (*tcp).csty & 0x2u32 != 0 {
-      if length < 6u32 {
-        if p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
-            length,
-            6i32,
-          ); /* packno is uint32_t */
-        }
-        return 0i32;
+  let mut bandno: OPJ_UINT32 = 0; /* component value */
+  let mut cblkno: OPJ_UINT32 = 0; /* resolution level value */
+  let mut pos = 0usize; /* precinct value */
+  let mut length = dest.len() as OPJ_UINT32;
+  let mut l_nb_bytes: OPJ_UINT32 = 0; /* quality layer value */
+  let compno = pi.compno; /* BIO component */
+  let resno = pi.resno;
+  let precno = pi.precno;
+  let layno = pi.layno;
+  let mut l_nb_blocks: OPJ_UINT32 = 0;
+  let mut packet_empty = 0i32;
+  let packno = tile.packno;
+  /* <SOP 0xff91> */
+  if tcp.csty & 0x2u32 != 0 {
+    if length < 6u32 {
+      if p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
+          length,
+          6i32,
+        ); /* packno is uint32_t */
       }
-      dest[0] = 255 as OPJ_BYTE;
-      dest[1] = 145 as OPJ_BYTE;
-      dest[2] = 0 as OPJ_BYTE;
-      dest[3] = 4 as OPJ_BYTE;
-      dest[4] = ((*tile).packno >> 8i32 & 0xffu32) as OPJ_BYTE;
-      dest[5] = ((*tile).packno & 0xffu32) as OPJ_BYTE;
-      pos += 6;
-      length = (length as core::ffi::c_uint).wrapping_sub(6u32) as OPJ_UINT32 as OPJ_UINT32
+      return 0i32;
     }
-    /* </SOP> */
-    if layno == 0 {
-      band = (*res).bands.as_mut_ptr();
-      bandno = 0 as OPJ_UINT32;
-      while bandno < (*res).numbands {
-        let mut prc = core::ptr::null_mut::<opj_tcd_precinct_t>();
-        /* Skip empty bands */
-        if opj_tcd_is_band_empty(unsafe { &*band }) == 0 {
-          /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1294 */
-          /* but likely not a proper fix. */
-          if precno >= (*res).pw.wrapping_mul((*res).ph) {
-            event_msg!(
-              p_manager,
-              EVT_ERROR,
-              "opj_t2_encode_packet(): accessing precno={} >= {}\n",
-              precno,
-              (*res).pw.wrapping_mul((*res).ph),
-            );
-            return 0i32;
-          }
-          prc = (*band).precincts.as_mut_ptr().offset(precno as isize);
-          /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
-          if !(*prc).incltree.is_null() {
-            opj_tgt_reset(&mut *(*prc).incltree);
-          }
-          if !(*prc).imsbtree.is_null() {
-            opj_tgt_reset(&mut *(*prc).imsbtree);
-          }
-          l_nb_blocks = (*prc).cw.wrapping_mul((*prc).ch);
-          cblkno = 0 as OPJ_UINT32;
-          while cblkno < l_nb_blocks {
-            cblk = (&mut (*prc).cblks).enc_ptr().offset(cblkno as isize);
-            (*cblk).numpasses = 0 as OPJ_UINT32;
-            opj_tgt_setvalue(
-              &mut *(*prc).imsbtree,
-              cblkno,
-              (*band).numbps - (*cblk).numbps as OPJ_INT32,
-            );
-            cblkno += 1;
-          }
-        }
-        bandno = bandno.wrapping_add(1);
-        band = band.offset(1)
-      }
-    }
-    let mut bio = opj_bio::new_enc(&mut dest[pos..]);
-    let bio = &mut bio;
-    /* Empty header bit */
-    opj_bio_putbit(bio, if packet_empty != 0 { 0 } else { 1 });
-
-    /* Writing Packet header */
-    band = (*res).bands.as_mut_ptr();
+    dest[0] = 255 as OPJ_BYTE;
+    dest[1] = 145 as OPJ_BYTE;
+    dest[2] = 0 as OPJ_BYTE;
+    dest[3] = 4 as OPJ_BYTE;
+    dest[4] = (packno >> 8i32 & 0xffu32) as OPJ_BYTE;
+    dest[5] = (packno & 0xffu32) as OPJ_BYTE;
+    pos += 6;
+    length = (length as core::ffi::c_uint).wrapping_sub(6u32) as OPJ_UINT32 as OPJ_UINT32
+  }
+  /* </SOP> */
+  let tilec = &mut tile.comps[compno as usize];
+  let res = &mut tilec.resolutions[resno as usize];
+  if layno == 0 {
     bandno = 0 as OPJ_UINT32;
-    while packet_empty == 0 && bandno < (*res).numbands {
-      let mut prc_0 = core::ptr::null_mut::<opj_tcd_precinct_t>();
+    while bandno < res.numbands {
+      let band = &mut res.bands[bandno as usize];
       /* Skip empty bands */
-      if opj_tcd_is_band_empty(unsafe { &*band }) == 0 {
-        /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1297 */
+      if opj_tcd_is_band_empty(band) == 0 {
+        /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1294 */
         /* but likely not a proper fix. */
-        if precno >= (*res).pw.wrapping_mul((*res).ph) {
+        if precno >= res.pw.wrapping_mul(res.ph) {
           event_msg!(
             p_manager,
             EVT_ERROR,
             "opj_t2_encode_packet(): accessing precno={} >= {}\n",
             precno,
-            (*res).pw.wrapping_mul((*res).ph),
+            res.pw.wrapping_mul(res.ph),
           );
           return 0i32;
         }
-        prc_0 = (*band).precincts.as_mut_ptr().offset(precno as isize);
-        l_nb_blocks = (*prc_0).cw.wrapping_mul((*prc_0).ch);
-        cblk = (&mut (*prc_0).cblks).enc_ptr();
-        cblkno = 0 as OPJ_UINT32;
-        while cblkno < l_nb_blocks {
-          let mut layer: *mut opj_tcd_layer_t = (*cblk).layers.as_mut_ptr().offset(layno as isize);
-          if (*cblk).numpasses == 0 && (*layer).numpasses != 0 {
-            opj_tgt_setvalue(&mut *(*prc_0).incltree, cblkno, layno as OPJ_INT32);
-          }
-          cblk = cblk.offset(1);
-          cblkno += 1;
+        let prc = &mut band.precincts[precno as usize];
+        /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
+        if !prc.incltree.is_null() {
+          // SAFETY: incltree is the precinct's tag tree, owned by the precinct.
+          opj_tgt_reset(unsafe { &mut *prc.incltree });
         }
-        cblk = (&mut (*prc_0).cblks).enc_ptr();
+        if !prc.imsbtree.is_null() {
+          // SAFETY: imsbtree is the precinct's tag tree, owned by the precinct.
+          opj_tgt_reset(unsafe { &mut *prc.imsbtree });
+        }
+        l_nb_blocks = prc.cw.wrapping_mul(prc.ch);
         cblkno = 0 as OPJ_UINT32;
         while cblkno < l_nb_blocks {
-          let mut layer_0: *mut opj_tcd_layer_t =
-            (*cblk).layers.as_mut_ptr().offset(layno as isize);
-          let mut increment = 0 as OPJ_UINT32;
-          let mut nump = 0 as OPJ_UINT32;
-          let mut len = 0 as OPJ_UINT32;
-          let mut passno: OPJ_UINT32 = 0;
-          let mut l_nb_passes: OPJ_UINT32 = 0;
-          /* cblk inclusion bits */
-          if (*cblk).numpasses == 0 {
-            opj_tgt_encode(
-              bio,
-              &mut *(*prc_0).incltree,
-              cblkno,
-              layno.wrapping_add(1u32) as OPJ_INT32,
-            );
-          } else {
-            opj_bio_putbit(bio, ((*layer_0).numpasses != 0u32) as u32);
-          }
-          /* if cblk not included, go to the next cblk  */
-          if (*layer_0).numpasses == 0 {
-            cblk = cblk.offset(1)
-          } else {
-            /* if first instance of cblk --> zero bit-planes information */
-            if (*cblk).numpasses == 0 {
-              (*cblk).numlenbits = 3 as OPJ_UINT32;
-              opj_tgt_encode(bio, &mut *(*prc_0).imsbtree, cblkno, 999i32);
-            }
-            /* number of coding passes included */
-            opj_t2_putnumpasses(bio, (*layer_0).numpasses);
-            l_nb_passes = (*cblk).numpasses.wrapping_add((*layer_0).numpasses);
-            pass = (*cblk)
-              .passes
-              .as_mut_ptr()
-              .offset((*cblk).numpasses as isize);
-            /* computation of the increase of the length indicator and insertion in the header     */
-            passno = (*cblk).numpasses;
-            while passno < l_nb_passes {
-              nump = nump.wrapping_add(1);
-              len = (len as core::ffi::c_uint).wrapping_add((*pass).len) as OPJ_UINT32;
-              if (*pass).term
-                || passno
-                  == (*cblk)
-                    .numpasses
-                    .wrapping_add((*layer_0).numpasses)
-                    .wrapping_sub(1u32)
-              {
-                increment = opj_int_max(
-                  increment as OPJ_INT32,
-                  opj_int_floorlog2(len as OPJ_INT32) + 1i32
-                    - ((*cblk).numlenbits as OPJ_INT32 + opj_int_floorlog2(nump as OPJ_INT32)),
-                ) as OPJ_UINT32;
-                len = 0 as OPJ_UINT32;
-                nump = 0 as OPJ_UINT32
-              }
-              pass = pass.offset(1);
-              passno += 1;
-            }
-            opj_t2_putcommacode(bio, increment as OPJ_INT32);
-            /* computation of the new Length indicator */
-            (*cblk).numlenbits =
-              ((*cblk).numlenbits as core::ffi::c_uint).wrapping_add(increment) as OPJ_UINT32;
-            pass = (*cblk)
-              .passes
-              .as_mut_ptr()
-              .offset((*cblk).numpasses as isize);
-            /* insertion of the codeword segment length */
-            passno = (*cblk).numpasses;
-            while passno < l_nb_passes {
-              nump = nump.wrapping_add(1);
-              len = (len as core::ffi::c_uint).wrapping_add((*pass).len) as OPJ_UINT32;
-              if (*pass).term
-                || passno
-                  == (*cblk)
-                    .numpasses
-                    .wrapping_add((*layer_0).numpasses)
-                    .wrapping_sub(1u32)
-              {
-                opj_bio_write(
-                  bio,
-                  len,
-                  (*cblk)
-                    .numlenbits
-                    .wrapping_add(opj_int_floorlog2(nump as OPJ_INT32) as OPJ_UINT32),
-                );
-                len = 0 as OPJ_UINT32;
-                nump = 0 as OPJ_UINT32
-              }
-              pass = pass.offset(1);
-              passno += 1;
-            }
-            cblk = cblk.offset(1)
-          }
+          let cblk = prc.cblks.enc_mut(cblkno as usize);
+          cblk.numpasses = 0 as OPJ_UINT32;
+          // SAFETY: imsbtree is the precinct's tag tree, owned by the precinct.
+          opj_tgt_setvalue(
+            unsafe { &mut *prc.imsbtree },
+            cblkno,
+            band.numbps - cblk.numbps as OPJ_INT32,
+          );
           cblkno += 1;
         }
       }
       bandno = bandno.wrapping_add(1);
-      band = band.offset(1)
     }
-    if opj_bio_flush(bio) == 0 {
-      return 0i32;
-      /* modified to eliminate longjmp !! */
-    }
-    l_nb_bytes = opj_bio_numbytes(bio) as OPJ_UINT32;
-    pos += l_nb_bytes as usize;
-    length = (length as core::ffi::c_uint).wrapping_sub(l_nb_bytes) as OPJ_UINT32;
-    /* <EPH 0xff92> */
-    if (*tcp).csty & 0x4u32 != 0 {
-      if length < 2u32 {
-        if p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint {
-          event_msg!(
-            p_manager,
-            EVT_ERROR,
-            "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
-            length,
-            2i32,
-          );
-        }
+  }
+  let mut bio = opj_bio::new_enc(&mut dest[pos..]);
+  let bio = &mut bio;
+  /* Empty header bit */
+  opj_bio_putbit(bio, if packet_empty != 0 { 0 } else { 1 });
+
+  /* Writing Packet header */
+  bandno = 0 as OPJ_UINT32;
+  while packet_empty == 0 && bandno < res.numbands {
+    let band = &mut res.bands[bandno as usize];
+    /* Skip empty bands */
+    if opj_tcd_is_band_empty(band) == 0 {
+      /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1297 */
+      /* but likely not a proper fix. */
+      if precno >= res.pw.wrapping_mul(res.ph) {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "opj_t2_encode_packet(): accessing precno={} >= {}\n",
+          precno,
+          res.pw.wrapping_mul(res.ph),
+        );
         return 0i32;
       }
-      dest[pos] = 255 as OPJ_BYTE;
-      dest[pos + 1] = 146 as OPJ_BYTE;
-      pos += 2;
-      length = (length as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32 as OPJ_UINT32
+      let prc = &mut band.precincts[precno as usize];
+      l_nb_blocks = prc.cw.wrapping_mul(prc.ch);
+      cblkno = 0 as OPJ_UINT32;
+      while cblkno < l_nb_blocks {
+        let cblk = prc.cblks.enc_mut(cblkno as usize);
+        let layer = &mut cblk.layers[layno as usize];
+        if cblk.numpasses == 0 && layer.numpasses != 0 {
+          // SAFETY: incltree is the precinct's tag tree, owned by the precinct.
+          opj_tgt_setvalue(unsafe { &mut *prc.incltree }, cblkno, layno as OPJ_INT32);
+        }
+        cblkno += 1;
+      }
+      cblkno = 0 as OPJ_UINT32;
+      while cblkno < l_nb_blocks {
+        let cblk = prc.cblks.enc_mut(cblkno as usize);
+        let mut increment = 0 as OPJ_UINT32;
+        let mut nump = 0 as OPJ_UINT32;
+        let mut len = 0 as OPJ_UINT32;
+        let mut passno: OPJ_UINT32 = 0;
+        let mut l_nb_passes: OPJ_UINT32 = 0;
+        /* cblk inclusion bits */
+        if cblk.numpasses == 0 {
+          // SAFETY: incltree is the precinct's tag tree, owned by the precinct.
+          opj_tgt_encode(
+            bio,
+            unsafe { &mut *prc.incltree },
+            cblkno,
+            layno.wrapping_add(1u32) as OPJ_INT32,
+          );
+        } else {
+          opj_bio_putbit(bio, (cblk.layers[layno as usize].numpasses != 0u32) as u32);
+        }
+        /* if cblk not included, go to the next cblk  */
+        if cblk.layers[layno as usize].numpasses == 0 {
+        } else {
+          /* if first instance of cblk --> zero bit-planes information */
+          if cblk.numpasses == 0 {
+            cblk.numlenbits = 3 as OPJ_UINT32;
+            // SAFETY: imsbtree is the precinct's tag tree, owned by the precinct.
+            opj_tgt_encode(bio, unsafe { &mut *prc.imsbtree }, cblkno, 999i32);
+          }
+          /* number of coding passes included */
+          opj_t2_putnumpasses(bio, cblk.layers[layno as usize].numpasses);
+          l_nb_passes = cblk.numpasses.wrapping_add(cblk.layers[layno as usize].numpasses);
+          /* computation of the increase of the length indicator and insertion in the header     */
+          passno = cblk.numpasses;
+          while passno < l_nb_passes {
+            nump = nump.wrapping_add(1);
+            len = (len as core::ffi::c_uint).wrapping_add(cblk.passes[passno as usize].len)
+              as OPJ_UINT32;
+            if cblk.passes[passno as usize].term
+              || passno
+                == cblk
+                  .numpasses
+                  .wrapping_add(cblk.layers[layno as usize].numpasses)
+                  .wrapping_sub(1u32)
+            {
+              increment = opj_int_max(
+                increment as OPJ_INT32,
+                opj_int_floorlog2(len as OPJ_INT32) + 1i32
+                  - (cblk.numlenbits as OPJ_INT32 + opj_int_floorlog2(nump as OPJ_INT32)),
+              ) as OPJ_UINT32;
+              len = 0 as OPJ_UINT32;
+              nump = 0 as OPJ_UINT32
+            }
+            passno += 1;
+          }
+          opj_t2_putcommacode(bio, increment as OPJ_INT32);
+          /* computation of the new Length indicator */
+          cblk.numlenbits =
+            (cblk.numlenbits as core::ffi::c_uint).wrapping_add(increment) as OPJ_UINT32;
+          /* insertion of the codeword segment length */
+          passno = cblk.numpasses;
+          while passno < l_nb_passes {
+            nump = nump.wrapping_add(1);
+            len = (len as core::ffi::c_uint).wrapping_add(cblk.passes[passno as usize].len)
+              as OPJ_UINT32;
+            if cblk.passes[passno as usize].term
+              || passno
+                == cblk
+                  .numpasses
+                  .wrapping_add(cblk.layers[layno as usize].numpasses)
+                  .wrapping_sub(1u32)
+            {
+              opj_bio_write(
+                bio,
+                len,
+                cblk
+                  .numlenbits
+                  .wrapping_add(opj_int_floorlog2(nump as OPJ_INT32) as OPJ_UINT32),
+              );
+              len = 0 as OPJ_UINT32;
+              nump = 0 as OPJ_UINT32
+            }
+            passno += 1;
+          }
+        }
+        cblkno += 1;
+      }
     }
-    /* </EPH> */
-    /* << INDEX */
-    /* End of packet header position. Currently only represents the distance to start of packet
-    Will be updated later by incrementing with packet start value*/
-    if !cstr_info.is_null() && (*cstr_info).index_write != 0 {
+    bandno = bandno.wrapping_add(1);
+  }
+  if opj_bio_flush(bio) == 0 {
+    return 0i32;
+    /* modified to eliminate longjmp !! */
+  }
+  l_nb_bytes = opj_bio_numbytes(bio) as OPJ_UINT32;
+  pos += l_nb_bytes as usize;
+  length = (length as core::ffi::c_uint).wrapping_sub(l_nb_bytes) as OPJ_UINT32;
+  /* <EPH 0xff92> */
+  if tcp.csty & 0x4u32 != 0 {
+    if length < 2u32 {
+      if p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
+          length,
+          2i32,
+        );
+      }
+      return 0i32;
+    }
+    dest[pos] = 255 as OPJ_BYTE;
+    dest[pos + 1] = 146 as OPJ_BYTE;
+    pos += 2;
+    length = (length as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32 as OPJ_UINT32
+  }
+  /* </EPH> */
+  /* << INDEX */
+  /* End of packet header position. Currently only represents the distance to start of packet
+  Will be updated later by incrementing with packet start value*/
+  if !cstr_info.is_null() && unsafe { (*cstr_info).index_write } != 0 {
+    // SAFETY: cstr_info is the caller's codestream-info structure.
+    unsafe {
       let mut info_PK: *mut opj_packet_info_t = &mut *(*(*cstr_info).tile.offset(tileno as isize))
         .packet
         .offset((*cstr_info).packno as isize)
         as *mut opj_packet_info_t;
       (*info_PK).end_ph_pos = pos as OPJ_OFF_T
     }
-    /* INDEX >> */
-    /* Writing the packet body */
-    band = (*res).bands.as_mut_ptr();
-    bandno = 0 as OPJ_UINT32;
-    while packet_empty == 0 && bandno < (*res).numbands {
-      let mut prc_1 = core::ptr::null_mut::<opj_tcd_precinct_t>();
-      /* Skip empty bands */
-      if opj_tcd_is_band_empty(unsafe { &*band }) == 0 {
-        prc_1 = (*band).precincts.as_mut_ptr().offset(precno as isize);
-        l_nb_blocks = (*prc_1).cw.wrapping_mul((*prc_1).ch);
-        cblk = (&mut (*prc_1).cblks).enc_ptr();
-        cblkno = 0 as OPJ_UINT32;
-        while cblkno < l_nb_blocks {
-          let mut layer_1: *mut opj_tcd_layer_t =
-            (*cblk).layers.as_mut_ptr().offset(layno as isize);
-          if (*layer_1).numpasses == 0 {
-            cblk = cblk.offset(1)
-          } else {
-            if (*layer_1).len > length {
-              if p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint {
-                event_msg!(
-                  p_manager,
-                  EVT_ERROR,
-                  "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
-                  length,
-                  (*layer_1).len
-                );
-              }
-              return 0i32;
+  }
+  /* INDEX >> */
+  /* Writing the packet body */
+  bandno = 0 as OPJ_UINT32;
+  while packet_empty == 0 && bandno < res.numbands {
+    let band = &mut res.bands[bandno as usize];
+    /* Skip empty bands */
+    if opj_tcd_is_band_empty(band) == 0 {
+      let prc = &mut band.precincts[precno as usize];
+      l_nb_blocks = prc.cw.wrapping_mul(prc.ch);
+      cblkno = 0 as OPJ_UINT32;
+      while cblkno < l_nb_blocks {
+        let cblk = prc.cblks.enc_mut(cblkno as usize);
+        if cblk.layers[layno as usize].numpasses == 0 {
+        } else {
+          if cblk.layers[layno as usize].len > length {
+            if p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint {
+              event_msg!(
+                p_manager,
+                EVT_ERROR,
+                "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
+                length,
+                cblk.layers[layno as usize].len
+              );
             }
+            return 0i32;
+          }
 
-            if p_t2_mode == FINAL_PASS {
-              let len = (*layer_1).len as usize;
-              dest[pos..pos + len]
-                .copy_from_slice(core::slice::from_raw_parts((*layer_1).data, len));
-            }
-            (*cblk).numpasses = ((*cblk).numpasses as core::ffi::c_uint)
-              .wrapping_add((*layer_1).numpasses) as OPJ_UINT32;
-            pos += (*layer_1).len as usize;
-            length = (length as core::ffi::c_uint).wrapping_sub((*layer_1).len) as OPJ_UINT32;
-            /* INDEX >> */
-            /* << INDEX */
-            if !cstr_info.is_null() && (*cstr_info).index_write != 0 {
+          if p_t2_mode == FINAL_PASS {
+            let len = cblk.layers[layno as usize].len as usize;
+            // SAFETY: the layer payload was allocated by the rate allocator and
+            // is alive for the whole encode.
+            dest[pos..pos + len].copy_from_slice(unsafe {
+              core::slice::from_raw_parts(cblk.layers[layno as usize].data, len)
+            });
+          }
+          cblk.numpasses = (cblk.numpasses as core::ffi::c_uint)
+            .wrapping_add(cblk.layers[layno as usize].numpasses) as OPJ_UINT32;
+          pos += cblk.layers[layno as usize].len as usize;
+          length = (length as core::ffi::c_uint)
+            .wrapping_sub(cblk.layers[layno as usize].len) as OPJ_UINT32;
+          /* INDEX >> */
+          /* << INDEX */
+          if !cstr_info.is_null() && unsafe { (*cstr_info).index_write } != 0 {
+            // SAFETY: cstr_info is the caller's codestream-info structure.
+            unsafe {
               let mut info_PK_0: *mut opj_packet_info_t =
                 &mut *(*(*cstr_info).tile.offset(tileno as isize))
                   .packet
                   .offset((*cstr_info).packno as isize) as *mut opj_packet_info_t;
-              (*info_PK_0).disto += (*layer_1).disto;
+              (*info_PK_0).disto += cblk.layers[layno as usize].disto;
               if (*cstr_info).D_max < (*info_PK_0).disto {
                 (*cstr_info).D_max = (*info_PK_0).disto
               }
             }
-            cblk = cblk.offset(1)
           }
-          cblkno += 1;
         }
+        cblkno += 1;
       }
-      bandno = bandno.wrapping_add(1);
-      band = band.offset(1)
     }
-    *p_data_written =
-      (*p_data_written as core::ffi::c_uint).wrapping_add(pos as OPJ_UINT32) as OPJ_UINT32;
-    1i32
+    bandno += 1;
   }
+  *p_data_written = pos as OPJ_UINT32;
+  1i32
 }
 fn opj_t2_read_packet_header(
   cp: &mut opj_cp_t,
@@ -1432,12 +1445,12 @@ fn opj_t2_read_packet_data(
               // skip this codeblock since it is a partial read
               partial_buffer = 1i32;
               cblk.numchunks = 0 as OPJ_UINT32;
-              seg.numpasses = ((seg.numpasses as core::ffi::c_uint)
+              seg.numpasses = (seg.numpasses as core::ffi::c_uint)
                 .wrapping_add(seg.numnewpasses)
-                as OPJ_UINT32);
-              cblk.numnewpasses = ((cblk.numnewpasses as core::ffi::c_uint)
+                as OPJ_UINT32;
+              cblk.numnewpasses = (cblk.numnewpasses as core::ffi::c_uint)
                 .wrapping_sub(seg.numnewpasses)
-                as OPJ_UINT32);
+                as OPJ_UINT32;
               if cblk.numnewpasses > 0u32 {
                 l_segno += 1;
                 cblk.numsegs = cblk.numsegs.wrapping_add(1);
@@ -1467,13 +1480,13 @@ fn opj_t2_read_packet_data(
             cblk.numchunks = cblk.numchunks.wrapping_add(1);
             l_pos += seg.newlen as usize;
             seg.len =
-              ((seg.len as core::ffi::c_uint).wrapping_add(seg.newlen) as OPJ_UINT32);
-            seg.numpasses = ((seg.numpasses as core::ffi::c_uint)
+              (seg.len as core::ffi::c_uint).wrapping_add(seg.newlen) as OPJ_UINT32;
+            seg.numpasses = (seg.numpasses as core::ffi::c_uint)
               .wrapping_add(seg.numnewpasses)
-              as OPJ_UINT32);
-            cblk.numnewpasses = ((cblk.numnewpasses as core::ffi::c_uint)
+              as OPJ_UINT32;
+            cblk.numnewpasses = (cblk.numnewpasses as core::ffi::c_uint)
               .wrapping_sub(seg.numnewpasses)
-              as OPJ_UINT32);
+              as OPJ_UINT32;
             seg.real_num_passes = seg.numpasses;
             if cblk.numnewpasses > 0u32 {
               l_segno += 1;
@@ -1575,13 +1588,13 @@ fn opj_t2_skip_packet_data(
               as OPJ_UINT32;
           {
             let seg = &mut cblk.segs[l_segno];
-            seg.numpasses = ((seg.numpasses as core::ffi::c_uint)
+            seg.numpasses = (seg.numpasses as core::ffi::c_uint)
               .wrapping_add(seg.numnewpasses)
-              as OPJ_UINT32 as OPJ_UINT32);
+              as OPJ_UINT32;
           }
-          cblk.numnewpasses = ((cblk.numnewpasses as core::ffi::c_uint)
+          cblk.numnewpasses = (cblk.numnewpasses as core::ffi::c_uint)
             .wrapping_sub(cblk.segs[l_segno].numnewpasses)
-            as OPJ_UINT32);
+            as OPJ_UINT32;
           if cblk.numnewpasses > 0u32 {
             l_segno += 1;
             cblk.numsegs = cblk.numsegs.wrapping_add(1)

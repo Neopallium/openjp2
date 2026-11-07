@@ -478,7 +478,7 @@ fn opj_tcd_rateallocate(
                 && cp.rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
             {
               if opj_t2_encode_packets(
-                t2,
+                unsafe { &mut *t2 },
                 tcd.tcd_tileno,
                 &mut tcd.tcd_image.tiles,
                 layno.wrapping_add(1u32),
@@ -535,7 +535,7 @@ fn opj_tcd_rateallocate(
             if (layer_allocation_is_same && !last_layer_allocation_ok)
               || (!layer_allocation_is_same
                 && opj_t2_encode_packets(
-                  t2,
+                  unsafe { &mut *t2 },
                   tcd.tcd_tileno,
                   &mut tcd.tcd_image.tiles,
                   layno.wrapping_add(1u32),
@@ -2236,7 +2236,7 @@ fn opj_tcd_t2_encode(
   // SAFETY: `tcp` is set by opj_tcd_init_tile.
   let numlayers = unsafe { (*p_tcd.tcp).numlayers };
   if opj_t2_encode_packets(
-    l_t2,
+    unsafe { &mut *l_t2 },
     p_tcd.tcd_tileno,
     &mut p_tcd.tcd_image.tiles,
     numlayers,
