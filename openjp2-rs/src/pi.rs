@@ -1767,7 +1767,6 @@ pub(crate) fn opj_pi_create_decode(
   p_image: &mut CoreImage,
   p_cp: &mut opj_cp_t,
   p_tile_no: OPJ_UINT32,
-  manager: &mut opj_event_mgr,
 ) -> Vec<opj_pi_iterator_t> {
   let numcomps = p_image.numcomps;
   /* loop */
@@ -1964,7 +1963,6 @@ pub(crate) fn opj_pi_initialise_encode(
   p_cp: &mut opj_cp_t,
   p_tile_no: OPJ_UINT32,
   p_t2_mode: J2K_T2_MODE,
-  manager: &mut opj_event_mgr,
 ) -> Vec<opj_pi_iterator_t> {
   let numcomps = p_image.numcomps;
   /* loop*/

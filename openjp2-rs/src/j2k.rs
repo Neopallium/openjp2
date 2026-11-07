@@ -3330,6 +3330,8 @@ fn opj_j2k_write_sod(
       l_cstr_info,
       marker_info,
       p_manager,
+      p_j2k.m_private_image.as_deref_mut().expect("m_private_image"),
+      &mut p_j2k.m_cp,
     ) == 0
     {
       event_msg!(p_manager, EVT_ERROR, "Cannot encode tile\n",);
@@ -6821,7 +6823,7 @@ fn opj_j2k_copy_default_tcp_and_create_tcd(
   // Init the current tile decoder
   if opj_tcd_init(
     &mut p_j2k.m_tcd,
-    p_j2k.m_private_image.as_deref_mut().expect("m_private_image") as *mut CoreImage,
+    p_j2k.m_private_image.as_deref().expect("m_private_image"),
     &mut p_j2k.m_cp,
   ) == 0
   {
@@ -7305,7 +7307,7 @@ pub(crate) fn opj_j2k_read_tile_header(
       return false;
     }
     /*FIXME ???*/
-    if opj_tcd_init_decode_tile(&mut p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager) == 0 {
+    if opj_tcd_init_decode_tile(&mut p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"), &mut p_j2k.m_cp) == 0 {
       event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
       return false;
     }
@@ -7321,7 +7323,7 @@ pub(crate) fn opj_j2k_read_tile_header(
     /* For internal use in j2k.c, we don't need this */
     /* This is just needed for folks using the opj_read_tile_header() / opj_decode_tile_data() combo */
     if let Some(data_size) = &mut tile_info.data_size {
-      *data_size = opj_tcd_get_decoded_tile_size(&mut p_j2k.m_tcd, 0i32);
+      *data_size = opj_tcd_get_decoded_tile_size(&mut p_j2k.m_tcd, 0i32, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"));
       if *data_size == (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32) {
         return false;
       }
@@ -7350,10 +7352,18 @@ pub(crate) fn opj_j2k_decode_tile(
   {
     return 0i32;
   }
-  let l_tcp = &mut p_j2k.m_cp.tcps[p_tile_index as usize];
-  if l_tcp.m_data.is_empty() {
-    opj_j2k_tcp_destroy(l_tcp);
-    return 0i32;
+  let l_data_ptr;
+  let l_data_size;
+  {
+    let l_tcp = &mut p_j2k.m_cp.tcps[p_tile_index as usize];
+    if l_tcp.m_data.is_empty() {
+      opj_j2k_tcp_destroy(l_tcp);
+      return 0i32;
+    }
+    // The m_data buffer stays alive for the whole decode; take its raw parts
+    // so the `&mut p_j2k.m_cp` borrow below does not conflict with l_tcp.
+    l_data_ptr = l_tcp.m_data.as_mut_ptr();
+    l_data_size = l_tcp.m_data_size;
   }
     /* When using the opj_read_tile_header / opj_decode_tile_data API */
     /* such as in test_tile_decoder, m_output_image is NULL, so fall back */
@@ -7375,14 +7385,16 @@ pub(crate) fn opj_j2k_decode_tile(
       l_bounds_y1,
       p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode,
       p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode.as_ptr(),
-      l_tcp.m_data.as_mut_ptr(),
-      l_tcp.m_data_size,
+      l_data_ptr,
+      l_data_size,
       p_tile_index,
       p_j2k.cstr_index.as_deref_mut().map(|i| i as *mut CodestreamIndex).unwrap_or(core::ptr::null_mut()),
       p_manager,
+      p_j2k.m_private_image.as_deref_mut().expect("m_private_image"),
+      &mut p_j2k.m_cp,
     ) == 0
     {
-      opj_j2k_tcp_destroy(l_tcp);
+      opj_j2k_tcp_destroy(&mut p_j2k.m_cp.tcps[p_tile_index as usize]);
       p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
       event_msg!(p_manager, EVT_ERROR, "Failed to decode.\n",);
       return 0i32;
@@ -7391,14 +7403,14 @@ pub(crate) fn opj_j2k_decode_tile(
     /* itself the TCD data. This is typically the case for whole single */
     /* tile decoding optimization. */
     if let Some(p_data) = p_data {
-      if opj_tcd_update_tile_data(&mut p_j2k.m_tcd, p_data) == 0 {
+      if opj_tcd_update_tile_data(&mut p_j2k.m_tcd, p_data, p_j2k.m_private_image.as_deref_mut().expect("m_private_image")) == 0 {
         return 0i32;
       }
       /* To avoid to destroy the tcp which can be useful when we try to decode a tile decoded before (cf j2k_random_tile_access)
        * we destroy just the data which will be re-read in read_tile_header*/
       /*opj_j2k_tcp_destroy(l_tcp);
       p_j2k->m_tcd->tcp = 0;*/
-      opj_j2k_tcp_data_destroy(l_tcp);
+      opj_j2k_tcp_data_destroy(&mut p_j2k.m_cp.tcps[p_tile_index as usize]);
     }
     p_j2k.m_specific_param.m_decoder.m_can_decode = false;
     p_j2k.m_specific_param.m_decoder.m_state &= !(J2KState::DATA);
@@ -7443,12 +7455,12 @@ pub(crate) fn opj_j2k_decode_tile(
 fn opj_j2k_update_image_data(
   p_tcd: &mut opj_tcd,
   p_output_image: &mut CoreImage,
+  p_image_src: &mut CoreImage,
 ) -> OPJ_BOOL {
   let l_tilec = p_tcd.tcd_image.tiles.comps.as_mut_ptr();
-  // SAFETY: `p_tcd.image` is the codec's decoded source image (never null during decode);
-  // referenced exclusively here. The tile component vector is walked with raw pointers like the
+  // The tile component vector is walked with raw pointers like the
   // C code does; `l_tilec_i` below is the only reference into it at any time.
-  let l_image_src = unsafe { &mut *(*p_tcd).image };
+  let l_image_src = p_image_src;
   let mut i: OPJ_UINT32 = 0;
   while i < (*l_image_src).numcomps {
     let mut res_x0: OPJ_INT32 = 0;
@@ -8923,10 +8935,7 @@ fn opj_j2k_decode_tiles(
         comp.data = p_j2k.m_tcd.tcd_image.tiles.comps[i as usize]
           .data
           .take_vec(len);
-        // SAFETY: `p_tcd.image` is the codec's private image.
-        comp.resno_decoded = unsafe {
-          (*(*p_j2k.m_tcd.image).comps.as_ptr().add(i as usize)).resno_decoded
-        };
+        comp.resno_decoded = p_j2k.m_private_image.as_deref().expect("m_private_image").comps[i as usize].resno_decoded;
         i += 1;
       }
       return 1i32;
@@ -8964,7 +8973,7 @@ fn opj_j2k_decode_tiles(
         tile_info.index.wrapping_add(1u32),
         p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
       );
-      if opj_j2k_update_image_data(&mut p_j2k.m_tcd, p_j2k.m_output_image.as_mut().expect("m_output_image")) == 0 {
+      if opj_j2k_update_image_data(&mut p_j2k.m_tcd, p_j2k.m_output_image.as_mut().expect("m_output_image"), p_j2k.m_private_image.as_deref_mut().expect("m_private_image")) == 0 {
         return 0i32;
       }
       let same_extent = p_j2k.m_output_image.as_ref().map_or(false, |image| {
@@ -9092,7 +9101,7 @@ fn opj_j2k_decode_one_tile(
         tile_info.index.wrapping_add(1u32),
         p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw),
       );
-      if opj_j2k_update_image_data(&mut p_j2k.m_tcd, p_j2k.m_output_image.as_mut().expect("m_output_image")) == 0 {
+      if opj_j2k_update_image_data(&mut p_j2k.m_tcd, p_j2k.m_output_image.as_mut().expect("m_output_image"), p_j2k.m_private_image.as_deref_mut().expect("m_private_image")) == 0 {
         return 0i32;
       }
       opj_j2k_tcp_data_destroy(&mut p_j2k.m_cp.tcps[tile_info.index as usize]);
@@ -9450,8 +9459,7 @@ pub(crate) fn opj_j2k_encode(
       /* if we only have one tile, then simply set tile component data equal to image component data */
       /* otherwise, allocate the data */
       j = 0 as OPJ_UINT32;
-      // SAFETY: `p_tcd.image` is the codec's private image, valid while the tcd is in use.
-      let image = unsafe { &mut *p_j2k.m_tcd.image };
+      let image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
       while j < image.numcomps {
         let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
         if l_reuse_data != 0 {
@@ -9468,7 +9476,7 @@ pub(crate) fn opj_j2k_encode(
         }
         j += 1;
       }
-      l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(&mut p_j2k.m_tcd);
+      l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(&mut p_j2k.m_tcd, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"));
       if l_reuse_data == 0 {
         if l_current_tile_size > l_max_tile_size {
           if l_current_data.try_reserve_exact(l_current_tile_size as usize).is_err() {
@@ -9487,9 +9495,9 @@ pub(crate) fn opj_j2k_encode(
         /* 32 bit components @ 8 bit precision get converted to 8 bit */
         /* 32 bit components @ 16 bit precision get converted to 16 bit */
         let p_data = &mut l_current_data[..l_current_tile_size as usize];
-        opj_j2k_get_tile_data(&mut p_j2k.m_tcd, p_data);
+        opj_j2k_get_tile_data(&mut p_j2k.m_tcd, p_data, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"));
         /* now copy this data into the tile component */
-        if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data) == 0 {
+        if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data, p_j2k.m_private_image.as_deref_mut().expect("m_private_image")) == 0 {
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -9595,7 +9603,7 @@ fn opj_j2k_pre_write_tile(
     .m_encoder
     .m_current_poc_tile_part_number = 0 as OPJ_UINT32;
   /* initialisation before tile encoding  */
-  if opj_tcd_init_encode_tile(&mut p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager) == 0 {
+  if opj_tcd_init_encode_tile(&mut p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"), &mut p_j2k.m_cp) == 0 {
     return 0i32;
   } /* (/8) */
   1i32 /* (%8) */
@@ -9639,8 +9647,7 @@ fn opj_get_tile_dimensions(
     );
 }
 
-fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8]) {
-  let l_image = unsafe { &mut *p_tcd.image };
+fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8], l_image: &mut CoreImage) {
   let numcomps = l_image.numcomps as usize;
   let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
   for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_image.comps.iter()) {
@@ -10247,7 +10254,7 @@ fn opj_j2k_create_tcd(
 ) -> OPJ_BOOL {
   /* preconditions */
 
-  if opj_tcd_init(&mut p_j2k.m_tcd, p_j2k.m_private_image.as_deref_mut().expect("m_private_image") as *mut CoreImage, &mut p_j2k.m_cp) == 0 {
+  if opj_tcd_init(&mut p_j2k.m_tcd, p_j2k.m_private_image.as_deref().expect("m_private_image"), &mut p_j2k.m_cp) == 0 {
     return 0i32;
   }
   1i32
@@ -10272,8 +10279,7 @@ pub(crate) fn opj_j2k_write_tile(
     let mut j: OPJ_UINT32 = 0;
     /* Allocate data */
     j = 0 as OPJ_UINT32;
-    // SAFETY: `p_tcd.image` is the codec's private image, valid while the tcd is in use.
-    let numcomps = unsafe { (*p_j2k.m_tcd.image).numcomps };
+    let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
     while j < numcomps {
       let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
       if opj_alloc_tile_component_data(l_tilec) == 0 {
@@ -10287,7 +10293,7 @@ pub(crate) fn opj_j2k_write_tile(
       j += 1;
     }
     /* now copy data into the tile component */
-    if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data) == 0 {
+    if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data, p_j2k.m_private_image.as_deref_mut().expect("m_private_image")) == 0 {
       event_msg!(
         p_manager,
         EVT_ERROR,

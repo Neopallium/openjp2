@@ -150,7 +150,7 @@ pub(crate) fn opj_t2_encode_packets(
   } else {
     1u32
   };
-  let mut pi_vec = opj_pi_initialise_encode(image, cp, p_tile_no, p_t2_mode, p_manager);
+  let mut pi_vec = opj_pi_initialise_encode(image, cp, p_tile_no, p_t2_mode);
   if pi_vec.is_empty() {
     return 0i32;
   }
@@ -346,7 +346,7 @@ pub(crate) fn opj_t2_decode_packets(
   let mut pino: OPJ_UINT32 = 0;
   let mut l_nb_bytes_read: OPJ_UINT32 = 0;
   /* create a packet iterator */
-  let mut pi_vec = opj_pi_create_decode(image, cp, p_tile_no, p_manager);
+  let mut pi_vec = opj_pi_create_decode(image, cp, p_tile_no);
   if pi_vec.is_empty() {
     return 0i32;
   }
@@ -422,10 +422,8 @@ pub(crate) fn opj_t2_decode_packets(
               minimum_num_resolutions: tilec.minimum_num_resolutions,
               compno: pi.compno,
             },
-            // SAFETY: tcd.tcp / tcd.image are set by opj_tcd_init.
-            unsafe { &(&*tcd.tcp).tccps[pi.compno as usize] },
-            // SAFETY: tcd.image is the codec's image, valid here.
-            unsafe { &(&*tcd.image).comps },
+            &cp.tcps[p_tile_no as usize].tccps[pi.compno as usize],
+            &image.comps,
             pi.resno,
             band.bandno,
             prec.x0 as OPJ_UINT32,
