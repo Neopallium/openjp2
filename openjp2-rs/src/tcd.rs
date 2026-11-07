@@ -2129,35 +2129,31 @@ pub(crate) fn opj_tcd_get_encoder_input_buffer_size(
 fn opj_tcd_dc_level_shift_encode(p_tcd: &mut opj_tcd, cp: &mut opj_cp_t) -> OPJ_BOOL {
   // SAFETY: `tcp` is set by opj_tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
-  let mut compno: OPJ_UINT32 = 0;
-  let mut l_nb_elem: OPJ_SIZE_T = 0;
-  let mut i: OPJ_SIZE_T = 0;
-  compno = 0 as OPJ_UINT32;
-  while compno < p_tcd.tcd_image.tiles.numcomps {
-    let l_tile_comp = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
-    let l_tccp = &tccps[compno as usize];
-    l_nb_elem = ((l_tile_comp.x1 - l_tile_comp.x0) as OPJ_SIZE_T)
-      .wrapping_mul((l_tile_comp.y1 - l_tile_comp.y0) as OPJ_SIZE_T);
-    let data = l_tile_comp.data.as_mut_slice(l_nb_elem as usize);
-    if l_tccp.qmfbid == 1u32 {
-      i = 0 as OPJ_SIZE_T;
-      while i < l_nb_elem {
-        data[i as usize] -= l_tccp.m_dc_level_shift;
-        i += 1;
+  /* Parallel across components (each component shifts its own buffer). */
+  p_tcd
+    .tcd_image
+    .tiles
+    .comps
+    .par_iter_mut()
+    .enumerate()
+    .for_each(|(compno, l_tile_comp)| {
+      let l_tccp = &tccps[compno];
+      let l_nb_elem = ((l_tile_comp.x1 - l_tile_comp.x0) as OPJ_SIZE_T)
+        .wrapping_mul((l_tile_comp.y1 - l_tile_comp.y0) as OPJ_SIZE_T);
+      let data = l_tile_comp.data.as_mut_slice(l_nb_elem);
+      if l_tccp.qmfbid == 1u32 {
+        for v in data.iter_mut() {
+          *v -= l_tccp.m_dc_level_shift;
+        }
+      } else {
+        for v in data.iter_mut() {
+          // The C code reads the sample as an i32, shifts it, then stores the
+          // result as f32 bits for the 9x7 transform to consume.
+          let val = *v;
+          *v = ((val - l_tccp.m_dc_level_shift) as OPJ_FLOAT32).to_bits() as OPJ_INT32;
+        }
       }
-    } else {
-      i = 0 as OPJ_SIZE_T;
-      while i < l_nb_elem {
-        // The C code reads the sample as an i32, shifts it, then stores the
-        // result as f32 bits for the 9x7 transform to consume.
-        let val = data[i as usize];
-        data[i as usize] =
-          ((val - l_tccp.m_dc_level_shift) as OPJ_FLOAT32).to_bits() as OPJ_INT32;
-        i += 1;
-      }
-    }
-    compno += 1;
-  }
+    });
   1i32
 }
 fn opj_tcd_mct_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_cp_t) -> OPJ_BOOL {
