@@ -241,20 +241,13 @@ pub struct opj_cparameters {
 pub type opj_cparameters_t = opj_cparameters;
 
 #[cfg(feature = "c_api")]
-#[allow(unsafe_code)]
 impl Drop for opj_cparameters {
   fn drop(&mut self) {
     if !self.cp_matrice.is_null() {
       crate::cabi::opj_free(self.cp_matrice as *mut core::ffi::c_void);
       self.cp_matrice = core::ptr::null_mut();
     }
-    if !self.cp_comment.is_null() {
-      let _old_comment = unsafe {
-        // Convert the old comment back into a CString and drop it.
-        std::ffi::CString::from_raw(self.cp_comment as *mut core::ffi::c_char)
-      };
-      self.cp_comment = core::ptr::null_mut();
-    }
+    self.cp_comment = crate::cabi::cparams_free_comment(self.cp_comment);
     if !self.mct_data.is_null() {
       crate::cabi::opj_free(self.mct_data);
       self.mct_data = core::ptr::null_mut();
@@ -335,68 +328,28 @@ impl opj_cparameters_t {
   }
 
   #[cfg(feature = "c_api")]
-  #[allow(unsafe_code)]
   pub fn set_comment(&mut self, comment: &str) {
-    let comment = std::ffi::CString::new(comment).expect("CString::new failed");
-    if !self.cp_comment.is_null() {
-      unsafe {
-        // Convert the old comment back into a CString and drop it.
-        let _old_comment = std::ffi::CString::from_raw(self.cp_comment as *mut core::ffi::c_char);
-      }
-    }
-    self.cp_comment = comment.into_raw();
+    self.cp_comment = crate::cabi::cparams_set_comment(self.cp_comment, comment);
   }
 
   #[cfg(feature = "c_api")]
-  #[allow(unsafe_code)]
   pub fn set_MCT(
     &mut self,
-    mut encoding_matrix: &[f32],
-    mut dc_shift: &[i32],
+    encoding_matrix: &[f32],
+    dc_shift: &[i32],
     nb_comps: u32,
   ) -> bool {
-    let l_matrix_size = core::mem::size_of_val(encoding_matrix);
-    let l_dc_shift_size = core::mem::size_of_val(dc_shift);
-    let l_mct_total_size = l_matrix_size + l_dc_shift_size;
-    /* add MCT capability */
-    if self.rsiz as core::ffi::c_int & 0x8000i32 != 0 {
-      self.rsiz = (self.rsiz as core::ffi::c_int | 0x100i32) as OPJ_UINT16
-    } else {
-      self.rsiz = (0x8000i32 | 0x100i32) as OPJ_UINT16
-    }
-    self.irreversible = 1i32;
-    /* use array based MCT */
-    self.tcp_mct = 2 as core::ffi::c_char;
-    self.mct_data = crate::cabi::opj_malloc(l_mct_total_size);
-    if self.mct_data.is_null() {
-      return false;
-    }
-    self
-      .get_matrix_mut(nb_comps as usize)
-      .copy_from_slice(encoding_matrix);
-    self
-      .get_dc_shift_mut(nb_comps as usize)
-      .copy_from_slice(dc_shift);
-    true
+    crate::cabi::cparams_set_mct(self, encoding_matrix, dc_shift, nb_comps)
   }
 
   #[cfg(feature = "c_api")]
-  #[allow(unsafe_code)]
   pub fn get_matrix_mut(&mut self, nb_comps: usize) -> &mut [f32] {
-    let mut l_matrix_size = nb_comps * nb_comps;
-    unsafe { core::slice::from_raw_parts_mut(self.mct_data as *mut f32, l_matrix_size) }
+    crate::cabi::cparams_matrix_mut(self, nb_comps as u32)
   }
 
   #[cfg(feature = "c_api")]
-  #[allow(unsafe_code)]
   pub fn get_dc_shift_mut(&mut self, nb_comps: usize) -> &mut [i32] {
-    let mut l_matrix_byte_size = nb_comps * nb_comps * core::mem::size_of::<OPJ_FLOAT32>();
-    unsafe {
-      core::slice::from_raw_parts_mut(
-        self.mct_data.add(l_matrix_byte_size) as *mut i32,
-        nb_comps,
-      )
-    }
+    crate::cabi::cparams_dc_shift_mut(self, nb_comps as u32)
   }
 }
 

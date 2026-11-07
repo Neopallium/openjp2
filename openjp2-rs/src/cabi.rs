@@ -525,3 +525,86 @@ pub(crate) fn cparams_dc_shift(dc_shift: *mut OPJ_INT32, numcomps: u32) -> Vec<O
   // SAFETY: `dc_shift` points at `numcomps` ints following the MCT matrix.
   unsafe { core::slice::from_raw_parts(dc_shift, numcomps as usize) }.to_vec()
 }
+
+/* ----------------------------------------------------------------------- */
+/* Encoder parameter marshalling (Drop / setters)                          */
+
+/// Frees the C-allocated comment string and returns null.
+pub(crate) fn cparams_free_comment(ptr: *mut core::ffi::c_char) -> *mut core::ffi::c_char {
+  if !ptr.is_null() {
+    // SAFETY: the comment was built with CString::into_raw by cparams_set_comment.
+    unsafe {
+      drop(std::ffi::CString::from_raw(ptr));
+    }
+  }
+  core::ptr::null_mut()
+}
+
+/// Stores `comment` as a NUL-terminated C string; frees any previous one.
+pub(crate) fn cparams_set_comment(
+  old_ptr: *mut core::ffi::c_char,
+  comment: &str,
+) -> *mut core::ffi::c_char {
+  let _ = cparams_free_comment(old_ptr);
+  let cstring = std::ffi::CString::new(comment).expect("CString::new failed");
+  cstring.into_raw()
+}
+
+/// Fills the caller-provided MCT buffer (matrix + dc shifts).
+pub(crate) fn cparams_set_mct(
+  self_: &mut opj_cparameters_t,
+  encoding_matrix: &[f32],
+  dc_shift: &[i32],
+  nb_comps: u32,
+) -> bool {
+  let l_matrix_size = core::mem::size_of_val(encoding_matrix);
+  let l_dc_shift_size = core::mem::size_of_val(dc_shift);
+  let l_mct_total_size = l_matrix_size + l_dc_shift_size;
+  /* add MCT capability */
+  if self_.rsiz as core::ffi::c_int & 0x8000i32 != 0 {
+    self_.rsiz = (self_.rsiz as core::ffi::c_int | 0x100i32) as OPJ_UINT16
+  } else {
+    self_.rsiz = (0x8000i32 | 0x100i32) as OPJ_UINT16
+  }
+  self_.irreversible = 1i32;
+  /* use array based MCT */
+  self_.tcp_mct = 2 as core::ffi::c_char;
+  self_.mct_data = opj_malloc(l_mct_total_size);
+  if self_.mct_data.is_null() {
+    return false;
+  }
+  // SAFETY: mct_data was allocated with exactly l_mct_total_size bytes above.
+  unsafe {
+    let matrix: &mut [f32] = core::slice::from_raw_parts_mut(
+      self_.mct_data as *mut f32,
+      encoding_matrix.len(),
+    );
+    matrix.copy_from_slice(encoding_matrix);
+    let dc: &mut [i32] = core::slice::from_raw_parts_mut(
+      self_.mct_data.add(l_matrix_size) as *mut i32,
+      nb_comps as usize,
+    );
+    dc.copy_from_slice(dc_shift);
+  }
+  true
+}
+
+/// Views the matrix part of the caller-provided MCT buffer.
+pub(crate) fn cparams_matrix_mut(self_: &mut opj_cparameters_t, nb_comps: u32) -> &mut [f32] {
+  let l_matrix_size = (nb_comps * nb_comps) as usize;
+  // SAFETY: the buffer was sized for `nb_comps^2` floats by cparams_set_mct.
+  unsafe { core::slice::from_raw_parts_mut(self_.mct_data as *mut f32, l_matrix_size) }
+}
+
+/// Views the dc-shift part of the caller-provided MCT buffer.
+pub(crate) fn cparams_dc_shift_mut(self_: &mut opj_cparameters_t, nb_comps: u32) -> &mut [i32] {
+  let l_matrix_size = (nb_comps * nb_comps) as usize;
+  let l_matrix_byte_size = l_matrix_size.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>());
+  // SAFETY: the dc shifts follow the matrix in the cparams_set_mct buffer.
+  unsafe {
+    core::slice::from_raw_parts_mut(
+      self_.mct_data.add(l_matrix_byte_size) as *mut i32,
+      nb_comps as usize,
+    )
+  }
+}
