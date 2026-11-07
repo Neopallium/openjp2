@@ -419,7 +419,7 @@ fn opj_idwt53_h(dwt: &opj_dwt_t, tiledp: &mut [OPJ_INT32], row_start: usize) {
   opj_dwt_interleave_h(dwt, &tiledp[row_start..row_start + len]);
   dwt.decode_1();
   for k in 0..len {
-    tiledp[row_start + k] = dwt.mem[k].get();
+    tiledp[row_start + k] = dwt.mem[k as usize].get();
   }
 }
 
@@ -442,7 +442,7 @@ fn opj_idwt53_v(
     dwt.decode_1();
     let mut k = 0i32;
     while k < dwt.sn + dwt.dn {
-      tiledp[col_start + (c as usize) + (k as usize) * (stride as usize)] = dwt.mem[k as usize].get();
+      tiledp[col_start + (c as usize) + (k as usize) * stride] = dwt.mem[k as usize].get();
       k += 1
     }
     c += 1
@@ -2358,7 +2358,7 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
     h.win_h_x1 = h.dn as OPJ_UINT32;
     j = 0 as OPJ_UINT32;
     while j + (NB_ELTS_V8 - 1) < rh {
-      opj_v8dwt_interleave_h(&h, &mut tile_data, aj_start, w, NB_ELTS_V8);
+      opj_v8dwt_interleave_h(&h, &tile_data, aj_start, w, NB_ELTS_V8);
       opj_v8dwt_decode(&h);
       /* To be adapted if NB_ELTS_V8 changes */
       for k in 0..rw as usize {
@@ -2371,7 +2371,7 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
       j += NB_ELTS_V8;
     }
     if j < rh {
-      opj_v8dwt_interleave_h(&h, &mut tile_data, aj_start, w, rh.wrapping_sub(j));
+      opj_v8dwt_interleave_h(&h, &tile_data, aj_start, w, rh.wrapping_sub(j));
       opj_v8dwt_decode(&h);
       let mut k_0: OPJ_UINT32 = 0;
       while k_0 < rw {
@@ -2393,7 +2393,7 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
     aj_start = 0usize;
     j = rw;
     while j > (NB_ELTS_V8 - 1) {
-      opj_v8dwt_interleave_v(&v, &mut tile_data, aj_start, w, NB_ELTS_V8);
+      opj_v8dwt_interleave_v(&v, &tile_data, aj_start, w, NB_ELTS_V8);
       opj_v8dwt_decode(&v);
       let mut k_1: OPJ_UINT32 = 0;
       while k_1 < rh {
@@ -2410,7 +2410,7 @@ fn opj_dwt_decode_tile_97(tilec: &mut opj_tcd_tilecomp_t, mut numres: OPJ_UINT32
     if rw & (NB_ELTS_V8 - 1) != 0 {
       let mut k_2: OPJ_UINT32 = 0;
       j = rw & (NB_ELTS_V8 - 1);
-      opj_v8dwt_interleave_v(&v, &mut tile_data, aj_start, w, j);
+      opj_v8dwt_interleave_v(&v, &tile_data, aj_start, w, j);
       opj_v8dwt_decode(&v);
       k_2 = 0 as OPJ_UINT32;
       while k_2 < rh {

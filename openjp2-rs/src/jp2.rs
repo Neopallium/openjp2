@@ -335,9 +335,9 @@ fn opj_jp2_write_cdef(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
   header.write(buf);
   buf.write_u16::<BigEndian>(len as u16).unwrap();
   for info in info {
-    buf.write_u16::<BigEndian>(info.cn as u16).unwrap();
-    buf.write_u16::<BigEndian>(info.typ as u16).unwrap();
-    buf.write_u16::<BigEndian>(info.asoc as u16).unwrap();
+    buf.write_u16::<BigEndian>(info.cn).unwrap();
+    buf.write_u16::<BigEndian>(info.typ).unwrap();
+    buf.write_u16::<BigEndian>(info.asoc).unwrap();
   }
   true
 }
@@ -362,13 +362,13 @@ fn opj_jp2_write_colr(mut jp2: &mut opj_jp2, buf: &mut Vec<u8>) -> bool {
     _ => return false,
   };
   header.write(buf);
-  buf.push(meth as u8);
+  buf.push(meth);
   buf.push(jp2.precedence as u8);
   buf.push(jp2.approx as u8);
   match meth {
     1 => {
       /* EnumCS */
-      buf.write_u32::<BigEndian>(jp2.enumcs as u32).unwrap();
+      buf.write_u32::<BigEndian>(jp2.enumcs).unwrap();
       // TODO: Support CIELab? (enumcs == 14).
     }
     2 => {
@@ -624,7 +624,7 @@ fn opj_jp2_apply_pclr(
       let pcol = cmap.pcol as u16;
       for (dst, src) in dst.iter_mut().zip(src.iter().take(max)) {
         // The index
-        let mut k = *src as i32;
+        let mut k = *src;
         if k < 0 {
           k = 0
         } else if k > top_k {
@@ -657,7 +657,7 @@ fn opj_jp2_read_pclr(jp2: &mut opj_jp2, mut buf: &[u8], p_manager: &mut opj_even
   }
   let nr_entries = buf
     .read_u16::<BigEndian>()
-    .expect("Buffer should have enough data") as u16;
+    .expect("Buffer should have enough data");
   if nr_entries == 0 || nr_entries > 1024 {
     event_msg!(
       p_manager,
@@ -1605,7 +1605,7 @@ fn opj_jp2_read_header_procedure(
         );
         return 0i32;
       }
-      data.resize(data_size as usize, 0);
+      data.resize(data_size, 0);
       if stream.read_exact(data.as_mut_slice()).is_err() {
         event_msg!(
           p_manager,

@@ -1274,7 +1274,6 @@ fn opj_j2k_write_cod(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut
   opj_write_bytes(&mut l_buf[pos..], l_tcp.mct, 1 as OPJ_UINT32);
   pos += 1usize;
   l_remaining_size = l_remaining_size.wrapping_sub(9u32);
-  drop(l_tcp);
   if opj_j2k_write_SPCod_SPCoc(
     p_j2k,
     p_j2k.m_current_tile_number,
@@ -1389,8 +1388,6 @@ fn opj_j2k_read_cod(
     l_tcp.tccps[i as usize].csty = l_tcp.csty & 0x1u32;
     i += 1;
   }
-  drop(l_tcp);
-  drop(l_cp);
   if opj_j2k_read_SPCod_SPCoc(
     p_j2k,
     0 as OPJ_UINT32,
@@ -6649,8 +6646,7 @@ fn opj_j2k_read_header_procedure(
         event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
         return 0i32;
       }
-      drop(l_header_data);
-      /* Read the marker segment with the correct marker handler */
+          /* Read the marker segment with the correct marker handler */
       let header_data =
         p_j2k.m_specific_param.m_decoder.m_header_data[..l_marker_size as usize].to_vec();
       if l_marker_handler.handler(p_j2k, &header_data, p_manager) == 0 {
@@ -7072,8 +7068,7 @@ pub(crate) fn opj_j2k_read_tile_header(
               event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
               return false;
             }
-            drop(l_header_data);
-            /* Read the marker segment with the correct marker handler */
+                      /* Read the marker segment with the correct marker handler */
             let header_data =
               p_j2k.m_specific_param.m_decoder.m_header_data[..l_marker_size as usize].to_vec();
             if l_marker_handler.handler(p_j2k, &header_data, p_manager) == 0 {
@@ -8237,8 +8232,6 @@ fn opj_j2k_read_SPCod_SPCoc(
       i += 1;
     }
   }
-  drop(l_tccp);
-  drop(l_tcp);
   if reduce_err {
     p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
     return 0i32;

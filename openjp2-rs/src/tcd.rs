@@ -1641,7 +1641,7 @@ pub(crate) fn opj_tcd_update_tile_data(
           }
         }
         2 => {
-          let (dest, remain) = p_dest.split_at_mut(l_nb_elem as usize * 2);
+          let (dest, remain) = p_dest.split_at_mut(l_nb_elem * 2);
           p_dest = remain;
           if l_img_comp.sgnd != 0 {
             for (src, dest) in l_src
@@ -1668,7 +1668,7 @@ pub(crate) fn opj_tcd_update_tile_data(
           }
         }
         4 => {
-          let (dest, remain) = p_dest.split_at_mut(l_nb_elem as usize * 4);
+          let (dest, remain) = p_dest.split_at_mut(l_nb_elem * 4);
           p_dest = remain;
           for (src, dest) in l_src
             .chunks_exact(l_width + l_stride)

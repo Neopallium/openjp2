@@ -57,9 +57,7 @@ pub enum J2KFormat {
 
 /// Detect Jpeg 2000 format from magic bytes.
 pub fn detect_format(buf: &[u8]) -> Result<J2KFormat, String> {
-  if buf.starts_with(JP2_RFC3745_MAGIC) {
-    Ok(J2KFormat::JP2)
-  } else if buf.starts_with(JP2_MAGIC) {
+  if buf.starts_with(JP2_RFC3745_MAGIC) || buf.starts_with(JP2_MAGIC) {
     Ok(J2KFormat::JP2)
   } else if buf.starts_with(J2K_CODESTREAM_MAGIC) {
     Ok(J2KFormat::J2K)

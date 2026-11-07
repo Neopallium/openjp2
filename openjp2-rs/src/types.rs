@@ -851,7 +851,7 @@ impl TileBuf {
     if bytes == 0 {
       return true;
     }
-    let samples = (bytes as usize) / core::mem::size_of::<OPJ_INT32>();
+    let samples = bytes / core::mem::size_of::<OPJ_INT32>();
     let mut data: Vec<OPJ_INT32> = Vec::new();
     if data.try_reserve_exact(samples).is_err() {
       return false;
