@@ -418,7 +418,7 @@ impl Codec {
 
   pub fn setup_encoder(
     &mut self,
-    parameters: &mut opj_cparameters_t,
+    parameters: &mut EncoderParameters,
     p_image: &mut CoreImage,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {

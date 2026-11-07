@@ -418,12 +418,103 @@ pub unsafe fn opj_setup_encoder(
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   let parameters = &mut *parameters;
   let mut core = core_from_opj(p_image);
-  let ret = l_codec.setup_encoder(parameters, &mut core);
+  let mut safe = encoder_params_from_c(parameters, core.numcomps);
+  let ret = l_codec.setup_encoder(&mut safe, &mut core);
+  // The codec used to free the caller's MCT buffer here; the C caller hands
+  // ownership of it to opj_setup_encoder.
+  if !parameters.mct_data.is_null() {
+    // SAFETY: allocated with opj_malloc in opj_set_MCT.
+    unsafe { ::libc::free(parameters.mct_data) };
+    parameters.mct_data = core::ptr::null_mut();
+  }
   let fresh = core_into_opj(core);
   p_image.clear_comps();
   p_image.clear_icc_profile();
   *p_image = *fresh;
   ret
+}
+
+/// Converts the C-ABI encoder parameters into the core's safe owned struct.
+fn encoder_params_from_c(
+  parameters: &opj_cparameters_t,
+  numcomps: u32,
+) -> openjp2_core::EncoderParameters {
+  let mut safe = openjp2_core::EncoderParameters {
+    tile_size_on: parameters.tile_size_on,
+    cp_tx0: parameters.cp_tx0,
+    cp_ty0: parameters.cp_ty0,
+    cp_tdx: parameters.cp_tdx,
+    cp_tdy: parameters.cp_tdy,
+    cp_disto_alloc: parameters.cp_disto_alloc,
+    cp_fixed_alloc: parameters.cp_fixed_alloc,
+    cp_fixed_quality: parameters.cp_fixed_quality,
+    csty: parameters.csty,
+    prog_order: parameters.prog_order,
+    POC: parameters.POC,
+    numpocs: parameters.numpocs,
+    tcp_numlayers: parameters.tcp_numlayers,
+    tcp_rates: parameters.tcp_rates,
+    tcp_distoratio: parameters.tcp_distoratio,
+    numresolution: parameters.numresolution,
+    cblockw_init: parameters.cblockw_init,
+    cblockh_init: parameters.cblockh_init,
+    mode: parameters.mode,
+    irreversible: parameters.irreversible,
+    roi_compno: parameters.roi_compno,
+    roi_shift: parameters.roi_shift,
+    res_spec: parameters.res_spec,
+    prcw_init: parameters.prcw_init,
+    prch_init: parameters.prch_init,
+    index_on: parameters.index_on,
+    image_offset_x0: parameters.image_offset_x0,
+    image_offset_y0: parameters.image_offset_y0,
+    subsampling_dx: parameters.subsampling_dx,
+    subsampling_dy: parameters.subsampling_dy,
+    decod_format: parameters.decod_format,
+    cod_format: parameters.cod_format,
+    cp_cinema: parameters.cp_cinema,
+    max_comp_size: parameters.max_comp_size,
+    cp_rsiz: parameters.cp_rsiz,
+    tp_on: parameters.tp_on,
+    tp_flag: parameters.tp_flag,
+    tcp_mct: parameters.tcp_mct,
+    jpip_on: parameters.jpip_on,
+    max_cs_size: parameters.max_cs_size,
+    rsiz: parameters.rsiz,
+    ..Default::default()
+  };
+  safe.cp_matrice = if parameters.cp_matrice.is_null() {
+    None
+  } else {
+    let array_len = (parameters.tcp_numlayers as usize)
+      .wrapping_mul(parameters.numresolution as usize)
+      .wrapping_mul(3);
+    // SAFETY: cp_matrice is the caller's matrix of `array_len` ints.
+    Some(unsafe { core::slice::from_raw_parts(parameters.cp_matrice, array_len) }.to_vec())
+  };
+  safe.cp_comment = if parameters.cp_comment.is_null() {
+    None
+  } else {
+    // SAFETY: cp_comment is a caller-provided NUL-terminated string.
+    Some(unsafe { core::ffi::CStr::from_ptr(parameters.cp_comment) }.to_bytes().to_vec())
+  };
+  safe.mct_data = if parameters.mct_data.is_null() {
+    None
+  } else {
+    let l_mct_len = (numcomps * numcomps) as usize;
+    // SAFETY: mct_data holds l_mct_len floats followed by numcomps ints.
+    unsafe {
+      let matrix: Vec<f32> =
+        core::slice::from_raw_parts(parameters.mct_data as *const f32, l_mct_len).to_vec();
+      let dc_shift: Vec<i32> = core::slice::from_raw_parts(
+        (parameters.mct_data as *mut u8).add(l_mct_len * core::mem::size_of::<f32>()) as *const i32,
+        numcomps as usize,
+      )
+      .to_vec();
+      Some((matrix, dc_shift))
+    }
+  };
+  safe
 }
 
 /* ----------------------------------------------------------------------- */

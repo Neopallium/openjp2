@@ -37,8 +37,10 @@ use super::j2k::*;
 
 use super::event::opj_event_mgr;
 
-#[derive(Clone)]
-pub(crate) struct EncoderParameters {
+/// Safe, owned encoder parameters.  The C ABI mirror (`opj_cparameters_t`)
+/// is marshalled into this by the capi crate; the tools build it directly.
+#[derive(Clone, Debug)]
+pub struct EncoderParameters {
   pub tile_size_on: OPJ_BOOL,
   pub cp_tx0: core::ffi::c_int,
   pub cp_ty0: core::ffi::c_int,
@@ -47,8 +49,8 @@ pub(crate) struct EncoderParameters {
   pub cp_disto_alloc: core::ffi::c_int,
   pub cp_fixed_alloc: core::ffi::c_int,
   pub cp_fixed_quality: core::ffi::c_int,
-  pub cp_matrice: *mut core::ffi::c_int,
-  pub cp_comment: *mut core::ffi::c_char,
+  pub cp_matrice: Option<Vec<core::ffi::c_int>>,
+  pub cp_comment: Option<Vec<OPJ_BYTE>>,
   pub csty: core::ffi::c_int,
   pub prog_order: OPJ_PROG_ORDER,
   pub POC: [opj_poc_t; 32],
@@ -80,7 +82,7 @@ pub(crate) struct EncoderParameters {
   pub tp_flag: core::ffi::c_char,
   pub tcp_mct: core::ffi::c_char,
   pub jpip_on: OPJ_BOOL,
-  pub mct_data: *mut core::ffi::c_void,
+  pub mct_data: Option<(Vec<OPJ_FLOAT32>, Vec<OPJ_INT32>)>,
   pub max_cs_size: core::ffi::c_int,
   pub rsiz: OPJ_UINT16,
 }
@@ -96,8 +98,8 @@ impl Default for EncoderParameters {
       cp_disto_alloc: Default::default(),
       cp_fixed_alloc: Default::default(),
       cp_fixed_quality: Default::default(),
-      cp_matrice: core::ptr::null_mut(),
-      cp_comment: core::ptr::null_mut(),
+      cp_matrice: None,
+      cp_comment: None,
       csty: Default::default(),
       prog_order: OPJ_LRCP,
       POC: Default::default(),
@@ -129,60 +131,9 @@ impl Default for EncoderParameters {
       tp_flag: Default::default(),
       tcp_mct: Default::default(),
       jpip_on: Default::default(),
-      mct_data: core::ptr::null_mut(),
+      mct_data: None,
       max_cs_size: Default::default(),
       rsiz: Default::default(),
-    }
-  }
-}
-
-impl EncoderParameters {
-  pub fn from_c(params: &mut opj_cparameters_t) -> Self {
-    Self {
-      tile_size_on: params.tile_size_on,
-      cp_tx0: params.cp_tx0,
-      cp_ty0: params.cp_ty0,
-      cp_tdx: params.cp_tdx,
-      cp_tdy: params.cp_tdy,
-      cp_disto_alloc: params.cp_disto_alloc,
-      cp_fixed_alloc: params.cp_fixed_alloc,
-      cp_fixed_quality: params.cp_fixed_quality,
-      cp_matrice: params.cp_matrice,
-      cp_comment: params.cp_comment,
-      csty: params.csty,
-      prog_order: params.prog_order,
-      POC: params.POC,
-      numpocs: params.numpocs,
-      tcp_numlayers: params.tcp_numlayers,
-      tcp_rates: params.tcp_rates,
-      tcp_distoratio: params.tcp_distoratio,
-      numresolution: params.numresolution,
-      cblockw_init: params.cblockw_init,
-      cblockh_init: params.cblockh_init,
-      mode: params.mode,
-      irreversible: params.irreversible,
-      roi_compno: params.roi_compno,
-      roi_shift: params.roi_shift,
-      res_spec: params.res_spec,
-      prcw_init: params.prcw_init,
-      prch_init: params.prch_init,
-      index_on: params.index_on,
-      image_offset_x0: params.image_offset_x0,
-      image_offset_y0: params.image_offset_y0,
-      subsampling_dx: params.subsampling_dx,
-      subsampling_dy: params.subsampling_dy,
-      decod_format: params.decod_format,
-      cod_format: params.cod_format,
-      cp_cinema: params.cp_cinema,
-      max_comp_size: params.max_comp_size,
-      cp_rsiz: params.cp_rsiz,
-      tp_on: params.tp_on,
-      tp_flag: params.tp_flag,
-      tcp_mct: params.tcp_mct,
-      jpip_on: params.jpip_on,
-      mct_data: params.mct_data,
-      max_cs_size: params.max_cs_size,
-      rsiz: params.rsiz,
     }
   }
 }

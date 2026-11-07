@@ -3,9 +3,7 @@ use super::consts::*;
 use super::dwt::*;
 use super::event::*;
 use super::image::*;
-#[cfg(feature = "c_api")]
 use super::invert::*;
-#[cfg(feature = "c_api")]
 use super::mct::*;
 use super::math::*;
 use rayon::prelude::*;
@@ -4771,7 +4769,7 @@ fn opj_j2k_initialise_4K_poc(POC: &mut [opj_poc_t], numres: core::ffi::c_int) ->
   2i32
 }
 fn opj_j2k_set_cinema_parameters(
-  mut parameters: &mut opj_cparameters_t,
+  mut parameters: &mut EncoderParameters,
   image: &mut CoreImage,
   mut p_manager: &mut opj_event_mgr,
 ) {
@@ -4957,7 +4955,7 @@ fn opj_j2k_is_cinema_compliant(
     1i32
 }
 fn opj_j2k_get_imf_max_NL(
-  mut parameters: &mut opj_cparameters_t,
+  mut parameters: &mut EncoderParameters,
   mut image: &mut CoreImage,
 ) -> core::ffi::c_int {
   /* Decomposition levels */
@@ -5004,7 +5002,7 @@ fn opj_j2k_get_imf_max_NL(
   -(1i32)
 }
 fn opj_j2k_set_imf_parameters(
-  mut parameters: &mut opj_cparameters_t,
+  mut parameters: &mut EncoderParameters,
   mut image: &mut CoreImage,
   mut _p_manager: &mut opj_event_mgr,
 ) {
@@ -5083,7 +5081,7 @@ static TAB_MAX_SUB_LEVEL_FROM_MAIN_LEVEL: [OPJ_UINT16; 12] = [
   9 as OPJ_UINT16,
 ];
 fn opj_j2k_is_imf_compliant(
-  mut parameters: &mut opj_cparameters_t,
+  mut parameters: &mut EncoderParameters,
   mut image: &mut CoreImage,
   mut p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -5442,7 +5440,7 @@ fn opj_j2k_is_imf_compliant(
 
 pub(crate) fn opj_j2k_setup_encoder(
   p_j2k: &mut opj_j2k,
-  parameters: &mut opj_cparameters_t,
+  parameters: &mut EncoderParameters,
   image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {
@@ -5511,7 +5509,7 @@ pub(crate) fn opj_j2k_setup_encoder(
     }
 
     if parameters.cp_fixed_alloc != 0 {
-      if parameters.cp_matrice.is_null() {
+      if parameters.cp_matrice.is_none() {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -5834,12 +5832,8 @@ pub(crate) fn opj_j2k_setup_encoder(
     }
 
     if parameters.cp_fixed_alloc != 0 {
-      let _array_len = (parameters.tcp_numlayers as usize)
-        .wrapping_mul(parameters.numresolution as usize)
-        .wrapping_mul(3);
-      #[cfg(feature = "c_api")]
-      if let Some(matrice) = crate::cabi::cparams_matrice(parameters, _array_len) {
-        cp.m_specific_param.m_enc.m_matrice = matrice;
+      if let Some(matrice) = parameters.cp_matrice.as_deref() {
+        cp.m_specific_param.m_enc.m_matrice = matrice.to_vec();
       }
     }
     /* tiles */
@@ -5849,13 +5843,8 @@ pub(crate) fn opj_j2k_setup_encoder(
     cp.tx0 = parameters.cp_tx0 as OPJ_UINT32;
     cp.ty0 = parameters.cp_ty0 as OPJ_UINT32;
     /* comment string */
-    if false {
-      #[cfg(feature = "c_api")]
-      if let Some(comment) = crate::cabi::cparams_comment(parameters) {
-        cp.comment = comment;
-      }
-      #[cfg(not(feature = "c_api"))]
-      unreachable!();
+    if let Some(comment) = parameters.cp_comment.as_deref() {
+      cp.comment = comment.to_vec();
     } else {
       /* Create default comment for codestream */
       /* UniPG>> */
@@ -5977,15 +5966,11 @@ pub(crate) fn opj_j2k_setup_encoder(
       }
       tcp.tccps
         .resize(image.numcomps as usize, Default::default());
-      if cfg!(feature = "c_api") && !parameters.mct_data.is_null() {
-        #[cfg(feature = "c_api")]
-        {
+      if let Some((lTmpBuf, dc_shift)) = parameters.mct_data.as_ref() {
         let numcomps = image.numcomps;
         let lMctLen = numcomps * numcomps;
         /* copy the caller-provided coding matrix into a scratch buffer */
-        let (mut lTmpBuf, l_dc_shift) =
-          crate::cabi::cparams_mct_data(parameters, numcomps)
-            .expect("mct_data is non-null in this branch");
+        let mut lTmpBuf = lTmpBuf.clone();
         tcp.mct = 2 as OPJ_UINT32;
         tcp.m_mct_coding_matrix.clear();
         tcp.m_mct_coding_matrix.extend_from_slice(&lTmpBuf);
@@ -6010,15 +5995,12 @@ pub(crate) fn opj_j2k_setup_encoder(
           image.numcomps,
           &tcp.m_mct_decoding_matrix,
         );
-        let dc_shift: Vec<OPJ_INT32> = crate::cabi::cparams_dc_shift(l_dc_shift, numcomps);
         for (i, tccp_1) in tcp.tccps.iter_mut().enumerate().take(numcomps as usize) {
           tccp_1.m_dc_level_shift = dc_shift[i];
         }
         if opj_j2k_setup_mct_encoding(tcp, image) == 0i32 {
-          /* free will be handled by opj_j2k_destroy */
           event_msg!(p_manager, EVT_ERROR, "Failed to setup j2k mct encoding\n",);
           return 0i32;
-        }
         }
       } else {
         if tcp.mct == 1u32 && image.numcomps >= 3u32 {
@@ -6126,11 +6108,7 @@ pub(crate) fn opj_j2k_setup_encoder(
       }
       tileno += 1;
     }
-    #[cfg(feature = "c_api")]
-    if !parameters.mct_data.is_null() {
-      crate::cabi::opj_free(parameters.mct_data);
-      parameters.mct_data = core::ptr::null_mut::<core::ffi::c_void>()
-    }
+
     1i32
 }
 /* *

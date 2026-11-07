@@ -5,7 +5,7 @@ use rand::prelude::*;
 use std::path::PathBuf;
 
 pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<(), String> {
-  let mut params = opj_cparameters_t::default();
+  let mut params = EncoderParameters::default();
   let mut args = args.into_iter();
 
   // Skip program name.

@@ -730,9 +730,9 @@ impl CompressionParameters {
     })
   }
 
-  pub fn to_c_params(&self) -> opj_cparameters_t {
+  pub fn to_c_params(&self) -> EncoderParameters {
     // Start with defaults
-    let mut c_params = opj_cparameters_t {
+    let mut c_params = EncoderParameters {
       max_comp_size: self.max_comp_size as i32,
       max_cs_size: self.max_cs_size as i32,
       ..Default::default()
@@ -788,10 +788,10 @@ impl CompressionParameters {
     }
 
     // Comment
-    #[cfg(feature = "c_api")]
-    if let Some(comment) = &self.comment {
-      c_params.set_comment(comment);
-    }
+    c_params.cp_comment = self
+      .comment
+      .as_ref()
+      .map(|comment| comment.as_bytes().to_vec());
 
     // Various parameters
     c_params.csty = self.csty as i32;

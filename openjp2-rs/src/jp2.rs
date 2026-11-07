@@ -1244,7 +1244,7 @@ pub(crate) fn opj_jp2_set_threads(mut jp2: &mut opj_jp2, mut num_threads: OPJ_UI
 /* ----------------------------------------------------------------------- */
 pub(crate) fn opj_jp2_setup_encoder(
   jp2: &mut opj_jp2,
-  parameters: &mut opj_cparameters_t,
+  parameters: &mut EncoderParameters,
   image: &mut CoreImage,
   p_manager: &mut opj_event_mgr,
 ) -> OPJ_BOOL {

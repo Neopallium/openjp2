@@ -472,61 +472,6 @@ pub(crate) fn t2_pack_info_end_ph(p_pack_info: *mut opj_packet_info_t, l_pos: i6
 }
 
 /* ----------------------------------------------------------------------- */
-/* Encoder parameter marshalling (setup_encoder reads)                     */
-
-/// Copies the caller-provided fixed-quality matrix (`cp_matrice`) into an
-/// owned buffer. Returns None when no matrix is set.
-pub(crate) fn cparams_matrice(
-  parameters: &opj_cparameters_t,
-  array_len: usize,
-) -> Option<Vec<core::ffi::c_int>> {
-  if parameters.cp_matrice.is_null() {
-    return None;
-  }
-  // SAFETY: `cp_matrice` is the caller's matrix of `array_len` ints.
-  Some(unsafe { core::slice::from_raw_parts(parameters.cp_matrice, array_len) }.to_vec())
-}
-
-/// Copies the caller-provided comment string into an owned byte buffer.
-pub(crate) fn cparams_comment(parameters: &opj_cparameters_t) -> Option<Vec<u8>> {
-  if parameters.cp_comment.is_null() {
-    return None;
-  }
-  // SAFETY: `cp_comment` is a caller-provided NUL-terminated string.
-  Some(
-    unsafe { core::ffi::CStr::from_ptr(parameters.cp_comment) }
-      .to_bytes()
-      .to_vec(),
-  )
-}
-
-/// Copies the caller-provided MCT coding matrix and returns it together with
-/// the pointer to the dc-shift array that follows it in the same buffer.
-pub(crate) fn cparams_mct_data(
-  parameters: &opj_cparameters_t,
-  numcomps: u32,
-) -> Option<(Vec<OPJ_FLOAT32>, *mut OPJ_INT32)> {
-  if parameters.mct_data.is_null() {
-    return None;
-  }
-  let l_mct_len = (numcomps * numcomps) as usize;
-  let l_mct_size = l_mct_len.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>());
-  // SAFETY: `mct_data` holds `l_mct_len` floats followed by `numcomps` ints.
-  unsafe {
-    let l_dc_shift = (parameters.mct_data as *mut OPJ_BYTE).add(l_mct_size) as *mut OPJ_INT32;
-    let matrix: Vec<OPJ_FLOAT32> =
-      core::slice::from_raw_parts(parameters.mct_data as *const OPJ_FLOAT32, l_mct_len).to_vec();
-    Some((matrix, l_dc_shift))
-  }
-}
-
-/// Copies the dc-shift array that follows the MCT matrix in the caller's buffer.
-pub(crate) fn cparams_dc_shift(dc_shift: *mut OPJ_INT32, numcomps: u32) -> Vec<OPJ_INT32> {
-  // SAFETY: `dc_shift` points at `numcomps` ints following the MCT matrix.
-  unsafe { core::slice::from_raw_parts(dc_shift, numcomps as usize) }.to_vec()
-}
-
-/* ----------------------------------------------------------------------- */
 /* Encoder parameter marshalling (Drop / setters)                          */
 
 /// Frees the C-allocated comment string and returns null.
