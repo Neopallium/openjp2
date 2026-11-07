@@ -395,22 +395,13 @@ fn opj_tcd_rateallocate(
 
     /* index file */
     #[cfg(feature = "c_api")]
-    #[allow(unsafe_code)]
-    if !cstr_info.is_null() {
-      // SAFETY: `cstr_info` is the C-ABI codestream info v1 mirror.
-      let tile_info = unsafe {
-        &mut *(*cstr_info).tile.offset(tcd.tcd_tileno as isize) as *mut opj_tile_info_t
-      };
-      unsafe {
-        (*tile_info).numpix = tcd.tcd_image.tiles.numpix;
-        (*tile_info).distotile = tcd.tcd_image.tiles.distotile;
-      }
-      {
-        let mut v: Vec<core::ffi::c_double> = vec![0.0; tcd_tcp_numlayers as usize];
-        unsafe { (*tile_info).thresh = v.as_mut_ptr() };
-        core::mem::forget(v);
-      }
-    } /* fixed_quality */
+    crate::cabi::tcd_index_set_tile_stats(
+      cstr_info,
+      tcd.tcd_tileno,
+      tcd.tcd_image.tiles.numpix,
+      tcd.tcd_image.tiles.distotile,
+      tcd_tcp_numlayers,
+    ); /* fixed_quality */
 
     layno = 0 as OPJ_UINT32;
     while layno < tcd_tcp_numlayers {
@@ -563,18 +554,9 @@ fn opj_tcd_rateallocate(
         /* Special value to indicate to use all passes */
         goodthresh = -(1i32) as OPJ_FLOAT64
       }
+      /* Threshold for Marcela Index */
       #[cfg(feature = "c_api")]
-      #[allow(unsafe_code)]
-      if !cstr_info.is_null() {
-        /* Threshold for Marcela Index */
-        // SAFETY: the v1 C-ABI tile info was allocated above with a thresh
-        // array of numlayers entries.
-        unsafe {
-          *(*(*cstr_info).tile.offset(tcd.tcd_tileno as isize))
-            .thresh
-            .offset(layno as isize) = goodthresh
-        }
-      }
+      crate::cabi::tcd_index_set_thresh(cstr_info, tcd.tcd_tileno, layno, goodthresh);
 
       opj_tcd_makelayer(tcd, layno, goodthresh, 1 as OPJ_UINT32);
 
@@ -1251,46 +1233,25 @@ pub(crate) fn opj_tcd_encode_tile(
   if p_tcd.cur_tp_num == 0u32 {
     p_tcd.tcd_tileno = p_tile_no;
     /* FIXME _ProfStop(PGROUP_RATE); */
-    #[cfg(feature = "c_api")]
-    #[allow(unsafe_code)]
-    if !p_cstr_info.is_null() {
-      let mut l_num_packs = 0 as OPJ_UINT32;
-      let mut i: OPJ_UINT32 = 0;
+    {
       /* INDEX >> "Precinct_nb_X et Precinct_nb_Y" */
       let l_tilec_idx = &p_tcd.tcd_image.tiles.comps[0]; /* based on component 0 */
+      #[cfg(feature = "c_api")]
       let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps; /* based on component 0 */
-      i = 0 as OPJ_UINT32;
-      while i < l_tilec_idx.numresolutions {
-        let l_res_idx = &l_tilec_idx.resolutions[i as usize];
-        // SAFETY: `p_cstr_info` is the C-ABI codestream info v1 mirror.
-        unsafe {
-          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pw[i as usize] =
-            l_res_idx.pw as core::ffi::c_int;
-          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).ph[i as usize] =
-            l_res_idx.ph as core::ffi::c_int;
-        }
+      let mut l_num_packs = 0 as OPJ_UINT32;
+      for l_res_idx in l_tilec_idx.resolutions.iter() {
         l_num_packs = (l_num_packs as core::ffi::c_uint)
           .wrapping_add(l_res_idx.pw.wrapping_mul(l_res_idx.ph))
           as OPJ_UINT32;
-        // SAFETY: see above.
-        unsafe {
-          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pdx[i as usize] =
-            tccps[i as usize].prcw[i as usize] as core::ffi::c_int;
-          (*(*p_cstr_info).tile.offset(p_tile_no as isize)).pdy[i as usize] =
-            tccps[i as usize].prch[i as usize] as core::ffi::c_int;
-        }
-        i += 1;
       }
-      // SAFETY: see above; the packet array is a Vec transferred into the field.
-      unsafe {
-        let p_packet = &mut (*(*p_cstr_info).tile.offset(p_tile_no as isize)).packet;
-        let n = ((*p_cstr_info).numcomps as usize)
-          .wrapping_mul((*p_cstr_info).numlayers as usize)
-          .wrapping_mul(l_num_packs as usize);
-        let mut v: Vec<opj_packet_info_t> = vec![Default::default(); n];
-        *p_packet = v.as_mut_ptr();
-        core::mem::forget(v);
-      }
+      #[cfg(feature = "c_api")]
+      crate::cabi::tcd_index_encode_tile_init(
+        p_cstr_info,
+        p_tile_no,
+        l_num_packs,
+        &l_tilec_idx.resolutions[..],
+        tccps,
+      );
     }
     if opj_tcd_dc_level_shift_encode(p_tcd, cp) == 0 {
       return 0i32;
@@ -1331,11 +1292,7 @@ pub(crate) fn opj_tcd_encode_tile(
   /*--------------TIER2------------------*/
   /* INDEX */
   #[cfg(feature = "c_api")]
-  #[allow(unsafe_code)]
-  if !p_cstr_info.is_null() {
-    // SAFETY: C-ABI v1 mirror write.
-    unsafe { (*p_cstr_info).index_write = 1i32 }
-  }
+  crate::cabi::tcd_index_set_write(p_cstr_info, 1i32);
   /* FIXME _ProfStart(PGROUP_T2); */
   if opj_tcd_t2_encode(
     p_tcd,
@@ -2301,10 +2258,7 @@ fn opj_tcd_rate_allocate_encode(
   {
     let mut l_nb_written = 0 as OPJ_UINT32;
     #[cfg(feature = "c_api")]
-    #[allow(unsafe_code)]
-    if !p_cstr_info.is_null() {
-      unsafe { (*p_cstr_info).index_write = 0i32 }
-    }
+    crate::cabi::tcd_index_set_write(p_cstr_info, 0i32);
 
     if cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy
       == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO

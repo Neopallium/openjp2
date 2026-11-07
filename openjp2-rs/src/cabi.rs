@@ -284,5 +284,244 @@ pub unsafe fn free_cstr_index_mirror(p_cstr_ind: *mut opj_codestream_index_t) {
 /* ----------------------------------------------------------------------- */
 /* Tile marker info (PLT packet sizes)                                      */
 
+/* ----------------------------------------------------------------------- */
+/* Encode-side codestream info v1 writes (called from tcd/t2)               */
 
+/// Writes the tile stats (numpix/distotile + a fresh thresh array) into the
+/// v1 mirror's tile slot.
+pub(crate) fn tcd_index_set_tile_stats(
+  cstr_info: *mut opj_codestream_info_t,
+  tileno: u32,
+  numpix: i32,
+  distotile: f64,
+  numlayers: u32,
+) {
+  if cstr_info.is_null() {
+    return;
+  }
+  // SAFETY: `cstr_info` is the caller's v1 mirror; its tile array has tw*th entries.
+  unsafe {
+    let tile_info =
+      &mut *(*cstr_info).tile.offset(tileno as isize) as *mut opj_tile_info_t;
+    (*tile_info).numpix = numpix;
+    (*tile_info).distotile = distotile;
+    let mut v: Vec<core::ffi::c_double> = vec![0.0; numlayers as usize];
+    (*tile_info).thresh = v.as_mut_ptr();
+    core::mem::forget(v);
+  }
+}
 
+/// Writes the good threshold of one layer into the v1 mirror's thresh array.
+pub(crate) fn tcd_index_set_thresh(
+  cstr_info: *mut opj_codestream_info_t,
+  tileno: u32,
+  layno: u32,
+  goodthresh: f64,
+) {
+  if cstr_info.is_null() {
+    return;
+  }
+  // SAFETY: the thresh array was allocated by tcd_index_set_tile_stats with
+  // `numlayers` entries; `layno` stays within it.
+  unsafe {
+    *(*(*cstr_info).tile.offset(tileno as isize))
+      .thresh
+      .offset(layno as isize) = goodthresh
+  };
+}
+
+/// Sets the v1 mirror's index_write flag.
+pub(crate) fn tcd_index_set_write(cstr_info: *mut opj_codestream_info_t, write: i32) {
+  if cstr_info.is_null() {
+    return;
+  }
+  // SAFETY: pointer validity is the caller's contract (C-ABI mirror).
+  unsafe {
+    (*cstr_info).index_write = write;
+  }
+}
+
+/// Initializes the v1 mirror's tile slot from the component-0 resolution
+/// layout (precinct sizes/exponents and the packet array).
+pub(crate) fn tcd_index_encode_tile_init(
+  cstr_info: *mut opj_codestream_info_t,
+  tileno: u32,
+  l_num_packs: u32,
+  resolutions: &[crate::types::opj_tcd_resolution_t],
+  tccps: &[crate::types::opj_tccp_t],
+) {
+  if cstr_info.is_null() {
+    return;
+  }
+  // SAFETY: `cstr_info` is the caller's v1 mirror; its tile array has tw*th
+  // entries and the packet array is built below with the exact element count.
+  unsafe {
+    for (i, l_res_idx) in resolutions.iter().enumerate() {
+      (*(*cstr_info).tile.offset(tileno as isize)).pw[i] = l_res_idx.pw as core::ffi::c_int;
+      (*(*cstr_info).tile.offset(tileno as isize)).ph[i] = l_res_idx.ph as core::ffi::c_int;
+      (*(*cstr_info).tile.offset(tileno as isize)).pdx[i] =
+        tccps[i].prcw[i] as core::ffi::c_int;
+      (*(*cstr_info).tile.offset(tileno as isize)).pdy[i] =
+        tccps[i].prch[i] as core::ffi::c_int;
+    }
+    let p_packet = &mut (*(*cstr_info).tile.offset(tileno as isize)).packet;
+    let n = ((*cstr_info).numcomps as usize)
+      .wrapping_mul((*cstr_info).numlayers as usize)
+      .wrapping_mul(l_num_packs as usize);
+    let mut v: Vec<opj_packet_info_t> = vec![Default::default(); n];
+    *p_packet = v.as_mut_ptr();
+    core::mem::forget(v);
+  }
+}
+
+/// Per-packet index bookkeeping of t2 encode (start/end positions).
+pub(crate) fn t2_write_packet_index(
+  cstr_info: *mut opj_codestream_info_t,
+  tileno: u32,
+  l_nb_bytes: i64,
+  tp_on: bool,
+  poc: bool,
+) {
+  if cstr_info.is_null() {
+    return;
+  }
+  // SAFETY: `cstr_info` is the caller's v1 mirror; the tile/packet arrays were
+  // sized by tcd_index_encode_tile_init.
+  unsafe {
+    if (*cstr_info).index_write != 0 {
+      let info_TL: *mut opj_tile_info_t =
+        &mut *(*cstr_info).tile.offset(tileno as isize) as *mut opj_tile_info_t;
+      let info_PK: *mut opj_packet_info_t =
+        &mut *(*info_TL).packet.offset((*cstr_info).packno as isize)
+          as *mut opj_packet_info_t;
+      if (*cstr_info).packno == 0 {
+        (*info_PK).start_pos = ((*info_TL).end_header + 1i32) as OPJ_OFF_T
+      } else {
+        (*info_PK).start_pos =
+          if (tp_on || poc) && (*info_PK).start_pos != 0 {
+            (*info_PK).start_pos
+          } else {
+            ((*(*info_TL)
+              .packet
+              .offset(((*cstr_info).packno - 1i32) as isize))
+            .end_pos)
+              + 1i64
+          }
+      }
+      (*info_PK).end_pos = (*info_PK).start_pos + l_nb_bytes - 1;
+      (*info_PK).end_ph_pos += (*info_PK).start_pos - 1i64
+    }
+    (*cstr_info).packno += 1
+  }
+}
+
+/// Sets the packet's end-of-header position (encode).
+pub(crate) fn t2_packet_index_end_ph(
+  cstr_info: *mut opj_codestream_info_t,
+  tileno: u32,
+  pos: i64,
+) {
+  if cstr_info.is_null() {
+    return;
+  }
+  // SAFETY: see t2_write_packet_index.
+  unsafe {
+    if (*cstr_info).index_write != 0 {
+      let info_PK: *mut opj_packet_info_t = &mut *(*(*cstr_info).tile.offset(tileno as isize))
+        .packet
+        .offset((*cstr_info).packno as isize)
+        as *mut opj_packet_info_t;
+      (*info_PK).end_ph_pos = pos
+    }
+  }
+}
+
+/// Accumulates the packet distortion and tracks D_max (encode).
+pub(crate) fn t2_packet_index_disto(
+  cstr_info: *mut opj_codestream_info_t,
+  tileno: u32,
+  disto: f64,
+) {
+  if cstr_info.is_null() {
+    return;
+  }
+  // SAFETY: see t2_write_packet_index.
+  unsafe {
+    if (*cstr_info).index_write != 0 {
+      let info_PK: *mut opj_packet_info_t =
+        &mut *(*(*cstr_info).tile.offset(tileno as isize))
+          .packet
+          .offset((*cstr_info).packno as isize) as *mut opj_packet_info_t;
+      (*info_PK).disto += disto;
+      if (*cstr_info).D_max < (*info_PK).disto {
+        (*cstr_info).D_max = (*info_PK).disto
+      }
+    }
+  }
+}
+
+/// Sets the caller-provided packet-info's end-of-header position.
+pub(crate) fn t2_pack_info_end_ph(p_pack_info: *mut opj_packet_info_t, l_pos: i64) {
+  if p_pack_info.is_null() {
+    return;
+  }
+  // SAFETY: `p_pack_info` is the caller's packet-info slot.
+  unsafe {
+    (*p_pack_info).end_ph_pos = l_pos;
+  }
+}
+
+/* ----------------------------------------------------------------------- */
+/* Encoder parameter marshalling (setup_encoder reads)                     */
+
+/// Copies the caller-provided fixed-quality matrix (`cp_matrice`) into an
+/// owned buffer. Returns None when no matrix is set.
+pub(crate) fn cparams_matrice(
+  parameters: &opj_cparameters_t,
+  array_len: usize,
+) -> Option<Vec<core::ffi::c_int>> {
+  if parameters.cp_matrice.is_null() {
+    return None;
+  }
+  // SAFETY: `cp_matrice` is the caller's matrix of `array_len` ints.
+  Some(unsafe { core::slice::from_raw_parts(parameters.cp_matrice, array_len) }.to_vec())
+}
+
+/// Copies the caller-provided comment string into an owned byte buffer.
+pub(crate) fn cparams_comment(parameters: &opj_cparameters_t) -> Option<Vec<u8>> {
+  if parameters.cp_comment.is_null() {
+    return None;
+  }
+  // SAFETY: `cp_comment` is a caller-provided NUL-terminated string.
+  Some(
+    unsafe { core::ffi::CStr::from_ptr(parameters.cp_comment) }
+      .to_bytes()
+      .to_vec(),
+  )
+}
+
+/// Copies the caller-provided MCT coding matrix and returns it together with
+/// the pointer to the dc-shift array that follows it in the same buffer.
+pub(crate) fn cparams_mct_data(
+  parameters: &opj_cparameters_t,
+  numcomps: u32,
+) -> Option<(Vec<OPJ_FLOAT32>, *mut OPJ_INT32)> {
+  if parameters.mct_data.is_null() {
+    return None;
+  }
+  let l_mct_len = (numcomps * numcomps) as usize;
+  let l_mct_size = l_mct_len.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>());
+  // SAFETY: `mct_data` holds `l_mct_len` floats followed by `numcomps` ints.
+  unsafe {
+    let l_dc_shift = (parameters.mct_data as *mut OPJ_BYTE).add(l_mct_size) as *mut OPJ_INT32;
+    let matrix: Vec<OPJ_FLOAT32> =
+      core::slice::from_raw_parts(parameters.mct_data as *const OPJ_FLOAT32, l_mct_len).to_vec();
+    Some((matrix, l_dc_shift))
+  }
+}
+
+/// Copies the dc-shift array that follows the MCT matrix in the caller's buffer.
+pub(crate) fn cparams_dc_shift(dc_shift: *mut OPJ_INT32, numcomps: u32) -> Vec<OPJ_INT32> {
+  // SAFETY: `dc_shift` points at `numcomps` ints following the MCT matrix.
+  unsafe { core::slice::from_raw_parts(dc_shift, numcomps as usize) }.to_vec()
+}

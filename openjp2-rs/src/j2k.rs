@@ -5837,11 +5837,8 @@ pub(crate) fn opj_j2k_setup_encoder(
         .wrapping_mul(parameters.numresolution as usize)
         .wrapping_mul(3);
       #[cfg(feature = "c_api")]
-      #[allow(unsafe_code)]
-      #[allow(unsafe_code)]
-      {
-        cp.m_specific_param.m_enc.m_matrice =
-          unsafe { core::slice::from_raw_parts(parameters.cp_matrice, _array_len) }.to_vec();
+      if let Some(matrice) = crate::cabi::cparams_matrice(parameters, _array_len) {
+        cp.m_specific_param.m_enc.m_matrice = matrice;
       }
     }
     /* tiles */
@@ -5851,15 +5848,10 @@ pub(crate) fn opj_j2k_setup_encoder(
     cp.tx0 = parameters.cp_tx0 as OPJ_UINT32;
     cp.ty0 = parameters.cp_ty0 as OPJ_UINT32;
     /* comment string */
-    if false && !parameters.cp_comment.is_null() {
+    if false {
       #[cfg(feature = "c_api")]
-      #[allow(unsafe_code)]
-      #[allow(unsafe_code)]
-      {
-        // SAFETY: `cp_comment` is a caller-provided NUL-terminated string copied verbatim.
-        cp.comment = unsafe { core::ffi::CStr::from_ptr(parameters.cp_comment) }
-          .to_bytes()
-          .to_vec();
+      if let Some(comment) = crate::cabi::cparams_comment(parameters) {
+        cp.comment = comment;
       }
       #[cfg(not(feature = "c_api"))]
       unreachable!();
@@ -5986,19 +5978,13 @@ pub(crate) fn opj_j2k_setup_encoder(
         .resize(image.numcomps as usize, Default::default());
       if cfg!(feature = "c_api") && !parameters.mct_data.is_null() {
         #[cfg(feature = "c_api")]
-        #[allow(unsafe_code)]
         {
         let numcomps = image.numcomps;
         let lMctLen = numcomps * numcomps;
-        let lMctSize = lMctLen.wrapping_mul(core::mem::size_of::<OPJ_FLOAT32>() as OPJ_UINT32);
-        let l_dc_shift = unsafe {
-          (parameters.mct_data as *mut OPJ_BYTE).offset(lMctSize as isize) as *mut OPJ_INT32
-        };
         /* copy the caller-provided coding matrix into a scratch buffer */
-        let mut lTmpBuf: Vec<OPJ_FLOAT32> = unsafe {
-          core::slice::from_raw_parts(parameters.mct_data as *const OPJ_FLOAT32, lMctLen as usize)
-        }
-        .to_vec();
+        let (mut lTmpBuf, l_dc_shift) =
+          crate::cabi::cparams_mct_data(parameters, numcomps)
+            .expect("mct_data is non-null in this branch");
         tcp.mct = 2 as OPJ_UINT32;
         tcp.m_mct_coding_matrix.clear();
         tcp.m_mct_coding_matrix.extend_from_slice(&lTmpBuf);
@@ -6023,11 +6009,9 @@ pub(crate) fn opj_j2k_setup_encoder(
           image.numcomps,
           &tcp.m_mct_decoding_matrix,
         );
-        i = 0 as OPJ_UINT32;
-        while i < image.numcomps {
-          // SAFETY: `l_dc_shift` points at `numcomps` ints following the caller's MCT matrix.
-          tcp.tccps[i as usize].m_dc_level_shift = unsafe { *l_dc_shift.offset(i as isize) };
-          i += 1;
+        let dc_shift: Vec<OPJ_INT32> = crate::cabi::cparams_dc_shift(l_dc_shift, numcomps);
+        for (i, tccp_1) in tcp.tccps.iter_mut().enumerate().take(numcomps as usize) {
+          tccp_1.m_dc_level_shift = dc_shift[i];
         }
         if opj_j2k_setup_mct_encoding(tcp, image) == 0i32 {
           /* free will be handled by opj_j2k_destroy */
@@ -6142,8 +6126,6 @@ pub(crate) fn opj_j2k_setup_encoder(
       tileno += 1;
     }
     #[cfg(feature = "c_api")]
-    #[allow(unsafe_code)]
-    #[allow(unsafe_code)]
     if !parameters.mct_data.is_null() {
       crate::cabi::opj_free(parameters.mct_data);
       parameters.mct_data = core::ptr::null_mut::<core::ffi::c_void>()

@@ -269,40 +269,13 @@ pub(crate) fn opj_t2_encode_packets(
         }
         /* INDEX >> */
         #[cfg(feature = "c_api")]
-        #[allow(unsafe_code)]
-        if !cstr_info.is_null() {
-          // SAFETY: cstr_info is the caller's codestream-info structure.
-          unsafe {
-            if (*cstr_info).index_write != 0 {
-              let mut info_TL: *mut opj_tile_info_t =
-                &mut *(*cstr_info).tile.offset(p_tile_no as isize) as *mut opj_tile_info_t;
-              let mut info_PK: *mut opj_packet_info_t =
-                &mut *(*info_TL).packet.offset((*cstr_info).packno as isize)
-                  as *mut opj_packet_info_t;
-              if (*cstr_info).packno == 0 {
-                (*info_PK).start_pos = ((*info_TL).end_header + 1i32) as OPJ_OFF_T
-              } else {
-                (*info_PK).start_pos =
-                  if (cp.m_specific_param.m_enc.m_tp_on || cp.tcps[p_tile_no as usize].POC)
-                    && (*info_PK).start_pos != 0
-                  {
-                    (*info_PK).start_pos
-                  } else {
-                    ((*(*info_TL)
-                      .packet
-                      .offset(((*cstr_info).packno - 1i32) as isize))
-                    .end_pos)
-                      + 1i64
-                  }
-              }
-              (*info_PK).end_pos = (*info_PK).start_pos + l_nb_bytes as i64 - 1;
-              (*info_PK).end_ph_pos += (*info_PK).start_pos - 1i64
-              /* End of packet header which now only represents the distance
-              to start of packet is incremented by value of start of packet*/
-            }
-            (*cstr_info).packno += 1
-          }
-        }
+        crate::cabi::t2_write_packet_index(
+          cstr_info,
+          p_tile_no,
+          l_nb_bytes as i64,
+          cp.m_specific_param.m_enc.m_tp_on,
+          cp.tcps[p_tile_no as usize].POC,
+        );
         /* << INDEX */
         tile.packno = tile.packno.wrapping_add(1)
       }
@@ -865,18 +838,7 @@ fn opj_t2_encode_packet(
   /* End of packet header position. Currently only represents the distance to start of packet
   Will be updated later by incrementing with packet start value*/
   #[cfg(feature = "c_api")]
-  #[allow(unsafe_code)]
-  #[allow(unsafe_code)]
-  if !cstr_info.is_null() && unsafe { (*cstr_info).index_write } != 0 {
-    // SAFETY: cstr_info is the caller's codestream-info structure.
-    unsafe {
-      let mut info_PK: *mut opj_packet_info_t = &mut *(*(*cstr_info).tile.offset(tileno as isize))
-        .packet
-        .offset((*cstr_info).packno as isize)
-        as *mut opj_packet_info_t;
-      (*info_PK).end_ph_pos = pos as OPJ_OFF_T
-    }
-  }
+  crate::cabi::t2_packet_index_end_ph(cstr_info, tileno, pos as OPJ_OFF_T);
   /* INDEX >> */
   /* Writing the packet body */
   bandno = 0 as OPJ_UINT32;
@@ -917,21 +879,7 @@ fn opj_t2_encode_packet(
           /* INDEX >> */
           /* << INDEX */
           #[cfg(feature = "c_api")]
-          #[allow(unsafe_code)]
-          #[allow(unsafe_code)]
-          if !cstr_info.is_null() && unsafe { (*cstr_info).index_write } != 0 {
-            // SAFETY: cstr_info is the caller's codestream-info structure.
-            unsafe {
-              let mut info_PK_0: *mut opj_packet_info_t =
-                &mut *(*(*cstr_info).tile.offset(tileno as isize))
-                  .packet
-                  .offset((*cstr_info).packno as isize) as *mut opj_packet_info_t;
-              (*info_PK_0).disto += cblk.layers[layno as usize].disto;
-              if (*cstr_info).D_max < (*info_PK_0).disto {
-                (*cstr_info).D_max = (*info_PK_0).disto
-              }
-            }
-          }
+          crate::cabi::t2_packet_index_disto(cstr_info, tileno, cblk.layers[layno as usize].disto);
         }
         cblkno += 1;
       }
@@ -1071,11 +1019,7 @@ fn opj_t2_read_packet_header(
     /* End of packet header position. Currently only represents the distance to start of packet
     Will be updated later by incrementing with packet start value */
     #[cfg(feature = "c_api")]
-    #[allow(unsafe_code)]
-    if !p_pack_info.is_null() {
-      // SAFETY: p_pack_info is the caller's packet-info slot.
-      unsafe { (*p_pack_info).end_ph_pos = l_pos as OPJ_OFF_T }
-    }
+    crate::cabi::t2_pack_info_end_ph(p_pack_info, l_pos as OPJ_OFF_T);
     /* INDEX >> */
     *p_is_data_present = 0i32;
     *p_data_read = l_pos as OPJ_UINT32;
@@ -1313,11 +1257,7 @@ fn opj_t2_read_packet_header(
   /* End of packet header position. Currently only represents the distance to start of packet
   Will be updated later by incrementing with packet start value */
   #[cfg(feature = "c_api")]
-  #[allow(unsafe_code)]
-  if !p_pack_info.is_null() {
-    // SAFETY: p_pack_info is the caller's packet-info slot.
-    unsafe { (*p_pack_info).end_ph_pos = l_pos as OPJ_OFF_T }
-  }
+  crate::cabi::t2_pack_info_end_ph(p_pack_info, l_pos as OPJ_OFF_T);
   /* INDEX >> */
   *p_is_data_present = 1i32; /* next code_block */
   *p_data_read = l_pos as OPJ_UINT32;
