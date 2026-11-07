@@ -2105,12 +2105,12 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   if sig & sample_mask != 0 {
                     //if LSB is set
                     let mut sym: OPJ_UINT32 = 0; // decoded value cannot be zero
-                    assert!(ht_data[dp + 0usize] != 0u32);
+                    assert!(ht_data[dp] != 0u32);
                     sym = cwd & 1u32;
                     // remove center of bin if sym is 0
-                    let fresh16 = &mut (ht_data[dp + 0usize]); // put half the center of bin
+                    let fresh16 = &mut (ht_data[dp]); // put half the center of bin
                     *fresh16 ^= (1u32).wrapping_sub(sym) << p.wrapping_sub(1u32); //next row
-                    let fresh17 = &mut (ht_data[dp + 0usize]);
+                    let fresh17 = &mut (ht_data[dp]);
                     *fresh17 |= half;
                     cwd >>= 1i32
                   }
@@ -2272,7 +2272,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     //scan mbr to find a new significant sample
                     sample_mask_0 = 0x11111111u32 & col_mask_0; // LSB
                     if mbr_0 & sample_mask_0 != 0 {
-                      assert!(ht_data[dp_0 + 0usize] == 0u32);
+                      assert!(ht_data[dp_0] == 0u32);
                       if cwd_0 & 1u32 != 0 {
                         //consume bit and increment number of
                         //consumed bits
@@ -2346,10 +2346,10 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                       //scan 4 signs
                       sample_mask_1 = 0x11111111u32 & col_mask_1;
                       if new_sig & sample_mask_1 != 0 {
-                        assert!(ht_data[dp_1 + 0usize] == 0u32);
+                        assert!(ht_data[dp_1] == 0u32);
                         //consume bit and increment number
                         //of consumed bits
-                        let fresh30 = &mut (ht_data[dp_1 + 0usize]); //put value and sign
+                        let fresh30 = &mut (ht_data[dp_1]); //put value and sign
                         *fresh30 |= (cwd_0 & 1u32) << 31i32 | val_15;
                         cwd_0 >>= 1i32;
                         cnt += 1;

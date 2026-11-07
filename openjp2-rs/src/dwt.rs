@@ -1074,10 +1074,6 @@ fn opj_dwt_encode_and_deinterleave_v_real(
 /// Forward wavelet transform in 2-D. The tile component buffer and the NB_ELTS_V8-interleaved
 /// scratch are viewed as slices for the duration of each row/column pass; the views are created
 /// from the raw allocation at the boundary only (see the SAFETY notes below).
-#[inline]
-/// Reinterpret an i32 sample buffer as f32 (the C code memcpy'd the words).
-
-
 fn opj_dwt_encode_procedure(tilec: &mut opj_tcd_tilecomp_t, wavelet: ForwardWavelet) -> OPJ_BOOL {
   let w = (tilec.x1 - tilec.x0) as OPJ_UINT32;
   let h = (tilec.y1 - tilec.y0) as OPJ_UINT32;

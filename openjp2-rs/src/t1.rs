@@ -2521,7 +2521,7 @@ pub(crate) fn opj_t1_encode_cblks(
   let mut compno: OPJ_UINT32 = 0;
   tile.distotile = 0 as OPJ_FLOAT64;
   compno = 0 as OPJ_UINT32;
-  's_19: while compno < tile.numcomps {
+  while compno < tile.numcomps {
     let tilec = &mut tile.comps[compno as usize];
     let tccp = &tcp.tccps[compno as usize];
     let tile_w = (tilec.x1 - tilec.x0) as OPJ_UINT32;
