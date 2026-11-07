@@ -37,7 +37,6 @@ file-io = ["libc"]
 # FOR INTERNAL TESTING PURPOSES ONLY
 test_malloc = []
 
-c_api = []
 
 jpwl = []
 jpspec = []

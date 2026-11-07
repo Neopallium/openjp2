@@ -572,7 +572,6 @@ fn opj_t2_skip_packet(
   1i32
 }
 fn opj_t2_encode_packet(
-  #[cfg_attr(not(feature = "c_api"), allow(unused_variables))]
   _tileno: OPJ_UINT32,
   tile: &mut opj_tcd_tile_t,
   tcp: &mut opj_tcp_t,

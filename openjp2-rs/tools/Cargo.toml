@@ -44,9 +44,6 @@ test_malloc = ["openjp2/test_malloc"]
 # Kept for the cfg in tools/tests/nonreg.rs (rayon is now a hard dependency).
 parallel-tests = []
 
-# Mirrors the core's C-ABI feature: only set_comment in the tools uses it.
-c_api = []
-
 rust_backend = ["image/tiff"]
 
 libtiff = ["libtiff-sys"]
