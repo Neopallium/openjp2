@@ -1,9 +1,12 @@
 #![allow(dead_code)]
 #![allow(mutable_transmutes)]
 #![allow(non_camel_case_types)]
+// The C-ABI mirror types (c_api_types.rs, opj_image_comptparm, the
+// EncoderParameters POC/DA_* fields) intentionally keep C field names, and
+// some c2rust-residue identifiers (pSrcMatrix, lTmpBuf, XTsiz, ...) remain
+// to be renamed (see the work plan in RESUME-session.md).
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
-// TODO(phase 7): drop these two once the c2rust residue is cleaned up.
 #![allow(unused_assignments)]
 #![allow(unused_mut)]
 #![deny(unsafe_op_in_unsafe_fn)]

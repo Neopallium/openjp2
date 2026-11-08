@@ -391,7 +391,7 @@ fn opj_jp2_check_color(
 ) -> OPJ_BOOL {
   /* testcase 4149.pdf.SIGSEGV.cf7.3501 */
   if let Some(cdef) = &color.jp2_cdef {
-    /* FIXME image->numcomps == jp2->numcomps before color is applied ??? */
+    /* Upstream notes numcomps may change here when color is applied */
     let mut nr_channels = image.numcomps;
     /* cdef applies to cmap channels if any */
     if let Some(pclr) = &color.jp2_pclr {
@@ -642,8 +642,8 @@ fn opj_jp2_apply_pclr(
  * Collect palette data
  *
  * @param jp2 JP2 handle
- * @param p_pclr_header_data    FIXME DOC
- * @param p_pclr_header_size    FIXME DOC
+ * @param p_pclr_header_data
+ * @param p_pclr_header_size
  * @param p_manager
  *
  * @return Returns true if successful, returns false otherwise
@@ -718,9 +718,9 @@ fn opj_jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
  * Collect component mapping data
  *
  * @param jp2                 JP2 handle
- * @param p_cmap_header_data  FIXME DOC
- * @param p_cmap_header_size  FIXME DOC
- * @param p_manager           FIXME DOC
+ * @param p_cmap_header_data
+ * @param p_cmap_header_size
+ * @param p_manager
  *
  * @return Returns true if successful, returns false otherwise
 */
@@ -841,7 +841,7 @@ fn opj_jp2_read_cdef(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
     .read_u16::<BigEndian>()
     .expect("Buffer should have enough data") as usize;
   if n == 0 {
-    /* szukw000: FIXME */
+
     event_msg!(
       p_manager,
       EVT_ERROR,
@@ -1324,7 +1324,7 @@ pub(crate) fn opj_jp2_setup_encoder(
     }
   }
   /* Channel Definition box */
-  /* FIXME not provided by parameters */
+  /* Not provided by parameters */
   /* We try to do what we can... */
   let mut alpha_count = 0;
   let mut alpha_channel = 0;

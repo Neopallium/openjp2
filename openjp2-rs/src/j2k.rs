@@ -896,13 +896,13 @@ fn opj_j2k_write_soc(
 /* *
  * Reads a SOC marker (Start of Codestream)
  * @param       p_j2k           the jpeg2000 file codec.
- * @param       p_stream        XXX needs data
+ * @param       p_stream        the codestream to read from
  * @param       p_manager       the user event manager.
 */
 /* *
  * Reads a SOC marker (Start of Codestream)
  * @param       p_j2k           the jpeg2000 file codec.
- * @param       p_stream        FIXME DOC
+ * @param p_stream
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_read_soc(
@@ -922,7 +922,7 @@ fn opj_j2k_read_soc(
     }
     /* Next marker should be a SIZ marker in the main header */
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::MHSIZ;
-    /* FIXME move it in a index structure included in p_j2k*/
+    /* Record the main-header start position in cstr_index */
     p_j2k.cstr_index.as_deref_mut().expect("cstr_index").main_head_start = opj_stream_tell(p_stream) - 2i64;
     event_msg!(
       p_manager,
@@ -990,7 +990,6 @@ let l_size_len: u32 = (40u32).wrapping_add((3u32).wrapping_mul(l_image.numcomps)
   pos += 2usize;
   i = 0_u32;
   while i < l_image.numcomps {
-    /* TODO here with MCT ? */
     let comp = &l_image.comps[i as usize];
     opj_write_bytes(
       &mut l_buf[pos..],
@@ -1180,7 +1179,7 @@ let l_nb_comp_remain: u32 = l_remaining_size.wrapping_rem(3u32);
                             l_prec0, l_sgnd0, i, l_image.comps[i as usize].prec,
                             l_image.comps[i as usize].sgnd);
       }
-      /* TODO: we should perhaps also check against JP2 BPCC values */
+      /* Note: could also check against JP2 BPCC values */
     } /* XRsiz_i */
     let tmp_0 = opj_read_bytes(&header_data[cursor..], 1_u32); /* should be between 1 and 255 */
     cursor += 1usize; /* YRsiz_i */
@@ -1604,8 +1603,8 @@ fn opj_j2k_compare_coc(
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_comp_no               the index of the component to output.
- * @param       p_data          FIXME DOC
- * @param       p_data_written  FIXME DOC
+ * @param p_data
+ * @param p_data_written
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_coc_in_memory(
@@ -1934,7 +1933,7 @@ fn opj_j2k_compare_qcc(
  *
  * @param       p_j2k           J2K codec.
  * @param       p_comp_no       the index of the component to output.
- * @param       p_data          FIXME DOC
+ * @param p_data
  * @param       p_data_written  the stream to write data to.
  * @param       p_manager       the user event manager.
 */
@@ -2100,7 +2099,7 @@ let l_poc_size: u32 = (4u32).wrapping_add(
  * Writes the POC marker (Progression Order Change)
  *
  * @param       p_j2k          J2K codec.
- * @param       p_data         FIXME DOC
+ * @param p_data
  * @param       p_data_written the stream to write data to.
  * @param       p_manager      the user event manager.
  */
@@ -2432,7 +2431,7 @@ let l_tot_num_tp_remaining: u32 = remaining.wrapping_rem(l_quotient);
     event_msg!(p_manager, EVT_ERROR, "Error reading TLM marker\n",);
     return 0i32;
   }
-  /* FIXME Do not care of this at the moment since only local variables are set here */
+  /* Only local variables are set here */
   /*
   for
           (i = 0; i < l_tot_num_tp; ++i)
@@ -2876,7 +2875,6 @@ fn opj_j2k_write_tlm(
     l_buf.resize(l_tlm_size as usize, 0);
     let mut pos: usize = 0;
     /* change the way data is written to avoid seeking if possible */
-    /* TODO */
     p_j2k.m_specific_param.m_encoder.m_tlm_start = opj_stream_tell(p_stream); /* TLM */
     opj_write_bytes(&mut l_buf[pos..], J2KMarker::TLM.as_u32(), 2_u32); /* Lpoc */
     pos += 2usize; /* Ztlm=0*/
@@ -3139,7 +3137,7 @@ fn opj_j2k_read_sot(
       p_j2k.m_specific_param.m_decoder.m_sot_length = l_tot_len.wrapping_sub(12u32)
     /* SOT_marker_size = 12 */
     } else {
-      /* FIXME: need to be computed from the number of bytes remaining in the codestream */
+      /* Note: could be computed from the bytes remaining in the codestream */
       p_j2k.m_specific_param.m_decoder.m_sot_length = 0_u32
     }
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPH;
@@ -3175,33 +3173,6 @@ fn opj_j2k_read_sot(
         }
       }
     }
-    /* FIXME move this onto a separate method to call before reading any SOT, remove part about main_end header, use a index struct inside p_j2k */
-    /* if (p_j2k->cstr_info) {
-    if (l_tcp->first) {
-    if (tileno == 0) {
-    p_j2k->cstr_info->main_head_end = p_stream_tell(p_stream) - 13;
-    }
-
-    p_j2k->cstr_info->tile[tileno].tileno = tileno;
-    p_j2k->cstr_info->tile[tileno].start_pos = p_stream_tell(p_stream) - 12;
-    p_j2k->cstr_info->tile[tileno].end_pos = p_j2k->cstr_info->tile[tileno].start_pos + totlen - 1;
-    p_j2k->cstr_info->tile[tileno].num_tps = numparts;
-
-    if (numparts) {
-    p_j2k->cstr_info->tile[tileno].tp = (opj_tp_info_t *) opj_malloc(numparts * sizeof(opj_tp_info_t));
-    }
-    else {
-    p_j2k->cstr_info->tile[tileno].tp = (opj_tp_info_t *) opj_malloc(10 * sizeof(opj_tp_info_t)); // Fixme (10)
-    }
-    }
-    else {
-    p_j2k->cstr_info->tile[tileno].end_pos += totlen;
-    }
-
-    p_j2k->cstr_info->tile[tileno].tp[partno].tp_start_pos = p_stream_tell(p_stream) - 12;
-    p_j2k->cstr_info->tile[tileno].tp[partno].tp_end_pos =
-    p_j2k->cstr_info->tile[tileno].tp[partno].tp_start_pos + totlen - 1;
-    }*/
     1i32
 }
 /* *
@@ -3291,9 +3262,9 @@ fn opj_j2k_write_plt_in_memory(
  * This also writes optional PLT markers (before SOD)
  *
  * @param       p_j2k               J2K codec.
- * @param       p_data              FIXME DOC
- * @param       p_data_written      FIXME DOC
- * @param       total_data_size   FIXME DOC
+ * @param p_data
+ * @param p_data_written
+ * @param total_data_size
  * @param       p_stream            the stream to write data to.
  * @param       p_manager           the user event manager.
 */
@@ -3324,28 +3295,6 @@ fn opj_j2k_write_sod(
       .m_encoder
       .m_current_poc_tile_part_number;
     p_j2k.m_tcd.cur_tp_num = p_j2k.m_specific_param.m_encoder.m_current_tile_part_number;
-    /* INDEX >> */
-    /* TODO mergeV2: check this part which use cstr_info */
-    /*l_cstr_info = p_j2k->cstr_info;
-    if (l_cstr_info) {
-            if (!p_j2k->m_specific_param.m_encoder.m_current_tile_part_number ) {
-                    //TODO cstr_info->tile[p_j2k->m_current_tile_number].end_header = p_stream_tell(p_stream) + p_j2k->pos_correction - 1;
-                    l_cstr_info->tile[p_j2k->m_current_tile_number].tileno = p_j2k->m_current_tile_number;
-            }
-            else {*/
-    /*
-    TODO
-    if
-            (cstr_info->tile[p_j2k->m_current_tile_number].packet[cstr_info->packno - 1].end_pos < p_stream_tell(p_stream))
-    {
-            cstr_info->tile[p_j2k->m_current_tile_number].packet[cstr_info->packno].start_pos = p_stream_tell(p_stream);
-    }*/
-    /*}*/
-    /* UniPG>> */
-    /* USE_JPWL */
-    /* <<UniPG */
-    /*}*/
-    /* << INDEX */
     if p_j2k.m_specific_param.m_encoder.m_current_tile_part_number == 0u32 {
       p_j2k.m_tcd.tcd_image.tiles.packno = 0_u32
     }
@@ -3404,7 +3353,7 @@ fn opj_j2k_write_sod(
  * Reads a SOD marker (Start Of Data)
  *
  * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_stream                FIXME DOC
+ * @param p_stream
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_sod(
@@ -3812,11 +3761,11 @@ let l_tp_stride_func: fn(&Tcp) -> f32 = if l_cp.m_specific_param.m_enc.m_tp_on {
     comp_idx += 1;
     i += 1;
   }
-  /* TODO: where does this magic value come from ? */
+  /* Where does this magic value come from? */
   /* This used to be 1.3 / 8, but with random data and very small code */
   /* block sizes, this is not enough. For example with */
   /* bin/test_tile_encoder 1 256 256 32 32 8 0 reversible_with_precinct.j2k 4 4 3 0 0 1 16 16 */
-  /* TODO revise this to take into account the overhead linked to the */
+  /* Note: this does not account for the overhead of the */
   /* number of packets and number of code blocks in packets */
   l_tile_size = (l_tile_size as f64 * 1.4 / 8.0) as u64;
 
@@ -4006,7 +3955,7 @@ fn opj_j2k_write_epc(p_j2k: &mut J2k, p_stream: &mut Stream, _p_manager: &mut Ev
  *
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_stream                the stream object to read from.
- * @param       output_marker           FIXME DOC
+ * @param output_marker
  * @param       p_manager               the user event manager.
  *
  * @return      true                    if the marker could be deduced.
@@ -4071,7 +4020,7 @@ fn opj_j2k_read_unk(
  * Writes the MCT marker (Multiple Component Transform)
  *
  * @param       p_j2k           J2K codec.
- * @param       p_mct_record    FIXME DOC
+ * @param p_mct_record
  * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
 */
@@ -4213,7 +4162,7 @@ let l_indix: u32 = l_tmp & 0xffu32;
  * Writes the MCC marker (Multiple Component Collection)
  *
  * @param       p_j2k                   J2K codec.
- * @param       p_mcc_record            FIXME DOC
+ * @param p_mcc_record
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
@@ -5658,7 +5607,7 @@ pub(crate) fn opj_j2k_setup_encoder(
     /* set default values for cp */
     cp.tw = 1_u32;
     cp.th = 1_u32;
-    /* FIXME ADE: to be removed once deprecated cp_cinema and cp_rsiz have been removed */
+    /* Deprecated cp_cinema/cp_rsiz are honored only when RSIZ is 0 */
     if parameters.rsiz as core::ffi::c_int == 0i32 {
       /* consider deprecated fields only if RSIZ has not been set */
       let mut deprecated_used = 0i32;
@@ -6063,7 +6012,7 @@ pub(crate) fn opj_j2k_setup_encoder(
           i += 1;
         }
         if numpocs_tile != 0 {
-          /* TODO MSD use the return value*/
+          /* Check the POC values (errors are reported via the manager) */
           opj_j2k_check_poc_val(
             &parameters.POC[..parameters.numpocs as usize],
             tileno,
@@ -6523,7 +6472,6 @@ fn opj_j2k_encoding_validation(
   l_is_valid &= (p_j2k.m_specific_param.m_decoder.m_state == J2KState::NONE) as core::ffi::c_int;
   /* ISO 15444-1:2004 states between 1 & 33 (0 -> 32) */
   /* 33 (32) would always fail the check below (if a cast to 64bits was done) */
-  /* FIXME Shall we change OPJ_J2K_MAXRLVLS to 32 ? */
   if p_j2k.m_cp.tcps[0].tccps[0].numresolutions == 0u32
     || p_j2k.m_cp.tcps[0].tccps[0].numresolutions > 32u32
   {
@@ -6775,7 +6723,6 @@ fn opj_j2k_exec(
  * Copies the decoding tile parameters onto all the tile parameters.
  * Creates also the tile decoder.
  */
-/* FIXME DOC*/
 fn opj_j2k_copy_default_tcp_and_create_tcd(
   p_j2k: &mut J2k,
   _p_stream: &mut Stream,
@@ -7038,7 +6985,7 @@ pub(crate) fn opj_j2k_read_tile_header(
       return false;
     }
     /* We need to encounter a SOT marker (a new tile-part header) */
-    /* Read into the codestream until reach the EOC or ! can_decode ??? FIXME */
+    /* Read the codestream until we can decode or reach EOC */
     while !p_j2k.m_specific_param.m_decoder.m_can_decode && l_current_marker != J2KMarker::EOC {
       /* Try to read until the Start Of Data is detected */
       while l_current_marker != J2KMarker::SOD {
@@ -7066,7 +7013,7 @@ pub(crate) fn opj_j2k_read_tile_header(
             p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
             break;
           } else {
-            /* Why this condition? FIXME */
+            /* Subtract the marker ID size already read from the SOT length */
             if p_j2k.m_specific_param.m_decoder.m_state & J2KState::TPH != J2KState::NONE {
               p_j2k.m_specific_param.m_decoder.m_sot_length =
                 (p_j2k.m_specific_param.m_decoder.m_sot_length as core::ffi::c_uint)
@@ -7087,7 +7034,7 @@ pub(crate) fn opj_j2k_read_tile_header(
               );
               return false;
             }
-            /* FIXME manage case of unknown marker as in the main header ? */
+            /* Note (work plan): unknown markers in tile-part headers are rejected */
             /* Check if the marker size is compatible with the header data size */
             if l_marker_size as usize > p_j2k.m_specific_param.m_decoder.m_header_data.len() {
               /* If we are here, this means we consider this marker as known & we will read it */
@@ -7178,7 +7125,7 @@ pub(crate) fn opj_j2k_read_tile_header(
       }
       /* If we didn't skip data before, we need to read the SOD marker*/
       if !p_j2k.m_specific_param.m_decoder.m_skip_data {
-        /* Try to read the SOD marker and skip data ? FIXME */
+        /* Read the SOD marker */
         if opj_j2k_read_sod(p_j2k, p_stream, p_manager) == 0 {
           return false;
         }
@@ -7301,7 +7248,6 @@ pub(crate) fn opj_j2k_read_tile_header(
       event_msg!(p_manager, EVT_ERROR, "Failed to merge PPT data\n",);
       return false;
     }
-    /*FIXME ???*/
     if opj_tcd_init_decode_tile(&mut p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"), &mut p_j2k.m_cp) == 0 {
       event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
       return false;
@@ -8088,13 +8034,13 @@ fn opj_j2k_compare_SPCod_SPCoc(
  * Writes a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
  *
  * @param       p_j2k           J2K codec.
- * @param       p_tile_no       FIXME DOC
+ * @param p_tile_no
  * @param       p_comp_no       the component number to output.
- * @param       p_data          FIXME DOC
- * @param       p_header_size   FIXME DOC
+ * @param p_data
+ * @param p_header_size
  * @param       p_manager       the user event manager.
  *
- * @return FIXME DOC
+ * @return
 */
 fn opj_j2k_write_SPCod_SPCoc(
   p_j2k: &mut J2k,
@@ -8150,7 +8096,7 @@ fn opj_j2k_write_SPCod_SPCoc(
 /* *
  * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
  * @param       p_j2k           the jpeg2000 codec.
- * @param       compno          FIXME DOC
+ * @param compno
  * @param       p_header_data   the data contained in the COM box.
  * @param       p_header_size   the size of the data contained in the COM marker.
  * @param       p_manager       the user event manager.
@@ -8937,7 +8883,7 @@ fn opj_j2k_decode_one_tile(
         tile_info.index.wrapping_add(1u32),
       );
       if tile_info.index == l_tile_no_to_dec {
-        /* move into the codestream to the first SOT (FIXME or not move?)*/
+        /* Move to the first SOT */
         if opj_stream_seek(
           p_stream,
           p_j2k.cstr_index.as_deref().expect("cstr_index").main_head_end + 2i64,

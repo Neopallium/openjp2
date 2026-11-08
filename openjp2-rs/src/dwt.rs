@@ -297,8 +297,8 @@ const opj_invK: f32 = 1.0 / 1.230_174_1;
 /* <summary>                                                              */
 /* This table contains the norms of the 5-3 wavelets for different bands. */
 /* </summary>                                                             */
-/* FIXME! the array should really be extended up to 33 resolution levels */
-/* See https://github.com/uclouvain/openjpeg/issues/493 */
+/* Note: upstream issue #493 - these arrays cover only 10 resolution
+levels; see https://github.com/uclouvain/openjpeg/issues/493 */
 const opj_dwt_norms: [[f64; 10]; 4] = [
   [
     1.000, 1.500, 2.750, 5.375, 10.68, 21.34, 42.67, 85.33, 170.7, 341.3,
@@ -316,8 +316,8 @@ const opj_dwt_norms: [[f64; 10]; 4] = [
 /* <summary>                                                              */
 /* This table contains the norms of the 9-7 wavelets for different bands. */
 /* </summary>                                                             */
-/* FIXME! the array should really be extended up to 33 resolution levels */
-/* See https://github.com/uclouvain/openjpeg/issues/493 */
+/* Note: upstream issue #493 - these arrays cover only 10 resolution
+levels; see https://github.com/uclouvain/openjpeg/issues/493 */
 const opj_dwt_norms_real: [[f64; 10]; 4] = [
   [
     1.000, 1.965, 4.177, 8.403, 16.90, 33.84, 67.69, 135.3, 270.6, 540.9,
@@ -1088,7 +1088,6 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
   if l_data_size
     > (usize::MAX).wrapping_div(NB_ELTS_V8 as usize * core::mem::size_of::<i32>())
   {
-    /* FIXME event manager error callback */
     return 0i32;
   }
   /* scratch size in i32 elements */
@@ -1245,8 +1244,8 @@ pub(crate) fn opj_dwt_decode(
 /* </summary>               */
 
 pub fn opj_dwt_getnorm(mut level: u32, orient: u32) -> f64 {
-  /* FIXME ! This is just a band-aid to avoid a buffer overflow */
-  /* but the array should really be extended up to 33 resolution levels */
+  /* Band-aid to avoid a buffer overflow (upstream #493: the arrays only
+  cover 10 resolution levels). */
   /* See https://github.com/uclouvain/openjpeg/issues/493 */
   if orient == 0 && level >= 10 {
     level = 9
@@ -1269,8 +1268,8 @@ pub(crate) fn opj_dwt_encode_real(tilec: &mut TcdTileComp) -> OPJ_BOOL {
 /* </summary>               */
 
 pub fn opj_dwt_getnorm_real(mut level: u32, orient: u32) -> f64 {
-  /* FIXME ! This is just a band-aid to avoid a buffer overflow */
-  /* but the array should really be extended up to 33 resolution levels */
+  /* Band-aid to avoid a buffer overflow (upstream #493: the arrays only
+  cover 10 resolution levels). */
   /* See https://github.com/uclouvain/openjpeg/issues/493 */
   if orient == 0 && level >= 10 {
     level = 9
@@ -1379,7 +1378,6 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
   let mut h_mem_len = opj_dwt_max_resolution(&tilec.resolutions, numres) as usize;
   /* overflow check */
   if h_mem_len > (usize::MAX / PARALLEL_COLS_53 / core::mem::size_of::<i32>()) {
-    /* FIXME event manager error callback */
     return 0i32;
   }
   /* We need PARALLEL_COLS_53 times the height of the array, */
@@ -1719,7 +1717,6 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
   /* overflow check */
   /* in vertical pass, we process 4 columns at a time */
   if h_mem_size > (usize::MAX / 4 * core::mem::size_of::<i32>()) {
-    /* FIXME event manager error callback */
     return 0i32;
   }
   h_mem_size *= 4;
@@ -1948,7 +1945,6 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
           0_u32,
           true,
         ) {
-          /* FIXME event manager error callback */
           return 0i32;
         }
       }
@@ -1986,7 +1982,6 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
         4_u32,
         true,
       ) {
-        /* FIXME event manager error callback */
         return 0i32;
       }
       i = (i as core::ffi::c_uint).wrapping_add(nb_cols)
@@ -2291,7 +2286,6 @@ fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL 
   l_data_size = opj_dwt_max_resolution(&tilec.resolutions, numres) as usize;
   /* overflow check */
   if l_data_size > (usize::MAX).wrapping_div(V8_SIZE) {
-    /* FIXME event manager error callback */
     return 0i32;
   }
   // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
@@ -2477,7 +2471,6 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
   l_data_size = opj_dwt_max_resolution(&tilec.resolutions, numres) as usize;
   /* overflow check */
   if l_data_size > (usize::MAX).wrapping_div(V8_SIZE) {
-    /* FIXME event manager error callback */
     return 0i32;
   }
   // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
@@ -2690,7 +2683,6 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
           1_u32,
           true,
         ) {
-          /* FIXME event manager error callback */
           return 0i32;
         }
       }
@@ -2714,7 +2706,6 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
         1_u32,
         true,
       ) {
-        /* FIXME event manager error callback */
         return 0i32;
       }
     }
@@ -2738,7 +2729,6 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
         NB_ELTS_V8,
         true,
       ) {
-        /* FIXME event manager error callback */
         return 0i32;
       }
       j += NB_ELTS_V8;

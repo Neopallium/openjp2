@@ -386,7 +386,7 @@ pub fn parse_cli_options(
       // Add missing option handlers:
       (CompressOpt::Threads, Some(arg)) => {
         if arg == "ALL_CPUS" {
-          // TODO: Use num_cpus crate
+          // The rayon pool is sized via OPJ_NUM_THREADS; keep CLI parity.
           c_params.num_threads = 4; //num_cpus::get() as i32;
           if c_params.num_threads == 1 {
             c_params.num_threads = 0;

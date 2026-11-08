@@ -5,7 +5,7 @@ use core::cell::Cell;
 
 pub struct MqcState {
   pub qeval: u32,
-  // TODO: use 'bool'
+  // 0/1 bit values (u8 for parity with the C code)
   pub mps: u8,
   pub nmps: u8,
   pub nlps: u8,

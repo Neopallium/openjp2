@@ -622,7 +622,6 @@ pub(crate) fn opj_alloc_tile_component_data(l_tilec: &mut TcdTileComp) -> OPJ_BO
  * POSSIBILITY OF SUCH DAMAGE.
  */
 /* ----------------------------------------------------------------------- */
-/* TODO MSD: */
 /* *
  * Initializes tile coding/decoding
  */
@@ -1094,7 +1093,7 @@ fn opj_tcd_code_block_enc_allocate_data(p_code_block: &mut TcdCblkEnc) {
   /* and +33 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 4) */
   /* and +63 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 4 -IMF 2K) */
   /* and +74 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 4 -n 8 -s 7,7 -I) */
-  /* TODO: is there a theoretical upper-bound for the compressed code */
+  /* Note: no known theoretical upper bound for the compressed code */
   /* block size ? */
   l_data_size = (74u32).wrapping_add(
     ((p_code_block.x1 - p_code_block.x0)
@@ -1218,7 +1217,6 @@ pub(crate) fn opj_tcd_encode_tile(
 ) -> OPJ_BOOL {
   if p_tcd.cur_tp_num == 0u32 {
     p_tcd.tcd_tileno = p_tile_no;
-    /* FIXME _ProfStop(PGROUP_RATE); */
     if opj_tcd_dc_level_shift_encode(p_tcd, cp) == 0 {
       return 0i32;
     }
@@ -1244,19 +1242,9 @@ pub(crate) fn opj_tcd_encode_tile(
     }
   }
   /* << INDEX */
-  /* FIXME _ProfStart(PGROUP_DC_SHIFT); */
   /*---------------TILE-------------------*/
-  /* FIXME _ProfStop(PGROUP_DC_SHIFT); */
-  /* FIXME _ProfStart(PGROUP_MCT); */
-  /* FIXME _ProfStop(PGROUP_MCT); */
-  /* FIXME _ProfStart(PGROUP_DWT); */
-  /* FIXME  _ProfStop(PGROUP_DWT); */
-  /* FIXME  _ProfStart(PGROUP_T1); */
-  /* FIXME _ProfStop(PGROUP_T1); */
-  /* FIXME _ProfStart(PGROUP_RATE); */
   /*--------------TIER2------------------*/
   /* INDEX */
-  /* FIXME _ProfStart(PGROUP_T2); */
   if opj_tcd_t2_encode(
     p_tcd,
     &mut p_dest[..p_max_length as usize],
@@ -1270,7 +1258,6 @@ pub(crate) fn opj_tcd_encode_tile(
   {
     return 0i32;
   }
-  /* FIXME _ProfStop(PGROUP_T2); */
   1i32
 }
 pub(crate) fn opj_tcd_decode_tile(
@@ -1395,9 +1382,7 @@ pub(crate) fn opj_tcd_decode_tile(
       compno += 1;
     }
   }
-  /* FIXME */
   /*--------------TIER2------------------*/
-  /* FIXME _ProfStart(PGROUP_T2); */
   l_data_read = 0_u32;
   if opj_tcd_t2_decode(
     p_tcd,
@@ -1410,13 +1395,10 @@ pub(crate) fn opj_tcd_decode_tile(
   {
     return 0i32;
   }
-  /* FIXME _ProfStop(PGROUP_T2); */
   /*------------------TIER1-----------------*/
-  /* FIXME _ProfStart(PGROUP_T1); */
   if opj_tcd_t1_decode(p_tcd, p_manager, image, cp, p_src) == 0 {
     return 0i32;
   }
-  /* FIXME _ProfStop(PGROUP_T1); */
   /* For subtile decoding, now we know the resno_decoded, we can allocate */
   /* the tile data buffer */
   if p_tcd.whole_tile_decoding == 0 {
@@ -1464,22 +1446,16 @@ pub(crate) fn opj_tcd_decode_tile(
     }
   }
   /*----------------DWT---------------------*/
-  /* FIXME _ProfStart(PGROUP_DWT); */
   if opj_tcd_dwt_decode(p_tcd, image, cp) == 0 {
     return 0i32;
   }
-  /* FIXME _ProfStop(PGROUP_DWT); */
   /*----------------MCT-------------------*/
-  /* FIXME _ProfStart(PGROUP_MCT); */
   if opj_tcd_mct_decode(p_tcd, p_manager, image, cp) == 0 {
     return 0i32;
   }
-  /* FIXME _ProfStop(PGROUP_MCT); */
-  /* FIXME _ProfStart(PGROUP_DC_SHIFT); */
   if opj_tcd_dc_level_shift_decode(p_tcd, image, cp) == 0 {
     return 0i32;
   }
-  /* FIXME _ProfStop(PGROUP_DC_SHIFT); */
   /*---------------TILE-------------------*/
   1i32 /*(/ 8)*/
 }
@@ -1982,7 +1958,7 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mu
         if l_tccp.qmfbid == 1u32 {
           for j in 0..l_height as usize {
             for i in 0..l_width as usize {
-              /* TODO: do addition on int64 ? */
+              /* Note: could do the addition in i64 */
               let idx = j * row_stride + i;
               data[idx] = opj_int_clamp(data[idx] + l_tccp.m_dc_level_shift, l_min, l_max);
             }

@@ -239,7 +239,6 @@ impl Stream {
     match res {
       Ok(offset) => {
         self.m_byte_offset = offset as i64;
-        // TODO: return number of bytes skipped.
         log::trace!("-- skip({count}) = {offset}");
         Ok(count)
       }

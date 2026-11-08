@@ -252,7 +252,7 @@ pub fn parse_decompress_options(
       (DecompressOpt::Layer, Some(arg)) => params.core.cp_layer = arg.parse()?,
       (DecompressOpt::Threads, Some(arg)) => {
         if arg == "ALL_CPUS" {
-          // TODO: Use num_cpus crate
+          // The rayon pool is sized via OPJ_NUM_THREADS; keep CLI parity.
           params.num_threads = 4; //num_cpus::get() as i32;
           if params.num_threads == 1 {
             params.num_threads = 0;

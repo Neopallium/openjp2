@@ -378,7 +378,6 @@ pub mod opj {
   pub const OPJ_J2K_MH_IND: u32 = 16;
   /**< Tile index based on the current tile */
   pub const OPJ_J2K_TH_IND: u32 = 32;
-  /*FIXME pub const OPJ_J2K_CSTR_IND: u32     = 48;*/
   /**< JP2 file information */
   pub const OPJ_JP2_INFO: u32 = 128;
   /**< JP2 file index */

@@ -1594,7 +1594,6 @@ pub(crate) fn opj_pi_update_encode_not_poc(
     }
 }
 /* *
- * FIXME DOC
  */
 pub(crate) fn opj_pi_update_decode_poc(
   p_pi: &mut [PiIterator],
@@ -1626,7 +1625,6 @@ pub(crate) fn opj_pi_update_decode_poc(
     }
 }
 /* *
- * FIXME DOC
  */
 pub(crate) fn opj_pi_update_decode_not_poc(
   p_pi: &mut [PiIterator],
@@ -1658,7 +1656,6 @@ pub(crate) fn opj_pi_update_decode_not_poc(
     }
 }
 /* *
- * FIXME DOC
  */
 fn opj_pi_check_next_level(
   pos: i32,

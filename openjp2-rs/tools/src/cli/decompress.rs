@@ -58,7 +58,7 @@ fn decompress_image<P: AsRef<Path>>(
       return Err(ImageError::EncodeError("Failed to set strict mode".into()));
     }
 
-  // TODO: set the number of threads.
+  // Threads are sized globally via OPJ_NUM_THREADS (rayon pool).
 
   // Create input stream
   let mut stream = Stream::new_file(input, 1_000_000, true)?;

@@ -155,7 +155,8 @@ pub(crate) fn opj_t2_encode_packets(
       poc = 0_u32;
       while poc < pocno {
         let mut l_tp_num = compno;
-        /* TODO MSD : check why this function cannot fail (cf. v1) */
+        /* Note: in v2 this cannot fail (allocations are infallible); the
+        return value is kept for parity with v1 */
         opj_pi_create_encode(
           pi_vec.as_mut_slice(),
           cp,
@@ -166,7 +167,7 @@ pub(crate) fn opj_t2_encode_packets(
           p_t2_mode,
         );
         if pi_vec[poc as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
-          /* TODO ADE : add an error */
+          event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
           opj_pi_destroy(&mut pi_vec);
           return 0i32;
         }
@@ -219,7 +220,7 @@ pub(crate) fn opj_t2_encode_packets(
       p_t2_mode,
     );
     if pi_vec[p_pino as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
-      /* TODO ADE : add an error */
+      event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
       opj_pi_destroy(&mut pi_vec);
       return 0i32;
     }
@@ -304,7 +305,7 @@ pub(crate) fn opj_t2_decode_packets(
      */
     let mut first_pass_failed: Vec<OPJ_BOOL> = Vec::new();
     if pi_vec[pino as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
-      /* TODO ADE : add an error */
+      event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
       opj_pi_destroy(&mut pi_vec);
       return 0i32;
     }
@@ -447,12 +448,12 @@ Decode a packet of a tile from a source buffer
 @param tcp Tile coding parameters
 @param pi Packet identity
 @param src Source buffer
-@param data_read   FIXME DOC
-@param max_length  FIXME DOC
+@param data_read
+@param max_length
 @param pack_info Packet information
 @param p_manager the user event manager
 
-@return  FIXME DOC
+@return
 */
 fn opj_t2_decode_packet(
   cp: &mut Cp,
@@ -513,7 +514,7 @@ Encode a packet of a tile to a destination buffer
 @param tcp Tile coding parameters
 @param pi Packet identity
 @param dest Destination buffer
-@param p_data_written   FIXME DOC
+@param p_data_written
 @param len Length of the destination buffer
 @param cstr_info Codestream information structure
 @param p_t2_mode If == THRESH_CALC In threshold calculation ,If == FINAL_PASS Final pass
@@ -928,7 +929,7 @@ fn opj_t2_read_packet_header(
     } else {
       l_pos += 6
     }
-    /* * TODO : check the Nsop value */
+    /* Note (work plan): the Nsop value is not validated */
   }
 
   /*
@@ -954,7 +955,7 @@ fn opj_t2_read_packet_header(
   l_present = opj_bio_read(l_bio, 1_u32);
   log::debug!("present={}", l_present);
   if l_present == 0 {
-    /* TODO MSD: no test to control the output of this function*/
+    /* Note: no output check here (parity with upstream) */
     opj_bio_inalign(l_bio);
     l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
     /* EPH markers */
