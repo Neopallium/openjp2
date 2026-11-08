@@ -1303,3 +1303,54 @@ pub(crate) fn opj_mqc_byteout(mut mqc: &mut Mqc) {
     }
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn make_coder() -> Mqc {
+    let mut mqc = Mqc::default();
+    opj_mqc_resetstates(&mut mqc);
+    opj_mqc_setcurctx(&mut mqc, 0);
+    mqc
+  }
+
+  /// Encodes a bit sequence into a fresh coder and decodes it back.
+  #[test]
+  fn encode_decode_round_trip() {
+    let mut enc = make_coder();
+    opj_mqc_init_enc(&mut enc, 4096);
+    let enc_start = enc.start;
+    let enc_cursor = enc.cursor;
+    let bits: Vec<u32> = (0..2000u32).map(|i| (i * 7919 + 13) % 2).collect();
+    for &b in &bits {
+      opj_mqc_setcurctx(&mut enc, (b as u8) % 19);
+      opj_mqc_encode_macro(&mut enc, b);
+    }
+    opj_mqc_flush(&mut enc);
+    /* The coded bytes are buf[start..cursor]; buf[0] is the sentinel the
+    first byteout clobbers (the C writes at data - 1). */
+    let nbytes = enc.cursor.saturating_sub(enc.start);
+
+    let mut dec = make_coder();
+    dec.buf = enc.buf.clone();
+    dec.buf.resize(
+      enc.start + nbytes + OPJ_COMMON_CBLK_DATA_EXTRA as usize,
+      Cell::new(0),
+    );
+    opj_mqc_init_dec(
+      &mut dec,
+      enc.start,
+      nbytes as u32,
+      OPJ_COMMON_CBLK_DATA_EXTRA,
+    );
+    let mut decoded = Vec::with_capacity(bits.len());
+    for &b in &bits {
+      opj_mqc_setcurctx(&mut dec, (b as u8) % 19);
+      let mut d = 0u32;
+      opj_mqc_decode_macro(&mut d, &mut dec);
+      decoded.push(d);
+    }
+    assert_eq!(bits, decoded);
+  }
+}
