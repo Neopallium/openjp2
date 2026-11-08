@@ -64,12 +64,12 @@ pub struct CstrCompInfoV2 {
   pub cblksty: u32,
   pub qmfbid: u32,
   pub qntsty: u32,
-  pub stepsizes_mant: [u32; 97],
-  pub stepsizes_expn: [u32; 97],
+  pub stepsizes_mant: [u32; OPJ_J2K_MAXBANDS as usize],
+  pub stepsizes_expn: [u32; OPJ_J2K_MAXBANDS as usize],
   pub numgbits: u32,
   pub roishift: i32,
-  pub prcw: [u32; 33],
-  pub prch: [u32; 33],
+  pub prcw: [u32; OPJ_J2K_MAXRLVLS as usize],
+  pub prch: [u32; OPJ_J2K_MAXRLVLS as usize],
 }
 
 impl Default for CstrCompInfoV2 {
@@ -82,12 +82,12 @@ impl Default for CstrCompInfoV2 {
       cblksty: 0,
       qmfbid: 0,
       qntsty: 0,
-      stepsizes_mant: [0; 97],
-      stepsizes_expn: [0; 97],
+      stepsizes_mant: [0; OPJ_J2K_MAXBANDS as usize],
+      stepsizes_expn: [0; OPJ_J2K_MAXBANDS as usize],
       numgbits: 0,
       roishift: 0,
-      prcw: [0; 33],
-      prch: [0; 33],
+      prcw: [0; OPJ_J2K_MAXRLVLS as usize],
+      prch: [0; OPJ_J2K_MAXRLVLS as usize],
     }
   }
 }
@@ -128,7 +128,7 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> CstrInfoV2 {
       roishift: l_tccp.roishift,
       ..Default::default()
     };
-    if l_tccp.numresolutions < 33u32 {
+    if l_tccp.numresolutions < OPJ_J2K_MAXRLVLS {
       info.prch[..l_tccp.numresolutions as usize]
         .copy_from_slice(&l_tccp.prch[..l_tccp.numresolutions as usize]);
       info.prcw[..l_tccp.numresolutions as usize]
@@ -139,7 +139,7 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> CstrInfoV2 {
     } else {
       (l_tccp.numresolutions as i32 * 3i32) - 2i32
     };
-    if numbands < 3i32 * 33i32 - 2i32 {
+    if numbands < OPJ_J2K_MAXBANDS as i32 {
       for bandno in 0..numbands as usize {
         info.stepsizes_mant[bandno] = l_tccp.stepsizes[bandno].mant as u32;
         info.stepsizes_expn[bandno] = l_tccp.stepsizes[bandno].expn as u32;
@@ -1495,7 +1495,7 @@ fn opj_j2k_read_cod(
   p_header_size = p_header_size.wrapping_sub(5u32);
   i = 0_u32;
   while i < l_image_numcomps {
-    l_tcp.tccps[i as usize].csty = l_tcp.csty & 0x1u32;
+    l_tcp.tccps[i as usize].csty = l_tcp.csty & J2K_CP_CSTY_PRT;
     i += 1;
   }
   if opj_j2k_read_SPCod_SPCoc(
@@ -3403,10 +3403,7 @@ fn opj_j2k_read_sod(
       }
     }
     if p_j2k.m_specific_param.m_decoder.m_sot_length
-      > (2147483647u32)
-        .wrapping_mul(2u32)
-        .wrapping_add(1u32)
-        .wrapping_sub(2u32)
+      > u32::MAX - OPJ_COMMON_CBLK_DATA_EXTRA
     {
       event_msg!(
         p_manager,
@@ -3419,11 +3416,7 @@ fn opj_j2k_read_sod(
     /* do so that opj_mqc_init_dec_common() can safely add a synthetic */
     /* 0xFFFF marker. */
     if l_tcp.m_data_size
-      > (2147483647u32)
-        .wrapping_mul(2u32)
-        .wrapping_add(1u32)
-        .wrapping_sub(2u32)
-        .wrapping_sub(p_j2k.m_specific_param.m_decoder.m_sot_length)
+      > u32::MAX - OPJ_COMMON_CBLK_DATA_EXTRA - p_j2k.m_specific_param.m_decoder.m_sot_length
     {
       event_msg!(p_manager, EVT_ERROR,
                           "*l_tile_len > UINT_MAX - OPJ_COMMON_CBLK_DATA_EXTRA - p_j2k->m_specific_param.m_decoder.m_sot_length");
@@ -3436,7 +3429,8 @@ fn opj_j2k_read_sod(
       event_msg!(p_manager, EVT_ERROR, "Not enough memory to decode tile\n",);
       return 0i32;
     }
-    l_tcp.m_data.resize(new_len + 2, 0);
+    /* OPJ_COMMON_CBLK_DATA_EXTRA: margin for a fake 0xFFFF marker */
+    l_tcp.m_data.resize(new_len + OPJ_COMMON_CBLK_DATA_EXTRA as usize, 0);
   } else {
     l_sot_length_pb_detected = 1i32
   }
@@ -8009,7 +8003,7 @@ fn opj_j2k_get_SPCod_SPCoc_size(
 
   assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
   assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
-  if l_tccp.csty & 0x1u32 != 0 {
+  if l_tccp.csty & J2K_CP_CSTY_PRT != 0 {
     (5u32).wrapping_add(l_tccp.numresolutions)
   } else {
     5_u32
@@ -8051,7 +8045,7 @@ fn opj_j2k_compare_SPCod_SPCoc(
   if l_tccp0.qmfbid != l_tccp1.qmfbid {
     return 0i32;
   }
-  if l_tccp0.csty & 0x1u32 != l_tccp1.csty & 0x1u32 {
+  if l_tccp0.csty & J2K_CP_CSTY_PRT != l_tccp1.csty & J2K_CP_CSTY_PRT {
     return 0i32;
   }
   i = 0u32;
@@ -8110,7 +8104,7 @@ fn opj_j2k_write_SPCod_SPCoc(
   opj_write_bytes(&mut data[pos..], l_tccp.qmfbid, 1_u32);
   pos += 1usize;
   *p_header_size = (*p_header_size).wrapping_sub(5u32);
-  if l_tccp.csty & 0x1u32 != 0 {
+  if l_tccp.csty & J2K_CP_CSTY_PRT != 0 {
     if *p_header_size < l_tccp.numresolutions {
       event_msg!(p_manager, EVT_ERROR, "Error writing SPCod SPCoc element\n",);
       return 0i32;
@@ -8215,7 +8209,7 @@ fn opj_j2k_read_SPCod_SPCoc(
   /* SPcod (G) / SPcoc (D) */
   l_tccp.cblksty = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
-  if l_tccp.cblksty & 0x80u32 != 0u32 {
+  if l_tccp.cblksty & J2K_CCP_CBLKSTY_HTMIXED != 0u32 {
     /* We do not support HT mixed mode yet.  For conformance, it should be supported.*/
     event_msg!(
       p_manager,
@@ -8237,7 +8231,7 @@ fn opj_j2k_read_SPCod_SPCoc(
   }
   *p_header_size = (*p_header_size).wrapping_sub(5u32);
   /* use custom precinct size ? */
-  if l_tccp.csty & 0x1u32 != 0 {
+  if l_tccp.csty & J2K_CP_CSTY_PRT != 0 {
     if *p_header_size < l_tccp.numresolutions {
       event_msg!(p_manager, EVT_ERROR, "Error reading SPCod SPCoc element\n",);
       return 0i32;

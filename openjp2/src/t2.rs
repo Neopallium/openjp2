@@ -1,4 +1,5 @@
 use super::bio::*;
+use super::consts::*;
 use super::event::*;
 use super::math::*;
 use super::openjpeg::*;
@@ -594,7 +595,7 @@ fn opj_t2_encode_packet(
   let mut packet_empty = 0i32;
   let packno = tile.packno;
   /* <SOP 0xff91> */
-  if tcp.csty & 0x2u32 != 0 {
+  if tcp.csty & J2K_CP_CSTY_SOP != 0 {
     if length < 6u32 {
       if p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint {
         event_msg!(
@@ -791,7 +792,7 @@ fn opj_t2_encode_packet(
   pos += l_nb_bytes as usize;
   length = (length as core::ffi::c_uint).wrapping_sub(l_nb_bytes);
   /* <EPH 0xff92> */
-  if tcp.csty & 0x4u32 != 0 {
+  if tcp.csty & J2K_CP_CSTY_EPH != 0 {
     if length < 2u32 {
       if p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint {
         event_msg!(
@@ -915,7 +916,7 @@ fn opj_t2_read_packet_header(
   }
 
   /* SOP markers */
-  if csty & 0x2u32 != 0 {
+  if csty & J2K_CP_CSTY_SOP != 0 {
     if p_max_length < 6u32 {
       event_msg!(
         p_manager,
@@ -959,7 +960,7 @@ fn opj_t2_read_packet_header(
     opj_bio_inalign(l_bio);
     l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
     /* EPH markers */
-    if csty & 0x4u32 != 0 {
+    if csty & J2K_CP_CSTY_EPH != 0 {
       /* EPH markers are required when specified (upstream #1547) */
       if l_header.len() - l_hdr_pos < 2usize {
         event_msg!(
@@ -1196,7 +1197,7 @@ fn opj_t2_read_packet_header(
   }
   l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
   /* EPH markers */
-  if csty & 0x4u32 != 0 {
+  if csty & J2K_CP_CSTY_EPH != 0 {
     /* EPH markers are required when specified (upstream #1547) */
   if l_header.len() - l_hdr_pos < 2usize {
       event_msg!(

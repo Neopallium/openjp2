@@ -32,6 +32,7 @@
  */
 
 use super::c_api_types::*;
+use super::consts::*;
 use crate::image::CoreImage;
 use super::j2k::*;
 
@@ -53,7 +54,7 @@ pub struct EncoderParameters {
   pub cp_comment: Option<Vec<u8>>,
   pub csty: core::ffi::c_int,
   pub prog_order: OPJ_PROG_ORDER,
-  pub POC: [opj_poc_t; 32],
+  pub POC: [opj_poc_t; J2K_MAX_POCS as usize],
   pub numpocs: u32,
   pub tcp_numlayers: core::ffi::c_int,
   pub tcp_rates: [core::ffi::c_float; 100],
@@ -66,8 +67,8 @@ pub struct EncoderParameters {
   pub roi_compno: core::ffi::c_int,
   pub roi_shift: core::ffi::c_int,
   pub res_spec: core::ffi::c_int,
-  pub prcw_init: [core::ffi::c_int; 33],
-  pub prch_init: [core::ffi::c_int; 33],
+  pub prcw_init: [core::ffi::c_int; OPJ_J2K_MAXRLVLS as usize],
+  pub prch_init: [core::ffi::c_int; OPJ_J2K_MAXRLVLS as usize],
   pub index_on: core::ffi::c_int,
   pub image_offset_x0: core::ffi::c_int,
   pub image_offset_y0: core::ffi::c_int,
@@ -115,8 +116,8 @@ impl Default for EncoderParameters {
       roi_compno: -1,
       roi_shift: Default::default(),
       res_spec: Default::default(),
-      prcw_init: [Default::default(); 33],
-      prch_init: [Default::default(); 33],
+      prcw_init: [Default::default(); OPJ_J2K_MAXRLVLS as usize],
+      prch_init: [Default::default(); OPJ_J2K_MAXRLVLS as usize],
       index_on: Default::default(),
       image_offset_x0: Default::default(),
       image_offset_y0: Default::default(),
@@ -421,7 +422,7 @@ pub(crate) struct Tcp {
   pub mct: u32,
   pub rates: [f32; 100],
   pub numpocs: u32,
-  pub pocs: [opj_poc_t; 32],
+  pub pocs: [opj_poc_t; J2K_MAX_POCS as usize],
   pub ppt_markers: Vec<Ppx>,
   pub ppt_buffer: Vec<u8>,
   /* read cursor into `ppt_buffer`; `ppt_len` is the number of bytes left from it */
@@ -454,7 +455,7 @@ impl Default for Tcp {
       mct: 0,
       rates: [0.0; 100],
       numpocs: 0,
-      pocs: [Default::default(); 32],
+      pocs: [Default::default(); J2K_MAX_POCS as usize],
       ppt_markers: Vec::new(),
       ppt_buffer: Vec::new(),
       ppt_data_pos: 0,
@@ -509,11 +510,11 @@ pub(crate) struct Tccp {
   pub cblksty: u32,
   pub qmfbid: u32,
   pub qntsty: u32,
-  pub stepsizes: [Stepsize; 97],
+  pub stepsizes: [Stepsize; OPJ_J2K_MAXBANDS as usize],
   pub numgbits: u32,
   pub roishift: i32,
-  pub prcw: [u32; 33],
-  pub prch: [u32; 33],
+  pub prcw: [u32; OPJ_J2K_MAXRLVLS as usize],
+  pub prch: [u32; OPJ_J2K_MAXRLVLS as usize],
   pub m_dc_level_shift: i32,
 }
 impl Default for Tccp {
@@ -526,11 +527,11 @@ impl Default for Tccp {
       cblksty: 0,
       qmfbid: 0,
       qntsty: 0,
-      stepsizes: [Default::default(); 97],
+      stepsizes: [Default::default(); OPJ_J2K_MAXBANDS as usize],
       numgbits: 0,
       roishift: 0,
-      prcw: [0; 33],
-      prch: [0; 33],
+      prcw: [0; OPJ_J2K_MAXRLVLS as usize],
+      prch: [0; OPJ_J2K_MAXRLVLS as usize],
       m_dc_level_shift: 0,
     }
   }

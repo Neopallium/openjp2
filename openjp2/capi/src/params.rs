@@ -4,6 +4,7 @@
 
 use openjp2_core::c_api_types::*;
 use openjp2_core::c_api_types::{OPJ_BOOL, OPJ_UINT16, OPJ_UINT32};
+use openjp2_core::consts::opj::OPJ_PATH_LEN;
 
 extern "C" {
   fn malloc(size: usize) -> *mut core::ffi::c_void;
@@ -55,10 +56,10 @@ pub struct opj_cparameters {
   pub res_spec: core::ffi::c_int,
   pub prcw_init: [core::ffi::c_int; 33],
   pub prch_init: [core::ffi::c_int; 33],
-  pub infile: [core::ffi::c_char; 4096],
-  pub outfile: [core::ffi::c_char; 4096],
+  pub infile: [core::ffi::c_char; OPJ_PATH_LEN as usize],
+  pub outfile: [core::ffi::c_char; OPJ_PATH_LEN as usize],
   pub index_on: core::ffi::c_int,
-  pub index: [core::ffi::c_char; 4096],
+  pub index: [core::ffi::c_char; OPJ_PATH_LEN as usize],
   pub image_offset_x0: core::ffi::c_int,
   pub image_offset_y0: core::ffi::c_int,
   pub subsampling_dx: core::ffi::c_int,
@@ -121,10 +122,10 @@ impl Default for opj_cparameters_t {
       res_spec: Default::default(),
       prcw_init: [Default::default(); 33],
       prch_init: [Default::default(); 33],
-      infile: [0; 4096],
-      outfile: [0; 4096],
+      infile: [0; OPJ_PATH_LEN as usize],
+      outfile: [0; OPJ_PATH_LEN as usize],
       index_on: Default::default(),
-      index: [0; 4096],
+      index: [0; OPJ_PATH_LEN as usize],
       image_offset_x0: Default::default(),
       image_offset_y0: Default::default(),
       subsampling_dx: 1,

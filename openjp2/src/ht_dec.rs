@@ -1,3 +1,4 @@
+use super::consts::*;
 use super::event::*;
 use super::openjpeg::*;
 use super::t1::*;
@@ -1249,7 +1250,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     let mut sp: usize = 0;
     let mut x: i32 = 0;
     let mut y: i32 = 0;
-    let mut stripe_causal = (cblksty & 0x8u32 != 0u32) as core::ffi::c_int;
+    let mut stripe_causal = (cblksty & J2K_CCP_CBLKSTY_VSC != 0u32) as core::ffi::c_int;
     let mut cblk_len = 0_u32;
     // stops unused parameter message
     // stops unused parameter message

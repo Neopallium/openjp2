@@ -166,13 +166,15 @@ pub struct opj_poc {
 }
 pub type opj_poc_t = opj_poc;
 
+use crate::consts::opj::OPJ_PATH_LEN;
+
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct opj_dparameters {
   pub cp_reduce: u32,
   pub cp_layer: u32,
-  pub infile: [core::ffi::c_char; 4096],
-  pub outfile: [core::ffi::c_char; 4096],
+  pub infile: [core::ffi::c_char; OPJ_PATH_LEN as usize],
+  pub outfile: [core::ffi::c_char; OPJ_PATH_LEN as usize],
   pub decod_format: core::ffi::c_int,
   pub cod_format: core::ffi::c_int,
   pub DA_x0: u32,
@@ -194,8 +196,8 @@ impl Default for opj_dparameters_t {
     Self {
       cp_reduce: Default::default(),
       cp_layer: Default::default(),
-      infile: [Default::default(); 4096],
-      outfile: [Default::default(); 4096],
+      infile: [Default::default(); OPJ_PATH_LEN as usize],
+      outfile: [Default::default(); OPJ_PATH_LEN as usize],
       decod_format: -1,
       cod_format: -1,
       DA_x0: Default::default(),

@@ -1,3 +1,4 @@
+use super::consts::*;
 use super::event::*;
 use super::j2k::*;
 use super::math::*;
@@ -1338,7 +1339,7 @@ pub(crate) fn opj_get_all_encoding_parameters(
       let l_tccp = &tcp.tccps[compno as usize];
       let l_img_comp = &p_image.comps[compno as usize];
       /* Each component owns a stride of 4 u32 per resolution (max 33). */
-      let mut l_resolution_offset = (compno as usize).wrapping_mul((4i32 * 33i32) as usize);
+      let mut l_resolution_offset = (compno as usize).wrapping_mul((4i32 * OPJ_J2K_MAXRLVLS as i32) as usize);
       l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp.dx);
       l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp.dy);
       l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp.dx);
@@ -1778,7 +1779,7 @@ pub(crate) fn opj_pi_create_decode(
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations */
   l_bound = p_cp.tcps[p_tile_no as usize].numpocs.wrapping_add(1u32);
-  let l_data_stride = (4i32 * 33i32) as usize;
+  let l_data_stride = (4i32 * OPJ_J2K_MAXRLVLS as i32) as usize;
   let mut l_tmp_data: Vec<u32> = vec![0; l_data_stride.wrapping_mul(numcomps as usize)];
   /* memory allocation for pi */
   let mut l_pi = opj_pi_create(p_image, p_cp, p_tile_no);
@@ -1974,7 +1975,7 @@ pub(crate) fn opj_pi_initialise_encode(
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations*/
   l_bound = p_cp.tcps[p_tile_no as usize].numpocs.wrapping_add(1u32);
-  let l_data_stride = (4i32 * 33i32) as usize;
+  let l_data_stride = (4i32 * OPJ_J2K_MAXRLVLS as i32) as usize;
   let mut l_tmp_data: Vec<u32> = vec![0; l_data_stride.wrapping_mul(numcomps as usize)];
   /* memory allocation for pi*/
   let mut l_pi = opj_pi_create(p_image, p_cp, p_tile_no);
