@@ -15,13 +15,17 @@ exclude = ["samples/*"]
 
 [workspace]
 members = ["tools", "libtiff-sys"]
+# v2 keeps feature resolution per build unit: `default-features = false`
+# on the openjp2 dependency (e.g. for no-rayon platforms) is honored
+# instead of being polluted by this package's own default features.
+resolver = "2"
 
 [lib]
 name = "openjp2"
 crate-type = ["rlib"]
 
 [dependencies]
-rayon = "1.11"
+rayon = { version = "1.11", optional = true }
 bitflags = "1.3.2"
 byteorder = { version = "1.5" }
 log = "0.4.17"
@@ -29,8 +33,9 @@ log = "0.4.17"
 smallvec = "1.13"
 
 [features]
-# (no features: the crate is self-contained)
-
-
+# Parallelism via rayon is optional: some platforms/targets cannot use
+# rayon.  The code falls back to sequential iterators without it.
+default = ["rayon"]
+rayon = ["dep:rayon"]
 jpwl = []
 jpspec = []

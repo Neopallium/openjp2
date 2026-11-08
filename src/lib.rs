@@ -129,6 +129,7 @@ mod codec;
 mod dwt;
 mod function_list;
 mod ht_dec;
+mod par;
 mod invert;
 mod j2k;
 mod jp2;

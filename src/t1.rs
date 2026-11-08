@@ -1,20 +1,19 @@
 use super::consts::*;
-use rayon::prelude::*;
 use super::dwt::*;
 use super::event::*;
 use super::ht_dec::*;
 use super::math::*;
 use super::mqc::*;
 use super::openjpeg::*;
-use crate::image::CoreImageComp;
+use super::par;
 use super::t1_luts::*;
 use super::tcd::*;
+use crate::image::CoreImageComp;
 
 use core::{
   cell::{Cell, RefCell},
   ops::AddAssign,
 };
-
 
 // The T1 passes walk several aliasing cursors over the same coefficient and flag buffers, so the
 // backing stores hold `Cell`s: that keeps the cursors `Copy` and aliasable without any `unsafe`.
@@ -308,12 +307,7 @@ fn opj_t1_getctxno_zc(mut mqc: &mut Mqc, f: u32) -> u8 {
 }
 
 #[inline]
-fn opj_t1_getctxtno_sc_or_spb_index(
-  mut fX: u32,
-  mut pfX: u32,
-  mut nfX: u32,
-  mut ci: u32,
-) -> u32 {
+fn opj_t1_getctxtno_sc_or_spb_index(mut fX: u32, mut pfX: u32, mut nfX: u32, mut ci: u32) -> u32 {
   /*
     0 pfX T1_CHI_THIS           T1_LUT_SGN_W
     1 tfX T1_SIGMA_1            T1_LUT_SIG_N
@@ -378,13 +372,7 @@ fn opj_t1_getnmsedec_ref(mut x: u32, mut bitpos: u32) -> i16 {
 }
 
 #[inline]
-fn opj_t1_update_flags_macro(
-  flagsp: FlagsPtr,
-  ci: u32,
-  s: u32,
-  stride: u32,
-  vsc: u32,
-) {
+fn opj_t1_update_flags_macro(flagsp: FlagsPtr, ci: u32, s: u32, stride: u32, vsc: u32) {
   /* east */
   flagsp.or_at(-1, T1_SIGMA_5 << 3_u32.wrapping_mul(ci));
 
@@ -412,13 +400,7 @@ fn opj_t1_update_flags_macro(
 }
 
 #[inline]
-fn opj_t1_update_flags(
-  flagsp: FlagsPtr,
-  ci: u32,
-  s: u32,
-  stride: u32,
-  vsc: u32,
-) {
+fn opj_t1_update_flags(flagsp: FlagsPtr, ci: u32, s: u32, stride: u32, vsc: u32) {
   opj_t1_update_flags_macro(flagsp, ci, s, stride, vsc);
 }
 
@@ -442,45 +424,45 @@ fn opj_t1_enc_sigpass_step_macro(
   ci: u32,
   vsc: u32,
 ) {
-    let mut v = 0;
-    let flags = flagsp.get();
-    if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0
-      && (flags & (T1_SIGMA_NEIGHBOURS << ci.wrapping_mul(3))) != 0
-    {
-      let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
-      v = if opj_smr_abs(l_datap.get()) & one != 0 {
-        1
-      } else {
-        0
-      };
-      log::debug!("   ctxt1={}", ctxt1);
-      opj_t1_setcurctx(mqc, ctxt1);
+  let mut v = 0;
+  let flags = flagsp.get();
+  if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0
+    && (flags & (T1_SIGMA_NEIGHBOURS << ci.wrapping_mul(3))) != 0
+  {
+    let ctxt1 = opj_t1_getctxno_zc(mqc, flags >> ci.wrapping_mul(3));
+    v = if opj_smr_abs(l_datap.get()) & one != 0 {
+      1
+    } else {
+      0
+    };
+    log::debug!("   ctxt1={}", ctxt1);
+    opj_t1_setcurctx(mqc, ctxt1);
 
+    if type_0 == T1_TYPE_RAW {
+      /* BYPASS/LAZY MODE */
+      opj_mqc_bypass_enc_macro(mqc, v);
+    } else {
+      opj_mqc_encode_macro(mqc, v);
+    }
+    if v != 0 {
+      let lu = opj_t1_getctxtno_sc_or_spb_index(flags, flagsp.at(-1), flagsp.at(1), ci);
+      let ctxt2 = opj_t1_getctxno_sc(lu);
+      v = opj_smr_sign(l_datap.get());
+      *nmsedec += opj_t1_getnmsedec_sig(opj_smr_abs(l_datap.get()), bpno as u32) as i32;
+      log::debug!("   ctxt2={}", ctxt2);
+      opj_t1_setcurctx(mqc, ctxt2);
       if type_0 == T1_TYPE_RAW {
         /* BYPASS/LAZY MODE */
         opj_mqc_bypass_enc_macro(mqc, v);
       } else {
-        opj_mqc_encode_macro(mqc, v);
+        let spb = opj_t1_getspb(lu) as u32;
+        log::debug!("   spb={}", spb);
+        opj_mqc_encode_macro(mqc, v ^ spb);
       }
-      if v != 0 {
-        let lu = opj_t1_getctxtno_sc_or_spb_index(flags, flagsp.at(-1), flagsp.at(1), ci);
-        let ctxt2 = opj_t1_getctxno_sc(lu);
-        v = opj_smr_sign(l_datap.get());
-        *nmsedec += opj_t1_getnmsedec_sig(opj_smr_abs(l_datap.get()), bpno as u32) as i32;
-        log::debug!("   ctxt2={}", ctxt2);
-        opj_t1_setcurctx(mqc, ctxt2);
-        if type_0 == T1_TYPE_RAW {
-          /* BYPASS/LAZY MODE */
-          opj_mqc_bypass_enc_macro(mqc, v);
-        } else {
-          let spb = opj_t1_getspb(lu) as u32;
-          log::debug!("   spb={}", spb);
-          opj_mqc_encode_macro(mqc, v ^ spb);
-        }
-        opj_t1_update_flags(flagsp, ci, v, w.wrapping_add(2), vsc);
-      }
-      flagsp.or(T1_PI_THIS << ci.wrapping_mul(3));
+      opj_t1_update_flags(flagsp, ci, v, w.wrapping_add(2), vsc);
     }
+    flagsp.or(T1_PI_THIS << ci.wrapping_mul(3));
+  }
 }
 
 #[inline]
@@ -573,24 +555,60 @@ fn opj_t1_enc_sigpass(
   mut type_0: u8,
   mut cblksty: u32,
 ) {
-    let mut i = 0;
-    let mut k = 0;
-    let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
-    let extra = 2;
-    let (w, h) = (t1.w, t1.h);
-    let (mqc, mut datap, mut f) = t1.split(w + 2);
+  let mut i = 0;
+  let mut k = 0;
+  let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
+  let extra = 2;
+  let (w, h) = (t1.w, t1.h);
+  let (mqc, mut datap, mut f) = t1.split(w + 2);
 
-    *nmsedec = 0;
-    log::debug!("enc_sigpass: bpno={}", bpno);
+  *nmsedec = 0;
+  log::debug!("enc_sigpass: bpno={}", bpno);
 
-    while k < h & !(0x03) {
-      log::debug!(" k={}", k);
-      i = 0;
-      while i < w {
-        log::debug!(" i={}", i);
-        if f.get() == 0 {
-          /* Nothing to do for any of the 4 data points */
-        } else {
+  while k < h & !(0x03) {
+    log::debug!(" k={}", k);
+    i = 0;
+    while i < w {
+      log::debug!(" i={}", i);
+      if f.get() == 0 {
+        /* Nothing to do for any of the 4 data points */
+      } else {
+        opj_t1_enc_sigpass_step_macro(
+          mqc,
+          w,
+          f,
+          datap,
+          bpno,
+          one,
+          nmsedec,
+          type_0,
+          0,
+          cblksty & J2K_CCP_CBLKSTY_VSC,
+        );
+        opj_t1_enc_sigpass_step_macro(mqc, w, f, datap.offset(1), bpno, one, nmsedec, type_0, 1, 0);
+        opj_t1_enc_sigpass_step_macro(mqc, w, f, datap.offset(2), bpno, one, nmsedec, type_0, 2, 0);
+        opj_t1_enc_sigpass_step_macro(mqc, w, f, datap.offset(3), bpno, one, nmsedec, type_0, 3, 0);
+      }
+      i += 1;
+      f += 1;
+      datap += 4
+    }
+    k += 4;
+    f += extra;
+  }
+
+  if k < h {
+    let mut j: u32 = 0;
+    log::debug!(" k={}", k);
+    i = 0;
+    while i < w {
+      log::debug!(" i={}", i);
+      if f.get() == 0 {
+        /* Nothing to do for any of the 4 data points */
+        datap = datap.offset(h.wrapping_sub(k) as isize)
+      } else {
+        j = k;
+        while j < h {
           opj_t1_enc_sigpass_step_macro(
             mqc,
             w,
@@ -600,86 +618,17 @@ fn opj_t1_enc_sigpass(
             one,
             nmsedec,
             type_0,
-            0,
-            cblksty & J2K_CCP_CBLKSTY_VSC,
+            j - k,
+            (j == k && (cblksty & J2K_CCP_CBLKSTY_VSC) != 0) as u32,
           );
-          opj_t1_enc_sigpass_step_macro(
-            mqc,
-            w,
-            f,
-            datap.offset(1),
-            bpno,
-            one,
-            nmsedec,
-            type_0,
-            1,
-            0,
-          );
-          opj_t1_enc_sigpass_step_macro(
-            mqc,
-            w,
-            f,
-            datap.offset(2),
-            bpno,
-            one,
-            nmsedec,
-            type_0,
-            2,
-            0,
-          );
-          opj_t1_enc_sigpass_step_macro(
-            mqc,
-            w,
-            f,
-            datap.offset(3),
-            bpno,
-            one,
-            nmsedec,
-            type_0,
-            3,
-            0,
-          );
+          j += 1;
+          datap += 1
         }
-        i += 1;
-        f += 1;
-        datap += 4
       }
-      k += 4;
-      f += extra;
+      i += 1;
+      f += 1
     }
-
-    if k < h {
-      let mut j: u32 = 0;
-      log::debug!(" k={}", k);
-      i = 0;
-      while i < w {
-        log::debug!(" i={}", i);
-        if f.get() == 0 {
-          /* Nothing to do for any of the 4 data points */
-          datap = datap.offset(h.wrapping_sub(k) as isize)
-        } else {
-          j = k;
-          while j < h {
-            opj_t1_enc_sigpass_step_macro(
-              mqc,
-              w,
-              f,
-              datap,
-              bpno,
-              one,
-              nmsedec,
-              type_0,
-              j - k,
-              (j == k && (cblksty & J2K_CCP_CBLKSTY_VSC) != 0) as u32,
-            );
-            j += 1;
-            datap += 1
-          }
-        }
-        i += 1;
-        f += 1
-      }
-    }
+  }
 }
 
 /* *
@@ -889,7 +838,11 @@ fn opj_t1_dec_sigpass_mqc_64x64_vsc(t1: &mut T1Coder, bpno: i32, data_src: Optio
   opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_TRUE, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_sigpass_mqc_generic_novsc(t1: &mut T1Coder, bpno: i32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_sigpass_mqc_generic_novsc(
+  t1: &mut T1Coder,
+  bpno: i32,
+  data_src: Option<&[Cell<i32>]>,
+) {
   opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_FALSE, t1.w, t1.h, t1.w + 2, data_src);
 }
 
@@ -934,27 +887,27 @@ fn opj_t1_enc_refpass_step_macro(
   type_0: u8,
   ci: u32,
 ) {
-    let mut v: u32 = 0;
-    let flags = flagsp.get();
-    if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3)))
-      == (T1_SIGMA_THIS << ci.wrapping_mul(3))
-    {
-      let shift_flags = flags >> ci.wrapping_mul(3);
-      let ctxt = opj_t1_getctxno_mag(shift_flags);
-      let abs_data = opj_smr_abs(l_datap.get());
-      *nmsedec += opj_t1_getnmsedec_ref(abs_data, bpno as u32) as i32;
-      v = if abs_data & one != 0 { 1 } else { 0 };
-      log::debug!("   ctxt={}", ctxt);
-      opj_t1_setcurctx(mqc, ctxt);
+  let mut v: u32 = 0;
+  let flags = flagsp.get();
+  if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3)))
+    == (T1_SIGMA_THIS << ci.wrapping_mul(3))
+  {
+    let shift_flags = flags >> ci.wrapping_mul(3);
+    let ctxt = opj_t1_getctxno_mag(shift_flags);
+    let abs_data = opj_smr_abs(l_datap.get());
+    *nmsedec += opj_t1_getnmsedec_ref(abs_data, bpno as u32) as i32;
+    v = if abs_data & one != 0 { 1 } else { 0 };
+    log::debug!("   ctxt={}", ctxt);
+    opj_t1_setcurctx(mqc, ctxt);
 
-      if type_0 == T1_TYPE_RAW {
-        /* BYPASS/LAZY MODE */
-        opj_mqc_bypass_enc_macro(mqc, v);
-      } else {
-        opj_mqc_encode_macro(mqc, v);
-      }
-      flagsp.or(T1_MU_THIS << ci.wrapping_mul(3));
+    if type_0 == T1_TYPE_RAW {
+      /* BYPASS/LAZY MODE */
+      opj_mqc_bypass_enc_macro(mqc, v);
+    } else {
+      opj_mqc_encode_macro(mqc, v);
     }
+    flagsp.or(T1_MU_THIS << ci.wrapping_mul(3));
+  }
 }
 
 #[inline]
@@ -1029,80 +982,71 @@ fn opj_t1_dec_refpass_step_mqc(
 /* *
 Encode refinement pass
 */
-fn opj_t1_enc_refpass(
-  mut t1: &mut T1Coder,
-  mut bpno: i32,
-  mut nmsedec: &mut i32,
-  mut type_0: u8,
-) {
-    let mut i: u32 = 0;
-    let mut k: u32 = 0;
-    let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
-    let extra = 2;
-    let (w, h) = (t1.w, t1.h);
-    let (mqc, mut datap, mut f) = t1.split(w + 2);
+fn opj_t1_enc_refpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mut type_0: u8) {
+  let mut i: u32 = 0;
+  let mut k: u32 = 0;
+  let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
+  let extra = 2;
+  let (w, h) = (t1.w, t1.h);
+  let (mqc, mut datap, mut f) = t1.split(w + 2);
 
-    *nmsedec = 0;
-    log::debug!("enc_refpass: bpno={}", bpno);
+  *nmsedec = 0;
+  log::debug!("enc_refpass: bpno={}", bpno);
 
-    while k < h & !(0x03) {
-      log::debug!(" k={}", k);
-      i = 0;
-      while i < w {
-        let flags = f.get();
-        log::debug!(" i={}", i);
-        if (flags & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0 {
-          /* none significant */
-        } else if (flags & (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3))
-          == (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3)
-        {
-          /* all processed by sigpass */
-        } else {
-          opj_t1_enc_refpass_step_macro(mqc, f, datap, bpno, one, nmsedec, type_0, 0);
-          opj_t1_enc_refpass_step_macro(mqc, f, datap.offset(1), bpno, one, nmsedec, type_0, 1);
-          opj_t1_enc_refpass_step_macro(mqc, f, datap.offset(2), bpno, one, nmsedec, type_0, 2);
-          opj_t1_enc_refpass_step_macro(mqc, f, datap.offset(3), bpno, one, nmsedec, type_0, 3);
-        }
-        i += 1;
-        f += 1;
-        datap += 4
+  while k < h & !(0x03) {
+    log::debug!(" k={}", k);
+    i = 0;
+    while i < w {
+      let flags = f.get();
+      log::debug!(" i={}", i);
+      if (flags & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0 {
+        /* none significant */
+      } else if (flags & (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3))
+        == (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3)
+      {
+        /* all processed by sigpass */
+      } else {
+        opj_t1_enc_refpass_step_macro(mqc, f, datap, bpno, one, nmsedec, type_0, 0);
+        opj_t1_enc_refpass_step_macro(mqc, f, datap.offset(1), bpno, one, nmsedec, type_0, 1);
+        opj_t1_enc_refpass_step_macro(mqc, f, datap.offset(2), bpno, one, nmsedec, type_0, 2);
+        opj_t1_enc_refpass_step_macro(mqc, f, datap.offset(3), bpno, one, nmsedec, type_0, 3);
       }
-      k += 4;
-      f += extra;
+      i += 1;
+      f += 1;
+      datap += 4
     }
+    k += 4;
+    f += extra;
+  }
 
-    if k < h {
-      let mut j: u32 = 0;
-      let remaining_lines = h - k;
-      log::debug!(" k={}", k);
-      i = 0;
-      while i < w {
-        log::debug!(" i={}", i);
-        if (f.get() & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0 {
-          /* none significant */
-          datap = datap.offset(remaining_lines as isize);
-        } else {
-          j = 0;
-          while j < remaining_lines {
-            opj_t1_enc_refpass_step_macro(mqc, f, datap, bpno, one, nmsedec, type_0, j);
-            j += 1;
-            datap += 1
-          }
+  if k < h {
+    let mut j: u32 = 0;
+    let remaining_lines = h - k;
+    log::debug!(" k={}", k);
+    i = 0;
+    while i < w {
+      log::debug!(" i={}", i);
+      if (f.get() & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0 {
+        /* none significant */
+        datap = datap.offset(remaining_lines as isize);
+      } else {
+        j = 0;
+        while j < remaining_lines {
+          opj_t1_enc_refpass_step_macro(mqc, f, datap, bpno, one, nmsedec, type_0, j);
+          j += 1;
+          datap += 1
         }
-        i += 1;
-        f += 1
       }
+      i += 1;
+      f += 1
     }
+  }
 }
 
 /* *
 Decode refinement pass
 */
-fn opj_t1_dec_refpass_raw(
-  mut t1: &mut T1Coder,
-  mut bpno: i32,
-  data_src: Option<&[Cell<i32>]>,
-) {
+fn opj_t1_dec_refpass_raw(mut t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
   let mut one: i32 = 0;
   let mut poshalf: i32 = 0;
   let mut i: u32 = 0;
@@ -1223,11 +1167,19 @@ fn opj_t1_dec_refpass_mqc_internal(
   }
 }
 
-fn opj_t1_dec_refpass_mqc_64x64(mut t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_refpass_mqc_64x64(
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
+  data_src: Option<&[Cell<i32>]>,
+) {
   opj_t1_dec_refpass_mqc_internal(t1, bpno, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_refpass_mqc_generic(mut t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_refpass_mqc_generic(
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
+  data_src: Option<&[Cell<i32>]>,
+) {
   opj_t1_dec_refpass_mqc_internal(t1, bpno, t1.w, t1.h, t1.w + 2, data_src);
 }
 
@@ -1385,84 +1337,84 @@ fn opj_t1_enc_clnpass(
   mut nmsedec: &mut i32,
   mut cblksty: u32,
 ) {
-    let mut i: u32 = 0;
-    let mut k: u32 = 0;
-    let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
-    let extra = 2;
-    let (w, h) = (t1.w, t1.h);
-    let (mqc, mut datap, mut f) = t1.split(w + 2);
+  let mut i: u32 = 0;
+  let mut k: u32 = 0;
+  let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
+  let extra = 2;
+  let (w, h) = (t1.w, t1.h);
+  let (mqc, mut datap, mut f) = t1.split(w + 2);
 
-    *nmsedec = 0;
-    log::debug!("enc_clnpass: bpno={}", bpno);
-    k = 0;
-    while k < (h & !0x03) {
-      log::debug!(" k={}", k);
-      i = 0;
-      while i < w {
-        log::debug!(" i={}", i);
-        let mut agg = 0;
-        let mut runlen = 0u32;
-        agg = (f.get() == 0) as u8;
-        log::debug!("   agg={}", agg);
-        'cln: {
-          if agg != 0 {
-            runlen = 0;
-            while runlen < 4 {
-              if (opj_smr_abs(datap.get()) & one) != 0 {
-                break;
-              }
-              runlen = runlen.wrapping_add(1);
-              datap += 1
+  *nmsedec = 0;
+  log::debug!("enc_clnpass: bpno={}", bpno);
+  k = 0;
+  while k < (h & !0x03) {
+    log::debug!(" k={}", k);
+    i = 0;
+    while i < w {
+      log::debug!(" i={}", i);
+      let mut agg = 0;
+      let mut runlen = 0u32;
+      agg = (f.get() == 0) as u8;
+      log::debug!("   agg={}", agg);
+      'cln: {
+        if agg != 0 {
+          runlen = 0;
+          while runlen < 4 {
+            if (opj_smr_abs(datap.get()) & one) != 0 {
+              break;
             }
-            opj_t1_setcurctx(mqc, T1_CTXNO_AGG);
-            opj_mqc_encode_macro(mqc, (runlen != 4) as u32);
-            if runlen == 4 {
-              break 'cln;
-            }
-            opj_t1_setcurctx(mqc, T1_CTXNO_UNI);
-            opj_mqc_encode_macro(mqc, runlen >> 1);
-            opj_mqc_encode_macro(mqc, runlen & 1);
-          } else {
-            runlen = 0;
+            runlen = runlen.wrapping_add(1);
+            datap += 1
           }
-          opj_t1_enc_clnpass_step_macro(
-            mqc, w, f, datap, bpno, one, nmsedec, agg, runlen, 4, cblksty,
-          );
-          datap = datap.offset(4_u32.wrapping_sub(runlen) as isize);
+          opj_t1_setcurctx(mqc, T1_CTXNO_AGG);
+          opj_mqc_encode_macro(mqc, (runlen != 4) as u32);
+          if runlen == 4 {
+            break 'cln;
+          }
+          opj_t1_setcurctx(mqc, T1_CTXNO_UNI);
+          opj_mqc_encode_macro(mqc, runlen >> 1);
+          opj_mqc_encode_macro(mqc, runlen & 1);
+        } else {
+          runlen = 0;
         }
-        i += 1;
-        f += 1
-      }
-      k += 4;
-      f += extra;
-    }
-
-    if k < h {
-      let agg = 0;
-      let runlen = 0;
-      log::debug!(" k={}", k);
-      i = 0;
-      while i < w {
-        log::debug!(" i={}", i);
-        log::debug!("  agg={}", agg);
         opj_t1_enc_clnpass_step_macro(
-          mqc,
-          w,
-          f,
-          datap,
-          bpno,
-          one,
-          nmsedec,
-          agg,
-          runlen,
-          h - k,
-          cblksty,
+          mqc, w, f, datap, bpno, one, nmsedec, agg, runlen, 4, cblksty,
         );
-        datap = datap.offset((h - k) as isize);
-        i += 1;
-        f += 1
+        datap = datap.offset(4_u32.wrapping_sub(runlen) as isize);
       }
+      i += 1;
+      f += 1
     }
+    k += 4;
+    f += extra;
+  }
+
+  if k < h {
+    let agg = 0;
+    let runlen = 0;
+    log::debug!(" k={}", k);
+    i = 0;
+    while i < w {
+      log::debug!(" i={}", i);
+      log::debug!("  agg={}", agg);
+      opj_t1_enc_clnpass_step_macro(
+        mqc,
+        w,
+        f,
+        datap,
+        bpno,
+        one,
+        nmsedec,
+        agg,
+        runlen,
+        h - k,
+        cblksty,
+      );
+      datap = datap.offset((h - k) as isize);
+      i += 1;
+      f += 1
+    }
+  }
 }
 
 fn opj_t1_dec_clnpass_internal(
@@ -1687,7 +1639,11 @@ fn opj_t1_dec_clnpass_64x64_vsc(t1: &mut T1Coder, mut bpno: i32, data_src: Optio
   opj_t1_dec_clnpass_internal(t1, bpno, true, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_clnpass_generic_novsc(t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_clnpass_generic_novsc(
+  t1: &mut T1Coder,
+  mut bpno: i32,
+  data_src: Option<&[Cell<i32>]>,
+) {
   opj_t1_dec_clnpass_internal(t1, bpno, false, t1.w, t1.h, t1.w + 2, data_src);
 }
 
@@ -1695,7 +1651,12 @@ fn opj_t1_dec_clnpass_generic_vsc(t1: &mut T1Coder, mut bpno: i32, data_src: Opt
   opj_t1_dec_clnpass_internal(t1, bpno, true, t1.w, t1.h, t1.w + 2, data_src);
 }
 
-fn opj_t1_dec_clnpass(mut t1: &mut T1Coder, mut bpno: i32, mut cblksty: i32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_clnpass(
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
+  mut cblksty: i32,
+  data_src: Option<&[Cell<i32>]>,
+) {
   if t1.w == 64 && t1.h == 64 {
     if (cblksty as u32 & J2K_CCP_CBLKSTY_VSC) != 0 {
       opj_t1_dec_clnpass_64x64_vsc(t1, bpno, data_src);
@@ -1750,11 +1711,7 @@ fn opj_t1_getwmsedec(
   wmsedec
 }
 
-fn opj_t1_allocate_buffers(
-  mut t1: &mut T1Coder,
-  mut w: u32,
-  mut h: u32,
-) -> OPJ_BOOL {
+fn opj_t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OPJ_BOOL {
   let mut flagssize: u32 = 0;
   let mut flags_stride: u32 = 0;
   /* No risk of overflow. Prior checks ensure those assert are met */
@@ -1945,7 +1902,6 @@ fn opj_t1_cblk_writeback(
   }
 }
 
-
 pub(crate) fn opj_t1_decode_cblks(
   tilec_view: &TcdTilecView,
   _tccps: &[Tccp],
@@ -1960,14 +1916,15 @@ pub(crate) fn opj_t1_decode_cblks(
   /* Snapshot the tile geometry (values), so the walks below can borrow
   tilec.resolutions without aliasing the data buffer. */
   let tile_w = (tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].x1
-    - tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].x0) as usize;
+    - tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].x0)
+    as usize;
   let tile_h = (tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].y1
-    - tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].y0) as usize;
+    - tilec.resolutions[(tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].y0)
+    as usize;
   /* Collect the decode jobs: every codeblock whose area is of interest.
   The per-codeblock buffers carry the decoded coefficients so the decode
   can run in parallel and the tile-buffer write-back stays sequential. */
-  let mut jobs: Vec<(u32, i32, i32, f32, u32, u32, &mut TcdCblkDec)> =
-    Vec::new();
+  let mut jobs: Vec<(u32, i32, i32, f32, u32, u32, &mut TcdCblkDec)> = Vec::new();
 
   /* The previous (coarser) resolution's extents feed the band offsets;
   snapshot them first so the collection walk only needs `&mut`. */
@@ -1996,7 +1953,11 @@ pub(crate) fn opj_t1_decode_cblks(
       let band_stepsize = band.stepsize;
       let off_x = if bandno_val & 1 != 0 { prev_w } else { 0 };
       let off_y = if bandno_val & 2 != 0 { prev_h } else { 0 };
-      for precinct in band.precincts.iter_mut().take((res.pw.wrapping_mul(res.ph)) as usize) {
+      for precinct in band
+        .precincts
+        .iter_mut()
+        .take((res.pw.wrapping_mul(res.ph)) as usize)
+      {
         if opj_tcd_is_subband_area_of_interest(
           tilec_view,
           tccp,
@@ -2100,21 +2061,16 @@ pub(crate) fn opj_t1_decode_cblks(
       0,
     )
   };
-  let ok_flags: Vec<OPJ_BOOL> = if jobs.len() >= 8 {
-    jobs
-      .par_iter_mut()
-      .map(|(bandno, band_x0, band_y0, band_stepsize, off_x, off_y, cblk)| {
-        decode_job((bandno, band_x0, band_y0, band_stepsize, off_x, off_y), cblk)
-      })
-      .collect()
-  } else {
-    jobs
-      .iter_mut()
-      .map(|(bandno, band_x0, band_y0, band_stepsize, off_x, off_y, cblk)| {
-        decode_job((bandno, band_x0, band_y0, band_stepsize, off_x, off_y), cblk)
-      })
-      .collect()
-  };
+  let ok_flags: Vec<OPJ_BOOL> = par::map_collect(
+    &mut jobs,
+    8,
+    |_i, (bandno, band_x0, band_y0, band_stepsize, off_x, off_y, cblk)| {
+      decode_job(
+        (bandno, band_x0, band_y0, band_stepsize, off_x, off_y),
+        cblk,
+      )
+    },
+  );
   if ok_flags.contains(&0) {
     *pret = 0;
     return;
@@ -2124,7 +2080,15 @@ pub(crate) fn opj_t1_decode_cblks(
   if tilec_view.whole_tile_decoding != 0 {
     let tile_data = tilec.data.as_mut_slice(tile_w.wrapping_mul(tile_h));
     for (_bandno, band_x0, band_y0, _band_stepsize, off_x, off_y, cblk) in jobs {
-      opj_t1_cblk_writeback(cblk, off_x, off_y, band_x0, band_y0, tile_data, tile_w as u32);
+      opj_t1_cblk_writeback(
+        cblk,
+        off_x,
+        off_y,
+        band_x0,
+        band_y0,
+        tile_data,
+        tile_w as u32,
+      );
     }
   }
 }
@@ -2139,168 +2103,150 @@ fn opj_t1_decode_cblk(
   p_manager: &EventMgr,
   mut check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
-    let mut bpno_plus_one: i32 = 0; /* BYPASS mode */
-    let mut passtype: u32 = 0;
-    let mut segno: u32 = 0;
-    let mut passno: u32 = 0;
-    let mut cblkdataindex = 0_u32;
-    let mut type_0 = 0_u8;
-    t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
-    if opj_t1_allocate_buffers(
-      t1,
-      (cblk.x1 - cblk.x0) as u32,
-      (cblk.y1 - cblk.y0) as u32,
-    ) == 0
-    {
-      return 0i32;
+  let mut bpno_plus_one: i32 = 0; /* BYPASS mode */
+  let mut passtype: u32 = 0;
+  let mut segno: u32 = 0;
+  let mut passno: u32 = 0;
+  let mut cblkdataindex = 0_u32;
+  let mut type_0 = 0_u8;
+  t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
+  if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32) == 0 {
+    return 0i32;
+  }
+  bpno_plus_one = roishift.wrapping_add(cblk.numbps) as i32;
+  if bpno_plus_one >= 31i32 {
+    event_msg!(
+      p_manager,
+      EVT_WARNING,
+      "opj_t1_decode_cblk(): unsupported bpno_plus_one = {} >= 31\n",
+      bpno_plus_one,
+    );
+    return 0i32;
+  }
+  passtype = 2;
+
+  opj_mqc_resetstates(&mut t1.mqc);
+  opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
+  opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
+  opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
+
+  if cblk.corrupted {
+    assert_eq!(cblk.numchunks, 0);
+    return 1i32;
+  }
+
+  /* The C code reads the codeblock payload either in place (single chunk,
+  no cblkdatabuffer) or through a concatenation buffer (multi-chunk /
+  multi-threaded cases). Here the MQ coder owns its buffer, so we always
+  copy the chunks into it: one copy per codeblock. */
+  {
+    let mut i: u32 = 0;
+    let mut cblk_len: u32 = 0;
+    /* Compute whole codeblock length from chunk lengths */
+    cblk_len = 0_u32;
+    i = 0_u32;
+    while i < cblk.numchunks {
+      cblk_len = (cblk_len as core::ffi::c_uint).wrapping_add(cblk.chunks[i as usize].len);
+      i += 1
     }
-    bpno_plus_one = roishift.wrapping_add(cblk.numbps) as i32;
-    if bpno_plus_one >= 31i32 {
+    /* Allocate temporary memory if needed */
+    t1.mqc
+      .grow_buf((cblk_len + OPJ_COMMON_CBLK_DATA_EXTRA) as usize);
+    /* Concatenate all chunks into the MQ coder's buffer */
+    let buf = t1.mqc.buf_mut();
+    let mut off = 0usize;
+    i = 0_u32;
+    while i < cblk.numchunks {
+      let chunk = &cblk.chunks[i as usize];
+      let src_chunk = &src[chunk.data_offset..chunk.data_offset + chunk.len as usize];
+      for (dst, &b) in buf[off..off + chunk.len as usize].iter_mut().zip(src_chunk) {
+        dst.set(b);
+      }
+      off += chunk.len as usize;
+      i += 1
+    }
+  }
+  /* For subtile decoding, directly decode in the decoded_data buffer of */
+  /* the code-block. Hack t1->data to point to it, and restore it later */
+  let decoded_data_src: Option<&[Cell<i32>]> = if !cblk.decoded_data.is_empty() {
+    Some(cblk.decoded_data.as_slice())
+  } else {
+    None
+  };
+  segno = 0_u32;
+  while segno < cblk.real_num_segs {
+    let seg = &cblk.segs[segno as usize];
+    /* BYPASS mode */
+    type_0 = if bpno_plus_one <= cblk.numbps as i32 - 4i32 && passtype < 2 && cblksty & 0x1 != 0 {
+      1i32
+    } else {
+      0i32
+    } as u8;
+    if type_0 as core::ffi::c_int == 1i32 {
+      opj_mqc_raw_init_dec(&mut t1.mqc, cblkdataindex as usize, seg.len, 2_u32);
+    } else {
+      opj_mqc_init_dec(&mut t1.mqc, cblkdataindex as usize, seg.len, 2_u32);
+    }
+    cblkdataindex = (cblkdataindex as core::ffi::c_uint).wrapping_add(seg.len);
+    passno = 0_u32;
+    while passno < seg.real_num_passes && bpno_plus_one >= 1i32 {
+      match passtype {
+        0 => {
+          if type_0 as core::ffi::c_int == 1i32 {
+            opj_t1_dec_sigpass_raw(t1, bpno_plus_one, cblksty as i32, decoded_data_src);
+          } else {
+            opj_t1_dec_sigpass_mqc(t1, bpno_plus_one, cblksty as i32, decoded_data_src);
+          }
+        }
+        1 => {
+          if type_0 as core::ffi::c_int == 1i32 {
+            opj_t1_dec_refpass_raw(t1, bpno_plus_one, decoded_data_src);
+          } else {
+            opj_t1_dec_refpass_mqc(t1, bpno_plus_one, decoded_data_src);
+          }
+        }
+        2 => {
+          opj_t1_dec_clnpass(t1, bpno_plus_one, cblksty as i32, decoded_data_src);
+        }
+        _ => {}
+      }
+      if (cblksty & J2K_CCP_CBLKSTY_RESET) != 0 && type_0 == T1_TYPE_MQ {
+        opj_mqc_resetstates(&mut t1.mqc);
+        opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
+        opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
+        opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
+      }
+      passtype = passtype.wrapping_add(1);
+      if passtype == 3 {
+        passtype = 0;
+        bpno_plus_one -= 1
+      }
+      passno += 1;
+    }
+    opq_mqc_finish_dec(&mut t1.mqc);
+    segno += 1;
+  }
+  if check_pterm != 0 {
+    let mqc = &mut t1.mqc; /* MQC component */
+    if mqc.remaining() > 2 {
       event_msg!(
         p_manager,
         EVT_WARNING,
-        "opj_t1_decode_cblk(): unsupported bpno_plus_one = {} >= 31\n",
-        bpno_plus_one,
+        "PTERM check failure: {} remaining bytes in code block ({} used / {})\n",
+        mqc.remaining() as core::ffi::c_int - 2i32,
+        mqc.consumed() as core::ffi::c_int,
+        mqc.seg_len() as core::ffi::c_int,
       );
-      return 0i32;
+    } else if mqc.end_of_byte_stream_counter > 2 {
+      event_msg!(
+        p_manager,
+        EVT_WARNING,
+        "PTERM check failure: {} synthetized 0xFF markers read\n",
+        mqc.end_of_byte_stream_counter,
+      );
     }
-    passtype = 2;
-
-    opj_mqc_resetstates(&mut t1.mqc);
-    opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
-    opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
-    opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
-
-    if cblk.corrupted {
-      assert_eq!(cblk.numchunks, 0);
-      return 1i32;
-    }
-
-    /* The C code reads the codeblock payload either in place (single chunk,
-    no cblkdatabuffer) or through a concatenation buffer (multi-chunk /
-    multi-threaded cases). Here the MQ coder owns its buffer, so we always
-    copy the chunks into it: one copy per codeblock. */
-    {
-      let mut i: u32 = 0;
-      let mut cblk_len: u32 = 0;
-      /* Compute whole codeblock length from chunk lengths */
-      cblk_len = 0_u32;
-      i = 0_u32;
-      while i < cblk.numchunks {
-        cblk_len = (cblk_len as core::ffi::c_uint)
-          .wrapping_add(cblk.chunks[i as usize].len);
-        i += 1
-      }
-      /* Allocate temporary memory if needed */
-      t1.mqc.grow_buf((cblk_len + OPJ_COMMON_CBLK_DATA_EXTRA) as usize);
-      /* Concatenate all chunks into the MQ coder's buffer */
-      let buf = t1.mqc.buf_mut();
-      let mut off = 0usize;
-      i = 0_u32;
-      while i < cblk.numchunks {
-        let chunk = &cblk.chunks[i as usize];
-        let src_chunk = &src[chunk.data_offset..chunk.data_offset + chunk.len as usize];
-        for (dst, &b) in buf[off..off + chunk.len as usize].iter_mut().zip(src_chunk) {
-          dst.set(b);
-        }
-        off += chunk.len as usize;
-        i += 1
-      }
-    }
-    /* For subtile decoding, directly decode in the decoded_data buffer of */
-    /* the code-block. Hack t1->data to point to it, and restore it later */
-    let decoded_data_src: Option<&[Cell<i32>]> = if !cblk.decoded_data.is_empty() {
-      Some(cblk.decoded_data.as_slice())
-    } else {
-      None
-    };
-    segno = 0_u32;
-    while segno < cblk.real_num_segs {
-      let seg = &cblk.segs[segno as usize];
-      /* BYPASS mode */
-      type_0 = if bpno_plus_one <= cblk.numbps as i32 - 4i32
-        && passtype < 2
-        && cblksty & 0x1 != 0
-      {
-        1i32
-      } else {
-        0i32
-      } as u8;
-      if type_0 as core::ffi::c_int == 1i32 {
-        opj_mqc_raw_init_dec(
-          &mut t1.mqc,
-          cblkdataindex as usize,
-          seg.len,
-          2_u32,
-        );
-      } else {
-        opj_mqc_init_dec(
-          &mut t1.mqc,
-          cblkdataindex as usize,
-          seg.len,
-          2_u32,
-        );
-      }
-      cblkdataindex = (cblkdataindex as core::ffi::c_uint).wrapping_add(seg.len);
-      passno = 0_u32;
-      while passno < seg.real_num_passes && bpno_plus_one >= 1i32 {
-        match passtype {
-          0 => {
-            if type_0 as core::ffi::c_int == 1i32 {
-              opj_t1_dec_sigpass_raw(t1, bpno_plus_one, cblksty as i32, decoded_data_src);
-            } else {
-              opj_t1_dec_sigpass_mqc(t1, bpno_plus_one, cblksty as i32, decoded_data_src);
-            }
-          }
-          1 => {
-            if type_0 as core::ffi::c_int == 1i32 {
-              opj_t1_dec_refpass_raw(t1, bpno_plus_one, decoded_data_src);
-            } else {
-              opj_t1_dec_refpass_mqc(t1, bpno_plus_one, decoded_data_src);
-            }
-          }
-          2 => {
-            opj_t1_dec_clnpass(t1, bpno_plus_one, cblksty as i32, decoded_data_src);
-          }
-          _ => {}
-        }
-        if (cblksty & J2K_CCP_CBLKSTY_RESET) != 0 && type_0 == T1_TYPE_MQ {
-          opj_mqc_resetstates(&mut t1.mqc);
-          opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
-          opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
-          opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
-        }
-        passtype = passtype.wrapping_add(1);
-        if passtype == 3 {
-          passtype = 0;
-          bpno_plus_one -= 1
-        }
-        passno += 1;
-      }
-      opq_mqc_finish_dec(&mut t1.mqc);
-      segno += 1;
-    }
-    if check_pterm != 0 {
-      let mqc = &mut t1.mqc; /* MQC component */
-      if mqc.remaining() > 2 {
-        event_msg!(
-          p_manager,
-          EVT_WARNING,
-          "PTERM check failure: {} remaining bytes in code block ({} used / {})\n",
-          mqc.remaining() as core::ffi::c_int - 2i32,
-          mqc.consumed() as core::ffi::c_int,
-          mqc.seg_len() as core::ffi::c_int,
-        );
-      } else if mqc.end_of_byte_stream_counter > 2 {
-        event_msg!(
-          p_manager,
-          EVT_WARNING,
-          "PTERM check failure: {} synthetized 0xFF markers read\n",
-          mqc.end_of_byte_stream_counter,
-        );
-      }
-    }
-    1i32
+  }
+  1i32
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2342,9 +2288,7 @@ fn opj_t1_cblk_encode_processor(
 
     x += off_x as i32;
     y += off_y as i32;
-    if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32)
-      == 0
-    {
+    if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32) == 0 {
       return (0i32, 0.0);
     }
     cblk_w = t1.w;
@@ -2371,18 +2315,24 @@ fn opj_t1_cblk_encode_processor(
           );
           t1data.set_at(
             1,
-            ((tile_data[base.wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w)).wrapping_add(i)
-              as usize] as u32) << (7i32 - 1i32)) as i32,
+            ((tile_data[base
+              .wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w))
+              .wrapping_add(i) as usize] as u32)
+              << (7i32 - 1i32)) as i32,
           );
           t1data.set_at(
             2,
-            ((tile_data[base.wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w)).wrapping_add(i)
-              as usize] as u32) << (7i32 - 1i32)) as i32,
+            ((tile_data[base
+              .wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w))
+              .wrapping_add(i) as usize] as u32)
+              << (7i32 - 1i32)) as i32,
           );
           t1data.set_at(
             3,
-            ((tile_data[base.wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w)).wrapping_add(i)
-              as usize] as u32) << (7i32 - 1i32)) as i32,
+            ((tile_data[base
+              .wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w))
+              .wrapping_add(i) as usize] as u32)
+              << (7i32 - 1i32)) as i32,
           );
           t1data = t1data.offset(4);
           i += 1
@@ -2398,7 +2348,8 @@ fn opj_t1_cblk_encode_processor(
             t1data.set_at(
               0,
               ((tile_data[base.wrapping_add(k.wrapping_mul(tile_w)).wrapping_add(i) as usize]
-                as u32) << (7i32 - 1i32)) as i32,
+                as u32)
+                << (7i32 - 1i32)) as i32,
             );
             t1data = t1data.offset(1);
             k += 1
@@ -2417,36 +2368,43 @@ fn opj_t1_cblk_encode_processor(
           t1data_0.set_at(
             0,
             opj_lrintf(
-              f32::from_bits(tile_data[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i)
-                as usize] as u32)
-                / band_stepsize
+              f32::from_bits(
+                tile_data[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i) as usize]
+                  as u32,
+              ) / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );
           t1data_0.set_at(
             1,
             opj_lrintf(
-              f32::from_bits(tile_data[base.wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w)).wrapping_add(i)
-                as usize] as u32)
-                / band_stepsize
+              f32::from_bits(
+                tile_data[base
+                  .wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w))
+                  .wrapping_add(i) as usize] as u32,
+              ) / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );
           t1data_0.set_at(
             2,
             opj_lrintf(
-              f32::from_bits(tile_data[base.wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w)).wrapping_add(i)
-                as usize] as u32)
-                / band_stepsize
+              f32::from_bits(
+                tile_data[base
+                  .wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w))
+                  .wrapping_add(i) as usize] as u32,
+              ) / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );
           t1data_0.set_at(
             3,
             opj_lrintf(
-              f32::from_bits(tile_data[base.wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w)).wrapping_add(i)
-                as usize] as u32)
-                / band_stepsize
+              f32::from_bits(
+                tile_data[base
+                  .wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w))
+                  .wrapping_add(i) as usize] as u32,
+              ) / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );
@@ -2464,9 +2422,10 @@ fn opj_t1_cblk_encode_processor(
             t1data_0.set_at(
               0,
               opj_lrintf(
-                f32::from_bits(tile_data[base.wrapping_add(k_0.wrapping_mul(tile_w)).wrapping_add(i)
-                  as usize] as u32)
-                  / band_stepsize
+                f32::from_bits(
+                  tile_data[base.wrapping_add(k_0.wrapping_mul(tile_w)).wrapping_add(i) as usize]
+                    as u32,
+                ) / band_stepsize
                   * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
               ) as i32,
             );
@@ -2524,22 +2483,19 @@ pub(crate) fn opj_t1_encode_cblks(
         }
       })
       .collect();
-    let tile_data = tilec.data.as_mut_slice((tile_w as usize).wrapping_mul(tile_h as usize));
+    let tile_data = tilec
+      .data
+      .as_mut_slice((tile_w as usize).wrapping_mul(tile_h as usize));
     let tile_data_shared: &[i32] = tile_data;
     /* Collect the encode jobs (the codeblock walk mutates only the cblk
     state, and each job writes only its own codeblock). */
-    let mut jobs: Vec<(
-      u32,
-      u32,
-      u32,
-      u32,
-      u32,
-      i32,
-      i32,
-      f32,
-      &mut TcdCblkEnc,
-    )> = Vec::new();
-    for (resno, res) in tilec.resolutions.iter_mut().enumerate().take(tilec.numresolutions as usize) {
+    let mut jobs: Vec<(u32, u32, u32, u32, u32, i32, i32, f32, &mut TcdCblkEnc)> = Vec::new();
+    for (resno, res) in tilec
+      .resolutions
+      .iter_mut()
+      .enumerate()
+      .take(tilec.numresolutions as usize)
+    {
       let (prev_w, prev_h) = prev_dims[resno];
       for band in res.bands.iter_mut().take(res.numbands as usize) {
         let bandno_val = band.bandno;
@@ -2556,7 +2512,10 @@ pub(crate) fn opj_t1_encode_cblks(
             .take((res.pw.wrapping_mul(res.ph)) as usize)
           {
             if let CodeBlocks::Enc(cblks) = &mut prc.cblks {
-              for cblk in cblks.iter_mut().take((prc.cw.wrapping_mul(prc.ch)) as usize) {
+              for cblk in cblks
+                .iter_mut()
+                .take((prc.cw.wrapping_mul(prc.ch)) as usize)
+              {
                 jobs.push((
                   resno as u32,
                   off_x as u32,
@@ -2586,7 +2545,7 @@ pub(crate) fn opj_t1_encode_cblks(
       &i32,
       &f32,
     ),
-                     cblk: &mut TcdCblkEnc|
+                      cblk: &mut TcdCblkEnc|
      -> (OPJ_BOOL, f64) {
       opj_t1_cblk_encode_processor(
         compno,
@@ -2607,21 +2566,25 @@ pub(crate) fn opj_t1_encode_cblks(
         mct_numcomps,
       )
     };
-    let results: Vec<(OPJ_BOOL, f64)> = if jobs.len() >= 8 {
-      jobs
-        .par_iter_mut()
-        .map(|(resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize, cblk)| {
-          encode_job((resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize), cblk)
-        })
-        .collect()
-    } else {
-      jobs
-        .iter_mut()
-        .map(|(resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize, cblk)| {
-          encode_job((resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize), cblk)
-        })
-        .collect()
-    };
+    let results: Vec<(OPJ_BOOL, f64)> = par::map_collect(
+      &mut jobs,
+      8,
+      |_i, (resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize, cblk)| {
+        encode_job(
+          (
+            resno,
+            off_x,
+            off_y,
+            bandno,
+            nrr,
+            band_x0,
+            band_y0,
+            band_stepsize,
+          ),
+          cblk,
+        )
+      },
+    );
     let mut cumdisto: f64 = 0.0;
     for (ok, cumwmsedec) in results {
       if ok == 0 {
@@ -2678,190 +2641,191 @@ fn opj_t1_encode_cblk(
   mut mct_norms: Option<&[f64]>,
   mut mct_numcomps: u32,
 ) -> core::ffi::c_double {
-    let mut cumwmsedec = 0.0f64; /* MQC component */
-    let mut passno: u32 = 0;
-    let mut bpno: i32 = 0;
-    let mut passtype: u32 = 0;
-    let mut nmsedec = 0i32;
-    let mut max: i32 = 0;
-    let mut i: u32 = 0;
-    let mut j: u32 = 0;
-    let mut type_0 = 0_u8;
-    let mut tempwmsedec: f64 = 0.;
-    t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
-    max = 0i32;
-    let mut datap = t1.data.offset(0);
-    j = 0_u32;
-    while j < t1.h {
-      let w = t1.w;
-      i = 0_u32;
-      while i < w {
-        let mut tmp = datap.get();
-        if tmp < 0i32 {
-          let mut tmp_unsigned: u32 = 0;
-          if tmp == i32::MIN {
-            /* To avoid undefined behaviour when negating INT_MIN */
-            /* but if we go here, it means we have supplied an input */
-            /* with more bit depth than we we can really support. */
-            /* Cf https://github.com/uclouvain/openjpeg/issues/1432 */
-            tmp = i32::MIN + 1;
-          }
-          max = opj_int_max(max, -tmp);
-          tmp_unsigned = if tmp >= 0i32 {
-            tmp as u32
-          } else {
-            (-tmp as u32) | 0x80000000u32
-          };
-          datap.set(tmp_unsigned as i32);
-        } else {
-          max = opj_int_max(max, tmp)
+  let mut cumwmsedec = 0.0f64; /* MQC component */
+  let mut passno: u32 = 0;
+  let mut bpno: i32 = 0;
+  let mut passtype: u32 = 0;
+  let mut nmsedec = 0i32;
+  let mut max: i32 = 0;
+  let mut i: u32 = 0;
+  let mut j: u32 = 0;
+  let mut type_0 = 0_u8;
+  let mut tempwmsedec: f64 = 0.;
+  t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
+  max = 0i32;
+  let mut datap = t1.data.offset(0);
+  j = 0_u32;
+  while j < t1.h {
+    let w = t1.w;
+    i = 0_u32;
+    while i < w {
+      let mut tmp = datap.get();
+      if tmp < 0i32 {
+        let mut tmp_unsigned: u32 = 0;
+        if tmp == i32::MIN {
+          /* To avoid undefined behaviour when negating INT_MIN */
+          /* but if we go here, it means we have supplied an input */
+          /* with more bit depth than we we can really support. */
+          /* Cf https://github.com/uclouvain/openjpeg/issues/1432 */
+          tmp = i32::MIN + 1;
         }
-        i += 1;
-        datap = datap.offset(1);
+        max = opj_int_max(max, -tmp);
+        tmp_unsigned = if tmp >= 0i32 {
+          tmp as u32
+        } else {
+          (-tmp as u32) | 0x80000000u32
+        };
+        datap.set(tmp_unsigned as i32);
+      } else {
+        max = opj_int_max(max, tmp)
       }
-      j += 1
+      i += 1;
+      datap = datap.offset(1);
     }
-    cblk.numbps = if max != 0 {
-      (opj_int_floorlog2(max) + 1i32 - (7i32 - 1i32)) as u32
+    j += 1
+  }
+  cblk.numbps = if max != 0 {
+    (opj_int_floorlog2(max) + 1i32 - (7i32 - 1i32)) as u32
+  } else {
+    0
+  };
+  if cblk.numbps == 0 {
+    cblk.totalpasses = 0_u32;
+    return cumwmsedec;
+  }
+  bpno = cblk.numbps.wrapping_sub(1) as i32;
+  passtype = 2_u32;
+
+  opj_mqc_resetstates(&mut t1.mqc);
+  opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
+  opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
+  opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
+  opj_mqc_init_enc(&mut t1.mqc, cblk.data_size);
+
+  passno = 0_u32;
+  while bpno >= 0i32 {
+    type_0 = if bpno < cblk.numbps as i32 - 4i32 && passtype < 2 && cblksty & 0x1 != 0 {
+      1i32
     } else {
-      0
-    };
-    if cblk.numbps == 0 {
-      cblk.totalpasses = 0_u32;
-      return cumwmsedec;
-    }
-    bpno = cblk.numbps.wrapping_sub(1) as i32;
-    passtype = 2_u32;
-
-    opj_mqc_resetstates(&mut t1.mqc);
-    opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
-    opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
-    opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
-    opj_mqc_init_enc(&mut t1.mqc, cblk.data_size);
-
-    passno = 0_u32;
-    while bpno >= 0i32 {
-      type_0 = if bpno < cblk.numbps as i32 - 4i32 && passtype < 2 && cblksty & 0x1 != 0 {
-        1i32
+      0i32
+    } as u8;
+    /* If the previous pass was terminating, we need to reset the encoder */
+    if passno > 0 && cblk.passes[passno.wrapping_sub(1) as usize].term {
+      if type_0 as core::ffi::c_int == 1i32 {
+        opj_mqc_bypass_init_enc(&mut t1.mqc);
       } else {
-        0i32
-      } as u8;
-      /* If the previous pass was terminating, we need to reset the encoder */
-      if passno > 0
-        && cblk.passes[passno.wrapping_sub(1) as usize].term
-      {
-        if type_0 as core::ffi::c_int == 1i32 {
-          opj_mqc_bypass_init_enc(&mut t1.mqc);
-        } else {
-          opj_mqc_restart_init_enc(&mut t1.mqc);
+        opj_mqc_restart_init_enc(&mut t1.mqc);
+      }
+    }
+    match passtype {
+      0 => {
+        opj_t1_enc_sigpass(t1, bpno, &mut nmsedec, type_0, cblksty);
+      }
+      1 => {
+        opj_t1_enc_refpass(t1, bpno, &mut nmsedec, type_0);
+      }
+      2 => {
+        opj_t1_enc_clnpass(t1, bpno, &mut nmsedec, cblksty);
+        /* code switch SEGMARK (i.e. SEGSYM) */
+        if cblksty & 0x20 != 0 {
+          opj_mqc_segmark_enc(&mut t1.mqc);
         }
       }
-      match passtype {
-        0 => {
-          opj_t1_enc_sigpass(t1, bpno, &mut nmsedec, type_0, cblksty);
-        }
-        1 => {
-          opj_t1_enc_refpass(t1, bpno, &mut nmsedec, type_0);
-        }
-        2 => {
-          opj_t1_enc_clnpass(t1, bpno, &mut nmsedec, cblksty);
-          /* code switch SEGMARK (i.e. SEGSYM) */
-          if cblksty & 0x20 != 0 {
-            opj_mqc_segmark_enc(&mut t1.mqc);
-          }
-        }
-        _ => {}
-      }
+      _ => {}
+    }
 
-      tempwmsedec = opj_t1_getwmsedec(
-        nmsedec,
-        compno,
-        level,
-        orient,
-        bpno,
-        qmfbid,
-        stepsize,
-        numcomps,
-        mct_norms,
-        mct_numcomps,
-      );
-      cumwmsedec += tempwmsedec;
-      cblk.passes[passno as usize].distortiondec = cumwmsedec;
-      if opj_t1_enc_is_term_pass(cblk, cblksty, bpno, passtype) != 0 {
-        /* If it is a terminated pass, terminate it */
-        if type_0 as core::ffi::c_int == 1i32 {
-          opj_mqc_bypass_flush_enc(&mut t1.mqc, (cblksty & 0x10) as OPJ_BOOL);
-        } else if cblksty & 0x10 != 0 {
-          opj_mqc_erterm_enc(&mut t1.mqc);
-        } else {
-          opj_mqc_flush(&mut t1.mqc);
-        }
-        cblk.passes[passno as usize].term = true;
-        cblk.passes[passno as usize].rate = opj_mqc_numbytes(&mut t1.mqc)
+    tempwmsedec = opj_t1_getwmsedec(
+      nmsedec,
+      compno,
+      level,
+      orient,
+      bpno,
+      qmfbid,
+      stepsize,
+      numcomps,
+      mct_norms,
+      mct_numcomps,
+    );
+    cumwmsedec += tempwmsedec;
+    cblk.passes[passno as usize].distortiondec = cumwmsedec;
+    if opj_t1_enc_is_term_pass(cblk, cblksty, bpno, passtype) != 0 {
+      /* If it is a terminated pass, terminate it */
+      if type_0 as core::ffi::c_int == 1i32 {
+        opj_mqc_bypass_flush_enc(&mut t1.mqc, (cblksty & 0x10) as OPJ_BOOL);
+      } else if cblksty & 0x10 != 0 {
+        opj_mqc_erterm_enc(&mut t1.mqc);
       } else {
-        /* Non terminated pass */
-        let mut rate_extra_bytes: u32 = 0;
-        if type_0 as core::ffi::c_int == 1i32 {
-          rate_extra_bytes =
-            opj_mqc_bypass_get_extra_bytes(&mut t1.mqc, (cblksty & 0x10) as OPJ_BOOL)
-        } else {
-          rate_extra_bytes = 3_u32
-        }
-        cblk.passes[passno as usize].term = false;
-        cblk.passes[passno as usize].rate = opj_mqc_numbytes(&mut t1.mqc).wrapping_add(rate_extra_bytes)
+        opj_mqc_flush(&mut t1.mqc);
       }
-      passtype = passtype.wrapping_add(1);
-      if passtype == 3 {
-        passtype = 0_u32;
-        bpno -= 1
-      }
-      /* Code-switch "RESET" */
-      if cblksty & 0x2 != 0 {
-        opj_mqc_reset_enc(&mut t1.mqc);
-      }
-      passno += 1;
-    }
-    cblk.totalpasses = passno;
-    if cblk.totalpasses != 0 {
-      {
-        /* Copy the encoded bytes from the MQ coder's buffer into the codeblock
-         * data buffer (the C encoder wrote them in place through a pointer). */
-        let nb = opj_mqc_numbytes(&mut t1.mqc) as usize;
-        cblk.data.resize(nb.wrapping_add(1), 0);
-        let mq_buf = t1.mqc.buf_ref();
-        for (i, cell) in mq_buf[1..1 + nb].iter().enumerate() {
-          cblk.data[1 + i] = cell.get();
-        }
-      }
-      /* Make sure that pass rates are increasing */
-      let mut last_pass_rate = opj_mqc_numbytes(&mut t1.mqc);
-      passno = cblk.totalpasses;
-      while passno > 0 {
-        passno = passno.wrapping_sub(1);
-        if cblk.passes[passno as usize].rate > last_pass_rate {
-          cblk.passes[passno as usize].rate = last_pass_rate
-        } else {
-          last_pass_rate = cblk.passes[passno as usize].rate
-        }
-      }
-    }
-    passno = 0_u32;
-    while passno < cblk.totalpasses {
-      /* Prevent generation of FF as last data byte of a pass*/
-      /* For terminating passes, the flushing procedure ensured this already */
-      assert!(cblk.passes[passno as usize].rate > 0);
-      if cblk.data_byte(cblk.passes[passno as usize].rate.wrapping_sub(1) as usize)
-        as core::ffi::c_int
-        == 0xffi32
-      {
-        cblk.passes[passno as usize].rate = cblk.passes[passno as usize].rate.wrapping_sub(1)
-      }
-      cblk.passes[passno as usize].len = cblk.passes[passno as usize].rate.wrapping_sub(if passno == 0 {
-        0
+      cblk.passes[passno as usize].term = true;
+      cblk.passes[passno as usize].rate = opj_mqc_numbytes(&mut t1.mqc)
+    } else {
+      /* Non terminated pass */
+      let mut rate_extra_bytes: u32 = 0;
+      if type_0 as core::ffi::c_int == 1i32 {
+        rate_extra_bytes = opj_mqc_bypass_get_extra_bytes(&mut t1.mqc, (cblksty & 0x10) as OPJ_BOOL)
       } else {
-        cblk.passes[passno.wrapping_sub(1) as usize].rate
-      });
-      passno += 1;
+        rate_extra_bytes = 3_u32
+      }
+      cblk.passes[passno as usize].term = false;
+      cblk.passes[passno as usize].rate =
+        opj_mqc_numbytes(&mut t1.mqc).wrapping_add(rate_extra_bytes)
     }
-    cumwmsedec
+    passtype = passtype.wrapping_add(1);
+    if passtype == 3 {
+      passtype = 0_u32;
+      bpno -= 1
+    }
+    /* Code-switch "RESET" */
+    if cblksty & 0x2 != 0 {
+      opj_mqc_reset_enc(&mut t1.mqc);
+    }
+    passno += 1;
+  }
+  cblk.totalpasses = passno;
+  if cblk.totalpasses != 0 {
+    {
+      /* Copy the encoded bytes from the MQ coder's buffer into the codeblock
+       * data buffer (the C encoder wrote them in place through a pointer). */
+      let nb = opj_mqc_numbytes(&mut t1.mqc) as usize;
+      cblk.data.resize(nb.wrapping_add(1), 0);
+      let mq_buf = t1.mqc.buf_ref();
+      for (i, cell) in mq_buf[1..1 + nb].iter().enumerate() {
+        cblk.data[1 + i] = cell.get();
+      }
+    }
+    /* Make sure that pass rates are increasing */
+    let mut last_pass_rate = opj_mqc_numbytes(&mut t1.mqc);
+    passno = cblk.totalpasses;
+    while passno > 0 {
+      passno = passno.wrapping_sub(1);
+      if cblk.passes[passno as usize].rate > last_pass_rate {
+        cblk.passes[passno as usize].rate = last_pass_rate
+      } else {
+        last_pass_rate = cblk.passes[passno as usize].rate
+      }
+    }
+  }
+  passno = 0_u32;
+  while passno < cblk.totalpasses {
+    /* Prevent generation of FF as last data byte of a pass*/
+    /* For terminating passes, the flushing procedure ensured this already */
+    assert!(cblk.passes[passno as usize].rate > 0);
+    if cblk.data_byte(cblk.passes[passno as usize].rate.wrapping_sub(1) as usize)
+      as core::ffi::c_int
+      == 0xffi32
+    {
+      cblk.passes[passno as usize].rate = cblk.passes[passno as usize].rate.wrapping_sub(1)
+    }
+    cblk.passes[passno as usize].len =
+      cblk.passes[passno as usize]
+        .rate
+        .wrapping_sub(if passno == 0 {
+          0
+        } else {
+          cblk.passes[passno.wrapping_sub(1) as usize].rate
+        });
+    passno += 1;
+  }
+  cumwmsedec
 }
