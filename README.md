@@ -50,11 +50,13 @@ Decoding is parallel on two levels (feature `rayon`): inside each tile
 (tier-1 code-block decoding, DWT, DC shift) and across tiles for whole-image,
 full-quality decodes of multi-tile codestreams (the safe `Image` API decodes
 every tile with a fresh codec state over an in-memory snapshot and merges the
-results; ~1.5x on 25-tile files at 24 threads).  Multi-tile encoding is
-parallel the same way (per-tile fresh encoder states, tile-parts written
-in order, ~1.3x at 24 threads).  Both parallel paths fall back to the
-sequential code for any input or layout they do not support, so the output
-is always identical to the serial path.
+results; ~1.5x on 25-tile files at 24 threads).  Quality-layer limits,
+resolution reduction and decode-area requests are honoured as well.
+Multi-tile encoding is parallel the same way (per-tile fresh encoder
+states, tile-parts written in order, ~1.3x at 24 threads).  Both
+parallel paths fall back to the sequential code for any input or layout
+they do not support, so the output is always identical to the serial
+path.
 
 ## Features
 
