@@ -853,6 +853,76 @@ mod tests {
     assert_eq!((dyn_img.width(), dyn_img.height()), (w, h));
   }
 
+  /// Parallel-vs-serial encode byte-identity over the test corpus (runs
+  /// when OPJ_DATA_ROOT is set): every input that decodes must re-encode
+  /// to the identical codestream through both paths.
+  #[cfg(feature = "rayon")]
+  #[test]
+  fn parallel_encode_matches_serial_on_corpus() {
+    let root = match std::env::var_os("OPJ_DATA_ROOT") {
+      Some(r) => std::path::PathBuf::from(r),
+      None => return,
+    };
+    let input = root.join("input").join("nonregression");
+    if !input.is_dir() {
+      return;
+    }
+    let mut checked = 0usize;
+    let mut entries: Vec<_> = std::fs::read_dir(&input)
+      .expect("read_dir")
+      .filter_map(|e| e.ok())
+      .map(|e| e.path())
+      .filter(|p| {
+        matches!(
+          p.extension().and_then(|e| e.to_str()),
+          Some("j2k") | Some("j2c") | Some("jp2")
+        )
+      })
+      .collect();
+    entries.sort();
+    for path in entries {
+      let buf = std::fs::read(&path).expect("read input");
+      let Ok(image) = Image::from_bytes(&buf) else {
+        continue;
+      };
+      let params = EncodeParameters::new().num_resolutions(4).tile_size(256, 256);
+      let Ok(par) = image.encode(params.clone()) else {
+        continue;
+      };
+      #[allow(deprecated)]
+      let serial = {
+        let mut codec = Codec::new_encoder(OPJ_CODEC_J2K).unwrap();
+        let mut low = params.clone().into_inner();
+        let mut img = image.into_core_image();
+        if codec.setup_encoder(&mut low, &mut img) != 1 {
+          continue;
+        }
+        let buf2 = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        {
+          let writer = crate::stream::SharedVecWriter {
+            buf: buf2.clone(),
+            pos: 0,
+          };
+          let mut stream = Stream::new_output(
+            crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+            writer,
+          );
+          assert_eq!(codec.start_compress(&mut img, &mut stream), 1);
+          assert_eq!(codec.encode(&mut stream), 1);
+          assert_eq!(codec.end_compress(&mut stream), 1);
+          drop(stream);
+        }
+        std::rc::Rc::try_unwrap(buf2)
+          .ok()
+          .map(|b| b.into_inner())
+          .expect("unique handle")
+      };
+      assert_eq!(par, serial, "{}: parallel/serial encode mismatch", path.display());
+      checked += 1;
+    }
+    assert!(checked > 10, "expected a corpus of re-encodable inputs");
+  }
+
   /// The concurrent-tile encode must produce byte-identical codestreams
   /// to the sequential low-level encode.
   #[cfg(feature = "rayon")]
