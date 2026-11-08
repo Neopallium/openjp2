@@ -10,8 +10,8 @@ use crate::cli::{
 
 use crate::args;
 
-const OPJ_TEST_CMD_LIST: &str = include_str!("../../../openjpeg/tests/nonregression/test_suite.ctest.in");
-const OPJ_TEST_MD5_LIST: &str = include_str!("../../../openjpeg/tests/nonregression/md5refs.txt");
+const OPJ_TEST_CMD_LIST: &str = include_str!("../../openjpeg/tests/nonregression/test_suite.ctest.in");
+const OPJ_TEST_MD5_LIST: &str = include_str!("../../openjpeg/tests/nonregression/md5refs.txt");
 const LIBTIFF_4_1: &str = "libtiff_4_1:";
 
 pub struct MD5References {

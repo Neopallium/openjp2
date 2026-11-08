@@ -1,3 +1,10 @@
+# Rust crate ignores (moved up from the openjp2/ crate dir)
+target
+test.j2k
+/run_tests.sh
+*.sed
+c2rust
+
 # Ignore files and directories made by `cmake .`.
 CMakeFiles/
 Makefile
