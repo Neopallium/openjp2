@@ -460,6 +460,19 @@ mod tests {
     }
   }
 
+  #[cfg(feature = "image")]
+  #[test]
+  fn sample_to_dynamic_image() {
+    use core::convert::TryFrom;
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let image = Image::from_bytes(&buf).expect("decode sample");
+    let pixels = image.get_pixels(None).expect("get_pixels");
+    assert_eq!((pixels.width, pixels.height), (image.width(), image.height()));
+    let dyn_img = ::image::DynamicImage::try_from(&image).expect("convert");
+    assert_eq!(dyn_img.width(), image.width());
+    assert_eq!(dyn_img.height(), image.height());
+  }
+
   #[test]
   fn color_space_round_trip() {
     for cs in [
@@ -473,6 +486,265 @@ mod tests {
       let c: OPJ_COLOR_SPACE = cs.into();
       let back: ColorSpace = c.into();
       assert_eq!(back, cs);
+    }
+  }
+}
+
+/// `image`-crate interop: pixel extraction and `DynamicImage` conversion
+/// (mirrors the `jpeg2k` crate's `get_pixels`).
+#[cfg(feature = "image")]
+pub mod image_conv {
+  use super::*;
+  use core::convert::TryFrom;
+
+  /// Pixel data in a canonical 8/16-bit layout.
+  #[derive(Debug, Clone, PartialEq, Eq)]
+  pub enum ImagePixelData {
+    L8(Vec<u8>),
+    La8(Vec<u8>),
+    Rgb8(Vec<u8>),
+    Rgba8(Vec<u8>),
+    L16(Vec<u16>),
+    La16(Vec<u16>),
+    Rgb16(Vec<u16>),
+    Rgba16(Vec<u16>),
+  }
+
+  /// Decoded pixels with their colour format.
+  #[derive(Debug, Clone, PartialEq, Eq)]
+  pub struct ImageData {
+    pub width: u32,
+    pub height: u32,
+    pub format: ::image::ExtendedColorType,
+    pub data: ImagePixelData,
+  }
+
+  impl Image {
+    /// Convert the component planes into canonical pixels.
+    ///
+    /// `alpha_default` fills a missing alpha channel with a constant value
+    /// (jpeg2k-compatible: for a 1/3-component image, an extra alpha
+    /// channel with the given value is emitted).
+    pub fn get_pixels(&self, alpha_default: Option<u32>) -> Result<ImageData> {
+      let comps = &self.core.comps;
+      let (width, height) = comps
+        .first()
+        .map(|c| (c.w, c.h))
+        .ok_or_else(|| Error::Unsupported("image has no components".into()))?;
+      let max_prec = comps.iter().fold(0u32, |max, c| max.max(c.prec));
+      let has_alpha = comps.iter().any(|c| c.alpha != 0);
+      match &self.color_space() {
+        ColorSpace::Unknown => { /* infer from the component count below */ }
+        ColorSpace::Srgb | ColorSpace::Gray => {}
+        cs => return Err(Error::Unsupported(format!("color space {cs:?}"))),
+      }
+
+      let data = match (comps.as_slice(), has_alpha, max_prec) {
+        ([r], _, 1..=8) => {
+          if let Some(alpha) = alpha_default {
+            (
+              ::image::ExtendedColorType::La8,
+              ImagePixelData::La8(
+                comp_u8(r).flat_map(|r| [r, alpha as u8]).collect(),
+              ),
+            )
+          } else {
+            (
+              ::image::ExtendedColorType::L8,
+              ImagePixelData::L8(comp_u8(r).collect()),
+            )
+          }
+        }
+        ([r], _, 9..=16) => {
+          if let Some(alpha) = alpha_default {
+            (
+              ::image::ExtendedColorType::La16,
+              ImagePixelData::La16(
+                comp_u16(r).flat_map(|r| [r, alpha as u16]).collect(),
+              ),
+            )
+          } else {
+            (
+              ::image::ExtendedColorType::L16,
+              ImagePixelData::L16(comp_u16(r).collect()),
+            )
+          }
+        }
+        ([r, a], true, 1..=8) => (
+          ::image::ExtendedColorType::La8,
+          ImagePixelData::La8(
+            comp_u8(r)
+              .zip(comp_u8(a))
+              .flat_map(|(r, a)| [r, a])
+              .collect(),
+          ),
+        ),
+        ([r, a], true, 9..=16) => (
+          ::image::ExtendedColorType::La16,
+          ImagePixelData::La16(
+            comp_u16(r)
+              .zip(comp_u16(a))
+              .flat_map(|(r, a)| [r, a])
+              .collect(),
+          ),
+        ),
+        ([r, g, b], false, 1..=8) => {
+          if let Some(alpha) = alpha_default {
+            (
+              ::image::ExtendedColorType::Rgba8,
+              ImagePixelData::Rgba8(
+                comp_u8(r)
+                  .zip(comp_u8(g).zip(comp_u8(b)))
+                  .flat_map(|(r, (g, b))| [r, g, b, alpha as u8])
+                  .collect(),
+              ),
+            )
+          } else {
+            (
+              ::image::ExtendedColorType::Rgb8,
+              ImagePixelData::Rgb8(
+                comp_u8(r)
+                  .zip(comp_u8(g).zip(comp_u8(b)))
+                  .flat_map(|(r, (g, b))| [r, g, b])
+                  .collect(),
+              ),
+            )
+          }
+        }
+        ([r, g, b], false, 9..=16) => {
+          if let Some(alpha) = alpha_default {
+            (
+              ::image::ExtendedColorType::Rgba16,
+              ImagePixelData::Rgba16(
+                comp_u16(r)
+                  .zip(comp_u16(g).zip(comp_u16(b)))
+                  .flat_map(|(r, (g, b))| [r, g, b, alpha as u16])
+                  .collect(),
+              ),
+            )
+          } else {
+            (
+              ::image::ExtendedColorType::Rgb16,
+              ImagePixelData::Rgb16(
+                comp_u16(r)
+                  .zip(comp_u16(g).zip(comp_u16(b)))
+                  .flat_map(|(r, (g, b))| [r, g, b])
+                  .collect(),
+              ),
+            )
+          }
+        }
+        ([r, g, b, a], _, 1..=8) => (
+          ::image::ExtendedColorType::Rgba8,
+          ImagePixelData::Rgba8(
+            comp_u8(r)
+              .zip(comp_u8(g).zip(comp_u8(b).zip(comp_u8(a))))
+              .flat_map(|(r, (g, (b, a)))| [r, g, b, a])
+              .collect(),
+          ),
+        ),
+        ([r, g, b, a], _, 9..=16) => (
+          ::image::ExtendedColorType::Rgba16,
+          ImagePixelData::Rgba16(
+            comp_u16(r)
+              .zip(comp_u16(g).zip(comp_u16(b).zip(comp_u16(a))))
+              .flat_map(|(r, (g, (b, a)))| [r, g, b, a])
+              .collect(),
+          ),
+        ),
+        _ => {
+          return Err(Error::Unsupported(format!(
+            "unsupported component/precision combination: {} components, max precision {}",
+            comps.len(),
+            max_prec
+          )))
+        }
+      };
+
+      Ok(ImageData {
+        width,
+        height,
+        format: data.0,
+        data: data.1,
+      })
+    }
+  }
+
+  /// Scales a component to unsigned 8-bit values.
+  fn comp_u8(comp: &CoreImageComp) -> impl Iterator<Item = u8> + '_ {
+    let len = (comp.w as usize) * (comp.h as usize);
+    let data = &comp.data[..len];
+    let prec = comp.prec;
+    let signed = comp.sgnd != 0;
+    data.iter().map(move |p| {
+      if signed {
+        let old_max = 1i64 << (prec - 1);
+        const NEW_MAX: i64 = 1 << 7;
+        ((((*p as i64) * NEW_MAX) / old_max) + NEW_MAX) as u8
+      } else {
+        let old_max = (1u64 << prec) - 1;
+        const NEW_MAX: u64 = (1 << 8) - 1;
+        (((*p as u64) * NEW_MAX) / old_max) as u8
+      }
+    })
+  }
+
+  /// Scales a component to unsigned 16-bit values.
+  fn comp_u16(comp: &CoreImageComp) -> impl Iterator<Item = u16> + '_ {
+    let len = (comp.w as usize) * (comp.h as usize);
+    let data = &comp.data[..len];
+    let prec = comp.prec;
+    let signed = comp.sgnd != 0;
+    data.iter().map(move |p| {
+      if signed {
+        let old_max = 1i64 << (prec - 1);
+        const NEW_MAX: i64 = 1 << 15;
+        ((((*p as i64) * NEW_MAX) / old_max) + NEW_MAX) as u16
+      } else {
+        let old_max = (1u64 << prec) - 1;
+        const NEW_MAX: u64 = (1 << 16) - 1;
+        (((*p as u64) * NEW_MAX) / old_max) as u16
+      }
+    })
+  }
+
+  impl TryFrom<&Image> for ::image::DynamicImage {
+    type Error = Error;
+
+    fn try_from(img: &Image) -> Result<::image::DynamicImage> {
+      use ::image::*;
+      let ImageData {
+        width,
+        height,
+        data,
+        ..
+      } = img.get_pixels(None)?;
+      Ok(match data {
+        ImagePixelData::L8(d) => DynamicImage::ImageLuma8(
+          GrayImage::from_vec(width, height, d).expect("pixel buffer length"),
+        ),
+        ImagePixelData::La8(d) => DynamicImage::ImageLumaA8(
+          GrayAlphaImage::from_vec(width, height, d).expect("pixel buffer length"),
+        ),
+        ImagePixelData::Rgb8(d) => DynamicImage::ImageRgb8(
+          RgbImage::from_vec(width, height, d).expect("pixel buffer length"),
+        ),
+        ImagePixelData::Rgba8(d) => DynamicImage::ImageRgba8(
+          RgbaImage::from_vec(width, height, d).expect("pixel buffer length"),
+        ),
+        ImagePixelData::L16(d) => DynamicImage::ImageLuma16(
+          ImageBuffer::from_vec(width, height, d).expect("pixel buffer length"),
+        ),
+        ImagePixelData::La16(d) => DynamicImage::ImageLumaA16(
+          ImageBuffer::from_vec(width, height, d).expect("pixel buffer length"),
+        ),
+        ImagePixelData::Rgb16(d) => DynamicImage::ImageRgb16(
+          ImageBuffer::from_vec(width, height, d).expect("pixel buffer length"),
+        ),
+        ImagePixelData::Rgba16(d) => DynamicImage::ImageRgba16(
+          ImageBuffer::from_vec(width, height, d).expect("pixel buffer length"),
+        ),
+      })
     }
   }
 }
