@@ -9423,6 +9423,7 @@ pub(crate) fn j2k_decode_tile_worker(
   tile_no: u32,
   layer: u32,
   reduce: u32,
+  strict: bool,
   decode_bounds: Option<&CoreImage>,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
@@ -9440,6 +9441,9 @@ pub(crate) fn j2k_decode_tile_worker(
     dec.m_tile_ind_to_dec = tile_no as i32;
     dec.m_state = J2KState::TPHSOT;
     dec.m_can_decode = false;
+    /* opj_j2k_decoder_set_strict_mode also disables the nb-tile-parts
+    correction hack; mirror it so the strict decode matches the serial. */
+    dec.m_nb_tile_parts_correction_checked = strict;
   }
   j2k.m_current_tile_number = tile_no;
   /* The serial path initialises the tcd from the private image at the end
@@ -9565,6 +9569,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
   cstr_index: &CodestreamIndex,
   layer: u32,
   reduce: u32,
+  strict: bool,
   decode_bounds: Option<&CoreImage>,
   merge_image: &CoreImage,
   stream: &mut Stream,
@@ -9648,6 +9653,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
         tile_no,
         layer,
         reduce,
+        strict,
         decode_bounds,
         &mut worker_stream,
         &mut manager,

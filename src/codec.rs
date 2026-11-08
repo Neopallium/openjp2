@@ -229,6 +229,7 @@ impl Codec {
       &cstr_index,
       layer,
       0,
+      false,
       Some(area_image),
       area_image,
       stream,
@@ -255,6 +256,7 @@ impl Codec {
     header: &CoreImage,
     layer: u32,
     reduce: u32,
+    strict: bool,
   ) -> Option<CoreImage> {
     let cp = match &self.m_codec {
       CodecType::Decoder(CodecFormat::J2K(j2k)) => &j2k.m_cp,
@@ -288,6 +290,7 @@ impl Codec {
       &cstr_index,
       layer,
       reduce,
+      strict,
       None,
       &merge,
       stream,

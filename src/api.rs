@@ -627,7 +627,9 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
   result is always identical. */
   #[cfg(feature = "rayon")]
   if params.decode_area.is_none() {
-    if let Some(core) = codec.decode_parallel(stream, &image, params.layers, params.reduce) {
+    if let Some(core) =
+      codec.decode_parallel(stream, &image, params.layers, params.reduce, params.strict)
+    {
       return Ok(Image { core });
     }
   }
@@ -1320,6 +1322,57 @@ mod tests {
         Some(img)
       })();
       let par = Image::from_bytes(&buf).ok();
+      // Strict mode: both paths must agree again (against the strict
+      // serial decode, which can legitimately differ from the lenient one).
+      let par_strict =
+        Image::from_bytes_with(&buf, DecodeParameters::new().strict(true)).ok();
+      let serial_strict: Option<crate::CoreImage> = (|| {
+        let fmt = match crate::detect_format(&buf) {
+          Ok(f) => f,
+          Err(_) => return None,
+        };
+        let c = if fmt == J2KFormat::JP2 {
+          OPJ_CODEC_JP2
+        } else {
+          OPJ_CODEC_J2K
+        };
+        let mut codec = Codec::new_decoder(c)?;
+        let mut dp = opj_dparameters::default();
+        if codec.setup_decoder(&mut dp) != 1 {
+          return None;
+        }
+        if codec.decoder_set_strict_mode(1) != 1 {
+          return None;
+        }
+        let mut stream = Stream::new_input(
+          crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+          std::io::Cursor::new(buf.clone()),
+          buf.len() as u64,
+        );
+        let mut img = codec.read_header(&mut stream)?;
+        if codec.decode(&mut stream, &mut img) != 1 {
+          return None;
+        }
+        if codec.end_decompress(&mut stream) != 1 {
+          return None;
+        }
+        Some(img)
+      })();
+      match (serial_strict.as_ref(), par_strict) {
+        (Some(s), Some(p)) => {
+          for (a, b) in p.components().iter().zip(s.comps.iter()) {
+            assert_eq!(
+              a.data,
+              b.data,
+              "{}: parallel/serial strict mismatch",
+              path.display()
+            );
+          }
+        }
+        (Some(_), None) => panic!("{}: serial decoded, parallel strict failed", path.display()),
+        (None, Some(_)) => panic!("{}: parallel strict decoded, serial failed", path.display()),
+        (None, None) => {}
+      }
       match (serial, par) {
         (Some(s), Some(p)) => {
           assert_eq!(
