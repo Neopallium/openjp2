@@ -10403,7 +10403,7 @@ fn opj_j2k_pre_write_tile(
 }
 
 fn opj_get_tile_dimensions(
-  l_image: &CoreImage,
+  _l_image: &CoreImage,
   l_tilec: &TcdTileComp,
   l_img_comp: &CoreImageComp,
   l_size_comp: &mut u32,
@@ -10427,9 +10427,14 @@ fn opj_get_tile_dimensions(
 
   *l_width = (l_tilec.x1 - l_tilec.x0) as u32;
   *l_height = (l_tilec.y1 - l_tilec.y0) as u32;
-  *l_offset_x = opj_uint_ceildiv(l_image.x0, l_img_comp.dx);
-  *l_offset_y = opj_uint_ceildiv(l_image.y0, l_img_comp.dy);
-  *l_image_width = opj_uint_ceildiv(l_image.x1 - l_image.x0, l_img_comp.dx);
+  /* The component plane dimensions as stored: ceildiv(x1, dx) -
+  ceildiv(x0, dx).  The C computes the width as ceildiv(x1 - x0, dx),
+  which disagrees when the image origin is not aligned to the
+  subsampling factor (e.g. issue726.j2k: x0=123, dx=2 gives 3 instead
+  of 2) and makes the C read past the component buffer. */
+  *l_offset_x = l_img_comp.x0;
+  *l_offset_y = l_img_comp.y0;
+  *l_image_width = l_img_comp.w;
   *l_stride = l_image_width.wrapping_sub(*l_width);
   *l_tile_offset = (l_tilec.x0 as u32).wrapping_sub(*l_offset_x).wrapping_add(
     (l_tilec.y0 as u32)
@@ -10471,7 +10476,8 @@ fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &CoreI
      * c2rust transcription modelled that as `chunks_exact(l_width + l_stride)`, which demands a
      * full trailing stride that the C never reads (and the component buffer may not have, for
      * bottom-edge tiles); `chunks` accepts the short final chunk instead. */
-    let l_src = &l_img_comp.data[l_tile_offset as usize..];
+    let l_src =
+      &l_img_comp.data[(l_tile_offset as usize).min(l_img_comp.data.len())..];
     match l_size_comp {
       1 => {
         let (dest, remain) = p_data.split_at_mut(l_nb_elem);
