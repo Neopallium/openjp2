@@ -653,8 +653,9 @@ mod tests {
         assert_eq!(codec.start_compress(&mut img, &mut stream), 1);
         assert_eq!(codec.encode(&mut stream), 1);
         assert_eq!(codec.end_compress(&mut stream), 1);
+        drop(stream);
       }
-      buf2.borrow().clone()
+      std::rc::Rc::try_unwrap(buf2).ok().map(|b| b.into_inner()).expect("unique handle")
     };
     assert_eq!(par, serial, "parallel/serial encode mismatch");
   }
