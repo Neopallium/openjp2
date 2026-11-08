@@ -754,6 +754,27 @@ mod tests {
     assert!(back.components()[0].data.iter().any(|v| *v != 0));
   }
 
+  /// Code-block sizes and comment markers through the builder.
+  #[test]
+  fn encode_with_codeblock_sizes_and_comment() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let image = Image::from_bytes(&buf).expect("decode");
+    let codestream = image
+      .encode(
+        EncodeParameters::new()
+          .num_resolutions(3)
+          .codeblock_width(16)
+          .codeblock_height(16)
+          .comment("openjp2 test comment"),
+      )
+      .expect("encode");
+    let back = Image::from_bytes(&codestream).expect("decode");
+    assert_eq!((back.width(), back.height()), (image.width(), image.height()));
+    for (a, b) in image.components().iter().zip(back.components()) {
+      assert_eq!(a.data, b.data, "lossless with 16x16 code-blocks");
+    }
+  }
+
   /// Decoding garbage must return an error, never panic.
   #[test]
   fn decode_garbage_errors() {
