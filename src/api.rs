@@ -1227,14 +1227,25 @@ mod tests {
     let codestream = image
       .encode(EncodeParameters::new().num_resolutions(2).tile_size(512, 512))
       .expect("encode");
-    let area = DecodeArea::new(64, 64, 900, 700);
+    /* Tile-aligned area: exercises the parallel area path (the partial
+    one below falls back to the sequential decode). */
+    let aligned = DecodeArea::new(0, 0, 1024, 1024);
     let sub = Image::from_bytes_with(
       &codestream,
-      DecodeParameters::new().decode_area(Some(area)),
+      DecodeParameters::new().decode_area(Some(aligned)),
     )
-    .expect("decode area");
-    assert_eq!((sub.width(), sub.height()), (836, 636));
+    .expect("decode aligned area");
+    assert_eq!((sub.width(), sub.height()), (1024, 1024));
     assert!(sub.components()[0].data.iter().any(|v| *v != 0));
+    /* Partial area: sequential fallback, same API surface. */
+    let partial = DecodeArea::new(64, 64, 900, 700);
+    let sub2 = Image::from_bytes_with(
+      &codestream,
+      DecodeParameters::new().decode_area(Some(partial)),
+    )
+    .expect("decode partial area");
+    assert_eq!((sub2.width(), sub2.height()), (836, 636));
+    assert!(sub2.components()[0].data.iter().any(|v| *v != 0));
   }
 
   /// The concurrent-tile decode honours a quality-layer limit (the
@@ -1413,7 +1424,14 @@ mod tests {
       compare(
         &DecodeParameters::new()
           .decode_area(Some(DecodeArea::new(64, 64, 256, 256))),
-        "area",
+        "area-partial",
+      );
+      /* A whole-image "area" (clamped to the image bounds) covers every
+      tile completely, so this exercises the parallel area driver. */
+      compare(
+        &DecodeParameters::new()
+          .decode_area(Some(DecodeArea::new(0, 0, 100_000_000, 100_000_000))),
+        "area-whole",
       );
       match (serial, par) {
         (Some(s), Some(p)) => {
