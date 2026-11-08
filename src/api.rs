@@ -379,27 +379,27 @@ impl Image {
         2,
         crate::OPJ_CLRSPC_GRAY,
         vec![
-          g.as_raw().chunks_exact(2).map(|px| px[0]).collect(),
-          g.as_raw().chunks_exact(2).map(|px| px[1]).collect(),
+          g.as_raw().as_chunks::<2>().0.iter().map(|c| c[0]).collect(),
+          g.as_raw().as_chunks::<2>().0.iter().map(|c| c[1]).collect(),
         ],
       ),
       ImageRgb16(r) => (
         3,
         crate::OPJ_CLRSPC_SRGB,
         vec![
-          r.as_raw().chunks_exact(3).map(|px| px[0]).collect(),
-          r.as_raw().chunks_exact(3).map(|px| px[1]).collect(),
-          r.as_raw().chunks_exact(3).map(|px| px[2]).collect(),
+          r.as_raw().as_chunks::<3>().0.iter().map(|c| c[0]).collect(),
+          r.as_raw().as_chunks::<3>().0.iter().map(|c| c[1]).collect(),
+          r.as_raw().as_chunks::<3>().0.iter().map(|c| c[2]).collect(),
         ],
       ),
       ImageRgba16(r) => (
         4,
         crate::OPJ_CLRSPC_SRGB,
         vec![
-          r.as_raw().chunks_exact(4).map(|px| px[0]).collect(),
-          r.as_raw().chunks_exact(4).map(|px| px[1]).collect(),
-          r.as_raw().chunks_exact(4).map(|px| px[2]).collect(),
-          r.as_raw().chunks_exact(4).map(|px| px[3]).collect(),
+          r.as_raw().as_chunks::<4>().0.iter().map(|c| c[0]).collect(),
+          r.as_raw().as_chunks::<4>().0.iter().map(|c| c[1]).collect(),
+          r.as_raw().as_chunks::<4>().0.iter().map(|c| c[2]).collect(),
+          r.as_raw().as_chunks::<4>().0.iter().map(|c| c[3]).collect(),
         ],
       ),
       _ => {
