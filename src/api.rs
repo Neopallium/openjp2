@@ -715,6 +715,36 @@ mod tests {
     assert_eq!(par, serial, "parallel/serial encode mismatch");
   }
 
+  /// The irreversible 9-7 transform: a lossy encode/decode round trip.
+  #[test]
+  fn irreversible_encode_round_trip() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let image = Image::from_bytes(&buf).expect("decode");
+    let codestream = image
+      .encode(
+        EncodeParameters::new()
+          .irreversible(true)
+          .num_resolutions(4)
+          .num_layers(1)
+          .tile_size(512, 512),
+      )
+      .expect("encode");
+    let back = Image::from_bytes(&codestream).expect("decode");
+    assert_eq!((back.width(), back.height()), (image.width(), image.height()));
+    assert_eq!(back.num_components(), image.num_components());
+    // Lossy, but the pixels must be close (9-7 with one layer).
+    for (a, b) in image.components().iter().zip(back.components()) {
+      let max_delta = a
+        .data
+        .iter()
+        .zip(&b.data)
+        .map(|(x, y)| (x - y).unsigned_abs())
+        .max()
+        .unwrap_or(0);
+      assert!(max_delta < 64, "9-7 round trip drifted by {max_delta}");
+    }
+  }
+
   /// The concurrent-tile decode honours a resolution reduction.
   #[cfg(feature = "rayon")]
   #[test]
