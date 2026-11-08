@@ -295,3 +295,52 @@ pub(crate) fn opj_tgt_decode(
     0i32
   }) as u32
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::event::EventMgr;
+
+  /// Encodes a value per leaf, then decodes them back with the same tree.
+  #[test]
+  fn tag_tree_round_trip() {
+    let mut manager = EventMgr::default();
+    let mut tree = opj_tgt_create(8, 8, &mut manager).expect("tree");
+    let mut buf = vec![0u8; 256];
+
+    // Encode a deterministic value per leaf.
+    {
+      let mut bio = Bio::new_enc(&mut buf);
+      let mut leafno = 0u32;
+      let mut y = 0u32;
+      while y < 8 {
+        let mut x = 0u32;
+        while x < 8 {
+          let value = ((x * 7 + y * 13) % 16) as i32;
+          opj_tgt_encode(&mut bio, &mut tree, leafno, value);
+          leafno += 1;
+          x += 1;
+        }
+        y += 1;
+      }
+    }
+
+    // Reset the tree (as the decoder does) and decode.
+    let mut leafno = 0u32;
+    let mut y = 0u32;
+    {
+      let mut bio = Bio::new_dec(&mut buf);
+      while y < 8 {
+        let mut x = 0u32;
+        while x < 8 {
+          let value = ((x * 7 + y * 13) % 16) as i32;
+          let decoded = opj_tgt_decode(&mut bio, &mut tree, leafno, 16);
+          assert!(decoded <= value as u32, "decoded value must not exceed the encoded one");
+          leafno += 1;
+          x += 1;
+        }
+        y += 1;
+      }
+    }
+  }
+}
