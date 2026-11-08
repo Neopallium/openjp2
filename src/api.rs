@@ -536,6 +536,90 @@ mod tests {
   }
 
   #[test]
+  fn decode_area_and_layers() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let full = Image::from_bytes(&buf).expect("decode full");
+    // Decode a 64x64 corner with a resolution reduction.
+    let area = DecodeArea::new(0, 0, 64, 64);
+    let sub = Image::from_bytes_with(
+      &buf,
+      DecodeParameters::new()
+        .decode_area(Some(area))
+        .reduce(1)
+        .layers(1)
+        .strict(true),
+    )
+    .expect("decode area");
+    assert!(sub.width() <= 64 && sub.height() <= 64);
+    assert!(sub.width() > 0 && sub.height() > 0);
+    assert_eq!(sub.num_components(), full.num_components());
+  }
+
+  /// Encodes random images with the reversible transform and checks the
+  /// round trip is lossless, across a few sizes/precisions/component counts.
+  #[test]
+  fn lossless_round_trip_property() {
+    let mut rng: u64 = 0x9e3779b97f4a7c15;
+    let mut next = move || {
+      rng ^= rng << 13;
+      rng ^= rng >> 7;
+      rng ^= rng << 17;
+      rng
+    };
+    for (w, h, comps, prec) in [(17, 13, 1, 8), (64, 64, 3, 8), (33, 31, 3, 12)] {
+      let mut core = crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+        numcomps: comps,
+        color_space: if comps == 1 {
+          crate::OPJ_CLRSPC_GRAY
+        } else {
+          crate::OPJ_CLRSPC_SRGB
+        },
+        comps: Vec::new(),
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      };
+      for c in 0..comps {
+        let dx = if c == 0 { 1 } else { 2 };
+        let (cw, ch) = (w.div_ceil(dx), h.div_ceil(dx));
+        let mut data = Vec::with_capacity((cw * ch) as usize);
+        for _ in 0..cw * ch {
+          data.push((next() % (1u64 << prec)) as i32);
+        }
+        core.comps.push(crate::CoreImageComp {
+          dx,
+          dy: dx,
+          w: cw,
+          h: ch,
+          x0: 0,
+          y0: 0,
+          prec,
+          bpp: prec,
+          sgnd: 0,
+          resno_decoded: 0,
+          factor: 0,
+          alpha: 0,
+          data,
+        });
+      }
+      let image = Image { core };
+      let codestream = image
+        .encode(EncodeParameters::new().num_resolutions(3).num_layers(1))
+        .expect("encode");
+      let back = Image::from_bytes(&codestream).expect("decode");
+      assert_eq!(back.width(), image.width());
+      assert_eq!(back.height(), image.height());
+      assert_eq!(back.num_components(), comps);
+      for (a, b) in image.components().iter().zip(back.components()) {
+        assert_eq!(a.data, b.data, "lossless round trip failed for {w}x{h} prec {prec}");
+      }
+    }
+  }
+
+  #[test]
   fn color_space_round_trip() {
     for cs in [
       ColorSpace::Unknown,

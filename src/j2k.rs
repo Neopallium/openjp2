@@ -10134,7 +10134,7 @@ fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &mut C
             .chunks(l_width + l_stride)
             .zip(dest.chunks_exact_mut(l_width))
           {
-            let src = &src[0..l_width];
+            let src = &src[..l_width.min(src.len())]; /* pad with zeros if the component buffer is short */
             for (src, dest) in src.iter().zip(dest.iter_mut()) {
               *dest = *src as i8 as u8;
             }
@@ -10144,7 +10144,7 @@ fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &mut C
             .chunks(l_width + l_stride)
             .zip(dest.chunks_exact_mut(l_width))
           {
-            let src = &src[0..l_width];
+            let src = &src[..l_width.min(src.len())]; /* pad with zeros if the component buffer is short */
             for (src, dest) in src.iter().zip(dest.iter_mut()) {
               *dest = (*src & 0xffi32) as u8;
             }
@@ -10159,7 +10159,7 @@ fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &mut C
             .chunks(l_width + l_stride)
             .zip(dest.chunks_exact_mut(l_width * 2))
           {
-            let src = &src[0..l_width];
+            let src = &src[..l_width.min(src.len())]; /* pad with zeros if the component buffer is short */
             let (chunks, _) = dest.as_chunks_mut::<2>();
             for (src, dest) in src.iter().zip(chunks) {
               let val = *src as i16;
@@ -10171,7 +10171,7 @@ fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &mut C
             .chunks(l_width + l_stride)
             .zip(dest.chunks_exact_mut(l_width * 2))
           {
-            let src = &src[0..l_width];
+            let src = &src[..l_width.min(src.len())]; /* pad with zeros if the component buffer is short */
             let (chunks, _) = dest.as_chunks_mut::<2>();
             for (src, dest) in src.iter().zip(chunks) {
               let val = (*src & 0xffffi32) as i16;
@@ -10187,7 +10187,7 @@ fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &mut C
           .chunks(l_width + l_stride)
           .zip(dest.chunks_exact_mut(l_width * 4))
         {
-          let src = &src[0..l_width];
+          let src = &src[..l_width.min(src.len())]; /* pad with zeros if the component buffer is short */
           let (chunks, _) = dest.as_chunks_mut::<4>();
           for (src, dest) in src.iter().zip(chunks) {
             *dest = src.to_ne_bytes();
