@@ -960,16 +960,19 @@ fn opj_t2_read_packet_header(
     l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
     /* EPH markers */
     if csty & 0x4u32 != 0 {
+      /* EPH markers are required when specified (upstream #1547) */
       if l_header.len() - l_hdr_pos < 2usize {
         event_msg!(
           p_manager,
-          EVT_WARNING,
-          "Not enough space for expected EPH marker\n",
+          EVT_ERROR,
+          "Not enough space for required EPH marker\n",
         );
+        return 0i32;
       } else if l_header[l_hdr_pos] as core::ffi::c_int != 0xffi32
         || l_header[l_hdr_pos + 1] as core::ffi::c_int != 0x92i32
       {
-        event_msg!(p_manager, EVT_WARNING, "Expected EPH marker\n",);
+        event_msg!(p_manager, EVT_ERROR, "Expected EPH marker\n",);
+        return 0i32;
       } else {
         l_hdr_pos += 2
       }
@@ -1194,21 +1197,29 @@ fn opj_t2_read_packet_header(
   l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
   /* EPH markers */
   if csty & 0x4u32 != 0 {
-    if l_header.len() - l_hdr_pos < 2usize {
+    /* EPH markers are required when specified (upstream #1547) */
+  if l_header.len() - l_hdr_pos < 2usize {
       event_msg!(
         p_manager,
-        EVT_WARNING,
-        "Not enough space for expected EPH marker\n",
+        EVT_ERROR,
+        "Not enough space for required EPH marker\n",
       );
+      return 0i32;
     } else if l_header[l_hdr_pos] as core::ffi::c_int != 0xffi32
       || l_header[l_hdr_pos + 1] as core::ffi::c_int != 0x92i32
     {
-      event_msg!(p_manager, EVT_WARNING, "Expected EPH marker\n",);
+      event_msg!(p_manager, EVT_ERROR, "Expected EPH marker\n",);
+      return 0i32;
     } else {
       l_hdr_pos += 2
     }
   }
   l_header_length = l_hdr_pos as u32;
+  /* Do not allow a zero-length header in a non-zero-length packet
+  (upstream #1526) */
+  if l_header_length == 0 {
+    return 0i32;
+  }
   log::debug!("hdrlen={}", l_header_length);
   log::debug!("packet body");
   if l_cp.ppm {
@@ -1261,14 +1272,21 @@ fn opj_t2_read_packet_data(
     cblkno = 0_u32;
     while cblkno < l_nb_code_blocks {
       let cblk = prc.cblks.dec_mut(cblkno as usize);
-      // if we have a partial data stream, set numchunks to zero
-      // since we have no data to actually decode.
-      if partial_buffer != 0 {
-        cblk.numchunks = 0_u32
-      }
       if cblk.numnewpasses == 0 {
         /* nothing to do */
-      } else {
+        cblkno += 1;
+        continue;
+      }
+      // if a previous segment in this packet couldn't be decoded, or if this
+      // code block was corrupted in a previous layer, then mark it corrupted
+      // since we have no data to actually decode (upstream #1536).
+      if partial_buffer != 0 || cblk.corrupted {
+        cblk.numchunks = 0_u32;
+        cblk.corrupted = true;
+        cblkno += 1;
+        continue;
+      }
+      {
         let mut l_segno: usize;
         if cblk.numsegs == 0 {
           l_segno = 0;
@@ -1298,18 +1316,12 @@ fn opj_t2_read_packet_data(
                                             seg.newlen, p_max_length,
                                             cblkno, pi.precno, bandno,
                                             pi.resno, pi.compno);
-              // skip this codeblock since it is a partial read
+              /* skip this codeblock (and the following ones in this packet)
+              since it is a partial read (upstream #1533) */
               partial_buffer = 1i32;
+              cblk.corrupted = true;
               cblk.numchunks = 0_u32;
-              seg.numpasses = (seg.numpasses as core::ffi::c_uint)
-                .wrapping_add(seg.numnewpasses);
-              cblk.numnewpasses = (cblk.numnewpasses as core::ffi::c_uint)
-                .wrapping_sub(seg.numnewpasses);
-              if cblk.numnewpasses > 0u32 {
-                l_segno += 1;
-                cblk.numsegs = cblk.numsegs.wrapping_add(1);
-                break;
-              }
+              break;
             }
           } else {
             /* USE_JPWL */
@@ -1420,6 +1432,7 @@ fn opj_t2_skip_packet_data(
                                             cblk.segs[l_segno].newlen, p_max_length,
                                             cblkno, pi.precno, bandno,
                                             pi.resno, pi.compno);
+              *p_data_read = p_max_length;
               return 1i32;
             }
           }

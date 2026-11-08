@@ -968,6 +968,9 @@ pub(crate) struct TcdCblkDec {
   pub numsegs: u32,
   pub real_num_segs: u32,
   pub numchunks: u32,
+  /// Whether the code block data is corrupted (upstream: partial reads mark
+  /// the codeblock so t1 decoding skips it instead of reading garbage).
+  pub corrupted: bool,
   pub decoded_data: Vec<core::cell::Cell<i32>>,
 }
 #[derive(Copy, Clone)]

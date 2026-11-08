@@ -3444,10 +3444,12 @@ fn opj_j2k_read_sod(
   if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
     let mut l_current_pos = opj_stream_tell(p_stream) - 2i64;
     let tile = &mut l_cstr_index.tiles[p_j2k.m_current_tile_number as usize];
-    let mut l_current_tile_part = tile.current_tpsno;
-    tile.tp_index[l_current_tile_part as usize].end_header = l_current_pos;
-    tile.tp_index[l_current_tile_part as usize].end_pos =
-      l_current_pos + p_j2k.m_specific_param.m_decoder.m_sot_length as i64 + 2i64;
+    let l_current_tile_part = tile.current_tpsno;
+    if (l_current_tile_part as usize) < tile.tp_index.len() {
+      tile.tp_index[l_current_tile_part as usize].end_header = l_current_pos;
+      tile.tp_index[l_current_tile_part as usize].end_pos =
+        l_current_pos + p_j2k.m_specific_param.m_decoder.m_sot_length as i64 + 2i64;
+    }
     if 0i32
       == opj_j2k_add_tlmarker(
         p_j2k.m_current_tile_number,
@@ -3478,6 +3480,12 @@ fn opj_j2k_read_sod(
     l_current_read_size = 0_usize
   }
   if l_current_read_size != p_j2k.m_specific_param.m_decoder.m_sot_length as usize {
+    if l_current_read_size == usize::MAX {
+      /* opj_stream_read_data failed; avoid a later heap-buffer-overflow
+      in opj_t1_decode_cblk in non-strict mode (upstream #1534/#1533) */
+      event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
+      return 0i32;
+    }
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC
   } else {
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT
@@ -4553,10 +4561,12 @@ let l_nb_stages: u32 = opj_read_bytes(&header_data[cursor..], 1_u32);
     event_msg!(p_manager, EVT_WARNING, "Error reading MCO marker\n",);
     return 0i32;
   }
-  i = 0_u32;
-  while i < l_image_numcomps {
-    l_tcp.tccps[i as usize].m_dc_level_shift = 0i32;
-    i += 1;
+  if l_nb_stages > 0u32 {
+    i = 0_u32;
+    while i < l_image_numcomps {
+      l_tcp.tccps[i as usize].m_dc_level_shift = 0i32;
+      i += 1;
+    }
   }
   l_tcp.m_mct_decoding_matrix.clear();
   i = 0_u32;
@@ -4795,7 +4805,12 @@ pub(crate) fn opj_j2k_setup_decoder(mut j2k: &mut J2k, mut parameters: &mut opj_
 }
 
 pub(crate) fn opj_j2k_decoder_set_strict_mode(mut j2k: &mut J2k, mut strict: OPJ_BOOL) {
-  j2k.m_cp.strict = strict
+  j2k.m_cp.strict = strict;
+  if strict != 0 {
+    /* The nb-tile-parts correction hack is not applied in strict mode
+    (upstream #1560) */
+    j2k.m_specific_param.m_decoder.m_nb_tile_parts_correction_checked = true
+  }
 }
 
 pub(crate) fn opj_j2k_set_threads(
@@ -6109,7 +6124,13 @@ pub(crate) fn opj_j2k_setup_encoder(
         } else {
           0i32
         } as u32;
-        tccp_1.numgbits = 2_u32;
+        /* From https://github.com/uclouvain/openjpeg/issues/1340
+           (upstream #1559): Cinema2K uses 1 guard bit */
+        tccp_1.numgbits = if parameters.rsiz == OPJ_PROFILE_CINEMA_2K as u16 {
+          1_u32
+        } else {
+          2_u32
+        };
         if i as i32 == parameters.roi_compno {
           tccp_1.roishift = parameters.roi_shift
         } else {
@@ -6218,7 +6239,7 @@ fn opj_j2k_add_tlmarker(
   });
   if marker == J2KMarker::SOT {
     let l_current_tile_part = tile.current_tpsno;
-    if !tile.tp_index.is_empty() {
+    if (l_current_tile_part as usize) < tile.tp_index.len() {
       tile.tp_index[l_current_tile_part as usize].start_pos = pos;
     }
   }
@@ -7014,7 +7035,18 @@ pub(crate) fn opj_j2k_read_tile_header(
             break;
           } else {
             /* Subtract the marker ID size already read from the SOT length */
-            if p_j2k.m_specific_param.m_decoder.m_state & J2KState::TPH != J2KState::NONE {
+            if p_j2k.m_specific_param.m_decoder.m_state & J2KState::TPH != J2KState::NONE
+              && p_j2k.m_specific_param.m_decoder.m_sot_length != 0
+            {
+              if p_j2k.m_specific_param.m_decoder.m_sot_length < l_marker_size.wrapping_add(2u32) {
+                /* upstream #1561 */
+                event_msg!(
+                  p_manager,
+                  EVT_ERROR,
+                  "Sot length is less than marker size + marker ID\n",
+                );
+                return false;
+              }
               p_j2k.m_specific_param.m_decoder.m_sot_length =
                 (p_j2k.m_specific_param.m_decoder.m_sot_length as core::ffi::c_uint)
                   .wrapping_sub(l_marker_size.wrapping_add(2u32))
@@ -7141,7 +7173,11 @@ pub(crate) fn opj_j2k_read_tile_header(
             .m_specific_param
             .m_decoder
             .m_nb_tile_parts_correction_checked = true;
-          if opj_j2k_need_nb_tile_parts_correction(
+          /* Skip the correction hack when a single tile part is declared:
+          it hurts performance on files with many single-part tiles
+          (upstream #1560) */
+          if p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize].m_nb_tile_parts == 1u32 {
+          } else if opj_j2k_need_nb_tile_parts_correction(
             p_stream,
             p_j2k.m_current_tile_number,
             &mut l_correction_needed,
@@ -8817,28 +8853,46 @@ fn opj_j2k_decode_one_tile(
       if p_j2k.cstr_index.as_deref().expect("cstr_index").tiles[l_tile_no_to_dec as usize].nb_tps
         == 0
       {
-        /* the index for this tile has not been built,
-         *  so move to the last SOT read */
+        /* The index for this tile has not been built: the tile's tile-parts
+        are interleaved with other tiles' tile-parts and TNsot was only
+        declared in a tile-part not reached yet.  m_last_sot_read_pos may
+        point past the first tile-part of the requested tile, so seek back
+        to the start of the codestream and read the tile-part headers in
+        order (upstream #1558). */
         if opj_stream_seek(
           p_stream,
-          p_j2k.m_specific_param.m_decoder.m_last_sot_read_pos + 2i64,
+          p_j2k.cstr_index.as_deref().expect("cstr_index").main_head_end + 2i64,
           p_manager,
         ) == 0
         {
           event_msg!(p_manager, EVT_ERROR, "Problem with seek function\n",);
           return 0i32;
         }
-      } else if opj_stream_seek(
-        p_stream,
-        p_j2k.cstr_index.as_deref().expect("cstr_index").tiles[l_tile_no_to_dec as usize]
+      } else {
+        let sot_pos = p_j2k.cstr_index.as_deref().expect("cstr_index").tiles
+          [l_tile_no_to_dec as usize]
           .tp_index[0]
-          .start_pos
-          + 2i64,
-        p_manager,
-      ) == 0
-      {
-        event_msg!(p_manager, EVT_ERROR, "Problem with seek function\n",);
-        return 0i32;
+          .start_pos;
+        if opj_stream_seek(p_stream, sot_pos, p_manager) == 0 {
+          event_msg!(p_manager, EVT_ERROR, "Problem with seek function\n",);
+          return 0i32;
+        }
+        /* Validate that the expected SOT marker is there (upstream #1558) */
+        if opj_stream_read_data(
+          p_stream,
+          &mut p_j2k.m_specific_param.m_decoder.m_header_data[..2],
+          p_manager,
+        ) != 2
+        {
+          event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
+          return 0i32;
+        }
+        if J2KMarker::from_buffer(&p_j2k.m_specific_param.m_decoder.m_header_data)
+          != J2KMarker::SOT
+        {
+          event_msg!(p_manager, EVT_ERROR, "Did not get expected SOT marker\n",);
+          return 0i32;
+        }
       }
       /* Special case if we have previously read the EOC marker (if the previous tile getted is the last ) */
       if p_j2k.m_specific_param.m_decoder.m_state == J2KState::EOC {

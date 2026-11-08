@@ -2004,7 +2004,17 @@ pub(crate) fn opj_pi_initialise_encode(
   /* set values for first packet iterator*/
   l_pi[0].tp_on = p_cp.m_specific_param.m_enc.m_tp_on as u8;
   /* memory allocation for include*/
-  let include_size = p_cp.tcps[p_tile_no as usize].numlayers.wrapping_mul(l_step_l);
+  /* Guard against integer overflow (upstream 839936aa): the include array
+  covers numlayers * l_step_l entries. */
+  let l_numlayers = p_cp.tcps[p_tile_no as usize].numlayers;
+  let include_size = if l_numlayers != 0 && l_step_l <= u32::MAX / l_numlayers {
+    l_numlayers.wrapping_mul(l_step_l)
+  } else {
+    0
+  };
+  if include_size == 0 {
+    return Vec::new();
+  }
   {
     // The include bitmask is shared across the pi elements of this tile.
     let include: Rc<[Cell<i16>]> = vec![Cell::new(0i16); include_size as usize].into();

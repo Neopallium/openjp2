@@ -2171,6 +2171,11 @@ fn opj_t1_decode_cblk(
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_AGG, 0, 3);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
 
+    if cblk.corrupted {
+      assert_eq!(cblk.numchunks, 0);
+      return 1i32;
+    }
+
     /* The C code reads the codeblock payload either in place (single chunk,
     no cblkdatabuffer) or through a concatenation buffer (multi-chunk /
     multi-threaded cases). Here the MQ coder owns its buffer, so we always

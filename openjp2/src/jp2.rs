@@ -1309,18 +1309,24 @@ pub(crate) fn opj_jp2_setup_encoder(
   /* Colour Specification box */
   if !image.icc_profile_buf.is_empty() {
     jp2.meth = 2_u32;
-    jp2.enumcs = 0_u32
+    jp2.enumcs = 0_u32;
+    /* Copy the profile so the colr box writer finds it (upstream #1574) */
+    jp2.color.icc_profile = Some(ICCProfile::ICC(image.icc_profile_buf.clone()));
   } else {
     jp2.meth = 1_u32;
-    if image.color_space as core::ffi::c_int == 1 {
+    if image.color_space as core::ffi::c_int == OPJ_CLRSPC_SRGB as core::ffi::c_int {
       jp2.enumcs = 16_u32
     /* sRGB as defined by IEC 61966-2-1 */
-    } else if image.color_space as core::ffi::c_int == 2 {
+    } else if image.color_space as core::ffi::c_int == OPJ_CLRSPC_GRAY as core::ffi::c_int {
       jp2.enumcs = 17_u32
     /* greyscale */
-    } else if image.color_space as core::ffi::c_int == 3 {
+    } else if image.color_space as core::ffi::c_int == OPJ_CLRSPC_SYCC as core::ffi::c_int {
       jp2.enumcs = 18_u32
       /* YUV */
+    } else if image.color_space as core::ffi::c_int == OPJ_CLRSPC_EYCC as core::ffi::c_int {
+      jp2.enumcs = 24_u32
+    } else if image.color_space as core::ffi::c_int == OPJ_CLRSPC_CMYK as core::ffi::c_int {
+      jp2.enumcs = 12_u32
     }
   }
   /* Channel Definition box */
