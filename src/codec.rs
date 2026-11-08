@@ -154,7 +154,7 @@ impl Codec {
   /// apply, leaving the stream positioned for the sequential fallback.
   #[cfg(feature = "rayon")]
   pub(crate) fn decode_parallel(
-    &self,
+    &mut self,
     stream: &mut Stream,
     header: &CoreImage,
   ) -> Option<CoreImage> {
@@ -169,7 +169,17 @@ impl Codec {
       return None;
     }
     let cstr_index = self.get_cstr_index_owned()?;
-    crate::j2k::j2k_decode_tiles_parallel(cp, header, num_tiles, &cstr_index, stream)
+    let mut core = crate::j2k::j2k_decode_tiles_parallel(cp, header, num_tiles, &cstr_index, stream)?;
+    /* JP2 files with a palette/component mapping need the same colour
+    post-processing the serial opj_jp2_decode applies after the codestream
+    decode (the palette lookup turns indices into colour values). */
+    if let CodecType::Decoder(CodecFormat::JP2(jp2)) = &mut self.m_codec {
+      let mut manager = crate::event::EventMgr::default();
+      if crate::jp2::opj_jp2_apply_color_postprocessing(jp2, &mut core, &mut manager) == 0 {
+        return None;
+      }
+    }
+    Some(core)
   }
 
   /// Safe, owned codestream index (the capi crate marshals this into the
