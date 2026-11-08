@@ -54,7 +54,7 @@ pub struct EncoderParameters {
   pub cp_comment: Option<Vec<u8>>,
   pub csty: core::ffi::c_int,
   pub prog_order: OPJ_PROG_ORDER,
-  pub POC: [opj_poc_t; J2K_MAX_POCS as usize],
+  pub pocs: [opj_poc_t; J2K_MAX_POCS as usize],
   pub numpocs: u32,
   pub tcp_numlayers: core::ffi::c_int,
   pub tcp_rates: [core::ffi::c_float; 100],
@@ -103,7 +103,7 @@ impl Default for EncoderParameters {
       cp_comment: None,
       csty: Default::default(),
       prog_order: OPJ_LRCP,
-      POC: Default::default(),
+      pocs: Default::default(),
       numpocs: Default::default(),
       tcp_numlayers: Default::default(),
       tcp_rates: [Default::default(); 100],
@@ -145,10 +145,10 @@ pub(crate) struct DecoderParameters {
   pub cp_layer: u32,
   pub decod_format: core::ffi::c_int,
   pub cod_format: core::ffi::c_int,
-  pub DA_x0: u32,
-  pub DA_x1: u32,
-  pub DA_y0: u32,
-  pub DA_y1: u32,
+  pub da_x0: u32,
+  pub da_x1: u32,
+  pub da_y0: u32,
+  pub da_y1: u32,
   pub m_verbose: OPJ_BOOL,
   pub tile_index: u32,
   pub nb_tile_to_decode: u32,
@@ -162,10 +162,10 @@ impl Default for DecoderParameters {
       cp_layer: Default::default(),
       decod_format: -1,
       cod_format: -1,
-      DA_x0: Default::default(),
-      DA_x1: Default::default(),
-      DA_y0: Default::default(),
-      DA_y1: Default::default(),
+      da_x0: Default::default(),
+      da_x1: Default::default(),
+      da_y0: Default::default(),
+      da_y1: Default::default(),
       m_verbose: Default::default(),
       tile_index: Default::default(),
       nb_tile_to_decode: Default::default(),
@@ -175,15 +175,15 @@ impl Default for DecoderParameters {
 }
 
 pub(crate) struct TcdMarkerInfo {
-  pub need_PLT: OPJ_BOOL,
+  pub need_plt: OPJ_BOOL,
   pub packet_count: u32,
   pub p_packet_size: Vec<u32>,
 }
 
 impl TcdMarkerInfo {
-  pub(crate) fn new(need_PLT: OPJ_BOOL) -> Self {
+  pub(crate) fn new(need_plt: OPJ_BOOL) -> Self {
     Self {
-      need_PLT,
+      need_plt,
       packet_count: 0,
       p_packet_size: Vec::new(),
     }
@@ -206,9 +206,9 @@ pub(crate) struct Jp2 {
   pub w: u32,
   pub h: u32,
   pub bpc: u32,
-  pub C: u32,
-  pub UnkC: u32,
-  pub IPR: u32,
+  pub components: u32,
+  pub unknown_color_space: u32,
+  pub ipr: u32,
   pub meth: u32,
   pub approx: u32,
   pub enumcs: u32,
@@ -443,7 +443,7 @@ pub(crate) struct Tcp {
   pub m_mcc_records: Vec<SimpleMccData>,
   pub cod: bool,
   pub ppt: bool,
-  pub POC: bool,
+  pub poc: bool,
 }
 impl Default for Tcp {
   fn default() -> Self {
@@ -473,7 +473,7 @@ impl Default for Tcp {
       m_mcc_records: Vec::new(),
       cod: false,
       ppt: false,
-      POC: false,
+      poc: false,
     }
   }
 }
@@ -962,7 +962,7 @@ pub(crate) struct TcdCblkDec {
   pub y0: i32,
   pub x1: i32,
   pub y1: i32,
-  pub Mb: u32,
+  pub mb: u32,
   pub numbps: u32,
   pub numlenbits: u32,
   pub numnewpasses: u32,
@@ -1056,8 +1056,8 @@ pub(crate) struct C2RustUnnamed_2 {
 pub(crate) struct J2kEnc {
   pub m_current_poc_tile_part_number: u32,
   pub m_current_tile_part_number: u32,
-  pub m_TLM: OPJ_BOOL,
-  pub m_Ttlmi_is_byte: OPJ_BOOL,
+  pub m_tlm: OPJ_BOOL,
+  pub m_ttlmi_is_byte: OPJ_BOOL,
   pub m_tlm_start: i64,
   pub m_tlm_sot_offsets_buffer: Vec<u8>,
   /* write cursor into `m_tlm_sot_offsets_buffer` */
@@ -1065,8 +1065,8 @@ pub(crate) struct J2kEnc {
   pub m_total_tile_parts: u32,
   pub m_encoded_tile_data: Vec<u8>,
   pub m_header_tile_data: Vec<u8>,
-  pub m_PLT: OPJ_BOOL,
-  pub m_reserved_bytes_for_PLT: u32,
+  pub m_plt: OPJ_BOOL,
+  pub m_reserved_bytes_for_plt: u32,
   pub m_nb_comps: u32,
 }
 

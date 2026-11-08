@@ -57,19 +57,19 @@ impl dwt_local<'_> {
     (1 + (i * 2)) as isize * chunk
   }
 
-  fn s__idx(&self, i: i32, chunk: isize) -> isize {
+  fn s_clamped_idx(&self, i: i32, chunk: isize) -> isize {
     self.s_idx(self.sn_idx(i), chunk)
   }
 
-  fn d__idx(&self, i: i32, chunk: isize) -> isize {
+  fn d_clamped_idx(&self, i: i32, chunk: isize) -> isize {
     self.d_idx(self.dn_idx(i), chunk)
   }
 
-  fn ss__idx(&self, i: i32, chunk: isize) -> isize {
+  fn ss_clamped_idx(&self, i: i32, chunk: isize) -> isize {
     self.s_idx(self.dn_idx(i), chunk)
   }
 
-  fn dd__idx(&self, i: i32, chunk: isize) -> isize {
+  fn dd_clamped_idx(&self, i: i32, chunk: isize) -> isize {
     self.d_idx(self.sn_idx(i), chunk)
   }
 
@@ -100,19 +100,19 @@ impl dwt_local<'_> {
   }
 
   fn s_(&self, i: i32) -> i32 {
-    self.m(self.s__idx(i, 1))
+    self.m(self.s_clamped_idx(i, 1))
   }
 
   fn d_(&self, i: i32) -> i32 {
-    self.m(self.d__idx(i, 1))
+    self.m(self.d_clamped_idx(i, 1))
   }
 
   fn ss_(&self, i: i32) -> i32 {
-    self.m(self.ss__idx(i, 1))
+    self.m(self.ss_clamped_idx(i, 1))
   }
 
   fn dd_(&self, i: i32) -> i32 {
-    self.m(self.dd__idx(i, 1))
+    self.m(self.dd_clamped_idx(i, 1))
   }
 
   /// Inverse 5-3 wavelet transform in 1-D.
@@ -193,8 +193,8 @@ impl dwt_local<'_> {
       if self.dn > 0 || self.sn > 1 {
         for i in win_l_x0..win_l_x1 {
           let s_idx = self.s_idx(i, 4);
-          let d0_idx = self.d__idx(i - 1, 4);
-          let d1_idx = self.d__idx(i, 4);
+          let d0_idx = self.d_clamped_idx(i - 1, 4);
+          let d1_idx = self.d_clamped_idx(i, 4);
           for off in 0..4 {
             let val = self.m(s_idx + off).wrapping_sub(
               self
@@ -208,8 +208,8 @@ impl dwt_local<'_> {
         }
         for i in win_h_x0..win_h_x1 {
           let d_idx = self.d_idx(i, 4);
-          let s0_idx = self.s__idx(i, 4);
-          let s1_idx = self.s__idx(i + 1, 4);
+          let s0_idx = self.s_clamped_idx(i, 4);
+          let s1_idx = self.s_clamped_idx(i + 1, 4);
           for off in 0..4 {
             let val = self
               .m(d_idx + off)
@@ -227,8 +227,8 @@ impl dwt_local<'_> {
       } else {
         for i in win_l_x0..win_l_x1 {
           let d_idx = self.d_idx(i, 4);
-          let s0_idx = self.ss__idx(i, 4);
-          let s1_idx = self.ss__idx(i + 1, 4);
+          let s0_idx = self.ss_clamped_idx(i, 4);
+          let s1_idx = self.ss_clamped_idx(i + 1, 4);
           for off in 0..4 {
             let val = self.m(d_idx + off).wrapping_sub(
               self
@@ -242,8 +242,8 @@ impl dwt_local<'_> {
         }
         for i in win_h_x0..win_h_x1 {
           let s_idx = self.s_idx(i, 4);
-          let d0_idx = self.dd__idx(i, 4);
-          let d1_idx = self.dd__idx(i - 1, 4);
+          let d0_idx = self.dd_clamped_idx(i, 4);
+          let d1_idx = self.dd_clamped_idx(i - 1, 4);
           for off in 0..4 {
             let val = self
               .m(s_idx + off)
@@ -287,19 +287,19 @@ pub struct v8dwt_local<'a> {
 }
 
 /* From table F.4 from the standard */
-const opj_dwt_alpha: f32 = -1.586_134_3;
-const opj_dwt_beta: f32 = -0.052980118;
-const opj_dwt_gamma: f32 = 0.882_911_1;
-const opj_dwt_delta: f32 = 0.443_506_87;
-const opj_K: f32 = 1.230_174_1;
-const opj_invK: f32 = 1.0 / 1.230_174_1;
+const DWT_ALPHA: f32 = -1.586_134_3;
+const DWT_BETA: f32 = -0.052980118;
+const DWT_GAMMA: f32 = 0.882_911_1;
+const DWT_DELTA: f32 = 0.443_506_87;
+const DWT_K: f32 = 1.230_174_1;
+const DWT_INV_K: f32 = 1.0 / 1.230_174_1;
 
 /* <summary>                                                              */
 /* This table contains the norms of the 5-3 wavelets for different bands. */
 /* </summary>                                                             */
 /* Note: upstream issue #493 - these arrays cover only 10 resolution
 levels; see https://github.com/uclouvain/openjpeg/issues/493 */
-const opj_dwt_norms: [[f64; 10]; 4] = [
+const DWT_NORMS: [[f64; 10]; 4] = [
   [
     1.000, 1.500, 2.750, 5.375, 10.68, 21.34, 42.67, 85.33, 170.7, 341.3,
   ],
@@ -318,7 +318,7 @@ const opj_dwt_norms: [[f64; 10]; 4] = [
 /* </summary>                                                             */
 /* Note: upstream issue #493 - these arrays cover only 10 resolution
 levels; see https://github.com/uclouvain/openjpeg/issues/493 */
-const opj_dwt_norms_real: [[f64; 10]; 4] = [
+const DWT_NORMS_REAL: [[f64; 10]; 4] = [
   [
     1.000, 1.965, 4.177, 8.403, 16.90, 33.84, 67.69, 135.3, 270.6, 540.9,
   ],
@@ -543,7 +543,7 @@ fn opj_dwt_encode_1_real(w: &mut [f32], dn: i32, sn: i32, cas: i32) {
     (b + 1i32) as usize,
     dn as u32,
     opj_int_min(dn, sn - b) as u32,
-    opj_dwt_alpha,
+    DWT_ALPHA,
   );
   opj_dwt_encode_step2(
     w,
@@ -551,7 +551,7 @@ fn opj_dwt_encode_1_real(w: &mut [f32], dn: i32, sn: i32, cas: i32) {
     (a + 1i32) as usize,
     sn as u32,
     opj_int_min(sn, dn - a) as u32,
-    opj_dwt_beta,
+    DWT_BETA,
   );
   opj_dwt_encode_step2(
     w,
@@ -559,7 +559,7 @@ fn opj_dwt_encode_1_real(w: &mut [f32], dn: i32, sn: i32, cas: i32) {
     (b + 1i32) as usize,
     dn as u32,
     opj_int_min(dn, sn - b) as u32,
-    opj_dwt_gamma,
+    DWT_GAMMA,
   );
   opj_dwt_encode_step2(
     w,
@@ -567,12 +567,12 @@ fn opj_dwt_encode_1_real(w: &mut [f32], dn: i32, sn: i32, cas: i32) {
     (a + 1i32) as usize,
     sn as u32,
     opj_int_min(sn, dn - a) as u32,
-    opj_dwt_delta,
+    DWT_DELTA,
   );
   if a == 0i32 {
-    opj_dwt_encode_step1_combined(w, 0, sn as u32, dn as u32, opj_invK, opj_K);
+    opj_dwt_encode_step1_combined(w, 0, sn as u32, dn as u32, DWT_INV_K, DWT_K);
   } else {
-    opj_dwt_encode_step1_combined(w, 0, dn as u32, sn as u32, opj_K, opj_invK);
+    opj_dwt_encode_step1_combined(w, 0, dn as u32, sn as u32, DWT_K, DWT_INV_K);
   };
 }
 /* *
@@ -1015,7 +1015,7 @@ fn opj_dwt_encode_and_deinterleave_v_real(
     ((b + 1i32) * NB_ELTS_V8 as i32) as usize,
     dn as u32,
     opj_int_min(dn, sn - b) as u32,
-    opj_dwt_alpha,
+    DWT_ALPHA,
   );
   opj_v8dwt_encode_step2(
     tmp,
@@ -1023,7 +1023,7 @@ fn opj_dwt_encode_and_deinterleave_v_real(
     ((a + 1i32) * NB_ELTS_V8 as i32) as usize,
     sn as u32,
     opj_int_min(sn, dn - a) as u32,
-    opj_dwt_beta,
+    DWT_BETA,
   );
   opj_v8dwt_encode_step2(
     tmp,
@@ -1031,7 +1031,7 @@ fn opj_dwt_encode_and_deinterleave_v_real(
     ((b + 1i32) * NB_ELTS_V8 as i32) as usize,
     dn as u32,
     opj_int_min(dn, sn - b) as u32,
-    opj_dwt_gamma,
+    DWT_GAMMA,
   );
   opj_v8dwt_encode_step2(
     tmp,
@@ -1039,10 +1039,10 @@ fn opj_dwt_encode_and_deinterleave_v_real(
     ((a + 1i32) * NB_ELTS_V8 as i32) as usize,
     sn as u32,
     opj_int_min(sn, dn - a) as u32,
-    opj_dwt_delta,
+    DWT_DELTA,
   );
-  opj_v8dwt_encode_step1(tmp, (b * NB_ELTS_V8 as i32) as usize, dn as u32, opj_K);
-  opj_v8dwt_encode_step1(tmp, (a * NB_ELTS_V8 as i32) as usize, sn as u32, opj_invK);
+  opj_v8dwt_encode_step1(tmp, (b * NB_ELTS_V8 as i32) as usize, dn as u32, DWT_K);
+  opj_v8dwt_encode_step1(tmp, (a * NB_ELTS_V8 as i32) as usize, sn as u32, DWT_INV_K);
   if cols == NB_ELTS_V8 {
     opj_dwt_deinterleave_v_cols::<f32>(
       tmp,
@@ -1252,7 +1252,7 @@ pub fn opj_dwt_getnorm(mut level: u32, orient: u32) -> f64 {
   } else if orient > 0 && level >= 9 {
     level = 8
   }
-  opj_dwt_norms[orient as usize][level as usize]
+  DWT_NORMS[orient as usize][level as usize]
 }
 
 /* <summary>                             */
@@ -1276,7 +1276,7 @@ pub fn opj_dwt_getnorm_real(mut level: u32, orient: u32) -> f64 {
   } else if orient > 0 && level >= 9 {
     level = 8
   }
-  opj_dwt_norms_real[orient as usize][level as usize]
+  DWT_NORMS_REAL[orient as usize][level as usize]
 }
 
 pub(crate) fn opj_dwt_calc_explicit_stepsizes(tccp: &mut Tccp, mut prec: u32) {
@@ -2209,13 +2209,13 @@ fn opj_v8dwt_decode(mut dwt: &V8Dwt) {
   let mut a: i32 = 0;
   let mut b: i32 = 0;
   /* BUG_WEIRD_TWO_INVK (look for this identifier in tcd.c) */
-  /* Historic value for 2 / opj_invK */
+  /* Historic value for 2 / DWT_INV_K */
   /* Normally, we should use invK, but if we do so, we have failures in the */
   /* conformance test, due to MSE and peak errors significantly higher than */
   /* accepted value */
-  /* Due to using two_invK instead of invK, we have to compensate in tcd.c */
+  /* Due to using two_inv_k instead of invK, we have to compensate in tcd.c */
   /* the computation of the stepsize for the non LL subbands */
-  let two_invK = 1.625_732_4_f32;
+  let two_inv_k = 1.625_732_4_f32;
   if dwt.cas == 0i32 {
     if !(dwt.dn > 0i32 || dwt.sn > 1i32) {
       return;
@@ -2231,8 +2231,8 @@ fn opj_v8dwt_decode(mut dwt: &V8Dwt) {
   }
   // The C code indexes `wavelet` in `opj_v8_t` units; here the buffer is flat floats.
   let group = |k: i32| (NB_ELTS_V8 as i32 * k) as usize;
-  opj_v8dwt_decode_step1(dwt.wavelet, group(a), dwt.win_l_x0, dwt.win_l_x1, opj_K);
-  opj_v8dwt_decode_step1(dwt.wavelet, group(b), dwt.win_h_x0, dwt.win_h_x1, two_invK);
+  opj_v8dwt_decode_step1(dwt.wavelet, group(a), dwt.win_l_x0, dwt.win_l_x1, DWT_K);
+  opj_v8dwt_decode_step1(dwt.wavelet, group(b), dwt.win_h_x0, dwt.win_h_x1, two_inv_k);
   opj_v8dwt_decode_step2(
     dwt.wavelet,
     group(b),
@@ -2240,7 +2240,7 @@ fn opj_v8dwt_decode(mut dwt: &V8Dwt) {
     dwt.win_l_x0,
     dwt.win_l_x1,
     opj_int_min(dwt.sn, dwt.dn - a) as u32,
-    -opj_dwt_delta,
+    -DWT_DELTA,
   );
   opj_v8dwt_decode_step2(
     dwt.wavelet,
@@ -2249,7 +2249,7 @@ fn opj_v8dwt_decode(mut dwt: &V8Dwt) {
     dwt.win_h_x0,
     dwt.win_h_x1,
     opj_int_min(dwt.dn, dwt.sn - b) as u32,
-    -opj_dwt_gamma,
+    -DWT_GAMMA,
   );
   opj_v8dwt_decode_step2(
     dwt.wavelet,
@@ -2258,7 +2258,7 @@ fn opj_v8dwt_decode(mut dwt: &V8Dwt) {
     dwt.win_l_x0,
     dwt.win_l_x1,
     opj_int_min(dwt.sn, dwt.dn - a) as u32,
-    -opj_dwt_beta,
+    -DWT_BETA,
   );
   opj_v8dwt_decode_step2(
     dwt.wavelet,
@@ -2267,7 +2267,7 @@ fn opj_v8dwt_decode(mut dwt: &V8Dwt) {
     dwt.win_h_x0,
     dwt.win_h_x1,
     opj_int_min(dwt.dn, dwt.sn - b) as u32,
-    -opj_dwt_alpha,
+    -DWT_ALPHA,
   );
 }
 

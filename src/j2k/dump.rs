@@ -108,7 +108,7 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &J2k, flag: i32, out_stream: &mut
   }
   /* Dump the codestream info from main header */
   if flag & 2i32 != 0 && p_j2k.m_private_image.is_some() {
-    opj_j2k_dump_MH_info(p_j2k, out_stream);
+    opj_j2k_dump_mh_info(p_j2k, out_stream);
   }
   /* Dump all tile/codestream info */
   if flag & 8i32 != 0 {
@@ -134,13 +134,13 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &J2k, flag: i32, out_stream: &mut
   if flag & 4i32 != 0 {};
   /* Dump the codestream index from main header */
   if flag & 16i32 != 0 {
-    opj_j2k_dump_MH_index(p_j2k, out_stream);
+    opj_j2k_dump_mh_index(p_j2k, out_stream);
   }
   /* Dump the codestream index of the current tile */
   if flag & 32i32 != 0 {}
 }
 
-fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
+fn opj_j2k_dump_mh_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   let Some(cstr_index) = p_j2k.cstr_index.as_deref() else {
     return;
   };
@@ -214,7 +214,7 @@ fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   fprintf!(out_stream, "}}\n");
 }
 
-fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
+fn opj_j2k_dump_mh_info<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   fprintf!(out_stream, "Codestream info from main header: {{\n");
   fprintf!(
     out_stream,

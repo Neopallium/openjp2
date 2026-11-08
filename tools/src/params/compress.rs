@@ -807,16 +807,16 @@ impl CompressionParameters {
     // POC markers
     c_params.numpocs = self.poc_markers.len() as u32;
     for (i, poc) in self.poc_markers.iter().enumerate() {
-      if i >= c_params.POC.len() {
+      if i >= c_params.pocs.len() {
         break;
       }
-      c_params.POC[i].tile = poc.tile;
-      c_params.POC[i].resno0 = poc.resolution_start;
-      c_params.POC[i].compno0 = poc.component_start;
-      c_params.POC[i].layno1 = poc.layer_end;
-      c_params.POC[i].resno1 = poc.resolution_end;
-      c_params.POC[i].compno1 = poc.component_end;
-      c_params.POC[i].prg = match poc.prog_order {
+      c_params.pocs[i].tile = poc.tile;
+      c_params.pocs[i].resno0 = poc.resolution_start;
+      c_params.pocs[i].compno0 = poc.component_start;
+      c_params.pocs[i].layno1 = poc.layer_end;
+      c_params.pocs[i].resno1 = poc.resolution_end;
+      c_params.pocs[i].compno1 = poc.component_end;
+      c_params.pocs[i].prg = match poc.prog_order {
         ProgressionOrder::LRCP => OPJ_LRCP,
         ProgressionOrder::RLCP => OPJ_RLCP,
         ProgressionOrder::RPCL => OPJ_RPCL,

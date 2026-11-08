@@ -1900,7 +1900,7 @@ pub(crate) fn opj_pi_create_decode(
     l_pi[pino as usize].include_size = l_pi[(pino - 1) as usize].include_size;
     pino += 1;
   }
-  if p_cp.tcps[p_tile_no as usize].POC {
+  if p_cp.tcps[p_tile_no as usize].poc {
     opj_pi_update_decode_poc(&mut l_pi, &p_cp.tcps[p_tile_no as usize], l_max_prec, l_max_res);
   } else {
     opj_pi_update_decode_not_poc(&mut l_pi, &p_cp.tcps[p_tile_no as usize], l_max_prec, l_max_res);
@@ -2096,7 +2096,7 @@ pub(crate) fn opj_pi_initialise_encode(
     l_pi[pino as usize].include_size = l_pi[(pino - 1) as usize].include_size;
     pino += 1;
   }
-  if p_cp.tcps[p_tile_no as usize].POC
+  if p_cp.tcps[p_tile_no as usize].poc
     && ((p_cp.rsiz as core::ffi::c_int >= 0x3i32 && p_cp.rsiz as core::ffi::c_int <= 0x6i32)
       || p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint)
   {
@@ -2122,7 +2122,7 @@ pub(crate) fn opj_pi_create_encode(
 ) {
   let mut i: i32 = 0;
   let mut incr_top = 1_u32;
-  let mut resetX = 0_u32;
+  let mut reset_x = 0_u32;
   let rsiz = cp.rsiz;
   let tp_on = cp.m_specific_param.m_enc.m_tp_on;
   let tcp = &mut cp.tcps[tileno as usize].pocs[pino as usize];
@@ -2364,10 +2364,10 @@ pub(crate) fn opj_pi_create_encode(
                           .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
                         tcp.ty0_t = pi[pino as usize].poc.ty1;
                         incr_top = 1_u32;
-                        resetX = 1_u32
+                        reset_x = 1_u32
                       } else {
                         incr_top = 0_u32;
-                        resetX = 0_u32
+                        reset_x = 0_u32
                       }
                     } else {
                       pi[pino as usize].poc.ty0 = tcp.ty0_t;
@@ -2377,9 +2377,9 @@ pub(crate) fn opj_pi_create_encode(
                         .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
                       tcp.ty0_t = pi[pino as usize].poc.ty1;
                       incr_top = 0_u32;
-                      resetX = 1_u32
+                      reset_x = 1_u32
                     }
-                    if resetX == 1u32 {
+                    if reset_x == 1u32 {
                       tcp.tx0_t = tcp.txS;
                       pi[pino as usize].poc.tx0 = tcp.tx0_t;
                       pi[pino as usize].poc.tx1 = tcp
@@ -2444,7 +2444,7 @@ pub(crate) fn opj_pi_update_encoding_parameters(
       &mut l_max_prec,
       &mut l_max_res,
     );
-    if p_cp.tcps[p_tile_no as usize].POC {
+    if p_cp.tcps[p_tile_no as usize].poc {
       opj_pi_update_encode_poc_and_final(
         p_cp, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min,
       );

@@ -83,7 +83,7 @@ pub struct frwd_struct<'a> {
   pub bits: u32,
   pub unstuff: OPJ_BOOL,
   pub size: core::ffi::c_int,
-  pub X: u32,
+  pub x: u32,
 }
 
 impl frwd_struct<'_> {
@@ -279,7 +279,7 @@ fn mel_read(melp: &mut dec_mel_t) {
  *  @param [in]  melp is a pointer to dec_mel_t structure
  */
 fn mel_decode(melp: &mut dec_mel_t) {
-  const mel_exp: [core::ffi::c_int; 13] = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5];
+  const MEL_EXP: [core::ffi::c_int; 13] = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5];
   if melp.bits < 6i32 {
     // if there are less than 6 bits in tmp
     mel_read(melp);
@@ -289,7 +289,7 @@ fn mel_decode(melp: &mut dec_mel_t) {
   //repeat so long that there is enough decodable bits in tmp,
   // and the runs store is not full (num_runs < 8)
   while melp.bits >= 6i32 && melp.num_runs < 8i32 {
-    let mut eval = mel_exp[melp.k as usize]; // number of bits associated with state
+    let mut eval = MEL_EXP[melp.k as usize]; // number of bits associated with state
     let mut run = 0i32;
     if melp.tmp & (1u64) << 63i32 != 0 {
       //The next bit to decode (stored in MSB)
@@ -791,7 +791,7 @@ fn decode_init_uvlc(
   // 2 bits in the LSB for prefix length
   // 3 bits for suffix length
   // 3 bits in the MSB for prefix value (u_pfx in Table 3 of ITU T.814)
-  static dec: [u8; 8] = [
+  static DEC: [u8; 8] = [
     (3i32 | (5i32) << 2i32 | (5i32) << 5i32) as u8,
     (1i32 | (1i32) << 5i32) as u8,
     (2i32 | (2i32) << 5i32) as u8,
@@ -811,7 +811,7 @@ fn decode_init_uvlc(
     // u_off are either 01 or 10
     let mut d: u32 = 0; //look at the least significant 3 bits
     let mut suffix_len: u32 = 0; //prefix length
-    d = dec[(vlc & 0x7u32) as usize] as u32; // u value
+    d = DEC[(vlc & 0x7u32) as usize] as u32; // u value
     vlc >>= d & 0x3u32; // kappa is 1 for initial line
     consumed_bits =
       (consumed_bits as core::ffi::c_uint).wrapping_add(d & 0x3u32);
@@ -830,7 +830,7 @@ fn decode_init_uvlc(
     }
   } else if mode == 3u32 {
     // both u_off are 1, and MEL event is 0
-    let mut d1 = dec[(vlc & 0x7u32) as usize] as u32; // LSBs of VLC are prefix codeword
+    let mut d1 = DEC[(vlc & 0x7u32) as usize] as u32; // LSBs of VLC are prefix codeword
     vlc >>= d1 & 0x3u32; // Consume bits
     consumed_bits =
       (consumed_bits as core::ffi::c_uint).wrapping_add(d1 & 0x3u32);
@@ -851,7 +851,7 @@ fn decode_init_uvlc(
       //Kappa is 1 for initial line
       // u value
       //Kappa is 1 for initial line
-      d2 = dec[(vlc & 0x7u32) as usize] as u32; // LSBs of VLC are prefix codeword
+      d2 = DEC[(vlc & 0x7u32) as usize] as u32; // LSBs of VLC are prefix codeword
       vlc >>= d2 & 0x3u32; // Consume bits
       consumed_bits =
         (consumed_bits as core::ffi::c_uint).wrapping_add(d2 & 0x3u32); // u value
@@ -870,11 +870,11 @@ fn decode_init_uvlc(
     let mut d1_0: u32 = 0; // LSBs of VLC are prefix codeword
     let mut d2_0: u32 = 0; // Consume bits
     let mut suffix_len_2: u32 = 0; // LSBs of VLC are prefix codeword
-    d1_0 = dec[(vlc & 0x7u32) as usize] as u32; // Consume bits
+    d1_0 = DEC[(vlc & 0x7u32) as usize] as u32; // Consume bits
     vlc >>= d1_0 & 0x3u32; // u value
     consumed_bits =
       (consumed_bits as core::ffi::c_uint).wrapping_add(d1_0 & 0x3u32); // add 2+kappa
-    d2_0 = dec[(vlc & 0x7u32) as usize] as u32; // u value
+    d2_0 = DEC[(vlc & 0x7u32) as usize] as u32; // u value
     vlc >>= d2_0 & 0x3u32;
     consumed_bits =
       (consumed_bits as core::ffi::c_uint).wrapping_add(d2_0 & 0x3u32);
@@ -910,7 +910,7 @@ fn decode_noninit_uvlc(
   // 2 bits in the LSB for prefix length
   // 3 bits for suffix length
   // 3 bits in the MSB for prefix value (u_pfx in Table 3 of ITU T.814)
-  static dec: [u8; 8] = [
+  static DEC: [u8; 8] = [
     (3i32 | (5i32) << 2i32 | (5i32) << 5i32) as u8,
     (1i32 | (1i32) << 5i32) as u8,
     (2i32 | (2i32) << 5i32) as u8,
@@ -929,7 +929,7 @@ fn decode_noninit_uvlc(
     //u_off are either 01 or 10
     let mut d: u32 = 0; //look at the least significant 3 bits
     let mut suffix_len: u32 = 0; //prefix length
-    d = dec[(vlc & 0x7u32) as usize] as u32; // u value
+    d = DEC[(vlc & 0x7u32) as usize] as u32; // u value
     vlc >>= d & 0x3u32; //for kappa
     consumed_bits =
       (consumed_bits as core::ffi::c_uint).wrapping_add(d & 0x3u32);
@@ -951,11 +951,11 @@ fn decode_noninit_uvlc(
     let mut d1: u32 = 0; // LSBs of VLC are prefix codeword
     let mut d2: u32 = 0; // Consume bits
     let mut suffix_len_0: u32 = 0; // LSBs of VLC are prefix codeword
-    d1 = dec[(vlc & 0x7u32) as usize] as u32; // Consume bits
+    d1 = DEC[(vlc & 0x7u32) as usize] as u32; // Consume bits
     vlc >>= d1 & 0x3u32; // u value
     consumed_bits =
       (consumed_bits as core::ffi::c_uint).wrapping_add(d1 & 0x3u32); //1 for kappa
-    d2 = dec[(vlc & 0x7u32) as usize] as u32; // u value
+    d2 = DEC[(vlc & 0x7u32) as usize] as u32; // u value
     vlc >>= d2 & 0x3u32;
     consumed_bits =
       (consumed_bits as core::ffi::c_uint).wrapping_add(d2 & 0x3u32);
@@ -1001,7 +1001,7 @@ fn frwd_read(msp: &mut frwd_struct_t) {
     msp.size -= 4i32 // reduce size
   } else if msp.size > 0i32 {
     let mut i = 0i32; // read one byte at a time
-    val = if msp.X != 0u32 { 0xffffffffu32 } else { 0u32 }; // mask of location
+    val = if msp.x != 0u32 { 0xffffffffu32 } else { 0u32 }; // mask of location
     while msp.size > 0i32 {
       let mut v = msp.data[msp.pos] as u32; // put one byte in its correct location
       msp.pos += 1;
@@ -1011,7 +1011,7 @@ fn frwd_read(msp: &mut frwd_struct_t) {
       i += 8i32
     }
   } else {
-    val = if msp.X != 0u32 { 0xffffffffu32 } else { 0u32 }
+    val = if msp.x != 0u32 { 0xffffffffu32 } else { 0u32 }
   }
   // we accumulate in t and keep a count of the number of bits in bits
   bits = (8u32).wrapping_sub(if msp.unstuff != 0 { 1u32 } else { 0u32 }); // Do we need unstuffing next?
@@ -1054,7 +1054,7 @@ fn frwd_init<'a>(
   msp: &mut frwd_struct_t<'a>,
   data: &'a [u8],
   mut size: core::ffi::c_int,
-  mut X: u32,
+  mut x: u32,
 ) {
   let mut num: core::ffi::c_int = 0;
   let mut i: core::ffi::c_int = 0;
@@ -1064,8 +1064,8 @@ fn frwd_init<'a>(
   msp.bits = 0_u32;
   msp.unstuff = 0i32;
   msp.size = size;
-  msp.X = X;
-  assert!(msp.X == 0u32 || msp.X == 0xffu32);
+  msp.x = x;
+  assert!(msp.x == 0u32 || msp.x == 0xffu32);
   //This code is designed for an architecture that read address should
   // align to the read size (address multiple of 4 if read size is 4)
   //These few lines take care of the case where data is not at a multiple
@@ -1082,7 +1082,7 @@ fn frwd_init<'a>(
       msp.pos += 1;
       b as core::ffi::c_uint
     } else {
-      msp.X
+      msp.x
     } as u64;
     msp.tmp |= d << msp.bits;
     msp.bits = (msp.bits as core::ffi::c_uint)
@@ -1219,7 +1219,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       bits: 0,
       unstuff: 0,
       size: 0,
-      X: 0,
+      x: 0,
     };
     let mut sigprop = frwd_struct_t {
       data: &[],
@@ -1228,7 +1228,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       bits: 0,
       unstuff: 0,
       size: 0,
-      X: 0,
+      x: 0,
     };
     let mut magref = rev_struct_t {
       data: &[],
@@ -1272,11 +1272,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     {
       return 0i32;
     }
-    if cblk.Mb == 0u32 {
+    if cblk.mb == 0u32 {
       return 1i32;
     }
     /* numbps = Mb + 1 - zero_bplanes, Mb = Kmax, zero_bplanes = missing_msbs */
-    zero_bplanes = cblk.Mb.wrapping_add(1u32).wrapping_sub(cblk.numbps);
+    zero_bplanes = cblk.mb.wrapping_add(1u32).wrapping_sub(cblk.numbps);
     /* Compute whole codeblock length from chunk lengths */
     cblk_len = 0_u32;
     let mut i: u32 = 0;
@@ -1382,7 +1382,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                         "We do not support more than 3 coding passes in an HT codeblock; This codeblocks has {} passes.\n", num_passes);
       return 0i32;
     }
-    if cblk.Mb > 30u32 {
+    if cblk.mb > 30u32 {
       /* This check is better moved to opj_t2_read_packet_header() in t2.c
         We do not have enough precision to decode any passes
         The design of openjpeg assumes that the bits of a 32-bit integer are
@@ -1390,22 +1390,22 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         bit 31 is for sign
         bits 30-1 are for magnitude
         bit 0 is for the center of the quantization bin
-        Therefore we can only do values of cblk->Mb <= 30
+        Therefore we can only do values of cblk->mb <= 30
       */
       event_msg!(p_manager, EVT_ERROR,
-                        "32 bits are not enough to decode this codeblock, since the number of bitplane, {}, is larger than 30.\n", cblk.Mb);
+                        "32 bits are not enough to decode this codeblock, since the number of bitplane, {}, is larger than 30.\n", cblk.mb);
       return 0i32;
     }
-    if zero_bplanes > cblk.Mb {
+    if zero_bplanes > cblk.mb {
       /* This check is better moved to opj_t2_read_packet_header() in t2.c,
       in the line "l_cblk->numbps = (u32)l_band->numbps + 1 - i;"
-      where i is the zero bitplanes, and should be no larger than cblk->Mb
+      where i is the zero bitplanes, and should be no larger than cblk->mb
       We cannot have more zero bitplanes than there are planes. */
       event_msg!(p_manager, EVT_ERROR,
                         "Malformed HT codeblock. Decoding this codeblock is stopped. There are {} zero bitplanes in {} bitplanes.\n", zero_bplanes,
-                        cblk.Mb);
+                        cblk.mb);
       return 0i32;
-    } else if zero_bplanes == cblk.Mb && num_passes > 1u32 {
+    } else if zero_bplanes == cblk.mb && num_passes > 1u32 {
       /* When the number of zero bitplanes is equal to the number of bitplanes,
       only the cleanup pass makes sense*/
       if !ONLY_CLEANUP_PASS_DECODED.load(Ordering::Relaxed) {
@@ -1498,7 +1498,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     x = 0i32;
     while x < width {
       // one iteration per quad pair
-      let mut U_q: [u32; 2] = [0; 2]; // u values for the quad pair
+      let mut u_q: [u32; 2] = [0; 2]; // u values for the quad pair
       let mut uvlc_mode: u32 = 0;
       let mut consumed_bits: u32 = 0;
       let mut m_n: u32 = 0;
@@ -1515,7 +1515,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       // a maximum of one stuffing per two bytes)
       vlc_val = rev_fetch(&mut vlc);
       //decode VLC using the context c_q and the head of the VLC bitstream
-      qinf[0_usize] = vlc_tbl0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
+      qinf[0_usize] = VLC_TBL0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
       if c_q == 0u32 {
         // if zero context, we need to use one MEL event
         run -= 2i32; //the number of 0 events is multiplied by 2, so subtract 2
@@ -1553,7 +1553,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       if (x + 2i32) < width {
         // do not run if codeblock is narrower
         //decode VLC using the context c_q and the head of the VLC bitstream
-        qinf[1_usize] = vlc_tbl0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
+        qinf[1_usize] = VLC_TBL0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
         // if context is zero, use one MEL event
         if c_q == 0u32 {
           //zero context
@@ -1609,10 +1609,10 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         }
       }
       //decode uvlc_mode to get u for both quads
-      consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, &mut U_q);
-      if U_q[0_usize] > zero_bplanes_p1 || U_q[1_usize] > zero_bplanes_p1 {
+      consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, &mut u_q);
+      if u_q[0_usize] > zero_bplanes_p1 || u_q[1_usize] > zero_bplanes_p1 {
         event_msg!(p_manager, EVT_ERROR,
-                            "Malformed HT codeblock. Decoding this codeblock is stopped. U_q is larger than zero bitplanes + 1 \n");
+                            "Malformed HT codeblock. Decoding this codeblock is stopped. u_q is larger than zero bitplanes + 1 \n");
         return 0i32;
       }
       //consume u bits in the VLC code
@@ -1640,7 +1640,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         //is it significant? (sigma_n)
         let mut val: u32 = 0; //get 32 bits of magsgn data
         ms_val = frwd_fetch(&mut magsgn); //evaluate m_n (number of bits
-        m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 12i32 & 1u32);
+        m_n = u_q[0_usize].wrapping_sub(qinf[0_usize] >> 12i32 & 1u32);
         // to read from bitstream), using EMB e_k
         frwd_advance(&mut magsgn, m_n); //consume m_n
         val = ms_val << 31i32; //get sign bit
@@ -1660,7 +1660,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         let mut val_0: u32 = 0; //get 32 bits
         let mut t: u32 = 0; //m_n, uses EMB e_k
         ms_val = frwd_fetch(&mut magsgn); //consume m_n
-        m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 13i32 & 1u32); //get sign bit
+        m_n = u_q[0_usize].wrapping_sub(qinf[0_usize] >> 13i32 & 1u32); //get sign bit
         frwd_advance(&mut magsgn, m_n); //keep only m_n bits
         val_0 = ms_val << 31i32; //add EMB e_1
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32); //bin center
@@ -1684,7 +1684,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       if qinf[0_usize] & 0x40u32 != 0 {
         let mut val_1: u32 = 0; //m_n
         ms_val = frwd_fetch(&mut magsgn); //center of bin
-        m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 14i32 & 1u32);
+        m_n = u_q[0_usize].wrapping_sub(qinf[0_usize] >> 14i32 & 1u32);
         frwd_advance(&mut magsgn, m_n);
         val_1 = ms_val << 31i32;
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
@@ -1698,7 +1698,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       if qinf[0_usize] & 0x80u32 != 0 {
         let mut val_2: u32 = 0;
         ms_val = frwd_fetch(&mut magsgn);
-        m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 15i32 & 1u32);
+        m_n = u_q[0_usize].wrapping_sub(qinf[0_usize] >> 15i32 & 1u32);
         frwd_advance(&mut magsgn, m_n);
         val_2 = ms_val << 31i32;
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
@@ -1716,7 +1716,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       if qinf[1_usize] & 0x10u32 != 0 {
         let mut val_3: u32 = 0; //m_n
         ms_val = frwd_fetch(&mut magsgn);
-        m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 12i32 & 1u32);
+        m_n = u_q[1_usize].wrapping_sub(qinf[1_usize] >> 12i32 & 1u32);
         frwd_advance(&mut magsgn, m_n);
         val_3 = ms_val << 31i32;
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
@@ -1731,7 +1731,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         let mut t_0: u32 = 0;
         ms_val = frwd_fetch(&mut magsgn);
         //max(E^NW, E^N) | s
-        m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 13i32 & 1u32); //m_n
+        m_n = u_q[1_usize].wrapping_sub(qinf[1_usize] >> 13i32 & 1u32); //m_n
         frwd_advance(&mut magsgn, m_n);
         val_4 = ms_val << 31i32;
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
@@ -1753,7 +1753,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       if qinf[1_usize] & 0x40u32 != 0 {
         let mut val_5: u32 = 0; //m_n
         ms_val = frwd_fetch(&mut magsgn); //center of bin
-        m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 14i32 & 1u32);
+        m_n = u_q[1_usize].wrapping_sub(qinf[1_usize] >> 14i32 & 1u32);
         frwd_advance(&mut magsgn, m_n);
         val_5 = ms_val << 31i32;
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
@@ -1767,7 +1767,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       if qinf[1_usize] & 0x80u32 != 0 {
         let mut val_6: u32 = 0;
         ms_val = frwd_fetch(&mut magsgn);
-        m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 15i32 & 1u32);
+        m_n = u_q[1_usize].wrapping_sub(qinf[1_usize] >> 15i32 & 1u32);
         frwd_advance(&mut magsgn, m_n);
         val_6 = ms_val << 31i32;
         v_n = ms_val & ((1u32) << m_n).wrapping_sub(1u32);
@@ -1800,7 +1800,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       c_q = 0_u32;
       x_0 = 0i32;
       while x_0 < width {
-        let mut U_q_0: [u32; 2] = [0; 2];
+        let mut u_q_0: [u32; 2] = [0; 2];
         let mut uvlc_mode_0: u32 = 0;
         let mut consumed_bits_0: u32 = 0;
         let mut m_n_0: u32 = 0;
@@ -1818,7 +1818,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                                                                                                  //the following is very similar to previous code, so please refer to
                                                                                                  // that
         vlc_val = rev_fetch(&mut vlc);
-        qinf[0_usize] = vlc_tbl1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
+        qinf[0_usize] = VLC_TBL1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
         if c_q == 0u32 {
           //zero context
           run -= 2i32;
@@ -1848,7 +1848,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           c_q |= (line_state[lsp + 1].get() as core::ffi::c_int >> 7i32) as core::ffi::c_uint;
           c_q |=
             (line_state[lsp + 2].get() as core::ffi::c_int >> 5i32 & 0x4i32) as core::ffi::c_uint;
-          qinf[1_usize] = vlc_tbl1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
+          qinf[1_usize] = VLC_TBL1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
           if c_q == 0u32 {
             //zero context
             run -= 2i32;
@@ -1872,42 +1872,42 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         //retrieve u
         // //////////
         uvlc_mode_0 = (qinf[0_usize] & 0x8u32) >> 3i32 | (qinf[1_usize] & 0x8u32) >> 2i32;
-        consumed_bits_0 = decode_noninit_uvlc(vlc_val, uvlc_mode_0, &mut U_q_0);
+        consumed_bits_0 = decode_noninit_uvlc(vlc_val, uvlc_mode_0, &mut u_q_0);
         vlc_val = rev_advance(&mut vlc, consumed_bits_0);
-        //calculate E^max and add it to U_q, eqns 5 and 6 in ITU T.814
+        //calculate E^max and add it to u_q, eqns 5 and 6 in ITU T.814
         if qinf[0_usize] & 0xf0u32 & (qinf[0_usize] & 0xf0u32).wrapping_sub(1u32) != 0 {
           // is \gamma_q 1?
-          let mut E = ls0 as core::ffi::c_uint & 0x7fu32; //max(E, E^NE, E^NF)
-          E = if E > line_state[lsp + 1].get() as core::ffi::c_uint & 0x7fu32 {
-            E
+          let mut e = ls0 as core::ffi::c_uint & 0x7fu32; //max(E, E^NE, E^NF)
+          e = if e > line_state[lsp + 1].get() as core::ffi::c_uint & 0x7fu32 {
+            e
           } else {
             (line_state[lsp + 1].get() as core::ffi::c_uint) & 0x7fu32
           };
-          //since U_q already has u_q + 1, we subtract 2 instead of 1
-          U_q_0[0_usize] = (U_q_0[0_usize] as core::ffi::c_uint).wrapping_add(if E > 2u32 {
-            E.wrapping_sub(2u32)
+          //since u_q already has u_q + 1, we subtract 2 instead of 1
+          u_q_0[0_usize] = (u_q_0[0_usize] as core::ffi::c_uint).wrapping_add(if e > 2u32 {
+            e.wrapping_sub(2u32)
           } else {
             0u32
           })
         }
         if qinf[1_usize] & 0xf0u32 & (qinf[1_usize] & 0xf0u32).wrapping_sub(1u32) != 0 {
           //is \gamma_q 1?
-          let mut E_0 = line_state[lsp + 1].get() as core::ffi::c_uint & 0x7fu32; //max(E, E^NE, E^NF)
-          E_0 = if E_0 > line_state[lsp + 2].get() as core::ffi::c_uint & 0x7fu32 {
-            E_0
+          let mut e_0 = line_state[lsp + 1].get() as core::ffi::c_uint & 0x7fu32; //max(E, E^NE, E^NF)
+          e_0 = if e_0 > line_state[lsp + 2].get() as core::ffi::c_uint & 0x7fu32 {
+            e_0
           } else {
             (line_state[lsp + 2].get() as core::ffi::c_uint) & 0x7fu32
           };
-          //since U_q already has u_q + 1, we subtract 2 instead of 1
-          U_q_0[1_usize] = (U_q_0[1_usize] as core::ffi::c_uint).wrapping_add(if E_0 > 2u32 {
-            E_0.wrapping_sub(2u32)
+          //since u_q already has u_q + 1, we subtract 2 instead of 1
+          u_q_0[1_usize] = (u_q_0[1_usize] as core::ffi::c_uint).wrapping_add(if e_0 > 2u32 {
+            e_0.wrapping_sub(2u32)
           } else {
             0u32
           }) as u32
         } //for next double quad
-        if U_q_0[0_usize] > zero_bplanes_p1 || U_q_0[1_usize] > zero_bplanes_p1 {
+        if u_q_0[0_usize] > zero_bplanes_p1 || u_q_0[1_usize] > zero_bplanes_p1 {
           event_msg!(p_manager, EVT_ERROR,
-                                "Malformed HT codeblock. Decoding this codeblock is stopped. U_q islarger than bitplanes + 1 \n");
+                                "Malformed HT codeblock. Decoding this codeblock is stopped. u_q islarger than bitplanes + 1 \n");
           return 0i32;
         }
         ls0 = line_state[lsp + 2].get();
@@ -1934,7 +1934,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           //sigma_n
           let mut val_7: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-          m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 12i32 & 1u32);
+          m_n_0 = u_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 12i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
           val_7 = ms_val_0 << 31i32;
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
@@ -1949,7 +1949,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           let mut val_8: u32 = 0; //m_n
           let mut t_1: u32 = 0; //center of bin
           ms_val_0 = frwd_fetch(&mut magsgn);
-          m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 13i32 & 1u32);
+          m_n_0 = u_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 13i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
           val_8 = ms_val_0 << 31i32;
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
@@ -1970,7 +1970,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           //sigma_n
           let mut val_9: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-          m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 14i32 & 1u32);
+          m_n_0 = u_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 14i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
           val_9 = ms_val_0 << 31i32;
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
@@ -1984,7 +1984,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           //sigma_n
           let mut val_10: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-          m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 15i32 & 1u32);
+          m_n_0 = u_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 15i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
           val_10 = ms_val_0 << 31i32;
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
@@ -2002,7 +2002,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           //sigma_n
           let mut val_11: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-          m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 12i32 & 1u32);
+          m_n_0 = u_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 12i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
           val_11 = ms_val_0 << 31i32;
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
@@ -2017,7 +2017,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           let mut val_12: u32 = 0; //m_n
           let mut t_2: u32 = 0; //center of bin
           ms_val_0 = frwd_fetch(&mut magsgn);
-          m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 13i32 & 1u32);
+          m_n_0 = u_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 13i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
           val_12 = ms_val_0 << 31i32;
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
@@ -2038,7 +2038,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           //sigma_n
           let mut val_13: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-          m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 14i32 & 1u32);
+          m_n_0 = u_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 14i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
           val_13 = ms_val_0 << 31i32;
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);
@@ -2052,7 +2052,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           //sigma_n
           let mut val_14: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
-          m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 15i32 & 1u32);
+          m_n_0 = u_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 15i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
           val_14 = ms_val_0 << 31i32;
           v_n_0 = ms_val_0 & ((1u32) << m_n_0).wrapping_sub(1u32);

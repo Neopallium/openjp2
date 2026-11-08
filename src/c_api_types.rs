@@ -1,3 +1,6 @@
+// The C-ABI mirror types keep the C header's field spellings.
+#![allow(non_snake_case)]
+
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third

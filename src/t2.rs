@@ -226,7 +226,7 @@ pub(crate) fn opj_t2_encode_packets(
       return 0i32;
     }
     if let Some(marker_info) = p_marker_info.as_deref_mut() {
-      if marker_info.need_PLT != 0 {
+      if marker_info.need_plt != 0 {
         /* One time use intended */
         assert!(marker_info.packet_count == 0u32);
         assert!(marker_info.p_packet_size.is_empty());
@@ -260,7 +260,7 @@ pub(crate) fn opj_t2_encode_packets(
         *p_data_written =
           (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes);
         if let Some(marker_info) = p_marker_info.as_deref_mut() {
-          if marker_info.need_PLT != 0 {
+          if marker_info.need_plt != 0 {
             marker_info.p_packet_size[marker_info.packet_count as usize] = l_nb_bytes;
             marker_info.packet_count = marker_info.packet_count.wrapping_add(1)
           }
@@ -1047,7 +1047,7 @@ fn opj_t2_read_packet_header(
             {
               i += 1;
             }
-            cblk.Mb = band.numbps as u32;
+            cblk.mb = band.numbps as u32;
             if band.numbps as u32 + 1 < i {
               /* Not totally sure what we should do in that situation,
                * but that avoids the integer overflow of

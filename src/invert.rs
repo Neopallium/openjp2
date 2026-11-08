@@ -9,31 +9,31 @@ use smallvec::SmallVec;
  * Matrix inversion.
  */
 pub(crate) fn opj_matrix_inversion_f(
-  mut pSrcMatrix: &mut [f32],
-  mut pDestMatrix: &mut [f32],
+  mut p_src_matrix: &mut [f32],
+  mut p_dest_matrix: &mut [f32],
   mut nb_compo: usize,
 ) -> bool {
-  let mut lPermutations = SmallVec::<[u32; 0]>::with_capacity(nb_compo);
+  let mut l_permutations = SmallVec::<[u32; 0]>::with_capacity(nb_compo);
   let mut src_tmp = SmallVec::<[f32; 0]>::with_capacity(nb_compo);
   let mut dest_tmp = SmallVec::<[f32; 0]>::with_capacity(nb_compo);
   let mut swap_area = SmallVec::<[f32; 0]>::with_capacity(nb_compo);
-  lPermutations.resize(nb_compo, 0);
+  l_permutations.resize(nb_compo, 0);
   src_tmp.resize(nb_compo, 0.0);
   dest_tmp.resize(nb_compo, 0.0);
   swap_area.resize(nb_compo, 0.0);
-  if !opj_lupDecompose(
-    pSrcMatrix,
-    lPermutations.as_mut_slice(),
+  if !opj_lup_decompose(
+    p_src_matrix,
+    l_permutations.as_mut_slice(),
     swap_area.as_mut_slice(),
     nb_compo,
   ) {
     return false;
   }
-  opj_lupInvert(
-    pSrcMatrix,
-    pDestMatrix,
+  opj_lup_invert(
+    p_src_matrix,
+    p_dest_matrix,
     nb_compo,
-    lPermutations.as_slice(),
+    l_permutations.as_slice(),
     src_tmp.as_mut_slice(),
     dest_tmp.as_mut_slice(),
     swap_area.as_mut_slice(),
@@ -78,7 +78,7 @@ pub(crate) fn opj_matrix_inversion_f(
    Local functions
 ==========================================================
 */
-fn opj_lupDecompose(
+fn opj_lup_decompose(
   matrix: &mut [f32],
   permutations: &mut [u32],
   p_swap_area: &mut [f32],
@@ -165,7 +165,7 @@ fn opj_lupDecompose(
 /* *
  * LUP solving
  */
-fn opj_lupSolve(
+fn opj_lup_solve(
   p_result: &mut [f32],
   p_matrix: &[f32],
   p_vector: &[f32],
@@ -235,36 +235,36 @@ fn opj_lupSolve(
 /* *
  *LUP inversion (call with the result of lupDecompose)
  */
-fn opj_lupInvert(
-  pSrcMatrix: &mut [f32],
-  pDestMatrix: &mut [f32],
+fn opj_lup_invert(
+  p_src_matrix: &mut [f32],
+  p_dest_matrix: &mut [f32],
   nb_compo: usize,
-  pPermutations: &[u32],
+  p_permutations: &[u32],
   p_src_temp: &mut [f32],
   p_dest_temp: &mut [f32],
   p_swap_area: &mut [f32],
 ) {
   let nb_compo_usize = nb_compo;
-  let mut lLineMatrix = pDestMatrix;
+  let mut l_line_matrix = p_dest_matrix;
   for j in 0..nb_compo {
-    let lCurrentPtr = &mut lLineMatrix[j + 1..];
+    let l_current_ptr = &mut l_line_matrix[j + 1..];
     p_src_temp.fill(0.0);
     p_src_temp[j] = 1.0;
     let p_src_temp_slice = &mut p_src_temp[..nb_compo_usize];
     let p_dest_temp_slice = &mut p_dest_temp[..nb_compo_usize];
-    let pSrcMatrix_slice = &pSrcMatrix[..nb_compo_usize * nb_compo_usize];
-    let pPermutations_slice = &pPermutations[..nb_compo_usize];
+    let p_src_matrix_slice = &p_src_matrix[..nb_compo_usize * nb_compo_usize];
+    let p_permutations_slice = &p_permutations[..nb_compo_usize];
     let p_swap_area_slice = &mut p_swap_area[..nb_compo_usize];
-    opj_lupSolve(
+    opj_lup_solve(
       p_dest_temp_slice,
-      pSrcMatrix_slice,
+      p_src_matrix_slice,
       p_src_temp_slice,
-      pPermutations_slice,
+      p_permutations_slice,
       nb_compo_usize,
       p_swap_area_slice,
     );
     for i in 0..nb_compo_usize {
-      lCurrentPtr[i * nb_compo_usize] = p_dest_temp[i];
+      l_current_ptr[i * nb_compo_usize] = p_dest_temp[i];
     }
   }
 }

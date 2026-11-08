@@ -227,21 +227,21 @@ fn opj_jp2_read_ihdr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
   // BPC
   jp2.bpc = buf.read_u8().expect("Buffer should have enough data") as u32;
   // C
-  jp2.C = buf.read_u8().expect("Buffer should have enough data") as u32;
+  jp2.components = buf.read_u8().expect("Buffer should have enough data") as u32;
 
   /* Should be equal to 7 cf. chapter about image header box of the norm */
-  if jp2.C != 7 {
+  if jp2.components != 7 {
     event_msg!(
       p_manager,
       EVT_INFO,
       "JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file ({}) \n",
-      jp2.C
+      jp2.components
     );
   }
   // UnkC
-  jp2.UnkC = buf.read_u8().expect("Buffer should have enough data") as u32;
+  jp2.unknown_color_space = buf.read_u8().expect("Buffer should have enough data") as u32;
   // IPR
-  jp2.IPR = buf.read_u8().expect("Buffer should have enough data") as u32;
+  jp2.ipr = buf.read_u8().expect("Buffer should have enough data") as u32;
 
   jp2.j2k.m_cp.allow_different_bit_depth_sign = jp2.bpc == 255;
   jp2.j2k.ihdr_w = jp2.w;
@@ -268,11 +268,11 @@ fn opj_jp2_write_ihdr(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
   // BPC
   buf.push(jp2.bpc as u8);
   // C : Always 7
-  buf.push(jp2.C as u8);
+  buf.push(jp2.components as u8);
   // UnkC, colorspace unknown
-  buf.push(jp2.UnkC as u8);
+  buf.push(jp2.unknown_color_space as u8);
   // IPR, no intellectual property
-  buf.push(jp2.IPR as u8);
+  buf.push(jp2.ipr as u8);
   true
 }
 
@@ -1295,11 +1295,11 @@ pub(crate) fn opj_jp2_setup_encoder(
     }
   }
   /* C : Always 7 */
-  jp2.C = 7_u32;
+  jp2.components = 7_u32;
   /* UnkC, colorspace specified in colr box */
-  jp2.UnkC = 0_u32;
+  jp2.unknown_color_space = 0_u32;
   /* IPR, no intellectual property */
-  jp2.IPR = 0_u32;
+  jp2.ipr = 0_u32;
 
   /* BitsPerComponent box */
   for (j_comp, comp) in jp2.comps.iter_mut().zip(&comps[..]) {
@@ -2120,9 +2120,9 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<Jp2> {
     w: 0,
     h: 0,
     bpc: 0,
-    C: 0,
-    UnkC: 0,
-    IPR: 0,
+    components: 0,
+    unknown_color_space: 0,
+    ipr: 0,
     meth: 0,
     approx: 0,
     enumcs: 0,

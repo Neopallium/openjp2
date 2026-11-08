@@ -51,18 +51,18 @@ fn opj_int_fix_mul(mut a: i32, mut b: i32) -> i32 {
 /* <summary> */
 /* This table contains the norms of the basis function of the reversible MCT. */
 /* </summary> */
-static opj_mct_norms: [f64; 3] = [1.732f64, 0.8292f64, 0.8292f64];
+static MCT_NORMS: [f64; 3] = [1.732f64, 0.8292f64, 0.8292f64];
 /* <summary> */
 /* This table contains the norms of the basis function of the irreversible MCT. */
 /* </summary> */
-static opj_mct_norms_real: [f64; 3] = [1.732f64, 1.805f64, 1.573f64];
+static MCT_NORMS_REAL: [f64; 3] = [1.732f64, 1.805f64, 1.573f64];
 
 pub(crate) fn opj_mct_get_mct_norms() -> &'static [f64] {
-  &opj_mct_norms
+  &MCT_NORMS
 }
 
 pub(crate) fn opj_mct_get_mct_norms_real() -> &'static [f64] {
-  &opj_mct_norms_real
+  &MCT_NORMS_REAL
 }
 /* <summary> */
 /* Forward reversible MCT. */
@@ -100,7 +100,7 @@ pub(crate) fn opj_mct_decode(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
 /* </summary> */
 
 pub(crate) fn opj_mct_getnorm(mut compno: u32) -> f64 {
-  opj_mct_norms[compno as usize]
+  MCT_NORMS[compno as usize]
 }
 /* <summary> */
 /* Forward irreversible MCT. */
@@ -145,7 +145,7 @@ pub(crate) fn opj_mct_decode_real(
 /* </summary> */
 
 pub(crate) fn opj_mct_getnorm_real(mut compno: u32) -> f64 {
-  opj_mct_norms_real[compno as usize]
+  MCT_NORMS_REAL[compno as usize]
 }
 
 #[allow(clippy::needless_range_loop)]

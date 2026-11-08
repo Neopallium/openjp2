@@ -308,8 +308,8 @@ fn opj_tcd_rateallocate(
     let mut min: f64 = 0.;
     let mut max: f64 = 0.;
     let mut cumdisto: [f64; 100] = [0.; 100];
-    let K = 1_f64;
-    let mut maxSE = 0 as f64;
+    let k = 1_f64;
+    let mut max_se = 0 as f64;
     let tcd_tcp_numlayers = cp.tcps[tcd.tcd_tileno as usize].numlayers;
     let tcd_tcp_rates = cp.tcps[tcd.tcd_tileno as usize].rates;
     let tcd_tcp_distoratio = cp.tcps[tcd.tcd_tileno as usize].distoratio;
@@ -380,7 +380,7 @@ fn opj_tcd_rateallocate(
         resno += 1;
       }
       let prec = image.comps[compno as usize].prec;
-      maxSE += (((1i32) << prec) as f64 - 1.0f64)
+      max_se += (((1i32) << prec) as f64 - 1.0f64)
         * (((1i32) << prec) as f64 - 1.0f64)
         * tilec.numpix as f64;
       compno += 1;
@@ -406,7 +406,7 @@ fn opj_tcd_rateallocate(
       let mut distotarget: f64 = 0.;
 
       distotarget = tcd.tcd_image.tiles.distotile
-        - K * maxSE
+        - k * max_se
           / (10_f32 as core::ffi::c_double).powf(
             (tcd_tcp_distoratio[layno as usize] / 10 as core::ffi::c_float) as core::ffi::c_double,
           );
@@ -618,12 +618,12 @@ pub(crate) fn opj_alloc_tile_component_data(l_tilec: &mut TcdTileComp) -> OPJ_BO
 pub(crate) fn opj_tcd_init_tile(
   mut p_tcd: &mut Tcd,
   mut p_tile_no: u32,
-  mut isEncoder: OPJ_BOOL,
+  mut is_encoder: OPJ_BOOL,
   mut manager: &mut EventMgr,
   image: &mut CoreImage,
   cp: &mut Cp,
 ) -> OPJ_BOOL {
-  let sizeof_block = if isEncoder != 0 {
+  let sizeof_block = if is_encoder != 0 {
     core::mem::size_of::<TcdCblkEnc>()
   } else {
     core::mem::size_of::<TcdCblkDec>()
@@ -711,7 +711,7 @@ pub(crate) fn opj_tcd_init_tile(
     } else {
       tilec.minimum_num_resolutions = tccp.numresolutions.wrapping_sub(m_reduce)
     }
-    if isEncoder != 0 {
+    if is_encoder != 0 {
       let mut l_tile_data_size: usize = 0;
       /* compute l_data_size with overflow check */
       let mut w = (tilec.x1 - tilec.x0) as usize;
@@ -874,13 +874,13 @@ pub(crate) fn opj_tcd_init_tile(
             l_level_no.wrapping_add(1u32) as i32,
           )
         }
-        if isEncoder == 0 || opj_tcd_is_band_empty(band) == 0 {
+        if is_encoder == 0 || opj_tcd_is_band_empty(band) == 0 {
           let step_size = &tccp.stepsizes[l_step_size_idx];
           /* Table E-1 - Sub-band gains */
           /* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
-          /* the test (!isEncoder && l_tccp->qmfbid == 0) is strongly */
-          /* linked to the use of two_invK instead of invK */
-          let log2_gain = if (isEncoder == 0 && tccp.qmfbid == 0u32) || band.bandno == 0u32 {
+          /* the test (!is_encoder && l_tccp->qmfbid == 0) is strongly */
+          /* linked to the use of two_invK instead of invk */
+          let log2_gain = if (is_encoder == 0 && tccp.qmfbid == 0u32) || band.bandno == 0u32 {
             0i32
           } else if band.bandno == 3u32 {
             2i32
@@ -888,11 +888,11 @@ pub(crate) fn opj_tcd_init_tile(
             1i32
           };
           /* Nominal dynamic range. Equation E-4 */
-          let Rb = image_comp.prec as i32 + log2_gain;
+          let r_b = image_comp.prec as i32 + log2_gain;
           /* Delta_b value of Equation E-3 in "E.1 Inverse quantization
            * procedure" of the standard */
           band.stepsize = ((1.0f64 + step_size.mant as core::ffi::c_double / 2048.0f64)
-            * 2.0f64.powf((Rb - step_size.expn) as core::ffi::c_double))
+            * 2.0f64.powf((r_b - step_size.expn) as core::ffi::c_double))
             as f32;
           /* Mb value of Equation E-2 in "E.1 Inverse quantization
            * procedure" of the standard */
@@ -958,7 +958,7 @@ pub(crate) fn opj_tcd_init_tile(
             let precinct_y0 = precinct.y0;
             let precinct_x1 = precinct.x1;
             let precinct_y1 = precinct.y1;
-            if isEncoder != 0 {
+            if is_encoder != 0 {
               precinct.cblks.grow_enc(l_nb_code_blocks as usize);
             } else {
               precinct.cblks.grow_dec(l_nb_code_blocks as usize);
@@ -979,7 +979,7 @@ pub(crate) fn opj_tcd_init_tile(
                 tlcblkystart + cblkno.wrapping_div(precinct_cw) as i32 * ((1i32) << cblkheightexpn);
               let mut cblkxend = cblkxstart + ((1i32) << cblkwidthexpn);
               let mut cblkyend = cblkystart + ((1i32) << cblkheightexpn);
-              if isEncoder != 0 {
+              if is_encoder != 0 {
                 let code_block = precinct.cblks.enc_mut(cblkno as usize);
                 opj_tcd_code_block_enc_allocate(code_block);
                 /* code-block size (global) */

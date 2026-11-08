@@ -34,7 +34,7 @@ pub struct Mqc {
 }
 impl Default for Mqc {
   fn default() -> Self {
-    let ctx = &mqc_states[0];
+    let ctx = &MQC_STATES[0];
     Self {
       c: 0,
       a: 0,
@@ -46,7 +46,7 @@ impl Default for Mqc {
       cursor: 0,
       ctxs: [ctx; MQC_NUMCTXS],
       curctx: 0,
-      lut_ctxno_zc_orient: &lut_ctxno_zc[0],
+      lut_ctxno_zc_orient: &LUT_CTXNO_ZC[0],
       backup: [0; 2],
     }
   }
@@ -59,12 +59,12 @@ impl Mqc {
 
   pub(crate) fn set_curctx_nlps(&mut self) {
     let curctx = self.curctx();
-    self.ctxs[self.curctx as usize] = &mqc_states[curctx.nlps as usize];
+    self.ctxs[self.curctx as usize] = &MQC_STATES[curctx.nlps as usize];
   }
 
   pub(crate) fn set_curctx_nmps(&mut self) {
     let curctx = self.curctx();
-    self.ctxs[self.curctx as usize] = &mqc_states[curctx.nmps as usize];
+    self.ctxs[self.curctx as usize] = &MQC_STATES[curctx.nmps as usize];
   }
 
   pub(crate) fn curctx(&self) -> &'static MqcState {
@@ -376,7 +376,7 @@ pub(crate) fn opj_mqc_bypass_enc_macro(mqc: &mut Mqc, d: u32) {
 /* <summary> */
 /* This array defines all the possible states for a context. */
 /* </summary> */
-const mqc_states: [MqcState; 47 * 2] = [
+const MQC_STATES: [MqcState; 47 * 2] = [
   MqcState {
     qeval: 0x5601,
     mps: 0,
@@ -1265,12 +1265,12 @@ pub(crate) fn opq_mqc_finish_dec(mqc: &mut Mqc) {
 
 pub(crate) fn opj_mqc_resetstates(mqc: &mut Mqc) {
   for i in 0..19 {
-    mqc.ctxs[i] = &mqc_states[0];
+    mqc.ctxs[i] = &MQC_STATES[0];
   }
 }
 
 pub(crate) fn opj_mqc_setstate(mqc: &mut Mqc, ctxno: u8, msb: u32, prob: i32) {
-  mqc.ctxs[ctxno as usize] = &mqc_states[msb.wrapping_add((prob << 1) as u32) as usize];
+  mqc.ctxs[ctxno as usize] = &MQC_STATES[msb.wrapping_add((prob << 1) as u32) as usize];
 }
 
 pub(crate) fn opj_mqc_byteout(mut mqc: &mut Mqc) {

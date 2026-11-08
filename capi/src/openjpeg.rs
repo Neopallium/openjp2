@@ -453,7 +453,7 @@ fn encoder_params_from_c(
     cp_fixed_quality: parameters.cp_fixed_quality,
     csty: parameters.csty,
     prog_order: parameters.prog_order,
-    POC: parameters.POC,
+    pocs: parameters.POC,
     numpocs: parameters.numpocs,
     tcp_numlayers: parameters.tcp_numlayers,
     tcp_rates: parameters.tcp_rates,

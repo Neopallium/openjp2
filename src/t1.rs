@@ -307,34 +307,34 @@ fn opj_t1_getctxno_zc(mut mqc: &mut Mqc, f: u32) -> u8 {
 }
 
 #[inline]
-fn opj_t1_getctxtno_sc_or_spb_index(mut fX: u32, mut pfX: u32, mut nfX: u32, mut ci: u32) -> u32 {
+fn opj_t1_getctxtno_sc_or_spb_index(mut f_x: u32, mut p_f_x: u32, mut n_f_x: u32, mut ci: u32) -> u32 {
   /*
-    0 pfX T1_CHI_THIS           T1_LUT_SGN_W
-    1 tfX T1_SIGMA_1            T1_LUT_SIG_N
-    2 nfX T1_CHI_THIS           T1_LUT_SGN_E
-    3 tfX T1_SIGMA_3            T1_LUT_SIG_W
-    4  fX T1_CHI_(THIS - 1)     T1_LUT_SGN_N
-    5 tfX T1_SIGMA_5            T1_LUT_SIG_E
-    6  fX T1_CHI_(THIS + 1)     T1_LUT_SGN_S
-    7 tfX T1_SIGMA_7            T1_LUT_SIG_S
+    0 p_f_x T1_CHI_THIS           T1_LUT_SGN_W
+    1 tf_x T1_SIGMA_1            T1_LUT_SIG_N
+    2 n_f_x T1_CHI_THIS           T1_LUT_SGN_E
+    3 tf_x T1_SIGMA_3            T1_LUT_SIG_W
+    4  f_x T1_CHI_(THIS - 1)     T1_LUT_SGN_N
+    5 tf_x T1_SIGMA_5            T1_LUT_SIG_E
+    6  f_x T1_CHI_(THIS + 1)     T1_LUT_SGN_S
+    7 tf_x T1_SIGMA_7            T1_LUT_SIG_S
   */
 
-  let mut lu = fX >> ci.wrapping_mul(3) & (T1_SIGMA_1 | T1_SIGMA_3 | T1_SIGMA_5 | T1_SIGMA_7);
+  let mut lu = f_x >> ci.wrapping_mul(3) & (T1_SIGMA_1 | T1_SIGMA_3 | T1_SIGMA_5 | T1_SIGMA_7);
 
-  lu |= (pfX >> T1_CHI_THIS_I.wrapping_add(ci.wrapping_mul(3))) & (1 << 0);
-  lu |= (nfX >> (T1_CHI_THIS_I - 2).wrapping_add(ci.wrapping_mul(3))) & (1 << 2);
+  lu |= (p_f_x >> T1_CHI_THIS_I.wrapping_add(ci.wrapping_mul(3))) & (1 << 0);
+  lu |= (n_f_x >> (T1_CHI_THIS_I - 2).wrapping_add(ci.wrapping_mul(3))) & (1 << 2);
   if ci == 0 {
-    lu |= (fX >> (T1_CHI_0_I - 4)) & (1 << 4);
+    lu |= (f_x >> (T1_CHI_0_I - 4)) & (1 << 4);
   } else {
-    lu |= (fX >> (T1_CHI_1_I - 4).wrapping_add(ci.wrapping_sub(1).wrapping_mul(3))) & (1 << 4);
+    lu |= (f_x >> (T1_CHI_1_I - 4).wrapping_add(ci.wrapping_sub(1).wrapping_mul(3))) & (1 << 4);
   }
-  lu |= (fX >> (T1_CHI_2_I - 6).wrapping_add(ci.wrapping_mul(3))) & (1 << 6);
+  lu |= (f_x >> (T1_CHI_2_I - 6).wrapping_add(ci.wrapping_mul(3))) & (1 << 6);
   lu
 }
 
 #[inline]
 fn opj_t1_getctxno_sc(mut lu: u32) -> u8 {
-  lut_ctxno_sc[lu as usize]
+  LUT_CTXNO_SC[lu as usize]
 }
 
 #[inline]
@@ -354,21 +354,21 @@ fn opj_t1_getctxno_mag(mut f: u32) -> u8 {
 
 #[inline]
 fn opj_t1_getspb(mut lu: u32) -> u8 {
-  lut_spb[lu as usize]
+  LUT_SPB[lu as usize]
 }
 
 fn opj_t1_getnmsedec_sig(mut x: u32, mut bitpos: u32) -> i16 {
   if bitpos > 0 {
-    return lut_nmsedec_sig[((x >> bitpos) & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
+    return LUT_NMSEDEC_SIG[((x >> bitpos) & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
   }
-  lut_nmsedec_sig0[(x & ((1 << T1_NMSEDEC_BITS) - 1)) as usize]
+  LUT_NMSEDEC_SIG0[(x & ((1 << T1_NMSEDEC_BITS) - 1)) as usize]
 }
 
 fn opj_t1_getnmsedec_ref(mut x: u32, mut bitpos: u32) -> i16 {
   if bitpos > 0 {
-    return lut_nmsedec_ref[((x >> bitpos) & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
+    return LUT_NMSEDEC_REF[((x >> bitpos) & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
   }
-  lut_nmsedec_ref0[(x & ((1 << T1_NMSEDEC_BITS) - 1)) as usize]
+  LUT_NMSEDEC_REF0[(x & ((1 << T1_NMSEDEC_BITS) - 1)) as usize]
 }
 
 #[inline]
@@ -1224,9 +1224,9 @@ fn opj_t1_enc_clnpass_step_macro(
       }
     } else {
       for ci in runlen..lim {
-        let mut goto_PARTIAL = false;
+        let mut goto_partial = false;
         if agg != 0 && ci == runlen {
-          goto_PARTIAL = true;
+          goto_partial = true;
         } else if (flagsp.get() & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 {
           let ctxt1 = opj_t1_getctxno_zc(mqc, flagsp.get() >> ci.wrapping_mul(3));
           log::debug!("   ctxt1={}", ctxt1);
@@ -1238,10 +1238,10 @@ fn opj_t1_enc_clnpass_step_macro(
           };
           opj_mqc_encode_macro(mqc, v);
           if v != 0 {
-            goto_PARTIAL = true;
+            goto_partial = true;
           }
         }
-        if goto_PARTIAL {
+        if goto_partial {
           let lu = opj_t1_getctxtno_sc_or_spb_index(flagsp.get(), flagsp.at(-1), flagsp.at(1), ci);
           *nmsedec += opj_t1_getnmsedec_sig(opj_smr_abs(l_datap.get()), bpno as u32) as i32;
           let ctxt2 = opj_t1_getctxno_sc(lu);
@@ -2109,7 +2109,7 @@ fn opj_t1_decode_cblk(
   let mut passno: u32 = 0;
   let mut cblkdataindex = 0_u32;
   let mut type_0 = 0_u8;
-  t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
+  t1.mqc.lut_ctxno_zc_orient = &LUT_CTXNO_ZC[orient as usize];
   if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32) == 0 {
     return 0i32;
   }
@@ -2651,7 +2651,7 @@ fn opj_t1_encode_cblk(
   let mut j: u32 = 0;
   let mut type_0 = 0_u8;
   let mut tempwmsedec: f64 = 0.;
-  t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
+  t1.mqc.lut_ctxno_zc_orient = &LUT_CTXNO_ZC[orient as usize];
   max = 0i32;
   let mut datap = t1.data.offset(0);
   j = 0_u32;
