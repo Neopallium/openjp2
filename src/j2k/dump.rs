@@ -23,11 +23,7 @@ fn opj_j2k_dump_tile_info<W: StringWriter>(
   } else {
     fprintf!(out_stream, "\t\t prg=0\n");
   }
-  fprintf!(
-    out_stream,
-    "\t\t numlayers={}\n",
-    l_default_tile.numlayers,
-  );
+  fprintf!(out_stream, "\t\t numlayers={}\n", l_default_tile.numlayers,);
   fprintf!(out_stream, "\t\t mct={:x}\n", l_default_tile.mct);
   /*end of default tile*/
   compno = 0i32; /*end of component of default tile*/
@@ -104,7 +100,11 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &J2k, flag: i32, out_stream: &mut
   }
   /* Dump the image_header */
   if flag & 1i32 != 0 && p_j2k.m_private_image.is_some() {
-    j2k_dump_image_header(p_j2k.m_private_image.as_deref().expect("m_private_image"), 0i32, out_stream);
+    j2k_dump_image_header(
+      p_j2k.m_private_image.as_deref().expect("m_private_image"),
+      0i32,
+      out_stream,
+    );
   }
   /* Dump the codestream info from main header */
   if flag & 2i32 != 0 && p_j2k.m_private_image.is_some() {
@@ -119,7 +119,11 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &J2k, flag: i32, out_stream: &mut
       while i < l_nb_tiles {
         opj_j2k_dump_tile_info(
           &p_j2k.m_cp.tcps[i as usize],
-          p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps as i32,
+          p_j2k
+            .m_private_image
+            .as_deref()
+            .expect("m_private_image")
+            .numcomps as i32,
           out_stream,
         );
         i += 1;
@@ -170,11 +174,7 @@ fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   }
   fprintf!(out_stream, "\t }}\n");
   /* Simple test to avoid writing empty information */
-  let l_acc_nb_of_tile_part: u32 = cstr_index
-    .tiles
-    .iter()
-    .map(|tile| tile.nb_tps)
-    .sum();
+  let l_acc_nb_of_tile_part: u32 = cstr_index.tiles.iter().map(|tile| tile.nb_tps).sum();
   if l_acc_nb_of_tile_part != 0 {
     fprintf!(out_stream, "\t Tile index: {{\n");
     for (it_tile, tile) in cstr_index.tiles.iter().enumerate() {
@@ -185,7 +185,12 @@ fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
         it_tile,
         nb_of_tile_part,
       );
-      for (it_tile_part, tp) in tile.tp_index.iter().enumerate().take(nb_of_tile_part as usize) {
+      for (it_tile_part, tp) in tile
+        .tp_index
+        .iter()
+        .enumerate()
+        .take(nb_of_tile_part as usize)
+      {
         fprintf!(
           out_stream,
           "\t\t\t tile-part[{}]: star_pos={}, end_header={}, end_pos={}.\n",
@@ -208,7 +213,6 @@ fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   }
   fprintf!(out_stream, "}}\n");
 }
-
 
 fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   fprintf!(out_stream, "Codestream info from main header: {{\n");
@@ -238,7 +242,11 @@ fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
         .m_default_tcp
         .as_deref()
         .expect("decoder m_default_tcp is always set"),
-      p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps as i32,
+      p_j2k
+        .m_private_image
+        .as_deref()
+        .expect("m_private_image")
+        .numcomps as i32,
       out_stream,
     );
   }
