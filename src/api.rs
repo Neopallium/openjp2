@@ -90,6 +90,30 @@ impl From<ColorSpace> for OPJ_COLOR_SPACE {
   }
 }
 
+/// Packet progression order (mirrors the C `OPJ_PROG_ORDER` values).
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+pub enum ProgressionOrder {
+  #[default]
+  Lrcp,
+  Rlcp,
+  Rpcl,
+  Pcrl,
+  Cprl,
+}
+
+impl From<ProgressionOrder> for crate::c_api_types::OPJ_PROG_ORDER {
+  fn from(p: ProgressionOrder) -> Self {
+    use crate::c_api_types::{OPJ_CPRL, OPJ_LRCP, OPJ_PCRL, OPJ_RLCP, OPJ_RPCL};
+    match p {
+      ProgressionOrder::Lrcp => OPJ_LRCP,
+      ProgressionOrder::Rlcp => OPJ_RLCP,
+      ProgressionOrder::Rpcl => OPJ_RPCL,
+      ProgressionOrder::Pcrl => OPJ_PCRL,
+      ProgressionOrder::Cprl => OPJ_CPRL,
+    }
+  }
+}
+
 /// Rectangular decode area in image coordinates (`x0 <= x < x1`).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DecodeArea {
@@ -185,6 +209,38 @@ impl EncodeParameters {
   /// Use the irreversible 9-7 transform (default is reversible 5-3).
   pub fn irreversible(mut self, yes: bool) -> Self {
     self.inner.irreversible = yes as i32;
+    self
+  }
+
+  /// Packet progression order.
+  pub fn progression_order(mut self, order: ProgressionOrder) -> Self {
+    self.inner.prog_order = order.into();
+    self
+  }
+
+  /// Use tiles of the given size.
+  pub fn tile_size(mut self, w: u32, h: u32) -> Self {
+    self.inner.tile_size_on = 1;
+    self.inner.cp_tdx = w as i32;
+    self.inner.cp_tdy = h as i32;
+    self
+  }
+
+  /// Append a quality layer with the given compression ratio
+  /// (e.g. `20.0` = 20:1); enables fixed-quality rate allocation.
+  pub fn layer_rate(mut self, rate: f32) -> Self {
+    let n = self.inner.tcp_numlayers as usize;
+    if n < 100 {
+      self.inner.cp_disto_alloc = 1;
+      self.inner.tcp_rates[n] = rate;
+      self.inner.tcp_numlayers += 1;
+    }
+    self
+  }
+
+  /// Embed a comment marker in the codestream.
+  pub fn comment(mut self, comment: &str) -> Self {
+    self.inner.cp_comment = Some(comment.as_bytes().to_vec());
     self
   }
 
@@ -447,7 +503,13 @@ mod tests {
     assert!(image.width() > 0 && image.height() > 0);
     // Round-trip through the J2K encoder and back.
     let codestream = image
-      .encode(EncodeParameters::new().num_resolutions(3).num_layers(1))
+      .encode(
+        EncodeParameters::new()
+          .num_resolutions(3)
+          .num_layers(1)
+          .progression_order(ProgressionOrder::Lrcp)
+          .comment("api test"),
+      )
       .expect("encode");
     assert!(!codestream.is_empty());
     let back = Image::from_bytes(&codestream).expect("decode round-trip");
