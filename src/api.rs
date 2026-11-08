@@ -715,6 +715,49 @@ mod tests {
     assert_eq!(par, serial, "parallel/serial encode mismatch");
   }
 
+  /// DumpImage + the codestream index/info accessors.
+  #[test]
+  fn dump_image_and_index() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let mut dump = DumpImage::from_bytes(&buf).expect("dump image");
+    dump.decode().expect("decode");
+    let index = dump.get_codestream_index().expect("index");
+    assert_eq!(index.tile_indices().len(), 1);
+    assert!(!index.markers().is_empty());
+    let info = dump.get_codestream_info().expect("info");
+    assert_eq!((info.tw(), info.th()), (1, 1));
+    assert_eq!(info.nbcomps(), 3);
+    let text = dump.dump(0xFFFF);
+    assert!(text.contains("Codestream index"));
+  }
+
+  /// Fixed-quality layer rates via the builder (rate allocation).
+  #[test]
+  fn encode_with_layer_rates() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let image = Image::from_bytes(&buf).expect("decode");
+    let codestream = image
+      .encode(
+        EncodeParameters::new()
+          .num_resolutions(3)
+          .layer_rate(50.0)
+          .layer_rate(10.0),
+      )
+      .expect("encode");
+    let back = Image::from_bytes(&codestream).expect("decode");
+    assert_eq!((back.width(), back.height()), (image.width(), image.height()));
+    assert!(back.components()[0].data.iter().any(|v| *v != 0));
+  }
+
+  /// Decoding garbage must return an error, never panic.
+  #[test]
+  fn decode_garbage_errors() {
+    assert!(Image::from_bytes(b"not a jpeg2000 file at all").is_err());
+    let mut data = vec![0xFFu8, 0x4F]; // SOC only
+    data.extend(std::iter::repeat(0u8).take(64));
+    assert!(Image::from_bytes(&data).is_err());
+  }
+
   /// The irreversible 9-7 transform: a lossy encode/decode round trip.
   #[test]
   fn irreversible_encode_round_trip() {
