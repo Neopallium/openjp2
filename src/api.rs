@@ -456,6 +456,8 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
   }
 
   if let Some(area) = params.decode_area {
+    #[cfg(feature = "rayon")]
+    let full_header = image.clone();
     let ret = codec.set_decode_area(
       &mut image,
       area.start_x as i32,
@@ -465,6 +467,13 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
     );
     if ret != 1 {
       return Err(Error::Decode("set_decode_area failed".into()));
+    }
+    /* Concurrent tile decode of the intersecting tiles (rayon). */
+    #[cfg(feature = "rayon")]
+    if params.reduce == 0 {
+      if let Some(core) = codec.decode_parallel_area(stream, &full_header, &image) {
+        return Ok(Image { core });
+      }
     }
   }
 
@@ -612,8 +621,29 @@ mod tests {
     }
   }
 
+  /// The concurrent-tile decode honours a decode-area request (only the
+  /// intersecting tiles are decoded).
+  #[cfg(feature = "rayon")]
+  #[test]
+  fn parallel_tile_decode_with_area() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    // The sample is single-tile; build a multi-tile codestream first.
+    let image = Image::from_bytes(&buf).expect("decode");
+    let codestream = image
+      .encode(EncodeParameters::new().num_resolutions(2).tile_size(512, 512))
+      .expect("encode");
+    let area = DecodeArea::new(64, 64, 900, 700);
+    let sub = Image::from_bytes_with(
+      &codestream,
+      DecodeParameters::new().decode_area(Some(area)),
+    )
+    .expect("decode area");
+    assert_eq!((sub.width(), sub.height()), (836, 636));
+    assert!(sub.components()[0].data.iter().any(|v| *v != 0));
+  }
+
   /// The concurrent-tile decode honours a quality-layer limit (the
-  /// reduce/decode-area cases stay on the serial path).
+  /// reduce cases stay on the serial path).
   #[cfg(feature = "rayon")]
   #[test]
   fn parallel_tile_decode_with_layers() {

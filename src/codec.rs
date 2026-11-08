@@ -181,6 +181,68 @@ impl Codec {
     Some(crate::j2k::j2k_encode_tiles_parallel(j2k, stream, &mut manager) != 0)
   }
 
+  /// Parallel decode of a decode-area request (feature `rayon`, safe-API
+  /// internal): only the tiles intersecting the area are decoded, with
+  /// the area image as the merge target.  `header` is the full-resolution
+  /// header image (the workers' geometry source); `area_image` is the
+  /// DA-dim image produced by `set_decode_area`.
+  #[cfg(feature = "rayon")]
+  pub(crate) fn decode_parallel_area(
+    &mut self,
+    stream: &mut Stream,
+    header: &CoreImage,
+    area_image: &CoreImage,
+  ) -> Option<CoreImage> {
+    let cp = match &self.m_codec {
+      CodecType::Decoder(CodecFormat::J2K(j2k)) => &j2k.m_cp,
+      CodecType::Decoder(CodecFormat::JP2(jp2)) => &jp2.j2k.m_cp,
+      _ => return None,
+    };
+    let info = self.get_cstr_info_v2()?;
+    let num_tiles = info.tw.wrapping_mul(info.th);
+    let dec = match &self.m_codec {
+      CodecType::Decoder(CodecFormat::J2K(j2k)) => &j2k.m_specific_param.m_decoder,
+      CodecType::Decoder(CodecFormat::JP2(jp2)) => &jp2.j2k.m_specific_param.m_decoder,
+      _ => return None,
+    };
+    let (start_x, start_y) = (dec.m_start_tile_x, dec.m_start_tile_y);
+    let (end_x, end_y) = (dec.m_end_tile_x, dec.m_end_tile_y);
+    if end_x <= start_x || end_y <= start_y {
+      return None;
+    }
+    let mut tiles = Vec::new();
+    for ty in start_y..end_y {
+      for tx in start_x..end_x {
+        tiles.push(ty.wrapping_mul(info.tw).wrapping_add(tx));
+      }
+    }
+    if tiles.len() <= 1 {
+      return None;
+    }
+    let cstr_index = self.get_cstr_index_owned()?;
+    let layer = cp.m_specific_param.m_dec.m_layer;
+    let mut core = crate::j2k::j2k_decode_tiles_parallel(
+      cp,
+      header,
+      num_tiles,
+      &tiles,
+      &cstr_index,
+      layer,
+      Some(area_image),
+      area_image,
+      stream,
+    )?;
+    /* JP2 palette/component-mapping post-processing (same as the serial
+    opj_jp2_decode). */
+    if let CodecType::Decoder(CodecFormat::JP2(jp2)) = &mut self.m_codec {
+      let mut manager = crate::event::EventMgr::default();
+      if crate::jp2::opj_jp2_apply_color_postprocessing(jp2, &mut core, &mut manager) == 0 {
+        return None;
+      }
+    }
+    Some(core)
+  }
+
   /// Parallel whole-image decode over the given stream (feature `rayon`,
   /// safe-API internal): decodes every tile with a fresh codec state and
   /// merges the results.  Returns None when the parallel path does not
@@ -203,8 +265,18 @@ impl Codec {
       return None;
     }
     let cstr_index = self.get_cstr_index_owned()?;
-    let mut core =
-      crate::j2k::j2k_decode_tiles_parallel(cp, header, num_tiles, &cstr_index, layer, stream)?;
+    let tiles: Vec<u32> = (0..num_tiles).collect();
+    let mut core = crate::j2k::j2k_decode_tiles_parallel(
+      cp,
+      header,
+      num_tiles,
+      &tiles,
+      &cstr_index,
+      layer,
+      None,
+      header,
+      stream,
+    )?;
     /* JP2 files with a palette/component mapping need the same colour
     post-processing the serial opj_jp2_decode applies after the codestream
     decode (the palette lookup turns indices into colour values). */

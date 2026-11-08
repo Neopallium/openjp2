@@ -9485,6 +9485,7 @@ pub(crate) fn j2k_decode_tile_worker(
   header: &CoreImage,
   tile_no: u32,
   layer: u32,
+  decode_bounds: Option<&CoreImage>,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
 ) -> Option<Tcd> {
@@ -9492,6 +9493,9 @@ pub(crate) fn j2k_decode_tile_worker(
   j2k.m_cp = cp.clone();
   j2k.m_cp.m_specific_param.m_dec.m_layer = layer;
   j2k.m_private_image = Some(Box::new(header.clone()));
+  /* The serial decode_tile takes the window bounds from m_output_image;
+  for a decode-area request it is the (small) area image. */
+  j2k.m_output_image = decode_bounds.map(|i| Box::new(i.clone()));
   {
     let dec = &mut j2k.m_specific_param.m_decoder;
     dec.m_tile_ind_to_dec = tile_no as i32;
@@ -9611,8 +9615,11 @@ pub(crate) fn j2k_decode_tiles_parallel(
   cp: &Cp,
   header: &CoreImage,
   num_tiles: u32,
+  tiles: &[u32],
   cstr_index: &CodestreamIndex,
   layer: u32,
+  decode_bounds: Option<&CoreImage>,
+  merge_image: &CoreImage,
   stream: &mut Stream,
 ) -> Option<CoreImage> {
   use rayon::prelude::*;
@@ -9640,11 +9647,12 @@ pub(crate) fn j2k_decode_tiles_parallel(
     && cstr_index.tiles[0].nb_tps > 0
     && !cstr_index.tiles[0].tp_index.is_empty();
   if tlm_ok {
-    for (i, tile) in cstr_index.tiles.iter().enumerate() {
-      if i >= first_sot.len() || tile.tp_index.is_empty() {
+    for &t in tiles {
+      let tile = &cstr_index.tiles[t as usize];
+      if tile.tp_index.is_empty() {
         return None;
       }
-      first_sot[i] = tile.tp_index[0].start_pos;
+      first_sot[t as usize] = tile.tp_index[0].start_pos;
     }
   } else {
     let start = cstr_index.main_head_end.max(0) as usize;
@@ -9670,47 +9678,48 @@ pub(crate) fn j2k_decode_tiles_parallel(
       }
     }
   }
-  if first_sot.iter().any(|p| *p < 0) {
+  if tiles.iter().any(|t| first_sot[*t as usize] < 0) {
     return None;
   }
 
-  /* Decode all tiles in parallel. */
-  let tiles: Vec<Option<Tcd>> = (0..num_tiles as usize)
+  /* Decode the requested tiles in parallel. */
+  let decoded: Vec<Option<Tcd>> = tiles
     .into_par_iter()
-    .map(|tile_no| {
+    .map(|&tile_no| {
       let mut worker_stream = Stream::new_input(
         OPJ_J2K_STREAM_CHUNK_SIZE as usize,
         std::io::Cursor::new(SharedBuf(bytes.clone())),
         len,
       );
-      if worker_stream.seek(first_sot[tile_no] + 2).is_err() {
+      if worker_stream.seek(first_sot[tile_no as usize] + 2).is_err() {
         return None;
       }
       let mut manager = EventMgr::default();
       j2k_decode_tile_worker(
         cp,
         header,
-        tile_no as u32,
+        tile_no,
         layer,
+        decode_bounds,
         &mut worker_stream,
         &mut manager,
       )
     })
     .collect();
-  if tiles.iter().any(Option::is_none) {
+  if decoded.iter().any(Option::is_none) {
     return None;
   }
-  let tiles: Vec<(u32, Tcd)> = tiles
-    .into_iter()
-    .enumerate()
-    .map(|(i, t)| (i as u32, t.expect("checked above")))
+  let decoded: Vec<(u32, Tcd)> = tiles
+    .iter()
+    .copied()
+    .zip(decoded.into_iter().map(|t| t.expect("checked above")))
     .collect();
 
   /* Merge in tile order (sequential; the per-tile update is already
   parallel across components). */
-  let mut output = header.clone();
+  let mut output = merge_image.clone();
   let mut manager = EventMgr::default();
-  if j2k_merge_tile_results(tiles, header, &mut output, &mut manager) == 0 {
+  if j2k_merge_tile_results(decoded, header, &mut output, &mut manager) == 0 {
     return None;
   }
   Some(output)
