@@ -132,6 +132,14 @@ opj_end_compress    j2k.rs: opj_j2k_end_compress -> EOC + TLM/PLT index markers
   `set_defaults`/`set_comment`/`set_MCT`; `capi/src/cstr_info.rs`: the
   codestream-info v1/v2 and index mirrors + builders/destroyers.
 
+The encoder mirrors this: `j2k_encode_tile_worker` +
+`j2k_encode_tiles_parallel` (in `src/j2k.rs`, wired through
+`Codec::encode_parallel` from `encode_image` in `src/api.rs`) encode
+each tile into a per-worker memory buffer via the existing
+pre_write_tile / tile-data extraction / post_write_tile sequence and
+write the tile-parts sequentially (TLM state updated in order), so
+the codestream is byte-identical to the serial encode.
+
 ## Parallelism (`src/par.rs` + the tile decode driver)
 
 Additionally, the safe one-shot API decodes multi-tile codestreams with
