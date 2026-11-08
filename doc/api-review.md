@@ -192,3 +192,26 @@ Migration path (non-breaking first, breaking second):
   keep the core dependency-free.
 - Naming parity: match `jpeg2k`'s exact fn names (`from_bytes`,
   `color_space`, `components`) so wrapper code is mechanical.
+
+---
+
+## Implementation status (2026-11-08 marathon)
+
+| Proposal | Status |
+|---|---|
+| `Error`/`Result` | ✅ `openjp2::{Error, Result}` (`src/api.rs`) |
+| `ColorSpace` | ✅ safe enum with `From` conversions |
+| `DecodeArea`/`DecodeParameters` builder | ✅ (reduce/layers/strict/decode_area/ignore_pclr_cmap_cdef) |
+| `Image` one-shot API | ✅ from_bytes/from_bytes_with/from_file/from_file_with + accessors + into_core_image |
+| `EncodeParameters` builder + `Image::encode`/`encode_jp2` | ✅ (num_resolutions/num_layers/irreversible/codeblock sizes/progression_order/tile_size/layer_rate/comment) |
+| `image`-crate interop | ✅ behind the `image` feature: `ImageData`/`ImagePixelData`, `get_pixels`, `TryFrom<&Image> for DynamicImage` |
+| Index/info accessors | ✅ `CodestreamIndex`/`CstrInfoV2` jpeg2k-style accessors |
+| `DumpImage` | ✅ (decode/index/info/dump text) |
+| `ffi` module for the C mirrors | ✅ `openjp2::ffi` (the old glob re-exports stay for compatibility) |
+| `threads` feature alias | ✅ (`threads = ["rayon"]`) |
+| jpeg2k thin-wrapper PoC | ✅ `/tmp/jpeg2k-openjp2` runs jpeg2k's README/convert/save/dump examples over openjp2 with no `openjpeg-sys` |
+| `Codec` Result-ification + deprecations | ⏳ not started (breaking-change prep, migration steps 1-2) |
+| Component `data_u8`/`data_u16` iterators on the openjp2 side | ⏳ present in the wrapper PoC, not yet in `openjp2::ImageComponent` (openjp2 exposes `CoreImageComp` directly) |
+
+The remaining open questions from §4 are unchanged; `openjp2::Image`
+keeps the `image`-crate name ambiguity accepted for now.
