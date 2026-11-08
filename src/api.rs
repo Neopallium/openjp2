@@ -754,6 +754,84 @@ mod tests {
     assert!(back.components()[0].data.iter().any(|v| *v != 0));
   }
 
+  /// Grey+alpha and RGB+alpha pixel extraction (image-crate interop).
+  #[cfg(feature = "image")]
+  #[test]
+  fn get_pixels_alpha() {
+    // 2 components, the second marked as alpha (cdef typ 1).
+    let (w, h) = (32u32, 32u32);
+    let mut core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 2,
+      color_space: crate::OPJ_CLRSPC_GRAY,
+      comps: Vec::new(),
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    for c in 0..2 {
+      core.comps.push(crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: if c == 1 { 1 } else { 0 },
+        data: vec![(c as i32) * 200; (w * h) as usize],
+      });
+    }
+    let image = Image { core };
+    let pixels = image.get_pixels(None).expect("get_pixels");
+    assert_eq!(pixels.format, ::image::ExtendedColorType::La8);
+    assert_eq!(pixels.width, w);
+    assert_eq!(pixels.height, h);
+    // A single component with a default alpha fill.
+    let gray = Image {
+      core: crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+        numcomps: 1,
+        color_space: crate::OPJ_CLRSPC_GRAY,
+        comps: vec![crate::CoreImageComp {
+          dx: 1,
+          dy: 1,
+          w,
+          h,
+          x0: 0,
+          y0: 0,
+          prec: 8,
+          bpp: 8,
+          sgnd: 0,
+          resno_decoded: 0,
+          factor: 0,
+          alpha: 0,
+          data: vec![7; (w * h) as usize],
+        }],
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      },
+    };
+    let filled = gray.get_pixels(Some(255)).expect("get_pixels with alpha");
+    assert_eq!(filled.format, ::image::ExtendedColorType::La8);
+    match filled.data {
+      super::image_conv::ImagePixelData::La8(v) => {
+        assert_eq!(v.len(), (w * h * 2) as usize);
+        assert_eq!(&v[0..2], &[7, 255]);
+      }
+      other => panic!("unexpected {other:?}"),
+    }
+  }
+
   /// Code-block sizes and comment markers through the builder.
   #[test]
   fn encode_with_codeblock_sizes_and_comment() {
