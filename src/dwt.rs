@@ -2,6 +2,14 @@ use core::cell::Cell;
 
 use super::math::*;
 use super::openjpeg::*;
+use super::par;
+
+thread_local! {
+  /// Per-worker scratch memory for the parallel 5-3 passes (one column/row
+  /// at a time; sized to the current resolution).
+  static DWT_SCRATCH: core::cell::RefCell<Vec<core::cell::Cell<i32>>> =
+    const { core::cell::RefCell::new(Vec::new()) };
+}
 use super::sparse_array::{sparse_array_read, sparse_array_write, SparseArray};
 
 /// Which wavelet a forward transform runs. This replaces the pair of
@@ -1417,21 +1425,51 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
     if numres == 0 {
       break;
     }
-    let mut j: u32 = 0;
     h.sn = rw as i32;
     v.sn = rh as i32;
     rw = (tilec.resolutions[res_idx].x1 - tilec.resolutions[res_idx].x0) as u32;
     rh = (tilec.resolutions[res_idx].y1 - tilec.resolutions[res_idx].y0) as u32;
     h.dn = rw.wrapping_sub(h.sn as u32) as i32;
     h.cas = tilec.resolutions[res_idx].x0 % 2i32;
-    j = 0_u32;
-    while j < rh {
-      opj_idwt53_h(&h, tile_data, (j as usize).wrapping_mul(w as usize));
-      j += 1;
+    let level_rows = rh as usize;
+    if level_rows * rw as usize >= 16384 {
+      /* Large levels: parallelise the in-place horizontal pass (the rows
+      are disjoint and independent); smaller levels and the vertical pass
+      stay sequential (the per-level parallel overhead dominates there). */
+      let h_sn = h.sn;
+      let h_dn = h.dn;
+      let h_cas = h.cas;
+      let h_len = 2 * (h_sn + h_dn) as usize;
+      let stride = w as usize;
+      par::for_each_chunks_mut(&mut tile_data[..level_rows * stride], stride, |_row_idx, row| {
+        DWT_SCRATCH.with(|scratch| {
+          let mut s = scratch.borrow_mut();
+          if s.len() < h_len {
+            s.resize(h_len, core::cell::Cell::new(0));
+          }
+          let d = Dwt {
+            mem: &s[..h_len],
+            dn: h_dn,
+            sn: h_sn,
+            cas: h_cas,
+          };
+          opj_dwt_interleave_h(&d, row);
+          d.decode_1();
+          for (cell, row_v) in d.mem[..(h_sn + h_dn) as usize].iter().zip(row.iter_mut()) {
+            *row_v = cell.get();
+          }
+        });
+      });
+    } else {
+      let mut j: u32 = 0;
+      while j < rh {
+        opj_idwt53_h(&h, tile_data, (j as usize).wrapping_mul(w as usize));
+        j += 1;
+      }
     }
     v.dn = rh.wrapping_sub(v.sn as u32) as i32;
     v.cas = tilec.resolutions[res_idx].y0 % 2i32;
-    j = 0_u32;
+    let mut j: u32 = 0;
     while j.wrapping_add((2i32 * 4i32) as core::ffi::c_uint) <= rw {
       opj_idwt53_v(&v, tile_data, j as usize, w as usize, 2i32 * 4i32);
       j = (j as core::ffi::c_uint).wrapping_add((2i32 * 4i32) as core::ffi::c_uint)

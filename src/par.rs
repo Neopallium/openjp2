@@ -81,3 +81,46 @@ where
     .map(|((i, x), y)| f(i, x, y))
     .collect()
 }
+
+/// Applies `f(index)` for `i` in `0..n`, in parallel under the `rayon`
+/// feature.
+#[cfg(feature = "rayon")]
+pub(crate) fn for_each_range<F>(n: usize, f: F)
+where
+  F: Fn(usize) + Sync + Send,
+{
+  use rayon::prelude::*;
+  (0..n).into_par_iter().for_each(f);
+}
+
+#[cfg(not(feature = "rayon"))]
+pub(crate) fn for_each_range<F>(n: usize, f: F)
+where
+  F: Fn(usize),
+{
+  for i in 0..n {
+    f(i);
+  }
+}
+
+/// Applies `f(chunk_index, chunk)` to each disjoint `chunk`-sized slice of
+/// `data`, in parallel under the `rayon` feature.
+#[cfg(feature = "rayon")]
+pub(crate) fn for_each_chunks_mut<T, F>(data: &mut [T], chunk: usize, f: F)
+where
+  T: Send,
+  F: Fn(usize, &mut [T]) + Sync,
+{
+  use rayon::prelude::*;
+  data.par_chunks_mut(chunk).enumerate().for_each(|(i, s)| f(i, s));
+}
+
+#[cfg(not(feature = "rayon"))]
+pub(crate) fn for_each_chunks_mut<T, F>(data: &mut [T], chunk: usize, f: F)
+where
+  F: Fn(usize, &mut [T]),
+{
+  for (i, s) in data.chunks_mut(chunk).enumerate() {
+    f(i, s);
+  }
+}
