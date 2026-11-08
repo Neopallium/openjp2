@@ -42,3 +42,7 @@ rayon = ["dep:rayon"]
 threads = ["rayon"]
 # `image`-crate interop (Image::get_pixels / DynamicImage conversion).
 image = ["dep:image"]
+
+[[example]]
+name = "bench_decode"
+path = "examples/bench_decode.rs"
