@@ -444,12 +444,13 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
     .read_header(stream)
     .ok_or_else(|| Error::Decode("failed to read header".into()))?;
 
-  /* Concurrent tile decode (rayon): only for whole-image, full-quality
-  decodes of multi-tile codestreams; any failure falls back to the
-  sequential path below, so the result is always identical. */
+  /* Concurrent tile decode (rayon): only for whole-image, full-resolution
+  decodes of multi-tile codestreams (a quality-layer limit is supported);
+  any failure falls back to the sequential path below, so the result is
+  always identical. */
   #[cfg(feature = "rayon")]
-  if params.reduce == 0 && params.layers == 0 && params.decode_area.is_none() {
-    if let Some(core) = codec.decode_parallel(stream, &image) {
+  if params.reduce == 0 && params.decode_area.is_none() {
+    if let Some(core) = codec.decode_parallel(stream, &image, params.layers) {
       return Ok(Image { core });
     }
   }
@@ -609,6 +610,20 @@ mod tests {
         assert_eq!(a.data, b.data, "lossless round trip failed for {w}x{h} prec {prec}");
       }
     }
+  }
+
+  /// The concurrent-tile decode honours a quality-layer limit (the
+  /// reduce/decode-area cases stay on the serial path).
+  #[cfg(feature = "rayon")]
+  #[test]
+  fn parallel_tile_decode_with_layers() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let full = Image::from_bytes(&buf).expect("decode");
+    let limited = Image::from_bytes_with(&buf, DecodeParameters::new().layers(1))
+      .expect("decode with layer limit");
+    assert_eq!((limited.width(), limited.height()), (full.width(), full.height()));
+    // The first layer alone must decode (a lossy rendition of the image).
+    assert!(limited.components()[0].data.iter().any(|v| *v != 0));
   }
 
   /// Parallel-vs-serial byte identity over the real test corpus (runs

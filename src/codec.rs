@@ -190,6 +190,7 @@ impl Codec {
     &mut self,
     stream: &mut Stream,
     header: &CoreImage,
+    layer: u32,
   ) -> Option<CoreImage> {
     let cp = match &self.m_codec {
       CodecType::Decoder(CodecFormat::J2K(j2k)) => &j2k.m_cp,
@@ -202,7 +203,8 @@ impl Codec {
       return None;
     }
     let cstr_index = self.get_cstr_index_owned()?;
-    let mut core = crate::j2k::j2k_decode_tiles_parallel(cp, header, num_tiles, &cstr_index, stream)?;
+    let mut core =
+      crate::j2k::j2k_decode_tiles_parallel(cp, header, num_tiles, &cstr_index, layer, stream)?;
     /* JP2 files with a palette/component mapping need the same colour
     post-processing the serial opj_jp2_decode applies after the codestream
     decode (the palette lookup turns indices into colour values). */

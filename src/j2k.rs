@@ -9484,11 +9484,13 @@ pub(crate) fn j2k_decode_tile_worker(
   cp: &Cp,
   header: &CoreImage,
   tile_no: u32,
+  layer: u32,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
 ) -> Option<Tcd> {
   let mut j2k = opj_j2k_create_decompress()?;
   j2k.m_cp = cp.clone();
+  j2k.m_cp.m_specific_param.m_dec.m_layer = layer;
   j2k.m_private_image = Some(Box::new(header.clone()));
   {
     let dec = &mut j2k.m_specific_param.m_decoder;
@@ -9610,6 +9612,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
   header: &CoreImage,
   num_tiles: u32,
   cstr_index: &CodestreamIndex,
+  layer: u32,
   stream: &mut Stream,
 ) -> Option<CoreImage> {
   use rayon::prelude::*;
@@ -9684,7 +9687,14 @@ pub(crate) fn j2k_decode_tiles_parallel(
         return None;
       }
       let mut manager = EventMgr::default();
-      j2k_decode_tile_worker(cp, header, tile_no as u32, &mut worker_stream, &mut manager)
+      j2k_decode_tile_worker(
+        cp,
+        header,
+        tile_no as u32,
+        layer,
+        &mut worker_stream,
+        &mut manager,
+      )
     })
     .collect();
   if tiles.iter().any(Option::is_none) {
