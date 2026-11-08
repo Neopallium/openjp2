@@ -5,6 +5,18 @@ use super::math::*;
 use super::mct::*;
 use super::openjpeg::*;
 use super::par;
+
+// TEMPORARY profiling (OPJ_PROFILE=1): stage timings for the rayon plan.
+macro_rules! tprof {
+  ($name:expr, $body:expr) => {{
+    let _t = std::time::Instant::now();
+    let r = $body;
+    if std::env::var_os("OPJ_PROFILE").is_some() {
+      eprintln!("PROF {} {:.2}ms", $name, _t.elapsed().as_secs_f64() * 1e3);
+    }
+    r
+  }};
+}
 use super::pi::*;
 use super::t1::*;
 use super::t2::*;
@@ -1187,16 +1199,16 @@ pub(crate) fn opj_tcd_encode_tile(
 ) -> OPJ_BOOL {
   if p_tcd.cur_tp_num == 0u32 {
     p_tcd.tcd_tileno = p_tile_no;
-    if opj_tcd_dc_level_shift_encode(p_tcd, cp) == 0 {
+    if tprof!("dc_shift_encode", opj_tcd_dc_level_shift_encode(p_tcd, cp)) == 0 {
       return 0i32;
     }
-    if opj_tcd_mct_encode(p_tcd, image, cp) == 0 {
+    if tprof!("mct_encode", opj_tcd_mct_encode(p_tcd, image, cp)) == 0 {
       return 0i32;
     }
-    if opj_tcd_dwt_encode(p_tcd, cp) == 0 {
+    if tprof!("dwt_encode", opj_tcd_dwt_encode(p_tcd, cp)) == 0 {
       return 0i32;
     }
-    if opj_tcd_t1_encode(p_tcd, image, cp) == 0 {
+    if tprof!("t1_encode", opj_tcd_t1_encode(p_tcd, image, cp)) == 0 {
       return 0i32;
     }
     if opj_tcd_rate_allocate_encode(
@@ -1388,11 +1400,11 @@ pub(crate) fn opj_tcd_decode_tile(
   }
   /*--------------TIER2------------------*/
   l_data_read = 0_u32;
-  if opj_tcd_t2_decode(p_tcd, p_src, &mut l_data_read, p_manager, image, cp) == 0 {
+  if tprof!("t2_decode", opj_tcd_t2_decode(p_tcd, p_src, &mut l_data_read, p_manager, image, cp)) == 0 {
     return 0i32;
   }
   /*------------------TIER1-----------------*/
-  if opj_tcd_t1_decode(p_tcd, p_manager, image, cp, p_src) == 0 {
+  if tprof!("t1_decode", opj_tcd_t1_decode(p_tcd, p_manager, image, cp, p_src)) == 0 {
     return 0i32;
   }
   /* For subtile decoding, now we know the resno_decoded, we can allocate */
@@ -1441,14 +1453,14 @@ pub(crate) fn opj_tcd_decode_tile(
     }
   }
   /*----------------DWT---------------------*/
-  if opj_tcd_dwt_decode(p_tcd, image, cp) == 0 {
+  if tprof!("dwt_decode", opj_tcd_dwt_decode(p_tcd, image, cp)) == 0 {
     return 0i32;
   }
   /*----------------MCT-------------------*/
-  if opj_tcd_mct_decode(p_tcd, p_manager, image, cp) == 0 {
+  if tprof!("mct_decode", opj_tcd_mct_decode(p_tcd, p_manager, image, cp)) == 0 {
     return 0i32;
   }
-  if opj_tcd_dc_level_shift_decode(p_tcd, image, cp) == 0 {
+  if tprof!("dc_shift_decode", opj_tcd_dc_level_shift_decode(p_tcd, image, cp)) == 0 {
     return 0i32;
   }
   /*---------------TILE-------------------*/
