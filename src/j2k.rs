@@ -8019,7 +8019,7 @@ fn update_image_data_comp(
   1i32
 }
 
-fn opj_j2k_update_image_dimensions(p_image: &mut CoreImage, p_manager: &mut EventMgr) -> OPJ_BOOL {
+pub(crate) fn opj_j2k_update_image_dimensions(p_image: &mut CoreImage, p_manager: &mut EventMgr) -> OPJ_BOOL {
   let mut it_comp: u32 = 0;
   let mut l_comp_x1: i32 = 0;
   let mut l_comp_y1: i32 = 0;
@@ -9485,6 +9485,7 @@ pub(crate) fn j2k_decode_tile_worker(
   header: &CoreImage,
   tile_no: u32,
   layer: u32,
+  reduce: u32,
   decode_bounds: Option<&CoreImage>,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
@@ -9492,6 +9493,7 @@ pub(crate) fn j2k_decode_tile_worker(
   let mut j2k = opj_j2k_create_decompress()?;
   j2k.m_cp = cp.clone();
   j2k.m_cp.m_specific_param.m_dec.m_layer = layer;
+  j2k.m_cp.m_specific_param.m_dec.m_reduce = reduce;
   j2k.m_private_image = Some(Box::new(header.clone()));
   /* The serial decode_tile takes the window bounds from m_output_image;
   for a decode-area request it is the (small) area image. */
@@ -9618,6 +9620,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
   tiles: &[u32],
   cstr_index: &CodestreamIndex,
   layer: u32,
+  reduce: u32,
   decode_bounds: Option<&CoreImage>,
   merge_image: &CoreImage,
   stream: &mut Stream,
@@ -9700,6 +9703,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
         header,
         tile_no,
         layer,
+        reduce,
         decode_bounds,
         &mut worker_stream,
         &mut manager,

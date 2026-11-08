@@ -444,13 +444,13 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
     .read_header(stream)
     .ok_or_else(|| Error::Decode("failed to read header".into()))?;
 
-  /* Concurrent tile decode (rayon): only for whole-image, full-resolution
-  decodes of multi-tile codestreams (a quality-layer limit is supported);
-  any failure falls back to the sequential path below, so the result is
-  always identical. */
+  /* Concurrent tile decode (rayon): whole-image decodes of multi-tile
+  codestreams, with quality-layer limits and resolution reduction
+  supported; any failure falls back to the sequential path below, so the
+  result is always identical. */
   #[cfg(feature = "rayon")]
-  if params.reduce == 0 && params.decode_area.is_none() {
-    if let Some(core) = codec.decode_parallel(stream, &image, params.layers) {
+  if params.decode_area.is_none() {
+    if let Some(core) = codec.decode_parallel(stream, &image, params.layers, params.reduce) {
       return Ok(Image { core });
     }
   }
@@ -619,6 +619,26 @@ mod tests {
         assert_eq!(a.data, b.data, "lossless round trip failed for {w}x{h} prec {prec}");
       }
     }
+  }
+
+  /// The concurrent-tile decode honours a resolution reduction.
+  #[cfg(feature = "rayon")]
+  #[test]
+  fn parallel_tile_decode_with_reduce() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let image = Image::from_bytes(&buf).expect("decode");
+    let codestream = image
+      .encode(EncodeParameters::new().num_resolutions(4).tile_size(512, 512))
+      .expect("encode");
+    let reduced = Image::from_bytes_with(&codestream, DecodeParameters::new().reduce(2))
+      .expect("decode reduced");
+    /* The image bounds stay full-dim; the component planes are reduced. */
+    let c = &reduced.components()[0];
+    assert_eq!(
+      (c.w, c.h),
+      (image.width().div_ceil(4), image.height().div_ceil(4))
+    );
+    assert!(reduced.components()[0].data.iter().any(|v| *v != 0));
   }
 
   /// The concurrent-tile decode honours a decode-area request (only the

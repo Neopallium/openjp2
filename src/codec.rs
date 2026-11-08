@@ -228,6 +228,7 @@ impl Codec {
       &tiles,
       &cstr_index,
       layer,
+      0,
       Some(area_image),
       area_image,
       stream,
@@ -253,6 +254,7 @@ impl Codec {
     stream: &mut Stream,
     header: &CoreImage,
     layer: u32,
+    reduce: u32,
   ) -> Option<CoreImage> {
     let cp = match &self.m_codec {
       CodecType::Decoder(CodecFormat::J2K(j2k)) => &j2k.m_cp,
@@ -266,6 +268,18 @@ impl Codec {
     }
     let cstr_index = self.get_cstr_index_owned()?;
     let tiles: Vec<u32> = (0..num_tiles).collect();
+    /* The merge target mirrors the serial output image: for a reduced
+    decode it carries the factor and the reduced component dimensions. */
+    let mut merge = header.clone();
+    if reduce > 0 {
+      for comp in &mut merge.comps {
+        comp.factor = reduce;
+      }
+      let mut manager = crate::event::EventMgr::default();
+      if crate::j2k::opj_j2k_update_image_dimensions(&mut merge, &mut manager) == 0 {
+        return None;
+      }
+    }
     let mut core = crate::j2k::j2k_decode_tiles_parallel(
       cp,
       header,
@@ -273,8 +287,9 @@ impl Codec {
       &tiles,
       &cstr_index,
       layer,
+      reduce,
       None,
-      header,
+      &merge,
       stream,
     )?;
     /* JP2 files with a palette/component mapping need the same colour
