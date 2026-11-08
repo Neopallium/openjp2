@@ -71,7 +71,8 @@ impl Jp2BoxHeader {
       }
       /* last box */
       if max_size > u32::MAX as usize {
-        // TODO: Handle large boxes?
+        // Note (upstream parity): the C reference rejects boxes larger than
+        // 2^32 here too ("Cannot handle box sizes higher than 2^32").
         return Err("Cannot handle box sizes higher than 2^32".to_string());
       }
       self.length = max_size as u32;
@@ -89,7 +90,8 @@ impl Jp2BoxHeader {
         .map_err(|e| format!("Truncated JP2 XLBox header: {e:?}"))?;
       self.header_length += 8;
       if xl_part_size != 0 {
-        // TODO: Handle large boxes?
+        // Note (upstream parity): the C reference rejects XL boxes larger
+        // than 2^32 here too.
         return Err("Cannot handle box sizes higher than 2^32".to_string());
       }
       self.length = length;
@@ -369,7 +371,8 @@ fn opj_jp2_write_colr(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
     1 => {
       /* EnumCS */
       buf.write_u32::<BigEndian>(jp2.enumcs).unwrap();
-      // TODO: Support CIELab? (enumcs == 14).
+      // Note (upstream parity): writing a CIELab colr box (enumcs == 14) is
+      // not supported by the C reference either; decoding it is.
     }
     2 => {
       /* ICC profile */
