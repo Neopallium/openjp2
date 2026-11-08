@@ -1072,14 +1072,16 @@ pub unsafe fn opj_image_data_free(ptr: *mut core::ffi::c_void) {
   crate::image::opj_image_data_free(ptr);
 }
 
-/* Stub implementation */
 #[no_mangle]
 pub fn opj_has_thread_support() -> OPJ_BOOL {
-  0i32
+  openjp2_core::has_thread_support()
 }
+
 #[no_mangle]
 pub fn opj_get_num_cpus() -> core::ffi::c_int {
-  1i32
+  std::thread::available_parallelism()
+    .map(|n| n.get() as core::ffi::c_int)
+    .unwrap_or(1i32)
 }
 
 /* ----------------------------------------------------------------------- */

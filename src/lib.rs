@@ -48,6 +48,13 @@ pub mod stream;
 
 // High-level safe API (doc/api-review.md).
 mod api;
+
+/// Whether the build includes the `rayon` feature (the C-ABI
+/// `opj_has_thread_support` reports this).
+pub fn has_thread_support() -> OPJ_BOOL {
+  cfg!(feature = "rayon") as OPJ_BOOL
+}
+
 pub use api::{ColorSpace, DecodeArea, DecodeParameters, DumpImage, EncodeParameters, Error, Image, ProgressionOrder, Result};
 #[cfg(feature = "image")]
 pub use api::image_conv::{ImageData, ImagePixelData};
