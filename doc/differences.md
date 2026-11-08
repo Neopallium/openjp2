@@ -84,3 +84,9 @@ a literal transcription.  This page lists the intentional divergences.
 - `opj_get_num_cpus()` reports `std::thread::available_parallelism()`;
   `opj_has_thread_support()` reports the `rayon` feature.
 - Error messages are best-effort translations of the C diagnostics.
+- The ~200 `assert!` sites in the core are ports of the C's `assert()`
+  (stripped by NDEBUG in release C builds).  They encode invariants the
+  C relies on too; the mutation/truncation fuzz campaigns (tens of
+  thousands of decodes, zero panics) show they do not fire on corrupt
+  input, and the bounds-checked Rust code fails loudly instead of
+  running past them, so they are kept.
