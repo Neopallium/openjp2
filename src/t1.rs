@@ -1786,8 +1786,13 @@ fn opj_t1_clbl_decode_processor(
   cblk_h = (cblk.y1 - cblk.y0) as u32;
   /* Always decode into the per-codeblock buffer: the parallel decode pass
   writes here, and the sequential write-back (whole-tile) or the window
-  path (partial) consumes it afterwards. */
-  cblk.decoded_data = vec![Cell::new(0); cblk_w as usize * cblk_h as usize];
+  path (partial) consumes it afterwards.  Reuse the buffer across
+  re-decodes of the same code-block (heaptrack: this was the top
+  allocation site). */
+  cblk.decoded_data.clear();
+  cblk
+    .decoded_data
+    .resize(cblk_w as usize * cblk_h as usize, Cell::new(0));
 
   // Use thread local t1 instance.
   let ret = T1.with(|l_t1| {
