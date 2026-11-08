@@ -28,7 +28,7 @@ pub mod stream;
 
 // High-level safe API (doc/api-review.md).
 mod api;
-pub use api::{ColorSpace, DecodeArea, DecodeParameters, EncodeParameters, Error, Image, Result};
+pub use api::{ColorSpace, DecodeArea, DecodeParameters, DumpImage, EncodeParameters, Error, Image, Result};
 #[cfg(feature = "image")]
 pub use api::image_conv::{ImageData, ImagePixelData};
 

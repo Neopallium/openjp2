@@ -150,6 +150,99 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> Option<CstrInfoV2> {
   }
   Some(cstr_info)
 }
+
+/// jpeg2k-parity accessors (the C mirror exposes the same fields).
+impl CstrInfoV2 {
+  pub fn tile_info(&self) -> &CstrTccpInfoV2 {
+    &self.default_tile
+  }
+
+  pub fn default_tile_info(&self) -> &CstrTccpInfoV2 {
+    &self.default_tile
+  }
+
+  pub fn tx0(&self) -> u32 {
+    self.tx0
+  }
+
+  pub fn ty0(&self) -> u32 {
+    self.ty0
+  }
+
+  pub fn tdx(&self) -> u32 {
+    self.tdx
+  }
+
+  pub fn tdy(&self) -> u32 {
+    self.tdy
+  }
+
+  pub fn tw(&self) -> u32 {
+    self.tw
+  }
+
+  pub fn th(&self) -> u32 {
+    self.th
+  }
+
+  pub fn nbcomps(&self) -> u32 {
+    self.nbcomps
+  }
+}
+
+impl CstrTccpInfoV2 {
+  pub fn csty(&self) -> u32 {
+    self.csty
+  }
+
+  pub fn prg(&self) -> OPJ_PROG_ORDER {
+    self.prg
+  }
+
+  pub fn numlayers(&self) -> u32 {
+    self.numlayers
+  }
+
+  pub fn mct(&self) -> u32 {
+    self.mct
+  }
+
+  pub fn tccp_infos(&self) -> &[CstrCompInfoV2] {
+    &self.tccps
+  }
+}
+
+impl CodestreamIndex {
+  pub fn markers(&self) -> &[opj_marker_info] {
+    &self.markers
+  }
+
+  pub fn tile_indices(&self) -> &[CodestreamTileIndex] {
+    &self.tiles
+  }
+}
+
+impl CodestreamTileIndex {
+  pub fn tileno(&self) -> u32 {
+    self.tileno
+  }
+
+  pub fn nb_tile_parts(&self) -> u32 {
+    self.nb_tps
+  }
+
+  pub fn tile_part_indexes(&self) -> &[opj_tp_index] {
+    &self.tp_index
+  }
+
+  pub fn markers(&self) -> &[opj_marker_info] {
+    &self.markers
+  }
+
+  pub fn packet_infos(&self) -> &[opj_packet_info] {
+    &self.packet_index
+  }
+}
 use super::openjpeg::*;
 use super::pi::*;
 use super::stream::*;

@@ -17,6 +17,13 @@ impl StringWriter for std::io::Stdout {
   }
 }
 
+impl StringWriter for String {
+  fn write_string(&mut self, s: &str) -> usize {
+    self.push_str(s);
+    s.len()
+  }
+}
+
 impl StringWriter for std::io::Stderr {
   fn write_string(&mut self, s: &str) -> usize {
     use std::io::Write;

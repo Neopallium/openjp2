@@ -38,6 +38,8 @@ smallvec = "1.13"
 # rayon.  The code falls back to sequential iterators without it.
 default = ["rayon", "image"]
 rayon = ["dep:rayon"]
+# jpeg2k-compatible alias for the rayon feature.
+threads = ["rayon"]
 # `image`-crate interop (Image::get_pixels / DynamicImage conversion).
 image = ["dep:image"]
 jpwl = []

@@ -201,7 +201,7 @@ impl EncodeParameters {
   }
 
   /// Access the underlying low-level parameters.
-  pub fn as_mut(&mut self) -> &mut crate::EncoderParameters {
+  pub fn low_level(&mut self) -> &mut crate::EncoderParameters {
     &mut self.inner
   }
 
@@ -746,5 +746,100 @@ pub mod image_conv {
         ),
       })
     }
+  }
+}
+
+/// Header/decode driver for the codestream index/info and the dump text
+/// (the jpeg2k `DumpImage` equivalent).
+pub struct DumpImage {
+  codec: Codec,
+  stream: Stream,
+  image: Option<CoreImage>,
+}
+
+impl DumpImage {
+  pub fn from_bytes(buf: &[u8]) -> Result<Self> {
+    Self::from_bytes_with(buf, DecodeParameters::default())
+  }
+
+  pub fn from_bytes_with(buf: &[u8], params: DecodeParameters) -> Result<Self> {
+    let format = detect_format(buf)
+      .ok_or_else(|| Error::Unsupported("unknown JPEG 2000 format".into()))?;
+    let buf = buf.to_vec();
+    let len = buf.len() as u64;
+    let mut stream = Stream::new_input(
+      crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+      std::io::Cursor::new(buf),
+      len,
+    );
+    let codec_format = match format {
+      J2KFormat::J2K => OPJ_CODEC_J2K,
+      J2KFormat::JP2 => OPJ_CODEC_JP2,
+      other => {
+        return Err(Error::Unsupported(format!(
+          "codec format {:?} is not supported",
+          other
+        )))
+      }
+    };
+    let mut codec = Codec::new_decoder(codec_format)
+      .ok_or_else(|| Error::Decode("failed to create decoder".into()))?;
+    let mut dparams = opj_dparameters {
+      cp_reduce: params.reduce,
+      cp_layer: params.layers,
+      ..Default::default()
+    };
+    if params.ignore_pclr_cmap_cdef {
+      dparams.flags |= OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG;
+    }
+    if codec.setup_decoder(&mut dparams) != 1 {
+      return Err(Error::Decode("setup_decoder failed".into()));
+    }
+    let image = codec
+      .read_header(&mut stream)
+      .ok_or_else(|| Error::Decode("failed to read header".into()))?;
+    Ok(Self {
+      codec,
+      stream,
+      image: Some(image),
+    })
+  }
+
+  pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
+    let buf = std::fs::read(path)?;
+    Self::from_bytes(&buf)
+  }
+
+  pub fn from_file_with<P: AsRef<std::path::Path>>(path: P, params: DecodeParameters) -> Result<Self> {
+    let buf = std::fs::read(path)?;
+    Self::from_bytes_with(&buf, params)
+  }
+
+  /// Decode the tile data (needed to populate the codestream index with
+  /// the tile markers).
+  pub fn decode(&mut self) -> Result<()> {
+    let mut image = self.image.take().expect("image is Some");
+    if self.codec.decode(&mut self.stream, &mut image) != 1 {
+      return Err(Error::Decode("decode failed".into()));
+    }
+    self.image = Some(image);
+    Ok(())
+  }
+
+  /// The codestream index (tile-parts, markers, packets).
+  pub fn get_codestream_index(&self) -> Option<crate::CodestreamIndex> {
+    self.codec.get_cstr_index_owned()
+  }
+
+  /// The codestream header info (v2).
+  pub fn get_codestream_info(&self) -> Option<crate::CstrInfoV2> {
+    self.codec.get_cstr_info_v2()
+  }
+
+  /// The dump text for the given info flag.
+  pub fn dump(&self, info_flag: i32) -> String {
+    let mut out = String::new();
+    self.codec.dump_codec(info_flag, &mut out);
+    out
   }
 }
