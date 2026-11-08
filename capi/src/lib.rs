@@ -1,3 +1,4 @@
+#![allow(deprecated)] // the C ABI shim legitimately drives the low-level Codec API
 //! C ABI for the Rust OpenJPEG port.
 //!
 //! This crate holds the `#[no_mangle]`/`#[repr(C)]` surface that produces the

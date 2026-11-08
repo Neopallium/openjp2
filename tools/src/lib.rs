@@ -1,3 +1,4 @@
+#![allow(deprecated)] // the CLI tools drive the low-level Codec API (tile decode etc.)
 pub mod cli;
 
 /// Installs the global rayon pool sized from `OPJ_NUM_THREADS` (the C tools'

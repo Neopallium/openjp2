@@ -210,6 +210,7 @@ impl Codec {
     }
   }
 
+  #[deprecated(note = "use `Image::from_bytes`/`from_file` (src/api.rs) for one-shot decoding")]
   pub fn read_header(&mut self, p_stream: &mut Stream) -> Option<CoreImage> {
     match &mut self.m_codec {
       CodecType::Encoder(_) => {
@@ -261,6 +262,7 @@ impl Codec {
     }
   }
 
+  #[deprecated(note = "use `Image::from_bytes`/`from_file` (src/api.rs) for one-shot decoding")]
   pub fn decode(&mut self, p_stream: &mut Stream, p_image: &mut CoreImage) -> OPJ_BOOL {
     match &mut self.m_codec {
       CodecType::Encoder(_) => (),
@@ -274,6 +276,7 @@ impl Codec {
     0i32
   }
 
+  #[deprecated(note = "use `Image::from_bytes`/`from_file` (src/api.rs) for one-shot decoding")]
   pub fn end_decompress(&mut self, mut p_stream: &mut Stream) -> OPJ_BOOL {
     match &mut self.m_codec {
       CodecType::Encoder(_) => (),

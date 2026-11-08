@@ -387,6 +387,8 @@ impl std::io::Seek for SharedVecWriter {
   }
 }
 
+/// Internal driver over the (deprecated-for-users) low-level Codec methods.
+#[allow(deprecated)]
 fn encode_image(
   image: &CoreImage,
   params: crate::EncoderParameters,
@@ -430,6 +432,8 @@ fn encode_image(
   Ok(out)
 }
 
+/// Internal driver over the (deprecated-for-users) low-level Codec methods.
+#[allow(deprecated)]
 fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParameters) -> Result<Image> {
   let codec_format = match format {
     J2KFormat::J2K => OPJ_CODEC_J2K,
@@ -935,6 +939,7 @@ pub struct DumpImage {
 }
 
 impl DumpImage {
+  #[allow(deprecated)]
   pub fn from_bytes(buf: &[u8]) -> Result<Self> {
     Self::from_bytes_with(buf, DecodeParameters::default())
   }
@@ -972,6 +977,7 @@ impl DumpImage {
     if codec.setup_decoder(&mut dparams) != 1 {
       return Err(Error::Decode("setup_decoder failed".into()));
     }
+    #[allow(deprecated)]
     let image = codec
       .read_header(&mut stream)
       .ok_or_else(|| Error::Decode("failed to read header".into()))?;
@@ -994,6 +1000,7 @@ impl DumpImage {
 
   /// Decode the tile data (needed to populate the codestream index with
   /// the tile markers).
+  #[allow(deprecated)]
   pub fn decode(&mut self) -> Result<()> {
     let mut image = self.image.take().expect("image is Some");
     if self.codec.decode(&mut self.stream, &mut image) != 1 {
