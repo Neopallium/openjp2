@@ -621,6 +621,44 @@ mod tests {
     }
   }
 
+  /// The concurrent-tile encode must produce byte-identical codestreams
+  /// to the sequential low-level encode.
+  #[cfg(feature = "rayon")]
+  #[test]
+  fn parallel_tile_encode_byte_identical() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let image = Image::from_bytes(&buf).expect("decode");
+    let params = EncodeParameters::new()
+      .num_resolutions(3)
+      .num_layers(2)
+      .tile_size(512, 512)
+      .progression_order(ProgressionOrder::Lrcp);
+    let par = image.encode(params.clone()).expect("parallel encode");
+    #[allow(deprecated)]
+    let serial = {
+      let mut codec = Codec::new_encoder(OPJ_CODEC_J2K).unwrap();
+      let mut low = params.into_inner();
+      let mut img = image.into_core_image();
+      assert_eq!(codec.setup_encoder(&mut low, &mut img), 1);
+      let buf2 = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+      {
+        let writer = crate::stream::SharedVecWriter {
+          buf: buf2.clone(),
+          pos: 0,
+        };
+        let mut stream = Stream::new_output(
+          crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+          writer,
+        );
+        assert_eq!(codec.start_compress(&mut img, &mut stream), 1);
+        assert_eq!(codec.encode(&mut stream), 1);
+        assert_eq!(codec.end_compress(&mut stream), 1);
+      }
+      buf2.borrow().clone()
+    };
+    assert_eq!(par, serial, "parallel/serial encode mismatch");
+  }
+
   /// The concurrent-tile decode honours a resolution reduction.
   #[cfg(feature = "rayon")]
   #[test]
