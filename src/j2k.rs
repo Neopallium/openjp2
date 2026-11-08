@@ -9427,7 +9427,7 @@ pub(crate) fn j2k_decode_tile_worker(
   decode_bounds: Option<&CoreImage>,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> Option<Tcd> {
+) -> Option<(Tcd, Vec<u32>)> {
   let mut j2k = opj_j2k_create_decompress()?;
   j2k.m_cp = cp.clone();
   j2k.m_cp.m_specific_param.m_dec.m_layer = layer;
@@ -9508,27 +9508,35 @@ pub(crate) fn j2k_decode_tile_worker(
   if !decoded_any {
     return None;
   }
-  Some(core::mem::take(&mut j2k.m_tcd))
+  /* The t2 decode updates the private image's resno_decoded to the
+  highest resolution actually decoded (a quality-layer limit can
+  truncate it below minimum_num_resolutions - 1). */
+  let resno = j2k
+    .m_private_image
+    .as_deref()
+    .expect("m_private_image")
+    .comps
+    .iter()
+    .map(|c| c.resno_decoded)
+    .collect();
+  Some((core::mem::take(&mut j2k.m_tcd), resno))
 }
 
 /// Merges per-tile decode results into the output image (the existing
 /// sequential update path, run once per tile in order).
 pub(crate) fn j2k_merge_tile_results(
-  tiles: Vec<(u32, Tcd)>,
+  tiles: Vec<(u32, Tcd, Vec<u32>)>,
   header: &CoreImage,
   p_output_image: &mut CoreImage,
   p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  for (_tile_no, mut tcd) in tiles {
+  for (_tile_no, mut tcd, resno) in tiles {
     let mut private = header.clone();
     /* The header image carries resno_decoded == 0; the update path indexes
-    the tile-comp resolutions with it.  In the serial flow the t2 decode
-    updates the codec's private image in place (max decoded resolution);
-    here the decoded count is read back from the tile caches instead. */
+    the tile-comp resolutions with it.  The serial flow learns the decoded
+    resolution count from the t2 decode; the workers carry it out. */
     for (i, comp) in private.comps.iter_mut().enumerate() {
-      comp.resno_decoded = tcd.tcd_image.tiles.comps[i]
-        .minimum_num_resolutions
-        .saturating_sub(1);
+      comp.resno_decoded = *resno.get(i).unwrap_or(&0);
     }
     if opj_j2k_update_image_data(&mut tcd, p_output_image, &mut private) == 0 {
       event_msg!(p_manager, EVT_ERROR, "Failed to update image with tile data\n",);
@@ -9635,7 +9643,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
   }
 
   /* Decode the requested tiles in parallel. */
-  let decoded: Vec<Option<Tcd>> = tiles
+  let decoded: Vec<Option<(Tcd, Vec<u32>)>> = tiles
     .into_par_iter()
     .map(|&tile_no| {
       let mut worker_stream = Stream::new_input(
@@ -9647,7 +9655,22 @@ pub(crate) fn j2k_decode_tiles_parallel(
         return None;
       }
       let mut manager = EventMgr::default();
-      j2k_decode_tile_worker(
+      /* The sequential decode (and the C reference) reuses code-block
+      state ACROSS tiles: for "tolerant" codestreams whose packet
+      segments overrun their packets (g1_colr.j2c), the serial walk
+      only works because the previous tile's segment state is still
+      there, and the t2 lenient recovery ("segment too long") would
+      silently produce DIFFERENT data in a fresh per-tile decode.
+      Treat that recovery as a worker failure so the caller falls
+      back to the (correct) sequential decode. */
+      let recovered = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+      let recovered2 = recovered.clone();
+      manager.set_warning_handler(move |msg: &str| {
+        if msg.contains("segment too long") {
+          recovered2.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+      });
+      let result = j2k_decode_tile_worker(
         cp,
         header,
         tile_no,
@@ -9657,16 +9680,28 @@ pub(crate) fn j2k_decode_tiles_parallel(
         decode_bounds,
         &mut worker_stream,
         &mut manager,
-      )
+      );
+      if recovered.load(std::sync::atomic::Ordering::Relaxed) {
+        return None;
+      }
+      result
     })
     .collect();
   if decoded.iter().any(Option::is_none) {
     return None;
   }
-  let decoded: Vec<(u32, Tcd)> = tiles
+  let decoded: Vec<(u32, Tcd, Vec<u32>)> = tiles
     .iter()
     .copied()
-    .zip(decoded.into_iter().map(|t| t.expect("checked above")))
+    .zip(
+      decoded
+        .into_iter()
+        .map(|t| {
+          let (tcd, resno) = t.expect("checked above");
+          (tcd, resno)
+        }),
+    )
+    .map(|(tile, (tcd, resno))| (tile, tcd, resno))
     .collect();
 
   /* Merge in tile order (sequential; the per-tile update is already

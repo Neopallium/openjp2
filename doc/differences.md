@@ -31,6 +31,17 @@ a literal transcription.  This page lists the intentional divergences.
   back to the sequential path).
 - At 24 threads the port decodes ~26% faster than the C reference on the
   standard benchmark file; single-threaded it is within ~13%.
+- The tile-level concurrent decode only runs where it is byte-identical
+  to the sequential decode by construction, and falls back to it
+  otherwise: (1) decode areas that do not cover every intersecting tile
+  completely (the out-of-window DWT taps of a partial window read the
+  previous tile's leftover buffer in the sequential path), (2) quality
+  layer limits and resolution reductions (unwritten coefficient regions
+  also read cross-tile leftovers), and (3) "tolerant" codestreams whose
+  packet segments overrun their packets (g1_colr.j2c): the sequential
+  walk only works through the code-block state left by the previous
+  tile, and a fresh per-tile decode would silently differ (detected via
+  the t2 "segment too long" recovery and treated as a worker failure).
 
 ## Features
 
@@ -55,6 +66,16 @@ a literal transcription.  This page lists the intentional divergences.
   C custom streams round-trip through callback shims in the capi crate.
 - The `opj_codec_private_t` layout is internal; only the opaque C handle
   is stable.
+
+## Decode strictness
+
+- The C library defaults to strict mode; the C tools decode with strict
+  ON unless `-allow-partial` is given.  The port keeps that for the C
+  ABI and the CLI tools, but the safe API (`Image::from_bytes` and
+  friends) defaults to LENIENT decoding (`DecodeParameters::strict()`
+  opts in) - a forgiving default for partial/truncated codestreams.
+  Verified byte-identical to the C reference's `-allow-partial` output
+  on the partial-codestream test files (e.g. v4dwt_interleave_h).
 
 ## Behavioural edge cases
 

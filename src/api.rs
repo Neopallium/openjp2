@@ -613,7 +613,9 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
   if codec.setup_decoder(&mut dparams) != 1 {
     return Err(Error::Decode("setup_decoder failed".into()));
   }
-  if params.strict && codec.decoder_set_strict_mode(1) != 1 {
+  /* The C library default is strict; the builder flag must control the
+  mode explicitly so strict(false) actually relaxes it. */
+  if codec.decoder_set_strict_mode(params.strict as crate::OPJ_BOOL) != 1 {
     return Err(Error::Decode("failed to set strict mode".into()));
   }
 
@@ -621,15 +623,16 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
     .read_header(stream)
     .ok_or_else(|| Error::Decode("failed to read header".into()))?;
 
-  /* Concurrent tile decode (rayon): whole-image decodes of multi-tile
-  codestreams, with quality-layer limits and resolution reduction
-  supported; any failure falls back to the sequential path below, so the
-  result is always identical. */
+  /* Concurrent tile decode (rayon): whole-image, full-quality,
+  full-resolution decodes of multi-tile codestreams.  A layer limit or a
+  resolution reduction leaves coefficient regions unwritten, which the
+  sequential path (like the C reference) reads as the PREVIOUS tile's
+  leftovers - a fresh per-tile worker cannot reproduce that, so those
+  cases stay on the sequential path.  Any failure also falls back to the
+  sequential path below, so the result is always identical. */
   #[cfg(feature = "rayon")]
-  if params.decode_area.is_none() {
-    if let Some(core) =
-      codec.decode_parallel(stream, &image, params.layers, params.reduce, params.strict)
-    {
+  if params.decode_area.is_none() && params.layers == 0 && params.reduce == 0 {
+    if let Some(core) = codec.decode_parallel(stream, &image, 0, 0, params.strict) {
       return Ok(Image { core });
     }
   }
@@ -647,9 +650,11 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
     if ret != 1 {
       return Err(Error::Decode("set_decode_area failed".into()));
     }
-    /* Concurrent tile decode of the intersecting tiles (rayon). */
+    /* Concurrent tile decode of the intersecting tiles (rayon); the same
+    unwritten-coefficient caveat as above limits it to full-quality
+    full-resolution decodes. */
     #[cfg(feature = "rayon")]
-    if params.reduce == 0 {
+    if params.reduce == 0 && params.layers == 0 {
       if let Some(core) = codec.decode_parallel_area(stream, &full_header, &image) {
         return Ok(Image { core });
       }
@@ -1307,6 +1312,11 @@ mod tests {
         if codec.setup_decoder(&mut dp) != 1 {
           return None;
         }
+        /* The safe API defaults to lenient decoding (DecodeParameters
+        ::default().strict == false); mirror it. */
+        if codec.decoder_set_strict_mode(0) != 1 {
+          return None;
+        }
         let mut stream = Stream::new_input(
           crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
           std::io::Cursor::new(buf.clone()),
@@ -1322,57 +1332,89 @@ mod tests {
         Some(img)
       })();
       let par = Image::from_bytes(&buf).ok();
-      // Strict mode: both paths must agree again (against the strict
-      // serial decode, which can legitimately differ from the lenient one).
-      let par_strict =
-        Image::from_bytes_with(&buf, DecodeParameters::new().strict(true)).ok();
-      let serial_strict: Option<crate::CoreImage> = (|| {
-        let fmt = match crate::detect_format(&buf) {
-          Ok(f) => f,
-          Err(_) => return None,
-        };
-        let c = if fmt == J2KFormat::JP2 {
-          OPJ_CODEC_JP2
-        } else {
-          OPJ_CODEC_J2K
-        };
-        let mut codec = Codec::new_decoder(c)?;
-        let mut dp = opj_dparameters::default();
-        if codec.setup_decoder(&mut dp) != 1 {
-          return None;
-        }
-        if codec.decoder_set_strict_mode(1) != 1 {
-          return None;
-        }
-        let mut stream = Stream::new_input(
-          crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
-          std::io::Cursor::new(buf.clone()),
-          buf.len() as u64,
-        );
-        let mut img = codec.read_header(&mut stream)?;
-        if codec.decode(&mut stream, &mut img) != 1 {
-          return None;
-        }
-        if codec.end_decompress(&mut stream) != 1 {
-          return None;
-        }
-        Some(img)
-      })();
-      match (serial_strict.as_ref(), par_strict) {
-        (Some(s), Some(p)) => {
-          for (a, b) in p.components().iter().zip(s.comps.iter()) {
+      // A parallel-vs-serial comparison for an arbitrary parameter set:
+      // both paths must succeed/fail together and produce identical data.
+      let compare = |params: &DecodeParameters, label: &str| {
+        #[allow(deprecated)]
+        let serial: Option<crate::CoreImage> = (|| {
+          let fmt = match crate::detect_format(&buf) {
+            Ok(f) => f,
+            Err(_) => return None,
+          };
+          let c = if fmt == J2KFormat::JP2 {
+            OPJ_CODEC_JP2
+          } else {
+            OPJ_CODEC_J2K
+          };
+          let mut codec = Codec::new_decoder(c)?;
+          let mut dp = opj_dparameters::default();
+          dp.cp_layer = params.layers;
+          dp.cp_reduce = params.reduce;
+          if codec.setup_decoder(&mut dp) != 1 {
+            return None;
+          }
+          if codec.decoder_set_strict_mode(params.strict as crate::OPJ_BOOL) != 1 {
+            return None;
+          }
+          let mut stream = Stream::new_input(
+            crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+            std::io::Cursor::new(buf.clone()),
+            buf.len() as u64,
+          );
+          let mut img = codec.read_header(&mut stream)?;
+          if let Some(area) = params.decode_area {
+            if codec.set_decode_area(
+              &mut img,
+              area.start_x as i32,
+              area.start_y as i32,
+              area.end_x as i32,
+              area.end_y as i32,
+            ) != 1
+            {
+              return None;
+            }
+          }
+          if codec.decode(&mut stream, &mut img) != 1 {
+            return None;
+          }
+          if codec.end_decompress(&mut stream) != 1 {
+            return None;
+          }
+          Some(img)
+        })();
+        let par = Image::from_bytes_with(&buf, params.clone()).ok();
+        match (serial.as_ref(), par) {
+          (Some(s), Some(p)) => {
             assert_eq!(
-              a.data,
-              b.data,
-              "{}: parallel/serial strict mismatch",
+              p.components().len(),
+              s.comps.len(),
+              "{}: component count differs ({label})",
               path.display()
             );
+            for (a, b) in p.components().iter().zip(s.comps.iter()) {
+              assert_eq!(
+                a.data,
+                b.data,
+                "{}: parallel/serial mismatch ({label})",
+                path.display()
+              );
+            }
           }
+          (Some(_), None) => panic!("{}: serial decoded, parallel failed ({label})", path.display()),
+          (None, Some(_)) => panic!("{}: parallel decoded, serial failed ({label})", path.display()),
+          (None, None) => {}
         }
-        (Some(_), None) => panic!("{}: serial decoded, parallel strict failed", path.display()),
-        (None, Some(_)) => panic!("{}: parallel strict decoded, serial failed", path.display()),
-        (None, None) => {}
-      }
+      };
+      compare(&DecodeParameters::new().strict(true), "strict");
+      compare(
+        &DecodeParameters::new().layers(2).reduce(1),
+        "layers+reduce",
+      );
+      compare(
+        &DecodeParameters::new()
+          .decode_area(Some(DecodeArea::new(64, 64, 256, 256))),
+        "area",
+      );
       match (serial, par) {
         (Some(s), Some(p)) => {
           assert_eq!(

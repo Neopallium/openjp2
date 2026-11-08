@@ -219,8 +219,30 @@ impl Codec {
     if tiles.len() <= 1 {
       return None;
     }
+    /* The parallel path decodes each intersecting tile with a fresh tcd:
+    it can only reproduce the serial output when every involved tile is
+    covered COMPLETELY by the decode area.  A partial window leaves the
+    out-of-window filter taps unwritten: the sequential decode (and the
+    C reference) reads the PREVIOUS tile's leftover buffer contents
+    there, which a fresh worker buffer (zeroed) cannot reproduce. */
+    for &tile in &tiles {
+      let tx = tile % info.tw;
+      let ty = tile / info.tw;
+      let tile_x0 = tx.wrapping_mul(info.tdx).wrapping_add(cp.tx0);
+      let tile_y0 = ty.wrapping_mul(info.tdy).wrapping_add(cp.ty0);
+      let tile_x1 = (tile_x0.wrapping_add(info.tdx)).min(header.x1);
+      let tile_y1 = (tile_y0.wrapping_add(info.tdy)).min(header.y1);
+      if area_image.x0 > tile_x0
+        || area_image.y0 > tile_y0
+        || area_image.x1 < tile_x1
+        || area_image.y1 < tile_y1
+      {
+        return None;
+      }
+    }
     let cstr_index = self.get_cstr_index_owned()?;
     let layer = cp.m_specific_param.m_dec.m_layer;
+    let strict = cp.strict != 0;
     let mut core = crate::j2k::j2k_decode_tiles_parallel(
       cp,
       header,
@@ -229,7 +251,7 @@ impl Codec {
       &cstr_index,
       layer,
       0,
-      false,
+      strict,
       Some(area_image),
       area_image,
       stream,

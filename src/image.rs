@@ -72,8 +72,14 @@ pub(crate) fn opj_image_comp_header_update(p_image_header: &mut CoreImage, p_cp:
     let l_comp_y0 = opj_uint_ceildiv(l_y0, comp.dy);
     let l_comp_x1 = opj_uint_ceildiv(l_x1, comp.dx);
     let l_comp_y1 = opj_uint_ceildiv(l_y1, comp.dy);
-    let l_width = opj_uint_ceildivpow2(l_comp_x1.wrapping_sub(l_comp_x0), comp.factor);
-    let l_height = opj_uint_ceildivpow2(l_comp_y1.wrapping_sub(l_comp_y0), comp.factor);
+    /* The C computes ceildivpow2(x1) - ceildivpow2(x0) (divide before the
+    difference); doing ceildivpow2(x1 - x0) gives a different size when
+    the origin is not aligned to 2^factor (e.g. b1_mono.j2c with
+    x0=1, factor=1: 151 vs 152). */
+    let l_width = opj_uint_ceildivpow2(l_comp_x1, comp.factor)
+      - opj_uint_ceildivpow2(l_comp_x0, comp.factor);
+    let l_height = opj_uint_ceildivpow2(l_comp_y1, comp.factor)
+      - opj_uint_ceildivpow2(l_comp_y0, comp.factor);
     comp.w = l_width;
     comp.h = l_height;
     comp.x0 = l_comp_x0;
