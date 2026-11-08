@@ -165,17 +165,21 @@ impl Stream {
         Ok(len)
       }
       Err(_err) => {
-        // Maybe EOF, do a partial read.
-        match self.m_inner.read(buf) {
-          Ok(nb) => {
-            self.m_byte_offset += nb as i64;
-            Ok(nb)
-          }
+        /* read_exact may have delivered a partial prefix before hitting
+        EOF; those bytes are already in `buf`.  Count them through the
+        reader's position delta so they are not silently lost (a plain
+        follow-up read would start after them and return 0). */
+        let pos = match self.m_inner.stream_position() {
+          Ok(pos) => pos,
           Err(err) => {
             log::trace!("Failed to read from stream: {err}");
-            Err(err)
+            return Err(err);
           }
-        }
+        };
+        let consumed = (pos as i64).saturating_sub(self.m_byte_offset).max(0) as usize;
+        let nb = consumed.min(len);
+        self.m_byte_offset += nb as i64;
+        Ok(nb)
       }
     }
   }

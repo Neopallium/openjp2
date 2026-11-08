@@ -148,6 +148,30 @@ impl Codec {
     }
   }
 
+  /// Parallel whole-image decode over the given stream (feature `rayon`,
+  /// safe-API internal): decodes every tile with a fresh codec state and
+  /// merges the results.  Returns None when the parallel path does not
+  /// apply, leaving the stream positioned for the sequential fallback.
+  #[cfg(feature = "rayon")]
+  pub(crate) fn decode_parallel(
+    &self,
+    stream: &mut Stream,
+    header: &CoreImage,
+  ) -> Option<CoreImage> {
+    let cp = match &self.m_codec {
+      CodecType::Decoder(CodecFormat::J2K(j2k)) => &j2k.m_cp,
+      CodecType::Decoder(CodecFormat::JP2(jp2)) => &jp2.j2k.m_cp,
+      _ => return None,
+    };
+    let info = self.get_cstr_info_v2()?;
+    let num_tiles = info.tw.wrapping_mul(info.th);
+    if num_tiles <= 1 {
+      return None;
+    }
+    let cstr_index = self.get_cstr_index_owned()?;
+    crate::j2k::j2k_decode_tiles_parallel(cp, header, num_tiles, &cstr_index, stream)
+  }
+
   /// Safe, owned codestream index (the capi crate marshals this into the
   /// C-ABI mirror for `opj_get_cstr_index`).
   pub fn get_cstr_index_owned(&self) -> Option<crate::j2k::CodestreamIndex> {

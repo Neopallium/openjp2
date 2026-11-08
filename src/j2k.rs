@@ -9466,6 +9466,235 @@ fn opj_j2k_decode_one_tile(
 /* *
  * Sets up the procedures to do on decoding one tile. Developers wanting to extend the library can add their own reading procedures.
  */
+/// Decodes a single tile with a fresh codec state over a stream positioned
+/// at the tile's first SOT (used by the parallel tile-decode driver in the
+/// safe API).  Returns the decoded tile cache.
+pub(crate) fn j2k_decode_tile_worker(
+  cp: &Cp,
+  header: &CoreImage,
+  tile_no: u32,
+  stream: &mut Stream,
+  p_manager: &mut EventMgr,
+) -> Option<Tcd> {
+  let mut j2k = opj_j2k_create_decompress()?;
+  j2k.m_cp = cp.clone();
+  j2k.m_private_image = Some(Box::new(header.clone()));
+  {
+    let dec = &mut j2k.m_specific_param.m_decoder;
+    dec.m_tile_ind_to_dec = tile_no as i32;
+    dec.m_state = J2KState::TPHSOT;
+    dec.m_can_decode = false;
+  }
+  j2k.m_current_tile_number = tile_no;
+  /* The serial path initialises the tcd from the private image at the end
+  of opj_j2k_read_header; the worker codec skipped read_header, so do it
+  here (sizes tcd.tcd_image.tiles.comps from the header image). */
+  if opj_tcd_init(
+    &mut j2k.m_tcd,
+    j2k.m_private_image.as_deref().expect("m_private_image"),
+    &mut j2k.m_cp,
+  ) == 0
+  {
+    return None;
+  }
+  /* Decode every tile-part of the requested tile.  The read_tile_header
+  walk skips the (possibly interleaved) tile-parts of the other tiles,
+  so the stream only needs to start at the tile's first SOT. */
+  let nb_of_tiles = j2k.m_cp.tw.wrapping_mul(j2k.m_cp.th);
+  if opj_j2k_allocate_tile_element_cstr_index(
+    j2k.cstr_index.as_deref_mut().expect("cstr_index"),
+    nb_of_tiles,
+  ) == 0
+  {
+    return None;
+  }
+  let mut tile_info = TileInfo::default();
+  let mut decoded_any = false;
+  loop {
+    if !opj_j2k_read_tile_header(&mut j2k, stream, &mut tile_info, p_manager) {
+      return None;
+    }
+    if !tile_info.go_on {
+      break;
+    }
+    if tile_info.index != tile_no {
+      if decoded_any {
+        break;
+      }
+      /* Unexpected tile (should not happen from the tile's own SOT):
+      keep skipping until the requested tile shows up or EOC is hit. */
+      event_msg!(
+        p_manager,
+        EVT_WARNING,
+        "j2k_decode_tile_worker: skipping tile {} while decoding tile {}\n",
+        tile_info.index.wrapping_add(1u32),
+        tile_no.wrapping_add(1u32),
+      );
+      continue;
+    }
+    if opj_j2k_decode_tile(&mut j2k, tile_info.index, None, stream, p_manager) == 0 {
+      return None;
+    }
+    opj_j2k_tcp_data_destroy(&mut j2k.m_cp.tcps[tile_info.index as usize]);
+    decoded_any = true;
+  }
+  if !decoded_any {
+    return None;
+  }
+  Some(core::mem::take(&mut j2k.m_tcd))
+}
+
+/// Merges per-tile decode results into the output image (the existing
+/// sequential update path, run once per tile in order).
+pub(crate) fn j2k_merge_tile_results(
+  tiles: Vec<(u32, Tcd)>,
+  header: &CoreImage,
+  p_output_image: &mut CoreImage,
+  p_manager: &mut EventMgr,
+) -> OPJ_BOOL {
+  for (_tile_no, mut tcd) in tiles {
+    let mut private = header.clone();
+    /* The header image carries resno_decoded == 0; the update path indexes
+    the tile-comp resolutions with it.  In the serial flow the t2 decode
+    updates the codec's private image in place (max decoded resolution);
+    here the decoded count is read back from the tile caches instead. */
+    for (i, comp) in private.comps.iter_mut().enumerate() {
+      comp.resno_decoded = tcd.tcd_image.tiles.comps[i]
+        .minimum_num_resolutions
+        .saturating_sub(1);
+    }
+    if opj_j2k_update_image_data(&mut tcd, p_output_image, &mut private) == 0 {
+      event_msg!(p_manager, EVT_ERROR, "Failed to update image with tile data\n",);
+      return 0i32;
+    }
+  }
+  1i32
+}
+
+/// Parallel whole-image decode (feature `rayon`): snapshot the codestream
+/// into memory, locate every tile's first SOT (from the TLM-built index
+/// when present, else by scanning for SOT markers - bit-stuffing guarantees
+/// FF 90 never occurs inside coded tile data), decode each tile with a
+/// fresh codec state over an independent cursor into the shared buffer,
+/// and merge the tile caches in order with the existing update path.
+///
+/// Returns None when the layout is not supported (the caller then falls
+/// back to the sequential decode), so the result is always identical to
+/// the serial path.
+/// Shared read-only buffer adapter so `std::io::Cursor` (which needs
+/// `AsRef<[u8]>`) can borrow the snapshot without copying it.
+#[cfg(feature = "rayon")]
+struct SharedBuf(std::sync::Arc<Vec<u8>>);
+
+#[cfg(feature = "rayon")]
+impl AsRef<[u8]> for SharedBuf {
+  fn as_ref(&self) -> &[u8] {
+    &self.0[..]
+  }
+}
+
+#[cfg(feature = "rayon")]
+pub(crate) fn j2k_decode_tiles_parallel(
+  cp: &Cp,
+  header: &CoreImage,
+  num_tiles: u32,
+  cstr_index: &CodestreamIndex,
+  stream: &mut Stream,
+) -> Option<CoreImage> {
+  use rayon::prelude::*;
+  use std::io::Read as _;
+
+  /* Snapshot the whole codestream: workers seek within it independently.
+  The stream position is restored so a serial fallback stays possible. */
+  let anchor = stream.tell();
+  let bytes: std::sync::Arc<Vec<u8>> = {
+    if stream.seek(0).is_err() {
+      return None;
+    }
+    let mut buf = Vec::new();
+    if stream.read_to_end(&mut buf).is_err() {
+      return None;
+    }
+    std::sync::Arc::new(buf)
+  };
+  let _ = stream.seek(anchor);
+  let len = bytes.len() as u64;
+
+  /* First SOT offset per tile (absolute positions in the buffer). */
+  let mut first_sot: Vec<i64> = vec![-1; num_tiles as usize];
+  let tlm_ok = !cstr_index.tiles.is_empty()
+    && cstr_index.tiles[0].nb_tps > 0
+    && !cstr_index.tiles[0].tp_index.is_empty();
+  if tlm_ok {
+    for (i, tile) in cstr_index.tiles.iter().enumerate() {
+      if i >= first_sot.len() || tile.tp_index.is_empty() {
+        return None;
+      }
+      first_sot[i] = tile.tp_index[0].start_pos;
+    }
+  } else {
+    let start = cstr_index.main_head_end.max(0) as usize;
+    let mut i = start;
+    while i + 12 <= bytes.len() {
+      if bytes[i] == 0xFF && bytes[i + 1] == 0xD9 {
+        /* EOC */
+        break;
+      }
+      if bytes[i] == 0xFF
+        && bytes[i + 1] == 0x90
+        && u16::from_be_bytes([bytes[i + 2], bytes[i + 3]]) == 10
+      {
+        /* Isot (the tile index) sits at offset +4..+6; TNsot (+11) is not
+        reliable (bug #254: some encoders write TNsot == 1 everywhere). */
+        let isot = u16::from_be_bytes([bytes[i + 4], bytes[i + 5]]) as u32;
+        if (isot as usize) < first_sot.len() && first_sot[isot as usize] < 0 {
+          first_sot[isot as usize] = i as i64;
+        }
+        i += 12;
+      } else {
+        i += 1;
+      }
+    }
+  }
+  if first_sot.iter().any(|p| *p < 0) {
+    return None;
+  }
+
+  /* Decode all tiles in parallel. */
+  let tiles: Vec<Option<Tcd>> = (0..num_tiles as usize)
+    .into_par_iter()
+    .map(|tile_no| {
+      let mut worker_stream = Stream::new_input(
+        OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+        std::io::Cursor::new(SharedBuf(bytes.clone())),
+        len,
+      );
+      if worker_stream.seek(first_sot[tile_no] + 2).is_err() {
+        return None;
+      }
+      let mut manager = EventMgr::default();
+      j2k_decode_tile_worker(cp, header, tile_no as u32, &mut worker_stream, &mut manager)
+    })
+    .collect();
+  if tiles.iter().any(Option::is_none) {
+    return None;
+  }
+  let tiles: Vec<(u32, Tcd)> = tiles
+    .into_iter()
+    .enumerate()
+    .map(|(i, t)| (i as u32, t.expect("checked above")))
+    .collect();
+
+  /* Merge in tile order (sequential; the per-tile update is already
+  parallel across components). */
+  let mut output = header.clone();
+  let mut manager = EventMgr::default();
+  if j2k_merge_tile_results(tiles, header, &mut output, &mut manager) == 0 {
+    return None;
+  }
+  Some(output)
+}
+
 fn opj_j2k_setup_decoding_tile(
   _p_j2k: &mut J2k,
   list: &mut J2kProcList,

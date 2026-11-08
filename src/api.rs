@@ -466,6 +466,16 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
     .read_header(stream)
     .ok_or_else(|| Error::Decode("failed to read header".into()))?;
 
+  /* Concurrent tile decode (rayon): only for whole-image, full-quality
+  decodes of multi-tile codestreams; any failure falls back to the
+  sequential path below, so the result is always identical. */
+  #[cfg(feature = "rayon")]
+  if params.reduce == 0 && params.layers == 0 && params.decode_area.is_none() {
+    if let Some(core) = codec.decode_parallel(stream, &image) {
+      return Ok(Image { core });
+    }
+  }
+
   if let Some(area) = params.decode_area {
     let ret = codec.set_decode_area(
       &mut image,
@@ -620,6 +630,68 @@ mod tests {
       for (a, b) in image.components().iter().zip(back.components()) {
         assert_eq!(a.data, b.data, "lossless round trip failed for {w}x{h} prec {prec}");
       }
+    }
+  }
+
+  /// The concurrent-tile decode (rayon): a multi-tile codestream must
+  /// decode byte-identically to the source pixels.
+  #[cfg(feature = "rayon")]
+  #[test]
+  fn parallel_tile_decode_matches_source() {
+    let mut rng: u64 = 0x1234_5678_9abc_def0;
+    let mut next = move || {
+      rng ^= rng << 13;
+      rng ^= rng >> 7;
+      rng ^= rng << 17;
+      rng
+    };
+    let (w, h) = (192u32, 128u32);
+    let mut core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 3,
+      color_space: crate::OPJ_CLRSPC_SRGB,
+      comps: Vec::new(),
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    for _c in 0..3 {
+      let mut data = Vec::with_capacity((w * h) as usize);
+      for _ in 0..w * h {
+        data.push((next() % 256) as i32);
+      }
+      core.comps.push(crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data,
+      });
+    }
+    let image = Image { core };
+    let codestream = image
+      .encode(
+        EncodeParameters::new()
+          .num_resolutions(2)
+          .num_layers(1)
+          .tile_size(64, 64),
+      )
+      .expect("encode");
+    let back = Image::from_bytes(&codestream).expect("decode");
+    assert_eq!(back.width(), w);
+    assert_eq!(back.height(), h);
+    for (a, b) in image.components().iter().zip(back.components()) {
+      assert_eq!(a.data, b.data, "parallel tile decode mismatch");
     }
   }
 

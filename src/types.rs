@@ -546,7 +546,7 @@ pub(crate) struct Stepsize {
 pub(crate) struct Ppx {
   pub m_data: Vec<u8>,
 }
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct Cp {
   pub rsiz: u16,
   pub tx0: u32,
@@ -571,7 +571,7 @@ pub(crate) struct Cp {
 /* This was a C union of the decoder-only and encoder-only coding parameters. A given
 `Cp` is either a decoder or an encoder one, so holding both costs a few bytes and
 lets the encoder side own its data instead of aliasing raw memory. */
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct C2RustUnnamed_0 {
   pub m_dec: DecodingParams,
   pub m_enc: EncodingParams,
@@ -591,6 +591,7 @@ pub(crate) enum J2K_QUALITY_LAYER_ALLOCATION_STRATEGY {
   FIXED_LAYER = 2,
 }
 
+#[derive(Clone)]
 pub(crate) struct EncodingParams {
   pub m_max_comp_size: u32,
   pub m_tp_pos: i32,
