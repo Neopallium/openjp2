@@ -20,7 +20,13 @@ exclude = ["CMakeLists.txt"]
 name = "openjp2"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
+[features]
+# File-based streams and the FILE* dump writer need libc.  Disable for
+# no_std targets like WASM; custom (callback) streams still work.
+default = ["file-io"]
+file-io = ["dep:libc"]
+
 [dependencies]
 openjp2_core = { package = "openjp2", path = ".." }
-libc = "0.2"
+libc = { version = "0.2", optional = true }
 log = "0.4.17"

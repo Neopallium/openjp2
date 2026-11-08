@@ -140,10 +140,10 @@ impl Codec {
   pub fn get_cstr_info_v2(&self) -> Option<crate::j2k::CstrInfoV2> {
     match &self.m_codec {
       CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
-        Some(crate::j2k::j2k_get_cstr_info_owned(j2k))
+        crate::j2k::j2k_get_cstr_info_owned(j2k)
       }
       CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
-        Some(crate::j2k::j2k_get_cstr_info_owned(&jp2.j2k))
+        crate::j2k::j2k_get_cstr_info_owned(&jp2.j2k)
       }
     }
   }

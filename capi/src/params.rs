@@ -11,7 +11,7 @@ extern "C" {
   fn free(ptr: *mut core::ffi::c_void);
 }
 
-fn c_malloc(size: usize) -> *mut core::ffi::c_void {
+pub(crate) fn c_malloc(size: usize) -> *mut core::ffi::c_void {
   if size == 0 {
     return core::ptr::null_mut();
   }
@@ -19,7 +19,7 @@ fn c_malloc(size: usize) -> *mut core::ffi::c_void {
   unsafe { malloc(size) }
 }
 
-fn c_free(ptr: *mut core::ffi::c_void) {
+pub(crate) fn c_free(ptr: *mut core::ffi::c_void) {
   if !ptr.is_null() {
     // SAFETY: the pointer came from c_malloc.
     unsafe { free(ptr) }

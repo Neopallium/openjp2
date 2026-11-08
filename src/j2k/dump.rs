@@ -234,21 +234,13 @@ fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
     p_j2k.m_cp.tw,
     p_j2k.m_cp.th,
   );
-  if p_j2k.m_private_image.is_some() {
-    opj_j2k_dump_tile_info(
-      p_j2k
-        .m_specific_param
-        .m_decoder
-        .m_default_tcp
-        .as_deref()
-        .expect("decoder m_default_tcp is always set"),
-      p_j2k
-        .m_private_image
-        .as_deref()
-        .expect("m_private_image")
-        .numcomps as i32,
-      out_stream,
-    );
+  /* The default-tile info lives in the decoder state; encoders (and
+  codecs whose header was not read) have none, and the C dump skips it. */
+  if let (Some(img), Some(default_tcp)) = (
+    p_j2k.m_private_image.as_deref(),
+    p_j2k.m_specific_param.m_decoder.m_default_tcp.as_deref(),
+  ) {
+    opj_j2k_dump_tile_info(default_tcp, img.numcomps as i32, out_stream);
   }
   fprintf!(out_stream, "}}\n");
 }

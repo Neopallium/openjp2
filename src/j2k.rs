@@ -93,12 +93,10 @@ impl Default for CstrCompInfoV2 {
 }
 
 /// Builds the owned codestream info v2 of a j2k codec (header summary).
-pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> CstrInfoV2 {
-  let numcomps = p_j2k
-    .m_private_image
-    .as_deref()
-    .expect("m_private_image")
-    .numcomps;
+/// Returns None when the codec has no decoded header yet (e.g. it is an
+/// encoder), so the C API can return a null pointer instead of panicking.
+pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> Option<CstrInfoV2> {
+  let numcomps = p_j2k.m_private_image.as_deref()?.numcomps;
   let mut cstr_info = CstrInfoV2 {
     nbcomps: numcomps,
     tx0: p_j2k.m_cp.tx0,
@@ -113,8 +111,7 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> CstrInfoV2 {
     .m_specific_param
     .m_decoder
     .m_default_tcp
-    .as_deref()
-    .expect("decoder m_default_tcp is always set");
+    .as_deref()?;
   cstr_info.default_tile.csty = l_default_tile.csty;
   cstr_info.default_tile.prg = l_default_tile.prg;
   cstr_info.default_tile.numlayers = l_default_tile.numlayers;
@@ -151,7 +148,7 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> CstrInfoV2 {
     }
     cstr_info.default_tile.tccps.push(info);
   }
-  cstr_info
+  Some(cstr_info)
 }
 use super::openjpeg::*;
 use super::pi::*;

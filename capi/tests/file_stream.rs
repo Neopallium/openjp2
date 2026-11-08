@@ -1,3 +1,4 @@
+#![cfg(feature = "file-io")]
 use std::ffi::*;
 
 use openjp2::openjpeg::*;

@@ -15,13 +15,13 @@ pub fn opj_image_data_alloc(size: OPJ_SIZE_T) -> *mut core::ffi::c_void {
   if size == 0 {
     return core::ptr::null_mut();
   }
-  unsafe { ::libc::malloc(size) }
+  crate::params::c_malloc(size)
 }
 
 /// Free an image component data buffer allocated by `opj_image_data_alloc`.
 pub fn opj_image_data_free(ptr: *mut core::ffi::c_void) {
   if !ptr.is_null() {
-    unsafe { ::libc::free(ptr) }
+    crate::params::c_free(ptr);
   }
 }
 
@@ -153,23 +153,6 @@ impl opj_image_comp {
     self.resno_decoded = other.resno_decoded;
     self.factor = other.factor;
     self.alpha = other.alpha;
-  }
-
-  /// Move a core component's data into this C-ABI component (no copy); the source is left empty.
-  pub fn move_data_from_core(&mut self, other: &mut CoreImageComp) {
-    self.clear_data();
-    let v = core::mem::take(&mut other.data);
-    if v.is_empty() {
-      self.data = core::ptr::null_mut();
-      return;
-    }
-    let mut v = v;
-    self.data = v.as_mut_ptr();
-    // The Vec allocation is handed to the C ABI, which frees it with opj_image_data_free
-    // (malloc-backed, same allocator family as the system allocator).
-    // SAFETY: 0 is <= the current length; this just prevents the Vec drop from freeing `data`.
-    unsafe { v.set_len(0) };
-    core::mem::forget(v);
   }
 
   pub fn data(&self) -> Option<&[i32]> {
@@ -638,13 +621,16 @@ impl opj_image {
 
   pub fn clear_icc_profile(&mut self) {
     if !self.icc_profile_buf.is_null() {
-      // SAFETY: `icc_profile_buf` was built as a Vec of exactly `icc_profile_len` bytes.
+      // A non-null buffer with a length of 0 is the C ABI's CIELab marker;
+      // those buffers are always CIE_LAB_BYTE_SIZE bytes long.
+      let len = if self.icc_profile_len == 0 {
+        CIE_LAB_BYTE_SIZE
+      } else {
+        self.icc_profile_len as usize
+      };
+      // SAFETY: `icc_profile_buf` was built as a Vec of exactly `len` bytes.
       unsafe {
-        drop(Vec::from_raw_parts(
-          self.icc_profile_buf,
-          self.icc_profile_len as usize,
-          self.icc_profile_len as usize,
-        ))
+        drop(Vec::from_raw_parts(self.icc_profile_buf, len, len))
       };
       self.icc_profile_buf = core::ptr::null_mut();
       self.icc_profile_len = 0;
@@ -701,7 +687,9 @@ pub fn opj_image_create(
   cmptparms: *mut opj_image_cmptparm_t,
   clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
-  assert!(!cmptparms.is_null());
+  if numcmpts > 0 && cmptparms.is_null() {
+    return core::ptr::null_mut();
+  }
   let cmptparms = unsafe { core::slice::from_raw_parts(cmptparms, numcmpts as usize) };
   if let Some(image) = opj_image::create(cmptparms, clrspc) {
     Box::into_raw(image)
@@ -739,7 +727,9 @@ pub fn opj_image_tile_create(
   cmptparms: *mut opj_image_cmptparm_t,
   clrspc: OPJ_COLOR_SPACE,
 ) -> *mut opj_image_t {
-  assert!(!cmptparms.is_null());
+  if numcmpts > 0 && cmptparms.is_null() {
+    return core::ptr::null_mut();
+  }
   let cmptparms = unsafe { core::slice::from_raw_parts(cmptparms, numcmpts as usize) };
   if let Some(image) = opj_image::tile_create(cmptparms, clrspc) {
     Box::into_raw(image)

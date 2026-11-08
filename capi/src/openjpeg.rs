@@ -41,6 +41,7 @@ use openjp2_core::c_api_types::*;
 
 use openjp2_core::{opj_codec_private_t, opj_stream_private_t, TileInfo};
 
+#[cfg(feature = "file-io")]
 use ::libc::FILE;
 
 /* ---------------------------------------------------------------------- */
@@ -426,7 +427,7 @@ pub unsafe fn opj_setup_encoder(
   // ownership of it to opj_setup_encoder.
   if !parameters.mct_data.is_null() {
     // SAFETY: allocated with opj_malloc in opj_set_MCT.
-    unsafe { ::libc::free(parameters.mct_data) };
+    crate::params::c_free(parameters.mct_data);
     parameters.mct_data = core::ptr::null_mut();
   }
   let fresh = core_into_opj(core);
@@ -653,6 +654,7 @@ pub unsafe fn opj_destroy_codec(p_codec: *mut opj_codec_t) {
 }
 
 /* ---------------------------------------------------------------------- */
+#[cfg(feature = "file-io")]
 #[no_mangle]
 pub unsafe fn opj_dump_codec(
   p_codec: *mut opj_codec_t,
@@ -671,8 +673,10 @@ pub unsafe fn opj_dump_codec(
 }
 
 /// A `Write` adapter over the caller's `FILE*` for opj_dump_codec.
+#[cfg(feature = "file-io")]
 struct CFile(*mut FILE);
 
+#[cfg(feature = "file-io")]
 impl std::io::Write for CFile {
   fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
     // SAFETY: the FILE* is the caller's open output stream.
@@ -689,6 +693,7 @@ impl std::io::Write for CFile {
   }
 }
 
+#[cfg(feature = "file-io")]
 impl openjp2_core::StringWriter for CFile {
   fn write_string(&mut self, s: &str) -> usize {
     use std::io::Write;
@@ -914,7 +919,7 @@ pub unsafe extern "C" fn opj_stream_create(
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_create(l_is_input: OPJ_BOOL) -> *mut opj_stream_t {
-  opj_stream_create(0x100000 as OPJ_SIZE_T, l_is_input)
+  opj_stream_create(openjp2_core::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as OPJ_SIZE_T, l_is_input)
 }
 
 #[no_mangle]
@@ -1015,6 +1020,7 @@ pub unsafe extern "C" fn opj_stream_set_user_data_length(
   p_stream.stream.set_stream_length(data_length);
 }
 
+#[cfg(feature = "file-io")]
 #[no_mangle]
 pub unsafe fn opj_stream_create_default_file_stream(
   fname: *const core::ffi::c_char,
@@ -1023,6 +1029,7 @@ pub unsafe fn opj_stream_create_default_file_stream(
   opj_stream_create_file_stream(fname, 0x100000 as OPJ_SIZE_T, p_is_read_stream)
 }
 
+#[cfg(feature = "file-io")]
 #[no_mangle]
 pub unsafe fn opj_stream_create_file_stream(
   fname: *const core::ffi::c_char,
