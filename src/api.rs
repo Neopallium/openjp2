@@ -619,6 +619,37 @@ mod tests {
     }
   }
 
+  /// Encode config sweep: every progression order with tiles and layers,
+  /// always decoding back losslessly.
+  #[test]
+  fn encode_config_sweep() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let image = Image::from_bytes(&buf).expect("decode sample");
+    for order in [
+      ProgressionOrder::Lrcp,
+      ProgressionOrder::Rlcp,
+      ProgressionOrder::Rpcl,
+      ProgressionOrder::Pcrl,
+      ProgressionOrder::Cprl,
+    ] {
+      let codestream = image
+        .encode(
+          EncodeParameters::new()
+            .num_resolutions(2)
+            .num_layers(2)
+            .progression_order(order)
+            .tile_size(512, 512),
+        )
+        .expect("encode");
+      let back = Image::from_bytes(&codestream).expect("decode");
+      assert_eq!(back.width(), image.width(), "order {order:?}");
+      assert_eq!(back.height(), image.height(), "order {order:?}");
+      for (a, b) in image.components().iter().zip(back.components()) {
+        assert_eq!(a.data, b.data, "lossless for order {order:?}");
+      }
+    }
+  }
+
   #[test]
   fn color_space_round_trip() {
     for cs in [
@@ -817,7 +848,7 @@ pub mod image_conv {
   }
 
   /// Scales a component to unsigned 8-bit values.
-  fn comp_u8(comp: &CoreImageComp) -> impl Iterator<Item = u8> + '_ {
+  pub(crate) fn comp_u8(comp: &CoreImageComp) -> impl Iterator<Item = u8> + '_ {
     let len = (comp.w as usize) * (comp.h as usize);
     let data = &comp.data[..len];
     let prec = comp.prec;
@@ -836,7 +867,7 @@ pub mod image_conv {
   }
 
   /// Scales a component to unsigned 16-bit values.
-  fn comp_u16(comp: &CoreImageComp) -> impl Iterator<Item = u16> + '_ {
+  pub(crate) fn comp_u16(comp: &CoreImageComp) -> impl Iterator<Item = u16> + '_ {
     let len = (comp.w as usize) * (comp.h as usize);
     let data = &comp.data[..len];
     let prec = comp.prec;

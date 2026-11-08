@@ -438,6 +438,7 @@ pub(crate) enum ProgressionOrder {
   PCRL,
   RLCP,
   LRCP,
+  RPCL,
 }
 
 impl ProgressionOrder {
@@ -447,6 +448,7 @@ impl ProgressionOrder {
       OPJ_PCRL => Self::PCRL,
       OPJ_RLCP => Self::RLCP,
       OPJ_LRCP => Self::LRCP,
+      OPJ_RPCL => Self::RPCL,
       _ => Self::Unknown,
     }
   }
@@ -458,6 +460,7 @@ impl ProgressionOrder {
       Self::PCRL => &[Precinct, Component, Resolution, Layer],
       Self::RLCP => &[Resolution, Layer, Component, Precinct],
       Self::LRCP => &[Layer, Resolution, Component, Precinct],
+      Self::RPCL => &[Resolution, Precinct, Component, Layer],
       Self::Unknown => &[],
     }
   }
@@ -468,6 +471,7 @@ impl ProgressionOrder {
       Self::PCRL => "PCRL",
       Self::RLCP => "RLCP",
       Self::LRCP => "LRCP",
+      Self::RPCL => "RPCL",
       Self::Unknown => "",
     }
   }

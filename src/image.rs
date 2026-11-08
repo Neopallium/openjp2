@@ -425,3 +425,17 @@ impl CoreImage {
   }
 }
 
+
+impl CoreImageComp {
+  /// Component data scaled to unsigned 8-bit values (precision-aware).
+  #[cfg(feature = "image")]
+  pub fn data_u8(&self) -> impl Iterator<Item = u8> + '_ {
+    crate::api::image_conv::comp_u8(self)
+  }
+
+  /// Component data scaled to unsigned 16-bit values (precision-aware).
+  #[cfg(feature = "image")]
+  pub fn data_u16(&self) -> impl Iterator<Item = u16> + '_ {
+    crate::api::image_conv::comp_u16(self)
+  }
+}
