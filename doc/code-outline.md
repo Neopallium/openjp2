@@ -132,6 +132,24 @@ opj_end_compress    j2k.rs: opj_j2k_end_compress -> EOC + TLM/PLT index markers
   `set_defaults`/`set_comment`/`set_MCT`; `capi/src/cstr_info.rs`: the
   codestream-info v1/v2 and index mirrors + builders/destroyers.
 
+## Parallelism (`src/par.rs` + the tile decode driver)
+
+Additionally, the safe one-shot API decodes multi-tile codestreams with
+tiles in parallel (`j2k_decode_tiles_parallel` in `src/j2k.rs`, wired
+through `Codec::decode_parallel` in `src/codec.rs` from `decode_stream`
+in `src/api.rs`): the codestream is snapshotted into an `Arc<Vec<u8>>`,
+each tile's first SOT is located (TLM-built index when valid, else an
+FF90/Isot scan - bit-stuffing guarantees SOT markers never appear in
+coded data), and every tile is decoded by `j2k_decode_tile_worker`
+(a fresh decoder over an independent cursor at the tile's first SOT).
+The per-tile caches are merged in order with
+`opj_j2k_update_image_data` (`j2k_merge_tile_results`), and JP2 files
+re-run `opj_jp2_apply_color_postprocessing` (palette/cdef) afterwards,
+exactly like the serial `opj_jp2_decode`.  Any unsupported layout or
+worker failure returns None and the caller falls back to the serial
+decode, so the parallel path is byte-identical to the serial one by
+construction.
+
 ## Parallelism (`src/par.rs`)
 
 Rayon (feature `rayon`, default on) parallelises: tier-1 code-block

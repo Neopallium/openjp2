@@ -40,6 +40,16 @@ The API mirrors the [`jpeg2k`](https://crates.io/crates/jpeg2k) crate so it
 can act as a thin wrapper (see `doc/api-review.md`); the C-ABI mirror types
 are available under the `ffi` module.
 
+## Parallelism
+
+Decoding is parallel on two levels (feature `rayon`): inside each tile
+(tier-1 code-block decoding, DWT, DC shift) and across tiles for whole-image,
+full-quality decodes of multi-tile codestreams (the safe `Image` API decodes
+every tile with a fresh codec state over an in-memory snapshot and merges the
+results; ~1.5x on 25-tile files at 24 threads).  The parallel-tile path
+falls back to the sequential decode for any layout it does not support, so
+the output is always identical to the serial path.
+
 ## Features
 
 | Feature    | Default | Meaning |
