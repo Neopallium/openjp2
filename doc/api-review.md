@@ -215,4 +215,7 @@ Migration path (non-breaking first, breaking second):
 | Concurrent tile decode / encode | ✅ whole-image multi-tile decodes and multi-tile encodes run tiles in parallel (rayon), byte-identical to the serial paths (04d9170a, dea21597, 93ae8fd8) |
 
 The remaining open questions from §4 are unchanged; `openjp2::Image`
-keeps the `image`-crate name ambiguity accepted for now.
+keeps the `image`-crate name ambiguity accepted for now.  The
+intentional divergences from the C reference (threading model,
+removed jpwl/jpspec features, SIMD, safety hardening) are listed in
+`doc/differences.md`.

@@ -86,3 +86,4 @@ Build without rayon for no-rayon targets: `cargo build --no-default-features --f
 - `doc/jpeg2000-design-spec.md` — JPEG 2000 formats & algorithms (no code refs)
 - `doc/code-outline.md` — module map onto the spec and the pipelines
 - `doc/api-review.md` — public API review + the jpeg2k alignment plan
+- `doc/differences.md` — intentional divergences from the C reference
