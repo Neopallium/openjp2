@@ -386,11 +386,9 @@ pub fn parse_cli_options(
       // Add missing option handlers:
       (CompressOpt::Threads, Some(arg)) => {
         if arg == "ALL_CPUS" {
-          // The rayon pool is sized via OPJ_NUM_THREADS; keep CLI parity.
-          c_params.num_threads = 4; //num_cpus::get() as i32;
-          if c_params.num_threads == 1 {
-            c_params.num_threads = 0;
-          }
+          c_params.num_threads = std::thread::available_parallelism()
+            .map(|n| n.get() as i32)
+            .unwrap_or(1i32);
         } else {
           c_params.num_threads = arg.parse()?;
         }
@@ -675,7 +673,7 @@ impl Default for CompressionParameters {
       output_file: None,
       codec_format: None,
       decode_format: None,
-      num_threads: 1,
+      num_threads: 0,
       num_resolutions: 6,
       max_comp_size: 0,
       max_cs_size: 0,

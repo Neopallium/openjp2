@@ -4,7 +4,7 @@ use openjp2::{detect_format_from_file, openjpeg::*, J2KFormat};
 use std::path::PathBuf;
 
 // Parameters struct similar to opj_decompress_parameters
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct DecompressParameters {
   // Core parameters
   pub core: opj_dparameters_t,
@@ -77,32 +77,6 @@ enum DecompressOpt {
   AllowPartial,
 }
 
-impl Default for DecompressParameters {
-  fn default() -> Self {
-    Self {
-      core: opj_dparameters_t::default(),
-      num_threads: 1,
-      tile_index: None,
-      input_file: None,
-      output_file: None,
-      index_file: None,
-      codec_format: None,
-      output_format: None,
-      da_x0: 0,
-      da_y0: 0,
-      da_x1: 0,
-      da_y1: 0,
-      force_rgb: false,
-      upsample: false,
-      split_pnm: false,
-      quiet: false,
-      allow_partial: false,
-      numcomps: 0,
-      comps_indices: Vec::new(),
-      precision: Vec::new(),
-    }
-  }
-}
 
 // Implement option parsing
 impl DecompressParameters {
@@ -252,11 +226,9 @@ pub fn parse_decompress_options(
       (DecompressOpt::Layer, Some(arg)) => params.core.cp_layer = arg.parse()?,
       (DecompressOpt::Threads, Some(arg)) => {
         if arg == "ALL_CPUS" {
-          // The rayon pool is sized via OPJ_NUM_THREADS; keep CLI parity.
-          params.num_threads = 4; //num_cpus::get() as i32;
-          if params.num_threads == 1 {
-            params.num_threads = 0;
-          }
+          params.num_threads = std::thread::available_parallelism()
+            .map(|n| n.get() as i32)
+            .unwrap_or(1i32);
         } else {
           params.num_threads = arg.parse()?;
         }

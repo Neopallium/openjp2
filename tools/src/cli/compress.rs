@@ -158,6 +158,7 @@ pub fn run_compress(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>>
       return Ok(());
     }
   };
+  crate::configure_thread_pool(cli_opts.compression_params.num_threads.max(0) as usize);
 
   // Process files
   let start_time = std::time::Instant::now();

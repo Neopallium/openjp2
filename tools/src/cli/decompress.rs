@@ -468,6 +468,7 @@ pub fn run_decompress(args: Vec<String>) -> Result<(), Box<dyn std::error::Error
     Some(opts) => opts,
     None => return Ok(()),
   };
+  crate::configure_thread_pool(params.num_threads.max(0) as usize);
 
   let start_time = std::time::Instant::now();
   let mut num_decompressed = 0;
