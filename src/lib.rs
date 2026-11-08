@@ -10,6 +10,26 @@
 #![forbid(unsafe_code)]
 
 
+//! A pure-Rust port of [OpenJPEG](https://github.com/uclouvain/openjpeg) with a
+//! safe high-level API, a C ABI drop-in, and CLI tools.
+//!
+//! ```
+//! use openjp2::*;
+//!
+//! fn main() -> Result<()> {
+//!     // One-shot decode (JP2 or J2K, auto-detected; multi-tile codestreams
+//!     // decode tiles in parallel).
+//!     let image = Image::from_file("samples/Hadley_Crater.jp2")?;
+//!     println!("{}x{} {:?}", image.width(), image.height(), image.color_space());
+//!
+//!     // Encode back (reversible 5-3: lossless).
+//!     let codestream: Vec<u8> = image.encode(EncodeParameters::new().num_resolutions(3))?;
+//!     let back = Image::from_bytes(&codestream)?;
+//!     assert_eq!((back.width(), back.height()), (image.width(), image.height()));
+//!     Ok(())
+//! }
+//! ```
+//!
 pub mod c_api_types;
 pub mod consts;
 mod types;

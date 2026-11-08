@@ -210,8 +210,9 @@ Migration path (non-breaking first, breaking second):
 | `ffi` module for the C mirrors | ✅ `openjp2::ffi` (the old glob re-exports stay for compatibility) |
 | `threads` feature alias | ✅ (`threads = ["rayon"]`) |
 | jpeg2k thin-wrapper PoC | ✅ `/tmp/jpeg2k-openjp2` runs jpeg2k's README/convert/save/dump examples over openjp2 with no `openjpeg-sys` |
-| `Codec` Result-ification + deprecations | ⏳ not started (breaking-change prep, migration steps 1-2) |
-| Component `data_u8`/`data_u16` iterators on the openjp2 side | ⏳ present in the wrapper PoC, not yet in `openjp2::ImageComponent` (openjp2 exposes `CoreImageComp` directly) |
+| `Codec` Result-ification + deprecations | ✅ deprecations done (47c60c7f); the `Result`-typed `Codec` itself stays deferred (breaking-change prep, migration steps 1-2) |
+| Component `data_u8`/`data_u16` iterators on the openjp2 side | ✅ `CoreImageComp::data_u8`/`data_u16` (feature `image`) |
+| Concurrent tile decode / encode | ✅ whole-image multi-tile decodes and multi-tile encodes run tiles in parallel (rayon), byte-identical to the serial paths (04d9170a, dea21597, 93ae8fd8) |
 
 The remaining open questions from §4 are unchanged; `openjp2::Image`
 keeps the `image`-crate name ambiguity accepted for now.

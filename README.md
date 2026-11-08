@@ -17,23 +17,27 @@ doc/        design spec, code outline, API review
 ```rust
 use openjp2::*;
 
-// One-shot decode (JP2 or J2K, auto-detected).
-let image = Image::from_file("input.jp2")?;
-println!("{}x{} {:?}", image.width(), image.height(), image.color_space());
+fn main() -> Result<()> {
+    // One-shot decode (JP2 or J2K, auto-detected).
+    let image = Image::from_file("input.jp2")?;
+    println!("{}x{} {:?}", image.width(), image.height(), image.color_space());
 
-// Decoder options via the builder.
-let image = Image::from_file_with(
-    "input.jp2",
-    DecodeParameters::new()
-        .layers(4)          // only the first 4 quality layers
-        .decode_area(Some(DecodeArea::new(0, 0, 512, 512))),
-)?;
+    // Decoder options via the builder.
+    let image = Image::from_file_with(
+        "input.jp2",
+        DecodeParameters::new()
+            .layers(4) // only the first 4 quality layers
+            .decode_area(Some(DecodeArea::new(0, 0, 512, 512))),
+    )?;
 
-// Convert to an image-crate DynamicImage (feature `image`, on by default).
-let dyn_img: image::DynamicImage = (&image).try_into()?;
+    // Convert to an image-crate DynamicImage (feature `image`, on by default).
+    let dyn_img: image::DynamicImage = (&image).try_into()?;
 
-// Encode (reversible 5-3 by default; lossless round-trips).
-let codestream: Vec<u8> = image.encode(EncodeParameters::new().num_resolutions(5))?;
+    // Encode (reversible 5-3 by default; lossless round-trips; multi-tile
+    // encodes are parallelised automatically).
+    let codestream: Vec<u8> = image.encode(EncodeParameters::new().num_resolutions(5))?;
+    Ok(())
+}
 ```
 
 The API mirrors the [`jpeg2k`](https://crates.io/crates/jpeg2k) crate so it
