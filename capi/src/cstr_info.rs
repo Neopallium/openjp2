@@ -216,7 +216,12 @@ pub fn destroy_cstr_index(p_cstr_ind: *mut opj_codestream_index_t) {
       let n = cstr_ind.nb_of_tiles as usize;
       for tile in core::slice::from_raw_parts_mut(cstr_ind.tile_index, n) {
         if !tile.tp_index.is_null() {
-          let m = tile.nb_tps as usize;
+          /* The tp_index allocation is sized `current_nb_tps` (the core keeps
+          tp_index.len() == current_nb_tps); `nb_tps` is the *declared* part
+          count and can be smaller (even 0) when a later SOT declares no
+          parts.  The C code frees with opj_free, which is length-less;
+          Vec::from_raw_parts needs the real allocation size. */
+          let m = tile.current_nb_tps as usize;
           drop(Vec::from_raw_parts(tile.tp_index, m, m));
         }
         if !tile.marker.is_null() {
