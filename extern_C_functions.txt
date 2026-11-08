@@ -1,4 +1,0 @@
-* malloc
-* calloc
-* free
-
