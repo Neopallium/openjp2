@@ -28,7 +28,9 @@ pub mod stream;
 
 // High-level safe API (doc/api-review.md).
 mod api;
-pub use api::{ColorSpace, DecodeArea, DecodeParameters, Error, Image, Result};
+pub use api::{ColorSpace, DecodeArea, DecodeParameters, EncodeParameters, Error, Image, Result};
+#[cfg(feature = "image")]
+pub use api::image_conv::{ImageData, ImagePixelData};
 
 // The C-ABI mirror types are also available behind `ffi` for
 // interop with the C header spellings.
