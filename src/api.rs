@@ -338,6 +338,121 @@ impl Image {
     self.core
   }
 
+  /// Build an image from an `image`-crate `DynamicImage` (feature
+  /// `image`): each channel becomes a component plane (8- or 16-bit).
+  #[cfg(feature = "image")]
+  pub fn from_dynamic_image(img: &::image::DynamicImage) -> Self {
+    use ::image::DynamicImage::*;
+    let (w, h) = (img.width(), img.height());
+    // Channels as plain u16 planes (8-bit data widened).
+    let widen = |data: &[u8], stride: usize, chan: usize| -> Vec<u16> {
+      data.chunks_exact(stride).map(|px| px[chan] as u16).collect()
+    };
+    let (numcomps, color_space, planes): (u32, crate::OPJ_COLOR_SPACE, Vec<Vec<u16>>) = match img {
+      ImageLuma8(g) => (
+        1,
+        crate::OPJ_CLRSPC_GRAY,
+        vec![g.as_raw().iter().map(|&v| v as u16).collect()],
+      ),
+      ImageLumaA8(g) => (
+        2,
+        crate::OPJ_CLRSPC_GRAY,
+        vec![widen(g.as_raw(), 2, 0), widen(g.as_raw(), 2, 1)],
+      ),
+      ImageRgb8(r) => (
+        3,
+        crate::OPJ_CLRSPC_SRGB,
+        vec![widen(r.as_raw(), 3, 0), widen(r.as_raw(), 3, 1), widen(r.as_raw(), 3, 2)],
+      ),
+      ImageRgba8(r) => (
+        4,
+        crate::OPJ_CLRSPC_SRGB,
+        vec![
+          widen(r.as_raw(), 4, 0),
+          widen(r.as_raw(), 4, 1),
+          widen(r.as_raw(), 4, 2),
+          widen(r.as_raw(), 4, 3),
+        ],
+      ),
+      ImageLuma16(g) => (1, crate::OPJ_CLRSPC_GRAY, vec![g.as_raw().to_vec()]),
+      ImageLumaA16(g) => (
+        2,
+        crate::OPJ_CLRSPC_GRAY,
+        vec![
+          g.as_raw().chunks_exact(2).map(|px| px[0]).collect(),
+          g.as_raw().chunks_exact(2).map(|px| px[1]).collect(),
+        ],
+      ),
+      ImageRgb16(r) => (
+        3,
+        crate::OPJ_CLRSPC_SRGB,
+        vec![
+          r.as_raw().chunks_exact(3).map(|px| px[0]).collect(),
+          r.as_raw().chunks_exact(3).map(|px| px[1]).collect(),
+          r.as_raw().chunks_exact(3).map(|px| px[2]).collect(),
+        ],
+      ),
+      ImageRgba16(r) => (
+        4,
+        crate::OPJ_CLRSPC_SRGB,
+        vec![
+          r.as_raw().chunks_exact(4).map(|px| px[0]).collect(),
+          r.as_raw().chunks_exact(4).map(|px| px[1]).collect(),
+          r.as_raw().chunks_exact(4).map(|px| px[2]).collect(),
+          r.as_raw().chunks_exact(4).map(|px| px[3]).collect(),
+        ],
+      ),
+      _ => {
+        let rgba = img.to_rgba8();
+        (
+          4,
+          crate::OPJ_CLRSPC_SRGB,
+          vec![
+            widen(rgba.as_raw(), 4, 0),
+            widen(rgba.as_raw(), 4, 1),
+            widen(rgba.as_raw(), 4, 2),
+            widen(rgba.as_raw(), 4, 3),
+          ],
+        )
+      }
+    };
+    let prec = if planes.iter().any(|p| p.iter().any(|&v| v > 255)) {
+      16
+    } else {
+      8
+    };
+    Self {
+      core: crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+        numcomps,
+        color_space,
+        comps: planes
+          .into_iter()
+          .map(|data| crate::CoreImageComp {
+            dx: 1,
+            dy: 1,
+            w,
+            h,
+            x0: 0,
+            y0: 0,
+            prec,
+            bpp: prec,
+            sgnd: 0,
+            resno_decoded: 0,
+            factor: 0,
+            alpha: 0,
+            data: data.into_iter().map(i32::from).collect(),
+          })
+          .collect(),
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      },
+    }
+  }
+
   /// Encode the image to a JPEG 2000 codestream (or JP2 file when
   /// `format` is set) held in an in-memory buffer.
   pub fn encode(&self, params: EncodeParameters) -> Result<Vec<u8>> {
@@ -348,6 +463,68 @@ impl Image {
   pub fn encode_jp2(&self, params: EncodeParameters) -> Result<Vec<u8>> {
     encode_image(&self.core, params.into_inner(), J2KFormat::JP2)
   }
+
+  /// Encode the image into any `Write + Seek` sink (the encoder seeks
+  /// back to patch marker lengths, so a plain `Write` is not enough).
+  pub fn encode_to_writer<W: std::io::Write + std::io::Seek + 'static>(
+    &self,
+    params: EncodeParameters,
+    writer: W,
+  ) -> Result<()> {
+    encode_image_to_writer(&self.core, params.into_inner(), J2KFormat::J2K, writer)
+  }
+}
+
+#[allow(deprecated)]
+fn encode_image_to_writer<W: std::io::Write + std::io::Seek + 'static>(
+  image: &CoreImage,
+  params: crate::EncoderParameters,
+  format: J2KFormat,
+  writer: W,
+) -> Result<()> {
+  let codec_format = match format {
+    J2KFormat::J2K => OPJ_CODEC_J2K,
+    J2KFormat::JP2 => OPJ_CODEC_JP2,
+    other => {
+      return Err(Error::Unsupported(format!(
+        "codec format {:?} is not supported for encoding",
+        other
+      )))
+    }
+  };
+  let mut codec = Codec::new_encoder(codec_format)
+    .ok_or_else(|| Error::Encode("failed to create encoder".into()))?;
+  let mut params = params;
+  let mut image = image.clone();
+  if codec.setup_encoder(&mut params, &mut image) != 1 {
+    return Err(Error::Encode("setup_encoder failed".into()));
+  }
+  let mut stream = Stream::new_output(
+    crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+    writer,
+  );
+  if codec.start_compress(&mut image, &mut stream) != 1 {
+    return Err(Error::Encode("start_compress failed".into()));
+  }
+  /* Multi-tile images encode concurrently (byte-identical fallback). */
+  #[cfg(feature = "rayon")]
+  let parallel_ok =
+    codec.num_tiles() > 1 && codec.encode_parallel(&mut stream) == Some(true);
+  #[cfg(feature = "rayon")]
+  let encode_ok = if parallel_ok {
+    true
+  } else {
+    codec.encode(&mut stream) == 1
+  };
+  #[cfg(not(feature = "rayon"))]
+  let encode_ok = codec.encode(&mut stream) == 1;
+  if !encode_ok {
+    return Err(Error::Encode("encode failed".into()));
+  }
+  if codec.end_compress(&mut stream) != 1 {
+    return Err(Error::Encode("end_compress failed".into()));
+  }
+  Ok(())
 }
 
 /// `Write + Seek` adapter collecting into a shared `Vec<u8>`; the j2k
@@ -752,6 +929,56 @@ mod tests {
     let back = Image::from_bytes(&codestream).expect("decode");
     assert_eq!((back.width(), back.height()), (image.width(), image.height()));
     assert!(back.components()[0].data.iter().any(|v| *v != 0));
+  }
+
+  /// Encode to an arbitrary writer and decode the bytes back.
+  #[test]
+  fn encode_to_writer_round_trip() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    let image = Image::from_bytes(&buf).expect("decode");
+    let file = std::fs::File::create("/tmp/openjp2_encode_to_writer.j2k").expect("create");
+    image
+      .encode_to_writer(
+        EncodeParameters::new().num_resolutions(3).tile_size(512, 512),
+        file,
+      )
+      .expect("encode to writer");
+    let back = Image::from_file("/tmp/openjp2_encode_to_writer.j2k").expect("decode");
+    let _ = std::fs::remove_file("/tmp/openjp2_encode_to_writer.j2k");
+    assert_eq!((back.width(), back.height()), (image.width(), image.height()));
+    for (a, b) in image.components().iter().zip(back.components()) {
+      assert_eq!(a.data, b.data, "writer round trip");
+    }
+  }
+
+  /// Build an image from an image-crate DynamicImage and round-trip it.
+  #[cfg(feature = "image")]
+  #[test]
+  fn from_dynamic_image_round_trip() {
+    let mut img = ::image::RgbaImage::new(96, 64);
+    for (i, px) in img.pixels_mut().enumerate() {
+      *px = ::image::Rgba([
+        (i % 251) as u8,
+        ((i * 7) % 233) as u8,
+        ((i * 13) % 199) as u8,
+        255,
+      ]);
+    }
+    let dyn_img = ::image::DynamicImage::ImageRgba8(img);
+    let image = Image::from_dynamic_image(&dyn_img);
+    assert_eq!(image.num_components(), 4);
+    assert_eq!((image.width(), image.height()), (96, 64));
+    // Round-trip through the encoder (lossless 5-3).
+    let codestream = image
+      .encode(EncodeParameters::new().num_resolutions(3))
+      .expect("encode");
+    let back = Image::from_bytes(&codestream).expect("decode");
+    for (a, b) in image.components().iter().zip(back.components()) {
+      assert_eq!(a.data, b.data);
+    }
+    // And back into pixels.
+    let pixels = back.get_pixels(None).expect("get_pixels");
+    assert_eq!(pixels.format, ::image::ExtendedColorType::Rgba8);
   }
 
   /// Grey+alpha and RGB+alpha pixel extraction (image-crate interop).
