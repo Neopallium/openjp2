@@ -26,6 +26,17 @@ pub mod image;
 pub mod openjpeg;
 pub mod stream;
 
+// High-level safe API (doc/api-review.md).
+mod api;
+pub use api::{ColorSpace, DecodeArea, DecodeParameters, Error, Image, Result};
+
+// The C-ABI mirror types are also available behind `ffi` for
+// interop with the C header spellings.
+pub mod ffi {
+  pub use crate::c_api_types::*;
+  pub use crate::consts::opj::*;
+}
+
 // Export safe API
 pub use c_api_types::*;
 pub use codec::{opj_codec_private_t, Codec};
