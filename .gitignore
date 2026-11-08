@@ -2,23 +2,25 @@
 CMakeFiles/
 Makefile
 cmake_install.cmake
-/CMakeCache.txt
-/CPackConfig.cmake
-/CPackSourceConfig.cmake
-/CTestCustom.cmake
-/LICENSE.txt
-/OpenJPEGConfig.cmake
-/libopenjp2.pc
-/src/bin/common/opj_apps_config.h
-/src/lib/openjp2/opj_config.h
-/src/lib/openjp2/opj_config_private.h
-scripts/opjstyle*
+/openjpeg/CMakeCache.txt
+/openjpeg/CPackConfig.cmake
+/openjpeg/CPackSourceConfig.cmake
+/openjpeg/CTestCustom.cmake
+/openjpeg/LICENSE.txt
+/openjpeg/OpenJPEGConfig.cmake
+/openjpeg/libopenjp2.pc
+/openjpeg/src/bin/common/opj_apps_config.h
+/openjpeg/src/lib/openjp2/opj_config.h
+/openjpeg/src/lib/openjp2/opj_config_private.h
+/openjpeg/scripts/opjstyle*
 
 # Ignore directories made by `make`.
-/bin/
+/openjpeg/bin/
 
-/data
-/build/
-/build_c/
+# C build trees and test data (data is cloned from openjpeg-data).
+/openjpeg/build/
+/openjpeg/build_c/
+/openjpeg/data/
+/openjpeg/partial_tests/
+/openjpeg/old_logs/
 *.log
-/partial_tests

@@ -41,18 +41,12 @@ jobs:
             rustup default ${{ matrix.toolchain }}
             rustup target add ${{ matrix.platform.target }}
       - name: check default features
-        working-directory: ./openjp2-rs
+        working-directory: ./openjp2
         run: cargo check --target ${{ matrix.platform.target }} --verbose
-      - name: check features std
-        working-directory: ./openjp2-rs
-        run: cargo check --target ${{ matrix.platform.target }} --no-default-features --features std
-      - name: check features std,file-io
-        working-directory: ./openjp2-rs
-        run: cargo check --target ${{ matrix.platform.target }} --no-default-features --features std,file-io
       - name: build
-        working-directory: ./openjp2-rs
+        working-directory: ./openjp2
         run: cargo build --target ${{ matrix.platform.target }} --verbose
       - name: test
-        working-directory: ./openjp2-rs
+        working-directory: ./openjp2
         run: cargo test --target ${{ matrix.platform.target }} --verbose
 

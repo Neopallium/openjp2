@@ -3,7 +3,7 @@
 # The allowlist entries also fail with the reference C library.
 set -uo pipefail
 
-BUILD_DIR="${BUILD_DIR:-/opt/openjpeg/build}"
+BUILD_DIR="${BUILD_DIR:-/opt/openjpeg/openjpeg/build}"
 JOBS="${JOBS:-$(nproc)}"
 
 ALLOWED=(

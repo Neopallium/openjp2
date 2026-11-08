@@ -66,7 +66,7 @@ let args = args!["-i", "input.ppm"];
 
 ```bash
 # Run all tests
-cd openjp2-rs/tools
+cd openjp2/tools
 cargo test
 
 # Run specific test file

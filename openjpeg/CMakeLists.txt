@@ -225,7 +225,15 @@ if(USE_RUST_LIB)
   enable_language(Rust)
   include(CMakeCargo)
 
-  add_subdirectory(openjp2-rs)
+  # The Rust openjp2 crate lives outside this (C/CMake) source tree, next
+  # to it, since the Rust workspace is the top level of the repository.
+  set(OPENJPEG_RUST_CRATE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../openjp2" CACHE PATH
+      "Path to the Rust openjp2 crate directory")
+  if(NOT EXISTS "${OPENJPEG_RUST_CRATE_DIR}/Cargo.toml")
+    message(FATAL_ERROR "Rust crate not found at ${OPENJPEG_RUST_CRATE_DIR} "
+      "(set OPENJPEG_RUST_CRATE_DIR to the openjp2 crate directory)")
+  endif()
+  add_subdirectory(${OPENJPEG_RUST_CRATE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/openjp2-rs)
 else()
   add_subdirectory(src/lib)
 endif()
@@ -287,7 +295,7 @@ if(BUILD_TESTING)
     # They could be found via git on the OpenJPEG GitHub code project
     # git clone https://github.com/uclouvain/openjpeg-data.git
     find_path(OPJ_DATA_ROOT README-OPJ-Data
-      PATHS $ENV{OPJ_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../data
+      PATHS $ENV{OPJ_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../data ${CMAKE_SOURCE_DIR}/data
       NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
       )
 
