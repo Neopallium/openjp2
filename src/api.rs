@@ -742,6 +742,21 @@ mod tests {
         )
       })
       .collect();
+    let conformance = root.join("input").join("conformance");
+    if conformance.is_dir() {
+      entries.extend(
+        std::fs::read_dir(&conformance)
+          .expect("read_dir")
+          .filter_map(|e| e.ok())
+          .map(|e| e.path())
+          .filter(|p| {
+            matches!(
+              p.extension().and_then(|e| e.to_str()),
+              Some("j2k") | Some("j2c") | Some("jp2") | Some("jhc") | Some("jph")
+            )
+          }),
+      );
+    }
     entries.sort();
     for path in entries {
       let buf = std::fs::read(&path).expect("read input");
