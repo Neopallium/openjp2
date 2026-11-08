@@ -42,5 +42,3 @@ rayon = ["dep:rayon"]
 threads = ["rayon"]
 # `image`-crate interop (Image::get_pixels / DynamicImage conversion).
 image = ["dep:image"]
-jpwl = []
-jpspec = []

@@ -542,24 +542,6 @@ pub(crate) enum J2KMarker {
   MCT,
   /// MCO marker value
   MCO,
-  /// EPC marker value (Part 11: JPEG 2000 for Wireless)
-  #[cfg(feature = "jpwl")]
-  EPC,
-  /// EPB marker value (Part 11: JPEG 2000 for Wireless)
-  #[cfg(feature = "jpwl")]
-  EPB,
-  /// ESD marker value (Part 11: JPEG 2000 for Wireless)
-  #[cfg(feature = "jpwl")]
-  ESD,
-  /// RED marker value (Part 11: JPEG 2000 for Wireless)
-  #[cfg(feature = "jpwl")]
-  RED,
-  /// SEC marker value (Part 8: Secure JPEG 2000)
-  #[cfg(feature = "jpspec")]
-  SEC,
-  /// INSEC marker value (Part 8: Secure JPEG 2000)
-  #[cfg(feature = "jpspec")]
-  INSEC,
 }
 
 impl From<u32> for J2KMarker {
@@ -591,18 +573,6 @@ impl From<u32> for J2KMarker {
       0xff75 => Self::MCC,
       0xff74 => Self::MCT,
       0xff77 => Self::MCO,
-      #[cfg(feature = "jpwl")]
-      0xff68 => Self::EPC,
-      #[cfg(feature = "jpwl")]
-      0xff66 => Self::EPB,
-      #[cfg(feature = "jpwl")]
-      0xff67 => Self::ESD,
-      #[cfg(feature = "jpwl")]
-      0xff69 => Self::RED,
-      #[cfg(feature = "jpspec")]
-      0xff65 => Self::SEC,
-      #[cfg(feature = "jpspec")]
-      0xff94 => Self::INSEC,
       num => Self::UNK(num),
     }
   }
@@ -642,18 +612,6 @@ impl J2KMarker {
       Self::MCC => 0xff75,
       Self::MCT => 0xff74,
       Self::MCO => 0xff77,
-      #[cfg(feature = "jpwl")]
-      Self::EPC => 0xff68,
-      #[cfg(feature = "jpwl")]
-      Self::EPB => 0xff66,
-      #[cfg(feature = "jpwl")]
-      Self::ESD => 0xff67,
-      #[cfg(feature = "jpwl")]
-      Self::RED => 0xff69,
-      #[cfg(feature = "jpspec")]
-      Self::SEC => 0xff65,
-      #[cfg(feature = "jpspec")]
-      Self::INSEC => 0xff94,
       Self::UNK(num) => *num,
     }
   }
@@ -690,19 +648,6 @@ impl J2KMarker {
       Self::CPF => J2KState::MH,
       Self::MCC => J2KState::MH | J2KState::TPH,
       Self::MCO => J2KState::MH | J2KState::TPH,
-      #[cfg(feature = "jpwl")]
-      Self::EPC => J2KState::MH | J2KState::TPH,
-      #[cfg(feature = "jpwl")]
-      Self::EPB => J2KState::MH | J2KState::TPH,
-      #[cfg(feature = "jpwl")]
-      Self::ESD => J2KState::MH | J2KState::TPH,
-      #[cfg(feature = "jpwl")]
-      Self::RED => J2KState::MH | J2KState::TPH,
-      #[cfg(feature = "jpspec")]
-      Self::SEC => J2K_DEC_STATE_MH,
-      #[cfg(feature = "jpspec")]
-      Self::INSEC => J2KState::NONE,
-
       _ => J2KState::MH | J2KState::TPH,
     }
   }
@@ -730,18 +675,6 @@ impl J2KMarker {
       Self::CPF => opj_j2k_read_cpf(p_j2k, header_data, p_manager),
       Self::MCC => opj_j2k_read_mcc(p_j2k, header_data, p_manager),
       Self::MCO => opj_j2k_read_mco(p_j2k, header_data, p_manager),
-      #[cfg(feature = "jpwl")]
-      Self::EPC => opj_j2k_read_epc(p_j2k, header_data, p_manager),
-      #[cfg(feature = "jpwl")]
-      Self::EPB => opj_j2k_read_epb(p_j2k, header_data, p_manager),
-      #[cfg(feature = "jpwl")]
-      Self::ESD => opj_j2k_read_esd(p_j2k, header_data, p_manager),
-      #[cfg(feature = "jpwl")]
-      Self::RED => opj_j2k_read_red(p_j2k, header_data, p_manager),
-      #[cfg(feature = "jpspec")]
-      Self::SEC => opj_j2k_read_sec(p_j2k, header_data, p_manager),
-      #[cfg(feature = "jpspec")]
-      Self::INSEC => opj_j2k_read_insec(p_j2k, header_data, p_manager),
       _ => {
         // No handler for this marker.
         event_msg!(

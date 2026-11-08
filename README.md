@@ -62,9 +62,8 @@ path.
 
 | Feature    | Default | Meaning |
 |---|---|---|
-| `rayon`    | on      | Parallel tier-1 codeblock coding, DWT, DC shift (alias: `threads`) |
+| `rayon`    | on      | Parallel tier-1 codeblock coding, DWT, DC shift, tile-level decode/encode (alias: `threads`) |
 | `image`    | on      | `get_pixels` / `DynamicImage` interop with the `image` crate |
-| `jpwl`     | off     | JPWL (Part 11) structures |
 
 Build without rayon for no-rayon targets: `cargo build --no-default-features --features image`.
 
