@@ -727,8 +727,13 @@ mod tests {
     let info = dump.get_codestream_info().expect("info");
     assert_eq!((info.tw(), info.th()), (1, 1));
     assert_eq!(info.nbcomps(), 3);
-    let text = dump.dump(0xFFFF);
-    assert!(text.contains("Codestream index"));
+    let text = dump.dump(
+      (crate::consts::opj::OPJ_IMG_INFO
+        | crate::consts::opj::OPJ_J2K_MH_INFO
+        | crate::consts::opj::OPJ_J2K_MH_IND) as i32,
+    );
+    // The JP2 dump prints the boxes and the codestream header info.
+    assert!(text.contains("Codestream info"));
   }
 
   /// Fixed-quality layer rates via the builder (rate allocation).
