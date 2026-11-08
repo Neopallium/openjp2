@@ -3,11 +3,11 @@ use crate::image::*;
 use crate::openjpeg::*;
 
 fn opj_j2k_dump_tile_info<W: StringWriter>(
-  l_default_tile: &opj_tcp_t,
-  numcomps: OPJ_INT32,
+  l_default_tile: &Tcp,
+  numcomps: i32,
   out_stream: &mut W,
 ) {
-  let mut compno: OPJ_INT32 = 0;
+  let mut compno: i32 = 0;
   fprintf!(out_stream, "\t default tile {{\n");
   if l_default_tile.csty != 0 {
     fprintf!(out_stream, "\t\t csty={:#x}\n", l_default_tile.csty);
@@ -33,9 +33,9 @@ fn opj_j2k_dump_tile_info<W: StringWriter>(
   compno = 0i32; /*end of component of default tile*/
   while compno < numcomps {
     let l_tccp = &l_default_tile.tccps[compno as usize];
-    let mut resno: OPJ_UINT32 = 0;
-    let mut bandno: OPJ_INT32 = 0;
-    let mut numbands: OPJ_INT32 = 0;
+    let mut resno: u32 = 0;
+    let mut bandno: i32 = 0;
+    let mut numbands: i32 = 0;
     /* coding style*/
     fprintf!(out_stream, "\t\t comp {} {{\n", compno);
     if l_tccp.csty != 0 {
@@ -57,7 +57,7 @@ fn opj_j2k_dump_tile_info<W: StringWriter>(
     }
     fprintf!(out_stream, "\t\t\t qmfbid={}\n", l_tccp.qmfbid);
     fprintf!(out_stream, "\t\t\t preccintsize (w,h)=");
-    resno = 0 as OPJ_UINT32;
+    resno = 0_u32;
     while resno < l_tccp.numresolutions {
       fprintf!(
         out_stream,
@@ -75,7 +75,7 @@ fn opj_j2k_dump_tile_info<W: StringWriter>(
     numbands = if l_tccp.qntsty == 1u32 {
       1i32
     } else {
-      (l_tccp.numresolutions as OPJ_INT32 * 3i32) - 2i32
+      (l_tccp.numresolutions as i32 * 3i32) - 2i32
     };
     bandno = 0i32;
     while bandno < numbands {
@@ -96,7 +96,7 @@ fn opj_j2k_dump_tile_info<W: StringWriter>(
   fprintf!(out_stream, "\t }}\n");
 }
 
-pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &opj_j2k, flag: OPJ_INT32, out_stream: &mut W) {
+pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &J2k, flag: i32, out_stream: &mut W) {
   /* Check if the flag is compatible with j2k file*/
   if flag & 128i32 != 0 || flag & 256i32 != 0 {
     fprintf!(out_stream, "Wrong flag\n");
@@ -113,13 +113,13 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &opj_j2k, flag: OPJ_INT32, out_st
   /* Dump all tile/codestream info */
   if flag & 8i32 != 0 {
     let l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
-    let mut i: OPJ_UINT32 = 0;
+    let mut i: u32 = 0;
     if p_j2k.m_private_image.is_some() {
-      i = 0 as OPJ_UINT32;
+      i = 0_u32;
       while i < l_nb_tiles {
         opj_j2k_dump_tile_info(
           &p_j2k.m_cp.tcps[i as usize],
-          p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps as OPJ_INT32,
+          p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps as i32,
           out_stream,
         );
         i += 1;
@@ -136,7 +136,7 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &opj_j2k, flag: OPJ_INT32, out_st
   if flag & 32i32 != 0 {}
 }
 
-fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
+fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   let Some(cstr_index) = p_j2k.cstr_index.as_deref() else {
     return;
   };
@@ -170,7 +170,7 @@ fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
   }
   fprintf!(out_stream, "\t }}\n");
   /* Simple test to avoid writing empty information */
-  let l_acc_nb_of_tile_part: OPJ_UINT32 = cstr_index
+  let l_acc_nb_of_tile_part: u32 = cstr_index
     .tiles
     .iter()
     .map(|tile| tile.nb_tps)
@@ -210,7 +210,7 @@ fn opj_j2k_dump_MH_index<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
 }
 
 
-fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
+fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   fprintf!(out_stream, "Codestream info from main header: {{\n");
   fprintf!(
     out_stream,
@@ -238,7 +238,7 @@ fn opj_j2k_dump_MH_info<W: StringWriter>(p_j2k: &opj_j2k, out_stream: &mut W) {
         .m_default_tcp
         .as_deref()
         .expect("decoder m_default_tcp is always set"),
-      p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps as OPJ_INT32,
+      p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps as i32,
       out_stream,
     );
   }
@@ -273,8 +273,8 @@ pub(crate) fn j2k_dump_image_header<W: StringWriter>(
   );
   fprintf!(out_stream, "{} numcomps={}\n", tab, img_header.numcomps);
   if !img_header.comps.is_empty() {
-    let mut compno: OPJ_UINT32 = 0;
-    compno = 0 as OPJ_UINT32;
+    let mut compno: u32 = 0;
+    compno = 0_u32;
     while compno < img_header.numcomps {
       fprintf!(out_stream, "{}\t component {} {{\n", tab, compno);
       j2k_dump_image_comp_header(

@@ -43,8 +43,8 @@ use super::j2k::*;
 
 #[allow(clippy::large_enum_variant)]
 pub(crate) enum CodecFormat {
-  J2K(opj_j2k),
-  JP2(opj_jp2),
+  J2K(J2k),
+  JP2(Jp2),
 }
 
 pub(crate) enum CodecType {
@@ -55,7 +55,7 @@ pub(crate) enum CodecType {
 #[repr(C)]
 pub struct Codec {
   pub(crate) m_codec: CodecType,
-  pub(crate) m_event_mgr: opj_event_mgr,
+  pub(crate) m_event_mgr: EventMgr,
 }
 pub type opj_codec_private_t = Codec;
 
@@ -124,7 +124,7 @@ impl Codec {
     }
   }
 
-  pub fn dump_codec<W: StringWriter>(&self, mut info_flag: OPJ_INT32, mut output_stream: &mut W) {
+  pub fn dump_codec<W: StringWriter>(&self, mut info_flag: i32, mut output_stream: &mut W) {
     match &self.m_codec {
       CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
         j2k_dump(j2k, info_flag, output_stream)
@@ -290,10 +290,10 @@ impl Codec {
   pub fn set_decode_area(
     &mut self,
     p_image: &mut CoreImage,
-    mut p_start_x: OPJ_INT32,
-    mut p_start_y: OPJ_INT32,
-    mut p_end_x: OPJ_INT32,
-    mut p_end_y: OPJ_INT32,
+    mut p_start_x: i32,
+    mut p_start_y: i32,
+    mut p_end_x: i32,
+    mut p_end_y: i32,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
       CodecType::Encoder(_) => (),
@@ -343,7 +343,7 @@ impl Codec {
   pub fn decode_tile_data(
     &mut self,
     mut p_stream: &mut Stream,
-    mut p_tile_index: OPJ_UINT32,
+    mut p_tile_index: u32,
     p_data: Option<&mut [u8]>,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
@@ -366,7 +366,7 @@ impl Codec {
     &mut self,
     p_stream: &mut Stream,
     p_image: &mut CoreImage,
-    mut tile_index: OPJ_UINT32,
+    mut tile_index: u32,
   ) -> OPJ_BOOL {
     match &mut self.m_codec {
       CodecType::Encoder(_) => (),
@@ -384,7 +384,7 @@ impl Codec {
     0
   }
 
-  pub fn set_decoded_resolution_factor(&mut self, mut res_factor: OPJ_UINT32) -> OPJ_BOOL {
+  pub fn set_decoded_resolution_factor(&mut self, mut res_factor: u32) -> OPJ_BOOL {
     match &mut self.m_codec {
       CodecType::Encoder(_) => 0,
       CodecType::Decoder(CodecFormat::J2K(dec)) => {
@@ -497,7 +497,7 @@ impl Codec {
 
   pub fn write_tile(
     &mut self,
-    p_tile_index: OPJ_UINT32,
+    p_tile_index: u32,
     p_data: &[u8],
     p_stream: &mut Stream,
   ) -> OPJ_BOOL {

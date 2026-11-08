@@ -3,23 +3,21 @@ use super::openjpeg::*;
 use super::t1_luts::*;
 use core::cell::Cell;
 
-pub struct opj_mqc_state {
+pub struct MqcState {
   pub qeval: u32,
   // TODO: use 'bool'
   pub mps: u8,
   pub nmps: u8,
   pub nlps: u8,
 }
-pub type opj_mqc_state_t = opj_mqc_state;
-
-pub struct opj_mqc {
-  pub c: OPJ_UINT32,
-  pub a: OPJ_UINT32,
-  pub ct: OPJ_UINT32,
-  pub end_of_byte_stream_counter: OPJ_UINT32,
+pub struct Mqc {
+  pub c: u32,
+  pub a: u32,
+  pub ct: u32,
+  pub end_of_byte_stream_counter: u32,
   /// Owned byte buffer this coder reads from / writes to. The code-block data
   /// sits at `start..end`; `Cell` lets the shared-borrow byte-out path write.
-  buf: Vec<Cell<OPJ_BYTE>>,
+  buf: Vec<Cell<u8>>,
   /// Index of the code-block's first byte within `base`. The encoder's buffer carries one
   /// sentinel byte in front of it (see `opj_tcd_code_block_enc_allocate_data`), so `start` is
   /// 1 there and the cursor may legally sit one byte before the code-block data.
@@ -29,14 +27,12 @@ pub struct opj_mqc {
   end: usize,
   /// Read/write cursor, as an index into `base`.
   cursor: usize,
-  pub ctxs: [&'static opj_mqc_state_t; MQC_NUMCTXS],
+  pub ctxs: [&'static MqcState; MQC_NUMCTXS],
   pub curctx: u8,
-  pub lut_ctxno_zc_orient: &'static [OPJ_BYTE; 512],
-  pub backup: [OPJ_BYTE; 2],
+  pub lut_ctxno_zc_orient: &'static [u8; 512],
+  pub backup: [u8; 2],
 }
-pub type opj_mqc_t = opj_mqc;
-
-impl Default for opj_mqc {
+impl Default for Mqc {
   fn default() -> Self {
     let ctx = &mqc_states[0];
     Self {
@@ -56,7 +52,7 @@ impl Default for opj_mqc {
   }
 }
 
-impl opj_mqc {
+impl Mqc {
   pub(crate) fn set_curctx(&mut self, ctxno: u8) {
     self.curctx = ctxno;
   }
@@ -71,14 +67,14 @@ impl opj_mqc {
     self.ctxs[self.curctx as usize] = &mqc_states[curctx.nmps as usize];
   }
 
-  pub(crate) fn curctx(&self) -> &'static opj_mqc_state_t {
+  pub(crate) fn curctx(&self) -> &'static MqcState {
     self.ctxs[self.curctx as usize]
   }
 
   /// Byte view over the owned buffer. `Cell` lets a shared borrow still write,
   /// which keeps the byte-out path free of `&mut` juggling.
   #[inline]
-  fn buf(&self) -> &[Cell<OPJ_BYTE>] {
+  fn buf(&self) -> &[Cell<u8>] {
     &self.buf[..]
   }
 
@@ -90,12 +86,12 @@ impl opj_mqc {
   }
 
   /// Public read view of the owned buffer.
-  pub(crate) fn buf_ref(&self) -> &[Cell<OPJ_BYTE>] {
+  pub(crate) fn buf_ref(&self) -> &[Cell<u8>] {
     &self.buf[..]
   }
 
   /// Public mutable view of the owned buffer.
-  pub(crate) fn buf_mut(&mut self) -> &mut [Cell<OPJ_BYTE>] {
+  pub(crate) fn buf_mut(&mut self) -> &mut [Cell<u8>] {
     &mut self.buf[..]
   }
 
@@ -107,7 +103,7 @@ impl opj_mqc {
     self.cursor = start;
   }
 
-  pub(crate) fn write_byte(&mut self, b: OPJ_BYTE) {
+  pub(crate) fn write_byte(&mut self, b: u8) {
     self.buf()[self.cursor].set(b);
   }
 
@@ -115,15 +111,15 @@ impl opj_mqc {
     self.cursor as isize >= self.start as isize + offset
   }
 
-  pub(crate) fn bp(&self) -> OPJ_BYTE {
+  pub(crate) fn bp(&self) -> u8 {
     self.buf()[self.cursor].get()
   }
 
-  pub(crate) fn bp_peek_offset(&self, offset: isize) -> OPJ_BYTE {
+  pub(crate) fn bp_peek_offset(&self, offset: isize) -> u8 {
     self.buf()[self.cursor.wrapping_add_signed(offset)].get()
   }
 
-  pub(crate) fn bp_peek(&self) -> OPJ_BYTE {
+  pub(crate) fn bp_peek(&self) -> u8 {
     self.bp_peek_offset(1)
   }
 
@@ -151,7 +147,7 @@ impl opj_mqc {
   }
 
   pub(crate) fn backup_extra(&mut self) {
-    let mut backup = [0 as OPJ_BYTE; 2];
+    let mut backup = [0_u8; 2];
     let buf = self.buf();
     // Backup extra bytes and replace with `0xff`
     for (idx, byte) in backup.iter_mut().enumerate() {
@@ -172,12 +168,12 @@ impl opj_mqc {
 }
 
 #[inline]
-pub(crate) fn opj_mqc_setcurctx(mqc: &mut opj_mqc_t, ctxno: u8) {
+pub(crate) fn opj_mqc_setcurctx(mqc: &mut Mqc, ctxno: u8) {
   mqc.set_curctx(ctxno);
 }
 
 /* For internal use of opj_mqc_decode_macro() */
-fn opj_mqc_mpsexchange_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
+fn opj_mqc_mpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
   let curctx = mqc.curctx();
   if mqc.a < curctx.qeval {
     *d = (curctx.mps == 0) as u32;
@@ -189,7 +185,7 @@ fn opj_mqc_mpsexchange_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
 }
 
 /* For internal use of opj_mqc_decode_macro() */
-fn opj_mqc_lpsexchange_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
+fn opj_mqc_lpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
   let curctx = mqc.curctx();
   if mqc.a < curctx.qeval {
     mqc.a = curctx.qeval;
@@ -208,7 +204,7 @@ Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
 @return Returns the decoded symbol (0 or 1)
 */
 #[inline]
-pub(crate) fn opj_mqc_raw_decode(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
+pub(crate) fn opj_mqc_raw_decode(mut mqc: &mut Mqc) -> u32 {
   if mqc.ct == 0 {
     /* Given opj_mqc_raw_init_dec() we know that at some point we will */
     /* have a 0xFF 0xFF artificial marker */
@@ -217,12 +213,12 @@ pub(crate) fn opj_mqc_raw_decode(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
         mqc.c = 0xff;
         mqc.ct = 8;
       } else {
-        mqc.c = mqc.bp() as OPJ_UINT32;
+        mqc.c = mqc.bp() as u32;
         mqc.inc_bp();
         mqc.ct = 7;
       }
     } else {
-      mqc.c = mqc.bp() as OPJ_UINT32;
+      mqc.c = mqc.bp() as u32;
       mqc.inc_bp();
       mqc.ct = 8;
     }
@@ -233,11 +229,11 @@ pub(crate) fn opj_mqc_raw_decode(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
 }
 
 #[inline]
-fn opj_mqc_bytein_macro(mqc: &mut opj_mqc_t) {
-  let mut l_c: OPJ_UINT32 = 0;
+fn opj_mqc_bytein_macro(mqc: &mut Mqc) {
+  let mut l_c: u32 = 0;
   /* Given opj_mqc_init_dec() we know that at some point we will */
   /* have a 0xFF 0xFF artificial marker */
-  l_c = mqc.bp_peek() as OPJ_UINT32;
+  l_c = mqc.bp_peek() as u32;
   if mqc.bp() == 0xff {
     if l_c > 0x8f {
       mqc.c = mqc.c.wrapping_add(0xff00);
@@ -256,13 +252,13 @@ fn opj_mqc_bytein_macro(mqc: &mut opj_mqc_t) {
 }
 
 #[inline]
-pub(crate) fn opj_mqc_bytein(mqc: &mut opj_mqc_t) {
+pub(crate) fn opj_mqc_bytein(mqc: &mut Mqc) {
   opj_mqc_bytein_macro(mqc);
 }
 
 /* For internal use of opj_mqc_decode_macro() */
 #[inline]
-fn opj_mqc_renormd_macro(mqc: &mut opj_mqc_t) {
+fn opj_mqc_renormd_macro(mqc: &mut Mqc) {
   loop {
     if mqc.ct == 0 {
       opj_mqc_bytein_macro(mqc);
@@ -277,7 +273,7 @@ fn opj_mqc_renormd_macro(mqc: &mut opj_mqc_t) {
 }
 
 #[inline]
-pub(crate) fn opj_mqc_decode_macro(d: &mut OPJ_UINT32, mqc: &mut opj_mqc_t) {
+pub(crate) fn opj_mqc_decode_macro(d: &mut u32, mqc: &mut Mqc) {
   /* Implements ISO 15444-1 C.3.2 Decoding a decision (DECODE) */
   /* Note: alternate "J.2 - Decoding an MPS or an LPS in the */
   /* software-conventions decoder" has been tried, but does not bring any */
@@ -305,7 +301,7 @@ Renormalize mqc->a and mqc->c while encoding, so that mqc->a stays between 0x800
 @param ct_ value of mqc->ct_
 */
 #[inline]
-fn opj_mqc_renorme_macro(mqc: &mut opj_mqc_t) {
+fn opj_mqc_renorme_macro(mqc: &mut Mqc) {
   loop {
     mqc.a <<= 1;
     mqc.c <<= 1;
@@ -320,7 +316,7 @@ fn opj_mqc_renorme_macro(mqc: &mut opj_mqc_t) {
 }
 
 #[inline]
-fn opj_mqc_codemps_macro(mqc: &mut opj_mqc_t) {
+fn opj_mqc_codemps_macro(mqc: &mut Mqc) {
   mqc.a = mqc.a.wrapping_sub(mqc.curctx().qeval);
   if mqc.a & 0x8000 == 0 {
     if mqc.a < mqc.curctx().qeval {
@@ -336,7 +332,7 @@ fn opj_mqc_codemps_macro(mqc: &mut opj_mqc_t) {
 }
 
 #[inline]
-fn opj_mqc_codelps_macro(mqc: &mut opj_mqc_t) {
+fn opj_mqc_codelps_macro(mqc: &mut Mqc) {
   mqc.a = mqc.a.wrapping_sub(mqc.curctx().qeval);
   if mqc.a < mqc.curctx().qeval {
     mqc.c = mqc.c.wrapping_add(mqc.curctx().qeval);
@@ -348,7 +344,7 @@ fn opj_mqc_codelps_macro(mqc: &mut opj_mqc_t) {
 }
 
 #[inline]
-pub(crate) fn opj_mqc_encode_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
+pub(crate) fn opj_mqc_encode_macro(mqc: &mut Mqc, d: u32) {
   if mqc.curctx().mps as u32 == d {
     opj_mqc_codemps(mqc);
   } else {
@@ -357,14 +353,14 @@ pub(crate) fn opj_mqc_encode_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
 }
 
 #[inline]
-pub(crate) fn opj_mqc_bypass_enc_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
+pub(crate) fn opj_mqc_bypass_enc_macro(mqc: &mut Mqc, d: u32) {
   if mqc.ct == BYPASS_CT_INIT {
     mqc.ct = 8;
   }
   mqc.ct = mqc.ct.wrapping_sub(1);
   mqc.c = mqc.c.wrapping_add(d << mqc.ct);
   if mqc.ct == 0 {
-    mqc.write_byte(mqc.c as OPJ_BYTE);
+    mqc.write_byte(mqc.c as u8);
     mqc.ct = 8;
     /* If the previous byte was 0xff, make sure that the next msb is 0 */
     if mqc.bp() == 0xff {
@@ -380,566 +376,566 @@ pub(crate) fn opj_mqc_bypass_enc_macro(mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
 /* <summary> */
 /* This array defines all the possible states for a context. */
 /* </summary> */
-const mqc_states: [opj_mqc_state_t; 47 * 2] = [
-  opj_mqc_state_t {
+const mqc_states: [MqcState; 47 * 2] = [
+  MqcState {
     qeval: 0x5601,
     mps: 0,
     nmps: 2,
     nlps: 3,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5601,
     mps: 1,
     nmps: 3,
     nlps: 2,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3401,
     mps: 0,
     nmps: 4,
     nlps: 12,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3401,
     mps: 1,
     nmps: 5,
     nlps: 13,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1801,
     mps: 0,
     nmps: 6,
     nlps: 18,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1801,
     mps: 1,
     nmps: 7,
     nlps: 19,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0ac1,
     mps: 0,
     nmps: 8,
     nlps: 24,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0ac1,
     mps: 1,
     nmps: 9,
     nlps: 25,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0521,
     mps: 0,
     nmps: 10,
     nlps: 58,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0521,
     mps: 1,
     nmps: 11,
     nlps: 59,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0221,
     mps: 0,
     nmps: 76,
     nlps: 66,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0221,
     mps: 1,
     nmps: 77,
     nlps: 67,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5601,
     mps: 0,
     nmps: 14,
     nlps: 13,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5601,
     mps: 1,
     nmps: 15,
     nlps: 12,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5401,
     mps: 0,
     nmps: 16,
     nlps: 28,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5401,
     mps: 1,
     nmps: 17,
     nlps: 29,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x4801,
     mps: 0,
     nmps: 18,
     nlps: 28,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x4801,
     mps: 1,
     nmps: 19,
     nlps: 29,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3801,
     mps: 0,
     nmps: 20,
     nlps: 28,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3801,
     mps: 1,
     nmps: 21,
     nlps: 29,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3001,
     mps: 0,
     nmps: 22,
     nlps: 34,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3001,
     mps: 1,
     nmps: 23,
     nlps: 35,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x2401,
     mps: 0,
     nmps: 24,
     nlps: 36,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x2401,
     mps: 1,
     nmps: 25,
     nlps: 37,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1c01,
     mps: 0,
     nmps: 26,
     nlps: 40,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1c01,
     mps: 1,
     nmps: 27,
     nlps: 41,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1601,
     mps: 0,
     nmps: 58,
     nlps: 42,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1601,
     mps: 1,
     nmps: 59,
     nlps: 43,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5601,
     mps: 0,
     nmps: 30,
     nlps: 29,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5601,
     mps: 1,
     nmps: 31,
     nlps: 28,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5401,
     mps: 0,
     nmps: 32,
     nlps: 28,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5401,
     mps: 1,
     nmps: 33,
     nlps: 29,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5101,
     mps: 0,
     nmps: 34,
     nlps: 30,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5101,
     mps: 1,
     nmps: 35,
     nlps: 31,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x4801,
     mps: 0,
     nmps: 36,
     nlps: 32,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x4801,
     mps: 1,
     nmps: 37,
     nlps: 33,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3801,
     mps: 0,
     nmps: 38,
     nlps: 34,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3801,
     mps: 1,
     nmps: 39,
     nlps: 35,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3401,
     mps: 0,
     nmps: 40,
     nlps: 36,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3401,
     mps: 1,
     nmps: 41,
     nlps: 37,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3001,
     mps: 0,
     nmps: 42,
     nlps: 38,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x3001,
     mps: 1,
     nmps: 43,
     nlps: 39,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x2801,
     mps: 0,
     nmps: 44,
     nlps: 38,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x2801,
     mps: 1,
     nmps: 45,
     nlps: 39,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x2401,
     mps: 0,
     nmps: 46,
     nlps: 40,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x2401,
     mps: 1,
     nmps: 47,
     nlps: 41,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x2201,
     mps: 0,
     nmps: 48,
     nlps: 42,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x2201,
     mps: 1,
     nmps: 49,
     nlps: 43,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1c01,
     mps: 0,
     nmps: 50,
     nlps: 44,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1c01,
     mps: 1,
     nmps: 51,
     nlps: 45,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1801,
     mps: 0,
     nmps: 52,
     nlps: 46,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1801,
     mps: 1,
     nmps: 53,
     nlps: 47,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1601,
     mps: 0,
     nmps: 54,
     nlps: 48,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1601,
     mps: 1,
     nmps: 55,
     nlps: 49,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1401,
     mps: 0,
     nmps: 56,
     nlps: 50,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1401,
     mps: 1,
     nmps: 57,
     nlps: 51,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1201,
     mps: 0,
     nmps: 58,
     nlps: 52,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1201,
     mps: 1,
     nmps: 59,
     nlps: 53,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1101,
     mps: 0,
     nmps: 60,
     nlps: 54,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x1101,
     mps: 1,
     nmps: 61,
     nlps: 55,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0ac1,
     mps: 0,
     nmps: 62,
     nlps: 56,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0ac1,
     mps: 1,
     nmps: 63,
     nlps: 57,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x09c1,
     mps: 0,
     nmps: 64,
     nlps: 58,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x09c1,
     mps: 1,
     nmps: 65,
     nlps: 59,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x08a1,
     mps: 0,
     nmps: 66,
     nlps: 60,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x08a1,
     mps: 1,
     nmps: 67,
     nlps: 61,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0521,
     mps: 0,
     nmps: 68,
     nlps: 62,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0521,
     mps: 1,
     nmps: 69,
     nlps: 63,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0441,
     mps: 0,
     nmps: 70,
     nlps: 64,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0441,
     mps: 1,
     nmps: 71,
     nlps: 65,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x02a1,
     mps: 0,
     nmps: 72,
     nlps: 66,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x02a1,
     mps: 1,
     nmps: 73,
     nlps: 67,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0221,
     mps: 0,
     nmps: 74,
     nlps: 68,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0221,
     mps: 1,
     nmps: 75,
     nlps: 69,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0141,
     mps: 0,
     nmps: 76,
     nlps: 70,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0141,
     mps: 1,
     nmps: 77,
     nlps: 71,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0111,
     mps: 0,
     nmps: 78,
     nlps: 72,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0111,
     mps: 1,
     nmps: 79,
     nlps: 73,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0085,
     mps: 0,
     nmps: 80,
     nlps: 74,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0085,
     mps: 1,
     nmps: 81,
     nlps: 75,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0049,
     mps: 0,
     nmps: 82,
     nlps: 76,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0049,
     mps: 1,
     nmps: 83,
     nlps: 77,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0025,
     mps: 0,
     nmps: 84,
     nlps: 78,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0025,
     mps: 1,
     nmps: 85,
     nlps: 79,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0015,
     mps: 0,
     nmps: 86,
     nlps: 80,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0015,
     mps: 1,
     nmps: 87,
     nlps: 81,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0009,
     mps: 0,
     nmps: 88,
     nlps: 82,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0009,
     mps: 1,
     nmps: 89,
     nlps: 83,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0005,
     mps: 0,
     nmps: 90,
     nlps: 84,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0005,
     mps: 1,
     nmps: 91,
     nlps: 85,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0001,
     mps: 0,
     nmps: 90,
     nlps: 86,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x0001,
     mps: 1,
     nmps: 91,
     nlps: 87,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5601,
     mps: 0,
     nmps: 92,
     nlps: 92,
   },
-  opj_mqc_state_t {
+  MqcState {
     qeval: 0x5601,
     mps: 1,
     nmps: 93,
@@ -1001,7 +997,7 @@ const mqc_states: [opj_mqc_state_t; 47 * 2] = [
 Fill mqc->c with 1's for flushing
 @param mqc MQC handle
 */
-fn opj_mqc_setbits(mut mqc: &mut opj_mqc_t) {
+fn opj_mqc_setbits(mut mqc: &mut Mqc) {
   let mut tempc = mqc.c.wrapping_add(mqc.a);
   mqc.c |= 0xffff;
   if mqc.c >= tempc {
@@ -1015,14 +1011,14 @@ fn opj_mqc_setbits(mut mqc: &mut opj_mqc_t) {
 ==========================================================
 */
 
-pub(crate) fn opj_mqc_numbytes(mut mqc: &mut opj_mqc_t) -> OPJ_UINT32 {
-  mqc.consumed() as OPJ_UINT32
+pub(crate) fn opj_mqc_numbytes(mut mqc: &mut Mqc) -> u32 {
+  mqc.consumed() as u32
 }
 
 /// `bp` is the code-block data buffer and `len` its usable length. The buffer is allocated with
 /// one extra sentinel byte in front of `bp` (see `opj_tcd_code_block_enc_allocate_data`), which
 /// is what lets the cursor start one byte before the code-block data.
-pub(crate) fn opj_mqc_init_enc(mut mqc: &mut opj_mqc_t, len: OPJ_UINT32) {
+pub(crate) fn opj_mqc_init_enc(mut mqc: &mut Mqc, len: u32) {
   /* To avoid the curctx pointer to be dangling, but not strictly */
   /* required as the current context is always set before encoding */
   opj_mqc_setcurctx(mqc, 0);
@@ -1046,7 +1042,7 @@ pub(crate) fn opj_mqc_init_enc(mut mqc: &mut opj_mqc_t, len: OPJ_UINT32) {
   mqc.end_of_byte_stream_counter = 0;
 }
 
-pub(crate) fn opj_mqc_flush(mut mqc: &mut opj_mqc_t) {
+pub(crate) fn opj_mqc_flush(mut mqc: &mut Mqc) {
   /* C.2.9 Termination of coding (FLUSH) */
   /* Figure C.11 – FLUSH procedure */
   opj_mqc_setbits(mqc);
@@ -1062,7 +1058,7 @@ pub(crate) fn opj_mqc_flush(mut mqc: &mut opj_mqc_t) {
   }
 }
 
-pub(crate) fn opj_mqc_bypass_init_enc(mut mqc: &mut opj_mqc_t) {
+pub(crate) fn opj_mqc_bypass_init_enc(mut mqc: &mut Mqc) {
   /* This function is normally called after at least one opj_mqc_flush() */
   /* which will have advance mqc->bp by at least 2 bytes beyond its */
   /* initial position */
@@ -1079,14 +1075,14 @@ pub(crate) fn opj_mqc_bypass_init_enc(mut mqc: &mut opj_mqc_t) {
   assert!(mqc.bp_peek_offset(-1) != 0xff);
 }
 
-pub(crate) fn opj_mqc_bypass_enc(mut mqc: &mut opj_mqc_t, d: OPJ_UINT32) {
+pub(crate) fn opj_mqc_bypass_enc(mut mqc: &mut Mqc, d: u32) {
   opj_mqc_bypass_enc_macro(mqc, d)
 }
 
 pub(crate) fn opj_mqc_bypass_get_extra_bytes(
-  mut mqc: &mut opj_mqc_t,
+  mut mqc: &mut Mqc,
   mut erterm: OPJ_BOOL,
-) -> OPJ_UINT32 {
+) -> u32 {
   if mqc.ct < 7 || mqc.ct == 7 && (erterm != 0 || mqc.bp_peek_offset(-1) != 0xff) {
     1
   } else {
@@ -1094,7 +1090,7 @@ pub(crate) fn opj_mqc_bypass_get_extra_bytes(
   }
 }
 
-pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut opj_mqc_t, mut erterm: OPJ_BOOL) {
+pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: OPJ_BOOL) {
   /* Is there any bit remaining to be flushed ? */
   /* If the last output byte is 0xff, we can discard it, unless */
   /* erterm is required (I'm not completely sure why in erterm */
@@ -1112,7 +1108,7 @@ pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut opj_mqc_t, mut erterm: OPJ_
       mqc.c = mqc.c.wrapping_add((bit_value << mqc.ct) as u32);
       bit_value = 1i32.wrapping_sub(bit_value);
     }
-    mqc.write_byte(mqc.c as OPJ_BYTE);
+    mqc.write_byte(mqc.c as u8);
     /* Advance pointer so that opj_mqc_numbytes() returns a valid value */
     mqc.inc_bp()
   } else if mqc.ct == 7 && mqc.bp_peek_offset(-1) == 0xff {
@@ -1134,14 +1130,14 @@ pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut opj_mqc_t, mut erterm: OPJ_
   assert!(mqc.bp_peek_offset(-1) != 0xff);
 }
 
-pub(crate) fn opj_mqc_reset_enc(mut mqc: &mut opj_mqc_t) {
+pub(crate) fn opj_mqc_reset_enc(mut mqc: &mut Mqc) {
   opj_mqc_resetstates(mqc);
   opj_mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
   opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
   opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
 }
 
-pub(crate) fn opj_mqc_restart_init_enc(mut mqc: &mut opj_mqc_t) {
+pub(crate) fn opj_mqc_restart_init_enc(mut mqc: &mut Mqc) {
   /* <Re-init part> */
   /* As specified in Figure C.10 - Initialization of the encoder */
   /* (C.2.8 Initialization of the encoder (INITENC)) */
@@ -1160,13 +1156,13 @@ pub(crate) fn opj_mqc_restart_init_enc(mut mqc: &mut opj_mqc_t) {
   }
 }
 
-pub(crate) fn opj_mqc_erterm_enc(mut mqc: &mut opj_mqc_t) {
+pub(crate) fn opj_mqc_erterm_enc(mut mqc: &mut Mqc) {
   let mut k = (11_i32).wrapping_sub(mqc.ct as i32).wrapping_add(1);
   while k > 0 {
     mqc.c <<= mqc.ct;
     mqc.ct = 0;
     opj_mqc_byteout(mqc);
-    k -= mqc.ct as OPJ_INT32
+    k -= mqc.ct as i32
   }
   if mqc.bp() != 0xff {
     opj_mqc_byteout(mqc);
@@ -1178,7 +1174,7 @@ Encode the most probable symbol
 @param mqc MQC handle
 */
 #[inline]
-fn opj_mqc_codemps(mut mqc: &mut opj_mqc_t) {
+fn opj_mqc_codemps(mut mqc: &mut Mqc) {
   opj_mqc_codemps_macro(mqc)
 }
 
@@ -1187,7 +1183,7 @@ Encode the most least symbol
 @param mqc MQC handle
 */
 #[inline]
-fn opj_mqc_codelps(mut mqc: &mut opj_mqc_t) {
+fn opj_mqc_codelps(mut mqc: &mut Mqc) {
   opj_mqc_codelps_macro(mqc)
 }
 
@@ -1197,11 +1193,11 @@ Encode a symbol using the MQ-coder
 @param d The symbol to be encoded (0 or 1)
 */
 #[inline]
-pub(crate) fn opj_mqc_encode(mut mqc: &mut opj_mqc_t, mut d: OPJ_UINT32) {
+pub(crate) fn opj_mqc_encode(mut mqc: &mut Mqc, mut d: u32) {
   opj_mqc_encode_macro(mqc, d)
 }
 
-pub(crate) fn opj_mqc_segmark_enc(mut mqc: &mut opj_mqc_t) {
+pub(crate) fn opj_mqc_segmark_enc(mut mqc: &mut Mqc) {
   opj_mqc_setcurctx(mqc, 18);
 
   for i in 1u32..5 {
@@ -1210,10 +1206,10 @@ pub(crate) fn opj_mqc_segmark_enc(mut mqc: &mut opj_mqc_t) {
 }
 
 fn opj_mqc_init_dec_common(
-  mut mqc: &mut opj_mqc_t,
+  mut mqc: &mut Mqc,
   mut offset: usize,
-  mut len: OPJ_UINT32,
-  mut extra_writable_bytes: OPJ_UINT32,
+  mut len: u32,
+  mut extra_writable_bytes: u32,
 ) {
   assert!(extra_writable_bytes >= OPJ_COMMON_CBLK_DATA_EXTRA);
   let len = len as usize;
@@ -1227,10 +1223,10 @@ fn opj_mqc_init_dec_common(
 }
 
 pub(crate) fn opj_mqc_init_dec(
-  mut mqc: &mut opj_mqc_t,
+  mut mqc: &mut Mqc,
   mut offset: usize,
-  mut len: OPJ_UINT32,
-  mut extra_writable_bytes: OPJ_UINT32,
+  mut len: u32,
+  mut extra_writable_bytes: u32,
 ) {
   /* Implements ISO 15444-1 C.3.5 Initialization of the decoder (INITDEC) */
   /* Note: alternate "J.1 - Initialization of the software-conventions */
@@ -1252,43 +1248,43 @@ pub(crate) fn opj_mqc_init_dec(
 }
 
 pub(crate) fn opj_mqc_raw_init_dec(
-  mqc: &mut opj_mqc_t,
+  mqc: &mut Mqc,
   offset: usize,
-  len: OPJ_UINT32,
-  extra_writable_bytes: OPJ_UINT32,
+  len: u32,
+  extra_writable_bytes: u32,
 ) {
   opj_mqc_init_dec_common(mqc, offset, len, extra_writable_bytes);
   mqc.c = 0;
   mqc.ct = 0;
 }
 
-pub(crate) fn opq_mqc_finish_dec(mqc: &mut opj_mqc_t) {
+pub(crate) fn opq_mqc_finish_dec(mqc: &mut Mqc) {
   /* Restore the bytes overwritten by opj_mqc_init_dec_common() */
   mqc.restore_extra();
 }
 
-pub(crate) fn opj_mqc_resetstates(mqc: &mut opj_mqc_t) {
+pub(crate) fn opj_mqc_resetstates(mqc: &mut Mqc) {
   for i in 0..19 {
     mqc.ctxs[i] = &mqc_states[0];
   }
 }
 
-pub(crate) fn opj_mqc_setstate(mqc: &mut opj_mqc_t, ctxno: u8, msb: OPJ_UINT32, prob: OPJ_INT32) {
-  mqc.ctxs[ctxno as usize] = &mqc_states[msb.wrapping_add((prob << 1) as OPJ_UINT32) as usize];
+pub(crate) fn opj_mqc_setstate(mqc: &mut Mqc, ctxno: u8, msb: u32, prob: i32) {
+  mqc.ctxs[ctxno as usize] = &mqc_states[msb.wrapping_add((prob << 1) as u32) as usize];
 }
 
-pub(crate) fn opj_mqc_byteout(mut mqc: &mut opj_mqc_t) {
+pub(crate) fn opj_mqc_byteout(mut mqc: &mut Mqc) {
   /* bp is initialized to start - 1 in opj_mqc_init_enc() */
   /* but this is safe, see opj_tcd_code_block_enc_allocate_data() */
   assert!(mqc.check_start(-1));
   if mqc.bp() == 0xff {
     mqc.inc_bp();
-    mqc.write_byte((mqc.c >> 20) as OPJ_BYTE);
+    mqc.write_byte((mqc.c >> 20) as u8);
     mqc.c &= 0xfffff;
     mqc.ct = 7
   } else if mqc.c & 0x8000000 == 0 {
     mqc.inc_bp();
-    mqc.write_byte((mqc.c >> 19) as OPJ_BYTE);
+    mqc.write_byte((mqc.c >> 19) as u8);
     mqc.c &= 0x7ffff;
     mqc.ct = 8
   } else {
@@ -1296,12 +1292,12 @@ pub(crate) fn opj_mqc_byteout(mut mqc: &mut opj_mqc_t) {
     if mqc.bp() == 0xff {
       mqc.c &= 0x7ffffff;
       mqc.inc_bp();
-      mqc.write_byte((mqc.c >> 20) as OPJ_BYTE);
+      mqc.write_byte((mqc.c >> 20) as u8);
       mqc.c &= 0xfffff;
       mqc.ct = 7
     } else {
       mqc.inc_bp();
-      mqc.write_byte((mqc.c >> 19) as OPJ_BYTE);
+      mqc.write_byte((mqc.c >> 19) as u8);
       mqc.c &= 0x7ffff;
       mqc.ct = 8
     }

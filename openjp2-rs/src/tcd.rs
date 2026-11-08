@@ -13,14 +13,14 @@ use super::tgt::*;
 
 
 /* ----------------------------------------------------------------------- */
-impl opj_tcd {
+impl Tcd {
   pub fn new(m_is_decoder: bool) -> Self {
     let mut tcd = Self::default();
     tcd.m_is_decoder = m_is_decoder;
     tcd
   }
 
-  pub fn used_component(&self, compno: OPJ_UINT32) -> bool {
+  pub fn used_component(&self, compno: u32) -> bool {
     if self.used_component.is_empty() {
       return true;
     }
@@ -28,20 +28,20 @@ impl opj_tcd {
   }
 }
 
-impl Drop for opj_tcd {
+impl Drop for Tcd {
   fn drop(&mut self) {
     opj_tcd_free_tile(self);
   }
 }
 
 /* ----------------------------------------------------------------------- */
-fn opj_tcd_rateallocate_fixed(tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_cp_t) {
-  let mut layno: OPJ_UINT32 = 0; /* fixed_quality */
+fn opj_tcd_rateallocate_fixed(tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) {
+  let mut layno: u32 = 0; /* fixed_quality */
   // SAFETY: `tcp` is set by opj_tcd_init_tile and valid while the tcd is in use.
   let numlayers = cp.tcps[tcd.tcd_tileno as usize].numlayers;
-  layno = 0 as OPJ_UINT32;
+  layno = 0_u32;
   while layno < numlayers {
-    opj_tcd_makelayer_fixed(tcd, layno, 1 as OPJ_UINT32, image, cp);
+    opj_tcd_makelayer_fixed(tcd, layno, 1_u32, image, cp);
     layno += 1;
   }
 }
@@ -49,39 +49,39 @@ fn opj_tcd_rateallocate_fixed(tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut
 /** Returns OPJ_TRUE if the layer allocation is unchanged w.r.t to the previous
  * invokation with a different threshold */
 fn opj_tcd_makelayer(
-  tcd: &mut opj_tcd,
-  layno: OPJ_UINT32,
-  thresh: OPJ_FLOAT64,
-  final_0: OPJ_UINT32,
+  tcd: &mut Tcd,
+  layno: u32,
+  thresh: f64,
+  final_0: u32,
 ) -> bool {
-  let mut compno: OPJ_UINT32 = 0;
-  let mut resno: OPJ_UINT32 = 0;
-  let mut bandno: OPJ_UINT32 = 0;
-  let mut precno: OPJ_UINT32 = 0;
-  let mut cblkno: OPJ_UINT32 = 0;
-  let mut passno: OPJ_UINT32 = 0;
+  let mut compno: u32 = 0;
+  let mut resno: u32 = 0;
+  let mut bandno: u32 = 0;
+  let mut precno: u32 = 0;
+  let mut cblkno: u32 = 0;
+  let mut passno: u32 = 0;
   let mut layer_allocation_is_same = true;
-  tcd.tcd_image.tiles.distolayer[layno as usize] = 0 as OPJ_FLOAT64;
-  compno = 0 as OPJ_UINT32;
+  tcd.tcd_image.tiles.distolayer[layno as usize] = 0 as f64;
+  compno = 0_u32;
   while compno < tcd.tcd_image.tiles.numcomps {
     let tilec = &mut tcd.tcd_image.tiles.comps[compno as usize];
-    resno = 0 as OPJ_UINT32;
+    resno = 0_u32;
     while resno < tilec.numresolutions {
       let res = &mut tilec.resolutions[resno as usize];
-      bandno = 0 as OPJ_UINT32;
+      bandno = 0_u32;
       while bandno < res.numbands {
         let band = &mut res.bands[bandno as usize];
         /* Skip empty bands */
         if opj_tcd_is_band_empty(band) == 0 {
-          precno = 0 as OPJ_UINT32;
+          precno = 0_u32;
           while precno < res.pw.wrapping_mul(res.ph) {
             let prc = &mut band.precincts[precno as usize];
-            cblkno = 0 as OPJ_UINT32;
+            cblkno = 0_u32;
             while cblkno < prc.cw.wrapping_mul(prc.ch) {
               let cblk = prc.cblks.enc_mut(cblkno as usize);
-              let mut n: OPJ_UINT32 = 0;
+              let mut n: u32 = 0;
               if layno == 0u32 {
-                cblk.numpassesinlayers = 0 as OPJ_UINT32
+                cblk.numpassesinlayers = 0_u32
               }
               n = cblk.numpassesinlayers;
               if thresh < 0 as core::ffi::c_double {
@@ -90,8 +90,8 @@ fn opj_tcd_makelayer(
               } else {
                 passno = cblk.numpassesinlayers;
                 while passno < cblk.totalpasses {
-                  let mut dr: OPJ_UINT32 = 0;
-                  let mut dd: OPJ_FLOAT64 = 0.;
+                  let mut dr: u32 = 0;
+                  let mut dd: f64 = 0.;
                   if n == 0u32 {
                     dr = cblk.passes[passno as usize].rate;
                     dd = cblk.passes[passno as usize].distortiondec
@@ -121,7 +121,7 @@ fn opj_tcd_makelayer(
                 cblk.layers[layno as usize].numpasses = n - cblk.numpassesinlayers;
               }
               if cblk.layers[layno as usize].numpasses == 0 {
-                cblk.layers[layno as usize].disto = 0 as OPJ_FLOAT64
+                cblk.layers[layno as usize].disto = 0 as f64
               } else {
                 if cblk.numpassesinlayers == 0u32 {
                   cblk.layers[layno as usize].len = cblk.passes[n.wrapping_sub(1u32) as usize].rate;
@@ -162,35 +162,35 @@ fn opj_tcd_makelayer(
   layer_allocation_is_same
 }
 fn opj_tcd_makelayer_fixed(
-  tcd: &mut opj_tcd,
-  layno: OPJ_UINT32,
-  final_0: OPJ_UINT32,
+  tcd: &mut Tcd,
+  layno: u32,
+  final_0: u32,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) {
-  let mut compno: OPJ_UINT32 = 0;
-  let mut resno: OPJ_UINT32 = 0;
-  let mut bandno: OPJ_UINT32 = 0;
-  let mut precno: OPJ_UINT32 = 0;
-  let mut cblkno: OPJ_UINT32 = 0;
-  let mut value: OPJ_INT32 = 0;
-  let mut matrice: [[[OPJ_INT32; 3]; j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT as usize];
+  let mut compno: u32 = 0;
+  let mut resno: u32 = 0;
+  let mut bandno: u32 = 0;
+  let mut precno: u32 = 0;
+  let mut cblkno: u32 = 0;
+  let mut value: i32 = 0;
+  let mut matrice: [[[i32; 3]; j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT as usize];
     j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT as usize] = [[[0; 3];
     j2k::J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT as usize];
     j2k::J2K_TCD_MATRIX_MAX_LAYER_COUNT as usize];
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
-  let mut k: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
+  let mut j: u32 = 0;
+  let mut k: u32 = 0;
   // SAFETY: `cp`/`tcp`/`image` are set by opj_tcd_init(_tile) and valid here.
   let tcd_tcp = &cp.tcps[tcd.tcd_tileno as usize];
-  compno = 0 as OPJ_UINT32;
+  compno = 0_u32;
   while compno < tcd.tcd_image.tiles.numcomps {
     let tilec = &mut tcd.tcd_image.tiles.comps[compno as usize];
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < tcd_tcp.numlayers {
-      j = 0 as OPJ_UINT32;
+      j = 0_u32;
       while j < tilec.numresolutions {
-        k = 0 as OPJ_UINT32;
+        k = 0_u32;
         while k < 3u32 {
           matrice[i as usize][j as usize][k as usize] = (cp
             .m_specific_param
@@ -198,32 +198,32 @@ fn opj_tcd_makelayer_fixed(
             .m_matrice[i.wrapping_mul(tilec.numresolutions)
             .wrapping_mul(3u32)
             .wrapping_add(j.wrapping_mul(3u32))
-            .wrapping_add(k) as usize] as OPJ_FLOAT32
+            .wrapping_add(k) as usize] as f32
             * (image.comps[compno as usize].prec as core::ffi::c_double / 16.0f64)
-              as OPJ_FLOAT32) as OPJ_INT32;
+              as f32) as i32;
           k += 1;
         }
         j += 1;
       }
       i += 1;
     }
-    resno = 0 as OPJ_UINT32;
+    resno = 0_u32;
     while resno < tilec.numresolutions {
       let res = &mut tilec.resolutions[resno as usize];
-      bandno = 0 as OPJ_UINT32;
+      bandno = 0_u32;
       while bandno < res.numbands {
         let band = &mut res.bands[bandno as usize];
         /* Skip empty bands */
         if opj_tcd_is_band_empty(band) == 0 {
-          precno = 0 as OPJ_UINT32; /* number of bit-plan equal to zero */
+          precno = 0_u32; /* number of bit-plan equal to zero */
           while precno < res.pw.wrapping_mul(res.ph) {
             let prc = &mut band.precincts[precno as usize];
-            cblkno = 0 as OPJ_UINT32;
+            cblkno = 0_u32;
             while cblkno < prc.cw.wrapping_mul(prc.ch) {
               let cblk = prc.cblks.enc_mut(cblkno as usize);
-              let mut n: OPJ_UINT32 = 0;
+              let mut n: u32 = 0;
               let mut imsb =
-                image.comps[compno as usize].prec.wrapping_sub(cblk.numbps) as OPJ_INT32;
+                image.comps[compno as usize].prec.wrapping_sub(cblk.numbps) as i32;
               /* Correction of the matrix of coefficient to include the IMSB information */
               if layno == 0u32 {
                 value = matrice[layno as usize][resno as usize][bandno as usize]; /* fixed_quality */
@@ -246,13 +246,13 @@ fn opj_tcd_makelayer_fixed(
                 }
               } /* compno */
               if layno == 0u32 {
-                cblk.numpassesinlayers = 0 as OPJ_UINT32
+                cblk.numpassesinlayers = 0_u32
               } /* resno */
               n = cblk.numpassesinlayers;
               if cblk.numpassesinlayers == 0u32 {
                 if value != 0i32 {
                   n = (3u32)
-                    .wrapping_mul(value as OPJ_UINT32)
+                    .wrapping_mul(value as u32)
                     .wrapping_sub(2u32)
                     .wrapping_add(cblk.numpassesinlayers)
                 } else {
@@ -260,7 +260,7 @@ fn opj_tcd_makelayer_fixed(
                 }
               } else {
                 n = (3u32)
-                  .wrapping_mul(value as OPJ_UINT32)
+                  .wrapping_mul(value as u32)
                   .wrapping_add(cblk.numpassesinlayers)
               }
               cblk.layers[layno as usize].numpasses = n.wrapping_sub(cblk.numpassesinlayers);
@@ -295,67 +295,67 @@ fn opj_tcd_makelayer_fixed(
   }
 }
 fn opj_tcd_rateallocate(
-  tcd: &mut opj_tcd,
+  tcd: &mut Tcd,
   dest: &mut [u8],
-  p_data_written: &mut OPJ_UINT32,
-  len: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  p_data_written: &mut u32,
+  len: u32,
+  p_manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
   {
-    let mut compno: OPJ_UINT32 = 0;
-    let mut resno: OPJ_UINT32 = 0;
-    let mut bandno: OPJ_UINT32 = 0;
-    let mut precno: OPJ_UINT32 = 0;
-    let mut cblkno: OPJ_UINT32 = 0;
-    let mut layno: OPJ_UINT32 = 0;
-    let mut passno: OPJ_UINT32 = 0;
-    let mut min: OPJ_FLOAT64 = 0.;
-    let mut max: OPJ_FLOAT64 = 0.;
-    let mut cumdisto: [OPJ_FLOAT64; 100] = [0.; 100];
-    let K = 1 as OPJ_FLOAT64;
-    let mut maxSE = 0 as OPJ_FLOAT64;
+    let mut compno: u32 = 0;
+    let mut resno: u32 = 0;
+    let mut bandno: u32 = 0;
+    let mut precno: u32 = 0;
+    let mut cblkno: u32 = 0;
+    let mut layno: u32 = 0;
+    let mut passno: u32 = 0;
+    let mut min: f64 = 0.;
+    let mut max: f64 = 0.;
+    let mut cumdisto: [f64; 100] = [0.; 100];
+    let K = 1_f64;
+    let mut maxSE = 0 as f64;
     let tcd_tcp_numlayers = cp.tcps[tcd.tcd_tileno as usize].numlayers;
     let tcd_tcp_rates = cp.tcps[tcd.tcd_tileno as usize].rates;
     let tcd_tcp_distoratio = cp.tcps[tcd.tcd_tileno as usize].distoratio;
     min = 1.797_693_134_862_315_7e308_f64;
-    max = 0 as OPJ_FLOAT64;
+    max = 0 as f64;
     tcd.tcd_image.tiles.numpix = 0i32;
-    compno = 0 as OPJ_UINT32;
+    compno = 0_u32;
     while compno < tcd.tcd_image.tiles.numcomps {
       let tilec = &mut tcd.tcd_image.tiles.comps[compno as usize];
       tilec.numpix = 0i32;
-      resno = 0 as OPJ_UINT32;
+      resno = 0_u32;
       while resno < tilec.numresolutions {
         let res = &mut tilec.resolutions[resno as usize];
-        bandno = 0 as OPJ_UINT32;
+        bandno = 0_u32;
         while bandno < res.numbands {
           let band = &mut res.bands[bandno as usize];
           /* bandno */
           /* precno */
           /* Skip empty bands */
           if opj_tcd_is_band_empty(band) == 0 {
-            precno = 0 as OPJ_UINT32;
+            precno = 0_u32;
             while precno < res.pw.wrapping_mul(res.ph) {
               let prc = &mut band.precincts[precno as usize];
-              cblkno = 0 as OPJ_UINT32;
+              cblkno = 0_u32;
               while cblkno < prc.cw.wrapping_mul(prc.ch) {
                 let cblk = prc.cblks.enc_mut(cblkno as usize);
                 /* cbklno */
-                passno = 0 as OPJ_UINT32; /* passno */
+                passno = 0_u32; /* passno */
                 while passno < cblk.totalpasses {
-                  let mut dr: OPJ_INT32 = 0;
-                  let mut dd: OPJ_FLOAT64 = 0.;
-                  let mut rdslope: OPJ_FLOAT64 = 0.;
+                  let mut dr: i32 = 0;
+                  let mut dd: f64 = 0.;
+                  let mut rdslope: f64 = 0.;
                   if passno == 0u32 {
-                    dr = cblk.passes[passno as usize].rate as OPJ_INT32;
+                    dr = cblk.passes[passno as usize].rate as i32;
                     dd = cblk.passes[passno as usize].distortiondec
                   } else {
                     dr = cblk.passes[passno as usize]
                       .rate
                       .wrapping_sub(cblk.passes[passno.wrapping_sub(1u32) as usize].rate)
-                      as OPJ_INT32;
+                      as i32;
                     dd = cblk.passes[passno as usize].distortiondec
                       - cblk.passes[passno.wrapping_sub(1u32) as usize].distortiondec
                   }
@@ -386,34 +386,34 @@ fn opj_tcd_rateallocate(
         resno += 1;
       }
       let prec = image.comps[compno as usize].prec;
-      maxSE += (((1i32) << prec) as OPJ_FLOAT64 - 1.0f64)
-        * (((1i32) << prec) as OPJ_FLOAT64 - 1.0f64)
-        * tilec.numpix as OPJ_FLOAT64;
+      maxSE += (((1i32) << prec) as f64 - 1.0f64)
+        * (((1i32) << prec) as f64 - 1.0f64)
+        * tilec.numpix as f64;
       compno += 1;
     }
 
     /* index file */
 
-    layno = 0 as OPJ_UINT32;
+    layno = 0_u32;
     while layno < tcd_tcp_numlayers {
       let mut lo = min;
       let mut hi = max;
       let mut maxlen = if tcd_tcp_rates[layno as usize] > 0.0f32 {
         opj_uint_min(
-          (tcd_tcp_rates[layno as usize] as core::ffi::c_double).ceil() as OPJ_UINT32,
+          (tcd_tcp_rates[layno as usize] as core::ffi::c_double).ceil() as u32,
           len,
         )
       } else {
         len
       };
-      let mut goodthresh = 0 as OPJ_FLOAT64;
-      let mut stable_thresh = 0 as OPJ_FLOAT64;
-      let mut i: OPJ_UINT32 = 0;
-      let mut distotarget: OPJ_FLOAT64 = 0.;
+      let mut goodthresh = 0 as f64;
+      let mut stable_thresh = 0 as f64;
+      let mut i: u32 = 0;
+      let mut distotarget: f64 = 0.;
 
       distotarget = tcd.tcd_image.tiles.distotile
         - K * maxSE
-          / (10 as OPJ_FLOAT32 as core::ffi::c_double)
+          / (10_f32 as core::ffi::c_double)
             .powf((tcd_tcp_distoratio[layno as usize] / 10 as core::ffi::c_float) as core::ffi::c_double);
 
       /* Don't try to find an optimal threshold but rather take everything not included yet, if
@@ -428,12 +428,12 @@ fn opj_tcd_rateallocate(
           && tcd_tcp_distoratio[layno as usize] as core::ffi::c_double > 0.0f64
       {
         /* fixed_quality */
-        let mut thresh = 0 as OPJ_FLOAT64;
+        let mut thresh = 0 as f64;
         let mut last_layer_allocation_ok = false;
 
-        i = 0 as OPJ_UINT32;
+        i = 0_u32;
         while i < 128u32 {
-          let mut distoachieved = 0 as OPJ_FLOAT64;
+          let mut distoachieved = 0 as f64;
           let new_thresh = (lo + hi) / 2.0;
           /* Stop iterating when the threshold has stabilized enough */
           /* 0.5 * 1e-5 is somewhat arbitrary, but has been selected */
@@ -445,7 +445,7 @@ fn opj_tcd_rateallocate(
           thresh = new_thresh;
 
           let layer_allocation_is_same =
-            opj_tcd_makelayer(tcd, layno, thresh, 0 as OPJ_UINT32) && i != 0;
+            opj_tcd_makelayer(tcd, layno, thresh, 0_u32) && i != 0;
           if cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy
             == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
           {
@@ -541,11 +541,11 @@ fn opj_tcd_rateallocate(
 
       } else {
         /* Special value to indicate to use all passes */
-        goodthresh = -(1i32) as OPJ_FLOAT64
+        goodthresh = -(1i32) as f64
       }
       /* Threshold for Marcela Index */
 
-      opj_tcd_makelayer(tcd, layno, goodthresh, 1 as OPJ_UINT32);
+      opj_tcd_makelayer(tcd, layno, goodthresh, 1_u32);
 
       cumdisto[layno as usize] = if layno == 0u32 {
         tcd.tcd_image.tiles.distolayer[0_usize]
@@ -560,9 +560,9 @@ fn opj_tcd_rateallocate(
 }
 
 pub(crate) fn opj_tcd_init(
-  p_tcd: &mut opj_tcd,
+  p_tcd: &mut Tcd,
   image: &CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
   p_tcd.tcd_image.tiles.comps = (0..image.numcomps as usize)
     .map(|_| Default::default())
@@ -572,12 +572,12 @@ pub(crate) fn opj_tcd_init(
   1i32
 }
 
-pub(crate) fn opj_alloc_tile_component_data(l_tilec: &mut opj_tcd_tilecomp_t) -> OPJ_BOOL {
+pub(crate) fn opj_alloc_tile_component_data(l_tilec: &mut TcdTileComp) -> OPJ_BOOL {
   let needed = l_tilec.data_size_needed;
   if l_tilec.data.ensure(needed) {
     1i32
   } else {
-    l_tilec.data_size_needed = 0i32 as size_t;
+    l_tilec.data_size_needed = 0i32 as usize;
     0i32
   }
 }
@@ -628,41 +628,41 @@ pub(crate) fn opj_alloc_tile_component_data(l_tilec: &mut opj_tcd_tilecomp_t) ->
  */
 /* ----------------------------------------------------------------------- */
 pub(crate) fn opj_tcd_init_tile(
-  mut p_tcd: &mut opj_tcd,
-  mut p_tile_no: OPJ_UINT32,
+  mut p_tcd: &mut Tcd,
+  mut p_tile_no: u32,
   mut isEncoder: OPJ_BOOL,
-  mut manager: &mut opj_event_mgr,
+  mut manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
   let sizeof_block = if isEncoder != 0 {
-    core::mem::size_of::<opj_tcd_cblk_enc_t>()
+    core::mem::size_of::<TcdCblkEnc>()
   } else {
-    core::mem::size_of::<opj_tcd_cblk_dec_t>()
+    core::mem::size_of::<TcdCblkDec>()
   };
-  let mut compno: OPJ_UINT32 = 0;
-  let mut resno: OPJ_UINT32 = 0;
-  let mut bandno: OPJ_UINT32 = 0;
-  let mut precno: OPJ_UINT32 = 0;
-  let mut cblkno: OPJ_UINT32 = 0;
-  let mut p: OPJ_UINT32 = 0;
-  let mut q: OPJ_UINT32 = 0;
-  let mut l_level_no: OPJ_UINT32 = 0;
-  let mut l_pdx: OPJ_UINT32 = 0;
-  let mut l_pdy: OPJ_UINT32 = 0;
-  let mut l_x0b: OPJ_INT32 = 0;
-  let mut l_y0b: OPJ_INT32 = 0;
-  let mut l_tx0: OPJ_UINT32 = 0;
-  let mut l_ty0: OPJ_UINT32 = 0;
+  let mut compno: u32 = 0;
+  let mut resno: u32 = 0;
+  let mut bandno: u32 = 0;
+  let mut precno: u32 = 0;
+  let mut cblkno: u32 = 0;
+  let mut p: u32 = 0;
+  let mut q: u32 = 0;
+  let mut l_level_no: u32 = 0;
+  let mut l_pdx: u32 = 0;
+  let mut l_pdy: u32 = 0;
+  let mut l_x0b: i32 = 0;
+  let mut l_y0b: i32 = 0;
+  let mut l_tx0: u32 = 0;
+  let mut l_ty0: u32 = 0;
   /* extent of precincts , top left, bottom right**/
-  let mut l_tl_prc_x_start: OPJ_INT32 = 0;
-  let mut l_tl_prc_y_start: OPJ_INT32 = 0;
-  let mut l_br_prc_x_end: OPJ_INT32 = 0;
-  let mut l_br_prc_y_end: OPJ_INT32 = 0;
+  let mut l_tl_prc_x_start: i32 = 0;
+  let mut l_tl_prc_y_start: i32 = 0;
+  let mut l_br_prc_x_end: i32 = 0;
+  let mut l_br_prc_y_end: i32 = 0;
   /* number of precinct for a resolution */
-  let mut l_nb_precincts: OPJ_UINT32 = 0;
+  let mut l_nb_precincts: u32 = 0;
   /* number of code blocks for a precinct*/
-  let mut l_nb_code_blocks: OPJ_UINT32 = 0;
+  let mut l_nb_code_blocks: u32 = 0;
   /* size of data for a tile */
   /* tile coordinates */
   let tcp = &cp.tcps[p_tile_no as usize];
@@ -677,17 +677,17 @@ pub(crate) fn opj_tcd_init_tile(
   /*fprintf(stderr, "Tile coordinate = %d,%d\n", p, q);*/
   /* 4 borders of the tile rescale on the image if necessary */
   l_tx0 = tx0.wrapping_add(p.wrapping_mul(tdx)); /* can't be greater than l_image->x1 so won't overflow */
-  p_tcd.tcd_image.tiles.x0 = opj_uint_max(l_tx0, image.x0) as OPJ_INT32;
-  p_tcd.tcd_image.tiles.x1 = opj_uint_min(opj_uint_adds(l_tx0, tdx), image.x1) as OPJ_INT32;
-  /* all those OPJ_UINT32 are casted to OPJ_INT32, let's do some sanity check */
+  p_tcd.tcd_image.tiles.x0 = opj_uint_max(l_tx0, image.x0) as i32;
+  p_tcd.tcd_image.tiles.x1 = opj_uint_min(opj_uint_adds(l_tx0, tdx), image.x1) as i32;
+  /* all those u32 are casted to i32, let's do some sanity check */
   if p_tcd.tcd_image.tiles.x0 < 0i32 || p_tcd.tcd_image.tiles.x1 <= p_tcd.tcd_image.tiles.x0 {
     event_msg!(manager, EVT_ERROR, "Tile X coordinates are not supported\n",); /* can't be greater than l_image->y1 so won't overflow */
     return 0i32;
   }
   l_ty0 = ty0.wrapping_add(q.wrapping_mul(tdy));
-  p_tcd.tcd_image.tiles.y0 = opj_uint_max(l_ty0, image.y0) as OPJ_INT32;
-  p_tcd.tcd_image.tiles.y1 = opj_uint_min(opj_uint_adds(l_ty0, tdy), image.y1) as OPJ_INT32;
-  /* all those OPJ_UINT32 are casted to OPJ_INT32, let's do some sanity check */
+  p_tcd.tcd_image.tiles.y0 = opj_uint_max(l_ty0, image.y0) as i32;
+  p_tcd.tcd_image.tiles.y1 = opj_uint_min(opj_uint_adds(l_ty0, tdy), image.y1) as i32;
+  /* all those u32 are casted to i32, let's do some sanity check */
   if p_tcd.tcd_image.tiles.y0 < 0i32 || p_tcd.tcd_image.tiles.y1 <= p_tcd.tcd_image.tiles.y0 {
     event_msg!(manager, EVT_ERROR, "Tile Y coordinates are not supported\n",);
     return 0i32;
@@ -703,31 +703,31 @@ pub(crate) fn opj_tcd_init_tile(
   }
   /*fprintf(stderr, "Tile border = %d,%d,%d,%d\n", l_tile->x0, l_tile->y0,l_tile->x1,l_tile->y1);*/
   /*tile->numcomps = image->numcomps; */
-  compno = 0 as OPJ_UINT32; /* compno */
+  compno = 0_u32; /* compno */
   while compno < p_tcd.tcd_image.tiles.numcomps {
     /*fprintf(stderr, "compno = %d/%d\n", compno, l_tile->numcomps);*/
     let image_comp = &mut image.comps[compno as usize];
     let tccp = &tcp.tccps[compno as usize];
     let tilec = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
-    image_comp.resno_decoded = 0 as OPJ_UINT32;
+    image_comp.resno_decoded = 0_u32;
     /* border of each l_tile component (global) */
-    tilec.x0 = opj_int_ceildiv(p_tcd.tcd_image.tiles.x0, image_comp.dx as OPJ_INT32);
-    tilec.y0 = opj_int_ceildiv(p_tcd.tcd_image.tiles.y0, image_comp.dy as OPJ_INT32);
-    tilec.x1 = opj_int_ceildiv(p_tcd.tcd_image.tiles.x1, image_comp.dx as OPJ_INT32);
-    tilec.y1 = opj_int_ceildiv(p_tcd.tcd_image.tiles.y1, image_comp.dy as OPJ_INT32);
+    tilec.x0 = opj_int_ceildiv(p_tcd.tcd_image.tiles.x0, image_comp.dx as i32);
+    tilec.y0 = opj_int_ceildiv(p_tcd.tcd_image.tiles.y0, image_comp.dy as i32);
+    tilec.x1 = opj_int_ceildiv(p_tcd.tcd_image.tiles.x1, image_comp.dx as i32);
+    tilec.y1 = opj_int_ceildiv(p_tcd.tcd_image.tiles.y1, image_comp.dy as i32);
     tilec.compno = compno;
     /*fprintf(stderr, "\tTile compo border = %d,%d,%d,%d\n", l_tilec->x0, l_tilec->y0,l_tilec->x1,l_tilec->y1);*/
     tilec.numresolutions = tccp.numresolutions;
     if tccp.numresolutions < m_reduce {
-      tilec.minimum_num_resolutions = 1 as OPJ_UINT32
+      tilec.minimum_num_resolutions = 1_u32
     } else {
       tilec.minimum_num_resolutions = tccp.numresolutions.wrapping_sub(m_reduce)
     }
     if isEncoder != 0 {
-      let mut l_tile_data_size: OPJ_SIZE_T = 0;
+      let mut l_tile_data_size: usize = 0;
       /* compute l_data_size with overflow check */
-      let mut w = (tilec.x1 - tilec.x0) as OPJ_SIZE_T;
-      let mut h = (tilec.y1 - tilec.y0) as OPJ_SIZE_T;
+      let mut w = (tilec.x1 - tilec.x0) as usize;
+      let mut h = (tilec.y1 - tilec.y0) as usize;
       /* issue 733, l_data_size == 0U, probably something wrong should be checked before getting here */
       if h > 0 && w > (usize::MAX).wrapping_div(h) {
         event_msg!(
@@ -738,7 +738,7 @@ pub(crate) fn opj_tcd_init_tile(
         return 0i32;
       }
       l_tile_data_size = w.wrapping_mul(h);
-      if (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_UINT32>()) < l_tile_data_size {
+      if (usize::MAX).wrapping_div(core::mem::size_of::<u32>()) < l_tile_data_size {
         event_msg!(
           manager,
           EVT_ERROR,
@@ -746,14 +746,14 @@ pub(crate) fn opj_tcd_init_tile(
         );
         return 0i32;
       }
-      l_tile_data_size = l_tile_data_size.wrapping_mul(core::mem::size_of::<OPJ_UINT32>());
+      l_tile_data_size = l_tile_data_size.wrapping_mul(core::mem::size_of::<u32>());
       tilec.data_size_needed = l_tile_data_size
     }
     tilec.data_win.release();
-    tilec.win_x0 = 0 as OPJ_UINT32;
-    tilec.win_y0 = 0 as OPJ_UINT32;
-    tilec.win_x1 = 0 as OPJ_UINT32;
-    tilec.win_y1 = 0 as OPJ_UINT32;
+    tilec.win_x0 = 0_u32;
+    tilec.win_y0 = 0_u32;
+    tilec.win_x1 = 0_u32;
+    tilec.win_y1 = 0_u32;
     /* Grow-only, like the C realloc path: existing entries (and the precinct
      * buffers they own) are preserved, new entries are zeroed. */
     {
@@ -765,50 +765,50 @@ pub(crate) fn opj_tcd_init_tile(
     l_level_no = tilec.numresolutions;
     /*fprintf(stderr, "\tlevel_no=%d\n",l_level_no);*/
     let mut l_step_size_idx: usize = 0;
-    resno = 0 as OPJ_UINT32; /* resno */
+    resno = 0_u32; /* resno */
     while resno < tilec.numresolutions {
       /*fprintf(stderr, "\t\tresno = %d/%d\n", resno, l_tilec->numresolutions);*/
-      let mut tlcbgxstart: OPJ_INT32 = 0;
-      let mut tlcbgystart: OPJ_INT32 = 0;
-      let mut cbgwidthexpn: OPJ_UINT32 = 0;
-      let mut cbgheightexpn: OPJ_UINT32 = 0;
-      let mut cblkwidthexpn: OPJ_UINT32 = 0;
-      let mut cblkheightexpn: OPJ_UINT32 = 0;
+      let mut tlcbgxstart: i32 = 0;
+      let mut tlcbgystart: i32 = 0;
+      let mut cbgwidthexpn: u32 = 0;
+      let mut cbgheightexpn: u32 = 0;
+      let mut cblkwidthexpn: u32 = 0;
+      let mut cblkheightexpn: u32 = 0;
       l_level_no = l_level_no.wrapping_sub(1);
       /*, brcbgxend, brcbgyend*/
       let res = &mut tilec.resolutions[resno as usize];
-      res.x0 = opj_int_ceildivpow2(tilec.x0, l_level_no as OPJ_INT32);
-      res.y0 = opj_int_ceildivpow2(tilec.y0, l_level_no as OPJ_INT32);
-      res.x1 = opj_int_ceildivpow2(tilec.x1, l_level_no as OPJ_INT32);
-      res.y1 = opj_int_ceildivpow2(tilec.y1, l_level_no as OPJ_INT32);
+      res.x0 = opj_int_ceildivpow2(tilec.x0, l_level_no as i32);
+      res.y0 = opj_int_ceildivpow2(tilec.y0, l_level_no as i32);
+      res.x1 = opj_int_ceildivpow2(tilec.x1, l_level_no as i32);
+      res.y1 = opj_int_ceildivpow2(tilec.y1, l_level_no as i32);
       l_pdx = tccp.prcw[resno as usize];
       l_pdy = tccp.prch[resno as usize];
-      l_tl_prc_x_start = opj_int_floordivpow2(res.x0, l_pdx as OPJ_INT32) << l_pdx;
-      l_tl_prc_y_start = opj_int_floordivpow2(res.y0, l_pdy as OPJ_INT32) << l_pdy;
-      let mut tmp = (opj_int_ceildivpow2(res.x1, l_pdx as OPJ_INT32) as OPJ_UINT32) << l_pdx;
-      if tmp > 2147483647 as OPJ_UINT32 {
+      l_tl_prc_x_start = opj_int_floordivpow2(res.x0, l_pdx as i32) << l_pdx;
+      l_tl_prc_y_start = opj_int_floordivpow2(res.y0, l_pdy as i32) << l_pdy;
+      let mut tmp = (opj_int_ceildivpow2(res.x1, l_pdx as i32) as u32) << l_pdx;
+      if tmp > 2147483647_u32 {
         event_msg!(manager, EVT_ERROR, "Integer overflow\n",);
         return 0i32;
       }
-      l_br_prc_x_end = tmp as OPJ_INT32;
+      l_br_prc_x_end = tmp as i32;
       let mut tmp_0 =
-        (opj_int_ceildivpow2(res.y1, l_pdy as OPJ_INT32) as OPJ_UINT32) << l_pdy;
-      if tmp_0 > 2147483647 as OPJ_UINT32 {
+        (opj_int_ceildivpow2(res.y1, l_pdy as i32) as u32) << l_pdy;
+      if tmp_0 > 2147483647_u32 {
         event_msg!(manager, EVT_ERROR, "Integer overflow\n",);
         return 0i32;
       }
-      l_br_prc_y_end = tmp_0 as OPJ_INT32;
+      l_br_prc_y_end = tmp_0 as i32;
       res.pw = if res.x0 == res.x1 {
         0u32
       } else {
-        ((l_br_prc_x_end - l_tl_prc_x_start) >> l_pdx) as OPJ_UINT32
+        ((l_br_prc_x_end - l_tl_prc_x_start) >> l_pdx) as u32
       };
       res.ph = if res.y0 == res.y1 {
         0u32
       } else {
-        ((l_br_prc_y_end - l_tl_prc_y_start) >> l_pdy) as OPJ_UINT32
+        ((l_br_prc_y_end - l_tl_prc_y_start) >> l_pdy) as u32
       };
-      if res.pw != 0u32 && (-(1i32) as OPJ_UINT32).wrapping_div(res.pw) < res.ph {
+      if res.pw != 0u32 && (-(1i32) as u32).wrapping_div(res.pw) < res.ph {
         event_msg!(
           manager,
           EVT_ERROR,
@@ -817,8 +817,8 @@ pub(crate) fn opj_tcd_init_tile(
         return 0i32;
       }
       l_nb_precincts = res.pw.wrapping_mul(res.ph);
-      if (-(1i32) as OPJ_UINT32)
-        .wrapping_div(core::mem::size_of::<opj_tcd_precinct_t>() as OPJ_UINT32)
+      if (-(1i32) as u32)
+        .wrapping_div(core::mem::size_of::<TcdPrecinct>() as u32)
         < l_nb_precincts
       {
         event_msg!(
@@ -842,7 +842,7 @@ pub(crate) fn opj_tcd_init_tile(
         /* brcbgyend = l_br_prc_y_end;*/
         cbgwidthexpn = l_pdx;
         cbgheightexpn = l_pdy;
-        res.numbands = 1 as OPJ_UINT32
+        res.numbands = 1_u32
       } else {
         tlcbgxstart = opj_int_ceildivpow2(l_tl_prc_x_start, 1i32);
         tlcbgystart = opj_int_ceildivpow2(l_tl_prc_y_start, 1i32);
@@ -850,43 +850,43 @@ pub(crate) fn opj_tcd_init_tile(
         /*brcbgyend = opj_int_ceildivpow2(l_br_prc_y_end, 1);*/
         cbgwidthexpn = l_pdx.wrapping_sub(1u32); /* bandno */
         cbgheightexpn = l_pdy.wrapping_sub(1u32);
-        res.numbands = 3 as OPJ_UINT32
+        res.numbands = 3_u32
       }
       cblkwidthexpn = opj_uint_min(tccp.cblkw, cbgwidthexpn);
       cblkheightexpn = opj_uint_min(tccp.cblkh, cbgheightexpn);
       let res_pw = res.pw;
-      bandno = 0 as OPJ_UINT32;
+      bandno = 0_u32;
       while bandno < res.numbands {
         /*fprintf(stderr, "\t\t\tband_no=%d/%d\n", bandno, l_res->numbands );*/
         let band = &mut res.bands[bandno as usize];
         if resno == 0u32 {
-          band.bandno = 0 as OPJ_UINT32;
-          band.x0 = opj_int_ceildivpow2(tilec.x0, l_level_no as OPJ_INT32);
-          band.y0 = opj_int_ceildivpow2(tilec.y0, l_level_no as OPJ_INT32);
-          band.x1 = opj_int_ceildivpow2(tilec.x1, l_level_no as OPJ_INT32);
-          band.y1 = opj_int_ceildivpow2(tilec.y1, l_level_no as OPJ_INT32)
+          band.bandno = 0_u32;
+          band.x0 = opj_int_ceildivpow2(tilec.x0, l_level_no as i32);
+          band.y0 = opj_int_ceildivpow2(tilec.y0, l_level_no as i32);
+          band.x1 = opj_int_ceildivpow2(tilec.x1, l_level_no as i32);
+          band.y1 = opj_int_ceildivpow2(tilec.y1, l_level_no as i32)
         } else {
           band.bandno = bandno.wrapping_add(1u32);
           /* x0b = 1 if bandno = 1 or 3 */
-          l_x0b = (band.bandno & 1u32) as OPJ_INT32;
+          l_x0b = (band.bandno & 1u32) as i32;
           /* y0b = 1 if bandno = 2 or 3 */
-          l_y0b = (band.bandno >> 1i32) as OPJ_INT32;
+          l_y0b = (band.bandno >> 1i32) as i32;
           /* l_band border (global) */
           band.x0 = opj_int64_ceildivpow2(
-            tilec.x0 as i64 - ((l_x0b as OPJ_INT64) << l_level_no),
-            l_level_no.wrapping_add(1u32) as OPJ_INT32,
+            tilec.x0 as i64 - ((l_x0b as i64) << l_level_no),
+            l_level_no.wrapping_add(1u32) as i32,
           );
           band.y0 = opj_int64_ceildivpow2(
-            tilec.y0 as i64 - ((l_y0b as OPJ_INT64) << l_level_no),
-            l_level_no.wrapping_add(1u32) as OPJ_INT32,
+            tilec.y0 as i64 - ((l_y0b as i64) << l_level_no),
+            l_level_no.wrapping_add(1u32) as i32,
           );
           band.x1 = opj_int64_ceildivpow2(
-            tilec.x1 as i64 - ((l_x0b as OPJ_INT64) << l_level_no),
-            l_level_no.wrapping_add(1u32) as OPJ_INT32,
+            tilec.x1 as i64 - ((l_x0b as i64) << l_level_no),
+            l_level_no.wrapping_add(1u32) as i32,
           );
           band.y1 = opj_int64_ceildivpow2(
-            tilec.y1 as i64 - ((l_y0b as OPJ_INT64) << l_level_no),
-            l_level_no.wrapping_add(1u32) as OPJ_INT32,
+            tilec.y1 as i64 - ((l_y0b as i64) << l_level_no),
+            l_level_no.wrapping_add(1u32) as i32,
           )
         }
         if isEncoder == 0 || opj_tcd_is_band_empty(band) == 0 {
@@ -903,16 +903,16 @@ pub(crate) fn opj_tcd_init_tile(
             1i32
           };
           /* Nominal dynamic range. Equation E-4 */
-          let Rb = image_comp.prec as OPJ_INT32 + log2_gain;
+          let Rb = image_comp.prec as i32 + log2_gain;
           /* Delta_b value of Equation E-3 in "E.1 Inverse quantization
            * procedure" of the standard */
           band.stepsize = ((1.0f64
             + step_size.mant as core::ffi::c_double / 2048.0f64)
             * 2.0f64.powf((Rb - step_size.expn) as core::ffi::c_double))
-            as OPJ_FLOAT32;
+            as f32;
           /* Mb value of Equation E-2 in "E.1 Inverse quantization
            * procedure" of the standard */
-          band.numbps = step_size.expn + tccp.numgbits as OPJ_INT32 - 1i32;
+          band.numbps = step_size.expn + tccp.numgbits as i32 - 1i32;
           /* Grow-only, like the C realloc path: existing precincts (and the
            * tag trees / code blocks they own) are preserved, new ones are zeroed. */
           {
@@ -925,16 +925,16 @@ pub(crate) fn opj_tcd_init_tile(
           let band_y0 = band.y0;
           let band_x1 = band.x1;
           let band_y1 = band.y1;
-          precno = 0 as OPJ_UINT32;
+          precno = 0_u32;
           while precno < l_nb_precincts {
-            let mut tlcblkxstart: OPJ_INT32 = 0;
-            let mut tlcblkystart: OPJ_INT32 = 0;
-            let mut brcblkxend: OPJ_INT32 = 0;
-            let mut brcblkyend: OPJ_INT32 = 0;
+            let mut tlcblkxstart: i32 = 0;
+            let mut tlcblkystart: i32 = 0;
+            let mut brcblkxend: i32 = 0;
+            let mut brcblkyend: i32 = 0;
             let mut cbgxstart = tlcbgxstart
-              + precno.wrapping_rem(res_pw) as OPJ_INT32 * ((1i32) << cbgwidthexpn);
+              + precno.wrapping_rem(res_pw) as i32 * ((1i32) << cbgwidthexpn);
             let mut cbgystart = tlcbgystart
-              + precno.wrapping_div(res_pw) as OPJ_INT32 * ((1i32) << cbgheightexpn);
+              + precno.wrapping_div(res_pw) as i32 * ((1i32) << cbgheightexpn);
             let mut cbgxend = cbgxstart + ((1i32) << cbgwidthexpn);
             let mut cbgyend = cbgystart + ((1i32) << cbgheightexpn);
             /*fprintf(stderr, "\t precno=%d; bandno=%d, resno=%d; compno=%d\n", precno, bandno , resno, compno);*/
@@ -948,30 +948,30 @@ pub(crate) fn opj_tcd_init_tile(
             precinct.y1 = opj_int_min(cbgyend, band_y1);
             /*fprintf(stderr, "\t prc_x0=%d; prc_y0=%d, prc_x1=%d; prc_y1=%d\n",l_current_precinct->x0, l_current_precinct->y0 ,l_current_precinct->x1, l_current_precinct->y1);*/
             tlcblkxstart =
-              opj_int_floordivpow2(precinct.x0, cblkwidthexpn as OPJ_INT32)
+              opj_int_floordivpow2(precinct.x0, cblkwidthexpn as i32)
                 << cblkwidthexpn;
             /*fprintf(stderr, "\t tlcblkxstart =%d\n",tlcblkxstart );*/
             tlcblkystart =
-              opj_int_floordivpow2(precinct.y0, cblkheightexpn as OPJ_INT32)
+              opj_int_floordivpow2(precinct.y0, cblkheightexpn as i32)
                 << cblkheightexpn;
             /*fprintf(stderr, "\t tlcblkystart =%d\n",tlcblkystart );*/
             brcblkxend =
-              opj_int_ceildivpow2(precinct.x1, cblkwidthexpn as OPJ_INT32)
+              opj_int_ceildivpow2(precinct.x1, cblkwidthexpn as i32)
                 << cblkwidthexpn;
             /*fprintf(stderr, "\t brcblkxend =%d\n",brcblkxend );*/
             brcblkyend =
-              opj_int_ceildivpow2(precinct.y1, cblkheightexpn as OPJ_INT32)
+              opj_int_ceildivpow2(precinct.y1, cblkheightexpn as i32)
                 << cblkheightexpn;
             /*fprintf(stderr, "\t brcblkyend =%d\n",brcblkyend );*/
             precinct.cw =
-              ((brcblkxend - tlcblkxstart) >> cblkwidthexpn) as OPJ_UINT32;
+              ((brcblkxend - tlcblkxstart) >> cblkwidthexpn) as u32;
             precinct.ch =
-              ((brcblkyend - tlcblkystart) >> cblkheightexpn) as OPJ_UINT32;
+              ((brcblkyend - tlcblkystart) >> cblkheightexpn) as u32;
             l_nb_code_blocks = precinct
               .cw
               .wrapping_mul(precinct.ch);
             /*fprintf(stderr, "\t\t\t\t precinct_cw = %d x recinct_ch = %d\n",l_current_precinct->cw, l_current_precinct->ch);      */
-            if (-(1i32) as OPJ_UINT32).wrapping_div(sizeof_block as OPJ_UINT32)
+            if (-(1i32) as u32).wrapping_div(sizeof_block as u32)
               < l_nb_code_blocks
             {
               event_msg!(
@@ -1000,13 +1000,13 @@ pub(crate) fn opj_tcd_init_tile(
               Some(tree) => opj_tgt_init(tree, precinct_cw, precinct_ch, manager),
               None => opj_tgt_create(precinct_cw, precinct_ch, manager),
             };
-            cblkno = 0 as OPJ_UINT32;
+            cblkno = 0_u32;
             while cblkno < l_nb_code_blocks {
               let mut cblkxstart = tlcblkxstart
-                + cblkno.wrapping_rem(precinct_cw) as OPJ_INT32
+                + cblkno.wrapping_rem(precinct_cw) as i32
                   * ((1i32) << cblkwidthexpn);
               let mut cblkystart = tlcblkystart
-                + cblkno.wrapping_div(precinct_cw) as OPJ_INT32
+                + cblkno.wrapping_div(precinct_cw) as i32
                   * ((1i32) << cblkheightexpn);
               let mut cblkxend = cblkxstart + ((1i32) << cblkwidthexpn);
               let mut cblkyend = cblkystart + ((1i32) << cblkheightexpn);
@@ -1046,21 +1046,21 @@ pub(crate) fn opj_tcd_init_tile(
   1i32
 }
 pub(crate) fn opj_tcd_init_encode_tile(
-  mut p_tcd: &mut opj_tcd,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_tcd: &mut Tcd,
+  mut p_tile_no: u32,
+  mut p_manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
   opj_tcd_init_tile(p_tcd, p_tile_no, 1i32, p_manager, image, cp)
 }
 
 pub(crate) fn opj_tcd_init_decode_tile(
-  mut p_tcd: &mut opj_tcd,
-  mut p_tile_no: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_tcd: &mut Tcd,
+  mut p_tile_no: u32,
+  mut p_manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
   opj_tcd_init_tile(p_tcd, p_tile_no, 0i32, p_manager, image, cp)
 }
@@ -1070,7 +1070,7 @@ pub(crate) fn opj_tcd_init_decode_tile(
 /* *
  * Allocates memory for an encoding code block (but not data memory).
  */
-fn opj_tcd_code_block_enc_allocate(p_code_block: &mut opj_tcd_cblk_enc_t) {
+fn opj_tcd_code_block_enc_allocate(p_code_block: &mut TcdCblkEnc) {
   if p_code_block.layers.is_empty() {
     p_code_block.layers.resize(100, Default::default());
   }
@@ -1084,8 +1084,8 @@ fn opj_tcd_code_block_enc_allocate(p_code_block: &mut opj_tcd_cblk_enc_t) {
 /* *
  * Allocates data memory for an encoding code block.
  */
-fn opj_tcd_code_block_enc_allocate_data(p_code_block: &mut opj_tcd_cblk_enc_t) {
-  let mut l_data_size: OPJ_UINT32 = 0;
+fn opj_tcd_code_block_enc_allocate_data(p_code_block: &mut TcdCblkEnc) {
+  let mut l_data_size: u32 = 0;
   /* +1 is needed for https://github.com/uclouvain/openjpeg/issues/835 */
   /* and actually +2 required for https://github.com/uclouvain/openjpeg/issues/982 */
   /* and +7 for https://github.com/uclouvain/openjpeg/issues/1283 (-M 3) */
@@ -1099,7 +1099,7 @@ fn opj_tcd_code_block_enc_allocate_data(p_code_block: &mut opj_tcd_cblk_enc_t) {
   l_data_size = (74u32).wrapping_add(
     ((p_code_block.x1 - p_code_block.x0)
       * (p_code_block.y1 - p_code_block.y0)
-      * core::mem::size_of::<OPJ_UINT32>() as OPJ_INT32) as OPJ_UINT32,
+      * core::mem::size_of::<u32>() as i32) as u32,
   );
   if l_data_size > p_code_block.data_size {
     p_code_block.data.clear();
@@ -1109,8 +1109,8 @@ fn opj_tcd_code_block_enc_allocate_data(p_code_block: &mut opj_tcd_cblk_enc_t) {
   }
 }
 
-pub(crate) fn opj_tcd_reinit_segment(seg: &mut opj_tcd_seg_t) {
-  *seg = opj_tcd_seg_t::default();
+pub(crate) fn opj_tcd_reinit_segment(seg: &mut TcdSeg) {
+  *seg = TcdSeg::default();
 }
 /* We reserve the initial byte as a fake byte to a non-FF value */
 /* and increment the data pointer, so that opj_mqc_init_enc() */
@@ -1122,7 +1122,7 @@ pub(crate) fn opj_tcd_reinit_segment(seg: &mut opj_tcd_seg_t) {
 /* *
  * Allocates memory for a decoding code block.
  */
-fn opj_tcd_code_block_dec_allocate(p_code_block: &mut opj_tcd_cblk_dec_t) {
+fn opj_tcd_code_block_dec_allocate(p_code_block: &mut TcdCblkDec) {
   if p_code_block.segs.is_empty() {
     p_code_block.segs.resize(10, Default::default());
   } else {
@@ -1139,28 +1139,28 @@ fn opj_tcd_code_block_dec_allocate(p_code_block: &mut opj_tcd_cblk_dec_t) {
 }
 
 pub(crate) fn opj_tcd_get_decoded_tile_size(
-  p_tcd: &mut opj_tcd,
+  p_tcd: &mut Tcd,
   take_into_account_partial_decoding: OPJ_BOOL,
   image: &mut CoreImage,
-) -> OPJ_UINT32 {
-  let mut i: OPJ_UINT32 = 0;
-  let mut l_data_size = 0 as OPJ_UINT32;
-  let mut l_size_comp: OPJ_UINT32 = 0;
-  let mut l_remaining: OPJ_UINT32 = 0;
-  let mut l_temp: OPJ_UINT32 = 0;
-  i = 0 as OPJ_UINT32;
+) -> u32 {
+  let mut i: u32 = 0;
+  let mut l_data_size = 0_u32;
+  let mut l_size_comp: u32 = 0;
+  let mut l_remaining: u32 = 0;
+  let mut l_temp: u32 = 0;
+  i = 0_u32;
   while i < image.numcomps {
     let l_tile_comp = &p_tcd.tcd_image.tiles.comps[i as usize];
     let l_img_comp = &image.comps[i as usize];
-    let mut w: OPJ_UINT32 = 0;
-    let mut h: OPJ_UINT32 = 0;
+    let mut w: u32 = 0;
+    let mut h: u32 = 0;
     l_size_comp = l_img_comp.prec >> 3i32;
     l_remaining = l_img_comp.prec & 7u32;
     if l_remaining != 0 {
       l_size_comp += 1;
     }
     if l_size_comp == 3u32 {
-      l_size_comp = 4 as OPJ_UINT32
+      l_size_comp = 4_u32
     }
     let l_res = &l_tile_comp.resolutions
       [(l_tile_comp.minimum_num_resolutions.wrapping_sub(1u32)) as usize];
@@ -1168,8 +1168,8 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
       w = l_res.win_x1.wrapping_sub(l_res.win_x0);
       h = l_res.win_y1.wrapping_sub(l_res.win_y0)
     } else {
-      w = (l_res.x1 - l_res.x0) as OPJ_UINT32;
-      h = (l_res.y1 - l_res.y0) as OPJ_UINT32
+      w = (l_res.x1 - l_res.x0) as u32;
+      h = (l_res.y1 - l_res.y0) as u32
     }
     if h > 0u32
       && (2147483647u32)
@@ -1190,7 +1190,7 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
     {
       return (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32);
     }
-    l_temp = (l_temp as core::ffi::c_uint).wrapping_mul(l_size_comp) as OPJ_UINT32;
+    l_temp = (l_temp as core::ffi::c_uint).wrapping_mul(l_size_comp);
     if l_temp
       > (2147483647u32)
         .wrapping_mul(2u32)
@@ -1199,22 +1199,22 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
     {
       return (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32);
     }
-    l_data_size = (l_data_size as core::ffi::c_uint).wrapping_add(l_temp) as OPJ_UINT32;
+    l_data_size = (l_data_size as core::ffi::c_uint).wrapping_add(l_temp);
     i += 1;
   }
   l_data_size
 }
 
 pub(crate) fn opj_tcd_encode_tile(
-  p_tcd: &mut opj_tcd,
-  p_tile_no: OPJ_UINT32,
+  p_tcd: &mut Tcd,
+  p_tile_no: u32,
   p_dest: &mut [u8],
-  p_data_written: &mut OPJ_UINT32,
-  p_max_length: OPJ_UINT32,
-  p_marker_info: Option<&mut opj_tcd_marker_info_t>,
-  p_manager: &mut opj_event_mgr,
+  p_data_written: &mut u32,
+  p_max_length: u32,
+  p_marker_info: Option<&mut TcdMarkerInfo>,
+  p_manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
   if p_tcd.cur_tp_num == 0u32 {
     p_tcd.tcd_tileno = p_tile_no;
@@ -1274,21 +1274,21 @@ pub(crate) fn opj_tcd_encode_tile(
   1i32
 }
 pub(crate) fn opj_tcd_decode_tile(
-  p_tcd: &mut opj_tcd,
-  win_x0: OPJ_UINT32,
-  win_y0: OPJ_UINT32,
-  win_x1: OPJ_UINT32,
-  win_y1: OPJ_UINT32,
-  numcomps_to_decode: OPJ_UINT32,
-  comps_indices: &[OPJ_UINT32],
+  p_tcd: &mut Tcd,
+  win_x0: u32,
+  win_y0: u32,
+  win_x1: u32,
+  win_y1: u32,
+  numcomps_to_decode: u32,
+  comps_indices: &[u32],
   p_src: &mut [u8],
-  p_tile_no: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  p_tile_no: u32,
+  p_manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
-  let mut l_data_read: OPJ_UINT32 = 0;
-  let mut compno: OPJ_UINT32 = 0;
+  let mut l_data_read: u32 = 0;
+  let mut compno: u32 = 0;
   p_tcd.tcd_tileno = p_tile_no;
   p_tcd.win_x0 = win_x0;
   p_tcd.win_y0 = win_y0;
@@ -1297,7 +1297,7 @@ pub(crate) fn opj_tcd_decode_tile(
   p_tcd.whole_tile_decoding = 1i32;
   if numcomps_to_decode != 0 {
     let mut used_component = vec![false; image.numcomps as usize];
-    compno = 0 as OPJ_UINT32;
+    compno = 0_u32;
     // SAFETY: the caller provides numcomps_to_decode valid component indices.
     let indices = comps_indices;
     for &idx in indices {
@@ -1307,7 +1307,7 @@ pub(crate) fn opj_tcd_decode_tile(
   } else {
     p_tcd.used_component = vec![]
   }
-  compno = 0 as OPJ_UINT32;
+  compno = 0_u32;
   while compno < image.numcomps {
     if p_tcd.used_component(compno) && opj_tcd_is_whole_tilecomp_decoding(p_tcd, compno, image) == 0 {
       p_tcd.whole_tile_decoding = 0i32;
@@ -1316,17 +1316,17 @@ pub(crate) fn opj_tcd_decode_tile(
     compno += 1;
   }
   if p_tcd.whole_tile_decoding != 0 {
-    compno = 0 as OPJ_UINT32;
+    compno = 0_u32;
     while compno < image.numcomps {
       if p_tcd.used_component(compno) {
         let tilec = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
         let res_idx = (tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize;
-        let mut l_data_size: OPJ_SIZE_T = 0;
+        let mut l_data_size: usize = 0;
         /* compute l_data_size with overflow check */
         let mut res_w = (tilec.resolutions[res_idx].x1 - tilec.resolutions[res_idx].x0)
-          as OPJ_SIZE_T;
+          as usize;
         let mut res_h = (tilec.resolutions[res_idx].y1 - tilec.resolutions[res_idx].y0)
-          as OPJ_SIZE_T;
+          as usize;
         /* issue 733, l_data_size == 0U, probably something wrong should be checked before getting here */
         if res_h > 0 && res_w > (usize::MAX).wrapping_div(res_h) {
           event_msg!(
@@ -1337,7 +1337,7 @@ pub(crate) fn opj_tcd_decode_tile(
           return 0i32;
         }
         l_data_size = res_w.wrapping_mul(res_h);
-        if (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_UINT32>()) < l_data_size {
+        if (usize::MAX).wrapping_div(core::mem::size_of::<u32>()) < l_data_size {
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -1345,8 +1345,8 @@ pub(crate) fn opj_tcd_decode_tile(
           );
           return 0i32;
         }
-        l_data_size = (l_data_size as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT32>())
-          as OPJ_SIZE_T as OPJ_SIZE_T;
+        l_data_size = l_data_size.wrapping_mul(core::mem::size_of::<u32>())
+          as usize as usize;
         tilec.data_size_needed = l_data_size;
         if opj_alloc_tile_component_data(tilec) == 0 {
           event_msg!(
@@ -1363,18 +1363,18 @@ pub(crate) fn opj_tcd_decode_tile(
     /* Compute restricted tile-component and tile-resolution coordinates */
     /* of the window of interest, but defer the memory allocation until */
     /* we know the resno_decoded */
-    compno = 0 as OPJ_UINT32;
+    compno = 0_u32;
     while compno < image.numcomps {
-      let mut resno: OPJ_UINT32 = 0;
+      let mut resno: u32 = 0;
       if p_tcd.used_component(compno) {
         let tilec_0 = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
         let image_comp = &image.comps[compno as usize];
         /* Compute the intersection of the area of interest, expressed in tile coordinates */
         /* with the tile coordinates */
-        tilec_0.win_x0 = opj_uint_max(tilec_0.x0 as OPJ_UINT32, opj_uint_ceildiv(p_tcd.win_x0, image_comp.dx));
-        tilec_0.win_y0 = opj_uint_max(tilec_0.y0 as OPJ_UINT32, opj_uint_ceildiv(p_tcd.win_y0, image_comp.dy));
-        tilec_0.win_x1 = opj_uint_min(tilec_0.x1 as OPJ_UINT32, opj_uint_ceildiv(p_tcd.win_x1, image_comp.dx));
-        tilec_0.win_y1 = opj_uint_min(tilec_0.y1 as OPJ_UINT32, opj_uint_ceildiv(p_tcd.win_y1, image_comp.dy));
+        tilec_0.win_x0 = opj_uint_max(tilec_0.x0 as u32, opj_uint_ceildiv(p_tcd.win_x0, image_comp.dx));
+        tilec_0.win_y0 = opj_uint_max(tilec_0.y0 as u32, opj_uint_ceildiv(p_tcd.win_y0, image_comp.dy));
+        tilec_0.win_x1 = opj_uint_min(tilec_0.x1 as u32, opj_uint_ceildiv(p_tcd.win_x1, image_comp.dx));
+        tilec_0.win_y1 = opj_uint_min(tilec_0.y1 as u32, opj_uint_ceildiv(p_tcd.win_y1, image_comp.dy));
         if tilec_0.win_x1 < tilec_0.win_x0 || tilec_0.win_y1 < tilec_0.win_y0 {
           /* We should not normally go there. The circumstance is when */
           /* the tile coordinates do not intersect the area of interest */
@@ -1382,7 +1382,7 @@ pub(crate) fn opj_tcd_decode_tile(
           event_msg!(p_manager, EVT_ERROR, "Invalid tilec->win_xxx values\n",);
           return 0i32;
         }
-        resno = 0 as OPJ_UINT32;
+        resno = 0_u32;
         while resno < tilec_0.numresolutions {
           let res = &mut tilec_0.resolutions[resno as usize];
           res.win_x0 = opj_uint_ceildivpow2(tilec_0.win_x0, tilec_0.numresolutions.wrapping_sub(1u32).wrapping_sub(resno));
@@ -1398,7 +1398,7 @@ pub(crate) fn opj_tcd_decode_tile(
   /* FIXME */
   /*--------------TIER2------------------*/
   /* FIXME _ProfStart(PGROUP_T2); */
-  l_data_read = 0 as OPJ_UINT32;
+  l_data_read = 0_u32;
   if opj_tcd_t2_decode(
     p_tcd,
     p_src,
@@ -1420,15 +1420,15 @@ pub(crate) fn opj_tcd_decode_tile(
   /* For subtile decoding, now we know the resno_decoded, we can allocate */
   /* the tile data buffer */
   if p_tcd.whole_tile_decoding == 0 {
-    compno = 0 as OPJ_UINT32;
+    compno = 0_u32;
     while compno < image.numcomps {
       if p_tcd.used_component(compno) {
         let tilec_1 = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
         let image_comp_0 = &image.comps[compno as usize];
         let res_0 = &tilec_1.resolutions[image_comp_0.resno_decoded as usize];
-        let w = res_0.win_x1.wrapping_sub(res_0.win_x0) as OPJ_SIZE_T;
-        let h = res_0.win_y1.wrapping_sub(res_0.win_y0) as OPJ_SIZE_T;
-        let mut l_data_size_0: OPJ_SIZE_T = 0;
+        let w = res_0.win_x1.wrapping_sub(res_0.win_x0) as usize;
+        let h = res_0.win_y1.wrapping_sub(res_0.win_y0) as usize;
+        let mut l_data_size_0: usize = 0;
         tilec_1.data_win.release();
         if w > 0 && h > 0 {
         if w > (usize::MAX).wrapping_div(h) {
@@ -1440,7 +1440,7 @@ pub(crate) fn opj_tcd_decode_tile(
           return 0i32;
         }
         l_data_size_0 = w.wrapping_mul(h);
-        if l_data_size_0 > (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_INT32>()) {
+        if l_data_size_0 > (usize::MAX).wrapping_div(core::mem::size_of::<i32>()) {
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -1448,8 +1448,8 @@ pub(crate) fn opj_tcd_decode_tile(
           );
           return 0i32;
         }
-        l_data_size_0 = (l_data_size_0 as usize).wrapping_mul(core::mem::size_of::<OPJ_INT32>())
-          as OPJ_SIZE_T as OPJ_SIZE_T;
+        l_data_size_0 = l_data_size_0.wrapping_mul(core::mem::size_of::<i32>())
+          as usize as usize;
         if !tilec_1.data_win.alloc(l_data_size_0) {
           event_msg!(
             p_manager,
@@ -1484,13 +1484,13 @@ pub(crate) fn opj_tcd_decode_tile(
   1i32 /*(/ 8)*/
 }
 pub(crate) fn opj_tcd_update_tile_data(
-  p_tcd: &mut opj_tcd,
+  p_tcd: &mut Tcd,
   mut p_dest: &mut [u8],
   image: &mut CoreImage,
 ) -> OPJ_BOOL {
   {
     let mut p_dest_length = p_dest.len() as u32;
-    let mut l_data_size = 0 as OPJ_UINT32;
+    let mut l_data_size = 0_u32;
     let mut l_stride = 0usize;
     let mut l_width = 0usize;
     let mut l_height = 0usize;
@@ -1528,7 +1528,7 @@ pub(crate) fn opj_tcd_update_tile_data(
         l_size_comp += 1;
       }
       if l_size_comp == 3u32 {
-        l_size_comp = 4 as OPJ_UINT32
+        l_size_comp = 4_u32
       }
       let l_nb_elem = l_height * l_width;
       let mut l_src = l_src_data;
@@ -1612,7 +1612,7 @@ pub(crate) fn opj_tcd_update_tile_data(
 Free the memory allocated for encoding
 @param tcd TCD handle
 */
-fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
+fn opj_tcd_free_tile(mut p_tcd: &mut Tcd) {
   for l_tile_comp in p_tcd.tcd_image.tiles.comps.iter_mut() {
     for l_res in l_tile_comp.resolutions.iter_mut() {
       for l_band in l_res.bands.iter_mut() {
@@ -1626,18 +1626,18 @@ fn opj_tcd_free_tile(mut p_tcd: &mut opj_tcd) {
     }
     l_tile_comp.resolutions.clear();
     l_tile_comp.data.release();
-    l_tile_comp.data_size_needed = 0i32 as size_t;
+    l_tile_comp.data_size_needed = 0i32 as usize;
     l_tile_comp.data_win.release();
   }
   p_tcd.tcd_image.tiles.comps.clear();
 }
 fn opj_tcd_t2_decode(
-  mut p_tcd: &mut opj_tcd,
+  mut p_tcd: &mut Tcd,
   p_src_data: &mut [u8],
-  p_data_read: &mut OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  p_data_read: &mut u32,
+  mut p_manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
   let mut t2 = opj_t2_create(image, cp);
   if opj_t2_decode_packets(
@@ -1656,21 +1656,21 @@ fn opj_tcd_t2_decode(
   1i32
 }
 fn opj_tcd_t1_decode(
-  p_tcd: &mut opj_tcd,
-  p_manager: &mut opj_event_mgr,
+  p_tcd: &mut Tcd,
+  p_manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
   src: &mut [u8],
 ) -> OPJ_BOOL {
   let tcp = &cp.tcps[p_tcd.tcd_tileno as usize];
-  let mut compno: OPJ_UINT32 = 0;
+  let mut compno: u32 = 0;
   let mut ret = 1i32;
   let mut check_pterm = 0i32;
   /* Only enable PTERM check if we decode all layers */
   if tcp.num_layers_to_decode == tcp.numlayers && tcp.tccps[0].cblksty & 0x10u32 != 0u32 {
     check_pterm = 1i32
   }
-  compno = 0 as OPJ_UINT32;
+  compno = 0_u32;
   while compno < p_tcd.tcd_image.tiles.numcomps {
     if p_tcd.used_component(compno) {
       let l_tilec = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
@@ -1704,7 +1704,7 @@ fn opj_tcd_t1_decode(
   }
   ret
 }
-fn opj_tcd_dwt_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_cp_t) -> OPJ_BOOL {
+fn opj_tcd_dwt_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OPJ_BOOL {
   // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
   let img_comps = &image.comps;
@@ -1740,8 +1740,8 @@ fn opj_tcd_dwt_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_c
 /// Runs `f` on a bit-exact `&mut [f32]` view of the i32 buffer: the float MCT
 /// stores f32 bit patterns in the i32 component data (the C code reinterprets
 /// in place; here we convert per element).
-fn with_f32_view<R>(data: &mut [OPJ_INT32], f: impl FnOnce(&mut [OPJ_FLOAT32]) -> R) -> R {
-  let mut fdata: Vec<OPJ_FLOAT32> = data.iter().map(|&x| f32::from_bits(x as u32)).collect();
+fn with_f32_view<R>(data: &mut [i32], f: impl FnOnce(&mut [f32]) -> R) -> R {
+  let mut fdata: Vec<f32> = data.iter().map(|&x| f32::from_bits(x as u32)).collect();
   let r = f(&mut fdata);
   for (d, &v) in data.iter_mut().zip(fdata.iter()) {
     *d = v.to_bits() as i32;
@@ -1750,13 +1750,13 @@ fn with_f32_view<R>(data: &mut [OPJ_INT32], f: impl FnOnce(&mut [OPJ_FLOAT32]) -
 }
 
 fn opj_tcd_mct_decode(
-  p_tcd: &mut opj_tcd,
-  p_manager: &mut opj_event_mgr,
+  p_tcd: &mut Tcd,
+  p_manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
   let tcp = &cp.tcps[p_tcd.tcd_tileno as usize];
-  let mut l_samples: OPJ_SIZE_T = 0;
+  let mut l_samples: usize = 0;
   if tcp.mct == 0u32 || !p_tcd.used_component.is_empty() {
     return 1i32;
   }
@@ -1767,8 +1767,8 @@ fn opj_tcd_mct_decode(
     /* A bit inefficient: we process more data than needed if */
     /* resno_decoded < l_tile_comp->minimum_num_resolutions-1, */
     /* but we would need to take into account a stride then */
-    l_samples = ((res_comp0.x1 - res_comp0.x0) as OPJ_SIZE_T)
-      .wrapping_mul((res_comp0.y1 - res_comp0.y0) as OPJ_SIZE_T);
+    l_samples = ((res_comp0.x1 - res_comp0.x0) as usize)
+      .wrapping_mul((res_comp0.y1 - res_comp0.y0) as usize);
     if p_tcd.tcd_image.tiles.numcomps >= 3u32
       && (min_num_res != p_tcd.tcd_image.tiles.comps[1].minimum_num_resolutions
         || min_num_res != p_tcd.tcd_image.tiles.comps[2].minimum_num_resolutions)
@@ -1788,11 +1788,11 @@ fn opj_tcd_mct_decode(
       /* testcase 1336.pdf.asan.47.376 */
       if image.comps[0].resno_decoded != image.comps[1].resno_decoded
         || image.comps[0].resno_decoded != image.comps[2].resno_decoded
-        || ((res_comp1.x1 - res_comp1.x0) as OPJ_SIZE_T)
-          .wrapping_mul((res_comp1.y1 - res_comp1.y0) as OPJ_SIZE_T)
+        || ((res_comp1.x1 - res_comp1.x0) as usize)
+          .wrapping_mul((res_comp1.y1 - res_comp1.y0) as usize)
           != l_samples
-        || ((res_comp2.x1 - res_comp2.x0) as OPJ_SIZE_T)
-          .wrapping_mul((res_comp2.y1 - res_comp2.y0) as OPJ_SIZE_T)
+        || ((res_comp2.x1 - res_comp2.x0) as usize)
+          .wrapping_mul((res_comp2.y1 - res_comp2.y0) as usize)
           != l_samples
       {
         event_msg!(
@@ -1806,8 +1806,8 @@ fn opj_tcd_mct_decode(
   } else {
     let res_comp0_0 =
       &p_tcd.tcd_image.tiles.comps[0].resolutions[image.comps[0].resno_decoded as usize];
-    l_samples = (res_comp0_0.win_x1.wrapping_sub(res_comp0_0.win_x0) as OPJ_SIZE_T)
-      .wrapping_mul(res_comp0_0.win_y1.wrapping_sub(res_comp0_0.win_y0) as OPJ_SIZE_T);
+    l_samples = (res_comp0_0.win_x1.wrapping_sub(res_comp0_0.win_x0) as usize)
+      .wrapping_mul(res_comp0_0.win_y1.wrapping_sub(res_comp0_0.win_y0) as usize);
     if p_tcd.tcd_image.tiles.numcomps >= 3u32 {
       let res_comp1_0 =
         &p_tcd.tcd_image.tiles.comps[1].resolutions[image.comps[1].resno_decoded as usize];
@@ -1816,11 +1816,11 @@ fn opj_tcd_mct_decode(
       /* testcase 1336.pdf.asan.47.376 */
       if image.comps[0].resno_decoded != image.comps[1].resno_decoded
         || image.comps[0].resno_decoded != image.comps[2].resno_decoded
-        || (res_comp1_0.win_x1.wrapping_sub(res_comp1_0.win_x0) as OPJ_SIZE_T)
-          .wrapping_mul(res_comp1_0.win_y1.wrapping_sub(res_comp1_0.win_y0) as OPJ_SIZE_T)
+        || (res_comp1_0.win_x1.wrapping_sub(res_comp1_0.win_x0) as usize)
+          .wrapping_mul(res_comp1_0.win_y1.wrapping_sub(res_comp1_0.win_y0) as usize)
           != l_samples
-        || (res_comp2_0.win_x1.wrapping_sub(res_comp2_0.win_x0) as OPJ_SIZE_T)
-          .wrapping_mul(res_comp2_0.win_y1.wrapping_sub(res_comp2_0.win_y0) as OPJ_SIZE_T)
+        || (res_comp2_0.win_x1.wrapping_sub(res_comp2_0.win_x0) as usize)
+          .wrapping_mul(res_comp2_0.win_y1.wrapping_sub(res_comp2_0.win_y0) as usize)
           != l_samples
       {
         event_msg!(
@@ -1848,16 +1848,16 @@ fn opj_tcd_mct_decode(
       if tcp.m_mct_decoding_matrix.is_empty() {
         return 1i32;
       }
-      let mut l_data: Vec<Vec<OPJ_FLOAT32>> = Vec::with_capacity(numcomps);
+      let mut l_data: Vec<Vec<f32>> = Vec::with_capacity(numcomps);
       {
         let mut rest = &mut *comps;
         for _ in 0..numcomps {
           let (first, r) = rest.split_at_mut(1);
           let c = &mut first[0];
           let s = if whole {
-            c.data.as_mut_slice(l_samples as usize)
+            c.data.as_mut_slice(l_samples)
           } else {
-            c.data_win.as_mut_slice(l_samples as usize)
+            c.data_win.as_mut_slice(l_samples)
           };
           l_data.push(s.iter().map(|&x| f32::from_bits(x as u32)).collect());
           rest = r;
@@ -1865,7 +1865,7 @@ fn opj_tcd_mct_decode(
       }
       let matrix = &tcp.m_mct_decoding_matrix[..];
       {
-        let mut l_views: Vec<&mut [OPJ_FLOAT32]> = l_data.iter_mut().map(|v| &mut v[..]).collect();
+        let mut l_views: Vec<&mut [f32]> = l_data.iter_mut().map(|v| &mut v[..]).collect();
         if opj_mct_decode_custom(matrix, l_samples, &mut l_views, image.comps[0].sgnd) == 0 {
           return 0i32;
         }
@@ -1876,9 +1876,9 @@ fn opj_tcd_mct_decode(
           let (first, r) = rest.split_at_mut(1);
           let c = &mut first[0];
           let s = if whole {
-            c.data.as_mut_slice(l_samples as usize)
+            c.data.as_mut_slice(l_samples)
           } else {
-            c.data_win.as_mut_slice(l_samples as usize)
+            c.data_win.as_mut_slice(l_samples)
           };
           for (d, &v) in s.iter_mut().zip(fdata.iter()) {
             *d = v.to_bits() as i32;
@@ -1890,17 +1890,17 @@ fn opj_tcd_mct_decode(
       let (c0, rest) = comps.split_at_mut(1);
       let (c1, rest) = rest.split_at_mut(1);
       let (c2, _) = rest.split_at_mut(1);
-      let s0 = if whole { c0[0].data.as_mut_slice(l_samples as usize) } else { c0[0].data_win.as_mut_slice(l_samples as usize) };
-      let s1 = if whole { c1[0].data.as_mut_slice(l_samples as usize) } else { c1[0].data_win.as_mut_slice(l_samples as usize) };
-      let s2 = if whole { c2[0].data.as_mut_slice(l_samples as usize) } else { c2[0].data_win.as_mut_slice(l_samples as usize) };
+      let s0 = if whole { c0[0].data.as_mut_slice(l_samples) } else { c0[0].data_win.as_mut_slice(l_samples) };
+      let s1 = if whole { c1[0].data.as_mut_slice(l_samples) } else { c1[0].data_win.as_mut_slice(l_samples) };
+      let s2 = if whole { c2[0].data.as_mut_slice(l_samples) } else { c2[0].data_win.as_mut_slice(l_samples) };
       opj_mct_decode(s0, s1, s2);
     } else {
       let (c0, rest) = comps.split_at_mut(1);
       let (c1, rest) = rest.split_at_mut(1);
       let (c2, _) = rest.split_at_mut(1);
-      let s0 = if whole { c0[0].data.as_mut_slice(l_samples as usize) } else { c0[0].data_win.as_mut_slice(l_samples as usize) };
-      let s1 = if whole { c1[0].data.as_mut_slice(l_samples as usize) } else { c1[0].data_win.as_mut_slice(l_samples as usize) };
-      let s2 = if whole { c2[0].data.as_mut_slice(l_samples as usize) } else { c2[0].data_win.as_mut_slice(l_samples as usize) };
+      let s0 = if whole { c0[0].data.as_mut_slice(l_samples) } else { c0[0].data_win.as_mut_slice(l_samples) };
+      let s1 = if whole { c1[0].data.as_mut_slice(l_samples) } else { c1[0].data_win.as_mut_slice(l_samples) };
+      let s2 = if whole { c2[0].data.as_mut_slice(l_samples) } else { c2[0].data_win.as_mut_slice(l_samples) };
       with_f32_view(s0, |f0| {
         with_f32_view(s1, |f1| {
           with_f32_view(s2, |f2| opj_mct_decode_real(f0, f1, f2))
@@ -1917,7 +1917,7 @@ fn opj_tcd_mct_decode(
   }
   1i32
 }
-fn opj_tcd_dc_level_shift_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_cp_t) -> OPJ_BOOL {
+fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OPJ_BOOL {
   // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
   let img_comps = &image.comps;
@@ -1943,17 +1943,17 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp:
         (
           l_res.win_x1.wrapping_sub(l_res.win_x0),
           l_res.win_y1.wrapping_sub(l_res.win_y0),
-          0 as OPJ_UINT32,
+          0_u32,
         )
       } else {
-        let l_width = (l_res.x1 - l_res.x0) as OPJ_UINT32;
-        let l_height = (l_res.y1 - l_res.y0) as OPJ_UINT32;
+        let l_width = (l_res.x1 - l_res.x0) as u32;
+        let l_height = (l_res.y1 - l_res.y0) as u32;
         let l_stride = ((l_tile_comp.resolutions
           [(l_tile_comp.minimum_num_resolutions.wrapping_sub(1u32)) as usize]
         .x1
           - l_tile_comp.resolutions
             [(l_tile_comp.minimum_num_resolutions.wrapping_sub(1u32)) as usize]
-            .x0) as OPJ_UINT32)
+            .x0) as u32)
           .wrapping_sub(l_width);
         assert!(
           l_height == 0u32
@@ -1976,7 +1976,7 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp:
             ((1i32) << l_img_comp.prec.wrapping_sub(1u32)) - 1i32,
           )
         } else {
-          (0i32, ((1u32) << l_img_comp.prec).wrapping_sub(1u32) as OPJ_INT32)
+          (0i32, ((1u32) << l_img_comp.prec).wrapping_sub(1u32) as i32)
         };
 
         if l_tccp.qmfbid == 1u32 {
@@ -1991,7 +1991,7 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp:
           for j in 0..l_height as usize {
             for i in 0..l_width as usize {
               let idx = j * row_stride + i;
-              let l_value = f32::from_bits(data[idx] as OPJ_UINT32);
+              let l_value = f32::from_bits(data[idx] as u32);
               if l_value > 2147483647 as core::ffi::c_float {
                 data[idx] = l_max
               } else if l_value < (-(2147483647i32) - 1i32) as core::ffi::c_float {
@@ -2001,9 +2001,9 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp:
                 let l_value_int = opj_lrintf(l_value);
                 data[idx] = opj_int64_clamp(
                   l_value_int + l_tccp.m_dc_level_shift as i64,
-                  l_min as OPJ_INT64,
-                  l_max as OPJ_INT64,
-                ) as OPJ_INT32
+                  l_min as i64,
+                  l_max as i64,
+                ) as i32
               }
             }
           }
@@ -2015,12 +2015,12 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp:
 
 
 pub(crate) fn opj_tcd_get_encoder_input_buffer_size(
-  mut p_tcd: &mut opj_tcd,
+  mut p_tcd: &mut Tcd,
   image: &mut CoreImage,
-) -> OPJ_SIZE_T {
-  let mut l_data_size = 0 as OPJ_SIZE_T;
-  let mut l_size_comp: OPJ_UINT32 = 0;
-  let mut l_remaining: OPJ_UINT32 = 0;
+) -> usize {
+  let mut l_data_size = 0_usize;
+  let mut l_size_comp: u32 = 0;
+  let mut l_remaining: u32 = 0;
   let numcomps = image.numcomps as usize;
   let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
   for (l_tilec, l_img_comp) in l_tilec.iter().zip(image.comps.iter()) {
@@ -2030,19 +2030,19 @@ pub(crate) fn opj_tcd_get_encoder_input_buffer_size(
       l_size_comp += 1;
     }
     if l_size_comp == 3u32 {
-      l_size_comp = 4 as OPJ_UINT32
+      l_size_comp = 4_u32
     }
-    l_data_size = (l_data_size as usize).wrapping_add(
+    l_data_size = l_data_size.wrapping_add(
       (l_size_comp as usize).wrapping_mul(
-        ((l_tilec.x1 - l_tilec.x0) as OPJ_SIZE_T)
-          .wrapping_mul((l_tilec.y1 - l_tilec.y0) as OPJ_SIZE_T),
+        ((l_tilec.x1 - l_tilec.x0) as usize)
+          .wrapping_mul((l_tilec.y1 - l_tilec.y0) as usize),
       ),
-    ) as OPJ_SIZE_T as OPJ_SIZE_T;
+    );
   }
   l_data_size
 }
 
-fn opj_tcd_dc_level_shift_encode(p_tcd: &mut opj_tcd, cp: &mut opj_cp_t) -> OPJ_BOOL {
+fn opj_tcd_dc_level_shift_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OPJ_BOOL {
   // SAFETY: `tcp` is set by opj_tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
   /* Parallel across components (each component shifts its own buffer). */
@@ -2054,8 +2054,8 @@ fn opj_tcd_dc_level_shift_encode(p_tcd: &mut opj_tcd, cp: &mut opj_cp_t) -> OPJ_
     .enumerate()
     .for_each(|(compno, l_tile_comp)| {
       let l_tccp = &tccps[compno];
-      let l_nb_elem = ((l_tile_comp.x1 - l_tile_comp.x0) as OPJ_SIZE_T)
-        .wrapping_mul((l_tile_comp.y1 - l_tile_comp.y0) as OPJ_SIZE_T);
+      let l_nb_elem = ((l_tile_comp.x1 - l_tile_comp.x0) as usize)
+        .wrapping_mul((l_tile_comp.y1 - l_tile_comp.y0) as usize);
       let data = l_tile_comp.data.as_mut_slice(l_nb_elem);
       if l_tccp.qmfbid == 1u32 {
         for v in data.iter_mut() {
@@ -2066,13 +2066,13 @@ fn opj_tcd_dc_level_shift_encode(p_tcd: &mut opj_tcd, cp: &mut opj_cp_t) -> OPJ_
           // The C code reads the sample as an i32, shifts it, then stores the
           // result as f32 bits for the 9x7 transform to consume.
           let val = *v;
-          *v = ((val - l_tccp.m_dc_level_shift) as OPJ_FLOAT32).to_bits() as OPJ_INT32;
+          *v = ((val - l_tccp.m_dc_level_shift) as f32).to_bits() as i32;
         }
       }
     });
   1i32
 }
-fn opj_tcd_mct_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_cp_t) -> OPJ_BOOL {
+fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OPJ_BOOL {
   let tcp = &cp.tcps[p_tcd.tcd_tileno as usize];
   let samples = ((p_tcd.tcd_image.tiles.comps[0].x1 - p_tcd.tcd_image.tiles.comps[0].x0) as usize)
     .wrapping_mul((p_tcd.tcd_image.tiles.comps[0].y1 - p_tcd.tcd_image.tiles.comps[0].y0) as usize);
@@ -2085,7 +2085,7 @@ fn opj_tcd_mct_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_c
       return 1i32;
     }
     let numcomps = comps.len();
-    let mut l_data: Vec<&mut [OPJ_INT32]> = Vec::with_capacity(numcomps);
+    let mut l_data: Vec<&mut [i32]> = Vec::with_capacity(numcomps);
     let mut rest = comps;
     for _ in 0..numcomps {
       let (first, r) = rest.split_at_mut(1);
@@ -2093,7 +2093,7 @@ fn opj_tcd_mct_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_c
       rest = r;
     }
     let matrix = &tcp.m_mct_coding_matrix[..];
-    if opj_mct_encode_custom(matrix, samples as OPJ_SIZE_T, &mut l_data, image.comps[0].sgnd) == 0 {
+    if opj_mct_encode_custom(matrix, samples, &mut l_data, image.comps[0].sgnd) == 0 {
       return 0i32;
     }
   } else if tcp.tccps[0].qmfbid == 0u32 {
@@ -2119,7 +2119,7 @@ fn opj_tcd_mct_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_c
   }
   1i32
 }
-fn opj_tcd_dwt_encode(p_tcd: &mut opj_tcd, cp: &mut opj_cp_t) -> OPJ_BOOL {
+fn opj_tcd_dwt_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OPJ_BOOL {
   // SAFETY: `tcp` is set by opj_tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
   /* Parallel across components (each forward transform is independent). */
@@ -2145,11 +2145,11 @@ fn opj_tcd_dwt_encode(p_tcd: &mut opj_tcd, cp: &mut opj_cp_t) -> OPJ_BOOL {
   }
   1i32
 }
-fn opj_tcd_t1_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_cp_t) -> OPJ_BOOL {
+fn opj_tcd_t1_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OPJ_BOOL {
   // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
   let l_tcp = &cp.tcps[p_tcd.tcd_tileno as usize];
   let mut l_mct_numcomps = 0u32;
-  let l_mct_norms: Option<&[OPJ_FLOAT64]> = if l_tcp.mct == 1u32 {
+  let l_mct_norms: Option<&[f64]> = if l_tcp.mct == 1u32 {
     l_mct_numcomps = 3u32;
     /* irreversible encoding */
     if l_tcp.tccps[0].qmfbid == 0u32 {
@@ -2174,14 +2174,14 @@ fn opj_tcd_t1_encode(p_tcd: &mut opj_tcd, image: &mut CoreImage, cp: &mut opj_cp
   )
 }
 fn opj_tcd_t2_encode(
-  mut p_tcd: &mut opj_tcd,
+  mut p_tcd: &mut Tcd,
   mut dest_data: &mut [u8],
-  mut p_data_written: &mut OPJ_UINT32,
-  mut p_max_dest_size: OPJ_UINT32,
-  mut p_marker_info: Option<&mut opj_tcd_marker_info_t>,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_data_written: &mut u32,
+  mut p_max_dest_size: u32,
+  mut p_marker_info: Option<&mut TcdMarkerInfo>,
+  mut p_manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
   let numlayers = cp.tcps[p_tcd.tcd_tileno as usize].numlayers;
   let mut t2 = opj_t2_create(image, cp);
@@ -2207,15 +2207,15 @@ fn opj_tcd_t2_encode(
   1i32
 }
 fn opj_tcd_rate_allocate_encode(
-  mut p_tcd: &mut opj_tcd,
+  mut p_tcd: &mut Tcd,
   mut dest_data: &mut [u8],
-  mut p_max_dest_size: OPJ_UINT32,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_max_dest_size: u32,
+  mut p_manager: &mut EventMgr,
   image: &mut CoreImage,
-  cp: &mut opj_cp_t,
+  cp: &mut Cp,
 ) -> OPJ_BOOL {
   {
-    let mut l_nb_written = 0 as OPJ_UINT32;
+    let mut l_nb_written = 0_u32;
 
     if cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy
       == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::RATE_DISTORTION_RATIO
@@ -2243,14 +2243,14 @@ fn opj_tcd_rate_allocate_encode(
 }
 
 pub(crate) fn opj_tcd_copy_tile_data(
-  p_tcd: &mut opj_tcd,
+  p_tcd: &mut Tcd,
   mut p_src: &[u8],
   image: &mut CoreImage,
 ) -> OPJ_BOOL {
-  let mut l_data_size = 0 as OPJ_SIZE_T;
-  let mut l_size_comp: OPJ_UINT32 = 0;
-  let mut l_remaining: OPJ_UINT32 = 0;
-  let mut l_nb_elem: OPJ_SIZE_T = 0;
+  let mut l_data_size = 0_usize;
+  let mut l_size_comp: u32 = 0;
+  let mut l_remaining: u32 = 0;
+  let mut l_nb_elem: usize = 0;
   l_data_size = opj_tcd_get_encoder_input_buffer_size(p_tcd, image);
   if l_data_size != p_src.len() {
     return 0i32;
@@ -2260,21 +2260,21 @@ pub(crate) fn opj_tcd_copy_tile_data(
   for (l_tilec, l_img_comp) in l_tilec.iter_mut().zip(image.comps.iter()) {
     l_size_comp = l_img_comp.prec >> 3i32;
     l_remaining = l_img_comp.prec & 7u32;
-    l_nb_elem = ((l_tilec.x1 - l_tilec.x0) as OPJ_SIZE_T)
-      .wrapping_mul((l_tilec.y1 - l_tilec.y0) as OPJ_SIZE_T);
+    l_nb_elem = ((l_tilec.x1 - l_tilec.x0) as usize)
+      .wrapping_mul((l_tilec.y1 - l_tilec.y0) as usize);
     if l_remaining != 0 {
       l_size_comp += 1;
     }
     if l_size_comp == 3u32 {
-      l_size_comp = 4 as OPJ_UINT32
+      l_size_comp = 4_u32
     }
-    let l_dest = l_tilec.data.as_mut_slice(l_nb_elem as usize);
+    let l_dest = l_tilec.data.as_mut_slice(l_nb_elem);
     match l_size_comp {
       1 => {
         let (src, remain) = p_src.split_at(l_nb_elem);
         if l_img_comp.sgnd != 0 {
           for (src, dest) in src.iter().zip(l_dest.iter_mut()) {
-            *dest = *src as OPJ_INT32;
+            *dest = *src as i32;
           }
         } else {
           for (src, dest) in src.iter().zip(l_dest.iter_mut()) {
@@ -2288,7 +2288,7 @@ pub(crate) fn opj_tcd_copy_tile_data(
         if l_img_comp.sgnd != 0 {
           let (chunks, _) = src.as_chunks::<2>();
           for (src, dest) in chunks.iter().zip(l_dest.iter_mut()) {
-            *dest = u16::from_ne_bytes(*src) as OPJ_INT32;
+            *dest = u16::from_ne_bytes(*src) as i32;
           }
         } else {
           let (chunks, _) = src.as_chunks::<2>();
@@ -2302,7 +2302,7 @@ pub(crate) fn opj_tcd_copy_tile_data(
         let (src, remain) = p_src.split_at(l_nb_elem * 4);
         let (chunks, _) = src.as_chunks::<4>();
         for (src, dest) in chunks.iter().zip(l_dest.iter_mut()) {
-          *dest = u32::from_ne_bytes(*src) as OPJ_INT32;
+          *dest = u32::from_ne_bytes(*src) as i32;
         }
         p_src = remain;
       }
@@ -2312,7 +2312,7 @@ pub(crate) fn opj_tcd_copy_tile_data(
   1i32
 }
 
-pub(crate) fn opj_tcd_is_band_empty(band: &opj_tcd_band_t) -> OPJ_BOOL {
+pub(crate) fn opj_tcd_is_band_empty(band: &TcdBand) -> OPJ_BOOL {
   (band.x1 - band.x0 == 0i32 || band.y1 - band.y0 == 0i32) as core::ffi::c_int
 }
 
@@ -2320,27 +2320,27 @@ pub(crate) fn opj_tcd_is_band_empty(band: &opj_tcd_band_t) -> OPJ_BOOL {
 /// predicates and the per-codeblock decoders need, so the &mut walks over
 /// the resolutions/bands/precincts never alias the codec-level structures.
 pub(crate) struct TcdTilecView {
-  pub win: [OPJ_UINT32; 4],
+  pub win: [u32; 4],
   pub whole_tile_decoding: OPJ_BOOL,
-  pub x0: OPJ_INT32,
-  pub y0: OPJ_INT32,
-  pub x1: OPJ_INT32,
-  pub y1: OPJ_INT32,
-  pub numresolutions: OPJ_UINT32,
-  pub minimum_num_resolutions: OPJ_UINT32,
-  pub compno: OPJ_UINT32,
+  pub x0: i32,
+  pub y0: i32,
+  pub x1: i32,
+  pub y1: i32,
+  pub numresolutions: u32,
+  pub minimum_num_resolutions: u32,
+  pub compno: u32,
 }
 
 pub(crate) fn opj_tcd_is_subband_area_of_interest(
   tilec: &TcdTilecView,
-  tccp: &opj_tccp_t,
+  tccp: &Tccp,
   image_comps: &[CoreImageComp],
-  resno: OPJ_UINT32,
-  bandno: OPJ_UINT32,
-  band_x0: OPJ_UINT32,
-  band_y0: OPJ_UINT32,
-  band_x1: OPJ_UINT32,
-  band_y1: OPJ_UINT32,
+  resno: u32,
+  bandno: u32,
+  band_x0: u32,
+  band_y0: u32,
+  band_x1: u32,
+  band_y1: u32,
 ) -> OPJ_BOOL {
   {
     /* Note: those values for filter_margin are in part the result of */
@@ -2357,23 +2357,23 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
       2i32
     } else {
       3i32
-    } as OPJ_UINT32;
+    } as u32;
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
     let mut tcx0 = opj_uint_max(
-      tilec.x0 as OPJ_UINT32,
+      tilec.x0 as u32,
       opj_uint_ceildiv(tilec.win[0], image_comp.dx),
     );
     let mut tcy0 = opj_uint_max(
-      tilec.y0 as OPJ_UINT32,
+      tilec.y0 as u32,
       opj_uint_ceildiv(tilec.win[1], image_comp.dy),
     );
     let mut tcx1 = opj_uint_min(
-      tilec.x1 as OPJ_UINT32,
+      tilec.x1 as u32,
       opj_uint_ceildiv(tilec.win[2], image_comp.dx),
     );
     let mut tcy1 = opj_uint_min(
-      tilec.y1 as OPJ_UINT32,
+      tilec.y1 as u32,
       opj_uint_ceildiv(tilec.win[3], image_comp.dy),
     );
     /* Compute number of decomposition for this band. See table F-1 */
@@ -2428,14 +2428,14 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
     };
     let mut intersects: OPJ_BOOL = 0;
     if tbx0 < filter_margin {
-      tbx0 = 0 as OPJ_UINT32
+      tbx0 = 0_u32
     } else {
-      tbx0 = (tbx0 as core::ffi::c_uint).wrapping_sub(filter_margin) as OPJ_UINT32
+      tbx0 = (tbx0 as core::ffi::c_uint).wrapping_sub(filter_margin)
     }
     if tby0 < filter_margin {
-      tby0 = 0 as OPJ_UINT32
+      tby0 = 0_u32
     } else {
-      tby0 = (tby0 as core::ffi::c_uint).wrapping_sub(filter_margin) as OPJ_UINT32
+      tby0 = (tby0 as core::ffi::c_uint).wrapping_sub(filter_margin)
     }
     tbx1 = opj_uint_adds(tbx1, filter_margin);
     tby1 = opj_uint_adds(tby1, filter_margin);
@@ -2452,8 +2452,8 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
  * @return OPJ_TRUE whether the tile componenent is fully decoded
  */
 fn opj_tcd_is_whole_tilecomp_decoding(
-  p_tcd: &mut opj_tcd,
-  compno: OPJ_UINT32,
+  p_tcd: &mut Tcd,
+  compno: u32,
   image: &mut CoreImage,
 ) -> OPJ_BOOL {
   {
@@ -2462,19 +2462,19 @@ fn opj_tcd_is_whole_tilecomp_decoding(
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
     let mut tcx0 = opj_uint_max(
-      tilec.x0 as OPJ_UINT32,
+      tilec.x0 as u32,
       opj_uint_ceildiv(p_tcd.win_x0, image_comp.dx),
     );
     let mut tcy0 = opj_uint_max(
-      tilec.y0 as OPJ_UINT32,
+      tilec.y0 as u32,
       opj_uint_ceildiv(p_tcd.win_y0, image_comp.dy),
     );
     let mut tcx1 = opj_uint_min(
-      tilec.x1 as OPJ_UINT32,
+      tilec.x1 as u32,
       opj_uint_ceildiv(p_tcd.win_x1, image_comp.dx),
     );
     let mut tcy1 = opj_uint_min(
-      tilec.y1 as OPJ_UINT32,
+      tilec.y1 as u32,
       opj_uint_ceildiv(p_tcd.win_y1, image_comp.dy),
     );
     let mut shift = tilec
@@ -2482,15 +2482,15 @@ fn opj_tcd_is_whole_tilecomp_decoding(
       .wrapping_sub(tilec.minimum_num_resolutions);
     /* Tolerate small margin within the reduced resolution factor to consider if */
     /* the whole tile path must be taken */
-    (tcx0 >= tilec.x0 as OPJ_UINT32
-      && tcy0 >= tilec.y0 as OPJ_UINT32
-      && tcx1 <= tilec.x1 as OPJ_UINT32
-      && tcy1 <= tilec.y1 as OPJ_UINT32
+    (tcx0 >= tilec.x0 as u32
+      && tcy0 >= tilec.y0 as u32
+      && tcx1 <= tilec.x1 as u32
+      && tcy1 <= tilec.y1 as u32
       && (shift >= 32u32
-        || tcx0.wrapping_sub(tilec.x0 as OPJ_UINT32) >> shift == 0u32
-          && tcy0.wrapping_sub(tilec.y0 as OPJ_UINT32) >> shift == 0u32
-          && (tilec.x1 as OPJ_UINT32).wrapping_sub(tcx1) >> shift == 0u32
-          && (tilec.y1 as OPJ_UINT32).wrapping_sub(tcy1) >> shift == 0u32))
+        || tcx0.wrapping_sub(tilec.x0 as u32) >> shift == 0u32
+          && tcy0.wrapping_sub(tilec.y0 as u32) >> shift == 0u32
+          && (tilec.x1 as u32).wrapping_sub(tcx1) >> shift == 0u32
+          && (tilec.y1 as u32).wrapping_sub(tcy1) >> shift == 0u32))
       as core::ffi::c_int
   }
 }

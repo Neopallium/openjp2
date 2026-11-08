@@ -35,15 +35,15 @@ use super::openjpeg::*;
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
 pub struct opj_image_comptparm {
-  pub dx: OPJ_UINT32,
-  pub dy: OPJ_UINT32,
-  pub w: OPJ_UINT32,
-  pub h: OPJ_UINT32,
-  pub x0: OPJ_UINT32,
-  pub y0: OPJ_UINT32,
-  pub prec: OPJ_UINT32,
-  pub bpp: OPJ_UINT32,
-  pub sgnd: OPJ_UINT32,
+  pub dx: u32,
+  pub dy: u32,
+  pub w: u32,
+  pub h: u32,
+  pub x0: u32,
+  pub y0: u32,
+  pub prec: u32,
+  pub bpp: u32,
+  pub sgnd: u32,
 }
 pub type opj_image_cmptparm_t = opj_image_comptparm;
 
@@ -56,7 +56,7 @@ pub struct ImageCompRef<'a> {
   pub data: &'a [i32],
 }
 
-pub(crate) fn opj_image_comp_header_update(p_image_header: &mut CoreImage, p_cp: &opj_cp) {
+pub(crate) fn opj_image_comp_header_update(p_image_header: &mut CoreImage, p_cp: &Cp) {
   let l_x0 = opj_uint_max(p_cp.tx0, p_image_header.x0);
   let l_y0 = opj_uint_max(p_cp.ty0, p_image_header.y0);
   let l_x1 = p_cp
@@ -87,31 +87,31 @@ pub(crate) fn opj_copy_image_header_to_core(p_image_src: &CoreImage, p_image_des
 
 #[derive(Clone, Default)]
 pub struct CoreImageComp {
-  pub dx: OPJ_UINT32,
-  pub dy: OPJ_UINT32,
-  pub w: OPJ_UINT32,
-  pub h: OPJ_UINT32,
-  pub x0: OPJ_UINT32,
-  pub y0: OPJ_UINT32,
-  pub prec: OPJ_UINT32,
-  pub bpp: OPJ_UINT32,
-  pub sgnd: OPJ_UINT32,
-  pub resno_decoded: OPJ_UINT32,
-  pub factor: OPJ_UINT32,
-  pub alpha: OPJ_UINT16,
-  pub data: Vec<OPJ_INT32>,
+  pub dx: u32,
+  pub dy: u32,
+  pub w: u32,
+  pub h: u32,
+  pub x0: u32,
+  pub y0: u32,
+  pub prec: u32,
+  pub bpp: u32,
+  pub sgnd: u32,
+  pub resno_decoded: u32,
+  pub factor: u32,
+  pub alpha: u16,
+  pub data: Vec<i32>,
 }
 
 #[derive(Clone, Default)]
 pub struct CoreImage {
-  pub x0: OPJ_UINT32,
-  pub y0: OPJ_UINT32,
-  pub x1: OPJ_UINT32,
-  pub y1: OPJ_UINT32,
-  pub numcomps: OPJ_UINT32,
+  pub x0: u32,
+  pub y0: u32,
+  pub x1: u32,
+  pub y1: u32,
+  pub numcomps: u32,
   pub color_space: OPJ_COLOR_SPACE,
   pub comps: Vec<CoreImageComp>,
-  pub icc_profile_buf: Vec<OPJ_BYTE>,
+  pub icc_profile_buf: Vec<u8>,
   /// A non-empty profile buffer with this flag means the profile is CIELab
   /// (mirrors the C ABI convention of icc_profile_len == 0).
   pub icc_profile_is_cielab: bool,

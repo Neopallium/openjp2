@@ -35,7 +35,7 @@ use super::c_api_types::*;
 use crate::image::CoreImage;
 use super::j2k::*;
 
-use super::event::opj_event_mgr;
+use super::event::EventMgr;
 
 /// Safe, owned encoder parameters.  The C ABI mirror (`opj_cparameters_t`)
 /// is marshalled into this by the capi crate; the tools build it directly.
@@ -50,11 +50,11 @@ pub struct EncoderParameters {
   pub cp_fixed_alloc: core::ffi::c_int,
   pub cp_fixed_quality: core::ffi::c_int,
   pub cp_matrice: Option<Vec<core::ffi::c_int>>,
-  pub cp_comment: Option<Vec<OPJ_BYTE>>,
+  pub cp_comment: Option<Vec<u8>>,
   pub csty: core::ffi::c_int,
   pub prog_order: OPJ_PROG_ORDER,
   pub POC: [opj_poc_t; 32],
-  pub numpocs: OPJ_UINT32,
+  pub numpocs: u32,
   pub tcp_numlayers: core::ffi::c_int,
   pub tcp_rates: [core::ffi::c_float; 100],
   pub tcp_distoratio: [core::ffi::c_float; 100],
@@ -82,9 +82,9 @@ pub struct EncoderParameters {
   pub tp_flag: core::ffi::c_char,
   pub tcp_mct: core::ffi::c_char,
   pub jpip_on: OPJ_BOOL,
-  pub mct_data: Option<(Vec<OPJ_FLOAT32>, Vec<OPJ_INT32>)>,
+  pub mct_data: Option<(Vec<f32>, Vec<i32>)>,
   pub max_cs_size: core::ffi::c_int,
-  pub rsiz: OPJ_UINT16,
+  pub rsiz: u16,
 }
 
 impl Default for EncoderParameters {
@@ -140,17 +140,17 @@ impl Default for EncoderParameters {
 
 #[derive(Clone)]
 pub(crate) struct DecoderParameters {
-  pub cp_reduce: OPJ_UINT32,
-  pub cp_layer: OPJ_UINT32,
+  pub cp_reduce: u32,
+  pub cp_layer: u32,
   pub decod_format: core::ffi::c_int,
   pub cod_format: core::ffi::c_int,
-  pub DA_x0: OPJ_UINT32,
-  pub DA_x1: OPJ_UINT32,
-  pub DA_y0: OPJ_UINT32,
-  pub DA_y1: OPJ_UINT32,
+  pub DA_x0: u32,
+  pub DA_x1: u32,
+  pub DA_y0: u32,
+  pub DA_y1: u32,
   pub m_verbose: OPJ_BOOL,
-  pub tile_index: OPJ_UINT32,
-  pub nb_tile_to_decode: OPJ_UINT32,
+  pub tile_index: u32,
+  pub nb_tile_to_decode: u32,
   pub flags: core::ffi::c_uint,
 }
 
@@ -173,13 +173,13 @@ impl Default for DecoderParameters {
   }
 }
 
-pub(crate) struct opj_tcd_marker_info {
+pub(crate) struct TcdMarkerInfo {
   pub need_PLT: OPJ_BOOL,
-  pub packet_count: OPJ_UINT32,
-  pub p_packet_size: Vec<OPJ_UINT32>,
+  pub packet_count: u32,
+  pub p_packet_size: Vec<u32>,
 }
 
-impl opj_tcd_marker_info {
+impl TcdMarkerInfo {
   pub(crate) fn new(need_PLT: OPJ_BOOL) -> Self {
     Self {
       need_PLT,
@@ -188,56 +188,54 @@ impl opj_tcd_marker_info {
     }
   }
 }
-pub(crate) type opj_tcd_marker_info_t = opj_tcd_marker_info;
-
 pub struct Stream {
   pub(crate) m_inner: super::stream::StreamInner,
-  pub(crate) m_stream_length: OPJ_UINT64,
-  pub(crate) m_byte_offset: OPJ_OFF_T,
+  pub(crate) m_stream_length: u64,
+  pub(crate) m_byte_offset: i64,
 }
 pub(crate) type opj_stream_private = Stream;
 pub type opj_stream_private_t = Stream;
 
-pub(crate) type opj_jp2_proc =
-  fn(_: &mut opj_jp2, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
-pub(crate) type opj_jp2_proc_list_t = super::function_list::ProcedureList<opj_jp2_proc>;
+pub(crate) type Jp2Proc =
+  fn(_: &mut Jp2, _: &mut Stream, _: &mut EventMgr) -> OPJ_BOOL;
+pub(crate) type Jp2ProcList = super::function_list::ProcedureList<Jp2Proc>;
 
-pub(crate) struct opj_jp2 {
-  pub j2k: opj_j2k,
-  pub w: OPJ_UINT32,
-  pub h: OPJ_UINT32,
-  pub bpc: OPJ_UINT32,
-  pub C: OPJ_UINT32,
-  pub UnkC: OPJ_UINT32,
-  pub IPR: OPJ_UINT32,
-  pub meth: OPJ_UINT32,
-  pub approx: OPJ_UINT32,
-  pub enumcs: OPJ_UINT32,
-  pub precedence: OPJ_UINT32,
-  pub brand: OPJ_UINT32,
-  pub minversion: OPJ_UINT32,
+pub(crate) struct Jp2 {
+  pub j2k: J2k,
+  pub w: u32,
+  pub h: u32,
+  pub bpc: u32,
+  pub C: u32,
+  pub UnkC: u32,
+  pub IPR: u32,
+  pub meth: u32,
+  pub approx: u32,
+  pub enumcs: u32,
+  pub precedence: u32,
+  pub brand: u32,
+  pub minversion: u32,
   pub cl: Vec<u32>,
-  pub comps: Vec<opj_jp2_comps>,
-  pub j2k_codestream_offset: OPJ_OFF_T,
-  pub jpip_iptr_offset: OPJ_OFF_T,
+  pub comps: Vec<Jp2Comps>,
+  pub j2k_codestream_offset: i64,
+  pub jpip_iptr_offset: i64,
   pub jpip_on: OPJ_BOOL,
-  pub jp2_state: OPJ_UINT32,
-  pub jp2_img_state: OPJ_UINT32,
-  pub color: opj_jp2_color,
+  pub jp2_state: u32,
+  pub jp2_img_state: u32,
+  pub color: Jp2Color,
   pub ignore_pclr_cmap_cdef: OPJ_BOOL,
-  pub has_jp2h: OPJ_BYTE,
-  pub has_ihdr: OPJ_BYTE,
+  pub has_jp2h: u8,
+  pub has_ihdr: u8,
 }
 
 #[derive(Clone)]
-pub(crate) struct opj_jp2_color {
+pub(crate) struct Jp2Color {
   pub icc_profile: Option<ICCProfile>,
-  pub jp2_cdef: Option<opj_jp2_cdef>,
-  pub jp2_pclr: Option<opj_jp2_pclr>,
-  pub jp2_has_colr: OPJ_BYTE,
+  pub jp2_cdef: Option<Jp2Cdef>,
+  pub jp2_pclr: Option<Jp2Pclr>,
+  pub jp2_has_colr: u8,
 }
 
-impl opj_jp2_color {
+impl Jp2Color {
   pub fn icc_profile_len(&self) -> usize {
     match &self.icc_profile {
       Some(ICCProfile::ICC(data)) => data.len(),
@@ -344,113 +342,109 @@ pub(crate) struct Jp2ChannelSign {
 }
 
 #[derive(Clone)]
-pub(crate) struct opj_jp2_pclr {
+pub(crate) struct Jp2Pclr {
   pub entries: Vec<u32>,
   pub channel: Vec<Jp2ChannelSign>,
-  pub cmap: Vec<opj_jp2_cmap_comp>,
+  pub cmap: Vec<Jp2CmapComp>,
   pub nr_entries: u16,
   pub nr_channels: u8,
 }
 
 #[derive(Copy, Clone)]
-pub(crate) struct opj_jp2_cmap_comp {
+pub(crate) struct Jp2CmapComp {
   pub cmp: u16,
   pub mtyp: u8,
   pub pcol: u8,
 }
 
 #[derive(Clone)]
-pub(crate) struct opj_jp2_cdef {
-  pub info: Vec<opj_jp2_cdef_info>,
+pub(crate) struct Jp2Cdef {
+  pub info: Vec<Jp2CdefInfo>,
 }
-pub(crate) type opj_jp2_cdef_t = opj_jp2_cdef;
-
 #[derive(Copy, Clone)]
-pub(crate) struct opj_jp2_cdef_info {
-  pub cn: OPJ_UINT16,
-  pub typ: OPJ_UINT16,
-  pub asoc: OPJ_UINT16,
+pub(crate) struct Jp2CdefInfo {
+  pub cn: u16,
+  pub typ: u16,
+  pub asoc: u16,
 }
 
 #[derive(Copy, Clone, Default)]
-pub(crate) struct opj_jp2_comps {
-  //pub depth: OPJ_UINT32,
-  //pub sgnd: OPJ_UINT32,
-  pub bpcc: OPJ_UINT32,
+pub(crate) struct Jp2Comps {
+  //pub depth: u32,
+  //pub sgnd: u32,
+  pub bpcc: u32,
 }
 
-pub(crate) type opj_j2k_proc =
-  fn(_: &mut opj_j2k, _: &mut Stream, _: &mut opj_event_mgr) -> OPJ_BOOL;
-pub(crate) type opj_j2k_proc_list_t = super::function_list::ProcedureList<opj_j2k_proc>;
+pub(crate) type J2kProc =
+  fn(_: &mut J2k, _: &mut Stream, _: &mut EventMgr) -> OPJ_BOOL;
+pub(crate) type J2kProcList = super::function_list::ProcedureList<J2kProc>;
 
-pub(crate) struct opj_j2k {
+pub(crate) struct J2k {
   pub m_is_decoder: OPJ_BOOL,
   pub m_specific_param: C2RustUnnamed_2,
   pub m_private_image: Option<Box<CoreImage>>,
   pub m_output_image: Option<Box<CoreImage>>,
-  pub m_cp: opj_cp_t,
+  pub m_cp: Cp,
   pub cstr_index: Option<Box<CodestreamIndex>>,
-  pub m_current_tile_number: OPJ_UINT32,
-  pub m_tcd: opj_tcd,
-  pub ihdr_w: OPJ_UINT32,
-  pub ihdr_h: OPJ_UINT32,
+  pub m_current_tile_number: u32,
+  pub m_tcd: Tcd,
+  pub ihdr_w: u32,
+  pub ihdr_h: u32,
   pub dump_state: core::ffi::c_uint,
 }
 
 #[derive(Default)]
-pub(crate) struct opj_tcd {
-  pub tp_pos: OPJ_INT32,
-  pub tp_num: OPJ_UINT32,
-  pub cur_tp_num: OPJ_UINT32,
-  pub cur_totnum_tp: OPJ_UINT32,
-  pub cur_pino: OPJ_UINT32,
-  pub tcd_image: opj_tcd_image,
-  pub tcd_tileno: OPJ_UINT32,
+pub(crate) struct Tcd {
+  pub tp_pos: i32,
+  pub tp_num: u32,
+  pub cur_tp_num: u32,
+  pub cur_totnum_tp: u32,
+  pub cur_pino: u32,
+  pub tcd_image: TcdImage,
+  pub tcd_tileno: u32,
   pub m_is_decoder: bool,
-  pub win_x0: OPJ_UINT32,
-  pub win_y0: OPJ_UINT32,
-  pub win_x1: OPJ_UINT32,
-  pub win_y1: OPJ_UINT32,
+  pub win_x0: u32,
+  pub win_y0: u32,
+  pub win_x1: u32,
+  pub win_y1: u32,
   pub whole_tile_decoding: OPJ_BOOL,
   pub used_component: Vec<bool>,
 }
 
 
 #[derive(Clone)]
-pub(crate) struct opj_tcp {
-  pub csty: OPJ_UINT32,
+pub(crate) struct Tcp {
+  pub csty: u32,
   pub prg: OPJ_PROG_ORDER,
-  pub numlayers: OPJ_UINT32,
-  pub num_layers_to_decode: OPJ_UINT32,
-  pub mct: OPJ_UINT32,
-  pub rates: [OPJ_FLOAT32; 100],
-  pub numpocs: OPJ_UINT32,
+  pub numlayers: u32,
+  pub num_layers_to_decode: u32,
+  pub mct: u32,
+  pub rates: [f32; 100],
+  pub numpocs: u32,
   pub pocs: [opj_poc_t; 32],
-  pub ppt_markers: Vec<opj_ppx>,
-  pub ppt_buffer: Vec<OPJ_BYTE>,
+  pub ppt_markers: Vec<Ppx>,
+  pub ppt_buffer: Vec<u8>,
   /* read cursor into `ppt_buffer`; `ppt_len` is the number of bytes left from it */
   pub ppt_data_pos: usize,
-  pub ppt_len: OPJ_UINT32,
-  pub distoratio: [OPJ_FLOAT32; 100],
-  pub tccps: Vec<opj_tccp_t>,
-  pub m_current_tile_part_number: OPJ_INT32,
-  pub m_nb_tile_parts: OPJ_UINT32,
+  pub ppt_len: u32,
+  pub distoratio: [f32; 100],
+  pub tccps: Vec<Tccp>,
+  pub m_current_tile_part_number: i32,
+  pub m_nb_tile_parts: u32,
   /// Tile-part data buffer: `m_data_size` bytes of codestream data plus a 2-byte margin for the
   /// MQ decoder's synthetic end marker.
-  pub m_data: Vec<OPJ_BYTE>,
-  pub m_data_size: OPJ_UINT32,
-  pub mct_norms: Vec<OPJ_FLOAT64>,
-  pub m_mct_decoding_matrix: Vec<OPJ_FLOAT32>,
-  pub m_mct_coding_matrix: Vec<OPJ_FLOAT32>,
-  pub m_mct_records: Vec<opj_mct_data_t>,
-  pub m_mcc_records: Vec<opj_simple_mcc_decorrelation_data_t>,
+  pub m_data: Vec<u8>,
+  pub m_data_size: u32,
+  pub mct_norms: Vec<f64>,
+  pub m_mct_decoding_matrix: Vec<f32>,
+  pub m_mct_coding_matrix: Vec<f32>,
+  pub m_mct_records: Vec<MctData>,
+  pub m_mcc_records: Vec<SimpleMccData>,
   pub cod: bool,
   pub ppt: bool,
   pub POC: bool,
 }
-pub(crate) type opj_tcp_t = opj_tcp;
-
-impl Default for opj_tcp {
+impl Default for Tcp {
   fn default() -> Self {
     Self {
       csty: 0,
@@ -484,17 +478,15 @@ impl Default for opj_tcp {
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct opj_simple_mcc_decorrelation_data {
-  pub m_index: OPJ_UINT32,
-  pub m_nb_comps: OPJ_UINT32,
+pub(crate) struct SimpleMccData {
+  pub m_index: u32,
+  pub m_nb_comps: u32,
   /* index into the owning tcp's `m_mct_records` */
   pub m_decorrelation_array: Option<usize>,
   /* index into the owning tcp's `m_mct_records` */
   pub m_offset_array: Option<usize>,
   pub m_is_irreversible: bool,
 }
-pub(crate) type opj_simple_mcc_decorrelation_data_t = opj_simple_mcc_decorrelation_data;
-
 pub type J2K_MCT_ARRAY_TYPE = MCT_ARRAY_TYPE;
 pub type MCT_ARRAY_TYPE = core::ffi::c_uint;
 pub const MCT_TYPE_OFFSET: MCT_ARRAY_TYPE = 2;
@@ -502,33 +494,29 @@ pub const MCT_TYPE_DECORRELATION: MCT_ARRAY_TYPE = 1;
 pub const MCT_TYPE_DEPENDENCY: MCT_ARRAY_TYPE = 0;
 
 #[derive(Default, Clone)]
-pub(crate) struct opj_mct_data {
+pub(crate) struct MctData {
   pub m_element_type: MCTElementType,
   pub m_array_type: J2K_MCT_ARRAY_TYPE,
-  pub m_index: OPJ_UINT32,
-  pub m_data: Vec<OPJ_BYTE>,
+  pub m_index: u32,
+  pub m_data: Vec<u8>,
 }
-pub(crate) type opj_mct_data_t = opj_mct_data;
-
 #[derive(Copy, Clone)]
-pub(crate) struct opj_tccp {
-  pub csty: OPJ_UINT32,
-  pub numresolutions: OPJ_UINT32,
-  pub cblkw: OPJ_UINT32,
-  pub cblkh: OPJ_UINT32,
-  pub cblksty: OPJ_UINT32,
-  pub qmfbid: OPJ_UINT32,
-  pub qntsty: OPJ_UINT32,
-  pub stepsizes: [opj_stepsize_t; 97],
-  pub numgbits: OPJ_UINT32,
-  pub roishift: OPJ_INT32,
-  pub prcw: [OPJ_UINT32; 33],
-  pub prch: [OPJ_UINT32; 33],
-  pub m_dc_level_shift: OPJ_INT32,
+pub(crate) struct Tccp {
+  pub csty: u32,
+  pub numresolutions: u32,
+  pub cblkw: u32,
+  pub cblkh: u32,
+  pub cblksty: u32,
+  pub qmfbid: u32,
+  pub qntsty: u32,
+  pub stepsizes: [Stepsize; 97],
+  pub numgbits: u32,
+  pub roishift: i32,
+  pub prcw: [u32; 33],
+  pub prch: [u32; 33],
+  pub m_dc_level_shift: i32,
 }
-pub(crate) type opj_tccp_t = opj_tccp;
-
-impl Default for opj_tccp {
+impl Default for Tccp {
   fn default() -> Self {
     Self {
       csty: 0,
@@ -549,50 +537,43 @@ impl Default for opj_tccp {
 }
 
 #[derive(Copy, Clone, Default)]
-pub(crate) struct opj_stepsize {
-  pub expn: OPJ_INT32,
-  pub mant: OPJ_INT32,
+pub(crate) struct Stepsize {
+  pub expn: i32,
+  pub mant: i32,
 }
-pub(crate) type opj_stepsize_t = opj_stepsize;
-
 #[derive(Clone, Default)]
-pub(crate) struct opj_ppx_struct {
-  pub m_data: Vec<OPJ_BYTE>,
+pub(crate) struct Ppx {
+  pub m_data: Vec<u8>,
 }
-pub(crate) type opj_ppx = opj_ppx_struct;
-
 #[derive(Default)]
-pub(crate) struct opj_cp {
-  pub rsiz: OPJ_UINT16,
-  pub tx0: OPJ_UINT32,
-  pub ty0: OPJ_UINT32,
-  pub tdx: OPJ_UINT32,
-  pub tdy: OPJ_UINT32,
-  pub comment: Vec<OPJ_BYTE>,
-  pub tw: OPJ_UINT32,
-  pub th: OPJ_UINT32,
-  pub ppm_markers: Vec<opj_ppx>,
-  pub ppm_buffer: Vec<OPJ_BYTE>,
+pub(crate) struct Cp {
+  pub rsiz: u16,
+  pub tx0: u32,
+  pub ty0: u32,
+  pub tdx: u32,
+  pub tdy: u32,
+  pub comment: Vec<u8>,
+  pub tw: u32,
+  pub th: u32,
+  pub ppm_markers: Vec<Ppx>,
+  pub ppm_buffer: Vec<u8>,
   /* read cursor into `ppm_buffer`; `ppm_len` is the number of bytes left from it */
   pub ppm_data_pos: usize,
-  pub ppm_len: OPJ_UINT32,
-  pub tcps: Vec<opj_tcp_t>,
+  pub ppm_len: u32,
+  pub tcps: Vec<Tcp>,
   pub m_specific_param: C2RustUnnamed_0,
   pub strict: OPJ_BOOL,
   pub ppm: bool,
   pub m_is_decoder: bool,
   pub allow_different_bit_depth_sign: bool,
 }
-pub(crate) type opj_cp_t = opj_cp;
-
-
 /* This was a C union of the decoder-only and encoder-only coding parameters. A given
-`opj_cp` is either a decoder or an encoder one, so holding both costs a few bytes and
+`Cp` is either a decoder or an encoder one, so holding both costs a few bytes and
 lets the encoder side own its data instead of aliasing raw memory. */
 #[derive(Default)]
 pub(crate) struct C2RustUnnamed_0 {
-  pub m_dec: opj_decoding_param_t,
-  pub m_enc: opj_encoding_param_t,
+  pub m_dec: DecodingParams,
+  pub m_enc: EncodingParams,
 }
 
 /**
@@ -609,17 +590,15 @@ pub(crate) enum J2K_QUALITY_LAYER_ALLOCATION_STRATEGY {
   FIXED_LAYER = 2,
 }
 
-pub(crate) struct opj_encoding_param {
-  pub m_max_comp_size: OPJ_UINT32,
-  pub m_tp_pos: OPJ_INT32,
-  pub m_matrice: Vec<OPJ_INT32>,
-  pub m_tp_flag: OPJ_BYTE,
+pub(crate) struct EncodingParams {
+  pub m_max_comp_size: u32,
+  pub m_tp_pos: i32,
+  pub m_matrice: Vec<i32>,
+  pub m_tp_flag: u8,
   pub m_quality_layer_alloc_strategy: J2K_QUALITY_LAYER_ALLOCATION_STRATEGY,
   pub m_tp_on: bool,
 }
-pub(crate) type opj_encoding_param_t = opj_encoding_param;
-
-impl Default for opj_encoding_param {
+impl Default for EncodingParams {
   fn default() -> Self {
     Self {
       m_max_comp_size: 0,
@@ -633,33 +612,27 @@ impl Default for opj_encoding_param {
 }
 
 #[derive(Copy, Clone, Default)]
-pub(crate) struct opj_decoding_param {
-  pub m_reduce: OPJ_UINT32,
-  pub m_layer: OPJ_UINT32,
+pub(crate) struct DecodingParams {
+  pub m_reduce: u32,
+  pub m_layer: u32,
 }
-pub(crate) type opj_decoding_param_t = opj_decoding_param;
-
 #[derive(Default)]
-pub(crate) struct opj_tcd_image {
-  pub tiles: opj_tcd_tile,
+pub(crate) struct TcdImage {
+  pub tiles: TcdTile,
 }
-pub(crate) type opj_tcd_image_t = opj_tcd_image;
-
-pub(crate) struct opj_tcd_tile {
-  pub x0: OPJ_INT32,
-  pub y0: OPJ_INT32,
-  pub x1: OPJ_INT32,
-  pub y1: OPJ_INT32,
-  pub numcomps: OPJ_UINT32,
-  pub comps: Vec<opj_tcd_tilecomp_t>,
-  pub numpix: OPJ_INT32,
-  pub distotile: OPJ_FLOAT64,
-  pub distolayer: [OPJ_FLOAT64; 100],
-  pub packno: OPJ_UINT32,
+pub(crate) struct TcdTile {
+  pub x0: i32,
+  pub y0: i32,
+  pub x1: i32,
+  pub y1: i32,
+  pub numcomps: u32,
+  pub comps: Vec<TcdTileComp>,
+  pub numpix: i32,
+  pub distotile: f64,
+  pub distolayer: [f64; 100],
+  pub packno: u32,
 }
-pub(crate) type opj_tcd_tile_t = opj_tcd_tile;
-
-impl Default for opj_tcd_tile {
+impl Default for TcdTile {
   fn default() -> Self {
     Self {
       x0: Default::default(),
@@ -694,8 +667,8 @@ pub(crate) enum TileBuf {
   #[default]
   Empty,
   Owned {
-    data: Vec<OPJ_INT32>,
-    bytes: OPJ_SIZE_T,
+    data: Vec<i32>,
+    bytes: usize,
   },
 }
 
@@ -705,21 +678,21 @@ impl TileBuf {
   /// # Safety contract for the caller
   /// `len` must not exceed the number of samples the buffer covers. For
   /// `Borrowed` buffers the pointer must stay valid for `len` samples.
-  pub(crate) fn as_mut_slice(&mut self, len: usize) -> &mut [OPJ_INT32] {
+  pub(crate) fn as_mut_slice(&mut self, len: usize) -> &mut [i32] {
     match self {
       TileBuf::Owned { data, .. } => &mut data[..len],
       TileBuf::Empty => &mut [],
     }
   }
 
-  pub(crate) fn as_mut_ptr(&self) -> *mut OPJ_INT32 {
+  pub(crate) fn as_mut_ptr(&self) -> *mut i32 {
     match self {
       TileBuf::Empty => core::ptr::null_mut(),
       TileBuf::Owned { data, .. } => {
         if data.is_empty() {
           core::ptr::null_mut()
         } else {
-          data.as_ptr() as *mut OPJ_INT32
+          data.as_ptr() as *mut i32
         }
       }
     }
@@ -730,7 +703,7 @@ impl TileBuf {
   }
 
   /// Byte capacity of an owned buffer; 0 for empty or borrowed ones.
-  pub(crate) fn bytes(&self) -> OPJ_SIZE_T {
+  pub(crate) fn bytes(&self) -> usize {
     match *self {
       TileBuf::Owned { bytes, .. } => bytes,
       _ => 0,
@@ -742,13 +715,13 @@ impl TileBuf {
   }
 
   /// Drops any current buffer and allocates a fresh owned one. Contents are not preserved.
-  pub(crate) fn alloc(&mut self, bytes: OPJ_SIZE_T) -> bool {
+  pub(crate) fn alloc(&mut self, bytes: usize) -> bool {
     self.release();
     if bytes == 0 {
       return true;
     }
-    let samples = bytes / core::mem::size_of::<OPJ_INT32>();
-    let mut data: Vec<OPJ_INT32> = Vec::new();
+    let samples = bytes / core::mem::size_of::<i32>();
+    let mut data: Vec<i32> = Vec::new();
     if data.try_reserve_exact(samples).is_err() {
       return false;
     }
@@ -758,7 +731,7 @@ impl TileBuf {
   }
 
   /// Reallocates only when the buffer is absent or too small, like the C grow path.
-  pub(crate) fn ensure(&mut self, bytes: OPJ_SIZE_T) -> bool {
+  pub(crate) fn ensure(&mut self, bytes: usize) -> bool {
     if !self.is_null() && bytes <= self.bytes() {
       return true;
     }
@@ -770,7 +743,7 @@ impl TileBuf {
   ///
   /// # Safety contract for the caller
   /// `len` must not exceed the number of samples the buffer covers.
-  pub(crate) fn take_vec(&mut self, len: usize) -> Vec<OPJ_INT32> {
+  pub(crate) fn take_vec(&mut self, len: usize) -> Vec<i32> {
     match core::mem::replace(self, TileBuf::Empty) {
       TileBuf::Owned { mut data, .. } => {
         data.truncate(len);
@@ -781,27 +754,25 @@ impl TileBuf {
   }
 }
 
-pub(crate) struct opj_tcd_tilecomp {
-  pub x0: OPJ_INT32,
-  pub y0: OPJ_INT32,
-  pub x1: OPJ_INT32,
-  pub y1: OPJ_INT32,
-  pub compno: OPJ_UINT32,
-  pub numresolutions: OPJ_UINT32,
-  pub minimum_num_resolutions: OPJ_UINT32,
-  pub resolutions: Vec<opj_tcd_resolution_t>,
+pub(crate) struct TcdTileComp {
+  pub x0: i32,
+  pub y0: i32,
+  pub x1: i32,
+  pub y1: i32,
+  pub compno: u32,
+  pub numresolutions: u32,
+  pub minimum_num_resolutions: u32,
+  pub resolutions: Vec<TcdResolution>,
   pub data: TileBuf,
-  pub data_size_needed: size_t,
+  pub data_size_needed: usize,
   pub data_win: TileBuf,
-  pub win_x0: OPJ_UINT32,
-  pub win_y0: OPJ_UINT32,
-  pub win_x1: OPJ_UINT32,
-  pub win_y1: OPJ_UINT32,
-  pub numpix: OPJ_INT32,
+  pub win_x0: u32,
+  pub win_y0: u32,
+  pub win_x1: u32,
+  pub win_y1: u32,
+  pub numpix: i32,
 }
-pub(crate) type opj_tcd_tilecomp_t = opj_tcd_tilecomp;
-
-impl Default for opj_tcd_tilecomp {
+impl Default for TcdTileComp {
   fn default() -> Self {
     Self {
       x0: 0,
@@ -825,35 +796,32 @@ impl Default for opj_tcd_tilecomp {
 }
 
 #[derive(Default)]
-pub(crate) struct opj_tcd_resolution {
-  pub x0: OPJ_INT32,
-  pub y0: OPJ_INT32,
-  pub x1: OPJ_INT32,
-  pub y1: OPJ_INT32,
-  pub pw: OPJ_UINT32,
-  pub ph: OPJ_UINT32,
-  pub numbands: OPJ_UINT32,
-  pub bands: [opj_tcd_band_t; 3],
-  pub win_x0: OPJ_UINT32,
-  pub win_y0: OPJ_UINT32,
-  pub win_x1: OPJ_UINT32,
-  pub win_y1: OPJ_UINT32,
+pub(crate) struct TcdResolution {
+  pub x0: i32,
+  pub y0: i32,
+  pub x1: i32,
+  pub y1: i32,
+  pub pw: u32,
+  pub ph: u32,
+  pub numbands: u32,
+  pub bands: [TcdBand; 3],
+  pub win_x0: u32,
+  pub win_y0: u32,
+  pub win_x1: u32,
+  pub win_y1: u32,
 }
-pub(crate) type opj_tcd_resolution_t = opj_tcd_resolution;
-
-
-pub(crate) struct opj_tcd_band {
-  pub x0: OPJ_INT32,
-  pub y0: OPJ_INT32,
-  pub x1: OPJ_INT32,
-  pub y1: OPJ_INT32,
-  pub bandno: OPJ_UINT32,
-  pub precincts: Vec<opj_tcd_precinct_t>,
-  pub numbps: OPJ_INT32,
-  pub stepsize: OPJ_FLOAT32,
+pub(crate) struct TcdBand {
+  pub x0: i32,
+  pub y0: i32,
+  pub x1: i32,
+  pub y1: i32,
+  pub bandno: u32,
+  pub precincts: Vec<TcdPrecinct>,
+  pub numbps: i32,
+  pub stepsize: f32,
 }
 
-impl Default for opj_tcd_band {
+impl Default for TcdBand {
   fn default() -> Self {
     Self {
       x0: 0,
@@ -867,22 +835,18 @@ impl Default for opj_tcd_band {
     }
   }
 }
-pub(crate) type opj_tcd_band_t = opj_tcd_band;
-
-pub(crate) struct opj_tcd_precinct {
-  pub x0: OPJ_INT32,
-  pub y0: OPJ_INT32,
-  pub x1: OPJ_INT32,
-  pub y1: OPJ_INT32,
-  pub cw: OPJ_UINT32,
-  pub ch: OPJ_UINT32,
+pub(crate) struct TcdPrecinct {
+  pub x0: i32,
+  pub y0: i32,
+  pub x1: i32,
+  pub y1: i32,
+  pub cw: u32,
+  pub ch: u32,
   pub cblks: CodeBlocks,
-  pub incltree: Option<Box<opj_tgt_tree_t>>,
-  pub imsbtree: Option<Box<opj_tgt_tree_t>>,
+  pub incltree: Option<Box<TgtTree>>,
+  pub imsbtree: Option<Box<TgtTree>>,
 }
-pub(crate) type opj_tcd_precinct_t = opj_tcd_precinct;
-
-impl Default for opj_tcd_precinct {
+impl Default for TcdPrecinct {
   fn default() -> Self {
     Self {
       x0: 0,
@@ -898,30 +862,26 @@ impl Default for opj_tcd_precinct {
   }
 }
 
-pub(crate) struct opj_tgt_tree {
-  pub numleafsh: OPJ_UINT32,
-  pub numleafsv: OPJ_UINT32,
-  pub nodes: Vec<opj_tgt_node>,
+pub(crate) struct TgtTree {
+  pub numleafsh: u32,
+  pub numleafsv: u32,
+  pub nodes: Vec<TgtNode>,
 }
-pub(crate) type opj_tgt_tree_t = opj_tgt_tree;
-
 #[derive(Copy, Clone, Default)]
-pub(crate) struct opj_tgt_node {
-  /// Index into `opj_tgt_tree::nodes`; `None` for the root.
-  pub parent: Option<OPJ_UINT32>,
-  pub value: OPJ_INT32,
-  pub low: OPJ_INT32,
-  pub known: OPJ_UINT32,
+pub(crate) struct TgtNode {
+  /// Index into `TgtTree::nodes`; `None` for the root.
+  pub parent: Option<u32>,
+  pub value: i32,
+  pub low: i32,
+  pub known: u32,
 }
-pub(crate) type opj_tgt_node_t = opj_tgt_node;
-
-/// Code blocks of a precinct. The variant is fixed by `opj_tcd::m_is_decoder` on first use.
+/// Code blocks of a precinct. The variant is fixed by `Tcd::m_is_decoder` on first use.
 #[derive(Clone, Default)]
 pub(crate) enum CodeBlocks {
   #[default]
   Empty,
-  Enc(Vec<opj_tcd_cblk_enc_t>),
-  Dec(Vec<opj_tcd_cblk_dec_t>),
+  Enc(Vec<TcdCblkEnc>),
+  Dec(Vec<TcdCblkDec>),
 }
 
 impl CodeBlocks {
@@ -963,28 +923,28 @@ impl CodeBlocks {
     }
   }
 
-  pub(crate) fn enc_ptr(&mut self) -> *mut opj_tcd_cblk_enc_t {
+  pub(crate) fn enc_ptr(&mut self) -> *mut TcdCblkEnc {
     match self {
       CodeBlocks::Enc(v) => v.as_mut_ptr(),
       _ => core::ptr::null_mut(),
     }
   }
 
-  pub(crate) fn dec_ptr(&mut self) -> *mut opj_tcd_cblk_dec_t {
+  pub(crate) fn dec_ptr(&mut self) -> *mut TcdCblkDec {
     match self {
       CodeBlocks::Dec(v) => v.as_mut_ptr(),
       _ => core::ptr::null_mut(),
     }
   }
 
-  pub(crate) fn enc_mut(&mut self, i: usize) -> &mut opj_tcd_cblk_enc_t {
+  pub(crate) fn enc_mut(&mut self, i: usize) -> &mut TcdCblkEnc {
     match self {
       CodeBlocks::Enc(v) => &mut v[i],
       _ => panic!("CodeBlocks::enc_mut on a non-Enc variant"),
     }
   }
 
-  pub(crate) fn dec_mut(&mut self, i: usize) -> &mut opj_tcd_cblk_dec_t {
+  pub(crate) fn dec_mut(&mut self, i: usize) -> &mut TcdCblkDec {
     match self {
       CodeBlocks::Dec(v) => &mut v[i],
       _ => panic!("CodeBlocks::dec_mut on a non-Dec variant"),
@@ -994,159 +954,144 @@ impl CodeBlocks {
 
 #[derive(Clone)]
 #[derive(Default)]
-pub(crate) struct opj_tcd_cblk_dec {
-  pub segs: Vec<opj_tcd_seg_t>,
-  pub chunks: Vec<opj_tcd_seg_data_chunk_t>,
-  pub x0: OPJ_INT32,
-  pub y0: OPJ_INT32,
-  pub x1: OPJ_INT32,
-  pub y1: OPJ_INT32,
-  pub Mb: OPJ_UINT32,
-  pub numbps: OPJ_UINT32,
-  pub numlenbits: OPJ_UINT32,
-  pub numnewpasses: OPJ_UINT32,
-  pub numsegs: OPJ_UINT32,
-  pub real_num_segs: OPJ_UINT32,
-  pub numchunks: OPJ_UINT32,
-  pub decoded_data: Vec<core::cell::Cell<OPJ_INT32>>,
+pub(crate) struct TcdCblkDec {
+  pub segs: Vec<TcdSeg>,
+  pub chunks: Vec<TcdSegDataChunk>,
+  pub x0: i32,
+  pub y0: i32,
+  pub x1: i32,
+  pub y1: i32,
+  pub Mb: u32,
+  pub numbps: u32,
+  pub numlenbits: u32,
+  pub numnewpasses: u32,
+  pub numsegs: u32,
+  pub real_num_segs: u32,
+  pub numchunks: u32,
+  pub decoded_data: Vec<core::cell::Cell<i32>>,
 }
-pub(crate) type opj_tcd_cblk_dec_t = opj_tcd_cblk_dec;
-
-
 #[derive(Copy, Clone)]
-pub(crate) struct opj_tcd_seg_data_chunk {
+pub(crate) struct TcdSegDataChunk {
   /// Offset of the chunk into the tile's codestream data buffer.
   pub data_offset: usize,
-  pub len: OPJ_UINT32,
+  pub len: u32,
 }
-pub(crate) type opj_tcd_seg_data_chunk_t = opj_tcd_seg_data_chunk;
-
 #[derive(Copy, Clone, Default)]
-pub(crate) struct opj_tcd_seg {
-  pub len: OPJ_UINT32,
-  pub numpasses: OPJ_UINT32,
-  pub real_num_passes: OPJ_UINT32,
-  pub maxpasses: OPJ_UINT32,
-  pub numnewpasses: OPJ_UINT32,
-  pub newlen: OPJ_UINT32,
+pub(crate) struct TcdSeg {
+  pub len: u32,
+  pub numpasses: u32,
+  pub real_num_passes: u32,
+  pub maxpasses: u32,
+  pub numnewpasses: u32,
+  pub newlen: u32,
 }
-pub(crate) type opj_tcd_seg_t = opj_tcd_seg;
-
 #[derive(Clone)]
 #[derive(Default)]
-pub(crate) struct opj_tcd_cblk_enc {
+pub(crate) struct TcdCblkEnc {
   /// Compressed-data buffer. `buf[0]` is the sentinel byte the MQ coder reads through
   /// `data[-1]`; the payload the C code called `data` starts at `buf[1]`.
-  pub data: Vec<OPJ_BYTE>,
-  pub layers: Vec<opj_tcd_layer_t>,
-  pub passes: Vec<opj_tcd_pass_t>,
-  pub x0: OPJ_INT32,
-  pub y0: OPJ_INT32,
-  pub x1: OPJ_INT32,
-  pub y1: OPJ_INT32,
-  pub numbps: OPJ_UINT32,
-  pub numlenbits: OPJ_UINT32,
-  pub data_size: OPJ_UINT32,
-  pub numpasses: OPJ_UINT32,
-  pub numpassesinlayers: OPJ_UINT32,
-  pub totalpasses: OPJ_UINT32,
+  pub data: Vec<u8>,
+  pub layers: Vec<TcdLayer>,
+  pub passes: Vec<TcdPass>,
+  pub x0: i32,
+  pub y0: i32,
+  pub x1: i32,
+  pub y1: i32,
+  pub numbps: u32,
+  pub numlenbits: u32,
+  pub data_size: u32,
+  pub numpasses: u32,
+  pub numpassesinlayers: u32,
+  pub totalpasses: u32,
 }
-pub(crate) type opj_tcd_cblk_enc_t = opj_tcd_cblk_enc;
-
-impl opj_tcd_cblk_enc {
+impl TcdCblkEnc {
   /// Start of the payload, i.e. what the C struct stored in its `data` member.
   /// Null while no buffer has been allocated.
-  pub(crate) fn data_ptr(&self) -> *mut OPJ_BYTE {
+  pub(crate) fn data_ptr(&self) -> *mut u8 {
     if self.data.is_empty() {
       core::ptr::null_mut()
     } else {
       // The leading byte is a sentinel; the payload starts at index 1.
-      self.data.as_ptr().wrapping_add(1) as *mut OPJ_BYTE
+      self.data.as_ptr().wrapping_add(1) as *mut u8
     }
   }
 
   /// Payload byte at `index`, where index 0 is the first payload byte.
-  pub(crate) fn data_byte(&self, index: usize) -> OPJ_BYTE {
+  pub(crate) fn data_byte(&self, index: usize) -> u8 {
     self.data[index + 1]
   }
 }
 
 
 #[derive(Copy, Clone, Default)]
-pub(crate) struct opj_tcd_pass {
-  pub rate: OPJ_UINT32,
-  pub distortiondec: OPJ_FLOAT64,
-  pub len: OPJ_UINT32,
+pub(crate) struct TcdPass {
+  pub rate: u32,
+  pub distortiondec: f64,
+  pub len: u32,
   pub term: bool,
 }
-pub(crate) type opj_tcd_pass_t = opj_tcd_pass;
-
 #[derive(Copy, Clone, Default)]
-pub(crate) struct opj_tcd_layer {
-  pub numpasses: OPJ_UINT32,
-  pub len: OPJ_UINT32,
-  pub disto: OPJ_FLOAT64,
-  /// Offset of the payload into `opj_tcd_cblk_enc.data` (the Vec holds a
+pub(crate) struct TcdLayer {
+  pub numpasses: u32,
+  pub len: u32,
+  pub disto: f64,
+  /// Offset of the payload into `TcdCblkEnc.data` (the Vec holds a
   /// leading sentinel byte, so a C `data` pointer equals offset 1).
   pub data_offset: usize,
 }
-pub(crate) type opj_tcd_layer_t = opj_tcd_layer;
-
-/* This was a C union of the decoder-only and encoder-only codec state. A given `opj_j2k` is
+/* This was a C union of the decoder-only and encoder-only codec state. A given `J2k` is
 either a decoder or an encoder one, so holding both costs a few bytes and lets each side own
 its scratch buffers instead of aliasing raw memory. */
 #[derive(Default)]
 pub(crate) struct C2RustUnnamed_2 {
-  pub m_decoder: opj_j2k_dec_t,
-  pub m_encoder: opj_j2k_enc_t,
+  pub m_decoder: J2kDec,
+  pub m_encoder: J2kEnc,
 }
 
 #[derive(Default)]
-pub(crate) struct opj_j2k_enc {
-  pub m_current_poc_tile_part_number: OPJ_UINT32,
-  pub m_current_tile_part_number: OPJ_UINT32,
+pub(crate) struct J2kEnc {
+  pub m_current_poc_tile_part_number: u32,
+  pub m_current_tile_part_number: u32,
   pub m_TLM: OPJ_BOOL,
   pub m_Ttlmi_is_byte: OPJ_BOOL,
-  pub m_tlm_start: OPJ_OFF_T,
-  pub m_tlm_sot_offsets_buffer: Vec<OPJ_BYTE>,
+  pub m_tlm_start: i64,
+  pub m_tlm_sot_offsets_buffer: Vec<u8>,
   /* write cursor into `m_tlm_sot_offsets_buffer` */
   pub m_tlm_sot_offsets_current: usize,
-  pub m_total_tile_parts: OPJ_UINT32,
-  pub m_encoded_tile_data: Vec<OPJ_BYTE>,
-  pub m_header_tile_data: Vec<OPJ_BYTE>,
+  pub m_total_tile_parts: u32,
+  pub m_encoded_tile_data: Vec<u8>,
+  pub m_header_tile_data: Vec<u8>,
   pub m_PLT: OPJ_BOOL,
-  pub m_reserved_bytes_for_PLT: OPJ_UINT32,
-  pub m_nb_comps: OPJ_UINT32,
+  pub m_reserved_bytes_for_PLT: u32,
+  pub m_nb_comps: u32,
 }
 
-impl opj_j2k_enc {
+impl J2kEnc {
   /* Grow-only scratch buffer used to assemble a marker segment before it is written out.
   Mirrors the C `opj_realloc` of `m_header_tile_data`; the returned pointer is valid until
   the next call. */
-  pub(crate) fn header_tile_data(&mut self, size: OPJ_UINT32) -> *mut OPJ_BYTE {
+  pub(crate) fn header_tile_data(&mut self, size: u32) -> *mut u8 {
     if size as usize > self.m_header_tile_data.len() {
       self.m_header_tile_data.resize(size as usize, 0);
     }
     self.m_header_tile_data.as_mut_ptr()
   }
 }
-pub(crate) type opj_j2k_enc_t = opj_j2k_enc;
-
 #[derive(Default)]
-pub(crate) struct opj_j2k_dec {
+pub(crate) struct J2kDec {
   pub m_state: J2KState,
-  pub m_default_tcp: Option<Box<opj_tcp_t>>,
-  pub m_header_data: Vec<OPJ_BYTE>,
-  pub m_sot_length: OPJ_UINT32,
-  pub m_start_tile_x: OPJ_UINT32,
-  pub m_start_tile_y: OPJ_UINT32,
-  pub m_end_tile_x: OPJ_UINT32,
-  pub m_end_tile_y: OPJ_UINT32,
-  pub m_tile_ind_to_dec: OPJ_INT32,
-  pub m_last_sot_read_pos: OPJ_OFF_T,
+  pub m_default_tcp: Option<Box<Tcp>>,
+  pub m_header_data: Vec<u8>,
+  pub m_sot_length: u32,
+  pub m_start_tile_x: u32,
+  pub m_start_tile_y: u32,
+  pub m_end_tile_x: u32,
+  pub m_end_tile_y: u32,
+  pub m_tile_ind_to_dec: i32,
+  pub m_last_sot_read_pos: i64,
   pub m_last_tile_part: OPJ_BOOL,
-  pub m_numcomps_to_decode: OPJ_UINT32,
-  pub m_comps_indices_to_decode: Vec<OPJ_UINT32>,
+  pub m_numcomps_to_decode: u32,
+  pub m_comps_indices_to_decode: Vec<u32>,
   pub m_can_decode: bool,
   pub m_discard_tiles: bool,
   pub m_skip_data: bool,
@@ -1154,14 +1099,13 @@ pub(crate) struct opj_j2k_dec {
   pub m_nb_tile_parts_correction: bool,
 }
 
-impl opj_j2k_dec {
+impl J2kDec {
   /* Grow-only scratch buffer holding the marker segment currently being read. Mirrors the
   C `opj_realloc` of `m_header_data`. */
-  pub(crate) fn header_data(&mut self, size: OPJ_UINT32) -> &mut [OPJ_BYTE] {
+  pub(crate) fn header_data(&mut self, size: u32) -> &mut [u8] {
     if size as usize > self.m_header_data.len() {
       self.m_header_data.resize(size as usize, 0);
     }
     &mut self.m_header_data[..size as usize]
   }
 }
-pub(crate) type opj_j2k_dec_t = opj_j2k_dec;

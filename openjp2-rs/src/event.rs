@@ -45,13 +45,13 @@ pub use super::consts::event::*;
 /// The sinks sit behind `Mutex`es so the manager is `Sync`: the t1 codeblock jobs
 /// dispatch events from rayon worker threads.
 #[derive(Default)]
-pub struct opj_event_mgr {
+pub struct EventMgr {
   error_handler: Option<std::sync::Mutex<Box<dyn FnMut(&str) + Send>>>,
   warning_handler: Option<std::sync::Mutex<Box<dyn FnMut(&str) + Send>>>,
   info_handler: Option<std::sync::Mutex<Box<dyn FnMut(&str) + Send>>>,
 }
 
-impl opj_event_mgr {
+impl EventMgr {
   pub fn set_default_event_handler(&mut self) {
     *self = Self::default();
   }

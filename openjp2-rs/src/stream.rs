@@ -208,9 +208,9 @@ impl Stream {
   pub fn get_bytes_left(&self) -> i64 {
     log::trace!("-- byte_left(), offset={}", self.m_byte_offset);
     assert!(self.m_byte_offset >= 0i64);
-    assert!(self.m_stream_length >= self.m_byte_offset as OPJ_UINT64);
+    assert!(self.m_stream_length >= self.m_byte_offset as u64);
     let nb = if self.m_stream_length != 0 {
-      (self.m_stream_length as OPJ_OFF_T) - self.m_byte_offset
+      (self.m_stream_length as i64) - self.m_byte_offset
     } else {
       0i64
     };
@@ -289,13 +289,13 @@ impl Write for Stream {
 pub(crate) fn opj_stream_read_data(
   p_stream: &mut Stream,
   buf: &mut [u8],
-  mut _p_event_mgr: &mut opj_event_mgr,
-) -> OPJ_SIZE_T {
+  mut _p_event_mgr: &mut EventMgr,
+) -> usize {
   match p_stream.read(buf) {
-    Ok(nb) => nb as OPJ_SIZE_T,
+    Ok(nb) => nb,
     Err(err) => {
       log::trace!("Failed to read from stream: {err}");
-      -1i32 as OPJ_SIZE_T
+      -1i32 as usize
     }
   }
 }
@@ -303,21 +303,21 @@ pub(crate) fn opj_stream_read_data(
 pub(crate) fn opj_stream_write_data(
   p_stream: &mut Stream,
   buf: &[u8],
-  mut _p_event_mgr: &mut opj_event_mgr,
-) -> OPJ_SIZE_T {
+  mut _p_event_mgr: &mut EventMgr,
+) -> usize {
   log::trace!("-- write({}), offset={}", buf.len(), p_stream.m_byte_offset);
   match p_stream.write(buf) {
     Ok(nb) => nb,
     Err(err) => {
       log::trace!("Failed to write to stream: {err}");
-      -1i32 as OPJ_SIZE_T
+      -1i32 as usize
     }
   }
 }
 
 pub(crate) fn opj_stream_flush(
   p_stream: &mut Stream,
-  mut _p_event_mgr: &mut opj_event_mgr,
+  mut _p_event_mgr: &mut EventMgr,
 ) -> OPJ_BOOL {
   match p_stream.flush() {
     Ok(_) => 1,
@@ -328,19 +328,19 @@ pub(crate) fn opj_stream_flush(
   }
 }
 
-pub(crate) fn opj_stream_tell(p_stream: &Stream) -> OPJ_OFF_T {
+pub(crate) fn opj_stream_tell(p_stream: &Stream) -> i64 {
   p_stream.tell()
 }
 
-pub(crate) fn opj_stream_get_number_byte_left(p_stream: &Stream) -> OPJ_OFF_T {
+pub(crate) fn opj_stream_get_number_byte_left(p_stream: &Stream) -> i64 {
   p_stream.get_bytes_left()
 }
 
 pub(crate) fn opj_stream_skip(
   p_stream: &mut Stream,
-  mut p_size: OPJ_OFF_T,
-  mut _p_event_mgr: &mut opj_event_mgr,
-) -> OPJ_OFF_T {
+  mut p_size: i64,
+  mut _p_event_mgr: &mut EventMgr,
+) -> i64 {
   match p_stream.skip(p_size) {
     Ok(offset) => {
       log::trace!("-- skip({p_size}) = {}", offset);
@@ -355,8 +355,8 @@ pub(crate) fn opj_stream_skip(
 
 pub(crate) fn opj_stream_seek(
   p_stream: &mut Stream,
-  mut p_size: OPJ_OFF_T,
-  mut _p_event_mgr: &mut opj_event_mgr,
+  mut p_size: i64,
+  mut _p_event_mgr: &mut EventMgr,
 ) -> OPJ_BOOL {
   match p_stream.seek(p_size) {
     Ok(_) => {

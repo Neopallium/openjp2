@@ -8,16 +8,16 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Copy, Clone)]
 pub struct dec_mel<'a> {
-  pub data: &'a [OPJ_UINT8],
+  pub data: &'a [u8],
   /// Index of the next byte to read; the MEL segment grows forward.
   pub pos: usize,
-  pub tmp: OPJ_UINT64,
+  pub tmp: u64,
   pub bits: core::ffi::c_int,
   pub size: core::ffi::c_int,
   pub unstuff: OPJ_BOOL,
   pub k: core::ffi::c_int,
   pub num_runs: core::ffi::c_int,
-  pub runs: OPJ_UINT64,
+  pub runs: u64,
 }
 
 impl dec_mel<'_> {
@@ -38,12 +38,12 @@ pub type dec_mel_t<'a> = dec_mel<'a>;
 
 #[derive(Copy, Clone)]
 pub struct rev_struct<'a> {
-  pub data: &'a [OPJ_UINT8],
+  pub data: &'a [u8],
   /// Index of the next byte to read; VLC and MRP segments grow backward, so this walks down and
   /// may end one slot below the segment. Signed to keep that final decrement from underflowing.
   pub pos: isize,
-  pub tmp: OPJ_UINT64,
-  pub bits: OPJ_UINT32,
+  pub tmp: u64,
+  pub bits: u32,
   pub size: core::ffi::c_int,
   pub unstuff: OPJ_BOOL,
 }
@@ -53,7 +53,7 @@ impl rev_struct<'_> {
     (self.data.as_ptr() as usize).wrapping_add_signed(self.pos)
   }
 
-  fn byte(&self) -> OPJ_UINT8 {
+  fn byte(&self) -> u8 {
     self.data[self.pos as usize]
   }
 }
@@ -75,14 +75,14 @@ pub type rev_struct_t<'a> = rev_struct<'a>;
 
 #[derive(Copy, Clone)]
 pub struct frwd_struct<'a> {
-  pub data: &'a [OPJ_UINT8],
+  pub data: &'a [u8],
   /// Index of the next byte to read; MagSgn and SPP segments grow forward.
   pub pos: usize,
-  pub tmp: OPJ_UINT64,
-  pub bits: OPJ_UINT32,
+  pub tmp: u64,
+  pub bits: u32,
   pub unstuff: OPJ_BOOL,
   pub size: core::ffi::c_int,
-  pub X: OPJ_UINT32,
+  pub X: u32,
 }
 
 impl frwd_struct<'_> {
@@ -163,7 +163,7 @@ static ONLY_CLEANUP_PASS_DECODED: AtomicBool = AtomicBool::new(false);
  *
  *   @param [in]  val is the value for which population count is sought
  */
-fn population_count(mut val: OPJ_UINT32) -> OPJ_UINT32 {
+fn population_count(mut val: u32) -> u32 {
   val.count_ones()
 }
 //* ***********************************************************************/
@@ -171,7 +171,7 @@ fn population_count(mut val: OPJ_UINT32) -> OPJ_UINT32 {
  *
  *   @param [in]  val is the value for which leading zero count is sought
  */
-fn count_leading_zeros(mut val: OPJ_UINT32) -> OPJ_UINT32 {
+fn count_leading_zeros(mut val: u32) -> u32 {
   val.leading_zeros()
 }
 //* ***********************************************************************/
@@ -180,8 +180,8 @@ fn count_leading_zeros(mut val: OPJ_UINT32) -> OPJ_UINT32 {
  *   @param [in]  data is the byte stream to read from
  *   @param [in]  pos is the index of the first of the four bytes
  */
-fn read_le_uint32(data: &[OPJ_UINT8], pos: usize) -> OPJ_UINT32 {
-  OPJ_UINT32::from_le_bytes([data[pos], data[pos + 1], data[pos + 2], data[pos + 3]])
+fn read_le_uint32(data: &[u8], pos: usize) -> u32 {
+  u32::from_le_bytes([data[pos], data[pos + 1], data[pos + 2], data[pos + 3]])
 }
 
 //* ***********************************************************************/
@@ -197,9 +197,9 @@ fn read_le_uint32(data: &[OPJ_UINT8], pos: usize) -> OPJ_UINT32 {
  *  @param [in]  melp is a pointer to dec_mel_t structure
  */
 fn mel_read(melp: &mut dec_mel_t) {
-  let mut val: OPJ_UINT32 = 0;
+  let mut val: u32 = 0;
   let mut bits: core::ffi::c_int = 0;
-  let mut t: OPJ_UINT32 = 0;
+  let mut t: u32 = 0;
   let mut unstuff: OPJ_BOOL = 0;
   if melp.bits > 32i32 {
     //there are enough bits in the tmp variable
@@ -214,11 +214,11 @@ fn mel_read(melp: &mut dec_mel_t) {
     melp.size -= 4i32 // reduce counter
   } else if melp.size > 0i32 {
     // 4 or less
-    let mut m: OPJ_UINT32 = 0; // read one byte at a time
-    let mut v: OPJ_UINT32 = 0; // mask of location
+    let mut m: u32 = 0; // read one byte at a time
+    let mut v: u32 = 0; // mask of location
     let mut i = 0i32; // put byte in its correct location
     while melp.size > 1i32 {
-      let mut v_0 = melp.data[melp.pos] as OPJ_UINT32;
+      let mut v_0 = melp.data[melp.pos] as u32;
       melp.pos += 1;
       let mut m_0 = !((0xffu32) << i);
       val = val & m_0 | v_0 << i;
@@ -228,7 +228,7 @@ fn mel_read(melp: &mut dec_mel_t) {
     // size equal to 1
     // the one before the last is different
     // MEL and VLC segments can overlap
-    v = melp.data[melp.pos] as OPJ_UINT32;
+    v = melp.data[melp.pos] as u32;
     melp.pos += 1;
     v |= 0xfu32;
     m = !((0xffu32) << i);
@@ -258,7 +258,7 @@ fn mel_read(melp: &mut dec_mel_t) {
   melp.unstuff = (val >> 24i32 & 0xffu32 == 0xffu32) as core::ffi::c_int;
   // move t to tmp, and push the result all the way up, so we read from
   // the MSB
-  melp.tmp |= (t as OPJ_UINT64) << (64i32 - bits - melp.bits);
+  melp.tmp |= (t as u64) << (64i32 - bits - melp.bits);
   melp.bits += bits;
   //increment the number of bits in tmp
 }
@@ -318,8 +318,8 @@ fn mel_decode(melp: &mut dec_mel_t) {
       run = (run << 1i32) + 1i32
     } // 6 bits are sufficient
     eval = melp.num_runs * 7i32; // store the value in runs
-    melp.runs &= !((0x3f as OPJ_UINT64) << eval);
-    melp.runs |= (run as OPJ_UINT64) << eval;
+    melp.runs &= !(0x3f_u64 << eval);
+    melp.runs |= (run as u64) << eval;
     melp.num_runs += 1
   }
 }
@@ -335,7 +335,7 @@ fn mel_decode(melp: &mut dec_mel_t) {
  */
 fn mel_init<'a>(
   melp: &mut dec_mel_t<'a>,
-  bbuf: &'a [OPJ_UINT8],
+  bbuf: &'a [u8],
   mut lcup: core::ffi::c_int,
   mut scup: core::ffi::c_int,
 ) -> bool {
@@ -344,12 +344,12 @@ fn mel_init<'a>(
   melp.data = bbuf;
   melp.pos = (lcup - scup) as usize; //
   melp.bits = 0i32; // no unstuffing
-  melp.tmp = 0 as OPJ_UINT64; // size is the length of MEL+VLC-1
+  melp.tmp = 0_u64; // size is the length of MEL+VLC-1
   melp.unstuff = 0i32; // 0 for state
   melp.size = scup - 1i32; // num_runs is 0
   melp.k = 0i32; //
   melp.num_runs = 0i32;
-  melp.runs = 0 as OPJ_UINT64;
+  melp.runs = 0_u64;
   //This code is borrowed; original is for a different architecture
   //These few lines take care of the case where data is not at a multiple
   // of 4 boundary.  It reads 1,2,3 up to 4 bytes from the MEL segment
@@ -357,7 +357,7 @@ fn mel_init<'a>(
   i = 0i32;
   while i < num {
     // this code is similar to mel_read
-    let mut d: OPJ_UINT64 = 0; // if buffer is consumed
+    let mut d: u64 = 0; // if buffer is consumed
     let mut d_bits: core::ffi::c_int = 0;
     if melp.unstuff != 0i32 && melp.data[melp.pos] as core::ffi::c_int > 0x8fi32 {
       return false;
@@ -366,7 +366,7 @@ fn mel_init<'a>(
       melp.data[melp.pos] as core::ffi::c_int
     } else {
       0xffi32
-    } as OPJ_UINT64;
+    } as u64;
     // set data to 0xFF
     if melp.size == 1i32 {
       d |= 0xfu64
@@ -426,9 +426,9 @@ fn mel_get_run(melp: &mut dec_mel_t) -> core::ffi::c_int {
  *  @param [in]  vlcp is a pointer to rev_struct_t structure
  */
 fn rev_read(vlcp: &mut rev_struct_t) {
-  let mut val: OPJ_UINT32 = 0;
-  let mut tmp: OPJ_UINT32 = 0;
-  let mut bits: OPJ_UINT32 = 0;
+  let mut val: u32 = 0;
+  let mut tmp: u32 = 0;
+  let mut bits: u32 = 0;
   let mut unstuff: OPJ_BOOL = 0;
   //process 4 bytes at a time
   if vlcp.bits > 32u32 {
@@ -436,7 +436,7 @@ fn rev_read(vlcp: &mut rev_struct_t) {
     return;
     // reading 32 bits can overflow vlcp->tmp
   }
-  val = 0 as OPJ_UINT32;
+  val = 0_u32;
   //the next line (the if statement) needs to be tested first
   if vlcp.size > 3i32 {
     // if there are more than 3 bytes left in VLC
@@ -448,7 +448,7 @@ fn rev_read(vlcp: &mut rev_struct_t) {
     // 4 or less
     let mut i = 24i32; // read one byte at a time
     while vlcp.size > 0i32 {
-      let mut v = vlcp.byte() as OPJ_UINT32; // put byte in its correct location
+      let mut v = vlcp.byte() as u32; // put byte in its correct location
       vlcp.pos -= 1;
       val |= v << i;
       vlcp.size -= 1;
@@ -471,7 +471,7 @@ fn rev_read(vlcp: &mut rev_struct_t) {
     } else {
       0u32
     },
-  )) as OPJ_UINT32;
+  )) as u32;
   unstuff = (val >> 16i32 & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   tmp |= (val >> 8i32 & 0xffu32) << bits;
   bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(
@@ -480,7 +480,7 @@ fn rev_read(vlcp: &mut rev_struct_t) {
     } else {
       0u32
     },
-  )) as OPJ_UINT32;
+  )) as u32;
   unstuff = (val >> 8i32 & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   tmp |= (val & 0xffu32) << bits;
   bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(
@@ -489,11 +489,11 @@ fn rev_read(vlcp: &mut rev_struct_t) {
     } else {
       0u32
     },
-  )) as OPJ_UINT32;
+  )) as u32;
   unstuff = (val & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   // now move the read and unstuffed bits into vlcp->tmp
-  vlcp.tmp |= (tmp as OPJ_UINT64) << vlcp.bits;
-  vlcp.bits = (vlcp.bits as core::ffi::c_uint).wrapping_add(bits) as OPJ_UINT32;
+  vlcp.tmp |= (tmp as u64) << vlcp.bits;
+  vlcp.bits = (vlcp.bits as core::ffi::c_uint).wrapping_add(bits);
   vlcp.unstuff = unstuff;
   // this for the next read
 }
@@ -513,11 +513,11 @@ fn rev_read(vlcp: &mut rev_struct_t) {
  */
 fn rev_init<'a>(
   vlcp: &mut rev_struct_t<'a>,
-  data: &'a [OPJ_UINT8],
+  data: &'a [u8],
   mut lcup: core::ffi::c_int,
   mut scup: core::ffi::c_int,
 ) {
-  let mut d: OPJ_UINT32 = 0;
+  let mut d: u32 = 0;
   let mut num: core::ffi::c_int = 0;
   let mut tnum: core::ffi::c_int = 0;
   let mut i: core::ffi::c_int = 0;
@@ -526,10 +526,10 @@ fn rev_init<'a>(
   vlcp.pos = (lcup - 2) as isize;
   //size can not be larger than this, in fact it should be smaller
   vlcp.size = scup - 2i32; // read one byte (this is a half byte)
-  d = vlcp.byte() as OPJ_UINT32; // both initialize and set
+  d = vlcp.byte() as u32; // both initialize and set
   vlcp.pos -= 1; //check standard
-  vlcp.tmp = (d >> 4i32) as OPJ_UINT64; //this is useful for the next byte
-  vlcp.bits = (4i32 - (vlcp.tmp & 7u64 == 7u64) as core::ffi::c_int) as OPJ_UINT32;
+  vlcp.tmp = (d >> 4i32) as u64; //this is useful for the next byte
+  vlcp.bits = (4i32 - (vlcp.tmp & 7u64 == 7u64) as core::ffi::c_int) as u32;
   vlcp.unstuff = (d > 0x8fu32) as core::ffi::c_int;
   //This code is designed for an architecture that read address should
   // align to the read size (address multiple of 4 if read size is 4)
@@ -540,10 +540,10 @@ fn rev_init<'a>(
   tnum = if num < vlcp.size { num } else { vlcp.size };
   i = 0i32;
   while i < tnum {
-    let mut d_0: OPJ_UINT64 = 0;
-    let mut d_bits: OPJ_UINT32 = 0;
+    let mut d_0: u64 = 0;
+    let mut d_bits: u32 = 0;
     // for next byte
-    d_0 = vlcp.byte() as OPJ_UINT64; // read one byte and move read pointer
+    d_0 = vlcp.byte() as u64; // read one byte and move read pointer
     vlcp.pos -= 1;
     d_bits = (8u32).wrapping_sub(if vlcp.unstuff != 0 && d_0 & 0x7fu64 == 0x7fu64 {
       1u32
@@ -551,7 +551,7 @@ fn rev_init<'a>(
       0u32
     });
     vlcp.tmp |= d_0 << vlcp.bits;
-    vlcp.bits = (vlcp.bits as core::ffi::c_uint).wrapping_add(d_bits) as OPJ_UINT32;
+    vlcp.bits = (vlcp.bits as core::ffi::c_uint).wrapping_add(d_bits);
     vlcp.unstuff = (d_0 > 0x8fu64) as core::ffi::c_int;
     i += 1
   }
@@ -568,7 +568,7 @@ fn rev_init<'a>(
  *
  *  @param [in]  vlcp is a pointer to rev_struct structure
  */
-fn rev_fetch(vlcp: &mut rev_struct_t) -> OPJ_UINT32 {
+fn rev_fetch(vlcp: &mut rev_struct_t) -> u32 {
   if vlcp.bits < 32u32 {
     // if there are less then 32 bits, read more
     rev_read(vlcp); // read 32 bits, but unstuffing might reduce this
@@ -578,7 +578,7 @@ fn rev_fetch(vlcp: &mut rev_struct_t) -> OPJ_UINT32 {
       // read another 32
     }
   }
-  vlcp.tmp as OPJ_UINT32
+  vlcp.tmp as u32
   // return the head (bottom-most) of vlcp->tmp
 }
 //* ***********************************************************************/
@@ -587,11 +587,11 @@ fn rev_fetch(vlcp: &mut rev_struct_t) -> OPJ_UINT32 {
  *  @param [in]  vlcp is a pointer to rev_struct structure
  *  @param [in]  num_bits is the number of bits to be removed
  */
-fn rev_advance(vlcp: &mut rev_struct_t, mut num_bits: OPJ_UINT32) -> OPJ_UINT32 {
+fn rev_advance(vlcp: &mut rev_struct_t, mut num_bits: u32) -> u32 {
   assert!(num_bits <= vlcp.bits); // remove bits
   vlcp.tmp >>= num_bits; // decrement the number of bits
-  vlcp.bits = (vlcp.bits as core::ffi::c_uint).wrapping_sub(num_bits) as OPJ_UINT32;
-  vlcp.tmp as OPJ_UINT32
+  vlcp.bits = (vlcp.bits as core::ffi::c_uint).wrapping_sub(num_bits);
+  vlcp.tmp as u32
 }
 //* ***********************************************************************/
 /* * @brief Reads and unstuffs from rev_struct
@@ -605,15 +605,15 @@ fn rev_advance(vlcp: &mut rev_struct_t, mut num_bits: OPJ_UINT32) -> OPJ_UINT32 
  *  @param [in]  mrp is a pointer to rev_struct structure
  */
 fn rev_read_mrp(mrp: &mut rev_struct_t) {
-  let mut val: OPJ_UINT32 = 0;
-  let mut tmp: OPJ_UINT32 = 0;
-  let mut bits: OPJ_UINT32 = 0;
+  let mut val: u32 = 0;
+  let mut tmp: u32 = 0;
+  let mut bits: u32 = 0;
   let mut unstuff: OPJ_BOOL = 0;
   //process 4 bytes at a time
   if mrp.bits > 32u32 {
     return;
   }
-  val = 0 as OPJ_UINT32;
+  val = 0_u32;
   if mrp.size > 3i32 {
     // If there are 3 byte or more
     // (pos - 3) moves back to read 32 bits at once
@@ -623,7 +623,7 @@ fn rev_read_mrp(mrp: &mut rev_struct_t) {
   } else if mrp.size > 0i32 {
     let mut i = 24i32; // read one byte at a time
     while mrp.size > 0i32 {
-      let mut v = mrp.byte() as OPJ_UINT32; // put byte in its correct location
+      let mut v = mrp.byte() as u32; // put byte in its correct location
       mrp.pos -= 1;
       val |= v << i;
       mrp.size -= 1;
@@ -647,7 +647,7 @@ fn rev_read_mrp(mrp: &mut rev_struct_t) {
     } else {
       0u32
     },
-  )) as OPJ_UINT32;
+  )) as u32;
   unstuff = (val >> 16i32 & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   tmp |= (val >> 8i32 & 0xffu32) << bits;
   bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(
@@ -656,7 +656,7 @@ fn rev_read_mrp(mrp: &mut rev_struct_t) {
     } else {
       0u32
     },
-  )) as OPJ_UINT32;
+  )) as u32;
   unstuff = (val >> 8i32 & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   tmp |= (val & 0xffu32) << bits;
   bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(
@@ -665,10 +665,10 @@ fn rev_read_mrp(mrp: &mut rev_struct_t) {
     } else {
       0u32
     },
-  )) as OPJ_UINT32;
+  )) as u32;
   unstuff = (val & 0xffu32 > 0x8fu32) as core::ffi::c_int;
-  mrp.tmp |= (tmp as OPJ_UINT64) << mrp.bits;
-  mrp.bits = (mrp.bits as core::ffi::c_uint).wrapping_add(bits) as OPJ_UINT32;
+  mrp.tmp |= (tmp as u64) << mrp.bits;
+  mrp.bits = (mrp.bits as core::ffi::c_uint).wrapping_add(bits);
   mrp.unstuff = unstuff;
   // next byte
 }
@@ -689,7 +689,7 @@ fn rev_read_mrp(mrp: &mut rev_struct_t) {
  */
 fn rev_init_mrp<'a>(
   mrp: &mut rev_struct_t<'a>,
-  data: &'a [OPJ_UINT8],
+  data: &'a [u8],
   mut lcup: core::ffi::c_int,
   mut len2: core::ffi::c_int,
 ) {
@@ -699,8 +699,8 @@ fn rev_init_mrp<'a>(
   mrp.pos = (lcup + len2 - 1) as isize;
   mrp.size = len2;
   mrp.unstuff = 1i32;
-  mrp.bits = 0 as OPJ_UINT32;
-  mrp.tmp = 0 as OPJ_UINT64;
+  mrp.bits = 0_u32;
+  mrp.tmp = 0_u64;
   //This code is designed for an architecture that read address should
   // align to the read size (address multiple of 4 if read size is 4)
   //These few lines take care of the case where data is not at a multiple
@@ -708,8 +708,8 @@ fn rev_init_mrp<'a>(
   num = 1i32 + (mrp.addr() & 0x3) as core::ffi::c_int;
   i = 0i32;
   while i < num {
-    let mut d: OPJ_UINT64 = 0;
-    let mut d_bits: OPJ_UINT32 = 0;
+    let mut d: u64 = 0;
+    let mut d_bits: u32 = 0;
     // for next byte
     let fresh7 = mrp.size;
     mrp.size -= 1;
@@ -719,14 +719,14 @@ fn rev_init_mrp<'a>(
       b as core::ffi::c_int
     } else {
       0i32
-    } as OPJ_UINT64;
+    } as u64;
     d_bits = (8u32).wrapping_sub(if mrp.unstuff != 0 && d & 0x7fu64 == 0x7fu64 {
       1u32
     } else {
       0u32
     });
     mrp.tmp |= d << mrp.bits;
-    mrp.bits = (mrp.bits as core::ffi::c_uint).wrapping_add(d_bits) as OPJ_UINT32;
+    mrp.bits = (mrp.bits as core::ffi::c_uint).wrapping_add(d_bits);
     mrp.unstuff = (d > 0x8fu64) as core::ffi::c_int;
     i += 1
   }
@@ -742,7 +742,7 @@ fn rev_init_mrp<'a>(
  *
  *  @param [in]  mrp is a pointer to rev_struct structure
  */
-fn rev_fetch_mrp(mrp: &mut rev_struct_t) -> OPJ_UINT32 {
+fn rev_fetch_mrp(mrp: &mut rev_struct_t) -> u32 {
   if mrp.bits < 32u32 {
     // if there are less than 32 bits in mrp->tmp
     rev_read_mrp(mrp); // read 30-32 bits from mrp
@@ -752,7 +752,7 @@ fn rev_fetch_mrp(mrp: &mut rev_struct_t) -> OPJ_UINT32 {
       // read more
     }
   }
-  mrp.tmp as OPJ_UINT32
+  mrp.tmp as u32
   // return the head of mrp->tmp
 }
 //* ***********************************************************************/
@@ -761,11 +761,11 @@ fn rev_fetch_mrp(mrp: &mut rev_struct_t) -> OPJ_UINT32 {
  *  @param [in]  mrp is a pointer to rev_struct structure
  *  @param [in]  num_bits is the number of bits to be removed
  */
-fn rev_advance_mrp(mrp: &mut rev_struct_t, mut num_bits: OPJ_UINT32) -> OPJ_UINT32 {
+fn rev_advance_mrp(mrp: &mut rev_struct_t, mut num_bits: u32) -> u32 {
   assert!(num_bits <= mrp.bits); // discard the lowest num_bits bits
   mrp.tmp >>= num_bits;
-  mrp.bits = (mrp.bits as core::ffi::c_uint).wrapping_sub(num_bits) as OPJ_UINT32;
-  mrp.tmp as OPJ_UINT32
+  mrp.bits = (mrp.bits as core::ffi::c_uint).wrapping_sub(num_bits);
+  mrp.tmp as u32
   // return data after consumption
 }
 //* ***********************************************************************/
@@ -780,42 +780,42 @@ fn rev_advance_mrp(mrp: &mut rev_struct_t, mut num_bits: OPJ_UINT32) -> OPJ_UINT
  *               this value is a partial calculation of u + kappa.
  */
 fn decode_init_uvlc(
-  mut vlc: OPJ_UINT32,
-  mut mode: OPJ_UINT32,
-  u: &mut [OPJ_UINT32; 2],
-) -> OPJ_UINT32 {
+  mut vlc: u32,
+  mut mode: u32,
+  u: &mut [u32; 2],
+) -> u32 {
   //table stores possible decoding three bits from vlc
   // there are 8 entries for xx1, x10, 100, 000, where x means do not care
   // table value is made up of
   // 2 bits in the LSB for prefix length
   // 3 bits for suffix length
   // 3 bits in the MSB for prefix value (u_pfx in Table 3 of ITU T.814)
-  static dec: [OPJ_UINT8; 8] = [
-    (3i32 | (5i32) << 2i32 | (5i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
-    (2i32 | (2i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
-    (3i32 | (1i32) << 2i32 | (3i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
-    (2i32 | (2i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
+  static dec: [u8; 8] = [
+    (3i32 | (5i32) << 2i32 | (5i32) << 5i32) as u8,
+    (1i32 | (1i32) << 5i32) as u8,
+    (2i32 | (2i32) << 5i32) as u8,
+    (1i32 | (1i32) << 5i32) as u8,
+    (3i32 | (1i32) << 2i32 | (3i32) << 5i32) as u8,
+    (1i32 | (1i32) << 5i32) as u8,
+    (2i32 | (2i32) << 5i32) as u8,
+    (1i32 | (1i32) << 5i32) as u8,
   ];
-  let mut consumed_bits = 0 as OPJ_UINT32;
+  let mut consumed_bits = 0_u32;
   if mode == 0u32 {
     // both u_off are 0
-    u[1] = 1 as OPJ_UINT32;
+    u[1] = 1_u32;
     u[0] = u[1]
     //Kappa is 1 for initial line
   } else if mode <= 2u32 {
     // u_off are either 01 or 10
-    let mut d: OPJ_UINT32 = 0; //look at the least significant 3 bits
-    let mut suffix_len: OPJ_UINT32 = 0; //prefix length
-    d = dec[(vlc & 0x7u32) as usize] as OPJ_UINT32; // u value
+    let mut d: u32 = 0; //look at the least significant 3 bits
+    let mut suffix_len: u32 = 0; //prefix length
+    d = dec[(vlc & 0x7u32) as usize] as u32; // u value
     vlc >>= d & 0x3u32; // kappa is 1 for initial line
     consumed_bits =
-      (consumed_bits as core::ffi::c_uint).wrapping_add(d & 0x3u32) as OPJ_UINT32 as OPJ_UINT32;
+      (consumed_bits as core::ffi::c_uint).wrapping_add(d & 0x3u32);
     suffix_len = d >> 2i32 & 0x7u32;
-    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len) as OPJ_UINT32;
+    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len);
     d = (d >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len).wrapping_sub(1u32));
     u[0] = if mode == 1u32 {
       d.wrapping_add(1u32)
@@ -829,61 +829,61 @@ fn decode_init_uvlc(
     }
   } else if mode == 3u32 {
     // both u_off are 1, and MEL event is 0
-    let mut d1 = dec[(vlc & 0x7u32) as usize] as OPJ_UINT32; // LSBs of VLC are prefix codeword
+    let mut d1 = dec[(vlc & 0x7u32) as usize] as u32; // LSBs of VLC are prefix codeword
     vlc >>= d1 & 0x3u32; // Consume bits
     consumed_bits =
-      (consumed_bits as core::ffi::c_uint).wrapping_add(d1 & 0x3u32) as OPJ_UINT32 as OPJ_UINT32;
+      (consumed_bits as core::ffi::c_uint).wrapping_add(d1 & 0x3u32);
     if d1 & 0x3u32 > 2u32 {
-      let mut suffix_len_0: OPJ_UINT32 = 0;
+      let mut suffix_len_0: u32 = 0;
       //Kappa is 1 for initial line
       u[1] = (vlc & 1u32).wrapping_add(1u32).wrapping_add(1u32);
       consumed_bits = consumed_bits.wrapping_add(1);
       vlc >>= 1i32;
       suffix_len_0 = d1 >> 2i32 & 0x7u32;
-      consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_0) as OPJ_UINT32;
+      consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_0);
       d1 = (d1 >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len_0).wrapping_sub(1u32));
       u[0] = d1.wrapping_add(1u32)
     } else {
-      let mut d2: OPJ_UINT32 = 0;
-      let mut suffix_len_1: OPJ_UINT32 = 0;
+      let mut d2: u32 = 0;
+      let mut suffix_len_1: u32 = 0;
       //u_{q_2} prefix
       //Kappa is 1 for initial line
       // u value
       //Kappa is 1 for initial line
-      d2 = dec[(vlc & 0x7u32) as usize] as OPJ_UINT32; // LSBs of VLC are prefix codeword
+      d2 = dec[(vlc & 0x7u32) as usize] as u32; // LSBs of VLC are prefix codeword
       vlc >>= d2 & 0x3u32; // Consume bits
       consumed_bits =
-        (consumed_bits as core::ffi::c_uint).wrapping_add(d2 & 0x3u32) as OPJ_UINT32 as OPJ_UINT32; // u value
+        (consumed_bits as core::ffi::c_uint).wrapping_add(d2 & 0x3u32); // u value
       suffix_len_1 = d1 >> 2i32 & 0x7u32; //Kappa is 1 for initial line
-      consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_1) as OPJ_UINT32; // u value
+      consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_1); // u value
       d1 = (d1 >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len_1).wrapping_sub(1u32));
       u[0] = d1.wrapping_add(1u32);
       vlc >>= suffix_len_1;
       suffix_len_1 = d2 >> 2i32 & 0x7u32;
-      consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_1) as OPJ_UINT32;
+      consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_1);
       d2 = (d2 >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len_1).wrapping_sub(1u32));
       u[1] = d2.wrapping_add(1u32)
     }
   } else if mode == 4u32 {
     // both u_off are 1, and MEL event is 1
-    let mut d1_0: OPJ_UINT32 = 0; // LSBs of VLC are prefix codeword
-    let mut d2_0: OPJ_UINT32 = 0; // Consume bits
-    let mut suffix_len_2: OPJ_UINT32 = 0; // LSBs of VLC are prefix codeword
-    d1_0 = dec[(vlc & 0x7u32) as usize] as OPJ_UINT32; // Consume bits
+    let mut d1_0: u32 = 0; // LSBs of VLC are prefix codeword
+    let mut d2_0: u32 = 0; // Consume bits
+    let mut suffix_len_2: u32 = 0; // LSBs of VLC are prefix codeword
+    d1_0 = dec[(vlc & 0x7u32) as usize] as u32; // Consume bits
     vlc >>= d1_0 & 0x3u32; // u value
     consumed_bits =
-      (consumed_bits as core::ffi::c_uint).wrapping_add(d1_0 & 0x3u32) as OPJ_UINT32 as OPJ_UINT32; // add 2+kappa
-    d2_0 = dec[(vlc & 0x7u32) as usize] as OPJ_UINT32; // u value
+      (consumed_bits as core::ffi::c_uint).wrapping_add(d1_0 & 0x3u32); // add 2+kappa
+    d2_0 = dec[(vlc & 0x7u32) as usize] as u32; // u value
     vlc >>= d2_0 & 0x3u32;
     consumed_bits =
-      (consumed_bits as core::ffi::c_uint).wrapping_add(d2_0 & 0x3u32) as OPJ_UINT32 as OPJ_UINT32;
+      (consumed_bits as core::ffi::c_uint).wrapping_add(d2_0 & 0x3u32);
     suffix_len_2 = d1_0 >> 2i32 & 0x7u32;
-    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_2) as OPJ_UINT32;
+    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_2);
     d1_0 = (d1_0 >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len_2).wrapping_sub(1u32));
     u[0] = d1_0.wrapping_add(3u32);
     vlc >>= suffix_len_2;
     suffix_len_2 = d2_0 >> 2i32 & 0x7u32;
-    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_2) as OPJ_UINT32;
+    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_2);
     d2_0 = (d2_0 >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len_2).wrapping_sub(1u32));
     u[1] = d2_0.wrapping_add(3u32)
   }
@@ -899,41 +899,41 @@ fn decode_init_uvlc(
  *               this value is a partial calculation of u + kappa.
  */
 fn decode_noninit_uvlc(
-  mut vlc: OPJ_UINT32,
-  mut mode: OPJ_UINT32,
-  u: &mut [OPJ_UINT32; 2],
-) -> OPJ_UINT32 {
+  mut vlc: u32,
+  mut mode: u32,
+  u: &mut [u32; 2],
+) -> u32 {
   //table stores possible decoding three bits from vlc
   // there are 8 entries for xx1, x10, 100, 000, where x means do not care
   // table value is made up of
   // 2 bits in the LSB for prefix length
   // 3 bits for suffix length
   // 3 bits in the MSB for prefix value (u_pfx in Table 3 of ITU T.814)
-  static dec: [OPJ_UINT8; 8] = [
-    (3i32 | (5i32) << 2i32 | (5i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
-    (2i32 | (2i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
-    (3i32 | (1i32) << 2i32 | (3i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
-    (2i32 | (2i32) << 5i32) as OPJ_UINT8,
-    (1i32 | (1i32) << 5i32) as OPJ_UINT8,
+  static dec: [u8; 8] = [
+    (3i32 | (5i32) << 2i32 | (5i32) << 5i32) as u8,
+    (1i32 | (1i32) << 5i32) as u8,
+    (2i32 | (2i32) << 5i32) as u8,
+    (1i32 | (1i32) << 5i32) as u8,
+    (3i32 | (1i32) << 2i32 | (3i32) << 5i32) as u8,
+    (1i32 | (1i32) << 5i32) as u8,
+    (2i32 | (2i32) << 5i32) as u8,
+    (1i32 | (1i32) << 5i32) as u8,
   ];
-  let mut consumed_bits = 0 as OPJ_UINT32;
+  let mut consumed_bits = 0_u32;
   if mode == 0u32 {
-    u[1] = 1 as OPJ_UINT32;
+    u[1] = 1_u32;
     u[0] = u[1]
     //for kappa
   } else if mode <= 2u32 {
     //u_off are either 01 or 10
-    let mut d: OPJ_UINT32 = 0; //look at the least significant 3 bits
-    let mut suffix_len: OPJ_UINT32 = 0; //prefix length
-    d = dec[(vlc & 0x7u32) as usize] as OPJ_UINT32; // u value
+    let mut d: u32 = 0; //look at the least significant 3 bits
+    let mut suffix_len: u32 = 0; //prefix length
+    d = dec[(vlc & 0x7u32) as usize] as u32; // u value
     vlc >>= d & 0x3u32; //for kappa
     consumed_bits =
-      (consumed_bits as core::ffi::c_uint).wrapping_add(d & 0x3u32) as OPJ_UINT32 as OPJ_UINT32;
+      (consumed_bits as core::ffi::c_uint).wrapping_add(d & 0x3u32);
     suffix_len = d >> 2i32 & 0x7u32;
-    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len) as OPJ_UINT32;
+    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len);
     d = (d >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len).wrapping_sub(1u32));
     u[0] = if mode == 1u32 {
       d.wrapping_add(1u32)
@@ -947,24 +947,24 @@ fn decode_noninit_uvlc(
     }
   } else if mode == 3u32 {
     // both u_off are 1
-    let mut d1: OPJ_UINT32 = 0; // LSBs of VLC are prefix codeword
-    let mut d2: OPJ_UINT32 = 0; // Consume bits
-    let mut suffix_len_0: OPJ_UINT32 = 0; // LSBs of VLC are prefix codeword
-    d1 = dec[(vlc & 0x7u32) as usize] as OPJ_UINT32; // Consume bits
+    let mut d1: u32 = 0; // LSBs of VLC are prefix codeword
+    let mut d2: u32 = 0; // Consume bits
+    let mut suffix_len_0: u32 = 0; // LSBs of VLC are prefix codeword
+    d1 = dec[(vlc & 0x7u32) as usize] as u32; // Consume bits
     vlc >>= d1 & 0x3u32; // u value
     consumed_bits =
-      (consumed_bits as core::ffi::c_uint).wrapping_add(d1 & 0x3u32) as OPJ_UINT32 as OPJ_UINT32; //1 for kappa
-    d2 = dec[(vlc & 0x7u32) as usize] as OPJ_UINT32; // u value
+      (consumed_bits as core::ffi::c_uint).wrapping_add(d1 & 0x3u32); //1 for kappa
+    d2 = dec[(vlc & 0x7u32) as usize] as u32; // u value
     vlc >>= d2 & 0x3u32;
     consumed_bits =
-      (consumed_bits as core::ffi::c_uint).wrapping_add(d2 & 0x3u32) as OPJ_UINT32 as OPJ_UINT32;
+      (consumed_bits as core::ffi::c_uint).wrapping_add(d2 & 0x3u32);
     suffix_len_0 = d1 >> 2i32 & 0x7u32;
-    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_0) as OPJ_UINT32;
+    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_0);
     d1 = (d1 >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len_0).wrapping_sub(1u32));
     u[0] = d1.wrapping_add(1u32);
     vlc >>= suffix_len_0;
     suffix_len_0 = d2 >> 2i32 & 0x7u32;
-    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_0) as OPJ_UINT32;
+    consumed_bits = (consumed_bits as core::ffi::c_uint).wrapping_add(suffix_len_0);
     d2 = (d2 >> 5i32).wrapping_add(vlc & ((1u32) << suffix_len_0).wrapping_sub(1u32));
     u[1] = d2.wrapping_add(1u32)
   }
@@ -988,9 +988,9 @@ fn decode_noninit_uvlc(
  *
  */
 fn frwd_read(msp: &mut frwd_struct_t) {
-  let mut val: OPJ_UINT32 = 0; // assert that there is a space for 32 bits
-  let mut bits: OPJ_UINT32 = 0; // read 32 bits
-  let mut t: OPJ_UINT32 = 0;
+  let mut val: u32 = 0; // assert that there is a space for 32 bits
+  let mut bits: u32 = 0; // read 32 bits
+  let mut t: u32 = 0;
   let mut unstuff: OPJ_BOOL = 0;
   assert!(msp.bits <= 32u32);
   val = 0u32;
@@ -1002,7 +1002,7 @@ fn frwd_read(msp: &mut frwd_struct_t) {
     let mut i = 0i32; // read one byte at a time
     val = if msp.X != 0u32 { 0xffffffffu32 } else { 0u32 }; // mask of location
     while msp.size > 0i32 {
-      let mut v = msp.data[msp.pos] as OPJ_UINT32; // put one byte in its correct location
+      let mut v = msp.data[msp.pos] as u32; // put one byte in its correct location
       msp.pos += 1;
       let mut m = !((0xffu32) << i);
       val = val & m | v << i;
@@ -1021,24 +1021,24 @@ fn frwd_read(msp: &mut frwd_struct_t) {
     1u32
   } else {
     0u32
-  })) as OPJ_UINT32;
+  })) as u32;
   unstuff = (val >> 8i32 & 0xffu32 == 0xffu32) as core::ffi::c_int;
   t |= (val >> 16i32 & 0xffu32) << bits;
   bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(if unstuff != 0 {
     1u32
   } else {
     0u32
-  })) as OPJ_UINT32;
+  })) as u32;
   unstuff = (val >> 16i32 & 0xffu32 == 0xffu32) as core::ffi::c_int;
   t |= (val >> 24i32 & 0xffu32) << bits;
   bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(if unstuff != 0 {
     1u32
   } else {
     0u32
-  })) as OPJ_UINT32;
+  })) as u32;
   msp.unstuff = (val >> 24i32 & 0xffu32 == 0xffu32) as core::ffi::c_int;
-  msp.tmp |= (t as OPJ_UINT64) << msp.bits;
-  msp.bits = (msp.bits as core::ffi::c_uint).wrapping_add(bits) as OPJ_UINT32;
+  msp.tmp |= (t as u64) << msp.bits;
+  msp.bits = (msp.bits as core::ffi::c_uint).wrapping_add(bits);
 }
 //* ***********************************************************************/
 /* * @brief Initialize frwd_struct_t struct and reads some bytes
@@ -1051,16 +1051,16 @@ fn frwd_read(msp: &mut frwd_struct_t) {
  */
 fn frwd_init<'a>(
   msp: &mut frwd_struct_t<'a>,
-  data: &'a [OPJ_UINT8],
+  data: &'a [u8],
   mut size: core::ffi::c_int,
-  mut X: OPJ_UINT32,
+  mut X: u32,
 ) {
   let mut num: core::ffi::c_int = 0;
   let mut i: core::ffi::c_int = 0;
   msp.data = data;
   msp.pos = 0;
-  msp.tmp = 0 as OPJ_UINT64;
-  msp.bits = 0 as OPJ_UINT32;
+  msp.tmp = 0_u64;
+  msp.bits = 0_u32;
   msp.unstuff = 0i32;
   msp.size = size;
   msp.X = X;
@@ -1072,7 +1072,7 @@ fn frwd_init<'a>(
   num = 4i32 - (msp.addr() & 0x3) as core::ffi::c_int;
   i = 0i32;
   while i < num {
-    let mut d: OPJ_UINT64 = 0;
+    let mut d: u64 = 0;
     // unstuffing for next byte
     let fresh12 = msp.size;
     msp.size -= 1;
@@ -1082,11 +1082,10 @@ fn frwd_init<'a>(
       b as core::ffi::c_uint
     } else {
       msp.X
-    } as OPJ_UINT64;
+    } as u64;
     msp.tmp |= d << msp.bits;
     msp.bits = (msp.bits as core::ffi::c_uint)
-      .wrapping_add((8u32).wrapping_sub(if msp.unstuff != 0 { 1u32 } else { 0u32 }))
-      as OPJ_UINT32;
+      .wrapping_add((8u32).wrapping_sub(if msp.unstuff != 0 { 1u32 } else { 0u32 }));
     msp.unstuff = (d & 0xffu64 == 0xffu64) as core::ffi::c_int;
     i += 1
   }
@@ -1102,17 +1101,17 @@ fn frwd_init<'a>(
  *  @param [in]  msp is a pointer to frwd_struct_t
  *  @param [in]  num_bits is the number of bit to consume
  */
-fn frwd_advance(msp: &mut frwd_struct_t, mut num_bits: OPJ_UINT32) {
+fn frwd_advance(msp: &mut frwd_struct_t, mut num_bits: u32) {
   assert!(num_bits <= msp.bits);
   msp.tmp >>= num_bits;
-  msp.bits = (msp.bits as core::ffi::c_uint).wrapping_sub(num_bits) as OPJ_UINT32;
+  msp.bits = (msp.bits as core::ffi::c_uint).wrapping_sub(num_bits);
 }
 //* ***********************************************************************/
 /* * @brief Fetches 32 bits from the frwd_struct_t bitstream
  *
  *  @param [in]  msp is a pointer to frwd_struct_t
  */
-fn frwd_fetch(msp: &mut frwd_struct_t) -> OPJ_UINT32 {
+fn frwd_fetch(msp: &mut frwd_struct_t) -> u32 {
   if msp.bits < 32u32 {
     frwd_read(msp);
     if msp.bits < 32u32 {
@@ -1120,7 +1119,7 @@ fn frwd_fetch(msp: &mut frwd_struct_t) -> OPJ_UINT32 {
       frwd_read(msp);
     }
   }
-  msp.tmp as OPJ_UINT32
+  msp.tmp as u32
 }
 //* ***********************************************************************/
 /* * @brief Allocates T1 buffers
@@ -1130,9 +1129,9 @@ fn frwd_fetch(msp: &mut frwd_struct_t) -> OPJ_UINT32 {
  *  @param [in]       h is codeblock height
  */
 fn opj_t1_allocate_buffers(
-  mut t1: &mut opj_t1_t,
-  mut w: OPJ_UINT32,
-  mut h: OPJ_UINT32,
+  mut t1: &mut T1Coder,
+  mut w: u32,
+  mut h: u32,
 ) -> OPJ_BOOL {
   let mut flagssize: usize = 0;
   /* No risk of overflow. Prior checks ensure those assert are met */
@@ -1147,7 +1146,7 @@ fn opj_t1_allocate_buffers(
   // We expand these buffers to multiples of 16 bytes.
   // We need 4 buffers of 129 integers each, expanded to 132 integers each
   // We also need 514 bytes of buffer, expanded to 528 bytes
-  flagssize = 132usize * core::mem::size_of::<OPJ_UINT32>() * 4; // expanded to multiple of 16
+  flagssize = 132usize * core::mem::size_of::<u32>() * 4; // expanded to multiple of 16
   flagssize += 528; // 514 expanded to multiples of 16
   t1.flags.resize(flagssize);
   t1.w = w;
@@ -1167,30 +1166,30 @@ fn opj_t1_allocate_buffers(
  *  @param [in]       check_pterm: check termination (not used)
  */
 pub(crate) fn opj_t1_ht_decode_cblk(
-  mut t1: &mut opj_t1_t,
-  cblk: &mut opj_tcd_cblk_dec_t,
+  mut t1: &mut T1Coder,
+  cblk: &mut TcdCblkDec,
   src: &[u8],
-  mut _orient: OPJ_UINT32,
-  mut roishift: OPJ_UINT32,
-  mut cblksty: OPJ_UINT32,
-  p_manager: &opj_event_mgr,
+  mut _orient: u32,
+  mut roishift: u32,
+  mut cblksty: u32,
+  p_manager: &EventMgr,
   mut _check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
-    let mut zero_bplanes: OPJ_UINT32 = 0;
-    let mut num_passes: OPJ_UINT32 = 0;
-    let mut lengths1: OPJ_UINT32 = 0;
-    let mut lengths2: OPJ_UINT32 = 0;
-    let mut width: OPJ_INT32 = 0;
-    let mut height: OPJ_INT32 = 0;
-    let mut stride: OPJ_INT32 = 0;
+    let mut zero_bplanes: u32 = 0;
+    let mut num_passes: u32 = 0;
+    let mut lengths1: u32 = 0;
+    let mut lengths2: u32 = 0;
+    let mut width: i32 = 0;
+    let mut height: i32 = 0;
+    let mut stride: i32 = 0;
     let mut sigma1: FlagsPtr;
     let mut sigma2: FlagsPtr;
     let mut mbr1: FlagsPtr;
     let mut mbr2: FlagsPtr;
     let mut sip: FlagsPtr;
-    let mut sip_shift: OPJ_UINT32 = 0;
-    let mut p: OPJ_UINT32 = 0;
-    let mut zero_bplanes_p1: OPJ_UINT32 = 0;
+    let mut sip_shift: u32 = 0;
+    let mut p: u32 = 0;
+    let mut zero_bplanes_p1: u32 = 0;
     let mut lcup: core::ffi::c_int = 0;
     let mut scup: core::ffi::c_int = 0;
     let mut mel = dec_mel_t {
@@ -1241,17 +1240,17 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     // Per-column line state for the cleanup pass: bit 7 is `\sigma`, bits 0-6 are `E`.
     // 514 bytes are enough for a codeblock width of 1024; expanded to 528 like the C code.
     // `lsp` is the cursor into it.
-    let line_state: Vec<Cell<OPJ_UINT8>> = vec![Cell::new(0); 528];
+    let line_state: Vec<Cell<u8>> = vec![Cell::new(0); 528];
     let mut lsp: usize = 0;
     let mut run: core::ffi::c_int = 0;
-    let mut vlc_val: OPJ_UINT32 = 0;
-    let mut qinf: [OPJ_UINT32; 2] = [0; 2];
-    let mut c_q: OPJ_UINT32 = 0;
+    let mut vlc_val: u32 = 0;
+    let mut qinf: [u32; 2] = [0; 2];
+    let mut c_q: u32 = 0;
     let mut sp: usize = 0;
-    let mut x: OPJ_INT32 = 0;
-    let mut y: OPJ_INT32 = 0;
+    let mut x: i32 = 0;
+    let mut y: i32 = 0;
     let mut stripe_causal = (cblksty & 0x8u32 != 0u32) as core::ffi::c_int;
-    let mut cblk_len = 0 as OPJ_UINT32;
+    let mut cblk_len = 0_u32;
     // stops unused parameter message
     // stops unused parameter message
     // We ignor orient, because the same decoder is used for all subbands
@@ -1266,8 +1265,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     }
     if opj_t1_allocate_buffers(
       t1,
-      (cblk.x1 - cblk.x0) as OPJ_UINT32,
-      (cblk.y1 - cblk.y0) as OPJ_UINT32,
+      (cblk.x1 - cblk.x0) as u32,
+      (cblk.y1 - cblk.y0) as u32,
     ) == 0
     {
       return 0i32;
@@ -1278,33 +1277,31 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     /* numbps = Mb + 1 - zero_bplanes, Mb = Kmax, zero_bplanes = missing_msbs */
     zero_bplanes = cblk.Mb.wrapping_add(1u32).wrapping_sub(cblk.numbps);
     /* Compute whole codeblock length from chunk lengths */
-    cblk_len = 0 as OPJ_UINT32;
-    let mut i: OPJ_UINT32 = 0;
-    i = 0 as OPJ_UINT32;
+    cblk_len = 0_u32;
+    let mut i: u32 = 0;
+    i = 0_u32;
     while i < cblk.numchunks {
       cblk_len = (cblk_len as core::ffi::c_uint)
-        .wrapping_add(cblk.chunks[i as usize].len)
-        as OPJ_UINT32;
+        .wrapping_add(cblk.chunks[i as usize].len);
       i += 1;
     }
     let cblkdata: &[u8] = if cblk.numchunks > 1u32 || t1.mustuse_cblkdatabuffer != 0 {
-      let mut i_0: OPJ_UINT32 = 0;
+      let mut i_0: u32 = 0;
       /* Allocate temporary memory if needed */
       t1.grow_cblkdatabuffer(cblk_len as usize);
 
       /* Concatenate all chunks */
       {
         let buffer = t1.cblkdatabuffer();
-        cblk_len = 0 as OPJ_UINT32;
-        i_0 = 0 as OPJ_UINT32;
+        cblk_len = 0_u32;
+        i_0 = 0_u32;
         while i_0 < cblk.numchunks {
           let chunk = &cblk.chunks[i_0 as usize];
           let src_chunk = &src[chunk.data_offset..chunk.data_offset + chunk.len as usize];
           let off = cblk_len as usize;
           buffer[off..off + chunk.len as usize].copy_from_slice(src_chunk);
           cblk_len = (cblk_len as core::ffi::c_uint)
-            .wrapping_add(cblk.chunks[i_0 as usize].len)
-            as OPJ_UINT32;
+            .wrapping_add(cblk.chunks[i_0 as usize].len);
           i_0 += 1;
         }
       }
@@ -1317,11 +1314,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       /* think we will dereference a null cblkdta pointer */
       return 1i32;
     };
-    // The C code writes the decoded samples through a `OPJ_UINT32*` alias of the T1 data
+    // The C code writes the decoded samples through a `u32*` alias of the T1 data
     // buffer. Here we decode into a local u32 scratch and transfer it into the
     // Cell-based T1 buffer at the end of the function.
-    let mut ht_data: Vec<OPJ_UINT32> = vec![0u32; t1.data.as_slice().len()];
-    // OPJ_UINT32 num_passes is the number of passes: 1 if CUP only, 2 for
+    let mut ht_data: Vec<u32> = vec![0u32; t1.data.as_slice().len()];
+    // u32 num_passes is the number of passes: 1 if CUP only, 2 for
     // CUP+SPP, and 3 for CUP+SPP+MRP
     num_passes = if cblk.numsegs > 0u32 {
       cblk.segs[0].real_num_passes
@@ -1332,24 +1329,24 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       cblk.segs[1].real_num_passes
     } else {
       0u32
-    }) as OPJ_UINT32;
-    // OPJ_UINT32 lengths1 is the length of cleanup pass
+    });
+    // u32 lengths1 is the length of cleanup pass
     lengths1 = if num_passes > 0u32 {
       cblk.segs[0].len
     } else {
       0u32
     };
-    // OPJ_UINT32 lengths2 is the length of refinement passes (either SPP only or SPP+MRP)
+    // u32 lengths2 is the length of refinement passes (either SPP only or SPP+MRP)
     lengths2 = if num_passes > 1u32 {
       cblk.segs[1].len
     } else {
       0u32
     };
-    // OPJ_INT32 width is the decoded codeblock width
+    // i32 width is the decoded codeblock width
     width = cblk.x1 - cblk.x0;
-    // OPJ_INT32 height is the decoded codeblock height
+    // i32 height is the decoded codeblock height
     height = cblk.y1 - cblk.y0;
-    // OPJ_INT32 stride is the decoded codeblock buffer stride
+    // i32 stride is the decoded codeblock buffer stride
     stride = width;
     /*  sigma1 and sigma2 contains significant (i.e., non-zero) pixel
      *  locations.  The buffers are used interchangeably, because we need
@@ -1364,7 +1361,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
      *  goes outside the structure
      *  To work in OpenJPEG these buffers has been expanded to 132.
      */
-    // OPJ_UINT32 *pflags, *sigma1, *sigma2, *mbr1, *mbr2, *sip, sip_shift;
+    // u32 *pflags, *sigma1, *sigma2, *mbr1, *mbr2, *sip, sip_shift;
     sigma1 = t1.flags.offset(0);
     sigma2 = t1.flags.offset(132);
     // mbr arrangement is similar to sigma; mbr contains locations
@@ -1373,11 +1370,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     mbr2 = t1.flags.offset(3 * 132);
     //a pointer to sigma
     sip = sigma1; //pointers to arrays to be used interchangeably
-    sip_shift = 0 as OPJ_UINT32; //the amount of shift needed for sigma
+    sip_shift = 0_u32; //the amount of shift needed for sigma
     if num_passes > 1u32 && lengths2 == 0u32 {
       event_msg!(p_manager, EVT_WARNING,
                         "A malformed codeblock that has more than one coding pass, but zero length for 2nd and potentially the 3rd pass in an HT codeblock.\n");
-      num_passes = 1 as OPJ_UINT32
+      num_passes = 1_u32
     }
     if num_passes > 3u32 {
       event_msg!(p_manager, EVT_ERROR,
@@ -1400,7 +1397,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     }
     if zero_bplanes > cblk.Mb {
       /* This check is better moved to opj_t2_read_packet_header() in t2.c,
-      in the line "l_cblk->numbps = (OPJ_UINT32)l_band->numbps + 1 - i;"
+      in the line "l_cblk->numbps = (u32)l_band->numbps + 1 - i;"
       where i is the zero bitplanes, and should be no larger than cblk->Mb
       We cannot have more zero bitplanes than there are planes. */
       event_msg!(p_manager, EVT_ERROR,
@@ -1421,11 +1418,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                               num_passes);
         }
       }
-      num_passes = 1 as OPJ_UINT32
+      num_passes = 1_u32
     }
-    /* OPJ_UINT32 */
+    /* u32 */
     p = cblk.numbps;
-    // OPJ_UINT32 zero planes plus 1
+    // u32 zero planes plus 1
     zero_bplanes_p1 = zero_bplanes.wrapping_add(1u32);
     if lengths1 < 2u32 || lengths1 > cblk_len || lengths1.wrapping_add(lengths2) > cblk_len {
       event_msg!(
@@ -1457,14 +1454,14 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       return 0i32;
     }
     rev_init(&mut vlc, cblkdata, lcup, scup);
-    frwd_init(&mut magsgn, cblkdata, lcup - scup, 0xff as OPJ_UINT32);
+    frwd_init(&mut magsgn, cblkdata, lcup - scup, 0xff_u32);
     if num_passes > 1u32 {
       // needs to be tested
       frwd_init(
         &mut sigprop,
         &cblkdata[lengths1 as usize..],
         lengths2 as core::ffi::c_int,
-        0 as OPJ_UINT32,
+        0_u32,
       );
     }
     if num_passes > 2u32 {
@@ -1488,25 +1485,25 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     //initial 2 lines
     // ///////////////
     lsp = 0; // point to line state
-    line_state[lsp].set(0 as OPJ_UINT8); // for initial row of quad, we set to 0
+    line_state[lsp].set(0_u8); // for initial row of quad, we set to 0
     run = mel_get_run(&mut mel); // decode runs of events from MEL bitstrm
                                  // data represented as runs of 0 events
                                  // See mel_decode description
-    qinf[1_usize] = 0 as OPJ_UINT32; // quad info decoded from VLC bitstream
+    qinf[1_usize] = 0_u32; // quad info decoded from VLC bitstream
     qinf[0_usize] = qinf[1_usize]; // context for quad q
-    c_q = 0 as OPJ_UINT32; // decoded codeblock samples
+    c_q = 0_u32; // decoded codeblock samples
     sp = 0;
     // vlc_val;                 // fetched data from VLC bitstream
     x = 0i32;
     while x < width {
       // one iteration per quad pair
-      let mut U_q: [OPJ_UINT32; 2] = [0; 2]; // u values for the quad pair
-      let mut uvlc_mode: OPJ_UINT32 = 0;
-      let mut consumed_bits: OPJ_UINT32 = 0;
-      let mut m_n: OPJ_UINT32 = 0;
-      let mut v_n: OPJ_UINT32 = 0;
-      let mut ms_val: OPJ_UINT32 = 0;
-      let mut locs: OPJ_UINT32 = 0;
+      let mut U_q: [u32; 2] = [0; 2]; // u values for the quad pair
+      let mut uvlc_mode: u32 = 0;
+      let mut consumed_bits: u32 = 0;
+      let mut m_n: u32 = 0;
+      let mut v_n: u32 = 0;
+      let mut ms_val: u32 = 0;
+      let mut locs: u32 = 0;
       // decode VLC
       // ///////////
       //first quad
@@ -1517,7 +1514,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       // a maximum of one stuffing per two bytes)
       vlc_val = rev_fetch(&mut vlc);
       //decode VLC using the context c_q and the head of the VLC bitstream
-      qinf[0_usize] = vlc_tbl0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
+      qinf[0_usize] = vlc_tbl0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
       if c_q == 0u32 {
         // if zero context, we need to use one MEL event
         run -= 2i32; //the number of 0 events is multiplied by 2, so subtract 2
@@ -1536,7 +1533,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       //remove data from vlc stream (0 bits are removed if qinf is not used)
       vlc_val = rev_advance(&mut vlc, qinf[0_usize] & 0x7u32);
       //update sigma
-      // The update depends on the value of x; consider one OPJ_UINT32
+      // The update depends on the value of x; consider one u32
       // if x is 0, 8, 16 and so on, then this line update c locations
       //      nibble (4 bits) number   0 1 2 3 4 5 6 7
       //                         LSB   c c 0 0 0 0 0 0
@@ -1551,11 +1548,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       //                               0 0 0 0 0 0 0 0
       sip.or(((qinf[0_usize] & 0x30u32) >> 4i32 | (qinf[0_usize] & 0xc0u32) >> 2i32) << sip_shift);
       //second quad
-      qinf[1_usize] = 0 as OPJ_UINT32;
+      qinf[1_usize] = 0_u32;
       if (x + 2i32) < width {
         // do not run if codeblock is narrower
         //decode VLC using the context c_q and the head of the VLC bitstream
-        qinf[1_usize] = vlc_tbl0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
+        qinf[1_usize] = vlc_tbl0[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
         // if context is zero, use one MEL event
         if c_q == 0u32 {
           //zero context
@@ -1574,7 +1571,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         vlc_val = rev_advance(&mut vlc, qinf[1_usize] & 0x7u32)
       }
       //update sigma
-      // The update depends on the value of x; consider one OPJ_UINT32
+      // The update depends on the value of x; consider one u32
       // if x is 0, 8, 16 and so on, then this line update c locations
       //      nibble (4 bits) number   0 1 2 3 4 5 6 7
       //                         LSB   0 0 c c 0 0 0 0
@@ -1604,7 +1601,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         uvlc_mode =
           (uvlc_mode as core::ffi::c_uint)
             .wrapping_add(if run == -(1i32) { 1i32 } else { 0i32 } as core::ffi::c_uint)
-            as OPJ_UINT32; //increment uvlc_mode if event is 1
+            as u32; //increment uvlc_mode if event is 1
         if run < 0i32 {
           // if run is consumed (run is -1 or -2), get another run
           run = mel_get_run(&mut mel)
@@ -1622,7 +1619,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       //decode magsgn and update line_state
       // ///////////////////////////////////
       //We obtain a mask for the samples locations that needs evaluation
-      locs = 0xff as OPJ_UINT32;
+      locs = 0xff_u32;
       if x + 4i32 > width {
         locs >>= (x + 4i32 - width) << 1i32
         // limits width
@@ -1640,7 +1637,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       //first quad, starting at first sample in quad and moving on
       if qinf[0_usize] & 0x10u32 != 0 {
         //is it significant? (sigma_n)
-        let mut val: OPJ_UINT32 = 0; //get 32 bits of magsgn data
+        let mut val: u32 = 0; //get 32 bits of magsgn data
         ms_val = frwd_fetch(&mut magsgn); //evaluate m_n (number of bits
         m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 12i32 & 1u32);
         // to read from bitstream), using EMB e_k
@@ -1654,13 +1651,13 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         ht_data[sp] = val | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs & 0x1u32 != 0 {
         // if this is inside the codeblock, set the
-        ht_data[sp] = 0 as OPJ_UINT32
+        ht_data[sp] = 0_u32
         // sample to zero
       }
       if qinf[0_usize] & 0x20u32 != 0 {
         //sigma_n
-        let mut val_0: OPJ_UINT32 = 0; //get 32 bits
-        let mut t: OPJ_UINT32 = 0; //m_n, uses EMB e_k
+        let mut val_0: u32 = 0; //get 32 bits
+        let mut t: u32 = 0; //m_n, uses EMB e_k
         ms_val = frwd_fetch(&mut magsgn); //consume m_n
         m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 13i32 & 1u32); //get sign bit
         frwd_advance(&mut magsgn, m_n); //keep only m_n bits
@@ -1672,19 +1669,19 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
         ht_data[sp + (stride) as usize] = val_0 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
         //update line_state: bit 7 (\sigma^N), and E^N
-        t = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as OPJ_UINT32; // keep E^NW
+        t = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as u32; // keep E^NW
         v_n = (32u32).wrapping_sub(count_leading_zeros(v_n));
-        line_state[lsp].set((0x80u32 | (if t > v_n { t } else { v_n })) as OPJ_UINT8)
+        line_state[lsp].set((0x80u32 | (if t > v_n { t } else { v_n })) as u8)
       } else if locs & 0x2u32 != 0 {
         // if this is inside the codeblock, set the
-        ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
+        ht_data[sp + (stride) as usize] = 0_u32
         // sample to zero
       } // move to next quad information
       lsp += 1; // move to next column of samples
       sp += 1usize;
       //this is similar to the above two samples
       if qinf[0_usize] & 0x40u32 != 0 {
-        let mut val_1: OPJ_UINT32 = 0; //m_n
+        let mut val_1: u32 = 0; //m_n
         ms_val = frwd_fetch(&mut magsgn); //center of bin
         m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 14i32 & 1u32);
         frwd_advance(&mut magsgn, m_n);
@@ -1694,11 +1691,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n |= 1u32;
         ht_data[sp] = val_1 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs & 0x4u32 != 0 {
-        ht_data[sp] = 0 as OPJ_UINT32
+        ht_data[sp] = 0_u32
       }
-      line_state[lsp].set(0 as OPJ_UINT8);
+      line_state[lsp].set(0_u8);
       if qinf[0_usize] & 0x80u32 != 0 {
-        let mut val_2: OPJ_UINT32 = 0;
+        let mut val_2: u32 = 0;
         ms_val = frwd_fetch(&mut magsgn);
         m_n = U_q[0_usize].wrapping_sub(qinf[0_usize] >> 15i32 & 1u32);
         frwd_advance(&mut magsgn, m_n);
@@ -1708,15 +1705,15 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n |= 1u32;
         ht_data[sp + (stride) as usize] = val_2 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
         //line_state: bit 7 (\sigma^NW), and E^NW for next quad
-        line_state[lsp].set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n))) as OPJ_UINT8)
+        line_state[lsp].set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n))) as u8)
       } else if locs & 0x8u32 != 0 {
         //if outside set to 0
-        ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
+        ht_data[sp + (stride) as usize] = 0_u32
       } //move to next column
       sp += 1usize;
       //second quad
       if qinf[1_usize] & 0x10u32 != 0 {
-        let mut val_3: OPJ_UINT32 = 0; //m_n
+        let mut val_3: u32 = 0; //m_n
         ms_val = frwd_fetch(&mut magsgn);
         m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 12i32 & 1u32);
         frwd_advance(&mut magsgn, m_n);
@@ -1726,11 +1723,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n |= 1u32;
         ht_data[sp] = val_3 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs & 0x10u32 != 0 {
-        ht_data[sp] = 0 as OPJ_UINT32
+        ht_data[sp] = 0_u32
       }
       if qinf[1_usize] & 0x20u32 != 0 {
-        let mut val_4: OPJ_UINT32 = 0;
-        let mut t_0: OPJ_UINT32 = 0;
+        let mut val_4: u32 = 0;
+        let mut t_0: u32 = 0;
         ms_val = frwd_fetch(&mut magsgn);
         //max(E^NW, E^N) | s
         m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 13i32 & 1u32); //m_n
@@ -1740,11 +1737,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n |= ((qinf[1_usize] & 0x200u32) >> 9i32) << m_n;
         v_n |= 1u32;
         ht_data[sp + (stride) as usize] = val_4 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
-        t_0 = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as OPJ_UINT32;
+        t_0 = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as u32;
         v_n = (32u32).wrapping_sub(count_leading_zeros(v_n));
-        line_state[lsp].set((0x80u32 | (if t_0 > v_n { t_0 } else { v_n })) as OPJ_UINT8)
+        line_state[lsp].set((0x80u32 | (if t_0 > v_n { t_0 } else { v_n })) as u8)
       } else if locs & 0x20u32 != 0 {
-        ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
+        ht_data[sp + (stride) as usize] = 0_u32
         //update line_state: bit 7 (\sigma^N), and E^N
         //E^NW
         //E^N
@@ -1753,7 +1750,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       lsp += 1; //move to next sample
       sp += 1usize; //m_n
       if qinf[1_usize] & 0x40u32 != 0 {
-        let mut val_5: OPJ_UINT32 = 0; //m_n
+        let mut val_5: u32 = 0; //m_n
         ms_val = frwd_fetch(&mut magsgn); //center of bin
         m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 14i32 & 1u32);
         frwd_advance(&mut magsgn, m_n);
@@ -1763,11 +1760,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n |= 1u32;
         ht_data[sp] = val_5 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32)
       } else if locs & 0x40u32 != 0 {
-        ht_data[sp] = 0 as OPJ_UINT32
+        ht_data[sp] = 0_u32
       }
-      line_state[lsp].set(0 as OPJ_UINT8);
+      line_state[lsp].set(0_u8);
       if qinf[1_usize] & 0x80u32 != 0 {
-        let mut val_6: OPJ_UINT32 = 0;
+        let mut val_6: u32 = 0;
         ms_val = frwd_fetch(&mut magsgn);
         m_n = U_q[1_usize].wrapping_sub(qinf[1_usize] >> 15i32 & 1u32);
         frwd_advance(&mut magsgn, m_n);
@@ -1777,9 +1774,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         v_n |= 1u32;
         ht_data[sp + (stride) as usize] = val_6 | v_n.wrapping_add(2u32) << p.wrapping_sub(1u32);
         //line_state: bit 7 (\sigma^NW), and E^NW for next quad
-        line_state[lsp].set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n))) as OPJ_UINT8)
+        line_state[lsp].set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n))) as u8)
       } else if locs & 0x80u32 != 0 {
-        ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
+        ht_data[sp + (stride) as usize] = 0_u32
       }
       sp += 1usize;
       x += 4i32
@@ -1790,25 +1787,25 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     while y < height {
       /*done at the end of loop*/
       let mut sip_0: FlagsPtr; // shift sigma to the upper half od the nibble
-      let mut ls0: OPJ_UINT8 = 0; //move back to 0 (it might have been at 0x10)
-      let mut x_0: OPJ_INT32 = 0; //choose sigma array
+      let mut ls0: u8 = 0; //move back to 0 (it might have been at 0x10)
+      let mut x_0: i32 = 0; //choose sigma array
       sip_shift ^= 0x2u32; // read the line state value
       sip_shift &= 0xffffffefu32; // and set it to zero
       sip_0 = if y & 0x4i32 != 0 { sigma2 } else { sigma1 }; // generated samples
       lsp = 0; // context
       ls0 = line_state[lsp].get();
-      line_state[lsp].set(0 as OPJ_UINT8);
+      line_state[lsp].set(0_u8);
       sp = (y * stride) as usize;
-      c_q = 0 as OPJ_UINT32;
+      c_q = 0_u32;
       x_0 = 0i32;
       while x_0 < width {
-        let mut U_q_0: [OPJ_UINT32; 2] = [0; 2];
-        let mut uvlc_mode_0: OPJ_UINT32 = 0;
-        let mut consumed_bits_0: OPJ_UINT32 = 0;
-        let mut m_n_0: OPJ_UINT32 = 0;
-        let mut v_n_0: OPJ_UINT32 = 0;
-        let mut ms_val_0: OPJ_UINT32 = 0;
-        let mut locs_0: OPJ_UINT32 = 0;
+        let mut U_q_0: [u32; 2] = [0; 2];
+        let mut uvlc_mode_0: u32 = 0;
+        let mut consumed_bits_0: u32 = 0;
+        let mut m_n_0: u32 = 0;
+        let mut v_n_0: u32 = 0;
+        let mut ms_val_0: u32 = 0;
+        let mut locs_0: u32 = 0;
         // decode vlc
         // ///////////
         //first quad
@@ -1820,7 +1817,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                                                                                                  //the following is very similar to previous code, so please refer to
                                                                                                  // that
         vlc_val = rev_fetch(&mut vlc);
-        qinf[0_usize] = vlc_tbl1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
+        qinf[0_usize] = vlc_tbl1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
         if c_q == 0u32 {
           //zero context
           run -= 2i32;
@@ -1834,7 +1831,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         //remove data from vlc stream
         vlc_val = rev_advance(&mut vlc, qinf[0_usize] & 0x7u32);
         //update sigma
-        // The update depends on the value of x and y; consider one OPJ_UINT32
+        // The update depends on the value of x and y; consider one u32
         // if x is 0, 8, 16 and so on, and y is 2, 6, etc., then this
         // line update c locations
         //      nibble (4 bits) number   0 1 2 3 4 5 6 7
@@ -1845,12 +1842,12 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         sip_0
           .or(((qinf[0_usize] & 0x30u32) >> 4i32 | (qinf[0_usize] & 0xc0u32) >> 2i32) << sip_shift);
         //second quad
-        qinf[1_usize] = 0 as OPJ_UINT32;
+        qinf[1_usize] = 0_u32;
         if (x_0 + 2i32) < width {
           c_q |= (line_state[lsp + 1].get() as core::ffi::c_int >> 7i32) as core::ffi::c_uint;
           c_q |=
             (line_state[lsp + 2].get() as core::ffi::c_int >> 5i32 & 0x4i32) as core::ffi::c_uint;
-          qinf[1_usize] = vlc_tbl1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as OPJ_UINT32;
+          qinf[1_usize] = vlc_tbl1[(c_q << 7i32 | vlc_val & 0x7fu32) as usize] as u32;
           if c_q == 0u32 {
             //zero context
             run -= 2i32;
@@ -1890,7 +1887,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
             E.wrapping_sub(2u32)
           } else {
             0u32
-          }) as OPJ_UINT32
+          })
         }
         if qinf[1_usize] & 0xf0u32 & (qinf[1_usize] & 0xf0u32).wrapping_sub(1u32) != 0 {
           //is \gamma_q 1?
@@ -1905,7 +1902,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
             E_0.wrapping_sub(2u32)
           } else {
             0u32
-          }) as OPJ_UINT32
+          }) as u32
         } //for next double quad
         if U_q_0[0_usize] > zero_bplanes_p1 || U_q_0[1_usize] > zero_bplanes_p1 {
           event_msg!(p_manager, EVT_ERROR,
@@ -1913,12 +1910,12 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           return 0i32;
         }
         ls0 = line_state[lsp + 2].get();
-        line_state[lsp + 2].set(0 as OPJ_UINT8);
-        line_state[lsp + 1].set(0 as OPJ_UINT8);
+        line_state[lsp + 2].set(0_u8);
+        line_state[lsp + 1].set(0_u8);
         //decode magsgn and update line_state
         // ///////////////////////////////////
         //locations where samples need update
-        locs_0 = 0xff as OPJ_UINT32;
+        locs_0 = 0xff_u32;
         if x_0 + 4i32 > width {
           locs_0 >>= (x_0 + 4i32 - width) << 1i32
         }
@@ -1934,7 +1931,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         }
         if qinf[0_usize] & 0x10u32 != 0 {
           //sigma_n
-          let mut val_7: OPJ_UINT32 = 0; //m_n
+          let mut val_7: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
           m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 12i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
@@ -1944,12 +1941,12 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 |= 1u32;
           ht_data[sp] = val_7 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
         } else if locs_0 & 0x1u32 != 0 {
-          ht_data[sp] = 0 as OPJ_UINT32
+          ht_data[sp] = 0_u32
         }
         if qinf[0_usize] & 0x20u32 != 0 {
           //sigma_n
-          let mut val_8: OPJ_UINT32 = 0; //m_n
-          let mut t_1: OPJ_UINT32 = 0; //center of bin
+          let mut val_8: u32 = 0; //m_n
+          let mut t_1: u32 = 0; //center of bin
           ms_val_0 = frwd_fetch(&mut magsgn);
           m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 13i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
@@ -1959,18 +1956,18 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 |= 1u32;
           ht_data[sp + (stride) as usize] = val_8 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
           //update line_state: bit 7 (\sigma^N), and E^N
-          t_1 = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as OPJ_UINT32; //E^NW
+          t_1 = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as u32; //E^NW
           v_n_0 = (32u32).wrapping_sub(count_leading_zeros(v_n_0));
-          line_state[lsp].set((0x80u32 | (if t_1 > v_n_0 { t_1 } else { v_n_0 })) as OPJ_UINT8)
+          line_state[lsp].set((0x80u32 | (if t_1 > v_n_0 { t_1 } else { v_n_0 })) as u8)
         } else if locs_0 & 0x2u32 != 0 {
-          ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
+          ht_data[sp + (stride) as usize] = 0_u32
           //no need to update line_state
         }
         lsp += 1;
         sp += 1usize;
         if qinf[0_usize] & 0x40u32 != 0 {
           //sigma_n
-          let mut val_9: OPJ_UINT32 = 0; //m_n
+          let mut val_9: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
           m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 14i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
@@ -1980,11 +1977,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 |= 1u32;
           ht_data[sp] = val_9 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
         } else if locs_0 & 0x4u32 != 0 {
-          ht_data[sp] = 0 as OPJ_UINT32
+          ht_data[sp] = 0_u32
         }
         if qinf[0_usize] & 0x80u32 != 0 {
           //sigma_n
-          let mut val_10: OPJ_UINT32 = 0; //m_n
+          let mut val_10: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
           m_n_0 = U_q_0[0_usize].wrapping_sub(qinf[0_usize] >> 15i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
@@ -1995,14 +1992,14 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           ht_data[sp + (stride) as usize] = val_10 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
           //update line_state: bit 7 (\sigma^NW), and E^NW for next quad
           line_state[lsp]
-            .set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n_0))) as OPJ_UINT8)
+            .set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n_0))) as u8)
         } else if locs_0 & 0x8u32 != 0 {
-          ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
+          ht_data[sp + (stride) as usize] = 0_u32
         }
         sp += 1usize;
         if qinf[1_usize] & 0x10u32 != 0 {
           //sigma_n
-          let mut val_11: OPJ_UINT32 = 0; //m_n
+          let mut val_11: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
           m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 12i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
@@ -2012,12 +2009,12 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 |= 1u32;
           ht_data[sp] = val_11 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
         } else if locs_0 & 0x10u32 != 0 {
-          ht_data[sp] = 0 as OPJ_UINT32
+          ht_data[sp] = 0_u32
         }
         if qinf[1_usize] & 0x20u32 != 0 {
           //sigma_n
-          let mut val_12: OPJ_UINT32 = 0; //m_n
-          let mut t_2: OPJ_UINT32 = 0; //center of bin
+          let mut val_12: u32 = 0; //m_n
+          let mut t_2: u32 = 0; //center of bin
           ms_val_0 = frwd_fetch(&mut magsgn);
           m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 13i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
@@ -2027,18 +2024,18 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 |= 1u32;
           ht_data[sp + (stride) as usize] = val_12 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
           //update line_state: bit 7 (\sigma^N), and E^N
-          t_2 = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as OPJ_UINT32; //E^NW
+          t_2 = (line_state[lsp].get() as core::ffi::c_int & 0x7fi32) as u32; //E^NW
           v_n_0 = (32u32).wrapping_sub(count_leading_zeros(v_n_0));
-          line_state[lsp].set((0x80u32 | (if t_2 > v_n_0 { t_2 } else { v_n_0 })) as OPJ_UINT8)
+          line_state[lsp].set((0x80u32 | (if t_2 > v_n_0 { t_2 } else { v_n_0 })) as u8)
         } else if locs_0 & 0x20u32 != 0 {
-          ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
+          ht_data[sp + (stride) as usize] = 0_u32
           //no need to update line_state
         }
         lsp += 1;
         sp += 1usize;
         if qinf[1_usize] & 0x40u32 != 0 {
           //sigma_n
-          let mut val_13: OPJ_UINT32 = 0; //m_n
+          let mut val_13: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
           m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 14i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
@@ -2048,11 +2045,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           v_n_0 |= 1u32;
           ht_data[sp] = val_13 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32)
         } else if locs_0 & 0x40u32 != 0 {
-          ht_data[sp] = 0 as OPJ_UINT32
+          ht_data[sp] = 0_u32
         }
         if qinf[1_usize] & 0x80u32 != 0 {
           //sigma_n
-          let mut val_14: OPJ_UINT32 = 0; //m_n
+          let mut val_14: u32 = 0; //m_n
           ms_val_0 = frwd_fetch(&mut magsgn); //center of bin
           m_n_0 = U_q_0[1_usize].wrapping_sub(qinf[1_usize] >> 15i32 & 1u32);
           frwd_advance(&mut magsgn, m_n_0);
@@ -2063,9 +2060,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           ht_data[sp + (stride) as usize] = val_14 | v_n_0.wrapping_add(2u32) << p.wrapping_sub(1u32);
           //update line_state: bit 7 (\sigma^NW), and E^NW for next quad
           line_state[lsp]
-            .set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n_0))) as OPJ_UINT8)
+            .set((0x80u32 | (32u32).wrapping_sub(count_leading_zeros(v_n_0))) as u8)
         } else if locs_0 & 0x80u32 != 0 {
-          ht_data[sp + (stride) as usize] = 0 as OPJ_UINT32
+          ht_data[sp + (stride) as usize] = 0_u32
         }
         sp += 1usize;
         x_0 += 4i32
@@ -2081,7 +2078,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           // the address of the data that needs updating
           let mut dpp = ((y - 4i32) * stride) as usize; // half the center of the bin
           let mut half = (1u32) << p.wrapping_sub(2u32);
-          let mut i_1: OPJ_INT32 = 0;
+          let mut i_1: i32 = 0;
           i_1 = 0i32;
           while i_1 < width {
             //Process one entry from sigma array at a time
@@ -2103,7 +2100,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   let mut sample_mask = 0x11111111u32 & col_mask; //LSB
                   if sig & sample_mask != 0 {
                     //if LSB is set
-                    let mut sym: OPJ_UINT32 = 0; // decoded value cannot be zero
+                    let mut sym: u32 = 0; // decoded value cannot be zero
                     assert!(ht_data[dp] != 0u32);
                     sym = cwd & 1u32;
                     // remove center of bin if sym is 0
@@ -2113,10 +2110,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     *fresh17 |= half;
                     cwd >>= 1i32
                   }
-                  sample_mask = (sample_mask as core::ffi::c_uint).wrapping_add(sample_mask)
-                    as OPJ_UINT32 as OPJ_UINT32;
+                  sample_mask = (sample_mask as core::ffi::c_uint).wrapping_add(sample_mask);
                   if sig & sample_mask != 0 {
-                    let mut sym_0: OPJ_UINT32 = 0;
+                    let mut sym_0: u32 = 0;
                     assert!(ht_data[dp + (stride) as usize] != 0u32);
                     sym_0 = cwd & 1u32;
                     let fresh18 = &mut (ht_data[dp + (stride) as usize]);
@@ -2125,10 +2121,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     *fresh19 |= half;
                     cwd >>= 1i32
                   }
-                  sample_mask = (sample_mask as core::ffi::c_uint).wrapping_add(sample_mask)
-                    as OPJ_UINT32 as OPJ_UINT32;
+                  sample_mask = (sample_mask as core::ffi::c_uint).wrapping_add(sample_mask);
                   if sig & sample_mask != 0 {
-                    let mut sym_1: OPJ_UINT32 = 0;
+                    let mut sym_1: u32 = 0;
                     assert!(ht_data[dp + (2i32 * stride) as usize] != 0u32);
                     sym_1 = cwd & 1u32;
                     let fresh20 = &mut (ht_data[dp + (2i32 * stride) as usize]);
@@ -2137,10 +2132,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     *fresh21 |= half;
                     cwd >>= 1i32
                   }
-                  sample_mask = (sample_mask as core::ffi::c_uint).wrapping_add(sample_mask)
-                    as OPJ_UINT32 as OPJ_UINT32;
+                  sample_mask = (sample_mask as core::ffi::c_uint).wrapping_add(sample_mask);
                   if sig & sample_mask != 0 {
-                    let mut sym_2: OPJ_UINT32 = 0;
+                    let mut sym_2: u32 = 0;
                     assert!(ht_data[dp + (3i32 * stride) as usize] != 0u32);
                     sym_2 = cwd & 1u32;
                     let fresh22 = &mut (ht_data[dp + (3i32 * stride) as usize]);
@@ -2150,7 +2144,6 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     cwd >>= 1i32
                   }
                   sample_mask = (sample_mask as core::ffi::c_uint).wrapping_add(sample_mask)
-                    as OPJ_UINT32 as OPJ_UINT32
                 }
                 col_mask <<= 4i32;
                 j += 1;
@@ -2171,12 +2164,12 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           //data is processed in patches of 8 columns, each
           // each 32 bits in sigma1 or mbr1 represent 4 rows
           //integrate horizontally
-          let mut prev = 0 as OPJ_UINT32; // previous columns
-          let mut i_2: OPJ_INT32 = 0;
+          let mut prev = 0_u32; // previous columns
+          let mut i_2: i32 = 0;
           i_2 = 0i32;
           while i_2 < width {
-            let mut t_3: OPJ_UINT32 = 0;
-            let mut z: OPJ_UINT32 = 0;
+            let mut t_3: u32 = 0;
+            let mut z: u32 = 0;
             //remove already significance samples
             mbr.set(sig_0.get()); //start with significant samples
             mbr.or(prev >> 28i32); //for first column, left neighbors
@@ -2203,14 +2196,14 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           let mut cur_mbr: FlagsPtr;
           let mut nxt_sig: FlagsPtr;
           let mut nxt_mbr: FlagsPtr;
-          let mut prev_0: OPJ_UINT32 = 0;
-          let mut val_15: OPJ_UINT32 = 0;
-          let mut i_3: OPJ_INT32 = 0;
+          let mut prev_0: u32 = 0;
+          let mut val_15: u32 = 0;
+          let mut i_3: i32 = 0;
           // add membership from the next stripe, obtained above
           cur_sig_0 = if y & 0x4i32 != 0 { sigma2 } else { sigma1 }; //future samples
           cur_mbr = if y & 0x4i32 != 0 { mbr2 } else { mbr1 }; // the columns before these group of 8 columns
           nxt_sig = if y & 0x4i32 != 0 { sigma1 } else { sigma2 };
-          prev_0 = 0 as OPJ_UINT32;
+          prev_0 = 0_u32;
           i_3 = 0i32;
           while i_3 < width {
             let mut t_4 = nxt_sig.get();
@@ -2239,21 +2232,21 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           // significant samples including the bin center
           i_3 = 0i32;
           while i_3 < width {
-            let mut ux: OPJ_UINT32 = 0;
-            let mut tx: OPJ_UINT32 = 0;
+            let mut ux: u32 = 0;
+            let mut tx: u32 = 0;
             let mut mbr_0 = cur_mbr.get();
-            let mut new_sig = 0 as OPJ_UINT32;
+            let mut new_sig = 0_u32;
             if mbr_0 != 0 {
               //are there any samples that might be significant
-              let mut n: OPJ_INT32 = 0; //get 32 bits
+              let mut n: i32 = 0; //get 32 bits
               n = 0i32; //address for decoded samples
               while n < 8i32 {
-                let mut col_mask_0: OPJ_UINT32 = 0; //a mask to select a column
-                let mut inv_sig: OPJ_UINT32 = 0; // insignificant samples
-                let mut end: OPJ_INT32 = 0;
-                let mut j_0: OPJ_INT32 = 0;
+                let mut col_mask_0: u32 = 0; //a mask to select a column
+                let mut inv_sig: u32 = 0; // insignificant samples
+                let mut end: i32 = 0;
+                let mut j_0: i32 = 0;
                 let mut cwd_0 = frwd_fetch(&mut sigprop);
-                let mut cnt = 0 as OPJ_UINT32;
+                let mut cnt = 0_u32;
                 let mut dp_0 = ((y - 8i32) * stride) as usize;
                 dp_0 += (i_3 + n) as usize;
                 col_mask_0 = (0xfu32) << (4i32 * n);
@@ -2266,7 +2259,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                 };
                 j_0 = n;
                 while j_0 < end {
-                  let mut sample_mask_0: OPJ_UINT32 = 0;
+                  let mut sample_mask_0: u32 = 0;
                   if col_mask_0 & mbr_0 != 0u32 {
                     //scan mbr to find a new significant sample
                     sample_mask_0 = 0x11111111u32 & col_mask_0; // LSB
@@ -2277,7 +2270,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                         //consumed bits
                         //if this sample has become significant
                         // must propagate it to nearby samples
-                        let mut t_5: OPJ_UINT32 = 0; // new significant samples
+                        let mut t_5: u32 = 0; // new significant samples
                         new_sig |= sample_mask_0; // propagation to neighbors
                         t_5 = (0x32u32) << (j_0 * 4i32); // next row
                         mbr_0 |= t_5 & inv_sig
@@ -2285,12 +2278,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                       cwd_0 >>= 1i32;
                       cnt += 1;
                     }
-                    sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0)
-                      as OPJ_UINT32;
+                    sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0);
                     if mbr_0 & sample_mask_0 != 0 {
                       assert!(ht_data[dp_0 + (stride) as usize] == 0u32);
                       if cwd_0 & 1u32 != 0 {
-                        let mut t_6: OPJ_UINT32 = 0;
+                        let mut t_6: u32 = 0;
                         new_sig |= sample_mask_0;
                         t_6 = (0x74u32) << (j_0 * 4i32);
                         mbr_0 |= t_6 & inv_sig
@@ -2298,12 +2290,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                       cwd_0 >>= 1i32;
                       cnt += 1;
                     }
-                    sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0)
-                      as OPJ_UINT32;
+                    sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0);
                     if mbr_0 & sample_mask_0 != 0 {
                       assert!(ht_data[dp_0 + (2i32 * stride) as usize] == 0u32);
                       if cwd_0 & 1u32 != 0 {
-                        let mut t_7: OPJ_UINT32 = 0;
+                        let mut t_7: u32 = 0;
                         new_sig |= sample_mask_0;
                         t_7 = (0xe8u32) << (j_0 * 4i32);
                         mbr_0 |= t_7 & inv_sig
@@ -2311,12 +2302,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                       cwd_0 >>= 1i32;
                       cnt += 1;
                     }
-                    sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0)
-                      as OPJ_UINT32;
+                    sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0);
                     if mbr_0 & sample_mask_0 != 0 {
                       assert!(ht_data[dp_0 + (3i32 * stride) as usize] == 0u32);
                       if cwd_0 & 1u32 != 0 {
-                        let mut t_8: OPJ_UINT32 = 0;
+                        let mut t_8: u32 = 0;
                         new_sig |= sample_mask_0;
                         t_8 = (0xc0u32) << (j_0 * 4i32);
                         mbr_0 |= t_8 & inv_sig
@@ -2333,14 +2323,14 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                 //obtain signs here
                 if new_sig & (0xffffu32) << (4i32 * n) != 0 {
                   //if any
-                  let mut col_mask_1: OPJ_UINT32 = 0; // decoded samples address
-                  let mut j_1: OPJ_INT32 = 0; //mask to select a column
+                  let mut col_mask_1: u32 = 0; // decoded samples address
+                  let mut j_1: i32 = 0; //mask to select a column
                   let mut dp_1 = ((y - 8i32) * stride) as usize;
                   dp_1 += (i_3 + n) as usize;
                   col_mask_1 = (0xfu32) << (4i32 * n);
                   j_1 = n;
                   while j_1 < end {
-                    let mut sample_mask_1: OPJ_UINT32 = 0;
+                    let mut sample_mask_1: u32 = 0;
                     if col_mask_1 & new_sig != 0u32 {
                       //scan 4 signs
                       sample_mask_1 = 0x11111111u32 & col_mask_1;
@@ -2354,8 +2344,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                         cnt += 1;
                       }
                       sample_mask_1 = (sample_mask_1 as core::ffi::c_uint)
-                        .wrapping_add(sample_mask_1)
-                        as OPJ_UINT32;
+                        .wrapping_add(sample_mask_1);
                       if new_sig & sample_mask_1 != 0 {
                         assert!(ht_data[dp_1 + (stride) as usize] == 0u32);
                         let fresh31 = &mut (ht_data[dp_1 + (stride) as usize]);
@@ -2364,8 +2353,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                         cnt += 1;
                       }
                       sample_mask_1 = (sample_mask_1 as core::ffi::c_uint)
-                        .wrapping_add(sample_mask_1)
-                        as OPJ_UINT32;
+                        .wrapping_add(sample_mask_1);
                       if new_sig & sample_mask_1 != 0 {
                         assert!(ht_data[dp_1 + (2i32 * stride) as usize] == 0u32);
                         let fresh32 = &mut (ht_data[dp_1 + (2i32 * stride) as usize]);
@@ -2374,8 +2362,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                         cnt += 1;
                       }
                       sample_mask_1 = (sample_mask_1 as core::ffi::c_uint)
-                        .wrapping_add(sample_mask_1)
-                        as OPJ_UINT32;
+                        .wrapping_add(sample_mask_1);
                       if new_sig & sample_mask_1 != 0 {
                         assert!(ht_data[dp_1 + (3i32 * stride) as usize] == 0u32);
                         let fresh33 = &mut (ht_data[dp_1 + (3i32 * stride) as usize]);
@@ -2391,7 +2378,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   }
                 }
                 frwd_advance(&mut sigprop, cnt);
-                cnt = 0 as OPJ_UINT32;
+                cnt = 0_u32;
                 //update the next 8 columns
                 if n == 4i32 {
                   //horizontally
@@ -2420,7 +2407,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
           //clear current sigma
           //mbr need not be cleared because it is overwritten
           cur_sig_0 = if y & 0x4i32 != 0 { sigma2 } else { sigma1 };
-          let clear_len = ((width as OPJ_UINT32).wrapping_add(7u32) >> 3i32).wrapping_add(1u32);
+          let clear_len = ((width as u32).wrapping_add(7u32) >> 3i32).wrapping_add(1u32);
           for k in 0..clear_len as isize {
             cur_sig_0.set_at(k, 0);
           }
@@ -2429,20 +2416,20 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     }
     //terminating
     if num_passes > 1u32 {
-      let mut st: OPJ_INT32 = 0;
-      let mut y_0: OPJ_INT32 = 0;
+      let mut st: i32 = 0;
+      let mut y_0: i32 = 0;
       if num_passes > 2u32 && (height & 3i32 == 1i32 || height & 3i32 == 2i32) {
         //do magref
         let mut cur_sig_1 = if height & 0x4i32 != 0 { sigma2 } else { sigma1 }; //reversed
         let mut dpp_0 = ((height & 0xfffffci32) * stride) as usize;
         let mut half_0 = (1u32) << p.wrapping_sub(2u32);
-        let mut i_4: OPJ_INT32 = 0;
+        let mut i_4: i32 = 0;
         i_4 = 0i32;
         while i_4 < width {
           let mut cwd_1 = rev_fetch_mrp(&mut magref);
           let sig_1 = cur_sig_1.get();
           cur_sig_1 = cur_sig_1.offset(1);
-          let mut col_mask_2 = 0xf as OPJ_UINT32;
+          let mut col_mask_2 = 0xf_u32;
           let mut dp_2 = dpp_0 + (i_4) as usize;
           if sig_1 != 0 {
             let mut j_2: core::ffi::c_int = 0;
@@ -2451,7 +2438,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
               if sig_1 & col_mask_2 != 0 {
                 let mut sample_mask_2 = 0x11111111u32 & col_mask_2;
                 if sig_1 & sample_mask_2 != 0 {
-                  let mut sym_3: OPJ_UINT32 = 0;
+                  let mut sym_3: u32 = 0;
                   assert!(ht_data[dp_2] != 0u32);
                   sym_3 = cwd_1 & 1u32;
                   let fresh39 = &mut (ht_data[dp_2]);
@@ -2461,9 +2448,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   cwd_1 >>= 1i32
                 }
                 sample_mask_2 =
-                  (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2) as OPJ_UINT32;
+                  (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2);
                 if sig_1 & sample_mask_2 != 0 {
-                  let mut sym_4: OPJ_UINT32 = 0;
+                  let mut sym_4: u32 = 0;
                   assert!(ht_data[dp_2 + (stride) as usize] != 0u32);
                   sym_4 = cwd_1 & 1u32;
                   let fresh41 = &mut (ht_data[dp_2 + (stride) as usize]);
@@ -2473,9 +2460,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   cwd_1 >>= 1i32
                 }
                 sample_mask_2 =
-                  (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2) as OPJ_UINT32;
+                  (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2);
                 if sig_1 & sample_mask_2 != 0 {
-                  let mut sym_5: OPJ_UINT32 = 0;
+                  let mut sym_5: u32 = 0;
                   assert!(ht_data[dp_2 + (2i32 * stride) as usize] != 0u32);
                   sym_5 = cwd_1 & 1u32;
                   let fresh43 = &mut (ht_data[dp_2 + (2i32 * stride) as usize]);
@@ -2485,9 +2472,9 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   cwd_1 >>= 1i32
                 }
                 sample_mask_2 =
-                  (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2) as OPJ_UINT32;
+                  (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2);
                 if sig_1 & sample_mask_2 != 0 {
-                  let mut sym_6: OPJ_UINT32 = 0;
+                  let mut sym_6: u32 = 0;
                   assert!(ht_data[dp_2 + (3i32 * stride) as usize] != 0u32);
                   sym_6 = cwd_1 & 1u32;
                   let fresh45 = &mut (ht_data[dp_2 + (3i32 * stride) as usize]);
@@ -2497,7 +2484,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                   cwd_1 >>= 1i32
                 }
                 sample_mask_2 =
-                  (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2) as OPJ_UINT32
+                  (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2)
               }
               col_mask_2 <<= 4i32;
               j_2 += 1;
@@ -2516,12 +2503,12 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         let mut sig_2 = if height & 0x4i32 != 0 { sigma2 } else { sigma1 };
         let mut mbr_1 = if height & 0x4i32 != 0 { mbr2 } else { mbr1 };
         //integrate horizontally
-        let mut prev_1 = 0 as OPJ_UINT32;
-        let mut i_5: OPJ_INT32 = 0;
+        let mut prev_1 = 0_u32;
+        let mut i_5: i32 = 0;
         i_5 = 0i32;
         while i_5 < width {
-          let mut t_10: OPJ_UINT32 = 0;
-          let mut z_0: OPJ_UINT32 = 0;
+          let mut t_10: u32 = 0;
+          let mut z_0: u32 = 0;
           mbr_1.set(sig_2.get());
           //remove already significance samples
           mbr_1.or(prev_1 >> 28i32); //for first column, left neighbors
@@ -2551,8 +2538,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         let mut cur_mbr_0: FlagsPtr;
         let mut nxt_sig_0: FlagsPtr;
         let mut nxt_mbr_0: FlagsPtr;
-        let mut val_16: OPJ_UINT32 = 0;
-        let mut i_6: OPJ_INT32 = 0;
+        let mut val_16: u32 = 0;
+        let mut i_6: i32 = 0;
         //integrate vertically
         //above neighbors
         //below neighbors
@@ -2566,8 +2553,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         }
         //add membership from the next stripe, obtained above
         if height - y_0 > 4i32 {
-          let mut prev_2 = 0 as OPJ_UINT32; //for first column, left neighbors
-          let mut i_7: OPJ_INT32 = 0; //left neighbors
+          let mut prev_2 = 0_u32; //for first column, left neighbors
+          let mut i_7: i32 = 0; //left neighbors
           cur_sig_2 = if y_0 & 0x4i32 != 0 { sigma2 } else { sigma1 }; //left neighbors
           cur_mbr_0 = if y_0 & 0x4i32 != 0 { mbr2 } else { mbr1 }; //for last column, right neighbors
           nxt_sig_0 = if y_0 & 0x4i32 != 0 { sigma1 } else { sigma2 };
@@ -2599,19 +2586,19 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         i_6 = 0i32;
         while i_6 < width {
           let mut mbr_2 = cur_mbr_0.get() & pattern;
-          let mut new_sig_0 = 0 as OPJ_UINT32;
-          let mut ux_0: OPJ_UINT32 = 0;
-          let mut tx_0: OPJ_UINT32 = 0;
+          let mut new_sig_0 = 0_u32;
+          let mut ux_0: u32 = 0;
+          let mut tx_0: u32 = 0;
           if mbr_2 != 0 {
-            let mut n_0: OPJ_INT32 = 0;
+            let mut n_0: i32 = 0;
             n_0 = 0i32;
             while n_0 < 8i32 {
-              let mut col_mask_3: OPJ_UINT32 = 0;
-              let mut inv_sig_0: OPJ_UINT32 = 0;
-              let mut end_0: OPJ_INT32 = 0;
-              let mut j_3: OPJ_INT32 = 0;
+              let mut col_mask_3: u32 = 0;
+              let mut inv_sig_0: u32 = 0;
+              let mut end_0: i32 = 0;
+              let mut j_3: i32 = 0;
               let mut cwd_2 = frwd_fetch(&mut sigprop);
-              let mut cnt_0 = 0 as OPJ_UINT32;
+              let mut cnt_0 = 0_u32;
               let mut dp_3 = (y_0 * stride) as usize;
               dp_3 += (i_6 + n_0) as usize;
               col_mask_3 = (0xfu32) << (4i32 * n_0);
@@ -2623,14 +2610,14 @@ pub(crate) fn opj_t1_ht_decode_cblk(
               };
               j_3 = n_0;
               while j_3 < end_0 {
-                let mut sample_mask_3: OPJ_UINT32 = 0;
+                let mut sample_mask_3: u32 = 0;
                 if col_mask_3 & mbr_2 != 0u32 {
                   //scan 4 mbr
                   sample_mask_3 = 0x11111111u32 & col_mask_3;
                   if mbr_2 & sample_mask_3 != 0 {
                     assert!(ht_data[dp_3] == 0u32);
                     if cwd_2 & 1u32 != 0 {
-                      let mut t_12: OPJ_UINT32 = 0;
+                      let mut t_12: u32 = 0;
                       new_sig_0 |= sample_mask_3;
                       t_12 = (0x32u32) << (j_3 * 4i32);
                       mbr_2 |= t_12 & inv_sig_0
@@ -2639,11 +2626,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     cnt_0 += 1;
                   }
                   sample_mask_3 =
-                    (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3) as OPJ_UINT32;
+                    (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3);
                   if mbr_2 & sample_mask_3 != 0 {
                     assert!(ht_data[dp_3 + (stride) as usize] == 0u32);
                     if cwd_2 & 1u32 != 0 {
-                      let mut t_13: OPJ_UINT32 = 0;
+                      let mut t_13: u32 = 0;
                       new_sig_0 |= sample_mask_3;
                       t_13 = (0x74u32) << (j_3 * 4i32);
                       mbr_2 |= t_13 & inv_sig_0
@@ -2652,11 +2639,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     cnt_0 += 1;
                   }
                   sample_mask_3 =
-                    (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3) as OPJ_UINT32;
+                    (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3);
                   if mbr_2 & sample_mask_3 != 0 {
                     assert!(ht_data[dp_3 + (2i32 * stride) as usize] == 0u32);
                     if cwd_2 & 1u32 != 0 {
-                      let mut t_14: OPJ_UINT32 = 0;
+                      let mut t_14: u32 = 0;
                       new_sig_0 |= sample_mask_3;
                       t_14 = (0xe8u32) << (j_3 * 4i32);
                       mbr_2 |= t_14 & inv_sig_0
@@ -2665,11 +2652,11 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                     cnt_0 += 1;
                   }
                   sample_mask_3 =
-                    (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3) as OPJ_UINT32;
+                    (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3);
                   if mbr_2 & sample_mask_3 != 0 {
                     assert!(ht_data[dp_3 + (3i32 * stride) as usize] == 0u32);
                     if cwd_2 & 1u32 != 0 {
-                      let mut t_15: OPJ_UINT32 = 0;
+                      let mut t_15: u32 = 0;
                       new_sig_0 |= sample_mask_3;
                       t_15 = (0xc0u32) << (j_3 * 4i32);
                       mbr_2 |= t_15 & inv_sig_0
@@ -2684,14 +2671,14 @@ pub(crate) fn opj_t1_ht_decode_cblk(
               }
               //signs here
               if new_sig_0 & (0xffffu32) << (4i32 * n_0) != 0 {
-                let mut col_mask_4: OPJ_UINT32 = 0;
-                let mut j_4: OPJ_INT32 = 0;
+                let mut col_mask_4: u32 = 0;
+                let mut j_4: i32 = 0;
                 let mut dp_4 = (y_0 * stride) as usize;
                 dp_4 += (i_6 + n_0) as usize;
                 col_mask_4 = (0xfu32) << (4i32 * n_0);
                 j_4 = n_0;
                 while j_4 < end_0 {
-                  let mut sample_mask_4: OPJ_UINT32 = 0;
+                  let mut sample_mask_4: u32 = 0;
                   if col_mask_4 & new_sig_0 != 0u32 {
                     //scan 4 signs
                     sample_mask_4 = 0x11111111u32 & col_mask_4;
@@ -2702,8 +2689,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                       cwd_2 >>= 1i32;
                       cnt_0 += 1;
                     }
-                    sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4)
-                      as OPJ_UINT32;
+                    sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4);
                     if new_sig_0 & sample_mask_4 != 0 {
                       assert!(ht_data[dp_4 + (stride) as usize] == 0u32);
                       let fresh54 = &mut (ht_data[dp_4 + (stride) as usize]);
@@ -2711,8 +2697,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                       cwd_2 >>= 1i32;
                       cnt_0 += 1;
                     }
-                    sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4)
-                      as OPJ_UINT32;
+                    sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4);
                     if new_sig_0 & sample_mask_4 != 0 {
                       assert!(ht_data[dp_4 + (2i32 * stride) as usize] == 0u32);
                       let fresh55 = &mut (ht_data[dp_4 + (2i32 * stride) as usize]);
@@ -2720,8 +2705,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                       cwd_2 >>= 1i32;
                       cnt_0 += 1;
                     }
-                    sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4)
-                      as OPJ_UINT32;
+                    sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4);
                     if new_sig_0 & sample_mask_4 != 0 {
                       assert!(ht_data[dp_4 + (3i32 * stride) as usize] == 0u32);
                       let fresh56 = &mut (ht_data[dp_4 + (3i32 * stride) as usize]);
@@ -2736,7 +2720,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
                 }
               }
               frwd_advance(&mut sigprop, cnt_0);
-              cnt_0 = 0 as OPJ_UINT32;
+              cnt_0 = 0_u32;
               //update next columns
               if n_0 == 4i32 {
                 //horizontally
@@ -2765,8 +2749,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         y_0 += 4i32
       }
     }
-    let mut x_1: OPJ_INT32 = 0;
-    let mut y_1: OPJ_INT32 = 0;
+    let mut x_1: i32 = 0;
+    let mut y_1: i32 = 0;
     y_1 = 0i32;
     while y_1 < height {
       let mut sp_0 = (y_1 * stride) as usize;

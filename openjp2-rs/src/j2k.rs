@@ -12,64 +12,64 @@ use rayon::prelude::*;
 // is built only when a C caller asks for it via opj_get_cstr_index.
 #[derive(Clone, Default)]
 pub struct CodestreamIndex {
-  pub main_head_start: OPJ_OFF_T,
-  pub main_head_end: OPJ_OFF_T,
-  pub codestream_size: OPJ_UINT64,
+  pub main_head_start: i64,
+  pub main_head_end: i64,
+  pub codestream_size: u64,
   pub markers: Vec<opj_marker_info>,
   pub tiles: Vec<CodestreamTileIndex>,
 }
 
 #[derive(Clone, Default)]
 pub struct CodestreamTileIndex {
-  pub tileno: OPJ_UINT32,
-  pub nb_tps: OPJ_UINT32,
-  pub current_nb_tps: OPJ_UINT32,
-  pub current_tpsno: OPJ_UINT32,
+  pub tileno: u32,
+  pub nb_tps: u32,
+  pub current_nb_tps: u32,
+  pub current_tpsno: u32,
   pub tp_index: Vec<opj_tp_index>,
   pub markers: Vec<opj_marker_info>,
-  pub nb_packet: OPJ_UINT32,
+  pub nb_packet: u32,
   pub packet_index: Vec<opj_packet_info>,
 }
 
 /// Safe, owned codestream info v2 (the C mirror is built by the capi crate).
 #[derive(Clone, Default)]
 pub struct CstrInfoV2 {
-  pub nbcomps: OPJ_UINT32,
-  pub tx0: OPJ_UINT32,
-  pub ty0: OPJ_UINT32,
-  pub tdx: OPJ_UINT32,
-  pub tdy: OPJ_UINT32,
-  pub tw: OPJ_UINT32,
-  pub th: OPJ_UINT32,
+  pub nbcomps: u32,
+  pub tx0: u32,
+  pub ty0: u32,
+  pub tdx: u32,
+  pub tdy: u32,
+  pub tw: u32,
+  pub th: u32,
   pub default_tile: CstrTccpInfoV2,
 }
 
 /// Per-component default-tile coding parameters of the codestream header.
 #[derive(Clone, Default)]
 pub struct CstrTccpInfoV2 {
-  pub csty: OPJ_UINT32,
+  pub csty: u32,
   pub prg: OPJ_PROG_ORDER,
-  pub numlayers: OPJ_UINT32,
-  pub mct: OPJ_UINT32,
+  pub numlayers: u32,
+  pub mct: u32,
   pub tccps: Vec<CstrCompInfoV2>,
 }
 
 /// Per-component tccp info of the codestream header.
 #[derive(Clone)]
 pub struct CstrCompInfoV2 {
-  pub csty: OPJ_UINT32,
-  pub numresolutions: OPJ_UINT32,
-  pub cblkw: OPJ_UINT32,
-  pub cblkh: OPJ_UINT32,
-  pub cblksty: OPJ_UINT32,
-  pub qmfbid: OPJ_UINT32,
-  pub qntsty: OPJ_UINT32,
-  pub stepsizes_mant: [OPJ_UINT32; 97],
-  pub stepsizes_expn: [OPJ_UINT32; 97],
-  pub numgbits: OPJ_UINT32,
-  pub roishift: OPJ_INT32,
-  pub prcw: [OPJ_UINT32; 33],
-  pub prch: [OPJ_UINT32; 33],
+  pub csty: u32,
+  pub numresolutions: u32,
+  pub cblkw: u32,
+  pub cblkh: u32,
+  pub cblksty: u32,
+  pub qmfbid: u32,
+  pub qntsty: u32,
+  pub stepsizes_mant: [u32; 97],
+  pub stepsizes_expn: [u32; 97],
+  pub numgbits: u32,
+  pub roishift: i32,
+  pub prcw: [u32; 33],
+  pub prch: [u32; 33],
 }
 
 impl Default for CstrCompInfoV2 {
@@ -93,7 +93,7 @@ impl Default for CstrCompInfoV2 {
 }
 
 /// Builds the owned codestream info v2 of a j2k codec (header summary).
-pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &opj_j2k) -> CstrInfoV2 {
+pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> CstrInfoV2 {
   let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
   let mut cstr_info = CstrInfoV2 {
     nbcomps: numcomps,
@@ -134,15 +134,15 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &opj_j2k) -> CstrInfoV2 {
       info.prcw[..l_tccp.numresolutions as usize]
         .copy_from_slice(&l_tccp.prcw[..l_tccp.numresolutions as usize]);
     }
-    let numbands: OPJ_INT32 = if l_tccp.qntsty == 1u32 {
+    let numbands: i32 = if l_tccp.qntsty == 1u32 {
       1i32
     } else {
-      (l_tccp.numresolutions as OPJ_INT32 * 3i32) - 2i32
+      (l_tccp.numresolutions as i32 * 3i32) - 2i32
     };
     if numbands < 3i32 * 33i32 - 2i32 {
       for bandno in 0..numbands as usize {
-        info.stepsizes_mant[bandno] = l_tccp.stepsizes[bandno].mant as OPJ_UINT32;
-        info.stepsizes_expn[bandno] = l_tccp.stepsizes[bandno].expn as OPJ_UINT32;
+        info.stepsizes_mant[bandno] = l_tccp.stepsizes[bandno].mant as u32;
+        info.stepsizes_expn[bandno] = l_tccp.stepsizes[bandno].expn as u32;
       }
     }
     cstr_info.default_tile.tccps.push(info);
@@ -214,71 +214,71 @@ impl MCTElementType {
   }
 
   /// Read big-endian MCT array data of this element type into `dest` floats.
-  pub fn read_to_float(&self, src: &[u8], dest: &mut [OPJ_FLOAT32]) {
+  pub fn read_to_float(&self, src: &[u8], dest: &mut [f32]) {
     match self {
       Self::INT16 => {
         for (i, d) in dest.iter_mut().enumerate() {
-          *d = OPJ_UINT16::from_be_bytes([src[2 * i], src[2 * i + 1]]) as OPJ_FLOAT32;
+          *d = u16::from_be_bytes([src[2 * i], src[2 * i + 1]]) as f32;
         }
       }
       Self::INT32 => {
         for (i, d) in dest.iter_mut().enumerate() {
-          *d = OPJ_UINT32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]) as OPJ_FLOAT32;
+          *d = u32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]) as f32;
         }
       }
       Self::FLOAT => {
         for (i, d) in dest.iter_mut().enumerate() {
-          *d = OPJ_FLOAT32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]);
+          *d = f32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]);
         }
       }
       Self::DOUBLE => {
         for (i, d) in dest.iter_mut().enumerate() {
-          *d = OPJ_FLOAT64::from_be_bytes([src[8 * i], src[8 * i + 1], src[8 * i + 2], src[8 * i + 3], src[8 * i + 4], src[8 * i + 5], src[8 * i + 6], src[8 * i + 7]]) as OPJ_FLOAT32;
+          *d = f64::from_be_bytes([src[8 * i], src[8 * i + 1], src[8 * i + 2], src[8 * i + 3], src[8 * i + 4], src[8 * i + 5], src[8 * i + 6], src[8 * i + 7]]) as f32;
         }
       }
     }
   }
 
   /// Read big-endian MCT array data of this element type into `dest` int32s.
-  pub fn read_to_int32(&self, src: &[u8], dest: &mut [OPJ_UINT32]) {
+  pub fn read_to_int32(&self, src: &[u8], dest: &mut [u32]) {
     match self {
       Self::INT16 => {
         for (i, d) in dest.iter_mut().enumerate() {
-          *d = OPJ_UINT16::from_be_bytes([src[2 * i], src[2 * i + 1]]) as OPJ_UINT32;
+          *d = u16::from_be_bytes([src[2 * i], src[2 * i + 1]]) as u32;
         }
       }
       Self::INT32 => {
         for (i, d) in dest.iter_mut().enumerate() {
-          *d = OPJ_UINT32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]);
+          *d = u32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]);
         }
       }
       Self::FLOAT => {
         for (i, d) in dest.iter_mut().enumerate() {
-          *d = OPJ_FLOAT32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]) as OPJ_INT32
-            as OPJ_UINT32;
+          *d = f32::from_be_bytes([src[4 * i], src[4 * i + 1], src[4 * i + 2], src[4 * i + 3]]) as i32
+            as u32;
         }
       }
       Self::DOUBLE => {
         for (i, d) in dest.iter_mut().enumerate() {
-          *d = OPJ_FLOAT64::from_be_bytes([src[8 * i], src[8 * i + 1], src[8 * i + 2], src[8 * i + 3], src[8 * i + 4], src[8 * i + 5], src[8 * i + 6], src[8 * i + 7]]) as OPJ_INT32
-            as OPJ_UINT32;
+          *d = f64::from_be_bytes([src[8 * i], src[8 * i + 1], src[8 * i + 2], src[8 * i + 3], src[8 * i + 4], src[8 * i + 5], src[8 * i + 6], src[8 * i + 7]]) as i32
+            as u32;
         }
       }
     }
   }
 
   /// Write big-endian MCT array data of this element type from `src` floats.
-  pub fn write_from_float(&self, src: &[OPJ_FLOAT32], dest: &mut [u8]) {
+  pub fn write_from_float(&self, src: &[f32], dest: &mut [u8]) {
     match self {
       Self::INT16 => {
         for (i, s) in src.iter().enumerate() {
-          let v = *s as OPJ_UINT32;
-          dest[2 * i..2 * i + 2].copy_from_slice(&(v as OPJ_UINT16).to_be_bytes());
+          let v = *s as u32;
+          dest[2 * i..2 * i + 2].copy_from_slice(&(v as u16).to_be_bytes());
         }
       }
       Self::INT32 => {
         for (i, s) in src.iter().enumerate() {
-          let v = *s as OPJ_UINT32;
+          let v = *s as u32;
           dest[4 * i..4 * i + 4].copy_from_slice(&v.to_be_bytes());
         }
       }
@@ -289,7 +289,7 @@ impl MCTElementType {
       }
       Self::DOUBLE => {
         for (i, s) in src.iter().enumerate() {
-          let v = *s as OPJ_FLOAT64;
+          let v = *s as f64;
           dest[8 * i..8 * i + 8].copy_from_slice(&v.to_be_bytes());
         }
       }
@@ -496,7 +496,7 @@ impl From<u32> for J2KMarker {
 impl J2KMarker {
   pub fn from_buffer(buffer: &[u8]) -> Self {
     /* Read 2 bytes as the new marker ID */
-    Self::from(opj_read_bytes(buffer, 2 as OPJ_UINT32))
+    Self::from(opj_read_bytes(buffer, 2_u32))
   }
 
   pub fn as_u32(&self) -> u32 {
@@ -594,9 +594,9 @@ impl J2KMarker {
 
   pub fn handler(
     &self,
-    p_j2k: &mut opj_j2k,
+    p_j2k: &mut J2k,
     header_data: &[u8],
-    p_manager: &mut opj_event_mgr,
+    p_manager: &mut EventMgr,
   ) -> OPJ_BOOL {
     match self {
       Self::SOT => opj_j2k_read_sot(p_j2k, header_data, p_manager),
@@ -648,11 +648,11 @@ impl J2KMarker {
 /* *
  * Updates the Tile Length Marker.
  */
-fn opj_j2k_update_tlm(mut p_j2k: &mut opj_j2k, mut p_tile_part_size: OPJ_UINT32) {
+fn opj_j2k_update_tlm(mut p_j2k: &mut J2k, mut p_tile_part_size: u32) {
   let l_tile_number = p_j2k.m_current_tile_number;
   let l_is_byte = p_j2k.m_specific_param.m_encoder.m_Ttlmi_is_byte != 0;
   let l_enc = &mut p_j2k.m_specific_param.m_encoder;
-  let l_ttlmi_size = if l_is_byte { 1 } else { 2 } as OPJ_UINT32;
+  let l_ttlmi_size = if l_is_byte { 1 } else { 2 } as u32;
   crate::cio::opj_write_bytes(
     &mut l_enc.m_tlm_sot_offsets_buffer[l_enc.m_tlm_sot_offsets_current..],
     l_tile_number,
@@ -663,7 +663,7 @@ fn opj_j2k_update_tlm(mut p_j2k: &mut opj_j2k, mut p_tile_part_size: OPJ_UINT32)
   crate::cio::opj_write_bytes(
     &mut l_enc.m_tlm_sot_offsets_buffer[l_enc.m_tlm_sot_offsets_current..],
     p_tile_part_size,
-    4 as OPJ_UINT32,
+    4_u32,
   );
   l_enc.m_tlm_sot_offsets_current += 4;
 }
@@ -687,26 +687,26 @@ pub(crate) fn opj_j2k_convert_progression_order(prg_order: OPJ_PROG_ORDER) -> Pr
  */
 fn opj_j2k_check_poc_val(
   p_pocs: &[opj_poc_t],
-  tileno: OPJ_UINT32,
-  p_nb_pocs: OPJ_UINT32,
-  p_nb_resolutions: OPJ_UINT32,
-  p_num_comps: OPJ_UINT32,
-  p_num_layers: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  tileno: u32,
+  p_nb_pocs: u32,
+  p_nb_resolutions: u32,
+  p_num_comps: u32,
+  p_num_layers: u32,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut index: OPJ_UINT32 = 0;
-  let mut resno: OPJ_UINT32 = 0;
-  let mut compno: OPJ_UINT32 = 0;
-  let mut layno: OPJ_UINT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let step_c = 1 as OPJ_UINT32;
+  let mut index: u32 = 0;
+  let mut resno: u32 = 0;
+  let mut compno: u32 = 0;
+  let mut layno: u32 = 0;
+  let mut i: u32 = 0;
+  let step_c = 1_u32;
   let step_r = p_num_comps.wrapping_mul(step_c);
   let step_l = p_nb_resolutions.wrapping_mul(step_r);
   let mut loss = 0i32;
   assert!(p_nb_pocs > 0u32);
   let mut packet_array = vec![0u32; (step_l as usize).wrapping_mul(p_num_layers as usize)];
   /* iterate through all the pocs that match our tile of interest. */
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < p_nb_pocs {
     let poc = &p_pocs[i as usize];
     if tileno.wrapping_add(1u32) == poc.tile {
@@ -719,12 +719,12 @@ fn opj_j2k_check_poc_val(
         compno = poc.compno0;
         while compno < opj_uint_min(poc.compno1, p_num_comps) {
           /* The layer index always starts at zero for every progression. */
-          let layno0 = 0 as OPJ_UINT32;
+          let layno0 = 0_u32;
           let mut comp_index = res_index.wrapping_add(layno0.wrapping_mul(step_l));
           /* and finally take each layer of each res of ... */
           layno = layno0;
           while layno < opj_uint_min(poc.layno1, p_num_layers) {
-            packet_array[comp_index as usize] = 1 as OPJ_UINT32;
+            packet_array[comp_index as usize] = 1_u32;
             comp_index = comp_index.wrapping_add(step_l);
             layno += 1;
           }
@@ -737,12 +737,12 @@ fn opj_j2k_check_poc_val(
     }
     i += 1;
   }
-  index = 0 as OPJ_UINT32;
-  layno = 0 as OPJ_UINT32;
+  index = 0_u32;
+  layno = 0_u32;
   while layno < p_num_layers {
-    resno = 0 as OPJ_UINT32;
+    resno = 0_u32;
     while resno < p_nb_resolutions {
-      compno = 0 as OPJ_UINT32;
+      compno = 0_u32;
       while compno < p_num_comps {
         loss |= (packet_array[index as usize] != 1u32) as core::ffi::c_int;
         index = index.wrapping_add(step_c);
@@ -772,8 +772,8 @@ fn opj_j2k_check_poc_val(
  * @return              the number of tile parts.
  */
 /* ----------------------------------------------------------------------- */
-fn opj_j2k_get_num_tp(cp: &mut opj_cp_t, pino: OPJ_UINT32, tileno: OPJ_UINT32) -> OPJ_UINT32 {
-  let mut tpnum = 1 as OPJ_UINT32;
+fn opj_j2k_get_num_tp(cp: &mut Cp, pino: u32, tileno: u32) -> u32 {
+  let mut tpnum = 1_u32;
   /*  preconditions */
 
   assert!(tileno < cp.tw.wrapping_mul(cp.th));
@@ -808,12 +808,12 @@ fn opj_j2k_get_num_tp(cp: &mut opj_cp_t, pino: OPJ_UINT32, tileno: OPJ_UINT32) -
       }
       /* would we split here ? */
       if cp.m_specific_param.m_enc.m_tp_flag == *step as u8 {
-        cp.m_specific_param.m_enc.m_tp_pos = i as OPJ_INT32;
+        cp.m_specific_param.m_enc.m_tp_pos = i as i32;
         break;
       }
     }
   } else {
-    tpnum = 1 as OPJ_UINT32
+    tpnum = 1_u32
   }
   tpnum
 }
@@ -831,22 +831,22 @@ fn opj_j2k_get_num_tp(cp: &mut opj_cp_t, pino: OPJ_UINT32, tileno: OPJ_UINT32) -
  * @return true if the function was successful, false else.
  */
 fn opj_j2k_calculate_tp(
-  cp: &mut opj_cp_t,
-  p_nb_tiles: &mut OPJ_UINT32,
+  cp: &mut Cp,
+  p_nb_tiles: &mut u32,
   image: &mut CoreImage,
-  _p_manager: &mut opj_event_mgr,
+  _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut pino: OPJ_UINT32 = 0;
-  let mut tileno: OPJ_UINT32 = 0;
+  let mut pino: u32 = 0;
+  let mut tileno: u32 = 0;
   /* preconditions */
 
-  let l_nb_tiles: OPJ_UINT32 = cp.tw.wrapping_mul(cp.th);
-  *p_nb_tiles = 0 as OPJ_UINT32;
-  tileno = 0 as OPJ_UINT32;
+  let l_nb_tiles: u32 = cp.tw.wrapping_mul(cp.th);
+  *p_nb_tiles = 0_u32;
+  tileno = 0_u32;
   while tileno < l_nb_tiles {
-    let mut cur_totnum_tp = 0 as OPJ_UINT32;
+    let mut cur_totnum_tp = 0_u32;
     opj_pi_update_encoding_parameters(image, cp, tileno);
-    pino = 0 as OPJ_UINT32;
+    pino = 0_u32;
     while pino <= cp.tcps[tileno as usize].numpocs {
       let tp_num = opj_j2k_get_num_tp(cp, pino, tileno);
       *p_nb_tiles = (*p_nb_tiles).wrapping_add(tp_num);
@@ -872,9 +872,9 @@ fn opj_j2k_calculate_tp(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_write_soc(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* 2 bytes will be written */
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
@@ -882,7 +882,7 @@ fn opj_j2k_write_soc(
   /* preconditions */
 
   /* write SOC identifier */
-  opj_write_bytes(&mut l_buf[..], J2KMarker::SOC.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[..], J2KMarker::SOC.as_u32(), 2_u32);
   if opj_stream_write_data(p_stream, &l_buf[..2], p_manager) != 2 {
     return 0i32;
   }
@@ -906,11 +906,11 @@ fn opj_j2k_write_soc(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_read_soc(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut l_data: [OPJ_BYTE; 2] = [0; 2];
+  let mut l_data: [u8; 2] = [0; 2];
     /* preconditions */
 
     if opj_stream_read_data(p_stream, &mut l_data[..2], p_manager) != 2 {
@@ -937,7 +937,7 @@ fn opj_j2k_read_soc(
         p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
         J2KMarker::SOC,
         l_main_head_start,
-        2 as OPJ_UINT32,
+        2_u32,
       )
     {
     event_msg!(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n",);
@@ -953,54 +953,54 @@ fn opj_j2k_read_soc(
  * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
 */
-fn opj_j2k_write_siz(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0;
+fn opj_j2k_write_siz(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OPJ_BOOL {
+  let mut i: u32 = 0;
   /* preconditions */
 
   let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
   let cp = &mut p_j2k.m_cp;
-let l_size_len: OPJ_UINT32 = (40u32).wrapping_add((3u32).wrapping_mul(l_image.numcomps));
+let l_size_len: u32 = (40u32).wrapping_add((3u32).wrapping_mul(l_image.numcomps));
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(l_size_len as usize, 0);
   let mut pos: usize = 0;
   /* write SOC identifier */
-  opj_write_bytes(&mut l_buf[pos..], J2KMarker::SIZ.as_u32(), 2 as OPJ_UINT32); /* SIZ */
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::SIZ.as_u32(), 2_u32); /* SIZ */
   pos += 2usize; /* L_SIZ */
-  opj_write_bytes(&mut l_buf[pos..], l_size_len.wrapping_sub(2u32), 2 as OPJ_UINT32); /* Rsiz (capabilities) */
+  opj_write_bytes(&mut l_buf[pos..], l_size_len.wrapping_sub(2u32), 2_u32); /* Rsiz (capabilities) */
   pos += 2usize; /* Xsiz */
-  opj_write_bytes(&mut l_buf[pos..], cp.rsiz as OPJ_UINT32, 2 as OPJ_UINT32); /* Ysiz */
+  opj_write_bytes(&mut l_buf[pos..], cp.rsiz as u32, 2_u32); /* Ysiz */
   pos += 2usize; /* X0siz */
-  opj_write_bytes(&mut l_buf[pos..], l_image.x1, 4 as OPJ_UINT32); /* Y0siz */
+  opj_write_bytes(&mut l_buf[pos..], l_image.x1, 4_u32); /* Y0siz */
   pos += 4usize; /* XTsiz */
-  opj_write_bytes(&mut l_buf[pos..], l_image.y1, 4 as OPJ_UINT32); /* YTsiz */
+  opj_write_bytes(&mut l_buf[pos..], l_image.y1, 4_u32); /* YTsiz */
   pos += 4usize; /* XT0siz */
-  opj_write_bytes(&mut l_buf[pos..], l_image.x0, 4 as OPJ_UINT32); /* YT0siz */
+  opj_write_bytes(&mut l_buf[pos..], l_image.x0, 4_u32); /* YT0siz */
   pos += 4usize; /* Csiz */
-  opj_write_bytes(&mut l_buf[pos..], l_image.y0, 4 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_image.y0, 4_u32);
   pos += 4usize;
-  opj_write_bytes(&mut l_buf[pos..], cp.tdx, 4 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], cp.tdx, 4_u32);
   pos += 4usize;
-  opj_write_bytes(&mut l_buf[pos..], cp.tdy, 4 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], cp.tdy, 4_u32);
   pos += 4usize;
-  opj_write_bytes(&mut l_buf[pos..], cp.tx0, 4 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], cp.tx0, 4_u32);
   pos += 4usize;
-  opj_write_bytes(&mut l_buf[pos..], cp.ty0, 4 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], cp.ty0, 4_u32);
   pos += 4usize;
-  opj_write_bytes(&mut l_buf[pos..], l_image.numcomps, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_image.numcomps, 2_u32);
   pos += 2usize;
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_image.numcomps {
     /* TODO here with MCT ? */
     let comp = &l_image.comps[i as usize];
     opj_write_bytes(
       &mut l_buf[pos..],
       comp.prec.wrapping_sub(1u32).wrapping_add(comp.sgnd << 7i32),
-      1 as OPJ_UINT32,
+      1_u32,
     ); /* Ssiz_i */
     pos += 1usize; /* XRsiz_i */
-    opj_write_bytes(&mut l_buf[pos..], comp.dx, 1 as OPJ_UINT32); /* YRsiz_i */
+    opj_write_bytes(&mut l_buf[pos..], comp.dx, 1_u32); /* YRsiz_i */
     pos += 1usize;
-    opj_write_bytes(&mut l_buf[pos..], comp.dy, 1 as OPJ_UINT32);
+    opj_write_bytes(&mut l_buf[pos..], comp.dy, 1_u32);
     pos += 1usize;
     i += 1;
   }
@@ -1026,19 +1026,19 @@ let l_size_len: OPJ_UINT32 = (40u32).wrapping_add((3u32).wrapping_mul(l_image.nu
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_read_siz(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let mut l_nb_tiles: OPJ_UINT32 = 0;
-  let mut l_tmp: OPJ_UINT32 = 0;
-  let mut l_tx1: OPJ_UINT32 = 0;
-  let mut l_ty1: OPJ_UINT32 = 0;
-  let mut l_prec0: OPJ_UINT32 = 0;
-  let mut l_sgnd0: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
+  let mut l_nb_tiles: u32 = 0;
+  let mut l_tmp: u32 = 0;
+  let mut l_tx1: u32 = 0;
+  let mut l_ty1: u32 = 0;
+  let mut l_prec0: u32 = 0;
+  let mut l_sgnd0: u32 = 0;
   /* preconditions */
 
   let l_image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
@@ -1048,36 +1048,36 @@ fn opj_j2k_read_siz(
     event_msg!(p_manager, EVT_ERROR, "Error with SIZ marker size\n",); /* Rsiz (capabilities) */
     return 0i32;
   } /* Xsiz */
-let l_remaining_size: OPJ_UINT32 = p_header_size.wrapping_sub(36u32);
-let l_nb_comp: OPJ_UINT32 = l_remaining_size.wrapping_div(3u32);
-let l_nb_comp_remain: OPJ_UINT32 = l_remaining_size.wrapping_rem(3u32);
+let l_remaining_size: u32 = p_header_size.wrapping_sub(36u32);
+let l_nb_comp: u32 = l_remaining_size.wrapping_div(3u32);
+let l_nb_comp_remain: u32 = l_remaining_size.wrapping_rem(3u32);
   if l_nb_comp_remain != 0u32 {
     event_msg!(p_manager, EVT_ERROR, "Error with SIZ marker size\n",); /* XTsiz */
     return 0i32;
   } /* YTsiz */
-  l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* XT0siz */
+  l_tmp = opj_read_bytes(&header_data[cursor..], 2_u32); /* XT0siz */
   cursor += 2usize; /* YT0siz */
-  cp.rsiz = l_tmp as OPJ_UINT16; /* Csiz */
-  l_image.x1 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cp.rsiz = l_tmp as u16; /* Csiz */
+  l_image.x1 = opj_read_bytes(&header_data[cursor..], 4_u32);
   cursor += 4usize;
-  l_image.y1 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  l_image.y1 = opj_read_bytes(&header_data[cursor..], 4_u32);
   cursor += 4usize;
-  l_image.x0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  l_image.x0 = opj_read_bytes(&header_data[cursor..], 4_u32);
   cursor += 4usize;
-  l_image.y0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  l_image.y0 = opj_read_bytes(&header_data[cursor..], 4_u32);
   cursor += 4usize;
-  cp.tdx = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cp.tdx = opj_read_bytes(&header_data[cursor..], 4_u32);
   cursor += 4usize;
-  cp.tdy = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cp.tdy = opj_read_bytes(&header_data[cursor..], 4_u32);
   cursor += 4usize;
-  cp.tx0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cp.tx0 = opj_read_bytes(&header_data[cursor..], 4_u32);
   cursor += 4usize;
-  cp.ty0 = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  cp.ty0 = opj_read_bytes(&header_data[cursor..], 4_u32);
   cursor += 4usize;
-  l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+  l_tmp = opj_read_bytes(&header_data[cursor..], 2_u32);
   cursor += 2usize;
   if l_tmp < 16385u32 {
-    l_image.numcomps = l_tmp as OPJ_UINT16 as OPJ_UINT32
+    l_image.numcomps = l_tmp as u16 as u32
   } else {
     event_msg!(
       p_manager,
@@ -1100,8 +1100,8 @@ let l_nb_comp_remain: OPJ_UINT32 = l_remaining_size.wrapping_rem(3u32);
       p_manager,
       EVT_ERROR,
       "Error with SIZ marker: negative or zero image size ({} x {})\n",
-      l_image.x1 as OPJ_INT64 - l_image.x0 as i64,
-      l_image.y1 as OPJ_INT64 - l_image.y0 as i64,
+      l_image.x1 as i64 - l_image.x0 as i64,
+      l_image.y1 as i64 - l_image.y0 as i64,
     );
     return 0i32;
   }
@@ -1128,8 +1128,8 @@ let l_nb_comp_remain: OPJ_UINT32 = l_remaining_size.wrapping_rem(3u32);
     return 0i32;
   }
   if p_j2k.dump_state == 0 {
-    let mut siz_w: OPJ_UINT32 = 0;
-    let mut siz_h: OPJ_UINT32 = 0;
+    let mut siz_w: u32 = 0;
+    let mut siz_h: u32 = 0;
     siz_w = l_image.x1.wrapping_sub(l_image.x0);
     siz_h = l_image.y1.wrapping_sub(l_image.y0);
     if p_j2k.ihdr_w > 0u32
@@ -1159,12 +1159,12 @@ let l_nb_comp_remain: OPJ_UINT32 = l_remaining_size.wrapping_rem(3u32);
     );
     return 0i32;
   }
-  l_prec0 = 0 as OPJ_UINT32;
-  l_sgnd0 = 0 as OPJ_UINT32;
+  l_prec0 = 0_u32;
+  l_sgnd0 = 0_u32;
   /* Read the component information */
-  i = 0 as OPJ_UINT32; /* Ssiz_i */
+  i = 0_u32; /* Ssiz_i */
   while i < l_image.numcomps {
-    let tmp: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    let tmp: u32 = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
     l_image.comps[i as usize].prec = (tmp & 0x7fu32).wrapping_add(1u32);
     l_image.comps[i as usize].sgnd = tmp >> 7i32;
@@ -1182,10 +1182,10 @@ let l_nb_comp_remain: OPJ_UINT32 = l_remaining_size.wrapping_rem(3u32);
       }
       /* TODO: we should perhaps also check against JP2 BPCC values */
     } /* XRsiz_i */
-    let tmp_0 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* should be between 1 and 255 */
+    let tmp_0 = opj_read_bytes(&header_data[cursor..], 1_u32); /* should be between 1 and 255 */
     cursor += 1usize; /* YRsiz_i */
     l_image.comps[i as usize].dx = tmp_0; /* should be between 1 and 255 */
-    let tmp_1 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    let tmp_1 = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
     l_image.comps[i as usize].dy = tmp_1;
     if l_image.comps[i as usize].dx < 1u32
@@ -1208,7 +1208,7 @@ let l_nb_comp_remain: OPJ_UINT32 = l_remaining_size.wrapping_rem(3u32);
       return 0i32;
     }
     /* USE_JPWL */
-    l_image.comps[i as usize].resno_decoded = 0 as OPJ_UINT32; /* number of resolution decoded */
+    l_image.comps[i as usize].resno_decoded = 0_u32; /* number of resolution decoded */
     l_image.comps[i as usize].factor = cp.m_specific_param.m_dec.m_reduce; /* reducing factor per component */
     i += 1;
   }
@@ -1250,8 +1250,8 @@ let l_nb_comp_remain: OPJ_UINT32 = l_remaining_size.wrapping_rem(3u32);
     p_j2k.m_specific_param.m_decoder.m_end_tile_y =
       opj_uint_ceildiv(p_j2k.m_specific_param.m_decoder.m_end_tile_y - cp.ty0, cp.tdy);
   } else {
-    p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
-    p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
+    p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0_u32;
+    p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0_u32;
     p_j2k.m_specific_param.m_decoder.m_end_tile_x = cp.tw;
     p_j2k.m_specific_param.m_decoder.m_end_tile_y = cp.th
   }
@@ -1269,7 +1269,7 @@ let l_nb_comp_remain: OPJ_UINT32 = l_remaining_size.wrapping_rem(3u32);
   default_tcp.m_mct_records = Vec::with_capacity(10);
   default_tcp.m_mcc_records = Vec::with_capacity(10);
   /* set up default dc level shift */
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_image.numcomps {
     if l_image.comps[i as usize].sgnd == 0 {
       (&mut default_tcp.tccps)[i as usize].m_dc_level_shift = (1i32)
@@ -1277,7 +1277,7 @@ let l_nb_comp_remain: OPJ_UINT32 = l_remaining_size.wrapping_rem(3u32);
     }
     i += 1;
   }
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_nb_tiles {
     cp.tcps[i as usize]
       .tccps
@@ -1299,21 +1299,21 @@ let l_nb_comp_remain: OPJ_UINT32 = l_remaining_size.wrapping_rem(3u32);
  * @param       p_j2k                   J2K codec.
  * @param       p_manager       the user event manager.
 */
-fn opj_j2k_write_com(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+fn opj_j2k_write_com(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OPJ_BOOL {
   /* preconditions */
   /* L_COM */
 
   let comment_bytes = &p_j2k.m_cp.comment[..];
-let l_comment_size: OPJ_UINT32 = comment_bytes.len() as OPJ_UINT32;
-let l_total_com_size: OPJ_UINT32 = l_comment_size.wrapping_add(6u32);
+let l_comment_size: u32 = comment_bytes.len() as u32;
+let l_total_com_size: u32 = l_comment_size.wrapping_add(6u32);
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(l_total_com_size as usize, 0);
   let mut pos: usize = 0;
-  opj_write_bytes(&mut l_buf[pos..], J2KMarker::COM.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::COM.as_u32(), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_total_com_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_total_com_size.wrapping_sub(2u32), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], 1 as OPJ_UINT32, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], 1_u32, 2_u32);
   pos += 2usize;
   l_buf[pos..pos + l_comment_size as usize].copy_from_slice(comment_bytes);
   pos += l_comment_size as usize;
@@ -1340,9 +1340,9 @@ let l_total_com_size: OPJ_UINT32 = l_comment_size.wrapping_add(6u32);
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_com(
-  mut _p_j2k: &mut opj_j2k,
+  mut _p_j2k: &mut J2k,
   mut _header_data: &[u8],
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -1356,39 +1356,39 @@ fn opj_j2k_read_com(
  * @param       p_j2k                   J2K codec.
  * @param       p_manager       the user event manager.
 */
-fn opj_j2k_write_cod(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  let mut l_remaining_size: OPJ_UINT32 = 0;
+fn opj_j2k_write_cod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OPJ_BOOL {
+  let mut l_remaining_size: u32 = 0;
   /* preconditions */
   /* L_COD */
   /* SGcod (A) */
   /* SGcod (C) */
-let l_code_size: OPJ_UINT32 = (9u32).wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
+let l_code_size: u32 = (9u32).wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
     p_j2k,
     p_j2k.m_current_tile_number,
-    0 as OPJ_UINT32,
+    0_u32,
   ));
   l_remaining_size = l_code_size;
   let l_tcp = &p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(l_code_size as usize, 0);
   let mut pos: usize = 0;
-  opj_write_bytes(&mut l_buf[pos..], J2KMarker::COD.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::COD.as_u32(), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_code_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_code_size.wrapping_sub(2u32), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_tcp.csty, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_tcp.csty, 1_u32);
   pos += 1usize;
-  opj_write_bytes(&mut l_buf[pos..], l_tcp.prg as OPJ_UINT32, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_tcp.prg as u32, 1_u32);
   pos += 1usize;
-  opj_write_bytes(&mut l_buf[pos..], l_tcp.numlayers, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_tcp.numlayers, 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_tcp.mct, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_tcp.mct, 1_u32);
   pos += 1usize;
   l_remaining_size = l_remaining_size.wrapping_sub(9u32);
   if opj_j2k_write_SPCod_SPCoc(
     p_j2k,
     p_j2k.m_current_tile_number,
-    0 as OPJ_UINT32,
+    0_u32,
     &mut l_buf[pos..],
     &mut l_remaining_size,
     p_manager,
@@ -1416,15 +1416,15 @@ let l_code_size: OPJ_UINT32 = (9u32).wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_cod(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
   /* loop */
-  let mut i: OPJ_UINT32 = 0;
-  let mut l_tmp: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
+  let mut l_tmp: u32 = 0;
   /* preconditions */
 
   let l_image_numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
@@ -1447,14 +1447,14 @@ fn opj_j2k_read_cod(
     event_msg!(p_manager, EVT_ERROR, "Error reading COD marker\n",); /* Scod */
     return 0i32;
   }
-  l_tcp.csty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  l_tcp.csty = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   /* Make sure we know how to decode this */
-  if l_tcp.csty & !((0x1i32 | 0x2i32 | 0x4i32) as OPJ_UINT32) != 0u32 {
+  if l_tcp.csty & !((0x1i32 | 0x2i32 | 0x4i32) as u32) != 0u32 {
     event_msg!(p_manager, EVT_ERROR, "Unknown Scod value in COD marker\n",); /* SGcod (A) */
     return 0i32;
   }
-  l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  l_tmp = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   l_tcp.prg = l_tmp as OPJ_PROG_ORDER;
   /* Make sure progression order is valid */
@@ -1466,7 +1466,7 @@ fn opj_j2k_read_cod(
     ); /* SGcod (B) */
     l_tcp.prg = OPJ_PROG_UNKNOWN
   }
-  l_tcp.numlayers = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+  l_tcp.numlayers = opj_read_bytes(&header_data[cursor..], 2_u32);
   cursor += 2usize;
   if l_tcp.numlayers < 1u32 || l_tcp.numlayers > 65535u32 {
     event_msg!(
@@ -1483,7 +1483,7 @@ fn opj_j2k_read_cod(
   } else {
     l_tcp.num_layers_to_decode = l_tcp.numlayers
   } /* SGcod (C) */
-  l_tcp.mct = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  l_tcp.mct = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   if l_tcp.mct > 1u32 {
     event_msg!(
@@ -1494,14 +1494,14 @@ fn opj_j2k_read_cod(
     return 0i32;
   }
   p_header_size = p_header_size.wrapping_sub(5u32);
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_image_numcomps {
     l_tcp.tccps[i as usize].csty = l_tcp.csty & 0x1u32;
     i += 1;
   }
   if opj_j2k_read_SPCod_SPCoc(
     p_j2k,
-    0 as OPJ_UINT32,
+    0_u32,
     &header_data[cursor..],
     &mut p_header_size,
     p_manager,
@@ -1529,13 +1529,13 @@ fn opj_j2k_read_cod(
  * @param       p_manager   the user event manager.
 */
 fn opj_j2k_write_coc(
-  p_j2k: &mut opj_j2k,
-  p_comp_no: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_comp_no: u32,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut l_coc_size: OPJ_UINT32 = 0;
-  let mut l_remaining_size: OPJ_UINT32 = 0;
+  let mut l_coc_size: u32 = 0;
+  let mut l_remaining_size: u32 = 0;
   /* preconditions */
 
   let l_comp_room =
@@ -1543,7 +1543,7 @@ fn opj_j2k_write_coc(
       1i32
     } else {
       2i32
-    } as OPJ_UINT32;
+    } as u32;
   l_coc_size = (5u32)
     .wrapping_add(l_comp_room)
     .wrapping_add(opj_j2k_get_SPCod_SPCoc_size(
@@ -1579,9 +1579,9 @@ fn opj_j2k_write_coc(
  * @return      OPJ_TRUE if equals
  */
 fn opj_j2k_compare_coc(
-  p_j2k: &mut opj_j2k,
-  p_first_comp_no: OPJ_UINT32,
-  p_second_comp_no: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_first_comp_no: u32,
+  p_second_comp_no: u32,
 ) -> OPJ_BOOL {
   /* preconditions */
   let csty_eq = {
@@ -1609,11 +1609,11 @@ fn opj_j2k_compare_coc(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_coc_in_memory(
-  p_j2k: &mut opj_j2k,
-  p_comp_no: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_comp_no: u32,
   data: &mut [u8],
-  p_data_written: &mut OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  p_data_written: &mut u32,
+  p_manager: &mut EventMgr,
 ) {
   let mut pos: usize = 0;
   /* preconditions */
@@ -1625,7 +1625,7 @@ fn opj_j2k_write_coc_in_memory(
       1i32
     } else {
       2i32
-    } as OPJ_UINT32;
+    } as u32;
     (room, l_tcp.tccps[p_comp_no as usize].csty)
   };
   let l_coc_size = (5u32)
@@ -1636,25 +1636,25 @@ fn opj_j2k_write_coc_in_memory(
       p_comp_no,
     ));
   let mut l_remaining_size = l_coc_size;
-  opj_write_bytes(&mut data[pos..], J2KMarker::COC.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], J2KMarker::COC.as_u32(), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut data[pos..], l_coc_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], l_coc_size.wrapping_sub(2u32), 2_u32);
   pos += 2usize;
   opj_write_bytes(&mut data[pos..], p_comp_no, l_comp_room);
   pos += l_comp_room as usize;
-  opj_write_bytes(&mut data[pos..], l_csty, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], l_csty, 1_u32);
   pos += 1usize;
   l_remaining_size = l_remaining_size.wrapping_sub((5u32).wrapping_add(l_comp_room));
   opj_j2k_write_SPCod_SPCoc(
     p_j2k,
     p_j2k.m_current_tile_number,
-    0 as OPJ_UINT32,
+    0_u32,
     &mut data[pos..],
     &mut l_remaining_size,
     p_manager,
   );
   pos += *p_data_written as usize;
-  *p_data_written = pos as OPJ_UINT32;
+  *p_data_written = pos as u32;
 }
 
 /* *
@@ -1662,16 +1662,16 @@ fn opj_j2k_write_coc_in_memory(
  *
  * @param       p_j2k   the jpeg2000 codec to use.
  */
-fn opj_j2k_get_max_coc_size(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
+fn opj_j2k_get_max_coc_size(p_j2k: &mut J2k) -> u32 {
+  let mut i: u32 = 0;
+  let mut j: u32 = 0;
   /* preconditions */
   let l_nb_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   let l_nb_comp = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-  let mut l_max = 0 as OPJ_UINT32;
-  i = 0 as OPJ_UINT32;
+  let mut l_max = 0_u32;
+  i = 0_u32;
   while i < l_nb_tiles {
-    j = 0 as OPJ_UINT32;
+    j = 0_u32;
     while j < l_nb_comp {
       l_max = opj_uint_max(l_max, opj_j2k_get_SPCod_SPCoc_size(p_j2k, i, j));
       j += 1;
@@ -1696,27 +1696,27 @@ fn opj_j2k_get_max_coc_size(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_coc(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
   /* preconditions */
 
   let l_image_numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-let l_comp_room: OPJ_UINT32 = if l_image_numcomps <= 256u32 {
+let l_comp_room: u32 = if l_image_numcomps <= 256u32 {
     1i32
   } else {
     2i32
-  } as OPJ_UINT32;
+  } as u32;
   /* make sure room is sufficient*/
   if p_header_size < l_comp_room.wrapping_add(1u32) {
     event_msg!(p_manager, EVT_ERROR, "Error reading COC marker\n",); /* Ccoc */
     return 0i32;
   } /* Scoc */
   p_header_size = p_header_size.wrapping_sub(l_comp_room.wrapping_add(1u32));
-let l_comp_no: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], l_comp_room);
+let l_comp_no: u32 = opj_read_bytes(&header_data[cursor..], l_comp_room);
   cursor += l_comp_room as usize;
   if l_comp_no >= l_image_numcomps {
     event_msg!(
@@ -1741,7 +1741,7 @@ let l_comp_no: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], l_comp_room);
         .as_deref_mut()
         .expect("decoder m_default_tcp is always set")
     };
-    l_tcp.tccps[l_comp_no as usize].csty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    l_tcp.tccps[l_comp_no as usize].csty = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
   }
   if opj_j2k_read_SPCod_SPCoc(
@@ -1770,34 +1770,34 @@ let l_comp_no: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], l_comp_room);
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_qcd(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-    let mut l_qcd_size: OPJ_UINT32 = 0;
-    let mut l_remaining_size: OPJ_UINT32 = 0;
+    let mut l_qcd_size: u32 = 0;
+    let mut l_remaining_size: u32 = 0;
         /* preconditions */
     /* L_QCD */
 
     l_qcd_size = (4u32).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
       p_j2k,
       p_j2k.m_current_tile_number,
-      0 as OPJ_UINT32,
+      0_u32,
     ));
     l_remaining_size = l_qcd_size;
     let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
     l_buf.resize(l_qcd_size as usize, 0);
     let mut pos: usize = 0;
-    opj_write_bytes(&mut l_buf[pos..], J2KMarker::QCD.as_u32(), 2 as OPJ_UINT32);
+    opj_write_bytes(&mut l_buf[pos..], J2KMarker::QCD.as_u32(), 2_u32);
     pos += 2usize;
-    opj_write_bytes(&mut l_buf[pos..], l_qcd_size.wrapping_sub(2u32), 2 as OPJ_UINT32,);
+    opj_write_bytes(&mut l_buf[pos..], l_qcd_size.wrapping_sub(2u32), 2_u32,);
     pos += 2usize;
     l_remaining_size =
-      (l_remaining_size as core::ffi::c_uint).wrapping_sub(4u32) as OPJ_UINT32 as OPJ_UINT32;
+      (l_remaining_size as core::ffi::c_uint).wrapping_sub(4u32);
     if opj_j2k_write_SQcd_SQcc(
       p_j2k,
       p_j2k.m_current_tile_number,
-      0 as OPJ_UINT32,
+      0_u32,
       &mut l_buf[pos..],
       &mut l_remaining_size,
       p_manager,
@@ -1831,17 +1831,17 @@ fn opj_j2k_write_qcd(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_qcd(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   header_data: &[u8],
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
   /* preconditions */
 
   if opj_j2k_read_SQcd_SQcc(
     p_j2k,
-    0 as OPJ_UINT32,
+    0_u32,
     &header_data[cursor..],
     &mut p_header_size,
     p_manager,
@@ -1868,13 +1868,13 @@ fn opj_j2k_read_qcd(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_qcc(
-  p_j2k: &mut opj_j2k,
-  p_comp_no: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_comp_no: u32,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut l_qcc_size: OPJ_UINT32 = 0;
-  let mut l_remaining_size: OPJ_UINT32 = 0;
+  let mut l_qcc_size: u32 = 0;
+  let mut l_remaining_size: u32 = 0;
   /* preconditions */
 
   l_qcc_size = (5u32).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
@@ -1917,9 +1917,9 @@ fn opj_j2k_write_qcc(
  * @return OPJ_TRUE if equals.
  */
 fn opj_j2k_compare_qcc(
-  mut p_j2k: &mut opj_j2k,
-  mut p_first_comp_no: OPJ_UINT32,
-  mut p_second_comp_no: OPJ_UINT32,
+  mut p_j2k: &mut J2k,
+  mut p_first_comp_no: u32,
+  mut p_second_comp_no: u32,
 ) -> OPJ_BOOL {
   opj_j2k_compare_SQcd_SQcc(
     p_j2k,
@@ -1939,14 +1939,14 @@ fn opj_j2k_compare_qcc(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_write_qcc_in_memory(
-  p_j2k: &mut opj_j2k,
-  p_comp_no: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_comp_no: u32,
   data: &mut [u8],
-  p_data_written: &mut OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  p_data_written: &mut u32,
+  p_manager: &mut EventMgr,
 ) {
   let mut pos: usize = 0;
-  let mut l_qcc_size: OPJ_UINT32 = 0;
+  let mut l_qcc_size: u32 = 0;
   /* preconditions */
   /* L_QCC */
   l_qcc_size = (6u32).wrapping_add(opj_j2k_get_SQcd_SQcc_size(
@@ -1955,21 +1955,21 @@ fn opj_j2k_write_qcc_in_memory(
     p_comp_no,
   ));
   let mut l_remaining_size = l_qcc_size;
-  opj_write_bytes(&mut data[pos..], J2KMarker::QCC.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], J2KMarker::QCC.as_u32(), 2_u32);
   pos += 2usize;
   let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
   if numcomps <= 256u32 {
     l_qcc_size = l_qcc_size.wrapping_sub(1);
-    opj_write_bytes(&mut data[pos..], l_qcc_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+    opj_write_bytes(&mut data[pos..], l_qcc_size.wrapping_sub(2u32), 2_u32);
     pos += 2usize;
-    opj_write_bytes(&mut data[pos..], p_comp_no, 1 as OPJ_UINT32);
+    opj_write_bytes(&mut data[pos..], p_comp_no, 1_u32);
     pos += 1usize;
     /* in the case only one byte is sufficient the last byte allocated is useless -> still do -6 for available */
     l_remaining_size = l_remaining_size.wrapping_sub(6u32)
   } else {
-    opj_write_bytes(&mut data[pos..], l_qcc_size.wrapping_sub(2u32), 2 as OPJ_UINT32); /* L_QCC */
+    opj_write_bytes(&mut data[pos..], l_qcc_size.wrapping_sub(2u32), 2_u32); /* L_QCC */
     pos += 2usize; /* Cqcc */
-    opj_write_bytes(&mut data[pos..], p_comp_no, 2 as OPJ_UINT32);
+    opj_write_bytes(&mut data[pos..], p_comp_no, 2_u32);
     pos += 2usize;
     l_remaining_size = l_remaining_size.wrapping_sub(6u32)
   }
@@ -1982,13 +1982,13 @@ fn opj_j2k_write_qcc_in_memory(
     p_manager,
   );
   pos += *p_data_written as usize;
-  *p_data_written = pos as OPJ_UINT32;
+  *p_data_written = pos as u32;
 }
 
 /* *
  * Gets the maximum size taken by a qcc.
  */
-fn opj_j2k_get_max_qcc_size(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
+fn opj_j2k_get_max_qcc_size(mut p_j2k: &mut J2k) -> u32 {
   opj_j2k_get_max_coc_size(p_j2k)
 }
 
@@ -2007,13 +2007,13 @@ fn opj_j2k_get_max_qcc_size(mut p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_qcc(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
-  let l_comp_no: OPJ_UINT32;
+  let l_comp_no: u32;
   /* preconditions */
 
   let l_num_comp = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
@@ -2022,7 +2022,7 @@ fn opj_j2k_read_qcc(
       event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
       return 0i32;
     }
-    l_comp_no = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    l_comp_no = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
     p_header_size = p_header_size.wrapping_sub(1)
   } else {
@@ -2030,7 +2030,7 @@ fn opj_j2k_read_qcc(
       event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
       return 0i32;
     }
-    l_comp_no = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+    l_comp_no = opj_read_bytes(&header_data[cursor..], 2_u32);
     cursor += 2usize;
     p_header_size = p_header_size.wrapping_sub(2u32)
   }
@@ -2064,22 +2064,22 @@ fn opj_j2k_read_qcc(
 }
 
 fn opj_j2k_write_poc(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut l_written_size = 0 as OPJ_UINT32;
+  let mut l_written_size = 0_u32;
   /* preconditions */
 
   let l_tcp = &p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
-let l_nb_comp: OPJ_UINT32 = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-let l_nb_poc: OPJ_UINT32 = (1u32).wrapping_add(l_tcp.numpocs);
-  let l_poc_room: OPJ_UINT32 = if l_nb_comp <= 256u32 {
-    1 as OPJ_UINT32
+let l_nb_comp: u32 = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
+let l_nb_poc: u32 = (1u32).wrapping_add(l_tcp.numpocs);
+  let l_poc_room: u32 = if l_nb_comp <= 256u32 {
+    1_u32
   } else {
-    2 as OPJ_UINT32
+    2_u32
   };
-let l_poc_size: OPJ_UINT32 = (4u32).wrapping_add(
+let l_poc_size: u32 = (4u32).wrapping_add(
     (5u32)
       .wrapping_add((2u32).wrapping_mul(l_poc_room))
       .wrapping_mul(l_nb_poc),
@@ -2105,70 +2105,70 @@ let l_poc_size: OPJ_UINT32 = (4u32).wrapping_add(
  * @param       p_manager      the user event manager.
  */
 fn opj_j2k_write_poc_in_memory(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   data: &mut [u8],
-  p_data_written: &mut OPJ_UINT32,
-  _p_manager: &mut opj_event_mgr,
+  p_data_written: &mut u32,
+  _p_manager: &mut EventMgr,
 ) {
   let mut pos: usize = 0;
-  let mut i: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
   /* preconditions */
   /* Lpoc */
   let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
   let l_tcp = &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize]; /* LYEpoc_i */
   let l_tccp = &l_tcp.tccps[0]; /* REpoc_i */
-let l_nb_comp: OPJ_UINT32 = l_image.numcomps;
-let l_nb_poc: OPJ_UINT32 = (1u32).wrapping_add(l_tcp.numpocs);
-  let l_poc_room: OPJ_UINT32 = if l_nb_comp <= 256u32 {
-    1 as OPJ_UINT32
+let l_nb_comp: u32 = l_image.numcomps;
+let l_nb_poc: u32 = (1u32).wrapping_add(l_tcp.numpocs);
+  let l_poc_room: u32 = if l_nb_comp <= 256u32 {
+    1_u32
   } else {
-    2 as OPJ_UINT32
+    2_u32
   };
-let l_poc_size: OPJ_UINT32 = (4u32).wrapping_add(
+let l_poc_size: u32 = (4u32).wrapping_add(
     (5u32)
       .wrapping_add((2u32).wrapping_mul(l_poc_room))
       .wrapping_mul(l_nb_poc),
   );
-  opj_write_bytes(&mut data[pos..], J2KMarker::POC.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], J2KMarker::POC.as_u32(), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut data[pos..], l_poc_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], l_poc_size.wrapping_sub(2u32), 2_u32);
   pos += 2usize;
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_nb_poc {
     let l_current_poc = &mut l_tcp.pocs[i as usize];
-    opj_write_bytes(&mut data[pos..], l_current_poc.resno0, 1 as OPJ_UINT32);
+    opj_write_bytes(&mut data[pos..], l_current_poc.resno0, 1_u32);
     pos += 1usize;
     opj_write_bytes(&mut data[pos..], l_current_poc.compno0, l_poc_room);
     pos += l_poc_room as usize;
-    opj_write_bytes(&mut data[pos..], l_current_poc.layno1, 2 as OPJ_UINT32);
+    opj_write_bytes(&mut data[pos..], l_current_poc.layno1, 2_u32);
     pos += 2usize;
-    opj_write_bytes(&mut data[pos..], l_current_poc.resno1, 1 as OPJ_UINT32);
+    opj_write_bytes(&mut data[pos..], l_current_poc.resno1, 1_u32);
     pos += 1usize;
     opj_write_bytes(&mut data[pos..], l_current_poc.compno1, l_poc_room);
     pos += l_poc_room as usize;
-    opj_write_bytes(&mut data[pos..], l_current_poc.prg as OPJ_UINT32, 1 as OPJ_UINT32);
+    opj_write_bytes(&mut data[pos..], l_current_poc.prg as u32, 1_u32);
     pos += 1usize;
     /* change the value of the max layer according to the actual number of layers in the file, components and resolutions*/
     l_current_poc.layno1 =
-      opj_int_min(l_current_poc.layno1 as OPJ_INT32, l_tcp.numlayers as OPJ_INT32) as OPJ_UINT32;
+      opj_int_min(l_current_poc.layno1 as i32, l_tcp.numlayers as i32) as u32;
     l_current_poc.resno1 = opj_int_min(
-      l_current_poc.resno1 as OPJ_INT32,
-      l_tccp.numresolutions as OPJ_INT32,
-    ) as OPJ_UINT32;
+      l_current_poc.resno1 as i32,
+      l_tccp.numresolutions as i32,
+    ) as u32;
     l_current_poc.compno1 =
-      opj_int_min(l_current_poc.compno1 as OPJ_INT32, l_nb_comp as OPJ_INT32) as OPJ_UINT32;
+      opj_int_min(l_current_poc.compno1 as i32, l_nb_comp as i32) as u32;
     i += 1;
   }
-  *p_data_written = pos as OPJ_UINT32;
+  *p_data_written = pos as u32;
 }
 
 /* *
  * Gets the maximum size taken by the writing of a POC.
  */
-fn opj_j2k_get_max_poc_size(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
+fn opj_j2k_get_max_poc_size(p_j2k: &mut J2k) -> u32 {
   let l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
-  let mut l_max_poc = 0 as OPJ_UINT32;
-  let mut i: OPJ_UINT32 = 0;
+  let mut l_max_poc = 0_u32;
+  let mut i: u32 = 0;
   while i < l_nb_tiles {
     l_max_poc = opj_uint_max(l_max_poc, p_j2k.m_cp.tcps[i as usize].numpocs);
     i += 1;
@@ -2179,10 +2179,10 @@ fn opj_j2k_get_max_poc_size(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
 /* *
  * Gets the maximum size taken by the toc headers of all the tile parts of any given tile.
  */
-fn opj_j2k_get_max_toc_size(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
-  let l_nb_tiles: OPJ_UINT32 = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
-  let mut l_max = 0 as OPJ_UINT32;
-  let mut i: OPJ_UINT32 = 0;
+fn opj_j2k_get_max_toc_size(p_j2k: &mut J2k) -> u32 {
+  let l_nb_tiles: u32 = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
+  let mut l_max = 0_u32;
+  let mut i: u32 = 0;
   while i < l_nb_tiles {
     l_max = opj_uint_max(l_max, p_j2k.m_cp.tcps[i as usize].m_nb_tile_parts);
     i += 1;
@@ -2194,11 +2194,11 @@ fn opj_j2k_get_max_toc_size(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
  *
  * @param       p_j2k   the jpeg2000 codec to use.
  */
-fn opj_j2k_get_specific_header_sizes(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
-  let mut l_nb_bytes = 0 as OPJ_UINT32;
-  let mut l_coc_bytes: OPJ_UINT32 = 0;
-  let mut l_qcc_bytes: OPJ_UINT32 = 0;
-  let l_nb_comps: OPJ_UINT32 = p_j2k
+fn opj_j2k_get_specific_header_sizes(p_j2k: &mut J2k) -> u32 {
+  let mut l_nb_bytes = 0_u32;
+  let mut l_coc_bytes: u32 = 0;
+  let mut l_qcc_bytes: u32 = 0;
+  let l_nb_comps: u32 = p_j2k
     .m_private_image
     .as_deref()
     .expect("m_private_image")
@@ -2216,9 +2216,9 @@ fn opj_j2k_get_specific_header_sizes(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
   l_nb_bytes = l_nb_bytes.wrapping_add(opj_j2k_get_max_poc_size(p_j2k));
   if p_j2k.m_specific_param.m_encoder.m_PLT != 0 {
     /* Reserve space for PLT markers */
-    let l_cp: &opj_cp_t = &p_j2k.m_cp;
-    let mut l_max_packet_count = 0 as OPJ_UINT32;
-    let mut i: OPJ_UINT32 = 0;
+    let l_cp: &Cp = &p_j2k.m_cp;
+    let mut l_max_packet_count = 0_u32;
+    let mut i: u32 = 0;
     while i < l_cp.th.wrapping_mul(l_cp.tw) {
       l_max_packet_count = opj_uint_max(
         l_max_packet_count,
@@ -2234,7 +2234,7 @@ fn opj_j2k_get_specific_header_sizes(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
     /* estimate of 4 bytes for a packet size), one can write */
     /* (65536-6) / 4 = 16382 paquet sizes per PLT marker */
     p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT =
-      (6u32).wrapping_mul(opj_uint_ceildiv(l_max_packet_count, 16382 as OPJ_UINT32));
+      (6u32).wrapping_mul(opj_uint_ceildiv(l_max_packet_count, 16382_u32));
     /* Maximum 5 bytes per packet to encode a full UINT32 */
     l_nb_bytes = l_nb_bytes.wrapping_add((5u32).wrapping_mul(l_max_packet_count));
     p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT = p_j2k
@@ -2266,27 +2266,27 @@ fn opj_j2k_get_specific_header_sizes(p_j2k: &mut opj_j2k) -> OPJ_UINT32 {
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_poc(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let mut l_tmp: OPJ_UINT32 = 0;
-  let mut l_current_poc_nb: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
+  let mut l_tmp: u32 = 0;
+  let mut l_current_poc_nb: u32 = 0;
   /* preconditions */
 
   let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-let l_nb_comp: OPJ_UINT32 = l_image.numcomps;
-  let l_comp_room: OPJ_UINT32 = if l_nb_comp <= 256u32 {
-    1 as OPJ_UINT32
+let l_nb_comp: u32 = l_image.numcomps;
+  let l_comp_room: u32 = if l_nb_comp <= 256u32 {
+    1_u32
   } else {
-    2 as OPJ_UINT32
+    2_u32
   };
-let l_chunk_size: OPJ_UINT32 = (5u32).wrapping_add((2u32).wrapping_mul(l_comp_room));
+let l_chunk_size: u32 = (5u32).wrapping_add((2u32).wrapping_mul(l_comp_room));
   l_current_poc_nb = p_header_size.wrapping_div(l_chunk_size);
-let l_current_poc_remaining: OPJ_UINT32 = p_header_size.wrapping_rem(l_chunk_size);
+let l_current_poc_remaining: u32 = p_header_size.wrapping_rem(l_chunk_size);
   if l_current_poc_nb == 0u32 || l_current_poc_remaining != 0u32 {
     event_msg!(p_manager, EVT_ERROR, "Error reading POC marker\n",);
     return 0i32;
@@ -2302,7 +2302,7 @@ let l_current_poc_remaining: OPJ_UINT32 = p_header_size.wrapping_rem(l_chunk_siz
       .as_deref_mut()
       .expect("decoder m_default_tcp is always set")
   };
-let l_old_poc_nb: OPJ_UINT32 = if l_tcp.POC {
+let l_old_poc_nb: u32 = if l_tcp.POC {
     l_tcp.numpocs.wrapping_add(1u32)
   } else {
     0u32
@@ -2317,17 +2317,17 @@ let l_old_poc_nb: OPJ_UINT32 = if l_tcp.POC {
   i = l_old_poc_nb; /* CSpoc_i */
   while i < l_current_poc_nb {
     /* LYEpoc_i */
-    let resno0 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    let resno0 = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
     let compno0 = opj_read_bytes(&header_data[cursor..], l_comp_room);
     cursor += l_comp_room as usize;
-    let layno1 = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+    let layno1 = opj_read_bytes(&header_data[cursor..], 2_u32);
     cursor += 2usize;
-    let resno1 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    let resno1 = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
     let compno1 = opj_read_bytes(&header_data[cursor..], l_comp_room);
     cursor += l_comp_room as usize;
-    l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    l_tmp = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
     let poc = &mut l_tcp.pocs[i as usize];
     poc.resno0 = resno0;
@@ -2361,11 +2361,11 @@ let l_old_poc_nb: OPJ_UINT32 = if l_tcp.POC {
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_crg(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
   /* preconditions */
 
   let l_nb_comp = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
@@ -2404,13 +2404,13 @@ fn opj_j2k_read_crg(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_tlm(
-  _p_j2k: &mut opj_j2k,
+  _p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
-  let mut l_Stlm: OPJ_UINT32 = 0;
+  let mut l_Stlm: u32 = 0;
   /* preconditions */
   /* Stlm */
 
@@ -2419,15 +2419,15 @@ fn opj_j2k_read_tlm(
     return 0i32;
   }
   let remaining = p_header_size.wrapping_sub(2u32);
-  let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  let _ = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
-  l_Stlm = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  l_Stlm = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
-let l_ST: OPJ_UINT32 = l_Stlm >> 4i32 & 0x3u32;
-let l_SP: OPJ_UINT32 = l_Stlm >> 6i32 & 0x1u32;
-let l_Ptlm_size: OPJ_UINT32 = l_SP.wrapping_add(1u32).wrapping_mul(2u32);
-let l_quotient: OPJ_UINT32 = l_Ptlm_size.wrapping_add(l_ST);
-let l_tot_num_tp_remaining: OPJ_UINT32 = remaining.wrapping_rem(l_quotient);
+let l_ST: u32 = l_Stlm >> 4i32 & 0x3u32;
+let l_SP: u32 = l_Stlm >> 6i32 & 0x1u32;
+let l_Ptlm_size: u32 = l_SP.wrapping_add(1u32).wrapping_mul(2u32);
+let l_quotient: u32 = l_Ptlm_size.wrapping_add(l_ST);
+let l_tot_num_tp_remaining: u32 = remaining.wrapping_rem(l_quotient);
   if l_tot_num_tp_remaining != 0u32 {
     event_msg!(p_manager, EVT_ERROR, "Error reading TLM marker\n",);
     return 0i32;
@@ -2462,11 +2462,11 @@ let l_tot_num_tp_remaining: OPJ_UINT32 = remaining.wrapping_rem(l_quotient);
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_plm(
-  mut _p_j2k: &mut opj_j2k,
+  mut _p_j2k: &mut J2k,
   header_data: &[u8],
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
   /* preconditions */
 
   if p_header_size < 1u32 {
@@ -2537,15 +2537,15 @@ fn opj_j2k_read_plm(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_plt(
-  _p_j2k: &mut opj_j2k,
+  _p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
-  let mut l_tmp: OPJ_UINT32 = 0;
-  let mut l_packet_len = 0 as OPJ_UINT32;
-  let mut i: OPJ_UINT32 = 0;
+  let mut l_tmp: u32 = 0;
+  let mut l_packet_len = 0_u32;
+  let mut i: u32 = 0;
   /* preconditions */
   /* Iplt_ij */
 
@@ -2553,12 +2553,12 @@ fn opj_j2k_read_plt(
     event_msg!(p_manager, EVT_ERROR, "Error reading PLT marker\n",);
     return 0i32;
   }
-  let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  let _ = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   let remaining = p_header_size.wrapping_sub(1);
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < remaining {
-    l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    l_tmp = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
     /* take only the last seven bytes */
     l_packet_len |= l_tmp & 0x7fu32;
@@ -2566,7 +2566,7 @@ fn opj_j2k_read_plt(
       l_packet_len <<= 7i32
     } else {
       /* store packet length and proceed to next packet */
-      l_packet_len = 0 as OPJ_UINT32
+      l_packet_len = 0_u32
     }
     i += 1;
   }
@@ -2594,11 +2594,11 @@ fn opj_j2k_read_plt(
  * @param       p_manager               the user event manager.
  */
 fn opj_j2k_read_ppm(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
   /* preconditions */
 
@@ -2609,10 +2609,10 @@ fn opj_j2k_read_ppm(
   }
   let l_cp = &mut p_j2k.m_cp;
   l_cp.ppm = true;
-let l_Z_ppm: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+let l_Z_ppm: u32 = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   /* check allocation needed */
-  if l_cp.ppm_markers.len() as OPJ_UINT32 <= l_Z_ppm {
+  if l_cp.ppm_markers.len() as u32 <= l_Z_ppm {
     /* grow-only; the tail is default-initialised, as in the C realloc+memset */
     let l_new_count = l_Z_ppm.wrapping_add(1u32) as usize; /* can't overflow, l_Z_ppm is UINT8 */
     l_cp.ppm_markers.resize_with(l_new_count, Default::default);
@@ -2638,10 +2638,10 @@ let l_Z_ppm: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32
  * @param       p_cp      main coding parameters.
  * @param       p_manager the user event manager.
  */
-fn opj_j2k_merge_ppm(p_cp: &mut opj_cp_t, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0;
-  let mut l_ppm_data_size: OPJ_UINT32 = 0;
-  let mut l_N_ppm_remaining: OPJ_UINT32 = 0;
+fn opj_j2k_merge_ppm(p_cp: &mut Cp, p_manager: &mut EventMgr) -> OPJ_BOOL {
+  let mut i: u32 = 0;
+  let mut l_ppm_data_size: u32 = 0;
+  let mut l_N_ppm_remaining: u32 = 0;
   /* preconditions */
 
     assert!(p_cp.ppm_buffer.is_empty());
@@ -2658,9 +2658,9 @@ fn opj_j2k_merge_ppm(p_cp: &mut opj_cp_t, p_manager: &mut opj_event_mgr) -> OPJ_
     while (i as usize) < p_cp.ppm_markers.len() {
       if !(&p_cp.ppm_markers)[i as usize].m_data.is_empty() {
         /* standard doesn't seem to require contiguous Zppm */
-        let mut l_data: &[OPJ_BYTE] = &(&p_cp.ppm_markers)[i as usize].m_data[..];
-        if l_N_ppm_remaining >= l_data.len() as OPJ_UINT32 {
-          l_N_ppm_remaining -= l_data.len() as OPJ_UINT32;
+        let mut l_data: &[u8] = &(&p_cp.ppm_markers)[i as usize].m_data[..];
+        if l_N_ppm_remaining >= l_data.len() as u32 {
+          l_N_ppm_remaining -= l_data.len() as u32;
           l_data = &[];
         } else {
           l_data = &l_data[l_N_ppm_remaining as usize..];
@@ -2673,7 +2673,7 @@ fn opj_j2k_merge_ppm(p_cp: &mut opj_cp_t, p_manager: &mut opj_event_mgr) -> OPJ_
             event_msg!(p_manager, EVT_ERROR, "Not enough bytes to read Nppm\n",);
             return 0i32;
           }
-          let l_N_ppm = crate::cio::opj_read_bytes(l_data, 4 as OPJ_UINT32);
+          let l_N_ppm = crate::cio::opj_read_bytes(l_data, 4_u32);
           l_data = &l_data[4..];
 
           if l_ppm_data_size > u32::MAX - l_N_ppm {
@@ -2681,10 +2681,10 @@ fn opj_j2k_merge_ppm(p_cp: &mut opj_cp_t, p_manager: &mut opj_event_mgr) -> OPJ_
             return 0i32;
           }
           l_ppm_data_size += l_N_ppm;
-          if l_data.len() as OPJ_UINT32 >= l_N_ppm {
+          if l_data.len() as u32 >= l_N_ppm {
             l_data = &l_data[l_N_ppm as usize..]
           } else {
-            l_N_ppm_remaining = l_N_ppm - l_data.len() as OPJ_UINT32;
+            l_N_ppm_remaining = l_N_ppm - l_data.len() as u32;
             l_data = &[]
           }
         }
@@ -2697,17 +2697,17 @@ fn opj_j2k_merge_ppm(p_cp: &mut opj_cp_t, p_manager: &mut opj_event_mgr) -> OPJ_
       return 0i32;
     }
     /* Second pass: concatenate the payloads, dropping the Nppm fields. */
-    let mut l_buffer: Vec<OPJ_BYTE> = Vec::with_capacity(l_ppm_data_size as usize);
+    let mut l_buffer: Vec<u8> = Vec::with_capacity(l_ppm_data_size as usize);
     p_cp.ppm_len = l_ppm_data_size;
     l_N_ppm_remaining = 0u32;
     i = 0u32;
     while (i as usize) < p_cp.ppm_markers.len() {
       if !(&p_cp.ppm_markers)[i as usize].m_data.is_empty() {
         /* standard doesn't seem to require contiguous Zppm */
-        let mut l_data: &[OPJ_BYTE] = &(&p_cp.ppm_markers)[i as usize].m_data[..];
-        if l_N_ppm_remaining >= l_data.len() as OPJ_UINT32 {
+        let mut l_data: &[u8] = &(&p_cp.ppm_markers)[i as usize].m_data[..];
+        if l_N_ppm_remaining >= l_data.len() as u32 {
           l_buffer.extend_from_slice(l_data);
-          l_N_ppm_remaining -= l_data.len() as OPJ_UINT32;
+          l_N_ppm_remaining -= l_data.len() as u32;
           l_data = &[];
         } else {
           l_buffer.extend_from_slice(&l_data[..l_N_ppm_remaining as usize]);
@@ -2721,14 +2721,14 @@ fn opj_j2k_merge_ppm(p_cp: &mut opj_cp_t, p_manager: &mut opj_event_mgr) -> OPJ_
             event_msg!(p_manager, EVT_ERROR, "Not enough bytes to read Nppm\n",);
             return 0i32;
           }
-          let l_N_ppm = crate::cio::opj_read_bytes(l_data, 4 as OPJ_UINT32);
+          let l_N_ppm = crate::cio::opj_read_bytes(l_data, 4_u32);
           l_data = &l_data[4..];
-          if l_data.len() as OPJ_UINT32 >= l_N_ppm {
+          if l_data.len() as u32 >= l_N_ppm {
             l_buffer.extend_from_slice(&l_data[..l_N_ppm as usize]);
             l_data = &l_data[l_N_ppm as usize..]
           } else {
             l_buffer.extend_from_slice(l_data);
-            l_N_ppm_remaining = l_N_ppm - l_data.len() as OPJ_UINT32;
+            l_N_ppm_remaining = l_N_ppm - l_data.len() as u32;
             l_data = &[]
           }
         }
@@ -2758,13 +2758,13 @@ fn opj_j2k_merge_ppm(p_cp: &mut opj_cp_t, p_manager: &mut opj_event_mgr) -> OPJ_
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_ppt(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   header_data: &[u8],
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
-  let mut l_Z_ppt: OPJ_UINT32 = 0;
+  let mut l_Z_ppt: u32 = 0;
   /* preconditions */
 
   /* We need to have the Z_ppt element + 1 byte of Ippt at minimum */
@@ -2780,11 +2780,11 @@ fn opj_j2k_read_ppt(
   }
   let tcp = &mut cp.tcps[p_j2k.m_current_tile_number as usize];
   tcp.ppt = true;
-  l_Z_ppt = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  l_Z_ppt = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   p_header_size = p_header_size.wrapping_sub(1);
   /* check allocation needed */
-  if (tcp.ppt_markers.len() as OPJ_UINT32) <= l_Z_ppt {
+  if (tcp.ppt_markers.len() as u32) <= l_Z_ppt {
     /* grow-only; the tail is default-initialised, as in the C realloc+memset */
     let l_newCount = l_Z_ppt.wrapping_add(1u32) as usize; /* can't overflow, l_Z_ppt is UINT8 */
     tcp.ppt_markers.resize_with(l_newCount, Default::default);
@@ -2809,7 +2809,7 @@ fn opj_j2k_read_ppt(
  * @param       p_tcp   the tile.
  * @param       p_manager               the user event manager.
  */
-fn opj_j2k_merge_ppt(p_tcp: &mut opj_tcp_t, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+fn opj_j2k_merge_ppt(p_tcp: &mut Tcp, p_manager: &mut EventMgr) -> OPJ_BOOL {
   /* preconditions */
 
   if !p_tcp.ppt_buffer.is_empty() {
@@ -2830,7 +2830,7 @@ fn opj_j2k_merge_ppt(p_tcp: &mut opj_tcp_t, p_manager: &mut opj_event_mgr) -> OP
     l_buffer.append(&mut l_marker.m_data);
   }
   p_tcp.ppt_markers = Vec::new();
-  p_tcp.ppt_len = l_buffer.len() as OPJ_UINT32;
+  p_tcp.ppt_len = l_buffer.len() as u32;
   p_tcp.ppt_data_pos = 0;
   p_tcp.ppt_buffer = l_buffer;
   1i32
@@ -2843,12 +2843,12 @@ fn opj_j2k_merge_ppt(p_tcp: &mut opj_tcp_t, p_manager: &mut opj_event_mgr) -> OP
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_tlm(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-        let mut l_tlm_size: OPJ_UINT32 = 0;
-    let mut size_per_tile_part: OPJ_UINT32 = 0;
+        let mut l_tlm_size: u32 = 0;
+    let mut size_per_tile_part: u32 = 0;
     /* preconditions */
 
     /* 10921 = (65535 - header_size) / size_per_tile_part where */
@@ -2863,10 +2863,10 @@ fn opj_j2k_write_tlm(
       return 0i32;
     }
     if p_j2k.m_specific_param.m_encoder.m_total_tile_parts <= 255u32 {
-      size_per_tile_part = 5 as OPJ_UINT32;
+      size_per_tile_part = 5_u32;
       p_j2k.m_specific_param.m_encoder.m_Ttlmi_is_byte = 1i32
     } else {
-      size_per_tile_part = 6 as OPJ_UINT32;
+      size_per_tile_part = 6_u32;
       p_j2k.m_specific_param.m_encoder.m_Ttlmi_is_byte = 0i32
     }
     l_tlm_size = ((2i32 + 4i32) as core::ffi::c_uint).wrapping_add(
@@ -2878,11 +2878,11 @@ fn opj_j2k_write_tlm(
     /* change the way data is written to avoid seeking if possible */
     /* TODO */
     p_j2k.m_specific_param.m_encoder.m_tlm_start = opj_stream_tell(p_stream); /* TLM */
-    opj_write_bytes(&mut l_buf[pos..], J2KMarker::TLM.as_u32(), 2 as OPJ_UINT32); /* Lpoc */
+    opj_write_bytes(&mut l_buf[pos..], J2KMarker::TLM.as_u32(), 2_u32); /* Lpoc */
     pos += 2usize; /* Ztlm=0*/
-    opj_write_bytes(&mut l_buf[pos..], l_tlm_size.wrapping_sub(2u32), 2 as OPJ_UINT32,);
+    opj_write_bytes(&mut l_buf[pos..], l_tlm_size.wrapping_sub(2u32), 2_u32,);
     pos += 2usize;
-    opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 1 as OPJ_UINT32);
+    opj_write_bytes(&mut l_buf[pos..], 0_u32, 1_u32);
     pos += 1usize;
     /* Stlm 0x50= ST=1(8bits-255 tiles max),SP=1(Ptlm=32bits) */
     /* Stlm 0x60= ST=2(16bits-65535 tiles max),SP=1(Ptlm=32bits) */
@@ -2890,7 +2890,7 @@ fn opj_j2k_write_tlm(
         0x50i32
       } else {
         0x60i32
-      } as OPJ_UINT32, 1 as OPJ_UINT32,);
+      } as u32, 1_u32,);
     pos += 1usize;
     /* do nothing on the size_per_tile_part * l_j2k->m_specific_param.m_encoder.m_total_tile_parts remaining data */
     if opj_stream_write_data(p_stream, &l_buf[..l_tlm_size as usize], p_manager) != l_tlm_size as usize
@@ -2911,11 +2911,11 @@ fn opj_j2k_write_tlm(
  * @param       p_manager        the user event manager.
 */
 fn opj_j2k_write_sot(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   data: &mut [u8],
-  p_data_written: &mut OPJ_UINT32,
+  p_data_written: &mut u32,
   _p_stream: &Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut pos: usize = 0;
   /* preconditions */
@@ -2929,29 +2929,29 @@ fn opj_j2k_write_sot(
     );
     return 0i32;
   }
-  opj_write_bytes(&mut data[pos..], J2KMarker::SOT.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], J2KMarker::SOT.as_u32(), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut data[pos..], 10 as OPJ_UINT32, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], 10_u32, 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut data[pos..], p_j2k.m_current_tile_number, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], p_j2k.m_current_tile_number, 2_u32);
   pos += 2usize;
   /* Psot  */
   pos += 4usize; /* TPsot */
   opj_write_bytes(
     &mut data[pos..],
     p_j2k.m_specific_param.m_encoder.m_current_tile_part_number,
-    1 as OPJ_UINT32,
+    1_u32,
   ); /* TNsot */
   pos += 1usize;
   opj_write_bytes(
     &mut data[pos..],
     p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize].m_nb_tile_parts,
-    1 as OPJ_UINT32,
+    1_u32,
   );
   pos += 1usize;
   /* UniPG>> */
   /* USE_JPWL */
-  *p_data_written = pos as OPJ_UINT32;
+  *p_data_written = pos as u32;
   1i32
 }
 /* *
@@ -2968,12 +2968,12 @@ fn opj_j2k_write_sot(
  * @param       p_manager       the user event manager.
  */
 fn opj_j2k_get_sot_values(
-  header_data: &[OPJ_BYTE],
-  p_tile_no: &mut OPJ_UINT32,
-  p_tot_len: &mut OPJ_UINT32,
-  p_current_part: &mut OPJ_UINT32,
-  p_num_parts: &mut OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  header_data: &[u8],
+  p_tile_no: &mut u32,
+  p_tot_len: &mut u32,
+  p_current_part: &mut u32,
+  p_num_parts: &mut u32,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut cursor: usize = 0;
   /* preconditions */
@@ -2983,13 +2983,13 @@ fn opj_j2k_get_sot_values(
     event_msg!(p_manager, EVT_ERROR, "Error reading SOT marker\n",); /* Isot */
     return 0i32;
   } /* Psot */
-  *p_tile_no = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* TPsot */
+  *p_tile_no = opj_read_bytes(&header_data[cursor..], 2_u32); /* TPsot */
   cursor += 2usize; /* TNsot */
-  *p_tot_len = opj_read_bytes(&header_data[cursor..], 4 as OPJ_UINT32);
+  *p_tot_len = opj_read_bytes(&header_data[cursor..], 4_u32);
   cursor += 4usize;
-  *p_current_part = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  *p_current_part = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
-  *p_num_parts = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  *p_num_parts = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   1i32
 }
@@ -3002,15 +3002,15 @@ fn opj_j2k_get_sot_values(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_read_sot(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-    let mut l_tot_len: OPJ_UINT32 = 0;
-    let mut l_num_parts = 0 as OPJ_UINT32;
-    let mut l_current_part: OPJ_UINT32 = 0;
-    let mut l_tile_x: OPJ_UINT32 = 0;
-    let mut l_tile_y: OPJ_UINT32 = 0;
+    let mut l_tot_len: u32 = 0;
+    let mut l_num_parts = 0_u32;
+    let mut l_current_part: u32 = 0;
+    let mut l_tile_x: u32 = 0;
+    let mut l_tile_y: u32 = 0;
     /* preconditions */
 
     if opj_j2k_get_sot_values(
@@ -3040,7 +3040,7 @@ fn opj_j2k_read_sot(
     l_tile_y = p_j2k.m_current_tile_number.wrapping_div(p_j2k.m_cp.tw);
     if p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec < 0i32
       || p_j2k.m_current_tile_number
-        == p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32
+        == p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as u32
     {
       /* Do only this check if we decode all tile part headers, or if */
       /* we decode one precise tile. Otherwise the m_current_tile_part_number */
@@ -3052,7 +3052,7 @@ fn opj_j2k_read_sot(
       /* several times. */
       /* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
       /* should appear in increasing order. */
-      if l_tcp.m_current_tile_part_number + 1i32 != l_current_part as OPJ_INT32 {
+      if l_tcp.m_current_tile_part_number + 1i32 != l_current_part as i32 {
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -3064,7 +3064,7 @@ fn opj_j2k_read_sot(
         return 0i32;
       }
     }
-    l_tcp.m_current_tile_part_number = l_current_part as OPJ_INT32;
+    l_tcp.m_current_tile_part_number = l_current_part as i32;
     /* USE_JPWL */
     /* look for the tile in the list of already processed tile (in parts). */
     /* Optimization possible here with a more complex data structure and with the removing of tiles */
@@ -3107,8 +3107,7 @@ fn opj_j2k_read_sot(
     if l_num_parts != 0u32 {
       /* Number of tile-part header is provided by this tile-part header */
       l_num_parts = (l_num_parts as core::ffi::c_uint)
-        .wrapping_add(p_j2k.m_specific_param.m_decoder.m_nb_tile_parts_correction as _)
-        as OPJ_UINT32;
+        .wrapping_add(p_j2k.m_specific_param.m_decoder.m_nb_tile_parts_correction as _);
       /* Useful to manage the case of textGBR.jp2 file because two values of TNSot are allowed: the correct numbers of
        * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
       if l_tcp.m_nb_tile_parts != 0 && l_current_part >= l_tcp.m_nb_tile_parts {
@@ -3141,7 +3140,7 @@ fn opj_j2k_read_sot(
     /* SOT_marker_size = 12 */
     } else {
       /* FIXME: need to be computed from the number of bytes remaining in the codestream */
-      p_j2k.m_specific_param.m_decoder.m_sot_length = 0 as OPJ_UINT32
+      p_j2k.m_specific_param.m_decoder.m_sot_length = 0_u32
     }
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPH;
     /* Check if the current tile is outside the area we want decode or not corresponding to the tile index*/
@@ -3154,7 +3153,7 @@ fn opj_j2k_read_sot(
     } else {
       assert!(p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec >= 0i32);
       p_j2k.m_specific_param.m_decoder.m_skip_data = p_j2k.m_current_tile_number
-        != p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32;
+        != p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as u32;
     }
     /* Index */
     if let Some(cstr_index) = p_j2k.cstr_index.as_deref_mut() {
@@ -3167,7 +3166,7 @@ fn opj_j2k_read_sot(
         tile.tp_index.resize(l_num_parts as usize, Default::default());
       } else {
         if tile.tp_index.is_empty() {
-          tile.current_nb_tps = 10 as OPJ_UINT32;
+          tile.current_nb_tps = 10_u32;
           tile.tp_index.resize(10, Default::default());
         }
         if l_current_part >= tile.current_nb_tps {
@@ -3209,37 +3208,37 @@ fn opj_j2k_read_sot(
  * Write one or more PLT markers in the provided buffer
  */
 fn opj_j2k_write_plt_in_memory(
-  _p_j2k: &opj_j2k,
-  marker_info: &opj_tcd_marker_info_t,
+  _p_j2k: &J2k,
+  marker_info: &TcdMarkerInfo,
   data: &mut [u8],
-  p_data_written: &mut OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  p_data_written: &mut u32,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut Zplt = 0 as OPJ_BYTE;
-  let mut Lplt: OPJ_UINT16 = 0;
+  let mut Zplt = 0_u8;
+  let mut Lplt: u16 = 0;
   let pos_start: usize = 0;
   let mut pos_Lplt: usize = 2;
   let mut pos: usize = 0;
-  let mut i: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
   let packet_sizes = &marker_info.p_packet_size[..];
-  opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2_u32);
   pos += 2usize;
   /* Reserve space for Lplt */
   pos += 2usize;
-  opj_write_bytes(&mut data[pos..], Zplt as OPJ_UINT32, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], Zplt as u32, 1_u32);
   pos += 1usize;
-  Lplt = 3 as OPJ_UINT16;
-  i = 0 as OPJ_UINT32;
+  Lplt = 3_u16;
+  i = 0_u32;
   while i < marker_info.packet_count {
-    let mut var_bytes: [OPJ_BYTE; 5] = [0; 5];
-    let mut var_bytes_size = 0 as OPJ_UINT8;
+    let mut var_bytes: [u8; 5] = [0; 5];
+    let mut var_bytes_size = 0_u8;
     let mut packet_size = packet_sizes[i as usize];
     /* Packet size written in variable-length way, starting with LSB */
-    var_bytes[var_bytes_size as usize] = (packet_size & 0x7fu32) as OPJ_BYTE;
+    var_bytes[var_bytes_size as usize] = (packet_size & 0x7fu32) as u8;
     var_bytes_size = var_bytes_size.wrapping_add(1);
     packet_size >>= 7i32;
     while packet_size > 0u32 {
-      var_bytes[var_bytes_size as usize] = (packet_size & 0x7fu32 | 0x80u32) as OPJ_BYTE;
+      var_bytes[var_bytes_size as usize] = (packet_size & 0x7fu32 | 0x80u32) as u8;
       var_bytes_size = var_bytes_size.wrapping_add(1);
       packet_size >>= 7i32
     }
@@ -3255,34 +3254,34 @@ fn opj_j2k_write_plt_in_memory(
         return 0i32;
       }
       /* Patch Lplt */
-      opj_write_bytes(&mut data[pos_Lplt..], Lplt as OPJ_UINT32, 2 as OPJ_UINT32);
+      opj_write_bytes(&mut data[pos_Lplt..], Lplt as u32, 2_u32);
       /* Start new segment */
-      opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2 as OPJ_UINT32);
+      opj_write_bytes(&mut data[pos..], J2KMarker::PLT.as_u32(), 2_u32);
       pos += 2usize;
       /* Reserve space for Lplt */
       pos_Lplt = pos;
       pos += 2usize;
       Zplt = Zplt.wrapping_add(1);
-      opj_write_bytes(&mut data[pos..], Zplt as OPJ_UINT32, 1 as OPJ_UINT32);
+      opj_write_bytes(&mut data[pos..], Zplt as u32, 1_u32);
       pos += 1usize;
-      Lplt = 3 as OPJ_UINT16
+      Lplt = 3_u16
     }
-    Lplt = (Lplt as core::ffi::c_int + var_bytes_size as core::ffi::c_int) as OPJ_UINT16;
+    Lplt = (Lplt as core::ffi::c_int + var_bytes_size as core::ffi::c_int) as u16;
     /* Serialize variable-length packet size, starting with MSB */
     while var_bytes_size as core::ffi::c_int > 0i32 {
       opj_write_bytes(
         &mut data[pos..],
-        var_bytes[(var_bytes_size as core::ffi::c_int - 1i32) as usize] as OPJ_UINT32,
-        1 as OPJ_UINT32,
+        var_bytes[(var_bytes_size as core::ffi::c_int - 1i32) as usize] as u32,
+        1_u32,
       );
       pos += 1usize;
       var_bytes_size = var_bytes_size.wrapping_sub(1)
     }
     i += 1;
   }
-  *p_data_written = (pos - pos_start) as OPJ_UINT32;
+  *p_data_written = (pos - pos_start) as u32;
   /* Patch Lplt */
-  opj_write_bytes(&mut data[pos_Lplt..], Lplt as OPJ_UINT32, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos_Lplt..], Lplt as u32, 2_u32);
   1i32
 }
 
@@ -3299,13 +3298,13 @@ fn opj_j2k_write_plt_in_memory(
  * @param       p_manager           the user event manager.
 */
 fn opj_j2k_write_sod(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   data: &mut [u8],
-  p_data_written: &mut OPJ_UINT32,
+  p_data_written: &mut u32,
   _p_stream: &Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-    let mut l_remaining_data: OPJ_UINT32 = 0;
+    let mut l_remaining_data: u32 = 0;
     /* preconditions */
 
     if data.len() < 4 {
@@ -3316,9 +3315,9 @@ fn opj_j2k_write_sod(
       );
       return 0i32;
     }
-    opj_write_bytes(&mut data[..], J2KMarker::SOD.as_u32(), 2 as OPJ_UINT32);
+    opj_write_bytes(&mut data[..], J2KMarker::SOD.as_u32(), 2_u32);
     /* make room for the EOF marker */
-    l_remaining_data = (data.len() as OPJ_UINT32).wrapping_sub(4u32);
+    l_remaining_data = (data.len() as u32).wrapping_sub(4u32);
     /* update tile coder */
     p_j2k.m_tcd.tp_num = p_j2k
       .m_specific_param
@@ -3348,10 +3347,10 @@ fn opj_j2k_write_sod(
     /*}*/
     /* << INDEX */
     if p_j2k.m_specific_param.m_encoder.m_current_tile_part_number == 0u32 {
-      p_j2k.m_tcd.tcd_image.tiles.packno = 0 as OPJ_UINT32
+      p_j2k.m_tcd.tcd_image.tiles.packno = 0_u32
     }
-    *p_data_written = 0 as OPJ_UINT32;
-    let mut marker_info = opj_tcd_marker_info::new(p_j2k.m_specific_param.m_encoder.m_PLT);
+    *p_data_written = 0_u32;
+    let mut marker_info = TcdMarkerInfo::new(p_j2k.m_specific_param.m_encoder.m_PLT);
     if l_remaining_data < p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT {
       event_msg!(
         p_manager,
@@ -3361,8 +3360,7 @@ fn opj_j2k_write_sod(
       return 0i32;
     }
     l_remaining_data = (l_remaining_data as core::ffi::c_uint)
-      .wrapping_sub(p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT)
-      as OPJ_UINT32;
+      .wrapping_sub(p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT);
     if opj_tcd_encode_tile(
       &mut p_j2k.m_tcd,
       p_j2k.m_current_tile_number,
@@ -3379,9 +3377,9 @@ fn opj_j2k_write_sod(
       return 0i32;
     }
     /* For SOD */
-    *p_data_written = (*p_data_written as core::ffi::c_uint).wrapping_add(2u32) as OPJ_UINT32;
+    *p_data_written = (*p_data_written as core::ffi::c_uint).wrapping_add(2u32);
     if p_j2k.m_specific_param.m_encoder.m_PLT != 0 {
-      let mut l_data_written_PLT = 0 as OPJ_UINT32;
+      let mut l_data_written_PLT = 0_u32;
       let mut p_PLT_buffer = vec![0u8; p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_PLT as usize];
       if opj_j2k_write_plt_in_memory(
         &*p_j2k,
@@ -3398,7 +3396,7 @@ fn opj_j2k_write_sod(
       data.copy_within(0..*p_data_written as usize, l_data_written_PLT as usize);
       data[..l_data_written_PLT as usize].copy_from_slice(&p_PLT_buffer[..l_data_written_PLT as usize]);
       *p_data_written =
-        (*p_data_written as core::ffi::c_uint).wrapping_add(l_data_written_PLT) as OPJ_UINT32
+        (*p_data_written as core::ffi::c_uint).wrapping_add(l_data_written_PLT)
     }
     1i32
 }
@@ -3410,34 +3408,34 @@ fn opj_j2k_write_sod(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_sod(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut l_current_read_size: OPJ_SIZE_T = 0;
+  let mut l_current_read_size: usize = 0;
   let mut l_sot_length_pb_detected = 0i32;
   /* preconditions */
 
   let strict = p_j2k.m_cp.strict;
   let l_tcp = &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
   if p_j2k.m_specific_param.m_decoder.m_last_tile_part != 0 {
-    /* opj_stream_get_number_byte_left returns OPJ_OFF_T
+    /* opj_stream_get_number_byte_left returns i64
     // but we are in the last tile part,
-    // so its result will fit on OPJ_UINT32 unless we find
+    // so its result will fit on u32 unless we find
     // a file with a single tile part of more than 4 GB...*/
     p_j2k.m_specific_param.m_decoder.m_sot_length =
-      (opj_stream_get_number_byte_left(p_stream) - 2i64) as OPJ_UINT32
+      (opj_stream_get_number_byte_left(p_stream) - 2i64) as u32
   } else if p_j2k.m_specific_param.m_decoder.m_sot_length >= 2u32 {
     p_j2k.m_specific_param.m_decoder.m_sot_length = (p_j2k.m_specific_param.m_decoder.m_sot_length
       as core::ffi::c_uint)
-      .wrapping_sub(2u32) as OPJ_UINT32
+      .wrapping_sub(2u32)
   }
-  /* Check to avoid pass the limit of OPJ_UINT32 */
+  /* Check to avoid pass the limit of u32 */
   /* Patch to support new PHR data */
   if p_j2k.m_specific_param.m_decoder.m_sot_length != 0 {
     /* If we are here, we'll try to read the data after allocation */
     /* Check enough bytes left in stream before allocation */
-    if p_j2k.m_specific_param.m_decoder.m_sot_length as OPJ_OFF_T
+    if p_j2k.m_specific_param.m_decoder.m_sot_length as i64
       > opj_stream_get_number_byte_left(p_stream)
     {
       if strict != 0 {
@@ -3528,47 +3526,47 @@ fn opj_j2k_read_sod(
       p_manager,
     )
   } else {
-    l_current_read_size = 0 as OPJ_SIZE_T
+    l_current_read_size = 0_usize
   }
   if l_current_read_size != p_j2k.m_specific_param.m_decoder.m_sot_length as usize {
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC
   } else {
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT
   }
-  l_tcp.m_data_size = l_tcp.m_data_size.wrapping_add(l_current_read_size as OPJ_UINT32);
+  l_tcp.m_data_size = l_tcp.m_data_size.wrapping_add(l_current_read_size as u32);
   1i32
 }
 
 fn opj_j2k_write_rgn(
-  p_j2k: &mut opj_j2k,
-  p_tile_no: OPJ_UINT32,
-  p_comp_no: OPJ_UINT32,
-  nb_comps: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_tile_no: u32,
+  p_comp_no: u32,
+  nb_comps: u32,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
   /* Lrgn */
   /* Srgn */
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
-  let l_comp_room: OPJ_UINT32 = if nb_comps <= 256u32 {
-    1 as OPJ_UINT32
+  let l_comp_room: u32 = if nb_comps <= 256u32 {
+    1_u32
   } else {
-    2 as OPJ_UINT32
+    2_u32
   };
-let l_rgn_size: OPJ_UINT32 = (6u32).wrapping_add(l_comp_room);
+let l_rgn_size: u32 = (6u32).wrapping_add(l_comp_room);
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(l_rgn_size as usize, 0);
   let mut pos: usize = 0;
-  opj_write_bytes(&mut l_buf[pos..], J2KMarker::RGN.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::RGN.as_u32(), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_rgn_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_rgn_size.wrapping_sub(2u32), 2_u32);
   pos += 2usize;
   opj_write_bytes(&mut l_buf[pos..], p_comp_no, l_comp_room);
   pos += l_comp_room as usize;
-  opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], 0_u32, 1_u32);
   pos += 1usize;
-  opj_write_bytes(&mut l_buf[pos..], l_tccp.roishift as OPJ_UINT32, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_tccp.roishift as u32, 1_u32);
   pos += 1usize;
   if opj_stream_write_data(p_stream, &l_buf[..l_rgn_size as usize], p_manager)
     != l_rgn_size as usize
@@ -3587,15 +3585,15 @@ let l_rgn_size: OPJ_UINT32 = (6u32).wrapping_add(l_comp_room);
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_eoc(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(2, 0);
-  opj_write_bytes(&mut l_buf[..], J2KMarker::EOC.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[..], J2KMarker::EOC.as_u32(), 2_u32);
   /* UniPG>> */
   /* USE_JPWL */
   if opj_stream_write_data(p_stream, &l_buf[..2], p_manager) != 2
@@ -3625,21 +3623,21 @@ fn opj_j2k_write_eoc(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_rgn(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
   /* preconditions*/
   /* Srgn */
 
   let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-let l_nb_comp: OPJ_UINT32 = l_image.numcomps;
-  let l_comp_room: OPJ_UINT32 = if l_nb_comp <= 256u32 {
-    1 as OPJ_UINT32
+let l_nb_comp: u32 = l_image.numcomps;
+  let l_comp_room: u32 = if l_nb_comp <= 256u32 {
+    1_u32
   } else {
-    2 as OPJ_UINT32
+    2_u32
   };
   if p_header_size != (2u32).wrapping_add(l_comp_room) {
     event_msg!(p_manager, EVT_ERROR, "Error reading RGN marker\n",);
@@ -3656,9 +3654,9 @@ let l_nb_comp: OPJ_UINT32 = l_image.numcomps;
       .as_deref_mut()
       .expect("decoder m_default_tcp is always set")
   };
-let l_comp_no: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], l_comp_room);
+let l_comp_no: u32 = opj_read_bytes(&header_data[cursor..], l_comp_room);
   cursor += l_comp_room as usize;
-  let _ = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  let _ = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   /* USE_JPWL */
   /* testcase 3635.pdf.asan.77.2930 */
@@ -3673,20 +3671,20 @@ let l_comp_no: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], l_comp_room);
     return 0i32;
   }
   l_tcp.tccps[l_comp_no as usize].roishift =
-    opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32) as OPJ_INT32;
+    opj_read_bytes(&header_data[cursor..], 1_u32) as i32;
   cursor += 1usize;
   1i32
 }
 
-fn opj_j2k_get_tp_stride(p_tcp: &opj_tcp_t) -> OPJ_FLOAT32 {
+fn opj_j2k_get_tp_stride(p_tcp: &Tcp) -> f32 {
   p_tcp
     .m_nb_tile_parts
     .wrapping_sub(1u32)
-    .wrapping_mul(14u32) as OPJ_FLOAT32
+    .wrapping_mul(14u32) as f32
 }
 
-fn opj_j2k_get_default_stride(_p_tcp: &opj_tcp_t) -> OPJ_FLOAT32 {
-  0 as OPJ_FLOAT32
+fn opj_j2k_get_default_stride(_p_tcp: &Tcp) -> f32 {
+  0 as f32
 }
 
 /* *
@@ -3697,18 +3695,18 @@ fn opj_j2k_get_default_stride(_p_tcp: &opj_tcp_t) -> OPJ_FLOAT32 {
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_update_rates(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
-  let mut k: OPJ_UINT32 = 0;
-  let mut l_x0: OPJ_INT32 = 0;
-  let mut l_y0: OPJ_INT32 = 0;
-  let mut l_x1: OPJ_INT32 = 0;
-  let mut l_y1: OPJ_INT32 = 0;
-  let mut l_last_res: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
+  let mut j: u32 = 0;
+  let mut k: u32 = 0;
+  let mut l_x0: i32 = 0;
+  let mut l_y0: i32 = 0;
+  let mut l_x1: i32 = 0;
+  let mut l_y1: i32 = 0;
+  let mut l_last_res: u32 = 0;
   /* preconditions */
 
   let l_cp = &mut p_j2k.m_cp;
@@ -3717,48 +3715,48 @@ fn opj_j2k_update_rates(
     (8u32).wrapping_mul(l_image.comps[0].dx).wrapping_mul(l_image.comps[0].dy);
   let l_size_pixel = l_image.numcomps.wrapping_mul(l_image.comps[0].prec);
   let l_sot_remove =
-    opj_stream_tell(p_stream) as OPJ_FLOAT32 / l_cp.th.wrapping_mul(l_cp.tw) as OPJ_FLOAT32;
-let l_tp_stride_func: fn(&opj_tcp_t) -> OPJ_FLOAT32 = if l_cp.m_specific_param.m_enc.m_tp_on {
+    opj_stream_tell(p_stream) as f32 / l_cp.th.wrapping_mul(l_cp.tw) as f32;
+let l_tp_stride_func: fn(&Tcp) -> f32 = if l_cp.m_specific_param.m_enc.m_tp_on {
     opj_j2k_get_tp_stride
   } else {
     opj_j2k_get_default_stride
   };
   let mut tcp_idx = 0usize;
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_cp.th {
-    j = 0 as OPJ_UINT32;
+    j = 0_u32;
     while j < l_cp.tw {
-      let l_offset = l_tp_stride_func(&l_cp.tcps[tcp_idx]) / l_cp.tcps[tcp_idx].numlayers as OPJ_FLOAT32;
+      let l_offset = l_tp_stride_func(&l_cp.tcps[tcp_idx]) / l_cp.tcps[tcp_idx].numlayers as f32;
       /* 4 borders of the tile rescale on the image if necessary */
       l_x0 = opj_int_max(
-        l_cp.tx0.wrapping_add(j.wrapping_mul(l_cp.tdx)) as OPJ_INT32,
-        l_image.x0 as OPJ_INT32,
+        l_cp.tx0.wrapping_add(j.wrapping_mul(l_cp.tdx)) as i32,
+        l_image.x0 as i32,
       );
       l_y0 = opj_int_max(
-        l_cp.ty0.wrapping_add(i.wrapping_mul(l_cp.tdy)) as OPJ_INT32,
-        l_image.y0 as OPJ_INT32,
+        l_cp.ty0.wrapping_add(i.wrapping_mul(l_cp.tdy)) as i32,
+        l_image.y0 as i32,
       );
       l_x1 = opj_int_min(
         l_cp
           .tx0
-          .wrapping_add(j.wrapping_add(1u32).wrapping_mul(l_cp.tdx)) as OPJ_INT32,
-        l_image.x1 as OPJ_INT32,
+          .wrapping_add(j.wrapping_add(1u32).wrapping_mul(l_cp.tdx)) as i32,
+        l_image.x1 as i32,
       );
       l_y1 = opj_int_min(
         l_cp
           .ty0
-          .wrapping_add(i.wrapping_add(1u32).wrapping_mul(l_cp.tdy)) as OPJ_INT32,
-        l_image.y1 as OPJ_INT32,
+          .wrapping_add(i.wrapping_add(1u32).wrapping_mul(l_cp.tdy)) as i32,
+        l_image.y1 as i32,
       );
       /* Modification of the RATE >> */
-      k = 0 as OPJ_UINT32;
+      k = 0_u32;
       while k < l_cp.tcps[tcp_idx].numlayers {
         if l_cp.tcps[tcp_idx].rates[k as usize] > 0.0f32 {
-          l_cp.tcps[tcp_idx].rates[k as usize] = (l_size_pixel as OPJ_FLOAT64
-            * (l_x1 - l_x0) as OPJ_UINT32 as core::ffi::c_double
-            * (l_y1 - l_y0) as OPJ_UINT32 as core::ffi::c_double
-            / (l_cp.tcps[tcp_idx].rates[k as usize] * l_bits_empty as OPJ_FLOAT32) as core::ffi::c_double)
-            as OPJ_FLOAT32
+          l_cp.tcps[tcp_idx].rates[k as usize] = (l_size_pixel as f64
+            * (l_x1 - l_x0) as u32 as core::ffi::c_double
+            * (l_y1 - l_y0) as u32 as core::ffi::c_double
+            / (l_cp.tcps[tcp_idx].rates[k as usize] * l_bits_empty as f32) as core::ffi::c_double)
+            as f32
             - l_offset
         }
         k += 1;
@@ -3769,9 +3767,9 @@ let l_tp_stride_func: fn(&opj_tcp_t) -> OPJ_FLOAT32 = if l_cp.m_specific_param.m
     i += 1;
   }
   tcp_idx = 0usize;
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_cp.th {
-    j = 0 as OPJ_UINT32;
+    j = 0_u32;
     while j < l_cp.tw {
       if l_cp.tcps[tcp_idx].rates[0] > 0.0f32 {
         l_cp.tcps[tcp_idx].rates[0] -= l_sot_remove;
@@ -3780,7 +3778,7 @@ let l_tp_stride_func: fn(&opj_tcp_t) -> OPJ_FLOAT32 = if l_cp.m_specific_param.m
         }
       }
       l_last_res = l_cp.tcps[tcp_idx].numlayers.wrapping_sub(1u32);
-      k = 1 as OPJ_UINT32;
+      k = 1_u32;
       while k < l_last_res {
         if l_cp.tcps[tcp_idx].rates[k as usize] > 0.0f32 {
           l_cp.tcps[tcp_idx].rates[k as usize] -= l_sot_remove;
@@ -3806,7 +3804,7 @@ let l_tp_stride_func: fn(&opj_tcp_t) -> OPJ_FLOAT32 = if l_cp.m_specific_param.m
   }
   let mut l_tile_size = 0u64;
   let mut comp_idx = 0usize;
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_image.numcomps {
     l_tile_size += opj_uint_ceildiv(l_cp.tdx, l_image.comps[comp_idx].dx) as u64
       * opj_uint_ceildiv(l_cp.tdy, l_image.comps[comp_idx].dy) as u64
@@ -3841,7 +3839,7 @@ let l_tp_stride_func: fn(&opj_tcp_t) -> OPJ_FLOAT32 = if l_cp.m_specific_param.m
       p_manager,
       EVT_ERROR,
       "Not enough memory to allocate m_encoded_tile_data. {} MB required\n",
-      l_tile_size.wrapping_div(1024u64).wrapping_div(1024u64) as OPJ_UINT32,
+      l_tile_size.wrapping_div(1024u64).wrapping_div(1024u64) as u32,
     );
     return 0i32;
   }
@@ -3864,9 +3862,9 @@ let l_tp_stride_func: fn(&opj_tcp_t) -> OPJ_FLOAT32 = if l_cp.m_specific_param.m
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_get_end_header(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  _p_manager: &mut opj_event_mgr,
+  _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -3881,9 +3879,9 @@ fn opj_j2k_get_end_header(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_write_mct_data_group(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -3917,15 +3915,15 @@ fn opj_j2k_write_mct_data_group(
  * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_all_coc(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  let mut compno: OPJ_UINT32 = 0;
+fn opj_j2k_write_all_coc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OPJ_BOOL {
+  let mut compno: u32 = 0;
   /* preconditions */
 
-  compno = 1 as OPJ_UINT32;
+  compno = 1_u32;
   let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
   while compno < numcomps {
     /* cod is first component of first tile */
-    if opj_j2k_compare_coc(p_j2k, 0 as OPJ_UINT32, compno) == 0
+    if opj_j2k_compare_coc(p_j2k, 0_u32, compno) == 0
       && opj_j2k_write_coc(p_j2k, compno, p_stream, p_manager) == 0
     {
       return 0i32;
@@ -3941,15 +3939,15 @@ fn opj_j2k_write_all_coc(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: 
  * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_all_qcc(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  let mut compno: OPJ_UINT32 = 0;
+fn opj_j2k_write_all_qcc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OPJ_BOOL {
+  let mut compno: u32 = 0;
   /* preconditions */
 
-  compno = 1 as OPJ_UINT32;
+  compno = 1_u32;
   let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
   while compno < numcomps {
     /* qcd is first component of first tile */
-    if opj_j2k_compare_qcc(p_j2k, 0 as OPJ_UINT32, compno) == 0
+    if opj_j2k_compare_qcc(p_j2k, 0_u32, compno) == 0
       && opj_j2k_write_qcc(p_j2k, compno, p_stream, p_manager) == 0
     {
       return 0i32;
@@ -3965,15 +3963,15 @@ fn opj_j2k_write_all_qcc(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: 
  * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_regions(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  let mut compno: OPJ_UINT32 = 0;
+fn opj_j2k_write_regions(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OPJ_BOOL {
+  let mut compno: u32 = 0;
   /* preconditions */
 
   let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-  compno = 0 as OPJ_UINT32;
+  compno = 0_u32;
   while compno < numcomps {
     if p_j2k.m_cp.tcps[0].tccps[compno as usize].roishift != 0
-      && opj_j2k_write_rgn(p_j2k, 0 as OPJ_UINT32, compno, numcomps, p_stream, p_manager) == 0
+      && opj_j2k_write_rgn(p_j2k, 0_u32, compno, numcomps, p_stream, p_manager) == 0
     {
       return 0i32;
     }
@@ -3988,16 +3986,16 @@ fn opj_j2k_write_regions(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: 
  * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_epc(p_j2k: &mut opj_j2k, p_stream: &mut Stream, _p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+fn opj_j2k_write_epc(p_j2k: &mut J2k, p_stream: &mut Stream, _p_manager: &mut EventMgr) -> OPJ_BOOL {
   /* preconditions */
 
   if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
-    l_cstr_index.codestream_size = opj_stream_tell(p_stream) as OPJ_UINT64;
+    l_cstr_index.codestream_size = opj_stream_tell(p_stream) as u64;
     /* UniPG>> */
     /* The following adjustment is done to adjust the codestream size */
     /* if SOD is not at 0 in the buffer. Useful in case of JP2, where */
     /* the first bunch of bytes is not in the codestream              */
-    l_cstr_index.codestream_size -= l_cstr_index.main_head_start as OPJ_UINT64;
+    l_cstr_index.codestream_size -= l_cstr_index.main_head_start as u64;
     /* <<UniPG */
   }
   /* USE_JPWL */
@@ -4014,13 +4012,13 @@ fn opj_j2k_write_epc(p_j2k: &mut opj_j2k, p_stream: &mut Stream, _p_manager: &mu
  * @return      true                    if the marker could be deduced.
 */
 fn opj_j2k_read_unk(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
   mut output_marker: &mut J2KMarker,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut l_unknown_marker: OPJ_UINT32 = 0;
-  let mut l_size_unk = 2 as OPJ_UINT32;
+  let mut l_unknown_marker: u32 = 0;
+  let mut l_size_unk = 2_u32;
   let mut l_marker_handler = J2KMarker::UNK(0);
   /* preconditions*/
 
@@ -4033,7 +4031,7 @@ fn opj_j2k_read_unk(
       return 0i32;
     }
     /* read 2 bytes as the new marker ID*/
-    l_unknown_marker = opj_read_bytes(&p_j2k.m_specific_param.m_decoder.m_header_data, 2 as OPJ_UINT32);
+    l_unknown_marker = opj_read_bytes(&p_j2k.m_specific_param.m_decoder.m_header_data, 2_u32);
     if l_unknown_marker < 0xff00u32 {
       continue;
     }
@@ -4052,7 +4050,7 @@ fn opj_j2k_read_unk(
         let mut res = opj_j2k_add_mhmarker(
           p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
           J2KMarker::UNK(0),
-          (opj_stream_tell(p_stream) as OPJ_UINT32).wrapping_sub(l_size_unk) as OPJ_OFF_T,
+          (opj_stream_tell(p_stream) as u32).wrapping_sub(l_size_unk) as i64,
           l_size_unk,
         );
         if res == 0i32 {
@@ -4063,7 +4061,7 @@ fn opj_j2k_read_unk(
       break;
     /* next marker is known and well located */
     } else {
-      l_size_unk = (l_size_unk as core::ffi::c_uint).wrapping_add(2u32) as OPJ_UINT32
+      l_size_unk = (l_size_unk as core::ffi::c_uint).wrapping_add(2u32)
     }
   }
   *output_marker = l_marker_handler;
@@ -4078,31 +4076,31 @@ fn opj_j2k_read_unk(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_write_mct_record(
-  p_j2k: &mut opj_j2k,
-  p_mct_record: &opj_mct_data,
+  p_j2k: &mut J2k,
+  p_mct_record: &MctData,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
   /* Lmct */
 
-let l_mct_size: OPJ_UINT32 = (10u32).wrapping_add(p_mct_record.m_data.len() as OPJ_UINT32);
+let l_mct_size: u32 = (10u32).wrapping_add(p_mct_record.m_data.len() as u32);
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(l_mct_size as usize, 0);
   let mut pos: usize = 0;
-  opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCT.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCT.as_u32(), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_mct_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_mct_size.wrapping_sub(2u32), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], 0_u32, 2_u32);
   pos += 2usize;
   /* only one marker atm */
-let l_tmp: OPJ_UINT32 = p_mct_record.m_index & 0xffu32
+let l_tmp: u32 = p_mct_record.m_index & 0xffu32
     | (p_mct_record.m_array_type as core::ffi::c_uint) << 8i32
     | (p_mct_record.m_element_type as core::ffi::c_uint) << 10i32;
-  opj_write_bytes(&mut l_buf[pos..], l_tmp, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_tmp, 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], 0_u32, 2_u32);
   pos += 2usize;
   l_buf[pos..].copy_from_slice(&p_mct_record.m_data);
   pos += p_mct_record.m_data.len();
@@ -4132,13 +4130,13 @@ let l_tmp: OPJ_UINT32 = p_mct_record.m_index & 0xffu32
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_mct(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
-  let mut l_tmp: OPJ_UINT32 = 0;
+  let mut l_tmp: u32 = 0;
   /* preconditions */
 
   let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
@@ -4157,7 +4155,7 @@ fn opj_j2k_read_mct(
     return 0i32;
   }
   /* first marker */
-  l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Zmct */
+  l_tmp = opj_read_bytes(&header_data[cursor..], 2_u32); /* Zmct */
   cursor += 2usize;
   if l_tmp != 0u32 {
     event_msg!(
@@ -4172,9 +4170,9 @@ fn opj_j2k_read_mct(
     return 0i32;
   }
   /* Imct -> no need for other values, take the first, type is double with decorrelation x0000 1101 0000 0000*/
-  l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Imct */
+  l_tmp = opj_read_bytes(&header_data[cursor..], 2_u32); /* Imct */
   cursor += 2usize;
-let l_indix: OPJ_UINT32 = l_tmp & 0xffu32;
+let l_indix: u32 = l_tmp & 0xffu32;
   /* find an existing record with this index, or append a fresh one */
   let mut l_mct_idx: usize = 0;
   while l_mct_idx < l_tcp.m_mct_records.len() {
@@ -4191,7 +4189,7 @@ let l_indix: OPJ_UINT32 = l_tmp & 0xffu32;
   l_mct_data.m_index = l_indix;
   l_mct_data.m_array_type = (l_tmp >> 8i32 & 3u32) as J2K_MCT_ARRAY_TYPE;
   l_mct_data.m_element_type = MCTElementType::new(l_tmp >> 10i32 & 3u32);
-  l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Ymct */
+  l_tmp = opj_read_bytes(&header_data[cursor..], 2_u32); /* Ymct */
   cursor += 2usize;
   if l_tmp != 0u32 {
     event_msg!(
@@ -4220,24 +4218,24 @@ let l_indix: OPJ_UINT32 = l_tmp & 0xffu32;
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_write_mcc_record(
-  p_j2k: &mut opj_j2k,
-  p_mcc_record: &opj_simple_mcc_decorrelation_data,
-  mct_records: &[opj_mct_data],
+  p_j2k: &mut J2k,
+  p_mcc_record: &SimpleMccData,
+  mct_records: &[MctData],
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0;
-  let mut l_tmcc: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
+  let mut l_tmcc: u32 = 0;
   /* preconditions */
   /* Lmcc */
 
-  let (l_nb_bytes_for_comp, l_mask): (OPJ_UINT32, OPJ_UINT32) =
+  let (l_nb_bytes_for_comp, l_mask): (u32, u32) =
     if p_mcc_record.m_nb_comps > 255u32 {
-      (2 as OPJ_UINT32, 0x8000 as OPJ_UINT32)
+      (2_u32, 0x8000_u32)
     } else {
-      (1 as OPJ_UINT32, 0 as OPJ_UINT32)
+      (1_u32, 0_u32)
     };
-let l_mcc_size: OPJ_UINT32 = p_mcc_record
+let l_mcc_size: u32 = p_mcc_record
     .m_nb_comps
     .wrapping_mul(2u32)
     .wrapping_mul(l_nb_bytes_for_comp)
@@ -4245,33 +4243,33 @@ let l_mcc_size: OPJ_UINT32 = p_mcc_record
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(l_mcc_size as usize, 0);
   let mut pos: usize = 0;
-  opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCC.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCC.as_u32(), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_mcc_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_mcc_size.wrapping_sub(2u32), 2_u32);
   pos += 2usize;
   /* first marker */
-  opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32); /* Zmcc */
+  opj_write_bytes(&mut l_buf[pos..], 0_u32, 2_u32); /* Zmcc */
   pos += 2usize; /* Imcc -> no need for other values, take the first */
-  opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_index, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_index, 1_u32);
   pos += 1usize;
   /* only one marker atm */
-  opj_write_bytes(&mut l_buf[pos..], 0 as OPJ_UINT32, 2 as OPJ_UINT32); /* Ymcc */
+  opj_write_bytes(&mut l_buf[pos..], 0_u32, 2_u32); /* Ymcc */
   pos += 2usize; /* Qmcc -> number of collections -> 1 */
-  opj_write_bytes(&mut l_buf[pos..], 1 as OPJ_UINT32, 2 as OPJ_UINT32); /* Xmcci type of component transformation -> array based decorrelation */
+  opj_write_bytes(&mut l_buf[pos..], 1_u32, 2_u32); /* Xmcci type of component transformation -> array based decorrelation */
   pos += 2usize; /* Nmcci number of input components involved and size for each component offset = 8 bits */
-  opj_write_bytes(&mut l_buf[pos..], 0x1 as OPJ_UINT32, 1 as OPJ_UINT32); /* Cmccij Component offset*/
+  opj_write_bytes(&mut l_buf[pos..], 0x1_u32, 1_u32); /* Cmccij Component offset*/
   pos += 1usize; /* Mmcci number of output components involved and size for each component offset = 8 bits */
-  opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_nb_comps | l_mask, 2 as OPJ_UINT32); /* Wmccij Component offset*/
+  opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_nb_comps | l_mask, 2_u32); /* Wmccij Component offset*/
   pos += 2usize; /* Tmcci : use MCT defined as number 1 and irreversible array based. */
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < p_mcc_record.m_nb_comps {
     opj_write_bytes(&mut l_buf[pos..], i, l_nb_bytes_for_comp);
     pos += l_nb_bytes_for_comp as usize;
     i += 1;
   }
-  opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_nb_comps | l_mask, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], p_mcc_record.m_nb_comps | l_mask, 2_u32);
   pos += 2usize;
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < p_mcc_record.m_nb_comps {
     opj_write_bytes(&mut l_buf[pos..], i, l_nb_bytes_for_comp);
     pos += l_nb_bytes_for_comp as usize;
@@ -4284,7 +4282,7 @@ let l_mcc_size: OPJ_UINT32 = p_mcc_record
   if let Some(offset_idx) = p_mcc_record.m_offset_array {
     l_tmcc |= mct_records[offset_idx].m_index << 8i32
   }
-  opj_write_bytes(&mut l_buf[pos..], l_tmcc, 3 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_tmcc, 3_u32);
   pos += 3usize;
   if opj_stream_write_data(p_stream, &l_buf[..l_mcc_size as usize], p_manager)
     != l_mcc_size as usize
@@ -4304,19 +4302,19 @@ let l_mcc_size: OPJ_UINT32 = p_mcc_record
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_mcc(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
-  let mut l_tmp: OPJ_UINT32 = 0;
-  let mut l_indix: OPJ_UINT32 = 0;
-  let mut l_nb_collections: OPJ_UINT32 = 0;
-  let mut l_nb_comps: OPJ_UINT32 = 0;
-  let mut l_nb_bytes_by_comp: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
+  let mut j: u32 = 0;
+  let mut l_tmp: u32 = 0;
+  let mut l_indix: u32 = 0;
+  let mut l_nb_collections: u32 = 0;
+  let mut l_nb_comps: u32 = 0;
+  let mut l_nb_bytes_by_comp: u32 = 0;
   /* preconditions */
 
   let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
@@ -4335,7 +4333,7 @@ fn opj_j2k_read_mcc(
       return 0i32;
     }
     /* first marker */
-    l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Zmcc */
+    l_tmp = opj_read_bytes(&header_data[cursor..], 2_u32); /* Zmcc */
     cursor += 2usize; /* Imcc -> no need for other values, take the first */
     if l_tmp != 0u32 {
       event_msg!(
@@ -4349,7 +4347,7 @@ fn opj_j2k_read_mcc(
       event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
       return 0i32;
     }
-    l_indix = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    l_indix = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
     /* find an existing record with this index, or append a fresh one */
     let mut l_mcc_idx: usize = 0;
@@ -4366,7 +4364,7 @@ fn opj_j2k_read_mcc(
     let l_mcc_record = &mut l_tcp.m_mcc_records[l_mcc_idx];
     l_mcc_record.m_index = l_indix;
     /* only one marker atm */
-    l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Ymcc */
+    l_tmp = opj_read_bytes(&header_data[cursor..], 2_u32); /* Ymcc */
     cursor += 2usize; /* Qmcc -> number of collections -> 1 */
     if l_tmp != 0u32 {
       event_msg!(
@@ -4376,7 +4374,7 @@ fn opj_j2k_read_mcc(
       ); /* Xmcci type of component transformation -> array based decorrelation */
       return 1i32;
     } /* Cmccij Component offset*/
-    l_nb_collections = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32); /* Wmccij Component offset*/
+    l_nb_collections = opj_read_bytes(&header_data[cursor..], 2_u32); /* Wmccij Component offset*/
     cursor += 2usize; /* Wmccij Component offset*/
     if l_nb_collections > 1u32 {
       event_msg!(
@@ -4386,14 +4384,14 @@ fn opj_j2k_read_mcc(
       );
       return 1i32;
     }
-    p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(7u32) as OPJ_UINT32;
-    i = 0 as OPJ_UINT32;
+    p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(7u32);
+    i = 0_u32;
     while i < l_nb_collections {
       if p_header_size < 3u32 {
         event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
         return 0i32;
       }
-      l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+      l_tmp = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
       if l_tmp != 1u32 {
         event_msg!(
@@ -4403,9 +4401,9 @@ fn opj_j2k_read_mcc(
         );
         return 1i32;
       }
-      l_nb_comps = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+      l_nb_comps = opj_read_bytes(&header_data[cursor..], 2_u32);
     cursor += 2usize;
-      p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(3u32) as OPJ_UINT32;
+      p_header_size = (p_header_size as core::ffi::c_uint).wrapping_sub(3u32);
       l_nb_bytes_by_comp = (1u32).wrapping_add(l_nb_comps >> 15i32);
       l_mcc_record.m_nb_comps = l_nb_comps & 0x7fffu32;
       if p_header_size
@@ -4420,8 +4418,8 @@ fn opj_j2k_read_mcc(
         l_nb_bytes_by_comp
           .wrapping_mul(l_mcc_record.m_nb_comps)
           .wrapping_add(2u32),
-      ) as OPJ_UINT32;
-      j = 0 as OPJ_UINT32;
+      );
+      j = 0_u32;
       while j < l_mcc_record.m_nb_comps {
         l_tmp = opj_read_bytes(&header_data[cursor..], l_nb_bytes_by_comp);
         cursor += l_nb_bytes_by_comp as isize as usize;
@@ -4435,7 +4433,7 @@ fn opj_j2k_read_mcc(
         }
         j += 1;
       }
-      l_nb_comps = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+      l_nb_comps = opj_read_bytes(&header_data[cursor..], 2_u32);
     cursor += 2usize;
       l_nb_bytes_by_comp = (1u32).wrapping_add(l_nb_comps >> 15i32);
       l_nb_comps &= 0x7fffu32;
@@ -4459,8 +4457,8 @@ fn opj_j2k_read_mcc(
         l_nb_bytes_by_comp
           .wrapping_mul(l_mcc_record.m_nb_comps)
           .wrapping_add(3u32),
-      ) as OPJ_UINT32;
-      j = 0 as OPJ_UINT32;
+      );
+      j = 0_u32;
       while j < l_mcc_record.m_nb_comps {
         l_tmp = opj_read_bytes(&header_data[cursor..], l_nb_bytes_by_comp);
         cursor += l_nb_bytes_by_comp as isize as usize;
@@ -4474,7 +4472,7 @@ fn opj_j2k_read_mcc(
         }
         j += 1;
       }
-      l_tmp = opj_read_bytes(&header_data[cursor..], 3 as OPJ_UINT32);
+      l_tmp = opj_read_bytes(&header_data[cursor..], 3_u32);
     cursor += 3usize;
       l_mcc_record.m_is_irreversible = l_tmp >> 16i32 & 1u32 == 0;
       l_mcc_record.m_decorrelation_array = None;
@@ -4522,23 +4520,23 @@ fn opj_j2k_read_mcc(
  * @param       p_j2k                           J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_mco(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
+fn opj_j2k_write_mco(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OPJ_BOOL {
   /* preconditions */
   /* Lmco */
   /* Imco -> use the mcc indicated by 1*/
   let l_tcp = &p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
-let l_mco_size: OPJ_UINT32 = (5u32).wrapping_add(l_tcp.m_mcc_records.len() as OPJ_UINT32);
+let l_mco_size: u32 = (5u32).wrapping_add(l_tcp.m_mcc_records.len() as u32);
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(l_mco_size as usize, 0);
   let mut pos: usize = 0;
-  opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCO.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::MCO.as_u32(), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_mco_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_mco_size.wrapping_sub(2u32), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_tcp.m_mcc_records.len() as OPJ_UINT32, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_tcp.m_mcc_records.len() as u32, 1_u32);
   pos += 1usize;
   for l_mcc_record in &l_tcp.m_mcc_records {
-    opj_write_bytes(&mut l_buf[pos..], l_mcc_record.m_index, 1 as OPJ_UINT32);
+    opj_write_bytes(&mut l_buf[pos..], l_mcc_record.m_index, 1_u32);
     pos += 1usize;
   }
   if opj_stream_write_data(p_stream, &l_buf[..l_mco_size as usize], p_manager) != l_mco_size as usize
@@ -4566,14 +4564,14 @@ let l_mco_size: OPJ_UINT32 = (5u32).wrapping_add(l_tcp.m_mcc_records.len() as OP
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_mco(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
-  let mut l_tmp: OPJ_UINT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
+  let mut l_tmp: u32 = 0;
+  let mut i: u32 = 0;
   /* preconditions */
 
   let l_image_numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
@@ -4592,7 +4590,7 @@ fn opj_j2k_read_mco(
     event_msg!(p_manager, EVT_ERROR, "Error reading MCO marker\n",);
     return 0i32;
   }
-let l_nb_stages: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+let l_nb_stages: u32 = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   if l_nb_stages > 1u32 {
     event_msg!(
@@ -4606,15 +4604,15 @@ let l_nb_stages: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UI
     event_msg!(p_manager, EVT_WARNING, "Error reading MCO marker\n",);
     return 0i32;
   }
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_image_numcomps {
     l_tcp.tccps[i as usize].m_dc_level_shift = 0i32;
     i += 1;
   }
   l_tcp.m_mct_decoding_matrix.clear();
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_nb_stages {
-    l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    l_tmp = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
     if opj_j2k_add_mct(
       l_tcp,
@@ -4629,9 +4627,9 @@ let l_nb_stages: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UI
   1i32
 }
 
-fn opj_j2k_add_mct(p_tcp: &mut opj_tcp_t, p_image: &mut CoreImage, p_index: OPJ_UINT32) -> OPJ_BOOL {
-    let mut l_data_size: OPJ_UINT32 = 0;
-    let mut l_nb_elem: OPJ_UINT32 = 0;
+fn opj_j2k_add_mct(p_tcp: &mut Tcp, p_image: &mut CoreImage, p_index: u32) -> OPJ_BOOL {
+    let mut l_data_size: u32 = 0;
+    let mut l_nb_elem: u32 = 0;
     /* preconditions */
     let p_tcp_ref = &mut *p_tcp;
     /* find the MCC record with this index */
@@ -4655,7 +4653,7 @@ fn opj_j2k_add_mct(p_tcp: &mut opj_tcp_t, p_image: &mut CoreImage, p_index: OPJ_
         .size()
         .wrapping_mul(p_image.numcomps)
         .wrapping_mul(p_image.numcomps);
-      if l_deco_array.m_data.len() as OPJ_UINT32 != l_data_size {
+      if l_deco_array.m_data.len() as u32 != l_data_size {
         return 0i32;
       }
       l_nb_elem = p_image.numcomps.wrapping_mul(p_image.numcomps);
@@ -4674,16 +4672,16 @@ fn opj_j2k_add_mct(p_tcp: &mut opj_tcp_t, p_image: &mut CoreImage, p_index: OPJ_
         .m_element_type
         .size()
         .wrapping_mul(p_image.numcomps);
-      if l_offset_array.m_data.len() as OPJ_UINT32 != l_data_size {
+      if l_offset_array.m_data.len() as u32 != l_data_size {
         return 0i32;
       }
       l_nb_elem = p_image.numcomps;
-      let mut l_offset_data: Vec<OPJ_UINT32> = vec![0; l_nb_elem as usize];
+      let mut l_offset_data: Vec<u32> = vec![0; l_nb_elem as usize];
       l_offset_array
         .m_element_type
         .read_to_int32(l_offset_array.m_data.as_slice(), &mut l_offset_data);
       for (tccp, &offset) in p_tcp_ref.tccps.iter_mut().zip(l_offset_data.iter()) {
-        tccp.m_dc_level_shift = offset as OPJ_INT32;
+        tccp.m_dc_level_shift = offset as i32;
       }
     }
     1i32
@@ -4695,29 +4693,29 @@ fn opj_j2k_add_mct(p_tcp: &mut opj_tcp_t, p_image: &mut CoreImage, p_index: OPJ_
  * @param       p_j2k                           J2K codec.
  * @param       p_manager               the user event manager.
 */
-fn opj_j2k_write_cbd(p_j2k: &mut opj_j2k, p_stream: &mut Stream, p_manager: &mut opj_event_mgr) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0;
+fn opj_j2k_write_cbd(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OPJ_BOOL {
+  let mut i: u32 = 0;
   /* preconditions */
   /* L_CBD */
   /* Component bit depth */
   let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
-let l_cbd_size: OPJ_UINT32 = (6u32).wrapping_add(l_image.numcomps);
+let l_cbd_size: u32 = (6u32).wrapping_add(l_image.numcomps);
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(l_cbd_size as usize, 0);
   let mut pos: usize = 0;
-  opj_write_bytes(&mut l_buf[pos..], J2KMarker::CBD.as_u32(), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], J2KMarker::CBD.as_u32(), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_cbd_size.wrapping_sub(2u32), 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_cbd_size.wrapping_sub(2u32), 2_u32);
   pos += 2usize;
-  opj_write_bytes(&mut l_buf[pos..], l_image.numcomps, 2 as OPJ_UINT32);
+  opj_write_bytes(&mut l_buf[pos..], l_image.numcomps, 2_u32);
   pos += 2usize;
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_image.numcomps {
     let comp = &l_image.comps[i as usize];
     opj_write_bytes(
       &mut l_buf[pos..],
       comp.sgnd << 7i32 | comp.prec.wrapping_sub(1u32),
-      1 as OPJ_UINT32,
+      1_u32,
     );
     pos += 1usize;
     i += 1;
@@ -4745,32 +4743,32 @@ let l_cbd_size: OPJ_UINT32 = (6u32).wrapping_add(l_image.numcomps);
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_cbd(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   header_data: &[u8],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut p_header_size = header_data.len() as OPJ_UINT32;
+  let mut p_header_size = header_data.len() as u32;
     let mut cursor: usize = 0;
-  let mut l_comp_def: OPJ_UINT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
+  let mut l_comp_def: u32 = 0;
+  let mut i: u32 = 0;
   /* preconditions */
   /* Component bit depth */
 
   let l_image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
-let l_num_comp: OPJ_UINT32 = l_image.numcomps;
+let l_num_comp: u32 = l_image.numcomps;
   if p_header_size != l_image.numcomps.wrapping_add(2u32) {
     event_msg!(p_manager, EVT_ERROR, "Crror reading CBD marker\n",);
     return 0i32;
   }
-let l_nb_comp: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+let l_nb_comp: u32 = opj_read_bytes(&header_data[cursor..], 2_u32);
   cursor += 2usize;
   if l_nb_comp != l_num_comp {
     event_msg!(p_manager, EVT_ERROR, "Crror reading CBD marker\n",);
     return 0i32;
   }
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_num_comp {
-    l_comp_def = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+    l_comp_def = opj_read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
     let comp = &mut l_image.comps[i as usize];
     comp.sgnd = l_comp_def >> 7i32 & 1u32;
@@ -4805,9 +4803,9 @@ let l_nb_comp: OPJ_UINT32 = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_cap(
-  mut _p_j2k: &mut opj_j2k,
+  mut _p_j2k: &mut J2k,
   mut _header_data: &[u8],
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -4829,9 +4827,9 @@ fn opj_j2k_read_cap(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_read_cpf(
-  mut _p_j2k: &mut opj_j2k,
+  mut _p_j2k: &mut J2k,
   mut _header_data: &[u8],
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -4841,19 +4839,19 @@ fn opj_j2k_read_cpf(
 /* ----------------------------------------------------------------------- */
 /* J2K / JPT decoder interface                                             */
 /* ----------------------------------------------------------------------- */
-pub(crate) fn opj_j2k_setup_decoder(mut j2k: &mut opj_j2k, mut parameters: &mut opj_dparameters_t) {
+pub(crate) fn opj_j2k_setup_decoder(mut j2k: &mut J2k, mut parameters: &mut opj_dparameters_t) {
   j2k.m_cp.m_specific_param.m_dec.m_layer = parameters.cp_layer;
   j2k.m_cp.m_specific_param.m_dec.m_reduce = parameters.cp_reduce;
   j2k.dump_state = parameters.flags & 0x2u32
 }
 
-pub(crate) fn opj_j2k_decoder_set_strict_mode(mut j2k: &mut opj_j2k, mut strict: OPJ_BOOL) {
+pub(crate) fn opj_j2k_decoder_set_strict_mode(mut j2k: &mut J2k, mut strict: OPJ_BOOL) {
   j2k.m_cp.strict = strict
 }
 
 pub(crate) fn opj_j2k_set_threads(
-  mut _j2k: &mut opj_j2k,
-  mut _num_threads: OPJ_UINT32,
+  mut _j2k: &mut J2k,
+  mut _num_threads: u32,
 ) -> OPJ_BOOL {
   0i32
 }
@@ -4861,34 +4859,34 @@ pub(crate) fn opj_j2k_set_threads(
 /* ----------------------------------------------------------------------- */
 /* J2K encoder interface                                                       */
 /* ----------------------------------------------------------------------- */
-pub(crate) fn opj_j2k_create_compress() -> Option<opj_j2k> {
-  let mut l_j2k = opj_j2k::new(0);
+pub(crate) fn opj_j2k_create_compress() -> Option<J2k> {
+  let mut l_j2k = J2k::new(0);
   l_j2k.m_cp.m_is_decoder = false;
   l_j2k.m_specific_param.m_encoder.m_header_tile_data = vec![0u8; 1000];
   Some(l_j2k)
 }
 
 fn opj_j2k_initialise_4K_poc(POC: &mut [opj_poc_t], numres: core::ffi::c_int) -> core::ffi::c_int {
-  POC[0].tile = 1 as OPJ_UINT32;
-  POC[0].resno0 = 0 as OPJ_UINT32;
-  POC[0].compno0 = 0 as OPJ_UINT32;
-  POC[0].layno1 = 1 as OPJ_UINT32;
-  POC[0].resno1 = (numres - 1i32) as OPJ_UINT32;
-  POC[0].compno1 = 3 as OPJ_UINT32;
+  POC[0].tile = 1_u32;
+  POC[0].resno0 = 0_u32;
+  POC[0].compno0 = 0_u32;
+  POC[0].layno1 = 1_u32;
+  POC[0].resno1 = (numres - 1i32) as u32;
+  POC[0].compno1 = 3_u32;
   POC[0].prg1 = OPJ_CPRL;
-  POC[1].tile = 1 as OPJ_UINT32;
-  POC[1].resno0 = (numres - 1i32) as OPJ_UINT32;
-  POC[1].compno0 = 0 as OPJ_UINT32;
-  POC[1].layno1 = 1 as OPJ_UINT32;
-  POC[1].resno1 = numres as OPJ_UINT32;
-  POC[1].compno1 = 3 as OPJ_UINT32;
+  POC[1].tile = 1_u32;
+  POC[1].resno0 = (numres - 1i32) as u32;
+  POC[1].compno0 = 0_u32;
+  POC[1].layno1 = 1_u32;
+  POC[1].resno1 = numres as u32;
+  POC[1].compno1 = 3_u32;
   POC[1].prg1 = OPJ_CPRL;
   2i32
 }
 fn opj_j2k_set_cinema_parameters(
   mut parameters: &mut EncoderParameters,
   image: &mut CoreImage,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) {
   let comps = &image.comps;
   /* Configure cinema parameters */
@@ -4975,9 +4973,9 @@ fn opj_j2k_set_cinema_parameters(
     if parameters.rsiz as core::ffi::c_int == 0x4i32 {
       parameters.numpocs =
         opj_j2k_initialise_4K_poc(&mut parameters.POC[..2], parameters.numresolution)
-          as OPJ_UINT32
+          as u32
     } else {
-      parameters.numpocs = 0 as OPJ_UINT32
+      parameters.numpocs = 0_u32
     }
     /* Limited bit-rate */
     parameters.cp_disto_alloc = 1i32;
@@ -5006,18 +5004,18 @@ fn opj_j2k_set_cinema_parameters(
       .wrapping_mul(comps[0].w)
       .wrapping_mul(comps[0].h)
       .wrapping_mul(comps[0].prec)
-      as OPJ_FLOAT32
-      / (parameters.max_cs_size as OPJ_UINT32)
+      as f32
+      / (parameters.max_cs_size as u32)
         .wrapping_mul(8u32)
         .wrapping_mul(comps[0].dx)
-        .wrapping_mul(comps[0].dy) as OPJ_FLOAT32;
+        .wrapping_mul(comps[0].dy) as f32;
 }
 fn opj_j2k_is_cinema_compliant(
   mut image: &mut CoreImage,
-  mut rsiz: OPJ_UINT16,
-  mut p_manager: &mut opj_event_mgr,
+  mut rsiz: u16,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
   let comps = &image.comps;
     /* Number of components */
     if image.numcomps != 3u32 {
@@ -5027,7 +5025,7 @@ fn opj_j2k_is_cinema_compliant(
       return 0i32;
     }
     /* Bitdepth */
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < image.numcomps {
       if (comps[i as usize].prec != 12u32) as core::ffi::c_uint
         | comps[i as usize].sgnd
@@ -5077,9 +5075,9 @@ fn opj_j2k_get_imf_max_NL(
 ) -> core::ffi::c_int {
   /* Decomposition levels */
   let rsiz = parameters.rsiz;
-  let profile = (rsiz as core::ffi::c_int & 0xff00i32) as OPJ_UINT16;
+  let profile = (rsiz as core::ffi::c_int & 0xff00i32) as u16;
   let XTsiz = if parameters.tile_size_on != 0 {
-    parameters.cp_tdx as OPJ_UINT32
+    parameters.cp_tdx as u32
   } else {
     image.x1
   };
@@ -5121,10 +5119,10 @@ fn opj_j2k_get_imf_max_NL(
 fn opj_j2k_set_imf_parameters(
   mut parameters: &mut EncoderParameters,
   mut image: &mut CoreImage,
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) {
   let rsiz = parameters.rsiz;
-  let profile = (rsiz as core::ffi::c_int & 0xff00i32) as OPJ_UINT16;
+  let profile = (rsiz as core::ffi::c_int & 0xff00i32) as u16;
   /* Override defaults set by opj_set_default_encoder_parameters */
   if parameters.cblockw_init == 64i32 && parameters.cblockh_init == 64i32 {
     parameters.cblockw_init = 32i32;
@@ -5152,10 +5150,10 @@ fn opj_j2k_set_imf_parameters(
     /* Note: below is generic logic */
     if parameters.tile_size_on == 0 {
       while parameters.numresolution > 0i32 {
-        if image.x1 < (1u32) << (parameters.numresolution as OPJ_UINT32).wrapping_sub(1u32) {
+        if image.x1 < (1u32) << (parameters.numresolution as u32).wrapping_sub(1u32) {
           parameters.numresolution -= 1
         } else {
-          if image.y1 >= (1u32) << (parameters.numresolution as OPJ_UINT32).wrapping_sub(1u32) {
+          if image.y1 >= (1u32) << (parameters.numresolution as u32).wrapping_sub(1u32) {
             break;
           }
           parameters.numresolution -= 1
@@ -5183,34 +5181,34 @@ fn opj_j2k_set_imf_parameters(
   };
 }
 /* Table A.53 from JPEG2000 standard */
-static TAB_MAX_SUB_LEVEL_FROM_MAIN_LEVEL: [OPJ_UINT16; 12] = [
-  15 as OPJ_UINT16,
-  1 as OPJ_UINT16,
-  1 as OPJ_UINT16,
-  1 as OPJ_UINT16,
-  2 as OPJ_UINT16,
-  3 as OPJ_UINT16,
-  4 as OPJ_UINT16,
-  5 as OPJ_UINT16,
-  6 as OPJ_UINT16,
-  7 as OPJ_UINT16,
-  8 as OPJ_UINT16,
-  9 as OPJ_UINT16,
+static TAB_MAX_SUB_LEVEL_FROM_MAIN_LEVEL: [u16; 12] = [
+  15_u16,
+  1_u16,
+  1_u16,
+  1_u16,
+  2_u16,
+  3_u16,
+  4_u16,
+  5_u16,
+  6_u16,
+  7_u16,
+  8_u16,
+  9_u16,
 ];
 fn opj_j2k_is_imf_compliant(
   mut parameters: &mut EncoderParameters,
   mut image: &mut CoreImage,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
   let comps = &image.comps;
     let rsiz = parameters.rsiz;
-    let profile = (rsiz as core::ffi::c_int & 0xff00i32) as OPJ_UINT16;
-    let mainlevel = (rsiz as core::ffi::c_int & 0xfi32) as OPJ_UINT16;
-    let sublevel = (rsiz as core::ffi::c_int >> 4i32 & 0xfi32) as OPJ_UINT16;
+    let profile = (rsiz as core::ffi::c_int & 0xff00i32) as u16;
+    let mainlevel = (rsiz as core::ffi::c_int & 0xfi32) as u16;
+    let sublevel = (rsiz as core::ffi::c_int >> 4i32 & 0xfi32) as u16;
     let NL = parameters.numresolution - 1i32;
     let XTsiz = if parameters.tile_size_on != 0 {
-      parameters.cp_tdx as OPJ_UINT32
+      parameters.cp_tdx as u32
     } else {
       image.x1
     };
@@ -5224,8 +5222,8 @@ fn opj_j2k_is_imf_compliant(
     } else {
       /* Validate sublevel */
       assert!(
-        core::mem::size_of::<[OPJ_UINT16; 12]>()
-          == ((11i32 + 1i32) as usize).wrapping_mul(core::mem::size_of::<OPJ_UINT16>())
+        core::mem::size_of::<[u16; 12]>()
+          == ((11i32 + 1i32) as usize).wrapping_mul(core::mem::size_of::<u16>())
       );
       if sublevel as core::ffi::c_int
         > TAB_MAX_SUB_LEVEL_FROM_MAIN_LEVEL[mainlevel as usize] as core::ffi::c_int
@@ -5263,8 +5261,8 @@ fn opj_j2k_is_imf_compliant(
         || profile as core::ffi::c_int == 0x500i32
         || profile as core::ffi::c_int == 0x600i32
       {
-        if (parameters.cp_tdx as OPJ_UINT32) < image.x1
-          || (parameters.cp_tdy as OPJ_UINT32) < image.y1
+        if (parameters.cp_tdx as u32) < image.x1
+          || (parameters.cp_tdy as u32) < image.y1
         {
           event_msg!(p_manager, EVT_WARNING,
                               "IMF 2K/4K/8K single tile profiles require tile to be greater or equal to image size.\n-> {},{} is lesser than {},{}\n-> Non-IMF codestream will be generated\n",
@@ -5272,8 +5270,8 @@ fn opj_j2k_is_imf_compliant(
                               image.x1, image.y1);
           ret = 0i32
         }
-      } else if !(parameters.cp_tdx as OPJ_UINT32 >= image.x1
-        && parameters.cp_tdy as OPJ_UINT32 >= image.y1)
+      } else if !(parameters.cp_tdx as u32 >= image.x1
+        && parameters.cp_tdy as u32 >= image.y1)
         && !(parameters.cp_tdx == 1024i32 && parameters.cp_tdy == 1024i32)
         && !(parameters.cp_tdx == 2048i32
           && parameters.cp_tdy == 2048i32
@@ -5290,7 +5288,7 @@ fn opj_j2k_is_imf_compliant(
       }
     }
     /* Bitdepth */
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < image.numcomps {
       if !(comps[i as usize].prec >= 8u32
         && comps[i as usize].prec <= 16u32)
@@ -5309,7 +5307,7 @@ fn opj_j2k_is_imf_compliant(
       i += 1;
     }
     /* Sub-sampling */
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < image.numcomps {
       if i == 0u32 && comps[i as usize].dx != 1u32 {
         event_msg!(p_manager, EVT_WARNING,
@@ -5556,18 +5554,18 @@ fn opj_j2k_is_imf_compliant(
 }
 
 pub(crate) fn opj_j2k_setup_encoder(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   parameters: &mut EncoderParameters,
   image: &mut CoreImage,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut tileno: OPJ_UINT32 = 0;
-    let mut numpocs_tile: OPJ_UINT32 = 0;
+    let mut i: u32 = 0;
+    let mut j: u32 = 0;
+    let mut tileno: u32 = 0;
+    let mut numpocs_tile: u32 = 0;
     let cp = &mut p_j2k.m_cp;
-    let mut cblkw: OPJ_UINT32 = 0;
-    let mut cblkh: OPJ_UINT32 = 0;
+    let mut cblkw: u32 = 0;
+    let mut cblkh: u32 = 0;
     if parameters.numresolution <= 0i32 || parameters.numresolution > 33i32 {
       event_msg!(
         p_manager,
@@ -5604,8 +5602,8 @@ pub(crate) fn opj_j2k_setup_encoder(
       );
       return 0i32;
     }
-    cblkw = opj_int_floorlog2(parameters.cblockw_init) as OPJ_UINT32;
-    cblkh = opj_int_floorlog2(parameters.cblockh_init) as OPJ_UINT32;
+    cblkw = opj_int_floorlog2(parameters.cblockw_init) as u32;
+    cblkh = opj_int_floorlog2(parameters.cblockh_init) as u32;
     if parameters.cblockw_init != (1i32) << cblkw {
       event_msg!(
         p_manager,
@@ -5658,27 +5656,27 @@ pub(crate) fn opj_j2k_setup_encoder(
     p_j2k.m_specific_param.m_encoder.m_nb_comps = image.numcomps;
     /* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
     /* set default values for cp */
-    cp.tw = 1 as OPJ_UINT32;
-    cp.th = 1 as OPJ_UINT32;
+    cp.tw = 1_u32;
+    cp.th = 1_u32;
     /* FIXME ADE: to be removed once deprecated cp_cinema and cp_rsiz have been removed */
     if parameters.rsiz as core::ffi::c_int == 0i32 {
       /* consider deprecated fields only if RSIZ has not been set */
       let mut deprecated_used = 0i32;
       match parameters.cp_cinema as core::ffi::c_uint {
         1 => {
-          parameters.rsiz = 0x3 as OPJ_UINT16;
+          parameters.rsiz = 0x3_u16;
           parameters.max_cs_size = 1302083i32;
           parameters.max_comp_size = 1041666i32;
           deprecated_used = 1i32
         }
         2 => {
-          parameters.rsiz = 0x3 as OPJ_UINT16;
+          parameters.rsiz = 0x3_u16;
           parameters.max_cs_size = 651041i32;
           parameters.max_comp_size = 520833i32;
           deprecated_used = 1i32
         }
         3 => {
-          parameters.rsiz = 0x4 as OPJ_UINT16;
+          parameters.rsiz = 0x4_u16;
           parameters.max_cs_size = 1302083i32;
           parameters.max_comp_size = 1041666i32;
           deprecated_used = 1i32
@@ -5687,15 +5685,15 @@ pub(crate) fn opj_j2k_setup_encoder(
       }
       match parameters.cp_rsiz as core::ffi::c_uint {
         3 => {
-          parameters.rsiz = 0x3 as OPJ_UINT16;
+          parameters.rsiz = 0x3_u16;
           deprecated_used = 1i32
         }
         4 => {
-          parameters.rsiz = 0x4 as OPJ_UINT16;
+          parameters.rsiz = 0x4_u16;
           deprecated_used = 1i32
         }
         33024 => {
-          parameters.rsiz = (0x8000i32 | 0x100i32) as OPJ_UINT16;
+          parameters.rsiz = (0x8000i32 | 0x100i32) as u16;
           deprecated_used = 1i32
         }
         _ => {}
@@ -5713,15 +5711,15 @@ pub(crate) fn opj_j2k_setup_encoder(
     }
     if parameters.cp_disto_alloc != 0 {
       /* Emit warnings if tcp_rates are not decreasing */
-      i = 1 as OPJ_UINT32;
-      while i < parameters.tcp_numlayers as OPJ_UINT32 {
+      i = 1_u32;
+      while i < parameters.tcp_numlayers as u32 {
         let mut rate_i_corr = parameters.tcp_rates[i as usize];
         let mut rate_i_m_1_corr = parameters.tcp_rates[i.wrapping_sub(1u32) as usize];
         if rate_i_corr as core::ffi::c_double <= 1.0f64 {
-          rate_i_corr = 1.0f64 as OPJ_FLOAT32
+          rate_i_corr = 1.0f64 as f32
         }
         if rate_i_m_1_corr as core::ffi::c_double <= 1.0f64 {
-          rate_i_m_1_corr = 1.0f64 as OPJ_FLOAT32
+          rate_i_m_1_corr = 1.0f64 as f32
         }
         if rate_i_corr >= rate_i_m_1_corr {
           if rate_i_corr != parameters.tcp_rates[i as usize]
@@ -5783,11 +5781,11 @@ pub(crate) fn opj_j2k_setup_encoder(
       }
     } else if parameters.cp_fixed_quality != 0 {
       /* Emit warnings if tcp_distoratio are not increasing */
-      i = 1 as OPJ_UINT32;
-      while i < parameters.tcp_numlayers as OPJ_UINT32 {
+      i = 1_u32;
+      while i < parameters.tcp_numlayers as u32 {
         if parameters.tcp_distoratio[i as usize]
           < parameters.tcp_distoratio[i.wrapping_sub(1u32) as usize]
-          && !(i == (parameters.tcp_numlayers as OPJ_UINT32).wrapping_sub(1u32)
+          && !(i == (parameters.tcp_numlayers as u32).wrapping_sub(1u32)
             && parameters.tcp_distoratio[i as usize] == 0 as core::ffi::c_float)
         {
           event_msg!(
@@ -5807,7 +5805,7 @@ pub(crate) fn opj_j2k_setup_encoder(
     if parameters.max_cs_size <= 0i32 {
       if parameters.tcp_rates[(parameters.tcp_numlayers - 1i32) as usize] > 0 as core::ffi::c_float
       {
-        let mut temp_size: OPJ_FLOAT32 = 0.;
+        let mut temp_size: f32 = 0.;
         temp_size = (image.numcomps as core::ffi::c_double
           * image.comps[0].w as core::ffi::c_double
           * image.comps[0].h as core::ffi::c_double
@@ -5817,7 +5815,7 @@ pub(crate) fn opj_j2k_setup_encoder(
             * 8 as core::ffi::c_double
             * image.comps[0].dx as core::ffi::c_double
             * image.comps[0].dy as core::ffi::c_double))
-          as OPJ_FLOAT32;
+          as f32;
         if temp_size > 2147483647 as core::ffi::c_float {
           parameters.max_cs_size = 2147483647i32
         } else {
@@ -5827,7 +5825,7 @@ pub(crate) fn opj_j2k_setup_encoder(
         parameters.max_cs_size = 0i32
       }
     } else {
-      let mut temp_rate: OPJ_FLOAT32 = 0.;
+      let mut temp_rate: f32 = 0.;
       let mut cap = 0i32;
       if parameters.rsiz as core::ffi::c_int >= 0x400i32
         && parameters.rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
@@ -5840,11 +5838,11 @@ pub(crate) fn opj_j2k_setup_encoder(
           .wrapping_mul(image.comps[0].w)
           .wrapping_mul(image.comps[0].h)
           .wrapping_mul(image.comps[0].prec)
-          as OPJ_FLOAT32
-          / (parameters.max_cs_size as OPJ_UINT32)
+          as f32
+          / (parameters.max_cs_size as u32)
             .wrapping_mul(8u32)
             .wrapping_mul(image.comps[0].dx)
-            .wrapping_mul(image.comps[0].dy) as OPJ_FLOAT32
+            .wrapping_mul(image.comps[0].dy) as f32
       }
       temp_rate = (image.numcomps as core::ffi::c_double
         * image.comps[0].w as core::ffi::c_double
@@ -5853,9 +5851,9 @@ pub(crate) fn opj_j2k_setup_encoder(
         / (parameters.max_cs_size as core::ffi::c_double
           * 8 as core::ffi::c_double
           * image.comps[0].dx as core::ffi::c_double
-          * image.comps[0].dy as core::ffi::c_double)) as OPJ_FLOAT32;
-      i = 0 as OPJ_UINT32;
-      while i < parameters.tcp_numlayers as OPJ_UINT32 {
+          * image.comps[0].dy as core::ffi::c_double)) as f32;
+      i = 0_u32;
+      while i < parameters.tcp_numlayers as u32 {
         if parameters.tcp_rates[i as usize] < temp_rate {
           parameters.tcp_rates[i as usize] = temp_rate;
           cap = 1i32
@@ -5887,11 +5885,11 @@ pub(crate) fn opj_j2k_setup_encoder(
           EVT_WARNING,
           "JPEG 2000 Scalable Digital Cinema profiles not yet supported\n",
         );
-        parameters.rsiz = 0 as OPJ_UINT16
+        parameters.rsiz = 0_u16
       } else {
         opj_j2k_set_cinema_parameters(parameters, image, p_manager);
         if opj_j2k_is_cinema_compliant(image, parameters.rsiz, p_manager) == 0 {
-          parameters.rsiz = 0 as OPJ_UINT16
+          parameters.rsiz = 0_u16
         }
       }
     } else if parameters.rsiz as core::ffi::c_int == 0x7i32 {
@@ -5900,7 +5898,7 @@ pub(crate) fn opj_j2k_setup_encoder(
         EVT_WARNING,
         "JPEG 2000 Long Term Storage profile not yet supported\n",
       );
-      parameters.rsiz = 0 as OPJ_UINT16
+      parameters.rsiz = 0_u16
     } else if parameters.rsiz as core::ffi::c_int >= 0x100i32
       && parameters.rsiz as core::ffi::c_int <= 0x300i32 | 0xbi32
     {
@@ -5909,32 +5907,32 @@ pub(crate) fn opj_j2k_setup_encoder(
         EVT_WARNING,
         "JPEG 2000 Broadcast profiles not yet supported\n",
       );
-      parameters.rsiz = 0 as OPJ_UINT16
+      parameters.rsiz = 0_u16
     } else if parameters.rsiz as core::ffi::c_int >= 0x400i32
       && parameters.rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
     {
       opj_j2k_set_imf_parameters(parameters, image, p_manager);
       if opj_j2k_is_imf_compliant(parameters, image, p_manager) == 0 {
-        parameters.rsiz = 0 as OPJ_UINT16
+        parameters.rsiz = 0_u16
       }
     } else if parameters.rsiz as core::ffi::c_int & 0x8000i32 != 0 {
       if parameters.rsiz as core::ffi::c_int == 0x8000i32 {
         event_msg!(p_manager, EVT_WARNING,
                           "JPEG 2000 Part-2 profile defined\nbut no Part-2 extension enabled.\nProfile set to NONE.\n");
-        parameters.rsiz = 0 as OPJ_UINT16
+        parameters.rsiz = 0_u16
       } else if parameters.rsiz as core::ffi::c_int != 0x8000i32 | 0x100i32 {
         event_msg!(
           p_manager,
           EVT_WARNING,
           "Unsupported Part-2 extension enabled\nProfile set to NONE.\n",
         );
-        parameters.rsiz = 0 as OPJ_UINT16
+        parameters.rsiz = 0_u16
       }
     }
     /*
     copy user encoding parameters
     */
-    cp.m_specific_param.m_enc.m_max_comp_size = parameters.max_comp_size as OPJ_UINT32;
+    cp.m_specific_param.m_enc.m_max_comp_size = parameters.max_comp_size as u32;
     cp.rsiz = parameters.rsiz;
 
     if parameters.cp_fixed_alloc != 0 {
@@ -5954,11 +5952,11 @@ pub(crate) fn opj_j2k_setup_encoder(
       }
     }
     /* tiles */
-    cp.tdx = parameters.cp_tdx as OPJ_UINT32;
-    cp.tdy = parameters.cp_tdy as OPJ_UINT32;
+    cp.tdx = parameters.cp_tdx as u32;
+    cp.tdy = parameters.cp_tdy as u32;
     /* tile offset */
-    cp.tx0 = parameters.cp_tx0 as OPJ_UINT32;
-    cp.ty0 = parameters.cp_ty0 as OPJ_UINT32;
+    cp.tx0 = parameters.cp_tx0 as u32;
+    cp.ty0 = parameters.cp_ty0 as u32;
     /* comment string */
     if let Some(comment) = parameters.cp_comment.as_deref() {
       cp.comment = comment.to_vec();
@@ -5997,7 +5995,7 @@ pub(crate) fn opj_j2k_setup_encoder(
       cp.tdy = image.y1.wrapping_sub(cp.ty0)
     }
     if parameters.tp_on != 0 {
-      cp.m_specific_param.m_enc.m_tp_flag = parameters.tp_flag as OPJ_BYTE;
+      cp.m_specific_param.m_enc.m_tp_flag = parameters.tp_flag as u8;
       cp.m_specific_param.m_enc.m_tp_on = true;
     }
     /* USE_JPWL */
@@ -6006,14 +6004,14 @@ pub(crate) fn opj_j2k_setup_encoder(
     cp.tcps = (0..cp.tw.wrapping_mul(cp.th))
       .map(|_| Default::default())
       .collect();
-    tileno = 0 as OPJ_UINT32;
+    tileno = 0_u32;
     while tileno < cp.tw.wrapping_mul(cp.th) {
       let tcp = &mut cp.tcps[tileno as usize];
       let fixed_distoratio = cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy
         == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO;
-      tcp.numlayers = parameters.tcp_numlayers as OPJ_UINT32;
+      tcp.numlayers = parameters.tcp_numlayers as u32;
 
-      j = 0 as OPJ_UINT32;
+      j = 0_u32;
       while j < tcp.numlayers {
         if cp.rsiz as core::ffi::c_int >= 0x3i32 && cp.rsiz as core::ffi::c_int <= 0x6i32
           || cp.rsiz as core::ffi::c_int >= 0x400i32
@@ -6030,19 +6028,19 @@ pub(crate) fn opj_j2k_setup_encoder(
           tcp.rates[j as usize] = parameters.tcp_rates[j as usize]
         }
         if !fixed_distoratio && tcp.rates[j as usize] as core::ffi::c_double <= 1.0f64 {
-          tcp.rates[j as usize] = 0.0f64 as OPJ_FLOAT32
+          tcp.rates[j as usize] = 0.0f64 as f32
           /* force lossless */
         }
         j += 1;
       }
-      tcp.csty = parameters.csty as OPJ_UINT32;
+      tcp.csty = parameters.csty as u32;
       tcp.prg = parameters.prog_order;
-      tcp.mct = parameters.tcp_mct as OPJ_UINT32;
-      numpocs_tile = 0 as OPJ_UINT32;
+      tcp.mct = parameters.tcp_mct as u32;
+      numpocs_tile = 0_u32;
       tcp.POC = false;
       if parameters.numpocs != 0 {
         /* initialisation of POC */
-        i = 0 as OPJ_UINT32;
+        i = 0_u32;
         while i < parameters.numpocs {
           if tileno.wrapping_add(1u32) == parameters.POC[i as usize].tile {
             let tcp_poc = &mut tcp.pocs[numpocs_tile as usize];
@@ -6070,16 +6068,16 @@ pub(crate) fn opj_j2k_setup_encoder(
             &parameters.POC[..parameters.numpocs as usize],
             tileno,
             parameters.numpocs,
-            parameters.numresolution as OPJ_UINT32,
+            parameters.numresolution as u32,
             image.numcomps,
-            parameters.tcp_numlayers as OPJ_UINT32,
+            parameters.tcp_numlayers as u32,
             p_manager,
           );
           tcp.POC = true;
           tcp.numpocs = numpocs_tile.wrapping_sub(1u32)
         }
       } else {
-        tcp.numpocs = 0 as OPJ_UINT32
+        tcp.numpocs = 0_u32
       }
       tcp.tccps
         .resize(image.numcomps as usize, Default::default());
@@ -6088,7 +6086,7 @@ pub(crate) fn opj_j2k_setup_encoder(
         let lMctLen = numcomps * numcomps;
         /* copy the caller-provided coding matrix into a scratch buffer */
         let mut lTmpBuf = lTmpBuf.clone();
-        tcp.mct = 2 as OPJ_UINT32;
+        tcp.mct = 2_u32;
         tcp.m_mct_coding_matrix.clear();
         tcp.m_mct_coding_matrix.extend_from_slice(&lTmpBuf);
         tcp.m_mct_decoding_matrix.clear();
@@ -6132,10 +6130,10 @@ pub(crate) fn opj_j2k_setup_encoder(
               EVT_WARNING,
               "Cannot perform MCT on components with different sizes. Disabling MCT.\n",
             ); /* 0 => one precinct || 1 => custom precinct  */
-            tcp.mct = 0 as OPJ_UINT32
+            tcp.mct = 0_u32
           }
         }
-        i = 0 as OPJ_UINT32;
+        i = 0_u32;
         while i < image.numcomps {
           let comp = &image.comps[i as usize];
           if comp.sgnd == 0 {
@@ -6144,48 +6142,48 @@ pub(crate) fn opj_j2k_setup_encoder(
           i += 1;
         }
       }
-      i = 0 as OPJ_UINT32;
+      i = 0_u32;
       while i < image.numcomps {
         let tccp_1 = &mut tcp.tccps[i as usize];
-        tccp_1.csty = (parameters.csty & 0x1i32) as OPJ_UINT32;
-        tccp_1.numresolutions = parameters.numresolution as OPJ_UINT32;
-        tccp_1.cblkw = opj_int_floorlog2(parameters.cblockw_init) as OPJ_UINT32;
-        tccp_1.cblkh = opj_int_floorlog2(parameters.cblockh_init) as OPJ_UINT32;
-        tccp_1.cblksty = parameters.mode as OPJ_UINT32;
+        tccp_1.csty = (parameters.csty & 0x1i32) as u32;
+        tccp_1.numresolutions = parameters.numresolution as u32;
+        tccp_1.cblkw = opj_int_floorlog2(parameters.cblockw_init) as u32;
+        tccp_1.cblkh = opj_int_floorlog2(parameters.cblockh_init) as u32;
+        tccp_1.cblksty = parameters.mode as u32;
         tccp_1.qmfbid = if parameters.irreversible != 0 {
           0i32
         } else {
           1i32
-        } as OPJ_UINT32;
+        } as u32;
         tccp_1.qntsty = if parameters.irreversible != 0 {
           2i32
         } else {
           0i32
-        } as OPJ_UINT32;
-        tccp_1.numgbits = 2 as OPJ_UINT32;
-        if i as OPJ_INT32 == parameters.roi_compno {
+        } as u32;
+        tccp_1.numgbits = 2_u32;
+        if i as i32 == parameters.roi_compno {
           tccp_1.roishift = parameters.roi_shift
         } else {
           tccp_1.roishift = 0i32
         }
         if parameters.csty & 0x1i32 != 0 {
           let mut p = 0i32;
-          let mut it_res: OPJ_INT32 = 0;
+          let mut it_res: i32 = 0;
           assert!(tccp_1.numresolutions > 0u32);
-          it_res = tccp_1.numresolutions as OPJ_INT32 - 1i32;
+          it_res = tccp_1.numresolutions as i32 - 1i32;
           while it_res >= 0i32 {
             if p < parameters.res_spec {
               if parameters.prcw_init[p as usize] < 1i32 {
-                tccp_1.prcw[it_res as usize] = 1 as OPJ_UINT32
+                tccp_1.prcw[it_res as usize] = 1_u32
               } else {
                 tccp_1.prcw[it_res as usize] =
-                  opj_int_floorlog2(parameters.prcw_init[p as usize]) as OPJ_UINT32
+                  opj_int_floorlog2(parameters.prcw_init[p as usize]) as u32
               }
               if parameters.prch_init[p as usize] < 1i32 {
-                tccp_1.prch[it_res as usize] = 1 as OPJ_UINT32
+                tccp_1.prch[it_res as usize] = 1_u32
               } else {
                 tccp_1.prch[it_res as usize] =
-                  opj_int_floorlog2(parameters.prch_init[p as usize]) as OPJ_UINT32
+                  opj_int_floorlog2(parameters.prch_init[p as usize]) as u32
               }
             } else {
               let mut res_spec = parameters.res_spec;
@@ -6198,14 +6196,14 @@ pub(crate) fn opj_j2k_setup_encoder(
               size_prch =
                 parameters.prch_init[(res_spec - 1i32) as usize] >> (p - (res_spec - 1i32));
               if size_prcw < 1i32 {
-                tccp_1.prcw[it_res as usize] = 1 as OPJ_UINT32
+                tccp_1.prcw[it_res as usize] = 1_u32
               } else {
-                tccp_1.prcw[it_res as usize] = opj_int_floorlog2(size_prcw) as OPJ_UINT32
+                tccp_1.prcw[it_res as usize] = opj_int_floorlog2(size_prcw) as u32
               }
               if size_prch < 1i32 {
-                tccp_1.prch[it_res as usize] = 1 as OPJ_UINT32
+                tccp_1.prch[it_res as usize] = 1_u32
               } else {
-                tccp_1.prch[it_res as usize] = opj_int_floorlog2(size_prch) as OPJ_UINT32
+                tccp_1.prch[it_res as usize] = opj_int_floorlog2(size_prch) as u32
               }
             }
             p += 1;
@@ -6213,10 +6211,10 @@ pub(crate) fn opj_j2k_setup_encoder(
             /*printf("\nsize precinct for level {} : {},{}\n", it_res,tccp->prcw[it_res], tccp->prch[it_res]); */
           }
         } else {
-          j = 0 as OPJ_UINT32;
+          j = 0_u32;
           while j < tccp_1.numresolutions {
-            tccp_1.prcw[j as usize] = 15 as OPJ_UINT32;
-            tccp_1.prch[j as usize] = 15 as OPJ_UINT32;
+            tccp_1.prcw[j as usize] = 15_u32;
+            tccp_1.prch[j as usize] = 15_u32;
             j += 1;
           }
         }
@@ -6238,13 +6236,13 @@ Add main header marker information
 fn opj_j2k_add_mhmarker(
   cstr_index: &mut CodestreamIndex,
   marker: J2KMarker,
-  pos: OPJ_OFF_T,
-  len: OPJ_UINT32,
+  pos: i64,
+  len: u32,
 ) -> OPJ_BOOL {
   cstr_index.markers.push(opj_marker_info {
-    type_: marker.as_u32() as OPJ_UINT16,
-    pos: pos as OPJ_OFF_T,
-    len: len as OPJ_INT32,
+    type_: marker.as_u32() as u16,
+    pos,
+    len: len as i32,
   });
   1i32
 }
@@ -6257,22 +6255,22 @@ Add tile header marker information
 @param len          length of marker segment
  */
 fn opj_j2k_add_tlmarker(
-  tileno: OPJ_UINT32,
+  tileno: u32,
   cstr_index: &mut CodestreamIndex,
   marker: J2KMarker,
-  pos: OPJ_OFF_T,
-  len: OPJ_UINT32,
+  pos: i64,
+  len: u32,
 ) -> OPJ_BOOL {
   let tile = &mut cstr_index.tiles[tileno as usize];
   tile.markers.push(opj_marker_info {
-    type_: marker.as_u32() as OPJ_UINT16,
-    pos: pos as OPJ_OFF_T,
-    len: len as OPJ_INT32,
+    type_: marker.as_u32() as u16,
+    pos,
+    len: len as i32,
   });
   if marker == J2KMarker::SOT {
     let l_current_tile_part = tile.current_tpsno;
     if !tile.tp_index.is_empty() {
-      tile.tp_index[l_current_tile_part as usize].start_pos = pos as OPJ_OFF_T;
+      tile.tp_index[l_current_tile_part as usize].start_pos = pos;
     }
   }
   1i32
@@ -6284,20 +6282,20 @@ fn opj_j2k_add_tlmarker(
  */
 
 pub(crate) fn opj_j2k_end_decompress(
-  mut _p_j2k: &mut opj_j2k,
+  mut _p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   1i32
 }
 
 pub(crate) fn opj_j2k_read_header(
   p_stream: &mut Stream,
-  p_j2k: &mut opj_j2k,
-  p_manager: &mut opj_event_mgr,
+  p_j2k: &mut J2k,
+  p_manager: &mut EventMgr,
 ) -> Option<CoreImage> {
-  let mut validation_list = opj_j2k_proc_list_t::new();
-  let mut procedure_list = opj_j2k_proc_list_t::new();
+  let mut validation_list = J2kProcList::new();
+  let mut procedure_list = J2kProcList::new();
   /* preconditions */
 
   /* create an empty image header */
@@ -6338,9 +6336,9 @@ pub(crate) fn opj_j2k_read_header(
   )
 }
 fn opj_j2k_setup_header_reading(
-  _p_j2k: &mut opj_j2k,
-  list: &mut opj_j2k_proc_list_t,
-  _p_manager: &mut opj_event_mgr,
+  _p_j2k: &mut J2k,
+  list: &mut J2kProcList,
+  _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   list.add(opj_j2k_read_header_procedure);
   /* DEVELOPER CORNER, add your custom procedures */
@@ -6352,9 +6350,9 @@ fn opj_j2k_setup_header_reading(
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 fn opj_j2k_setup_decoding_validation(
-  _p_j2k: &mut opj_j2k,
-  list: &mut opj_j2k_proc_list_t,
-  _p_manager: &mut opj_event_mgr,
+  _p_j2k: &mut J2k,
+  list: &mut J2kProcList,
+  _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   list.add(opj_j2k_build_decoder);
   list.add(opj_j2k_decoding_validation);
@@ -6372,24 +6370,24 @@ fn opj_j2k_setup_decoding_validation(
  * @return true if the parameters are correct.
  */
 fn opj_j2k_mct_validation(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   _p_stream: &mut Stream,
-  _p_manager: &mut opj_event_mgr,
+  _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut l_is_valid = 1i32;
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
+  let mut j: u32 = 0;
   /* preconditions */
 
   if p_j2k.m_cp.rsiz as core::ffi::c_int & 0x8200i32 == 0x8200i32 {
     let l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
     let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < l_nb_tiles {
       let l_tcp = &p_j2k.m_cp.tcps[i as usize];
       if l_tcp.mct == 2u32 {
         l_is_valid &= (!l_tcp.m_mct_coding_matrix.is_empty()) as core::ffi::c_int;
-        j = 0 as OPJ_UINT32;
+        j = 0_u32;
         while j < numcomps {
           l_is_valid &= (l_tcp.tccps[j as usize].qmfbid & 1u32 == 0) as core::ffi::c_int;
           j += 1;
@@ -6402,10 +6400,10 @@ fn opj_j2k_mct_validation(
 }
 
 pub(crate) fn opj_j2k_setup_mct_encoding(
-  p_tcp: &mut opj_tcp_t,
+  p_tcp: &mut Tcp,
   p_image: &mut CoreImage,
 ) -> OPJ_BOOL {
-    let mut l_indix = 1 as OPJ_UINT32;
+    let mut l_indix = 1_u32;
     /* preconditions */
     let p_tcp_ref = &mut *p_tcp;
     if p_tcp_ref.mct != 2u32 {
@@ -6442,9 +6440,9 @@ pub(crate) fn opj_j2k_setup_mct_encoding(
     l_mct_offset_data.m_element_type = MCTElementType::FLOAT;
     let l_nb_elem = p_image.numcomps;
     let l_mct_size = l_nb_elem.wrapping_mul(l_mct_offset_data.m_element_type.size());
-    let mut l_data: Vec<OPJ_FLOAT32> = vec![0.0; l_nb_elem as usize];
+    let mut l_data: Vec<f32> = vec![0.0; l_nb_elem as usize];
     for (i, item) in l_data.iter_mut().enumerate() {
-      *item = p_tcp_ref.tccps[i].m_dc_level_shift as OPJ_FLOAT32;
+      *item = p_tcp_ref.tccps[i].m_dc_level_shift as f32;
     }
     l_mct_offset_data.m_data.clear();
     l_mct_offset_data.m_data.resize(l_mct_size as usize, 0);
@@ -6465,9 +6463,9 @@ pub(crate) fn opj_j2k_setup_mct_encoding(
     1i32
 }
 fn opj_j2k_build_decoder(
-  mut _p_j2k: &mut opj_j2k,
+  mut _p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* add here initialization of cp
   copy paste of setup_decoder */
@@ -6478,9 +6476,9 @@ fn opj_j2k_build_decoder(
  * Builds the tcd encoder to use to encode tile.
  */
 fn opj_j2k_init_info(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   _p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* The encode-side codestream-info v1 (index file) mirror is not
   supported by this port (mergeV2 TODO in the C code); the tile-part
@@ -6494,9 +6492,9 @@ fn opj_j2k_init_info(
 }
 
 fn opj_j2k_build_encoder(
-  mut _p_j2k: &mut opj_j2k,
+  mut _p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* add here initialization of cp
   copy paste of setup_encoder */
@@ -6513,9 +6511,9 @@ fn opj_j2k_build_encoder(
  * @return true if the parameters are correct.
  */
 fn opj_j2k_encoding_validation(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut l_is_valid = 1i32;
   /* preconditions */
@@ -6540,7 +6538,7 @@ fn opj_j2k_encoding_validation(
     < ((1i32)
       << p_j2k.m_cp.tcps[0].tccps[0]
         .numresolutions
-        .wrapping_sub(1u32)) as OPJ_UINT32
+        .wrapping_sub(1u32)) as u32
   {
     event_msg!(
       p_manager,
@@ -6553,7 +6551,7 @@ fn opj_j2k_encoding_validation(
     < ((1i32)
       << p_j2k.m_cp.tcps[0].tccps[0]
         .numresolutions
-        .wrapping_sub(1u32)) as OPJ_UINT32
+        .wrapping_sub(1u32)) as u32
   {
     event_msg!(
       p_manager,
@@ -6575,9 +6573,9 @@ fn opj_j2k_encoding_validation(
  * @return true if the parameters are correct.
  */
 fn opj_j2k_decoding_validation(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut l_is_valid = 1i32;
   /* preconditions*/
@@ -6592,11 +6590,11 @@ fn opj_j2k_decoding_validation(
  * The read header procedure.
  */
 fn opj_j2k_read_header_procedure(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-    let mut l_marker_size: OPJ_UINT32 = 0;
+    let mut l_marker_size: u32 = 0;
     let mut l_has_siz = 0i32;
     let mut l_has_cod = 0i32;
     let mut l_has_qcd = 0i32;
@@ -6675,12 +6673,12 @@ fn opj_j2k_read_header_procedure(
         return 0i32;
       }
       /* read 2 bytes as the marker size */
-      l_marker_size = opj_read_bytes(&p_j2k.m_specific_param.m_decoder.m_header_data, 2 as OPJ_UINT32); /* Subtract the size of the marker ID already read */
+      l_marker_size = opj_read_bytes(&p_j2k.m_specific_param.m_decoder.m_header_data, 2_u32); /* Subtract the size of the marker ID already read */
       if l_marker_size < 2u32 {
         event_msg!(p_manager, EVT_ERROR, "Invalid marker size\n",);
         return 0i32;
       }
-      l_marker_size = (l_marker_size as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32;
+      l_marker_size = (l_marker_size as core::ffi::c_uint).wrapping_sub(2u32);
       /* Check if the marker size is compatible with the header data size */
       let l_header_data = p_j2k.m_specific_param.m_decoder.header_data(l_marker_size);
       /* Try to read the rest of the marker segment from stream and copy them into the buffer */
@@ -6705,9 +6703,9 @@ fn opj_j2k_read_header_procedure(
         == opj_j2k_add_mhmarker(
           p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
           l_marker_handler,
-          (opj_stream_tell(p_stream) as OPJ_UINT32)
+          (opj_stream_tell(p_stream) as u32)
             .wrapping_sub(l_marker_size)
-            .wrapping_sub(4u32) as OPJ_OFF_T,
+            .wrapping_sub(4u32) as i64,
           l_marker_size.wrapping_add(4u32),
         )
       {
@@ -6759,16 +6757,16 @@ fn opj_j2k_read_header_procedure(
     );
     /* Position of the last element if the main header */
     p_j2k.cstr_index.as_deref_mut().expect("cstr_index").main_head_end =
-      (opj_stream_tell(p_stream) as OPJ_UINT32).wrapping_sub(2u32) as OPJ_OFF_T;
+      (opj_stream_tell(p_stream) as u32).wrapping_sub(2u32) as i64;
     /* Next step: read a tile-part header */
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT;
     1i32
 }
 fn opj_j2k_exec(
-  p_j2k: &mut opj_j2k,
-  list: &mut opj_j2k_proc_list_t,
+  p_j2k: &mut J2k,
+  list: &mut J2kProcList,
   stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   list.execute(|p| (p)(p_j2k, stream, p_manager) != 0) as i32
 }
@@ -6779,14 +6777,14 @@ fn opj_j2k_exec(
  */
 /* FIXME DOC*/
 fn opj_j2k_copy_default_tcp_and_create_tcd(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   _p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
   /* preconditions */
 
-let l_nb_tiles: OPJ_UINT32 = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
+let l_nb_tiles: u32 = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
   let l_default_tcp = p_j2k
     .m_specific_param
     .m_decoder
@@ -6794,7 +6792,7 @@ let l_nb_tiles: OPJ_UINT32 = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
     .as_deref_mut()
     .expect("decoder m_default_tcp is always set");
   /* For each tile */
-  i = 0 as OPJ_UINT32;
+  i = 0_u32;
   while i < l_nb_tiles {
     /* keep the tile-compo coding parameters of the current tile coding parameters*/
     let l_current_tccp = core::mem::take(&mut p_j2k.m_cp.tcps[i as usize].tccps);
@@ -6830,7 +6828,7 @@ let l_nb_tiles: OPJ_UINT32 = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
   1i32
 }
 
-impl Drop for opj_j2k {
+impl Drop for J2k {
   fn drop(&mut self) {
     if self.m_is_decoder != 0 {
       if let Some(mut tcp) = self.m_specific_param.m_decoder.m_default_tcp.take() {
@@ -6838,7 +6836,7 @@ impl Drop for opj_j2k {
       }
       self.m_specific_param.m_decoder.m_header_data = Vec::new();
       self.m_specific_param.m_decoder.m_comps_indices_to_decode = Vec::new();
-      self.m_specific_param.m_decoder.m_numcomps_to_decode = 0 as OPJ_UINT32
+      self.m_specific_param.m_decoder.m_numcomps_to_decode = 0_u32
     } else {
       self.m_specific_param.m_encoder.m_encoded_tile_data = Vec::new();
       self.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = Vec::new();
@@ -6860,7 +6858,7 @@ impl Drop for opj_j2k {
  *
  * @param       p_tcp           the tile coding parameter to destroy.
  */
-fn opj_j2k_tcp_destroy(p_tcp: &mut opj_tcp_t) {
+fn opj_j2k_tcp_destroy(p_tcp: &mut Tcp) {
   p_tcp.ppt_markers = Vec::new();
   p_tcp.ppt_buffer = Vec::new();
   p_tcp.tccps = Vec::new();
@@ -6877,9 +6875,9 @@ fn opj_j2k_tcp_destroy(p_tcp: &mut opj_tcp_t) {
  *
  * @param       p_tcp           the tile coding parameter which contain data to destroy.
  */
-fn opj_j2k_tcp_data_destroy(p_tcp: &mut opj_tcp_t) {
+fn opj_j2k_tcp_data_destroy(p_tcp: &mut Tcp) {
   p_tcp.m_data.clear();
-  p_tcp.m_data_size = 0 as OPJ_UINT32;
+  p_tcp.m_data_size = 0_u32;
 }
 
 /* *
@@ -6887,11 +6885,11 @@ fn opj_j2k_tcp_data_destroy(p_tcp: &mut opj_tcp_t) {
  *
  * @param       p_cp            the coding parameter to destroy.
  */
-fn opj_j2k_cp_destroy(p_cp: &mut opj_cp_t) {
-  let l_nb_tiles: OPJ_UINT32; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
+fn opj_j2k_cp_destroy(p_cp: &mut Cp) {
+  let l_nb_tiles: u32; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
   if !p_cp.tcps.is_empty() {
     l_nb_tiles = p_cp.th.wrapping_mul(p_cp.tw);
-    let mut i: OPJ_UINT32 = 0;
+    let mut i: u32 = 0;
     while i < l_nb_tiles {
       opj_j2k_tcp_destroy(&mut p_cp.tcps[i as usize]);
       i += 1;
@@ -6918,18 +6916,18 @@ fn opj_j2k_cp_destroy(p_cp: &mut opj_cp_t) {
  */
 fn opj_j2k_need_nb_tile_parts_correction(
   mut p_stream: &mut Stream,
-  mut tile_no: OPJ_UINT32,
+  mut tile_no: u32,
   p_correction_needed: &mut OPJ_BOOL,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-    let mut l_header_data: [OPJ_BYTE; 10] = [0; 10];
-    let mut l_stream_pos_backup: OPJ_OFF_T = 0;
+    let mut l_header_data: [u8; 10] = [0; 10];
+    let mut l_stream_pos_backup: i64 = 0;
     let mut l_current_marker = J2KMarker::UNK(0);
-    let mut l_marker_size: OPJ_UINT32 = 0;
-    let mut l_tile_no: OPJ_UINT32 = 0;
-    let mut l_tot_len: OPJ_UINT32 = 0;
-    let mut l_current_part: OPJ_UINT32 = 0;
-    let mut l_num_parts: OPJ_UINT32 = 0;
+    let mut l_marker_size: u32 = 0;
+    let mut l_tile_no: u32 = 0;
+    let mut l_tot_len: u32 = 0;
+    let mut l_current_part: u32 = 0;
+    let mut l_num_parts: u32 = 0;
     /* initialize to no correction needed */
     *p_correction_needed = 0i32;
     if opj_stream_has_seek(p_stream) == 0 {
@@ -6968,13 +6966,13 @@ fn opj_j2k_need_nb_tile_parts_correction(
       }
       /* Read 2 bytes from the buffer as the marker size */
       l_marker_size =
-        opj_read_bytes(&l_header_data[..2], 2 as OPJ_UINT32);
+        opj_read_bytes(&l_header_data[..2], 2_u32);
       /* Check marker size for SOT Marker */
       if l_marker_size != 10u32 {
         event_msg!(p_manager, EVT_ERROR, "Inconsistent marker size\n",);
         return 0i32;
       }
-      l_marker_size = (l_marker_size as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32;
+      l_marker_size = (l_marker_size as core::ffi::c_uint).wrapping_sub(2u32);
       if opj_stream_read_data(p_stream, &mut l_header_data[..l_marker_size as usize], p_manager) != l_marker_size as usize
       {
         event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
@@ -7002,9 +7000,9 @@ fn opj_j2k_need_nb_tile_parts_correction(
         }
         return 1i32;
       }
-      l_tot_len = (l_tot_len as core::ffi::c_uint).wrapping_sub(12u32) as OPJ_UINT32;
+      l_tot_len = (l_tot_len as core::ffi::c_uint).wrapping_sub(12u32);
       /* look for next SOT marker */
-      if opj_stream_skip(p_stream, l_tot_len as OPJ_OFF_T, p_manager) != l_tot_len as OPJ_OFF_T {
+      if opj_stream_skip(p_stream, l_tot_len as i64, p_manager) != l_tot_len as i64 {
         /* assume all is OK */
         if opj_stream_seek(p_stream, l_stream_pos_backup, p_manager) == 0 {
           return 0i32;
@@ -7023,13 +7021,13 @@ fn opj_j2k_need_nb_tile_parts_correction(
 }
 
 pub(crate) fn opj_j2k_read_tile_header(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
   tile_info: &mut TileInfo,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> bool {
     let mut l_current_marker = J2KMarker::SOT;
-    let mut l_marker_size: OPJ_UINT32 = 0;
+    let mut l_marker_size: u32 = 0;
     let l_nb_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
     /* preconditions */
 
@@ -7055,7 +7053,7 @@ pub(crate) fn opj_j2k_read_tile_header(
             return false;
           }
           /* Read 2 bytes from the buffer as the marker size */
-          l_marker_size = opj_read_bytes(&p_j2k.m_specific_param.m_decoder.m_header_data, 2 as OPJ_UINT32);
+          l_marker_size = opj_read_bytes(&p_j2k.m_specific_param.m_decoder.m_header_data, 2_u32);
           /* Check marker size (does not include marker ID but includes marker size) */
           if l_marker_size < 2u32 {
             event_msg!(p_manager, EVT_ERROR, "Inconsistent marker size\n",);
@@ -7072,10 +7070,10 @@ pub(crate) fn opj_j2k_read_tile_header(
             if p_j2k.m_specific_param.m_decoder.m_state & J2KState::TPH != J2KState::NONE {
               p_j2k.m_specific_param.m_decoder.m_sot_length =
                 (p_j2k.m_specific_param.m_decoder.m_sot_length as core::ffi::c_uint)
-                  .wrapping_sub(l_marker_size.wrapping_add(2u32)) as OPJ_UINT32
+                  .wrapping_sub(l_marker_size.wrapping_add(2u32))
             } /* Subtract the size of the marker ID already read */
             l_marker_size =
-              (l_marker_size as core::ffi::c_uint).wrapping_sub(2u32) as OPJ_UINT32 as OPJ_UINT32;
+              (l_marker_size as core::ffi::c_uint).wrapping_sub(2u32);
             /* Get the marker handler from the marker ID */
             let l_marker_handler = l_current_marker;
             /* Check if the marker is known and if it is the right place to find it */
@@ -7094,7 +7092,7 @@ pub(crate) fn opj_j2k_read_tile_header(
             if l_marker_size as usize > p_j2k.m_specific_param.m_decoder.m_header_data.len() {
               /* If we are here, this means we consider this marker as known & we will read it */
               /* Check enough bytes left in stream before allocation */
-              if l_marker_size as OPJ_OFF_T > opj_stream_get_number_byte_left(p_stream) {
+              if l_marker_size as i64 > opj_stream_get_number_byte_left(p_stream) {
                 event_msg!(
                   p_manager,
                   EVT_ERROR,
@@ -7128,9 +7126,9 @@ pub(crate) fn opj_j2k_read_tile_header(
                 p_j2k.m_current_tile_number,
                 p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
                 l_marker_handler,
-                (opj_stream_tell(p_stream) as OPJ_UINT32)
+                (opj_stream_tell(p_stream) as u32)
                   .wrapping_sub(l_marker_size)
-                  .wrapping_sub(4u32) as OPJ_OFF_T,
+                  .wrapping_sub(4u32) as i64,
                 l_marker_size.wrapping_add(4u32),
               )
             {
@@ -7139,18 +7137,18 @@ pub(crate) fn opj_j2k_read_tile_header(
             }
             /* Keep the position of the last SOT marker read */
             if l_marker_handler == J2KMarker::SOT {
-              let mut sot_pos = (opj_stream_tell(p_stream) as OPJ_UINT32)
+              let mut sot_pos = (opj_stream_tell(p_stream) as u32)
                 .wrapping_sub(l_marker_size)
                 .wrapping_sub(4u32);
               if sot_pos as i64 > p_j2k.m_specific_param.m_decoder.m_last_sot_read_pos {
-                p_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = sot_pos as OPJ_OFF_T
+                p_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = sot_pos as i64
               }
             }
             if p_j2k.m_specific_param.m_decoder.m_skip_data {
               /* Skip the rest of the tile part header*/
               if opj_stream_skip(
                 p_stream,
-                p_j2k.m_specific_param.m_decoder.m_sot_length as OPJ_OFF_T,
+                p_j2k.m_specific_param.m_decoder.m_sot_length as i64,
                 p_manager,
               ) != p_j2k.m_specific_param.m_decoder.m_sot_length as i64
               {
@@ -7211,7 +7209,7 @@ pub(crate) fn opj_j2k_read_tile_header(
             return false;
           }
           if l_correction_needed != 0 {
-            let mut l_tile_no: OPJ_UINT32 = 0;
+            let mut l_tile_no: u32 = 0;
             p_j2k.m_specific_param.m_decoder.m_can_decode = false;
             p_j2k.m_specific_param.m_decoder.m_nb_tile_parts_correction = true;
             /* correct tiles */
@@ -7246,7 +7244,7 @@ pub(crate) fn opj_j2k_read_tile_header(
         /* row of tiles have TPsot == 0 and TNsot == 0, and missing EOC, */
         /* but no other tile-parts were found. */
         if p_j2k.m_current_tile_number.wrapping_add(1u32) == l_nb_tiles {
-          let mut l_tile_no_0: OPJ_UINT32 = 0;
+          let mut l_tile_no_0: u32 = 0;
           l_tile_no_0 = 0u32;
           while l_tile_no_0 < l_nb_tiles {
             if p_j2k.m_cp.tcps[l_tile_no_0 as usize].m_current_tile_part_number == 0i32
@@ -7278,7 +7276,7 @@ pub(crate) fn opj_j2k_read_tile_header(
     if l_current_marker == J2KMarker::EOC
       && p_j2k.m_specific_param.m_decoder.m_state != J2KState::EOC
     {
-      p_j2k.m_current_tile_number = 0 as OPJ_UINT32;
+      p_j2k.m_current_tile_number = 0_u32;
       p_j2k.m_specific_param.m_decoder.m_state = J2KState::EOC
     }
     /* Deal with tiles that have a single tile-part with TPsot == 0 and TNsot == 0 */
@@ -7334,14 +7332,14 @@ pub(crate) fn opj_j2k_read_tile_header(
     true
 }
 pub(crate) fn opj_j2k_decode_tile(
-  p_j2k: &mut opj_j2k,
-  p_tile_index: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_tile_index: u32,
   p_data: Option<&mut [u8]>,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut l_current_marker = J2KMarker::UNK(0);
-  let mut l_data: [OPJ_BYTE; 2] = [0; 2];
+  let mut l_data: [u8; 2] = [0; 2];
   /* preconditions */
 
   if p_j2k.m_specific_param.m_decoder.m_state & J2KState::DATA == J2KState::NONE
@@ -7424,7 +7422,7 @@ pub(crate) fn opj_j2k_decode_tile(
       }
       l_current_marker = J2KMarker::from_buffer(&l_data);
       if l_current_marker == J2KMarker::EOC {
-        p_j2k.m_current_tile_number = 0 as OPJ_UINT32;
+        p_j2k.m_current_tile_number = 0_u32;
         p_j2k.m_specific_param.m_decoder.m_state = J2KState::EOC
       } else if l_current_marker == J2KMarker::UNK(0x8080u32) {
         /* cf. https://code.google.com/p/openjpeg/issues/detail?id=226 */
@@ -7451,7 +7449,7 @@ pub(crate) fn opj_j2k_decode_tile(
   1i32
 }
 fn opj_j2k_update_image_data(
-  p_tcd: &mut opj_tcd,
+  p_tcd: &mut Tcd,
   p_output_image: &mut CoreImage,
   p_image_src: &mut CoreImage,
 ) -> OPJ_BOOL {
@@ -7477,33 +7475,33 @@ fn opj_j2k_update_image_data(
 }
 
 fn update_image_data_comp(
-  l_tilec_i: &mut opj_tcd_tilecomp_t,
+  l_tilec_i: &mut TcdTileComp,
   l_img_comp_src: &CoreImageComp,
   dest: &mut CoreImageComp,
   whole_tile: bool,
 ) -> OPJ_BOOL {
-    let mut res_x0: OPJ_INT32 = 0;
-    let mut res_x1: OPJ_INT32 = 0;
-    let mut res_y0: OPJ_INT32 = 0;
-    let mut res_y1: OPJ_INT32 = 0;
-    let mut src_data_stride: OPJ_UINT32 = 0;
-    let mut l_width_src: OPJ_UINT32 = 0;
-    let mut l_height_src: OPJ_UINT32 = 0;
-    let mut l_width_dest: OPJ_UINT32 = 0;
-    let mut l_height_dest: OPJ_UINT32 = 0;
-    let mut l_offset_x0_src: OPJ_INT32 = 0;
-    let mut l_offset_y0_src: OPJ_INT32 = 0;
-    let mut l_offset_x1_src: OPJ_INT32 = 0;
-    let mut l_offset_y1_src: OPJ_INT32 = 0;
-    let mut l_start_offset_src: OPJ_SIZE_T = 0;
-    let mut l_start_x_dest: OPJ_UINT32 = 0;
-    let mut l_start_y_dest: OPJ_UINT32 = 0;
-    let mut l_x0_dest: OPJ_UINT32 = 0;
-    let mut l_y0_dest: OPJ_UINT32 = 0;
-    let mut l_x1_dest: OPJ_UINT32 = 0;
-    let mut l_y1_dest: OPJ_UINT32 = 0;
-    let mut l_start_offset_dest: OPJ_SIZE_T = 0;
-    let mut j: OPJ_UINT32 = 0;
+    let mut res_x0: i32 = 0;
+    let mut res_x1: i32 = 0;
+    let mut res_y0: i32 = 0;
+    let mut res_y1: i32 = 0;
+    let mut src_data_stride: u32 = 0;
+    let mut l_width_src: u32 = 0;
+    let mut l_height_src: u32 = 0;
+    let mut l_width_dest: u32 = 0;
+    let mut l_height_dest: u32 = 0;
+    let mut l_offset_x0_src: i32 = 0;
+    let mut l_offset_y0_src: i32 = 0;
+    let mut l_offset_x1_src: i32 = 0;
+    let mut l_offset_y1_src: i32 = 0;
+    let mut l_start_offset_src: usize = 0;
+    let mut l_start_x_dest: u32 = 0;
+    let mut l_start_y_dest: u32 = 0;
+    let mut l_x0_dest: u32 = 0;
+    let mut l_y0_dest: u32 = 0;
+    let mut l_x1_dest: u32 = 0;
+    let mut l_y1_dest: u32 = 0;
+    let mut l_start_offset_dest: usize = 0;
+    let mut j: u32 = 0;
     /* Copy info from decoded comp image to output image */
     dest.resno_decoded = l_img_comp_src.resno_decoded;
     if whole_tile {
@@ -7515,14 +7513,14 @@ fn update_image_data_comp(
       src_data_stride = (l_tilec_i.resolutions[l_tilec_i.minimum_num_resolutions as usize - 1]
         .x1
         - l_tilec_i.resolutions[l_tilec_i.minimum_num_resolutions as usize - 1].x0)
-        as OPJ_UINT32;
+        as u32;
       !l_tilec_i.data.is_null()
     } else {
       let l_res = &l_tilec_i.resolutions[l_img_comp_src.resno_decoded as usize];
-      res_x0 = l_res.win_x0 as OPJ_INT32;
-      res_y0 = l_res.win_y0 as OPJ_INT32;
-      res_x1 = l_res.win_x1 as OPJ_INT32;
-      res_y1 = l_res.win_y1 as OPJ_INT32;
+      res_x0 = l_res.win_x0 as i32;
+      res_y0 = l_res.win_y0 as i32;
+      res_x1 = l_res.win_x1 as i32;
+      res_y1 = l_res.win_y1 as i32;
       src_data_stride = l_res.win_x1.wrapping_sub(l_res.win_x0);
       !l_tilec_i.data_win.is_null()
     };
@@ -7532,8 +7530,8 @@ fn update_image_data_comp(
       !l_tilec_i.data_win.is_null()
     };
     if src_available {
-      l_width_src = (res_x1 - res_x0) as OPJ_UINT32;
-      l_height_src = (res_y1 - res_y0) as OPJ_UINT32;
+      l_width_src = (res_x1 - res_x0) as u32;
+      l_height_src = (res_y1 - res_y0) as u32;
       /* Current tile component size*/
       /* Border of the current output component*/
       l_x0_dest = opj_uint_ceildivpow2(dest.x0, dest.factor); /* can't overflow given that image->x1 is uint32 */
@@ -7550,46 +7548,46 @@ fn update_image_data_comp(
 
       assert!(res_x0 >= 0i32);
       assert!(res_x1 >= 0i32);
-      if l_x0_dest < res_x0 as OPJ_UINT32 {
-        l_start_x_dest = (res_x0 as OPJ_UINT32).wrapping_sub(l_x0_dest);
+      if l_x0_dest < res_x0 as u32 {
+        l_start_x_dest = (res_x0 as u32).wrapping_sub(l_x0_dest);
         l_offset_x0_src = 0i32;
-        if l_x1_dest >= res_x1 as OPJ_UINT32 {
+        if l_x1_dest >= res_x1 as u32 {
           l_width_dest = l_width_src;
           l_offset_x1_src = 0i32
         } else {
-          l_width_dest = l_x1_dest.wrapping_sub(res_x0 as OPJ_UINT32);
-          l_offset_x1_src = l_width_src.wrapping_sub(l_width_dest) as OPJ_INT32
+          l_width_dest = l_x1_dest.wrapping_sub(res_x0 as u32);
+          l_offset_x1_src = l_width_src.wrapping_sub(l_width_dest) as i32
         }
       } else {
         l_start_x_dest = 0u32;
-        l_offset_x0_src = l_x0_dest as OPJ_INT32 - res_x0;
-        if l_x1_dest >= res_x1 as OPJ_UINT32 {
-          l_width_dest = l_width_src.wrapping_sub(l_offset_x0_src as OPJ_UINT32);
+        l_offset_x0_src = l_x0_dest as i32 - res_x0;
+        if l_x1_dest >= res_x1 as u32 {
+          l_width_dest = l_width_src.wrapping_sub(l_offset_x0_src as u32);
           l_offset_x1_src = 0i32
         } else {
           l_width_dest = dest.w;
-          l_offset_x1_src = res_x1 - l_x1_dest as OPJ_INT32
+          l_offset_x1_src = res_x1 - l_x1_dest as i32
         }
       }
-      if l_y0_dest < res_y0 as OPJ_UINT32 {
-        l_start_y_dest = (res_y0 as OPJ_UINT32).wrapping_sub(l_y0_dest);
+      if l_y0_dest < res_y0 as u32 {
+        l_start_y_dest = (res_y0 as u32).wrapping_sub(l_y0_dest);
         l_offset_y0_src = 0i32;
-        if l_y1_dest >= res_y1 as OPJ_UINT32 {
+        if l_y1_dest >= res_y1 as u32 {
           l_height_dest = l_height_src;
           l_offset_y1_src = 0i32
         } else {
-          l_height_dest = l_y1_dest.wrapping_sub(res_y0 as OPJ_UINT32);
-          l_offset_y1_src = l_height_src.wrapping_sub(l_height_dest) as OPJ_INT32
+          l_height_dest = l_y1_dest.wrapping_sub(res_y0 as u32);
+          l_offset_y1_src = l_height_src.wrapping_sub(l_height_dest) as i32
         }
       } else {
         l_start_y_dest = 0u32;
-        l_offset_y0_src = l_y0_dest as OPJ_INT32 - res_y0;
-        if l_y1_dest >= res_y1 as OPJ_UINT32 {
-          l_height_dest = l_height_src.wrapping_sub(l_offset_y0_src as OPJ_UINT32);
+        l_offset_y0_src = l_y0_dest as i32 - res_y0;
+        if l_y1_dest >= res_y1 as u32 {
+          l_height_dest = l_height_src.wrapping_sub(l_offset_y0_src as u32);
           l_offset_y1_src = 0i32
         } else {
           l_height_dest = dest.h;
-          l_offset_y1_src = res_y1 - l_y1_dest as OPJ_INT32
+          l_offset_y1_src = res_y1 - l_y1_dest as i32
         }
       }
       if l_offset_x0_src < 0i32
@@ -7600,17 +7598,17 @@ fn update_image_data_comp(
         return 0i32;
       }
       /* testcase 2977.pdf.asan.67.2198 */
-      if (l_width_dest as OPJ_INT32) < 0i32 || (l_height_dest as OPJ_INT32) < 0i32 {
+      if (l_width_dest as i32) < 0i32 || (l_height_dest as i32) < 0i32 {
         return 0i32;
       }
       /*-----*/
       /* Compute the input buffer offset */
-      l_start_offset_src = (l_offset_x0_src as OPJ_SIZE_T).wrapping_add(
-        (l_offset_y0_src as OPJ_SIZE_T).wrapping_mul(src_data_stride as OPJ_SIZE_T),
+      l_start_offset_src = (l_offset_x0_src as usize).wrapping_add(
+        (l_offset_y0_src as usize).wrapping_mul(src_data_stride as usize),
       );
       /* Compute the output buffer offset */
-      l_start_offset_dest = (l_start_x_dest as OPJ_SIZE_T).wrapping_add(
-        (l_start_y_dest as OPJ_SIZE_T).wrapping_mul(dest.w as OPJ_SIZE_T),
+      l_start_offset_dest = (l_start_x_dest as usize).wrapping_add(
+        (l_start_y_dest as usize).wrapping_mul(dest.w as usize),
       );
       /* Allocate output component buffer if necessary */
       if dest.data.is_empty()
@@ -7630,12 +7628,12 @@ fn update_image_data_comp(
         }
       } else {
         if dest.data.is_empty() {
-          let l_width = dest.w as OPJ_SIZE_T;
-          let l_height = dest.h as OPJ_SIZE_T;
+          let l_width = dest.w as usize;
+          let l_height = dest.h as usize;
           if l_height == 0
             || l_width > (usize::MAX).wrapping_div(l_height)
             || l_width.wrapping_mul(l_height)
-              > (usize::MAX).wrapping_div(core::mem::size_of::<OPJ_INT32>())
+              > (usize::MAX).wrapping_div(core::mem::size_of::<i32>())
           {
             /* would overflow */
             return 0i32;
@@ -7650,10 +7648,10 @@ fn update_image_data_comp(
           l_tilec_i.data_win.as_mut_slice(src_len)
         };
         let dest_w = dest.w as usize;
-        j = 0 as OPJ_UINT32;
+        j = 0_u32;
         while j < l_height_dest {
-          let src_row = l_start_offset_src as usize + j as usize * src_data_stride as usize;
-          let dest_row = l_start_offset_dest as usize + j as usize * dest_w;
+          let src_row = l_start_offset_src + j as usize * src_data_stride as usize;
+          let dest_row = l_start_offset_dest + j as usize * dest_w;
           dest.data[dest_row..dest_row + l_width_dest as usize]
             .copy_from_slice(&src[src_row..src_row + l_width_dest as usize]);
           j += 1;
@@ -7665,23 +7663,23 @@ fn update_image_data_comp(
 
 fn opj_j2k_update_image_dimensions(
   p_image: &mut CoreImage,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut it_comp: OPJ_UINT32 = 0;
-  let mut l_comp_x1: OPJ_INT32 = 0;
-  let mut l_comp_y1: OPJ_INT32 = 0;
+  let mut it_comp: u32 = 0;
+  let mut l_comp_x1: i32 = 0;
+  let mut l_comp_y1: i32 = 0;
   let img_x0 = p_image.x0;
   let img_y0 = p_image.y0;
   let img_x1 = p_image.x1;
   let img_y1 = p_image.y1;
-  it_comp = 0 as OPJ_UINT32;
+  it_comp = 0_u32;
   while it_comp < p_image.numcomps {
-    let mut l_h: OPJ_INT32 = 0;
-    let mut l_w: OPJ_INT32 = 0;
-    if img_x0 > 2147483647 as OPJ_UINT32
-      || img_y0 > 2147483647 as OPJ_UINT32
-      || img_x1 > 2147483647 as OPJ_UINT32
-      || img_y1 > 2147483647 as OPJ_UINT32
+    let mut l_h: i32 = 0;
+    let mut l_w: i32 = 0;
+    if img_x0 > 2147483647_u32
+      || img_y0 > 2147483647_u32
+      || img_x1 > 2147483647_u32
+      || img_y1 > 2147483647_u32
     {
       event_msg!(
         p_manager,
@@ -7695,11 +7693,11 @@ fn opj_j2k_update_image_dimensions(
     let l_img_comp = &mut comps[it_comp as usize];
     l_img_comp.x0 = opj_uint_ceildiv(img_x0, l_img_comp.dx);
     l_img_comp.y0 = opj_uint_ceildiv(img_y0, l_img_comp.dy);
-    l_comp_x1 = opj_int_ceildiv(img_x1 as OPJ_INT32, l_img_comp.dx as OPJ_INT32);
-    l_comp_y1 = opj_int_ceildiv(img_y1 as OPJ_INT32, l_img_comp.dy as OPJ_INT32);
+    l_comp_x1 = opj_int_ceildiv(img_x1 as i32, l_img_comp.dx as i32);
+    l_comp_y1 = opj_int_ceildiv(img_y1 as i32, l_img_comp.dy as i32);
 
-    l_w = opj_int_ceildivpow2(l_comp_x1, l_img_comp.factor as OPJ_INT32)
-      - opj_int_ceildivpow2(l_img_comp.x0 as OPJ_INT32, l_img_comp.factor as OPJ_INT32);
+    l_w = opj_int_ceildivpow2(l_comp_x1, l_img_comp.factor as i32)
+      - opj_int_ceildivpow2(l_img_comp.x0 as i32, l_img_comp.factor as i32);
     if l_w < 0i32 {
       event_msg!(
         p_manager,
@@ -7710,9 +7708,9 @@ fn opj_j2k_update_image_dimensions(
       );
       return 0i32;
     }
-    l_img_comp.w = l_w as OPJ_UINT32;
-    l_h = opj_int_ceildivpow2(l_comp_y1, l_img_comp.factor as OPJ_INT32)
-      - opj_int_ceildivpow2(l_img_comp.y0 as OPJ_INT32, l_img_comp.factor as OPJ_INT32);
+    l_img_comp.w = l_w as u32;
+    l_h = opj_int_ceildivpow2(l_comp_y1, l_img_comp.factor as i32)
+      - opj_int_ceildivpow2(l_img_comp.y0 as i32, l_img_comp.factor as i32);
     if l_h < 0i32 {
       event_msg!(
         p_manager,
@@ -7723,16 +7721,16 @@ fn opj_j2k_update_image_dimensions(
       );
       return 0i32;
     }
-    l_img_comp.h = l_h as OPJ_UINT32;
+    l_img_comp.h = l_h as u32;
     it_comp += 1;
   }
   1i32
 }
 
 pub(crate) fn opj_j2k_set_decoded_components(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   compenents: &[u32],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let numcomps = compenents.len() as u32;
     if p_j2k.m_private_image.is_none() {
@@ -7765,18 +7763,18 @@ pub(crate) fn opj_j2k_set_decoded_components(
 }
 
 pub(crate) fn opj_j2k_set_decode_area(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_image: &mut CoreImage,
-  p_start_x: OPJ_INT32,
-  p_start_y: OPJ_INT32,
-  p_end_x: OPJ_INT32,
-  p_end_y: OPJ_INT32,
-  p_manager: &mut opj_event_mgr,
+  p_start_x: i32,
+  p_start_y: i32,
+  p_end_x: i32,
+  p_end_y: i32,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let l_cp = &p_j2k.m_cp;
     let mut l_image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
     let mut ret: OPJ_BOOL = 0;
-    let mut it_comp: OPJ_UINT32 = 0;
+    let mut it_comp: u32 = 0;
     if !(p_j2k.m_cp.tw == 1u32
       && p_j2k.m_cp.th == 1u32
       && !p_j2k.m_cp.tcps[0].m_data.is_empty())
@@ -7793,7 +7791,7 @@ pub(crate) fn opj_j2k_set_decode_area(
     }
     /* Update the comps[].factor member of the output image with the one */
     /* of m_reduce */
-    it_comp = 0 as OPJ_UINT32;
+    it_comp = 0_u32;
     while it_comp < p_image.numcomps {
       p_image.comps[it_comp as usize].factor = p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
       it_comp += 1;
@@ -7804,8 +7802,8 @@ pub(crate) fn opj_j2k_set_decode_area(
         EVT_INFO,
         "No decoded area parameters, set the decoded area to the whole image\n",
       );
-      p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
-      p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
+      p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0_u32;
+      p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0_u32;
       p_j2k.m_specific_param.m_decoder.m_end_tile_x = l_cp.tw;
       p_j2k.m_specific_param.m_decoder.m_end_tile_y = l_cp.th;
       p_image.x0 = l_image.x0;
@@ -7825,7 +7823,7 @@ pub(crate) fn opj_j2k_set_decode_area(
         p_start_x,
       );
       return 0i32;
-    } else if p_start_x as OPJ_UINT32 > l_image.x1 {
+    } else if p_start_x as u32 > l_image.x1 {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -7834,7 +7832,7 @@ pub(crate) fn opj_j2k_set_decode_area(
         l_image.x1
       );
       return 0i32;
-    } else if (p_start_x as OPJ_UINT32) < l_image.x0 {
+    } else if (p_start_x as u32) < l_image.x0 {
       event_msg!(
         p_manager,
         EVT_WARNING,
@@ -7842,13 +7840,13 @@ pub(crate) fn opj_j2k_set_decode_area(
         p_start_x,
         l_image.x0
       );
-      p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0 as OPJ_UINT32;
+      p_j2k.m_specific_param.m_decoder.m_start_tile_x = 0_u32;
       p_image.x0 = l_image.x0
     } else {
-      p_j2k.m_specific_param.m_decoder.m_start_tile_x = (p_start_x as OPJ_UINT32)
+      p_j2k.m_specific_param.m_decoder.m_start_tile_x = (p_start_x as u32)
         .wrapping_sub(l_cp.tx0)
         .wrapping_div(l_cp.tdx);
-      p_image.x0 = p_start_x as OPJ_UINT32
+      p_image.x0 = p_start_x as u32
     }
     /* Up */
     if p_start_y < 0i32 {
@@ -7859,7 +7857,7 @@ pub(crate) fn opj_j2k_set_decode_area(
         p_start_y,
       );
       return 0i32;
-    } else if p_start_y as OPJ_UINT32 > l_image.y1 {
+    } else if p_start_y as u32 > l_image.y1 {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -7868,7 +7866,7 @@ pub(crate) fn opj_j2k_set_decode_area(
         l_image.y1,
       );
       return 0i32;
-    } else if (p_start_y as OPJ_UINT32) < l_image.y0 {
+    } else if (p_start_y as u32) < l_image.y0 {
       event_msg!(
         p_manager,
         EVT_WARNING,
@@ -7876,13 +7874,13 @@ pub(crate) fn opj_j2k_set_decode_area(
         p_start_y,
         l_image.y0
       );
-      p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0 as OPJ_UINT32;
+      p_j2k.m_specific_param.m_decoder.m_start_tile_y = 0_u32;
       p_image.y0 = l_image.y0
     } else {
-      p_j2k.m_specific_param.m_decoder.m_start_tile_y = (p_start_y as OPJ_UINT32)
+      p_j2k.m_specific_param.m_decoder.m_start_tile_y = (p_start_y as u32)
         .wrapping_sub(l_cp.ty0)
         .wrapping_div(l_cp.tdy);
-      p_image.y0 = p_start_y as OPJ_UINT32
+      p_image.y0 = p_start_y as u32
     }
     /* Right */
     if p_end_x <= 0i32 {
@@ -7893,7 +7891,7 @@ pub(crate) fn opj_j2k_set_decode_area(
         p_end_x,
       );
       return 0i32;
-    } else if (p_end_x as OPJ_UINT32) < l_image.x0 {
+    } else if (p_end_x as u32) < l_image.x0 {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -7902,7 +7900,7 @@ pub(crate) fn opj_j2k_set_decode_area(
         l_image.x0
       );
       return 0i32;
-    } else if p_end_x as OPJ_UINT32 > l_image.x1 {
+    } else if p_end_x as u32 > l_image.x1 {
       event_msg!(
         p_manager,
         EVT_WARNING,
@@ -7914,8 +7912,8 @@ pub(crate) fn opj_j2k_set_decode_area(
       p_image.x1 = l_image.x1
     } else {
       p_j2k.m_specific_param.m_decoder.m_end_tile_x =
-        opj_uint_ceildiv(p_end_x as OPJ_UINT32 - l_cp.tx0, l_cp.tdx);
-      p_image.x1 = p_end_x as OPJ_UINT32
+        opj_uint_ceildiv(p_end_x as u32 - l_cp.tx0, l_cp.tdx);
+      p_image.x1 = p_end_x as u32
     }
     /* Bottom */
     if p_end_y <= 0i32 {
@@ -7926,7 +7924,7 @@ pub(crate) fn opj_j2k_set_decode_area(
         p_end_y,
       );
       return 0i32;
-    } else if (p_end_y as OPJ_UINT32) < l_image.y0 {
+    } else if (p_end_y as u32) < l_image.y0 {
       event_msg!(
       p_manager,
       EVT_ERROR,
@@ -7936,7 +7934,7 @@ pub(crate) fn opj_j2k_set_decode_area(
     );
       return 0i32;
     }
-    if p_end_y as OPJ_UINT32 > l_image.y1 {
+    if p_end_y as u32 > l_image.y1 {
       event_msg!(
         p_manager,
         EVT_WARNING,
@@ -7948,8 +7946,8 @@ pub(crate) fn opj_j2k_set_decode_area(
       p_image.y1 = l_image.y1
     } else {
       p_j2k.m_specific_param.m_decoder.m_end_tile_y =
-        opj_uint_ceildiv(p_end_y as OPJ_UINT32 - l_cp.ty0, l_cp.tdy);
-      p_image.y1 = p_end_y as OPJ_UINT32
+        opj_uint_ceildiv(p_end_y as u32 - l_cp.ty0, l_cp.tdy);
+      p_image.y1 = p_end_y as u32
     }
     /* ----- */
     p_j2k.m_specific_param.m_decoder.m_discard_tiles = true;
@@ -7968,7 +7966,7 @@ pub(crate) fn opj_j2k_set_decode_area(
     ret
 }
 
-impl opj_j2k {
+impl J2k {
   pub fn new(m_is_decoder: i32) -> Self {
     Self {
       m_is_decoder,
@@ -7978,7 +7976,7 @@ impl opj_j2k {
       m_cp: Default::default(),
       cstr_index: None,
       m_current_tile_number: 0,
-      m_tcd: opj_tcd::new(m_is_decoder != 0),
+      m_tcd: Tcd::new(m_is_decoder != 0),
       ihdr_w: 0,
       ihdr_h: 0,
       dump_state: 0,
@@ -7986,8 +7984,8 @@ impl opj_j2k {
   }
 }
 
-pub(crate) fn opj_j2k_create_decompress() -> Option<opj_j2k> {
-  let mut l_j2k = opj_j2k::new(1);
+pub(crate) fn opj_j2k_create_decompress() -> Option<J2k> {
+  let mut l_j2k = J2k::new(1);
   l_j2k.m_cp.m_is_decoder = true;
   /* in the absence of JP2 boxes, consider different bit depth / sign */
   /* per component is allowed */
@@ -7997,7 +7995,7 @@ pub(crate) fn opj_j2k_create_decompress() -> Option<opj_j2k> {
   l_j2k.m_specific_param.m_decoder.m_default_tcp = Some(Box::default());
   l_j2k.m_specific_param.m_decoder.m_header_data = vec![0u8; 1000];
   l_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = -(1i32);
-  l_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = 0 as OPJ_OFF_T;
+  l_j2k.m_specific_param.m_decoder.m_last_sot_read_pos = 0_i64;
   /* codestream index creation */
   l_j2k.cstr_index = Some(Box::new(CodestreamIndex::default()));
   Some(l_j2k)
@@ -8019,10 +8017,10 @@ fn opj_j2k_create_cstr_index() -> Box<CodestreamIndex> {
  * @return      the number of bytes taken by the SPCod element.
  */
 fn opj_j2k_get_SPCod_SPCoc_size(
-  p_j2k: &mut opj_j2k,
-  p_tile_no: OPJ_UINT32,
-  p_comp_no: OPJ_UINT32,
-) -> OPJ_UINT32 {
+  p_j2k: &mut J2k,
+  p_tile_no: u32,
+  p_comp_no: u32,
+) -> u32 {
   /* preconditions */
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
   /* preconditions again */
@@ -8032,7 +8030,7 @@ fn opj_j2k_get_SPCod_SPCoc_size(
   if l_tccp.csty & 0x1u32 != 0 {
     (5u32).wrapping_add(l_tccp.numresolutions)
   } else {
-    5 as OPJ_UINT32
+    5_u32
   }
 }
 /* *
@@ -8046,12 +8044,12 @@ fn opj_j2k_get_SPCod_SPCoc_size(
  * @return OPJ_TRUE if SPCdod are equals.
  */
 fn opj_j2k_compare_SPCod_SPCoc(
-  p_j2k: &mut opj_j2k,
-  p_tile_no: OPJ_UINT32,
-  p_first_comp_no: OPJ_UINT32,
-  p_second_comp_no: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_tile_no: u32,
+  p_first_comp_no: u32,
+  p_second_comp_no: u32,
 ) -> OPJ_BOOL {
-  let mut i: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
   /* preconditions */
   let l_tcp = &p_j2k.m_cp.tcps[p_tile_no as usize];
   let l_tccp0 = &l_tcp.tccps[p_first_comp_no as usize];
@@ -8099,15 +8097,15 @@ fn opj_j2k_compare_SPCod_SPCoc(
  * @return FIXME DOC
 */
 fn opj_j2k_write_SPCod_SPCoc(
-  p_j2k: &mut opj_j2k,
-  p_tile_no: OPJ_UINT32,
-  p_comp_no: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_tile_no: u32,
+  p_comp_no: u32,
   data: &mut [u8],
-  p_header_size: &mut OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  p_header_size: &mut u32,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut pos: usize = 0;
-  let mut i: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
   /* preconditions */
 
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
@@ -8119,15 +8117,15 @@ fn opj_j2k_write_SPCod_SPCoc(
     event_msg!(p_manager, EVT_ERROR, "Error writing SPCod SPCoc element\n",); /* SPcoc (H) */
     return 0i32;
   } /* SPcoc (I_i) */
-  opj_write_bytes(&mut data[pos..], l_tccp.numresolutions.wrapping_sub(1u32), 1 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], l_tccp.numresolutions.wrapping_sub(1u32), 1_u32);
   pos += 1usize;
-  opj_write_bytes(&mut data[pos..], l_tccp.cblkw.wrapping_sub(2u32), 1 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], l_tccp.cblkw.wrapping_sub(2u32), 1_u32);
   pos += 1usize;
-  opj_write_bytes(&mut data[pos..], l_tccp.cblkh.wrapping_sub(2u32), 1 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], l_tccp.cblkh.wrapping_sub(2u32), 1_u32);
   pos += 1usize;
-  opj_write_bytes(&mut data[pos..], l_tccp.cblksty, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], l_tccp.cblksty, 1_u32);
   pos += 1usize;
-  opj_write_bytes(&mut data[pos..], l_tccp.qmfbid, 1 as OPJ_UINT32);
+  opj_write_bytes(&mut data[pos..], l_tccp.qmfbid, 1_u32);
   pos += 1usize;
   *p_header_size = (*p_header_size).wrapping_sub(5u32);
   if l_tccp.csty & 0x1u32 != 0 {
@@ -8135,12 +8133,12 @@ fn opj_j2k_write_SPCod_SPCoc(
       event_msg!(p_manager, EVT_ERROR, "Error writing SPCod SPCoc element\n",);
       return 0i32;
     }
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < l_tccp.numresolutions {
       opj_write_bytes(
         &mut data[pos..],
         l_tccp.prcw[i as usize].wrapping_add(l_tccp.prch[i as usize] << 4i32),
-        1 as OPJ_UINT32,
+        1_u32,
       );
       pos += 1usize;
       i += 1;
@@ -8158,15 +8156,15 @@ fn opj_j2k_write_SPCod_SPCoc(
  * @param       p_manager       the user event manager.
 */
 fn opj_j2k_read_SPCod_SPCoc(
-  p_j2k: &mut opj_j2k,
-  compno: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  compno: u32,
   header_data: &[u8],
-  p_header_size: &mut OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  p_header_size: &mut u32,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut cursor: usize = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let mut l_tmp: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
+  let mut l_tmp: u32 = 0;
   /* preconditions */
 
   /* If we are in the first tile-part header of the current tile */
@@ -8192,7 +8190,7 @@ fn opj_j2k_read_SPCod_SPCoc(
     return 0i32;
   }
   /* SPcod (D) / SPcoc (A) */
-  l_tccp.numresolutions = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* tccp->numresolutions = read() + 1 */
+  l_tccp.numresolutions = opj_read_bytes(&header_data[cursor..], 1_u32); /* tccp->numresolutions = read() + 1 */
   l_tccp.numresolutions = l_tccp.numresolutions.wrapping_add(1);
   if l_tccp.numresolutions > 33u32 {
     event_msg!(
@@ -8214,11 +8212,11 @@ fn opj_j2k_read_SPCod_SPCoc(
     reduce_err = true;
   }
   /* SPcod (E) / SPcoc (B) */
-  l_tccp.cblkw = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  l_tccp.cblkw = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   l_tccp.cblkw = l_tccp.cblkw.wrapping_add(2u32);
   /* SPcod (F) / SPcoc (C) */
-  l_tccp.cblkh = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  l_tccp.cblkh = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   l_tccp.cblkh = l_tccp.cblkh.wrapping_add(2u32);
   if l_tccp.cblkw > 10u32
@@ -8233,7 +8231,7 @@ fn opj_j2k_read_SPCod_SPCoc(
     return 0i32;
   }
   /* SPcod (G) / SPcoc (D) */
-  l_tccp.cblksty = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  l_tccp.cblksty = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   if l_tccp.cblksty & 0x80u32 != 0u32 {
     /* We do not support HT mixed mode yet.  For conformance, it should be supported.*/
@@ -8245,7 +8243,7 @@ fn opj_j2k_read_SPCod_SPCoc(
     return 0i32;
   }
   /* SPcod (H) / SPcoc (E) */
-  l_tccp.qmfbid = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  l_tccp.qmfbid = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   if l_tccp.qmfbid > 1u32 {
     event_msg!(
@@ -8263,9 +8261,9 @@ fn opj_j2k_read_SPCod_SPCoc(
       return 0i32;
     }
     /* SPcod (I_i) / SPcoc (F_i) */
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < l_tccp.numresolutions {
-      l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+      l_tmp = opj_read_bytes(&header_data[cursor..], 1_u32);
       cursor += 1usize;
       /* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
       if i != 0u32 && (l_tmp & 0xfu32 == 0u32 || l_tmp >> 4i32 == 0u32) {
@@ -8279,10 +8277,10 @@ fn opj_j2k_read_SPCod_SPCoc(
     *p_header_size = (*p_header_size).wrapping_sub(l_tccp.numresolutions)
   } else {
     /* set default size for the precinct width and height */
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < l_tccp.numresolutions {
-      l_tccp.prcw[i as usize] = 15 as OPJ_UINT32;
-      l_tccp.prch[i as usize] = 15 as OPJ_UINT32;
+      l_tccp.prcw[i as usize] = 15_u32;
+      l_tccp.prch[i as usize] = 15_u32;
       i += 1;
     }
   }
@@ -8298,9 +8296,9 @@ fn opj_j2k_read_SPCod_SPCoc(
  *
  * @param               p_j2k           the J2k codec.
  */
-fn opj_j2k_copy_tile_component_parameters(p_j2k: &mut opj_j2k) {
+fn opj_j2k_copy_tile_component_parameters(p_j2k: &mut J2k) {
   /* loop */
-  let mut i: OPJ_UINT32 = 0;
+  let mut i: u32 = 0;
   /* preconditions */
   let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
   let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
@@ -8314,7 +8312,7 @@ fn opj_j2k_copy_tile_component_parameters(p_j2k: &mut opj_j2k) {
       .as_deref_mut()
       .expect("decoder m_default_tcp is always set")
   };
-  i = 1 as OPJ_UINT32;
+  i = 1_u32;
   while i < numcomps {
     let ref_ = &l_tcp.tccps[0];
     let (numresolutions, cblkw, cblkh, cblksty, qmfbid, prcw, prch) = (
@@ -8348,17 +8346,17 @@ fn opj_j2k_copy_tile_component_parameters(p_j2k: &mut opj_j2k) {
  * @return      the number of bytes taken by the SPCod element.
  */
 fn opj_j2k_get_SQcd_SQcc_size(
-  p_j2k: &mut opj_j2k,
-  p_tile_no: OPJ_UINT32,
-  p_comp_no: OPJ_UINT32,
-) -> OPJ_UINT32 {
+  p_j2k: &mut J2k,
+  p_tile_no: u32,
+  p_comp_no: u32,
+) -> u32 {
   /* preconditions */
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
   /* preconditions again */
 
   assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
   assert!(p_comp_no < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps);
-let l_num_bands: OPJ_UINT32 = if l_tccp.qntsty == 1u32 {
+let l_num_bands: u32 = if l_tccp.qntsty == 1u32 {
     1u32
   } else {
     l_tccp.numresolutions.wrapping_mul(3u32).wrapping_sub(2u32)
@@ -8380,13 +8378,13 @@ let l_num_bands: OPJ_UINT32 = if l_tccp.qntsty == 1u32 {
  * @return OPJ_TRUE if equals.
  */
 fn opj_j2k_compare_SQcd_SQcc(
-  p_j2k: &mut opj_j2k,
-  p_tile_no: OPJ_UINT32,
-  p_first_comp_no: OPJ_UINT32,
-  p_second_comp_no: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_tile_no: u32,
+  p_first_comp_no: u32,
+  p_second_comp_no: u32,
 ) -> OPJ_BOOL {
-  let mut l_band_no: OPJ_UINT32 = 0;
-  let mut l_num_bands: OPJ_UINT32 = 0;
+  let mut l_band_no: u32 = 0;
+  let mut l_num_bands: u32 = 0;
   /* preconditions */
   let l_tcp = &p_j2k.m_cp.tcps[p_tile_no as usize];
   let l_tccp0 = &l_tcp.tccps[p_first_comp_no as usize];
@@ -8405,7 +8403,7 @@ fn opj_j2k_compare_SQcd_SQcc(
       return 0i32;
     }
   }
-  l_band_no = 0 as OPJ_UINT32;
+  l_band_no = 0_u32;
   while l_band_no < l_num_bands {
     if l_tccp0.stepsizes[l_band_no as usize].expn != l_tccp1.stepsizes[l_band_no as usize].expn {
       return 0i32;
@@ -8413,7 +8411,7 @@ fn opj_j2k_compare_SQcd_SQcc(
     l_band_no += 1;
   }
   if l_tccp0.qntsty != 0u32 {
-    l_band_no = 0 as OPJ_UINT32;
+    l_band_no = 0_u32;
     while l_band_no < l_num_bands {
       if l_tccp0.stepsizes[l_band_no as usize].mant != l_tccp1.stepsizes[l_band_no as usize].mant {
         return 0i32;
@@ -8436,19 +8434,19 @@ fn opj_j2k_compare_SQcd_SQcc(
  *
 */
 fn opj_j2k_write_SQcd_SQcc(
-  p_j2k: &mut opj_j2k,
-  p_tile_no: OPJ_UINT32,
-  p_comp_no: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_tile_no: u32,
+  p_comp_no: u32,
   data: &mut [u8],
-  p_header_size: &mut OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  p_header_size: &mut u32,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut pos: usize = 0;
-  let mut l_header_size: OPJ_UINT32 = 0;
-  let mut l_band_no: OPJ_UINT32 = 0;
-  let mut l_num_bands: OPJ_UINT32 = 0;
-  let mut l_expn: OPJ_UINT32 = 0;
-  let mut l_mant: OPJ_UINT32 = 0;
+  let mut l_header_size: u32 = 0;
+  let mut l_band_no: u32 = 0;
+  let mut l_num_bands: u32 = 0;
+  let mut l_expn: u32 = 0;
+  let mut l_mant: u32 = 0;
   /* preconditions */
 
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
@@ -8470,13 +8468,13 @@ fn opj_j2k_write_SQcd_SQcc(
     opj_write_bytes(
       &mut data[pos..],
       l_tccp.qntsty.wrapping_add(l_tccp.numgbits << 5i32),
-      1 as OPJ_UINT32,
+      1_u32,
     );
     pos += 1usize;
-    l_band_no = 0 as OPJ_UINT32;
+    l_band_no = 0_u32;
     while l_band_no < l_num_bands {
-      l_expn = l_tccp.stepsizes[l_band_no as usize].expn as OPJ_UINT32;
-      opj_write_bytes(&mut data[pos..], l_expn << 3i32, 1 as OPJ_UINT32);
+      l_expn = l_tccp.stepsizes[l_band_no as usize].expn as u32;
+      opj_write_bytes(&mut data[pos..], l_expn << 3i32, 1_u32);
       pos += 1usize;
       l_band_no += 1;
     }
@@ -8489,17 +8487,17 @@ fn opj_j2k_write_SQcd_SQcc(
     opj_write_bytes(
       &mut data[pos..],
       l_tccp.qntsty.wrapping_add(l_tccp.numgbits << 5i32),
-      1 as OPJ_UINT32,
+      1_u32,
     );
     pos += 1usize;
-    l_band_no = 0 as OPJ_UINT32;
+    l_band_no = 0_u32;
     while l_band_no < l_num_bands {
-      l_expn = l_tccp.stepsizes[l_band_no as usize].expn as OPJ_UINT32;
-      l_mant = l_tccp.stepsizes[l_band_no as usize].mant as OPJ_UINT32;
+      l_expn = l_tccp.stepsizes[l_band_no as usize].expn as u32;
+      l_mant = l_tccp.stepsizes[l_band_no as usize].mant as u32;
       opj_write_bytes(
         &mut data[pos..],
         (l_expn << 11i32).wrapping_add(l_mant),
-        2 as OPJ_UINT32,
+        2_u32,
       );
       pos += 2usize;
       l_band_no += 1;
@@ -8520,17 +8518,17 @@ fn opj_j2k_write_SQcd_SQcc(
  *
 */
 fn opj_j2k_read_SQcd_SQcc(
-  p_j2k: &mut opj_j2k,
-  p_comp_no: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_comp_no: u32,
   header_data: &[u8],
-  p_header_size: &mut OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  p_header_size: &mut u32,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut cursor: usize = 0;
   /* loop*/
-  let mut l_band_no: OPJ_UINT32 = 0;
-  let mut l_tmp: OPJ_UINT32 = 0;
-  let mut l_num_band: OPJ_UINT32 = 0;
+  let mut l_band_no: u32 = 0;
+  let mut l_tmp: u32 = 0;
+  let mut l_num_band: u32 = 0;
   /* preconditions*/
 
   /* come from tile part header or main header ?*/
@@ -8553,12 +8551,12 @@ fn opj_j2k_read_SQcd_SQcc(
     return 0i32;
   }
   *p_header_size = (*p_header_size).wrapping_sub(1u32);
-  l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32);
+  l_tmp = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
   l_tccp.qntsty = l_tmp & 0x1fu32;
   l_tccp.numgbits = l_tmp >> 5i32;
   if l_tccp.qntsty == 1u32 {
-    l_num_band = 1 as OPJ_UINT32
+    l_num_band = 1_u32
   } else {
     l_num_band = if l_tccp.qntsty == 0u32 {
       *p_header_size
@@ -8578,12 +8576,12 @@ fn opj_j2k_read_SQcd_SQcc(
   /* USE_JPWL */
 
   if l_tccp.qntsty == 0u32 {
-    l_band_no = 0 as OPJ_UINT32; /* SPqcx_i */
+    l_band_no = 0_u32; /* SPqcx_i */
     while l_band_no < l_num_band {
-      l_tmp = opj_read_bytes(&header_data[cursor..], 1 as OPJ_UINT32); /* SPqcx_i */
+      l_tmp = opj_read_bytes(&header_data[cursor..], 1_u32); /* SPqcx_i */
       cursor += 1usize;
       if l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
-        l_tccp.stepsizes[l_band_no as usize].expn = (l_tmp >> 3i32) as OPJ_INT32;
+        l_tccp.stepsizes[l_band_no as usize].expn = (l_tmp >> 3i32) as i32;
         l_tccp.stepsizes[l_band_no as usize].mant = 0i32
       }
       l_band_no += 1;
@@ -8593,13 +8591,13 @@ fn opj_j2k_read_SQcd_SQcc(
     }
     *p_header_size = (*p_header_size).wrapping_sub(l_num_band)
   } else {
-    l_band_no = 0 as OPJ_UINT32;
+    l_band_no = 0_u32;
     while l_band_no < l_num_band {
-      l_tmp = opj_read_bytes(&header_data[cursor..], 2 as OPJ_UINT32);
+      l_tmp = opj_read_bytes(&header_data[cursor..], 2_u32);
       cursor += 2usize;
       if l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
-        l_tccp.stepsizes[l_band_no as usize].expn = (l_tmp >> 11i32) as OPJ_INT32;
-        l_tccp.stepsizes[l_band_no as usize].mant = (l_tmp & 0x7ffu32) as OPJ_INT32
+        l_tccp.stepsizes[l_band_no as usize].expn = (l_tmp >> 11i32) as i32;
+        l_tccp.stepsizes[l_band_no as usize].mant = (l_tmp & 0x7ffu32) as i32
       }
       l_band_no += 1;
     }
@@ -8610,14 +8608,14 @@ fn opj_j2k_read_SQcd_SQcc(
   }
   /* Add Antonin : if scalar_derived -> compute other stepsizes */
   if l_tccp.qntsty == 1u32 {
-    l_band_no = 1 as OPJ_UINT32;
+    l_band_no = 1_u32;
     while l_band_no < (3i32 * 33i32 - 2i32) as core::ffi::c_uint {
       l_tccp.stepsizes[l_band_no as usize].expn = if l_tccp.stepsizes[0_usize].expn
-        - l_band_no.wrapping_sub(1u32).wrapping_div(3u32) as OPJ_INT32
+        - l_band_no.wrapping_sub(1u32).wrapping_div(3u32) as i32
         > 0i32
       {
         (l_tccp.stepsizes[0_usize].expn)
-          - l_band_no.wrapping_sub(1u32).wrapping_div(3u32) as OPJ_INT32
+          - l_band_no.wrapping_sub(1u32).wrapping_div(3u32) as i32
       } else {
         0i32
       };
@@ -8633,8 +8631,8 @@ fn opj_j2k_read_SQcd_SQcc(
  *
  * @param               p_j2k           the J2k codec.
  */
-fn opj_j2k_copy_tile_quantization_parameters(p_j2k: &mut opj_j2k) {
-  let mut i: OPJ_UINT32 = 0;
+fn opj_j2k_copy_tile_quantization_parameters(p_j2k: &mut J2k) {
+  let mut i: u32 = 0;
   /* preconditions */
   let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
   let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
@@ -8648,7 +8646,7 @@ fn opj_j2k_copy_tile_quantization_parameters(p_j2k: &mut opj_j2k) {
       .as_deref_mut()
       .expect("decoder m_default_tcp is always set")
   };
-  i = 1 as OPJ_UINT32;
+  i = 1_u32;
   while i < numcomps {
     let ref_ = &l_tcp.tccps[0];
     let (qntsty, numgbits, stepsizes) = (ref_.qntsty, ref_.numgbits, ref_.stepsizes);
@@ -8660,7 +8658,7 @@ fn opj_j2k_copy_tile_quantization_parameters(p_j2k: &mut opj_j2k) {
   }
 }
 
-fn opj_j2k_allocate_tile_element_cstr_index(p_j2k: &mut opj_j2k) -> OPJ_BOOL {
+fn opj_j2k_allocate_tile_element_cstr_index(p_j2k: &mut J2k) -> OPJ_BOOL {
   let nb_of_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   let cstr_index = p_j2k.cstr_index.as_deref_mut().expect("cstr_index");
   cstr_index.tiles.resize(nb_of_tiles as usize, CodestreamTileIndex::default());
@@ -8671,14 +8669,14 @@ fn opj_j2k_allocate_tile_element_cstr_index(p_j2k: &mut opj_j2k) -> OPJ_BOOL {
 }
 
 fn opj_j2k_are_all_used_components_decoded(
-  p_j2k: &mut opj_j2k,
-  p_manager: &mut opj_event_mgr,
+  p_j2k: &mut J2k,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut compno: OPJ_UINT32 = 0;
+  let mut compno: u32 = 0;
     let mut decoded_all_used_components = 1i32;
     if let Some(image) = p_j2k.m_output_image.as_ref() {
       if p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode != 0 {
-        compno = 0 as OPJ_UINT32;
+        compno = 0_u32;
         while compno < p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode {
           let dec_compno = (&p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode)
             [compno as usize];
@@ -8694,7 +8692,7 @@ fn opj_j2k_are_all_used_components_decoded(
           compno += 1;
         }
       } else {
-        compno = 0 as OPJ_UINT32;
+        compno = 0_u32;
         while compno < image.numcomps {
           if image.comps[compno as usize].data.is_empty() {
             event_msg!(
@@ -8724,12 +8722,12 @@ fn opj_j2k_are_all_used_components_decoded(
  * Reads the tiles.
  */
 fn opj_j2k_decode_tiles(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
     let mut tile_info = TileInfo::default();
-    let mut nr_tiles = 0 as OPJ_UINT32;
+    let mut nr_tiles = 0_u32;
     /* Particular case for whole single tile decoding */
     /* We can avoid allocating intermediate tile buffers */
     let single_tile_fast = p_j2k.m_cp.tw == 1u32
@@ -8755,7 +8753,7 @@ fn opj_j2k_decode_tiles(
       }
       /* Transfer TCD data to output image data */
       let image = p_j2k.m_output_image.as_mut().expect("m_output_image");
-      let mut i: OPJ_UINT32 = 0;
+      let mut i: u32 = 0;
       while i < image.numcomps {
         let comp = &mut image.comps[i as usize];
         let len = (comp.w as usize).wrapping_mul(comp.h as usize);
@@ -8772,8 +8770,8 @@ fn opj_j2k_decode_tiles(
         && p_j2k.m_cp.th == 1u32
         && !p_j2k.m_cp.tcps[0].m_data.is_empty()
       {
-        tile_info.index = 0 as OPJ_UINT32;
-        p_j2k.m_current_tile_number = 0 as OPJ_UINT32;
+        tile_info.index = 0_u32;
+        p_j2k.m_current_tile_number = 0_u32;
         p_j2k.m_specific_param.m_decoder.m_state |= J2KState::DATA
       } else {
         if !opj_j2k_read_tile_header(p_j2k, p_stream, &mut tile_info, p_manager) {
@@ -8839,9 +8837,9 @@ fn opj_j2k_decode_tiles(
  * Sets up the procedures to do on decoding data. Developers wanting to extend the library can add their own reading procedures.
  */
 fn opj_j2k_setup_decoding(
-  _p_j2k: &mut opj_j2k,
-  list: &mut opj_j2k_proc_list_t,
-  _p_manager: &mut opj_event_mgr,
+  _p_j2k: &mut J2k,
+  list: &mut J2kProcList,
+  _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   list.add(opj_j2k_decode_tiles);
   /* DEVELOPER CORNER, add your custom procedures */
@@ -8852,13 +8850,13 @@ fn opj_j2k_setup_decoding(
  * Read and decode one tile.
  */
 fn opj_j2k_decode_one_tile(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
     let mut tile_info = TileInfo::default();
-    let mut l_nb_tiles: OPJ_UINT32 = 0;
-    let mut i: OPJ_UINT32 = 0;
+    let mut l_nb_tiles: u32 = 0;
+    let mut i: u32 = 0;
     /*Allocate and initialize some elements of codestrem index if not already done*/
     if p_j2k.cstr_index.as_deref().expect("cstr_index").tiles.is_empty()
       && opj_j2k_allocate_tile_element_cstr_index(p_j2k) == 0
@@ -8866,7 +8864,7 @@ fn opj_j2k_decode_one_tile(
       return 0i32;
     }
     /* Move into the codestream to the first SOT used to decode the desired tile */
-    let l_tile_no_to_dec = p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as OPJ_UINT32;
+    let l_tile_no_to_dec = p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as u32;
     if !p_j2k.cstr_index.as_deref().expect("cstr_index").tiles.is_empty()
       && !p_j2k.cstr_index.as_deref().expect("cstr_index").tiles[0].tp_index.is_empty()
     {
@@ -8906,7 +8904,7 @@ fn opj_j2k_decode_one_tile(
     /* Not completely sure this is always correct but required for */
     /* ./build/bin/j2k_random_tile_access ./build/tests/tte1.j2k */
     l_nb_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < l_nb_tiles {
       p_j2k.m_cp.tcps[i as usize].m_current_tile_part_number = -(1i32);
       i += 1;
@@ -8970,9 +8968,9 @@ fn opj_j2k_decode_one_tile(
  * Sets up the procedures to do on decoding one tile. Developers wanting to extend the library can add their own reading procedures.
  */
 fn opj_j2k_setup_decoding_tile(
-  _p_j2k: &mut opj_j2k,
-  list: &mut opj_j2k_proc_list_t,
-  _p_manager: &mut opj_event_mgr,
+  _p_j2k: &mut J2k,
+  list: &mut J2kProcList,
+  _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   list.add(opj_j2k_decode_one_tile);
   /* DEVELOPER CORNER, add your custom procedures */
@@ -8980,7 +8978,7 @@ fn opj_j2k_setup_decoding_tile(
 }
 
 fn opj_j2k_move_data_from_codec_to_output_image(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_image: &mut CoreImage,
 ) -> OPJ_BOOL {
   /* Move data and copy one information from codec to output image. */
@@ -9006,10 +9004,10 @@ fn opj_j2k_move_data_from_codec_to_output_image(
 }
 
 pub(crate) fn opj_j2k_decode(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
   p_image: &mut CoreImage,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
     /* Heuristics to detect sequence opj_read_header(), opj_set_decoded_resolution_factor() */
     /* and finally opj_decode_image() without manual setting of comps[].factor */
@@ -9024,10 +9022,10 @@ pub(crate) fn opj_j2k_decode(
       && p_image.comps[0].factor == 0u32
       && p_image.comps[0].data.is_empty()
     {
-      let mut it_comp: OPJ_UINT32 = 0;
+      let mut it_comp: u32 = 0;
       /* Update the comps[].factor member of the output image with the one */
       /* of m_reduce */
-      it_comp = 0 as OPJ_UINT32;
+      it_comp = 0_u32;
       while it_comp < p_image.numcomps {
         p_image.comps[it_comp as usize].factor = p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
         it_comp += 1;
@@ -9041,7 +9039,7 @@ pub(crate) fn opj_j2k_decode(
     }
     opj_copy_image_header_to_core(p_image, p_j2k.m_output_image.as_mut().expect("m_output_image"));
     /* customization of the decoding */
-    let mut procedure_list = opj_j2k_proc_list_t::new();
+    let mut procedure_list = J2kProcList::new();
     if opj_j2k_setup_decoding(p_j2k, &mut procedure_list, p_manager) == 0 {
       return 0i32;
     }
@@ -9055,15 +9053,15 @@ pub(crate) fn opj_j2k_decode(
 }
 
 pub(crate) fn opj_j2k_get_tile(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
   p_image: &mut CoreImage,
-  p_manager: &mut opj_event_mgr,
-  tile_index: OPJ_UINT32,
+  p_manager: &mut EventMgr,
+  tile_index: u32,
 ) -> OPJ_BOOL {
-  let mut compno: OPJ_UINT32 = 0;
-  let mut l_tile_x: OPJ_UINT32 = 0;
-  let mut l_tile_y: OPJ_UINT32 = 0;
+  let mut compno: u32 = 0;
+  let mut l_tile_x: u32 = 0;
+  let mut l_tile_y: u32 = 0;
     if p_image.numcomps < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
       event_msg!(
         p_manager,
@@ -9112,25 +9110,25 @@ pub(crate) fn opj_j2k_get_tile(
       p_image.y1 = p_j2k.m_private_image.as_deref().expect("m_private_image").y1
     }
 
-    compno = 0 as OPJ_UINT32;
+    compno = 0_u32;
     while compno < p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
-      let mut l_comp_x1: OPJ_INT32 = 0;
-      let mut l_comp_y1: OPJ_INT32 = 0;
+      let mut l_comp_x1: i32 = 0;
+      let mut l_comp_y1: i32 = 0;
       let l_img_comp = &mut p_image.comps[compno as usize];
 
       l_img_comp.factor = p_j2k.m_private_image.as_deref().expect("m_private_image").comps[compno as usize].factor;
 
       l_img_comp.x0 = opj_uint_ceildiv(p_image.x0, l_img_comp.dx);
       l_img_comp.y0 = opj_uint_ceildiv(p_image.y0, l_img_comp.dy);
-      l_comp_x1 = opj_int_ceildiv(p_image.x1 as OPJ_INT32, l_img_comp.dx as OPJ_INT32);
-      l_comp_y1 = opj_int_ceildiv(p_image.y1 as OPJ_INT32, l_img_comp.dy as OPJ_INT32);
+      l_comp_x1 = opj_int_ceildiv(p_image.x1 as i32, l_img_comp.dx as i32);
+      l_comp_y1 = opj_int_ceildiv(p_image.y1 as i32, l_img_comp.dy as i32);
 
-      l_img_comp.w = (opj_int_ceildivpow2(l_comp_x1, l_img_comp.factor as OPJ_INT32)
-        - opj_int_ceildivpow2(l_img_comp.x0 as OPJ_INT32, l_img_comp.factor as OPJ_INT32))
-        as OPJ_UINT32;
-      l_img_comp.h = (opj_int_ceildivpow2(l_comp_y1, l_img_comp.factor as OPJ_INT32)
-        - opj_int_ceildivpow2(l_img_comp.y0 as OPJ_INT32, l_img_comp.factor as OPJ_INT32))
-        as OPJ_UINT32;
+      l_img_comp.w = (opj_int_ceildivpow2(l_comp_x1, l_img_comp.factor as i32)
+        - opj_int_ceildivpow2(l_img_comp.x0 as i32, l_img_comp.factor as i32))
+        as u32;
+      l_img_comp.h = (opj_int_ceildivpow2(l_comp_y1, l_img_comp.factor as i32)
+        - opj_int_ceildivpow2(l_img_comp.y0 as i32, l_img_comp.factor as i32))
+        as u32;
       compno += 1;
     }
     if p_image.numcomps > p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps {
@@ -9145,8 +9143,8 @@ pub(crate) fn opj_j2k_get_tile(
      * previously computed */
     p_j2k.m_output_image = Some(Box::new(CoreImage::default()));
     opj_copy_image_header_to_core(p_image, p_j2k.m_output_image.as_mut().expect("m_output_image"));
-    p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = tile_index as OPJ_INT32;
-    let mut procedure_list = opj_j2k_proc_list_t::new();
+    p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec = tile_index as i32;
+    let mut procedure_list = J2kProcList::new();
     /* customization of the decoding */
     if opj_j2k_setup_decoding_tile(p_j2k, &mut procedure_list, p_manager) == 0 {
       return 0i32;
@@ -9161,11 +9159,11 @@ pub(crate) fn opj_j2k_get_tile(
 }
 
 pub(crate) fn opj_j2k_set_decoded_resolution_factor(
-  p_j2k: &mut opj_j2k,
-  res_factor: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
+  p_j2k: &mut J2k,
+  res_factor: u32,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut it_comp: OPJ_UINT32 = 0;
+  let mut it_comp: u32 = 0;
   p_j2k.m_cp.m_specific_param.m_dec.m_reduce = res_factor;
   let Some(default_tcp) = p_j2k.m_specific_param.m_decoder.m_default_tcp.as_deref() else {
     return 0i32;
@@ -9175,7 +9173,7 @@ pub(crate) fn opj_j2k_set_decoded_resolution_factor(
     && !default_tcp.tccps.is_empty()
   {
     let image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
-    it_comp = 0 as OPJ_UINT32;
+    it_comp = 0_u32;
     while it_comp < image.numcomps {
       let max_res = default_tcp.tccps[it_comp as usize].numresolutions;
       if res_factor >= max_res {
@@ -9195,9 +9193,9 @@ pub(crate) fn opj_j2k_set_decoded_resolution_factor(
 }
 
 pub(crate) fn opj_j2k_encoder_set_extra_options(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   options: &[&str],
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> bool {
   for option in options {
     if option.starts_with("PLT=") {
@@ -9229,7 +9227,7 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
         return false;
       }
     } else if option.starts_with("GUARD_BITS=") {
-      let mut tileno: OPJ_UINT32 = 0;
+      let mut tileno: u32 = 0;
       let mut cp = &mut p_j2k.m_cp;
       let mut numgbits = option
         .strip_prefix("GUARD_BITS=")
@@ -9245,12 +9243,12 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
         );
         return false;
       }
-      tileno = 0 as OPJ_UINT32;
+      tileno = 0_u32;
       while tileno < cp.tw.wrapping_mul(cp.th) {
-        let mut i: OPJ_UINT32 = 0;
-        i = 0 as OPJ_UINT32;
+        let mut i: u32 = 0;
+        i = 0_u32;
         while i < p_j2k.m_specific_param.m_encoder.m_nb_comps {
-          cp.tcps[tileno as usize].tccps[i as usize].numgbits = numgbits as OPJ_UINT32;
+          cp.tcps[tileno as usize].tccps[i as usize].numgbits = numgbits as u32;
           i += 1;
         }
         tileno += 1;
@@ -9264,20 +9262,20 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
 }
 
 pub(crate) fn opj_j2k_encode(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut l_nb_tiles: OPJ_UINT32 = 0;
-    let mut l_max_tile_size = 0 as OPJ_SIZE_T;
-    let mut l_current_tile_size: OPJ_SIZE_T = 0;
-    let mut l_current_data: Vec<OPJ_BYTE> = Vec::new();
+    let mut i: u32 = 0;
+    let mut j: u32 = 0;
+    let mut l_nb_tiles: u32 = 0;
+    let mut l_max_tile_size = 0_usize;
+    let mut l_current_tile_size: usize = 0;
+    let mut l_current_data: Vec<u8> = Vec::new();
     /* preconditions */
 
     l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < l_nb_tiles {
       if opj_j2k_pre_write_tile(p_j2k, i, p_stream, p_manager) == 0 {
         l_current_data.clear();
@@ -9285,7 +9283,7 @@ pub(crate) fn opj_j2k_encode(
       }
       /* if we only have one tile, then simply set tile component data equal to image component data */
       /* otherwise, allocate the data */
-      j = 0 as OPJ_UINT32;
+      j = 0_u32;
       let image = p_j2k.m_private_image.as_deref_mut().expect("m_private_image");
       while j < image.numcomps {
         let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
@@ -9303,7 +9301,7 @@ pub(crate) fn opj_j2k_encode(
       l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(&mut p_j2k.m_tcd, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"));
       {
         if l_current_tile_size > l_max_tile_size {
-          if l_current_data.try_reserve_exact(l_current_tile_size as usize).is_err() {
+          if l_current_data.try_reserve_exact(l_current_tile_size).is_err() {
             l_current_data.clear();
             event_msg!(
               p_manager,
@@ -9312,13 +9310,13 @@ pub(crate) fn opj_j2k_encode(
             );
             return 0i32;
           }
-          l_current_data.resize(l_current_tile_size as usize, 0);
+          l_current_data.resize(l_current_tile_size, 0);
           l_max_tile_size = l_current_tile_size
         }
         /* copy image data (32 bit) to l_current_data as contiguous, all-component, zero offset buffer */
         /* 32 bit components @ 8 bit precision get converted to 8 bit */
         /* 32 bit components @ 16 bit precision get converted to 16 bit */
-        let p_data = &mut l_current_data[..l_current_tile_size as usize];
+        let p_data = &mut l_current_data[..l_current_tile_size];
         opj_j2k_get_tile_data(&mut p_j2k.m_tcd, p_data, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"));
         /* now copy this data into the tile component */
         if opj_tcd_copy_tile_data(&mut p_j2k.m_tcd, p_data, p_j2k.m_private_image.as_deref_mut().expect("m_private_image")) == 0 {
@@ -9342,11 +9340,11 @@ pub(crate) fn opj_j2k_encode(
 }
 
 pub(crate) fn opj_j2k_end_compress(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut procedure_list = opj_j2k_proc_list_t::new();
+  let mut procedure_list = J2kProcList::new();
   /* customization of the encoding */
   if opj_j2k_setup_end_compress(p_j2k, &mut procedure_list, p_manager) == 0 {
     return 0i32;
@@ -9358,13 +9356,13 @@ pub(crate) fn opj_j2k_end_compress(
 }
 
 pub(crate) fn opj_j2k_start_compress(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
   p_image: &mut CoreImage,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut validation_list = opj_j2k_proc_list_t::new();
-  let mut procedure_list = opj_j2k_proc_list_t::new();
+  let mut validation_list = J2kProcList::new();
+  let mut procedure_list = J2kProcList::new();
   /* preconditions */
 
   {
@@ -9405,10 +9403,10 @@ pub(crate) fn opj_j2k_start_compress(
 }
 
 fn opj_j2k_pre_write_tile(
-  mut p_j2k: &mut opj_j2k,
-  mut p_tile_index: OPJ_UINT32,
+  mut p_j2k: &mut J2k,
+  mut p_tile_index: u32,
   mut _p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   if p_tile_index != p_j2k.m_current_tile_number {
     event_msg!(p_manager, EVT_ERROR, "The given tile index does not match.",);
@@ -9421,12 +9419,12 @@ fn opj_j2k_pre_write_tile(
     p_j2k.m_current_tile_number.wrapping_add(1u32),
     p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th),
   );
-  p_j2k.m_specific_param.m_encoder.m_current_tile_part_number = 0 as OPJ_UINT32;
+  p_j2k.m_specific_param.m_encoder.m_current_tile_part_number = 0_u32;
   p_j2k.m_tcd.cur_totnum_tp = p_j2k.m_cp.tcps[p_tile_index as usize].m_nb_tile_parts;
   p_j2k
     .m_specific_param
     .m_encoder
-    .m_current_poc_tile_part_number = 0 as OPJ_UINT32;
+    .m_current_poc_tile_part_number = 0_u32;
   /* initialisation before tile encoding  */
   if opj_tcd_init_encode_tile(&mut p_j2k.m_tcd, p_j2k.m_current_tile_number, p_manager, p_j2k.m_private_image.as_deref_mut().expect("m_private_image"), &mut p_j2k.m_cp) == 0 {
     return 0i32;
@@ -9436,54 +9434,54 @@ fn opj_j2k_pre_write_tile(
 
 fn opj_get_tile_dimensions(
   l_image: &CoreImage,
-  l_tilec: &opj_tcd_tilecomp_t,
+  l_tilec: &TcdTileComp,
   l_img_comp: &CoreImageComp,
-  l_size_comp: &mut OPJ_UINT32,
-  l_width: &mut OPJ_UINT32,
-  l_height: &mut OPJ_UINT32,
-  l_offset_x: &mut OPJ_UINT32,
-  l_offset_y: &mut OPJ_UINT32,
-  l_image_width: &mut OPJ_UINT32,
-  l_stride: &mut OPJ_UINT32,
-  l_tile_offset: &mut OPJ_UINT32,
+  l_size_comp: &mut u32,
+  l_width: &mut u32,
+  l_height: &mut u32,
+  l_offset_x: &mut u32,
+  l_offset_y: &mut u32,
+  l_image_width: &mut u32,
+  l_stride: &mut u32,
+  l_tile_offset: &mut u32,
 ) {
-  let mut l_remaining: OPJ_UINT32 = 0;
+  let mut l_remaining: u32 = 0;
   *l_size_comp = l_img_comp.prec >> 3i32;
   l_remaining = l_img_comp.prec & 7u32;
   if l_remaining != 0 {
     *l_size_comp = l_size_comp.wrapping_add(1u32)
   }
   if *l_size_comp == 3u32 {
-    *l_size_comp = 4 as OPJ_UINT32
+    *l_size_comp = 4_u32
   }
 
-  *l_width = (l_tilec.x1 - l_tilec.x0) as OPJ_UINT32;
-  *l_height = (l_tilec.y1 - l_tilec.y0) as OPJ_UINT32;
+  *l_width = (l_tilec.x1 - l_tilec.x0) as u32;
+  *l_height = (l_tilec.y1 - l_tilec.y0) as u32;
   *l_offset_x = opj_uint_ceildiv(l_image.x0, l_img_comp.dx);
   *l_offset_y = opj_uint_ceildiv(l_image.y0, l_img_comp.dy);
   *l_image_width = opj_uint_ceildiv(l_image.x1 - l_image.x0, l_img_comp.dx);
   *l_stride = l_image_width.wrapping_sub(*l_width);
-  *l_tile_offset = (l_tilec.x0 as OPJ_UINT32)
+  *l_tile_offset = (l_tilec.x0 as u32)
     .wrapping_sub(*l_offset_x)
     .wrapping_add(
-      (l_tilec.y0 as OPJ_UINT32)
+      (l_tilec.y0 as u32)
         .wrapping_sub(*l_offset_y)
         .wrapping_mul(*l_image_width),
     );
 }
 
-fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8], l_image: &mut CoreImage) {
+fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &mut CoreImage) {
   let numcomps = l_image.numcomps as usize;
   let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
   for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_image.comps.iter()) {
-    let mut l_size_comp: OPJ_UINT32 = 0;
-    let mut l_width: OPJ_UINT32 = 0;
-    let mut l_height: OPJ_UINT32 = 0;
-    let mut l_offset_x: OPJ_UINT32 = 0;
-    let mut l_offset_y: OPJ_UINT32 = 0;
-    let mut l_image_width: OPJ_UINT32 = 0;
-    let mut l_stride: OPJ_UINT32 = 0;
-    let mut l_tile_offset: OPJ_UINT32 = 0;
+    let mut l_size_comp: u32 = 0;
+    let mut l_width: u32 = 0;
+    let mut l_height: u32 = 0;
+    let mut l_offset_x: u32 = 0;
+    let mut l_offset_y: u32 = 0;
+    let mut l_image_width: u32 = 0;
+    let mut l_stride: u32 = 0;
+    let mut l_tile_offset: u32 = 0;
     opj_get_tile_dimensions(
       l_image,
       l_tilec,
@@ -9533,7 +9531,7 @@ fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8], l_image: &m
           }
         }
         2 => {
-          let (dest, remain) = p_data.split_at_mut(l_nb_elem as usize * 2);
+          let (dest, remain) = p_data.split_at_mut(l_nb_elem * 2);
           p_data = remain;
           if l_img_comp.sgnd != 0 {
             for (src, dest) in l_src
@@ -9562,7 +9560,7 @@ fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8], l_image: &m
           }
         }
         4 => {
-          let (dest, remain) = p_data.split_at_mut(l_nb_elem as usize * 4);
+          let (dest, remain) = p_data.split_at_mut(l_nb_elem * 4);
           p_data = remain;
           for (src, dest) in l_src
             .chunks(l_width + l_stride)
@@ -9581,24 +9579,24 @@ fn opj_j2k_get_tile_data(p_tcd: &mut opj_tcd, mut p_data: &mut [u8], l_image: &m
 }
 
 fn opj_j2k_post_write_tile(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut l_nb_bytes_written: OPJ_UINT32 = 0;
-    let mut l_tile_size = 0 as OPJ_UINT32;
-    let mut l_available_data: OPJ_UINT32 = 0;
+  let mut l_nb_bytes_written: u32 = 0;
+    let mut l_tile_size = 0_u32;
+    let mut l_available_data: u32 = 0;
     /* preconditions */
     assert!(!p_j2k
       .m_specific_param
       .m_encoder
       .m_encoded_tile_data
       .is_empty());
-    l_tile_size = p_j2k.m_specific_param.m_encoder.m_encoded_tile_data.len() as OPJ_UINT32;
+    l_tile_size = p_j2k.m_specific_param.m_encoder.m_encoded_tile_data.len() as u32;
     l_available_data = l_tile_size;
     let mut l_encoded_buf =
       core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_encoded_tile_data);
-    l_nb_bytes_written = 0 as OPJ_UINT32;
+    l_nb_bytes_written = 0_u32;
     if opj_j2k_write_first_tile_part(
       p_j2k,
       &mut l_encoded_buf[..],
@@ -9611,8 +9609,8 @@ fn opj_j2k_post_write_tile(
     }
     let l_current_offset = l_nb_bytes_written as usize;
     l_available_data =
-      (l_available_data as core::ffi::c_uint).wrapping_sub(l_nb_bytes_written) as OPJ_UINT32;
-    l_nb_bytes_written = 0 as OPJ_UINT32;
+      (l_available_data as core::ffi::c_uint).wrapping_sub(l_nb_bytes_written);
+    l_nb_bytes_written = 0_u32;
     if opj_j2k_write_all_tile_parts(
       p_j2k,
       &mut l_encoded_buf[l_current_offset..],
@@ -9624,7 +9622,7 @@ fn opj_j2k_post_write_tile(
       return 0i32;
     }
     l_available_data =
-      (l_available_data as core::ffi::c_uint).wrapping_sub(l_nb_bytes_written) as OPJ_UINT32;
+      (l_available_data as core::ffi::c_uint).wrapping_sub(l_nb_bytes_written);
     l_nb_bytes_written = l_tile_size.wrapping_sub(l_available_data);
     if opj_stream_write_data(p_stream, &l_encoded_buf[..l_nb_bytes_written as usize], p_manager) != l_nb_bytes_written as usize
     {
@@ -9640,9 +9638,9 @@ fn opj_j2k_post_write_tile(
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 fn opj_j2k_setup_end_compress(
-  p_j2k: &mut opj_j2k,
-  list: &mut opj_j2k_proc_list_t,
-  _p_manager: &mut opj_event_mgr,
+  p_j2k: &mut J2k,
+  list: &mut J2kProcList,
+  _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* DEVELOPER CORNER, insert your custom procedures */
   list.add(opj_j2k_write_eoc);
@@ -9660,9 +9658,9 @@ fn opj_j2k_setup_end_compress(
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 fn opj_j2k_setup_encoding_validation(
-  _p_j2k: &mut opj_j2k,
-  list: &mut opj_j2k_proc_list_t,
-  _p_manager: &mut opj_event_mgr,
+  _p_j2k: &mut J2k,
+  list: &mut J2kProcList,
+  _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   list.add(opj_j2k_build_encoder);
   list.add(opj_j2k_encoding_validation);
@@ -9676,9 +9674,9 @@ fn opj_j2k_setup_encoding_validation(
  * Developers wanting to extend the library can add their own writing procedures.
  */
 fn opj_j2k_setup_header_writing(
-  p_j2k: &mut opj_j2k,
-  list: &mut opj_j2k_proc_list_t,
-  _p_manager: &mut opj_event_mgr,
+  p_j2k: &mut J2k,
+  list: &mut J2kProcList,
+  _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   list.add(opj_j2k_init_info);
   list.add(opj_j2k_write_soc);
@@ -9711,26 +9709,26 @@ fn opj_j2k_setup_header_writing(
 }
 
 fn opj_j2k_write_first_tile_part(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   data: &mut [u8],
-  p_data_written: &mut OPJ_UINT32,
+  p_data_written: &mut u32,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut pos: usize = 0;
   let mut l_begin_pos: usize = 0;
-  let mut total_data_size = data.len() as OPJ_UINT32;
-  let mut l_nb_bytes_written = 0 as OPJ_UINT32;
-  let mut l_current_nb_bytes_written: OPJ_UINT32 = 0;
-    p_j2k.m_tcd.cur_pino = 0 as OPJ_UINT32;
+  let mut total_data_size = data.len() as u32;
+  let mut l_nb_bytes_written = 0_u32;
+  let mut l_current_nb_bytes_written: u32 = 0;
+    p_j2k.m_tcd.cur_pino = 0_u32;
     /*Get number of tile parts*/
     p_j2k
       .m_specific_param
       .m_encoder
-      .m_current_poc_tile_part_number = 0 as OPJ_UINT32;
+      .m_current_poc_tile_part_number = 0_u32;
     /* INDEX >> */
     /* << INDEX */
-    l_current_nb_bytes_written = 0 as OPJ_UINT32;
+    l_current_nb_bytes_written = 0_u32;
     l_begin_pos = pos;
     if opj_j2k_write_sot(
       p_j2k,
@@ -9743,14 +9741,14 @@ fn opj_j2k_write_first_tile_part(
       return 0i32;
     }
     l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
-      .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32;
+      .wrapping_add(l_current_nb_bytes_written);
     pos += l_current_nb_bytes_written as usize;
     total_data_size =
-      (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32;
+      (total_data_size as core::ffi::c_uint).wrapping_sub(l_current_nb_bytes_written);
     let rsiz = p_j2k.m_cp.rsiz as core::ffi::c_int;
     let tile_has_poc = p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize].POC;
     if !(0x3i32..=0x6i32).contains(&rsiz) && tile_has_poc {
-      l_current_nb_bytes_written = 0 as OPJ_UINT32;
+      l_current_nb_bytes_written = 0_u32;
       opj_j2k_write_poc_in_memory(
         p_j2k,
         &mut data[pos..],
@@ -9758,13 +9756,12 @@ fn opj_j2k_write_first_tile_part(
         p_manager,
       );
       l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
-        .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
-        as OPJ_UINT32;
+        .wrapping_add(l_current_nb_bytes_written);
       pos += l_current_nb_bytes_written as usize;
       total_data_size = (total_data_size as core::ffi::c_uint)
-        .wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32
+        .wrapping_sub(l_current_nb_bytes_written)
     }
-    l_current_nb_bytes_written = 0 as OPJ_UINT32;
+    l_current_nb_bytes_written = 0_u32;
     if opj_j2k_write_sod(
       p_j2k,
       &mut data[pos..],
@@ -9776,47 +9773,47 @@ fn opj_j2k_write_first_tile_part(
       return 0i32;
     }
     l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
-      .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32;
+      .wrapping_add(l_current_nb_bytes_written);
     *p_data_written = l_nb_bytes_written;
     /* Writing Psot in SOT marker */
-    opj_write_bytes(&mut data[l_begin_pos + 6..], l_nb_bytes_written, 4 as OPJ_UINT32); /* PSOT */
+    opj_write_bytes(&mut data[l_begin_pos + 6..], l_nb_bytes_written, 4_u32); /* PSOT */
     if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
       opj_j2k_update_tlm(p_j2k, l_nb_bytes_written);
     }
     1i32
 }
 fn opj_j2k_write_all_tile_parts(
-  p_j2k: &mut opj_j2k,
+  p_j2k: &mut J2k,
   data: &mut [u8],
-  p_data_written: &mut OPJ_UINT32,
+  p_data_written: &mut u32,
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let mut pos: usize = 0;
   let mut l_begin_pos: usize = 0;
-  let mut total_data_size = data.len() as OPJ_UINT32;
-  let mut tilepartno = 0 as OPJ_UINT32;
-  let mut l_nb_bytes_written = 0 as OPJ_UINT32;
-  let mut l_current_nb_bytes_written: OPJ_UINT32 = 0;
-  let mut l_part_tile_size: OPJ_UINT32 = 0;
-  let mut tot_num_tp: OPJ_UINT32 = 0;
-  let mut pino: OPJ_UINT32 = 0;
+  let mut total_data_size = data.len() as u32;
+  let mut tilepartno = 0_u32;
+  let mut l_nb_bytes_written = 0_u32;
+  let mut l_current_nb_bytes_written: u32 = 0;
+  let mut l_part_tile_size: u32 = 0;
+  let mut tot_num_tp: u32 = 0;
+  let mut pino: u32 = 0;
   /*Get number of tile parts*/
-  tot_num_tp = opj_j2k_get_num_tp(&mut p_j2k.m_cp, 0 as OPJ_UINT32, p_j2k.m_current_tile_number);
+  tot_num_tp = opj_j2k_get_num_tp(&mut p_j2k.m_cp, 0_u32, p_j2k.m_current_tile_number);
     /* start writing remaining tile parts */
     p_j2k.m_specific_param.m_encoder.m_current_tile_part_number = p_j2k
       .m_specific_param
       .m_encoder
       .m_current_tile_part_number
       .wrapping_add(1);
-    tilepartno = 1 as OPJ_UINT32;
+    tilepartno = 1_u32;
     while tilepartno < tot_num_tp {
       p_j2k
         .m_specific_param
         .m_encoder
         .m_current_poc_tile_part_number = tilepartno;
-      l_current_nb_bytes_written = 0 as OPJ_UINT32;
-      l_part_tile_size = 0 as OPJ_UINT32;
+      l_current_nb_bytes_written = 0_u32;
+      l_part_tile_size = 0_u32;
       l_begin_pos = pos;
       if opj_j2k_write_sot(
         p_j2k,
@@ -9829,14 +9826,13 @@ fn opj_j2k_write_all_tile_parts(
         return 0i32;
       }
       l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
-        .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
-        as OPJ_UINT32;
+        .wrapping_add(l_current_nb_bytes_written);
       pos += l_current_nb_bytes_written as usize;
       total_data_size = (total_data_size as core::ffi::c_uint)
-        .wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32;
+        .wrapping_sub(l_current_nb_bytes_written);
       l_part_tile_size = (l_part_tile_size as core::ffi::c_uint)
-        .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32;
-      l_current_nb_bytes_written = 0 as OPJ_UINT32;
+        .wrapping_add(l_current_nb_bytes_written);
+      l_current_nb_bytes_written = 0_u32;
       if opj_j2k_write_sod(
         p_j2k,
       &mut data[pos..],
@@ -9849,14 +9845,13 @@ fn opj_j2k_write_all_tile_parts(
       }
       pos += l_current_nb_bytes_written as usize;
       l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
-        .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
-        as OPJ_UINT32;
+        .wrapping_add(l_current_nb_bytes_written);
       total_data_size = (total_data_size as core::ffi::c_uint)
-        .wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32;
+        .wrapping_sub(l_current_nb_bytes_written);
       l_part_tile_size = (l_part_tile_size as core::ffi::c_uint)
-        .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32;
+        .wrapping_add(l_current_nb_bytes_written);
       /* Writing Psot in SOT marker */
-      opj_write_bytes(&mut data[l_begin_pos + 6..], l_part_tile_size, 4 as OPJ_UINT32); /* PSOT */
+      opj_write_bytes(&mut data[l_begin_pos + 6..], l_part_tile_size, 4_u32); /* PSOT */
       if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
         opj_j2k_update_tlm(p_j2k, l_part_tile_size);
       }
@@ -9867,19 +9862,19 @@ fn opj_j2k_write_all_tile_parts(
         .wrapping_add(1);
       tilepartno += 1;
     }
-    pino = 1 as OPJ_UINT32;
+    pino = 1_u32;
     while pino <= p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize].numpocs {
       p_j2k.m_tcd.cur_pino = pino;
       /*Get number of tile parts*/
       tot_num_tp = opj_j2k_get_num_tp(&mut p_j2k.m_cp, pino, p_j2k.m_current_tile_number);
-      tilepartno = 0 as OPJ_UINT32;
+      tilepartno = 0_u32;
       while tilepartno < tot_num_tp {
         p_j2k
           .m_specific_param
           .m_encoder
           .m_current_poc_tile_part_number = tilepartno;
-        l_current_nb_bytes_written = 0 as OPJ_UINT32;
-        l_part_tile_size = 0 as OPJ_UINT32;
+        l_current_nb_bytes_written = 0_u32;
+        l_part_tile_size = 0_u32;
         l_begin_pos = pos;
         if opj_j2k_write_sot(
           p_j2k,
@@ -9892,14 +9887,13 @@ fn opj_j2k_write_all_tile_parts(
           return 0i32;
         }
         l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
-          .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
-          as OPJ_UINT32;
+          .wrapping_add(l_current_nb_bytes_written);
         pos += l_current_nb_bytes_written as usize;
         total_data_size = (total_data_size as core::ffi::c_uint)
-          .wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32;
+          .wrapping_sub(l_current_nb_bytes_written);
         l_part_tile_size = (l_part_tile_size as core::ffi::c_uint)
-          .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32;
-        l_current_nb_bytes_written = 0 as OPJ_UINT32;
+          .wrapping_add(l_current_nb_bytes_written);
+        l_current_nb_bytes_written = 0_u32;
         if opj_j2k_write_sod(
           p_j2k,
       &mut data[pos..],
@@ -9911,15 +9905,14 @@ fn opj_j2k_write_all_tile_parts(
           return 0i32;
         }
         l_nb_bytes_written = (l_nb_bytes_written as core::ffi::c_uint)
-          .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32
-          as OPJ_UINT32;
+          .wrapping_add(l_current_nb_bytes_written);
         pos += l_current_nb_bytes_written as usize;
         total_data_size = (total_data_size as core::ffi::c_uint)
-          .wrapping_sub(l_current_nb_bytes_written) as OPJ_UINT32;
+          .wrapping_sub(l_current_nb_bytes_written);
         l_part_tile_size = (l_part_tile_size as core::ffi::c_uint)
-          .wrapping_add(l_current_nb_bytes_written) as OPJ_UINT32;
+          .wrapping_add(l_current_nb_bytes_written);
         /* Writing Psot in SOT marker */
-        opj_write_bytes(&mut data[l_begin_pos + 6..], l_part_tile_size, 4 as OPJ_UINT32); /* PSOT */
+        opj_write_bytes(&mut data[l_begin_pos + 6..], l_part_tile_size, 4_u32); /* PSOT */
         if p_j2k.m_specific_param.m_encoder.m_TLM != 0 {
           opj_j2k_update_tlm(p_j2k, l_part_tile_size);
         }
@@ -9936,21 +9929,21 @@ fn opj_j2k_write_all_tile_parts(
     1i32
 }
 fn opj_j2k_write_updated_tlm(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
-  mut p_manager: &mut opj_event_mgr,
+  mut p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  let mut l_tlm_size: OPJ_UINT32 = 0;
-  let mut l_tlm_position: OPJ_OFF_T = 0;
-  let mut l_current_position: OPJ_OFF_T = 0;
-  let mut size_per_tile_part: OPJ_UINT32 = 0;
+  let mut l_tlm_size: u32 = 0;
+  let mut l_tlm_position: i64 = 0;
+  let mut l_current_position: i64 = 0;
+  let mut size_per_tile_part: u32 = 0;
   /* preconditions */
 
   size_per_tile_part = if p_j2k.m_specific_param.m_encoder.m_Ttlmi_is_byte != 0 {
     5i32
   } else {
     6i32
-  } as OPJ_UINT32;
+  } as u32;
   l_tlm_size = size_per_tile_part.wrapping_mul(p_j2k.m_specific_param.m_encoder.m_total_tile_parts);
   l_tlm_position = 6i64 + p_j2k.m_specific_param.m_encoder.m_tlm_start;
   l_current_position = opj_stream_tell(p_stream);
@@ -9975,9 +9968,9 @@ fn opj_j2k_write_updated_tlm(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_end_encoding(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
   p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = Vec::new();
@@ -9993,9 +9986,9 @@ fn opj_j2k_end_encoding(
  * Destroys the memory associated with the decoding of headers.
  */
 fn opj_j2k_destroy_header_memory(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -10011,9 +10004,9 @@ fn opj_j2k_destroy_header_memory(
  * @param       p_manager               the user event manager.
 */
 fn opj_j2k_create_tcd(
-  mut p_j2k: &mut opj_j2k,
+  mut p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
-  mut _p_manager: &mut opj_event_mgr,
+  mut _p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   /* preconditions */
 
@@ -10024,11 +10017,11 @@ fn opj_j2k_create_tcd(
 }
 
 pub(crate) fn opj_j2k_write_tile(
-  p_j2k: &mut opj_j2k,
-  p_tile_index: OPJ_UINT32,
+  p_j2k: &mut J2k,
+  p_tile_index: u32,
   p_data: &[u8],
   p_stream: &mut Stream,
-  p_manager: &mut opj_event_mgr,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   if opj_j2k_pre_write_tile(p_j2k, p_tile_index, p_stream, p_manager) == 0 {
     event_msg!(
@@ -10039,9 +10032,9 @@ pub(crate) fn opj_j2k_write_tile(
     );
     return 0i32;
   } else {
-    let mut j: OPJ_UINT32 = 0;
+    let mut j: u32 = 0;
     /* Allocate data */
-    j = 0 as OPJ_UINT32;
+    j = 0_u32;
     let numcomps = p_j2k.m_private_image.as_deref().expect("m_private_image").numcomps;
     while j < numcomps {
       let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];

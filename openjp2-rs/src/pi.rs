@@ -13,59 +13,53 @@ pub const THRESH_CALC: T2_MODE = 0;
 pub type J2K_T2_MODE = T2_MODE;
 
 #[derive(Default, Clone)]
-pub struct opj_pi_resolution {
-  pub pdx: OPJ_UINT32,
-  pub pdy: OPJ_UINT32,
-  pub pw: OPJ_UINT32,
-  pub ph: OPJ_UINT32,
+pub struct PiResolution {
+  pub pdx: u32,
+  pub pdy: u32,
+  pub pw: u32,
+  pub ph: u32,
 }
-pub type opj_pi_resolution_t = opj_pi_resolution;
-
 #[derive(Default, Clone)]
-pub struct opj_pi_comp {
-  pub dx: OPJ_UINT32,
-  pub dy: OPJ_UINT32,
-  pub numresolutions: OPJ_UINT32,
-  pub resolutions: Vec<opj_pi_resolution_t>,
+pub struct PiComp {
+  pub dx: u32,
+  pub dy: u32,
+  pub numresolutions: u32,
+  pub resolutions: Vec<PiResolution>,
 }
-pub type opj_pi_comp_t = opj_pi_comp;
-
 #[derive(Clone, Default)]
-pub struct opj_pi_iterator {
-  pub tp_on: OPJ_BYTE,
+pub struct PiIterator {
+  pub tp_on: u8,
   /* Every pi element for a tile shares this one allocation
   (opj_pi_create_decode chains `include = (prev)->include.clone()`); the Rc
   refcount keeps it alive until the last element is dropped. All accesses
   bounds-check against include_size. */
-  pub include: Rc<[Cell<OPJ_INT16>]>,
-  pub include_size: OPJ_UINT32,
-  pub step_l: OPJ_UINT32,
-  pub step_r: OPJ_UINT32,
-  pub step_c: OPJ_UINT32,
-  pub step_p: OPJ_UINT32,
-  pub compno: OPJ_UINT32,
-  pub resno: OPJ_UINT32,
-  pub precno: OPJ_UINT32,
-  pub layno: OPJ_UINT32,
+  pub include: Rc<[Cell<i16>]>,
+  pub include_size: u32,
+  pub step_l: u32,
+  pub step_r: u32,
+  pub step_c: u32,
+  pub step_p: u32,
+  pub compno: u32,
+  pub resno: u32,
+  pub precno: u32,
+  pub layno: u32,
   pub first: OPJ_BOOL,
   pub poc: opj_poc_t,
-  pub numcomps: OPJ_UINT32,
-  pub comps: Vec<opj_pi_comp_t>,
-  pub tx0: OPJ_UINT32,
-  pub ty0: OPJ_UINT32,
-  pub tx1: OPJ_UINT32,
-  pub ty1: OPJ_UINT32,
-  pub x: OPJ_UINT32,
-  pub y: OPJ_UINT32,
-  pub dx: OPJ_UINT32,
-  pub dy: OPJ_UINT32,
+  pub numcomps: u32,
+  pub comps: Vec<PiComp>,
+  pub tx0: u32,
+  pub ty0: u32,
+  pub tx1: u32,
+  pub ty1: u32,
+  pub x: u32,
+  pub y: u32,
+  pub dx: u32,
+  pub dy: u32,
 }
-pub type opj_pi_iterator_t = opj_pi_iterator;
-
 #[inline]
-fn opj_uint_ceildivpow2(mut a: OPJ_UINT32, mut b: OPJ_UINT32) -> OPJ_UINT32 {
+fn opj_uint_ceildivpow2(mut a: u32, mut b: u32) -> u32 {
   ((a as u64)
-    .wrapping_add((1 as OPJ_UINT64) << b)
+    .wrapping_add(1_u64 << b)
     .wrapping_sub(1u64)
     >> b) as u32
 }
@@ -123,9 +117,9 @@ Get next packet in layer-resolution-component-precinct order.
    local functions
 ==========================================================
 */
-fn opj_pi_next_lrcp(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> OPJ_BOOL {
+fn opj_pi_next_lrcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
     let mut current_block: u64;
-    let mut index = 0 as OPJ_UINT32;
+    let mut index = 0_u32;
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
@@ -187,7 +181,7 @@ fn opj_pi_next_lrcp(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
                 return 0i32;
               }
               if pi.include[index as usize].get() == 0 {
-                pi.include[index as usize].set(1 as OPJ_INT16);
+                pi.include[index as usize].set(1_i16);
                 return 1i32;
               }
               current_block = 5634871135123216486;
@@ -232,9 +226,9 @@ Get next packet in resolution-layer-component-precinct order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_rlcp(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> OPJ_BOOL {
+fn opj_pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
     let mut current_block: u64;
-    let mut index = 0 as OPJ_UINT32;
+    let mut index = 0_u32;
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
@@ -290,7 +284,7 @@ fn opj_pi_next_rlcp(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
                 return 0i32;
               }
               if pi.include[index as usize].get() == 0 {
-                pi.include[index as usize].set(1 as OPJ_INT16);
+                pi.include[index as usize].set(1_i16);
                 return 1i32;
               }
               current_block = 5634871135123216486;
@@ -335,18 +329,18 @@ Get next packet in resolution-precinct-component-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> OPJ_BOOL {
-    let mut levelno: OPJ_UINT32 = 0;
-    let mut trx0: OPJ_UINT32 = 0;
-    let mut try0: OPJ_UINT32 = 0;
-    let mut trx1: OPJ_UINT32 = 0;
-    let mut try1: OPJ_UINT32 = 0;
-    let mut rpx: OPJ_UINT32 = 0;
-    let mut rpy: OPJ_UINT32 = 0;
-    let mut prci: OPJ_UINT32 = 0;
-    let mut prcj: OPJ_UINT32 = 0;
+fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
+    let mut levelno: u32 = 0;
+    let mut trx0: u32 = 0;
+    let mut try0: u32 = 0;
+    let mut trx1: u32 = 0;
+    let mut try1: u32 = 0;
+    let mut rpx: u32 = 0;
+    let mut rpy: u32 = 0;
+    let mut prci: u32 = 0;
+    let mut prcj: u32 = 0;
     let mut current_block: u64;
-    let mut index = 0 as OPJ_UINT32;
+    let mut index = 0_u32;
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
@@ -359,17 +353,17 @@ fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
     if pi.first == 0 {
       current_block = 129780949503461575;
     } else {
-      let mut compno: OPJ_UINT32 = 0;
-      let mut resno: OPJ_UINT32 = 0;
+      let mut compno: u32 = 0;
+      let mut resno: u32 = 0;
       pi.first = 0i32;
-      pi.dx = 0 as OPJ_UINT32;
-      pi.dy = 0 as OPJ_UINT32;
-      compno = 0 as OPJ_UINT32;
+      pi.dx = 0_u32;
+      pi.dy = 0_u32;
+      compno = 0_u32;
       while compno < pi.numcomps {
-                resno = 0 as OPJ_UINT32;
+                resno = 0_u32;
         while resno < pi.comps[compno as usize].numresolutions {
-          let mut dx: OPJ_UINT32 = 0;
-          let mut dy: OPJ_UINT32 = 0;
+          let mut dx: u32 = 0;
+          let mut dy: u32 = 0;
                     if pi.comps[compno as usize].resolutions[resno as usize]
             .pdx
             .wrapping_add(pi.comps[compno as usize].numresolutions)
@@ -491,7 +485,7 @@ fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
                 return 0i32;
               }
               if pi.include[index as usize].get() == 0 {
-                pi.include[index as usize].set(1 as OPJ_INT16);
+                pi.include[index as usize].set(1_i16);
                 return 1i32;
               }
               current_block = 129780949503461575;
@@ -509,8 +503,7 @@ fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
                 pi.compno = pi.poc.compno0
               } else {
                 pi.y = (pi.y as core::ffi::c_uint)
-                  .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)))
-                  as OPJ_UINT32;
+                  .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)));
                 current_block = 6450636197030046351;
                 break;
               }
@@ -590,8 +583,7 @@ fn opj_pi_next_rpcl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
             break;
           } else {
             pi.x = (pi.x as core::ffi::c_uint)
-              .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)))
-              as OPJ_UINT32;
+              .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)));
             current_block = 3123434771885419771;
           }
         }
@@ -604,18 +596,18 @@ Get next packet in precinct-component-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> OPJ_BOOL {
-    let mut levelno: OPJ_UINT32 = 0;
-    let mut trx0: OPJ_UINT32 = 0;
-    let mut try0: OPJ_UINT32 = 0;
-    let mut trx1: OPJ_UINT32 = 0;
-    let mut try1: OPJ_UINT32 = 0;
-    let mut rpx: OPJ_UINT32 = 0;
-    let mut rpy: OPJ_UINT32 = 0;
-    let mut prci: OPJ_UINT32 = 0;
-    let mut prcj: OPJ_UINT32 = 0;
+fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
+    let mut levelno: u32 = 0;
+    let mut trx0: u32 = 0;
+    let mut try0: u32 = 0;
+    let mut trx1: u32 = 0;
+    let mut try1: u32 = 0;
+    let mut rpx: u32 = 0;
+    let mut rpy: u32 = 0;
+    let mut prci: u32 = 0;
+    let mut prcj: u32 = 0;
     let mut current_block: u64;
-    let mut index = 0 as OPJ_UINT32;
+    let mut index = 0_u32;
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
@@ -628,17 +620,17 @@ fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
     if pi.first == 0 {
             current_block = 10853015579903106591;
     } else {
-      let mut compno: OPJ_UINT32 = 0;
-      let mut resno: OPJ_UINT32 = 0;
+      let mut compno: u32 = 0;
+      let mut resno: u32 = 0;
       pi.first = 0i32;
-      pi.dx = 0 as OPJ_UINT32;
-      pi.dy = 0 as OPJ_UINT32;
-      compno = 0 as OPJ_UINT32;
+      pi.dx = 0_u32;
+      pi.dy = 0_u32;
+      compno = 0_u32;
       while compno < pi.numcomps {
-                resno = 0 as OPJ_UINT32;
+                resno = 0_u32;
         while resno < pi.comps[compno as usize].numresolutions {
-          let mut dx: OPJ_UINT32 = 0;
-          let mut dy: OPJ_UINT32 = 0;
+          let mut dx: u32 = 0;
+          let mut dy: u32 = 0;
                     if pi.comps[compno as usize].resolutions[resno as usize]
             .pdx
             .wrapping_add(pi.comps[compno as usize].numresolutions)
@@ -742,8 +734,7 @@ fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
               pi.compno = pi.poc.compno0
             } else {
               pi.y = (pi.y as core::ffi::c_uint)
-                .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)))
-                as OPJ_UINT32;
+                .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)));
               current_block = 7245201122033322888;
               break;
             }
@@ -762,7 +753,7 @@ fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
                 return 0i32;
               }
               if pi.include[index as usize].get() == 0 {
-                pi.include[index as usize].set(1 as OPJ_INT16);
+                pi.include[index as usize].set(1_i16);
                 return 1i32;
               }
               current_block = 10853015579903106591;
@@ -780,8 +771,7 @@ fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
                                 pi.resno = pi.poc.resno0
               } else {
                 pi.x = (pi.x as core::ffi::c_uint)
-                  .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)))
-                  as OPJ_UINT32;
+                  .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)));
                 current_block = 8845338526596852646;
                 break;
               }
@@ -799,8 +789,8 @@ fn opj_pi_next_pcrl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
             prcj = 0;
                         levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
 
-            if ((pi.comps[pi.compno as usize].dx << levelno as u64) >> levelno) as u32 != pi.comps[pi.compno as usize].dx
-              || ((pi.comps[pi.compno as usize].dy << levelno as u64) >> levelno) as u32 != pi.comps[pi.compno as usize].dy
+            if ((pi.comps[pi.compno as usize].dx << levelno as u64) >> levelno) != pi.comps[pi.compno as usize].dx
+              || ((pi.comps[pi.compno as usize].dy << levelno as u64) >> levelno) != pi.comps[pi.compno as usize].dy
             {
               current_block = 15512526488502093901;
               continue;
@@ -866,19 +856,19 @@ Get next packet in component-precinct-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> OPJ_BOOL {
-    let mut resno: OPJ_UINT32 = 0;
-    let mut levelno: OPJ_UINT32 = 0;
-    let mut trx0: OPJ_UINT32 = 0;
-    let mut try0: OPJ_UINT32 = 0;
-    let mut trx1: OPJ_UINT32 = 0;
-    let mut try1: OPJ_UINT32 = 0;
-    let mut rpx: OPJ_UINT32 = 0;
-    let mut rpy: OPJ_UINT32 = 0;
-    let mut prci: OPJ_UINT32 = 0;
-    let mut prcj: OPJ_UINT32 = 0;
+fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
+    let mut resno: u32 = 0;
+    let mut levelno: u32 = 0;
+    let mut trx0: u32 = 0;
+    let mut try0: u32 = 0;
+    let mut trx1: u32 = 0;
+    let mut try1: u32 = 0;
+    let mut rpx: u32 = 0;
+    let mut rpy: u32 = 0;
+    let mut prci: u32 = 0;
+    let mut prcj: u32 = 0;
     let mut current_block: u64;
-    let mut index = 0 as OPJ_UINT32;
+    let mut index = 0_u32;
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
     {
       event_msg!(
@@ -906,12 +896,12 @@ fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
             break;
           }
           resno = 0;
-                    pi.dx = 0 as OPJ_UINT32;
-          pi.dy = 0 as OPJ_UINT32;
-          resno = 0 as OPJ_UINT32;
+                    pi.dx = 0_u32;
+          pi.dy = 0_u32;
+          resno = 0_u32;
           while resno < pi.comps[pi.compno as usize].numresolutions {
-            let mut dx: OPJ_UINT32 = 0;
-            let mut dy: OPJ_UINT32 = 0;
+            let mut dx: u32 = 0;
+            let mut dy: u32 = 0;
                         if pi.comps[pi.compno as usize].resolutions[resno as usize]
               .pdx
               .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
@@ -1018,7 +1008,7 @@ fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
                 return 0i32;
               }
               if pi.include[index as usize].get() == 0 {
-                pi.include[index as usize].set(1 as OPJ_INT16);
+                pi.include[index as usize].set(1_i16);
                 return 1i32;
               }
               current_block = 13707613154239713890;
@@ -1036,8 +1026,7 @@ fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
                 pi.resno = pi.poc.resno0
               } else {
                 pi.y = (pi.y as core::ffi::c_uint)
-                  .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)))
-                  as OPJ_UINT32;
+                  .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)));
                 current_block = 18153031941552419006;
                 break;
               }
@@ -1055,8 +1044,8 @@ fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
             prcj = 0;
                         levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
 
-            if ((pi.comps[pi.compno as usize].dx << levelno as u64) >> levelno) as u32 != pi.comps[pi.compno as usize].dx
-              || ((pi.comps[pi.compno as usize].dy << levelno as u64) >> levelno) as u32 != pi.comps[pi.compno as usize].dy
+            if ((pi.comps[pi.compno as usize].dx << levelno as u64) >> levelno) != pi.comps[pi.compno as usize].dx
+              || ((pi.comps[pi.compno as usize].dy << levelno as u64) >> levelno) != pi.comps[pi.compno as usize].dy
             {
               current_block = 3123434771885419771;
               continue;
@@ -1110,8 +1099,7 @@ fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
             break;
           } else {
             pi.x = (pi.x as core::ffi::c_uint)
-              .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)))
-              as OPJ_UINT32;
+              .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)));
             current_block = 10692455896603418738;
           }
         }
@@ -1137,26 +1125,26 @@ fn opj_pi_next_cprl(pi: &mut opj_pi_iterator_t, manager: &mut opj_event_mgr) -> 
  */
 pub(crate) fn opj_get_encoding_parameters(
   p_image: &mut CoreImage,
-  p_cp: &opj_cp_t,
-  p_tileno: OPJ_UINT32,
-  p_tx0: &mut OPJ_UINT32,
-  p_tx1: &mut OPJ_UINT32,
-  p_ty0: &mut OPJ_UINT32,
-  p_ty1: &mut OPJ_UINT32,
-  p_dx_min: &mut OPJ_UINT32,
-  p_dy_min: &mut OPJ_UINT32,
-  p_max_prec: &mut OPJ_UINT32,
-  p_max_res: &mut OPJ_UINT32,
+  p_cp: &Cp,
+  p_tileno: u32,
+  p_tx0: &mut u32,
+  p_tx1: &mut u32,
+  p_ty0: &mut u32,
+  p_ty1: &mut u32,
+  p_dx_min: &mut u32,
+  p_dy_min: &mut u32,
+  p_max_prec: &mut u32,
+  p_max_res: &mut u32,
 ) {
   /* loop */
-  let mut compno: OPJ_UINT32 = 0;
-  let mut resno: OPJ_UINT32 = 0;
+  let mut compno: u32 = 0;
+  let mut resno: u32 = 0;
   /* position in x and y of tile */
-  let mut p: OPJ_UINT32 = 0;
-  let mut q: OPJ_UINT32 = 0;
+  let mut p: u32 = 0;
+  let mut q: u32 = 0;
   /* non-corrected (in regard to image offset) tile offset */
-  let mut l_tx0: OPJ_UINT32 = 0;
-  let mut l_ty0: OPJ_UINT32 = 0;
+  let mut l_tx0: u32 = 0;
+  let mut l_ty0: u32 = 0;
   /* preconditions */
 
   assert!(p_tileno < p_cp.tw.wrapping_mul(p_cp.th));
@@ -1173,32 +1161,32 @@ pub(crate) fn opj_get_encoding_parameters(
   *p_ty0 = opj_uint_max(l_ty0, p_image.y0);
   *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, p_cp.tdy), p_image.y1);
     /* max precision is 0 (can only grow) */
-    *p_max_prec = 0 as OPJ_UINT32;
-    *p_max_res = 0 as OPJ_UINT32;
+    *p_max_prec = 0_u32;
+    *p_max_res = 0_u32;
     /* take the largest value for dx_min and dy_min */
-    *p_dx_min = 0x7fffffff as OPJ_UINT32;
-    *p_dy_min = 0x7fffffff as OPJ_UINT32;
-    compno = 0 as OPJ_UINT32;
+    *p_dx_min = 0x7fffffff_u32;
+    *p_dy_min = 0x7fffffff_u32;
+    compno = 0_u32;
     while compno < p_image.numcomps {
       /* arithmetic variables to calculate */
-      let mut l_level_no: OPJ_UINT32 = 0;
-      let mut l_rx0: OPJ_UINT32 = 0;
-      let mut l_ry0: OPJ_UINT32 = 0;
-      let mut l_rx1: OPJ_UINT32 = 0;
-      let mut l_ry1: OPJ_UINT32 = 0;
-      let mut l_px0: OPJ_UINT32 = 0;
-      let mut l_py0: OPJ_UINT32 = 0;
-      let mut l_px1: OPJ_UINT32 = 0;
-      let mut py1: OPJ_UINT32 = 0;
-      let mut l_pdx: OPJ_UINT32 = 0;
-      let mut l_pdy: OPJ_UINT32 = 0;
-      let mut l_pw: OPJ_UINT32 = 0;
-      let mut l_ph: OPJ_UINT32 = 0;
-      let mut l_product: OPJ_UINT32 = 0;
-      let mut l_tcx0: OPJ_UINT32 = 0;
-      let mut l_tcy0: OPJ_UINT32 = 0;
-      let mut l_tcx1: OPJ_UINT32 = 0;
-      let mut l_tcy1: OPJ_UINT32 = 0;
+      let mut l_level_no: u32 = 0;
+      let mut l_rx0: u32 = 0;
+      let mut l_ry0: u32 = 0;
+      let mut l_rx1: u32 = 0;
+      let mut l_ry1: u32 = 0;
+      let mut l_px0: u32 = 0;
+      let mut l_py0: u32 = 0;
+      let mut l_px1: u32 = 0;
+      let mut py1: u32 = 0;
+      let mut l_pdx: u32 = 0;
+      let mut l_pdy: u32 = 0;
+      let mut l_pw: u32 = 0;
+      let mut l_ph: u32 = 0;
+      let mut l_product: u32 = 0;
+      let mut l_tcx0: u32 = 0;
+      let mut l_tcy0: u32 = 0;
+      let mut l_tcx1: u32 = 0;
+      let mut l_tcy1: u32 = 0;
       let l_tccp = &tcp.tccps[compno as usize];
       let l_img_comp = &p_image.comps[compno as usize];
       l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp.dx);
@@ -1209,10 +1197,10 @@ pub(crate) fn opj_get_encoding_parameters(
         *p_max_res = l_tccp.numresolutions
       }
       /* use custom size for precincts */
-      resno = 0 as OPJ_UINT32;
+      resno = 0_u32;
       while resno < l_tccp.numresolutions {
-        let mut l_dx: OPJ_UINT64 = 0;
-        let mut l_dy: OPJ_UINT64 = 0;
+        let mut l_dx: u64 = 0;
+        let mut l_dy: u64 = 0;
 
         /* precinct width and height */
         l_pdx = l_tccp.prcw[resno as usize];
@@ -1284,27 +1272,27 @@ pub(crate) fn opj_get_encoding_parameters(
  */
 pub(crate) fn opj_get_all_encoding_parameters(
   p_image: &mut CoreImage,
-  p_cp: &opj_cp_t,
-  tileno: OPJ_UINT32,
-  p_tx0: &mut OPJ_UINT32,
-  p_tx1: &mut OPJ_UINT32,
-  p_ty0: &mut OPJ_UINT32,
-  p_ty1: &mut OPJ_UINT32,
-  p_dx_min: &mut OPJ_UINT32,
-  p_dy_min: &mut OPJ_UINT32,
-  p_max_prec: &mut OPJ_UINT32,
-  p_max_res: &mut OPJ_UINT32,
-  mut p_resolutions: Option<&mut [OPJ_UINT32]>,
+  p_cp: &Cp,
+  tileno: u32,
+  p_tx0: &mut u32,
+  p_tx1: &mut u32,
+  p_ty0: &mut u32,
+  p_ty1: &mut u32,
+  p_dx_min: &mut u32,
+  p_dy_min: &mut u32,
+  p_max_prec: &mut u32,
+  p_max_res: &mut u32,
+  mut p_resolutions: Option<&mut [u32]>,
 ) {
   /* loop*/
-  let mut compno: OPJ_UINT32 = 0;
-  let mut resno: OPJ_UINT32 = 0;
+  let mut compno: u32 = 0;
+  let mut resno: u32 = 0;
   /* position in x and y of tile*/
-  let mut p: OPJ_UINT32 = 0;
-  let mut q: OPJ_UINT32 = 0;
+  let mut p: u32 = 0;
+  let mut q: u32 = 0;
   /* non-corrected (in regard to image offset) tile offset */
-  let mut l_tx0: OPJ_UINT32 = 0;
-  let mut l_ty0: OPJ_UINT32 = 0;
+  let mut l_tx0: u32 = 0;
+  let mut l_ty0: u32 = 0;
   /* preconditions in debug*/
 
   assert!(tileno < p_cp.tw.wrapping_mul(p_cp.th));
@@ -1321,32 +1309,32 @@ pub(crate) fn opj_get_all_encoding_parameters(
   *p_ty0 = opj_uint_max(l_ty0, p_image.y0);
   *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, p_cp.tdy), p_image.y1);
     /* max precision and resolution is 0 (can only grow)*/
-    *p_max_prec = 0 as OPJ_UINT32;
-    *p_max_res = 0 as OPJ_UINT32;
+    *p_max_prec = 0_u32;
+    *p_max_res = 0_u32;
     /* take the largest value for dx_min and dy_min*/
-    *p_dx_min = 0x7fffffff as OPJ_UINT32;
-    *p_dy_min = 0x7fffffff as OPJ_UINT32;
-    compno = 0 as OPJ_UINT32;
+    *p_dx_min = 0x7fffffff_u32;
+    *p_dy_min = 0x7fffffff_u32;
+    compno = 0_u32;
     while compno < p_image.numcomps {
       /* arithmetic variables to calculate*/
-      let mut l_level_no: OPJ_UINT32 = 0;
-      let mut l_rx0: OPJ_UINT32 = 0;
-      let mut l_ry0: OPJ_UINT32 = 0;
-      let mut l_rx1: OPJ_UINT32 = 0;
-      let mut l_ry1: OPJ_UINT32 = 0;
-      let mut l_px0: OPJ_UINT32 = 0;
-      let mut l_py0: OPJ_UINT32 = 0;
-      let mut l_px1: OPJ_UINT32 = 0;
-      let mut py1: OPJ_UINT32 = 0;
-      let mut l_product: OPJ_UINT32 = 0;
-      let mut l_tcx0: OPJ_UINT32 = 0;
-      let mut l_tcy0: OPJ_UINT32 = 0;
-      let mut l_tcx1: OPJ_UINT32 = 0;
-      let mut l_tcy1: OPJ_UINT32 = 0;
-      let mut l_pdx: OPJ_UINT32 = 0;
-      let mut l_pdy: OPJ_UINT32 = 0;
-      let mut l_pw: OPJ_UINT32 = 0;
-      let mut l_ph: OPJ_UINT32 = 0;
+      let mut l_level_no: u32 = 0;
+      let mut l_rx0: u32 = 0;
+      let mut l_ry0: u32 = 0;
+      let mut l_rx1: u32 = 0;
+      let mut l_ry1: u32 = 0;
+      let mut l_px0: u32 = 0;
+      let mut l_py0: u32 = 0;
+      let mut l_px1: u32 = 0;
+      let mut py1: u32 = 0;
+      let mut l_product: u32 = 0;
+      let mut l_tcx0: u32 = 0;
+      let mut l_tcy0: u32 = 0;
+      let mut l_tcx1: u32 = 0;
+      let mut l_tcy1: u32 = 0;
+      let mut l_pdx: u32 = 0;
+      let mut l_pdy: u32 = 0;
+      let mut l_pw: u32 = 0;
+      let mut l_ph: u32 = 0;
       let l_tccp = &tcp.tccps[compno as usize];
       let l_img_comp = &p_image.comps[compno as usize];
       /* Each component owns a stride of 4 u32 per resolution (max 33). */
@@ -1360,10 +1348,10 @@ pub(crate) fn opj_get_all_encoding_parameters(
       }
       /* use custom size for precincts*/
       l_level_no = l_tccp.numresolutions;
-      resno = 0 as OPJ_UINT32;
+      resno = 0_u32;
       while resno < l_tccp.numresolutions {
-        let mut l_dx: OPJ_UINT32 = 0;
-        let mut l_dy: OPJ_UINT32 = 0;
+        let mut l_dx: u32 = 0;
+        let mut l_dy: u32 = 0;
         l_level_no = l_level_no.wrapping_sub(1);
         /* precinct width and height*/
         l_pdx = l_tccp.prcw[resno as usize];
@@ -1445,14 +1433,14 @@ pub(crate) fn opj_get_all_encoding_parameters(
  */
 pub(crate) fn opj_pi_create(
   image: &CoreImage,
-  cp: &opj_cp_t,
-  tileno: OPJ_UINT32,
-) -> Vec<opj_pi_iterator_t> {
+  cp: &Cp,
+  tileno: u32,
+) -> Vec<PiIterator> {
   /* loop*/
-  let mut pino: OPJ_UINT32 = 0;
-  let mut compno: OPJ_UINT32 = 0;
+  let mut pino: u32 = 0;
+  let mut compno: u32 = 0;
   /* number of poc in the p_pi*/
-  let mut l_poc_bound: OPJ_UINT32 = 0;
+  let mut l_poc_bound: u32 = 0;
   /* preconditions in debug*/
 
   assert!(tileno < cp.tw.wrapping_mul(cp.th));
@@ -1460,15 +1448,15 @@ pub(crate) fn opj_pi_create(
   let tcp = &cp.tcps[tileno as usize];
   l_poc_bound = tcp.numpocs.wrapping_add(1u32);
   /* memory allocations*/
-  let mut l_pi: Vec<opj_pi_iterator_t> = Vec::with_capacity(l_poc_bound as usize);
-  pino = 0 as OPJ_UINT32;
+  let mut l_pi: Vec<PiIterator> = Vec::with_capacity(l_poc_bound as usize);
+  pino = 0_u32;
   while pino < l_poc_bound {
-    let mut current = opj_pi_iterator {
+    let mut current = PiIterator {
       numcomps: image.numcomps,
       comps: vec![Default::default(); image.numcomps as usize],
       ..Default::default()
     };
-    compno = 0 as OPJ_UINT32;
+    compno = 0_u32;
     while compno < image.numcomps {
       let comp = &mut current.comps[compno as usize];
       let tccp = &tcp.tccps[compno as usize];
@@ -1482,21 +1470,21 @@ pub(crate) fn opj_pi_create(
   l_pi
 }
 pub(crate) fn opj_pi_update_encode_poc_and_final(
-  p_cp: &mut opj_cp_t,
-  p_tileno: OPJ_UINT32,
-  p_tx0: OPJ_UINT32,
-  p_tx1: OPJ_UINT32,
-  p_ty0: OPJ_UINT32,
-  p_ty1: OPJ_UINT32,
-  p_max_prec: OPJ_UINT32,
-  _p_max_res: OPJ_UINT32,
-  p_dx_min: OPJ_UINT32,
-  p_dy_min: OPJ_UINT32,
+  p_cp: &mut Cp,
+  p_tileno: u32,
+  p_tx0: u32,
+  p_tx1: u32,
+  p_ty0: u32,
+  p_ty1: u32,
+  p_max_prec: u32,
+  _p_max_res: u32,
+  p_dx_min: u32,
+  p_dy_min: u32,
 ) {
   /* loop*/
-  let mut pino: OPJ_UINT32 = 0;
+  let mut pino: u32 = 0;
   /* number of pocs*/
-  let mut l_poc_bound: OPJ_UINT32 = 0;
+  let mut l_poc_bound: u32 = 0;
   /* preconditions in debug*/
 
   assert!(p_tileno < p_cp.tw.wrapping_mul(p_cp.th));
@@ -1510,9 +1498,9 @@ pub(crate) fn opj_pi_update_encode_poc_and_final(
     l_tcp.pocs[0].resE = l_tcp.pocs[0].resno1;
     l_tcp.pocs[0].layE = l_tcp.pocs[0].layno1;
     /* special treatment for the first element*/
-    l_tcp.pocs[0].layS = 0 as OPJ_UINT32;
+    l_tcp.pocs[0].layS = 0_u32;
     l_tcp.pocs[0].prg = l_tcp.pocs[0].prg1;
-    l_tcp.pocs[0].prcS = 0 as OPJ_UINT32;
+    l_tcp.pocs[0].prcS = 0_u32;
     l_tcp.pocs[0].prcE = p_max_prec;
     l_tcp.pocs[0].txS = p_tx0;
     l_tcp.pocs[0].txE = p_tx1;
@@ -1521,7 +1509,7 @@ pub(crate) fn opj_pi_update_encode_poc_and_final(
     l_tcp.pocs[0].dx = p_dx_min;
     l_tcp.pocs[0].dy = p_dy_min;
     
-    pino = 1 as OPJ_UINT32;
+    pino = 1_u32;
     while pino < l_poc_bound {
       l_tcp.pocs[pino as usize].compS = l_tcp.pocs[pino as usize].compno0;
       l_tcp.pocs[pino as usize].compE = l_tcp.pocs[pino as usize].compno1;
@@ -1529,7 +1517,7 @@ pub(crate) fn opj_pi_update_encode_poc_and_final(
       l_tcp.pocs[pino as usize].resE = l_tcp.pocs[pino as usize].resno1;
       l_tcp.pocs[pino as usize].layE = l_tcp.pocs[pino as usize].layno1;
       l_tcp.pocs[pino as usize].prg = l_tcp.pocs[pino as usize].prg1;
-      l_tcp.pocs[pino as usize].prcS = 0 as OPJ_UINT32;
+      l_tcp.pocs[pino as usize].prcS = 0_u32;
       /* special treatment here different from the first element*/
       l_tcp.pocs[pino as usize].layS = if l_tcp.pocs[pino as usize].layE > l_tcp.pocs[(pino - 1) as usize].layE {
         l_tcp.pocs[pino as usize].layE
@@ -1562,22 +1550,22 @@ pub(crate) fn opj_pi_update_encode_poc_and_final(
  * @param   p_dy_min        the minimum dy of all the components of all the resolutions for the tile.
  */
 pub(crate) fn opj_pi_update_encode_not_poc(
-  p_cp: &mut opj_cp_t,
-  p_num_comps: OPJ_UINT32,
-  p_tileno: OPJ_UINT32,
-  p_tx0: OPJ_UINT32,
-  p_tx1: OPJ_UINT32,
-  p_ty0: OPJ_UINT32,
-  p_ty1: OPJ_UINT32,
-  p_max_prec: OPJ_UINT32,
-  p_max_res: OPJ_UINT32,
-  p_dx_min: OPJ_UINT32,
-  p_dy_min: OPJ_UINT32,
+  p_cp: &mut Cp,
+  p_num_comps: u32,
+  p_tileno: u32,
+  p_tx0: u32,
+  p_tx1: u32,
+  p_ty0: u32,
+  p_ty1: u32,
+  p_max_prec: u32,
+  p_max_res: u32,
+  p_dx_min: u32,
+  p_dy_min: u32,
 ) {
   /* loop*/
-  let mut pino: OPJ_UINT32 = 0;
+  let mut pino: u32 = 0;
   /* number of pocs*/
-  let mut l_poc_bound: OPJ_UINT32 = 0;
+  let mut l_poc_bound: u32 = 0;
   /* preconditions in debug*/
 
   assert!(p_tileno < p_cp.tw.wrapping_mul(p_cp.th));
@@ -1585,16 +1573,16 @@ pub(crate) fn opj_pi_update_encode_not_poc(
   let l_tcp = &mut p_cp.tcps[p_tileno as usize];
   /* number of iterations in the loop */
   l_poc_bound = l_tcp.numpocs.wrapping_add(1u32);
-  pino = 0 as OPJ_UINT32;
+  pino = 0_u32;
     while pino < l_poc_bound {
-      l_tcp.pocs[pino as usize].compS = 0 as OPJ_UINT32;
+      l_tcp.pocs[pino as usize].compS = 0_u32;
       l_tcp.pocs[pino as usize].compE = p_num_comps;
-      l_tcp.pocs[pino as usize].resS = 0 as OPJ_UINT32;
+      l_tcp.pocs[pino as usize].resS = 0_u32;
       l_tcp.pocs[pino as usize].resE = p_max_res;
-      l_tcp.pocs[pino as usize].layS = 0 as OPJ_UINT32;
+      l_tcp.pocs[pino as usize].layS = 0_u32;
       l_tcp.pocs[pino as usize].layE = l_tcp.numlayers;
       l_tcp.pocs[pino as usize].prg = l_tcp.prg;
-      l_tcp.pocs[pino as usize].prcS = 0 as OPJ_UINT32;
+      l_tcp.pocs[pino as usize].prcS = 0_u32;
       l_tcp.pocs[pino as usize].prcE = p_max_prec;
       l_tcp.pocs[pino as usize].txS = p_tx0;
       l_tcp.pocs[pino as usize].txE = p_tx1;
@@ -1609,27 +1597,27 @@ pub(crate) fn opj_pi_update_encode_not_poc(
  * FIXME DOC
  */
 pub(crate) fn opj_pi_update_decode_poc(
-  p_pi: &mut [opj_pi_iterator_t],
-  p_tcp: &opj_tcp_t,
-  p_max_precision: OPJ_UINT32,
-  _p_max_res: OPJ_UINT32,
+  p_pi: &mut [PiIterator],
+  p_tcp: &Tcp,
+  p_max_precision: u32,
+  _p_max_res: u32,
 ) {
   /* loop*/
-  let mut pino: OPJ_UINT32 = 0;
+  let mut pino: u32 = 0;
   /* encoding parameters to set*/
-  let mut l_bound: OPJ_UINT32 = 0;
+  let mut l_bound: u32 = 0;
   /* preconditions in debug*/
 
   /* initializations*/
   l_bound = p_tcp.numpocs.wrapping_add(1u32); /* Progression Order #0 */
-  pino = 0 as OPJ_UINT32; /* Resolution Level Index #0 (End) */
+  pino = 0_u32; /* Resolution Level Index #0 (End) */
     while pino < l_bound {
       p_pi[pino as usize].poc.prg = p_tcp.pocs[pino as usize].prg; /* Component Index #0 (End) */
       p_pi[pino as usize].first = 1i32; /* Layer Index #0 (End) */
       p_pi[pino as usize].poc.resno0 = p_tcp.pocs[pino as usize].resno0;
       p_pi[pino as usize].poc.compno0 = p_tcp.pocs[pino as usize].compno0;
-      p_pi[pino as usize].poc.layno0 = 0 as OPJ_UINT32;
-      p_pi[pino as usize].poc.precno0 = 0 as OPJ_UINT32;
+      p_pi[pino as usize].poc.layno0 = 0_u32;
+      p_pi[pino as usize].poc.precno0 = 0_u32;
       p_pi[pino as usize].poc.resno1 = p_tcp.pocs[pino as usize].resno1;
       p_pi[pino as usize].poc.compno1 = p_tcp.pocs[pino as usize].compno1;
       p_pi[pino as usize].poc.layno1 = opj_uint_min(p_tcp.pocs[pino as usize].layno1, p_tcp.numlayers);
@@ -1641,27 +1629,27 @@ pub(crate) fn opj_pi_update_decode_poc(
  * FIXME DOC
  */
 pub(crate) fn opj_pi_update_decode_not_poc(
-  p_pi: &mut [opj_pi_iterator_t],
-  p_tcp: &opj_tcp_t,
-  p_max_precision: OPJ_UINT32,
-  p_max_res: OPJ_UINT32,
+  p_pi: &mut [PiIterator],
+  p_tcp: &Tcp,
+  p_max_precision: u32,
+  p_max_res: u32,
 ) {
   /* loop*/
-  let mut pino: OPJ_UINT32 = 0;
+  let mut pino: u32 = 0;
   /* encoding parameters to set*/
-  let mut l_bound: OPJ_UINT32 = 0;
+  let mut l_bound: u32 = 0;
   /* preconditions in debug*/
 
   /* initializations*/
   l_bound = p_tcp.numpocs.wrapping_add(1u32);
-  pino = 0 as OPJ_UINT32;
+  pino = 0_u32;
     while pino < l_bound {
       p_pi[pino as usize].poc.prg = p_tcp.prg;
       p_pi[pino as usize].first = 1i32;
-      p_pi[pino as usize].poc.resno0 = 0 as OPJ_UINT32;
-      p_pi[pino as usize].poc.compno0 = 0 as OPJ_UINT32;
-      p_pi[pino as usize].poc.layno0 = 0 as OPJ_UINT32;
-      p_pi[pino as usize].poc.precno0 = 0 as OPJ_UINT32;
+      p_pi[pino as usize].poc.resno0 = 0_u32;
+      p_pi[pino as usize].poc.compno0 = 0_u32;
+      p_pi[pino as usize].poc.layno0 = 0_u32;
+      p_pi[pino as usize].poc.precno0 = 0_u32;
       p_pi[pino as usize].poc.resno1 = p_max_res;
       p_pi[pino as usize].poc.compno1 = p_pi[pino as usize].numcomps;
       p_pi[pino as usize].poc.layno1 = p_tcp.numlayers;
@@ -1673,11 +1661,11 @@ pub(crate) fn opj_pi_update_decode_not_poc(
  * FIXME DOC
  */
 fn opj_pi_check_next_level(
-  pos: OPJ_INT32,
+  pos: i32,
   tcp: &opj_poc_t,
   prog: ProgressionOrder,
 ) -> OPJ_BOOL {
-  let mut i: OPJ_INT32 = 0; /*end if*/
+  let mut i: i32 = 0; /*end if*/
     if pos >= 0i32 {
       i = pos;
       while i >= 0i32 {
@@ -1766,35 +1754,35 @@ fn opj_pi_check_next_level(
 
 pub(crate) fn opj_pi_create_decode(
   p_image: &mut CoreImage,
-  p_cp: &mut opj_cp_t,
-  p_tile_no: OPJ_UINT32,
-) -> Vec<opj_pi_iterator_t> {
+  p_cp: &mut Cp,
+  p_tile_no: u32,
+) -> Vec<PiIterator> {
   let numcomps = p_image.numcomps;
   /* loop */
-  let mut pino: OPJ_UINT32 = 0;
-  let mut compno: OPJ_UINT32 = 0;
-  let mut resno: OPJ_UINT32 = 0;
+  let mut pino: u32 = 0;
+  let mut compno: u32 = 0;
+  let mut resno: u32 = 0;
   /* encoding parameters to set */
-  let mut l_max_res: OPJ_UINT32 = 0;
-  let mut l_max_prec: OPJ_UINT32 = 0;
-  let mut l_tx0: OPJ_UINT32 = 0;
-  let mut l_tx1: OPJ_UINT32 = 0;
-  let mut l_ty0: OPJ_UINT32 = 0;
-  let mut l_ty1: OPJ_UINT32 = 0;
-  let mut l_dx_min: OPJ_UINT32 = 0;
-  let mut l_dy_min: OPJ_UINT32 = 0;
-  let mut l_bound: OPJ_UINT32 = 0;
-  let mut l_step_p: OPJ_UINT32 = 0;
-  let mut l_step_c: OPJ_UINT32 = 0;
-  let mut l_step_r: OPJ_UINT32 = 0;
-  let mut l_step_l: OPJ_UINT32 = 0;
+  let mut l_max_res: u32 = 0;
+  let mut l_max_prec: u32 = 0;
+  let mut l_tx0: u32 = 0;
+  let mut l_tx1: u32 = 0;
+  let mut l_ty0: u32 = 0;
+  let mut l_ty1: u32 = 0;
+  let mut l_dx_min: u32 = 0;
+  let mut l_dy_min: u32 = 0;
+  let mut l_bound: u32 = 0;
+  let mut l_step_p: u32 = 0;
+  let mut l_step_c: u32 = 0;
+  let mut l_step_r: u32 = 0;
+  let mut l_step_l: u32 = 0;
   /* preconditions in debug */
 
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations */
   l_bound = p_cp.tcps[p_tile_no as usize].numpocs.wrapping_add(1u32);
   let l_data_stride = (4i32 * 33i32) as usize;
-  let mut l_tmp_data: Vec<OPJ_UINT32> = vec![0; l_data_stride.wrapping_mul(numcomps as usize)];
+  let mut l_tmp_data: Vec<u32> = vec![0; l_data_stride.wrapping_mul(numcomps as usize)];
   /* memory allocation for pi */
   let mut l_pi = opj_pi_create(p_image, p_cp, p_tile_no);
   if l_pi.is_empty() {
@@ -1816,7 +1804,7 @@ pub(crate) fn opj_pi_create_decode(
     Some(&mut l_tmp_data),
   );
   /* step calculations */
-  l_step_p = 1 as OPJ_UINT32;
+  l_step_p = 1_u32;
   l_step_c = l_max_prec.wrapping_mul(l_step_p);
   l_step_r = numcomps.wrapping_mul(l_step_c);
   l_step_l = l_max_res.wrapping_mul(l_step_r);
@@ -1828,7 +1816,7 @@ pub(crate) fn opj_pi_create_decode(
   {
     p_cp.tcps[p_tile_no as usize].numlayers.wrapping_add(1u32).wrapping_mul(l_step_l)
   } else {
-    0 as OPJ_UINT32
+    0_u32
   };
   if include_size == 0 {
     return Vec::new();
@@ -1836,7 +1824,7 @@ pub(crate) fn opj_pi_create_decode(
   {
     // The include bitmask is shared across the pi elements of this tile:
     // elements 1.. clone element 0's Rc, exactly like the C version.
-    let include: Rc<[Cell<OPJ_INT16>]> = vec![Cell::new(0i16); include_size as usize].into();
+    let include: Rc<[Cell<i16>]> = vec![Cell::new(0i16); include_size as usize].into();
     l_pi[0].include = include;
   }
   l_pi[0].include_size = include_size;
@@ -1852,14 +1840,14 @@ pub(crate) fn opj_pi_create_decode(
   l_pi[0].step_r = l_step_r;
   l_pi[0].step_l = l_step_l;
   /* allocation for components and number of components has already been calculated by opj_pi_create */
-  compno = 0 as OPJ_UINT32;
+  compno = 0_u32;
   while compno < numcomps {
     let l_current_comp = &mut l_pi[0].comps[compno as usize];
     l_current_comp.dx = p_image.comps[compno as usize].dx;
     l_current_comp.dy = p_image.comps[compno as usize].dy;
     /* resolutions have already been initialized */
     let mut ev_offset = (compno as usize).wrapping_mul(l_data_stride);
-    resno = 0 as OPJ_UINT32;
+    resno = 0_u32;
     while resno < l_current_comp.numresolutions {
       let l_res = &mut l_current_comp.resolutions[resno as usize];
       l_res.pdx = l_tmp_data[ev_offset];
@@ -1874,7 +1862,7 @@ pub(crate) fn opj_pi_create_decode(
     }
     compno += 1;
   }
-  pino = 1 as OPJ_UINT32;
+  pino = 1_u32;
   while pino < l_bound {
     l_pi[pino as usize].tx0 = l_tx0;
     l_pi[pino as usize].ty0 = l_ty0;
@@ -1887,14 +1875,14 @@ pub(crate) fn opj_pi_create_decode(
     l_pi[pino as usize].step_r = l_step_r;
     l_pi[pino as usize].step_l = l_step_l;
     /* allocation for components and number of components has already been calculated by opj_pi_create */
-    compno = 0 as OPJ_UINT32;
+    compno = 0_u32;
     while compno < numcomps {
       let l_current_comp = &mut l_pi[pino as usize].comps[compno as usize];
       l_current_comp.dx = p_image.comps[compno as usize].dx;
       l_current_comp.dy = p_image.comps[compno as usize].dy;
       /* resolutions have already been initialized */
       let mut ev_offset = (compno as usize).wrapping_mul(l_data_stride);
-      resno = 0 as OPJ_UINT32;
+      resno = 0_u32;
       while resno < l_current_comp.numresolutions {
         let l_res_0 = &mut l_current_comp.resolutions[resno as usize];
         l_res_0.pdx = l_tmp_data[ev_offset];
@@ -1923,17 +1911,17 @@ pub(crate) fn opj_pi_create_decode(
 }
 pub(crate) fn opj_get_encoding_packet_count(
   p_image: &mut CoreImage,
-  p_cp: &opj_cp_t,
-  p_tile_no: OPJ_UINT32,
-) -> OPJ_UINT32 {
-  let mut l_max_res: OPJ_UINT32 = 0;
-  let mut l_max_prec: OPJ_UINT32 = 0;
-  let mut l_tx0: OPJ_UINT32 = 0;
-  let mut l_tx1: OPJ_UINT32 = 0;
-  let mut l_ty0: OPJ_UINT32 = 0;
-  let mut l_ty1: OPJ_UINT32 = 0;
-  let mut l_dx_min: OPJ_UINT32 = 0;
-  let mut l_dy_min: OPJ_UINT32 = 0;
+  p_cp: &Cp,
+  p_tile_no: u32,
+) -> u32 {
+  let mut l_max_res: u32 = 0;
+  let mut l_max_prec: u32 = 0;
+  let mut l_tx0: u32 = 0;
+  let mut l_tx1: u32 = 0;
+  let mut l_ty0: u32 = 0;
+  let mut l_ty1: u32 = 0;
+  let mut l_dx_min: u32 = 0;
+  let mut l_dy_min: u32 = 0;
   /* preconditions in debug*/
 
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
@@ -1961,36 +1949,36 @@ pub(crate) fn opj_get_encoding_packet_count(
 
 pub(crate) fn opj_pi_initialise_encode(
   p_image: &mut CoreImage,
-  p_cp: &mut opj_cp_t,
-  p_tile_no: OPJ_UINT32,
+  p_cp: &mut Cp,
+  p_tile_no: u32,
   p_t2_mode: J2K_T2_MODE,
-) -> Vec<opj_pi_iterator_t> {
+) -> Vec<PiIterator> {
   let numcomps = p_image.numcomps;
   /* loop*/
-  let mut pino: OPJ_UINT32 = 0;
-  let mut compno: OPJ_UINT32 = 0;
-  let mut resno: OPJ_UINT32 = 0;
+  let mut pino: u32 = 0;
+  let mut compno: u32 = 0;
+  let mut resno: u32 = 0;
   /* encoding parameters to set*/
-  let mut l_max_res: OPJ_UINT32 = 0;
-  let mut l_max_prec: OPJ_UINT32 = 0;
-  let mut l_tx0: OPJ_UINT32 = 0;
-  let mut l_tx1: OPJ_UINT32 = 0;
-  let mut l_ty0: OPJ_UINT32 = 0;
-  let mut l_ty1: OPJ_UINT32 = 0;
-  let mut l_dx_min: OPJ_UINT32 = 0;
-  let mut l_dy_min: OPJ_UINT32 = 0;
-  let mut l_bound: OPJ_UINT32 = 0;
-  let mut l_step_p: OPJ_UINT32 = 0;
-  let mut l_step_c: OPJ_UINT32 = 0;
-  let mut l_step_r: OPJ_UINT32 = 0;
-  let mut l_step_l: OPJ_UINT32 = 0;
+  let mut l_max_res: u32 = 0;
+  let mut l_max_prec: u32 = 0;
+  let mut l_tx0: u32 = 0;
+  let mut l_tx1: u32 = 0;
+  let mut l_ty0: u32 = 0;
+  let mut l_ty1: u32 = 0;
+  let mut l_dx_min: u32 = 0;
+  let mut l_dy_min: u32 = 0;
+  let mut l_bound: u32 = 0;
+  let mut l_step_p: u32 = 0;
+  let mut l_step_c: u32 = 0;
+  let mut l_step_r: u32 = 0;
+  let mut l_step_l: u32 = 0;
   /* preconditions in debug*/
 
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations*/
   l_bound = p_cp.tcps[p_tile_no as usize].numpocs.wrapping_add(1u32);
   let l_data_stride = (4i32 * 33i32) as usize;
-  let mut l_tmp_data: Vec<OPJ_UINT32> = vec![0; l_data_stride.wrapping_mul(numcomps as usize)];
+  let mut l_tmp_data: Vec<u32> = vec![0; l_data_stride.wrapping_mul(numcomps as usize)];
   /* memory allocation for pi*/
   let mut l_pi = opj_pi_create(p_image, p_cp, p_tile_no);
   if l_pi.is_empty() {
@@ -2012,17 +2000,17 @@ pub(crate) fn opj_pi_initialise_encode(
     Some(&mut l_tmp_data),
   );
   /* step calculations*/
-  l_step_p = 1 as OPJ_UINT32;
+  l_step_p = 1_u32;
   l_step_c = l_max_prec.wrapping_mul(l_step_p);
   l_step_r = numcomps.wrapping_mul(l_step_c);
   l_step_l = l_max_res.wrapping_mul(l_step_r);
   /* set values for first packet iterator*/
-  l_pi[0].tp_on = p_cp.m_specific_param.m_enc.m_tp_on as OPJ_BYTE;
+  l_pi[0].tp_on = p_cp.m_specific_param.m_enc.m_tp_on as u8;
   /* memory allocation for include*/
   let include_size = p_cp.tcps[p_tile_no as usize].numlayers.wrapping_mul(l_step_l);
   {
     // The include bitmask is shared across the pi elements of this tile.
-    let include: Rc<[Cell<OPJ_INT16>]> = vec![Cell::new(0i16); include_size as usize].into();
+    let include: Rc<[Cell<i16>]> = vec![Cell::new(0i16); include_size as usize].into();
     l_pi[0].include = include;
   }
   l_pi[0].include_size = include_size;
@@ -2038,14 +2026,14 @@ pub(crate) fn opj_pi_initialise_encode(
   l_pi[0].step_r = l_step_r;
   l_pi[0].step_l = l_step_l;
   /* allocation for components and number of components has already been calculated by opj_pi_create */
-  compno = 0 as OPJ_UINT32;
+  compno = 0_u32;
   while compno < numcomps {
     let l_current_comp = &mut l_pi[0].comps[compno as usize];
     l_current_comp.dx = p_image.comps[compno as usize].dx;
     l_current_comp.dy = p_image.comps[compno as usize].dy;
     /* resolutions have already been initialized */
     let mut ev_offset = (compno as usize).wrapping_mul(l_data_stride);
-    resno = 0 as OPJ_UINT32;
+    resno = 0_u32;
     while resno < l_current_comp.numresolutions {
       let l_res = &mut l_current_comp.resolutions[resno as usize];
       l_res.pdx = l_tmp_data[ev_offset];
@@ -2060,7 +2048,7 @@ pub(crate) fn opj_pi_initialise_encode(
     }
     compno += 1;
   }
-  pino = 1 as OPJ_UINT32;
+  pino = 1_u32;
   while pino < l_bound {
     l_pi[pino as usize].tx0 = l_tx0;
     l_pi[pino as usize].ty0 = l_ty0;
@@ -2073,14 +2061,14 @@ pub(crate) fn opj_pi_initialise_encode(
     l_pi[pino as usize].step_r = l_step_r;
     l_pi[pino as usize].step_l = l_step_l;
     /* allocation for components and number of components has already been calculated by opj_pi_create */
-    compno = 0 as OPJ_UINT32;
+    compno = 0_u32;
     while compno < numcomps {
       let l_current_comp = &mut l_pi[pino as usize].comps[compno as usize];
       l_current_comp.dx = p_image.comps[compno as usize].dx;
       l_current_comp.dy = p_image.comps[compno as usize].dy;
       /* resolutions have already been initialized */
       let mut ev_offset = (compno as usize).wrapping_mul(l_data_stride);
-      resno = 0 as OPJ_UINT32;
+      resno = 0_u32;
       while resno < l_current_comp.numresolutions {
         let l_res_0 = &mut l_current_comp.resolutions[resno as usize];
         l_res_0.pdx = l_tmp_data[ev_offset];
@@ -2116,17 +2104,17 @@ pub(crate) fn opj_pi_initialise_encode(
   l_pi
 }
 pub(crate) fn opj_pi_create_encode(
-  pi: &mut [opj_pi_iterator_t],
-  cp: &mut opj_cp_t,
-  tileno: OPJ_UINT32,
-  pino: OPJ_UINT32,
-  tpnum: OPJ_UINT32,
-  tppos: OPJ_INT32,
+  pi: &mut [PiIterator],
+  cp: &mut Cp,
+  tileno: u32,
+  pino: u32,
+  tpnum: u32,
+  tppos: i32,
   t2_mode: J2K_T2_MODE,
 ) {
-  let mut i: OPJ_INT32 = 0;
-  let mut incr_top = 1 as OPJ_UINT32;
-  let mut resetX = 0 as OPJ_UINT32;
+  let mut i: i32 = 0;
+  let mut incr_top = 1_u32;
+  let mut resetX = 0_u32;
   let rsiz = cp.rsiz;
   let tp_on = cp.m_specific_param.m_enc.m_tp_on;
   let tcp = &mut cp.tcps[tileno as usize].pocs[pino as usize];
@@ -2194,26 +2182,26 @@ pub(crate) fn opj_pi_create_encode(
               tcp.comp_t = tcp.compS;
               pi[pino as usize].poc.compno0 = tcp.comp_t;
               pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
-              tcp.comp_t = (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32
+              tcp.comp_t = (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32)
             }
             ProgressionStep::Resolution => {
               tcp.res_t = tcp.resS;
               pi[pino as usize].poc.resno0 = tcp.res_t;
               pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
-              tcp.res_t = (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32
+              tcp.res_t = (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32)
             }
             ProgressionStep::Layer => {
               tcp.lay_t = tcp.layS;
               pi[pino as usize].poc.layno0 = tcp.lay_t;
               pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
-              tcp.lay_t = (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32
+              tcp.lay_t = (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32)
             }
             ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
               0 | 1 => {
                 tcp.prc_t = tcp.prcS;
                 pi[pino as usize].poc.precno0 = tcp.prc_t;
                 pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
-                tcp.prc_t = (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32
+                tcp.prc_t = (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32)
               }
               _ => {
                 tcp.tx0_t = tcp.txS;
@@ -2236,7 +2224,7 @@ pub(crate) fn opj_pi_create_encode(
           }
           i -= 1
         }
-        incr_top = 1 as OPJ_UINT32
+        incr_top = 1_u32
       } else {
         i = tppos;
         while i >= 0i32 {
@@ -2282,17 +2270,17 @@ pub(crate) fn opj_pi_create_encode(
                     pi[pino as usize].poc.resno0 = tcp.res_t;
                     pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
                     tcp.res_t =
-                      (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32;
-                    incr_top = 1 as OPJ_UINT32
+                      (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32);
+                    incr_top = 1_u32
                   } else {
-                    incr_top = 0 as OPJ_UINT32
+                    incr_top = 0_u32
                   }
                 } else {
                   pi[pino as usize].poc.resno0 = tcp.res_t;
                   pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
                   tcp.res_t =
-                    (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32;
-                  incr_top = 0 as OPJ_UINT32
+                    (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32);
+                  incr_top = 0_u32
                 }
               }
               ProgressionStep::Component => {
@@ -2302,17 +2290,17 @@ pub(crate) fn opj_pi_create_encode(
                     pi[pino as usize].poc.compno0 = tcp.comp_t;
                     pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
                     tcp.comp_t =
-                      (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32;
-                    incr_top = 1 as OPJ_UINT32
+                      (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32);
+                    incr_top = 1_u32
                   } else {
-                    incr_top = 0 as OPJ_UINT32
+                    incr_top = 0_u32
                   }
                 } else {
                   pi[pino as usize].poc.compno0 = tcp.comp_t;
                   pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
                   tcp.comp_t =
-                    (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32;
-                  incr_top = 0 as OPJ_UINT32
+                    (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32);
+                  incr_top = 0_u32
                 }
               }
               ProgressionStep::Layer => {
@@ -2322,17 +2310,17 @@ pub(crate) fn opj_pi_create_encode(
                     pi[pino as usize].poc.layno0 = tcp.lay_t;
                     pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
                     tcp.lay_t =
-                      (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32;
-                    incr_top = 1 as OPJ_UINT32
+                      (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32);
+                    incr_top = 1_u32
                   } else {
-                    incr_top = 0 as OPJ_UINT32
+                    incr_top = 0_u32
                   }
                 } else {
                   pi[pino as usize].poc.layno0 = tcp.lay_t;
                   pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
                   tcp.lay_t =
-                    (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32;
-                  incr_top = 0 as OPJ_UINT32
+                    (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32);
+                  incr_top = 0_u32
                 }
               }
               ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
@@ -2343,17 +2331,17 @@ pub(crate) fn opj_pi_create_encode(
                       pi[pino as usize].poc.precno0 = tcp.prc_t;
                       pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
                       tcp.prc_t =
-                        (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32;
-                      incr_top = 1 as OPJ_UINT32
+                        (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32);
+                      incr_top = 1_u32
                     } else {
-                      incr_top = 0 as OPJ_UINT32
+                      incr_top = 0_u32
                     }
                   } else {
                     pi[pino as usize].poc.precno0 = tcp.prc_t;
                     pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
                     tcp.prc_t =
-                      (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32) as OPJ_UINT32;
-                    incr_top = 0 as OPJ_UINT32
+                      (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32);
+                    incr_top = 0_u32
                   }
                 }
                 _ => {
@@ -2367,11 +2355,11 @@ pub(crate) fn opj_pi_create_encode(
                           .wrapping_add(tcp.dy)
                           .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
                         tcp.ty0_t = pi[pino as usize].poc.ty1;
-                        incr_top = 1 as OPJ_UINT32;
-                        resetX = 1 as OPJ_UINT32
+                        incr_top = 1_u32;
+                        resetX = 1_u32
                       } else {
-                        incr_top = 0 as OPJ_UINT32;
-                        resetX = 0 as OPJ_UINT32
+                        incr_top = 0_u32;
+                        resetX = 0_u32
                       }
                     } else {
                       pi[pino as usize].poc.ty0 = tcp.ty0_t;
@@ -2380,8 +2368,8 @@ pub(crate) fn opj_pi_create_encode(
                         .wrapping_add(tcp.dy)
                         .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
                       tcp.ty0_t = pi[pino as usize].poc.ty1;
-                      incr_top = 0 as OPJ_UINT32;
-                      resetX = 1 as OPJ_UINT32
+                      incr_top = 0_u32;
+                      resetX = 1_u32
                     }
                     if resetX == 1u32 {
                       tcp.tx0_t = tcp.txS;
@@ -2399,7 +2387,7 @@ pub(crate) fn opj_pi_create_encode(
                       .wrapping_add(tcp.dx)
                       .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
                     tcp.tx0_t = pi[pino as usize].poc.tx1;
-                    incr_top = 0 as OPJ_UINT32
+                    incr_top = 0_u32
                   }
                 }
               },
@@ -2412,25 +2400,25 @@ pub(crate) fn opj_pi_create_encode(
     };
 }
 
-pub(crate) fn opj_pi_destroy(p_pi: &mut Vec<opj_pi_iterator_t>) {
+pub(crate) fn opj_pi_destroy(p_pi: &mut Vec<PiIterator>) {
   /* Clearing drops each element's own comps/resolutions Vecs and the
    * shared include Rc. */
   p_pi.clear();
 }
 pub(crate) fn opj_pi_update_encoding_parameters(
   p_image: &mut CoreImage,
-  p_cp: &mut opj_cp_t,
-  p_tile_no: OPJ_UINT32,
+  p_cp: &mut Cp,
+  p_tile_no: u32,
 ) {
   /* encoding parameters to set */
-  let mut l_max_res: OPJ_UINT32 = 0;
-  let mut l_max_prec: OPJ_UINT32 = 0;
-  let mut l_tx0: OPJ_UINT32 = 0;
-  let mut l_tx1: OPJ_UINT32 = 0;
-  let mut l_ty0: OPJ_UINT32 = 0;
-  let mut l_ty1: OPJ_UINT32 = 0;
-  let mut l_dx_min: OPJ_UINT32 = 0;
-  let mut l_dy_min: OPJ_UINT32 = 0;
+  let mut l_max_res: u32 = 0;
+  let mut l_max_prec: u32 = 0;
+  let mut l_tx0: u32 = 0;
+  let mut l_tx1: u32 = 0;
+  let mut l_ty0: u32 = 0;
+  let mut l_ty1: u32 = 0;
+  let mut l_dx_min: u32 = 0;
+  let mut l_dy_min: u32 = 0;
   /* preconditions */
 
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
@@ -2470,8 +2458,8 @@ pub(crate) fn opj_pi_update_encoding_parameters(
 }
 
 pub(crate) fn opj_pi_next(
-  pi: &mut opj_pi_iterator_t,
-  manager: &mut opj_event_mgr,
+  pi: &mut PiIterator,
+  manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   match pi.poc.prg as core::ffi::c_int {
       0 => return opj_pi_next_lrcp(pi, manager),

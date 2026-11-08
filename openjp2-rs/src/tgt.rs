@@ -49,17 +49,17 @@ use super::openjpeg::*;
 /// Compute the per-level leaf counts and the total node count for a `numleafsh` x `numleafsv`
 /// tag tree. Returns `(nplh, nplv, numlvls, numnodes)`.
 fn opj_tgt_levels(
-  numleafsh: OPJ_UINT32,
-  numleafsv: OPJ_UINT32,
-) -> ([OPJ_INT32; 32], [OPJ_INT32; 32], usize, usize) {
-  let mut nplh: [OPJ_INT32; 32] = [0; 32];
-  let mut nplv: [OPJ_INT32; 32] = [0; 32];
-  nplh[0] = numleafsh as OPJ_INT32;
-  nplv[0] = numleafsv as OPJ_INT32;
+  numleafsh: u32,
+  numleafsv: u32,
+) -> ([i32; 32], [i32; 32], usize, usize) {
+  let mut nplh: [i32; 32] = [0; 32];
+  let mut nplv: [i32; 32] = [0; 32];
+  nplh[0] = numleafsh as i32;
+  nplv[0] = numleafsv as i32;
   let mut numlvls = 0usize;
   let mut numnodes = 0usize;
   loop {
-    let n = (nplh[numlvls] * nplv[numlvls]) as OPJ_UINT32;
+    let n = (nplh[numlvls] * nplv[numlvls]) as u32;
     nplh[numlvls + 1] = (nplh[numlvls] + 1i32) / 2i32;
     nplv[numlvls + 1] = (nplv[numlvls] + 1i32) / 2i32;
     numnodes += n as usize;
@@ -73,9 +73,9 @@ fn opj_tgt_levels(
 
 /// Wire up each node's parent index. Mirrors the pointer walk in `src/lib/openjp2/tgt.c`.
 fn opj_tgt_link_parents(
-  tree: &mut opj_tgt_tree_t,
-  nplh: &[OPJ_INT32; 32],
-  nplv: &[OPJ_INT32; 32],
+  tree: &mut TgtTree,
+  nplh: &[i32; 32],
+  nplv: &[i32; 32],
   numlvls: usize,
 ) {
   let mut node = 0usize;
@@ -90,11 +90,11 @@ fn opj_tgt_link_parents(
         if k < 0i32 {
           break;
         }
-        tree.nodes[node].parent = Some(parent as OPJ_UINT32);
+        tree.nodes[node].parent = Some(parent as u32);
         node += 1;
         k -= 1;
         if k >= 0i32 {
-          tree.nodes[node].parent = Some(parent as OPJ_UINT32);
+          tree.nodes[node].parent = Some(parent as u32);
           node += 1;
         }
         parent += 1;
@@ -112,16 +112,16 @@ fn opj_tgt_link_parents(
 }
 
 pub(crate) fn opj_tgt_create(
-  numleafsh: OPJ_UINT32,
-  numleafsv: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> Option<Box<opj_tgt_tree_t>> {
+  numleafsh: u32,
+  numleafsv: u32,
+  p_manager: &mut EventMgr,
+) -> Option<Box<TgtTree>> {
   let (nplh, nplv, numlvls, numnodes) = opj_tgt_levels(numleafsh, numleafsv);
   /* ADD */
   if numnodes == 0 {
     return None;
   }
-  let mut tree = Box::new(opj_tgt_tree_t {
+  let mut tree = Box::new(TgtTree {
     numleafsh,
     numleafsv,
     nodes: Vec::new(),
@@ -134,7 +134,7 @@ pub(crate) fn opj_tgt_create(
     );
     return None;
   }
-  tree.nodes.resize(numnodes, opj_tgt_node_t::default());
+  tree.nodes.resize(numnodes, TgtNode::default());
   opj_tgt_link_parents(&mut tree, &nplh, &nplv, numlvls);
   opj_tgt_reset(&mut tree);
   Some(tree)
@@ -149,11 +149,11 @@ pub(crate) fn opj_tgt_create(
 */
 
 pub(crate) fn opj_tgt_init(
-  mut tree: Box<opj_tgt_tree_t>,
-  p_num_leafs_h: OPJ_UINT32,
-  p_num_leafs_v: OPJ_UINT32,
-  p_manager: &mut opj_event_mgr,
-) -> Option<Box<opj_tgt_tree_t>> {
+  mut tree: Box<TgtTree>,
+  p_num_leafs_h: u32,
+  p_num_leafs_v: u32,
+  p_manager: &mut EventMgr,
+) -> Option<Box<TgtTree>> {
   if tree.numleafsh != p_num_leafs_h || tree.numleafsv != p_num_leafs_v {
     tree.numleafsh = p_num_leafs_h;
     tree.numleafsv = p_num_leafs_v;
@@ -175,7 +175,7 @@ pub(crate) fn opj_tgt_init(
         );
         return None;
       }
-      tree.nodes.resize(numnodes, opj_tgt_node_t::default());
+      tree.nodes.resize(numnodes, TgtNode::default());
     } else {
       /* The C code keeps the over-sized buffer; truncating keeps `nodes.len()` authoritative. */
       tree.nodes.truncate(numnodes);
@@ -186,15 +186,15 @@ pub(crate) fn opj_tgt_init(
   Some(tree)
 }
 
-pub(crate) fn opj_tgt_reset(tree: &mut opj_tgt_tree_t) {
+pub(crate) fn opj_tgt_reset(tree: &mut TgtTree) {
   for node in &mut tree.nodes {
     node.value = 999i32;
     node.low = 0i32;
-    node.known = 0 as OPJ_UINT32;
+    node.known = 0_u32;
   }
 }
 
-pub(crate) fn opj_tgt_setvalue(tree: &mut opj_tgt_tree_t, leafno: OPJ_UINT32, value: OPJ_INT32) {
+pub(crate) fn opj_tgt_setvalue(tree: &mut TgtTree, leafno: u32, value: i32) {
   let mut current = Some(leafno);
   while let Some(idx) = current {
     let node = &mut tree.nodes[idx as usize];
@@ -207,12 +207,12 @@ pub(crate) fn opj_tgt_setvalue(tree: &mut opj_tgt_tree_t, leafno: OPJ_UINT32, va
 }
 
 pub(crate) fn opj_tgt_encode(
-  bio: &mut opj_bio,
-  tree: &mut opj_tgt_tree_t,
-  leafno: OPJ_UINT32,
-  threshold: OPJ_INT32,
+  bio: &mut Bio,
+  tree: &mut TgtTree,
+  leafno: u32,
+  threshold: i32,
 ) {
-  let mut stk: [OPJ_UINT32; 31] = [0; 31];
+  let mut stk: [u32; 31] = [0; 31];
   let mut stkptr = 0usize;
   let mut node = leafno;
   while let Some(parent) = tree.nodes[node as usize].parent {
@@ -233,7 +233,7 @@ pub(crate) fn opj_tgt_encode(
         if low >= n.value {
           if n.known == 0 {
             opj_bio_putbit(bio, 1);
-            n.known = 1 as OPJ_UINT32
+            n.known = 1_u32
           }
           break;
         } else {
@@ -252,12 +252,12 @@ pub(crate) fn opj_tgt_encode(
 }
 
 pub(crate) fn opj_tgt_decode(
-  bio: &mut opj_bio,
-  tree: &mut opj_tgt_tree_t,
-  leafno: OPJ_UINT32,
-  threshold: OPJ_INT32,
-) -> OPJ_UINT32 {
-  let mut stk: [OPJ_UINT32; 31] = [0; 31];
+  bio: &mut Bio,
+  tree: &mut TgtTree,
+  leafno: u32,
+  threshold: i32,
+) -> u32 {
+  let mut stk: [u32; 31] = [0; 31];
   let mut stkptr = 0usize;
   let mut node = leafno;
   while let Some(parent) = tree.nodes[node as usize].parent {
@@ -275,7 +275,7 @@ pub(crate) fn opj_tgt_decode(
         low = n.low
       }
       while low < threshold && low < n.value {
-        if opj_bio_read(bio, 1 as OPJ_UINT32) != 0 {
+        if opj_bio_read(bio, 1_u32) != 0 {
           n.value = low
         } else {
           low += 1
@@ -293,5 +293,5 @@ pub(crate) fn opj_tgt_decode(
     1i32
   } else {
     0i32
-  }) as OPJ_UINT32
+  }) as u32
 }

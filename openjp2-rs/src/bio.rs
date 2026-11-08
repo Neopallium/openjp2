@@ -1,15 +1,14 @@
 use super::openjpeg::*;
 
 /// Individual bit input-output stream over a borrowed byte buffer.
-pub(crate) struct opj_bio<'a> {
+pub(crate) struct Bio<'a> {
   data: &'a mut [u8],
   cursor: usize,
-  buf: OPJ_UINT32,
-  ct: OPJ_UINT32,
+  buf: u32,
+  ct: u32,
 }
-pub(crate) type opj_bio_t<'a> = opj_bio<'a>;
 
-impl<'a> opj_bio<'a> {
+impl<'a> Bio<'a> {
   pub(crate) fn new_enc(data: &'a mut [u8]) -> Self {
     Self {
       data,
@@ -38,7 +37,7 @@ impl<'a> opj_bio<'a> {
     self.ct = if self.buf == 0xff00u32 { 7 } else { 8 };
     match self.data.get_mut(self.cursor) {
       Some(slot) => {
-        *slot = (self.buf >> 8i32) as OPJ_BYTE;
+        *slot = (self.buf >> 8i32) as u8;
         self.cursor += 1;
         1i32
       }
@@ -51,7 +50,7 @@ impl<'a> opj_bio<'a> {
     self.ct = if self.buf == 0xff00u32 { 7 } else { 8 };
     match self.data.get(self.cursor) {
       Some(&byte) => {
-        self.buf |= byte as OPJ_UINT32;
+        self.buf |= byte as u32;
         self.cursor += 1;
         1i32
       }
@@ -59,7 +58,7 @@ impl<'a> opj_bio<'a> {
     }
   }
 
-  fn putbit(&mut self, b: OPJ_UINT32) {
+  fn putbit(&mut self, b: u32) {
     if self.ct == 0 {
       /* MSD: why not check the return value of this function ? */
       self.byteout();
@@ -68,7 +67,7 @@ impl<'a> opj_bio<'a> {
     self.buf |= b << self.ct;
   }
 
-  fn getbit(&mut self) -> OPJ_UINT32 {
+  fn getbit(&mut self) -> u32 {
     if self.ct == 0 {
       /* MSD: why not check the return value of this function ? */
       self.bytein();
@@ -84,7 +83,7 @@ impl<'a> opj_bio<'a> {
 ==========================================================
 */
 
-pub(crate) fn opj_bio_numbytes(bio: &opj_bio) -> isize {
+pub(crate) fn opj_bio_numbytes(bio: &Bio) -> isize {
   bio.numbytes() as isize
 }
 
@@ -93,23 +92,23 @@ Write a bit
 @param bio BIO handle
 @param b Bit to write (0 or 1)
 */
-pub(crate) fn opj_bio_putbit(bio: &mut opj_bio, b: OPJ_UINT32) {
+pub(crate) fn opj_bio_putbit(bio: &mut Bio, b: u32) {
   bio.putbit(b)
 }
 
-pub(crate) fn opj_bio_write(bio: &mut opj_bio, v: OPJ_UINT32, n: OPJ_UINT32) {
+pub(crate) fn opj_bio_write(bio: &mut Bio, v: u32, n: u32) {
   assert!(n > 0u32 && n <= 32u32);
-  let mut i = n as OPJ_INT32 - 1i32;
+  let mut i = n as i32 - 1i32;
   while i >= 0i32 {
     bio.putbit(v >> i & 1u32);
     i -= 1
   }
 }
 
-pub(crate) fn opj_bio_read(bio: &mut opj_bio, n: OPJ_UINT32) -> OPJ_UINT32 {
+pub(crate) fn opj_bio_read(bio: &mut Bio, n: u32) -> u32 {
   assert!(n > 0u32);
   let mut v = 0u32;
-  let mut i = n as OPJ_INT32 - 1i32;
+  let mut i = n as i32 - 1i32;
   while i >= 0i32 {
     /* can't overflow, getbit returns 0 or 1 */
     v |= bio.getbit() << i;
@@ -118,7 +117,7 @@ pub(crate) fn opj_bio_read(bio: &mut opj_bio, n: OPJ_UINT32) -> OPJ_UINT32 {
   v
 }
 
-pub(crate) fn opj_bio_flush(bio: &mut opj_bio) -> OPJ_BOOL {
+pub(crate) fn opj_bio_flush(bio: &mut Bio) -> OPJ_BOOL {
   if bio.byteout() == 0 {
     return 0i32;
   }
@@ -128,7 +127,7 @@ pub(crate) fn opj_bio_flush(bio: &mut opj_bio) -> OPJ_BOOL {
   1i32
 }
 
-pub(crate) fn opj_bio_inalign(bio: &mut opj_bio) -> OPJ_BOOL {
+pub(crate) fn opj_bio_inalign(bio: &mut Bio) -> OPJ_BOOL {
   if bio.buf & 0xffu32 == 0xffu32 && bio.bytein() == 0 {
     return 0i32;
   }

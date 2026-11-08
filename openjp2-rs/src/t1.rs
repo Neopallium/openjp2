@@ -197,11 +197,11 @@ impl T1Data {
 
   /// Raw view of the coefficient buffer, kept only for the tile-interop loops in
   /// `opj_t1_clbl_decode_processor` / `opj_t1_cblk_encode_processor` that still walk
-  /// `opj_tcd_tilecomp::data` as a raw pointer. Dropped in phase 3, when the tile component
+  /// `TcdTileComp::data` as a raw pointer. Dropped in phase 3, when the tile component
   /// owns its samples as a `Vec`.
-  pub fn as_mut_ptr(&self) -> *mut OPJ_INT32 {
+  pub fn as_mut_ptr(&self) -> *mut i32 {
     // `Cell<i32>` is `repr(transparent)` over `i32`, so this is a layout-preserving cast.
-    self.data.as_ptr() as *mut OPJ_INT32
+    self.data.as_ptr() as *mut i32
   }
 
   pub fn offset(&self, offset: isize) -> DataPtr<'_> {
@@ -213,21 +213,18 @@ impl T1Data {
 }
 
 #[derive(Default)]
-pub(crate) struct opj_t1 {
-  pub mqc: opj_mqc_t,
+pub(crate) struct T1Coder {
+  pub mqc: Mqc,
   pub data: T1Data,
   pub flags: T1Flags,
-  pub w: OPJ_UINT32,
-  pub h: OPJ_UINT32,
-  pub datasize: OPJ_UINT32,
+  pub w: u32,
+  pub h: u32,
+  pub datasize: u32,
   pub encoder: OPJ_BOOL,
   pub mustuse_cblkdatabuffer: OPJ_BOOL,
   pub cblkdatabuffer: Vec<u8>,
 }
-pub(crate) type opj_t1_t = opj_t1;
-
-
-impl opj_t1 {
+impl T1Coder {
   fn new() -> Self {
     Self::default()
   }
@@ -248,7 +245,7 @@ impl opj_t1 {
 
   /// Disjoint borrows of the MQ coder and the coefficient/flag cursors, so a coding pass can
   /// drive the coder while walking both buffers.
-  fn split<'a>(&'a mut self, flags_stride: OPJ_UINT32) -> (&'a mut opj_mqc_t, DataPtr<'a>, FlagsPtr<'a>) {
+  fn split<'a>(&'a mut self, flags_stride: u32) -> (&'a mut Mqc, DataPtr<'a>, FlagsPtr<'a>) {
     self.split_with(flags_stride, None)
   }
 
@@ -257,9 +254,9 @@ impl opj_t1 {
   /// thread-local T1 cache from holding any reference to the code-block.
   fn split_with<'a>(
     &'a mut self,
-    flags_stride: OPJ_UINT32,
+    flags_stride: u32,
     data: Option<&'a [Cell<i32>]>,
-  ) -> (&'a mut opj_mqc_t, DataPtr<'a>, FlagsPtr<'a>) {
+  ) -> (&'a mut Mqc, DataPtr<'a>, FlagsPtr<'a>) {
     let data = match data {
       Some(data) => DataPtr { data, idx: 0 },
       None => self.data.offset(0),
@@ -270,27 +267,27 @@ impl opj_t1 {
 }
 
 thread_local! {
-  static T1: RefCell<opj_t1> = RefCell::new(opj_t1::new())
+  static T1: RefCell<T1Coder> = RefCell::new(T1Coder::new())
 }
 
 #[inline]
-fn opj_t1_setcurctx(mqc: &mut opj_mqc_t, ctxno: u8) {
+fn opj_t1_setcurctx(mqc: &mut Mqc, ctxno: u8) {
   mqc.set_curctx(ctxno);
 }
 
 /* Macros to deal with signed integer with just MSB bit set for
  * negative values (smr = signed magnitude representation) */
-//#define opj_smr_abs(x)  (((OPJ_UINT32)(x)) & 0x7FFFFFFFU)
+//#define opj_smr_abs(x)  (((u32)(x)) & 0x7FFFFFFFU)
 fn opj_smr_abs(x: i32) -> u32 {
   x as u32 & 0x7FFFFFFFu32
 }
 
-//#define opj_smr_sign(x) (((OPJ_UINT32)(x)) >> 31)
+//#define opj_smr_sign(x) (((u32)(x)) >> 31)
 fn opj_smr_sign(x: i32) -> u32 {
   x as u32 >> 31
 }
 
-//#define opj_to_smr(x)   ((x) >= 0 ? (OPJ_UINT32)(x) : ((OPJ_UINT32)(-x) | 0x80000000U))
+//#define opj_to_smr(x)   ((x) >= 0 ? (u32)(x) : ((u32)(-x) | 0x80000000U))
 fn opj_to_smr(x: i32) -> u32 {
   if x >= 0 {
     x as u32
@@ -306,17 +303,17 @@ fn opj_to_smr(x: i32) -> u32 {
 /* ----------------------------------------------------------------------- */
 
 #[inline]
-fn opj_t1_getctxno_zc(mut mqc: &mut opj_mqc_t, f: OPJ_UINT32) -> OPJ_BYTE {
+fn opj_t1_getctxno_zc(mut mqc: &mut Mqc, f: u32) -> u8 {
   mqc.lut_ctxno_zc_orient[(f & T1_SIGMA_NEIGHBOURS) as usize]
 }
 
 #[inline]
 fn opj_t1_getctxtno_sc_or_spb_index(
-  mut fX: OPJ_UINT32,
-  mut pfX: OPJ_UINT32,
-  mut nfX: OPJ_UINT32,
-  mut ci: OPJ_UINT32,
-) -> OPJ_UINT32 {
+  mut fX: u32,
+  mut pfX: u32,
+  mut nfX: u32,
+  mut ci: u32,
+) -> u32 {
   /*
     0 pfX T1_CHI_THIS           T1_LUT_SGN_W
     1 tfX T1_SIGMA_1            T1_LUT_SIG_N
@@ -342,12 +339,12 @@ fn opj_t1_getctxtno_sc_or_spb_index(
 }
 
 #[inline]
-fn opj_t1_getctxno_sc(mut lu: OPJ_UINT32) -> OPJ_BYTE {
+fn opj_t1_getctxno_sc(mut lu: u32) -> u8 {
   lut_ctxno_sc[lu as usize]
 }
 
 #[inline]
-fn opj_t1_getctxno_mag(mut f: OPJ_UINT32) -> u8 {
+fn opj_t1_getctxno_mag(mut f: u32) -> u8 {
   let tmp = if f & T1_SIGMA_NEIGHBOURS != 0 {
     T1_CTXNO_MAG + 1
   } else {
@@ -362,18 +359,18 @@ fn opj_t1_getctxno_mag(mut f: OPJ_UINT32) -> u8 {
 }
 
 #[inline]
-fn opj_t1_getspb(mut lu: OPJ_UINT32) -> OPJ_BYTE {
+fn opj_t1_getspb(mut lu: u32) -> u8 {
   lut_spb[lu as usize]
 }
 
-fn opj_t1_getnmsedec_sig(mut x: OPJ_UINT32, mut bitpos: OPJ_UINT32) -> OPJ_INT16 {
+fn opj_t1_getnmsedec_sig(mut x: u32, mut bitpos: u32) -> i16 {
   if bitpos > 0 {
     return lut_nmsedec_sig[((x >> bitpos) & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
   }
   lut_nmsedec_sig0[(x & ((1 << T1_NMSEDEC_BITS) - 1)) as usize]
 }
 
-fn opj_t1_getnmsedec_ref(mut x: OPJ_UINT32, mut bitpos: OPJ_UINT32) -> OPJ_INT16 {
+fn opj_t1_getnmsedec_ref(mut x: u32, mut bitpos: u32) -> i16 {
   if bitpos > 0 {
     return lut_nmsedec_ref[((x >> bitpos) & ((1 << T1_NMSEDEC_BITS) - 1)) as usize];
   }
@@ -383,10 +380,10 @@ fn opj_t1_getnmsedec_ref(mut x: OPJ_UINT32, mut bitpos: OPJ_UINT32) -> OPJ_INT16
 #[inline]
 fn opj_t1_update_flags_macro(
   flagsp: FlagsPtr,
-  ci: OPJ_UINT32,
-  s: OPJ_UINT32,
-  stride: OPJ_UINT32,
-  vsc: OPJ_UINT32,
+  ci: u32,
+  s: u32,
+  stride: u32,
+  vsc: u32,
 ) {
   /* east */
   flagsp.or_at(-1, T1_SIGMA_5 << 3_u32.wrapping_mul(ci));
@@ -417,10 +414,10 @@ fn opj_t1_update_flags_macro(
 #[inline]
 fn opj_t1_update_flags(
   flagsp: FlagsPtr,
-  ci: OPJ_UINT32,
-  s: OPJ_UINT32,
-  stride: OPJ_UINT32,
-  vsc: OPJ_UINT32,
+  ci: u32,
+  s: u32,
+  stride: u32,
+  vsc: u32,
 ) {
   opj_t1_update_flags_macro(flagsp, ci, s, stride, vsc);
 }
@@ -434,16 +431,16 @@ Encode significant pass
 */
 #[inline]
 fn opj_t1_enc_sigpass_step_macro(
-  mqc: &mut opj_mqc_t,
-  w: OPJ_UINT32,
+  mqc: &mut Mqc,
+  w: u32,
   flagsp: FlagsPtr,
   l_datap: DataPtr,
-  bpno: OPJ_INT32,
-  one: OPJ_UINT32,
-  nmsedec: &mut OPJ_INT32,
-  type_0: OPJ_BYTE,
-  ci: OPJ_UINT32,
-  vsc: OPJ_UINT32,
+  bpno: i32,
+  one: u32,
+  nmsedec: &mut i32,
+  type_0: u8,
+  ci: u32,
+  vsc: u32,
 ) {
     let mut v = 0;
     let flags = flagsp.get();
@@ -476,7 +473,7 @@ fn opj_t1_enc_sigpass_step_macro(
           /* BYPASS/LAZY MODE */
           opj_mqc_bypass_enc_macro(mqc, v);
         } else {
-          let spb = opj_t1_getspb(lu) as OPJ_UINT32;
+          let spb = opj_t1_getspb(lu) as u32;
           log::debug!("   spb={}", spb);
           opj_mqc_encode_macro(mqc, v ^ spb);
         }
@@ -488,13 +485,13 @@ fn opj_t1_enc_sigpass_step_macro(
 
 #[inline]
 fn opj_t1_dec_sigpass_step_raw(
-  mqc: &mut opj_mqc_t,
-  w: OPJ_UINT32,
+  mqc: &mut Mqc,
+  w: u32,
   flagsp: FlagsPtr,
   datap: DataPtr,
-  mut oneplushalf: OPJ_INT32,
-  mut vsc: OPJ_UINT32,
-  mut ci: OPJ_UINT32,
+  mut oneplushalf: i32,
+  mut vsc: u32,
+  mut ci: u32,
 ) {
   let mut v = 0;
   let flags = flagsp.get();
@@ -513,14 +510,14 @@ fn opj_t1_dec_sigpass_step_raw(
 #[inline]
 fn opj_t1_dec_sigpass_step_mqc_macro(
   flagsp: FlagsPtr,
-  mut flags_stride: OPJ_UINT32,
+  mut flags_stride: u32,
   datap: DataPtr,
-  mut data_stride: OPJ_UINT32,
-  mut ci: OPJ_UINT32,
-  mut mqc: &mut opj_mqc_t,
-  mut v: OPJ_UINT32,
-  mut oneplushalf: OPJ_INT32,
-  mut vsc: OPJ_UINT32,
+  mut data_stride: u32,
+  mut ci: u32,
+  mut mqc: &mut Mqc,
+  mut v: u32,
+  mut oneplushalf: i32,
+  mut vsc: u32,
 ) {
   let flags = flagsp.get();
   if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0
@@ -532,7 +529,7 @@ fn opj_t1_dec_sigpass_step_mqc_macro(
     if v != 0 {
       let mut lu = opj_t1_getctxtno_sc_or_spb_index(flags, flagsp.at(-1), flagsp.at(1), ci);
       let mut ctxt2 = opj_t1_getctxno_sc(lu);
-      let mut spb = opj_t1_getspb(lu) as OPJ_UINT32;
+      let mut spb = opj_t1_getspb(lu) as u32;
       opj_t1_setcurctx(mqc, ctxt2);
       opj_mqc_decode_macro(&mut v, mqc);
       v ^= spb;
@@ -548,13 +545,13 @@ fn opj_t1_dec_sigpass_step_mqc_macro(
 
 #[inline]
 fn opj_t1_dec_sigpass_step_mqc(
-  mut t1: &mut opj_t1_t,
+  mut t1: &mut T1Coder,
   mut flagsp: FlagsPtr,
   mut datap: DataPtr,
-  mut oneplushalf: OPJ_INT32,
-  mut ci: OPJ_UINT32,
-  mut flags_stride: OPJ_UINT32,
-  mut vsc: OPJ_UINT32,
+  mut oneplushalf: i32,
+  mut ci: u32,
+  mut flags_stride: u32,
+  mut vsc: u32,
 ) {
   let v = 0;
   let mut mqc = &mut t1.mqc; // MQC component
@@ -562,7 +559,7 @@ fn opj_t1_dec_sigpass_step_mqc(
 }
 
 // #define T1_FLAGS(x, y)
-fn t1_flags(flags: &T1Flags, w: OPJ_UINT32, x: u32, y: u32) -> FlagsPtr<'_> {
+fn t1_flags(flags: &T1Flags, w: u32, x: u32, y: u32) -> FlagsPtr<'_> {
   flags.offset((x + 1).wrapping_add((y / 4 + 1).wrapping_mul(w.wrapping_add(2))) as isize)
 }
 
@@ -570,11 +567,11 @@ fn t1_flags(flags: &T1Flags, w: OPJ_UINT32, x: u32, y: u32) -> FlagsPtr<'_> {
 Encode significant pass
 */
 fn opj_t1_enc_sigpass(
-  mut t1: &mut opj_t1_t,
-  mut bpno: OPJ_INT32,
-  mut nmsedec: &mut OPJ_INT32,
-  mut type_0: OPJ_BYTE,
-  mut cblksty: OPJ_UINT32,
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
+  mut nmsedec: &mut i32,
+  mut type_0: u8,
+  mut cblksty: u32,
 ) {
     let mut i = 0;
     let mut k = 0;
@@ -652,7 +649,7 @@ fn opj_t1_enc_sigpass(
     }
 
     if k < h {
-      let mut j: OPJ_UINT32 = 0;
+      let mut j: u32 = 0;
       log::debug!(" k={}", k);
       i = 0;
       while i < w {
@@ -689,9 +686,9 @@ fn opj_t1_enc_sigpass(
 Decode significant pass
 */
 fn opj_t1_dec_sigpass_raw(
-  mut t1: &mut opj_t1_t,
-  mut bpno: OPJ_INT32,
-  mut cblksty: OPJ_INT32,
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
+  mut cblksty: i32,
   data_src: Option<&[Cell<i32>]>,
 ) {
   let mut one = 0;
@@ -780,12 +777,12 @@ fn opj_t1_dec_sigpass_raw(
 }
 
 fn opj_t1_dec_sigpass_mqc_internal(
-  mut t1: &mut opj_t1_t,
-  mut bpno: OPJ_INT32,
-  vsc: OPJ_UINT32,
-  w: OPJ_UINT32,
-  h: OPJ_UINT32,
-  flags_stride: OPJ_UINT32,
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
+  vsc: u32,
+  w: u32,
+  h: u32,
+  flags_stride: u32,
   data_src: Option<&[Cell<i32>]>,
 ) {
   let mut one = 0;
@@ -884,26 +881,26 @@ fn opj_t1_dec_sigpass_mqc_internal(
   }
 }
 
-fn opj_t1_dec_sigpass_mqc_64x64_novsc(t1: &mut opj_t1_t, bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_sigpass_mqc_64x64_novsc(t1: &mut T1Coder, bpno: i32, data_src: Option<&[Cell<i32>]>) {
   opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_FALSE, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_sigpass_mqc_64x64_vsc(t1: &mut opj_t1_t, bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_sigpass_mqc_64x64_vsc(t1: &mut T1Coder, bpno: i32, data_src: Option<&[Cell<i32>]>) {
   opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_TRUE, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_sigpass_mqc_generic_novsc(t1: &mut opj_t1_t, bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_sigpass_mqc_generic_novsc(t1: &mut T1Coder, bpno: i32, data_src: Option<&[Cell<i32>]>) {
   opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_FALSE, t1.w, t1.h, t1.w + 2, data_src);
 }
 
-fn opj_t1_dec_sigpass_mqc_generic_vsc(t1: &mut opj_t1_t, bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_sigpass_mqc_generic_vsc(t1: &mut T1Coder, bpno: i32, data_src: Option<&[Cell<i32>]>) {
   opj_t1_dec_sigpass_mqc_internal(t1, bpno, OPJ_TRUE, t1.w, t1.h, t1.w + 2, data_src);
 }
 
 fn opj_t1_dec_sigpass_mqc(
-  mut t1: &mut opj_t1_t,
-  mut bpno: OPJ_INT32,
-  mut cblksty: OPJ_INT32,
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
+  mut cblksty: i32,
   data_src: Option<&[Cell<i32>]>,
 ) {
   if t1.w == 64 && t1.h == 64 {
@@ -928,16 +925,16 @@ Encode refinement pass step
 */
 #[inline]
 fn opj_t1_enc_refpass_step_macro(
-  mqc: &mut opj_mqc_t,
+  mqc: &mut Mqc,
   flagsp: FlagsPtr,
   l_datap: DataPtr,
-  bpno: OPJ_INT32,
-  one: OPJ_UINT32,
-  nmsedec: &mut OPJ_INT32,
-  type_0: OPJ_BYTE,
-  ci: OPJ_UINT32,
+  bpno: i32,
+  one: u32,
+  nmsedec: &mut i32,
+  type_0: u8,
+  ci: u32,
 ) {
-    let mut v: OPJ_UINT32 = 0;
+    let mut v: u32 = 0;
     let flags = flagsp.get();
     if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3)))
       == (T1_SIGMA_THIS << ci.wrapping_mul(3))
@@ -962,11 +959,11 @@ fn opj_t1_enc_refpass_step_macro(
 
 #[inline]
 fn opj_t1_dec_refpass_step_raw(
-  mqc: &mut opj_mqc_t,
+  mqc: &mut Mqc,
   flagsp: FlagsPtr,
   datap: DataPtr,
-  mut poshalf: OPJ_INT32,
-  mut ci: OPJ_UINT32,
+  mut poshalf: i32,
+  mut ci: u32,
 ) {
   let mut v = 0;
 
@@ -989,11 +986,11 @@ fn opj_t1_dec_refpass_step_raw(
 fn opj_t1_dec_refpass_step_mqc_macro(
   flagsp: FlagsPtr,
   datap: DataPtr,
-  mut data_stride: OPJ_UINT32,
-  mut ci: OPJ_UINT32,
-  mut mqc: &mut opj_mqc_t,
-  mut v: &mut OPJ_UINT32,
-  mut poshalf: OPJ_INT32,
+  mut data_stride: u32,
+  mut ci: u32,
+  mut mqc: &mut Mqc,
+  mut v: &mut u32,
+  mut poshalf: i32,
 ) {
   let flags = flagsp.get();
   if (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3)))
@@ -1017,11 +1014,11 @@ fn opj_t1_dec_refpass_step_mqc_macro(
 
 #[inline]
 fn opj_t1_dec_refpass_step_mqc(
-  mut t1: &mut opj_t1_t,
+  mut t1: &mut T1Coder,
   mut flagsp: FlagsPtr,
   mut datap: DataPtr,
-  mut poshalf: OPJ_INT32,
-  mut ci: OPJ_UINT32,
+  mut poshalf: i32,
+  mut ci: u32,
 ) {
   let mut v = 0;
 
@@ -1033,13 +1030,13 @@ fn opj_t1_dec_refpass_step_mqc(
 Encode refinement pass
 */
 fn opj_t1_enc_refpass(
-  mut t1: &mut opj_t1_t,
-  mut bpno: OPJ_INT32,
-  mut nmsedec: &mut OPJ_INT32,
-  mut type_0: OPJ_BYTE,
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
+  mut nmsedec: &mut i32,
+  mut type_0: u8,
 ) {
-    let mut i: OPJ_UINT32 = 0;
-    let mut k: OPJ_UINT32 = 0;
+    let mut i: u32 = 0;
+    let mut k: u32 = 0;
     let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
     let extra = 2;
     let (w, h) = (t1.w, t1.h);
@@ -1075,7 +1072,7 @@ fn opj_t1_enc_refpass(
     }
 
     if k < h {
-      let mut j: OPJ_UINT32 = 0;
+      let mut j: u32 = 0;
       let remaining_lines = h - k;
       log::debug!(" k={}", k);
       i = 0;
@@ -1102,15 +1099,15 @@ fn opj_t1_enc_refpass(
 Decode refinement pass
 */
 fn opj_t1_dec_refpass_raw(
-  mut t1: &mut opj_t1_t,
-  mut bpno: OPJ_INT32,
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
   data_src: Option<&[Cell<i32>]>,
 ) {
-  let mut one: OPJ_INT32 = 0;
-  let mut poshalf: OPJ_INT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
-  let mut k: OPJ_UINT32 = 0;
+  let mut one: i32 = 0;
+  let mut poshalf: i32 = 0;
+  let mut i: u32 = 0;
+  let mut j: u32 = 0;
+  let mut k: u32 = 0;
   let (l_w, l_h) = (t1.w, t1.h);
   let (mqc, mut data, mut flagsp) = t1.split_with(l_w + 2, data_src);
   one = 1 << bpno;
@@ -1167,11 +1164,11 @@ fn opj_t1_dec_refpass_raw(
 }
 
 fn opj_t1_dec_refpass_mqc_internal(
-  mut t1: &mut opj_t1_t,
-  mut bpno: OPJ_INT32,
-  w: OPJ_UINT32,
-  h: OPJ_UINT32,
-  flags_stride: OPJ_UINT32,
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
+  w: u32,
+  h: u32,
+  flags_stride: u32,
   data_src: Option<&[Cell<i32>]>,
 ) {
   let mut one = 0;
@@ -1226,15 +1223,15 @@ fn opj_t1_dec_refpass_mqc_internal(
   }
 }
 
-fn opj_t1_dec_refpass_mqc_64x64(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_refpass_mqc_64x64(mut t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
   opj_t1_dec_refpass_mqc_internal(t1, bpno, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_refpass_mqc_generic(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_refpass_mqc_generic(mut t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
   opj_t1_dec_refpass_mqc_internal(t1, bpno, t1.w, t1.h, t1.w + 2, data_src);
 }
 
-fn opj_t1_dec_refpass_mqc(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_refpass_mqc(mut t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
   if t1.w == 64 && t1.h == 64 {
     opj_t1_dec_refpass_mqc_64x64(t1, bpno, data_src);
   } else {
@@ -1247,17 +1244,17 @@ Encode clean-up pass step
 */
 #[inline]
 fn opj_t1_enc_clnpass_step_macro(
-  mqc: &mut opj_mqc_t,
-  w: OPJ_UINT32,
+  mqc: &mut Mqc,
+  w: u32,
   flagsp: FlagsPtr,
   mut l_datap: DataPtr,
-  bpno: OPJ_INT32,
-  one: OPJ_UINT32,
-  nmsedec: &mut OPJ_INT32,
-  agg: OPJ_BYTE,
-  runlen: OPJ_UINT32,
-  lim: OPJ_UINT32,
-  cblksty: OPJ_UINT32,
+  bpno: i32,
+  one: u32,
+  nmsedec: &mut i32,
+  agg: u8,
+  runlen: u32,
+  lim: u32,
+  cblksty: u32,
 ) {
   const CHECK: opj_flag_t =
     T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3;
@@ -1322,14 +1319,14 @@ fn opj_t1_dec_clnpass_step_macro(
   check_flags: bool,
   partial: bool,
   flagsp: FlagsPtr,
-  flags_stride: OPJ_UINT32,
+  flags_stride: u32,
   datap: DataPtr,
-  data_stride: OPJ_UINT32,
-  ci: OPJ_UINT32,
-  mqc: &mut opj_mqc_t,
-  mut v: OPJ_UINT32,
-  oneplushalf: OPJ_INT32,
-  vsc: OPJ_UINT32,
+  data_stride: u32,
+  ci: u32,
+  mqc: &mut Mqc,
+  mut v: u32,
+  oneplushalf: i32,
+  vsc: u32,
 ) {
   let flags = flagsp.get();
   if !check_flags || (flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 {
@@ -1354,13 +1351,13 @@ fn opj_t1_dec_clnpass_step_macro(
 }
 
 fn opj_t1_dec_clnpass_step(
-  mqc: &mut opj_mqc_t,
-  w: OPJ_UINT32,
+  mqc: &mut Mqc,
+  w: u32,
   flagsp: FlagsPtr,
   datap: DataPtr,
-  mut oneplushalf: OPJ_INT32,
-  mut ci: OPJ_UINT32,
-  mut vsc: OPJ_UINT32,
+  mut oneplushalf: i32,
+  mut ci: u32,
+  mut vsc: u32,
 ) {
   let v = 0;
 
@@ -1383,13 +1380,13 @@ fn opj_t1_dec_clnpass_step(
 Encode clean-up pass
 */
 fn opj_t1_enc_clnpass(
-  mut t1: &mut opj_t1_t,
-  mut bpno: OPJ_INT32,
-  mut nmsedec: &mut OPJ_INT32,
-  mut cblksty: OPJ_UINT32,
+  mut t1: &mut T1Coder,
+  mut bpno: i32,
+  mut nmsedec: &mut i32,
+  mut cblksty: u32,
 ) {
-    let mut i: OPJ_UINT32 = 0;
-    let mut k: OPJ_UINT32 = 0;
+    let mut i: u32 = 0;
+    let mut k: u32 = 0;
     let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
     let extra = 2;
     let (w, h) = (t1.w, t1.h);
@@ -1469,8 +1466,8 @@ fn opj_t1_enc_clnpass(
 }
 
 fn opj_t1_dec_clnpass_internal(
-  t1: &mut opj_t1_t,
-  bpno: OPJ_INT32,
+  t1: &mut T1Coder,
+  bpno: i32,
   vsc: bool,
   w: u32,
   h: u32,
@@ -1661,7 +1658,7 @@ fn opj_t1_dec_clnpass_internal(
   }
 }
 
-fn opj_t1_dec_clnpass_check_segsym(mut t1: &mut opj_t1_t, mut cblksty: OPJ_INT32) {
+fn opj_t1_dec_clnpass_check_segsym(mut t1: &mut T1Coder, mut cblksty: i32) {
   if (cblksty as u32 & J2K_CCP_CBLKSTY_SEGSYM) != 0 {
     let mqc = &mut t1.mqc;
     let mut v = 0;
@@ -1682,23 +1679,23 @@ fn opj_t1_dec_clnpass_check_segsym(mut t1: &mut opj_t1_t, mut cblksty: OPJ_INT32
   }
 }
 
-fn opj_t1_dec_clnpass_64x64_novsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_clnpass_64x64_novsc(t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
   opj_t1_dec_clnpass_internal(t1, bpno, false, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_clnpass_64x64_vsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_clnpass_64x64_vsc(t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
   opj_t1_dec_clnpass_internal(t1, bpno, true, 64, 64, 66, data_src);
 }
 
-fn opj_t1_dec_clnpass_generic_novsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_clnpass_generic_novsc(t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
   opj_t1_dec_clnpass_internal(t1, bpno, false, t1.w, t1.h, t1.w + 2, data_src);
 }
 
-fn opj_t1_dec_clnpass_generic_vsc(t1: &mut opj_t1_t, mut bpno: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_clnpass_generic_vsc(t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
   opj_t1_dec_clnpass_internal(t1, bpno, true, t1.w, t1.h, t1.w + 2, data_src);
 }
 
-fn opj_t1_dec_clnpass(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, mut cblksty: OPJ_INT32, data_src: Option<&[Cell<i32>]>) {
+fn opj_t1_dec_clnpass(mut t1: &mut T1Coder, mut bpno: i32, mut cblksty: i32, data_src: Option<&[Cell<i32>]>) {
   if t1.w == 64 && t1.h == 64 {
     if (cblksty as u32 & J2K_CCP_CBLKSTY_VSC) != 0 {
       opj_t1_dec_clnpass_64x64_vsc(t1, bpno, data_src);
@@ -1714,17 +1711,17 @@ fn opj_t1_dec_clnpass(mut t1: &mut opj_t1_t, mut bpno: OPJ_INT32, mut cblksty: O
 }
 
 fn opj_t1_getwmsedec(
-  mut nmsedec: OPJ_INT32,
-  mut compno: OPJ_UINT32,
-  mut level: OPJ_UINT32,
-  mut orient: OPJ_UINT32,
-  mut bpno: OPJ_INT32,
-  mut qmfbid: OPJ_UINT32,
-  mut stepsize: OPJ_FLOAT64,
-  mut _numcomps: OPJ_UINT32,
-  mut mct_norms: Option<&[OPJ_FLOAT64]>,
-  mut mct_numcomps: OPJ_UINT32,
-) -> OPJ_FLOAT64 {
+  mut nmsedec: i32,
+  mut compno: u32,
+  mut level: u32,
+  mut orient: u32,
+  mut bpno: i32,
+  mut qmfbid: u32,
+  mut stepsize: f64,
+  mut _numcomps: u32,
+  mut mct_norms: Option<&[f64]>,
+  mut mct_numcomps: u32,
+) -> f64 {
   let mut w1 = 1.0;
   let mut w2 = 0.0;
   let mut wmsedec = 0.0;
@@ -1754,12 +1751,12 @@ fn opj_t1_getwmsedec(
 }
 
 fn opj_t1_allocate_buffers(
-  mut t1: &mut opj_t1_t,
-  mut w: OPJ_UINT32,
-  mut h: OPJ_UINT32,
+  mut t1: &mut T1Coder,
+  mut w: u32,
+  mut h: u32,
 ) -> OPJ_BOOL {
-  let mut flagssize: OPJ_UINT32 = 0;
-  let mut flags_stride: OPJ_UINT32 = 0;
+  let mut flagssize: u32 = 0;
+  let mut flags_stride: u32 = 0;
   /* No risk of overflow. Prior checks ensure those assert are met */
   /* They are per the specification */
 
@@ -1810,26 +1807,26 @@ fn opj_t1_allocate_buffers(
 
 #[allow(clippy::too_many_arguments)]
 fn opj_t1_clbl_decode_processor(
-  _resno: OPJ_UINT32,
-  _off_x: OPJ_UINT32,
-  _off_y: OPJ_UINT32,
+  _resno: u32,
+  _off_x: u32,
+  _off_y: u32,
   src: &[u8],
-  tccp: &opj_tccp_t,
-  bandno: OPJ_UINT32,
-  _band_x0: OPJ_INT32,
-  _band_y0: OPJ_INT32,
-  band_stepsize: OPJ_FLOAT32,
-  cblk: &mut opj_tcd_cblk_dec_t,
-  p_manager: &opj_event_mgr,
+  tccp: &Tccp,
+  bandno: u32,
+  _band_x0: i32,
+  _band_y0: i32,
+  band_stepsize: f32,
+  cblk: &mut TcdCblkDec,
+  p_manager: &EventMgr,
   check_pterm: OPJ_BOOL,
   mustuse_cblkdatabuffer: OPJ_BOOL,
 ) -> OPJ_BOOL {
-  let mut cblk_w: OPJ_UINT32 = 0;
-  let mut cblk_h: OPJ_UINT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
-  cblk_w = (cblk.x1 - cblk.x0) as OPJ_UINT32;
-  cblk_h = (cblk.y1 - cblk.y0) as OPJ_UINT32;
+  let mut cblk_w: u32 = 0;
+  let mut cblk_h: u32 = 0;
+  let mut i: u32 = 0;
+  let mut j: u32 = 0;
+  cblk_w = (cblk.x1 - cblk.x0) as u32;
+  cblk_h = (cblk.y1 - cblk.y0) as u32;
   /* Always decode into the per-codeblock buffer: the parallel decode pass
   writes here, and the sequential write-back (whole-tile) or the window
   path (partial) consumes it afterwards. */
@@ -1847,7 +1844,7 @@ fn opj_t1_clbl_decode_processor(
         cblk,
         src,
         bandno,
-        tccp.roishift as OPJ_UINT32,
+        tccp.roishift as u32,
         tccp.cblksty,
         p_manager,
         check_pterm,
@@ -1858,7 +1855,7 @@ fn opj_t1_clbl_decode_processor(
         cblk,
         src,
         bandno,
-        tccp.roishift as OPJ_UINT32,
+        tccp.roishift as u32,
         tccp.cblksty,
         p_manager,
         check_pterm,
@@ -1868,17 +1865,17 @@ fn opj_t1_clbl_decode_processor(
   if ret == 0 {
     return 0i32;
   }
-  cblk_w = (cblk.x1 - cblk.x0) as OPJ_UINT32;
-  cblk_h = (cblk.y1 - cblk.y0) as OPJ_UINT32;
+  cblk_w = (cblk.x1 - cblk.x0) as u32;
+  cblk_h = (cblk.y1 - cblk.y0) as u32;
   if tccp.roishift != 0 {
     let thresh = if tccp.roishift >= 31i32 {
       i32::MAX
     } else {
       (1i32) << tccp.roishift
     };
-    j = 0 as OPJ_UINT32;
+    j = 0_u32;
     while j < cblk_h {
-      i = 0 as OPJ_UINT32;
+      i = 0_u32;
       while i < cblk_w {
         let idx = j.wrapping_mul(cblk_w).wrapping_add(i) as usize;
         if tccp.roishift >= 31i32 {
@@ -1899,7 +1896,7 @@ fn opj_t1_clbl_decode_processor(
   }
   let cblk_size = cblk_w.wrapping_mul(cblk_h);
   if tccp.qmfbid == 1 {
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < cblk_size {
       let idx = i as usize;
       cblk.decoded_data[idx].set(cblk.decoded_data[idx].get() / 2i32);
@@ -1907,12 +1904,12 @@ fn opj_t1_clbl_decode_processor(
     }
   } else {
     let stepsize = 0.5f32 * band_stepsize;
-    i = 0 as OPJ_UINT32;
+    i = 0_u32;
     while i < cblk_size {
       let idx = i as usize;
-      let tmp = cblk.decoded_data[idx].get() as OPJ_FLOAT32 * stepsize;
+      let tmp = cblk.decoded_data[idx].get() as f32 * stepsize;
       // C reinterprets the f32 bits as an i32 via memcpy.
-      cblk.decoded_data[idx].set(tmp.to_bits() as OPJ_INT32);
+      cblk.decoded_data[idx].set(tmp.to_bits() as i32);
       i += 1
     }
   }
@@ -1922,22 +1919,22 @@ fn opj_t1_clbl_decode_processor(
 /// Copies a decoded codeblock into its rectangle of the tile buffer
 /// (whole-tile decoding only; the window path keeps `cblk.decoded_data`).
 fn opj_t1_cblk_writeback(
-  cblk: &opj_tcd_cblk_dec_t,
-  off_x: OPJ_UINT32,
-  off_y: OPJ_UINT32,
-  band_x0: OPJ_INT32,
-  band_y0: OPJ_INT32,
-  tile_data: &mut [OPJ_INT32],
-  tile_w: OPJ_UINT32,
+  cblk: &TcdCblkDec,
+  off_x: u32,
+  off_y: u32,
+  band_x0: i32,
+  band_y0: i32,
+  tile_data: &mut [i32],
+  tile_w: u32,
 ) {
-  let cblk_w = (cblk.x1 - cblk.x0) as OPJ_UINT32;
-  let cblk_h = (cblk.y1 - cblk.y0) as OPJ_UINT32;
+  let cblk_w = (cblk.x1 - cblk.x0) as u32;
+  let cblk_h = (cblk.y1 - cblk.y0) as u32;
   if cblk.decoded_data.is_empty() {
     return;
   }
-  let x = (cblk.x0 - band_x0) as OPJ_UINT32 + off_x;
-  let y = (cblk.y0 - band_y0) as OPJ_UINT32 + off_y;
-  let mut j = 0 as OPJ_UINT32;
+  let x = (cblk.x0 - band_x0) as u32 + off_x;
+  let y = (cblk.y0 - band_y0) as u32 + off_y;
+  let mut j = 0_u32;
   while j < cblk_h {
     let base = (y + j).wrapping_mul(tile_w) + x;
     let src = j.wrapping_mul(cblk_w) as usize;
@@ -1951,12 +1948,12 @@ fn opj_t1_cblk_writeback(
 
 pub(crate) fn opj_t1_decode_cblks(
   tilec_view: &TcdTilecView,
-  _tccps: &[opj_tccp_t],
+  _tccps: &[Tccp],
   image_comps: &[CoreImageComp],
   pret: &mut OPJ_BOOL,
-  tilec: &mut opj_tcd_tilecomp_t,
-  tccp: &opj_tccp_t,
-  p_manager: &opj_event_mgr,
+  tilec: &mut TcdTileComp,
+  tccp: &Tccp,
+  p_manager: &EventMgr,
   check_pterm: OPJ_BOOL,
   src: &mut [u8],
 ) {
@@ -1969,12 +1966,12 @@ pub(crate) fn opj_t1_decode_cblks(
   /* Collect the decode jobs: every codeblock whose area is of interest.
   The per-codeblock buffers carry the decoded coefficients so the decode
   can run in parallel and the tile-buffer write-back stays sequential. */
-  let mut jobs: Vec<(OPJ_UINT32, OPJ_INT32, OPJ_INT32, OPJ_FLOAT32, OPJ_UINT32, OPJ_UINT32, &mut opj_tcd_cblk_dec_t)> =
+  let mut jobs: Vec<(u32, i32, i32, f32, u32, u32, &mut TcdCblkDec)> =
     Vec::new();
 
   /* The previous (coarser) resolution's extents feed the band offsets;
   snapshot them first so the collection walk only needs `&mut`. */
-  let prev_dims: Vec<(OPJ_INT32, OPJ_INT32)> = (0..tilec.minimum_num_resolutions)
+  let prev_dims: Vec<(i32, i32)> = (0..tilec.minimum_num_resolutions)
     .map(|r| {
       if r > 0 {
         let p = &tilec.resolutions[(r - 1) as usize];
@@ -2004,12 +2001,12 @@ pub(crate) fn opj_t1_decode_cblks(
           tilec_view,
           tccp,
           image_comps,
-          resno as OPJ_UINT32,
+          resno as u32,
           bandno_val,
-          precinct.x0 as OPJ_UINT32,
-          precinct.y0 as OPJ_UINT32,
-          precinct.x1 as OPJ_UINT32,
-          precinct.y1 as OPJ_UINT32,
+          precinct.x0 as u32,
+          precinct.y0 as u32,
+          precinct.x1 as u32,
+          precinct.y1 as u32,
         ) == 0
         {
           if let CodeBlocks::Dec(cblks) = &mut precinct.cblks {
@@ -2031,12 +2028,12 @@ pub(crate) fn opj_t1_decode_cblks(
               tilec_view,
               tccp,
               image_comps,
-              resno as OPJ_UINT32,
+              resno as u32,
               bandno_val,
-              cblk.x0 as OPJ_UINT32,
-              cblk.y0 as OPJ_UINT32,
-              cblk.x1 as OPJ_UINT32,
-              cblk.y1 as OPJ_UINT32,
+              cblk.x0 as u32,
+              cblk.y0 as u32,
+              cblk.x1 as u32,
+              cblk.y1 as u32,
             ) == 0
             {
               if !cblk.decoded_data.is_empty() {
@@ -2045,8 +2042,8 @@ pub(crate) fn opj_t1_decode_cblks(
             } else {
               let mut do_decode = true;
               if tilec_view.whole_tile_decoding == 0 {
-                let cblk_w = (cblk.x1 - cblk.x0) as OPJ_UINT32;
-                let cblk_h = (cblk.y1 - cblk.y0) as OPJ_UINT32;
+                let cblk_w = (cblk.x1 - cblk.x0) as u32;
+                let cblk_h = (cblk.y1 - cblk.y0) as u32;
                 if !cblk.decoded_data.is_empty() || cblk_w == 0 || cblk_h == 0 {
                   do_decode = false;
                 }
@@ -2057,8 +2054,8 @@ pub(crate) fn opj_t1_decode_cblks(
                   band_x0,
                   band_y0,
                   band_stepsize,
-                  off_x as OPJ_UINT32,
-                  off_y as OPJ_UINT32,
+                  off_x as u32,
+                  off_y as u32,
                   cblk,
                 ));
               }
@@ -2078,14 +2075,14 @@ pub(crate) fn opj_t1_decode_cblks(
   sequential: the rayon overhead would dominate. */
   let src_shared: &[u8] = &*src;
   let decode_job = |(bandno, band_x0, band_y0, band_stepsize, off_x, off_y): (
-    &OPJ_UINT32,
-    &OPJ_INT32,
-    &OPJ_INT32,
-    &OPJ_FLOAT32,
-    &OPJ_UINT32,
-    &OPJ_UINT32,
+    &u32,
+    &i32,
+    &i32,
+    &f32,
+    &u32,
+    &u32,
   ),
-                    cblk: &mut opj_tcd_cblk_dec_t|
+                    cblk: &mut TcdCblkDec|
    -> OPJ_BOOL {
     opj_t1_clbl_decode_processor(
       0,
@@ -2127,37 +2124,37 @@ pub(crate) fn opj_t1_decode_cblks(
   if tilec_view.whole_tile_decoding != 0 {
     let tile_data = tilec.data.as_mut_slice(tile_w.wrapping_mul(tile_h));
     for (_bandno, band_x0, band_y0, _band_stepsize, off_x, off_y, cblk) in jobs {
-      opj_t1_cblk_writeback(cblk, off_x, off_y, band_x0, band_y0, tile_data, tile_w as OPJ_UINT32);
+      opj_t1_cblk_writeback(cblk, off_x, off_y, band_x0, band_y0, tile_data, tile_w as u32);
     }
   }
 }
 
 fn opj_t1_decode_cblk(
-  t1: &mut opj_t1_t,
-  cblk: &mut opj_tcd_cblk_dec_t,
+  t1: &mut T1Coder,
+  cblk: &mut TcdCblkDec,
   src: &[u8],
-  mut orient: OPJ_UINT32,
-  mut roishift: OPJ_UINT32,
-  mut cblksty: OPJ_UINT32,
-  p_manager: &opj_event_mgr,
+  mut orient: u32,
+  mut roishift: u32,
+  mut cblksty: u32,
+  p_manager: &EventMgr,
   mut check_pterm: OPJ_BOOL,
 ) -> OPJ_BOOL {
-    let mut bpno_plus_one: OPJ_INT32 = 0; /* BYPASS mode */
-    let mut passtype: OPJ_UINT32 = 0;
-    let mut segno: OPJ_UINT32 = 0;
-    let mut passno: OPJ_UINT32 = 0;
-    let mut cblkdataindex = 0 as OPJ_UINT32;
-    let mut type_0 = 0 as OPJ_BYTE;
+    let mut bpno_plus_one: i32 = 0; /* BYPASS mode */
+    let mut passtype: u32 = 0;
+    let mut segno: u32 = 0;
+    let mut passno: u32 = 0;
+    let mut cblkdataindex = 0_u32;
+    let mut type_0 = 0_u8;
     t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
     if opj_t1_allocate_buffers(
       t1,
-      (cblk.x1 - cblk.x0) as OPJ_UINT32,
-      (cblk.y1 - cblk.y0) as OPJ_UINT32,
+      (cblk.x1 - cblk.x0) as u32,
+      (cblk.y1 - cblk.y0) as u32,
     ) == 0
     {
       return 0i32;
     }
-    bpno_plus_one = roishift.wrapping_add(cblk.numbps) as OPJ_INT32;
+    bpno_plus_one = roishift.wrapping_add(cblk.numbps) as i32;
     if bpno_plus_one >= 31i32 {
       event_msg!(
         p_manager,
@@ -2179,15 +2176,14 @@ fn opj_t1_decode_cblk(
     multi-threaded cases). Here the MQ coder owns its buffer, so we always
     copy the chunks into it: one copy per codeblock. */
     {
-      let mut i: OPJ_UINT32 = 0;
-      let mut cblk_len: OPJ_UINT32 = 0;
+      let mut i: u32 = 0;
+      let mut cblk_len: u32 = 0;
       /* Compute whole codeblock length from chunk lengths */
-      cblk_len = 0 as OPJ_UINT32;
-      i = 0 as OPJ_UINT32;
+      cblk_len = 0_u32;
+      i = 0_u32;
       while i < cblk.numchunks {
         cblk_len = (cblk_len as core::ffi::c_uint)
-          .wrapping_add(cblk.chunks[i as usize].len)
-          as OPJ_UINT32;
+          .wrapping_add(cblk.chunks[i as usize].len);
         i += 1
       }
       /* Allocate temporary memory if needed */
@@ -2195,7 +2191,7 @@ fn opj_t1_decode_cblk(
       /* Concatenate all chunks into the MQ coder's buffer */
       let buf = t1.mqc.buf_mut();
       let mut off = 0usize;
-      i = 0 as OPJ_UINT32;
+      i = 0_u32;
       while i < cblk.numchunks {
         let chunk = &cblk.chunks[i as usize];
         let src_chunk = &src[chunk.data_offset..chunk.data_offset + chunk.len as usize];
@@ -2213,42 +2209,42 @@ fn opj_t1_decode_cblk(
     } else {
       None
     };
-    segno = 0 as OPJ_UINT32;
+    segno = 0_u32;
     while segno < cblk.real_num_segs {
       let seg = &cblk.segs[segno as usize];
       /* BYPASS mode */
-      type_0 = if bpno_plus_one <= cblk.numbps as OPJ_INT32 - 4i32
+      type_0 = if bpno_plus_one <= cblk.numbps as i32 - 4i32
         && passtype < 2
         && cblksty & 0x1 != 0
       {
         1i32
       } else {
         0i32
-      } as OPJ_BYTE;
+      } as u8;
       if type_0 as core::ffi::c_int == 1i32 {
         opj_mqc_raw_init_dec(
           &mut t1.mqc,
           cblkdataindex as usize,
           seg.len,
-          2 as OPJ_UINT32,
+          2_u32,
         );
       } else {
         opj_mqc_init_dec(
           &mut t1.mqc,
           cblkdataindex as usize,
           seg.len,
-          2 as OPJ_UINT32,
+          2_u32,
         );
       }
       cblkdataindex = (cblkdataindex as core::ffi::c_uint).wrapping_add(seg.len);
-      passno = 0 as OPJ_UINT32;
+      passno = 0_u32;
       while passno < seg.real_num_passes && bpno_plus_one >= 1i32 {
         match passtype {
           0 => {
             if type_0 as core::ffi::c_int == 1i32 {
-              opj_t1_dec_sigpass_raw(t1, bpno_plus_one, cblksty as OPJ_INT32, decoded_data_src);
+              opj_t1_dec_sigpass_raw(t1, bpno_plus_one, cblksty as i32, decoded_data_src);
             } else {
-              opj_t1_dec_sigpass_mqc(t1, bpno_plus_one, cblksty as OPJ_INT32, decoded_data_src);
+              opj_t1_dec_sigpass_mqc(t1, bpno_plus_one, cblksty as i32, decoded_data_src);
             }
           }
           1 => {
@@ -2259,7 +2255,7 @@ fn opj_t1_decode_cblk(
             }
           }
           2 => {
-            opj_t1_dec_clnpass(t1, bpno_plus_one, cblksty as OPJ_INT32, decoded_data_src);
+            opj_t1_dec_clnpass(t1, bpno_plus_one, cblksty as i32, decoded_data_src);
           }
           _ => {}
         }
@@ -2309,27 +2305,27 @@ fn opj_t1_decode_cblk(
  * @param tls       TLS handle.
  */
 fn opj_t1_cblk_encode_processor(
-  compno: OPJ_UINT32,
-  _resno: OPJ_UINT32,
-  off_x: OPJ_UINT32,
-  off_y: OPJ_UINT32,
-  tile_data: &[OPJ_INT32],
-  tile_w: OPJ_UINT32,
-  tile_numcomps: OPJ_UINT32,
-  numresolutions_minus_resno: OPJ_UINT32,
-  bandno: OPJ_UINT32,
-  band_x0: OPJ_INT32,
-  band_y0: OPJ_INT32,
-  band_stepsize: OPJ_FLOAT32,
-  cblk: &mut opj_tcd_cblk_enc_t,
-  tccp: &opj_tccp_t,
-  mct_norms: Option<&[OPJ_FLOAT64]>,
-  mct_numcomps: OPJ_UINT32,
-) -> (OPJ_BOOL, OPJ_FLOAT64) {
-  let mut cblk_w: OPJ_UINT32 = 0;
-  let mut cblk_h: OPJ_UINT32 = 0;
-  let mut i: OPJ_UINT32 = 0;
-  let mut j: OPJ_UINT32 = 0;
+  compno: u32,
+  _resno: u32,
+  off_x: u32,
+  off_y: u32,
+  tile_data: &[i32],
+  tile_w: u32,
+  tile_numcomps: u32,
+  numresolutions_minus_resno: u32,
+  bandno: u32,
+  band_x0: i32,
+  band_y0: i32,
+  band_stepsize: f32,
+  cblk: &mut TcdCblkEnc,
+  tccp: &Tccp,
+  mct_norms: Option<&[f64]>,
+  mct_numcomps: u32,
+) -> (OPJ_BOOL, f64) {
+  let mut cblk_w: u32 = 0;
+  let mut cblk_h: u32 = 0;
+  let mut i: u32 = 0;
+  let mut j: u32 = 0;
   let mut x = cblk.x0 - band_x0;
   let mut y = cblk.y0 - band_y0;
 
@@ -2339,16 +2335,16 @@ fn opj_t1_cblk_encode_processor(
     let t1 = &mut *ref_t1;
     let mut ret = 0i32;
 
-    x += off_x as OPJ_INT32;
-    y += off_y as OPJ_INT32;
-    if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as OPJ_UINT32, (cblk.y1 - cblk.y0) as OPJ_UINT32)
+    x += off_x as i32;
+    y += off_y as i32;
+    if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32)
       == 0
     {
       return (0i32, 0.0);
     }
     cblk_w = t1.w;
     cblk_h = t1.h;
-    let base = (y as OPJ_UINT32).wrapping_mul(tile_w).wrapping_add(x as OPJ_UINT32);
+    let base = (y as u32).wrapping_mul(tile_w).wrapping_add(x as u32);
     if tccp.qmfbid == 1 {
       let mut t1data = t1.data.offset(0);
       /* Do multiplication on unsigned type, even if the
@@ -2359,45 +2355,45 @@ fn opj_t1_cblk_encode_processor(
        * representation
        * Fixes https://github.com/uclouvain/openjpeg/issues/1053
        */
-      j = 0 as OPJ_UINT32;
+      j = 0_u32;
       while j < cblk_h & !(3u32) {
-        i = 0 as OPJ_UINT32;
+        i = 0_u32;
         while i < cblk_w {
           t1data.set_at(
             0,
-            ((tile_data[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i) as usize] as OPJ_UINT32)
-              << (7i32 - 1i32)) as OPJ_INT32,
+            ((tile_data[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i) as usize] as u32)
+              << (7i32 - 1i32)) as i32,
           );
           t1data.set_at(
             1,
             ((tile_data[base.wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w)).wrapping_add(i)
-              as usize] as OPJ_UINT32) << (7i32 - 1i32)) as OPJ_INT32,
+              as usize] as u32) << (7i32 - 1i32)) as i32,
           );
           t1data.set_at(
             2,
             ((tile_data[base.wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w)).wrapping_add(i)
-              as usize] as OPJ_UINT32) << (7i32 - 1i32)) as OPJ_INT32,
+              as usize] as u32) << (7i32 - 1i32)) as i32,
           );
           t1data.set_at(
             3,
             ((tile_data[base.wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w)).wrapping_add(i)
-              as usize] as OPJ_UINT32) << (7i32 - 1i32)) as OPJ_INT32,
+              as usize] as u32) << (7i32 - 1i32)) as i32,
           );
           t1data = t1data.offset(4);
           i += 1
         }
-        j = (j as core::ffi::c_uint).wrapping_add(4) as OPJ_UINT32 as OPJ_UINT32
+        j = (j as core::ffi::c_uint).wrapping_add(4)
       }
       if j < cblk_h {
-        i = 0 as OPJ_UINT32;
+        i = 0_u32;
         while i < cblk_w {
-          let mut k: OPJ_UINT32 = 0;
+          let mut k: u32 = 0;
           k = j;
           while k < cblk_h {
             t1data.set_at(
               0,
               ((tile_data[base.wrapping_add(k.wrapping_mul(tile_w)).wrapping_add(i) as usize]
-                as OPJ_UINT32) << (7i32 - 1i32)) as OPJ_INT32,
+                as u32) << (7i32 - 1i32)) as i32,
             );
             t1data = t1data.offset(1);
             k += 1
@@ -2409,65 +2405,65 @@ fn opj_t1_cblk_encode_processor(
       let mut t1data_0 = t1.data.offset(0);
       /* Change from "natural" order to "zigzag" order of T1 passes */
       /* Change from "natural" order to "zigzag" order of T1 passes */
-      j = 0 as OPJ_UINT32; /* fixed_quality */
+      j = 0_u32; /* fixed_quality */
       while j < cblk_h & !(3u32) {
-        i = 0 as OPJ_UINT32; /* compno  */
+        i = 0_u32; /* compno  */
         while i < cblk_w {
           t1data_0.set_at(
             0,
             opj_lrintf(
               f32::from_bits(tile_data[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i)
-                as usize] as OPJ_UINT32)
+                as usize] as u32)
                 / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
-            ) as OPJ_INT32,
+            ) as i32,
           );
           t1data_0.set_at(
             1,
             opj_lrintf(
               f32::from_bits(tile_data[base.wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w)).wrapping_add(i)
-                as usize] as OPJ_UINT32)
+                as usize] as u32)
                 / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
-            ) as OPJ_INT32,
+            ) as i32,
           );
           t1data_0.set_at(
             2,
             opj_lrintf(
               f32::from_bits(tile_data[base.wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w)).wrapping_add(i)
-                as usize] as OPJ_UINT32)
+                as usize] as u32)
                 / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
-            ) as OPJ_INT32,
+            ) as i32,
           );
           t1data_0.set_at(
             3,
             opj_lrintf(
               f32::from_bits(tile_data[base.wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w)).wrapping_add(i)
-                as usize] as OPJ_UINT32)
+                as usize] as u32)
                 / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
-            ) as OPJ_INT32,
+            ) as i32,
           );
           t1data_0 = t1data_0.offset(4);
           i += 1
         }
-        j = (j as core::ffi::c_uint).wrapping_add(4) as OPJ_UINT32 as OPJ_UINT32
+        j = (j as core::ffi::c_uint).wrapping_add(4)
       }
       if j < cblk_h {
-        i = 0 as OPJ_UINT32;
+        i = 0_u32;
         while i < cblk_w {
-          let mut k_0: OPJ_UINT32 = 0;
+          let mut k_0: u32 = 0;
           k_0 = j;
           while k_0 < cblk_h {
             t1data_0.set_at(
               0,
               opj_lrintf(
                 f32::from_bits(tile_data[base.wrapping_add(k_0.wrapping_mul(tile_w)).wrapping_add(i)
-                  as usize] as OPJ_UINT32)
+                  as usize] as u32)
                   / band_stepsize
                   * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
-              ) as OPJ_INT32,
+              ) as i32,
             );
             t1data_0 = t1data_0.offset(1);
             k_0 += 1;
@@ -2483,7 +2479,7 @@ fn opj_t1_cblk_encode_processor(
       compno,
       numresolutions_minus_resno,
       tccp.qmfbid,
-      band_stepsize as OPJ_FLOAT64,
+      band_stepsize as f64,
       tccp.cblksty,
       tile_numcomps,
       mct_norms,
@@ -2495,25 +2491,25 @@ fn opj_t1_cblk_encode_processor(
   (ret, cumwmsedec)
 }
 pub(crate) fn opj_t1_encode_cblks(
-  tile: &mut opj_tcd_tile_t,
-  tcp: &opj_tcp_t,
-  mct_norms: Option<&[OPJ_FLOAT64]>,
-  mct_numcomps: OPJ_UINT32,
+  tile: &mut TcdTile,
+  tcp: &Tcp,
+  mct_norms: Option<&[f64]>,
+  mct_numcomps: u32,
 ) -> OPJ_BOOL {
   let mut ret = 1i32;
-  let mut compno: OPJ_UINT32 = 0;
-  tile.distotile = 0 as OPJ_FLOAT64;
-  compno = 0 as OPJ_UINT32;
+  let mut compno: u32 = 0;
+  tile.distotile = 0 as f64;
+  compno = 0_u32;
   while compno < tile.numcomps {
     let tilec = &mut tile.comps[compno as usize];
     let tccp = &tcp.tccps[compno as usize];
-    let tile_w = (tilec.x1 - tilec.x0) as OPJ_UINT32;
-    let tile_h = (tilec.y1 - tilec.y0) as OPJ_UINT32;
+    let tile_w = (tilec.x1 - tilec.x0) as u32;
+    let tile_h = (tilec.y1 - tilec.y0) as u32;
     let tile_numcomps = tile.numcomps;
     let numresolutions_minus_1 = tilec.numresolutions.wrapping_sub(1u32);
     /* Snapshot the coarser-resolution dims first (the collection walk only
     needs `&mut`), then take the shared read-only view of the tile data. */
-    let prev_dims: Vec<(OPJ_INT32, OPJ_INT32)> = (0..tilec.numresolutions)
+    let prev_dims: Vec<(i32, i32)> = (0..tilec.numresolutions)
       .map(|r| {
         if r > 0 {
           let p = &tilec.resolutions[(r - 1) as usize];
@@ -2524,19 +2520,19 @@ pub(crate) fn opj_t1_encode_cblks(
       })
       .collect();
     let tile_data = tilec.data.as_mut_slice((tile_w as usize).wrapping_mul(tile_h as usize));
-    let tile_data_shared: &[OPJ_INT32] = tile_data;
+    let tile_data_shared: &[i32] = tile_data;
     /* Collect the encode jobs (the codeblock walk mutates only the cblk
     state, and each job writes only its own codeblock). */
     let mut jobs: Vec<(
-      OPJ_UINT32,
-      OPJ_UINT32,
-      OPJ_UINT32,
-      OPJ_UINT32,
-      OPJ_UINT32,
-      OPJ_INT32,
-      OPJ_INT32,
-      OPJ_FLOAT32,
-      &mut opj_tcd_cblk_enc_t,
+      u32,
+      u32,
+      u32,
+      u32,
+      u32,
+      i32,
+      i32,
+      f32,
+      &mut TcdCblkEnc,
     )> = Vec::new();
     for (resno, res) in tilec.resolutions.iter_mut().enumerate().take(tilec.numresolutions as usize) {
       let (prev_w, prev_h) = prev_dims[resno];
@@ -2557,11 +2553,11 @@ pub(crate) fn opj_t1_encode_cblks(
             if let CodeBlocks::Enc(cblks) = &mut prc.cblks {
               for cblk in cblks.iter_mut().take((prc.cw.wrapping_mul(prc.ch)) as usize) {
                 jobs.push((
-                  resno as OPJ_UINT32,
-                  off_x as OPJ_UINT32,
-                  off_y as OPJ_UINT32,
+                  resno as u32,
+                  off_x as u32,
+                  off_y as u32,
                   bandno_val,
-                  numresolutions_minus_1.wrapping_sub(resno as OPJ_UINT32),
+                  numresolutions_minus_1.wrapping_sub(resno as u32),
                   band_x0,
                   band_y0,
                   band_stepsize,
@@ -2576,17 +2572,17 @@ pub(crate) fn opj_t1_encode_cblks(
     /* Parallel encode: each job owns its codeblock; tile_data is read-only.
     Small job sets stay sequential (rayon overhead would dominate). */
     let encode_job = |(resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize): (
-      &OPJ_UINT32,
-      &OPJ_UINT32,
-      &OPJ_UINT32,
-      &OPJ_UINT32,
-      &OPJ_UINT32,
-      &OPJ_INT32,
-      &OPJ_INT32,
-      &OPJ_FLOAT32,
+      &u32,
+      &u32,
+      &u32,
+      &u32,
+      &u32,
+      &i32,
+      &i32,
+      &f32,
     ),
-                     cblk: &mut opj_tcd_cblk_enc_t|
-     -> (OPJ_BOOL, OPJ_FLOAT64) {
+                     cblk: &mut TcdCblkEnc|
+     -> (OPJ_BOOL, f64) {
       opj_t1_cblk_encode_processor(
         compno,
         *resno,
@@ -2606,7 +2602,7 @@ pub(crate) fn opj_t1_encode_cblks(
         mct_numcomps,
       )
     };
-    let results: Vec<(OPJ_BOOL, OPJ_FLOAT64)> = if jobs.len() >= 8 {
+    let results: Vec<(OPJ_BOOL, f64)> = if jobs.len() >= 8 {
       jobs
         .par_iter_mut()
         .map(|(resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize, cblk)| {
@@ -2621,7 +2617,7 @@ pub(crate) fn opj_t1_encode_cblks(
         })
         .collect()
     };
-    let mut cumdisto: OPJ_FLOAT64 = 0.0;
+    let mut cumdisto: f64 = 0.0;
     for (ok, cumwmsedec) in results {
       if ok == 0 {
         ret = 0i32;
@@ -2636,10 +2632,10 @@ pub(crate) fn opj_t1_encode_cblks(
 }
 
 fn opj_t1_enc_is_term_pass(
-  cblk: &opj_tcd_cblk_enc_t,
-  mut cblksty: OPJ_UINT32,
-  mut bpno: OPJ_INT32,
-  mut passtype: OPJ_UINT32,
+  cblk: &TcdCblkEnc,
+  mut cblksty: u32,
+  mut bpno: i32,
+  mut passtype: u32,
 ) -> core::ffi::c_int {
   /* Is it the last cleanup pass ? */
   if passtype == 2 && bpno == 0i32 {
@@ -2650,12 +2646,12 @@ fn opj_t1_enc_is_term_pass(
   }
   if cblksty & 0x1 != 0 {
     /* For bypass arithmetic bypass, terminate the 4th cleanup pass */
-    if bpno == cblk.numbps as OPJ_INT32 - 4i32 && passtype == 2 {
+    if bpno == cblk.numbps as i32 - 4i32 && passtype == 2 {
       return 1i32;
     }
     /* and beyond terminate all the magnitude refinement passes (in raw) */
     /* and cleanup passes (in MQC) */
-    if bpno < cblk.numbps as OPJ_INT32 - 4i32 && passtype > 0 {
+    if bpno < cblk.numbps as i32 - 4i32 && passtype > 0 {
       return 1i32;
     }
   }
@@ -2665,39 +2661,39 @@ fn opj_t1_enc_is_term_pass(
 /* * Return "cumwmsedec" that should be used to increase tile->distotile */
 /* * mod fixed_quality */
 fn opj_t1_encode_cblk(
-  t1: &mut opj_t1_t,
-  cblk: &mut opj_tcd_cblk_enc_t,
-  mut orient: OPJ_UINT32,
-  mut compno: OPJ_UINT32,
-  mut level: OPJ_UINT32,
-  mut qmfbid: OPJ_UINT32,
-  mut stepsize: OPJ_FLOAT64,
-  mut cblksty: OPJ_UINT32,
-  mut numcomps: OPJ_UINT32,
-  mut mct_norms: Option<&[OPJ_FLOAT64]>,
-  mut mct_numcomps: OPJ_UINT32,
+  t1: &mut T1Coder,
+  cblk: &mut TcdCblkEnc,
+  mut orient: u32,
+  mut compno: u32,
+  mut level: u32,
+  mut qmfbid: u32,
+  mut stepsize: f64,
+  mut cblksty: u32,
+  mut numcomps: u32,
+  mut mct_norms: Option<&[f64]>,
+  mut mct_numcomps: u32,
 ) -> core::ffi::c_double {
     let mut cumwmsedec = 0.0f64; /* MQC component */
-    let mut passno: OPJ_UINT32 = 0;
-    let mut bpno: OPJ_INT32 = 0;
-    let mut passtype: OPJ_UINT32 = 0;
+    let mut passno: u32 = 0;
+    let mut bpno: i32 = 0;
+    let mut passtype: u32 = 0;
     let mut nmsedec = 0i32;
-    let mut max: OPJ_INT32 = 0;
-    let mut i: OPJ_UINT32 = 0;
-    let mut j: OPJ_UINT32 = 0;
-    let mut type_0 = 0 as OPJ_BYTE;
-    let mut tempwmsedec: OPJ_FLOAT64 = 0.;
+    let mut max: i32 = 0;
+    let mut i: u32 = 0;
+    let mut j: u32 = 0;
+    let mut type_0 = 0_u8;
+    let mut tempwmsedec: f64 = 0.;
     t1.mqc.lut_ctxno_zc_orient = &lut_ctxno_zc[orient as usize];
     max = 0i32;
     let mut datap = t1.data.offset(0);
-    j = 0 as OPJ_UINT32;
+    j = 0_u32;
     while j < t1.h {
       let w = t1.w;
-      i = 0 as OPJ_UINT32;
+      i = 0_u32;
       while i < w {
         let mut tmp = datap.get();
         if tmp < 0i32 {
-          let mut tmp_unsigned: OPJ_UINT32 = 0;
+          let mut tmp_unsigned: u32 = 0;
           if tmp == i32::MIN {
             /* To avoid undefined behaviour when negating INT_MIN */
             /* but if we go here, it means we have supplied an input */
@@ -2707,11 +2703,11 @@ fn opj_t1_encode_cblk(
           }
           max = opj_int_max(max, -tmp);
           tmp_unsigned = if tmp >= 0i32 {
-            tmp as OPJ_UINT32
+            tmp as u32
           } else {
-            (-tmp as OPJ_UINT32) | 0x80000000u32
+            (-tmp as u32) | 0x80000000u32
           };
-          datap.set(tmp_unsigned as OPJ_INT32);
+          datap.set(tmp_unsigned as i32);
         } else {
           max = opj_int_max(max, tmp)
         }
@@ -2721,16 +2717,16 @@ fn opj_t1_encode_cblk(
       j += 1
     }
     cblk.numbps = if max != 0 {
-      (opj_int_floorlog2(max) + 1i32 - (7i32 - 1i32)) as OPJ_UINT32
+      (opj_int_floorlog2(max) + 1i32 - (7i32 - 1i32)) as u32
     } else {
       0
     };
     if cblk.numbps == 0 {
-      cblk.totalpasses = 0 as OPJ_UINT32;
+      cblk.totalpasses = 0_u32;
       return cumwmsedec;
     }
-    bpno = cblk.numbps.wrapping_sub(1) as OPJ_INT32;
-    passtype = 2 as OPJ_UINT32;
+    bpno = cblk.numbps.wrapping_sub(1) as i32;
+    passtype = 2_u32;
 
     opj_mqc_resetstates(&mut t1.mqc);
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_UNI, 0, 46);
@@ -2738,13 +2734,13 @@ fn opj_t1_encode_cblk(
     opj_mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
     opj_mqc_init_enc(&mut t1.mqc, cblk.data_size);
 
-    passno = 0 as OPJ_UINT32;
+    passno = 0_u32;
     while bpno >= 0i32 {
-      type_0 = if bpno < cblk.numbps as OPJ_INT32 - 4i32 && passtype < 2 && cblksty & 0x1 != 0 {
+      type_0 = if bpno < cblk.numbps as i32 - 4i32 && passtype < 2 && cblksty & 0x1 != 0 {
         1i32
       } else {
         0i32
-      } as OPJ_BYTE;
+      } as u8;
       /* If the previous pass was terminating, we need to reset the encoder */
       if passno > 0
         && cblk.passes[passno.wrapping_sub(1) as usize].term
@@ -2799,19 +2795,19 @@ fn opj_t1_encode_cblk(
         cblk.passes[passno as usize].rate = opj_mqc_numbytes(&mut t1.mqc)
       } else {
         /* Non terminated pass */
-        let mut rate_extra_bytes: OPJ_UINT32 = 0;
+        let mut rate_extra_bytes: u32 = 0;
         if type_0 as core::ffi::c_int == 1i32 {
           rate_extra_bytes =
             opj_mqc_bypass_get_extra_bytes(&mut t1.mqc, (cblksty & 0x10) as OPJ_BOOL)
         } else {
-          rate_extra_bytes = 3 as OPJ_UINT32
+          rate_extra_bytes = 3_u32
         }
         cblk.passes[passno as usize].term = false;
         cblk.passes[passno as usize].rate = opj_mqc_numbytes(&mut t1.mqc).wrapping_add(rate_extra_bytes)
       }
       passtype = passtype.wrapping_add(1);
       if passtype == 3 {
-        passtype = 0 as OPJ_UINT32;
+        passtype = 0_u32;
         bpno -= 1
       }
       /* Code-switch "RESET" */
@@ -2844,7 +2840,7 @@ fn opj_t1_encode_cblk(
         }
       }
     }
-    passno = 0 as OPJ_UINT32;
+    passno = 0_u32;
     while passno < cblk.totalpasses {
       /* Prevent generation of FF as last data byte of a pass*/
       /* For terminating passes, the flushing procedure ensured this already */

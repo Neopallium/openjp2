@@ -32,20 +32,13 @@
  */
 
 
-pub type size_t = usize;
 
 pub type OPJ_BOOL = i32;
-pub type OPJ_CHAR = core::ffi::c_char;
 pub type OPJ_FLOAT32 = f32;
-pub type OPJ_FLOAT64 = f64;
 pub type OPJ_BYTE = u8;
-pub type OPJ_INT8 = i8;
-pub type OPJ_UINT8 = u8;
-pub type OPJ_INT16 = i16;
 pub type OPJ_UINT16 = u16;
 pub type OPJ_INT32 = i32;
 pub type OPJ_UINT32 = u32;
-pub type OPJ_INT64 = i64;
 pub type OPJ_UINT64 = u64;
 pub type OPJ_OFF_T = i64;
 pub type OPJ_SIZE_T = usize;
@@ -71,7 +64,6 @@ pub const OPJ_LRCP: PROG_ORDER = 0;
 pub const OPJ_PROG_UNKNOWN: PROG_ORDER = -1;
 pub type OPJ_PROG_ORDER = PROG_ORDER;
 
-pub type OPJ_BITFIELD = core::ffi::c_uint;
 
 /// Supported image color spaces
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
@@ -135,61 +127,61 @@ impl CODEC_FORMAT {
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct opj_poc {
-  pub resno0: OPJ_UINT32,
-  pub compno0: OPJ_UINT32,
-  pub layno1: OPJ_UINT32,
-  pub resno1: OPJ_UINT32,
-  pub compno1: OPJ_UINT32,
-  pub layno0: OPJ_UINT32,
-  pub precno0: OPJ_UINT32,
-  pub precno1: OPJ_UINT32,
+  pub resno0: u32,
+  pub compno0: u32,
+  pub layno1: u32,
+  pub resno1: u32,
+  pub compno1: u32,
+  pub layno0: u32,
+  pub precno0: u32,
+  pub precno1: u32,
   pub prg1: OPJ_PROG_ORDER,
   pub prg: OPJ_PROG_ORDER,
-  pub progorder: [OPJ_CHAR; 5],
-  pub tile: OPJ_UINT32,
-  pub tx0: OPJ_UINT32,
-  pub tx1: OPJ_UINT32,
-  pub ty0: OPJ_UINT32,
-  pub ty1: OPJ_UINT32,
-  pub layS: OPJ_UINT32,
-  pub resS: OPJ_UINT32,
-  pub compS: OPJ_UINT32,
-  pub prcS: OPJ_UINT32,
-  pub layE: OPJ_UINT32,
-  pub resE: OPJ_UINT32,
-  pub compE: OPJ_UINT32,
-  pub prcE: OPJ_UINT32,
-  pub txS: OPJ_UINT32,
-  pub txE: OPJ_UINT32,
-  pub tyS: OPJ_UINT32,
-  pub tyE: OPJ_UINT32,
-  pub dx: OPJ_UINT32,
-  pub dy: OPJ_UINT32,
-  pub lay_t: OPJ_UINT32,
-  pub res_t: OPJ_UINT32,
-  pub comp_t: OPJ_UINT32,
-  pub prc_t: OPJ_UINT32,
-  pub tx0_t: OPJ_UINT32,
-  pub ty0_t: OPJ_UINT32,
+  pub progorder: [core::ffi::c_char; 5],
+  pub tile: u32,
+  pub tx0: u32,
+  pub tx1: u32,
+  pub ty0: u32,
+  pub ty1: u32,
+  pub layS: u32,
+  pub resS: u32,
+  pub compS: u32,
+  pub prcS: u32,
+  pub layE: u32,
+  pub resE: u32,
+  pub compE: u32,
+  pub prcE: u32,
+  pub txS: u32,
+  pub txE: u32,
+  pub tyS: u32,
+  pub tyE: u32,
+  pub dx: u32,
+  pub dy: u32,
+  pub lay_t: u32,
+  pub res_t: u32,
+  pub comp_t: u32,
+  pub prc_t: u32,
+  pub tx0_t: u32,
+  pub ty0_t: u32,
 }
 pub type opj_poc_t = opj_poc;
 
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct opj_dparameters {
-  pub cp_reduce: OPJ_UINT32,
-  pub cp_layer: OPJ_UINT32,
+  pub cp_reduce: u32,
+  pub cp_layer: u32,
   pub infile: [core::ffi::c_char; 4096],
   pub outfile: [core::ffi::c_char; 4096],
   pub decod_format: core::ffi::c_int,
   pub cod_format: core::ffi::c_int,
-  pub DA_x0: OPJ_UINT32,
-  pub DA_x1: OPJ_UINT32,
-  pub DA_y0: OPJ_UINT32,
-  pub DA_y1: OPJ_UINT32,
+  pub DA_x0: u32,
+  pub DA_x1: u32,
+  pub DA_y0: u32,
+  pub DA_y1: u32,
   pub m_verbose: OPJ_BOOL,
-  pub tile_index: OPJ_UINT32,
-  pub nb_tile_to_decode: OPJ_UINT32,
+  pub tile_index: u32,
+  pub nb_tile_to_decode: u32,
   pub jpwl_correct: OPJ_BOOL,
   pub jpwl_exp_comps: core::ffi::c_int,
   pub jpwl_max_tiles: core::ffi::c_int,
@@ -231,21 +223,21 @@ pub type opj_codec_t = *mut core::ffi::c_void;
 pub type opj_stream_read_fn = Option<
   unsafe extern "C" fn(
     _: *mut core::ffi::c_void,
-    _: OPJ_SIZE_T,
+    _: usize,
     _: *mut core::ffi::c_void,
-  ) -> OPJ_SIZE_T,
+  ) -> usize,
 >;
 pub type opj_stream_write_fn = Option<
   unsafe extern "C" fn(
     _: *mut core::ffi::c_void,
-    _: OPJ_SIZE_T,
+    _: usize,
     _: *mut core::ffi::c_void,
-  ) -> OPJ_SIZE_T,
+  ) -> usize,
 >;
 pub type opj_stream_skip_fn =
-  Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_OFF_T>;
+  Option<unsafe extern "C" fn(_: i64, _: *mut core::ffi::c_void) -> i64>;
 pub type opj_stream_seek_fn =
-  Option<unsafe extern "C" fn(_: OPJ_OFF_T, _: *mut core::ffi::c_void) -> OPJ_BOOL>;
+  Option<unsafe extern "C" fn(_: i64, _: *mut core::ffi::c_void) -> OPJ_BOOL>;
 pub type opj_stream_free_user_data_fn =
   Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>;
 pub type opj_stream_t = *mut core::ffi::c_void;
@@ -254,9 +246,9 @@ pub type opj_stream_t = *mut core::ffi::c_void;
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
 pub struct opj_packet_info {
-  pub start_pos: OPJ_OFF_T,
-  pub end_ph_pos: OPJ_OFF_T,
-  pub end_pos: OPJ_OFF_T,
+  pub start_pos: i64,
+  pub end_ph_pos: i64,
+  pub end_pos: i64,
   pub disto: core::ffi::c_double,
 }
 pub type opj_packet_info_t = opj_packet_info;
@@ -265,7 +257,7 @@ pub type opj_packet_info_t = opj_packet_info;
 #[derive(Copy, Clone, Default)]
 pub struct opj_marker_info {
   pub type_: core::ffi::c_ushort,
-  pub pos: OPJ_OFF_T,
+  pub pos: i64,
   pub len: core::ffi::c_int,
 }
 pub type opj_marker_info_t = opj_marker_info;
@@ -273,9 +265,9 @@ pub type opj_marker_info_t = opj_marker_info;
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
 pub struct opj_tp_index {
-  pub start_pos: OPJ_OFF_T,
-  pub end_header: OPJ_OFF_T,
-  pub end_pos: OPJ_OFF_T,
+  pub start_pos: i64,
+  pub end_header: i64,
+  pub end_pos: i64,
 }
 pub type opj_tp_index_t = opj_tp_index;
 
