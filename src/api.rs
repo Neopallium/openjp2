@@ -621,6 +621,61 @@ mod tests {
     }
   }
 
+  /// 16-bit pixel extraction through the `image`-crate interop.
+  #[cfg(feature = "image")]
+  #[test]
+  fn get_pixels_16bit() {
+    let (w, h) = (64u32, 48u32);
+    let mut core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 1,
+      color_space: crate::OPJ_CLRSPC_GRAY,
+      comps: Vec::new(),
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    let mut data = Vec::with_capacity((w * h) as usize);
+    for i in 0..w * h {
+      data.push((i % 4096) as i32);
+    }
+    core.comps.push(crate::CoreImageComp {
+      dx: 1,
+      dy: 1,
+      w,
+      h,
+      x0: 0,
+      y0: 0,
+      prec: 12,
+      bpp: 12,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data,
+    });
+    let image = Image { core };
+    let pixels = image.get_pixels(None).expect("get_pixels");
+    assert_eq!(pixels.format, ::image::ExtendedColorType::L16);
+    assert_eq!(pixels.width, w);
+    assert_eq!(pixels.height, h);
+    match pixels.data {
+      super::image_conv::ImagePixelData::L16(v) => {
+        assert_eq!(v.len(), (w * h) as usize);
+        // 12-bit 0..4095 maps to 16-bit 0..65535 (proportional)
+        assert_eq!(v[0], 0);
+        assert!(v[1] > 0 && v[1] < 65535);
+      }
+      other => panic!("unexpected pixel format {other:?}"),
+    }
+    // And the DynamicImage conversion path.
+    use core::convert::TryFrom;
+    let dyn_img = ::image::DynamicImage::try_from(&image).expect("convert");
+    assert_eq!((dyn_img.width(), dyn_img.height()), (w, h));
+  }
+
   /// The concurrent-tile encode must produce byte-identical codestreams
   /// to the sequential low-level encode.
   #[cfg(feature = "rayon")]
