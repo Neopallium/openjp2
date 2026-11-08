@@ -611,6 +611,88 @@ mod tests {
     }
   }
 
+  /// Parallel-vs-serial byte identity over the real test corpus (runs
+  /// when OPJ_DATA_ROOT is set, e.g. in the dev gates): every file that
+  /// decodes must produce the same pixels through the parallel one-shot
+  /// API and the sequential low-level Codec API.
+  #[cfg(feature = "rayon")]
+  #[test]
+  fn parallel_matches_serial_on_corpus() {
+    let root = match std::env::var_os("OPJ_DATA_ROOT") {
+      Some(r) => std::path::PathBuf::from(r),
+      None => return, /* no test data -> skip */
+    };
+    let input = root.join("input").join("nonregression");
+    if !input.is_dir() {
+      return;
+    }
+    let mut checked = 0usize;
+    let mut entries: Vec<_> = std::fs::read_dir(&input)
+      .expect("read_dir")
+      .filter_map(|e| e.ok())
+      .map(|e| e.path())
+      .filter(|p| {
+        matches!(
+          p.extension().and_then(|e| e.to_str()),
+          Some("j2k") | Some("j2c") | Some("jp2") | Some("jhc") | Some("jph")
+        )
+      })
+      .collect();
+    entries.sort();
+    for path in entries {
+      let buf = std::fs::read(&path).expect("read input");
+      #[allow(deprecated)]
+      let serial: Option<crate::CoreImage> = (|| {
+        let fmt = match crate::detect_format(&buf) {
+          Ok(f) => f,
+          Err(_) => return None,
+        };
+        let c = if fmt == J2KFormat::JP2 {
+          OPJ_CODEC_JP2
+        } else {
+          OPJ_CODEC_J2K
+        };
+        let mut codec = Codec::new_decoder(c)?;
+        let mut dp = opj_dparameters::default();
+        if codec.setup_decoder(&mut dp) != 1 {
+          return None;
+        }
+        let mut stream = Stream::new_input(
+          crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+          std::io::Cursor::new(buf.clone()),
+          buf.len() as u64,
+        );
+        let mut img = codec.read_header(&mut stream)?;
+        if codec.decode(&mut stream, &mut img) != 1 {
+          return None;
+        }
+        if codec.end_decompress(&mut stream) != 1 {
+          return None;
+        }
+        Some(img)
+      })();
+      let par = Image::from_bytes(&buf).ok();
+      match (serial, par) {
+        (Some(s), Some(p)) => {
+          assert_eq!(
+            p.components().len(),
+            s.comps.len(),
+            "{}: component count differs",
+            path.display()
+          );
+          for (a, b) in p.components().iter().zip(s.comps.iter()) {
+            assert_eq!(a.data, b.data, "{}: parallel/serial mismatch", path.display());
+          }
+          checked += 1;
+        }
+        (Some(_), None) => panic!("{}: serial decoded, parallel failed", path.display()),
+        (None, Some(_)) => panic!("{}: parallel decoded, serial failed", path.display()),
+        (None, None) => {} /* expected-corrupt input */
+      }
+    }
+    assert!(checked > 10, "expected a corpus of decodable inputs");
+  }
+
   /// The concurrent-tile decode (rayon): a multi-tile codestream must
   /// decode byte-identically to the source pixels.
   #[cfg(feature = "rayon")]
