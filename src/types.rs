@@ -1081,6 +1081,21 @@ impl J2kEnc {
     self.m_header_tile_data.as_mut_ptr()
   }
 }
+/// TLM (Tile Length Marker) tile-part info gathered from the main header
+/// (upstream #1538).
+#[derive(Clone, Default)]
+pub(crate) struct TlmInfo {
+  pub m_entries_count: u32,
+  pub m_tile_part_infos: Vec<TlmTilePartInfo>,
+  pub m_is_invalid: bool,
+}
+
+#[derive(Copy, Clone, Default)]
+pub(crate) struct TlmTilePartInfo {
+  pub m_tile_index: u16,
+  pub m_length: u32,
+}
+
 #[derive(Default)]
 pub(crate) struct J2kDec {
   pub m_state: J2KState,
@@ -1101,6 +1116,10 @@ pub(crate) struct J2kDec {
   pub m_skip_data: bool,
   pub m_nb_tile_parts_correction_checked: bool,
   pub m_nb_tile_parts_correction: bool,
+  pub m_tlm: TlmInfo,
+  pub m_num_intersecting_tile_parts: u32,
+  pub m_idx_intersecting_tile_parts: u32,
+  pub m_intersecting_tile_parts_offset: Vec<i64>,
 }
 
 impl J2kDec {

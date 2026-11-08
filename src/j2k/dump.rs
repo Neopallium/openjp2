@@ -174,7 +174,22 @@ fn opj_j2k_dump_mh_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   }
   fprintf!(out_stream, "\t }}\n");
   /* Simple test to avoid writing empty information */
-  let l_acc_nb_of_tile_part: u32 = cstr_index.tiles.iter().map(|tile| tile.nb_tps).sum();
+  let mut l_acc_nb_of_tile_part: u32 = cstr_index.tiles.iter().map(|tile| tile.nb_tps).sum();
+  /* To avoid regenerating the expected opj_dump results from the test
+  suite when there is a TLM marker present (upstream): the TLM-built
+  tile-part entries have a start position but no end_header yet. */
+  if std::env::var_os("OJP_DO_NOT_DISPLAY_TILE_INDEX_IF_TLM").is_some() {
+    for tile in cstr_index.tiles.iter() {
+      if tile.nb_tps != 0
+        && !tile.tp_index.is_empty()
+        && tile.tp_index[0].start_pos > 0
+        && tile.tp_index[0].end_header == 0
+      {
+        l_acc_nb_of_tile_part = 0;
+        break;
+      }
+    }
+  }
   if l_acc_nb_of_tile_part != 0 {
     fprintf!(out_stream, "\t Tile index: {{\n");
     for (it_tile, tile) in cstr_index.tiles.iter().enumerate() {
