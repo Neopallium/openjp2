@@ -5034,8 +5034,12 @@ pub(crate) fn opj_j2k_decoder_set_strict_mode(mut j2k: &mut J2k, mut strict: OPJ
   }
 }
 
-pub(crate) fn opj_j2k_set_threads(mut _j2k: &mut J2k, mut _num_threads: u32) -> OPJ_BOOL {
-  0i32
+pub(crate) fn opj_j2k_set_threads(_j2k: &mut J2k, num_threads: u32) -> OPJ_BOOL {
+  /* The C keeps a per-codec thread pool; the Rust port uses the
+  process-wide rayon pool, sized on the first successful call.  The C
+  contract is that this call succeeds. */
+  crate::par::configure_pool(num_threads as usize);
+  1i32
 }
 
 /* ----------------------------------------------------------------------- */
