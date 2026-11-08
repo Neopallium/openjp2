@@ -148,6 +148,39 @@ impl Codec {
     }
   }
 
+  /// Number of tiles of the configured encoder (safe-API internal).
+  #[cfg(feature = "rayon")]
+  pub(crate) fn num_tiles(&self) -> u32 {
+    match &self.m_codec {
+      CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {
+        j2k.m_cp.tw.wrapping_mul(j2k.m_cp.th)
+      }
+      CodecType::Encoder(CodecFormat::JP2(jp2)) | CodecType::Decoder(CodecFormat::JP2(jp2)) => {
+        jp2.j2k.m_cp.tw.wrapping_mul(jp2.j2k.m_cp.th)
+      }
+    }
+  }
+
+  /// Parallel tile encoding into the given stream (feature `rayon`,
+  /// safe-API internal): encodes every tile with a fresh codec state and
+  /// writes the tile-parts in order.  Returns None when the parallel path
+  /// does not apply, leaving the codec state untouched for the sequential
+  /// fallback.
+  #[cfg(feature = "rayon")]
+  pub(crate) fn encode_parallel(&mut self, stream: &mut Stream) -> Option<bool> {
+    let j2k = match &mut self.m_codec {
+      CodecType::Encoder(CodecFormat::J2K(j2k)) => j2k,
+      CodecType::Encoder(CodecFormat::JP2(jp2)) => &mut jp2.j2k,
+      _ => return None,
+    };
+    let num_tiles = j2k.m_cp.tw.wrapping_mul(j2k.m_cp.th);
+    if num_tiles <= 1 {
+      return None;
+    }
+    let mut manager = crate::event::EventMgr::default();
+    Some(crate::j2k::j2k_encode_tiles_parallel(j2k, stream, &mut manager) != 0)
+  }
+
   /// Parallel whole-image decode over the given stream (feature `rayon`,
   /// safe-API internal): decodes every tile with a fresh codec state and
   /// merges the results.  Returns None when the parallel path does not

@@ -2018,7 +2018,7 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mu
 
 pub(crate) fn opj_tcd_get_encoder_input_buffer_size(
   mut p_tcd: &mut Tcd,
-  image: &mut CoreImage,
+  image: &CoreImage,
 ) -> usize {
   let mut l_data_size = 0_usize;
   let mut l_size_comp: u32 = 0;
@@ -2235,7 +2235,7 @@ fn opj_tcd_rate_allocate_encode(
 pub(crate) fn opj_tcd_copy_tile_data(
   p_tcd: &mut Tcd,
   mut p_src: &[u8],
-  image: &mut CoreImage,
+  image: &CoreImage,
 ) -> OPJ_BOOL {
   let mut l_data_size = 0_usize;
   let mut l_size_comp: u32 = 0;

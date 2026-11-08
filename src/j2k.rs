@@ -3933,9 +3933,20 @@ fn opj_j2k_update_rates(
     }
     i += 1;
   }
+  opj_j2k_alloc_encoded_tile_data(p_j2k, p_manager)
+}
+
+/// Sizes the per-tile encoded-data scratch buffer (the C allocates it in
+/// opj_j2k_update_rates; the parallel tile encoder needs it per worker).
+pub(crate) fn opj_j2k_alloc_encoded_tile_data(
+  p_j2k: &mut J2k,
+  p_manager: &mut EventMgr,
+) -> OPJ_BOOL {
+  let l_cp = &p_j2k.m_cp;
+  let l_image = p_j2k.m_private_image.as_deref().expect("m_private_image");
   let mut l_tile_size = 0u64;
   let mut comp_idx = 0usize;
-  i = 0_u32;
+  let mut i = 0u32;
   while i < l_image.numcomps {
     l_tile_size += opj_uint_ceildiv(l_cp.tdx, l_image.comps[comp_idx].dx) as u64
       * opj_uint_ceildiv(l_cp.tdy, l_image.comps[comp_idx].dy) as u64
@@ -10185,6 +10196,142 @@ pub(crate) fn opj_j2k_encode(
   1i32
 }
 
+/// Encodes one tile with a fresh codec state, mirroring the serial
+/// opj_j2k_encode loop body (pre_write_tile + tile-data copy +
+/// post_write_tile), but writing the tile-part into an in-memory buffer
+/// instead of the caller's stream (used by the parallel tile encoder in
+/// the safe API).  `private` is a header-only image (the pixel data lives
+/// in the pre-built `tile_buffer`, avoiding a full-image copy per worker).
+#[cfg(feature = "rayon")]
+fn j2k_encode_tile_worker(
+  cp: &Cp,
+  private: &CoreImage,
+  enc: &J2kEnc,
+  tile_no: u32,
+  real: &CoreImage,
+  p_manager: &mut EventMgr,
+) -> Option<Vec<u8>> {
+  let mut j2k = opj_j2k_create_compress()?;
+  j2k.m_cp = cp.clone();
+  j2k.m_private_image = Some(Box::new(private.clone()));
+  j2k.m_specific_param.m_encoder = enc.clone();
+  /* The TLM marker accumulation happens in the master, in tile order. */
+  j2k.m_specific_param.m_encoder.m_tlm = 0;
+  j2k.m_current_tile_number = tile_no;
+  if opj_tcd_init(&mut j2k.m_tcd, private, &mut j2k.m_cp) == 0 {
+    return None;
+  }
+  if opj_j2k_alloc_encoded_tile_data(&mut j2k, p_manager) == 0 {
+    return None;
+  }
+  /* opj_j2k_pre_write_tile equivalent */
+  j2k.m_specific_param.m_encoder.m_current_tile_part_number = 0_u32;
+  j2k.m_tcd.cur_totnum_tp = j2k.m_cp.tcps[tile_no as usize].m_nb_tile_parts;
+  j2k
+    .m_specific_param
+    .m_encoder
+    .m_current_poc_tile_part_number = 0_u32;
+  if opj_tcd_init_encode_tile(
+    &mut j2k.m_tcd,
+    tile_no,
+    p_manager,
+    j2k.m_private_image.as_deref_mut().expect("m_private_image"),
+    &mut j2k.m_cp,
+  ) == 0
+  {
+    return None;
+  }
+  /* Extract this tile's pixels (shared read-only image) into the tile
+  components. */
+  {
+    let image = j2k.m_private_image.as_deref_mut().expect("m_private_image");
+    let mut j = 0u32;
+    while j < image.numcomps {
+      let l_tilec = &mut j2k.m_tcd.tcd_image.tiles.comps[j as usize];
+      if opj_alloc_tile_component_data(l_tilec) == 0 {
+        return None;
+      }
+      j += 1;
+    }
+    let tile_size = opj_tcd_get_encoder_input_buffer_size(&mut j2k.m_tcd, real);
+    let mut buf = vec![0u8; tile_size];
+    opj_j2k_get_tile_data(&mut j2k.m_tcd, &mut buf[..], real);
+    if opj_tcd_copy_tile_data(&mut j2k.m_tcd, &buf[..], image) == 0 {
+      return None;
+    }
+  }
+  /* opj_j2k_post_write_tile against a per-worker memory stream. */
+  let writer = SharedVecWriter {
+    buf: std::rc::Rc::new(std::cell::RefCell::new(Vec::new())),
+    pos: 0,
+  };
+  let out_buf = writer.buf.clone();
+  let mut worker_stream = Stream::new_output(OPJ_J2K_STREAM_CHUNK_SIZE as usize, writer);
+  if opj_j2k_post_write_tile(&mut j2k, &mut worker_stream, p_manager) == 0 {
+    return None;
+  }
+  drop(worker_stream);
+  std::rc::Rc::try_unwrap(out_buf)
+    .ok()
+    .map(|b| b.into_inner())
+}
+
+/// Encodes every tile in parallel (feature `rayon`) and writes the
+/// tile-parts sequentially, so the codestream is byte-identical to the
+/// serial encode.  Returns 0 when a worker fails (the caller then falls
+/// back to the serial encode).  The master's TLM state is updated in
+/// tile order.
+#[cfg(feature = "rayon")]
+pub(crate) fn j2k_encode_tiles_parallel(
+  p_j2k: &mut J2k,
+  p_stream: &mut Stream,
+  p_manager: &mut EventMgr,
+) -> OPJ_BOOL {
+  use rayon::prelude::*;
+  let num_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
+  if num_tiles <= 1 {
+    return 0i32;
+  }
+  let header = p_j2k
+    .m_private_image
+    .as_deref()
+    .expect("m_private_image")
+    .clone_header_only();
+  let cp = p_j2k.m_cp.clone();
+  let enc = p_j2k.m_specific_param.m_encoder.clone();
+  /* Encode every tile in parallel; the workers read the pixels from the
+  shared image (read-only) and write their tile-parts into per-worker
+  buffers. */
+  let results: Vec<Option<Vec<u8>>> = {
+    let real = p_j2k
+      .m_private_image
+      .as_deref()
+      .expect("m_private_image");
+    (0..num_tiles)
+      .into_par_iter()
+      .map(|tile_no| {
+        let mut manager = EventMgr::default();
+        j2k_encode_tile_worker(&cp, &header, &enc, tile_no, real, &mut manager)
+      })
+      .collect()
+  };
+  if results.iter().any(Option::is_none) {
+    return 0i32;
+  }
+  /* Write the tile-parts in order. */
+  for bytes in results {
+    let bytes = bytes.expect("checked above");
+    if opj_stream_write_data(p_stream, &bytes, p_manager) != bytes.len() {
+      return 0i32;
+    }
+    if p_j2k.m_specific_param.m_encoder.m_tlm != 0 {
+      opj_j2k_update_tlm(p_j2k, bytes.len() as u32);
+    }
+    p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);
+  }
+  1i32
+}
+
 pub(crate) fn opj_j2k_end_compress(
   mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
@@ -10324,7 +10471,7 @@ fn opj_get_tile_dimensions(
   );
 }
 
-fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &mut CoreImage) {
+fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &CoreImage) {
   let numcomps = l_image.numcomps as usize;
   let l_tilec = &p_tcd.tcd_image.tiles.comps[..numcomps];
   for (l_tilec, l_img_comp) in l_tilec.iter().zip(l_image.comps.iter()) {

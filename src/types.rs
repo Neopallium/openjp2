@@ -1053,7 +1053,7 @@ pub(crate) struct C2RustUnnamed_2 {
   pub m_encoder: J2kEnc,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct J2kEnc {
   pub m_current_poc_tile_part_number: u32,
   pub m_current_tile_part_number: u32,

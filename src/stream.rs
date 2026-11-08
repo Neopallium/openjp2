@@ -376,3 +376,40 @@ pub(crate) fn opj_stream_seek(
 pub(crate) fn opj_stream_has_seek(p_stream: &Stream) -> OPJ_BOOL {
   p_stream.has_seek() as _
 }
+
+
+/// `Write + Seek` adapter collecting into a shared `Vec<u8>`; the encoder
+/// seeks back to patch marker lengths, so the position must be honoured.
+pub(crate) struct SharedVecWriter {
+  pub(crate) buf: std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
+  pub(crate) pos: u64,
+}
+
+impl std::io::Write for SharedVecWriter {
+  fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+    let mut buf = self.buf.borrow_mut();
+    let start = self.pos as usize;
+    if start + data.len() > buf.len() {
+      buf.resize(start + data.len(), 0);
+    }
+    buf[start..start + data.len()].copy_from_slice(data);
+    self.pos += data.len() as u64;
+    Ok(data.len())
+  }
+
+  fn flush(&mut self) -> std::io::Result<()> {
+    Ok(())
+  }
+}
+
+impl std::io::Seek for SharedVecWriter {
+  fn seek(&mut self, pos: std::io::SeekFrom) -> std::io::Result<u64> {
+    let new_pos = match pos {
+      std::io::SeekFrom::Start(p) => p,
+      std::io::SeekFrom::Current(d) => (self.pos as i64 + d) as u64,
+      std::io::SeekFrom::End(d) => (self.buf.borrow().len() as i64 + d) as u64,
+    };
+    self.pos = new_pos;
+    Ok(new_pos)
+  }
+}

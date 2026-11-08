@@ -353,40 +353,6 @@ impl Image {
 /// `Write + Seek` adapter collecting into a shared `Vec<u8>`; the j2k
 /// encoder seeks back to patch marker lengths, so the position must be
 /// honoured.
-struct SharedVecWriter {
-  buf: std::rc::Rc<std::cell::RefCell<Vec<u8>>>,
-  pos: u64,
-}
-
-impl std::io::Write for SharedVecWriter {
-  fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
-    let mut buf = self.buf.borrow_mut();
-    let start = self.pos as usize;
-    if start + data.len() > buf.len() {
-      buf.resize(start + data.len(), 0);
-    }
-    buf[start..start + data.len()].copy_from_slice(data);
-    self.pos += data.len() as u64;
-    Ok(data.len())
-  }
-
-  fn flush(&mut self) -> std::io::Result<()> {
-    Ok(())
-  }
-}
-
-impl std::io::Seek for SharedVecWriter {
-  fn seek(&mut self, pos: std::io::SeekFrom) -> std::io::Result<u64> {
-    let new_pos = match pos {
-      std::io::SeekFrom::Start(p) => p,
-      std::io::SeekFrom::Current(d) => (self.pos as i64 + d) as u64,
-      std::io::SeekFrom::End(d) => (self.buf.borrow().len() as i64 + d) as u64,
-    };
-    self.pos = new_pos;
-    Ok(new_pos)
-  }
-}
-
 /// Internal driver over the (deprecated-for-users) low-level Codec methods.
 #[allow(deprecated)]
 fn encode_image(
@@ -410,7 +376,7 @@ fn encode_image(
   if codec.setup_encoder(&mut params, &mut image) != 1 {
     return Err(Error::Encode("setup_encoder failed".into()));
   }
-  let writer = SharedVecWriter {
+  let writer = crate::stream::SharedVecWriter {
     buf: std::rc::Rc::new(std::cell::RefCell::new(Vec::new())),
     pos: 0,
   };
@@ -422,7 +388,19 @@ fn encode_image(
   if codec.start_compress(&mut image, &mut stream) != 1 {
     return Err(Error::Encode("start_compress failed".into()));
   }
-  if codec.encode(&mut stream) != 1 {
+  /* Concurrent tile encoding (rayon): only multi-tile images; any failure
+  falls back to the sequential encode below, which yields identical bytes. */
+  #[cfg(feature = "rayon")]
+  let parallel_ok = codec.num_tiles() > 1 && codec.encode_parallel(&mut stream) == Some(true);
+  #[cfg(feature = "rayon")]
+  let encode_ok = if parallel_ok {
+    true
+  } else {
+    codec.encode(&mut stream) == 1
+  };
+  #[cfg(not(feature = "rayon"))]
+  let encode_ok = codec.encode(&mut stream) == 1;
+  if !encode_ok {
     return Err(Error::Encode("encode failed".into()));
   }
   if codec.end_compress(&mut stream) != 1 {
