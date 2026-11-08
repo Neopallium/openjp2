@@ -9556,6 +9556,13 @@ pub(crate) fn j2k_decode_tile_worker(
     }
     opj_j2k_tcp_data_destroy(&mut j2k.m_cp.tcps[tile_info.index as usize]);
     decoded_any = true;
+    /* Stop as soon as the tile's tile-parts are exhausted instead of
+    walking to the EOC marker (the nb-tile-parts correction has already
+    run by now, so the count is reliable). */
+    let tcp = &j2k.m_cp.tcps[tile_no as usize];
+    if tcp.m_current_tile_part_number as u32 + 1 >= tcp.m_nb_tile_parts {
+      break;
+    }
   }
   if !decoded_any {
     return None;
