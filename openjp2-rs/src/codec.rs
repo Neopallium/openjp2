@@ -124,7 +124,6 @@ impl Codec {
     }
   }
 
-  #[cfg(feature = "file-io")]
   pub fn dump_codec<W: StringWriter>(&self, mut info_flag: OPJ_INT32, mut output_stream: &mut W) {
     match &self.m_codec {
       CodecType::Encoder(CodecFormat::J2K(j2k)) | CodecType::Decoder(CodecFormat::J2K(j2k)) => {

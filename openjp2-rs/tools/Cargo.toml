@@ -7,7 +7,7 @@ name = "opj_dump"
 path = "src/bin/opj_dump.rs"
 
 [dependencies]
-openjp2 = { path = "../", default-features = false, features = ["file-io"] }
+openjp2 = { path = "../", default-features = false }
 log = "0.4"
 libc = "0.2"
 
@@ -39,7 +39,6 @@ md5 = { version = "0.8", optional = true }
 default = ["lcms2", "testing"]
 #default = ["lcms2"]
 
-test_malloc = ["openjp2/test_malloc"]
 
 # Kept for the cfg in tools/tests/nonreg.rs (rayon is now a hard dependency).
 parallel-tests = []

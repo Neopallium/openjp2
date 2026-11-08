@@ -3,7 +3,6 @@ pub trait StringWriter {
   fn write_string(&mut self, s: &str) -> usize;
 }
 
-#[cfg(feature = "file-io")]
 impl StringWriter for std::fs::File {
   fn write_string(&mut self, s: &str) -> usize {
     use std::io::Write;
@@ -11,7 +10,6 @@ impl StringWriter for std::fs::File {
   }
 }
 
-#[cfg(feature = "file-io")]
 impl StringWriter for std::io::Stdout {
   fn write_string(&mut self, s: &str) -> usize {
     use std::io::Write;
@@ -19,7 +17,6 @@ impl StringWriter for std::io::Stdout {
   }
 }
 
-#[cfg(feature = "file-io")]
 impl StringWriter for std::io::Stderr {
   fn write_string(&mut self, s: &str) -> usize {
     use std::io::Write;

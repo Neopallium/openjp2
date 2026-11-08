@@ -9,8 +9,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![forbid(unsafe_code)]
 
-#[cfg(feature = "file-io")]
-extern crate libc;
 
 pub mod c_api_types;
 pub mod consts;
@@ -19,7 +17,6 @@ mod types;
 #[macro_use]
 mod event;
 
-#[cfg(feature = "file-io")]
 #[macro_use]
 mod fprintf;
 pub use fprintf::StringWriter;
@@ -88,7 +85,6 @@ pub fn detect_format_from_extension_os_str(
   detect_format_from_extension(ext.as_deref())
 }
 
-#[cfg(feature = "file-io")]
 fn detect_from_file_magic<P: AsRef<std::path::Path>>(path: P) -> Result<J2KFormat, String> {
   use std::io::Read;
   // Read magic bytes from file
@@ -100,7 +96,6 @@ fn detect_from_file_magic<P: AsRef<std::path::Path>>(path: P) -> Result<J2KForma
   detect_format(&buf)
 }
 
-#[cfg(feature = "file-io")]
 pub fn detect_format_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<J2KFormat, String> {
   let path = path.as_ref();
   let ext = path.extension().map(|ext| ext.to_string_lossy());

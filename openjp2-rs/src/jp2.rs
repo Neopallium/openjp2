@@ -2144,7 +2144,6 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<opj_jp2> {
   Some(jp2)
 }
 
-#[cfg(feature = "file-io")]
 pub(crate) fn jp2_dump<W: crate::fprintf::StringWriter>(
   p_jp2: &opj_jp2,
   flag: OPJ_INT32,

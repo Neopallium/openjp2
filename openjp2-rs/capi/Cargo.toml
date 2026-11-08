@@ -1,7 +1,7 @@
 [package]
 name = "openjp2-capi"
 authors = ["Robert G. Jakabosky <rjakabosky+neopallium@neoawareness.com>"]
-version = "0.6.2"
+version = "0.7.0"
 license = "BSD-2-Clause"
 description = "C ABI for the Rust port of Openjpeg."
 repository = "https://github.com/Neopallium/openjp2"
@@ -21,6 +21,6 @@ name = "openjp2"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
-openjp2_core = { package = "openjp2", path = "..", default-features = false, features = ["file-io"] }
+openjp2_core = { package = "openjp2", path = "..", default-features = false }
 libc = "0.2"
 log = "0.4.17"

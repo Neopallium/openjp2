@@ -39,7 +39,6 @@
 
 use std::io::{self as io, BufReader, BufWriter, Error as IoError, Read, Seek, SeekFrom, Write};
 
-#[cfg(feature = "file-io")]
 use std::{fs::File, path::Path};
 
 use super::event::*;
@@ -120,7 +119,6 @@ impl Seek for StreamInner {
 }
 
 impl Stream {
-  #[cfg(feature = "file-io")]
   pub fn new_file<P: AsRef<Path>>(path: P, buffer_size: usize, is_input: bool) -> io::Result<Self> {
     if is_input {
       let file = File::open(&path)?;
