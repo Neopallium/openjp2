@@ -1320,8 +1320,6 @@ mod tests {
   fn encode_decode_round_trip() {
     let mut enc = make_coder();
     opj_mqc_init_enc(&mut enc, 4096);
-    let enc_start = enc.start;
-    let enc_cursor = enc.cursor;
     let bits: Vec<u32> = (0..2000u32).map(|i| (i * 7919 + 13) % 2).collect();
     for &b in &bits {
       opj_mqc_setcurctx(&mut enc, (b as u8) % 19);

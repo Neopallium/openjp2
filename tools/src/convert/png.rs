@@ -579,16 +579,14 @@ fn lodepng_save(image: &mut CoreImage, prec: u32, path: &Path) -> Result<(), Ima
 
     match (d0, d1, d2, d3) {
       (d0, None, None, None) => {
-        let buffer = d0.map(|d| d as u8).collect::<Vec<_>>();
+        let buffer = d0.collect::<Vec<_>>();
         encoder
           .encode_file(path, &buffer, width, height)
           .map_err(|e| ImageError::EncodeError(e.to_string()))?;
       }
       (d0, Some(d1), None, None) => {
         let pixels = d0.zip(d1);
-        let buffer = pixels
-          .map(|(d0, d1)| GreyAlpha(d0 as u8, d1 as u8))
-          .collect::<Vec<_>>();
+        let buffer = pixels.map(|(d0, d1)| GreyAlpha(d0, d1)).collect::<Vec<_>>();
         encoder
           .encode_file(path, &buffer, width, height)
           .map_err(|e| ImageError::EncodeError(e.to_string()))?;

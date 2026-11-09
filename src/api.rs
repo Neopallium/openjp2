@@ -858,7 +858,7 @@ mod tests {
         assert_eq!(v[0], 0);
         assert!(v[1] > 0 && v[1] < 65535);
       }
-      other => panic!("unexpected pixel format {other:?}"),
+      other => panic!("unexpected pixel format {:?}", other),
     }
     // And the DynamicImage conversion path.
     use core::convert::TryFrom;
@@ -1095,7 +1095,7 @@ mod tests {
         resno_decoded: 0,
         factor: 0,
         alpha: if c == 1 { 1 } else { 0 },
-        data: vec![(c as i32) * 200; (w * h) as usize],
+        data: vec![c * 200; (w * h) as usize],
       });
     }
     let image = Image { core };
@@ -1138,7 +1138,7 @@ mod tests {
         assert_eq!(v.len(), (w * h * 2) as usize);
         assert_eq!(&v[0..2], &[7, 255]);
       }
-      other => panic!("unexpected {other:?}"),
+      other => panic!("unexpected {:?}", other),
     }
   }
 
@@ -1185,7 +1185,7 @@ mod tests {
   fn decode_garbage_errors() {
     assert!(Image::from_bytes(b"not a jpeg2000 file at all").is_err());
     let mut data = vec![0xFFu8, 0x4F]; // SOC only
-    data.extend(std::iter::repeat(0u8).take(64));
+    data.extend([0u8; 64]);
     assert!(Image::from_bytes(&data).is_err());
   }
 
@@ -1215,7 +1215,7 @@ mod tests {
         .map(|(x, y)| (x - y).unsigned_abs())
         .max()
         .unwrap_or(0);
-      assert!(max_delta < 64, "9-7 round trip drifted by {max_delta}");
+      assert!(max_delta < 64, "9-7 round trip drifted by {}", max_delta);
     }
   }
 
@@ -1381,9 +1381,11 @@ mod tests {
             OPJ_CODEC_J2K
           };
           let mut codec = Codec::new_decoder(c)?;
-          let mut dp = opj_dparameters::default();
-          dp.cp_layer = params.layers;
-          dp.cp_reduce = params.reduce;
+          let mut dp = opj_dparameters {
+            cp_layer: params.layers,
+            cp_reduce: params.reduce,
+            ..Default::default()
+          };
           if codec.setup_decoder(&mut dp) != 1 {
             return None;
           }

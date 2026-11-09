@@ -26,9 +26,9 @@ mod tests {
       assert!(!version.is_null());
 
       // Test a few more function pointers exist
-      assert!(TIFFClose as usize != 0);
-      assert!(TIFFReadScanline as usize != 0);
-      assert!(TIFFWriteScanline as usize != 0);
+      assert!(TIFFClose as *const () as usize != 0);
+      assert!(TIFFReadScanline as *const () as usize != 0);
+      assert!(TIFFWriteScanline as *const () as usize != 0);
     }
   }
 }
