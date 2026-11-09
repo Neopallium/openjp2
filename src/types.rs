@@ -410,6 +410,11 @@ pub(crate) struct Tcd {
   pub win_y1: u32,
   pub whole_tile_decoding: OPJ_BOOL,
   pub used_component: Vec<bool>,
+  /// Reusable f32 scratch for the whole-tile 9-7 inverse DWT (one per Tcd,
+  /// shared across the components decoded sequentially; the C reinterprets
+  /// the i32 buffer in place, the safe Rust port converts through this
+  /// scratch instead of a fresh per-component allocation).
+  pub dwt_f32_scratch: Vec<f32>,
 }
 
 

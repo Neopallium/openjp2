@@ -10,7 +10,12 @@ pub mod cli;
 /// and is read by rayon itself.
 pub fn configure_thread_pool(threads: usize) {
   if threads > 0 {
-    let _ = rayon::ThreadPoolBuilder::new().num_threads(threads).build_global();
+    let _ = rayon::ThreadPoolBuilder::new()
+      .num_threads(threads)
+      /* The t1/DWT call depth is shallow; keep worker stacks small so
+      multi-threaded decodes don't add ~1MB of touched stack per thread. */
+      .stack_size(512 * 1024)
+      .build_global();
     return;
   }
   if std::env::var("RAYON_NUM_THREADS").is_ok() {
@@ -24,7 +29,10 @@ pub fn configure_thread_pool(threads: usize) {
   };
   if n > 0 {
     // build_global only succeeds once per process; that is all we need.
-    let _ = rayon::ThreadPoolBuilder::new().num_threads(n).build_global();
+    let _ = rayon::ThreadPoolBuilder::new()
+      .num_threads(n)
+      .stack_size(512 * 1024)
+      .build_global();
   }
 }
 // Common code shared between the openjp2 CLI tools.

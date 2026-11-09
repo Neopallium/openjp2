@@ -1398,8 +1398,7 @@ pub(crate) fn opj_tcd_decode_tile(
       compno += 1;
     }
   }
-  /*--------------TIER2------------------*/
-  l_data_read = 0_u32;
+
   if tprof!("t2_decode", opj_tcd_t2_decode(p_tcd, p_src, &mut l_data_read, p_manager, image, cp)) == 0 {
     return 0i32;
   }
@@ -1407,6 +1406,8 @@ pub(crate) fn opj_tcd_decode_tile(
   if tprof!("t1_decode", opj_tcd_t1_decode(p_tcd, p_manager, image, cp, p_src)) == 0 {
     return 0i32;
   }
+
+
   /* For subtile decoding, now we know the resno_decoded, we can allocate */
   /* the tile data buffer */
   if p_tcd.whole_tile_decoding == 0 {
@@ -1698,38 +1699,47 @@ fn opj_tcd_dwt_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OP
   let used: Vec<bool> = (0..p_tcd.tcd_image.tiles.numcomps)
     .map(|c| p_tcd.used_component(c))
     .collect();
-  let results: Vec<OPJ_BOOL> = par::map_collect(
-    &mut p_tcd.tcd_image.tiles.comps,
-    1,
-    |compno, l_tile_comp| {
+  let any_real = (0..p_tcd.tcd_image.tiles.numcomps as usize)
+    .any(|c| used[c] && tccps[c].qmfbid == 0u32);
+  if any_real {
+    /* The 9-7 inverse DWT converts each component through a full-sized f32
+    scratch (the C reinterprets the i32 buffer in place).  Reuse one scratch
+    for all components: they run sequentially so the transient is a single
+    component's worth instead of numcomps concurrent copies. */
+    for compno in 0..p_tcd.tcd_image.tiles.numcomps as usize {
       if !used[compno] {
-        return 1i32;
+        continue;
       }
       let resno_decoded = img_comps[compno].resno_decoded.wrapping_add(1u32);
-      if tccps[compno].qmfbid == 1u32 {
+      let l_tile_comp = &mut p_tcd.tcd_image.tiles.comps[compno];
+      let r = if tccps[compno].qmfbid == 1u32 {
         opj_dwt_decode(whole_tile, l_tile_comp, resno_decoded)
       } else {
-        opj_dwt_decode_real(whole_tile, l_tile_comp, resno_decoded)
+        opj_dwt_decode_real(whole_tile, l_tile_comp, resno_decoded, &mut p_tcd.dwt_f32_scratch)
+      };
+      if r == 0 {
+        return 0i32;
       }
-    },
-  );
-  if results.contains(&0) {
-    return 0i32;
+    }
+    1i32
+  } else {
+    let results: Vec<OPJ_BOOL> = par::map_collect(
+      &mut p_tcd.tcd_image.tiles.comps,
+      1,
+      |compno, l_tile_comp| {
+        if !used[compno] {
+          return 1i32;
+        }
+        let resno_decoded = img_comps[compno].resno_decoded.wrapping_add(1u32);
+        opj_dwt_decode(whole_tile, l_tile_comp, resno_decoded)
+      },
+    );
+    if results.contains(&0) {
+      return 0i32;
+    }
+    1i32
   }
-  1i32
 }
-/// Runs `f` on a bit-exact `&mut [f32]` view of the i32 buffer: the float MCT
-/// stores f32 bit patterns in the i32 component data (the C code reinterprets
-/// in place; here we convert per element).
-fn with_f32_view<R>(data: &mut [i32], f: impl FnOnce(&mut [f32]) -> R) -> R {
-  let mut fdata: Vec<f32> = data.iter().map(|&x| f32::from_bits(x as u32)).collect();
-  let r = f(&mut fdata);
-  for (d, &v) in data.iter_mut().zip(fdata.iter()) {
-    *d = v.to_bits() as i32;
-  }
-  r
-}
-
 fn opj_tcd_mct_decode(
   p_tcd: &mut Tcd,
   p_manager: &mut EventMgr,
@@ -1906,11 +1916,7 @@ fn opj_tcd_mct_decode(
       } else {
         c2[0].data_win.as_mut_slice(l_samples)
       };
-      with_f32_view(s0, |f0| {
-        with_f32_view(s1, |f1| {
-          with_f32_view(s2, |f2| opj_mct_decode_real(f0, f1, f2))
-        })
-      });
+      opj_mct_decode_real(s0, s1, s2);
     }
   } else {
     event_msg!(
@@ -2093,13 +2099,11 @@ fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OP
     let (c0, rest) = comps.split_at_mut(1);
     let (c1, rest) = rest.split_at_mut(1);
     let (c2, _) = rest.split_at_mut(1);
-    with_f32_view(c0[0].data.as_mut_slice(samples), |f0| {
-      with_f32_view(c1[0].data.as_mut_slice(samples), |f1| {
-        with_f32_view(c2[0].data.as_mut_slice(samples), |f2| {
-          opj_mct_encode_real(f0, f1, f2)
-        })
-      })
-    });
+    opj_mct_encode_real(
+      c0[0].data.as_mut_slice(samples),
+      c1[0].data.as_mut_slice(samples),
+      c2[0].data.as_mut_slice(samples),
+    );
   } else {
     let (c0, rest) = comps.split_at_mut(1);
     let (c1, rest) = rest.split_at_mut(1);
