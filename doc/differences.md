@@ -84,6 +84,10 @@ a literal transcription.  This page lists the intentional divergences.
 - `opj_get_num_cpus()` reports `std::thread::available_parallelism()`;
   `opj_has_thread_support()` reports the `rayon` feature.
 - Error messages are best-effort translations of the C diagnostics.
+- CMYK->RGB in the Rust tools uses the canonical f32 + truncation
+  semantics (the current upstream C tools' float code drifts by a few
+  +1 pixels on this platform and disagrees with its own md5refs; the
+  Rust tools match the md5refs exactly).
 - The ~200 `assert!` sites in the core are ports of the C's `assert()`
   (stripped by NDEBUG in release C builds).  They encode invariants the
   C relies on too; the mutation/truncation fuzz campaigns (tens of

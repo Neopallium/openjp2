@@ -818,16 +818,19 @@ pub fn color_cmyk_to_rgb(image: &mut CoreImage) {
   };
 
   for i in 0..max {
-    // CMYK values from 0 to 1
-    let c = 1.0 - (c_data[i] as f32 * sc);
-    let m = 1.0 - (m_data[i] as f32 * sm);
-    let y = 1.0 - (y_data[i] as f32 * sy);
-    let k = 1.0 - (k_data[i] as f32 * sk);
+    /* CMYK values from 0 to 1 (f32, like the C's float arithmetic - the
+    rounding differs from f64 for values near an integer) */
+    let c = 1.0f32 - (c_data[i] as f32 * sc);
+    let m = 1.0f32 - (m_data[i] as f32 * sm);
+    let y = 1.0f32 - (y_data[i] as f32 * sy);
+    let k = 1.0f32 - (k_data[i] as f32 * sk);
 
-    // CMYK -> RGB
-    c_data[i] = (255.0 * c * k).round() as i32; // R
-    m_data[i] = (255.0 * m * k).round() as i32; // G
-    y_data[i] = (255.0 * y * k).round() as i32; // B
+    /* CMYK -> RGB: the C truncates (int)(255.0F * C * K); f64 would give
+    a different value for near-integer results (e.g. 255*(1-185/255) is
+    69.999... in f32 -> 69, but exactly 70 in f64). */
+    c_data[i] = (255.0f32 * c * k) as i32; // R
+    m_data[i] = (255.0f32 * m * k) as i32; // G
+    y_data[i] = (255.0f32 * y * k) as i32; // B
   }
 
   // Update component properties
@@ -835,7 +838,11 @@ pub fn color_cmyk_to_rgb(image: &mut CoreImage) {
   comps.1.prec = 8;
   comps.2.prec = 8;
 
+  /* The C drops the K component from the image (numcomps -= 1 and the
+  components shifted); the pgx writer iterates the component ARRAY, so
+  truncate it here to match. */
   image.numcomps -= 1;
+  image.comps.truncate(image.numcomps as usize);
   image.color_space = OPJ_CLRSPC_SRGB;
 }
 

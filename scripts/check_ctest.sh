@@ -7,9 +7,13 @@ BUILD_DIR="${BUILD_DIR:-/opt/openjpeg/openjpeg/build}"
 JOBS="${JOBS:-$(nproc)}"
 
 ALLOWED=(
+  # The C-ABI tools link the Rust library but keep the upstream C tools'
+  # color.c: its CMYK->RGB float arithmetic disagrees with the upstream
+  # md5refs on this platform (the reference C library build fails these
+  # identically - verified against upstream master).  The Rust tools
+  # (tools/) use the canonical conversion and match the refs exactly.
   "NR-DEC-issue205.jp2-43-decode-md5"
   "NR-DEC-issue208.jp2-69-decode-md5"
-  "NR-DEC-issue226.j2k-74-decode-md5"
 )
 
 log="$(mktemp)"

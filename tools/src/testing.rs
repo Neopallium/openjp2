@@ -252,8 +252,18 @@ impl TestCommand {
 
   pub fn run_nonreg_decode(&self, md5_refs: &Arc<MD5References>) {
     let name = format!("NR-DEC-{}-{}", self.input_file_name(), self.index);
-    // Get the input filename without path.
-    let input_filename = self.input_file_name();
+    // Remove stale output files from previous runs (e.g. a component the
+    // current tool version no longer writes would otherwise be picked up
+    // by the md5 glob below).
+    if let Ok(dir) = std::fs::read_dir(self.output_file().parent().unwrap_or(Path::new("."))) {
+      let prefix = self.output_file_name();
+      for entry in dir.flatten() {
+        let fname = entry.file_name().to_string_lossy().to_string();
+        if fname.starts_with(&prefix) && (fname.ends_with(".pgx") || fname.ends_with(".png")) {
+          let _ = std::fs::remove_file(entry.path());
+        }
+      }
+    }
     println!("{name}-decode");
     let result = run_decompress(self.command.clone());
 
@@ -269,13 +279,7 @@ impl TestCommand {
     let result = md5_refs.check_output_files_md5(self.output_file());
 
     if let Err(err) = result {
-      // Check for expected md5 failure
-      match input_filename.as_str() {
-        "issue205.jp2" | "issue208.jp2" | "issue226.j2k" => {
-          eprintln!("Expected MD5 mismatch for {}", input_filename);
-        }
-        _ => panic!("MD5 check failed: {}", err),
-      }
+      panic!("MD5 check failed: {}", err);
     }
   }
 }
