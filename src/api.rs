@@ -1163,6 +1163,23 @@ mod tests {
     }
   }
 
+  /// The default codestream comment identifies the port itself; the
+  /// `openjpeg-version-string` feature switches it to the upstream
+  /// string (checked by the encode byte-identity gates).
+  #[test]
+  fn default_codestream_comment_is_ours() {
+    let comment = crate::openjpeg::default_codestream_comment();
+    #[cfg(feature = "openjpeg-version-string")]
+    assert!(comment.starts_with("Created by OpenJPEG version "));
+    #[cfg(not(feature = "openjpeg-version-string"))]
+    {
+      assert!(comment.starts_with("Created by "));
+      assert!(comment.contains(env!("CARGO_PKG_NAME")));
+      assert!(comment.contains(env!("CARGO_PKG_VERSION")));
+      assert!(!comment.contains("OpenJPEG version"));
+    }
+  }
+
   /// Decoding garbage must return an error, never panic.
   #[test]
   fn decode_garbage_errors() {

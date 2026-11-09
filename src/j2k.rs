@@ -6049,7 +6049,7 @@ pub(crate) fn opj_j2k_setup_encoder(
   } else {
     /* Create default comment for codestream */
     /* UniPG>> */
-    cp.comment = format!("Created by OpenJPEG version {}", OPJ_VERSION).into_bytes();
+    cp.comment = crate::openjpeg::default_codestream_comment().into_bytes();
   }
   /*
   calculate other encoding parameters

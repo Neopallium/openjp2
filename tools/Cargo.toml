@@ -37,6 +37,9 @@ md5 = { version = "0.8", optional = true }
 
 [features]
 default = ["lcms2", "testing"]
+# Write the upstream OpenJPEG product/version string into the default
+# codestream comment (see the openjp2 crate feature of the same name).
+openjpeg-version-string = ["openjp2/openjpeg-version-string"]
 #default = ["lcms2"]
 
 

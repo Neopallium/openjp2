@@ -42,6 +42,11 @@ rayon = ["dep:rayon"]
 threads = ["rayon"]
 # `image`-crate interop (Image::get_pixels / DynamicImage conversion).
 image = ["dep:image"]
+# Write the upstream OpenJPEG product/version string into the default
+# codestream comment (COM marker) instead of the port's own name and
+# version, so encoded files are byte-identical to the C reference.
+# Off by default; the test suite enables it where needed.
+openjpeg-version-string = []
 
 [[example]]
 name = "bench_decode"

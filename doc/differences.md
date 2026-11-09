@@ -88,6 +88,11 @@ a literal transcription.  This page lists the intentional divergences.
   semantics (the current upstream C tools' float code drifts by a few
   +1 pixels on this platform and disagrees with its own md5refs; the
   Rust tools match the md5refs exactly).
+- The default codestream comment (COM marker) written by the encoder
+  identifies the port ("Created by openjp2 version X").  Building with
+  the `openjpeg-version-string` feature (off by default) writes the
+  upstream OpenJPEG product/version string instead, making encoded
+  files byte-identical to the C reference for test comparisons.
 - The ~200 `assert!` sites in the core are ports of the C's `assert()`
   (stripped by NDEBUG in release C builds).  They encode invariants the
   C relies on too; the mutation/truncation fuzz campaigns (tens of
