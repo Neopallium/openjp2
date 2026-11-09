@@ -55,5 +55,5 @@ libpng = ["libpng-sys"]
 
 lodepng = ["dep:lodepng", "rgb"]
 
-testing = ["libtiff", "libpng", "md5"]
+testing = ["libtiff", "libpng", "md5", "openjp2/openjpeg-version-string"]
 

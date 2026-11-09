@@ -1,5 +1,5 @@
 function(cargo_build)
-    cmake_parse_arguments(CARGO "" "NAME" "" ${ARGN})
+    cmake_parse_arguments(CARGO "" "NAME" "FEATURES" ${ARGN})
     string(REPLACE "-" "_" LIB_NAME ${CARGO_NAME})
 
     set(CARGO_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -46,6 +46,9 @@ function(cargo_build)
 		set(CARGO_ARGS "lipo")
 	else()
     	set(CARGO_ARGS "build")
+	foreach(FEATURE IN LISTS CARGO_FEATURES)
+		list(APPEND CARGO_ARGS "--features" ${FEATURE})
+	endforeach()
 		list(APPEND CARGO_ARGS "--target" ${LIB_TARGET})
 	endif()
 
