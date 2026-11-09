@@ -117,8 +117,8 @@ pub unsafe fn opj_set_error_handler(
 }
 
 /* ---------------------------------------------------------------------- */
-pub const OPJ_VERSION: &str = "2.5.2";
-pub const OPJ_VERSION_C: *const u8 = b"2.5.2\x00" as *const u8;
+pub const OPJ_VERSION: &str = "2.5.4";
+pub const OPJ_VERSION_C: *const u8 = b"2.5.4\x00" as *const u8;
 
 #[no_mangle]
 pub fn opj_version() -> *const core::ffi::c_char {

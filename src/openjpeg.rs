@@ -8,5 +8,5 @@ pub use crate::c_api_types::*;
 pub use crate::consts::opj::*;
 pub use crate::types::*;
 
-pub const OPJ_VERSION: &str = "2.5.2";
+pub const OPJ_VERSION: &str = "2.5.4";
 
