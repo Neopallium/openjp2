@@ -9,6 +9,10 @@ thread_local! {
   /// at a time; sized to the current resolution).
   static DWT_SCRATCH: core::cell::RefCell<Vec<core::cell::Cell<i32>>> =
     const { core::cell::RefCell::new(Vec::new()) };
+  /// Per-worker scratch memory for the parallel 9-7 passes (the wavelet
+  /// cells of one row/column group, sized to the current resolution).
+  static DWT_SCRATCH_F32: core::cell::RefCell<Vec<core::cell::Cell<f32>>> =
+    const { core::cell::RefCell::new(Vec::new()) };
 }
 use super::sparse_array::{sparse_array_read, sparse_array_write, SparseArray};
 
@@ -2452,32 +2456,72 @@ fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32, f32_scratch:
     h.win_l_x1 = h.sn as u32;
     h.win_h_x0 = 0_u32;
     h.win_h_x1 = h.dn as u32;
-    j = 0_u32;
-    while j + (NB_ELTS_V8 - 1) < rh {
-      opj_v8dwt_interleave_h(&h, tile_data, aj_start, w, NB_ELTS_V8);
-      opj_v8dwt_decode(&h);
-      /* To be adapted if NB_ELTS_V8 changes */
-      for k in 0..rw as usize {
-        let g = k * NB_ELTS_V8 as usize;
-        for r in 0..NB_ELTS_V8 as usize {
-          tile_data[aj_start + k + r * w as usize] = h.wavelet[g + r].get();
+    if (rw as usize).wrapping_mul(rh as usize) >= 16384 {
+      /* Large levels: parallelise the horizontal pass over the 8-row groups
+      (disjoint row bands); smaller levels stay sequential (the per-level
+      parallel overhead dominates there). */
+      let h_len = (rw as usize) * NB_ELTS_V8 as usize;
+      let (h_sn, h_dn, h_cas) = (h.sn, h.dn, h.cas);
+      let stride = w as usize;
+      par::for_each_chunks_mut(
+        &mut tile_data[..rh as usize * stride],
+        stride * NB_ELTS_V8 as usize,
+        |_gi, chunk| {
+          DWT_SCRATCH_F32.with(|scratch| {
+            let mut s = scratch.borrow_mut();
+            if s.len() < h_len {
+              s.resize(h_len, core::cell::Cell::new(0.0));
+            }
+            let d = v8dwt_local {
+              wavelet: &s[..h_len],
+              dn: h_dn,
+              sn: h_sn,
+              cas: h_cas,
+              win_l_x0: 0,
+              win_l_x1: h_sn as u32,
+              win_h_x0: 0,
+              win_h_x1: h_dn as u32,
+            };
+            let remaining = (chunk.len() / stride) as u32;
+            opj_v8dwt_interleave_h(&d, chunk, 0, stride as u32, remaining);
+            opj_v8dwt_decode(&d);
+            for k in 0..rw as usize {
+              let g = k * NB_ELTS_V8 as usize;
+              for r in 0..remaining as usize {
+                chunk[k + r * stride] = d.wavelet[g + r].get();
+              }
+            }
+          });
+        },
+      );
+    } else {
+      j = 0_u32;
+      while j + (NB_ELTS_V8 - 1) < rh {
+        opj_v8dwt_interleave_h(&h, tile_data, aj_start, w, NB_ELTS_V8);
+        opj_v8dwt_decode(&h);
+        /* To be adapted if NB_ELTS_V8 changes */
+        for k in 0..rw as usize {
+          let g = k * NB_ELTS_V8 as usize;
+          for r in 0..NB_ELTS_V8 as usize {
+            tile_data[aj_start + k + r * w as usize] = h.wavelet[g + r].get();
+          }
         }
+        aj_start += (w * NB_ELTS_V8) as usize;
+        j += NB_ELTS_V8;
       }
-      aj_start += (w * NB_ELTS_V8) as usize;
-      j += NB_ELTS_V8;
-    }
-    if j < rh {
-      opj_v8dwt_interleave_h(&h, tile_data, aj_start, w, rh.wrapping_sub(j));
-      opj_v8dwt_decode(&h);
-      let mut k_0: u32 = 0;
-      while k_0 < rw {
-        let mut l: u32 = 0;
-        while l < rh.wrapping_sub(j) {
-          tile_data[aj_start + (k_0 as usize) + (w as usize) * (l as usize)] =
-            h.wavelet[(k_0 * NB_ELTS_V8 + l) as usize].get();
-          l += 1;
+      if j < rh {
+        opj_v8dwt_interleave_h(&h, tile_data, aj_start, w, rh.wrapping_sub(j));
+        opj_v8dwt_decode(&h);
+        let mut k_0: u32 = 0;
+        while k_0 < rw {
+          let mut l: u32 = 0;
+          while l < rh.wrapping_sub(j) {
+            tile_data[aj_start + (k_0 as usize) + (w as usize) * (l as usize)] =
+              h.wavelet[(k_0 * NB_ELTS_V8 + l) as usize].get();
+            l += 1;
+          }
+          k_0 += 1;
         }
-        k_0 += 1;
       }
     }
     v.dn = rh.wrapping_sub(v.sn as u32) as i32;
