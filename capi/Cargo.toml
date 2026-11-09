@@ -28,6 +28,7 @@ file-io = ["dep:libc"]
 # Pass-through: write the upstream OpenJPEG product/version string into
 # the default codestream comment (off by default).
 openjpeg-version-string = ["openjp2_core/openjpeg-version-string"]
+simd = ["openjp2_core/simd"]
 
 [dependencies]
 openjp2_core = { package = "openjp2", path = ".." }

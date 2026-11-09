@@ -50,9 +50,11 @@ a literal transcription.  This page lists the intentional divergences.
   parse as unknown and are rejected, like the C's default builds.
   The `jpwl_*` parameter fields remain in the C-ABI mirror for struct
   parity.
-- SIMD kernels (NEON/AVX2/AVX512 IDWT) are not ported; the scalar paths
-  are used.  The C reference's SIMD is only in the DWT (a minor share of
-  decode time).
+- SIMD: the C reference's NEON/AVX2/AVX512 IDWT kernels are not ported
+  verbatim, but an optional `simd` feature (off by default) provides a
+  safe `wide`-based kernel for the 5-3 vertical pass (~2% decode win
+  at 1 thread, ~8% at 24 threads, byte-identical).  See
+  `doc/simd-options.md` for the options and measurements.
 - HTJ2K (T.814) decoding is ported; HTJ2K encoding is not, matching the
   C reference (decode-only).
 

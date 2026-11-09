@@ -32,6 +32,7 @@ byteorder = { version = "1.5" }
 log = "0.4.17"
 
 smallvec = "1.13"
+wide = { version = "1.7", optional = true }
 
 [features]
 # Parallelism via rayon is optional: some platforms/targets cannot use
@@ -47,6 +48,9 @@ image = ["dep:image"]
 # version, so encoded files are byte-identical to the C reference.
 # Off by default; the test suite enables it where needed.
 openjpeg-version-string = []
+# SIMD-accelerated DWT kernels via the `wide` crate (safe API; the
+# kernels run on the generic build without it).  Off by default.
+simd = ["dep:wide"]
 
 [[example]]
 name = "bench_decode"

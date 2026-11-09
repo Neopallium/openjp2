@@ -92,3 +92,4 @@ Build without rayon for no-rayon targets: `cargo build --no-default-features --f
 - `doc/code-outline.md` — module map onto the spec and the pipelines
 - `doc/api-review.md` — public API review + the jpeg2k alignment plan
 - `doc/differences.md` — intentional divergences from the C reference
+- `doc/simd-options.md` — SIMD options, measurements, and the `simd` feature

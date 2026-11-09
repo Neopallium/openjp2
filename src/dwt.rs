@@ -421,6 +421,65 @@ fn opj_dwt_interleave_v(v: &Dwt, a: &[i32], a_start: usize, x: i32) {
 /* Inverse 5-3 wavelet transform in 1-D for one row. */
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
+#[cfg(feature = "simd")]
+fn opj_idwt53_v_simd(
+  sn: i32,
+  dn: i32,
+  tiledp: &mut [i32],
+  col_start: usize,
+  stride: usize,
+  nb_cols: i32,
+) -> i32 {
+  use wide::i32x4;
+  let len = (sn + dn) as usize;
+  let two = i32x4::splat(2);
+  #[inline(always)]
+  fn load(buf: &[i32], k: usize, c: usize, stride: usize) -> i32x4 {
+    i32x4::from([buf[c + k * stride], buf[c + 1 + k * stride], buf[c + 2 + k * stride], buf[c + 3 + k * stride]])
+  }
+  /* Interleaved results for a 4-column group (the same layout the
+  scalar path's scratch + write-back produces).  Writing the results to
+  a scratch first avoids the read-after-write aliasing between the
+  plain input rows (0..sn-1 = low, sn.. = high) and the interleaved
+  output rows (2i = low, 2i+1 = high) - exactly how the C reference's
+  SIMD kernels avoid it. */
+  let mut scratch = vec![i32x4::splat(0); len];
+  let mut c = col_start;
+  let end = col_start + (nb_cols as usize) - (nb_cols as usize) % 4;
+  while c < end {
+    // low pass: s'[i] = s[i] - (d[i-1] + d[i] + 2) >> 2
+    // d reads clamp to dn-1 when sn > dn (odd level heights), exactly
+    // like the scalar path's dn_idx clamp.
+    let d_idx = |i: usize| sn as usize + i.min(dn as usize - 1);
+    let mut prev_d = load(tiledp, d_idx(0), c, stride); // d(-1) = d(0)
+    for i in 0..sn as usize {
+      let s = load(tiledp, i, c, stride);
+      let d = load(tiledp, d_idx(i), c, stride);
+      let val = (prev_d + d + two) >> 2;
+      scratch[2 * i] = s - val;
+      prev_d = d;
+    }
+    // high pass: d'[i] = d[i] + (s'[i] + s'[i+1]) >> 1
+    for i in 0..dn as usize {
+      let s0 = scratch[2 * i];
+      let s1 = if i + 1 >= sn as usize { scratch[2 * (sn as usize - 1)] } else { scratch[2 * (i + 1)] };
+      let d = load(tiledp, sn as usize + i, c, stride);
+      scratch[2 * i + 1] = d + ((s0 + s1) >> 1);
+    }
+    // write back: row k of the group = scratch[k]
+    for (k, v) in scratch.iter().enumerate() {
+      let arr = v.to_array();
+      let base = c + k * stride;
+      tiledp[base] = arr[0];
+      tiledp[base + 1] = arr[1];
+      tiledp[base + 2] = arr[2];
+      tiledp[base + 3] = arr[3];
+    }
+    c += 4;
+  }
+  (end - col_start) as i32
+}
+
 /// Inverse 5-3 wavelet transform in 1-D for one row: interleave, transform, copy back.
 fn opj_idwt53_h(dwt: &Dwt, tiledp: &mut [i32], row_start: usize) {
   let len = (dwt.sn + dwt.dn) as usize;
@@ -445,6 +504,12 @@ fn opj_idwt53_v(
   nb_cols: i32,
 ) {
   let mut c = 0i32;
+  /* SIMD path (feature `simd`): cas == 0 (even-origin columns) only;
+  odd origins and short columns use the scalar path. */
+  #[cfg(feature = "simd")]
+  if dwt.cas == 0 && nb_cols >= 4 && dwt.sn + dwt.dn > 1 && dwt.dn > 0 {
+    c = opj_idwt53_v_simd(dwt.sn, dwt.dn, tiledp, col_start, stride, nb_cols);
+  }
   while c < nb_cols {
     opj_dwt_interleave_v(dwt, tiledp, col_start + c as usize, stride as i32);
     dwt.decode_1();
