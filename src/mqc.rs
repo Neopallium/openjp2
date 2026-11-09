@@ -3,6 +3,7 @@ use super::openjpeg::*;
 use super::t1_luts::*;
 use core::cell::Cell;
 
+#[derive(Copy, Clone)]
 pub struct MqcState {
   pub qeval: u32,
   // 0/1 bit values (u8 for parity with the C code)
@@ -27,14 +28,15 @@ pub struct Mqc {
   end: usize,
   /// Read/write cursor, as an index into `base`.
   cursor: usize,
-  pub ctxs: [&'static MqcState; MQC_NUMCTXS],
+  /// Value array of the 19 contexts, padded to 256 slots so a `u8` context
+  /// number indexes it in-bounds without a branch.
+  pub ctxs: [MqcState; 256],
   pub curctx: u8,
   pub lut_ctxno_zc_orient: &'static [u8; 512],
   pub backup: [u8; 2],
 }
 impl Default for Mqc {
   fn default() -> Self {
-    let ctx = &MQC_STATES[0];
     Self {
       c: 0,
       a: 0,
@@ -44,7 +46,7 @@ impl Default for Mqc {
       start: 0,
       end: 0,
       cursor: 0,
-      ctxs: [ctx; MQC_NUMCTXS],
+      ctxs: [MQC_STATES[0]; 256],
       curctx: 0,
       lut_ctxno_zc_orient: &LUT_CTXNO_ZC[0],
       backup: [0; 2],
@@ -59,15 +61,15 @@ impl Mqc {
 
   pub(crate) fn set_curctx_nlps(&mut self) {
     let curctx = self.curctx();
-    self.ctxs[self.curctx as usize] = &MQC_STATES[curctx.nlps as usize];
+    self.ctxs[self.curctx as usize] = MQC_STATES[curctx.nlps as usize];
   }
 
   pub(crate) fn set_curctx_nmps(&mut self) {
     let curctx = self.curctx();
-    self.ctxs[self.curctx as usize] = &MQC_STATES[curctx.nmps as usize];
+    self.ctxs[self.curctx as usize] = MQC_STATES[curctx.nmps as usize];
   }
 
-  pub(crate) fn curctx(&self) -> &'static MqcState {
+  pub(crate) fn curctx(&self) -> MqcState {
     self.ctxs[self.curctx as usize]
   }
 
@@ -173,6 +175,7 @@ pub(crate) fn opj_mqc_setcurctx(mqc: &mut Mqc, ctxno: u8) {
 }
 
 /* For internal use of opj_mqc_decode_macro() */
+#[inline(always)]
 fn opj_mqc_mpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
   let curctx = mqc.curctx();
   if mqc.a < curctx.qeval {
@@ -185,6 +188,7 @@ fn opj_mqc_mpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
 }
 
 /* For internal use of opj_mqc_decode_macro() */
+#[inline(always)]
 fn opj_mqc_lpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
   let curctx = mqc.curctx();
   if mqc.a < curctx.qeval {
@@ -228,7 +232,7 @@ pub(crate) fn opj_mqc_raw_decode(mut mqc: &mut Mqc) -> u32 {
   mqc.c >> mqc.ct & 0x1
 }
 
-#[inline]
+#[inline(always)]
 fn opj_mqc_bytein_macro(mqc: &mut Mqc) {
   let mut l_c: u32 = 0;
   /* Given opj_mqc_init_dec() we know that at some point we will */
@@ -257,7 +261,7 @@ pub(crate) fn opj_mqc_bytein(mqc: &mut Mqc) {
 }
 
 /* For internal use of opj_mqc_decode_macro() */
-#[inline]
+#[inline(always)]
 fn opj_mqc_renormd_macro(mqc: &mut Mqc) {
   loop {
     if mqc.ct == 0 {
@@ -272,7 +276,7 @@ fn opj_mqc_renormd_macro(mqc: &mut Mqc) {
   }
 }
 
-#[inline]
+#[inline(always)]
 pub(crate) fn opj_mqc_decode_macro(d: &mut u32, mqc: &mut Mqc) {
   /* Implements ISO 15444-1 C.3.2 Decoding a decision (DECODE) */
   /* Note: alternate "J.2 - Decoding an MPS or an LPS in the */
@@ -300,7 +304,7 @@ Renormalize mqc->a and mqc->c while encoding, so that mqc->a stays between 0x800
 @param c_ value of mqc->c_
 @param ct_ value of mqc->ct_
 */
-#[inline]
+#[inline(always)]
 fn opj_mqc_renorme_macro(mqc: &mut Mqc) {
   loop {
     mqc.a <<= 1;
@@ -315,7 +319,7 @@ fn opj_mqc_renorme_macro(mqc: &mut Mqc) {
   }
 }
 
-#[inline]
+#[inline(always)]
 fn opj_mqc_codemps_macro(mqc: &mut Mqc) {
   mqc.a = mqc.a.wrapping_sub(mqc.curctx().qeval);
   if mqc.a & 0x8000 == 0 {
@@ -331,7 +335,7 @@ fn opj_mqc_codemps_macro(mqc: &mut Mqc) {
   }
 }
 
-#[inline]
+#[inline(always)]
 fn opj_mqc_codelps_macro(mqc: &mut Mqc) {
   mqc.a = mqc.a.wrapping_sub(mqc.curctx().qeval);
   if mqc.a < mqc.curctx().qeval {
@@ -343,7 +347,7 @@ fn opj_mqc_codelps_macro(mqc: &mut Mqc) {
   opj_mqc_renorme_macro(mqc);
 }
 
-#[inline]
+#[inline(always)]
 pub(crate) fn opj_mqc_encode_macro(mqc: &mut Mqc, d: u32) {
   if mqc.curctx().mps as u32 == d {
     opj_mqc_codemps(mqc);
@@ -1265,14 +1269,15 @@ pub(crate) fn opq_mqc_finish_dec(mqc: &mut Mqc) {
 
 pub(crate) fn opj_mqc_resetstates(mqc: &mut Mqc) {
   for i in 0..19 {
-    mqc.ctxs[i] = &MQC_STATES[0];
+    mqc.ctxs[i] = MQC_STATES[0];
   }
 }
 
 pub(crate) fn opj_mqc_setstate(mqc: &mut Mqc, ctxno: u8, msb: u32, prob: i32) {
-  mqc.ctxs[ctxno as usize] = &MQC_STATES[msb.wrapping_add((prob << 1) as u32) as usize];
+  mqc.ctxs[ctxno as usize] = MQC_STATES[msb.wrapping_add((prob << 1) as u32) as usize];
 }
 
+#[inline(always)]
 pub(crate) fn opj_mqc_byteout(mut mqc: &mut Mqc) {
   /* bp is initialized to start - 1 in opj_mqc_init_enc() */
   /* but this is safe, see opj_tcd_code_block_enc_allocate_data() */

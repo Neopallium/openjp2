@@ -411,7 +411,7 @@ Decode significant pass
 /* *
 Encode significant pass
 */
-#[inline]
+#[inline(always)]
 fn opj_t1_enc_sigpass_step_macro(
   mqc: &mut Mqc,
   w: u32,
@@ -902,7 +902,7 @@ Decode refinement pass
 /**
 Encode refinement pass step
 */
-#[inline]
+#[inline(always)]
 fn opj_t1_enc_refpass_step_macro(
   mqc: &mut Mqc,
   flagsp: FlagsPtr,
@@ -1220,7 +1220,7 @@ fn opj_t1_dec_refpass_mqc(mut t1: &mut T1Coder, mut bpno: i32, data_src: Option<
 /**
 Encode clean-up pass step
 */
-#[inline]
+#[inline(always)]
 fn opj_t1_enc_clnpass_step_macro(
   mqc: &mut Mqc,
   w: u32,
