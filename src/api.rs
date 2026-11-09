@@ -135,6 +135,12 @@ impl DecodeArea {
 }
 
 /// Decoder settings, built with the fluent builder pattern.
+///
+/// Defaults: full quality (reduce 0, all layers), whole image, and
+/// LENIENT decoding (`strict == false`), like the C tools' `-allow-
+/// partial`: partial or slightly malformed codestreams decode as far as
+/// they can instead of being rejected.  (The C ABI and the CLI tools
+/// keep the C library's strict-by-default behaviour.)
 #[derive(Debug, Clone, Default)]
 pub struct DecodeParameters {
   pub reduce: u32,
