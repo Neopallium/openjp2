@@ -140,7 +140,10 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> Option<CstrInfoV2> {
     } else {
       (l_tccp.numresolutions as i32 * 3i32) - 2i32
     };
-    if numbands < OPJ_J2K_MAXBANDS as i32 {
+    /* Guard the negative case too: an incomplete header (no COD) leaves
+    numresolutions at 0, giving numbands = -2 which would otherwise run
+    the band loop to usize::MAX. */
+    if numbands > 0i32 && numbands < OPJ_J2K_MAXBANDS as i32 {
       for bandno in 0..numbands as usize {
         info.stepsizes_mant[bandno] = l_tccp.stepsizes[bandno].mant as u32;
         info.stepsizes_expn[bandno] = l_tccp.stepsizes[bandno].expn as u32;
@@ -1265,6 +1268,76 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
   }
   if cp.tdx == 0u32 || cp.tdy == 0u32 {
     return 0i32;
+  }
+  /* Decoder resource limits (Rust core API): check the codestream's declared
+  geometry against the configured caps BEFORE anything is allocated from it.
+  This is the first defence against malicious headers with huge image/tile
+  dimensions. */
+  {
+    let limits = p_j2k.decode_limits;
+    let siz_w = l_image.x1.wrapping_sub(l_image.x0);
+    let siz_h = l_image.y1.wrapping_sub(l_image.y0);
+    if limits.max_image_width != 0 && siz_w > limits.max_image_width {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "SIZ image width {} exceeds the decoder limit {}
+",
+        siz_w,
+        limits.max_image_width,
+      );
+      return 0i32;
+    }
+    if limits.max_image_height != 0 && siz_h > limits.max_image_height {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "SIZ image height {} exceeds the decoder limit {}
+",
+        siz_h,
+        limits.max_image_height,
+      );
+      return 0i32;
+    }
+    if limits.max_tile_pixels != 0 {
+      let tile_pixels = (cp.tdx as u64).wrapping_mul(cp.tdy as u64);
+      if tile_pixels > limits.max_tile_pixels {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "SIZ tile area {} exceeds the decoder limit {}
+",
+          tile_pixels,
+          limits.max_tile_pixels,
+        );
+        return 0i32;
+      }
+    }
+    if limits.max_mem_alloc != 0 {
+      let mut total: u64 = 0;
+      let mut c: u32 = 0;
+      while c < l_image.numcomps {
+        let comp = &l_image.comps[c as usize];
+        let cw = siz_w.div_ceil(comp.dx);
+        let ch = siz_h.div_ceil(comp.dy);
+        total = total.saturating_add(
+          (cw as u64)
+            .wrapping_mul(ch as u64)
+            .wrapping_mul(core::mem::size_of::<i32>() as u64),
+        );
+        c += 1;
+      }
+      if total > limits.max_mem_alloc {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "SIZ image component data {} bytes exceeds the decoder memory limit {} bytes\\n",
+          total,
+          limits.max_mem_alloc,
+        );
+        return 0i32;
+      }
+    }
   }
 
   /* Compute the number of tiles */
@@ -3524,6 +3597,12 @@ fn opj_j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
           EVT_WARNING,
           "Tile part length size inconsistent with stream length\n",
         );
+        /* Progressive download: a Psot that exceeds the available bytes must
+        not drive a multi-gigabyte allocation - clamp the read to what is
+        actually in the stream (the tile decode then stops cleanly when the
+        data runs out). */
+        p_j2k.m_specific_param.m_decoder.m_sot_length =
+          opj_stream_get_number_byte_left(p_stream) as u32;
       }
     }
     if p_j2k.m_specific_param.m_decoder.m_sot_length > u32::MAX - OPJ_COMMON_CBLK_DATA_EXTRA {
@@ -6686,6 +6765,7 @@ fn opj_j2k_read_header_procedure(
   let mut l_has_siz = 0i32;
   let mut l_has_cod = 0i32;
   let mut l_has_qcd = 0i32;
+  let strict = p_j2k.m_cp.strict;
   /* preconditions */
 
   /*  We enter in the main header */
@@ -6702,6 +6782,13 @@ fn opj_j2k_read_header_procedure(
     p_manager,
   ) != 2
   {
+    /* Progressive-download support (lenient mode): a header that ends after
+    SIZ still yields the image dimensions and component count - accept the
+    header read so far instead of failing hard. */
+    if strict == 0 && l_has_siz != 0 {
+      p_j2k.m_header_partial = true;
+      return 1i32;
+    }
     event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
     return 0i32;
   }
@@ -6765,6 +6852,10 @@ fn opj_j2k_read_header_procedure(
       p_manager,
     ) != 2
     {
+      if strict == 0 && l_has_siz != 0 {
+        p_j2k.m_header_partial = true;
+        return 1i32;
+      }
       event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
       return 0i32;
     }
@@ -6779,6 +6870,10 @@ fn opj_j2k_read_header_procedure(
     let l_header_data = p_j2k.m_specific_param.m_decoder.header_data(l_marker_size);
     /* Try to read the rest of the marker segment from stream and copy them into the buffer */
     if opj_stream_read_data(p_stream, l_header_data, p_manager) != l_marker_size as usize {
+      if strict == 0 && l_has_siz != 0 {
+        p_j2k.m_header_partial = true;
+        return 1i32;
+      }
       event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
       return 0i32;
     }
@@ -6953,6 +7048,12 @@ fn opj_j2k_copy_default_tcp_and_create_tcd(
 ) -> OPJ_BOOL {
   let mut i: u32 = 0;
   /* preconditions */
+  /* A lenient partial header (SIZ decoded, the rest cut off) has no
+  COD/QCD: the tcd creation would run on default (possibly zeroed) coding
+  parameters.  Skip it; the decode stage returns the partial image. */
+  if p_j2k.m_header_partial {
+    return 1i32;
+  }
 
   let l_nb_tiles: u32 = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
   let l_default_tcp = p_j2k
@@ -7575,6 +7676,41 @@ pub(crate) fn opj_j2k_read_tile_header(
     event_msg!(p_manager, EVT_ERROR, "Failed to merge PPT data\n",);
     return false;
   }
+  /* Decoder resource limit (Rust core API): bound the tile buffers before
+  opj_tcd_init_decode_tile allocates them.  tdx*tdy is the worst-case tile
+  area (edge tiles are smaller), so this pre-check is conservative. */
+  {
+    /* Always runs: an unset limit falls back to the built-in 1 GiB ceiling
+    so a corrupt tile header cannot drive a huge allocation.  The bound is
+    the ACTUAL per-tile area: the tcd clamps each tile to the image
+    extents (a header may declare a raw tdx/tdy far larger than the
+    image - cf. huge-tile-size.jp2). */
+    let max_mem = p_j2k.decode_limits.effective_max_mem();
+    let numcomps = p_j2k
+      .m_private_image
+      .as_deref()
+      .expect("m_private_image")
+      .numcomps;
+    let img = p_j2k.m_private_image.as_deref().expect("m_private_image");
+    let image_pixels = (img.x1.wrapping_sub(img.x0) as u64)
+      .wrapping_mul(img.y1.wrapping_sub(img.y0) as u64);
+    let cp_ref = &p_j2k.m_cp;
+    let raw_tile_pixels = (cp_ref.tdx as u64).wrapping_mul(cp_ref.tdy as u64);
+    let tile_pixels = raw_tile_pixels.min(image_pixels);
+    let tile_bytes = tile_pixels
+      .wrapping_mul(core::mem::size_of::<i32>() as u64)
+      .wrapping_mul(numcomps as u64);
+    if tile_bytes > max_mem {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Tile data {} bytes exceeds the decoder memory limit {} bytes\n",
+        tile_bytes,
+        max_mem,
+      );
+      return false;
+    }
+  }
   if opj_tcd_init_decode_tile(
     &mut p_j2k.m_tcd,
     p_j2k.m_current_tile_number,
@@ -7757,10 +7893,36 @@ fn opj_j2k_update_image_data(
   p_tcd: &mut Tcd,
   p_output_image: &mut CoreImage,
   p_image_src: &mut CoreImage,
+  max_mem: u64,
+  p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
   let whole_tile = p_tcd.whole_tile_decoding != 0;
   let img_comps_src = &p_image_src.comps[..];
   let numcomps = p_image_src.numcomps as usize;
+  /* Decoder resource limit (Rust core API): the destination component
+  buffers are sized from the image dimensions - check the total before the
+  first allocation (an unset limit falls back to the built-in 1 GiB
+  ceiling). */
+  {
+    let mut total: u64 = 0;
+    for comp in &p_output_image.comps {
+      total = total.saturating_add(
+        (comp.w as u64)
+          .wrapping_mul(comp.h as u64)
+          .wrapping_mul(core::mem::size_of::<i32>() as u64),
+      );
+    }
+    if total > max_mem {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Output image component data {} bytes exceeds the decoder memory limit {} bytes\\n",
+        total,
+        max_mem,
+      );
+      return 0i32;
+    }
+  }
   let results: Vec<OPJ_BOOL> = par::zip_map_collect(
     &mut p_tcd.tcd_image.tiles.comps,
     &mut p_output_image.comps,
@@ -8278,6 +8440,8 @@ impl J2k {
       ihdr_w: 0,
       ihdr_h: 0,
       dump_state: 0,
+      decode_limits: Default::default(),
+      m_header_partial: false,
     }
   }
 }
@@ -9183,6 +9347,8 @@ fn opj_j2k_decode_tiles(
         .m_private_image
         .as_deref_mut()
         .expect("m_private_image"),
+      p_j2k.decode_limits.effective_max_mem(),
+      p_manager,
     ) == 0
     {
       return 0i32;
@@ -9367,6 +9533,8 @@ fn opj_j2k_decode_one_tile(
         .m_private_image
         .as_deref_mut()
         .expect("m_private_image"),
+      p_j2k.decode_limits.effective_max_mem(),
+      p_manager,
     ) == 0
     {
       return 0i32;
@@ -9529,6 +9697,7 @@ pub(crate) fn j2k_merge_tile_results(
   header: &CoreImage,
   p_output_image: &mut CoreImage,
   p_manager: &mut EventMgr,
+  max_mem: u64,
 ) -> OPJ_BOOL {
   for (_tile_no, mut tcd, resno) in tiles {
     let mut private = header.clone();
@@ -9538,7 +9707,7 @@ pub(crate) fn j2k_merge_tile_results(
     for (i, comp) in private.comps.iter_mut().enumerate() {
       comp.resno_decoded = *resno.get(i).unwrap_or(&0);
     }
-    if opj_j2k_update_image_data(&mut tcd, p_output_image, &mut private) == 0 {
+    if opj_j2k_update_image_data(&mut tcd, p_output_image, &mut private, max_mem, p_manager) == 0 {
       event_msg!(p_manager, EVT_ERROR, "Failed to update image with tile data\n",);
       return 0i32;
     }
@@ -9581,6 +9750,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
   decode_bounds: Option<&CoreImage>,
   merge_image: &CoreImage,
   stream: &mut Stream,
+  max_mem: u64,
 ) -> Option<CoreImage> {
   use rayon::prelude::*;
   use std::io::Read as _;
@@ -9708,7 +9878,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
   parallel across components). */
   let mut output = merge_image.clone();
   let mut manager = EventMgr::default();
-  if j2k_merge_tile_results(decoded, header, &mut output, &mut manager) == 0 {
+  if j2k_merge_tile_results(decoded, header, &mut output, &mut manager, max_mem) == 0 {
     return None;
   }
   Some(output)
@@ -9756,6 +9926,12 @@ pub(crate) fn opj_j2k_decode(
   p_image: &mut CoreImage,
   p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
+  /* A lenient partial header has no codestream to decode: return the
+  partial (header-only) image data instead of walking an uninitialized
+  TCD. */
+  if p_j2k.m_header_partial {
+    return 0i32;
+  }
   /* Heuristics to detect sequence opj_read_header(), opj_set_decoded_resolution_factor() */
   /* and finally opj_decode_image() without manual setting of comps[].factor */
   /* We could potentially always execute it, if we don't allow people to do */

@@ -1048,16 +1048,13 @@ fn opj_t2_read_packet_header(
               i += 1;
             }
             cblk.mb = band.numbps as u32;
-            if band.numbps as u32 + 1 < i {
-              /* Not totally sure what we should do in that situation,
-               * but that avoids the integer overflow of
-               * https://github.com/uclouvain/openjpeg/pull/1488
-               * while keeping the regression test suite happy.
-               */
-              cblk.numbps = (band.numbps + 1 - i as i32) as u32;
-            } else {
-              cblk.numbps = band.numbps as u32 + 1 - i;
-            }
+            /* Both C branches compute the same wrapping arithmetic; the
+             * branch exists upstream only to document the PR #1488 integer
+             * overflow while keeping the regression suite happy. */
+            cblk.numbps = band
+              .numbps
+              .wrapping_add(1)
+              .wrapping_sub(i as i32) as u32;
             cblk.numlenbits = 3_u32
           }
           /* number of coding passes */

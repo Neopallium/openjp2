@@ -193,9 +193,19 @@ impl Codec {
     header: &CoreImage,
     area_image: &CoreImage,
   ) -> Option<CoreImage> {
-    let cp = match &self.m_codec {
-      CodecType::Decoder(CodecFormat::J2K(j2k)) => &j2k.m_cp,
-      CodecType::Decoder(CodecFormat::JP2(jp2)) => &jp2.j2k.m_cp,
+    let (cp, limits) = match &self.m_codec {
+      CodecType::Decoder(CodecFormat::J2K(j2k)) => {
+        if j2k.m_header_partial {
+          return None;
+        }
+        (&j2k.m_cp, j2k.decode_limits)
+      }
+      CodecType::Decoder(CodecFormat::JP2(jp2)) => {
+        if jp2.j2k.m_header_partial {
+          return None;
+        }
+        (&jp2.j2k.m_cp, jp2.j2k.decode_limits)
+      }
       _ => return None,
     };
     let info = self.get_cstr_info_v2()?;
@@ -255,6 +265,7 @@ impl Codec {
       Some(area_image),
       area_image,
       stream,
+      limits.effective_max_mem(),
     )?;
     /* JP2 palette/component-mapping post-processing (same as the serial
     opj_jp2_decode). */
@@ -280,9 +291,19 @@ impl Codec {
     reduce: u32,
     strict: bool,
   ) -> Option<CoreImage> {
-    let cp = match &self.m_codec {
-      CodecType::Decoder(CodecFormat::J2K(j2k)) => &j2k.m_cp,
-      CodecType::Decoder(CodecFormat::JP2(jp2)) => &jp2.j2k.m_cp,
+    let (cp, limits) = match &self.m_codec {
+      CodecType::Decoder(CodecFormat::J2K(j2k)) => {
+        if j2k.m_header_partial {
+          return None;
+        }
+        (&j2k.m_cp, j2k.decode_limits)
+      }
+      CodecType::Decoder(CodecFormat::JP2(jp2)) => {
+        if jp2.j2k.m_header_partial {
+          return None;
+        }
+        (&jp2.j2k.m_cp, jp2.j2k.decode_limits)
+      }
       _ => return None,
     };
     let info = self.get_cstr_info_v2()?;
@@ -316,6 +337,7 @@ impl Codec {
       None,
       &merge,
       stream,
+      limits.effective_max_mem(),
     )?;
     /* JP2 files with a palette/component mapping need the same colour
     post-processing the serial opj_jp2_decode applies after the codestream
@@ -388,6 +410,31 @@ impl Codec {
         }
         1
       }
+    }
+  }
+
+  /// Applies decode resource limits (Rust core API only; all-zero = unlimited).
+  /// See `crate::api::DecodeLimits`.
+  pub fn set_decode_limits(&mut self, limits: crate::api::DecodeLimits) -> OPJ_BOOL {
+    match &mut self.m_codec {
+      CodecType::Encoder(_) => {
+        event_msg!(
+          &mut self.m_event_mgr,
+          EVT_ERROR,
+          "Codec provided to the opj_set_decode_limits function is not a decompressor handler.\n",
+        );
+        0
+      }
+      CodecType::Decoder(dec) => match dec {
+        CodecFormat::J2K(dec) => {
+          dec.decode_limits = limits;
+          1
+        }
+        CodecFormat::JP2(dec) => {
+          dec.j2k.decode_limits = limits;
+          1
+        }
+      },
     }
   }
 

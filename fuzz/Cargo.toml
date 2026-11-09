@@ -1,0 +1,32 @@
+[package]
+name = "openjp2-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.openjp2]
+path = ".."
+default-features = false
+
+# Prevent this from being part of the workspace while in the workspace root
+[workspace]
+
+[[bin]]
+name = "fuzz_decode"
+path = "fuzz_targets/fuzz_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "gen_seeds"
+path = "fuzz_targets/gen_seeds.rs"
+test = false
+doc = false
+bench = false

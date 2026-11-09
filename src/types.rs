@@ -392,6 +392,14 @@ pub(crate) struct J2k {
   pub ihdr_w: u32,
   pub ihdr_h: u32,
   pub dump_state: core::ffi::c_uint,
+  /// Optional decode resource limits (Rust core API only; all-zero =
+  /// unlimited).  Enforced in the SIZ handler, tile initialization and the
+  /// JP2 box reader.
+  pub decode_limits: crate::api::DecodeLimits,
+  /// Lenient mode accepted a truncated main header (SIZ decoded, the rest
+  /// cut off): the image geometry is known but the codestream cannot be
+  /// decoded further - the decode stage returns the partial image.
+  pub m_header_partial: bool,
 }
 
 #[derive(Default)]

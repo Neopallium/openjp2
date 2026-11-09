@@ -134,6 +134,88 @@ impl DecodeArea {
   }
 }
 
+/// Optional resource limits for decoding untrusted input.
+///
+/// These guards exist only in the Rust core API (the C-ABI mirror keeps
+/// the upstream behaviour).
+///
+/// The limits are checked *before* allocations happen: codestream values
+/// that prefix a length (JP2 box lengths, marker segment lengths) are
+/// verified against the remaining stream bytes first, and the
+/// image/tile/metadata dimensions are checked against the limits before
+/// any buffer is sized from them.
+///
+/// `max_mem_alloc == 0` means "the built-in default ceiling" (1 GiB) so a
+/// corrupt header cannot drive a multi-gigabyte allocation out of a tiny
+/// input; set it explicitly for larger images.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct DecodeLimits {
+  /// Maximum decoded image width in pixels (0 = unlimited).
+  pub max_image_width: u32,
+  /// Maximum decoded image height in pixels (0 = unlimited).
+  pub max_image_height: u32,
+  /// Maximum tile area in pixels (tile width x tile height, 0 = unlimited).
+  pub max_tile_pixels: u64,
+  /// Upper bound on the memory the decode may allocate, in bytes.
+  /// 0 = the built-in default ceiling (1 GiB); set explicitly for larger
+  /// images.  Covers the dominant buffers: the per-component image and
+  /// tile data.
+  pub max_mem_alloc: u64,
+  /// Maximum length of a single metadata element in bytes - ICC colour
+  /// profiles, JP2 header-box payloads, comments, etc. (0 = unlimited).
+  pub max_metadata_len: usize,
+}
+
+/// Built-in memory ceiling when `DecodeLimits::max_mem_alloc` is left at 0.
+pub const DEFAULT_DECODE_MEM_LIMIT: u64 = 1 << 30;
+
+impl DecodeLimits {
+  pub(crate) fn effective_max_mem(&self) -> u64 {
+    if self.max_mem_alloc == 0 {
+      DEFAULT_DECODE_MEM_LIMIT
+    } else {
+      self.max_mem_alloc
+    }
+  }
+}
+
+impl DecodeLimits {
+  pub const fn new() -> Self {
+    Self {
+      max_image_width: 0,
+      max_image_height: 0,
+      max_tile_pixels: 0,
+      max_mem_alloc: 0,
+      max_metadata_len: 0,
+    }
+  }
+
+  /// Cap the decoded image dimensions (either limit may be 0 = unlimited).
+  pub fn max_image_size(mut self, width: u32, height: u32) -> Self {
+    self.max_image_width = width;
+    self.max_image_height = height;
+    self
+  }
+
+  /// Cap the tile area in pixels (0 = unlimited).
+  pub fn max_tile_pixels(mut self, pixels: u64) -> Self {
+    self.max_tile_pixels = pixels;
+    self
+  }
+
+  /// Cap the decode memory budget in bytes (0 = the built-in 1 GiB default).
+  pub fn max_mem_alloc(mut self, bytes: u64) -> Self {
+    self.max_mem_alloc = bytes;
+    self
+  }
+
+  /// Cap the length of a single metadata element in bytes (0 = unlimited).
+  pub fn max_metadata_len(mut self, bytes: usize) -> Self {
+    self.max_metadata_len = bytes;
+    self
+  }
+}
+
 /// Decoder settings, built with the fluent builder pattern.
 ///
 /// Defaults: full quality (reduce 0, all layers), whole image, and
@@ -148,6 +230,8 @@ pub struct DecodeParameters {
   pub strict: bool,
   pub decode_area: Option<DecodeArea>,
   pub ignore_pclr_cmap_cdef: bool,
+  /// Optional resource limits (see `DecodeLimits`); all-zero = unlimited.
+  pub limits: DecodeLimits,
 }
 
 impl DecodeParameters {
@@ -170,6 +254,12 @@ impl DecodeParameters {
   /// Reject malformed codestreams instead of tolerating them.
   pub fn strict(mut self, strict: bool) -> Self {
     self.strict = strict;
+    self
+  }
+
+  /// Apply resource limits to the decode (see `DecodeLimits`).
+  pub fn limits(mut self, limits: DecodeLimits) -> Self {
+    self.limits = limits;
     self
   }
 
@@ -342,6 +432,12 @@ impl Image {
   /// The raw decoded data (escape hatch to the low-level API).
   pub fn into_core_image(self) -> CoreImage {
     self.core
+  }
+
+  /// Build an image from raw component planes (the input side of
+  /// `encode`/`encode_jp2`).
+  pub fn from_core_image(core: CoreImage) -> Self {
+    Self { core }
   }
 
   /// Build an image from an `image`-crate `DynamicImage` (feature
@@ -619,6 +715,9 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
   if codec.setup_decoder(&mut dparams) != 1 {
     return Err(Error::Decode("setup_decoder failed".into()));
   }
+  if codec.set_decode_limits(params.limits) != 1 {
+    return Err(Error::Decode("set_decode_limits failed".into()));
+  }
   /* The C library default is strict; the builder flag must control the
   mode explicitly so strict(false) actually relaxes it. */
   if codec.decoder_set_strict_mode(params.strict as crate::OPJ_BOOL) != 1 {
@@ -667,10 +766,18 @@ fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParamete
     }
   }
 
+  /* Progressive-download support: in lenient mode a truncated or damaged
+  codestream must not throw away the image data decoded so far - return the
+  partial image instead of an error (the header already succeeded, so the
+  dimensions and component count are known).  Strict mode keeps the hard
+  failure. */
   if codec.decode(stream, &mut image) != 1 {
-    return Err(Error::Decode("decode failed".into()));
+    if params.strict {
+      return Err(Error::Decode("decode failed".into()));
+    }
+    return Ok(Image { core: image });
   }
-  if codec.end_decompress(stream) != 1 {
+  if codec.end_decompress(stream) != 1 && params.strict {
     return Err(Error::Decode("end_decompress failed".into()));
   }
 
@@ -1217,6 +1324,130 @@ mod tests {
         .unwrap_or(0);
       assert!(max_delta < 64, "9-7 round trip drifted by {}", max_delta);
     }
+  }
+
+  /// Lenient mode returns a partial image for truncated codestreams instead
+  /// of an error (progressive download), and the decoder limits reject
+  /// oversized geometry before any allocation.
+  #[test]
+  fn truncation_and_limits() {
+    let mut rng: u64 = 0x243f6a8885a308d3;
+    let mut next = move || {
+      rng ^= rng << 13;
+      rng ^= rng >> 7;
+      rng ^= rng << 17;
+      rng
+    };
+    // Build a small valid codestream with the encoder.
+    let (w, h) = (96u32, 64u32);
+    let mut core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 3,
+      color_space: crate::OPJ_CLRSPC_SRGB,
+      comps: Vec::new(),
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    for _c in 0..3u32 {
+      let mut data = Vec::with_capacity((w * h) as usize);
+      for _ in 0..w * h {
+        data.push((next() % 256) as i32);
+      }
+      core.comps.push(crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data,
+      });
+    }
+    let image = Image { core };
+    let codestream = image
+      .encode(EncodeParameters::new().num_resolutions(2).num_layers(1))
+      .expect("encode");
+
+    // 1. Full decode works.
+    let full = Image::from_bytes(&codestream).expect("full decode");
+    assert_eq!(full.width(), w);
+    assert_eq!(full.height(), h);
+
+    // 2. Strict mode rejects a truncated codestream; lenient mode returns the
+    // partial image with the right dimensions (and component count).
+    let half = &codestream[..codestream.len() / 2];
+    assert!(Image::from_bytes_with(
+      half,
+      DecodeParameters::new().strict(true)
+    )
+    .is_err());
+    let partial = Image::from_bytes_with(half, DecodeParameters::new().strict(false))
+      .expect("lenient partial decode");
+    assert_eq!(partial.width(), w);
+    assert_eq!(partial.height(), h);
+    assert_eq!(partial.num_components(), 3);
+
+    // 3. A codestream cut inside the header (after SIZ) still yields the
+    // dimensions in lenient mode.
+    let siz_end = {
+      // SIZ marker: FF 51, then size; find it in the first 200 bytes.
+      let pos = codestream
+        .windows(2)
+        .position(|win| win == [0xff, 0x51])
+        .expect("SIZ marker");
+      let l = u16::from_be_bytes([codestream[pos + 2], codestream[pos + 3]]) as usize;
+      pos + 2 + l
+    };
+    let header_only = &codestream[..siz_end + 8];
+    let partial_hdr = Image::from_bytes_with(header_only, DecodeParameters::new().strict(false))
+      .expect("lenient header-only decode");
+    assert_eq!(partial_hdr.width(), w);
+    assert_eq!(partial_hdr.height(), h);
+    assert!(Image::from_bytes_with(header_only, DecodeParameters::new().strict(true)).is_err());
+
+    // 4. Decoder limits: image size, tile area, and memory budget all reject
+    // the codestream before decoding.
+    assert!(Image::from_bytes_with(
+      &codestream,
+      DecodeParameters::new().limits(DecodeLimits::new().max_image_size(w - 1, h)),
+    )
+    .is_err());
+    assert!(Image::from_bytes_with(
+      &codestream,
+      DecodeParameters::new().limits(DecodeLimits::new().max_image_size(w, h - 1)),
+    )
+    .is_err());
+    assert!(Image::from_bytes_with(
+      &codestream,
+      DecodeParameters::new().limits(DecodeLimits::new().max_tile_pixels(10)),
+    )
+    .is_err());
+    assert!(Image::from_bytes_with(
+      &codestream,
+      DecodeParameters::new().limits(DecodeLimits::new().max_mem_alloc(1024)),
+    )
+    .is_err());
+    // ... and generous limits accept it.
+    let ok = Image::from_bytes_with(
+      &codestream,
+      DecodeParameters::new().limits(
+        DecodeLimits::new()
+          .max_image_size(w, h)
+          .max_tile_pixels(w as u64 * h as u64)
+          .max_mem_alloc(64 * 1024 * 1024),
+      ),
+    )
+    .expect("decode within limits");
+    assert_eq!(ok.width(), w);
   }
 
   /// The concurrent-tile decode honours a resolution reduction.

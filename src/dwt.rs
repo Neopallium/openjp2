@@ -132,11 +132,15 @@ impl dwt_local<'_> {
     if self.cas == 0 {
       if self.dn > 0 || self.sn > 1 {
         for i in 0..self.sn {
-          let val = (self.d_(i - 1) + self.d_(i) + 2) >> 2;
+          let val = self
+            .d_(i - 1)
+            .wrapping_add(self.d_(i))
+            .wrapping_add(2)
+            >> 2;
           self.m_sub(self.s_idx(i, 1), val);
         }
         for i in 0..self.dn {
-          let val = (self.s_(i) + self.s_(i + 1)) >> 1;
+          let val = self.s_(i).wrapping_add(self.s_(i + 1)) >> 1;
           self.m_add(self.d_idx(i, 1), val);
         }
       }
@@ -145,11 +149,15 @@ impl dwt_local<'_> {
         self.m_set(self.s_idx(0, 1), self.s(0) / 2);
       } else {
         for i in 0..self.sn {
-          let val = (self.ss_(i) + self.ss_(i + 1) + 2) >> 2;
+          let val = self
+            .ss_(i)
+            .wrapping_add(self.ss_(i + 1))
+            .wrapping_add(2)
+            >> 2;
           self.m_sub(self.d_idx(i, 1), val);
         }
         for i in 0..self.dn {
-          let val = (self.dd_(i) + self.dd_(i - 1)) >> 1;
+          let val = self.dd_(i).wrapping_add(self.dd_(i - 1)) >> 1;
           self.m_add(self.s_idx(i, 1), val);
         }
       }
@@ -166,11 +174,15 @@ impl dwt_local<'_> {
     if self.cas == 0 {
       if self.dn > 0 || self.sn > 1 {
         for i in win_l_x0..win_l_x1 {
-          let val = (self.d_(i - 1) + self.d_(i) + 2) >> 2;
+          let val = self
+            .d_(i - 1)
+            .wrapping_add(self.d_(i))
+            .wrapping_add(2)
+            >> 2;
           self.m_sub(self.s_idx(i, 1), val);
         }
         for i in win_h_x0..win_h_x1 {
-          let val = (self.s_(i) + self.s_(i + 1)) >> 1;
+          let val = self.s_(i).wrapping_add(self.s_(i + 1)) >> 1;
           self.m_add(self.d_idx(i, 1), val);
         }
       }
@@ -694,56 +706,74 @@ fn opj_dwt_encode_and_deinterleave_h_one_row(
       i = 0i32;
       while i < sn - 1i32 {
         tmp[(sn + i) as usize] = row[row_start + (2i32 * i + 1i32) as usize]
-          - ((row[row_start + (i * 2i32) as usize]
-            + row[row_start + ((i + 1i32) * 2i32) as usize])
-            >> 1i32);
+          .wrapping_sub(
+            row[row_start + (i * 2i32) as usize]
+              .wrapping_add(row[row_start + ((i + 1i32) * 2i32) as usize])
+              >> 1i32,
+          );
         i += 1
       }
       if width.wrapping_rem(2u32) == 0u32 {
         tmp[(sn + i) as usize] = row[row_start + (2i32 * i + 1i32) as usize]
-          - row[row_start + (i * 2i32) as usize]
+          .wrapping_sub(row[row_start + (i * 2i32) as usize])
       }
-      row[row_start] += (tmp[sn as usize] + tmp[sn as usize] + 2i32) >> 2i32;
+      row[row_start] = row[row_start].wrapping_add(
+        (tmp[sn as usize].wrapping_add(tmp[sn as usize]).wrapping_add(2i32)) >> 2i32,
+      );
       i = 1i32;
       while i < dn {
-        row[row_start + i as usize] = row[row_start + (2i32 * i) as usize]
-          + ((tmp[(sn + (i - 1i32)) as usize] + tmp[(sn + i) as usize] + 2i32) >> 2i32);
+        row[row_start + i as usize] = row[row_start + (2i32 * i) as usize].wrapping_add(
+          (tmp[(sn + (i - 1i32)) as usize].wrapping_add(tmp[(sn + i) as usize]).wrapping_add(2i32))
+            >> 2i32,
+        );
         i += 1
       }
       if width.wrapping_rem(2u32) == 1u32 {
-        row[row_start + i as usize] = row[row_start + (2i32 * i) as usize]
-          + ((tmp[(sn + (i - 1i32)) as usize] + tmp[(sn + (i - 1i32)) as usize] + 2i32)
-            >> 2i32)
+        row[row_start + i as usize] = row[row_start + (2i32 * i) as usize].wrapping_add(
+          (tmp[(sn + (i - 1i32)) as usize]
+            .wrapping_add(tmp[(sn + (i - 1i32)) as usize])
+            .wrapping_add(2i32))
+            >> 2i32,
+        )
       }
       row[row_start + sn as usize..row_start + sn as usize + dn as usize]
         .copy_from_slice(&tmp[sn as usize..sn as usize + dn as usize]);
     }
   } else if width == 1u32 {
-    row[row_start] *= 2i32
+    row[row_start] = row[row_start].wrapping_mul(2i32)
   } else {
     let mut i_0: i32 = 0;
-    tmp[sn as usize] = row[row_start] - row[row_start + 1];
+    tmp[sn as usize] = row[row_start].wrapping_sub(row[row_start + 1]);
     i_0 = 1i32;
     while i_0 < sn {
-      tmp[(sn + i_0) as usize] = row[row_start + (2i32 * i_0) as usize]
-        - ((row[row_start + (2i32 * i_0 + 1i32) as usize]
-          + row[row_start + (2i32 * (i_0 - 1i32) + 1i32) as usize])
-          >> 1i32);
+      tmp[(sn + i_0) as usize] = row[row_start + (2i32 * i_0) as usize].wrapping_sub(
+        row[row_start + (2i32 * i_0 + 1i32) as usize]
+          .wrapping_add(row[row_start + (2i32 * (i_0 - 1i32) + 1i32) as usize])
+          >> 1i32,
+      );
       i_0 += 1
     }
     if width.wrapping_rem(2u32) == 1u32 {
       tmp[(sn + i_0) as usize] = row[row_start + (2i32 * i_0) as usize]
-        - row[row_start + (2i32 * (i_0 - 1i32) + 1i32) as usize]
+        .wrapping_sub(row[row_start + (2i32 * (i_0 - 1i32) + 1i32) as usize])
     }
     i_0 = 0i32;
     while i_0 < dn - 1i32 {
-      row[row_start + i_0 as usize] = row[row_start + (2i32 * i_0 + 1i32) as usize]
-        + ((tmp[(sn + i_0) as usize] + tmp[(sn + i_0 + 1i32) as usize] + 2i32) >> 2i32);
+      row[row_start + i_0 as usize] = row[row_start + (2i32 * i_0 + 1i32) as usize].wrapping_add(
+        (tmp[(sn + i_0) as usize]
+          .wrapping_add(tmp[(sn + i_0 + 1i32) as usize])
+          .wrapping_add(2i32))
+          >> 2i32,
+      );
       i_0 += 1
     }
     if width.wrapping_rem(2u32) == 0u32 {
-      row[row_start + i_0 as usize] = row[row_start + (2i32 * i_0 + 1i32) as usize]
-        + ((tmp[(sn + i_0) as usize] + tmp[(sn + i_0) as usize] + 2i32) >> 2i32)
+      row[row_start + i_0 as usize] = row[row_start + (2i32 * i_0 + 1i32) as usize].wrapping_add(
+        (tmp[(sn + i_0) as usize]
+          .wrapping_add(tmp[(sn + i_0) as usize])
+          .wrapping_add(2i32))
+          >> 2i32,
+      )
     }
     row[row_start + sn as usize..row_start + sn as usize + dn as usize]
       .copy_from_slice(&tmp[sn as usize..sn as usize + dn as usize]);
@@ -896,7 +926,7 @@ fn opj_dwt_encode_and_deinterleave_v(
       while i + 1 < sn {
         c = 0_u32;
         while c < NB_ELTS_V8 {
-          dc!(i, c) -= (sc!(i, c) + sc!(i + 1, c)) >> 1;
+          dc!(i, c) = dc!(i, c).wrapping_sub(sc!(i, c).wrapping_add(sc!(i + 1, c)) >> 1);
           c += 1
         }
         i += 1
@@ -910,14 +940,14 @@ fn opj_dwt_encode_and_deinterleave_v(
       }
       c = 0_u32;
       while c < NB_ELTS_V8 {
-        sc!(0, c) += (dc!(0, c) + dc!(0, c) + 2) >> 2;
+        sc!(0, c) = sc!(0, c).wrapping_add(dc!(0, c).wrapping_add(dc!(0, c)).wrapping_add(2) >> 2);
         c += 1
       }
       i = 1_u32;
       while i < dn {
         c = 0_u32;
         while c < NB_ELTS_V8 {
-          sc!(i, c) += (dc!(i - 1, c) + dc!(i, c) + 2) >> 2;
+          sc!(i, c) = sc!(i, c).wrapping_add(dc!(i - 1, c).wrapping_add(dc!(i, c)).wrapping_add(2) >> 2);
           c += 1
         }
         i += 1
@@ -925,7 +955,7 @@ fn opj_dwt_encode_and_deinterleave_v(
       if height % 2 == 1 {
         c = 0_u32;
         while c < NB_ELTS_V8 {
-          sc!(i, c) += (dc!(i - 1, c) + dc!(i - 1, c) + 2) >> 2;
+          sc!(i, c) = sc!(i, c).wrapping_add(dc!(i - 1, c).wrapping_add(dc!(i - 1, c)).wrapping_add(2) >> 2);
           c += 1
         }
       }
@@ -946,7 +976,7 @@ fn opj_dwt_encode_and_deinterleave_v(
     while i < sn {
       c = 0_u32;
       while c < NB_ELTS_V8 {
-        sc!(i, c) -= (dc!(i, c) + dc!(i - 1, c)) >> 1;
+        sc!(i, c) = sc!(i, c).wrapping_sub(dc!(i, c).wrapping_add(dc!(i - 1, c)) >> 1);
         c += 1
       }
       i += 1
@@ -954,7 +984,7 @@ fn opj_dwt_encode_and_deinterleave_v(
     if height % 2 == 1 {
       c = 0_u32;
       while c < NB_ELTS_V8 {
-        sc!(i, c) -= dc!(i - 1, c);
+        sc!(i, c) = sc!(i, c).wrapping_sub(dc!(i - 1, c));
         c += 1
       }
     }
@@ -962,7 +992,7 @@ fn opj_dwt_encode_and_deinterleave_v(
     while i + 1 < dn {
       c = 0_u32;
       while c < NB_ELTS_V8 {
-        dc!(i, c) += (sc!(i, c) + sc!(i + 1, c) + 2) >> 2;
+        dc!(i, c) = dc!(i, c).wrapping_add(sc!(i, c).wrapping_add(sc!(i + 1, c)).wrapping_add(2) >> 2);
         c += 1
       }
       i += 1
@@ -970,7 +1000,7 @@ fn opj_dwt_encode_and_deinterleave_v(
     if height.is_multiple_of(2) {
       c = 0_u32;
       while c < NB_ELTS_V8 {
-        dc!(i, c) += (sc!(i, c) + sc!(i, c) + 2) >> 2;
+        dc!(i, c) = dc!(i, c).wrapping_add(sc!(i, c).wrapping_add(sc!(i, c)).wrapping_add(2) >> 2);
         c += 1
       }
     }

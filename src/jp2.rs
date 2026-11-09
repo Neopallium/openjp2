@@ -1573,6 +1573,20 @@ fn opj_jp2_read_header_procedure(
     }
     let data_size = header.content_length() as usize;
     if header.ty.is_file_header() || header.ty.is_image_header() {
+      if jp2.j2k.decode_limits.max_metadata_len != 0
+        && data_size > jp2.j2k.decode_limits.max_metadata_len
+      {
+        /* Decoder resource limit (Rust core API): refuse to allocate a
+        metadata payload (e.g. an ICC profile) longer than the cap. */
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "JP2 box payload {} bytes exceeds the decoder metadata limit {} bytes\n",
+          data_size,
+          jp2.j2k.decode_limits.max_metadata_len,
+        );
+        return 0i32;
+      }
       if !header.ty.is_file_header() {
         event_msg!(
           p_manager,
