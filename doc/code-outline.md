@@ -153,10 +153,14 @@ coded data), and every tile is decoded by `j2k_decode_tile_worker`
 The per-tile caches are merged in order with
 `opj_j2k_update_image_data` (`j2k_merge_tile_results`), and JP2 files
 re-run `opj_jp2_apply_color_postprocessing` (palette/cdef) afterwards,
-exactly like the serial `opj_jp2_decode`.  Any unsupported layout or
-worker failure returns None and the caller falls back to the serial
-decode, so the parallel path is byte-identical to the serial one by
-construction.
+exactly like the serial `opj_jp2_decode`.  The parallel path only runs
+where it is byte-identical to the serial one by construction:
+whole-image full-quality decodes, tile-aligned decode areas, and
+multi-tile encodes.  Everything else - partial windows, layer limits,
+resolution reduction, and "tolerant" codestreams whose packet segments
+overrun their packets (detected via the t2 lenient recovery) - returns
+None and the caller falls back to the serial decode, which reproduces
+the C reference's cross-tile buffer-reuse behaviour.
 
 ## Parallelism (`src/par.rs`)
 
