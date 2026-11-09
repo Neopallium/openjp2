@@ -790,8 +790,8 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
             prcj = 0;
                         levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
 
-            if ((pi.comps[pi.compno as usize].dx << levelno as u64) >> levelno) != pi.comps[pi.compno as usize].dx
-              || ((pi.comps[pi.compno as usize].dy << levelno as u64) >> levelno) != pi.comps[pi.compno as usize].dy
+            if ((pi.comps[pi.compno as usize].dx as u64) << levelno >> levelno) != pi.comps[pi.compno as usize].dx as u64
+              || ((pi.comps[pi.compno as usize].dy as u64) << levelno >> levelno) != pi.comps[pi.compno as usize].dy as u64
             {
               current_block = 15512526488502093901;
               continue;
@@ -804,8 +804,8 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
             rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx.wrapping_add(levelno);
             rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy.wrapping_add(levelno);
 
-            if ((pi.comps[pi.compno as usize].dx << rpx) as u64 >> rpx) as u32 != pi.comps[pi.compno as usize].dx
-              || ((pi.comps[pi.compno as usize].dy << rpy) as u64 >> rpy) as u32 != pi.comps[pi.compno as usize].dy
+            if (((pi.comps[pi.compno as usize].dx as u64) << rpx) >> rpx) as u32 != pi.comps[pi.compno as usize].dx
+              || (((pi.comps[pi.compno as usize].dy as u64) << rpy) >> rpy) as u32 != pi.comps[pi.compno as usize].dy
             {
               current_block = 15512526488502093901;
               continue;
@@ -1045,8 +1045,8 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
             prcj = 0;
                         levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
 
-            if ((pi.comps[pi.compno as usize].dx << levelno as u64) >> levelno) != pi.comps[pi.compno as usize].dx
-              || ((pi.comps[pi.compno as usize].dy << levelno as u64) >> levelno) != pi.comps[pi.compno as usize].dy
+            if ((pi.comps[pi.compno as usize].dx as u64) << levelno >> levelno) != pi.comps[pi.compno as usize].dx as u64
+              || ((pi.comps[pi.compno as usize].dy as u64) << levelno >> levelno) != pi.comps[pi.compno as usize].dy as u64
             {
               current_block = 3123434771885419771;
               continue;
@@ -1059,8 +1059,8 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
             rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx.wrapping_add(levelno);
             rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy.wrapping_add(levelno);
 
-            if ((pi.comps[pi.compno as usize].dx << rpx) as u64 >> rpx) as u32 != pi.comps[pi.compno as usize].dx
-              || ((pi.comps[pi.compno as usize].dy << rpy) as u64 >> rpy) as u32 != pi.comps[pi.compno as usize].dy
+            if (((pi.comps[pi.compno as usize].dx as u64) << rpx) >> rpx) as u32 != pi.comps[pi.compno as usize].dx
+              || (((pi.comps[pi.compno as usize].dy as u64) << rpy) >> rpy) as u32 != pi.comps[pi.compno as usize].dy
             {
               current_block = 3123434771885419771;
               continue;

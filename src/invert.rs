@@ -84,15 +84,12 @@ fn opj_lup_decompose(
   p_swap_area: &mut [f32],
   nb_compo: usize,
 ) -> bool {
-  let mut tmp_permutations = 0;
-  let mut k2 = 0;
-  let mut temp = 0.0;
+  if nb_compo == 0 {
+    return false;
+  }
   let l_last_column = nb_compo - 1;
-  let l_swap_size = nb_compo * core::mem::size_of::<f32>();
-  let mut l_tmp_matrix = 0;
-  let mut l_column_matrix = 0;
-  let mut l_dest_matrix = 0;
-  let mut offset = 1;
+  let mut l_tmp_matrix = 0usize; /* start index of the pivot row */
+  let mut offset = 1usize;
   let mut l_stride = nb_compo - 1;
   // initialize permutations
   for (i, perm) in permutations.iter_mut().enumerate().take(nb_compo) {
@@ -101,14 +98,15 @@ fn opj_lup_decompose(
   // now make a pivot with column switch
   for k in 0..l_last_column {
     // take the middle element
-    l_column_matrix = l_tmp_matrix + k;
+    let mut l_column_matrix = l_tmp_matrix + k;
     // make permutation with the biggest value in the column
-    let mut p = 0.0;
-    for i in k..nb_compo {
-      temp = matrix[l_column_matrix].abs();
+    let mut p = 0.0f32;
+    let mut k2 = k;
+    for _i in k..nb_compo {
+      let temp = matrix[l_column_matrix].abs();
       if temp > p {
         p = temp;
-        k2 = i;
+        k2 = _i;
       }
       // next line
       l_column_matrix += nb_compo;
@@ -119,20 +117,17 @@ fn opj_lup_decompose(
     }
     // should we permute ?
     if k2 != k {
-      // exchange of line
-      // k2 > k
-      let dst_p = tmp_permutations + k2 - k;
-      // swap indices
-      permutations.swap(tmp_permutations, dst_p);
-      // and swap entire line.
-      l_column_matrix = l_tmp_matrix + (k2 - k) * nb_compo;
-      p_swap_area.copy_from_slice(&matrix[l_column_matrix..l_column_matrix + l_swap_size]);
-      matrix.copy_within(l_tmp_matrix..l_tmp_matrix + l_swap_size, l_column_matrix);
-      matrix[l_tmp_matrix..l_tmp_matrix + l_swap_size].copy_from_slice(&p_swap_area[..l_swap_size]);
+      /* k2 > k; swap the permutation indices and the entire rows. */
+      permutations.swap(k, k2);
+      let row_k = l_tmp_matrix;
+      let row_k2 = l_tmp_matrix + (k2 - k) * nb_compo;
+      p_swap_area[..nb_compo].copy_from_slice(&matrix[row_k2..row_k2 + nb_compo]);
+      matrix.copy_within(row_k..row_k + nb_compo, row_k2);
+      matrix[row_k..row_k + nb_compo].copy_from_slice(&p_swap_area[..nb_compo]);
     }
     // now update data in the rest of the line and line after
-    l_dest_matrix = l_tmp_matrix + k;
-    l_column_matrix = l_dest_matrix + nb_compo;
+    let mut l_dest_matrix = l_tmp_matrix + k;
+    let mut l_column_matrix = l_dest_matrix + nb_compo;
     // take the middle element
     let temp = matrix[l_dest_matrix];
     l_dest_matrix += 1;
@@ -142,11 +137,14 @@ fn opj_lup_decompose(
       // matrix[i][k] /= matrix[k][k];
       // p = matrix[i][k]
       let p = matrix[l_column_matrix] / temp;
-      l_column_matrix += 1;
       matrix[l_column_matrix] = p;
+      l_column_matrix += 1;
 
-      for j in offset..nb_compo {
-        matrix[l_dest_matrix + j] -= p * matrix[l_dest_matrix + j - 1];
+      for _ in offset..nb_compo {
+        // matrix[i][j] -= matrix[i][k] * matrix[k][j];
+        matrix[l_column_matrix] -= p * matrix[l_dest_matrix];
+        l_column_matrix += 1;
+        l_dest_matrix += 1;
       }
       // come back to the k+1th element
       l_dest_matrix -= l_stride;
@@ -173,68 +171,51 @@ fn opj_lup_solve(
   nb_compo: usize,
   p_intermediate_data: &mut [f32],
 ) {
-  let mut k: i32 = 0;
-  let mut i: usize = 0;
-  let mut j: usize = 0;
-  let mut sum: f32 = 0.;
-  let mut u: f32 = 0.;
-  let l_stride = nb_compo + 1;
-  let mut l_current_ptr: usize;
-  let mut l_intermediate_ptr: usize;
-  let mut l_dest_ptr: usize;
-  let mut l_tmp_matrix: usize;
-  let mut l_line_matrix = 0;
-  let mut l_begin_ptr = p_result.len() - 1;
-  let mut l_generated_data = 0;
-  let mut l_current_permutation_ptr = 0;
-  l_intermediate_ptr = 0;
-  l_generated_data = nb_compo - 1;
-  i = 0;
-  while i < nb_compo {
-    sum = 0.0;
-    l_current_ptr = 0;
-    l_tmp_matrix = l_line_matrix;
-    j = 1;
-    while j <= i {
+  assert!(nb_compo > 0);
+  let mut l_line_matrix = 0usize;
+  let mut l_intermediate_ptr = 0usize;
+  let mut l_current_permutation_ptr = 0usize;
+  for i in 0..nb_compo {
+    let mut sum = 0.0f32;
+    let mut l_tmp_matrix = l_line_matrix;
+    let mut l_current_ptr = 0usize;
+    for _ in 1..=i {
+      /* sum += matrix[i][j-1] * y[j-1]; */
       sum += p_matrix[l_tmp_matrix] * p_intermediate_data[l_current_ptr];
       l_tmp_matrix += 1;
       l_current_ptr += 1;
-      j += 1;
     }
+    /* y[i] = pVector[pPermutations[i]] - sum; */
     p_intermediate_data[l_intermediate_ptr] =
       p_vector[p_permutations[l_current_permutation_ptr] as usize] - sum;
     l_line_matrix += nb_compo;
     l_intermediate_ptr += 1;
     l_current_permutation_ptr += 1;
-    i += 1;
   }
-  l_line_matrix = p_matrix.len() - nb_compo - 1;
-  l_dest_ptr = nb_compo;
-  assert!(nb_compo != 0);
-  k = nb_compo as i32 - 1;
-  while k != -1 {
-    sum = 0.0;
-    l_tmp_matrix = l_line_matrix;
-    u = p_matrix[l_tmp_matrix];
-    l_line_matrix -= l_stride;
-    l_current_ptr = l_dest_ptr;
-    j = (k + 1) as usize;
-    while j < nb_compo {
+  /* Back substitution: iterate k from nb_compo-1 down to 0; the diagonal of
+  row k sits at index k*(nb_compo+1) (the C walks a pointer down from
+  matrix + n*n - 1 by (nb_compo+1) per step).  p_result[k] is written each
+  iteration, reading p_result[k+1..nb_compo] and p_intermediate_data[k]. */
+  for (count, k) in (0..nb_compo).rev().enumerate() {
+    let l_line_matrix = nb_compo * nb_compo - 1 - count * (nb_compo + 1);
+    let mut l_tmp_matrix = l_line_matrix;
+    let u = p_matrix[l_tmp_matrix];
+    l_tmp_matrix += 1;
+    let mut l_current_ptr = k + 1;
+    let mut sum = 0.0f32;
+    for _ in (k + 1)..nb_compo {
+      /* sum += matrix[k][j] * x[j] */
       sum += p_matrix[l_tmp_matrix] * p_result[l_current_ptr];
       l_tmp_matrix += 1;
       l_current_ptr += 1;
-      j += 1;
     }
-    p_result[l_begin_ptr] = (p_intermediate_data[l_generated_data] - sum) / u;
-    l_generated_data -= 1;
-    l_begin_ptr -= 1;
-    l_dest_ptr -= 1;
-    k -= 1;
+    /* x[k] = (y[k] - sum) / u; */
+    p_result[k] = (p_intermediate_data[k] - sum) / u;
   }
 }
 /* *
- *LUP inversion (call with the result of lupDecompose)
- */
+  *LUP inversion (call with the result of lupDecompose)
+  */
 fn opj_lup_invert(
   p_src_matrix: &mut [f32],
   p_dest_matrix: &mut [f32],
@@ -245,26 +226,132 @@ fn opj_lup_invert(
   p_swap_area: &mut [f32],
 ) {
   let nb_compo_usize = nb_compo;
-  let mut l_line_matrix = p_dest_matrix;
   for j in 0..nb_compo {
-    let l_current_ptr = &mut l_line_matrix[j + 1..];
-    p_src_temp.fill(0.0);
+    p_src_temp[..nb_compo_usize].fill(0.0);
     p_src_temp[j] = 1.0;
-    let p_src_temp_slice = &mut p_src_temp[..nb_compo_usize];
-    let p_dest_temp_slice = &mut p_dest_temp[..nb_compo_usize];
-    let p_src_matrix_slice = &p_src_matrix[..nb_compo_usize * nb_compo_usize];
-    let p_permutations_slice = &p_permutations[..nb_compo_usize];
-    let p_swap_area_slice = &mut p_swap_area[..nb_compo_usize];
     opj_lup_solve(
-      p_dest_temp_slice,
-      p_src_matrix_slice,
-      p_src_temp_slice,
-      p_permutations_slice,
+      &mut p_dest_temp[..nb_compo_usize],
+      &p_src_matrix[..nb_compo_usize * nb_compo_usize],
+      &p_src_temp[..nb_compo_usize],
+      &p_permutations[..nb_compo_usize],
       nb_compo_usize,
-      p_swap_area_slice,
+      &mut p_swap_area[..nb_compo_usize],
     );
     for i in 0..nb_compo_usize {
-      l_current_ptr[i * nb_compo_usize] = p_dest_temp[i];
+      p_dest_matrix[j + i * nb_compo_usize] = p_dest_temp[i];
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn invert(mat: &[f32], n: usize) -> Option<Vec<f32>> {
+    let mut src = mat.to_vec();
+    let mut dst = vec![0.0f32; n * n];
+    let mut permutations = vec![0u32; n];
+    let mut src_temp = vec![0.0f32; n];
+    let mut dest_temp = vec![0.0f32; n];
+    let mut swap_area = vec![0.0f32; n];
+    if opj_lup_decompose(&mut src, &mut permutations, &mut swap_area, n) {
+      opj_lup_invert(
+        &mut src,
+        &mut dst,
+        n,
+        &permutations,
+        &mut src_temp,
+        &mut dest_temp,
+        &mut swap_area,
+      );
+      Some(dst)
+    } else {
+      None
+    }
+  }
+
+  fn mat_mul(a: &[f32], b: &[f32], n: usize) -> Vec<f32> {
+    let mut out = vec![0.0f32; n * n];
+    for i in 0..n {
+      for j in 0..n {
+        let mut acc = 0.0f32;
+        for k in 0..n {
+          acc += a[i * n + k] * b[k * n + j];
+        }
+        out[i * n + j] = acc;
+      }
+    }
+    out
+  }
+
+  fn approx_identity(m: &[f32], n: usize) -> bool {
+    for i in 0..n {
+      for j in 0..n {
+        let want = if i == j { 1.0 } else { 0.0 };
+        if (m[i * n + j] - want).abs() > 1e-4 {
+          return false;
+        }
+      }
+    }
+    true
+  }
+
+  /// Inverting the identity matrix must return the identity matrix.
+  #[test]
+  fn identity_inversion() {
+    for n in 1..=4 {
+      let mut id = vec![0.0f32; n * n];
+      for i in 0..n {
+        id[i * n + i] = 1.0;
+      }
+      let inv = invert(&id, n).expect("identity is invertible");
+      assert!(approx_identity(&inv, n), "n={n}: inverse of I is I, got {inv:?}");
+    }
+  }
+
+  /// A known 2x2 inverse (values from the closed form).
+  #[test]
+  fn known_2x2_inverse() {
+    // [[2,1],[1,3]] -> [[3/5,-1/5],[-1/5,2/5]]
+    let m = [2.0f32, 1.0, 1.0, 3.0];
+    let inv = invert(&m, 2).expect("invertible");
+    let expect = [0.6f32, -0.2, -0.2, 0.4];
+    for (a, b) in inv.iter().zip(expect.iter()) {
+      assert!((a - b).abs() < 1e-5, "got {inv:?}, want {expect:?}");
+    }
+  }
+
+  /// M * M^-1 and M^-1 * M must be the identity (exercises the pivot swap:
+  /// the first column of m3 has its maximum on row 1).
+  #[test]
+  fn round_trip_is_identity() {
+    let cases: &[&[f32]] = &[
+      &[2.0, 1.0, 1.0, 3.0],
+      &[0.0, 1.0, 1.0, 2.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+      &[4.0, 1.0, 2.0, 1.0, 1.0, 3.0, 0.0, 0.0, 2.0, 0.0, 3.0, 1.0, 1.0, 0.0, 1.0, 2.0],
+      &[5.0],
+    ];
+    for m in cases {
+      let n = (m.len() as f64).sqrt() as usize;
+      assert_eq!(n * n, m.len());
+      let inv = invert(m, n).expect("matrix is invertible");
+      assert!(
+        approx_identity(&mat_mul(m, &inv, n), n),
+        "n={n}: M*M^-1 != I for {m:?} (inv {inv:?})"
+      );
+      assert!(
+        approx_identity(&mat_mul(&inv, m, n), n),
+        "n={n}: M^-1*M != I for {m:?} (inv {inv:?})"
+      );
+    }
+  }
+
+  /// A matrix with a zero pivot column must be rejected (the C detects
+  /// singularity only when the whole pivot column is zero), not produce
+  /// garbage.
+  #[test]
+  fn singular_is_rejected() {
+    let m = [0.0f32, 1.0, 0.0, 2.0];
+    assert!(invert(&m, 2).is_none());
   }
 }

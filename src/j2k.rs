@@ -1130,9 +1130,10 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
   cursor += 4usize;
   l_tmp = opj_read_bytes(&header_data[cursor..], 2_u32);
   cursor += 2usize;
-  if l_tmp < 16385u32 {
-    l_image.numcomps = l_tmp as u16 as u32
-  } else {
+  /* Port-specific hardening: the C accepts Csiz == 0 and then dereferences
+  tccps[0] in the mandatory COD/QCD handlers (undefined behaviour); the
+  port rejects it here so a crafted codestream cannot panic the decoder. */
+  if l_tmp < 1u32 || l_tmp > 16384u32 {
     event_msg!(
       p_manager,
       EVT_ERROR,
@@ -1141,6 +1142,7 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     );
     return 0i32;
   }
+  l_image.numcomps = l_tmp;
   if l_image.numcomps != l_nb_comp {
     event_msg!(p_manager, EVT_ERROR,
                     "Error with SIZ marker: number of component is not compatible with the remaining number of parameters ( {} vs {})\n",
@@ -1313,30 +1315,33 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
         return 0i32;
       }
     }
-    if limits.max_mem_alloc != 0 {
-      let mut total: u64 = 0;
-      let mut c: u32 = 0;
-      while c < l_image.numcomps {
-        let comp = &l_image.comps[c as usize];
-        let cw = siz_w.div_ceil(comp.dx);
-        let ch = siz_h.div_ceil(comp.dy);
-        total = total.saturating_add(
-          (cw as u64)
-            .wrapping_mul(ch as u64)
-            .wrapping_mul(core::mem::size_of::<i32>() as u64),
-        );
-        c += 1;
-      }
-      if total > limits.max_mem_alloc {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "SIZ image component data {} bytes exceeds the decoder memory limit {} bytes\\n",
-          total,
-          limits.max_mem_alloc,
-        );
-        return 0i32;
-      }
+    /* Decoder resource limit (Rust core API): the SIZ geometry is checked
+    against the effective memory ceiling (an unset max_mem_alloc falls back
+    to the built-in 1 GiB default) so a crafted header cannot drive a
+    multi-gigabyte component-data allocation out of a tiny input. */
+    let max_mem = limits.effective_max_mem();
+    let mut total: u64 = 0;
+    let mut c: u32 = 0;
+    while c < l_image.numcomps {
+      let comp = &l_image.comps[c as usize];
+      let cw = siz_w.div_ceil(comp.dx);
+      let ch = siz_h.div_ceil(comp.dy);
+      total = total.saturating_add(
+        (cw as u64)
+          .wrapping_mul(ch as u64)
+          .wrapping_mul(core::mem::size_of::<i32>() as u64),
+      );
+      c += 1;
+    }
+    if total > max_mem {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "SIZ image component data {} bytes exceeds the decoder memory limit {} bytes\n",
+        total,
+        max_mem,
+      );
+      return 0i32;
     }
   }
 
@@ -1355,6 +1360,29 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     return 0i32;
   }
   l_nb_tiles = cp.tw.wrapping_mul(cp.th);
+  /* Decoder resource limit (Rust core API): the per-tile coding-parameter
+  arrays (numcomps x Tccp per tile, plus the per-tile Tcp) are allocated
+  below from the codestream geometry alone.  The C's per-tile calloc fails
+  gracefully when it exhausts memory; a Vec resize would abort the process,
+  so size-check the total against the effective memory ceiling first (a
+  crafted SIZ can request up to ~1.2 TB here from a ~49 KB input). */
+  {
+    let limits = p_j2k.decode_limits;
+    let tccps_bytes = (l_image.numcomps as u64)
+      .saturating_mul(core::mem::size_of::<Tccp>() as u64)
+      .saturating_mul(l_nb_tiles as u64);
+    let tcps_bytes = (l_nb_tiles as u64).saturating_mul(core::mem::size_of::<Tcp>() as u64);
+    if tccps_bytes.saturating_add(tcps_bytes) > limits.effective_max_mem() {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "SIZ coding parameters {} bytes exceeds the decoder memory limit {} bytes\n",
+        tccps_bytes.saturating_add(tcps_bytes),
+        limits.effective_max_mem(),
+      );
+      return 0i32;
+    }
+  }
   /* Define the tiles which will be decoded */
   if p_j2k.m_specific_param.m_decoder.m_discard_tiles {
     p_j2k.m_specific_param.m_decoder.m_start_tile_x = p_j2k
@@ -2753,7 +2781,9 @@ fn opj_j2k_read_plt(_p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventM
     /* take only the last seven bytes */
     l_packet_len |= l_tmp & 0x7fu32;
     if l_tmp & 0x80u32 != 0 {
-      l_packet_len <<= 7i32
+      /* The C's unsigned shift wraps; wrapping_shl keeps debug builds from
+      panicking on 5+ continuation bytes without changing any output. */
+      l_packet_len = l_packet_len.wrapping_shl(7)
     } else {
       /* store packet length and proceed to next packet */
       l_packet_len = 0_u32
@@ -5746,6 +5776,54 @@ pub(crate) fn opj_j2k_setup_encoder(
       33i32,
     );
     return 0i32;
+  }
+  /* Port-specific hardening: the C overflows its fixed-size arrays (or has
+  undefined-behaviour shifts) for out-of-range encoder parameters; reject
+  them here so the port fails cleanly instead of panicking. */
+  if parameters.tcp_numlayers < 0i32
+    || parameters.tcp_numlayers > parameters.tcp_rates.len() as i32
+  {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid number of layers : {} not in range [0,{}]\n",
+      parameters.tcp_numlayers,
+      parameters.tcp_rates.len(),
+    );
+    return 0i32;
+  }
+  if parameters.numpocs > j2k::J2K_MAX_POCS {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid number of progression orders : {} exceeds the maximum of {}\n",
+      parameters.numpocs,
+      j2k::J2K_MAX_POCS,
+    );
+    return 0i32;
+  }
+  if parameters.csty & 1i32 != 0i32
+    && (parameters.res_spec < 1i32 || parameters.res_spec > OPJ_J2K_MAXRLVLS as i32)
+  {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid number of specified resolutions : {} not in range [1,{}]\n",
+      parameters.res_spec,
+      OPJ_J2K_MAXRLVLS,
+    );
+    return 0i32;
+  }
+  for comp in image.comps.iter() {
+    if comp.prec < 1u32 || comp.prec > 31u32 {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Invalid image component precision : {} not in range [1,31]\n",
+        comp.prec,
+      );
+      return 0i32;
+    }
   }
   if parameters.cblockw_init < 4i32 || parameters.cblockw_init > 1024i32 {
     event_msg!(

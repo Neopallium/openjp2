@@ -559,7 +559,11 @@ fn opj_t1_enc_sigpass(
 ) {
   let mut i = 0;
   let mut k = 0;
-  let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
+  /* The C shifts 1i32 by (bpno + T1_NMSEDEC_FRACBITS), which is undefined
+  behaviour for shift counts >= 32 (x86 masks the count; that is the
+  behaviour the release build has been matching).  wrapping_shl makes every
+  build mode produce those same bits instead of panicking in debug. */
+  let one = 1u32.wrapping_shl((bpno + T1_NMSEDEC_FRACBITS) as u32);
   let extra = 2;
   let (w, h) = (t1.w, t1.h);
   let (mqc, mut datap, mut f) = t1.split(w + 2);
@@ -1011,7 +1015,8 @@ Encode refinement pass
 fn opj_t1_enc_refpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mut type_0: u8) {
   let mut i: u32 = 0;
   let mut k: u32 = 0;
-  let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
+  /* See opj_t1_enc_sigpass: wrapping_shl matches the C's masked shift. */
+  let one = 1u32.wrapping_shl((bpno + T1_NMSEDEC_FRACBITS) as u32);
   let extra = 2;
   let (w, h) = (t1.w, t1.h);
   let (mqc, mut datap, mut f) = t1.split(w + 2);
@@ -1369,7 +1374,8 @@ fn opj_t1_enc_clnpass(
 ) {
   let mut i: u32 = 0;
   let mut k: u32 = 0;
-  let one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
+  /* See opj_t1_enc_sigpass: wrapping_shl matches the C's masked shift. */
+  let one = 1u32.wrapping_shl((bpno + T1_NMSEDEC_FRACBITS) as u32);
   let extra = 2;
   let (w, h) = (t1.w, t1.h);
   let (mqc, mut datap, mut f) = t1.split(w + 2);
