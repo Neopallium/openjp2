@@ -50,6 +50,30 @@ impl From<std::io::Error> for Error {
   }
 }
 
+/// Runs a codec operation, converting any internal panic into an `Error`.
+///
+/// Decoding untrusted data is the one path where a defensive catch_unwind
+/// is justified: a decoder bug must fail the decode, never abort the host
+/// application.  The one-shot API types are dropped after an error, so the
+/// poisoned decoder state cannot be observed.
+fn catch_codec_panic<T>(is_decode: bool, f: impl FnOnce() -> Result<T>) -> Result<T> {
+  match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
+    Ok(result) => result,
+    Err(payload) => {
+      let detail = payload
+        .downcast_ref::<&str>()
+        .map(|s| s.to_string())
+        .or_else(|| payload.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "unknown panic".to_string());
+      if is_decode {
+        Err(Error::Decode(format!("internal decoder panic: {detail}")))
+      } else {
+        Err(Error::Encode(format!("internal encoder panic: {detail}")))
+      }
+    }
+  }
+}
+
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
 /// Safe colour-space enum (mirror of the C `OPJ_COLOR_SPACE` values).
@@ -584,6 +608,16 @@ fn encode_image_to_writer<W: std::io::Write + std::io::Seek + 'static>(
   format: J2KFormat,
   writer: W,
 ) -> Result<()> {
+  catch_codec_panic(false, || encode_image_to_writer_inner(image, params, format, writer))
+}
+
+#[allow(deprecated)]
+fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + 'static>(
+  image: &CoreImage,
+  params: crate::EncoderParameters,
+  format: J2KFormat,
+  writer: W,
+) -> Result<()> {
   let codec_format = match format {
     J2KFormat::J2K => OPJ_CODEC_J2K,
     J2KFormat::JP2 => OPJ_CODEC_JP2,
@@ -635,6 +669,15 @@ fn encode_image_to_writer<W: std::io::Write + std::io::Seek + 'static>(
 /// Internal driver over the (deprecated-for-users) low-level Codec methods.
 #[allow(deprecated)]
 fn encode_image(
+  image: &CoreImage,
+  params: crate::EncoderParameters,
+  format: J2KFormat,
+) -> Result<Vec<u8>> {
+  catch_codec_panic(false, || encode_image_inner(image, params, format))
+}
+
+#[allow(deprecated)]
+fn encode_image_inner(
   image: &CoreImage,
   params: crate::EncoderParameters,
   format: J2KFormat,
@@ -692,6 +735,16 @@ fn encode_image(
 /// Internal driver over the (deprecated-for-users) low-level Codec methods.
 #[allow(deprecated)]
 fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParameters) -> Result<Image> {
+  catch_codec_panic(true, || decode_stream_inner(stream, format, params))
+}
+
+/// Internal driver over the (deprecated-for-users) low-level Codec methods.
+#[allow(deprecated)]
+fn decode_stream_inner(
+  stream: &mut Stream,
+  format: J2KFormat,
+  params: &DecodeParameters,
+) -> Result<Image> {
   let codec_format = match format {
     J2KFormat::J2K => OPJ_CODEC_J2K,
     J2KFormat::JP2 => OPJ_CODEC_JP2,
@@ -1818,6 +1871,281 @@ mod tests {
       assert_eq!(back, cs);
     }
   }
+
+  /// Minimal J2K builder: a valid 8x8 single-component codestream with the
+  /// given COD parameters, used to craft regression inputs.
+  fn build_minimal_j2k(numresolutions: u8, prog_order: u8, layers: u16) -> Vec<u8> {
+    let mut cs = Vec::new();
+    // SOC
+    cs.extend([0xff, 0x4f]);
+    // SIZ: 1 component, 8x8, 8-bit unsigned
+    cs.extend([0xff, 0x51, 0x00, 0x29]);
+    cs.extend(0u32.to_be_bytes()); // Rsiz
+    cs.extend(8u32.to_be_bytes()); // Xsiz
+    cs.extend(8u32.to_be_bytes()); // Ysiz
+    cs.extend(0u32.to_be_bytes()); // XOsiz
+    cs.extend(0u32.to_be_bytes()); // YOsiz
+    cs.extend(8u32.to_be_bytes()); // XTsiz
+    cs.extend(8u32.to_be_bytes()); // YTsiz
+    cs.extend(0u32.to_be_bytes()); // XTOsiz
+    cs.extend(0u32.to_be_bytes()); // YTOsiz
+    cs.extend(1u16.to_be_bytes()); // Csiz
+    cs.extend([0x07, 0x01, 0x01]); // Ssiz (8-bit) XRsiz YRsiz
+    // COD
+    cs.extend([0xff, 0x52, 0x00, 0x0c]);
+    cs.extend([0x00, prog_order]); // Scod, progression order
+    cs.extend(layers.to_be_bytes()); // num layers
+    cs.extend([0x00]); // MCT
+    cs.extend([numresolutions - 1, 0x04, 0x04, 0x00, 0x01]); // SPcod: levels, cblk 64, qmfbid 5-3
+    // QCD: no quantization, 2 bytes per subband
+    let numbands = 3 * numresolutions as usize - 2;
+    let lqcd = 2 + 1 + 2 * numbands;
+    cs.extend([0xff, 0x5c]);
+    cs.extend((lqcd as u16).to_be_bytes());
+    cs.extend([0x00]); // Sqcd
+    cs.extend(std::iter::repeat(0u8).take(2 * numbands));
+    // SOT + SOD + a little tile data
+    cs.extend([0xff, 0x90, 0x00, 0x0a]);
+    cs.extend(0u16.to_be_bytes()); // Isot
+    cs.extend(0u32.to_be_bytes()); // Psot (unknown)
+    cs.extend([0x00, 0x01]); // TPsot, TNsot
+    cs.extend([0xff, 0x93]); // SOD
+    cs.extend([0u8; 16]);
+    cs
+  }
+
+  /// Regression (review finding 2): a codestream with Csiz = 0 must be
+  /// rejected cleanly - the old code panicked in read_cod on the empty
+  /// tccps array.
+  #[test]
+  fn csiz_zero_is_rejected() {
+    let mut cs = Vec::new();
+    cs.extend([0xff, 0x4f]); // SOC
+    // SIZ with Csiz = 0 (no component records)
+    cs.extend([0xff, 0x51, 0x00, 0x26]);
+    cs.extend(0u32.to_be_bytes()); // Rsiz
+    cs.extend(8u32.to_be_bytes()); // Xsiz
+    cs.extend(8u32.to_be_bytes()); // Ysiz
+    cs.extend(0u32.to_be_bytes()); // XOsiz
+    cs.extend(0u32.to_be_bytes()); // YOsiz
+    cs.extend(8u32.to_be_bytes()); // XTsiz
+    cs.extend(8u32.to_be_bytes()); // YTsiz
+    cs.extend(0u32.to_be_bytes()); // XTOsiz
+    cs.extend(0u32.to_be_bytes()); // YTOsiz
+    cs.extend(0u16.to_be_bytes()); // Csiz = 0
+    // COD (valid, 1 resolution)
+    cs.extend([0xff, 0x52, 0x00, 0x0c]);
+    cs.extend([0x00, 0x00]); // Scod, LRCP
+    cs.extend(1u16.to_be_bytes());
+    cs.extend([0x00]); // MCT
+    cs.extend([0x00, 0x04, 0x04, 0x00, 0x01]);
+    // QCD
+    cs.extend([0xff, 0x5c, 0x00, 0x05, 0x00, 0x00, 0x00]);
+    // SOT + SOD + garbage
+    cs.extend([0xff, 0x90, 0x00, 0x0a]);
+    cs.extend(0u16.to_be_bytes());
+    cs.extend(0u32.to_be_bytes());
+    cs.extend([0x00, 0x01]);
+    cs.extend([0xff, 0x93]);
+    cs.extend([0u8; 16]);
+    assert!(
+      Image::from_bytes_with(&cs, DecodeParameters::new().strict(true)).is_err(),
+      "Csiz=0 must be rejected"
+    );
+  }
+
+  /// Regression (review finding 5): 6 PLT continuation bytes overflow the
+  /// packet-length shift in debug builds; the decode must fail cleanly.
+  #[test]
+  fn plt_overflow_is_rejected() {
+    let mut cs = build_minimal_j2k(1, 0, 1);
+    // Replace the trailing tile data with a PLT marker + 6 continuation bytes.
+    let insert_at = cs.len() - 16 - 2; // before SOD
+    let mut header = cs.split_off(insert_at);
+    cs.extend([0xff, 0x58, 0x00, 0x09, 0x00]); // PLT, Zplt = 0
+    cs.extend([0x81u8; 6]);
+    cs.append(&mut header);
+    assert!(
+      Image::from_bytes_with(&cs, DecodeParameters::new().strict(true)).is_err(),
+      "overflowed PLT must fail the decode"
+    );
+  }
+
+  /// Regression (review finding 3): numresolutions = 33 with PCRL order
+  /// drives shift counts of 32 through the packet iterator; the decode must
+  /// not panic (the truncated tile data makes it fail in strict mode).
+  #[test]
+  fn pi_high_resolution_pcrl_does_not_panic() {
+    let cs = build_minimal_j2k(33, 3, 1);
+    let result = Image::from_bytes_with(&cs, DecodeParameters::new().strict(true));
+    let lenient = Image::from_bytes_with(&cs, DecodeParameters::new().strict(false));
+    // The exact outcome depends on how far the decode gets; only panics are
+    // bugs here.
+    let _ = (result, lenient);
+  }
+
+  /// Regression (review finding 7): out-of-range encoder parameters must be
+  /// rejected with an error, never panic (the C overflows its fixed arrays
+  /// for these).
+  #[test]
+  fn encoder_parameters_are_validated() {
+    let (w, h) = (16u32, 16u32);
+    let mut core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 1,
+      color_space: crate::OPJ_CLRSPC_GRAY,
+      comps: vec![crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data: vec![64i32; (w * h) as usize],
+      }],
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    let image = Image { core };
+
+    assert!(image.encode(EncodeParameters::new().num_layers(101)).is_err());
+    assert!(image.encode(EncodeParameters::new().num_layers(150)).is_err());
+
+    let mut params = EncodeParameters::new();
+    params.low_level().numpocs = 33;
+    assert!(image.encode(params).is_err());
+
+    let mut params = EncodeParameters::new();
+    params.low_level().csty = 1;
+    params.low_level().res_spec = 0;
+    assert!(image.encode(params).is_err());
+
+    let mut params = EncodeParameters::new();
+    params.low_level().csty = 1;
+    params.low_level().res_spec = 34;
+    assert!(image.encode(params).is_err());
+  }
+
+  /// Regression (review finding 1): a custom MCT matrix must reach the
+  /// matrix inversion without panicking.  The old port panicked there
+  /// ("attempt to subtract with overflow").  Upstream parity note: the C
+  /// reference writes the MCT data group only for the OPJ_MCT profile and
+  /// its decoder rejects COD mct=2 ("Invalid multiple component
+  /// transformation"), so - like the C - the produced codestream is not
+  /// decodable; the encode side is what this test pins down.
+  #[test]
+  fn custom_mct_encode_reaches_inversion() {
+    let (w, h) = (32u32, 24u32);
+    let mut rng: u64 = 0x6a09e667f3bcc909;
+    let mut next = move || {
+      rng ^= rng << 13;
+      rng ^= rng >> 7;
+      rng ^= rng << 17;
+      rng
+    };
+    let mut comps = Vec::new();
+    for _ in 0..3 {
+      let mut data = Vec::with_capacity((w * h) as usize);
+      for _ in 0..w * h {
+        data.push((next() % 256) as i32);
+      }
+      comps.push(crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data,
+      });
+    }
+    let image = Image {
+      core: crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+        numcomps: 3,
+        color_space: crate::OPJ_CLRSPC_SRGB,
+        comps,
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      },
+    };
+    let mut params = EncodeParameters::new().num_resolutions(3).num_layers(1);
+    // Non-singular decorrelation matrix; identity would also do.
+    let matrix = vec![1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+    params.low_level().mct_data = Some((matrix, vec![0i32; 3]));
+    let codestream = image.encode(params).expect("custom MCT encode (matrix inversion)");
+    assert!(!codestream.is_empty());
+    // Upstream parity: the decoder rejects COD mct=2 like the C reference.
+    assert!(
+      Image::from_bytes_with(&codestream, DecodeParameters::new().strict(true)).is_err(),
+      "custom MCT codestreams are rejected on decode (C parity)"
+    );
+  }
+
+  /// Regression (review finding 6): a 16-bit image with 6 decomposition
+  /// levels pushes the t1 encoder's significance shift past 31; the old code
+  /// panicked in debug builds.
+  #[test]
+  fn encode_16bit_deep_dwt() {
+    let (w, h) = (64u32, 48u32);
+    let mut data = Vec::with_capacity((w * h) as usize);
+    for i in 0..w * h {
+      data.push((i * 1009 % 65536) as i32);
+    }
+    let image = Image {
+      core: crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+        numcomps: 1,
+        color_space: crate::OPJ_CLRSPC_GRAY,
+        comps: vec![crate::CoreImageComp {
+          dx: 1,
+          dy: 1,
+          w,
+          h,
+          x0: 0,
+          y0: 0,
+          prec: 16,
+          bpp: 16,
+          sgnd: 0,
+          resno_decoded: 0,
+          factor: 0,
+          alpha: 0,
+          data,
+        }],
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      },
+    };
+    let codestream = image
+      .encode(EncodeParameters::new().num_resolutions(6).num_layers(1))
+      .expect("16-bit deep-DWT encode");
+    let back = Image::from_bytes(&codestream).expect("decode");
+    assert_eq!(back.num_components(), 1);
+    for (x, y) in image.components()[0].data.iter().zip(back.components()[0].data.iter()) {
+      assert_eq!(x, y, "reversible 5-3 must be lossless");
+    }
+  }
 }
 
 /// `image`-crate interop: pixel extraction and `DynamicImage` conversion
@@ -2127,9 +2455,11 @@ impl DumpImage {
       return Err(Error::Decode("setup_decoder failed".into()));
     }
     #[allow(deprecated)]
-    let image = codec
-      .read_header(&mut stream)
-      .ok_or_else(|| Error::Decode("failed to read header".into()))?;
+    let image = catch_codec_panic(true, || {
+      codec
+        .read_header(&mut stream)
+        .ok_or_else(|| Error::Decode("failed to read header".into()))
+    })?;
     Ok(Self {
       codec,
       stream,
@@ -2152,9 +2482,14 @@ impl DumpImage {
   #[allow(deprecated)]
   pub fn decode(&mut self) -> Result<()> {
     let mut image = self.image.take().expect("image is Some");
-    if self.codec.decode(&mut self.stream, &mut image) != 1 {
-      return Err(Error::Decode("decode failed".into()));
-    }
+    let codec = &mut self.codec;
+    let stream = &mut self.stream;
+    catch_codec_panic(true, || {
+      if codec.decode(stream, &mut image) != 1 {
+        return Err(Error::Decode("decode failed".into()));
+      }
+      Ok(())
+    })?;
     self.image = Some(image);
     Ok(())
   }

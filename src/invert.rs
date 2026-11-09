@@ -163,6 +163,9 @@ fn opj_lup_decompose(
 /* *
  * LUP solving
  */
+// The index cursors mirror the C pointer walks one-for-one; keep them
+// explicit for parity.
+#[allow(clippy::explicit_counter_loop)]
 fn opj_lup_solve(
   p_result: &mut [f32],
   p_matrix: &[f32],

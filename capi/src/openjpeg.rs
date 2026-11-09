@@ -77,118 +77,138 @@ fn wrap_callback(
   }
 }
 
+/// Runs `f`, converting any panic into the C-style failure value.
+///
+/// A panic must NEVER unwind across the C ABI: that is undefined behaviour
+/// in C callers.  The failure default (OPJ_FALSE / NULL / 0) signals the
+/// error the same way the core's error events do.
+fn ffi_guard<T: Default>(f: impl FnOnce() -> T) -> T {
+  match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
+    Ok(v) => v,
+    Err(payload) => {
+      let detail = payload
+        .downcast_ref::<&str>()
+        .map(|s| s.to_string())
+        .or_else(|| payload.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "unknown panic".to_string());
+      eprintln!("openjp2: internal panic caught at the C ABI boundary: {detail}");
+      T::default()
+    }
+  }
+}
+
 #[no_mangle]
 pub unsafe fn opj_set_info_handler(
   p_codec: *mut opj_codec_t,
   p_callback: opj_msg_callback,
   p_user_data: *mut core::ffi::c_void,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.set_info_handler(wrap_callback(p_callback, p_user_data))
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_set_warning_handler(
   p_codec: *mut opj_codec_t,
   p_callback: opj_msg_callback,
   p_user_data: *mut core::ffi::c_void,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.set_warning_handler(wrap_callback(p_callback, p_user_data))
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_set_error_handler(
   p_codec: *mut opj_codec_t,
   p_callback: opj_msg_callback,
   p_user_data: *mut core::ffi::c_void,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.set_error_handler(wrap_callback(p_callback, p_user_data))
-}
+})}
 
 /* ---------------------------------------------------------------------- */
 pub const OPJ_VERSION: &str = "2.5.4";
 pub const OPJ_VERSION_C: *const u8 = b"2.5.4\x00" as *const u8;
 
 #[no_mangle]
-pub fn opj_version() -> *const core::ffi::c_char {
+pub fn opj_version() -> *const core::ffi::c_char {ffi_guard(|| {
   OPJ_VERSION_C as *const core::ffi::c_char
-}
+})}
 
 /* ---------------------------------------------------------------------- */
 /* DECOMPRESSION FUNCTIONS*/
 #[no_mangle]
-pub fn opj_create_decompress(p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
+pub fn opj_create_decompress(p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {ffi_guard(|| {
   if let Some(codec) = opj_codec_private_t::new_decoder(p_format) {
     let l_codec = Box::new(codec);
     Box::into_raw(l_codec) as *mut opj_codec_t
   } else {
     core::ptr::null_mut()
   }
-}
+})}
 
 #[no_mangle]
-pub unsafe fn opj_set_default_decoder_parameters(parameters: *mut opj_dparameters_t) {
+pub unsafe fn opj_set_default_decoder_parameters(parameters: *mut opj_dparameters_t) {ffi_guard(|| {
   if parameters.is_null() {
     return;
   }
   let parameters = &mut *parameters;
   parameters.set_defaults();
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_codec_set_threads(
   p_codec: *mut opj_codec_t,
   num_threads: core::ffi::c_int,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.set_threads(num_threads)
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_setup_decoder(
   p_codec: *mut opj_codec_t,
   parameters: *mut opj_dparameters_t,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() || parameters.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   let parameters = &mut *parameters;
   l_codec.setup_decoder(parameters)
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_decoder_set_strict_mode(
   p_codec: *mut opj_codec_t,
   strict: OPJ_BOOL,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.decoder_set_strict_mode(strict)
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_read_header(
   p_stream: *mut opj_stream_t,
   p_codec: *mut opj_codec_t,
   p_image: *mut *mut opj_image_t,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_stream.is_null() | p_image.is_null() {
     return 0i32;
   }
@@ -201,7 +221,7 @@ pub unsafe fn opj_read_header(
     }
     None => 0,
   }
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_set_decoded_components(
@@ -209,21 +229,21 @@ pub unsafe fn opj_set_decoded_components(
   numcomps: OPJ_UINT32,
   comps_indices: *const OPJ_UINT32,
   apply_color_transforms: OPJ_BOOL,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   let components = unsafe { core::slice::from_raw_parts(comps_indices, numcomps as usize) };
   l_codec.set_decoded_components(components, apply_color_transforms)
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_decode(
   p_codec: *mut opj_codec_t,
   p_stream: *mut opj_stream_t,
   p_image: *mut opj_image_t,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_stream.is_null() | p_image.is_null() {
     return 0i32;
   }
@@ -240,7 +260,7 @@ pub unsafe fn opj_decode(
   } else {
     0
   }
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_set_decode_area(
@@ -250,7 +270,7 @@ pub unsafe fn opj_set_decode_area(
   p_start_y: OPJ_INT32,
   p_end_x: OPJ_INT32,
   p_end_y: OPJ_INT32,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_image.is_null() {
     return 0i32;
   }
@@ -269,7 +289,7 @@ pub unsafe fn opj_set_decode_area(
   p_image.clear_icc_profile();
   *p_image = *fresh;
   ret
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_read_tile_header(
@@ -283,7 +303,7 @@ pub unsafe fn opj_read_tile_header(
   p_tile_y1: *mut OPJ_INT32,
   p_nb_comps: *mut OPJ_UINT32,
   p_should_go_on: *mut OPJ_BOOL,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_stream.is_null() {
     return 0i32;
   }
@@ -325,7 +345,7 @@ pub unsafe fn opj_read_tile_header(
   } else {
     0
   }
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_decode_tile_data(
@@ -334,7 +354,7 @@ pub unsafe fn opj_decode_tile_data(
   p_data: *mut OPJ_BYTE,
   p_data_size: OPJ_UINT32,
   p_stream: *mut opj_stream_t,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_stream.is_null() {
     return 0i32;
   }
@@ -346,7 +366,7 @@ pub unsafe fn opj_decode_tile_data(
     Some(unsafe { core::slice::from_raw_parts_mut(p_data, p_data_size as usize) })
   };
   l_codec.decode_tile_data(p_stream, p_tile_index, p_data)
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_get_decoded_tile(
@@ -354,7 +374,7 @@ pub unsafe fn opj_get_decoded_tile(
   p_stream: *mut opj_stream_t,
   p_image: *mut opj_image_t,
   tile_index: OPJ_UINT32,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_stream.is_null() | p_image.is_null() {
     return 0i32;
   }
@@ -368,36 +388,36 @@ pub unsafe fn opj_get_decoded_tile(
   p_image.clear_icc_profile();
   *p_image = *fresh;
   ret
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_set_decoded_resolution_factor(
   p_codec: *mut opj_codec_t,
   res_factor: OPJ_UINT32,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() {
     return 0i32;
   }
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.set_decoded_resolution_factor(res_factor)
-}
+})}
 
 /* default decoding parameters */
 /* ---------------------------------------------------------------------- */
 /* COMPRESSION FUNCTIONS*/
 #[no_mangle]
-pub unsafe fn opj_create_compress(p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {
+pub unsafe fn opj_create_compress(p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {ffi_guard(|| {
   if let Some(codec) = opj_codec_private_t::new_encoder(p_format) {
     let l_codec = Box::new(codec);
     Box::into_raw(l_codec) as *mut opj_codec_t
   } else {
     core::ptr::null_mut()
   }
-}
+})}
 
 /* default coding parameters */
 #[no_mangle]
-pub unsafe fn opj_set_default_encoder_parameters(parameters: *mut opj_cparameters_t) {
+pub unsafe fn opj_set_default_encoder_parameters(parameters: *mut opj_cparameters_t) {ffi_guard(|| {
   if parameters.is_null() {
     return;
   }
@@ -406,14 +426,14 @@ pub unsafe fn opj_set_default_encoder_parameters(parameters: *mut opj_cparameter
   }
   let parameters = &mut *parameters;
   parameters.set_defaults();
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_setup_encoder(
   p_codec: *mut opj_codec_t,
   parameters: *mut opj_cparameters_t,
   p_image: *mut opj_image_t,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | parameters.is_null() | p_image.is_null() {
     return 0i32;
   }
@@ -435,7 +455,7 @@ pub unsafe fn opj_setup_encoder(
   p_image.clear_icc_profile();
   *p_image = *fresh;
   ret
-}
+})}
 
 /// Converts the C-ABI encoder parameters into the core's safe owned struct.
 fn encoder_params_from_c(
@@ -525,7 +545,7 @@ fn encoder_params_from_c(
 pub unsafe fn opj_encoder_set_extra_options(
   p_codec: *mut opj_codec_t,
   options: *const *const core::ffi::c_char,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if options.is_null() {
     return 1;
   }
@@ -548,7 +568,7 @@ pub unsafe fn opj_encoder_set_extra_options(
     p_option_iter = p_option_iter.offset(1);
   }
   l_codec.encoder_set_extra_options(options.as_slice()) as _
-}
+})}
 
 /* ----------------------------------------------------------------------- */
 #[no_mangle]
@@ -556,7 +576,7 @@ pub unsafe fn opj_start_compress(
   p_codec: *mut opj_codec_t,
   p_image: *mut opj_image_t,
   p_stream: *mut opj_stream_t,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_stream.is_null() | p_image.is_null() {
     return 0i32;
   }
@@ -570,46 +590,46 @@ pub unsafe fn opj_start_compress(
   p_image.clear_icc_profile();
   *p_image = *fresh;
   ret
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_encode(
   p_codec: *mut opj_codec_t,
   p_stream: *mut opj_stream_t,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_stream.is_null() {
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.encode(p_stream)
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_end_compress(
   p_codec: *mut opj_codec_t,
   p_stream: *mut opj_stream_t,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_stream.is_null() {
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.end_compress(p_stream)
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_end_decompress(
   p_codec: *mut opj_codec_t,
   p_stream: *mut opj_stream_t,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_stream.is_null() {
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   l_codec.end_decompress(p_stream)
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_set_MCT(
@@ -617,7 +637,7 @@ pub unsafe fn opj_set_MCT(
   pEncodingMatrix: *mut OPJ_FLOAT32,
   p_dc_shift: *mut OPJ_INT32,
   nb_comps: OPJ_UINT32,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   let l_matrix_size = nb_comps * nb_comps;
   let l_dc_shift_size = nb_comps;
   let encoding_matrix =
@@ -625,7 +645,7 @@ pub unsafe fn opj_set_MCT(
   let dc_shift = unsafe { core::slice::from_raw_parts(p_dc_shift, l_dc_shift_size as usize) };
   let parameters = &mut *parameters;
   parameters.set_MCT(encoding_matrix, dc_shift, nb_comps) as _
-}
+})}
 
 #[no_mangle]
 pub unsafe fn opj_write_tile(
@@ -634,7 +654,7 @@ pub unsafe fn opj_write_tile(
   p_data: *mut OPJ_BYTE,
   p_data_size: OPJ_UINT32,
   p_stream: *mut opj_stream_t,
-) -> OPJ_BOOL {
+) -> OPJ_BOOL {ffi_guard(|| {
   if p_codec.is_null() | p_stream.is_null() | p_data.is_null() {
     return 0i32;
   }
@@ -642,16 +662,16 @@ pub unsafe fn opj_write_tile(
   let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
   let p_data = unsafe { core::slice::from_raw_parts(p_data as *const u8, p_data_size as usize) };
   l_codec.write_tile(p_tile_index, p_data, p_stream)
-}
+})}
 
 /* ---------------------------------------------------------------------- */
 #[no_mangle]
-pub unsafe fn opj_destroy_codec(p_codec: *mut opj_codec_t) {
+pub unsafe fn opj_destroy_codec(p_codec: *mut opj_codec_t) {ffi_guard(|| {
   if p_codec.is_null() {
     return;
   }
   let _ = Box::from_raw(p_codec as *mut opj_codec_private_t);
-}
+})}
 
 /* ---------------------------------------------------------------------- */
 #[cfg(feature = "file-io")]
@@ -660,7 +680,7 @@ pub unsafe fn opj_dump_codec(
   p_codec: *mut opj_codec_t,
   info_flag: OPJ_INT32,
   output_stream: *mut FILE,
-) {
+) {ffi_guard(|| {
   if p_codec.is_null() {
     return;
   }
@@ -670,7 +690,7 @@ pub unsafe fn opj_dump_codec(
   }
   let mut writer = CFile(output_stream);
   l_codec.dump_codec(info_flag, &mut writer)
-}
+})}
 
 /// A `Write` adapter over the caller's `FILE*` for opj_dump_codec.
 #[cfg(feature = "file-io")]
@@ -702,7 +722,7 @@ impl openjp2_core::StringWriter for CFile {
 }
 
 #[no_mangle]
-pub unsafe fn opj_get_cstr_info(p_codec: *mut opj_codec_t) -> *mut opj_codestream_info_v2_t {
+pub unsafe fn opj_get_cstr_info(p_codec: *mut opj_codec_t) -> *mut opj_codestream_info_v2_t {ffi_guard(|| {
   if p_codec.is_null() {
     return core::ptr::null_mut::<opj_codestream_info_v2_t>();
   }
@@ -711,15 +731,15 @@ pub unsafe fn opj_get_cstr_info(p_codec: *mut opj_codec_t) -> *mut opj_codestrea
     Some(info) => crate::cstr_info::build_cstr_info_v2(&info),
     None => core::ptr::null_mut::<opj_codestream_info_v2_t>(),
   }
-}
+})}
 
 #[no_mangle]
-pub unsafe fn opj_destroy_cstr_info(cstr_info: *mut *mut opj_codestream_info_v2_t) {
+pub unsafe fn opj_destroy_cstr_info(cstr_info: *mut *mut opj_codestream_info_v2_t) {ffi_guard(|| {
   crate::cstr_info::destroy_cstr_info_v2(cstr_info);
-}
+})}
 
 #[no_mangle]
-pub unsafe fn opj_get_cstr_index(p_codec: *mut opj_codec_t) -> *mut opj_codestream_index_t {
+pub unsafe fn opj_get_cstr_index(p_codec: *mut opj_codec_t) -> *mut opj_codestream_index_t {ffi_guard(|| {
   if p_codec.is_null() {
     return core::ptr::null_mut::<opj_codestream_index_t>();
   }
@@ -728,16 +748,16 @@ pub unsafe fn opj_get_cstr_index(p_codec: *mut opj_codec_t) -> *mut opj_codestre
     Some(index) => crate::cstr_info::build_cstr_index(&index),
     None => core::ptr::null_mut::<opj_codestream_index_t>(),
   }
-}
+})}
 
 #[no_mangle]
-pub unsafe fn opj_destroy_cstr_index(p_cstr_index: *mut *mut opj_codestream_index_t) {
+pub unsafe fn opj_destroy_cstr_index(p_cstr_index: *mut *mut opj_codestream_index_t) {ffi_guard(|| {
   if p_cstr_index.is_null() {
     return;
   }
   crate::cstr_info::destroy_cstr_index(*p_cstr_index);
   *p_cstr_index = core::ptr::null_mut::<opj_codestream_index_t>();
-}
+})}
 
 /* ----------------------------------------------------------------------- */
 /* C stream objects (Phase 5.e: the C-callback adapter lives here; the    */
@@ -911,29 +931,29 @@ fn new_custom_stream(buffer_size: OPJ_SIZE_T, is_input: bool) -> Box<OpjStream> 
 pub unsafe extern "C" fn opj_stream_create(
   p_buffer_size: OPJ_SIZE_T,
   l_is_input: OPJ_BOOL,
-) -> *mut opj_stream_t {
+) -> *mut opj_stream_t {ffi_guard(|| {
   let p_stream = Box::into_raw(new_custom_stream(p_buffer_size, l_is_input != 0)) as *mut opj_stream_t;
   log::trace!("-- create stream: {:?}", p_stream);
   p_stream
-}
+})}
 
 #[no_mangle]
-pub unsafe extern "C" fn opj_stream_default_create(l_is_input: OPJ_BOOL) -> *mut opj_stream_t {
+pub unsafe extern "C" fn opj_stream_default_create(l_is_input: OPJ_BOOL) -> *mut opj_stream_t {ffi_guard(|| {
   opj_stream_create(openjp2_core::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as OPJ_SIZE_T, l_is_input)
-}
+})}
 
 #[no_mangle]
-pub unsafe extern "C" fn opj_stream_destroy(p_stream: *mut opj_stream_t) {
+pub unsafe extern "C" fn opj_stream_destroy(p_stream: *mut opj_stream_t) {ffi_guard(|| {
   if !p_stream.is_null() {
     let _ = Box::from_raw(p_stream as *mut OpjStream);
   }
-}
+})}
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_read_function(
   p_stream: *mut opj_stream_t,
   p_function: opj_stream_read_fn,
-) {
+) {ffi_guard(|| {
   if p_stream.is_null() {
     return;
   }
@@ -944,13 +964,13 @@ pub unsafe extern "C" fn opj_stream_set_read_function(
   if let Some(callbacks) = &p_stream.callbacks {
     callbacks.borrow_mut().m_read_fn = p_function;
   }
-}
+})}
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_seek_function(
   p_stream: *mut opj_stream_t,
   p_function: opj_stream_seek_fn,
-) {
+) {ffi_guard(|| {
   if p_stream.is_null() {
     return;
   }
@@ -958,13 +978,13 @@ pub unsafe extern "C" fn opj_stream_set_seek_function(
   if let Some(callbacks) = &p_stream.callbacks {
     callbacks.borrow_mut().m_seek_fn = p_function;
   }
-}
+})}
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_write_function(
   p_stream: *mut opj_stream_t,
   p_function: opj_stream_write_fn,
-) {
+) {ffi_guard(|| {
   if p_stream.is_null() {
     return;
   }
@@ -975,13 +995,13 @@ pub unsafe extern "C" fn opj_stream_set_write_function(
   if let Some(callbacks) = &p_stream.callbacks {
     callbacks.borrow_mut().m_write_fn = p_function;
   }
-}
+})}
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_skip_function(
   p_stream: *mut opj_stream_t,
   p_function: opj_stream_skip_fn,
-) {
+) {ffi_guard(|| {
   if p_stream.is_null() {
     return;
   }
@@ -989,14 +1009,14 @@ pub unsafe extern "C" fn opj_stream_set_skip_function(
   if let Some(callbacks) = &p_stream.callbacks {
     callbacks.borrow_mut().m_skip_fn = p_function;
   }
-}
+})}
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_user_data(
   p_stream: *mut opj_stream_t,
   p_data: *mut core::ffi::c_void,
   p_function: opj_stream_free_user_data_fn,
-) {
+) {ffi_guard(|| {
   if p_stream.is_null() {
     return;
   }
@@ -1006,28 +1026,28 @@ pub unsafe extern "C" fn opj_stream_set_user_data(
     callbacks.m_user_data = p_data;
     callbacks.m_free_user_data_fn = p_function;
   }
-}
+})}
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_set_user_data_length(
   p_stream: *mut opj_stream_t,
   data_length: OPJ_UINT64,
-) {
+) {ffi_guard(|| {
   if p_stream.is_null() {
     return;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut OpjStream) };
   p_stream.stream.set_stream_length(data_length);
-}
+})}
 
 #[cfg(feature = "file-io")]
 #[no_mangle]
 pub unsafe fn opj_stream_create_default_file_stream(
   fname: *const core::ffi::c_char,
   p_is_read_stream: OPJ_BOOL,
-) -> *mut opj_stream_t {
+) -> *mut opj_stream_t {ffi_guard(|| {
   opj_stream_create_file_stream(fname, 0x100000 as OPJ_SIZE_T, p_is_read_stream)
-}
+})}
 
 #[cfg(feature = "file-io")]
 #[no_mangle]
@@ -1035,7 +1055,7 @@ pub unsafe fn opj_stream_create_file_stream(
   fname: *const core::ffi::c_char,
   p_size: OPJ_SIZE_T,
   p_is_read_stream: OPJ_BOOL,
-) -> *mut opj_stream_t {
+) -> *mut opj_stream_t {ffi_guard(|| {
   if fname.is_null() {
     return core::ptr::null_mut::<opj_stream_t>();
   }
@@ -1060,29 +1080,29 @@ pub unsafe fn opj_stream_create_file_stream(
       core::ptr::null_mut::<opj_stream_t>()
     }
   }
-}
+})}
 
 #[no_mangle]
-pub unsafe fn opj_image_data_alloc(size: OPJ_SIZE_T) -> *mut core::ffi::c_void {
+pub unsafe fn opj_image_data_alloc(size: OPJ_SIZE_T) -> *mut core::ffi::c_void {ffi_guard(|| {
   crate::image::opj_image_data_alloc(size)
-}
+})}
 
 #[no_mangle]
-pub unsafe fn opj_image_data_free(ptr: *mut core::ffi::c_void) {
+pub unsafe fn opj_image_data_free(ptr: *mut core::ffi::c_void) {ffi_guard(|| {
   crate::image::opj_image_data_free(ptr);
-}
+})}
 
 #[no_mangle]
-pub fn opj_has_thread_support() -> OPJ_BOOL {
+pub fn opj_has_thread_support() -> OPJ_BOOL {ffi_guard(|| {
   openjp2_core::has_thread_support()
-}
+})}
 
 #[no_mangle]
-pub fn opj_get_num_cpus() -> core::ffi::c_int {
+pub fn opj_get_num_cpus() -> core::ffi::c_int {ffi_guard(|| {
   std::thread::available_parallelism()
     .map(|n| n.get() as core::ffi::c_int)
     .unwrap_or(1i32)
-}
+})}
 
 /* ----------------------------------------------------------------------- */
 /* Image object exports (moved from the core crate in Phase 6)             */
@@ -1092,20 +1112,20 @@ pub fn opj_image_create(
   numcmpts: OPJ_UINT32,
   cmptparms: *mut opj_image_cmptparm_t,
   clrspc: OPJ_COLOR_SPACE,
-) -> *mut opj_image_t {
+) -> *mut opj_image_t {ffi_guard(|| {
   crate::image::opj_image_create(numcmpts, cmptparms, clrspc)
-}
+})}
 
 #[no_mangle]
-pub fn opj_image_destroy(image: *mut opj_image_t) {
+pub fn opj_image_destroy(image: *mut opj_image_t) {ffi_guard(|| {
   crate::image::opj_image_destroy(image);
-}
+})}
 
 #[no_mangle]
 pub fn opj_image_tile_create(
   numcmpts: OPJ_UINT32,
   cmptparms: *mut opj_image_cmptparm_t,
   clrspc: OPJ_COLOR_SPACE,
-) -> *mut opj_image_t {
+) -> *mut opj_image_t {ffi_guard(|| {
   crate::image::opj_image_tile_create(numcmpts, cmptparms, clrspc)
-}
+})}

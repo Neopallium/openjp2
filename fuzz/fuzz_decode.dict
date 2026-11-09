@@ -1,0 +1,72 @@
+# JPEG2000 J2K marker segments (2-byte marker + length prefix).
+# The tokens help the byte-level mutator insert structurally meaningful
+# sequences into corpus inputs.
+# SOC
+"\xff\x4f"
+# SIZ prefix
+"\xff\x51\x00"
+# COD prefix
+"\xff\x52\x00"
+# COC prefix
+"\xff\x53\x00"
+# TLM prefix
+"\xff\x55\x00"
+# PLT prefix
+"\xff\x58\x00"
+# PLM prefix
+"\xff\x5b\x00"
+# QCD prefix
+"\xff\x5c\x00"
+# QCC prefix
+"\xff\x5d\x00"
+# POC prefix
+"\xff\x5f\x00"
+# PPM prefix
+"\xff\x60\x00"
+# PPT prefix
+"\xff\x61\x00"
+# COM prefix
+"\xff\x64\x00"
+# MCT prefix
+"\xff\x74\x00"
+# MCC prefix
+"\xff\x75\x00"
+# SOT prefix
+"\xff\x90\x00"
+# SOP
+"\xff\x91"
+# EPH
+"\xff\x92"
+# SOD
+"\xff\x93"
+# EOC
+"\xff\x93"
+
+# JP2 box types and signatures
+# JP2 signature box
+"\x00\x00\x00\x0cjP  \x0d\x0a\x87\x0a"
+"ftyp"
+"jp2h"
+"ihdr"
+"colr"
+"bpcc"
+"pclr"
+"cdef"
+"cmap"
+"jp2c"
+"jp2 "
+"jph "
+"uuid"
+
+# Boundary/extreme multi-byte values for the length and count fields
+"\x00\x00\x00\x00"
+"\x00\x00\x00\x01"
+"\x00\x01\x00\x00"
+"\x7f\xff\xff\xff"
+"\x80\x00\x00\x00"
+"\xff\x00\x00\x00"
+"\xff\xff\xff\xff"
+"\xff\xff"
+"\x00\x00"
+"\x7f\xff"
+"\x80\x00"

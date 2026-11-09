@@ -1133,7 +1133,7 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
   /* Port-specific hardening: the C accepts Csiz == 0 and then dereferences
   tccps[0] in the mandatory COD/QCD handlers (undefined behaviour); the
   port rejects it here so a crafted codestream cannot panic the decoder. */
-  if l_tmp < 1u32 || l_tmp > 16384u32 {
+  if !(1u32..=16384u32).contains(&l_tmp) {
     event_msg!(
       p_manager,
       EVT_ERROR,
