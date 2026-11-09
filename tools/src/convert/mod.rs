@@ -3,6 +3,7 @@ pub use raw::*;
 mod bmp;
 pub use bmp::*;
 mod pgx;
+mod pnm;
 pub use pgx::*;
 mod png;
 pub use png::*;
@@ -36,6 +37,10 @@ pub fn load_image(
     Some(ImageFileFormat::PGX) => load_pgx_image(path, params),
     Some(ImageFileFormat::PNG) => load_png_image(path, params),
     Some(ImageFileFormat::TIF) => load_tiff_image(path, params),
+    /* PPM/PGM parse directly into the image (no image-crate intermediate:
+    the DynamicImage + channel-plane conversion cost ~2x the file size in
+    peak memory, and the C tools' ppmtoimage reads the file directly). */
+    Some(ImageFileFormat::PXM) => pnm::load_pnm_image(path, params),
     _ => {
       let image = read_image(path)?;
       convert_from_dynamic_image(image, params)

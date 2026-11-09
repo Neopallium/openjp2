@@ -10113,31 +10113,56 @@ pub(crate) fn opj_j2k_encode(
   /* preconditions */
 
   l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
+  /* Single-tile encode: reuse the image component data as the tile data
+  (the C reference's l_reuse_data optimization - the encode modifies the
+  data in place, so the caller's image is consumed exactly like the C). */
+  let single_tile = l_nb_tiles == 1;
   i = 0_u32;
   while i < l_nb_tiles {
     if opj_j2k_pre_write_tile(p_j2k, i, p_stream, p_manager) == 0 {
       l_current_data.clear();
       return 0i32;
     }
-    /* if we only have one tile, then simply set tile component data equal to image component data */
-    /* otherwise, allocate the data */
     j = 0_u32;
     let image = p_j2k
       .m_private_image
       .as_deref_mut()
       .expect("m_private_image");
-    while j < image.numcomps {
-      let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
-      if opj_alloc_tile_component_data(l_tilec) == 0 {
-        event_msg!(
-          p_manager,
-          EVT_ERROR,
-          "Error allocating tile component data.",
+    if single_tile {
+      /* Move the image component buffers into the tile components
+      (Vec swap: no copy, no extra allocation, no unsafe). */
+      while j < image.numcomps {
+        let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
+        let img_comp = &mut image.comps[j as usize];
+        let img_data = core::mem::take(&mut img_comp.data);
+        let len = img_data.len();
+        let old = core::mem::replace(
+          &mut l_tilec.data,
+          crate::types::TileBuf::Owned {
+            data: img_data,
+            bytes: len.wrapping_mul(core::mem::size_of::<i32>()),
+          },
         );
-        l_current_data.clear();
-        return 0i32;
+        if let crate::types::TileBuf::Owned { data, .. } = old {
+          img_comp.data = data;
+        }
+        l_tilec.data_size_needed = len;
+        j += 1;
       }
-      j += 1;
+    } else {
+      while j < image.numcomps {
+        let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
+        if opj_alloc_tile_component_data(l_tilec) == 0 {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
+            "Error allocating tile component data.",
+          );
+          l_current_data.clear();
+          return 0i32;
+        }
+        j += 1;
+      }
     }
     l_current_tile_size = opj_tcd_get_encoder_input_buffer_size(
       &mut p_j2k.m_tcd,
@@ -10146,7 +10171,7 @@ pub(crate) fn opj_j2k_encode(
         .as_deref_mut()
         .expect("m_private_image"),
     );
-    {
+    if !single_tile {
       if l_current_tile_size > l_max_tile_size {
         if l_current_data
           .try_reserve_exact(l_current_tile_size)
