@@ -1315,33 +1315,39 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
         return 0i32;
       }
     }
-    /* Decoder resource limit (Rust core API): the SIZ geometry is checked
-    against the effective memory ceiling (an unset max_mem_alloc falls back
-    to the built-in 1 GiB default) so a crafted header cannot drive a
-    multi-gigabyte component-data allocation out of a tiny input. */
-    let max_mem = limits.effective_max_mem();
-    let mut total: u64 = 0;
-    let mut c: u32 = 0;
-    while c < l_image.numcomps {
-      let comp = &l_image.comps[c as usize];
-      let cw = siz_w.div_ceil(comp.dx);
-      let ch = siz_h.div_ceil(comp.dy);
-      total = total.saturating_add(
-        (cw as u64)
-          .wrapping_mul(ch as u64)
-          .wrapping_mul(core::mem::size_of::<i32>() as u64),
-      );
-      c += 1;
-    }
-    if total > max_mem {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "SIZ image component data {} bytes exceeds the decoder memory limit {} bytes\n",
-        total,
-        max_mem,
-      );
-      return 0i32;
+    /* Decoder resource limit (Rust core API): when the caller sets an
+    explicit max_mem_alloc, reject oversized declared geometry up front
+    (fail-fast before any decode work).  With the default settings the
+    built-in 1 GiB ceiling still governs the ACTUAL allocations (tile data
+    in opj_j2k_decode_tile, output image data in opj_j2k_update_image_data),
+    but the declared component geometry itself allocates nothing at header
+    time - header-only inspection (opj_dump) of huge-dimension files must
+    keep working like the C reference. */
+    if limits.max_mem_alloc != 0 {
+      let max_mem = limits.effective_max_mem();
+      let mut total: u64 = 0;
+      let mut c: u32 = 0;
+      while c < l_image.numcomps {
+        let comp = &l_image.comps[c as usize];
+        let cw = siz_w.div_ceil(comp.dx);
+        let ch = siz_h.div_ceil(comp.dy);
+        total = total.saturating_add(
+          (cw as u64)
+            .wrapping_mul(ch as u64)
+            .wrapping_mul(core::mem::size_of::<i32>() as u64),
+        );
+        c += 1;
+      }
+      if total > max_mem {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "SIZ image component data {} bytes exceeds the decoder memory limit {} bytes\n",
+          total,
+          max_mem,
+        );
+        return 0i32;
+      }
     }
   }
 

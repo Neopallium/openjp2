@@ -59,9 +59,11 @@ cargo +nightly fuzz tmin fuzz_decode artifacts/fuzz_decode/<name>
   ceiling (see `DEFAULT_DECODE_MEM_LIMIT`): the decode-stage buffers
   (tile data, output image data) are always bounded, so a corrupt header
   cannot drive a multi-gigabyte allocation out of a tiny input. Set an
-  explicit limit for larger images; the SIZ-stage check now always applies
-  (the effective ceiling, default included) and also accounts for the
-  per-tile coding-parameter arrays.
+  explicit limit for larger images; with an explicit limit the SIZ-stage
+  component-data check rejects oversized geometry up front.  The header's
+  own allocations (the per-tile coding-parameter arrays, tccps/Tcp) are
+  always size-checked against the effective ceiling, because they happen
+  at header time regardless of the caller's limits.
 - Lengths that prefix data in the stream (JP2 box lengths, marker segment
   lengths, the SOD tile-part length) are checked against the remaining
   stream bytes before any allocation; the lenient SOD path clamps a lying
