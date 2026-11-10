@@ -258,12 +258,14 @@ Notes:
 
 ## B.2 Encoder
 
-1. **Unify serial/parallel tile encoding around one pure function.**
-   Extract `encode_tile(cp, image, tile_no) -> Result<Vec<u8>>` (the current
-   worker body, minus the stream writes); the serial path calls it in a loop,
-   the parallel path calls it under rayon, and the master stays the only
-   writer of markers/TLM. This makes the byte-identity guarantee structural
-   and lets the TLM multi-part guard live in one place.
+1. **Unify serial/parallel tile encoding around one pure function.** —
+   ✅ **LANDED (cf05b406)**: `j2k_encode_tile` (the former worker body,
+   minus the stream writes) is THE per-tile encode path — the serial
+   `opj_j2k_encode` loops it, the parallel driver runs it under rayon; each
+   worker records its own per-tile-part TLM entries and the master merges
+   them in tile order, so the TLM multi-part guard is gone and the parallel
+   path is byte-identical for multi-part tiles too (regression test
+   `parallel_tlm_multi_part_matches_serial`).
 2. **Tier-1 encode workspace isolation** (same as B.1.3): no cross-tile
    `Mqc` reuse through the thread-local.
 3. **Fix the remaining encoder parity gaps tracked from the reviews**
