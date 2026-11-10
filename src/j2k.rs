@@ -10006,7 +10006,7 @@ pub(crate) fn j2k_merge_tile_results(
 /// Shared read-only buffer adapter so `std::io::Cursor` (which needs
 /// `AsRef<[u8]>`) can borrow the snapshot without copying it.
 #[cfg(feature = "rayon")]
-struct SharedBuf(std::sync::Arc<Vec<u8>>);
+struct SharedBuf(std::sync::Arc<[u8]>);
 
 #[cfg(feature = "rayon")]
 impl AsRef<[u8]> for SharedBuf {
@@ -10034,9 +10034,13 @@ pub(crate) fn j2k_decode_tiles_parallel(
   use std::io::Read as _;
 
   /* Snapshot the whole codestream: workers seek within it independently.
-  The stream position is restored so a serial fallback stays possible. */
+  The stream position is restored so a serial fallback stays possible.
+  For in-memory streams the buffer is shared zero-copy (B.1.6); other
+  sources are read once. */
   let anchor = stream.tell();
-  let bytes: std::sync::Arc<Vec<u8>> = {
+  let bytes: std::sync::Arc<[u8]> = if let Some(shared) = stream.shared_bytes() {
+    shared
+  } else {
     if stream.seek(0).is_err() {
       return None;
     }
@@ -10044,7 +10048,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
     if stream.read_to_end(&mut buf).is_err() {
       return None;
     }
-    std::sync::Arc::new(buf)
+    std::sync::Arc::<[u8]>::from(buf)
   };
   let _ = stream.seek(anchor);
   let len = bytes.len() as u64;
@@ -10069,26 +10073,50 @@ pub(crate) fn j2k_decode_tiles_parallel(
       first_sot[t as usize] = tile.tp_index[0].start_pos;
     }
   } else {
-    let start = cstr_index.main_head_end.max(0) as usize;
-    let mut i = start;
-    while i + 12 <= bytes.len() {
-      if bytes[i] == 0xFF && bytes[i + 1] == 0xD9 {
+    /* Structured SOT walk: step the tile-parts by their declared lengths
+    (segment-aware, so packet data is never scanned - the raw FF 90 00 0A
+    byte scan could false-positive on packet bytes, review_3 L13; B.1.6). */
+    let mut pos = cstr_index.main_head_end.max(0) as usize;
+    while pos + 4 <= bytes.len() {
+      let marker = u16::from_be_bytes([bytes[pos], bytes[pos + 1]]);
+      if marker == 0xFFD9 {
         /* EOC */
         break;
       }
-      if bytes[i] == 0xFF
-        && bytes[i + 1] == 0x90
-        && u16::from_be_bytes([bytes[i + 2], bytes[i + 3]]) == 10
-      {
-        /* Isot (the tile index) sits at offset +4..+6; TNsot (+11) is not
-        reliable (bug #254: some encoders write TNsot == 1 everywhere). */
-        let isot = u16::from_be_bytes([bytes[i + 4], bytes[i + 5]]) as u32;
-        if (isot as usize) < first_sot.len() && first_sot[isot as usize] < 0 {
-          first_sot[isot as usize] = i as i64;
+      if marker == 0xFF90 {
+        /* SOT: record the tile-part start (the Isot sits at +4..+6), then
+        skip the whole part via Psot. */
+        if pos + 12 > bytes.len()
+          || u16::from_be_bytes([bytes[pos + 2], bytes[pos + 3]]) != 10
+        {
+          return None;
         }
-        i += 12;
+        let isot = u16::from_be_bytes([bytes[pos + 4], bytes[pos + 5]]) as u32;
+        if (isot as usize) < first_sot.len() && first_sot[isot as usize] < 0 {
+          first_sot[isot as usize] = pos as i64;
+        }
+        let psot = u32::from_be_bytes([
+          bytes[pos + 6],
+          bytes[pos + 7],
+          bytes[pos + 8],
+          bytes[pos + 9],
+        ]) as usize;
+        if psot < 10 || pos + psot > bytes.len() {
+          /* Unknown or overrunning part length: the walk cannot be trusted
+          - decline (the caller falls back to the serial path). */
+          return None;
+        }
+        pos += psot;
+      } else if marker == 0xFF4F || marker == 0xFF93 {
+        /* SOC/SOD carry no length field (2 bytes). */
+        pos += 2;
       } else {
-        i += 1;
+        /* A marker with a length field (Lmar includes itself). */
+        let lmar = u16::from_be_bytes([bytes[pos + 2], bytes[pos + 3]]) as usize;
+        if lmar < 2 || pos + lmar > bytes.len() {
+          return None;
+        }
+        pos += lmar;
       }
     }
   }

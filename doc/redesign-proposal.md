@@ -265,11 +265,15 @@ Notes:
    (allocate lazily or cap), the dwt scratch (post-item 4 it shrinks), and
    the tag-tree node vector — every decode-path allocation sized from header
    values fails gracefully instead of aborting.
-6. **Parallel decode v2.** Replace the `Arc<Vec<u8>>` snapshot + raw
-   `FF 90 00 0A` prescan with the TLM/tp_index seek plan already used for
-   decode areas, or a double-buffered tile-header reader; eliminate the
-   review_3 L13 prescan false-positive class and the full-stream copy
-   (B.1-memory).
+6. **Parallel decode v2.** — ✅ **LANDED (B.1.6)**: the raw `FF 90 00 0A`
+   byte prescan is replaced by a structured SOT walk (tile-parts stepped by
+   their declared Psot lengths — the L13 false-positive class is gone, and
+   unknown/overrunning lengths decline to the serial path), and in-memory
+   streams now share their buffer zero-copy (`Stream::shared_bytes`,
+   `Arc<[u8]>`).  (Original item text: replace the `Arc<Vec<u8>>` snapshot
+   + raw `FF 90 00 0A` prescan with the TLM/tp_index seek plan already used
+   for decode areas, or a double-buffered tile-header reader; eliminate the
+   review_3 L13 prescan false-positive class and the full-stream copy.)
 7. **Structured errors.** Thread a `pos`/`marker` context into `event_msg!`
    at the marker loop and box loop so `Error::Decode` can carry where the
    failure happened (helps users and the fuzz triage).

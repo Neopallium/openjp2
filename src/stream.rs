@@ -57,7 +57,7 @@ pub(crate) enum StreamInner {
   Writer(BufWriter<Box<dyn WriteSeek>>),
   /// Owned in-memory bytes with a direct cursor (no BufReader indirection
   /// and no extra copy for the common decode-from-buffer case).
-  Bytes(std::io::Cursor<Vec<u8>>),
+  Bytes(std::io::Cursor<std::sync::Arc<[u8]>>),
 }
 
 impl StreamInner {
@@ -70,7 +70,7 @@ impl StreamInner {
   }
 
   pub fn from_bytes(bytes: Vec<u8>) -> Self {
-    Self::Bytes(std::io::Cursor::new(bytes))
+    Self::Bytes(std::io::Cursor::new(std::sync::Arc::<[u8]>::from(bytes)))
   }
 
   pub fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
@@ -154,14 +154,24 @@ impl Stream {
     }
   }
 
-  /// Wrap an owned in-memory buffer as an input stream: the bytes are
-  /// copied once into a direct cursor (no `BufReader` indirection) — the
+  /// Wrap an owned in-memory buffer as an input stream: the bytes move
+  /// into a direct cursor (no `BufReader` indirection, no copy) — the
   /// common decode-from-buffer shape.
   pub fn from_bytes(bytes: Vec<u8>) -> Self {
     Self {
       m_inner: super::stream::StreamInner::from_bytes(bytes.clone()),
       m_stream_length: bytes.len() as u64,
       m_byte_offset: 0,
+    }
+  }
+
+  /// For in-memory streams: share the underlying buffer without copying
+  /// (the parallel decode's snapshot becomes zero-copy; B.1.6).  Returns
+  /// `None` for reader/file streams.
+  pub(crate) fn shared_bytes(&self) -> Option<std::sync::Arc<[u8]>> {
+    match &self.m_inner {
+      super::stream::StreamInner::Bytes(cursor) => Some(cursor.get_ref().clone()),
+      _ => None,
     }
   }
 
