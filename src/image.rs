@@ -194,7 +194,7 @@ impl CoreImageComp {
     /* Guard the shifts below: precisions outside 1..=31 have no meaningful
     i32 sample representation (PCLR palettes can set prec up to 128, and
     caller-built components may carry 0). */
-    if !(1..=31).contains(&precision) || !(1..=31).contains(&self.prec) {
+    if !crate::types::prec_valid(precision) || !crate::types::prec_valid(self.prec) {
       return;
     }
     if self.prec < precision {
@@ -277,7 +277,7 @@ impl CoreImage {
       /* Guard the shift: PCLR palettes can legally set prec up to 128 and
       caller-built components may carry prec == 0; the adjustment is only
       meaningful for 1..=31. */
-      adjust: if comp.sgnd != 0 && (1..=31).contains(&comp.prec) {
+      adjust: if comp.sgnd != 0 && crate::types::prec_valid(comp.prec) {
         1 << (comp.prec - 1)
       } else {
         0

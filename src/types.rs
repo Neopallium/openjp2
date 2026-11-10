@@ -672,6 +672,12 @@ pub struct TileInfo {
 /// integer samples (t1 write-back / dc-shift decode) keep them as exact
 /// bit patterns, mirroring the C's in-place int32/float reinterpretation
 /// without any unsafe.
+/// The sample precisions the port supports: 1..=31 (the C's OpenJpeg limit).
+/// Central rule for setup_encoder validation and the image.rs guards.
+pub(crate) fn prec_valid(prec: u32) -> bool {
+  (1..=31).contains(&prec)
+}
+
 #[derive(Default)]
 pub(crate) enum TileBuf {
   #[default]

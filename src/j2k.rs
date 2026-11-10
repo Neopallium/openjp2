@@ -5936,7 +5936,7 @@ pub(crate) fn opj_j2k_setup_encoder(
     return 0i32;
   }
   for comp in image.comps.iter() {
-    if comp.prec < 1u32 || comp.prec > 31u32 {
+    if !crate::types::prec_valid(comp.prec) {
       event_msg!(
         p_manager,
         EVT_ERROR,
