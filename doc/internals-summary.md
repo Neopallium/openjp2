@@ -31,7 +31,7 @@ faithful, `#![forbid(unsafe_code)]` port of OpenJPEG 2.5.x; module names map
 | `tcd.rs` | Tile coder: geometry construction (resolutions/bands/precincts/codeblocks), orchestration of dwt/mct/dc-shift/t1/t2, rate allocation (encode), tile↔image data transfer (`update_tile_data`, `copy_tile_data`). |
 | `j2k.rs` | Codestream state machine: every marker read/write handler, main/tile-part header loops, tile decode loop, parallel tile decode/encode drivers, `setup_encoder/decoder`. |
 | `jp2.rs` | JP2 box reader/writer (jp/ ftyp/ jp2h/ ihdr/ colr/ bpcc/ pclr/ cdef/ cmap/ jp2c), colour post-processing (`check_color`, `apply_pclr`, `apply_cdef`). |
-| `codec.rs` | `Codec` facade over `J2k`/`Jp2` (the `CodecType`/`CodecFormat` enums) + parallel dispatch hooks. |
+| `codec.rs` | `Decoder`/`Encoder` over the `CodecFormat` enum (`J2k`/`Jp2`), each with an `EventMgr`; shared surface (handlers, `set_threads`, dump, cstr accessors, `get_tile_geometry`) via an internal macro + parallel dispatch hooks. The merged `Codec` handle lives in `openjp2-capi` (`capi/src/codec.rs`). |
 | `api.rs` | The safe high-level API + `catch_unwind` guards around decode/encode drivers. |
 
 Key structural decisions (recorded so they are not rediscovered):
@@ -50,7 +50,7 @@ Key structural decisions (recorded so they are not rediscovered):
 ```
 Image::from_bytes / DumpImage
  └─ decode_stream (catch_unwind)  [api.rs]
-     ├─ Codec::new_decoder + setup_decoder + set_decode_limits + strict
+     ├─ Decoder::new + setup_decoder + set_decode_limits + strict
      ├─ read_header
      │   ├─ J2K: marker loop (j2k.rs read_header_procedure)
      │   │     SOC → SIZ/COD/QCD/… (dispatch table J2KMarker::handler) → SOT break
@@ -61,7 +61,7 @@ Image::from_bytes / DumpImage
      │   └─ JP2: box loop (jp2.rs read_header_procedure) → jp2h boxes
      │         (ihdr/colr/pclr/cdef/cmap) → jp2c → the J2K header; metadata
      │         length caps; then j2k read
-     ├─ (rayon) decode_parallel / decode_parallel_area [codec.rs]
+     ├─ (rayon) Decoder::decode_parallel / decode_parallel_area [codec.rs]
      │     per-tile fresh codec states over an Arc<Vec<u8>> snapshot;
      │     SOT pre-scan (TLM index or FF90 scan); workers run the serial
      │     tile pipeline below; master merges via update_image_data and
@@ -103,7 +103,7 @@ hard failures.
 ```
 Image::encode / encode_jp2 / encode_to_writer
  └─ encode_image* (catch_unwind) [api.rs]
-     ├─ Codec::new_encoder + setup_encoder (j2k.rs)
+     ├─ Encoder::new + setup_encoder (j2k.rs)
      │     • parameter validation (layers 0..=100, numpocs ≤ 32,
      │       res_spec×numresolution shift guard, prog order, prec 1..=31,
      │       cblk sizes, tile grid, mct_data lengths)
