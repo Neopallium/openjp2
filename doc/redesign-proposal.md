@@ -260,11 +260,12 @@ Notes:
    whole-tile f32 scratch copies are gone), the seams carry exact bit
    patterns (lossless vs the C's shared-array reinterpretation), and the
    encode dc-shift converts the buffer variant once.
-5. **Fallible-allocation sweep (review findings).** `try_reserve` for the TLM
-   `m_tile_part_infos`, `check_poc_val`'s matrix, pi's `include` mask
-   (allocate lazily or cap), the dwt scratch (post-item 4 it shrinks), and
-   the tag-tree node vector — every decode-path allocation sized from header
-   values fails gracefully instead of aborting.
+5. **Fallible-allocation sweep (review findings).** — ✅ **LANDED (B.1.5)**:
+   TLM `m_tile_part_infos`, `check_poc_val`'s matrix, pi's `include` mask
+   (0fc72bb9), the tag-tree node vector (already guarded), and now the
+   header-sized dwt scratches (5-3/9-7 whole+partial, the DWT_SCRATCH
+   thread-locals) all `try_reserve` — decode-path allocations sized from
+   header values fail gracefully.
 6. **Parallel decode v2.** — ✅ **LANDED (B.1.6)**: the raw `FF 90 00 0A`
    byte prescan is replaced by a structured SOT walk (tile-parts stepped by
    their declared Psot lengths — the L13 false-positive class is gone, and
@@ -274,9 +275,10 @@ Notes:
    + raw `FF 90 00 0A` prescan with the TLM/tp_index seek plan already used
    for decode areas, or a double-buffered tile-header reader; eliminate the
    review_3 L13 prescan false-positive class and the full-stream copy.)
-7. **Structured errors.** Thread a `pos`/`marker` context into `event_msg!`
-   at the marker loop and box loop so `Error::Decode` can carry where the
-   failure happened (helps users and the fuzz triage).
+7. **Structured errors.** — ✅ **LANDED (29349c49)**: `DecodeError
+   { message, marker, box_, pos }` — the decoder records the context at the
+   marker loops (main/tile-header/read_unk) and the JP2 box loop, and the
+   `Decoder` builds `Error::Decode` with it (rendered by `Display`).
 
 ## B.2 Encoder
 
@@ -302,9 +304,10 @@ Notes:
    COD mct=2 (both C and port reject it). Decide: keep C parity (encode-only
    feature, as today) or emit the MCT data group + accept mct=2 on decode as
    a deliberate, documented extension.
-5. **Precision/clipping hygiene.** Centralize the "prec 1..=31" and clipping
-   rules in one place (setup_encoder + `CoreImageComp::clip`) so new encode
-   entry points can't bypass validation.
+5. **Precision/clipping hygiene.** — ✅ **LANDED (1021e635)**:
+   `types::prec_valid` is the single 1..=31 rule, used by the
+   `setup_encoder` validation and the image.rs guards (clip /
+   `comps_data_iter`).
 
 ## B.3 Cross-cutting
 
