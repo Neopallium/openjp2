@@ -287,19 +287,23 @@ Notes:
 
 ## B.3 Cross-cutting
 
-1. **`Stream` for in-memory bytes.** Add `Stream::from_bytes(&[u8])` (no
-   `BufReader<Cursor>` indirection) for the common case; keep `new_input` for
-   arbitrary `Read+Seek`.
+1. **`Stream` for in-memory bytes.** — ✅ **LANDED (c1e2d503)**:
+   `Stream::from_bytes(Vec<u8>)` adds a `StreamInner::Bytes` variant (direct
+   cursor, one copy); the safe-API decode driver and `DumpImage` use it.
+   (Original item text: add `Stream::from_bytes(&[u8])` (no
+   `BufReader<Cursor>` indirection) for the common case; keep `new_input`
+   for arbitrary `Read+Seek`.)
 2. **Module hygiene.** `api.rs` (2240+ lines incl. tests) splits into
    `api/{error,decode,encode,image_conv,dump}.rs`; the 200-line test modules
    stay in the parent or move to `tests/`.
 3. **Panic-catch scope.** Keep `catch_unwind` at the safe-API and C-ABI
    boundaries (do not wrap individual internal calls).
-4. **Remaining open review items** (schedule inside this redesign rather than
-   as one-offs): t1 refinement-pass wrapping (review_2 M7), `opj_lrintf` NaN
-   parity (review_3 M12 — needs an empirical trigger first), `DumpImage`
-   unify with `Decoder`, the `LayerRate` builder doc/behavior, the
-   `Jp2BoxType::UUID` constant typo, `GUARD_BITS` parse parity.
+4. **Remaining open review items** — 🟡 PARTIAL: t1 refinement-pass
+   wrapping (review_2 M7) ✅ done, `LayerRate` builder doc/behavior ✅ done,
+   `Jp2BoxType::UUID` constant typo ✅ done, `GUARD_BITS` parse parity ✅
+   done (B.3.4 batch 29150b83).  Still open: `opj_lrintf` NaN parity
+   (review_3 M12 — needs an empirical trigger first), `DumpImage` unify
+   with `Decoder`.
 
 # Part C — Design questions
 
