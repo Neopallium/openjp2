@@ -3637,9 +3637,11 @@ fn opj_j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
         /* Progressive download: a Psot that exceeds the available bytes must
         not drive a multi-gigabyte allocation - clamp the read to what is
         actually in the stream (the tile decode then stops cleanly when the
-        data runs out). */
+        data runs out).  A negative byte count (seek past the declared EOF
+        via crafted TLM offsets) must clamp to zero, not wrap to a ~4 GiB
+        value that slips past the u32 guard below. */
         p_j2k.m_specific_param.m_decoder.m_sot_length =
-          opj_stream_get_number_byte_left(p_stream) as u32;
+          opj_stream_get_number_byte_left(p_stream).max(0) as u32;
       }
     }
     if p_j2k.m_specific_param.m_decoder.m_sot_length > u32::MAX - OPJ_COMMON_CBLK_DATA_EXTRA {

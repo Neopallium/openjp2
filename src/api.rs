@@ -2641,6 +2641,18 @@ pub mod image_conv {
             .into(),
         ));
       }
+      /* A partially decoded image (lenient/truncated codestream) has
+      component data shorter than the declared geometry; refuse it too
+      instead of silently returning an ImageData shorter than w*h. */
+      if comps
+        .iter()
+        .any(|c| c.data.len() != (c.w as usize) * (c.h as usize))
+      {
+        return Err(Error::Unsupported(
+          "component data is truncated (partial decode); the image must be fully decoded"
+            .into(),
+        ));
+      }
       let max_prec = comps.iter().fold(0u32, |max, c| max.max(c.prec));
       let has_alpha = comps.iter().any(|c| c.alpha != 0);
       match &self.color_space() {
