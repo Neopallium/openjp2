@@ -1143,6 +1143,34 @@ mod tests {
     assert_eq!(par, serial, "parallel/serial encode mismatch");
   }
 
+  /// Regression (0.7 Codec split): a degenerate whole-image decode area
+  /// (the CLI's default `-d 0,0,0,0` call shape) must decode identically to
+  /// no area at all.  It must not take the parallel decode-area path, whose
+  /// workers reproduce only the lenient tile-part walk — pinned by the
+  /// issue235 fixture (multi-tile), where the parallel-area path produced
+  /// different pixels than the serial decode.
+  #[test]
+  fn degenerate_decode_area_matches_whole() {
+    let buf = std::fs::read("samples/issue235_cielab_multitile.jp2").expect("sample file");
+    let whole = Image::from_bytes(&buf).expect("whole decode");
+    // Low-level flow like the CLI: set_decode_area((0,0,0,0)) then decode.
+    let mut dec = Decoder::new(J2KFormat::JP2).unwrap();
+    let mut s = Stream::new_input(
+      crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+      std::io::Cursor::new(buf.clone()),
+      buf.len() as u64,
+    );
+    let mut hdr = dec.read_header(&mut s).unwrap().into_core_image();
+    dec
+      .set_decode_area(&mut hdr, Some(DecodeArea::new(0, 0, 0, 0)))
+      .unwrap();
+    let area = dec.decode(&mut s).unwrap();
+    assert_eq!(area.comps.len(), whole.components().len());
+    for (a, b) in whole.components().iter().zip(area.comps.iter()) {
+      assert_eq!(a.data, b.data, "degenerate area vs whole component data");
+    }
+  }
+
   /// DumpImage + the codestream index/info accessors.
   #[test]
   fn dump_image_and_index() {
@@ -2910,3 +2938,6 @@ impl DumpImage {
     out
   }
 }
+
+
+

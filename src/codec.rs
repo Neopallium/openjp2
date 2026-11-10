@@ -367,7 +367,12 @@ impl Decoder {
     #[cfg(feature = "rayon")]
     if self.pending_area.is_none() {
       let (layer, reduce, strict) = self.state_summary();
-      if layer == 0 && reduce == 0 {
+      /* The parallel workers reproduce the serial decode only for the
+      lenient tile-part walk; strict mode changes the walk semantics
+      (the nb-tile-parts correction and the lenient recoveries the
+      workers' fresh state cannot replay — see issue235), so strict
+      decodes stay on the authoritative sequential path. */
+      if !strict && layer == 0 && reduce == 0 {
         let full_header = image.clone();
         if let Some(core) = self.decode_parallel(stream, &full_header, 0, 0, strict) {
           return Ok(core);
@@ -406,8 +411,9 @@ impl Decoder {
       full-resolution decodes. */
       #[cfg(feature = "rayon")]
       {
-        let (layer, reduce, _) = self.state_summary();
-        if layer == 0 && reduce == 0 {
+        let (layer, reduce, strict) = self.state_summary();
+        /* Same strict-mode caveat as the whole-image path above. */
+        if !strict && layer == 0 && reduce == 0 {
           if let Some(core) = self.decode_parallel_area(stream, &full_header, &image) {
             return Ok(core);
           }
