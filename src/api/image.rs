@@ -159,11 +159,18 @@ impl Image {
         )
       }
     };
-    let prec = if planes.iter().any(|p| p.iter().any(|&v| v > 255)) {
+    /* The precision follows the SOURCE format (a 16-bit image stays 16-bit
+    even when all its values are small); the alpha plane of La/Rgba images
+    is marked. */
+    let prec = if matches!(
+      img,
+      ImageLuma16(_) | ImageLumaA16(_) | ImageRgb16(_) | ImageRgba16(_)
+    ) {
       16
     } else {
       8
     };
+    let has_alpha = numcomps == 2 || numcomps == 4;
     Self {
       core: crate::CoreImage {
         x0: 0,
@@ -174,7 +181,8 @@ impl Image {
         color_space,
         comps: planes
           .into_iter()
-          .map(|data| crate::CoreImageComp {
+          .enumerate()
+          .map(|(idx, data)| crate::CoreImageComp {
             dx: 1,
             dy: 1,
             w,
@@ -186,7 +194,7 @@ impl Image {
             sgnd: 0,
             resno_decoded: 0,
             factor: 0,
-            alpha: 0,
+            alpha: if has_alpha && idx as u32 == numcomps - 1 { 1 } else { 0 },
             data: data.into_iter().map(i32::from).collect(),
           })
           .collect(),

@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![allow(mutable_transmutes)]
 #![allow(non_camel_case_types)]
 // The C-ABI mirror types keep the C header's field spellings; those names
 // carry a scoped #![allow(non_snake_case)] in c_api_types.rs itself. All

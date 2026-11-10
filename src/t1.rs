@@ -201,11 +201,6 @@ impl T1Data {
   /// `opj_t1_clbl_decode_processor` / `opj_t1_cblk_encode_processor` that still walk
   /// `TcdTileComp::data` as a raw pointer. Dropped in phase 3, when the tile component
   /// owns its samples as a `Vec`.
-  pub fn as_mut_ptr(&self) -> *mut i32 {
-    // `Cell<i32>` is `repr(transparent)` over `i32`, so this is a layout-preserving cast.
-    self.data.as_ptr() as *mut i32
-  }
-
   pub fn offset(&self, offset: isize) -> DataPtr<'_> {
     DataPtr {
       data: &self.data,

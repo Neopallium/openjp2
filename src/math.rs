@@ -103,7 +103,14 @@ pub(crate) fn opj_uint_subs(mut a: u32, mut b: u32) -> u32 {
 
 #[inline]
 pub(crate) fn opj_lrintf(mut f: f32) -> i64 {
-  f.round_ties_even() as i64
+  /* cvtss2si emulation: NaN and out-of-range inputs yield i64::MIN, like
+  the C's lrintf on x86 (the dc-level-shift then clamps the result to the
+  sample range - open-findings OF-23 / review_3 M12). */
+  if f.is_nan() || f >= 9223372036854775808.0f32 || f < -9223372036854775808.0f32 {
+    i64::MIN
+  } else {
+    f.round_ties_even() as i64
+  }
 }
 
 #[inline]

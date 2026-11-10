@@ -10026,6 +10026,12 @@ pub(crate) fn j2k_decode_tiles_parallel(
   };
   let _ = stream.seek(anchor);
   let len = bytes.len() as u64;
+  /* The snapshot is decode memory: count it against the caller's limit and
+  decline the parallel path when it would exceed it (graceful serial
+  fallback - open-findings OF-18). */
+  if len > max_mem {
+    return None;
+  }
 
   /* First SOT offset per tile (absolute positions in the buffer). */
   let mut first_sot: Vec<i64> = vec![-1; num_tiles as usize];
