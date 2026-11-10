@@ -84,7 +84,13 @@ impl EventMgr {
     };
     match handler {
       Some(handler) => {
-        handler.lock().expect("event handler lock poisoned")(msg);
+        /* A poisoned lock means a handler panicked mid-callback; degrade by
+        keeping the (possibly broken) handler installed instead of panicking
+        the host through the event path (the handler's own panics are caught
+        at the API boundaries). */
+        handler
+          .lock()
+          .unwrap_or_else(|poisoned| poisoned.into_inner())(msg);
         1
       }
       None => 0,
