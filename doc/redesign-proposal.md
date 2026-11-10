@@ -181,6 +181,21 @@ Notes:
    `EventHandlers`/`Threads` helper. The safe API drivers switch from
    `Codec` to the split types; the `opj_codec_private_t` alias disappears
    from the core.
+> **Considered and deferred (owner decision, 2026-11-10):** replacing the
+> `CodecFormat` enum dispatch inside `Decoder`/`Encoder` with boxed
+> `DecoderCodec`/`EncoderCodec` trait objects was reviewed and declined for
+> now.  The enum has exactly two formats (J2K/JP2; JPT is unsupported), and
+> the trait would need ~15 accessor methods to reach the internal state the
+> parallel drivers and cstr accessors read directly (`m_cp`,
+> `decode_limits`, `m_header_partial`, `m_specific_param.m_decoder`, ...)
+> — an interface dominated by plumbing, with zero code reduction (each
+> impl would still call the same `opj_j2k_*`/`opj_jp2_*` free functions the
+> match arms call).  Revisit only when a third format is scheduled; the
+> compiler-exhaustive matches are a feature for a C-parity port.  (A
+> smaller cleanup — a static `CodecCommon` trait replacing the
+> `codec_common!` macro — remains available if the macro ever becomes a
+> maintenance burden.)
+
 2. **Merged `Codec` lives in the capi crate.** — ✅ **LANDED (793ff501)**: the
    capi defines
    `Codec { Dec(core::Decoder), Enc(core::Encoder) }` to keep the
