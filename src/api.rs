@@ -404,6 +404,15 @@ impl Image {
   }
 
   /// Decode from an in-memory buffer with the given decoder settings.
+  ///
+  /// Lenient mode (the default; `DecodeParameters::strict(true)` opts out)
+  /// preserves the pixels decoded before a truncation point.  Note the
+  /// contract's scope: truncation AFTER the last tile's data (a missing EOC)
+  /// delivers the fully decoded image, but truncation mid-tile — or a
+  /// used-components failure — may return the header image with EMPTY
+  /// component data (earlier tiles' pixels are not moved out).  The C
+  /// reference behaves the same way; check `Image::components()` data lengths
+  /// when decoding untrusted partial streams.
   pub fn from_bytes_with(buf: &[u8], params: DecodeParameters) -> Result<Self> {
     let format = detect_format(buf)
       .ok_or_else(|| Error::Unsupported("unknown JPEG 2000 format".into()))?;

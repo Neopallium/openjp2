@@ -20,10 +20,12 @@ a literal transcription.  This page lists the intentional divergences.
 
 - The C reference uses a per-codec `opj_thread_pool_t` created by
   `opj_codec_set_threads()`.  The port uses the process-wide rayon pool:
-  the first successful sizing wins (`build_global` only succeeds once),
-  and `opj_codec_set_threads` always returns `OPJ_TRUE` (sizing the pool
-  when possible).  The CLI tools size the pool from `-threads N` /
-  `OPJ_NUM_THREADS` / `RAYON_NUM_THREADS`.
+  the first successful sizing wins (`build_global` only succeeds once).
+  `opj_codec_set_threads` mirrors the C's failure cases — no thread
+  support and `num_threads > i32::MAX` return `OPJ_FALSE` — and otherwise
+  returns `OPJ_TRUE` (the C's "FALSE after the tcd exists" nuance does
+  not apply: the port's pool is process-wide by design).  The CLI tools
+  size the pool from `-threads N` / `OPJ_NUM_THREADS` / `RAYON_NUM_THREADS`.
 - The port parallelises more than the C: per-tile code-block decode/encode,
   DWT, DC shift (as in the C), plus tile-level concurrent decode and
   encode in the safe API (`Image::from_bytes` / `Image::encode`).
