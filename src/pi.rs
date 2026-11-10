@@ -1211,10 +1211,10 @@ pub(crate) fn opj_get_encoding_parameters(
         l_dy =
           l_img_comp.dy as u64 * ((1u64) << (l_pdy + l_tccp.numresolutions - 1u32 - resno));
         /* take the minimum size for dx for each comp and resolution */
-        if l_dx < u32::MAX as u64 {
+        if l_dx <= u32::MAX as u64 {
           *p_dx_min = opj_uint_min(*p_dx_min, l_dx as u32);
         }
-        if l_dy < u32::MAX as u64 {
+        if l_dy <= u32::MAX as u64 {
           *p_dy_min = opj_uint_min(*p_dy_min, l_dy as u32);
         }
         /* various calculations of extents */

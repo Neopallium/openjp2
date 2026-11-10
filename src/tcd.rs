@@ -2185,9 +2185,19 @@ fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OP
     return 1i32;
   }
   let comps = &mut p_tcd.tcd_image.tiles.comps[..];
-  /* The standard MCT needs 3 components; the C reads OOB for fewer.  Fail
-  the encode instead of panicking on split_at_mut (review round 2, LOW-3). */
-  if tcp.mct == 1u32 && comps.len() < 3 {
+  /* The standard MCT needs 3 components of equal plane size; the C reads
+  OOB for fewer or mismatched (review round 2, LOW-3; open-findings OF-07).
+  Fail the encode cleanly instead of panicking. */
+  if comps.len() < 3 {
+    return 0i32;
+  }
+  if comps[1..]
+    .iter()
+    .any(|c| (c.x1 - c.x0, c.y1 - c.y0) != (comps[0].x1 - comps[0].x0, comps[0].y1 - comps[0].y0))
+  {
+    /* The tcd encode stage has no event manager of its own; the failure
+    propagates to the encode driver's error path (the decode-side sibling
+    emits "Tiles don't all have the same dimension"). */
     return 0i32;
   }
   if tcp.mct == 2u32 {

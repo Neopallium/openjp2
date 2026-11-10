@@ -171,11 +171,13 @@ impl CoreImageComp {
     let signed = self.sgnd != 0;
     let (min, max) = match (precision, signed) {
       (0..=31, false) => (0, (1i64 << precision) - 1),
-      (0..=31, true) => {
+      (1..=31, true) => {
         let max = (1i64 << (precision - 1)) - 1;
         let min = -max - 1;
         (min, max)
       }
+      /* precision 0 (or > 31) has no representable range: clamp to
+      non-negative, matching the comps_data_iter/scale guards. */
       _ => (0, i64::MAX),
     };
     for val in self.data.iter_mut() {
