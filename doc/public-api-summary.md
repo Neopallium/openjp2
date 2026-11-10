@@ -51,9 +51,12 @@ Image::has_icc_profile() -> bool
 Image::components() -> &[CoreImageComp]
 Image::into_core_image(self) -> CoreImage
 // encoding
-Image::encode(&self, EncodeParameters) -> Result<Vec<u8>>        // J2K codestream
-Image::encode_jp2(&self, EncodeParameters) -> Result<Vec<u8>>    // JP2 file
-Image::encode_to_writer(&self, EncodeParameters, W: Write+Seek) -> Result<()>
+Image::encode(self, EncodeParameters) -> Result<Vec<u8>>         // J2K codestream (by value: the
+                                                                 // encoder transforms the buffers
+                                                                 // in place; clone first to keep
+                                                                 // the source)
+Image::encode_jp2(self, EncodeParameters) -> Result<Vec<u8>>     // JP2 file (by value, same)
+Image::encode_to_writer(self, EncodeParameters, W: Write+Seek) -> Result<()>
 // pixel extraction (feature "image")
 Image::get_pixels(&self, alpha_default: Option<u32>) -> Result<ImageData>
 // conversions (feature "image")
