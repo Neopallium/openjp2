@@ -72,6 +72,11 @@ pub struct DecoderSettings {
   /// Dump the codestream info as it is read (the C's
   /// `OPJ_DPARAMETERS_DUMP_FLAG`).
   pub dump_state: bool,
+  /// Per-decode thread limit: `0` = the ambient rayon pool (the default),
+  /// `n > 0` = a local n-thread pool for this codec's decodes (the native
+  /// `DecodeParameters::threads` knob; the C's `set_threads` sizes the
+  /// process-wide pool instead).
+  pub threads: usize,
 }
 
 /// A decoded codestream header: geometry and component metadata with empty
@@ -108,6 +113,14 @@ pub struct Decoder {
   header: Option<CoreImage>,
   /// Decode-area request stored by `set_decode_area`; applied by `decode`.
   pending_area: Option<DecodeArea>,
+  /// Per-decode thread limit (`DecodeParameters::threads`): `0` = the
+  /// ambient rayon pool, `n > 0` = a lazily-built local n-thread pool used
+  /// for all parallelism of this codec's decodes.
+  threads: usize,
+  /// The local pool built for `threads` (shared with the per-thread
+  /// `par::CURRENT_POOL` registration during a decode).
+  #[cfg(feature = "rayon")]
+  pool: Option<std::rc::Rc<rayon::ThreadPool>>,
 }
 
 /// Low-level J2K/JP2 encoder (see `Image::encode*` for the one-shot
@@ -241,6 +254,9 @@ impl Decoder {
       m_event_mgr: Default::default(),
       header: None,
       pending_area: None,
+      threads: 0,
+      #[cfg(feature = "rayon")]
+      pool: None,
     })
   }
 
@@ -249,11 +265,46 @@ impl Decoder {
   /// `opj_setup_decoder` equivalent; the capi crate translates
   /// `opj_dparameters_t` into this.
   pub fn apply_settings(&mut self, settings: &DecoderSettings) -> Result<()> {
+    self.threads = settings.threads;
     match &mut self.m_codec {
       CodecFormat::J2K(dec) => opj_j2k_setup_decoder(dec, settings),
       CodecFormat::JP2(dec) => opj_jp2_setup_decoder(dec, settings),
     }
     Ok(())
+  }
+
+  /// Runs `f` with this codec's per-decode pool registered as the current
+  /// pool for the parallel helpers (`DecodeParameters::threads`).  `0`
+  /// (the default) keeps the ambient pool; `n > 0` builds a local
+  /// n-thread pool on first use and reuses it for every decode of this
+  /// codec.  Without the `rayon` feature the limit is inert (the helpers
+  /// are sequential anyway).
+  fn with_pool<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+    #[cfg(feature = "rayon")]
+    {
+      if self.threads == 0 {
+        return f(self);
+      }
+      if self.pool.is_none() {
+        self.pool = rayon::ThreadPoolBuilder::new()
+          .num_threads(self.threads)
+          .build()
+          .ok()
+          .map(std::rc::Rc::new);
+      }
+      match &self.pool {
+        Some(pool) => {
+          let _guard = crate::par::set_current_pool(pool);
+          f(self)
+        }
+        None => f(self),
+      }
+    }
+    #[cfg(not(feature = "rayon"))]
+    {
+      let _ = self.threads;
+      f(self)
+    }
   }
 
   /// Lenient vs strict decode (the C default is strict; the safe API
@@ -360,6 +411,11 @@ impl Decoder {
   /// image with empty component data instead of an error (C parity; see
   /// `Image::from_bytes_with`'s contract note).
   pub fn decode(&mut self, stream: &mut Stream) -> Result<CoreImage> {
+    self.with_pool(|slf| slf.decode_body(stream))
+  }
+
+  /// The pool-wrapped body of `decode` (see `with_pool`).
+  fn decode_body(&mut self, stream: &mut Stream) -> Result<CoreImage> {
     let mut image = self
       .header
       .clone()
@@ -498,6 +554,16 @@ impl Decoder {
     tile: u32,
     out: Option<&mut [u8]>,
   ) -> Result<()> {
+    self.with_pool(|slf| slf.decode_tile_data_body(stream, tile, out))
+  }
+
+  /// The pool-wrapped body of `decode_tile_data` (see `with_pool`).
+  fn decode_tile_data_body(
+    &mut self,
+    stream: &mut Stream,
+    tile: u32,
+    out: Option<&mut [u8]>,
+  ) -> Result<()> {
     let ok = match &mut self.m_codec {
       CodecFormat::J2K(dec) => opj_j2k_decode_tile(dec, tile, out, stream, &mut self.m_event_mgr),
       CodecFormat::JP2(dec) => opj_jp2_decode_tile(dec, tile, out, stream, &mut self.m_event_mgr),
@@ -512,6 +578,11 @@ impl Decoder {
   /// Decodes a whole tile and returns it as an image (the header must have
   /// been read).
   pub fn get_decoded_tile(&mut self, stream: &mut Stream, tile: u32) -> Result<CoreImage> {
+    self.with_pool(|slf| slf.get_decoded_tile_body(stream, tile))
+  }
+
+  /// The pool-wrapped body of `get_decoded_tile` (see `with_pool`).
+  fn get_decoded_tile_body(&mut self, stream: &mut Stream, tile: u32) -> Result<CoreImage> {
     let mut image = self
       .header
       .clone()

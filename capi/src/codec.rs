@@ -102,6 +102,10 @@ impl Codec {
               != 0,
           dump_state: parameters.flags & openjp2_ctypes::consts::opj::OPJ_DPARAMETERS_DUMP_FLAG
             != 0,
+          /* The C-ABI thread control stays the process-wide pool
+          (opj_codec_set_threads); the native per-decode limit is unused
+          here. */
+          threads: 0,
         };
         dec.apply_settings(&settings).is_ok() as OPJ_BOOL
       }

@@ -37,6 +37,7 @@ impl DumpImage {
       layers: params.layers,
       reduce: params.reduce,
       ignore_pclr_cmap_cdef: params.ignore_pclr_cmap_cdef,
+      threads: params.threads,
       ..Default::default()
     })?;
     /* Mirror decode_stream_inner: the strict flag and the resource limits

@@ -471,6 +471,70 @@ use super::*;
     }
   }
 
+  /// `DecodeParameters::threads`: the per-decode pool limit must be
+  /// byte-identical to the automatic (ambient pool) decode, at every
+  /// sensible size including a single worker and one more worker than
+  /// needed.  Uses the multi-tile issue235 fixture so the parallel tile
+  /// driver AND the nested codeblock work both exercise the local pool.
+  #[test]
+  fn decode_parameters_threads_limit_is_byte_identical() {
+    let buf = std::fs::read("samples/issue235_cielab_multitile.jp2").expect("sample file");
+    let reference = Image::from_bytes(&buf).expect("reference decode");
+    for n in [1usize, 2, 4] {
+      let limited = Image::from_bytes_with(&buf, DecodeParameters::new().threads(n))
+        .expect("limited decode");
+      assert_eq!(
+        reference.components().len(),
+        limited.components().len(),
+        "threads({n}) component count"
+      );
+      for (a, b) in reference.components().iter().zip(limited.components().iter()) {
+        assert_eq!(a.data, b.data, "threads({n}) component data");
+      }
+    }
+  }
+
+  /// The per-decode pool is scoped: a limited decode must not leak the
+  /// local pool into a following automatic decode on the same thread, and
+  /// a low-level Decoder reuses its pool across decodes deterministically.
+  #[test]
+  fn decode_parameters_threads_pool_is_scoped() {
+    let buf = std::fs::read("samples/issue235_cielab_multitile.jp2").expect("sample file");
+    let reference = Image::from_bytes(&buf).expect("reference decode");
+    // First a limited decode, then an automatic one on the same thread.
+    let _ = Image::from_bytes_with(&buf, DecodeParameters::new().threads(2))
+      .expect("limited decode");
+    let after = Image::from_bytes(&buf).expect("automatic decode after limited");
+    for (a, b) in reference.components().iter().zip(after.components().iter()) {
+      assert_eq!(a.data, b.data, "automatic decode after a limited one");
+    }
+    // One codec, several tile decodes: the local pool is built once and
+    // reused (each get_decoded_tile re-runs through with_pool), and the
+    // result is deterministic.
+    let mut dec = Decoder::new(J2KFormat::JP2).unwrap();
+    dec
+      .apply_settings(&DecoderSettings {
+        threads: 2,
+        ..Default::default()
+      })
+      .unwrap();
+    let mut s = Stream::new_input(
+      crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+      std::io::Cursor::new(buf.clone()),
+      buf.len() as u64,
+    );
+    let _hdr = dec.read_header(&mut s).unwrap();
+    let first = dec.get_decoded_tile(&mut s, 0).unwrap();
+    let second = dec.get_decoded_tile(&mut s, 0).unwrap();
+    assert!(
+      first.comps.iter().any(|c| !c.data.is_empty()),
+      "tile decode produced data"
+    );
+    for (a, b) in first.comps.iter().zip(second.comps.iter()) {
+      assert_eq!(a.data, b.data, "repeated limited tile decode");
+    }
+  }
+
   /// Regression (review_3 pass-2 residual, OF-43): a failed DumpImage
   /// decode must not trap a retry - the decoder keeps its own header copy
   /// and the retry simply fails again on the mid-state stream.

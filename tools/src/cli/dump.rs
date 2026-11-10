@@ -184,6 +184,7 @@ fn process_file(
         ignore_pclr_cmap_cdef: parameters.flags
           & OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG != 0,
         dump_state: parameters.flags & OPJ_DPARAMETERS_DUMP_FLAG != 0,
+        threads: 0,
       })
       .map_err(|_| "Failed to setup decoder")?;
 

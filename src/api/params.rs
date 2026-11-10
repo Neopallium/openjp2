@@ -180,6 +180,11 @@ pub struct DecodeParameters {
   pub strict: bool,
   pub decode_area: Option<DecodeArea>,
   pub ignore_pclr_cmap_cdef: bool,
+  /// Per-decode thread limit: `0` = automatic (the process-wide rayon
+  /// pool), `n > 0` = a local n-thread pool built for this decode.  The
+  /// default (`0`) preserves the current process-wide behaviour; without
+  /// the `rayon` feature the value is inert.
+  pub threads: usize,
   /// Optional resource limits (see `DecodeLimits`).  All-zero except
   /// `max_mem_alloc` = unlimited; `max_mem_alloc == 0` selects the built-in
   /// 1 GiB ceiling (`DEFAULT_DECODE_MEM_LIMIT`).
@@ -218,6 +223,14 @@ impl DecodeParameters {
   /// Restrict the decoded area (whole image when None).
   pub fn decode_area(mut self, area: Option<DecodeArea>) -> Self {
     self.decode_area = area;
+    self
+  }
+
+  /// Limit the number of worker threads used for this decode (`0` = the
+  /// process-wide rayon pool, the default; `n > 0` = a local n-thread pool
+  /// for this decode only).  The result is byte-identical either way.
+  pub fn threads(mut self, n: usize) -> Self {
+    self.threads = n;
     self
   }
 

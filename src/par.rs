@@ -28,6 +28,46 @@ pub(crate) fn current_thread_index() -> Option<usize> {
   None
 }
 
+#[cfg(feature = "rayon")]
+thread_local! {
+  // The pool that with_current_pool installs the parallel helpers on, set
+  // per-thread by set_current_pool (the per-decode thread limit,
+  // DecodeParameters::threads).  None = the ambient pool (the default).
+  static CURRENT_POOL: std::cell::RefCell<Option<std::rc::Rc<rayon::ThreadPool>>> =
+    const { std::cell::RefCell::new(None) };
+}
+
+/// Runs `f` on the per-thread current pool when one is set (the ambient
+/// rayon pool otherwise).  Every parallel helper funnels through here so a
+/// decode wrapped by `set_current_pool` runs ALL its parallelism (the tile
+/// driver and the nested codeblock work) on the caller's chosen pool.
+#[cfg(feature = "rayon")]
+pub(crate) fn with_current_pool<R: Send>(f: impl FnOnce() -> R + Send) -> R {
+  CURRENT_POOL.with(|p| match p.borrow().as_ref() {
+    Some(pool) => pool.install(f),
+    None => f(),
+  })
+}
+
+/// Installs `pool` as the per-thread pool for the parallel helpers until
+/// the returned guard is dropped (restoring the previous setting).
+#[cfg(feature = "rayon")]
+pub(crate) fn set_current_pool(pool: &std::rc::Rc<rayon::ThreadPool>) -> CurrentPoolGuard {
+  let prev = CURRENT_POOL.with(|p| p.borrow_mut().replace(pool.clone()));
+  CurrentPoolGuard(prev)
+}
+
+/// RAII restore for `set_current_pool` (also runs when a decode panics).
+#[cfg(feature = "rayon")]
+pub(crate) struct CurrentPoolGuard(Option<std::rc::Rc<rayon::ThreadPool>>);
+
+#[cfg(feature = "rayon")]
+impl Drop for CurrentPoolGuard {
+  fn drop(&mut self) {
+    CURRENT_POOL.with(|p| *p.borrow_mut() = self.0.take());
+  }
+}
+
 /// Applies `f(index, element)` to every element of `items`, collecting the
 /// results. Parallel under the `rayon` feature when `items.len() >= threshold`.
 #[cfg(feature = "rayon")]
@@ -39,11 +79,13 @@ where
 {
   use rayon::prelude::*;
   if items.len() >= threshold {
-    items
-      .par_iter_mut()
-      .enumerate()
-      .map(|(i, x)| f(i, x))
-      .collect()
+    with_current_pool(|| {
+      items
+        .par_iter_mut()
+        .enumerate()
+        .map(|(i, x)| f(i, x))
+        .collect()
+    })
   } else {
     items.iter_mut().enumerate().map(|(i, x)| f(i, x)).collect()
   }
@@ -65,7 +107,9 @@ where
   F: Fn(usize, &mut T) + Sync,
 {
   use rayon::prelude::*;
-  items.par_iter_mut().enumerate().for_each(|(i, x)| f(i, x));
+  with_current_pool(|| {
+    items.par_iter_mut().enumerate().for_each(|(i, x)| f(i, x));
+  });
 }
 
 #[cfg(not(feature = "rayon"))]
@@ -87,12 +131,14 @@ where
   F: Fn(usize, &mut T, &mut U) -> R + Sync,
 {
   use rayon::prelude::*;
-  a.par_iter_mut()
-    .enumerate()
-    .take(n)
-    .zip(b.par_iter_mut())
-    .map(|((i, x), y)| f(i, x, y))
-    .collect()
+  with_current_pool(|| {
+    a.par_iter_mut()
+      .enumerate()
+      .take(n)
+      .zip(b.par_iter_mut())
+      .map(|((i, x), y)| f(i, x, y))
+      .collect()
+  })
 }
 
 #[cfg(not(feature = "rayon"))]
@@ -116,7 +162,9 @@ where
   F: Fn(usize) + Sync + Send,
 {
   use rayon::prelude::*;
-  (0..n).into_par_iter().for_each(f);
+  with_current_pool(|| {
+    (0..n).into_par_iter().for_each(f);
+  });
 }
 
 #[cfg(not(feature = "rayon"))]
@@ -138,7 +186,9 @@ where
   F: Fn(usize, &mut [T]) + Sync,
 {
   use rayon::prelude::*;
-  data.par_chunks_mut(chunk).enumerate().for_each(|(i, s)| f(i, s));
+  with_current_pool(|| {
+    data.par_chunks_mut(chunk).enumerate().for_each(|(i, s)| f(i, s));
+  });
 }
 
 #[cfg(not(feature = "rayon"))]

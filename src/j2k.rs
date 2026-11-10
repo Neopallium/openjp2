@@ -10129,10 +10129,12 @@ pub(crate) fn j2k_decode_tiles_parallel(
     return None;
   }
 
-  /* Decode the requested tiles in parallel. */
-  let decoded: Vec<Option<(Tcd, Vec<u32>)>> = tiles
-    .into_par_iter()
-    .map(|&tile_no| {
+  /* Decode the requested tiles in parallel (on the caller's chosen pool
+  via par::with_current_pool — DecodeParameters::threads). */
+  let decoded: Vec<Option<(Tcd, Vec<u32>)>> = crate::par::with_current_pool(|| {
+    tiles
+      .into_par_iter()
+      .map(|&tile_no| {
       let mut worker_stream = Stream::new_input(
         OPJ_J2K_STREAM_CHUNK_SIZE as usize,
         std::io::Cursor::new(SharedBuf(bytes.clone())),
@@ -10173,7 +10175,8 @@ pub(crate) fn j2k_decode_tiles_parallel(
       }
       result
     })
-    .collect();
+    .collect()
+  });
   if decoded.iter().any(Option::is_none) {
     return None;
   }

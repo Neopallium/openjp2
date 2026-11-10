@@ -14,6 +14,7 @@ pub(crate) fn decode_stream_inner(
     layers: params.layers,
     reduce: params.reduce,
     ignore_pclr_cmap_cdef: params.ignore_pclr_cmap_cdef,
+    threads: params.threads,
     ..Default::default()
   })?;
   codec.set_limits(params.limits)?;

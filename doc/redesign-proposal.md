@@ -352,10 +352,14 @@ Notes:
 9. **Component data typing** → i32-only for 0.7; the future design for
    f32/i32 (and possibly u32 / higher-resolution pixels) is written up in
    `doc/component-data-types.md`.
-10. **Threading** → the user can limit the threads used for a decode, while
-    automatic (the configured rayon pool) stays supported:
-    `DecodeParameters::threads(n)` with `0` = automatic, `n > 0` = a local
-    n-thread pool for that decode.
+10. **Threading** → ✅ **LANDED**: `DecodeParameters::threads(n)` with
+    `0` = automatic (the configured rayon pool), `n > 0` = a local
+    n-thread pool for that decode.  Implementation: the pool is built
+    lazily per `Decoder` and registered as the per-thread current pool
+    (`par::set_current_pool`/`with_current_pool`) for the decode's
+    duration, so ALL parallelism of that decode — the tile driver AND the
+    nested codeblock work — runs on it; byte-identical results, and the
+    setting cannot leak into other decodes on the same thread.
 11. **`get_pixels` alpha** → keep the jpeg2k signature
     (`alpha_default: Option<u32>`); the shortcomings are noted in
     `doc/component-data-types.md`.
