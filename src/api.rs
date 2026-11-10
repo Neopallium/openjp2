@@ -419,13 +419,7 @@ impl Image {
   pub fn from_bytes_with(buf: &[u8], params: DecodeParameters) -> Result<Self> {
     let format = detect_format(buf)
       .ok_or_else(|| Error::Unsupported("unknown JPEG 2000 format".into()))?;
-    let buf = buf.to_vec();
-    let len = buf.len() as u64;
-    let mut stream = Stream::new_input(
-      crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
-      std::io::Cursor::new(buf),
-      len,
-    );
+    let mut stream = Stream::from_bytes(buf.to_vec());
     decode_stream(&mut stream, format, &params)
   }
 
@@ -2969,13 +2963,7 @@ impl DumpImage {
   pub fn from_bytes_with(buf: &[u8], params: DecodeParameters) -> Result<Self> {
     let format = detect_format(buf)
       .ok_or_else(|| Error::Unsupported("unknown JPEG 2000 format".into()))?;
-    let buf = buf.to_vec();
-    let len = buf.len() as u64;
-    let mut stream = Stream::new_input(
-      crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
-      std::io::Cursor::new(buf),
-      len,
-    );
+    let mut stream = Stream::from_bytes(buf.to_vec());
     let mut codec = Decoder::new(format)?;
     codec.apply_settings(&DecoderSettings {
       layers: params.layers,

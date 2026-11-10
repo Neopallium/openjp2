@@ -55,6 +55,9 @@ impl<R: Write + Seek> WriteSeek for R {}
 pub(crate) enum StreamInner {
   Reader(BufReader<Box<dyn ReadSeek>>),
   Writer(BufWriter<Box<dyn WriteSeek>>),
+  /// Owned in-memory bytes with a direct cursor (no BufReader indirection
+  /// and no extra copy for the common decode-from-buffer case).
+  Bytes(std::io::Cursor<Vec<u8>>),
 }
 
 impl StreamInner {
@@ -66,9 +69,17 @@ impl StreamInner {
     Self::Writer(BufWriter::with_capacity(capacity, Box::new(writer)))
   }
 
+  pub fn from_bytes(bytes: Vec<u8>) -> Self {
+    Self::Bytes(std::io::Cursor::new(bytes))
+  }
+
   pub fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
     match self {
       StreamInner::Reader(reader) => reader.seek_relative(offset),
+      StreamInner::Bytes(cursor) => {
+        cursor.seek(SeekFrom::Current(offset))?;
+        Ok(())
+      }
       StreamInner::Writer(writer) => {
         writer.seek(SeekFrom::Current(offset))?;
         Ok(())
@@ -79,6 +90,7 @@ impl StreamInner {
   pub fn has_seek(&self) -> bool {
     match self {
       StreamInner::Reader(_) => true,
+      StreamInner::Bytes(_) => true,
       StreamInner::Writer(_) => true,
     }
   }
@@ -88,6 +100,7 @@ impl Read for StreamInner {
   fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
     match self {
       StreamInner::Reader(reader) => reader.read(buf),
+      StreamInner::Bytes(cursor) => cursor.read(buf),
       _ => Err(IoError::other("Can't read from output stream.")),
     }
   }
@@ -114,6 +127,7 @@ impl Seek for StreamInner {
     match self {
       StreamInner::Reader(reader) => reader.seek(pos),
       StreamInner::Writer(writer) => writer.seek(pos),
+      StreamInner::Bytes(cursor) => cursor.seek(pos),
     }
   }
 }
@@ -140,6 +154,17 @@ impl Stream {
     }
   }
 
+  /// Wrap an owned in-memory buffer as an input stream: the bytes are
+  /// copied once into a direct cursor (no `BufReader` indirection) — the
+  /// common decode-from-buffer shape.
+  pub fn from_bytes(bytes: Vec<u8>) -> Self {
+    Self {
+      m_inner: super::stream::StreamInner::from_bytes(bytes.clone()),
+      m_stream_length: bytes.len() as u64,
+      m_byte_offset: 0,
+    }
+  }
+
   /// Wrap a `Write + Seek` source as an output stream.
   pub fn new_output<R: Write + Seek + 'static>(buffer_size: usize, writer: R) -> Self {
     Self {
@@ -150,7 +175,7 @@ impl Stream {
   }
 
   pub fn is_input(&self) -> bool {
-    matches!(self.m_inner, StreamInner::Reader(_))
+    matches!(self.m_inner, StreamInner::Reader(_) | StreamInner::Bytes(_))
   }
 
   pub fn set_stream_length(&mut self, len: u64) {
