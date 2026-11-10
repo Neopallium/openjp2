@@ -6,7 +6,7 @@
 //! here.
 
 use openjp2_ctypes::*;
-pub use openjp2_core::{opj_image_cmptparm_t, opj_image_comptparm};
+pub use openjp2_ctypes::{opj_image_cmptparm_t, opj_image_comptparm};
 use openjp2_core::{CoreImage, CoreImageComp, ICCProfile, ICCProfileMut, ICCProfileRef, CIE_LAB_BYTE_SIZE};
 
 /// Allocate `size` bytes for image component data (malloc-backed, so C

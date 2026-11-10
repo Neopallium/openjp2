@@ -31,7 +31,7 @@
 
 use super::math::*;
 use super::openjpeg::*;
-pub use openjp2_ctypes::{opj_image_cmptparm_t, opj_image_comptparm};
+use openjp2_ctypes::opj_image_comptparm;
 
 pub struct ImageCompRef<'a> {
   /// Component.

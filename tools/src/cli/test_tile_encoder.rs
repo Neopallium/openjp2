@@ -1,4 +1,4 @@
-use openjp2::image::opj_image_cmptparm_t;
+use openjp2::ffi::opj_image_cmptparm_t;
 use openjp2::CoreImage;
 use openjp2::{detect_format_from_extension_os_str, openjpeg::*, Codec, J2KFormat, Stream};
 use rand::prelude::*;

@@ -2,7 +2,7 @@ use super::convert_from_dynamic_image;
 use super::ImageError;
 use crate::params::CompressionParameters;
 use openjp2::CoreImage;
-use openjp2::COLOR_SPACE::OPJ_CLRSPC_SRGB;
+use openjp2::ffi::COLOR_SPACE::OPJ_CLRSPC_SRGB;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::Read;

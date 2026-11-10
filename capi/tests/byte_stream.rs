@@ -4,7 +4,7 @@ use std::io::*;
 
 use openjp2::openjpeg::*;
 use openjp2::image::opj_image_t;
-use openjp2_core::{opj_dparameters_t, OPJ_CODEC_JP2};
+use openjp2_ctypes::{opj_dparameters_t, OPJ_CODEC_JP2};
 
 
 extern "C" fn log_info(msg: *const c_char, _data: *mut c_void) {

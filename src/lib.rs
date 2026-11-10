@@ -30,7 +30,7 @@
 //! }
 //! ```
 //!
-pub use openjp2_ctypes as c_api_types;
+use openjp2_ctypes as c_api_types;
 pub mod consts;
 mod types;
 
@@ -51,8 +51,8 @@ mod api;
 
 /// Whether the build includes the `rayon` feature (the C-ABI
 /// `opj_has_thread_support` reports this).
-pub fn has_thread_support() -> OPJ_BOOL {
-  cfg!(feature = "rayon") as OPJ_BOOL
+pub fn has_thread_support() -> c_api_types::OPJ_BOOL {
+  cfg!(feature = "rayon") as c_api_types::OPJ_BOOL
 }
 
 pub use api::{ColorSpace, DecodeArea, DecodeLimits, DecodeParameters, DumpImage, EncodeParameters, Error, Image, ProgressionOrder, Result};
@@ -66,10 +66,8 @@ pub mod ffi {
   pub use crate::consts::opj::*;
 }
 
-// Export safe API
-pub use c_api_types::*;
 pub use codec::{opj_codec_private_t, Codec};
-pub use image::{CoreImage, CoreImageComp, opj_image_cmptparm_t, opj_image_comptparm};
+pub use image::{CoreImage, CoreImageComp};
 pub use j2k::{CstrCompInfoV2, CstrInfoV2, CstrTccpInfoV2, CodestreamIndex, CodestreamTileIndex};
 pub use types::EncoderParameters;
 pub use types::opj_stream_private_t;

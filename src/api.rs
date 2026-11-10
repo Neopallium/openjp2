@@ -9,7 +9,8 @@ use crate::c_api_types::{
   OPJ_CLRSPC_UNKNOWN, OPJ_CODEC_J2K, OPJ_CODEC_JP2,
 };
 use crate::consts::opj::OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG;
-use crate::{Codec, CoreImage, CoreImageComp, J2KFormat, Stream, opj_dparameters};
+use crate::c_api_types::opj_dparameters;
+use crate::{Codec, CoreImage, CoreImageComp, J2KFormat, Stream};
 
 /// Errors returned by the safe API.
 #[derive(Debug)]
@@ -489,25 +490,25 @@ impl Image {
     let widen = |data: &[u8], stride: usize, chan: usize| -> Vec<u16> {
       data.chunks_exact(stride).map(|px| px[chan] as u16).collect()
     };
-    let (numcomps, color_space, planes): (u32, crate::OPJ_COLOR_SPACE, Vec<Vec<u16>>) = match img {
+    let (numcomps, color_space, planes): (u32, OPJ_COLOR_SPACE, Vec<Vec<u16>>) = match img {
       ImageLuma8(g) => (
         1,
-        crate::OPJ_CLRSPC_GRAY,
+        crate::c_api_types::OPJ_CLRSPC_GRAY,
         vec![g.as_raw().iter().map(|&v| v as u16).collect()],
       ),
       ImageLumaA8(g) => (
         2,
-        crate::OPJ_CLRSPC_GRAY,
+        crate::c_api_types::OPJ_CLRSPC_GRAY,
         vec![widen(g.as_raw(), 2, 0), widen(g.as_raw(), 2, 1)],
       ),
       ImageRgb8(r) => (
         3,
-        crate::OPJ_CLRSPC_SRGB,
+        crate::c_api_types::OPJ_CLRSPC_SRGB,
         vec![widen(r.as_raw(), 3, 0), widen(r.as_raw(), 3, 1), widen(r.as_raw(), 3, 2)],
       ),
       ImageRgba8(r) => (
         4,
-        crate::OPJ_CLRSPC_SRGB,
+        crate::c_api_types::OPJ_CLRSPC_SRGB,
         vec![
           widen(r.as_raw(), 4, 0),
           widen(r.as_raw(), 4, 1),
@@ -515,10 +516,10 @@ impl Image {
           widen(r.as_raw(), 4, 3),
         ],
       ),
-      ImageLuma16(g) => (1, crate::OPJ_CLRSPC_GRAY, vec![g.as_raw().to_vec()]),
+      ImageLuma16(g) => (1, crate::c_api_types::OPJ_CLRSPC_GRAY, vec![g.as_raw().to_vec()]),
       ImageLumaA16(g) => (
         2,
-        crate::OPJ_CLRSPC_GRAY,
+        crate::c_api_types::OPJ_CLRSPC_GRAY,
         vec![
           g.as_raw().as_chunks::<2>().0.iter().map(|c| c[0]).collect(),
           g.as_raw().as_chunks::<2>().0.iter().map(|c| c[1]).collect(),
@@ -526,7 +527,7 @@ impl Image {
       ),
       ImageRgb16(r) => (
         3,
-        crate::OPJ_CLRSPC_SRGB,
+        crate::c_api_types::OPJ_CLRSPC_SRGB,
         vec![
           r.as_raw().as_chunks::<3>().0.iter().map(|c| c[0]).collect(),
           r.as_raw().as_chunks::<3>().0.iter().map(|c| c[1]).collect(),
@@ -535,7 +536,7 @@ impl Image {
       ),
       ImageRgba16(r) => (
         4,
-        crate::OPJ_CLRSPC_SRGB,
+        crate::c_api_types::OPJ_CLRSPC_SRGB,
         vec![
           r.as_raw().as_chunks::<4>().0.iter().map(|c| c[0]).collect(),
           r.as_raw().as_chunks::<4>().0.iter().map(|c| c[1]).collect(),
@@ -547,7 +548,7 @@ impl Image {
         let rgba = img.to_rgba8();
         (
           4,
-          crate::OPJ_CLRSPC_SRGB,
+          crate::c_api_types::OPJ_CLRSPC_SRGB,
           vec![
             widen(rgba.as_raw(), 4, 0),
             widen(rgba.as_raw(), 4, 1),
@@ -788,7 +789,7 @@ fn decode_stream_inner(
   }
   /* The C library default is strict; the builder flag must control the
   mode explicitly so strict(false) actually relaxes it. */
-  if codec.decoder_set_strict_mode(params.strict as crate::OPJ_BOOL) != 1 {
+  if codec.decoder_set_strict_mode(params.strict as crate::c_api_types::OPJ_BOOL) != 1 {
     return Err(Error::Decode("failed to set strict mode".into()));
   }
 
@@ -880,7 +881,7 @@ mod tests {
         x1: w,
         y1: h,
         numcomps: 1,
-        color_space: crate::OPJ_CLRSPC_GRAY,
+        color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
         comps: vec![crate::CoreImageComp {
           dx: 1,
           dy: 1,
@@ -935,7 +936,7 @@ mod tests {
       x1: w,
       y1: h,
       numcomps: 1,
-      color_space: crate::OPJ_CLRSPC_GRAY,
+      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
       comps: vec![crate::CoreImageComp {
         dx: 1,
         dy: 1,
@@ -1038,9 +1039,9 @@ mod tests {
         y1: h,
         numcomps: comps,
         color_space: if comps == 1 {
-          crate::OPJ_CLRSPC_GRAY
+          crate::c_api_types::OPJ_CLRSPC_GRAY
         } else {
-          crate::OPJ_CLRSPC_SRGB
+          crate::c_api_types::OPJ_CLRSPC_SRGB
         },
         comps: Vec::new(),
         icc_profile_buf: Vec::new(),
@@ -1094,7 +1095,7 @@ mod tests {
       x1: w,
       y1: h,
       numcomps: 1,
-      color_space: crate::OPJ_CLRSPC_GRAY,
+      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
       comps: Vec::new(),
       icc_profile_buf: Vec::new(),
       icc_profile_is_cielab: false,
@@ -1348,7 +1349,7 @@ mod tests {
       x1: w,
       y1: h,
       numcomps: 2,
-      color_space: crate::OPJ_CLRSPC_GRAY,
+      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
       comps: Vec::new(),
       icc_profile_buf: Vec::new(),
       icc_profile_is_cielab: false,
@@ -1383,7 +1384,7 @@ mod tests {
         x1: w,
         y1: h,
         numcomps: 1,
-        color_space: crate::OPJ_CLRSPC_GRAY,
+        color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
         comps: vec![crate::CoreImageComp {
           dx: 1,
           dy: 1,
@@ -1511,7 +1512,7 @@ mod tests {
       x1: w,
       y1: h,
       numcomps: 3,
-      color_space: crate::OPJ_CLRSPC_SRGB,
+      color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
       comps: Vec::new(),
       icc_profile_buf: Vec::new(),
       icc_profile_is_cielab: false,
@@ -1785,7 +1786,7 @@ mod tests {
           if codec.setup_decoder(&mut dp) != 1 {
             return None;
           }
-          if codec.decoder_set_strict_mode(params.strict as crate::OPJ_BOOL) != 1 {
+          if codec.decoder_set_strict_mode(params.strict as crate::c_api_types::OPJ_BOOL) != 1 {
             return None;
           }
           let mut stream = Stream::new_input(
@@ -1894,7 +1895,7 @@ mod tests {
       x1: w,
       y1: h,
       numcomps: 3,
-      color_space: crate::OPJ_CLRSPC_SRGB,
+      color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
       comps: Vec::new(),
       icc_profile_buf: Vec::new(),
       icc_profile_is_cielab: false,
@@ -2075,7 +2076,7 @@ mod tests {
         x1: 0,
         y1: 0,
         numcomps: 1,
-        color_space: crate::OPJ_CLRSPC_GRAY,
+        color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
         comps: vec![crate::CoreImageComp {
           dx: 1,
           dy: 1,
@@ -2112,7 +2113,7 @@ mod tests {
       x1: w,
       y1: h,
       numcomps: 1,
-      color_space: crate::OPJ_CLRSPC_GRAY,
+      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
       comps: vec![crate::CoreImageComp {
         dx: 1,
         dy: 1,
@@ -2151,7 +2152,7 @@ mod tests {
       x1: w,
       y1: h,
       numcomps: 3,
-      color_space: crate::OPJ_CLRSPC_SRGB,
+      color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
       comps: (0..3)
         .map(|_| crate::CoreImageComp {
           dx: 1,
@@ -2192,7 +2193,7 @@ mod tests {
       x1: w,
       y1: h,
       numcomps: 1,
-      color_space: crate::OPJ_CLRSPC_GRAY,
+      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
       comps: vec![crate::CoreImageComp {
         dx: 1,
         dy: 1,
@@ -2253,7 +2254,7 @@ mod tests {
       x1: w,
       y1: h,
       numcomps: 3,
-      color_space: crate::OPJ_CLRSPC_SRGB,
+      color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
       comps,
       icc_profile_buf: Vec::new(),
       icc_profile_is_cielab: false,
@@ -2349,7 +2350,7 @@ mod tests {
         x1: w,
         y1: h,
         numcomps: 3,
-        color_space: crate::OPJ_CLRSPC_UNSPECIFIED,
+        color_space: crate::c_api_types::OPJ_CLRSPC_UNSPECIFIED,
         comps,
         icc_profile_buf: Vec::new(),
         icc_profile_is_cielab: false,
@@ -2377,7 +2378,7 @@ fn subsampled_empty_tiles_round_trip() {
     x1: w,
     y1: h,
     numcomps: 1,
-    color_space: crate::OPJ_CLRSPC_GRAY,
+    color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
     comps: vec![crate::CoreImageComp {
       dx: 128,
       dy: 128,
@@ -2549,7 +2550,7 @@ fn subsampled_empty_tiles_round_trip() {
       x1: w,
       y1: h,
       numcomps: 1,
-      color_space: crate::OPJ_CLRSPC_GRAY,
+      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
       comps: vec![crate::CoreImageComp {
         dx: 1,
         dy: 1,
@@ -2634,7 +2635,7 @@ fn subsampled_empty_tiles_round_trip() {
         x1: w,
         y1: h,
         numcomps: 3,
-        color_space: crate::OPJ_CLRSPC_SRGB,
+        color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
         comps,
         icc_profile_buf: Vec::new(),
         icc_profile_is_cielab: false,
@@ -2670,7 +2671,7 @@ fn subsampled_empty_tiles_round_trip() {
         x1: w,
         y1: h,
         numcomps: 1,
-        color_space: crate::OPJ_CLRSPC_GRAY,
+        color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
         comps: vec![crate::CoreImageComp {
           dx: 1,
           dy: 1,
@@ -3037,7 +3038,7 @@ impl DumpImage {
     /* Mirror decode_stream_inner: the strict flag and the resource limits
     must reach the DumpImage decoder too (they used to be silently
     dropped). */
-    if codec.decoder_set_strict_mode(params.strict as crate::OPJ_BOOL) != 1 {
+    if codec.decoder_set_strict_mode(params.strict as crate::c_api_types::OPJ_BOOL) != 1 {
       return Err(Error::Decode("failed to set strict mode".into()));
     }
     if codec.set_decode_limits(params.limits) != 1 {
