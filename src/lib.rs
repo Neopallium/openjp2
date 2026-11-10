@@ -66,7 +66,7 @@ pub mod ffi {
   pub use crate::consts::opj::*;
 }
 
-pub use codec::{Decoder, Encoder};
+pub use codec::{Decoder, DecoderSettings, Encoder, HeaderImage};
 pub use image::{CoreImage, CoreImageComp};
 pub use j2k::{CstrCompInfoV2, CstrInfoV2, CstrTccpInfoV2, CodestreamIndex, CodestreamTileIndex};
 pub use types::EncoderParameters;

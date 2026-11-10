@@ -251,15 +251,15 @@ pub unsafe fn opj_decode(
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut Codec);
-  let mut core = core_from_opj(p_image);
-  if l_codec.decode(p_stream, &mut core) == 1 {
-    let fresh = core_into_opj(core);
-    p_image.clear_comps();
-    p_image.clear_icc_profile();
-    *p_image = *fresh;
-    1
-  } else {
-    0
+  match l_codec.decode(p_stream) {
+    Some(core) => {
+      let fresh = core_into_opj(core);
+      p_image.clear_comps();
+      p_image.clear_icc_profile();
+      *p_image = *fresh;
+      1
+    }
+    None => 0,
   }
 })}
 
@@ -310,41 +310,37 @@ pub unsafe fn opj_read_tile_header(
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut Codec);
-  let mut tile_info = TileInfo::default();
-  if !p_data_size.is_null() {
-    // Request the tile data size.
-    tile_info.data_size = Some(0);
-  }
-  if l_codec.read_tile_header(p_stream, &mut tile_info) {
-    unsafe {
-      if !p_tile_index.is_null() {
-        *p_tile_index = tile_info.index;
+  match l_codec.read_tile_header(p_stream) {
+    Some(tile_info) => {
+      unsafe {
+        if !p_tile_index.is_null() {
+          *p_tile_index = tile_info.index;
+        }
+        if !p_data_size.is_null() {
+          *p_data_size = tile_info.data_size.unwrap_or_default();
+        }
+        if !p_tile_x0.is_null() {
+          *p_tile_x0 = tile_info.x0;
+        }
+        if !p_tile_y0.is_null() {
+          *p_tile_y0 = tile_info.y0;
+        }
+        if !p_tile_x1.is_null() {
+          *p_tile_x1 = tile_info.x1;
+        }
+        if !p_tile_y1.is_null() {
+          *p_tile_y1 = tile_info.y1;
+        }
+        if !p_nb_comps.is_null() {
+          *p_nb_comps = tile_info.nb_comps;
+        }
+        if !p_should_go_on.is_null() {
+          *p_should_go_on = tile_info.go_on as _;
+        }
       }
-      if !p_data_size.is_null() {
-        *p_data_size = tile_info.data_size.unwrap_or_default();
-      }
-      if !p_tile_x0.is_null() {
-        *p_tile_x0 = tile_info.x0;
-      }
-      if !p_tile_y0.is_null() {
-        *p_tile_y0 = tile_info.y0;
-      }
-      if !p_tile_x1.is_null() {
-        *p_tile_x1 = tile_info.x1;
-      }
-      if !p_tile_y1.is_null() {
-        *p_tile_y1 = tile_info.y1;
-      }
-      if !p_nb_comps.is_null() {
-        *p_nb_comps = tile_info.nb_comps;
-      }
-      if !p_should_go_on.is_null() {
-        *p_should_go_on = tile_info.go_on as _;
-      }
+      1
     }
-    1
-  } else {
-    0
+    None => 0,
   }
 })}
 
@@ -382,13 +378,16 @@ pub unsafe fn opj_get_decoded_tile(
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
   let l_codec = &mut *(p_codec as *mut Codec);
-  let mut core = core_from_opj(p_image);
-  let ret = l_codec.get_decoded_tile(p_stream, &mut core, tile_index);
-  let fresh = core_into_opj(core);
-  p_image.clear_comps();
-  p_image.clear_icc_profile();
-  *p_image = *fresh;
-  ret
+  match l_codec.get_decoded_tile(p_stream, tile_index) {
+    Some(core) => {
+      let fresh = core_into_opj(core);
+      p_image.clear_comps();
+      p_image.clear_icc_profile();
+      *p_image = *fresh;
+      1
+    }
+    None => 0,
+  }
 })}
 
 #[no_mangle]

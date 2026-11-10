@@ -8,10 +8,9 @@
 use crate::c_api_types::OPJ_COLOR_SPACE;
 use crate::c_api_types::{
   OPJ_CLRSPC_CMYK, OPJ_CLRSPC_EYCC, OPJ_CLRSPC_GRAY, OPJ_CLRSPC_SRGB, OPJ_CLRSPC_SYCC,
-  OPJ_CLRSPC_UNKNOWN, OPJ_CODEC_J2K, OPJ_CODEC_JP2,
+  OPJ_CLRSPC_UNKNOWN,
 };
-use crate::consts::opj::OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG;
-use crate::c_api_types::opj_dparameters;
+use crate::codec::DecoderSettings;
 use crate::{CoreImage, CoreImageComp, Decoder, Encoder, J2KFormat, Stream};
 
 /// Errors returned by the safe API.
@@ -619,7 +618,6 @@ impl Image {
   }
 }
 
-#[allow(deprecated)]
 fn encode_image_to_writer<W: std::io::Write + std::io::Seek + 'static>(
   image: &CoreImage,
   params: crate::EncoderParameters,
@@ -629,37 +627,21 @@ fn encode_image_to_writer<W: std::io::Write + std::io::Seek + 'static>(
   catch_codec_panic(false, || encode_image_to_writer_inner(image, params, format, writer))
 }
 
-#[allow(deprecated)]
 fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + 'static>(
   image: &CoreImage,
   params: crate::EncoderParameters,
   format: J2KFormat,
   writer: W,
 ) -> Result<()> {
-  let codec_format = match format {
-    J2KFormat::J2K => OPJ_CODEC_J2K,
-    J2KFormat::JP2 => OPJ_CODEC_JP2,
-    other => {
-      return Err(Error::Unsupported(format!(
-        "codec format {:?} is not supported for encoding",
-        other
-      )))
-    }
-  };
-  let mut codec = Encoder::new(codec_format)
-    .ok_or_else(|| Error::Encode("failed to create encoder".into()))?;
+  let mut codec = Encoder::new(format)?;
   let mut params = params;
   let mut image = image.clone();
-  if codec.setup_encoder(&mut params, &mut image) != 1 {
-    return Err(Error::Encode("setup_encoder failed".into()));
-  }
+  codec.setup(&mut params, &mut image)?;
   let mut stream = Stream::new_output(
     crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
     writer,
   );
-  if codec.start_compress(&mut image, &mut stream) != 1 {
-    return Err(Error::Encode("start_compress failed".into()));
-  }
+  codec.start(&mut image, &mut stream)?;
   /* Multi-tile images encode concurrently (byte-identical fallback). */
   #[cfg(feature = "rayon")]
   let parallel_ok =
@@ -668,24 +650,21 @@ fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + 'static>(
   let encode_ok = if parallel_ok {
     true
   } else {
-    codec.encode(&mut stream) == 1
+    codec.encode(&mut stream).is_ok()
   };
   #[cfg(not(feature = "rayon"))]
-  let encode_ok = codec.encode(&mut stream) == 1;
+  let encode_ok = codec.encode(&mut stream).is_ok();
   if !encode_ok {
     return Err(Error::Encode("encode failed".into()));
   }
-  if codec.end_compress(&mut stream) != 1 {
-    return Err(Error::Encode("end_compress failed".into()));
-  }
+  codec.finish(&mut stream)?;
   Ok(())
 }
 
 /// `Write + Seek` adapter collecting into a shared `Vec<u8>`; the j2k
 /// encoder seeks back to patch marker lengths, so the position must be
 /// honoured.
-/// Internal driver over the (deprecated-for-users) low-level Codec methods.
-#[allow(deprecated)]
+/// Internal driver over the low-level Encoder API.
 fn encode_image(
   image: &CoreImage,
   params: crate::EncoderParameters,
@@ -694,28 +673,15 @@ fn encode_image(
   catch_codec_panic(false, || encode_image_inner(image, params, format))
 }
 
-#[allow(deprecated)]
 fn encode_image_inner(
   image: &CoreImage,
   params: crate::EncoderParameters,
   format: J2KFormat,
 ) -> Result<Vec<u8>> {
-  let codec_format = match format {
-    J2KFormat::J2K => OPJ_CODEC_J2K,
-    J2KFormat::JP2 => OPJ_CODEC_JP2,
-    other => {
-      return Err(Error::Unsupported(format!(
-        "codec format {:?} is not supported for encoding",
-        other
-      )))
-    }
-  };
-  let mut codec = Encoder::new(codec_format).ok_or_else(|| Error::Encode("failed to create encoder".into()))?;
+  let mut codec = Encoder::new(format)?;
   let mut params = params;
   let mut image = image.clone();
-  if codec.setup_encoder(&mut params, &mut image) != 1 {
-    return Err(Error::Encode("setup_encoder failed".into()));
-  }
+  codec.setup(&mut params, &mut image)?;
   let writer = crate::stream::SharedVecWriter {
     buf: std::rc::Rc::new(std::cell::RefCell::new(Vec::new())),
     pos: 0,
@@ -725,9 +691,7 @@ fn encode_image_inner(
     crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
     writer,
   );
-  if codec.start_compress(&mut image, &mut stream) != 1 {
-    return Err(Error::Encode("start_compress failed".into()));
-  }
+  codec.start(&mut image, &mut stream)?;
   /* Concurrent tile encoding (rayon): only multi-tile images; any failure
   falls back to the sequential encode below, which yields identical bytes. */
   #[cfg(feature = "rayon")]
@@ -736,125 +700,54 @@ fn encode_image_inner(
   let encode_ok = if parallel_ok {
     true
   } else {
-    codec.encode(&mut stream) == 1
+    codec.encode(&mut stream).is_ok()
   };
   #[cfg(not(feature = "rayon"))]
-  let encode_ok = codec.encode(&mut stream) == 1;
+  let encode_ok = codec.encode(&mut stream).is_ok();
   if !encode_ok {
     return Err(Error::Encode("encode failed".into()));
   }
-  if codec.end_compress(&mut stream) != 1 {
-    return Err(Error::Encode("end_compress failed".into()));
-  }
+  codec.finish(&mut stream)?;
   let out = out_buf.borrow().clone();
   Ok(out)
 }
 
-/// Internal driver over the (deprecated-for-users) low-level Codec methods.
-#[allow(deprecated)]
+/// Internal driver over the low-level Decoder API.
 fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParameters) -> Result<Image> {
   catch_codec_panic(true, || decode_stream_inner(stream, format, params))
 }
 
 /// Internal driver over the (deprecated-for-users) low-level Codec methods.
-#[allow(deprecated)]
 fn decode_stream_inner(
   stream: &mut Stream,
   format: J2KFormat,
   params: &DecodeParameters,
 ) -> Result<Image> {
-  let codec_format = match format {
-    J2KFormat::J2K => OPJ_CODEC_J2K,
-    J2KFormat::JP2 => OPJ_CODEC_JP2,
-    other => {
-      return Err(Error::Unsupported(format!(
-        "codec format {:?} is not supported for decoding",
-        other
-      )))
-    }
-  };
-  let mut codec = Decoder::new(codec_format).ok_or_else(|| Error::Decode("failed to create decoder".into()))?;
-
-  let mut dparams = opj_dparameters {
-    cp_reduce: params.reduce,
-    cp_layer: params.layers,
+  let mut codec = Decoder::new(format)?;
+  codec.apply_settings(&DecoderSettings {
+    layers: params.layers,
+    reduce: params.reduce,
+    ignore_pclr_cmap_cdef: params.ignore_pclr_cmap_cdef,
     ..Default::default()
-  };
-  if params.ignore_pclr_cmap_cdef {
-    dparams.flags |= OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG;
-  }
-  if codec.setup_decoder(&mut dparams) != 1 {
-    return Err(Error::Decode("setup_decoder failed".into()));
-  }
-  if codec.set_decode_limits(params.limits) != 1 {
-    return Err(Error::Decode("set_decode_limits failed".into()));
-  }
+  })?;
+  codec.set_limits(params.limits)?;
   /* The C library default is strict; the builder flag must control the
   mode explicitly so strict(false) actually relaxes it. */
-  if codec.decoder_set_strict_mode(params.strict as crate::c_api_types::OPJ_BOOL) != 1 {
-    return Err(Error::Decode("failed to set strict mode".into()));
-  }
+  codec.set_strict(params.strict)?;
 
-  let mut image = codec
-    .read_header(stream)
-    .ok_or_else(|| Error::Decode("failed to read header".into()))?;
-
-  /* Concurrent tile decode (rayon): whole-image, full-quality,
-  full-resolution decodes of multi-tile codestreams.  A layer limit or a
-  resolution reduction leaves coefficient regions unwritten, which the
-  sequential path (like the C reference) reads as the PREVIOUS tile's
-  leftovers - a fresh per-tile worker cannot reproduce that, so those
-  cases stay on the sequential path.  Any failure also falls back to the
-  sequential path below, so the result is always identical. */
-  #[cfg(feature = "rayon")]
-  if params.decode_area.is_none() && params.layers == 0 && params.reduce == 0 {
-    if let Some(core) = codec.decode_parallel(stream, &image, 0, 0, params.strict) {
-      return Ok(Image { core });
-    }
-  }
+  let header = codec.read_header(stream)?;
+  let mut image = header.into_core_image();
 
   if let Some(area) = params.decode_area {
-    #[cfg(feature = "rayon")]
-    let full_header = image.clone();
-    let ret = codec.set_decode_area(
-      &mut image,
-      area.start_x as i32,
-      area.start_y as i32,
-      area.end_x as i32,
-      area.end_y as i32,
-    );
-    if ret != 1 {
-      return Err(Error::Decode("set_decode_area failed".into()));
-    }
-    /* Concurrent tile decode of the intersecting tiles (rayon); the same
-    unwritten-coefficient caveat as above limits it to full-quality
-    full-resolution decodes. */
-    #[cfg(feature = "rayon")]
-    if params.reduce == 0 && params.layers == 0 {
-      if let Some(core) = codec.decode_parallel_area(stream, &full_header, &image) {
-        return Ok(Image { core });
-      }
-    }
+    codec.set_decode_area(&mut image, Some(area))?;
   }
 
-  /* Progressive-download support: in lenient mode a codestream truncated
-  AFTER the last tile's data (missing EOC) delivers the fully decoded image
-  instead of an error.  Strict mode keeps the hard failure.  Note the scope:
-  truncation MID-TILE (or a used-components failure) may still return the
-  header image with empty component data - the C behaves the same way, and
-  the safe API documents this partial-decode contract rather than silently
-  inventing pixels. */
-  if codec.decode(stream, &mut image) != 1 {
-    if params.strict {
-      return Err(Error::Decode("decode failed".into()));
-    }
-    return Ok(Image { core: image });
-  }
-  if codec.end_decompress(stream) != 1 && params.strict {
+  let core = codec.decode(stream)?;
+  if codec.end_decompress(stream).is_err() && params.strict {
     return Err(Error::Decode("end_decompress failed".into()));
   }
 
-  Ok(Image { core: image })
+  Ok(Image { core })
 }
 
 /// Detect the format of an in-memory buffer.
@@ -1179,10 +1072,10 @@ mod tests {
       };
       #[allow(deprecated)]
       let serial = {
-        let mut codec = Encoder::new(OPJ_CODEC_J2K).unwrap();
+        let mut codec = Encoder::new(J2KFormat::J2K).unwrap();
         let mut low = params.clone().into_inner();
         let mut img = image.into_core_image();
-        if codec.setup_encoder(&mut low, &mut img) != 1 {
+        if codec.setup(&mut low, &mut img).is_err() {
           continue;
         }
         let buf2 = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
@@ -1195,9 +1088,9 @@ mod tests {
             crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
             writer,
           );
-          assert_eq!(codec.start_compress(&mut img, &mut stream), 1);
-          assert_eq!(codec.encode(&mut stream), 1);
-          assert_eq!(codec.end_compress(&mut stream), 1);
+          codec.start(&mut img, &mut stream).unwrap();
+          codec.encode(&mut stream).unwrap();
+          codec.finish(&mut stream).unwrap();
           drop(stream);
         }
         std::rc::Rc::try_unwrap(buf2)
@@ -1226,10 +1119,10 @@ mod tests {
     let par = image.encode(params.clone()).expect("parallel encode");
     #[allow(deprecated)]
     let serial = {
-      let mut codec = Encoder::new(OPJ_CODEC_J2K).unwrap();
+      let mut codec = Encoder::new(J2KFormat::J2K).unwrap();
       let mut low = params.into_inner();
       let mut img = image.into_core_image();
-      assert_eq!(codec.setup_encoder(&mut low, &mut img), 1);
+      codec.setup(&mut low, &mut img).unwrap();
       let buf2 = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
       {
         let writer = crate::stream::SharedVecWriter {
@@ -1240,9 +1133,9 @@ mod tests {
           crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
           writer,
         );
-        assert_eq!(codec.start_compress(&mut img, &mut stream), 1);
-        assert_eq!(codec.encode(&mut stream), 1);
-        assert_eq!(codec.end_compress(&mut stream), 1);
+        codec.start(&mut img, &mut stream).unwrap();
+        codec.encode(&mut stream).unwrap();
+        codec.finish(&mut stream).unwrap();
         drop(stream);
       }
       std::rc::Rc::try_unwrap(buf2).ok().map(|b| b.into_inner()).expect("unique handle")
@@ -1729,92 +1622,48 @@ mod tests {
     entries.sort();
     for path in entries {
       let buf = std::fs::read(&path).expect("read input");
-      #[allow(deprecated)]
       let serial: Option<crate::CoreImage> = (|| {
-        let fmt = match crate::detect_format(&buf) {
-          Ok(f) => f,
-          Err(_) => return None,
-        };
-        let c = if fmt == J2KFormat::JP2 {
-          OPJ_CODEC_JP2
-        } else {
-          OPJ_CODEC_J2K
-        };
-        let mut codec = Decoder::new(c)?;
-        let mut dp = opj_dparameters::default();
-        if codec.setup_decoder(&mut dp) != 1 {
-          return None;
-        }
+        let fmt = crate::detect_format(&buf).ok()?;
+        let mut codec = Decoder::new(fmt).ok()?;
         /* The safe API defaults to lenient decoding (DecodeParameters
         ::default().strict == false); mirror it. */
-        if codec.decoder_set_strict_mode(0) != 1 {
-          return None;
-        }
+        codec.set_strict(false).ok()?;
         let mut stream = Stream::new_input(
           crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
           std::io::Cursor::new(buf.clone()),
           buf.len() as u64,
         );
-        let mut img = codec.read_header(&mut stream)?;
-        if codec.decode(&mut stream, &mut img) != 1 {
-          return None;
-        }
-        if codec.end_decompress(&mut stream) != 1 {
-          return None;
-        }
+        codec.read_header(&mut stream).ok()?;
+        let img = codec.decode(&mut stream).ok()?;
+        codec.end_decompress(&mut stream).ok()?;
         Some(img)
       })();
       let par = Image::from_bytes(&buf).ok();
       // A parallel-vs-serial comparison for an arbitrary parameter set:
       // both paths must succeed/fail together and produce identical data.
       let compare = |params: &DecodeParameters, label: &str| {
-        #[allow(deprecated)]
         let serial: Option<crate::CoreImage> = (|| {
-          let fmt = match crate::detect_format(&buf) {
-            Ok(f) => f,
-            Err(_) => return None,
-          };
-          let c = if fmt == J2KFormat::JP2 {
-            OPJ_CODEC_JP2
-          } else {
-            OPJ_CODEC_J2K
-          };
-          let mut codec = Decoder::new(c)?;
-          let mut dp = opj_dparameters {
-            cp_layer: params.layers,
-            cp_reduce: params.reduce,
-            ..Default::default()
-          };
-          if codec.setup_decoder(&mut dp) != 1 {
-            return None;
-          }
-          if codec.decoder_set_strict_mode(params.strict as crate::c_api_types::OPJ_BOOL) != 1 {
-            return None;
-          }
+          let fmt = crate::detect_format(&buf).ok()?;
+          let mut codec = Decoder::new(fmt).ok()?;
+          codec
+            .apply_settings(&DecoderSettings {
+              layers: params.layers,
+              reduce: params.reduce,
+              ..Default::default()
+            })
+            .ok()?;
+          codec.set_strict(params.strict).ok()?;
           let mut stream = Stream::new_input(
             crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
             std::io::Cursor::new(buf.clone()),
             buf.len() as u64,
           );
-          let mut img = codec.read_header(&mut stream)?;
+          let mut img = codec.read_header(&mut stream).ok()?.into_core_image();
           if let Some(area) = params.decode_area {
-            if codec.set_decode_area(
-              &mut img,
-              area.start_x as i32,
-              area.start_y as i32,
-              area.end_x as i32,
-              area.end_y as i32,
-            ) != 1
-            {
-              return None;
-            }
+            codec.set_decode_area(&mut img, Some(area)).ok()?;
           }
-          if codec.decode(&mut stream, &mut img) != 1 {
-            return None;
-          }
-          if codec.end_decompress(&mut stream) != 1 {
-            return None;
-          }
+          let img = codec.decode(&mut stream).ok()?;
+          codec.end_decompress(&mut stream).ok()?;
           Some(img)
         })();
         let par = Image::from_bytes_with(&buf, params.clone()).ok();
@@ -2000,16 +1849,15 @@ mod tests {
     // The raw (unguarded) Codec path must fail cleanly too, not panic.
     #[allow(deprecated)]
     {
-      let mut codec = Decoder::new(OPJ_CODEC_J2K).unwrap();
+      let mut codec = Decoder::new(J2KFormat::J2K).unwrap();
       let mut stream = Stream::new_input(
         crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
         std::io::Cursor::new(cs.clone()),
         cs.len() as u64,
       );
-      let mut dp = opj_dparameters::default();
-      codec.setup_decoder(&mut dp);
-      codec.decoder_set_strict_mode(1);
-      assert!(codec.read_header(&mut stream).is_none());
+      codec.apply_settings(&DecoderSettings::default()).unwrap();
+      codec.set_strict(true).unwrap();
+      assert!(codec.read_header(&mut stream).is_err());
     }
   }
 
@@ -2022,25 +1870,20 @@ mod tests {
       let data = std::fs::read(path).unwrap();
       #[allow(deprecated)]
       {
-        let mut codec = Decoder::new(OPJ_CODEC_J2K).unwrap();
+        let mut codec = Decoder::new(J2KFormat::J2K).unwrap();
         let mut stream = Stream::new_input(
           crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
           std::io::Cursor::new(data.clone()),
           data.len() as u64,
         );
-        let mut dp = opj_dparameters::default();
-        codec.setup_decoder(&mut dp);
-        let image = codec.read_header(&mut stream).expect("header");
-        let mut tile_info = crate::TileInfo::default();
-        tile_info.data_size = Some(0);
-        assert!(
-          codec.read_tile_header(&mut stream, &mut tile_info),
-          "{path}: read_tile_header"
-        );
+        codec.apply_settings(&DecoderSettings::default()).unwrap();
+        let _image = codec.read_header(&mut stream).expect("header");
+        let tile_info = codec
+          .read_tile_header(&mut stream)
+          .expect("{path}: read_tile_header");
         let mut buf = vec![0u8; tile_info.data_size.unwrap_or(0) as usize];
         let ok = codec.decode_tile_data(&mut stream, 0, Some(&mut buf));
-        assert!(ok == 1, "{path}: decode_tile_data -> {ok}");
-        let _ = image;
+        assert!(ok.is_ok(), "{path}: decode_tile_data -> {ok:?}");
       }
     }
   }
@@ -2263,9 +2106,9 @@ mod tests {
     };
     #[allow(deprecated)]
     let encode_low_level = |tlm: bool| -> Vec<u8> {
-      let mut codec = Encoder::new(OPJ_CODEC_J2K).unwrap();
+      let mut codec = Encoder::new(J2KFormat::J2K).unwrap();
       if tlm {
-        assert!(codec.encoder_set_extra_options(&["TLM=YES"]));
+        codec.extra_options(&["TLM=YES"]).unwrap();
       }
       let mut params = crate::EncoderParameters {
         tile_size_on: 1,
@@ -2286,7 +2129,7 @@ mod tests {
         ..Default::default()
       };
       let mut img = core.clone();
-      assert_eq!(codec.setup_encoder(&mut params, &mut img), 1);
+      codec.setup(&mut params, &mut img).unwrap();
       let buf = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
       {
         let writer = crate::stream::SharedVecWriter { buf: buf.clone(), pos: 0 };
@@ -2294,16 +2137,16 @@ mod tests {
           crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
           writer,
         );
-        assert_eq!(codec.start_compress(&mut img, &mut stream), 1);
+        codec.start(&mut img, &mut stream).unwrap();
         // The parallel driver must decline when TLM + multi-part tiles are
         // requested (one TLM entry per tile would corrupt the marker); for
         // the non-TLM control it applies normally.
         let parallel = codec.encode_parallel(&mut stream);
         assert_eq!(parallel, Some(!tlm), "parallel path fallback for TLM + multi-part");
         if parallel != Some(true) {
-          assert_eq!(codec.encode(&mut stream), 1);
+          codec.encode(&mut stream).unwrap();
         }
-        assert_eq!(codec.end_compress(&mut stream), 1);
+        codec.finish(&mut stream).unwrap();
       }
       std::rc::Rc::try_unwrap(buf).ok().map(|b| b.into_inner()).expect("unique handle")
     };
@@ -2995,7 +2838,6 @@ pub mod image_conv {
 pub struct DumpImage {
   codec: Decoder,
   stream: Stream,
-  image: Option<CoreImage>,
 }
 
 impl DumpImage {
@@ -3014,49 +2856,20 @@ impl DumpImage {
       std::io::Cursor::new(buf),
       len,
     );
-    let codec_format = match format {
-      J2KFormat::J2K => OPJ_CODEC_J2K,
-      J2KFormat::JP2 => OPJ_CODEC_JP2,
-      other => {
-        return Err(Error::Unsupported(format!(
-          "codec format {:?} is not supported",
-          other
-        )))
-      }
-    };
-    let mut codec = Decoder::new(codec_format)
-      .ok_or_else(|| Error::Decode("failed to create decoder".into()))?;
-    let mut dparams = opj_dparameters {
-      cp_reduce: params.reduce,
-      cp_layer: params.layers,
+    let mut codec = Decoder::new(format)?;
+    codec.apply_settings(&DecoderSettings {
+      layers: params.layers,
+      reduce: params.reduce,
+      ignore_pclr_cmap_cdef: params.ignore_pclr_cmap_cdef,
       ..Default::default()
-    };
-    if params.ignore_pclr_cmap_cdef {
-      dparams.flags |= OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG;
-    }
-    if codec.setup_decoder(&mut dparams) != 1 {
-      return Err(Error::Decode("setup_decoder failed".into()));
-    }
+    })?;
     /* Mirror decode_stream_inner: the strict flag and the resource limits
     must reach the DumpImage decoder too (they used to be silently
     dropped). */
-    if codec.decoder_set_strict_mode(params.strict as crate::c_api_types::OPJ_BOOL) != 1 {
-      return Err(Error::Decode("failed to set strict mode".into()));
-    }
-    if codec.set_decode_limits(params.limits) != 1 {
-      return Err(Error::Decode("set_decode_limits failed".into()));
-    }
-    #[allow(deprecated)]
-    let image = catch_codec_panic(true, || {
-      codec
-        .read_header(&mut stream)
-        .ok_or_else(|| Error::Decode("failed to read header".into()))
-    })?;
-    Ok(Self {
-      codec,
-      stream,
-      image: Some(image),
-    })
+    codec.set_strict(params.strict)?;
+    codec.set_limits(params.limits)?;
+    catch_codec_panic(true, || codec.read_header(&mut stream).map(|_| ()))?;
+    Ok(Self { codec, stream })
   }
 
   pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
@@ -3071,33 +2884,23 @@ impl DumpImage {
 
   /// Decode the tile data (needed to populate the codestream index with
   /// the tile markers).
-  #[allow(deprecated)]
   pub fn decode(&mut self) -> Result<()> {
-    let mut image = self.image.take().expect("image is Some");
     let codec = &mut self.codec;
     let stream = &mut self.stream;
-    let result = catch_codec_panic(true, || {
-      if codec.decode(stream, &mut image) != 1 {
-        return Err(Error::Decode("decode failed".into()));
-      }
-      Ok(())
-    });
-    /* Restore the image even on failure: a retry (or another decode() call)
-    must not hit the expect() above, and the C reference has no such trap.
-    The failed decode leaves the codec/stream mid-state; the retry simply
-    fails again without panicking. */
-    self.image = Some(image);
-    result
+    /* The Decoder keeps its own header copy, so a failed decode cannot
+    trap a retry (the retry simply fails again on the mid-state stream,
+    matching the C). */
+    catch_codec_panic(true, || codec.decode(stream).map(|_| ()))
   }
 
   /// The codestream index (tile-parts, markers, packets).
   pub fn get_codestream_index(&self) -> Option<crate::CodestreamIndex> {
-    self.codec.get_cstr_index_owned()
+    self.codec.cstr_index()
   }
 
   /// The codestream header info (v2).
   pub fn get_codestream_info(&self) -> Option<crate::CstrInfoV2> {
-    self.codec.get_cstr_info_v2()
+    self.codec.cstr_info()
   }
 
   /// The dump text for the given info flag.

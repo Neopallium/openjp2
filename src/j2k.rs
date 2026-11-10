@@ -5092,10 +5092,10 @@ fn opj_j2k_read_cpf(
 /* ----------------------------------------------------------------------- */
 /* J2K / JPT decoder interface                                             */
 /* ----------------------------------------------------------------------- */
-pub(crate) fn opj_j2k_setup_decoder(mut j2k: &mut J2k, mut parameters: &mut opj_dparameters_t) {
-  j2k.m_cp.m_specific_param.m_dec.m_layer = parameters.cp_layer;
-  j2k.m_cp.m_specific_param.m_dec.m_reduce = parameters.cp_reduce;
-  j2k.dump_state = parameters.flags & 0x2u32
+pub(crate) fn opj_j2k_setup_decoder(j2k: &mut J2k, settings: &crate::codec::DecoderSettings) {
+  j2k.m_cp.m_specific_param.m_dec.m_layer = settings.layers;
+  j2k.m_cp.m_specific_param.m_dec.m_reduce = settings.reduce;
+  j2k.dump_state = if settings.dump_state { 2 } else { 0 };
 }
 
 pub(crate) fn opj_j2k_decoder_set_strict_mode(mut j2k: &mut J2k, mut strict: OPJ_BOOL) {

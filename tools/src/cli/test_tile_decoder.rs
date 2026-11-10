@@ -1,4 +1,4 @@
-use openjp2::{detect_format_from_file, openjpeg::*, Decoder, J2KFormat, Stream, TileInfo};
+use openjp2::{detect_format_from_file, openjpeg::*, Decoder, Stream};
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy)]
@@ -11,7 +11,7 @@ struct DecodeArea {
 
 fn create_codec_and_stream<P: AsRef<Path>>(input: P) -> Result<(Decoder, Stream), String> {
   let input = input.as_ref();
-  let mut params = opj_dparameters_t {
+  let params = opj_dparameters_t {
     // Do not use layer decoding limitations
     cp_layer: 0,
     // Do not use resolutions reductions
@@ -22,33 +22,26 @@ fn create_codec_and_stream<P: AsRef<Path>>(input: P) -> Result<(Decoder, Stream)
   let codec_format = detect_format_from_file(input)?;
   let stream = Stream::new_file(input, 1_000_000, true).map_err(|e| format!("{e:?}"))?;
 
-  // Create decompression codec
-  let cod_format = match codec_format {
-    J2KFormat::J2K => OPJ_CODEC_J2K,
-    J2KFormat::JP2 => OPJ_CODEC_JP2,
-    _ => {
-      return Err("Unknown codec format".to_string());
-    }
-  };
-
   let mut codec =
-    Decoder::new(cod_format).ok_or_else(|| "Failed to create codec".to_string())?;
+    Decoder::new(codec_format).map_err(|_| "Failed to create codec".to_string())?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));
   codec.set_warning_handler(|msg: &str| print!("[WARNING] {}", msg));
   codec.set_error_handler(|msg: &str| print!("[ERROR] {}", msg));
 
-  let status = codec.setup_decoder(&mut params);
-  if status == 0 {
-    return Err("Failed to setup decoder".into());
-  }
+  codec
+    .apply_settings(&openjp2::DecoderSettings {
+      layers: params.cp_layer,
+      reduce: params.cp_reduce,
+      ..Default::default()
+    })
+    .map_err(|_| "Failed to setup decoder".to_string())?;
 
   Ok((codec, stream))
 }
 
 pub fn run_test_tile_decoder(args: Vec<String>, default_file: &str) -> Result<(), String> {
-  let mut tile_info = TileInfo::default();
   let mut args = args.into_iter();
   // Skip program name.
   args.next();
@@ -68,22 +61,29 @@ pub fn run_test_tile_decoder(args: Vec<String>, default_file: &str) -> Result<()
   // Decode image header and create image.
   let mut image = codec
     .read_header(&mut stream)
-    .ok_or("Failed to read header")?;
+    .map(|h| h.into_core_image())
+    .map_err(|_| "Failed to read header")?;
 
   // Set decode area
-  if codec.set_decode_area(&mut image, area.x0, area.y0, area.x1, area.y1) != 1 {
-    Err("Failed to set decode area")?;
-  }
+  codec
+    .set_decode_area(
+      &mut image,
+      Some(openjp2::DecodeArea::new(
+        area.x0 as u32,
+        area.y0 as u32,
+        area.x1 as u32,
+        area.y1 as u32,
+      )),
+    )
+    .map_err(|_| "Failed to set decode area")?;
 
   let mut data = vec![0; 1000];
   let mut go_on = true;
   while go_on {
-    // We need to set this to some value before calling read_tile_header.
-    tile_info.data_size = Some(0);
     // Decode tile
-    if !codec.read_tile_header(&mut stream, &mut tile_info) {
-      Err("Failed to read tile header")?;
-    }
+    let tile_info = codec
+      .read_tile_header(&mut stream)
+      .map_err(|_| "Failed to read tile header")?;
     go_on = tile_info.go_on;
 
     if go_on {
@@ -92,16 +92,16 @@ pub fn run_test_tile_decoder(args: Vec<String>, default_file: &str) -> Result<()
         data.resize(data_size, 0);
       }
       // Decode tile
-      if codec.decode_tile_data(&mut stream, tile_info.index, Some(data.as_mut_slice())) != 1 {
-        Err("Failed to decode tile")?;
-      }
+      codec
+        .decode_tile_data(&mut stream, tile_info.index, Some(data.as_mut_slice()))
+        .map_err(|_| "Failed to decode tile")?;
     }
   }
 
   // End decompression
-  if codec.end_decompress(&mut stream) != 1 {
-    Err("Failed to end decompress")?;
-  }
+  codec
+    .end_decompress(&mut stream)
+    .map_err(|_| "Failed to end decompress")?;
 
   Ok(())
 }

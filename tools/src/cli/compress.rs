@@ -1,5 +1,5 @@
 use crate::{convert::*, params::*};
-use openjp2::{detect_format_from_file, openjpeg::*, CoreImage, Encoder, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, CoreImage, Encoder, Stream};
 use std::path::{Path, PathBuf};
 
 fn compress_image(
@@ -63,20 +63,11 @@ fn compress_image(
   //eprintln!("{params:#?}");
 
   // Create encoder based on codec format
-  let cod_format = match params.codec_format {
-    Some(J2KFormat::J2K) => OPJ_CODEC_J2K,
-    Some(J2KFormat::JP2) => OPJ_CODEC_JP2,
-    None => {
-      return Err(ImageError::InvalidFormat(
-        "No codec format specified".into(),
-      ));
-    }
-    _ => {
-      return Err(ImageError::InvalidFormat("Unknown codec format".into()));
-    }
-  };
-  let mut codec = Encoder::new(cod_format)
-    .ok_or_else(|| ImageError::EncodeError("Failed to create codec".into()))?;
+  let format = params.codec_format.ok_or_else(|| {
+    ImageError::InvalidFormat("No codec format specified".into())
+  })?;
+  let mut codec = Encoder::new(format)
+    .map_err(|e| ImageError::EncodeError(e.to_string()))?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));
@@ -85,10 +76,9 @@ fn compress_image(
 
   // Set compression parameters
   let mut c_params = params.to_c_params();
-  let status = codec.setup_encoder(&mut c_params, &mut image);
-  if status == 0 {
-    return Err(ImageError::EncodeError("Failed to setup encoder".into()));
-  }
+  codec
+    .setup(&mut c_params, &mut image)
+    .map_err(|_| ImageError::EncodeError("Failed to setup encoder".into()))?;
 
   // Setup extra options.
   {
@@ -105,21 +95,20 @@ fn compress_image(
       options.push(bits.as_str());
     }
 
-    if !options.is_empty()
-      && !codec.encoder_set_extra_options(&options) {
-        return Err(ImageError::EncodeError(
-          "Failed to set encoder options".into(),
-        ));
-      }
+    if !options.is_empty() && codec.extra_options(&options).is_err() {
+      return Err(ImageError::EncodeError(
+        "Failed to set encoder options".into(),
+      ));
+    }
   }
 
   // Create output stream
   let mut stream = Stream::new_file(output, 1_000_000, false)?;
 
   // Compress image
-  let result = codec.start_compress(&mut image, &mut stream) == 1
-    && codec.encode(&mut stream) == 1
-    && codec.end_compress(&mut stream) == 1;
+  let result = codec.start(&mut image, &mut stream).is_ok()
+    && codec.encode(&mut stream).is_ok()
+    && codec.finish(&mut stream).is_ok();
   if !result {
     return Err(ImageError::EncodeError("Compression failed".into()));
   }

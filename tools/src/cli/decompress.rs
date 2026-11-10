@@ -1,5 +1,5 @@
 use crate::{color::*, convert::*, params::*};
-use openjp2::{detect_format_from_file, openjpeg::*, Decoder, CoreImage, ICCProfile, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, Decoder, CoreImage, ICCProfile, Stream};
 use std::{env, path::Path};
 
 fn decompress_image<P: AsRef<Path>>(
@@ -13,20 +13,11 @@ fn decompress_image<P: AsRef<Path>>(
   //eprintln!("params: {:?}", params);
 
   // Create decompression codec
-  let cod_format = match params.codec_format {
-    Some(J2KFormat::J2K) => OPJ_CODEC_J2K,
-    Some(J2KFormat::JP2) => OPJ_CODEC_JP2,
-    None => {
-      return Err(ImageError::InvalidFormat(
-        "No codec format specified".into(),
-      ));
-    }
-    _ => {
-      return Err(ImageError::InvalidFormat("Unknown codec format".into()));
-    }
-  };
-  let mut codec = Decoder::new(cod_format)
-    .ok_or_else(|| ImageError::EncodeError("Failed to create codec".into()))?;
+  let format = params.codec_format.ok_or_else(|| {
+    ImageError::InvalidFormat("No codec format specified".into())
+  })?;
+  let mut codec = Decoder::new(format)
+    .map_err(|e| ImageError::DecodeError(e.to_string()))?;
 
   // setup the decoder with the provided parameters.
   let mut d_params = params.to_c_params();
@@ -47,16 +38,19 @@ fn decompress_image<P: AsRef<Path>>(
     codec.set_error_handler(|msg: &str| print!("[ERROR] {}", msg));
   }
 
-  let status = codec.setup_decoder(&mut d_params);
-  if status == 0 {
-    return Err(ImageError::EncodeError("Failed to setup decoder".into()));
-  }
+  codec
+    .apply_settings(&openjp2::DecoderSettings {
+      layers: d_params.cp_layer,
+      reduce: d_params.cp_reduce,
+      ignore_pclr_cmap_cdef: d_params.flags & OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG != 0,
+      ..Default::default()
+    })
+    .map_err(|_| ImageError::EncodeError("Failed to setup decoder".into()))?;
 
   // Disable strict mode if we want to decode partial codestreams.
-  if params.allow_partial
-    && codec.decoder_set_strict_mode(0) == 0 {
-      return Err(ImageError::EncodeError("Failed to set strict mode".into()));
-    }
+  if params.allow_partial && codec.set_strict(false).is_err() {
+    return Err(ImageError::EncodeError("Failed to set strict mode".into()));
+  }
 
   // Threads are sized globally via OPJ_NUM_THREADS (rayon pool).
 
@@ -66,18 +60,18 @@ fn decompress_image<P: AsRef<Path>>(
   // Decode image header and create image.
   let mut image = codec
     .read_header(&mut stream)
-    .ok_or_else(|| ImageError::DecodeError("Failed to read header".into()))?;
+    .map(|h| h.into_core_image())
+    .map_err(|_| ImageError::DecodeError("Failed to read header".into()))?;
 
   // Set the components to decode.
-  if params.numcomps > 0
-    && codec.set_decoded_components(&params.comps_indices, 0) == 0 {
-      return Err(ImageError::DecodeError(
-        "Failed to set decoded components".into(),
-      ));
-    }
+  if params.numcomps > 0 && codec.set_components(&params.comps_indices).is_err() {
+    return Err(ImageError::DecodeError(
+      "Failed to set decoded components".into(),
+    ));
+  }
   if let Some(cp_reduce) = set_decoded_resolution_factor {
     // For debuging/testing purposes.
-    if codec.set_decoded_resolution_factor(cp_reduce) == 0 {
+    if codec.set_resolution_factor(cp_reduce).is_err() {
       return Err(ImageError::DecodeError(
         "Failed to set decoded resolution factor".into(),
       ));
@@ -93,30 +87,41 @@ fn decompress_image<P: AsRef<Path>>(
       && !params.quiet {
         eprintln!("WARNING: -d option is ignored when decoding tiles");
       }
-    if codec.get_decoded_tile(&mut stream, &mut image, tile_index) == 0 {
-      return Err(ImageError::DecodeError(
-        "Failed to set decoded tiles".into(),
-      ));
-    }
+    image = match codec.get_decoded_tile(&mut stream, tile_index) {
+      Ok(core) => core,
+      Err(_) => {
+        return Err(ImageError::DecodeError(
+          "Failed to set decoded tiles".into(),
+        ));
+      }
+    };
   } else {
     if env::var("SKIP_OPJ_SET_DECODE_AREA").is_ok() && no_decode_area {
       // For debuging/testing purposes.
-    } else if codec.set_decode_area(
-      &mut image,
-      params.da_x0 as i32,
-      params.da_y0 as i32,
-      params.da_x1 as i32,
-      params.da_y1 as i32,
-    ) == 0
+    } else if codec
+      .set_decode_area(
+        &mut image,
+        Some(openjp2::DecodeArea::new(
+          params.da_x0,
+          params.da_y0,
+          params.da_x1,
+          params.da_y1,
+        )),
+      )
+      .is_err()
     {
       return Err(ImageError::DecodeError("Failed to set decode area".into()));
     }
 
     // Decode image
-    let status =
-      codec.decode(&mut stream, &mut image) == 1 && codec.end_decompress(&mut stream) == 1;
-    if !status {
-      return Err(ImageError::DecodeError("Failed to decode image".into()));
+    image = match codec.decode(&mut stream) {
+      Ok(core) => core,
+      Err(_) => {
+        return Err(ImageError::DecodeError("Failed to decode image".into()));
+      }
+    };
+    if codec.end_decompress(&mut stream).is_err() {
+      return Err(ImageError::DecodeError("Failed to end decompress".into()));
     }
   }
 

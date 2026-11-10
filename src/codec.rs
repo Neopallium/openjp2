@@ -37,18 +37,64 @@ use super::c_api_types::*;
 use super::consts::*;
 use super::types::*;
 
+use super::api::{DecodeArea, DecodeLimits, Error, Result};
 use super::event::*;
 use super::fprintf::StringWriter;
 use super::j2k::*;
+use crate::J2KFormat;
 
 /// The low-level codec split (0.7): the merged `Codec` handle moved to the
 /// `openjp2-capi` crate, where it keeps the single `opj_codec_t*` C-ABI
 /// contract.  The core exposes the two directions directly; each owns the
-/// format-specific state and an event manager.
+/// format-specific state and an event manager.  The public signatures are
+/// C-type-free (`Result`-returning); the C-shaped parameter translation
+/// lives in the capi crate.
 #[allow(clippy::large_enum_variant)]
 pub(crate) enum CodecFormat {
   J2K(J2k),
   JP2(Jp2),
+}
+
+/// Native (C-free) decoder settings: the subset of the C's
+/// `opj_dparameters_t` the core consumes (`cp_layer`, `cp_reduce` and the
+/// two `flags` bits).  The file names, formats and JPWL fields of the C
+/// struct are CLI-level conveniences consumed nowhere in the core.
+#[derive(Clone, Copy, Default, Debug)]
+pub struct DecoderSettings {
+  /// Quality-layer cap (`0` = all layers; the C's `cp_layer`).
+  pub layers: u32,
+  /// Resolution reduction (`0` = full resolution; the C's `cp_reduce`).
+  pub reduce: u32,
+  /// Ignore JP2 palette/channel-definition boxes during colour application
+  /// (the C's `OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG`).
+  pub ignore_pclr_cmap_cdef: bool,
+  /// Dump the codestream info as it is read (the C's
+  /// `OPJ_DPARAMETERS_DUMP_FLAG`).
+  pub dump_state: bool,
+}
+
+/// A decoded codestream header: geometry and component metadata with empty
+/// pixel data (`Decoder::read_header` output; the pixel data is produced by
+/// `Decoder::decode`).  The empty data makes it impossible to mistake a
+/// header for decoded pixels.
+pub struct HeaderImage(CoreImage);
+
+impl HeaderImage {
+  pub fn width(&self) -> u32 {
+    self.0.x1 - self.0.x0
+  }
+
+  pub fn height(&self) -> u32 {
+    self.0.y1 - self.0.y0
+  }
+
+  pub fn num_components(&self) -> u32 {
+    self.0.numcomps
+  }
+
+  pub fn into_core_image(self) -> CoreImage {
+    self.0
+  }
 }
 
 /// Low-level J2K/JP2 decoder (see `Image::from_bytes*` for the one-shot
@@ -56,6 +102,11 @@ pub(crate) enum CodecFormat {
 pub struct Decoder {
   pub(crate) m_codec: CodecFormat,
   pub(crate) m_event_mgr: EventMgr,
+  /// The header read by `read_header` (target image for `decode`,
+  /// `get_decoded_tile`, ...).
+  header: Option<CoreImage>,
+  /// Decode-area request stored by `set_decode_area`; applied by `decode`.
+  pending_area: Option<DecodeArea>,
 }
 
 /// Low-level J2K/JP2 encoder (see `Image::encode*` for the one-shot
@@ -71,32 +122,34 @@ pub struct Encoder {
 macro_rules! codec_common {
   ($ty:ty) => {
     impl $ty {
-      pub fn set_info_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) -> OPJ_BOOL {
+      pub fn set_info_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
         self.m_event_mgr.set_info_handler(handler);
-        1i32
       }
 
-      pub fn set_warning_handler(
-        &mut self,
-        handler: impl FnMut(&str) + Send + 'static,
-      ) -> OPJ_BOOL {
+      pub fn set_warning_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
         self.m_event_mgr.set_warning_handler(handler);
-        1i32
       }
 
-      pub fn set_error_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) -> OPJ_BOOL {
+      pub fn set_error_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
         self.m_event_mgr.set_error_handler(handler);
-        1i32
       }
 
-      pub fn set_threads(&mut self, num_threads: core::ffi::c_int) -> OPJ_BOOL {
-        if num_threads >= 0i32 {
-          match &mut self.m_codec {
-            CodecFormat::J2K(j2k) => opj_j2k_set_threads(j2k, num_threads as _),
-            CodecFormat::JP2(jp2) => opj_jp2_set_threads(jp2, num_threads as _),
-          }
+      pub fn set_threads(&mut self, num_threads: i32) -> Result<()> {
+        if num_threads < 0i32 {
+          return Err(Error::Unsupported(
+            "negative thread count".into(),
+          ));
+        }
+        let ok = match &mut self.m_codec {
+          CodecFormat::J2K(j2k) => opj_j2k_set_threads(j2k, num_threads as u32),
+          CodecFormat::JP2(jp2) => opj_jp2_set_threads(jp2, num_threads as u32),
+        };
+        if ok != 0 {
+          Ok(())
         } else {
-          0
+          Err(Error::Unsupported(
+            "threading is unavailable or the count is out of range".into(),
+          ))
         }
       }
 
@@ -107,18 +160,18 @@ macro_rules! codec_common {
         }
       }
 
-      /// Safe, owned codestream info v2 (header summary). The capi crate
-      /// marshals this into the C-ABI mirror for `opj_get_cstr_info`.
-      pub fn get_cstr_info_v2(&self) -> Option<crate::j2k::CstrInfoV2> {
+      /// Owned codestream info (header summary).  The capi crate marshals
+      /// this into the C-ABI mirror for `opj_get_cstr_info`.
+      pub fn cstr_info(&self) -> Option<crate::j2k::CstrInfoV2> {
         match &self.m_codec {
           CodecFormat::J2K(j2k) => crate::j2k::j2k_get_cstr_info_owned(j2k),
           CodecFormat::JP2(jp2) => crate::j2k::j2k_get_cstr_info_owned(&jp2.j2k),
         }
       }
 
-      /// Safe, owned codestream index (the capi crate marshals this into the
+      /// Owned codestream index (the capi crate marshals this into the
       /// C-ABI mirror for `opj_get_cstr_index`).
-      pub fn get_cstr_index_owned(&self) -> Option<crate::j2k::CodestreamIndex> {
+      pub fn cstr_index(&self) -> Option<crate::j2k::CodestreamIndex> {
         match &self.m_codec {
           CodecFormat::J2K(j2k) => j2k.cstr_index.as_deref().cloned(),
           CodecFormat::JP2(jp2) => jp2.j2k.cstr_index.as_deref().cloned(),
@@ -157,174 +210,323 @@ codec_common!(Decoder);
 codec_common!(Encoder);
 
 impl Decoder {
-  pub fn new(format: CODEC_FORMAT) -> Option<Self> {
+  pub fn new(format: J2KFormat) -> Result<Self> {
     let m_codec = match format {
-      OPJ_CODEC_J2K => CodecFormat::J2K(opj_j2k_create_decompress()?),
-      OPJ_CODEC_JP2 => {
+      J2KFormat::J2K => CodecFormat::J2K(
+        opj_j2k_create_decompress().ok_or_else(|| Error::Decode("failed to create decoder".into()))?,
+      ),
+      J2KFormat::JP2 => {
         /* get a JP2 decoder handle */
-        CodecFormat::JP2(opj_jp2_create(1i32)?)
+        CodecFormat::JP2(
+          opj_jp2_create(1i32).ok_or_else(|| Error::Decode("failed to create decoder".into()))?,
+        )
       }
-      _ => {
-        return None;
+      other => {
+        return Err(Error::Unsupported(format!(
+          "codec format {:?} is not supported for decoding",
+          other
+        )));
       }
     };
-    Some(Decoder {
+    Ok(Decoder {
       m_codec,
       m_event_mgr: Default::default(),
+      header: None,
+      pending_area: None,
     })
   }
 
-  pub fn setup_decoder(&mut self, parameters: &mut opj_dparameters_t) -> OPJ_BOOL {
+  /// Applies the native decoder settings (layer cap, resolution reduction,
+  /// JP2 colour-box handling and the dump flag).  The C's
+  /// `opj_setup_decoder` equivalent; the capi crate translates
+  /// `opj_dparameters_t` into this.
+  pub fn apply_settings(&mut self, settings: &DecoderSettings) -> Result<()> {
     match &mut self.m_codec {
-      CodecFormat::J2K(dec) => {
-        opj_j2k_setup_decoder(dec, parameters);
-        1
-      }
-      CodecFormat::JP2(dec) => {
-        opj_jp2_setup_decoder(dec, parameters);
-        1
-      }
+      CodecFormat::J2K(dec) => opj_j2k_setup_decoder(dec, settings),
+      CodecFormat::JP2(dec) => opj_jp2_setup_decoder(dec, settings),
     }
+    Ok(())
   }
 
-  pub fn decoder_set_strict_mode(&mut self, strict: OPJ_BOOL) -> OPJ_BOOL {
+  /// Lenient vs strict decode (the C default is strict; the safe API
+  /// builder is lenient by default and calls this explicitly).
+  pub fn set_strict(&mut self, strict: bool) -> Result<()> {
     match &mut self.m_codec {
-      CodecFormat::J2K(dec) => {
-        opj_j2k_decoder_set_strict_mode(dec, strict);
-        1
-      }
-      CodecFormat::JP2(dec) => {
-        opj_jp2_decoder_set_strict_mode(dec, strict);
-        1
-      }
+      CodecFormat::J2K(dec) => opj_j2k_decoder_set_strict_mode(dec, strict as OPJ_BOOL),
+      CodecFormat::JP2(dec) => opj_jp2_decoder_set_strict_mode(dec, strict as OPJ_BOOL),
     }
+    Ok(())
   }
 
-  /// Applies decode resource limits (Rust core API only; all-zero = unlimited).
-  /// See `crate::api::DecodeLimits`.
-  pub fn set_decode_limits(&mut self, limits: crate::api::DecodeLimits) -> OPJ_BOOL {
+  /// Applies decode resource limits (`max_mem_alloc == 0` selects the
+  /// built-in 1 GiB ceiling).
+  pub fn set_limits(&mut self, limits: DecodeLimits) -> Result<()> {
     match &mut self.m_codec {
       CodecFormat::J2K(dec) => {
         dec.decode_limits = limits;
-        1
       }
       CodecFormat::JP2(dec) => {
         dec.j2k.decode_limits = limits;
-        1
       }
     }
+    Ok(())
   }
 
-  #[deprecated(note = "use `Image::from_bytes`/`from_file` (src/api.rs) for one-shot decoding")]
-  pub fn read_header(&mut self, p_stream: &mut Stream) -> Option<CoreImage> {
-    match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_read_header(p_stream, dec, &mut self.m_event_mgr),
-      CodecFormat::JP2(dec) => opj_jp2_read_header(p_stream, dec, &mut self.m_event_mgr),
-    }
-  }
-
-  pub fn set_decoded_components(
-    &mut self,
-    components: &[u32],
-    apply_color_transforms: OPJ_BOOL,
-  ) -> OPJ_BOOL {
-    if apply_color_transforms != 0 {
-      event_msg!(
-        &mut self.m_event_mgr,
-        EVT_ERROR,
-        "apply_color_transforms = OPJ_TRUE is not supported.\n",
-      );
-      return 0i32;
-    }
-    match &mut self.m_codec {
+  /// Restricts decoding to the given component indices.
+  pub fn set_components(&mut self, components: &[u32]) -> Result<()> {
+    let ok = match &mut self.m_codec {
       CodecFormat::J2K(dec) => opj_j2k_set_decoded_components(dec, components, &mut self.m_event_mgr),
       CodecFormat::JP2(dec) => opj_jp2_set_decoded_components(dec, components, &mut self.m_event_mgr),
+    };
+    if ok != 0 {
+      Ok(())
+    } else {
+      Err(Error::Decode("set_decoded_components failed".into()))
     }
   }
 
-  #[deprecated(note = "use `Image::from_bytes`/`from_file` (src/api.rs) for one-shot decoding")]
-  pub fn decode(&mut self, p_stream: &mut Stream, p_image: &mut CoreImage) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_decode(dec, p_stream, p_image, &mut self.m_event_mgr),
-      CodecFormat::JP2(dec) => opj_jp2_decode(dec, p_stream, p_image, &mut self.m_event_mgr),
-    }
-  }
-
-  #[deprecated(note = "use `Image::from_bytes`/`from_file` (src/api.rs) for one-shot decoding")]
-  pub fn end_decompress(&mut self, p_stream: &mut Stream) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_end_decompress(dec, p_stream, &mut self.m_event_mgr),
-      CodecFormat::JP2(dec) => opj_jp2_end_decompress(dec, p_stream, &mut self.m_event_mgr),
-    }
-  }
-
-  pub fn set_decode_area(
-    &mut self,
-    p_image: &mut CoreImage,
-    p_start_x: i32,
-    p_start_y: i32,
-    p_end_x: i32,
-    p_end_y: i32,
-  ) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_set_decode_area(
-        dec,
-        p_image,
-        p_start_x,
-        p_start_y,
-        p_end_x,
-        p_end_y,
-        &mut self.m_event_mgr,
-      ),
-      CodecFormat::JP2(dec) => opj_jp2_set_decode_area(
-        dec,
-        p_image,
-        p_start_x,
-        p_start_y,
-        p_end_x,
-        p_end_y,
-        &mut self.m_event_mgr,
-      ),
-    }
-  }
-
-  pub fn read_tile_header(&mut self, p_stream: &mut Stream, tile_info: &mut TileInfo) -> bool {
-    match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_read_tile_header(dec, p_stream, tile_info, &mut self.m_event_mgr),
-      CodecFormat::JP2(dec) => {
-        opj_jp2_read_tile_header(dec, p_stream, tile_info, &mut self.m_event_mgr)
+  /// Requests a decode area (a sub-window of the full image).  The header
+  /// image's dimensions are updated in place (C contract) and the area is
+  /// applied by the next `decode`.  `None` resets to the full image.
+  pub fn set_decode_area(&mut self, header: &mut CoreImage, area: Option<DecodeArea>) -> Result<()> {
+    self.pending_area = area;
+    if let Some(area) = area {
+      let ok = match &mut self.m_codec {
+        CodecFormat::J2K(dec) => opj_j2k_set_decode_area(
+          dec,
+          header,
+          area.start_x as i32,
+          area.start_y as i32,
+          area.end_x as i32,
+          area.end_y as i32,
+          &mut self.m_event_mgr,
+        ),
+        CodecFormat::JP2(dec) => opj_jp2_set_decode_area(
+          dec,
+          header,
+          area.start_x as i32,
+          area.start_y as i32,
+          area.end_x as i32,
+          area.end_y as i32,
+          &mut self.m_event_mgr,
+        ),
+      };
+      if ok == 0 {
+        return Err(Error::Decode("set_decode_area failed".into()));
       }
     }
+    Ok(())
   }
 
+  /// Resolution-reduction factor for the decoded image.
+  pub fn set_resolution_factor(&mut self, res_factor: u32) -> Result<()> {
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(dec) => {
+        opj_j2k_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr)
+      }
+      CodecFormat::JP2(dec) => {
+        opj_jp2_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr)
+      }
+    };
+    if ok != 0 {
+      Ok(())
+    } else {
+      Err(Error::Decode("set_decoded_resolution_factor failed".into()))
+    }
+  }
+
+  /// Reads the codestream header.  Must be called before `decode`,
+  /// `decode_tile_data` and `get_decoded_tile`.
+  pub fn read_header(&mut self, stream: &mut Stream) -> Result<HeaderImage> {
+    let image = match &mut self.m_codec {
+      CodecFormat::J2K(dec) => opj_j2k_read_header(stream, dec, &mut self.m_event_mgr),
+      CodecFormat::JP2(dec) => opj_jp2_read_header(stream, dec, &mut self.m_event_mgr),
+    }
+    .ok_or_else(|| Error::Decode("failed to read header".into()))?;
+    self.header = Some(image.clone());
+    Ok(HeaderImage(image))
+  }
+
+  /// Decodes the image (the header must have been read).  In lenient mode a
+  /// codestream truncated after the last tile's data delivers the header
+  /// image with empty component data instead of an error (C parity; see
+  /// `Image::from_bytes_with`'s contract note).
+  pub fn decode(&mut self, stream: &mut Stream) -> Result<CoreImage> {
+    let mut image = self
+      .header
+      .clone()
+      .ok_or_else(|| Error::Decode("read_header must be called before decode".into()))?;
+
+    /* Concurrent tile decode (rayon): whole-image, full-quality,
+    full-resolution decodes of multi-tile codestreams.  A layer limit or a
+    resolution reduction leaves coefficient regions unwritten, which the
+    sequential path (like the C reference) reads as the PREVIOUS tile's
+    leftovers - a fresh per-tile worker cannot reproduce that, so those
+    cases stay on the sequential path.  Any failure also falls back to the
+    sequential path below, so the result is always identical. */
+    #[cfg(feature = "rayon")]
+    if self.pending_area.is_none() {
+      let (layer, reduce, strict) = self.state_summary();
+      if layer == 0 && reduce == 0 {
+        let full_header = image.clone();
+        if let Some(core) = self.decode_parallel(stream, &full_header, 0, 0, strict) {
+          return Ok(core);
+        }
+      }
+    }
+
+    if let Some(area) = self.pending_area {
+      #[cfg(feature = "rayon")]
+      let full_header = image.clone();
+      let ok = match &mut self.m_codec {
+        CodecFormat::J2K(dec) => opj_j2k_set_decode_area(
+          dec,
+          &mut image,
+          area.start_x as i32,
+          area.start_y as i32,
+          area.end_x as i32,
+          area.end_y as i32,
+          &mut self.m_event_mgr,
+        ),
+        CodecFormat::JP2(dec) => opj_jp2_set_decode_area(
+          dec,
+          &mut image,
+          area.start_x as i32,
+          area.start_y as i32,
+          area.end_x as i32,
+          area.end_y as i32,
+          &mut self.m_event_mgr,
+        ),
+      };
+      if ok == 0 {
+        return Err(Error::Decode("set_decode_area failed".into()));
+      }
+      /* Concurrent tile decode of the intersecting tiles (rayon); the same
+      unwritten-coefficient caveat as above limits it to full-quality
+      full-resolution decodes. */
+      #[cfg(feature = "rayon")]
+      {
+        let (layer, reduce, _) = self.state_summary();
+        if layer == 0 && reduce == 0 {
+          if let Some(core) = self.decode_parallel_area(stream, &full_header, &image) {
+            return Ok(core);
+          }
+        }
+      }
+    }
+
+    /* Progressive-download support: in lenient mode a codestream truncated
+    AFTER the last tile's data (missing EOC) delivers the fully decoded image
+    instead of an error.  Strict mode keeps the hard failure.  Note the
+    scope: truncation MID-TILE (or a used-components failure) may still
+    return the header image with empty component data - the C behaves the
+    same way, and the safe API documents this partial-decode contract
+    rather than silently inventing pixels. */
+    let (ok, strict) = match &mut self.m_codec {
+      CodecFormat::J2K(dec) => (
+        opj_j2k_decode(dec, stream, &mut image, &mut self.m_event_mgr),
+        dec.m_cp.strict != 0,
+      ),
+      CodecFormat::JP2(dec) => (
+        opj_jp2_decode(dec, stream, &mut image, &mut self.m_event_mgr),
+        dec.j2k.m_cp.strict != 0,
+      ),
+    };
+    if ok == 0 {
+      if strict {
+        return Err(Error::Decode("decode failed".into()));
+      }
+      return Ok(image);
+    }
+    Ok(image)
+  }
+
+  /// Reads the remaining end-of-codestream markers (the C's
+  /// `opj_end_decompress`).
+  pub fn end_decompress(&mut self, stream: &mut Stream) -> Result<()> {
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(dec) => opj_j2k_end_decompress(dec, stream, &mut self.m_event_mgr),
+      CodecFormat::JP2(dec) => opj_jp2_end_decompress(dec, stream, &mut self.m_event_mgr),
+    };
+    if ok != 0 {
+      Ok(())
+    } else {
+      Err(Error::Decode("end_decompress failed".into()))
+    }
+  }
+
+  /// Reads the next tile-part header (the tile API).  The returned
+  /// `data_size` is the tile data size (always requested, matching the C's
+  /// `opj_read_tile_header` contract when the caller wants it).
+  pub fn read_tile_header(&mut self, stream: &mut Stream) -> Result<TileInfo> {
+    let mut tile_info = TileInfo {
+      data_size: Some(0), // always request the tile data size
+      ..Default::default()
+    };
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(dec) => opj_j2k_read_tile_header(dec, stream, &mut tile_info, &mut self.m_event_mgr),
+      CodecFormat::JP2(dec) => {
+        opj_jp2_read_tile_header(dec, stream, &mut tile_info, &mut self.m_event_mgr)
+      }
+    };
+    if ok {
+      Ok(tile_info)
+    } else {
+      Err(Error::Decode("read_tile_header failed".into()))
+    }
+  }
+
+  /// Decodes one tile's data into `out` (or into the codec's internal
+  /// buffer when `out` is `None`; the tile API).
   pub fn decode_tile_data(
     &mut self,
-    p_stream: &mut Stream,
-    p_tile_index: u32,
-    p_data: Option<&mut [u8]>,
-  ) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_decode_tile(dec, p_tile_index, p_data, p_stream, &mut self.m_event_mgr),
-      CodecFormat::JP2(dec) => opj_jp2_decode_tile(dec, p_tile_index, p_data, p_stream, &mut self.m_event_mgr),
+    stream: &mut Stream,
+    tile: u32,
+    out: Option<&mut [u8]>,
+  ) -> Result<()> {
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(dec) => opj_j2k_decode_tile(dec, tile, out, stream, &mut self.m_event_mgr),
+      CodecFormat::JP2(dec) => opj_jp2_decode_tile(dec, tile, out, stream, &mut self.m_event_mgr),
+    };
+    if ok != 0 {
+      Ok(())
+    } else {
+      Err(Error::Decode("decode_tile_data failed".into()))
     }
   }
 
-  pub fn get_decoded_tile(
-    &mut self,
-    p_stream: &mut Stream,
-    p_image: &mut CoreImage,
-    tile_index: u32,
-  ) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_get_tile(dec, p_stream, p_image, &mut self.m_event_mgr, tile_index),
-      CodecFormat::JP2(dec) => opj_jp2_get_tile(dec, p_stream, p_image, &mut self.m_event_mgr, tile_index),
+  /// Decodes a whole tile and returns it as an image (the header must have
+  /// been read).
+  pub fn get_decoded_tile(&mut self, stream: &mut Stream, tile: u32) -> Result<CoreImage> {
+    let mut image = self
+      .header
+      .clone()
+      .ok_or_else(|| Error::Decode("read_header must be called before get_decoded_tile".into()))?;
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(dec) => opj_j2k_get_tile(dec, stream, &mut image, &mut self.m_event_mgr, tile),
+      CodecFormat::JP2(dec) => opj_jp2_get_tile(dec, stream, &mut image, &mut self.m_event_mgr, tile),
+    };
+    if ok != 0 {
+      Ok(image)
+    } else {
+      Err(Error::Decode("get_decoded_tile failed".into()))
     }
   }
 
-  pub fn set_decoded_resolution_factor(&mut self, res_factor: u32) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr),
-      CodecFormat::JP2(dec) => opj_jp2_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr),
+  /// (layer, reduce, strict) of the current decoder state — the parallel
+  /// drivers' eligibility summary.
+  fn state_summary(&self) -> (u32, u32, bool) {
+    match &self.m_codec {
+      CodecFormat::J2K(j2k) => (
+        j2k.m_cp.m_specific_param.m_dec.m_layer,
+        j2k.m_cp.m_specific_param.m_dec.m_reduce,
+        j2k.m_cp.strict != 0,
+      ),
+      CodecFormat::JP2(jp2) => (
+        jp2.j2k.m_cp.m_specific_param.m_dec.m_layer,
+        jp2.j2k.m_cp.m_specific_param.m_dec.m_reduce,
+        jp2.j2k.m_cp.strict != 0,
+      ),
     }
   }
 
@@ -354,7 +556,7 @@ impl Decoder {
         (&jp2.j2k.m_cp, jp2.j2k.decode_limits)
       }
     };
-    let info = self.get_cstr_info_v2()?;
+    let info = self.cstr_info()?;
     let num_tiles = info.tw.wrapping_mul(info.th);
     let dec = match &self.m_codec {
       CodecFormat::J2K(j2k) => &j2k.m_specific_param.m_decoder,
@@ -395,7 +597,7 @@ impl Decoder {
         return None;
       }
     }
-    let cstr_index = self.get_cstr_index_owned()?;
+    let cstr_index = self.cstr_index()?;
     let layer = cp.m_specific_param.m_dec.m_layer;
     let strict = cp.strict != 0;
     let mut core = crate::j2k::j2k_decode_tiles_parallel(
@@ -450,12 +652,12 @@ impl Decoder {
         (&jp2.j2k.m_cp, jp2.j2k.decode_limits)
       }
     };
-    let info = self.get_cstr_info_v2()?;
+    let info = self.cstr_info()?;
     let num_tiles = info.tw.wrapping_mul(info.th);
     if num_tiles <= 1 {
       return None;
     }
-    let cstr_index = self.get_cstr_index_owned()?;
+    let cstr_index = self.cstr_index()?;
     let tiles: Vec<u32> = (0..num_tiles).collect();
     /* The merge target mirrors the serial output image: for a reduced
     decode it carries the factor and the reduced component dimensions. */
@@ -497,71 +699,107 @@ impl Decoder {
 }
 
 impl Encoder {
-  pub fn new(format: CODEC_FORMAT) -> Option<Self> {
+  pub fn new(format: J2KFormat) -> Result<Self> {
     let m_codec = match format {
-      OPJ_CODEC_J2K => CodecFormat::J2K(opj_j2k_create_compress()?),
-      OPJ_CODEC_JP2 => {
+      J2KFormat::J2K => CodecFormat::J2K(
+        opj_j2k_create_compress().ok_or_else(|| Error::Encode("failed to create encoder".into()))?,
+      ),
+      J2KFormat::JP2 => {
         /* get a JP2 encoder handle */
-        CodecFormat::JP2(opj_jp2_create(0i32)?)
+        CodecFormat::JP2(
+          opj_jp2_create(0i32).ok_or_else(|| Error::Encode("failed to create encoder".into()))?,
+        )
       }
-      _ => {
-        return None;
+      other => {
+        return Err(Error::Unsupported(format!(
+          "codec format {:?} is not supported for encoding",
+          other
+        )));
       }
     };
-    Some(Encoder {
+    Ok(Encoder {
       m_codec,
       m_event_mgr: Default::default(),
     })
   }
 
-  pub fn setup_encoder(
-    &mut self,
-    parameters: &mut EncoderParameters,
-    p_image: &mut CoreImage,
-  ) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(enc) => opj_j2k_setup_encoder(enc, parameters, p_image, &mut self.m_event_mgr),
-      CodecFormat::JP2(enc) => opj_jp2_setup_encoder(enc, parameters, p_image, &mut self.m_event_mgr),
+  /// Validates the encoder parameters against the image (the C's
+  /// `opj_setup_encoder`; must be called before `start`).
+  pub fn setup(&mut self, parameters: &mut EncoderParameters, image: &mut CoreImage) -> Result<()> {
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(enc) => opj_j2k_setup_encoder(enc, parameters, image, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => opj_jp2_setup_encoder(enc, parameters, image, &mut self.m_event_mgr),
+    };
+    if ok != 0 {
+      Ok(())
+    } else {
+      Err(Error::Encode("setup_encoder failed".into()))
     }
   }
 
-  pub fn encoder_set_extra_options(&mut self, options: &[&str]) -> bool {
-    match &mut self.m_codec {
+  /// Encoder options in the C's `key=value` form ("TLM=YES", "GUARD_BITS=4",
+  /// ...).
+  pub fn extra_options(&mut self, options: &[&str]) -> Result<()> {
+    let ok = match &mut self.m_codec {
       CodecFormat::J2K(enc) => opj_j2k_encoder_set_extra_options(enc, options, &mut self.m_event_mgr),
       CodecFormat::JP2(enc) => opj_jp2_encoder_set_extra_options(enc, options, &mut self.m_event_mgr),
+    };
+    if ok {
+      Ok(())
+    } else {
+      Err(Error::Encode("extra_options failed".into()))
     }
   }
 
-  pub fn start_compress(&mut self, p_image: &mut CoreImage, p_stream: &mut Stream) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(enc) => opj_j2k_start_compress(enc, p_stream, p_image, &mut self.m_event_mgr),
-      CodecFormat::JP2(enc) => opj_jp2_start_compress(enc, p_stream, p_image, &mut self.m_event_mgr),
+  /// Writes the codestream header (the C's `opj_start_compress`).
+  pub fn start(&mut self, image: &mut CoreImage, stream: &mut Stream) -> Result<()> {
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(enc) => opj_j2k_start_compress(enc, stream, image, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => opj_jp2_start_compress(enc, stream, image, &mut self.m_event_mgr),
+    };
+    if ok != 0 {
+      Ok(())
+    } else {
+      Err(Error::Encode("start_compress failed".into()))
     }
   }
 
-  pub fn encode(&mut self, p_stream: &mut Stream) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(enc) => opj_j2k_encode(enc, p_stream, &mut self.m_event_mgr),
-      CodecFormat::JP2(enc) => opj_jp2_encode(enc, p_stream, &mut self.m_event_mgr),
+  /// Encodes the image (the C's `opj_encode`).
+  pub fn encode(&mut self, stream: &mut Stream) -> Result<()> {
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(enc) => opj_j2k_encode(enc, stream, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => opj_jp2_encode(enc, stream, &mut self.m_event_mgr),
+    };
+    if ok != 0 {
+      Ok(())
+    } else {
+      Err(Error::Encode("encode failed".into()))
     }
   }
 
-  pub fn end_compress(&mut self, p_stream: &mut Stream) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(enc) => opj_j2k_end_compress(enc, p_stream, &mut self.m_event_mgr),
-      CodecFormat::JP2(enc) => opj_jp2_end_compress(enc, p_stream, &mut self.m_event_mgr),
+  /// Writes the end-of-codestream markers (the C's `opj_end_compress`).
+  pub fn finish(&mut self, stream: &mut Stream) -> Result<()> {
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(enc) => opj_j2k_end_compress(enc, stream, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => opj_jp2_end_compress(enc, stream, &mut self.m_event_mgr),
+    };
+    if ok != 0 {
+      Ok(())
+    } else {
+      Err(Error::Encode("end_compress failed".into()))
     }
   }
 
-  pub fn write_tile(
-    &mut self,
-    p_tile_index: u32,
-    p_data: &[u8],
-    p_stream: &mut Stream,
-  ) -> OPJ_BOOL {
-    match &mut self.m_codec {
-      CodecFormat::J2K(enc) => opj_j2k_write_tile(enc, p_tile_index, p_data, p_stream, &mut self.m_event_mgr),
-      CodecFormat::JP2(enc) => opj_jp2_write_tile(enc, p_tile_index, p_data, p_stream, &mut self.m_event_mgr),
+  /// Writes one pre-encoded tile (the C's `opj_write_tile`).
+  pub fn write_tile(&mut self, tile: u32, data: &[u8], stream: &mut Stream) -> Result<()> {
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(enc) => opj_j2k_write_tile(enc, tile, data, stream, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => opj_jp2_write_tile(enc, tile, data, stream, &mut self.m_event_mgr),
+    };
+    if ok != 0 {
+      Ok(())
+    } else {
+      Err(Error::Encode("write_tile failed".into()))
     }
   }
 

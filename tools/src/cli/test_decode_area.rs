@@ -1,5 +1,5 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt, PositionalArg};
-use openjp2::{detect_format_from_file, openjpeg::*, Decoder, CoreImage, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, Decoder, CoreImage, Stream};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -128,32 +128,23 @@ fn print_help() {
 }
 
 fn create_codec_and_stream(input: &PathBuf) -> Result<(Decoder, Stream), String> {
-  let mut params = opj_dparameters_t::default();
+  let _params = opj_dparameters_t::default();
 
   let codec_format = detect_format_from_file(input)?;
   let stream = Stream::new_file(input, 1_000_000, true).map_err(|e| format!("{e:?}"))?;
 
   // Create decompression codec
-  let cod_format = match codec_format {
-    J2KFormat::J2K => OPJ_CODEC_J2K,
-    J2KFormat::JP2 => OPJ_CODEC_JP2,
-    _ => {
-      return Err("Unknown codec format".to_string());
-    }
-  };
-
   let mut codec =
-    Decoder::new(cod_format).ok_or_else(|| "Failed to create codec".to_string())?;
+    Decoder::new(codec_format).map_err(|_| "Failed to create codec".to_string())?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));
   codec.set_warning_handler(|msg: &str| print!("[WARNING] {}", msg));
   codec.set_error_handler(|msg: &str| print!("[ERROR] {}", msg));
 
-  let status = codec.setup_decoder(&mut params);
-  if status == 0 {
-    return Err("Failed to setup decoder".into());
-  }
+  codec
+    .apply_settings(&openjp2::DecoderSettings::default())
+    .map_err(|_| "Failed to setup decoder".to_string())?;
 
   Ok((codec, stream))
 }
@@ -185,7 +176,8 @@ fn decode(
   // Decode image header and create image.
   let mut image = codec
     .read_header(&mut stream)
-    .ok_or("Failed to read header")?;
+    .map(|h| h.into_core_image())
+    .map_err(|_| "Failed to read header")?;
 
   // Get the codestream geometry.
   if let Some(tile_info) = tile_info {
@@ -198,14 +190,24 @@ fn decode(
 
   // Set decode area if provided
   if let Some(area) = area {
-    codec.set_decode_area(&mut image, area.x0, area.y0, area.x1, area.y1);
+    codec
+      .set_decode_area(
+        &mut image,
+        Some(openjp2::DecodeArea::new(
+          area.x0 as u32,
+          area.y0 as u32,
+          area.x1 as u32,
+          area.y1 as u32,
+        )),
+      )
+      .map_err(|_| "Failed to set decode area")?;
   }
 
   // Decode image
-  let status = codec.decode(&mut stream, &mut image) == 1 && codec.end_decompress(&mut stream) == 1;
-  if !status {
-    Err("Failed to decode image")?;
-  }
+  image = codec.decode(&mut stream).map_err(|_| "Failed to decode image")?;
+  codec
+    .end_decompress(&mut stream)
+    .map_err(|_| "Failed to end decompress")?;
 
   Ok(image)
 }
@@ -227,7 +229,8 @@ fn decode_by_strip(
   // Decode image header and create image.
   let mut image = codec
     .read_header(&mut stream)
-    .ok_or("Failed to read header")?;
+    .map(|h| h.into_core_image())
+    .map_err(|_| "Failed to read header")?;
 
   let full_x0 = image.x0 as i32;
   let full_y0 = image.y0 as i32;
@@ -250,14 +253,20 @@ fn decode_by_strip(
     }
 
     // Set decode area if provided
-    if codec.set_decode_area(&mut image, area.x0, y, area.x1, y1) != 1 {
-      Err("Failed to set decode area")?;
-    }
+    codec
+      .set_decode_area(
+        &mut image,
+        Some(openjp2::DecodeArea::new(
+          area.x0 as u32,
+          y as u32,
+          area.x1 as u32,
+          y1 as u32,
+        )),
+      )
+      .map_err(|_| "Failed to set decode area")?;
 
     // Decode image by strip
-    if codec.decode(&mut stream, &mut image) != 1 {
-      Err("Failed to decode image")?;
-    }
+    image = codec.decode(&mut stream).map_err(|_| "Failed to decode image")?;
 
     // Check consistency if full image is provided
     if let Some(full_image) = &full_image {
@@ -274,20 +283,26 @@ fn decode_by_strip(
     }
 
     // Set decode area if provided
-    if codec.set_decode_area(&mut image, full_x0, full_y0, full_x1, full_y1) != 1 {
-      Err("Failed to set decode area")?;
-    }
+    codec
+      .set_decode_area(
+        &mut image,
+        Some(openjp2::DecodeArea::new(
+          full_x0 as u32,
+          full_y0 as u32,
+          full_x1 as u32,
+          full_y1 as u32,
+        )),
+      )
+      .map_err(|_| "Failed to set decode area")?;
 
     // Decode full image
-    if codec.decode(&mut stream, &mut image) != 1 {
-      Err("Failed to decode image")?;
-    }
+    let _ = codec.decode(&mut stream).map_err(|_| "Failed to decode image")?;
   }
 
   // End decompression
-  if codec.end_decompress(&mut stream) != 1 {
-    Err("Failed to end decompression")?;
-  }
+  codec
+    .end_decompress(&mut stream)
+    .map_err(|_| "Failed to end decompression")?;
 
   Ok(())
 }

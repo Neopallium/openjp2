@@ -1239,12 +1239,12 @@ fn opj_jp2_write_jp(
 /* ----------------------------------------------------------------------- */
 /* JP2 decoder interface                                             */
 /* ----------------------------------------------------------------------- */
-pub(crate) fn opj_jp2_setup_decoder(mut jp2: &mut Jp2, mut parameters: &mut opj_dparameters_t) {
+pub(crate) fn opj_jp2_setup_decoder(jp2: &mut Jp2, settings: &crate::codec::DecoderSettings) {
   /* setup the J2K codec */
-  opj_j2k_setup_decoder(&mut jp2.j2k, parameters);
+  opj_j2k_setup_decoder(&mut jp2.j2k, settings);
   /* further JP2 initializations go here */
   jp2.color.jp2_has_colr = 0_u8;
-  jp2.ignore_pclr_cmap_cdef = (parameters.flags & 0x1u32) as OPJ_BOOL;
+  jp2.ignore_pclr_cmap_cdef = settings.ignore_pclr_cmap_cdef as OPJ_BOOL;
 }
 
 pub(crate) fn opj_jp2_decoder_set_strict_mode(mut jp2: &mut Jp2, mut strict: OPJ_BOOL) {

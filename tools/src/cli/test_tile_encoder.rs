@@ -1,6 +1,6 @@
 use openjp2::ffi::opj_image_cmptparm_t;
 use openjp2::CoreImage;
-use openjp2::{detect_format_from_extension_os_str, openjpeg::*, Encoder, J2KFormat, Stream};
+use openjp2::{detect_format_from_extension_os_str, openjpeg::*, Encoder, Stream};
 use rand::prelude::*;
 use std::path::PathBuf;
 
@@ -134,15 +134,8 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
 
   // Create compression codec
   let codec_format = detect_format_from_extension_os_str(output_ext)?;
-  let cod_format = match codec_format {
-    J2KFormat::J2K => OPJ_CODEC_J2K,
-    J2KFormat::JP2 => OPJ_CODEC_JP2,
-    _ => {
-      return Err("Unknown codec format".to_string());
-    }
-  };
   let mut codec =
-    Encoder::new(cod_format).ok_or_else(|| "Failed to create codec".to_string())?;
+    Encoder::new(codec_format).map_err(|_| "Failed to create codec".to_string())?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));
@@ -158,7 +151,7 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
   image.x1 = offsetx + image_width;
   image.y1 = offsety + image_height;
 
-  if codec.setup_encoder(&mut params, &mut image) != 1 {
+  if codec.setup(&mut params, &mut image).is_err() {
     return Err("Failed to setup encoder".into());
   }
 
@@ -166,7 +159,7 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
   let mut stream = Stream::new_file(output_file, 1_000_000, false).map_err(|e| format!("{e:?}"))?;
 
   // Start compression
-  if codec.start_compress(&mut image, &mut stream) != 1 {
+  if codec.start(&mut image, &mut stream).is_err() {
     Err("Failed to start compress")?;
   }
 
@@ -181,13 +174,13 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
     let tile_size = (tile_x1 - tile_x0) * (tile_y1 - tile_y0) * num_comps * comp_prec / 8;
     let data = &data[..tile_size as usize];
 
-    if codec.write_tile(i, data, &mut stream) != 1 {
+    if codec.write_tile(i, data, &mut stream).is_err() {
       Err("Failed to write tile")?;
     }
   }
 
   // End compression
-  if codec.end_compress(&mut stream) != 1 {
+  if codec.finish(&mut stream).is_err() {
     Err("Failed to end compress")?;
   }
 

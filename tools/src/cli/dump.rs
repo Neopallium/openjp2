@@ -1,5 +1,5 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
-use openjp2::{detect_format_from_file, openjpeg::*, Decoder, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, Decoder, Stream};
 use std::ffi::CString;
 use std::path::{Path, PathBuf};
 
@@ -168,14 +168,7 @@ fn process_file(
       .map_err(|e| format!("Failed to create stream: {}", e))?;
 
     // Create decompression codec
-    let cod_format = match format {
-      J2KFormat::J2K => OPJ_CODEC_J2K,
-      J2KFormat::JP2 => OPJ_CODEC_JP2,
-      _ => {
-        return Err("Unknown codec format".into());
-      }
-    };
-    let mut codec = Decoder::new(cod_format).ok_or("Failed to create codec")?;
+    let mut codec = Decoder::new(format).map_err(|_| "Failed to create codec")?;
 
     /* catch events using our callbacks and give a local context */
     codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));
@@ -184,15 +177,20 @@ fn process_file(
 
     parameters.flags |= OPJ_DPARAMETERS_DUMP_FLAG;
 
-    let status = codec.setup_decoder(&mut parameters);
-    if status == 0 {
-      return Err("Failed to setup decoder".into());
-    }
+    codec
+      .apply_settings(&openjp2::DecoderSettings {
+        layers: parameters.cp_layer,
+        reduce: parameters.cp_reduce,
+        ignore_pclr_cmap_cdef: parameters.flags
+          & OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG != 0,
+        dump_state: parameters.flags & OPJ_DPARAMETERS_DUMP_FLAG != 0,
+      })
+      .map_err(|_| "Failed to setup decoder")?;
 
     // Decode image header and create image.
-    let _image = codec
+    codec
       .read_header(&mut stream)
-      .ok_or("Failed to read header")?;
+      .map_err(|_| "Failed to read header")?;
 
     // Dump codec info
     if let Some(output) = output {
