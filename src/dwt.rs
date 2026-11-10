@@ -14,7 +14,7 @@ thread_local! {
   static DWT_SCRATCH_F32: core::cell::RefCell<Vec<core::cell::Cell<f32>>> =
     const { core::cell::RefCell::new(Vec::new()) };
 }
-use super::sparse_array::{sparse_array_read, sparse_array_write, SparseArray};
+use super::sparse_array::{sparse_array_read, sparse_array_write, SparseArray, SparseSample};
 
 /// Which wavelet a forward transform runs. This replaces the pair of
 /// `Option<unsafe extern "C" fn(*mut c_void, ...)>` tables the C code dispatches through, so the
@@ -1185,8 +1185,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
   let w = (tilec.x1 - tilec.x0) as u32;
   let h = (tilec.y1 - tilec.y0) as u32;
   let total_len = (w as usize).wrapping_mul(h as usize);
-  let tiledp = tilec.data.as_mut_ptr();
-  if total_len > 0 && tiledp.is_null() {
+  if total_len > 0 && tilec.data.is_null() {
     return 0i32;
   }
   let l = tilec.numresolutions as i32 - 1i32;
@@ -1197,17 +1196,26 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
   {
     return 0i32;
   }
-  /* scratch size in i32 elements */
-  let scratch_len = l_data_size
-    .wrapping_mul(NB_ELTS_V8 as usize * core::mem::size_of::<i32>())
-    / core::mem::size_of::<i32>();
-  /* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
-  /* in that case, so do not error out */
+  /* scratch size in elements of the wavelet's sample type */
+  let scratch_len = l_data_size.wrapping_mul(NB_ELTS_V8 as usize);
+  /* l_data_size is equal to 0 when numresolutions == 1 but the scratch is
+  not used in that case, so do not error out */
   let mut bj: Vec<i32> = Vec::new();
-  if bj.try_reserve_exact(scratch_len).is_err() {
-    return 0i32;
+  let mut bjf: Vec<f32> = Vec::new();
+  match wavelet {
+    ForwardWavelet::Reversible53 => {
+      if bj.try_reserve_exact(scratch_len).is_err() {
+        return 0i32;
+      }
+      bj.resize(scratch_len, 0);
+    }
+    ForwardWavelet::Irreversible97 => {
+      if bjf.try_reserve_exact(scratch_len).is_err() {
+        return 0i32;
+      }
+      bjf.resize(scratch_len, 0.0);
+    }
   }
-  bj.resize(scratch_len, 0);
   /* width of the resolution level computed   */
   let mut cur = l; /* height of the resolution level computed  */
   while cur > 0 {
@@ -1233,7 +1241,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
         while j + NB_ELTS_V8 - 1 < rw {
           let col = j as usize;
           {
-            let data = &mut tilec.data.as_mut_slice(total_len);
+            let data = &mut tilec.data.as_mut_i32(total_len);
             let scratch = &mut bj[..];
             opj_dwt_encode_and_deinterleave_v(
               data,
@@ -1249,7 +1257,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
         }
         if j < rw {
           let col = j as usize;
-          let data = &mut tilec.data.as_mut_slice(total_len);
+          let data = &mut tilec.data.as_mut_i32(total_len);
           let scratch = &mut bj[..];
           opj_dwt_encode_and_deinterleave_v(
             data,
@@ -1267,7 +1275,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
           let row_start = j.wrapping_mul(w) as usize;
           let even = if cas_row == 0i32 { 1i32 } else { 0i32 };
           {
-            let data = &mut tilec.data.as_mut_slice(total_len);
+            let data = &mut tilec.data.as_mut_i32(total_len);
             let scratch = &mut bj[..];
             opj_dwt_encode_and_deinterleave_h_one_row(data, row_start, scratch, rw, even)
           }
@@ -1275,21 +1283,17 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
         }
       }
       ForwardWavelet::Irreversible97 => {
-        /* Convert the buffer to its f32 bit-patterns once per level, run the
-         * vertical and horizontal passes, and write the words back. */
-        let mut data_f: Vec<f32> = tilec.data.as_mut_slice(total_len)
-          .iter()
-          .map(|&x| f32::from_bits(x as u32))
-          .collect();
-        let mut scratch_f: Vec<f32> = bj.iter().map(|&x| f32::from_bits(x as u32)).collect();
+        /* The 9-7 buffer is f32-typed: the vertical and horizontal passes
+         * borrow it directly (the C's in-place reinterpretation, without
+         * the per-level whole-tile copy). */
         /* Perform vertical pass */
         let mut j: u32 = 0;
         while j + NB_ELTS_V8 - 1 < rw {
           let col = j as usize;
           opj_dwt_encode_and_deinterleave_v_real(
-            &mut data_f,
+            tilec.data.as_mut_f32(total_len),
             col,
-            &mut scratch_f,
+            &mut bjf[..],
             rh,
             (cas_col == 0i32) as core::ffi::c_int,
             w,
@@ -1300,9 +1304,9 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
         if j < rw {
           let col = j as usize;
           opj_dwt_encode_and_deinterleave_v_real(
-            &mut data_f,
+            tilec.data.as_mut_f32(total_len),
             col,
-            &mut scratch_f,
+            &mut bjf[..],
             rh,
             (cas_col == 0i32) as core::ffi::c_int,
             w,
@@ -1315,16 +1319,13 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
           let row_start = j.wrapping_mul(w) as usize;
           let even = if cas_row == 0i32 { 1i32 } else { 0i32 };
           opj_dwt_encode_and_deinterleave_h_one_row_real(
-            &mut data_f,
+            tilec.data.as_mut_f32(total_len),
             row_start,
-            &mut scratch_f,
+            &mut bjf[..],
             rw,
             even,
           );
           j += 1;
-        }
-        for (d, &v) in tilec.data.as_mut_slice(total_len).iter_mut().zip(data_f.iter()) {
-          *d = v.to_bits() as i32;
         }
       }
     }
@@ -1525,7 +1526,7 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
   if total_len > 0 && tilec.data.is_null() {
     return 0i32;
   }
-  let tile_data = tilec.data.as_mut_slice(total_len);
+  let tile_data = tilec.data.as_mut_i32(total_len);
 
   let mut res_idx = 1usize;
   loop {
@@ -1589,8 +1590,8 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
   }
   1i32
 }
-fn opj_dwt_interleave_partial_h(
-  dest: &[Cell<i32>],
+fn opj_dwt_interleave_partial_h<T: SparseSample>(
+  dest: &[Cell<T>],
   cas: i32,
   sa: &SparseArray,
   sa_line: u32,
@@ -1625,8 +1626,8 @@ fn opj_dwt_interleave_partial_h(
   );
   assert!(ret);
 }
-fn opj_dwt_interleave_partial_v(
-  dest: &[Cell<i32>],
+fn opj_dwt_interleave_partial_v<T: SparseSample>(
+  dest: &[Cell<T>],
   cas: i32,
   sa: &SparseArray,
   sa_col: u32,
@@ -1844,7 +1845,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
       return 1i32;
     }
     // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
-    let win = tilec.data_win.as_mut_slice(win_w.wrapping_mul(win_h));
+    let win = tilec.data_win.as_mut_i32(win_w.wrapping_mul(win_h));
     let ret = sparse_array_read(
       &sa,
       tr_max.win_x0.wrapping_sub(tr_max.x0 as u32),
@@ -2146,7 +2147,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
     return 1i32;
   }
   // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
-  let win = tilec.data_win.as_mut_slice(win_w.wrapping_mul(win_h));
+  let win = tilec.data_win.as_mut_i32(win_w.wrapping_mul(win_h));
   let ret_0 = sparse_array_read(
     &sa,
     tr_max.win_x0.wrapping_sub(tr_max.x0 as u32),
@@ -2423,7 +2424,7 @@ fn opj_v8dwt_decode(mut dwt: &V8Dwt) {
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
-fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32, f32_scratch: &mut Vec<f32>) -> OPJ_BOOL {
+fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
   let mut rw = (tilec.resolutions[0].x1 - tilec.resolutions[0].x0) as u32;
   let mut rh = (tilec.resolutions[0].y1 - tilec.resolutions[0].y0) as u32;
   let w = (tilec.resolutions[tilec.minimum_num_resolutions as usize - 1].x1
@@ -2470,15 +2471,9 @@ fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32, f32_scratch:
   if total_len > 0 && tilec.data.is_null() {
     return 0i32;
   }
-  f32_scratch.clear();
-  f32_scratch.extend(
-    tilec
-      .data
-      .as_mut_slice(total_len)
-      .iter()
-      .map(|&x| f32::from_bits(x as u32)),
-  );
-  let tile_data = f32_scratch.as_mut_slice();
+  /* The 9-7 buffer is f32-typed: borrow it directly (the C's in-place
+  reinterpretation; no whole-tile copy). */
+  let tile_data = tilec.data.as_mut_f32(total_len);
 
   let mut res_idx = 1usize;
   loop {
@@ -2606,9 +2601,6 @@ fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32, f32_scratch:
     }
     res_idx += 1;
   }
-  for (d, &v) in tilec.data.as_mut_slice(total_len).iter_mut().zip(tile_data.iter()) {
-    *d = v.to_bits() as i32;
-  }
   1i32
 }
 fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
@@ -2647,7 +2639,7 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
       return 1i32;
     }
     // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
-    let win = tilec.data_win.as_mut_slice(win_w.wrapping_mul(win_h));
+    let win = tilec.data_win.as_mut_f32(win_w.wrapping_mul(win_h));
     let ret = sparse_array_read(
       &sa,
       tr_max.win_x0.wrapping_sub(tr_max.x0 as u32),
@@ -2938,7 +2930,7 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
     return 1i32;
   }
   // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
-  let win = tilec.data_win.as_mut_slice(win_w.wrapping_mul(win_h));
+  let win = tilec.data_win.as_mut_f32(win_w.wrapping_mul(win_h));
   let ret_0 = sparse_array_read(
     &sa,
     tr_max.win_x0.wrapping_sub(tr_max.x0 as u32),
@@ -2958,10 +2950,9 @@ pub(crate) fn opj_dwt_decode_real(
   whole_tile_decoding: OPJ_BOOL,
   tilec: &mut TcdTileComp,
   numres: u32,
-  scratch: &mut Vec<f32>,
 ) -> OPJ_BOOL {
   if whole_tile_decoding != 0 {
-    opj_dwt_decode_tile_97(tilec, numres, scratch)
+    opj_dwt_decode_tile_97(tilec, numres)
   } else {
     opj_dwt_decode_partial_97(tilec, numres)
   }

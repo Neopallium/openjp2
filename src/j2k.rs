@@ -8254,9 +8254,9 @@ fn update_image_data_comp(
       /* directly to save a copy */
       let len = (dest.w as usize).wrapping_mul(dest.h as usize);
       if whole_tile {
-        dest.data = l_tilec_i.data.take_vec(len);
+        dest.data = l_tilec_i.data.take_vec_i32(len);
       } else {
-        dest.data = l_tilec_i.data_win.take_vec(len);
+        dest.data = l_tilec_i.data_win.take_vec_i32(len);
       }
     } else {
       if dest.data.is_empty() {
@@ -8273,19 +8273,45 @@ fn update_image_data_comp(
       }
       /* Move the output buffer to the first place where we will write*/
       let src_len = (l_offset_y0_src as usize + l_height_dest as usize) * src_data_stride as usize;
-      let src = if whole_tile {
-        l_tilec_i.data.as_mut_slice(src_len)
+      let src_is_f32 = if whole_tile {
+        l_tilec_i.data.is_f32()
       } else {
-        l_tilec_i.data_win.as_mut_slice(src_len)
+        l_tilec_i.data_win.is_f32()
       };
       let dest_w = dest.w as usize;
-      j = 0_u32;
-      while j < l_height_dest {
-        let src_row = l_start_offset_src + j as usize * src_data_stride as usize;
-        let dest_row = l_start_offset_dest + j as usize * dest_w;
-        dest.data[dest_row..dest_row + l_width_dest as usize]
-          .copy_from_slice(&src[src_row..src_row + l_width_dest as usize]);
-        j += 1;
+      if src_is_f32 {
+        /* 9-7: the buffer holds f32 words; after the dc-shift they carry
+        the exact int bit patterns (the C's shared-array reinterpretation). */
+        let src = if whole_tile {
+          l_tilec_i.data.as_mut_f32(src_len)
+        } else {
+          l_tilec_i.data_win.as_mut_f32(src_len)
+        };
+        j = 0_u32;
+        while j < l_height_dest {
+          let src_row = l_start_offset_src + j as usize * src_data_stride as usize;
+          let dest_row = l_start_offset_dest + j as usize * dest_w;
+          let mut k = 0usize;
+          while k < l_width_dest as usize {
+            dest.data[dest_row + k] = src[src_row + k].to_bits() as i32;
+            k += 1;
+          }
+          j += 1;
+        }
+      } else {
+        let src = if whole_tile {
+          l_tilec_i.data.as_mut_i32(src_len)
+        } else {
+          l_tilec_i.data_win.as_mut_i32(src_len)
+        };
+        j = 0_u32;
+        while j < l_height_dest {
+          let src_row = l_start_offset_src + j as usize * src_data_stride as usize;
+          let dest_row = l_start_offset_dest + j as usize * dest_w;
+          dest.data[dest_row..dest_row + l_width_dest as usize]
+            .copy_from_slice(&src[src_row..src_row + l_width_dest as usize]);
+          j += 1;
+        }
       }
     }
   }
@@ -9439,7 +9465,7 @@ fn opj_j2k_decode_tiles(
       let len = (comp.w as usize).wrapping_mul(comp.h as usize);
       comp.data = p_j2k.m_tcd.tcd_image.tiles.comps[i as usize]
         .data
-        .take_vec(len);
+        .take_vec_i32(len);
       comp.resno_decoded = p_j2k
         .m_private_image
         .as_deref()
@@ -10466,12 +10492,12 @@ pub(crate) fn opj_j2k_encode(
         let len = img_data.len();
         let old = core::mem::replace(
           &mut l_tilec.data,
-          crate::types::TileBuf::Owned {
+          crate::types::TileBuf::I32 {
             data: img_data,
             bytes: len.wrapping_mul(core::mem::size_of::<i32>()),
           },
         );
-        if let crate::types::TileBuf::Owned { data, .. } = old {
+        if let crate::types::TileBuf::I32 { data, .. } = old {
           img_comp.data = data;
         }
         l_tilec.data_size_needed = len;
@@ -10480,7 +10506,7 @@ pub(crate) fn opj_j2k_encode(
     } else {
       while j < image.numcomps {
         let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
-        if opj_alloc_tile_component_data(l_tilec) == 0 {
+        if opj_alloc_tile_component_data(l_tilec, false) == 0 {
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -10609,7 +10635,7 @@ fn j2k_encode_tile_worker(
     let mut j = 0u32;
     while j < image.numcomps {
       let l_tilec = &mut j2k.m_tcd.tcd_image.tiles.comps[j as usize];
-      if opj_alloc_tile_component_data(l_tilec) == 0 {
+      if opj_alloc_tile_component_data(l_tilec, false) == 0 {
         return None;
       }
       j += 1;
@@ -11400,7 +11426,7 @@ pub(crate) fn opj_j2k_write_tile(
       .numcomps;
     while j < numcomps {
       let l_tilec = &mut p_j2k.m_tcd.tcd_image.tiles.comps[j as usize];
-      if opj_alloc_tile_component_data(l_tilec) == 0 {
+      if opj_alloc_tile_component_data(l_tilec, false) == 0 {
         event_msg!(
           p_manager,
           EVT_ERROR,

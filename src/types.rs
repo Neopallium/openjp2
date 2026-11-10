@@ -409,11 +409,6 @@ pub(crate) struct Tcd {
   pub win_y1: u32,
   pub whole_tile_decoding: OPJ_BOOL,
   pub used_component: Vec<bool>,
-  /// Reusable f32 scratch for the whole-tile 9-7 inverse DWT (one per Tcd,
-  /// shared across the components decoded sequentially; the C reinterprets
-  /// the i32 buffer in place, the safe Rust port converts through this
-  /// scratch instead of a fresh per-component allocation).
-  pub dwt_f32_scratch: Vec<f32>,
 }
 
 
@@ -670,51 +665,96 @@ pub struct TileInfo {
   pub go_on: bool,
 }
 
-/// Sample buffer of a tile component, backed by an owned Vec.
+/// Sample buffer of a tile component, backed by an owned `Vec` of the
+/// transform's element type: `i32` for the reversible 5-3, `f32` for the
+/// irreversible 9-7 (the port's internal qmfbid convention is 1 = 5-3,
+/// 0 = 9-7).  The 9-7 buffer holds plain f32 words; the phases that store
+/// integer samples (t1 write-back / dc-shift decode) keep them as exact
+/// bit patterns, mirroring the C's in-place int32/float reinterpretation
+/// without any unsafe.
 #[derive(Default)]
 pub(crate) enum TileBuf {
   #[default]
   Empty,
-  Owned {
+  I32 {
     data: Vec<i32>,
+    bytes: usize,
+  },
+  F32 {
+    data: Vec<f32>,
     bytes: usize,
   },
 }
 
 impl TileBuf {
-  /// Mutable slice over `len` samples of the buffer.
+  /// Mutable slice over `len` samples of a 5-3 (i32) buffer; empty otherwise.
   ///
-  /// # Safety contract for the caller
-  /// `len` must not exceed the number of samples the buffer covers. For
-  /// `Borrowed` buffers the pointer must stay valid for `len` samples.
-  pub(crate) fn as_mut_slice(&mut self, len: usize) -> &mut [i32] {
+  /// # Caller contract
+  /// `len` must not exceed the number of samples the buffer covers.
+  pub(crate) fn as_mut_i32(&mut self, len: usize) -> &mut [i32] {
     match self {
-      TileBuf::Owned { data, .. } => &mut data[..len],
-      TileBuf::Empty => &mut [],
+      TileBuf::I32 { data, .. } => &mut data[..len],
+      _ => &mut [],
     }
   }
 
-  pub(crate) fn as_mut_ptr(&self) -> *mut i32 {
+  /// Mutable slice over `len` samples of a 9-7 (f32) buffer; empty otherwise.
+  ///
+  /// # Caller contract
+  /// `len` must not exceed the number of samples the buffer covers.
+  pub(crate) fn as_mut_f32(&mut self, len: usize) -> &mut [f32] {
+    match self {
+      TileBuf::F32 { data, .. } => &mut data[..len],
+      _ => &mut [],
+    }
+  }
+
+  pub(crate) fn as_mut_i32_ptr(&self) -> *mut i32 {
     match self {
       TileBuf::Empty => core::ptr::null_mut(),
-      TileBuf::Owned { data, .. } => {
+      TileBuf::I32 { data, .. } => {
         if data.is_empty() {
           core::ptr::null_mut()
         } else {
           data.as_ptr() as *mut i32
         }
       }
+      TileBuf::F32 { .. } => core::ptr::null_mut(),
+    }
+  }
+
+  pub(crate) fn as_mut_f32_ptr(&self) -> *mut f32 {
+    match self {
+      TileBuf::Empty => core::ptr::null_mut(),
+      TileBuf::F32 { data, .. } => {
+        if data.is_empty() {
+          core::ptr::null_mut()
+        } else {
+          data.as_ptr() as *mut f32
+        }
+      }
+      TileBuf::I32 { .. } => core::ptr::null_mut(),
     }
   }
 
   pub(crate) fn is_null(&self) -> bool {
-    self.as_mut_ptr().is_null()
+    match self {
+      TileBuf::Empty => true,
+      TileBuf::I32 { data, .. } => data.is_empty(),
+      TileBuf::F32 { data, .. } => data.is_empty(),
+    }
   }
 
-  /// Byte capacity of an owned buffer; 0 for empty or borrowed ones.
+  /// Whether the buffer stores f32 samples (9-7); used to pick the typed
+  /// accessor at shared call sites.
+  pub(crate) fn is_f32(&self) -> bool {
+    matches!(self, TileBuf::F32 { .. })
+  }
+
+  /// Byte capacity of an owned buffer; 0 for empty ones.
   pub(crate) fn bytes(&self) -> usize {
     match *self {
-      TileBuf::Owned { bytes, .. } => bytes,
+      TileBuf::I32 { bytes, .. } | TileBuf::F32 { bytes, .. } => bytes,
       _ => 0,
     }
   }
@@ -723,40 +763,61 @@ impl TileBuf {
     *self = TileBuf::Empty;
   }
 
-  /// Drops any current buffer and allocates a fresh owned one. Contents are not preserved.
-  pub(crate) fn alloc(&mut self, bytes: usize) -> bool {
+  /// Drops any current buffer and allocates a fresh owned one. Contents are
+  /// not preserved.  `f32_buf` selects the element type (9-7 vs 5-3).
+  pub(crate) fn alloc(&mut self, bytes: usize, f32_buf: bool) -> bool {
     self.release();
     if bytes == 0 {
       return true;
     }
-    let samples = bytes / core::mem::size_of::<i32>();
-    let mut data: Vec<i32> = Vec::new();
-    if data.try_reserve_exact(samples).is_err() {
-      return false;
+    if f32_buf {
+      let samples = bytes / core::mem::size_of::<f32>();
+      let mut data: Vec<f32> = Vec::new();
+      if data.try_reserve_exact(samples).is_err() {
+        return false;
+      }
+      data.resize(samples, 0.0);
+      *self = TileBuf::F32 { data, bytes };
+    } else {
+      let samples = bytes / core::mem::size_of::<i32>();
+      let mut data: Vec<i32> = Vec::new();
+      if data.try_reserve_exact(samples).is_err() {
+        return false;
+      }
+      data.resize(samples, 0);
+      *self = TileBuf::I32 { data, bytes };
     }
-    data.resize(samples, 0);
-    *self = TileBuf::Owned { data, bytes };
     true
   }
 
-  /// Reallocates only when the buffer is absent or too small, like the C grow path.
-  pub(crate) fn ensure(&mut self, bytes: usize) -> bool {
-    if !self.is_null() && bytes <= self.bytes() {
+  /// Reallocates only when the buffer is absent, too small, or of the wrong
+  /// element type, like the C grow path.
+  pub(crate) fn ensure(&mut self, bytes: usize, f32_buf: bool) -> bool {
+    let right_type = matches!(
+      self,
+      TileBuf::I32 { .. } if !f32_buf
+    ) || matches!(self, TileBuf::F32 { .. } if f32_buf);
+    if !self.is_null() && right_type && bytes <= self.bytes() {
       return true;
     }
-    self.alloc(bytes)
+    self.alloc(bytes, f32_buf)
   }
 
-  /// Hands the owned buffer over as a `Vec` of `len` samples; the caller owns it from then on.
-  /// Only valid for `Owned` buffers; returns an empty Vec for `Empty`/`Borrowed` ones.
+  /// Hands the owned buffer over as a `Vec` of `len` i32 samples; the caller
+  /// owns it from then on.  F32 samples are delivered as their bit patterns
+  /// (the C's int32 reinterpretation).  Returns an empty Vec for `Empty`.
   ///
-  /// # Safety contract for the caller
+  /// # Caller contract
   /// `len` must not exceed the number of samples the buffer covers.
-  pub(crate) fn take_vec(&mut self, len: usize) -> Vec<i32> {
+  pub(crate) fn take_vec_i32(&mut self, len: usize) -> Vec<i32> {
     match core::mem::replace(self, TileBuf::Empty) {
-      TileBuf::Owned { mut data, .. } => {
+      TileBuf::I32 { mut data, .. } => {
         data.truncate(len);
         data
+      }
+      TileBuf::F32 { mut data, .. } => {
+        data.truncate(len);
+        data.into_iter().map(|v| v.to_bits() as i32).collect()
       }
       _ => Vec::new(),
     }

@@ -110,30 +110,30 @@ pub(crate) fn opj_mct_getnorm(mut compno: u32) -> f64 {
 /* Forward irreversible MCT. */
 /* </summary> */
 
-pub(crate) fn opj_mct_encode_real(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
+pub(crate) fn opj_mct_encode_real(c0: &mut [f32], c1: &mut [f32], c2: &mut [f32]) {
   let len = c0.len().min(c1.len()).min(c2.len());
   for i in 0..len {
-    let r = f32::from_bits(c0[i] as u32);
-    let g = f32::from_bits(c1[i] as u32);
-    let b = f32::from_bits(c2[i] as u32);
-    c0[i] = (0.299f32 * r + 0.587f32 * g + 0.114f32 * b).to_bits() as i32;
-    c1[i] = (-0.16875f32 * r - 0.331260f32 * g + 0.5f32 * b).to_bits() as i32;
-    c2[i] = (0.5f32 * r - 0.41869f32 * g - 0.08131f32 * b).to_bits() as i32;
+    let r = c0[i];
+    let g = c1[i];
+    let b = c2[i];
+    c0[i] = 0.299f32 * r + 0.587f32 * g + 0.114f32 * b;
+    c1[i] = -0.16875f32 * r - 0.331260f32 * g + 0.5f32 * b;
+    c2[i] = 0.5f32 * r - 0.41869f32 * g - 0.08131f32 * b;
   }
 }
 /* <summary> */
 /* Inverse irreversible MCT. */
 /* </summary> */
 
-pub(crate) fn opj_mct_decode_real(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
+pub(crate) fn opj_mct_decode_real(c0: &mut [f32], c1: &mut [f32], c2: &mut [f32]) {
   let len = c0.len().min(c1.len()).min(c2.len());
   for i in 0..len {
-    let y = f32::from_bits(c0[i] as u32);
-    let u = f32::from_bits(c1[i] as u32);
-    let v = f32::from_bits(c2[i] as u32);
-    c0[i] = (y + v * 1.402f32).to_bits() as i32;
-    c1[i] = (y - u * 0.34413f32 - v * 0.71414f32).to_bits() as i32;
-    c2[i] = (y + u * 1.772f32).to_bits() as i32;
+    let y = c0[i];
+    let u = c1[i];
+    let v = c2[i];
+    c0[i] = y + v * 1.402f32;
+    c1[i] = y - u * 0.34413f32 - v * 0.71414f32;
+    c2[i] = y + u * 1.772f32;
   }
 }
 /* <summary> */

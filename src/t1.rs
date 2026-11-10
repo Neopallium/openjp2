@@ -281,6 +281,22 @@ pub(crate) struct T1Pool {
 static T1_DECODE_POOL: std::sync::OnceLock<T1Pool> = std::sync::OnceLock::new();
 static T1_ENCODE_POOL: std::sync::OnceLock<T1Pool> = std::sync::OnceLock::new();
 
+/// The whole-tile decode write-back target: the tile buffer guarded by the
+/// tile mutex, typed by the transform (5-3 writes i32 coefficients, 9-7
+/// writes the dequantized f32 words).
+pub(crate) enum TileDataMutex<'a> {
+  I32(std::sync::Mutex<&'a mut [i32]>),
+  F32(std::sync::Mutex<&'a mut [f32]>),
+}
+
+/// Shared read-only view of the tile buffer for the parallel t1 encode
+/// jobs, typed by the transform.
+#[derive(Copy, Clone)]
+pub(crate) enum TileDataView<'a> {
+  I32(&'a [i32]),
+  F32(&'a [f32]),
+}
+
 impl T1Pool {
   fn new() -> Self {
     let n = crate::par::current_num_threads().max(1);
@@ -1865,7 +1881,7 @@ fn opj_t1_clbl_decode_processor(
   p_manager: &EventMgr,
   check_pterm: OPJ_BOOL,
   mustuse_cblkdatabuffer: OPJ_BOOL,
-  whole_tile_mutex: Option<&std::sync::Mutex<&mut [i32]>>,
+  whole_tile_mutex: Option<&TileDataMutex>,
   tile_w: u32,
 ) -> OPJ_BOOL {
   let cblk_w = (cblk.x1 - cblk.x0) as u32;
@@ -1959,15 +1975,33 @@ fn opj_t1_clbl_decode_processor(
       let x = (cblk.x0 - band_x0) as u32 + off_x;
       let y = (cblk.y0 - band_y0) as u32 + off_y;
       {
-        let mut tile_data = whole_tile_mutex.unwrap().lock().unwrap();
-        let mut jj = 0u32;
-        while jj < cblk_h {
-          let base = (y.wrapping_add(jj)).wrapping_mul(tile_w).wrapping_add(x) as usize;
-          let src = jj.wrapping_mul(cblk_w) as usize;
-          for ii in 0..cblk_w as usize {
-            tile_data[base + ii] = data[src + ii].get();
+        match whole_tile_mutex.unwrap() {
+          TileDataMutex::I32(m) => {
+            let mut tile_data = m.lock().unwrap();
+            let mut jj = 0u32;
+            while jj < cblk_h {
+              let base = (y.wrapping_add(jj)).wrapping_mul(tile_w).wrapping_add(x) as usize;
+              let src = jj.wrapping_mul(cblk_w) as usize;
+              for ii in 0..cblk_w as usize {
+                tile_data[base + ii] = data[src + ii].get();
+              }
+              jj += 1
+            }
           }
-          jj += 1
+          TileDataMutex::F32(m) => {
+            /* 9-7: the dequantized t1 cells hold the f32 bit patterns;
+            store the words (the C reinterprets the shared array). */
+            let mut tile_data = m.lock().unwrap();
+            let mut jj = 0u32;
+            while jj < cblk_h {
+              let base = (y.wrapping_add(jj)).wrapping_mul(tile_w).wrapping_add(x) as usize;
+              let src = jj.wrapping_mul(cblk_w) as usize;
+              for ii in 0..cblk_w as usize {
+                tile_data[base + ii] = f32::from_bits(data[src + ii].get() as u32);
+              }
+              jj += 1
+            }
+          }
         }
       }
     }
@@ -2169,14 +2203,16 @@ pub(crate) fn opj_t1_decode_cblks(
   through a mutex: each job only ever writes its own codeblock rectangle
   (disjoint regions), and the copy is a handful of cache lines, so the lock
   is effectively uncontended. */
-  let tile_mutex: Option<std::sync::Mutex<&mut [i32]>> =
-    if tilec_view.whole_tile_decoding != 0 {
-      Some(std::sync::Mutex::new(
-        tilec.data.as_mut_slice(tile_w.wrapping_mul(tile_h)),
-      ))
+  let tile_mutex: Option<TileDataMutex> = if tilec_view.whole_tile_decoding != 0 {
+    let len = tile_w.wrapping_mul(tile_h);
+    Some(if tilec.data.is_f32() {
+      TileDataMutex::F32(std::sync::Mutex::new(tilec.data.as_mut_f32(len)))
     } else {
-      None
-    };
+      TileDataMutex::I32(std::sync::Mutex::new(tilec.data.as_mut_i32(len)))
+    })
+  } else {
+    None
+  };
   let src_shared: &[u8] = &*src;
   let decode_job = |(bandno, band_x0, band_y0, band_stepsize, off_x, off_y): (
     &u32,
@@ -2395,7 +2431,7 @@ fn opj_t1_cblk_encode_processor(
   _resno: u32,
   off_x: u32,
   off_y: u32,
-  tile_data: &[i32],
+  tile_data: TileDataView,
   tile_w: u32,
   tile_numcomps: u32,
   numresolutions_minus_resno: u32,
@@ -2427,6 +2463,14 @@ fn opj_t1_cblk_encode_processor(
     cblk_w = t1.w;
     cblk_h = t1.h;
     let base = (y as u32).wrapping_mul(tile_w).wrapping_add(x as u32);
+    let ti32: &[i32] = match tile_data {
+      TileDataView::I32(d) => d,
+      TileDataView::F32(_) => &[],
+    };
+    let tf32: &[f32] = match tile_data {
+      TileDataView::F32(d) => d,
+      TileDataView::I32(_) => &[],
+    };
     if tccp.qmfbid == 1 {
       let mut t1data = t1.data.offset(0);
       /* Do multiplication on unsigned type, even if the
@@ -2443,26 +2487,26 @@ fn opj_t1_cblk_encode_processor(
         while i < cblk_w {
           t1data.set_at(
             0,
-            ((tile_data[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i) as usize] as u32)
+            ((ti32[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i) as usize] as u32)
               << (7i32 - 1i32)) as i32,
           );
           t1data.set_at(
             1,
-            ((tile_data[base
+            ((ti32[base
               .wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w))
               .wrapping_add(i) as usize] as u32)
               << (7i32 - 1i32)) as i32,
           );
           t1data.set_at(
             2,
-            ((tile_data[base
+            ((ti32[base
               .wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w))
               .wrapping_add(i) as usize] as u32)
               << (7i32 - 1i32)) as i32,
           );
           t1data.set_at(
             3,
-            ((tile_data[base
+            ((ti32[base
               .wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w))
               .wrapping_add(i) as usize] as u32)
               << (7i32 - 1i32)) as i32,
@@ -2480,7 +2524,7 @@ fn opj_t1_cblk_encode_processor(
           while k < cblk_h {
             t1data.set_at(
               0,
-              ((tile_data[base.wrapping_add(k.wrapping_mul(tile_w)).wrapping_add(i) as usize]
+              ((ti32[base.wrapping_add(k.wrapping_mul(tile_w)).wrapping_add(i) as usize]
                 as u32)
                 << (7i32 - 1i32)) as i32,
             );
@@ -2501,43 +2545,35 @@ fn opj_t1_cblk_encode_processor(
           t1data_0.set_at(
             0,
             opj_lrintf(
-              f32::from_bits(
-                tile_data[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i) as usize]
-                  as u32,
-              ) / band_stepsize
+              tf32[base.wrapping_add(j.wrapping_mul(tile_w)).wrapping_add(i) as usize]
+                / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );
           t1data_0.set_at(
             1,
             opj_lrintf(
-              f32::from_bits(
-                tile_data[base
+              tf32[base
                   .wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w))
-                  .wrapping_add(i) as usize] as u32,
-              ) / band_stepsize
+                  .wrapping_add(i) as usize] / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );
           t1data_0.set_at(
             2,
             opj_lrintf(
-              f32::from_bits(
-                tile_data[base
+              tf32[base
                   .wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w))
-                  .wrapping_add(i) as usize] as u32,
-              ) / band_stepsize
+                  .wrapping_add(i) as usize] / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );
           t1data_0.set_at(
             3,
             opj_lrintf(
-              f32::from_bits(
-                tile_data[base
+              tf32[base
                   .wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w))
-                  .wrapping_add(i) as usize] as u32,
-              ) / band_stepsize
+                  .wrapping_add(i) as usize] / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );
@@ -2555,10 +2591,8 @@ fn opj_t1_cblk_encode_processor(
             t1data_0.set_at(
               0,
               opj_lrintf(
-                f32::from_bits(
-                  tile_data[base.wrapping_add(k_0.wrapping_mul(tile_w)).wrapping_add(i) as usize]
-                    as u32,
-                ) / band_stepsize
+                tf32[base.wrapping_add(k_0.wrapping_mul(tile_w)).wrapping_add(i) as usize]
+                  / band_stepsize
                   * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
               ) as i32,
             );
@@ -2616,10 +2650,12 @@ pub(crate) fn opj_t1_encode_cblks(
         }
       })
       .collect();
-    let tile_data = tilec
-      .data
-      .as_mut_slice((tile_w as usize).wrapping_mul(tile_h as usize));
-    let tile_data_shared: &[i32] = tile_data;
+    let tile_len = (tile_w as usize).wrapping_mul(tile_h as usize);
+    let tile_data_shared: TileDataView = if tilec.data.is_f32() {
+      TileDataView::F32(tilec.data.as_mut_f32(tile_len))
+    } else {
+      TileDataView::I32(tilec.data.as_mut_i32(tile_len))
+    };
     /* Collect the encode jobs (the codeblock walk mutates only the cblk
     state, and each job writes only its own codeblock). */
     let mut jobs: Vec<(u32, u32, u32, u32, u32, i32, i32, f32, &mut TcdCblkEnc)> = Vec::new();

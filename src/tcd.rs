@@ -585,9 +585,12 @@ pub(crate) fn opj_tcd_init(p_tcd: &mut Tcd, image: &CoreImage, cp: &mut Cp) -> O
   1i32
 }
 
-pub(crate) fn opj_alloc_tile_component_data(l_tilec: &mut TcdTileComp) -> OPJ_BOOL {
+pub(crate) fn opj_alloc_tile_component_data(
+  l_tilec: &mut TcdTileComp,
+  f32_buf: bool,
+) -> OPJ_BOOL {
   let needed = l_tilec.data_size_needed;
-  if l_tilec.data.ensure(needed) {
+  if l_tilec.data.ensure(needed, f32_buf) {
     1i32
   } else {
     l_tilec.data_size_needed = 0i32 as usize;
@@ -1345,7 +1348,9 @@ pub(crate) fn opj_tcd_decode_tile(
         }
         l_data_size = l_data_size.wrapping_mul(core::mem::size_of::<u32>()) as usize as usize;
         tilec.data_size_needed = l_data_size;
-        if opj_alloc_tile_component_data(tilec) == 0 {
+        /* The buffer element type follows the transform (9-7 -> f32). */
+        let f32_buf = cp.tcps[p_tcd.tcd_tileno as usize].tccps[compno as usize].qmfbid == 0;
+        if opj_alloc_tile_component_data(tilec, f32_buf) == 0 {
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -1470,7 +1475,8 @@ pub(crate) fn opj_tcd_decode_tile(
             return 0i32;
           }
           l_data_size_0 = l_data_size_0.wrapping_mul(core::mem::size_of::<i32>()) as usize as usize;
-          if !tilec_1.data_win.alloc(l_data_size_0) {
+          let f32_buf = cp.tcps[p_tcd.tcd_tileno as usize].tccps[compno as usize].qmfbid == 0;
+          if !tilec_1.data_win.alloc(l_data_size_0, f32_buf) {
             event_msg!(
               p_manager,
               EVT_ERROR,
@@ -1505,9 +1511,6 @@ pub(crate) fn opj_tcd_update_tile_data(
   {
     let mut p_dest_length = p_dest.len() as u32;
     let mut l_data_size = 0_u32;
-    let mut l_stride = 0usize;
-    let mut l_width = 0usize;
-    let mut l_height = 0usize;
     l_data_size = opj_tcd_get_decoded_tile_size(p_tcd, 1i32, image);
     if l_data_size == (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32)
       || l_data_size > p_dest_length
@@ -1520,39 +1523,65 @@ pub(crate) fn opj_tcd_update_tile_data(
       let mut l_size_comp = l_img_comp.prec >> 3i32;
       let l_remaining = l_img_comp.prec & 7u32;
       let l_res = &l_tilec.resolutions[l_img_comp.resno_decoded as usize];
-      let l_src_data = if p_tcd.whole_tile_decoding != 0 {
-        l_width = (l_res.x1 - l_res.x0) as usize;
-        l_height = (l_res.y1 - l_res.y0) as usize;
-        l_stride =
-          ((l_tilec.resolutions[(l_tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].x1
-            - l_tilec.resolutions[(l_tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize].x0)
-            as usize)
-            .wrapping_sub(l_width);
-        l_tilec
-          .data
-          .as_mut_slice((l_width.wrapping_add(l_stride)).wrapping_mul(l_height))
+      let whole = p_tcd.whole_tile_decoding != 0;
+      let l_src_f32 = if whole {
+        l_tilec.data.is_f32()
       } else {
-        l_width = l_res.win_x1.wrapping_sub(l_res.win_x0) as usize;
-        l_height = l_res.win_y1.wrapping_sub(l_res.win_y0) as usize;
-        l_stride = 0usize;
-        l_tilec
-          .data_win
-          .as_mut_slice(l_width.wrapping_mul(l_height))
+        l_tilec.data_win.is_f32()
       };
+      /* Component geometry first, then the typed borrows (the i32 and f32
+      views are mutually exclusive branches, so they never overlap). */
+      let (l_width, l_height, l_stride) = if whole {
+        let lw = (l_res.x1 - l_res.x0) as usize;
+        let lh = (l_res.y1 - l_res.y0) as usize;
+        let ls = ((l_tilec.resolutions
+          [(l_tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize]
+          .x1
+          - l_tilec.resolutions[(l_tilec.minimum_num_resolutions.wrapping_sub(1u32)) as usize]
+            .x0) as usize)
+          .wrapping_sub(lw);
+        (lw, lh, ls)
+      } else {
+        (
+          l_res.win_x1.wrapping_sub(l_res.win_x0) as usize,
+          l_res.win_y1.wrapping_sub(l_res.win_y0) as usize,
+          0usize,
+        )
+      };
+      if l_width == 0usize || l_height == 0usize {
+        continue;
+      }
+      /* 9-7 buffers hold f32 words carrying the int bit patterns (the C's
+      shared-array reinterpretation); the deprecated tile-API copy reads
+      i32 values, so convert the window once per component. */
+      let l_src_owned: Option<Vec<i32>>;
+      let mut l_src: &[i32];
+      if l_src_f32 {
+        let f32s = if whole {
+          l_tilec
+            .data
+            .as_mut_f32((l_width.wrapping_add(l_stride)).wrapping_mul(l_height))
+        } else {
+          l_tilec.data_win.as_mut_f32(l_width.wrapping_mul(l_height))
+        };
+        l_src_owned = Some(f32s.iter().map(|v| v.to_bits() as i32).collect());
+        l_src = l_src_owned.as_deref().unwrap();
+      } else if whole {
+        l_src_owned = None;
+        l_src = l_tilec
+          .data
+          .as_mut_i32((l_width.wrapping_add(l_stride)).wrapping_mul(l_height));
+      } else {
+        l_src_owned = None;
+        l_src = l_tilec.data_win.as_mut_i32(l_width.wrapping_mul(l_height));
+      }
       if l_remaining != 0 {
         l_size_comp += 1;
       }
       if l_size_comp == 3u32 {
         l_size_comp = 4_u32
       }
-      /* Zero-width or zero-height components carry no data (subsampled
-      away, like opj_tcd_get_decoded_tile_size skips): the C's copy loops
-      no-op, while chunks_exact(0) would panic here. */
-      if l_width == 0usize || l_height == 0usize {
-        continue;
-      }
       let l_nb_elem = l_height * l_width;
-      let mut l_src = l_src_data;
       match l_size_comp {
         1 => {
           let (dest, remain) = p_dest.split_at_mut(l_nb_elem);
@@ -1751,7 +1780,7 @@ fn opj_tcd_dwt_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OP
       let r = if tccps[compno].qmfbid == 1u32 {
         opj_dwt_decode(whole_tile, l_tile_comp, resno_decoded)
       } else {
-        opj_dwt_decode_real(whole_tile, l_tile_comp, resno_decoded, &mut p_tcd.dwt_f32_scratch)
+        opj_dwt_decode_real(whole_tile, l_tile_comp, resno_decoded)
       };
       if r == 0 {
         return 0i32;
@@ -1875,42 +1904,65 @@ fn opj_tcd_mct_decode(
       if tcp.m_mct_decoding_matrix.is_empty() {
         return 1i32;
       }
-      let mut l_data: Vec<Vec<f32>> = Vec::with_capacity(numcomps);
+      let matrix = &tcp.m_mct_decoding_matrix[..];
+      if comps
+        .iter()
+        .all(|c| if whole { c.data.is_f32() } else { c.data_win.is_f32() })
       {
+        /* 9-7 buffers: borrow the f32 planes directly (no scratch copies). */
         let mut rest = &mut *comps;
+        let mut l_views: Vec<&mut [f32]> = Vec::with_capacity(numcomps);
         for _ in 0..numcomps {
           let (first, r) = rest.split_at_mut(1);
           let c = &mut first[0];
-          let s = if whole {
-            c.data.as_mut_slice(l_samples)
+          l_views.push(if whole {
+            c.data.as_mut_f32(l_samples)
           } else {
-            c.data_win.as_mut_slice(l_samples)
-          };
-          l_data.push(s.iter().map(|&x| f32::from_bits(x as u32)).collect());
+            c.data_win.as_mut_f32(l_samples)
+          });
           rest = r;
         }
-      }
-      let matrix = &tcp.m_mct_decoding_matrix[..];
-      {
-        let mut l_views: Vec<&mut [f32]> = l_data.iter_mut().map(|v| &mut v[..]).collect();
         if opj_mct_decode_custom(matrix, l_samples, &mut l_views, image.comps[0].sgnd) == 0 {
           return 0i32;
         }
-      }
-      {
-        let mut rest = &mut *comps;
-        for fdata in &l_data {
-          let (first, r) = rest.split_at_mut(1);
-          let c = &mut first[0];
-          let s = if whole {
-            c.data.as_mut_slice(l_samples)
-          } else {
-            c.data_win.as_mut_slice(l_samples)
-          };
-          for (d, &v) in s.iter_mut().zip(fdata.iter()) {
-            *d = v.to_bits() as i32;
+      } else {
+        /* 5-3 buffers: convert through f32 scratch, like before. */
+        let mut l_data: Vec<Vec<f32>> = Vec::with_capacity(numcomps);
+        {
+          let mut rest = &mut *comps;
+          for _ in 0..numcomps {
+            let (first, r) = rest.split_at_mut(1);
+            let c = &mut first[0];
+            let s = if whole {
+              c.data.as_mut_i32(l_samples)
+            } else {
+              c.data_win.as_mut_i32(l_samples)
+            };
+            l_data.push(s.iter().map(|&x| x as f32).collect());
+            rest = r;
           }
-          rest = r;
+        }
+        {
+          let mut l_views: Vec<&mut [f32]> = l_data.iter_mut().map(|v| &mut v[..]).collect();
+          if opj_mct_decode_custom(matrix, l_samples, &mut l_views, image.comps[0].sgnd) == 0 {
+            return 0i32;
+          }
+        }
+        {
+          let mut rest = &mut *comps;
+          for fdata in &l_data {
+            let (first, r) = rest.split_at_mut(1);
+            let c = &mut first[0];
+            let s = if whole {
+              c.data.as_mut_i32(l_samples)
+            } else {
+              c.data_win.as_mut_i32(l_samples)
+            };
+            for (d, &v) in s.iter_mut().zip(fdata.iter()) {
+              *d = v as i32;
+            }
+            rest = r;
+          }
         }
       }
     } else if tcp.tccps[0].qmfbid == 1u32 {
@@ -1918,19 +1970,19 @@ fn opj_tcd_mct_decode(
       let (c1, rest) = rest.split_at_mut(1);
       let (c2, _) = rest.split_at_mut(1);
       let s0 = if whole {
-        c0[0].data.as_mut_slice(l_samples)
+        c0[0].data.as_mut_i32(l_samples)
       } else {
-        c0[0].data_win.as_mut_slice(l_samples)
+        c0[0].data_win.as_mut_i32(l_samples)
       };
       let s1 = if whole {
-        c1[0].data.as_mut_slice(l_samples)
+        c1[0].data.as_mut_i32(l_samples)
       } else {
-        c1[0].data_win.as_mut_slice(l_samples)
+        c1[0].data_win.as_mut_i32(l_samples)
       };
       let s2 = if whole {
-        c2[0].data.as_mut_slice(l_samples)
+        c2[0].data.as_mut_i32(l_samples)
       } else {
-        c2[0].data_win.as_mut_slice(l_samples)
+        c2[0].data_win.as_mut_i32(l_samples)
       };
       opj_mct_decode(s0, s1, s2);
     } else {
@@ -1938,19 +1990,19 @@ fn opj_tcd_mct_decode(
       let (c1, rest) = rest.split_at_mut(1);
       let (c2, _) = rest.split_at_mut(1);
       let s0 = if whole {
-        c0[0].data.as_mut_slice(l_samples)
+        c0[0].data.as_mut_f32(l_samples)
       } else {
-        c0[0].data_win.as_mut_slice(l_samples)
+        c0[0].data_win.as_mut_f32(l_samples)
       };
       let s1 = if whole {
-        c1[0].data.as_mut_slice(l_samples)
+        c1[0].data.as_mut_f32(l_samples)
       } else {
-        c1[0].data_win.as_mut_slice(l_samples)
+        c1[0].data_win.as_mut_f32(l_samples)
       };
       let s2 = if whole {
-        c2[0].data.as_mut_slice(l_samples)
+        c2[0].data.as_mut_f32(l_samples)
       } else {
-        c2[0].data_win.as_mut_slice(l_samples)
+        c2[0].data_win.as_mut_f32(l_samples)
       };
       opj_mct_decode_real(s0, s1, s2);
     }
@@ -2006,15 +2058,7 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mu
 
     if l_width != 0 && l_height != 0 {
       let row_stride = (l_width.wrapping_add(l_stride)) as usize;
-      let data = if whole_tile == 0 {
-        l_tile_comp
-          .data_win
-          .as_mut_slice(row_stride * (l_height as usize))
-      } else {
-        l_tile_comp
-          .data
-          .as_mut_slice(row_stride * (l_height as usize))
-      };
+      let len = row_stride * (l_height as usize);
       let (l_min, l_max) = if l_img_comp.sgnd != 0 {
         (
           -((1i32) << l_img_comp.prec.wrapping_sub(1u32)),
@@ -2025,6 +2069,11 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mu
       };
 
       if l_tccp.qmfbid == 1u32 {
+        let data = if whole_tile == 0 {
+          l_tile_comp.data_win.as_mut_i32(len)
+        } else {
+          l_tile_comp.data.as_mut_i32(len)
+        };
         for j in 0..l_height as usize {
           for i in 0..l_width as usize {
             /* Note: could do the addition in i64 */
@@ -2037,23 +2086,33 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mu
           }
         }
       } else {
+        /* 9-7: the buffer holds f32 words; the clamped integer result is
+        stored as its exact bit pattern (the C writes an int into the
+        shared int32/float array; storing the bits keeps the round trip
+        exact for every value). */
+        let data = if whole_tile == 0 {
+          l_tile_comp.data_win.as_mut_f32(len)
+        } else {
+          l_tile_comp.data.as_mut_f32(len)
+        };
         for j in 0..l_height as usize {
           for i in 0..l_width as usize {
             let idx = j * row_stride + i;
-            let l_value = f32::from_bits(data[idx] as u32);
-            if l_value > 2147483647 as core::ffi::c_float {
-              data[idx] = l_max
+            let l_value = data[idx];
+            let v = if l_value > 2147483647 as core::ffi::c_float {
+              l_max
             } else if l_value < (-(2147483647i32) - 1i32) as core::ffi::c_float {
-              data[idx] = l_min
+              l_min
             } else {
               /* Do addition on int64 to avoid overflows */
               let l_value_int = opj_lrintf(l_value);
-              data[idx] = opj_int64_clamp(
+              opj_int64_clamp(
                 l_value_int + l_tccp.m_dc_level_shift as i64,
                 l_min as i64,
                 l_max as i64,
               ) as i32
-            }
+            };
+            data[idx] = f32::from_bits(v as u32);
           }
         }
       }
@@ -2095,18 +2154,25 @@ fn opj_tcd_dc_level_shift_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OPJ_BOOL {
     let l_tccp = &tccps[compno];
     let l_nb_elem = ((l_tile_comp.x1 - l_tile_comp.x0) as usize)
       .wrapping_mul((l_tile_comp.y1 - l_tile_comp.y0) as usize);
-    let data = l_tile_comp.data.as_mut_slice(l_nb_elem);
     if l_tccp.qmfbid == 1u32 {
+      let data = l_tile_comp.data.as_mut_i32(l_nb_elem);
       for v in data.iter_mut() {
         *v = v.wrapping_sub(l_tccp.m_dc_level_shift);
       }
     } else {
-      for v in data.iter_mut() {
-        // The C code reads the sample as an i32, shifts it, then stores the
-        // result as f32 bits for the 9x7 transform to consume.
-        let val = *v;
-        *v = (val.wrapping_sub(l_tccp.m_dc_level_shift) as f32).to_bits() as i32;
-      }
+      /* 9-7: the shift produces f32 samples for the transform to consume;
+      the C reinterprets the shared int32/float array in place, the typed
+      buffer converts its element type once (the input i32 vec is consumed,
+      so there is no extra live copy). */
+      let mut data = l_tile_comp.data.as_mut_i32(l_nb_elem).to_vec();
+      let shift = l_tccp.m_dc_level_shift;
+      let f32s: Vec<f32> = data
+        .iter_mut()
+        .map(|v| v.wrapping_sub(shift) as f32)
+        .collect();
+      let bytes = core::mem::size_of_val(&*f32s);
+      let _ = &mut data;
+      l_tile_comp.data = crate::types::TileBuf::F32 { data: f32s, bytes };
     }
   });
   1i32
@@ -2129,34 +2195,75 @@ fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OP
       return 1i32;
     }
     let numcomps = comps.len();
-    let mut l_data: Vec<&mut [i32]> = Vec::with_capacity(numcomps);
-    let mut rest = comps;
-    for _ in 0..numcomps {
-      let (first, r) = rest.split_at_mut(1);
-      l_data.push(first[0].data.as_mut_slice(samples));
-      rest = r;
-    }
     let matrix = &tcp.m_mct_coding_matrix[..];
-    if opj_mct_encode_custom(matrix, samples, &mut l_data, image.comps[0].sgnd) == 0 {
-      return 0i32;
+    if comps.iter().all(|c| !c.data.is_f32()) {
+      /* 5-3 buffers: borrow the i32 planes directly (the C's exact
+      behavior - the integer fixed-point matrix runs on the samples). */
+      let mut l_data: Vec<&mut [i32]> = Vec::with_capacity(numcomps);
+      let mut rest = &mut *comps;
+      for _ in 0..numcomps {
+        let (first, r) = rest.split_at_mut(1);
+        l_data.push(first[0].data.as_mut_i32(samples));
+        rest = r;
+      }
+      if opj_mct_encode_custom(matrix, samples, &mut l_data, image.comps[0].sgnd) == 0 {
+        return 0i32;
+      }
+    } else {
+      /* 9-7 buffers: the C reads the shared int32/float array as ints, so
+      the integer matrix runs on the f32 words' bit patterns; convert
+      through a scratch and write the words back. */
+      let mut l_scratch: Vec<Vec<i32>> = Vec::with_capacity(numcomps);
+      {
+        let mut rest = &mut *comps;
+        for _ in 0..numcomps {
+          let (first, r) = rest.split_at_mut(1);
+          l_scratch.push(
+            first[0]
+              .data
+              .as_mut_f32(samples)
+              .iter()
+              .map(|v| v.to_bits() as i32)
+              .collect(),
+          );
+          rest = r;
+        }
+      }
+      {
+        let mut l_views: Vec<&mut [i32]> =
+          l_scratch.iter_mut().map(|v| &mut v[..]).collect();
+        if opj_mct_encode_custom(matrix, samples, &mut l_views, image.comps[0].sgnd) == 0 {
+          return 0i32;
+        }
+      }
+      {
+        let mut rest = &mut *comps;
+        for fdata in &l_scratch {
+          let (first, r) = rest.split_at_mut(1);
+          for (d, &v) in first[0].data.as_mut_f32(samples).iter_mut().zip(fdata.iter()) {
+            *d = f32::from_bits(v as u32);
+          }
+          rest = r;
+        }
+      }
     }
   } else if tcp.tccps[0].qmfbid == 0u32 {
     let (c0, rest) = comps.split_at_mut(1);
     let (c1, rest) = rest.split_at_mut(1);
     let (c2, _) = rest.split_at_mut(1);
     opj_mct_encode_real(
-      c0[0].data.as_mut_slice(samples),
-      c1[0].data.as_mut_slice(samples),
-      c2[0].data.as_mut_slice(samples),
+      c0[0].data.as_mut_f32(samples),
+      c1[0].data.as_mut_f32(samples),
+      c2[0].data.as_mut_f32(samples),
     );
   } else {
     let (c0, rest) = comps.split_at_mut(1);
     let (c1, rest) = rest.split_at_mut(1);
     let (c2, _) = rest.split_at_mut(1);
     opj_mct_encode(
-      c0[0].data.as_mut_slice(samples),
-      c1[0].data.as_mut_slice(samples),
-      c2[0].data.as_mut_slice(samples),
+      c0[0].data.as_mut_i32(samples),
+      c1[0].data.as_mut_i32(samples),
+      c2[0].data.as_mut_i32(samples),
     );
   }
   1i32
@@ -2307,7 +2414,7 @@ pub(crate) fn opj_tcd_copy_tile_data(
     if l_size_comp == 3u32 {
       l_size_comp = 4_u32
     }
-    let l_dest = l_tilec.data.as_mut_slice(l_nb_elem);
+    let l_dest = l_tilec.data.as_mut_i32(l_nb_elem);
     match l_size_comp {
       1 => {
         let (src, remain) = p_src.split_at(l_nb_elem);
