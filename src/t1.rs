@@ -1816,9 +1816,9 @@ fn opj_t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OPJ_
   /* No risk of overflow. Prior checks ensure those assert are met */
   /* They are per the specification */
 
-  assert!(w <= 1024);
-  assert!(h <= 1024);
-  assert!(w.wrapping_mul(h) <= 4096);
+  debug_assert!(w <= 1024);
+  debug_assert!(h <= 1024);
+  debug_assert!(w.wrapping_mul(h) <= 4096);
   /* encoder uses tile buffer, so no need to allocate */
   let datasize = w.wrapping_mul(h);
   t1.data.resize(datasize as usize);
@@ -2974,7 +2974,7 @@ fn opj_t1_encode_cblk(
   while passno < cblk.totalpasses {
     /* Prevent generation of FF as last data byte of a pass*/
     /* For terminating passes, the flushing procedure ensured this already */
-    assert!(cblk.passes[passno as usize].rate > 0);
+    debug_assert!(cblk.passes[passno as usize].rate > 0);
     if cblk.data_byte(cblk.passes[passno as usize].rate.wrapping_sub(1) as usize)
       as core::ffi::c_int
       == 0xffi32

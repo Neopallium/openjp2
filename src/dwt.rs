@@ -607,7 +607,7 @@ fn opj_dwt_encode_step2(
     }
   }
   if m < end {
-    assert!(m.wrapping_add(1u32) == end);
+    debug_assert!(m.wrapping_add(1u32) == end);
     w[fw_base - 1] += 2 as core::ffi::c_float * w[fw_base - 2] * c
   };
 }
@@ -618,7 +618,7 @@ Forward 9-7 wavelet transform in 1-D
 fn opj_dwt_encode_1_real(w: &mut [f32], dn: i32, sn: i32, cas: i32) {
   let mut a: i32 = 0;
   let mut b: i32 = 0;
-  assert!(dn + sn > 1i32);
+  debug_assert!(dn + sn > 1i32);
   if cas == 0i32 {
     a = 0i32;
     b = 1i32
@@ -1078,7 +1078,7 @@ fn opj_v8dwt_encode_step2(
     }
   }
   if m < end {
-    assert!(m.wrapping_add(1u32) == end);
+    debug_assert!(m.wrapping_add(1u32) == end);
     c = 0;
     while c < NB_ELTS_V8 as i32 {
       tmp[fw_base - n + c as usize] +=
@@ -1623,7 +1623,7 @@ fn opj_dwt_interleave_partial_h<T: SparseSample>(
     0_u32,
     true,
   );
-  assert!(ret);
+  debug_assert!(ret);
   let ret = sparse_array_read(
     sa,
     sn.wrapping_add(win_h_x0),
@@ -1635,7 +1635,7 @@ fn opj_dwt_interleave_partial_h<T: SparseSample>(
     0_u32,
     true,
   );
-  assert!(ret);
+  debug_assert!(ret);
 }
 fn opj_dwt_interleave_partial_v<T: SparseSample>(
   dest: &[Cell<T>],
@@ -1660,7 +1660,7 @@ fn opj_dwt_interleave_partial_v<T: SparseSample>(
     (2i32 * 4i32) as u32,
     true,
   );
-  assert!(ret);
+  debug_assert!(ret);
   let ret = sparse_array_read(
     sa,
     sa_col,
@@ -1672,7 +1672,7 @@ fn opj_dwt_interleave_partial_v<T: SparseSample>(
     (2i32 * 4i32) as u32,
     true,
   );
-  assert!(ret);
+  debug_assert!(ret);
 }
 
 fn opj_dwt_get_band_coordinates(
@@ -1868,7 +1868,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
       tr_max.win_x1.wrapping_sub(tr_max.win_x0),
       true,
     );
-    assert!(ret);
+    debug_assert!(ret);
     return 1i32;
   }
   h_mem_size = opj_dwt_max_resolution(&tilec.resolutions, numres) as usize;
@@ -2174,7 +2174,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
     tr_max.win_x1.wrapping_sub(tr_max.win_x0),
     true,
   );
-  assert!(ret_0);
+  debug_assert!(ret_0);
   1i32
 }
 
@@ -2229,7 +2229,7 @@ fn opj_v8dwt_interleave_partial_h(
       0_u32,
       true,
     );
-    assert!(ret);
+    debug_assert!(ret);
     let ret = sparse_array_read(
       sa,
       (dwt.sn as u32).wrapping_add(dwt.win_h_x0),
@@ -2241,7 +2241,7 @@ fn opj_v8dwt_interleave_partial_h(
       0_u32,
       true,
     );
-    assert!(ret);
+    debug_assert!(ret);
   }
 }
 
@@ -2298,7 +2298,7 @@ fn opj_v8dwt_interleave_partial_v(
     2 * NB_ELTS_V8,
     true,
   );
-  assert!(ret);
+  debug_assert!(ret);
   let ret = sparse_array_read(
     sa,
     sa_col,
@@ -2310,7 +2310,7 @@ fn opj_v8dwt_interleave_partial_v(
     2 * NB_ELTS_V8,
     true,
   );
-  assert!(ret);
+  debug_assert!(ret);
 }
 
 /// `w` is the flat wavelet buffer and `w_base` the float index the C code's `opj_v8_t*` argument
@@ -2359,7 +2359,7 @@ fn opj_v8dwt_decode_step2(
     w_base += STEP;
   }
   if m < end {
-    assert!(m.wrapping_add(1u32) == end);
+    debug_assert!(m.wrapping_add(1u32) == end);
     c += c;
     for e in 0..N {
       let cell = &w[w_base - N + e];
@@ -2675,7 +2675,7 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
       tr_max.win_x1.wrapping_sub(tr_max.win_x0),
       true,
     );
-    assert!(ret);
+    debug_assert!(ret);
     return 1i32;
   }
   l_data_size = opj_dwt_max_resolution(&tilec.resolutions, numres) as usize;
@@ -2971,7 +2971,7 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
     tr_max.win_x1.wrapping_sub(tr_max.win_x0),
     true,
   );
-  assert!(ret_0);
+  debug_assert!(ret_0);
   1i32
 }
 

@@ -1047,7 +1047,7 @@ pub(crate) fn opj_mqc_init_enc(mut mqc: &mut Mqc, len: u32) {
   /* At this point we should test *(mqc->bp) against 0xFF, but this is not */
   /* necessary, as this is only used at the beginning of the code block */
   /* and our initial fake byte is set at 0 */
-  assert!(mqc.bp() != 0xff);
+  debug_assert!(mqc.bp() != 0xff);
 
   mqc.end_of_byte_stream_counter = 0;
 }
@@ -1072,7 +1072,7 @@ pub(crate) fn opj_mqc_bypass_init_enc(mut mqc: &mut Mqc) {
   /* This function is normally called after at least one opj_mqc_flush() */
   /* which will have advance mqc->bp by at least 2 bytes beyond its */
   /* initial position */
-  assert!(mqc.check_start(0));
+  debug_assert!(mqc.check_start(0));
   mqc.c = 0;
   /* in theory we should initialize to 8, but use this special value */
   /* as a hint that opj_mqc_bypass_enc() has never been called, so */
@@ -1082,7 +1082,7 @@ pub(crate) fn opj_mqc_bypass_init_enc(mut mqc: &mut Mqc) {
   mqc.ct = BYPASS_CT_INIT;
   /* Given that we are called after opj_mqc_flush(), the previous byte */
   /* cannot be 0xff. */
-  assert!(mqc.bp_peek_offset(-1) != 0xff);
+  debug_assert!(mqc.bp_peek_offset(-1) != 0xff);
 }
 
 pub(crate) fn opj_mqc_bypass_enc(mut mqc: &mut Mqc, d: u32) {
@@ -1123,7 +1123,7 @@ pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: OPJ_BOOL) 
     mqc.inc_bp()
   } else if mqc.ct == 7 && mqc.bp_peek_offset(-1) == 0xff {
     /* Discard last 0xff */
-    assert!(erterm == 0);
+    debug_assert!(erterm == 0);
     mqc.bp_offset(-1)
   } else if mqc.ct == 8
     && erterm == 0
@@ -1137,7 +1137,7 @@ pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: OPJ_BOOL) 
     mqc.bp_offset(-2)
   }
 
-  assert!(mqc.bp_peek_offset(-1) != 0xff);
+  debug_assert!(mqc.bp_peek_offset(-1) != 0xff);
 }
 
 pub(crate) fn opj_mqc_reset_enc(mut mqc: &mut Mqc) {
@@ -1159,8 +1159,8 @@ pub(crate) fn opj_mqc_restart_init_enc(mut mqc: &mut Mqc) {
   /* initial position */
   mqc.bp_offset(-1);
 
-  assert!(mqc.check_start(-1));
-  assert!(mqc.bp() != 0xff);
+  debug_assert!(mqc.check_start(-1));
+  debug_assert!(mqc.bp() != 0xff);
   if mqc.bp() == 0xff {
     mqc.ct = 13;
   }
@@ -1221,7 +1221,7 @@ fn opj_mqc_init_dec_common(
   mut len: u32,
   mut extra_writable_bytes: u32,
 ) {
-  assert!(extra_writable_bytes >= OPJ_COMMON_CBLK_DATA_EXTRA);
+  debug_assert!(extra_writable_bytes >= OPJ_COMMON_CBLK_DATA_EXTRA);
   let len = len as usize;
   debug_assert!(mqc.buf.len() >= offset.wrapping_add(len).wrapping_add(extra_writable_bytes as usize));
   mqc.attach(offset, offset + len);
@@ -1287,7 +1287,7 @@ pub(crate) fn opj_mqc_setstate(mqc: &mut Mqc, ctxno: u8, msb: u32, prob: i32) {
 pub(crate) fn opj_mqc_byteout(mut mqc: &mut Mqc) {
   /* bp is initialized to start - 1 in opj_mqc_init_enc() */
   /* but this is safe, see opj_tcd_code_block_enc_allocate_data() */
-  assert!(mqc.check_start(-1));
+  debug_assert!(mqc.check_start(-1));
   if mqc.bp() == 0xff {
     mqc.inc_bp();
     mqc.write_byte((mqc.c >> 20) as u8);

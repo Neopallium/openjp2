@@ -97,7 +97,7 @@ pub(crate) fn opj_bio_putbit(bio: &mut Bio, b: u32) {
 }
 
 pub(crate) fn opj_bio_write(bio: &mut Bio, v: u32, n: u32) {
-  assert!(n > 0u32 && n <= 32u32);
+  debug_assert!(n > 0u32 && n <= 32u32);
   let mut i = n as i32 - 1i32;
   while i >= 0i32 {
     bio.putbit(v >> i & 1u32);
@@ -106,7 +106,7 @@ pub(crate) fn opj_bio_write(bio: &mut Bio, v: u32, n: u32) {
 }
 
 pub(crate) fn opj_bio_read(bio: &mut Bio, n: u32) -> u32 {
-  assert!(n > 0u32);
+  debug_assert!(n > 0u32);
   let mut v = 0u32;
   let mut i = n as i32 - 1i32;
   while i >= 0i32 {
