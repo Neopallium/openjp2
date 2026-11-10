@@ -224,12 +224,15 @@ Notes:
    exactly one entry; the header writer/reader lists are fixed sequences.
    Replace `ProcedureList` with plain method calls — simpler, greppable, no
    fn-pointer table. Low risk, mechanical.)
-2. **Marker classification cleanup (review_3 M3).** Make
-   `EPH/SOC/SOD/EOC` behave like the C's `read_unk` (skip + rescan) so corrupt
-   streams recover identically; special-case `SOD` explicitly in the
-   tile-part loop where it terminates the header (study the C's
-   `opj_j2k_read_unk` + `read_tile_header` interplay first — this is the one
-   item the fix round left open on purpose).
+2. **Marker classification cleanup (review_3 M3).** — ✅ **LANDED (B.1.2)**:
+   `EPH/SOC/SOD/EOC` now behave like the C's `read_unk` (skip + rescan) via
+   the `has_handler()` predicate; the tile-part loop's SOD/EOC state machine
+   was left untouched (the C fatals on stray markers there too, matching the
+   port's existing behavior).  (Original item text: make `EPH/SOC/SOD/EOC`
+   behave like the C's `read_unk` (skip + rescan) so corrupt streams recover
+   identically; special-case `SOD` explicitly in the tile-part loop where it
+   terminates the header ... the one item the fix round left open on
+   purpose.)
 3. **Thread-local T1 → owned per-job workspace.** — ✅ **LANDED (2363fdb6)**:
    separate decode/encode `T1Pool`s (one slot per rayon worker,
    `OnceLock`-backed, poisoned-lock recovery); a decoded MQ sentinel can no
