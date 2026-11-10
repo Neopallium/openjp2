@@ -1033,6 +1033,12 @@ pub(crate) fn opj_mqc_init_enc(mut mqc: &mut Mqc, len: u32) {
   mqc.c = 0;
   let base_len = (len as usize).wrapping_add(1);
   mqc.grow_buf(base_len);
+  /* Zero the sentinel byte the cursor reads through at bp - 1: the C's
+  comment ("our initial fake byte is set at 0") relies on the codeblock
+  allocation being zeroed, but the port's buffer is shared with the t1
+  DECODE path (which leaves the last decoded chunk's bytes, including a
+  possible 0xFF, in buf[0]) - re-establish the invariant here. */
+  mqc.buf_mut()[0].set(0);
   mqc.attach(1, base_len);
   /* Yes, we point before the start of the buffer, but this is safe */
   /* given opj_tcd_code_block_enc_allocate_data() */
@@ -1355,5 +1361,21 @@ mod tests {
       decoded.push(d);
     }
     assert_eq!(bits, decoded);
+  }
+
+  /// The encoder's sentinel byte (buf[0], the byte the cursor reads through
+  /// at bp - 1) must be re-zeroed by opj_mqc_init_enc: the buffer is shared
+  /// with the t1 DECODE path, which leaves the last decoded chunk's bytes
+  /// in it (a stale 0xFF used to trip the always-on assert below).
+  #[test]
+  fn init_enc_zeroes_sentinel() {
+    let mut mqc = Mqc::default();
+    opj_mqc_resetstates(&mut mqc);
+    // Simulate a decode that left a chunk starting with 0xFF in the buffer.
+    mqc.grow_buf(64);
+    mqc.buf_mut()[0].set(0xff);
+    mqc.buf_mut()[1].set(0x7f);
+    opj_mqc_init_enc(&mut mqc, 63);
+    assert_eq!(mqc.buf_ref()[0].get(), 0, "sentinel must be zeroed");
   }
 }

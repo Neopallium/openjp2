@@ -74,9 +74,11 @@ pub(crate) fn opj_mct_encode(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
     let r = c0[i];
     let g = c1[i];
     let b = c2[i];
-    c0[i] = (r + g * 2i32 + b) >> 2i32;
-    c1[i] = b - g;
-    c2[i] = r - g;
+    /* The C's int arithmetic wraps on hardware (UB in the standard);
+    match it explicitly so debug builds do not panic on extreme samples. */
+    c0[i] = r.wrapping_add(g.wrapping_mul(2i32)).wrapping_add(b) >> 2i32;
+    c1[i] = b.wrapping_sub(g);
+    c2[i] = r.wrapping_sub(g);
   }
 }
 /* <summary> */
@@ -89,10 +91,10 @@ pub(crate) fn opj_mct_decode(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
     let y = c0[i];
     let u = c1[i];
     let v = c2[i];
-    let g = y - ((u + v) >> 2i32);
-    c0[i] = v + g;
+    let g = y.wrapping_sub(u.wrapping_add(v) >> 2i32);
+    c0[i] = v.wrapping_add(g);
     c1[i] = g;
-    c2[i] = u + g;
+    c2[i] = u.wrapping_add(g);
   }
 }
 /* <summary> */

@@ -682,7 +682,10 @@ fn opj_jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
   if buf.len() < nr_channels as usize {
     return 0;
   }
-  let mut entries = Vec::with_capacity((nr_channels * nr_channels) as usize);
+  /* Capacity hint: the entries hold nr_entries x nr_channels values.  The
+  u8 x u8 product overflows in debug builds for nr_channels >= 16 (and is
+  semantically wrong even when it wraps). */
+  let mut entries = Vec::with_capacity((nr_entries as usize) * (nr_channels as usize));
   let mut channel = Vec::with_capacity(nr_channels as usize);
   for _ in 0..nr_channels {
     let value = buf.read_u8().expect("Buffer should have enough data");
@@ -968,7 +971,6 @@ fn opj_jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
           .expect("Buffer should have enough data");
         icc_profile.write_all(&0u32.to_ne_bytes()).unwrap();
       } else if !buf.is_empty() {
-        icc_profile.write_all(&0x44454600u32.to_ne_bytes()).unwrap();
         event_msg!(
           p_manager,
           EVT_WARNING,
@@ -976,6 +978,11 @@ fn opj_jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
           total_size,
         );
       }
+      /* C parity: the second word is the "DEF" illuminant word for every
+      CIELab form except the 28-byte one (which explicitly carries 0 there);
+      the port used to omit it for the default/minimal form, producing a
+      32-byte profile that breaks the CIE_LAB_BYTE_SIZE == 36 convention. */
+      icc_profile.write_all(&0x44454600u32.to_ne_bytes()).unwrap();
       icc_profile.write_all(&rl.to_ne_bytes()).unwrap();
       icc_profile.write_all(&ol.to_ne_bytes()).unwrap();
       icc_profile.write_all(&ra.to_ne_bytes()).unwrap();

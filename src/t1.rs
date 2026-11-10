@@ -2232,6 +2232,13 @@ fn opj_t1_decode_cblk(
     return 1i32;
   }
 
+  /* C parity (t1.c): a codeblock with no data has nothing to decode -
+  return before the segment loop so the PTERM check below does not run
+  against the previous codeblock's stale MQ state. */
+  if cblk.numchunks == 0 {
+    return 1i32;
+  }
+
   /* The C code reads the codeblock payload either in place (single chunk,
   no cblkdatabuffer) or through a concatenation buffer (multi-chunk /
   multi-threaded cases). Here the MQ coder owns its buffer, so we always

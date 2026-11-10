@@ -211,10 +211,13 @@ impl Stream {
 
   pub fn get_bytes_left(&self) -> i64 {
     log::trace!("-- byte_left(), offset={}", self.m_byte_offset);
-    assert!(self.m_byte_offset >= 0i64);
-    /* The C's opj_stream_get_number_byte_left asserts\n    m_user_data_length >= m_byte_offset - but only in debug builds\n    (NDEBUG strips it), and unknown-length streams (length 0) return 0.\n    Mirror that: the check only applies when a length is known. */
+    /* The C's opj_stream_get_number_byte_left asserts
+    m_user_data_length >= m_byte_offset only in debug builds (NDEBUG strips
+    it) and unknown-length streams (length 0) return 0.  Mirror the
+    behaviour WITHOUT the asserts: the TLM-driven decode can seek to the
+    end of the last tile part and probe 2 bytes past EOF, which must read
+    as a clean short-read, not a panic. */
     if self.m_stream_length != 0 {
-      assert!(self.m_stream_length >= self.m_byte_offset as u64);
       log::trace!("-- get_number_byte_left() = {}", (self.m_stream_length as i64) - self.m_byte_offset);
       (self.m_stream_length as i64) - self.m_byte_offset
     } else {

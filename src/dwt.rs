@@ -934,7 +934,7 @@ fn opj_dwt_encode_and_deinterleave_v(
       if height.is_multiple_of(2) {
         c = 0_u32;
         while c < NB_ELTS_V8 {
-          dc!(i, c) -= sc!(i, c);
+          dc!(i, c) = dc!(i, c).wrapping_sub(sc!(i, c));
           c += 1
         }
       }
@@ -963,13 +963,13 @@ fn opj_dwt_encode_and_deinterleave_v(
   } else if height == 1 {
     c = 0_u32;
     while c < NB_ELTS_V8 {
-      sc!(0, c) *= 2;
+      sc!(0, c) = sc!(0, c).wrapping_mul(2);
       c += 1
     }
   } else {
     c = 0_u32;
     while c < NB_ELTS_V8 {
-      sc!(0, c) -= dc!(0, c);
+      sc!(0, c) = sc!(0, c).wrapping_sub(dc!(0, c));
       c += 1
     }
     i = 1_u32;
@@ -1852,8 +1852,11 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
   }
   h_mem_size = opj_dwt_max_resolution(&tilec.resolutions, numres) as usize;
   /* overflow check */
-  /* in vertical pass, we process 4 columns at a time */
-  if h_mem_size > (usize::MAX / 4 * core::mem::size_of::<i32>()) {
+  /* in vertical pass, we process 4 columns at a time; the scratch holds
+  4 x h_mem_size i32 elements, so the guard must divide by 4 * sizeof(i32)
+  (the C writes SIZE_MAX / (4 * sizeof(OPJ_INT32)); the port's previous
+  left-to-right MAX/4*4 expression was a dead check). */
+  if h_mem_size > (usize::MAX).wrapping_div(4 * core::mem::size_of::<i32>()) {
     return 0i32;
   }
   h_mem_size *= 4;

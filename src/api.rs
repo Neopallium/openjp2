@@ -1856,6 +1856,401 @@ mod tests {
     }
   }
 
+  /// Regression (review round 2, H1): a QCD marker with Sqcd == 1 (SIQNT)
+  /// and no SPqcd bytes must be rejected, not panic (the 2-byte band read
+  /// used to slice past the end of the marker content).
+  #[test]
+  fn siqnt_truncated_qcd_rejected() {
+    let mut cs = Vec::new();
+    cs.extend([0xff, 0x4f]); // SOC
+    // SIZ 8x8 1 comp
+    cs.extend([0xff, 0x51, 0x00, 0x29]);
+    cs.extend(0u16.to_be_bytes()); // Rsiz
+    for _ in 0..8 {
+      cs.extend(8u32.to_be_bytes());
+    }
+    cs.extend(0u32.to_be_bytes());
+    cs.extend(1u16.to_be_bytes()); // Csiz
+    cs.extend([0x07, 0x01, 0x01]);
+    // COD
+    cs.extend([0xff, 0x52, 0x00, 0x0c]);
+    cs.extend([0x00, 0x00]);
+    cs.extend(1u16.to_be_bytes());
+    cs.extend([0x00]);
+    cs.extend([0x00, 0x04, 0x04, 0x00, 0x01]);
+    // QCD: Lqcd=3, Sqcd=0x01 (SIQNT), no SPqcd -> truncated
+    cs.extend([0xff, 0x5c, 0x00, 0x03, 0x01]);
+
+    assert!(Image::from_bytes_with(&cs, DecodeParameters::new().strict(true)).is_err());
+    // The raw (unguarded) Codec path must fail cleanly too, not panic.
+    #[allow(deprecated)]
+    {
+      let mut codec = Codec::new_decoder(OPJ_CODEC_J2K).unwrap();
+      let mut stream = Stream::new_input(
+        crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+        std::io::Cursor::new(cs.clone()),
+        cs.len() as u64,
+      );
+      let mut dp = opj_dparameters::default();
+      codec.setup_decoder(&mut dp);
+      codec.decoder_set_strict_mode(1);
+      assert!(codec.read_header(&mut stream).is_none());
+    }
+  }
+
+  /// Regression (review round 2, H2): components that subsample to a zero
+  /// width/height must not panic the tile API (the C SIGFPEs on one shape
+  /// and no-ops on the other; both now fail/succeed cleanly).
+  #[test]
+  fn zerodim_tile_api_does_not_panic() {
+    for path in ["samples/zerowidth_patched.j2k", "samples/zerodim_patched.j2k"] {
+      let data = std::fs::read(path).unwrap();
+      #[allow(deprecated)]
+      {
+        let mut codec = Codec::new_decoder(OPJ_CODEC_J2K).unwrap();
+        let mut stream = Stream::new_input(
+          crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+          std::io::Cursor::new(data.clone()),
+          data.len() as u64,
+        );
+        let mut dp = opj_dparameters::default();
+        codec.setup_decoder(&mut dp);
+        let image = codec.read_header(&mut stream).expect("header");
+        let mut tile_info = crate::TileInfo::default();
+        tile_info.data_size = Some(0);
+        assert!(
+          codec.read_tile_header(&mut stream, &mut tile_info),
+          "{path}: read_tile_header"
+        );
+        let mut buf = vec![0u8; tile_info.data_size.unwrap_or(0) as usize];
+        let ok = codec.decode_tile_data(&mut stream, 0, Some(&mut buf));
+        assert!(ok == 1, "{path}: decode_tile_data -> {ok}");
+        let _ = image;
+      }
+    }
+  }
+
+  /// Regression (review round 2, M2 / round 3, H1): in lenient mode a
+  /// codestream truncated right after the tile data (missing EOC) must
+  /// still deliver the decoded pixels - the C returns the full image, the
+  /// port used to return an image with empty component data.
+  #[test]
+  fn lenient_truncated_stream_keeps_pixels() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").unwrap();
+    let image = Image::from_bytes(&buf).unwrap();
+    let full = image.encode(EncodeParameters::new().num_resolutions(3)).unwrap();
+    let trunc = &full[..full.len() - 2]; // drop the EOC marker
+    let partial = Image::from_bytes_with(trunc, DecodeParameters::new().strict(false))
+      .expect("lenient truncated decode");
+    assert_eq!(partial.num_components(), image.num_components());
+    for (a, b) in image.components().iter().zip(partial.components()) {
+      assert_eq!(a.data.len(), b.data.len(), "component data must be preserved");
+      assert_eq!(a.data, b.data, "pixels must match the full decode");
+    }
+    // Strict mode still rejects the same stream.
+    assert!(Image::from_bytes_with(trunc, DecodeParameters::new().strict(true)).is_err());
+  }
+
+  /// Regression (review round 2, H3): an empty image with tiles requested
+  /// (or a tile origin outside the image) must be rejected, not divide by
+  /// zero.
+  #[test]
+  fn empty_image_with_tiles_rejected() {
+    let empty = Image {
+      core: crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: 0,
+        y1: 0,
+        numcomps: 1,
+        color_space: crate::OPJ_CLRSPC_GRAY,
+        comps: vec![crate::CoreImageComp {
+          dx: 1,
+          dy: 1,
+          w: 0,
+          h: 0,
+          x0: 0,
+          y0: 0,
+          prec: 8,
+          bpp: 8,
+          sgnd: 0,
+          resno_decoded: 0,
+          factor: 0,
+          alpha: 0,
+          data: vec![],
+        }],
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      },
+    };
+    assert!(empty
+      .encode(EncodeParameters::new().tile_size(64, 64))
+      .is_err());
+  }
+
+  /// Regression (review round 3, M4): is_imf_compliant must not index
+  /// prcw_init past the end for a caller-supplied res_spec > 33 (the C
+  /// reads OOB and returns FALSE; the port clamps the walk and encodes).
+  #[test]
+  fn imf_oversized_res_spec_encodes() {
+    let (w, h) = (32u32, 32u32);
+    let core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 1,
+      color_space: crate::OPJ_CLRSPC_GRAY,
+      comps: vec![crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data: vec![1; (w * h) as usize],
+      }],
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    let image = Image { core };
+    let mut params = EncodeParameters::new();
+    params.low_level().rsiz = 0x0400; // IMF 2K
+    params.low_level().res_spec = 40;
+    params.low_level().csty = 2;
+    assert!(image.encode(params).is_ok(), "encode must not panic");
+  }
+
+  /// Regression (review round 2, M6): custom-MCT matrix and dc-shift
+  /// vectors with the wrong lengths must be rejected (the C reads them
+  /// unconditionally).
+  #[test]
+  fn custom_mct_lengths_validated() {
+    let (w, h) = (16u32, 16u32);
+    let core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 3,
+      color_space: crate::OPJ_CLRSPC_SRGB,
+      comps: (0..3)
+        .map(|_| crate::CoreImageComp {
+          dx: 1,
+          dy: 1,
+          w,
+          h,
+          x0: 0,
+          y0: 0,
+          prec: 8,
+          bpp: 8,
+          sgnd: 0,
+          resno_decoded: 0,
+          factor: 0,
+          alpha: 0,
+          data: vec![7; (w * h) as usize],
+        })
+        .collect(),
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    let image = Image { core };
+    let mut params = EncodeParameters::new().num_resolutions(2);
+    params.low_level().mct_data = Some((vec![1.0f32; 4], vec![0i32; 3])); // matrix too short
+    assert!(image.encode(params.clone()).is_err());
+    let mut params = EncodeParameters::new().num_resolutions(2);
+    params.low_level().mct_data = Some((vec![1.0f32; 9], vec![0i32; 2])); // dc_shift too short
+    assert!(image.encode(params).is_err());
+  }
+
+  /// Regression (review round 3, L3): an out-of-range progression order
+  /// must be rejected instead of written as a garbage marker.
+  #[test]
+  fn prog_order_validated() {
+    let (w, h) = (16u32, 16u32);
+    let core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 1,
+      color_space: crate::OPJ_CLRSPC_GRAY,
+      comps: vec![crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data: vec![1; (w * h) as usize],
+      }],
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    let image = Image { core };
+    let mut params = EncodeParameters::new();
+    params.low_level().prog_order = 99;
+    assert!(image.encode(params).is_err());
+  }
+
+  /// Regression (review rounds 2+3, M1): with TLM enabled and multi-part
+  /// tiles, the parallel encoder must fall back to the sequential path
+  /// (one TLM entry per tile would corrupt the marker); both paths then
+  /// produce byte-identical output.
+  #[cfg(feature = "rayon")]
+  #[test]
+  fn parallel_tlm_multi_part_falls_back() {
+    let (w, h) = (192u32, 128u32);
+    let mut comps = Vec::new();
+    for c in 0..3u32 {
+      let mut data = Vec::with_capacity((w * h) as usize);
+      for i in 0..w * h {
+        data.push(((i * 7 + c * 31) % 256) as i32);
+      }
+      comps.push(crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data,
+      });
+    }
+    let core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 3,
+      color_space: crate::OPJ_CLRSPC_SRGB,
+      comps,
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    #[allow(deprecated)]
+    let encode_low_level = |tlm: bool| -> Vec<u8> {
+      let mut codec = Codec::new_encoder(OPJ_CODEC_J2K).unwrap();
+      if tlm {
+        assert!(codec.encoder_set_extra_options(&["TLM=YES"]));
+      }
+      let mut params = crate::EncoderParameters {
+        tile_size_on: 1,
+        cp_tdx: 64,
+        cp_tdy: 64,
+        tp_on: 1,
+        tp_flag: b'R' as i8, // one tile-part per rate layer
+        cp_disto_alloc: 1,   // enable rate allocation so the layers split
+        tcp_numlayers: 2,
+        tcp_rates: {
+          let mut r = [0.0; 100];
+          r[0] = 20.0;
+          r[1] = 10.0;
+          r
+        },
+        numresolution: 3,
+        irreversible: 0,
+        ..Default::default()
+      };
+      let mut img = core.clone();
+      assert_eq!(codec.setup_encoder(&mut params, &mut img), 1);
+      let buf = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+      {
+        let writer = crate::stream::SharedVecWriter { buf: buf.clone(), pos: 0 };
+        let mut stream = Stream::new_output(
+          crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+          writer,
+        );
+        assert_eq!(codec.start_compress(&mut img, &mut stream), 1);
+        // The parallel driver must decline when TLM + multi-part tiles are
+        // requested (one TLM entry per tile would corrupt the marker); for
+        // the non-TLM control it applies normally.
+        let parallel = codec.encode_parallel(&mut stream);
+        assert_eq!(parallel, Some(!tlm), "parallel path fallback for TLM + multi-part");
+        if parallel != Some(true) {
+          assert_eq!(codec.encode(&mut stream), 1);
+        }
+        assert_eq!(codec.end_compress(&mut stream), 1);
+      }
+      std::rc::Rc::try_unwrap(buf).ok().map(|b| b.into_inner()).expect("unique handle")
+    };
+    let with_tlm = encode_low_level(true);
+    let without_tlm = encode_low_level(false);
+    assert!(!with_tlm.is_empty());
+    assert!(!without_tlm.is_empty());
+    // Both encode; the TLM variant decodes (rate allocation makes it lossy,
+    // so only geometry/components are asserted).
+    let back = Image::from_bytes(&with_tlm).expect("decode TLM stream");
+    assert_eq!(back.num_components(), 3);
+    assert_eq!((back.width(), back.height()), (w, h));
+  }
+
+  /// Regression (review round 2, M4 / round 3, H2b): subsampled component
+  /// planes must be rejected by get_pixels/DynamicImage instead of
+  /// silently truncating and panicking in the conversion.
+  #[cfg(feature = "image")]
+  #[test]
+  fn get_pixels_subsampled_rejected() {
+    let (w, h) = (64u32, 48u32);
+    let mut comps = Vec::new();
+    for c in 0..3u32 {
+      let dx = if c == 0 { 1 } else { 2 };
+      let (cw, ch) = (w.div_ceil(dx), h.div_ceil(dx));
+      comps.push(crate::CoreImageComp {
+        dx,
+        dy: dx,
+        w: cw,
+        h: ch,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data: vec![c as i32 * 40; (cw * ch) as usize],
+      });
+    }
+    let image = Image {
+      core: crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+        numcomps: 3,
+        color_space: crate::OPJ_CLRSPC_UNSPECIFIED,
+        comps,
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      },
+    };
+    assert!(image.get_pixels(None).is_err(), "subsampled planes must be rejected");
+    use core::convert::TryFrom;
+    assert!(
+      ::image::DynamicImage::try_from(&image).is_err(),
+      "DynamicImage conversion must not panic"
+    );
+  }
+
   #[test]
   fn color_space_round_trip() {
     for cs in [
@@ -2189,6 +2584,17 @@ pub mod image_conv {
         .first()
         .map(|c| (c.w, c.h))
         .ok_or_else(|| Error::Unsupported("image has no components".into()))?;
+      /* Legally subsampled codestreams (XRsiz/YRsiz > 1) have component
+      planes of different dimensions; the per-plane iterators below zip and
+      would silently truncate.  Refuse them instead of returning an
+      ImageData shorter than its contract (and panicking in the
+      DynamicImage conversion). */
+      if !self.core.comps_same_dims() {
+        return Err(Error::Unsupported(
+          "components have different dimensions (subsampled image); convert each plane separately"
+            .into(),
+        ));
+      }
       let max_prec = comps.iter().fold(0u32, |max, c| max.max(c.prec));
       let has_alpha = comps.iter().any(|c| c.alpha != 0);
       match &self.color_space() {
@@ -2330,9 +2736,12 @@ pub mod image_conv {
 
   /// Scales a component to unsigned 8-bit values.
   pub(crate) fn comp_u8(comp: &CoreImageComp) -> impl Iterator<Item = u8> + '_ {
-    let len = (comp.w as usize) * (comp.h as usize);
+    // Bound the walk by the data actually present, not by w*h: a partial
+    // (lenient/truncated) decode legitimately leaves the plane shorter than
+    // the declared geometry, and the slice must not panic.
+    let len = ((comp.w as usize) * (comp.h as usize)).min(comp.data.len());
     let data = &comp.data[..len];
-    let prec = comp.prec;
+    let prec = comp.prec.clamp(1, 31);
     let signed = comp.sgnd != 0;
     data.iter().map(move |p| {
       if signed {
@@ -2349,9 +2758,10 @@ pub mod image_conv {
 
   /// Scales a component to unsigned 16-bit values.
   pub(crate) fn comp_u16(comp: &CoreImageComp) -> impl Iterator<Item = u16> + '_ {
-    let len = (comp.w as usize) * (comp.h as usize);
+    // See comp_u8: bound by the available data, clamp the precision.
+    let len = ((comp.w as usize) * (comp.h as usize)).min(comp.data.len());
     let data = &comp.data[..len];
-    let prec = comp.prec;
+    let prec = comp.prec.clamp(1, 31);
     let signed = comp.sgnd != 0;
     data.iter().map(move |p| {
       if signed {
@@ -2379,28 +2789,28 @@ pub mod image_conv {
       } = img.get_pixels(None)?;
       Ok(match data {
         ImagePixelData::L8(d) => DynamicImage::ImageLuma8(
-          GrayImage::from_vec(width, height, d).expect("pixel buffer length"),
+          GrayImage::from_vec(width, height, d).ok_or_else(|| Error::Unsupported("pixel buffer length mismatch".into()))?,
         ),
         ImagePixelData::La8(d) => DynamicImage::ImageLumaA8(
-          GrayAlphaImage::from_vec(width, height, d).expect("pixel buffer length"),
+          GrayAlphaImage::from_vec(width, height, d).ok_or_else(|| Error::Unsupported("pixel buffer length mismatch".into()))?,
         ),
         ImagePixelData::Rgb8(d) => DynamicImage::ImageRgb8(
-          RgbImage::from_vec(width, height, d).expect("pixel buffer length"),
+          RgbImage::from_vec(width, height, d).ok_or_else(|| Error::Unsupported("pixel buffer length mismatch".into()))?,
         ),
         ImagePixelData::Rgba8(d) => DynamicImage::ImageRgba8(
-          RgbaImage::from_vec(width, height, d).expect("pixel buffer length"),
+          RgbaImage::from_vec(width, height, d).ok_or_else(|| Error::Unsupported("pixel buffer length mismatch".into()))?,
         ),
         ImagePixelData::L16(d) => DynamicImage::ImageLuma16(
-          ImageBuffer::from_vec(width, height, d).expect("pixel buffer length"),
+          ImageBuffer::from_vec(width, height, d).ok_or_else(|| Error::Unsupported("pixel buffer length mismatch".into()))?,
         ),
         ImagePixelData::La16(d) => DynamicImage::ImageLumaA16(
-          ImageBuffer::from_vec(width, height, d).expect("pixel buffer length"),
+          ImageBuffer::from_vec(width, height, d).ok_or_else(|| Error::Unsupported("pixel buffer length mismatch".into()))?,
         ),
         ImagePixelData::Rgb16(d) => DynamicImage::ImageRgb16(
-          ImageBuffer::from_vec(width, height, d).expect("pixel buffer length"),
+          ImageBuffer::from_vec(width, height, d).ok_or_else(|| Error::Unsupported("pixel buffer length mismatch".into()))?,
         ),
         ImagePixelData::Rgba16(d) => DynamicImage::ImageRgba16(
-          ImageBuffer::from_vec(width, height, d).expect("pixel buffer length"),
+          ImageBuffer::from_vec(width, height, d).ok_or_else(|| Error::Unsupported("pixel buffer length mismatch".into()))?,
         ),
       })
     }
@@ -2454,6 +2864,15 @@ impl DumpImage {
     if codec.setup_decoder(&mut dparams) != 1 {
       return Err(Error::Decode("setup_decoder failed".into()));
     }
+    /* Mirror decode_stream_inner: the strict flag and the resource limits
+    must reach the DumpImage decoder too (they used to be silently
+    dropped). */
+    if codec.decoder_set_strict_mode(params.strict as crate::OPJ_BOOL) != 1 {
+      return Err(Error::Decode("failed to set strict mode".into()));
+    }
+    if codec.set_decode_limits(params.limits) != 1 {
+      return Err(Error::Decode("set_decode_limits failed".into()));
+    }
     #[allow(deprecated)]
     let image = catch_codec_panic(true, || {
       codec
@@ -2484,14 +2903,18 @@ impl DumpImage {
     let mut image = self.image.take().expect("image is Some");
     let codec = &mut self.codec;
     let stream = &mut self.stream;
-    catch_codec_panic(true, || {
+    let result = catch_codec_panic(true, || {
       if codec.decode(stream, &mut image) != 1 {
         return Err(Error::Decode("decode failed".into()));
       }
       Ok(())
-    })?;
-    self.image = Some(image);
-    Ok(())
+    });
+    /* Keep the image on failure so a retry after fixing the parameters (or
+    another decode() call) cannot hit the expect() above. */
+    if result.is_ok() {
+      self.image = Some(image);
+    }
+    result
   }
 
   /// The codestream index (tile-parts, markers, packets).

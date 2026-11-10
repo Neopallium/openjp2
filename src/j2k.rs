@@ -1404,11 +1404,11 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
       .wrapping_sub(cp.ty0)
       .wrapping_div(cp.tdy);
     p_j2k.m_specific_param.m_decoder.m_end_tile_x = opj_uint_ceildiv(
-      p_j2k.m_specific_param.m_decoder.m_end_tile_x - cp.tx0,
+      p_j2k.m_specific_param.m_decoder.m_end_tile_x.wrapping_sub(cp.tx0),
       cp.tdx,
     );
     p_j2k.m_specific_param.m_decoder.m_end_tile_y = opj_uint_ceildiv(
-      p_j2k.m_specific_param.m_decoder.m_end_tile_y - cp.ty0,
+      p_j2k.m_specific_param.m_decoder.m_end_tile_y.wrapping_sub(cp.ty0),
       cp.tdy,
     );
   } else {
@@ -3619,6 +3619,7 @@ fn opj_j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
     /* Check enough bytes left in stream before allocation */
     if p_j2k.m_specific_param.m_decoder.m_sot_length as i64
       > opj_stream_get_number_byte_left(p_stream)
+      && p_stream.m_stream_length != 0
     {
       if strict != 0 {
         event_msg!(
@@ -5744,9 +5745,11 @@ fn opj_j2k_is_imf_compliant(
       ret = 0i32
     }
   } else {
+    /* The C indexes prcw_init[i] with the caller-supplied res_spec (OOB
+    read for res_spec > 33); clamp the walk to the fixed array instead. */
     let mut i_0: core::ffi::c_int = 0;
     i_0 = 0i32;
-    while i_0 < parameters.res_spec {
+    while i_0 < parameters.res_spec && (i_0 as usize) < parameters.prcw_init.len() {
       if parameters.prcw_init[i_0 as usize] != 256i32
         || parameters.prch_init[i_0 as usize] != 256i32
       {
@@ -5820,6 +5823,33 @@ pub(crate) fn opj_j2k_setup_encoder(
     );
     return 0i32;
   }
+  /* The precinct-size derivation shifts prcw_init[res_spec-1] right by
+  (numresolution - res_spec) bits; shift counts >= 32 are a debug-build
+  panic (the C has shift UB).  Reject the combination instead. */
+  if parameters.csty & 1i32 != 0i32
+    && parameters.numresolution as i64 - parameters.res_spec as i64 >= 32i64
+  {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid resolution/precinct combination : numresolution ({}) - res_spec ({}) must be < 32\n",
+      parameters.numresolution,
+      parameters.res_spec,
+    );
+    return 0i32;
+  }
+  /* The C's opj_j2k_write_cod asserts on an unknown progression order; the
+  port's write path uses it as a marker value (garbage output where the C
+  has UB) - reject it up front. */
+  if !(0i32..=4i32).contains(&parameters.prog_order) {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid progression order : {}\n",
+      parameters.prog_order,
+    );
+    return 0i32;
+  }
   for comp in image.comps.iter() {
     if comp.prec < 1u32 || comp.prec > 31u32 {
       event_msg!(
@@ -5827,6 +5857,26 @@ pub(crate) fn opj_j2k_setup_encoder(
         EVT_ERROR,
         "Invalid image component precision : {} not in range [1,31]\n",
         comp.prec,
+      );
+      return 0i32;
+    }
+  }
+  /* The custom-MCT matrix and dc-shift vectors are sized by the caller
+  (public EncoderParameters / C-ABI opj_set_MCT); the C reads them
+  unconditionally (heap overread UB).  Validate the lengths so the port
+  fails cleanly instead of panicking in the matrix inversion or the
+  dc_shift indexing. */
+  if let Some((matrix, dc_shift)) = parameters.mct_data.as_ref() {
+    let n = image.numcomps as usize;
+    if matrix.len() != n * n || dc_shift.len() != n {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Invalid MCT data : matrix {} entries, dc_shift {} entries, expected {} and {}\n",
+        matrix.len(),
+        dc_shift.len(),
+        n * n,
+        n,
       );
       return 0i32;
     }
@@ -6226,10 +6276,28 @@ pub(crate) fn opj_j2k_setup_encoder(
       event_msg!(p_manager, EVT_ERROR, "Invalid tile height\n",);
       return 0i32;
     }
+    /* Reject empty tile grids up front: an image whose y1 <= ty0 (or
+    x1 <= tx0) yields th == 0 (tw == 0) and the C divides by zero at the
+    tile-count check below (SIGFPE); a zero tw later panics on
+    tcps[0] in the validation step. */
+    if image.y1 <= cp.ty0 || image.x1 <= cp.tx0 {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Invalid tile grid: image [({},{}) - ({},{})] does not contain the tile origin ({},{})\n",
+        image.x0,
+        image.y0,
+        image.x1,
+        image.y1,
+        cp.tx0,
+        cp.ty0,
+      );
+      return 0i32;
+    }
     cp.tw = opj_uint_ceildiv(image.x1 - (cp.tx0), cp.tdx);
     cp.th = opj_uint_ceildiv(image.y1 - (cp.ty0), cp.tdy);
     /* Check that the number of tiles is valid */
-    if cp.tw > (65535u32).wrapping_div(cp.th) {
+    if cp.tw == 0u32 || cp.th == 0u32 || cp.tw > (65535u32).wrapping_div(cp.th) {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -7938,8 +8006,16 @@ pub(crate) fn opj_j2k_decode_tile(
   }
   if p_j2k.m_specific_param.m_decoder.m_state != J2KState::EOC {
     if opj_stream_read_data(p_stream, &mut l_data[..2], p_manager) != 2 {
-      event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
-      return 0i32;
+      /* C parity (j2k.c:10191-10194): in lenient mode a codestream that
+      runs out after the tile data still delivers the decoded tiles - the
+      strict mode keeps the hard failure. */
+      let strict = p_j2k.m_cp.strict != 0;
+      event_msg!(
+        p_manager,
+        if strict { EVT_ERROR } else { EVT_WARNING },
+        "Stream too short\n",
+      );
+      return if strict { 0i32 } else { 1i32 };
     }
     l_current_marker = J2KMarker::from_buffer(&l_data);
     if l_current_marker == J2KMarker::EOC {
@@ -9177,6 +9253,13 @@ fn opj_j2k_read_sqcd_sqcc(
     }
     *p_header_size = (*p_header_size).wrapping_sub(l_num_band)
   } else {
+    /* Hoisted before the band loop: with qntsty == 1 (SIQNT) the declared
+    l_num_band is forced to 1 even when no SPqcd bytes remain, and reading
+    2 bytes past the end of the marker content is a slice OOB panic (the C
+    reads stale scratch bytes in-bounds and then fails the same check). */
+    if *p_header_size < 2 * l_num_band {
+      return 0i32;
+    }
     l_band_no = 0_u32;
     while l_band_no < l_num_band {
       l_tmp = opj_read_bytes(&header_data[cursor..], 2_u32);
@@ -9186,9 +9269,6 @@ fn opj_j2k_read_sqcd_sqcc(
         l_tccp.stepsizes[l_band_no as usize].mant = (l_tmp & 0x7ffu32) as i32
       }
       l_band_no += 1;
-    }
-    if *p_header_size < 2 * l_num_band {
-      return 0i32;
     }
     *p_header_size = (*p_header_size).wrapping_sub((2u32).wrapping_mul(l_num_band))
   }
@@ -9401,7 +9481,13 @@ fn opj_j2k_decode_tiles(
       p_j2k.m_specific_param.m_decoder.m_state |= J2KState::DATA
     } else {
       if !opj_j2k_read_tile_header(p_j2k, p_stream, &mut tile_info, p_manager) {
-        return 0i32;
+        /* Lenient mode (progressive download): stop decoding tiles and keep
+        the ones already merged (the C's decode_tile returns OPJ_TRUE for a
+        short stream in lenient mode and the tile loop ends the same way). */
+        if p_j2k.m_cp.strict != 0 {
+          return 0i32;
+        }
+        break;
       }
       if !tile_info.go_on {
         break;
@@ -10583,6 +10669,18 @@ pub(crate) fn j2k_encode_tiles_parallel(
   use rayon::prelude::*;
   let num_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   if num_tiles <= 1 {
+    return 0i32;
+  }
+  /* The parallel driver records one TLM entry per TILE with the whole
+  tile's length, while the serial path (and the C) records one per
+  TILE-PART with that part's Psot.  With TLM enabled and tiles that split
+  into multiple parts (tp_flag rate/layer allocation or POC), the TLM
+  would carry num_tiles entries where write_updated_tlm emits
+  total_tile_parts - wrong lengths.  Fall back to the sequential encoder
+  (the caller treats a 0 return as "parallel path does not apply"). */
+  if p_j2k.m_specific_param.m_encoder.m_tlm != 0
+    && p_j2k.m_specific_param.m_encoder.m_total_tile_parts != num_tiles
+  {
     return 0i32;
   }
   let header = p_j2k

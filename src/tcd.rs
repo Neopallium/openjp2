@@ -948,9 +948,20 @@ pub(crate) fn opj_tcd_init_tile(
             tlcblkystart =
               opj_int_floordivpow2(precinct.y0, cblkheightexpn as i32) << cblkheightexpn;
             /*fprintf(stderr, "\t tlcblkystart =%d\n",tlcblkystart );*/
-            brcblkxend = opj_int_ceildivpow2(precinct.x1, cblkwidthexpn as i32) << cblkwidthexpn;
-            /*fprintf(stderr, "\t brcblkxend =%d\n",brcblkxend );*/
-            brcblkyend = opj_int_ceildivpow2(precinct.y1, cblkheightexpn as i32) << cblkheightexpn;
+            /* Like the precinct-grid computation above: the i32 shift can
+            overflow for tiles near 2^31 (debug-build panic; the C has UB). */
+            let tmp_0 = (opj_int_ceildivpow2(precinct.x1, cblkwidthexpn as i32) as u32) << cblkwidthexpn;
+            if tmp_0 > 2147483647_u32 {
+              event_msg!(manager, EVT_ERROR, "Integer overflow\n",);
+              return 0i32;
+            }
+            brcblkxend = tmp_0 as i32;
+            let tmp_1 = (opj_int_ceildivpow2(precinct.y1, cblkheightexpn as i32) as u32) << cblkheightexpn;
+            if tmp_1 > 2147483647_u32 {
+              event_msg!(manager, EVT_ERROR, "Integer overflow\n",);
+              return 0i32;
+            }
+            brcblkyend = tmp_1 as i32;
             /*fprintf(stderr, "\t brcblkyend =%d\n",brcblkyend );*/
             precinct.cw = ((brcblkxend - tlcblkxstart) >> cblkwidthexpn) as u32;
             precinct.ch = ((brcblkyend - tlcblkystart) >> cblkheightexpn) as u32;
@@ -1151,6 +1162,13 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
     } else {
       w = (l_res.x1 - l_res.x0) as u32;
       h = (l_res.y1 - l_res.y0) as u32
+    }
+    /* A component can legally round to a zero width or height under
+    subsampling (e.g. tile origin 1 with XRsiz 32); it contributes no data.
+    The C divides by zero here (SIGFPE) - skip it instead. */
+    if w == 0u32 || h == 0u32 {
+      i += 1;
+      continue;
     }
     if h > 0u32
       && (2147483647u32)
@@ -1514,6 +1532,12 @@ pub(crate) fn opj_tcd_update_tile_data(
       }
       if l_size_comp == 3u32 {
         l_size_comp = 4_u32
+      }
+      /* Zero-width or zero-height components carry no data (subsampled
+      away, like opj_tcd_get_decoded_tile_size skips): the C's copy loops
+      no-op, while chunks_exact(0) would panic here. */
+      if l_width == 0usize || l_height == 0usize {
+        continue;
       }
       let l_nb_elem = l_height * l_width;
       let mut l_src = l_src_data;
@@ -1993,7 +2017,11 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mu
           for i in 0..l_width as usize {
             /* Note: could do the addition in i64 */
             let idx = j * row_stride + i;
-            data[idx] = opj_int_clamp(data[idx] + l_tccp.m_dc_level_shift, l_min, l_max);
+            data[idx] = opj_int_clamp(
+              data[idx].wrapping_add(l_tccp.m_dc_level_shift),
+              l_min,
+              l_max,
+            );
           }
         }
       } else {
@@ -2058,14 +2086,14 @@ fn opj_tcd_dc_level_shift_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OPJ_BOOL {
     let data = l_tile_comp.data.as_mut_slice(l_nb_elem);
     if l_tccp.qmfbid == 1u32 {
       for v in data.iter_mut() {
-        *v -= l_tccp.m_dc_level_shift;
+        *v = v.wrapping_sub(l_tccp.m_dc_level_shift);
       }
     } else {
       for v in data.iter_mut() {
         // The C code reads the sample as an i32, shifts it, then stores the
         // result as f32 bits for the 9x7 transform to consume.
         let val = *v;
-        *v = ((val - l_tccp.m_dc_level_shift) as f32).to_bits() as i32;
+        *v = (val.wrapping_sub(l_tccp.m_dc_level_shift) as f32).to_bits() as i32;
       }
     }
   });
