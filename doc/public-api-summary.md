@@ -67,6 +67,7 @@ DecodeParameters::new() -> Self
   .reduce(u32)                    // 2^reduce resolution reduction
   .layers(u32)                    // 0 = all quality layers
   .strict(bool)                   // default false (lenient, -allow-partial parity)
+  .threads(usize)                 // 0 = automatic pool (default), n > 0 = local n-thread pool
   .limits(DecodeLimits)           // resource caps for untrusted input
   .decode_area(Option<DecodeArea>)
   .ignore_pclr_cmap_cdef()
