@@ -308,7 +308,7 @@ mod tests {
         id[i * n + i] = 1.0;
       }
       let inv = invert(&id, n).expect("identity is invertible");
-      assert!(approx_identity(&inv, n), "n={n}: inverse of I is I, got {inv:?}");
+      assert!(approx_identity(&inv, n), "n={}: inverse of I is I, got {:?}", n, inv);
     }
   }
 
@@ -320,7 +320,7 @@ mod tests {
     let inv = invert(&m, 2).expect("invertible");
     let expect = [0.6f32, -0.2, -0.2, 0.4];
     for (a, b) in inv.iter().zip(expect.iter()) {
-      assert!((a - b).abs() < 1e-5, "got {inv:?}, want {expect:?}");
+      assert!((a - b).abs() < 1e-5, "got {:?}, want {:?}", inv, expect);
     }
   }
 
@@ -340,11 +340,17 @@ mod tests {
       let inv = invert(m, n).expect("matrix is invertible");
       assert!(
         approx_identity(&mat_mul(m, &inv, n), n),
-        "n={n}: M*M^-1 != I for {m:?} (inv {inv:?})"
+        "n={}: M*M^-1 != I for {:?} (inv {:?})",
+        n,
+        m,
+        inv
       );
       assert!(
         approx_identity(&mat_mul(&inv, m, n), n),
-        "n={n}: M^-1*M != I for {m:?} (inv {inv:?})"
+        "n={}: M^-1*M != I for {:?} (inv {:?})",
+        n,
+        m,
+        inv
       );
     }
   }

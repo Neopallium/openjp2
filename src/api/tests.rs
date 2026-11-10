@@ -2150,9 +2150,9 @@ fn subsampled_empty_tiles_round_trip() {
       let codestream = image
         .clone()
         .encode(params)
-        .unwrap_or_else(|e| panic!("mode {mode}: encode failed: {e}"));
+        .unwrap_or_else(|e| panic!("mode {}: encode failed: {}", mode, e));
       let back = Image::from_bytes(&codestream)
-        .unwrap_or_else(|e| panic!("mode {mode}: decode failed: {e}"));
+        .unwrap_or_else(|e| panic!("mode {}: decode failed: {}", mode, e));
       for (a, b) in image.components()[0].data.iter().zip(back.components()[0].data.iter()) {
         assert_eq!(a, b, "mode {mode}: 5-3 round trip must be lossless");
       }

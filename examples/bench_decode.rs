@@ -24,7 +24,7 @@ fn main() -> Result<()> {
   let params = EncodeParameters::new().num_resolutions(4).tile_size(512, 512);
   let t1 = Instant::now();
   for _ in 0..n {
-    let _ = image.encode(params.clone())?;
+    let _ = image.clone().encode(params.clone())?;
   }
   println!("encode (multi-tile): {:.3} ms/image", t1.elapsed().as_secs_f64() * 1e3 / n as f64);
   Ok(())

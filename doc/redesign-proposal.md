@@ -290,8 +290,10 @@ Notes:
    them in tile order, so the TLM multi-part guard is gone and the parallel
    path is byte-identical for multi-part tiles too (regression test
    `parallel_tlm_multi_part_matches_serial`).
-2. **Tier-1 encode workspace isolation** (same as B.1.3): no cross-tile
-   `Mqc` reuse through the thread-local.
+2. **Tier-1 encode workspace isolation** (same as B.1.3) — ✅ **LANDED
+   (2363fdb6, with B.1.3)**: the per-worker T1 pools are split between the
+   encode and decode paths, so there is no cross-tile `Mqc` reuse through
+   the thread-local on either side.
 3. **Fix the remaining encoder parity gaps tracked from the reviews** —
    ✅ **ALL RESOLVED**: fixed-layer rate allocation index clamp (review_2
    LOW-4 / review_3 L11 — 018303d4), `numpix` as `i64` (L12 — 1db2aaa9),
@@ -300,10 +302,14 @@ Notes:
    verified upstream-absent (`index_on` is a dead parameter in the C;
    `opj_get_cstr_index` after encode yields nothing there too), so no port
    work; recorded as KEEP in open-findings OF-26.
-4. **Custom MCT end-to-end.** The inversion is fixed; upstream cannot decode
-   COD mct=2 (both C and port reject it). Decide: keep C parity (encode-only
-   feature, as today) or emit the MCT data group + accept mct=2 on decode as
-   a deliberate, documented extension.
+4. **Custom MCT end-to-end.** — ✅ **LANDED (b3f11bab, B.2.4)**: the
+   deliberate, documented extension was chosen — the encoder emits the MCT
+   data group under the C's `rsiz & 0x8100` gate and the decoder accepts
+   COD mct=2, applying the decoding matrix from the MCT/MCC/MCO markers
+   (strict rejects a missing matrix, lenient skips the transform).  The
+   inversion fix (b27c344d) was already in; the encode side was already
+   complete, so the decode acceptance was the remaining piece.  Round-trip
+   tests pin it (see the Part C item 8 note).
 5. **Precision/clipping hygiene.** — ✅ **LANDED (1021e635)**:
    `types::prec_valid` is the single 1..=31 rule, used by the
    `setup_encoder` validation and the image.rs guards (clip /
@@ -320,14 +326,14 @@ Notes:
 2. **Module hygiene.** — ✅ **LANDED (6bd28934)**: `api.rs` (3023 lines)
    is now `api/{error,params,image,encode,decode,image_conv,dump,tests}.rs`
    behind a thin facade (the test module moved to `api/tests.rs`).
-3. **Panic-catch scope.** Keep `catch_unwind` at the safe-API and C-ABI
-   boundaries (do not wrap individual internal calls).
-4. **Remaining open review items** — 🟡 PARTIAL: t1 refinement-pass
-   wrapping (review_2 M7) ✅ done, `LayerRate` builder doc/behavior ✅ done,
-   `Jp2BoxType::UUID` constant typo ✅ done, `GUARD_BITS` parse parity ✅
-   done (B.3.4 batch 29150b83).  Still open: `opj_lrintf` NaN parity
-   (review_3 M12 — needs an empirical trigger first), `DumpImage` unify
-   with `Decoder`.
+3. **Panic-catch scope.** — ✅ **KEPT AS DESIGNED**: `catch_unwind`
+   stays at the safe-API and C-ABI boundaries only (9.7); individual
+   internal calls are never wrapped.
+4. **Remaining open review items** — ✅ **ALL RESOLVED**: t1
+   refinement-pass wrapping (review_2 M7 — 0fc72bb9), `LayerRate` builder
+   doc/behavior, `Jp2BoxType::UUID` constant typo, `GUARD_BITS` parse
+   parity (B.3.4 batch 29150b83), `opj_lrintf` NaN parity (review_3 M12 —
+   OF-23, 1568fde7), and the `DumpImage`/`Decoder` unification (29349c49).
 
 # Part C — Design questions
 
@@ -371,14 +377,17 @@ Notes:
     (`alpha_default: Option<u32>`); the shortcomings are noted in
     `doc/component-data-types.md`.
 12. **Unsafe policy for the DWT reinterpret (typed `TileBuf` vs a scoped
-    exception)** → deferred (question was unclear; revisit with a concrete
-    writeup when B.1.4 is scheduled).
-13. **Parallel-decode rework (B.1.6)** → deferred until after the split.
+    exception)** → ✅ **RESOLVED by B.1.4 (35e54fd5)**: the fully safe
+    typed `TileBuf` (I32/F32 by qmfbid, bit-exact seams, no whole-tile 9-7
+    scratch) was chosen; no scoped unsafe exception was ever needed.
+13. **Parallel-decode rework (B.1.6)** → ✅ **RESOLVED (f5ba2a2e)**:
+    landed after the split (structured SOT walk + zero-copy in-memory
+    snapshot).
 14. **Procedure-list removal (B.1.1)** → yes, remove them.
 15. **Docs layout** → keep all five (+ the new component-data doc).
 16. **`OPJ_*` internals (B.0 phase c)** → incremental migration to primitive
     Rust types; where `OPJ_BOOL` signals an error it becomes
     `Result<(), Error>` (incrementally is fine).
 
-No questions remain open for the 0.7 cycle; items 8, 12 and 13 are explicitly
-deferred and will be revisited with a concrete writeup each.
+No questions remain open for the 0.7 cycle: item 8 landed (B.2.4), items
+12 and 13 were resolved by B.1.4 / B.1.6, and the rest were decided above.
