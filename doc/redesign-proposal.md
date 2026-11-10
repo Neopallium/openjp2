@@ -171,23 +171,30 @@ Notes:
 
 ## B.0 Codec split & C-type extraction (owner decisions)
 
-1. **Split `Codec` (core)** — replace `codec.rs`'s `CodecType`/`CodecFormat`
-   facade with two public types, `Decoder` and `Encoder`, each owning the
-   `CodecFormat` enum + an `EventMgr`. The 24 methods partition cleanly
+1. **Split `Codec` (core)** — ✅ **LANDED (793ff501)**: `codec.rs` now exposes
+   `Decoder` and `Encoder`, each owning the `CodecFormat` enum + an
+   `EventMgr`.  (The original item text follows: replace `codec.rs`'s
+   `CodecType`/`CodecFormat` facade with two public types, `Decoder` and
+   `Encoder`, each owning the `CodecFormat` enum + an `EventMgr`.) The 24 methods partition cleanly
    (verified): 14 → `Decoder`, 7 → `Encoder`, 6 shared (3 handlers,
    `set_threads`, `dump_codec`, cstr accessors) via a small internal
    `EventHandlers`/`Threads` helper. The safe API drivers switch from
    `Codec` to the split types; the `opj_codec_private_t` alias disappears
    from the core.
-2. **Merged `Codec` lives in the capi crate.** The capi defines
-   `Codec { enum { Dec(core::Decoder), Enc(core::Encoder) } }` to keep the
+2. **Merged `Codec` lives in the capi crate.** — ✅ **LANDED (793ff501)**: the
+   capi defines
+   `Codec { Dec(core::Decoder), Enc(core::Encoder) }` to keep the
    single `opj_codec_t*` pointer contract, and becomes the *only* place where
    the C-shaped parameters (`opj_dparameters_t`, `opj_image_cmptparm_t`,
    `opj_cparameters_t`) are marshalled. The core's public signatures become
    C-type-free.
-3. **`openjp2-ctypes` crate (new workspace member).** Moves all of today's
+3. **`openjp2-ctypes` crate (new workspace member).** — ✅ **LANDED
+   (b0538729 + 603aec32)**: the C-ABI mirror types, the `consts::opj`
+   constants and `opj_image_comptparm` moved; the core keeps a private
+   `c_api_types` alias for its internal use and re-exports the types only
+   under `openjp2::ffi`.  (Original item text: moves all of today's
    `c_api_types.rs` plus the C-header-mirror constants (`consts::{opj, cio,
-   event}`, the ABI constants in `consts::j2k`) and `opj_image_comptparm`.
+   event}`, the ABI constants in `consts::j2k`) and `opj_image_comptparm`.)
    Ownership inventory (verified): the core *internally* uses `OPJ_BOOL`
    (~280 sites in 12 modules), `OPJ_COLOR_SPACE`, `OPJ_PROG_ORDER`+constants,
    `opj_poc_t`, `CODEC_FORMAT`, `opj_dparameters_t`, RSIZ/CINEMA modes —
