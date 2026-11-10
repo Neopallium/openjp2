@@ -2,9 +2,9 @@
 //! the safe owned `openjp2_core::EncoderParameters`; this module owns the
 //! `#[repr(C)]` struct C callers fill in, plus the marshalling setters.
 
-use openjp2_core::c_api_types::*;
-use openjp2_core::c_api_types::{OPJ_BOOL, OPJ_UINT16, OPJ_UINT32};
-use openjp2_core::consts::opj::OPJ_PATH_LEN;
+use openjp2_ctypes::*;
+use openjp2_ctypes::{OPJ_BOOL, OPJ_UINT16, OPJ_UINT32};
+use openjp2_ctypes::consts::opj::OPJ_PATH_LEN;
 
 extern "C" {
   fn malloc(size: usize) -> *mut core::ffi::c_void;

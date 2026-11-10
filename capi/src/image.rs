@@ -5,7 +5,7 @@
 //! owned `CoreImage`; the C surface builds/destroys the `#[repr(C)]` mirrors
 //! here.
 
-use openjp2_core::c_api_types::*;
+use openjp2_ctypes::*;
 pub use openjp2_core::{opj_image_cmptparm_t, opj_image_comptparm};
 use openjp2_core::{CoreImage, CoreImageComp, ICCProfile, ICCProfileMut, ICCProfileRef, CIE_LAB_BYTE_SIZE};
 

@@ -540,10 +540,15 @@ dependencies = [
  "byteorder",
  "image",
  "log",
+ "openjp2-ctypes",
  "rayon",
  "smallvec",
  "wide",
 ]
+
+[[package]]
+name = "openjp2-ctypes"
+version = "0.7.0"
 
 [[package]]
 name = "openjp2-tools"

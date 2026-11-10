@@ -32,5 +32,6 @@ simd = ["openjp2_core/simd"]
 
 [dependencies]
 openjp2_core = { package = "openjp2", path = ".." }
+openjp2-ctypes = { path = "../ctypes" }
 libc = { version = "0.2", optional = true }
 log = "0.4.17"

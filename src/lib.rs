@@ -30,7 +30,7 @@
 //! }
 //! ```
 //!
-pub mod c_api_types;
+pub use openjp2_ctypes as c_api_types;
 pub mod consts;
 mod types;
 
@@ -69,7 +69,7 @@ pub mod ffi {
 // Export safe API
 pub use c_api_types::*;
 pub use codec::{opj_codec_private_t, Codec};
-pub use image::{opj_image_cmptparm_t, opj_image_comptparm, CoreImage, CoreImageComp};
+pub use image::{CoreImage, CoreImageComp, opj_image_cmptparm_t, opj_image_comptparm};
 pub use j2k::{CstrCompInfoV2, CstrInfoV2, CstrTccpInfoV2, CodestreamIndex, CodestreamTileIndex};
 pub use types::EncoderParameters;
 pub use types::opj_stream_private_t;

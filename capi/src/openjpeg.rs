@@ -37,7 +37,7 @@
 use crate::image::*;
 use crate::params::opj_cparameters_t;
 use crate::cstr_info::{opj_codestream_index_t, opj_codestream_info_v2_t};
-use openjp2_core::c_api_types::*;
+use openjp2_ctypes::*;
 
 use openjp2_core::{opj_codec_private_t, opj_stream_private_t, TileInfo};
 
@@ -939,7 +939,7 @@ pub unsafe extern "C" fn opj_stream_create(
 
 #[no_mangle]
 pub unsafe extern "C" fn opj_stream_default_create(l_is_input: OPJ_BOOL) -> *mut opj_stream_t {ffi_guard(|| {
-  opj_stream_create(openjp2_core::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as OPJ_SIZE_T, l_is_input)
+  opj_stream_create(openjp2_ctypes::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as OPJ_SIZE_T, l_is_input)
 })}
 
 #[no_mangle]

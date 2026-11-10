@@ -1,8 +1,8 @@
 //! The C-ABI codestream-info mirrors (v1 index and v2 header info) plus the
 //! builders that marshal the core's safe owned structures into them.
 
-use openjp2_core::c_api_types::{opj_marker_info_t, opj_packet_info_t, OPJ_INT32, OPJ_PROG_ORDER, OPJ_UINT32};
-use openjp2_core::c_api_types::OPJ_OFF_T;
+use openjp2_ctypes::{opj_marker_info_t, opj_packet_info_t, OPJ_INT32, OPJ_PROG_ORDER, OPJ_UINT32};
+use openjp2_ctypes::OPJ_OFF_T;
 use openjp2_core::{CodestreamIndex, CodestreamTileIndex, CstrCompInfoV2, CstrInfoV2};
 
 #[repr(C)]
@@ -58,7 +58,7 @@ pub struct opj_tile_index {
   pub nb_tps: OPJ_UINT32,
   pub current_nb_tps: OPJ_UINT32,
   pub current_tpsno: OPJ_UINT32,
-  pub tp_index: *mut openjp2_core::c_api_types::opj_tp_index_t,
+  pub tp_index: *mut openjp2_ctypes::opj_tp_index_t,
   pub marknum: OPJ_UINT32,
   pub marker: *mut opj_marker_info_t,
   pub maxmarknum: OPJ_UINT32,

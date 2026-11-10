@@ -114,6 +114,7 @@ dependencies = [
  "byteorder",
  "image",
  "log",
+ "openjp2-ctypes",
  "rayon",
  "smallvec",
  "wide",
@@ -126,7 +127,12 @@ dependencies = [
  "libc",
  "log",
  "openjp2",
+ "openjp2-ctypes",
 ]
+
+[[package]]
+name = "openjp2-ctypes"
+version = "0.7.0"
 
 [[package]]
 name = "pxfm"

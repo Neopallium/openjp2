@@ -31,21 +31,7 @@
 
 use super::math::*;
 use super::openjpeg::*;
-
-#[repr(C)]
-#[derive(Copy, Clone, Default)]
-pub struct opj_image_comptparm {
-  pub dx: u32,
-  pub dy: u32,
-  pub w: u32,
-  pub h: u32,
-  pub x0: u32,
-  pub y0: u32,
-  pub prec: u32,
-  pub bpp: u32,
-  pub sgnd: u32,
-}
-pub type opj_image_cmptparm_t = opj_image_comptparm;
+pub use openjp2_ctypes::{opj_image_cmptparm_t, opj_image_comptparm};
 
 pub struct ImageCompRef<'a> {
   /// Component.
