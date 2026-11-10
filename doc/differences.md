@@ -24,8 +24,11 @@ a literal transcription.  This page lists the intentional divergences.
   `opj_codec_set_threads` mirrors the C's failure cases — no thread
   support and `num_threads > i32::MAX` return `OPJ_FALSE` — and otherwise
   returns `OPJ_TRUE` (the C's "FALSE after the tcd exists" nuance does
-  not apply: the port's pool is process-wide by design).  The CLI tools
-  size the pool from `-threads N` / `OPJ_NUM_THREADS` / `RAYON_NUM_THREADS`.
+  not apply: the port's pool is process-wide by design).  A
+  `num_threads == 0` call sizes nothing — the C builds a zero-worker
+  (serial) pool for that codec — so use a positive count or the env vars
+  below to shape parallelism.  The CLI tools size the pool from
+  `-threads N` / `OPJ_NUM_THREADS` / `RAYON_NUM_THREADS`.
 - The port parallelises more than the C: per-tile code-block decode/encode,
   DWT, DC shift (as in the C), plus tile-level concurrent decode and
   encode in the safe API (`Image::from_bytes` / `Image::encode`).
