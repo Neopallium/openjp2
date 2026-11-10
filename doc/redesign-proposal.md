@@ -286,12 +286,14 @@ Notes:
    `parallel_tlm_multi_part_matches_serial`).
 2. **Tier-1 encode workspace isolation** (same as B.1.3): no cross-tile
    `Mqc` reuse through the thread-local.
-3. **Fix the remaining encoder parity gaps tracked from the reviews**
-   (each with a regression test): fixed-layer rate allocation index clamp
-   (review_2 LOW-4 / review_3 L11), `numpix` as `OPJ_SIZE_T` (L12), empty
-   COM comment flag (L4), `set_threads` return-value parity (L2), encode-side
-   codestream index recording (currently absent — `opj_get_cstr_index` after
-   encode yields nothing).
+3. **Fix the remaining encoder parity gaps tracked from the reviews** —
+   ✅ **ALL RESOLVED**: fixed-layer rate allocation index clamp (review_2
+   LOW-4 / review_3 L11 — 018303d4), `numpix` as `i64` (L12 — 1db2aaa9),
+   empty COM comment flag (L4 — 0fc72bb9), `set_threads` return-value
+   parity (L2 — 0fc72bb9), and the encode-side codestream index recording —
+   verified upstream-absent (`index_on` is a dead parameter in the C;
+   `opj_get_cstr_index` after encode yields nothing there too), so no port
+   work; recorded as KEEP in open-findings OF-26.
 4. **Custom MCT end-to-end.** The inversion is fixed; upstream cannot decode
    COD mct=2 (both C and port reject it). Decide: keep C parity (encode-only
    feature, as today) or emit the MCT data group + accept mct=2 on decode as
