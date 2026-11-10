@@ -197,6 +197,10 @@ pub(crate) type opj_stream_private = Stream;
 pub type opj_stream_private_t = Stream;
 
 pub(crate) struct Jp2 {
+  /// Decode-failure context for structured errors: the JP2 box type that
+  /// failed and the stream position (B.1.7).
+  pub(crate) last_box: Option<[u8; 4]>,
+  pub(crate) last_pos: Option<u64>,
   pub j2k: J2k,
   pub w: u32,
   pub h: u32,
@@ -372,6 +376,10 @@ pub(crate) struct Jp2Comps {
 }
 
 pub(crate) struct J2k {
+  /// Decode-failure context for structured errors: the marker that failed
+  /// and the stream position (B.1.7).
+  pub(crate) last_marker: Option<u32>,
+  pub(crate) last_pos: Option<u64>,
   pub m_is_decoder: OPJ_BOOL,
   pub m_specific_param: C2RustUnnamed_2,
   pub m_private_image: Option<Box<CoreImage>>,
@@ -676,6 +684,20 @@ pub struct TileInfo {
 /// Central rule for setup_encoder validation and the image.rs guards.
 pub(crate) fn prec_valid(prec: u32) -> bool {
   (1..=31).contains(&prec)
+}
+
+impl J2k {
+  pub(crate) fn record_error_context(&mut self, marker: u32, pos: u64) {
+    self.last_marker = Some(marker);
+    self.last_pos = Some(pos);
+  }
+}
+
+impl Jp2 {
+  pub(crate) fn record_error_context(&mut self, box_ty: u32, pos: u64) {
+    self.last_box = Some(box_ty.to_be_bytes());
+    self.last_pos = Some(pos);
+  }
 }
 
 #[derive(Default)]

@@ -4346,6 +4346,10 @@ fn opj_j2k_read_unk(
     /* Get the marker handler from the marker ID*/
     l_marker_handler = J2KMarker::from(l_unknown_marker);
     if p_j2k.m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
+      p_j2k.record_error_context(
+        l_marker_handler.as_u32(),
+        opj_stream_tell(p_stream).max(0) as u64,
+      );
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -7042,6 +7046,10 @@ fn opj_j2k_read_header_procedure(
     streams with stray FF 92/4F/93/D9 recover there - review round 3 M3). */
     if l_marker_handler.is_unknown() || !l_marker_handler.has_handler() {
       if opj_j2k_read_unk(p_j2k, p_stream, &mut l_current_marker, p_manager) == 0 {
+        p_j2k.record_error_context(
+          l_current_marker.as_u32(),
+          opj_stream_tell(p_stream).max(0) as u64,
+        );
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -7068,6 +7076,10 @@ fn opj_j2k_read_header_procedure(
     }
     /* Check if the marker is known and if it is the right place to find it */
     if p_j2k.m_specific_param.m_decoder.m_state & l_marker_handler.states() == J2KState::NONE {
+      p_j2k.record_error_context(
+        l_current_marker.as_u32(),
+        opj_stream_tell(p_stream).max(0) as u64,
+      );
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -7111,6 +7123,10 @@ fn opj_j2k_read_header_procedure(
     let header_data =
       p_j2k.m_specific_param.m_decoder.m_header_data[..l_marker_size as usize].to_vec();
     if l_marker_handler.handler(p_j2k, &header_data, p_manager) == 0 {
+      p_j2k.record_error_context(
+        l_current_marker.as_u32(),
+        opj_stream_tell(p_stream).max(0) as u64,
+      );
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -7652,6 +7668,10 @@ pub(crate) fn opj_j2k_read_tile_header(
           let header_data =
             p_j2k.m_specific_param.m_decoder.m_header_data[..l_marker_size as usize].to_vec();
           if l_marker_handler.handler(p_j2k, &header_data, p_manager) == 0 {
+            p_j2k.record_error_context(
+              l_current_marker.as_u32(),
+              opj_stream_tell(p_stream).max(0) as u64,
+            );
             event_msg!(
               p_manager,
               EVT_ERROR,
@@ -8688,6 +8708,8 @@ pub(crate) fn opj_j2k_set_decode_area(
 impl J2k {
   pub fn new(m_is_decoder: i32) -> Self {
     Self {
+      last_marker: None,
+      last_pos: None,
       m_is_decoder,
       m_specific_param: Default::default(),
       m_private_image: None,

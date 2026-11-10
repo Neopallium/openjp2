@@ -54,7 +54,7 @@ pub fn has_thread_support() -> c_api_types::OPJ_BOOL {
   cfg!(feature = "rayon") as c_api_types::OPJ_BOOL
 }
 
-pub use api::{ColorSpace, DecodeArea, DecodeLimits, DecodeParameters, DumpImage, EncodeParameters, Error, Image, ProgressionOrder, Result};
+pub use api::{ColorSpace, DecodeArea, DecodeError, DecodeLimits, DecodeParameters, DumpImage, EncodeParameters, Error, Image, ProgressionOrder, Result};
 #[cfg(feature = "image")]
 pub use api::image_conv::{ImageData, ImagePixelData};
 

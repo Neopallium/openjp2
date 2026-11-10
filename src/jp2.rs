@@ -1528,10 +1528,12 @@ fn opj_jp2_read_header_procedure(
         jp2.jp2_state |= JP2_STATE_CODESTREAM as core::ffi::c_uint;
         return 1i32;
       } else {
+        jp2.record_error_context(header.ty_u32(), opj_stream_tell(stream).max(0) as u64);
         event_msg!(p_manager, EVT_ERROR, "bad placed jpeg codestream\n",);
         return 0i32;
       }
     } else if header.length == 0u32 {
+      jp2.record_error_context(header.ty_u32(), opj_stream_tell(stream).max(0) as u64);
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -1541,6 +1543,7 @@ fn opj_jp2_read_header_procedure(
     } else {
       /* testcase 1851.pdf.SIGSEGV.ce9.948 */
       if header.length < header.header_length {
+        jp2.record_error_context(header.ty_u32(), opj_stream_tell(stream).max(0) as u64);
         event_msg!(
           p_manager,
           EVT_ERROR,
@@ -2036,6 +2039,8 @@ pub(crate) fn opj_jp2_get_tile(
 pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<Jp2> {
   /* create the J2K codec */
   let mut jp2 = Jp2 {
+    last_box: None,
+    last_pos: None,
     j2k: if p_is_decoder == 0 {
       opj_j2k_create_compress()?
     } else {

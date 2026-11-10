@@ -37,7 +37,7 @@ use super::c_api_types::*;
 use super::consts::*;
 use super::types::*;
 
-use super::api::{DecodeArea, DecodeLimits, Error, Result};
+use super::api::{DecodeArea, DecodeError, DecodeLimits, Error, Result};
 use super::event::*;
 use super::fprintf::StringWriter;
 use super::j2k::*;
@@ -312,7 +312,7 @@ impl Decoder {
         ),
       };
       if ok == 0 {
-        return Err(Error::Decode("set_decode_area failed".into()));
+        return Err(self.decode_error("set_decode_area failed"));
       }
     }
     Ok(())
@@ -342,7 +342,7 @@ impl Decoder {
       CodecFormat::J2K(dec) => opj_j2k_read_header(stream, dec, &mut self.m_event_mgr),
       CodecFormat::JP2(dec) => opj_jp2_read_header(stream, dec, &mut self.m_event_mgr),
     }
-    .ok_or_else(|| Error::Decode("failed to read header".into()))?;
+    .ok_or_else(|| self.decode_error("failed to read header"))?;
     self.header = Some(image.clone());
     Ok(HeaderImage(image))
   }
@@ -355,7 +355,7 @@ impl Decoder {
     let mut image = self
       .header
       .clone()
-      .ok_or_else(|| Error::Decode("read_header must be called before decode".into()))?;
+      .ok_or_else(|| self.decode_error("read_header must be called before decode"))?;
 
     /* Concurrent tile decode (rayon): whole-image, full-quality,
     full-resolution decodes of multi-tile codestreams.  A layer limit or a
@@ -440,7 +440,7 @@ impl Decoder {
     };
     if ok == 0 {
       if strict {
-        return Err(Error::Decode("decode failed".into()));
+        return Err(self.decode_error("decode failed"));
       }
       return Ok(image);
     }
@@ -457,7 +457,7 @@ impl Decoder {
     if ok != 0 {
       Ok(())
     } else {
-      Err(Error::Decode("end_decompress failed".into()))
+      Err(self.decode_error("end_decompress failed"))
     }
   }
 
@@ -478,7 +478,7 @@ impl Decoder {
     if ok {
       Ok(tile_info)
     } else {
-      Err(Error::Decode("read_tile_header failed".into()))
+      Err(self.decode_error("read_tile_header failed"))
     }
   }
 
@@ -497,7 +497,7 @@ impl Decoder {
     if ok != 0 {
       Ok(())
     } else {
-      Err(Error::Decode("decode_tile_data failed".into()))
+      Err(self.decode_error("decode_tile_data failed"))
     }
   }
 
@@ -507,7 +507,7 @@ impl Decoder {
     let mut image = self
       .header
       .clone()
-      .ok_or_else(|| Error::Decode("read_header must be called before get_decoded_tile".into()))?;
+      .ok_or_else(|| self.decode_error("read_header must be called before get_decoded_tile"))?;
     let ok = match &mut self.m_codec {
       CodecFormat::J2K(dec) => opj_j2k_get_tile(dec, stream, &mut image, &mut self.m_event_mgr, tile),
       CodecFormat::JP2(dec) => opj_jp2_get_tile(dec, stream, &mut image, &mut self.m_event_mgr, tile),
@@ -515,7 +515,26 @@ impl Decoder {
     if ok != 0 {
       Ok(image)
     } else {
-      Err(Error::Decode("get_decoded_tile failed".into()))
+      Err(self.decode_error("get_decoded_tile failed"))
+    }
+  }
+
+  /// Builds the structured decode error from the codec's recorded failure
+  /// context (marker/box + stream position; B.1.7).
+  fn decode_error(&self, fallback: &str) -> Error {
+    match &self.m_codec {
+      CodecFormat::J2K(j2k) => Error::Decode(DecodeError {
+        message: fallback.into(),
+        marker: j2k.last_marker.map(|m| m as u16),
+        box_: None,
+        pos: j2k.last_pos,
+      }),
+      CodecFormat::JP2(jp2) => Error::Decode(DecodeError {
+        message: fallback.into(),
+        marker: jp2.j2k.last_marker.map(|m| m as u16),
+        box_: jp2.last_box,
+        pos: jp2.last_pos.or(jp2.j2k.last_pos),
+      }),
     }
   }
 

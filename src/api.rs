@@ -20,7 +20,7 @@ pub mod image_conv;
 #[cfg(test)]
 mod tests;
 
-pub use error::{Error, Result};
+pub use error::{DecodeError, Error, Result};
 pub(crate) use error::catch_codec_panic;
 pub use params::*;
 pub use image::Image;

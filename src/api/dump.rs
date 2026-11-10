@@ -11,6 +11,18 @@ pub struct DumpImage {
 }
 
 impl DumpImage {
+  /// Wrap an existing decoder and stream for index/info/dump access (the
+  /// decoder's header must already have been read).  Composes the dump
+  /// facility with the low-level `Decoder` API.
+  pub fn new(codec: Decoder, stream: Stream) -> Self {
+    Self { codec, stream }
+  }
+
+  /// The wrapped decoder (index/info state lives on it).
+  pub fn decoder(&self) -> &Decoder {
+    &self.codec
+  }
+
   #[allow(deprecated)]
   pub fn from_bytes(buf: &[u8]) -> Result<Self> {
     Self::from_bytes_with(buf, DecodeParameters::default())

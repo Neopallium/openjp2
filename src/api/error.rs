@@ -13,8 +13,10 @@
 pub enum Error {
   /// I/O failure (file reads, stream errors).
   Io(std::io::Error),
-  /// The codestream is corrupt or uses an unsupported feature.
-  Decode(String),
+  /// The codestream is corrupt or uses an unsupported feature.  The
+  /// marker/box and position fields carry where the failure happened when
+  /// the decoder recorded them.
+  Decode(DecodeError),
   /// Invalid encode parameters or a failure while encoding.
   Encode(String),
   /// The requested feature is not supported (by the build or the format).
@@ -25,7 +27,19 @@ impl core::fmt::Display for Error {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     match self {
       Error::Io(e) => write!(f, "io error: {e}"),
-      Error::Decode(s) => write!(f, "decode error: {s}"),
+      Error::Decode(d) => {
+        write!(f, "decode error: {}", d.message)?;
+        if let Some(m) = d.marker {
+          write!(f, " (marker FF{m:02X})")?;
+        }
+        if let Some(b) = d.box_ {
+          write!(f, " (box {})", String::from_utf8_lossy(&b))?;
+        }
+        if let Some(p) = d.pos {
+          write!(f, " (at byte {p})")?;
+        }
+        Ok(())
+      }
       Error::Encode(s) => write!(f, "encode error: {s}"),
       Error::Unsupported(s) => write!(f, "unsupported: {s}"),
     }
@@ -47,6 +61,37 @@ impl From<std::io::Error> for Error {
   }
 }
 
+/// Structured decode-failure context: the message plus (when recorded by
+/// the decoder) the offending marker, JP2 box type and stream position.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DecodeError {
+  pub message: String,
+  /// The codestream marker that failed (e.g. `0xFF51` for SIZ).
+  pub marker: Option<u16>,
+  /// The JP2 box type that failed (big-endian `'jp2h'` etc.).
+  pub box_: Option<[u8; 4]>,
+  /// The stream position at the failure.
+  pub pos: Option<u64>,
+}
+
+impl From<String> for DecodeError {
+  fn from(message: String) -> Self {
+    DecodeError {
+      message,
+      ..Default::default()
+    }
+  }
+}
+
+impl From<&str> for DecodeError {
+  fn from(message: &str) -> Self {
+    DecodeError {
+      message: message.into(),
+      ..Default::default()
+    }
+  }
+}
+
 /// Runs a codec operation, converting any internal panic into an `Error`.
 ///
 /// Decoding untrusted data is the one path where a defensive catch_unwind
@@ -63,7 +108,7 @@ pub(crate) fn catch_codec_panic<T>(is_decode: bool, f: impl FnOnce() -> Result<T
         .or_else(|| payload.downcast_ref::<String>().cloned())
         .unwrap_or_else(|| "unknown panic".to_string());
       if is_decode {
-        Err(Error::Decode(format!("internal decoder panic: {detail}")))
+        Err(Error::Decode(format!("internal decoder panic: {detail}").into()))
       } else {
         Err(Error::Encode(format!("internal encoder panic: {detail}")))
       }
