@@ -162,7 +162,6 @@ mod bio;
 mod cio;
 mod codec;
 mod dwt;
-mod function_list;
 mod ht_dec;
 mod par;
 mod invert;

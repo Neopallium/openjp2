@@ -36,7 +36,6 @@ use super::consts::*;
 use crate::image::CoreImage;
 use super::j2k::*;
 
-use super::event::EventMgr;
 
 /// Safe, owned encoder parameters.  The C ABI mirror (`opj_cparameters_t`)
 /// is marshalled into this by the capi crate; the tools build it directly.
@@ -196,10 +195,6 @@ pub struct Stream {
 }
 pub(crate) type opj_stream_private = Stream;
 pub type opj_stream_private_t = Stream;
-
-pub(crate) type Jp2Proc =
-  fn(_: &mut Jp2, _: &mut Stream, _: &mut EventMgr) -> OPJ_BOOL;
-pub(crate) type Jp2ProcList = super::function_list::ProcedureList<Jp2Proc>;
 
 pub(crate) struct Jp2 {
   pub j2k: J2k,
@@ -375,10 +370,6 @@ pub(crate) struct Jp2Comps {
   //pub sgnd: u32,
   pub bpcc: u32,
 }
-
-pub(crate) type J2kProc =
-  fn(_: &mut J2k, _: &mut Stream, _: &mut EventMgr) -> OPJ_BOOL;
-pub(crate) type J2kProcList = super::function_list::ProcedureList<J2kProc>;
 
 pub(crate) struct J2k {
   pub m_is_decoder: OPJ_BOOL,
