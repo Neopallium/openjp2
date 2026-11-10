@@ -269,6 +269,12 @@ fn opj_tcd_makelayer_fixed(
               }
               cblk.layers[layno as usize].numpasses = n.wrapping_sub(cblk.numpassesinlayers);
               if cblk.layers[layno as usize].numpasses != 0 {
+                /* The fixed-alloc matrix can imply more passes than the
+                codeblock actually coded (the C reads passes[] OOB here);
+                clamp the index to the coded pass count. */
+                if n > cblk.totalpasses {
+                  n = cblk.totalpasses;
+                }
                 if cblk.numpassesinlayers == 0u32 {
                   cblk.layers[layno as usize].len = cblk.passes[n.wrapping_sub(1u32) as usize].rate;
                   cblk.layers[layno as usize].data_offset = 1;
@@ -2107,6 +2113,11 @@ fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OP
     return 1i32;
   }
   let comps = &mut p_tcd.tcd_image.tiles.comps[..];
+  /* The standard MCT needs 3 components; the C reads OOB for fewer.  Fail
+  the encode instead of panicking on split_at_mut (review round 2, LOW-3). */
+  if tcp.mct == 1u32 && comps.len() < 3 {
+    return 0i32;
+  }
   if tcp.mct == 2u32 {
     if tcp.m_mct_coding_matrix.is_empty() {
       return 1i32;

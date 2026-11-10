@@ -6,8 +6,10 @@ fn opj_int_fix_mul(mut a: i32, mut b: i32) -> i32 {
   let mut temp = a as i64 * b as i64;
   temp += 4096i64;
 
-  assert!(temp >> 13i32 <= 0x7fffffff_i64);
-  assert!(temp >> 13i32 >= -0x7fffffff_i64 - 1_i64);
+  /* The C's asserts here are NDEBUG-stripped in release builds; debug_assert
+  matches that behaviour (the range check remains as a debug aid). */
+  debug_assert!(temp >> 13i32 <= 0x7fffffff_i64);
+  debug_assert!(temp >> 13i32 >= -0x7fffffff_i64 - 1_i64);
   (temp >> 13i32) as i32
 }
 /*

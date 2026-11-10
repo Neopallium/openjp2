@@ -11038,6 +11038,15 @@ fn opj_j2k_post_write_tile(
   let mut l_encoded_buf =
     core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_encoded_tile_data);
   l_nb_bytes_written = 0_u32;
+  /* The take() above moved the buffer out; restore it on every failure path
+  so a subsequent write_tile call does not hit the assert at the top (the C
+  keeps the buffer). */
+  macro_rules! fail {
+    () => {
+      p_j2k.m_specific_param.m_encoder.m_encoded_tile_data = l_encoded_buf;
+      return 0i32;
+    };
+  }
   if opj_j2k_write_first_tile_part(
     p_j2k,
     &mut l_encoded_buf[..],
@@ -11046,7 +11055,7 @@ fn opj_j2k_post_write_tile(
     p_manager,
   ) == 0
   {
-    return 0i32;
+    fail!();
   }
   let l_current_offset = l_nb_bytes_written as usize;
   l_available_data = (l_available_data as core::ffi::c_uint).wrapping_sub(l_nb_bytes_written);
@@ -11059,7 +11068,7 @@ fn opj_j2k_post_write_tile(
     p_manager,
   ) == 0
   {
-    return 0i32;
+    fail!();
   }
   l_available_data = (l_available_data as core::ffi::c_uint).wrapping_sub(l_nb_bytes_written);
   l_nb_bytes_written = l_tile_size.wrapping_sub(l_available_data);
@@ -11069,7 +11078,7 @@ fn opj_j2k_post_write_tile(
     p_manager,
   ) != l_nb_bytes_written as usize
   {
-    return 0i32;
+    fail!();
   }
   p_j2k.m_specific_param.m_encoder.m_encoded_tile_data = l_encoded_buf;
   p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);

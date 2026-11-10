@@ -59,7 +59,9 @@ fn opj_tgt_levels(
   let mut numlvls = 0usize;
   let mut numnodes = 0usize;
   loop {
-    let n = (nplh[numlvls] * nplv[numlvls]) as u32;
+    /* The C's int product wraps (UB); wrapping_mul keeps debug builds from
+    panicking on >= 2^29 leaf grids (review round 2, LOW-6). */
+    let n = (nplh[numlvls].wrapping_mul(nplv[numlvls])) as u32;
     nplh[numlvls + 1] = (nplh[numlvls] + 1i32) / 2i32;
     nplv[numlvls + 1] = (nplv[numlvls] + 1i32) / 2i32;
     numnodes += n as usize;
