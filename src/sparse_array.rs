@@ -83,6 +83,12 @@ impl SparseArray {
       return None;
     }
 
+    /* The C's create-time per-block size contract (open-findings OF-30):
+    block_width * block_height samples must fit the element count. */
+    if block_width > u32::MAX / block_height / core::mem::size_of::<i32>() as u32 {
+      return None;
+    }
+
     let block_count_hor = opj_uint_ceildiv(width, block_width);
     let block_count_ver = opj_uint_ceildiv(height, block_height);
 

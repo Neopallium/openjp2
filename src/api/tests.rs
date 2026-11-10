@@ -3,10 +3,6 @@
 
 use super::*;
 
-#[cfg(test)]
-mod tests {
-  use super::*;
-
   /// Regression: a fixed-alloc matrix implying more passes than a codeblock
   /// actually coded must not panic (the C records the over-promising count
   /// and reads passes[] OOB in both makelayer_fixed and t2 — UB).  Covers
@@ -15,7 +11,7 @@ mod tests {
   fn fixed_alloc_overpromise_does_not_panic() {
     for data in [
       vec![0i32; 4096], // all-zero cblks: totalpasses == 0
-      (0..4096).map(|i| (i % 251) as i32).collect::<Vec<i32>>(), // real passes
+      (0..4096).map(|i| i % 251).collect::<Vec<i32>>(), // real passes
     ] {
       let (w, h) = (64u32, 64u32);
       let core = crate::CoreImage {
@@ -473,6 +469,24 @@ mod tests {
     for (a, b) in whole.components().iter().zip(area.comps.iter()) {
       assert_eq!(a.data, b.data, "degenerate area vs whole component data");
     }
+  }
+
+  /// Regression (review_3 pass-2 residual, OF-43): a failed DumpImage
+  /// decode must not trap a retry - the decoder keeps its own header copy
+  /// and the retry simply fails again on the mid-state stream.
+  #[test]
+  fn dump_image_failed_decode_retry_does_not_panic() {
+    let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+    // Truncate the stream mid-data and decode STRICT, so the decode fails
+    // (lenient mode would deliver the partial image per its contract).
+    let truncated = &buf[..buf.len() / 2];
+    let mut dump = DumpImage::from_bytes_with(truncated, DecodeParameters::new().strict(true))
+      .expect("header reads");
+    let first = dump.decode();
+    let second = dump.decode();
+    // The retry must not panic; both results are errors (mid-state stream).
+    assert!(first.is_err());
+    assert!(second.is_err());
   }
 
   /// DumpImage + the codestream index/info accessors.
@@ -1215,7 +1229,7 @@ mod tests {
           .expect("{path}: read_tile_header");
         let mut buf = vec![0u8; tile_info.data_size.unwrap_or(0) as usize];
         let ok = codec.decode_tile_data(&mut stream, 0, Some(&mut buf));
-        assert!(ok.is_ok(), "{path}: decode_tile_data -> {ok:?}");
+        assert!(ok.is_ok(), "{}", format!("{path}: decode_tile_data -> {ok:?}"));
       }
     }
   }
@@ -1669,7 +1683,7 @@ fn subsampled_empty_tiles_round_trip() {
     cs.extend([0xff, 0x5c]);
     cs.extend((lqcd as u16).to_be_bytes());
     cs.extend([0x00]); // Sqcd
-    cs.extend(std::iter::repeat(0u8).take(2 * numbands));
+    cs.extend(std::iter::repeat_n(0u8, 2 * numbands));
     // SOT + SOD + a little tile data
     cs.extend([0xff, 0x90, 0x00, 0x0a]);
     cs.extend(0u16.to_be_bytes()); // Isot
@@ -1912,5 +1926,4 @@ fn subsampled_empty_tiles_round_trip() {
       assert_eq!(x, y, "reversible 5-3 must be lossless");
     }
   }
-}
 

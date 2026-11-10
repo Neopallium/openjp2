@@ -129,6 +129,10 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> Option<CstrInfoV2> {
       roishift: l_tccp.roishift,
       ..Default::default()
     };
+    /* Note (open-findings OF-27): the C memcpy's `numresolutions` BYTES of
+    prch/prcw here (a bug - it copies half the values); the port copies the
+    ELEMENTS, so `opj_get_cstr_info` consumers see complete data where the C
+    sees truncated data - a deliberate, documented positive divergence. */
     if l_tccp.numresolutions < OPJ_J2K_MAXRLVLS {
       info.prch[..l_tccp.numresolutions as usize]
         .copy_from_slice(&l_tccp.prch[..l_tccp.numresolutions as usize]);
@@ -5676,8 +5680,9 @@ fn opj_j2k_is_imf_compliant(
       }
     }
     _ => {
-      panic!("Unknown OPJ_PROFILE");
-      //C: assert(0);
+      /* C: assert(0); - unknown profiles are validated away, and the C's
+      release build (NDEBUG) falls through here anyway. */
+      debug_assert!(false, "Unknown OPJ_PROFILE");
     }
   }
   if parameters.roi_compno != -(1i32) {
