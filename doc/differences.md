@@ -16,6 +16,17 @@ a literal transcription.  This page lists the intentional divergences.
   explicit checks, except where the port pre-checks to keep the C's error
   diagnostics.
 
+## Custom MCT (mct=2)
+
+- The C reference rejects any COD/COC `mct > 1` ("Invalid multiple
+  component transformation") — the custom-MCT writer is therefore
+  nonfunctional end-to-end upstream.  The port's documented extension
+  accepts `mct = 2` and applies the decoding matrix delivered by the
+  MCT/MCC/MCO markers (an `opj_set_MCT`/`EncodeParameters::low_level()`
+  encode with the `OPJ_MCT` rsiz writes them; the port's decoder inverts
+  the transform).  Streams declaring mct=2 without a usable matrix are
+  rejected in strict mode and have the transform skipped in lenient mode.
+
 ## Event reporting
 
 - The C reference delivers diagnostics through user-registered callbacks

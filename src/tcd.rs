@@ -1906,6 +1906,19 @@ fn opj_tcd_mct_decode(
     let numcomps = comps.len();
     if tcp.mct == 2u32 {
       if tcp.m_mct_decoding_matrix.is_empty() {
+        /* mct=2 without a decoding matrix (no usable MCT/MCC/MCO
+        records): a malformed custom-MCT stream.  Strict decodes reject
+        it; lenient decodes skip the transform and deliver the samples as
+        decoded (the documented extension's failure mode - the C reference
+        never accepts mct=2 at all). */
+        if cp.strict != 0 {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
+            "mct=2 codestream carries no usable MCT decoding matrix\n",
+          );
+          return 0i32;
+        }
         return 1i32;
       }
       let matrix = &tcp.m_mct_decoding_matrix[..];

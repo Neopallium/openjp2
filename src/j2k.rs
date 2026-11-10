@@ -1731,7 +1731,12 @@ fn opj_j2k_read_cod(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
   } /* SGcod (C) */
   l_tcp.mct = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
-  if l_tcp.mct > 1u32 {
+  /* The C reference rejects any mct > 1.  The port's documented custom-MCT
+  extension accepts mct = 2 (the transform's decoding matrix arrives via
+  the MCT/MCC/MCO markers); a missing matrix is then handled at the tile
+  decode stage (strict rejects, lenient skips the transform).  Values > 2
+  stay invalid. */
+  if l_tcp.mct > 2u32 {
     event_msg!(
       p_manager,
       EVT_ERROR,

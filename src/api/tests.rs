@@ -1934,14 +1934,168 @@ fn subsampled_empty_tiles_round_trip() {
     let mut params = EncodeParameters::new().num_resolutions(3).num_layers(1);
     // Non-singular decorrelation matrix; identity would also do.
     let matrix = vec![1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
-    params.low_level().mct_data = Some((matrix, vec![0i32; 3]));
+    params.low_level().mct_data = Some((matrix, vec![128i32; 3]));
     let codestream = image.encode(params).expect("custom MCT encode (matrix inversion)");
     assert!(!codestream.is_empty());
-    // Upstream parity: the decoder rejects COD mct=2 like the C reference.
+    // C parity for the WRITER: without the OPJ_MCT rsiz bits no MCT/MCC/MCO
+    // markers are written, so the stream declares mct=2 but carries no
+    // decoding matrix.  The port's documented extension then: strict
+    // decodes reject it, lenient decodes skip the transform.
     assert!(
       Image::from_bytes_with(&codestream, DecodeParameters::new().strict(true)).is_err(),
-      "custom MCT codestreams are rejected on decode (C parity)"
+      "mct=2 without a decoding matrix is rejected in strict mode"
     );
+    // The identity matrix leaves the samples unchanged either way.
+    let lenient = Image::from_bytes_with(&codestream, DecodeParameters::new().strict(false))
+      .expect("lenient decode skips the missing transform");
+    for (a, b) in image.components().iter().zip(lenient.components().iter()) {
+      assert_eq!(a.data, b.data, "identity transform passes samples through");
+    }
+  }
+
+  /// B.2.4 end-to-end: with the OPJ_MCT rsiz the encoder writes the
+  /// MCT/MCC/MCO markers, and the decoder applies the decoding matrix —
+  /// the identity matrix round-trips losslessly.
+  #[test]
+  fn custom_mct_identity_round_trip_lossless() {
+    let (w, h) = (32u32, 24u32);
+    let mut rng: u64 = 0x9e3779b97f4a7c15;
+    let mut next = move || {
+      rng ^= rng << 13;
+      rng ^= rng >> 7;
+      rng ^= rng << 17;
+      rng
+    };
+    let mut comps = Vec::new();
+    for _ in 0..3 {
+      let mut data = Vec::with_capacity((w * h) as usize);
+      for _ in 0..w * h {
+        data.push((next() % 256) as i32);
+      }
+      comps.push(crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data,
+      });
+    }
+    let image = Image {
+      core: crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+        numcomps: 3,
+        color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
+        comps,
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      },
+    };
+    let mut params = EncodeParameters::new().num_resolutions(3).num_layers(1);
+    let matrix = vec![1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+    params.low_level().mct_data = Some((matrix, vec![128i32; 3]));
+    // OPJ_MCT = OPJ_PROFILE_PART2 | OPJ_EXTENSION_MCT (0x8100): the rsiz
+    // gate that makes the encoder emit the MCT data group.
+    params.low_level().rsiz = 0x8100;
+    let codestream = image.encode(params).expect("custom MCT encode");
+    // The MCT marker (0xFF74) must be present.
+    assert!(
+      codestream.windows(2).any(|w| w == [0xFF, 0x74]),
+      "the encoder wrote the MCT marker"
+    );
+    let decoded = Image::from_bytes(&codestream).expect("custom MCT decode");
+    for (a, b) in image.components().iter().zip(decoded.components().iter()) {
+      assert_eq!(
+        a.data, b.data,
+        "identity custom MCT round-trips losslessly"
+      );
+    }
+  }
+
+  /// B.2.4: a real decorrelation matrix round-trips within the fixed-point
+  /// quantization tolerance, and the transform is actually applied (a
+  /// skipped inverse would leave the transformed samples, far off).
+  #[test]
+  fn custom_mct_real_matrix_round_trip() {
+    let (w, h) = (32u32, 24u32);
+    let mut rng: u64 = 0xdeadbeefcafef00d;
+    let mut next = move || {
+      rng ^= rng << 13;
+      rng ^= rng >> 7;
+      rng ^= rng << 17;
+      rng
+    };
+    let mut comps = Vec::new();
+    for _ in 0..3 {
+      let mut data = Vec::with_capacity((w * h) as usize);
+      for _ in 0..w * h {
+        data.push((next() % 256) as i32);
+      }
+      comps.push(crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data,
+      });
+    }
+    let image = Image {
+      core: crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+        numcomps: 3,
+        color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
+        comps,
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      },
+    };
+    let mut params = EncodeParameters::new().num_resolutions(3).num_layers(1);
+    // The classic (well-conditioned) YCbCr decorrelation matrix.
+    let matrix = vec![
+      0.299f32,
+      0.587,
+      0.114,
+      -0.168736,
+      -0.331264,
+      0.5,
+      0.5,
+      -0.418688,
+      -0.081312,
+    ];
+    params.low_level().mct_data = Some((matrix, vec![128i32; 3]));
+    params.low_level().rsiz = 0x8100;
+    let codestream = image.encode(params).expect("custom MCT encode");
+    let decoded = Image::from_bytes(&codestream).expect("custom MCT decode");
+    for (a, b) in image.components().iter().zip(decoded.components().iter()) {
+      assert_eq!(a.data.len(), b.data.len());
+      for (x, y) in a.data.iter().zip(b.data.iter()) {
+        assert!(
+          (x - y).abs() <= 4,
+          "custom MCT round trip within tolerance: {x} vs {y}"
+        );
+      }
+    }
   }
 
   /// Regression (review finding 6): a 16-bit image with 6 decomposition

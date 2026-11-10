@@ -347,8 +347,15 @@ Notes:
    implementation (C-INTERMEDIATE, C-GOOD-ERR, C-NO-OUT, naming, builders).
 7. **Encoder knobs** → common knobs on the `EncodeParameters` builder;
    advanced knobs stay on `low_level()`.
-8. **Custom MCT decode** → extend beyond C parity (accept mct=2 on decode),
-   but only AFTER the API refactor.
+8. **Custom MCT decode** → ✅ **LANDED (B.2.4)**: the decoder accepts
+   mct=2 (the C rejects mct>1) and applies the decoding matrix delivered by
+   the MCT/MCC/MCO markers (`opj_tcd_mct_decode` + `opj_j2k_add_mct` were
+   already wired; the COD check and the strict-aware empty-matrix guard
+   were the missing pieces).  End-to-end round trips are pinned by
+   `custom_mct_identity_round_trip_lossless` /
+   `custom_mct_real_matrix_round_trip`; strict rejects mct=2 without a
+   matrix, lenient skips the transform.  A documented divergence
+   (doc/differences.md).
 9. **Component data typing** → i32-only for 0.7; the future design for
    f32/i32 (and possibly u32 / higher-resolution pixels) is written up in
    `doc/component-data-types.md`.
