@@ -179,7 +179,8 @@ Migration path (non-breaking first, breaking second):
    the `OPJ_BOOL`-returning methods with `#[deprecated]`.
 2. Add the `Image::from_*` one-shot API + `DecodeParameters` builder.
 3. Move the C mirrors to `pub mod ffi` and re-export for compatibility.
-4. Release 0.8 with the old API removed.
+4. Release 0.7 with the old API removed (0.7 is unpublished, so the breaking
+   changes land there directly).
 
 ## 4. Open questions
 
@@ -196,8 +197,8 @@ Owner decisions (2026-11-10):
    data access (J2K/JP2 support more components than `image` can represent).
 5. **jpeg2k naming** → keep only where it makes sense.
 
-Still open (carried in `doc/redesign-proposal.md` Part C): breaking-change
-timing for 0.8, structured errors, encoder-builder completeness, custom-MCT
+Still open (carried in `doc/redesign-proposal.md` Part C): structured
+errors, encoder-builder completeness, custom-MCT
 decode extension, raw f32 planes, threading default, `get_pixels` alpha
 signature, the unsafe exception for the DWT reinterpret, parallel-decode
 rework, procedure-list removal, docs layout, and whether the core eventually

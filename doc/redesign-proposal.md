@@ -6,7 +6,7 @@ jpeg2k-parity work, mostly landed). The goal of this document: propose the
 *next* iteration of the public API and the internal architecture, and record
 the design questions that need your decision.
 
-# Part A — Proposed public API (v0.8)
+# Part A — Proposed public API (target: the unpublished 0.7)
 
 ## A.1 Guiding principles (revised 2026-11-10, with owner decisions)
 
@@ -16,7 +16,9 @@ the design questions that need your decision.
 2. **No C types in the core's public namespace.** All C-ABI mirror types move
    to a new shared crate **`openjp2-ctypes`** (owner decision); the core keeps
    using them internally for now (non-breaking) and re-exports them only
-   under `openjp2::ffi`; the root `pub use c_api_types::*` is removed in 0.8.
+   under `openjp2::ffi`; the root `pub use c_api_types::*` is removed in the
+   upcoming 0.7 release (0.7 has never been published, so the breaking
+   changes can land directly in it — no 0.8 staging needed).
    The `openjp2-capi` crate is the only consumer that talks C types across
    the boundary.
 3. Every fallible call returns `Result<_, Error>`; panics are caught at the
@@ -188,9 +190,10 @@ Notes:
    (`opj_codec_t`, `opj_stream_t`, callback fn-pointer typedefs,
    `opj_packet_info_t`, `opj_marker_info_t`, `opj_tp_index_t`) are used only
    by the capi and move wholesale. Root `pub use c_api_types::*` is removed
-   in 0.8 (kept under `ffi` as a re-export of the ctypes crate).
+   in the 0.7 release (kept under `ffi` as a re-export of the ctypes crate).
    **Phasing:** (a) extract + core depends + capi depends (non-breaking);
-   (b) 0.8: drop the root re-export, split `Codec`, move the marshalling;
+   (b) 0.7 (unpublished, so breaking changes are fine): drop the root
+       re-export, split `Codec`, move the marshalling;
    (c) optional later: replace `OPJ_BOOL` etc. *inside* the core with Rust
    types (bool/i32/enums) so the core no longer imports the ctypes crate at
    all.
@@ -280,7 +283,7 @@ Notes:
 1. **Image naming** → keep `openjp2::Image`. ✅ recorded in A.1.
 2. **Codec split** → split into core `Decoder`/`Encoder`; a merged `Codec`
    moves into the capi crate (B.0). The old deprecated `Codec` methods are
-   removed with it in 0.8.
+   removed with it in 0.7.
 3. **C-ABI types** → all move to a new `openjp2-ctypes` crate; the capi crate
    is the only consumer of them at the boundary (B.0).
 4. **`image` crate** → stays optional; raw component access is always
@@ -290,11 +293,13 @@ Notes:
 
 ## Still open — for our next pass
 
-1. **Breaking-change timing.** Is 0.8 the right release for the Codec split +
-   root re-export removal together (one breaking release), or should the
-   ctypes extraction ship first as a non-breaking 0.7.x?
+1. ~~Breaking-change timing~~ **DECIDED:** 0.7 has never been published, so
+   the Codec split + root re-export removal land directly in 0.7 — no
+   non-breaking staging release is needed. The ctypes extraction is simply
+   the first commit of that release cycle (it keeps the tree green by
+   itself, then the split lands on top).
 2. **Error granularity.** Structured `DecodeError { marker/box, pos }` or
-   `String` for 0.8?
+   `String` for 0.7?
 3. **Encoder surface completeness.** Full builder (precincts, ROI,
    tile-parts, TLM, guard bits, rates) in `EncodeParameters`, or advanced
    knobs on `low_level()` only?
@@ -303,7 +308,8 @@ Notes:
 5. **Raw f32 planes.** With B.1.4 (typed `TileBuf`), should `ImageComponent`
    ever expose raw f32 planes for 9-7 files, or is i32-only the contract?
 6. **Threading default.** Keep automatic tile parallelism in the one-shot
-   API, or make it opt-in (`DecodeParameters::threads`)?
+   API, or make it opt-in (`DecodeParameters::threads(0 = automatic)` as an
+   opt-out)?
 7. **`get_pixels` alpha.** Drop `alpha_default: Option<u32>` for a
    `with_alpha` variant, or keep jpeg2k's exact signature?
 8. **Unsafe policy for the DWT reinterpret.** Typed `TileBuf` (no unsafe), or
