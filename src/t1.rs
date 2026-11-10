@@ -11,7 +11,7 @@ use super::tcd::*;
 use crate::image::CoreImageComp;
 
 use core::{
-  cell::{Cell, RefCell},
+  cell::Cell,
   ops::AddAssign,
 };
 
@@ -253,7 +253,7 @@ impl T1Coder {
 
   /// Like `split`, but the coefficient cursors walk `data` instead of the internal buffer.
   /// The decode path passes the code-block's owned `decoded_data` cells here, which keeps the
-  /// thread-local T1 cache from holding any reference to the code-block.
+  /// pooled T1 workspace from holding any reference to the code-block.
   fn split_with<'a>(
     &'a mut self,
     flags_stride: u32,
@@ -268,8 +268,38 @@ impl T1Coder {
   }
 }
 
-thread_local! {
-  static T1: RefCell<T1Coder> = RefCell::new(T1Coder::new())
+/* Per-worker T1 workspaces, one pool per direction.  The decoder and the
+encoder each own their pool so a decoded MQ sentinel can never leak into
+an encode running later on the same worker - the decode->encode sharing
+hazard is gone structurally (opj_mqc_init_enc still zeroes the sentinel
+as defense).  Each slot keeps the C's buffer-reuse amortization; the slot
+mutexes are uncontended (a worker runs its jobs sequentially). */
+pub(crate) struct T1Pool {
+  slots: Vec<std::sync::Mutex<Option<T1Coder>>>,
+}
+
+static T1_DECODE_POOL: std::sync::OnceLock<T1Pool> = std::sync::OnceLock::new();
+static T1_ENCODE_POOL: std::sync::OnceLock<T1Pool> = std::sync::OnceLock::new();
+
+impl T1Pool {
+  fn new() -> Self {
+    let n = crate::par::current_num_threads().max(1);
+    T1Pool {
+      slots: (0..n).map(|_| std::sync::Mutex::new(None)).collect(),
+    }
+  }
+
+  fn with<R>(&self, f: impl FnOnce(&mut T1Coder) -> R) -> R {
+    let idx = crate::par::current_thread_index().unwrap_or(0) % self.slots.len();
+    /* Recover from a poisoned slot (a panic mid-codeblock): the partially
+    written workspace is exactly what the old thread-local would have
+    retained too, and the panic itself is caught at the API boundary. */
+    let mut slot = self.slots[idx]
+      .lock()
+      .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let t1 = slot.get_or_insert_with(T1Coder::new);
+    f(t1)
+  }
 }
 
 #[inline]
@@ -1851,11 +1881,8 @@ fn opj_t1_clbl_decode_processor(
       .resize(cblk_w as usize * cblk_h as usize, Cell::new(0));
   }
 
-  // Use thread local t1 instance.
-  let ret = T1.with(|l_t1| {
-    let mut ref_t1 = l_t1.borrow_mut();
-    let t1 = &mut *ref_t1;
-
+  // Per-worker decode workspace (see T1Pool).
+  let ret = T1_DECODE_POOL.get_or_init(T1Pool::new).with(|t1| {
     t1.mustuse_cblkdatabuffer = mustuse_cblkdatabuffer;
     let r = if tccp.cblksty & J2K_CCP_CBLKSTY_HT != 0 {
       opj_t1_ht_decode_cblk(
@@ -1885,7 +1912,7 @@ fn opj_t1_clbl_decode_processor(
     }
     if whole_tile {
       /* Whole-tile decoding: like the C, the coefficients land in the
-      thread-local t1.data (no per-codeblock buffer); apply roishift +
+      worker's t1.data (no per-codeblock buffer); apply roishift +
       dequant and copy them straight into the codeblock's rectangle of
       the tile buffer (guarded by the tile mutex; rectangles are
       disjoint, so the lock is effectively uncontended). */
@@ -2131,12 +2158,13 @@ pub(crate) fn opj_t1_decode_cblks(
     return;
   }
 
-  /* Parallel decode: each job owns its codeblock (and the thread-local T1
-  state).  Whole-tile decoding writes the dequantized coefficients straight
-  into the codeblock's rectangle of the tile buffer through a shared Cell
-  view (the C's design: the thread-local t1.data holds the coefficients, no
-  per-codeblock buffers); window decoding keeps cblk.decoded_data.  Small
-  job sets stay sequential: the rayon overhead would dominate. */
+  /* Parallel decode: each job owns its codeblock (and the per-worker T1
+  workspace from the decode pool).  Whole-tile decoding writes the
+  dequantized coefficients straight into the codeblock's rectangle of the
+  tile buffer through a shared Cell view (the C's design: the worker's
+  t1.data holds the coefficients, no per-codeblock buffers); window
+  decoding keeps cblk.decoded_data.  Small job sets stay sequential: the
+  rayon overhead would dominate. */
   /* Whole-tile decoding shares the tile buffer across the parallel jobs
   through a mutex: each job only ever writes its own codeblock rectangle
   (disjoint regions), and the copy is a handful of cache lines, so the lock
@@ -2387,10 +2415,8 @@ fn opj_t1_cblk_encode_processor(
   let mut x = cblk.x0 - band_x0;
   let mut y = cblk.y0 - band_y0;
 
-  // Use thread local t1 instance.
-  let (ret, cumwmsedec) = T1.with(|l_t1| {
-    let mut ref_t1 = l_t1.borrow_mut();
-    let t1 = &mut *ref_t1;
+  // Per-worker encode workspace (see T1Pool).
+  let (ret, cumwmsedec) = T1_ENCODE_POOL.get_or_init(T1Pool::new).with(|t1| {
     let mut ret = 0i32;
 
     x += off_x as i32;

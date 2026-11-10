@@ -2,6 +2,32 @@
 //! platforms/targets cannot use rayon); everything falls back to the
 //! sequential iterators otherwise, with identical results.
 
+/// The current rayon pool's worker count (1 without the `rayon` feature).
+#[cfg(feature = "rayon")]
+pub(crate) fn current_num_threads() -> usize {
+  rayon::current_num_threads()
+}
+
+/// The current rayon pool's worker count (1 without the `rayon` feature).
+#[cfg(not(feature = "rayon"))]
+pub(crate) fn current_num_threads() -> usize {
+  1
+}
+
+/// The calling rayon worker's index, or `None` outside a rayon job (always
+/// `None` without the `rayon` feature).
+#[cfg(feature = "rayon")]
+pub(crate) fn current_thread_index() -> Option<usize> {
+  rayon::current_thread_index()
+}
+
+/// The calling rayon worker's index, or `None` outside a rayon job (always
+/// `None` without the `rayon` feature).
+#[cfg(not(feature = "rayon"))]
+pub(crate) fn current_thread_index() -> Option<usize> {
+  None
+}
+
 /// Applies `f(index, element)` to every element of `items`, collecting the
 /// results. Parallel under the `rayon` feature when `items.len() >= threshold`.
 #[cfg(feature = "rayon")]
