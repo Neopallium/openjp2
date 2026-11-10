@@ -183,15 +183,25 @@ Migration path (non-breaking first, breaking second):
 
 ## 4. Open questions
 
-- `Image` name collision: `openjp2::Image` vs `image::DynamicImage` — fine
-  (different crates), but consider `Jp2Image` if ambiguity hurts.
-- Keep `Codec` public at the root or behind `codec::`? Proposal: root
-  `Image`-centric API; `Codec` re-exported for advanced use.
-- `get_pixels`/`ImageData` in `openjp2` itself (pulling in the `image`
-  crate) or left to wrappers? Proposal: behind the `image` feature to
-  keep the core dependency-free.
-- Naming parity: match `jpeg2k`'s exact fn names (`from_bytes`,
-  `color_space`, `components`) so wrapper code is mechanical.
+Owner decisions (2026-11-10):
+
+1. **`Image` name** → keep `openjp2::Image` as-is.
+2. **`Codec` shape** → split it: the core gets `Decoder`/`Encoder` types
+   (all/most of `Codec`'s logic moves into them); the merged `Codec` the
+   C-ABI needs moves into the `openjp2-capi` crate.
+3. **C-ABI types** → move all of them out of the core into a new shared
+   `openjp2-ctypes` crate (the fallback if capi-only doesn't work out);
+   the capi crate is the consumer of these types when linking the core.
+4. **`image`-crate interop** → keep optional; always provide raw component
+   data access (J2K/JP2 support more components than `image` can represent).
+5. **jpeg2k naming** → keep only where it makes sense.
+
+Still open (carried in `doc/redesign-proposal.md` Part C): breaking-change
+timing for 0.8, structured errors, encoder-builder completeness, custom-MCT
+decode extension, raw f32 planes, threading default, `get_pixels` alpha
+signature, the unsafe exception for the DWT reinterpret, parallel-decode
+rework, procedure-list removal, docs layout, and whether the core eventually
+drops `OPJ_BOOL` internally.
 
 ---
 

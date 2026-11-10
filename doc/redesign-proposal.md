@@ -8,16 +8,25 @@ the design questions that need your decision.
 
 # Part A — Proposed public API (v0.8)
 
-## A.1 Guiding principles
+## A.1 Guiding principles (revised 2026-11-10, with owner decisions)
 
-1. One primary surface: the safe one-shot + builder API. The low-level
-   `Codec` becomes a typed, `Result`-returning advanced API behind a
-   `raw`/`codec` module, no longer deprecated-in-place.
-2. No C types in the default namespace: `OPJ_*` mirrors exist **only** under
-   `openjp2::ffi` (kept for the capi crate; normal users never import them).
+1. One primary surface: the safe one-shot + builder API. The low-level API
+   becomes **split `Decoder` / `Encoder` types** (owner decision: the merged
+   `Codec` goes away from the core; see A.4).
+2. **No C types in the core's public namespace.** All C-ABI mirror types move
+   to a new shared crate **`openjp2-ctypes`** (owner decision); the core keeps
+   using them internally for now (non-breaking) and re-exports them only
+   under `openjp2::ffi`; the root `pub use c_api_types::*` is removed in 0.8.
+   The `openjp2-capi` crate is the only consumer that talks C types across
+   the boundary.
 3. Every fallible call returns `Result<_, Error>`; panics are caught at the
    boundary (already true for the safe API — extend to the new low-level API).
-4. Feature-light core: `image`-crate interop and rayon stay optional.
+4. Feature-light core: `rayon` and `image`-crate interop stay optional.
+   **Raw component data access is always available** (owner decision: J2K/JP2
+   support more components/precisions than the `image` crate can represent) —
+   the `image` feature only adds `DynamicImage`/`ImageData` conveniences.
+5. `Image` keeps its name (owner decision). jpeg2k naming parity is kept only
+   where it costs nothing (owner decision).
 
 ## A.2 Proposed types & methods
 
@@ -49,13 +58,13 @@ impl Image {
 }
 
 // NEW: typed component view (wraps CoreImageComp, hides resno_decoded etc.)
+// Raw access is available WITHOUT any cargo feature.
 pub struct ImageComponent {
   pub fn width/height/precision/signed/subsampling(dx,dy)/is_alpha;
-  pub fn data(&self) -> ComponentData<'_>;   // enum below
-  pub fn to_u8(&self) -> impl Iterator<Item=u8>;   // precision-aware scaling
-  pub fn to_u16(&self) -> impl Iterator<Item=u16>;
+  pub fn data(&self) -> &[i32];                       // raw, always available
+  pub fn to_u8(&self) -> impl Iterator<Item=u8>;       // precision-aware, no feature
+  pub fn to_u16(&self) -> impl Iterator<Item=u16>;     // (today's data_u8/u16, un-gated)
 }
-pub enum ComponentData<'a> { I32(&'a [i32]) }   // future: F32 for 9-7 raw?
 
 // ---- decode configuration ----
 pub struct DecodeParameters { /* builder as today + */ }
@@ -98,43 +107,93 @@ pub struct CodestreamIndex { /* wraps the current struct, accessor-only */ }
   pub fn markers(&self) -> &[MarkerInfo];       // NEW: expose the marker list
 pub struct DumpImage { /* as today + set_decode_limits already wired */ }
 
-// ---- the typed low-level API (replaces the deprecated Codec methods) ----
-pub mod raw {
-  pub struct Decoder { codec: Codec }   // J2K or JP2 behind the enum
-  impl Decoder {
-    pub fn new(format: J2KFormat) -> Result<Self>;
-    pub fn set_strict / set_limits / set_components / set_decode_area /
-        set_resolution_factor;
-    pub fn read_header(&mut self, &mut Stream) -> Result<HeaderImage>;
-    pub fn decode(&mut self, &mut Stream) -> Result<CoreImage>;
-    pub fn read_tile_header(&mut self, &mut Stream) -> Result<TileInfo>;
-    pub fn decode_tile_data(&mut self, &mut Stream, tile: u32, out: Option<&mut [u8]>) -> Result<()>;
-    pub fn get_decoded_tile(&mut self, &mut Stream, tile: u32) -> Result<CoreImage>;
-    pub fn cstr_info(&self) -> Option<CodestreamInfo>;
-    pub fn cstr_index(&self) -> Option<CodestreamIndex>;
-  }
-  pub struct Encoder { codec: Codec }
-  impl Encoder {
-    pub fn new(format: J2KFormat) -> Result<Self>;
-    pub fn setup(&mut self, &mut EncodeParameters, &mut CoreImage) -> Result<()>;
-    pub fn start(&mut self, &mut CoreImage, &mut Stream) -> Result<()>;
-    pub fn encode(&mut self, &mut Stream) -> Result<()>;
-    pub fn write_tile(&mut self, tile: u32, &[u8], &mut Stream) -> Result<()>;
-    pub fn finish(&mut self, &mut Stream) -> Result<()>;
-    pub fn extra_options(&mut self, &[&str]) -> Result<()>;
-  }
+// ---- the split low-level API (owner decision: Codec is split; the merged
+//      type moves to the capi crate) ----
+pub struct Decoder { inner: DecoderInner, event_mgr: EventMgr }
+impl Decoder {
+  pub fn new(format: J2KFormat) -> Result<Self>;
+  pub fn set_strict / set_limits / set_components / set_decode_area /
+      set_resolution_factor / set_threads;
+  pub fn set_info_handler / set_warning_handler / set_error_handler;
+  pub fn read_header(&mut self, &mut Stream) -> Result<HeaderImage>;
+  pub fn decode(&mut self, &mut Stream) -> Result<CoreImage>;
+  pub fn read_tile_header(&mut self, &mut Stream) -> Result<TileInfo>;
+  pub fn decode_tile_data(&mut self, &mut Stream, tile: u32, out: Option<&mut [u8]>) -> Result<()>;
+  pub fn get_decoded_tile(&mut self, &mut Stream, tile: u32) -> Result<CoreImage>;
+  pub fn cstr_info(&self) -> Option<CodestreamInfo>;
+  pub fn cstr_index(&self) -> Option<CodestreamIndex>;
+  pub fn dump(&self, info_flag: i32) -> String;
 }
+pub struct Encoder { inner: EncoderInner, event_mgr: EventMgr }
+impl Encoder {
+  pub fn new(format: J2KFormat) -> Result<Self>;
+  pub fn set_info_handler / set_warning_handler / set_error_handler / set_threads;
+  pub fn setup(&mut self, &mut EncodeParameters, &mut CoreImage) -> Result<()>;
+  pub fn start(&mut self, &mut CoreImage, &mut Stream) -> Result<()>;
+  pub fn encode(&mut self, &mut Stream) -> Result<()>;
+  pub fn write_tile(&mut self, tile: u32, &[u8], &mut Stream) -> Result<()>;
+  pub fn finish(&mut self, &mut Stream) -> Result<()>;
+  pub fn extra_options(&mut self, &[&str]) -> Result<()>;
+  pub fn cstr_info(&self) -> Option<CodestreamInfo>;
+  pub fn cstr_index(&self) -> Option<CodestreamIndex>;
+  pub fn dump(&self, info_flag: i32) -> String;
+}
+// The openjp2-capi crate defines ITS OWN merged type to keep the single
+// opj_codec_t* pointer contract, and marshals the C-shaped parameters there:
+//
+//   capi::Codec { enum { Dec(openjp2::Decoder), Enc(openjp2::Encoder) } }
+//
+// so the core's public signatures contain NO C types (opj_dparameters and
+// friends are translated inside the capi crate).
 ```
 
 Notes:
-- `Codec` stays `pub` (re-exported) for the capi crate and exotic users, but
-  the deprecated methods are removed in 0.8; `raw::{Decoder,Encoder}` wrap it
-  and convert everything to `Result` (a panic inside is still caught by the
-  existing guards).
+- The split replaces today's `Codec` entirely in the core. Internally
+  `Decoder`/`Encoder` hold the `CodecFormat` enum (J2K/JP2) plus an
+  `EventMgr`; the six methods they share (handlers, `set_threads`, `dump`,
+  cstr accessors) are duplicated or factored into a tiny `EventHandlers`
+  helper — there is no user-visible merged type in the core anymore.
 - `HeaderImage` = a `CoreImage` with empty component data (header-only) so
   callers cannot mistake it for decoded pixels.
+- The safe API (`Image`, `DumpImage`) is rewritten on top of `Decoder`
+  (and the encode drivers on `Encoder`); nothing user-visible changes there.
+- The capi crate's merged `Codec` keeps today's `opj_codec_t*` ABI and is
+  where `opj_dparameters_t`/`opj_image_cmptparm_t` marshalling lives.
 
 # Part B — Proposed internal structure
+
+## B.0 Codec split & C-type extraction (owner decisions)
+
+1. **Split `Codec` (core)** — replace `codec.rs`'s `CodecType`/`CodecFormat`
+   facade with two public types, `Decoder` and `Encoder`, each owning the
+   `CodecFormat` enum + an `EventMgr`. The 24 methods partition cleanly
+   (verified): 14 → `Decoder`, 7 → `Encoder`, 6 shared (3 handlers,
+   `set_threads`, `dump_codec`, cstr accessors) via a small internal
+   `EventHandlers`/`Threads` helper. The safe API drivers switch from
+   `Codec` to the split types; the `opj_codec_private_t` alias disappears
+   from the core.
+2. **Merged `Codec` lives in the capi crate.** The capi defines
+   `Codec { enum { Dec(core::Decoder), Enc(core::Encoder) } }` to keep the
+   single `opj_codec_t*` pointer contract, and becomes the *only* place where
+   the C-shaped parameters (`opj_dparameters_t`, `opj_image_cmptparm_t`,
+   `opj_cparameters_t`) are marshalled. The core's public signatures become
+   C-type-free.
+3. **`openjp2-ctypes` crate (new workspace member).** Moves all of today's
+   `c_api_types.rs` plus the C-header-mirror constants (`consts::{opj, cio,
+   event}`, the ABI constants in `consts::j2k`) and `opj_image_comptparm`.
+   Ownership inventory (verified): the core *internally* uses `OPJ_BOOL`
+   (~280 sites in 12 modules), `OPJ_COLOR_SPACE`, `OPJ_PROG_ORDER`+constants,
+   `opj_poc_t`, `CODEC_FORMAT`, `opj_dparameters_t`, RSIZ/CINEMA modes —
+   these keep working by depending on the crate; the purely-C items
+   (`opj_codec_t`, `opj_stream_t`, callback fn-pointer typedefs,
+   `opj_packet_info_t`, `opj_marker_info_t`, `opj_tp_index_t`) are used only
+   by the capi and move wholesale. Root `pub use c_api_types::*` is removed
+   in 0.8 (kept under `ffi` as a re-export of the ctypes crate).
+   **Phasing:** (a) extract + core depends + capi depends (non-breaking);
+   (b) 0.8: drop the root re-export, split `Codec`, move the marshalling;
+   (c) optional later: replace `OPJ_BOOL` etc. *inside* the core with Rust
+   types (bool/i32/enums) so the core no longer imports the ctypes crate at
+   all.
 
 ## B.1 Decoder
 
@@ -211,43 +270,50 @@ Notes:
 4. **Remaining open review items** (schedule inside this redesign rather than
    as one-offs): t1 refinement-pass wrapping (review_2 M7), `opj_lrintf` NaN
    parity (review_3 M12 — needs an empirical trigger first), `DumpImage`
-   unify with `raw::Decoder`, the `LayerRate` builder doc/behavior, the
+   unify with `Decoder`, the `LayerRate` builder doc/behavior, the
    `Jp2BoxType::UUID` constant typo, `GUARD_BITS` parse parity.
 
-# Part C — Design questions for you
+# Part C — Design questions
 
-1. **Image naming.** Keep `openjp2::Image` (collides conceptually with
-   `image::DynamicImage` but never in the same namespace) or rename to
-   `DecodedImage`/`Jp2Image`? The jpeg2k wrapper parity argues for keeping
-   `Image`.
-2. **Breaking change timing.** The typed `raw::{Decoder,Encoder}` + removal
-   of the deprecated `Codec` methods is a 0.8 breaking change. Do it in one
-   release, or keep the deprecated shims for one more cycle?
-3. **Error granularity.** Is the structured `DecodeError { marker/box, pos }`
-   worth it, or is `String` sufficient for 0.8?
-4. **Encoder surface completeness.** Do you want the full builder (precincts,
-   ROI, tile-parts, TLM, guard bits, rates) in `EncodeParameters`, or should
-   advanced knobs stay on `low_level()`?
-5. **Custom MCT decode.** Extend beyond C parity (accept mct=2 on decode,
-   since we can) or stay strict-parity? (See B.2.4.)
-6. **Component data typing.** Is `ComponentData::I32` enough, or should the
-   API expose the raw f32 planes for 9-7 files (post-B.1.4)?
-7. **Threading default.** Keep automatic tile parallelism in the one-shot API
-   (today's behavior), or make it opt-in (`DecodeParameters::threads`)?
-   Today's parallelism is byte-identical and bounded, but implicit.
-8. **`get_pixels` alpha.** Drop the `alpha_default: Option<u32>` parameter
-   (A.2) in favour of a separate `with_alpha` variant, or keep jpeg2k's
-   signature exactly?
-9. **Unsafe policy for the DWT reinterpret.** B.1.4 avoids unsafe via a typed
-   `TileBuf`; alternatively a single `#[allow(unsafe_code)]` reinterpret
-   block would be smaller (~15 sites). Is `forbid(unsafe_code)` absolute, or
-   is a scoped, documented exception acceptable for the i32/f32 view?
-10. **Parallel-decode rework (B.1.6).** Worth the effort now (removes the
-    snapshot copy + prescan hazard), or defer until the memory audit asks
-    for it?
-11. **Procedure-list removal (B.1.1).** The lists mirror the C's design and
-    helped parity review; is a mechanical simplification acceptable, or do
-    you prefer keeping the C mirror as-is for future upstream syncs?
-12. **Docs.** Should these three docs (public-api-summary, internals-summary,
-    redesign-proposal) replace `api-review.md` + `code-outline.md`, or live
-    alongside them?
+## Decided (owner, 2026-11-10)
+
+1. **Image naming** → keep `openjp2::Image`. ✅ recorded in A.1.
+2. **Codec split** → split into core `Decoder`/`Encoder`; a merged `Codec`
+   moves into the capi crate (B.0). The old deprecated `Codec` methods are
+   removed with it in 0.8.
+3. **C-ABI types** → all move to a new `openjp2-ctypes` crate; the capi crate
+   is the only consumer of them at the boundary (B.0).
+4. **`image` crate** → stays optional; raw component access is always
+   available (`ImageComponent::data()` + `to_u8`/`to_u16` without any
+   feature).
+5. **jpeg2k naming parity** → keep only where free; no forced parity.
+
+## Still open — for our next pass
+
+1. **Breaking-change timing.** Is 0.8 the right release for the Codec split +
+   root re-export removal together (one breaking release), or should the
+   ctypes extraction ship first as a non-breaking 0.7.x?
+2. **Error granularity.** Structured `DecodeError { marker/box, pos }` or
+   `String` for 0.8?
+3. **Encoder surface completeness.** Full builder (precincts, ROI,
+   tile-parts, TLM, guard bits, rates) in `EncodeParameters`, or advanced
+   knobs on `low_level()` only?
+4. **Custom MCT decode.** Extend beyond C parity (accept mct=2 on decode) or
+   stay strict-parity? (B.2.4.)
+5. **Raw f32 planes.** With B.1.4 (typed `TileBuf`), should `ImageComponent`
+   ever expose raw f32 planes for 9-7 files, or is i32-only the contract?
+6. **Threading default.** Keep automatic tile parallelism in the one-shot
+   API, or make it opt-in (`DecodeParameters::threads`)?
+7. **`get_pixels` alpha.** Drop `alpha_default: Option<u32>` for a
+   `with_alpha` variant, or keep jpeg2k's exact signature?
+8. **Unsafe policy for the DWT reinterpret.** Typed `TileBuf` (no unsafe), or
+   is a scoped, documented `#[allow(unsafe_code)]` exception acceptable?
+9. **Parallel-decode rework (B.1.6).** Now (removes snapshot copy + prescan
+   hazard) or defer?
+10. **Procedure-list removal (B.1.1).** OK to simplify away the C's
+    procedure-list mirror, or keep for upstream-sync parity?
+11. **Docs layout.** Replace `api-review.md` + `code-outline.md` with the new
+    trio, or keep all five?
+12. **`OPJ_BOOL` inside the core (B.0 phase c).** Worth the ~300-site
+    internal migration to Rust types (bool/i32/enums), or leave the core
+    importing `openjp2-ctypes` indefinitely?
