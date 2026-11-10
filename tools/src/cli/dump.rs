@@ -1,5 +1,5 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
-use openjp2::{detect_format_from_file, openjpeg::*, Codec, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, Decoder, J2KFormat, Stream};
 use std::ffi::CString;
 use std::path::{Path, PathBuf};
 
@@ -175,7 +175,7 @@ fn process_file(
         return Err("Unknown codec format".into());
       }
     };
-    let mut codec = Codec::new_decoder(cod_format).ok_or("Failed to create codec")?;
+    let mut codec = Decoder::new(cod_format).ok_or("Failed to create codec")?;
 
     /* catch events using our callbacks and give a local context */
     codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));

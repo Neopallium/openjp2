@@ -1,5 +1,5 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt, PositionalArg};
-use openjp2::{detect_format_from_file, openjpeg::*, Codec, CoreImage, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, Decoder, CoreImage, J2KFormat, Stream};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -127,7 +127,7 @@ fn print_help() {
   std::process::exit(0);
 }
 
-fn create_codec_and_stream(input: &PathBuf) -> Result<(Codec, Stream), String> {
+fn create_codec_and_stream(input: &PathBuf) -> Result<(Decoder, Stream), String> {
   let mut params = opj_dparameters_t::default();
 
   let codec_format = detect_format_from_file(input)?;
@@ -143,7 +143,7 @@ fn create_codec_and_stream(input: &PathBuf) -> Result<(Codec, Stream), String> {
   };
 
   let mut codec =
-    Codec::new_decoder(cod_format).ok_or_else(|| "Failed to create codec".to_string())?;
+    Decoder::new(cod_format).ok_or_else(|| "Failed to create codec".to_string())?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));

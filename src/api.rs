@@ -1,6 +1,8 @@
 //! Safe, high-level API over the codec (see doc/api-review.md, item 13 of
 //! the work plan): one-shot `Image` decoding, a `DecodeParameters` builder,
-//! a typed `ColorSpace`, and a unified `Error`.  The low-level `Codec` /
+//! a typed `ColorSpace`, and a unified `Error`.  The low-level `Decoder` /
+//! `Encoder` types (the merged `Codec` handle lives in the `openjp2-capi`
+//! crate) keep the C-style step API for incremental use.
 //! `Stream` types remain available for streaming and tile-level use cases.
 
 use crate::c_api_types::OPJ_COLOR_SPACE;
@@ -10,7 +12,7 @@ use crate::c_api_types::{
 };
 use crate::consts::opj::OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG;
 use crate::c_api_types::opj_dparameters;
-use crate::{Codec, CoreImage, CoreImageComp, J2KFormat, Stream};
+use crate::{CoreImage, CoreImageComp, Decoder, Encoder, J2KFormat, Stream};
 
 /// Errors returned by the safe API.
 #[derive(Debug)]
@@ -644,7 +646,7 @@ fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + 'static>(
       )))
     }
   };
-  let mut codec = Codec::new_encoder(codec_format)
+  let mut codec = Encoder::new(codec_format)
     .ok_or_else(|| Error::Encode("failed to create encoder".into()))?;
   let mut params = params;
   let mut image = image.clone();
@@ -708,7 +710,7 @@ fn encode_image_inner(
       )))
     }
   };
-  let mut codec = Codec::new_encoder(codec_format).ok_or_else(|| Error::Encode("failed to create encoder".into()))?;
+  let mut codec = Encoder::new(codec_format).ok_or_else(|| Error::Encode("failed to create encoder".into()))?;
   let mut params = params;
   let mut image = image.clone();
   if codec.setup_encoder(&mut params, &mut image) != 1 {
@@ -771,7 +773,7 @@ fn decode_stream_inner(
       )))
     }
   };
-  let mut codec = Codec::new_decoder(codec_format).ok_or_else(|| Error::Decode("failed to create decoder".into()))?;
+  let mut codec = Decoder::new(codec_format).ok_or_else(|| Error::Decode("failed to create decoder".into()))?;
 
   let mut dparams = opj_dparameters {
     cp_reduce: params.reduce,
@@ -1177,7 +1179,7 @@ mod tests {
       };
       #[allow(deprecated)]
       let serial = {
-        let mut codec = Codec::new_encoder(OPJ_CODEC_J2K).unwrap();
+        let mut codec = Encoder::new(OPJ_CODEC_J2K).unwrap();
         let mut low = params.clone().into_inner();
         let mut img = image.into_core_image();
         if codec.setup_encoder(&mut low, &mut img) != 1 {
@@ -1224,7 +1226,7 @@ mod tests {
     let par = image.encode(params.clone()).expect("parallel encode");
     #[allow(deprecated)]
     let serial = {
-      let mut codec = Codec::new_encoder(OPJ_CODEC_J2K).unwrap();
+      let mut codec = Encoder::new(OPJ_CODEC_J2K).unwrap();
       let mut low = params.into_inner();
       let mut img = image.into_core_image();
       assert_eq!(codec.setup_encoder(&mut low, &mut img), 1);
@@ -1738,7 +1740,7 @@ mod tests {
         } else {
           OPJ_CODEC_J2K
         };
-        let mut codec = Codec::new_decoder(c)?;
+        let mut codec = Decoder::new(c)?;
         let mut dp = opj_dparameters::default();
         if codec.setup_decoder(&mut dp) != 1 {
           return None;
@@ -1777,7 +1779,7 @@ mod tests {
           } else {
             OPJ_CODEC_J2K
           };
-          let mut codec = Codec::new_decoder(c)?;
+          let mut codec = Decoder::new(c)?;
           let mut dp = opj_dparameters {
             cp_layer: params.layers,
             cp_reduce: params.reduce,
@@ -1998,7 +2000,7 @@ mod tests {
     // The raw (unguarded) Codec path must fail cleanly too, not panic.
     #[allow(deprecated)]
     {
-      let mut codec = Codec::new_decoder(OPJ_CODEC_J2K).unwrap();
+      let mut codec = Decoder::new(OPJ_CODEC_J2K).unwrap();
       let mut stream = Stream::new_input(
         crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
         std::io::Cursor::new(cs.clone()),
@@ -2020,7 +2022,7 @@ mod tests {
       let data = std::fs::read(path).unwrap();
       #[allow(deprecated)]
       {
-        let mut codec = Codec::new_decoder(OPJ_CODEC_J2K).unwrap();
+        let mut codec = Decoder::new(OPJ_CODEC_J2K).unwrap();
         let mut stream = Stream::new_input(
           crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
           std::io::Cursor::new(data.clone()),
@@ -2261,7 +2263,7 @@ mod tests {
     };
     #[allow(deprecated)]
     let encode_low_level = |tlm: bool| -> Vec<u8> {
-      let mut codec = Codec::new_encoder(OPJ_CODEC_J2K).unwrap();
+      let mut codec = Encoder::new(OPJ_CODEC_J2K).unwrap();
       if tlm {
         assert!(codec.encoder_set_extra_options(&["TLM=YES"]));
       }
@@ -2991,7 +2993,7 @@ pub mod image_conv {
 /// Header/decode driver for the codestream index/info and the dump text
 /// (the jpeg2k `DumpImage` equivalent).
 pub struct DumpImage {
-  codec: Codec,
+  codec: Decoder,
   stream: Stream,
   image: Option<CoreImage>,
 }
@@ -3022,7 +3024,7 @@ impl DumpImage {
         )))
       }
     };
-    let mut codec = Codec::new_decoder(codec_format)
+    let mut codec = Decoder::new(codec_format)
       .ok_or_else(|| Error::Decode("failed to create decoder".into()))?;
     let mut dparams = opj_dparameters {
       cp_reduce: params.reduce,

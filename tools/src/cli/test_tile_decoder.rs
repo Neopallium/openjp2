@@ -1,4 +1,4 @@
-use openjp2::{detect_format_from_file, openjpeg::*, Codec, J2KFormat, Stream, TileInfo};
+use openjp2::{detect_format_from_file, openjpeg::*, Decoder, J2KFormat, Stream, TileInfo};
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy)]
@@ -9,7 +9,7 @@ struct DecodeArea {
   y1: i32,
 }
 
-fn create_codec_and_stream<P: AsRef<Path>>(input: P) -> Result<(Codec, Stream), String> {
+fn create_codec_and_stream<P: AsRef<Path>>(input: P) -> Result<(Decoder, Stream), String> {
   let input = input.as_ref();
   let mut params = opj_dparameters_t {
     // Do not use layer decoding limitations
@@ -32,7 +32,7 @@ fn create_codec_and_stream<P: AsRef<Path>>(input: P) -> Result<(Codec, Stream), 
   };
 
   let mut codec =
-    Codec::new_decoder(cod_format).ok_or_else(|| "Failed to create codec".to_string())?;
+    Decoder::new(cod_format).ok_or_else(|| "Failed to create codec".to_string())?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));

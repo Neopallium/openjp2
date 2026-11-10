@@ -1,5 +1,5 @@
 use crate::{convert::*, params::*};
-use openjp2::{detect_format_from_file, openjpeg::*, CoreImage, Codec, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, CoreImage, Encoder, J2KFormat, Stream};
 use std::path::{Path, PathBuf};
 
 fn compress_image(
@@ -75,7 +75,7 @@ fn compress_image(
       return Err(ImageError::InvalidFormat("Unknown codec format".into()));
     }
   };
-  let mut codec = Codec::new_encoder(cod_format)
+  let mut codec = Encoder::new(cod_format)
     .ok_or_else(|| ImageError::EncodeError("Failed to create codec".into()))?;
 
   /* catch events using our callbacks and give a local context */

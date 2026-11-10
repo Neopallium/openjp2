@@ -1,5 +1,5 @@
 use crate::{color::*, convert::*, params::*};
-use openjp2::{detect_format_from_file, openjpeg::*, Codec, CoreImage, ICCProfile, J2KFormat, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, Decoder, CoreImage, ICCProfile, J2KFormat, Stream};
 use std::{env, path::Path};
 
 fn decompress_image<P: AsRef<Path>>(
@@ -25,7 +25,7 @@ fn decompress_image<P: AsRef<Path>>(
       return Err(ImageError::InvalidFormat("Unknown codec format".into()));
     }
   };
-  let mut codec = Codec::new_decoder(cod_format)
+  let mut codec = Decoder::new(cod_format)
     .ok_or_else(|| ImageError::EncodeError("Failed to create codec".into()))?;
 
   // setup the decoder with the provided parameters.

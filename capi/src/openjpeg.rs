@@ -39,7 +39,8 @@ use crate::params::opj_cparameters_t;
 use crate::cstr_info::{opj_codestream_index_t, opj_codestream_info_v2_t};
 use openjp2_ctypes::*;
 
-use openjp2_core::{opj_codec_private_t, opj_stream_private_t, TileInfo};
+use crate::codec::Codec;
+use openjp2_core::{opj_stream_private_t, TileInfo};
 
 #[cfg(feature = "file-io")]
 use ::libc::FILE;
@@ -106,7 +107,7 @@ pub unsafe fn opj_set_info_handler(
   if p_codec.is_null() {
     return 0i32;
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   l_codec.set_info_handler(wrap_callback(p_callback, p_user_data))
 })}
 
@@ -119,7 +120,7 @@ pub unsafe fn opj_set_warning_handler(
   if p_codec.is_null() {
     return 0i32;
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   l_codec.set_warning_handler(wrap_callback(p_callback, p_user_data))
 })}
 
@@ -132,7 +133,7 @@ pub unsafe fn opj_set_error_handler(
   if p_codec.is_null() {
     return 0i32;
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   l_codec.set_error_handler(wrap_callback(p_callback, p_user_data))
 })}
 
@@ -149,7 +150,7 @@ pub fn opj_version() -> *const core::ffi::c_char {ffi_guard(|| {
 /* DECOMPRESSION FUNCTIONS*/
 #[no_mangle]
 pub fn opj_create_decompress(p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {ffi_guard(|| {
-  if let Some(codec) = opj_codec_private_t::new_decoder(p_format) {
+  if let Some(codec) = Codec::new_decoder(p_format) {
     let l_codec = Box::new(codec);
     Box::into_raw(l_codec) as *mut opj_codec_t
   } else {
@@ -174,7 +175,7 @@ pub unsafe fn opj_codec_set_threads(
   if p_codec.is_null() {
     return 0i32;
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   l_codec.set_threads(num_threads)
 })}
 
@@ -186,7 +187,7 @@ pub unsafe fn opj_setup_decoder(
   if p_codec.is_null() || parameters.is_null() {
     return 0i32;
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let parameters = &mut *parameters;
   l_codec.setup_decoder(parameters)
 })}
@@ -199,7 +200,7 @@ pub unsafe fn opj_decoder_set_strict_mode(
   if p_codec.is_null() {
     return 0i32;
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   l_codec.decoder_set_strict_mode(strict)
 })}
 
@@ -213,7 +214,7 @@ pub unsafe fn opj_read_header(
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   match l_codec.read_header(p_stream) {
     Some(image) => {
       *p_image = Box::into_raw(core_into_opj(image));
@@ -233,7 +234,7 @@ pub unsafe fn opj_set_decoded_components(
   if p_codec.is_null() {
     return 0i32;
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let components = unsafe { core::slice::from_raw_parts(comps_indices, numcomps as usize) };
   l_codec.set_decoded_components(components, apply_color_transforms)
 })}
@@ -249,7 +250,7 @@ pub unsafe fn opj_decode(
   }
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let mut core = core_from_opj(p_image);
   if l_codec.decode(p_stream, &mut core) == 1 {
     let fresh = core_into_opj(core);
@@ -275,7 +276,7 @@ pub unsafe fn opj_set_decode_area(
     return 0i32;
   }
   let p_image = unsafe { &mut *p_image };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let mut core = core_from_opj(p_image);
   // set_decode_area only adjusts the component geometry; the caller's data
   // buffers are stale at this point (C leaves them alone and opj_decode
@@ -308,7 +309,7 @@ pub unsafe fn opj_read_tile_header(
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let mut tile_info = TileInfo::default();
   if !p_data_size.is_null() {
     // Request the tile data size.
@@ -359,7 +360,7 @@ pub unsafe fn opj_decode_tile_data(
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let p_data = if p_data.is_null() {
     None
   } else {
@@ -380,7 +381,7 @@ pub unsafe fn opj_get_decoded_tile(
   }
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let mut core = core_from_opj(p_image);
   let ret = l_codec.get_decoded_tile(p_stream, &mut core, tile_index);
   let fresh = core_into_opj(core);
@@ -398,7 +399,7 @@ pub unsafe fn opj_set_decoded_resolution_factor(
   if p_codec.is_null() {
     return 0i32;
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   l_codec.set_decoded_resolution_factor(res_factor)
 })}
 
@@ -407,7 +408,7 @@ pub unsafe fn opj_set_decoded_resolution_factor(
 /* COMPRESSION FUNCTIONS*/
 #[no_mangle]
 pub unsafe fn opj_create_compress(p_format: OPJ_CODEC_FORMAT) -> *mut opj_codec_t {ffi_guard(|| {
-  if let Some(codec) = opj_codec_private_t::new_encoder(p_format) {
+  if let Some(codec) = Codec::new_encoder(p_format) {
     let l_codec = Box::new(codec);
     Box::into_raw(l_codec) as *mut opj_codec_t
   } else {
@@ -438,7 +439,7 @@ pub unsafe fn opj_setup_encoder(
     return 0i32;
   }
   let p_image = unsafe { &mut *p_image };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let parameters = &mut *parameters;
   let mut core = core_from_opj(p_image);
   let mut safe = encoder_params_from_c(parameters, core.numcomps);
@@ -552,7 +553,7 @@ pub unsafe fn opj_encoder_set_extra_options(
   if p_codec.is_null() {
     return 0;
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let mut p_option_iter = options;
   let mut options = Vec::new();
   while !(*p_option_iter).is_null() {
@@ -582,7 +583,7 @@ pub unsafe fn opj_start_compress(
   }
   let p_image = unsafe { &mut *p_image };
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let mut core = core_from_opj(p_image);
   let ret = l_codec.start_compress(&mut core, p_stream);
   let fresh = core_into_opj(core);
@@ -601,7 +602,7 @@ pub unsafe fn opj_encode(
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   l_codec.encode(p_stream)
 })}
 
@@ -614,7 +615,7 @@ pub unsafe fn opj_end_compress(
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   l_codec.end_compress(p_stream)
 })}
 
@@ -627,7 +628,7 @@ pub unsafe fn opj_end_decompress(
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   l_codec.end_decompress(p_stream)
 })}
 
@@ -659,7 +660,7 @@ pub unsafe fn opj_write_tile(
     return 0i32;
   }
   let p_stream = unsafe { &mut *(p_stream as *mut opj_stream_private_t) };
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   let p_data = unsafe { core::slice::from_raw_parts(p_data as *const u8, p_data_size as usize) };
   l_codec.write_tile(p_tile_index, p_data, p_stream)
 })}
@@ -670,7 +671,7 @@ pub unsafe fn opj_destroy_codec(p_codec: *mut opj_codec_t) {ffi_guard(|| {
   if p_codec.is_null() {
     return;
   }
-  let _ = Box::from_raw(p_codec as *mut opj_codec_private_t);
+  let _ = Box::from_raw(p_codec as *mut Codec);
 })}
 
 /* ---------------------------------------------------------------------- */
@@ -684,7 +685,7 @@ pub unsafe fn opj_dump_codec(
   if p_codec.is_null() {
     return;
   }
-  let l_codec = &mut *(p_codec as *mut opj_codec_private_t);
+  let l_codec = &mut *(p_codec as *mut Codec);
   if output_stream.is_null() {
     return;
   }
@@ -726,7 +727,7 @@ pub unsafe fn opj_get_cstr_info(p_codec: *mut opj_codec_t) -> *mut opj_codestrea
   if p_codec.is_null() {
     return core::ptr::null_mut::<opj_codestream_info_v2_t>();
   }
-  let l_codec = &*(p_codec as *mut opj_codec_private_t);
+  let l_codec = &*(p_codec as *mut Codec);
   match l_codec.get_cstr_info_v2() {
     Some(info) => crate::cstr_info::build_cstr_info_v2(&info),
     None => core::ptr::null_mut::<opj_codestream_info_v2_t>(),
@@ -743,7 +744,7 @@ pub unsafe fn opj_get_cstr_index(p_codec: *mut opj_codec_t) -> *mut opj_codestre
   if p_codec.is_null() {
     return core::ptr::null_mut::<opj_codestream_index_t>();
   }
-  let l_codec = &*(p_codec as *mut opj_codec_private_t);
+  let l_codec = &*(p_codec as *mut Codec);
   match l_codec.get_cstr_index_owned() {
     Some(index) => crate::cstr_info::build_cstr_index(&index),
     None => core::ptr::null_mut::<opj_codestream_index_t>(),

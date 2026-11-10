@@ -1,6 +1,6 @@
 use openjp2::ffi::opj_image_cmptparm_t;
 use openjp2::CoreImage;
-use openjp2::{detect_format_from_extension_os_str, openjpeg::*, Codec, J2KFormat, Stream};
+use openjp2::{detect_format_from_extension_os_str, openjpeg::*, Encoder, J2KFormat, Stream};
 use rand::prelude::*;
 use std::path::PathBuf;
 
@@ -142,7 +142,7 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
     }
   };
   let mut codec =
-    Codec::new_encoder(cod_format).ok_or_else(|| "Failed to create codec".to_string())?;
+    Encoder::new(cod_format).ok_or_else(|| "Failed to create codec".to_string())?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));
