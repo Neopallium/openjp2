@@ -94,8 +94,13 @@ dependencies = [
  "bitflags",
  "byteorder",
  "log",
+ "openjp2-ctypes",
  "smallvec",
 ]
+
+[[package]]
+name = "openjp2-ctypes"
+version = "0.7.0"
 
 [[package]]
 name = "openjp2-fuzz"

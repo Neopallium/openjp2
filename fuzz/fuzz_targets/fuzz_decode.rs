@@ -23,8 +23,25 @@ use libfuzzer_sys::{fuzz_mutator, fuzz_target};
 use openjp2::{DecodeLimits, DecodeParameters, Image};
 
 fuzz_target!(|data: &[u8]| {
+  // Content-consistency check (open-findings OF-45): a successful STRICT
+  // decode must deliver complete component data - header geometry with
+  // empty or truncated pixels is a decoder lie the panic-only check
+  // cannot see (the H1-style empty-image regression class).  (Lenient
+  // decodes are excluded: their documented contract returns a partial
+  // header image on truncation.)
+  if let Ok(image) = Image::from_bytes_with(data, DecodeParameters::new().strict(true)) {
+    for comp in image.components() {
+      let expected = (comp.w as usize) * (comp.h as usize);
+      assert_eq!(
+        comp.data.len(),
+        expected,
+        "full decode delivered {} of {} samples",
+        comp.data.len(),
+        expected
+      );
+    }
+  }
   let _ = Image::from_bytes_with(data, DecodeParameters::new().strict(false));
-  let _ = Image::from_bytes_with(data, DecodeParameters::new().strict(true));
   let limits = DecodeLimits::new()
     .max_image_size(2048, 2048)
     .max_tile_pixels(2048 * 2048)
