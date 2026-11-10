@@ -969,20 +969,24 @@ fn opj_jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
         il = buf
           .read_u32::<BigEndian>()
           .expect("Buffer should have enough data");
+        /* C parity (jp2.c): the 35-byte form zeroes the second word. */
         icc_profile.write_all(&0u32.to_ne_bytes()).unwrap();
-      } else if !buf.is_empty() {
-        event_msg!(
-          p_manager,
-          EVT_WARNING,
-          "Bad COLR header box (CIELab, bad size: {})\n",
-          total_size,
-        );
+      } else {
+        /* C parity (jp2.c): the second word is the "DEF" illuminant word
+        for every other form (including the default 7-byte one); the port
+        used to omit it there, producing a 32-byte profile that broke the
+        CIE_LAB_BYTE_SIZE == 36 convention and shifted the range words the
+        consumers read. */
+        icc_profile.write_all(&0x44454600u32.to_ne_bytes()).unwrap();
+        if !buf.is_empty() {
+          event_msg!(
+            p_manager,
+            EVT_WARNING,
+            "Bad COLR header box (CIELab, bad size: {})\n",
+            total_size,
+          );
+        }
       }
-      /* C parity: the second word is the "DEF" illuminant word for every
-      CIELab form except the 28-byte one (which explicitly carries 0 there);
-      the port used to omit it for the default/minimal form, producing a
-      32-byte profile that breaks the CIE_LAB_BYTE_SIZE == 36 convention. */
-      icc_profile.write_all(&0x44454600u32.to_ne_bytes()).unwrap();
       icc_profile.write_all(&rl.to_ne_bytes()).unwrap();
       icc_profile.write_all(&ol.to_ne_bytes()).unwrap();
       icc_profile.write_all(&ra.to_ne_bytes()).unwrap();
