@@ -2091,13 +2091,14 @@ mod tests {
     assert!(image.encode(params).is_err());
   }
 
-  /// Regression (review rounds 2+3, M1): with TLM enabled and multi-part
-  /// tiles, the parallel encoder must fall back to the sequential path
-  /// (one TLM entry per tile would corrupt the marker); both paths then
-  /// produce byte-identical output.
+  /// Regression (review rounds 2+3, M1; re-verified after B.2.1): with TLM
+  /// enabled and multi-part tiles, the parallel encoder records one TLM
+  /// entry per tile-part (each worker records into its own buffer clone
+  /// and the master merges in tile order), so it must produce output
+  /// byte-identical to the serial encode.
   #[cfg(feature = "rayon")]
   #[test]
-  fn parallel_tlm_multi_part_falls_back() {
+  fn parallel_tlm_multi_part_matches_serial() {
     let (w, h) = (192u32, 128u32);
     let mut comps = Vec::new();
     for c in 0..3u32 {
@@ -2166,25 +2167,59 @@ mod tests {
           writer,
         );
         codec.start(&mut img, &mut stream).unwrap();
-        // The parallel driver must decline when TLM + multi-part tiles are
-        // requested (one TLM entry per tile would corrupt the marker); for
-        // the non-TLM control it applies normally.
+        // The parallel path handles TLM + multi-part tiles (per-part
+        // entries, merged by the master); verify it applies for both.
         let parallel = codec.encode_parallel(&mut stream);
-        assert_eq!(parallel, Some(!tlm), "parallel path fallback for TLM + multi-part");
-        if parallel != Some(true) {
-          codec.encode(&mut stream).unwrap();
-        }
+        assert_eq!(parallel, Some(true), "parallel path must handle TLM + multi-part");
         codec.finish(&mut stream).unwrap();
       }
       std::rc::Rc::try_unwrap(buf).ok().map(|b| b.into_inner()).expect("unique handle")
     };
-    let with_tlm = encode_low_level(true);
-    let without_tlm = encode_low_level(false);
-    assert!(!with_tlm.is_empty());
-    assert!(!without_tlm.is_empty());
-    // Both encode; the TLM variant decodes (rate allocation makes it lossy,
-    // so only geometry/components are asserted).
-    let back = Image::from_bytes(&with_tlm).expect("decode TLM stream");
+    // The parallel output must be byte-identical to the serial encode for
+    // both variants (the per-part TLM entries included).
+    let parallel_tlm = encode_low_level(true);
+    let parallel_plain = encode_low_level(false);
+    let serial = |tlm: bool| -> Vec<u8> {
+      let mut codec = Encoder::new(J2KFormat::J2K).unwrap();
+      if tlm {
+        codec.extra_options(&["TLM=YES"]).unwrap();
+      }
+      let mut params = crate::EncoderParameters {
+        tile_size_on: 1,
+        cp_tdx: 64,
+        cp_tdy: 64,
+        tp_on: 1,
+        tp_flag: b'R' as i8,
+        cp_disto_alloc: 1,
+        tcp_numlayers: 2,
+        tcp_rates: {
+          let mut r = [0.0; 100];
+          r[0] = 20.0;
+          r[1] = 10.0;
+          r
+        },
+        numresolution: 3,
+        irreversible: 0,
+        ..Default::default()
+      };
+      let mut img = core.clone();
+      codec.setup(&mut params, &mut img).unwrap();
+      let buf = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+      {
+        let writer = crate::stream::SharedVecWriter { buf: buf.clone(), pos: 0 };
+        let mut stream = Stream::new_output(
+          crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+          writer,
+        );
+        codec.start(&mut img, &mut stream).unwrap();
+        codec.encode(&mut stream).unwrap();
+        codec.finish(&mut stream).unwrap();
+      }
+      std::rc::Rc::try_unwrap(buf).ok().map(|b| b.into_inner()).expect("unique handle")
+    };
+    assert_eq!(parallel_tlm, serial(true), "TLM parallel/serial byte identity");
+    assert_eq!(parallel_plain, serial(false), "plain parallel/serial byte identity");
+    let back = Image::from_bytes(&parallel_tlm).expect("decode TLM stream");
     assert_eq!(back.num_components(), 3);
     assert_eq!((back.width(), back.height()), (w, h));
   }
