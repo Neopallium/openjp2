@@ -2098,6 +2098,67 @@ fn subsampled_empty_tiles_round_trip() {
     }
   }
 
+  /// OF-44 remainder: the codeblock-style mode bits (the CLI's `-M` -
+  /// 1=LAZY, 2=RESET, 4=TERMALL, 8=VSC, 16=PTERM, 32=SEGSYM) change the
+  /// codestream's signaling structure; every one must decode losslessly
+  /// (single layer, reversible 5-3), and the decoder must not regress on
+  /// any combination.
+  #[test]
+  fn codeblock_style_modes_decode_losslessly() {
+    let (w, h) = (64u32, 48u32);
+    let mut rng: u64 = 0x243f6a8885a308d3;
+    let mut next = move || {
+      rng ^= rng << 13;
+      rng ^= rng >> 7;
+      rng ^= rng << 17;
+      rng
+    };
+    let mut data = Vec::with_capacity((w * h) as usize);
+    for _ in 0..w * h {
+      data.push((next() % 256) as i32);
+    }
+    let image = Image {
+      core: crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+        numcomps: 1,
+        color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+        comps: vec![crate::CoreImageComp {
+          dx: 1,
+          dy: 1,
+          w,
+          h,
+          x0: 0,
+          y0: 0,
+          prec: 8,
+          bpp: 8,
+          sgnd: 0,
+          resno_decoded: 0,
+          factor: 0,
+          alpha: 0,
+          data,
+        }],
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      },
+    };
+    for mode in [1i32, 2, 4, 8, 16, 32, 0x3F] {
+      let mut params = EncodeParameters::new().num_resolutions(3).num_layers(1);
+      params.low_level().mode = mode;
+      let codestream = image
+        .clone()
+        .encode(params)
+        .unwrap_or_else(|e| panic!("mode {mode}: encode failed: {e}"));
+      let back = Image::from_bytes(&codestream)
+        .unwrap_or_else(|e| panic!("mode {mode}: decode failed: {e}"));
+      for (a, b) in image.components()[0].data.iter().zip(back.components()[0].data.iter()) {
+        assert_eq!(a, b, "mode {mode}: 5-3 round trip must be lossless");
+      }
+    }
+  }
+
   /// Regression (review finding 6): a 16-bit image with 6 decomposition
   /// levels pushes the t1 encoder's significance shift past 31; the old code
   /// panicked in debug builds.

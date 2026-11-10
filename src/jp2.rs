@@ -922,10 +922,12 @@ fn opj_jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
       return 0i32;
     }
     // EnumCS
-    jp2.enumcs = buf
-      .read_u32::<BigEndian>()
-      .expect("Buffer should have enough data");
-
+    /* C parity (jp2.c:1507-1510): the generic warning runs BEFORE the
+    EnumCS read below, so it uses the PREVIOUS (stale) enumcs value and
+    fires whenever the total size exceeds the 7-byte minimum - including
+    for CIELab boxes (which then also get the CIELab-specific warning).
+    The port used to run it after the read (threshold total > 11, real
+    enumcs), a log-only divergence. */
     if buf.len() > 4 && jp2.enumcs != 14 {
       /* handled below for CIELab) */
       /* testcase Altona_Technical_v20_x4.pdf */
@@ -936,6 +938,11 @@ fn opj_jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
         total_size,
       );
     }
+
+    // EnumCS
+    jp2.enumcs = buf
+      .read_u32::<BigEndian>()
+      .expect("Buffer should have enough data");
 
     // CIELab
     if jp2.enumcs == 14 {
