@@ -198,14 +198,18 @@ fn opj_tcd_makelayer_fixed(
       while j < tilec.numresolutions {
         k = 0_u32;
         while k < 3u32 {
-          matrice[i as usize][j as usize][k as usize] = (cp.m_specific_param.m_enc.m_matrice[i
+          /* The matrix is sized by the configured parameters; a per-component
+          COC can carry a larger numresolutions, which the C reads OOB
+          (open-findings OF-08).  Treat the missing entries as 0. */
+          let m_idx = i
             .wrapping_mul(tilec.numresolutions)
             .wrapping_mul(3u32)
             .wrapping_add(j.wrapping_mul(3u32))
-            .wrapping_add(k)
-            as usize] as f32
-            * (image.comps[compno as usize].prec as core::ffi::c_double / 16.0f64) as f32)
-            as i32;
+            .wrapping_add(k) as usize;
+          let m_val = cp.m_specific_param.m_enc.m_matrice.get(m_idx).copied().unwrap_or(0);
+          matrice[i as usize][j as usize][k as usize] =
+            (m_val as f32 * (image.comps[compno as usize].prec as core::ffi::c_double / 16.0f64)
+              as f32) as i32;
           k += 1;
         }
         j += 1;

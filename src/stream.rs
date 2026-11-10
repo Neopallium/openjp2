@@ -433,10 +433,13 @@ impl std::io::Write for SharedVecWriter {
 
 impl std::io::Seek for SharedVecWriter {
   fn seek(&mut self, pos: std::io::SeekFrom) -> std::io::Result<u64> {
+    /* Saturate the position: a negative relative seek must clamp to the
+    buffer start, never wrap to a huge u64 (a later write would then try to
+    resize the buffer past the address space - open-findings OF-16). */
     let new_pos = match pos {
       std::io::SeekFrom::Start(p) => p,
-      std::io::SeekFrom::Current(d) => (self.pos as i64 + d) as u64,
-      std::io::SeekFrom::End(d) => (self.buf.borrow().len() as i64 + d) as u64,
+      std::io::SeekFrom::Current(d) => self.pos.saturating_add_signed(d),
+      std::io::SeekFrom::End(d) => (self.buf.borrow().len() as u64).saturating_add_signed(d),
     };
     self.pos = new_pos;
     Ok(new_pos)
