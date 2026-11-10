@@ -217,28 +217,31 @@ Notes:
 
 ## B.1 Decoder
 
-1. **Kill the procedure lists.** `opj_j2k_setup_decoding`'s list has exactly
-   one entry; the header writer/reader lists are fixed sequences. Replace
-   `ProcedureList` with plain method calls (simpler, greppable, no fn-pointer
-   table). Low risk, mechanical.
+1. **Kill the procedure lists.** — ✅ **LANDED (8b5b2705)**:
+   `ProcedureList`/`function_list.rs` is gone; the fixed sequences are
+   direct short-circuiting call chains (`opj_j2k_write_header` /
+   `opj_jp2_write_header_boxes`).  (Original item text: `opj_j2k_setup_decoding`'s list has
+   exactly one entry; the header writer/reader lists are fixed sequences.
+   Replace `ProcedureList` with plain method calls — simpler, greppable, no
+   fn-pointer table. Low risk, mechanical.)
 2. **Marker classification cleanup (review_3 M3).** Make
    `EPH/SOC/SOD/EOC` behave like the C's `read_unk` (skip + rescan) so corrupt
    streams recover identically; special-case `SOD` explicitly in the
    tile-part loop where it terminates the header (study the C's
    `opj_j2k_read_unk` + `read_tile_header` interplay first — this is the one
    item the fix round left open on purpose).
-3. **Thread-local T1 → owned per-job workspace.** Replace
-   `thread_local! { T1 }` with an `Arc<T1Pool>` (one workspace per rayon
-   worker, reused across codeblocks within a tile) or a per-call `T1` when
-   there is no rayon. This removes the decode→encode `Mqc.buf[0]` sharing
-   hazard *structurally* (the sentinel fix stays as defense) and makes the
-   encoder state independent of the previous decode on the same thread.
-4. **Close the f32 reinterpret gap without unsafe.** `TileBuf` becomes
-   `enum TileBuf { I32(Vec<i32>), F32(Vec<f32>) }` selected by the tilecomp's
-   `qmfbid`: the 9-7 DWT/MCT/dc-shift borrow `&mut [f32]` directly, the t1
-   write-back and `update_tile_data` use `from_bits`/`to_bits` at the seams.
-   Drops the ~14 MB whole-tile 9-7 scratch (the C reinterprets in place) —
-   the last remaining decode-memory delta vs the C.
+3. **Thread-local T1 → owned per-job workspace.** — ✅ **LANDED (2363fdb6)**:
+   separate decode/encode `T1Pool`s (one slot per rayon worker,
+   `OnceLock`-backed, poisoned-lock recovery); a decoded MQ sentinel can no
+   longer reach an encode on the same worker.  (Original item text: replace
+   `thread_local! { T1 }` with an `Arc<T1Pool>` ... the sentinel fix stays
+   as defense.)
+4. **Close the f32 reinterpret gap without unsafe.** — ✅ **LANDED
+   (35e54fd5)**: `TileBuf { I32(Vec<i32>), F32(Vec<f32>) }` selected by
+   qmfbid; the 9-7 DWT/MCT/dc-shift borrow `&mut [f32]` directly (the
+   whole-tile f32 scratch copies are gone), the seams carry exact bit
+   patterns (lossless vs the C's shared-array reinterpretation), and the
+   encode dc-shift converts the buffer variant once.
 5. **Fallible-allocation sweep (review findings).** `try_reserve` for the TLM
    `m_tile_part_infos`, `check_poc_val`'s matrix, pi's `include` mask
    (allocate lazily or cap), the dwt scratch (post-item 4 it shrinks), and
