@@ -1143,6 +1143,62 @@ mod tests {
     assert_eq!(par, serial, "parallel/serial encode mismatch");
   }
 
+  /// Regression (review round 3, M3): EPH/SOC/SOD/EOC have no entries in
+  /// the C's marker table, so a stray one in the main header is skipped by
+  /// `read_unk` (and the scan resumes at the next real marker); the port
+  /// used to treat them as known-and-handlerless -> fatal "No handler".
+  #[test]
+  fn stray_no_table_markers_are_skipped() {
+    let (w, h) = (32u32, 32u32);
+    let core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 1,
+      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+      comps: vec![crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data: (0..(w * h)).map(|i| (i % 199) as i32).collect(),
+      }],
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    let image = Image { core };
+    let codestream = image
+      .encode(EncodeParameters::new().num_resolutions(1))
+      .expect("encode");
+    let reference = Image::from_bytes(&codestream).expect("reference decode");
+    for stray in [[0xff, 0x92], [0xff, 0x4f], [0xff, 0x93], [0xff, 0xd9]] {
+      // Insert the stray marker + zero length after SOC + SIZ's marker ID
+      // (offset 4), so the format-detection magic (FF4F FF51) is intact and
+      // the main-header loop meets the stray where the C's read_unk skips
+      // it.
+      let mut patched = Vec::with_capacity(codestream.len() + 4);
+      patched.extend_from_slice(&codestream[..4]);
+      patched.extend_from_slice(&stray);
+      patched.extend_from_slice(&[0x00, 0x00]);
+      patched.extend_from_slice(&codestream[4..]);
+      let decoded = Image::from_bytes(&patched).unwrap_or_else(|e| {
+        panic!("stray {:02X}{:02X} must be skipped: {e:?}", stray[0], stray[1])
+      });
+      for (a, b) in reference.components().iter().zip(decoded.components()) {
+        assert_eq!(a.data, b.data, "stray marker changed the decode");
+      }
+    }
+  }
+
   /// Regression (0.7 Codec split): a degenerate whole-image decode area
   /// (the CLI's default `-d 0,0,0,0` call shape) must decode identically to
   /// no area at all.  It must not take the parallel decode-area path, whose

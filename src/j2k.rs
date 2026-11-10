@@ -655,6 +655,38 @@ impl J2KMarker {
     }
   }
 
+  /// Whether the marker has a real header-reading handler.  EPH/SOC/SOD/
+  /// EOC (and SOP) have none: the C's marker table has no entries for the
+  /// former four (its `read_unk` skips them and rescans), and SOP's entry
+  /// is a NULL handler that errors at the position check.  The dispatch
+  /// fallback in `handler()` is the "in table, NULL handler" case.
+  pub fn has_handler(&self) -> bool {
+    matches!(
+      self,
+      Self::SOT
+        | Self::COD
+        | Self::COC
+        | Self::RGN
+        | Self::QCD
+        | Self::QCC
+        | Self::POC
+        | Self::SIZ
+        | Self::TLM
+        | Self::PLM
+        | Self::PLT
+        | Self::PPM
+        | Self::PPT
+        | Self::CRG
+        | Self::COM
+        | Self::MCT
+        | Self::CBD
+        | Self::CAP
+        | Self::CPF
+        | Self::MCC
+        | Self::MCO
+    )
+  }
+
   pub fn handler(&self, p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OPJ_BOOL {
     match self {
       Self::SOT => opj_j2k_read_sot(p_j2k, header_data, p_manager),
@@ -4316,7 +4348,7 @@ fn opj_j2k_read_unk(
         "Marker is not compliant with its position\n",
       );
       return 0i32;
-    } else if !l_marker_handler.is_unknown() {
+    } else if !l_marker_handler.is_unknown() && l_marker_handler.has_handler() {
       /* Add the marker to the codestream index*/
       if l_marker_handler != J2KMarker::SOT {
         let mut res = opj_j2k_add_mhmarker(
@@ -7001,8 +7033,10 @@ fn opj_j2k_read_header_procedure(
     }
     /* Get the marker handler from the marker ID */
     let mut l_marker_handler = l_current_marker;
-    /* Manage case where marker is unknown */
-    if l_marker_handler.is_unknown() {
+    /* Manage case where marker is unknown (or has no table entry in the C:
+    EPH/SOC/SOD/EOC are skipped by the C's read_unk scan, so corrupt
+    streams with stray FF 92/4F/93/D9 recover there - review round 3 M3). */
+    if l_marker_handler.is_unknown() || !l_marker_handler.has_handler() {
       if opj_j2k_read_unk(p_j2k, p_stream, &mut l_current_marker, p_manager) == 0 {
         event_msg!(
           p_manager,
