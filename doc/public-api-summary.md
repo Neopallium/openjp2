@@ -123,47 +123,49 @@ DumpImage::from_bytes / from_bytes_with / from_file / from_file_with
 `ImagePixelData` is an enum of `L8/La8/Rgb8/Rgba8` (`Vec<u8>`) and
 `L16/La16/Rgb16/Rgba16` (`Vec<u16>`).
 
-## Layer 2 — low-level `Decoder` / `Encoder` (0.7: the merged `Codec` moved to `openjp2-capi`)
+## Layer 2 — low-level `Decoder` / `Encoder` (0.7: C-free `Result` surface; the merged `Codec` lives in `openjp2-capi`)
 
 ```rust
-// construction
-Decoder::new(OPJ_CODEC_FORMAT) -> Option<Self>
-Encoder::new(OPJ_CODEC_FORMAT) -> Option<Self>
-// events (shared)
-.set_info_handler / .set_warning_handler / .set_error_handler(FnMut(&str)+Send+'static) -> OPJ_BOOL
+// construction (J2KFormat; Result-returning)
+Decoder::new(J2KFormat) -> Result<Self>
+Encoder::new(J2KFormat) -> Result<Self>
+// events (shared; infallible)
+.set_info_handler / .set_warning_handler / .set_error_handler(FnMut(&str)+Send+'static)
 // threading (sizes the process-wide rayon pool; first call wins)
-.set_threads(c_int) -> OPJ_BOOL
+.set_threads(i32) -> Result<()>
 // dump / header info (shared)
 .dump_codec<W: StringWriter>(info_flag, &mut W)
-.get_cstr_info_v2() -> Option<CstrInfoV2>
-.get_cstr_index_owned() -> Option<CodestreamIndex>
+.cstr_info() -> Option<CstrInfoV2>          // the C-ABI opj_get_cstr_info source
+.cstr_index() -> Option<CodestreamIndex>    // the C-ABI opj_get_cstr_index source
 .get_tile_geometry() -> (tdx, tdy, cblkw, cblkh)
-// decoder (returns OPJ_BOOL / Option; several #[deprecated] in favour of Image)
-Decoder::setup_decoder(&mut opj_dparameters) -> OPJ_BOOL
-Decoder::decoder_set_strict_mode(OPJ_BOOL) -> OPJ_BOOL
-Decoder::set_decode_limits(DecodeLimits) -> OPJ_BOOL
-Decoder::read_header(&mut Stream) -> Option<CoreImage>          // deprecated
-Decoder::set_decoded_components(&[u32], OPJ_BOOL) -> OPJ_BOOL
-Decoder::decode(&mut Stream, &mut CoreImage) -> OPJ_BOOL        // deprecated
-Decoder::end_decompress(&mut Stream) -> OPJ_BOOL                // deprecated
-Decoder::set_decode_area(&mut CoreImage, x0, y0, x1, y1) -> OPJ_BOOL
-Decoder::read_tile_header(&mut Stream, &mut TileInfo) -> bool
-Decoder::decode_tile_data(&mut Stream, tile_index, Option<&mut [u8]>) -> OPJ_BOOL
-Decoder::get_decoded_tile(&mut Stream, &mut CoreImage, tile_index) -> OPJ_BOOL
-Decoder::set_decoded_resolution_factor(u32) -> OPJ_BOOL
+// decoder
+Decoder::apply_settings(&DecoderSettings) -> Result<()>   // layers/reduce/
+                                                          // ignore_pclr_cmap_cdef/dump_state
+Decoder::set_strict(bool) / set_limits(DecodeLimits) / set_components(&[u32]) /
+    set_decode_area(&mut CoreImage, Option<DecodeArea>) / set_resolution_factor(u32) -> Result<()>
+Decoder::read_header(&mut Stream) -> Result<HeaderImage>  // header-only (empty data)
+Decoder::decode(&mut Stream) -> Result<CoreImage>         // lenient mode returns the
+                                                          // partial image (documented contract)
+Decoder::end_decompress(&mut Stream) -> Result<()>
+Decoder::read_tile_header(&mut Stream) -> Result<TileInfo>   // always requests the data size
+Decoder::decode_tile_data(&mut Stream, tile, Option<&mut [u8]>) -> Result<()>
+Decoder::get_decoded_tile(&mut Stream, tile) -> Result<CoreImage>
 // encoder
-Encoder::setup_encoder(&mut EncoderParameters, &mut CoreImage) -> OPJ_BOOL
-Encoder::encoder_set_extra_options(&[&str]) -> bool             // "TLM=YES", GUARD_BITS, ...
-Encoder::start_compress(&mut CoreImage, &mut Stream) -> OPJ_BOOL
-Encoder::encode(&mut Stream) -> OPJ_BOOL
-Encoder::end_compress(&mut Stream) -> OPJ_BOOL
-Encoder::write_tile(tile_index, &[u8], &mut Stream) -> OPJ_BOOL
+Encoder::setup(&mut EncoderParameters, &mut CoreImage) -> Result<()>
+Encoder::extra_options(&[&str]) -> Result<()>              // "TLM=YES", GUARD_BITS, ...
+Encoder::start(&mut CoreImage, &mut Stream) -> Result<()>
+Encoder::encode(&mut Stream) -> Result<()>
+Encoder::finish(&mut Stream) -> Result<()>
+Encoder::write_tile(tile, &[u8], &mut Stream) -> Result<()>
 ```
 
-The `openjp2-capi` crate wraps either direction in its own merged
-`capi::Codec { Dec(core::Decoder), Enc(core::Encoder) }` to keep the single
-`opj_codec_t*` pointer contract; wrong-direction calls reproduce the C's
-error events through a hidden `emit_error_event` seam.
+`DecoderSettings` is the native subset of the C's `opj_dparameters_t` the
+core consumes (`cp_layer`, `cp_reduce`, the two `flags` bits); the
+`openjp2-capi` crate translates the C struct there and keeps the single
+`opj_codec_t*` pointer contract via its merged
+`capi::Codec { Dec(core::Decoder), Enc(core::Encoder) }` (wrong-direction
+calls reproduce the C's error events through a hidden `emit_error_event`
+seam).  No C types appear in the core's public signatures.
 
 Internal parallel hooks (`pub(crate)`, `cfg(feature = "rayon")`): `num_tiles`,
 `encode_parallel` (Encoder), `decode_parallel`, `decode_parallel_area`
