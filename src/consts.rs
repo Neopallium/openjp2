@@ -278,7 +278,7 @@ impl From<u32> for Jp2BoxType {
       0x72657320 => Jp2BoxType::RES,
       0x6a703269 => Jp2BoxType::JP2I,
       0x786d6c20 => Jp2BoxType::XML,
-      0x75756994 => Jp2BoxType::UUID,
+      0x75756964 => Jp2BoxType::UUID,
       0x75696e66 => Jp2BoxType::UINF,
       _ => Jp2BoxType::Unknown(value),
     }
@@ -323,7 +323,7 @@ impl Jp2BoxType {
       Jp2BoxType::RES => Some(0x72657320),
       Jp2BoxType::JP2I => Some(0x6a703269),
       Jp2BoxType::XML => Some(0x786d6c20),
-      Jp2BoxType::UUID => Some(0x75756994),
+      Jp2BoxType::UUID => Some(0x75756964),
       Jp2BoxType::UINF => Some(0x75696e66),
       Jp2BoxType::Unknown(value) => Some(*value),
     }

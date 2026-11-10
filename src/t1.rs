@@ -2412,7 +2412,7 @@ fn opj_t1_decode_cblk(
       event_msg!(
         p_manager,
         EVT_WARNING,
-        "PTERM check failure: {} synthetized 0xFF markers read\n",
+        "PTERM check failure: {} synthesized 0xFF markers read\n",
         mqc.end_of_byte_stream_counter,
       );
     }

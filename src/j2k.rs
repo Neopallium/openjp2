@@ -3716,6 +3716,10 @@ fn opj_j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
         value that slips past the u32 guard below. */
         p_j2k.m_specific_param.m_decoder.m_sot_length =
           opj_stream_get_number_byte_left(p_stream).max(0) as u32;
+        /* The C's lenient path exits the tile loop through the NEOC state
+        with no error event; mirror it so the next read_tile_header round
+        does not re-enter at EOF and emit an unconditional error. */
+        p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
       }
     }
     if p_j2k.m_specific_param.m_decoder.m_sot_length > u32::MAX - OPJ_COMMON_CBLK_DATA_EXTRA {
@@ -10472,11 +10476,16 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
     } else if option.starts_with("GUARD_BITS=") {
       let mut tileno: u32 = 0;
       let mut cp = &mut p_j2k.m_cp;
-      let mut numgbits = option
-        .strip_prefix("GUARD_BITS=")
-        .expect("starts_with check above")
-        .parse::<i32>()
-        .unwrap_or_default();
+      /* The C parses the value with atoi: leading digits, stop at the
+      first non-digit ("3x" -> 3, "" -> 0). */
+      let gb_str = option.strip_prefix("GUARD_BITS=").expect("starts_with check above");
+      let numgbits = gb_str
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .fold(0i32, |acc, c| {
+          acc.saturating_mul(10)
+            .saturating_add((c as u8).wrapping_sub(b'0') as i32)
+        });
       if !(0..=7).contains(&numgbits) {
         event_msg!(
           p_manager,

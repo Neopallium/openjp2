@@ -318,7 +318,7 @@ impl EncodeParameters {
     }
   }
 
-  /// Number of DWT decomposition levels.
+  /// Number of resolutions (DWT decomposition levels + 1).
   pub fn num_resolutions(mut self, n: u32) -> Self {
     self.inner.numresolution = n as i32;
     self
@@ -351,7 +351,8 @@ impl EncodeParameters {
   }
 
   /// Append a quality layer with the given compression ratio
-  /// (e.g. `20.0` = 20:1); enables fixed-quality rate allocation.
+  /// (e.g. `20.0` = 20:1); enables rate-distortion ratio allocation (the
+  /// C's `-q` option).
   ///
   /// Layers beyond the 100 supported by the format are silently ignored
   /// (debug builds assert).
