@@ -158,7 +158,10 @@ impl<'a> DataPtr<'a> {
   #[inline]
   pub fn add_at(&self, offset: isize, value: i32) {
     let cell = self.cell(offset);
-    cell.set(cell.get() + value);
+    /* The C's `*ptr += value` wraps on hardware (UB in the standard); the
+    refinement pass can reach i32 overflow with roishift + numbps == 30.
+    wrapping_add keeps debug builds from panicking (review round 2, M7). */
+    cell.set(cell.get().wrapping_add(value));
   }
 
   pub fn offset(&self, offset: isize) -> Self {

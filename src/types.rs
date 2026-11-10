@@ -567,6 +567,9 @@ pub(crate) struct Cp {
   pub tdx: u32,
   pub tdy: u32,
   pub comment: Vec<u8>,
+  /// Whether a COM comment was explicitly configured (an empty comment is
+  /// still emitted; the C checks the pointer, not the length).
+  pub comment_set: bool,
   pub tw: u32,
   pub th: u32,
   pub ppm_markers: Vec<Ppx>,

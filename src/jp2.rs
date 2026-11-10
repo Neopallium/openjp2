@@ -815,7 +815,7 @@ fn opj_jp2_apply_cdef(
         if cn != acn && info.typ == 0 {
           comps.swap(cn as usize, acn as usize);
           /* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
-          for j in i..n {
+          for j in (i + 1)..n {
             let info = &mut cdef.info[j];
             if info.cn == cn {
               info.cn = acn
@@ -1323,7 +1323,11 @@ pub(crate) fn opj_jp2_setup_encoder(
   }
 
   /* Colour Specification box */
-  if !image.icc_profile_buf.is_empty() {
+  /* C parity (jp2.c:1995-2008): a CIELab profile has icc_profile_len == 0 in
+  the C, so a decoded CIELab image re-encodes as meth = 1 (the enumcs switch
+  has no CIE_LAB case, leaving enumcs = 0); only a real ICC profile takes
+  meth = 2. */
+  if !image.icc_profile_buf.is_empty() && !image.icc_profile_is_cielab {
     jp2.meth = 2_u32;
     jp2.enumcs = 0_u32;
     /* Copy the profile so the colr box writer finds it (upstream #1574) */

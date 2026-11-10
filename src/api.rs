@@ -254,7 +254,9 @@ pub struct DecodeParameters {
   pub strict: bool,
   pub decode_area: Option<DecodeArea>,
   pub ignore_pclr_cmap_cdef: bool,
-  /// Optional resource limits (see `DecodeLimits`); all-zero = unlimited.
+  /// Optional resource limits (see `DecodeLimits`).  All-zero except
+  /// `max_mem_alloc` = unlimited; `max_mem_alloc == 0` selects the built-in
+  /// 1 GiB ceiling (`DEFAULT_DECODE_MEM_LIMIT`).
   pub limits: DecodeLimits,
 }
 
@@ -348,8 +350,12 @@ impl EncodeParameters {
 
   /// Append a quality layer with the given compression ratio
   /// (e.g. `20.0` = 20:1); enables fixed-quality rate allocation.
+  ///
+  /// Layers beyond the 100 supported by the format are silently ignored
+  /// (debug builds assert).
   pub fn layer_rate(mut self, rate: f32) -> Self {
     let n = self.inner.tcp_numlayers as usize;
+    debug_assert!(n < 100, "layer_rate past the 100-layer limit");
     if n < 100 {
       self.inner.cp_disto_alloc = 1;
       self.inner.tcp_rates[n] = rate;
@@ -819,11 +825,13 @@ fn decode_stream_inner(
     }
   }
 
-  /* Progressive-download support: in lenient mode a truncated or damaged
-  codestream must not throw away the image data decoded so far - return the
-  partial image instead of an error (the header already succeeded, so the
-  dimensions and component count are known).  Strict mode keeps the hard
-  failure. */
+  /* Progressive-download support: in lenient mode a codestream truncated
+  AFTER the last tile's data (missing EOC) delivers the fully decoded image
+  instead of an error.  Strict mode keeps the hard failure.  Note the scope:
+  truncation MID-TILE (or a used-components failure) may still return the
+  header image with empty component data - the C behaves the same way, and
+  the safe API documents this partial-decode contract rather than silently
+  inventing pixels. */
   if codec.decode(stream, &mut image) != 1 {
     if params.strict {
       return Err(Error::Decode("decode failed".into()));

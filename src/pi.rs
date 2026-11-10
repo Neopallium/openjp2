@@ -1826,7 +1826,14 @@ pub(crate) fn opj_pi_create_decode(
   {
     // The include bitmask is shared across the pi elements of this tile:
     // elements 1.. clone element 0's Rc, exactly like the C version.
-    let include: Rc<[Cell<i16>]> = vec![Cell::new(0i16); include_size as usize].into();
+    // The C's calloc fails gracefully on OOM; a vec! would abort the
+    // process on a crafted header driving a large include mask.
+    let mut include_vec: Vec<Cell<i16>> = Vec::new();
+    if include_vec.try_reserve_exact(include_size as usize).is_err() {
+      return Vec::new();
+    }
+    include_vec.resize(include_size as usize, Cell::new(0i16));
+    let include: Rc<[Cell<i16>]> = include_vec.into();
     l_pi[0].include = include;
   }
   l_pi[0].include_size = include_size;
@@ -2026,7 +2033,14 @@ pub(crate) fn opj_pi_initialise_encode(
   empty like the C instead of failing. */
   {
     // The include bitmask is shared across the pi elements of this tile.
-    let include: Rc<[Cell<i16>]> = vec![Cell::new(0i16); include_size as usize].into();
+    // The C's calloc fails gracefully on OOM; a vec! would abort the
+    // process on a crafted header driving a large include mask.
+    let mut include_vec: Vec<Cell<i16>> = Vec::new();
+    if include_vec.try_reserve_exact(include_size as usize).is_err() {
+      return Vec::new();
+    }
+    include_vec.resize(include_size as usize, Cell::new(0i16));
+    let include: Rc<[Cell<i16>]> = include_vec.into();
     l_pi[0].include = include;
   }
   l_pi[0].include_size = include_size;

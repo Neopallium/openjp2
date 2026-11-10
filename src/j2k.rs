@@ -750,7 +750,16 @@ fn opj_j2k_check_poc_val(
   let step_l = p_nb_resolutions.wrapping_mul(step_r);
   let mut loss = 0i32;
   assert!(p_nb_pocs > 0u32);
-  let mut packet_array = vec![0u32; (step_l as usize).wrapping_mul(p_num_layers as usize)];
+  /* The C's calloc fails gracefully on OOM; a vec! would abort.  Reserve
+  first (encoder parameters, but the shape is attacker-influenced through
+  the low-level API). */
+  let mut packet_array: Vec<u32> = Vec::new();
+  let packet_len = (step_l as usize).wrapping_mul(p_num_layers as usize);
+  if packet_array.try_reserve_exact(packet_len).is_err() {
+    event_msg!(p_manager, EVT_ERROR, "Not enough memory to check POC values\n",);
+    return 0i32;
+  }
+  packet_array.resize(packet_len, 0);
   /* iterate through all the pocs that match our tile of interest. */
   i = 0_u32;
   while i < p_nb_pocs {
@@ -2635,8 +2644,24 @@ fn opj_j2k_read_tlm(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
       );
       return 1i32;
     }
-    tlm.m_tile_part_infos
-      .resize((tlm.m_entries_count + l_num_tileparts) as usize, Default::default());
+    /* The C's realloc fails gracefully on OOM; a Vec resize would abort the
+    process.  Reserve first so a crafted stream (many TLM markers) fails
+    cleanly (review round 1, "infallible-allocation aborts"). */
+    let new_len = (tlm.m_entries_count + l_num_tileparts) as usize;
+    if tlm
+      .m_tile_part_infos
+      .try_reserve_exact(new_len.saturating_sub(tlm.m_tile_part_infos.len()))
+      .is_err()
+    {
+      tlm.m_is_invalid = true;
+      event_msg!(
+        p_manager,
+        EVT_WARNING,
+        "opj_j2k_read_tlm(): not enough memory for the TLM index.\n",
+      );
+      return 1i32;
+    }
+    tlm.m_tile_part_infos.resize(new_len, Default::default());
   }
   let num_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   for _ in 0..l_num_tileparts {
@@ -5087,8 +5112,13 @@ pub(crate) fn opj_j2k_decoder_set_strict_mode(mut j2k: &mut J2k, mut strict: OPJ
 
 pub(crate) fn opj_j2k_set_threads(_j2k: &mut J2k, num_threads: u32) -> OPJ_BOOL {
   /* The C keeps a per-codec thread pool; the Rust port uses the
-  process-wide rayon pool, sized on the first successful call.  The C
-  contract is that this call succeeds. */
+  process-wide rayon pool, sized on the first successful call.  Mirror the
+  C's failure cases: no thread support and out-of-range counts return
+  FALSE (the C's "cannot re-set after the tcd exists" nuance does not
+  apply - the port's pool is process-wide by design, see doc/differences). */
+  if crate::has_thread_support() == 0 || num_threads > i32::MAX as u32 {
+    return 0i32;
+  }
   crate::par::configure_pool(num_threads as usize);
   1i32
 }
@@ -6261,10 +6291,14 @@ pub(crate) fn opj_j2k_setup_encoder(
   /* comment string */
   if let Some(comment) = parameters.cp_comment.as_deref() {
     cp.comment = comment.to_vec();
+    /* An explicitly-set EMPTY comment must still emit the COM marker (the C
+    checks `comment != NULL`, not the length). */
+    cp.comment_set = true;
   } else {
     /* Create default comment for codestream */
     /* UniPG>> */
     cp.comment = crate::openjpeg::default_codestream_comment().into_bytes();
+    cp.comment_set = true;
   }
   /*
   calculate other encoding parameters
@@ -11101,7 +11135,7 @@ fn opj_j2k_setup_header_writing(
     }
   }
   list.add(opj_j2k_write_regions);
-  if !p_j2k.m_cp.comment.is_empty() {
+  if !p_j2k.m_cp.comment.is_empty() || p_j2k.m_cp.comment_set {
     list.add(opj_j2k_write_com);
   }
   /* DEVELOPER CORNER, insert your custom procedures */
