@@ -69,11 +69,20 @@ impl EventMgr {
   }
 
   pub fn is_enabled(&self, event_type: EventType) -> bool {
-    match event_type {
+    /* A registered handler OR an installed `log` sink (the default path:
+    without the `event-handlers` feature the messages go to the standard
+    `log` ecosystem). */
+    let has_handler = match event_type {
       EventType::Error => self.error_handler.is_some(),
       EventType::Warning => self.warning_handler.is_some(),
       EventType::Info => self.info_handler.is_some(),
-    }
+    };
+    has_handler
+      || match event_type {
+        EventType::Error => log::log_enabled!(log::Level::Error),
+        EventType::Warning => log::log_enabled!(log::Level::Warn),
+        EventType::Info => log::log_enabled!(log::Level::Info),
+      }
   }
 
   pub fn msg_write(&self, event_type: EventType, msg: &str) -> i32 {
@@ -93,7 +102,17 @@ impl EventMgr {
           .unwrap_or_else(|poisoned| poisoned.into_inner())(msg);
         1
       }
-      None => 0,
+      None => {
+        /* No handler registered: route through the standard `log` crate
+        (the stable Rust API's diagnostics path - the C-style callbacks are
+        an opt-in via the `event-handlers` feature). */
+        match event_type {
+          EventType::Error => log::error!("{}", msg),
+          EventType::Warning => log::warn!("{}", msg),
+          EventType::Info => log::info!("{}", msg),
+        }
+        0
+      }
     }
   }
 }

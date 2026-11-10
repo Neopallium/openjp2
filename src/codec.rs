@@ -34,6 +34,7 @@ use super::jp2::*;
 use super::image::*;
 
 use super::c_api_types::*;
+#[cfg(feature = "event-handlers")]
 use super::consts::*;
 use super::types::*;
 
@@ -122,14 +123,20 @@ pub struct Encoder {
 macro_rules! codec_common {
   ($ty:ty) => {
     impl $ty {
+      /// C-style event callbacks (the capi crate's `opj_set_*_handler`
+      /// surface).  Feature-gated: the stable Rust API routes diagnostics
+      /// through the `log` crate instead.
+      #[cfg(feature = "event-handlers")]
       pub fn set_info_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
         self.m_event_mgr.set_info_handler(handler);
       }
 
+      #[cfg(feature = "event-handlers")]
       pub fn set_warning_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
         self.m_event_mgr.set_warning_handler(handler);
       }
 
+      #[cfg(feature = "event-handlers")]
       pub fn set_error_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
         self.m_event_mgr.set_error_handler(handler);
       }
@@ -198,6 +205,7 @@ macro_rules! codec_common {
       /// Used only by the `openjp2-capi` crate's merged `Codec` handle to
       /// reproduce the C's error events when a decompressor call arrives on
       /// a compressor handle (and vice versa).  Not part of the stable API.
+      #[cfg(feature = "event-handlers")]
       #[doc(hidden)]
       pub fn emit_error_event(&mut self, msg: &str) {
         event_msg!(&mut self.m_event_mgr, EVT_ERROR, "{}", msg);

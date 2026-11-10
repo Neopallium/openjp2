@@ -40,6 +40,10 @@ wide = { version = "1.7", optional = true }
 # rayon.  The code falls back to sequential iterators without it.
 default = ["rayon", "image"]
 rayon = ["dep:rayon"]
+# C-style event callbacks (opj_set_info_handler etc. via Decoder/Encoder):
+# the C-ABI crate enables this; the stable Rust API routes diagnostics
+# through the `log` crate instead.
+event-handlers = []
 # jpeg2k-compatible alias for the rayon feature.
 threads = ["rayon"]
 # `image`-crate interop (Image::get_pixels / DynamicImage conversion).

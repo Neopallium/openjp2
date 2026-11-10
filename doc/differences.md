@@ -16,6 +16,20 @@ a literal transcription.  This page lists the intentional divergences.
   explicit checks, except where the port pre-checks to keep the C's error
   diagnostics.
 
+## Event reporting
+
+- The C reference delivers diagnostics through user-registered callbacks
+  (`opj_set_info_handler`/`warning`/`error`).  The core port routes messages
+  through the standard `log` crate by default; the C-style callback surface
+  (`Decoder`/`Encoder::set_*_handler`, plus the capi's `opj_set_*_handler`)
+  is gated behind the opt-in `event-handlers` feature, which the
+  `openjp2-capi` crate (and the CLI tools, which mirror the C CLI's
+  callback printing) enables.  With no handler AND no `log` sink installed,
+  messages are dropped (standard `log` behavior).  The message TEXT is
+  identical in both modes; parallel workers' messages become visible
+  through `log` where they used to be dropped (their per-worker managers
+  had no handlers).
+
 ## Threading
 
 - The C reference uses a per-codec `opj_thread_pool_t` created by
