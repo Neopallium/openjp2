@@ -4,7 +4,7 @@
 use super::*;
 
 pub(crate) fn encode_image_to_writer<W: std::io::Write + std::io::Seek + 'static>(
-  image: &CoreImage,
+  image: CoreImage,
   params: crate::EncoderParameters,
   format: J2KFormat,
   writer: W,
@@ -13,7 +13,7 @@ pub(crate) fn encode_image_to_writer<W: std::io::Write + std::io::Seek + 'static
 }
 
 pub(crate) fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + 'static>(
-  image: &CoreImage,
+  mut image: CoreImage,
   params: crate::EncoderParameters,
   format: J2KFormat,
   writer: W,
@@ -51,7 +51,7 @@ pub(crate) fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + '
 /// honoured.
 /// Internal driver over the low-level Encoder API.
 pub(crate) fn encode_image(
-  image: &CoreImage,
+  image: CoreImage,
   params: crate::EncoderParameters,
   format: J2KFormat,
 ) -> Result<Vec<u8>> {
@@ -59,13 +59,12 @@ pub(crate) fn encode_image(
 }
 
 pub(crate) fn encode_image_inner(
-  image: &CoreImage,
+  mut image: CoreImage,
   params: crate::EncoderParameters,
   format: J2KFormat,
 ) -> Result<Vec<u8>> {
   let mut codec = Encoder::new(format)?;
   let mut params = params;
-  let mut image = image.clone();
   codec.setup(&mut params, &mut image)?;
   let writer = crate::stream::SharedVecWriter {
     buf: std::rc::Rc::new(std::cell::RefCell::new(Vec::new())),

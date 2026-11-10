@@ -70,7 +70,7 @@ fn main() {
       .num_layers(2)
       .irreversible(!rev);
     for (fmt, cs) in [
-      ("j2k", image.encode(params.clone())),
+      ("j2k", image.clone().encode(params.clone())),
       ("jp2", image.encode_jp2(params.clone())),
     ] {
       if let Ok(cs) = cs {

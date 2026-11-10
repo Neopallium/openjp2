@@ -50,7 +50,7 @@ use super::*;
         ll.numresolution = numres;
         ll.cp_matrice = Some(vec![100i32; (numlayers * numres * 3) as usize]);
       }
-      let codestream = image.encode(params).expect("fixed-alloc encode");
+      let codestream = image.clone().encode(params).expect("fixed-alloc encode");
       let back = Image::from_bytes(&codestream).expect("decode fixed-alloc output");
       assert_eq!(back.width(), w);
       assert_eq!(back.height(), h);
@@ -106,7 +106,7 @@ use super::*;
     assert_eq!(image.num_components(), 3);
     assert!(image.width() > 0 && image.height() > 0);
     // Round-trip through the J2K encoder and back.
-    let codestream = image
+    let codestream = image.clone()
       .encode(
         EncodeParameters::new()
           .num_resolutions(3)
@@ -210,7 +210,7 @@ use super::*;
         });
       }
       let image = Image { core };
-      let codestream = image
+      let codestream = image.clone()
         .encode(EncodeParameters::new().num_resolutions(3).num_layers(1))
         .expect("encode");
       let back = Image::from_bytes(&codestream).expect("decode");
@@ -311,7 +311,7 @@ use super::*;
         continue;
       };
       let params = EncodeParameters::new().num_resolutions(4).tile_size(256, 256);
-      let Ok(par) = image.encode(params.clone()) else {
+      let Ok(par) = image.clone().encode(params.clone()) else {
         continue;
       };
       #[allow(deprecated)]
@@ -360,7 +360,7 @@ use super::*;
       .num_layers(2)
       .tile_size(512, 512)
       .progression_order(ProgressionOrder::Lrcp);
-    let par = image.encode(params.clone()).expect("parallel encode");
+    let par = image.clone().encode(params.clone()).expect("parallel encode");
     #[allow(deprecated)]
     let serial = {
       let mut codec = Encoder::new(J2KFormat::J2K).unwrap();
@@ -579,7 +579,7 @@ use super::*;
   fn encode_with_layer_rates() {
     let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
     let image = Image::from_bytes(&buf).expect("decode");
-    let codestream = image
+    let codestream = image.clone()
       .encode(
         EncodeParameters::new()
           .num_resolutions(3)
@@ -598,7 +598,7 @@ use super::*;
     let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
     let image = Image::from_bytes(&buf).expect("decode");
     let file = std::fs::File::create("/tmp/openjp2_encode_to_writer.j2k").expect("create");
-    image
+    image.clone()
       .encode_to_writer(
         EncodeParameters::new().num_resolutions(3).tile_size(512, 512),
         file,
@@ -630,7 +630,7 @@ use super::*;
     assert_eq!(image.num_components(), 4);
     assert_eq!((image.width(), image.height()), (96, 64));
     // Round-trip through the encoder (lossless 5-3).
-    let codestream = image
+    let codestream = image.clone()
       .encode(EncodeParameters::new().num_resolutions(3))
       .expect("encode");
     let back = Image::from_bytes(&codestream).expect("decode");
@@ -725,7 +725,7 @@ use super::*;
   fn encode_with_codeblock_sizes_and_comment() {
     let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
     let image = Image::from_bytes(&buf).expect("decode");
-    let codestream = image
+    let codestream = image.clone()
       .encode(
         EncodeParameters::new()
           .num_resolutions(3)
@@ -772,7 +772,7 @@ use super::*;
   fn irreversible_encode_round_trip() {
     let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
     let image = Image::from_bytes(&buf).expect("decode");
-    let codestream = image
+    let codestream = image.clone()
       .encode(
         EncodeParameters::new()
           .irreversible(true)
@@ -927,7 +927,7 @@ use super::*;
   fn parallel_tile_decode_with_reduce() {
     let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
     let image = Image::from_bytes(&buf).expect("decode");
-    let codestream = image
+    let codestream = image.clone()
       .encode(EncodeParameters::new().num_resolutions(4).tile_size(512, 512))
       .expect("encode");
     let reduced = Image::from_bytes_with(&codestream, DecodeParameters::new().reduce(2))
@@ -1183,7 +1183,7 @@ use super::*;
       });
     }
     let image = Image { core };
-    let codestream = image
+    let codestream = image.clone()
       .encode(
         EncodeParameters::new()
           .num_resolutions(2)
@@ -1212,7 +1212,7 @@ use super::*;
       ProgressionOrder::Pcrl,
       ProgressionOrder::Cprl,
     ] {
-      let codestream = image
+      let codestream = image.clone()
         .encode(
           EncodeParameters::new()
             .num_resolutions(2)
@@ -1306,7 +1306,7 @@ use super::*;
   fn lenient_truncated_stream_keeps_pixels() {
     let buf = std::fs::read("samples/Hadley_Crater.jp2").unwrap();
     let image = Image::from_bytes(&buf).unwrap();
-    let full = image.encode(EncodeParameters::new().num_resolutions(3)).unwrap();
+    let full = image.clone().encode(EncodeParameters::new().num_resolutions(3)).unwrap();
     let trunc = &full[..full.len() - 2]; // drop the EOC marker
     let partial = Image::from_bytes_with(trunc, DecodeParameters::new().strict(false))
       .expect("lenient truncated decode");
@@ -1431,10 +1431,10 @@ use super::*;
     let image = Image { core };
     let mut params = EncodeParameters::new().num_resolutions(2);
     params.low_level().mct_data = Some((vec![1.0f32; 4], vec![0i32; 3])); // matrix too short
-    assert!(image.encode(params.clone()).is_err());
+    assert!(image.clone().encode(params.clone()).is_err());
     let mut params = EncodeParameters::new().num_resolutions(2);
     params.low_level().mct_data = Some((vec![1.0f32; 9], vec![0i32; 2])); // dc_shift too short
-    assert!(image.encode(params).is_err());
+    assert!(image.clone().encode(params).is_err());
   }
 
   /// Regression (review round 3, L3): an out-of-range progression order
@@ -1689,7 +1689,7 @@ fn subsampled_empty_tiles_round_trip() {
   };
   let image = Image { core };
   let params = EncodeParameters::new().num_resolutions(3).tile_size(64, 64);
-  let codestream = image.encode(params).expect("subsampled tiled encode");
+  let codestream = image.clone().encode(params).expect("subsampled tiled encode");
   let back = Image::from_bytes(&codestream).expect("subsampled tiled decode");
   assert_eq!((back.width(), back.height()), (w, h));
   assert_eq!(back.num_components(), 1);
@@ -1861,22 +1861,22 @@ fn subsampled_empty_tiles_round_trip() {
     };
     let image = Image { core };
 
-    assert!(image.encode(EncodeParameters::new().num_layers(101)).is_err());
-    assert!(image.encode(EncodeParameters::new().num_layers(150)).is_err());
+    assert!(image.clone().encode(EncodeParameters::new().num_layers(101)).is_err());
+    assert!(image.clone().encode(EncodeParameters::new().num_layers(150)).is_err());
 
     let mut params = EncodeParameters::new();
     params.low_level().numpocs = 33;
-    assert!(image.encode(params).is_err());
+    assert!(image.clone().encode(params).is_err());
 
     let mut params = EncodeParameters::new();
     params.low_level().csty = 1;
     params.low_level().res_spec = 0;
-    assert!(image.encode(params).is_err());
+    assert!(image.clone().encode(params).is_err());
 
     let mut params = EncodeParameters::new();
     params.low_level().csty = 1;
     params.low_level().res_spec = 34;
-    assert!(image.encode(params).is_err());
+    assert!(image.clone().encode(params).is_err());
   }
 
   /// Regression (review finding 1): a custom MCT matrix must reach the
@@ -1935,7 +1935,7 @@ fn subsampled_empty_tiles_round_trip() {
     // Non-singular decorrelation matrix; identity would also do.
     let matrix = vec![1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
     params.low_level().mct_data = Some((matrix, vec![128i32; 3]));
-    let codestream = image.encode(params).expect("custom MCT encode (matrix inversion)");
+    let codestream = image.clone().encode(params).expect("custom MCT encode (matrix inversion)");
     assert!(!codestream.is_empty());
     // C parity for the WRITER: without the OPJ_MCT rsiz bits no MCT/MCC/MCO
     // markers are written, so the stream declares mct=2 but carries no
@@ -2007,7 +2007,7 @@ fn subsampled_empty_tiles_round_trip() {
     // OPJ_MCT = OPJ_PROFILE_PART2 | OPJ_EXTENSION_MCT (0x8100): the rsiz
     // gate that makes the encoder emit the MCT data group.
     params.low_level().rsiz = 0x8100;
-    let codestream = image.encode(params).expect("custom MCT encode");
+    let codestream = image.clone().encode(params).expect("custom MCT encode");
     // The MCT marker (0xFF74) must be present.
     assert!(
       codestream.windows(2).any(|w| w == [0xFF, 0x74]),
@@ -2085,14 +2085,14 @@ fn subsampled_empty_tiles_round_trip() {
     ];
     params.low_level().mct_data = Some((matrix, vec![128i32; 3]));
     params.low_level().rsiz = 0x8100;
-    let codestream = image.encode(params).expect("custom MCT encode");
+    let codestream = image.clone().encode(params).expect("custom MCT encode");
     let decoded = Image::from_bytes(&codestream).expect("custom MCT decode");
     for (a, b) in image.components().iter().zip(decoded.components().iter()) {
       assert_eq!(a.data.len(), b.data.len());
       for (x, y) in a.data.iter().zip(b.data.iter()) {
         assert!(
           (x - y).abs() <= 4,
-          "custom MCT round trip within tolerance: {x} vs {y}"
+          "custom MCT round trip within tolerance"
         );
       }
     }
@@ -2135,7 +2135,7 @@ fn subsampled_empty_tiles_round_trip() {
         icc_profile_is_cielab: false,
       },
     };
-    let codestream = image
+    let codestream = image.clone()
       .encode(EncodeParameters::new().num_resolutions(6).num_layers(1))
       .expect("16-bit deep-DWT encode");
     let back = Image::from_bytes(&codestream).expect("decode");

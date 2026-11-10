@@ -1,6 +1,7 @@
 use super::*;
 
 /// A fully decoded JPEG 2000 image (owned pixel data).
+#[derive(Clone)]
 pub struct Image {
   pub(crate) core: CoreImage,
 }
@@ -205,24 +206,28 @@ impl Image {
   }
 
   /// Encode the image to a JPEG 2000 codestream (or JP2 file when
-  /// `format` is set) held in an in-memory buffer.
-  pub fn encode(&self, params: EncodeParameters) -> Result<Vec<u8>> {
-    encode_image(&self.core, params.into_inner(), J2KFormat::J2K)
+  /// `format` is set) held in an in-memory buffer.  Takes the image by
+  /// value: the encoder transforms the component buffers in place, so no
+  /// copy is made (clone first to keep the source).
+  pub fn encode(self, params: EncodeParameters) -> Result<Vec<u8>> {
+    encode_image(self.core, params.into_inner(), J2KFormat::J2K)
   }
 
-  /// Encode the image to a JP2 file in an in-memory buffer.
-  pub fn encode_jp2(&self, params: EncodeParameters) -> Result<Vec<u8>> {
-    encode_image(&self.core, params.into_inner(), J2KFormat::JP2)
+  /// Encode the image to a JP2 file in an in-memory buffer.  By-value like
+  /// `encode` (clone first to keep the source).
+  pub fn encode_jp2(self, params: EncodeParameters) -> Result<Vec<u8>> {
+    encode_image(self.core, params.into_inner(), J2KFormat::JP2)
   }
 
   /// Encode the image into any `Write + Seek` sink (the encoder seeks
   /// back to patch marker lengths, so a plain `Write` is not enough).
+  /// By-value like `encode`.
   pub fn encode_to_writer<W: std::io::Write + std::io::Seek + 'static>(
-    &self,
+    self,
     params: EncodeParameters,
     writer: W,
   ) -> Result<()> {
-    encode_image_to_writer(&self.core, params.into_inner(), J2KFormat::J2K, writer)
+    encode_image_to_writer(self.core, params.into_inner(), J2KFormat::J2K, writer)
   }
 }
 
