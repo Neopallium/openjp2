@@ -203,9 +203,14 @@ Notes:
    `opj_packet_info_t`, `opj_marker_info_t`, `opj_tp_index_t`) are used only
    by the capi and move wholesale. Root `pub use c_api_types::*` is removed
    in the 0.7 release (kept under `ffi` as a re-export of the ctypes crate).
-   **Phasing:** (a) extract + core depends + capi depends (non-breaking);
-   (b) 0.7 (unpublished, so breaking changes are fine): drop the root
-       re-export, split `Codec`, move the marshalling;
+   **Phasing:** (a) extract + core depends + capi depends (non-breaking) —
+   done (b0538729); (b) 0.7 (unpublished, so breaking changes are fine):
+   drop the root re-export — done (603aec32), split `Codec` — done
+   (793ff501), move the marshalling + the C-free `Result` surface — done
+   (7d555fe4: native `DecoderSettings` replaces `opj_dparameters_t` in the
+   core signatures, the whole low-level surface is `Result`-returning,
+   `HeaderImage` for `read_header`, `J2KFormat` constructors; the capi
+   translates the C structs and marshals the new returns);
    (c) optional later: replace `OPJ_BOOL` etc. *inside* the core with Rust
    types (bool/i32/enums) so the core no longer imports the ctypes crate at
    all.
