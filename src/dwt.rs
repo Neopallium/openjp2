@@ -1217,6 +1217,15 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
       as u32;
     let cas_row = tilec.resolutions[cur as usize].x0 & 1i32;
     let cas_col = tilec.resolutions[cur as usize].y0 & 1i32;
+    /* A component can subsample to nothing inside a tile (subsampling larger
+    than the tile size): its resolutions are 0-wide (or 0-high).  The C's
+    row loops no-op on the zero-sized buffer (the malloc'd pointer is read
+    as garbage); the port's V8 accessors would panic - skip the transform
+    level entirely. */
+    if rw == 0u32 || rh == 0u32 {
+      cur -= 1i32;
+      continue;
+    }
     match wavelet {
       ForwardWavelet::Reversible53 => {
         /* Perform vertical pass */

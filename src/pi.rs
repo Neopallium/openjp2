@@ -1814,11 +1814,15 @@ pub(crate) fn opj_pi_create_decode(
   {
     p_cp.tcps[p_tile_no as usize].numlayers.wrapping_add(1u32).wrapping_mul(l_step_l)
   } else {
-    0_u32
-  };
-  if include_size == 0 {
+    /* The step product overflows u32: the C wraps it (UB, wrong-sized
+    include buffer); the port fails cleanly here instead. */
     return Vec::new();
-  }
+  };
+  /* An all-components-empty tile (subsampling larger than the tile size)
+  legitimately yields include_size == 0: the C's calloc(0) succeeds and the
+  iterator emits zero packets (precno1 = pw*ph = 0 keeps the precinct loops
+  from ever touching the include mask).  Create the iterator with an empty
+  mask so the tile decodes as empty like the C instead of failing. */
   {
     // The include bitmask is shared across the pi elements of this tile:
     // elements 1.. clone element 0's Rc, exactly like the C version.
@@ -2011,11 +2015,15 @@ pub(crate) fn opj_pi_initialise_encode(
   let include_size = if l_numlayers != 0 && l_step_l <= u32::MAX / l_numlayers {
     l_numlayers.wrapping_mul(l_step_l)
   } else {
-    0
-  };
-  if include_size == 0 {
+    /* The step product overflows u32: the C wraps it (UB, wrong-sized
+    include buffer); the port fails cleanly here instead. */
     return Vec::new();
-  }
+  };
+  /* An all-components-empty tile (subsampling larger than the tile size)
+  legitimately yields include_size == 0: the C's calloc(0) succeeds and the
+  iterator emits zero packets (the precinct loops never touch the include
+  mask).  Create the iterator with an empty mask so the tile encodes as
+  empty like the C instead of failing. */
   {
     // The include bitmask is shared across the pi elements of this tile.
     let include: Rc<[Cell<i16>]> = vec![Cell::new(0i16); include_size as usize].into();

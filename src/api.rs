@@ -2251,6 +2251,52 @@ mod tests {
     );
   }
 
+/// Regression (review round 3, M5, re-opened by the reviewer): a tile whose
+/// components subsample to nothing (subsampling larger than the tile size)
+/// must encode AND decode - the C's calloc(0)/no-op loops succeed, the port
+/// used to fail (decode: empty pi treated as hard error; encode: empty pi +
+/// zero-dim DWT panics).
+#[test]
+fn subsampled_empty_tiles_round_trip() {
+  let (w, h) = (256u32, 256u32);
+  let core = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: w,
+    y1: h,
+    numcomps: 1,
+    color_space: crate::OPJ_CLRSPC_GRAY,
+    comps: vec![crate::CoreImageComp {
+      dx: 128,
+      dy: 128,
+      w: w.div_ceil(128),
+      h: h.div_ceil(128),
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data: (0..(w / 128) * (h / 128)).map(|i| (i % 256) as i32).collect(),
+    }],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let image = Image { core };
+  let params = EncodeParameters::new().num_resolutions(3).tile_size(64, 64);
+  let codestream = image.encode(params).expect("subsampled tiled encode");
+  let back = Image::from_bytes(&codestream).expect("subsampled tiled decode");
+  assert_eq!((back.width(), back.height()), (w, h));
+  assert_eq!(back.num_components(), 1);
+  // The visible pixels (the 2x2 subsampled plane) must round-trip losslessly
+  // (reversible 5-3).
+  for (a, b) in image.components()[0].data.iter().zip(back.components()[0].data.iter()) {
+    assert_eq!(a, b, "subsampled round trip must be lossless");
+  }
+}
+
   #[test]
   fn color_space_round_trip() {
     for cs in [
@@ -2909,11 +2955,11 @@ impl DumpImage {
       }
       Ok(())
     });
-    /* Keep the image on failure so a retry after fixing the parameters (or
-    another decode() call) cannot hit the expect() above. */
-    if result.is_ok() {
-      self.image = Some(image);
-    }
+    /* Restore the image even on failure: a retry (or another decode() call)
+    must not hit the expect() above, and the C reference has no such trap.
+    The failed decode leaves the codec/stream mid-state; the retry simply
+    fails again without panicking. */
+    self.image = Some(image);
     result
   }
 

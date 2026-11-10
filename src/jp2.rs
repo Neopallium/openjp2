@@ -426,7 +426,9 @@ fn opj_jp2_check_color(
     }
     /* issue 397 */
     /* ISO 15444-1 states that if cdef is present, it shall contain a complete list of channel definitions. */
-    for chan in 1..nr_channels {
+    /* C parity (jp2.c): EVERY channel, including channel 0, must appear
+    (the C walks nr_channels down to 0; the port used to start at 1). */
+    for chan in 0..nr_channels {
       let has = cdef
         .info
         .iter()

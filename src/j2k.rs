@@ -10896,6 +10896,13 @@ fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &CoreI
     let l_width = l_width as usize;
     let l_stride = l_stride as usize;
     let l_nb_elem = l_height * l_width;
+    /* A component can subsample to a zero width/height inside a tile
+    (subsampling larger than the tile size): the C's copy loops no-op and
+    the component contributes nothing.  chunks(0)/chunks_exact(0) would
+    panic here. */
+    if l_width == 0usize || l_height == 0usize {
+      continue;
+    }
     /* The C reads `l_height` rows of `l_width` samples with `l_stride` between rows. The
      * c2rust transcription modelled that as `chunks_exact(l_width + l_stride)`, which demands a
      * full trailing stride that the C never reads (and the component buffer may not have, for

@@ -203,6 +203,12 @@ impl CoreImageComp {
     if self.prec == precision {
       return;
     }
+    /* Guard the shifts below: precisions outside 1..=31 have no meaningful
+    i32 sample representation (PCLR palettes can set prec up to 128, and
+    caller-built components may carry 0). */
+    if !(1..=31).contains(&precision) || !(1..=31).contains(&self.prec) {
+      return;
+    }
     if self.prec < precision {
       let signed = self.sgnd != 0;
       let old_prec = self.prec;
@@ -280,7 +286,10 @@ impl CoreImage {
   pub fn comps_data_iter(&self) -> Option<impl Iterator<Item = ImageCompRef<'_>>> {
     Some(self.comps.iter().map(|comp| ImageCompRef {
       comp,
-      adjust: if comp.sgnd != 0 {
+      /* Guard the shift: PCLR palettes can legally set prec up to 128 and
+      caller-built components may carry prec == 0; the adjustment is only
+      meaningful for 1..=31. */
+      adjust: if comp.sgnd != 0 && (1..=31).contains(&comp.prec) {
         1 << (comp.prec - 1)
       } else {
         0
