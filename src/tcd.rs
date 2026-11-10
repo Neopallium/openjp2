@@ -339,11 +339,11 @@ fn opj_tcd_rateallocate(
     let tcd_tcp_distoratio = cp.tcps[tcd.tcd_tileno as usize].distoratio;
     min = 1.797_693_134_862_315_7e308_f64;
     max = 0 as f64;
-    tcd.tcd_image.tiles.numpix = 0i32;
+    tcd.tcd_image.tiles.numpix = 0i64;
     compno = 0_u32;
     while compno < tcd.tcd_image.tiles.numcomps {
       let tilec = &mut tcd.tcd_image.tiles.comps[compno as usize];
-      tilec.numpix = 0i32;
+      tilec.numpix = 0i64;
       resno = 0_u32;
       while resno < tilec.numresolutions {
         let res = &mut tilec.resolutions[resno as usize];
@@ -391,8 +391,8 @@ fn opj_tcd_rateallocate(
 
                 {
                   let cblk_pix_count = (cblk.x1 - cblk.x0) * (cblk.y1 - cblk.y0);
-                  tcd.tcd_image.tiles.numpix += cblk_pix_count;
-                  tilec.numpix += cblk_pix_count;
+                  tcd.tcd_image.tiles.numpix += cblk_pix_count as i64;
+                  tilec.numpix += cblk_pix_count as i64;
                 }
                 cblkno += 1;
               }

@@ -631,7 +631,7 @@ pub(crate) struct TcdTile {
   pub y1: i32,
   pub numcomps: u32,
   pub comps: Vec<TcdTileComp>,
-  pub numpix: i32,
+  pub numpix: i64,
   pub distotile: f64,
   pub distolayer: [f64; 100],
   pub packno: u32,
@@ -840,7 +840,7 @@ pub(crate) struct TcdTileComp {
   pub win_y0: u32,
   pub win_x1: u32,
   pub win_y1: u32,
-  pub numpix: i32,
+  pub numpix: i64,
 }
 impl Default for TcdTileComp {
   fn default() -> Self {

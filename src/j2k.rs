@@ -3763,7 +3763,7 @@ fn opj_j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
     let mut l_current_pos = opj_stream_tell(p_stream) - 2i64;
     let tile = &mut l_cstr_index.tiles[p_j2k.m_current_tile_number as usize];
     let l_current_tile_part = tile.current_tpsno;
-    if (l_current_tile_part as usize) < tile.tp_index.len() {
+    if l_current_tile_part < tile.nb_tps {
       tile.tp_index[l_current_tile_part as usize].end_header = l_current_pos;
       tile.tp_index[l_current_tile_part as usize].end_pos =
         l_current_pos + p_j2k.m_specific_param.m_decoder.m_sot_length as i64 + 2i64;
@@ -6698,7 +6698,7 @@ fn opj_j2k_add_tlmarker(
   });
   if marker == J2KMarker::SOT {
     let l_current_tile_part = tile.current_tpsno;
-    if (l_current_tile_part as usize) < tile.tp_index.len() {
+    if l_current_tile_part < tile.nb_tps {
       tile.tp_index[l_current_tile_part as usize].start_pos = pos;
     }
   }
@@ -7995,12 +7995,16 @@ pub(crate) fn opj_j2k_decode_tile(
     return 0i32;
   }
   let mut l_tile_data;
+  let l_tile_data_size;
   {
     let l_tcp = &mut p_j2k.m_cp.tcps[p_tile_index as usize];
     if l_tcp.m_data.is_empty() {
       opj_j2k_tcp_destroy(l_tcp);
       return 0i32;
     }
+    /* The C passes m_data_size (not the buffer length: the buffer carries
+    a 2-byte fake-0xFFFF margin the tile decoder must not see as data). */
+    l_tile_data_size = l_tcp.m_data_size as usize;
     // Take the tile data out so the `&mut p_j2k.m_cp` borrow below does not
     // conflict with it; the decode reads through the local buffer and the
     // data is destroyed afterwards anyway (opj_j2k_tcp_data_destroy).
@@ -8026,7 +8030,7 @@ pub(crate) fn opj_j2k_decode_tile(
     l_bounds_y1,
     p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode,
     &p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode[..],
-    &mut l_tile_data[..],
+    &mut l_tile_data[..l_tile_data_size],
     p_tile_index,
     p_manager,
     p_j2k
