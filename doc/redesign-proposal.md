@@ -55,7 +55,10 @@ impl Image {
   pub fn encode(&self, params: &EncodeParameters) -> Result<Vec<u8>>;
   pub fn encode_jp2(&self, params: &EncodeParameters) -> Result<Vec<u8>>;
   pub fn encode_to_writer<W: Write+Seek>(&self, params, w) -> Result<()>;
-  #[cfg(feature = "image")] pub fn get_pixels(&self) -> Result<ImageData>; // drop alpha_default
+  #[cfg(feature = "image")] pub fn get_pixels(&self, alpha_default: Option<u32>) -> Result<ImageData>;
+      // keep the jpeg2k signature (owner decision); see doc/component-data-types.md
+      // for the noted shortcomings (u32 alpha truncated for 8/16-bit output,
+      // the Option-parameter shape is un-idiomatic for a reader method).
   #[cfg(feature = "image")] pub fn to_dynamic_image(&self) -> Result<DynamicImage>;
 }
 
@@ -74,7 +77,9 @@ impl DecodeParameters {
   pub fn new() -> Self;
   pub fn reduce / layers / strict / limits / decode_area / ignore_pclr_cmap_cdef;
   // NEW:
-  pub fn threads(self, n: usize) -> Self;      // explicit opt-in for tile parallelism
+  pub fn threads(self, n: usize) -> Self;      // 0 = automatic (the configured rayon pool);
+                                              // n > 0 = limit THIS decode to a local
+                                              // n-thread rayon pool (owner decision)
 }
 
 // ---- encode configuration: fill the builder out to the C surface ----
@@ -280,46 +285,41 @@ Notes:
 
 ## Decided (owner, 2026-11-10)
 
-1. **Image naming** → keep `openjp2::Image`. ✅ recorded in A.1.
-2. **Codec split** → split into core `Decoder`/`Encoder`; a merged `Codec`
-   moves into the capi crate (B.0). The old deprecated `Codec` methods are
-   removed with it in 0.7.
+1. **Image naming** → keep `openjp2::Image`.
+2. **Codec split** → core `Decoder`/`Encoder`; the merged `Codec` moves into
+   the capi crate. The deprecated methods go with it in 0.7 (unpublished, so
+   the breaking change lands there directly — no 0.8 staging).
 3. **C-ABI types** → all move to a new `openjp2-ctypes` crate; the capi crate
-   is the only consumer of them at the boundary (B.0).
-4. **`image` crate** → stays optional; raw component access is always
-   available (`ImageComponent::data()` + `to_u8`/`to_u16` without any
-   feature).
-5. **jpeg2k naming parity** → keep only where free; no forced parity.
+   is their only consumer at the boundary.
+4. **`image` crate** → stays optional; raw component access always available.
+5. **jpeg2k naming parity** → keep only where free.
+6. **API style** → follow the Rust API guidelines
+   (https://rust-lang.github.io/api-guidelines/) as much as possible; the
+   proposal in Part A should be re-checked against them before
+   implementation (C-INTERMEDIATE, C-GOOD-ERR, C-NO-OUT, naming, builders).
+7. **Encoder knobs** → common knobs on the `EncodeParameters` builder;
+   advanced knobs stay on `low_level()`.
+8. **Custom MCT decode** → extend beyond C parity (accept mct=2 on decode),
+   but only AFTER the API refactor.
+9. **Component data typing** → i32-only for 0.7; the future design for
+   f32/i32 (and possibly u32 / higher-resolution pixels) is written up in
+   `doc/component-data-types.md`.
+10. **Threading** → the user can limit the threads used for a decode, while
+    automatic (the configured rayon pool) stays supported:
+    `DecodeParameters::threads(n)` with `0` = automatic, `n > 0` = a local
+    n-thread pool for that decode.
+11. **`get_pixels` alpha** → keep the jpeg2k signature
+    (`alpha_default: Option<u32>`); the shortcomings are noted in
+    `doc/component-data-types.md`.
+12. **Unsafe policy for the DWT reinterpret (typed `TileBuf` vs a scoped
+    exception)** → deferred (question was unclear; revisit with a concrete
+    writeup when B.1.4 is scheduled).
+13. **Parallel-decode rework (B.1.6)** → deferred until after the split.
+14. **Procedure-list removal (B.1.1)** → yes, remove them.
+15. **Docs layout** → keep all five (+ the new component-data doc).
+16. **`OPJ_*` internals (B.0 phase c)** → incremental migration to primitive
+    Rust types; where `OPJ_BOOL` signals an error it becomes
+    `Result<(), Error>` (incrementally is fine).
 
-## Still open — for our next pass
-
-1. ~~Breaking-change timing~~ **DECIDED:** 0.7 has never been published, so
-   the Codec split + root re-export removal land directly in 0.7 — no
-   non-breaking staging release is needed. The ctypes extraction is simply
-   the first commit of that release cycle (it keeps the tree green by
-   itself, then the split lands on top).
-2. **Error granularity.** Structured `DecodeError { marker/box, pos }` or
-   `String` for 0.7?
-3. **Encoder surface completeness.** Full builder (precincts, ROI,
-   tile-parts, TLM, guard bits, rates) in `EncodeParameters`, or advanced
-   knobs on `low_level()` only?
-4. **Custom MCT decode.** Extend beyond C parity (accept mct=2 on decode) or
-   stay strict-parity? (B.2.4.)
-5. **Raw f32 planes.** With B.1.4 (typed `TileBuf`), should `ImageComponent`
-   ever expose raw f32 planes for 9-7 files, or is i32-only the contract?
-6. **Threading default.** Keep automatic tile parallelism in the one-shot
-   API, or make it opt-in (`DecodeParameters::threads(0 = automatic)` as an
-   opt-out)?
-7. **`get_pixels` alpha.** Drop `alpha_default: Option<u32>` for a
-   `with_alpha` variant, or keep jpeg2k's exact signature?
-8. **Unsafe policy for the DWT reinterpret.** Typed `TileBuf` (no unsafe), or
-   is a scoped, documented `#[allow(unsafe_code)]` exception acceptable?
-9. **Parallel-decode rework (B.1.6).** Now (removes snapshot copy + prescan
-   hazard) or defer?
-10. **Procedure-list removal (B.1.1).** OK to simplify away the C's
-    procedure-list mirror, or keep for upstream-sync parity?
-11. **Docs layout.** Replace `api-review.md` + `code-outline.md` with the new
-    trio, or keep all five?
-12. **`OPJ_BOOL` inside the core (B.0 phase c).** Worth the ~300-site
-    internal migration to Rust types (bool/i32/enums), or leave the core
-    importing `openjp2-ctypes` indefinitely?
+No questions remain open for the 0.7 cycle; items 8, 12 and 13 are explicitly
+deferred and will be revisited with a concrete writeup each.
