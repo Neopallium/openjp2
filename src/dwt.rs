@@ -1502,7 +1502,11 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
   /* we process PARALLEL_COLS_53 columns at a time */
   h_mem_len *= PARALLEL_COLS_53;
   // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
-  let scratch = vec![Cell::new(0i32); h_mem_len];
+  let mut scratch: Vec<Cell<i32>> = Vec::new();
+  if scratch.try_reserve_exact(h_mem_len).is_err() {
+    return 0i32;
+  }
+  scratch.resize(h_mem_len, Cell::new(0i32));
   let mut h = Dwt {
     mem: &scratch,
     dn: 0,
@@ -1554,6 +1558,13 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
         DWT_SCRATCH.with(|scratch| {
           let mut s = scratch.borrow_mut();
           if s.len() < h_len {
+            /* The thread-local scratch is sized from header geometry: fail
+            the job instead of aborting on OOM (the vec! resize would
+            abort). */
+            let need = h_len - s.len();
+            if s.try_reserve_exact(need).is_err() {
+              return;
+            }
             s.resize(h_len, core::cell::Cell::new(0));
           }
           let d = Dwt {
@@ -1871,7 +1882,11 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
   }
   h_mem_size *= 4;
   // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
-  let scratch = vec![Cell::new(0i32); h_mem_size];
+  let mut scratch: Vec<Cell<i32>> = Vec::new();
+  if scratch.try_reserve_exact(h_mem_size).is_err() {
+    return 0i32;
+  }
+  scratch.resize(h_mem_size, Cell::new(0i32));
   let mut h = Dwt {
     mem: &scratch,
     dn: 0,
@@ -2439,7 +2454,12 @@ fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL 
     return 0i32;
   }
   // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
-  let scratch = vec![Cell::new(0f32); l_data_size * NB_ELTS_V8 as usize];
+  let mut scratch: Vec<Cell<f32>> = Vec::new();
+  let scratch_len = l_data_size * NB_ELTS_V8 as usize;
+  if scratch.try_reserve_exact(scratch_len).is_err() {
+    return 0i32;
+  }
+  scratch.resize(scratch_len, Cell::new(0f32));
   let mut h = V8Dwt {
     wavelet: &scratch,
     dn: 0,
@@ -2507,6 +2527,10 @@ fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL 
           DWT_SCRATCH_F32.with(|scratch| {
             let mut s = scratch.borrow_mut();
             if s.len() < h_len {
+              let need = h_len - s.len();
+              if s.try_reserve_exact(need).is_err() {
+                return;
+              }
               s.resize(h_len, core::cell::Cell::new(0.0));
             }
             let d = v8dwt_local {
@@ -2660,7 +2684,12 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
     return 0i32;
   }
   // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
-  let scratch = vec![Cell::new(0f32); l_data_size * NB_ELTS_V8 as usize];
+  let mut scratch: Vec<Cell<f32>> = Vec::new();
+  let scratch_len = l_data_size * NB_ELTS_V8 as usize;
+  if scratch.try_reserve_exact(scratch_len).is_err() {
+    return 0i32;
+  }
+  scratch.resize(scratch_len, Cell::new(0f32));
   let mut h = V8Dwt {
     wavelet: &scratch,
     dn: 0,
