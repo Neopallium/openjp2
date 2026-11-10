@@ -293,9 +293,9 @@ Notes:
    (Original item text: add `Stream::from_bytes(&[u8])` (no
    `BufReader<Cursor>` indirection) for the common case; keep `new_input`
    for arbitrary `Read+Seek`.)
-2. **Module hygiene.** `api.rs` (2240+ lines incl. tests) splits into
-   `api/{error,decode,encode,image_conv,dump}.rs`; the 200-line test modules
-   stay in the parent or move to `tests/`.
+2. **Module hygiene.** — ✅ **LANDED (6bd28934)**: `api.rs` (3023 lines)
+   is now `api/{error,params,image,encode,decode,image_conv,dump,tests}.rs`
+   behind a thin facade (the test module moved to `api/tests.rs`).
 3. **Panic-catch scope.** Keep `catch_unwind` at the safe-API and C-ABI
    boundaries (do not wrap individual internal calls).
 4. **Remaining open review items** — 🟡 PARTIAL: t1 refinement-pass
