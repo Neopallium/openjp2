@@ -267,14 +267,20 @@ fn opj_tcd_makelayer_fixed(
                   .wrapping_mul(value as u32)
                   .wrapping_add(cblk.numpassesinlayers)
               }
-              cblk.layers[layno as usize].numpasses = n.wrapping_sub(cblk.numpassesinlayers);
+              /* The fixed-alloc matrix can imply more passes than the
+              codeblock actually coded.  The C records the over-promising
+              numpasses and then reads passes[] OOB in BOTH makelayer_fixed
+              (passes[n-1]) and the t2 packet writer (walking numpasses
+              entries) — UB.  Clamp the layer end to the coded pass budget
+              BEFORE recording, so the recorded numpasses, the len index and
+              t2's walk all stay in-bounds.  saturating_sub also absorbs the
+              `3 * value` u32-wrap case (value up to 2^31: the C's unsigned
+              wrap produces the same OOB family). */
+              if n > cblk.totalpasses {
+                n = cblk.totalpasses;
+              }
+              cblk.layers[layno as usize].numpasses = n.saturating_sub(cblk.numpassesinlayers);
               if cblk.layers[layno as usize].numpasses != 0 {
-                /* The fixed-alloc matrix can imply more passes than the
-                codeblock actually coded (the C reads passes[] OOB here);
-                clamp the index to the coded pass count. */
-                if n > cblk.totalpasses {
-                  n = cblk.totalpasses;
-                }
                 if cblk.numpassesinlayers == 0u32 {
                   cblk.layers[layno as usize].len = cblk.passes[n.wrapping_sub(1u32) as usize].rate;
                   cblk.layers[layno as usize].data_offset = 1;

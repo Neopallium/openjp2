@@ -863,6 +863,101 @@ pub fn detect_format(buf: &[u8]) -> Option<J2KFormat> {
 mod tests {
   use super::*;
 
+  /// Regression: a fixed-alloc matrix implying more passes than a codeblock
+  /// actually coded must not panic (the C records the over-promising count
+  /// and reads passes[] OOB in both makelayer_fixed and t2 — UB).  Covers
+  /// the all-zero cblk (totalpasses == 0) and the coded-cblk sub-cases.
+  #[test]
+  fn fixed_alloc_overpromise_does_not_panic() {
+    for data in [
+      vec![0i32; 4096], // all-zero cblks: totalpasses == 0
+      (0..4096).map(|i| (i % 251) as i32).collect::<Vec<i32>>(), // real passes
+    ] {
+      let (w, h) = (64u32, 64u32);
+      let core = crate::CoreImage {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+        numcomps: 1,
+        color_space: crate::OPJ_CLRSPC_GRAY,
+        comps: vec![crate::CoreImageComp {
+          dx: 1,
+          dy: 1,
+          w,
+          h,
+          x0: 0,
+          y0: 0,
+          prec: 8,
+          bpp: 8,
+          sgnd: 0,
+          resno_decoded: 0,
+          factor: 0,
+          alpha: 0,
+          data: data.clone(),
+        }],
+        icc_profile_buf: Vec::new(),
+        icc_profile_is_cielab: false,
+      };
+      let image = Image { core };
+      let numres = 7i32; // 64x64 -> 6 levels + 1
+      let numlayers = 3i32;
+      let mut params = EncodeParameters::new();
+      {
+        let ll = params.low_level();
+        ll.cp_fixed_alloc = 1;
+        ll.tcp_numlayers = numlayers;
+        ll.numresolution = numres;
+        ll.cp_matrice = Some(vec![100i32; (numlayers * numres * 3) as usize]);
+      }
+      let codestream = image.encode(params).expect("fixed-alloc encode");
+      let back = Image::from_bytes(&codestream).expect("decode fixed-alloc output");
+      assert_eq!(back.width(), w);
+      assert_eq!(back.height(), h);
+      // With the matrix clamped to the coded-pass budget every coded pass
+      // lands in layer 0, so the round trip stays lossless.
+      assert_eq!(back.components()[0].data, image.components()[0].data);
+    }
+    // The reviewer's literal 3-entry matrix: the C reads the caller's array
+    // OOB; the port must reject it cleanly (setup_encoder validation).
+    let (w, h) = (64u32, 64u32);
+    let mut params = EncodeParameters::new();
+    {
+      let ll = params.low_level();
+      ll.cp_fixed_alloc = 1;
+      ll.tcp_numlayers = 3;
+      ll.numresolution = 7;
+      ll.cp_matrice = Some(vec![100i32; 3]);
+    }
+    let core = crate::CoreImage {
+      x0: 0,
+      y0: 0,
+      x1: w,
+      y1: h,
+      numcomps: 1,
+      color_space: crate::OPJ_CLRSPC_GRAY,
+      comps: vec![crate::CoreImageComp {
+        dx: 1,
+        dy: 1,
+        w,
+        h,
+        x0: 0,
+        y0: 0,
+        prec: 8,
+        bpp: 8,
+        sgnd: 0,
+        resno_decoded: 0,
+        factor: 0,
+        alpha: 0,
+        data: vec![0; (w * h) as usize],
+      }],
+      icc_profile_buf: Vec::new(),
+      icc_profile_is_cielab: false,
+    };
+    let image = Image { core };
+    assert!(image.encode(params).is_err(), "short matrix must be rejected");
+  }
+
   /// Decodes the bundled sample and round-trips it through the encoder.
   #[test]
   fn decode_sample_and_round_trip() {

@@ -5988,6 +5988,24 @@ pub(crate) fn opj_j2k_setup_encoder(
       );
       return 0;
     }
+    /* makelayer_fixed indexes m_matrice[layer * numresolutions * 3 +
+    band * 3 + k] per tile (the C reads the caller's array OOB when it is
+    short — UB); reject a too-short matrix up front. */
+    let matrix_need =
+      parameters.tcp_numlayers * parameters.numresolution * 3;
+    if let Some(matrice) = parameters.cp_matrice.as_deref() {
+      if (matrice.len() as i32) < matrix_need {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "cp_matrice is too short for {} layers x {} resolutions (need {} entries)\n",
+          parameters.tcp_numlayers,
+          parameters.numresolution,
+          matrix_need
+        );
+        return 0;
+      }
+    }
   }
 
   p_j2k.m_specific_param.m_encoder.m_nb_comps = image.numcomps;
