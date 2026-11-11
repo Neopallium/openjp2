@@ -59,16 +59,16 @@ pub(crate) struct T2<'a> {
 /* * @defgroup T2 T2 - Implementation of a tier-2 coding */
 
 /* ----------------------------------------------------------------------- */
-fn opj_t2_putcommacode(bio: &mut Bio, mut n: i32) {
+fn t2_putcommacode(bio: &mut Bio, mut n: i32) {
   for _ in 0..n {
-    opj_bio_putbit(bio, 1);
+    bio_putbit(bio, 1);
   }
-  opj_bio_putbit(bio, 0);
+  bio_putbit(bio, 0);
 }
 
-fn opj_t2_getcommacode(bio: &mut Bio) -> u32 {
+fn t2_getcommacode(bio: &mut Bio) -> u32 {
   let mut n = 0_u32;
-  while opj_bio_read(bio, 1_u32) != 0 {
+  while bio_read(bio, 1_u32) != 0 {
     n += 1;
   }
   n
@@ -79,43 +79,43 @@ Variable length code for signalling delta Zil (truncation point)
 @param bio  Bit Input/Output component
 @param n    delta Zil
 */
-fn opj_t2_putnumpasses(bio: &mut Bio, mut n: u32) {
+fn t2_putnumpasses(bio: &mut Bio, mut n: u32) {
   if n == 1u32 {
-    opj_bio_putbit(bio, 0);
+    bio_putbit(bio, 0);
   } else if n == 2u32 {
-    opj_bio_write(bio, 2_u32, 2_u32);
+    bio_write(bio, 2_u32, 2_u32);
   } else if n <= 5u32 {
-    opj_bio_write(bio, 0xcu32 | n.wrapping_sub(3u32), 4_u32);
+    bio_write(bio, 0xcu32 | n.wrapping_sub(3u32), 4_u32);
   } else if n <= 36u32 {
-    opj_bio_write(bio, 0x1e0u32 | n.wrapping_sub(6u32), 9_u32);
+    bio_write(bio, 0x1e0u32 | n.wrapping_sub(6u32), 9_u32);
   } else if n <= 164u32 {
-    opj_bio_write(bio, 0xff80u32 | n.wrapping_sub(37u32), 16_u32);
+    bio_write(bio, 0xff80u32 | n.wrapping_sub(37u32), 16_u32);
   };
 }
 
-fn opj_t2_getnumpasses(bio: &mut Bio) -> u32 {
+fn t2_getnumpasses(bio: &mut Bio) -> u32 {
   let mut n: u32 = 0;
-  if opj_bio_read(bio, 1_u32) == 0 {
+  if bio_read(bio, 1_u32) == 0 {
     return 1_u32;
   }
-  if opj_bio_read(bio, 1_u32) == 0 {
+  if bio_read(bio, 1_u32) == 0 {
     return 2_u32;
   }
-  n = opj_bio_read(bio, 2_u32);
+  n = bio_read(bio, 2_u32);
   if n != 3u32 {
     return (3u32).wrapping_add(n);
   }
-  n = opj_bio_read(bio, 5_u32);
+  n = bio_read(bio, 5_u32);
   if n != 31u32 {
     return (6u32).wrapping_add(n);
   }
-  (37u32).wrapping_add(opj_bio_read(bio, 7_u32))
+  (37u32).wrapping_add(bio_read(bio, 7_u32))
 }
 
 /* ----------------------------------------------------------------------- */
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn opj_t2_encode_packets(
+pub(crate) fn t2_encode_packets(
   t2: &mut T2,
   mut p_tile_no: u32,
   tile: &mut TcdTile,
@@ -145,7 +145,7 @@ pub(crate) fn opj_t2_encode_packets(
   } else {
     1u32
   };
-  let mut pi_vec = opj_pi_initialise_encode(image, cp, p_tile_no, p_t2_mode);
+  let mut pi_vec = pi_initialise_encode(image, cp, p_tile_no, p_t2_mode);
   if pi_vec.is_empty() {
     return Err(());
   }
@@ -160,7 +160,7 @@ pub(crate) fn opj_t2_encode_packets(
         let mut l_tp_num = compno;
         /* Note: in v2 this cannot fail (allocations are infallible); the
         return value is kept for parity with v1 */
-        opj_pi_create_encode(
+        pi_create_encode(
           pi_vec.as_mut_slice(),
           cp,
           p_tile_no,
@@ -169,20 +169,16 @@ pub(crate) fn opj_t2_encode_packets(
           p_tp_pos,
           p_t2_mode,
         );
-        if pi_vec[poc as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int
-        {
-          event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
-          opj_pi_destroy(&mut pi_vec);
-          return Err(());
-        }
+        /* (Invalid progression orders are rejected when the POC marker is
+        read; the native enum cannot hold them.) */
         loop {
           let pi = &mut pi_vec[poc as usize];
-          if opj_pi_next(pi, p_manager).is_err() {
+          if pi_next(pi, p_manager).is_err() {
             break;
           }
           if pi.layno < p_maxlayers {
             l_nb_bytes = 0_u32;
-            if opj_t2_encode_packet(
+            if t2_encode_packet(
               p_tile_no,
               tile,
               &mut cp.tcps[p_tile_no as usize],
@@ -194,7 +190,7 @@ pub(crate) fn opj_t2_encode_packets(
             )
             .is_err()
             {
-              opj_pi_destroy(&mut pi_vec);
+              pi_destroy(&mut pi_vec);
               return Err(());
             }
             l_comp_len = (l_comp_len as core::ffi::c_uint).wrapping_add(l_nb_bytes);
@@ -206,7 +202,7 @@ pub(crate) fn opj_t2_encode_packets(
         if cp.m_specific_param.m_enc.m_max_comp_size != 0
           && l_comp_len > cp.m_specific_param.m_enc.m_max_comp_size
         {
-          opj_pi_destroy(&mut pi_vec);
+          pi_destroy(&mut pi_vec);
           return Err(());
         }
         poc += 1;
@@ -214,7 +210,7 @@ pub(crate) fn opj_t2_encode_packets(
       compno += 1;
     }
   } else {
-    opj_pi_create_encode(
+    pi_create_encode(
       pi_vec.as_mut_slice(),
       cp,
       p_tile_no,
@@ -223,28 +219,25 @@ pub(crate) fn opj_t2_encode_packets(
       p_tp_pos,
       p_t2_mode,
     );
-    if pi_vec[p_pino as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
-      event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
-      opj_pi_destroy(&mut pi_vec);
-      return Err(());
-    }
+    /* (Invalid progression orders are rejected when the POC marker is
+    read; the native enum cannot hold them.) */
     if let Some(marker_info) = p_marker_info.as_deref_mut() {
       if marker_info.need_plt {
         /* One time use intended */
         assert!(marker_info.packet_count == 0u32);
         assert!(marker_info.p_packet_size.is_empty());
-        let count = opj_get_encoding_packet_count(image, cp, p_tile_no) as usize;
+        let count = get_encoding_packet_count(image, cp, p_tile_no) as usize;
         marker_info.p_packet_size = vec![0; count];
       }
     }
     loop {
       let pi = &mut pi_vec[p_pino as usize];
-      if opj_pi_next(pi, p_manager).is_err() {
+      if pi_next(pi, p_manager).is_err() {
         break;
       }
       if pi.layno < p_maxlayers {
         l_nb_bytes = 0_u32;
-        if opj_t2_encode_packet(
+        if t2_encode_packet(
           p_tile_no,
           tile,
           &mut cp.tcps[p_tile_no as usize],
@@ -256,7 +249,7 @@ pub(crate) fn opj_t2_encode_packets(
         )
         .is_err()
         {
-          opj_pi_destroy(&mut pi_vec);
+          pi_destroy(&mut pi_vec);
           return Err(());
         }
         let (_, rest) = dest.split_at_mut(l_nb_bytes as usize);
@@ -274,10 +267,10 @@ pub(crate) fn opj_t2_encode_packets(
       }
     }
   }
-  opj_pi_destroy(&mut pi_vec);
+  pi_destroy(&mut pi_vec);
   Ok(())
 }
-pub(crate) fn opj_t2_decode_packets(
+pub(crate) fn t2_decode_packets(
   mut tcd: &mut Tcd,
   t2: &mut T2,
   mut p_tile_no: u32,
@@ -292,7 +285,7 @@ pub(crate) fn opj_t2_decode_packets(
   let mut pino: u32 = 0;
   let mut l_nb_bytes_read: u32 = 0;
   /* create a packet iterator */
-  let mut pi_vec = opj_pi_create_decode(image, cp, p_tile_no);
+  let mut pi_vec = pi_create_decode(image, cp, p_tile_no);
   if pi_vec.is_empty() {
     return Err(());
   }
@@ -310,13 +303,13 @@ pub(crate) fn opj_t2_decode_packets(
     let mut first_pass_failed: Vec<bool> = Vec::new();
     if pi_vec[pino as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
       event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
-      opj_pi_destroy(&mut pi_vec);
+      pi_destroy(&mut pi_vec);
       return Err(());
     }
     first_pass_failed = vec![true; image.numcomps as usize];
     loop {
       let pi = &mut pi_vec[pino as usize];
-      if opj_pi_next(pi, p_manager).is_err() {
+      if pi_next(pi, p_manager).is_err() {
         break;
       }
       let mut skip_packet = 0i32;
@@ -350,11 +343,11 @@ pub(crate) fn opj_t2_decode_packets(
           let band = &res.bands[bandno as usize];
           if (pi.precno as usize) >= band.precincts.len() {
             event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
-            opj_pi_destroy(&mut pi_vec);
+            pi_destroy(&mut pi_vec);
             return Err(());
           }
           let prec = &band.precincts[pi.precno as usize];
-          if opj_tcd_is_subband_area_of_interest(
+          if tcd_is_subband_area_of_interest(
             &TcdTilecView {
               win: [tcd.win_x0, tcd.win_y0, tcd.win_x1, tcd.win_y1],
               whole_tile_decoding: tcd.whole_tile_decoding,
@@ -385,7 +378,7 @@ pub(crate) fn opj_t2_decode_packets(
       if skip_packet == 0 {
         l_nb_bytes_read = 0_u32;
         first_pass_failed[pi.compno as usize] = false;
-        if opj_t2_decode_packet(
+        if t2_decode_packet(
           cp,
           p_tile_no,
           &mut tcd.tcd_image.tiles,
@@ -397,15 +390,15 @@ pub(crate) fn opj_t2_decode_packets(
         )
         .is_err()
         {
-          opj_pi_destroy(&mut pi_vec);
+          pi_destroy(&mut pi_vec);
 
           return Err(());
         }
         image.comps[pi.compno as usize].resno_decoded =
-          opj_uint_max(pi.resno, image.comps[pi.compno as usize].resno_decoded)
+          uint_max(pi.resno, image.comps[pi.compno as usize].resno_decoded)
       } else {
         l_nb_bytes_read = 0_u32;
-        if opj_t2_skip_packet(
+        if t2_skip_packet(
           cp,
           p_tile_no,
           &mut tcd.tcd_image.tiles,
@@ -416,7 +409,7 @@ pub(crate) fn opj_t2_decode_packets(
         )
         .is_err()
         {
-          opj_pi_destroy(&mut pi_vec);
+          pi_destroy(&mut pi_vec);
 
           return Err(());
         }
@@ -438,11 +431,11 @@ pub(crate) fn opj_t2_decode_packets(
   /* INDEX >> */
   /* << INDEX */
   /* don't forget to release pi */
-  opj_pi_destroy(&mut pi_vec);
+  pi_destroy(&mut pi_vec);
   *p_data_read = (p_data_read_initial - src.len()) as u32;
   Ok(())
 }
-pub(crate) fn opj_t2_create<'a>(image: &'a mut CoreImage, cp: &'a mut Cp) -> Box<T2<'a>> {
+pub(crate) fn t2_create<'a>(image: &'a mut CoreImage, cp: &'a mut Cp) -> Box<T2<'a>> {
   /* create the t2 structure */
   Box::new(T2 { image, cp })
 }
@@ -460,7 +453,7 @@ Decode a packet of a tile from a source buffer
 
 @return
 */
-fn opj_t2_decode_packet(
+fn t2_decode_packet(
   cp: &mut Cp,
   p_tile_no: u32,
   tile: &mut TcdTile,
@@ -474,7 +467,7 @@ fn opj_t2_decode_packet(
   let mut l_nb_bytes_read = 0_u32;
   let mut l_nb_total_bytes_read = 0_u32;
   *p_data_read = 0_u32;
-  if opj_t2_read_packet_header(
+  if t2_read_packet_header(
     cp,
     p_tile_no,
     tile,
@@ -495,9 +488,7 @@ fn opj_t2_decode_packet(
   /* we should read data for the packet */
   if l_read_data {
     l_nb_bytes_read = 0_u32;
-    if opj_t2_read_packet_data(cp, tile, pi, src, src_base, &mut l_nb_bytes_read, p_manager)
-      .is_err()
-    {
+    if t2_read_packet_data(cp, tile, pi, src, src_base, &mut l_nb_bytes_read, p_manager).is_err() {
       return Err(());
     }
     l_nb_total_bytes_read =
@@ -520,7 +511,7 @@ Encode a packet of a tile to a destination buffer
 @param p_manager the user event manager
 @return
 */
-fn opj_t2_skip_packet(
+fn t2_skip_packet(
   cp: &mut Cp,
   p_tile_no: u32,
   tile: &mut TcdTile,
@@ -533,7 +524,7 @@ fn opj_t2_skip_packet(
   let mut l_nb_bytes_read = 0_u32;
   let mut l_nb_total_bytes_read = 0_u32;
   *p_data_read = 0_u32;
-  if opj_t2_read_packet_header(
+  if t2_read_packet_header(
     cp,
     p_tile_no,
     tile,
@@ -554,8 +545,7 @@ fn opj_t2_skip_packet(
   /* we should read data for the packet */
   if l_read_data {
     l_nb_bytes_read = 0_u32;
-    if opj_t2_skip_packet_data(cp, tile, pi, &mut l_nb_bytes_read, p_max_length, p_manager).is_err()
-    {
+    if t2_skip_packet_data(cp, tile, pi, &mut l_nb_bytes_read, p_max_length, p_manager).is_err() {
       return Err(());
     }
     l_nb_total_bytes_read =
@@ -564,7 +554,7 @@ fn opj_t2_skip_packet(
   *p_data_read = l_nb_total_bytes_read;
   Ok(())
 }
-fn opj_t2_encode_packet(
+fn t2_encode_packet(
   _tileno: u32,
   tile: &mut TcdTile,
   tcp: &mut Tcp,
@@ -593,7 +583,7 @@ fn opj_t2_encode_packet(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
+          "t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
           length,
           6i32,
         ); /* packno is uint32_t */
@@ -617,14 +607,14 @@ fn opj_t2_encode_packet(
     while bandno < res.numbands {
       let band = &mut res.bands[bandno as usize];
       /* Skip empty bands */
-      if !opj_tcd_is_band_empty(band) {
+      if !tcd_is_band_empty(band) {
         /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1294 */
         /* but likely not a proper fix. */
         if precno >= res.pw.wrapping_mul(res.ph) {
           event_msg!(
             p_manager,
             EVT_ERROR,
-            "opj_t2_encode_packet(): accessing precno={} >= {}\n",
+            "t2_encode_packet(): accessing precno={} >= {}\n",
             precno,
             res.pw.wrapping_mul(res.ph),
           );
@@ -633,10 +623,10 @@ fn opj_t2_encode_packet(
         let prc = &mut band.precincts[precno as usize];
         /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
         if let Some(tree) = prc.incltree.as_mut() {
-          opj_tgt_reset(tree);
+          tgt_reset(tree);
         }
         if let Some(tree) = prc.imsbtree.as_mut() {
-          opj_tgt_reset(tree);
+          tgt_reset(tree);
         }
         l_nb_blocks = prc.cw.wrapping_mul(prc.ch);
         cblkno = 0_u32;
@@ -644,7 +634,7 @@ fn opj_t2_encode_packet(
           let cblk = prc.cblks.enc_mut(cblkno as usize);
           cblk.numpasses = 0_u32;
           // SAFETY: imsbtree is the precinct's tag tree, owned by the precinct.
-          opj_tgt_setvalue(
+          tgt_setvalue(
             prc.imsbtree.as_mut().expect("imsbtree"),
             cblkno,
             band.numbps - cblk.numbps as i32,
@@ -658,21 +648,21 @@ fn opj_t2_encode_packet(
   let mut bio = Bio::new_enc(&mut dest[pos..]);
   let bio = &mut bio;
   /* Empty header bit */
-  opj_bio_putbit(bio, if packet_empty != 0 { 0 } else { 1 });
+  bio_putbit(bio, if packet_empty != 0 { 0 } else { 1 });
 
   /* Writing Packet header */
   bandno = 0_u32;
   while packet_empty == 0 && bandno < res.numbands {
     let band = &mut res.bands[bandno as usize];
     /* Skip empty bands */
-    if !opj_tcd_is_band_empty(band) {
+    if !tcd_is_band_empty(band) {
       /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1297 */
       /* but likely not a proper fix. */
       if precno >= res.pw.wrapping_mul(res.ph) {
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "opj_t2_encode_packet(): accessing precno={} >= {}\n",
+          "t2_encode_packet(): accessing precno={} >= {}\n",
           precno,
           res.pw.wrapping_mul(res.ph),
         );
@@ -686,7 +676,7 @@ fn opj_t2_encode_packet(
         let layer = &mut cblk.layers[layno as usize];
         if cblk.numpasses == 0 && layer.numpasses != 0 {
           // SAFETY: incltree is the precinct's tag tree, owned by the precinct.
-          opj_tgt_setvalue(
+          tgt_setvalue(
             prc.incltree.as_mut().expect("incltree"),
             cblkno,
             layno as i32,
@@ -704,14 +694,14 @@ fn opj_t2_encode_packet(
         let mut l_nb_passes: u32 = 0;
         /* cblk inclusion bits */
         if cblk.numpasses == 0 {
-          opj_tgt_encode(
+          tgt_encode(
             bio,
             prc.incltree.as_mut().expect("incltree"),
             cblkno,
             layno.wrapping_add(1u32) as i32,
           );
         } else {
-          opj_bio_putbit(bio, (cblk.layers[layno as usize].numpasses != 0u32) as u32);
+          bio_putbit(bio, (cblk.layers[layno as usize].numpasses != 0u32) as u32);
         }
         /* if cblk not included, go to the next cblk  */
         if cblk.layers[layno as usize].numpasses == 0 {
@@ -719,7 +709,7 @@ fn opj_t2_encode_packet(
           /* if first instance of cblk --> zero bit-planes information */
           if cblk.numpasses == 0 {
             cblk.numlenbits = 3_u32;
-            opj_tgt_encode(
+            tgt_encode(
               bio,
               prc.imsbtree.as_mut().expect("imsbtree"),
               cblkno,
@@ -727,7 +717,7 @@ fn opj_t2_encode_packet(
             );
           }
           /* number of coding passes included */
-          opj_t2_putnumpasses(bio, cblk.layers[layno as usize].numpasses);
+          t2_putnumpasses(bio, cblk.layers[layno as usize].numpasses);
           l_nb_passes = cblk
             .numpasses
             .wrapping_add(cblk.layers[layno as usize].numpasses);
@@ -743,17 +733,17 @@ fn opj_t2_encode_packet(
                   .wrapping_add(cblk.layers[layno as usize].numpasses)
                   .wrapping_sub(1u32)
             {
-              increment = opj_int_max(
+              increment = int_max(
                 increment as i32,
-                opj_int_floorlog2(len as i32) + 1i32
-                  - (cblk.numlenbits as i32 + opj_int_floorlog2(nump as i32)),
+                int_floorlog2(len as i32) + 1i32
+                  - (cblk.numlenbits as i32 + int_floorlog2(nump as i32)),
               ) as u32;
               len = 0_u32;
               nump = 0_u32
             }
             passno += 1;
           }
-          opj_t2_putcommacode(bio, increment as i32);
+          t2_putcommacode(bio, increment as i32);
           /* computation of the new Length indicator */
           cblk.numlenbits = (cblk.numlenbits as core::ffi::c_uint).wrapping_add(increment);
           /* insertion of the codeword segment length */
@@ -768,12 +758,12 @@ fn opj_t2_encode_packet(
                   .wrapping_add(cblk.layers[layno as usize].numpasses)
                   .wrapping_sub(1u32)
             {
-              opj_bio_write(
+              bio_write(
                 bio,
                 len,
                 cblk
                   .numlenbits
-                  .wrapping_add(opj_int_floorlog2(nump as i32) as u32),
+                  .wrapping_add(int_floorlog2(nump as i32) as u32),
               );
               len = 0_u32;
               nump = 0_u32
@@ -786,11 +776,11 @@ fn opj_t2_encode_packet(
     }
     bandno = bandno.wrapping_add(1);
   }
-  if opj_bio_flush(bio).is_err() {
+  if bio_flush(bio).is_err() {
     return Err(());
     /* modified to eliminate longjmp !! */
   }
-  l_nb_bytes = opj_bio_numbytes(bio) as u32;
+  l_nb_bytes = bio_numbytes(bio) as u32;
   pos += l_nb_bytes as usize;
   length = (length as core::ffi::c_uint).wrapping_sub(l_nb_bytes);
   /* <EPH 0xff92> */
@@ -800,7 +790,7 @@ fn opj_t2_encode_packet(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
+          "t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
           length,
           2i32,
         );
@@ -822,7 +812,7 @@ fn opj_t2_encode_packet(
   while packet_empty == 0 && bandno < res.numbands {
     let band = &mut res.bands[bandno as usize];
     /* Skip empty bands */
-    if !opj_tcd_is_band_empty(band) {
+    if !tcd_is_band_empty(band) {
       let prc = &mut band.precincts[precno as usize];
       l_nb_blocks = prc.cw.wrapping_mul(prc.ch);
       cblkno = 0_u32;
@@ -835,7 +825,7 @@ fn opj_t2_encode_packet(
               event_msg!(
                 p_manager,
                 EVT_ERROR,
-                "opj_t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
+                "t2_encode_packet(): only {} bytes remaining in output buffer. {} needed.\n",
                 length,
                 cblk.layers[layno as usize].len
               );
@@ -863,7 +853,7 @@ fn opj_t2_encode_packet(
   *p_data_written = pos as u32;
   Ok(())
 }
-fn opj_t2_read_packet_header(
+fn t2_read_packet_header(
   cp: &mut Cp,
   p_tile_no: u32,
   tile: &mut TcdTile,
@@ -890,7 +880,7 @@ fn opj_t2_read_packet_header(
     bandno = 0_u32;
     while bandno < res.numbands {
       let band = &mut res.bands[bandno as usize];
-      if !opj_tcd_is_band_empty(band) {
+      if !tcd_is_band_empty(band) {
         if (pi.precno as usize) >= band.precincts.len() {
           event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
           return Err(());
@@ -898,10 +888,10 @@ fn opj_t2_read_packet_header(
         let prc = &mut band.precincts[pi.precno as usize];
         /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
         if let Some(tree) = prc.incltree.as_mut() {
-          opj_tgt_reset(tree);
+          tgt_reset(tree);
         }
         if let Some(tree) = prc.imsbtree.as_mut() {
-          opj_tgt_reset(tree);
+          tgt_reset(tree);
         }
         l_nb_code_blocks = prc.cw.wrapping_mul(prc.ch);
         cblkno = 0_u32;
@@ -954,12 +944,12 @@ fn opj_t2_read_packet_header(
   let mut l_bio = Bio::new_dec(&mut l_header[..]);
   let l_bio = &mut l_bio;
 
-  l_present = opj_bio_read(l_bio, 1_u32);
+  l_present = bio_read(l_bio, 1_u32);
   log::debug!("present={}", l_present);
   if l_present == 0 {
     /* Note: no output check here (parity with upstream) */
-    let _ = opj_bio_inalign(l_bio);
-    l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
+    let _ = bio_inalign(l_bio);
+    l_hdr_pos += bio_numbytes(l_bio) as usize;
     /* EPH markers */
     if csty & J2K_CP_CSTY_EPH != 0 {
       /* EPH markers are required when specified (upstream #1547) */
@@ -1002,7 +992,7 @@ fn opj_t2_read_packet_header(
   bandno = 0_u32;
   while bandno < res.numbands {
     let band = &mut res.bands[bandno as usize];
-    if !opj_tcd_is_band_empty(band) {
+    if !tcd_is_band_empty(band) {
       if (pi.precno as usize) >= band.precincts.len() {
         event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
         return Err(());
@@ -1019,7 +1009,7 @@ fn opj_t2_read_packet_header(
 
         /* if cblk not yet included before --> inclusion tagtree */
         if cblk.numsegs == 0 {
-          l_included = opj_tgt_decode(
+          l_included = tgt_decode(
             l_bio,
             prc.incltree.as_mut().expect("incltree"),
             cblkno,
@@ -1027,7 +1017,7 @@ fn opj_t2_read_packet_header(
           )
         /* else one bit */
         } else {
-          l_included = opj_bio_read(l_bio, 1_u32)
+          l_included = bio_read(l_bio, 1_u32)
         }
 
         /* if cblk not included */
@@ -1038,7 +1028,7 @@ fn opj_t2_read_packet_header(
           /* if cblk not yet included --> zero-bitplane tagtree */
           if cblk.numsegs == 0 {
             let mut i = 0_u32;
-            while opj_tgt_decode(
+            while tgt_decode(
               l_bio,
               // SAFETY: imsbtree is the precinct's tag tree, owned by the precinct.
               prc.imsbtree.as_mut().expect("imsbtree"),
@@ -1056,20 +1046,20 @@ fn opj_t2_read_packet_header(
             cblk.numlenbits = 3_u32
           }
           /* number of coding passes */
-          cblk.numnewpasses = opj_t2_getnumpasses(l_bio);
-          l_increment = opj_t2_getcommacode(l_bio);
+          cblk.numnewpasses = t2_getnumpasses(l_bio);
+          l_increment = t2_getcommacode(l_bio);
           /* length indicator increment */
           cblk.numlenbits = (cblk.numlenbits as core::ffi::c_uint).wrapping_add(l_increment);
           l_segno = 0_u32;
           if cblk.numsegs == 0 {
-            if opj_t2_init_seg(cblk, l_segno, tccp_cblksty, 1_u32).is_err() {
+            if t2_init_seg(cblk, l_segno, tccp_cblksty, 1_u32).is_err() {
               return Err(());
             }
           } else {
             l_segno = cblk.numsegs.wrapping_sub(1u32);
             if cblk.segs[l_segno as usize].numpasses == cblk.segs[l_segno as usize].maxpasses {
               l_segno = l_segno.wrapping_add(1);
-              if opj_t2_init_seg(cblk, l_segno, tccp_cblksty, 0_u32).is_err() {
+              if t2_init_seg(cblk, l_segno, tccp_cblksty, 0_u32).is_err() {
                 return Err(());
               }
             }
@@ -1082,17 +1072,17 @@ fn opj_t2_read_packet_header(
                 if l_segno == 0u32 { 1u32 } else { n as u32 };
               bit_number = cblk
                 .numlenbits
-                .wrapping_add(opj_uint_floorlog2(cblk.segs[l_segno as usize].numnewpasses));
+                .wrapping_add(uint_floorlog2(cblk.segs[l_segno as usize].numnewpasses));
               if bit_number > 32u32 {
                 event_msg!(
                   p_manager,
                   EVT_ERROR,
-                  "Invalid bit number {} in opj_t2_read_packet_header()\n",
+                  "Invalid bit number {} in t2_read_packet_header()\n",
                   bit_number,
                 );
                 return Err(());
               }
-              cblk.segs[l_segno as usize].newlen = opj_bio_read(l_bio, bit_number);
+              cblk.segs[l_segno as usize].newlen = bio_read(l_bio, bit_number);
               log::debug!(
                 "included={} numnewpasses={} increment={} len={}",
                 l_included,
@@ -1103,7 +1093,7 @@ fn opj_t2_read_packet_header(
               n -= cblk.segs[l_segno as usize].numnewpasses as i32;
               if n > 0i32 {
                 l_segno = l_segno.wrapping_add(1);
-                if opj_t2_init_seg(cblk, l_segno, tccp_cblksty, 0_u32).is_err() {
+                if t2_init_seg(cblk, l_segno, tccp_cblksty, 0_u32).is_err() {
                   return Err(());
                 }
               }
@@ -1114,7 +1104,7 @@ fn opj_t2_read_packet_header(
           } else {
             loop {
               let mut bit_number_0: u32 = 0;
-              cblk.segs[l_segno as usize].numnewpasses = opj_int_min(
+              cblk.segs[l_segno as usize].numnewpasses = int_min(
                 cblk.segs[l_segno as usize]
                   .maxpasses
                   .wrapping_sub(cblk.segs[l_segno as usize].numpasses) as i32,
@@ -1122,17 +1112,17 @@ fn opj_t2_read_packet_header(
               ) as u32;
               bit_number_0 = cblk
                 .numlenbits
-                .wrapping_add(opj_uint_floorlog2(cblk.segs[l_segno as usize].numnewpasses));
+                .wrapping_add(uint_floorlog2(cblk.segs[l_segno as usize].numnewpasses));
               if bit_number_0 > 32u32 {
                 event_msg!(
                   p_manager,
                   EVT_ERROR,
-                  "Invalid bit number {} in opj_t2_read_packet_header()\n",
+                  "Invalid bit number {} in t2_read_packet_header()\n",
                   bit_number_0,
                 );
                 return Err(());
               }
-              cblk.segs[l_segno as usize].newlen = opj_bio_read(l_bio, bit_number_0);
+              cblk.segs[l_segno as usize].newlen = bio_read(l_bio, bit_number_0);
               log::debug!(
                 "included={} numnewpasses={} increment={} len={}",
                 l_included,
@@ -1143,7 +1133,7 @@ fn opj_t2_read_packet_header(
               n -= cblk.segs[l_segno as usize].numnewpasses as i32;
               if n > 0i32 {
                 l_segno = l_segno.wrapping_add(1);
-                if opj_t2_init_seg(cblk, l_segno, tccp_cblksty, 0_u32).is_err() {
+                if t2_init_seg(cblk, l_segno, tccp_cblksty, 0_u32).is_err() {
                   return Err(());
                 }
               }
@@ -1158,10 +1148,10 @@ fn opj_t2_read_packet_header(
     }
     bandno = bandno.wrapping_add(1);
   }
-  if opj_bio_inalign(l_bio).is_err() {
+  if bio_inalign(l_bio).is_err() {
     return Err(());
   }
-  l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
+  l_hdr_pos += bio_numbytes(l_bio) as usize;
   /* EPH markers */
   if csty & J2K_CP_CSTY_EPH != 0 {
     /* EPH markers are required when specified (upstream #1547) */
@@ -1207,7 +1197,7 @@ fn opj_t2_read_packet_header(
   *p_data_read = l_pos as u32;
   Ok(())
 }
-fn opj_t2_read_packet_data(
+fn t2_read_packet_data(
   cp: &mut Cp,
   tile: &mut TcdTile,
   pi: &mut PiIterator,
@@ -1336,7 +1326,7 @@ fn opj_t2_read_packet_data(
   Ok(())
 }
 
-fn opj_t2_skip_packet_data(
+fn t2_skip_packet_data(
   cp: &mut Cp,
   tile: &mut TcdTile,
   pi: &mut PiIterator,
@@ -1430,7 +1420,7 @@ fn opj_t2_skip_packet_data(
   }
   Ok(())
 }
-fn opj_t2_init_seg(cblk: &mut TcdCblkDec, index: u32, cblksty: u32, first: u32) -> OpResult {
+fn t2_init_seg(cblk: &mut TcdCblkDec, index: u32, cblksty: u32, first: u32) -> OpResult {
   let l_nb_segs = index.wrapping_add(1u32);
   if l_nb_segs as usize > cblk.segs.len() {
     let new_len = cblk.segs.len() + 10;
@@ -1438,17 +1428,17 @@ fn opj_t2_init_seg(cblk: &mut TcdCblkDec, index: u32, cblksty: u32, first: u32) 
   }
   if cblksty & 0x4u32 != 0 {
     let seg = &mut cblk.segs[index as usize];
-    opj_tcd_reinit_segment(seg);
+    tcd_reinit_segment(seg);
     seg.maxpasses = 1_u32
   } else if cblksty & 0x1u32 != 0 {
     if first != 0 {
       let seg = &mut cblk.segs[index as usize];
-      opj_tcd_reinit_segment(seg);
+      tcd_reinit_segment(seg);
       seg.maxpasses = 10_u32
     } else {
       let prev_maxpasses = cblk.segs[index as usize - 1].maxpasses;
       let seg = &mut cblk.segs[index as usize];
-      opj_tcd_reinit_segment(seg);
+      tcd_reinit_segment(seg);
       seg.maxpasses = if prev_maxpasses == 1u32 || prev_maxpasses == 10u32 {
         2i32
       } else {
@@ -1461,7 +1451,7 @@ fn opj_t2_init_seg(cblk: &mut TcdCblkDec, index: u32, cblksty: u32, first: u32) 
      * Mb being the maximum number of bit-planes available for the
      * representation of coefficients in the sub-band */
     let seg = &mut cblk.segs[index as usize];
-    opj_tcd_reinit_segment(seg);
+    tcd_reinit_segment(seg);
     seg.maxpasses = 109_u32
   }
   Ok(())

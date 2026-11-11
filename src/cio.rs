@@ -1,4 +1,4 @@
-//! Big-endian byte I/O helpers (`opj_read_bytes`/`opj_write_bytes`).
+//! Big-endian byte I/O helpers (`read_bytes`/`write_bytes`).
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
@@ -43,14 +43,14 @@ const F32_SIZE: usize = core::mem::size_of::<f32>();
 const F64_SIZE: usize = core::mem::size_of::<f64>();
 
 /// Write the low `nb_bytes` of `value` big-endian into the start of `dest`.
-pub(crate) fn opj_write_bytes(dest: &mut [u8], value: u32, nb_bytes: u32) {
+pub(crate) fn write_bytes(dest: &mut [u8], value: u32, nb_bytes: u32) {
   let nb = nb_bytes as usize;
   debug_assert!(nb > 0 && nb <= U32_SIZE);
   dest[..nb].copy_from_slice(&value.to_be_bytes()[U32_SIZE - nb..]);
 }
 
 /// Read `nb_bytes` big-endian from the start of `src`.
-pub(crate) fn opj_read_bytes(src: &[u8], nb_bytes: u32) -> u32 {
+pub(crate) fn read_bytes(src: &[u8], nb_bytes: u32) -> u32 {
   let nb = nb_bytes as usize;
   debug_assert!(nb > 0 && nb <= U32_SIZE);
   let mut buf = [0u8; U32_SIZE];
@@ -58,21 +58,21 @@ pub(crate) fn opj_read_bytes(src: &[u8], nb_bytes: u32) -> u32 {
   u32::from_be_bytes(buf)
 }
 
-pub(crate) fn opj_write_double(dest: &mut [u8], value: f64) {
+pub(crate) fn write_double(dest: &mut [u8], value: f64) {
   dest[..F64_SIZE].copy_from_slice(&value.to_be_bytes());
 }
 
-pub(crate) fn opj_read_double(src: &[u8]) -> f64 {
+pub(crate) fn read_double(src: &[u8]) -> f64 {
   let mut buf = [0u8; F64_SIZE];
   buf.copy_from_slice(&src[..F64_SIZE]);
   f64::from_be_bytes(buf)
 }
 
-pub(crate) fn opj_write_float(dest: &mut [u8], value: f32) {
+pub(crate) fn write_float(dest: &mut [u8], value: f32) {
   dest[..F32_SIZE].copy_from_slice(&value.to_be_bytes());
 }
 
-pub(crate) fn opj_read_float(src: &[u8]) -> f32 {
+pub(crate) fn read_float(src: &[u8]) -> f32 {
   let mut buf = [0u8; F32_SIZE];
   buf.copy_from_slice(&src[..F32_SIZE]);
   f32::from_be_bytes(buf)

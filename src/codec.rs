@@ -163,7 +163,7 @@ pub struct Encoder {
 macro_rules! codec_common {
   ($ty:ty) => {
     impl $ty {
-      /// C-style event callbacks (the capi crate's `opj_set_*_handler`
+      /// C-style event callbacks (the capi crate's `set_*_handler`
       /// surface).  Feature-gated: the stable Rust API routes diagnostics
       /// through the `log` crate instead.
       #[cfg(feature = "event-handlers")]
@@ -185,7 +185,7 @@ macro_rules! codec_common {
         self.m_event_mgr.set_error_handler(handler);
       }
 
-      /// Sets the process-wide thread count (the C's `opj_set_threads`
+      /// Sets the process-wide thread count (the C's `set_threads`
       /// equivalent; see `DecodeParameters::threads` for the per-decode
       /// limit).
       pub fn set_threads(&mut self, num_threads: i32) -> Result<()> {
@@ -193,8 +193,8 @@ macro_rules! codec_common {
           return Err(Error::Unsupported("negative thread count".into()));
         }
         let ok = match &mut self.m_codec {
-          CodecFormat::J2K(j2k) => opj_j2k_set_threads(j2k, num_threads as u32),
-          CodecFormat::JP2(jp2) => opj_jp2_set_threads(jp2, num_threads as u32),
+          CodecFormat::J2K(j2k) => j2k_set_threads(j2k, num_threads as u32),
+          CodecFormat::JP2(jp2) => jp2_set_threads(jp2, num_threads as u32),
         };
         if ok.is_ok() {
           Ok(())
@@ -205,7 +205,7 @@ macro_rules! codec_common {
         }
       }
 
-      /// Writes the codestream info/dump text (`opj_dump`'s output).
+      /// Writes the codestream info/dump text (`dump`'s output).
       pub fn dump_codec<W: StringWriter>(&self, mut info_flag: i32, mut output_stream: &mut W) {
         match &self.m_codec {
           CodecFormat::J2K(j2k) => j2k_dump(j2k, info_flag, output_stream),
@@ -214,7 +214,7 @@ macro_rules! codec_common {
       }
 
       /// Owned codestream info (header summary).  The capi crate marshals
-      /// this into the C-ABI mirror for `opj_get_cstr_info`.
+      /// this into the C-ABI mirror for `get_cstr_info`.
       pub fn cstr_info(&self) -> Option<crate::j2k::CstrInfoV2> {
         match &self.m_codec {
           CodecFormat::J2K(j2k) => crate::j2k::j2k_get_cstr_info_owned(j2k),
@@ -223,7 +223,7 @@ macro_rules! codec_common {
       }
 
       /// Owned codestream index (the capi crate marshals this into the
-      /// C-ABI mirror for `opj_get_cstr_index`).
+      /// C-ABI mirror for `get_cstr_index`).
       pub fn cstr_index(&self) -> Option<crate::j2k::CodestreamIndex> {
         match &self.m_codec {
           CodecFormat::J2K(j2k) => j2k.cstr_index.as_deref().cloned(),
@@ -268,13 +268,12 @@ impl Decoder {
   pub fn new(format: J2KFormat) -> Result<Self> {
     let m_codec = match format {
       J2KFormat::J2K => CodecFormat::J2K(
-        opj_j2k_create_decompress()
-          .ok_or_else(|| Error::Decode("failed to create decoder".into()))?,
+        j2k_create_decompress().ok_or_else(|| Error::Decode("failed to create decoder".into()))?,
       ),
       J2KFormat::JP2 => {
         /* get a JP2 decoder handle */
         CodecFormat::JP2(
-          opj_jp2_create(true).ok_or_else(|| Error::Decode("failed to create decoder".into()))?,
+          jp2_create(true).ok_or_else(|| Error::Decode("failed to create decoder".into()))?,
         )
       }
       other => {
@@ -302,8 +301,8 @@ impl Decoder {
   pub fn apply_settings(&mut self, settings: &DecoderSettings) -> Result<()> {
     self.threads = settings.threads;
     match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_setup_decoder(dec, settings),
-      CodecFormat::JP2(dec) => opj_jp2_setup_decoder(dec, settings),
+      CodecFormat::J2K(dec) => j2k_setup_decoder(dec, settings),
+      CodecFormat::JP2(dec) => jp2_setup_decoder(dec, settings),
     }
     Ok(())
   }
@@ -346,8 +345,8 @@ impl Decoder {
   /// builder is lenient by default and calls this explicitly).
   pub fn set_strict(&mut self, strict: bool) -> Result<()> {
     match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_decoder_set_strict_mode(dec, strict),
-      CodecFormat::JP2(dec) => opj_jp2_decoder_set_strict_mode(dec, strict),
+      CodecFormat::J2K(dec) => j2k_decoder_set_strict_mode(dec, strict),
+      CodecFormat::JP2(dec) => jp2_decoder_set_strict_mode(dec, strict),
     }
     Ok(())
   }
@@ -369,12 +368,8 @@ impl Decoder {
   /// Restricts decoding to the given component indices.
   pub fn set_components(&mut self, components: &[u32]) -> Result<()> {
     let ok = match &mut self.m_codec {
-      CodecFormat::J2K(dec) => {
-        opj_j2k_set_decoded_components(dec, components, &mut self.m_event_mgr)
-      }
-      CodecFormat::JP2(dec) => {
-        opj_jp2_set_decoded_components(dec, components, &mut self.m_event_mgr)
-      }
+      CodecFormat::J2K(dec) => j2k_set_decoded_components(dec, components, &mut self.m_event_mgr),
+      CodecFormat::JP2(dec) => jp2_set_decoded_components(dec, components, &mut self.m_event_mgr),
     };
     if ok.is_ok() {
       Ok(())
@@ -394,7 +389,7 @@ impl Decoder {
     self.pending_area = area;
     if let Some(area) = area {
       let ok = match &mut self.m_codec {
-        CodecFormat::J2K(dec) => opj_j2k_set_decode_area(
+        CodecFormat::J2K(dec) => j2k_set_decode_area(
           dec,
           header,
           area.start_x as i32,
@@ -403,7 +398,7 @@ impl Decoder {
           area.end_y as i32,
           &mut self.m_event_mgr,
         ),
-        CodecFormat::JP2(dec) => opj_jp2_set_decode_area(
+        CodecFormat::JP2(dec) => jp2_set_decode_area(
           dec,
           header,
           area.start_x as i32,
@@ -424,10 +419,10 @@ impl Decoder {
   pub fn set_resolution_factor(&mut self, res_factor: u32) -> Result<()> {
     let ok = match &mut self.m_codec {
       CodecFormat::J2K(dec) => {
-        opj_j2k_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr)
+        j2k_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr)
       }
       CodecFormat::JP2(dec) => {
-        opj_jp2_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr)
+        jp2_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr)
       }
     };
     if ok.is_ok() {
@@ -441,8 +436,8 @@ impl Decoder {
   /// `decode_tile_data` and `get_decoded_tile`.
   pub fn read_header(&mut self, stream: &mut Stream) -> Result<HeaderImage> {
     let image = match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_read_header(stream, dec, &mut self.m_event_mgr),
-      CodecFormat::JP2(dec) => opj_jp2_read_header(stream, dec, &mut self.m_event_mgr),
+      CodecFormat::J2K(dec) => j2k_read_header(stream, dec, &mut self.m_event_mgr),
+      CodecFormat::JP2(dec) => jp2_read_header(stream, dec, &mut self.m_event_mgr),
     }
     .ok_or_else(|| self.decode_error("failed to read header"))?;
     self.header = Some(image.clone());
@@ -491,7 +486,7 @@ impl Decoder {
       #[cfg(feature = "rayon")]
       let full_header = image.clone();
       let ok = match &mut self.m_codec {
-        CodecFormat::J2K(dec) => opj_j2k_set_decode_area(
+        CodecFormat::J2K(dec) => j2k_set_decode_area(
           dec,
           &mut image,
           area.start_x as i32,
@@ -500,7 +495,7 @@ impl Decoder {
           area.end_y as i32,
           &mut self.m_event_mgr,
         ),
-        CodecFormat::JP2(dec) => opj_jp2_set_decode_area(
+        CodecFormat::JP2(dec) => jp2_set_decode_area(
           dec,
           &mut image,
           area.start_x as i32,
@@ -537,11 +532,11 @@ impl Decoder {
     rather than silently inventing pixels. */
     let (ok, strict) = match &mut self.m_codec {
       CodecFormat::J2K(dec) => (
-        opj_j2k_decode(dec, stream, &mut image, &mut self.m_event_mgr),
+        j2k_decode(dec, stream, &mut image, &mut self.m_event_mgr),
         dec.m_cp.strict,
       ),
       CodecFormat::JP2(dec) => (
-        opj_jp2_decode(dec, stream, &mut image, &mut self.m_event_mgr),
+        jp2_decode(dec, stream, &mut image, &mut self.m_event_mgr),
         dec.j2k.m_cp.strict,
       ),
     };
@@ -558,8 +553,8 @@ impl Decoder {
   /// `opj_end_decompress`).
   pub fn end_decompress(&mut self, stream: &mut Stream) -> Result<()> {
     let ok = match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_end_decompress(dec, stream, &mut self.m_event_mgr),
-      CodecFormat::JP2(dec) => opj_jp2_end_decompress(dec, stream, &mut self.m_event_mgr),
+      CodecFormat::J2K(dec) => j2k_end_decompress(dec, stream, &mut self.m_event_mgr),
+      CodecFormat::JP2(dec) => jp2_end_decompress(dec, stream, &mut self.m_event_mgr),
     };
     if ok.is_ok() {
       Ok(())
@@ -570,7 +565,7 @@ impl Decoder {
 
   /// Reads the next tile-part header (the tile API).  The returned
   /// `data_size` is the tile data size (always requested, matching the C's
-  /// `opj_read_tile_header` contract when the caller wants it).
+  /// `read_tile_header` contract when the caller wants it).
   pub fn read_tile_header(&mut self, stream: &mut Stream) -> Result<TileInfo> {
     let mut tile_info = TileInfo {
       data_size: Some(0), // always request the tile data size
@@ -578,10 +573,10 @@ impl Decoder {
     };
     let ok = match &mut self.m_codec {
       CodecFormat::J2K(dec) => {
-        opj_j2k_read_tile_header(dec, stream, &mut tile_info, &mut self.m_event_mgr)
+        j2k_read_tile_header(dec, stream, &mut tile_info, &mut self.m_event_mgr)
       }
       CodecFormat::JP2(dec) => {
-        opj_jp2_read_tile_header(dec, stream, &mut tile_info, &mut self.m_event_mgr)
+        jp2_read_tile_header(dec, stream, &mut tile_info, &mut self.m_event_mgr)
       }
     };
     if ok {
@@ -610,8 +605,8 @@ impl Decoder {
     out: Option<&mut [u8]>,
   ) -> Result<()> {
     let ok = match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_decode_tile(dec, tile, out, stream, &mut self.m_event_mgr),
-      CodecFormat::JP2(dec) => opj_jp2_decode_tile(dec, tile, out, stream, &mut self.m_event_mgr),
+      CodecFormat::J2K(dec) => j2k_decode_tile(dec, tile, out, stream, &mut self.m_event_mgr),
+      CodecFormat::JP2(dec) => jp2_decode_tile(dec, tile, out, stream, &mut self.m_event_mgr),
     };
     if ok.is_ok() {
       Ok(())
@@ -633,12 +628,8 @@ impl Decoder {
       .clone()
       .ok_or_else(|| self.decode_error("read_header must be called before get_decoded_tile"))?;
     let ok = match &mut self.m_codec {
-      CodecFormat::J2K(dec) => {
-        opj_j2k_get_tile(dec, stream, &mut image, &mut self.m_event_mgr, tile)
-      }
-      CodecFormat::JP2(dec) => {
-        opj_jp2_get_tile(dec, stream, &mut image, &mut self.m_event_mgr, tile)
-      }
+      CodecFormat::J2K(dec) => j2k_get_tile(dec, stream, &mut image, &mut self.m_event_mgr, tile),
+      CodecFormat::JP2(dec) => jp2_get_tile(dec, stream, &mut image, &mut self.m_event_mgr, tile),
     };
     if ok.is_ok() {
       Ok(image)
@@ -768,10 +759,10 @@ impl Decoder {
       limits.effective_max_mem(),
     )?;
     /* JP2 palette/component-mapping post-processing (same as the serial
-    opj_jp2_decode). */
+    jp2_decode). */
     if let CodecFormat::JP2(jp2) = &mut self.m_codec {
       let mut manager = crate::event::EventMgr::default();
-      if crate::jp2::opj_jp2_apply_color_postprocessing(jp2, &mut core, &mut manager).is_err() {
+      if crate::jp2::jp2_apply_color_postprocessing(jp2, &mut core, &mut manager).is_err() {
         return None;
       }
     }
@@ -820,7 +811,7 @@ impl Decoder {
         comp.factor = reduce;
       }
       let mut manager = crate::event::EventMgr::default();
-      if crate::j2k::opj_j2k_update_image_dimensions(&mut merge, &mut manager).is_err() {
+      if crate::j2k::j2k_update_image_dimensions(&mut merge, &mut manager).is_err() {
         return None;
       }
     }
@@ -839,11 +830,11 @@ impl Decoder {
       limits.effective_max_mem(),
     )?;
     /* JP2 files with a palette/component mapping need the same colour
-    post-processing the serial opj_jp2_decode applies after the codestream
+    post-processing the serial jp2_decode applies after the codestream
     decode (the palette lookup turns indices into colour values). */
     if let CodecFormat::JP2(jp2) = &mut self.m_codec {
       let mut manager = crate::event::EventMgr::default();
-      if crate::jp2::opj_jp2_apply_color_postprocessing(jp2, &mut core, &mut manager).is_err() {
+      if crate::jp2::jp2_apply_color_postprocessing(jp2, &mut core, &mut manager).is_err() {
         return None;
       }
     }
@@ -856,13 +847,12 @@ impl Encoder {
   pub fn new(format: J2KFormat) -> Result<Self> {
     let m_codec = match format {
       J2KFormat::J2K => CodecFormat::J2K(
-        opj_j2k_create_compress()
-          .ok_or_else(|| Error::Encode("failed to create encoder".into()))?,
+        j2k_create_compress().ok_or_else(|| Error::Encode("failed to create encoder".into()))?,
       ),
       J2KFormat::JP2 => {
         /* get a JP2 encoder handle */
         CodecFormat::JP2(
-          opj_jp2_create(false).ok_or_else(|| Error::Encode("failed to create encoder".into()))?,
+          jp2_create(false).ok_or_else(|| Error::Encode("failed to create encoder".into()))?,
         )
       }
       other => {
@@ -882,8 +872,8 @@ impl Encoder {
   /// `opj_setup_encoder`; must be called before `start`).
   pub fn setup(&mut self, parameters: &mut EncoderParameters, image: &mut CoreImage) -> Result<()> {
     let ok = match &mut self.m_codec {
-      CodecFormat::J2K(enc) => opj_j2k_setup_encoder(enc, parameters, image, &mut self.m_event_mgr),
-      CodecFormat::JP2(enc) => opj_jp2_setup_encoder(enc, parameters, image, &mut self.m_event_mgr),
+      CodecFormat::J2K(enc) => j2k_setup_encoder(enc, parameters, image, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => jp2_setup_encoder(enc, parameters, image, &mut self.m_event_mgr),
     };
     if ok.is_ok() {
       Ok(())
@@ -896,12 +886,8 @@ impl Encoder {
   /// ...).
   pub fn extra_options(&mut self, options: &[&str]) -> Result<()> {
     let ok = match &mut self.m_codec {
-      CodecFormat::J2K(enc) => {
-        opj_j2k_encoder_set_extra_options(enc, options, &mut self.m_event_mgr)
-      }
-      CodecFormat::JP2(enc) => {
-        opj_jp2_encoder_set_extra_options(enc, options, &mut self.m_event_mgr)
-      }
+      CodecFormat::J2K(enc) => j2k_encoder_set_extra_options(enc, options, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => jp2_encoder_set_extra_options(enc, options, &mut self.m_event_mgr),
     };
     if ok {
       Ok(())
@@ -913,8 +899,8 @@ impl Encoder {
   /// Writes the codestream header (the C's `opj_start_compress`).
   pub fn start(&mut self, image: &mut CoreImage, stream: &mut Stream) -> Result<()> {
     let ok = match &mut self.m_codec {
-      CodecFormat::J2K(enc) => opj_j2k_start_compress(enc, stream, image, &mut self.m_event_mgr),
-      CodecFormat::JP2(enc) => opj_jp2_start_compress(enc, stream, image, &mut self.m_event_mgr),
+      CodecFormat::J2K(enc) => j2k_start_compress(enc, stream, image, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => jp2_start_compress(enc, stream, image, &mut self.m_event_mgr),
     };
     if ok.is_ok() {
       Ok(())
@@ -926,8 +912,8 @@ impl Encoder {
   /// Encodes the image (the C's `opj_encode`).
   pub fn encode(&mut self, stream: &mut Stream) -> Result<()> {
     let ok = match &mut self.m_codec {
-      CodecFormat::J2K(enc) => opj_j2k_encode(enc, stream, &mut self.m_event_mgr),
-      CodecFormat::JP2(enc) => opj_jp2_encode(enc, stream, &mut self.m_event_mgr),
+      CodecFormat::J2K(enc) => j2k_encode(enc, stream, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => jp2_encode(enc, stream, &mut self.m_event_mgr),
     };
     if ok.is_ok() {
       Ok(())
@@ -939,8 +925,8 @@ impl Encoder {
   /// Writes the end-of-codestream markers (the C's `opj_end_compress`).
   pub fn finish(&mut self, stream: &mut Stream) -> Result<()> {
     let ok = match &mut self.m_codec {
-      CodecFormat::J2K(enc) => opj_j2k_end_compress(enc, stream, &mut self.m_event_mgr),
-      CodecFormat::JP2(enc) => opj_jp2_end_compress(enc, stream, &mut self.m_event_mgr),
+      CodecFormat::J2K(enc) => j2k_end_compress(enc, stream, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => jp2_end_compress(enc, stream, &mut self.m_event_mgr),
     };
     if ok.is_ok() {
       Ok(())
@@ -949,11 +935,11 @@ impl Encoder {
     }
   }
 
-  /// Writes one pre-encoded tile (the C's `opj_write_tile`).
+  /// Writes one pre-encoded tile (the C's `write_tile`).
   pub fn write_tile(&mut self, tile: u32, data: &[u8], stream: &mut Stream) -> Result<()> {
     let ok = match &mut self.m_codec {
-      CodecFormat::J2K(enc) => opj_j2k_write_tile(enc, tile, data, stream, &mut self.m_event_mgr),
-      CodecFormat::JP2(enc) => opj_jp2_write_tile(enc, tile, data, stream, &mut self.m_event_mgr),
+      CodecFormat::J2K(enc) => j2k_write_tile(enc, tile, data, stream, &mut self.m_event_mgr),
+      CodecFormat::JP2(enc) => jp2_write_tile(enc, tile, data, stream, &mut self.m_event_mgr),
     };
     if ok.is_ok() {
       Ok(())

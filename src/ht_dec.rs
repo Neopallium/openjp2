@@ -1103,7 +1103,7 @@ fn frwd_fetch(msp: &mut frwd_struct_t) -> u32 {
  *  @param [in]       w is codeblock width
  *  @param [in]       h is codeblock height
  */
-fn opj_t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OpResult {
+fn t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OpResult {
   let mut flagssize: usize = 0;
   /* No risk of overflow. Prior checks ensure those assert are met */
   /* They are per the specification */
@@ -1136,7 +1136,7 @@ fn opj_t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OpRe
  *  @param [in]       p_manager is events print manager
  *  @param [in]       check_pterm: check termination (not used)
  */
-pub(crate) fn opj_t1_ht_decode_cblk(
+pub(crate) fn t1_ht_decode_cblk(
   mut t1: &mut T1Coder,
   cblk: &mut TcdCblkDec,
   src: &[u8],
@@ -1234,7 +1234,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     );
     return Err(());
   }
-  if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32).is_err() {
+  if t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32).is_err() {
     return Err(());
   }
   if cblk.mb == 0u32 {
@@ -1346,7 +1346,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     return Err(());
   }
   if cblk.mb > 30u32 {
-    /* This check is better moved to opj_t2_read_packet_header() in t2.c
+    /* This check is better moved to t2_read_packet_header() in t2.c
       We do not have enough precision to decode any passes
       The design of openjpeg assumes that the bits of a 32-bit integer are
       assigned as follows:
@@ -1360,7 +1360,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     return Err(());
   }
   if zero_bplanes > cblk.mb {
-    /* This check is better moved to opj_t2_read_packet_header() in t2.c,
+    /* This check is better moved to t2_read_packet_header() in t2.c,
     in the line "l_cblk->numbps = (u32)l_band->numbps + 1 - i;"
     where i is the zero bitplanes, and should be no larger than cblk->mb
     We cannot have more zero bitplanes than there are planes. */

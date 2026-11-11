@@ -61,7 +61,7 @@ pub struct Stream {
   pub(crate) m_stream_length: u64,
   pub(crate) m_byte_offset: i64,
 }
-pub(crate) type opj_stream_private = Stream;
+pub(crate) type stream_private = Stream;
 
 pub(crate) enum StreamInner {
   Reader(BufReader<Box<dyn ReadSeek>>),
@@ -270,7 +270,7 @@ impl Stream {
   /// Bytes remaining before the declared stream end.
   pub fn get_bytes_left(&self) -> i64 {
     log::trace!("-- byte_left(), offset={}", self.m_byte_offset);
-    /* The C's opj_stream_get_number_byte_left asserts
+    /* The C's stream_get_number_byte_left asserts
     m_user_data_length >= m_byte_offset only in debug builds (NDEBUG strips
     it) and unknown-length streams (length 0) return 0.  Mirror the
     behaviour WITHOUT the asserts: the TLM-driven decode can seek to the
@@ -358,7 +358,7 @@ impl Write for Stream {
   }
 }
 
-pub(crate) fn opj_stream_read_data(
+pub(crate) fn stream_read_data(
   p_stream: &mut Stream,
   buf: &mut [u8],
   mut _p_event_mgr: &mut EventMgr,
@@ -372,7 +372,7 @@ pub(crate) fn opj_stream_read_data(
   }
 }
 
-pub(crate) fn opj_stream_write_data(
+pub(crate) fn stream_write_data(
   p_stream: &mut Stream,
   buf: &[u8],
   mut _p_event_mgr: &mut EventMgr,
@@ -387,7 +387,7 @@ pub(crate) fn opj_stream_write_data(
   }
 }
 
-pub(crate) fn opj_stream_flush(p_stream: &mut Stream, mut _p_event_mgr: &mut EventMgr) -> OpResult {
+pub(crate) fn stream_flush(p_stream: &mut Stream, mut _p_event_mgr: &mut EventMgr) -> OpResult {
   match p_stream.flush() {
     Ok(_) => Ok(()),
     Err(err) => {
@@ -397,15 +397,15 @@ pub(crate) fn opj_stream_flush(p_stream: &mut Stream, mut _p_event_mgr: &mut Eve
   }
 }
 
-pub(crate) fn opj_stream_tell(p_stream: &Stream) -> i64 {
+pub(crate) fn stream_tell(p_stream: &Stream) -> i64 {
   p_stream.tell()
 }
 
-pub(crate) fn opj_stream_get_number_byte_left(p_stream: &Stream) -> i64 {
+pub(crate) fn stream_get_number_byte_left(p_stream: &Stream) -> i64 {
   p_stream.get_bytes_left()
 }
 
-pub(crate) fn opj_stream_skip(
+pub(crate) fn stream_skip(
   p_stream: &mut Stream,
   mut p_size: i64,
   mut _p_event_mgr: &mut EventMgr,
@@ -422,7 +422,7 @@ pub(crate) fn opj_stream_skip(
   }
 }
 
-pub(crate) fn opj_stream_seek(
+pub(crate) fn stream_seek(
   p_stream: &mut Stream,
   mut p_size: i64,
   mut _p_event_mgr: &mut EventMgr,
@@ -439,7 +439,7 @@ pub(crate) fn opj_stream_seek(
   }
 }
 
-pub(crate) fn opj_stream_has_seek(p_stream: &Stream) -> bool {
+pub(crate) fn stream_has_seek(p_stream: &Stream) -> bool {
   p_stream.has_seek() as _
 }
 

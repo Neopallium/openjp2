@@ -2,11 +2,7 @@ use crate::fprintf::StringWriter;
 use crate::image::*;
 use crate::openjpeg::*;
 
-fn opj_j2k_dump_tile_info<W: StringWriter>(
-  l_default_tile: &Tcp,
-  numcomps: i32,
-  out_stream: &mut W,
-) {
+fn j2k_dump_tile_info<W: StringWriter>(l_default_tile: &Tcp, numcomps: i32, out_stream: &mut W) {
   let mut compno: i32 = 0;
   fprintf!(out_stream, "\t default tile {{\n");
   if l_default_tile.csty != 0 {
@@ -108,7 +104,7 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &J2k, flag: i32, out_stream: &mut
   }
   /* Dump the codestream info from main header */
   if flag & 2i32 != 0 && p_j2k.m_private_image.is_some() {
-    opj_j2k_dump_mh_info(p_j2k, out_stream);
+    j2k_dump_mh_info(p_j2k, out_stream);
   }
   /* Dump all tile/codestream info */
   if flag & 8i32 != 0 {
@@ -117,7 +113,7 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &J2k, flag: i32, out_stream: &mut
     if p_j2k.m_private_image.is_some() {
       i = 0_u32;
       while i < l_nb_tiles {
-        opj_j2k_dump_tile_info(
+        j2k_dump_tile_info(
           &p_j2k.m_cp.tcps[i as usize],
           p_j2k
             .m_private_image
@@ -134,13 +130,13 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &J2k, flag: i32, out_stream: &mut
   if flag & 4i32 != 0 {};
   /* Dump the codestream index from main header */
   if flag & 16i32 != 0 {
-    opj_j2k_dump_mh_index(p_j2k, out_stream);
+    j2k_dump_mh_index(p_j2k, out_stream);
   }
   /* Dump the codestream index of the current tile */
   if flag & 32i32 != 0 {}
 }
 
-fn opj_j2k_dump_mh_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
+fn j2k_dump_mh_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   let Some(cstr_index) = p_j2k.cstr_index.as_deref() else {
     return;
   };
@@ -175,7 +171,7 @@ fn opj_j2k_dump_mh_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   fprintf!(out_stream, "\t }}\n");
   /* Simple test to avoid writing empty information */
   let mut l_acc_nb_of_tile_part: u32 = cstr_index.tiles.iter().map(|tile| tile.nb_tps).sum();
-  /* To avoid regenerating the expected opj_dump results from the test
+  /* To avoid regenerating the expected dump results from the test
   suite when there is a TLM marker present (upstream): the TLM-built
   tile-part entries have a start position but no end_header yet. */
   if std::env::var_os("OJP_DO_NOT_DISPLAY_TILE_INDEX_IF_TLM").is_some() {
@@ -229,7 +225,7 @@ fn opj_j2k_dump_mh_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   fprintf!(out_stream, "}}\n");
 }
 
-fn opj_j2k_dump_mh_info<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
+fn j2k_dump_mh_info<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
   fprintf!(out_stream, "Codestream info from main header: {{\n");
   fprintf!(
     out_stream,
@@ -255,7 +251,7 @@ fn opj_j2k_dump_mh_info<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
     p_j2k.m_private_image.as_deref(),
     p_j2k.m_specific_param.m_decoder.m_default_tcp.as_deref(),
   ) {
-    opj_j2k_dump_tile_info(default_tcp, img.numcomps as i32, out_stream);
+    j2k_dump_tile_info(default_tcp, img.numcomps as i32, out_stream);
   }
   fprintf!(out_stream, "}}\n");
 }

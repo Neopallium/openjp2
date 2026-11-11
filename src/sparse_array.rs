@@ -90,8 +90,8 @@ impl SparseArray {
       return None;
     }
 
-    let block_count_hor = opj_uint_ceildiv(width, block_width);
-    let block_count_ver = opj_uint_ceildiv(height, block_height);
+    let block_count_hor = uint_ceildiv(width, block_width);
+    let block_count_ver = uint_ceildiv(height, block_height);
 
     if block_count_hor > u32::MAX / block_count_ver {
       return None;

@@ -11,7 +11,7 @@ pub use crate::stream::Stream;
 pub use crate::types::*;
 
 /// The upstream OpenJPEG version this port mirrors.
-pub(crate) const OPJ_VERSION: &str = "2.5.4";
+pub(crate) const UPSTREAM_VERSION: &str = "2.5.4";
 
 /// Default codestream comment (the COM marker) written by the encoder.
 ///
@@ -22,7 +22,7 @@ pub(crate) const OPJ_VERSION: &str = "2.5.4";
 /// suite compares against).
 #[cfg(feature = "openjpeg-version-string")]
 pub(crate) fn default_codestream_comment() -> String {
-  format!("Created by OpenJPEG version {}", OPJ_VERSION)
+  format!("Created by OpenJPEG version {}", UPSTREAM_VERSION)
 }
 
 /// Default codestream comment (the COM marker) written by the encoder.

@@ -3,7 +3,7 @@
 use super::openjpeg::*;
 
 #[inline]
-fn opj_int_fix_mul(mut a: i32, mut b: i32) -> i32 {
+fn int_fix_mul(mut a: i32, mut b: i32) -> i32 {
   let mut temp = a as i64 * b as i64;
   temp += 4096i64;
 
@@ -60,18 +60,18 @@ static MCT_NORMS: [f64; 3] = [1.732f64, 0.8292f64, 0.8292f64];
 /* </summary> */
 static MCT_NORMS_REAL: [f64; 3] = [1.732f64, 1.805f64, 1.573f64];
 
-pub(crate) fn opj_mct_get_mct_norms() -> &'static [f64] {
+pub(crate) fn mct_get_mct_norms() -> &'static [f64] {
   &MCT_NORMS
 }
 
-pub(crate) fn opj_mct_get_mct_norms_real() -> &'static [f64] {
+pub(crate) fn mct_get_mct_norms_real() -> &'static [f64] {
   &MCT_NORMS_REAL
 }
 /* <summary> */
 /* Forward reversible MCT. */
 /* </summary> */
 
-pub(crate) fn opj_mct_encode(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
+pub(crate) fn mct_encode(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
   let len = c0.len().min(c1.len()).min(c2.len());
   for i in 0..len {
     let r = c0[i];
@@ -88,7 +88,7 @@ pub(crate) fn opj_mct_encode(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
 /* Inverse reversible MCT. */
 /* </summary> */
 
-pub(crate) fn opj_mct_decode(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
+pub(crate) fn mct_decode(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
   let len = c0.len().min(c1.len()).min(c2.len());
   for i in 0..len {
     let y = c0[i];
@@ -104,14 +104,14 @@ pub(crate) fn opj_mct_decode(c0: &mut [i32], c1: &mut [i32], c2: &mut [i32]) {
 /* Get norm of basis function of reversible MCT. */
 /* </summary> */
 
-pub(crate) fn opj_mct_getnorm(mut compno: u32) -> f64 {
+pub(crate) fn mct_getnorm(mut compno: u32) -> f64 {
   MCT_NORMS[compno as usize]
 }
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
 
-pub(crate) fn opj_mct_encode_real(c0: &mut [f32], c1: &mut [f32], c2: &mut [f32]) {
+pub(crate) fn mct_encode_real(c0: &mut [f32], c1: &mut [f32], c2: &mut [f32]) {
   let len = c0.len().min(c1.len()).min(c2.len());
   for i in 0..len {
     let r = c0[i];
@@ -126,7 +126,7 @@ pub(crate) fn opj_mct_encode_real(c0: &mut [f32], c1: &mut [f32], c2: &mut [f32]
 /* Inverse irreversible MCT. */
 /* </summary> */
 
-pub(crate) fn opj_mct_decode_real(c0: &mut [f32], c1: &mut [f32], c2: &mut [f32]) {
+pub(crate) fn mct_decode_real(c0: &mut [f32], c1: &mut [f32], c2: &mut [f32]) {
   let len = c0.len().min(c1.len()).min(c2.len());
   for i in 0..len {
     let y = c0[i];
@@ -141,12 +141,12 @@ pub(crate) fn opj_mct_decode_real(c0: &mut [f32], c1: &mut [f32], c2: &mut [f32]
 /* Get norm of basis function of irreversible MCT. */
 /* </summary> */
 
-pub(crate) fn opj_mct_getnorm_real(mut compno: u32) -> f64 {
+pub(crate) fn mct_getnorm_real(mut compno: u32) -> f64 {
   MCT_NORMS_REAL[compno as usize]
 }
 
 #[allow(clippy::needless_range_loop)]
-pub(crate) fn opj_mct_encode_custom(
+pub(crate) fn mct_encode_custom(
   coding_matrix: &[f32],
   n: usize,
   data: &mut [&mut [i32]],
@@ -166,7 +166,7 @@ pub(crate) fn opj_mct_encode_custom(
     for j in 0..nb_comp {
       let mut acc = 0i32;
       for k in 0..nb_comp {
-        acc += opj_int_fix_mul(matrix[j * nb_comp + k], current[k]);
+        acc += int_fix_mul(matrix[j * nb_comp + k], current[k]);
       }
       data[j][i] = acc;
     }
@@ -175,7 +175,7 @@ pub(crate) fn opj_mct_encode_custom(
 }
 
 #[allow(clippy::needless_range_loop)]
-pub(crate) fn opj_mct_decode_custom(
+pub(crate) fn mct_decode_custom(
   decoding_matrix: &[f32],
   n: usize,
   data: &mut [&mut [f32]],
@@ -198,7 +198,7 @@ pub(crate) fn opj_mct_decode_custom(
   Ok(())
 }
 
-pub(crate) fn opj_calculate_norms(norms: &mut [f64], nb_comps: u32, matrix: &[f32]) {
+pub(crate) fn calculate_norms(norms: &mut [f64], nb_comps: u32, matrix: &[f32]) {
   let nb_comps = nb_comps as usize;
   for (i, norm) in norms.iter_mut().enumerate().take(nb_comps) {
     let mut acc = 0 as f64;

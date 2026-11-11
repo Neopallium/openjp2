@@ -33,25 +33,25 @@ impl Tcd {
 
 impl Drop for Tcd {
   fn drop(&mut self) {
-    opj_tcd_free_tile(self);
+    tcd_free_tile(self);
   }
 }
 
 /* ----------------------------------------------------------------------- */
-fn opj_tcd_rateallocate_fixed(tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) {
+fn tcd_rateallocate_fixed(tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) {
   let mut layno: u32 = 0; /* fixed_quality */
-  // SAFETY: `tcp` is set by opj_tcd_init_tile and valid while the tcd is in use.
+  // SAFETY: `tcp` is set by tcd_init_tile and valid while the tcd is in use.
   let numlayers = cp.tcps[tcd.tcd_tileno as usize].numlayers;
   layno = 0_u32;
   while layno < numlayers {
-    opj_tcd_makelayer_fixed(tcd, layno, 1_u32, image, cp);
+    tcd_makelayer_fixed(tcd, layno, 1_u32, image, cp);
     layno += 1;
   }
 }
 
 /** Returns OPJ_TRUE if the layer allocation is unchanged w.r.t to the previous
  * invokation with a different threshold */
-fn opj_tcd_makelayer(tcd: &mut Tcd, layno: u32, thresh: f64, final_0: u32) -> bool {
+fn tcd_makelayer(tcd: &mut Tcd, layno: u32, thresh: f64, final_0: u32) -> bool {
   let mut compno: u32 = 0;
   let mut resno: u32 = 0;
   let mut bandno: u32 = 0;
@@ -70,7 +70,7 @@ fn opj_tcd_makelayer(tcd: &mut Tcd, layno: u32, thresh: f64, final_0: u32) -> bo
       while bandno < res.numbands {
         let band = &mut res.bands[bandno as usize];
         /* Skip empty bands */
-        if !opj_tcd_is_band_empty(band) {
+        if !tcd_is_band_empty(band) {
           precno = 0_u32;
           while precno < res.pw.wrapping_mul(res.ph) {
             let prc = &mut band.precincts[precno as usize];
@@ -159,7 +159,7 @@ fn opj_tcd_makelayer(tcd: &mut Tcd, layno: u32, thresh: f64, final_0: u32) -> bo
   }
   layer_allocation_is_same
 }
-fn opj_tcd_makelayer_fixed(
+fn tcd_makelayer_fixed(
   tcd: &mut Tcd,
   layno: u32,
   final_0: u32,
@@ -179,7 +179,7 @@ fn opj_tcd_makelayer_fixed(
   let mut i: u32 = 0;
   let mut j: u32 = 0;
   let mut k: u32 = 0;
-  // SAFETY: `cp`/`tcp`/`image` are set by opj_tcd_init(_tile) and valid here.
+  // SAFETY: `cp`/`tcp`/`image` are set by tcd_init(_tile) and valid here.
   let tcd_tcp = &cp.tcps[tcd.tcd_tileno as usize];
   compno = 0_u32;
   while compno < tcd.tcd_image.tiles.numcomps {
@@ -221,7 +221,7 @@ fn opj_tcd_makelayer_fixed(
       while bandno < res.numbands {
         let band = &mut res.bands[bandno as usize];
         /* Skip empty bands */
-        if !opj_tcd_is_band_empty(band) {
+        if !tcd_is_band_empty(band) {
           precno = 0_u32; /* number of bit-plan equal to zero */
           while precno < res.pw.wrapping_mul(res.ph) {
             let prc = &mut band.precincts[precno as usize];
@@ -314,7 +314,7 @@ fn opj_tcd_makelayer_fixed(
     compno += 1;
   }
 }
-fn opj_tcd_rateallocate(
+fn tcd_rateallocate(
   tcd: &mut Tcd,
   dest: &mut [u8],
   p_data_written: &mut u32,
@@ -355,7 +355,7 @@ fn opj_tcd_rateallocate(
           /* bandno */
           /* precno */
           /* Skip empty bands */
-          if !opj_tcd_is_band_empty(band) {
+          if !tcd_is_band_empty(band) {
             precno = 0_u32;
             while precno < res.pw.wrapping_mul(res.ph) {
               let prc = &mut band.precincts[precno as usize];
@@ -419,7 +419,7 @@ fn opj_tcd_rateallocate(
       let mut lo = min;
       let mut hi = max;
       let mut maxlen = if tcd_tcp_rates[layno as usize] > 0.0f32 {
-        opj_uint_min(
+        uint_min(
           (tcd_tcp_rates[layno as usize] as core::ffi::c_double).ceil() as u32,
           len,
         )
@@ -465,7 +465,7 @@ fn opj_tcd_rateallocate(
           }
           thresh = new_thresh;
 
-          let layer_allocation_is_same = opj_tcd_makelayer(tcd, layno, thresh, 0_u32) && i != 0;
+          let layer_allocation_is_same = tcd_makelayer(tcd, layno, thresh, 0_u32) && i != 0;
           if cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy
             == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
           {
@@ -473,8 +473,8 @@ fn opj_tcd_rateallocate(
               || cp.rsiz as core::ffi::c_int >= 0x400i32
                 && cp.rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32
             {
-              if opj_t2_encode_packets(
-                &mut opj_t2_create(image, cp),
+              if t2_encode_packets(
+                &mut t2_create(image, cp),
                 tcd.tcd_tileno,
                 &mut tcd.tcd_image.tiles,
                 layno.wrapping_add(1u32),
@@ -520,17 +520,17 @@ fn opj_tcd_rateallocate(
             }
           } else {
             /* Disto/rate based optimization */
-            /* Check if the layer allocation done by opj_tcd_makelayer()
+            /* Check if the layer allocation done by tcd_makelayer()
              * is compatible of the maximum rate allocation. If not,
              * retry with a higher threshold.
              * If OK, try with a lower threshold.
-             * Call opj_t2_encode_packets() only if opj_tcd_makelayer()
+             * Call t2_encode_packets() only if tcd_makelayer()
              * has resulted in different truncation points since its last
              * call. */
             if (layer_allocation_is_same && !last_layer_allocation_ok)
               || (!layer_allocation_is_same
-                && opj_t2_encode_packets(
-                  &mut opj_t2_create(image, cp),
+                && t2_encode_packets(
+                  &mut t2_create(image, cp),
                   tcd.tcd_tileno,
                   &mut tcd.tcd_image.tiles,
                   layno.wrapping_add(1u32),
@@ -566,7 +566,7 @@ fn opj_tcd_rateallocate(
       }
       /* Threshold for Marcela Index */
 
-      opj_tcd_makelayer(tcd, layno, goodthresh, 1_u32);
+      tcd_makelayer(tcd, layno, goodthresh, 1_u32);
 
       cumdisto[layno as usize] = if layno == 0u32 {
         tcd.tcd_image.tiles.distolayer[0_usize]
@@ -580,7 +580,7 @@ fn opj_tcd_rateallocate(
   }
 }
 
-pub(crate) fn opj_tcd_init(p_tcd: &mut Tcd, image: &CoreImage, cp: &mut Cp) -> OpResult {
+pub(crate) fn tcd_init(p_tcd: &mut Tcd, image: &CoreImage, cp: &mut Cp) -> OpResult {
   p_tcd.tcd_image.tiles.comps = (0..image.numcomps as usize)
     .map(|_| Default::default())
     .collect();
@@ -589,7 +589,7 @@ pub(crate) fn opj_tcd_init(p_tcd: &mut Tcd, image: &CoreImage, cp: &mut Cp) -> O
   Ok(())
 }
 
-pub(crate) fn opj_alloc_tile_component_data(l_tilec: &mut TcdTileComp, f32_buf: bool) -> OpResult {
+pub(crate) fn alloc_tile_component_data(l_tilec: &mut TcdTileComp, f32_buf: bool) -> OpResult {
   let needed = l_tilec.data_size_needed;
   if l_tilec.data.ensure(needed, f32_buf) {
     Ok(())
@@ -643,7 +643,7 @@ pub(crate) fn opj_alloc_tile_component_data(l_tilec: &mut TcdTileComp, f32_buf: 
  * Initializes tile coding/decoding
  */
 /* ----------------------------------------------------------------------- */
-pub(crate) fn opj_tcd_init_tile(
+pub(crate) fn tcd_init_tile(
   mut p_tcd: &mut Tcd,
   mut p_tile_no: u32,
   mut is_encoder: bool,
@@ -693,16 +693,16 @@ pub(crate) fn opj_tcd_init_tile(
   /*fprintf(stderr, "Tile coordinate = %d,%d\n", p, q);*/
   /* 4 borders of the tile rescale on the image if necessary */
   l_tx0 = tx0.wrapping_add(p.wrapping_mul(tdx)); /* can't be greater than l_image->x1 so won't overflow */
-  p_tcd.tcd_image.tiles.x0 = opj_uint_max(l_tx0, image.x0) as i32;
-  p_tcd.tcd_image.tiles.x1 = opj_uint_min(opj_uint_adds(l_tx0, tdx), image.x1) as i32;
+  p_tcd.tcd_image.tiles.x0 = uint_max(l_tx0, image.x0) as i32;
+  p_tcd.tcd_image.tiles.x1 = uint_min(uint_adds(l_tx0, tdx), image.x1) as i32;
   /* all those u32 are casted to i32, let's do some sanity check */
   if p_tcd.tcd_image.tiles.x0 < 0i32 || p_tcd.tcd_image.tiles.x1 <= p_tcd.tcd_image.tiles.x0 {
     event_msg!(manager, EVT_ERROR, "Tile X coordinates are not supported\n",); /* can't be greater than l_image->y1 so won't overflow */
     return Err(());
   }
   l_ty0 = ty0.wrapping_add(q.wrapping_mul(tdy));
-  p_tcd.tcd_image.tiles.y0 = opj_uint_max(l_ty0, image.y0) as i32;
-  p_tcd.tcd_image.tiles.y1 = opj_uint_min(opj_uint_adds(l_ty0, tdy), image.y1) as i32;
+  p_tcd.tcd_image.tiles.y0 = uint_max(l_ty0, image.y0) as i32;
+  p_tcd.tcd_image.tiles.y1 = uint_min(uint_adds(l_ty0, tdy), image.y1) as i32;
   /* all those u32 are casted to i32, let's do some sanity check */
   if p_tcd.tcd_image.tiles.y0 < 0i32 || p_tcd.tcd_image.tiles.y1 <= p_tcd.tcd_image.tiles.y0 {
     event_msg!(manager, EVT_ERROR, "Tile Y coordinates are not supported\n",);
@@ -727,10 +727,10 @@ pub(crate) fn opj_tcd_init_tile(
     let tilec = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
     image_comp.resno_decoded = 0_u32;
     /* border of each l_tile component (global) */
-    tilec.x0 = opj_int_ceildiv(p_tcd.tcd_image.tiles.x0, image_comp.dx as i32);
-    tilec.y0 = opj_int_ceildiv(p_tcd.tcd_image.tiles.y0, image_comp.dy as i32);
-    tilec.x1 = opj_int_ceildiv(p_tcd.tcd_image.tiles.x1, image_comp.dx as i32);
-    tilec.y1 = opj_int_ceildiv(p_tcd.tcd_image.tiles.y1, image_comp.dy as i32);
+    tilec.x0 = int_ceildiv(p_tcd.tcd_image.tiles.x0, image_comp.dx as i32);
+    tilec.y0 = int_ceildiv(p_tcd.tcd_image.tiles.y0, image_comp.dy as i32);
+    tilec.x1 = int_ceildiv(p_tcd.tcd_image.tiles.x1, image_comp.dx as i32);
+    tilec.y1 = int_ceildiv(p_tcd.tcd_image.tiles.y1, image_comp.dy as i32);
     tilec.compno = compno;
     /*fprintf(stderr, "\tTile compo border = %d,%d,%d,%d\n", l_tilec->x0, l_tilec->y0,l_tilec->x1,l_tilec->y1);*/
     tilec.numresolutions = tccp.numresolutions;
@@ -793,21 +793,21 @@ pub(crate) fn opj_tcd_init_tile(
       l_level_no = l_level_no.wrapping_sub(1);
       /*, brcbgxend, brcbgyend*/
       let res = &mut tilec.resolutions[resno as usize];
-      res.x0 = opj_int_ceildivpow2(tilec.x0, l_level_no as i32);
-      res.y0 = opj_int_ceildivpow2(tilec.y0, l_level_no as i32);
-      res.x1 = opj_int_ceildivpow2(tilec.x1, l_level_no as i32);
-      res.y1 = opj_int_ceildivpow2(tilec.y1, l_level_no as i32);
+      res.x0 = int_ceildivpow2(tilec.x0, l_level_no as i32);
+      res.y0 = int_ceildivpow2(tilec.y0, l_level_no as i32);
+      res.x1 = int_ceildivpow2(tilec.x1, l_level_no as i32);
+      res.y1 = int_ceildivpow2(tilec.y1, l_level_no as i32);
       l_pdx = tccp.prcw[resno as usize];
       l_pdy = tccp.prch[resno as usize];
-      l_tl_prc_x_start = opj_int_floordivpow2(res.x0, l_pdx as i32) << l_pdx;
-      l_tl_prc_y_start = opj_int_floordivpow2(res.y0, l_pdy as i32) << l_pdy;
-      let mut tmp = (opj_int_ceildivpow2(res.x1, l_pdx as i32) as u32) << l_pdx;
+      l_tl_prc_x_start = int_floordivpow2(res.x0, l_pdx as i32) << l_pdx;
+      l_tl_prc_y_start = int_floordivpow2(res.y0, l_pdy as i32) << l_pdy;
+      let mut tmp = (int_ceildivpow2(res.x1, l_pdx as i32) as u32) << l_pdx;
       if tmp > 2147483647_u32 {
         event_msg!(manager, EVT_ERROR, "Integer overflow\n",);
         return Err(());
       }
       l_br_prc_x_end = tmp as i32;
-      let mut tmp_0 = (opj_int_ceildivpow2(res.y1, l_pdy as i32) as u32) << l_pdy;
+      let mut tmp_0 = (int_ceildivpow2(res.y1, l_pdy as i32) as u32) << l_pdy;
       if tmp_0 > 2147483647_u32 {
         event_msg!(manager, EVT_ERROR, "Integer overflow\n",);
         return Err(());
@@ -857,16 +857,16 @@ pub(crate) fn opj_tcd_init_tile(
         cbgheightexpn = l_pdy;
         res.numbands = 1_u32
       } else {
-        tlcbgxstart = opj_int_ceildivpow2(l_tl_prc_x_start, 1i32);
-        tlcbgystart = opj_int_ceildivpow2(l_tl_prc_y_start, 1i32);
-        /*brcbgxend = opj_int_ceildivpow2(l_br_prc_x_end, 1);*/
-        /*brcbgyend = opj_int_ceildivpow2(l_br_prc_y_end, 1);*/
+        tlcbgxstart = int_ceildivpow2(l_tl_prc_x_start, 1i32);
+        tlcbgystart = int_ceildivpow2(l_tl_prc_y_start, 1i32);
+        /*brcbgxend = int_ceildivpow2(l_br_prc_x_end, 1);*/
+        /*brcbgyend = int_ceildivpow2(l_br_prc_y_end, 1);*/
         cbgwidthexpn = l_pdx.wrapping_sub(1u32); /* bandno */
         cbgheightexpn = l_pdy.wrapping_sub(1u32);
         res.numbands = 3_u32
       }
-      cblkwidthexpn = opj_uint_min(tccp.cblkw, cbgwidthexpn);
-      cblkheightexpn = opj_uint_min(tccp.cblkh, cbgheightexpn);
+      cblkwidthexpn = uint_min(tccp.cblkw, cbgwidthexpn);
+      cblkheightexpn = uint_min(tccp.cblkh, cbgheightexpn);
       let res_pw = res.pw;
       bandno = 0_u32;
       while bandno < res.numbands {
@@ -874,10 +874,10 @@ pub(crate) fn opj_tcd_init_tile(
         let band = &mut res.bands[bandno as usize];
         if resno == 0u32 {
           band.bandno = 0_u32;
-          band.x0 = opj_int_ceildivpow2(tilec.x0, l_level_no as i32);
-          band.y0 = opj_int_ceildivpow2(tilec.y0, l_level_no as i32);
-          band.x1 = opj_int_ceildivpow2(tilec.x1, l_level_no as i32);
-          band.y1 = opj_int_ceildivpow2(tilec.y1, l_level_no as i32)
+          band.x0 = int_ceildivpow2(tilec.x0, l_level_no as i32);
+          band.y0 = int_ceildivpow2(tilec.y0, l_level_no as i32);
+          band.x1 = int_ceildivpow2(tilec.x1, l_level_no as i32);
+          band.y1 = int_ceildivpow2(tilec.y1, l_level_no as i32)
         } else {
           band.bandno = bandno.wrapping_add(1u32);
           /* x0b = 1 if bandno = 1 or 3 */
@@ -885,24 +885,24 @@ pub(crate) fn opj_tcd_init_tile(
           /* y0b = 1 if bandno = 2 or 3 */
           l_y0b = (band.bandno >> 1i32) as i32;
           /* l_band border (global) */
-          band.x0 = opj_int64_ceildivpow2(
+          band.x0 = int64_ceildivpow2(
             tilec.x0 as i64 - ((l_x0b as i64) << l_level_no),
             l_level_no.wrapping_add(1u32) as i32,
           );
-          band.y0 = opj_int64_ceildivpow2(
+          band.y0 = int64_ceildivpow2(
             tilec.y0 as i64 - ((l_y0b as i64) << l_level_no),
             l_level_no.wrapping_add(1u32) as i32,
           );
-          band.x1 = opj_int64_ceildivpow2(
+          band.x1 = int64_ceildivpow2(
             tilec.x1 as i64 - ((l_x0b as i64) << l_level_no),
             l_level_no.wrapping_add(1u32) as i32,
           );
-          band.y1 = opj_int64_ceildivpow2(
+          band.y1 = int64_ceildivpow2(
             tilec.y1 as i64 - ((l_y0b as i64) << l_level_no),
             l_level_no.wrapping_add(1u32) as i32,
           )
         }
-        if !is_encoder || !opj_tcd_is_band_empty(band) {
+        if !is_encoder || !tcd_is_band_empty(band) {
           let step_size = &tccp.stepsizes[l_step_size_idx];
           /* Table E-1 - Sub-band gains */
           /* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
@@ -954,27 +954,26 @@ pub(crate) fn opj_tcd_init_tile(
             /* precinct size (global) */
             /*fprintf(stderr, "\t cbgxstart=%d, l_band->x0 = %d \n",cbgxstart, l_band->x0);*/
             let precinct = &mut band.precincts[precno as usize];
-            precinct.x0 = opj_int_max(cbgxstart, band_x0);
-            precinct.y0 = opj_int_max(cbgystart, band_y0);
-            precinct.x1 = opj_int_min(cbgxend, band_x1);
-            precinct.y1 = opj_int_min(cbgyend, band_y1);
+            precinct.x0 = int_max(cbgxstart, band_x0);
+            precinct.y0 = int_max(cbgystart, band_y0);
+            precinct.x1 = int_min(cbgxend, band_x1);
+            precinct.y1 = int_min(cbgyend, band_y1);
             /*fprintf(stderr, "\t prc_x0=%d; prc_y0=%d, prc_x1=%d; prc_y1=%d\n",l_current_precinct->x0, l_current_precinct->y0 ,l_current_precinct->x1, l_current_precinct->y1);*/
-            tlcblkxstart = opj_int_floordivpow2(precinct.x0, cblkwidthexpn as i32) << cblkwidthexpn;
+            tlcblkxstart = int_floordivpow2(precinct.x0, cblkwidthexpn as i32) << cblkwidthexpn;
             /*fprintf(stderr, "\t tlcblkxstart =%d\n",tlcblkxstart );*/
-            tlcblkystart =
-              opj_int_floordivpow2(precinct.y0, cblkheightexpn as i32) << cblkheightexpn;
+            tlcblkystart = int_floordivpow2(precinct.y0, cblkheightexpn as i32) << cblkheightexpn;
             /*fprintf(stderr, "\t tlcblkystart =%d\n",tlcblkystart );*/
             /* Like the precinct-grid computation above: the i32 shift can
             overflow for tiles near 2^31 (debug-build panic; the C has UB). */
             let tmp_0 =
-              (opj_int_ceildivpow2(precinct.x1, cblkwidthexpn as i32) as u32) << cblkwidthexpn;
+              (int_ceildivpow2(precinct.x1, cblkwidthexpn as i32) as u32) << cblkwidthexpn;
             if tmp_0 > 2147483647_u32 {
               event_msg!(manager, EVT_ERROR, "Integer overflow\n",);
               return Err(());
             }
             brcblkxend = tmp_0 as i32;
             let tmp_1 =
-              (opj_int_ceildivpow2(precinct.y1, cblkheightexpn as i32) as u32) << cblkheightexpn;
+              (int_ceildivpow2(precinct.y1, cblkheightexpn as i32) as u32) << cblkheightexpn;
             if tmp_1 > 2147483647_u32 {
               event_msg!(manager, EVT_ERROR, "Integer overflow\n",);
               return Err(());
@@ -1005,12 +1004,12 @@ pub(crate) fn opj_tcd_init_tile(
               precinct.cblks.grow_dec(l_nb_code_blocks as usize);
             }
             precinct.incltree = match precinct.incltree.take() {
-              Some(tree) => opj_tgt_init(tree, precinct_cw, precinct_ch, manager),
-              None => opj_tgt_create(precinct_cw, precinct_ch, manager),
+              Some(tree) => tgt_init(tree, precinct_cw, precinct_ch, manager),
+              None => tgt_create(precinct_cw, precinct_ch, manager),
             };
             precinct.imsbtree = match precinct.imsbtree.take() {
-              Some(tree) => opj_tgt_init(tree, precinct_cw, precinct_ch, manager),
-              None => opj_tgt_create(precinct_cw, precinct_ch, manager),
+              Some(tree) => tgt_init(tree, precinct_cw, precinct_ch, manager),
+              None => tgt_create(precinct_cw, precinct_ch, manager),
             };
             cblkno = 0_u32;
             while cblkno < l_nb_code_blocks {
@@ -1022,21 +1021,21 @@ pub(crate) fn opj_tcd_init_tile(
               let mut cblkyend = cblkystart + ((1i32) << cblkheightexpn);
               if is_encoder {
                 let code_block = precinct.cblks.enc_mut(cblkno as usize);
-                opj_tcd_code_block_enc_allocate(code_block);
+                tcd_code_block_enc_allocate(code_block);
                 /* code-block size (global) */
-                code_block.x0 = opj_int_max(cblkxstart, precinct_x0);
-                code_block.y0 = opj_int_max(cblkystart, precinct_y0);
-                code_block.x1 = opj_int_min(cblkxend, precinct_x1);
-                code_block.y1 = opj_int_min(cblkyend, precinct_y1);
-                opj_tcd_code_block_enc_allocate_data(code_block);
+                code_block.x0 = int_max(cblkxstart, precinct_x0);
+                code_block.y0 = int_max(cblkystart, precinct_y0);
+                code_block.x1 = int_min(cblkxend, precinct_x1);
+                code_block.y1 = int_min(cblkyend, precinct_y1);
+                tcd_code_block_enc_allocate_data(code_block);
               } else {
                 let code_block = precinct.cblks.dec_mut(cblkno as usize);
-                opj_tcd_code_block_dec_allocate(code_block);
+                tcd_code_block_dec_allocate(code_block);
                 /* code-block size (global) */
-                code_block.x0 = opj_int_max(cblkxstart, precinct_x0);
-                code_block.y0 = opj_int_max(cblkystart, precinct_y0);
-                code_block.x1 = opj_int_min(cblkxend, precinct_x1);
-                code_block.y1 = opj_int_min(cblkyend, precinct_y1)
+                code_block.x0 = int_max(cblkxstart, precinct_x0);
+                code_block.y0 = int_max(cblkystart, precinct_y0);
+                code_block.x1 = int_min(cblkxend, precinct_x1);
+                code_block.y1 = int_min(cblkyend, precinct_y1)
               }
               cblkno += 1;
             }
@@ -1055,24 +1054,24 @@ pub(crate) fn opj_tcd_init_tile(
   }
   Ok(())
 }
-pub(crate) fn opj_tcd_init_encode_tile(
+pub(crate) fn tcd_init_encode_tile(
   mut p_tcd: &mut Tcd,
   mut p_tile_no: u32,
   mut p_manager: &mut EventMgr,
   image: &mut CoreImage,
   cp: &mut Cp,
 ) -> OpResult {
-  opj_tcd_init_tile(p_tcd, p_tile_no, true, p_manager, image, cp)
+  tcd_init_tile(p_tcd, p_tile_no, true, p_manager, image, cp)
 }
 
-pub(crate) fn opj_tcd_init_decode_tile(
+pub(crate) fn tcd_init_decode_tile(
   mut p_tcd: &mut Tcd,
   mut p_tile_no: u32,
   mut p_manager: &mut EventMgr,
   image: &mut CoreImage,
   cp: &mut Cp,
 ) -> OpResult {
-  opj_tcd_init_tile(p_tcd, p_tile_no, false, p_manager, image, cp)
+  tcd_init_tile(p_tcd, p_tile_no, false, p_manager, image, cp)
 }
 /* *
  * Allocates memory for an encoding code block (but not data).
@@ -1080,7 +1079,7 @@ pub(crate) fn opj_tcd_init_decode_tile(
 /* *
  * Allocates memory for an encoding code block (but not data memory).
  */
-fn opj_tcd_code_block_enc_allocate(p_code_block: &mut TcdCblkEnc) {
+fn tcd_code_block_enc_allocate(p_code_block: &mut TcdCblkEnc) {
   if p_code_block.layers.is_empty() {
     p_code_block.layers.resize(100, Default::default());
   }
@@ -1094,7 +1093,7 @@ fn opj_tcd_code_block_enc_allocate(p_code_block: &mut TcdCblkEnc) {
 /* *
  * Allocates data memory for an encoding code block.
  */
-fn opj_tcd_code_block_enc_allocate_data(p_code_block: &mut TcdCblkEnc) {
+fn tcd_code_block_enc_allocate_data(p_code_block: &mut TcdCblkEnc) {
   let mut l_data_size: u32 = 0;
   /* +1 is needed for https://github.com/uclouvain/openjpeg/issues/835 */
   /* and actually +2 required for https://github.com/uclouvain/openjpeg/issues/982 */
@@ -1119,12 +1118,12 @@ fn opj_tcd_code_block_enc_allocate_data(p_code_block: &mut TcdCblkEnc) {
   }
 }
 
-pub(crate) fn opj_tcd_reinit_segment(seg: &mut TcdSeg) {
+pub(crate) fn tcd_reinit_segment(seg: &mut TcdSeg) {
   *seg = TcdSeg::default();
 }
 /* We reserve the initial byte as a fake byte to a non-FF value */
-/* and increment the data pointer, so that opj_mqc_init_enc() */
-/* can do bp = data - 1, and opj_mqc_byteout() can safely dereference */
+/* and increment the data pointer, so that mqc_init_enc() */
+/* can do bp = data - 1, and mqc_byteout() can safely dereference */
 /* it. */
 /* *
 * Allocates memory for a decoding code block.
@@ -1132,7 +1131,7 @@ pub(crate) fn opj_tcd_reinit_segment(seg: &mut TcdSeg) {
 /* *
  * Allocates memory for a decoding code block.
  */
-fn opj_tcd_code_block_dec_allocate(p_code_block: &mut TcdCblkDec) {
+fn tcd_code_block_dec_allocate(p_code_block: &mut TcdCblkDec) {
   if p_code_block.segs.is_empty() {
     p_code_block.segs.resize(10, Default::default());
   } else {
@@ -1143,12 +1142,12 @@ fn opj_tcd_code_block_dec_allocate(p_code_block: &mut TcdCblkDec) {
     p_code_block.segs = segs;
     p_code_block.chunks = chunks;
     for seg in p_code_block.segs.iter_mut() {
-      opj_tcd_reinit_segment(seg);
+      tcd_reinit_segment(seg);
     }
   }
 }
 
-pub(crate) fn opj_tcd_get_decoded_tile_size(
+pub(crate) fn tcd_get_decoded_tile_size(
   p_tcd: &mut Tcd,
   take_into_account_partial_decoding: bool,
   image: &mut CoreImage,
@@ -1222,7 +1221,7 @@ pub(crate) fn opj_tcd_get_decoded_tile_size(
   l_data_size
 }
 
-pub(crate) fn opj_tcd_encode_tile(
+pub(crate) fn tcd_encode_tile(
   p_tcd: &mut Tcd,
   p_tile_no: u32,
   p_dest: &mut [u8],
@@ -1235,19 +1234,19 @@ pub(crate) fn opj_tcd_encode_tile(
 ) -> OpResult {
   if p_tcd.cur_tp_num == 0u32 {
     p_tcd.tcd_tileno = p_tile_no;
-    if opj_tcd_dc_level_shift_encode(p_tcd, cp).is_err() {
+    if tcd_dc_level_shift_encode(p_tcd, cp).is_err() {
       return Err(());
     }
-    if opj_tcd_mct_encode(p_tcd, image, cp).is_err() {
+    if tcd_mct_encode(p_tcd, image, cp).is_err() {
       return Err(());
     }
-    if opj_tcd_dwt_encode(p_tcd, cp).is_err() {
+    if tcd_dwt_encode(p_tcd, cp).is_err() {
       return Err(());
     }
-    if opj_tcd_t1_encode(p_tcd, image, cp).is_err() {
+    if tcd_t1_encode(p_tcd, image, cp).is_err() {
       return Err(());
     }
-    if opj_tcd_rate_allocate_encode(
+    if tcd_rate_allocate_encode(
       p_tcd,
       &mut p_dest[..p_max_length as usize],
       p_max_length,
@@ -1264,7 +1263,7 @@ pub(crate) fn opj_tcd_encode_tile(
   /*---------------TILE-------------------*/
   /*--------------TIER2------------------*/
   /* INDEX */
-  if opj_tcd_t2_encode(
+  if tcd_t2_encode(
     p_tcd,
     &mut p_dest[..p_max_length as usize],
     p_data_written,
@@ -1280,7 +1279,7 @@ pub(crate) fn opj_tcd_encode_tile(
   }
   Ok(())
 }
-pub(crate) fn opj_tcd_decode_tile(
+pub(crate) fn tcd_decode_tile(
   p_tcd: &mut Tcd,
   win_x0: u32,
   win_y0: u32,
@@ -1316,7 +1315,7 @@ pub(crate) fn opj_tcd_decode_tile(
   }
   compno = 0_u32;
   while compno < image.numcomps {
-    if p_tcd.used_component(compno) && !opj_tcd_is_whole_tilecomp_decoding(p_tcd, compno, image) {
+    if p_tcd.used_component(compno) && !tcd_is_whole_tilecomp_decoding(p_tcd, compno, image) {
       p_tcd.whole_tile_decoding = false;
       break;
     }
@@ -1354,7 +1353,7 @@ pub(crate) fn opj_tcd_decode_tile(
         tilec.data_size_needed = l_data_size;
         /* The buffer element type follows the transform (9-7 -> f32). */
         let f32_buf = cp.tcps[p_tcd.tcd_tileno as usize].tccps[compno as usize].qmfbid == 0;
-        if opj_alloc_tile_component_data(tilec, f32_buf).is_err() {
+        if alloc_tile_component_data(tilec, f32_buf).is_err() {
           event_msg!(
             p_manager,
             EVT_ERROR,
@@ -1377,22 +1376,10 @@ pub(crate) fn opj_tcd_decode_tile(
         let image_comp = &image.comps[compno as usize];
         /* Compute the intersection of the area of interest, expressed in tile coordinates */
         /* with the tile coordinates */
-        tilec_0.win_x0 = opj_uint_max(
-          tilec_0.x0 as u32,
-          opj_uint_ceildiv(p_tcd.win_x0, image_comp.dx),
-        );
-        tilec_0.win_y0 = opj_uint_max(
-          tilec_0.y0 as u32,
-          opj_uint_ceildiv(p_tcd.win_y0, image_comp.dy),
-        );
-        tilec_0.win_x1 = opj_uint_min(
-          tilec_0.x1 as u32,
-          opj_uint_ceildiv(p_tcd.win_x1, image_comp.dx),
-        );
-        tilec_0.win_y1 = opj_uint_min(
-          tilec_0.y1 as u32,
-          opj_uint_ceildiv(p_tcd.win_y1, image_comp.dy),
-        );
+        tilec_0.win_x0 = uint_max(tilec_0.x0 as u32, uint_ceildiv(p_tcd.win_x0, image_comp.dx));
+        tilec_0.win_y0 = uint_max(tilec_0.y0 as u32, uint_ceildiv(p_tcd.win_y0, image_comp.dy));
+        tilec_0.win_x1 = uint_min(tilec_0.x1 as u32, uint_ceildiv(p_tcd.win_x1, image_comp.dx));
+        tilec_0.win_y1 = uint_min(tilec_0.y1 as u32, uint_ceildiv(p_tcd.win_y1, image_comp.dy));
         if tilec_0.win_x1 < tilec_0.win_x0 || tilec_0.win_y1 < tilec_0.win_y0 {
           /* We should not normally go there. The circumstance is when */
           /* the tile coordinates do not intersect the area of interest */
@@ -1403,28 +1390,28 @@ pub(crate) fn opj_tcd_decode_tile(
         resno = 0_u32;
         while resno < tilec_0.numresolutions {
           let res = &mut tilec_0.resolutions[resno as usize];
-          res.win_x0 = opj_uint_ceildivpow2(
+          res.win_x0 = uint_ceildivpow2(
             tilec_0.win_x0,
             tilec_0
               .numresolutions
               .wrapping_sub(1u32)
               .wrapping_sub(resno),
           );
-          res.win_y0 = opj_uint_ceildivpow2(
+          res.win_y0 = uint_ceildivpow2(
             tilec_0.win_y0,
             tilec_0
               .numresolutions
               .wrapping_sub(1u32)
               .wrapping_sub(resno),
           );
-          res.win_x1 = opj_uint_ceildivpow2(
+          res.win_x1 = uint_ceildivpow2(
             tilec_0.win_x1,
             tilec_0
               .numresolutions
               .wrapping_sub(1u32)
               .wrapping_sub(resno),
           );
-          res.win_y1 = opj_uint_ceildivpow2(
+          res.win_y1 = uint_ceildivpow2(
             tilec_0.win_y1,
             tilec_0
               .numresolutions
@@ -1438,11 +1425,11 @@ pub(crate) fn opj_tcd_decode_tile(
     }
   }
 
-  if opj_tcd_t2_decode(p_tcd, p_src, &mut l_data_read, p_manager, image, cp).is_err() {
+  if tcd_t2_decode(p_tcd, p_src, &mut l_data_read, p_manager, image, cp).is_err() {
     return Err(());
   }
   /*------------------TIER1-----------------*/
-  if opj_tcd_t1_decode(p_tcd, p_manager, image, cp, p_src).is_err() {
+  if tcd_t1_decode(p_tcd, p_manager, image, cp, p_src).is_err() {
     return Err(());
   }
 
@@ -1493,20 +1480,20 @@ pub(crate) fn opj_tcd_decode_tile(
     }
   }
   /*----------------DWT---------------------*/
-  if opj_tcd_dwt_decode(p_tcd, image, cp).is_err() {
+  if tcd_dwt_decode(p_tcd, image, cp).is_err() {
     return Err(());
   }
   /*----------------MCT-------------------*/
-  if opj_tcd_mct_decode(p_tcd, p_manager, image, cp).is_err() {
+  if tcd_mct_decode(p_tcd, p_manager, image, cp).is_err() {
     return Err(());
   }
-  if opj_tcd_dc_level_shift_decode(p_tcd, image, cp).is_err() {
+  if tcd_dc_level_shift_decode(p_tcd, image, cp).is_err() {
     return Err(());
   }
   /*---------------TILE-------------------*/
   Ok(()) /*(/ 8)*/
 }
-pub(crate) fn opj_tcd_update_tile_data(
+pub(crate) fn tcd_update_tile_data(
   p_tcd: &mut Tcd,
   mut p_dest: &mut [u8],
   image: &mut CoreImage,
@@ -1514,7 +1501,7 @@ pub(crate) fn opj_tcd_update_tile_data(
   {
     let mut p_dest_length = p_dest.len() as u32;
     let mut l_data_size = 0_u32;
-    l_data_size = opj_tcd_get_decoded_tile_size(p_tcd, true, image);
+    l_data_size = tcd_get_decoded_tile_size(p_tcd, true, image);
     if l_data_size == (2147483647u32).wrapping_mul(2u32).wrapping_add(1u32)
       || l_data_size > p_dest_length
     {
@@ -1664,7 +1651,7 @@ pub(crate) fn opj_tcd_update_tile_data(
 Free the memory allocated for encoding
 @param tcd TCD handle
 */
-fn opj_tcd_free_tile(mut p_tcd: &mut Tcd) {
+fn tcd_free_tile(mut p_tcd: &mut Tcd) {
   for l_tile_comp in p_tcd.tcd_image.tiles.comps.iter_mut() {
     for l_res in l_tile_comp.resolutions.iter_mut() {
       for l_band in l_res.bands.iter_mut() {
@@ -1683,7 +1670,7 @@ fn opj_tcd_free_tile(mut p_tcd: &mut Tcd) {
   }
   p_tcd.tcd_image.tiles.comps.clear();
 }
-fn opj_tcd_t2_decode(
+fn tcd_t2_decode(
   mut p_tcd: &mut Tcd,
   p_src_data: &mut [u8],
   p_data_read: &mut u32,
@@ -1691,8 +1678,8 @@ fn opj_tcd_t2_decode(
   image: &mut CoreImage,
   cp: &mut Cp,
 ) -> OpResult {
-  let mut t2 = opj_t2_create(image, cp);
-  if opj_t2_decode_packets(
+  let mut t2 = t2_create(image, cp);
+  if t2_decode_packets(
     p_tcd,
     &mut t2,
     p_tcd.tcd_tileno,
@@ -1708,7 +1695,7 @@ fn opj_tcd_t2_decode(
   /*---------------CLEAN-------------------*/
   Ok(())
 }
-fn opj_tcd_t1_decode(
+fn tcd_t1_decode(
   p_tcd: &mut Tcd,
   p_manager: &mut EventMgr,
   image: &mut CoreImage,
@@ -1738,7 +1725,7 @@ fn opj_tcd_t1_decode(
         minimum_num_resolutions: l_tilec.minimum_num_resolutions,
         compno: l_tilec.compno,
       };
-      opj_t1_decode_cblks(
+      t1_decode_cblks(
         &view,
         &tcp.tccps,
         &image.comps,
@@ -1757,8 +1744,8 @@ fn opj_tcd_t1_decode(
   }
   ret
 }
-fn opj_tcd_dwt_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OpResult {
-  // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
+fn tcd_dwt_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OpResult {
+  // SAFETY: `tcp`/`image` are set by tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
   let img_comps = &image.comps;
   /* Parallel across components: each tile component's inverse transform is
@@ -1781,9 +1768,9 @@ fn opj_tcd_dwt_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> Op
       let resno_decoded = img_comps[compno].resno_decoded.wrapping_add(1u32);
       let l_tile_comp = &mut p_tcd.tcd_image.tiles.comps[compno];
       let r = if tccps[compno].qmfbid == 1u32 {
-        opj_dwt_decode(whole_tile, l_tile_comp, resno_decoded)
+        dwt_decode(whole_tile, l_tile_comp, resno_decoded)
       } else {
-        opj_dwt_decode_real(whole_tile, l_tile_comp, resno_decoded)
+        dwt_decode_real(whole_tile, l_tile_comp, resno_decoded)
       };
       if r.is_err() {
         return Err(());
@@ -1799,7 +1786,7 @@ fn opj_tcd_dwt_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> Op
           return Ok(());
         }
         let resno_decoded = img_comps[compno].resno_decoded.wrapping_add(1u32);
-        opj_dwt_decode(whole_tile, l_tile_comp, resno_decoded)
+        dwt_decode(whole_tile, l_tile_comp, resno_decoded)
       },
     );
     if results.contains(&Err(())) {
@@ -1808,7 +1795,7 @@ fn opj_tcd_dwt_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> Op
     Ok(())
   }
 }
-fn opj_tcd_mct_decode(
+fn tcd_mct_decode(
   p_tcd: &mut Tcd,
   p_manager: &mut EventMgr,
   image: &mut CoreImage,
@@ -1941,7 +1928,7 @@ fn opj_tcd_mct_decode(
           });
           rest = r;
         }
-        if opj_mct_decode_custom(matrix, l_samples, &mut l_views, image.comps[0].sgnd).is_err() {
+        if mct_decode_custom(matrix, l_samples, &mut l_views, image.comps[0].sgnd).is_err() {
           return Err(());
         }
       } else {
@@ -1963,7 +1950,7 @@ fn opj_tcd_mct_decode(
         }
         {
           let mut l_views: Vec<&mut [f32]> = l_data.iter_mut().map(|v| &mut v[..]).collect();
-          if opj_mct_decode_custom(matrix, l_samples, &mut l_views, image.comps[0].sgnd).is_err() {
+          if mct_decode_custom(matrix, l_samples, &mut l_views, image.comps[0].sgnd).is_err() {
             return Err(());
           }
         }
@@ -2003,7 +1990,7 @@ fn opj_tcd_mct_decode(
       } else {
         c2[0].data_win.as_mut_i32(l_samples)
       };
-      opj_mct_decode(s0, s1, s2);
+      mct_decode(s0, s1, s2);
     } else {
       let (c0, rest) = comps.split_at_mut(1);
       let (c1, rest) = rest.split_at_mut(1);
@@ -2023,7 +2010,7 @@ fn opj_tcd_mct_decode(
       } else {
         c2[0].data_win.as_mut_f32(l_samples)
       };
-      opj_mct_decode_real(s0, s1, s2);
+      mct_decode_real(s0, s1, s2);
     }
   } else {
     event_msg!(
@@ -2035,8 +2022,8 @@ fn opj_tcd_mct_decode(
   }
   Ok(())
 }
-fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OpResult {
-  // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
+fn tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OpResult {
+  // SAFETY: `tcp`/`image` are set by tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
   let img_comps = &image.comps;
   let whole_tile = p_tcd.whole_tile_decoding;
@@ -2097,7 +2084,7 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mu
           for i in 0..l_width as usize {
             /* Note: could do the addition in i64 */
             let idx = j * row_stride + i;
-            data[idx] = opj_int_clamp(
+            data[idx] = int_clamp(
               data[idx].wrapping_add(l_tccp.m_dc_level_shift),
               l_min,
               l_max,
@@ -2124,8 +2111,8 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mu
               l_min
             } else {
               /* Do addition on int64 to avoid overflows */
-              let l_value_int = opj_lrintf(l_value);
-              opj_int64_clamp(
+              let l_value_int = lrintf(l_value);
+              int64_clamp(
                 l_value_int + l_tccp.m_dc_level_shift as i64,
                 l_min as i64,
                 l_max as i64,
@@ -2140,10 +2127,7 @@ fn opj_tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mu
   Ok(())
 }
 
-pub(crate) fn opj_tcd_get_encoder_input_buffer_size(
-  mut p_tcd: &mut Tcd,
-  image: &CoreImage,
-) -> usize {
+pub(crate) fn tcd_get_encoder_input_buffer_size(mut p_tcd: &mut Tcd, image: &CoreImage) -> usize {
   let mut l_data_size = 0_usize;
   let mut l_size_comp: u32 = 0;
   let mut l_remaining: u32 = 0;
@@ -2165,8 +2149,8 @@ pub(crate) fn opj_tcd_get_encoder_input_buffer_size(
   l_data_size
 }
 
-fn opj_tcd_dc_level_shift_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OpResult {
-  // SAFETY: `tcp` is set by opj_tcd_init and valid here.
+fn tcd_dc_level_shift_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OpResult {
+  // SAFETY: `tcp` is set by tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
   /* Parallel across components (each component shifts its own buffer). */
   par::for_each(&mut p_tcd.tcd_image.tiles.comps, |compno, l_tile_comp| {
@@ -2196,7 +2180,7 @@ fn opj_tcd_dc_level_shift_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OpResult {
   });
   Ok(())
 }
-fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OpResult {
+fn tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OpResult {
   let tcp = &cp.tcps[p_tcd.tcd_tileno as usize];
   let samples = ((p_tcd.tcd_image.tiles.comps[0].x1 - p_tcd.tcd_image.tiles.comps[0].x0) as usize)
     .wrapping_mul((p_tcd.tcd_image.tiles.comps[0].y1 - p_tcd.tcd_image.tiles.comps[0].y0) as usize);
@@ -2235,7 +2219,7 @@ fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> Op
         l_data.push(first[0].data.as_mut_i32(samples));
         rest = r;
       }
-      if opj_mct_encode_custom(matrix, samples, &mut l_data, image.comps[0].sgnd).is_err() {
+      if mct_encode_custom(matrix, samples, &mut l_data, image.comps[0].sgnd).is_err() {
         return Err(());
       }
     } else {
@@ -2260,7 +2244,7 @@ fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> Op
       }
       {
         let mut l_views: Vec<&mut [i32]> = l_scratch.iter_mut().map(|v| &mut v[..]).collect();
-        if opj_mct_encode_custom(matrix, samples, &mut l_views, image.comps[0].sgnd).is_err() {
+        if mct_encode_custom(matrix, samples, &mut l_views, image.comps[0].sgnd).is_err() {
           return Err(());
         }
       }
@@ -2284,7 +2268,7 @@ fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> Op
     let (c0, rest) = comps.split_at_mut(1);
     let (c1, rest) = rest.split_at_mut(1);
     let (c2, _) = rest.split_at_mut(1);
-    opj_mct_encode_real(
+    mct_encode_real(
       c0[0].data.as_mut_f32(samples),
       c1[0].data.as_mut_f32(samples),
       c2[0].data.as_mut_f32(samples),
@@ -2293,7 +2277,7 @@ fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> Op
     let (c0, rest) = comps.split_at_mut(1);
     let (c1, rest) = rest.split_at_mut(1);
     let (c2, _) = rest.split_at_mut(1);
-    opj_mct_encode(
+    mct_encode(
       c0[0].data.as_mut_i32(samples),
       c1[0].data.as_mut_i32(samples),
       c2[0].data.as_mut_i32(samples),
@@ -2301,8 +2285,8 @@ fn opj_tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> Op
   }
   Ok(())
 }
-fn opj_tcd_dwt_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OpResult {
-  // SAFETY: `tcp` is set by opj_tcd_init and valid here.
+fn tcd_dwt_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OpResult {
+  // SAFETY: `tcp` is set by tcd_init and valid here.
   let tccps = &cp.tcps[p_tcd.tcd_tileno as usize].tccps;
   /* Parallel across components (each forward transform is independent). */
   let results: Vec<crate::types::OpResult> = par::map_collect(
@@ -2311,9 +2295,9 @@ fn opj_tcd_dwt_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OpResult {
     |compno, l_tile_comp| {
       let qmfbid = tccps[compno].qmfbid;
       if qmfbid == 1u32 {
-        opj_dwt_encode(l_tile_comp)
+        dwt_encode(l_tile_comp)
       } else if qmfbid == 0u32 {
-        opj_dwt_encode_real(l_tile_comp)
+        dwt_encode_real(l_tile_comp)
       } else {
         Ok(())
       }
@@ -2324,17 +2308,17 @@ fn opj_tcd_dwt_encode(p_tcd: &mut Tcd, cp: &mut Cp) -> OpResult {
   }
   Ok(())
 }
-fn opj_tcd_t1_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OpResult {
-  // SAFETY: `tcp`/`image` are set by opj_tcd_init and valid here.
+fn tcd_t1_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OpResult {
+  // SAFETY: `tcp`/`image` are set by tcd_init and valid here.
   let l_tcp = &cp.tcps[p_tcd.tcd_tileno as usize];
   let mut l_mct_numcomps = 0u32;
   let l_mct_norms: Option<&[f64]> = if l_tcp.mct == 1u32 {
     l_mct_numcomps = 3u32;
     /* irreversible encoding */
     if l_tcp.tccps[0].qmfbid == 0u32 {
-      Some(opj_mct_get_mct_norms_real())
+      Some(mct_get_mct_norms_real())
     } else {
-      Some(opj_mct_get_mct_norms())
+      Some(mct_get_mct_norms())
     }
   } else {
     l_mct_numcomps = image.numcomps;
@@ -2345,14 +2329,14 @@ fn opj_tcd_t1_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OpR
       Some(&l_tcp.mct_norms[..])
     }
   };
-  opj_t1_encode_cblks(
+  t1_encode_cblks(
     &mut p_tcd.tcd_image.tiles,
     l_tcp,
     l_mct_norms,
     l_mct_numcomps,
   )
 }
-fn opj_tcd_t2_encode(
+fn tcd_t2_encode(
   mut p_tcd: &mut Tcd,
   mut dest_data: &mut [u8],
   mut p_data_written: &mut u32,
@@ -2363,8 +2347,8 @@ fn opj_tcd_t2_encode(
   cp: &mut Cp,
 ) -> OpResult {
   let numlayers = cp.tcps[p_tcd.tcd_tileno as usize].numlayers;
-  let mut t2 = opj_t2_create(image, cp);
-  if opj_t2_encode_packets(
+  let mut t2 = t2_create(image, cp);
+  if t2_encode_packets(
     &mut t2,
     p_tcd.tcd_tileno,
     &mut p_tcd.tcd_image.tiles,
@@ -2386,7 +2370,7 @@ fn opj_tcd_t2_encode(
   /*---------------CLEAN-------------------*/
   Ok(())
 }
-fn opj_tcd_rate_allocate_encode(
+fn tcd_rate_allocate_encode(
   mut p_tcd: &mut Tcd,
   mut dest_data: &mut [u8],
   mut p_max_dest_size: u32,
@@ -2402,7 +2386,7 @@ fn opj_tcd_rate_allocate_encode(
       || cp.m_specific_param.m_enc.m_quality_layer_alloc_strategy
         == J2K_QUALITY_LAYER_ALLOCATION_STRATEGY::FIXED_DISTORTION_RATIO
     {
-      if opj_tcd_rateallocate(
+      if tcd_rateallocate(
         p_tcd,
         &mut dest_data[..p_max_dest_size as usize],
         &mut l_nb_written,
@@ -2417,22 +2401,18 @@ fn opj_tcd_rate_allocate_encode(
       }
     } else {
       /* Fixed layer allocation */
-      opj_tcd_rateallocate_fixed(p_tcd, image, cp); /*(/ 8)*/
+      tcd_rateallocate_fixed(p_tcd, image, cp); /*(/ 8)*/
     } /* (%8) */
     Ok(())
   }
 }
 
-pub(crate) fn opj_tcd_copy_tile_data(
-  p_tcd: &mut Tcd,
-  mut p_src: &[u8],
-  image: &CoreImage,
-) -> OpResult {
+pub(crate) fn tcd_copy_tile_data(p_tcd: &mut Tcd, mut p_src: &[u8], image: &CoreImage) -> OpResult {
   let mut l_data_size = 0_usize;
   let mut l_size_comp: u32 = 0;
   let mut l_remaining: u32 = 0;
   let mut l_nb_elem: usize = 0;
-  l_data_size = opj_tcd_get_encoder_input_buffer_size(p_tcd, image);
+  l_data_size = tcd_get_encoder_input_buffer_size(p_tcd, image);
   if l_data_size != p_src.len() {
     return Err(());
   }
@@ -2493,7 +2473,7 @@ pub(crate) fn opj_tcd_copy_tile_data(
   Ok(())
 }
 
-pub(crate) fn opj_tcd_is_band_empty(band: &TcdBand) -> bool {
+pub(crate) fn tcd_is_band_empty(band: &TcdBand) -> bool {
   band.x1 - band.x0 == 0i32 || band.y1 - band.y0 == 0i32
 }
 
@@ -2512,7 +2492,7 @@ pub(crate) struct TcdTilecView {
   pub compno: u32,
 }
 
-pub(crate) fn opj_tcd_is_subband_area_of_interest(
+pub(crate) fn tcd_is_subband_area_of_interest(
   tilec: &TcdTilecView,
   tccp: &Tccp,
   image_comps: &[CoreImageComp],
@@ -2531,28 +2511,16 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
     /* since F.2 and F.3 would lead to 4 instead, so the current 3 might be */
     /* needed to be bumped to 4, in case inconsistencies are found while */
     /* decoding parts of irreversible coded images. */
-    /* See opj_dwt_decode_partial_53 and opj_dwt_decode_partial_97 as well */
+    /* See dwt_decode_partial_53 and dwt_decode_partial_97 as well */
     let compno = tilec.compno as usize;
     let image_comp = &image_comps[compno];
     let mut filter_margin = if tccp.qmfbid == 1u32 { 2i32 } else { 3i32 } as u32;
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
-    let mut tcx0 = opj_uint_max(
-      tilec.x0 as u32,
-      opj_uint_ceildiv(tilec.win[0], image_comp.dx),
-    );
-    let mut tcy0 = opj_uint_max(
-      tilec.y0 as u32,
-      opj_uint_ceildiv(tilec.win[1], image_comp.dy),
-    );
-    let mut tcx1 = opj_uint_min(
-      tilec.x1 as u32,
-      opj_uint_ceildiv(tilec.win[2], image_comp.dx),
-    );
-    let mut tcy1 = opj_uint_min(
-      tilec.y1 as u32,
-      opj_uint_ceildiv(tilec.win[3], image_comp.dy),
-    );
+    let mut tcx0 = uint_max(tilec.x0 as u32, uint_ceildiv(tilec.win[0], image_comp.dx));
+    let mut tcy0 = uint_max(tilec.y0 as u32, uint_ceildiv(tilec.win[1], image_comp.dy));
+    let mut tcx1 = uint_min(tilec.x1 as u32, uint_ceildiv(tilec.win[2], image_comp.dx));
+    let mut tcy1 = uint_min(tilec.y1 as u32, uint_ceildiv(tilec.win[3], image_comp.dy));
     /* Compute number of decomposition for this band. See table F-1 */
     let mut nb = if resno == 0u32 {
       tilec.numresolutions.wrapping_sub(1u32)
@@ -2568,7 +2536,7 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
     } else if tcx0 <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(x0b) {
       0u32
     } else {
-      opj_uint_ceildivpow2(
+      uint_ceildivpow2(
         tcx0.wrapping_sub(((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(x0b)),
         nb,
       )
@@ -2578,7 +2546,7 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
     } else if tcy0 <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(y0b) {
       0u32
     } else {
-      opj_uint_ceildivpow2(
+      uint_ceildivpow2(
         tcy0.wrapping_sub(((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(y0b)),
         nb,
       )
@@ -2588,7 +2556,7 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
     } else if tcx1 <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(x0b) {
       0u32
     } else {
-      opj_uint_ceildivpow2(
+      uint_ceildivpow2(
         tcx1.wrapping_sub(((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(x0b)),
         nb,
       )
@@ -2598,7 +2566,7 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
     } else if tcy1 <= ((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(y0b) {
       0u32
     } else {
-      opj_uint_ceildivpow2(
+      uint_ceildivpow2(
         tcy1.wrapping_sub(((1u32) << nb.wrapping_sub(1u32)).wrapping_mul(y0b)),
         nb,
       )
@@ -2614,8 +2582,8 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
     } else {
       tby0 = (tby0 as core::ffi::c_uint).wrapping_sub(filter_margin)
     }
-    tbx1 = opj_uint_adds(tbx1, filter_margin);
-    tby1 = opj_uint_adds(tby1, filter_margin);
+    tbx1 = uint_adds(tbx1, filter_margin);
+    tby1 = uint_adds(tby1, filter_margin);
     intersects = band_x0 < tbx1 && band_y0 < tby1 && band_x1 > tbx0 && band_y1 > tby0;
     intersects
   }
@@ -2627,28 +2595,16 @@ pub(crate) fn opj_tcd_is_subband_area_of_interest(
  * @param compno Component number
  * @return OPJ_TRUE whether the tile componenent is fully decoded
  */
-fn opj_tcd_is_whole_tilecomp_decoding(p_tcd: &mut Tcd, compno: u32, image: &mut CoreImage) -> bool {
+fn tcd_is_whole_tilecomp_decoding(p_tcd: &mut Tcd, compno: u32, image: &mut CoreImage) -> bool {
   {
     let tilec = &p_tcd.tcd_image.tiles.comps[compno as usize];
     let image_comp = &image.comps[compno as usize];
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
-    let mut tcx0 = opj_uint_max(
-      tilec.x0 as u32,
-      opj_uint_ceildiv(p_tcd.win_x0, image_comp.dx),
-    );
-    let mut tcy0 = opj_uint_max(
-      tilec.y0 as u32,
-      opj_uint_ceildiv(p_tcd.win_y0, image_comp.dy),
-    );
-    let mut tcx1 = opj_uint_min(
-      tilec.x1 as u32,
-      opj_uint_ceildiv(p_tcd.win_x1, image_comp.dx),
-    );
-    let mut tcy1 = opj_uint_min(
-      tilec.y1 as u32,
-      opj_uint_ceildiv(p_tcd.win_y1, image_comp.dy),
-    );
+    let mut tcx0 = uint_max(tilec.x0 as u32, uint_ceildiv(p_tcd.win_x0, image_comp.dx));
+    let mut tcy0 = uint_max(tilec.y0 as u32, uint_ceildiv(p_tcd.win_y0, image_comp.dy));
+    let mut tcx1 = uint_min(tilec.x1 as u32, uint_ceildiv(p_tcd.win_x1, image_comp.dx));
+    let mut tcy1 = uint_min(tilec.y1 as u32, uint_ceildiv(p_tcd.win_y1, image_comp.dy));
     let mut shift = tilec
       .numresolutions
       .wrapping_sub(tilec.minimum_num_resolutions);

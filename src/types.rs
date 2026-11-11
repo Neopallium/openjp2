@@ -414,11 +414,11 @@ pub(crate) struct Tccp {
   pub cblksty: u32,
   pub qmfbid: u32,
   pub qntsty: u32,
-  pub stepsizes: [Stepsize; OPJ_J2K_MAXBANDS as usize],
+  pub stepsizes: [Stepsize; J2K_MAXBANDS as usize],
   pub numgbits: u32,
   pub roishift: i32,
-  pub prcw: [u32; OPJ_J2K_MAXRLVLS as usize],
-  pub prch: [u32; OPJ_J2K_MAXRLVLS as usize],
+  pub prcw: [u32; J2K_MAXRLVLS as usize],
+  pub prch: [u32; J2K_MAXRLVLS as usize],
   pub m_dc_level_shift: i32,
 }
 impl Default for Tccp {
@@ -431,11 +431,11 @@ impl Default for Tccp {
       cblksty: 0,
       qmfbid: 0,
       qntsty: 0,
-      stepsizes: [Default::default(); OPJ_J2K_MAXBANDS as usize],
+      stepsizes: [Default::default(); J2K_MAXBANDS as usize],
       numgbits: 0,
       roishift: 0,
-      prcw: [0; OPJ_J2K_MAXRLVLS as usize],
-      prch: [0; OPJ_J2K_MAXRLVLS as usize],
+      prcw: [0; J2K_MAXRLVLS as usize],
+      prch: [0; J2K_MAXRLVLS as usize],
       m_dc_level_shift: 0,
     }
   }
@@ -1057,7 +1057,7 @@ pub(crate) struct J2kEnc {
 
 impl J2kEnc {
   /* Grow-only scratch buffer used to assemble a marker segment before it is written out.
-  Mirrors the C `opj_realloc` of `m_header_tile_data`; the returned pointer is valid until
+  Mirrors the C `realloc_` of `m_header_tile_data`; the returned pointer is valid until
   the next call. */
   pub(crate) fn header_tile_data(&mut self, size: u32) -> *mut u8 {
     if size as usize > self.m_header_tile_data.len() {
@@ -1109,7 +1109,7 @@ pub(crate) struct J2kDec {
 
 impl J2kDec {
   /* Grow-only scratch buffer holding the marker segment currently being read. Mirrors the
-  C `opj_realloc` of `m_header_data`. */
+  C `realloc_` of `m_header_data`. */
   pub(crate) fn header_data(&mut self, size: u32) -> &mut [u8] {
     if size as usize > self.m_header_data.len() {
       self.m_header_data.resize(size as usize, 0);

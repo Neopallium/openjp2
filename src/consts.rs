@@ -1,13 +1,13 @@
-/// Stream status flags (the C's `opj_stream_status` values).
+/// Stream status flags (the C's `stream_status` values).
 pub mod cio {
   /// Stream is writable.
-  pub const OPJ_STREAM_STATUS_OUTPUT: u32 = 0x1u32;
+  pub const STREAM_STATUS_OUTPUT: u32 = 0x1u32;
   /// Stream is readable.
-  pub const OPJ_STREAM_STATUS_INPUT: u32 = 0x2u32;
+  pub const STREAM_STATUS_INPUT: u32 = 0x2u32;
   /// The stream end has been reached.
-  pub const OPJ_STREAM_STATUS_END: u32 = 0x4u32;
+  pub const STREAM_STATUS_END: u32 = 0x4u32;
   /// A stream error occurred.
-  pub const OPJ_STREAM_STATUS_ERROR: u32 = 0x8u32;
+  pub const STREAM_STATUS_ERROR: u32 = 0x8u32;
 }
 
 /// Event types and constants (ERROR/WARNING/INFO).
@@ -373,15 +373,16 @@ pub use openjp2_ctypes::consts::opj;
 /// Shared defaults (code-block size, progression, resolutions).
 pub mod common {
   /// Margin for a fake FFFF marker
-  pub const OPJ_COMMON_CBLK_DATA_EXTRA: u32 = 2;
+  pub const COMMON_CBLK_DATA_EXTRA: u32 = 2;
   /// Default code-block width.
-  pub const OPJ_COMP_PARAM_DEFAULT_CBLOCKW: u32 = 64;
+  pub const COMP_PARAM_DEFAULT_CBLOCKW: u32 = 64;
   /// Default code-block height.
-  pub const OPJ_COMP_PARAM_DEFAULT_CBLOCKH: u32 = 64;
+  pub const COMP_PARAM_DEFAULT_CBLOCKH: u32 = 64;
   /// Default progression order.
-  pub const OPJ_COMP_PARAM_DEFAULT_PROG_ORDER: i32 = crate::openjpeg::OPJ_LRCP;
+  pub const COMP_PARAM_DEFAULT_PROG_ORDER: i32 =
+    crate::j2k::ProgressionOrder::LRCP as core::ffi::c_int;
   /// Default decomposition levels.
-  pub const OPJ_COMP_PARAM_DEFAULT_NUMRESOLUTION: u32 = 6;
+  pub const COMP_PARAM_DEFAULT_NUMRESOLUTION: u32 = 6;
 }
 
 /// Tier-1 flags and context indices (significance/refinement bit
@@ -550,7 +551,17 @@ pub use common::*;
 pub use event::*;
 pub use j2k::*;
 pub use mqc::*;
-pub use opj::*;
+// Native names for the `openjpeg.h` constants the codec modules use
+// (the C spellings stay in openjp2-ctypes; the core is C-name-free).
+pub const J2K_MAXRLVLS: u32 = 33;
+pub const J2K_MAXBANDS: u32 = 3 * J2K_MAXRLVLS - 2;
+pub const PROFILE_CINEMA_2K: u16 = 3;
+/// The codec stream buffer size (the C's `OPJ_J2K_STREAM_CHUNK_SIZE`).
+pub const J2K_STREAM_CHUNK_SIZE: u32 = 0x100000;
+/// Dump flags for `dump_codec` (the C's `OPJ_IMG_INFO` etc.).
+pub const IMG_INFO: u32 = 1;
+pub const J2K_MH_INFO: u32 = 2;
+pub const J2K_MH_IND: u32 = 16;
 pub use t1::*;
 
 #[cfg(test)]

@@ -32,7 +32,7 @@ pub struct PiComp {
 pub struct PiIterator {
   pub tp_on: u8,
   /* Every pi element for a tile shares this one allocation
-  (opj_pi_create_decode chains `include = (prev)->include.clone()`); the Rc
+  (pi_create_decode chains `include = (prev)->include.clone()`); the Rc
   refcount keeps it alive until the last element is dropped. All accesses
   bounds-check against include_size. */
   pub include: Rc<[Cell<i16>]>,
@@ -59,7 +59,7 @@ pub struct PiIterator {
   pub dy: u32,
 }
 #[inline]
-fn opj_uint_ceildivpow2(mut a: u32, mut b: u32) -> u32 {
+fn uint_ceildivpow2(mut a: u32, mut b: u32) -> u32 {
   ((a as u64).wrapping_add(1_u64 << b).wrapping_sub(1u64) >> b) as u32
 }
 
@@ -116,14 +116,14 @@ Get next packet in layer-resolution-component-precinct order.
    local functions
 ==========================================================
 */
-fn opj_pi_next_lrcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
+fn pi_next_lrcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   let mut current_block: u64;
   let mut index = 0_u32;
   if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32) {
     event_msg!(
       manager,
       EVT_ERROR,
-      "opj_pi_next_lrcp(): invalid compno0/compno1\n",
+      "pi_next_lrcp(): invalid compno0/compno1\n",
     );
     return Err(());
   }
@@ -226,14 +226,14 @@ Get next packet in resolution-layer-component-precinct order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
+fn pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   let mut current_block: u64;
   let mut index = 0_u32;
   if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32) {
     event_msg!(
       manager,
       EVT_ERROR,
-      "opj_pi_next_rlcp(): invalid compno0/compno1\n",
+      "pi_next_rlcp(): invalid compno0/compno1\n",
     );
     return Err(());
   }
@@ -330,7 +330,7 @@ Get next packet in resolution-precinct-component-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
+fn pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   let mut levelno: u32 = 0;
   let mut trx0: u32 = 0;
   let mut try0: u32 = 0;
@@ -346,7 +346,7 @@ fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
     event_msg!(
       manager,
       EVT_ERROR,
-      "opj_pi_next_rpcl(): invalid compno0/compno1\n",
+      "pi_next_rpcl(): invalid compno0/compno1\n",
     );
     return Err(());
   }
@@ -391,11 +391,7 @@ fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
                 .wrapping_sub(1u32)
                 .wrapping_sub(resno),
           );
-          pi.dx = if pi.dx == 0 {
-            dx
-          } else {
-            opj_uint_min(pi.dx, dx)
-          }
+          pi.dx = if pi.dx == 0 { dx } else { uint_min(pi.dx, dx) }
         }
         if pi.comps[compno as usize].resolutions[resno as usize]
           .pdy
@@ -424,11 +420,7 @@ fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
                 .wrapping_sub(1u32)
                 .wrapping_sub(resno),
           );
-          pi.dy = if pi.dy == 0 {
-            dy
-          } else {
-            opj_uint_min(pi.dy, dy)
-          }
+          pi.dy = if pi.dy == 0 { dy } else { uint_min(pi.dy, dy) }
         }
         resno += 1;
       }
@@ -533,10 +525,10 @@ fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
             continue;
           }
 
-          trx0 = opj_uint64_ceildiv_res_uint32(pi.tx0 as u64, dx << levelno);
-          try0 = opj_uint64_ceildiv_res_uint32(pi.ty0 as u64, dy << levelno);
-          trx1 = opj_uint64_ceildiv_res_uint32(pi.tx1 as u64, dx << levelno);
-          try1 = opj_uint64_ceildiv_res_uint32(pi.ty1 as u64, dy << levelno);
+          trx0 = uint64_ceildiv_res_uint32(pi.tx0 as u64, dx << levelno);
+          try0 = uint64_ceildiv_res_uint32(pi.ty0 as u64, dy << levelno);
+          trx1 = uint64_ceildiv_res_uint32(pi.tx1 as u64, dx << levelno);
+          try1 = uint64_ceildiv_res_uint32(pi.ty1 as u64, dy << levelno);
           rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize]
             .pdx
             .wrapping_add(levelno);
@@ -572,17 +564,17 @@ fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
             current_block = 10891380440665537214;
             continue;
           }
-          prci = opj_uint_floordivpow2(
-            opj_uint64_ceildiv_res_uint32(pi.x as u64, dx << levelno),
+          prci = uint_floordivpow2(
+            uint64_ceildiv_res_uint32(pi.x as u64, dx << levelno),
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
-          ) - opj_uint_floordivpow2(
+          ) - uint_floordivpow2(
             trx0,
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
           );
-          prcj = opj_uint_floordivpow2(
-            opj_uint64_ceildiv_res_uint32(pi.y as u64, dy << levelno),
+          prcj = uint_floordivpow2(
+            uint64_ceildiv_res_uint32(pi.y as u64, dy << levelno),
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
-          ) - opj_uint_floordivpow2(
+          ) - uint_floordivpow2(
             try0,
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
           );
@@ -607,7 +599,7 @@ Get next packet in precinct-component-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
+fn pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   let mut levelno: u32 = 0;
   let mut trx0: u32 = 0;
   let mut try0: u32 = 0;
@@ -623,7 +615,7 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
     event_msg!(
       manager,
       EVT_ERROR,
-      "opj_pi_next_pcrl(): invalid compno0/compno1\n",
+      "pi_next_pcrl(): invalid compno0/compno1\n",
     );
     return Err(());
   }
@@ -668,11 +660,7 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
                 .wrapping_sub(1u32)
                 .wrapping_sub(resno),
           );
-          pi.dx = if pi.dx == 0 {
-            dx
-          } else {
-            opj_uint_min(pi.dx, dx)
-          }
+          pi.dx = if pi.dx == 0 { dx } else { uint_min(pi.dx, dx) }
         }
         if pi.comps[compno as usize].resolutions[resno as usize]
           .pdy
@@ -701,11 +689,7 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
                 .wrapping_sub(1u32)
                 .wrapping_sub(resno),
           );
-          pi.dy = if pi.dy == 0 {
-            dy
-          } else {
-            opj_uint_min(pi.dy, dy)
-          }
+          pi.dy = if pi.dy == 0 { dy } else { uint_min(pi.dy, dy) }
         }
         resno += 1;
       }
@@ -787,7 +771,7 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
             }
           }
         }
-        if pi.resno < opj_uint_min(pi.poc.resno1, pi.comps[pi.compno as usize].numresolutions) {
+        if pi.resno < uint_min(pi.poc.resno1, pi.comps[pi.compno as usize].numresolutions) {
           levelno = 0;
           trx0 = 0;
           try0 = 0;
@@ -808,19 +792,19 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
             continue;
           }
 
-          trx0 = opj_uint64_ceildiv_res_uint32(
+          trx0 = uint64_ceildiv_res_uint32(
             pi.tx0 as u64,
             (pi.comps[pi.compno as usize].dx as u64) << levelno,
           );
-          try0 = opj_uint64_ceildiv_res_uint32(
+          try0 = uint64_ceildiv_res_uint32(
             pi.ty0 as u64,
             (pi.comps[pi.compno as usize].dy as u64) << levelno,
           );
-          trx1 = opj_uint64_ceildiv_res_uint32(
+          trx1 = uint64_ceildiv_res_uint32(
             pi.tx1 as u64,
             (pi.comps[pi.compno as usize].dx as u64) << levelno,
           );
-          try1 = opj_uint64_ceildiv_res_uint32(
+          try1 = uint64_ceildiv_res_uint32(
             pi.ty1 as u64,
             (pi.comps[pi.compno as usize].dy as u64) << levelno,
           );
@@ -862,23 +846,23 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
             current_block = 15512526488502093901;
             continue;
           }
-          prci = opj_uint_floordivpow2(
-            opj_uint64_ceildiv_res_uint32(
+          prci = uint_floordivpow2(
+            uint64_ceildiv_res_uint32(
               pi.x as u64,
               (pi.comps[pi.compno as usize].dx as u64) << levelno,
             ),
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
-          ) - opj_uint_floordivpow2(
+          ) - uint_floordivpow2(
             trx0,
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
           );
-          prcj = opj_uint_floordivpow2(
-            opj_uint64_ceildiv_res_uint32(
+          prcj = uint_floordivpow2(
+            uint64_ceildiv_res_uint32(
               pi.y as u64,
               (pi.comps[pi.compno as usize].dy as u64) << levelno,
             ),
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
-          ) - opj_uint_floordivpow2(
+          ) - uint_floordivpow2(
             try0,
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
           );
@@ -902,7 +886,7 @@ Get next packet in component-precinct-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
+fn pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   let mut resno: u32 = 0;
   let mut levelno: u32 = 0;
   let mut trx0: u32 = 0;
@@ -919,7 +903,7 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
     event_msg!(
       manager,
       EVT_ERROR,
-      "opj_pi_next_cprl(): invalid compno0/compno1\n",
+      "pi_next_cprl(): invalid compno0/compno1\n",
     );
     return Err(());
   }
@@ -974,11 +958,7 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
                   .wrapping_sub(1u32)
                   .wrapping_sub(resno),
             );
-            pi.dx = if pi.dx == 0 {
-              dx
-            } else {
-              opj_uint_min(pi.dx, dx)
-            }
+            pi.dx = if pi.dx == 0 { dx } else { uint_min(pi.dx, dx) }
           }
           if pi.comps[pi.compno as usize].resolutions[resno as usize]
             .pdy
@@ -1007,11 +987,7 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
                   .wrapping_sub(1u32)
                   .wrapping_sub(resno),
             );
-            pi.dy = if pi.dy == 0 {
-              dy
-            } else {
-              opj_uint_min(pi.dy, dy)
-            }
+            pi.dy = if pi.dy == 0 { dy } else { uint_min(pi.dy, dy) }
           }
           resno += 1;
         }
@@ -1077,7 +1053,7 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
             }
           }
         }
-        if pi.resno < opj_uint_min(pi.poc.resno1, pi.comps[pi.compno as usize].numresolutions) {
+        if pi.resno < uint_min(pi.poc.resno1, pi.comps[pi.compno as usize].numresolutions) {
           levelno = 0;
           trx0 = 0;
           try0 = 0;
@@ -1098,19 +1074,19 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
             continue;
           }
 
-          trx0 = opj_uint64_ceildiv_res_uint32(
+          trx0 = uint64_ceildiv_res_uint32(
             pi.tx0 as u64,
             (pi.comps[pi.compno as usize].dx as u64) << levelno,
           );
-          try0 = opj_uint64_ceildiv_res_uint32(
+          try0 = uint64_ceildiv_res_uint32(
             pi.ty0 as u64,
             (pi.comps[pi.compno as usize].dy as u64) << levelno,
           );
-          trx1 = opj_uint64_ceildiv_res_uint32(
+          trx1 = uint64_ceildiv_res_uint32(
             pi.tx1 as u64,
             (pi.comps[pi.compno as usize].dx as u64) << levelno,
           );
-          try1 = opj_uint64_ceildiv_res_uint32(
+          try1 = uint64_ceildiv_res_uint32(
             pi.ty1 as u64,
             (pi.comps[pi.compno as usize].dy as u64) << levelno,
           );
@@ -1152,23 +1128,23 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
             current_block = 3123434771885419771;
             continue;
           }
-          prci = opj_uint_floordivpow2(
-            opj_uint64_ceildiv_res_uint32(
+          prci = uint_floordivpow2(
+            uint64_ceildiv_res_uint32(
               pi.x as u64,
               (pi.comps[pi.compno as usize].dx as u64) << levelno,
             ),
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
-          ) - opj_uint_floordivpow2(
+          ) - uint_floordivpow2(
             trx0,
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
           );
-          prcj = opj_uint_floordivpow2(
-            opj_uint64_ceildiv_res_uint32(
+          prcj = uint_floordivpow2(
+            uint64_ceildiv_res_uint32(
               pi.y as u64,
               (pi.comps[pi.compno as usize].dy as u64) << levelno,
             ),
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
-          ) - opj_uint_floordivpow2(
+          ) - uint_floordivpow2(
             try0,
             pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
           );
@@ -1204,7 +1180,7 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
  * @param   p_dx_min            pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
  * @param   p_dy_min            pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  */
-pub(crate) fn opj_get_encoding_parameters(
+pub(crate) fn get_encoding_parameters(
   p_image: &mut CoreImage,
   p_cp: &Cp,
   p_tileno: u32,
@@ -1236,11 +1212,11 @@ pub(crate) fn opj_get_encoding_parameters(
   q = p_tileno.wrapping_div(p_cp.tw);
   /* find extent of tile */
   l_tx0 = p_cp.tx0.wrapping_add(p.wrapping_mul(p_cp.tdx)); /* can't be greater than p_image->x1 so won't overflow */
-  *p_tx0 = opj_uint_max(l_tx0, p_image.x0); /* can't be greater than p_image->y1 so won't overflow */
-  *p_tx1 = opj_uint_min(opj_uint_adds(l_tx0, p_cp.tdx), p_image.x1);
+  *p_tx0 = uint_max(l_tx0, p_image.x0); /* can't be greater than p_image->y1 so won't overflow */
+  *p_tx1 = uint_min(uint_adds(l_tx0, p_cp.tdx), p_image.x1);
   l_ty0 = p_cp.ty0.wrapping_add(q.wrapping_mul(p_cp.tdy));
-  *p_ty0 = opj_uint_max(l_ty0, p_image.y0);
-  *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, p_cp.tdy), p_image.y1);
+  *p_ty0 = uint_max(l_ty0, p_image.y0);
+  *p_ty1 = uint_min(uint_adds(l_ty0, p_cp.tdy), p_image.y1);
   /* max precision is 0 (can only grow) */
   *p_max_prec = 0_u32;
   *p_max_res = 0_u32;
@@ -1270,10 +1246,10 @@ pub(crate) fn opj_get_encoding_parameters(
     let mut l_tcy1: u32 = 0;
     let l_tccp = &tcp.tccps[compno as usize];
     let l_img_comp = &p_image.comps[compno as usize];
-    l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp.dx);
-    l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp.dy);
-    l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp.dx);
-    l_tcy1 = opj_uint_ceildiv(*p_ty1, l_img_comp.dy);
+    l_tcx0 = uint_ceildiv(*p_tx0, l_img_comp.dx);
+    l_tcy0 = uint_ceildiv(*p_ty0, l_img_comp.dy);
+    l_tcx1 = uint_ceildiv(*p_tx1, l_img_comp.dx);
+    l_tcy1 = uint_ceildiv(*p_ty1, l_img_comp.dy);
     if l_tccp.numresolutions > *p_max_res {
       *p_max_res = l_tccp.numresolutions
     }
@@ -1291,21 +1267,21 @@ pub(crate) fn opj_get_encoding_parameters(
       l_dy = l_img_comp.dy as u64 * ((1u64) << (l_pdy + l_tccp.numresolutions - 1u32 - resno));
       /* take the minimum size for dx for each comp and resolution */
       if l_dx <= u32::MAX as u64 {
-        *p_dx_min = opj_uint_min(*p_dx_min, l_dx as u32);
+        *p_dx_min = uint_min(*p_dx_min, l_dx as u32);
       }
       if l_dy <= u32::MAX as u64 {
-        *p_dy_min = opj_uint_min(*p_dy_min, l_dy as u32);
+        *p_dy_min = uint_min(*p_dy_min, l_dy as u32);
       }
       /* various calculations of extents */
       l_level_no = l_tccp.numresolutions.wrapping_sub(1u32).wrapping_sub(resno);
-      l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
-      l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
-      l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
-      l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
-      l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
-      l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
-      l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
-      py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
+      l_rx0 = uint_ceildivpow2(l_tcx0, l_level_no);
+      l_ry0 = uint_ceildivpow2(l_tcy0, l_level_no);
+      l_rx1 = uint_ceildivpow2(l_tcx1, l_level_no);
+      l_ry1 = uint_ceildivpow2(l_tcy1, l_level_no);
+      l_px0 = uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
+      l_py0 = uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
+      l_px1 = uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
+      py1 = uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
       l_pw = if l_rx0 == l_rx1 {
         0u32
       } else {
@@ -1347,7 +1323,7 @@ pub(crate) fn opj_get_encoding_parameters(
  * @param   p_dy_min        pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  * @param   p_resolutions   pointer to an area corresponding to the one described above.
  */
-pub(crate) fn opj_get_all_encoding_parameters(
+pub(crate) fn get_all_encoding_parameters(
   p_image: &mut CoreImage,
   p_cp: &Cp,
   tileno: u32,
@@ -1380,11 +1356,11 @@ pub(crate) fn opj_get_all_encoding_parameters(
   q = tileno.wrapping_div(p_cp.tw);
   /* here calculation of tx0, tx1, ty0, ty1, maxprec, l_dx and l_dy */
   l_tx0 = p_cp.tx0.wrapping_add(p.wrapping_mul(p_cp.tdx)); /* can't be greater than p_image->x1 so won't overflow */
-  *p_tx0 = opj_uint_max(l_tx0, p_image.x0); /* can't be greater than p_image->y1 so won't overflow */
-  *p_tx1 = opj_uint_min(opj_uint_adds(l_tx0, p_cp.tdx), p_image.x1);
+  *p_tx0 = uint_max(l_tx0, p_image.x0); /* can't be greater than p_image->y1 so won't overflow */
+  *p_tx1 = uint_min(uint_adds(l_tx0, p_cp.tdx), p_image.x1);
   l_ty0 = p_cp.ty0.wrapping_add(q.wrapping_mul(p_cp.tdy));
-  *p_ty0 = opj_uint_max(l_ty0, p_image.y0);
-  *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, p_cp.tdy), p_image.y1);
+  *p_ty0 = uint_max(l_ty0, p_image.y0);
+  *p_ty1 = uint_min(uint_adds(l_ty0, p_cp.tdy), p_image.y1);
   /* max precision and resolution is 0 (can only grow)*/
   *p_max_prec = 0_u32;
   *p_max_res = 0_u32;
@@ -1416,11 +1392,11 @@ pub(crate) fn opj_get_all_encoding_parameters(
     let l_img_comp = &p_image.comps[compno as usize];
     /* Each component owns a stride of 4 u32 per resolution (max 33). */
     let mut l_resolution_offset =
-      (compno as usize).wrapping_mul((4i32 * OPJ_J2K_MAXRLVLS as i32) as usize);
-    l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp.dx);
-    l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp.dy);
-    l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp.dx);
-    l_tcy1 = opj_uint_ceildiv(*p_ty1, l_img_comp.dy);
+      (compno as usize).wrapping_mul((4i32 * J2K_MAXRLVLS as i32) as usize);
+    l_tcx0 = uint_ceildiv(*p_tx0, l_img_comp.dx);
+    l_tcy0 = uint_ceildiv(*p_ty0, l_img_comp.dy);
+    l_tcx1 = uint_ceildiv(*p_tx1, l_img_comp.dx);
+    l_tcy1 = uint_ceildiv(*p_ty1, l_img_comp.dy);
     if l_tccp.numresolutions > *p_max_res {
       *p_max_res = l_tccp.numresolutions
     }
@@ -1451,7 +1427,7 @@ pub(crate) fn opj_get_all_encoding_parameters(
           .dx
           .wrapping_mul((1u32) << l_pdx.wrapping_add(l_level_no));
         /* take the minimum size for l_dx for each comp and resolution*/
-        *p_dx_min = opj_uint_min(*p_dx_min, l_dx)
+        *p_dx_min = uint_min(*p_dx_min, l_dx)
       }
       if l_pdy.wrapping_add(l_level_no) < 32u32
         && l_img_comp.dy
@@ -1463,17 +1439,17 @@ pub(crate) fn opj_get_all_encoding_parameters(
         l_dy = l_img_comp
           .dy
           .wrapping_mul((1u32) << l_pdy.wrapping_add(l_level_no));
-        *p_dy_min = opj_uint_min(*p_dy_min, l_dy)
+        *p_dy_min = uint_min(*p_dy_min, l_dy)
       }
       /* various calculations of extents*/
-      l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
-      l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
-      l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
-      l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
-      l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
-      l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
-      l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
-      py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
+      l_rx0 = uint_ceildivpow2(l_tcx0, l_level_no);
+      l_ry0 = uint_ceildivpow2(l_tcy0, l_level_no);
+      l_rx1 = uint_ceildivpow2(l_tcx1, l_level_no);
+      l_ry1 = uint_ceildivpow2(l_tcy1, l_level_no);
+      l_px0 = uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
+      l_py0 = uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
+      l_px1 = uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
+      py1 = uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
       l_pw = if l_rx0 == l_rx1 {
         0u32
       } else {
@@ -1509,7 +1485,7 @@ pub(crate) fn opj_get_all_encoding_parameters(
  * @param   tileno  the index of the tile from which creating the packet iterator.
  * @param   manager Event manager
  */
-pub(crate) fn opj_pi_create(image: &CoreImage, cp: &Cp, tileno: u32) -> Vec<PiIterator> {
+pub(crate) fn pi_create(image: &CoreImage, cp: &Cp, tileno: u32) -> Vec<PiIterator> {
   /* loop*/
   let mut pino: u32 = 0;
   let mut compno: u32 = 0;
@@ -1543,7 +1519,7 @@ pub(crate) fn opj_pi_create(image: &CoreImage, cp: &Cp, tileno: u32) -> Vec<PiIt
   }
   l_pi
 }
-pub(crate) fn opj_pi_update_encode_poc_and_final(
+pub(crate) fn pi_update_encode_poc_and_final(
   p_cp: &mut Cp,
   p_tileno: u32,
   p_tx0: u32,
@@ -1624,7 +1600,7 @@ pub(crate) fn opj_pi_update_encode_poc_and_final(
  * @param   p_dx_min        the minimum dx of all the components of all the resolutions for the tile.
  * @param   p_dy_min        the minimum dy of all the components of all the resolutions for the tile.
  */
-pub(crate) fn opj_pi_update_encode_not_poc(
+pub(crate) fn pi_update_encode_not_poc(
   p_cp: &mut Cp,
   p_num_comps: u32,
   p_tileno: u32,
@@ -1670,7 +1646,7 @@ pub(crate) fn opj_pi_update_encode_not_poc(
 }
 /* *
  */
-pub(crate) fn opj_pi_update_decode_poc(
+pub(crate) fn pi_update_decode_poc(
   p_pi: &mut [PiIterator],
   p_tcp: &Tcp,
   p_max_precision: u32,
@@ -1694,15 +1670,14 @@ pub(crate) fn opj_pi_update_decode_poc(
     p_pi[pino as usize].poc.precno0 = 0_u32;
     p_pi[pino as usize].poc.resno1 = p_tcp.pocs[pino as usize].resno1;
     p_pi[pino as usize].poc.compno1 = p_tcp.pocs[pino as usize].compno1;
-    p_pi[pino as usize].poc.layno1 =
-      opj_uint_min(p_tcp.pocs[pino as usize].layno1, p_tcp.numlayers);
+    p_pi[pino as usize].poc.layno1 = uint_min(p_tcp.pocs[pino as usize].layno1, p_tcp.numlayers);
     p_pi[pino as usize].poc.precno1 = p_max_precision;
     pino += 1;
   }
 }
 /* *
  */
-pub(crate) fn opj_pi_update_decode_not_poc(
+pub(crate) fn pi_update_decode_not_poc(
   p_pi: &mut [PiIterator],
   p_tcp: &Tcp,
   p_max_precision: u32,
@@ -1733,7 +1708,7 @@ pub(crate) fn opj_pi_update_decode_not_poc(
 }
 /* *
  */
-fn opj_pi_check_next_level(pos: i32, tcp: &crate::types::Poc, prog: ProgressionOrder) -> OpResult {
+fn pi_check_next_level(pos: i32, tcp: &crate::types::Poc, prog: ProgressionOrder) -> OpResult {
   let mut i: i32 = 0; /*end if*/
   if pos >= 0i32 {
     i = pos;
@@ -1741,7 +1716,7 @@ fn opj_pi_check_next_level(pos: i32, tcp: &crate::types::Poc, prog: ProgressionO
       match prog.get_step(i) {
         ProgressionStep::Resolution => {
           if tcp.res_t == tcp.res_e {
-            if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
+            if pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
               return Ok(());
             } else {
               return Err(());
@@ -1753,7 +1728,7 @@ fn opj_pi_check_next_level(pos: i32, tcp: &crate::types::Poc, prog: ProgressionO
         }
         ProgressionStep::Component => {
           if tcp.comp_t == tcp.comp_e {
-            if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
+            if pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
               return Ok(());
             } else {
               return Err(());
@@ -1764,7 +1739,7 @@ fn opj_pi_check_next_level(pos: i32, tcp: &crate::types::Poc, prog: ProgressionO
         }
         ProgressionStep::Layer => {
           if tcp.lay_t == tcp.lay_e {
-            if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
+            if pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
               return Ok(());
             } else {
               return Err(());
@@ -1778,7 +1753,7 @@ fn opj_pi_check_next_level(pos: i32, tcp: &crate::types::Poc, prog: ProgressionO
             0 | 1 => {
               /* fall through */
               if tcp.prc_t == tcp.prc_e {
-                if opj_pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
+                if pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
                   return Ok(());
                 } else {
                   return Err(());
@@ -1791,7 +1766,7 @@ fn opj_pi_check_next_level(pos: i32, tcp: &crate::types::Poc, prog: ProgressionO
               if tcp.tx0_t == tcp.tx_e {
                 /*TY*/
                 if tcp.ty0_t == tcp.ty_e {
-                  if opj_pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
+                  if pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
                     return Ok(());
                   } else {
                     return Err(());
@@ -1821,7 +1796,7 @@ fn opj_pi_check_next_level(pos: i32, tcp: &crate::types::Poc, prog: ProgressionO
 ==========================================================
 */
 
-pub(crate) fn opj_pi_create_decode(
+pub(crate) fn pi_create_decode(
   p_image: &mut CoreImage,
   p_cp: &mut Cp,
   p_tile_no: u32,
@@ -1850,15 +1825,15 @@ pub(crate) fn opj_pi_create_decode(
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations */
   l_bound = p_cp.tcps[p_tile_no as usize].numpocs.wrapping_add(1u32);
-  let l_data_stride = (4i32 * OPJ_J2K_MAXRLVLS as i32) as usize;
+  let l_data_stride = (4i32 * J2K_MAXRLVLS as i32) as usize;
   let mut l_tmp_data: Vec<u32> = vec![0; l_data_stride.wrapping_mul(numcomps as usize)];
   /* memory allocation for pi */
-  let mut l_pi = opj_pi_create(p_image, p_cp, p_tile_no);
+  let mut l_pi = pi_create(p_image, p_cp, p_tile_no);
   if l_pi.is_empty() {
     return l_pi;
   }
   /* get encoding parameters */
-  opj_get_all_encoding_parameters(
+  get_all_encoding_parameters(
     p_image,
     p_cp,
     p_tile_no,
@@ -1879,7 +1854,7 @@ pub(crate) fn opj_pi_create_decode(
   l_step_l = l_max_res.wrapping_mul(l_step_r);
   /* memory allocation for include */
   /* prevent an integer overflow issue */
-  /* 0 < l_tcp->numlayers < 65536 c.f. opj_j2k_read_cod in j2k.c */
+  /* 0 < l_tcp->numlayers < 65536 c.f. j2k_read_cod in j2k.c */
   let include_size = if l_step_l
     <= u32::MAX.wrapping_div(p_cp.tcps[p_tile_no as usize].numlayers.wrapping_add(1u32))
   {
@@ -1925,7 +1900,7 @@ pub(crate) fn opj_pi_create_decode(
   l_pi[0].step_c = l_step_c;
   l_pi[0].step_r = l_step_r;
   l_pi[0].step_l = l_step_l;
-  /* allocation for components and number of components has already been calculated by opj_pi_create */
+  /* allocation for components and number of components has already been calculated by pi_create */
   compno = 0_u32;
   while compno < numcomps {
     let l_current_comp = &mut l_pi[0].comps[compno as usize];
@@ -1960,7 +1935,7 @@ pub(crate) fn opj_pi_create_decode(
     l_pi[pino as usize].step_c = l_step_c;
     l_pi[pino as usize].step_r = l_step_r;
     l_pi[pino as usize].step_l = l_step_l;
-    /* allocation for components and number of components has already been calculated by opj_pi_create */
+    /* allocation for components and number of components has already been calculated by pi_create */
     compno = 0_u32;
     while compno < numcomps {
       let l_current_comp = &mut l_pi[pino as usize].comps[compno as usize];
@@ -1989,14 +1964,14 @@ pub(crate) fn opj_pi_create_decode(
     pino += 1;
   }
   if p_cp.tcps[p_tile_no as usize].poc {
-    opj_pi_update_decode_poc(
+    pi_update_decode_poc(
       &mut l_pi,
       &p_cp.tcps[p_tile_no as usize],
       l_max_prec,
       l_max_res,
     );
   } else {
-    opj_pi_update_decode_not_poc(
+    pi_update_decode_not_poc(
       &mut l_pi,
       &p_cp.tcps[p_tile_no as usize],
       l_max_prec,
@@ -2005,11 +1980,7 @@ pub(crate) fn opj_pi_create_decode(
   }
   l_pi
 }
-pub(crate) fn opj_get_encoding_packet_count(
-  p_image: &mut CoreImage,
-  p_cp: &Cp,
-  p_tile_no: u32,
-) -> u32 {
+pub(crate) fn get_encoding_packet_count(p_image: &mut CoreImage, p_cp: &Cp, p_tile_no: u32) -> u32 {
   let mut l_max_res: u32 = 0;
   let mut l_max_prec: u32 = 0;
   let mut l_tx0: u32 = 0;
@@ -2022,7 +1993,7 @@ pub(crate) fn opj_get_encoding_packet_count(
 
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* get encoding parameters*/
-  opj_get_all_encoding_parameters(
+  get_all_encoding_parameters(
     p_image,
     p_cp,
     p_tile_no,
@@ -2043,7 +2014,7 @@ pub(crate) fn opj_get_encoding_packet_count(
     .wrapping_mul(l_max_res)
 }
 
-pub(crate) fn opj_pi_initialise_encode(
+pub(crate) fn pi_initialise_encode(
   p_image: &mut CoreImage,
   p_cp: &mut Cp,
   p_tile_no: u32,
@@ -2073,15 +2044,15 @@ pub(crate) fn opj_pi_initialise_encode(
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations*/
   l_bound = p_cp.tcps[p_tile_no as usize].numpocs.wrapping_add(1u32);
-  let l_data_stride = (4i32 * OPJ_J2K_MAXRLVLS as i32) as usize;
+  let l_data_stride = (4i32 * J2K_MAXRLVLS as i32) as usize;
   let mut l_tmp_data: Vec<u32> = vec![0; l_data_stride.wrapping_mul(numcomps as usize)];
   /* memory allocation for pi*/
-  let mut l_pi = opj_pi_create(p_image, p_cp, p_tile_no);
+  let mut l_pi = pi_create(p_image, p_cp, p_tile_no);
   if l_pi.is_empty() {
     return l_pi;
   }
   /* get encoding parameters*/
-  opj_get_all_encoding_parameters(
+  get_all_encoding_parameters(
     p_image,
     p_cp,
     p_tile_no,
@@ -2145,7 +2116,7 @@ pub(crate) fn opj_pi_initialise_encode(
   l_pi[0].step_c = l_step_c;
   l_pi[0].step_r = l_step_r;
   l_pi[0].step_l = l_step_l;
-  /* allocation for components and number of components has already been calculated by opj_pi_create */
+  /* allocation for components and number of components has already been calculated by pi_create */
   compno = 0_u32;
   while compno < numcomps {
     let l_current_comp = &mut l_pi[0].comps[compno as usize];
@@ -2180,7 +2151,7 @@ pub(crate) fn opj_pi_initialise_encode(
     l_pi[pino as usize].step_c = l_step_c;
     l_pi[pino as usize].step_r = l_step_r;
     l_pi[pino as usize].step_l = l_step_l;
-    /* allocation for components and number of components has already been calculated by opj_pi_create */
+    /* allocation for components and number of components has already been calculated by pi_create */
     compno = 0_u32;
     while compno < numcomps {
       let l_current_comp = &mut l_pi[pino as usize].comps[compno as usize];
@@ -2212,18 +2183,18 @@ pub(crate) fn opj_pi_initialise_encode(
     && ((p_cp.rsiz as core::ffi::c_int >= 0x3i32 && p_cp.rsiz as core::ffi::c_int <= 0x6i32)
       || p_t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint)
   {
-    opj_pi_update_encode_poc_and_final(
+    pi_update_encode_poc_and_final(
       p_cp, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min,
     );
   } else {
-    opj_pi_update_encode_not_poc(
+    pi_update_encode_not_poc(
       p_cp, numcomps, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min,
       l_dy_min,
     );
   }
   l_pi
 }
-pub(crate) fn opj_pi_create_encode(
+pub(crate) fn pi_create_encode(
   pi: &mut [PiIterator],
   cp: &mut Cp,
   tileno: u32,
@@ -2238,7 +2209,7 @@ pub(crate) fn opj_pi_create_encode(
   let rsiz = cp.rsiz;
   let tp_on = cp.m_specific_param.m_enc.m_tp_on;
   let tcp = &mut cp.tcps[tileno as usize].pocs[pino as usize];
-  let prog = opj_j2k_convert_progression_order(tcp.prg.into());
+  let prog = j2k_convert_progression_order(tcp.prg.into());
   pi[pino as usize].first = true;
   pi[pino as usize].poc.prg = tcp.prg;
   if !(tp_on
@@ -2383,7 +2354,7 @@ pub(crate) fn opj_pi_create_encode(
           match prog.get_step(i) {
             ProgressionStep::Resolution => {
               if tcp.res_t == tcp.res_e {
-                if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
+                if pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
                   tcp.res_t = tcp.res_s;
                   pi[pino as usize].poc.resno0 = tcp.res_t;
                   pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
@@ -2401,7 +2372,7 @@ pub(crate) fn opj_pi_create_encode(
             }
             ProgressionStep::Component => {
               if tcp.comp_t == tcp.comp_e {
-                if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
+                if pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
                   tcp.comp_t = tcp.comp_s;
                   pi[pino as usize].poc.compno0 = tcp.comp_t;
                   pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
@@ -2419,7 +2390,7 @@ pub(crate) fn opj_pi_create_encode(
             }
             ProgressionStep::Layer => {
               if tcp.lay_t == tcp.lay_e {
-                if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
+                if pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
                   tcp.lay_t = tcp.lay_s;
                   pi[pino as usize].poc.layno0 = tcp.lay_t;
                   pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
@@ -2438,7 +2409,7 @@ pub(crate) fn opj_pi_create_encode(
             ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
               0 | 1 => {
                 if tcp.prc_t == tcp.prc_e {
-                  if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
+                  if pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
                     tcp.prc_t = tcp.prc_s;
                     pi[pino as usize].poc.precno0 = tcp.prc_t;
                     pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
@@ -2457,7 +2428,7 @@ pub(crate) fn opj_pi_create_encode(
               _ => {
                 if tcp.tx0_t >= tcp.tx_e {
                   if tcp.ty0_t >= tcp.ty_e {
-                    if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
+                    if pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
                       tcp.ty0_t = tcp.ty_s;
                       pi[pino as usize].poc.ty0 = tcp.ty0_t;
                       pi[pino as usize].poc.ty1 = tcp
@@ -2510,12 +2481,12 @@ pub(crate) fn opj_pi_create_encode(
   };
 }
 
-pub(crate) fn opj_pi_destroy(p_pi: &mut Vec<PiIterator>) {
+pub(crate) fn pi_destroy(p_pi: &mut Vec<PiIterator>) {
   /* Clearing drops each element's own comps/resolutions Vecs and the
    * shared include Rc. */
   p_pi.clear();
 }
-pub(crate) fn opj_pi_update_encoding_parameters(
+pub(crate) fn pi_update_encoding_parameters(
   p_image: &mut CoreImage,
   p_cp: &mut Cp,
   p_tile_no: u32,
@@ -2533,7 +2504,7 @@ pub(crate) fn opj_pi_update_encoding_parameters(
 
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* get encoding parameters */
-  opj_get_encoding_parameters(
+  get_encoding_parameters(
     p_image,
     p_cp,
     p_tile_no,
@@ -2547,11 +2518,11 @@ pub(crate) fn opj_pi_update_encoding_parameters(
     &mut l_max_res,
   );
   if p_cp.tcps[p_tile_no as usize].poc {
-    opj_pi_update_encode_poc_and_final(
+    pi_update_encode_poc_and_final(
       p_cp, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min,
     );
   } else {
-    opj_pi_update_encode_not_poc(
+    pi_update_encode_not_poc(
       p_cp,
       p_image.numcomps,
       p_tile_no,
@@ -2567,13 +2538,13 @@ pub(crate) fn opj_pi_update_encoding_parameters(
   };
 }
 
-pub(crate) fn opj_pi_next(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
+pub(crate) fn pi_next(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   match pi.poc.prg as core::ffi::c_int {
-    0 => return opj_pi_next_lrcp(pi, manager),
-    1 => return opj_pi_next_rlcp(pi, manager),
-    2 => return opj_pi_next_rpcl(pi, manager),
-    3 => return opj_pi_next_pcrl(pi, manager),
-    4 => return opj_pi_next_cprl(pi, manager),
+    0 => return pi_next_lrcp(pi, manager),
+    1 => return pi_next_rlcp(pi, manager),
+    2 => return pi_next_rpcl(pi, manager),
+    3 => return pi_next_pcrl(pi, manager),
+    4 => return pi_next_cprl(pi, manager),
     -1 => return Err(()),
     _ => {}
   }

@@ -22,11 +22,11 @@ pub struct Mqc {
   /// sits at `start..end`; `Cell` lets the shared-borrow byte-out path write.
   buf: Vec<Cell<u8>>,
   /// Index of the code-block's first byte within `base`. The encoder's buffer carries one
-  /// sentinel byte in front of it (see `opj_tcd_code_block_enc_allocate_data`), so `start` is
+  /// sentinel byte in front of it (see `tcd_code_block_enc_allocate_data`), so `start` is
   /// 1 there and the cursor may legally sit one byte before the code-block data.
   start: usize,
   /// Index one past the code-block's last byte within `base` (decoder only). The
-  /// `OPJ_COMMON_CBLK_DATA_EXTRA` scratch bytes live at `end..base_len`.
+  /// `COMMON_CBLK_DATA_EXTRA` scratch bytes live at `end..base_len`.
   end: usize,
   /// Read/write cursor, as an index into `base`.
   cursor: usize,
@@ -172,13 +172,13 @@ impl Mqc {
 }
 
 #[inline]
-pub(crate) fn opj_mqc_setcurctx(mqc: &mut Mqc, ctxno: u8) {
+pub(crate) fn mqc_setcurctx(mqc: &mut Mqc, ctxno: u8) {
   mqc.set_curctx(ctxno);
 }
 
-/* For internal use of opj_mqc_decode_macro() */
+/* For internal use of mqc_decode_macro() */
 #[inline(always)]
-fn opj_mqc_mpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
+fn mqc_mpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
   let curctx = mqc.curctx();
   if mqc.a < curctx.qeval {
     *d = (curctx.mps == 0) as u32;
@@ -189,9 +189,9 @@ fn opj_mqc_mpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
   }
 }
 
-/* For internal use of opj_mqc_decode_macro() */
+/* For internal use of mqc_decode_macro() */
 #[inline(always)]
-fn opj_mqc_lpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
+fn mqc_lpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
   let curctx = mqc.curctx();
   if mqc.a < curctx.qeval {
     mqc.a = curctx.qeval;
@@ -210,9 +210,9 @@ Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
 @return Returns the decoded symbol (0 or 1)
 */
 #[inline]
-pub(crate) fn opj_mqc_raw_decode(mut mqc: &mut Mqc) -> u32 {
+pub(crate) fn mqc_raw_decode(mut mqc: &mut Mqc) -> u32 {
   if mqc.ct == 0 {
-    /* Given opj_mqc_raw_init_dec() we know that at some point we will */
+    /* Given mqc_raw_init_dec() we know that at some point we will */
     /* have a 0xFF 0xFF artificial marker */
     if mqc.c == 0xff {
       if mqc.bp() > 0x8f {
@@ -235,9 +235,9 @@ pub(crate) fn opj_mqc_raw_decode(mut mqc: &mut Mqc) -> u32 {
 }
 
 #[inline(always)]
-fn opj_mqc_bytein_macro(mqc: &mut Mqc) {
+fn mqc_bytein_macro(mqc: &mut Mqc) {
   let mut l_c: u32 = 0;
-  /* Given opj_mqc_init_dec() we know that at some point we will */
+  /* Given mqc_init_dec() we know that at some point we will */
   /* have a 0xFF 0xFF artificial marker */
   l_c = mqc.bp_peek() as u32;
   if mqc.bp() == 0xff {
@@ -258,16 +258,16 @@ fn opj_mqc_bytein_macro(mqc: &mut Mqc) {
 }
 
 #[inline]
-pub(crate) fn opj_mqc_bytein(mqc: &mut Mqc) {
-  opj_mqc_bytein_macro(mqc);
+pub(crate) fn mqc_bytein(mqc: &mut Mqc) {
+  mqc_bytein_macro(mqc);
 }
 
-/* For internal use of opj_mqc_decode_macro() */
+/* For internal use of mqc_decode_macro() */
 #[inline(always)]
-fn opj_mqc_renormd_macro(mqc: &mut Mqc) {
+fn mqc_renormd_macro(mqc: &mut Mqc) {
   loop {
     if mqc.ct == 0 {
-      opj_mqc_bytein_macro(mqc);
+      mqc_bytein_macro(mqc);
     }
     mqc.a <<= 1;
     mqc.c <<= 1;
@@ -279,20 +279,20 @@ fn opj_mqc_renormd_macro(mqc: &mut Mqc) {
 }
 
 #[inline(always)]
-pub(crate) fn opj_mqc_decode_macro(d: &mut u32, mqc: &mut Mqc) {
+pub(crate) fn mqc_decode_macro(d: &mut u32, mqc: &mut Mqc) {
   /* Implements ISO 15444-1 C.3.2 Decoding a decision (DECODE) */
   /* Note: alternate "J.2 - Decoding an MPS or an LPS in the */
   /* software-conventions decoder" has been tried, but does not bring any */
   /* improvement. See https://github.com/uclouvain/openjpeg/issues/921 */
   mqc.a = mqc.a.wrapping_sub(mqc.curctx().qeval);
   if (mqc.c >> 16) < mqc.curctx().qeval {
-    opj_mqc_lpsexchange_macro(d, mqc);
-    opj_mqc_renormd_macro(mqc);
+    mqc_lpsexchange_macro(d, mqc);
+    mqc_renormd_macro(mqc);
   } else {
     mqc.c = mqc.c.wrapping_sub(mqc.curctx().qeval << 16);
     if mqc.a & 0x8000 == 0 {
-      opj_mqc_mpsexchange_macro(d, mqc);
-      opj_mqc_renormd_macro(mqc);
+      mqc_mpsexchange_macro(d, mqc);
+      mqc_renormd_macro(mqc);
     } else {
       *d = mqc.curctx().mps as u32
     }
@@ -307,13 +307,13 @@ Renormalize mqc->a and mqc->c while encoding, so that mqc->a stays between 0x800
 @param ct_ value of mqc->ct_
 */
 #[inline(always)]
-fn opj_mqc_renorme_macro(mqc: &mut Mqc) {
+fn mqc_renorme_macro(mqc: &mut Mqc) {
   loop {
     mqc.a <<= 1;
     mqc.c <<= 1;
     mqc.ct = mqc.ct.wrapping_sub(1);
     if mqc.ct == 0 {
-      opj_mqc_byteout(mqc);
+      mqc_byteout(mqc);
     }
     if mqc.a & 0x8000 != 0 {
       break;
@@ -322,7 +322,7 @@ fn opj_mqc_renorme_macro(mqc: &mut Mqc) {
 }
 
 #[inline(always)]
-fn opj_mqc_codemps_macro(mqc: &mut Mqc) {
+fn mqc_codemps_macro(mqc: &mut Mqc) {
   mqc.a = mqc.a.wrapping_sub(mqc.curctx().qeval);
   if mqc.a & 0x8000 == 0 {
     if mqc.a < mqc.curctx().qeval {
@@ -331,14 +331,14 @@ fn opj_mqc_codemps_macro(mqc: &mut Mqc) {
       mqc.c = mqc.c.wrapping_add(mqc.curctx().qeval);
     }
     mqc.set_curctx_nmps();
-    opj_mqc_renorme_macro(mqc);
+    mqc_renorme_macro(mqc);
   } else {
     mqc.c = mqc.c.wrapping_add(mqc.curctx().qeval);
   }
 }
 
 #[inline(always)]
-fn opj_mqc_codelps_macro(mqc: &mut Mqc) {
+fn mqc_codelps_macro(mqc: &mut Mqc) {
   mqc.a = mqc.a.wrapping_sub(mqc.curctx().qeval);
   if mqc.a < mqc.curctx().qeval {
     mqc.c = mqc.c.wrapping_add(mqc.curctx().qeval);
@@ -346,20 +346,20 @@ fn opj_mqc_codelps_macro(mqc: &mut Mqc) {
     mqc.a = mqc.curctx().qeval
   }
   mqc.set_curctx_nlps();
-  opj_mqc_renorme_macro(mqc);
+  mqc_renorme_macro(mqc);
 }
 
 #[inline(always)]
-pub(crate) fn opj_mqc_encode_macro(mqc: &mut Mqc, d: u32) {
+pub(crate) fn mqc_encode_macro(mqc: &mut Mqc, d: u32) {
   if mqc.curctx().mps as u32 == d {
-    opj_mqc_codemps(mqc);
+    mqc_codemps(mqc);
   } else {
-    opj_mqc_codelps(mqc);
+    mqc_codelps(mqc);
   }
 }
 
 #[inline]
-pub(crate) fn opj_mqc_bypass_enc_macro(mqc: &mut Mqc, d: u32) {
+pub(crate) fn mqc_bypass_enc_macro(mqc: &mut Mqc, d: u32) {
   if mqc.ct == BYPASS_CT_INIT {
     mqc.ct = 8;
   }
@@ -1003,7 +1003,7 @@ const MQC_STATES: [MqcState; 47 * 2] = [
 Fill mqc->c with 1's for flushing
 @param mqc MQC handle
 */
-fn opj_mqc_setbits(mut mqc: &mut Mqc) {
+fn mqc_setbits(mut mqc: &mut Mqc) {
   let mut tempc = mqc.c.wrapping_add(mqc.a);
   mqc.c |= 0xffff;
   if mqc.c >= tempc {
@@ -1017,17 +1017,17 @@ fn opj_mqc_setbits(mut mqc: &mut Mqc) {
 ==========================================================
 */
 
-pub(crate) fn opj_mqc_numbytes(mut mqc: &mut Mqc) -> u32 {
+pub(crate) fn mqc_numbytes(mut mqc: &mut Mqc) -> u32 {
   mqc.consumed() as u32
 }
 
 /// `bp` is the code-block data buffer and `len` its usable length. The buffer is allocated with
-/// one extra sentinel byte in front of `bp` (see `opj_tcd_code_block_enc_allocate_data`), which
+/// one extra sentinel byte in front of `bp` (see `tcd_code_block_enc_allocate_data`), which
 /// is what lets the cursor start one byte before the code-block data.
-pub(crate) fn opj_mqc_init_enc(mut mqc: &mut Mqc, len: u32) {
+pub(crate) fn mqc_init_enc(mut mqc: &mut Mqc, len: u32) {
   /* To avoid the curctx pointer to be dangling, but not strictly */
   /* required as the current context is always set before encoding */
-  opj_mqc_setcurctx(mqc, 0);
+  mqc_setcurctx(mqc, 0);
 
   /* As specified in Figure C.10 - Initialization of the encoder */
   /* (C.2.8 Initialization of the encoder (INITENC)) */
@@ -1043,7 +1043,7 @@ pub(crate) fn opj_mqc_init_enc(mut mqc: &mut Mqc, len: u32) {
   mqc.buf_mut()[0].set(0);
   mqc.attach(1, base_len);
   /* Yes, we point before the start of the buffer, but this is safe */
-  /* given opj_tcd_code_block_enc_allocate_data() */
+  /* given tcd_code_block_enc_allocate_data() */
   mqc.bp_offset(-1);
   mqc.ct = 12;
   /* At this point we should test *(mqc->bp) against 0xFF, but this is not */
@@ -1054,44 +1054,44 @@ pub(crate) fn opj_mqc_init_enc(mut mqc: &mut Mqc, len: u32) {
   mqc.end_of_byte_stream_counter = 0;
 }
 
-pub(crate) fn opj_mqc_flush(mut mqc: &mut Mqc) {
+pub(crate) fn mqc_flush(mut mqc: &mut Mqc) {
   /* C.2.9 Termination of coding (FLUSH) */
   /* Figure C.11 – FLUSH procedure */
-  opj_mqc_setbits(mqc);
+  mqc_setbits(mqc);
   mqc.c <<= mqc.ct;
-  opj_mqc_byteout(mqc);
+  mqc_byteout(mqc);
   mqc.c <<= mqc.ct;
-  opj_mqc_byteout(mqc);
+  mqc_byteout(mqc);
 
   /* It is forbidden that a coding pass ends with 0xff */
   if mqc.bp() != 0xff {
-    /* Advance pointer so that opj_mqc_numbytes() returns a valid value */
+    /* Advance pointer so that mqc_numbytes() returns a valid value */
     mqc.inc_bp()
   }
 }
 
-pub(crate) fn opj_mqc_bypass_init_enc(mut mqc: &mut Mqc) {
-  /* This function is normally called after at least one opj_mqc_flush() */
+pub(crate) fn mqc_bypass_init_enc(mut mqc: &mut Mqc) {
+  /* This function is normally called after at least one mqc_flush() */
   /* which will have advance mqc->bp by at least 2 bytes beyond its */
   /* initial position */
   debug_assert!(mqc.check_start(0));
   mqc.c = 0;
   /* in theory we should initialize to 8, but use this special value */
-  /* as a hint that opj_mqc_bypass_enc() has never been called, so */
-  /* as to avoid the 0xff 0x7f elimination trick in opj_mqc_bypass_flush_enc() */
+  /* as a hint that mqc_bypass_enc() has never been called, so */
+  /* as to avoid the 0xff 0x7f elimination trick in mqc_bypass_flush_enc() */
   /* to trigger when we don't have output any bit during this bypass sequence */
   /* Any value > 8 will do */
   mqc.ct = BYPASS_CT_INIT;
-  /* Given that we are called after opj_mqc_flush(), the previous byte */
+  /* Given that we are called after mqc_flush(), the previous byte */
   /* cannot be 0xff. */
   debug_assert!(mqc.bp_peek_offset(-1) != 0xff);
 }
 
-pub(crate) fn opj_mqc_bypass_enc(mut mqc: &mut Mqc, d: u32) {
-  opj_mqc_bypass_enc_macro(mqc, d)
+pub(crate) fn mqc_bypass_enc(mut mqc: &mut Mqc, d: u32) {
+  mqc_bypass_enc_macro(mqc, d)
 }
 
-pub(crate) fn opj_mqc_bypass_get_extra_bytes(mut mqc: &mut Mqc, mut erterm: bool) -> u32 {
+pub(crate) fn mqc_bypass_get_extra_bytes(mut mqc: &mut Mqc, mut erterm: bool) -> u32 {
   if mqc.ct < 7 || mqc.ct == 7 && (erterm || mqc.bp_peek_offset(-1) != 0xff) {
     1
   } else {
@@ -1099,7 +1099,7 @@ pub(crate) fn opj_mqc_bypass_get_extra_bytes(mut mqc: &mut Mqc, mut erterm: bool
   }
 }
 
-pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: bool) {
+pub(crate) fn mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: bool) {
   /* Is there any bit remaining to be flushed ? */
   /* If the last output byte is 0xff, we can discard it, unless */
   /* erterm is required (I'm not completely sure why in erterm */
@@ -1118,7 +1118,7 @@ pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: bool) {
       bit_value = 1i32.wrapping_sub(bit_value);
     }
     mqc.write_byte(mqc.c as u8);
-    /* Advance pointer so that opj_mqc_numbytes() returns a valid value */
+    /* Advance pointer so that mqc_numbytes() returns a valid value */
     mqc.inc_bp()
   } else if mqc.ct == 7 && mqc.bp_peek_offset(-1) == 0xff {
     /* Discard last 0xff */
@@ -1139,21 +1139,21 @@ pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: bool) {
   debug_assert!(mqc.bp_peek_offset(-1) != 0xff);
 }
 
-pub(crate) fn opj_mqc_reset_enc(mut mqc: &mut Mqc) {
-  opj_mqc_resetstates(mqc);
-  opj_mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
-  opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
-  opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
+pub(crate) fn mqc_reset_enc(mut mqc: &mut Mqc) {
+  mqc_resetstates(mqc);
+  mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
+  mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
+  mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
 }
 
-pub(crate) fn opj_mqc_restart_init_enc(mut mqc: &mut Mqc) {
+pub(crate) fn mqc_restart_init_enc(mut mqc: &mut Mqc) {
   /* <Re-init part> */
   /* As specified in Figure C.10 - Initialization of the encoder */
   /* (C.2.8 Initialization of the encoder (INITENC)) */
   mqc.a = 0x8000;
   mqc.c = 0;
   mqc.ct = 12;
-  /* This function is normally called after at least one opj_mqc_flush() */
+  /* This function is normally called after at least one mqc_flush() */
   /* which will have advance mqc->bp by at least 2 bytes beyond its */
   /* initial position */
   mqc.bp_offset(-1);
@@ -1165,16 +1165,16 @@ pub(crate) fn opj_mqc_restart_init_enc(mut mqc: &mut Mqc) {
   }
 }
 
-pub(crate) fn opj_mqc_erterm_enc(mut mqc: &mut Mqc) {
+pub(crate) fn mqc_erterm_enc(mut mqc: &mut Mqc) {
   let mut k = (11_i32).wrapping_sub(mqc.ct as i32).wrapping_add(1);
   while k > 0 {
     mqc.c <<= mqc.ct;
     mqc.ct = 0;
-    opj_mqc_byteout(mqc);
+    mqc_byteout(mqc);
     k -= mqc.ct as i32
   }
   if mqc.bp() != 0xff {
-    opj_mqc_byteout(mqc);
+    mqc_byteout(mqc);
   }
 }
 
@@ -1183,8 +1183,8 @@ Encode the most probable symbol
 @param mqc MQC handle
 */
 #[inline]
-fn opj_mqc_codemps(mut mqc: &mut Mqc) {
-  opj_mqc_codemps_macro(mqc)
+fn mqc_codemps(mut mqc: &mut Mqc) {
+  mqc_codemps_macro(mqc)
 }
 
 /* *
@@ -1192,8 +1192,8 @@ Encode the most least symbol
 @param mqc MQC handle
 */
 #[inline]
-fn opj_mqc_codelps(mut mqc: &mut Mqc) {
-  opj_mqc_codelps_macro(mqc)
+fn mqc_codelps(mut mqc: &mut Mqc) {
+  mqc_codelps_macro(mqc)
 }
 
 /* *
@@ -1202,25 +1202,25 @@ Encode a symbol using the MQ-coder
 @param d The symbol to be encoded (0 or 1)
 */
 #[inline]
-pub(crate) fn opj_mqc_encode(mut mqc: &mut Mqc, mut d: u32) {
-  opj_mqc_encode_macro(mqc, d)
+pub(crate) fn mqc_encode(mut mqc: &mut Mqc, mut d: u32) {
+  mqc_encode_macro(mqc, d)
 }
 
-pub(crate) fn opj_mqc_segmark_enc(mut mqc: &mut Mqc) {
-  opj_mqc_setcurctx(mqc, 18);
+pub(crate) fn mqc_segmark_enc(mut mqc: &mut Mqc) {
+  mqc_setcurctx(mqc, 18);
 
   for i in 1u32..5 {
-    opj_mqc_encode(mqc, i.wrapping_rem(2));
+    mqc_encode(mqc, i.wrapping_rem(2));
   }
 }
 
-fn opj_mqc_init_dec_common(
+fn mqc_init_dec_common(
   mut mqc: &mut Mqc,
   mut offset: usize,
   mut len: u32,
   mut extra_writable_bytes: u32,
 ) {
-  debug_assert!(extra_writable_bytes >= OPJ_COMMON_CBLK_DATA_EXTRA);
+  debug_assert!(extra_writable_bytes >= COMMON_CBLK_DATA_EXTRA);
   let len = len as usize;
   debug_assert!(
     mqc.buf.len()
@@ -1236,7 +1236,7 @@ fn opj_mqc_init_dec_common(
   mqc.backup_extra();
 }
 
-pub(crate) fn opj_mqc_init_dec(
+pub(crate) fn mqc_init_dec(
   mut mqc: &mut Mqc,
   mut offset: usize,
   mut len: u32,
@@ -1247,50 +1247,45 @@ pub(crate) fn opj_mqc_init_dec(
   /* decoder" has been tried, but does */
   /* not bring any improvement. */
   /* See https://github.com/uclouvain/openjpeg/issues/921 */
-  opj_mqc_init_dec_common(mqc, offset, len, extra_writable_bytes);
-  opj_mqc_setcurctx(mqc, 0);
+  mqc_init_dec_common(mqc, offset, len, extra_writable_bytes);
+  mqc_setcurctx(mqc, 0);
   mqc.end_of_byte_stream_counter = 0;
   if len == 0 {
     mqc.c = 0xff << 16;
   } else {
     mqc.c = (mqc.bp() as u32) << 16;
   }
-  opj_mqc_bytein(mqc);
+  mqc_bytein(mqc);
   mqc.c <<= 7;
   mqc.ct = mqc.ct.wrapping_sub(7);
   mqc.a = 0x8000;
 }
 
-pub(crate) fn opj_mqc_raw_init_dec(
-  mqc: &mut Mqc,
-  offset: usize,
-  len: u32,
-  extra_writable_bytes: u32,
-) {
-  opj_mqc_init_dec_common(mqc, offset, len, extra_writable_bytes);
+pub(crate) fn mqc_raw_init_dec(mqc: &mut Mqc, offset: usize, len: u32, extra_writable_bytes: u32) {
+  mqc_init_dec_common(mqc, offset, len, extra_writable_bytes);
   mqc.c = 0;
   mqc.ct = 0;
 }
 
 pub(crate) fn opq_mqc_finish_dec(mqc: &mut Mqc) {
-  /* Restore the bytes overwritten by opj_mqc_init_dec_common() */
+  /* Restore the bytes overwritten by mqc_init_dec_common() */
   mqc.restore_extra();
 }
 
-pub(crate) fn opj_mqc_resetstates(mqc: &mut Mqc) {
+pub(crate) fn mqc_resetstates(mqc: &mut Mqc) {
   for i in 0..19 {
     mqc.ctxs[i] = MQC_STATES[0];
   }
 }
 
-pub(crate) fn opj_mqc_setstate(mqc: &mut Mqc, ctxno: u8, msb: u32, prob: i32) {
+pub(crate) fn mqc_setstate(mqc: &mut Mqc, ctxno: u8, msb: u32, prob: i32) {
   mqc.ctxs[ctxno as usize] = MQC_STATES[msb.wrapping_add((prob << 1) as u32) as usize];
 }
 
 #[inline(always)]
-pub(crate) fn opj_mqc_byteout(mut mqc: &mut Mqc) {
-  /* bp is initialized to start - 1 in opj_mqc_init_enc() */
-  /* but this is safe, see opj_tcd_code_block_enc_allocate_data() */
+pub(crate) fn mqc_byteout(mut mqc: &mut Mqc) {
+  /* bp is initialized to start - 1 in mqc_init_enc() */
+  /* but this is safe, see tcd_code_block_enc_allocate_data() */
   debug_assert!(mqc.check_start(-1));
   if mqc.bp() == 0xff {
     mqc.inc_bp();
@@ -1325,8 +1320,8 @@ mod tests {
 
   fn make_coder() -> Mqc {
     let mut mqc = Mqc::default();
-    opj_mqc_resetstates(&mut mqc);
-    opj_mqc_setcurctx(&mut mqc, 0);
+    mqc_resetstates(&mut mqc);
+    mqc_setcurctx(&mut mqc, 0);
     mqc
   }
 
@@ -1334,13 +1329,13 @@ mod tests {
   #[test]
   fn encode_decode_round_trip() {
     let mut enc = make_coder();
-    opj_mqc_init_enc(&mut enc, 4096);
+    mqc_init_enc(&mut enc, 4096);
     let bits: Vec<u32> = (0..2000u32).map(|i| (i * 7919 + 13) % 2).collect();
     for &b in &bits {
-      opj_mqc_setcurctx(&mut enc, (b as u8) % 19);
-      opj_mqc_encode_macro(&mut enc, b);
+      mqc_setcurctx(&mut enc, (b as u8) % 19);
+      mqc_encode_macro(&mut enc, b);
     }
-    opj_mqc_flush(&mut enc);
+    mqc_flush(&mut enc);
     /* The coded bytes are buf[start..cursor]; buf[0] is the sentinel the
     first byteout clobbers (the C writes at data - 1). */
     let nbytes = enc.cursor.saturating_sub(enc.start);
@@ -1348,38 +1343,33 @@ mod tests {
     let mut dec = make_coder();
     dec.buf = enc.buf.clone();
     dec.buf.resize(
-      enc.start + nbytes + OPJ_COMMON_CBLK_DATA_EXTRA as usize,
+      enc.start + nbytes + COMMON_CBLK_DATA_EXTRA as usize,
       Cell::new(0),
     );
-    opj_mqc_init_dec(
-      &mut dec,
-      enc.start,
-      nbytes as u32,
-      OPJ_COMMON_CBLK_DATA_EXTRA,
-    );
+    mqc_init_dec(&mut dec, enc.start, nbytes as u32, COMMON_CBLK_DATA_EXTRA);
     let mut decoded = Vec::with_capacity(bits.len());
     for &b in &bits {
-      opj_mqc_setcurctx(&mut dec, (b as u8) % 19);
+      mqc_setcurctx(&mut dec, (b as u8) % 19);
       let mut d = 0u32;
-      opj_mqc_decode_macro(&mut d, &mut dec);
+      mqc_decode_macro(&mut d, &mut dec);
       decoded.push(d);
     }
     assert_eq!(bits, decoded);
   }
 
   /// The encoder's sentinel byte (buf[0], the byte the cursor reads through
-  /// at bp - 1) must be re-zeroed by opj_mqc_init_enc: the buffer is shared
+  /// at bp - 1) must be re-zeroed by mqc_init_enc: the buffer is shared
   /// with the t1 DECODE path, which leaves the last decoded chunk's bytes
   /// in it (a stale 0xFF used to trip the always-on assert below).
   #[test]
   fn init_enc_zeroes_sentinel() {
     let mut mqc = Mqc::default();
-    opj_mqc_resetstates(&mut mqc);
+    mqc_resetstates(&mut mqc);
     // Simulate a decode that left a chunk starting with 0xFF in the buffer.
     mqc.grow_buf(64);
     mqc.buf_mut()[0].set(0xff);
     mqc.buf_mut()[1].set(0x7f);
-    opj_mqc_init_enc(&mut mqc, 63);
+    mqc_init_enc(&mut mqc, 63);
     assert_eq!(mqc.buf_ref()[0].get(), 0, "sentinel must be zeroed");
   }
 }

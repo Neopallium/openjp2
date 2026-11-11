@@ -341,10 +341,7 @@ fn parallel_encode_matches_serial_on_corpus() {
           buf: buf2.clone(),
           pos: 0,
         };
-        let mut stream = Stream::new_output(
-          crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
-          writer,
-        );
+        let mut stream = Stream::new_output(crate::consts::J2K_STREAM_CHUNK_SIZE as usize, writer);
         codec.start(&mut img, &mut stream).unwrap();
         codec.encode(&mut stream).unwrap();
         codec.finish(&mut stream).unwrap();
@@ -394,10 +391,7 @@ fn parallel_tile_encode_byte_identical() {
         buf: buf2.clone(),
         pos: 0,
       };
-      let mut stream = Stream::new_output(
-        crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
-        writer,
-      );
+      let mut stream = Stream::new_output(crate::consts::J2K_STREAM_CHUNK_SIZE as usize, writer);
       codec.start(&mut img, &mut stream).unwrap();
       codec.encode(&mut stream).unwrap();
       codec.finish(&mut stream).unwrap();
@@ -483,7 +477,7 @@ fn degenerate_decode_area_matches_whole() {
   // Low-level flow like the CLI: set_decode_area((0,0,0,0)) then decode.
   let mut dec = Decoder::new(J2KFormat::JP2).unwrap();
   let mut s = Stream::new_input(
-    crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+    crate::consts::J2K_STREAM_CHUNK_SIZE as usize,
     std::io::Cursor::new(buf.clone()),
     buf.len() as u64,
   );
@@ -549,7 +543,7 @@ fn decode_parameters_threads_pool_is_scoped() {
     })
     .unwrap();
   let mut s = Stream::new_input(
-    crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+    crate::consts::J2K_STREAM_CHUNK_SIZE as usize,
     std::io::Cursor::new(buf.clone()),
     buf.len() as u64,
   );
@@ -596,9 +590,7 @@ fn dump_image_and_index() {
   assert_eq!((info.tw(), info.th()), (1, 1));
   assert_eq!(info.nbcomps(), 3);
   let text = dump.dump(
-    (crate::consts::opj::OPJ_IMG_INFO
-      | crate::consts::opj::OPJ_J2K_MH_INFO
-      | crate::consts::opj::OPJ_J2K_MH_IND) as i32,
+    (crate::consts::IMG_INFO | crate::consts::J2K_MH_INFO | crate::consts::J2K_MH_IND) as i32,
   );
   // The JP2 dump prints the boxes and the codestream header info.
   assert!(text.contains("Codestream info"));
@@ -1097,7 +1089,7 @@ fn parallel_matches_serial_on_corpus() {
       ::default().strict == false); mirror it. */
       codec.set_strict(false).ok()?;
       let mut stream = Stream::new_input(
-        crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+        crate::consts::J2K_STREAM_CHUNK_SIZE as usize,
         std::io::Cursor::new(buf.clone()),
         buf.len() as u64,
       );
@@ -1122,7 +1114,7 @@ fn parallel_matches_serial_on_corpus() {
           .ok()?;
         codec.set_strict(params.strict).ok()?;
         let mut stream = Stream::new_input(
-          crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+          crate::consts::J2K_STREAM_CHUNK_SIZE as usize,
           std::io::Cursor::new(buf.clone()),
           buf.len() as u64,
         );
@@ -1330,7 +1322,7 @@ fn siqnt_truncated_qcd_rejected() {
   {
     let mut codec = Decoder::new(J2KFormat::J2K).unwrap();
     let mut stream = Stream::new_input(
-      crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+      crate::consts::J2K_STREAM_CHUNK_SIZE as usize,
       std::io::Cursor::new(cs.clone()),
       cs.len() as u64,
     );
@@ -1354,7 +1346,7 @@ fn zerodim_tile_api_does_not_panic() {
     {
       let mut codec = Decoder::new(J2KFormat::J2K).unwrap();
       let mut stream = Stream::new_input(
-        crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+        crate::consts::J2K_STREAM_CHUNK_SIZE as usize,
         std::io::Cursor::new(data.clone()),
         data.len() as u64,
       );
@@ -1634,10 +1626,7 @@ fn parallel_tlm_multi_part_matches_serial() {
         buf: buf.clone(),
         pos: 0,
       };
-      let mut stream = Stream::new_output(
-        crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
-        writer,
-      );
+      let mut stream = Stream::new_output(crate::consts::J2K_STREAM_CHUNK_SIZE as usize, writer);
       codec.start(&mut img, &mut stream).unwrap();
       // The parallel path handles TLM + multi-part tiles (per-part
       // entries, merged by the master); verify it applies for both.
@@ -1689,10 +1678,7 @@ fn parallel_tlm_multi_part_matches_serial() {
         buf: buf.clone(),
         pos: 0,
       };
-      let mut stream = Stream::new_output(
-        crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
-        writer,
-      );
+      let mut stream = Stream::new_output(crate::consts::J2K_STREAM_CHUNK_SIZE as usize, writer);
       codec.start(&mut img, &mut stream).unwrap();
       codec.encode(&mut stream).unwrap();
       codec.finish(&mut stream).unwrap();

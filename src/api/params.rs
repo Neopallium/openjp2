@@ -4,7 +4,7 @@
 use super::*;
 use crate::c_api_types::OPJ_OFF;
 use crate::consts::j2k::J2K_MAX_POCS;
-use crate::consts::opj::OPJ_J2K_MAXRLVLS;
+use crate::consts::J2K_MAXRLVLS;
 
 /// The colour space a codestream declares (the JP2 `colr`/COD value).
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -341,9 +341,9 @@ pub struct EncoderParameters {
   /// Number of precinct sizes.
   pub res_spec: core::ffi::c_int,
   /// Precinct widths per resolution.
-  pub prcw_init: [core::ffi::c_int; OPJ_J2K_MAXRLVLS as usize],
+  pub prcw_init: [core::ffi::c_int; J2K_MAXRLVLS as usize],
   /// Precinct heights per resolution.
-  pub prch_init: [core::ffi::c_int; OPJ_J2K_MAXRLVLS as usize],
+  pub prch_init: [core::ffi::c_int; J2K_MAXRLVLS as usize],
   /// Request a codestream index (unused upstream; reserved).
   pub index_on: core::ffi::c_int,
   /// Image offset in x.
@@ -413,8 +413,8 @@ impl Default for EncoderParameters {
       roi_compno: -1,
       roi_shift: Default::default(),
       res_spec: Default::default(),
-      prcw_init: [Default::default(); OPJ_J2K_MAXRLVLS as usize],
-      prch_init: [Default::default(); OPJ_J2K_MAXRLVLS as usize],
+      prcw_init: [Default::default(); J2K_MAXRLVLS as usize],
+      prch_init: [Default::default(); J2K_MAXRLVLS as usize],
       index_on: Default::default(),
       image_offset_x0: Default::default(),
       image_offset_y0: Default::default(),

@@ -10,7 +10,7 @@ use smallvec::SmallVec;
 /* *
  * Matrix inversion.
  */
-pub(crate) fn opj_matrix_inversion_f(
+pub(crate) fn matrix_inversion_f(
   mut p_src_matrix: &mut [f32],
   mut p_dest_matrix: &mut [f32],
   mut nb_compo: usize,
@@ -23,7 +23,7 @@ pub(crate) fn opj_matrix_inversion_f(
   src_tmp.resize(nb_compo, 0.0);
   dest_tmp.resize(nb_compo, 0.0);
   swap_area.resize(nb_compo, 0.0);
-  if !opj_lup_decompose(
+  if !lup_decompose(
     p_src_matrix,
     l_permutations.as_mut_slice(),
     swap_area.as_mut_slice(),
@@ -31,7 +31,7 @@ pub(crate) fn opj_matrix_inversion_f(
   ) {
     return false;
   }
-  opj_lup_invert(
+  lup_invert(
     p_src_matrix,
     p_dest_matrix,
     nb_compo,
@@ -80,7 +80,7 @@ pub(crate) fn opj_matrix_inversion_f(
    Local functions
 ==========================================================
 */
-fn opj_lup_decompose(
+fn lup_decompose(
   matrix: &mut [f32],
   permutations: &mut [u32],
   p_swap_area: &mut [f32],
@@ -168,7 +168,7 @@ fn opj_lup_decompose(
 // The index cursors mirror the C pointer walks one-for-one; keep them
 // explicit for parity.
 #[allow(clippy::explicit_counter_loop)]
-fn opj_lup_solve(
+fn lup_solve(
   p_result: &mut [f32],
   p_matrix: &[f32],
   p_vector: &[f32],
@@ -221,7 +221,7 @@ fn opj_lup_solve(
 /* *
  *LUP inversion (call with the result of lupDecompose)
  */
-fn opj_lup_invert(
+fn lup_invert(
   p_src_matrix: &mut [f32],
   p_dest_matrix: &mut [f32],
   nb_compo: usize,
@@ -234,7 +234,7 @@ fn opj_lup_invert(
   for j in 0..nb_compo {
     p_src_temp[..nb_compo_usize].fill(0.0);
     p_src_temp[j] = 1.0;
-    opj_lup_solve(
+    lup_solve(
       &mut p_dest_temp[..nb_compo_usize],
       &p_src_matrix[..nb_compo_usize * nb_compo_usize],
       &p_src_temp[..nb_compo_usize],
@@ -259,8 +259,8 @@ mod tests {
     let mut src_temp = vec![0.0f32; n];
     let mut dest_temp = vec![0.0f32; n];
     let mut swap_area = vec![0.0f32; n];
-    if opj_lup_decompose(&mut src, &mut permutations, &mut swap_area, n) {
-      opj_lup_invert(
+    if lup_decompose(&mut src, &mut permutations, &mut swap_area, n) {
+      lup_invert(
         &mut src,
         &mut dst,
         n,

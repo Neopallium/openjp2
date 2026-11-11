@@ -84,7 +84,7 @@ impl<'a> Bio<'a> {
 ==========================================================
 */
 
-pub(crate) fn opj_bio_numbytes(bio: &Bio) -> isize {
+pub(crate) fn bio_numbytes(bio: &Bio) -> isize {
   bio.numbytes() as isize
 }
 
@@ -93,11 +93,11 @@ Write a bit
 @param bio BIO handle
 @param b Bit to write (0 or 1)
 */
-pub(crate) fn opj_bio_putbit(bio: &mut Bio, b: u32) {
+pub(crate) fn bio_putbit(bio: &mut Bio, b: u32) {
   bio.putbit(b)
 }
 
-pub(crate) fn opj_bio_write(bio: &mut Bio, v: u32, n: u32) {
+pub(crate) fn bio_write(bio: &mut Bio, v: u32, n: u32) {
   debug_assert!(n > 0u32 && n <= 32u32);
   let mut i = n as i32 - 1i32;
   while i >= 0i32 {
@@ -106,7 +106,7 @@ pub(crate) fn opj_bio_write(bio: &mut Bio, v: u32, n: u32) {
   }
 }
 
-pub(crate) fn opj_bio_read(bio: &mut Bio, n: u32) -> u32 {
+pub(crate) fn bio_read(bio: &mut Bio, n: u32) -> u32 {
   debug_assert!(n > 0u32);
   let mut v = 0u32;
   let mut i = n as i32 - 1i32;
@@ -118,7 +118,7 @@ pub(crate) fn opj_bio_read(bio: &mut Bio, n: u32) -> u32 {
   v
 }
 
-pub(crate) fn opj_bio_flush(bio: &mut Bio) -> OpResult {
+pub(crate) fn bio_flush(bio: &mut Bio) -> OpResult {
   if bio.byteout().is_err() {
     return Err(());
   }
@@ -128,7 +128,7 @@ pub(crate) fn opj_bio_flush(bio: &mut Bio) -> OpResult {
   Ok(())
 }
 
-pub(crate) fn opj_bio_inalign(bio: &mut Bio) -> OpResult {
+pub(crate) fn bio_inalign(bio: &mut Bio) -> OpResult {
   if bio.buf & 0xffu32 == 0xffu32 && bio.bytein().is_err() {
     return Err(());
   }

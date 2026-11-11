@@ -45,30 +45,30 @@ pub struct ImageCompRef<'a> {
   pub data: &'a [i32],
 }
 
-pub(crate) fn opj_image_comp_header_update(p_image_header: &mut CoreImage, p_cp: &Cp) {
-  let l_x0 = opj_uint_max(p_cp.tx0, p_image_header.x0);
-  let l_y0 = opj_uint_max(p_cp.ty0, p_image_header.y0);
+pub(crate) fn image_comp_header_update(p_image_header: &mut CoreImage, p_cp: &Cp) {
+  let l_x0 = uint_max(p_cp.tx0, p_image_header.x0);
+  let l_y0 = uint_max(p_cp.ty0, p_image_header.y0);
   let l_x1 = p_cp
     .tx0
     .wrapping_add(p_cp.tw.wrapping_sub(1u32).wrapping_mul(p_cp.tdx));
   let l_y1 = p_cp
     .ty0
     .wrapping_add(p_cp.th.wrapping_sub(1u32).wrapping_mul(p_cp.tdy));
-  let l_x1 = opj_uint_min(opj_uint_adds(l_x1, p_cp.tdx), p_image_header.x1);
-  let l_y1 = opj_uint_min(opj_uint_adds(l_y1, p_cp.tdy), p_image_header.y1);
+  let l_x1 = uint_min(uint_adds(l_x1, p_cp.tdx), p_image_header.x1);
+  let l_y1 = uint_min(uint_adds(l_y1, p_cp.tdy), p_image_header.y1);
   for comp in &mut p_image_header.comps {
-    let l_comp_x0 = opj_uint_ceildiv(l_x0, comp.dx);
-    let l_comp_y0 = opj_uint_ceildiv(l_y0, comp.dy);
-    let l_comp_x1 = opj_uint_ceildiv(l_x1, comp.dx);
-    let l_comp_y1 = opj_uint_ceildiv(l_y1, comp.dy);
+    let l_comp_x0 = uint_ceildiv(l_x0, comp.dx);
+    let l_comp_y0 = uint_ceildiv(l_y0, comp.dy);
+    let l_comp_x1 = uint_ceildiv(l_x1, comp.dx);
+    let l_comp_y1 = uint_ceildiv(l_y1, comp.dy);
     /* The C computes ceildivpow2(x1) - ceildivpow2(x0) (divide before the
     difference); doing ceildivpow2(x1 - x0) gives a different size when
     the origin is not aligned to 2^factor (e.g. b1_mono.j2c with
     x0=1, factor=1: 151 vs 152). */
     let l_width =
-      opj_uint_ceildivpow2(l_comp_x1, comp.factor) - opj_uint_ceildivpow2(l_comp_x0, comp.factor);
+      uint_ceildivpow2(l_comp_x1, comp.factor) - uint_ceildivpow2(l_comp_x0, comp.factor);
     let l_height =
-      opj_uint_ceildivpow2(l_comp_y1, comp.factor) - opj_uint_ceildivpow2(l_comp_y0, comp.factor);
+      uint_ceildivpow2(l_comp_y1, comp.factor) - uint_ceildivpow2(l_comp_y0, comp.factor);
     comp.w = l_width;
     comp.h = l_height;
     comp.x0 = l_comp_x0;
@@ -76,7 +76,7 @@ pub(crate) fn opj_image_comp_header_update(p_image_header: &mut CoreImage, p_cp:
   }
 }
 
-pub(crate) fn opj_copy_image_header_to_core(p_image_src: &CoreImage, p_image_dest: &mut CoreImage) {
+pub(crate) fn copy_image_header_to_core(p_image_src: &CoreImage, p_image_dest: &mut CoreImage) {
   *p_image_dest = p_image_src.clone_header_only();
 }
 
