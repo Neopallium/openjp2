@@ -8,7 +8,7 @@ a C ABI drop-in for `libopenjp2`, and CLI tools.
 src/        the openjp2 crate (core + safe API)
 capi/       the openjp2-capi crate: #[no_mangle] C ABI producing libopenjp2.{a,so}
 ctypes/     the openjp2-ctypes crate: C-ABI mirror types + openjpeg.h constants
-wasm/       the openjp2-wasm crate: WASM bindings over the safe API (canvas decode)
+wasm/       the openjp2-wasm crate: WASM bindings + the GitHub-Pages playground
 cli/        the openjp2-cli crate: modern compress / decompress / dump tools
 tools/      the openjp2-tools crate: opj_compress / opj_decompress / opj_dump / ... (C parity)
 openjpeg/   the C/CMake reference project (upstream openjpeg, tests, test data)

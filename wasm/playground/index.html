@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>openjp2 playground — pure-Rust JPEG 2000 in your browser</title>
+  <link rel="stylesheet" href="playground.css" />
+</head>
+<body>
+  <header>
+    <h1>openjp2 playground</h1>
+    <p class="subtitle">
+      Decode and encode JPEG 2000 (<span class="code">.jp2</span> /
+      <span class="code">.j2k</span>) entirely in the browser with the
+      pure-Rust OpenJPEG port — no server round-trips.  <span id="version"></span>
+    </p>
+  </header>
+
+  <main class="columns">
+    <section class="panel" id="panel-decode">
+      <h2>Decode</h2>
+      <p class="hint">Drop a <span class="code">.jp2</span> / <span class="code">.j2k</span>
+        codestream here, or click to browse.  Multi-tile codestreams decode in parallel.</p>
+      <div class="dropzone" id="decode-drop">
+        <canvas id="decode-canvas" width="1" height="1"></canvas>
+        <div class="dropzone-label">drop a JP2/J2K file</div>
+      </div>
+      <dl class="info" id="decode-info"></dl>
+      <label class="row"><input type="checkbox" id="decode-strict" /> strict mode</label>
+    </section>
+
+    <section class="panel" id="panel-encode">
+      <h2>Encode</h2>
+      <p class="hint">Drop any image the browser can read (PNG, JPEG, WebP, ...)
+        to encode it to JPEG 2000.</p>
+      <div class="dropzone" id="encode-drop">
+        <canvas id="encode-canvas" width="1" height="1"></canvas>
+        <div class="dropzone-label">drop an image</div>
+      </div>
+      <dl class="info" id="encode-info"></dl>
+      <div class="controls">
+        <label class="row"><input type="checkbox" id="encode-lossless" checked /> lossless (5-3)</label>
+        <label class="row">container:
+          <select id="encode-format">
+            <option value="jp2" selected>JP2 (.jp2)</option>
+            <option value="j2k">J2K (.j2k)</option>
+          </select>
+        </label>
+        <button id="encode-download" disabled>download</button>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-explorer">
+      <h2>Explorer</h2>
+      <p class="hint">Byte-level view of the loaded codestream: marker segments
+        are highlighted — click one for its meaning and a link into the
+        JPEG 2000 spec.  The truncation slider cuts the codestream and
+        re-decodes it live (lenient mode tolerates truncated files).</p>
+      <div class="controls">
+        <label class="row">truncate at
+          <input type="range" id="trunc-slider" min="0" max="100" value="100" />
+          <span id="trunc-label">100%</span>
+        </label>
+        <div id="trunc-status"></div>
+      </div>
+      <div class="hex" id="hex-view"><div class="hex-empty">decode a file first</div></div>
+      <div class="marker-detail" id="marker-detail"></div>
+    </section>
+  </main>
+
+  <footer>
+    Powered by <a href="https://github.com/Neopallium/openjp2">openjp2</a>,
+    a pure-Rust port of OpenJPEG.  Encoded/decoded pixels never leave
+    your browser.
+  </footer>
+
+  <script type="module" src="playground.js"></script>
+</body>
+</html>

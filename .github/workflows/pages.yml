@@ -1,0 +1,57 @@
+# Builds the openjp2-wasm playground and publishes it to GitHub Pages.
+#
+# Pages must be enabled on the repository (Settings -> Pages ->
+# "GitHub Actions" as the source).  The site is built from the main
+# branch and deployed to the Pages environment by this workflow.
+
+name: pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "wasm/**"
+      - "src/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-bindgen-cli
+        # Keep in sync with the wasm-bindgen version in wasm/Cargo.lock.
+        run: cargo install wasm-bindgen-cli --version 0.2.130
+
+      - name: Build the playground
+        run: bash wasm/playground/build.sh
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: wasm/playground
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

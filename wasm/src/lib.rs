@@ -57,6 +57,12 @@ pub fn init() {
   console_error_panic_hook::set_once();
 }
 
+/// The openjp2-wasm crate version.
+#[wasm_bindgen]
+pub fn version() -> String {
+  env!("CARGO_PKG_VERSION").to_string()
+}
+
 /// Codestream geometry and component layout (no pixel decoding).
 #[wasm_bindgen]
 pub struct ImageInfo {
@@ -111,20 +117,132 @@ pub fn decode_to_rgba_full(data: &[u8]) -> Result<Vec<u8>, JsValue> {
   decode_to_rgba(data, Some(false))
 }
 
+/// Decode outcome with a completeness flag (the explorer's probe).
+///
+/// `complete` reflects whether every component buffer reached the
+/// declared geometry.  Note: the lenient decoder zero-fills undecoded
+/// regions, so a truncated codestream can still report full-length
+/// buffers; for a coverage verdict, check whether the codestream's
+/// markers reach EOC (the playground does this on the JS side).
+#[wasm_bindgen]
+pub struct DecodeProbe {
+  /// Declared image width.
+  pub width: u32,
+  /// Declared image height.
+  pub height: u32,
+  /// Whether every pixel of the declared geometry was decoded.
+  pub complete: bool,
+  /// Tightly packed RGBA8 (width * height * 4); empty when only the
+  /// header survived.
+  #[wasm_bindgen(getter_with_clone)]
+  pub pixels: Vec<u8>,
+}
+
+/// Decodes leniently (or strictly) and reports how much of the image
+/// survived.
+///
+/// This is the truncation-slider backend: it never fails on a truncated
+/// codestream that has at least a readable header.
+#[wasm_bindgen]
+pub fn decode_probe(data: &[u8], strict: Option<bool>) -> Result<DecodeProbe, JsValue> {
+  let mut params = DecodeParameters::new();
+  if strict.unwrap_or(false) {
+    params = params.strict(true);
+  }
+  let image = Image::from_bytes_with(data, params).map_err(js_err)?;
+  let w = image.width() as usize;
+  let h = image.height() as usize;
+  let comps = image.components();
+  let total = w * h;
+  let mut pixels = vec![0u8; total * 4];
+  let mut complete = !comps.is_empty();
+  for (ci, c) in comps.iter().enumerate().take(4) {
+    if c.dx != 1 || c.dy != 1 {
+      continue;
+    }
+    let shift = |v: i32| -> u8 {
+      let mut s = v;
+      if c.sgnd == 0 {
+        s -= 1 << (c.prec - 1);
+      }
+      if c.prec > 8 {
+        s >>= c.prec - 8;
+      } else if c.prec < 8 {
+        s <<= 8 - c.prec;
+      }
+      s.clamp(0, 255) as u8
+    };
+    if c.data.len() < total {
+      complete = false;
+    }
+    let n = c.data.len().min(total);
+    match (comps.len(), ci) {
+      (1, 0) => {
+        for (i, px) in pixels.as_chunks_mut::<4>().0[..n].iter_mut().enumerate() {
+          let g = shift(c.data[i]);
+          px[0] = g;
+          px[1] = g;
+          px[2] = g;
+          px[3] = 255;
+        }
+      }
+      (2, 0) => {
+        for (i, px) in pixels.as_chunks_mut::<4>().0[..n].iter_mut().enumerate() {
+          let g = shift(c.data[i]);
+          px[0] = g;
+          px[1] = g;
+          px[2] = g;
+          px[3] = 255;
+        }
+      }
+      (2, 1) => {
+        for (i, px) in pixels.as_chunks_mut::<4>().0[..n].iter_mut().enumerate() {
+          px[3] = shift(c.data[i]);
+        }
+      }
+      (_, 0..=3) => {
+        for (i, px) in pixels.as_chunks_mut::<4>().0[..n].iter_mut().enumerate() {
+          px[ci] = shift(c.data[i]);
+          if ci == 2 {
+            px[3] = 255;
+          }
+        }
+      }
+      _ => {}
+    }
+  }
+  Ok(DecodeProbe {
+    width: image.width(),
+    height: image.height(),
+    complete,
+    pixels,
+  })
+}
+
 /// Encodes tightly packed RGBA8 pixels to a J2K codestream.
 ///
 /// Only the RGB channels are used (the alpha channel is dropped).
 /// `lossless` selects the reversible 5-3 transform; `false` uses the
 /// irreversible 9-7 transform with one quality layer.
 #[wasm_bindgen]
-pub fn encode_rgba_to_j2k(width: u32, height: u32, rgba: &[u8], lossless: bool) -> Result<Vec<u8>, JsValue> {
+pub fn encode_rgba_to_j2k(
+  width: u32,
+  height: u32,
+  rgba: &[u8],
+  lossless: bool,
+) -> Result<Vec<u8>, JsValue> {
   encode_rgba(width, height, rgba, lossless, false).map_err(js_err)
 }
 
 /// Encodes tightly packed RGBA8 pixels to a JP2 file (like
 /// [`encode_rgba_to_j2k`], but wrapped in the JP2 container).
 #[wasm_bindgen]
-pub fn encode_rgba_to_jp2(width: u32, height: u32, rgba: &[u8], lossless: bool) -> Result<Vec<u8>, JsValue> {
+pub fn encode_rgba_to_jp2(
+  width: u32,
+  height: u32,
+  rgba: &[u8],
+  lossless: bool,
+) -> Result<Vec<u8>, JsValue> {
   encode_rgba(width, height, rgba, lossless, true).map_err(js_err)
 }
 
