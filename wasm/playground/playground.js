@@ -80,38 +80,63 @@ function rpc(msg, transfer) {
   });
 }
 
-let decodeSeq = 0;
+let decodeSeq = 0; // truncation-point ordering (explorer)
+let loadSeq = 0; // file-load generation (panel + explorer)
+
+/// Busy indicator: count of in-flight decode/encode jobs.
+const active = { decode: 0, encode: 0 };
+function updateBusy() {
+  const el = $("busy");
+  const busy = active.decode + active.encode > 0;
+  el.hidden = !busy;
+  el.textContent = active.decode ? "decoding…" : active.encode ? "encoding…" : "";
+}
 
 /// Decode to an RGBA probe, on the worker when available.  `seq` guards
-/// against stale results from rapid truncation changes.
-async function probeDecode(data, strict, seq) {
-  if (workerUp) {
-    const copy = new Uint8Array(data); // must be standalone to transfer
-    const res = await rpc({ type: "decode", data: copy.buffer, strict }, [copy.buffer]);
-    if (seq !== undefined && seq !== decodeSeq) return null; // stale
-    return { width: res.width, height: res.height, complete: res.complete, pixels: res.pixels };
+/// against stale results from rapid truncation changes (explorer only);
+/// `tag` tells the worker whether the job may be coalesced.
+async function probeDecode(data, strict, seq, tag) {
+  active.decode += 1;
+  updateBusy();
+  try {
+    if (workerUp) {
+      const copy = new Uint8Array(data); // must be standalone to transfer
+      const res = await rpc({ type: "decode", tag, data: copy.buffer, strict }, [copy.buffer]);
+      if (seq !== undefined && seq !== decodeSeq) return null; // stale
+      return { width: res.width, height: res.height, complete: res.complete, pixels: res.pixels };
+    }
+    const probe = decode_probe(data, strict);
+    return {
+      width: probe.width,
+      height: probe.height,
+      complete: probe.complete,
+      pixels: new Uint8Array(probe.pixels),
+    };
+  } finally {
+    active.decode -= 1;
+    updateBusy();
   }
-  const probe = decode_probe(data, strict);
-  return {
-    width: probe.width,
-    height: probe.height,
-    complete: probe.complete,
-    pixels: new Uint8Array(probe.pixels),
-  };
 }
 
 async function workerEncode(width, height, rgba, lossless, format) {
-  if (workerUp) {
-    const copy = new Uint8Array(rgba);
-    const res = await rpc(
-      { type: "encode", width, height, data: copy.buffer, lossless, format },
-      [copy.buffer],
-    );
-    return new Uint8Array(res.bytes);
+  active.encode += 1;
+  updateBusy();
+  try {
+    if (workerUp) {
+      const copy = new Uint8Array(rgba);
+      const res = await rpc(
+        { type: "encode", width, height, data: copy.buffer, lossless, format },
+        [copy.buffer],
+      );
+      return new Uint8Array(res.bytes);
+    }
+    return format === "j2k"
+      ? encode_rgba_to_j2k(width, height, rgba, lossless)
+      : encode_rgba_to_jp2(width, height, rgba, lossless);
+  } finally {
+    active.encode -= 1;
+    updateBusy();
   }
-  return format === "j2k"
-    ? encode_rgba_to_j2k(width, height, rgba, lossless)
-    : encode_rgba_to_jp2(width, height, rgba, lossless);
 }
 
 // ---------------------------------------------------------------------------
@@ -322,7 +347,7 @@ function drawProbe(width, height, pixels, canvas) {
   const ctx = canvas.getContext("2d");
   canvas.width = width;
   canvas.height = height;
-  if (pixels.length === width * height * 4) {
+  if (width > 0 && height > 0 && pixels.length === width * height * 4) {
     const img = new ImageData(
       new Uint8ClampedArray(pixels.buffer, pixels.byteOffset, pixels.length),
       width,
@@ -330,6 +355,7 @@ function drawProbe(width, height, pixels, canvas) {
     );
     ctx.putImageData(img, 0, 0);
   } else {
+    // header-only decode: no pixel data for the declared geometry
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, width, height);
   }
@@ -340,10 +366,11 @@ async function explorerDecode(cut) {
   const t0 = performance.now();
   const complete = structurallyComplete(sub, csOffset);
   const seq = ++decodeSeq;
+  const myLoad = loadSeq;
   let status;
   try {
-    const probe = await probeDecode(sub, false, seq);
-    if (!probe) return; // superseded by a newer truncation point
+    const probe = await probeDecode(sub, false, seq, "explorer");
+    if (!probe || myLoad !== loadSeq) return; // superseded / new file
     const ms = performance.now() - t0;
     drawProbe(probe.width, probe.height, probe.pixels, explorerCanvas);
     setInfo($("explorer-info"), [
@@ -408,9 +435,11 @@ const decodeCanvas = $("decode-canvas");
 
 async function showDecode(data, strict) {
   const t0 = performance.now();
-  const seq = ++decodeSeq;
-  const probe = await probeDecode(data, strict, seq);
-  if (!probe) return;
+  const myLoad = loadSeq;
+  // No truncation-seq guard: the panel always shows the full-file
+  // decode; only a newer file load supersedes it.
+  const probe = await probeDecode(data, strict, undefined, "panel");
+  if (myLoad !== loadSeq) return;
   const ms = performance.now() - t0;
   drawProbe(probe.width, probe.height, probe.pixels, decodeCanvas);
   const complete = structurallyComplete(data, csOffset);
@@ -441,6 +470,7 @@ function loadCodestream(file) {
     treeRoot = structure.tree;
     csOffset = structure.csOffset;
     codestream = data;
+    loadSeq += 1;
     showDecode(data, $("decode-strict").checked).catch((e) =>
       setInfo($("decode-info"), [["error", String(e)]]),
     );

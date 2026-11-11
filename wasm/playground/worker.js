@@ -1,6 +1,11 @@
 // Web Worker backend for the playground: runs the wasm decode/encode off
-// the main thread so the UI stays responsive.  Coalesces queued decode
-// requests (only the latest truncation point is decoded).
+// the main thread so the UI stays responsive.
+//
+// Decode requests come in two flavours:
+// - "panel" jobs (the Decode section, strict toggle): always run.
+// - "explorer" jobs (the truncation slider): coalesced — only the latest
+//   queued truncation point is decoded, and every superseded request id
+//   receives that result (the main thread discards stale ones).
 
 import init, {
   decode_probe,
@@ -15,39 +20,52 @@ function ready() {
   return readyPromise;
 }
 
-let decodeQueue = [];
+let panelQueue = [];
+let explorerQueue = [];
 let running = false;
+
+async function runJob(job) {
+  const { id, data, strict } = job;
+  const probe = decode_probe(new Uint8Array(data), strict);
+  return {
+    id,
+    ok: true,
+    width: probe.width,
+    height: probe.height,
+    complete: probe.complete,
+    pixels: probe.pixels,
+  };
+}
 
 async function drain() {
   if (running) return;
   running = true;
   try {
-    while (decodeQueue.length) {
-      // Coalesce: run only the latest queued decode, but reply to every
-      // superseded request id too (the main thread discards stale ones).
-      const jobs = decodeQueue;
-      decodeQueue = [];
-      const latest = jobs[jobs.length - 1];
-      const ids = jobs.map((j) => j.id);
-      const { data, strict } = latest;
+    while (panelQueue.length || explorerQueue.length) {
+      let job;
+      if (panelQueue.length) {
+        // panel jobs always run, in order
+        job = panelQueue.shift();
+      } else {
+        // coalesce the explorer backlog into the latest request
+        const jobs = explorerQueue;
+        explorerQueue = [];
+        job = jobs[jobs.length - 1];
+        // reply the dropped ids with the same result afterwards
+        job.dropIds = jobs.slice(0, -1).map((j) => j.id);
+      }
       try {
         await ready();
-        const probe = decode_probe(new Uint8Array(data), strict);
-        for (const id of ids) {
-          self.postMessage(
-            {
-              id,
-              ok: true,
-              width: probe.width,
-              height: probe.height,
-              complete: probe.complete,
-              pixels: probe.pixels,
-            },
-            [probe.pixels.buffer],
-          );
+        const result = await runJob(job);
+        // dropped ids get a plain (cloned) copy first; the transferable
+        // buffer is handed over only once, with the main reply
+        for (const id of job.dropIds || []) {
+          self.postMessage({ ...result, id });
         }
+        self.postMessage(result, [result.pixels.buffer]);
       } catch (e) {
-        for (const id of ids) {
+        self.postMessage({ id: job.id, ok: false, error: String(e) });
+        for (const id of job.dropIds || []) {
           self.postMessage({ id, ok: false, error: String(e) });
         }
       }
@@ -61,7 +79,11 @@ self.onmessage = (ev) => {
   const msg = ev.data;
   switch (msg.type) {
     case "decode": {
-      decodeQueue.push({ id: msg.id, data: msg.data, strict: msg.strict });
+      if (msg.tag === "panel") {
+        panelQueue.push({ id: msg.id, data: msg.data, strict: msg.strict });
+      } else {
+        explorerQueue.push({ id: msg.id, data: msg.data, strict: msg.strict });
+      }
       drain();
       break;
     }
