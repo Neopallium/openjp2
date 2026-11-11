@@ -9,9 +9,11 @@ JOBS="${JOBS:-$(nproc)}"
 ALLOWED=(
   # The C-ABI tools link the Rust library but keep the upstream C tools'
   # color.c: its CMYK->RGB float arithmetic disagrees with the upstream
-  # md5refs on this platform (the reference C library build fails these
-  # identically - verified against upstream master).  The Rust tools
-  # (tools/) use the canonical conversion and match the refs exactly.
+  # md5refs in RELEASE builds on this platform (the reference C library
+  # build fails these identically - verified against upstream master; a
+  # Debug build of the tools passes them, i.e. the drift is C-compiler
+  # optimization-dependent).  The Rust tools (tools/) use the canonical
+  # conversion and match the refs exactly.
   "NR-DEC-issue205.jp2-43-decode-md5"
   "NR-DEC-issue208.jp2-69-decode-md5"
 )

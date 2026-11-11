@@ -118,7 +118,7 @@ jobs:
           rm -rf openjpeg/data/.git
 
       - name: Configure (C reference + Rust library)
-        run: cmake -S openjpeg -B openjpeg/build -DUSE_RUST_LIB=ON -DBUILD_TESTING=ON
+        run: cmake -S openjpeg -B openjpeg/build -DUSE_RUST_LIB=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: cmake --build openjpeg/build -j"$(nproc)"
