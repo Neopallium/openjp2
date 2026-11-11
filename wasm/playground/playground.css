@@ -155,8 +155,18 @@ button:disabled { background: #3a3f4a; color: var(--muted); cursor: default; }
 .tree details > summary::marker { color: var(--muted); }
 .tree-node { display: flex; gap: 0.6rem; align-items: baseline; cursor: pointer; }
 .tree-node:hover { color: var(--accent); }
+.tree-node.selected { color: var(--accent); font-weight: 700; }
 .tree-node .tree-range { color: var(--muted); font-size: 0.75rem; margin-left: auto; }
 .tree-node.beyond-cut { color: #5a4a50; text-decoration: line-through; }
+
+.presets { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.presets button {
+  background: #2c313a;
+  color: var(--ink);
+  padding: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
 
 .marker-detail { margin-top: 0.5rem; min-height: 2.5rem; }
 .marker-detail a { color: var(--accent); }

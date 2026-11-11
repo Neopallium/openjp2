@@ -1,4 +1,8 @@
 // openjp2 playground — drop-decode, encode-anything, codestream explorer.
+//
+// The heavy wasm decode/encode runs in a Web Worker (worker.js); if the
+// worker cannot load (e.g. `file://` without a server), the page falls
+// back to running the wasm on the main thread.
 import init, {
   decode_probe,
   encode_rgba_to_jp2,
@@ -33,6 +37,81 @@ function setInfo(el, entries) {
       return [dt, dd];
     }).flat(),
   );
+}
+
+// ---------------------------------------------------------------------------
+// worker plumbing (with a main-thread fallback)
+
+const worker = (() => {
+  try {
+    return new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
+  } catch {
+    return null;
+  }
+})();
+
+let workerUp = worker !== null;
+let callId = 0;
+const pending = new Map();
+
+if (worker) {
+  worker.onmessage = (ev) => {
+    const { id, ok, ...rest } = ev.data;
+    const p = pending.get(id);
+    if (!p) return;
+    pending.delete(id);
+    if (ok) p.resolve(rest);
+    else p.reject(new Error(rest.error));
+  };
+  worker.onerror = () => {
+    // module worker unsupported or the script failed to load: fall back
+    // to main-thread wasm.
+    workerUp = false;
+    for (const [, p] of pending) p.reject(new Error("worker failed"));
+    pending.clear();
+  };
+}
+
+function rpc(msg, transfer) {
+  return new Promise((resolve, reject) => {
+    const id = ++callId;
+    pending.set(id, { resolve, reject });
+    worker.postMessage({ id, ...msg }, transfer || []);
+  });
+}
+
+let decodeSeq = 0;
+
+/// Decode to an RGBA probe, on the worker when available.  `seq` guards
+/// against stale results from rapid truncation changes.
+async function probeDecode(data, strict, seq) {
+  if (workerUp) {
+    const copy = new Uint8Array(data); // must be standalone to transfer
+    const res = await rpc({ type: "decode", data: copy.buffer, strict }, [copy.buffer]);
+    if (seq !== undefined && seq !== decodeSeq) return null; // stale
+    return { width: res.width, height: res.height, complete: res.complete, pixels: res.pixels };
+  }
+  const probe = decode_probe(data, strict);
+  return {
+    width: probe.width,
+    height: probe.height,
+    complete: probe.complete,
+    pixels: new Uint8Array(probe.pixels),
+  };
+}
+
+async function workerEncode(width, height, rgba, lossless, format) {
+  if (workerUp) {
+    const copy = new Uint8Array(rgba);
+    const res = await rpc(
+      { type: "encode", width, height, data: copy.buffer, lossless, format },
+      [copy.buffer],
+    );
+    return new Uint8Array(res.bytes);
+  }
+  return format === "j2k"
+    ? encode_rgba_to_j2k(width, height, rgba, lossless)
+    : encode_rgba_to_jp2(width, height, rgba, lossless);
 }
 
 // ---------------------------------------------------------------------------
@@ -84,6 +163,7 @@ function renderHex(data, cut) {
       } else {
         const b = data[i];
         s.textContent = b.toString(16).padStart(2, "0") + " ";
+        s.dataset.offset = i;
         if (i >= cut) {
           s.className = "cut";
           s.title = "beyond the truncation point";
@@ -113,6 +193,24 @@ function renderHex(data, cut) {
   view.appendChild(frag);
 }
 
+/// Selects the hex bytes in [start, end) and scrolls the first into view.
+function selectHexSpan(start, end) {
+  document.querySelectorAll("#hex-view .byte.selected").forEach((s) => s.classList.remove("selected"));
+  const cap = Math.min(codestream.length, HEX_CAP);
+  const lo = Math.max(start, 0);
+  const hi = Math.min(end, cap);
+  if (hi <= lo) return;
+  let first = null;
+  document.querySelectorAll("#hex-view .byte[data-offset]").forEach((s) => {
+    const off = Number(s.dataset.offset);
+    if (off >= lo && off < hi) {
+      s.classList.add("selected");
+      if (!first) first = s;
+    }
+  });
+  if (first) first.scrollIntoView({ block: "center" });
+}
+
 function showDetail(range) {
   const el = $("marker-detail");
   el.replaceChildren();
@@ -123,7 +221,7 @@ function showDetail(range) {
   const text = document.createElement("span");
   text.textContent = ` — ${kind}, bytes ${range.start}–${range.end} (${fmtBytes(range.end - range.start)})`;
   el.append(name, text);
-  if (range.code !== undefined && MARKERS[range.code]) {
+  if (range.code !== undefined && range.code !== null && MARKERS[range.code]) {
     el.append(document.createElement("br"));
     const link = document.createElement("a");
     link.href = SPEC_URL;
@@ -144,20 +242,6 @@ function showDetail(range) {
   }
 }
 
-function highlightRange(range) {
-  document.querySelectorAll(".byte.selected").forEach((s) => s.classList.remove("selected"));
-  if (!range || !labelIndex) return;
-  document.querySelectorAll("#hex-view .byte[data-range]").forEach((s) => {
-    const ri = Number(s.dataset.range);
-    if (ri < ranges.length) {
-      const r = ranges[ri];
-      if (r.start === range.start && r.end === range.end) s.classList.add("selected");
-    }
-  });
-  const first = document.querySelector("#hex-view .byte.selected");
-  if (first) first.scrollIntoView({ block: "center" });
-}
-
 // ---------------------------------------------------------------------------
 // tree view
 
@@ -172,6 +256,8 @@ function treeEl(node, cut, open) {
   const li = document.createElement("li");
   const head = document.createElement("div");
   head.className = "tree-node";
+  head.dataset.start = node.start;
+  head.dataset.end = node.end;
   if (node.children.length) {
     const det = document.createElement("details");
     det.open = open;
@@ -203,10 +289,28 @@ function treeEl(node, cut, open) {
       spec: node.spec,
     };
     showDetail(range);
-    highlightRange(range);
+    selectHexSpan(node.start, node.end);
+    selectTreeNodes(node.start, node.end, true);
   });
   li.appendChild(head);
   return li;
+}
+
+/// Selects the tree node(s) covering [start, end); `preferSmallest`
+/// picks the innermost node when several cover the span.
+function selectTreeNodes(start, end, preferSmallest) {
+  document.querySelectorAll("#tree-view .tree-node.selected").forEach((s) => s.classList.remove("selected"));
+  const nodes = [...document.querySelectorAll("#tree-view .tree-node[data-start]")]
+    .filter((n) => Number(n.dataset.start) <= start && Number(n.dataset.end) >= end);
+  if (!nodes.length) return;
+  const chosen = preferSmallest
+    ? nodes.sort(
+        (a, b) =>
+          (a.dataset.end - a.dataset.start) - (b.dataset.end - b.dataset.start),
+      )[0]
+    : nodes[0];
+  chosen.classList.add("selected");
+  chosen.scrollIntoView({ block: "nearest" });
 }
 
 // ---------------------------------------------------------------------------
@@ -214,32 +318,34 @@ function treeEl(node, cut, open) {
 
 const explorerCanvas = $("explorer-canvas");
 
-function drawProbe(probe, canvas) {
+function drawProbe(width, height, pixels, canvas) {
   const ctx = canvas.getContext("2d");
-  canvas.width = probe.width;
-  canvas.height = probe.height;
-  if (probe.pixels.length === probe.width * probe.height * 4) {
+  canvas.width = width;
+  canvas.height = height;
+  if (pixels.length === width * height * 4) {
     const img = new ImageData(
-      new Uint8ClampedArray(probe.pixels.buffer, probe.pixels.byteOffset, probe.pixels.length),
-      probe.width,
-      probe.height,
+      new Uint8ClampedArray(pixels.buffer, pixels.byteOffset, pixels.length),
+      width,
+      height,
     );
     ctx.putImageData(img, 0, 0);
   } else {
     ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, probe.width, probe.height);
+    ctx.fillRect(0, 0, width, height);
   }
 }
 
-function explorerDecode(cut) {
+async function explorerDecode(cut) {
   const sub = codestream.subarray(0, cut);
   const t0 = performance.now();
   const complete = structurallyComplete(sub, csOffset);
+  const seq = ++decodeSeq;
   let status;
   try {
-    const probe = decode_probe(sub, false);
+    const probe = await probeDecode(sub, false, seq);
+    if (!probe) return; // superseded by a newer truncation point
     const ms = performance.now() - t0;
-    drawProbe(probe, explorerCanvas);
+    drawProbe(probe.width, probe.height, probe.pixels, explorerCanvas);
     setInfo($("explorer-info"), [
       ["size", `${probe.width}×${probe.height}`],
       ["pixels", complete ? "complete" : "truncated (black = not decoded)"],
@@ -273,15 +379,40 @@ $("trunc-slider").addEventListener("input", (ev) => {
 });
 
 // ---------------------------------------------------------------------------
+// truncation presets
+
+const PRESETS = [500, 1024, 4096, 32768, 262144, 1048576];
+
+function renderPresets() {
+  const el = $("trunc-presets");
+  el.replaceChildren();
+  for (const size of PRESETS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = fmtBytes(size);
+    b.disabled = !codestream || size >= codestream.length;
+    b.title = `truncate to ${size} bytes`;
+    b.addEventListener("click", () => {
+      const cut = Math.min(size, codestream.length);
+      $("trunc-slider").value = cut;
+      applyCut(cut);
+    });
+    el.appendChild(b);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // decode panel
 
 const decodeCanvas = $("decode-canvas");
 
-function showDecode(data, strict) {
+async function showDecode(data, strict) {
   const t0 = performance.now();
-  const probe = decode_probe(data, strict);
+  const seq = ++decodeSeq;
+  const probe = await probeDecode(data, strict, seq);
+  if (!probe) return;
   const ms = performance.now() - t0;
-  drawProbe(probe, decodeCanvas);
+  drawProbe(probe.width, probe.height, probe.pixels, decodeCanvas);
   const complete = structurallyComplete(data, csOffset);
   setInfo($("decode-info"), [
     ["size", `${probe.width}×${probe.height}`],
@@ -289,7 +420,6 @@ function showDecode(data, strict) {
     ["decode", `${ms.toFixed(0)} ms`],
   ]);
   $("decode-drop").classList.add("has-image");
-  return probe;
 }
 
 function loadCodestream(file) {
@@ -311,11 +441,9 @@ function loadCodestream(file) {
     treeRoot = structure.tree;
     csOffset = structure.csOffset;
     codestream = data;
-    try {
-      showDecode(data, $("decode-strict").checked);
-    } catch (e) {
-      setInfo($("decode-info"), [["error", String(e)]]);
-    }
+    showDecode(data, $("decode-strict").checked).catch((e) =>
+      setInfo($("decode-info"), [["error", String(e)]]),
+    );
     // explorer
     const slider = $("trunc-slider");
     slider.max = data.length;
@@ -324,6 +452,7 @@ function loadCodestream(file) {
     renderHex(data, data.length);
     renderTree(treeRoot, data.length);
     renderLegend();
+    renderPresets();
     explorerDecode(data.length);
   });
 }
@@ -343,14 +472,15 @@ function renderLegend() {
 }
 
 // ---------------------------------------------------------------------------
-// byte clicks
+// hex <-> tree selection
 
 $("hex-view").addEventListener("click", (ev) => {
   const span = ev.target.closest("[data-range]");
   if (!span) return;
   const range = ranges[Number(span.dataset.range)];
   showDetail(range);
-  highlightRange(range);
+  selectHexSpan(range.start, range.end);
+  selectTreeNodes(range.start, range.end, true);
 });
 
 // ---------------------------------------------------------------------------
@@ -374,7 +504,7 @@ function loadSourceImage(file) {
   img.src = url;
 }
 
-function runEncode() {
+async function runEncode() {
   const ctx = encodeCanvas.getContext("2d");
   const { width, height } = encodeCanvas;
   const rgba = ctx.getImageData(0, 0, width, height).data;
@@ -382,9 +512,7 @@ function runEncode() {
   const format = $("encode-format").value;
   const t0 = performance.now();
   try {
-    encoded = format === "j2k"
-      ? encode_rgba_to_j2k(width, height, rgba, lossless)
-      : encode_rgba_to_jp2(width, height, rgba, lossless);
+    encoded = await workerEncode(width, height, rgba, lossless, format);
   } catch (e) {
     setInfo($("encode-info"), [["error", String(e)]]);
     return;
@@ -446,16 +574,26 @@ wireDrop($("encode-drop"), encodeInput, loadSourceImage);
 
 $("decode-strict").addEventListener("change", () => {
   if (codestream) {
-    try {
-      showDecode(codestream, $("decode-strict").checked);
-    } catch (e) {
-      setInfo($("decode-info"), [["error", String(e)]]);
-    }
+    showDecode(codestream, $("decode-strict").checked).catch((e) =>
+      setInfo($("decode-info"), [["error", String(e)]]),
+    );
   }
 });
 
 // ---------------------------------------------------------------------------
 
-init().then(() => {
-  $("version").textContent = `openjp2-wasm ${version()}`;
-});
+(async () => {
+  try {
+    let v;
+    if (workerUp) {
+      const res = await rpc({ type: "version" });
+      v = res.version;
+    } else {
+      await init();
+      v = version();
+    }
+    $("version").textContent = `openjp2-wasm ${v}`;
+  } catch {
+    $("version").textContent = "openjp2-wasm";
+  }
+})();

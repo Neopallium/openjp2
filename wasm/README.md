@@ -45,12 +45,19 @@ not applied.
 - **Encode** — drop any browser-readable image to encode it to JP2/J2K
   (lossless 5-3 or lossy 9-7) and download the result.
 - **Explorer** — a structural tree of the file (JP2 boxes → codestream
-  markers → tile-parts), a byte-level hex view where **every byte** is
-  colour-coded and labelled with the part of the stream it belongs to
-  (click one for its meaning and a link into the JPEG 2000 spec;
-  unrecognized bytes are marked corrupt), and a truncation slider that
-  cuts the codestream and re-decodes it live into the preview —
-  demonstrating the lenient decoder's tolerance for truncated files.
+  markers → tile-parts) linked bidirectionally with the hex view (click a
+  tree node to highlight its bytes, click a byte to highlight its tree
+  node), a byte-level hex view where **every byte** is colour-coded and
+  labelled with the part of the stream it belongs to (click one for its
+  meaning and a link into the JPEG 2000 spec; unrecognized bytes are
+  marked corrupt), and a truncation slider — with size preset buttons
+  (500 B … 1 MiB) — that cuts the codestream and re-decodes it live into
+  the preview, demonstrating the lenient decoder's tolerance for
+  truncated files.
+
+All decode/encode work runs in a Web Worker (`worker.js`) so the page
+never freezes during a decode; where module workers are unavailable the
+page falls back to running the wasm on the main thread.
 
 The site is published by `.github/workflows/pages.yml` on every push that
 touches `wasm/**` or `src/**` (requires Pages → "GitHub Actions" in the
