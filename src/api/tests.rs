@@ -631,7 +631,8 @@ fn encode_with_layer_rates() {
 fn encode_to_writer_round_trip() {
   let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
   let image = Image::from_bytes(&buf).expect("decode");
-  let file = std::fs::File::create("/tmp/openjp2_encode_to_writer.j2k").expect("create");
+  let out_path = std::env::temp_dir().join("openjp2_encode_to_writer.j2k");
+  let file = std::fs::File::create(&out_path).expect("create");
   image
     .clone()
     .encode_to_writer(
@@ -641,8 +642,8 @@ fn encode_to_writer_round_trip() {
       file,
     )
     .expect("encode to writer");
-  let back = Image::from_file("/tmp/openjp2_encode_to_writer.j2k").expect("decode");
-  let _ = std::fs::remove_file("/tmp/openjp2_encode_to_writer.j2k");
+  let back = Image::from_file(&out_path).expect("decode");
+  let _ = std::fs::remove_file(&out_path);
   assert_eq!(
     (back.width(), back.height()),
     (image.width(), image.height())

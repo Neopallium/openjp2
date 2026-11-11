@@ -23,15 +23,18 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 [features]
 # File-based streams and the FILE* dump writer need libc.  Disable for
 # no_std targets like WASM; custom (callback) streams still work.
-default = ["file-io"]
+# `threads` mirrors the core's rayon feature: the C ABI default keeps the
+# parallel codecs, and no-default-features builds (WASM) drop it.
+default = ["file-io", "threads"]
 file-io = ["dep:libc"]
+threads = ["openjp2_core/threads"]
 # Pass-through: write the upstream OpenJPEG product/version string into
 # the default codestream comment (off by default).
 openjpeg-version-string = ["openjp2_core/openjpeg-version-string"]
 simd = ["openjp2_core/simd"]
 
 [dependencies]
-openjp2_core = { package = "openjp2", path = "..", features = ["event-handlers"] }
+openjp2_core = { package = "openjp2", path = "..", default-features = false, features = ["event-handlers"] }
 openjp2-ctypes = { path = "../ctypes" }
 libc = { version = "0.2", optional = true }
 log = "0.4.17"
