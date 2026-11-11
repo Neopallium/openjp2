@@ -31,3 +31,6 @@ cmake_install.cmake
 /openjpeg/partial_tests/
 /openjpeg/old_logs/
 *.log
+
+# Extra scripts
+*.sh

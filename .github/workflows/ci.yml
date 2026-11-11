@@ -25,6 +25,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fix DNS (prepend a public resolver)
+        run: |
+          # The runner's DNS intermittently fails to resolve
+          # azure.archive.ubuntu.com (which archive.ubuntu.com aliases),
+          # breaking apt.  Prepend a public resolver as the first entry
+          # (Microsoft's apt troubleshooting doc, Scenario 4).
+          sudo sed -i '1i nameserver 8.8.8.8' /etc/resolv.conf
+          cat /etc/resolv.conf
+
       - name: Install requirements
         run: |
           sudo apt update
@@ -84,6 +93,15 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+
+      - name: Fix DNS (prepend a public resolver)
+        run: |
+          # The runner's DNS intermittently fails to resolve
+          # azure.archive.ubuntu.com (which archive.ubuntu.com aliases),
+          # breaking apt.  Prepend a public resolver as the first entry
+          # (Microsoft's apt troubleshooting doc, Scenario 4).
+          sudo sed -i '1i nameserver 8.8.8.8' /etc/resolv.conf
+          cat /etc/resolv.conf
 
       - name: Install requirements
         run: |
@@ -169,6 +187,15 @@ jobs:
             apt: ""
     steps:
       - uses: actions/checkout@v4
+
+      - name: Fix DNS (prepend a public resolver)
+        run: |
+          # The runner's DNS intermittently fails to resolve
+          # azure.archive.ubuntu.com (which archive.ubuntu.com aliases),
+          # breaking apt.  Prepend a public resolver as the first entry
+          # (Microsoft's apt troubleshooting doc, Scenario 4).
+          sudo sed -i '1i nameserver 8.8.8.8' /etc/resolv.conf
+          cat /etc/resolv.conf
 
       - name: Install requirements
         run: |
