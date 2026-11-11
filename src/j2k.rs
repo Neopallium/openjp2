@@ -1834,21 +1834,21 @@ fn opj_j2k_write_coc(
  *
  * @return      OPJ_TRUE if equals
  */
-fn opj_j2k_compare_coc(p_j2k: &mut J2k, p_first_comp_no: u32, p_second_comp_no: u32) -> OPJ_BOOL {
+fn opj_j2k_compare_coc(p_j2k: &mut J2k, p_first_comp_no: u32, p_second_comp_no: u32) -> bool {
   /* preconditions */
   let csty_eq = {
     let l_tcp = &p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
     l_tcp.tccps[p_first_comp_no as usize].csty == l_tcp.tccps[p_second_comp_no as usize].csty
   };
   if !csty_eq {
-    return 0i32;
+    return false;
   }
   opj_j2k_compare_spcod_spcoc(
     p_j2k,
     p_j2k.m_current_tile_number,
     p_first_comp_no,
     p_second_comp_no,
-  )
+  ) != 0
 }
 
 /* *
@@ -4216,7 +4216,7 @@ fn opj_j2k_write_all_coc(
     .numcomps;
   while compno < numcomps {
     /* cod is first component of first tile */
-    if opj_j2k_compare_coc(p_j2k, 0_u32, compno) == 0
+    if !opj_j2k_compare_coc(p_j2k, 0_u32, compno)
       && opj_j2k_write_coc(p_j2k, compno, p_stream, p_manager) == 0
     {
       return 0i32;
@@ -7446,7 +7446,7 @@ fn opj_j2k_need_nb_tile_parts_correction(
   let mut l_num_parts: u32 = 0;
   /* initialize to no correction needed */
   *p_correction_needed = 0i32;
-  if opj_stream_has_seek(p_stream) == 0 {
+  if !opj_stream_has_seek(p_stream) {
     /* We can't do much in this case, seek is needed */
     return 1i32;
   }
@@ -7762,7 +7762,7 @@ pub(crate) fn opj_j2k_read_tile_header(
         && p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec >= 0
         && p_j2k.m_current_tile_number == p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as u32
         && !p_j2k.m_specific_param.m_decoder.m_tlm.m_is_invalid
-        && opj_stream_has_seek(p_stream) != 0
+        && opj_stream_has_seek(p_stream)
       {
         let l_tcp = &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
         let tile = &p_j2k
@@ -9471,7 +9471,7 @@ fn opj_j2k_allocate_tile_element_cstr_index(
   1i32
 }
 
-fn opj_j2k_are_all_used_components_decoded(p_j2k: &mut J2k, p_manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_j2k_are_all_used_components_decoded(p_j2k: &mut J2k, p_manager: &mut EventMgr) -> bool {
   let mut compno: u32 = 0;
   let mut decoded_all_used_components = 1i32;
   if let Some(image) = p_j2k.m_output_image.as_ref() {
@@ -9513,9 +9513,9 @@ fn opj_j2k_are_all_used_components_decoded(p_j2k: &mut J2k, p_manager: &mut Even
       EVT_ERROR,
       "Failed to decode all used components\n",
     );
-    return 0i32;
+    return false;
   }
-  1i32
+  true
 }
 
 /* *
@@ -9581,7 +9581,7 @@ fn opj_j2k_decode_tiles(
     && dec.m_end_tile_y == p_j2k.m_cp.th;
   let mut end_pos: i64 = 0;
   let cstr_index = p_j2k.cstr_index.as_deref().expect("cstr_index");
-  if !full_extent && !dec.m_tlm.m_is_invalid && opj_stream_has_seek(p_stream) != 0 {
+  if !full_extent && !dec.m_tlm.m_is_invalid && opj_stream_has_seek(p_stream) {
     let mut m_num_intersecting_tile_parts: u32 = 0;
     for tile in cstr_index.tiles.iter() {
       if tile.nb_tps > 0
@@ -9690,7 +9690,7 @@ fn opj_j2k_decode_tiles(
       break;
     }
   }
-  if opj_j2k_are_all_used_components_decoded(p_j2k, p_manager) == 0 {
+  if !opj_j2k_are_all_used_components_decoded(p_j2k, p_manager) {
     return 0i32;
   }
   1i32
@@ -9861,7 +9861,7 @@ fn opj_j2k_decode_one_tile(
       );
     }
   }
-  if opj_j2k_are_all_used_components_decoded(p_j2k, p_manager) == 0 {
+  if !opj_j2k_are_all_used_components_decoded(p_j2k, p_manager) {
     return 0i32;
   }
   1i32

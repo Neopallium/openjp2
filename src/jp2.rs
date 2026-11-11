@@ -1184,7 +1184,7 @@ fn opj_jp2_write_jp2c(
   stream: &mut Stream,
   p_manager: &mut EventMgr,
 ) -> OPJ_BOOL {
-  if opj_stream_has_seek(stream) == 0 {
+  if !opj_stream_has_seek(stream) {
     event_msg!(p_manager, EVT_ERROR, "Stream doesn't support seeking.\n",);
     return 0;
   }
@@ -1508,7 +1508,7 @@ fn opj_jp2_default_validation(
   l_is_valid &= (jp2.meth > 0u32 && jp2.meth < 3u32) as core::ffi::c_int;
   /* stream validation */
   /* back and forth is needed */
-  l_is_valid &= opj_stream_has_seek(stream);
+  l_is_valid &= opj_stream_has_seek(stream) as core::ffi::c_int;
   l_is_valid
 }
 

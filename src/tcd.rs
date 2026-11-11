@@ -67,7 +67,7 @@ fn opj_tcd_makelayer(tcd: &mut Tcd, layno: u32, thresh: f64, final_0: u32) -> bo
       while bandno < res.numbands {
         let band = &mut res.bands[bandno as usize];
         /* Skip empty bands */
-        if opj_tcd_is_band_empty(band) == 0 {
+        if !opj_tcd_is_band_empty(band) {
           precno = 0_u32;
           while precno < res.pw.wrapping_mul(res.ph) {
             let prc = &mut band.precincts[precno as usize];
@@ -212,7 +212,7 @@ fn opj_tcd_makelayer_fixed(
       while bandno < res.numbands {
         let band = &mut res.bands[bandno as usize];
         /* Skip empty bands */
-        if opj_tcd_is_band_empty(band) == 0 {
+        if !opj_tcd_is_band_empty(band) {
           precno = 0_u32; /* number of bit-plan equal to zero */
           while precno < res.pw.wrapping_mul(res.ph) {
             let prc = &mut band.precincts[precno as usize];
@@ -346,7 +346,7 @@ fn opj_tcd_rateallocate(
           /* bandno */
           /* precno */
           /* Skip empty bands */
-          if opj_tcd_is_band_empty(band) == 0 {
+          if !opj_tcd_is_band_empty(band) {
             precno = 0_u32;
             while precno < res.pw.wrapping_mul(res.ph) {
               let prc = &mut band.precincts[precno as usize];
@@ -894,7 +894,7 @@ pub(crate) fn opj_tcd_init_tile(
             l_level_no.wrapping_add(1u32) as i32,
           )
         }
-        if is_encoder == 0 || opj_tcd_is_band_empty(band) == 0 {
+        if is_encoder == 0 || !opj_tcd_is_band_empty(band) {
           let step_size = &tccp.stepsizes[l_step_size_idx];
           /* Table E-1 - Sub-band gains */
           /* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
@@ -2474,8 +2474,8 @@ pub(crate) fn opj_tcd_copy_tile_data(
   1i32
 }
 
-pub(crate) fn opj_tcd_is_band_empty(band: &TcdBand) -> OPJ_BOOL {
-  (band.x1 - band.x0 == 0i32 || band.y1 - band.y0 == 0i32) as core::ffi::c_int
+pub(crate) fn opj_tcd_is_band_empty(band: &TcdBand) -> bool {
+  band.x1 - band.x0 == 0i32 || band.y1 - band.y0 == 0i32
 }
 
 /// Read-only snapshot of the tile-component fields the area-of-interest

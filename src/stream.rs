@@ -412,7 +412,7 @@ pub(crate) fn opj_stream_seek(
   }
 }
 
-pub(crate) fn opj_stream_has_seek(p_stream: &Stream) -> OPJ_BOOL {
+pub(crate) fn opj_stream_has_seek(p_stream: &Stream) -> bool {
   p_stream.has_seek() as _
 }
 

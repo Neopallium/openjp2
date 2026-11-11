@@ -1875,7 +1875,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
   /* overflow check */
   /* in vertical pass, we process 4 columns at a time; the scratch holds
   4 x h_mem_size i32 elements, so the guard must divide by 4 * sizeof(i32)
-  (the C writes SIZE_MAX / (4 * sizeof(OPJ_INT32)); the port's previous
+  (the C writes SIZE_MAX / (4 * sizeof(int32_t)); the port's previous
   left-to-right MAX/4*4 expression was a dead check). */
   if h_mem_size > (usize::MAX).wrapping_div(4 * core::mem::size_of::<i32>()) {
     return 0i32;

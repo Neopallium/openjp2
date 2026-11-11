@@ -2669,7 +2669,7 @@ pub(crate) fn opj_t1_encode_cblks(
         let off_x = if bandno_val & 1 != 0 { prev_w } else { 0 };
         let off_y = if bandno_val & 2 != 0 { prev_h } else { 0 };
         /* Skip empty bands */
-        if opj_tcd_is_band_empty(band) == 0 {
+        if !opj_tcd_is_band_empty(band) {
           for prc in band
             .precincts
             .iter_mut()

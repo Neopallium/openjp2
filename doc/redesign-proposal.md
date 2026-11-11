@@ -193,8 +193,8 @@ Notes:
 > match arms call).  Revisit only when a third format is scheduled; the
 > compiler-exhaustive matches are a feature for a C-parity port.  (A
 > smaller cleanup — a static `CodecCommon` trait replacing the
-> `codec_common!` macro — remains available if the macro ever becomes a
-> maintenance burden.)
+> `codec_common!` macro — was considered and DROPPED by the owner
+> (2026-11-11): the macro is stable and not a maintenance burden.)
 
 2. **Merged `Codec` lives in the capi crate.** — ✅ **LANDED (793ff501)**: the
    capi defines

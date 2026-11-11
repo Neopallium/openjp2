@@ -625,7 +625,7 @@ fn opj_t2_encode_packet(
     while bandno < res.numbands {
       let band = &mut res.bands[bandno as usize];
       /* Skip empty bands */
-      if opj_tcd_is_band_empty(band) == 0 {
+      if !opj_tcd_is_band_empty(band) {
         /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1294 */
         /* but likely not a proper fix. */
         if precno >= res.pw.wrapping_mul(res.ph) {
@@ -673,7 +673,7 @@ fn opj_t2_encode_packet(
   while packet_empty == 0 && bandno < res.numbands {
     let band = &mut res.bands[bandno as usize];
     /* Skip empty bands */
-    if opj_tcd_is_band_empty(band) == 0 {
+    if !opj_tcd_is_band_empty(band) {
       /* Avoid out of bounds access of https://github.com/uclouvain/openjpeg/issues/1297 */
       /* but likely not a proper fix. */
       if precno >= res.pw.wrapping_mul(res.ph) {
@@ -820,7 +820,7 @@ fn opj_t2_encode_packet(
   while packet_empty == 0 && bandno < res.numbands {
     let band = &mut res.bands[bandno as usize];
     /* Skip empty bands */
-    if opj_tcd_is_band_empty(band) == 0 {
+    if !opj_tcd_is_band_empty(band) {
       let prc = &mut band.precincts[precno as usize];
       l_nb_blocks = prc.cw.wrapping_mul(prc.ch);
       cblkno = 0_u32;
@@ -889,7 +889,7 @@ fn opj_t2_read_packet_header(
     bandno = 0_u32;
     while bandno < res.numbands {
       let band = &mut res.bands[bandno as usize];
-      if opj_tcd_is_band_empty(band) == 0 {
+      if !opj_tcd_is_band_empty(band) {
         if (pi.precno as usize) >= band.precincts.len() {
           event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
           return 0i32;
@@ -1001,7 +1001,7 @@ fn opj_t2_read_packet_header(
   bandno = 0_u32;
   while bandno < res.numbands {
     let band = &mut res.bands[bandno as usize];
-    if opj_tcd_is_band_empty(band) == 0 {
+    if !opj_tcd_is_band_empty(band) {
       if (pi.precno as usize) >= band.precincts.len() {
         event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
         return 0i32;
