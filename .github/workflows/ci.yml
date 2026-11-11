@@ -88,7 +88,7 @@ jobs:
       - name: Install requirements
         run: |
           sudo apt update
-          sudo apt install -y cmake gcc g++ libtiff-dev libwebp-dev libzstd-dev pkg-config
+          sudo apt install -y cmake gcc g++ libtiff-dev libpng-dev liblcms2-dev libwebp-dev libzstd-dev pkg-config
 
       - name: Install Rust (stable)
         run: |
