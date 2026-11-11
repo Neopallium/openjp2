@@ -217,8 +217,8 @@ pub(crate) struct T1Coder {
   pub w: u32,
   pub h: u32,
   pub datasize: u32,
-  pub encoder: OPJ_BOOL,
-  pub mustuse_cblkdatabuffer: OPJ_BOOL,
+  pub encoder: bool,
+  pub mustuse_cblkdatabuffer: bool,
   pub cblkdatabuffer: Vec<u8>,
 }
 impl T1Coder {
@@ -1810,7 +1810,7 @@ fn opj_t1_getwmsedec(
   wmsedec
 }
 
-fn opj_t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OPJ_BOOL {
+fn opj_t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OpResult {
   let mut flagssize: u32 = 0;
   let mut flags_stride: u32 = 0;
   /* No risk of overflow. Prior checks ensure those assert are met */
@@ -1855,7 +1855,7 @@ fn opj_t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OPJ_
   }
   t1.w = w;
   t1.h = h;
-  1i32
+Ok(())
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1874,11 +1874,11 @@ fn opj_t1_clbl_decode_processor(
   band_stepsize: f32,
   cblk: &mut TcdCblkDec,
   p_manager: &EventMgr,
-  check_pterm: OPJ_BOOL,
-  mustuse_cblkdatabuffer: OPJ_BOOL,
+  check_pterm: bool,
+  mustuse_cblkdatabuffer: bool,
   whole_tile_mutex: Option<&TileDataMutex>,
   tile_w: u32,
-) -> OPJ_BOOL {
+) -> OpResult {
   let cblk_w = (cblk.x1 - cblk.x0) as u32;
   let cblk_h = (cblk.y1 - cblk.y0) as u32;
   let whole_tile = whole_tile_mutex.is_some();
@@ -1918,8 +1918,8 @@ fn opj_t1_clbl_decode_processor(
         check_pterm,
       )
     };
-    if r == 0 {
-      return 0i32;
+    if r.is_err() {
+      return Err(());
     }
     if whole_tile {
       /* Whole-tile decoding: like the C, the coefficients land in the
@@ -2000,10 +2000,10 @@ fn opj_t1_clbl_decode_processor(
         }
       }
     }
-    1i32
+    Ok(())
   });
-  if ret == 0 {
-    return 0i32;
+  if ret.is_err() {
+    return Err(());
   }
   if !whole_tile {
     let mut i: u32 = 0;
@@ -2055,18 +2055,18 @@ fn opj_t1_clbl_decode_processor(
       }
     }
   }
-  1i32
+Ok(())
 }
 
 pub(crate) fn opj_t1_decode_cblks(
   tilec_view: &TcdTilecView,
   _tccps: &[Tccp],
   image_comps: &[CoreImageComp],
-  pret: &mut OPJ_BOOL,
+  pret: &mut crate::types::OpResult,
   tilec: &mut TcdTileComp,
   tccp: &Tccp,
   p_manager: &EventMgr,
-  check_pterm: OPJ_BOOL,
+  check_pterm: bool,
   src: &mut [u8],
 ) {
   /* Snapshot the tile geometry (values), so the walks below can borrow
@@ -2114,7 +2114,7 @@ pub(crate) fn opj_t1_decode_cblks(
         .iter_mut()
         .take((res.pw.wrapping_mul(res.ph)) as usize)
       {
-        if opj_tcd_is_subband_area_of_interest(
+        if !opj_tcd_is_subband_area_of_interest(
           tilec_view,
           tccp,
           image_comps,
@@ -2124,7 +2124,7 @@ pub(crate) fn opj_t1_decode_cblks(
           precinct.y0 as u32,
           precinct.x1 as u32,
           precinct.y1 as u32,
-        ) == 0
+        )
         {
           if let CodeBlocks::Dec(cblks) = &mut precinct.cblks {
             for cblk in cblks
@@ -2141,7 +2141,7 @@ pub(crate) fn opj_t1_decode_cblks(
             .iter_mut()
             .take((precinct.cw.wrapping_mul(precinct.ch)) as usize)
           {
-            if opj_tcd_is_subband_area_of_interest(
+            if !opj_tcd_is_subband_area_of_interest(
               tilec_view,
               tccp,
               image_comps,
@@ -2151,14 +2151,14 @@ pub(crate) fn opj_t1_decode_cblks(
               cblk.y0 as u32,
               cblk.x1 as u32,
               cblk.y1 as u32,
-            ) == 0
+            )
             {
               if !cblk.decoded_data.is_empty() {
                 cblk.decoded_data = Vec::new();
               }
             } else {
               let mut do_decode = true;
-              if tilec_view.whole_tile_decoding == 0 {
+              if !tilec_view.whole_tile_decoding {
                 let cblk_w = (cblk.x1 - cblk.x0) as u32;
                 let cblk_h = (cblk.y1 - cblk.y0) as u32;
                 if !cblk.decoded_data.is_empty() || cblk_w == 0 || cblk_h == 0 {
@@ -2183,7 +2183,7 @@ pub(crate) fn opj_t1_decode_cblks(
     }
   }
 
-  if *pret == 0 {
+  if pret.is_err() {
     return;
   }
 
@@ -2198,7 +2198,7 @@ pub(crate) fn opj_t1_decode_cblks(
   through a mutex: each job only ever writes its own codeblock rectangle
   (disjoint regions), and the copy is a handful of cache lines, so the lock
   is effectively uncontended. */
-  let tile_mutex: Option<TileDataMutex> = if tilec_view.whole_tile_decoding != 0 {
+  let tile_mutex: Option<TileDataMutex> = if tilec_view.whole_tile_decoding {
     let len = tile_w.wrapping_mul(tile_h);
     Some(if tilec.data.is_f32() {
       TileDataMutex::F32(std::sync::Mutex::new(tilec.data.as_mut_f32(len)))
@@ -2218,7 +2218,7 @@ pub(crate) fn opj_t1_decode_cblks(
     &u32,
   ),
                     cblk: &mut TcdCblkDec|
-   -> OPJ_BOOL {
+   -> OpResult {
     opj_t1_clbl_decode_processor(
       0,
       *off_x,
@@ -2232,12 +2232,12 @@ pub(crate) fn opj_t1_decode_cblks(
       cblk,
       p_manager,
       check_pterm,
-      0,
+      false,
       tile_mutex.as_ref(),
       tile_w as u32,
     )
   };
-  let ok_flags: Vec<OPJ_BOOL> = par::map_collect(
+  let ok_flags: Vec<crate::types::OpResult> = par::map_collect(
     &mut jobs,
     8,
     |_i, (bandno, band_x0, band_y0, band_stepsize, off_x, off_y, cblk)| {
@@ -2247,8 +2247,8 @@ pub(crate) fn opj_t1_decode_cblks(
       )
     },
   );
-  if ok_flags.contains(&0) {
-    *pret = 0;
+  if ok_flags.contains(&Err(())) {
+    *pret = Err(());
   }
 }
 
@@ -2260,8 +2260,8 @@ fn opj_t1_decode_cblk(
   mut roishift: u32,
   mut cblksty: u32,
   p_manager: &EventMgr,
-  mut check_pterm: OPJ_BOOL,
-) -> OPJ_BOOL {
+  mut check_pterm: bool,
+) -> OpResult {
   let mut bpno_plus_one: i32 = 0; /* BYPASS mode */
   let mut passtype: u32 = 0;
   let mut segno: u32 = 0;
@@ -2269,8 +2269,8 @@ fn opj_t1_decode_cblk(
   let mut cblkdataindex = 0_u32;
   let mut type_0 = 0_u8;
   t1.mqc.lut_ctxno_zc_orient = &LUT_CTXNO_ZC[orient as usize];
-  if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32) == 0 {
-    return 0i32;
+  if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32).is_err() {
+    return Err(());
   }
   bpno_plus_one = roishift.wrapping_add(cblk.numbps) as i32;
   if bpno_plus_one >= 31i32 {
@@ -2280,7 +2280,7 @@ fn opj_t1_decode_cblk(
       "opj_t1_decode_cblk(): unsupported bpno_plus_one = {} >= 31\n",
       bpno_plus_one,
     );
-    return 0i32;
+    return Err(());
   }
   passtype = 2;
 
@@ -2291,14 +2291,14 @@ fn opj_t1_decode_cblk(
 
   if cblk.corrupted {
     assert_eq!(cblk.numchunks, 0);
-    return 1i32;
+    return Ok(());
   }
 
   /* C parity (t1.c): a codeblock with no data has nothing to decode -
   return before the segment loop so the PTERM check below does not run
   against the previous codeblock's stale MQ state. */
   if cblk.numchunks == 0 {
-    return 1i32;
+    return Ok(());
   }
 
   /* The C code reads the codeblock payload either in place (single chunk,
@@ -2392,7 +2392,7 @@ fn opj_t1_decode_cblk(
     opq_mqc_finish_dec(&mut t1.mqc);
     segno += 1;
   }
-  if check_pterm != 0 {
+  if check_pterm {
     let mqc = &mut t1.mqc; /* MQC component */
     if mqc.remaining() > 2 {
       event_msg!(
@@ -2412,7 +2412,7 @@ fn opj_t1_decode_cblk(
       );
     }
   }
-  1i32
+Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2438,7 +2438,7 @@ fn opj_t1_cblk_encode_processor(
   tccp: &Tccp,
   mct_norms: Option<&[f64]>,
   mct_numcomps: u32,
-) -> (OPJ_BOOL, f64) {
+) -> (crate::types::OpResult, f64) {
   let mut cblk_w: u32 = 0;
   let mut cblk_h: u32 = 0;
   let mut i: u32 = 0;
@@ -2448,12 +2448,12 @@ fn opj_t1_cblk_encode_processor(
 
   // Per-worker encode workspace (see T1Pool).
   let (ret, cumwmsedec) = T1_ENCODE_POOL.get_or_init(T1Pool::new).with(|t1| {
-    let mut ret = 0i32;
+    let mut ret: crate::types::OpResult = Err(());
 
     x += off_x as i32;
     y += off_y as i32;
-    if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32) == 0 {
-      return (0i32, 0.0);
+    if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32).is_err() {
+      return (Err(()), 0.0);
     }
     cblk_w = t1.w;
     cblk_h = t1.h;
@@ -2611,7 +2611,7 @@ fn opj_t1_cblk_encode_processor(
       mct_norms,
       mct_numcomps,
     );
-    ret = 1i32;
+    ret = Ok(());
     (ret, cumwmsedec)
   });
   (ret, cumwmsedec)
@@ -2621,8 +2621,8 @@ pub(crate) fn opj_t1_encode_cblks(
   tcp: &Tcp,
   mct_norms: Option<&[f64]>,
   mct_numcomps: u32,
-) -> OPJ_BOOL {
-  let mut ret = 1i32;
+) -> OpResult {
+  let mut ret: crate::types::OpResult = Ok(());
   let mut compno: u32 = 0;
   tile.distotile = 0 as f64;
   compno = 0_u32;
@@ -2710,7 +2710,7 @@ pub(crate) fn opj_t1_encode_cblks(
       &f32,
     ),
                       cblk: &mut TcdCblkEnc|
-     -> (OPJ_BOOL, f64) {
+     -> (crate::types::OpResult, f64) {
       opj_t1_cblk_encode_processor(
         compno,
         *resno,
@@ -2730,7 +2730,7 @@ pub(crate) fn opj_t1_encode_cblks(
         mct_numcomps,
       )
     };
-    let results: Vec<(OPJ_BOOL, f64)> = par::map_collect(
+    let results: Vec<(crate::types::OpResult, f64)> = par::map_collect(
       &mut jobs,
       8,
       |_i, (resno, off_x, off_y, bandno, nrr, band_x0, band_y0, band_stepsize, cblk)| {
@@ -2751,8 +2751,8 @@ pub(crate) fn opj_t1_encode_cblks(
     );
     let mut cumdisto: f64 = 0.0;
     for (ok, cumwmsedec) in results {
-      if ok == 0 {
-        ret = 0i32;
+      if ok.is_err() {
+        ret = Err(());
       }
       /* Same reduction order as the sequential walk. */
       cumdisto += cumwmsedec;
@@ -2915,7 +2915,7 @@ fn opj_t1_encode_cblk(
     if opj_t1_enc_is_term_pass(cblk, cblksty, bpno, passtype) != 0 {
       /* If it is a terminated pass, terminate it */
       if type_0 as core::ffi::c_int == 1i32 {
-        opj_mqc_bypass_flush_enc(&mut t1.mqc, (cblksty & 0x10) as OPJ_BOOL);
+        opj_mqc_bypass_flush_enc(&mut t1.mqc, (cblksty & 0x10) != 0);
       } else if cblksty & 0x10 != 0 {
         opj_mqc_erterm_enc(&mut t1.mqc);
       } else {
@@ -2927,7 +2927,7 @@ fn opj_t1_encode_cblk(
       /* Non terminated pass */
       let mut rate_extra_bytes: u32 = 0;
       if type_0 as core::ffi::c_int == 1i32 {
-        rate_extra_bytes = opj_mqc_bypass_get_extra_bytes(&mut t1.mqc, (cblksty & 0x10) as OPJ_BOOL)
+        rate_extra_bytes = opj_mqc_bypass_get_extra_bytes(&mut t1.mqc, (cblksty & 0x10) != 0)
       } else {
         rate_extra_bytes = 3_u32
       }

@@ -1,5 +1,4 @@
 use super::consts::*;
-use super::openjpeg::*;
 use super::t1_luts::*;
 use core::cell::Cell;
 
@@ -1091,23 +1090,23 @@ pub(crate) fn opj_mqc_bypass_enc(mut mqc: &mut Mqc, d: u32) {
 
 pub(crate) fn opj_mqc_bypass_get_extra_bytes(
   mut mqc: &mut Mqc,
-  mut erterm: OPJ_BOOL,
+  mut erterm: bool,
 ) -> u32 {
-  if mqc.ct < 7 || mqc.ct == 7 && (erterm != 0 || mqc.bp_peek_offset(-1) != 0xff) {
+  if mqc.ct < 7 || mqc.ct == 7 && (erterm || mqc.bp_peek_offset(-1) != 0xff) {
     1
   } else {
     0
   }
 }
 
-pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: OPJ_BOOL) {
+pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: bool) {
   /* Is there any bit remaining to be flushed ? */
   /* If the last output byte is 0xff, we can discard it, unless */
   /* erterm is required (I'm not completely sure why in erterm */
   /* we must output 0xff 0x2a if the last byte was 0xff instead of */
   /* discarding it, but Kakadu requires it when decoding */
   /* in -fussy mode) */
-  if mqc.ct < 7 || mqc.ct == 7 && (erterm != 0 || mqc.bp_peek_offset(-1) != 0xff) {
+  if mqc.ct < 7 || mqc.ct == 7 && (erterm || mqc.bp_peek_offset(-1) != 0xff) {
     let mut bit_value = 0i32;
     /* If so, fill the remaining lsbs with an alternating sequence of */
     /* 0,1,... */
@@ -1123,10 +1122,10 @@ pub(crate) fn opj_mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: OPJ_BOOL) 
     mqc.inc_bp()
   } else if mqc.ct == 7 && mqc.bp_peek_offset(-1) == 0xff {
     /* Discard last 0xff */
-    debug_assert!(erterm == 0);
+    debug_assert!(!erterm);
     mqc.bp_offset(-1)
   } else if mqc.ct == 8
-    && erterm == 0
+    && !erterm
     && mqc.bp_peek_offset(-1) == 0x7f
     && mqc.bp_peek_offset(-2) == 0xff
   {

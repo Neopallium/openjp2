@@ -44,7 +44,7 @@ pub struct PiIterator {
   pub resno: u32,
   pub precno: u32,
   pub layno: u32,
-  pub first: OPJ_BOOL,
+  pub first: bool,
   pub poc: opj_poc_t,
   pub numcomps: u32,
   pub comps: Vec<PiComp>,
@@ -118,7 +118,7 @@ Get next packet in layer-resolution-component-precinct order.
    local functions
 ==========================================================
 */
-fn opj_pi_next_lrcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_pi_next_lrcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
     let mut current_block: u64;
     let mut index = 0_u32;
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
@@ -128,12 +128,12 @@ fn opj_pi_next_lrcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         EVT_ERROR,
         "opj_pi_next_lrcp(): invalid compno0/compno1\n",
       );
-      return 0i32;
+      return Err(());
     }
-    if pi.first == 0 {
+    if !pi.first {
                   current_block = 5634871135123216486;
     } else {
-      pi.first = 0i32;
+      pi.first = false;
       pi.layno = pi.poc.layno0;
       current_block = 2868539653012386629;
     }
@@ -179,11 +179,11 @@ fn opj_pi_next_lrcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
               /* the POC should be rejected */
               if index >= pi.include_size {
                 event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
-                return 0i32;
+                return Err(());
               }
               if pi.include[index as usize].get() == 0 {
                 pi.include[index as usize].set(1_i16);
-                return 1i32;
+                return Ok(());
               }
               current_block = 5634871135123216486;
               break;
@@ -220,14 +220,14 @@ fn opj_pi_next_lrcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         }
       }
     }
-    0i32
+Err(())
 }
 /* *
 Get next packet in resolution-layer-component-precinct order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
     let mut current_block: u64;
     let mut index = 0_u32;
     if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
@@ -237,12 +237,12 @@ fn opj_pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         EVT_ERROR,
         "opj_pi_next_rlcp(): invalid compno0/compno1\n",
       );
-      return 0i32;
+      return Err(());
     }
-    if pi.first == 0 {
+    if !pi.first {
                   current_block = 5634871135123216486;
     } else {
-      pi.first = 0i32;
+      pi.first = false;
       pi.resno = pi.poc.resno0;
       current_block = 2868539653012386629;
     }
@@ -282,11 +282,11 @@ fn opj_pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
                 .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
               if index >= pi.include_size {
                 event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
-                return 0i32;
+                return Err(());
               }
               if pi.include[index as usize].get() == 0 {
                 pi.include[index as usize].set(1_i16);
-                return 1i32;
+                return Ok(());
               }
               current_block = 5634871135123216486;
               break;
@@ -323,14 +323,14 @@ fn opj_pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         }
       }
     }
-    0i32
+Err(())
 }
 /* *
 Get next packet in resolution-precinct-component-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
     let mut levelno: u32 = 0;
     let mut trx0: u32 = 0;
     let mut try0: u32 = 0;
@@ -349,14 +349,14 @@ fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         EVT_ERROR,
         "opj_pi_next_rpcl(): invalid compno0/compno1\n",
       );
-      return 0i32;
+      return Err(());
     }
-    if pi.first == 0 {
+    if !pi.first {
       current_block = 129780949503461575;
     } else {
       let mut compno: u32 = 0;
       let mut resno: u32 = 0;
-      pi.first = 0i32;
+      pi.first = false;
       pi.dx = 0_u32;
       pi.dy = 0_u32;
       compno = 0_u32;
@@ -436,7 +436,7 @@ fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         compno += 1;
       }
       if pi.dx == 0u32 || pi.dy == 0u32 {
-        return 0i32;
+        return Err(());
       }
       if pi.tp_on == 0 {
         pi.poc.ty0 = pi.ty0;
@@ -483,11 +483,11 @@ fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
                 .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
               if index >= pi.include_size {
                 event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
-                return 0i32;
+                return Err(());
               }
               if pi.include[index as usize].get() == 0 {
                 pi.include[index as usize].set(1_i16);
-                return 1i32;
+                return Ok(());
               }
               current_block = 129780949503461575;
               break;
@@ -590,14 +590,14 @@ fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         }
       }
     }
-    0i32
+Err(())
 }
 /* *
 Get next packet in precinct-component-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
     let mut levelno: u32 = 0;
     let mut trx0: u32 = 0;
     let mut try0: u32 = 0;
@@ -616,14 +616,14 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         EVT_ERROR,
         "opj_pi_next_pcrl(): invalid compno0/compno1\n",
       );
-      return 0i32;
+      return Err(());
     }
-    if pi.first == 0 {
+    if !pi.first {
             current_block = 10853015579903106591;
     } else {
       let mut compno: u32 = 0;
       let mut resno: u32 = 0;
-      pi.first = 0i32;
+      pi.first = false;
       pi.dx = 0_u32;
       pi.dy = 0_u32;
       compno = 0_u32;
@@ -703,7 +703,7 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         compno += 1;
       }
       if pi.dx == 0u32 || pi.dy == 0u32 {
-        return 0i32;
+        return Err(());
       }
       if pi.tp_on == 0 {
         pi.poc.ty0 = pi.ty0;
@@ -751,11 +751,11 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
                 .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
               if index >= pi.include_size {
                 event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
-                return 0i32;
+                return Err(());
               }
               if pi.include[index as usize].get() == 0 {
                 pi.include[index as usize].set(1_i16);
-                return 1i32;
+                return Ok(());
               }
               current_block = 10853015579903106591;
               break;
@@ -850,14 +850,14 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         }
       }
     }
-    0i32
+Err(())
 }
 /* *
 Get next packet in component-precinct-resolution-layer order.
 @param pi packet iterator to modify
 @return returns false if pi pointed to the last packet or else returns true
 */
-fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
     let mut resno: u32 = 0;
     let mut levelno: u32 = 0;
     let mut trx0: u32 = 0;
@@ -877,12 +877,12 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         EVT_ERROR,
         "opj_pi_next_cprl(): invalid compno0/compno1\n",
       );
-      return 0i32;
+      return Err(());
     }
-    if pi.first == 0 {
+    if !pi.first {
             current_block = 13707613154239713890;
     } else {
-      pi.first = 0i32;
+      pi.first = false;
       pi.compno = pi.poc.compno0;
       current_block = 3640593987805443782;
     }
@@ -972,7 +972,7 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
             resno += 1;
           }
           if pi.dx == 0u32 || pi.dy == 0u32 {
-            return 0i32;
+            return Err(());
           }
           if pi.tp_on == 0 {
             pi.poc.ty0 = pi.ty0;
@@ -1006,11 +1006,11 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
                 .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
               if index >= pi.include_size {
                 event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
-                return 0i32;
+                return Err(());
               }
               if pi.include[index as usize].get() == 0 {
                 pi.include[index as usize].set(1_i16);
-                return 1i32;
+                return Ok(());
               }
               current_block = 13707613154239713890;
               break;
@@ -1106,7 +1106,7 @@ fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OPJ_BOOL {
         }
       }
     }
-    0i32
+Err(())
 }
 
 /* *
@@ -1613,7 +1613,7 @@ pub(crate) fn opj_pi_update_decode_poc(
   pino = 0_u32; /* Resolution Level Index #0 (End) */
     while pino < l_bound {
       p_pi[pino as usize].poc.prg = p_tcp.pocs[pino as usize].prg; /* Component Index #0 (End) */
-      p_pi[pino as usize].first = 1i32; /* Layer Index #0 (End) */
+      p_pi[pino as usize].first = true; /* Layer Index #0 (End) */
       p_pi[pino as usize].poc.resno0 = p_tcp.pocs[pino as usize].resno0;
       p_pi[pino as usize].poc.compno0 = p_tcp.pocs[pino as usize].compno0;
       p_pi[pino as usize].poc.layno0 = 0_u32;
@@ -1644,7 +1644,7 @@ pub(crate) fn opj_pi_update_decode_not_poc(
   pino = 0_u32;
     while pino < l_bound {
       p_pi[pino as usize].poc.prg = p_tcp.prg;
-      p_pi[pino as usize].first = 1i32;
+      p_pi[pino as usize].first = true;
       p_pi[pino as usize].poc.resno0 = 0_u32;
       p_pi[pino as usize].poc.compno0 = 0_u32;
       p_pi[pino as usize].poc.layno0 = 0_u32;
@@ -1662,7 +1662,7 @@ fn opj_pi_check_next_level(
   pos: i32,
   tcp: &opj_poc_t,
   prog: ProgressionOrder,
-) -> OPJ_BOOL {
+) -> OpResult {
   let mut i: i32 = 0; /*end if*/
     if pos >= 0i32 {
       i = pos;
@@ -1670,36 +1670,36 @@ fn opj_pi_check_next_level(
         match prog.get_step(i) {
           ProgressionStep::Resolution => {
             if tcp.res_t == tcp.resE {
-              if opj_pi_check_next_level(pos - 1i32, tcp, prog) != 0 {
-                return 1i32;
+              if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
+                return Ok(());
               } else {
-                return 0i32;
+                return Err(());
               }
             } else {
-              return 1i32;
+              return Ok(());
             }
             /*end case P*/
           }
           ProgressionStep::Component => {
             if tcp.comp_t == tcp.compE {
-              if opj_pi_check_next_level(pos - 1i32, tcp, prog) != 0 {
-                return 1i32;
+              if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
+                return Ok(());
               } else {
-                return 0i32;
+                return Err(());
               }
             } else {
-              return 1i32;
+              return Ok(());
             }
           }
           ProgressionStep::Layer => {
             if tcp.lay_t == tcp.layE {
-              if opj_pi_check_next_level(pos - 1i32, tcp, prog) != 0 {
-                return 1i32;
+              if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
+                return Ok(());
               } else {
-                return 0i32;
+                return Err(());
               }
             } else {
-              return 1i32;
+              return Ok(());
             }
           }
           ProgressionStep::Precinct => {
@@ -1707,30 +1707,30 @@ fn opj_pi_check_next_level(
               0 | 1 => {
                 /* fall through */
                 if tcp.prc_t == tcp.prcE {
-                  if opj_pi_check_next_level(i - 1i32, tcp, prog) != 0 {
-                    return 1i32;
+                  if opj_pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
+                    return Ok(());
                   } else {
-                    return 0i32;
+                    return Err(());
                   }
                 } else {
-                  return 1i32;
+                  return Ok(());
                 }
               }
               _ => {
                 if tcp.tx0_t == tcp.txE {
                   /*TY*/
                   if tcp.ty0_t == tcp.tyE {
-                    if opj_pi_check_next_level(i - 1i32, tcp, prog) != 0 {
-                      return 1i32;
+                    if opj_pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
+                      return Ok(());
                     } else {
-                      return 0i32;
+                      return Err(());
                     }
                   } else {
-                    return 1i32;
+                    return Ok(());
                   }
                 /*TY*/
                 } else {
-                  return 1i32;
+                  return Ok(());
                 }
               }
             }
@@ -1742,7 +1742,7 @@ fn opj_pi_check_next_level(
       }
       /*end for*/
     }
-    0i32
+Err(())
 }
 /*
 ==========================================================
@@ -2149,7 +2149,7 @@ pub(crate) fn opj_pi_create_encode(
   let tp_on = cp.m_specific_param.m_enc.m_tp_on;
   let tcp = &mut cp.tcps[tileno as usize].pocs[pino as usize];
   let prog = opj_j2k_convert_progression_order(tcp.prg);
-  pi[pino as usize].first = 1i32;
+  pi[pino as usize].first = true;
   pi[pino as usize].poc.prg = tcp.prg;
     if !(tp_on
       && (!(rsiz as core::ffi::c_int >= 0x3i32 && rsiz as core::ffi::c_int <= 0x6i32)
@@ -2295,7 +2295,7 @@ pub(crate) fn opj_pi_create_encode(
             match prog.get_step(i) {
               ProgressionStep::Resolution => {
                 if tcp.res_t == tcp.resE {
-                  if opj_pi_check_next_level(i - 1i32, &*tcp, prog) != 0 {
+                  if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
                     tcp.res_t = tcp.resS;
                     pi[pino as usize].poc.resno0 = tcp.res_t;
                     pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
@@ -2315,7 +2315,7 @@ pub(crate) fn opj_pi_create_encode(
               }
               ProgressionStep::Component => {
                 if tcp.comp_t == tcp.compE {
-                  if opj_pi_check_next_level(i - 1i32, &*tcp, prog) != 0 {
+                  if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
                     tcp.comp_t = tcp.compS;
                     pi[pino as usize].poc.compno0 = tcp.comp_t;
                     pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
@@ -2335,7 +2335,7 @@ pub(crate) fn opj_pi_create_encode(
               }
               ProgressionStep::Layer => {
                 if tcp.lay_t == tcp.layE {
-                  if opj_pi_check_next_level(i - 1i32, &*tcp, prog) != 0 {
+                  if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
                     tcp.lay_t = tcp.layS;
                     pi[pino as usize].poc.layno0 = tcp.lay_t;
                     pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
@@ -2356,7 +2356,7 @@ pub(crate) fn opj_pi_create_encode(
               ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
                 0 | 1 => {
                   if tcp.prc_t == tcp.prcE {
-                    if opj_pi_check_next_level(i - 1i32, &*tcp, prog) != 0 {
+                    if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
                       tcp.prc_t = tcp.prcS;
                       pi[pino as usize].poc.precno0 = tcp.prc_t;
                       pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
@@ -2377,7 +2377,7 @@ pub(crate) fn opj_pi_create_encode(
                 _ => {
                   if tcp.tx0_t >= tcp.txE {
                     if tcp.ty0_t >= tcp.tyE {
-                      if opj_pi_check_next_level(i - 1i32, &*tcp, prog) != 0 {
+                      if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
                         tcp.ty0_t = tcp.tyS;
                         pi[pino as usize].poc.ty0 = tcp.ty0_t;
                         pi[pino as usize].poc.ty1 = tcp
@@ -2490,15 +2490,15 @@ pub(crate) fn opj_pi_update_encoding_parameters(
 pub(crate) fn opj_pi_next(
   pi: &mut PiIterator,
   manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   match pi.poc.prg as core::ffi::c_int {
       0 => return opj_pi_next_lrcp(pi, manager),
       1 => return opj_pi_next_rlcp(pi, manager),
       2 => return opj_pi_next_rpcl(pi, manager),
       3 => return opj_pi_next_pcrl(pi, manager),
       4 => return opj_pi_next_cprl(pi, manager),
-      -1 => return 0i32,
+      -1 => return Err(()),
       _ => {}
     }
-    0i32
+Err(())
 }

@@ -81,7 +81,7 @@ pub struct EncoderParameters {
   pub tp_on: core::ffi::c_char,
   pub tp_flag: core::ffi::c_char,
   pub tcp_mct: core::ffi::c_char,
-  pub jpip_on: OPJ_BOOL,
+  pub jpip_on: core::ffi::c_int,
   pub mct_data: Option<(Vec<f32>, Vec<i32>)>,
   pub max_cs_size: core::ffi::c_int,
   pub rsiz: u16,
@@ -148,7 +148,7 @@ pub(crate) struct DecoderParameters {
   pub da_x1: u32,
   pub da_y0: u32,
   pub da_y1: u32,
-  pub m_verbose: OPJ_BOOL,
+  pub m_verbose: bool,
   pub tile_index: u32,
   pub nb_tile_to_decode: u32,
   pub flags: core::ffi::c_uint,
@@ -174,13 +174,13 @@ impl Default for DecoderParameters {
 }
 
 pub(crate) struct TcdMarkerInfo {
-  pub need_plt: OPJ_BOOL,
+  pub need_plt: bool,
   pub packet_count: u32,
   pub p_packet_size: Vec<u32>,
 }
 
 impl TcdMarkerInfo {
-  pub(crate) fn new(need_plt: OPJ_BOOL) -> Self {
+  pub(crate) fn new(need_plt: bool) -> Self {
     Self {
       need_plt,
       packet_count: 0,
@@ -218,11 +218,11 @@ pub(crate) struct Jp2 {
   pub comps: Vec<Jp2Comps>,
   pub j2k_codestream_offset: i64,
   pub jpip_iptr_offset: i64,
-  pub jpip_on: OPJ_BOOL,
+  pub jpip_on: bool,
   pub jp2_state: u32,
   pub jp2_img_state: u32,
   pub color: Jp2Color,
-  pub ignore_pclr_cmap_cdef: OPJ_BOOL,
+  pub ignore_pclr_cmap_cdef: bool,
   pub has_jp2h: u8,
   pub has_ihdr: u8,
 }
@@ -380,7 +380,7 @@ pub(crate) struct J2k {
   /// and the stream position (B.1.7).
   pub(crate) last_marker: Option<u32>,
   pub(crate) last_pos: Option<u64>,
-  pub m_is_decoder: OPJ_BOOL,
+  pub m_is_decoder: bool,
   pub m_specific_param: C2RustUnnamed_2,
   pub m_private_image: Option<Box<CoreImage>>,
   pub m_output_image: Option<Box<CoreImage>>,
@@ -415,7 +415,7 @@ pub(crate) struct Tcd {
   pub win_y0: u32,
   pub win_x1: u32,
   pub win_y1: u32,
-  pub whole_tile_decoding: OPJ_BOOL,
+  pub whole_tile_decoding: bool,
   pub used_component: Vec<bool>,
 }
 
@@ -573,7 +573,7 @@ pub(crate) struct Cp {
   pub ppm_len: u32,
   pub tcps: Vec<Tcp>,
   pub m_specific_param: C2RustUnnamed_0,
-  pub strict: OPJ_BOOL,
+  pub strict: bool,
   pub ppm: bool,
   pub m_is_decoder: bool,
   pub allow_different_bit_depth_sign: bool,
@@ -682,6 +682,12 @@ pub struct TileInfo {
 /// without any unsafe.
 /// The sample precisions the port supports: 1..=31 (the C's OpenJpeg limit).
 /// Central rule for setup_encoder validation and the image.rs guards.
+/// Internal fallible-operation result (the phase-c `OPJ_BOOL` migration):
+/// `Ok(())` = the C's return 1, `Err(())` = the C's return 0.  The event
+/// manager carries the diagnostic (emitted at the failure site), and the
+/// safe-API boundary maps failures to the structured `api::Error`.
+pub(crate) type OpResult = Result<(), ()>;
+
 pub(crate) fn prec_valid(prec: u32) -> bool {
   (1..=31).contains(&prec)
 }
@@ -1153,8 +1159,8 @@ pub(crate) struct C2RustUnnamed_2 {
 pub(crate) struct J2kEnc {
   pub m_current_poc_tile_part_number: u32,
   pub m_current_tile_part_number: u32,
-  pub m_tlm: OPJ_BOOL,
-  pub m_ttlmi_is_byte: OPJ_BOOL,
+  pub m_tlm: bool,
+  pub m_ttlmi_is_byte: bool,
   pub m_tlm_start: i64,
   pub m_tlm_sot_offsets_buffer: Vec<u8>,
   /* write cursor into `m_tlm_sot_offsets_buffer` */
@@ -1162,7 +1168,7 @@ pub(crate) struct J2kEnc {
   pub m_total_tile_parts: u32,
   pub m_encoded_tile_data: Vec<u8>,
   pub m_header_tile_data: Vec<u8>,
-  pub m_plt: OPJ_BOOL,
+  pub m_plt: bool,
   pub m_reserved_bytes_for_plt: u32,
   pub m_nb_comps: u32,
 }
@@ -1205,7 +1211,7 @@ pub(crate) struct J2kDec {
   pub m_end_tile_y: u32,
   pub m_tile_ind_to_dec: i32,
   pub m_last_sot_read_pos: i64,
-  pub m_last_tile_part: OPJ_BOOL,
+  pub m_last_tile_part: bool,
   pub m_numcomps_to_decode: u32,
   pub m_comps_indices_to_decode: Vec<u32>,
   pub m_can_decode: bool,

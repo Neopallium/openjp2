@@ -102,7 +102,7 @@ pub(crate) fn j2k_dump<W: StringWriter>(p_j2k: &J2k, flag: i32, out_stream: &mut
   if flag & 1i32 != 0 && p_j2k.m_private_image.is_some() {
     j2k_dump_image_header(
       p_j2k.m_private_image.as_deref().expect("m_private_image"),
-      0i32,
+      false,
       out_stream,
     );
   }
@@ -262,11 +262,11 @@ fn opj_j2k_dump_mh_info<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
 
 pub(crate) fn j2k_dump_image_header<W: StringWriter>(
   img_header: &CoreImage,
-  dev_dump_flag: OPJ_BOOL,
+  dev_dump_flag: bool,
   out_stream: &mut W,
 ) {
   let mut tab = "";
-  if dev_dump_flag != 0 {
+  if dev_dump_flag {
     fprintf!(out_stream, "[DEV] Dump an image_header struct {{\n");
   } else {
     fprintf!(out_stream, "Image info {{\n");
@@ -306,11 +306,11 @@ pub(crate) fn j2k_dump_image_header<W: StringWriter>(
 
 pub(crate) fn j2k_dump_image_comp_header<W: StringWriter>(
   comp_header: &CoreImageComp,
-  dev_dump_flag: OPJ_BOOL,
+  dev_dump_flag: bool,
   out_stream: &mut W,
 ) {
   let mut tab = "";
-  if dev_dump_flag != 0 {
+  if dev_dump_flag {
     fprintf!(out_stream, "[DEV] Dump an image_comp_header struct {{\n");
   } else {
     tab = "\t\t";
@@ -324,7 +324,7 @@ pub(crate) fn j2k_dump_image_comp_header<W: StringWriter>(
   );
   fprintf!(out_stream, "{} prec={}\n", tab, comp_header.prec);
   fprintf!(out_stream, "{} sgnd={}\n", tab, comp_header.sgnd);
-  if dev_dump_flag != 0 {
+  if dev_dump_flag {
     fprintf!(out_stream, "}}\n");
   };
 }

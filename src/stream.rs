@@ -360,12 +360,12 @@ pub(crate) fn opj_stream_write_data(
 pub(crate) fn opj_stream_flush(
   p_stream: &mut Stream,
   mut _p_event_mgr: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   match p_stream.flush() {
-    Ok(_) => 1,
+    Ok(_) => Ok(()),
     Err(err) => {
       log::trace!("Failed to flush stream: {err}");
-      0
+      Err(())
     }
   }
 }
@@ -399,15 +399,15 @@ pub(crate) fn opj_stream_seek(
   p_stream: &mut Stream,
   mut p_size: i64,
   mut _p_event_mgr: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   match p_stream.seek(p_size) {
     Ok(_) => {
       log::trace!("-- seek({p_size}) = {}", 1);
-      1
+      Ok(())
     }
     Err(err) => {
       log::trace!("Failed to seek stream: {err}");
-      0
+      Err(())
     }
   }
 }

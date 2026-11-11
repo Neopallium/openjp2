@@ -126,7 +126,7 @@ pub(crate) fn opj_t2_encode_packets(
   mut p_pino: u32,
   mut p_t2_mode: J2K_T2_MODE,
   mut p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   let mut dest = &mut dest[..];
   let image = &mut *t2.image;
   let cp = &mut *t2.cp;
@@ -145,7 +145,7 @@ pub(crate) fn opj_t2_encode_packets(
   };
   let mut pi_vec = opj_pi_initialise_encode(image, cp, p_tile_no, p_t2_mode);
   if pi_vec.is_empty() {
-    return 0i32;
+    return Err(());
   }
   *p_data_written = 0_u32;
   if p_t2_mode as core::ffi::c_uint == THRESH_CALC as core::ffi::c_uint {
@@ -170,11 +170,11 @@ pub(crate) fn opj_t2_encode_packets(
         if pi_vec[poc as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
           event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
           opj_pi_destroy(&mut pi_vec);
-          return 0i32;
+          return Err(());
         }
         loop {
           let pi = &mut pi_vec[poc as usize];
-          if opj_pi_next(pi, p_manager) == 0 {
+          if opj_pi_next(pi, p_manager).is_err() {
             break;
           }
           if pi.layno < p_maxlayers {
@@ -188,10 +188,10 @@ pub(crate) fn opj_t2_encode_packets(
               &mut l_nb_bytes,
               p_t2_mode,
               p_manager,
-            ) == 0
+            ).is_err()
             {
               opj_pi_destroy(&mut pi_vec);
-              return 0i32;
+              return Err(());
             }
             l_comp_len = (l_comp_len as core::ffi::c_uint).wrapping_add(l_nb_bytes);
             let (_, rest) = dest.split_at_mut(l_nb_bytes as usize);
@@ -204,7 +204,7 @@ pub(crate) fn opj_t2_encode_packets(
           && l_comp_len > cp.m_specific_param.m_enc.m_max_comp_size
         {
           opj_pi_destroy(&mut pi_vec);
-          return 0i32;
+          return Err(());
         }
         poc += 1;
       }
@@ -223,10 +223,10 @@ pub(crate) fn opj_t2_encode_packets(
     if pi_vec[p_pino as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
       event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
       opj_pi_destroy(&mut pi_vec);
-      return 0i32;
+      return Err(());
     }
     if let Some(marker_info) = p_marker_info.as_deref_mut() {
-      if marker_info.need_plt != 0 {
+      if marker_info.need_plt {
         /* One time use intended */
         assert!(marker_info.packet_count == 0u32);
         assert!(marker_info.p_packet_size.is_empty());
@@ -236,7 +236,7 @@ pub(crate) fn opj_t2_encode_packets(
     }
     loop {
       let pi = &mut pi_vec[p_pino as usize];
-      if opj_pi_next(pi, p_manager) == 0 {
+      if opj_pi_next(pi, p_manager).is_err() {
         break;
       }
       if pi.layno < p_maxlayers {
@@ -250,17 +250,17 @@ pub(crate) fn opj_t2_encode_packets(
           &mut l_nb_bytes,
           p_t2_mode,
           p_manager,
-        ) == 0
+        ).is_err()
         {
           opj_pi_destroy(&mut pi_vec);
-          return 0i32;
+          return Err(());
         }
         let (_, rest) = dest.split_at_mut(l_nb_bytes as usize);
         dest = rest;
         *p_data_written =
           (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes);
         if let Some(marker_info) = p_marker_info.as_deref_mut() {
-          if marker_info.need_plt != 0 {
+          if marker_info.need_plt {
             marker_info.p_packet_size[marker_info.packet_count as usize] = l_nb_bytes;
             marker_info.packet_count = marker_info.packet_count.wrapping_add(1)
           }
@@ -272,7 +272,7 @@ pub(crate) fn opj_t2_encode_packets(
     }
   }
   opj_pi_destroy(&mut pi_vec);
-  1i32
+Ok(())
 }
 pub(crate) fn opj_t2_decode_packets(
   mut tcd: &mut Tcd,
@@ -281,7 +281,7 @@ pub(crate) fn opj_t2_decode_packets(
   mut src: &mut [u8],
   mut p_data_read: &mut u32,
   mut p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   let p_data_read_initial = src.len();
   let image = &mut *t2.image;
   let cp = &mut *t2.cp;
@@ -291,7 +291,7 @@ pub(crate) fn opj_t2_decode_packets(
   /* create a packet iterator */
   let mut pi_vec = opj_pi_create_decode(image, cp, p_tile_no);
   if pi_vec.is_empty() {
-    return 0i32;
+    return Err(());
   }
   let (num_layers_to_decode, numpocs) = {
     let tcp = &cp.tcps[p_tile_no as usize];
@@ -304,16 +304,16 @@ pub(crate) fn opj_t2_decode_packets(
      * l_current_pi->resno is always >= p_tile->comps[l_current_pi->compno].minimum_num_resolutions
      * and no l_img_comp->resno_decoded are computed
      */
-    let mut first_pass_failed: Vec<OPJ_BOOL> = Vec::new();
+    let mut first_pass_failed: Vec<bool> = Vec::new();
     if pi_vec[pino as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
       event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
       opj_pi_destroy(&mut pi_vec);
-      return 0i32;
+      return Err(());
     }
-    first_pass_failed = vec![1i32; image.numcomps as usize];
+    first_pass_failed = vec![true; image.numcomps as usize];
     loop {
       let pi = &mut pi_vec[pino as usize];
-      if opj_pi_next(pi, p_manager) == 0 {
+      if opj_pi_next(pi, p_manager).is_err() {
         break;
       }
       let mut skip_packet = 0i32;
@@ -348,7 +348,7 @@ pub(crate) fn opj_t2_decode_packets(
           if (pi.precno as usize) >= band.precincts.len() {
             event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
             opj_pi_destroy(&mut pi_vec);
-            return 0i32;
+            return Err(());
           }
           let prec = &band.precincts[pi.precno as usize];
           if opj_tcd_is_subband_area_of_interest(
@@ -371,7 +371,7 @@ pub(crate) fn opj_t2_decode_packets(
             prec.y0 as u32,
             prec.x1 as u32,
             prec.y1 as u32,
-          ) != 0
+          )
           {
             skip_packet = 0i32;
             break;
@@ -382,7 +382,7 @@ pub(crate) fn opj_t2_decode_packets(
       }
       if skip_packet == 0 {
         l_nb_bytes_read = 0_u32;
-        first_pass_failed[pi.compno as usize] = 0i32;
+        first_pass_failed[pi.compno as usize] = false;
         if opj_t2_decode_packet(
           cp,
           p_tile_no,
@@ -392,11 +392,11 @@ pub(crate) fn opj_t2_decode_packets(
           src_base,
           &mut l_nb_bytes_read,
           p_manager,
-        ) == 0
+        ).is_err()
         {
           opj_pi_destroy(&mut pi_vec);
 
-          return 0i32;
+          return Err(());
         }
         image.comps[pi.compno as usize].resno_decoded =
           opj_uint_max(pi.resno, image.comps[pi.compno as usize].resno_decoded)
@@ -410,14 +410,14 @@ pub(crate) fn opj_t2_decode_packets(
           &mut src[..],
           &mut l_nb_bytes_read,
           p_manager,
-        ) == 0
+        ).is_err()
         {
           opj_pi_destroy(&mut pi_vec);
 
-          return 0i32;
+          return Err(());
         }
       }
-      if first_pass_failed[pi.compno as usize] != 0
+      if first_pass_failed[pi.compno as usize]
         && image.comps[pi.compno as usize].resno_decoded == 0u32
       {
         image.comps[pi.compno as usize].resno_decoded = tcd.tcd_image.tiles.comps
@@ -436,7 +436,7 @@ pub(crate) fn opj_t2_decode_packets(
   /* don't forget to release pi */
   opj_pi_destroy(&mut pi_vec);
   *p_data_read = (p_data_read_initial - src.len()) as u32;
-  1i32
+Ok(())
 }
 pub(crate) fn opj_t2_create<'a>(image: &'a mut CoreImage, cp: &'a mut Cp) -> Box<T2<'a>> {
   /* create the t2 structure */
@@ -465,8 +465,8 @@ fn opj_t2_decode_packet(
   src_base: usize,
   p_data_read: &mut u32,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
-  let mut l_read_data: OPJ_BOOL = 0;
+) -> OpResult {
+  let mut l_read_data: bool = false;
   let mut l_nb_bytes_read = 0_u32;
   let mut l_nb_total_bytes_read = 0_u32;
   *p_data_read = 0_u32;
@@ -479,16 +479,16 @@ fn opj_t2_decode_packet(
     src,
     &mut l_nb_bytes_read,
     p_manager,
-  ) == 0
+  ).is_err()
   {
-    return 0i32;
+    return Err(());
   }
   let src = &mut src[l_nb_bytes_read as usize..];
   let src_base = src_base + l_nb_bytes_read as usize;
   l_nb_total_bytes_read =
     (l_nb_total_bytes_read as core::ffi::c_uint).wrapping_add(l_nb_bytes_read);
   /* we should read data for the packet */
-  if l_read_data != 0 {
+  if l_read_data {
     l_nb_bytes_read = 0_u32;
     if opj_t2_read_packet_data(
       cp,
@@ -498,15 +498,15 @@ fn opj_t2_decode_packet(
       src_base,
       &mut l_nb_bytes_read,
       p_manager,
-    ) == 0
+    ).is_err()
     {
-      return 0i32;
+      return Err(());
     }
     l_nb_total_bytes_read =
       (l_nb_total_bytes_read as core::ffi::c_uint).wrapping_add(l_nb_bytes_read)
   }
   *p_data_read = l_nb_total_bytes_read;
-  1i32
+Ok(())
 }
 /* *
 Encode a packet of a tile to a destination buffer
@@ -530,8 +530,8 @@ fn opj_t2_skip_packet(
   src: &mut [u8],
   p_data_read: &mut u32,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
-  let mut l_read_data: OPJ_BOOL = 0;
+) -> OpResult {
+  let mut l_read_data: bool = false;
   let mut l_nb_bytes_read = 0_u32;
   let mut l_nb_total_bytes_read = 0_u32;
   *p_data_read = 0_u32;
@@ -544,16 +544,16 @@ fn opj_t2_skip_packet(
     src,
     &mut l_nb_bytes_read,
     p_manager,
-  ) == 0
+  ).is_err()
   {
-    return 0i32;
+    return Err(());
   }
   let (_, src_rest) = src.split_at_mut(l_nb_bytes_read as usize);
   l_nb_total_bytes_read =
     (l_nb_total_bytes_read as core::ffi::c_uint).wrapping_add(l_nb_bytes_read);
   let p_max_length = src_rest.len() as u32;
   /* we should read data for the packet */
-  if l_read_data != 0 {
+  if l_read_data {
     l_nb_bytes_read = 0_u32;
     if opj_t2_skip_packet_data(
       cp,
@@ -562,15 +562,15 @@ fn opj_t2_skip_packet(
       &mut l_nb_bytes_read,
       p_max_length,
       p_manager,
-    ) == 0
+    ).is_err()
     {
-      return 0i32;
+      return Err(());
     }
     l_nb_total_bytes_read =
       (l_nb_total_bytes_read as core::ffi::c_uint).wrapping_add(l_nb_bytes_read)
   }
   *p_data_read = l_nb_total_bytes_read;
-  1i32
+Ok(())
 }
 fn opj_t2_encode_packet(
   _tileno: u32,
@@ -581,7 +581,7 @@ fn opj_t2_encode_packet(
   p_data_written: &mut u32,
   mut p_t2_mode: J2K_T2_MODE,
   mut p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   let mut bandno: u32 = 0; /* component value */
   let mut cblkno: u32 = 0; /* resolution level value */
   let mut pos = 0usize; /* precinct value */
@@ -606,7 +606,7 @@ fn opj_t2_encode_packet(
           6i32,
         ); /* packno is uint32_t */
       }
-      return 0i32;
+      return Err(());
     }
     dest[0] = 255_u8;
     dest[1] = 145_u8;
@@ -636,7 +636,7 @@ fn opj_t2_encode_packet(
             precno,
             res.pw.wrapping_mul(res.ph),
           );
-          return 0i32;
+          return Err(());
         }
         let prc = &mut band.precincts[precno as usize];
         /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
@@ -684,7 +684,7 @@ fn opj_t2_encode_packet(
           precno,
           res.pw.wrapping_mul(res.ph),
         );
-        return 0i32;
+        return Err(());
       }
       let prc = &mut band.precincts[precno as usize];
       l_nb_blocks = prc.cw.wrapping_mul(prc.ch);
@@ -784,8 +784,8 @@ fn opj_t2_encode_packet(
     }
     bandno = bandno.wrapping_add(1);
   }
-  if opj_bio_flush(bio) == 0 {
-    return 0i32;
+  if opj_bio_flush(bio).is_err() {
+    return Err(());
     /* modified to eliminate longjmp !! */
   }
   l_nb_bytes = opj_bio_numbytes(bio) as u32;
@@ -803,7 +803,7 @@ fn opj_t2_encode_packet(
           2i32,
         );
       }
-      return 0i32;
+      return Err(());
     }
     dest[pos] = 255_u8;
     dest[pos + 1] = 146_u8;
@@ -838,7 +838,7 @@ fn opj_t2_encode_packet(
                 cblk.layers[layno as usize].len
               );
             }
-            return 0i32;
+            return Err(());
           }
 
           if p_t2_mode == FINAL_PASS {
@@ -860,18 +860,18 @@ fn opj_t2_encode_packet(
     bandno += 1;
   }
   *p_data_written = pos as u32;
-  1i32
+Ok(())
 }
 fn opj_t2_read_packet_header(
   cp: &mut Cp,
   p_tile_no: u32,
   tile: &mut TcdTile,
   pi: &mut PiIterator,
-  p_is_data_present: &mut OPJ_BOOL,
+  p_is_data_present: &mut bool,
   p_src_data: &mut [u8],
   p_data_read: &mut u32,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   /* loop */
   let mut bandno: u32 = 0; /* BIO component */
   let mut cblkno: u32 = 0;
@@ -892,7 +892,7 @@ fn opj_t2_read_packet_header(
       if !opj_tcd_is_band_empty(band) {
         if (pi.precno as usize) >= band.precincts.len() {
           event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
-          return 0i32;
+          return Err(());
         }
         let prc = &mut band.precincts[pi.precno as usize];
         /* A degenerate precinct (cw*ch == 0) has no tag trees; the C code no-ops here. */
@@ -957,7 +957,7 @@ fn opj_t2_read_packet_header(
   log::debug!("present={}", l_present);
   if l_present == 0 {
     /* Note: no output check here (parity with upstream) */
-    opj_bio_inalign(l_bio);
+    let _ = opj_bio_inalign(l_bio);
     l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
     /* EPH markers */
     if csty & J2K_CP_CSTY_EPH != 0 {
@@ -968,12 +968,12 @@ fn opj_t2_read_packet_header(
           EVT_ERROR,
           "Not enough space for required EPH marker\n",
         );
-        return 0i32;
+        return Err(());
       } else if l_header[l_hdr_pos] as core::ffi::c_int != 0xffi32
         || l_header[l_hdr_pos + 1] as core::ffi::c_int != 0x92i32
       {
         event_msg!(p_manager, EVT_ERROR, "Expected EPH marker\n",);
-        return 0i32;
+        return Err(());
       } else {
         l_hdr_pos += 2
       }
@@ -993,9 +993,9 @@ fn opj_t2_read_packet_header(
     /* End of packet header position. Currently only represents the distance to start of packet
     Will be updated later by incrementing with packet start value */
     /* INDEX >> */
-    *p_is_data_present = 0i32;
+    *p_is_data_present = false;
     *p_data_read = l_pos as u32;
-    return 1i32;
+    return Ok(());
   }
 
   bandno = 0_u32;
@@ -1004,7 +1004,7 @@ fn opj_t2_read_packet_header(
     if !opj_tcd_is_band_empty(band) {
       if (pi.precno as usize) >= band.precincts.len() {
         event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
-        return 0i32;
+        return Err(());
       }
       let prc = &mut band.precincts[pi.precno as usize];
       l_nb_code_blocks = prc.cw.wrapping_mul(prc.ch);
@@ -1070,9 +1070,9 @@ fn opj_t2_read_packet_header(
               l_segno,
               tccp_cblksty,
               1_u32,
-            ) == 0
+            ).is_err()
             {
-              return 0i32;
+              return Err(());
             }
           } else {
             l_segno = cblk.numsegs.wrapping_sub(1u32);
@@ -1083,9 +1083,9 @@ fn opj_t2_read_packet_header(
                 l_segno,
                 tccp_cblksty,
                 0_u32,
-              ) == 0
+              ).is_err()
               {
-                return 0i32;
+                return Err(());
               }
             }
           }
@@ -1108,7 +1108,7 @@ fn opj_t2_read_packet_header(
                   "Invalid bit number {} in opj_t2_read_packet_header()\n",
                   bit_number,
                 );
-                return 0i32;
+                return Err(());
               }
               cblk.segs[l_segno as usize].newlen = opj_bio_read(l_bio, bit_number);
               log::debug!(
@@ -1126,9 +1126,9 @@ fn opj_t2_read_packet_header(
                   l_segno,
                   tccp_cblksty,
                   0_u32,
-                ) == 0
+                ).is_err()
                 {
-                  return 0i32;
+                  return Err(());
                 }
               }
               if n <= 0i32 {
@@ -1155,7 +1155,7 @@ fn opj_t2_read_packet_header(
                   "Invalid bit number {} in opj_t2_read_packet_header()\n",
                   bit_number_0,
                 );
-                return 0i32;
+                return Err(());
               }
               cblk.segs[l_segno as usize].newlen = opj_bio_read(l_bio, bit_number_0);
               log::debug!(
@@ -1173,9 +1173,9 @@ fn opj_t2_read_packet_header(
                   l_segno,
                   tccp_cblksty,
                   0_u32,
-                ) == 0
+                ).is_err()
                 {
-                  return 0i32;
+                  return Err(());
                 }
               }
               if n <= 0i32 {
@@ -1189,8 +1189,8 @@ fn opj_t2_read_packet_header(
     }
     bandno = bandno.wrapping_add(1);
   }
-  if opj_bio_inalign(l_bio) == 0 {
-    return 0i32;
+  if opj_bio_inalign(l_bio).is_err() {
+    return Err(());
   }
   l_hdr_pos += opj_bio_numbytes(l_bio) as usize;
   /* EPH markers */
@@ -1202,12 +1202,12 @@ fn opj_t2_read_packet_header(
         EVT_ERROR,
         "Not enough space for required EPH marker\n",
       );
-      return 0i32;
+      return Err(());
     } else if l_header[l_hdr_pos] as core::ffi::c_int != 0xffi32
       || l_header[l_hdr_pos + 1] as core::ffi::c_int != 0x92i32
     {
       event_msg!(p_manager, EVT_ERROR, "Expected EPH marker\n",);
-      return 0i32;
+      return Err(());
     } else {
       l_hdr_pos += 2
     }
@@ -1216,7 +1216,7 @@ fn opj_t2_read_packet_header(
   /* Do not allow a zero-length header in a non-zero-length packet
   (upstream #1526) */
   if l_header_length == 0 {
-    return 0i32;
+    return Err(());
   }
   log::debug!("hdrlen={}", l_header_length);
   log::debug!("packet body");
@@ -1234,9 +1234,9 @@ fn opj_t2_read_packet_header(
   /* End of packet header position. Currently only represents the distance to start of packet
   Will be updated later by incrementing with packet start value */
   /* INDEX >> */
-  *p_is_data_present = 1i32; /* next code_block */
+  *p_is_data_present = true; /* next code_block */
   *p_data_read = l_pos as u32;
-  1i32
+Ok(())
 }
 fn opj_t2_read_packet_data(
   cp: &mut Cp,
@@ -1246,7 +1246,7 @@ fn opj_t2_read_packet_data(
   src_base: usize,
   p_data_read: &mut u32,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   let mut bandno: u32 = 0;
   let mut cblkno: u32 = 0;
   let mut l_nb_code_blocks: u32 = 0;
@@ -1263,7 +1263,7 @@ fn opj_t2_read_packet_data(
     }
     if (pi.precno as usize) >= band.precincts.len() {
       event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
-      return 0i32;
+      return Err(());
     }
     let prc = &mut band.precincts[pi.precno as usize];
     l_nb_code_blocks = prc.cw.wrapping_mul(prc.ch);
@@ -1301,13 +1301,13 @@ fn opj_t2_read_packet_data(
         {
           let seg = &mut cblk.segs[l_segno];
           if seg.newlen as usize > p_src_data.len() - l_pos || partial_buffer != 0 {
-            if cp.strict != 0 {
+            if cp.strict {
               event_msg!(p_manager, EVT_ERROR,
                                             "read: segment too long ({}) with max ({}) for codeblock {} (p={}, b={}, r={}, c={})\n",
                                             seg.newlen, p_max_length,
                                             cblkno, pi.precno, bandno,
                                             pi.resno, pi.compno);
-              return 0i32;
+              return Err(());
             } else {
               event_msg!(p_manager, EVT_WARNING,
                                             "read: segment too long ({}) with max ({}) for codeblock {} (p={}, b={}, r={}, c={})\n",
@@ -1366,7 +1366,7 @@ fn opj_t2_read_packet_data(
   } else {
     *p_data_read = l_pos as u32
   }
-  1i32
+Ok(())
 }
 
 fn opj_t2_skip_packet_data(
@@ -1376,7 +1376,7 @@ fn opj_t2_skip_packet_data(
   p_data_read: &mut u32,
   p_max_length: u32,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   let mut bandno: u32 = 0;
   let mut cblkno: u32 = 0;
   let mut l_nb_code_blocks: u32 = 0;
@@ -1391,7 +1391,7 @@ fn opj_t2_skip_packet_data(
     }
     if (pi.precno as usize) >= band.precincts.len() {
       event_msg!(p_manager, EVT_ERROR, "Invalid precinct\n",);
-      return 0i32;
+      return Err(());
     }
     let prc = &mut band.precincts[pi.precno as usize];
     l_nb_code_blocks = prc.cw.wrapping_mul(prc.ch);
@@ -1417,13 +1417,13 @@ fn opj_t2_skip_packet_data(
           if (*p_data_read).wrapping_add(cblk.segs[l_segno].newlen) < *p_data_read
             || (*p_data_read).wrapping_add(cblk.segs[l_segno].newlen) > p_max_length
           {
-            if cp.strict != 0 {
+            if cp.strict {
               event_msg!(p_manager, EVT_ERROR,
                                             "skip: segment too long ({}) with max ({}) for codeblock {} (p={}, b={}, r={}, c={})\n",
                                             cblk.segs[l_segno].newlen, p_max_length,
                                             cblkno, pi.precno, bandno,
                                             pi.resno, pi.compno);
-              return 0i32;
+              return Err(());
             } else {
               event_msg!(p_manager, EVT_WARNING,
                                             "skip: segment too long ({}) with max ({}) for codeblock {} (p={}, b={}, r={}, c={})\n",
@@ -1431,7 +1431,7 @@ fn opj_t2_skip_packet_data(
                                             cblkno, pi.precno, bandno,
                                             pi.resno, pi.compno);
               *p_data_read = p_max_length;
-              return 1i32;
+              return Ok(());
             }
           }
           /* USE_JPWL */
@@ -1462,14 +1462,14 @@ fn opj_t2_skip_packet_data(
     }
     bandno += 1;
   }
-  1i32
+Ok(())
 }
 fn opj_t2_init_seg(
   cblk: &mut TcdCblkDec,
   index: u32,
   cblksty: u32,
   first: u32,
-) -> OPJ_BOOL {
+) -> OpResult {
   let l_nb_segs = index.wrapping_add(1u32);
   if l_nb_segs as usize > cblk.segs.len() {
     let new_len = cblk.segs.len() + 10;
@@ -1504,5 +1504,5 @@ fn opj_t2_init_seg(
     opj_tcd_reinit_segment(seg);
     seg.maxpasses = 109_u32
   }
-  1i32
+Ok(())
 }

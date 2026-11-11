@@ -696,11 +696,11 @@ fn opj_dwt_encode_and_deinterleave_h_one_row(
   row_start: usize,
   tmp: &mut [i32],
   width: u32,
-  even: OPJ_BOOL,
+  even: bool,
 ) {
-  let sn = (width.wrapping_add(if even != 0 { 1 } else { 0 }) >> 1i32) as i32;
+  let sn = (width.wrapping_add(if even { 1 } else { 0 }) >> 1i32) as i32;
   let dn = width.wrapping_sub(sn as u32) as i32;
-  if even != 0 {
+  if even {
     if width > 1u32 {
       let mut i: i32 = 0;
       i = 0i32;
@@ -787,15 +787,15 @@ fn opj_dwt_encode_and_deinterleave_h_one_row_real(
   row_start: usize,
   tmp: &mut [f32],
   width: u32,
-  even: OPJ_BOOL,
+  even: bool,
 ) {
-  let sn = (width.wrapping_add(if even != 0 { 1 } else { 0 }) >> 1i32) as i32;
+  let sn = (width.wrapping_add(if even { 1 } else { 0 }) >> 1i32) as i32;
   let dn = width.wrapping_sub(sn as u32) as i32;
   if width == 1u32 {
     return;
   }
   tmp[..width as usize].copy_from_slice(&row[row_start..row_start + width as usize]);
-  opj_dwt_encode_1_real(tmp, dn, sn, if even != 0 { 0i32 } else { 1i32 });
+  opj_dwt_encode_1_real(tmp, dn, sn, if even { 0i32 } else { 1i32 });
   opj_dwt_deinterleave_h(
     tmp,
     0,
@@ -803,7 +803,7 @@ fn opj_dwt_encode_and_deinterleave_h_one_row_real(
     row_start,
     dn,
     sn,
-    if even != 0 { 0i32 } else { 1i32 },
+    if even { 0i32 } else { 1i32 },
   );
 }
 
@@ -898,11 +898,11 @@ fn opj_dwt_encode_and_deinterleave_v(
   array_start: usize,
   tmp: &mut [i32],
   height: u32,
-  even: OPJ_BOOL,
+  even: bool,
   stride_width: u32,
   cols: u32,
 ) {
-  let sn = (height + if even != 0 { 1 } else { 0 }) >> 1;
+  let sn = (height + if even { 1 } else { 0 }) >> 1;
   let dn = height - sn;
   opj_dwt_fetch_cols_vertical_pass(array, array_start, tmp, height, stride_width, cols);
 
@@ -920,7 +920,7 @@ fn opj_dwt_encode_and_deinterleave_v(
     };
   }
 
-  if even != 0 {
+  if even {
     if height > 1 {
       i = 0_u32;
       while i + 1 < sn {
@@ -1013,7 +1013,7 @@ fn opj_dwt_encode_and_deinterleave_v(
       dn as i32,
       sn as i32,
       stride_width,
-      if even != 0 { 0i32 } else { 1i32 },
+      if even { 0i32 } else { 1i32 },
       NB_ELTS_V8,
     );
   } else {
@@ -1024,7 +1024,7 @@ fn opj_dwt_encode_and_deinterleave_v(
       dn as i32,
       sn as i32,
       stride_width,
-      if even != 0 { 0i32 } else { 1i32 },
+      if even { 0i32 } else { 1i32 },
       cols,
     );
   };
@@ -1097,11 +1097,11 @@ fn opj_dwt_encode_and_deinterleave_v_real(
   array_start: usize,
   tmp: &mut [f32],
   height: u32,
-  even: OPJ_BOOL,
+  even: bool,
   stride_width: u32,
   cols: u32,
 ) {
-  let sn = (height.wrapping_add(if even != 0 { 1 } else { 0 }) >> 1i32) as i32;
+  let sn = (height.wrapping_add(if even { 1 } else { 0 }) >> 1i32) as i32;
   let dn = height.wrapping_sub(sn as u32) as i32;
   let mut a: i32 = 0;
   let mut b: i32 = 0;
@@ -1109,7 +1109,7 @@ fn opj_dwt_encode_and_deinterleave_v_real(
     return;
   }
   opj_dwt_fetch_cols_vertical_pass(array, array_start, tmp, height, stride_width, cols);
-  if even != 0 {
+  if even {
     a = 0i32;
     b = 1i32
   } else {
@@ -1158,7 +1158,7 @@ fn opj_dwt_encode_and_deinterleave_v_real(
       dn,
       sn,
       stride_width,
-      if even != 0 { 0i32 } else { 1i32 },
+      if even { 0i32 } else { 1i32 },
       NB_ELTS_V8,
     );
   } else {
@@ -1169,7 +1169,7 @@ fn opj_dwt_encode_and_deinterleave_v_real(
       dn,
       sn,
       stride_width,
-      if even != 0 { 0i32 } else { 1i32 },
+      if even { 0i32 } else { 1i32 },
       cols,
     );
   };
@@ -1181,12 +1181,12 @@ fn opj_dwt_encode_and_deinterleave_v_real(
 /// Forward wavelet transform in 2-D. The tile component buffer and the NB_ELTS_V8-interleaved
 /// scratch are viewed as slices for the duration of each row/column pass; the views are created
 /// from the raw allocation at the boundary only (see the SAFETY notes below).
-fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) -> OPJ_BOOL {
+fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) -> OpResult {
   let w = (tilec.x1 - tilec.x0) as u32;
   let h = (tilec.y1 - tilec.y0) as u32;
   let total_len = (w as usize).wrapping_mul(h as usize);
   if total_len > 0 && tilec.data.is_null() {
-    return 0i32;
+    return Err(());
   }
   let l = tilec.numresolutions as i32 - 1i32;
   let l_data_size = opj_dwt_max_resolution(&tilec.resolutions, tilec.numresolutions) as usize;
@@ -1194,7 +1194,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
   if l_data_size
     > (usize::MAX).wrapping_div(NB_ELTS_V8 as usize * core::mem::size_of::<i32>())
   {
-    return 0i32;
+    return Err(());
   }
   /* scratch size in elements of the wavelet's sample type */
   let scratch_len = l_data_size.wrapping_mul(NB_ELTS_V8 as usize);
@@ -1205,13 +1205,13 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
   match wavelet {
     ForwardWavelet::Reversible53 => {
       if bj.try_reserve_exact(scratch_len).is_err() {
-        return 0i32;
+        return Err(());
       }
       bj.resize(scratch_len, 0);
     }
     ForwardWavelet::Irreversible97 => {
       if bjf.try_reserve_exact(scratch_len).is_err() {
-        return 0i32;
+        return Err(());
       }
       bjf.resize(scratch_len, 0.0);
     }
@@ -1248,7 +1248,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
               col,
               scratch,
               rh,
-              (cas_col == 0i32) as core::ffi::c_int,
+              cas_col == 0i32,
               w,
               NB_ELTS_V8,
             )
@@ -1264,7 +1264,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
             col,
             scratch,
             rh,
-            (cas_col == 0i32) as core::ffi::c_int,
+            cas_col == 0i32,
             w,
             rw.wrapping_sub(j),
           )
@@ -1273,7 +1273,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
         j = 0_u32;
         while j < rh {
           let row_start = j.wrapping_mul(w) as usize;
-          let even = if cas_row == 0i32 { 1i32 } else { 0i32 };
+          let even = cas_row == 0i32;
           {
             let data = &mut tilec.data.as_mut_i32(total_len);
             let scratch = &mut bj[..];
@@ -1295,7 +1295,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
             col,
             &mut bjf[..],
             rh,
-            (cas_col == 0i32) as core::ffi::c_int,
+            cas_col == 0i32,
             w,
             NB_ELTS_V8,
           );
@@ -1308,7 +1308,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
             col,
             &mut bjf[..],
             rh,
-            (cas_col == 0i32) as core::ffi::c_int,
+            cas_col == 0i32,
             w,
             rw.wrapping_sub(j),
           );
@@ -1317,7 +1317,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
         j = 0_u32;
         while j < rh {
           let row_start = j.wrapping_mul(w) as usize;
-          let even = if cas_row == 0i32 { 1i32 } else { 0i32 };
+          let even = cas_row == 0i32;
           opj_dwt_encode_and_deinterleave_h_one_row_real(
             tilec.data.as_mut_f32(total_len),
             row_start,
@@ -1331,13 +1331,13 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
     }
     cur -= 1;
   }
-  1i32
+Ok(())
 }
 
 /* Forward 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
 
-pub(crate) fn opj_dwt_encode(tilec: &mut TcdTileComp) -> OPJ_BOOL {
+pub(crate) fn opj_dwt_encode(tilec: &mut TcdTileComp) -> OpResult {
   opj_dwt_encode_procedure(tilec, ForwardWavelet::Reversible53)
 }
 /* <summary>                            */
@@ -1345,11 +1345,11 @@ pub(crate) fn opj_dwt_encode(tilec: &mut TcdTileComp) -> OPJ_BOOL {
 /* </summary>                           */
 
 pub(crate) fn opj_dwt_decode(
-  whole_tile_decoding: OPJ_BOOL,
+  whole_tile_decoding: bool,
   tilec: &mut TcdTileComp,
   numres: u32,
-) -> OPJ_BOOL {
-  if whole_tile_decoding != 0 {
+) -> OpResult {
+  if whole_tile_decoding {
     opj_dwt_decode_tile(tilec, numres)
   } else {
     opj_dwt_decode_partial_tile(tilec, numres)
@@ -1376,7 +1376,7 @@ pub fn opj_dwt_getnorm(mut level: u32, orient: u32) -> f64 {
 /* Forward 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
 
-pub(crate) fn opj_dwt_encode_real(tilec: &mut TcdTileComp) -> OPJ_BOOL {
+pub(crate) fn opj_dwt_encode_real(tilec: &mut TcdTileComp) -> OpResult {
   opj_dwt_encode_procedure(tilec, ForwardWavelet::Irreversible97)
 }
 
@@ -1481,7 +1481,7 @@ fn opj_dwt_max_resolution(r: &[TcdResolution], mut i: u32) -> u32 {
 /* </summary>                           */
 /// Inverse 5-3 wavelet transform in 2-D. The tile component buffer is viewed as one slice for
 /// the whole procedure; the row/column passes index into it with `usize` arithmetic.
-fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
+fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
   let mut rw = (tilec.resolutions[0].x1 - tilec.resolutions[0].x0) as u32;
   let mut rh = (tilec.resolutions[0].y1 - tilec.resolutions[0].y0) as u32;
   let w = (tilec.resolutions[tilec.minimum_num_resolutions as usize - 1].x1
@@ -1490,12 +1490,12 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
   // Not entirely sure for the return code of w == 0 which is triggered per
   // https://github.com/uclouvain/openjpeg/issues/1505
   if numres == 1 || w == 0 {
-    return 1i32;
+    return Ok(());
   }
   let mut h_mem_len = opj_dwt_max_resolution(&tilec.resolutions, numres) as usize;
   /* overflow check */
   if h_mem_len > (usize::MAX / PARALLEL_COLS_53 / core::mem::size_of::<i32>()) {
-    return 0i32;
+    return Err(());
   }
   /* We need PARALLEL_COLS_53 times the height of the array, */
   /* since for the vertical pass */
@@ -1504,7 +1504,7 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
   // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
   let mut scratch: Vec<Cell<i32>> = Vec::new();
   if scratch.try_reserve_exact(h_mem_len).is_err() {
-    return 0i32;
+    return Err(());
   }
   scratch.resize(h_mem_len, Cell::new(0i32));
   let mut h = Dwt {
@@ -1528,7 +1528,7 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
       - tilec.resolutions[tilec.minimum_num_resolutions as usize - 1].y0) as usize,
   );
   if total_len > 0 && tilec.data.is_null() {
-    return 0i32;
+    return Err(());
   }
   let tile_data = tilec.data.as_mut_i32(total_len);
 
@@ -1599,7 +1599,7 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
     }
     res_idx += 1;
   }
-  1i32
+Ok(())
 }
 fn opj_dwt_interleave_partial_h<T: SparseSample>(
   dest: &[Cell<T>],
@@ -1821,7 +1821,7 @@ fn opj_dwt_init_sparse_array(tilec: &TcdTileComp, numres: u32) -> Option<SparseA
   Some(sa)
 }
 
-fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
+fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
   let mut resno: u32 = 0;
   /* This value matches the maximum left/right extension given in tables */
   /* F.2 and F.3 of the standard. */
@@ -1839,12 +1839,12 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
   if tilec.resolutions[tr_max_idx].x0 == tilec.resolutions[tr_max_idx].x1
     || tilec.resolutions[tr_max_idx].y0 == tilec.resolutions[tr_max_idx].y1
   {
-    return 1i32;
+    return Ok(());
   }
   let mut sa = if let Some(sa) = opj_dwt_init_sparse_array(&*tilec, numres) {
     sa
   } else {
-    return 0i32;
+    return Err(());
   };
   if numres == 1u32 {
     let tr_max = &tilec.resolutions[tr_max_idx];
@@ -1853,7 +1853,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
     if win_w == 0 || win_h == 0 {
       // Empty window (e.g. the tile does not intersect the decoding area): nothing to read back,
       // and `data_win` may be null, so skip the read entirely (the forgiving path did the same).
-      return 1i32;
+      return Ok(());
     }
     // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
     let win = tilec.data_win.as_mut_i32(win_w.wrapping_mul(win_h));
@@ -1869,7 +1869,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
       true,
     );
     debug_assert!(ret);
-    return 1i32;
+    return Ok(());
   }
   h_mem_size = opj_dwt_max_resolution(&tilec.resolutions, numres) as usize;
   /* overflow check */
@@ -1878,13 +1878,13 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
   (the C writes SIZE_MAX / (4 * sizeof(int32_t)); the port's previous
   left-to-right MAX/4*4 expression was a dead check). */
   if h_mem_size > (usize::MAX).wrapping_div(4 * core::mem::size_of::<i32>()) {
-    return 0i32;
+    return Err(());
   }
   h_mem_size *= 4;
   // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
   let mut scratch: Vec<Cell<i32>> = Vec::new();
   if scratch.try_reserve_exact(h_mem_size).is_err() {
-    return 0i32;
+    return Err(());
   }
   scratch.resize(h_mem_size, Cell::new(0i32));
   let mut h = Dwt {
@@ -2110,7 +2110,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
           0_u32,
           true,
         ) {
-          return 0i32;
+          return Err(());
         }
       }
       j += 1;
@@ -2147,7 +2147,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
         4_u32,
         true,
       ) {
-        return 0i32;
+        return Err(());
       }
       i = (i as core::ffi::c_uint).wrapping_add(nb_cols)
     }
@@ -2159,7 +2159,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
   if win_w == 0 || win_h == 0 {
     // Empty window (e.g. the tile does not intersect the decoding area): nothing to read back,
     // and `data_win` may be null, so skip the read entirely (the forgiving path did the same).
-    return 1i32;
+    return Ok(());
   }
   // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
   let win = tilec.data_win.as_mut_i32(win_w.wrapping_mul(win_h));
@@ -2175,7 +2175,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_
     true,
   );
   debug_assert!(ret_0);
-  1i32
+Ok(())
 }
 
 /// Inverse lazy transform (horizontal) of the 9-7 pass: stage a block of `remaining_height`
@@ -2439,25 +2439,25 @@ fn opj_v8dwt_decode(mut dwt: &V8Dwt) {
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
-fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
+fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
   let mut rw = (tilec.resolutions[0].x1 - tilec.resolutions[0].x0) as u32;
   let mut rh = (tilec.resolutions[0].y1 - tilec.resolutions[0].y0) as u32;
   let w = (tilec.resolutions[tilec.minimum_num_resolutions as usize - 1].x1
     - tilec.resolutions[tilec.minimum_num_resolutions as usize - 1].x0) as u32;
   let mut l_data_size: usize = 0;
   if numres == 1u32 {
-    return 1i32;
+    return Ok(());
   }
   l_data_size = opj_dwt_max_resolution(&tilec.resolutions, numres) as usize;
   /* overflow check */
   if l_data_size > (usize::MAX).wrapping_div(V8_SIZE) {
-    return 0i32;
+    return Err(());
   }
   // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
   let mut scratch: Vec<Cell<f32>> = Vec::new();
   let scratch_len = l_data_size * NB_ELTS_V8 as usize;
   if scratch.try_reserve_exact(scratch_len).is_err() {
-    return 0i32;
+    return Err(());
   }
   scratch.resize(scratch_len, Cell::new(0f32));
   let mut h = V8Dwt {
@@ -2489,7 +2489,7 @@ fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL 
       - tilec.resolutions[tilec.minimum_num_resolutions as usize - 1].y0) as usize,
   );
   if total_len > 0 && tilec.data.is_null() {
-    return 0i32;
+    return Err(());
   }
   /* The 9-7 buffer is f32-typed: borrow it directly (the C's in-place
   reinterpretation; no whole-tile copy). */
@@ -2625,9 +2625,9 @@ fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL 
     }
     res_idx += 1;
   }
-  1i32
+Ok(())
 }
-fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BOOL {
+fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
   let mut resno: u32 = 0;
   /* This value matches the maximum left/right extension given in tables */
   /* F.2 and F.3 of the standard. Note: in opj_tcd_is_subband_area_of_interest() */
@@ -2646,12 +2646,12 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
   if tilec.resolutions[tr_max_idx].x0 == tilec.resolutions[tr_max_idx].x1
     || tilec.resolutions[tr_max_idx].y0 == tilec.resolutions[tr_max_idx].y1
   {
-    return 1i32;
+    return Ok(());
   }
   let mut sa = if let Some(sa) = opj_dwt_init_sparse_array(&*tilec, numres) {
     sa
   } else {
-    return 0i32;
+    return Err(());
   };
   if numres == 1u32 {
     let tr_max = &tilec.resolutions[tr_max_idx];
@@ -2660,7 +2660,7 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
     if win_w == 0 || win_h == 0 {
       // Empty window (e.g. the tile does not intersect the decoding area): nothing to read back,
       // and `data_win` may be null, so skip the read entirely (the forgiving path did the same).
-      return 1i32;
+      return Ok(());
     }
     // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
     let win = tilec.data_win.as_mut_f32(win_w.wrapping_mul(win_h));
@@ -2676,18 +2676,18 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
       true,
     );
     debug_assert!(ret);
-    return 1i32;
+    return Ok(());
   }
   l_data_size = opj_dwt_max_resolution(&tilec.resolutions, numres) as usize;
   /* overflow check */
   if l_data_size > (usize::MAX).wrapping_div(V8_SIZE) {
-    return 0i32;
+    return Err(());
   }
   // The horizontal and vertical views share this scratch buffer, exactly as in the C code.
   let mut scratch: Vec<Cell<f32>> = Vec::new();
   let scratch_len = l_data_size * NB_ELTS_V8 as usize;
   if scratch.try_reserve_exact(scratch_len).is_err() {
-    return 0i32;
+    return Err(());
   }
   scratch.resize(scratch_len, Cell::new(0f32));
   let mut h = V8Dwt {
@@ -2898,7 +2898,7 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
           1_u32,
           true,
         ) {
-          return 0i32;
+          return Err(());
         }
       }
       j += NB_ELTS_V8;
@@ -2921,7 +2921,7 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
         1_u32,
         true,
       ) {
-        return 0i32;
+        return Err(());
       }
     }
     v.win_l_x0 = win_ll_y0;
@@ -2944,7 +2944,7 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
         NB_ELTS_V8,
         true,
       ) {
-        return 0i32;
+        return Err(());
       }
       j += NB_ELTS_V8;
     }
@@ -2956,7 +2956,7 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
   if win_w == 0 || win_h == 0 {
     // Empty window (e.g. the tile does not intersect the decoding area): nothing to read back,
     // and `data_win` may be null, so skip the read entirely (the forgiving path did the same).
-    return 1i32;
+    return Ok(());
   }
   // SAFETY: `data_win` covers the window of interest (`win_w * win_h` samples).
   let win = tilec.data_win.as_mut_f32(win_w.wrapping_mul(win_h));
@@ -2972,15 +2972,15 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OPJ_BO
     true,
   );
   debug_assert!(ret_0);
-  1i32
+Ok(())
 }
 
 pub(crate) fn opj_dwt_decode_real(
-  whole_tile_decoding: OPJ_BOOL,
+  whole_tile_decoding: bool,
   tilec: &mut TcdTileComp,
   numres: u32,
-) -> OPJ_BOOL {
-  if whole_tile_decoding != 0 {
+) -> OpResult {
+  if whole_tile_decoding {
     opj_dwt_decode_tile_97(tilec, numres)
   } else {
     opj_dwt_decode_partial_97(tilec, numres)

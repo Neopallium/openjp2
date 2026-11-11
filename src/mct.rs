@@ -150,7 +150,7 @@ pub(crate) fn opj_mct_encode_custom(
   n: usize,
   data: &mut [&mut [i32]],
   _is_signed: u32,
-) -> OPJ_BOOL {
+) -> OpResult {
   let nb_comp = data.len();
   let multiplicator = ((1i32) << 13i32) as f32;
   let matrix: Vec<i32> = coding_matrix[..nb_comp * nb_comp]
@@ -170,7 +170,7 @@ pub(crate) fn opj_mct_encode_custom(
       data[j][i] = acc;
     }
   }
-  1i32
+Ok(())
 }
 
 #[allow(clippy::needless_range_loop)]
@@ -179,7 +179,7 @@ pub(crate) fn opj_mct_decode_custom(
   n: usize,
   data: &mut [&mut [f32]],
   _is_signed: u32,
-) -> OPJ_BOOL {
+) -> OpResult {
   let nb_comp = data.len();
   let mut current = vec![0 as f32; nb_comp];
   for i in 0..n {
@@ -194,7 +194,7 @@ pub(crate) fn opj_mct_decode_custom(
       data[j][i] = acc;
     }
   }
-  1i32
+Ok(())
 }
 
 pub(crate) fn opj_calculate_norms(

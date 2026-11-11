@@ -32,36 +32,36 @@ impl<'a> Bio<'a> {
     self.cursor
   }
 
-  fn byteout(&mut self) -> OPJ_BOOL {
+  fn byteout(&mut self) -> OpResult {
     self.buf = self.buf << 8i32 & 0xffffu32;
     self.ct = if self.buf == 0xff00u32 { 7 } else { 8 };
     match self.data.get_mut(self.cursor) {
       Some(slot) => {
         *slot = (self.buf >> 8i32) as u8;
         self.cursor += 1;
-        1i32
+Ok(())
       }
-      None => 0i32,
+      None => Err(()),
     }
   }
 
-  fn bytein(&mut self) -> OPJ_BOOL {
+  fn bytein(&mut self) -> OpResult {
     self.buf = self.buf << 8i32 & 0xffffu32;
     self.ct = if self.buf == 0xff00u32 { 7 } else { 8 };
     match self.data.get(self.cursor) {
       Some(&byte) => {
         self.buf |= byte as u32;
         self.cursor += 1;
-        1i32
+Ok(())
       }
-      None => 0i32,
+      None => Err(()),
     }
   }
 
   fn putbit(&mut self, b: u32) {
     if self.ct == 0 {
       /* MSD: why not check the return value of this function ? */
-      self.byteout();
+      let _ = self.byteout();
     }
     self.ct -= 1;
     self.buf |= b << self.ct;
@@ -70,7 +70,7 @@ impl<'a> Bio<'a> {
   fn getbit(&mut self) -> u32 {
     if self.ct == 0 {
       /* MSD: why not check the return value of this function ? */
-      self.bytein();
+      let _ = self.bytein();
     }
     self.ct -= 1;
     self.buf >> self.ct & 1u32
@@ -117,22 +117,22 @@ pub(crate) fn opj_bio_read(bio: &mut Bio, n: u32) -> u32 {
   v
 }
 
-pub(crate) fn opj_bio_flush(bio: &mut Bio) -> OPJ_BOOL {
-  if bio.byteout() == 0 {
-    return 0i32;
+pub(crate) fn opj_bio_flush(bio: &mut Bio) -> OpResult {
+  if bio.byteout().is_err() {
+    return Err(());
   }
-  if bio.ct == 7u32 && bio.byteout() == 0 {
-    return 0i32;
+  if bio.ct == 7u32 && bio.byteout().is_err() {
+    return Err(());
   }
-  1i32
+Ok(())
 }
 
-pub(crate) fn opj_bio_inalign(bio: &mut Bio) -> OPJ_BOOL {
-  if bio.buf & 0xffu32 == 0xffu32 && bio.bytein() == 0 {
-    return 0i32;
+pub(crate) fn opj_bio_inalign(bio: &mut Bio) -> OpResult {
+  if bio.buf & 0xffu32 == 0xffu32 && bio.bytein().is_err() {
+    return Err(());
   }
   bio.ct = 0;
-  1i32
+Ok(())
 }
 
 /*

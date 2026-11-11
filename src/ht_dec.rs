@@ -15,7 +15,7 @@ pub struct dec_mel<'a> {
   pub tmp: u64,
   pub bits: core::ffi::c_int,
   pub size: core::ffi::c_int,
-  pub unstuff: OPJ_BOOL,
+  pub unstuff: i32,
   pub k: core::ffi::c_int,
   pub num_runs: core::ffi::c_int,
   pub runs: u64,
@@ -46,7 +46,7 @@ pub struct rev_struct<'a> {
   pub tmp: u64,
   pub bits: u32,
   pub size: core::ffi::c_int,
-  pub unstuff: OPJ_BOOL,
+  pub unstuff: i32,
 }
 
 impl rev_struct<'_> {
@@ -81,7 +81,7 @@ pub struct frwd_struct<'a> {
   pub pos: usize,
   pub tmp: u64,
   pub bits: u32,
-  pub unstuff: OPJ_BOOL,
+  pub unstuff: i32,
   pub size: core::ffi::c_int,
   pub x: u32,
 }
@@ -201,7 +201,7 @@ fn mel_read(melp: &mut dec_mel_t) {
   let mut val: u32 = 0;
   let mut bits: core::ffi::c_int = 0;
   let mut t: u32 = 0;
-  let mut unstuff: OPJ_BOOL = 0;
+  let mut unstuff: i32 = 0;
   if melp.bits > 32i32 {
     //there are enough bits in the tmp variable
     return;
@@ -360,7 +360,7 @@ fn mel_init<'a>(
     // this code is similar to mel_read
     let mut d: u64 = 0; // if buffer is consumed
     let mut d_bits: core::ffi::c_int = 0;
-    if melp.unstuff != 0i32 && melp.data[melp.pos] as core::ffi::c_int > 0x8fi32 {
+    if melp.unstuff != 0 && melp.data[melp.pos] as core::ffi::c_int > 0x8fi32 {
       return false;
     }
     d = if melp.size > 0i32 {
@@ -430,7 +430,7 @@ fn rev_read(vlcp: &mut rev_struct_t) {
   let mut val: u32 = 0;
   let mut tmp: u32 = 0;
   let mut bits: u32 = 0;
-  let mut unstuff: OPJ_BOOL = 0;
+  let mut unstuff: i32 = 0;
   //process 4 bytes at a time
   if vlcp.bits > 32u32 {
     // if there are more than 32 bits in tmp, then
@@ -466,31 +466,31 @@ fn rev_read(vlcp: &mut rev_struct_t) {
   }); //this is for the next byte
   unstuff = (val >> 24i32 > 0x8fu32) as core::ffi::c_int; //process the next byte
   tmp |= (val >> 16i32 & 0xffu32) << bits;
-  bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(
+  bits = bits.wrapping_add((8u32).wrapping_sub(
     if unstuff != 0 && val >> 16i32 & 0x7fu32 == 0x7fu32 {
       1u32
     } else {
       0u32
     },
-  )) as u32;
+  ));
   unstuff = (val >> 16i32 & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   tmp |= (val >> 8i32 & 0xffu32) << bits;
-  bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(
+  bits = bits.wrapping_add((8u32).wrapping_sub(
     if unstuff != 0 && val >> 8i32 & 0x7fu32 == 0x7fu32 {
       1u32
     } else {
       0u32
     },
-  )) as u32;
+  ));
   unstuff = (val >> 8i32 & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   tmp |= (val & 0xffu32) << bits;
-  bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(
+  bits = bits.wrapping_add((8u32).wrapping_sub(
     if unstuff != 0 && val & 0x7fu32 == 0x7fu32 {
       1u32
     } else {
       0u32
     },
-  )) as u32;
+  ));
   unstuff = (val & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   // now move the read and unstuffed bits into vlcp->tmp
   vlcp.tmp |= (tmp as u64) << vlcp.bits;
@@ -609,7 +609,7 @@ fn rev_read_mrp(mrp: &mut rev_struct_t) {
   let mut val: u32 = 0;
   let mut tmp: u32 = 0;
   let mut bits: u32 = 0;
-  let mut unstuff: OPJ_BOOL = 0;
+  let mut unstuff: i32 = 0;
   //process 4 bytes at a time
   if mrp.bits > 32u32 {
     return;
@@ -642,31 +642,31 @@ fn rev_read_mrp(mrp: &mut rev_struct_t) {
   unstuff = (val >> 24i32 > 0x8fu32) as core::ffi::c_int;
   //process the next byte
   tmp |= (val >> 16i32 & 0xffu32) << bits; // move data to mrp pointer
-  bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(
+  bits = bits.wrapping_add((8u32).wrapping_sub(
     if unstuff != 0 && val >> 16i32 & 0x7fu32 == 0x7fu32 {
       1u32
     } else {
       0u32
     },
-  )) as u32;
+  ));
   unstuff = (val >> 16i32 & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   tmp |= (val >> 8i32 & 0xffu32) << bits;
-  bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(
+  bits = bits.wrapping_add((8u32).wrapping_sub(
     if unstuff != 0 && val >> 8i32 & 0x7fu32 == 0x7fu32 {
       1u32
     } else {
       0u32
     },
-  )) as u32;
+  ));
   unstuff = (val >> 8i32 & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   tmp |= (val & 0xffu32) << bits;
-  bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(
+  bits = bits.wrapping_add((8u32).wrapping_sub(
     if unstuff != 0 && val & 0x7fu32 == 0x7fu32 {
       1u32
     } else {
       0u32
     },
-  )) as u32;
+  ));
   unstuff = (val & 0xffu32 > 0x8fu32) as core::ffi::c_int;
   mrp.tmp |= (tmp as u64) << mrp.bits;
   mrp.bits = (mrp.bits as core::ffi::c_uint).wrapping_add(bits);
@@ -992,7 +992,7 @@ fn frwd_read(msp: &mut frwd_struct_t) {
   let mut val: u32 = 0; // assert that there is a space for 32 bits
   let mut bits: u32 = 0; // read 32 bits
   let mut t: u32 = 0;
-  let mut unstuff: OPJ_BOOL = 0;
+  let mut unstuff: i32 = 0;
   assert!(msp.bits <= 32u32);
   val = 0u32;
   if msp.size > 3i32 {
@@ -1018,25 +1018,25 @@ fn frwd_read(msp: &mut frwd_struct_t) {
   t = val & 0xffu32; // for next byte
   unstuff = (val & 0xffu32 == 0xffu32) as core::ffi::c_int; // move data to msp->tmp
   t |= (val >> 8i32 & 0xffu32) << bits;
-  bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(if unstuff != 0 {
+  bits = bits.wrapping_add((8u32).wrapping_sub(if unstuff != 0 {
     1u32
   } else {
     0u32
-  })) as u32;
+  }));
   unstuff = (val >> 8i32 & 0xffu32 == 0xffu32) as core::ffi::c_int;
   t |= (val >> 16i32 & 0xffu32) << bits;
-  bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(if unstuff != 0 {
+  bits = bits.wrapping_add((8u32).wrapping_sub(if unstuff != 0 {
     1u32
   } else {
     0u32
-  })) as u32;
+  }));
   unstuff = (val >> 16i32 & 0xffu32 == 0xffu32) as core::ffi::c_int;
   t |= (val >> 24i32 & 0xffu32) << bits;
-  bits = (bits as core::ffi::c_uint).wrapping_add((8u32).wrapping_sub(if unstuff != 0 {
+  bits = bits.wrapping_add((8u32).wrapping_sub(if unstuff != 0 {
     1u32
   } else {
     0u32
-  })) as u32;
+  }));
   msp.unstuff = (val >> 24i32 & 0xffu32 == 0xffu32) as core::ffi::c_int;
   msp.tmp |= (t as u64) << msp.bits;
   msp.bits = (msp.bits as core::ffi::c_uint).wrapping_add(bits);
@@ -1133,7 +1133,7 @@ fn opj_t1_allocate_buffers(
   mut t1: &mut T1Coder,
   mut w: u32,
   mut h: u32,
-) -> OPJ_BOOL {
+) -> OpResult {
   let mut flagssize: usize = 0;
   /* No risk of overflow. Prior checks ensure those assert are met */
   /* They are per the specification */
@@ -1152,7 +1152,7 @@ fn opj_t1_allocate_buffers(
   t1.flags.resize(flagssize);
   t1.w = w;
   t1.h = h;
-  1i32
+Ok(())
 }
 //* ***********************************************************************/
 /* * @brief Decodes one codeblock, processing the cleanup, siginificance
@@ -1174,8 +1174,8 @@ pub(crate) fn opj_t1_ht_decode_cblk(
   mut roishift: u32,
   mut cblksty: u32,
   p_manager: &EventMgr,
-  mut _check_pterm: OPJ_BOOL,
-) -> OPJ_BOOL {
+  mut _check_pterm: bool,
+) -> OpResult {
     let mut zero_bplanes: u32 = 0;
     let mut num_passes: u32 = 0;
     let mut lengths1: u32 = 0;
@@ -1262,18 +1262,18 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         EVT_ERROR,
         "We do not support ROI in decoding HT codeblocks\n",
       );
-      return 0i32;
+      return Err(());
     }
     if opj_t1_allocate_buffers(
       t1,
       (cblk.x1 - cblk.x0) as u32,
       (cblk.y1 - cblk.y0) as u32,
-    ) == 0
+    ).is_err()
     {
-      return 0i32;
+      return Err(());
     }
     if cblk.mb == 0u32 {
-      return 1i32;
+      return Ok(());
     }
     /* numbps = Mb + 1 - zero_bplanes, Mb = Kmax, zero_bplanes = missing_msbs */
     zero_bplanes = cblk.mb.wrapping_add(1u32).wrapping_sub(cblk.numbps);
@@ -1286,7 +1286,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         .wrapping_add(cblk.chunks[i as usize].len);
       i += 1;
     }
-    let cblkdata: &[u8] = if cblk.numchunks > 1u32 || t1.mustuse_cblkdatabuffer != 0 {
+    let cblkdata: &[u8] = if cblk.numchunks > 1u32 || t1.mustuse_cblkdatabuffer {
       let mut i_0: u32 = 0;
       /* Allocate temporary memory if needed */
       t1.grow_cblkdatabuffer(cblk_len as usize);
@@ -1313,7 +1313,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     } else {
       /* Not sure if that can happen in practice, but avoid Coverity to */
       /* think we will dereference a null cblkdta pointer */
-      return 1i32;
+      return Ok(());
     };
     // The C code writes the decoded samples through a `u32*` alias of the T1 data
     // buffer. Here we decode into a local u32 scratch and transfer it into the
@@ -1380,7 +1380,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
     if num_passes > 3u32 {
       event_msg!(p_manager, EVT_ERROR,
                         "We do not support more than 3 coding passes in an HT codeblock; This codeblocks has {} passes.\n", num_passes);
-      return 0i32;
+      return Err(());
     }
     if cblk.mb > 30u32 {
       /* This check is better moved to opj_t2_read_packet_header() in t2.c
@@ -1394,7 +1394,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       */
       event_msg!(p_manager, EVT_ERROR,
                         "32 bits are not enough to decode this codeblock, since the number of bitplane, {}, is larger than 30.\n", cblk.mb);
-      return 0i32;
+      return Err(());
     }
     if zero_bplanes > cblk.mb {
       /* This check is better moved to opj_t2_read_packet_header() in t2.c,
@@ -1404,7 +1404,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       event_msg!(p_manager, EVT_ERROR,
                         "Malformed HT codeblock. Decoding this codeblock is stopped. There are {} zero bitplanes in {} bitplanes.\n", zero_bplanes,
                         cblk.mb);
-      return 0i32;
+      return Err(());
     } else if zero_bplanes == cblk.mb && num_passes > 1u32 {
       /* When the number of zero bitplanes is equal to the number of bitplanes,
       only the cleanup pass makes sense*/
@@ -1431,7 +1431,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         EVT_ERROR,
         "Malformed HT codeblock. Invalid codeblock length values.\n",
       );
-      return 0i32;
+      return Err(());
     }
     // read scup and fix the bytes there
     lcup = lengths1 as core::ffi::c_int; // length of CUP
@@ -1443,7 +1443,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       /* The standard stipulates 2 <= Scup <= min(Lcup, 4079) */
       event_msg!(p_manager, EVT_ERROR,
                         "Malformed HT codeblock. One of the following condition is not met: 2 <= Scup <= min(Lcup, 4079)\n");
-      return 0i32;
+      return Err(());
     }
     // init structures
     if !mel_init(&mut mel, cblkdata, lcup, scup) {
@@ -1452,7 +1452,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         EVT_ERROR,
         "Malformed HT codeblock.  Incorrect MEL segment sequence.\n"
       );
-      return 0i32;
+      return Err(());
     }
     rev_init(&mut vlc, cblkdata, lcup, scup);
     frwd_init(&mut magsgn, cblkdata, lcup - scup, 0xff_u32);
@@ -1613,7 +1613,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       if u_q[0_usize] > zero_bplanes_p1 || u_q[1_usize] > zero_bplanes_p1 {
         event_msg!(p_manager, EVT_ERROR,
                             "Malformed HT codeblock. Decoding this codeblock is stopped. u_q is larger than zero bitplanes + 1 \n");
-        return 0i32;
+        return Err(());
       }
       //consume u bits in the VLC code
       vlc_val = rev_advance(&mut vlc, consumed_bits);
@@ -1633,7 +1633,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
       if ((qinf[0_usize] & 0xf0u32) >> 4i32 | qinf[1_usize] & 0xf0u32) & !locs != 0 {
         event_msg!(p_manager, EVT_ERROR,
                             "Malformed HT codeblock. VLC code produces significant samples outside the codeblock area.\n");
-        return 0i32;
+        return Err(());
       }
       //first quad, starting at first sample in quad and moving on
       if qinf[0_usize] & 0x10u32 != 0 {
@@ -1908,7 +1908,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         if u_q_0[0_usize] > zero_bplanes_p1 || u_q_0[1_usize] > zero_bplanes_p1 {
           event_msg!(p_manager, EVT_ERROR,
                                 "Malformed HT codeblock. Decoding this codeblock is stopped. u_q islarger than bitplanes + 1 \n");
-          return 0i32;
+          return Err(());
         }
         ls0 = line_state[lsp + 2].get();
         line_state[lsp + 2].set(0_u8);
@@ -1928,7 +1928,7 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         if ((qinf[0_usize] & 0xf0u32) >> 4i32 | qinf[1_usize] & 0xf0u32) & !locs_0 != 0 {
           event_msg!(p_manager, EVT_ERROR,
                               "Malformed HT codeblock. VLC code produces significant samples outside the codeblock area.\n");
-          return 0i32;
+          return Err(());
         }
         if qinf[0_usize] & 0x10u32 != 0 {
           //sigma_n
@@ -2780,5 +2780,5 @@ pub(crate) fn opj_t1_ht_decode_cblk(
         cell.set(v as i32);
       }
     }
-    1i32
+Ok(())
 }

@@ -33,7 +33,6 @@
 use super::jp2::*;
 use super::image::*;
 
-use super::c_api_types::*;
 #[cfg(feature = "event-handlers")]
 use super::consts::*;
 use super::types::*;
@@ -164,7 +163,7 @@ macro_rules! codec_common {
           CodecFormat::J2K(j2k) => opj_j2k_set_threads(j2k, num_threads as u32),
           CodecFormat::JP2(jp2) => opj_jp2_set_threads(jp2, num_threads as u32),
         };
-        if ok != 0 {
+        if ok.is_ok() {
           Ok(())
         } else {
           Err(Error::Unsupported(
@@ -239,7 +238,7 @@ impl Decoder {
       J2KFormat::JP2 => {
         /* get a JP2 decoder handle */
         CodecFormat::JP2(
-          opj_jp2_create(1i32).ok_or_else(|| Error::Decode("failed to create decoder".into()))?,
+          opj_jp2_create(true).ok_or_else(|| Error::Decode("failed to create decoder".into()))?,
         )
       }
       other => {
@@ -311,8 +310,8 @@ impl Decoder {
   /// builder is lenient by default and calls this explicitly).
   pub fn set_strict(&mut self, strict: bool) -> Result<()> {
     match &mut self.m_codec {
-      CodecFormat::J2K(dec) => opj_j2k_decoder_set_strict_mode(dec, strict as OPJ_BOOL),
-      CodecFormat::JP2(dec) => opj_jp2_decoder_set_strict_mode(dec, strict as OPJ_BOOL),
+      CodecFormat::J2K(dec) => opj_j2k_decoder_set_strict_mode(dec, strict),
+      CodecFormat::JP2(dec) => opj_jp2_decoder_set_strict_mode(dec, strict),
     }
     Ok(())
   }
@@ -337,7 +336,7 @@ impl Decoder {
       CodecFormat::J2K(dec) => opj_j2k_set_decoded_components(dec, components, &mut self.m_event_mgr),
       CodecFormat::JP2(dec) => opj_jp2_set_decoded_components(dec, components, &mut self.m_event_mgr),
     };
-    if ok != 0 {
+    if ok.is_ok() {
       Ok(())
     } else {
       Err(Error::Decode("set_decoded_components failed".into()))
@@ -370,7 +369,7 @@ impl Decoder {
           &mut self.m_event_mgr,
         ),
       };
-      if ok == 0 {
+      if ok.is_err() {
         return Err(self.decode_error("set_decode_area failed"));
       }
     }
@@ -387,7 +386,7 @@ impl Decoder {
         opj_jp2_set_decoded_resolution_factor(dec, res_factor, &mut self.m_event_mgr)
       }
     };
-    if ok != 0 {
+    if ok.is_ok() {
       Ok(())
     } else {
       Err(Error::Decode("set_decoded_resolution_factor failed".into()))
@@ -467,7 +466,7 @@ impl Decoder {
           &mut self.m_event_mgr,
         ),
       };
-      if ok == 0 {
+      if ok.is_err() {
         return Err(Error::Decode("set_decode_area failed".into()));
       }
       /* Concurrent tile decode of the intersecting tiles (rayon); the same
@@ -495,14 +494,14 @@ impl Decoder {
     let (ok, strict) = match &mut self.m_codec {
       CodecFormat::J2K(dec) => (
         opj_j2k_decode(dec, stream, &mut image, &mut self.m_event_mgr),
-        dec.m_cp.strict != 0,
+        dec.m_cp.strict,
       ),
       CodecFormat::JP2(dec) => (
         opj_jp2_decode(dec, stream, &mut image, &mut self.m_event_mgr),
-        dec.j2k.m_cp.strict != 0,
+        dec.j2k.m_cp.strict,
       ),
     };
-    if ok == 0 {
+    if ok.is_err() {
       if strict {
         return Err(self.decode_error("decode failed"));
       }
@@ -518,7 +517,7 @@ impl Decoder {
       CodecFormat::J2K(dec) => opj_j2k_end_decompress(dec, stream, &mut self.m_event_mgr),
       CodecFormat::JP2(dec) => opj_jp2_end_decompress(dec, stream, &mut self.m_event_mgr),
     };
-    if ok != 0 {
+    if ok.is_ok() {
       Ok(())
     } else {
       Err(self.decode_error("end_decompress failed"))
@@ -568,7 +567,7 @@ impl Decoder {
       CodecFormat::J2K(dec) => opj_j2k_decode_tile(dec, tile, out, stream, &mut self.m_event_mgr),
       CodecFormat::JP2(dec) => opj_jp2_decode_tile(dec, tile, out, stream, &mut self.m_event_mgr),
     };
-    if ok != 0 {
+    if ok.is_ok() {
       Ok(())
     } else {
       Err(self.decode_error("decode_tile_data failed"))
@@ -591,7 +590,7 @@ impl Decoder {
       CodecFormat::J2K(dec) => opj_j2k_get_tile(dec, stream, &mut image, &mut self.m_event_mgr, tile),
       CodecFormat::JP2(dec) => opj_jp2_get_tile(dec, stream, &mut image, &mut self.m_event_mgr, tile),
     };
-    if ok != 0 {
+    if ok.is_ok() {
       Ok(image)
     } else {
       Err(self.decode_error("get_decoded_tile failed"))
@@ -624,12 +623,12 @@ impl Decoder {
       CodecFormat::J2K(j2k) => (
         j2k.m_cp.m_specific_param.m_dec.m_layer,
         j2k.m_cp.m_specific_param.m_dec.m_reduce,
-        j2k.m_cp.strict != 0,
+        j2k.m_cp.strict,
       ),
       CodecFormat::JP2(jp2) => (
         jp2.j2k.m_cp.m_specific_param.m_dec.m_layer,
         jp2.j2k.m_cp.m_specific_param.m_dec.m_reduce,
-        jp2.j2k.m_cp.strict != 0,
+        jp2.j2k.m_cp.strict,
       ),
     }
   }
@@ -703,7 +702,7 @@ impl Decoder {
     }
     let cstr_index = self.cstr_index()?;
     let layer = cp.m_specific_param.m_dec.m_layer;
-    let strict = cp.strict != 0;
+    let strict = cp.strict;
     let mut core = crate::j2k::j2k_decode_tiles_parallel(
       cp,
       header,
@@ -722,7 +721,7 @@ impl Decoder {
     opj_jp2_decode). */
     if let CodecFormat::JP2(jp2) = &mut self.m_codec {
       let mut manager = crate::event::EventMgr::default();
-      if crate::jp2::opj_jp2_apply_color_postprocessing(jp2, &mut core, &mut manager) == 0 {
+      if crate::jp2::opj_jp2_apply_color_postprocessing(jp2, &mut core, &mut manager).is_err() {
         return None;
       }
     }
@@ -771,7 +770,7 @@ impl Decoder {
         comp.factor = reduce;
       }
       let mut manager = crate::event::EventMgr::default();
-      if crate::j2k::opj_j2k_update_image_dimensions(&mut merge, &mut manager) == 0 {
+      if crate::j2k::opj_j2k_update_image_dimensions(&mut merge, &mut manager).is_err() {
         return None;
       }
     }
@@ -794,7 +793,7 @@ impl Decoder {
     decode (the palette lookup turns indices into colour values). */
     if let CodecFormat::JP2(jp2) = &mut self.m_codec {
       let mut manager = crate::event::EventMgr::default();
-      if crate::jp2::opj_jp2_apply_color_postprocessing(jp2, &mut core, &mut manager) == 0 {
+      if crate::jp2::opj_jp2_apply_color_postprocessing(jp2, &mut core, &mut manager).is_err() {
         return None;
       }
     }
@@ -811,7 +810,7 @@ impl Encoder {
       J2KFormat::JP2 => {
         /* get a JP2 encoder handle */
         CodecFormat::JP2(
-          opj_jp2_create(0i32).ok_or_else(|| Error::Encode("failed to create encoder".into()))?,
+          opj_jp2_create(false).ok_or_else(|| Error::Encode("failed to create encoder".into()))?,
         )
       }
       other => {
@@ -834,7 +833,7 @@ impl Encoder {
       CodecFormat::J2K(enc) => opj_j2k_setup_encoder(enc, parameters, image, &mut self.m_event_mgr),
       CodecFormat::JP2(enc) => opj_jp2_setup_encoder(enc, parameters, image, &mut self.m_event_mgr),
     };
-    if ok != 0 {
+    if ok.is_ok() {
       Ok(())
     } else {
       Err(Error::Encode("setup_encoder failed".into()))
@@ -861,7 +860,7 @@ impl Encoder {
       CodecFormat::J2K(enc) => opj_j2k_start_compress(enc, stream, image, &mut self.m_event_mgr),
       CodecFormat::JP2(enc) => opj_jp2_start_compress(enc, stream, image, &mut self.m_event_mgr),
     };
-    if ok != 0 {
+    if ok.is_ok() {
       Ok(())
     } else {
       Err(Error::Encode("start_compress failed".into()))
@@ -874,7 +873,7 @@ impl Encoder {
       CodecFormat::J2K(enc) => opj_j2k_encode(enc, stream, &mut self.m_event_mgr),
       CodecFormat::JP2(enc) => opj_jp2_encode(enc, stream, &mut self.m_event_mgr),
     };
-    if ok != 0 {
+    if ok.is_ok() {
       Ok(())
     } else {
       Err(Error::Encode("encode failed".into()))
@@ -887,7 +886,7 @@ impl Encoder {
       CodecFormat::J2K(enc) => opj_j2k_end_compress(enc, stream, &mut self.m_event_mgr),
       CodecFormat::JP2(enc) => opj_jp2_end_compress(enc, stream, &mut self.m_event_mgr),
     };
-    if ok != 0 {
+    if ok.is_ok() {
       Ok(())
     } else {
       Err(Error::Encode("end_compress failed".into()))
@@ -900,7 +899,7 @@ impl Encoder {
       CodecFormat::J2K(enc) => opj_j2k_write_tile(enc, tile, data, stream, &mut self.m_event_mgr),
       CodecFormat::JP2(enc) => opj_jp2_write_tile(enc, tile, data, stream, &mut self.m_event_mgr),
     };
-    if ok != 0 {
+    if ok.is_ok() {
       Ok(())
     } else {
       Err(Error::Encode("write_tile failed".into()))
@@ -932,6 +931,6 @@ impl Encoder {
       return None;
     }
     let mut manager = crate::event::EventMgr::default();
-    Some(crate::j2k::j2k_encode_tiles_parallel(j2k, stream, &mut manager) != 0)
+    Some(crate::j2k::j2k_encode_tiles_parallel(j2k, stream, &mut manager).is_ok())
   }
 }

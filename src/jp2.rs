@@ -128,10 +128,10 @@ impl Jp2BoxHeader {
           EVT_WARNING,
           &format!("Ignoring unsupported box type: {:?}\n", self.ty),
         );
-        1
+        Ok(())
       }
     };
-    if res != 0 {
+    if res.is_ok() {
       Ok(())
     } else {
       Err(format!("Failed to read box type: {:?}", self.ty))
@@ -175,18 +175,18 @@ impl HeaderWriter {
  *
  * @return  true if the image header is valid, false else.
  */
-fn opj_jp2_read_ihdr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_jp2_read_ihdr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if !jp2.comps.is_empty() {
     event_msg!(
       p_manager,
       EVT_WARNING,
       "Ignoring ihdr box. First ihdr box already read\n",
     );
-    return 1;
+    return Ok(());
   }
   if buf.len() != 14 {
     event_msg!(p_manager, EVT_ERROR, "Bad image header box (bad size)\n",);
-    return 0;
+    return Err(());
   }
   // Height
   jp2.h = buf
@@ -209,7 +209,7 @@ fn opj_jp2_read_ihdr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
       jp2.h,
       numcomps,
     );
-    return 0;
+    return Err(());
   }
   if numcomps > 16384 {
     /* unsigned underflow is well defined: 1U <= jp2->numcomps <= 16384U */
@@ -218,7 +218,7 @@ fn opj_jp2_read_ihdr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
       EVT_ERROR,
       "Invalid number of components (ihdr)\n",
     );
-    return 0;
+    return Err(());
   }
   /* allocate memory for components */
   jp2.comps = Vec::with_capacity(numcomps as usize);
@@ -249,7 +249,7 @@ fn opj_jp2_read_ihdr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
   jp2.j2k.ihdr_w = jp2.w;
   jp2.j2k.ihdr_h = jp2.h;
   jp2.has_ihdr = 1_u8;
-  1
+Ok(())
 }
 
 /* *
@@ -302,7 +302,7 @@ fn opj_jp2_write_bpcc(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
  *
  * @return  true if the bpc header is valid, false else.
  */
-fn opj_jp2_read_bpcc(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_jp2_read_bpcc(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if jp2.bpc != 255 {
     event_msg!(p_manager, EVT_WARNING,
                       "A BPCC header box is available although BPC given by the IHDR box ({}) indicate components bit depth is constant\n", jp2.bpc);
@@ -310,14 +310,14 @@ fn opj_jp2_read_bpcc(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
   /* and length is relevant */
   if buf.len() != jp2.comps.len() {
     event_msg!(p_manager, EVT_ERROR, "Bad BPCC header box (bad size)\n",);
-    return 0;
+    return Err(());
   }
   /* read info for each component */
   for comp in &mut jp2.comps {
     /* read each BPCC component */
     comp.bpcc = buf.read_u8().expect("Buffer should have enough data") as u32;
   }
-  1
+Ok(())
 }
 
 /* *
@@ -391,7 +391,7 @@ fn opj_jp2_check_color(
   image: &mut CoreImage,
   color: &mut Jp2Color,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   /* testcase 4149.pdf.SIGSEGV.cf7.3501 */
   if let Some(cdef) = &color.jp2_cdef {
     /* Upstream notes numcomps may change here when color is applied */
@@ -411,7 +411,7 @@ fn opj_jp2_check_color(
           info.cn as i32,
           nr_channels,
         );
-        return 0;
+        return Err(());
       }
       if info.asoc != 65535 && info.asoc > 0 && (info.asoc - 1) as u32 >= nr_channels {
         event_msg!(
@@ -421,7 +421,7 @@ fn opj_jp2_check_color(
           info.asoc as core::ffi::c_int - 1i32,
           nr_channels,
         );
-        return 0;
+        return Err(());
       }
     }
     /* issue 397 */
@@ -436,7 +436,7 @@ fn opj_jp2_check_color(
         .is_some();
       if !has {
         event_msg!(p_manager, EVT_ERROR, "Incomplete channel definitions.\n",);
-        return 0;
+        return Err(());
       }
     }
   }
@@ -550,11 +550,11 @@ fn opj_jp2_check_color(
         }
       }
       if !is_sane {
-        return 0;
+        return Err(());
       }
     }
   }
-  1
+Ok(())
 }
 
 /* *
@@ -568,7 +568,7 @@ fn opj_jp2_apply_pclr(
   image: &mut CoreImage,
   pclr: &Jp2Pclr,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   let nr_channels = pclr.nr_channels as usize;
   let comps = &image.comps;
   for (i, cmap) in pclr.cmap.iter().enumerate() {
@@ -580,12 +580,12 @@ fn opj_jp2_apply_pclr(
         "image->comps[{}].data == NULL in opj_jp2_apply_pclr().\n",
         i as core::ffi::c_int,
       );
-      return 0;
+      return Err(());
     }
     // Ensure valid palette index.
     if cmap.mtyp != 0 && i != cmap.pcol as usize {
       event_msg!(p_manager, EVT_ERROR, "Invalid cmap: pcol != i.\n",);
-      return 0;
+      return Err(());
     }
   }
 
@@ -599,7 +599,7 @@ fn opj_jp2_apply_pclr(
       EVT_ERROR,
       "Memory allocation failure in opj_jp2_apply_pclr().\n",
     );
-    return 0i32;
+    return Err(());
   }
   let new_comps = &mut image.comps;
 
@@ -640,7 +640,7 @@ fn opj_jp2_apply_pclr(
       }
     }
   }
-  1
+Ok(())
 }
 
 /* *
@@ -653,12 +653,12 @@ fn opj_jp2_apply_pclr(
  *
  * @return Returns true if successful, returns false otherwise
 */
-fn opj_jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if jp2.color.jp2_pclr.is_some() {
-    return 0;
+    return Err(());
   }
   if buf.len() < 3 {
-    return 0;
+    return Err(());
   }
   let nr_entries = buf
     .read_u16::<BigEndian>()
@@ -670,7 +670,7 @@ fn opj_jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
       "Invalid PCLR box. Reports {} entries\n",
       nr_entries as core::ffi::c_int,
     );
-    return 0;
+    return Err(());
   }
   let nr_channels = buf.read_u8().expect("Buffer should have enough data");
   if nr_channels == 0 {
@@ -679,10 +679,10 @@ fn opj_jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
       EVT_ERROR,
       "Invalid PCLR box. Reports 0 palette columns\n",
     );
-    return 0;
+    return Err(());
   }
   if buf.len() < nr_channels as usize {
-    return 0;
+    return Err(());
   }
   /* Capacity hint: the entries hold nr_entries x nr_channels values.  The
   u8 x u8 product overflows in debug builds for nr_channels >= 16 (and is
@@ -707,7 +707,7 @@ fn opj_jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
         entries.push(value as u32);
       } else {
         // Truncated data.
-        return 0;
+        return Err(());
       }
     }
   }
@@ -719,7 +719,7 @@ fn opj_jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
     cmap: Default::default(),
   };
   jp2.color.jp2_pclr = Some(jp2_pclr);
-  1
+Ok(())
 }
 
 /* *
@@ -732,7 +732,7 @@ fn opj_jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
  *
  * @return Returns true if successful, returns false otherwise
 */
-fn opj_jp2_read_cmap(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_jp2_read_cmap(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   /* Need nr_channels: */
   let mut pclr = if let Some(pclr) = &mut jp2.color.jp2_pclr {
     pclr
@@ -742,19 +742,19 @@ fn opj_jp2_read_cmap(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
       EVT_ERROR,
       "Need to read a PCLR box before the CMAP box.\n",
     );
-    return 0;
+    return Err(());
   };
   /* Part 1, I.5.3.5: 'There shall be at most one Component Mapping box
    * inside a JP2 Header box' :
    */
   if !pclr.cmap.is_empty() {
     event_msg!(p_manager, EVT_ERROR, "Only one CMAP box is allowed.\n",); /* CMP^i */
-    return 0;
+    return Err(());
   }
   let nr_channels = pclr.nr_channels as usize;
   if buf.len() < nr_channels * 4 {
     event_msg!(p_manager, EVT_ERROR, "Insufficient data for CMAP box.\n",);
-    return 0;
+    return Err(());
   }
   let mut cmap = Vec::with_capacity(nr_channels);
   for _ in 0..nr_channels {
@@ -769,7 +769,7 @@ fn opj_jp2_read_cmap(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
     cmap.push(Jp2CmapComp { cmp, mtyp, pcol });
   }
   pclr.cmap = cmap;
-  1
+Ok(())
 }
 
 fn opj_jp2_apply_cdef(
@@ -834,15 +834,15 @@ fn opj_jp2_apply_cdef(
 }
 
 /* jp2_apply_cdef() */
-fn opj_jp2_read_cdef(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_jp2_read_cdef(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   /* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
    * inside a JP2 Header box.'*/
   if jp2.color.jp2_cdef.is_some() {
-    return 0;
+    return Err(());
   }
   if buf.len() < 2 {
     event_msg!(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n",);
-    return 0;
+    return Err(());
   }
   // N
   let n = buf
@@ -855,11 +855,11 @@ fn opj_jp2_read_cdef(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
       EVT_ERROR,
       "Number of channel description is equal to zero in CDEF box.\n",
     );
-    return 0;
+    return Err(());
   }
   if buf.len() < n * 6 {
     event_msg!(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n",);
-    return 0;
+    return Err(());
   }
   let mut info = Vec::with_capacity(n);
   for _i in 0..n {
@@ -878,7 +878,7 @@ fn opj_jp2_read_cdef(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
     info.push(Jp2CdefInfo { cn, typ, asoc });
   }
   jp2.color.jp2_cdef = Some(Jp2Cdef { info });
-  1
+Ok(())
 }
 
 /* *
@@ -891,11 +891,11 @@ fn opj_jp2_read_cdef(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
  *
  * @return  true if the bpc header is valid, false else.
 */
-fn opj_jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let total_size = buf.len() as u32;
   if buf.len() < 3 {
     event_msg!(p_manager, EVT_ERROR, "Bad COLR header box (bad size)\n",);
-    return 0;
+    return Err(());
   }
   /* Part 1, I.5.3.3 : 'A conforming JP2 reader shall ignore all Colour
    * Specification boxes after the first.'
@@ -903,7 +903,7 @@ fn opj_jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
   if jp2.color.jp2_has_colr != 0 {
     event_msg!(p_manager, EVT_INFO,
                       "A conforming JP2 reader shall ignore all Colour Specification boxes after the first, so we ignore this one.\n");
-    return 1;
+    return Ok(());
   }
   // METH
   jp2.meth = buf.read_u8().expect("Buffer should have enough data") as u32;
@@ -919,7 +919,7 @@ fn opj_jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
         "Bad COLR header box (bad size: {})\n",
         total_size,
       );
-      return 0i32;
+      return Err(());
     }
     // EnumCS
     /* C parity (jp2.c:1507-1510): the generic warning runs BEFORE the
@@ -1017,29 +1017,29 @@ fn opj_jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
     event_msg!(p_manager, EVT_INFO,
                       "COLR BOX meth value is not a regular value ({}), so we will ignore the entire Colour Specification box. \n", jp2.meth);
   }
-  1
+Ok(())
 }
 
 pub(crate) fn opj_jp2_apply_color_postprocessing(
   jp2: &mut Jp2,
   p_image: &mut CoreImage,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   if jp2.j2k.m_specific_param.m_decoder.m_numcomps_to_decode != 0 {
     /* Bypass all JP2 component transforms */
-    return 1;
+    return Ok(());
   }
-  if jp2.ignore_pclr_cmap_cdef == 0 {
-    if opj_jp2_check_color(p_image, &mut jp2.color, p_manager) == 0 {
-      return 0;
+  if !jp2.ignore_pclr_cmap_cdef {
+    if opj_jp2_check_color(p_image, &mut jp2.color, p_manager).is_err() {
+      return Err(());
     }
 
     if let Some(pclr) = &jp2.color.jp2_pclr {
       /* Part 1, I.5.3.4: Either both or none : */
       if pclr.cmap.is_empty() {
         jp2.color.jp2_pclr = None;
-      } else if opj_jp2_apply_pclr(p_image, pclr, p_manager) == 0 {
-        return 0;
+      } else if opj_jp2_apply_pclr(p_image, pclr, p_manager).is_err() {
+        return Err(());
       }
     }
     /* Apply the color space if needed */
@@ -1047,7 +1047,7 @@ pub(crate) fn opj_jp2_apply_color_postprocessing(
       opj_jp2_apply_cdef(p_image, &mut jp2.color, p_manager);
     }
   }
-  1
+Ok(())
 }
 
 pub(crate) fn opj_jp2_decode(
@@ -1055,15 +1055,15 @@ pub(crate) fn opj_jp2_decode(
   p_stream: &mut Stream,
   p_image: &mut CoreImage,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   /* J2K decoding */
-  if opj_j2k_decode(&mut jp2.j2k, p_stream, p_image, p_manager) == 0 {
+  if opj_j2k_decode(&mut jp2.j2k, p_stream, p_image, p_manager).is_err() {
     event_msg!(
       p_manager,
       EVT_ERROR,
       "Failed to decode the codestream in the JP2 file\n",
     );
-    return 0i32;
+    return Err(());
   }
 
   opj_jp2_apply_color_postprocessing(jp2, p_image, p_manager)
@@ -1082,7 +1082,7 @@ fn opj_jp2_write_jp2h(
   jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   let mut writers = Vec::with_capacity(4);
   // JP2H box type
   let mut jp2h = Jp2BoxHeader::new(Jp2BoxType::JP2H);
@@ -1107,7 +1107,7 @@ fn opj_jp2_write_jp2h(
           EVT_ERROR,
           "Not enough memory to hold JP2 Header data\n",
         );
-        return 0i32;
+        return Err(());
       }
     }
   }
@@ -1118,7 +1118,7 @@ fn opj_jp2_write_jp2h(
       EVT_ERROR,
       "Stream error while writing JP2 Header box\n",
     );
-    return 0;
+    return Err(());
   }
   for writer in &writers {
     if !writer.write(stream) {
@@ -1127,10 +1127,10 @@ fn opj_jp2_write_jp2h(
         EVT_ERROR,
         "Stream error while writing JP2 Header box\n",
       );
-      return 0i32;
+      return Err(());
     }
   }
-  1
+Ok(())
 }
 
 /* *
@@ -1146,7 +1146,7 @@ fn opj_jp2_write_ftyp(
   jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   /* FTYP */
   let mut header = Jp2BoxHeader::new(Jp2BoxType::FTYP);
   header.length += 8 + (4 * jp2.cl.len() as u32);
@@ -1165,9 +1165,9 @@ fn opj_jp2_write_ftyp(
       EVT_ERROR,
       "Error while writing ftyp data to stream\n",
     );
-    return 0;
+    return Err(());
   }
-  1
+Ok(())
 }
 
 /* *
@@ -1183,17 +1183,17 @@ fn opj_jp2_write_jp2c(
   jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   if !opj_stream_has_seek(stream) {
     event_msg!(p_manager, EVT_ERROR, "Stream doesn't support seeking.\n",);
-    return 0;
+    return Err(());
   }
   let j2k_codestream_exit = opj_stream_tell(stream);
   let mut header = Jp2BoxHeader::new(Jp2BoxType::JP2C);
   header.length = (j2k_codestream_exit - jp2.j2k_codestream_offset) as u32;
-  if opj_stream_seek(stream, jp2.j2k_codestream_offset, p_manager) == 0 {
+  if opj_stream_seek(stream, jp2.j2k_codestream_offset, p_manager).is_err() {
     event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
-    return 0;
+    return Err(());
   }
   if !header.write(stream) {
     event_msg!(
@@ -1201,13 +1201,13 @@ fn opj_jp2_write_jp2c(
       EVT_ERROR,
       "Error while writing jp2c header to stream\n",
     );
-    return 0;
+    return Err(());
   }
-  if opj_stream_seek(stream, j2k_codestream_exit, p_manager) == 0 {
+  if opj_stream_seek(stream, j2k_codestream_exit, p_manager).is_err() {
     event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
-    return 0;
+    return Err(());
   }
-  1
+Ok(())
 }
 
 /* *
@@ -1223,7 +1223,7 @@ fn opj_jp2_write_jp(
   _jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   let mut tmp_buf = [0u8; 12];
   let mut buf = &mut tmp_buf[..];
   let mut header = Jp2BoxHeader::new(Jp2BoxType::JP);
@@ -1238,9 +1238,9 @@ fn opj_jp2_write_jp(
       EVT_ERROR,
       "Error while writing jp data to stream\n",
     );
-    return 0;
+    return Err(());
   }
-  1
+Ok(())
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1251,14 +1251,14 @@ pub(crate) fn opj_jp2_setup_decoder(jp2: &mut Jp2, settings: &crate::codec::Deco
   opj_j2k_setup_decoder(&mut jp2.j2k, settings);
   /* further JP2 initializations go here */
   jp2.color.jp2_has_colr = 0_u8;
-  jp2.ignore_pclr_cmap_cdef = settings.ignore_pclr_cmap_cdef as OPJ_BOOL;
+  jp2.ignore_pclr_cmap_cdef = settings.ignore_pclr_cmap_cdef;
 }
 
-pub(crate) fn opj_jp2_decoder_set_strict_mode(mut jp2: &mut Jp2, mut strict: OPJ_BOOL) {
+pub(crate) fn opj_jp2_decoder_set_strict_mode(mut jp2: &mut Jp2, mut strict: bool) {
   opj_j2k_decoder_set_strict_mode(&mut jp2.j2k, strict);
 }
 
-pub(crate) fn opj_jp2_set_threads(mut jp2: &mut Jp2, mut num_threads: u32) -> OPJ_BOOL {
+pub(crate) fn opj_jp2_set_threads(mut jp2: &mut Jp2, mut num_threads: u32) -> OpResult {
   opj_j2k_set_threads(&mut jp2.j2k, num_threads)
 }
 
@@ -1270,7 +1270,7 @@ pub(crate) fn opj_jp2_setup_encoder(
   parameters: &mut EncoderParameters,
   image: &mut CoreImage,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   /* setup the J2K codec */
   /* ------------------- */
   /* Check if number of components respects standard */
@@ -1281,10 +1281,10 @@ pub(crate) fn opj_jp2_setup_encoder(
       EVT_ERROR,
       "Invalid number of components specified while setting up JP2 encoder\n",
     );
-    return 0;
+    return Err(());
   }
-  if opj_j2k_setup_encoder(&mut jp2.j2k, parameters, image, p_manager) == 0 {
-    return 0;
+  if opj_j2k_setup_encoder(&mut jp2.j2k, parameters, image, p_manager).is_err() {
+    return Err(());
   }
   /* setup the JP2 codec */
 
@@ -1438,15 +1438,15 @@ pub(crate) fn opj_jp2_setup_encoder(
   }
   jp2.precedence = 0_u32;
   jp2.approx = 0_u32;
-  jp2.jpip_on = parameters.jpip_on;
-  1
+  jp2.jpip_on = parameters.jpip_on != 0;
+Ok(())
 }
 
 pub(crate) fn opj_jp2_encode(
   jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   opj_j2k_encode(&mut jp2.j2k, stream, p_manager)
 }
 
@@ -1454,13 +1454,13 @@ pub(crate) fn opj_jp2_end_decompress(
   jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   /* preconditions */
 
   /* read the trailing header boxes (the C's fixed end-header list:
   read_header_procedure). */
-  if opj_jp2_read_header_procedure(jp2, stream, p_manager) == 0 {
-    return 0i32;
+  if opj_jp2_read_header_procedure(jp2, stream, p_manager).is_err() {
+    return Err(());
   }
   opj_j2k_end_decompress(&mut jp2.j2k, stream, p_manager)
 }
@@ -1469,11 +1469,11 @@ pub(crate) fn opj_jp2_end_compress(
   jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   /* preconditions */
 
-  if opj_j2k_end_compress(&mut jp2.j2k, stream, p_manager) == 0 {
-    return 0i32;
+  if opj_j2k_end_compress(&mut jp2.j2k, stream, p_manager).is_err() {
+    return Err(());
   }
   /* write the trailing boxes (the C's fixed end-header list: write_jp2c). */
   opj_jp2_write_jp2c(jp2, stream, p_manager)
@@ -1483,33 +1483,37 @@ fn opj_jp2_default_validation(
   jp2: &mut Jp2,
   stream: &mut Stream,
   _p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
-  let mut l_is_valid = 1i32;
+) -> OpResult {
+  let mut l_is_valid = true;
 
   /* JPEG2000 codec validation */
   /* STATE checking */
   /* make sure the state is at 0 */
-  l_is_valid &= (jp2.jp2_state == JP2_STATE_NONE as core::ffi::c_uint) as core::ffi::c_int;
+  l_is_valid &= jp2.jp2_state == JP2_STATE_NONE as core::ffi::c_uint;
   /* make sure not reading a jp2h ???? WEIRD */
-  l_is_valid &= (jp2.jp2_img_state == JP2_IMG_STATE_NONE as core::ffi::c_uint) as core::ffi::c_int;
+  l_is_valid &= jp2.jp2_img_state == JP2_IMG_STATE_NONE as core::ffi::c_uint;
   /* PARAMETER VALIDATION */
   /* number of components */
-  l_is_valid &= !jp2.cl.is_empty() as core::ffi::c_int;
+  l_is_valid &= !jp2.cl.is_empty();
   /* width */
-  l_is_valid &= (jp2.h > 0u32) as core::ffi::c_int;
+  l_is_valid &= jp2.h > 0u32;
   /* height */
-  l_is_valid &= (jp2.w > 0u32) as core::ffi::c_int;
+  l_is_valid &= jp2.w > 0u32;
   /* precision */
   for i in 0..jp2.comps.len() {
-    l_is_valid &= ((jp2.comps[i].bpcc & 0x7fu32) < 38u32) as core::ffi::c_int;
+    l_is_valid &= (jp2.comps[i].bpcc & 0x7fu32) < 38u32;
     /* 0 is valid, ignore sign for check */
   }
   /* METH */
-  l_is_valid &= (jp2.meth > 0u32 && jp2.meth < 3u32) as core::ffi::c_int;
+  l_is_valid &= jp2.meth > 0u32 && jp2.meth < 3u32;
   /* stream validation */
   /* back and forth is needed */
-  l_is_valid &= opj_stream_has_seek(stream) as core::ffi::c_int;
-  l_is_valid
+  l_is_valid &= opj_stream_has_seek(stream);
+  if l_is_valid {
+    Ok(())
+  } else {
+    Err(())
+  }
 }
 
 /* *
@@ -1525,7 +1529,7 @@ fn opj_jp2_read_header_procedure(
   jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   let mut data = Vec::<u8>::new();
 
   while let Some(header) = Jp2BoxHeader::from_stream(stream) {
@@ -1533,11 +1537,11 @@ fn opj_jp2_read_header_procedure(
     if header.ty == Jp2BoxType::JP2C {
       if jp2.jp2_state & JP2_STATE_HEADER as core::ffi::c_uint != 0 {
         jp2.jp2_state |= JP2_STATE_CODESTREAM as core::ffi::c_uint;
-        return 1i32;
+        return Ok(());
       } else {
         jp2.record_error_context(header.ty_u32(), opj_stream_tell(stream).max(0) as u64);
         event_msg!(p_manager, EVT_ERROR, "bad placed jpeg codestream\n",);
-        return 0i32;
+        return Err(());
       }
     } else if header.length == 0u32 {
       jp2.record_error_context(header.ty_u32(), opj_stream_tell(stream).max(0) as u64);
@@ -1546,7 +1550,7 @@ fn opj_jp2_read_header_procedure(
         EVT_ERROR,
         "Cannot handle box of undefined sizes\n",
       );
-      return 0i32;
+      return Err(());
     } else {
       /* testcase 1851.pdf.SIGSEGV.ce9.948 */
       if header.length < header.header_length {
@@ -1558,7 +1562,7 @@ fn opj_jp2_read_header_procedure(
           header.length,
           header.ty_u32(),
         );
-        return 0i32;
+        return Err(());
       }
     }
     let data_size = header.content_length() as usize;
@@ -1575,7 +1579,7 @@ fn opj_jp2_read_header_procedure(
           data_size,
           jp2.j2k.decode_limits.max_metadata_len,
         );
-        return 0i32;
+        return Err(());
       }
       if !header.ty.is_file_header() {
         event_msg!(
@@ -1600,7 +1604,7 @@ fn opj_jp2_read_header_procedure(
               EVT_ERROR,
               "Problem with skipping JPEG2000 box, stream error\n",
             );
-            return 0i32;
+            return Err(());
           }
           continue;
         }
@@ -1616,7 +1620,7 @@ fn opj_jp2_read_header_procedure(
           data_size,
           opj_stream_get_number_byte_left(stream) as u32,
         );
-        return 0i32;
+        return Err(());
       }
       data.resize(data_size, 0);
       if stream.read_exact(data.as_mut_slice()).is_err() {
@@ -1625,10 +1629,10 @@ fn opj_jp2_read_header_procedure(
           EVT_ERROR,
           "Problem with reading JPEG2000 box, stream error\n",
         );
-        return 0i32;
+        return Err(());
       }
       if header.read_content(jp2, &data, p_manager).is_err() {
-        return 0;
+        return Err(());
       }
     } else {
       if jp2.jp2_state & JP2_STATE_SIGNATURE == 0 {
@@ -1637,7 +1641,7 @@ fn opj_jp2_read_header_procedure(
           EVT_ERROR,
           "Malformed JP2 file format: first box must be JPEG 2000 signature box\n",
         );
-        return 0i32;
+        return Err(());
       }
       if jp2.jp2_state & JP2_STATE_FILE_TYPE == 0 {
         event_msg!(
@@ -1645,7 +1649,7 @@ fn opj_jp2_read_header_procedure(
           EVT_ERROR,
           "Malformed JP2 file format: second box must be file type box\n",
         );
-        return 0i32;
+        return Err(());
       }
       jp2.jp2_state |= JP2_STATE_UNKNOWN;
       if opj_stream_skip(stream, data_size as i64, p_manager) != data_size as i64 {
@@ -1657,19 +1661,19 @@ fn opj_jp2_read_header_procedure(
             EVT_WARNING,
             "Problem with skipping JPEG2000 box, stream error\n",
           );
-          return 1i32;
+          return Ok(());
         } else {
           event_msg!(
             p_manager,
             EVT_ERROR,
             "Problem with skipping JPEG2000 box, stream error\n",
           );
-          return 0i32;
+          return Err(());
         }
       }
     }
   }
-  1i32
+Ok(())
 }
 
 /* *
@@ -1687,17 +1691,17 @@ pub(crate) fn opj_jp2_start_compress(
   stream: &mut Stream,
   p_image: &mut CoreImage,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   /* preconditions */
 
   /* validation of the parameters codec (the C's fixed validation list:
   opj_jp2_default_validation). */
-  if opj_jp2_default_validation(jp2, stream, p_manager) == 0 {
-    return 0i32;
+  if opj_jp2_default_validation(jp2, stream, p_manager).is_err() {
+    return Err(());
   }
   /* write header (the C's fixed header-writing list). */
-  if opj_jp2_write_header_boxes(jp2, stream, p_manager) == 0 {
-    return 0i32;
+  if opj_jp2_write_header_boxes(jp2, stream, p_manager).is_err() {
+    return Err(());
   }
   opj_j2k_start_compress(&mut jp2.j2k, stream, p_image, p_manager)
 }
@@ -1712,19 +1716,19 @@ pub(crate) fn opj_jp2_start_compress(
  *
  * @return true if the file signature box is valid.
  */
-fn opj_jp2_read_jp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_jp2_read_jp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if jp2.jp2_state != JP2_STATE_NONE {
     event_msg!(
       p_manager,
       EVT_ERROR,
       "The signature box must be the first box in the file.\n",
     );
-    return 0;
+    return Err(());
   }
   /* assure length of data is correct (4 -> magic number) */
   if buf.len() != 4 {
     event_msg!(p_manager, EVT_ERROR, "Error with JP signature Box size\n",);
-    return 0;
+    return Err(());
   }
   /* rearrange data */
   let magic_number = buf
@@ -1736,10 +1740,10 @@ fn opj_jp2_read_jp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> O
       EVT_ERROR,
       "Error with JP Signature : bad magic number\n",
     );
-    return 0;
+    return Err(());
   }
   jp2.jp2_state |= JP2_STATE_SIGNATURE;
-  1
+Ok(())
 }
 
 /* *
@@ -1752,19 +1756,19 @@ fn opj_jp2_read_jp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> O
  *
  * @return true if the FTYP box is valid.
  */
-fn opj_jp2_read_ftyp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_jp2_read_ftyp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if jp2.jp2_state != JP2_STATE_SIGNATURE {
     event_msg!(
       p_manager,
       EVT_ERROR,
       "The ftyp box must be the second box in the file.\n",
     );
-    return 0;
+    return Err(());
   }
   /* assure length of data is correct */
   if buf.len() < 8 {
     event_msg!(p_manager, EVT_ERROR, "Error with FTYP signature Box size\n",);
-    return 0;
+    return Err(());
   }
   // BR
   jp2.brand = buf
@@ -1777,7 +1781,7 @@ fn opj_jp2_read_ftyp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
   /* the number of remaining bytes should be a multiple of 4 */
   if buf.len() & 0x3 != 0 {
     event_msg!(p_manager, EVT_ERROR, "Error with FTYP signature Box size\n",);
-    return 0;
+    return Err(());
   }
   /* div by 4 */
   let numcl = buf.len() >> 2;
@@ -1790,35 +1794,35 @@ fn opj_jp2_read_ftyp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
     jp2.cl.push(value);
   }
   jp2.jp2_state |= JP2_STATE_FILE_TYPE;
-  1
+Ok(())
 }
 
 fn opj_jp2_skip_jp2c(
   jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   /* preconditions */
 
   jp2.j2k_codestream_offset = opj_stream_tell(stream);
   if opj_stream_skip(stream, 8_i64, p_manager) != 8i64 {
-    return 0i32;
+    return Err(());
   }
-  1i32
+Ok(())
 }
 
 fn opj_jpip_skip_iptr(
   jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   /* preconditions */
 
   jp2.jpip_iptr_offset = opj_stream_tell(stream);
   if opj_stream_skip(stream, 24_i64, p_manager) != 24i64 {
-    return 0i32;
+    return Err(());
   }
-  1i32
+Ok(())
 }
 
 /* *
@@ -1831,7 +1835,7 @@ fn opj_jpip_skip_iptr(
  *
  * @return true if the JP2 Header box was successfully recognized.
 */
-fn opj_jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OPJ_BOOL {
+fn opj_jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut header = Jp2BoxHeader::default();
   let mut l_has_ihdr = false;
 
@@ -1842,7 +1846,7 @@ fn opj_jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
       EVT_ERROR,
       "The  box must be the first box in the file.\n",
     );
-    return 0;
+    return Err(());
   }
   jp2.jp2_img_state = JP2_IMG_STATE_NONE;
   /* iterate while remaining data */
@@ -1851,11 +1855,11 @@ fn opj_jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
     if let Err(e) = header.read(&mut buf, 0) {
       let msg = format!("Stream error while reading JP2 Header box: {}", e);
       event_msg!(p_manager, EVT_ERROR, &msg);
-      return 0;
+      return Err(());
     }
     if header.length < header.header_length {
       event_msg!(p_manager, EVT_ERROR, "Box length is inconsistent.\n",);
-      return 0;
+      return Err(());
     }
     let content_length = header.content_length() as usize;
     if buf.len() < content_length {
@@ -1864,13 +1868,13 @@ fn opj_jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
         EVT_ERROR,
         "Stream error while reading JP2 Header box: box length is inconsistent.\n",
       );
-      return 0;
+      return Err(());
     }
     let (content, rest) = buf.split_at(content_length);
     buf = rest;
     if header.ty.is_image_header() {
       if header.read_content(jp2, content, p_manager).is_err() {
-        return 0;
+        return Err(());
       }
     } else {
       jp2.jp2_img_state |= JP2_IMG_STATE_UNKNOWN
@@ -1885,11 +1889,11 @@ fn opj_jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) ->
       EVT_ERROR,
       "Stream error while reading JP2 Header box: no \'ihdr\' box.\n",
     );
-    return 0;
+    return Err(());
   }
   jp2.jp2_state |= JP2_STATE_HEADER;
   jp2.has_jp2h = 1_u8;
-  1
+Ok(())
 }
 
 pub(crate) fn opj_jp2_read_header(
@@ -1901,7 +1905,7 @@ pub(crate) fn opj_jp2_read_header(
   (setup_decoding_validation only carried the DEVELOPER CORNER). */
   /* read header (the C's fixed header-reading list:
   read_header_procedure). */
-  if opj_jp2_read_header_procedure(jp2, p_stream, p_manager) == 0 {
+  if opj_jp2_read_header_procedure(jp2, p_stream, p_manager).is_err() {
     return None;
   }
   if jp2.has_jp2h as core::ffi::c_int == 0i32 {
@@ -1953,12 +1957,16 @@ fn opj_jp2_write_header_boxes(
   jp2: &mut Jp2,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
-  (opj_jp2_write_jp(jp2, stream, p_manager) != 0
-    && opj_jp2_write_ftyp(jp2, stream, p_manager) != 0
-    && opj_jp2_write_jp2h(jp2, stream, p_manager) != 0
-    && (jp2.jpip_on == 0 || opj_jpip_skip_iptr(jp2, stream, p_manager) != 0)
-    && opj_jp2_skip_jp2c(jp2, stream, p_manager) != 0) as i32
+) -> OpResult {
+  if opj_jp2_write_jp(jp2, stream, p_manager).is_ok()
+    && opj_jp2_write_ftyp(jp2, stream, p_manager).is_ok()
+    && opj_jp2_write_jp2h(jp2, stream, p_manager).is_ok()
+    && (!jp2.jpip_on || opj_jpip_skip_iptr(jp2, stream, p_manager).is_ok())
+    && opj_jp2_skip_jp2c(jp2, stream, p_manager).is_ok() {
+    Ok(())
+  } else {
+    Err(())
+  }
 }
 
 pub(crate) fn opj_jp2_read_tile_header(
@@ -1976,7 +1984,7 @@ pub(crate) fn opj_jp2_write_tile(
   p_data: &[u8],
   p_stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   opj_j2k_write_tile(&mut p_jp2.j2k, p_tile_index, p_data, p_stream, p_manager)
 }
 
@@ -1986,7 +1994,7 @@ pub(crate) fn opj_jp2_decode_tile(
   p_data: Option<&mut [u8]>,
   p_stream: &mut Stream,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   opj_j2k_decode_tile(&mut p_jp2.j2k, p_tile_index, p_data, p_stream, p_manager)
 }
 
@@ -1994,7 +2002,7 @@ pub(crate) fn opj_jp2_set_decoded_components(
   p_jp2: &mut Jp2,
   components: &[u32],
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   opj_j2k_set_decoded_components(&mut p_jp2.j2k, components, p_manager)
 }
 
@@ -2006,7 +2014,7 @@ pub(crate) fn opj_jp2_set_decode_area(
   p_end_x: i32,
   p_end_y: i32,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   opj_j2k_set_decode_area(
     &mut p_jp2.j2k,
     p_image,
@@ -2024,31 +2032,31 @@ pub(crate) fn opj_jp2_get_tile(
   p_image: &mut CoreImage,
   p_manager: &mut EventMgr,
   tile_index: u32,
-) -> OPJ_BOOL {
+) -> OpResult {
   event_msg!(
     p_manager,
     EVT_WARNING,
     "JP2 box which are after the codestream will not be read by this function.\n",
   );
-  if opj_j2k_get_tile(&mut p_jp2.j2k, p_stream, p_image, p_manager, tile_index) == 0 {
+  if opj_j2k_get_tile(&mut p_jp2.j2k, p_stream, p_image, p_manager, tile_index).is_err() {
     event_msg!(
       p_manager,
       EVT_ERROR,
       "Failed to decode the codestream in the JP2 file\n",
     );
-    return 0i32;
+    return Err(());
   }
 
   opj_jp2_apply_color_postprocessing(p_jp2, p_image, p_manager)
 }
 
 /// JP2 encoder interface
-pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<Jp2> {
+pub(crate) fn opj_jp2_create(mut p_is_decoder: bool) -> Option<Jp2> {
   /* create the J2K codec */
   let mut jp2 = Jp2 {
     last_box: None,
     last_pos: None,
-    j2k: if p_is_decoder == 0 {
+    j2k: if !p_is_decoder {
       opj_j2k_create_compress()?
     } else {
       opj_j2k_create_decompress()?
@@ -2069,10 +2077,10 @@ pub(crate) fn opj_jp2_create(mut p_is_decoder: OPJ_BOOL) -> Option<Jp2> {
     comps: Vec::new(),
     j2k_codestream_offset: 0,
     jpip_iptr_offset: 0,
-    jpip_on: 0,
+    jpip_on: false,
     jp2_state: 0,
     jp2_img_state: 0,
-    ignore_pclr_cmap_cdef: 0,
+    ignore_pclr_cmap_cdef: false,
     has_jp2h: 0,
     has_ihdr: 0,
     /* Color structure */
@@ -2099,7 +2107,7 @@ pub(crate) fn opj_jp2_set_decoded_resolution_factor(
   p_jp2: &mut Jp2,
   res_factor: u32,
   p_manager: &mut EventMgr,
-) -> OPJ_BOOL {
+) -> OpResult {
   opj_j2k_set_decoded_resolution_factor(&mut p_jp2.j2k, res_factor, p_manager)
 }
 
