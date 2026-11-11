@@ -163,16 +163,13 @@ impl HeaderWriter {
   }
 }
 
-/* *
- * Reads a IHDR box - Image Header box
- *
- * @param   p_image_header_data         pointer to actual data (already read from file)
- * @param   jp2                         the jpeg2000 file codec.
- * @param   p_image_header_size         the size of the image header
- * @param   p_manager                   the user event manager.
- *
- * @return  true if the image header is valid, false else.
- */
+/// Reads a IHDR box - Image Header box
+///
+/// `jp2` -- the jpeg2000 file codec.
+/// `buf` -- the IHDR box data (already read from file).
+/// `p_manager` -- the user event manager.
+///
+/// true if the image header is valid, false else.
 fn jp2_read_ihdr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if !jp2.comps.is_empty() {
     event_msg!(
@@ -248,10 +245,7 @@ fn jp2_read_ihdr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpR
   Ok(())
 }
 
-/* *
- * Writes the Image Header box - Image Header box.
- *
-*/
+/// Writes the Image Header box - Image Header box.
 fn jp2_write_ihdr(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
   // IHDR
   let mut header = Jp2BoxHeader::new(Jp2BoxType::IHDR);
@@ -274,10 +268,7 @@ fn jp2_write_ihdr(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
   true
 }
 
-/* *
- * Writes the Bit per Component box.
- *
-*/
+/// Writes the Bit per Component box.
 fn jp2_write_bpcc(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
   let mut header = Jp2BoxHeader::new(Jp2BoxType::BPCC);
   header.length += jp2.comps.len() as u32;
@@ -288,16 +279,13 @@ fn jp2_write_bpcc(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
   true
 }
 
-/* *
- * Reads a Bit per Component box.
- *
- * @param   p_bpc_header_data           pointer to actual data (already read from file)
- * @param   jp2                         the jpeg2000 file codec.
- * @param   p_bpc_header_size           the size of the bpc header
- * @param   p_manager                   the user event manager.
- *
- * @return  true if the bpc header is valid, false else.
- */
+/// Reads a Bit per Component box.
+///
+/// `jp2` -- the jpeg2000 file codec.
+/// `buf` -- the BPCC box data (already read from file).
+/// `p_manager` -- the user event manager.
+///
+/// true if the bpc header is valid, false else.
 fn jp2_read_bpcc(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if jp2.bpc != 255 {
     event_msg!(p_manager, EVT_WARNING,
@@ -316,10 +304,7 @@ fn jp2_read_bpcc(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpR
   Ok(())
 }
 
-/* *
- * Writes the Channel Definition box.
- *
- */
+/// Writes the Channel Definition box.
 fn jp2_write_cdef(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
   let info = if let Some(cdef) = &jp2.color.jp2_cdef {
     &cdef.info
@@ -340,10 +325,7 @@ fn jp2_write_cdef(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
   true
 }
 
-/* *
- * Writes the Colour Specification box.
- *
-*/
+/// Writes the Colour Specification box.
 fn jp2_write_colr(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
   let meth = jp2.meth as u8;
   let mut header = Jp2BoxHeader::new(Jp2BoxType::COLR);
@@ -553,13 +535,11 @@ fn jp2_check_color(
   Ok(())
 }
 
-/* *
-Apply collected palette data
-@param image Image.
-@param color Collector for profile, cdef and pclr data.
-@param p_manager the user event manager.
-@return true in case of success
-*/
+/// Apply collected palette data
+/// `image` -- Image.
+/// `color` -- Collector for profile, cdef and pclr data.
+/// `p_manager` -- the user event manager.
+/// true in case of success
 fn jp2_apply_pclr(image: &mut CoreImage, pclr: &Jp2Pclr, p_manager: &mut EventMgr) -> OpResult {
   let nr_channels = pclr.nr_channels as usize;
   let comps = &image.comps;
@@ -635,16 +615,14 @@ fn jp2_apply_pclr(image: &mut CoreImage, pclr: &Jp2Pclr, p_manager: &mut EventMg
   Ok(())
 }
 
-/* *
- * Collect palette data
- *
- * @param jp2 JP2 handle
- * @param p_pclr_header_data
- * @param p_pclr_header_size
- * @param p_manager
- *
- * @return Returns true if successful, returns false otherwise
-*/
+/// Collect palette data
+///
+/// `jp2` -- JP2 handle
+/// `p_pclr_header_data`
+/// `p_pclr_header_size`
+/// `p_manager`
+///
+/// Returns true if successful, returns false otherwise
 fn jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if jp2.color.jp2_pclr.is_some() {
     return Err(());
@@ -714,16 +692,14 @@ fn jp2_read_pclr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpR
   Ok(())
 }
 
-/* *
- * Collect component mapping data
- *
- * @param jp2                 JP2 handle
- * @param p_cmap_header_data
- * @param p_cmap_header_size
- * @param p_manager
- *
- * @return Returns true if successful, returns false otherwise
-*/
+/// Collect component mapping data
+///
+/// `jp2` -- JP2 handle
+/// `jp2` -- the jpeg2000 file codec.
+/// `buf` -- the CMAP box data.
+/// `p_manager` -- the user event manager.
+///
+/// Returns true if successful, returns false otherwise
 fn jp2_read_cmap(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   /* Need nr_channels: */
   let mut pclr = if let Some(pclr) = &mut jp2.color.jp2_pclr {
@@ -868,16 +844,14 @@ fn jp2_read_cdef(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpR
   Ok(())
 }
 
-/* *
- * Reads the Color Specification box.
- *
- * @param   p_colr_header_data          pointer to actual data (already read from file)
- * @param   jp2                         the jpeg2000 file codec.
- * @param   p_colr_header_size          the size of the color header
- * @param   p_manager                   the user event manager.
- *
- * @return  true if the bpc header is valid, false else.
-*/
+/// Reads the Color Specification box.
+///
+/// `p_colr_header_data` -- pointer to actual data (already read from file)
+/// `jp2` -- the jpeg2000 file codec.
+/// `buf` -- the COLR box data.
+/// `p_manager` -- the user event manager.
+///
+/// true if the bpc header is valid, false else.
 fn jp2_read_colr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let total_size = buf.len() as u32;
   if buf.len() < 3 {
@@ -1056,15 +1030,13 @@ pub(crate) fn jp2_decode(
   jp2_apply_color_postprocessing(jp2, p_image, p_manager)
 }
 
-/* *
- * Writes the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
- *
- * @param  jp2      the jpeg2000 file codec.
- * @param  stream      the stream to write data to.
- * @param  p_manager  user event manager.
- *
- * @return true if writing was successful.
- */
+/// Writes the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
+///
+/// `jp2` -- the jpeg2000 file codec.
+/// `stream` -- the stream to write data to.
+/// `p_manager` -- user event manager.
+///
+/// true if writing was successful.
 fn jp2_write_jp2h(jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut writers = Vec::with_capacity(4);
   // JP2H box type
@@ -1116,15 +1088,13 @@ fn jp2_write_jp2h(jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) 
   Ok(())
 }
 
-/* *
- * Writes a FTYP box - File type box
- *
- * @param   stream         the stream to write data to.
- * @param   jp2         the jpeg2000 file codec.
- * @param   p_manager   the user event manager.
- *
- * @return  true if writing was successful.
- */
+/// Writes a FTYP box - File type box
+///
+/// `stream` -- the stream to write data to.
+/// `jp2` -- the jpeg2000 file codec.
+/// `p_manager` -- the user event manager.
+///
+/// true if writing was successful.
 fn jp2_write_ftyp(jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   /* FTYP */
   let mut header = Jp2BoxHeader::new(Jp2BoxType::FTYP);
@@ -1149,15 +1119,13 @@ fn jp2_write_ftyp(jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) 
   Ok(())
 }
 
-/* *
- * Writes the Jpeg2000 codestream Header box - JP2C Header box. This function must be called AFTER the coding has been done.
- *
- * @param   stream         the stream to write data to.
- * @param   jp2         the jpeg2000 file codec.
- * @param   p_manager   user event manager.
- *
- * @return true if writing was successful.
-*/
+/// Writes the Jpeg2000 codestream Header box - JP2C Header box. This function must be called AFTER the coding has been done.
+///
+/// `stream` -- the stream to write data to.
+/// `jp2` -- the jpeg2000 file codec.
+/// `p_manager` -- user event manager.
+///
+/// true if writing was successful.
 fn jp2_write_jp2c(jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   if !stream_has_seek(stream) {
     event_msg!(p_manager, EVT_ERROR, "Stream doesn't support seeking.\n",);
@@ -1185,15 +1153,13 @@ fn jp2_write_jp2c(jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) 
   Ok(())
 }
 
-/* *
- * Writes a jpeg2000 file signature box.
- *
- * @param stream the stream to write data to.
- * @param   jp2         the jpeg2000 file codec.
- * @param p_manager the user event manager.
- *
- * @return true if writing was successful.
- */
+/// Writes a jpeg2000 file signature box.
+///
+/// `stream` -- the stream to write data to.
+/// `jp2` -- the jpeg2000 file codec.
+/// `p_manager` -- the user event manager.
+///
+/// true if writing was successful.
 fn jp2_write_jp(_jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut tmp_buf = [0u8; 12];
   let mut buf = &mut tmp_buf[..];
@@ -1214,9 +1180,9 @@ fn jp2_write_jp(_jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) -
   Ok(())
 }
 
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 /* JP2 decoder interface                                             */
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 pub(crate) fn jp2_setup_decoder(jp2: &mut Jp2, settings: &crate::codec::DecoderSettings) {
   /* setup the J2K codec */
   j2k_setup_decoder(&mut jp2.j2k, settings);
@@ -1233,9 +1199,9 @@ pub(crate) fn jp2_set_threads(mut jp2: &mut Jp2, mut num_threads: u32) -> OpResu
   j2k_set_threads(&mut jp2.j2k, num_threads)
 }
 
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 /* JP2 encoder interface                                             */
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 pub(crate) fn jp2_setup_encoder(
   jp2: &mut Jp2,
   parameters: &mut EncoderParameters,
@@ -1243,7 +1209,7 @@ pub(crate) fn jp2_setup_encoder(
   p_manager: &mut EventMgr,
 ) -> OpResult {
   /* setup the J2K codec */
-  /* ------------------- */
+  // -------------------
   /* Check if number of components respects standard */
   let numcomps = image.numcomps;
   if !(1..=16384).contains(&numcomps) {
@@ -1483,15 +1449,13 @@ fn jp2_default_validation(
   }
 }
 
-/* *
- * Reads a jpeg2000 file header structure.
- *
- * @param jp2 the jpeg2000 file header structure.
- * @param stream the stream to read data from.
- * @param p_manager the user event manager.
- *
- * @return true if the box is valid.
- */
+/// Reads a jpeg2000 file header structure.
+///
+/// `jp2` -- the jpeg2000 file header structure.
+/// `stream` -- the stream to read data from.
+/// `p_manager` -- the user event manager.
+///
+/// true if the box is valid.
 fn jp2_read_header_procedure(
   jp2: &mut Jp2,
   stream: &mut Stream,
@@ -1643,16 +1607,14 @@ fn jp2_read_header_procedure(
   Ok(())
 }
 
-/* *
- * Executes the given procedures on the given codec.
- *
- * @param   p_procedure_list    the list of procedures to execute
- * @param   jp2                 the jpeg2000 file codec to execute the procedures on.
- * @param   stream                  the stream to execute the procedures on.
- * @param   p_manager           the user manager.
- *
- * @return  true                if all the procedures were successfully executed.
- */
+/// Executes the given procedures on the given codec.
+///
+/// `p_procedure_list` -- the list of procedures to execute
+/// `jp2` -- the jpeg2000 file codec to execute the procedures on.
+/// `stream` -- the stream to execute the procedures on.
+/// `p_manager` -- the user manager.
+///
+/// true                if all the procedures were successfully executed.
 pub(crate) fn jp2_start_compress(
   jp2: &mut Jp2,
   stream: &mut Stream,
@@ -1673,16 +1635,14 @@ pub(crate) fn jp2_start_compress(
   j2k_start_compress(&mut jp2.j2k, stream, p_image, p_manager)
 }
 
-/* *
- * Reads a jpeg2000 file signature box.
- *
- * @param   p_header_data   the data contained in the signature box.
- * @param   jp2             the jpeg2000 file codec.
- * @param   p_header_size   the size of the data contained in the signature box.
- * @param   p_manager       the user event manager.
- *
- * @return true if the file signature box is valid.
- */
+/// Reads a jpeg2000 file signature box.
+///
+/// `p_header_data` -- the data contained in the signature box.
+/// `jp2` -- the jpeg2000 file codec.
+/// `p_header_size` -- the size of the data contained in the signature box.
+/// `p_manager` -- the user event manager.
+///
+/// true if the file signature box is valid.
 fn jp2_read_jp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if jp2.jp2_state != JP2_STATE_NONE {
     event_msg!(
@@ -1713,16 +1673,14 @@ fn jp2_read_jp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpRes
   Ok(())
 }
 
-/* *
- * Reads a a FTYP box - File type box
- *
- * @param   p_header_data   the data contained in the FTYP box.
- * @param   jp2             the jpeg2000 file codec.
- * @param   p_header_size   the size of the data contained in the FTYP box.
- * @param   p_manager       the user event manager.
- *
- * @return true if the FTYP box is valid.
- */
+/// Reads a a FTYP box - File type box
+///
+/// `p_header_data` -- the data contained in the FTYP box.
+/// `jp2` -- the jpeg2000 file codec.
+/// `p_header_size` -- the size of the data contained in the FTYP box.
+/// `p_manager` -- the user event manager.
+///
+/// true if the FTYP box is valid.
 fn jp2_read_ftyp(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if jp2.jp2_state != JP2_STATE_SIGNATURE {
     event_msg!(
@@ -1784,16 +1742,14 @@ fn jpip_skip_iptr(jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) 
   Ok(())
 }
 
-/* *
- * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
- *
- * @param   p_header_data   the data contained in the file header box.
- * @param   jp2             the jpeg2000 file codec.
- * @param   p_header_size   the size of the data contained in the file header box.
- * @param   p_manager       the user event manager.
- *
- * @return true if the JP2 Header box was successfully recognized.
-*/
+/// Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
+///
+/// `p_header_data` -- the data contained in the file header box.
+/// `jp2` -- the jpeg2000 file codec.
+/// `p_header_size` -- the size of the data contained in the file header box.
+/// `p_manager` -- the user event manager.
+///
+/// true if the JP2 Header box was successfully recognized.
 fn jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut header = Jp2BoxHeader::default();
   let mut l_has_ihdr = false;
@@ -1906,11 +1862,9 @@ pub(crate) fn jp2_read_header(
   Some(image)
 }
 
-/* *
- * Writes the JP2 header boxes (the C's fixed header-writing procedure
- * list, inlined: signature, FTYP, JP2H, optional JPIP IPTR skip, and the
- * jump over the codestream box).  Extensions go here directly.
- */
+/// Writes the JP2 header boxes (the C's fixed header-writing procedure
+/// list, inlined: signature, FTYP, JP2H, optional JPIP IPTR skip, and the
+/// jump over the codestream box).  Extensions go here directly.
 fn jp2_write_header_boxes(
   jp2: &mut Jp2,
   stream: &mut Stream,

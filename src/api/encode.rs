@@ -2,6 +2,7 @@
 // and doc/redesign-proposal.md B.3.2.
 
 use super::*;
+use crate::consts::J2K_STREAM_CHUNK_SIZE;
 
 pub(crate) fn encode_image_to_writer<W: std::io::Write + std::io::Seek + 'static>(
   image: CoreImage,
@@ -24,10 +25,7 @@ pub(crate) fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + '
   let mut params = params;
   let mut image = image.clone();
   codec.setup(&mut params, &mut image)?;
-  let mut stream = Stream::new_output(
-    crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
-    writer,
-  );
+  let mut stream = Stream::new_output(J2K_STREAM_CHUNK_SIZE as usize, writer);
   codec.start(&mut image, &mut stream)?;
   /* Multi-tile images encode concurrently (byte-identical fallback). */
   #[cfg(feature = "rayon")]
@@ -72,10 +70,7 @@ pub(crate) fn encode_image_inner(
     pos: 0,
   };
   let out_buf = writer.buf.clone();
-  let mut stream = Stream::new_output(
-    crate::consts::opj::OPJ_J2K_STREAM_CHUNK_SIZE as usize,
-    writer,
-  );
+  let mut stream = Stream::new_output(J2K_STREAM_CHUNK_SIZE as usize, writer);
   codec.start(&mut image, &mut stream)?;
   /* Concurrent tile encoding (rayon): only multi-tile images; any failure
   falls back to the sequential encode below, which yields identical bytes. */

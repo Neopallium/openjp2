@@ -1997,7 +1997,7 @@ fn encoder_parameters_are_validated() {
 /// Regression (review finding 1): a custom MCT matrix must reach the
 /// matrix inversion without panicking.  The old port panicked there
 /// ("attempt to subtract with overflow").  Upstream parity note: the C
-/// reference writes the MCT data group only for the OPJ_MCT profile and
+/// reference writes the MCT data group only for the ColorTransform profile and
 /// its decoder rejects COD mct=2 ("Invalid multiple component
 /// transformation"), so - like the C - the produced codestream is not
 /// decodable; the encode side is what this test pins down.
@@ -2055,7 +2055,7 @@ fn custom_mct_encode_reaches_inversion() {
     .encode(params)
     .expect("custom MCT encode (matrix inversion)");
   assert!(!codestream.is_empty());
-  // C parity for the WRITER: without the OPJ_MCT rsiz bits no MCT/MCC/MCO
+  // C parity for the WRITER: without the ColorTransform rsiz bits no MCT/MCC/MCO
   // markers are written, so the stream declares mct=2 but carries no
   // decoding matrix.  The port's documented extension then: strict
   // decodes reject it, lenient decodes skip the transform.
@@ -2071,7 +2071,7 @@ fn custom_mct_encode_reaches_inversion() {
   }
 }
 
-/// B.2.4 end-to-end: with the OPJ_MCT rsiz the encoder writes the
+/// B.2.4 end-to-end: with the ColorTransform rsiz the encoder writes the
 /// MCT/MCC/MCO markers, and the decoder applies the decoding matrix —
 /// the identity matrix round-trips losslessly.
 #[test]
@@ -2122,7 +2122,7 @@ fn custom_mct_identity_round_trip_lossless() {
   let mut params = EncodeParameters::new().num_resolutions(3).num_layers(1);
   let matrix = vec![1.0f32, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
   params.low_level().mct_data = Some((matrix, vec![128i32; 3]));
-  // OPJ_MCT = OPJ_PROFILE_PART2 | OPJ_EXTENSION_MCT (0x8100): the rsiz
+  // ColorTransform = PROFILE_PART2 | EXTENSION_MCT (0x8100): the rsiz
   // gate that makes the encoder emit the MCT data group.
   params.low_level().rsiz = 0x8100;
   let codestream = image.clone().encode(params).expect("custom MCT encode");

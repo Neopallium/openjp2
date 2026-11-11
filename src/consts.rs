@@ -368,8 +368,6 @@ pub mod mqc {
   pub const BYPASS_CT_INIT: u32 = 0xDEADBEEF;
 }
 
-pub use openjp2_ctypes::consts::opj;
-
 /// Shared defaults (code-block size, progression, resolutions).
 pub mod common {
   /// Margin for a fake FFFF marker
@@ -416,7 +414,7 @@ pub mod t1 {
   pub const T1_NMSEDEC_FRACBITS: i32 = (T1_NMSEDEC_BITS - 1) as i32;
   /// Normal coding using entropy coder
   pub const T1_TYPE_MQ: u8 = 0;
-  /// No encoding the information is store under raw format in codestream (mode switch RAW)*/
+  /// No entropy coding: information stored raw in the codestream (mode-switch RAW).
   pub const T1_TYPE_RAW: u8 = 1;
   /// Significance state bit for each of the eight neighbours
   /// (`T1_SIGMA_0`..`T1_SIGMA_8`); the neighbour masks combine them
@@ -556,9 +554,9 @@ pub use mqc::*;
 pub const J2K_MAXRLVLS: u32 = 33;
 pub const J2K_MAXBANDS: u32 = 3 * J2K_MAXRLVLS - 2;
 pub const PROFILE_CINEMA_2K: u16 = 3;
-/// The codec stream buffer size (the C's `OPJ_J2K_STREAM_CHUNK_SIZE`).
+/// The codec stream buffer size (the C's `J2K_STREAM_CHUNK_SIZE`).
 pub const J2K_STREAM_CHUNK_SIZE: u32 = 0x100000;
-/// Dump flags for `dump_codec` (the C's `OPJ_IMG_INFO` etc.).
+/// Dump flags for `dump_codec` (the C's `IMG_INFO` etc.).
 pub const IMG_INFO: u32 = 1;
 pub const J2K_MH_INFO: u32 = 2;
 pub const J2K_MH_IND: u32 = 16;

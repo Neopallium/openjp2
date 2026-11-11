@@ -1,37 +1,36 @@
+// The copyright in this software is being made available under the 2-clauses
+// BSD License, included below. This software may be subject to other third
+// party and contributor rights, including patent rights, and no such rights
+// are granted under this license.
+//
+// Copyright (c) 2005, Herve Drolon, FreeImage Team
+// Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
+// Copyright (c) 2012, CS Systemes d'Information, France
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //! The safe `Decoder`/`Encoder` handles over the J2K/JP2 codecs
 //! (the `CodecFormat` enum dispatches to the internal state).
-/*
- * The copyright in this software is being made available under the 2-clauses
- * BSD License, included below. This software may be subject to other third
- * party and contributor rights, including patent rights, and no such rights
- * are granted under this license.
- *
- * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
- * Copyright (c) 2012, CS Systemes d'Information, France
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+
 use super::image::*;
 use super::jp2::*;
 
@@ -47,7 +46,7 @@ use super::j2k::*;
 use crate::J2KFormat;
 
 /// The low-level codec split (0.7): the merged `Codec` handle moved to the
-/// `openjp2-capi` crate, where it keeps the single `opj_codec_t*` C-ABI
+/// `openjp2-capi` crate, where it keeps the single `Codec*` C-ABI
 /// contract.  The core exposes the two directions directly; each owns the
 /// format-specific state and an event manager.  The public signatures are
 /// C-type-free (`Result`-returning); the C-shaped parameter translation
@@ -59,7 +58,7 @@ pub(crate) enum CodecFormat {
 }
 
 /// Native (C-free) decoder settings: the subset of the C's
-/// `opj_dparameters_t` the core consumes (`cp_layer`, `cp_reduce` and the
+/// `DecodeParameters` the core consumes (`cp_layer`, `cp_reduce` and the
 /// two `flags` bits).  The file names, formats and JPWL fields of the C
 /// struct are CLI-level conveniences consumed nowhere in the core.
 #[derive(Clone, Copy, Default, Debug)]
@@ -69,10 +68,10 @@ pub struct DecoderSettings {
   /// Resolution reduction (`0` = full resolution; the C's `cp_reduce`).
   pub reduce: u32,
   /// Ignore JP2 palette/channel-definition boxes during colour application
-  /// (the C's `OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG`).
+  /// (the C's `ignore_pclr_cmap_cdef`).
   pub ignore_pclr_cmap_cdef: bool,
   /// Dump the codestream info as it is read (the C's
-  /// `OPJ_DPARAMETERS_DUMP_FLAG`).
+  /// `dump_flag`).
   pub dump_state: bool,
   /// Per-decode thread limit: `0` = the ambient rayon pool (the default),
   /// `n > 0` = a local n-thread pool for this codec's decodes (the native
@@ -296,8 +295,8 @@ impl Decoder {
 
   /// Applies the native decoder settings (layer cap, resolution reduction,
   /// JP2 colour-box handling and the dump flag).  The C's
-  /// `opj_setup_decoder` equivalent; the capi crate translates
-  /// `opj_dparameters_t` into this.
+  /// `Codec::setup` equivalent; the capi crate translates
+  /// `DecodeParameters` into this.
   pub fn apply_settings(&mut self, settings: &DecoderSettings) -> Result<()> {
     self.threads = settings.threads;
     match &mut self.m_codec {
@@ -550,7 +549,7 @@ impl Decoder {
   }
 
   /// Reads the remaining end-of-codestream markers (the C's
-  /// `opj_end_decompress`).
+  /// `Codec::finish`).
   pub fn end_decompress(&mut self, stream: &mut Stream) -> Result<()> {
     let ok = match &mut self.m_codec {
       CodecFormat::J2K(dec) => j2k_end_decompress(dec, stream, &mut self.m_event_mgr),
@@ -869,7 +868,7 @@ impl Encoder {
   }
 
   /// Validates the encoder parameters against the image (the C's
-  /// `opj_setup_encoder`; must be called before `start`).
+  /// `Codec::setup`; must be called before `start`).
   pub fn setup(&mut self, parameters: &mut EncoderParameters, image: &mut CoreImage) -> Result<()> {
     let ok = match &mut self.m_codec {
       CodecFormat::J2K(enc) => j2k_setup_encoder(enc, parameters, image, &mut self.m_event_mgr),
@@ -896,7 +895,7 @@ impl Encoder {
     }
   }
 
-  /// Writes the codestream header (the C's `opj_start_compress`).
+  /// Writes the codestream header (the C's `Codec::start`).
   pub fn start(&mut self, image: &mut CoreImage, stream: &mut Stream) -> Result<()> {
     let ok = match &mut self.m_codec {
       CodecFormat::J2K(enc) => j2k_start_compress(enc, stream, image, &mut self.m_event_mgr),
@@ -909,7 +908,7 @@ impl Encoder {
     }
   }
 
-  /// Encodes the image (the C's `opj_encode`).
+  /// Encodes the image (the C's `Codec::encode`).
   pub fn encode(&mut self, stream: &mut Stream) -> Result<()> {
     let ok = match &mut self.m_codec {
       CodecFormat::J2K(enc) => j2k_encode(enc, stream, &mut self.m_event_mgr),
@@ -922,7 +921,7 @@ impl Encoder {
     }
   }
 
-  /// Writes the end-of-codestream markers (the C's `opj_end_compress`).
+  /// Writes the end-of-codestream markers (the C's `Codec::finish`).
   pub fn finish(&mut self, stream: &mut Stream) -> Result<()> {
     let ok = match &mut self.m_codec {
       CodecFormat::J2K(enc) => j2k_end_compress(enc, stream, &mut self.m_event_mgr),

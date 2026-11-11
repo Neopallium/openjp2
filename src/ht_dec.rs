@@ -1,3 +1,8 @@
+// This file is part of the OpenJpeg software implementation.
+// File: ht_dec.c
+// Author: Aous Naman
+// Date: 01 September 2021
+
 //! HTJ2K (T.814) block decoder: the high-throughput coder's
 //! Melcode/VLC unstuffing machines. See `doc/jpeg2000-design-spec.md` §4.
 use super::consts::*;
@@ -30,13 +35,12 @@ impl dec_mel<'_> {
     self.data.as_ptr() as usize + self.pos
   }
 }
-//* ***********************************************************************/
-/* * @brief MEL state structure for reading and decoding the MEL bitstream
- *
- *  A number of events is decoded from the MEL bitstream ahead of time
- *  and stored in run/num_runs.
- *  Each run represents the number of zero events before a one event.
- */
+// **********************************************************************
+/// MEL state structure for reading and decoding the MEL bitstream
+///
+/// A number of events is decoded from the MEL bitstream ahead of time
+/// and stored in run/num_runs.
+/// Each run represents the number of zero events before a one event.
 pub type dec_mel_t<'a> = dec_mel<'a>;
 
 #[derive(Copy, Clone)]
@@ -70,10 +74,9 @@ impl rev_struct<'_> {
 // queue of decoded runs
 // !<number of decoded runs left in runs (maximum 8)
 // !<runs of decoded MEL codewords (7 bits/run)
-//* ***********************************************************************/
-/* * @brief A structure for reading and unstuffing a segment that grows
- *         backward, such as VLC and MRP
- */
+// **********************************************************************
+/// A structure for reading and unstuffing a segment that grows
+/// backward, such as VLC and MRP
 pub type rev_struct_t<'a> = rev_struct<'a>;
 
 #[derive(Copy, Clone)]
@@ -100,10 +103,9 @@ impl frwd_struct<'_> {
 // !<number of bytes left
 // !<true if the last byte is more than 0x8F
 // !<then the current byte is unstuffed if it is 0x7F
-//* ***********************************************************************/
-/* * @brief State structure for reading and unstuffing of forward-growing
- *         bitstreams; these are: MagSgn and SPP bitstreams
- */
+// **********************************************************************
+/// State structure for reading and unstuffing of forward-growing
+/// bitstreams; these are: MagSgn and SPP bitstreams
 pub type frwd_struct_t<'a> = frwd_struct<'a>;
 // !<pointer to bitstream
 // !<temporary buffer of read data
@@ -111,7 +113,7 @@ pub type frwd_struct_t<'a> = frwd_struct<'a>;
 // !<true if a bit needs to be unstuffed from next byte
 // !<size of data
 // !<0 or 0xFF, X's are inserted at end of bitstream
-//* **************************************************************************/
+// *************************************************************************
 // This software is released under the 2-Clause BSD license, included
 // below.
 //
@@ -141,64 +143,53 @@ pub type frwd_struct_t<'a> = frwd_struct<'a>;
 // LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//* **************************************************************************/
-// This file is part of the OpenJpeg software implementation.
-// File: ht_dec.c
-// Author: Aous Naman
-// Date: 01 September 2021
-//* **************************************************************************/
-//* **************************************************************************/
-/* * @file ht_dec.c
- *  @brief implements HTJ2K block decoder
- */
-// ///////////////////////////////////////////////////////////////////////////
+// *************************************************************************
+// implements HTJ2K block decoder
+//
+////////////////////////////////////////////////////////////////////////////
 // compiler detection
-// ///////////////////////////////////////////////////////////////////////////
-//* ***********************************************************************/
-/* * @brief Displays the error message for disabling the decoding of SPP and
- * MRP passes
- */
+////////////////////////////////////////////////////////////////////////////
+// **********************************************************************
+// Displays the error message for disabling the decoding of SPP and
+// MRP passes
+//
 /// Process-wide "message shown once" flag (the C code used a `static` local). An atomic keeps the
 /// double-checked claim logic without mutable-static UB.
 static ONLY_CLEANUP_PASS_DECODED: AtomicBool = AtomicBool::new(false);
-//* ***********************************************************************/
-/* * @brief Generates population count (i.e., the number of set bits)
- *
- *   @param [in]  val is the value for which population count is sought
- */
+// **********************************************************************
+/// Generates population count (i.e., the number of set bits)
+///
+/// `val` -- is the value for which population count is sought
 fn population_count(mut val: u32) -> u32 {
   val.count_ones()
 }
-//* ***********************************************************************/
-/* * @brief Counts the number of leading zeros
- *
- *   @param [in]  val is the value for which leading zero count is sought
- */
+// **********************************************************************
+/// Counts the number of leading zeros
+///
+/// `val` -- is the value for which leading zero count is sought
 fn count_leading_zeros(mut val: u32) -> u32 {
   val.leading_zeros()
 }
-//* ***********************************************************************/
-/* * @brief Read a little-endian serialized UINT32.
- *
- *   @param [in]  data is the byte stream to read from
- *   @param [in]  pos is the index of the first of the four bytes
- */
+// **********************************************************************
+/// Read a little-endian serialized UINT32.
+///
+/// `data` -- is the byte stream to read from
+/// `pos` -- is the index of the first of the four bytes
 fn read_le_uint32(data: &[u8], pos: usize) -> u32 {
   u32::from_le_bytes([data[pos], data[pos + 1], data[pos + 2], data[pos + 3]])
 }
 
-//* ***********************************************************************/
-/* * @brief Reads and unstuffs the MEL bitstream
- *
- *  This design needs more bytes in the codeblock buffer than the length
- *  of the cleanup pass by up to 2 bytes.
- *
- *  Unstuffing removes the MSB of the byte following a byte whose
- *  value is 0xFF; this prevents sequences larger than 0xFF7F in value
- *  from appearing the bitstream.
- *
- *  @param [in]  melp is a pointer to dec_mel_t structure
- */
+// **********************************************************************
+/// Reads and unstuffs the MEL bitstream
+///
+/// This design needs more bytes in the codeblock buffer than the length
+/// of the cleanup pass by up to 2 bytes.
+///
+/// Unstuffing removes the MSB of the byte following a byte whose
+/// value is 0xFF; this prevents sequences larger than 0xFF7F in value
+/// from appearing the bitstream.
+///
+/// `melp` -- is a pointer to dec_mel_t structure
 fn mel_read(melp: &mut dec_mel_t) {
   let mut val: u32 = 0;
   let mut bits: core::ffi::c_int = 0;
@@ -265,21 +256,20 @@ fn mel_read(melp: &mut dec_mel_t) {
   melp.bits += bits;
   //increment the number of bits in tmp
 }
-//* ***********************************************************************/
-/* * @brief Decodes unstuffed MEL segment bits stored in tmp to runs
- *
- *  Runs are stored in "runs" and the number of runs in "num_runs".
- *  Each run represents a number of zero events that may or may not
- *  terminate in a 1 event.
- *  Each run is stored in 7 bits.  The LSB is 1 if the run terminates in
- *  a 1 event, 0 otherwise.  The next 6 bits, for the case terminating
- *  with 1, contain the number of consecutive 0 zero events * 2; for the
- *  case terminating with 0, they store (number of consecutive 0 zero
- *  events - 1) * 2.
- *  A total of 6 bits (made up of 1 + 5) should have been enough.
- *
- *  @param [in]  melp is a pointer to dec_mel_t structure
- */
+// **********************************************************************
+/// Decodes unstuffed MEL segment bits stored in tmp to runs
+///
+/// Runs are stored in "runs" and the number of runs in "num_runs".
+/// Each run represents a number of zero events that may or may not
+/// terminate in a 1 event.
+/// Each run is stored in 7 bits.  The LSB is 1 if the run terminates in
+/// a 1 event, 0 otherwise.  The next 6 bits, for the case terminating
+/// with 1, contain the number of consecutive 0 zero events * 2; for the
+/// case terminating with 0, they store (number of consecutive 0 zero
+/// events - 1) * 2.
+/// A total of 6 bits (made up of 1 + 5) should have been enough.
+///
+/// `melp` -- is a pointer to dec_mel_t structure
 fn mel_decode(melp: &mut dec_mel_t) {
   const MEL_EXP: [core::ffi::c_int; 13] = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5];
   if melp.bits < 6i32 {
@@ -326,16 +316,15 @@ fn mel_decode(melp: &mut dec_mel_t) {
     melp.num_runs += 1
   }
 }
-//* ***********************************************************************/
-/* * @brief Initiates a dec_mel_t structure for MEL decoding and reads
- *         some bytes in order to get the read address to a multiple
- *         of 4
- *
- *  @param [in]  melp is a pointer to dec_mel_t structure
- *  @param [in]  bbuf is a pointer to byte buffer
- *  @param [in]  lcup is the length of MagSgn+MEL+VLC segments
- *  @param [in]  scup is the length of MEL+VLC segments
- */
+// **********************************************************************
+/// Initiates a dec_mel_t structure for MEL decoding and reads
+/// some bytes in order to get the read address to a multiple
+/// of 4
+///
+/// `melp` -- is a pointer to dec_mel_t structure
+/// `bbuf` -- is a pointer to byte buffer
+/// `lcup` -- is the length of MagSgn+MEL+VLC segments
+/// `scup` -- is the length of MEL+VLC segments
 fn mel_init<'a>(
   melp: &mut dec_mel_t<'a>,
   bbuf: &'a [u8],
@@ -390,12 +379,11 @@ fn mel_init<'a>(
   // is the MSB
   true
 }
-//* ***********************************************************************/
-/* * @brief Retrieves one run from dec_mel_t; if there are no runs stored
- *         MEL segment is decoded
- *
- * @param [in]  melp is a pointer to dec_mel_t structure
- */
+// **********************************************************************
+/// Retrieves one run from dec_mel_t; if there are no runs stored
+/// MEL segment is decoded
+///
+/// `melp` -- is a pointer to dec_mel_t structure
 fn mel_get_run(melp: &mut dec_mel_t) -> core::ffi::c_int {
   let mut t: core::ffi::c_int = 0;
   if melp.num_runs == 0i32 {
@@ -408,26 +396,25 @@ fn mel_get_run(melp: &mut dec_mel_t) -> core::ffi::c_int {
   t
   // return run
 }
-//* ***********************************************************************/
-/* * @brief Read and unstuff data from a backwardly-growing segment
- *
- *  This reader can read up to 8 bytes from before the VLC segment.
- *  Care must be taken not read from unreadable memory, causing a
- *  segmentation fault.
- *
- *  Note that there is another subroutine rev_read_mrp that is slightly
- *  different.  The other one fills zeros when the buffer is exhausted.
- *  This one basically does not care if the bytes are consumed, because
- *  any extra data should not be used in the actual decoding.
- *
- *  Unstuffing is needed to prevent sequences more than 0xFF8F from
- *  appearing in the bits stream; since we are reading backward, we keep
- *  watch when a value larger than 0x8F appears in the bitstream.
- *  If the byte following this is 0x7F, we unstuff this byte (ignore the
- *  MSB of that byte, which should be 0).
- *
- *  @param [in]  vlcp is a pointer to rev_struct_t structure
- */
+// **********************************************************************
+/// Read and unstuff data from a backwardly-growing segment
+///
+/// This reader can read up to 8 bytes from before the VLC segment.
+/// Care must be taken not read from unreadable memory, causing a
+/// segmentation fault.
+///
+/// Note that there is another subroutine rev_read_mrp that is slightly
+/// different.  The other one fills zeros when the buffer is exhausted.
+/// This one basically does not care if the bytes are consumed, because
+/// any extra data should not be used in the actual decoding.
+///
+/// Unstuffing is needed to prevent sequences more than 0xFF8F from
+/// appearing in the bits stream; since we are reading backward, we keep
+/// watch when a value larger than 0x8F appears in the bitstream.
+/// If the byte following this is 0x7F, we unstuff this byte (ignore the
+/// MSB of that byte, which should be 0).
+///
+/// `vlcp` -- is a pointer to rev_struct_t structure
 fn rev_read(vlcp: &mut rev_struct_t) {
   let mut val: u32 = 0;
   let mut tmp: u32 = 0;
@@ -500,20 +487,19 @@ fn rev_read(vlcp: &mut rev_struct_t) {
   vlcp.unstuff = unstuff;
   // this for the next read
 }
-//* ***********************************************************************/
-/* * @brief Initiates the rev_struct_t structure and reads a few bytes to
- *         move the read address to multiple of 4
- *
- *  There is another similar rev_init_mrp subroutine.  The difference is
- *  that this one, rev_init, discards the first 12 bits (they have the
- *  sum of the lengths of VLC and MEL segments), and first unstuff depends
- *  on first 4 bits.
- *
- *  @param [in]  vlcp is a pointer to rev_struct_t structure
- *  @param [in]  data is a pointer to byte at the start of the cleanup pass
- *  @param [in]  lcup is the length of MagSgn+MEL+VLC segments
- *  @param [in]  scup is the length of MEL+VLC segments
- */
+// **********************************************************************
+/// Initiates the rev_struct_t structure and reads a few bytes to
+/// move the read address to multiple of 4
+///
+/// There is another similar rev_init_mrp subroutine.  The difference is
+/// that this one, rev_init, discards the first 12 bits (they have the
+/// sum of the lengths of VLC and MEL segments), and first unstuff depends
+/// on first 4 bits.
+///
+/// `vlcp` -- is a pointer to rev_struct_t structure
+/// `data` -- is a pointer to byte at the start of the cleanup pass
+/// `lcup` -- is the length of MagSgn+MEL+VLC segments
+/// `scup` -- is the length of MEL+VLC segments
 fn rev_init<'a>(
   vlcp: &mut rev_struct_t<'a>,
   data: &'a [u8],
@@ -564,13 +550,12 @@ fn rev_init<'a>(
   // move data to vlcp->tmp
   // read another 32 buts
 }
-//* ***********************************************************************/
-/* * @brief Retrieves 32 bits from the head of a rev_struct structure
- *
- *  By the end of this call, vlcp->tmp must have no less than 33 bits
- *
- *  @param [in]  vlcp is a pointer to rev_struct structure
- */
+// **********************************************************************
+/// Retrieves 32 bits from the head of a rev_struct structure
+///
+/// By the end of this call, vlcp->tmp must have no less than 33 bits
+///
+/// `vlcp` -- is a pointer to rev_struct structure
 fn rev_fetch(vlcp: &mut rev_struct_t) -> u32 {
   if vlcp.bits < 32u32 {
     // if there are less then 32 bits, read more
@@ -584,29 +569,27 @@ fn rev_fetch(vlcp: &mut rev_struct_t) -> u32 {
   vlcp.tmp as u32
   // return the head (bottom-most) of vlcp->tmp
 }
-//* ***********************************************************************/
-/* * @brief Consumes num_bits from a rev_struct structure
- *
- *  @param [in]  vlcp is a pointer to rev_struct structure
- *  @param [in]  num_bits is the number of bits to be removed
- */
+// **********************************************************************
+/// Consumes num_bits from a rev_struct structure
+///
+/// `vlcp` -- is a pointer to rev_struct structure
+/// `num_bits` -- is the number of bits to be removed
 fn rev_advance(vlcp: &mut rev_struct_t, mut num_bits: u32) -> u32 {
   assert!(num_bits <= vlcp.bits); // remove bits
   vlcp.tmp >>= num_bits; // decrement the number of bits
   vlcp.bits = (vlcp.bits as core::ffi::c_uint).wrapping_sub(num_bits);
   vlcp.tmp as u32
 }
-//* ***********************************************************************/
-/* * @brief Reads and unstuffs from rev_struct
- *
- *  This is different than rev_read in that this fills in zeros when the
- *  the available data is consumed.  The other does not care about the
- *  values when all data is consumed.
- *
- *  See rev_read for more information about unstuffing
- *
- *  @param [in]  mrp is a pointer to rev_struct structure
- */
+// **********************************************************************
+/// Reads and unstuffs from rev_struct
+///
+/// This is different than rev_read in that this fills in zeros when the
+/// the available data is consumed.  The other does not care about the
+/// values when all data is consumed.
+///
+/// See rev_read for more information about unstuffing
+///
+/// `mrp` -- is a pointer to rev_struct structure
 fn rev_read_mrp(mrp: &mut rev_struct_t) {
   let mut val: u32 = 0;
   let mut tmp: u32 = 0;
@@ -675,21 +658,20 @@ fn rev_read_mrp(mrp: &mut rev_struct_t) {
   mrp.unstuff = unstuff;
   // next byte
 }
-//* ***********************************************************************/
-/* * @brief Initialized rev_struct structure for MRP segment, and reads
- *         a number of bytes such that the next 32 bits read are from
- *         an address that is a multiple of 4. Note this is designed for
- *         an architecture that read size must be compatible with the
- *         alignment of the read address
- *
- *  There is another similar subroutine rev_init.  This subroutine does
- *  NOT skip the first 12 bits, and starts with unstuff set to true.
- *
- *  @param [in]  mrp is a pointer to rev_struct structure
- *  @param [in]  data is a pointer to byte at the start of the cleanup pass
- *  @param [in]  lcup is the length of MagSgn+MEL+VLC segments
- *  @param [in]  len2 is the length of SPP+MRP segments
- */
+// **********************************************************************
+/// Initialized rev_struct structure for MRP segment, and reads
+/// a number of bytes such that the next 32 bits read are from
+/// an address that is a multiple of 4. Note this is designed for
+/// an architecture that read size must be compatible with the
+/// alignment of the read address
+///
+/// There is another similar subroutine rev_init.  This subroutine does
+/// NOT skip the first 12 bits, and starts with unstuff set to true.
+///
+/// `mrp` -- is a pointer to rev_struct structure
+/// `data` -- is a pointer to byte at the start of the cleanup pass
+/// `lcup` -- is the length of MagSgn+MEL+VLC segments
+/// `len2` -- is the length of SPP+MRP segments
 fn rev_init_mrp<'a>(
   mrp: &mut rev_struct_t<'a>,
   data: &'a [u8],
@@ -738,13 +720,12 @@ fn rev_init_mrp<'a>(
 //read a byte, 0 if no more data
 //check if unstuffing is needed
 // move data to vlcp->tmp
-//* ***********************************************************************/
-/* * @brief Retrieves 32 bits from the head of a rev_struct structure
- *
- *  By the end of this call, mrp->tmp must have no less than 33 bits
- *
- *  @param [in]  mrp is a pointer to rev_struct structure
- */
+// **********************************************************************
+/// Retrieves 32 bits from the head of a rev_struct structure
+///
+/// By the end of this call, mrp->tmp must have no less than 33 bits
+///
+/// `mrp` -- is a pointer to rev_struct structure
 fn rev_fetch_mrp(mrp: &mut rev_struct_t) -> u32 {
   if mrp.bits < 32u32 {
     // if there are less than 32 bits in mrp->tmp
@@ -758,12 +739,11 @@ fn rev_fetch_mrp(mrp: &mut rev_struct_t) -> u32 {
   mrp.tmp as u32
   // return the head of mrp->tmp
 }
-//* ***********************************************************************/
-/* * @brief Consumes num_bits from a rev_struct structure
- *
- *  @param [in]  mrp is a pointer to rev_struct structure
- *  @param [in]  num_bits is the number of bits to be removed
- */
+// **********************************************************************
+/// Consumes num_bits from a rev_struct structure
+///
+/// `mrp` -- is a pointer to rev_struct structure
+/// `num_bits` -- is the number of bits to be removed
 fn rev_advance_mrp(mrp: &mut rev_struct_t, mut num_bits: u32) -> u32 {
   assert!(num_bits <= mrp.bits); // discard the lowest num_bits bits
   mrp.tmp >>= num_bits;
@@ -771,17 +751,16 @@ fn rev_advance_mrp(mrp: &mut rev_struct_t, mut num_bits: u32) -> u32 {
   mrp.tmp as u32
   // return data after consumption
 }
-//* ***********************************************************************/
-/* * @brief Decode initial UVLC to get the u value (or u_q)
- *
- *  @param [in]  vlc is the head of the VLC bitstream
- *  @param [in]  mode is 0, 1, 2, 3, or 4. Values in 0 to 3 are composed of
- *               u_off of 1st quad and 2nd quad of a quad pair.  The value
- *               4 occurs when both bits are 1, and the event decoded
- *               from MEL bitstream is also 1.
- *  @param [out] u is the u value (or u_q) + 1.  Note: we produce u + 1;
- *               this value is a partial calculation of u + kappa.
- */
+// **********************************************************************
+/// Decode initial UVLC to get the u value (or u_q)
+///
+/// `vlc` -- is the head of the VLC bitstream
+/// `mode` -- is 0, 1, 2, 3, or 4. Values in 0 to 3 are composed of
+/// u_off of 1st quad and 2nd quad of a quad pair.  The value
+/// 4 occurs when both bits are 1, and the event decoded
+/// from MEL bitstream is also 1.
+/// `u` -- is the u value (or u_q) + 1.  Note: we produce u + 1;
+/// this value is a partial calculation of u + kappa.
 fn decode_init_uvlc(mut vlc: u32, mut mode: u32, u: &mut [u32; 2]) -> u32 {
   //table stores possible decoding three bits from vlc
   // there are 8 entries for xx1, x10, 100, 000, where x means do not care
@@ -883,15 +862,14 @@ fn decode_init_uvlc(mut vlc: u32, mut mode: u32, u: &mut [u32; 2]) -> u32 {
   }
   consumed_bits
 }
-//* ***********************************************************************/
-/* * @brief Decode non-initial UVLC to get the u value (or u_q)
- *
- *  @param [in]  vlc is the head of the VLC bitstream
- *  @param [in]  mode is 0, 1, 2, or 3. The 1st bit is u_off of 1st quad
- *               and 2nd for 2nd quad of a quad pair
- *  @param [out] u is the u value (or u_q) + 1.  Note: we produce u + 1;
- *               this value is a partial calculation of u + kappa.
- */
+// **********************************************************************
+/// Decode non-initial UVLC to get the u value (or u_q)
+///
+/// `vlc` -- is the head of the VLC bitstream
+/// `mode` -- is 0, 1, 2, or 3. The 1st bit is u_off of 1st quad
+/// and 2nd for 2nd quad of a quad pair
+/// `u` -- is the u value (or u_q) + 1.  Note: we produce u + 1;
+/// this value is a partial calculation of u + kappa.
 fn decode_noninit_uvlc(mut vlc: u32, mut mode: u32, u: &mut [u32; 2]) -> u32 {
   //table stores possible decoding three bits from vlc
   // there are 8 entries for xx1, x10, 100, 000, where x means do not care
@@ -957,23 +935,21 @@ fn decode_noninit_uvlc(mut vlc: u32, mut mode: u32, u: &mut [u32; 2]) -> u32 {
   }
   consumed_bits
 }
-//* ***********************************************************************/
-/* * @brief Read and unstuffs 32 bits from forward-growing bitstream
- *
- *  A subroutine to read from both the MagSgn or SPP bitstreams;
- *  in particular, when MagSgn bitstream is consumed, 0xFF's are fed,
- *  while when SPP is exhausted 0's are fed in.
- *  X controls this value.
- *
- *  Unstuffing prevent sequences that are more than 0xFF7F from appearing
- *  in the conpressed sequence.  So whenever a value of 0xFF is coded, the
- *  MSB of the next byte is set 0 and must be ignored during decoding.
- *
- *  Reading can go beyond the end of buffer by up to 3 bytes.
- *
- *  @param  [in]  msp is a pointer to frwd_struct_t structure
- *
- */
+// **********************************************************************
+/// Read and unstuffs 32 bits from forward-growing bitstream
+///
+/// A subroutine to read from both the MagSgn or SPP bitstreams;
+/// in particular, when MagSgn bitstream is consumed, 0xFF's are fed,
+/// while when SPP is exhausted 0's are fed in.
+/// X controls this value.
+///
+/// Unstuffing prevent sequences that are more than 0xFF7F from appearing
+/// in the conpressed sequence.  So whenever a value of 0xFF is coded, the
+/// MSB of the next byte is set 0 and must be ignored during decoding.
+///
+/// Reading can go beyond the end of buffer by up to 3 bytes.
+///
+/// `msp` -- is a pointer to frwd_struct_t structure
 fn frwd_read(msp: &mut frwd_struct_t) {
   let mut val: u32 = 0; // assert that there is a space for 32 bits
   let mut bits: u32 = 0; // read 32 bits
@@ -1015,15 +991,14 @@ fn frwd_read(msp: &mut frwd_struct_t) {
   msp.tmp |= (t as u64) << msp.bits;
   msp.bits = (msp.bits as core::ffi::c_uint).wrapping_add(bits);
 }
-//* ***********************************************************************/
-/* * @brief Initialize frwd_struct_t struct and reads some bytes
- *
- *  @param [in]  msp is a pointer to frwd_struct_t
- *  @param [in]  data is a pointer to the start of data
- *  @param [in]  size is the number of byte in the bitstream
- *  @param [in]  X is the value fed in when the bitstream is exhausted.
- *               See frwd_read.
- */
+// **********************************************************************
+/// Initialize frwd_struct_t struct and reads some bytes
+///
+/// `msp` -- is a pointer to frwd_struct_t
+/// `data` -- is a pointer to the start of data
+/// `size` -- is the number of byte in the bitstream
+/// `X` -- is the value fed in when the bitstream is exhausted.
+/// See frwd_read.
 fn frwd_init<'a>(
   msp: &mut frwd_struct_t<'a>,
   data: &'a [u8],
@@ -1070,22 +1045,20 @@ fn frwd_init<'a>(
   // number of bits added to msp->tmp
   // read 32 bits more
 }
-//* ***********************************************************************/
-/* * @brief Consume num_bits bits from the bitstream of frwd_struct_t
- *
- *  @param [in]  msp is a pointer to frwd_struct_t
- *  @param [in]  num_bits is the number of bit to consume
- */
+// **********************************************************************
+/// Consume num_bits bits from the bitstream of frwd_struct_t
+///
+/// `msp` -- is a pointer to frwd_struct_t
+/// `num_bits` -- is the number of bit to consume
 fn frwd_advance(msp: &mut frwd_struct_t, mut num_bits: u32) {
   assert!(num_bits <= msp.bits);
   msp.tmp >>= num_bits;
   msp.bits = (msp.bits as core::ffi::c_uint).wrapping_sub(num_bits);
 }
-//* ***********************************************************************/
-/* * @brief Fetches 32 bits from the frwd_struct_t bitstream
- *
- *  @param [in]  msp is a pointer to frwd_struct_t
- */
+// **********************************************************************
+/// Fetches 32 bits from the frwd_struct_t bitstream
+///
+/// `msp` -- is a pointer to frwd_struct_t
 fn frwd_fetch(msp: &mut frwd_struct_t) -> u32 {
   if msp.bits < 32u32 {
     frwd_read(msp);
@@ -1096,13 +1069,12 @@ fn frwd_fetch(msp: &mut frwd_struct_t) -> u32 {
   }
   msp.tmp as u32
 }
-//* ***********************************************************************/
-/* * @brief Allocates T1 buffers
- *
- *  @param [in, out]  t1 is codeblock cofficients storage
- *  @param [in]       w is codeblock width
- *  @param [in]       h is codeblock height
- */
+// **********************************************************************
+/// Allocates T1 buffers
+///
+/// `t1` -- is codeblock cofficients storage
+/// `w` -- is codeblock width
+/// `h` -- is codeblock height
 fn t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OpResult {
   let mut flagssize: usize = 0;
   /* No risk of overflow. Prior checks ensure those assert are met */
@@ -1124,18 +1096,17 @@ fn t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OpResult
   t1.h = h;
   Ok(())
 }
-//* ***********************************************************************/
-/* * @brief Decodes one codeblock, processing the cleanup, siginificance
- *         propagation, and magnitude refinement pass
- *
- *  @param [in, out]  t1 is codeblock cofficients storage
- *  @param [in]       cblk is codeblock properties
- *  @param [in]       orient is the subband to which the codeblock belongs (not needed)
- *  @param [in]       roishift is region of interest shift
- *  @param [in]       cblksty is codeblock style
- *  @param [in]       p_manager is events print manager
- *  @param [in]       check_pterm: check termination (not used)
- */
+// **********************************************************************
+/// Decodes one codeblock, processing the cleanup, siginificance
+/// propagation, and magnitude refinement pass
+///
+/// `t1` -- is codeblock cofficients storage
+/// `cblk` -- is codeblock properties
+/// `orient` -- is the subband to which the codeblock belongs (not needed)
+/// `roishift` -- is region of interest shift
+/// `cblksty` -- is codeblock style
+/// `p_manager` -- is events print manager
+/// `check_pterm`: check termination (not used)
 pub(crate) fn t1_ht_decode_cblk(
   mut t1: &mut T1Coder,
   cblk: &mut TcdCblkDec,
@@ -1436,14 +1407,14 @@ pub(crate) fn t1_ht_decode_cblk(
       lengths2 as core::ffi::c_int,
     );
   }
-  /* * State storage
-   *  One byte per quad; for 1024 columns, or 512 quads, we need
-   *  512 bytes. We are using 2 extra bytes one on the left and one on
-   *  the right for convenience.
-   *
-   *  The MSB bit in each byte is (\sigma^nw | \sigma^n), and the 7 LSBs
-   *  contain max(E^nw | E^n)
-   */
+  // State storage
+  // One byte per quad; for 1024 columns, or 512 quads, we need
+  // 512 bytes. We are using 2 extra bytes one on the left and one on
+  // the right for convenience.
+  //
+  // The MSB bit in each byte is (\sigma^nw | \sigma^n), and the 7 LSBs
+  // contain max(E^nw | E^n)
+  //
   // 514 is enough for a block width of 1024, +2 extra
   // here expanded to 528
   //initial 2 lines
@@ -1499,17 +1470,17 @@ pub(crate) fn t1_ht_decode_cblk(
     //update sigma
     // The update depends on the value of x; consider one u32
     // if x is 0, 8, 16 and so on, then this line update c locations
-    //      nibble (4 bits) number   0 1 2 3 4 5 6 7
-    //                         LSB   c c 0 0 0 0 0 0
-    //                               c c 0 0 0 0 0 0
-    //                               0 0 0 0 0 0 0 0
-    //                               0 0 0 0 0 0 0 0
+    // nibble (4 bits) number   0 1 2 3 4 5 6 7
+    // LSB   c c 0 0 0 0 0 0
+    // c c 0 0 0 0 0 0
+    // 0 0 0 0 0 0 0 0
+    // 0 0 0 0 0 0 0 0
     // if x is 4, 12, 20, then this line update locations c
-    //      nibble (4 bits) number   0 1 2 3 4 5 6 7
-    //                         LSB   0 0 0 0 c c 0 0
-    //                               0 0 0 0 c c 0 0
-    //                               0 0 0 0 0 0 0 0
-    //                               0 0 0 0 0 0 0 0
+    // nibble (4 bits) number   0 1 2 3 4 5 6 7
+    // LSB   0 0 0 0 c c 0 0
+    // 0 0 0 0 c c 0 0
+    // 0 0 0 0 0 0 0 0
+    // 0 0 0 0 0 0 0 0
     sip.or(((qinf[0_usize] & 0x30u32) >> 4i32 | (qinf[0_usize] & 0xc0u32) >> 2i32) << sip_shift);
     //second quad
     qinf[1_usize] = 0_u32;
@@ -1537,17 +1508,17 @@ pub(crate) fn t1_ht_decode_cblk(
     //update sigma
     // The update depends on the value of x; consider one u32
     // if x is 0, 8, 16 and so on, then this line update c locations
-    //      nibble (4 bits) number   0 1 2 3 4 5 6 7
-    //                         LSB   0 0 c c 0 0 0 0
-    //                               0 0 c c 0 0 0 0
-    //                               0 0 0 0 0 0 0 0
-    //                               0 0 0 0 0 0 0 0
+    // nibble (4 bits) number   0 1 2 3 4 5 6 7
+    // LSB   0 0 c c 0 0 0 0
+    // 0 0 c c 0 0 0 0
+    // 0 0 0 0 0 0 0 0
+    // 0 0 0 0 0 0 0 0
     // if x is 4, 12, 20, then this line update locations c
-    //      nibble (4 bits) number   0 1 2 3 4 5 6 7
-    //                         LSB   0 0 0 0 0 0 c c
-    //                               0 0 0 0 0 0 c c
-    //                               0 0 0 0 0 0 0 0
-    //                               0 0 0 0 0 0 0 0
+    // nibble (4 bits) number   0 1 2 3 4 5 6 7
+    // LSB   0 0 0 0 0 0 c c
+    // 0 0 0 0 0 0 c c
+    // 0 0 0 0 0 0 0 0
+    // 0 0 0 0 0 0 0 0
     sip.or(
       (qinf[1_usize] & 0x30u32 | (qinf[1_usize] & 0xc0u32) << 2i32)
         << (4u32).wrapping_add(sip_shift),
@@ -1797,11 +1768,11 @@ pub(crate) fn t1_ht_decode_cblk(
       // The update depends on the value of x and y; consider one u32
       // if x is 0, 8, 16 and so on, and y is 2, 6, etc., then this
       // line update c locations
-      //      nibble (4 bits) number   0 1 2 3 4 5 6 7
-      //                         LSB   0 0 0 0 0 0 0 0
-      //                               0 0 0 0 0 0 0 0
-      //                               c c 0 0 0 0 0 0
-      //                               c c 0 0 0 0 0 0
+      // nibble (4 bits) number   0 1 2 3 4 5 6 7
+      // LSB   0 0 0 0 0 0 0 0
+      // 0 0 0 0 0 0 0 0
+      // c c 0 0 0 0 0 0
+      // c c 0 0 0 0 0 0
       sip_0
         .or(((qinf[0_usize] & 0x30u32) >> 4i32 | (qinf[0_usize] & 0xc0u32) >> 2i32) << sip_shift);
       //second quad

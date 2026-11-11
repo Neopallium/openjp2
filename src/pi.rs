@@ -1,3 +1,38 @@
+// The copyright in this software is being made available under the 2-clauses
+// BSD License, included below. This software may be subject to other third
+// party and contributor rights, including patent rights, and no such rights
+// are granted under this license.
+//
+// Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
+// Copyright (c) 2002-2014, Professor Benoit Macq
+// Copyright (c) 2001-2003, David Janssens
+// Copyright (c) 2002-2003, Yannick Verschueren
+// Copyright (c) 2003-2007, Francois-Olivier Devaux
+// Copyright (c) 2003-2014, Antonin Descampe
+// Copyright (c) 2005, Herve Drolon, FreeImage Team
+// Copyright (c) 2006-2007, Parvatha Elangovan
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //! Packet iteration: the progression-order walks (LRCP/RLCP/RPCL/
 //! PCRL/CPRL) that drive tier-2. See `doc/jpeg2000-design-spec.md` §3.8.
 use super::consts::*;
@@ -63,54 +98,19 @@ fn uint_ceildivpow2(mut a: u32, mut b: u32) -> u32 {
   ((a as u64).wrapping_add(1_u64 << b).wrapping_sub(1u64) >> b) as u32
 }
 
-/*
- * The copyright in this software is being made available under the 2-clauses
- * BSD License, included below. This software may be subject to other third
- * party and contributor rights, including patent rights, and no such rights
- * are granted under this license.
- *
- * Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
- * Copyright (c) 2002-2014, Professor Benoit Macq
- * Copyright (c) 2001-2003, David Janssens
- * Copyright (c) 2002-2003, Yannick Verschueren
- * Copyright (c) 2003-2007, Francois-Olivier Devaux
- * Copyright (c) 2003-2014, Antonin Descampe
- * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2006-2007, Parvatha Elangovan
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-/* * @defgroup PI PI - Implementation of a packet iterator */
-/*@{*/
-/* * @name Local static functions */
-/*@{*/
-/* *
-Get next packet in layer-resolution-component-precinct order.
-@param pi packet iterator to modify
-@return returns false if pi pointed to the last packet or else returns true
-*/
-/*@}*/
-/*@}*/
+//
+//
+// PI - Implementation of a packet iterator
+//@{
+// Local static functions
+//@{
+//
+// Get next packet in layer-resolution-component-precinct order.
+// * `pi` — packet iterator to modify
+// returns false if pi pointed to the last packet or else returns true
+//
+//@}
+//@}
 /*
 ==========================================================
    local functions
@@ -221,11 +221,10 @@ fn pi_next_lrcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   }
   Err(())
 }
-/* *
-Get next packet in resolution-layer-component-precinct order.
-@param pi packet iterator to modify
-@return returns false if pi pointed to the last packet or else returns true
-*/
+
+/// Get next packet in resolution-layer-component-precinct order.
+/// `pi` — packet iterator to modify
+/// returns false if pi pointed to the last packet or else returns true
 fn pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   let mut current_block: u64;
   let mut index = 0_u32;
@@ -325,11 +324,10 @@ fn pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   }
   Err(())
 }
-/* *
-Get next packet in resolution-precinct-component-layer order.
-@param pi packet iterator to modify
-@return returns false if pi pointed to the last packet or else returns true
-*/
+
+/// Get next packet in resolution-precinct-component-layer order.
+/// `pi` — packet iterator to modify
+/// returns false if pi pointed to the last packet or else returns true
 fn pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   let mut levelno: u32 = 0;
   let mut trx0: u32 = 0;
@@ -594,11 +592,10 @@ fn pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   }
   Err(())
 }
-/* *
-Get next packet in precinct-component-resolution-layer order.
-@param pi packet iterator to modify
-@return returns false if pi pointed to the last packet or else returns true
-*/
+
+/// Get next packet in precinct-component-resolution-layer order.
+/// `pi` — packet iterator to modify
+/// returns false if pi pointed to the last packet or else returns true
 fn pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   let mut levelno: u32 = 0;
   let mut trx0: u32 = 0;
@@ -881,11 +878,10 @@ fn pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   }
   Err(())
 }
-/* *
-Get next packet in component-precinct-resolution-layer order.
-@param pi packet iterator to modify
-@return returns false if pi pointed to the last packet or else returns true
-*/
+
+/// Get next packet in component-precinct-resolution-layer order.
+/// `pi` — packet iterator to modify
+/// returns false if pi pointed to the last packet or else returns true
 fn pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   let mut resno: u32 = 0;
   let mut levelno: u32 = 0;
@@ -1165,21 +1161,19 @@ fn pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   Err(())
 }
 
-/* *
- * Gets the encoding parameters needed to update the coding parameters and all the pocs.
- *
- * @param   p_image         the image being encoded.
- * @param   p_cp            the coding parameters.
- * @param   tileno          the tile index of the tile being encoded.
- * @param   p_tx0           pointer that will hold the X0 parameter for the tile
- * @param   p_tx1           pointer that will hold the X1 parameter for the tile
- * @param   p_ty0           pointer that will hold the Y0 parameter for the tile
- * @param   p_ty1           pointer that will hold the Y1 parameter for the tile
- * @param   p_max_prec      pointer that will hold the maximum precision for all the bands of the tile
- * @param   p_max_res       pointer that will hold the maximum number of resolutions for all the poc inside the tile.
- * @param   p_dx_min            pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
- * @param   p_dy_min            pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
- */
+/// Gets the encoding parameters needed to update the coding parameters and all the pocs.
+///
+/// `p_image` — the image being encoded.
+/// `p_cp` — the coding parameters.
+/// `tileno` — the tile index of the tile being encoded.
+/// `p_tx0` — pointer that will hold the X0 parameter for the tile
+/// `p_tx1` — pointer that will hold the X1 parameter for the tile
+/// `p_ty0` — pointer that will hold the Y0 parameter for the tile
+/// `p_ty1` — pointer that will hold the Y1 parameter for the tile
+/// `p_max_prec` — pointer that will hold the maximum precision for all the bands of the tile
+/// `p_max_res` — pointer that will hold the maximum number of resolutions for all the poc inside the tile.
+/// `p_dx_min` — pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
+/// `p_dy_min` — pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
 pub(crate) fn get_encoding_parameters(
   p_image: &mut CoreImage,
   p_cp: &Cp,
@@ -1303,26 +1297,24 @@ pub(crate) fn get_encoding_parameters(
   }
 }
 
-/* *
- * Gets the encoding parameters needed to update the coding parameters and all the pocs.
- * The precinct widths, heights, dx and dy for each component at each resolution will be stored as well.
- * the last parameter of the function should be an array of pointers of size nb components, each pointer leading
- * to an area of size 4 * max_res. The data is stored inside this area with the following pattern :
- * dx_compi_res0 , dy_compi_res0 , w_compi_res0, h_compi_res0 , dx_compi_res1 , dy_compi_res1 , w_compi_res1, h_compi_res1 , ...
- *
- * @param   p_image         the image being encoded.
- * @param   p_cp            the coding parameters.
- * @param   tileno          the tile index of the tile being encoded.
- * @param   p_tx0           pointer that will hold the X0 parameter for the tile
- * @param   p_tx1           pointer that will hold the X1 parameter for the tile
- * @param   p_ty0           pointer that will hold the Y0 parameter for the tile
- * @param   p_ty1           pointer that will hold the Y1 parameter for the tile
- * @param   p_max_prec      pointer that will hold the maximum precision for all the bands of the tile
- * @param   p_max_res       pointer that will hold the maximum number of resolutions for all the poc inside the tile.
- * @param   p_dx_min        pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
- * @param   p_dy_min        pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
- * @param   p_resolutions   pointer to an area corresponding to the one described above.
- */
+/// Gets the encoding parameters needed to update the coding parameters and all the pocs.
+/// The precinct widths, heights, dx and dy for each component at each resolution will be stored as well.
+/// the last parameter of the function should be an array of pointers of size nb components, each pointer leading
+/// to an area of size 4 * max_res. The data is stored inside this area with the following pattern :
+/// dx_compi_res0 , dy_compi_res0 , w_compi_res0, h_compi_res0 , dx_compi_res1 , dy_compi_res1 , w_compi_res1, h_compi_res1 , ...
+///
+/// `p_image` — the image being encoded.
+/// `p_cp` — the coding parameters.
+/// `tileno` — the tile index of the tile being encoded.
+/// `p_tx0` — pointer that will hold the X0 parameter for the tile
+/// `p_tx1` — pointer that will hold the X1 parameter for the tile
+/// `p_ty0` — pointer that will hold the Y0 parameter for the tile
+/// `p_ty1` — pointer that will hold the Y1 parameter for the tile
+/// `p_max_prec` — pointer that will hold the maximum precision for all the bands of the tile
+/// `p_max_res` — pointer that will hold the maximum number of resolutions for all the poc inside the tile.
+/// `p_dx_min` — pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
+/// `p_dy_min` — pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
+/// `p_resolutions` — pointer to an area corresponding to the one described above.
 pub(crate) fn get_all_encoding_parameters(
   p_image: &mut CoreImage,
   p_cp: &Cp,
@@ -1476,15 +1468,14 @@ pub(crate) fn get_all_encoding_parameters(
     compno += 1;
   }
 }
-/* *
- * Allocates memory for a packet iterator. Data and data sizes are set by this operation.
- * No other data is set. The include section of the packet  iterator is not allocated.
- *
- * @param   p_image     the image used to initialize the packet iterator (in fact only the number of components is relevant.
- * @param   p_cp        the coding parameters.
- * @param   tileno  the index of the tile from which creating the packet iterator.
- * @param   manager Event manager
- */
+
+/// Allocates memory for a packet iterator. Data and data sizes are set by this operation.
+/// No other data is set. The include section of the packet  iterator is not allocated.
+///
+/// `p_image` — the image used to initialize the packet iterator (in fact only the number of components is relevant.
+/// `p_cp` — the coding parameters.
+/// `tileno` — the index of the tile from which creating the packet iterator.
+/// `manager` — Event manager
 pub(crate) fn pi_create(image: &CoreImage, cp: &Cp, tileno: u32) -> Vec<PiIterator> {
   /* loop*/
   let mut pino: u32 = 0;
@@ -1585,21 +1576,20 @@ pub(crate) fn pi_update_encode_poc_and_final(
     pino += 1;
   }
 }
-/* *
- * Updates the coding parameters if the encoding is not used with Progression order changes and final (and cinema parameters are used).
- *
- * @param   p_cp        the coding parameters to modify
- * @param   p_num_comps     the number of components
- * @param   p_tileno    the tile index being concerned.
- * @param   p_tx0       X0 parameter for the tile
- * @param   p_tx1       X1 parameter for the tile
- * @param   p_ty0       Y0 parameter for the tile
- * @param   p_ty1       Y1 parameter for the tile
- * @param   p_max_prec  the maximum precision for all the bands of the tile
- * @param   p_max_res   the maximum number of resolutions for all the poc inside the tile.
- * @param   p_dx_min        the minimum dx of all the components of all the resolutions for the tile.
- * @param   p_dy_min        the minimum dy of all the components of all the resolutions for the tile.
- */
+
+/// Updates the coding parameters if the encoding is not used with Progression order changes and final (and cinema parameters are used).
+///
+/// `p_cp` — the coding parameters to modify
+/// `p_num_comps` — the number of components
+/// `p_tileno` — the tile index being concerned.
+/// `p_tx0` — X0 parameter for the tile
+/// `p_tx1` — X1 parameter for the tile
+/// `p_ty0` — Y0 parameter for the tile
+/// `p_ty1` — Y1 parameter for the tile
+/// `p_max_prec` — the maximum precision for all the bands of the tile
+/// `p_max_res` — the maximum number of resolutions for all the poc inside the tile.
+/// `p_dx_min` — the minimum dx of all the components of all the resolutions for the tile.
+/// `p_dy_min` — the minimum dy of all the components of all the resolutions for the tile.
 pub(crate) fn pi_update_encode_not_poc(
   p_cp: &mut Cp,
   p_num_comps: u32,
@@ -1644,8 +1634,7 @@ pub(crate) fn pi_update_encode_not_poc(
     pino += 1;
   }
 }
-/* *
- */
+
 pub(crate) fn pi_update_decode_poc(
   p_pi: &mut [PiIterator],
   p_tcp: &Tcp,
@@ -1675,8 +1664,7 @@ pub(crate) fn pi_update_decode_poc(
     pino += 1;
   }
 }
-/* *
- */
+
 pub(crate) fn pi_update_decode_not_poc(
   p_pi: &mut [PiIterator],
   p_tcp: &Tcp,
@@ -1706,8 +1694,7 @@ pub(crate) fn pi_update_decode_not_poc(
     pino += 1;
   }
 }
-/* *
- */
+
 fn pi_check_next_level(pos: i32, tcp: &crate::types::Poc, prog: ProgressionOrder) -> OpResult {
   let mut i: i32 = 0; /*end if*/
   if pos >= 0i32 {

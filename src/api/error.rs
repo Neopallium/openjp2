@@ -7,7 +7,7 @@
 //! `Encoder` types (the merged `Codec` handle lives in the `openjp2-capi`
 //! crate) keep the C-style step API for incremental use.
 //! `Stream` types remain available for streaming and tile-level use cases.
-
+//!
 /// Errors returned by the safe API.
 #[derive(Debug)]
 pub enum Error {

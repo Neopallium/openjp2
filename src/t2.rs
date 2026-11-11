@@ -1,3 +1,40 @@
+// The copyright in this software is being made available under the 2-clauses
+// BSD License, included below. This software may be subject to other third
+// party and contributor rights, including patent rights, and no such rights
+// are granted under this license.
+//
+// Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
+// Copyright (c) 2002-2014, Professor Benoit Macq
+// Copyright (c) 2001-2003, David Janssens
+// Copyright (c) 2002-2003, Yannick Verschueren
+// Copyright (c) 2003-2007, Francois-Olivier Devaux
+// Copyright (c) 2003-2014, Antonin Descampe
+// Copyright (c) 2005, Herve Drolon, FreeImage Team
+// Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
+// Copyright (c) 2012, CS Systemes d'Information, France
+// Copyright (c) 2017, IntoPIX SA <support@intopix.com>
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //! Tier-2 codec: packet header parsing/writing (inclusion, zero
 //! bit-planes, coding passes, segment lengths) and the packet data I/O.
 //! See `doc/jpeg2000-design-spec.md` §3.8.
@@ -16,49 +53,12 @@ pub(crate) struct T2<'a> {
   pub image: &'a mut CoreImage,
   pub cp: &'a mut Cp,
 }
-/*
- * The copyright in this software is being made available under the 2-clauses
- * BSD License, included below. This software may be subject to other third
- * party and contributor rights, including patent rights, and no such rights
- * are granted under this license.
- *
- * Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
- * Copyright (c) 2002-2014, Professor Benoit Macq
- * Copyright (c) 2001-2003, David Janssens
- * Copyright (c) 2002-2003, Yannick Verschueren
- * Copyright (c) 2003-2007, Francois-Olivier Devaux
- * Copyright (c) 2003-2014, Antonin Descampe
- * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
- * Copyright (c) 2012, CS Systemes d'Information, France
- * Copyright (c) 2017, IntoPIX SA <support@intopix.com>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+//
+//
 
-/* * @defgroup T2 T2 - Implementation of a tier-2 coding */
+// T2 - Implementation of a tier-2 coding
 
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 fn t2_putcommacode(bio: &mut Bio, mut n: i32) {
   for _ in 0..n {
     bio_putbit(bio, 1);
@@ -74,11 +74,9 @@ fn t2_getcommacode(bio: &mut Bio) -> u32 {
   n
 }
 
-/* *
-Variable length code for signalling delta Zil (truncation point)
-@param bio  Bit Input/Output component
-@param n    delta Zil
-*/
+/// Variable length code for signalling delta Zil (truncation point)
+/// `bio` -- Bit Input/Output component
+/// `n` -- delta Zil
 fn t2_putnumpasses(bio: &mut Bio, mut n: u32) {
   if n == 1u32 {
     bio_putbit(bio, 0);
@@ -112,7 +110,7 @@ fn t2_getnumpasses(bio: &mut Bio) -> u32 {
   (37u32).wrapping_add(bio_read(bio, 7_u32))
 }
 
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn t2_encode_packets(
@@ -301,11 +299,11 @@ pub(crate) fn t2_decode_packets(
      * and no l_img_comp->resno_decoded are computed
      */
     let mut first_pass_failed: Vec<bool> = Vec::new();
-    if pi_vec[pino as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
-      event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
-      pi_destroy(&mut pi_vec);
-      return Err(());
-    }
+    /* (The C also rejects `poc.prg == ProgressionOrder::Unknown` here.  The native
+    `Poc` cannot hold an invalid progression order: `read_poc` converts the
+    raw byte with `ProgressionOrder::from`, which collapses invalid values to
+    `Lrcp` - so the decode-time check is unrepresentable and the error path
+    never fires.) */
     first_pass_failed = vec![true; image.numcomps as usize];
     loop {
       let pi = &mut pi_vec[pino as usize];
@@ -439,20 +437,17 @@ pub(crate) fn t2_create<'a>(image: &'a mut CoreImage, cp: &'a mut Cp) -> Box<T2<
   /* create the t2 structure */
   Box::new(T2 { image, cp })
 }
-/* *
-Decode a packet of a tile from a source buffer
-@param t2 T2 handle
-@param tile Tile for which to write the packets
-@param tcp Tile coding parameters
-@param pi Packet identity
-@param src Source buffer
-@param data_read
-@param max_length
-@param pack_info Packet information
-@param p_manager the user event manager
 
-@return
-*/
+/// Decode a packet of a tile from a source buffer
+/// `t2` -- T2 handle
+/// `tile` -- Tile for which to write the packets
+/// `tcp` -- Tile coding parameters
+/// `pi` -- Packet identity
+/// `src` -- Source buffer
+/// `data_read`
+/// `max_length`
+/// `pack_info` -- Packet information
+/// `p_manager` -- the user event manager
 fn t2_decode_packet(
   cp: &mut Cp,
   p_tile_no: u32,
@@ -497,20 +492,18 @@ fn t2_decode_packet(
   *p_data_read = l_nb_total_bytes_read;
   Ok(())
 }
-/* *
-Encode a packet of a tile to a destination buffer
-@param tileno Number of the tile encoded
-@param tile Tile for which to write the packets
-@param tcp Tile coding parameters
-@param pi Packet identity
-@param dest Destination buffer
-@param p_data_written
-@param len Length of the destination buffer
-@param cstr_info Codestream information structure
-@param p_t2_mode If == THRESH_CALC In threshold calculation ,If == FINAL_PASS Final pass
-@param p_manager the user event manager
-@return
-*/
+
+/// Encode a packet of a tile to a destination buffer
+/// `tileno` -- Number of the tile encoded
+/// `tile` -- Tile for which to write the packets
+/// `tcp` -- Tile coding parameters
+/// `pi` -- Packet identity
+/// `dest` -- Destination buffer
+/// `p_data_written`
+/// `len` -- Length of the destination buffer
+/// `cstr_info` -- Codestream information structure
+/// `p_t2_mode` -- If == THRESH_CALC In threshold calculation ,If == FINAL_PASS Final pass
+/// `p_manager` -- the user event manager
 fn t2_skip_packet(
   cp: &mut Cp,
   p_tile_no: u32,

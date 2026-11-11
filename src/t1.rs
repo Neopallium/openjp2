@@ -339,11 +339,11 @@ fn to_smr(x: i32) -> u32 {
   }
 }
 
-/* * @name Local static functions */
-/*@{*/
-/*@}*/
-/*@}*/
-/* ----------------------------------------------------------------------- */
+// Local static functions
+//@{
+//@}
+//@}
+// -----------------------------------------------------------------------
 
 #[inline]
 fn t1_getctxno_zc(mut mqc: &mut Mqc, f: u32) -> u8 {
@@ -455,13 +455,6 @@ fn t1_update_flags(flags: &mut u32, flagsp: FlagsPtr, ci: u32, s: u32, stride: u
   t1_update_flags_macro(flags, flagsp, ci, s, stride, vsc);
 }
 
-/* *
-Decode significant pass
-*/
-
-/* *
-Encode significant pass
-*/
 #[inline(always)]
 fn t1_enc_sigpass_step_macro(
   mqc: &mut Mqc,
@@ -609,9 +602,7 @@ fn t1_flags(flags: &T1Flags, w: u32, x: u32, y: u32) -> FlagsPtr<'_> {
   flags.offset((x + 1).wrapping_add((y / 4 + 1).wrapping_mul(w.wrapping_add(2))) as isize)
 }
 
-/* *
-Encode significant pass
-*/
+/// Encode significant pass
 fn t1_enc_sigpass(
   mut t1: &mut T1Coder,
   mut bpno: i32,
@@ -741,9 +732,7 @@ fn t1_enc_sigpass(
   }
 }
 
-/* *
-Decode significant pass
-*/
+/// Decode significant pass
 fn t1_dec_sigpass_raw(
   mut t1: &mut T1Coder,
   mut bpno: i32,
@@ -993,13 +982,7 @@ fn t1_dec_sigpass_mqc(
   }
 }
 
-/* *
-Decode refinement pass
-*/
-
-/**
-Encode refinement pass step
-*/
+/// Encode refinement pass step
 #[inline(always)]
 fn t1_enc_refpass_step_macro(
   mqc: &mut Mqc,
@@ -1103,9 +1086,7 @@ fn t1_dec_refpass_step_mqc(
   t1_dec_refpass_step_mqc_macro(flagsp, datap, 0, ci, mqc, &mut v, poshalf);
 }
 
-/* *
-Encode refinement pass
-*/
+/// Encode refinement pass
 fn t1_enc_refpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mut type_0: u8) {
   let mut i: u32 = 0;
   let mut k: u32 = 0;
@@ -1168,9 +1149,7 @@ fn t1_enc_refpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mu
   }
 }
 
-/* *
-Decode refinement pass
-*/
+/// Decode refinement pass
 fn t1_dec_refpass_raw(mut t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Cell<i32>]>) {
   let mut one: i32 = 0;
   let mut poshalf: i32 = 0;
@@ -1308,9 +1287,7 @@ fn t1_dec_refpass_mqc(mut t1: &mut T1Coder, mut bpno: i32, data_src: Option<&[Ce
   };
 }
 
-/**
-Encode clean-up pass step
-*/
+/// Encode clean-up pass step
 #[inline(always)]
 fn t1_enc_clnpass_step_macro(
   mqc: &mut Mqc,
@@ -1449,9 +1426,7 @@ fn t1_dec_clnpass_step(
   flagsp.set(flags);
 }
 
-/* *
-Encode clean-up pass
-*/
+/// Encode clean-up pass
 fn t1_enc_clnpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mut cblksty: u32) {
   let mut i: u32 = 0;
   let mut k: u32 = 0;
@@ -1891,8 +1866,8 @@ fn t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OpResult
   Ok(())
 }
 
-/* ----------------------------------------------------------------------- */
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 
 #[allow(clippy::too_many_arguments)]
 fn t1_clbl_decode_processor(
@@ -2447,11 +2422,10 @@ fn t1_decode_cblk(
 }
 
 #[allow(clippy::too_many_arguments)]
-/* * Procedure to deal with a asynchronous code-block encoding job.
- *
- * @param user_data Pointer to a t1_cblk_encode_processing_job_t* structure
- * @param tls       TLS handle.
- */
+/// Procedure to deal with a asynchronous code-block encoding job.
+///
+/// `user_data` -- Pointer to a t1_cblk_encode_processing_job_t* structure
+/// `tls` -- TLS handle.
 fn t1_cblk_encode_processor(
   compno: u32,
   _resno: u32,
@@ -2823,8 +2797,8 @@ fn t1_enc_is_term_pass(
   0i32
 }
 
-/* * Return "cumwmsedec" that should be used to increase tile->distotile */
-/* * mod fixed_quality */
+// Return "cumwmsedec" that should be used to increase tile->distotile
+/// mod fixed_quality
 fn t1_encode_cblk(
   t1: &mut T1Coder,
   cblk: &mut TcdCblkEnc,

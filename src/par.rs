@@ -1,7 +1,7 @@
 //! Parallel helpers: rayon when the `rayon` feature is enabled (some
 //! platforms/targets cannot use rayon); everything falls back to the
 //! sequential iterators otherwise, with identical results.
-
+//!
 /// The current rayon pool's worker count (1 without the `rayon` feature).
 #[cfg(feature = "rayon")]
 pub(crate) fn current_num_threads() -> usize {
@@ -206,7 +206,7 @@ where
 
 /// Sizes the process-wide rayon pool (the first successful call wins:
 /// `build_global` only succeeds once).  Used by the C-ABI
-/// `opj_codec_set_threads` and the CLI tools' env-based setup.
+/// `DecodeParameters::threads` and the CLI tools' env-based setup.
 #[cfg(feature = "rayon")]
 pub(crate) fn configure_pool(n: usize) {
   if n > 0 {

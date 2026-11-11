@@ -31,8 +31,8 @@ enum ForwardWavelet {
   Irreversible97,
 }
 
-/* * @name Local data structures */
-/*@{*/
+// Local data structures
+//@{
 
 pub const VREG_INT_COUNT: usize = 4;
 
@@ -260,7 +260,7 @@ impl dwt_local<'_> {
 }
 
 pub const NB_ELTS_V8: u32 = 8;
-/// Size in bytes of what the C code calls an `opj_v8_t`: one group of `NB_ELTS_V8` floats.
+/// Size in bytes of what the C code calls a `V8`: one group of `NB_ELTS_V8` floats.
 const V8_SIZE: usize = NB_ELTS_V8 as usize * core::mem::size_of::<f32>();
 
 pub type V8Dwt<'a> = v8dwt_local<'a>;
@@ -336,12 +336,12 @@ const DWT_NORMS_REAL: [[f64; 10]; 4] = [
   ],
 ];
 
-/*@}*/
-/* * @name Local static functions */
-/*@{*/
-/* *
-Forward lazy transform (horizontal)
-*/
+//@}
+// Local static functions
+//@{
+//
+// Forward lazy transform (horizontal)
+//
 /*
 ==========================================================
    local functions
@@ -586,9 +586,9 @@ fn dwt_encode_step2(w: &mut [f32], fl_base: usize, mut fw_base: usize, end: u32,
     w[fw_base - 1] += 2 as core::ffi::c_float * w[fw_base - 2] * c
   };
 }
-/* *
-Forward 9-7 wavelet transform in 1-D
-*/
+//
+// Forward 9-7 wavelet transform in 1-D
+//
 /// Forward 9-7 wavelet transform in 1-D, over one staging row of `sn + dn` floats.
 fn dwt_encode_1_real(w: &mut [f32], dn: i32, sn: i32, cas: i32) {
   let mut a: i32 = 0;
@@ -639,9 +639,8 @@ fn dwt_encode_1_real(w: &mut [f32], dn: i32, sn: i32, cas: i32) {
     dwt_encode_step1_combined(w, 0, dn as u32, sn as u32, DWT_K, DWT_INV_K);
   };
 }
-/* *
-Explicit calculation of the Quantization Stepsizes
-*/
+
+/// Explicit calculation of the Quantization Stepsizes
 fn dwt_encode_stepsize(mut stepsize: i32, mut numbps: i32, bandno_stepsize: &mut Stepsize) {
   let mut p: i32 = 0;
   let mut n: i32 = 0;
@@ -659,7 +658,7 @@ fn dwt_encode_stepsize(mut stepsize: i32, mut numbps: i32, bandno_stepsize: &mut
    DWT interface
 ==========================================================
 */
-/* * Process one line for the horizontal pass of the 5x3 forward transform */
+// Process one line for the horizontal pass of the 5x3 forward transform
 /// Process one line for the horizontal pass of the 5-3 forward transform. `row` is the tile
 /// component buffer (row starts at `row_start`), `tmp` the scratch buffer.
 fn dwt_encode_and_deinterleave_h_one_row(
@@ -754,7 +753,7 @@ fn dwt_encode_and_deinterleave_h_one_row(
       .copy_from_slice(&tmp[sn as usize..sn as usize + dn as usize]);
   };
 }
-/* * Process one line for the horizontal pass of the 9x7 forward transform */
+// Process one line for the horizontal pass of the 9x7 forward transform
 /// Process one line for the horizontal pass of the 9-7 forward transform: stage the row into
 /// `tmp`, transform in place, then deinterleave back into the tile component buffer.
 fn dwt_encode_and_deinterleave_h_one_row_real(
@@ -782,7 +781,7 @@ fn dwt_encode_and_deinterleave_h_one_row_real(
   );
 }
 
-/* * Fetch up to cols <= NB_ELTS_V8 for each line, and put them in tmpOut */
+// Fetch up to cols <= NB_ELTS_V8 for each line, and put them in tmpOut
 /* that has a NB_ELTS_V8 interleave factor. */
 /// Generic over the sample type so the 5-3 (`i32`) and 9-7 (`f32`) passes can share
 /// it without erasing their buffers to `void*`. Only moves and zero-fills samples.
@@ -2010,7 +2009,7 @@ fn dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult
       {
         /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
         /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
-        /* on opj_decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
+        /* on decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
         /* This is less extreme than memsetting the whole buffer to 0 */
         /* although we could potentially do better with better handling of edge conditions */
         if win_tr_x1 >= 1u32 && win_tr_x1 < rw {
@@ -2237,8 +2236,8 @@ fn v8dwt_interleave_partial_v(mut dwt: &V8Dwt, sa: &SparseArray, sa_col: u32, nb
   debug_assert!(ret);
 }
 
-/// `w` is the flat wavelet buffer and `w_base` the float index the C code's `opj_v8_t*` argument
-/// pointed at (its `opj_v8_t` index times `NB_ELTS_V8`).
+/// `w` is the flat wavelet buffer and `w_base` the float index the C code's `V8*` argument
+/// pointed at (its `V8` index times `NB_ELTS_V8`).
 fn v8dwt_decode_step1(w: &[Cell<f32>], w_base: usize, mut start: u32, mut end: u32, c: f32) {
   /* To be adapted if NB_ELTS_V8 changes */
   for i in start..end {
@@ -2250,7 +2249,7 @@ fn v8dwt_decode_step1(w: &[Cell<f32>], w_base: usize, mut start: u32, mut end: u
   }
 }
 
-/// `l_base` / `w_base` are the float indices the C code's two `opj_v8_t*` arguments pointed at.
+/// `l_base` / `w_base` are the float indices the C code's two `V8*` arguments pointed at.
 fn v8dwt_decode_step2(
   w: &[Cell<f32>],
   mut l_base: usize,
@@ -2312,7 +2311,7 @@ fn v8dwt_decode(mut dwt: &V8Dwt) {
     a = 1i32;
     b = 0i32
   }
-  // The C code indexes `wavelet` in `opj_v8_t` units; here the buffer is flat floats.
+  // The C code indexes `wavelet` in `V8` units; here the buffer is flat floats.
   let group = |k: i32| (NB_ELTS_V8 as i32 * k) as usize;
   v8dwt_decode_step1(dwt.wavelet, group(a), dwt.win_l_x0, dwt.win_l_x1, DWT_K);
   v8dwt_decode_step1(dwt.wavelet, group(b), dwt.win_h_x0, dwt.win_h_x1, two_inv_k);

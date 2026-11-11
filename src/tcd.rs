@@ -1,3 +1,41 @@
+// The copyright in this software is being made available under the 2-clauses
+// BSD License, included below. This software may be subject to other third
+// party and contributor rights, including patent rights, and no such rights
+// are granted under this license.
+//
+// Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
+// Copyright (c) 2002-2014, Professor Benoit Macq
+// Copyright (c) 2001-2003, David Janssens
+// Copyright (c) 2002-2003, Yannick Verschueren
+// Copyright (c) 2003-2007, Francois-Olivier Devaux
+// Copyright (c) 2003-2014, Antonin Descampe
+// Copyright (c) 2005, Herve Drolon, FreeImage Team
+// Copyright (c) 2006-2007, Parvatha Elangovan
+// Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
+// Copyright (c) 2012, CS Systemes d'Information, France
+// Copyright (c) 2017, IntoPIX SA <support@intopix.com>
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //! Tile-component decoder/encoder: the per-tile stage pipeline
 //! (DC shift -> MCT -> DWT -> tier-1 -> tier-2) and the decoded-tile
 //! data extraction. See `doc/jpeg2000-design-spec.md` §3.
@@ -15,7 +53,7 @@ use super::t2::*;
 use super::tgt::*;
 use crate::image::{CoreImage, CoreImageComp};
 
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 impl Tcd {
   pub fn new(m_is_decoder: bool) -> Self {
     let mut tcd = Self::default();
@@ -37,7 +75,7 @@ impl Drop for Tcd {
   }
 }
 
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 fn tcd_rateallocate_fixed(tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) {
   let mut layno: u32 = 0; /* fixed_quality */
   // SAFETY: `tcp` is set by tcd_init_tile and valid while the tcd is in use.
@@ -49,8 +87,8 @@ fn tcd_rateallocate_fixed(tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) {
   }
 }
 
-/** Returns OPJ_TRUE if the layer allocation is unchanged w.r.t to the previous
- * invokation with a different threshold */
+/// Returns true if the layer allocation is unchanged w.r.t to the previous
+/// invokation with a different threshold
 fn tcd_makelayer(tcd: &mut Tcd, layno: u32, thresh: f64, final_0: u32) -> bool {
   let mut compno: u32 = 0;
   let mut resno: u32 = 0;
@@ -598,51 +636,13 @@ pub(crate) fn alloc_tile_component_data(l_tilec: &mut TcdTileComp, f32_buf: bool
     Err(())
   }
 }
-/*
- * The copyright in this software is being made available under the 2-clauses
- * BSD License, included below. This software may be subject to other third
- * party and contributor rights, including patent rights, and no such rights
- * are granted under this license.
- *
- * Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
- * Copyright (c) 2002-2014, Professor Benoit Macq
- * Copyright (c) 2001-2003, David Janssens
- * Copyright (c) 2002-2003, Yannick Verschueren
- * Copyright (c) 2003-2007, Francois-Olivier Devaux
- * Copyright (c) 2003-2014, Antonin Descampe
- * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2006-2007, Parvatha Elangovan
- * Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
- * Copyright (c) 2012, CS Systemes d'Information, France
- * Copyright (c) 2017, IntoPIX SA <support@intopix.com>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-/* ----------------------------------------------------------------------- */
-/* *
- * Initializes tile coding/decoding
- */
-/* ----------------------------------------------------------------------- */
+//
+//
+// -----------------------------------------------------------------------
+//
+// Initializes tile coding/decoding
+//
+// -----------------------------------------------------------------------
 pub(crate) fn tcd_init_tile(
   mut p_tcd: &mut Tcd,
   mut p_tile_no: u32,
@@ -1073,12 +1073,11 @@ pub(crate) fn tcd_init_decode_tile(
 ) -> OpResult {
   tcd_init_tile(p_tcd, p_tile_no, false, p_manager, image, cp)
 }
-/* *
- * Allocates memory for an encoding code block (but not data).
- */
-/* *
- * Allocates memory for an encoding code block (but not data memory).
- */
+//
+// Allocates memory for an encoding code block (but not data).
+//
+
+/// Allocates memory for an encoding code block (but not data memory).
 fn tcd_code_block_enc_allocate(p_code_block: &mut TcdCblkEnc) {
   if p_code_block.layers.is_empty() {
     p_code_block.layers.resize(100, Default::default());
@@ -1087,12 +1086,11 @@ fn tcd_code_block_enc_allocate(p_code_block: &mut TcdCblkEnc) {
     p_code_block.passes.resize(100, Default::default());
   }
 }
-/* *
- * Allocates data for an encoding code block
- */
-/* *
- * Allocates data memory for an encoding code block.
- */
+//
+// Allocates data for an encoding code block
+//
+
+/// Allocates data memory for an encoding code block.
 fn tcd_code_block_enc_allocate_data(p_code_block: &mut TcdCblkEnc) {
   let mut l_data_size: u32 = 0;
   /* +1 is needed for https://github.com/uclouvain/openjpeg/issues/835 */
@@ -1125,12 +1123,11 @@ pub(crate) fn tcd_reinit_segment(seg: &mut TcdSeg) {
 /* and increment the data pointer, so that mqc_init_enc() */
 /* can do bp = data - 1, and mqc_byteout() can safely dereference */
 /* it. */
-/* *
-* Allocates memory for a decoding code block.
-*/
-/* *
- * Allocates memory for a decoding code block.
- */
+//
+// Allocates memory for a decoding code block.
+//
+
+/// Allocates memory for a decoding code block.
 fn tcd_code_block_dec_allocate(p_code_block: &mut TcdCblkDec) {
   if p_code_block.segs.is_empty() {
     p_code_block.segs.resize(10, Default::default());
@@ -1647,10 +1644,8 @@ pub(crate) fn tcd_update_tile_data(
   }
 }
 
-/* *
-Free the memory allocated for encoding
-@param tcd TCD handle
-*/
+/// Free the memory allocated for encoding
+/// `tcd` — TCD handle
 fn tcd_free_tile(mut p_tcd: &mut Tcd) {
   for l_tile_comp in p_tcd.tcd_image.tiles.comps.iter_mut() {
     for l_res in l_tile_comp.resolutions.iter_mut() {
@@ -2588,13 +2583,12 @@ pub(crate) fn tcd_is_subband_area_of_interest(
     intersects
   }
 }
-/* * Returns whether a tile componenent is fully decoded, taking into account
- * p_tcd->win_* members.
- *
- * @param p_tcd    TCD handle.
- * @param compno Component number
- * @return OPJ_TRUE whether the tile componenent is fully decoded
- */
+/// Returns whether a tile componenent is fully decoded, taking into account
+/// p_tcd->win_* members.
+///
+/// `p_tcd` — TCD handle.
+/// `compno` — Component number
+/// true whether the tile componenent is fully decoded
 fn tcd_is_whole_tilecomp_decoding(p_tcd: &mut Tcd, compno: u32, image: &mut CoreImage) -> bool {
   {
     let tilec = &p_tcd.tcd_image.tiles.comps[compno as usize];
@@ -2621,8 +2615,8 @@ fn tcd_is_whole_tilecomp_decoding(p_tcd: &mut Tcd, compno: u32, image: &mut Core
           && (tilec.y1 as u32).wrapping_sub(tcy1) >> shift == 0u32)
   }
 }
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------

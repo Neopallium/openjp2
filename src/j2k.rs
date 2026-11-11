@@ -13,7 +13,7 @@ use super::par;
 
 // Owned codestream index (Phase 5.d). The `#[repr(C)]` mirror in c_api_types.rs
 // is built only when a C caller asks for it via get_cstr_index.
-/// A codestream-index marker entry (the C `opj_marker_info` fields).
+/// A codestream-index marker entry (the C `MarkerInfo` fields).
 #[derive(Copy, Clone, Default, Debug)]
 pub struct MarkerInfo {
   /// The marker value.
@@ -24,7 +24,7 @@ pub struct MarkerInfo {
   pub len: i32,
 }
 
-/// A codestream-index tile-part entry (the C `opj_tp_index` fields).
+/// A codestream-index tile-part entry (the C `TpIndex` fields).
 #[derive(Copy, Clone, Default, Debug)]
 pub struct TpIndex {
   /// Start position of the tile-part.
@@ -35,7 +35,7 @@ pub struct TpIndex {
   pub end_pos: i64,
 }
 
-/// A codestream-index packet entry (the C `opj_packet_info` fields).
+/// A codestream-index packet entry (the C `PacketInfo` fields).
 #[derive(Copy, Clone, Default, Debug)]
 pub struct PacketInfo {
   /// Start position of the packet.
@@ -537,7 +537,7 @@ impl ProgressionStep {
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Eq, PartialEq, Default)]
 pub(crate) enum ProgressionOrder {
-  /// No/invalid order (the C's `OPJ_PROG_UNKNOWN`).
+  /// No/invalid order (the C's `Unknown`).
   Unknown = -1,
   /// Layer, resolution, component, precinct.
   #[default]
@@ -592,7 +592,7 @@ impl From<core::ffi::c_int> for ProgressionOrder {
 }
 
 impl ProgressionOrder {
-  /// The C marker value (`OPJ_LRCP` = 0 .. `OPJ_CPRL` = 4).
+  /// The C marker value (`ProgressionOrder::LRCP` = 0 .. `ProgressionOrder::CPRL` = 4).
   pub fn to_c_int(self) -> core::ffi::c_int {
     match self {
       Self::LRCP => 0,
@@ -882,9 +882,9 @@ impl J2KMarker {
   }
 }
 
-/* *
- * Updates the Tile Length Marker.
- */
+//
+// Updates the Tile Length Marker.
+//
 /// Merges a worker's per-tile-part TLM entries (recorded into the clone of
 /// the master's TLM buffer) into the master's buffer, in tile order.
 fn merge_tile_tlm(p_j2k: &mut J2k, worker_buf: &[u8], worker_cur: usize, base: usize) {
@@ -925,20 +925,19 @@ fn j2k_update_tlm(mut p_j2k: &mut J2k, mut p_tile_part_size: u32) {
 pub(crate) fn j2k_convert_progression_order(prg_order: ProgressionOrder) -> ProgressionOrder {
   prg_order
 }
-/* *
- * Checks the progression order changes values. Tells of the poc given as input are valid.
- * A nice message is outputted at errors.
- *
- * @param       p_pocs                  the progression order changes.
- * @param       tileno                  the tile number of interest
- * @param       p_nb_pocs               the number of progression order changes.
- * @param       p_nb_resolutions        the number of resolutions.
- * @param       numcomps                the number of components
- * @param       numlayers               the number of layers.
- * @param       p_manager               the user event manager.
- *
- * @return      true if the pocs are valid.
- */
+
+/// Checks the progression order changes values. Tells of the poc given as input are valid.
+/// A nice message is outputted at errors.
+///
+/// `p_pocs` — the progression order changes.
+/// `tileno` — the tile number of interest
+/// `p_nb_pocs` — the number of progression order changes.
+/// `p_nb_resolutions` — the number of resolutions.
+/// `p_num_comps` — the number of components
+/// `p_num_layers` — the number of layers.
+/// `p_manager` — the user event manager.
+///
+/// true if the pocs are valid.
 fn j2k_check_poc_val(
   p_pocs: &[crate::types::Poc],
   tileno: u32,
@@ -1029,16 +1028,16 @@ fn j2k_check_poc_val(
   loss == 0
 }
 
-/* *
- * Gets the number of tile parts used for the given change of progression (if any) and the given tile.
- *
- * @param               cp                      the coding parameters.
- * @param               pino            the offset of the given poc (i.e. its position in the coding parameter).
- * @param               tileno          the given tile.
- *
- * @return              the number of tile parts.
- */
-/* ----------------------------------------------------------------------- */
+//
+// Gets the number of tile parts used for the given change of progression (if any) and the given tile.
+//
+// * `cp` — the coding parameters.
+// * `pino` — the offset of the given poc (i.e. its position in the coding parameter).
+// * `tileno` — the given tile.
+//
+// the number of tile parts.
+//
+// -----------------------------------------------------------------------
 fn j2k_get_num_tp(cp: &mut Cp, pino: u32, tileno: u32) -> u32 {
   let mut tpnum = 1_u32;
   /*  preconditions */
@@ -1085,18 +1084,16 @@ fn j2k_get_num_tp(cp: &mut Cp, pino: u32, tileno: u32) -> u32 {
   tpnum
 }
 
-/* *
- * Calculates the total number of tile parts needed by the encoder to
- * encode such an image. If not enough memory is available, then the function return false.
- *
- * @param       p_nb_tiles      pointer that will hold the number of tile parts.
- * @param       cp                      the coding parameters for the image.
- * @param       image           the image to encode.
- * @param       p_j2k                   the p_j2k encoder.
- * @param       p_manager       the user event manager.
- *
- * @return true if the function was successful, false else.
- */
+/// Calculates the total number of tile parts needed by the encoder to
+/// encode such an image. If not enough memory is available, then the function return false.
+///
+/// `p_nb_tiles` — pointer that will hold the number of tile parts.
+/// `cp` — the coding parameters for the image.
+/// `image` — the image to encode.
+/// `p_j2k` — the p_j2k encoder.
+/// `p_manager` — the user event manager.
+///
+/// true if the function was successful, false else.
 fn j2k_calculate_tp(
   cp: &mut Cp,
   p_nb_tiles: &mut u32,
@@ -1126,18 +1123,17 @@ fn j2k_calculate_tp(
   Ok(())
 }
 
-/*
- * -----------------------------------------------------------------------
- * -----------------------------------------------------------------------
- * -----------------------------------------------------------------------
- */
-/* *
- * Writes the SOC marker (Start Of Codestream)
- *
- * @param       p_stream                        the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager       the user event manager.
-*/
+//
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+//
+
+/// Writes the SOC marker (Start Of Codestream)
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_soc(
   mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
@@ -1160,18 +1156,10 @@ fn j2k_write_soc(
   Ok(())
 }
 
-/* *
- * Reads a SOC marker (Start of Codestream)
- * @param       p_j2k           the jpeg2000 file codec.
- * @param       p_stream        the codestream to read from
- * @param       p_manager       the user event manager.
-*/
-/* *
- * Reads a SOC marker (Start of Codestream)
- * @param       p_j2k           the jpeg2000 file codec.
- * @param p_stream
- * @param       p_manager       the user event manager.
-*/
+/// Reads a SOC marker (Start of Codestream)
+/// `p_j2k` — the jpeg2000 file codec.
+/// `p_stream` — the codestream to read from.
+/// `p_manager` — the user event manager.
 fn j2k_read_soc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut l_data: [u8; 2] = [0; 2];
   /* preconditions */
@@ -1221,13 +1209,11 @@ fn j2k_read_soc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr
   Ok(())
 }
 
-/* *
- * Writes the SIZ marker (image and tile size)
- *
- * @param       p_j2k           J2K codec.
- * @param       p_stream        the stream to write data to.
- * @param       p_manager       the user event manager.
-*/
+/// Writes the SIZ marker (image and tile size)
+///
+/// `p_j2k` — J2K codec.
+/// `p_stream` — the stream to write data to.
+/// `p_manager` — the user event manager.
 fn j2k_write_siz(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut i: u32 = 0;
   /* preconditions */
@@ -1285,20 +1271,19 @@ fn j2k_write_siz(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMg
   Ok(())
 }
 
-/* *
- * Reads a SIZ marker (image and tile size)
- * @param       p_j2k           the jpeg2000 file codec.
- * @param       p_header_data   the data contained in the SIZ box.
- * @param       p_header_size   the size of the data contained in the SIZ marker.
- * @param       p_manager       the user event manager.
-*/
-/* *
- * Reads a SIZ marker (image and tile size)
- * @param       p_j2k           the jpeg2000 file codec.
- * @param       p_header_data   the data contained in the SIZ box.
- * @param       p_header_size   the size of the data contained in the SIZ marker.
- * @param       p_manager       the user event manager.
-*/
+//
+// Reads a SIZ marker (image and tile size)
+// * `p_j2k` — the jpeg2000 file codec.
+// * `p_header_data` — the data contained in the SIZ box.
+// * `p_header_size` — the size of the data contained in the SIZ marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a SIZ marker (image and tile size)
+/// `p_j2k` — the jpeg2000 file codec.
+/// `p_header_data` — the data contained in the SIZ box.
+/// `p_header_size` — the size of the data contained in the SIZ marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -1698,13 +1683,11 @@ fn j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   Ok(())
 }
 
-/* *
- * Writes the COM marker (comment)
- *
- * @param       p_stream                        the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager       the user event manager.
-*/
+/// Writes the COM marker (comment)
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_com(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   /* preconditions */
   /* L_COM */
@@ -1736,20 +1719,19 @@ fn j2k_write_com(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMg
   Ok(())
 }
 
-/* *
- * Reads a COM marker (comments)
- * @param       p_j2k           the jpeg2000 file codec.
- * @param       p_header_data   the data contained in the COM box.
- * @param       p_header_size   the size of the data contained in the COM marker.
- * @param       p_manager       the user event manager.
-*/
-/* *
- * Reads a COM marker (comments)
- * @param       p_j2k           the jpeg2000 file codec.
- * @param       p_header_data   the data contained in the COM box.
- * @param       p_header_size   the size of the data contained in the COM marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a COM marker (comments)
+// * `p_j2k` — the jpeg2000 file codec.
+// * `p_header_data` — the data contained in the COM box.
+// * `p_header_size` — the size of the data contained in the COM marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a COM marker (comments)
+/// `p_j2k` — the jpeg2000 file codec.
+/// `p_header_data` — the data contained in the COM box.
+/// `p_header_size` — the size of the data contained in the COM marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_com(
   mut _p_j2k: &mut J2k,
   mut _header_data: &[u8],
@@ -1760,13 +1742,11 @@ fn j2k_read_com(
   Ok(())
 }
 
-/* *
- * Writes the COD marker (Coding style default)
- *
- * @param       p_stream                        the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager       the user event manager.
-*/
+/// Writes the COD marker (Coding style default)
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_cod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut l_remaining_size: u32 = 0;
   /* preconditions */
@@ -1820,13 +1800,11 @@ fn j2k_write_cod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMg
   Ok(())
 }
 
-/* *
- * Reads a COD marker (Coding style defaults)
- * @param       p_header_data   the data contained in the COD box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the COD marker.
- * @param       p_manager               the user event manager.
-*/
+/// Reads a COD marker (Coding style defaults)
+/// `p_header_data` — the data contained in the COD box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the COD marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_cod(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -1938,14 +1916,12 @@ fn j2k_read_cod(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   Ok(())
 }
 
-/* *
- * Writes the COC marker (Coding style component)
- *
- * @param       p_j2k       J2K codec.
- * @param       p_comp_no   the index of the component to output.
- * @param       p_stream    the stream to write data to.
- * @param       p_manager   the user event manager.
-*/
+/// Writes the COC marker (Coding style component)
+///
+/// `p_j2k` — J2K codec.
+/// `p_comp_no` — the index of the component to output.
+/// `p_stream` — the stream to write data to.
+/// `p_manager` — the user event manager.
 fn j2k_write_coc(
   p_j2k: &mut J2k,
   p_comp_no: u32,
@@ -1992,15 +1968,13 @@ fn j2k_write_coc(
   Ok(())
 }
 
-/* *
- * Compares 2 COC markers (Coding style component)
- *
- * @param       p_j2k            J2K codec.
- * @param       p_first_comp_no  the index of the first component to compare.
- * @param       p_second_comp_no the index of the second component to compare.
- *
- * @return      OPJ_TRUE if equals
- */
+/// Compares 2 COC markers (Coding style component)
+///
+/// `p_j2k` — J2K codec.
+/// `p_first_comp_no` — the index of the first component to compare.
+/// `p_second_comp_no` — the index of the second component to compare.
+///
+/// true if equals
 fn j2k_compare_coc(p_j2k: &mut J2k, p_first_comp_no: u32, p_second_comp_no: u32) -> bool {
   /* preconditions */
   let csty_eq = {
@@ -2019,15 +1993,13 @@ fn j2k_compare_coc(p_j2k: &mut J2k, p_first_comp_no: u32, p_second_comp_no: u32)
   .is_ok()
 }
 
-/* *
- * Writes the COC marker (Coding style component)
- *
- * @param       p_j2k                   J2K codec.
- * @param       p_comp_no               the index of the component to output.
- * @param p_data
- * @param p_data_written
- * @param       p_manager               the user event manager.
-*/
+/// Writes the COC marker (Coding style component)
+///
+/// `p_j2k` — J2K codec.
+/// `p_comp_no` — the index of the component to output.
+/// `p_data`
+/// `p_data_written`
+/// `p_manager` — the user event manager.
 fn j2k_write_coc_in_memory(
   p_j2k: &mut J2k,
   p_comp_no: u32,
@@ -2077,11 +2049,9 @@ fn j2k_write_coc_in_memory(
   *p_data_written = pos as u32;
 }
 
-/* *
- * Gets the maximum size taken by a coc.
- *
- * @param       p_j2k   the jpeg2000 codec to use.
- */
+/// Gets the maximum size taken by a coc.
+///
+/// `p_j2k` — the jpeg2000 codec to use.
 fn j2k_get_max_coc_size(p_j2k: &mut J2k) -> u32 {
   let mut i: u32 = 0;
   let mut j: u32 = 0;
@@ -2105,20 +2075,19 @@ fn j2k_get_max_coc_size(p_j2k: &mut J2k) -> u32 {
   (6u32).wrapping_add(l_max)
 }
 
-/* *
- * Reads a COC marker (Coding Style Component)
- * @param       p_header_data   the data contained in the COC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the COC marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a COC marker (Coding Style Component)
- * @param       p_header_data   the data contained in the COC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the COC marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a COC marker (Coding Style Component)
+// * `p_header_data` — the data contained in the COC box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the COC marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a COC marker (Coding Style Component)
+/// `p_header_data` — the data contained in the COC box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the COC marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_coc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -2187,13 +2156,11 @@ fn j2k_read_coc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   Ok(())
 }
 
-/* *
- * Writes the QCD marker (quantization default)
- *
- * @param       p_j2k                   J2K codec.
- * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
-*/
+/// Writes the QCD marker (quantization default)
+///
+/// `p_j2k` — J2K codec.
+/// `p_stream` — the stream to write data to.
+/// `p_manager` — the user event manager.
 fn j2k_write_qcd(
   mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
@@ -2240,20 +2207,19 @@ fn j2k_write_qcd(
   }
   Ok(())
 }
-/* *
- * Reads a QCD marker (Quantization defaults)
- * @param       p_header_data   the data contained in the QCD box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the QCD marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a QCD marker (Quantization defaults)
- * @param       p_header_data   the data contained in the QCD box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the QCD marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a QCD marker (Quantization defaults)
+// * `p_header_data` — the data contained in the QCD box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the QCD marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a QCD marker (Quantization defaults)
+/// `p_header_data` — the data contained in the QCD box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the QCD marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_qcd(mut p_j2k: &mut J2k, header_data: &[u8], mut p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -2280,14 +2246,12 @@ fn j2k_read_qcd(mut p_j2k: &mut J2k, header_data: &[u8], mut p_manager: &mut Eve
   Ok(())
 }
 
-/* *
- * Writes the QCC marker (quantization component)
- *
- * @param       p_comp_no       the index of the component to output.
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
+/// Writes the QCC marker (quantization component)
+///
+/// `p_comp_no` — the index of the component to output.
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_qcc(
   p_j2k: &mut J2k,
   p_comp_no: u32,
@@ -2329,15 +2293,13 @@ fn j2k_write_qcc(
   Ok(())
 }
 
-/* *
- * Compare QCC markers (quantization component)
- *
- * @param       p_j2k                 J2K codec.
- * @param       p_first_comp_no       the index of the first component to compare.
- * @param       p_second_comp_no      the index of the second component to compare.
- *
- * @return OPJ_TRUE if equals.
- */
+/// Compare QCC markers (quantization component)
+///
+/// `p_j2k` — J2K codec.
+/// `p_first_comp_no` — the index of the first component to compare.
+/// `p_second_comp_no` — the index of the second component to compare.
+///
+/// true if equals.
 fn j2k_compare_qcc(
   mut p_j2k: &mut J2k,
   mut p_first_comp_no: u32,
@@ -2351,15 +2313,13 @@ fn j2k_compare_qcc(
   )
 }
 
-/* *
- * Writes the QCC marker (quantization component)
- *
- * @param       p_j2k           J2K codec.
- * @param       p_comp_no       the index of the component to output.
- * @param p_data
- * @param       p_data_written  the stream to write data to.
- * @param       p_manager       the user event manager.
-*/
+/// Writes the QCC marker (quantization component)
+///
+/// `p_j2k` — J2K codec.
+/// `p_comp_no` — the index of the component to output.
+/// `p_data`
+/// `p_data_written` — the stream to write data to.
+/// `p_manager` — the user event manager.
 fn j2k_write_qcc_in_memory(
   p_j2k: &mut J2k,
   p_comp_no: u32,
@@ -2411,27 +2371,24 @@ fn j2k_write_qcc_in_memory(
   *p_data_written = pos as u32;
 }
 
-/* *
- * Gets the maximum size taken by a qcc.
- */
+/// Gets the maximum size taken by a qcc.
 fn j2k_get_max_qcc_size(mut p_j2k: &mut J2k) -> u32 {
   j2k_get_max_coc_size(p_j2k)
 }
 
-/* *
- * Reads a QCC marker (Quantization component)
- * @param       p_header_data   the data contained in the QCC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the QCC marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a QCC marker (Quantization component)
- * @param       p_header_data   the data contained in the QCC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the QCC marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a QCC marker (Quantization component)
+// * `p_header_data` — the data contained in the QCC box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the QCC marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a QCC marker (Quantization component)
+/// `p_header_data` — the data contained in the QCC box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the QCC marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_qcc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -2519,14 +2476,12 @@ fn j2k_write_poc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMg
   Ok(())
 }
 
-/* *
- * Writes the POC marker (Progression Order Change)
- *
- * @param       p_j2k          J2K codec.
- * @param p_data
- * @param       p_data_written the stream to write data to.
- * @param       p_manager      the user event manager.
- */
+/// Writes the POC marker (Progression Order Change)
+///
+/// `p_j2k` — J2K codec.
+/// `p_data`
+/// `p_data_written` — the stream to write data to.
+/// `p_manager` — the user event manager.
 fn j2k_write_poc_in_memory(
   p_j2k: &mut J2k,
   data: &mut [u8],
@@ -2577,9 +2532,7 @@ fn j2k_write_poc_in_memory(
   *p_data_written = pos as u32;
 }
 
-/* *
- * Gets the maximum size taken by the writing of a POC.
- */
+/// Gets the maximum size taken by the writing of a POC.
 fn j2k_get_max_poc_size(p_j2k: &mut J2k) -> u32 {
   let l_nb_tiles = p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw);
   let mut l_max_poc = 0_u32;
@@ -2591,9 +2544,8 @@ fn j2k_get_max_poc_size(p_j2k: &mut J2k) -> u32 {
   l_max_poc = l_max_poc.wrapping_add(1);
   (4u32).wrapping_add((9u32).wrapping_mul(l_max_poc))
 }
-/* *
- * Gets the maximum size taken by the toc headers of all the tile parts of any given tile.
- */
+
+/// Gets the maximum size taken by the toc headers of all the tile parts of any given tile.
 fn j2k_get_max_toc_size(p_j2k: &mut J2k) -> u32 {
   let l_nb_tiles: u32 = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   let mut l_max = 0_u32;
@@ -2604,11 +2556,10 @@ fn j2k_get_max_toc_size(p_j2k: &mut J2k) -> u32 {
   }
   (12u32).wrapping_mul(l_max)
 }
-/* *
- * Gets the maximum size taken by the headers of the SOT.
- *
- * @param       p_j2k   the jpeg2000 codec to use.
- */
+
+/// Gets the maximum size taken by the headers of the SOT.
+///
+/// `p_j2k` — the jpeg2000 codec to use.
 fn j2k_get_specific_header_sizes(p_j2k: &mut J2k) -> u32 {
   let mut l_nb_bytes = 0_u32;
   let mut l_coc_bytes: u32 = 0;
@@ -2663,25 +2614,24 @@ fn j2k_get_specific_header_sizes(p_j2k: &mut J2k) -> u32 {
       .wrapping_add(1u32);
     l_nb_bytes = l_nb_bytes.wrapping_add(p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_plt)
   }
-  /* ** DEVELOPER CORNER, Add room for your headers ***/
+  // * DEVELOPER CORNER, Add room for your headers **
   l_nb_bytes
 }
-/* *
- * Reads a POC marker (Progression Order Change)
- *
- * @param       p_header_data   the data contained in the POC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a POC marker (Progression Order Change)
- *
- * @param       p_header_data   the data contained in the POC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a POC marker (Progression Order Change)
+//
+// * `p_header_data` — the data contained in the POC box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the POC marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a POC marker (Progression Order Change)
+///
+/// `p_header_data` — the data contained in the POC box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the POC marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_poc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -2753,22 +2703,21 @@ fn j2k_read_poc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   Ok(())
 }
 
-/* *
- * Reads a CRG marker (Component registration)
- *
- * @param       p_header_data   the data contained in the TLM box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a CRG marker (Component registration)
- *
- * @param       p_header_data   the data contained in the TLM box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a CRG marker (Component registration)
+//
+// * `p_header_data` — the data contained in the TLM box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the TLM marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a CRG marker (Component registration)
+///
+/// `p_header_data` — the data contained in the TLM box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the TLM marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_crg(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   /* preconditions */
@@ -2796,22 +2745,21 @@ fn j2k_read_crg(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   Ok(())
 }
 
-/* *
- * Reads a TLM marker (Tile Length Marker)
- *
- * @param       p_header_data   the data contained in the TLM box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a TLM marker (Tile Length Marker)
- *
- * @param       p_header_data   the data contained in the TLM box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a TLM marker (Tile Length Marker)
+//
+// * `p_header_data` — the data contained in the TLM box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the TLM marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a TLM marker (Tile Length Marker)
+///
+/// `p_header_data` — the data contained in the TLM box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the TLM marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_tlm(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   if header_data.len() < 2 {
     event_msg!(p_manager, EVT_ERROR, "Error reading TLM marker.\n",);
@@ -2918,22 +2866,21 @@ fn j2k_read_tlm(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   Ok(())
 }
 
-/* *
- * Reads a PLM marker (Packet length, main header marker)
- *
- * @param       p_header_data   the data contained in the TLM box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a PLM marker (Packet length, main header marker)
- *
- * @param       p_header_data   the data contained in the TLM box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a PLM marker (Packet length, main header marker)
+//
+// * `p_header_data` — the data contained in the TLM box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the TLM marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a PLM marker (Packet length, main header marker)
+///
+/// `p_header_data` — the data contained in the TLM box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the TLM marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_plm(
   mut _p_j2k: &mut J2k,
   header_data: &[u8],
@@ -2993,22 +2940,21 @@ fn j2k_read_plm(
   Ok(())
 }
 
-/* *
- * Reads a PLT marker (Packet length, tile-part header)
- *
- * @param       p_header_data   the data contained in the PLT box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the PLT marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a PLT marker (Packet length, tile-part header)
- *
- * @param       p_header_data   the data contained in the PLT box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the PLT marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a PLT marker (Packet length, tile-part header)
+//
+// * `p_header_data` — the data contained in the PLT box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the PLT marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a PLT marker (Packet length, tile-part header)
+///
+/// `p_header_data` — the data contained in the PLT box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the PLT marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_plt(_p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -3048,22 +2994,21 @@ fn j2k_read_plt(_p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) 
   Ok(())
 }
 
-/* *
- * Reads a PPM marker (Packed headers, main header)
- *
- * @param       p_header_data   the data contained in the POC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
- */
-/* *
- * Reads a PPM marker (Packed packet headers, main header)
- *
- * @param       p_header_data   the data contained in the POC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
- */
+//
+// Reads a PPM marker (Packed headers, main header)
+//
+// * `p_header_data` — the data contained in the POC box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the POC marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a PPM marker (Packed packet headers, main header)
+///
+/// `p_header_data` — the data contained in the POC box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the POC marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_ppm(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -3093,18 +3038,17 @@ fn j2k_read_ppm(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   Ok(())
 }
 
-/* *
- * Merges all PPM markers read (Packed headers, main header)
- *
- * @param       p_cp      main coding parameters.
- * @param       p_manager the user event manager.
- */
-/* *
- * Merges all PPM markers read (Packed headers, main header)
- *
- * @param       p_cp      main coding parameters.
- * @param       p_manager the user event manager.
- */
+//
+// Merges all PPM markers read (Packed headers, main header)
+//
+// * `p_cp` — main coding parameters.
+// * `p_manager` — the user event manager.
+//
+
+/// Merges all PPM markers read (Packed headers, main header)
+///
+/// `p_cp` — main coding parameters.
+/// `p_manager` — the user event manager.
 fn j2k_merge_ppm(p_cp: &mut Cp, p_manager: &mut EventMgr) -> OpResult {
   let mut i: u32 = 0;
   let mut l_ppm_data_size: u32 = 0;
@@ -3208,22 +3152,21 @@ fn j2k_merge_ppm(p_cp: &mut Cp, p_manager: &mut EventMgr) -> OpResult {
   p_cp.ppm_markers = Vec::new();
   Ok(())
 }
-/* *
- * Reads a PPT marker (Packed packet headers, tile-part header)
- *
- * @param       p_header_data   the data contained in the PPT box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the PPT marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a PPT marker (Packed packet headers, tile-part header)
- *
- * @param       p_header_data   the data contained in the PPT box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the PPT marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a PPT marker (Packed packet headers, tile-part header)
+//
+// * `p_header_data` — the data contained in the PPT box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the PPT marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a PPT marker (Packed packet headers, tile-part header)
+///
+/// `p_header_data` — the data contained in the PPT box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the PPT marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_ppt(mut p_j2k: &mut J2k, header_data: &[u8], mut p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -3260,18 +3203,17 @@ fn j2k_read_ppt(mut p_j2k: &mut J2k, header_data: &[u8], mut p_manager: &mut Eve
   tcp.ppt_markers[l_z_ppt as usize].m_data = header_data[cursor..].to_vec();
   Ok(())
 }
-/* *
- * Merges all PPT markers read (Packed headers, tile-part header)
- *
- * @param       p_tcp   the tile.
- * @param       p_manager               the user event manager.
- */
-/* *
- * Merges all PPT markers read (Packed packet headers, tile-part header)
- *
- * @param       p_tcp   the tile.
- * @param       p_manager               the user event manager.
- */
+//
+// Merges all PPT markers read (Packed headers, tile-part header)
+//
+// * `p_tcp` — the tile.
+// * `p_manager` — the user event manager.
+//
+
+/// Merges all PPT markers read (Packed packet headers, tile-part header)
+///
+/// `p_tcp` — the tile.
+/// `p_manager` — the user event manager.
 fn j2k_merge_ppt(p_tcp: &mut Tcp, p_manager: &mut EventMgr) -> OpResult {
   /* preconditions */
 
@@ -3298,13 +3240,12 @@ fn j2k_merge_ppt(p_tcp: &mut Tcp, p_manager: &mut EventMgr) -> OpResult {
   p_tcp.ppt_buffer = l_buffer;
   Ok(())
 }
-/* *
- * Writes the TLM marker (Tile Length Marker)
- *
- * @param       p_stream                                the stream to write data to.
- * @param       p_j2k                           J2K codec.
- * @param       p_manager               the user event manager.
-*/
+
+/// Writes the TLM marker (Tile Length Marker)
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_tlm(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut l_tlm_size: u32 = 0;
   let mut size_per_tile_part: u32 = 0;
@@ -3361,16 +3302,15 @@ fn j2k_write_tlm(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMg
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
   Ok(())
 }
-/* *
- * Writes the SOT marker (Start of tile-part)
- *
- * @param       p_j2k            J2K codec.
- * @param       p_data           Output buffer
- * @param       total_data_size  Output buffer size
- * @param       p_data_written   Number of bytes written into stream
- * @param       p_stream         the stream to write data to.
- * @param       p_manager        the user event manager.
-*/
+
+/// Writes the SOT marker (Start of tile-part)
+///
+/// `p_j2k` — J2K codec.
+/// `p_data` — Output buffer
+/// `total_data_size` — Output buffer size
+/// `p_data_written` — Number of bytes written into stream
+/// `p_stream` — the stream to write data to.
+/// `p_manager` — the user event manager.
 fn j2k_write_sot(
   p_j2k: &mut J2k,
   data: &mut [u8],
@@ -3415,19 +3355,18 @@ fn j2k_write_sot(
   *p_data_written = pos as u32;
   Ok(())
 }
-/* *
- * Reads values from a SOT marker (Start of tile-part)
- *
- * the j2k decoder state is not affected. No side effects, no checks except for p_header_size.
- *
- * @param       p_header_data   the data contained in the SOT marker.
- * @param       p_header_size   the size of the data contained in the SOT marker.
- * @param       p_tile_no       Isot.
- * @param       p_tot_len       Psot.
- * @param       p_current_part  TPsot.
- * @param       p_num_parts     TNsot.
- * @param       p_manager       the user event manager.
- */
+
+/// Reads values from a SOT marker (Start of tile-part)
+///
+/// the j2k decoder state is not affected. No side effects, no checks except for p_header_size.
+///
+/// `p_header_data` — the data contained in the SOT marker.
+/// `p_header_size` — the size of the data contained in the SOT marker.
+/// `p_tile_no` — Isot.
+/// `p_tot_len` — Psot.
+/// `p_current_part` — TPsot.
+/// `p_num_parts` — TNsot.
+/// `p_manager` — the user event manager.
 fn j2k_get_sot_values(
   header_data: &[u8],
   p_tile_no: &mut u32,
@@ -3454,14 +3393,13 @@ fn j2k_get_sot_values(
   cursor += 1usize;
   Ok(())
 }
-/* *
- * Reads a SOT marker (Start of tile-part)
- *
- * @param       p_header_data   the data contained in the SOT marker.
- * @param       p_j2k           the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the PPT marker.
- * @param       p_manager       the user event manager.
-*/
+
+/// Reads a SOT marker (Start of tile-part)
+///
+/// `p_header_data` — the data contained in the SOT marker.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the PPT marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_sot(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut l_tot_len: u32 = 0;
   let mut l_num_parts = 0_u32;
@@ -3649,9 +3587,8 @@ fn j2k_read_sot(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   }
   Ok(())
 }
-/* *
- * Write one or more PLT markers in the provided buffer
- */
+
+/// Write one or more PLT markers in the provided buffer
 fn j2k_write_plt_in_memory(
   _p_j2k: &J2k,
   marker_info: &TcdMarkerInfo,
@@ -3730,18 +3667,16 @@ fn j2k_write_plt_in_memory(
   Ok(())
 }
 
-/* *
- * Writes the SOD marker (Start of data)
- *
- * This also writes optional PLT markers (before SOD)
- *
- * @param       p_j2k               J2K codec.
- * @param p_data
- * @param p_data_written
- * @param total_data_size
- * @param       p_stream            the stream to write data to.
- * @param       p_manager           the user event manager.
-*/
+/// Writes the SOD marker (Start of data)
+///
+/// This also writes optional PLT markers (before SOD)
+///
+/// `p_j2k` — J2K codec.
+/// `p_data`
+/// `p_data_written`
+/// `total_data_size`
+/// `p_stream` — the stream to write data to.
+/// `p_manager` — the user event manager.
 fn j2k_write_sod(
   p_j2k: &mut J2k,
   data: &mut [u8],
@@ -3829,13 +3764,12 @@ fn j2k_write_sod(
   }
   Ok(())
 }
-/* *
- * Reads a SOD marker (Start Of Data)
- *
- * @param       p_j2k                   the jpeg2000 codec.
- * @param p_stream
- * @param       p_manager               the user event manager.
-*/
+
+/// Reads a SOD marker (Start Of Data)
+///
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_stream`
+/// `p_manager` — the user event manager.
 fn j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut l_current_read_size: usize = 0;
   let mut l_sot_length_pb_detected = 0i32;
@@ -3845,9 +3779,9 @@ fn j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr
   let l_tcp = &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
   if p_j2k.m_specific_param.m_decoder.m_last_tile_part {
     /* stream_get_number_byte_left returns i64
-    // but we are in the last tile part,
-    // so its result will fit on u32 unless we find
-    // a file with a single tile part of more than 4 GB...*/
+    but we are in the last tile part,
+    so its result will fit on u32 unless we find
+    a file with a single tile part of more than 4 GB... */
     p_j2k.m_specific_param.m_decoder.m_sot_length =
       (stream_get_number_byte_left(p_stream) - 2i64) as u32
   } else if p_j2k.m_specific_param.m_decoder.m_sot_length >= 2u32 {
@@ -4014,13 +3948,11 @@ fn j2k_write_rgn(
   Ok(())
 }
 
-/* *
- * Writes the EOC marker (End of Codestream)
- *
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
+/// Writes the EOC marker (End of Codestream)
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_eoc(
   mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
@@ -4042,22 +3974,21 @@ fn j2k_write_eoc(
   }
   Ok(())
 }
-/* *
- * Reads a RGN marker (Region Of Interest)
- *
- * @param       p_header_data   the data contained in the POC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a RGN marker (Region Of Interest)
- *
- * @param       p_header_data   the data contained in the POC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a RGN marker (Region Of Interest)
+//
+// * `p_header_data` — the data contained in the POC box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the POC marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a RGN marker (Region Of Interest)
+///
+/// `p_header_data` — the data contained in the POC box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the POC marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_rgn(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -4111,13 +4042,11 @@ fn j2k_get_default_stride(_p_tcp: &Tcp) -> f32 {
   0 as f32
 }
 
-/* *
- * Updates the rates of the tcp.
- *
- * @param       p_stream                                the stream to write data to.
- * @param       p_j2k                           J2K codec.
- * @param       p_manager               the user event manager.
-*/
+/// Updates the rates of the tcp.
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_update_rates(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut i: u32 = 0;
   let mut j: u32 = 0;
@@ -4284,13 +4213,11 @@ pub(crate) fn j2k_alloc_encoded_tile_data(p_j2k: &mut J2k, p_manager: &mut Event
   Ok(())
 }
 
-/* *
- * Gets the offset of the header.
- *
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
+/// Gets the offset of the header.
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_get_end_header(
   p_j2k: &mut J2k,
   p_stream: &mut Stream,
@@ -4305,13 +4232,12 @@ fn j2k_get_end_header(
     .main_head_end = stream_tell(p_stream);
   Ok(())
 }
-/* *
- * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
- *
- * @param       p_stream                        the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager       the user event manager.
-*/
+
+/// Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_mct_data_group(
   p_j2k: &mut J2k,
   p_stream: &mut Stream,
@@ -4342,13 +4268,12 @@ fn j2k_write_mct_data_group(
   }
   Ok(())
 }
-/* *
- * Writes COC marker for each component.
- *
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
+
+/// Writes COC marker for each component.
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_all_coc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut compno: u32 = 0;
   /* preconditions */
@@ -4370,13 +4295,12 @@ fn j2k_write_all_coc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
   }
   Ok(())
 }
-/* *
- * Writes QCC marker for each component.
- *
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
+
+/// Writes QCC marker for each component.
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_all_qcc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut compno: u32 = 0;
   /* preconditions */
@@ -4398,13 +4322,12 @@ fn j2k_write_all_qcc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
   }
   Ok(())
 }
-/* *
- * Writes regions of interests.
- *
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
+
+/// Writes regions of interests.
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_regions(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut compno: u32 = 0;
   /* preconditions */
@@ -4425,13 +4348,12 @@ fn j2k_write_regions(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
   }
   Ok(())
 }
-/* *
- * Writes EPC ????
- *
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
+
+/// Writes EPC ????
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_epc(p_j2k: &mut J2k, p_stream: &mut Stream, _p_manager: &mut EventMgr) -> OpResult {
   /* preconditions */
 
@@ -4447,16 +4369,15 @@ fn j2k_write_epc(p_j2k: &mut J2k, p_stream: &mut Stream, _p_manager: &mut EventM
   /* USE_JPWL */
   Ok(())
 }
-/* *
- * Reads an unknown marker
- *
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_stream                the stream object to read from.
- * @param output_marker
- * @param       p_manager               the user event manager.
- *
- * @return      true                    if the marker could be deduced.
-*/
+
+/// Reads an unknown marker
+///
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_stream` — the stream object to read from.
+/// `output_marker`
+/// `p_manager` — the user event manager.
+///
+/// true                    if the marker could be deduced.
 fn j2k_read_unk(
   mut p_j2k: &mut J2k,
   mut p_stream: &mut Stream,
@@ -4521,14 +4442,13 @@ fn j2k_read_unk(
   *output_marker = l_marker_handler;
   Ok(())
 }
-/* *
- * Writes the MCT marker (Multiple Component Transform)
- *
- * @param       p_j2k           J2K codec.
- * @param p_mct_record
- * @param       p_stream        the stream to write data to.
- * @param       p_manager       the user event manager.
-*/
+
+/// Writes the MCT marker (Multiple Component Transform)
+///
+/// `p_j2k` — J2K codec.
+/// `p_mct_record`
+/// `p_stream` — the stream to write data to.
+/// `p_manager` — the user event manager.
 fn j2k_write_mct_record(
   p_j2k: &mut J2k,
   p_mct_record: &MctData,
@@ -4565,22 +4485,21 @@ fn j2k_write_mct_record(
   Ok(())
 }
 
-/* *
- * Reads a MCT marker (Multiple Component Transform)
- *
- * @param       p_header_data   the data contained in the MCT box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the MCT marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a MCT marker (Multiple Component Transform)
- *
- * @param       p_header_data   the data contained in the MCT box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the MCT marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a MCT marker (Multiple Component Transform)
+//
+// * `p_header_data` — the data contained in the MCT box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the MCT marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a MCT marker (Multiple Component Transform)
+///
+/// `p_header_data` — the data contained in the MCT box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the MCT marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_mct(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -4657,14 +4576,12 @@ fn j2k_read_mct(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   Ok(())
 }
 
-/* *
- * Writes the MCC marker (Multiple Component Collection)
- *
- * @param       p_j2k                   J2K codec.
- * @param p_mcc_record
- * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
-*/
+/// Writes the MCC marker (Multiple Component Collection)
+///
+/// `p_j2k` — J2K codec.
+/// `p_mcc_record`
+/// `p_stream` — the stream to write data to.
+/// `p_manager` — the user event manager.
 fn j2k_write_mcc_record(
   p_j2k: &mut J2k,
   p_mcc_record: &SimpleMccData,
@@ -4738,14 +4655,12 @@ fn j2k_write_mcc_record(
   Ok(())
 }
 
-/* *
- * Reads a MCC marker (Multiple Component Collection)
- *
- * @param       p_header_data   the data contained in the MCC box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the MCC marker.
- * @param       p_manager               the user event manager.
-*/
+/// Reads a MCC marker (Multiple Component Collection)
+///
+/// `p_header_data` — the data contained in the MCC box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the MCC marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_mcc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -4798,7 +4713,7 @@ fn j2k_read_mcc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
     }
     l_mcc_idx += 1;
   }
-  /* * NOT FOUND */
+  // NOT FOUND
   if l_mcc_idx == l_tcp.m_mcc_records.len() {
     l_tcp.m_mcc_records.push(Default::default());
   }
@@ -4954,13 +4869,12 @@ fn j2k_read_mcc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   }
   Ok(())
 }
-/* *
- * Writes the MCO marker (Multiple component transformation ordering)
- *
- * @param       p_stream                                the stream to write data to.
- * @param       p_j2k                           J2K codec.
- * @param       p_manager               the user event manager.
-*/
+
+/// Writes the MCO marker (Multiple component transformation ordering)
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_mco(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   /* preconditions */
   /* Lmco */
@@ -4987,22 +4901,21 @@ fn j2k_write_mco(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMg
   Ok(())
 }
 
-/* *
- * Reads a MCO marker (Multiple Component Transform Ordering)
- *
- * @param       p_header_data   the data contained in the MCO box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the MCO marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a MCO marker (Multiple Component Transform Ordering)
- *
- * @param       p_header_data   the data contained in the MCO box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the MCO marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a MCO marker (Multiple Component Transform Ordering)
+//
+// * `p_header_data` — the data contained in the MCO box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the MCO marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a MCO marker (Multiple Component Transform Ordering)
+///
+/// `p_header_data` — the data contained in the MCO box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the MCO marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_mco(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -5133,13 +5046,12 @@ fn j2k_add_mct(p_tcp: &mut Tcp, p_image: &mut CoreImage, p_index: u32) -> OpResu
   }
   Ok(())
 }
-/* *
- * Writes the CBD marker (Component bit depth definition)
- *
- * @param       p_stream                                the stream to write data to.
- * @param       p_j2k                           J2K codec.
- * @param       p_manager               the user event manager.
-*/
+
+/// Writes the CBD marker (Component bit depth definition)
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_cbd(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut i: u32 = 0;
   /* preconditions */
@@ -5174,20 +5086,19 @@ fn j2k_write_cbd(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMg
   Ok(())
 }
 
-/* *
- * Reads a CBD marker (Component bit depth definition)
- * @param       p_header_data   the data contained in the CBD box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the CBD marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a CBD marker (Component bit depth definition)
- * @param       p_header_data   the data contained in the CBD box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the CBD marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a CBD marker (Component bit depth definition)
+// * `p_header_data` — the data contained in the CBD box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the CBD marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a CBD marker (Component bit depth definition)
+/// `p_header_data` — the data contained in the CBD box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the CBD marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_cbd(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -> OpResult {
   let mut p_header_size = header_data.len() as u32;
   let mut cursor: usize = 0;
@@ -5229,24 +5140,23 @@ fn j2k_read_cbd(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   Ok(())
 }
 
-/* *
- * Reads a CAP marker (extended capabilities definition). Empty implementation.
- * Found in HTJ2K files
- *
- * @param       p_header_data   the data contained in the CAP box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the CAP marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a CAP marker (extended capabilities definition). Empty implementation.
- * Found in HTJ2K files.
- *
- * @param       p_header_data   the data contained in the CAP box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the CAP marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a CAP marker (extended capabilities definition). Empty implementation.
+// Found in HTJ2K files
+//
+// * `p_header_data` — the data contained in the CAP box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the CAP marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a CAP marker (extended capabilities definition). Empty implementation.
+/// Found in HTJ2K files.
+///
+/// `p_header_data` — the data contained in the CAP box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the CAP marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_cap(
   mut _p_j2k: &mut J2k,
   mut _header_data: &[u8],
@@ -5257,20 +5167,19 @@ fn j2k_read_cap(
   Ok(())
 }
 
-/* *
- * Reads a CPF marker (corresponding profile). Empty implementation. Found in HTJ2K files
- * @param       p_header_data   the data contained in the CPF box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the CPF marker.
- * @param       p_manager               the user event manager.
-*/
-/* *
- * Reads a CPF marker (corresponding profile). Empty implementation. Found in HTJ2K files
- * @param       p_header_data   the data contained in the CPF box.
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_header_size   the size of the data contained in the CPF marker.
- * @param       p_manager               the user event manager.
-*/
+//
+// Reads a CPF marker (corresponding profile). Empty implementation. Found in HTJ2K files
+// * `p_header_data` — the data contained in the CPF box.
+// * `p_j2k` — the jpeg2000 codec.
+// * `p_header_size` — the size of the data contained in the CPF marker.
+// * `p_manager` — the user event manager.
+//
+
+/// Reads a CPF marker (corresponding profile). Empty implementation. Found in HTJ2K files
+/// `p_header_data` — the data contained in the CPF box.
+/// `p_j2k` — the jpeg2000 codec.
+/// `p_header_size` — the size of the data contained in the CPF marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_cpf(
   mut _p_j2k: &mut J2k,
   mut _header_data: &[u8],
@@ -5281,9 +5190,9 @@ fn j2k_read_cpf(
   Ok(())
 }
 
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 /* J2K / JPT decoder interface                                             */
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 pub(crate) fn j2k_setup_decoder(j2k: &mut J2k, settings: &crate::codec::DecoderSettings) {
   j2k.m_cp.m_specific_param.m_dec.m_layer = settings.layers;
   j2k.m_cp.m_specific_param.m_dec.m_reduce = settings.reduce;
@@ -5315,9 +5224,9 @@ pub(crate) fn j2k_set_threads(_j2k: &mut J2k, num_threads: u32) -> OpResult {
   Ok(())
 }
 
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 /* J2K encoder interface                                                       */
-/* ----------------------------------------------------------------------- */
+// -----------------------------------------------------------------------
 pub(crate) fn j2k_create_compress() -> Option<J2k> {
   let mut l_j2k = J2k::new(false);
   l_j2k.m_cp.m_is_decoder = false;
@@ -5816,7 +5725,7 @@ fn j2k_is_imf_compliant(
     _ => {
       /* C: assert(0); - unknown profiles are validated away, and the C's
       release build (NDEBUG) falls through here anyway. */
-      debug_assert!(false, "Unknown OPJ_PROFILE");
+      debug_assert!(false, "Unknown profile");
     }
   }
   if parameters.roi_compno != -(1i32) {
@@ -6556,7 +6465,7 @@ pub(crate) fn j2k_setup_encoder(
   }
   /* USE_JPWL */
   /* initialize the multiple tiles */
-  /* ---------------------------- */
+  // ----------------------------
   cp.tcps = (0..cp.tw.wrapping_mul(cp.th))
     .map(|_| Default::default())
     .collect();
@@ -6785,13 +6694,12 @@ pub(crate) fn j2k_setup_encoder(
 
   Ok(())
 }
-/* *
-Add main header marker information
-@param cstr_index    Codestream information structure
-@param type         marker type
-@param pos          byte offset of marker segment
-@param len          length of marker segment
- */
+
+/// Add main header marker information
+/// `cstr_index` — Codestream information structure
+/// `type` — marker type
+/// `pos` — byte offset of marker segment
+/// `len` — length of marker segment
 fn j2k_add_mhmarker(
   cstr_index: &mut CodestreamIndex,
   marker: J2KMarker,
@@ -6805,14 +6713,13 @@ fn j2k_add_mhmarker(
   });
   Ok(())
 }
-/* *
-Add tile header marker information
-@param tileno       tile index number
-@param cstr_index   Codestream information structure
-@param type         marker type
-@param pos          byte offset of marker segment
-@param len          length of marker segment
- */
+
+/// Add tile header marker information
+/// `tileno` — tile index number
+/// `cstr_index` — Codestream information structure
+/// `type` — marker type
+/// `pos` — byte offset of marker segment
+/// `len` — length of marker segment
 fn j2k_add_tlmarker(
   tileno: u32,
   cstr_index: &mut CodestreamIndex,
@@ -6834,12 +6741,10 @@ fn j2k_add_tlmarker(
   }
   Ok(())
 }
-/*
- * -----------------------------------------------------------------------
- * -----------------------------------------------------------------------
- * -----------------------------------------------------------------------
- */
 
+/// -----------------------------------------------------------------------
+/// -----------------------------------------------------------------------
+/// -----------------------------------------------------------------------
 pub(crate) fn j2k_end_decompress(
   mut _p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
@@ -6883,15 +6788,14 @@ pub(crate) fn j2k_read_header(
       .clone_header_only(),
   )
 }
-/* *
- * The mct encoding validation procedure.
- *
- * @param       p_j2k                   the jpeg2000 codec to validate.
- * @param       p_stream                                the input stream to validate.
- * @param       p_manager               the user event manager.
- *
- * @return true if the parameters are correct.
- */
+
+/// The mct encoding validation procedure.
+///
+/// `p_j2k` — the jpeg2000 codec to validate.
+/// `p_stream` — the input stream to validate.
+/// `p_manager` — the user event manager.
+///
+/// true if the parameters are correct.
 fn j2k_mct_validation(
   p_j2k: &mut J2k,
   _p_stream: &mut Stream,
@@ -6999,9 +6903,7 @@ fn j2k_build_decoder(
   Ok(())
 }
 
-/* *
- * Builds the tcd encoder to use to encode tile.
- */
+/// Builds the tcd encoder to use to encode tile.
 fn j2k_init_info(p_j2k: &mut J2k, _p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   /* The encode-side codestream-info v1 (index file) mirror is not
   supported by this port (mergeV2 TODO in the C code); the tile-part
@@ -7027,15 +6929,13 @@ fn j2k_build_encoder(
   Ok(())
 }
 
-/* *
- * The default encoding validation procedure without any extension.
- *
- * @param       p_j2k                   the jpeg2000 codec to validate.
- * @param       p_stream                the input stream to validate.
- * @param       p_manager               the user event manager.
- *
- * @return true if the parameters are correct.
- */
+/// The default encoding validation procedure without any extension.
+///
+/// `p_j2k` — the jpeg2000 codec to validate.
+/// `p_stream` — the input stream to validate.
+/// `p_manager` — the user event manager.
+///
+/// true if the parameters are correct.
 fn j2k_encoding_validation(
   mut p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
@@ -7092,15 +6992,14 @@ fn j2k_encoding_validation(
     Err(())
   }
 }
-/* *
- * The default decoding validation procedure without any extension.
- *
- * @param       p_j2k                   the jpeg2000 codec to validate.
- * @param       p_stream                                the input stream to validate.
- * @param       p_manager               the user event manager.
- *
- * @return true if the parameters are correct.
- */
+
+/// The default decoding validation procedure without any extension.
+///
+/// `p_j2k` — the jpeg2000 codec to validate.
+/// `p_stream` — the input stream to validate.
+/// `p_manager` — the user event manager.
+///
+/// true if the parameters are correct.
 fn j2k_decoding_validation(
   mut p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
@@ -7119,9 +7018,8 @@ fn j2k_decoding_validation(
     Err(())
   }
 }
-/* *
- * The read header procedure.
- */
+
+/// The read header procedure.
 fn j2k_read_header_procedure(
   p_j2k: &mut J2k,
   p_stream: &mut Stream,
@@ -7411,10 +7309,9 @@ fn j2k_build_tp_index_from_tlm(p_j2k: &mut J2k, p_manager: &mut EventMgr) {
     l_cur_offset += info.m_length as i64;
   }
 }
-/* *
- * Copies the decoding tile parameters onto all the tile parameters.
- * Creates also the tile decoder.
- */
+
+/// Copies the decoding tile parameters onto all the tile parameters.
+/// Creates also the tile decoder.
 fn j2k_copy_default_tcp_and_create_tcd(
   p_j2k: &mut J2k,
   _p_stream: &mut Stream,
@@ -7497,11 +7394,9 @@ impl Drop for J2k {
   }
 }
 
-/* *
- * Destroys a tile coding parameter structure.
- *
- * @param       p_tcp           the tile coding parameter to destroy.
- */
+/// Destroys a tile coding parameter structure.
+///
+/// `p_tcp` — the tile coding parameter to destroy.
 fn j2k_tcp_destroy(p_tcp: &mut Tcp) {
   p_tcp.ppt_markers = Vec::new();
   p_tcp.ppt_buffer = Vec::new();
@@ -7514,21 +7409,17 @@ fn j2k_tcp_destroy(p_tcp: &mut Tcp) {
   j2k_tcp_data_destroy(p_tcp);
 }
 
-/* *
- * Destroys the data inside a tile coding parameter structure.
- *
- * @param       p_tcp           the tile coding parameter which contain data to destroy.
- */
+/// Destroys the data inside a tile coding parameter structure.
+///
+/// `p_tcp` — the tile coding parameter which contain data to destroy.
 fn j2k_tcp_data_destroy(p_tcp: &mut Tcp) {
   p_tcp.m_data.clear();
   p_tcp.m_data_size = 0_u32;
 }
 
-/* *
- * Destroys a coding parameter structure.
- *
- * @param       p_cp            the coding parameter to destroy.
- */
+/// Destroys a coding parameter structure.
+///
+/// `p_cp` — the coding parameter to destroy.
 fn j2k_cp_destroy(p_cp: &mut Cp) {
   let l_nb_tiles: u32; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
   if !p_cp.tcps.is_empty() {
@@ -7548,16 +7439,14 @@ fn j2k_cp_destroy(p_cp: &mut Cp) {
   };
 }
 
-/* *
- * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
- *
- * @param       p_stream            the stream to read data from.
- * @param       tile_no             tile number we're looking for.
- * @param       p_correction_needed output value. if true, non conformant codestream needs TNsot correction.
- * @param       p_manager       the user event manager.
- *
- * @return true if the function was successful, false else.
- */
+/// Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
+///
+/// `p_stream` — the stream to read data from.
+/// `tile_no` — tile number we're looking for.
+/// `p_correction_needed` — output value. if true, non conformant codestream needs TNsot correction.
+/// `p_manager` — the user event manager.
+///
+/// true if the function was successful, false else.
 fn j2k_need_nb_tile_parts_correction(
   mut p_stream: &mut Stream,
   mut tile_no: u32,
@@ -8127,7 +8016,7 @@ pub(crate) fn j2k_read_tile_header(
   tile_info.index = p_j2k.m_current_tile_number;
   tile_info.go_on = true;
   /* For internal use in j2k.c, we don't need this */
-  /* This is just needed for folks using the read_tile_header() / opj_decode_tile_data() combo */
+  /* This is just needed for folks using the read_tile_header() / Codec::decode_tile_data() combo */
   if let Some(data_size) = &mut tile_info.data_size {
     *data_size = tcd_get_decoded_tile_size(
       &mut p_j2k.m_tcd,
@@ -8181,7 +8070,7 @@ pub(crate) fn j2k_decode_tile(
     // data is destroyed afterwards anyway (j2k_tcp_data_destroy).
     l_tile_data = std::mem::take(&mut l_tcp.m_data);
   }
-  /* When using the read_tile_header / opj_decode_tile_data API */
+  /* When using the read_tile_header / Codec::decode_tile_data API */
   /* such as in test_tile_decoder, m_output_image is NULL, so fall back */
   /* to the full image dimension. This is a bit surprising that */
   /* set_decode_area() is only used to determine intersecting tiles, */
@@ -8707,7 +8596,7 @@ pub(crate) fn j2k_set_decode_area(
     p_image.y1 = l_image.y1;
     return j2k_update_image_dimensions(p_image, p_manager);
   }
-  /* ----- */
+  // -----
   /* Check if the positions provided by the user are correct */
   /* Left */
   if p_start_x < 0i32 {
@@ -8844,7 +8733,7 @@ pub(crate) fn j2k_set_decode_area(
       uint_ceildiv(p_end_y as u32 - l_cp.ty0, l_cp.tdy);
     p_image.y1 = p_end_y as u32
   }
-  /* ----- */
+  // -----
   p_j2k.m_specific_param.m_decoder.m_discard_tiles = true;
   ret = j2k_update_image_dimensions(p_image, p_manager);
   if ret.is_ok() {
@@ -8906,15 +8795,14 @@ fn j2k_create_cstr_index() -> Box<CodestreamIndex> {
     ..Default::default()
   })
 }
-/* *
- * Gets the size taken by writing a SPCod or SPCoc for the given tile and component.
- *
- * @param       p_j2k                   the J2K codec.
- * @param       p_tile_no               the tile index.
- * @param       p_comp_no               the component being outputted.
- *
- * @return      the number of bytes taken by the SPCod element.
- */
+
+/// Gets the size taken by writing a SPCod or SPCoc for the given tile and component.
+///
+/// `p_j2k` — the J2K codec.
+/// `p_tile_no` — the tile index.
+/// `p_comp_no` — the component being outputted.
+///
+/// the number of bytes taken by the SPCod element.
 fn j2k_get_spcod_spcoc_size(p_j2k: &mut J2k, p_tile_no: u32, p_comp_no: u32) -> u32 {
   /* preconditions */
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
@@ -8935,16 +8823,15 @@ fn j2k_get_spcod_spcoc_size(p_j2k: &mut J2k, p_tile_no: u32, p_comp_no: u32) -> 
     5_u32
   }
 }
-/* *
- * Compare 2 a SPCod/ SPCoc elements, i.e. the coding style of a given component of a tile.
- *
- * @param       p_j2k            J2K codec.
- * @param       p_tile_no        Tile number
- * @param       p_first_comp_no  The 1st component number to compare.
- * @param       p_second_comp_no The 1st component number to compare.
- *
- * @return OPJ_TRUE if SPCdod are equals.
- */
+
+/// Compare 2 a SPCod/ SPCoc elements, i.e. the coding style of a given component of a tile.
+///
+/// `p_j2k` — J2K codec.
+/// `p_tile_no` — Tile number
+/// `p_first_comp_no` — The 1st component number to compare.
+/// `p_second_comp_no` — The 1st component number to compare.
+///
+/// true if SPCdod are equals.
 fn j2k_compare_spcod_spcoc(
   p_j2k: &mut J2k,
   p_tile_no: u32,
@@ -8986,18 +8873,15 @@ fn j2k_compare_spcod_spcoc(
   }
   Ok(())
 }
-/* *
- * Writes a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
- *
- * @param       p_j2k           J2K codec.
- * @param p_tile_no
- * @param       p_comp_no       the component number to output.
- * @param p_data
- * @param p_header_size
- * @param       p_manager       the user event manager.
- *
- * @return
-*/
+
+/// Writes a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
+///
+/// `p_j2k` — J2K codec.
+/// `p_tile_no`
+/// `p_comp_no` — the component number to output.
+/// `p_data`
+/// `p_header_size`
+/// `p_manager` — the user event manager.
 fn j2k_write_spcod_spcoc(
   p_j2k: &mut J2k,
   p_tile_no: u32,
@@ -9060,14 +8944,13 @@ fn j2k_write_spcod_spcoc(
   }
   Ok(())
 }
-/* *
- * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
- * @param       p_j2k           the jpeg2000 codec.
- * @param compno
- * @param       p_header_data   the data contained in the COM box.
- * @param       p_header_size   the size of the data contained in the COM marker.
- * @param       p_manager       the user event manager.
-*/
+
+/// Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
+/// `p_j2k` — the jpeg2000 codec.
+/// `compno`
+/// `p_header_data` — the data contained in the COM box.
+/// `p_header_size` — the size of the data contained in the COM marker.
+/// `p_manager` — the user event manager.
 fn j2k_read_spcod_spcoc(
   p_j2k: &mut J2k,
   compno: u32,
@@ -9209,11 +9092,9 @@ fn j2k_read_spcod_spcoc(
   Ok(())
 }
 
-/* *
- * Copies the tile component parameters of all the component from the first tile component.
- *
- * @param               p_j2k           the J2k codec.
- */
+/// Copies the tile component parameters of all the component from the first tile component.
+///
+/// `p_j2k` — the J2k codec.
 fn j2k_copy_tile_component_parameters(p_j2k: &mut J2k) {
   /* loop */
   let mut i: u32 = 0;
@@ -9258,15 +9139,13 @@ fn j2k_copy_tile_component_parameters(p_j2k: &mut J2k) {
   }
 }
 
-/* *
- * Gets the size taken by writing SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
- *
- * @param       p_tile_no               the tile index.
- * @param       p_comp_no               the component being outputted.
- * @param       p_j2k                   the J2K codec.
- *
- * @return      the number of bytes taken by the SPCod element.
- */
+/// Gets the size taken by writing SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
+///
+/// `p_tile_no` — the tile index.
+/// `p_comp_no` — the component being outputted.
+/// `p_j2k` — the J2K codec.
+///
+/// the number of bytes taken by the SPCod element.
 fn j2k_get_sqcd_sqcc_size(p_j2k: &mut J2k, p_tile_no: u32, p_comp_no: u32) -> u32 {
   /* preconditions */
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
@@ -9292,16 +9171,15 @@ fn j2k_get_sqcd_sqcc_size(p_j2k: &mut J2k, p_tile_no: u32, p_comp_no: u32) -> u3
     (1u32).wrapping_add((2u32).wrapping_mul(l_num_bands))
   }
 }
-/* *
- * Compares 2 SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
- *
- * @param       p_j2k                   J2K codec.
- * @param       p_tile_no               the tile to output.
- * @param       p_first_comp_no         the first component number to compare.
- * @param       p_second_comp_no        the second component number to compare.
- *
- * @return OPJ_TRUE if equals.
- */
+
+/// Compares 2 SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
+///
+/// `p_j2k` — J2K codec.
+/// `p_tile_no` — the tile to output.
+/// `p_first_comp_no` — the first component number to compare.
+/// `p_second_comp_no` — the second component number to compare.
+///
+/// true if equals.
 fn j2k_compare_sqcd_sqcc(
   p_j2k: &mut J2k,
   p_tile_no: u32,
@@ -9347,17 +9225,14 @@ fn j2k_compare_sqcd_sqcc(
   Ok(())
 }
 
-/* *
- * Writes a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
- *
- * @param       p_tile_no               the tile to output.
- * @param       p_comp_no               the component number to output.
- * @param       p_data                  the data buffer.
- * @param       p_header_size   pointer to the size of the data buffer, it is changed by the function.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
- *
-*/
+/// Writes a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
+///
+/// `p_tile_no` — the tile to output.
+/// `p_comp_no` — the component number to output.
+/// `p_data` — the data buffer.
+/// `p_header_size` — pointer to the size of the data buffer, it is changed by the function.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_write_sqcd_sqcc(
   p_j2k: &mut J2k,
   p_tile_no: u32,
@@ -9439,16 +9314,13 @@ fn j2k_write_sqcd_sqcc(
   Ok(())
 }
 
-/* *
- * Reads a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
- *
- * @param       p_j2k           J2K codec.
- * @param       compno          the component number to output.
- * @param       p_header_data   the data buffer.
- * @param       p_header_size   pointer to the size of the data buffer, it is changed by the function.
- * @param       p_manager       the user event manager.
- *
-*/
+/// Reads a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
+///
+/// `p_j2k` — J2K codec.
+/// `compno` — the component number to output.
+/// `p_header_data` — the data buffer.
+/// `p_header_size` — pointer to the size of the data buffer, it is changed by the function.
+/// `p_manager` — the user event manager.
 fn j2k_read_sqcd_sqcc(
   p_j2k: &mut J2k,
   p_comp_no: u32,
@@ -9509,7 +9381,7 @@ fn j2k_read_sqcd_sqcc(
                             2i32,
                         3i32 * 33i32 -
                             2i32);
-      /*return OPJ_FALSE;*/
+      /*return false;*/
     }
   }
   /* USE_JPWL */
@@ -9568,11 +9440,9 @@ fn j2k_read_sqcd_sqcc(
   Ok(())
 }
 
-/* *
- * Copies the tile quantization parameters of all the component from the first tile component.
- *
- * @param               p_j2k           the J2k codec.
- */
+/// Copies the tile quantization parameters of all the component from the first tile component.
+///
+/// `p_j2k` — the J2k codec.
 fn j2k_copy_tile_quantization_parameters(p_j2k: &mut J2k) {
   let mut i: u32 = 0;
   /* preconditions */
@@ -9664,9 +9534,7 @@ fn j2k_are_all_used_components_decoded(p_j2k: &mut J2k, p_manager: &mut EventMgr
   true
 }
 
-/* *
- * Reads the tiles.
- */
+/// Reads the tiles.
 fn j2k_decode_tiles(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   let mut tile_info = TileInfo::default();
   let mut nr_tiles = 0_u32;
@@ -9765,7 +9633,7 @@ fn j2k_decode_tiles(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
     } else {
       if !j2k_read_tile_header(p_j2k, p_stream, &mut tile_info, p_manager) {
         /* Lenient mode (progressive download): stop decoding tiles and keep
-        the ones already merged (the C's decode_tile returns OPJ_TRUE for a
+        the ones already merged (the C's decode_tile returns true for a
         short stream in lenient mode and the tile loop ends the same way). */
         if p_j2k.m_cp.strict {
           return Err(());
@@ -9856,9 +9724,7 @@ fn j2k_decode_tiles(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
   Ok(())
 }
 
-/*
- * Read and decode one tile.
- */
+/// Read and decode one tile.
 fn j2k_decode_one_tile(
   p_j2k: &mut J2k,
   p_stream: &mut Stream,
@@ -10031,9 +9897,9 @@ fn j2k_decode_one_tile(
   Ok(())
 }
 
-/* *
- * Sets up the procedures to do on decoding one tile. Developers wanting to extend the library can add their own reading procedures.
- */
+//
+// Sets up the procedures to do on decoding one tile. Developers wanting to extend the library can add their own reading procedures.
+//
 /// Decodes a single tile with a fresh codec state over a stream positioned
 /// at the tile's first SOT (used by the parallel tile-decode driver in the
 /// safe API).  Returns the decoded tile cache.
@@ -10409,9 +10275,9 @@ pub(crate) fn j2k_decode(
     return Err(());
   }
   /* Heuristics to detect sequence read_header(), set_decoded_resolution_factor() */
-  /* and finally opj_decode_image() without manual setting of comps[].factor */
+  /* and finally Codec::decode_image() without manual setting of comps[].factor */
   /* We could potentially always execute it, if we don't allow people to do */
-  /* read_header(), modify x0,y0,x1,y1 of returned image an call opj_decode_image() */
+  /* read_header(), modify x0,y0,x1,y1 of returned image an call Codec::decode_image() */
   if p_j2k.m_cp.m_specific_param.m_dec.m_reduce > 0u32
     && p_j2k.m_private_image.is_some()
     && p_j2k
@@ -11269,13 +11135,11 @@ fn j2k_post_write_tile(
   Ok(())
 }
 
-/* *
- * Writes the codestream header (the C's fixed header-writing procedure
- * list, inlined: init_info, SOC, SIZ, COD, QCD, all COC/QCC, optional TLM
- * (+POC for profile 4), regions, optional COM, optional MCT data group,
- * optional end-header marker, create_tcd, update_rates).  Extensions go
- * here directly.
- */
+/// Writes the codestream header (the C's fixed header-writing procedure
+/// list, inlined: init_info, SOC, SIZ, COD, QCD, all COC/QCC, optional TLM
+/// (+POC for profile 4), regions, optional COM, optional MCT data group,
+/// optional end-header marker, create_tcd, update_rates).  Extensions go
+/// here directly.
 fn j2k_write_header(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
   if j2k_init_info(p_j2k, p_stream, p_manager).is_err()
     || j2k_write_soc(p_j2k, p_stream, p_manager).is_err()
@@ -11572,13 +11436,11 @@ fn j2k_write_updated_tlm(
   Ok(())
 }
 
-/* *
- * Ends the encoding, i.e. frees memory.
- *
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
+/// Ends the encoding, i.e. frees memory.
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_end_encoding(
   mut p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
@@ -11591,12 +11453,11 @@ fn j2k_end_encoding(
   Ok(())
 }
 
-/* *
- * Destroys the memory associated with the decoding of headers.
- */
-/* *
- * Destroys the memory associated with the decoding of headers.
- */
+//
+// Destroys the memory associated with the decoding of headers.
+//
+
+/// Destroys the memory associated with the decoding of headers.
 fn j2k_destroy_header_memory(
   mut p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,
@@ -11608,13 +11469,11 @@ fn j2k_destroy_header_memory(
   Ok(())
 }
 
-/* *
- * Inits the Info
- *
- * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
-*/
+/// Inits the Info
+///
+/// `p_stream` — the stream to write data to.
+/// `p_j2k` — J2K codec.
+/// `p_manager` — the user event manager.
 fn j2k_create_tcd(
   mut p_j2k: &mut J2k,
   mut _p_stream: &mut Stream,

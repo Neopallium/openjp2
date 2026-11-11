@@ -50,7 +50,7 @@ impl From<ColorSpace> for OPJ_COLOR_SPACE {
   }
 }
 
-/// Packet progression order (mirrors the C `OPJ_PROG_ORDER` values).
+/// Packet progression order (mirrors the C `ProgressionOrder` values).
 /// Packet progression order (the COD marker's progression field).
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 pub enum ProgressionOrder {
@@ -75,7 +75,7 @@ impl From<crate::c_api_types::OPJ_PROG_ORDER> for ProgressionOrder {
       OPJ_RPCL => ProgressionOrder::Rpcl,
       OPJ_PCRL => ProgressionOrder::Pcrl,
       OPJ_CPRL => ProgressionOrder::Cprl,
-      _ => ProgressionOrder::Lrcp, /* incl. OPJ_LRCP and invalid values
+      _ => ProgressionOrder::Lrcp, /* incl. ProgressionOrder::LRCP and invalid values
                                    (the C ABI validates before
                                    converting; see capi) */
     }
@@ -286,7 +286,7 @@ impl DecodeParameters {
   }
 }
 
-/// Safe, owned encoder parameters.  The C ABI mirror (`opj_cparameters_t`)
+/// Safe, owned encoder parameters.  The C ABI mirror (`EncoderParameters`)
 /// is marshalled into this by the capi crate; the tools build it directly.
 #[derive(Clone, Debug)]
 pub struct EncoderParameters {
@@ -354,15 +354,15 @@ pub struct EncoderParameters {
   pub subsampling_dx: core::ffi::c_int,
   /// Component subsampling in y.
   pub subsampling_dy: core::ffi::c_int,
-  /// Input file format (`OPJ_CODEC_*`).
+  /// Input file format (`J2KFormat`; the C's `OPJ_CODEC_*` values).
   pub decod_format: core::ffi::c_int,
-  /// Output file format (`OPJ_CODEC_*`).
+  /// Output file format (`J2KFormat`; the C's `OPJ_CODEC_*` values).
   pub cod_format: core::ffi::c_int,
   /// Cinema profile mode.
   pub cp_cinema: u32,
   /// Maximum compressed size.
   pub max_comp_size: core::ffi::c_int,
-  /// Profile bits (e.g. `OPJ_MCT` enables the custom-MCT marker
+  /// Profile bits (e.g. `ColorTransform` enables the custom-MCT marker
   /// emission).
   pub cp_rsiz: u16,
   /// Write tile-part markers (`'R'`/`'C'` style flags).
@@ -376,11 +376,11 @@ pub struct EncoderParameters {
   /// Custom MCT: the decorrelation matrix (row-major, `n*n` entries) and
   /// the per-component DC level shifts.  Setting this also sets `mct = 2`
   /// in the COD marker; the encoder emits the MCT/MCC/MCO markers when
-  /// `rsiz` carries the `OPJ_MCT` bits.
+  /// `rsiz` carries the `ColorTransform` bits.
   pub mct_data: Option<(Vec<f32>, Vec<i32>)>,
   /// Maximum codestream size.
   pub max_cs_size: core::ffi::c_int,
-  /// Profile (`OPJ_RSIZ_CAPABILITIES` bits; e.g. `OPJ_MCT` enables the
+  /// Profile (`RsizCapabilities` bits; e.g. `ColorTransform` enables the
   /// custom-MCT marker emission).
   pub rsiz: u16,
 }

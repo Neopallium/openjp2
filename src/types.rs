@@ -1,43 +1,41 @@
+// The copyright in this software is being made available under the 2-clauses
+// BSD License, included below. This software may be subject to other third
+// party and contributor rights, including patent rights, and no such rights
+// are granted under this license.
+//
+// Copyright (c) 2005, Herve Drolon, FreeImage Team
+// Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
+// Copyright (c) 2012, CS Systemes d'Information, France
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //! Internal codec state: J2k/Jp2/Tcd/Tcp/Tccp, the tile buffers
 //! (`TileBuf`), and the encoder parameters. See `doc/code-outline.md`.
-/*
- * The copyright in this software is being made available under the 2-clauses
- * BSD License, included below. This software may be subject to other third
- * party and contributor rights, including patent rights, and no such rights
- * are granted under this license.
- *
- * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
- * Copyright (c) 2012, CS Systemes d'Information, France
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
 
 use super::consts::*;
 use super::j2k::*;
 use crate::image::{CoreImage, ICCProfile, ICCProfileRef};
 
-/// A progression-order change: the C `opj_poc_t` state, natively (the
+/// A progression-order change: the C `Poc` state, natively (the
 /// marker-declared bounds plus the packet-iterator's working state).
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Poc {
@@ -484,9 +482,7 @@ pub(crate) struct C2RustUnnamed_0 {
   pub m_enc: EncodingParams,
 }
 
-/**
-Rate allocation strategy
-*/
+/// Rate allocation strategy
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(i32)]
 pub(crate) enum J2K_QUALITY_LAYER_ALLOCATION_STRATEGY {
@@ -567,7 +563,7 @@ impl Default for TcdTile {
 /// without any unsafe.
 /// The sample precisions the port supports: 1..=31 (the C's OpenJpeg limit).
 /// Central rule for setup_encoder validation and the image.rs guards.
-/// Internal fallible-operation result (the phase-c `OPJ_BOOL` migration):
+/// Internal fallible-operation result (the phase-c `bool` migration):
 /// `Ok(())` = the C's return 1, `Err(())` = the C's return 0.  The event
 /// manager carries the diagnostic (emitted at the failure site), and the
 /// safe-API boundary maps failures to the structured `api::Error`.

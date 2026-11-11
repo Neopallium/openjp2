@@ -1,3 +1,38 @@
+// The copyright in this software is being made available under the 2-clauses
+// BSD License, included below. This software may be subject to other third
+// party and contributor rights, including patent rights, and no such rights
+// are granted under this license.
+//
+// Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
+// Copyright (c) 2002-2014, Professor Benoit Macq
+// Copyright (c) 2001-2003, David Janssens
+// Copyright (c) 2002-2003, Yannick Verschueren
+// Copyright (c) 2003-2007, Francois-Olivier Devaux
+// Copyright (c) 2003-2014, Antonin Descampe
+// Copyright (c) 2005, Herve Drolon, FreeImage Team
+// Copyright (c) 2008, Jerome Fimes, Communications & Systemes <jerome.fimes@c-s.fr>
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
 //! MQ arithmetic coder: the context/state machine, byte-in and
 //! byte-out with the 0xFF stuffing rules, bypass and termination.
 //! See `doc/jpeg2000-design-spec.md` §3.7 (MQ arithmetic coder).
@@ -204,11 +239,9 @@ fn mqc_lpsexchange_macro(d: &mut u32, mqc: &mut Mqc) {
   }
 }
 
-/**
-Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
-@param mqc MQC handle
-@return Returns the decoded symbol (0 or 1)
-*/
+/// Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
+/// `mqc` — MQC handle
+/// Returns the decoded symbol (0 or 1)
 #[inline]
 pub(crate) fn mqc_raw_decode(mut mqc: &mut Mqc) -> u32 {
   if mqc.ct == 0 {
@@ -299,13 +332,11 @@ pub(crate) fn mqc_decode_macro(d: &mut u32, mqc: &mut Mqc) {
   }
 }
 
-/**
-Renormalize mqc->a and mqc->c while encoding, so that mqc->a stays between 0x8000 and 0x10000
-@param mqc MQC handle
-@param a_ value of mqc->a
-@param c_ value of mqc->c_
-@param ct_ value of mqc->ct_
-*/
+/// Renormalize mqc->a and mqc->c while encoding, so that mqc->a stays between 0x8000 and 0x10000
+/// `mqc` — MQC handle
+/// `a_` — value of mqc->a
+/// `c_` — value of mqc->c_
+/// `ct_` — value of mqc->ct_
 #[inline(always)]
 fn mqc_renorme_macro(mqc: &mut Mqc) {
   loop {
@@ -377,8 +408,8 @@ pub(crate) fn mqc_bypass_enc_macro(mqc: &mut Mqc, d: u32) {
   }
 }
 
-/*@}*/
-/*@}*/
+//@}
+//@}
 /* <summary> */
 /* This array defines all the possible states for a context. */
 /* </summary> */
@@ -949,49 +980,14 @@ const MQC_STATES: [MqcState; 47 * 2] = [
   },
 ];
 
-/*
- * The copyright in this software is being made available under the 2-clauses
- * BSD License, included below. This software may be subject to other third
- * party and contributor rights, including patent rights, and no such rights
- * are granted under this license.
- *
- * Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
- * Copyright (c) 2002-2014, Professor Benoit Macq
- * Copyright (c) 2001-2003, David Janssens
- * Copyright (c) 2002-2003, Yannick Verschueren
- * Copyright (c) 2003-2007, Francois-Olivier Devaux
- * Copyright (c) 2003-2014, Antonin Descampe
- * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2008, Jerome Fimes, Communications & Systemes <jerome.fimes@c-s.fr>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+//
+//
 
-/* * @defgroup MQC MQC - Implementation of an MQ-Coder */
-/*@{*/
+// MQC - Implementation of an MQ-Coder
+//@{
 
-/* * @name Local static functions */
-/*@{*/
+// Local static functions
+//@{
 
 /*
 ==========================================================
@@ -999,10 +995,8 @@ const MQC_STATES: [MqcState; 47 * 2] = [
 ==========================================================
 */
 
-/* *
-Fill mqc->c with 1's for flushing
-@param mqc MQC handle
-*/
+/// Fill mqc->c with 1's for flushing
+/// `mqc` — MQC handle
 fn mqc_setbits(mut mqc: &mut Mqc) {
   let mut tempc = mqc.c.wrapping_add(mqc.a);
   mqc.c |= 0xffff;
@@ -1132,7 +1126,7 @@ pub(crate) fn mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: bool) {
     /* Tiny optimization: discard terminating 0xff 0x7f since it is */
     /* interpreted as 0xff 0x7f [0xff 0xff] by the decoder, and given */
     /* the bit stuffing, in fact as 0xff 0xff [0xff ..] */
-    /* Happens once on opj_compress -i ../MAPA.tif -o MAPA.j2k  -M 1 */
+    /* Happens once on compress -i ../MAPA.tif -o MAPA.j2k  -M 1 */
     mqc.bp_offset(-2)
   }
 
@@ -1178,29 +1172,23 @@ pub(crate) fn mqc_erterm_enc(mut mqc: &mut Mqc) {
   }
 }
 
-/* *
-Encode the most probable symbol
-@param mqc MQC handle
-*/
+/// Encode the most probable symbol
+/// `mqc` — MQC handle
 #[inline]
 fn mqc_codemps(mut mqc: &mut Mqc) {
   mqc_codemps_macro(mqc)
 }
 
-/* *
-Encode the most least symbol
-@param mqc MQC handle
-*/
+/// Encode the most least symbol
+/// `mqc` — MQC handle
 #[inline]
 fn mqc_codelps(mut mqc: &mut Mqc) {
   mqc_codelps_macro(mqc)
 }
 
-/* *
-Encode a symbol using the MQ-coder
-@param mqc MQC handle
-@param d The symbol to be encoded (0 or 1)
-*/
+/// Encode a symbol using the MQ-coder
+/// `mqc` — MQC handle
+/// `d` — The symbol to be encoded (0 or 1)
 #[inline]
 pub(crate) fn mqc_encode(mut mqc: &mut Mqc, mut d: u32) {
   mqc_encode_macro(mqc, d)

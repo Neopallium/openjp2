@@ -16,16 +16,16 @@
 //! use openjp2::*;
 //!
 //! fn main() -> Result<()> {
-//!     // One-shot decode (JP2 or J2K, auto-detected; multi-tile codestreams
-//!     // decode tiles in parallel).
-//!     let image = Image::from_file("samples/Hadley_Crater.jp2")?;
-//!     println!("{}x{} {:?}", image.width(), image.height(), image.color_space());
+//! // One-shot decode (JP2 or J2K, auto-detected; multi-tile codestreams
+//! // decode tiles in parallel).
+//! let image = Image::from_file("samples/Hadley_Crater.jp2")?;
+//! println!("{}x{} {:?}", image.width(), image.height(), image.color_space());
 //!
-//!     // Encode back (reversible 5-3: lossless).
-//!     let codestream: Vec<u8> = image.encode(EncodeParameters::new().num_resolutions(3))?;
-//!     let back = Image::from_bytes(&codestream)?;
-//!     assert_eq!((back.width(), back.height()), (image.width(), image.height()));
-//!     Ok(())
+//! // Encode back (reversible 5-3: lossless).
+//! let codestream: Vec<u8> = image.encode(EncodeParameters::new().num_resolutions(3))?;
+//! let back = Image::from_bytes(&codestream)?;
+//! assert_eq!((back.width(), back.height()), (image.width(), image.height()));
+//! Ok(())
 //! }
 //! ```
 //!
@@ -34,7 +34,7 @@
 //! The JPEG 2000 formats and algorithms this port implements are
 //! documented in the [`design_spec`] module (a documentation-only
 //! module, kept off the main crate page).
-//!
+
 use openjp2_ctypes as c_api_types;
 
 /// The JPEG 2000 design specification: the codestream structure, the
@@ -70,7 +70,7 @@ pub(crate) mod openjpeg;
 pub mod api;
 
 /// Whether the build includes the `rayon` feature (the C-ABI
-/// `opj_has_thread_support` reports this).
+/// `has_thread_support` reports this).
 pub fn has_thread_support() -> bool {
   cfg!(feature = "rayon")
 }
