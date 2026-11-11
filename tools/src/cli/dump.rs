@@ -1,5 +1,10 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
-use openjp2::{detect_format_from_file, openjpeg::*, Decoder, Stream};
+use openjp2::{detect_format_from_file, Decoder, Stream};
+use openjp2_ctypes::*;
+
+/// The upstream OpenJPEG version the CLI reports (C-parity output).
+const OPJ_VERSION: &str = "2.5.4";
+use openjp2_ctypes::consts::opj::*;
 use std::ffi::CString;
 use std::path::{Path, PathBuf};
 

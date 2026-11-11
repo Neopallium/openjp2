@@ -1,6 +1,5 @@
 use super::ImageError;
 use crate::params::CompressionParameters;
-use openjp2::openjpeg::*;
 use openjp2::CoreImage;
 use std::fs::File;
 use std::io::{BufRead, BufWriter, Read, Write};
@@ -92,7 +91,7 @@ pub fn load_pgx_image(
 
   // Create image
   let mut image = CoreImage::new();
-  image.color_space = OPJ_CLRSPC_GRAY;
+  image.color_space = openjp2::ColorSpace::Gray;
 
   // Set image parameters
   let offset = params.image_offset();

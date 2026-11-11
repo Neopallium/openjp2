@@ -8,6 +8,7 @@ name = "opj_dump"
 path = "src/bin/opj_dump.rs"
 
 [dependencies]
+openjp2-ctypes = { path = "../ctypes" }
 openjp2 = { path = "..", features = ["event-handlers"] }
 log = "0.4"
 libc = "0.2"

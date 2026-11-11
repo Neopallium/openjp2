@@ -35,10 +35,10 @@
 //! without code references (the authoritative walkthrough for the
 //! pipelines below):
 //!
-#[doc = include_str!("../doc/jpeg2000-design-spec.md")]
+#![doc = include_str!("../doc/jpeg2000-design-spec.md")]
 use openjp2_ctypes as c_api_types;
 /// C-mirror constants (`openjpeg.h` values grouped by domain).
-pub mod consts;
+pub(crate) mod consts;
 mod types;
 
 #[macro_use]
@@ -48,14 +48,13 @@ mod event;
 mod fprintf;
 pub use fprintf::StringWriter;
 
-// Public OpenJpeg interface.
 /// The image data model (`CoreImage`, `CoreImageComp`, ICC profiles).
 pub mod image;
-/// The low-level C-parity codec interface (J2K/JP2 handles and streams).
-/// The low-level C-parity codec interface (J2K/JP2 handles and streams).
-pub mod openjpeg;
 /// Byte streams for the codecs (`Stream` and its constructors).
 pub mod stream;
+// The C-parity re-export hub (ctypes + consts + internal types) is
+// crate-private: the C surface lives in openjp2-ctypes / openjp2-capi.
+pub(crate) mod openjpeg;
 
 // High-level safe API (doc/api-review.md).
 mod api;
@@ -73,19 +72,9 @@ pub use api::{
   Error, Image, ProgressionOrder, Result,
 };
 
-// The C-ABI mirror types are also available behind `ffi` for
-// interop with the C header spellings.
-/// The C-ABI mirror types and constants (the `openjpeg.h` spellings);
-/// the only place C types appear in the core's public namespace.
-pub mod ffi {
-  pub use crate::c_api_types::*;
-  pub use crate::consts::opj::*;
-}
-
 pub use codec::{Decoder, DecoderSettings, Encoder, HeaderImage};
 pub use image::{CoreImage, CoreImageComp};
 pub use j2k::{CodestreamIndex, CodestreamTileIndex, CstrCompInfoV2, CstrInfoV2, CstrTccpInfoV2};
-pub use types::opj_stream_private_t;
 pub use types::EncoderParameters;
 pub use types::{ICCProfile, ICCProfileMut, ICCProfileRef, Stream, TileInfo, CIE_LAB_BYTE_SIZE};
 

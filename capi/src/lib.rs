@@ -18,7 +18,6 @@ pub use openjp2_ctypes::*;
 pub use openjp2_core::{
   ColorSpace, DecodeArea, DecodeLimits, DecodeParameters, DumpImage,
   EncodeParameters, Error, Image, ProgressionOrder, Result,
-  opj_stream_private_t,
   CoreImage, CoreImageComp,
   CIE_LAB_BYTE_SIZE, ICCProfile, ICCProfileMut, ICCProfileRef,
   CodestreamIndex, CodestreamTileIndex, CstrCompInfoV2, CstrInfoV2,
@@ -27,6 +26,9 @@ pub use openjp2_core::{
   detect_format_from_extension_os_str, detect_format_from_file,
   has_thread_support, JP2_RFC3745_MAGIC,
 };
+
+/// The C stream handle type (the core's `Stream`).
+pub type opj_stream_private_t = openjp2_core::Stream;
 
 /// The merged `opj_codec_t*` handle (the core split its `Codec` into
 /// `Decoder`/`Encoder`; this crate keeps the single-pointer contract).

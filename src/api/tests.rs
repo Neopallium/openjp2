@@ -20,7 +20,7 @@ fn fixed_alloc_overpromise_does_not_panic() {
       x1: w,
       y1: h,
       numcomps: 1,
-      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+      color_space: crate::ColorSpace::Gray,
       comps: vec![crate::CoreImageComp {
         dx: 1,
         dy: 1,
@@ -75,7 +75,7 @@ fn fixed_alloc_overpromise_does_not_panic() {
     x1: w,
     y1: h,
     numcomps: 1,
-    color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+    color_space: crate::ColorSpace::Gray,
     comps: vec![crate::CoreImageComp {
       dx: 1,
       dy: 1,
@@ -185,9 +185,9 @@ fn lossless_round_trip_property() {
       y1: h,
       numcomps: comps,
       color_space: if comps == 1 {
-        crate::c_api_types::OPJ_CLRSPC_GRAY
+        crate::ColorSpace::Gray
       } else {
-        crate::c_api_types::OPJ_CLRSPC_SRGB
+        crate::ColorSpace::Srgb
       },
       comps: Vec::new(),
       icc_profile_buf: Vec::new(),
@@ -245,7 +245,7 @@ fn get_pixels_16bit() {
     x1: w,
     y1: h,
     numcomps: 1,
-    color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+    color_space: crate::ColorSpace::Gray,
     comps: Vec::new(),
     icc_profile_buf: Vec::new(),
     icc_profile_is_cielab: false,
@@ -424,7 +424,7 @@ fn stray_no_table_markers_are_skipped() {
     x1: w,
     y1: h,
     numcomps: 1,
-    color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+    color_space: crate::ColorSpace::Gray,
     comps: vec![crate::CoreImageComp {
       dx: 1,
       dy: 1,
@@ -696,7 +696,7 @@ fn get_pixels_alpha() {
     x1: w,
     y1: h,
     numcomps: 2,
-    color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+    color_space: crate::ColorSpace::Gray,
     comps: Vec::new(),
     icc_profile_buf: Vec::new(),
     icc_profile_is_cielab: false,
@@ -731,7 +731,7 @@ fn get_pixels_alpha() {
       x1: w,
       y1: h,
       numcomps: 1,
-      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+      color_space: crate::ColorSpace::Gray,
       comps: vec![crate::CoreImageComp {
         dx: 1,
         dy: 1,
@@ -867,7 +867,7 @@ fn truncation_and_limits() {
     x1: w,
     y1: h,
     numcomps: 3,
-    color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
+    color_space: crate::ColorSpace::Srgb,
     comps: Vec::new(),
     icc_profile_buf: Vec::new(),
     icc_profile_is_cielab: false,
@@ -1223,7 +1223,7 @@ fn parallel_tile_decode_matches_source() {
     x1: w,
     y1: h,
     numcomps: 3,
-    color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
+    color_space: crate::ColorSpace::Srgb,
     comps: Vec::new(),
     icc_profile_buf: Vec::new(),
     icc_profile_is_cielab: false,
@@ -1414,7 +1414,7 @@ fn empty_image_with_tiles_rejected() {
       x1: 0,
       y1: 0,
       numcomps: 1,
-      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+      color_space: crate::ColorSpace::Gray,
       comps: vec![crate::CoreImageComp {
         dx: 1,
         dy: 1,
@@ -1451,7 +1451,7 @@ fn imf_oversized_res_spec_encodes() {
     x1: w,
     y1: h,
     numcomps: 1,
-    color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+    color_space: crate::ColorSpace::Gray,
     comps: vec![crate::CoreImageComp {
       dx: 1,
       dy: 1,
@@ -1490,7 +1490,7 @@ fn custom_mct_lengths_validated() {
     x1: w,
     y1: h,
     numcomps: 3,
-    color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
+    color_space: crate::ColorSpace::Srgb,
     comps: (0..3)
       .map(|_| crate::CoreImageComp {
         dx: 1,
@@ -1531,7 +1531,7 @@ fn prog_order_validated() {
     x1: w,
     y1: h,
     numcomps: 1,
-    color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+    color_space: crate::ColorSpace::Gray,
     comps: vec![crate::CoreImageComp {
       dx: 1,
       dy: 1,
@@ -1552,7 +1552,11 @@ fn prog_order_validated() {
   };
   let image = Image { core };
   let mut params = EncodeParameters::new();
-  params.low_level().prog_order = 99;
+  // The C's progression-order validation moved to the C-ABI boundary (the
+  // native enum is exhaustive); the core still validates the numeric
+  // parameters.
+  params.low_level().res_spec = 0;
+  params.low_level().csty = 1;
   assert!(image.encode(params).is_err());
 }
 
@@ -1593,7 +1597,7 @@ fn parallel_tlm_multi_part_matches_serial() {
     x1: w,
     y1: h,
     numcomps: 3,
-    color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
+    color_space: crate::ColorSpace::Srgb,
     comps,
     icc_profile_buf: Vec::new(),
     icc_profile_is_cielab: false,
@@ -1605,7 +1609,7 @@ fn parallel_tlm_multi_part_matches_serial() {
       codec.extra_options(&["TLM=YES"]).unwrap();
     }
     let mut params = crate::EncoderParameters {
-      tile_size_on: 1,
+      tile_size_on: true,
       cp_tdx: 64,
       cp_tdy: 64,
       tp_on: 1,
@@ -1660,7 +1664,7 @@ fn parallel_tlm_multi_part_matches_serial() {
       codec.extra_options(&["TLM=YES"]).unwrap();
     }
     let mut params = crate::EncoderParameters {
-      tile_size_on: 1,
+      tile_size_on: true,
       cp_tdx: 64,
       cp_tdy: 64,
       tp_on: 1,
@@ -1747,7 +1751,7 @@ fn get_pixels_subsampled_rejected() {
       x1: w,
       y1: h,
       numcomps: 3,
-      color_space: crate::c_api_types::OPJ_CLRSPC_UNSPECIFIED,
+      color_space: crate::ColorSpace::Unknown,
       comps,
       icc_profile_buf: Vec::new(),
       icc_profile_is_cielab: false,
@@ -1778,7 +1782,7 @@ fn subsampled_empty_tiles_round_trip() {
     x1: w,
     y1: h,
     numcomps: 1,
-    color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+    color_space: crate::ColorSpace::Gray,
     comps: vec![crate::CoreImageComp {
       dx: 128,
       dy: 128,
@@ -1959,7 +1963,7 @@ fn encoder_parameters_are_validated() {
     x1: w,
     y1: h,
     numcomps: 1,
-    color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+    color_space: crate::ColorSpace::Gray,
     comps: vec![crate::CoreImageComp {
       dx: 1,
       dy: 1,
@@ -2050,7 +2054,7 @@ fn custom_mct_encode_reaches_inversion() {
       x1: w,
       y1: h,
       numcomps: 3,
-      color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
+      color_space: crate::ColorSpace::Srgb,
       comps,
       icc_profile_buf: Vec::new(),
       icc_profile_is_cielab: false,
@@ -2123,7 +2127,7 @@ fn custom_mct_identity_round_trip_lossless() {
       x1: w,
       y1: h,
       numcomps: 3,
-      color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
+      color_space: crate::ColorSpace::Srgb,
       comps,
       icc_profile_buf: Vec::new(),
       icc_profile_is_cielab: false,
@@ -2189,7 +2193,7 @@ fn custom_mct_real_matrix_round_trip() {
       x1: w,
       y1: h,
       numcomps: 3,
-      color_space: crate::c_api_types::OPJ_CLRSPC_SRGB,
+      color_space: crate::ColorSpace::Srgb,
       comps,
       icc_profile_buf: Vec::new(),
       icc_profile_is_cielab: false,
@@ -2238,7 +2242,7 @@ fn codeblock_style_modes_decode_losslessly() {
       x1: w,
       y1: h,
       numcomps: 1,
-      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+      color_space: crate::ColorSpace::Gray,
       comps: vec![crate::CoreImageComp {
         dx: 1,
         dy: 1,
@@ -2294,7 +2298,7 @@ fn encode_16bit_deep_dwt() {
       x1: w,
       y1: h,
       numcomps: 1,
-      color_space: crate::c_api_types::OPJ_CLRSPC_GRAY,
+      color_space: crate::ColorSpace::Gray,
       comps: vec![crate::CoreImageComp {
         dx: 1,
         dy: 1,

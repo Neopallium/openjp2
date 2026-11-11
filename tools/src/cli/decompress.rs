@@ -1,5 +1,6 @@
 use crate::{color::*, convert::*, params::*};
-use openjp2::{detect_format_from_file, openjpeg::*, CoreImage, Decoder, ICCProfile, Stream};
+use openjp2::{detect_format_from_file, ColorSpace, CoreImage, Decoder, ICCProfile, Stream};
+use openjp2_ctypes::consts::opj::*;
 use std::{env, path::Path};
 
 fn decompress_image<P: AsRef<Path>>(
@@ -136,14 +137,14 @@ fn decompress_image<P: AsRef<Path>>(
     .comps()
     .ok_or_else(|| ImageError::DecodeError("No components".into()))?;
   // Handle color space conversion
-  if image.color_space != OPJ_CLRSPC_SYCC
+  if image.color_space != ColorSpace::Sycc
     && image.numcomps == 3
     && comps[0].dx == comps[0].dy
     && comps[1].dx != 1
   {
-    image.color_space = OPJ_CLRSPC_SYCC;
+    image.color_space = ColorSpace::Sycc;
   } else if image.numcomps <= 2 {
-    image.color_space = OPJ_CLRSPC_GRAY;
+    image.color_space = ColorSpace::Gray;
   }
 
   log::debug!(
@@ -153,15 +154,15 @@ fn decompress_image<P: AsRef<Path>>(
   );
 
   // Handle color conversions
-  if image.color_space == OPJ_CLRSPC_SYCC {
+  if image.color_space == ColorSpace::Sycc {
     log::debug!("Converting SYCC to RGB");
     color_sycc_to_rgb(&mut image);
-  } else if image.color_space == OPJ_CLRSPC_CMYK
+  } else if image.color_space == ColorSpace::Cmyk
     && params.output_format != Some(ImageFileFormat::TIF)
   {
     log::debug!("Converting CMYK to RGB");
     color_cmyk_to_rgb(&mut image);
-  } else if image.color_space == OPJ_CLRSPC_EYCC {
+  } else if image.color_space == ColorSpace::Eycc {
     log::debug!("Converting eYCC to RGB");
     color_esycc_to_rgb(&mut image);
   }
@@ -412,10 +413,10 @@ fn upsample_image_components(orig: &CoreImage) -> Result<Option<CoreImage>, Imag
 fn convert_gray_to_rgb(orig: &CoreImage) -> Result<Option<CoreImage>, ImageError> {
   // Check if image needs to be converted.
   match orig.color_space {
-    OPJ_CLRSPC_SRGB => {
+    ColorSpace::Srgb => {
       return Ok(None);
     }
-    OPJ_CLRSPC_GRAY => (),
+    ColorSpace::Gray => (),
     _ => {
       return Err(ImageError::DecodeError(
         "Don't know how to convert image to RGB colorspace".into(),
@@ -429,7 +430,7 @@ fn convert_gray_to_rgb(orig: &CoreImage) -> Result<Option<CoreImage>, ImageError
   image.y0 = orig.y0;
   image.x1 = orig.x1;
   image.y1 = orig.y1;
-  image.color_space = OPJ_CLRSPC_SRGB;
+  image.color_space = ColorSpace::Srgb;
 
   // Allocate new components.
   let num_new_comp = orig.numcomps + 2;

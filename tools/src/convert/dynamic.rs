@@ -1,7 +1,8 @@
 use super::ImageError;
 use crate::params::CompressionParameters;
 use image::{self, DynamicImage};
-use openjp2::{openjpeg::*, CoreImage, CoreImageComp};
+use openjp2::{ColorSpace, CoreImage, CoreImageComp};
+use openjp2_ctypes::*;
 
 pub fn convert_comp_to_dynamic_grayscale(comp: &CoreImageComp) -> Result<DynamicImage, ImageError> {
   let width = comp.w;
@@ -58,8 +59,8 @@ pub fn convert_to_dynamic_image(image: &CoreImage) -> Result<DynamicImage, Image
   }
 
   let color_space = match (image.numcomps, image.color_space) {
-    (1 | 2, OPJ_CLRSPC_UNKNOWN | OPJ_CLRSPC_UNSPECIFIED) => OPJ_CLRSPC_GRAY,
-    (3 | 4, OPJ_CLRSPC_UNKNOWN | OPJ_CLRSPC_UNSPECIFIED) => OPJ_CLRSPC_SRGB,
+    (1 | 2, ColorSpace::Unknown) => ColorSpace::Gray,
+    (3 | 4, ColorSpace::Unknown) => ColorSpace::Srgb,
     (_, color_space) => color_space,
   };
 
@@ -68,7 +69,7 @@ pub fn convert_to_dynamic_image(image: &CoreImage) -> Result<DynamicImage, Image
   let adjust = c0.adjust;
   // Convert to DynamicImage based on components
   let dynamic_img = match (c0, c1, c2, c3, color_space) {
-    (c0, None, None, None, OPJ_CLRSPC_GRAY) => {
+    (c0, None, None, None, ColorSpace::Gray) => {
       // Grayscale image
 
       let pixels = c0.data.iter().map(|&x| x + adjust);
@@ -86,7 +87,7 @@ pub fn convert_to_dynamic_image(image: &CoreImage) -> Result<DynamicImage, Image
         DynamicImage::ImageLuma16(img_buf)
       }
     }
-    (gray, Some(alpha), None, None, OPJ_CLRSPC_GRAY) => {
+    (gray, Some(alpha), None, None, ColorSpace::Gray) => {
       // Grayscale with alpha
 
       let pixels = gray
@@ -108,7 +109,7 @@ pub fn convert_to_dynamic_image(image: &CoreImage) -> Result<DynamicImage, Image
         DynamicImage::ImageLumaA16(img_buf)
       }
     }
-    (r, Some(g), Some(b), None, OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC) => {
+    (r, Some(g), Some(b), None, ColorSpace::Srgb | ColorSpace::Sycc) => {
       // RGB image
 
       let pixels = r
@@ -131,7 +132,7 @@ pub fn convert_to_dynamic_image(image: &CoreImage) -> Result<DynamicImage, Image
         DynamicImage::ImageRgb16(img_buf)
       }
     }
-    (r, Some(g), Some(b), Some(a), OPJ_CLRSPC_SRGB | OPJ_CLRSPC_SYCC) => {
+    (r, Some(g), Some(b), Some(a), ColorSpace::Srgb | ColorSpace::Sycc) => {
       // RGBA image
 
       let pixels = r
@@ -229,7 +230,7 @@ pub fn convert_from_dynamic_image(
   image.y0 = offset.y;
   image.x1 = offset.x + (width - 1) * subsampling.width + 1;
   image.y1 = offset.y + (height - 1) * subsampling.height + 1;
-  image.color_space = color_space;
+  image.color_space = ColorSpace::from(color_space);
   image.alloc_comps(numcomps);
 
   let comps = image.comps_mut().expect("We just allocated them");

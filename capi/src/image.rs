@@ -745,7 +745,7 @@ pub fn core_from_opj(image: &opj_image) -> CoreImage {
       x1: image.x1,
       y1: image.y1,
       numcomps: image.numcomps,
-      color_space: image.color_space,
+      color_space: image.color_space.into(),
       comps: Vec::with_capacity(image.numcomps as usize),
       icc_profile_buf: Vec::new(),
       icc_profile_is_cielab: false,
@@ -794,7 +794,7 @@ pub fn core_into_opj(core: CoreImage) -> Box<opj_image> {
     image.x1 = core.x1;
     image.y1 = core.y1;
     image.numcomps = core.numcomps;
-    image.color_space = core.color_space;
+    image.color_space = core.color_space.into();
     if !image.alloc_comps(core.numcomps) {
       return image;
     }

@@ -64,6 +64,21 @@ pub enum ProgressionOrder {
   Cprl,
 }
 
+impl From<crate::c_api_types::OPJ_PROG_ORDER> for ProgressionOrder {
+  fn from(p: crate::c_api_types::OPJ_PROG_ORDER) -> Self {
+    use crate::c_api_types::{OPJ_CPRL, OPJ_PCRL, OPJ_RLCP, OPJ_RPCL};
+    match p {
+      OPJ_RLCP => ProgressionOrder::Rlcp,
+      OPJ_RPCL => ProgressionOrder::Rpcl,
+      OPJ_PCRL => ProgressionOrder::Pcrl,
+      OPJ_CPRL => ProgressionOrder::Cprl,
+      _ => ProgressionOrder::Lrcp, /* incl. OPJ_LRCP and invalid values
+                                   (the C ABI validates before
+                                   converting; see capi) */
+    }
+  }
+}
+
 impl From<ProgressionOrder> for crate::c_api_types::OPJ_PROG_ORDER {
   fn from(p: ProgressionOrder) -> Self {
     use crate::c_api_types::{OPJ_CPRL, OPJ_LRCP, OPJ_PCRL, OPJ_RLCP, OPJ_RPCL};
@@ -302,13 +317,13 @@ impl EncodeParameters {
 
   /// Packet progression order.
   pub fn progression_order(mut self, order: ProgressionOrder) -> Self {
-    self.inner.prog_order = order.into();
+    self.inner.prog_order = order;
     self
   }
 
   /// Use tiles of the given size.
   pub fn tile_size(mut self, w: u32, h: u32) -> Self {
-    self.inner.tile_size_on = 1;
+    self.inner.tile_size_on = true;
     self.inner.cp_tdx = w as i32;
     self.inner.cp_tdy = h as i32;
     self

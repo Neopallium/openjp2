@@ -1,6 +1,7 @@
-use openjp2::ffi::opj_image_cmptparm_t;
 use openjp2::CoreImage;
-use openjp2::{detect_format_from_extension_os_str, openjpeg::*, Encoder, Stream};
+use openjp2::{detect_format_from_extension_os_str, Encoder, EncoderParameters, Stream};
+use openjp2_ctypes::opj_image_cmptparm_t;
+use openjp2_ctypes::OPJ_CLRSPC_SRGB;
 use rand::prelude::*;
 use std::path::PathBuf;
 
@@ -108,12 +109,12 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
   // Set encoding parameters
   params.cp_tx0 = 0;
   params.cp_ty0 = 0;
-  params.tile_size_on = 1;
+  params.tile_size_on = true;
   params.cp_tdx = tile_width as i32;
   params.cp_tdy = tile_height as i32;
 
   // Progression order.
-  params.prog_order = OPJ_LRCP;
+  params.prog_order = openjp2::ProgressionOrder::Lrcp;
 
   // Image components
   let mut image_components = Vec::with_capacity(num_comps as usize);

@@ -128,7 +128,7 @@ pub struct CoreImage {
   /// Number of components.
   pub numcomps: u32,
   /// Declared colour space.
-  pub color_space: OPJ_COLOR_SPACE,
+  pub color_space: crate::api::ColorSpace,
   /// The components.
   pub comps: Vec<CoreImageComp>,
   /// Raw ICC profile bytes (JP2 `colr` box).
@@ -277,7 +277,7 @@ impl CoreImage {
     clrspc: OPJ_COLOR_SPACE,
   ) -> Option<CoreImage> {
     let mut image = CoreImage {
-      color_space: clrspc,
+      color_space: crate::api::ColorSpace::from(clrspc),
       ..Default::default()
     };
     if !image.alloc_comps(cmptparms.len() as u32) {
@@ -357,7 +357,7 @@ impl CoreImage {
     self.comps[0].set_data(r);
     self.comps[1].set_data(g);
     self.comps[2].set_data(b);
-    self.color_space = OPJ_CLRSPC_SRGB;
+    self.color_space = crate::api::ColorSpace::Srgb;
     true
   }
 

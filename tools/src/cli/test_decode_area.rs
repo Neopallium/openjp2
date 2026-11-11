@@ -1,5 +1,6 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt, PositionalArg};
-use openjp2::{detect_format_from_file, openjpeg::*, CoreImage, Decoder, Stream};
+use openjp2::{detect_format_from_file, CoreImage, Decoder, Stream};
+use openjp2_ctypes::opj_dparameters_t;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq)]

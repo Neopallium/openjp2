@@ -565,6 +565,7 @@ dependencies = [
  "log",
  "md5",
  "openjp2",
+ "openjp2-ctypes",
  "rand",
  "rayon",
  "rgb",

@@ -1,7 +1,7 @@
 use super::{BitBuffer, ImageError};
 use crate::params::CompressionParameters;
 use libtiff_sys::*;
-use openjp2::{openjpeg::*, CoreImage};
+use openjp2::{ColorSpace, CoreImage};
 use std::ffi::{c_void, CString};
 use std::os::raw::c_char;
 use std::path::Path;
@@ -73,11 +73,11 @@ pub fn load_tiff_image(
 
   // Create OpenJPEG image
   let color_space = if photometric == PHOTOMETRIC_RGB {
-    OPJ_CLRSPC_SRGB
+    ColorSpace::Srgb
   } else if photometric == PHOTOMETRIC_MINISBLACK {
-    OPJ_CLRSPC_GRAY
+    ColorSpace::Gray
   } else {
-    OPJ_CLRSPC_UNKNOWN
+    ColorSpace::Unknown
   };
 
   let mut image = CoreImage::new();
@@ -288,7 +288,7 @@ pub fn load_tiff_image(
 
   // Scale for cinema mode if needed
   let comps = image.comps_mut().expect("We just allocated the components");
-  if params.is_cinema() && color_space == OPJ_CLRSPC_SRGB {
+  if params.is_cinema() && color_space == ColorSpace::Srgb {
     for comp in comps.iter_mut() {
       comp.scale(12);
     }
@@ -366,7 +366,7 @@ pub fn save_tiff_image(image: &mut CoreImage, path: &Path) -> Result<(), ImageEr
     adjust,
     numcomps
   );
-  let photometric = if image.color_space == OPJ_CLRSPC_CMYK {
+  let photometric = if image.color_space == ColorSpace::Cmyk {
     if numcomps < 4 {
       return Err(ImageError::EncodeError(
         "CMYK images shall be composed of at least 4 planes".into(),

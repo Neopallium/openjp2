@@ -2,7 +2,7 @@ use log;
 use std::cmp::{max, min};
 use std::convert::TryInto;
 
-use openjp2::{openjpeg::*, CoreImage};
+use openjp2::{ColorSpace, CoreImage};
 
 #[cfg(feature = "lcms2")]
 use lcms2::*;
@@ -334,7 +334,7 @@ pub fn color_sycc_to_rgb(image: &mut CoreImage) {
   };
 
   if comps.len() < 3 {
-    image.color_space = OPJ_CLRSPC_GRAY;
+    image.color_space = ColorSpace::Gray;
     return;
   }
 
@@ -485,7 +485,7 @@ pub fn color_apply_icc_profile(image: &mut CoreImage, icc_profile: &[u8]) {
     log::error!("color_apply_icc_profile: failed to allocate components");
     return;
   }
-  image.color_space = OPJ_CLRSPC_SRGB;
+  image.color_space = ColorSpace::Srgb;
 
   // Copy the original components details to the new components
   let mut comps = image
@@ -843,7 +843,7 @@ pub fn color_cmyk_to_rgb(image: &mut CoreImage) {
   truncate it here to match. */
   image.numcomps -= 1;
   image.comps.truncate(image.numcomps as usize);
-  image.color_space = OPJ_CLRSPC_SRGB;
+  image.color_space = ColorSpace::Srgb;
 }
 
 pub fn color_esycc_to_rgb(image: &mut CoreImage) {
@@ -900,5 +900,5 @@ pub fn color_esycc_to_rgb(image: &mut CoreImage) {
     cr_data[i] = val.max(0).min(max_value);
   }
 
-  image.color_space = OPJ_CLRSPC_SRGB;
+  image.color_space = ColorSpace::Srgb;
 }

@@ -40,7 +40,7 @@ use crate::cstr_info::{opj_codestream_index_t, opj_codestream_info_v2_t};
 use openjp2_ctypes::*;
 
 use crate::codec::Codec;
-use openjp2_core::opj_stream_private_t;
+use openjp2_core::Stream as opj_stream_private_t;
 
 #[cfg(feature = "file-io")]
 use ::libc::FILE;
@@ -440,6 +440,16 @@ pub unsafe fn opj_setup_encoder(
   let p_image = unsafe { &mut *p_image };
   let l_codec = &mut *(p_codec as *mut Codec);
   let parameters = &mut *parameters;
+  /* The C's setup_encoder validates the progression order (0..=4); the
+  core's native enum cannot hold invalid values, so validate here and
+  fail the encode like the C does. */
+  if !(0..=4).contains(&parameters.prog_order) {
+    match l_codec {
+      Codec::Dec(dec) => dec.emit_error_event("Invalid progression order\n"),
+      Codec::Enc(enc) => enc.emit_error_event("Invalid progression order\n"),
+    }
+    return 0i32;
+  }
   let mut core = core_from_opj(p_image);
   let mut safe = encoder_params_from_c(parameters, core.numcomps);
   let ret = l_codec.setup_encoder(&mut safe, &mut core);
@@ -463,7 +473,7 @@ fn encoder_params_from_c(
   numcomps: u32,
 ) -> openjp2_core::EncoderParameters {
   let mut safe = openjp2_core::EncoderParameters {
-    tile_size_on: parameters.tile_size_on,
+    tile_size_on: parameters.tile_size_on != 0,
     cp_tx0: parameters.cp_tx0,
     cp_ty0: parameters.cp_ty0,
     cp_tdx: parameters.cp_tdx,
@@ -472,7 +482,7 @@ fn encoder_params_from_c(
     cp_fixed_alloc: parameters.cp_fixed_alloc,
     cp_fixed_quality: parameters.cp_fixed_quality,
     csty: parameters.csty,
-    prog_order: parameters.prog_order,
+    prog_order: openjp2_core::ProgressionOrder::from(parameters.prog_order),
     pocs: parameters.POC,
     numpocs: parameters.numpocs,
     tcp_numlayers: parameters.tcp_numlayers,
@@ -495,9 +505,9 @@ fn encoder_params_from_c(
     subsampling_dy: parameters.subsampling_dy,
     decod_format: parameters.decod_format,
     cod_format: parameters.cod_format,
-    cp_cinema: parameters.cp_cinema,
+    cp_cinema: parameters.cp_cinema as u32,
     max_comp_size: parameters.max_comp_size,
-    cp_rsiz: parameters.cp_rsiz,
+    cp_rsiz: parameters.cp_rsiz as u16,
     tp_on: parameters.tp_on,
     tp_flag: parameters.tp_flag,
     tcp_mct: parameters.tcp_mct,

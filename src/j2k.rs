@@ -5307,7 +5307,7 @@ fn opj_j2k_set_cinema_parameters(
   /* Configure cinema parameters */
   let mut i: core::ffi::c_int = 0;
   /* No tiling */
-  parameters.tile_size_on = 0i32;
+  parameters.tile_size_on = false;
   parameters.cp_tdx = 1i32;
   parameters.cp_tdy = 1i32;
   /* One tile part for each component */
@@ -5383,7 +5383,7 @@ fn opj_j2k_set_cinema_parameters(
     }
   }
   /* The progression order shall be CPRL */
-  parameters.prog_order = OPJ_CPRL;
+  parameters.prog_order = crate::api::ProgressionOrder::Cprl;
   /* Progression order changes for 4K, disallowed for 2K */
   if parameters.rsiz as core::ffi::c_int == 0x4i32 {
     parameters.numpocs =
@@ -5485,7 +5485,7 @@ fn opj_j2k_get_imf_max_nl(
   /* Decomposition levels */
   let rsiz = parameters.rsiz;
   let profile = (rsiz as core::ffi::c_int & 0xff00i32) as u16;
-  let x_tsiz = if parameters.tile_size_on != 0 {
+  let x_tsiz = if parameters.tile_size_on {
     parameters.cp_tdx as u32
   } else {
     image.x1
@@ -5541,7 +5541,7 @@ fn opj_j2k_set_imf_parameters(
   parameters.tp_flag = 'C' as i32 as core::ffi::c_char;
   parameters.tp_on = 1 as core::ffi::c_char;
   if parameters.prog_order as core::ffi::c_int == OPJ_LRCP as core::ffi::c_int {
-    parameters.prog_order = OPJ_CPRL
+    parameters.prog_order = crate::api::ProgressionOrder::Cprl
   }
   if profile as core::ffi::c_int == 0x400i32
     || profile as core::ffi::c_int == 0x500i32
@@ -5557,7 +5557,7 @@ fn opj_j2k_set_imf_parameters(
       parameters.numresolution = max_nl + 1i32
     }
     /* Note: below is generic logic */
-    if parameters.tile_size_on == 0 {
+    if !parameters.tile_size_on {
       while parameters.numresolution > 0i32 {
         if image.x1 < (1u32) << (parameters.numresolution as u32).wrapping_sub(1u32) {
           parameters.numresolution -= 1
@@ -5605,7 +5605,7 @@ fn opj_j2k_is_imf_compliant(
   let mainlevel = (rsiz as core::ffi::c_int & 0xfi32) as u16;
   let sublevel = (rsiz as core::ffi::c_int >> 4i32 & 0xfi32) as u16;
   let nl = parameters.numresolution - 1i32;
-  let x_tsiz = if parameters.tile_size_on != 0 {
+  let x_tsiz = if parameters.tile_size_on {
     parameters.cp_tdx as u32
   } else {
     image.x1
@@ -5654,7 +5654,7 @@ fn opj_j2k_is_imf_compliant(
                       parameters.cp_tx0, parameters.cp_ty0);
     ret = Err(())
   }
-  if parameters.tile_size_on != 0 {
+  if parameters.tile_size_on {
     if profile as core::ffi::c_int == 0x400i32
       || profile as core::ffi::c_int == 0x500i32
       || profile as core::ffi::c_int == 0x600i32
@@ -6021,15 +6021,6 @@ pub(crate) fn opj_j2k_setup_encoder(
   /* The C's opj_j2k_write_cod asserts on an unknown progression order; the
   port's write path uses it as a marker value (garbage output where the C
   has UB) - reject it up front. */
-  if !(0i32..=4i32).contains(&parameters.prog_order) {
-    event_msg!(
-      p_manager,
-      EVT_ERROR,
-      "Invalid progression order : {}\n",
-      parameters.prog_order,
-    );
-    return Err(());
-  }
   for comp in image.comps.iter() {
     if !crate::types::prec_valid(comp.prec) {
       event_msg!(
@@ -6468,7 +6459,7 @@ pub(crate) fn opj_j2k_setup_encoder(
   /*
   calculate other encoding parameters
   */
-  if parameters.tile_size_on != 0 {
+  if parameters.tile_size_on {
     if cp.tdx == 0u32 {
       event_msg!(p_manager, EVT_ERROR, "Invalid tile width\n",);
       return Err(());
@@ -6552,7 +6543,7 @@ pub(crate) fn opj_j2k_setup_encoder(
       j += 1;
     }
     tcp.csty = parameters.csty as u32;
-    tcp.prg = parameters.prog_order;
+    tcp.prg = parameters.prog_order.into();
     tcp.mct = parameters.tcp_mct as u32;
     numpocs_tile = 0_u32;
     tcp.poc = false;

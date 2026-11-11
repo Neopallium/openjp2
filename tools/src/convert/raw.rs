@@ -1,7 +1,7 @@
 use super::ImageError;
 use crate::params::ParameterError;
 use crate::params::{CompressionParameters, MCTMode};
-use openjp2::{openjpeg::*, CoreImage};
+use openjp2::{ColorSpace, CoreImage};
 use std::fs::File;
 use std::io::{BufWriter, Read, Write};
 use std::path::Path;
@@ -140,15 +140,15 @@ pub fn load_raw_image(
   // Create image and initialize components
   let mut image = CoreImage::new();
   image.color_space = if raw_params.num_comps == 1 {
-    OPJ_CLRSPC_GRAY
+    ColorSpace::Gray
   } else if raw_params.num_comps >= 3 {
     match &params.mct_mode {
-      Some(MCTMode::None) => OPJ_CLRSPC_SYCC,
-      None | Some(MCTMode::RGB2YCC) => OPJ_CLRSPC_SRGB,
-      _ => OPJ_CLRSPC_UNKNOWN,
+      Some(MCTMode::None) => ColorSpace::Sycc,
+      None | Some(MCTMode::RGB2YCC) => ColorSpace::Srgb,
+      _ => ColorSpace::Unknown,
     }
   } else {
-    OPJ_CLRSPC_UNKNOWN
+    ColorSpace::Unknown
   };
 
   // Set image parameters

@@ -1,4 +1,5 @@
-use openjp2::{detect_format_from_file, openjpeg::*, Decoder, Stream};
+use openjp2::{detect_format_from_file, Decoder, Stream};
+use openjp2_ctypes::*;
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy)]

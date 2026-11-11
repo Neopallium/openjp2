@@ -1885,17 +1885,17 @@ pub(crate) fn opj_jp2_read_header(
   {
     /* Set Image Color Space */
     if jp2.enumcs == 16u32 {
-      image.color_space = OPJ_CLRSPC_SRGB
+      image.color_space = crate::api::ColorSpace::Srgb
     } else if jp2.enumcs == 17u32 {
-      image.color_space = OPJ_CLRSPC_GRAY
+      image.color_space = crate::api::ColorSpace::Gray
     } else if jp2.enumcs == 18u32 {
-      image.color_space = OPJ_CLRSPC_SYCC
+      image.color_space = crate::api::ColorSpace::Sycc
     } else if jp2.enumcs == 24u32 {
-      image.color_space = OPJ_CLRSPC_EYCC
+      image.color_space = crate::api::ColorSpace::Eycc
     } else if jp2.enumcs == 12u32 {
-      image.color_space = OPJ_CLRSPC_CMYK
+      image.color_space = crate::api::ColorSpace::Cmyk
     } else {
-      image.color_space = OPJ_CLRSPC_UNKNOWN
+      image.color_space = crate::api::ColorSpace::Unknown
     }
   }
   if let Some(icc_profile) = jp2.color.icc_profile() {

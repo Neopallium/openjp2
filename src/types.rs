@@ -43,7 +43,7 @@ use crate::image::CoreImage;
 #[derive(Clone, Debug)]
 pub struct EncoderParameters {
   /// Size of tiles on by default (`true` = use `cp_tdx` x `cp_tdy`).
-  pub tile_size_on: OPJ_BOOL,
+  pub tile_size_on: bool,
   /// Origin of the tile grid in x.
   pub cp_tx0: core::ffi::c_int,
   /// Origin of the tile grid in y.
@@ -64,8 +64,8 @@ pub struct EncoderParameters {
   pub cp_comment: Option<Vec<u8>>,
   /// Coding style (see the COD marker).
   pub csty: core::ffi::c_int,
-  /// Progression order (`OPJ_LRCP` etc.).
-  pub prog_order: OPJ_PROG_ORDER,
+  /// Progression order.
+  pub prog_order: crate::api::ProgressionOrder,
   /// Progression-order changes.
   pub pocs: [opj_poc_t; J2K_MAX_POCS as usize],
   /// Number of progression-order changes in `pocs`.
@@ -111,12 +111,12 @@ pub struct EncoderParameters {
   /// Output file format (`OPJ_CODEC_*`).
   pub cod_format: core::ffi::c_int,
   /// Cinema profile mode.
-  pub cp_cinema: OPJ_CINEMA_MODE,
+  pub cp_cinema: u32,
   /// Maximum compressed size.
   pub max_comp_size: core::ffi::c_int,
-  /// Profile (`OPJ_RSIZ_CAPABILITIES` bits; e.g. `OPJ_MCT` enables the
-  /// custom-MCT marker emission).
-  pub cp_rsiz: OPJ_RSIZ_CAPABILITIES,
+  /// Profile bits (e.g. `OPJ_MCT` enables the custom-MCT marker
+  /// emission).
+  pub cp_rsiz: u16,
   /// Write tile-part markers (`'R'`/`'C'` style flags).
   pub tp_on: core::ffi::c_char,
   /// Tile-part flag character.
@@ -151,7 +151,7 @@ impl Default for EncoderParameters {
       cp_matrice: None,
       cp_comment: None,
       csty: Default::default(),
-      prog_order: OPJ_LRCP,
+      prog_order: crate::api::ProgressionOrder::Lrcp,
       pocs: Default::default(),
       numpocs: Default::default(),
       tcp_numlayers: Default::default(),
@@ -176,7 +176,7 @@ impl Default for EncoderParameters {
       cod_format: -1,
       cp_cinema: OPJ_OFF,
       max_comp_size: Default::default(),
-      cp_rsiz: OPJ_STD_RSIZ,
+      cp_rsiz: 0,
       tp_on: Default::default(),
       tp_flag: Default::default(),
       tcp_mct: Default::default(),
@@ -246,8 +246,6 @@ pub struct Stream {
   pub(crate) m_byte_offset: i64,
 }
 pub(crate) type opj_stream_private = Stream;
-/// C-compatible alias for [`Stream`] (the C ABI's stream handle type).
-pub type opj_stream_private_t = Stream;
 
 pub(crate) struct Jp2 {
   /// Decode-failure context for structured errors: the JP2 box type that

@@ -106,7 +106,7 @@ impl From<u32> for JpipBoxType {
 
 impl JpipBoxType {
   /// The four-character-code as a u32 (the JPIP box type word).
-  pub fn to_u32(&self) -> u32 {
+  pub fn to_u32(self) -> u32 {
     match self {
       JpipBoxType::None => 0x00000000,
       JpipBoxType::Cidx => 0x63696478,
@@ -123,7 +123,7 @@ impl JpipBoxType {
       JpipBoxType::Prxy => 0x70727879,
       JpipBoxType::Iptr => 0x69707472,
       JpipBoxType::Phld => 0x70686c64,
-      JpipBoxType::Unknown(value) => *value,
+      JpipBoxType::Unknown(value) => value,
     }
   }
 }
@@ -237,6 +237,8 @@ pub mod j2k {
 }
 
 /// JP2 box types (the four-character big-endian box identifiers).
+/// The variant names keep the C/ISO spellings (e.g. `FTYP`, `JP2H`).
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum Jp2BoxType {
   /// No box type
@@ -331,7 +333,7 @@ impl Jp2BoxType {
   }
 
   /// Converts the enum variant back into a u32 value.
-  pub fn to_u32(&self) -> Option<u32> {
+  pub fn to_u32(self) -> Option<u32> {
     match self {
       Jp2BoxType::None => None,
       Jp2BoxType::JPIP => Some(0x6a706970),
@@ -353,7 +355,7 @@ impl Jp2BoxType {
       Jp2BoxType::XML => Some(0x786d6c20),
       Jp2BoxType::UUID => Some(0x75756964),
       Jp2BoxType::UINF => Some(0x75696e66),
-      Jp2BoxType::Unknown(value) => Some(*value),
+      Jp2BoxType::Unknown(value) => Some(value),
     }
   }
 }

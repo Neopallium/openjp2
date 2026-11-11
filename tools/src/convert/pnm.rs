@@ -1,8 +1,6 @@
 use super::ImageError;
 use crate::params::CompressionParameters;
-use openjp2::openjpeg::*;
-use openjp2::CoreImage;
-use openjp2::CoreImageComp;
+use openjp2::{ColorSpace, CoreImage, CoreImageComp};
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 
@@ -188,9 +186,9 @@ pub fn load_pnm_image(
     y1: height,
     numcomps: num_comps,
     color_space: if num_comps == 1 {
-      OPJ_CLRSPC_GRAY
+      ColorSpace::Gray
     } else {
-      OPJ_CLRSPC_SRGB
+      ColorSpace::Srgb
     },
     comps,
     icc_profile_buf: Vec::new(),

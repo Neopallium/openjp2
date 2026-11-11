@@ -1,7 +1,12 @@
 use crate::convert::*;
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
 use crate::params::*;
-use openjp2::{detect_format_from_file, openjpeg::*, J2KFormat};
+use openjp2::{detect_format_from_file, EncoderParameters, J2KFormat};
+use openjp2_ctypes::*;
+
+/// The upstream OpenJPEG version the CLI reports (C-parity output).
+const OPJ_VERSION: &str = "2.5.4";
+use openjp2_ctypes::consts::opj::*;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -758,7 +763,7 @@ impl CompressionParameters {
 
     // Tile parameters
     if let Some(tile_size) = &self.tile_size {
-      c_params.tile_size_on = 1;
+      c_params.tile_size_on = true;
       c_params.cp_tdx = tile_size.width as i32;
       c_params.cp_tdy = tile_size.height as i32;
     }
@@ -794,12 +799,12 @@ impl CompressionParameters {
     // Various parameters
     c_params.csty = self.csty as i32;
     c_params.prog_order = match self.prog_order {
-      ProgressionOrder::LRCP => OPJ_LRCP,
-      ProgressionOrder::RLCP => OPJ_RLCP,
-      ProgressionOrder::RPCL => OPJ_RPCL,
-      ProgressionOrder::PCRL => OPJ_PCRL,
-      ProgressionOrder::CPRL => OPJ_CPRL,
-      _ => OPJ_PROG_UNKNOWN,
+      ProgressionOrder::LRCP => openjp2::ProgressionOrder::Lrcp,
+      ProgressionOrder::RLCP => openjp2::ProgressionOrder::Rlcp,
+      ProgressionOrder::RPCL => openjp2::ProgressionOrder::Rpcl,
+      ProgressionOrder::PCRL => openjp2::ProgressionOrder::Pcrl,
+      ProgressionOrder::CPRL => openjp2::ProgressionOrder::Cprl,
+      _ => openjp2::ProgressionOrder::Lrcp,
     };
 
     // POC markers

@@ -1,8 +1,7 @@
 use super::convert_from_dynamic_image;
 use super::ImageError;
 use crate::params::CompressionParameters;
-use openjp2::ffi::COLOR_SPACE::OPJ_CLRSPC_SRGB;
-use openjp2::CoreImage;
+use openjp2::{ColorSpace, CoreImage};
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::Read;
@@ -162,7 +161,7 @@ impl BmpInfo {
     };
 
     let mut image = CoreImage::new();
-    image.color_space = OPJ_CLRSPC_SRGB;
+    image.color_space = ColorSpace::Srgb;
     image.x0 = 0;
     image.y0 = 0;
     image.x1 = self.width as u32;

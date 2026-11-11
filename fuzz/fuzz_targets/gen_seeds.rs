@@ -4,7 +4,7 @@
 //!
 //! Run: `cargo run --bin gen_seeds` from the `fuzz/` directory.
 
-use openjp2::ffi::{OPJ_CLRSPC_GRAY, OPJ_CLRSPC_SRGB};
+use openjp2::ColorSpace;
 use openjp2::{CoreImage, CoreImageComp, EncodeParameters, Image};
 
 fn xorshift(r: &mut u64) -> u64 {
@@ -33,9 +33,9 @@ fn main() {
       y1: h,
       numcomps: comps,
       color_space: if comps == 1 {
-        OPJ_CLRSPC_GRAY
+        ColorSpace::Gray
       } else {
-        OPJ_CLRSPC_SRGB
+        ColorSpace::Srgb
       },
       comps: Vec::new(),
       icc_profile_buf: Vec::new(),

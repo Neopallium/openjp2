@@ -56,7 +56,7 @@ impl Image {
 
   /// The image colour space.
   pub fn color_space(&self) -> ColorSpace {
-    self.core.color_space.into()
+    self.core.color_space
   }
 
   /// Number of components.
@@ -98,20 +98,20 @@ impl Image {
         .map(|px| px[chan] as u16)
         .collect()
     };
-    let (numcomps, color_space, planes): (u32, OPJ_COLOR_SPACE, Vec<Vec<u16>>) = match img {
+    let (numcomps, color_space, planes): (u32, crate::api::ColorSpace, Vec<Vec<u16>>) = match img {
       ImageLuma8(g) => (
         1,
-        crate::c_api_types::OPJ_CLRSPC_GRAY,
+        crate::api::ColorSpace::Gray,
         vec![g.as_raw().iter().map(|&v| v as u16).collect()],
       ),
       ImageLumaA8(g) => (
         2,
-        crate::c_api_types::OPJ_CLRSPC_GRAY,
+        crate::api::ColorSpace::Gray,
         vec![widen(g.as_raw(), 2, 0), widen(g.as_raw(), 2, 1)],
       ),
       ImageRgb8(r) => (
         3,
-        crate::c_api_types::OPJ_CLRSPC_SRGB,
+        crate::api::ColorSpace::Srgb,
         vec![
           widen(r.as_raw(), 3, 0),
           widen(r.as_raw(), 3, 1),
@@ -120,7 +120,7 @@ impl Image {
       ),
       ImageRgba8(r) => (
         4,
-        crate::c_api_types::OPJ_CLRSPC_SRGB,
+        crate::api::ColorSpace::Srgb,
         vec![
           widen(r.as_raw(), 4, 0),
           widen(r.as_raw(), 4, 1),
@@ -128,14 +128,10 @@ impl Image {
           widen(r.as_raw(), 4, 3),
         ],
       ),
-      ImageLuma16(g) => (
-        1,
-        crate::c_api_types::OPJ_CLRSPC_GRAY,
-        vec![g.as_raw().to_vec()],
-      ),
+      ImageLuma16(g) => (1, crate::api::ColorSpace::Gray, vec![g.as_raw().to_vec()]),
       ImageLumaA16(g) => (
         2,
-        crate::c_api_types::OPJ_CLRSPC_GRAY,
+        crate::api::ColorSpace::Gray,
         vec![
           g.as_raw().as_chunks::<2>().0.iter().map(|c| c[0]).collect(),
           g.as_raw().as_chunks::<2>().0.iter().map(|c| c[1]).collect(),
@@ -143,7 +139,7 @@ impl Image {
       ),
       ImageRgb16(r) => (
         3,
-        crate::c_api_types::OPJ_CLRSPC_SRGB,
+        crate::api::ColorSpace::Srgb,
         vec![
           r.as_raw().as_chunks::<3>().0.iter().map(|c| c[0]).collect(),
           r.as_raw().as_chunks::<3>().0.iter().map(|c| c[1]).collect(),
@@ -152,7 +148,7 @@ impl Image {
       ),
       ImageRgba16(r) => (
         4,
-        crate::c_api_types::OPJ_CLRSPC_SRGB,
+        crate::api::ColorSpace::Srgb,
         vec![
           r.as_raw().as_chunks::<4>().0.iter().map(|c| c[0]).collect(),
           r.as_raw().as_chunks::<4>().0.iter().map(|c| c[1]).collect(),
@@ -164,7 +160,7 @@ impl Image {
         let rgba = img.to_rgba8();
         (
           4,
-          crate::c_api_types::OPJ_CLRSPC_SRGB,
+          crate::api::ColorSpace::Srgb,
           vec![
             widen(rgba.as_raw(), 4, 0),
             widen(rgba.as_raw(), 4, 1),

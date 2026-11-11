@@ -1,6 +1,10 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
 use crate::params::*;
-use openjp2::{detect_format_from_file, openjpeg::*, J2KFormat};
+use openjp2::{detect_format_from_file, J2KFormat};
+use openjp2_ctypes::*;
+
+/// The upstream OpenJPEG version the CLI reports (C-parity output).
+const OPJ_VERSION: &str = "2.5.4";
 use std::path::PathBuf;
 
 // Parameters struct similar to opj_decompress_parameters

@@ -243,7 +243,7 @@ fn encode_rgba(
     x1: width,
     y1: height,
     numcomps: 3,
-    color_space: openjp2::ffi::OPJ_CLRSPC_SRGB,
+    color_space: openjp2::ColorSpace::Srgb,
     comps: vec![comp(r), comp(g), comp(b)],
     icc_profile_buf: Vec::new(),
     icc_profile_is_cielab: false,
