@@ -164,7 +164,7 @@ fn to_rgba(image: &Image) -> Result<Vec<u8>, String> {
   let get = |ci: usize, i: usize| shift(comps[ci].data[i], comps[ci].prec, comps[ci].sgnd != 0);
   match n {
     1 => {
-      for (i, px) in out.chunks_exact_mut(4).enumerate() {
+      for (i, px) in out.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         let g = get(0, i);
         px[0] = g;
         px[1] = g;
@@ -173,7 +173,7 @@ fn to_rgba(image: &Image) -> Result<Vec<u8>, String> {
       }
     }
     2 => {
-      for (i, px) in out.chunks_exact_mut(4).enumerate() {
+      for (i, px) in out.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         let g = get(0, i);
         px[0] = g;
         px[1] = g;
@@ -182,7 +182,7 @@ fn to_rgba(image: &Image) -> Result<Vec<u8>, String> {
       }
     }
     3 | 4 => {
-      for (i, px) in out.chunks_exact_mut(4).enumerate() {
+      for (i, px) in out.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         px[0] = get(0, i);
         px[1] = get(1, i);
         px[2] = get(2, i);
@@ -217,7 +217,7 @@ fn encode_rgba(
   let mut r = Vec::with_capacity(n);
   let mut g = Vec::with_capacity(n);
   let mut b = Vec::with_capacity(n);
-  for px in rgba[..n * 4].chunks_exact(4) {
+  for px in rgba[..n * 4].as_chunks::<4>().0 {
     r.push(px[0] as i32);
     g.push(px[1] as i32);
     b.push(px[2] as i32);

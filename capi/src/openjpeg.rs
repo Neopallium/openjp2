@@ -40,7 +40,7 @@ use crate::cstr_info::{opj_codestream_index_t, opj_codestream_info_v2_t};
 use openjp2_ctypes::*;
 
 use crate::codec::Codec;
-use openjp2_core::{opj_stream_private_t, TileInfo};
+use openjp2_core::opj_stream_private_t;
 
 #[cfg(feature = "file-io")]
 use ::libc::FILE;

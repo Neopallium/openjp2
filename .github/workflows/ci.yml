@@ -1,0 +1,335 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# The upstream project's workflow gates this way; keep the convention.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ------------------------------------------------------------------
+  # The quick Rust gate suite (the "regular" upstream job, Rust-ified):
+  # fmt + clippy + build + unit tests + docs + the C-ABI crate.
+  # ------------------------------------------------------------------
+  gates:
+    name: gates (linux)
+    runs-on: ubuntu-24.04
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install requirements
+        run: |
+          sudo apt update
+          sudo apt install -y libtiff-dev pkg-config
+
+      - name: Install Rust (stable)
+        run: |
+          rustup update stable
+          rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            capi -> target
+            wasm -> target
+
+      - name: Format check
+        run: cargo fmt --all --check
+
+      - name: Clippy (workspace, -D warnings)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Clippy (all features)
+        run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+
+      - name: Build (workspace, all targets)
+        run: cargo build --workspace --all-targets
+
+      - name: Core unit tests
+        run: cargo test -p openjp2 --lib
+
+      - name: Docs build
+        run: cargo doc -p openjp2 --no-deps
+
+      - name: C-ABI crate (build + tests + clippy)
+        working-directory: capi
+        run: |
+          cargo build --all-features
+          cargo test
+          cargo clippy --all-targets -- -D warnings
+
+      - name: WASM bindings (native check + clippy)
+        working-directory: wasm
+        run: |
+          cargo check
+          cargo clippy --all-targets -- -D warnings
+
+  # ------------------------------------------------------------------
+  # The heavy C-parity gates: the upstream ctest suite linking the Rust
+  # library + the tools' conformance / non-regression suites.
+  # ------------------------------------------------------------------
+  parity:
+    name: parity (ctest + nonreg)
+    runs-on: ubuntu-24.04
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install requirements
+        run: |
+          sudo apt update
+          sudo apt install -y cmake gcc g++ libtiff-dev libwebp-dev libzstd-dev pkg-config
+
+      - name: Install Rust (stable)
+        run: |
+          rustup update stable
+          rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            capi -> target
+            tools -> target
+
+      - name: Cache openjpeg-data
+        id: data-cache
+        uses: actions/cache@v4
+        with:
+          path: openjpeg/data
+          key: openjpeg-data-2026-11
+          restore-keys: openjpeg-data-
+
+      - name: Fetch openjpeg-data
+        if: steps.data-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/uclouvain/openjpeg-data.git openjpeg/data
+          # keep the cache small: the tests only need the files
+          rm -rf openjpeg/data/.git
+
+      - name: Configure (C reference + Rust library)
+        run: cmake -S openjpeg -B openjpeg/build -DUSE_RUST_LIB=ON -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build openjpeg/build -j"$(nproc)"
+
+      - name: ctest (allowlisted failures only)
+        run: bash scripts/check_ctest.sh
+        env:
+          BUILD_DIR: ${{ github.workspace }}/openjpeg/build
+
+      - name: Tools conformance suite
+        run: cargo test -p openjp2-tools --test conformance
+        env:
+          OPJ_DATA_ROOT: ${{ github.workspace }}/openjpeg/data
+
+      - name: Tools decode-area suite
+        run: cargo test -p openjp2-tools --test tile_and_decode_area
+        env:
+          OPJ_DATA_ROOT: ${{ github.workspace }}/openjpeg/data
+
+      - name: Tools non-regression suite
+        run: cargo test -p openjp2-tools --test nonreg
+        env:
+          OPJ_DATA_ROOT: ${{ github.workspace }}/openjpeg/data
+
+  # ------------------------------------------------------------------
+  # Cross-target build checks: the Rust safe core AND the C-ABI crate,
+  # plus the WASM bindings on wasm32 (the user-requested WASM gate).
+  # ------------------------------------------------------------------
+  cross:
+    name: cross targets
+    runs-on: ubuntu-24.04
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: aarch64-unknown-linux-gnu
+            target: aarch64-unknown-linux-gnu
+            apt: gcc-aarch64-linux-gnu
+          - name: x86_64-pc-windows-gnu
+            target: x86_64-pc-windows-gnu
+            apt: gcc-mingw-w64-x86-64
+          - name: i686-unknown-linux-musl
+            target: i686-unknown-linux-musl
+            apt: musl-tools
+          - name: wasm32-unknown-unknown
+            target: wasm32-unknown-unknown
+            apt: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install requirements
+        run: |
+          sudo apt update
+          sudo apt install -y ${{ matrix.apt }}
+
+      - name: Install Rust + target
+        run: |
+          rustup update stable
+          rustup default stable
+          rustup target add ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            capi -> target
+            wasm -> target
+
+      - name: Check core (default features)
+        run: cargo check -p openjp2 --target ${{ matrix.target }}
+
+      - name: Check core (no default features)
+        run: cargo check -p openjp2 --target ${{ matrix.target }} --no-default-features
+
+      - name: Check C-ABI crate
+        run: cargo check --target ${{ matrix.target }}
+        working-directory: capi
+
+      # WASM-only: the bindings crate itself, plus the C ABI without
+      # file I/O (the no_std-style build the README documents).
+      - name: Build WASM bindings (wasm32)
+        if: matrix.target == 'wasm32-unknown-unknown'
+        run: cargo build --target wasm32-unknown-unknown
+        working-directory: wasm
+
+      - name: Check C-ABI crate on wasm (no file-io)
+        if: matrix.target == 'wasm32-unknown-unknown'
+        run: cargo check --target wasm32-unknown-unknown --no-default-features
+        working-directory: capi
+
+  # ------------------------------------------------------------------
+  # Native macOS / Windows builds of the safe core + the C ABI.
+  # (Upstream's macos / windows_build jobs, Rust-ified; the C-parity
+  # suites stay Linux-only.)
+  # ------------------------------------------------------------------
+  macos:
+    name: macOS (core + capi)
+    runs-on: macos-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        run: |
+          rustup update stable
+          rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            capi -> target
+
+      - name: Core tests
+        run: cargo test -p openjp2 --lib
+
+      - name: C-ABI crate
+        working-directory: capi
+        run: |
+          cargo build --all-features
+          cargo test
+
+  windows:
+    name: Windows (core + capi)
+    runs-on: windows-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        run: |
+          rustup update stable
+          rustup default stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            capi -> target
+
+      - name: Core tests
+        run: cargo test -p openjp2 --lib
+
+      - name: C-ABI crate
+        working-directory: capi
+        run: |
+          cargo build --all-features
+          cargo test
+
+  # ------------------------------------------------------------------
+  # AddressSanitizer pass on nightly (the upstream asan job).
+  # ------------------------------------------------------------------
+  asan:
+    name: asan (nightly)
+    runs-on: ubuntu-24.04
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (nightly)
+        run: |
+          rustup update nightly
+          rustup default nightly
+          rustup component add rust-src
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Core unit tests under ASan
+        run: cargo test -p openjp2 --lib -- --test-threads=1
+        env:
+          RUSTFLAGS: -Zsanitizer=address
+          ASAN_OPTIONS: detect_leaks=0
+
+  # ------------------------------------------------------------------
+  # Fuzz target compile check (replaces the upstream cifuzz job, which
+  # only applies to the google/oss-fuzz service); a time-capped fuzz
+  # smoke run is available via workflow_dispatch.
+  # ------------------------------------------------------------------
+  fuzz:
+    name: fuzz build (nightly)
+    runs-on: ubuntu-24.04
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (nightly)
+        run: |
+          rustup update nightly
+          rustup default nightly
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build the fuzz targets
+        run: cargo build
+        working-directory: fuzz
+
+  fuzz-smoke:
+    name: fuzz smoke (dispatch only)
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (nightly)
+        run: |
+          rustup update nightly
+          rustup default nightly
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run fuzz_decode (180 s, capped)
+        run: cargo fuzz run fuzz_decode -- -max_total_time=180 -max_len=131072 -dict=fuzz_decode.dict
+        working-directory: fuzz
