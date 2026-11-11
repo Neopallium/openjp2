@@ -33,7 +33,6 @@
 
 use super::math::*;
 use super::openjpeg::*;
-use openjp2_ctypes::opj_image_comptparm;
 
 /// Borrowed component with the signed->unsigned adjustment precomputed
 /// (used by the data iterators).
@@ -367,29 +366,19 @@ impl CoreImage {
     CoreImage::default()
   }
 
-  /// Header-only image from component parameters (no data), like
-  /// opj_image_tile_create.
+  /// Header-only image from component parameters (no data).
   pub fn tile_create(
-    cmptparms: &[opj_image_comptparm],
-    clrspc: OPJ_COLOR_SPACE,
+    cmptparms: &[CoreImageComp],
+    clrspc: crate::api::ColorSpace,
   ) -> Option<CoreImage> {
     let mut image = CoreImage {
-      color_space: crate::api::ColorSpace::from(clrspc),
+      color_space: clrspc,
       ..Default::default()
     };
     if !image.alloc_comps(cmptparms.len() as u32) {
       return None;
     }
-    for (comp, params) in image.comps.iter_mut().zip(cmptparms) {
-      comp.dx = params.dx;
-      comp.dy = params.dy;
-      comp.w = params.w;
-      comp.h = params.h;
-      comp.x0 = params.x0;
-      comp.y0 = params.y0;
-      comp.prec = params.prec;
-      comp.sgnd = params.sgnd;
-    }
+    image.comps.clone_from_slice(cmptparms);
     Some(image)
   }
 

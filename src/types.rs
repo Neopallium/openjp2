@@ -33,12 +33,86 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-use super::c_api_types::*;
 use super::consts::*;
 use super::j2k::*;
 use crate::image::{CoreImage, ICCProfile, ICCProfileRef};
 
-#[derive(Clone)]
+/// A progression-order change: the C `opj_poc_t` state, natively (the
+/// marker-declared bounds plus the packet-iterator's working state).
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Poc {
+  /// First resolution of the POC.
+  pub resno0: u32,
+  /// First component of the POC.
+  pub compno0: u32,
+  /// Last layer of the POC.
+  pub layno1: u32,
+  /// Last resolution of the POC.
+  pub resno1: u32,
+  /// Last component of the POC.
+  pub compno1: u32,
+  /// First layer of the POC.
+  pub layno0: u32,
+  /// First precinct of the POC.
+  pub precno0: u32,
+  /// Last precinct of the POC.
+  pub precno1: u32,
+  /// The order in effect AFTER this POC.
+  pub prg1: crate::api::ProgressionOrder,
+  /// The order in effect BEFORE this POC.
+  pub prg: crate::api::ProgressionOrder,
+  /// Tile the POC applies to.
+  pub tile: u32,
+  /// Tile origin x.
+  pub tx0: u32,
+  /// Tile end x.
+  pub tx1: u32,
+  /// Tile origin y.
+  pub ty0: u32,
+  /// Tile end y.
+  pub ty1: u32,
+  /// Packet-iterator working state (layer start).
+  pub lay_s: u32,
+  /// Packet-iterator working state (resolution start).
+  pub res_s: u32,
+  /// Packet-iterator working state (component start).
+  pub comp_s: u32,
+  /// Packet-iterator working state (precinct start).
+  pub prc_s: u32,
+  /// Packet-iterator working state (layer end).
+  pub lay_e: u32,
+  /// Packet-iterator working state (resolution end).
+  pub res_e: u32,
+  /// Packet-iterator working state (component end).
+  pub comp_e: u32,
+  /// Packet-iterator working state (precinct end).
+  pub prc_e: u32,
+  /// Packet-iterator working state (tile x start).
+  pub tx_s: u32,
+  /// Packet-iterator working state (tile x end).
+  pub tx_e: u32,
+  /// Packet-iterator working state (tile y start).
+  pub ty_s: u32,
+  /// Packet-iterator working state (tile y end).
+  pub ty_e: u32,
+  /// Packet-iterator working state (component dx).
+  pub dx: u32,
+  /// Packet-iterator working state (component dy).
+  pub dy: u32,
+  /// Packet-iterator working state (layer temporary).
+  pub lay_t: u32,
+  /// Packet-iterator working state (resolution temporary).
+  pub res_t: u32,
+  /// Packet-iterator working state (component temporary).
+  pub comp_t: u32,
+  /// Packet-iterator working state (precinct temporary).
+  pub prc_t: u32,
+  /// Packet-iterator working state (tile x0 temporary).
+  pub tx0_t: u32,
+  /// Packet-iterator working state (tile y0 temporary).
+  pub ty0_t: u32,
+}
+
 pub(crate) struct DecoderParameters {
   pub cp_reduce: u32,
   pub cp_layer: u32,
@@ -240,13 +314,13 @@ pub(crate) struct Tcd {
 #[derive(Clone)]
 pub(crate) struct Tcp {
   pub csty: u32,
-  pub prg: OPJ_PROG_ORDER,
+  pub prg: super::j2k::ProgressionOrder,
   pub numlayers: u32,
   pub num_layers_to_decode: u32,
   pub mct: u32,
   pub rates: [f32; 100],
   pub numpocs: u32,
-  pub pocs: [opj_poc_t; J2K_MAX_POCS as usize],
+  pub pocs: [Poc; J2K_MAX_POCS as usize],
   pub ppt_markers: Vec<Ppx>,
   pub ppt_buffer: Vec<u8>,
   /* read cursor into `ppt_buffer`; `ppt_len` is the number of bytes left from it */
@@ -273,7 +347,7 @@ impl Default for Tcp {
   fn default() -> Self {
     Self {
       csty: 0,
-      prg: Default::default(),
+      prg: super::j2k::ProgressionOrder::LRCP,
       numlayers: 0,
       num_layers_to_decode: 0,
       mct: 0,

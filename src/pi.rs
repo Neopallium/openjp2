@@ -46,7 +46,7 @@ pub struct PiIterator {
   pub precno: u32,
   pub layno: u32,
   pub first: bool,
-  pub poc: opj_poc_t,
+  pub poc: crate::types::Poc,
   pub numcomps: u32,
   pub comps: Vec<PiComp>,
   pub tx0: u32,
@@ -1566,44 +1566,44 @@ pub(crate) fn opj_pi_update_encode_poc_and_final(
   let l_tcp = &mut p_cp.tcps[p_tileno as usize];
   /* number of iterations in the loop */
   l_poc_bound = l_tcp.numpocs.wrapping_add(1u32);
-  l_tcp.pocs[0].compS = l_tcp.pocs[0].compno0;
-  l_tcp.pocs[0].compE = l_tcp.pocs[0].compno1;
-  l_tcp.pocs[0].resS = l_tcp.pocs[0].resno0;
-  l_tcp.pocs[0].resE = l_tcp.pocs[0].resno1;
-  l_tcp.pocs[0].layE = l_tcp.pocs[0].layno1;
+  l_tcp.pocs[0].comp_s = l_tcp.pocs[0].compno0;
+  l_tcp.pocs[0].comp_e = l_tcp.pocs[0].compno1;
+  l_tcp.pocs[0].res_s = l_tcp.pocs[0].resno0;
+  l_tcp.pocs[0].res_e = l_tcp.pocs[0].resno1;
+  l_tcp.pocs[0].lay_e = l_tcp.pocs[0].layno1;
   /* special treatment for the first element*/
-  l_tcp.pocs[0].layS = 0_u32;
+  l_tcp.pocs[0].lay_s = 0_u32;
   l_tcp.pocs[0].prg = l_tcp.pocs[0].prg1;
-  l_tcp.pocs[0].prcS = 0_u32;
-  l_tcp.pocs[0].prcE = p_max_prec;
-  l_tcp.pocs[0].txS = p_tx0;
-  l_tcp.pocs[0].txE = p_tx1;
-  l_tcp.pocs[0].tyS = p_ty0;
-  l_tcp.pocs[0].tyE = p_ty1;
+  l_tcp.pocs[0].prc_s = 0_u32;
+  l_tcp.pocs[0].prc_e = p_max_prec;
+  l_tcp.pocs[0].tx_s = p_tx0;
+  l_tcp.pocs[0].tx_e = p_tx1;
+  l_tcp.pocs[0].ty_s = p_ty0;
+  l_tcp.pocs[0].ty_e = p_ty1;
   l_tcp.pocs[0].dx = p_dx_min;
   l_tcp.pocs[0].dy = p_dy_min;
 
   pino = 1_u32;
   while pino < l_poc_bound {
-    l_tcp.pocs[pino as usize].compS = l_tcp.pocs[pino as usize].compno0;
-    l_tcp.pocs[pino as usize].compE = l_tcp.pocs[pino as usize].compno1;
-    l_tcp.pocs[pino as usize].resS = l_tcp.pocs[pino as usize].resno0;
-    l_tcp.pocs[pino as usize].resE = l_tcp.pocs[pino as usize].resno1;
-    l_tcp.pocs[pino as usize].layE = l_tcp.pocs[pino as usize].layno1;
+    l_tcp.pocs[pino as usize].comp_s = l_tcp.pocs[pino as usize].compno0;
+    l_tcp.pocs[pino as usize].comp_e = l_tcp.pocs[pino as usize].compno1;
+    l_tcp.pocs[pino as usize].res_s = l_tcp.pocs[pino as usize].resno0;
+    l_tcp.pocs[pino as usize].res_e = l_tcp.pocs[pino as usize].resno1;
+    l_tcp.pocs[pino as usize].lay_e = l_tcp.pocs[pino as usize].layno1;
     l_tcp.pocs[pino as usize].prg = l_tcp.pocs[pino as usize].prg1;
-    l_tcp.pocs[pino as usize].prcS = 0_u32;
+    l_tcp.pocs[pino as usize].prc_s = 0_u32;
     /* special treatment here different from the first element*/
-    l_tcp.pocs[pino as usize].layS =
-      if l_tcp.pocs[pino as usize].layE > l_tcp.pocs[(pino - 1) as usize].layE {
-        l_tcp.pocs[pino as usize].layE
+    l_tcp.pocs[pino as usize].lay_s =
+      if l_tcp.pocs[pino as usize].lay_e > l_tcp.pocs[(pino - 1) as usize].lay_e {
+        l_tcp.pocs[pino as usize].lay_e
       } else {
         0u32
       };
-    l_tcp.pocs[pino as usize].prcE = p_max_prec;
-    l_tcp.pocs[pino as usize].txS = p_tx0;
-    l_tcp.pocs[pino as usize].txE = p_tx1;
-    l_tcp.pocs[pino as usize].tyS = p_ty0;
-    l_tcp.pocs[pino as usize].tyE = p_ty1;
+    l_tcp.pocs[pino as usize].prc_e = p_max_prec;
+    l_tcp.pocs[pino as usize].tx_s = p_tx0;
+    l_tcp.pocs[pino as usize].tx_e = p_tx1;
+    l_tcp.pocs[pino as usize].ty_s = p_ty0;
+    l_tcp.pocs[pino as usize].ty_e = p_ty1;
     l_tcp.pocs[pino as usize].dx = p_dx_min;
     l_tcp.pocs[pino as usize].dy = p_dy_min;
     pino += 1;
@@ -1650,19 +1650,19 @@ pub(crate) fn opj_pi_update_encode_not_poc(
   l_poc_bound = l_tcp.numpocs.wrapping_add(1u32);
   pino = 0_u32;
   while pino < l_poc_bound {
-    l_tcp.pocs[pino as usize].compS = 0_u32;
-    l_tcp.pocs[pino as usize].compE = p_num_comps;
-    l_tcp.pocs[pino as usize].resS = 0_u32;
-    l_tcp.pocs[pino as usize].resE = p_max_res;
-    l_tcp.pocs[pino as usize].layS = 0_u32;
-    l_tcp.pocs[pino as usize].layE = l_tcp.numlayers;
-    l_tcp.pocs[pino as usize].prg = l_tcp.prg;
-    l_tcp.pocs[pino as usize].prcS = 0_u32;
-    l_tcp.pocs[pino as usize].prcE = p_max_prec;
-    l_tcp.pocs[pino as usize].txS = p_tx0;
-    l_tcp.pocs[pino as usize].txE = p_tx1;
-    l_tcp.pocs[pino as usize].tyS = p_ty0;
-    l_tcp.pocs[pino as usize].tyE = p_ty1;
+    l_tcp.pocs[pino as usize].comp_s = 0_u32;
+    l_tcp.pocs[pino as usize].comp_e = p_num_comps;
+    l_tcp.pocs[pino as usize].res_s = 0_u32;
+    l_tcp.pocs[pino as usize].res_e = p_max_res;
+    l_tcp.pocs[pino as usize].lay_s = 0_u32;
+    l_tcp.pocs[pino as usize].lay_e = l_tcp.numlayers;
+    l_tcp.pocs[pino as usize].prg = l_tcp.prg.into();
+    l_tcp.pocs[pino as usize].prc_s = 0_u32;
+    l_tcp.pocs[pino as usize].prc_e = p_max_prec;
+    l_tcp.pocs[pino as usize].tx_s = p_tx0;
+    l_tcp.pocs[pino as usize].tx_e = p_tx1;
+    l_tcp.pocs[pino as usize].ty_s = p_ty0;
+    l_tcp.pocs[pino as usize].ty_e = p_ty1;
     l_tcp.pocs[pino as usize].dx = p_dx_min;
     l_tcp.pocs[pino as usize].dy = p_dy_min;
     pino += 1;
@@ -1718,7 +1718,7 @@ pub(crate) fn opj_pi_update_decode_not_poc(
   l_bound = p_tcp.numpocs.wrapping_add(1u32);
   pino = 0_u32;
   while pino < l_bound {
-    p_pi[pino as usize].poc.prg = p_tcp.prg;
+    p_pi[pino as usize].poc.prg = p_tcp.prg.into();
     p_pi[pino as usize].first = true;
     p_pi[pino as usize].poc.resno0 = 0_u32;
     p_pi[pino as usize].poc.compno0 = 0_u32;
@@ -1733,14 +1733,14 @@ pub(crate) fn opj_pi_update_decode_not_poc(
 }
 /* *
  */
-fn opj_pi_check_next_level(pos: i32, tcp: &opj_poc_t, prog: ProgressionOrder) -> OpResult {
+fn opj_pi_check_next_level(pos: i32, tcp: &crate::types::Poc, prog: ProgressionOrder) -> OpResult {
   let mut i: i32 = 0; /*end if*/
   if pos >= 0i32 {
     i = pos;
     while i >= 0i32 {
       match prog.get_step(i) {
         ProgressionStep::Resolution => {
-          if tcp.res_t == tcp.resE {
+          if tcp.res_t == tcp.res_e {
             if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
               return Ok(());
             } else {
@@ -1752,7 +1752,7 @@ fn opj_pi_check_next_level(pos: i32, tcp: &opj_poc_t, prog: ProgressionOrder) ->
           /*end case P*/
         }
         ProgressionStep::Component => {
-          if tcp.comp_t == tcp.compE {
+          if tcp.comp_t == tcp.comp_e {
             if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
               return Ok(());
             } else {
@@ -1763,7 +1763,7 @@ fn opj_pi_check_next_level(pos: i32, tcp: &opj_poc_t, prog: ProgressionOrder) ->
           }
         }
         ProgressionStep::Layer => {
-          if tcp.lay_t == tcp.layE {
+          if tcp.lay_t == tcp.lay_e {
             if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
               return Ok(());
             } else {
@@ -1777,7 +1777,7 @@ fn opj_pi_check_next_level(pos: i32, tcp: &opj_poc_t, prog: ProgressionOrder) ->
           match tcp.prg as core::ffi::c_int {
             0 | 1 => {
               /* fall through */
-              if tcp.prc_t == tcp.prcE {
+              if tcp.prc_t == tcp.prc_e {
                 if opj_pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
                   return Ok(());
                 } else {
@@ -1788,9 +1788,9 @@ fn opj_pi_check_next_level(pos: i32, tcp: &opj_poc_t, prog: ProgressionOrder) ->
               }
             }
             _ => {
-              if tcp.tx0_t == tcp.txE {
+              if tcp.tx0_t == tcp.tx_e {
                 /*TY*/
-                if tcp.ty0_t == tcp.tyE {
+                if tcp.ty0_t == tcp.ty_e {
                   if opj_pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
                     return Ok(());
                   } else {
@@ -2238,7 +2238,7 @@ pub(crate) fn opj_pi_create_encode(
   let rsiz = cp.rsiz;
   let tp_on = cp.m_specific_param.m_enc.m_tp_on;
   let tcp = &mut cp.tcps[tileno as usize].pocs[pino as usize];
-  let prog = opj_j2k_convert_progression_order(tcp.prg);
+  let prog = opj_j2k_convert_progression_order(tcp.prg.into());
   pi[pino as usize].first = true;
   pi[pino as usize].poc.prg = tcp.prg;
   if !(tp_on
@@ -2248,44 +2248,44 @@ pub(crate) fn opj_pi_create_encode(
       || rsiz as core::ffi::c_int >= 0x3i32 && rsiz as core::ffi::c_int <= 0x6i32
       || rsiz as core::ffi::c_int >= 0x400i32 && rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32))
   {
-    pi[pino as usize].poc.resno0 = tcp.resS;
-    pi[pino as usize].poc.resno1 = tcp.resE;
-    pi[pino as usize].poc.compno0 = tcp.compS;
-    pi[pino as usize].poc.compno1 = tcp.compE;
-    pi[pino as usize].poc.layno0 = tcp.layS;
-    pi[pino as usize].poc.layno1 = tcp.layE;
-    pi[pino as usize].poc.precno0 = tcp.prcS;
-    pi[pino as usize].poc.precno1 = tcp.prcE;
-    pi[pino as usize].poc.tx0 = tcp.txS;
-    pi[pino as usize].poc.ty0 = tcp.tyS;
-    pi[pino as usize].poc.tx1 = tcp.txE;
-    pi[pino as usize].poc.ty1 = tcp.tyE
+    pi[pino as usize].poc.resno0 = tcp.res_s;
+    pi[pino as usize].poc.resno1 = tcp.res_e;
+    pi[pino as usize].poc.compno0 = tcp.comp_s;
+    pi[pino as usize].poc.compno1 = tcp.comp_e;
+    pi[pino as usize].poc.layno0 = tcp.lay_s;
+    pi[pino as usize].poc.layno1 = tcp.lay_e;
+    pi[pino as usize].poc.precno0 = tcp.prc_s;
+    pi[pino as usize].poc.precno1 = tcp.prc_e;
+    pi[pino as usize].poc.tx0 = tcp.tx_s;
+    pi[pino as usize].poc.ty0 = tcp.ty_s;
+    pi[pino as usize].poc.tx1 = tcp.tx_e;
+    pi[pino as usize].poc.ty1 = tcp.ty_e
   } else {
     i = tppos + 1i32;
     while i < 4i32 {
       match prog.get_step(i) {
         ProgressionStep::Resolution => {
-          pi[pino as usize].poc.resno0 = tcp.resS;
-          pi[pino as usize].poc.resno1 = tcp.resE
+          pi[pino as usize].poc.resno0 = tcp.res_s;
+          pi[pino as usize].poc.resno1 = tcp.res_e
         }
         ProgressionStep::Component => {
-          pi[pino as usize].poc.compno0 = tcp.compS;
-          pi[pino as usize].poc.compno1 = tcp.compE
+          pi[pino as usize].poc.compno0 = tcp.comp_s;
+          pi[pino as usize].poc.compno1 = tcp.comp_e
         }
         ProgressionStep::Layer => {
-          pi[pino as usize].poc.layno0 = tcp.layS;
-          pi[pino as usize].poc.layno1 = tcp.layE
+          pi[pino as usize].poc.layno0 = tcp.lay_s;
+          pi[pino as usize].poc.layno1 = tcp.lay_e
         }
         ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
           0 | 1 => {
-            pi[pino as usize].poc.precno0 = tcp.prcS;
-            pi[pino as usize].poc.precno1 = tcp.prcE
+            pi[pino as usize].poc.precno0 = tcp.prc_s;
+            pi[pino as usize].poc.precno1 = tcp.prc_e
           }
           _ => {
-            pi[pino as usize].poc.tx0 = tcp.txS;
-            pi[pino as usize].poc.ty0 = tcp.tyS;
-            pi[pino as usize].poc.tx1 = tcp.txE;
-            pi[pino as usize].poc.ty1 = tcp.tyE
+            pi[pino as usize].poc.tx0 = tcp.tx_s;
+            pi[pino as usize].poc.ty0 = tcp.ty_s;
+            pi[pino as usize].poc.tx1 = tcp.tx_e;
+            pi[pino as usize].poc.ty1 = tcp.ty_e
           }
         },
         _ => {}
@@ -2297,33 +2297,33 @@ pub(crate) fn opj_pi_create_encode(
       while i >= 0i32 {
         match prog.get_step(i) {
           ProgressionStep::Component => {
-            tcp.comp_t = tcp.compS;
+            tcp.comp_t = tcp.comp_s;
             pi[pino as usize].poc.compno0 = tcp.comp_t;
             pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
             tcp.comp_t = (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32)
           }
           ProgressionStep::Resolution => {
-            tcp.res_t = tcp.resS;
+            tcp.res_t = tcp.res_s;
             pi[pino as usize].poc.resno0 = tcp.res_t;
             pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
             tcp.res_t = (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32)
           }
           ProgressionStep::Layer => {
-            tcp.lay_t = tcp.layS;
+            tcp.lay_t = tcp.lay_s;
             pi[pino as usize].poc.layno0 = tcp.lay_t;
             pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
             tcp.lay_t = (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32)
           }
           ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
             0 | 1 => {
-              tcp.prc_t = tcp.prcS;
+              tcp.prc_t = tcp.prc_s;
               pi[pino as usize].poc.precno0 = tcp.prc_t;
               pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
               tcp.prc_t = (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32)
             }
             _ => {
-              tcp.tx0_t = tcp.txS;
-              tcp.ty0_t = tcp.tyS;
+              tcp.tx0_t = tcp.tx_s;
+              tcp.ty0_t = tcp.ty_s;
               pi[pino as usize].poc.tx0 = tcp.tx0_t;
               pi[pino as usize].poc.tx1 = tcp
                 .tx0_t
@@ -2382,9 +2382,9 @@ pub(crate) fn opj_pi_create_encode(
         if incr_top == 1u32 {
           match prog.get_step(i) {
             ProgressionStep::Resolution => {
-              if tcp.res_t == tcp.resE {
+              if tcp.res_t == tcp.res_e {
                 if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
-                  tcp.res_t = tcp.resS;
+                  tcp.res_t = tcp.res_s;
                   pi[pino as usize].poc.resno0 = tcp.res_t;
                   pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
                   tcp.res_t = (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32);
@@ -2400,9 +2400,9 @@ pub(crate) fn opj_pi_create_encode(
               }
             }
             ProgressionStep::Component => {
-              if tcp.comp_t == tcp.compE {
+              if tcp.comp_t == tcp.comp_e {
                 if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
-                  tcp.comp_t = tcp.compS;
+                  tcp.comp_t = tcp.comp_s;
                   pi[pino as usize].poc.compno0 = tcp.comp_t;
                   pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
                   tcp.comp_t = (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32);
@@ -2418,9 +2418,9 @@ pub(crate) fn opj_pi_create_encode(
               }
             }
             ProgressionStep::Layer => {
-              if tcp.lay_t == tcp.layE {
+              if tcp.lay_t == tcp.lay_e {
                 if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
-                  tcp.lay_t = tcp.layS;
+                  tcp.lay_t = tcp.lay_s;
                   pi[pino as usize].poc.layno0 = tcp.lay_t;
                   pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
                   tcp.lay_t = (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32);
@@ -2437,9 +2437,9 @@ pub(crate) fn opj_pi_create_encode(
             }
             ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
               0 | 1 => {
-                if tcp.prc_t == tcp.prcE {
+                if tcp.prc_t == tcp.prc_e {
                   if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
-                    tcp.prc_t = tcp.prcS;
+                    tcp.prc_t = tcp.prc_s;
                     pi[pino as usize].poc.precno0 = tcp.prc_t;
                     pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
                     tcp.prc_t = (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32);
@@ -2455,10 +2455,10 @@ pub(crate) fn opj_pi_create_encode(
                 }
               }
               _ => {
-                if tcp.tx0_t >= tcp.txE {
-                  if tcp.ty0_t >= tcp.tyE {
+                if tcp.tx0_t >= tcp.tx_e {
+                  if tcp.ty0_t >= tcp.ty_e {
                     if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
-                      tcp.ty0_t = tcp.tyS;
+                      tcp.ty0_t = tcp.ty_s;
                       pi[pino as usize].poc.ty0 = tcp.ty0_t;
                       pi[pino as usize].poc.ty1 = tcp
                         .ty0_t
@@ -2482,7 +2482,7 @@ pub(crate) fn opj_pi_create_encode(
                     reset_x = 1_u32
                   }
                   if reset_x == 1u32 {
-                    tcp.tx0_t = tcp.txS;
+                    tcp.tx0_t = tcp.tx_s;
                     pi[pino as usize].poc.tx0 = tcp.tx0_t;
                     pi[pino as usize].poc.tx1 = tcp
                       .tx0_t

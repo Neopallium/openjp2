@@ -100,7 +100,7 @@ pub fn build_cstr_info_v2(info: &CstrInfoV2) -> *mut opj_codestream_info_v2_t {
     m_default_tile_info: opj_tile_info_v2 {
       tileno: 0,
       csty: info.default_tile.csty,
-      prg: info.default_tile.prg,
+      prg: info.default_tile.prg.into(),
       numlayers: info.default_tile.numlayers,
       mct: info.default_tile.mct,
       tccp_info: if tccps.is_empty() {
@@ -159,7 +159,15 @@ pub fn build_cstr_index(index: &CodestreamIndex) -> *mut opj_codestream_index_t 
     main_head_end: index.main_head_end,
     codestream_size: index.codestream_size,
     marknum: index.markers.len() as OPJ_UINT32,
-    marker: clone_to_ptr(&index.markers),
+    marker: clone_to_ptr(&index
+      .markers
+      .iter()
+      .map(|m| openjp2_ctypes::opj_marker_info {
+        type_: m.type_,
+        pos: m.pos,
+        len: m.len,
+      })
+      .collect::<Vec<_>>()),
     maxmarknum: index.markers.len() as OPJ_UINT32,
     nb_of_tiles: index.tiles.len() as OPJ_UINT32,
     tile_index: if index.tiles.is_empty() {
@@ -181,9 +189,25 @@ fn marshal_tile(tile: &CodestreamTileIndex) -> opj_tile_index_t {
     nb_tps: tile.nb_tps,
     current_nb_tps: tile.current_nb_tps,
     current_tpsno: tile.current_tpsno,
-    tp_index: clone_to_ptr(&tile.tp_index),
+    tp_index: clone_to_ptr(&tile
+      .tp_index
+      .iter()
+      .map(|t| openjp2_ctypes::opj_tp_index {
+        start_pos: t.start_pos,
+        end_header: t.end_header,
+        end_pos: t.end_pos,
+      })
+      .collect::<Vec<_>>()),
     marknum: tile.markers.len() as OPJ_UINT32,
-    marker: clone_to_ptr(&tile.markers),
+    marker: clone_to_ptr(&tile
+      .markers
+      .iter()
+      .map(|m| openjp2_ctypes::opj_marker_info {
+        type_: m.type_,
+        pos: m.pos,
+        len: m.len,
+      })
+      .collect::<Vec<_>>()),
     maxmarknum: tile.markers.len() as OPJ_UINT32,
     nb_packet: 0,
     packet_index: core::ptr::null_mut(),

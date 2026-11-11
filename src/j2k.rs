@@ -13,6 +13,41 @@ use super::par;
 
 // Owned codestream index (Phase 5.d). The `#[repr(C)]` mirror in c_api_types.rs
 // is built only when a C caller asks for it via opj_get_cstr_index.
+/// A codestream-index marker entry (the C `opj_marker_info` fields).
+#[derive(Copy, Clone, Default, Debug)]
+pub struct MarkerInfo {
+  /// The marker value.
+  pub type_: u16,
+  /// Byte offset of the marker segment.
+  pub pos: i64,
+  /// Length of the marker segment.
+  pub len: i32,
+}
+
+/// A codestream-index tile-part entry (the C `opj_tp_index` fields).
+#[derive(Copy, Clone, Default, Debug)]
+pub struct TpIndex {
+  /// Start position of the tile-part.
+  pub start_pos: i64,
+  /// End of the tile-part header.
+  pub end_header: i64,
+  /// End position of the tile-part.
+  pub end_pos: i64,
+}
+
+/// A codestream-index packet entry (the C `opj_packet_info` fields).
+#[derive(Copy, Clone, Default, Debug)]
+pub struct PacketInfo {
+  /// Start position of the packet.
+  pub start_pos: i64,
+  /// End of the packet header.
+  pub end_ph_pos: i64,
+  /// End position of the packet.
+  pub end_pos: i64,
+  /// Accumulated distortion of the packet.
+  pub disto: f64,
+}
+
 /// Owned codestream index (marker/tile-part/packet layout of a decoded
 /// codestream; `Decoder::cstr_index`).
 #[derive(Clone, Default)]
@@ -24,7 +59,7 @@ pub struct CodestreamIndex {
   /// Total codestream size in bytes.
   pub codestream_size: u64,
   /// Main-header markers.
-  pub markers: Vec<opj_marker_info>,
+  pub markers: Vec<MarkerInfo>,
   /// Per-tile indexes.
   pub tiles: Vec<CodestreamTileIndex>,
 }
@@ -41,13 +76,13 @@ pub struct CodestreamTileIndex {
   /// Current tile-part number.
   pub current_tpsno: u32,
   /// Per-tile-part byte positions.
-  pub tp_index: Vec<opj_tp_index>,
+  pub tp_index: Vec<TpIndex>,
   /// Tile-part markers.
-  pub markers: Vec<opj_marker_info>,
+  pub markers: Vec<MarkerInfo>,
   /// Number of packets.
   pub nb_packet: u32,
   /// Per-packet indexes.
-  pub packet_index: Vec<opj_packet_info>,
+  pub packet_index: Vec<PacketInfo>,
 }
 
 /// Safe, owned codestream info v2 (the C mirror is built by the capi crate).
@@ -77,7 +112,7 @@ pub struct CstrTccpInfoV2 {
   /// Coding style.
   pub csty: u32,
   /// Progression order.
-  pub prg: OPJ_PROG_ORDER,
+  pub prg: crate::api::ProgressionOrder,
   /// Number of layers.
   pub numlayers: u32,
   /// Multiple-component transform mode (`0`/`1`/`2`).
@@ -154,7 +189,7 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> Option<CstrInfoV2> {
   };
   let l_default_tile = p_j2k.m_specific_param.m_decoder.m_default_tcp.as_deref()?;
   cstr_info.default_tile.csty = l_default_tile.csty;
-  cstr_info.default_tile.prg = l_default_tile.prg;
+  cstr_info.default_tile.prg = l_default_tile.prg.into();
   cstr_info.default_tile.numlayers = l_default_tile.numlayers;
   cstr_info.default_tile.mct = l_default_tile.mct;
   for l_tccp in l_default_tile.tccps.iter() {
@@ -254,7 +289,7 @@ impl CstrTccpInfoV2 {
   }
 
   /// Progression order.
-  pub fn prg(&self) -> OPJ_PROG_ORDER {
+  pub fn prg(&self) -> crate::api::ProgressionOrder {
     self.prg
   }
 
@@ -276,7 +311,7 @@ impl CstrTccpInfoV2 {
 
 impl CodestreamIndex {
   /// The main-header markers.
-  pub fn markers(&self) -> &[opj_marker_info] {
+  pub fn markers(&self) -> &[MarkerInfo] {
     &self.markers
   }
 
@@ -298,17 +333,17 @@ impl CodestreamTileIndex {
   }
 
   /// Per-tile-part byte positions.
-  pub fn tile_part_indexes(&self) -> &[opj_tp_index] {
+  pub fn tile_part_indexes(&self) -> &[TpIndex] {
     &self.tp_index
   }
 
   /// The tile-part markers.
-  pub fn markers(&self) -> &[opj_marker_info] {
+  pub fn markers(&self) -> &[MarkerInfo] {
     &self.markers
   }
 
   /// Per-packet indexes.
-  pub fn packet_infos(&self) -> &[opj_packet_info] {
+  pub fn packet_infos(&self) -> &[PacketInfo] {
     &self.packet_index
   }
 }
@@ -500,18 +535,76 @@ impl ProgressionStep {
 }
 
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Default)]
 pub(crate) enum ProgressionOrder {
-  Unknown = 0,
-  CPRL,
-  PCRL,
-  RLCP,
-  LRCP,
-  RPCL,
+  /// No/invalid order (the C's `OPJ_PROG_UNKNOWN`).
+  Unknown = -1,
+  /// Layer, resolution, component, precinct.
+  #[default]
+  LRCP = 0,
+  /// Resolution, layer, component, precinct.
+  RLCP = 1,
+  /// Resolution, precinct, component, layer.
+  RPCL = 2,
+  /// Precinct, component, resolution, layer.
+  PCRL = 3,
+  /// Component, precinct, resolution, layer.
+  CPRL = 4,
+}
+
+impl From<crate::api::ProgressionOrder> for ProgressionOrder {
+  fn from(p: crate::api::ProgressionOrder) -> Self {
+    use crate::api::ProgressionOrder as Api;
+    match p {
+      Api::Lrcp => Self::LRCP,
+      Api::Rlcp => Self::RLCP,
+      Api::Rpcl => Self::RPCL,
+      Api::Pcrl => Self::PCRL,
+      Api::Cprl => Self::CPRL,
+    }
+  }
+}
+
+impl From<ProgressionOrder> for crate::api::ProgressionOrder {
+  fn from(p: ProgressionOrder) -> Self {
+    use crate::api::ProgressionOrder as Api;
+    match p {
+      ProgressionOrder::LRCP => Api::Lrcp,
+      ProgressionOrder::RLCP => Api::Rlcp,
+      ProgressionOrder::RPCL => Api::Rpcl,
+      ProgressionOrder::PCRL => Api::Pcrl,
+      ProgressionOrder::CPRL => Api::Cprl,
+      ProgressionOrder::Unknown => Api::Lrcp,
+    }
+  }
+}
+
+impl core::fmt::Debug for ProgressionOrder {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    f.write_str(self.get_order_str())
+  }
+}
+
+impl From<core::ffi::c_int> for ProgressionOrder {
+  fn from(enum_prog: core::ffi::c_int) -> Self {
+    Self::from_c_enum(enum_prog)
+  }
 }
 
 impl ProgressionOrder {
-  pub fn from_c_enum(enum_prog: OPJ_PROG_ORDER) -> Self {
+  /// The C marker value (`OPJ_LRCP` = 0 .. `OPJ_CPRL` = 4).
+  pub fn to_c_int(self) -> core::ffi::c_int {
+    match self {
+      Self::LRCP => 0,
+      Self::RLCP => 1,
+      Self::RPCL => 2,
+      Self::PCRL => 3,
+      Self::CPRL => 4,
+      Self::Unknown => -1,
+    }
+  }
+
+  pub fn from_c_enum(enum_prog: core::ffi::c_int) -> Self {
     match enum_prog {
       OPJ_CPRL => Self::CPRL,
       OPJ_PCRL => Self::PCRL,
@@ -829,8 +922,8 @@ fn opj_j2k_update_tlm(mut p_j2k: &mut J2k, mut p_tile_part_size: u32) {
   l_enc.m_tlm_sot_offsets_current += 4;
 }
 
-pub(crate) fn opj_j2k_convert_progression_order(prg_order: OPJ_PROG_ORDER) -> ProgressionOrder {
-  ProgressionOrder::from_c_enum(prg_order)
+pub(crate) fn opj_j2k_convert_progression_order(prg_order: ProgressionOrder) -> ProgressionOrder {
+  prg_order
 }
 /* *
  * Checks the progression order changes values. Tells of the poc given as input are valid.
@@ -847,7 +940,7 @@ pub(crate) fn opj_j2k_convert_progression_order(prg_order: OPJ_PROG_ORDER) -> Pr
  * @return      true if the pocs are valid.
  */
 fn opj_j2k_check_poc_val(
-  p_pocs: &[opj_poc_t],
+  p_pocs: &[crate::types::Poc],
   tileno: u32,
   p_nb_pocs: u32,
   p_nb_resolutions: u32,
@@ -964,19 +1057,19 @@ fn opj_j2k_get_num_tp(cp: &mut Cp, pino: u32, tileno: u32) -> u32 {
       match step {
         ProgressionStep::Component => {
           /* component wise */
-          tpnum = tpnum.wrapping_mul(l_current_poc.compE)
+          tpnum = tpnum.wrapping_mul(l_current_poc.comp_e)
         }
         ProgressionStep::Resolution => {
           /* resolution wise */
-          tpnum = tpnum.wrapping_mul(l_current_poc.resE)
+          tpnum = tpnum.wrapping_mul(l_current_poc.res_e)
         }
         ProgressionStep::Precinct => {
           /* precinct wise */
-          tpnum = tpnum.wrapping_mul(l_current_poc.prcE)
+          tpnum = tpnum.wrapping_mul(l_current_poc.prc_e)
         }
         ProgressionStep::Layer => {
           /* layer wise */
-          tpnum = tpnum.wrapping_mul(l_current_poc.layE)
+          tpnum = tpnum.wrapping_mul(l_current_poc.lay_e)
         }
         ProgressionStep::Unknown => {}
       }
@@ -1778,7 +1871,7 @@ fn opj_j2k_read_cod(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
   }
   l_tmp = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
-  l_tcp.prg = l_tmp as OPJ_PROG_ORDER;
+  l_tcp.prg = ProgressionOrder::from_c_enum(l_tmp as core::ffi::c_int);
   /* Make sure progression order is valid */
   if l_tcp.prg as core::ffi::c_int > OPJ_CPRL as core::ffi::c_int {
     event_msg!(
@@ -1786,7 +1879,7 @@ fn opj_j2k_read_cod(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
       EVT_ERROR,
       "Unknown progression order in COD marker\n",
     ); /* SGcod (B) */
-    l_tcp.prg = OPJ_PROG_UNKNOWN
+    l_tcp.prg = ProgressionOrder::Unknown
   }
   l_tcp.numlayers = opj_read_bytes(&header_data[cursor..], 2_u32);
   cursor += 2usize;
@@ -2660,7 +2753,7 @@ fn opj_j2k_read_poc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     poc.layno1 = opj_uint_min(layno1, l_tcp.numlayers); /* REpoc_i */
     poc.resno1 = resno1; /* CEpoc_i */
     poc.compno1 = compno1; /* Ppoc_i */
-    poc.prg = l_tmp as OPJ_PROG_ORDER;
+    poc.prg = crate::api::ProgressionOrder::from(l_tmp as core::ffi::c_int);
     /* make sure comp is in acceptable bounds */
     poc.compno1 = opj_uint_min(poc.compno1, l_nb_comp);
     i += 1;
@@ -5281,21 +5374,24 @@ pub(crate) fn opj_j2k_create_compress() -> Option<J2k> {
   Some(l_j2k)
 }
 
-fn opj_j2k_initialise_4k_poc(poc: &mut [opj_poc_t], numres: core::ffi::c_int) -> core::ffi::c_int {
+fn opj_j2k_initialise_4k_poc(
+  poc: &mut [crate::types::Poc],
+  numres: core::ffi::c_int,
+) -> core::ffi::c_int {
   poc[0].tile = 1_u32;
   poc[0].resno0 = 0_u32;
   poc[0].compno0 = 0_u32;
   poc[0].layno1 = 1_u32;
   poc[0].resno1 = (numres - 1i32) as u32;
   poc[0].compno1 = 3_u32;
-  poc[0].prg1 = OPJ_CPRL;
+  poc[0].prg1 = crate::api::ProgressionOrder::Cprl;
   poc[1].tile = 1_u32;
   poc[1].resno0 = (numres - 1i32) as u32;
   poc[1].compno0 = 0_u32;
   poc[1].layno1 = 1_u32;
   poc[1].resno1 = numres as u32;
   poc[1].compno1 = 3_u32;
-  poc[1].prg1 = OPJ_CPRL;
+  poc[1].prg1 = crate::api::ProgressionOrder::Cprl;
   2i32
 }
 fn opj_j2k_set_cinema_parameters(
@@ -6753,7 +6849,7 @@ fn opj_j2k_add_mhmarker(
   pos: i64,
   len: u32,
 ) -> OpResult {
-  cstr_index.markers.push(opj_marker_info {
+  cstr_index.markers.push(MarkerInfo {
     type_: marker.as_u32() as u16,
     pos,
     len: len as i32,
@@ -6776,7 +6872,7 @@ fn opj_j2k_add_tlmarker(
   len: u32,
 ) -> OpResult {
   let tile = &mut cstr_index.tiles[tileno as usize];
-  tile.markers.push(opj_marker_info {
+  tile.markers.push(MarkerInfo {
     type_: marker.as_u32() as u16,
     pos,
     len: len as i32,

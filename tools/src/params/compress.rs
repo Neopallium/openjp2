@@ -820,12 +820,12 @@ impl CompressionParameters {
       c_params.pocs[i].resno1 = poc.resolution_end;
       c_params.pocs[i].compno1 = poc.component_end;
       c_params.pocs[i].prg = match poc.prog_order {
-        ProgressionOrder::LRCP => OPJ_LRCP,
-        ProgressionOrder::RLCP => OPJ_RLCP,
-        ProgressionOrder::RPCL => OPJ_RPCL,
-        ProgressionOrder::PCRL => OPJ_PCRL,
-        ProgressionOrder::CPRL => OPJ_CPRL,
-        _ => OPJ_PROG_UNKNOWN,
+        ProgressionOrder::LRCP => openjp2::ProgressionOrder::Lrcp,
+        ProgressionOrder::RLCP => openjp2::ProgressionOrder::Rlcp,
+        ProgressionOrder::RPCL => openjp2::ProgressionOrder::Rpcl,
+        ProgressionOrder::PCRL => openjp2::ProgressionOrder::Pcrl,
+        ProgressionOrder::CPRL => openjp2::ProgressionOrder::Cprl,
+        _ => openjp2::ProgressionOrder::Lrcp,
       };
     }
 

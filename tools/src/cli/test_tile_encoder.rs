@@ -1,7 +1,5 @@
-use openjp2::CoreImage;
 use openjp2::{detect_format_from_extension_os_str, Encoder, EncoderParameters, Stream};
-use openjp2_ctypes::opj_image_cmptparm_t;
-use openjp2_ctypes::OPJ_CLRSPC_SRGB;
+use openjp2::{ColorSpace, CoreImage};
 use rand::prelude::*;
 use std::path::PathBuf;
 
@@ -119,7 +117,7 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
   // Image components
   let mut image_components = Vec::with_capacity(num_comps as usize);
   for _ in 0..num_comps {
-    let comp_param = opj_image_cmptparm_t {
+    let comp_param = openjp2::CoreImageComp {
       dx: 1,
       dy: 1,
       w: image_width,
@@ -144,7 +142,7 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
 
   // Create tile image
   let mut image =
-    CoreImage::tile_create(&image_components, OPJ_CLRSPC_SRGB).ok_or("Failed to create image")?;
+    CoreImage::tile_create(&image_components, ColorSpace::Srgb).ok_or("Failed to create image")?;
 
   image.x0 = offsetx;
   image.y0 = offsety;

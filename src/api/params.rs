@@ -2,7 +2,6 @@
 // and doc/redesign-proposal.md B.3.2.
 
 use super::*;
-use crate::c_api_types::opj_poc_t;
 use crate::c_api_types::OPJ_OFF;
 use crate::consts::j2k::J2K_MAX_POCS;
 use crate::consts::opj::OPJ_J2K_MAXRLVLS;
@@ -316,7 +315,7 @@ pub struct EncoderParameters {
   /// Progression order.
   pub prog_order: crate::api::ProgressionOrder,
   /// Progression-order changes.
-  pub pocs: [opj_poc_t; J2K_MAX_POCS as usize],
+  pub pocs: [crate::types::Poc; J2K_MAX_POCS as usize],
   /// Number of progression-order changes in `pocs`.
   pub numpocs: u32,
   /// Number of quality layers.

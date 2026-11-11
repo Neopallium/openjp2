@@ -14,7 +14,7 @@ fn opj_j2k_dump_tile_info<W: StringWriter>(
   } else {
     fprintf!(out_stream, "\t\t csty=0\n");
   }
-  if l_default_tile.prg != 0 {
+  if l_default_tile.prg != super::ProgressionOrder::LRCP {
     fprintf!(
       out_stream,
       "\t\t prg={:#x}\n",

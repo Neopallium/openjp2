@@ -87,8 +87,12 @@ pub use codec::TileInfo;
 pub use codec::{Decoder, DecoderSettings, Encoder, HeaderImage};
 pub use image::{CoreImage, CoreImageComp};
 pub use image::{ICCProfile, ICCProfileMut, ICCProfileRef, CIE_LAB_BYTE_SIZE};
-pub use j2k::{CodestreamIndex, CodestreamTileIndex, CstrCompInfoV2, CstrInfoV2, CstrTccpInfoV2};
+pub use j2k::{
+  CodestreamIndex, CodestreamTileIndex, CstrCompInfoV2, CstrInfoV2, CstrTccpInfoV2, MarkerInfo,
+  PacketInfo, TpIndex,
+};
 pub use stream::Stream;
+pub use types::Poc;
 
 /// Magic bytes for JP2 RFC3745.
 pub const JP2_RFC3745_MAGIC: &[u8] = &[
