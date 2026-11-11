@@ -161,16 +161,15 @@ pub fn decode_probe(data: &[u8], strict: Option<bool>) -> Result<DecodeProbe, Js
       continue;
     }
     let shift = |v: i32| -> u8 {
-      let mut s = v;
-      if c.sgnd == 0 {
-        s -= 1 << (c.prec - 1);
+      if c.sgnd != 0 {
+        let old_max = 1i64 << (c.prec - 1);
+        const NEW_MAX: i64 = 1 << 7;
+        ((((v as i64) * NEW_MAX) / old_max) + NEW_MAX) as u8
+      } else {
+        let old_max = (1u64 << c.prec) - 1;
+        const NEW_MAX: u64 = (1 << 8) - 1;
+        (((v as u64) * NEW_MAX) / old_max) as u8
       }
-      if c.prec > 8 {
-        s >>= c.prec - 8;
-      } else if c.prec < 8 {
-        s <<= 8 - c.prec;
-      }
-      s.clamp(0, 255) as u8
     };
     if c.data.len() < total {
       complete = false;
@@ -267,17 +266,19 @@ fn to_rgba(image: &Image) -> Result<Vec<u8>, String> {
   }
   let n = comps.len();
   let mut out = vec![0u8; w * h * 4];
+  // Scale to 8 bits exactly like the image-crate conversion (comp_u8):
+  // the decoder has already applied the DC level shift, so unsigned
+  // samples span 0..2^prec-1 and signed ones -2^(prec-1)..2^(prec-1)-1.
   let shift = |v: i32, prec: u32, sgnd: bool| -> u8 {
-    let mut s = v;
-    if !sgnd {
-      s -= 1 << (prec - 1);
+    if sgnd {
+      let old_max = 1i64 << (prec - 1);
+      const NEW_MAX: i64 = 1 << 7;
+      ((((v as i64) * NEW_MAX) / old_max) + NEW_MAX) as u8
+    } else {
+      let old_max = (1u64 << prec) - 1;
+      const NEW_MAX: u64 = (1 << 8) - 1;
+      (((v as u64) * NEW_MAX) / old_max) as u8
     }
-    if prec > 8 {
-      s >>= prec - 8;
-    } else if prec < 8 {
-      s <<= 8 - prec;
-    }
-    s.clamp(0, 255) as u8
   };
   let get = |ci: usize, i: usize| shift(comps[ci].data[i], comps[ci].prec, comps[ci].sgnd != 0);
   match n {

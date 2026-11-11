@@ -44,9 +44,12 @@ not applied.
   codestreams decode in parallel); a strict-mode checkbox flips validation.
 - **Encode** — drop any browser-readable image to encode it to JP2/J2K
   (lossless 5-3 or lossy 9-7) and download the result.
-- **Explorer** — a byte-level hex view with highlighted marker segments
-  (click one for its meaning and a link into the JPEG 2000 spec), plus a
-  truncation slider that cuts the codestream and re-decodes it live —
+- **Explorer** — a structural tree of the file (JP2 boxes → codestream
+  markers → tile-parts), a byte-level hex view where **every byte** is
+  colour-coded and labelled with the part of the stream it belongs to
+  (click one for its meaning and a link into the JPEG 2000 spec;
+  unrecognized bytes are marked corrupt), and a truncation slider that
+  cuts the codestream and re-decodes it live into the preview —
   demonstrating the lenient decoder's tolerance for truncated files.
 
 The site is published by `.github/workflows/pages.yml` on every push that

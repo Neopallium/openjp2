@@ -52,10 +52,10 @@
 
     <section class="panel" id="panel-explorer">
       <h2>Explorer</h2>
-      <p class="hint">Byte-level view of the loaded codestream: marker segments
-        are highlighted — click one for its meaning and a link into the
-        JPEG 2000 spec.  The truncation slider cuts the codestream and
-        re-decodes it live (lenient mode tolerates truncated files).</p>
+      <p class="hint">Byte-level view of the loaded codestream: every byte is
+        labelled with the part of the file it belongs to — click one for
+        details.  The truncation slider cuts the codestream and re-decodes
+        it live into the preview (lenient mode tolerates truncated files).</p>
       <div class="controls">
         <label class="row">truncate at
           <input type="range" id="trunc-slider" min="0" max="100" value="100" />
@@ -63,7 +63,13 @@
         </label>
         <div id="trunc-status"></div>
       </div>
+      <div class="explorer-preview">
+        <canvas id="explorer-canvas" width="1" height="1"></canvas>
+      </div>
+      <dl class="info" id="explorer-info"></dl>
+      <div class="tree" id="tree-view"></div>
       <div class="hex" id="hex-view"><div class="hex-empty">decode a file first</div></div>
+      <div class="legend" id="hex-legend"></div>
       <div class="marker-detail" id="marker-detail"></div>
     </section>
   </main>

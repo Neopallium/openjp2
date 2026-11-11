@@ -5,44 +5,23 @@ import init, {
   encode_rgba_to_j2k,
   version,
 } from "./pkg/openjp2_wasm.js";
-
-// ---------------------------------------------------------------------------
-// JPEG 2000 marker dictionary (ISO/IEC 15444-1 Annex A section numbers;
-// the public ITU-T T.800 recommendation is textually identical).
-const MARKERS = {
-  0x4f: ["SOC", "Start of codestream", "A.4.1"],
-  0x51: ["SIZ", "Image and tile size", "A.5.1"],
-  0x52: ["COD", "Coding style default", "A.6.1"],
-  0x53: ["COC", "Coding style component", "A.6.2"],
-  0x54: ["TLM", "Tile-part lengths", "A.7.2"],
-  0x55: ["PLM", "Packet length, main header", "A.7.4"],
-  0x56: ["PLT", "Packet length, tile-part header", "A.7.3"],
-  0x57: ["QCD", "Quantization default", "A.6.4"],
-  0x58: ["QCC", "Quantization component", "A.6.5"],
-  0x5b: ["RGN", "Region of interest", "A.6.3"],
-  0x5c: ["POC", "Progression order change", "A.7.1"],
-  0x5d: ["PPM", "Packed packet headers, main header", "A.8.1"],
-  0x5e: ["PPT", "Packed packet headers, tile-part header", "A.8.2"],
-  0x63: ["CRG", "Component registration", "A.10.3"],
-  0x64: ["COM", "Comment", "A.10.2"],
-  0x75: ["MCC", "Multiple component transform collection (Part 2)", "M.13"],
-  0x76: ["MCO", "Multiple component transform ordering (Part 2)", "M.14"],
-  0x78: ["CBD", "Component bit depth definition (Part 2)", "M.15"],
-  0x90: ["SOT", "Start of tile-part", "A.4.2"],
-  0x91: ["SOP", "Start of packet", "A.9.2"],
-  0x92: ["EPH", "End of packet header", "A.9.3"],
-  0x93: ["SOD", "Start of data", "A.4.3"],
-  0xd9: ["EOC", "End of codestream", "A.4.4"],
-};
-const SPEC_URL = "https://www.itu.int/rec/T-REC-T.800";
+import {
+  MARKERS,
+  KINDS,
+  SPEC_URL,
+  fmtBytes,
+  buildStructure,
+  structurallyComplete,
+} from "./structure.js";
 
 // ---------------------------------------------------------------------------
 // element helpers
 const $ = (id) => document.getElementById(id);
 
-let codestream = null; // Uint8Array of the currently loaded codestream
-let markers = []; // [{ start, end, name }] from scanMarkers
+let codestream = null; // Uint8Array of the currently loaded file
 let csOffset = 0; // where the codestream starts inside `codestream`
+let ranges = []; // { start, end, kind, label, code?, spec? }
+let treeRoot = null; // tree node
 
 function setInfo(el, entries) {
   el.replaceChildren(
@@ -56,89 +35,29 @@ function setInfo(el, entries) {
   );
 }
 
-function fmtBytes(n) {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KiB`;
-  return `${(n / 1024 / 1024).toFixed(2)} MiB`;
-}
-
 // ---------------------------------------------------------------------------
-// codestream location + marker scan
-
-/// Finds where the J2K codestream starts: raw SOC, or the `jp2c` box.
-function codestreamOffset(data) {
-  if (data.length >= 2 && data[0] === 0xff && data[1] === 0x4f) return 0;
-  let off = 0;
-  while (off + 8 <= data.length) {
-    const len =
-      (data[off] << 24) | (data[off + 1] << 16) | (data[off + 2] << 8) | data[off + 3];
-    const type = String.fromCharCode(
-      data[off + 4], data[off + 5], data[off + 6], data[off + 7],
-    );
-    if (len < 8) break;
-    if (type === "jp2c") return off + 8;
-    off += len;
-  }
-  return -1;
-}
-
-/// Scans marker segments (accurate for headers; tile-part data is skipped
-/// via SOT's Psot field).
-function scanMarkers(data, cs) {
-  const out = [];
-  if (cs < 0 || cs + 2 > data.length || data[cs] !== 0xff || data[cs + 1] !== 0x4f) {
-    return out;
-  }
-  const name = (code) => (MARKERS[code] ? MARKERS[code][0] : `FF${code.toString(16).toUpperCase()}`);
-  out.push({ start: cs, end: cs + 2, name: "SOC" });
-  let pos = cs + 2;
-  while (pos + 1 < data.length) {
-    if (data[pos] !== 0xff) {
-      pos += 1;
-      continue;
-    }
-    const code = data[pos + 1];
-    if (code === 0xd9) {
-      out.push({ start: pos, end: pos + 2, name: "EOC" });
-      break;
-    }
-    if (code === 0x90) {
-      out.push({ start: pos, end: pos + 12, name: "SOT" });
-      const psot =
-        (data[pos + 6] << 24) | (data[pos + 7] << 16) | (data[pos + 8] << 8) | data[pos + 9];
-      pos += 12;
-      if (psot > 12) {
-        pos += psot - 12;
-      } else {
-        // tile-part runs to EOC
-        const eoc = data.indexOf(0xd9, pos);
-        if (eoc > 0 && data[eoc - 1] === 0xff) {
-          out.push({ start: eoc - 1, end: eoc + 1, name: "EOC" });
-        }
-        break;
-      }
-      continue;
-    }
-    if (code === 0x93) {
-      out.push({ start: pos, end: pos + 1, name: "SOD" });
-      pos += 1;
-      continue;
-    }
-    const l = (data[pos + 2] << 8) | data[pos + 3];
-    if (l === 0) {
-      out.push({ start: pos, end: data.length, name: name(code) });
-      break;
-    }
-    out.push({ start: pos, end: pos + 2 + l, name: name(code) });
-    pos += 2 + l;
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// hex view (capped) + marker detail
+// hex view
 
 const HEX_CAP = 96 * 1024;
+const HEX_ROW = 16;
+
+/// Per-byte index into `ranges` for the displayed region (Uint32Array).
+/// Iterates forwards so later (inner, more specific) ranges override
+/// earlier (outer) ones — e.g. markers override the enclosing jp2c box.
+function buildLabelIndex(data) {
+  const n = Math.min(data.length, HEX_CAP);
+  const idx = new Uint32Array(n).fill(0xffffffff);
+  for (let ri = 0; ri < ranges.length; ri++) {
+    const r = ranges[ri];
+    if (r.end <= 0 || r.start >= n) continue;
+    for (let i = Math.max(r.start, 0); i < Math.min(r.end, n); i++) {
+      idx[i] = ri;
+    }
+  }
+  return idx;
+}
+
+let labelIndex = null;
 
 function renderHex(data, cut) {
   const view = $("hex-view");
@@ -147,17 +66,18 @@ function renderHex(data, cut) {
     view.innerHTML = '<div class="hex-empty">decode a file first</div>';
     return;
   }
+  labelIndex = buildLabelIndex(data);
   const n = Math.min(data.length, HEX_CAP);
   const frag = document.createDocumentFragment();
-  const rows = Math.ceil(n / 16);
+  const rows = Math.ceil(n / HEX_ROW);
   for (let r = 0; r < rows; r++) {
     const line = document.createElement("div");
     const addr = document.createElement("span");
     addr.className = "addr";
-    addr.textContent = (r * 16).toString(16).padStart(8, "0") + "  ";
+    addr.textContent = (r * HEX_ROW).toString(16).padStart(8, "0") + "  ";
     line.appendChild(addr);
-    for (let c = 0; c < 16; c++) {
-      const i = r * 16 + c;
+    for (let c = 0; c < HEX_ROW; c++) {
+      const i = r * HEX_ROW + c;
       const s = document.createElement("span");
       if (i >= n) {
         s.textContent = "   ";
@@ -166,18 +86,17 @@ function renderHex(data, cut) {
         s.textContent = b.toString(16).padStart(2, "0") + " ";
         if (i >= cut) {
           s.className = "cut";
-        } else if (b === 0x00) {
-          s.className = "zero";
+          s.title = "beyond the truncation point";
         } else {
-          s.className = "byte";
-        }
-        if (i < cut) {
-          const m = markers.find((m) => i >= m.start && i < m.end);
-          if (m) {
-            s.classList.add("marker-byte");
-            s.dataset.marker = m.name;
-            s.dataset.start = m.start;
-            s.dataset.end = m.end;
+          const ri = labelIndex[i];
+          const range = ri !== 0xffffffff ? ranges[ri] : null;
+          const kind = range ? KINDS[range.kind] : KINDS.corrupt;
+          s.className = `byte ${kind.cls}`;
+          if (range) {
+            s.dataset.range = ri;
+            s.title = `${range.label} (${range.start}–${range.end})`;
+          } else {
+            s.title = "unrecognized / corrupt data";
           }
         }
       }
@@ -194,49 +113,111 @@ function renderHex(data, cut) {
   view.appendChild(frag);
 }
 
-function markerDetail(name, start, end) {
+function showDetail(range) {
   const el = $("marker-detail");
-  const [full, desc, section] = MARKERS[parseInt(name.slice(2), 16)] ||
-    [name, "Unknown marker", null];
   el.replaceChildren();
-  const span = document.createElement("span");
-  span.className = "marker-name";
-  span.textContent = full;
+  const name = document.createElement("span");
+  name.className = "marker-name";
+  name.textContent = range.label;
+  const kind = KINDS[range.kind]?.label || range.kind;
   const text = document.createElement("span");
-  text.textContent = ` — ${desc} (bytes ${start}–${end})`;
-  el.append(span, text);
-  if (section) {
+  text.textContent = ` — ${kind}, bytes ${range.start}–${range.end} (${fmtBytes(range.end - range.start)})`;
+  el.append(name, text);
+  if (range.code !== undefined && MARKERS[range.code]) {
     el.append(document.createElement("br"));
     const link = document.createElement("a");
     link.href = SPEC_URL;
     link.target = "_blank";
     link.rel = "noopener";
-    link.textContent = `ISO/IEC 15444-1 Annex ${section} (ITU-T T.800)`;
+    link.textContent = `ISO/IEC 15444-1 Annex ${MARKERS[range.code][2]} (ITU-T T.800)`;
     el.append(link);
+    const desc = document.createElement("div");
+    desc.className = "marker-spec";
+    desc.textContent = MARKERS[range.code][1];
+    el.append(desc);
+  }
+  if (range.spec) {
+    const desc = document.createElement("div");
+    desc.className = "marker-spec";
+    desc.textContent = range.spec;
+    el.append(desc);
   }
 }
 
-// ---------------------------------------------------------------------------
-// decode panel
-
-const decodeCanvas = $("decode-canvas");
-
-/// True when the marker scan reaches an EOC within the data: every
-/// tile-part's Psot fit, so the pixels are complete.
-function structurallyComplete(data, cs) {
-  const ms = scanMarkers(data, cs);
-  if (ms.length === 0) return false;
-  const last = ms[ms.length - 1];
-  return last.name === "EOC" && last.end <= data.length;
+function highlightRange(range) {
+  document.querySelectorAll(".byte.selected").forEach((s) => s.classList.remove("selected"));
+  if (!range || !labelIndex) return;
+  document.querySelectorAll("#hex-view .byte[data-range]").forEach((s) => {
+    const ri = Number(s.dataset.range);
+    if (ri < ranges.length) {
+      const r = ranges[ri];
+      if (r.start === range.start && r.end === range.end) s.classList.add("selected");
+    }
+  });
+  const first = document.querySelector("#hex-view .byte.selected");
+  if (first) first.scrollIntoView({ block: "center" });
 }
 
-function showDecode(data, strict) {
-  const t0 = performance.now();
-  const probe = decode_probe(data, strict);
-  const ms = performance.now() - t0;
-  const ctx = decodeCanvas.getContext("2d");
-  decodeCanvas.width = probe.width;
-  decodeCanvas.height = probe.height;
+// ---------------------------------------------------------------------------
+// tree view
+
+function renderTree(root, cut) {
+  const el = $("tree-view");
+  el.textContent = "";
+  if (!root) return;
+  el.appendChild(treeEl(root, cut, true));
+}
+
+function treeEl(node, cut, open) {
+  const li = document.createElement("li");
+  const head = document.createElement("div");
+  head.className = "tree-node";
+  if (node.children.length) {
+    const det = document.createElement("details");
+    det.open = open;
+    const sum = document.createElement("summary");
+    sum.textContent = node.label;
+    const ul = document.createElement("ul");
+    for (const child of node.children) ul.appendChild(treeEl(child, cut, false));
+    det.append(sum, ul);
+    head.appendChild(det);
+  } else {
+    head.textContent = node.label;
+  }
+  const span = document.createElement("span");
+  span.className = "tree-range";
+  span.textContent = `${fmtBytes(node.end - node.start)}`;
+  head.appendChild(span);
+  if (node.start >= cut) {
+    head.classList.add("beyond-cut");
+    head.title = "beyond the truncation point";
+  }
+  head.addEventListener("click", (ev) => {
+    if (ev.target.closest("summary")) return; // let details toggle
+    const range = {
+      start: node.start,
+      end: node.end,
+      kind: node.kind || "corrupt",
+      label: node.label,
+      code: node.code,
+      spec: node.spec,
+    };
+    showDetail(range);
+    highlightRange(range);
+  });
+  li.appendChild(head);
+  return li;
+}
+
+// ---------------------------------------------------------------------------
+// explorer image view + truncation
+
+const explorerCanvas = $("explorer-canvas");
+
+function drawProbe(probe, canvas) {
+  const ctx = canvas.getContext("2d");
+  canvas.width = probe.width;
+  canvas.height = probe.height;
   if (probe.pixels.length === probe.width * probe.height * 4) {
     const img = new ImageData(
       new Uint8ClampedArray(probe.pixels.buffer, probe.pixels.byteOffset, probe.pixels.length),
@@ -248,6 +229,59 @@ function showDecode(data, strict) {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, probe.width, probe.height);
   }
+}
+
+function explorerDecode(cut) {
+  const sub = codestream.subarray(0, cut);
+  const t0 = performance.now();
+  const complete = structurallyComplete(sub, csOffset);
+  let status;
+  try {
+    const probe = decode_probe(sub, false);
+    const ms = performance.now() - t0;
+    drawProbe(probe, explorerCanvas);
+    setInfo($("explorer-info"), [
+      ["size", `${probe.width}×${probe.height}`],
+      ["pixels", complete ? "complete" : "truncated (black = not decoded)"],
+      ["decode", `${ms.toFixed(0)} ms`],
+    ]);
+    status = complete
+      ? `decoded ${probe.width}×${probe.height} in ${ms.toFixed(0)} ms ✓`
+      : probe.pixels.length
+        ? "truncated: pixels decoded up to the cut point"
+        : "header only (no pixel data survives at this length)";
+  } catch (e) {
+    setInfo($("explorer-info"), [["error", String(e)]]);
+    status = `not decodable: ${e}`;
+  }
+  $("trunc-status").textContent = `${fmtBytes(cut)} → ${status}`;
+}
+
+let truncTimer = null;
+
+function applyCut(cut) {
+  $("trunc-label").textContent = `${Math.round((cut / codestream.length) * 100)}%`;
+  renderHex(codestream, cut);
+  renderTree(treeRoot, cut);
+  clearTimeout(truncTimer);
+  truncTimer = setTimeout(() => explorerDecode(cut), 150);
+}
+
+$("trunc-slider").addEventListener("input", (ev) => {
+  if (!codestream) return;
+  applyCut(Number(ev.target.value));
+});
+
+// ---------------------------------------------------------------------------
+// decode panel
+
+const decodeCanvas = $("decode-canvas");
+
+function showDecode(data, strict) {
+  const t0 = performance.now();
+  const probe = decode_probe(data, strict);
+  const ms = performance.now() - t0;
+  drawProbe(probe, decodeCanvas);
   const complete = structurallyComplete(data, csOffset);
   setInfo($("decode-info"), [
     ["size", `${probe.width}×${probe.height}`],
@@ -261,13 +295,22 @@ function showDecode(data, strict) {
 function loadCodestream(file) {
   file.arrayBuffer().then((buf) => {
     const data = new Uint8Array(buf);
-    csOffset = codestreamOffset(data);
-    if (csOffset < 0) {
-      setInfo($("decode-info"), [["error", "no codestream found (not a JP2/J2K file?)"]]);
-      return;
+    if (data.length < 2 || !(data[0] === 0xff && data[1] === 0x4f)) {
+      // quick check for a JP2 signature box (12 bytes, type 'jP  ')
+      if (
+        data.length < 12 ||
+        ((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3]) !== 12 ||
+        ((data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7]) !== 0x6a502020
+      ) {
+        setInfo($("decode-info"), [["error", "not a JP2/J2K file"]]);
+        return;
+      }
     }
+    const structure = buildStructure(data);
+    ranges = structure.ranges;
+    treeRoot = structure.tree;
+    csOffset = structure.csOffset;
     codestream = data;
-    markers = scanMarkers(data, csOffset);
     try {
       showDecode(data, $("decode-strict").checked);
     } catch (e) {
@@ -279,52 +322,35 @@ function loadCodestream(file) {
     slider.value = data.length;
     $("trunc-label").textContent = "100%";
     renderHex(data, data.length);
-    $("trunc-status").textContent =
-      `${fmtBytes(data.length)} · ${markers.length - 2} marker segments`;
+    renderTree(treeRoot, data.length);
+    renderLegend();
+    explorerDecode(data.length);
   });
 }
 
 // ---------------------------------------------------------------------------
-// truncation slider (lenient re-decode)
+// hex legend
 
-let truncTimer = null;
-
-$("trunc-slider").addEventListener("input", (ev) => {
-  if (!codestream) return;
-  const cut = Number(ev.target.value);
-  $("trunc-label").textContent = `${Math.round((cut / codestream.length) * 100)}%`;
-  renderHex(codestream, cut);
-  clearTimeout(truncTimer);
-  truncTimer = setTimeout(() => {
-    const sub = codestream.subarray(0, cut);
-    const t0 = performance.now();
-    const complete = structurallyComplete(sub, csOffset);
-    try {
-      const probe = decode_probe(sub, false);
-      const ms = performance.now() - t0;
-      const status = complete
-        ? `decoded ${probe.width}×${probe.height} in ${ms.toFixed(0)} ms ✓`
-        : probe.pixels.length
-          ? "truncated: pixels decoded up to the cut point"
-          : "header only (no pixel data survives at this length)";
-      $("trunc-status").textContent = `${fmtBytes(cut)} → ${status}`;
-    } catch (e) {
-      $("trunc-status").textContent = `${fmtBytes(cut)} → not decodable: ${e}`;
-    }
-  }, 120);
-});
+function renderLegend() {
+  const el = $("hex-legend");
+  el.replaceChildren();
+  for (const { cls, label } of Object.values(KINDS)) {
+    const item = document.createElement("span");
+    item.className = `legend-item ${cls}`;
+    item.textContent = label;
+    el.appendChild(item);
+  }
+}
 
 // ---------------------------------------------------------------------------
-// marker clicks
+// byte clicks
 
 $("hex-view").addEventListener("click", (ev) => {
-  const span = ev.target.closest("[data-marker]");
+  const span = ev.target.closest("[data-range]");
   if (!span) return;
-  document.querySelectorAll(".marker-byte.hot").forEach((s) => s.classList.remove("hot"));
-  document
-    .querySelectorAll(`[data-marker="${span.dataset.marker}"][data-start="${span.dataset.start}"]`)
-    .forEach((s) => s.classList.add("hot"));
-  markerDetail(span.dataset.marker, Number(span.dataset.start), Number(span.dataset.end));
+  const range = ranges[Number(span.dataset.range)];
+  showDetail(range);
+  highlightRange(range);
 });
 
 // ---------------------------------------------------------------------------
@@ -342,9 +368,7 @@ function loadSourceImage(file) {
     encodeCanvas.getContext("2d").drawImage(img, 0, 0);
     URL.revokeObjectURL(url);
     $("encode-drop").classList.add("has-image");
-    setInfo($("encode-info"), [
-      ["size", `${img.naturalWidth}×${img.naturalHeight}`],
-    ]);
+    setInfo($("encode-info"), [["size", `${img.naturalWidth}×${img.naturalHeight}`]]);
     runEncode();
   };
   img.src = url;
