@@ -541,7 +541,7 @@ fn encoder_params_from_c(
     subsampling_dy: parameters.subsampling_dy,
     decod_format: parameters.decod_format,
     cod_format: parameters.cod_format,
-    cp_cinema: parameters.cp_cinema as u32,
+    cp_cinema: parameters.cp_cinema,
     max_comp_size: parameters.max_comp_size,
     cp_rsiz: parameters.cp_rsiz as u16,
     tp_on: parameters.tp_on,
