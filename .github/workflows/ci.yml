@@ -194,7 +194,11 @@ jobs:
       - name: Check core (no default features)
         run: cargo check -p openjp2 --target ${{ matrix.target }} --no-default-features
 
+      # wasm32 cannot build the default (file-io) C ABI: libc has no
+      # FILE/fwrite/size_t there - the dedicated no-file-io step below
+      # covers that target instead.
       - name: Check C-ABI crate
+        if: matrix.target != 'wasm32-unknown-unknown'
         run: cargo check --target ${{ matrix.target }}
         working-directory: capi
 
