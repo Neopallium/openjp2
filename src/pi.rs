@@ -1881,8 +1881,7 @@ pub(crate) fn pi_create_decode(
   l_pi[0].ty0 = l_ty0;
   l_pi[0].tx1 = l_tx1;
   l_pi[0].ty1 = l_ty1;
-  /*l_pi[0].dx = l_img_comp->dx;*/
-  /*l_pi[0].dy = l_img_comp->dy;*/
+
   l_pi[0].step_p = l_step_p;
   l_pi[0].step_c = l_step_c;
   l_pi[0].step_r = l_step_r;

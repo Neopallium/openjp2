@@ -1274,7 +1274,6 @@ fn t2_read_packet_data(
               break;
             }
           } else {
-            /* USE_JPWL */
             if cblk.numchunks as usize == cblk.chunks.len() {
               let new_len = cblk.chunks.len() * 2 + 1;
               cblk.chunks.resize(
@@ -1384,7 +1383,6 @@ fn t2_skip_packet_data(
               return Ok(());
             }
           }
-          /* USE_JPWL */
           log::debug!(
             "p_data_read ({}) newlen ({})",
             *p_data_read,

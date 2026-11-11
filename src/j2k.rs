@@ -1150,9 +1150,6 @@ fn j2k_write_soc(
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-  /* UniPG>> */
-  /* USE_JPWL */
-  /* <<UniPG */
   Ok(())
 }
 
@@ -1408,7 +1405,6 @@ fn j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
       return Err(());
     }
   }
-  /* USE_JPWL */
   /* Allocate the resulting image components */
   let numcomps = l_image.numcomps;
   if !l_image.alloc_comps(numcomps) {
@@ -1467,7 +1463,6 @@ fn j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
                         l_image.comps[i as usize].prec);
       return Err(());
     }
-    /* USE_JPWL */
     l_image.comps[i as usize].resno_decoded = 0_u32; /* number of resolution decoded */
     l_image.comps[i as usize].factor = cp.m_specific_param.m_dec.m_reduce; /* reducing factor per component */
     i += 1;
@@ -1629,10 +1624,8 @@ fn j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
     p_j2k.m_specific_param.m_decoder.m_end_tile_x = cp.tw;
     p_j2k.m_specific_param.m_decoder.m_end_tile_y = cp.th
   }
-  /* USE_JPWL */
   /* memory allocations */
   cp.tcps = (0..l_nb_tiles).map(|_| Default::default()).collect();
-  /* USE_JPWL */
   let default_tcp = p_j2k
     .m_specific_param
     .m_decoder
@@ -2417,7 +2410,6 @@ fn j2k_read_qcc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
     cursor += 2usize;
     p_header_size = p_header_size.wrapping_sub(2u32)
   }
-  /* USE_JPWL */
   if l_comp_no >= l_num_comp {
     event_msg!(
       p_manager,
@@ -3350,8 +3342,6 @@ fn j2k_write_sot(
     1_u32,
   );
   pos += 1usize;
-  /* UniPG>> */
-  /* USE_JPWL */
   *p_data_written = pos as u32;
   Ok(())
 }
@@ -3460,7 +3450,6 @@ fn j2k_read_sot(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
     }
   }
   l_tcp.m_current_tile_part_number = l_current_part as i32;
-  /* USE_JPWL */
   /* look for the tile in the list of already processed tile (in parts). */
   /* Optimization possible here with a more complex data structure and with the removing of tiles */
   /* since the time taken by this function can only grow at the time */
@@ -3484,7 +3473,6 @@ fn j2k_read_sot(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
       return Err(());
     }
   }
-  /* USE_JPWL */
   /* Ref A.4.2: Psot could be equal zero if it is the last tile-part of the codestream.*/
   if l_tot_len == 0 {
     event_msg!(p_manager, EVT_INFO,
@@ -3885,7 +3873,6 @@ fn j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr
       event_msg!(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n",);
       return Err(());
     }
-    /*l_cstr_index->packno = 0;*/
   }
   /* Patch to support new PHR data */
   if l_sot_length_pb_detected == 0 {
@@ -3963,8 +3950,6 @@ fn j2k_write_eoc(
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(2, 0);
   write_bytes(&mut l_buf[..], J2KMarker::EOC.as_u32(), 2_u32);
-  /* UniPG>> */
-  /* USE_JPWL */
   if stream_write_data(p_stream, &l_buf[..2], p_manager) != 2 {
     return Err(());
   }
@@ -4017,7 +4002,6 @@ fn j2k_read_rgn(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   cursor += l_comp_room as usize;
   let _ = read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
-  /* USE_JPWL */
   /* testcase 3635.pdf.asan.77.2930 */
   if l_comp_no >= l_nb_comp {
     event_msg!(
@@ -4359,14 +4343,11 @@ fn j2k_write_epc(p_j2k: &mut J2k, p_stream: &mut Stream, _p_manager: &mut EventM
 
   if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
     l_cstr_index.codestream_size = stream_tell(p_stream) as u64;
-    /* UniPG>> */
     /* The following adjustment is done to adjust the codestream size */
     /* if SOD is not at 0 in the buffer. Useful in case of JP2, where */
     /* the first bunch of bytes is not in the codestream              */
     l_cstr_index.codestream_size -= l_cstr_index.main_head_start as u64;
-    /* <<UniPG */
   }
-  /* USE_JPWL */
   Ok(())
 }
 
@@ -6408,7 +6389,6 @@ pub(crate) fn j2k_setup_encoder(
     cp.comment_set = true;
   } else {
     /* Create default comment for codestream */
-    /* UniPG>> */
     cp.comment = crate::openjpeg::default_codestream_comment().into_bytes();
     cp.comment_set = true;
   }
@@ -6463,7 +6443,6 @@ pub(crate) fn j2k_setup_encoder(
     cp.m_specific_param.m_enc.m_tp_flag = parameters.tp_flag as u8;
     cp.m_specific_param.m_enc.m_tp_on = true;
   }
-  /* USE_JPWL */
   /* initialize the multiple tiles */
   // ----------------------------
   cp.tcps = (0..cp.tw.wrapping_mul(cp.th))
@@ -6676,7 +6655,6 @@ pub(crate) fn j2k_setup_encoder(
           }
           p += 1;
           it_res -= 1
-          /*printf("\nsize precinct for level {} : {},{}\n", it_res,tccp->prcw[it_res], tccp->prch[it_res]); */
         }
       } else {
         j = 0_u32;
@@ -9381,10 +9359,8 @@ fn j2k_read_sqcd_sqcc(
                             2i32,
                         3i32 * 33i32 -
                             2i32);
-      /*return false;*/
     }
   }
-  /* USE_JPWL */
 
   if l_tccp.qntsty == 0u32 {
     l_band_no = 0_u32; /* SPqcx_i */

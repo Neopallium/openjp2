@@ -1801,7 +1801,6 @@ fn t1_getwmsedec(
   if qmfbid == 1 {
     w2 = dwt_getnorm(level, orient)
   } else {
-    /* if (qmfbid == 0) */
     let log2_gain = if orient == 0 {
       0
     } else if orient == 3 {

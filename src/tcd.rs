@@ -150,7 +150,7 @@ fn tcd_makelayer(tcd: &mut Tcd, layno: u32, thresh: f64, final_0: u32) -> bool {
                   }
                   passno += 1;
                 }
-              } /*, matrice[tcd_tcp->numlayers][tcd_tile->comps[0].numresolutions][3]; */
+              }
 
               if cblk.layers[layno as usize].numpasses != n - cblk.numpassesinlayers {
                 layer_allocation_is_same = false;
@@ -690,7 +690,6 @@ pub(crate) fn tcd_init_tile(
   let m_reduce = cp.m_specific_param.m_dec.m_reduce;
   p = p_tile_no.wrapping_rem(tw);
   q = p_tile_no.wrapping_div(tw);
-  /*fprintf(stderr, "Tile coordinate = %d,%d\n", p, q);*/
   /* 4 borders of the tile rescale on the image if necessary */
   l_tx0 = tx0.wrapping_add(p.wrapping_mul(tdx)); /* can't be greater than l_image->x1 so won't overflow */
   p_tcd.tcd_image.tiles.x0 = uint_max(l_tx0, image.x0) as i32;
@@ -717,11 +716,9 @@ pub(crate) fn tcd_init_tile(
     );
     return Err(());
   }
-  /*fprintf(stderr, "Tile border = %d,%d,%d,%d\n", l_tile->x0, l_tile->y0,l_tile->x1,l_tile->y1);*/
-  /*tile->numcomps = image->numcomps; */
+
   compno = 0_u32; /* compno */
   while compno < p_tcd.tcd_image.tiles.numcomps {
-    /*fprintf(stderr, "compno = %d/%d\n", compno, l_tile->numcomps);*/
     let image_comp = &mut image.comps[compno as usize];
     let tccp = &tcp.tccps[compno as usize];
     let tilec = &mut p_tcd.tcd_image.tiles.comps[compno as usize];
@@ -732,7 +729,6 @@ pub(crate) fn tcd_init_tile(
     tilec.x1 = int_ceildiv(p_tcd.tcd_image.tiles.x1, image_comp.dx as i32);
     tilec.y1 = int_ceildiv(p_tcd.tcd_image.tiles.y1, image_comp.dy as i32);
     tilec.compno = compno;
-    /*fprintf(stderr, "\tTile compo border = %d,%d,%d,%d\n", l_tilec->x0, l_tilec->y0,l_tilec->x1,l_tilec->y1);*/
     tilec.numresolutions = tccp.numresolutions;
     if tccp.numresolutions < m_reduce {
       tilec.minimum_num_resolutions = 1_u32
@@ -779,11 +775,9 @@ pub(crate) fn tcd_init_tile(
       }
     }
     l_level_no = tilec.numresolutions;
-    /*fprintf(stderr, "\tlevel_no=%d\n",l_level_no);*/
     let mut l_step_size_idx: usize = 0;
     resno = 0_u32; /* resno */
     while resno < tilec.numresolutions {
-      /*fprintf(stderr, "\t\tresno = %d/%d\n", resno, l_tilec->numresolutions);*/
       let mut tlcbgxstart: i32 = 0;
       let mut tlcbgystart: i32 = 0;
       let mut cbgwidthexpn: u32 = 0;
@@ -845,13 +839,9 @@ pub(crate) fn tcd_init_tile(
         tlcbgxstart = l_tl_prc_x_start;
         tlcbgystart = l_tl_prc_y_start;
         /* border for each resolution level (global) */
-        /*fprintf(stderr, "\t\t\tres_x0= %d, res_y0 =%d, res_x1=%d, res_y1=%d\n", l_res->x0, l_res->y0, l_res->x1, l_res->y1);*/
         /* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-        /*fprintf(stderr, "\t\t\tpdx=%d, pdy=%d\n", l_pdx, l_pdy);*/
         /* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-        /*fprintf(stderr, "\t\t\tprc_x_start=%d, prc_y_start=%d, br_prc_x_end=%d, br_prc_y_end=%d \n", l_tl_prc_x_start, l_tl_prc_y_start, l_br_prc_x_end ,l_br_prc_y_end );*/
-        /*fprintf(stderr, "\t\t\tres_pw=%d, res_ph=%d\n", l_res->pw, l_res->ph );*/
-        /*brcbgxend = l_br_prc_x_end;*/
+
         /* brcbgyend = l_br_prc_y_end;*/
         cbgwidthexpn = l_pdx;
         cbgheightexpn = l_pdy;
@@ -859,8 +849,7 @@ pub(crate) fn tcd_init_tile(
       } else {
         tlcbgxstart = int_ceildivpow2(l_tl_prc_x_start, 1i32);
         tlcbgystart = int_ceildivpow2(l_tl_prc_y_start, 1i32);
-        /*brcbgxend = int_ceildivpow2(l_br_prc_x_end, 1);*/
-        /*brcbgyend = int_ceildivpow2(l_br_prc_y_end, 1);*/
+
         cbgwidthexpn = l_pdx.wrapping_sub(1u32); /* bandno */
         cbgheightexpn = l_pdy.wrapping_sub(1u32);
         res.numbands = 3_u32
@@ -870,7 +859,6 @@ pub(crate) fn tcd_init_tile(
       let res_pw = res.pw;
       bandno = 0_u32;
       while bandno < res.numbands {
-        /*fprintf(stderr, "\t\t\tband_no=%d/%d\n", bandno, l_res->numbands );*/
         let band = &mut res.bands[bandno as usize];
         if resno == 0u32 {
           band.bandno = 0_u32;
@@ -949,20 +937,14 @@ pub(crate) fn tcd_init_tile(
               tlcbgystart + precno.wrapping_div(res_pw) as i32 * ((1i32) << cbgheightexpn);
             let mut cbgxend = cbgxstart + ((1i32) << cbgwidthexpn);
             let mut cbgyend = cbgystart + ((1i32) << cbgheightexpn);
-            /*fprintf(stderr, "\t precno=%d; bandno=%d, resno=%d; compno=%d\n", precno, bandno , resno, compno);*/
-            /*fprintf(stderr, "\t tlcbgxstart(=%d) + (precno(=%d) percent res->pw(=%d)) * (1 << cbgwidthexpn(=%d)) \n",tlcbgxstart,precno,l_res->pw,cbgwidthexpn);*/
             /* precinct size (global) */
-            /*fprintf(stderr, "\t cbgxstart=%d, l_band->x0 = %d \n",cbgxstart, l_band->x0);*/
             let precinct = &mut band.precincts[precno as usize];
             precinct.x0 = int_max(cbgxstart, band_x0);
             precinct.y0 = int_max(cbgystart, band_y0);
             precinct.x1 = int_min(cbgxend, band_x1);
             precinct.y1 = int_min(cbgyend, band_y1);
-            /*fprintf(stderr, "\t prc_x0=%d; prc_y0=%d, prc_x1=%d; prc_y1=%d\n",l_current_precinct->x0, l_current_precinct->y0 ,l_current_precinct->x1, l_current_precinct->y1);*/
             tlcblkxstart = int_floordivpow2(precinct.x0, cblkwidthexpn as i32) << cblkwidthexpn;
-            /*fprintf(stderr, "\t tlcblkxstart =%d\n",tlcblkxstart );*/
             tlcblkystart = int_floordivpow2(precinct.y0, cblkheightexpn as i32) << cblkheightexpn;
-            /*fprintf(stderr, "\t tlcblkystart =%d\n",tlcblkystart );*/
             /* Like the precinct-grid computation above: the i32 shift can
             overflow for tiles near 2^31 (debug-build panic; the C has UB). */
             let tmp_0 =
@@ -979,11 +961,9 @@ pub(crate) fn tcd_init_tile(
               return Err(());
             }
             brcblkyend = tmp_1 as i32;
-            /*fprintf(stderr, "\t brcblkyend =%d\n",brcblkyend );*/
             precinct.cw = ((brcblkxend - tlcblkxstart) >> cblkwidthexpn) as u32;
             precinct.ch = ((brcblkyend - tlcblkystart) >> cblkheightexpn) as u32;
             l_nb_code_blocks = precinct.cw.wrapping_mul(precinct.ch);
-            /*fprintf(stderr, "\t\t\t\t precinct_cw = %d x recinct_ch = %d\n",l_current_precinct->cw, l_current_precinct->ch);      */
             if (-(1i32) as u32).wrapping_div(sizeof_block as u32) < l_nb_code_blocks {
               event_msg!(
                 manager,
