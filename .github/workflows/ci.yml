@@ -95,12 +95,12 @@ jobs:
           rustup update stable
           rustup default stable
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            . -> target
-            capi -> target
-            tools -> target
+      # NOTE: no rust-cache here on purpose.  The C build must link the
+      # capi artifacts that THIS cmake configure produces (with the
+      # openjpeg-version-string feature); a cache restored from the gates
+      # job (built without that feature) can silently feed stale objects
+      # into the C tests, which is exactly the class of failure the parity
+      # gate exists to catch.
 
       - name: Cache openjpeg-data
         id: data-cache
