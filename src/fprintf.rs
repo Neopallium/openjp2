@@ -1,5 +1,6 @@
 /// A trait for writing formatted strings without requiring std
 pub trait StringWriter {
+  /// Writes the formatted string, returning the number of bytes written.
   fn write_string(&mut self, s: &str) -> usize;
 }
 

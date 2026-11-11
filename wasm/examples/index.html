@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>openjp2-wasm demo</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; max-width: 60rem; }
+    canvas { border: 1px solid #888; image-rendering: pixelated; }
+    .row { display: flex; gap: 2rem; flex-wrap: wrap; }
+    .box { display: flex; flex-direction: column; gap: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>openjp2-wasm demo</h1>
+  <p>
+    Drop a <code>.jp2</code> / <code>.j2k</code> file to decode and preview
+    it, or drop any image the browser can read to encode it to JP2.
+  </p>
+  <div class="row">
+    <div class="box">
+      <h3>decode</h3>
+      <input type="file" id="decode-file" accept=".jp2,.j2k,.jpc" />
+      <canvas id="decode-canvas" width="1" height="1"></canvas>
+      <div id="decode-info"></div>
+    </div>
+    <div class="box">
+      <h3>encode (browser-readable image -> JP2)</h3>
+      <input type="file" id="encode-file" accept="image/*" />
+      <canvas id="encode-canvas" width="1" height="1"></canvas>
+      <label><input type="checkbox" id="lossless" checked /> lossless</label>
+      <div id="encode-info"></div>
+    </div>
+  </div>
+  <script type="module">
+    import init, {
+      decode_to_rgba,
+      decode_info,
+      encode_rgba_to_jp2,
+    } from "./pkg/openjp2_wasm.js";
+
+    await init();
+
+    // --- decode a JP2/J2K file -------------------------------
+    const decodeInput = document.getElementById("decode-file");
+    const decodeCanvas = document.getElementById("decode-canvas");
+    const decodeInfo = document.getElementById("decode-info");
+
+    decodeInput.addEventListener("change", async () => {
+      const file = decodeInput.files[0];
+      if (!file) return;
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      try {
+        const info = decode_info(bytes);
+        decodeInfo.textContent =
+          `${file.name}: ${info.width}x${info.height}, ` +
+          `${info.components} component(s), ${info.prec} bit, ` +
+          `${info.sgnd ? "signed" : "unsigned"}`;
+        const rgba = decode_to_rgba(bytes);
+        decodeCanvas.width = info.width;
+        decodeCanvas.height = info.height;
+        const ctx = decodeCanvas.getContext("2d");
+        const img = new ImageData(
+          new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, rgba.length),
+          info.width,
+          info.height,
+        );
+        ctx.putImageData(img, 0, 0);
+      } catch (e) {
+        decodeInfo.textContent = `failed to decode ${file.name}: ${e}`;
+      }
+    });
+
+    // --- encode a browser-readable image to JP2 --------------
+    const encodeInput = document.getElementById("encode-file");
+    const encodeCanvas = document.getElementById("encode-canvas");
+    const encodeInfo = document.getElementById("encode-info");
+    const losslessBox = document.getElementById("lossless");
+
+    encodeInput.addEventListener("change", async () => {
+      const file = encodeInput.files[0];
+      if (!file) return;
+      const bitmap = await createImageBitmap(file);
+      encodeCanvas.width = bitmap.width;
+      encodeCanvas.height = bitmap.height;
+      const ctx = encodeCanvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0);
+      const { data, width, height } = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+      const start = performance.now();
+      const jp2 = encode_rgba_to_jp2(width, height, data, losslessBox.checked);
+      const ms = (performance.now() - start).toFixed(1);
+      encodeInfo.textContent =
+        `${file.name}: encoded ${width}x${height} -> ${jp2.length} bytes in ${ms} ms`;
+      // offer the encoded file for download
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([jp2], { type: "image/jp2" }));
+      a.download = file.name.replace(/\.[^.]+$/, "") + ".jp2";
+      a.textContent = "download .jp2";
+      encodeInfo.appendChild(document.createTextNode(" "));
+      encodeInfo.appendChild(a);
+    });
+  </script>
+</body>
+</html>

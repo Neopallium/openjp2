@@ -11,7 +11,23 @@ keywords = ["j2k", "jp2", "jpeg2000", "image"]
 edition = "2018"
 autobins = false
 
-exclude = ["samples/*"]
+exclude = [
+  # the C reference project, its build dir and the test data
+  "openjpeg/*",
+  # sub-crates with their own packages / publish settings
+  "capi/*",
+  "ctypes/*",
+  "tools/*",
+  "libtiff-sys/*",
+  "fuzz/*",
+  "wasm/*",
+  # agent working notes (kept in git, not on crates.io)
+  "RESUME-session.md",
+  "open-findings.md",
+  "review_2.md",
+  "review_3.md",
+  "plan-finishOpenjpegRustSafePort.prompt.md",
+]
 
 [workspace]
 members = ["tools", "libtiff-sys", "ctypes"]
@@ -60,3 +76,12 @@ simd = ["dep:wide"]
 [[example]]
 name = "bench_decode"
 path = "examples/bench_decode.rs"
+
+[[example]]
+name = "simple_decode"
+path = "examples/simple_decode.rs"
+
+[[example]]
+name = "simple_encode"
+path = "examples/simple_encode.rs"
+required-features = ["image"]

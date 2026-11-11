@@ -1094,7 +1094,7 @@ pub unsafe fn opj_image_data_free(ptr: *mut core::ffi::c_void) {ffi_guard(|| {
 
 #[no_mangle]
 pub fn opj_has_thread_support() -> OPJ_BOOL {ffi_guard(|| {
-  openjp2_core::has_thread_support()
+  openjp2_core::has_thread_support() as OPJ_BOOL
 })}
 
 #[no_mangle]

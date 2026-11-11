@@ -24,10 +24,12 @@ impl DumpImage {
   }
 
   #[allow(deprecated)]
+  /// Wraps the given codestream bytes with default parameters.
   pub fn from_bytes(buf: &[u8]) -> Result<Self> {
     Self::from_bytes_with(buf, DecodeParameters::default())
   }
 
+  /// Wraps the given codestream bytes with explicit decode parameters.
   pub fn from_bytes_with(buf: &[u8], params: DecodeParameters) -> Result<Self> {
     let format = detect_format(buf)
       .ok_or_else(|| Error::Unsupported("unknown JPEG 2000 format".into()))?;
@@ -49,11 +51,13 @@ impl DumpImage {
     Ok(Self { codec, stream })
   }
 
+  /// Wraps a codestream file with default parameters.
   pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
     let buf = std::fs::read(path)?;
     Self::from_bytes(&buf)
   }
 
+  /// Wraps a codestream file with explicit decode parameters.
   pub fn from_file_with<P: AsRef<std::path::Path>>(path: P, params: DecodeParameters) -> Result<Self> {
     let buf = std::fs::read(path)?;
     Self::from_bytes_with(&buf, params)

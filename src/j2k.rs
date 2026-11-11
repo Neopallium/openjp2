@@ -10,65 +10,107 @@ use super::par;
 
 // Owned codestream index (Phase 5.d). The `#[repr(C)]` mirror in c_api_types.rs
 // is built only when a C caller asks for it via opj_get_cstr_index.
+/// Owned codestream index (marker/tile-part/packet layout of a decoded
+/// codestream; `Decoder::cstr_index`).
 #[derive(Clone, Default)]
 pub struct CodestreamIndex {
+  /// Byte offset of the start of the main header (the SOC marker).
   pub main_head_start: i64,
+  /// Byte offset of the end of the main header (the first SOD marker).
   pub main_head_end: i64,
+  /// Total codestream size in bytes.
   pub codestream_size: u64,
+  /// Main-header markers.
   pub markers: Vec<opj_marker_info>,
+  /// Per-tile indexes.
   pub tiles: Vec<CodestreamTileIndex>,
 }
 
+/// One tile's codestream-index entry.
 #[derive(Clone, Default)]
 pub struct CodestreamTileIndex {
+  /// Tile number.
   pub tileno: u32,
+  /// Tile-parts declared by the last SOT.
   pub nb_tps: u32,
+  /// Tile-parts decoded so far.
   pub current_nb_tps: u32,
+  /// Current tile-part number.
   pub current_tpsno: u32,
+  /// Per-tile-part byte positions.
   pub tp_index: Vec<opj_tp_index>,
+  /// Tile-part markers.
   pub markers: Vec<opj_marker_info>,
+  /// Number of packets.
   pub nb_packet: u32,
+  /// Per-packet indexes.
   pub packet_index: Vec<opj_packet_info>,
 }
 
 /// Safe, owned codestream info v2 (the C mirror is built by the capi crate).
 #[derive(Clone, Default)]
 pub struct CstrInfoV2 {
+  /// Number of components.
   pub nbcomps: u32,
+  /// Image origin x.
   pub tx0: u32,
+  /// Image origin y.
   pub ty0: u32,
+  /// Tile width.
   pub tdx: u32,
+  /// Tile height.
   pub tdy: u32,
+  /// Tiles horizontally.
   pub tw: u32,
+  /// Tiles vertically.
   pub th: u32,
+  /// The default tile's coding parameters.
   pub default_tile: CstrTccpInfoV2,
 }
 
 /// Per-component default-tile coding parameters of the codestream header.
 #[derive(Clone, Default)]
 pub struct CstrTccpInfoV2 {
+  /// Coding style.
   pub csty: u32,
+  /// Progression order.
   pub prg: OPJ_PROG_ORDER,
+  /// Number of layers.
   pub numlayers: u32,
+  /// Multiple-component transform mode (`0`/`1`/`2`).
   pub mct: u32,
+  /// Per-component parameters.
   pub tccps: Vec<CstrCompInfoV2>,
 }
 
 /// Per-component tccp info of the codestream header.
 #[derive(Clone)]
 pub struct CstrCompInfoV2 {
+  /// Component coding style.
   pub csty: u32,
+  /// Decomposition levels.
   pub numresolutions: u32,
+  /// Code-block width exponent.
   pub cblkw: u32,
+  /// Code-block height exponent.
   pub cblkh: u32,
+  /// Code-block style.
   pub cblksty: u32,
+  /// Wavelet filter (`1` = 5-3 reversible, `0` = 9-7 irreversible).
   pub qmfbid: u32,
+  /// Quantisation style.
   pub qntsty: u32,
+  /// Quantisation step mantissas per band.
   pub stepsizes_mant: [u32; OPJ_J2K_MAXBANDS as usize],
+  /// Quantisation step exponents per band.
   pub stepsizes_expn: [u32; OPJ_J2K_MAXBANDS as usize],
+  /// Guard bits.
   pub numgbits: u32,
+  /// Region-of-interest shift.
   pub roishift: i32,
+  /// Precinct widths per resolution.
   pub prcw: [u32; OPJ_J2K_MAXRLVLS as usize],
+  /// Precinct heights per resolution.
   pub prch: [u32; OPJ_J2K_MAXRLVLS as usize],
 }
 
@@ -160,92 +202,113 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> Option<CstrInfoV2> {
 
 /// jpeg2k-parity accessors (the C mirror exposes the same fields).
 impl CstrInfoV2 {
+  /// The default tile's coding parameters (jpeg2k parity alias).
   pub fn tile_info(&self) -> &CstrTccpInfoV2 {
     &self.default_tile
   }
 
+  /// The default tile's coding parameters.
   pub fn default_tile_info(&self) -> &CstrTccpInfoV2 {
     &self.default_tile
   }
 
+  /// Image origin x.
   pub fn tx0(&self) -> u32 {
     self.tx0
   }
 
+  /// Image origin y.
   pub fn ty0(&self) -> u32 {
     self.ty0
   }
 
+  /// Tile width.
   pub fn tdx(&self) -> u32 {
     self.tdx
   }
 
+  /// Tile height.
   pub fn tdy(&self) -> u32 {
     self.tdy
   }
 
+  /// Tiles horizontally.
   pub fn tw(&self) -> u32 {
     self.tw
   }
 
+  /// Tiles vertically.
   pub fn th(&self) -> u32 {
     self.th
   }
 
+  /// Number of components.
   pub fn nbcomps(&self) -> u32 {
     self.nbcomps
   }
 }
 
 impl CstrTccpInfoV2 {
+  /// Coding style.
   pub fn csty(&self) -> u32 {
     self.csty
   }
 
+  /// Progression order.
   pub fn prg(&self) -> OPJ_PROG_ORDER {
     self.prg
   }
 
+  /// Number of layers.
   pub fn numlayers(&self) -> u32 {
     self.numlayers
   }
 
+  /// Multiple-component transform mode.
   pub fn mct(&self) -> u32 {
     self.mct
   }
 
+  /// The per-component parameters.
   pub fn tccp_infos(&self) -> &[CstrCompInfoV2] {
     &self.tccps
   }
 }
 
 impl CodestreamIndex {
+  /// The main-header markers.
   pub fn markers(&self) -> &[opj_marker_info] {
     &self.markers
   }
 
+  /// The per-tile indexes.
   pub fn tile_indices(&self) -> &[CodestreamTileIndex] {
     &self.tiles
   }
 }
 
 impl CodestreamTileIndex {
+  /// The tile number.
   pub fn tileno(&self) -> u32 {
     self.tileno
   }
 
+  /// Tile-parts declared by the last SOT.
   pub fn nb_tile_parts(&self) -> u32 {
     self.nb_tps
   }
 
+  /// Per-tile-part byte positions.
   pub fn tile_part_indexes(&self) -> &[opj_tp_index] {
     &self.tp_index
   }
 
+  /// The tile-part markers.
   pub fn markers(&self) -> &[opj_marker_info] {
     &self.markers
   }
 
+  /// Per-packet indexes.
   pub fn packet_infos(&self) -> &[opj_packet_info] {
     &self.packet_index
   }
@@ -5182,7 +5245,7 @@ pub(crate) fn opj_j2k_set_threads(_j2k: &mut J2k, num_threads: u32) -> OpResult 
   C's failure cases: no thread support and out-of-range counts return
   FALSE (the C's "cannot re-set after the tcd exists" nuance does not
   apply - the port's pool is process-wide by design, see doc/differences). */
-  if crate::has_thread_support() == 0 || num_threads > i32::MAX as u32 {
+  if !crate::has_thread_support() || num_threads > i32::MAX as u32 {
     return Err(());
   }
   crate::par::configure_pool(num_threads as usize);

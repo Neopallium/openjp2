@@ -7,22 +7,34 @@ use super::{ColorSpace, CoreImageComp, Error, Image, Result};
   /// Pixel data in a canonical 8/16-bit layout.
   #[derive(Debug, Clone, PartialEq, Eq)]
   pub enum ImagePixelData {
+    /// 8-bit luminance.
     L8(Vec<u8>),
+    /// 8-bit luminance + alpha.
     La8(Vec<u8>),
+    /// 8-bit RGB.
     Rgb8(Vec<u8>),
+    /// 8-bit RGBA.
     Rgba8(Vec<u8>),
+    /// 16-bit luminance.
     L16(Vec<u16>),
+    /// 16-bit luminance + alpha.
     La16(Vec<u16>),
+    /// 16-bit RGB.
     Rgb16(Vec<u16>),
+    /// 16-bit RGBA.
     Rgba16(Vec<u16>),
   }
 
   /// Decoded pixels with their colour format.
   #[derive(Debug, Clone, PartialEq, Eq)]
   pub struct ImageData {
+    /// Image width in pixels.
     pub width: u32,
+    /// Image height in pixels.
     pub height: u32,
+    /// The pixel layout.
     pub format: ::image::ExtendedColorType,
+    /// The pixel data.
     pub data: ImagePixelData,
   }
 

@@ -87,6 +87,7 @@ impl StreamInner {
     }
   }
 
+  /// Whether the stream supports seeking.
   pub fn has_seek(&self) -> bool {
     match self {
       StreamInner::Reader(_) => true,
@@ -133,6 +134,7 @@ impl Seek for StreamInner {
 }
 
 impl Stream {
+  /// Opens a file as an input or output stream.
   pub fn new_file<P: AsRef<Path>>(path: P, buffer_size: usize, is_input: bool) -> io::Result<Self> {
     if is_input {
       let file = File::open(&path)?;
@@ -184,14 +186,17 @@ impl Stream {
     }
   }
 
+  /// Whether the stream is readable (an input stream).
   pub fn is_input(&self) -> bool {
     matches!(self.m_inner, StreamInner::Reader(_) | StreamInner::Bytes(_))
   }
 
+  /// Overrides the logical stream length (input streams).
   pub fn set_stream_length(&mut self, len: u64) {
     self.m_stream_length = len;
   }
 
+  /// Reads as many bytes as `buf` holds (short only on error/EOF).
   pub fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
     let len = buf.len();
     match self.m_inner.read_exact(buf) {
@@ -219,6 +224,7 @@ impl Stream {
     }
   }
 
+  /// Writes all of `buf` (short only on error).
   pub fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
     let len = buf.len();
     log::trace!("-- write({len}), offset={}", self.m_byte_offset);
@@ -234,16 +240,19 @@ impl Stream {
     }
   }
 
+  /// Flushes buffered output.
   pub fn flush(&mut self) -> io::Result<()> {
     log::trace!("-- flush(), offset={}", self.m_byte_offset);
     self.m_inner.flush()
   }
 
+  /// The current byte position.
   pub fn tell(&self) -> i64 {
     log::trace!("-- tell() = {}", self.m_byte_offset);
     self.m_byte_offset
   }
 
+  /// Bytes remaining before the declared stream end.
   pub fn get_bytes_left(&self) -> i64 {
     log::trace!("-- byte_left(), offset={}", self.m_byte_offset);
     /* The C's opj_stream_get_number_byte_left asserts
@@ -261,6 +270,7 @@ impl Stream {
     }
   }
 
+  /// Moves the position forward by `count` bytes.
   pub fn skip(&mut self, count: i64) -> io::Result<i64> {
     if count < 0 {
       log::trace!("Can't skip with count < 0: {count}");
@@ -292,6 +302,7 @@ impl Stream {
     }
   }
 
+  /// Moves the position to an absolute offset.
   pub fn seek(&mut self, offset: i64) -> io::Result<()> {
     let res = self.m_inner.seek_relative(offset - self.m_byte_offset);
     match res {
@@ -307,6 +318,8 @@ impl Stream {
     }
   }
 
+
+  /// Whether the stream supports seeking.
   pub fn has_seek(&self) -> bool {
     self.m_inner.has_seek()
   }

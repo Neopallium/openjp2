@@ -1,6 +1,7 @@
 [package]
 name = "openjp2-tools"
 edition = "2018"
+publish = false
 
 [[bin]]
 name = "opj_dump"

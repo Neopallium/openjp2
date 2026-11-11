@@ -65,6 +65,7 @@ impl From<std::io::Error> for Error {
 /// the decoder) the offending marker, JP2 box type and stream position.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DecodeError {
+  /// The human-readable failure description.
   pub message: String,
   /// The codestream marker that failed (e.g. `0xFF51` for SIZ).
   pub marker: Option<u16>,
@@ -116,4 +117,5 @@ pub(crate) fn catch_codec_panic<T>(is_decode: bool, f: impl FnOnce() -> Result<T
   }
 }
 
+/// The crate's result alias (`E` defaults to [`Error`]).
 pub type Result<T, E = Error> = core::result::Result<T, E>;

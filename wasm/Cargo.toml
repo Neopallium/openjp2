@@ -1,0 +1,24 @@
+[package]
+name = "openjp2-wasm"
+authors = ["Robert G. Jakabosky <rjakabosky+neopallium@neoawareness.com>"]
+version = "0.7.0"
+license = "BSD-2-Clause"
+description = "WASM bindings for the pure-Rust OpenJPEG port (openjp2)."
+repository = "https://github.com/Neopallium/openjp2"
+homepage = "https://github.com/Neopallium/openjp2"
+documentation = "https://docs.rs/openjp2-wasm"
+keywords = ["j2k", "jp2", "jpeg2000", "image", "wasm"]
+edition = "2021"
+autobins = false
+
+exclude = ["examples/*"]
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+openjp2 = { path = "..", default-features = false }
+wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1"

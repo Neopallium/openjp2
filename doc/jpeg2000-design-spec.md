@@ -258,6 +258,7 @@ An adaptive binary arithmetic coder over 19 contexts:
   - RPCL (resolution, precinct, component, layer),
   - PCRL (precinct, component, resolution, layer),
   - CPRL (component, precinct, resolution, layer).
+
   POC marker segments may switch the order at given tile/resolution/
   component/layer boundaries.
 

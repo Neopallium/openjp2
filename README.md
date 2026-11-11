@@ -7,6 +7,8 @@ a C ABI drop-in for `libopenjp2`, and CLI tools.
 ```
 src/        the openjp2 crate (core + safe API)
 capi/       the openjp2-capi crate: #[no_mangle] C ABI producing libopenjp2.{a,so}
+ctypes/     the openjp2-ctypes crate: C-ABI mirror types + openjpeg.h constants
+wasm/       the openjp2-wasm crate: WASM bindings over the safe API (canvas decode)
 tools/      the openjp2-tools crate: opj_compress / opj_decompress / opj_dump / ...
 openjpeg/   the C/CMake reference project (upstream openjpeg, tests, test data)
 doc/        design spec, code outline, API review
@@ -59,9 +61,11 @@ Multi-tile encoding is parallel the same way (per-tile fresh encoder
 states, tile-parts written in order, ~1.3x at 24 threads).  Both
 parallel paths fall back to the sequential code for any input or layout
 they do not support, so the output is always identical to the serial
-path.  The one-shot decode is lenient by default (`DecodeParameters
-::strict()` opts in); the C ABI and the CLI tools keep the C default
-(strict).
+path.  `DecodeParameters::threads(n)` limits the worker threads used for
+ONE decode (`0` = the process-wide pool, the default; `n > 0` = a local
+n-thread pool; byte-identical either way).  The one-shot decode is
+lenient by default (`DecodeParameters::strict()` opts in); the C ABI and
+the CLI tools keep the C default (strict).
 
 ## Features
 
@@ -69,8 +73,13 @@ path.  The one-shot decode is lenient by default (`DecodeParameters
 |---|---|---|
 | `rayon`    | on      | Parallel tier-1 codeblock coding, DWT, DC shift, tile-level decode/encode (alias: `threads`) |
 | `image`    | on      | `get_pixels` / `DynamicImage` interop with the `image` crate |
+| `event-handlers` | off | C-style event callbacks (`set_info_handler` / `set_warning_handler` / `set_error_handler` on `Decoder`/`Encoder`); without it, diagnostics go through the `log` crate |
+| `simd`     | off     | SIMD-accelerated DWT kernels via the `wide` crate (safe; identical results) |
+| `openjpeg-version-string` | off | Write the upstream OpenJPEG version string into encoded COM markers (byte-parity with the C encoder) |
 
 Build without rayon for no-rayon targets: `cargo build --no-default-features --features image`.
+The WASM bindings (crate `openjp2-wasm`) build the core with
+`--no-default-features` for `wasm32-unknown-unknown`.
 
 ## Development
 
@@ -83,8 +92,8 @@ Build without rayon for no-rayon targets: `cargo build --no-default-features --f
   `openjpeg/data/` (untracked).
 - Gates: `cargo test --workspace` (unit + tools conformance/nonreg),
   `bash scripts/check_ctest.sh`, `cd capi && cargo test`.
-- `OPJ_PROFILE=1` prints per-stage timings; `OPJ_NUM_THREADS` sizes the
-  rayon pool.
+- `OPJ_NUM_THREADS` sizes the rayon pool (first successful global
+  configuration wins).
 
 ## Docs
 

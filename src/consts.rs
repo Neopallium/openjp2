@@ -1,19 +1,31 @@
+/// Stream status flags (the C's `opj_stream_status` values).
 pub mod cio {
+  /// Stream is writable.
   pub const OPJ_STREAM_STATUS_OUTPUT: u32 = 0x1u32;
+  /// Stream is readable.
   pub const OPJ_STREAM_STATUS_INPUT: u32 = 0x2u32;
+  /// The stream end has been reached.
   pub const OPJ_STREAM_STATUS_END: u32 = 0x4u32;
+  /// A stream error occurred.
   pub const OPJ_STREAM_STATUS_ERROR: u32 = 0x8u32;
 }
 
+/// Event types and constants (ERROR/WARNING/INFO).
 pub mod event {
+  /// The event severity classes emitted through the event manager
+  /// (and the `log` crate by default).
   #[derive(Copy, Clone)]
   pub enum EventType {
+    /// Fatal/corrupt-codestream conditions.
     Error = 1,
+    /// Tolerated deviations.
     Warning = 2,
+    /// Informational messages.
     Info = 4,
   }
 
   impl EventType {
+    /// Maps the C ABI's integer event type back to the enum.
     pub fn from_i32(v: i32) -> Option<Self> {
       match v {
         1 => Some(EventType::Error),
@@ -24,17 +36,18 @@ pub mod event {
     }
   }
 
-  /**< Error event type */
+  /// Error event type
   pub const EVT_ERROR: EventType = EventType::Error;
-  /**< Warning event type */
+  /// Warning event type
   pub const EVT_WARNING: EventType = EventType::Warning;
-  /**< Debug event type */
+  /// Debug event type
   pub const EVT_INFO: EventType = EventType::Info;
 }
 
 /// Enum representing JPIP box types.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 pub enum JpipBoxType {
+  /// No box type.
   #[default]
   None,
   /// Codestream index
@@ -92,6 +105,7 @@ impl From<u32> for JpipBoxType {
 }
 
 impl JpipBoxType {
+  /// The four-character-code as a u32 (the JPIP box type word).
   pub fn to_u32(&self) -> u32 {
     match self {
       JpipBoxType::None => 0x00000000,
@@ -114,103 +128,115 @@ impl JpipBoxType {
   }
 }
 
+/// Codestream constants: coding styles, code-block styles, marker
+/// values, and the tier-1/tier-2 sizing limits.
 pub mod j2k {
+  /// Coding style: precincts per resolution.
   pub const J2K_CP_CSTY_PRT: u32 = 0x01;
+  /// Coding style: SOP markers.
   pub const J2K_CP_CSTY_SOP: u32 = 0x02;
+  /// Coding style: EPH markers.
   pub const J2K_CP_CSTY_EPH: u32 = 0x04;
+  /// Component coding style: precincts per resolution.
   pub const J2K_CCP_CSTY_PRT: u32 = 0x01;
-  /**< Selective arithmetic coding bypass */
+  /// Selective arithmetic coding bypass
   pub const J2K_CCP_CBLKSTY_LAZY: u32 = 0x01;
-  /**< Reset context probabilities on coding pass boundaries */
+  /// Reset context probabilities on coding pass boundaries
   pub const J2K_CCP_CBLKSTY_RESET: u32 = 0x02;
-  /**< Termination on each coding pass */
+  /// Termination on each coding pass
   pub const J2K_CCP_CBLKSTY_TERMALL: u32 = 0x04;
-  /**< Vertically stripe causal context */
+  /// Vertically stripe causal context
   pub const J2K_CCP_CBLKSTY_VSC: u32 = 0x08;
-  /**< Predictable termination */
+  /// Predictable termination
   pub const J2K_CCP_CBLKSTY_PTERM: u32 = 0x10;
-  /**< Segmentation symbols are used */
+  /// Segmentation symbols are used
   pub const J2K_CCP_CBLKSTY_SEGSYM: u32 = 0x20;
-  /**< (high throughput) HT codeblocks */
+  /// (high throughput) HT codeblocks
   pub const J2K_CCP_CBLKSTY_HT: u32 = 0x40;
-  /**< MIXED mode HT codeblocks */
+  /// MIXED mode HT codeblocks
   pub const J2K_CCP_CBLKSTY_HTMIXED: u32 = 0x80;
+  /// Quantisation style: no quantisation.
   pub const J2K_CCP_QNTSTY_NOQNT: u32 = 0;
+  /// Quantisation style: scalar derived (single value).
   pub const J2K_CCP_QNTSTY_SIQNT: u32 = 1;
+  /// Quantisation style: scalar expounded (per band).
   pub const J2K_CCP_QNTSTY_SEQNT: u32 = 2;
-  /**< SOC marker value */
+  /// SOC marker value
   pub const J2K_MS_SOC: u32 = 0xff4f;
-  /**< SOT marker value */
+  /// SOT marker value
   pub const J2K_MS_SOT: u32 = 0xff90;
-  /**< SOD marker value */
+  /// SOD marker value
   pub const J2K_MS_SOD: u32 = 0xff93;
-  /**< EOC marker value */
+  /// EOC marker value
   pub const J2K_MS_EOC: u32 = 0xffd9;
-  /**< CAP marker value */
+  /// CAP marker value
   pub const J2K_MS_CAP: u32 = 0xff50;
-  /**< SIZ marker value */
+  /// SIZ marker value
   pub const J2K_MS_SIZ: u32 = 0xff51;
-  /**< COD marker value */
+  /// COD marker value
   pub const J2K_MS_COD: u32 = 0xff52;
-  /**< COC marker value */
+  /// COC marker value
   pub const J2K_MS_COC: u32 = 0xff53;
-  /**< CPF marker value */
+  /// CPF marker value
   pub const J2K_MS_CPF: u32 = 0xff59;
-  /**< RGN marker value */
+  /// RGN marker value
   pub const J2K_MS_RGN: u32 = 0xff5e;
-  /**< QCD marker value */
+  /// QCD marker value
   pub const J2K_MS_QCD: u32 = 0xff5c;
-  /**< QCC marker value */
+  /// QCC marker value
   pub const J2K_MS_QCC: u32 = 0xff5d;
-  /**< POC marker value */
+  /// POC marker value
   pub const J2K_MS_POC: u32 = 0xff5f;
-  /**< TLM marker value */
+  /// TLM marker value
   pub const J2K_MS_TLM: u32 = 0xff55;
-  /**< PLM marker value */
+  /// PLM marker value
   pub const J2K_MS_PLM: u32 = 0xff57;
-  /**< PLT marker value */
+  /// PLT marker value
   pub const J2K_MS_PLT: u32 = 0xff58;
-  /**< PPM marker value */
+  /// PPM marker value
   pub const J2K_MS_PPM: u32 = 0xff60;
-  /**< PPT marker value */
+  /// PPT marker value
   pub const J2K_MS_PPT: u32 = 0xff61;
-  /**< SOP marker value */
+  /// SOP marker value
   pub const J2K_MS_SOP: u32 = 0xff91;
-  /**< EPH marker value */
+  /// EPH marker value
   pub const J2K_MS_EPH: u32 = 0xff92;
-  /**< CRG marker value */
+  /// CRG marker value
   pub const J2K_MS_CRG: u32 = 0xff63;
-  /**< COM marker value */
+  /// COM marker value
   pub const J2K_MS_COM: u32 = 0xff64;
-  /**< CBD marker value */
+  /// CBD marker value
   pub const J2K_MS_CBD: u32 = 0xff78;
-  /**< MCC marker value */
+  /// MCC marker value
   pub const J2K_MS_MCC: u32 = 0xff75;
-  /**< MCT marker value */
+  /// MCT marker value
   pub const J2K_MS_MCT: u32 = 0xff74;
-  /**< MCO marker value */
+  /// MCO marker value
   pub const J2K_MS_MCO: u32 = 0xff77;
-  /**< UNKNOWN marker value */
+  /// UNKNOWN marker value
   pub const J2K_MS_UNK: u32 = 0;
-  /**< EPC marker value (Part 11: JPEG 2000 for Wireless) */
+  /// EPC marker value (Part 11: JPEG 2000 for Wireless)
   pub const J2K_MS_EPC: u32 = 0xff68;
-  /**< EPB marker value (Part 11: JPEG 2000 for Wireless) */
+  /// EPB marker value (Part 11: JPEG 2000 for Wireless)
   pub const J2K_MS_EPB: u32 = 0xff66;
-  /**< ESD marker value (Part 11: JPEG 2000 for Wireless) */
+  /// ESD marker value (Part 11: JPEG 2000 for Wireless)
   pub const J2K_MS_ESD: u32 = 0xff67;
-  /**< RED marker value (Part 11: JPEG 2000 for Wireless) */
+  /// RED marker value (Part 11: JPEG 2000 for Wireless)
   pub const J2K_MS_RED: u32 = 0xff69;
-  /**< SEC marker value (Part 8: Secure JPEG 2000) */
+  /// SEC marker value (Part 8: Secure JPEG 2000)
   pub const J2K_MS_SEC: u32 = 0xff65;
-  /**< INSEC marker value (Part 8: Secure JPEG 2000) */
+  /// INSEC marker value (Part 8: Secure JPEG 2000)
   pub const J2K_MS_INSEC: u32 = 0xff94;
-  /**< Maximum number of POCs */
+  /// Maximum number of POCs
   pub const J2K_MAX_POCS: u32 = 32;
 
+  /// Fixed-alloc matrix: maximum layer count.
   pub const J2K_TCD_MATRIX_MAX_LAYER_COUNT: i32 = 10;
+  /// Fixed-alloc matrix: maximum resolution count.
   pub const J2K_TCD_MATRIX_MAX_RESOLUTION_COUNT: i32 = 10;
 }
 
+/// JP2 box types (the four-character big-endian box identifiers).
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum Jp2BoxType {
   /// No box type
@@ -286,10 +312,12 @@ impl From<u32> for Jp2BoxType {
 }
 
 impl Jp2BoxType {
+  /// Whether the box belongs in the file-level (non-`jp2h`) group.
   pub fn is_file_header(&self) -> bool {
     matches!(self, Jp2BoxType::JP | Jp2BoxType::FTYP | Jp2BoxType::JP2H)
   }
 
+  /// Whether the box belongs inside the `jp2h` super-box.
   pub fn is_image_header(&self) -> bool {
     matches!(
       self,
@@ -330,85 +358,156 @@ impl Jp2BoxType {
   }
 }
 
+/// MQ-coder constants.
 pub mod mqc {
+  /// Number of MQ contexts.
   pub const MQC_NUMCTXS: usize = 19;
+  /// The bypass-mode initial count sentinel.
   pub const BYPASS_CT_INIT: u32 = 0xDEADBEEF;
 }
 
 pub use openjp2_ctypes::consts::opj;
 
+/// Shared defaults (code-block size, progression, resolutions).
 pub mod common {
-  /**< Margin for a fake FFFF marker */
+  /// Margin for a fake FFFF marker
   pub const OPJ_COMMON_CBLK_DATA_EXTRA: u32 = 2;
+  /// Default code-block width.
   pub const OPJ_COMP_PARAM_DEFAULT_CBLOCKW: u32 = 64;
+  /// Default code-block height.
   pub const OPJ_COMP_PARAM_DEFAULT_CBLOCKH: u32 = 64;
+  /// Default progression order.
   pub const OPJ_COMP_PARAM_DEFAULT_PROG_ORDER: i32 = crate::openjpeg::OPJ_LRCP;
+  /// Default decomposition levels.
   pub const OPJ_COMP_PARAM_DEFAULT_NUMRESOLUTION: u32 = 6;
 }
 
+/// Tier-1 flags and context indices (significance/refinement bit
+/// masks and the MQ context offsets).
 pub mod t1 {
+  /// Fractional bits of the NMSE-decay look-up table.
   pub const T1_NMSEDEC_BITS: u32 = 7;
+  /// Zero-coding context count.
   pub const T1_NUMCTXS_ZC: u8 = 9;
+  /// Sign-coding context count.
   pub const T1_NUMCTXS_SC: u8 = 5;
+  /// Magnitude-refinement context count.
   pub const T1_NUMCTXS_MAG: u8 = 3;
+  /// Aggregation context count.
   pub const T1_NUMCTXS_AGG: u8 = 1;
+  /// Uniform context count.
   pub const T1_NUMCTXS_UNI: u8 = 1;
+  /// Zero-coding context index (0).
   pub const T1_CTXNO_ZC: u8 = 0;
+  /// Sign-coding context index.
   pub const T1_CTXNO_SC: u8 = T1_CTXNO_ZC + T1_NUMCTXS_ZC;
+  /// Magnitude-refinement context index.
   pub const T1_CTXNO_MAG: u8 = T1_CTXNO_SC + T1_NUMCTXS_SC;
+  /// Aggregation context index.
   pub const T1_CTXNO_AGG: u8 = T1_CTXNO_MAG + T1_NUMCTXS_MAG;
+  /// Uniform context index.
   pub const T1_CTXNO_UNI: u8 = T1_CTXNO_AGG + T1_NUMCTXS_AGG;
+  /// Total context count.
   pub const T1_NUMCTXS: u8 = T1_CTXNO_UNI + T1_NUMCTXS_UNI;
+  /// The NMSE-decay look-up fractional shift.
   pub const T1_NMSEDEC_FRACBITS: i32 = (T1_NMSEDEC_BITS - 1) as i32;
-  /**< Normal coding using entropy coder */
+  /// Normal coding using entropy coder
   pub const T1_TYPE_MQ: u8 = 0;
-  /**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
+  /// No encoding the information is store under raw format in codestream (mode switch RAW)*/
   pub const T1_TYPE_RAW: u8 = 1;
+  /// Significance state bit for each of the eight neighbours
+  /// (`T1_SIGMA_0`..`T1_SIGMA_8`); the neighbour masks combine them
+  /// (`T1_SIGMA_NW`..`T1_SIGMA_SE`).
   pub const T1_SIGMA_0: u32 = 1u32 << 0;
+  /// Significance state bit for neighbour 1.
   pub const T1_SIGMA_1: u32 = 1u32 << 1;
+  /// Significance state bit for neighbour 2.
   pub const T1_SIGMA_2: u32 = 1u32 << 2;
+  /// Significance state bit for neighbour 3.
   pub const T1_SIGMA_3: u32 = 1u32 << 3;
+  /// Significance state bit for neighbour 4.
   pub const T1_SIGMA_4: u32 = 1u32 << 4;
+  /// Significance state bit for neighbour 5.
   pub const T1_SIGMA_5: u32 = 1u32 << 5;
+  /// Significance state bit for neighbour 6.
   pub const T1_SIGMA_6: u32 = 1u32 << 6;
+  /// Significance state bit for neighbour 7.
   pub const T1_SIGMA_7: u32 = 1u32 << 7;
+  /// Significance state bit for neighbour 8.
   pub const T1_SIGMA_8: u32 = 1u32 << 8;
+  /// Significance state bit for neighbour 9.
   pub const T1_SIGMA_9: u32 = 1u32 << 9;
+  /// Significance state bit for neighbour 10.
   pub const T1_SIGMA_10: u32 = 1u32 << 10;
+  /// Significance state bit for neighbour 11.
   pub const T1_SIGMA_11: u32 = 1u32 << 11;
+  /// Significance state bit for neighbour 12.
   pub const T1_SIGMA_12: u32 = 1u32 << 12;
+  /// Significance state bit for neighbour 13.
   pub const T1_SIGMA_13: u32 = 1u32 << 13;
+  /// Significance state bit for neighbour 14.
   pub const T1_SIGMA_14: u32 = 1u32 << 14;
+  /// Significance state bit for neighbour 15.
   pub const T1_SIGMA_15: u32 = 1u32 << 15;
+  /// Significance state bit for neighbour 16.
   pub const T1_SIGMA_16: u32 = 1u32 << 16;
+  /// Significance state bit for neighbour 17.
   pub const T1_SIGMA_17: u32 = 1u32 << 17;
+  /// Refinement-state bit 0.
   pub const T1_CHI_0: u32 = 1u32 << 18;
+  /// Refinement-state bit 0 index.
   pub const T1_CHI_0_I: u32 = 18;
+  /// Refinement-state bit 1.
   pub const T1_CHI_1: u32 = 1u32 << 19;
+  /// Refinement-state bit 1 index.
   pub const T1_CHI_1_I: u32 = 19;
+  /// Magnitude-refinement-state bit 0.
   pub const T1_MU_0: u32 = 1u32 << 20;
+  /// Refinement-pass-state bit 0.
   pub const T1_PI_0: u32 = 1u32 << 21;
+  /// Refinement-state bit 2.
   pub const T1_CHI_2: u32 = 1u32 << 22;
+  /// Refinement-state bit 2 index.
   pub const T1_CHI_2_I: u32 = 22;
+  /// Magnitude-refinement-state bit 1.
   pub const T1_MU_1: u32 = 1u32 << 23;
+  /// Refinement-pass-state bit 1.
   pub const T1_PI_1: u32 = 1u32 << 24;
+  /// Refinement-state bit 3.
   pub const T1_CHI_3: u32 = 1u32 << 25;
+  /// Magnitude-refinement-state bit 2.
   pub const T1_MU_2: u32 = 1u32 << 26;
+  /// Refinement-pass-state bit 2.
   pub const T1_PI_2: u32 = 1u32 << 27;
+  /// Refinement-state bit 4.
   pub const T1_CHI_4: u32 = 1u32 << 28;
+  /// Magnitude-refinement-state bit 3.
   pub const T1_MU_3: u32 = 1u32 << 29;
+  /// Refinement-pass-state bit 3.
   pub const T1_PI_3: u32 = 1u32 << 30;
+  /// Refinement-state bit 5.
   pub const T1_CHI_5: u32 = 1u32 << 31;
+  /// Refinement-state bit 5 index.
   pub const T1_CHI_5_I: u32 = 31;
+  /// Significance of the north-west neighbour.
   pub const T1_SIGMA_NW: u32 = T1_SIGMA_0;
+  /// Significance of the north neighbour.
   pub const T1_SIGMA_N: u32 = T1_SIGMA_1;
+  /// Significance of the north-east neighbour.
   pub const T1_SIGMA_NE: u32 = T1_SIGMA_2;
+  /// Significance of the west neighbour.
   pub const T1_SIGMA_W: u32 = T1_SIGMA_3;
+  /// Significance of the current sample.
   pub const T1_SIGMA_THIS: u32 = T1_SIGMA_4;
+  /// Significance of the east neighbour.
   pub const T1_SIGMA_E: u32 = T1_SIGMA_5;
+  /// Significance of the south-west neighbour.
   pub const T1_SIGMA_SW: u32 = T1_SIGMA_6;
+  /// Significance of the south neighbour.
   pub const T1_SIGMA_S: u32 = T1_SIGMA_7;
+  /// Significance of the south-east neighbour.
   pub const T1_SIGMA_SE: u32 = T1_SIGMA_8;
+  /// Combined mask of all eight neighbour significance bits.
   pub const T1_SIGMA_NEIGHBOURS: u32 = T1_SIGMA_NW
     | T1_SIGMA_N
     | T1_SIGMA_NE
@@ -417,18 +516,31 @@ pub mod t1 {
     | T1_SIGMA_SW
     | T1_SIGMA_S
     | T1_SIGMA_SE;
+  /// Refinement state of the current sample.
   pub const T1_CHI_THIS: u32 = T1_CHI_1;
+  /// Refinement-state index of the current sample.
   pub const T1_CHI_THIS_I: u32 = T1_CHI_1_I;
+  /// Magnitude-refinement state of the current sample.
   pub const T1_MU_THIS: u32 = T1_MU_0;
+  /// Refinement-pass state of the current sample.
   pub const T1_PI_THIS: u32 = T1_PI_0;
+  /// Refinement state of the south neighbour.
   pub const T1_CHI_S: u32 = T1_CHI_2;
+  /// Sign LUT: west sign bit.
   pub const T1_LUT_SGN_W: u32 = 1u32 << 0;
+  /// Significance LUT: north bit.
   pub const T1_LUT_SIG_N: u32 = 1u32 << 1;
+  /// Sign LUT: east sign bit.
   pub const T1_LUT_SGN_E: u32 = 1u32 << 2;
+  /// Significance LUT: west bit.
   pub const T1_LUT_SIG_W: u32 = 1u32 << 3;
+  /// Sign LUT: north sign bit.
   pub const T1_LUT_SGN_N: u32 = 1u32 << 4;
+  /// Significance LUT: east bit.
   pub const T1_LUT_SIG_E: u32 = 1u32 << 5;
+  /// Sign LUT: south sign bit.
   pub const T1_LUT_SGN_S: u32 = 1u32 << 6;
+  /// Significance LUT: south bit.
   pub const T1_LUT_SIG_S: u32 = 1u32 << 7;
 }
 

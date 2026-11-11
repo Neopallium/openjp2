@@ -41,49 +41,98 @@ use super::j2k::*;
 /// is marshalled into this by the capi crate; the tools build it directly.
 #[derive(Clone, Debug)]
 pub struct EncoderParameters {
+  /// Size of tiles on by default (`true` = use `cp_tdx` x `cp_tdy`).
   pub tile_size_on: OPJ_BOOL,
+  /// Origin of the tile grid in x.
   pub cp_tx0: core::ffi::c_int,
+  /// Origin of the tile grid in y.
   pub cp_ty0: core::ffi::c_int,
+  /// Tile width.
   pub cp_tdx: core::ffi::c_int,
+  /// Tile height.
   pub cp_tdy: core::ffi::c_int,
+  /// Allocation by rate/distortion.
   pub cp_disto_alloc: core::ffi::c_int,
+  /// Allocation by fixed layer.
   pub cp_fixed_alloc: core::ffi::c_int,
+  /// Add fixed_quality.
   pub cp_fixed_quality: core::ffi::c_int,
+  /// Fixed layer allocation matrix.
   pub cp_matrice: Option<Vec<core::ffi::c_int>>,
+  /// Restrict to a comment (COM marker).
   pub cp_comment: Option<Vec<u8>>,
+  /// Coding style (see the COD marker).
   pub csty: core::ffi::c_int,
+  /// Progression order (`OPJ_LRCP` etc.).
   pub prog_order: OPJ_PROG_ORDER,
+  /// Progression-order changes.
   pub pocs: [opj_poc_t; J2K_MAX_POCS as usize],
+  /// Number of progression-order changes in `pocs`.
   pub numpocs: u32,
+  /// Number of quality layers.
   pub tcp_numlayers: core::ffi::c_int,
+  /// Rate of each layer (lossy).
   pub tcp_rates: [core::ffi::c_float; 100],
+  /// Distortion ratio of each layer.
   pub tcp_distoratio: [core::ffi::c_float; 100],
+  /// Number of decomposition levels.
   pub numresolution: core::ffi::c_int,
+  /// Initial code-block width exponent.
   pub cblockw_init: core::ffi::c_int,
+  /// Initial code-block height exponent.
   pub cblockh_init: core::ffi::c_int,
+  /// Coding mode (LAZY/RESET/TERMALL/VSC/PTERM/SEGSYM bits).
   pub mode: core::ffi::c_int,
+  /// `1` = irreversible 9-7, `0` = reversible 5-3.
   pub irreversible: core::ffi::c_int,
+  /// Region-of-interest component.
   pub roi_compno: core::ffi::c_int,
+  /// Region-of-interest shift (0 disables ROI).
   pub roi_shift: core::ffi::c_int,
+  /// Number of precinct sizes.
   pub res_spec: core::ffi::c_int,
+  /// Precinct widths per resolution.
   pub prcw_init: [core::ffi::c_int; OPJ_J2K_MAXRLVLS as usize],
+  /// Precinct heights per resolution.
   pub prch_init: [core::ffi::c_int; OPJ_J2K_MAXRLVLS as usize],
+  /// Request a codestream index (unused upstream; reserved).
   pub index_on: core::ffi::c_int,
+  /// Image offset in x.
   pub image_offset_x0: core::ffi::c_int,
+  /// Image offset in y.
   pub image_offset_y0: core::ffi::c_int,
+  /// Component subsampling in x.
   pub subsampling_dx: core::ffi::c_int,
+  /// Component subsampling in y.
   pub subsampling_dy: core::ffi::c_int,
+  /// Input file format (`OPJ_CODEC_*`).
   pub decod_format: core::ffi::c_int,
+  /// Output file format (`OPJ_CODEC_*`).
   pub cod_format: core::ffi::c_int,
+  /// Cinema profile mode.
   pub cp_cinema: OPJ_CINEMA_MODE,
+  /// Maximum compressed size.
   pub max_comp_size: core::ffi::c_int,
+  /// Profile (`OPJ_RSIZ_CAPABILITIES` bits; e.g. `OPJ_MCT` enables the
+  /// custom-MCT marker emission).
   pub cp_rsiz: OPJ_RSIZ_CAPABILITIES,
+  /// Write tile-part markers (`'R'`/`'C'` style flags).
   pub tp_on: core::ffi::c_char,
+  /// Tile-part flag character.
   pub tp_flag: core::ffi::c_char,
+  /// Component transform (`1` = standard MCT; `2` = custom MCT).
   pub tcp_mct: core::ffi::c_char,
+  /// Write JPIP index boxes (unused upstream; reserved).
   pub jpip_on: core::ffi::c_int,
+  /// Custom MCT: the decorrelation matrix (row-major, `n*n` entries) and
+  /// the per-component DC level shifts.  Setting this also sets `mct = 2`
+  /// in the COD marker; the encoder emits the MCT/MCC/MCO markers when
+  /// `rsiz` carries the `OPJ_MCT` bits.
   pub mct_data: Option<(Vec<f32>, Vec<i32>)>,
+  /// Maximum codestream size.
   pub max_cs_size: core::ffi::c_int,
+  /// Profile (`OPJ_RSIZ_CAPABILITIES` bits; e.g. `OPJ_MCT` enables the
+  /// custom-MCT marker emission).
   pub rsiz: u16,
 }
 
@@ -188,12 +237,15 @@ impl TcdMarkerInfo {
     }
   }
 }
+/// Byte stream the codecs read from / write to (see the `stream` module
+/// for the constructors).
 pub struct Stream {
   pub(crate) m_inner: super::stream::StreamInner,
   pub(crate) m_stream_length: u64,
   pub(crate) m_byte_offset: i64,
 }
 pub(crate) type opj_stream_private = Stream;
+/// C-compatible alias for [`Stream`] (the C ABI's stream handle type).
 pub type opj_stream_private_t = Stream;
 
 pub(crate) struct Jp2 {
@@ -260,30 +312,43 @@ impl Jp2Color {
   }
 }
 
+/// A colour profile carried by a JP2 `colr` box: either a raw ICC
+/// profile or a CIELab colour specification (36 bytes, see
+/// [`CIE_LAB_BYTE_SIZE`]).
 #[derive(Clone)]
 pub enum ICCProfile {
+  /// An ICC profile (the profile bytes, header included).
   ICC(Vec<u8>),
+  /// A CIELab colour specification (the fixed 36-byte layout).
   CIELab(Vec<u8>),
 }
+/// The size in bytes of a CIELab colour specification inside the JP2
+/// `colr` box.
 pub const CIE_LAB_BYTE_SIZE: usize = 36;
 
 impl ICCProfile {
+  /// Wraps raw ICC profile bytes.
   pub fn new_icc(data: &[u8]) -> Self {
     ICCProfile::ICC(data.to_vec())
   }
 
+  /// Wraps raw CIELab colour-specification bytes.
   pub fn new_cielab(data: &[u8]) -> Self {
     ICCProfile::CIELab(data.to_vec())
   }
 }
 
+/// Borrowed view of an [`ICCProfile`].
 #[derive(Debug)]
 pub enum ICCProfileRef<'a> {
+  /// The ICC profile bytes.
   ICC(&'a [u8]),
+  /// The CIELab colour-specification bytes.
   CIELab(&'a [u8]),
 }
 
 impl<'a> ICCProfileRef<'a> {
+  /// The profile bytes (either kind).
   pub fn as_slice(&self) -> &[u8] {
     match self {
       ICCProfileRef::ICC(data) => data,
@@ -291,10 +356,12 @@ impl<'a> ICCProfileRef<'a> {
     }
   }
 
+  /// Whether this is a CIELab colour specification.
   pub fn is_cielab(&self) -> bool {
     matches!(self, ICCProfileRef::CIELab(_))
   }
 
+  /// The profile length in bytes.
   pub fn len(&self) -> usize {
     match self {
       ICCProfileRef::ICC(data) => data.len(),
@@ -302,18 +369,23 @@ impl<'a> ICCProfileRef<'a> {
     }
   }
 
+  /// Whether the profile is empty.
   pub fn is_empty(&self) -> bool {
     self.len() == 0
   }
 }
 
+/// Mutable borrowed view of an [`ICCProfile`].
 #[derive(Debug)]
 pub enum ICCProfileMut<'a> {
+  /// The ICC profile bytes.
   ICC(&'a mut [u8]),
+  /// The CIELab colour-specification bytes.
   CIELab(&'a mut [u8]),
 }
 
 impl<'a> ICCProfileMut<'a> {
+  /// The mutable profile bytes (either kind).
   pub fn as_mut_slice(&mut self) -> &mut [u8] {
     match self {
       ICCProfileMut::ICC(data) => data,
@@ -321,12 +393,14 @@ impl<'a> ICCProfileMut<'a> {
     }
   }
 
+  /// Whether this is a CIELab colour specification.
   pub fn is_cielab(&self) -> bool {
     matches!(self, ICCProfileMut::CIELab(_))
   }
 }
 
 impl ICCProfile {
+  /// The profile bytes (either kind).
   pub fn as_slice(&self) -> &[u8] {
     match self {
       ICCProfile::ICC(data) => data,
@@ -495,10 +569,16 @@ pub(crate) struct SimpleMccData {
   pub m_offset_array: Option<usize>,
   pub m_is_irreversible: bool,
 }
+/// Back-compat alias for [`MCT_ARRAY_TYPE`].
 pub type J2K_MCT_ARRAY_TYPE = MCT_ARRAY_TYPE;
+/// The MCT marker's array-type field (one of [`MCT_TYPE_DEPENDENCY`],
+/// [`MCT_TYPE_DECORRELATION`], [`MCT_TYPE_OFFSET`]).
 pub type MCT_ARRAY_TYPE = core::ffi::c_uint;
+/// MCT array type: per-component offset (DC level shift) vector.
 pub const MCT_TYPE_OFFSET: MCT_ARRAY_TYPE = 2;
+/// MCT array type: decorrelation (transform) matrix.
 pub const MCT_TYPE_DECORRELATION: MCT_ARRAY_TYPE = 1;
+/// MCT array type: dependency array (unused by this port).
 pub const MCT_TYPE_DEPENDENCY: MCT_ARRAY_TYPE = 0;
 
 #[derive(Default, Clone)]
@@ -661,15 +741,24 @@ impl Default for TcdTile {
   }
 }
 
+/// Tile-part header summary returned by `Decoder::read_tile_header`.
 #[derive(Clone, Default, Debug)]
 pub struct TileInfo {
+  /// Tile index.
   pub index: u32,
+  /// The tile(-part) data size (always requested).
   pub data_size: Option<u32>,
+  /// Tile origin x.
   pub x0: i32,
+  /// Tile origin y.
   pub y0: i32,
+  /// Tile end x.
   pub x1: i32,
+  /// Tile end y.
   pub y1: i32,
+  /// Number of components.
   pub nb_comps: u32,
+  /// Whether more tile-parts follow this header.
   pub go_on: bool,
 }
 

@@ -2,6 +2,7 @@
 name = "libtiff-sys"
 version = "0.1.0"
 edition = "2021"
+publish = false
 links = "tiff"
 description = "Low-level Rust bindings for libTIFF"
 license = "MIT"

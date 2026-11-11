@@ -8,6 +8,7 @@ pub use crate::c_api_types::*;
 pub use crate::consts::opj::*;
 pub use crate::types::*;
 
+/// The upstream OpenJPEG version this port mirrors.
 pub const OPJ_VERSION: &str = "2.5.4";
 
 /// Default codestream comment (the COM marker) written by the encoder.

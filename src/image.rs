@@ -33,6 +33,8 @@ use super::math::*;
 use super::openjpeg::*;
 use openjp2_ctypes::opj_image_comptparm;
 
+/// Borrowed component with the signed->unsigned adjustment precomputed
+/// (used by the data iterators).
 pub struct ImageCompRef<'a> {
   /// Component.
   pub comp: &'a CoreImageComp,
@@ -77,32 +79,57 @@ pub(crate) fn opj_copy_image_header_to_core(p_image_src: &CoreImage, p_image_des
   *p_image_dest = p_image_src.clone_header_only();
 }
 
+/// One image component: geometry, sample format, and the raw sample data.
 #[derive(Clone, Default)]
 pub struct CoreImageComp {
+  /// Horizontal subsampling factor.
   pub dx: u32,
+  /// Vertical subsampling factor.
   pub dy: u32,
+  /// Component width in samples.
   pub w: u32,
+  /// Component height in samples.
   pub h: u32,
+  /// Component origin x.
   pub x0: u32,
+  /// Component origin y.
   pub y0: u32,
+  /// Sample precision in bits (1..=31 supported).
   pub prec: u32,
+  /// Bits per sample as declared (JP2 `bpc`; may differ from `prec`).
   pub bpp: u32,
+  /// `1` for signed samples.
   pub sgnd: u32,
+  /// Resolution actually decoded (0-based decomposition index).
   pub resno_decoded: u32,
+  /// Resolution reduction factor applied by the decode.
   pub factor: u32,
+  /// `1` when this component is the alpha channel.
   pub alpha: u16,
+  /// The sample values, row-major, `w * h` entries (i32 for 0.7; see
+  /// `doc/component-data-types.md`).
   pub data: Vec<i32>,
 }
 
+/// A decoded (or to-be-encoded) image: geometry, colour space, components
+/// and the ICC profile.
 #[derive(Clone, Default)]
 pub struct CoreImage {
+  /// Image origin x.
   pub x0: u32,
+  /// Image origin y.
   pub y0: u32,
+  /// Image end x.
   pub x1: u32,
+  /// Image end y.
   pub y1: u32,
+  /// Number of components.
   pub numcomps: u32,
+  /// Declared colour space.
   pub color_space: OPJ_COLOR_SPACE,
+  /// The components.
   pub comps: Vec<CoreImageComp>,
+  /// Raw ICC profile bytes (JP2 `colr` box).
   pub icc_profile_buf: Vec<u8>,
   /// A non-empty profile buffer with this flag means the profile is CIELab
   /// (mirrors the C ABI convention of icc_profile_len == 0).
@@ -115,6 +142,7 @@ impl CoreImageComp {
     Some(&self.data)
   }
 
+  /// Mutable data accessor (C-ABI image API compatibility).
   pub fn data_mut(&mut self) -> Option<&mut [i32]> {
     Some(&mut self.data)
   }
@@ -125,10 +153,12 @@ impl CoreImageComp {
     true
   }
 
+  /// Clears the sample data (keeping the geometry).
   pub fn clear_data(&mut self) {
     self.data.clear();
   }
 
+  /// Updates the component dimensions, clearing the data when they change.
   pub fn set_dims(&mut self, w: u32, h: u32) {
     if self.w == w && self.h == h {
       return;
@@ -138,6 +168,7 @@ impl CoreImageComp {
     self.data.clear();
   }
 
+  /// Replaces the sample data (returns `true` for C-ABI parity).
   pub fn set_data(&mut self, data: &[i32]) -> bool {
     self.data = data.to_vec();
     true
@@ -232,6 +263,7 @@ impl CoreImageComp {
 }
 
 impl CoreImage {
+  /// Creates an empty image.
   pub fn new() -> CoreImage {
     CoreImage::default()
   }
@@ -267,10 +299,12 @@ impl CoreImage {
     Some(&self.comps)
   }
 
+  /// Mutable component slice (C-ABI image API compatibility).
   pub fn comps_mut(&mut self) -> Option<&mut [CoreImageComp]> {
     Some(&mut self.comps)
   }
 
+  /// Iterates the components with their signed->unsigned adjustments.
   pub fn comps_data_iter(&self) -> Option<impl Iterator<Item = ImageCompRef<'_>>> {
     Some(self.comps.iter().map(|comp| ImageCompRef {
       comp,
@@ -286,6 +320,7 @@ impl CoreImage {
     }))
   }
 
+  /// Moves the components into a fresh image, emptying this one.
   pub fn take_comps(&mut self) -> CoreImage {
     let mut image = CoreImage {
       x0: self.x0,
@@ -301,6 +336,7 @@ impl CoreImage {
     image
   }
 
+  /// Sets three same-sized components from separate RGB planes.
   pub fn set_rgb(&mut self, w: usize, h: usize, r: &[i32], g: &[i32], b: &[i32]) -> bool {
     let len = w * h;
     if r.len() != len || g.len() != len || b.len() != len || self.comps.len() < 3 {
@@ -323,10 +359,12 @@ impl CoreImage {
     true
   }
 
+  /// Iterates the components' sample data mutably.
   pub fn comps_data_mut_iter(&mut self) -> Option<impl Iterator<Item = &mut [i32]>> {
     Some(self.comps.iter_mut().map(|c| &mut c.data[..]))
   }
 
+  /// Moves the ICC profile out of the image (either kind).
   pub fn take_icc_profile(&mut self) -> Option<ICCProfile> {
     if self.icc_profile_buf.is_empty() && !self.icc_profile_is_cielab {
       None
@@ -342,6 +380,7 @@ impl CoreImage {
     }
   }
 
+  /// Removes the ICC profile.
   pub fn clear_icc_profile(&mut self) {
     self.icc_profile_buf.clear();
     self.icc_profile_is_cielab = false;
@@ -381,6 +420,7 @@ impl CoreImage {
     }
   }
 
+  /// Reallocates the component list to `numcomps` default components.
   pub fn alloc_comps(&mut self, numcomps: u32) -> bool {
     self.comps.clear();
     self.numcomps = numcomps;
@@ -388,6 +428,7 @@ impl CoreImage {
     true
   }
 
+  /// Component 0's width, height and precision.
   pub fn comp0_dims_prec(&self) -> (usize, usize, i32) {
     if let Some(comp) = self.comps.first() {
       return (comp.w as usize, comp.h as usize, comp.prec as i32);

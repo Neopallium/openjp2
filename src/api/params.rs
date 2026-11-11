@@ -3,14 +3,21 @@
 
 use super::*;
 
+/// The colour space a codestream declares (the JP2 `colr`/COD value).
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColorSpace {
+  /// Unknown / not declared.
   #[default]
   Unknown,
+  /// sRGB.
   Srgb,
+  /// Grayscale.
   Gray,
+  /// YCbCr (`SYCC`).
   Sycc,
+  /// Extended YCC (`EYCC`).
   Eycc,
+  /// CMYK.
   Cmyk,
 }
 
@@ -41,13 +48,19 @@ impl From<ColorSpace> for OPJ_COLOR_SPACE {
 }
 
 /// Packet progression order (mirrors the C `OPJ_PROG_ORDER` values).
+/// Packet progression order (the COD marker's progression field).
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 pub enum ProgressionOrder {
+  /// Layer, resolution, component, precinct.
   #[default]
   Lrcp,
+  /// Resolution, layer, component, precinct.
   Rlcp,
+  /// Resolution, precinct, component, layer.
   Rpcl,
+  /// Precinct, component, resolution, layer.
   Pcrl,
+  /// Component, precinct, resolution, layer.
   Cprl,
 }
 
@@ -67,13 +80,18 @@ impl From<ProgressionOrder> for crate::c_api_types::OPJ_PROG_ORDER {
 /// Rectangular decode area in image coordinates (`x0 <= x < x1`).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct DecodeArea {
+  /// Inclusive x origin.
   pub start_x: u32,
+  /// Inclusive y origin.
   pub start_y: u32,
+  /// Exclusive x end.
   pub end_x: u32,
+  /// Exclusive y end.
   pub end_y: u32,
 }
 
 impl DecodeArea {
+  /// A new area (clamped to the image by the decoder).
   pub fn new(start_x: u32, start_y: u32, end_x: u32, end_y: u32) -> Self {
     Self {
       start_x,
@@ -130,6 +148,8 @@ impl DecodeLimits {
 }
 
 impl DecodeLimits {
+  /// All-zero limits (everything allowed, subject to the built-in
+  /// 1 GiB decode-memory ceiling).
   pub const fn new() -> Self {
     Self {
       max_image_width: 0,
@@ -175,10 +195,15 @@ impl DecodeLimits {
 /// keep the C library's strict-by-default behaviour.)
 #[derive(Debug, Clone, Default)]
 pub struct DecodeParameters {
+  /// Resolution reduction (`2^reduce`); `0` = full resolution.
   pub reduce: u32,
+  /// Only decode the first `layers` quality layers; `0` = all.
   pub layers: u32,
+  /// Reject malformed codestreams instead of tolerating them.
   pub strict: bool,
+  /// Restrict the decoded area (whole image when `None`).
   pub decode_area: Option<DecodeArea>,
+  /// Ignore the JP2 palette/channel-definition boxes.
   pub ignore_pclr_cmap_cdef: bool,
   /// Per-decode thread limit: `0` = automatic (the process-wide rayon
   /// pool), `n > 0` = a local n-thread pool built for this decode.  The
@@ -192,6 +217,7 @@ pub struct DecodeParameters {
 }
 
 impl DecodeParameters {
+  /// Default parameters: lenient, full image, automatic threading.
   pub fn new() -> Self {
     Self::default()
   }
@@ -249,6 +275,7 @@ pub struct EncodeParameters {
 }
 
 impl EncodeParameters {
+  /// Default parameters: lossless, single layer, one tile.
   pub fn new() -> Self {
     Self {
       inner: crate::EncoderParameters::default(),
@@ -323,10 +350,13 @@ impl EncodeParameters {
   }
 
   /// Access the underlying low-level parameters.
+  /// Mutable access to the low-level C-mirror parameters (advanced
+  /// knobs: custom MCT, cinema profiles, ...).
   pub fn low_level(&mut self) -> &mut crate::EncoderParameters {
     &mut self.inner
   }
 
+  /// Consumes the builder into the low-level parameter struct.
   pub fn into_inner(self) -> crate::EncoderParameters {
     self.inner
   }

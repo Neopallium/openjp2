@@ -7,6 +7,7 @@
 #![allow(unused_mut)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
 
 //! A pure-Rust port of [OpenJPEG](https://github.com/uclouvain/openjpeg) with a
@@ -29,7 +30,15 @@
 //! }
 //! ```
 //!
+//! # Design specification
+//!
+//! The JPEG 2000 formats and algorithms this port implements, written
+//! without code references (the authoritative walkthrough for the
+//! pipelines below):
+//!
+#[doc = include_str!("../doc/jpeg2000-design-spec.md")]
 use openjp2_ctypes as c_api_types;
+/// C-mirror constants (`openjpeg.h` values grouped by domain).
 pub mod consts;
 mod types;
 
@@ -41,8 +50,12 @@ mod fprintf;
 pub use fprintf::StringWriter;
 
 // Public OpenJpeg interface.
+/// The image data model (`CoreImage`, `CoreImageComp`, ICC profiles).
 pub mod image;
+/// The low-level C-parity codec interface (J2K/JP2 handles and streams).
+/// The low-level C-parity codec interface (J2K/JP2 handles and streams).
 pub mod openjpeg;
+/// Byte streams for the codecs (`Stream` and its constructors).
 pub mod stream;
 
 // High-level safe API (doc/api-review.md).
@@ -50,8 +63,8 @@ mod api;
 
 /// Whether the build includes the `rayon` feature (the C-ABI
 /// `opj_has_thread_support` reports this).
-pub fn has_thread_support() -> c_api_types::OPJ_BOOL {
-  cfg!(feature = "rayon") as c_api_types::OPJ_BOOL
+pub fn has_thread_support() -> bool {
+  cfg!(feature = "rayon")
 }
 
 pub use api::{ColorSpace, DecodeArea, DecodeError, DecodeLimits, DecodeParameters, DumpImage, EncodeParameters, Error, Image, ProgressionOrder, Result};
@@ -60,6 +73,8 @@ pub use api::image_conv::{ImageData, ImagePixelData};
 
 // The C-ABI mirror types are also available behind `ffi` for
 // interop with the C header spellings.
+/// The C-ABI mirror types and constants (the `openjpeg.h` spellings);
+/// the only place C types appear in the core's public namespace.
 pub mod ffi {
   pub use crate::c_api_types::*;
   pub use crate::consts::opj::*;
@@ -76,6 +91,7 @@ pub use types::{CIE_LAB_BYTE_SIZE, ICCProfile, ICCProfileMut, ICCProfileRef, Str
 pub const JP2_RFC3745_MAGIC: &[u8] = &[
   0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20, 0x0d, 0x0a, 0x87, 0x0a,
 ];
+/// The JP2 signature box contents (`0d 0a 87 0a`).
 pub const JP2_MAGIC: &[u8] = &[0x0d, 0x0a, 0x87, 0x0a];
 /// Magic bytes for J2K Codestream.
 pub const J2K_CODESTREAM_MAGIC: &[u8] = &[0xff, 0x4f, 0xff, 0x51];
@@ -83,8 +99,11 @@ pub const J2K_CODESTREAM_MAGIC: &[u8] = &[0xff, 0x4f, 0xff, 0x51];
 /// Supported Jpeg 2000 formats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum J2KFormat {
+  /// The JP2 container (ISO/IEC 15444-1 Annex I).
   JP2,
+  /// A raw codestream (Part 1).
   J2K,
+  /// JPT (Part 3): recognized but unsupported by this port.
   JPT,
 }
 
@@ -115,6 +134,7 @@ pub fn detect_format_from_extension(ext: Option<&str>) -> Result<J2KFormat, Stri
   }
 }
 
+/// Detects the format from a file extension (`OsStr` flavour).
 pub fn detect_format_from_extension_os_str(
   ext: Option<&std::ffi::OsStr>,
 ) -> Result<J2KFormat, String> {
@@ -133,6 +153,7 @@ fn detect_from_file_magic<P: AsRef<std::path::Path>>(path: P) -> Result<J2KForma
   detect_format(&buf)
 }
 
+/// Detects the format of a file (magic bytes, then extension).
 pub fn detect_format_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<J2KFormat, String> {
   let path = path.as_ref();
   let ext = path.extension().map(|ext| ext.to_string_lossy());

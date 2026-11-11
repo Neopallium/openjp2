@@ -85,18 +85,22 @@ pub struct DecoderSettings {
 pub struct HeaderImage(CoreImage);
 
 impl HeaderImage {
+  /// Image width in pixels.
   pub fn width(&self) -> u32 {
     self.0.x1 - self.0.x0
   }
 
+  /// Image height in pixels.
   pub fn height(&self) -> u32 {
     self.0.y1 - self.0.y0
   }
 
+  /// Number of components.
   pub fn num_components(&self) -> u32 {
     self.0.numcomps
   }
 
+  /// Consumes the wrapper into the raw `CoreImage` (with empty data).
   pub fn into_core_image(self) -> CoreImage {
     self.0
   }
@@ -143,16 +147,23 @@ macro_rules! codec_common {
         self.m_event_mgr.set_info_handler(handler);
       }
 
+      /// C-style warning callback (see the feature note on
+      /// `set_info_handler`).
       #[cfg(feature = "event-handlers")]
       pub fn set_warning_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
         self.m_event_mgr.set_warning_handler(handler);
       }
 
+      /// C-style error callback (see the feature note on
+      /// `set_info_handler`).
       #[cfg(feature = "event-handlers")]
       pub fn set_error_handler(&mut self, handler: impl FnMut(&str) + Send + 'static) {
         self.m_event_mgr.set_error_handler(handler);
       }
 
+      /// Sets the process-wide thread count (the C's `opj_set_threads`
+      /// equivalent; see `DecodeParameters::threads` for the per-decode
+      /// limit).
       pub fn set_threads(&mut self, num_threads: i32) -> Result<()> {
         if num_threads < 0i32 {
           return Err(Error::Unsupported(
@@ -172,6 +183,7 @@ macro_rules! codec_common {
         }
       }
 
+      /// Writes the codestream info/dump text (`opj_dump`'s output).
       pub fn dump_codec<W: StringWriter>(&self, mut info_flag: i32, mut output_stream: &mut W) {
         match &self.m_codec {
           CodecFormat::J2K(j2k) => j2k_dump(j2k, info_flag, output_stream),
@@ -230,6 +242,7 @@ codec_common!(Decoder);
 codec_common!(Encoder);
 
 impl Decoder {
+  /// Creates a decoder for the given format (`J2K` codestream or `JP2`).
   pub fn new(format: J2KFormat) -> Result<Self> {
     let m_codec = match format {
       J2KFormat::J2K => CodecFormat::J2K(
@@ -802,6 +815,7 @@ impl Decoder {
 }
 
 impl Encoder {
+  /// Creates an encoder for the given format (`J2K` codestream or `JP2`).
   pub fn new(format: J2KFormat) -> Result<Self> {
     let m_codec = match format {
       J2KFormat::J2K => CodecFormat::J2K(
