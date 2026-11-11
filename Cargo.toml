@@ -21,12 +21,6 @@ exclude = [
   "libtiff-sys/*",
   "fuzz/*",
   "wasm/*",
-  # agent working notes (kept in git, not on crates.io)
-  "RESUME-session.md",
-  "open-findings.md",
-  "review_2.md",
-  "review_3.md",
-  "plan-finishOpenjpegRustSafePort.prompt.md",
 ]
 
 [workspace]

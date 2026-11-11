@@ -34,3 +34,11 @@ cmake_install.cmake
 
 # Extra scripts
 *.sh
+
+# Agent/planning working notes: kept out of the git history (the files are
+# retained locally, untracked, for reference).
+/RESUME-session.md
+/open-findings.md
+/review_2.md
+/review_3.md
+/plan-finishOpenjpegRustSafePort.prompt.md
