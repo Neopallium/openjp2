@@ -1,3 +1,5 @@
+//! `image`-crate interop: `Image::get_pixels` (`ImageData` /
+//! `ImagePixelData`) and the `DynamicImage` conversions (feature `image`).
 // Split of the safe API (doc/api-review.md): see the facade in api.rs
 // and doc/redesign-proposal.md B.3.2.
 

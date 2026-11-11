@@ -64,8 +64,10 @@ pub mod stream;
 // crate-private: the C surface lives in openjp2-ctypes / openjp2-capi.
 pub(crate) mod openjpeg;
 
-// High-level safe API (doc/api-review.md).
-mod api;
+/// The high-level safe API: one-shot `Image` decode/encode, the
+/// `DecodeParameters`/`EncodeParameters` builders, `Decoder`/`Encoder`
+/// settings, typed errors and the `image`-crate interop.
+pub mod api;
 
 /// Whether the build includes the `rayon` feature (the C-ABI
 /// `opj_has_thread_support` reports this).
@@ -80,11 +82,13 @@ pub use api::{
   Error, Image, ProgressionOrder, Result,
 };
 
+pub use api::EncoderParameters;
+pub use codec::TileInfo;
 pub use codec::{Decoder, DecoderSettings, Encoder, HeaderImage};
 pub use image::{CoreImage, CoreImageComp};
+pub use image::{ICCProfile, ICCProfileMut, ICCProfileRef, CIE_LAB_BYTE_SIZE};
 pub use j2k::{CodestreamIndex, CodestreamTileIndex, CstrCompInfoV2, CstrInfoV2, CstrTccpInfoV2};
-pub use types::EncoderParameters;
-pub use types::{ICCProfile, ICCProfileMut, ICCProfileRef, Stream, TileInfo, CIE_LAB_BYTE_SIZE};
+pub use stream::Stream;
 
 /// Magic bytes for JP2 RFC3745.
 pub const JP2_RFC3745_MAGIC: &[u8] = &[

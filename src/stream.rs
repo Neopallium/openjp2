@@ -54,6 +54,15 @@ pub(crate) trait WriteSeek: Write + Seek {}
 
 impl<R: Write + Seek> WriteSeek for R {}
 
+/// Byte stream the codecs read from / write to (see the `stream` module
+/// for the constructors).
+pub struct Stream {
+  pub(crate) m_inner: super::stream::StreamInner,
+  pub(crate) m_stream_length: u64,
+  pub(crate) m_byte_offset: i64,
+}
+pub(crate) type opj_stream_private = Stream;
+
 pub(crate) enum StreamInner {
   Reader(BufReader<Box<dyn ReadSeek>>),
   Writer(BufWriter<Box<dyn WriteSeek>>),

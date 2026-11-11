@@ -2,6 +2,10 @@
 // and doc/redesign-proposal.md B.3.2.
 
 use super::*;
+use crate::c_api_types::opj_poc_t;
+use crate::c_api_types::OPJ_OFF;
+use crate::consts::j2k::J2K_MAX_POCS;
+use crate::consts::opj::OPJ_J2K_MAXRLVLS;
 
 /// The colour space a codestream declares (the JP2 `colr`/COD value).
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -280,6 +284,156 @@ impl DecodeParameters {
   pub fn ignore_pclr_cmap_cdef(mut self) -> Self {
     self.ignore_pclr_cmap_cdef = true;
     self
+  }
+}
+
+/// Safe, owned encoder parameters.  The C ABI mirror (`opj_cparameters_t`)
+/// is marshalled into this by the capi crate; the tools build it directly.
+#[derive(Clone, Debug)]
+pub struct EncoderParameters {
+  /// Size of tiles on by default (`true` = use `cp_tdx` x `cp_tdy`).
+  pub tile_size_on: bool,
+  /// Origin of the tile grid in x.
+  pub cp_tx0: core::ffi::c_int,
+  /// Origin of the tile grid in y.
+  pub cp_ty0: core::ffi::c_int,
+  /// Tile width.
+  pub cp_tdx: core::ffi::c_int,
+  /// Tile height.
+  pub cp_tdy: core::ffi::c_int,
+  /// Allocation by rate/distortion.
+  pub cp_disto_alloc: core::ffi::c_int,
+  /// Allocation by fixed layer.
+  pub cp_fixed_alloc: core::ffi::c_int,
+  /// Add fixed_quality.
+  pub cp_fixed_quality: core::ffi::c_int,
+  /// Fixed layer allocation matrix.
+  pub cp_matrice: Option<Vec<core::ffi::c_int>>,
+  /// Restrict to a comment (COM marker).
+  pub cp_comment: Option<Vec<u8>>,
+  /// Coding style (see the COD marker).
+  pub csty: core::ffi::c_int,
+  /// Progression order.
+  pub prog_order: crate::api::ProgressionOrder,
+  /// Progression-order changes.
+  pub pocs: [opj_poc_t; J2K_MAX_POCS as usize],
+  /// Number of progression-order changes in `pocs`.
+  pub numpocs: u32,
+  /// Number of quality layers.
+  pub tcp_numlayers: core::ffi::c_int,
+  /// Rate of each layer (lossy).
+  pub tcp_rates: [core::ffi::c_float; 100],
+  /// Distortion ratio of each layer.
+  pub tcp_distoratio: [core::ffi::c_float; 100],
+  /// Number of decomposition levels.
+  pub numresolution: core::ffi::c_int,
+  /// Initial code-block width exponent.
+  pub cblockw_init: core::ffi::c_int,
+  /// Initial code-block height exponent.
+  pub cblockh_init: core::ffi::c_int,
+  /// Coding mode (LAZY/RESET/TERMALL/VSC/PTERM/SEGSYM bits).
+  pub mode: core::ffi::c_int,
+  /// `1` = irreversible 9-7, `0` = reversible 5-3.
+  pub irreversible: core::ffi::c_int,
+  /// Region-of-interest component.
+  pub roi_compno: core::ffi::c_int,
+  /// Region-of-interest shift (0 disables ROI).
+  pub roi_shift: core::ffi::c_int,
+  /// Number of precinct sizes.
+  pub res_spec: core::ffi::c_int,
+  /// Precinct widths per resolution.
+  pub prcw_init: [core::ffi::c_int; OPJ_J2K_MAXRLVLS as usize],
+  /// Precinct heights per resolution.
+  pub prch_init: [core::ffi::c_int; OPJ_J2K_MAXRLVLS as usize],
+  /// Request a codestream index (unused upstream; reserved).
+  pub index_on: core::ffi::c_int,
+  /// Image offset in x.
+  pub image_offset_x0: core::ffi::c_int,
+  /// Image offset in y.
+  pub image_offset_y0: core::ffi::c_int,
+  /// Component subsampling in x.
+  pub subsampling_dx: core::ffi::c_int,
+  /// Component subsampling in y.
+  pub subsampling_dy: core::ffi::c_int,
+  /// Input file format (`OPJ_CODEC_*`).
+  pub decod_format: core::ffi::c_int,
+  /// Output file format (`OPJ_CODEC_*`).
+  pub cod_format: core::ffi::c_int,
+  /// Cinema profile mode.
+  pub cp_cinema: u32,
+  /// Maximum compressed size.
+  pub max_comp_size: core::ffi::c_int,
+  /// Profile bits (e.g. `OPJ_MCT` enables the custom-MCT marker
+  /// emission).
+  pub cp_rsiz: u16,
+  /// Write tile-part markers (`'R'`/`'C'` style flags).
+  pub tp_on: core::ffi::c_char,
+  /// Tile-part flag character.
+  pub tp_flag: core::ffi::c_char,
+  /// Component transform (`1` = standard MCT; `2` = custom MCT).
+  pub tcp_mct: core::ffi::c_char,
+  /// Write JPIP index boxes (unused upstream; reserved).
+  pub jpip_on: core::ffi::c_int,
+  /// Custom MCT: the decorrelation matrix (row-major, `n*n` entries) and
+  /// the per-component DC level shifts.  Setting this also sets `mct = 2`
+  /// in the COD marker; the encoder emits the MCT/MCC/MCO markers when
+  /// `rsiz` carries the `OPJ_MCT` bits.
+  pub mct_data: Option<(Vec<f32>, Vec<i32>)>,
+  /// Maximum codestream size.
+  pub max_cs_size: core::ffi::c_int,
+  /// Profile (`OPJ_RSIZ_CAPABILITIES` bits; e.g. `OPJ_MCT` enables the
+  /// custom-MCT marker emission).
+  pub rsiz: u16,
+}
+
+impl Default for EncoderParameters {
+  fn default() -> Self {
+    Self {
+      tile_size_on: Default::default(),
+      cp_tx0: Default::default(),
+      cp_ty0: Default::default(),
+      cp_tdx: Default::default(),
+      cp_tdy: Default::default(),
+      cp_disto_alloc: Default::default(),
+      cp_fixed_alloc: Default::default(),
+      cp_fixed_quality: Default::default(),
+      cp_matrice: None,
+      cp_comment: None,
+      csty: Default::default(),
+      prog_order: crate::api::ProgressionOrder::Lrcp,
+      pocs: Default::default(),
+      numpocs: Default::default(),
+      tcp_numlayers: Default::default(),
+      tcp_rates: [Default::default(); 100],
+      tcp_distoratio: [Default::default(); 100],
+      numresolution: 6i32,
+      cblockw_init: 64i32,
+      cblockh_init: 64i32,
+      mode: Default::default(),
+      irreversible: Default::default(),
+      roi_compno: -1,
+      roi_shift: Default::default(),
+      res_spec: Default::default(),
+      prcw_init: [Default::default(); OPJ_J2K_MAXRLVLS as usize],
+      prch_init: [Default::default(); OPJ_J2K_MAXRLVLS as usize],
+      index_on: Default::default(),
+      image_offset_x0: Default::default(),
+      image_offset_y0: Default::default(),
+      subsampling_dx: 1,
+      subsampling_dy: 1,
+      decod_format: -1,
+      cod_format: -1,
+      cp_cinema: OPJ_OFF,
+      max_comp_size: Default::default(),
+      cp_rsiz: 0,
+      tp_on: Default::default(),
+      tp_flag: Default::default(),
+      tcp_mct: Default::default(),
+      jpip_on: Default::default(),
+      mct_data: None,
+      max_cs_size: Default::default(),
+      rsiz: Default::default(),
+    }
   }
 }
 

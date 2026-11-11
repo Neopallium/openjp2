@@ -81,6 +81,103 @@ pub(crate) fn opj_copy_image_header_to_core(p_image_src: &CoreImage, p_image_des
   *p_image_dest = p_image_src.clone_header_only();
 }
 
+/// A colour profile carried by a JP2 `colr` box: either a raw ICC
+/// profile or a CIELab colour specification (36 bytes, see
+/// [`CIE_LAB_BYTE_SIZE`]).
+#[derive(Clone)]
+pub enum ICCProfile {
+  /// An ICC profile (the profile bytes, header included).
+  ICC(Vec<u8>),
+  /// A CIELab colour specification (the fixed 36-byte layout).
+  CIELab(Vec<u8>),
+}
+/// The size in bytes of a CIELab colour specification inside the JP2
+/// `colr` box.
+pub const CIE_LAB_BYTE_SIZE: usize = 36;
+
+impl ICCProfile {
+  /// Wraps raw ICC profile bytes.
+  pub fn new_icc(data: &[u8]) -> Self {
+    ICCProfile::ICC(data.to_vec())
+  }
+
+  /// Wraps raw CIELab colour-specification bytes.
+  pub fn new_cielab(data: &[u8]) -> Self {
+    ICCProfile::CIELab(data.to_vec())
+  }
+}
+
+/// Borrowed view of an [`ICCProfile`].
+#[derive(Debug)]
+pub enum ICCProfileRef<'a> {
+  /// The ICC profile bytes.
+  ICC(&'a [u8]),
+  /// The CIELab colour-specification bytes.
+  CIELab(&'a [u8]),
+}
+
+impl<'a> ICCProfileRef<'a> {
+  /// The profile bytes (either kind).
+  pub fn as_slice(&self) -> &[u8] {
+    match self {
+      ICCProfileRef::ICC(data) => data,
+      ICCProfileRef::CIELab(data) => data,
+    }
+  }
+
+  /// Whether this is a CIELab colour specification.
+  pub fn is_cielab(&self) -> bool {
+    matches!(self, ICCProfileRef::CIELab(_))
+  }
+
+  /// The profile length in bytes.
+  pub fn len(&self) -> usize {
+    match self {
+      ICCProfileRef::ICC(data) => data.len(),
+      ICCProfileRef::CIELab(data) => data.len(),
+    }
+  }
+
+  /// Whether the profile is empty.
+  pub fn is_empty(&self) -> bool {
+    self.len() == 0
+  }
+}
+
+/// Mutable borrowed view of an [`ICCProfile`].
+#[derive(Debug)]
+pub enum ICCProfileMut<'a> {
+  /// The ICC profile bytes.
+  ICC(&'a mut [u8]),
+  /// The CIELab colour-specification bytes.
+  CIELab(&'a mut [u8]),
+}
+
+impl<'a> ICCProfileMut<'a> {
+  /// The mutable profile bytes (either kind).
+  pub fn as_mut_slice(&mut self) -> &mut [u8] {
+    match self {
+      ICCProfileMut::ICC(data) => data,
+      ICCProfileMut::CIELab(data) => data,
+    }
+  }
+
+  /// Whether this is a CIELab colour specification.
+  pub fn is_cielab(&self) -> bool {
+    matches!(self, ICCProfileMut::CIELab(_))
+  }
+}
+
+impl ICCProfile {
+  /// The profile bytes (either kind).
+  pub fn as_slice(&self) -> &[u8] {
+    match self {
+      ICCProfile::ICC(data) => data,
+      ICCProfile::CIELab(data) => data,
+    }
+  }
+}
+
 /// One image component: geometry, sample format, and the raw sample data.
 #[derive(Clone, Default)]
 pub struct CoreImageComp {

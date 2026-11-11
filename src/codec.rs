@@ -37,9 +37,10 @@ use super::jp2::*;
 
 #[cfg(feature = "event-handlers")]
 use super::consts::*;
+use super::stream::Stream;
 use super::types::*;
 
-use super::api::{DecodeArea, DecodeError, DecodeLimits, Error, Result};
+use super::api::{DecodeArea, DecodeError, DecodeLimits, EncoderParameters, Error, Result};
 use super::event::*;
 use super::fprintf::StringWriter;
 use super::j2k::*;
@@ -106,6 +107,27 @@ impl HeaderImage {
   pub fn into_core_image(self) -> CoreImage {
     self.0
   }
+}
+
+/// Tile-part header summary returned by `Decoder::read_tile_header`.
+#[derive(Clone, Default, Debug)]
+pub struct TileInfo {
+  /// Tile index.
+  pub index: u32,
+  /// The tile(-part) data size (always requested).
+  pub data_size: Option<u32>,
+  /// Tile origin x.
+  pub x0: i32,
+  /// Tile origin y.
+  pub y0: i32,
+  /// Tile end x.
+  pub x1: i32,
+  /// Tile end y.
+  pub y1: i32,
+  /// Number of components.
+  pub nb_comps: u32,
+  /// Whether more tile-parts follow this header.
+  pub go_on: bool,
 }
 
 /// Low-level J2K/JP2 decoder (see `Image::from_bytes*` for the one-shot

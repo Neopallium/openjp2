@@ -4,7 +4,10 @@
 //! `openjp2-capi` crate; this module keeps the type re-exports the codec
 //! modules rely on, plus the image-data allocation used by the owned buffers.
 
+pub use crate::api::EncoderParameters;
 pub use crate::c_api_types::*;
+pub use crate::codec::TileInfo;
+pub use crate::stream::Stream;
 pub use crate::types::*;
 
 /// The upstream OpenJPEG version this port mirrors.
