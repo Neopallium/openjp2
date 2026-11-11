@@ -31,12 +31,20 @@
 //!
 //! # Design specification
 //!
-//! The JPEG 2000 formats and algorithms this port implements, written
-//! without code references (the authoritative walkthrough for the
-//! pipelines below):
+//! The JPEG 2000 formats and algorithms this port implements are
+//! documented in the [`design_spec`] module (a documentation-only
+//! module, kept off the main crate page).
 //!
-#![doc = include_str!("../doc/jpeg2000-design-spec.md")]
 use openjp2_ctypes as c_api_types;
+
+/// The JPEG 2000 design specification: the codestream structure, the
+/// decode/encode pipelines, and the formats (Part 1, JP2, HTJ2K), written
+/// without code references.
+///
+/// This module exists for documentation only; it contains no items.
+pub mod design_spec {
+  #![doc = include_str!("../doc/jpeg2000-design-spec.md")]
+}
 /// C-mirror constants (`openjpeg.h` values grouped by domain).
 pub(crate) mod consts;
 mod types;
