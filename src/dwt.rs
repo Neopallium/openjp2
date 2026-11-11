@@ -2009,7 +2009,7 @@ fn dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult
       {
         /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
         /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
-        /* on decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
+        /* on opj_decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
         /* This is less extreme than memsetting the whole buffer to 0 */
         /* although we could potentially do better with better handling of edge conditions */
         if win_tr_x1 >= 1u32 && win_tr_x1 < rw {

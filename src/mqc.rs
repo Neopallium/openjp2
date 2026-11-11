@@ -1126,7 +1126,7 @@ pub(crate) fn mqc_bypass_flush_enc(mut mqc: &mut Mqc, mut erterm: bool) {
     /* Tiny optimization: discard terminating 0xff 0x7f since it is */
     /* interpreted as 0xff 0x7f [0xff 0xff] by the decoder, and given */
     /* the bit stuffing, in fact as 0xff 0xff [0xff ..] */
-    /* Happens once on compress -i ../MAPA.tif -o MAPA.j2k  -M 1 */
+    /* Happens once on opj_compress -i ../MAPA.tif -o MAPA.j2k  -M 1 */
     mqc.bp_offset(-2)
   }
 
