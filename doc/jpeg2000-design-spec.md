@@ -111,7 +111,7 @@ The default transform, signalled by the MCT flag in COD and applied when
 there are exactly three components:
 
 - **RCT** (reversible, 5-3 path):
-  ```
+  ```text
   Y  = floor((I0 + 2*I1 + I2) / 4)
   U  = I2 - I1
   V  = I0 - I1
@@ -127,14 +127,14 @@ Two standard kernels, both implemented as lifting factorisations:
 
 **5-3 reversible (Le Gall):**
 
-```
+```text
 Y(2n+1) = X(2n+1) - floor((X(2n) + X(2n+2)) / 2)      (predict)
 Y(2n)   = X(2n)   + floor((Y(2n-1) + Y(2n+1) + 2) / 4) (update)
 ```
 
 **9-7 irreversible (CDF 9/7)**, with lifting steps
 
-```
+```text
 Y(2n+1) = X(2n+1) + alpha*(X(2n) + X(2n+2))
 Y(2n)   = X(2n)   + beta *(Y(2n-1) + Y(2n+1))
 Y(2n+1) = Y(2n+1) + gamma*(Y(2n) + Y(2n+2))
@@ -154,7 +154,7 @@ the standard allows up to 33 levels.
   everything exact). The QCD style is "no quantisation"; a guard-bit count
   `numgbits` is used for ROI scaling instead.
 - **Irreversible path**: scalar quantisation per subband:
-  ```
+  ```text
   q(c) = sign(c) * floor(|c| / step)
   ```
   with `step = 2^(Rb - epsb) * (1 + mu/2^11)`, where `Rb` is the nominal

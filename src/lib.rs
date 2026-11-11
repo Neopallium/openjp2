@@ -12,20 +12,73 @@
 //! A pure-Rust port of [OpenJPEG](https://github.com/uclouvain/openjpeg) with a
 //! safe high-level API, a C ABI drop-in, and CLI tools.
 //!
+//! # Examples
+//!
+//! ## Decode a JP2/J2K image
+//!
 //! ```
 //! use openjp2::*;
 //!
 //! fn main() -> Result<()> {
-//! // One-shot decode (JP2 or J2K, auto-detected; multi-tile codestreams
-//! // decode tiles in parallel).
-//! let image = Image::from_file("samples/Hadley_Crater.jp2")?;
-//! println!("{}x{} {:?}", image.width(), image.height(), image.color_space());
+//!     // One-shot decode (JP2 or J2K, auto-detected; multi-tile codestreams
+//!     // decode tiles in parallel).
+//!     let image = Image::from_file("samples/Hadley_Crater.jp2")?;
+//!     println!("{}x{} {:?}", image.width(), image.height(), image.color_space());
+//!     Ok(())
+//! }
+//! ```
 //!
-//! // Encode back (reversible 5-3: lossless).
-//! let codestream: Vec<u8> = image.encode(EncodeParameters::new().num_resolutions(3))?;
-//! let back = Image::from_bytes(&codestream)?;
-//! assert_eq!((back.width(), back.height()), (image.width(), image.height()));
-//! Ok(())
+//! ## Encode to JP2/J2K
+//!
+//! ```
+//! use openjp2::*;
+//!
+//! fn main() -> Result<()> {
+//!     let image = Image::from_file("samples/Hadley_Crater.jp2")?;
+//!
+//!     // Raw codestream (J2K); the default 5-3 wavelet is reversible (lossless).
+//!     let codestream: Vec<u8> = image.clone().encode(EncodeParameters::new())?;
+//!
+//!     // Or wrapped in the JP2 container.
+//!     let jp2: Vec<u8> = image.clone().encode_jp2(EncodeParameters::new().num_resolutions(3))?;
+//!
+//!     // Both round-trip back to an image.
+//!     let back = Image::from_bytes(&jp2)?;
+//!     assert_eq!((back.width(), back.height()), (image.width(), image.height()));
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Encode from another image format
+//!
+//! The `image` feature (default) bridges to the [`image`](https://crates.io/crates/image)
+//! crate: decode a PNG/JPEG/… and write it back as JPEG 2000.
+//!
+//! ```no_run
+//! use openjp2::*;
+//!
+//! fn main() -> Result<()> {
+//!     let source = ::image::open("photo.png").expect("decode the input image");
+//!     let jp2 = Image::from_dynamic_image(&source)
+//!         .encode_jp2(EncodeParameters::new().num_resolutions(5))?;
+//!     std::fs::write("photo.jp2", jp2)?;
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Decode the header only
+//!
+//! ```
+//! use openjp2::*;
+//!
+//! fn main() -> Result<()> {
+//!     // Inspect the image dimensions without decoding the pixel data.
+//!     let buf = std::fs::read("samples/Hadley_Crater.jp2")?;
+//!     let mut decoder = Decoder::new(J2KFormat::JP2)?;
+//!     let mut stream = Stream::from_bytes(buf);
+//!     let header = decoder.read_header(&mut stream)?;
+//!     println!("{}x{} ({} components)", header.width(), header.height(), header.num_components());
+//!     Ok(())
 //! }
 //! ```
 //!
