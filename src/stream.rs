@@ -1,3 +1,5 @@
+//! Byte streams for the codecs: file/reader/callback inputs and
+//! outputs, the in-memory cursor variant, and the C-ABI callbacks.
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third

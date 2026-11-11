@@ -1,3 +1,4 @@
+//! Individual bit input-output (the tier-2 bit-packing layer).
 use super::openjpeg::*;
 
 /// Individual bit input-output stream over a borrowed byte buffer.

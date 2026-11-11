@@ -1,3 +1,5 @@
+//! The image data model: `CoreImage`/`CoreImageComp`, the C-ABI
+//! compat accessors and the ICC-profile handling.
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third

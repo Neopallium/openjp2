@@ -1,3 +1,4 @@
+//! Tag trees (the tier-2 inclusion/zero-bitplane coding trees).
 use super::bio::*;
 use super::event::*;
 use super::openjpeg::*;

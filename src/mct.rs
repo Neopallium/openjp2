@@ -1,3 +1,5 @@
+//! Component transforms: the standard RCT/ICT kernels and the
+//! custom MCT matrix kernels. See `doc/jpeg2000-design-spec.md` §3.2.
 use super::openjpeg::*;
 
 

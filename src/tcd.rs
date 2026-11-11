@@ -1,3 +1,6 @@
+//! Tile-component decoder/encoder: the per-tile stage pipeline
+//! (DC shift -> MCT -> DWT -> tier-1 -> tier-2) and the decoded-tile
+//! data extraction. See `doc/jpeg2000-design-spec.md` §3.
 use super::consts::*;
 use super::dwt::*;
 use super::event::*;

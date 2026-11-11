@@ -1,3 +1,6 @@
+//! Discrete wavelet transform: the 5-3 reversible and 9-7
+//! irreversible lifting kernels, whole-tile and partial (windowed)
+//! paths. See `doc/jpeg2000-design-spec.md` §3.3.
 use core::cell::Cell;
 
 use super::math::*;

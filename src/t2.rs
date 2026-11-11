@@ -1,3 +1,6 @@
+//! Tier-2 codec: packet header parsing/writing (inclusion, zero
+//! bit-planes, coding passes, segment lengths) and the packet data I/O.
+//! See `doc/jpeg2000-design-spec.md` §3.8.
 use super::bio::*;
 use super::consts::*;
 use super::event::*;

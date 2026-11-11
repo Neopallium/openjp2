@@ -1,3 +1,5 @@
+//! Packet iteration: the progression-order walks (LRCP/RLCP/RPCL/
+//! PCRL/CPRL) that drive tier-2. See `doc/jpeg2000-design-spec.md` §3.8.
 use super::consts::*;
 use super::event::*;
 use super::j2k::*;

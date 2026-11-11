@@ -1,3 +1,6 @@
+//! J2K codestream codec: marker parsing/writing, the decode/encode
+//! drivers, tile-parts, TLM/PLT handling, and the codestream index.
+//! See `doc/jpeg2000-design-spec.md` §2-3 and `doc/code-outline.md`.
 use super::cio::{opj_read_bytes, opj_write_bytes};
 use super::consts::*;
 use super::dwt::*;

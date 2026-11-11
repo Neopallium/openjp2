@@ -1,3 +1,6 @@
+//! Tier-1 codec: bit-plane arithmetic coding (MQ) and the raw/HT
+//! modes, with the parallel per-code-block job drivers.
+//! See `doc/jpeg2000-design-spec.md` §3.7.
 use super::consts::*;
 use super::dwt::*;
 use super::event::*;

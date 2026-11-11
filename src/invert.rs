@@ -1,3 +1,5 @@
+//! Matrix inversion (the custom-MCT decoding matrix, LUP
+//! decomposition).
 use smallvec::SmallVec;
 
 /*

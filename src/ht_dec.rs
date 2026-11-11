@@ -1,3 +1,5 @@
+//! HTJ2K (T.814) block decoder: the high-throughput coder's
+//! Melcode/VLC unstuffing machines. See `doc/jpeg2000-design-spec.md` §4.
 use super::consts::*;
 use super::event::*;
 use super::openjpeg::*;

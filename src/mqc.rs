@@ -1,3 +1,6 @@
+//! MQ arithmetic coder: the context/state machine, byte-in and
+//! byte-out with the 0xFF stuffing rules, bypass and termination.
+//! See `doc/jpeg2000-design-spec.md` §3.7 (MQ arithmetic coder).
 use super::consts::*;
 use super::t1_luts::*;
 use core::cell::Cell;

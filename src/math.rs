@@ -1,3 +1,4 @@
+//! Integer arithmetic helpers (min/max/abs/ceil-div/fix-mul).
 #[inline]
 pub(crate) fn opj_int_max(mut a: i32, mut b: i32) -> i32 {
   a.max(b)

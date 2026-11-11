@@ -1,3 +1,5 @@
+//! The event manager: ERROR/WARNING/INFO messages to the `log`
+//! crate by default or the C-style callbacks (feature `event-handlers`).
 pub use super::consts::event::*;
 
 /*

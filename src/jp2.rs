@@ -1,3 +1,6 @@
+//! JP2 container codec: box parsing/writing (`jp2h`, `colr`, `pclr`,
+//! `cmap`, `cdef`, ...) and the colour post-processing.
+//! See `doc/jpeg2000-design-spec.md` §5.
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::BTreeSet;
 use std::io::{Read, Write};

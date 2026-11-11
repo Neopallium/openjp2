@@ -1,3 +1,5 @@
+//! The safe `Decoder`/`Encoder` handles over the J2K/JP2 codecs
+//! (the `CodecFormat` enum dispatches to the internal state).
 /*
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
