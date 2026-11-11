@@ -2738,11 +2738,6 @@ fn j2k_read_poc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
     cursor += l_comp_room as usize;
     l_tmp = read_bytes(&header_data[cursor..], 1_u32);
     cursor += 1usize;
-    /* Validate like the C (values above CPRL are invalid). */
-    if l_tmp > 4 {
-      event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
-      return Err(());
-    }
     let poc = &mut l_tcp.pocs[i as usize];
     poc.resno0 = resno0;
     poc.compno0 = compno0;
