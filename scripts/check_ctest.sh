@@ -49,6 +49,8 @@ grep -E '^[0-9]+% tests passed' "$log" || tail -20 "$log"
 if (( ${#unexpected[@]} )); then
   echo "REGRESSION: unexpected test failures:"
   printf '  %s\n' "${unexpected[@]}"
+  echo "--- end of the ctest log ---"
+  tail -40 "$log"
   exit 1
 fi
 
