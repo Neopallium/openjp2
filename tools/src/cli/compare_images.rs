@@ -1,8 +1,8 @@
 use crate::convert::load_image;
-use std::path::Path;
 use crate::getopt::{GetOpts, OptDef, ParsedOpt};
 use crate::params::{CompressionParameters, ImageFileFormat};
 use openjp2::CoreImage;
+use std::path::Path;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,7 +31,6 @@ struct Args {
   non_regression: bool,
   ignore_prec: bool,
 }
-
 
 fn parse_args(arguments: Vec<String>) -> Result<Args, String> {
   let opts = vec![

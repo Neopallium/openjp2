@@ -1,5 +1,5 @@
 use crate::{color::*, convert::*, params::*};
-use openjp2::{detect_format_from_file, openjpeg::*, Decoder, CoreImage, ICCProfile, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, CoreImage, Decoder, ICCProfile, Stream};
 use std::{env, path::Path};
 
 fn decompress_image<P: AsRef<Path>>(
@@ -13,11 +13,10 @@ fn decompress_image<P: AsRef<Path>>(
   //eprintln!("params: {:?}", params);
 
   // Create decompression codec
-  let format = params.codec_format.ok_or_else(|| {
-    ImageError::InvalidFormat("No codec format specified".into())
-  })?;
-  let mut codec = Decoder::new(format)
-    .map_err(|e| ImageError::DecodeError(e.to_string()))?;
+  let format = params
+    .codec_format
+    .ok_or_else(|| ImageError::InvalidFormat("No codec format specified".into()))?;
+  let mut codec = Decoder::new(format).map_err(|e| ImageError::DecodeError(e.to_string()))?;
 
   // setup the decoder with the provided parameters.
   let mut d_params = params.to_c_params();
@@ -83,10 +82,9 @@ fn decompress_image<P: AsRef<Path>>(
 
   if let Some(tile_index) = params.tile_index {
     // Decode a tile.
-    if !no_decode_area
-      && !params.quiet {
-        eprintln!("WARNING: -d option is ignored when decoding tiles");
-      }
+    if !no_decode_area && !params.quiet {
+      eprintln!("WARNING: -d option is ignored when decoding tiles");
+    }
     image = match codec.get_decoded_tile(&mut stream, tile_index) {
       Ok(core) => core,
       Err(_) => {

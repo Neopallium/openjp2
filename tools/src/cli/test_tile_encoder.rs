@@ -134,8 +134,7 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
 
   // Create compression codec
   let codec_format = detect_format_from_extension_os_str(output_ext)?;
-  let mut codec =
-    Encoder::new(codec_format).map_err(|_| "Failed to create codec".to_string())?;
+  let mut codec = Encoder::new(codec_format).map_err(|_| "Failed to create codec".to_string())?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));
@@ -143,8 +142,8 @@ pub fn run_test_tile_encoder(args: Vec<String>, default_file: &str) -> Result<()
   codec.set_error_handler(|msg: &str| print!("[ERROR] {}", msg));
 
   // Create tile image
-  let mut image = CoreImage::tile_create(&image_components, OPJ_CLRSPC_SRGB)
-    .ok_or("Failed to create image")?;
+  let mut image =
+    CoreImage::tile_create(&image_components, OPJ_CLRSPC_SRGB).ok_or("Failed to create image")?;
 
   image.x0 = offsetx;
   image.y0 = offsety;

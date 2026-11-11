@@ -16,7 +16,6 @@ struct Args {
   test_filename: Option<PathBuf>,
 }
 
-
 fn parse_args(arguments: Vec<String>) -> Result<Args, String> {
   let opts = vec![
     OptDef::short('b', Opt::Base, true),

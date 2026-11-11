@@ -9,7 +9,9 @@ pub(crate) fn encode_image_to_writer<W: std::io::Write + std::io::Seek + 'static
   format: J2KFormat,
   writer: W,
 ) -> Result<()> {
-  catch_codec_panic(false, || encode_image_to_writer_inner(image, params, format, writer))
+  catch_codec_panic(false, || {
+    encode_image_to_writer_inner(image, params, format, writer)
+  })
 }
 
 pub(crate) fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + 'static>(
@@ -29,8 +31,7 @@ pub(crate) fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + '
   codec.start(&mut image, &mut stream)?;
   /* Multi-tile images encode concurrently (byte-identical fallback). */
   #[cfg(feature = "rayon")]
-  let parallel_ok =
-    codec.num_tiles() > 1 && codec.encode_parallel(&mut stream) == Some(true);
+  let parallel_ok = codec.num_tiles() > 1 && codec.encode_parallel(&mut stream) == Some(true);
   #[cfg(feature = "rayon")]
   let encode_ok = if parallel_ok {
     true
@@ -95,4 +96,3 @@ pub(crate) fn encode_image_inner(
   let out = out_buf.borrow().clone();
   Ok(out)
 }
-

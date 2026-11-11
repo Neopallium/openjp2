@@ -1,5 +1,5 @@
 use crate::getopt::{GetOpts, OptDef, ParsedOpt, PositionalArg};
-use openjp2::{detect_format_from_file, openjpeg::*, Decoder, CoreImage, Stream};
+use openjp2::{detect_format_from_file, openjpeg::*, CoreImage, Decoder, Stream};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -96,9 +96,7 @@ fn parse_args(arguments: Vec<String>) -> Result<Args, String> {
           Err(_) => return Err("Invalid decode area coordinates".into()),
         }
       }
-      ParsedOpt::Opt(opt, None) => {
-        return Err(format!("Missing argument for option: {opt:?}"))
-      }
+      ParsedOpt::Opt(opt, None) => return Err(format!("Missing argument for option: {opt:?}")),
       ParsedOpt::ParseError(err) => {
         return Err(err);
       }
@@ -134,8 +132,7 @@ fn create_codec_and_stream(input: &PathBuf) -> Result<(Decoder, Stream), String>
   let stream = Stream::new_file(input, 1_000_000, true).map_err(|e| format!("{e:?}"))?;
 
   // Create decompression codec
-  let mut codec =
-    Decoder::new(codec_format).map_err(|_| "Failed to create codec".to_string())?;
+  let mut codec = Decoder::new(codec_format).map_err(|_| "Failed to create codec".to_string())?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));
@@ -204,7 +201,9 @@ fn decode(
   }
 
   // Decode image
-  image = codec.decode(&mut stream).map_err(|_| "Failed to decode image")?;
+  image = codec
+    .decode(&mut stream)
+    .map_err(|_| "Failed to decode image")?;
   codec
     .end_decompress(&mut stream)
     .map_err(|_| "Failed to end decompress")?;
@@ -266,7 +265,9 @@ fn decode_by_strip(
       .map_err(|_| "Failed to set decode area")?;
 
     // Decode image by strip
-    image = codec.decode(&mut stream).map_err(|_| "Failed to decode image")?;
+    image = codec
+      .decode(&mut stream)
+      .map_err(|_| "Failed to decode image")?;
 
     // Check consistency if full image is provided
     if let Some(full_image) = &full_image {
@@ -296,7 +297,9 @@ fn decode_by_strip(
       .map_err(|_| "Failed to set decode area")?;
 
     // Decode full image
-    let _ = codec.decode(&mut stream).map_err(|_| "Failed to decode image")?;
+    let _ = codec
+      .decode(&mut stream)
+      .map_err(|_| "Failed to decode image")?;
   }
 
   // End decompression

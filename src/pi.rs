@@ -9,7 +9,6 @@ use crate::image::CoreImage;
 use core::cell::Cell;
 use std::rc::Rc;
 
-
 pub type T2_MODE = core::ffi::c_uint;
 pub const FINAL_PASS: T2_MODE = 1;
 pub const THRESH_CALC: T2_MODE = 0;
@@ -61,10 +60,7 @@ pub struct PiIterator {
 }
 #[inline]
 fn opj_uint_ceildivpow2(mut a: u32, mut b: u32) -> u32 {
-  ((a as u64)
-    .wrapping_add(1_u64 << b)
-    .wrapping_sub(1u64)
-    >> b) as u32
+  ((a as u64).wrapping_add(1_u64 << b).wrapping_sub(1u64) >> b) as u32
 }
 
 /*
@@ -121,108 +117,109 @@ Get next packet in layer-resolution-component-precinct order.
 ==========================================================
 */
 fn opj_pi_next_lrcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
-    let mut current_block: u64;
-    let mut index = 0_u32;
-    if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
-    {
-      event_msg!(
-        manager,
-        EVT_ERROR,
-        "opj_pi_next_lrcp(): invalid compno0/compno1\n",
-      );
-      return Err(());
-    }
-    if !pi.first {
-                  current_block = 5634871135123216486;
-    } else {
-      pi.first = false;
-      pi.layno = pi.poc.layno0;
-      current_block = 2868539653012386629;
+  let mut current_block: u64;
+  let mut index = 0_u32;
+  if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32) {
+    event_msg!(
+      manager,
+      EVT_ERROR,
+      "opj_pi_next_lrcp(): invalid compno0/compno1\n",
+    );
+    return Err(());
+  }
+  if !pi.first {
+    current_block = 5634871135123216486;
+  } else {
+    pi.first = false;
+    pi.layno = pi.poc.layno0;
+    current_block = 2868539653012386629;
+  }
+  loop {
+    match current_block {
+      5634871135123216486 => {
+        pi.precno = pi.precno.wrapping_add(1);
+        current_block = 1109700713171191020;
+      }
+      _ => {
+        if pi.layno >= pi.poc.layno1 {
+          break;
+        }
+        pi.resno = pi.poc.resno0;
+        current_block = 1856101646708284338;
+      }
     }
     loop {
       match current_block {
-        5634871135123216486 => {
-          pi.precno = pi.precno.wrapping_add(1);
-          current_block = 1109700713171191020;
-        }
-        _ => {
-          if pi.layno >= pi.poc.layno1 {
+        1856101646708284338 => {
+          if pi.resno < pi.poc.resno1 {
+            pi.compno = pi.poc.compno0
+          } else {
+            pi.layno = pi.layno.wrapping_add(1);
+            current_block = 2868539653012386629;
             break;
           }
-          pi.resno = pi.poc.resno0;
-          current_block = 1856101646708284338;
+          current_block = 10048703153582371463;
+        }
+        _ => {
+          if pi.precno < pi.poc.precno1 {
+            index = pi
+              .layno
+              .wrapping_mul(pi.step_l)
+              .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
+              .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
+              .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
+            /* Avoids index out of bounds access with */
+            /* id_000098,sig_11,src_005411,op_havoc,rep_2 of */
+            /* https://github.com/uclouvain/openjpeg/issues/938 */
+            /* Not sure if this is the most clever fix. Perhaps */
+            /* include should be resized when a POC arises, or */
+            /* the POC should be rejected */
+            if index >= pi.include_size {
+              event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
+              return Err(());
+            }
+            if pi.include[index as usize].get() == 0 {
+              pi.include[index as usize].set(1_i16);
+              return Ok(());
+            }
+            current_block = 5634871135123216486;
+            break;
+          } else {
+            current_block = 17860125682698302841;
+          }
         }
       }
       loop {
         match current_block {
-          1856101646708284338 => {
-            if pi.resno < pi.poc.resno1 {
-              pi.compno = pi.poc.compno0
-            } else {
-              pi.layno = pi.layno.wrapping_add(1);
-              current_block = 2868539653012386629;
-              break;
-            }
+          17860125682698302841 => {
+            pi.compno = pi.compno.wrapping_add(1);
             current_block = 10048703153582371463;
           }
           _ => {
-            if pi.precno < pi.poc.precno1 {
-              index = pi
-                .layno
-                .wrapping_mul(pi.step_l)
-                .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
-                .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
-                .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
-              /* Avoids index out of bounds access with */
-              /* id_000098,sig_11,src_005411,op_havoc,rep_2 of */
-              /* https://github.com/uclouvain/openjpeg/issues/938 */
-              /* Not sure if this is the most clever fix. Perhaps */
-              /* include should be resized when a POC arises, or */
-              /* the POC should be rejected */
-              if index >= pi.include_size {
-                event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
-                return Err(());
+            if pi.compno < pi.poc.compno1 {
+              if pi.resno >= pi.comps[pi.compno as usize].numresolutions {
+                current_block = 17860125682698302841;
+                continue;
               }
-              if pi.include[index as usize].get() == 0 {
-                pi.include[index as usize].set(1_i16);
-                return Ok(());
+              if pi.tp_on == 0 {
+                pi.poc.precno1 = pi.comps[pi.compno as usize].resolutions[pi.resno as usize]
+                  .pw
+                  .wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph)
               }
-              current_block = 5634871135123216486;
+              pi.precno = pi.poc.precno0;
+              current_block = 1109700713171191020;
               break;
             } else {
-              current_block = 17860125682698302841;
-            }
-          }
-        }
-        loop {
-          match current_block {
-            17860125682698302841 => {
-              pi.compno = pi.compno.wrapping_add(1);
-              current_block = 10048703153582371463;
-            }
-            _ => {
-              if pi.compno < pi.poc.compno1 {
-                                if pi.resno >= pi.comps[pi.compno as usize].numresolutions {
-                  current_block = 17860125682698302841;
-                  continue;
-                }
-                                if pi.tp_on == 0 {
-                  pi.poc.precno1 = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph)
-                }
-                pi.precno = pi.poc.precno0;
-                current_block = 1109700713171191020;
-                break;
-              } else {
-                pi.resno = pi.resno.wrapping_add(1);
-                current_block = 1856101646708284338;
-                break;
-              }
+              pi.resno = pi.resno.wrapping_add(1);
+              current_block = 1856101646708284338;
+              break;
             }
           }
         }
       }
     }
-Err(())
+  }
+  Err(())
 }
 /* *
 Get next packet in resolution-layer-component-precinct order.
@@ -230,102 +227,103 @@ Get next packet in resolution-layer-component-precinct order.
 @return returns false if pi pointed to the last packet or else returns true
 */
 fn opj_pi_next_rlcp(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
-    let mut current_block: u64;
-    let mut index = 0_u32;
-    if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
-    {
-      event_msg!(
-        manager,
-        EVT_ERROR,
-        "opj_pi_next_rlcp(): invalid compno0/compno1\n",
-      );
-      return Err(());
-    }
-    if !pi.first {
-                  current_block = 5634871135123216486;
-    } else {
-      pi.first = false;
-      pi.resno = pi.poc.resno0;
-      current_block = 2868539653012386629;
+  let mut current_block: u64;
+  let mut index = 0_u32;
+  if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32) {
+    event_msg!(
+      manager,
+      EVT_ERROR,
+      "opj_pi_next_rlcp(): invalid compno0/compno1\n",
+    );
+    return Err(());
+  }
+  if !pi.first {
+    current_block = 5634871135123216486;
+  } else {
+    pi.first = false;
+    pi.resno = pi.poc.resno0;
+    current_block = 2868539653012386629;
+  }
+  loop {
+    match current_block {
+      5634871135123216486 => {
+        pi.precno = pi.precno.wrapping_add(1);
+        current_block = 1109700713171191020;
+      }
+      _ => {
+        if pi.resno >= pi.poc.resno1 {
+          break;
+        }
+        pi.layno = pi.poc.layno0;
+        current_block = 1856101646708284338;
+      }
     }
     loop {
       match current_block {
-        5634871135123216486 => {
-          pi.precno = pi.precno.wrapping_add(1);
-          current_block = 1109700713171191020;
-        }
-        _ => {
-          if pi.resno >= pi.poc.resno1 {
+        1856101646708284338 => {
+          if pi.layno < pi.poc.layno1 {
+            pi.compno = pi.poc.compno0
+          } else {
+            pi.resno = pi.resno.wrapping_add(1);
+            current_block = 2868539653012386629;
             break;
           }
-          pi.layno = pi.poc.layno0;
-          current_block = 1856101646708284338;
+          current_block = 10048703153582371463;
+        }
+        _ => {
+          if pi.precno < pi.poc.precno1 {
+            index = pi
+              .layno
+              .wrapping_mul(pi.step_l)
+              .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
+              .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
+              .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
+            if index >= pi.include_size {
+              event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
+              return Err(());
+            }
+            if pi.include[index as usize].get() == 0 {
+              pi.include[index as usize].set(1_i16);
+              return Ok(());
+            }
+            current_block = 5634871135123216486;
+            break;
+          } else {
+            current_block = 17860125682698302841;
+          }
         }
       }
       loop {
         match current_block {
-          1856101646708284338 => {
-            if pi.layno < pi.poc.layno1 {
-              pi.compno = pi.poc.compno0
-            } else {
-              pi.resno = pi.resno.wrapping_add(1);
-              current_block = 2868539653012386629;
-              break;
-            }
+          17860125682698302841 => {
+            pi.compno = pi.compno.wrapping_add(1);
             current_block = 10048703153582371463;
           }
           _ => {
-            if pi.precno < pi.poc.precno1 {
-              index = pi
-                .layno
-                .wrapping_mul(pi.step_l)
-                .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
-                .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
-                .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
-              if index >= pi.include_size {
-                event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
-                return Err(());
+            if pi.compno < pi.poc.compno1 {
+              if pi.resno >= pi.comps[pi.compno as usize].numresolutions {
+                current_block = 17860125682698302841;
+                continue;
               }
-              if pi.include[index as usize].get() == 0 {
-                pi.include[index as usize].set(1_i16);
-                return Ok(());
+              if pi.tp_on == 0 {
+                pi.poc.precno1 = pi.comps[pi.compno as usize].resolutions[pi.resno as usize]
+                  .pw
+                  .wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph)
               }
-              current_block = 5634871135123216486;
+              pi.precno = pi.poc.precno0;
+              current_block = 1109700713171191020;
               break;
             } else {
-              current_block = 17860125682698302841;
-            }
-          }
-        }
-        loop {
-          match current_block {
-            17860125682698302841 => {
-              pi.compno = pi.compno.wrapping_add(1);
-              current_block = 10048703153582371463;
-            }
-            _ => {
-              if pi.compno < pi.poc.compno1 {
-                                if pi.resno >= pi.comps[pi.compno as usize].numresolutions {
-                  current_block = 17860125682698302841;
-                  continue;
-                }
-                                if pi.tp_on == 0 {
-                  pi.poc.precno1 = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph)
-                }
-                pi.precno = pi.poc.precno0;
-                current_block = 1109700713171191020;
-                break;
-              } else {
-                pi.layno = pi.layno.wrapping_add(1);
-                current_block = 1856101646708284338;
-                break;
-              }
+              pi.layno = pi.layno.wrapping_add(1);
+              current_block = 1856101646708284338;
+              break;
             }
           }
         }
       }
     }
-Err(())
+  }
+  Err(())
 }
 /* *
 Get next packet in resolution-precinct-component-layer order.
@@ -333,266 +331,276 @@ Get next packet in resolution-precinct-component-layer order.
 @return returns false if pi pointed to the last packet or else returns true
 */
 fn opj_pi_next_rpcl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
-    let mut levelno: u32 = 0;
-    let mut trx0: u32 = 0;
-    let mut try0: u32 = 0;
-    let mut trx1: u32 = 0;
-    let mut try1: u32 = 0;
-    let mut rpx: u32 = 0;
-    let mut rpy: u32 = 0;
-    let mut prci: u32 = 0;
-    let mut prcj: u32 = 0;
-    let mut current_block: u64;
-    let mut index = 0_u32;
-    if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
-    {
-      event_msg!(
-        manager,
-        EVT_ERROR,
-        "opj_pi_next_rpcl(): invalid compno0/compno1\n",
-      );
+  let mut levelno: u32 = 0;
+  let mut trx0: u32 = 0;
+  let mut try0: u32 = 0;
+  let mut trx1: u32 = 0;
+  let mut try1: u32 = 0;
+  let mut rpx: u32 = 0;
+  let mut rpy: u32 = 0;
+  let mut prci: u32 = 0;
+  let mut prcj: u32 = 0;
+  let mut current_block: u64;
+  let mut index = 0_u32;
+  if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32) {
+    event_msg!(
+      manager,
+      EVT_ERROR,
+      "opj_pi_next_rpcl(): invalid compno0/compno1\n",
+    );
+    return Err(());
+  }
+  if !pi.first {
+    current_block = 129780949503461575;
+  } else {
+    let mut compno: u32 = 0;
+    let mut resno: u32 = 0;
+    pi.first = false;
+    pi.dx = 0_u32;
+    pi.dy = 0_u32;
+    compno = 0_u32;
+    while compno < pi.numcomps {
+      resno = 0_u32;
+      while resno < pi.comps[compno as usize].numresolutions {
+        let mut dx: u32 = 0;
+        let mut dy: u32 = 0;
+        if pi.comps[compno as usize].resolutions[resno as usize]
+          .pdx
+          .wrapping_add(pi.comps[compno as usize].numresolutions)
+          .wrapping_sub(1u32)
+          .wrapping_sub(resno)
+          < 32u32
+          && pi.comps[compno as usize].dx
+            <= (2147483647u32)
+              .wrapping_mul(2u32)
+              .wrapping_add(1u32)
+              .wrapping_div(
+                (1u32)
+                  << pi.comps[compno as usize].resolutions[resno as usize]
+                    .pdx
+                    .wrapping_add(pi.comps[compno as usize].numresolutions)
+                    .wrapping_sub(1u32)
+                    .wrapping_sub(resno),
+              )
+        {
+          dx = pi.comps[compno as usize].dx.wrapping_mul(
+            (1u32)
+              << pi.comps[compno as usize].resolutions[resno as usize]
+                .pdx
+                .wrapping_add(pi.comps[compno as usize].numresolutions)
+                .wrapping_sub(1u32)
+                .wrapping_sub(resno),
+          );
+          pi.dx = if pi.dx == 0 {
+            dx
+          } else {
+            opj_uint_min(pi.dx, dx)
+          }
+        }
+        if pi.comps[compno as usize].resolutions[resno as usize]
+          .pdy
+          .wrapping_add(pi.comps[compno as usize].numresolutions)
+          .wrapping_sub(1u32)
+          .wrapping_sub(resno)
+          < 32u32
+          && pi.comps[compno as usize].dy
+            <= (2147483647u32)
+              .wrapping_mul(2u32)
+              .wrapping_add(1u32)
+              .wrapping_div(
+                (1u32)
+                  << pi.comps[compno as usize].resolutions[resno as usize]
+                    .pdy
+                    .wrapping_add(pi.comps[compno as usize].numresolutions)
+                    .wrapping_sub(1u32)
+                    .wrapping_sub(resno),
+              )
+        {
+          dy = pi.comps[compno as usize].dy.wrapping_mul(
+            (1u32)
+              << pi.comps[compno as usize].resolutions[resno as usize]
+                .pdy
+                .wrapping_add(pi.comps[compno as usize].numresolutions)
+                .wrapping_sub(1u32)
+                .wrapping_sub(resno),
+          );
+          pi.dy = if pi.dy == 0 {
+            dy
+          } else {
+            opj_uint_min(pi.dy, dy)
+          }
+        }
+        resno += 1;
+      }
+      compno += 1;
+    }
+    if pi.dx == 0u32 || pi.dy == 0u32 {
       return Err(());
     }
-    if !pi.first {
-      current_block = 129780949503461575;
-    } else {
-      let mut compno: u32 = 0;
-      let mut resno: u32 = 0;
-      pi.first = false;
-      pi.dx = 0_u32;
-      pi.dy = 0_u32;
-      compno = 0_u32;
-      while compno < pi.numcomps {
-                resno = 0_u32;
-        while resno < pi.comps[compno as usize].numresolutions {
-          let mut dx: u32 = 0;
-          let mut dy: u32 = 0;
-                    if pi.comps[compno as usize].resolutions[resno as usize]
-            .pdx
-            .wrapping_add(pi.comps[compno as usize].numresolutions)
-            .wrapping_sub(1u32)
-            .wrapping_sub(resno)
-            < 32u32
-            && pi.comps[compno as usize].dx
-              <= (2147483647u32)
-                .wrapping_mul(2u32)
-                .wrapping_add(1u32)
-                .wrapping_div(
-                  (1u32)
-                    << pi.comps[compno as usize].resolutions[resno as usize]
-                      .pdx
-                      .wrapping_add(pi.comps[compno as usize].numresolutions)
-                      .wrapping_sub(1u32)
-                      .wrapping_sub(resno),
-                )
-          {
-            dx = pi.comps[compno as usize].dx.wrapping_mul(
-              (1u32)
-                << pi.comps[compno as usize].resolutions[resno as usize]
-                  .pdx
-                  .wrapping_add(pi.comps[compno as usize].numresolutions)
-                  .wrapping_sub(1u32)
-                  .wrapping_sub(resno),
-            );
-            pi.dx = if pi.dx == 0 {
-              dx
-            } else {
-              opj_uint_min(pi.dx, dx)
-            }
-          }
-          if pi.comps[compno as usize].resolutions[resno as usize]
-            .pdy
-            .wrapping_add(pi.comps[compno as usize].numresolutions)
-            .wrapping_sub(1u32)
-            .wrapping_sub(resno)
-            < 32u32
-            && pi.comps[compno as usize].dy
-              <= (2147483647u32)
-                .wrapping_mul(2u32)
-                .wrapping_add(1u32)
-                .wrapping_div(
-                  (1u32)
-                    << pi.comps[compno as usize].resolutions[resno as usize]
-                      .pdy
-                      .wrapping_add(pi.comps[compno as usize].numresolutions)
-                      .wrapping_sub(1u32)
-                      .wrapping_sub(resno),
-                )
-          {
-            dy = pi.comps[compno as usize].dy.wrapping_mul(
-              (1u32)
-                << pi.comps[compno as usize].resolutions[resno as usize]
-                  .pdy
-                  .wrapping_add(pi.comps[compno as usize].numresolutions)
-                  .wrapping_sub(1u32)
-                  .wrapping_sub(resno),
-            );
-            pi.dy = if pi.dy == 0 {
-              dy
-            } else {
-              opj_uint_min(pi.dy, dy)
-            }
-          }
-          resno += 1;
+    if pi.tp_on == 0 {
+      pi.poc.ty0 = pi.ty0;
+      pi.poc.tx0 = pi.tx0;
+      pi.poc.ty1 = pi.ty1;
+      pi.poc.tx1 = pi.tx1
+    }
+    pi.resno = pi.poc.resno0;
+    current_block = 11385396242402735691;
+  }
+  loop {
+    match current_block {
+      129780949503461575 => {
+        pi.layno = pi.layno.wrapping_add(1);
+        current_block = 2606304779496145856;
+      }
+      _ => {
+        if pi.resno >= pi.poc.resno1 {
+          break;
         }
-        compno += 1;
+        pi.y = pi.poc.ty0;
+        current_block = 6450636197030046351;
       }
-      if pi.dx == 0u32 || pi.dy == 0u32 {
-        return Err(());
-      }
-      if pi.tp_on == 0 {
-        pi.poc.ty0 = pi.ty0;
-        pi.poc.tx0 = pi.tx0;
-        pi.poc.ty1 = pi.ty1;
-        pi.poc.tx1 = pi.tx1
-      }
-      pi.resno = pi.poc.resno0;
-      current_block = 11385396242402735691;
     }
     loop {
       match current_block {
-        129780949503461575 => {
-          pi.layno = pi.layno.wrapping_add(1);
-          current_block = 2606304779496145856;
-        }
-        _ => {
-          if pi.resno >= pi.poc.resno1 {
+        6450636197030046351 => {
+          if pi.y < pi.poc.ty1 {
+            pi.x = pi.poc.tx0
+          } else {
+            pi.resno = pi.resno.wrapping_add(1);
+            current_block = 11385396242402735691;
             break;
           }
-          pi.y = pi.poc.ty0;
-          current_block = 6450636197030046351;
+          current_block = 3123434771885419771;
+        }
+        _ => {
+          if pi.layno < pi.poc.layno1 {
+            index = pi
+              .layno
+              .wrapping_mul(pi.step_l)
+              .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
+              .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
+              .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
+            if index >= pi.include_size {
+              event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
+              return Err(());
+            }
+            if pi.include[index as usize].get() == 0 {
+              pi.include[index as usize].set(1_i16);
+              return Ok(());
+            }
+            current_block = 129780949503461575;
+            break;
+          } else {
+            current_block = 10891380440665537214;
+          }
         }
       }
       loop {
         match current_block {
-          6450636197030046351 => {
-            if pi.y < pi.poc.ty1 {
-              pi.x = pi.poc.tx0
-            } else {
-              pi.resno = pi.resno.wrapping_add(1);
-              current_block = 11385396242402735691;
-              break;
-            }
-            current_block = 3123434771885419771;
-          }
+          10891380440665537214 => pi.compno = pi.compno.wrapping_add(1),
           _ => {
-            if pi.layno < pi.poc.layno1 {
-              index = pi
-                .layno
-                .wrapping_mul(pi.step_l)
-                .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
-                .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
-                .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
-              if index >= pi.include_size {
-                event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
-                return Err(());
-              }
-              if pi.include[index as usize].get() == 0 {
-                pi.include[index as usize].set(1_i16);
-                return Ok(());
-              }
-              current_block = 129780949503461575;
-              break;
+            if pi.x < pi.poc.tx1 {
+              pi.compno = pi.poc.compno0
             } else {
-              current_block = 10891380440665537214;
+              pi.y = (pi.y as core::ffi::c_uint)
+                .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)));
+              current_block = 6450636197030046351;
+              break;
             }
           }
         }
-        loop {
-          match current_block {
-            10891380440665537214 => pi.compno = pi.compno.wrapping_add(1),
-            _ => {
-              if pi.x < pi.poc.tx1 {
-                pi.compno = pi.poc.compno0
-              } else {
-                pi.y = (pi.y as core::ffi::c_uint)
-                  .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)));
-                current_block = 6450636197030046351;
-                break;
-              }
-            }
+        if pi.compno < pi.poc.compno1 {
+          levelno = 0;
+          trx0 = 0;
+          try0 = 0;
+          trx1 = 0;
+          try1 = 0;
+          rpx = 0;
+          rpy = 0;
+          prci = 0;
+          prcj = 0;
+          if pi.resno >= pi.comps[pi.compno as usize].numresolutions {
+            current_block = 10891380440665537214;
+            continue;
           }
-          if pi.compno < pi.poc.compno1 {
-            levelno = 0;
-            trx0 = 0;
-            try0 = 0;
-            trx1 = 0;
-            try1 = 0;
-            rpx = 0;
-            rpy = 0;
-            prci = 0;
-            prcj = 0;
-                        if pi.resno >= pi.comps[pi.compno as usize].numresolutions {
-              current_block = 10891380440665537214;
-              continue;
-            }
-                        levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
-            let dx = pi.comps[pi.compno as usize].dx as u64;
-            let dy = pi.comps[pi.compno as usize].dy as u64;
+          levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
+          let dx = pi.comps[pi.compno as usize].dx as u64;
+          let dy = pi.comps[pi.compno as usize].dy as u64;
 
-            if ((dx << levelno as u64) >> levelno) != dx
-              || ((dy << levelno as u64) >> levelno) != dy
-            {
-              current_block = 10891380440665537214;
-              continue;
-            }
-
-            trx0 = opj_uint64_ceildiv_res_uint32(pi.tx0 as u64, dx << levelno);
-            try0 = opj_uint64_ceildiv_res_uint32(pi.ty0 as u64, dy << levelno);
-            trx1 = opj_uint64_ceildiv_res_uint32(pi.tx1 as u64, dx << levelno);
-            try1 = opj_uint64_ceildiv_res_uint32(pi.ty1 as u64, dy << levelno);
-            rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx.wrapping_add(levelno);
-            rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy.wrapping_add(levelno);
-
-            if ((dx << rpx) >> rpx) != dx || ((dy << rpy) >> rpy) != dy {
-              current_block = 10891380440665537214;
-              continue;
-            }
-
-            /* See ISO-15441. B.12.1.3 Resolution level-position-component-layer progression */
-            if !(pi.y as u64).is_multiple_of(dy << rpy)
-              && !(pi.y == pi.ty0
-                && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy))
-            {
-              current_block = 10891380440665537214;
-              continue;
-            }
-            if !(pi.x as u64).is_multiple_of(dx << rpx)
-              && !(pi.x == pi.tx0
-                && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx))
-            {
-              current_block = 10891380440665537214;
-              continue;
-            }
-            if pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw == 0u32 || pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph == 0u32 {
-              current_block = 10891380440665537214;
-              continue;
-            }
-            if trx0 == trx1 || try0 == try1 {
-              current_block = 10891380440665537214;
-              continue;
-            }
-            prci = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32(pi.x as u64, dx << levelno),
-              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
-            ) - opj_uint_floordivpow2(trx0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx);
-            prcj = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32(pi.y as u64, dy << levelno),
-              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
-            ) - opj_uint_floordivpow2(try0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy);
-            pi.precno = prci.wrapping_add(prcj.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw));
-            pi.layno = pi.poc.layno0;
-            current_block = 2606304779496145856;
-            break;
-          } else {
-            pi.x = (pi.x as core::ffi::c_uint)
-              .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)));
-            current_block = 3123434771885419771;
+          if ((dx << levelno as u64) >> levelno) != dx || ((dy << levelno as u64) >> levelno) != dy
+          {
+            current_block = 10891380440665537214;
+            continue;
           }
+
+          trx0 = opj_uint64_ceildiv_res_uint32(pi.tx0 as u64, dx << levelno);
+          try0 = opj_uint64_ceildiv_res_uint32(pi.ty0 as u64, dy << levelno);
+          trx1 = opj_uint64_ceildiv_res_uint32(pi.tx1 as u64, dx << levelno);
+          try1 = opj_uint64_ceildiv_res_uint32(pi.ty1 as u64, dy << levelno);
+          rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize]
+            .pdx
+            .wrapping_add(levelno);
+          rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize]
+            .pdy
+            .wrapping_add(levelno);
+
+          if ((dx << rpx) >> rpx) != dx || ((dy << rpy) >> rpy) != dy {
+            current_block = 10891380440665537214;
+            continue;
+          }
+
+          /* See ISO-15441. B.12.1.3 Resolution level-position-component-layer progression */
+          if !(pi.y as u64).is_multiple_of(dy << rpy)
+            && !(pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy))
+          {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          if !(pi.x as u64).is_multiple_of(dx << rpx)
+            && !(pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx))
+          {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          if pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw == 0u32
+            || pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph == 0u32
+          {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          if trx0 == trx1 || try0 == try1 {
+            current_block = 10891380440665537214;
+            continue;
+          }
+          prci = opj_uint_floordivpow2(
+            opj_uint64_ceildiv_res_uint32(pi.x as u64, dx << levelno),
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
+          ) - opj_uint_floordivpow2(
+            trx0,
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
+          );
+          prcj = opj_uint_floordivpow2(
+            opj_uint64_ceildiv_res_uint32(pi.y as u64, dy << levelno),
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
+          ) - opj_uint_floordivpow2(
+            try0,
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
+          );
+          pi.precno = prci.wrapping_add(
+            prcj.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw),
+          );
+          pi.layno = pi.poc.layno0;
+          current_block = 2606304779496145856;
+          break;
+        } else {
+          pi.x =
+            (pi.x as core::ffi::c_uint).wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)));
+          current_block = 3123434771885419771;
         }
       }
     }
-Err(())
+  }
+  Err(())
 }
 /* *
 Get next packet in precinct-component-resolution-layer order.
@@ -600,64 +608,369 @@ Get next packet in precinct-component-resolution-layer order.
 @return returns false if pi pointed to the last packet or else returns true
 */
 fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
-    let mut levelno: u32 = 0;
-    let mut trx0: u32 = 0;
-    let mut try0: u32 = 0;
-    let mut trx1: u32 = 0;
-    let mut try1: u32 = 0;
-    let mut rpx: u32 = 0;
-    let mut rpy: u32 = 0;
-    let mut prci: u32 = 0;
-    let mut prcj: u32 = 0;
-    let mut current_block: u64;
-    let mut index = 0_u32;
-    if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
-    {
-      event_msg!(
-        manager,
-        EVT_ERROR,
-        "opj_pi_next_pcrl(): invalid compno0/compno1\n",
-      );
+  let mut levelno: u32 = 0;
+  let mut trx0: u32 = 0;
+  let mut try0: u32 = 0;
+  let mut trx1: u32 = 0;
+  let mut try1: u32 = 0;
+  let mut rpx: u32 = 0;
+  let mut rpy: u32 = 0;
+  let mut prci: u32 = 0;
+  let mut prcj: u32 = 0;
+  let mut current_block: u64;
+  let mut index = 0_u32;
+  if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32) {
+    event_msg!(
+      manager,
+      EVT_ERROR,
+      "opj_pi_next_pcrl(): invalid compno0/compno1\n",
+    );
+    return Err(());
+  }
+  if !pi.first {
+    current_block = 10853015579903106591;
+  } else {
+    let mut compno: u32 = 0;
+    let mut resno: u32 = 0;
+    pi.first = false;
+    pi.dx = 0_u32;
+    pi.dy = 0_u32;
+    compno = 0_u32;
+    while compno < pi.numcomps {
+      resno = 0_u32;
+      while resno < pi.comps[compno as usize].numresolutions {
+        let mut dx: u32 = 0;
+        let mut dy: u32 = 0;
+        if pi.comps[compno as usize].resolutions[resno as usize]
+          .pdx
+          .wrapping_add(pi.comps[compno as usize].numresolutions)
+          .wrapping_sub(1u32)
+          .wrapping_sub(resno)
+          < 32u32
+          && pi.comps[compno as usize].dx
+            <= (2147483647u32)
+              .wrapping_mul(2u32)
+              .wrapping_add(1u32)
+              .wrapping_div(
+                (1u32)
+                  << pi.comps[compno as usize].resolutions[resno as usize]
+                    .pdx
+                    .wrapping_add(pi.comps[compno as usize].numresolutions)
+                    .wrapping_sub(1u32)
+                    .wrapping_sub(resno),
+              )
+        {
+          dx = pi.comps[compno as usize].dx.wrapping_mul(
+            (1u32)
+              << pi.comps[compno as usize].resolutions[resno as usize]
+                .pdx
+                .wrapping_add(pi.comps[compno as usize].numresolutions)
+                .wrapping_sub(1u32)
+                .wrapping_sub(resno),
+          );
+          pi.dx = if pi.dx == 0 {
+            dx
+          } else {
+            opj_uint_min(pi.dx, dx)
+          }
+        }
+        if pi.comps[compno as usize].resolutions[resno as usize]
+          .pdy
+          .wrapping_add(pi.comps[compno as usize].numresolutions)
+          .wrapping_sub(1u32)
+          .wrapping_sub(resno)
+          < 32u32
+          && pi.comps[compno as usize].dy
+            <= (2147483647u32)
+              .wrapping_mul(2u32)
+              .wrapping_add(1u32)
+              .wrapping_div(
+                (1u32)
+                  << pi.comps[compno as usize].resolutions[resno as usize]
+                    .pdy
+                    .wrapping_add(pi.comps[compno as usize].numresolutions)
+                    .wrapping_sub(1u32)
+                    .wrapping_sub(resno),
+              )
+        {
+          dy = pi.comps[compno as usize].dy.wrapping_mul(
+            (1u32)
+              << pi.comps[compno as usize].resolutions[resno as usize]
+                .pdy
+                .wrapping_add(pi.comps[compno as usize].numresolutions)
+                .wrapping_sub(1u32)
+                .wrapping_sub(resno),
+          );
+          pi.dy = if pi.dy == 0 {
+            dy
+          } else {
+            opj_uint_min(pi.dy, dy)
+          }
+        }
+        resno += 1;
+      }
+      compno += 1;
+    }
+    if pi.dx == 0u32 || pi.dy == 0u32 {
       return Err(());
     }
-    if !pi.first {
+    if pi.tp_on == 0 {
+      pi.poc.ty0 = pi.ty0;
+      pi.poc.tx0 = pi.tx0;
+      pi.poc.ty1 = pi.ty1;
+      pi.poc.tx1 = pi.tx1
+    }
+    pi.y = pi.poc.ty0;
+    current_block = 7245201122033322888;
+  }
+  loop {
+    match current_block {
+      10853015579903106591 => {
+        pi.layno = pi.layno.wrapping_add(1);
+        current_block = 6281126495347172768;
+      }
+      _ => {
+        if pi.y >= pi.poc.ty1 {
+          break;
+        }
+        pi.x = pi.poc.tx0;
+        current_block = 8845338526596852646;
+      }
+    }
+    loop {
+      match current_block {
+        8845338526596852646 => {
+          if pi.x < pi.poc.tx1 {
+            pi.compno = pi.poc.compno0
+          } else {
+            pi.y = (pi.y as core::ffi::c_uint)
+              .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)));
+            current_block = 7245201122033322888;
+            break;
+          }
+          current_block = 980989089337379490;
+        }
+        _ => {
+          if pi.layno < pi.poc.layno1 {
+            index = pi
+              .layno
+              .wrapping_mul(pi.step_l)
+              .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
+              .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
+              .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
+            if index >= pi.include_size {
+              event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
+              return Err(());
+            }
+            if pi.include[index as usize].get() == 0 {
+              pi.include[index as usize].set(1_i16);
+              return Ok(());
+            }
             current_block = 10853015579903106591;
-    } else {
-      let mut compno: u32 = 0;
-      let mut resno: u32 = 0;
-      pi.first = false;
-      pi.dx = 0_u32;
-      pi.dy = 0_u32;
-      compno = 0_u32;
-      while compno < pi.numcomps {
-                resno = 0_u32;
-        while resno < pi.comps[compno as usize].numresolutions {
+            break;
+          } else {
+            current_block = 15512526488502093901;
+          }
+        }
+      }
+      loop {
+        match current_block {
+          15512526488502093901 => pi.resno = pi.resno.wrapping_add(1),
+          _ => {
+            if pi.compno < pi.poc.compno1 {
+              pi.resno = pi.poc.resno0
+            } else {
+              pi.x = (pi.x as core::ffi::c_uint)
+                .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)));
+              current_block = 8845338526596852646;
+              break;
+            }
+          }
+        }
+        if pi.resno < opj_uint_min(pi.poc.resno1, pi.comps[pi.compno as usize].numresolutions) {
+          levelno = 0;
+          trx0 = 0;
+          try0 = 0;
+          trx1 = 0;
+          try1 = 0;
+          rpx = 0;
+          rpy = 0;
+          prci = 0;
+          prcj = 0;
+          levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
+
+          if ((pi.comps[pi.compno as usize].dx as u64) << levelno >> levelno)
+            != pi.comps[pi.compno as usize].dx as u64
+            || ((pi.comps[pi.compno as usize].dy as u64) << levelno >> levelno)
+              != pi.comps[pi.compno as usize].dy as u64
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+
+          trx0 = opj_uint64_ceildiv_res_uint32(
+            pi.tx0 as u64,
+            (pi.comps[pi.compno as usize].dx as u64) << levelno,
+          );
+          try0 = opj_uint64_ceildiv_res_uint32(
+            pi.ty0 as u64,
+            (pi.comps[pi.compno as usize].dy as u64) << levelno,
+          );
+          trx1 = opj_uint64_ceildiv_res_uint32(
+            pi.tx1 as u64,
+            (pi.comps[pi.compno as usize].dx as u64) << levelno,
+          );
+          try1 = opj_uint64_ceildiv_res_uint32(
+            pi.ty1 as u64,
+            (pi.comps[pi.compno as usize].dy as u64) << levelno,
+          );
+          rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize]
+            .pdx
+            .wrapping_add(levelno);
+          rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize]
+            .pdy
+            .wrapping_add(levelno);
+
+          if (((pi.comps[pi.compno as usize].dx as u64) << rpx) >> rpx) as u32
+            != pi.comps[pi.compno as usize].dx
+            || (((pi.comps[pi.compno as usize].dy as u64) << rpy) >> rpy) as u32
+              != pi.comps[pi.compno as usize].dy
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          /* See ISO-15441. B.12.1.4 Position-component-resolution level-layer progression */
+          if !(pi.y as u64).is_multiple_of((pi.comps[pi.compno as usize].dy as u64) << rpy)
+            && !(pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy))
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          if !(pi.x as u64).is_multiple_of((pi.comps[pi.compno as usize].dx as u64) << rpx)
+            && !(pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx))
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          if pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw == 0u32
+            || pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph == 0u32
+          {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          if trx0 == trx1 || try0 == try1 {
+            current_block = 15512526488502093901;
+            continue;
+          }
+          prci = opj_uint_floordivpow2(
+            opj_uint64_ceildiv_res_uint32(
+              pi.x as u64,
+              (pi.comps[pi.compno as usize].dx as u64) << levelno,
+            ),
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
+          ) - opj_uint_floordivpow2(
+            trx0,
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
+          );
+          prcj = opj_uint_floordivpow2(
+            opj_uint64_ceildiv_res_uint32(
+              pi.y as u64,
+              (pi.comps[pi.compno as usize].dy as u64) << levelno,
+            ),
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
+          ) - opj_uint_floordivpow2(
+            try0,
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
+          );
+          pi.precno = prci.wrapping_add(
+            prcj.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw),
+          );
+          pi.layno = pi.poc.layno0;
+          current_block = 6281126495347172768;
+          break;
+        } else {
+          pi.compno = pi.compno.wrapping_add(1);
+          current_block = 980989089337379490;
+        }
+      }
+    }
+  }
+  Err(())
+}
+/* *
+Get next packet in component-precinct-resolution-layer order.
+@param pi packet iterator to modify
+@return returns false if pi pointed to the last packet or else returns true
+*/
+fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
+  let mut resno: u32 = 0;
+  let mut levelno: u32 = 0;
+  let mut trx0: u32 = 0;
+  let mut try0: u32 = 0;
+  let mut trx1: u32 = 0;
+  let mut try1: u32 = 0;
+  let mut rpx: u32 = 0;
+  let mut rpy: u32 = 0;
+  let mut prci: u32 = 0;
+  let mut prcj: u32 = 0;
+  let mut current_block: u64;
+  let mut index = 0_u32;
+  if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32) {
+    event_msg!(
+      manager,
+      EVT_ERROR,
+      "opj_pi_next_cprl(): invalid compno0/compno1\n",
+    );
+    return Err(());
+  }
+  if !pi.first {
+    current_block = 13707613154239713890;
+  } else {
+    pi.first = false;
+    pi.compno = pi.poc.compno0;
+    current_block = 3640593987805443782;
+  }
+  loop {
+    match current_block {
+      13707613154239713890 => {
+        pi.layno = pi.layno.wrapping_add(1);
+        current_block = 15594839951440953787;
+      }
+      _ => {
+        if pi.compno >= pi.poc.compno1 {
+          break;
+        }
+        resno = 0;
+        pi.dx = 0_u32;
+        pi.dy = 0_u32;
+        resno = 0_u32;
+        while resno < pi.comps[pi.compno as usize].numresolutions {
           let mut dx: u32 = 0;
           let mut dy: u32 = 0;
-                    if pi.comps[compno as usize].resolutions[resno as usize]
+          if pi.comps[pi.compno as usize].resolutions[resno as usize]
             .pdx
-            .wrapping_add(pi.comps[compno as usize].numresolutions)
+            .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
             .wrapping_sub(1u32)
             .wrapping_sub(resno)
             < 32u32
-            && pi.comps[compno as usize].dx
+            && pi.comps[pi.compno as usize].dx
               <= (2147483647u32)
                 .wrapping_mul(2u32)
                 .wrapping_add(1u32)
                 .wrapping_div(
                   (1u32)
-                    << pi.comps[compno as usize].resolutions[resno as usize]
+                    << pi.comps[pi.compno as usize].resolutions[resno as usize]
                       .pdx
-                      .wrapping_add(pi.comps[compno as usize].numresolutions)
+                      .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
                       .wrapping_sub(1u32)
                       .wrapping_sub(resno),
                 )
           {
-            dx = pi.comps[compno as usize].dx.wrapping_mul(
+            dx = pi.comps[pi.compno as usize].dx.wrapping_mul(
               (1u32)
-                << pi.comps[compno as usize].resolutions[resno as usize]
+                << pi.comps[pi.compno as usize].resolutions[resno as usize]
                   .pdx
-                  .wrapping_add(pi.comps[compno as usize].numresolutions)
+                  .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
                   .wrapping_sub(1u32)
                   .wrapping_sub(resno),
             );
@@ -667,30 +980,30 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
               opj_uint_min(pi.dx, dx)
             }
           }
-          if pi.comps[compno as usize].resolutions[resno as usize]
+          if pi.comps[pi.compno as usize].resolutions[resno as usize]
             .pdy
-            .wrapping_add(pi.comps[compno as usize].numresolutions)
+            .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
             .wrapping_sub(1u32)
             .wrapping_sub(resno)
             < 32u32
-            && pi.comps[compno as usize].dy
+            && pi.comps[pi.compno as usize].dy
               <= (2147483647u32)
                 .wrapping_mul(2u32)
                 .wrapping_add(1u32)
                 .wrapping_div(
                   (1u32)
-                    << pi.comps[compno as usize].resolutions[resno as usize]
+                    << pi.comps[pi.compno as usize].resolutions[resno as usize]
                       .pdy
-                      .wrapping_add(pi.comps[compno as usize].numresolutions)
+                      .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
                       .wrapping_sub(1u32)
                       .wrapping_sub(resno),
                 )
           {
-            dy = pi.comps[compno as usize].dy.wrapping_mul(
+            dy = pi.comps[pi.compno as usize].dy.wrapping_mul(
               (1u32)
-                << pi.comps[compno as usize].resolutions[resno as usize]
+                << pi.comps[pi.compno as usize].resolutions[resno as usize]
                   .pdy
-                  .wrapping_add(pi.comps[compno as usize].numresolutions)
+                  .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
                   .wrapping_sub(1u32)
                   .wrapping_sub(resno),
             );
@@ -702,413 +1015,178 @@ fn opj_pi_next_pcrl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
           }
           resno += 1;
         }
-        compno += 1;
+        if pi.dx == 0u32 || pi.dy == 0u32 {
+          return Err(());
+        }
+        if pi.tp_on == 0 {
+          pi.poc.ty0 = pi.ty0;
+          pi.poc.tx0 = pi.tx0;
+          pi.poc.ty1 = pi.ty1;
+          pi.poc.tx1 = pi.tx1
+        }
+        pi.y = pi.poc.ty0;
+        current_block = 18153031941552419006;
       }
-      if pi.dx == 0u32 || pi.dy == 0u32 {
-        return Err(());
-      }
-      if pi.tp_on == 0 {
-        pi.poc.ty0 = pi.ty0;
-        pi.poc.tx0 = pi.tx0;
-        pi.poc.ty1 = pi.ty1;
-        pi.poc.tx1 = pi.tx1
-      }
-      pi.y = pi.poc.ty0;
-      current_block = 7245201122033322888;
     }
     loop {
       match current_block {
-        10853015579903106591 => {
-          pi.layno = pi.layno.wrapping_add(1);
-          current_block = 6281126495347172768;
-        }
-        _ => {
-          if pi.y >= pi.poc.ty1 {
+        18153031941552419006 => {
+          if pi.y < pi.poc.ty1 {
+            pi.x = pi.poc.tx0
+          } else {
+            pi.compno = pi.compno.wrapping_add(1);
+            current_block = 3640593987805443782;
             break;
           }
-          pi.x = pi.poc.tx0;
-          current_block = 8845338526596852646;
+          current_block = 10692455896603418738;
+        }
+        _ => {
+          if pi.layno < pi.poc.layno1 {
+            index = pi
+              .layno
+              .wrapping_mul(pi.step_l)
+              .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
+              .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
+              .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
+            if index >= pi.include_size {
+              event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
+              return Err(());
+            }
+            if pi.include[index as usize].get() == 0 {
+              pi.include[index as usize].set(1_i16);
+              return Ok(());
+            }
+            current_block = 13707613154239713890;
+            break;
+          } else {
+            current_block = 3123434771885419771;
+          }
         }
       }
       loop {
         match current_block {
-          8845338526596852646 => {
+          3123434771885419771 => pi.resno = pi.resno.wrapping_add(1),
+          _ => {
             if pi.x < pi.poc.tx1 {
-              pi.compno = pi.poc.compno0
+              pi.resno = pi.poc.resno0
             } else {
               pi.y = (pi.y as core::ffi::c_uint)
                 .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)));
-              current_block = 7245201122033322888;
+              current_block = 18153031941552419006;
               break;
-            }
-            current_block = 980989089337379490;
-          }
-          _ => {
-            if pi.layno < pi.poc.layno1 {
-              index = pi
-                .layno
-                .wrapping_mul(pi.step_l)
-                .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
-                .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
-                .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
-              if index >= pi.include_size {
-                event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
-                return Err(());
-              }
-              if pi.include[index as usize].get() == 0 {
-                pi.include[index as usize].set(1_i16);
-                return Ok(());
-              }
-              current_block = 10853015579903106591;
-              break;
-            } else {
-              current_block = 15512526488502093901;
             }
           }
         }
-        loop {
-          match current_block {
-            15512526488502093901 => pi.resno = pi.resno.wrapping_add(1),
-            _ => {
-              if pi.compno < pi.poc.compno1 {
-                                pi.resno = pi.poc.resno0
-              } else {
-                pi.x = (pi.x as core::ffi::c_uint)
-                  .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)));
-                current_block = 8845338526596852646;
-                break;
-              }
-            }
+        if pi.resno < opj_uint_min(pi.poc.resno1, pi.comps[pi.compno as usize].numresolutions) {
+          levelno = 0;
+          trx0 = 0;
+          try0 = 0;
+          trx1 = 0;
+          try1 = 0;
+          rpx = 0;
+          rpy = 0;
+          prci = 0;
+          prcj = 0;
+          levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
+
+          if ((pi.comps[pi.compno as usize].dx as u64) << levelno >> levelno)
+            != pi.comps[pi.compno as usize].dx as u64
+            || ((pi.comps[pi.compno as usize].dy as u64) << levelno >> levelno)
+              != pi.comps[pi.compno as usize].dy as u64
+          {
+            current_block = 3123434771885419771;
+            continue;
           }
-          if pi.resno < opj_uint_min(pi.poc.resno1, pi.comps[pi.compno as usize].numresolutions) {
-            levelno = 0;
-            trx0 = 0;
-            try0 = 0;
-            trx1 = 0;
-            try1 = 0;
-            rpx = 0;
-            rpy = 0;
-            prci = 0;
-            prcj = 0;
-                        levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
 
-            if ((pi.comps[pi.compno as usize].dx as u64) << levelno >> levelno) != pi.comps[pi.compno as usize].dx as u64
-              || ((pi.comps[pi.compno as usize].dy as u64) << levelno >> levelno) != pi.comps[pi.compno as usize].dy as u64
-            {
-              current_block = 15512526488502093901;
-              continue;
-            }
+          trx0 = opj_uint64_ceildiv_res_uint32(
+            pi.tx0 as u64,
+            (pi.comps[pi.compno as usize].dx as u64) << levelno,
+          );
+          try0 = opj_uint64_ceildiv_res_uint32(
+            pi.ty0 as u64,
+            (pi.comps[pi.compno as usize].dy as u64) << levelno,
+          );
+          trx1 = opj_uint64_ceildiv_res_uint32(
+            pi.tx1 as u64,
+            (pi.comps[pi.compno as usize].dx as u64) << levelno,
+          );
+          try1 = opj_uint64_ceildiv_res_uint32(
+            pi.ty1 as u64,
+            (pi.comps[pi.compno as usize].dy as u64) << levelno,
+          );
+          rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize]
+            .pdx
+            .wrapping_add(levelno);
+          rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize]
+            .pdy
+            .wrapping_add(levelno);
 
-            trx0 = opj_uint64_ceildiv_res_uint32(pi.tx0 as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno);
-            try0 = opj_uint64_ceildiv_res_uint32(pi.ty0 as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno);
-            trx1 = opj_uint64_ceildiv_res_uint32(pi.tx1 as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno);
-            try1 = opj_uint64_ceildiv_res_uint32(pi.ty1 as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno);
-            rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx.wrapping_add(levelno);
-            rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy.wrapping_add(levelno);
-
-            if (((pi.comps[pi.compno as usize].dx as u64) << rpx) >> rpx) as u32 != pi.comps[pi.compno as usize].dx
-              || (((pi.comps[pi.compno as usize].dy as u64) << rpy) >> rpy) as u32 != pi.comps[pi.compno as usize].dy
-            {
-              current_block = 15512526488502093901;
-              continue;
-            }
-            /* See ISO-15441. B.12.1.4 Position-component-resolution level-layer progression */
-            if !(pi.y as u64).is_multiple_of((pi.comps[pi.compno as usize].dy as u64) << rpy)
-              && !(pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy))
-            {
-              current_block = 15512526488502093901;
-              continue;
-            }
-            if !(pi.x as u64).is_multiple_of((pi.comps[pi.compno as usize].dx as u64) << rpx)
-              && !(pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx))
-            {
-              current_block = 15512526488502093901;
-              continue;
-            }
-            if pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw == 0u32 || pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph == 0u32 {
-              current_block = 15512526488502093901;
-              continue;
-            }
-            if trx0 == trx1 || try0 == try1 {
-              current_block = 15512526488502093901;
-              continue;
-            }
-            prci = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32(pi.x as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno),
-              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
-            ) - opj_uint_floordivpow2(trx0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx);
-            prcj = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32(pi.y as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno),
-              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
-            ) - opj_uint_floordivpow2(try0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy);
-            pi.precno = prci.wrapping_add(prcj.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw));
-            pi.layno = pi.poc.layno0;
-            current_block = 6281126495347172768;
-            break;
-          } else {
-            pi.compno = pi.compno.wrapping_add(1);
-            current_block = 980989089337379490;
+          if (((pi.comps[pi.compno as usize].dx as u64) << rpx) >> rpx) as u32
+            != pi.comps[pi.compno as usize].dx
+            || (((pi.comps[pi.compno as usize].dy as u64) << rpy) >> rpy) as u32
+              != pi.comps[pi.compno as usize].dy
+          {
+            current_block = 3123434771885419771;
+            continue;
           }
-        }
-      }
-    }
-Err(())
-}
-/* *
-Get next packet in component-precinct-resolution-layer order.
-@param pi packet iterator to modify
-@return returns false if pi pointed to the last packet or else returns true
-*/
-fn opj_pi_next_cprl(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
-    let mut resno: u32 = 0;
-    let mut levelno: u32 = 0;
-    let mut trx0: u32 = 0;
-    let mut try0: u32 = 0;
-    let mut trx1: u32 = 0;
-    let mut try1: u32 = 0;
-    let mut rpx: u32 = 0;
-    let mut rpy: u32 = 0;
-    let mut prci: u32 = 0;
-    let mut prcj: u32 = 0;
-    let mut current_block: u64;
-    let mut index = 0_u32;
-    if pi.poc.compno0 >= pi.numcomps || pi.poc.compno1 >= pi.numcomps.wrapping_add(1u32)
-    {
-      event_msg!(
-        manager,
-        EVT_ERROR,
-        "opj_pi_next_cprl(): invalid compno0/compno1\n",
-      );
-      return Err(());
-    }
-    if !pi.first {
-            current_block = 13707613154239713890;
-    } else {
-      pi.first = false;
-      pi.compno = pi.poc.compno0;
-      current_block = 3640593987805443782;
-    }
-    loop {
-      match current_block {
-        13707613154239713890 => {
-          pi.layno = pi.layno.wrapping_add(1);
+          /* See ISO-15441. B.12.1.5 Component-position-resolution level-layer progression */
+          if !(pi.y as u64).is_multiple_of((pi.comps[pi.compno as usize].dy as u64) << rpy)
+            && !(pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy))
+          {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          if !(pi.x as u64).is_multiple_of((pi.comps[pi.compno as usize].dx as u64) << rpx)
+            && !(pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx))
+          {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          if pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw == 0u32
+            || pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph == 0u32
+          {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          if trx0 == trx1 || try0 == try1 {
+            current_block = 3123434771885419771;
+            continue;
+          }
+          prci = opj_uint_floordivpow2(
+            opj_uint64_ceildiv_res_uint32(
+              pi.x as u64,
+              (pi.comps[pi.compno as usize].dx as u64) << levelno,
+            ),
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
+          ) - opj_uint_floordivpow2(
+            trx0,
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
+          );
+          prcj = opj_uint_floordivpow2(
+            opj_uint64_ceildiv_res_uint32(
+              pi.y as u64,
+              (pi.comps[pi.compno as usize].dy as u64) << levelno,
+            ),
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
+          ) - opj_uint_floordivpow2(
+            try0,
+            pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
+          );
+          pi.precno = prci.wrapping_add(
+            prcj.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw),
+          );
+          pi.layno = pi.poc.layno0;
           current_block = 15594839951440953787;
-        }
-        _ => {
-          if pi.compno >= pi.poc.compno1 {
-            break;
-          }
-          resno = 0;
-                    pi.dx = 0_u32;
-          pi.dy = 0_u32;
-          resno = 0_u32;
-          while resno < pi.comps[pi.compno as usize].numresolutions {
-            let mut dx: u32 = 0;
-            let mut dy: u32 = 0;
-                        if pi.comps[pi.compno as usize].resolutions[resno as usize]
-              .pdx
-              .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
-              .wrapping_sub(1u32)
-              .wrapping_sub(resno)
-              < 32u32
-              && pi.comps[pi.compno as usize].dx
-                <= (2147483647u32)
-                  .wrapping_mul(2u32)
-                  .wrapping_add(1u32)
-                  .wrapping_div(
-                    (1u32)
-                      << pi.comps[pi.compno as usize].resolutions[resno as usize]
-                        .pdx
-                        .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
-                        .wrapping_sub(1u32)
-                        .wrapping_sub(resno),
-                  )
-            {
-              dx = pi.comps[pi.compno as usize].dx.wrapping_mul(
-                (1u32)
-                  << pi.comps[pi.compno as usize].resolutions[resno as usize]
-                    .pdx
-                    .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
-                    .wrapping_sub(1u32)
-                    .wrapping_sub(resno),
-              );
-              pi.dx = if pi.dx == 0 {
-                dx
-              } else {
-                opj_uint_min(pi.dx, dx)
-              }
-            }
-            if pi.comps[pi.compno as usize].resolutions[resno as usize]
-              .pdy
-              .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
-              .wrapping_sub(1u32)
-              .wrapping_sub(resno)
-              < 32u32
-              && pi.comps[pi.compno as usize].dy
-                <= (2147483647u32)
-                  .wrapping_mul(2u32)
-                  .wrapping_add(1u32)
-                  .wrapping_div(
-                    (1u32)
-                      << pi.comps[pi.compno as usize].resolutions[resno as usize]
-                        .pdy
-                        .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
-                        .wrapping_sub(1u32)
-                        .wrapping_sub(resno),
-                  )
-            {
-              dy = pi.comps[pi.compno as usize].dy.wrapping_mul(
-                (1u32)
-                  << pi.comps[pi.compno as usize].resolutions[resno as usize]
-                    .pdy
-                    .wrapping_add(pi.comps[pi.compno as usize].numresolutions)
-                    .wrapping_sub(1u32)
-                    .wrapping_sub(resno),
-              );
-              pi.dy = if pi.dy == 0 {
-                dy
-              } else {
-                opj_uint_min(pi.dy, dy)
-              }
-            }
-            resno += 1;
-          }
-          if pi.dx == 0u32 || pi.dy == 0u32 {
-            return Err(());
-          }
-          if pi.tp_on == 0 {
-            pi.poc.ty0 = pi.ty0;
-            pi.poc.tx0 = pi.tx0;
-            pi.poc.ty1 = pi.ty1;
-            pi.poc.tx1 = pi.tx1
-          }
-          pi.y = pi.poc.ty0;
-          current_block = 18153031941552419006;
-        }
-      }
-      loop {
-        match current_block {
-          18153031941552419006 => {
-            if pi.y < pi.poc.ty1 {
-              pi.x = pi.poc.tx0
-            } else {
-              pi.compno = pi.compno.wrapping_add(1);
-              current_block = 3640593987805443782;
-              break;
-            }
-            current_block = 10692455896603418738;
-          }
-          _ => {
-            if pi.layno < pi.poc.layno1 {
-              index = pi
-                .layno
-                .wrapping_mul(pi.step_l)
-                .wrapping_add(pi.resno.wrapping_mul(pi.step_r))
-                .wrapping_add(pi.compno.wrapping_mul(pi.step_c))
-                .wrapping_add(pi.precno.wrapping_mul(pi.step_p));
-              if index >= pi.include_size {
-                event_msg!(manager, EVT_ERROR, "Invalid access to pi->include",);
-                return Err(());
-              }
-              if pi.include[index as usize].get() == 0 {
-                pi.include[index as usize].set(1_i16);
-                return Ok(());
-              }
-              current_block = 13707613154239713890;
-              break;
-            } else {
-              current_block = 3123434771885419771;
-            }
-          }
-        }
-        loop {
-          match current_block {
-            3123434771885419771 => pi.resno = pi.resno.wrapping_add(1),
-            _ => {
-              if pi.x < pi.poc.tx1 {
-                pi.resno = pi.poc.resno0
-              } else {
-                pi.y = (pi.y as core::ffi::c_uint)
-                  .wrapping_add(pi.dy.wrapping_sub(pi.y.wrapping_rem(pi.dy)));
-                current_block = 18153031941552419006;
-                break;
-              }
-            }
-          }
-          if pi.resno < opj_uint_min(pi.poc.resno1, pi.comps[pi.compno as usize].numresolutions) {
-            levelno = 0;
-            trx0 = 0;
-            try0 = 0;
-            trx1 = 0;
-            try1 = 0;
-            rpx = 0;
-            rpy = 0;
-            prci = 0;
-            prcj = 0;
-                        levelno = pi.comps[pi.compno as usize].numresolutions - 1 - pi.resno;
-
-            if ((pi.comps[pi.compno as usize].dx as u64) << levelno >> levelno) != pi.comps[pi.compno as usize].dx as u64
-              || ((pi.comps[pi.compno as usize].dy as u64) << levelno >> levelno) != pi.comps[pi.compno as usize].dy as u64
-            {
-              current_block = 3123434771885419771;
-              continue;
-            }
-
-            trx0 = opj_uint64_ceildiv_res_uint32(pi.tx0 as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno);
-            try0 = opj_uint64_ceildiv_res_uint32(pi.ty0 as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno);
-            trx1 = opj_uint64_ceildiv_res_uint32(pi.tx1 as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno);
-            try1 = opj_uint64_ceildiv_res_uint32(pi.ty1 as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno);
-            rpx = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx.wrapping_add(levelno);
-            rpy = pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy.wrapping_add(levelno);
-
-            if (((pi.comps[pi.compno as usize].dx as u64) << rpx) >> rpx) as u32 != pi.comps[pi.compno as usize].dx
-              || (((pi.comps[pi.compno as usize].dy as u64) << rpy) >> rpy) as u32 != pi.comps[pi.compno as usize].dy
-            {
-              current_block = 3123434771885419771;
-              continue;
-            }
-            /* See ISO-15441. B.12.1.5 Component-position-resolution level-layer progression */
-            if !(pi.y as u64).is_multiple_of((pi.comps[pi.compno as usize].dy as u64) << rpy)
-              && !(pi.y == pi.ty0 && !((try0 as u64) << levelno).is_multiple_of(1u64 << rpy))
-            {
-              current_block = 3123434771885419771;
-              continue;
-            }
-            if !(pi.x as u64).is_multiple_of((pi.comps[pi.compno as usize].dx as u64) << rpx)
-              && !(pi.x == pi.tx0 && !((trx0 as u64) << levelno).is_multiple_of(1u64 << rpx))
-            {
-              current_block = 3123434771885419771;
-              continue;
-            }
-            if pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw == 0u32 || pi.comps[pi.compno as usize].resolutions[pi.resno as usize].ph == 0u32 {
-              current_block = 3123434771885419771;
-              continue;
-            }
-            if trx0 == trx1 || try0 == try1 {
-              current_block = 3123434771885419771;
-              continue;
-            }
-            prci = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32(pi.x as u64, (pi.comps[pi.compno as usize].dx as u64) << levelno),
-              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx,
-            ) - opj_uint_floordivpow2(trx0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdx);
-            prcj = opj_uint_floordivpow2(
-              opj_uint64_ceildiv_res_uint32(pi.y as u64, (pi.comps[pi.compno as usize].dy as u64) << levelno),
-              pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy,
-            ) - opj_uint_floordivpow2(try0, pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pdy);
-            pi.precno = prci.wrapping_add(prcj.wrapping_mul(pi.comps[pi.compno as usize].resolutions[pi.resno as usize].pw));
-            pi.layno = pi.poc.layno0;
-            current_block = 15594839951440953787;
-            break;
-          } else {
-            pi.x = (pi.x as core::ffi::c_uint)
-              .wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)));
-            current_block = 10692455896603418738;
-          }
+          break;
+        } else {
+          pi.x =
+            (pi.x as core::ffi::c_uint).wrapping_add(pi.dx.wrapping_sub(pi.x.wrapping_rem(pi.dx)));
+          current_block = 10692455896603418738;
         }
       }
     }
-Err(())
+  }
+  Err(())
 }
 
 /* *
@@ -1163,94 +1241,90 @@ pub(crate) fn opj_get_encoding_parameters(
   l_ty0 = p_cp.ty0.wrapping_add(q.wrapping_mul(p_cp.tdy));
   *p_ty0 = opj_uint_max(l_ty0, p_image.y0);
   *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, p_cp.tdy), p_image.y1);
-    /* max precision is 0 (can only grow) */
-    *p_max_prec = 0_u32;
-    *p_max_res = 0_u32;
-    /* take the largest value for dx_min and dy_min */
-    *p_dx_min = 0x7fffffff_u32;
-    *p_dy_min = 0x7fffffff_u32;
-    compno = 0_u32;
-    while compno < p_image.numcomps {
-      /* arithmetic variables to calculate */
-      let mut l_level_no: u32 = 0;
-      let mut l_rx0: u32 = 0;
-      let mut l_ry0: u32 = 0;
-      let mut l_rx1: u32 = 0;
-      let mut l_ry1: u32 = 0;
-      let mut l_px0: u32 = 0;
-      let mut l_py0: u32 = 0;
-      let mut l_px1: u32 = 0;
-      let mut py1: u32 = 0;
-      let mut l_pdx: u32 = 0;
-      let mut l_pdy: u32 = 0;
-      let mut l_pw: u32 = 0;
-      let mut l_ph: u32 = 0;
-      let mut l_product: u32 = 0;
-      let mut l_tcx0: u32 = 0;
-      let mut l_tcy0: u32 = 0;
-      let mut l_tcx1: u32 = 0;
-      let mut l_tcy1: u32 = 0;
-      let l_tccp = &tcp.tccps[compno as usize];
-      let l_img_comp = &p_image.comps[compno as usize];
-      l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp.dx);
-      l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp.dy);
-      l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp.dx);
-      l_tcy1 = opj_uint_ceildiv(*p_ty1, l_img_comp.dy);
-      if l_tccp.numresolutions > *p_max_res {
-        *p_max_res = l_tccp.numresolutions
-      }
-      /* use custom size for precincts */
-      resno = 0_u32;
-      while resno < l_tccp.numresolutions {
-        let mut l_dx: u64 = 0;
-        let mut l_dy: u64 = 0;
-
-        /* precinct width and height */
-        l_pdx = l_tccp.prcw[resno as usize];
-        l_pdy = l_tccp.prch[resno as usize];
-
-        l_dx = l_img_comp.dx as u64 * ((1u64) << (l_pdx + l_tccp.numresolutions - 1 - resno));
-        l_dy =
-          l_img_comp.dy as u64 * ((1u64) << (l_pdy + l_tccp.numresolutions - 1u32 - resno));
-        /* take the minimum size for dx for each comp and resolution */
-        if l_dx <= u32::MAX as u64 {
-          *p_dx_min = opj_uint_min(*p_dx_min, l_dx as u32);
-        }
-        if l_dy <= u32::MAX as u64 {
-          *p_dy_min = opj_uint_min(*p_dy_min, l_dy as u32);
-        }
-        /* various calculations of extents */
-        l_level_no = l_tccp
-          .numresolutions
-          .wrapping_sub(1u32)
-          .wrapping_sub(resno);
-        l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
-        l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
-        l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
-        l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
-        l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
-        l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
-        l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
-        py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
-        l_pw = if l_rx0 == l_rx1 {
-          0u32
-        } else {
-          (l_px1.wrapping_sub(l_px0)) >> l_pdx
-        };
-        l_ph = if l_ry0 == l_ry1 {
-          0u32
-        } else {
-          (py1.wrapping_sub(l_py0)) >> l_pdy
-        };
-        l_product = l_pw.wrapping_mul(l_ph);
-        /* update precision */
-        if l_product > *p_max_prec {
-          *p_max_prec = l_product
-        }
-        resno += 1;
-      }
-      compno += 1;
+  /* max precision is 0 (can only grow) */
+  *p_max_prec = 0_u32;
+  *p_max_res = 0_u32;
+  /* take the largest value for dx_min and dy_min */
+  *p_dx_min = 0x7fffffff_u32;
+  *p_dy_min = 0x7fffffff_u32;
+  compno = 0_u32;
+  while compno < p_image.numcomps {
+    /* arithmetic variables to calculate */
+    let mut l_level_no: u32 = 0;
+    let mut l_rx0: u32 = 0;
+    let mut l_ry0: u32 = 0;
+    let mut l_rx1: u32 = 0;
+    let mut l_ry1: u32 = 0;
+    let mut l_px0: u32 = 0;
+    let mut l_py0: u32 = 0;
+    let mut l_px1: u32 = 0;
+    let mut py1: u32 = 0;
+    let mut l_pdx: u32 = 0;
+    let mut l_pdy: u32 = 0;
+    let mut l_pw: u32 = 0;
+    let mut l_ph: u32 = 0;
+    let mut l_product: u32 = 0;
+    let mut l_tcx0: u32 = 0;
+    let mut l_tcy0: u32 = 0;
+    let mut l_tcx1: u32 = 0;
+    let mut l_tcy1: u32 = 0;
+    let l_tccp = &tcp.tccps[compno as usize];
+    let l_img_comp = &p_image.comps[compno as usize];
+    l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp.dx);
+    l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp.dy);
+    l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp.dx);
+    l_tcy1 = opj_uint_ceildiv(*p_ty1, l_img_comp.dy);
+    if l_tccp.numresolutions > *p_max_res {
+      *p_max_res = l_tccp.numresolutions
     }
+    /* use custom size for precincts */
+    resno = 0_u32;
+    while resno < l_tccp.numresolutions {
+      let mut l_dx: u64 = 0;
+      let mut l_dy: u64 = 0;
+
+      /* precinct width and height */
+      l_pdx = l_tccp.prcw[resno as usize];
+      l_pdy = l_tccp.prch[resno as usize];
+
+      l_dx = l_img_comp.dx as u64 * ((1u64) << (l_pdx + l_tccp.numresolutions - 1 - resno));
+      l_dy = l_img_comp.dy as u64 * ((1u64) << (l_pdy + l_tccp.numresolutions - 1u32 - resno));
+      /* take the minimum size for dx for each comp and resolution */
+      if l_dx <= u32::MAX as u64 {
+        *p_dx_min = opj_uint_min(*p_dx_min, l_dx as u32);
+      }
+      if l_dy <= u32::MAX as u64 {
+        *p_dy_min = opj_uint_min(*p_dy_min, l_dy as u32);
+      }
+      /* various calculations of extents */
+      l_level_no = l_tccp.numresolutions.wrapping_sub(1u32).wrapping_sub(resno);
+      l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
+      l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
+      l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
+      l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
+      l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
+      l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
+      l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
+      py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
+      l_pw = if l_rx0 == l_rx1 {
+        0u32
+      } else {
+        (l_px1.wrapping_sub(l_px0)) >> l_pdx
+      };
+      l_ph = if l_ry0 == l_ry1 {
+        0u32
+      } else {
+        (py1.wrapping_sub(l_py0)) >> l_pdy
+      };
+      l_product = l_pw.wrapping_mul(l_ph);
+      /* update precision */
+      if l_product > *p_max_prec {
+        *p_max_prec = l_product
+      }
+      resno += 1;
+    }
+    compno += 1;
+  }
 }
 
 /* *
@@ -1311,119 +1385,120 @@ pub(crate) fn opj_get_all_encoding_parameters(
   l_ty0 = p_cp.ty0.wrapping_add(q.wrapping_mul(p_cp.tdy));
   *p_ty0 = opj_uint_max(l_ty0, p_image.y0);
   *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, p_cp.tdy), p_image.y1);
-    /* max precision and resolution is 0 (can only grow)*/
-    *p_max_prec = 0_u32;
-    *p_max_res = 0_u32;
-    /* take the largest value for dx_min and dy_min*/
-    *p_dx_min = 0x7fffffff_u32;
-    *p_dy_min = 0x7fffffff_u32;
-    compno = 0_u32;
-    while compno < p_image.numcomps {
-      /* arithmetic variables to calculate*/
-      let mut l_level_no: u32 = 0;
-      let mut l_rx0: u32 = 0;
-      let mut l_ry0: u32 = 0;
-      let mut l_rx1: u32 = 0;
-      let mut l_ry1: u32 = 0;
-      let mut l_px0: u32 = 0;
-      let mut l_py0: u32 = 0;
-      let mut l_px1: u32 = 0;
-      let mut py1: u32 = 0;
-      let mut l_product: u32 = 0;
-      let mut l_tcx0: u32 = 0;
-      let mut l_tcy0: u32 = 0;
-      let mut l_tcx1: u32 = 0;
-      let mut l_tcy1: u32 = 0;
-      let mut l_pdx: u32 = 0;
-      let mut l_pdy: u32 = 0;
-      let mut l_pw: u32 = 0;
-      let mut l_ph: u32 = 0;
-      let l_tccp = &tcp.tccps[compno as usize];
-      let l_img_comp = &p_image.comps[compno as usize];
-      /* Each component owns a stride of 4 u32 per resolution (max 33). */
-      let mut l_resolution_offset = (compno as usize).wrapping_mul((4i32 * OPJ_J2K_MAXRLVLS as i32) as usize);
-      l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp.dx);
-      l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp.dy);
-      l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp.dx);
-      l_tcy1 = opj_uint_ceildiv(*p_ty1, l_img_comp.dy);
-      if l_tccp.numresolutions > *p_max_res {
-        *p_max_res = l_tccp.numresolutions
-      }
-      /* use custom size for precincts*/
-      l_level_no = l_tccp.numresolutions;
-      resno = 0_u32;
-      while resno < l_tccp.numresolutions {
-        let mut l_dx: u32 = 0;
-        let mut l_dy: u32 = 0;
-        l_level_no = l_level_no.wrapping_sub(1);
-        /* precinct width and height*/
-        l_pdx = l_tccp.prcw[resno as usize];
-        l_pdy = l_tccp.prch[resno as usize];
-        if let Some(buf) = p_resolutions.as_deref_mut() {
-          buf[l_resolution_offset] = l_pdx;
-          l_resolution_offset += 1;
-          buf[l_resolution_offset] = l_pdy;
-          l_resolution_offset += 1;
-        }
-        if l_pdx.wrapping_add(l_level_no) < 32u32
-          && l_img_comp.dx
-            <= (2147483647u32)
-              .wrapping_mul(2u32)
-              .wrapping_add(1u32)
-              .wrapping_div((1u32) << l_pdx.wrapping_add(l_level_no))
-        {
-          l_dx = l_img_comp
-            .dx
-            .wrapping_mul((1u32) << l_pdx.wrapping_add(l_level_no));
-          /* take the minimum size for l_dx for each comp and resolution*/
-          *p_dx_min = opj_uint_min(*p_dx_min, l_dx)
-        }
-        if l_pdy.wrapping_add(l_level_no) < 32u32
-          && l_img_comp.dy
-            <= (2147483647u32)
-              .wrapping_mul(2u32)
-              .wrapping_add(1u32)
-              .wrapping_div((1u32) << l_pdy.wrapping_add(l_level_no))
-        {
-          l_dy = l_img_comp
-            .dy
-            .wrapping_mul((1u32) << l_pdy.wrapping_add(l_level_no));
-          *p_dy_min = opj_uint_min(*p_dy_min, l_dy)
-        }
-        /* various calculations of extents*/
-        l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
-        l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
-        l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
-        l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
-        l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
-        l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
-        l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
-        py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
-        l_pw = if l_rx0 == l_rx1 {
-          0u32
-        } else {
-          (l_px1.wrapping_sub(l_px0)) >> l_pdx
-        };
-        l_ph = if l_ry0 == l_ry1 {
-          0u32
-        } else {
-          (py1.wrapping_sub(l_py0)) >> l_pdy
-        };
-        if let Some(buf) = p_resolutions.as_deref_mut() {
-          buf[l_resolution_offset] = l_pw;
-          l_resolution_offset += 1;
-          buf[l_resolution_offset] = l_ph;
-          l_resolution_offset += 1;
-        }
-        l_product = l_pw.wrapping_mul(l_ph);
-        /* update precision*/
-        if l_product > *p_max_prec {
-          *p_max_prec = l_product
-        }
-        resno += 1;
-      }
-      compno += 1;
+  /* max precision and resolution is 0 (can only grow)*/
+  *p_max_prec = 0_u32;
+  *p_max_res = 0_u32;
+  /* take the largest value for dx_min and dy_min*/
+  *p_dx_min = 0x7fffffff_u32;
+  *p_dy_min = 0x7fffffff_u32;
+  compno = 0_u32;
+  while compno < p_image.numcomps {
+    /* arithmetic variables to calculate*/
+    let mut l_level_no: u32 = 0;
+    let mut l_rx0: u32 = 0;
+    let mut l_ry0: u32 = 0;
+    let mut l_rx1: u32 = 0;
+    let mut l_ry1: u32 = 0;
+    let mut l_px0: u32 = 0;
+    let mut l_py0: u32 = 0;
+    let mut l_px1: u32 = 0;
+    let mut py1: u32 = 0;
+    let mut l_product: u32 = 0;
+    let mut l_tcx0: u32 = 0;
+    let mut l_tcy0: u32 = 0;
+    let mut l_tcx1: u32 = 0;
+    let mut l_tcy1: u32 = 0;
+    let mut l_pdx: u32 = 0;
+    let mut l_pdy: u32 = 0;
+    let mut l_pw: u32 = 0;
+    let mut l_ph: u32 = 0;
+    let l_tccp = &tcp.tccps[compno as usize];
+    let l_img_comp = &p_image.comps[compno as usize];
+    /* Each component owns a stride of 4 u32 per resolution (max 33). */
+    let mut l_resolution_offset =
+      (compno as usize).wrapping_mul((4i32 * OPJ_J2K_MAXRLVLS as i32) as usize);
+    l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp.dx);
+    l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp.dy);
+    l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp.dx);
+    l_tcy1 = opj_uint_ceildiv(*p_ty1, l_img_comp.dy);
+    if l_tccp.numresolutions > *p_max_res {
+      *p_max_res = l_tccp.numresolutions
     }
+    /* use custom size for precincts*/
+    l_level_no = l_tccp.numresolutions;
+    resno = 0_u32;
+    while resno < l_tccp.numresolutions {
+      let mut l_dx: u32 = 0;
+      let mut l_dy: u32 = 0;
+      l_level_no = l_level_no.wrapping_sub(1);
+      /* precinct width and height*/
+      l_pdx = l_tccp.prcw[resno as usize];
+      l_pdy = l_tccp.prch[resno as usize];
+      if let Some(buf) = p_resolutions.as_deref_mut() {
+        buf[l_resolution_offset] = l_pdx;
+        l_resolution_offset += 1;
+        buf[l_resolution_offset] = l_pdy;
+        l_resolution_offset += 1;
+      }
+      if l_pdx.wrapping_add(l_level_no) < 32u32
+        && l_img_comp.dx
+          <= (2147483647u32)
+            .wrapping_mul(2u32)
+            .wrapping_add(1u32)
+            .wrapping_div((1u32) << l_pdx.wrapping_add(l_level_no))
+      {
+        l_dx = l_img_comp
+          .dx
+          .wrapping_mul((1u32) << l_pdx.wrapping_add(l_level_no));
+        /* take the minimum size for l_dx for each comp and resolution*/
+        *p_dx_min = opj_uint_min(*p_dx_min, l_dx)
+      }
+      if l_pdy.wrapping_add(l_level_no) < 32u32
+        && l_img_comp.dy
+          <= (2147483647u32)
+            .wrapping_mul(2u32)
+            .wrapping_add(1u32)
+            .wrapping_div((1u32) << l_pdy.wrapping_add(l_level_no))
+      {
+        l_dy = l_img_comp
+          .dy
+          .wrapping_mul((1u32) << l_pdy.wrapping_add(l_level_no));
+        *p_dy_min = opj_uint_min(*p_dy_min, l_dy)
+      }
+      /* various calculations of extents*/
+      l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
+      l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
+      l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
+      l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
+      l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
+      l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
+      l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
+      py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
+      l_pw = if l_rx0 == l_rx1 {
+        0u32
+      } else {
+        (l_px1.wrapping_sub(l_px0)) >> l_pdx
+      };
+      l_ph = if l_ry0 == l_ry1 {
+        0u32
+      } else {
+        (py1.wrapping_sub(l_py0)) >> l_pdy
+      };
+      if let Some(buf) = p_resolutions.as_deref_mut() {
+        buf[l_resolution_offset] = l_pw;
+        l_resolution_offset += 1;
+        buf[l_resolution_offset] = l_ph;
+        l_resolution_offset += 1;
+      }
+      l_product = l_pw.wrapping_mul(l_ph);
+      /* update precision*/
+      if l_product > *p_max_prec {
+        *p_max_prec = l_product
+      }
+      resno += 1;
+    }
+    compno += 1;
+  }
 }
 /* *
  * Allocates memory for a packet iterator. Data and data sizes are set by this operation.
@@ -1434,11 +1509,7 @@ pub(crate) fn opj_get_all_encoding_parameters(
  * @param   tileno  the index of the tile from which creating the packet iterator.
  * @param   manager Event manager
  */
-pub(crate) fn opj_pi_create(
-  image: &CoreImage,
-  cp: &Cp,
-  tileno: u32,
-) -> Vec<PiIterator> {
+pub(crate) fn opj_pi_create(image: &CoreImage, cp: &Cp, tileno: u32) -> Vec<PiIterator> {
   /* loop*/
   let mut pino: u32 = 0;
   let mut compno: u32 = 0;
@@ -1495,47 +1566,48 @@ pub(crate) fn opj_pi_update_encode_poc_and_final(
   let l_tcp = &mut p_cp.tcps[p_tileno as usize];
   /* number of iterations in the loop */
   l_poc_bound = l_tcp.numpocs.wrapping_add(1u32);
-    l_tcp.pocs[0].compS = l_tcp.pocs[0].compno0;
-    l_tcp.pocs[0].compE = l_tcp.pocs[0].compno1;
-    l_tcp.pocs[0].resS = l_tcp.pocs[0].resno0;
-    l_tcp.pocs[0].resE = l_tcp.pocs[0].resno1;
-    l_tcp.pocs[0].layE = l_tcp.pocs[0].layno1;
-    /* special treatment for the first element*/
-    l_tcp.pocs[0].layS = 0_u32;
-    l_tcp.pocs[0].prg = l_tcp.pocs[0].prg1;
-    l_tcp.pocs[0].prcS = 0_u32;
-    l_tcp.pocs[0].prcE = p_max_prec;
-    l_tcp.pocs[0].txS = p_tx0;
-    l_tcp.pocs[0].txE = p_tx1;
-    l_tcp.pocs[0].tyS = p_ty0;
-    l_tcp.pocs[0].tyE = p_ty1;
-    l_tcp.pocs[0].dx = p_dx_min;
-    l_tcp.pocs[0].dy = p_dy_min;
-    
-    pino = 1_u32;
-    while pino < l_poc_bound {
-      l_tcp.pocs[pino as usize].compS = l_tcp.pocs[pino as usize].compno0;
-      l_tcp.pocs[pino as usize].compE = l_tcp.pocs[pino as usize].compno1;
-      l_tcp.pocs[pino as usize].resS = l_tcp.pocs[pino as usize].resno0;
-      l_tcp.pocs[pino as usize].resE = l_tcp.pocs[pino as usize].resno1;
-      l_tcp.pocs[pino as usize].layE = l_tcp.pocs[pino as usize].layno1;
-      l_tcp.pocs[pino as usize].prg = l_tcp.pocs[pino as usize].prg1;
-      l_tcp.pocs[pino as usize].prcS = 0_u32;
-      /* special treatment here different from the first element*/
-      l_tcp.pocs[pino as usize].layS = if l_tcp.pocs[pino as usize].layE > l_tcp.pocs[(pino - 1) as usize].layE {
+  l_tcp.pocs[0].compS = l_tcp.pocs[0].compno0;
+  l_tcp.pocs[0].compE = l_tcp.pocs[0].compno1;
+  l_tcp.pocs[0].resS = l_tcp.pocs[0].resno0;
+  l_tcp.pocs[0].resE = l_tcp.pocs[0].resno1;
+  l_tcp.pocs[0].layE = l_tcp.pocs[0].layno1;
+  /* special treatment for the first element*/
+  l_tcp.pocs[0].layS = 0_u32;
+  l_tcp.pocs[0].prg = l_tcp.pocs[0].prg1;
+  l_tcp.pocs[0].prcS = 0_u32;
+  l_tcp.pocs[0].prcE = p_max_prec;
+  l_tcp.pocs[0].txS = p_tx0;
+  l_tcp.pocs[0].txE = p_tx1;
+  l_tcp.pocs[0].tyS = p_ty0;
+  l_tcp.pocs[0].tyE = p_ty1;
+  l_tcp.pocs[0].dx = p_dx_min;
+  l_tcp.pocs[0].dy = p_dy_min;
+
+  pino = 1_u32;
+  while pino < l_poc_bound {
+    l_tcp.pocs[pino as usize].compS = l_tcp.pocs[pino as usize].compno0;
+    l_tcp.pocs[pino as usize].compE = l_tcp.pocs[pino as usize].compno1;
+    l_tcp.pocs[pino as usize].resS = l_tcp.pocs[pino as usize].resno0;
+    l_tcp.pocs[pino as usize].resE = l_tcp.pocs[pino as usize].resno1;
+    l_tcp.pocs[pino as usize].layE = l_tcp.pocs[pino as usize].layno1;
+    l_tcp.pocs[pino as usize].prg = l_tcp.pocs[pino as usize].prg1;
+    l_tcp.pocs[pino as usize].prcS = 0_u32;
+    /* special treatment here different from the first element*/
+    l_tcp.pocs[pino as usize].layS =
+      if l_tcp.pocs[pino as usize].layE > l_tcp.pocs[(pino - 1) as usize].layE {
         l_tcp.pocs[pino as usize].layE
       } else {
         0u32
       };
-      l_tcp.pocs[pino as usize].prcE = p_max_prec;
-      l_tcp.pocs[pino as usize].txS = p_tx0;
-      l_tcp.pocs[pino as usize].txE = p_tx1;
-      l_tcp.pocs[pino as usize].tyS = p_ty0;
-      l_tcp.pocs[pino as usize].tyE = p_ty1;
-      l_tcp.pocs[pino as usize].dx = p_dx_min;
-      l_tcp.pocs[pino as usize].dy = p_dy_min;
-            pino += 1;
-    }
+    l_tcp.pocs[pino as usize].prcE = p_max_prec;
+    l_tcp.pocs[pino as usize].txS = p_tx0;
+    l_tcp.pocs[pino as usize].txE = p_tx1;
+    l_tcp.pocs[pino as usize].tyS = p_ty0;
+    l_tcp.pocs[pino as usize].tyE = p_ty1;
+    l_tcp.pocs[pino as usize].dx = p_dx_min;
+    l_tcp.pocs[pino as usize].dy = p_dy_min;
+    pino += 1;
+  }
 }
 /* *
  * Updates the coding parameters if the encoding is not used with Progression order changes and final (and cinema parameters are used).
@@ -1577,24 +1649,24 @@ pub(crate) fn opj_pi_update_encode_not_poc(
   /* number of iterations in the loop */
   l_poc_bound = l_tcp.numpocs.wrapping_add(1u32);
   pino = 0_u32;
-    while pino < l_poc_bound {
-      l_tcp.pocs[pino as usize].compS = 0_u32;
-      l_tcp.pocs[pino as usize].compE = p_num_comps;
-      l_tcp.pocs[pino as usize].resS = 0_u32;
-      l_tcp.pocs[pino as usize].resE = p_max_res;
-      l_tcp.pocs[pino as usize].layS = 0_u32;
-      l_tcp.pocs[pino as usize].layE = l_tcp.numlayers;
-      l_tcp.pocs[pino as usize].prg = l_tcp.prg;
-      l_tcp.pocs[pino as usize].prcS = 0_u32;
-      l_tcp.pocs[pino as usize].prcE = p_max_prec;
-      l_tcp.pocs[pino as usize].txS = p_tx0;
-      l_tcp.pocs[pino as usize].txE = p_tx1;
-      l_tcp.pocs[pino as usize].tyS = p_ty0;
-      l_tcp.pocs[pino as usize].tyE = p_ty1;
-      l_tcp.pocs[pino as usize].dx = p_dx_min;
-      l_tcp.pocs[pino as usize].dy = p_dy_min;
-            pino += 1;
-    }
+  while pino < l_poc_bound {
+    l_tcp.pocs[pino as usize].compS = 0_u32;
+    l_tcp.pocs[pino as usize].compE = p_num_comps;
+    l_tcp.pocs[pino as usize].resS = 0_u32;
+    l_tcp.pocs[pino as usize].resE = p_max_res;
+    l_tcp.pocs[pino as usize].layS = 0_u32;
+    l_tcp.pocs[pino as usize].layE = l_tcp.numlayers;
+    l_tcp.pocs[pino as usize].prg = l_tcp.prg;
+    l_tcp.pocs[pino as usize].prcS = 0_u32;
+    l_tcp.pocs[pino as usize].prcE = p_max_prec;
+    l_tcp.pocs[pino as usize].txS = p_tx0;
+    l_tcp.pocs[pino as usize].txE = p_tx1;
+    l_tcp.pocs[pino as usize].tyS = p_ty0;
+    l_tcp.pocs[pino as usize].tyE = p_ty1;
+    l_tcp.pocs[pino as usize].dx = p_dx_min;
+    l_tcp.pocs[pino as usize].dy = p_dy_min;
+    pino += 1;
+  }
 }
 /* *
  */
@@ -1613,19 +1685,20 @@ pub(crate) fn opj_pi_update_decode_poc(
   /* initializations*/
   l_bound = p_tcp.numpocs.wrapping_add(1u32); /* Progression Order #0 */
   pino = 0_u32; /* Resolution Level Index #0 (End) */
-    while pino < l_bound {
-      p_pi[pino as usize].poc.prg = p_tcp.pocs[pino as usize].prg; /* Component Index #0 (End) */
-      p_pi[pino as usize].first = true; /* Layer Index #0 (End) */
-      p_pi[pino as usize].poc.resno0 = p_tcp.pocs[pino as usize].resno0;
-      p_pi[pino as usize].poc.compno0 = p_tcp.pocs[pino as usize].compno0;
-      p_pi[pino as usize].poc.layno0 = 0_u32;
-      p_pi[pino as usize].poc.precno0 = 0_u32;
-      p_pi[pino as usize].poc.resno1 = p_tcp.pocs[pino as usize].resno1;
-      p_pi[pino as usize].poc.compno1 = p_tcp.pocs[pino as usize].compno1;
-      p_pi[pino as usize].poc.layno1 = opj_uint_min(p_tcp.pocs[pino as usize].layno1, p_tcp.numlayers);
-      p_pi[pino as usize].poc.precno1 = p_max_precision;
-            pino += 1;
-    }
+  while pino < l_bound {
+    p_pi[pino as usize].poc.prg = p_tcp.pocs[pino as usize].prg; /* Component Index #0 (End) */
+    p_pi[pino as usize].first = true; /* Layer Index #0 (End) */
+    p_pi[pino as usize].poc.resno0 = p_tcp.pocs[pino as usize].resno0;
+    p_pi[pino as usize].poc.compno0 = p_tcp.pocs[pino as usize].compno0;
+    p_pi[pino as usize].poc.layno0 = 0_u32;
+    p_pi[pino as usize].poc.precno0 = 0_u32;
+    p_pi[pino as usize].poc.resno1 = p_tcp.pocs[pino as usize].resno1;
+    p_pi[pino as usize].poc.compno1 = p_tcp.pocs[pino as usize].compno1;
+    p_pi[pino as usize].poc.layno1 =
+      opj_uint_min(p_tcp.pocs[pino as usize].layno1, p_tcp.numlayers);
+    p_pi[pino as usize].poc.precno1 = p_max_precision;
+    pino += 1;
+  }
 }
 /* *
  */
@@ -1644,71 +1717,80 @@ pub(crate) fn opj_pi_update_decode_not_poc(
   /* initializations*/
   l_bound = p_tcp.numpocs.wrapping_add(1u32);
   pino = 0_u32;
-    while pino < l_bound {
-      p_pi[pino as usize].poc.prg = p_tcp.prg;
-      p_pi[pino as usize].first = true;
-      p_pi[pino as usize].poc.resno0 = 0_u32;
-      p_pi[pino as usize].poc.compno0 = 0_u32;
-      p_pi[pino as usize].poc.layno0 = 0_u32;
-      p_pi[pino as usize].poc.precno0 = 0_u32;
-      p_pi[pino as usize].poc.resno1 = p_max_res;
-      p_pi[pino as usize].poc.compno1 = p_pi[pino as usize].numcomps;
-      p_pi[pino as usize].poc.layno1 = p_tcp.numlayers;
-      p_pi[pino as usize].poc.precno1 = p_max_precision;
-            pino += 1;
-    }
+  while pino < l_bound {
+    p_pi[pino as usize].poc.prg = p_tcp.prg;
+    p_pi[pino as usize].first = true;
+    p_pi[pino as usize].poc.resno0 = 0_u32;
+    p_pi[pino as usize].poc.compno0 = 0_u32;
+    p_pi[pino as usize].poc.layno0 = 0_u32;
+    p_pi[pino as usize].poc.precno0 = 0_u32;
+    p_pi[pino as usize].poc.resno1 = p_max_res;
+    p_pi[pino as usize].poc.compno1 = p_pi[pino as usize].numcomps;
+    p_pi[pino as usize].poc.layno1 = p_tcp.numlayers;
+    p_pi[pino as usize].poc.precno1 = p_max_precision;
+    pino += 1;
+  }
 }
 /* *
  */
-fn opj_pi_check_next_level(
-  pos: i32,
-  tcp: &opj_poc_t,
-  prog: ProgressionOrder,
-) -> OpResult {
+fn opj_pi_check_next_level(pos: i32, tcp: &opj_poc_t, prog: ProgressionOrder) -> OpResult {
   let mut i: i32 = 0; /*end if*/
-    if pos >= 0i32 {
-      i = pos;
-      while i >= 0i32 {
-        match prog.get_step(i) {
-          ProgressionStep::Resolution => {
-            if tcp.res_t == tcp.resE {
-              if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
-                return Ok(());
-              } else {
-                return Err(());
-              }
-            } else {
+  if pos >= 0i32 {
+    i = pos;
+    while i >= 0i32 {
+      match prog.get_step(i) {
+        ProgressionStep::Resolution => {
+          if tcp.res_t == tcp.resE {
+            if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
               return Ok(());
-            }
-            /*end case P*/
-          }
-          ProgressionStep::Component => {
-            if tcp.comp_t == tcp.compE {
-              if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
-                return Ok(());
-              } else {
-                return Err(());
-              }
             } else {
-              return Ok(());
+              return Err(());
             }
+          } else {
+            return Ok(());
           }
-          ProgressionStep::Layer => {
-            if tcp.lay_t == tcp.layE {
-              if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
-                return Ok(());
-              } else {
-                return Err(());
-              }
+          /*end case P*/
+        }
+        ProgressionStep::Component => {
+          if tcp.comp_t == tcp.compE {
+            if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
+              return Ok(());
             } else {
-              return Ok(());
+              return Err(());
             }
+          } else {
+            return Ok(());
           }
-          ProgressionStep::Precinct => {
-            match tcp.prg as core::ffi::c_int {
-              0 | 1 => {
-                /* fall through */
-                if tcp.prc_t == tcp.prcE {
+        }
+        ProgressionStep::Layer => {
+          if tcp.lay_t == tcp.layE {
+            if opj_pi_check_next_level(pos - 1i32, tcp, prog).is_ok() {
+              return Ok(());
+            } else {
+              return Err(());
+            }
+          } else {
+            return Ok(());
+          }
+        }
+        ProgressionStep::Precinct => {
+          match tcp.prg as core::ffi::c_int {
+            0 | 1 => {
+              /* fall through */
+              if tcp.prc_t == tcp.prcE {
+                if opj_pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
+                  return Ok(());
+                } else {
+                  return Err(());
+                }
+              } else {
+                return Ok(());
+              }
+            }
+            _ => {
+              if tcp.tx0_t == tcp.txE {
+                /*TY*/
+                if tcp.ty0_t == tcp.tyE {
                   if opj_pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
                     return Ok(());
                   } else {
@@ -1717,34 +1799,21 @@ fn opj_pi_check_next_level(
                 } else {
                   return Ok(());
                 }
-              }
-              _ => {
-                if tcp.tx0_t == tcp.txE {
-                  /*TY*/
-                  if tcp.ty0_t == tcp.tyE {
-                    if opj_pi_check_next_level(i - 1i32, tcp, prog).is_ok() {
-                      return Ok(());
-                    } else {
-                      return Err(());
-                    }
-                  } else {
-                    return Ok(());
-                  }
-                /*TY*/
-                } else {
-                  return Ok(());
-                }
+              /*TY*/
+              } else {
+                return Ok(());
               }
             }
           }
-          _ => {}
         }
-        i -= 1
-        /*end switch*/
+        _ => {}
       }
-      /*end for*/
+      i -= 1
+      /*end switch*/
     }
-Err(())
+    /*end for*/
+  }
+  Err(())
 }
 /*
 ==========================================================
@@ -1814,7 +1883,10 @@ pub(crate) fn opj_pi_create_decode(
   let include_size = if l_step_l
     <= u32::MAX.wrapping_div(p_cp.tcps[p_tile_no as usize].numlayers.wrapping_add(1u32))
   {
-    p_cp.tcps[p_tile_no as usize].numlayers.wrapping_add(1u32).wrapping_mul(l_step_l)
+    p_cp.tcps[p_tile_no as usize]
+      .numlayers
+      .wrapping_add(1u32)
+      .wrapping_mul(l_step_l)
   } else {
     /* The step product overflows u32: the C wraps it (UB, wrong-sized
     include buffer); the port fails cleanly here instead. */
@@ -1831,7 +1903,10 @@ pub(crate) fn opj_pi_create_decode(
     // The C's calloc fails gracefully on OOM; a vec! would abort the
     // process on a crafted header driving a large include mask.
     let mut include_vec: Vec<Cell<i16>> = Vec::new();
-    if include_vec.try_reserve_exact(include_size as usize).is_err() {
+    if include_vec
+      .try_reserve_exact(include_size as usize)
+      .is_err()
+    {
       return Vec::new();
     }
     include_vec.resize(include_size as usize, Cell::new(0i16));
@@ -1914,9 +1989,19 @@ pub(crate) fn opj_pi_create_decode(
     pino += 1;
   }
   if p_cp.tcps[p_tile_no as usize].poc {
-    opj_pi_update_decode_poc(&mut l_pi, &p_cp.tcps[p_tile_no as usize], l_max_prec, l_max_res);
+    opj_pi_update_decode_poc(
+      &mut l_pi,
+      &p_cp.tcps[p_tile_no as usize],
+      l_max_prec,
+      l_max_res,
+    );
   } else {
-    opj_pi_update_decode_not_poc(&mut l_pi, &p_cp.tcps[p_tile_no as usize], l_max_prec, l_max_res);
+    opj_pi_update_decode_not_poc(
+      &mut l_pi,
+      &p_cp.tcps[p_tile_no as usize],
+      l_max_prec,
+      l_max_res,
+    );
   }
   l_pi
 }
@@ -2038,7 +2123,10 @@ pub(crate) fn opj_pi_initialise_encode(
     // The C's calloc fails gracefully on OOM; a vec! would abort the
     // process on a crafted header driving a large include mask.
     let mut include_vec: Vec<Cell<i16>> = Vec::new();
-    if include_vec.try_reserve_exact(include_size as usize).is_err() {
+    if include_vec
+      .try_reserve_exact(include_size as usize)
+      .is_err()
+    {
       return Vec::new();
     }
     include_vec.resize(include_size as usize, Cell::new(0i16));
@@ -2153,283 +2241,273 @@ pub(crate) fn opj_pi_create_encode(
   let prog = opj_j2k_convert_progression_order(tcp.prg);
   pi[pino as usize].first = true;
   pi[pino as usize].poc.prg = tcp.prg;
-    if !(tp_on
-      && (!(rsiz as core::ffi::c_int >= 0x3i32 && rsiz as core::ffi::c_int <= 0x6i32)
-        && !(rsiz as core::ffi::c_int >= 0x400i32
-          && rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32)
-        && t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint
-        || rsiz as core::ffi::c_int >= 0x3i32 && rsiz as core::ffi::c_int <= 0x6i32
-        || rsiz as core::ffi::c_int >= 0x400i32
-          && rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32))
-    {
-      pi[pino as usize].poc.resno0 = tcp.resS;
-      pi[pino as usize].poc.resno1 = tcp.resE;
-      pi[pino as usize].poc.compno0 = tcp.compS;
-      pi[pino as usize].poc.compno1 = tcp.compE;
-      pi[pino as usize].poc.layno0 = tcp.layS;
-      pi[pino as usize].poc.layno1 = tcp.layE;
-      pi[pino as usize].poc.precno0 = tcp.prcS;
-      pi[pino as usize].poc.precno1 = tcp.prcE;
-      pi[pino as usize].poc.tx0 = tcp.txS;
-      pi[pino as usize].poc.ty0 = tcp.tyS;
-      pi[pino as usize].poc.tx1 = tcp.txE;
-      pi[pino as usize].poc.ty1 = tcp.tyE
-    } else {
-      i = tppos + 1i32;
-      while i < 4i32 {
-        match prog.get_step(i) {
-          ProgressionStep::Resolution => {
-            pi[pino as usize].poc.resno0 = tcp.resS;
-            pi[pino as usize].poc.resno1 = tcp.resE
+  if !(tp_on
+    && (!(rsiz as core::ffi::c_int >= 0x3i32 && rsiz as core::ffi::c_int <= 0x6i32)
+      && !(rsiz as core::ffi::c_int >= 0x400i32 && rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32)
+      && t2_mode as core::ffi::c_uint == FINAL_PASS as core::ffi::c_uint
+      || rsiz as core::ffi::c_int >= 0x3i32 && rsiz as core::ffi::c_int <= 0x6i32
+      || rsiz as core::ffi::c_int >= 0x400i32 && rsiz as core::ffi::c_int <= 0x900i32 | 0x9bi32))
+  {
+    pi[pino as usize].poc.resno0 = tcp.resS;
+    pi[pino as usize].poc.resno1 = tcp.resE;
+    pi[pino as usize].poc.compno0 = tcp.compS;
+    pi[pino as usize].poc.compno1 = tcp.compE;
+    pi[pino as usize].poc.layno0 = tcp.layS;
+    pi[pino as usize].poc.layno1 = tcp.layE;
+    pi[pino as usize].poc.precno0 = tcp.prcS;
+    pi[pino as usize].poc.precno1 = tcp.prcE;
+    pi[pino as usize].poc.tx0 = tcp.txS;
+    pi[pino as usize].poc.ty0 = tcp.tyS;
+    pi[pino as usize].poc.tx1 = tcp.txE;
+    pi[pino as usize].poc.ty1 = tcp.tyE
+  } else {
+    i = tppos + 1i32;
+    while i < 4i32 {
+      match prog.get_step(i) {
+        ProgressionStep::Resolution => {
+          pi[pino as usize].poc.resno0 = tcp.resS;
+          pi[pino as usize].poc.resno1 = tcp.resE
+        }
+        ProgressionStep::Component => {
+          pi[pino as usize].poc.compno0 = tcp.compS;
+          pi[pino as usize].poc.compno1 = tcp.compE
+        }
+        ProgressionStep::Layer => {
+          pi[pino as usize].poc.layno0 = tcp.layS;
+          pi[pino as usize].poc.layno1 = tcp.layE
+        }
+        ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
+          0 | 1 => {
+            pi[pino as usize].poc.precno0 = tcp.prcS;
+            pi[pino as usize].poc.precno1 = tcp.prcE
           }
+          _ => {
+            pi[pino as usize].poc.tx0 = tcp.txS;
+            pi[pino as usize].poc.ty0 = tcp.tyS;
+            pi[pino as usize].poc.tx1 = tcp.txE;
+            pi[pino as usize].poc.ty1 = tcp.tyE
+          }
+        },
+        _ => {}
+      }
+      i += 1
+    }
+    if tpnum == 0u32 {
+      i = tppos;
+      while i >= 0i32 {
+        match prog.get_step(i) {
           ProgressionStep::Component => {
-            pi[pino as usize].poc.compno0 = tcp.compS;
-            pi[pino as usize].poc.compno1 = tcp.compE
+            tcp.comp_t = tcp.compS;
+            pi[pino as usize].poc.compno0 = tcp.comp_t;
+            pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
+            tcp.comp_t = (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32)
+          }
+          ProgressionStep::Resolution => {
+            tcp.res_t = tcp.resS;
+            pi[pino as usize].poc.resno0 = tcp.res_t;
+            pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
+            tcp.res_t = (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32)
           }
           ProgressionStep::Layer => {
-            pi[pino as usize].poc.layno0 = tcp.layS;
-            pi[pino as usize].poc.layno1 = tcp.layE
+            tcp.lay_t = tcp.layS;
+            pi[pino as usize].poc.layno0 = tcp.lay_t;
+            pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
+            tcp.lay_t = (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32)
           }
           ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
             0 | 1 => {
-              pi[pino as usize].poc.precno0 = tcp.prcS;
-              pi[pino as usize].poc.precno1 = tcp.prcE
+              tcp.prc_t = tcp.prcS;
+              pi[pino as usize].poc.precno0 = tcp.prc_t;
+              pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
+              tcp.prc_t = (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32)
             }
             _ => {
-              pi[pino as usize].poc.tx0 = tcp.txS;
-              pi[pino as usize].poc.ty0 = tcp.tyS;
-              pi[pino as usize].poc.tx1 = tcp.txE;
-              pi[pino as usize].poc.ty1 = tcp.tyE
+              tcp.tx0_t = tcp.txS;
+              tcp.ty0_t = tcp.tyS;
+              pi[pino as usize].poc.tx0 = tcp.tx0_t;
+              pi[pino as usize].poc.tx1 = tcp
+                .tx0_t
+                .wrapping_add(tcp.dx)
+                .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
+              pi[pino as usize].poc.ty0 = tcp.ty0_t;
+              pi[pino as usize].poc.ty1 = tcp
+                .ty0_t
+                .wrapping_add(tcp.dy)
+                .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
+              tcp.tx0_t = pi[pino as usize].poc.tx1;
+              tcp.ty0_t = pi[pino as usize].poc.ty1
             }
           },
           _ => {}
         }
-        i += 1
+        i -= 1
       }
-      if tpnum == 0u32 {
-        i = tppos;
-        while i >= 0i32 {
-          match prog.get_step(i) {
-            ProgressionStep::Component => {
-              tcp.comp_t = tcp.compS;
-              pi[pino as usize].poc.compno0 = tcp.comp_t;
-              pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
-              tcp.comp_t = (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32)
-            }
-            ProgressionStep::Resolution => {
-              tcp.res_t = tcp.resS;
-              pi[pino as usize].poc.resno0 = tcp.res_t;
-              pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
-              tcp.res_t = (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32)
-            }
-            ProgressionStep::Layer => {
-              tcp.lay_t = tcp.layS;
-              pi[pino as usize].poc.layno0 = tcp.lay_t;
-              pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
-              tcp.lay_t = (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32)
-            }
-            ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
-              0 | 1 => {
-                tcp.prc_t = tcp.prcS;
-                pi[pino as usize].poc.precno0 = tcp.prc_t;
-                pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
-                tcp.prc_t = (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32)
-              }
-              _ => {
-                tcp.tx0_t = tcp.txS;
-                tcp.ty0_t = tcp.tyS;
-                pi[pino as usize].poc.tx0 = tcp.tx0_t;
-                pi[pino as usize].poc.tx1 = tcp
-                  .tx0_t
-                  .wrapping_add(tcp.dx)
-                  .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
-                pi[pino as usize].poc.ty0 = tcp.ty0_t;
-                pi[pino as usize].poc.ty1 = tcp
-                  .ty0_t
-                  .wrapping_add(tcp.dy)
-                  .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
-                tcp.tx0_t = pi[pino as usize].poc.tx1;
-                tcp.ty0_t = pi[pino as usize].poc.ty1
-              }
-            },
-            _ => {}
+      incr_top = 1_u32
+    } else {
+      i = tppos;
+      while i >= 0i32 {
+        match prog.get_step(i) {
+          ProgressionStep::Component => {
+            pi[pino as usize].poc.compno0 = tcp.comp_t.wrapping_sub(1u32);
+            pi[pino as usize].poc.compno1 = tcp.comp_t
           }
-          i -= 1
+          ProgressionStep::Resolution => {
+            pi[pino as usize].poc.resno0 = tcp.res_t.wrapping_sub(1u32);
+            pi[pino as usize].poc.resno1 = tcp.res_t
+          }
+          ProgressionStep::Layer => {
+            pi[pino as usize].poc.layno0 = tcp.lay_t.wrapping_sub(1u32);
+            pi[pino as usize].poc.layno1 = tcp.lay_t
+          }
+          ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
+            0 | 1 => {
+              pi[pino as usize].poc.precno0 = tcp.prc_t.wrapping_sub(1u32);
+              pi[pino as usize].poc.precno1 = tcp.prc_t
+            }
+            _ => {
+              pi[pino as usize].poc.tx0 = tcp
+                .tx0_t
+                .wrapping_sub(tcp.dx)
+                .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
+              pi[pino as usize].poc.tx1 = tcp.tx0_t;
+              pi[pino as usize].poc.ty0 = tcp
+                .ty0_t
+                .wrapping_sub(tcp.dy)
+                .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
+              pi[pino as usize].poc.ty1 = tcp.ty0_t
+            }
+          },
+          _ => {}
         }
-        incr_top = 1_u32
-      } else {
-        i = tppos;
-        while i >= 0i32 {
+        if incr_top == 1u32 {
           match prog.get_step(i) {
-            ProgressionStep::Component => {
-              pi[pino as usize].poc.compno0 = tcp.comp_t.wrapping_sub(1u32);
-              pi[pino as usize].poc.compno1 = tcp.comp_t
-            }
             ProgressionStep::Resolution => {
-              pi[pino as usize].poc.resno0 = tcp.res_t.wrapping_sub(1u32);
-              pi[pino as usize].poc.resno1 = tcp.res_t
-            }
-            ProgressionStep::Layer => {
-              pi[pino as usize].poc.layno0 = tcp.lay_t.wrapping_sub(1u32);
-              pi[pino as usize].poc.layno1 = tcp.lay_t
-            }
-            ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
-              0 | 1 => {
-                pi[pino as usize].poc.precno0 = tcp.prc_t.wrapping_sub(1u32);
-                pi[pino as usize].poc.precno1 = tcp.prc_t
-              }
-              _ => {
-                pi[pino as usize].poc.tx0 = tcp
-                  .tx0_t
-                  .wrapping_sub(tcp.dx)
-                  .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
-                pi[pino as usize].poc.tx1 = tcp.tx0_t;
-                pi[pino as usize].poc.ty0 = tcp
-                  .ty0_t
-                  .wrapping_sub(tcp.dy)
-                  .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
-                pi[pino as usize].poc.ty1 = tcp.ty0_t
-              }
-            },
-            _ => {}
-          }
-          if incr_top == 1u32 {
-            match prog.get_step(i) {
-              ProgressionStep::Resolution => {
-                if tcp.res_t == tcp.resE {
-                  if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
-                    tcp.res_t = tcp.resS;
-                    pi[pino as usize].poc.resno0 = tcp.res_t;
-                    pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
-                    tcp.res_t =
-                      (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32);
-                    incr_top = 1_u32
-                  } else {
-                    incr_top = 0_u32
-                  }
-                } else {
+              if tcp.res_t == tcp.resE {
+                if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
+                  tcp.res_t = tcp.resS;
                   pi[pino as usize].poc.resno0 = tcp.res_t;
                   pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
-                  tcp.res_t =
-                    (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32);
+                  tcp.res_t = (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32);
+                  incr_top = 1_u32
+                } else {
                   incr_top = 0_u32
                 }
+              } else {
+                pi[pino as usize].poc.resno0 = tcp.res_t;
+                pi[pino as usize].poc.resno1 = tcp.res_t.wrapping_add(1u32);
+                tcp.res_t = (tcp.res_t as core::ffi::c_uint).wrapping_add(1u32);
+                incr_top = 0_u32
               }
-              ProgressionStep::Component => {
-                if tcp.comp_t == tcp.compE {
-                  if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
-                    tcp.comp_t = tcp.compS;
-                    pi[pino as usize].poc.compno0 = tcp.comp_t;
-                    pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
-                    tcp.comp_t =
-                      (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32);
-                    incr_top = 1_u32
-                  } else {
-                    incr_top = 0_u32
-                  }
-                } else {
+            }
+            ProgressionStep::Component => {
+              if tcp.comp_t == tcp.compE {
+                if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
+                  tcp.comp_t = tcp.compS;
                   pi[pino as usize].poc.compno0 = tcp.comp_t;
                   pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
-                  tcp.comp_t =
-                    (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32);
+                  tcp.comp_t = (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32);
+                  incr_top = 1_u32
+                } else {
                   incr_top = 0_u32
                 }
+              } else {
+                pi[pino as usize].poc.compno0 = tcp.comp_t;
+                pi[pino as usize].poc.compno1 = tcp.comp_t.wrapping_add(1u32);
+                tcp.comp_t = (tcp.comp_t as core::ffi::c_uint).wrapping_add(1u32);
+                incr_top = 0_u32
               }
-              ProgressionStep::Layer => {
-                if tcp.lay_t == tcp.layE {
+            }
+            ProgressionStep::Layer => {
+              if tcp.lay_t == tcp.layE {
+                if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
+                  tcp.lay_t = tcp.layS;
+                  pi[pino as usize].poc.layno0 = tcp.lay_t;
+                  pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
+                  tcp.lay_t = (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32);
+                  incr_top = 1_u32
+                } else {
+                  incr_top = 0_u32
+                }
+              } else {
+                pi[pino as usize].poc.layno0 = tcp.lay_t;
+                pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
+                tcp.lay_t = (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32);
+                incr_top = 0_u32
+              }
+            }
+            ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
+              0 | 1 => {
+                if tcp.prc_t == tcp.prcE {
                   if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
-                    tcp.lay_t = tcp.layS;
-                    pi[pino as usize].poc.layno0 = tcp.lay_t;
-                    pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
-                    tcp.lay_t =
-                      (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32);
+                    tcp.prc_t = tcp.prcS;
+                    pi[pino as usize].poc.precno0 = tcp.prc_t;
+                    pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
+                    tcp.prc_t = (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32);
                     incr_top = 1_u32
                   } else {
                     incr_top = 0_u32
                   }
                 } else {
-                  pi[pino as usize].poc.layno0 = tcp.lay_t;
-                  pi[pino as usize].poc.layno1 = tcp.lay_t.wrapping_add(1u32);
-                  tcp.lay_t =
-                    (tcp.lay_t as core::ffi::c_uint).wrapping_add(1u32);
+                  pi[pino as usize].poc.precno0 = tcp.prc_t;
+                  pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
+                  tcp.prc_t = (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32);
                   incr_top = 0_u32
                 }
               }
-              ProgressionStep::Precinct => match tcp.prg as core::ffi::c_int {
-                0 | 1 => {
-                  if tcp.prc_t == tcp.prcE {
+              _ => {
+                if tcp.tx0_t >= tcp.txE {
+                  if tcp.ty0_t >= tcp.tyE {
                     if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
-                      tcp.prc_t = tcp.prcS;
-                      pi[pino as usize].poc.precno0 = tcp.prc_t;
-                      pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
-                      tcp.prc_t =
-                        (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32);
-                      incr_top = 1_u32
-                    } else {
-                      incr_top = 0_u32
-                    }
-                  } else {
-                    pi[pino as usize].poc.precno0 = tcp.prc_t;
-                    pi[pino as usize].poc.precno1 = tcp.prc_t.wrapping_add(1u32);
-                    tcp.prc_t =
-                      (tcp.prc_t as core::ffi::c_uint).wrapping_add(1u32);
-                    incr_top = 0_u32
-                  }
-                }
-                _ => {
-                  if tcp.tx0_t >= tcp.txE {
-                    if tcp.ty0_t >= tcp.tyE {
-                      if opj_pi_check_next_level(i - 1i32, &*tcp, prog).is_ok() {
-                        tcp.ty0_t = tcp.tyS;
-                        pi[pino as usize].poc.ty0 = tcp.ty0_t;
-                        pi[pino as usize].poc.ty1 = tcp
-                          .ty0_t
-                          .wrapping_add(tcp.dy)
-                          .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
-                        tcp.ty0_t = pi[pino as usize].poc.ty1;
-                        incr_top = 1_u32;
-                        reset_x = 1_u32
-                      } else {
-                        incr_top = 0_u32;
-                        reset_x = 0_u32
-                      }
-                    } else {
+                      tcp.ty0_t = tcp.tyS;
                       pi[pino as usize].poc.ty0 = tcp.ty0_t;
                       pi[pino as usize].poc.ty1 = tcp
                         .ty0_t
                         .wrapping_add(tcp.dy)
                         .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
                       tcp.ty0_t = pi[pino as usize].poc.ty1;
-                      incr_top = 0_u32;
+                      incr_top = 1_u32;
                       reset_x = 1_u32
-                    }
-                    if reset_x == 1u32 {
-                      tcp.tx0_t = tcp.txS;
-                      pi[pino as usize].poc.tx0 = tcp.tx0_t;
-                      pi[pino as usize].poc.tx1 = tcp
-                        .tx0_t
-                        .wrapping_add(tcp.dx)
-                        .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
-                      tcp.tx0_t = pi[pino as usize].poc.tx1
+                    } else {
+                      incr_top = 0_u32;
+                      reset_x = 0_u32
                     }
                   } else {
+                    pi[pino as usize].poc.ty0 = tcp.ty0_t;
+                    pi[pino as usize].poc.ty1 = tcp
+                      .ty0_t
+                      .wrapping_add(tcp.dy)
+                      .wrapping_sub(tcp.ty0_t.wrapping_rem(tcp.dy));
+                    tcp.ty0_t = pi[pino as usize].poc.ty1;
+                    incr_top = 0_u32;
+                    reset_x = 1_u32
+                  }
+                  if reset_x == 1u32 {
+                    tcp.tx0_t = tcp.txS;
                     pi[pino as usize].poc.tx0 = tcp.tx0_t;
                     pi[pino as usize].poc.tx1 = tcp
                       .tx0_t
                       .wrapping_add(tcp.dx)
                       .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
-                    tcp.tx0_t = pi[pino as usize].poc.tx1;
-                    incr_top = 0_u32
+                    tcp.tx0_t = pi[pino as usize].poc.tx1
                   }
+                } else {
+                  pi[pino as usize].poc.tx0 = tcp.tx0_t;
+                  pi[pino as usize].poc.tx1 = tcp
+                    .tx0_t
+                    .wrapping_add(tcp.dx)
+                    .wrapping_sub(tcp.tx0_t.wrapping_rem(tcp.dx));
+                  tcp.tx0_t = pi[pino as usize].poc.tx1;
+                  incr_top = 0_u32
                 }
-              },
-              _ => {}
-            }
+              }
+            },
+            _ => {}
           }
-          i -= 1
         }
+        i -= 1
       }
-    };
+    }
+  };
 }
 
 pub(crate) fn opj_pi_destroy(p_pi: &mut Vec<PiIterator>) {
@@ -2455,52 +2533,49 @@ pub(crate) fn opj_pi_update_encoding_parameters(
 
   assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* get encoding parameters */
-    opj_get_encoding_parameters(
-      p_image,
-      p_cp,
-      p_tile_no,
-      &mut l_tx0,
-      &mut l_tx1,
-      &mut l_ty0,
-      &mut l_ty1,
-      &mut l_dx_min,
-      &mut l_dy_min,
-      &mut l_max_prec,
-      &mut l_max_res,
+  opj_get_encoding_parameters(
+    p_image,
+    p_cp,
+    p_tile_no,
+    &mut l_tx0,
+    &mut l_tx1,
+    &mut l_ty0,
+    &mut l_ty1,
+    &mut l_dx_min,
+    &mut l_dy_min,
+    &mut l_max_prec,
+    &mut l_max_res,
+  );
+  if p_cp.tcps[p_tile_no as usize].poc {
+    opj_pi_update_encode_poc_and_final(
+      p_cp, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min,
     );
-    if p_cp.tcps[p_tile_no as usize].poc {
-      opj_pi_update_encode_poc_and_final(
-        p_cp, p_tile_no, l_tx0, l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min,
-      );
-    } else {
-      opj_pi_update_encode_not_poc(
-        p_cp,
-        p_image.numcomps,
-        p_tile_no,
-        l_tx0,
-        l_tx1,
-        l_ty0,
-        l_ty1,
-        l_max_prec,
-        l_max_res,
-        l_dx_min,
-        l_dy_min,
-      );
-    };
+  } else {
+    opj_pi_update_encode_not_poc(
+      p_cp,
+      p_image.numcomps,
+      p_tile_no,
+      l_tx0,
+      l_tx1,
+      l_ty0,
+      l_ty1,
+      l_max_prec,
+      l_max_res,
+      l_dx_min,
+      l_dy_min,
+    );
+  };
 }
 
-pub(crate) fn opj_pi_next(
-  pi: &mut PiIterator,
-  manager: &mut EventMgr,
-) -> OpResult {
+pub(crate) fn opj_pi_next(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
   match pi.poc.prg as core::ffi::c_int {
-      0 => return opj_pi_next_lrcp(pi, manager),
-      1 => return opj_pi_next_rlcp(pi, manager),
-      2 => return opj_pi_next_rpcl(pi, manager),
-      3 => return opj_pi_next_pcrl(pi, manager),
-      4 => return opj_pi_next_cprl(pi, manager),
-      -1 => return Err(()),
-      _ => {}
-    }
-Err(())
+    0 => return opj_pi_next_lrcp(pi, manager),
+    1 => return opj_pi_next_rlcp(pi, manager),
+    2 => return opj_pi_next_rpcl(pi, manager),
+    3 => return opj_pi_next_pcrl(pi, manager),
+    4 => return opj_pi_next_cprl(pi, manager),
+    -1 => return Err(()),
+    _ => {}
+  }
+  Err(())
 }

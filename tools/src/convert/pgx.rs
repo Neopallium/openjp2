@@ -1,7 +1,7 @@
 use super::ImageError;
 use crate::params::CompressionParameters;
-use openjp2::CoreImage;
 use openjp2::openjpeg::*;
+use openjp2::CoreImage;
 use std::fs::File;
 use std::io::{BufRead, BufWriter, Read, Write};
 use std::path::Path;

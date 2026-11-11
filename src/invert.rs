@@ -219,8 +219,8 @@ fn opj_lup_solve(
   }
 }
 /* *
-  *LUP inversion (call with the result of lupDecompose)
-  */
+ *LUP inversion (call with the result of lupDecompose)
+ */
 fn opj_lup_invert(
   p_src_matrix: &mut [f32],
   p_dest_matrix: &mut [f32],
@@ -310,7 +310,12 @@ mod tests {
         id[i * n + i] = 1.0;
       }
       let inv = invert(&id, n).expect("identity is invertible");
-      assert!(approx_identity(&inv, n), "n={}: inverse of I is I, got {:?}", n, inv);
+      assert!(
+        approx_identity(&inv, n),
+        "n={}: inverse of I is I, got {:?}",
+        n,
+        inv
+      );
     }
   }
 
@@ -333,7 +338,9 @@ mod tests {
     let cases: &[&[f32]] = &[
       &[2.0, 1.0, 1.0, 3.0],
       &[0.0, 1.0, 1.0, 2.0, 1.0, 0.0, 1.0, 0.0, 1.0],
-      &[4.0, 1.0, 2.0, 1.0, 1.0, 3.0, 0.0, 0.0, 2.0, 0.0, 3.0, 1.0, 1.0, 0.0, 1.0, 2.0],
+      &[
+        4.0, 1.0, 2.0, 1.0, 1.0, 3.0, 0.0, 0.0, 2.0, 0.0, 3.0, 1.0, 1.0, 0.0, 1.0, 2.0,
+      ],
       &[5.0],
     ];
     for m in cases {

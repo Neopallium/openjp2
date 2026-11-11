@@ -2,7 +2,6 @@
 //! custom MCT matrix kernels. See `doc/jpeg2000-design-spec.md` §3.2.
 use super::openjpeg::*;
 
-
 #[inline]
 fn opj_int_fix_mul(mut a: i32, mut b: i32) -> i32 {
   let mut temp = a as i64 * b as i64;
@@ -172,7 +171,7 @@ pub(crate) fn opj_mct_encode_custom(
       data[j][i] = acc;
     }
   }
-Ok(())
+  Ok(())
 }
 
 #[allow(clippy::needless_range_loop)]
@@ -196,14 +195,10 @@ pub(crate) fn opj_mct_decode_custom(
       data[j][i] = acc;
     }
   }
-Ok(())
+  Ok(())
 }
 
-pub(crate) fn opj_calculate_norms(
-  norms: &mut [f64],
-  nb_comps: u32,
-  matrix: &[f32],
-) {
+pub(crate) fn opj_calculate_norms(norms: &mut [f64], nb_comps: u32, matrix: &[f32]) {
   let nb_comps = nb_comps as usize;
   for (i, norm) in norms.iter_mut().enumerate().take(nb_comps) {
     let mut acc = 0 as f64;
@@ -214,4 +209,3 @@ pub(crate) fn opj_calculate_norms(
     *norm = acc.sqrt();
   }
 }
-

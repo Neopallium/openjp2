@@ -3,9 +3,7 @@ use crate::params::CompressionParameters;
 use image::{self, DynamicImage};
 use openjp2::{openjpeg::*, CoreImage, CoreImageComp};
 
-pub fn convert_comp_to_dynamic_grayscale(
-  comp: &CoreImageComp,
-) -> Result<DynamicImage, ImageError> {
+pub fn convert_comp_to_dynamic_grayscale(comp: &CoreImageComp) -> Result<DynamicImage, ImageError> {
   let width = comp.w;
   let height = comp.h;
   let adjust = if comp.sgnd != 0 {
@@ -300,11 +298,7 @@ pub fn convert_from_dynamic_image(
       let b = data.next().expect("We just allocated all the components");
       let a = data.next().expect("We just allocated all the components");
       // zip the components data to access them together.
-      let data = r
-        .iter_mut()
-        .zip(&mut *g)
-        .zip(&mut *b)
-        .zip(&mut *a);
+      let data = r.iter_mut().zip(&mut *g).zip(&mut *b).zip(&mut *a);
 
       // iterate over the pixels and assign the pixel values to the components data.
       for ((((r, g), b), a), pixel) in data.zip(img.pixels()) {
@@ -355,11 +349,7 @@ pub fn convert_from_dynamic_image(
       let b = data.next().expect("We just allocated all the components");
       let a = data.next().expect("We just allocated all the components");
       // zip the components data to access them together.
-      let data = r
-        .iter_mut()
-        .zip(&mut *g)
-        .zip(&mut *b)
-        .zip(&mut *a);
+      let data = r.iter_mut().zip(&mut *g).zip(&mut *b).zip(&mut *a);
 
       // iterate over the pixels and assign the pixel values to the components data.
       for ((((r, g), b), a), pixel) in data.zip(img.pixels()) {

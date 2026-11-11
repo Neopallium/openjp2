@@ -58,8 +58,8 @@ pub fn load_pnm_image(
     t.parse::<u32>()
       .map_err(|_| ImageError::InvalidFormat(format!("Invalid PNM value: {t}")))
   };
-  let magic = next_token(&mut reader)?
-    .ok_or_else(|| ImageError::InvalidFormat("Empty PNM file".into()))?;
+  let magic =
+    next_token(&mut reader)?.ok_or_else(|| ImageError::InvalidFormat("Empty PNM file".into()))?;
   /* P7 (PAM): named key/value header fields terminated by ENDHDR. */
   let (width, height, maxval, num_comps, is_ascii) = if magic == "P7" {
     let mut width = 0u32;
@@ -97,10 +97,18 @@ pub fn load_pnm_image(
       "P1" | "P2" | "P4" | "P5" => 1,
       "P3" | "P6" => 3,
       other => {
-        return Err(ImageError::InvalidFormat(format!("Unknown PNM magic {other}")));
+        return Err(ImageError::InvalidFormat(format!(
+          "Unknown PNM magic {other}"
+        )));
       }
     };
-    (width, height, maxval, num_comps, matches!(magic.as_str(), "P1" | "P2" | "P3"))
+    (
+      width,
+      height,
+      maxval,
+      num_comps,
+      matches!(magic.as_str(), "P1" | "P2" | "P3"),
+    )
   };
   let bytes_per_sample = if maxval > 255 { 2 } else { 1 };
   let num_samples = (width as usize) * (height as usize);

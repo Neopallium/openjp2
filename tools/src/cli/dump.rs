@@ -181,8 +181,7 @@ fn process_file(
       .apply_settings(&openjp2::DecoderSettings {
         layers: parameters.cp_layer,
         reduce: parameters.cp_reduce,
-        ignore_pclr_cmap_cdef: parameters.flags
-          & OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG != 0,
+        ignore_pclr_cmap_cdef: parameters.flags & OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG != 0,
         dump_state: parameters.flags & OPJ_DPARAMETERS_DUMP_FLAG != 0,
         threads: 0,
       })

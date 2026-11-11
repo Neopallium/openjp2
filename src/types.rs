@@ -35,9 +35,8 @@
 
 use super::c_api_types::*;
 use super::consts::*;
-use crate::image::CoreImage;
 use super::j2k::*;
-
+use crate::image::CoreImage;
 
 /// Safe, owned encoder parameters.  The C ABI mirror (`opj_cparameters_t`)
 /// is marshalled into this by the capi crate; the tools build it directly.
@@ -494,7 +493,6 @@ pub(crate) struct Tcd {
   pub whole_tile_decoding: bool,
   pub used_component: Vec<bool>,
 }
-
 
 #[derive(Clone)]
 pub(crate) struct Tcp {
@@ -1147,8 +1145,7 @@ impl CodeBlocks {
   }
 }
 
-#[derive(Clone)]
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct TcdCblkDec {
   pub segs: Vec<TcdSeg>,
   pub chunks: Vec<TcdSegDataChunk>,
@@ -1183,8 +1180,7 @@ pub(crate) struct TcdSeg {
   pub numnewpasses: u32,
   pub newlen: u32,
 }
-#[derive(Clone)]
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct TcdCblkEnc {
   /// Compressed-data buffer. `buf[0]` is the sentinel byte the MQ coder reads through
   /// `data[-1]`; the payload the C code called `data` starts at `buf[1]`.
@@ -1219,7 +1215,6 @@ impl TcdCblkEnc {
     self.data[index + 1]
   }
 }
-
 
 #[derive(Copy, Clone, Default)]
 pub(crate) struct TcdPass {

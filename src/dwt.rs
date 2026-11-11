@@ -135,11 +135,7 @@ impl dwt_local<'_> {
     if self.cas == 0 {
       if self.dn > 0 || self.sn > 1 {
         for i in 0..self.sn {
-          let val = self
-            .d_(i - 1)
-            .wrapping_add(self.d_(i))
-            .wrapping_add(2)
-            >> 2;
+          let val = self.d_(i - 1).wrapping_add(self.d_(i)).wrapping_add(2) >> 2;
           self.m_sub(self.s_idx(i, 1), val);
         }
         for i in 0..self.dn {
@@ -152,11 +148,7 @@ impl dwt_local<'_> {
         self.m_set(self.s_idx(0, 1), self.s(0) / 2);
       } else {
         for i in 0..self.sn {
-          let val = self
-            .ss_(i)
-            .wrapping_add(self.ss_(i + 1))
-            .wrapping_add(2)
-            >> 2;
+          let val = self.ss_(i).wrapping_add(self.ss_(i + 1)).wrapping_add(2) >> 2;
           self.m_sub(self.d_idx(i, 1), val);
         }
         for i in 0..self.dn {
@@ -167,21 +159,11 @@ impl dwt_local<'_> {
     }
   }
 
-  fn decode_partial_1(
-    &self,
-    win_l_x0: i32,
-    win_l_x1: i32,
-    win_h_x0: i32,
-    win_h_x1: i32,
-  ) {
+  fn decode_partial_1(&self, win_l_x0: i32, win_l_x1: i32, win_h_x0: i32, win_h_x1: i32) {
     if self.cas == 0 {
       if self.dn > 0 || self.sn > 1 {
         for i in win_l_x0..win_l_x1 {
-          let val = self
-            .d_(i - 1)
-            .wrapping_add(self.d_(i))
-            .wrapping_add(2)
-            >> 2;
+          let val = self.d_(i - 1).wrapping_add(self.d_(i)).wrapping_add(2) >> 2;
           self.m_sub(self.s_idx(i, 1), val);
         }
         for i in win_h_x0..win_h_x1 {
@@ -209,13 +191,7 @@ impl dwt_local<'_> {
     }
   }
 
-  fn decode_partial_1_parallel(
-    &self,
-    win_l_x0: i32,
-    win_l_x1: i32,
-    win_h_x0: i32,
-    win_h_x1: i32,
-  ) {
+  fn decode_partial_1_parallel(&self, win_l_x0: i32, win_l_x1: i32, win_h_x0: i32, win_h_x1: i32) {
     if self.cas == 0 {
       if self.dn > 0 || self.sn > 1 {
         for i in win_l_x0..win_l_x1 {
@@ -454,7 +430,12 @@ fn opj_idwt53_v_simd(
   let two = i32x4::splat(2);
   #[inline(always)]
   fn load(buf: &[i32], k: usize, c: usize, stride: usize) -> i32x4 {
-    i32x4::from([buf[c + k * stride], buf[c + 1 + k * stride], buf[c + 2 + k * stride], buf[c + 3 + k * stride]])
+    i32x4::from([
+      buf[c + k * stride],
+      buf[c + 1 + k * stride],
+      buf[c + 2 + k * stride],
+      buf[c + 3 + k * stride],
+    ])
   }
   /* Interleaved results for a 4-column group (the same layout the
   scalar path's scratch + write-back produces).  Writing the results to
@@ -481,7 +462,11 @@ fn opj_idwt53_v_simd(
     // high pass: d'[i] = d[i] + (s'[i] + s'[i+1]) >> 1
     for i in 0..dn as usize {
       let s0 = scratch[2 * i];
-      let s1 = if i + 1 >= sn as usize { scratch[2 * (sn as usize - 1)] } else { scratch[2 * (i + 1)] };
+      let s1 = if i + 1 >= sn as usize {
+        scratch[2 * (sn as usize - 1)]
+      } else {
+        scratch[2 * (i + 1)]
+      };
       let d = load(tiledp, sn as usize + i, c, stride);
       scratch[2 * i + 1] = d + ((s0 + s1) >> 1);
     }
@@ -515,13 +500,7 @@ fn opj_idwt53_h(dwt: &Dwt, tiledp: &mut [i32], row_start: usize) {
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
 /// Inverse vertical 5-3 wavelet transform in 1-D for several columns: per column, interleave,
 /// transform, copy back. `col_start` is the tile-buffer offset of the first column.
-fn opj_idwt53_v(
-  dwt: &Dwt,
-  tiledp: &mut [i32],
-  col_start: usize,
-  stride: usize,
-  nb_cols: i32,
-) {
+fn opj_idwt53_v(dwt: &Dwt, tiledp: &mut [i32], col_start: usize, stride: usize, nb_cols: i32) {
   let mut c = 0i32;
   /* SIMD path (feature `simd`): cas == 0 (even-origin columns) only;
   odd origins and short columns use the scalar path. */
@@ -670,11 +649,7 @@ fn opj_dwt_encode_1_real(w: &mut [f32], dn: i32, sn: i32, cas: i32) {
 /* *
 Explicit calculation of the Quantization Stepsizes
 */
-fn opj_dwt_encode_stepsize(
-  mut stepsize: i32,
-  mut numbps: i32,
-  bandno_stepsize: &mut Stepsize,
-) {
+fn opj_dwt_encode_stepsize(mut stepsize: i32, mut numbps: i32, bandno_stepsize: &mut Stepsize) {
   let mut p: i32 = 0;
   let mut n: i32 = 0;
   p = opj_int_floorlog2(stepsize) - 13i32;
@@ -708,12 +683,11 @@ fn opj_dwt_encode_and_deinterleave_h_one_row(
       let mut i: i32 = 0;
       i = 0i32;
       while i < sn - 1i32 {
-        tmp[(sn + i) as usize] = row[row_start + (2i32 * i + 1i32) as usize]
-          .wrapping_sub(
-            row[row_start + (i * 2i32) as usize]
-              .wrapping_add(row[row_start + ((i + 1i32) * 2i32) as usize])
-              >> 1i32,
-          );
+        tmp[(sn + i) as usize] = row[row_start + (2i32 * i + 1i32) as usize].wrapping_sub(
+          row[row_start + (i * 2i32) as usize]
+            .wrapping_add(row[row_start + ((i + 1i32) * 2i32) as usize])
+            >> 1i32,
+        );
         i += 1
       }
       if width.wrapping_rem(2u32) == 0u32 {
@@ -721,12 +695,17 @@ fn opj_dwt_encode_and_deinterleave_h_one_row(
           .wrapping_sub(row[row_start + (i * 2i32) as usize])
       }
       row[row_start] = row[row_start].wrapping_add(
-        (tmp[sn as usize].wrapping_add(tmp[sn as usize]).wrapping_add(2i32)) >> 2i32,
+        (tmp[sn as usize]
+          .wrapping_add(tmp[sn as usize])
+          .wrapping_add(2i32))
+          >> 2i32,
       );
       i = 1i32;
       while i < dn {
         row[row_start + i as usize] = row[row_start + (2i32 * i) as usize].wrapping_add(
-          (tmp[(sn + (i - 1i32)) as usize].wrapping_add(tmp[(sn + i) as usize]).wrapping_add(2i32))
+          (tmp[(sn + (i - 1i32)) as usize]
+            .wrapping_add(tmp[(sn + i) as usize])
+            .wrapping_add(2i32))
             >> 2i32,
         );
         i += 1
@@ -868,11 +847,7 @@ fn opj_dwt_deinterleave_v_cols<T: Copy>(
   let mut k: i32 = 0;
   while k < 2i32 {
     let (n, src_base, dst_base) = if k == 0 {
-      (
-        sn as usize,
-        (cas * NB_ELTS_V8 as i32) as usize,
-        dst_start,
-      )
+      (sn as usize, (cas * NB_ELTS_V8 as i32) as usize, dst_start)
     } else {
       (
         dn as usize,
@@ -950,7 +925,8 @@ fn opj_dwt_encode_and_deinterleave_v(
       while i < dn {
         c = 0_u32;
         while c < NB_ELTS_V8 {
-          sc!(i, c) = sc!(i, c).wrapping_add(dc!(i - 1, c).wrapping_add(dc!(i, c)).wrapping_add(2) >> 2);
+          sc!(i, c) =
+            sc!(i, c).wrapping_add(dc!(i - 1, c).wrapping_add(dc!(i, c)).wrapping_add(2) >> 2);
           c += 1
         }
         i += 1
@@ -958,7 +934,8 @@ fn opj_dwt_encode_and_deinterleave_v(
       if height % 2 == 1 {
         c = 0_u32;
         while c < NB_ELTS_V8 {
-          sc!(i, c) = sc!(i, c).wrapping_add(dc!(i - 1, c).wrapping_add(dc!(i - 1, c)).wrapping_add(2) >> 2);
+          sc!(i, c) =
+            sc!(i, c).wrapping_add(dc!(i - 1, c).wrapping_add(dc!(i - 1, c)).wrapping_add(2) >> 2);
           c += 1
         }
       }
@@ -995,7 +972,8 @@ fn opj_dwt_encode_and_deinterleave_v(
     while i + 1 < dn {
       c = 0_u32;
       while c < NB_ELTS_V8 {
-        dc!(i, c) = dc!(i, c).wrapping_add(sc!(i, c).wrapping_add(sc!(i + 1, c)).wrapping_add(2) >> 2);
+        dc!(i, c) =
+          dc!(i, c).wrapping_add(sc!(i, c).wrapping_add(sc!(i + 1, c)).wrapping_add(2) >> 2);
         c += 1
       }
       i += 1
@@ -1064,7 +1042,8 @@ fn opj_v8dwt_encode_step2(
   if imax > 0u32 {
     c = 0;
     while c < NB_ELTS_V8 as i32 {
-      tmp[fw_base - n + c as usize] += (tmp[fl_base + c as usize] + tmp[fw_base + c as usize]) * cst;
+      tmp[fw_base - n + c as usize] +=
+        (tmp[fl_base + c as usize] + tmp[fw_base + c as usize]) * cst;
       c += 1
     }
     fw_base += 2 * n;
@@ -1194,9 +1173,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
   let l = tilec.numresolutions as i32 - 1i32;
   let l_data_size = opj_dwt_max_resolution(&tilec.resolutions, tilec.numresolutions) as usize;
   /* overflow check */
-  if l_data_size
-    > (usize::MAX).wrapping_div(NB_ELTS_V8 as usize * core::mem::size_of::<i32>())
-  {
+  if l_data_size > (usize::MAX).wrapping_div(NB_ELTS_V8 as usize * core::mem::size_of::<i32>()) {
     return Err(());
   }
   /* scratch size in elements of the wavelet's sample type */
@@ -1222,10 +1199,8 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
   /* width of the resolution level computed   */
   let mut cur = l; /* height of the resolution level computed  */
   while cur > 0 {
-    let rw = (tilec.resolutions[cur as usize].x1 - tilec.resolutions[cur as usize].x0)
-      as u32;
-    let rh = (tilec.resolutions[cur as usize].y1 - tilec.resolutions[cur as usize].y0)
-      as u32;
+    let rw = (tilec.resolutions[cur as usize].x1 - tilec.resolutions[cur as usize].x0) as u32;
+    let rh = (tilec.resolutions[cur as usize].y1 - tilec.resolutions[cur as usize].y0) as u32;
     let cas_row = tilec.resolutions[cur as usize].x0 & 1i32;
     let cas_col = tilec.resolutions[cur as usize].y0 & 1i32;
     /* A component can subsample to nothing inside a tile (subsampling larger
@@ -1334,7 +1309,7 @@ fn opj_dwt_encode_procedure(tilec: &mut TcdTileComp, wavelet: ForwardWavelet) ->
     }
     cur -= 1;
   }
-Ok(())
+  Ok(())
 }
 
 /* Forward 5-3 wavelet transform in 2-D. */
@@ -1400,58 +1375,53 @@ pub fn opj_dwt_getnorm_real(mut level: u32, orient: u32) -> f64 {
 }
 
 pub(crate) fn opj_dwt_calc_explicit_stepsizes(tccp: &mut Tccp, mut prec: u32) {
-    let mut numbands: u32 = 0;
-    let mut bandno: u32 = 0;
-    numbands = (3u32)
-      .wrapping_mul(tccp.numresolutions)
-      .wrapping_sub(2u32);
-    bandno = 0_u32;
-    while bandno < numbands {
-      let mut stepsize: f64 = 0.;
-      let mut resno: u32 = 0;
-      let mut level: u32 = 0;
-      let mut orient: u32 = 0;
-      let mut gain: u32 = 0;
-      resno = if bandno == 0u32 {
-        0u32
-      } else {
-        bandno
-          .wrapping_sub(1u32)
-          .wrapping_div(3u32)
-          .wrapping_add(1u32)
-      };
-      orient = if bandno == 0u32 {
-        0u32
-      } else {
-        bandno
-          .wrapping_sub(1u32)
-          .wrapping_rem(3u32)
-          .wrapping_add(1u32)
-      };
-      level = tccp
-        .numresolutions
+  let mut numbands: u32 = 0;
+  let mut bandno: u32 = 0;
+  numbands = (3u32).wrapping_mul(tccp.numresolutions).wrapping_sub(2u32);
+  bandno = 0_u32;
+  while bandno < numbands {
+    let mut stepsize: f64 = 0.;
+    let mut resno: u32 = 0;
+    let mut level: u32 = 0;
+    let mut orient: u32 = 0;
+    let mut gain: u32 = 0;
+    resno = if bandno == 0u32 {
+      0u32
+    } else {
+      bandno
         .wrapping_sub(1u32)
-        .wrapping_sub(resno);
-      gain = if tccp.qmfbid == 0u32 || orient == 0u32 {
-        0i32
-      } else if orient == 1u32 || orient == 2u32 {
-        1i32
-      } else {
-        2i32
-      } as u32;
-      if tccp.qntsty == 0u32 {
-        stepsize = 1.0f64
-      } else {
-        let mut norm = opj_dwt_getnorm_real(level, orient);
-        stepsize = ((1i32) << gain) as core::ffi::c_double / norm
-      }
-      opj_dwt_encode_stepsize(
-        (stepsize * 8192.0f64).floor() as i32,
-        prec.wrapping_add(gain) as i32,
-        &mut tccp.stepsizes[bandno as usize],
-      );
-      bandno += 1;
+        .wrapping_div(3u32)
+        .wrapping_add(1u32)
+    };
+    orient = if bandno == 0u32 {
+      0u32
+    } else {
+      bandno
+        .wrapping_sub(1u32)
+        .wrapping_rem(3u32)
+        .wrapping_add(1u32)
+    };
+    level = tccp.numresolutions.wrapping_sub(1u32).wrapping_sub(resno);
+    gain = if tccp.qmfbid == 0u32 || orient == 0u32 {
+      0i32
+    } else if orient == 1u32 || orient == 2u32 {
+      1i32
+    } else {
+      2i32
+    } as u32;
+    if tccp.qntsty == 0u32 {
+      stepsize = 1.0f64
+    } else {
+      let mut norm = opj_dwt_getnorm_real(level, orient);
+      stepsize = ((1i32) << gain) as core::ffi::c_double / norm
     }
+    opj_dwt_encode_stepsize(
+      (stepsize * 8192.0f64).floor() as i32,
+      prec.wrapping_add(gain) as i32,
+      &mut tccp.stepsizes[bandno as usize],
+    );
+    bandno += 1;
+  }
 }
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
@@ -1557,32 +1527,36 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
       let h_cas = h.cas;
       let h_len = 2 * (h_sn + h_dn) as usize;
       let stride = w as usize;
-      par::for_each_chunks_mut(&mut tile_data[..level_rows * stride], stride, |_row_idx, row| {
-        DWT_SCRATCH.with(|scratch| {
-          let mut s = scratch.borrow_mut();
-          if s.len() < h_len {
-            /* The thread-local scratch is sized from header geometry: fail
-            the job instead of aborting on OOM (the vec! resize would
-            abort). */
-            let need = h_len - s.len();
-            if s.try_reserve_exact(need).is_err() {
-              return;
+      par::for_each_chunks_mut(
+        &mut tile_data[..level_rows * stride],
+        stride,
+        |_row_idx, row| {
+          DWT_SCRATCH.with(|scratch| {
+            let mut s = scratch.borrow_mut();
+            if s.len() < h_len {
+              /* The thread-local scratch is sized from header geometry: fail
+              the job instead of aborting on OOM (the vec! resize would
+              abort). */
+              let need = h_len - s.len();
+              if s.try_reserve_exact(need).is_err() {
+                return;
+              }
+              s.resize(h_len, core::cell::Cell::new(0));
             }
-            s.resize(h_len, core::cell::Cell::new(0));
-          }
-          let d = Dwt {
-            mem: &s[..h_len],
-            dn: h_dn,
-            sn: h_sn,
-            cas: h_cas,
-          };
-          opj_dwt_interleave_h(&d, row);
-          d.decode_1();
-          for (cell, row_v) in d.mem[..(h_sn + h_dn) as usize].iter().zip(row.iter_mut()) {
-            *row_v = cell.get();
-          }
-        });
-      });
+            let d = Dwt {
+              mem: &s[..h_len],
+              dn: h_dn,
+              sn: h_sn,
+              cas: h_cas,
+            };
+            opj_dwt_interleave_h(&d, row);
+            d.decode_1();
+            for (cell, row_v) in d.mem[..(h_sn + h_dn) as usize].iter().zip(row.iter_mut()) {
+              *row_v = cell.get();
+            }
+          });
+        },
+      );
     } else {
       let mut j: u32 = 0;
       while j < rh {
@@ -1598,11 +1572,17 @@ fn opj_dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
       j = (j as core::ffi::c_uint).wrapping_add((2i32 * 4i32) as core::ffi::c_uint)
     }
     if j < rw {
-      opj_idwt53_v(&v, tile_data, j as usize, w as usize, rw.wrapping_sub(j) as i32);
+      opj_idwt53_v(
+        &v,
+        tile_data,
+        j as usize,
+        w as usize,
+        rw.wrapping_sub(j) as i32,
+      );
     }
     res_idx += 1;
   }
-Ok(())
+  Ok(())
 }
 fn opj_dwt_interleave_partial_h<T: SparseSample>(
   dest: &[Cell<T>],
@@ -1750,12 +1730,7 @@ fn opj_dwt_get_band_coordinates(
     }
   };
 }
-fn opj_dwt_segment_grow(
-  filter_width: u32,
-  max_size: u32,
-  start: &mut u32,
-  end: &mut u32,
-) {
+fn opj_dwt_segment_grow(filter_width: u32, max_size: u32, start: &mut u32, end: &mut u32) {
   *start = opj_uint_subs(*start, filter_width);
   *end = opj_uint_adds(*end, filter_width);
   *end = opj_uint_min(*end, max_size);
@@ -1766,12 +1741,7 @@ fn opj_dwt_init_sparse_array(tilec: &TcdTileComp, numres: u32) -> Option<SparseA
   let tr_max = &tilec.resolutions[numres.wrapping_sub(1u32) as usize];
   let w = (tr_max.x1 - tr_max.x0) as u32;
   let h = (tr_max.y1 - tr_max.y0) as u32;
-  let mut sa = SparseArray::new(
-    w,
-    h,
-    opj_uint_min(w, 64_u32),
-    opj_uint_min(h, 64_u32),
-  )?;
+  let mut sa = SparseArray::new(w, h, opj_uint_min(w, 64_u32), opj_uint_min(h, 64_u32))?;
   let mut resno: u32 = 0;
   while resno < numres {
     let res = &tilec.resolutions[resno as usize];
@@ -1993,30 +1963,10 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpRe
     win_hl_x1 = opj_uint_subs(win_hl_x1, tr_hl_x0);
     win_lh_y0 = opj_uint_subs(win_lh_y0, tr_lh_y0);
     win_lh_y1 = opj_uint_subs(win_lh_y1, tr_lh_y0);
-    opj_dwt_segment_grow(
-      filter_width,
-      h.sn as u32,
-      &mut win_ll_x0,
-      &mut win_ll_x1,
-    );
-    opj_dwt_segment_grow(
-      filter_width,
-      h.dn as u32,
-      &mut win_hl_x0,
-      &mut win_hl_x1,
-    );
-    opj_dwt_segment_grow(
-      filter_width,
-      v.sn as u32,
-      &mut win_ll_y0,
-      &mut win_ll_y1,
-    );
-    opj_dwt_segment_grow(
-      filter_width,
-      v.dn as u32,
-      &mut win_lh_y0,
-      &mut win_lh_y1,
-    );
+    opj_dwt_segment_grow(filter_width, h.sn as u32, &mut win_ll_x0, &mut win_ll_x1);
+    opj_dwt_segment_grow(filter_width, h.dn as u32, &mut win_hl_x0, &mut win_hl_x1);
+    opj_dwt_segment_grow(filter_width, v.sn as u32, &mut win_ll_y0, &mut win_ll_y1);
+    opj_dwt_segment_grow(filter_width, v.dn as u32, &mut win_lh_y0, &mut win_lh_y1);
     /* Compute the tile-resolution-based coordinates for the window of interest */
     if h.cas == 0i32 {
       win_tr_x0 = opj_uint_min(
@@ -2071,8 +2021,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpRe
     j = 0_u32;
     while j < rh {
       if j >= win_ll_y0 && j < win_ll_y1
-        || j >= win_lh_y0.wrapping_add(v.sn as u32)
-          && j < win_lh_y1.wrapping_add(v.sn as u32)
+        || j >= win_lh_y0.wrapping_add(v.sn as u32) && j < win_lh_y1.wrapping_add(v.sn as u32)
       {
         /* Avoids dwt.c:1584:44 (in opj_dwt_decode_partial_1): runtime error: */
         /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
@@ -2178,7 +2127,7 @@ fn opj_dwt_decode_partial_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpRe
     true,
   );
   debug_assert!(ret_0);
-Ok(())
+  Ok(())
 }
 
 /// Inverse lazy transform (horizontal) of the 9-7 pass: stage a block of `remaining_height`
@@ -2218,8 +2167,7 @@ fn opj_v8dwt_interleave_partial_h(
   remaining_height: u32,
 ) {
   let l_base = (NB_ELTS_V8 * dwt.cas as u32 + 2 * NB_ELTS_V8 * dwt.win_l_x0) as usize;
-  let h_base =
-    (NB_ELTS_V8 * (1i32 - dwt.cas) as u32 + 2 * NB_ELTS_V8 * dwt.win_h_x0) as usize;
+  let h_base = (NB_ELTS_V8 * (1i32 - dwt.cas) as u32 + 2 * NB_ELTS_V8 * dwt.win_h_x0) as usize;
   for i in 0..remaining_height {
     let ret = sparse_array_read(
       sa,
@@ -2288,8 +2236,7 @@ fn opj_v8dwt_interleave_partial_v(
   nb_elts_read: u32,
 ) {
   let l_base = (NB_ELTS_V8 * dwt.cas as u32 + 2 * NB_ELTS_V8 * dwt.win_l_x0) as usize;
-  let h_base =
-    (NB_ELTS_V8 * (1i32 - dwt.cas) as u32 + 2 * NB_ELTS_V8 * dwt.win_h_x0) as usize;
+  let h_base = (NB_ELTS_V8 * (1i32 - dwt.cas) as u32 + 2 * NB_ELTS_V8 * dwt.win_h_x0) as usize;
   let ret = sparse_array_read(
     sa,
     sa_col,
@@ -2318,13 +2265,7 @@ fn opj_v8dwt_interleave_partial_v(
 
 /// `w` is the flat wavelet buffer and `w_base` the float index the C code's `opj_v8_t*` argument
 /// pointed at (its `opj_v8_t` index times `NB_ELTS_V8`).
-fn opj_v8dwt_decode_step1(
-  w: &[Cell<f32>],
-  w_base: usize,
-  mut start: u32,
-  mut end: u32,
-  c: f32,
-) {
+fn opj_v8dwt_decode_step1(w: &[Cell<f32>], w_base: usize, mut start: u32, mut end: u32, c: f32) {
   /* To be adapted if NB_ELTS_V8 changes */
   for i in start..end {
     let base = w_base + (i * 2 * NB_ELTS_V8) as usize;
@@ -2628,7 +2569,7 @@ fn opj_dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult 
     }
     res_idx += 1;
   }
-Ok(())
+  Ok(())
 }
 fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
   let mut resno: u32 = 0;
@@ -2803,30 +2744,10 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OpResu
     win_hl_x1 = opj_uint_subs(win_hl_x1, tr_hl_x0);
     win_lh_y0 = opj_uint_subs(win_lh_y0, tr_lh_y0);
     win_lh_y1 = opj_uint_subs(win_lh_y1, tr_lh_y0);
-    opj_dwt_segment_grow(
-      filter_width,
-      h.sn as u32,
-      &mut win_ll_x0,
-      &mut win_ll_x1,
-    );
-    opj_dwt_segment_grow(
-      filter_width,
-      h.dn as u32,
-      &mut win_hl_x0,
-      &mut win_hl_x1,
-    );
-    opj_dwt_segment_grow(
-      filter_width,
-      v.sn as u32,
-      &mut win_ll_y0,
-      &mut win_ll_y1,
-    );
-    opj_dwt_segment_grow(
-      filter_width,
-      v.dn as u32,
-      &mut win_lh_y0,
-      &mut win_lh_y1,
-    );
+    opj_dwt_segment_grow(filter_width, h.sn as u32, &mut win_ll_x0, &mut win_ll_x1);
+    opj_dwt_segment_grow(filter_width, h.dn as u32, &mut win_hl_x0, &mut win_hl_x1);
+    opj_dwt_segment_grow(filter_width, v.sn as u32, &mut win_ll_y0, &mut win_ll_y1);
+    opj_dwt_segment_grow(filter_width, v.dn as u32, &mut win_lh_y0, &mut win_lh_y1);
     /* Compute the tile-resolution-based coordinates for the window of interest */
     if h.cas == 0i32 {
       win_tr_x0 = opj_uint_min(
@@ -2975,7 +2896,7 @@ fn opj_dwt_decode_partial_97(tilec: &mut TcdTileComp, mut numres: u32) -> OpResu
     true,
   );
   debug_assert!(ret_0);
-Ok(())
+  Ok(())
 }
 
 pub(crate) fn opj_dwt_decode_real(

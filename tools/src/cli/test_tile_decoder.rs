@@ -22,8 +22,7 @@ fn create_codec_and_stream<P: AsRef<Path>>(input: P) -> Result<(Decoder, Stream)
   let codec_format = detect_format_from_file(input)?;
   let stream = Stream::new_file(input, 1_000_000, true).map_err(|e| format!("{e:?}"))?;
 
-  let mut codec =
-    Decoder::new(codec_format).map_err(|_| "Failed to create codec".to_string())?;
+  let mut codec = Decoder::new(codec_format).map_err(|_| "Failed to create codec".to_string())?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));

@@ -76,8 +76,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-
 pub type OPJ_BOOL = i32;
 pub type OPJ_FLOAT32 = f32;
 pub type OPJ_BYTE = u8;
@@ -108,7 +106,6 @@ pub const OPJ_RLCP: PROG_ORDER = 1;
 pub const OPJ_LRCP: PROG_ORDER = 0;
 pub const OPJ_PROG_UNKNOWN: PROG_ORDER = -1;
 pub type OPJ_PROG_ORDER = PROG_ORDER;
-
 
 /// Supported image color spaces
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
@@ -167,7 +164,6 @@ impl CODEC_FORMAT {
     }
   }
 }
-
 
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug)]
@@ -268,18 +264,10 @@ impl opj_dparameters_t {
 
 pub type opj_codec_t = *mut core::ffi::c_void;
 pub type opj_stream_read_fn = Option<
-  unsafe extern "C" fn(
-    _: *mut core::ffi::c_void,
-    _: usize,
-    _: *mut core::ffi::c_void,
-  ) -> usize,
+  unsafe extern "C" fn(_: *mut core::ffi::c_void, _: usize, _: *mut core::ffi::c_void) -> usize,
 >;
 pub type opj_stream_write_fn = Option<
-  unsafe extern "C" fn(
-    _: *mut core::ffi::c_void,
-    _: usize,
-    _: *mut core::ffi::c_void,
-  ) -> usize,
+  unsafe extern "C" fn(_: *mut core::ffi::c_void, _: usize, _: *mut core::ffi::c_void) -> usize,
 >;
 pub type opj_stream_skip_fn =
   Option<unsafe extern "C" fn(_: i64, _: *mut core::ffi::c_void) -> i64>;
@@ -288,7 +276,6 @@ pub type opj_stream_seek_fn =
 pub type opj_stream_free_user_data_fn =
   Option<unsafe extern "C" fn(_: *mut core::ffi::c_void) -> ()>;
 pub type opj_stream_t = *mut core::ffi::c_void;
-
 
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
@@ -318,188 +305,187 @@ pub struct opj_tp_index {
 }
 pub type opj_tp_index_t = opj_tp_index;
 
-
-
 pub mod consts {
   /// Constants mirroring the public `openjpeg.h` defines.
   pub mod opj {
 
-  pub const OPJ_TRUE: u32 = 1;
-  pub const OPJ_FALSE: u32 = 0;
-  /**< Maximum allowed size for filenames */
-  pub const OPJ_PATH_LEN: u32 = 4096;
-  /**< Number of maximum resolution level authorized */
-  pub const OPJ_J2K_MAXRLVLS: u32 = 33;
-  /**< Number of maximum sub-band linked to number of resolution level */
-  pub const OPJ_J2K_MAXBANDS: u32 = 3 * OPJ_J2K_MAXRLVLS - 2;
-  pub const OPJ_J2K_DEFAULT_NB_SEGS: u32 = 10;
-  /** 1 mega by default */
-  pub const OPJ_J2K_STREAM_CHUNK_SIZE: u32 = 0x100000;
-  pub const OPJ_J2K_DEFAULT_HEADER_SIZE: u32 = 1000;
-  pub const OPJ_J2K_MCC_DEFAULT_NB_RECORDS: u32 = 10;
-  pub const OPJ_J2K_MCT_DEFAULT_NB_RECORDS: u32 = 10;
-  /**< Maximum number of tile parts expected by JPWL: increase at your will */
-  pub const JPWL_MAX_NO_TILESPECS: u32 = 16;
-  /**< Maximum number of packet parts expected by JPWL: increase at your will */
-  pub const JPWL_MAX_NO_PACKSPECS: u32 = 16;
-  /**< Maximum number of JPWL markers: increase at your will */
-  pub const JPWL_MAX_NO_MARKERS: u32 = 512;
-  /**< index file name used when JPWL is on */
-  pub const JPWL_PRIVATEINDEX_NAME: &str = "jpwl_index_privatefilename";
-  /**< Expect this number of components, so you'll find better the first EPB */
-  pub const JPWL_EXPECTED_COMPONENTS: u32 = 3;
-  /**< Expect this maximum number of tiles, to avoid some crashes */
-  pub const JPWL_MAXIMUM_TILES: u32 = 8192;
-  /**< Expect this maximum number of bit errors in marker id's */
-  pub const JPWL_MAXIMUM_HAMMING: u32 = 2;
-  /**< Expect this maximum number of bytes for composition of EPBs */
-  pub const JPWL_MAXIMUM_EPB_ROOM: u32 = 65450;
-  /**< Basic image information provided to the user */
-  pub const OPJ_IMG_INFO: u32 = 1;
-  /**< Codestream information based only on the main header */
-  pub const OPJ_J2K_MH_INFO: u32 = 2;
-  /**< Tile information based on the current tile header */
-  pub const OPJ_J2K_TH_INFO: u32 = 4;
-  /**< Tile/Component information of all tiles */
-  pub const OPJ_J2K_TCH_INFO: u32 = 8;
-  /**< Codestream index based only on the main header */
-  pub const OPJ_J2K_MH_IND: u32 = 16;
-  /**< Tile index based on the current tile */
-  pub const OPJ_J2K_TH_IND: u32 = 32;
-  /**< JP2 file information */
-  pub const OPJ_JP2_INFO: u32 = 128;
-  /**< JP2 file index */
-  pub const OPJ_JP2_IND: u32 = 256;
-  /** no profile, conform to 15444-1 */
-  pub const OPJ_PROFILE_NONE: u32 = 0x0000;
-  /** Profile 0 as described in 15444-1,Table A.45 */
-  pub const OPJ_PROFILE_0: u32 = 0x0001;
-  /** Profile 1 as described in 15444-1,Table A.45 */
-  pub const OPJ_PROFILE_1: u32 = 0x0002;
-  /** At least 1 extension defined in 15444-2 (Part-2) */
-  pub const OPJ_PROFILE_PART2: u32 = 0x8000;
-  /** 2K cinema profile defined in 15444-1 AMD1 */
-  pub const OPJ_PROFILE_CINEMA_2K: u32 = 0x0003;
-  /** 4K cinema profile defined in 15444-1 AMD1 */
-  pub const OPJ_PROFILE_CINEMA_4K: u32 = 0x0004;
-  /** Scalable 2K cinema profile defined in 15444-1 AMD2 */
-  pub const OPJ_PROFILE_CINEMA_S2K: u32 = 0x0005;
-  /** Scalable 4K cinema profile defined in 15444-1 AMD2 */
-  pub const OPJ_PROFILE_CINEMA_S4K: u32 = 0x0006;
-  /** Long term storage cinema profile defined in 15444-1 AMD2 */
-  pub const OPJ_PROFILE_CINEMA_LTS: u32 = 0x0007;
-  /** Single Tile Broadcast profile defined in 15444-1 AMD3 */
-  pub const OPJ_PROFILE_BC_SINGLE: u32 = 0x0100;
-  /** Multi Tile Broadcast profile defined in 15444-1 AMD3 */
-  pub const OPJ_PROFILE_BC_MULTI: u32 = 0x0200;
-  /** Multi Tile Reversible Broadcast profile defined in 15444-1 AMD3 */
-  pub const OPJ_PROFILE_BC_MULTI_R: u32 = 0x0300;
-  /** 2K Single Tile Lossy IMF profile defined in 15444-1 AMD 8 */
-  pub const OPJ_PROFILE_IMF_2K: u32 = 0x0400;
-  /** 4K Single Tile Lossy IMF profile defined in 15444-1 AMD 8 */
-  pub const OPJ_PROFILE_IMF_4K: u32 = 0x0500;
-  /** 8K Single Tile Lossy IMF profile defined in 15444-1 AMD 8 */
-  pub const OPJ_PROFILE_IMF_8K: u32 = 0x0600;
-  /** 2K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD 8 */
-  pub const OPJ_PROFILE_IMF_2K_R: u32 = 0x0700;
-  /** 4K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD 8 */
-  pub const OPJ_PROFILE_IMF_4K_R: u32 = 0x0800;
-  /** 8K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD 8 */
-  pub const OPJ_PROFILE_IMF_8K_R: u32 = 0x0900;
-  /** No Part-2 extension */
-  pub const OPJ_EXTENSION_NONE: u32 = 0x0000;
-  /** Custom MCT support */
-  pub const OPJ_EXTENSION_MCT: u32 = 0x0100;
+    pub const OPJ_TRUE: u32 = 1;
+    pub const OPJ_FALSE: u32 = 0;
+    /**< Maximum allowed size for filenames */
+    pub const OPJ_PATH_LEN: u32 = 4096;
+    /**< Number of maximum resolution level authorized */
+    pub const OPJ_J2K_MAXRLVLS: u32 = 33;
+    /**< Number of maximum sub-band linked to number of resolution level */
+    pub const OPJ_J2K_MAXBANDS: u32 = 3 * OPJ_J2K_MAXRLVLS - 2;
+    pub const OPJ_J2K_DEFAULT_NB_SEGS: u32 = 10;
+    /** 1 mega by default */
+    pub const OPJ_J2K_STREAM_CHUNK_SIZE: u32 = 0x100000;
+    pub const OPJ_J2K_DEFAULT_HEADER_SIZE: u32 = 1000;
+    pub const OPJ_J2K_MCC_DEFAULT_NB_RECORDS: u32 = 10;
+    pub const OPJ_J2K_MCT_DEFAULT_NB_RECORDS: u32 = 10;
+    /**< Maximum number of tile parts expected by JPWL: increase at your will */
+    pub const JPWL_MAX_NO_TILESPECS: u32 = 16;
+    /**< Maximum number of packet parts expected by JPWL: increase at your will */
+    pub const JPWL_MAX_NO_PACKSPECS: u32 = 16;
+    /**< Maximum number of JPWL markers: increase at your will */
+    pub const JPWL_MAX_NO_MARKERS: u32 = 512;
+    /**< index file name used when JPWL is on */
+    pub const JPWL_PRIVATEINDEX_NAME: &str = "jpwl_index_privatefilename";
+    /**< Expect this number of components, so you'll find better the first EPB */
+    pub const JPWL_EXPECTED_COMPONENTS: u32 = 3;
+    /**< Expect this maximum number of tiles, to avoid some crashes */
+    pub const JPWL_MAXIMUM_TILES: u32 = 8192;
+    /**< Expect this maximum number of bit errors in marker id's */
+    pub const JPWL_MAXIMUM_HAMMING: u32 = 2;
+    /**< Expect this maximum number of bytes for composition of EPBs */
+    pub const JPWL_MAXIMUM_EPB_ROOM: u32 = 65450;
+    /**< Basic image information provided to the user */
+    pub const OPJ_IMG_INFO: u32 = 1;
+    /**< Codestream information based only on the main header */
+    pub const OPJ_J2K_MH_INFO: u32 = 2;
+    /**< Tile information based on the current tile header */
+    pub const OPJ_J2K_TH_INFO: u32 = 4;
+    /**< Tile/Component information of all tiles */
+    pub const OPJ_J2K_TCH_INFO: u32 = 8;
+    /**< Codestream index based only on the main header */
+    pub const OPJ_J2K_MH_IND: u32 = 16;
+    /**< Tile index based on the current tile */
+    pub const OPJ_J2K_TH_IND: u32 = 32;
+    /**< JP2 file information */
+    pub const OPJ_JP2_INFO: u32 = 128;
+    /**< JP2 file index */
+    pub const OPJ_JP2_IND: u32 = 256;
+    /** no profile, conform to 15444-1 */
+    pub const OPJ_PROFILE_NONE: u32 = 0x0000;
+    /** Profile 0 as described in 15444-1,Table A.45 */
+    pub const OPJ_PROFILE_0: u32 = 0x0001;
+    /** Profile 1 as described in 15444-1,Table A.45 */
+    pub const OPJ_PROFILE_1: u32 = 0x0002;
+    /** At least 1 extension defined in 15444-2 (Part-2) */
+    pub const OPJ_PROFILE_PART2: u32 = 0x8000;
+    /** 2K cinema profile defined in 15444-1 AMD1 */
+    pub const OPJ_PROFILE_CINEMA_2K: u32 = 0x0003;
+    /** 4K cinema profile defined in 15444-1 AMD1 */
+    pub const OPJ_PROFILE_CINEMA_4K: u32 = 0x0004;
+    /** Scalable 2K cinema profile defined in 15444-1 AMD2 */
+    pub const OPJ_PROFILE_CINEMA_S2K: u32 = 0x0005;
+    /** Scalable 4K cinema profile defined in 15444-1 AMD2 */
+    pub const OPJ_PROFILE_CINEMA_S4K: u32 = 0x0006;
+    /** Long term storage cinema profile defined in 15444-1 AMD2 */
+    pub const OPJ_PROFILE_CINEMA_LTS: u32 = 0x0007;
+    /** Single Tile Broadcast profile defined in 15444-1 AMD3 */
+    pub const OPJ_PROFILE_BC_SINGLE: u32 = 0x0100;
+    /** Multi Tile Broadcast profile defined in 15444-1 AMD3 */
+    pub const OPJ_PROFILE_BC_MULTI: u32 = 0x0200;
+    /** Multi Tile Reversible Broadcast profile defined in 15444-1 AMD3 */
+    pub const OPJ_PROFILE_BC_MULTI_R: u32 = 0x0300;
+    /** 2K Single Tile Lossy IMF profile defined in 15444-1 AMD 8 */
+    pub const OPJ_PROFILE_IMF_2K: u32 = 0x0400;
+    /** 4K Single Tile Lossy IMF profile defined in 15444-1 AMD 8 */
+    pub const OPJ_PROFILE_IMF_4K: u32 = 0x0500;
+    /** 8K Single Tile Lossy IMF profile defined in 15444-1 AMD 8 */
+    pub const OPJ_PROFILE_IMF_8K: u32 = 0x0600;
+    /** 2K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD 8 */
+    pub const OPJ_PROFILE_IMF_2K_R: u32 = 0x0700;
+    /** 4K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD 8 */
+    pub const OPJ_PROFILE_IMF_4K_R: u32 = 0x0800;
+    /** 8K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD 8 */
+    pub const OPJ_PROFILE_IMF_8K_R: u32 = 0x0900;
+    /** No Part-2 extension */
+    pub const OPJ_EXTENSION_NONE: u32 = 0x0000;
+    /** Custom MCT support */
+    pub const OPJ_EXTENSION_MCT: u32 = 0x0100;
 
-  pub fn opj_is_cinema(v: u32) -> bool {
-    (OPJ_PROFILE_CINEMA_2K..=OPJ_PROFILE_CINEMA_S4K).contains(&v)
+    pub fn opj_is_cinema(v: u32) -> bool {
+      (OPJ_PROFILE_CINEMA_2K..=OPJ_PROFILE_CINEMA_S4K).contains(&v)
+    }
+
+    pub fn opj_is_storage(v: u32) -> bool {
+      v == OPJ_PROFILE_CINEMA_LTS
+    }
+
+    pub fn opj_is_broadcast(v: u32) -> bool {
+      (OPJ_PROFILE_BC_SINGLE..=(OPJ_PROFILE_BC_MULTI_R | 0x000b)).contains(&v)
+    }
+
+    pub fn opj_is_imf(v: u32) -> bool {
+      (OPJ_PROFILE_IMF_2K..=(OPJ_PROFILE_IMF_8K_R | 0x009b)).contains(&v)
+    }
+
+    pub fn opj_is_part2(v: u32) -> bool {
+      v & OPJ_PROFILE_PART2 != 0
+    }
+
+    /** Extract IMF profile without mainlevel/sublevel */
+    pub fn opj_get_imf_profile(v: u32) -> u32 {
+      v & 0xff00
+    }
+
+    /** Extract IMF main level */
+    pub fn opj_get_imf_mainlevel(v: u32) -> u32 {
+      v & 0xf
+    }
+
+    /** Extract IMF sub level */
+    pub fn opj_get_imf_sublevel(v: u32) -> u32 {
+      (v >> 4) & 0xf
+    }
+
+    /** Maximum main level */
+    pub const OPJ_IMF_MAINLEVEL_MAX: u32 = 11;
+    /** MSamples/sec for IMF main level 1 */
+    pub const OPJ_IMF_MAINLEVEL_1_MSAMPLESEC: u32 = 65;
+    /** MSamples/sec for IMF main level 2 */
+    pub const OPJ_IMF_MAINLEVEL_2_MSAMPLESEC: u32 = 130;
+    /** MSamples/sec for IMF main level 3 */
+    pub const OPJ_IMF_MAINLEVEL_3_MSAMPLESEC: u32 = 195;
+    /** MSamples/sec for IMF main level 4 */
+    pub const OPJ_IMF_MAINLEVEL_4_MSAMPLESEC: u32 = 260;
+    /** MSamples/sec for IMF main level 5 */
+    pub const OPJ_IMF_MAINLEVEL_5_MSAMPLESEC: u32 = 520;
+    /** MSamples/sec for IMF main level 6 */
+    pub const OPJ_IMF_MAINLEVEL_6_MSAMPLESEC: u32 = 1200;
+    /** MSamples/sec for IMF main level 7 */
+    pub const OPJ_IMF_MAINLEVEL_7_MSAMPLESEC: u32 = 2400;
+    /** MSamples/sec for IMF main level 8 */
+    pub const OPJ_IMF_MAINLEVEL_8_MSAMPLESEC: u32 = 4800;
+    /** MSamples/sec for IMF main level 9 */
+    pub const OPJ_IMF_MAINLEVEL_9_MSAMPLESEC: u32 = 9600;
+    /** MSamples/sec for IMF main level 10 */
+    pub const OPJ_IMF_MAINLEVEL_10_MSAMPLESEC: u32 = 19200;
+    /** MSamples/sec for IMF main level 11 */
+    pub const OPJ_IMF_MAINLEVEL_11_MSAMPLESEC: u32 = 38400;
+    /** Mbits/s for IMF sub level 1 */
+    pub const OPJ_IMF_SUBLEVEL_1_MBITSSEC: u32 = 200;
+    /** Mbits/s for IMF sub level 2 */
+    pub const OPJ_IMF_SUBLEVEL_2_MBITSSEC: u32 = 400;
+    /** Mbits/s for IMF sub level 3 */
+    pub const OPJ_IMF_SUBLEVEL_3_MBITSSEC: u32 = 800;
+    /** Mbits/s for IMF sub level 4 */
+    pub const OPJ_IMF_SUBLEVEL_4_MBITSSEC: u32 = 1600;
+    /** Mbits/s for IMF sub level 5 */
+    pub const OPJ_IMF_SUBLEVEL_5_MBITSSEC: u32 = 3200;
+    /** Mbits/s for IMF sub level 6 */
+    pub const OPJ_IMF_SUBLEVEL_6_MBITSSEC: u32 = 6400;
+    /** Mbits/s for IMF sub level 7 */
+    pub const OPJ_IMF_SUBLEVEL_7_MBITSSEC: u32 = 12800;
+    /** Mbits/s for IMF sub level 8 */
+    pub const OPJ_IMF_SUBLEVEL_8_MBITSSEC: u32 = 25600;
+    /** Mbits/s for IMF sub level 9 */
+    pub const OPJ_IMF_SUBLEVEL_9_MBITSSEC: u32 = 51200;
+    /** Maximum codestream length for 24fps */
+    pub const OPJ_CINEMA_24_CS: u32 = 1302083;
+    /** Maximum codestream length for 48fps */
+    pub const OPJ_CINEMA_48_CS: u32 = 651041;
+    /** Maximum size per color component for 2K & 4K @ 24fps */
+    pub const OPJ_CINEMA_24_COMP: u32 = 1041666;
+    /** Maximum size per color component for 2K @ 48fps */
+    pub const OPJ_CINEMA_48_COMP: u32 = 520833;
+    pub const OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG: u32 = 0x0001;
+    pub const OPJ_DPARAMETERS_DUMP_FLAG: u32 = 0x0002;
+    pub const OPJ_STREAM_READ: u32 = OPJ_TRUE;
+    pub const OPJ_STREAM_WRITE: u32 = OPJ_FALSE;
   }
-
-  pub fn opj_is_storage(v: u32) -> bool {
-    v == OPJ_PROFILE_CINEMA_LTS
-  }
-
-  pub fn opj_is_broadcast(v: u32) -> bool {
-    (OPJ_PROFILE_BC_SINGLE..=(OPJ_PROFILE_BC_MULTI_R | 0x000b)).contains(&v)
-  }
-
-  pub fn opj_is_imf(v: u32) -> bool {
-    (OPJ_PROFILE_IMF_2K..=(OPJ_PROFILE_IMF_8K_R | 0x009b)).contains(&v)
-  }
-
-  pub fn opj_is_part2(v: u32) -> bool {
-    v & OPJ_PROFILE_PART2 != 0
-  }
-
-  /** Extract IMF profile without mainlevel/sublevel */
-  pub fn opj_get_imf_profile(v: u32) -> u32 {
-    v & 0xff00
-  }
-
-  /** Extract IMF main level */
-  pub fn opj_get_imf_mainlevel(v: u32) -> u32 {
-    v & 0xf
-  }
-
-  /** Extract IMF sub level */
-  pub fn opj_get_imf_sublevel(v: u32) -> u32 {
-    (v >> 4) & 0xf
-  }
-
-  /** Maximum main level */
-  pub const OPJ_IMF_MAINLEVEL_MAX: u32 = 11;
-  /** MSamples/sec for IMF main level 1 */
-  pub const OPJ_IMF_MAINLEVEL_1_MSAMPLESEC: u32 = 65;
-  /** MSamples/sec for IMF main level 2 */
-  pub const OPJ_IMF_MAINLEVEL_2_MSAMPLESEC: u32 = 130;
-  /** MSamples/sec for IMF main level 3 */
-  pub const OPJ_IMF_MAINLEVEL_3_MSAMPLESEC: u32 = 195;
-  /** MSamples/sec for IMF main level 4 */
-  pub const OPJ_IMF_MAINLEVEL_4_MSAMPLESEC: u32 = 260;
-  /** MSamples/sec for IMF main level 5 */
-  pub const OPJ_IMF_MAINLEVEL_5_MSAMPLESEC: u32 = 520;
-  /** MSamples/sec for IMF main level 6 */
-  pub const OPJ_IMF_MAINLEVEL_6_MSAMPLESEC: u32 = 1200;
-  /** MSamples/sec for IMF main level 7 */
-  pub const OPJ_IMF_MAINLEVEL_7_MSAMPLESEC: u32 = 2400;
-  /** MSamples/sec for IMF main level 8 */
-  pub const OPJ_IMF_MAINLEVEL_8_MSAMPLESEC: u32 = 4800;
-  /** MSamples/sec for IMF main level 9 */
-  pub const OPJ_IMF_MAINLEVEL_9_MSAMPLESEC: u32 = 9600;
-  /** MSamples/sec for IMF main level 10 */
-  pub const OPJ_IMF_MAINLEVEL_10_MSAMPLESEC: u32 = 19200;
-  /** MSamples/sec for IMF main level 11 */
-  pub const OPJ_IMF_MAINLEVEL_11_MSAMPLESEC: u32 = 38400;
-  /** Mbits/s for IMF sub level 1 */
-  pub const OPJ_IMF_SUBLEVEL_1_MBITSSEC: u32 = 200;
-  /** Mbits/s for IMF sub level 2 */
-  pub const OPJ_IMF_SUBLEVEL_2_MBITSSEC: u32 = 400;
-  /** Mbits/s for IMF sub level 3 */
-  pub const OPJ_IMF_SUBLEVEL_3_MBITSSEC: u32 = 800;
-  /** Mbits/s for IMF sub level 4 */
-  pub const OPJ_IMF_SUBLEVEL_4_MBITSSEC: u32 = 1600;
-  /** Mbits/s for IMF sub level 5 */
-  pub const OPJ_IMF_SUBLEVEL_5_MBITSSEC: u32 = 3200;
-  /** Mbits/s for IMF sub level 6 */
-  pub const OPJ_IMF_SUBLEVEL_6_MBITSSEC: u32 = 6400;
-  /** Mbits/s for IMF sub level 7 */
-  pub const OPJ_IMF_SUBLEVEL_7_MBITSSEC: u32 = 12800;
-  /** Mbits/s for IMF sub level 8 */
-  pub const OPJ_IMF_SUBLEVEL_8_MBITSSEC: u32 = 25600;
-  /** Mbits/s for IMF sub level 9 */
-  pub const OPJ_IMF_SUBLEVEL_9_MBITSSEC: u32 = 51200;
-  /** Maximum codestream length for 24fps */
-  pub const OPJ_CINEMA_24_CS: u32 = 1302083;
-  /** Maximum codestream length for 48fps */
-  pub const OPJ_CINEMA_48_CS: u32 = 651041;
-  /** Maximum size per color component for 2K & 4K @ 24fps */
-  pub const OPJ_CINEMA_24_COMP: u32 = 1041666;
-  /** Maximum size per color component for 2K @ 48fps */
-  pub const OPJ_CINEMA_48_COMP: u32 = 520833;
-  pub const OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG: u32 = 0x0001;
-  pub const OPJ_DPARAMETERS_DUMP_FLAG: u32 = 0x0002;
-  pub const OPJ_STREAM_READ: u32 = OPJ_TRUE;
-  pub const OPJ_STREAM_WRITE: u32 = OPJ_FALSE;}
 }
 
 #[repr(C)]

@@ -40,7 +40,7 @@ impl<'a> Bio<'a> {
       Some(slot) => {
         *slot = (self.buf >> 8i32) as u8;
         self.cursor += 1;
-Ok(())
+        Ok(())
       }
       None => Err(()),
     }
@@ -53,7 +53,7 @@ Ok(())
       Some(&byte) => {
         self.buf |= byte as u32;
         self.cursor += 1;
-Ok(())
+        Ok(())
       }
       None => Err(()),
     }
@@ -125,7 +125,7 @@ pub(crate) fn opj_bio_flush(bio: &mut Bio) -> OpResult {
   if bio.ct == 7u32 && bio.byteout().is_err() {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 pub(crate) fn opj_bio_inalign(bio: &mut Bio) -> OpResult {
@@ -133,7 +133,7 @@ pub(crate) fn opj_bio_inalign(bio: &mut Bio) -> OpResult {
     return Err(());
   }
   bio.ct = 0;
-Ok(())
+  Ok(())
 }
 
 /*

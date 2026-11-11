@@ -361,4 +361,3 @@ impl EncodeParameters {
     self.inner
   }
 }
-

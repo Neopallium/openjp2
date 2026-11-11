@@ -38,4 +38,3 @@ pub fn default_codestream_comment() -> String {
     env!("CARGO_PKG_VERSION")
   )
 }
-

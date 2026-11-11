@@ -23,8 +23,8 @@ impl Image {
   /// reference behaves the same way; check `Image::components()` data lengths
   /// when decoding untrusted partial streams.
   pub fn from_bytes_with(buf: &[u8], params: DecodeParameters) -> Result<Self> {
-    let format = detect_format(buf)
-      .ok_or_else(|| Error::Unsupported("unknown JPEG 2000 format".into()))?;
+    let format =
+      detect_format(buf).ok_or_else(|| Error::Unsupported("unknown JPEG 2000 format".into()))?;
     let mut stream = Stream::from_bytes(buf.to_vec());
     decode_stream(&mut stream, format, &params)
   }
@@ -36,7 +36,10 @@ impl Image {
   }
 
   /// Decode from a file with the given decoder settings.
-  pub fn from_file_with<P: AsRef<std::path::Path>>(path: P, params: DecodeParameters) -> Result<Self> {
+  pub fn from_file_with<P: AsRef<std::path::Path>>(
+    path: P,
+    params: DecodeParameters,
+  ) -> Result<Self> {
     let buf = std::fs::read(path)?;
     Self::from_bytes_with(&buf, params)
   }
@@ -90,7 +93,10 @@ impl Image {
     let (w, h) = (img.width(), img.height());
     // Channels as plain u16 planes (8-bit data widened).
     let widen = |data: &[u8], stride: usize, chan: usize| -> Vec<u16> {
-      data.chunks_exact(stride).map(|px| px[chan] as u16).collect()
+      data
+        .chunks_exact(stride)
+        .map(|px| px[chan] as u16)
+        .collect()
     };
     let (numcomps, color_space, planes): (u32, OPJ_COLOR_SPACE, Vec<Vec<u16>>) = match img {
       ImageLuma8(g) => (
@@ -106,7 +112,11 @@ impl Image {
       ImageRgb8(r) => (
         3,
         crate::c_api_types::OPJ_CLRSPC_SRGB,
-        vec![widen(r.as_raw(), 3, 0), widen(r.as_raw(), 3, 1), widen(r.as_raw(), 3, 2)],
+        vec![
+          widen(r.as_raw(), 3, 0),
+          widen(r.as_raw(), 3, 1),
+          widen(r.as_raw(), 3, 2),
+        ],
       ),
       ImageRgba8(r) => (
         4,
@@ -118,7 +128,11 @@ impl Image {
           widen(r.as_raw(), 4, 3),
         ],
       ),
-      ImageLuma16(g) => (1, crate::c_api_types::OPJ_CLRSPC_GRAY, vec![g.as_raw().to_vec()]),
+      ImageLuma16(g) => (
+        1,
+        crate::c_api_types::OPJ_CLRSPC_GRAY,
+        vec![g.as_raw().to_vec()],
+      ),
       ImageLumaA16(g) => (
         2,
         crate::c_api_types::OPJ_CLRSPC_GRAY,
@@ -195,7 +209,11 @@ impl Image {
             sgnd: 0,
             resno_decoded: 0,
             factor: 0,
-            alpha: if has_alpha && idx as u32 == numcomps - 1 { 1 } else { 0 },
+            alpha: if has_alpha && idx as u32 == numcomps - 1 {
+              1
+            } else {
+              0
+            },
             data: data.into_iter().map(i32::from).collect(),
           })
           .collect(),
@@ -230,4 +248,3 @@ impl Image {
     encode_image_to_writer(self.core, params.into_inner(), J2KFormat::J2K, writer)
   }
 }
-

@@ -150,7 +150,11 @@ impl Stream {
 
   /// Wrap a `Read + Seek` source as an input stream. The capi crate uses this
   /// to plug its C-callback adapter in without the core knowing about C.
-  pub fn new_input<R: Read + Seek + 'static>(buffer_size: usize, reader: R, stream_length: u64) -> Self {
+  pub fn new_input<R: Read + Seek + 'static>(
+    buffer_size: usize,
+    reader: R,
+    stream_length: u64,
+  ) -> Self {
     Self {
       m_inner: super::stream::StreamInner::new_reader(buffer_size, reader),
       m_stream_length: stream_length,
@@ -264,7 +268,10 @@ impl Stream {
     end of the last tile part and probe 2 bytes past EOF, which must read
     as a clean short-read, not a panic. */
     if self.m_stream_length != 0 {
-      log::trace!("-- get_number_byte_left() = {}", (self.m_stream_length as i64) - self.m_byte_offset);
+      log::trace!(
+        "-- get_number_byte_left() = {}",
+        (self.m_stream_length as i64) - self.m_byte_offset
+      );
       (self.m_stream_length as i64) - self.m_byte_offset
     } else {
       log::trace!("-- get_number_byte_left() = 0");
@@ -320,7 +327,6 @@ impl Stream {
     }
   }
 
-
   /// Whether the stream supports seeking.
   pub fn has_seek(&self) -> bool {
     self.m_inner.has_seek()
@@ -372,10 +378,7 @@ pub(crate) fn opj_stream_write_data(
   }
 }
 
-pub(crate) fn opj_stream_flush(
-  p_stream: &mut Stream,
-  mut _p_event_mgr: &mut EventMgr,
-) -> OpResult {
+pub(crate) fn opj_stream_flush(p_stream: &mut Stream, mut _p_event_mgr: &mut EventMgr) -> OpResult {
   match p_stream.flush() {
     Ok(_) => Ok(()),
     Err(err) => {
@@ -430,7 +433,6 @@ pub(crate) fn opj_stream_seek(
 pub(crate) fn opj_stream_has_seek(p_stream: &Stream) -> bool {
   p_stream.has_seek() as _
 }
-
 
 /// `Write + Seek` adapter collecting into a shared `Vec<u8>`; the encoder
 /// seeks back to patch marker lengths, so the position must be honoured.

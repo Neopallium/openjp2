@@ -411,14 +411,8 @@ pub fn save_tiff_image(image: &mut CoreImage, path: &Path) -> Result<(), ImageEr
   }
   let write_strip = |buf: &mut BitBuffer, y| {
     // Write row
-    let written = unsafe {
-      TIFFWriteEncodedStrip(
-        tiff,
-        y,
-        buf.as_ptr() as *mut c_void,
-        strip_size as i64,
-      )
-    };
+    let written =
+      unsafe { TIFFWriteEncodedStrip(tiff, y, buf.as_ptr() as *mut c_void, strip_size as i64) };
     buf.reset();
     if written < 0 {
       unsafe { TIFFClose(tiff) };

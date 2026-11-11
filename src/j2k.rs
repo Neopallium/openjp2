@@ -152,11 +152,7 @@ pub(crate) fn j2k_get_cstr_info_owned(p_j2k: &J2k) -> Option<CstrInfoV2> {
     th: p_j2k.m_cp.th,
     ..Default::default()
   };
-  let l_default_tile = p_j2k
-    .m_specific_param
-    .m_decoder
-    .m_default_tcp
-    .as_deref()?;
+  let l_default_tile = p_j2k.m_specific_param.m_decoder.m_default_tcp.as_deref()?;
   cstr_info.default_tile.csty = l_default_tile.csty;
   cstr_info.default_tile.prg = l_default_tile.prg;
   cstr_info.default_tile.numlayers = l_default_tile.numlayers;
@@ -787,7 +783,7 @@ impl J2KMarker {
           EVT_ERROR,
           "No handler for unknown marker.\n",
         );
-Err(())
+        Err(())
       }
     }
   }
@@ -875,7 +871,11 @@ fn opj_j2k_check_poc_val(
   let mut packet_array: Vec<u32> = Vec::new();
   let packet_len = (step_l as usize).wrapping_mul(p_num_layers as usize);
   if packet_array.try_reserve_exact(packet_len).is_err() {
-    event_msg!(p_manager, EVT_ERROR, "Not enough memory to check POC values\n",);
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Not enough memory to check POC values\n",
+    );
     return false;
   }
   packet_array.resize(packet_len, 0);
@@ -1030,7 +1030,7 @@ fn opj_j2k_calculate_tp(
     cp.tcps[tileno as usize].m_nb_tile_parts = cur_totnum_tp;
     tileno += 1;
   }
-Ok(())
+  Ok(())
 }
 
 /*
@@ -1064,7 +1064,7 @@ fn opj_j2k_write_soc(
   /* UniPG>> */
   /* USE_JPWL */
   /* <<UniPG */
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -1115,17 +1115,17 @@ fn opj_j2k_read_soc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
     .expect("cstr_index")
     .main_head_start;
   if opj_j2k_add_mhmarker(
-      p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
-      J2KMarker::SOC,
-      l_main_head_start,
-      2_u32,
-    )
-    .is_err()
+    p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
+    J2KMarker::SOC,
+    l_main_head_start,
+    2_u32,
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n",);
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -1191,7 +1191,7 @@ fn opj_j2k_write_siz(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -1532,11 +1532,19 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
       .wrapping_sub(cp.ty0)
       .wrapping_div(cp.tdy);
     p_j2k.m_specific_param.m_decoder.m_end_tile_x = opj_uint_ceildiv(
-      p_j2k.m_specific_param.m_decoder.m_end_tile_x.wrapping_sub(cp.tx0),
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_end_tile_x
+        .wrapping_sub(cp.tx0),
       cp.tdx,
     );
     p_j2k.m_specific_param.m_decoder.m_end_tile_y = opj_uint_ceildiv(
-      p_j2k.m_specific_param.m_decoder.m_end_tile_y.wrapping_sub(cp.ty0),
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_end_tile_y
+        .wrapping_sub(cp.ty0),
       cp.tdy,
     );
   } else {
@@ -1582,7 +1590,8 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     if opj_j2k_allocate_tile_element_cstr_index(
       p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
       nb_of_tiles,
-    ).is_err()
+    )
+    .is_err()
     {
       return Err(());
     }
@@ -1595,7 +1604,7 @@ fn opj_j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
       .expect("m_private_image"),
     cp,
   );
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -1633,7 +1642,7 @@ fn opj_j2k_write_com(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -1657,7 +1666,7 @@ fn opj_j2k_read_com(
 ) -> OpResult {
   /* preconditions */
 
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -1703,7 +1712,8 @@ fn opj_j2k_write_cod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
     &mut l_buf[pos..],
     &mut l_remaining_size,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Error writing COD marker\n",);
     return Err(());
@@ -1717,7 +1727,7 @@ fn opj_j2k_write_cod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
   {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -1822,7 +1832,8 @@ fn opj_j2k_read_cod(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     &header_data[cursor..],
     &mut p_header_size,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Error reading COD marker\n",);
     return Err(());
@@ -1834,7 +1845,7 @@ fn opj_j2k_read_cod(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
   /* Apply the coding style to other components of the current tile or the m_default_tcp*/
   opj_j2k_copy_tile_component_parameters(p_j2k);
   /* Index */
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -1888,7 +1899,7 @@ fn opj_j2k_write_coc(
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_coc_data;
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -1914,7 +1925,8 @@ fn opj_j2k_compare_coc(p_j2k: &mut J2k, p_first_comp_no: u32, p_second_comp_no: 
     p_j2k.m_current_tile_number,
     p_first_comp_no,
     p_second_comp_no,
-  ).is_ok()
+  )
+  .is_ok()
 }
 
 /* *
@@ -2072,7 +2084,8 @@ fn opj_j2k_read_coc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     &header_data[cursor..],
     &mut p_header_size,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Error reading COC marker\n",);
     return Err(());
@@ -2081,7 +2094,7 @@ fn opj_j2k_read_coc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     event_msg!(p_manager, EVT_ERROR, "Error reading COC marker\n",);
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -2122,7 +2135,8 @@ fn opj_j2k_write_qcd(
     &mut l_buf[pos..],
     &mut l_remaining_size,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Error writing QCD marker\n",);
     return Err(());
@@ -2136,7 +2150,7 @@ fn opj_j2k_write_qcd(
   {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Reads a QCD marker (Quantization defaults)
@@ -2167,7 +2181,8 @@ fn opj_j2k_read_qcd(
     &header_data[cursor..],
     &mut p_header_size,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Error reading QCD marker\n",);
     return Err(());
@@ -2178,7 +2193,7 @@ fn opj_j2k_read_qcd(
   }
   /* Apply the quantization parameters to other components of the current tile or the m_default_tcp */
   opj_j2k_copy_tile_quantization_parameters(p_j2k);
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -2227,7 +2242,7 @@ fn opj_j2k_write_qcc(
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_qcc_data;
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -2378,7 +2393,8 @@ fn opj_j2k_read_qcc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     &header_data[cursor..],
     &mut p_header_size,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
     return Err(());
@@ -2387,7 +2403,7 @@ fn opj_j2k_read_qcc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     event_msg!(p_manager, EVT_ERROR, "Error reading QCC marker\n",);
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 fn opj_j2k_write_poc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr) -> OpResult {
@@ -2416,7 +2432,7 @@ fn opj_j2k_write_poc(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_poc_data;
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -2650,7 +2666,7 @@ fn opj_j2k_read_poc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     i += 1;
   }
   l_tcp.numpocs = l_current_poc_nb.wrapping_sub(1u32);
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -2693,7 +2709,7 @@ fn opj_j2k_read_crg(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
           p_header_data+=2;
   }
   */
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -2809,17 +2825,13 @@ fn opj_j2k_read_tlm(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     let l_length = opj_read_bytes(&header_data[cursor..], l_ptlm_size);
     cursor += l_ptlm_size as usize;
     let entries = p_j2k.m_specific_param.m_decoder.m_tlm.m_entries_count;
-    p_j2k
-      .m_specific_param
-      .m_decoder
-      .m_tlm
-      .m_tile_part_infos[entries as usize] = TlmTilePartInfo {
+    p_j2k.m_specific_param.m_decoder.m_tlm.m_tile_part_infos[entries as usize] = TlmTilePartInfo {
       m_tile_index: l_tile_index as u16,
       m_length: l_length,
     };
     p_j2k.m_specific_param.m_decoder.m_tlm.m_entries_count += 1;
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -2894,7 +2906,7 @@ fn opj_j2k_read_plm(
           }
   }
   */
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -2949,7 +2961,7 @@ fn opj_j2k_read_plt(_p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventM
     event_msg!(p_manager, EVT_ERROR, "Error reading PLT marker\n",);
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -2994,7 +3006,7 @@ fn opj_j2k_read_ppm(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     return Err(());
   }
   l_cp.ppm_markers[l_z_ppm as usize].m_data = header_data[cursor..].to_vec();
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -3110,7 +3122,7 @@ fn opj_j2k_merge_ppm(p_cp: &mut Cp, p_manager: &mut EventMgr) -> OpResult {
   p_cp.ppm_data_pos = 0;
   p_cp.ppm_buffer = l_buffer;
   p_cp.ppm_markers = Vec::new();
-Ok(())
+  Ok(())
 }
 /* *
  * Reads a PPT marker (Packed packet headers, tile-part header)
@@ -3166,7 +3178,7 @@ fn opj_j2k_read_ppt(
     return Err(());
   }
   tcp.ppt_markers[l_z_ppt as usize].m_data = header_data[cursor..].to_vec();
-Ok(())
+  Ok(())
 }
 /* *
  * Merges all PPT markers read (Packed headers, tile-part header)
@@ -3204,7 +3216,7 @@ fn opj_j2k_merge_ppt(p_tcp: &mut Tcp, p_manager: &mut EventMgr) -> OpResult {
   p_tcp.ppt_len = l_buffer.len() as u32;
   p_tcp.ppt_data_pos = 0;
   p_tcp.ppt_buffer = l_buffer;
-Ok(())
+  Ok(())
 }
 /* *
  * Writes the TLM marker (Tile Length Marker)
@@ -3269,7 +3281,7 @@ fn opj_j2k_write_tlm(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-Ok(())
+  Ok(())
 }
 /* *
  * Writes the SOT marker (Start of tile-part)
@@ -3323,7 +3335,7 @@ fn opj_j2k_write_sot(
   /* UniPG>> */
   /* USE_JPWL */
   *p_data_written = pos as u32;
-Ok(())
+  Ok(())
 }
 /* *
  * Reads values from a SOT marker (Start of tile-part)
@@ -3362,7 +3374,7 @@ fn opj_j2k_get_sot_values(
   cursor += 1usize;
   *p_num_parts = opj_read_bytes(&header_data[cursor..], 1_u32);
   cursor += 1usize;
-Ok(())
+  Ok(())
 }
 /* *
  * Reads a SOT marker (Start of tile-part)
@@ -3387,7 +3399,8 @@ fn opj_j2k_read_sot(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     &mut l_current_part,
     &mut l_num_parts,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Error reading SOT marker\n",);
     return Err(());
@@ -3556,7 +3569,7 @@ fn opj_j2k_read_sot(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
       }
     }
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Write one or more PLT markers in the provided buffer
@@ -3636,7 +3649,7 @@ fn opj_j2k_write_plt_in_memory(
   *p_data_written = (pos - pos_start) as u32;
   /* Patch l_plt */
   opj_write_bytes(&mut data[pos_l_plt..], l_plt as u32, 2_u32);
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -3706,7 +3719,8 @@ fn opj_j2k_write_sod(
       .as_deref_mut()
       .expect("m_private_image"),
     &mut p_j2k.m_cp,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Cannot encode tile\n",);
     return Err(());
@@ -3723,7 +3737,8 @@ fn opj_j2k_write_sod(
       &mut p_plt_buffer[..],
       &mut l_data_written_plt,
       p_manager,
-    ).is_err()
+    )
+    .is_err()
     {
       return Err(());
     }
@@ -3734,7 +3749,7 @@ fn opj_j2k_write_sod(
       .copy_from_slice(&p_plt_buffer[..l_data_written_plt as usize]);
     *p_data_written = (*p_data_written as core::ffi::c_uint).wrapping_add(l_data_written_plt)
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Reads a SOD marker (Start Of Data)
@@ -3844,17 +3859,17 @@ fn opj_j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
         l_current_pos + p_j2k.m_specific_param.m_decoder.m_sot_length as i64 + 2i64;
     }
     if opj_j2k_add_tlmarker(
-        p_j2k.m_current_tile_number,
-        p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
-        J2KMarker::SOD,
-        l_current_pos,
-        p_j2k
-          .m_specific_param
-          .m_decoder
-          .m_sot_length
-          .wrapping_add(2u32),
-      )
-      .is_err()
+      p_j2k.m_current_tile_number,
+      p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
+      J2KMarker::SOD,
+      l_current_pos,
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_sot_length
+        .wrapping_add(2u32),
+    )
+    .is_err()
     {
       event_msg!(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n",);
       return Err(());
@@ -3885,7 +3900,7 @@ fn opj_j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT
   }
   l_tcp.m_data_size = l_tcp.m_data_size.wrapping_add(l_current_read_size as u32);
-Ok(())
+  Ok(())
 }
 
 fn opj_j2k_write_rgn(
@@ -3921,7 +3936,7 @@ fn opj_j2k_write_rgn(
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -3950,7 +3965,7 @@ fn opj_j2k_write_eoc(
   if opj_stream_flush(p_stream, p_manager).is_err() {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Reads a RGN marker (Region Of Interest)
@@ -4010,7 +4025,7 @@ fn opj_j2k_read_rgn(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
   }
   l_tcp.tccps[l_comp_no as usize].roishift = opj_read_bytes(&header_data[cursor..], 1_u32) as i32;
   cursor += 1usize;
-Ok(())
+  Ok(())
 }
 
 fn opj_j2k_get_tp_stride(p_tcp: &Tcp) -> f32 {
@@ -4198,7 +4213,7 @@ pub(crate) fn opj_j2k_alloc_encoded_tile_data(
       vec![0u8; (6u32).wrapping_mul(p_j2k.m_specific_param.m_encoder.m_total_tile_parts) as usize];
     p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_current = 0
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -4220,7 +4235,7 @@ fn opj_j2k_get_end_header(
     .as_deref_mut()
     .expect("cstr_index")
     .main_head_end = opj_stream_tell(p_stream);
-Ok(())
+  Ok(())
 }
 /* *
  * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
@@ -4257,7 +4272,7 @@ fn opj_j2k_write_mct_data_group(
   if opj_j2k_write_mco(p_j2k, p_stream, p_manager).is_err() {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Writes COC marker for each component.
@@ -4289,7 +4304,7 @@ fn opj_j2k_write_all_coc(
     }
     compno += 1;
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Writes QCC marker for each component.
@@ -4321,7 +4336,7 @@ fn opj_j2k_write_all_qcc(
     }
     compno += 1;
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Writes regions of interests.
@@ -4352,7 +4367,7 @@ fn opj_j2k_write_regions(
     }
     compno += 1;
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Writes EPC ????
@@ -4378,7 +4393,7 @@ fn opj_j2k_write_epc(
     /* <<UniPG */
   }
   /* USE_JPWL */
-Ok(())
+  Ok(())
 }
 /* *
  * Reads an unknown marker
@@ -4452,7 +4467,7 @@ fn opj_j2k_read_unk(
     }
   }
   *output_marker = l_marker_handler;
-Ok(())
+  Ok(())
 }
 /* *
  * Writes the MCT marker (Multiple Component Transform)
@@ -4497,7 +4512,7 @@ fn opj_j2k_write_mct_record(
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -4589,7 +4604,7 @@ fn opj_j2k_read_mct(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
   l_mct_data
     .m_data
     .extend_from_slice(&header_data[cursor..cursor + p_header_size as usize]);
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -4672,7 +4687,7 @@ fn opj_j2k_write_mcc_record(
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -4889,7 +4904,7 @@ fn opj_j2k_read_mcc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     event_msg!(p_manager, EVT_ERROR, "Error reading MCC marker\n",);
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Writes the MCO marker (Multiple component transformation ordering)
@@ -4923,7 +4938,7 @@ fn opj_j2k_write_mco(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -5002,13 +5017,14 @@ fn opj_j2k_read_mco(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
         .as_deref_mut()
         .expect("m_private_image"),
       l_tmp,
-    ).is_err()
+    )
+    .is_err()
     {
       return Err(());
     }
     i += 1;
   }
-Ok(())
+  Ok(())
 }
 
 fn opj_j2k_add_mct(p_tcp: &mut Tcp, p_image: &mut CoreImage, p_index: u32) -> OpResult {
@@ -5069,7 +5085,7 @@ fn opj_j2k_add_mct(p_tcp: &mut Tcp, p_image: &mut CoreImage, p_index: u32) -> Op
       tccp.m_dc_level_shift = offset as i32;
     }
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Writes the CBD marker (Component bit depth definition)
@@ -5111,7 +5127,7 @@ fn opj_j2k_write_cbd(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Eve
     return Err(());
   }
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -5166,7 +5182,7 @@ fn opj_j2k_read_cbd(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMg
     }
     i += 1;
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -5194,7 +5210,7 @@ fn opj_j2k_read_cap(
 ) -> OpResult {
   /* preconditions */
 
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -5218,7 +5234,7 @@ fn opj_j2k_read_cpf(
 ) -> OpResult {
   /* preconditions */
 
-Ok(())
+  Ok(())
 }
 
 /* ----------------------------------------------------------------------- */
@@ -5252,7 +5268,7 @@ pub(crate) fn opj_j2k_set_threads(_j2k: &mut J2k, num_threads: u32) -> OpResult 
     return Err(());
   }
   crate::par::configure_pool(num_threads as usize);
-Ok(())
+  Ok(())
 }
 
 /* ----------------------------------------------------------------------- */
@@ -5460,7 +5476,7 @@ fn opj_j2k_is_cinema_compliant(
     4 => {}
     _ => {}
   }
-Ok(())
+  Ok(())
 }
 fn opj_j2k_get_imf_max_nl(
   mut parameters: &mut EncoderParameters,
@@ -5954,8 +5970,7 @@ pub(crate) fn opj_j2k_setup_encoder(
   /* Port-specific hardening: the C overflows its fixed-size arrays (or has
   undefined-behaviour shifts) for out-of-range encoder parameters; reject
   them here so the port fails cleanly instead of panicking. */
-  if parameters.tcp_numlayers < 0i32
-    || parameters.tcp_numlayers > parameters.tcp_rates.len() as i32
+  if parameters.tcp_numlayers < 0i32 || parameters.tcp_numlayers > parameters.tcp_rates.len() as i32
   {
     event_msg!(
       p_manager,
@@ -6124,8 +6139,7 @@ pub(crate) fn opj_j2k_setup_encoder(
     /* makelayer_fixed indexes m_matrice[layer * numresolutions * 3 +
     band * 3 + k] per tile (the C reads the caller's array OOB when it is
     short — UB); reject a too-short matrix up front. */
-    let matrix_need =
-      parameters.tcp_numlayers * parameters.numresolution * 3;
+    let matrix_need = parameters.tcp_numlayers * parameters.numresolution * 3;
     if let Some(matrice) = parameters.cp_matrice.as_deref() {
       if (matrice.len() as i32) < matrix_need {
         event_msg!(
@@ -6733,7 +6747,7 @@ pub(crate) fn opj_j2k_setup_encoder(
     tileno += 1;
   }
 
-Ok(())
+  Ok(())
 }
 /* *
 Add main header marker information
@@ -6753,7 +6767,7 @@ fn opj_j2k_add_mhmarker(
     pos,
     len: len as i32,
   });
-Ok(())
+  Ok(())
 }
 /* *
 Add tile header marker information
@@ -6782,7 +6796,7 @@ fn opj_j2k_add_tlmarker(
       tile.tp_index[l_current_tile_part as usize].start_pos = pos;
     }
   }
-Ok(())
+  Ok(())
 }
 /*
  * -----------------------------------------------------------------------
@@ -6795,7 +6809,7 @@ pub(crate) fn opj_j2k_end_decompress(
   mut _p_stream: &mut Stream,
   mut _p_manager: &mut EventMgr,
 ) -> OpResult {
-Ok(())
+  Ok(())
 }
 
 pub(crate) fn opj_j2k_read_header(
@@ -6937,7 +6951,7 @@ pub(crate) fn opj_j2k_setup_mct_encoding(p_tcp: &mut Tcp, p_image: &mut CoreImag
   l_mcc_data.m_index = l_indix;
   l_indix = l_indix.wrapping_add(1);
   l_mcc_data.m_offset_array = Some(l_mct_offset_idx);
-Ok(())
+  Ok(())
 }
 fn opj_j2k_build_decoder(
   mut _p_j2k: &mut J2k,
@@ -6946,7 +6960,7 @@ fn opj_j2k_build_decoder(
 ) -> OpResult {
   /* add here initialization of cp
   copy paste of setup_decoder */
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -6978,7 +6992,7 @@ fn opj_j2k_build_encoder(
 ) -> OpResult {
   /* add here initialization of cp
   copy paste of setup_encoder */
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -7210,7 +7224,10 @@ fn opj_j2k_read_header_procedure(
     /* Read the marker segment with the correct marker handler */
     let header_data =
       p_j2k.m_specific_param.m_decoder.m_header_data[..l_marker_size as usize].to_vec();
-    if l_marker_handler.handler(p_j2k, &header_data, p_manager).is_err() {
+    if l_marker_handler
+      .handler(p_j2k, &header_data, p_manager)
+      .is_err()
+    {
       p_j2k.record_error_context(
         l_current_marker.as_u32(),
         opj_stream_tell(p_stream).max(0) as u64,
@@ -7224,14 +7241,14 @@ fn opj_j2k_read_header_procedure(
     }
     /* Add the marker to the codestream index*/
     if opj_j2k_add_mhmarker(
-        p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
-        l_marker_handler,
-        (opj_stream_tell(p_stream) as u32)
-          .wrapping_sub(l_marker_size)
-          .wrapping_sub(4u32) as i64,
-        l_marker_size.wrapping_add(4u32),
-      )
-      .is_err()
+      p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
+      l_marker_handler,
+      (opj_stream_tell(p_stream) as u32)
+        .wrapping_sub(l_marker_size)
+        .wrapping_sub(4u32) as i64,
+      l_marker_size.wrapping_add(4u32),
+    )
+    .is_err()
     {
       event_msg!(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n",);
       return Err(());
@@ -7294,7 +7311,7 @@ fn opj_j2k_read_header_procedure(
 
   /* Next step: read a tile-part header */
   p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT;
-Ok(())
+  Ok(())
 }
 
 /// Fill cstr_index.tiles[].tp_index[] start/end positions from the TLM
@@ -7416,12 +7433,13 @@ fn opj_j2k_copy_default_tcp_and_create_tcd(
     &mut p_j2k.m_tcd,
     p_j2k.m_private_image.as_deref().expect("m_private_image"),
     &mut p_j2k.m_cp,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 impl Drop for J2k {
@@ -7580,7 +7598,8 @@ fn opj_j2k_need_nb_tile_parts_correction(
       &mut l_current_part,
       &mut l_num_parts,
       p_manager,
-    ).is_err()
+    )
+    .is_err()
     {
       return Err(());
     }
@@ -7612,7 +7631,7 @@ fn opj_j2k_need_nb_tile_parts_correction(
   if opj_stream_seek(p_stream, l_stream_pos_backup, p_manager).is_err() {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 pub(crate) fn opj_j2k_read_tile_header(
@@ -7635,12 +7654,19 @@ pub(crate) fn opj_j2k_read_tile_header(
   /* We need to encounter a SOT marker (a new tile-part header) */
   /* Read the codestream until we can decode or reach EOC */
   while !p_j2k.m_specific_param.m_decoder.m_can_decode && l_current_marker != J2KMarker::EOC {
-    if p_j2k.m_specific_param.m_decoder.m_num_intersecting_tile_parts > 0
+    if p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_num_intersecting_tile_parts
+      > 0
       && p_j2k
         .m_specific_param
         .m_decoder
         .m_idx_intersecting_tile_parts
-        < p_j2k.m_specific_param.m_decoder.m_num_intersecting_tile_parts
+        < p_j2k
+          .m_specific_param
+          .m_decoder
+          .m_num_intersecting_tile_parts
     {
       /* The TLM index planned the SOT positions of the intersecting
       tile-parts: seek straight to the next one (upstream #1538) */
@@ -7648,10 +7674,13 @@ pub(crate) fn opj_j2k_read_tile_header(
         .m_specific_param
         .m_decoder
         .m_intersecting_tile_parts_offset[p_j2k
-          .m_specific_param
-          .m_decoder
-          .m_idx_intersecting_tile_parts as usize];
-      p_j2k.m_specific_param.m_decoder.m_idx_intersecting_tile_parts += 1;
+        .m_specific_param
+        .m_decoder
+        .m_idx_intersecting_tile_parts as usize];
+      p_j2k
+        .m_specific_param
+        .m_decoder
+        .m_idx_intersecting_tile_parts += 1;
       if opj_stream_seek(p_stream, next_tp_sot_pos, p_manager).is_err() {
         event_msg!(p_manager, EVT_ERROR, "Problem with seek function\n",);
         return false;
@@ -7665,8 +7694,7 @@ pub(crate) fn opj_j2k_read_tile_header(
         event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
         return false;
       }
-      l_current_marker =
-        J2KMarker::from_buffer(&p_j2k.m_specific_param.m_decoder.m_header_data);
+      l_current_marker = J2KMarker::from_buffer(&p_j2k.m_specific_param.m_decoder.m_header_data);
       if l_current_marker != J2KMarker::SOT {
         event_msg!(p_manager, EVT_ERROR, "Did not get expected SOT marker\n",);
         return false;
@@ -7755,7 +7783,10 @@ pub(crate) fn opj_j2k_read_tile_header(
           /* Read the marker segment with the correct marker handler */
           let header_data =
             p_j2k.m_specific_param.m_decoder.m_header_data[..l_marker_size as usize].to_vec();
-          if l_marker_handler.handler(p_j2k, &header_data, p_manager).is_err() {
+          if l_marker_handler
+            .handler(p_j2k, &header_data, p_manager)
+            .is_err()
+          {
             p_j2k.record_error_context(
               l_current_marker.as_u32(),
               opj_stream_tell(p_stream).max(0) as u64,
@@ -7770,15 +7801,15 @@ pub(crate) fn opj_j2k_read_tile_header(
           }
           /* Add the marker to the codestream index*/
           if opj_j2k_add_tlmarker(
-              p_j2k.m_current_tile_number,
-              p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
-              l_marker_handler,
-              (opj_stream_tell(p_stream) as u32)
-                .wrapping_sub(l_marker_size)
-                .wrapping_sub(4u32) as i64,
-              l_marker_size.wrapping_add(4u32),
-            )
-            .is_err()
+            p_j2k.m_current_tile_number,
+            p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
+            l_marker_handler,
+            (opj_stream_tell(p_stream) as u32)
+              .wrapping_sub(l_marker_size)
+              .wrapping_sub(4u32) as i64,
+            l_marker_size.wrapping_add(4u32),
+          )
+          .is_err()
           {
             event_msg!(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n",);
             return false;
@@ -7843,11 +7874,8 @@ pub(crate) fn opj_j2k_read_tile_header(
         && opj_stream_has_seek(p_stream)
       {
         let l_tcp = &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize];
-        let tile = &p_j2k
-          .cstr_index
-          .as_deref()
-          .expect("cstr_index")
-          .tiles[p_j2k.m_current_tile_number as usize];
+        let tile = &p_j2k.cstr_index.as_deref().expect("cstr_index").tiles
+          [p_j2k.m_current_tile_number as usize];
         if l_tcp.m_nb_tile_parts == tile.nb_tps
           && l_tcp.m_current_tile_part_number as u32 + 1 < l_tcp.m_nb_tile_parts
         {
@@ -7899,7 +7927,8 @@ pub(crate) fn opj_j2k_read_tile_header(
           p_j2k.m_current_tile_number,
           &mut l_correction_needed,
           p_manager,
-        ).is_err()
+        )
+        .is_err()
         {
           event_msg!(
             p_manager,
@@ -8000,7 +8029,8 @@ pub(crate) fn opj_j2k_read_tile_header(
   if opj_j2k_merge_ppt(
     &mut p_j2k.m_cp.tcps[p_j2k.m_current_tile_number as usize],
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Failed to merge PPT data\n",);
     return false;
@@ -8021,8 +8051,8 @@ pub(crate) fn opj_j2k_read_tile_header(
       .expect("m_private_image")
       .numcomps;
     let img = p_j2k.m_private_image.as_deref().expect("m_private_image");
-    let image_pixels = (img.x1.wrapping_sub(img.x0) as u64)
-      .wrapping_mul(img.y1.wrapping_sub(img.y0) as u64);
+    let image_pixels =
+      (img.x1.wrapping_sub(img.x0) as u64).wrapping_mul(img.y1.wrapping_sub(img.y0) as u64);
     let cp_ref = &p_j2k.m_cp;
     let raw_tile_pixels = (cp_ref.tdx as u64).wrapping_mul(cp_ref.tdy as u64);
     let tile_pixels = raw_tile_pixels.min(image_pixels);
@@ -8049,7 +8079,8 @@ pub(crate) fn opj_j2k_read_tile_header(
       .as_deref_mut()
       .expect("m_private_image"),
     &mut p_j2k.m_cp,
-  ).is_err()
+  )
+  .is_err()
   {
     event_msg!(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n",);
     return false;
@@ -8146,7 +8177,8 @@ pub(crate) fn opj_j2k_decode_tile(
       .as_deref_mut()
       .expect("m_private_image"),
     &mut p_j2k.m_cp,
-  ).is_err()
+  )
+  .is_err()
   {
     opj_j2k_tcp_destroy(&mut p_j2k.m_cp.tcps[p_tile_index as usize]);
     p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
@@ -8164,7 +8196,8 @@ pub(crate) fn opj_j2k_decode_tile(
         .m_private_image
         .as_deref_mut()
         .expect("m_private_image"),
-    ).is_err()
+    )
+    .is_err()
     {
       return Err(());
     }
@@ -8228,7 +8261,7 @@ pub(crate) fn opj_j2k_decode_tile(
       return Err(());
     }
   }
-Ok(())
+  Ok(())
 }
 fn opj_j2k_update_image_data(
   p_tcd: &mut Tcd,
@@ -8273,7 +8306,7 @@ fn opj_j2k_update_image_data(
   if results.contains(&Err(())) {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 fn update_image_data_comp(
@@ -8482,10 +8515,13 @@ fn update_image_data_comp(
       }
     }
   }
-Ok(())
+  Ok(())
 }
 
-pub(crate) fn opj_j2k_update_image_dimensions(p_image: &mut CoreImage, p_manager: &mut EventMgr) -> OpResult {
+pub(crate) fn opj_j2k_update_image_dimensions(
+  p_image: &mut CoreImage,
+  p_manager: &mut EventMgr,
+) -> OpResult {
   let mut it_comp: u32 = 0;
   let mut l_comp_x1: i32 = 0;
   let mut l_comp_y1: i32 = 0;
@@ -8545,7 +8581,7 @@ pub(crate) fn opj_j2k_update_image_dimensions(p_image: &mut CoreImage, p_manager
     l_img_comp.h = l_h as u32;
     it_comp += 1;
   }
-Ok(())
+  Ok(())
 }
 
 pub(crate) fn opj_j2k_set_decoded_components(
@@ -8586,7 +8622,7 @@ pub(crate) fn opj_j2k_set_decoded_components(
   }
   p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode = compenents.to_vec();
   p_j2k.m_specific_param.m_decoder.m_numcomps_to_decode = numcomps;
-Ok(())
+  Ok(())
 }
 
 pub(crate) fn opj_j2k_set_decode_area(
@@ -8916,7 +8952,7 @@ fn opj_j2k_compare_spcod_spcoc(
     }
     i += 1;
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Writes a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
@@ -8990,7 +9026,7 @@ fn opj_j2k_write_spcod_spcoc(
     }
     *p_header_size = (*p_header_size).wrapping_sub(l_tccp.numresolutions)
   }
-Ok(())
+  Ok(())
 }
 /* *
  * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
@@ -9138,7 +9174,7 @@ fn opj_j2k_read_spcod_spcoc(
     p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -9276,7 +9312,7 @@ fn opj_j2k_compare_sqcd_sqcc(
       l_band_no += 1;
     }
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -9368,7 +9404,7 @@ fn opj_j2k_write_sqcd_sqcc(
     }
   }
   *p_header_size = (*p_header_size).wrapping_sub(l_header_size);
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -9497,7 +9533,7 @@ fn opj_j2k_read_sqcd_sqcc(
       l_band_no += 1;
     }
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -9546,7 +9582,7 @@ fn opj_j2k_allocate_tile_element_cstr_index(
   for tile in &mut cstr_index.tiles {
     tile.markers = Vec::with_capacity(100);
   }
-Ok(())
+  Ok(())
 }
 
 fn opj_j2k_are_all_used_components_decoded(p_j2k: &mut J2k, p_manager: &mut EventMgr) -> bool {
@@ -9645,9 +9681,19 @@ fn opj_j2k_decode_tiles(
     }
     return Ok(());
   }
-  p_j2k.m_specific_param.m_decoder.m_num_intersecting_tile_parts = 0;
-  p_j2k.m_specific_param.m_decoder.m_idx_intersecting_tile_parts = 0;
-  p_j2k.m_specific_param.m_decoder.m_intersecting_tile_parts_offset.clear();
+  p_j2k
+    .m_specific_param
+    .m_decoder
+    .m_num_intersecting_tile_parts = 0;
+  p_j2k
+    .m_specific_param
+    .m_decoder
+    .m_idx_intersecting_tile_parts = 0;
+  p_j2k
+    .m_specific_param
+    .m_decoder
+    .m_intersecting_tile_parts_offset
+    .clear();
 
   /* If the area to decode only intersects a subset of tiles, and we have
   valid TLM information, then use it to plan the tile-part offsets to
@@ -9728,7 +9774,8 @@ fn opj_j2k_decode_tiles(
         .expect("m_private_image"),
       p_j2k.decode_limits.effective_max_mem(),
       p_manager,
-    ).is_err()
+    )
+    .is_err()
     {
       return Err(());
     }
@@ -9757,12 +9804,19 @@ fn opj_j2k_decode_tiles(
     if nr_tiles == p_j2k.m_cp.th.wrapping_mul(p_j2k.m_cp.tw) {
       break;
     }
-    if p_j2k.m_specific_param.m_decoder.m_num_intersecting_tile_parts > 0
+    if p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_num_intersecting_tile_parts
+      > 0
       && p_j2k
         .m_specific_param
         .m_decoder
         .m_idx_intersecting_tile_parts
-        == p_j2k.m_specific_param.m_decoder.m_num_intersecting_tile_parts
+        == p_j2k
+          .m_specific_param
+          .m_decoder
+          .m_num_intersecting_tile_parts
     {
       let _ = opj_stream_seek(p_stream, end_pos + 2i64, p_manager);
       break;
@@ -9771,7 +9825,7 @@ fn opj_j2k_decode_tiles(
   if !opj_j2k_are_all_used_components_decoded(p_j2k, p_manager) {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 /*
@@ -9797,7 +9851,8 @@ fn opj_j2k_decode_one_tile(
     if opj_j2k_allocate_tile_element_cstr_index(
       p_j2k.cstr_index.as_deref_mut().expect("cstr_index"),
       nb_of_tiles,
-    ).is_err()
+    )
+    .is_err()
     {
       return Err(());
     }
@@ -9831,7 +9886,8 @@ fn opj_j2k_decode_one_tile(
           .main_head_end
           + 2i64,
         p_manager,
-      ).is_err()
+      )
+      .is_err()
       {
         event_msg!(p_manager, EVT_ERROR, "Problem with seek function\n",);
         return Err(());
@@ -9901,7 +9957,8 @@ fn opj_j2k_decode_one_tile(
         .expect("m_private_image"),
       p_j2k.decode_limits.effective_max_mem(),
       p_manager,
-    ).is_err()
+    )
+    .is_err()
     {
       return Err(());
     }
@@ -9923,7 +9980,8 @@ fn opj_j2k_decode_one_tile(
           .main_head_end
           + 2i64,
         p_manager,
-      ).is_err()
+      )
+      .is_err()
       {
         event_msg!(p_manager, EVT_ERROR, "Problem with seek function\n",);
         return Err(());
@@ -9942,7 +10000,7 @@ fn opj_j2k_decode_one_tile(
   if !opj_j2k_are_all_used_components_decoded(p_j2k, p_manager) {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -9987,7 +10045,8 @@ pub(crate) fn j2k_decode_tile_worker(
     &mut j2k.m_tcd,
     j2k.m_private_image.as_deref().expect("m_private_image"),
     &mut j2k.m_cp,
-  ).is_err()
+  )
+  .is_err()
   {
     return None;
   }
@@ -9998,7 +10057,8 @@ pub(crate) fn j2k_decode_tile_worker(
   if opj_j2k_allocate_tile_element_cstr_index(
     j2k.cstr_index.as_deref_mut().expect("cstr_index"),
     nb_of_tiles,
-  ).is_err()
+  )
+  .is_err()
   {
     return None;
   }
@@ -10073,12 +10133,18 @@ pub(crate) fn j2k_merge_tile_results(
     for (i, comp) in private.comps.iter_mut().enumerate() {
       comp.resno_decoded = *resno.get(i).unwrap_or(&0);
     }
-    if opj_j2k_update_image_data(&mut tcd, p_output_image, &mut private, max_mem, p_manager).is_err() {
-      event_msg!(p_manager, EVT_ERROR, "Failed to update image with tile data\n",);
+    if opj_j2k_update_image_data(&mut tcd, p_output_image, &mut private, max_mem, p_manager)
+      .is_err()
+    {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Failed to update image with tile data\n",
+      );
       return Err(());
     }
   }
-Ok(())
+  Ok(())
 }
 
 /// Parallel whole-image decode (feature `rayon`): snapshot the codestream
@@ -10174,9 +10240,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
       if marker == 0xFF90 {
         /* SOT: record the tile-part start (the Isot sits at +4..+6), then
         skip the whole part via Psot. */
-        if pos + 12 > bytes.len()
-          || u16::from_be_bytes([bytes[pos + 2], bytes[pos + 3]]) != 10
-        {
+        if pos + 12 > bytes.len() || u16::from_be_bytes([bytes[pos + 2], bytes[pos + 3]]) != 10 {
           return None;
         }
         let isot = u16::from_be_bytes([bytes[pos + 4], bytes[pos + 5]]) as u32;
@@ -10218,47 +10282,47 @@ pub(crate) fn j2k_decode_tiles_parallel(
     tiles
       .into_par_iter()
       .map(|&tile_no| {
-      let mut worker_stream = Stream::new_input(
-        OPJ_J2K_STREAM_CHUNK_SIZE as usize,
-        std::io::Cursor::new(SharedBuf(bytes.clone())),
-        len,
-      );
-      if worker_stream.seek(first_sot[tile_no as usize] + 2).is_err() {
-        return None;
-      }
-      let mut manager = EventMgr::default();
-      /* The sequential decode (and the C reference) reuses code-block
-      state ACROSS tiles: for "tolerant" codestreams whose packet
-      segments overrun their packets (g1_colr.j2c), the serial walk
-      only works because the previous tile's segment state is still
-      there, and the t2 lenient recovery ("segment too long") would
-      silently produce DIFFERENT data in a fresh per-tile decode.
-      Treat that recovery as a worker failure so the caller falls
-      back to the (correct) sequential decode. */
-      let recovered = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-      let recovered2 = recovered.clone();
-      manager.set_warning_handler(move |msg: &str| {
-        if msg.contains("segment too long") {
-          recovered2.store(true, std::sync::atomic::Ordering::Relaxed);
+        let mut worker_stream = Stream::new_input(
+          OPJ_J2K_STREAM_CHUNK_SIZE as usize,
+          std::io::Cursor::new(SharedBuf(bytes.clone())),
+          len,
+        );
+        if worker_stream.seek(first_sot[tile_no as usize] + 2).is_err() {
+          return None;
         }
-      });
-      let result = j2k_decode_tile_worker(
-        cp,
-        header,
-        tile_no,
-        layer,
-        reduce,
-        strict,
-        decode_bounds,
-        &mut worker_stream,
-        &mut manager,
-      );
-      if recovered.load(std::sync::atomic::Ordering::Relaxed) {
-        return None;
-      }
-      result
-    })
-    .collect()
+        let mut manager = EventMgr::default();
+        /* The sequential decode (and the C reference) reuses code-block
+        state ACROSS tiles: for "tolerant" codestreams whose packet
+        segments overrun their packets (g1_colr.j2c), the serial walk
+        only works because the previous tile's segment state is still
+        there, and the t2 lenient recovery ("segment too long") would
+        silently produce DIFFERENT data in a fresh per-tile decode.
+        Treat that recovery as a worker failure so the caller falls
+        back to the (correct) sequential decode. */
+        let recovered = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let recovered2 = recovered.clone();
+        manager.set_warning_handler(move |msg: &str| {
+          if msg.contains("segment too long") {
+            recovered2.store(true, std::sync::atomic::Ordering::Relaxed);
+          }
+        });
+        let result = j2k_decode_tile_worker(
+          cp,
+          header,
+          tile_no,
+          layer,
+          reduce,
+          strict,
+          decode_bounds,
+          &mut worker_stream,
+          &mut manager,
+        );
+        if recovered.load(std::sync::atomic::Ordering::Relaxed) {
+          return None;
+        }
+        result
+      })
+      .collect()
   });
   if decoded.iter().any(Option::is_none) {
     return None;
@@ -10266,14 +10330,10 @@ pub(crate) fn j2k_decode_tiles_parallel(
   let decoded: Vec<(u32, Tcd, Vec<u32>)> = tiles
     .iter()
     .copied()
-    .zip(
-      decoded
-        .into_iter()
-        .map(|t| {
-          let (tcd, resno) = t.expect("checked above");
-          (tcd, resno)
-        }),
-    )
+    .zip(decoded.into_iter().map(|t| {
+      let (tcd, resno) = t.expect("checked above");
+      (tcd, resno)
+    }))
     .map(|(tile, (tcd, resno))| (tile, tcd, resno))
     .collect();
 
@@ -10310,7 +10370,7 @@ fn opj_j2k_move_data_from_codec_to_output_image(
       comp.data = core::mem::take(&mut src_comp.data);
     }
   }
-Ok(())
+  Ok(())
 }
 
 pub(crate) fn opj_j2k_decode(
@@ -10587,7 +10647,7 @@ pub(crate) fn opj_j2k_set_decoded_resolution_factor(
     }
     return Ok(());
   }
-Err(())
+  Err(())
 }
 
 pub(crate) fn opj_j2k_encoder_set_extra_options(
@@ -10629,12 +10689,15 @@ pub(crate) fn opj_j2k_encoder_set_extra_options(
       let mut cp = &mut p_j2k.m_cp;
       /* The C parses the value with atoi: leading digits, stop at the
       first non-digit ("3x" -> 3, "" -> 0). */
-      let gb_str = option.strip_prefix("GUARD_BITS=").expect("starts_with check above");
+      let gb_str = option
+        .strip_prefix("GUARD_BITS=")
+        .expect("starts_with check above");
       let numgbits = gb_str
         .chars()
         .take_while(|c| c.is_ascii_digit())
         .fold(0i32, |acc, c| {
-          acc.saturating_mul(10)
+          acc
+            .saturating_mul(10)
             .saturating_add((c as u8).wrapping_sub(b'0') as i32)
         });
       if !(0..=7).contains(&numgbits) {
@@ -10719,7 +10782,7 @@ pub(crate) fn opj_j2k_encode(
     p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);
     tile_no += 1;
   }
-Ok(())
+  Ok(())
 }
 
 /// Encodes one tile into an in-memory buffer with a fresh codec state
@@ -10763,7 +10826,8 @@ pub(crate) fn j2k_encode_tile(
     p_manager,
     j2k.m_private_image.as_deref_mut().expect("m_private_image"),
     &mut j2k.m_cp,
-  ).is_err()
+  )
+  .is_err()
   {
     return None;
   }
@@ -10835,10 +10899,7 @@ pub(crate) fn j2k_encode_tiles_parallel(
   shared image (read-only) and write their tile-parts (and their TLM
   entries) into per-worker buffers. */
   let results: Vec<Option<(Vec<u8>, Vec<u8>, usize)>> = {
-    let real = p_j2k
-      .m_private_image
-      .as_deref()
-      .expect("m_private_image");
+    let real = p_j2k.m_private_image.as_deref().expect("m_private_image");
     (0..num_tiles)
       .into_par_iter()
       .map(|tile_no| {
@@ -10860,7 +10921,7 @@ pub(crate) fn j2k_encode_tiles_parallel(
     merge_tile_tlm(p_j2k, &tlm_buf, tlm_cur, tlm_base);
     p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);
   }
-Ok(())
+  Ok(())
 }
 
 pub(crate) fn opj_j2k_end_compress(
@@ -10918,7 +10979,7 @@ pub(crate) fn opj_j2k_start_compress(
     if opj_j2k_write_header(p_j2k, p_stream, p_manager).is_err() {
       return Err(());
     }
-Ok(())
+    Ok(())
   }
 }
 
@@ -10955,11 +11016,12 @@ fn opj_j2k_pre_write_tile(
       .as_deref_mut()
       .expect("m_private_image"),
     &mut p_j2k.m_cp,
-  ).is_err()
+  )
+  .is_err()
   {
     return Err(());
   } /* (/8) */
-Ok(()) /* (%8) */
+  Ok(()) /* (%8) */
 }
 
 fn opj_get_tile_dimensions(
@@ -11043,8 +11105,7 @@ fn opj_j2k_get_tile_data(p_tcd: &mut Tcd, mut p_data: &mut [u8], l_image: &CoreI
      * c2rust transcription modelled that as `chunks_exact(l_width + l_stride)`, which demands a
      * full trailing stride that the C never reads (and the component buffer may not have, for
      * bottom-edge tiles); `chunks` accepts the short final chunk instead. */
-    let l_src =
-      &l_img_comp.data[(l_tile_offset as usize).min(l_img_comp.data.len())..];
+    let l_src = &l_img_comp.data[(l_tile_offset as usize).min(l_img_comp.data.len())..];
     match l_size_comp {
       1 => {
         let (dest, remain) = p_data.split_at_mut(l_nb_elem);
@@ -11153,7 +11214,8 @@ fn opj_j2k_post_write_tile(
     &mut l_nb_bytes_written,
     p_stream,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     fail!();
   }
@@ -11166,7 +11228,8 @@ fn opj_j2k_post_write_tile(
     &mut l_nb_bytes_written,
     p_stream,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     fail!();
   }
@@ -11182,7 +11245,7 @@ fn opj_j2k_post_write_tile(
   }
   p_j2k.m_specific_param.m_encoder.m_encoded_tile_data = l_encoded_buf;
   p_j2k.m_current_tile_number = p_j2k.m_current_tile_number.wrapping_add(1);
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -11220,11 +11283,9 @@ fn opj_j2k_write_header(
   if opj_j2k_write_regions(p_j2k, p_stream, p_manager).is_err()
     || (!(p_j2k.m_cp.comment.is_empty() && !p_j2k.m_cp.comment_set)
       && opj_j2k_write_com(p_j2k, p_stream, p_manager).is_err())
-    || ((p_j2k.m_cp.rsiz as core::ffi::c_int & (0x8000i32 | 0x100i32))
-      == 0x8000i32 | 0x100i32
+    || ((p_j2k.m_cp.rsiz as core::ffi::c_int & (0x8000i32 | 0x100i32)) == 0x8000i32 | 0x100i32
       && opj_j2k_write_mct_data_group(p_j2k, p_stream, p_manager).is_err())
-    || (!p_j2k.cstr_index.is_none()
-      && opj_j2k_get_end_header(p_j2k, p_stream, p_manager).is_err())
+    || (!p_j2k.cstr_index.is_none() && opj_j2k_get_end_header(p_j2k, p_stream, p_manager).is_err())
     || opj_j2k_create_tcd(p_j2k, p_stream, p_manager).is_err()
     || opj_j2k_update_rates(p_j2k, p_stream, p_manager).is_err()
   {
@@ -11261,7 +11322,8 @@ fn opj_j2k_write_first_tile_part(
     &mut l_current_nb_bytes_written,
     p_stream,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     return Err(());
   }
@@ -11292,7 +11354,8 @@ fn opj_j2k_write_first_tile_part(
     &mut l_current_nb_bytes_written,
     p_stream,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     return Err(());
   }
@@ -11304,7 +11367,7 @@ fn opj_j2k_write_first_tile_part(
   if p_j2k.m_specific_param.m_encoder.m_tlm {
     opj_j2k_update_tlm(p_j2k, l_nb_bytes_written);
   }
-Ok(())
+  Ok(())
 }
 fn opj_j2k_write_all_tile_parts(
   p_j2k: &mut J2k,
@@ -11345,7 +11408,8 @@ fn opj_j2k_write_all_tile_parts(
       &mut l_current_nb_bytes_written,
       p_stream,
       p_manager,
-    ).is_err()
+    )
+    .is_err()
     {
       return Err(());
     }
@@ -11363,7 +11427,8 @@ fn opj_j2k_write_all_tile_parts(
       &mut l_current_nb_bytes_written,
       p_stream,
       p_manager,
-    ).is_err()
+    )
+    .is_err()
     {
       return Err(());
     }
@@ -11406,7 +11471,8 @@ fn opj_j2k_write_all_tile_parts(
         &mut l_current_nb_bytes_written,
         p_stream,
         p_manager,
-      ).is_err()
+      )
+      .is_err()
       {
         return Err(());
       }
@@ -11424,7 +11490,8 @@ fn opj_j2k_write_all_tile_parts(
         &mut l_current_nb_bytes_written,
         p_stream,
         p_manager,
-      ).is_err()
+      )
+      .is_err()
       {
         return Err(());
       }
@@ -11450,7 +11517,7 @@ fn opj_j2k_write_all_tile_parts(
     pino += 1;
   }
   *p_data_written = l_nb_bytes_written;
-Ok(())
+  Ok(())
 }
 fn opj_j2k_write_updated_tlm(
   mut p_j2k: &mut J2k,
@@ -11485,7 +11552,7 @@ fn opj_j2k_write_updated_tlm(
   if opj_stream_seek(p_stream, l_current_position, p_manager).is_err() {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -11504,7 +11571,7 @@ fn opj_j2k_end_encoding(
   p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = Vec::new();
   p_j2k.m_specific_param.m_encoder.m_tlm_sot_offsets_current = 0;
   p_j2k.m_specific_param.m_encoder.m_encoded_tile_data = Vec::new();
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -11521,7 +11588,7 @@ fn opj_j2k_destroy_header_memory(
   /* preconditions */
 
   p_j2k.m_specific_param.m_encoder.m_header_tile_data = Vec::new();
-Ok(())
+  Ok(())
 }
 
 /* *
@@ -11542,11 +11609,12 @@ fn opj_j2k_create_tcd(
     &mut p_j2k.m_tcd,
     p_j2k.m_private_image.as_deref().expect("m_private_image"),
     &mut p_j2k.m_cp,
-  ).is_err()
+  )
+  .is_err()
   {
     return Err(());
   }
-Ok(())
+  Ok(())
 }
 
 pub(crate) fn opj_j2k_write_tile(
@@ -11593,7 +11661,8 @@ pub(crate) fn opj_j2k_write_tile(
         .m_private_image
         .as_deref_mut()
         .expect("m_private_image"),
-    ).is_err()
+    )
+    .is_err()
     {
       event_msg!(
         p_manager,
@@ -11612,5 +11681,5 @@ pub(crate) fn opj_j2k_write_tile(
       return Err(());
     }
   }
-Ok(())
+  Ok(())
 }

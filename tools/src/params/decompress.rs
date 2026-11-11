@@ -77,7 +77,6 @@ enum DecompressOpt {
   AllowPartial,
 }
 
-
 // Implement option parsing
 impl DecompressParameters {
   fn parse_precision(&mut self, arg: &str) -> Result<(), Box<dyn std::error::Error>> {

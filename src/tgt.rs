@@ -49,10 +49,7 @@ use super::openjpeg::*;
 
 /// Compute the per-level leaf counts and the total node count for a `numleafsh` x `numleafsv`
 /// tag tree. Returns `(nplh, nplv, numlvls, numnodes)`.
-fn opj_tgt_levels(
-  numleafsh: u32,
-  numleafsv: u32,
-) -> ([i32; 32], [i32; 32], usize, usize) {
+fn opj_tgt_levels(numleafsh: u32, numleafsv: u32) -> ([i32; 32], [i32; 32], usize, usize) {
   let mut nplh: [i32; 32] = [0; 32];
   let mut nplv: [i32; 32] = [0; 32];
   nplh[0] = numleafsh as i32;
@@ -75,12 +72,7 @@ fn opj_tgt_levels(
 }
 
 /// Wire up each node's parent index. Mirrors the pointer walk in `src/lib/openjp2/tgt.c`.
-fn opj_tgt_link_parents(
-  tree: &mut TgtTree,
-  nplh: &[i32; 32],
-  nplv: &[i32; 32],
-  numlvls: usize,
-) {
+fn opj_tgt_link_parents(tree: &mut TgtTree, nplh: &[i32; 32], nplv: &[i32; 32], numlvls: usize) {
   let mut node = 0usize;
   let mut parent = tree.numleafsh.wrapping_mul(tree.numleafsv) as usize;
   let mut parent0 = parent;
@@ -209,12 +201,7 @@ pub(crate) fn opj_tgt_setvalue(tree: &mut TgtTree, leafno: u32, value: i32) {
   }
 }
 
-pub(crate) fn opj_tgt_encode(
-  bio: &mut Bio,
-  tree: &mut TgtTree,
-  leafno: u32,
-  threshold: i32,
-) {
+pub(crate) fn opj_tgt_encode(bio: &mut Bio, tree: &mut TgtTree, leafno: u32, threshold: i32) {
   let mut stk: [u32; 31] = [0; 31];
   let mut stkptr = 0usize;
   let mut node = leafno;
@@ -338,7 +325,10 @@ mod tests {
         while x < 8 {
           let value = ((x * 7 + y * 13) % 16) as i32;
           let decoded = opj_tgt_decode(&mut bio, &mut tree, leafno, 16);
-          assert!(decoded <= value as u32, "decoded value must not exceed the encoded one");
+          assert!(
+            decoded <= value as u32,
+            "decoded value must not exceed the encoded one"
+          );
           leafno += 1;
           x += 1;
         }

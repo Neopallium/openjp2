@@ -63,11 +63,10 @@ fn compress_image(
   //eprintln!("{params:#?}");
 
   // Create encoder based on codec format
-  let format = params.codec_format.ok_or_else(|| {
-    ImageError::InvalidFormat("No codec format specified".into())
-  })?;
-  let mut codec = Encoder::new(format)
-    .map_err(|e| ImageError::EncodeError(e.to_string()))?;
+  let format = params
+    .codec_format
+    .ok_or_else(|| ImageError::InvalidFormat("No codec format specified".into()))?;
+  let mut codec = Encoder::new(format).map_err(|e| ImageError::EncodeError(e.to_string()))?;
 
   /* catch events using our callbacks and give a local context */
   codec.set_info_handler(|msg: &str| print!("[INFO] {}", msg));

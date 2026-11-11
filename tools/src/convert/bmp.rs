@@ -1,8 +1,8 @@
 use super::convert_from_dynamic_image;
 use super::ImageError;
 use crate::params::CompressionParameters;
-use openjp2::CoreImage;
 use openjp2::ffi::COLOR_SPACE::OPJ_CLRSPC_SRGB;
+use openjp2::CoreImage;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::Read;
@@ -228,7 +228,9 @@ impl BmpInfo {
       let d_blue = comps.next().expect("We just allocated all components data");
 
       let src = src
-        .as_chunks::<4>().0.iter()
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| u32::from_le_bytes([p[0], p[1], p[2], p[3]]));
       match comps.next() {
         Some(d_alpha) => {
@@ -275,7 +277,11 @@ fn bmp_mask_get_shift_and_prec(mask: u32) -> (u32, u32, bool) {
   // Avoid shifting by 32 when the run of ones reaches the top bit (e.g. the
   // 0xff000000 alpha mask of 32bpp BI_ALPHABITFIELDS BMPs): `x >> 32` panics
   // in debug builds. Such a mask is contiguous, so there are no leftover bits.
-  let remain = if shift + prec < 32 { mask >> (shift + prec) } else { 0 };
+  let remain = if shift + prec < 32 {
+    mask >> (shift + prec)
+  } else {
+    0
+  };
   (shift, prec, remain == 0)
 }
 

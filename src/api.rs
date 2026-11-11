@@ -14,17 +14,17 @@ mod dump;
 mod encode;
 mod error;
 mod image;
-mod params;
 #[cfg(feature = "image")]
 pub mod image_conv;
+mod params;
 #[cfg(test)]
 mod tests;
 
-pub use error::{DecodeError, Error, Result};
-pub(crate) use error::catch_codec_panic;
-pub use params::*;
-pub use image::Image;
-pub(crate) use encode::{encode_image, encode_image_to_writer};
 pub(crate) use decode::decode_stream;
 pub use decode::detect_format;
 pub use dump::DumpImage;
+pub(crate) use encode::{encode_image, encode_image_to_writer};
+pub(crate) use error::catch_codec_panic;
+pub use error::{DecodeError, Error, Result};
+pub use image::Image;
+pub use params::*;

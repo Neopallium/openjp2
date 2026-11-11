@@ -13,10 +13,7 @@ use super::t1_luts::*;
 use super::tcd::*;
 use crate::image::CoreImageComp;
 
-use core::{
-  cell::Cell,
-  ops::AddAssign,
-};
+use core::{cell::Cell, ops::AddAssign};
 
 // The T1 passes walk several aliasing cursors over the same coefficient and flag buffers, so the
 // backing stores hold `Cell`s: that keeps the cursors `Copy` and aliasable without any `unsafe`.
@@ -354,7 +351,12 @@ fn opj_t1_getctxno_zc(mut mqc: &mut Mqc, f: u32) -> u8 {
 }
 
 #[inline]
-fn opj_t1_getctxtno_sc_or_spb_index(mut f_x: u32, mut p_f_x: u32, mut n_f_x: u32, mut ci: u32) -> u32 {
+fn opj_t1_getctxtno_sc_or_spb_index(
+  mut f_x: u32,
+  mut p_f_x: u32,
+  mut n_f_x: u32,
+  mut ci: u32,
+) -> u32 {
   /*
     0 p_f_x T1_CHI_THIS           T1_LUT_SGN_W
     1 tf_x T1_SIGMA_1            T1_LUT_SIG_N
@@ -419,7 +421,14 @@ fn opj_t1_getnmsedec_ref(mut x: u32, mut bitpos: u32) -> i16 {
 }
 
 #[inline]
-fn opj_t1_update_flags_macro(flags: &mut u32, flagsp: FlagsPtr, ci: u32, s: u32, stride: u32, vsc: u32) {
+fn opj_t1_update_flags_macro(
+  flags: &mut u32,
+  flagsp: FlagsPtr,
+  ci: u32,
+  s: u32,
+  stride: u32,
+  vsc: u32,
+) {
   /* east */
   flagsp.or_at(-1, T1_SIGMA_5 << 3_u32.wrapping_mul(ci));
 
@@ -585,7 +594,18 @@ fn opj_t1_dec_sigpass_step_mqc(
   let mut v = 0;
   let mut mqc = &mut t1.mqc; // MQC component
   let mut flags = flagsp.get();
-  opj_t1_dec_sigpass_step_mqc_macro(&mut flags, flagsp, flags_stride, datap, 0, ci, mqc, v, oneplushalf, vsc);
+  opj_t1_dec_sigpass_step_mqc_macro(
+    &mut flags,
+    flagsp,
+    flags_stride,
+    datap,
+    0,
+    ci,
+    mqc,
+    v,
+    oneplushalf,
+    vsc,
+  );
   flagsp.set(flags);
 }
 
@@ -640,9 +660,45 @@ fn opj_t1_enc_sigpass(
           0,
           cblksty & J2K_CCP_CBLKSTY_VSC,
         );
-        opj_t1_enc_sigpass_step_macro(mqc, w, &mut flags, f, datap.offset(1), bpno, one, nmsedec, type_0, 1, 0);
-        opj_t1_enc_sigpass_step_macro(mqc, w, &mut flags, f, datap.offset(2), bpno, one, nmsedec, type_0, 2, 0);
-        opj_t1_enc_sigpass_step_macro(mqc, w, &mut flags, f, datap.offset(3), bpno, one, nmsedec, type_0, 3, 0);
+        opj_t1_enc_sigpass_step_macro(
+          mqc,
+          w,
+          &mut flags,
+          f,
+          datap.offset(1),
+          bpno,
+          one,
+          nmsedec,
+          type_0,
+          1,
+          0,
+        );
+        opj_t1_enc_sigpass_step_macro(
+          mqc,
+          w,
+          &mut flags,
+          f,
+          datap.offset(2),
+          bpno,
+          one,
+          nmsedec,
+          type_0,
+          2,
+          0,
+        );
+        opj_t1_enc_sigpass_step_macro(
+          mqc,
+          w,
+          &mut flags,
+          f,
+          datap.offset(3),
+          bpno,
+          one,
+          nmsedec,
+          type_0,
+          3,
+          0,
+        );
         f.set(flags);
       }
       i += 1;
@@ -1858,7 +1914,7 @@ fn opj_t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OpRe
   }
   t1.w = w;
   t1.h = h;
-Ok(())
+  Ok(())
 }
 
 /* ----------------------------------------------------------------------- */
@@ -2058,7 +2114,7 @@ fn opj_t1_clbl_decode_processor(
       }
     }
   }
-Ok(())
+  Ok(())
 }
 
 pub(crate) fn opj_t1_decode_cblks(
@@ -2127,8 +2183,7 @@ pub(crate) fn opj_t1_decode_cblks(
           precinct.y0 as u32,
           precinct.x1 as u32,
           precinct.y1 as u32,
-        )
-        {
+        ) {
           if let CodeBlocks::Dec(cblks) = &mut precinct.cblks {
             for cblk in cblks
               .iter_mut()
@@ -2154,8 +2209,7 @@ pub(crate) fn opj_t1_decode_cblks(
               cblk.y0 as u32,
               cblk.x1 as u32,
               cblk.y1 as u32,
-            )
-            {
+            ) {
               if !cblk.decoded_data.is_empty() {
                 cblk.decoded_data = Vec::new();
               }
@@ -2415,7 +2469,7 @@ fn opj_t1_decode_cblk(
       );
     }
   }
-Ok(())
+  Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2455,7 +2509,8 @@ fn opj_t1_cblk_encode_processor(
 
     x += off_x as i32;
     y += off_y as i32;
-    if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32).is_err() {
+    if opj_t1_allocate_buffers(t1, (cblk.x1 - cblk.x0) as u32, (cblk.y1 - cblk.y0) as u32).is_err()
+    {
       return (Err(()), 0.0);
     }
     cblk_w = t1.w;
@@ -2522,8 +2577,7 @@ fn opj_t1_cblk_encode_processor(
           while k < cblk_h {
             t1data.set_at(
               0,
-              ((ti32[base.wrapping_add(k.wrapping_mul(tile_w)).wrapping_add(i) as usize]
-                as u32)
+              ((ti32[base.wrapping_add(k.wrapping_mul(tile_w)).wrapping_add(i) as usize] as u32)
                 << (7i32 - 1i32)) as i32,
             );
             t1data = t1data.offset(1);
@@ -2552,8 +2606,9 @@ fn opj_t1_cblk_encode_processor(
             1,
             opj_lrintf(
               tf32[base
-                  .wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w))
-                  .wrapping_add(i) as usize] / band_stepsize
+                .wrapping_add(j.wrapping_add(1).wrapping_mul(tile_w))
+                .wrapping_add(i) as usize]
+                / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );
@@ -2561,8 +2616,9 @@ fn opj_t1_cblk_encode_processor(
             2,
             opj_lrintf(
               tf32[base
-                  .wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w))
-                  .wrapping_add(i) as usize] / band_stepsize
+                .wrapping_add(j.wrapping_add(2).wrapping_mul(tile_w))
+                .wrapping_add(i) as usize]
+                / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );
@@ -2570,8 +2626,9 @@ fn opj_t1_cblk_encode_processor(
             3,
             opj_lrintf(
               tf32[base
-                  .wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w))
-                  .wrapping_add(i) as usize] / band_stepsize
+                .wrapping_add(j.wrapping_add(3).wrapping_mul(tile_w))
+                .wrapping_add(i) as usize]
+                / band_stepsize
                 * ((1i32) << (7i32 - 1i32)) as core::ffi::c_float,
             ) as i32,
           );

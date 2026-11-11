@@ -109,7 +109,9 @@ pub(crate) fn catch_codec_panic<T>(is_decode: bool, f: impl FnOnce() -> Result<T
         .or_else(|| payload.downcast_ref::<String>().cloned())
         .unwrap_or_else(|| "unknown panic".to_string());
       if is_decode {
-        Err(Error::Decode(format!("internal decoder panic: {detail}").into()))
+        Err(Error::Decode(
+          format!("internal decoder panic: {detail}").into(),
+        ))
       } else {
         Err(Error::Encode(format!("internal encoder panic: {detail}")))
       }

@@ -31,8 +31,8 @@ impl DumpImage {
 
   /// Wraps the given codestream bytes with explicit decode parameters.
   pub fn from_bytes_with(buf: &[u8], params: DecodeParameters) -> Result<Self> {
-    let format = detect_format(buf)
-      .ok_or_else(|| Error::Unsupported("unknown JPEG 2000 format".into()))?;
+    let format =
+      detect_format(buf).ok_or_else(|| Error::Unsupported("unknown JPEG 2000 format".into()))?;
     let mut stream = Stream::from_bytes(buf.to_vec());
     let mut codec = Decoder::new(format)?;
     codec.apply_settings(&DecoderSettings {
@@ -58,7 +58,10 @@ impl DumpImage {
   }
 
   /// Wraps a codestream file with explicit decode parameters.
-  pub fn from_file_with<P: AsRef<std::path::Path>>(path: P, params: DecodeParameters) -> Result<Self> {
+  pub fn from_file_with<P: AsRef<std::path::Path>>(
+    path: P,
+    params: DecodeParameters,
+  ) -> Result<Self> {
     let buf = std::fs::read(path)?;
     Self::from_bytes_with(&buf, params)
   }
@@ -91,6 +94,3 @@ impl DumpImage {
     out
   }
 }
-
-
-

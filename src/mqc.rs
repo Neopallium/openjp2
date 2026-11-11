@@ -1091,10 +1091,7 @@ pub(crate) fn opj_mqc_bypass_enc(mut mqc: &mut Mqc, d: u32) {
   opj_mqc_bypass_enc_macro(mqc, d)
 }
 
-pub(crate) fn opj_mqc_bypass_get_extra_bytes(
-  mut mqc: &mut Mqc,
-  mut erterm: bool,
-) -> u32 {
+pub(crate) fn opj_mqc_bypass_get_extra_bytes(mut mqc: &mut Mqc, mut erterm: bool) -> u32 {
   if mqc.ct < 7 || mqc.ct == 7 && (erterm || mqc.bp_peek_offset(-1) != 0xff) {
     1
   } else {
@@ -1225,7 +1222,12 @@ fn opj_mqc_init_dec_common(
 ) {
   debug_assert!(extra_writable_bytes >= OPJ_COMMON_CBLK_DATA_EXTRA);
   let len = len as usize;
-  debug_assert!(mqc.buf.len() >= offset.wrapping_add(len).wrapping_add(extra_writable_bytes as usize));
+  debug_assert!(
+    mqc.buf.len()
+      >= offset
+        .wrapping_add(len)
+        .wrapping_add(extra_writable_bytes as usize)
+  );
   mqc.attach(offset, offset + len);
   /* Insert an artificial 0xFF 0xFF marker at end of the code block */
   /* data so that the bytein routines stop on it. This saves us comparing */

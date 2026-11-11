@@ -1,5 +1,9 @@
 use super::*;
-pub(crate) fn decode_stream(stream: &mut Stream, format: J2KFormat, params: &DecodeParameters) -> Result<Image> {
+pub(crate) fn decode_stream(
+  stream: &mut Stream,
+  format: J2KFormat,
+  params: &DecodeParameters,
+) -> Result<Image> {
   catch_codec_panic(true, || decode_stream_inner(stream, format, params))
 }
 
@@ -41,4 +45,3 @@ pub(crate) fn decode_stream_inner(
 pub fn detect_format(buf: &[u8]) -> Option<J2KFormat> {
   crate::detect_format(buf).ok()
 }
-

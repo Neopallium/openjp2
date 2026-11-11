@@ -26,10 +26,7 @@ use openjp2::CoreImage;
 use std::path::Path;
 
 // Replace existing load_image function
-pub fn load_image(
-  path: &Path,
-  params: &CompressionParameters,
-) -> Result<CoreImage, ImageError> {
+pub fn load_image(path: &Path, params: &CompressionParameters) -> Result<CoreImage, ImageError> {
   match params.decode_format {
     Some(ImageFileFormat::RAW) => load_raw_image(path, params, true),
     Some(ImageFileFormat::RAWL) => load_raw_image(path, params, false),

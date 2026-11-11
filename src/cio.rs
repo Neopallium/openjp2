@@ -38,7 +38,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 const U32_SIZE: usize = core::mem::size_of::<u32>();
 const F32_SIZE: usize = core::mem::size_of::<f32>();
 const F64_SIZE: usize = core::mem::size_of::<f64>();

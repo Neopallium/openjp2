@@ -584,9 +584,10 @@ impl<V: Clone + fmt::Debug, P: Clone + fmt::Debug> Iterator for GetOptsIterator<
         };
       }
       return Some(ParsedOpt::Opt(opt.val.clone(), None));
-    } else if let Some(positional) = self
-      .opts
-      .handle_positional(0, Some(opt_str.clone()), &mut self.args)
+    } else if let Some(positional) =
+      self
+        .opts
+        .handle_positional(0, Some(opt_str.clone()), &mut self.args)
     {
       self.parse_positional = Some(1);
       return Some(positional);

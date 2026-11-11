@@ -6,11 +6,10 @@ use super::consts::*;
 use super::event::*;
 use super::math::*;
 use super::openjpeg::*;
-use crate::image::CoreImage;
 use super::pi::*;
 use super::tcd::*;
 use super::tgt::*;
-
+use crate::image::CoreImage;
 
 #[repr(C)]
 pub(crate) struct T2<'a> {
@@ -170,7 +169,8 @@ pub(crate) fn opj_t2_encode_packets(
           p_tp_pos,
           p_t2_mode,
         );
-        if pi_vec[poc as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int {
+        if pi_vec[poc as usize].poc.prg as core::ffi::c_int == OPJ_PROG_UNKNOWN as core::ffi::c_int
+        {
           event_msg!(p_manager, EVT_ERROR, "Invalid progression order\n",);
           opj_pi_destroy(&mut pi_vec);
           return Err(());
@@ -191,7 +191,8 @@ pub(crate) fn opj_t2_encode_packets(
               &mut l_nb_bytes,
               p_t2_mode,
               p_manager,
-            ).is_err()
+            )
+            .is_err()
             {
               opj_pi_destroy(&mut pi_vec);
               return Err(());
@@ -199,8 +200,7 @@ pub(crate) fn opj_t2_encode_packets(
             l_comp_len = (l_comp_len as core::ffi::c_uint).wrapping_add(l_nb_bytes);
             let (_, rest) = dest.split_at_mut(l_nb_bytes as usize);
             dest = rest;
-            *p_data_written =
-              (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes)
+            *p_data_written = (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes)
           }
         }
         if cp.m_specific_param.m_enc.m_max_comp_size != 0
@@ -253,15 +253,15 @@ pub(crate) fn opj_t2_encode_packets(
           &mut l_nb_bytes,
           p_t2_mode,
           p_manager,
-        ).is_err()
+        )
+        .is_err()
         {
           opj_pi_destroy(&mut pi_vec);
           return Err(());
         }
         let (_, rest) = dest.split_at_mut(l_nb_bytes as usize);
         dest = rest;
-        *p_data_written =
-          (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes);
+        *p_data_written = (*p_data_written as core::ffi::c_uint).wrapping_add(l_nb_bytes);
         if let Some(marker_info) = p_marker_info.as_deref_mut() {
           if marker_info.need_plt {
             marker_info.p_packet_size[marker_info.packet_count as usize] = l_nb_bytes;
@@ -275,7 +275,7 @@ pub(crate) fn opj_t2_encode_packets(
     }
   }
   opj_pi_destroy(&mut pi_vec);
-Ok(())
+  Ok(())
 }
 pub(crate) fn opj_t2_decode_packets(
   mut tcd: &mut Tcd,
@@ -374,8 +374,7 @@ pub(crate) fn opj_t2_decode_packets(
             prec.y0 as u32,
             prec.x1 as u32,
             prec.y1 as u32,
-          )
-          {
+          ) {
             skip_packet = 0i32;
             break;
           } else {
@@ -395,7 +394,8 @@ pub(crate) fn opj_t2_decode_packets(
           src_base,
           &mut l_nb_bytes_read,
           p_manager,
-        ).is_err()
+        )
+        .is_err()
         {
           opj_pi_destroy(&mut pi_vec);
 
@@ -413,7 +413,8 @@ pub(crate) fn opj_t2_decode_packets(
           &mut src[..],
           &mut l_nb_bytes_read,
           p_manager,
-        ).is_err()
+        )
+        .is_err()
         {
           opj_pi_destroy(&mut pi_vec);
 
@@ -439,7 +440,7 @@ pub(crate) fn opj_t2_decode_packets(
   /* don't forget to release pi */
   opj_pi_destroy(&mut pi_vec);
   *p_data_read = (p_data_read_initial - src.len()) as u32;
-Ok(())
+  Ok(())
 }
 pub(crate) fn opj_t2_create<'a>(image: &'a mut CoreImage, cp: &'a mut Cp) -> Box<T2<'a>> {
   /* create the t2 structure */
@@ -482,7 +483,8 @@ fn opj_t2_decode_packet(
     src,
     &mut l_nb_bytes_read,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     return Err(());
   }
@@ -493,15 +495,8 @@ fn opj_t2_decode_packet(
   /* we should read data for the packet */
   if l_read_data {
     l_nb_bytes_read = 0_u32;
-    if opj_t2_read_packet_data(
-      cp,
-      tile,
-      pi,
-      src,
-      src_base,
-      &mut l_nb_bytes_read,
-      p_manager,
-    ).is_err()
+    if opj_t2_read_packet_data(cp, tile, pi, src, src_base, &mut l_nb_bytes_read, p_manager)
+      .is_err()
     {
       return Err(());
     }
@@ -509,7 +504,7 @@ fn opj_t2_decode_packet(
       (l_nb_total_bytes_read as core::ffi::c_uint).wrapping_add(l_nb_bytes_read)
   }
   *p_data_read = l_nb_total_bytes_read;
-Ok(())
+  Ok(())
 }
 /* *
 Encode a packet of a tile to a destination buffer
@@ -547,7 +542,8 @@ fn opj_t2_skip_packet(
     src,
     &mut l_nb_bytes_read,
     p_manager,
-  ).is_err()
+  )
+  .is_err()
   {
     return Err(());
   }
@@ -558,14 +554,7 @@ fn opj_t2_skip_packet(
   /* we should read data for the packet */
   if l_read_data {
     l_nb_bytes_read = 0_u32;
-    if opj_t2_skip_packet_data(
-      cp,
-      tile,
-      pi,
-      &mut l_nb_bytes_read,
-      p_max_length,
-      p_manager,
-    ).is_err()
+    if opj_t2_skip_packet_data(cp, tile, pi, &mut l_nb_bytes_read, p_max_length, p_manager).is_err()
     {
       return Err(());
     }
@@ -573,7 +562,7 @@ fn opj_t2_skip_packet(
       (l_nb_total_bytes_read as core::ffi::c_uint).wrapping_add(l_nb_bytes_read)
   }
   *p_data_read = l_nb_total_bytes_read;
-Ok(())
+  Ok(())
 }
 fn opj_t2_encode_packet(
   _tileno: u32,
@@ -697,7 +686,11 @@ fn opj_t2_encode_packet(
         let layer = &mut cblk.layers[layno as usize];
         if cblk.numpasses == 0 && layer.numpasses != 0 {
           // SAFETY: incltree is the precinct's tag tree, owned by the precinct.
-          opj_tgt_setvalue(prc.incltree.as_mut().expect("incltree"), cblkno, layno as i32);
+          opj_tgt_setvalue(
+            prc.incltree.as_mut().expect("incltree"),
+            cblkno,
+            layno as i32,
+          );
         }
         cblkno += 1;
       }
@@ -726,11 +719,18 @@ fn opj_t2_encode_packet(
           /* if first instance of cblk --> zero bit-planes information */
           if cblk.numpasses == 0 {
             cblk.numlenbits = 3_u32;
-            opj_tgt_encode(bio, prc.imsbtree.as_mut().expect("imsbtree"), cblkno, 999i32);
+            opj_tgt_encode(
+              bio,
+              prc.imsbtree.as_mut().expect("imsbtree"),
+              cblkno,
+              999i32,
+            );
           }
           /* number of coding passes included */
           opj_t2_putnumpasses(bio, cblk.layers[layno as usize].numpasses);
-          l_nb_passes = cblk.numpasses.wrapping_add(cblk.layers[layno as usize].numpasses);
+          l_nb_passes = cblk
+            .numpasses
+            .wrapping_add(cblk.layers[layno as usize].numpasses);
           /* computation of the increase of the length indicator and insertion in the header     */
           passno = cblk.numpasses;
           while passno < l_nb_passes {
@@ -755,8 +755,7 @@ fn opj_t2_encode_packet(
           }
           opj_t2_putcommacode(bio, increment as i32);
           /* computation of the new Length indicator */
-          cblk.numlenbits =
-            (cblk.numlenbits as core::ffi::c_uint).wrapping_add(increment);
+          cblk.numlenbits = (cblk.numlenbits as core::ffi::c_uint).wrapping_add(increment);
           /* insertion of the codeword segment length */
           passno = cblk.numpasses;
           while passno < l_nb_passes {
@@ -852,8 +851,7 @@ fn opj_t2_encode_packet(
           cblk.numpasses = (cblk.numpasses as core::ffi::c_uint)
             .wrapping_add(cblk.layers[layno as usize].numpasses);
           pos += cblk.layers[layno as usize].len as usize;
-          length = (length as core::ffi::c_uint)
-            .wrapping_sub(cblk.layers[layno as usize].len);
+          length = (length as core::ffi::c_uint).wrapping_sub(cblk.layers[layno as usize].len);
           /* INDEX >> */
           /* << INDEX */
         }
@@ -863,7 +861,7 @@ fn opj_t2_encode_packet(
     bandno += 1;
   }
   *p_data_written = pos as u32;
-Ok(())
+  Ok(())
 }
 fn opj_t2_read_packet_header(
   cp: &mut Cp,
@@ -1054,40 +1052,24 @@ fn opj_t2_read_packet_header(
             /* Both C branches compute the same wrapping arithmetic; the
              * branch exists upstream only to document the PR #1488 integer
              * overflow while keeping the regression suite happy. */
-            cblk.numbps = band
-              .numbps
-              .wrapping_add(1)
-              .wrapping_sub(i as i32) as u32;
+            cblk.numbps = band.numbps.wrapping_add(1).wrapping_sub(i as i32) as u32;
             cblk.numlenbits = 3_u32
           }
           /* number of coding passes */
           cblk.numnewpasses = opj_t2_getnumpasses(l_bio);
           l_increment = opj_t2_getcommacode(l_bio);
           /* length indicator increment */
-          cblk.numlenbits =
-            (cblk.numlenbits as core::ffi::c_uint).wrapping_add(l_increment);
+          cblk.numlenbits = (cblk.numlenbits as core::ffi::c_uint).wrapping_add(l_increment);
           l_segno = 0_u32;
           if cblk.numsegs == 0 {
-            if opj_t2_init_seg(
-              cblk,
-              l_segno,
-              tccp_cblksty,
-              1_u32,
-            ).is_err()
-            {
+            if opj_t2_init_seg(cblk, l_segno, tccp_cblksty, 1_u32).is_err() {
               return Err(());
             }
           } else {
             l_segno = cblk.numsegs.wrapping_sub(1u32);
             if cblk.segs[l_segno as usize].numpasses == cblk.segs[l_segno as usize].maxpasses {
               l_segno = l_segno.wrapping_add(1);
-              if opj_t2_init_seg(
-                cblk,
-                l_segno,
-                tccp_cblksty,
-                0_u32,
-              ).is_err()
-              {
+              if opj_t2_init_seg(cblk, l_segno, tccp_cblksty, 0_u32).is_err() {
                 return Err(());
               }
             }
@@ -1096,14 +1078,11 @@ fn opj_t2_read_packet_header(
           if tccp_cblksty & 0x40u32 != 0u32 {
             loop {
               let mut bit_number: u32 = 0;
-              cblk.segs[l_segno as usize].numnewpasses = if l_segno == 0u32 {
-                1u32
-              } else {
-                n as u32
-              };
-              bit_number = cblk.numlenbits.wrapping_add(opj_uint_floorlog2(
-                cblk.segs[l_segno as usize].numnewpasses,
-              ));
+              cblk.segs[l_segno as usize].numnewpasses =
+                if l_segno == 0u32 { 1u32 } else { n as u32 };
+              bit_number = cblk
+                .numlenbits
+                .wrapping_add(opj_uint_floorlog2(cblk.segs[l_segno as usize].numnewpasses));
               if bit_number > 32u32 {
                 event_msg!(
                   p_manager,
@@ -1124,13 +1103,7 @@ fn opj_t2_read_packet_header(
               n -= cblk.segs[l_segno as usize].numnewpasses as i32;
               if n > 0i32 {
                 l_segno = l_segno.wrapping_add(1);
-                if opj_t2_init_seg(
-                  cblk,
-                  l_segno,
-                  tccp_cblksty,
-                  0_u32,
-                ).is_err()
-                {
+                if opj_t2_init_seg(cblk, l_segno, tccp_cblksty, 0_u32).is_err() {
                   return Err(());
                 }
               }
@@ -1146,11 +1119,10 @@ fn opj_t2_read_packet_header(
                   .maxpasses
                   .wrapping_sub(cblk.segs[l_segno as usize].numpasses) as i32,
                 n,
-              )
-                as u32;
-              bit_number_0 = cblk.numlenbits.wrapping_add(opj_uint_floorlog2(
-                cblk.segs[l_segno as usize].numnewpasses,
-              ));
+              ) as u32;
+              bit_number_0 = cblk
+                .numlenbits
+                .wrapping_add(opj_uint_floorlog2(cblk.segs[l_segno as usize].numnewpasses));
               if bit_number_0 > 32u32 {
                 event_msg!(
                   p_manager,
@@ -1171,13 +1143,7 @@ fn opj_t2_read_packet_header(
               n -= cblk.segs[l_segno as usize].numnewpasses as i32;
               if n > 0i32 {
                 l_segno = l_segno.wrapping_add(1);
-                if opj_t2_init_seg(
-                  cblk,
-                  l_segno,
-                  tccp_cblksty,
-                  0_u32,
-                ).is_err()
-                {
+                if opj_t2_init_seg(cblk, l_segno, tccp_cblksty, 0_u32).is_err() {
                   return Err(());
                 }
               }
@@ -1199,7 +1165,7 @@ fn opj_t2_read_packet_header(
   /* EPH markers */
   if csty & J2K_CP_CSTY_EPH != 0 {
     /* EPH markers are required when specified (upstream #1547) */
-  if l_header.len() - l_hdr_pos < 2usize {
+    if l_header.len() - l_hdr_pos < 2usize {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -1239,7 +1205,7 @@ fn opj_t2_read_packet_header(
   /* INDEX >> */
   *p_is_data_present = true; /* next code_block */
   *p_data_read = l_pos as u32;
-Ok(())
+  Ok(())
 }
 fn opj_t2_read_packet_data(
   cp: &mut Cp,
@@ -1341,12 +1307,10 @@ fn opj_t2_read_packet_data(
             chunk.len = seg.newlen;
             cblk.numchunks = cblk.numchunks.wrapping_add(1);
             l_pos += seg.newlen as usize;
-            seg.len =
-              (seg.len as core::ffi::c_uint).wrapping_add(seg.newlen);
-            seg.numpasses = (seg.numpasses as core::ffi::c_uint)
-              .wrapping_add(seg.numnewpasses);
-            cblk.numnewpasses = (cblk.numnewpasses as core::ffi::c_uint)
-              .wrapping_sub(seg.numnewpasses);
+            seg.len = (seg.len as core::ffi::c_uint).wrapping_add(seg.newlen);
+            seg.numpasses = (seg.numpasses as core::ffi::c_uint).wrapping_add(seg.numnewpasses);
+            cblk.numnewpasses =
+              (cblk.numnewpasses as core::ffi::c_uint).wrapping_sub(seg.numnewpasses);
             seg.real_num_passes = seg.numpasses;
             if cblk.numnewpasses > 0u32 {
               l_segno += 1;
@@ -1369,7 +1333,7 @@ fn opj_t2_read_packet_data(
   } else {
     *p_data_read = l_pos as u32
   }
-Ok(())
+  Ok(())
 }
 
 fn opj_t2_skip_packet_data(
@@ -1447,11 +1411,10 @@ fn opj_t2_skip_packet_data(
             (*p_data_read as core::ffi::c_uint).wrapping_add(cblk.segs[l_segno].newlen);
           {
             let seg = &mut cblk.segs[l_segno];
-            seg.numpasses = (seg.numpasses as core::ffi::c_uint)
-              .wrapping_add(seg.numnewpasses);
+            seg.numpasses = (seg.numpasses as core::ffi::c_uint).wrapping_add(seg.numnewpasses);
           }
-          cblk.numnewpasses = (cblk.numnewpasses as core::ffi::c_uint)
-            .wrapping_sub(cblk.segs[l_segno].numnewpasses);
+          cblk.numnewpasses =
+            (cblk.numnewpasses as core::ffi::c_uint).wrapping_sub(cblk.segs[l_segno].numnewpasses);
           if cblk.numnewpasses > 0u32 {
             l_segno += 1;
             cblk.numsegs = cblk.numsegs.wrapping_add(1)
@@ -1465,14 +1428,9 @@ fn opj_t2_skip_packet_data(
     }
     bandno += 1;
   }
-Ok(())
+  Ok(())
 }
-fn opj_t2_init_seg(
-  cblk: &mut TcdCblkDec,
-  index: u32,
-  cblksty: u32,
-  first: u32,
-) -> OpResult {
+fn opj_t2_init_seg(cblk: &mut TcdCblkDec, index: u32, cblksty: u32, first: u32) -> OpResult {
   let l_nb_segs = index.wrapping_add(1u32);
   if l_nb_segs as usize > cblk.segs.len() {
     let new_len = cblk.segs.len() + 10;
@@ -1491,12 +1449,11 @@ fn opj_t2_init_seg(
       let prev_maxpasses = cblk.segs[index as usize - 1].maxpasses;
       let seg = &mut cblk.segs[index as usize];
       opj_tcd_reinit_segment(seg);
-      seg.maxpasses =
-        if prev_maxpasses == 1u32 || prev_maxpasses == 10u32 {
-          2i32
-        } else {
-          1i32
-        } as u32
+      seg.maxpasses = if prev_maxpasses == 1u32 || prev_maxpasses == 10u32 {
+        2i32
+      } else {
+        1i32
+      } as u32
     }
   } else {
     /* See paragraph "B.10.6 Number of coding passes" of the standard.
@@ -1507,5 +1464,5 @@ fn opj_t2_init_seg(
     opj_tcd_reinit_segment(seg);
     seg.maxpasses = 109_u32
   }
-Ok(())
+  Ok(())
 }

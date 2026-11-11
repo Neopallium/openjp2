@@ -187,7 +187,10 @@ where
 {
   use rayon::prelude::*;
   with_current_pool(|| {
-    data.par_chunks_mut(chunk).enumerate().for_each(|(i, s)| f(i, s));
+    data
+      .par_chunks_mut(chunk)
+      .enumerate()
+      .for_each(|(i, s)| f(i, s));
   });
 }
 
@@ -201,17 +204,17 @@ where
   }
 }
 
-
 /// Sizes the process-wide rayon pool (the first successful call wins:
 /// `build_global` only succeeds once).  Used by the C-ABI
 /// `opj_codec_set_threads` and the CLI tools' env-based setup.
 #[cfg(feature = "rayon")]
 pub(crate) fn configure_pool(n: usize) {
   if n > 0 {
-    let _ = rayon::ThreadPoolBuilder::new().num_threads(n).build_global();
+    let _ = rayon::ThreadPoolBuilder::new()
+      .num_threads(n)
+      .build_global();
   }
 }
-
 
 /// No-op pool sizing without the `rayon` feature (the sequential
 /// iterators are used).

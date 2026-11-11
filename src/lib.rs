@@ -9,7 +9,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
-
 //! A pure-Rust port of [OpenJPEG](https://github.com/uclouvain/openjpeg) with a
 //! safe high-level API, a C ABI drop-in, and CLI tools.
 //!
@@ -67,9 +66,12 @@ pub fn has_thread_support() -> bool {
   cfg!(feature = "rayon")
 }
 
-pub use api::{ColorSpace, DecodeArea, DecodeError, DecodeLimits, DecodeParameters, DumpImage, EncodeParameters, Error, Image, ProgressionOrder, Result};
 #[cfg(feature = "image")]
 pub use api::image_conv::{ImageData, ImagePixelData};
+pub use api::{
+  ColorSpace, DecodeArea, DecodeError, DecodeLimits, DecodeParameters, DumpImage, EncodeParameters,
+  Error, Image, ProgressionOrder, Result,
+};
 
 // The C-ABI mirror types are also available behind `ffi` for
 // interop with the C header spellings.
@@ -82,10 +84,10 @@ pub mod ffi {
 
 pub use codec::{Decoder, DecoderSettings, Encoder, HeaderImage};
 pub use image::{CoreImage, CoreImageComp};
-pub use j2k::{CstrCompInfoV2, CstrInfoV2, CstrTccpInfoV2, CodestreamIndex, CodestreamTileIndex};
-pub use types::EncoderParameters;
+pub use j2k::{CodestreamIndex, CodestreamTileIndex, CstrCompInfoV2, CstrInfoV2, CstrTccpInfoV2};
 pub use types::opj_stream_private_t;
-pub use types::{CIE_LAB_BYTE_SIZE, ICCProfile, ICCProfileMut, ICCProfileRef, Stream, TileInfo};
+pub use types::EncoderParameters;
+pub use types::{ICCProfile, ICCProfileMut, ICCProfileRef, Stream, TileInfo, CIE_LAB_BYTE_SIZE};
 
 /// Magic bytes for JP2 RFC3745.
 pub const JP2_RFC3745_MAGIC: &[u8] = &[
@@ -183,13 +185,13 @@ mod cio;
 mod codec;
 mod dwt;
 mod ht_dec;
-mod par;
 mod invert;
 mod j2k;
 mod jp2;
 mod math;
 mod mct;
 mod mqc;
+mod par;
 mod pi;
 mod sparse_array;
 mod t1;

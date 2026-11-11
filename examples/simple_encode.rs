@@ -29,6 +29,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     image.encode(params)?
   };
   std::fs::write(&output, codestream)?;
-  println!("wrote {output} ({} bytes, {})", output.len(), if lossy { "lossy" } else { "lossless" });
+  println!(
+    "wrote {output} ({} bytes, {})",
+    output.len(),
+    if lossy { "lossy" } else { "lossless" }
+  );
   Ok(())
 }
