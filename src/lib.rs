@@ -132,7 +132,7 @@ pub fn has_thread_support() -> bool {
 pub use api::image_conv::{ImageData, ImagePixelData};
 pub use api::{
   ColorSpace, DecodeArea, DecodeError, DecodeLimits, DecodeParameters, DumpImage, EncodeParameters,
-  Error, Image, ProgressionOrder, Result,
+  Error, Image, ProgressionOrder, Result, ALL, IMG_INFO, J2K_MH_IND, J2K_MH_INFO,
 };
 
 pub use api::EncoderParameters;

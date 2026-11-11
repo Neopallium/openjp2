@@ -23,6 +23,7 @@ mod tests;
 pub(crate) use decode::decode_stream;
 pub use decode::detect_format;
 pub use dump::DumpImage;
+pub use dump::{ALL, IMG_INFO, J2K_MH_IND, J2K_MH_INFO};
 pub(crate) use encode::{encode_image, encode_image_to_writer};
 pub(crate) use error::catch_codec_panic;
 pub use error::{DecodeError, Error, Result};

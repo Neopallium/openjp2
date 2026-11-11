@@ -21,10 +21,11 @@ exclude = [
   "libtiff-sys/*",
   "fuzz/*",
   "wasm/*",
+  "cli/*",
 ]
 
 [workspace]
-members = ["tools", "libtiff-sys", "ctypes"]
+members = ["tools", "libtiff-sys", "ctypes", "cli"]
 # v2 keeps feature resolution per build unit: `default-features = false`
 # on the openjp2 dependency (e.g. for no-rayon platforms) is honored
 # instead of being polluted by this package's own default features.

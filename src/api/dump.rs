@@ -94,3 +94,15 @@ impl DumpImage {
     out
   }
 }
+
+/// Dump the image header (dimensions, components, color space) — the
+/// C's `OPJ_IMG_INFO` bit.
+pub const IMG_INFO: i32 = 1;
+/// Dump the codestream main header (COD/QCD/... marker details) — the
+/// C's `OPJ_J2K_MH_INFO` bit.
+pub const J2K_MH_INFO: i32 = 2;
+/// Dump the main header in the indented form — the C's
+/// `OPJ_J2K_MH_IND` bit.
+pub const J2K_MH_IND: i32 = 16;
+/// Everything: image header plus both main-header forms.
+pub const ALL: i32 = IMG_INFO | J2K_MH_INFO | J2K_MH_IND;
