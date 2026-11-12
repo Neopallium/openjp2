@@ -439,8 +439,7 @@ fn jp2_check_color(
       }
       let mut pcol_usage = BTreeSet::new();
       /* verify that no component is targeted more than once */
-      for i in 0..nr_channels {
-        let cmap = pclr.cmap[i];
+      for (i, &cmap) in pclr.cmap.iter().take(nr_channels).enumerate() {
         let mut mtyp = cmap.mtyp;
         let mut pcol = cmap.pcol;
         /* See ISO 15444-1 Table I.14 – MTYPi field values */
@@ -493,8 +492,7 @@ fn jp2_check_color(
         }
       }
       /* verify that all components are targeted at least once */
-      for i in 0..nr_channels {
-        let cmap = pclr.cmap[i];
+      for (i, &cmap) in pclr.cmap.iter().take(nr_channels).enumerate() {
         if !pcol_usage.contains(&(i as u8)) && cmap.mtyp != 0 {
           event_msg!(
             p_manager,
@@ -520,8 +518,7 @@ fn jp2_check_color(
         }
         if !is_sane {
           is_sane = true;
-          for i in 0..nr_channels {
-            let cmap = &mut pclr.cmap[i];
+          for (i, cmap) in pclr.cmap.iter_mut().take(nr_channels).enumerate() {
             cmap.mtyp = 1_u8;
             cmap.pcol = i as u8;
           }
@@ -779,8 +776,7 @@ fn jp2_apply_cdef(image: &mut CoreImage, color: &mut Jp2Color, manager: &mut Eve
         if cn != acn && info.typ == 0 {
           comps.swap(cn as usize, acn as usize);
           /* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
-          for j in (i + 1)..n {
-            let info = &mut cdef.info[j];
+          for info in &mut cdef.info[(i + 1)..n] {
             if info.cn == cn {
               info.cn = acn
             } else if info.cn == acn {
@@ -1433,8 +1429,8 @@ fn jp2_default_validation(
   /* height */
   l_is_valid &= jp2.w > 0u32;
   /* precision */
-  for i in 0..jp2.comps.len() {
-    l_is_valid &= (jp2.comps[i].bpcc & 0x7fu32) < 38u32;
+  for comp in &jp2.comps {
+    l_is_valid &= (comp.bpcc & 0x7fu32) < 38u32;
     /* 0 is valid, ignore sign for check */
   }
   /* METH */

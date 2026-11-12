@@ -5,7 +5,6 @@ edition = "2021"
 license = "BSD-2-Clause"
 description = "Command-line tools for the pure-Rust OpenJPEG port (openjp2)"
 repository = "https://github.com/Neopallium/openjp2"
-homepage = "https://github.com/Neopallium/openjp2"
 keywords = ["j2k", "jp2", "jpeg2000", "image", "cli"]
 publish = false
 

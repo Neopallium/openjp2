@@ -1261,9 +1261,7 @@ pub(crate) fn opq_mqc_finish_dec(mqc: &mut Mqc) {
 }
 
 pub(crate) fn mqc_resetstates(mqc: &mut Mqc) {
-  for i in 0..19 {
-    mqc.ctxs[i] = MQC_STATES[0];
-  }
+  mqc.ctxs[..19].fill(MQC_STATES[0]);
 }
 
 pub(crate) fn mqc_setstate(mqc: &mut Mqc, ctxno: u8, msb: u32, prob: i32) {

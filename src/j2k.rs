@@ -9591,8 +9591,9 @@ fn j2k_decode_tiles(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut Even
     for j in dec.m_start_tile_y..dec.m_end_tile_y {
       for i in dec.m_start_tile_x..dec.m_end_tile_x {
         let tile_number = (j * p_j2k.m_cp.tw + i) as usize;
-        for k in 0..cstr_index.tiles[tile_number].nb_tps as usize {
-          offsets.push(cstr_index.tiles[tile_number].tp_index[k].start_pos);
+        let tile = &cstr_index.tiles[tile_number];
+        for tp in &tile.tp_index[..tile.nb_tps as usize] {
+          offsets.push(tp.start_pos);
           m_num_intersecting_tile_parts += 1;
         }
       }
@@ -10222,9 +10223,16 @@ fn j2k_move_data_from_codec_to_output_image(p_j2k: &mut J2k, p_image: &mut CoreI
   if numcomps_to_decode > 0u32 {
     p_image.numcomps = numcomps_to_decode;
     p_image.comps.clear();
-    for compno in 0..numcomps_to_decode as usize {
-      let src_compno = p_j2k.m_specific_param.m_decoder.m_comps_indices_to_decode[compno] as usize;
-      p_image.comps.push(out_image.comps[src_compno].clone());
+    for &src_compno in p_j2k
+      .m_specific_param
+      .m_decoder
+      .m_comps_indices_to_decode
+      .iter()
+      .take(numcomps_to_decode as usize)
+    {
+      p_image
+        .comps
+        .push(out_image.comps[src_compno as usize].clone());
     }
     for comp in &mut out_image.comps {
       comp.data.clear();
