@@ -82,7 +82,7 @@
           <input type="number" id="encode-res" min="1" max="33" value="6"
             title="Number of resolutions (DWT decomposition levels + 1): the codestream stores a pyramid of progressively smaller versions of the image." />
         </label>
-        <label class="row">layers<span class="help" tabindex="0" data-help="Number of quality layers.&#10;&#10;Each layer adds quality; a decoder can stop after any layer, giving a choice between file size and quality. More layers give finer truncation options at a small size cost.">?</span>
+        <label class="row">layers<span class="help" tabindex="0" data-help="Number of quality layers.&#10;&#10;Each layer adds quality; a decoder can stop after any layer, giving a choice between file size and quality. More layers give finer truncation options at a small size cost.&#10;&#10;Layers are only meaningful when they have rate targets: with no explicit rates, the encoder generates a geometric ladder from 100:1 down to a lossless final layer. Set &#39;rates&#39; below for a custom ladder.">?</span>
           <input type="number" id="encode-layers" min="1" max="100" value="1"
             title="Number of quality layers: each layer adds more quality, letting decoders stop early at a lower quality level." />
         </label>
@@ -106,6 +106,10 @@
                 <input type="number" id="encode-tileh" min="0" value="0"
                   title="Tile height in pixels (0 = a single tile covering the whole image)." />
               </span>
+            </label>
+            <label class="row">rates
+              <input type="text" id="encode-rates" placeholder="auto from layers"
+                title="Per-layer rate targets, comma-separated (e.g. 100,20,5,0; 0 = lossless final layer). Overrides the automatic ladder." />
             </label>
             <label class="row">ratio<span class="help" tabindex="0" data-help="Target compression ratio (e.g. 20 = 20:1).&#10;&#10;Uses rate-distortion optimisation to pick one quality layer at that ratio; it overrides the fixed layer count. 0 = keep the fixed layers.">?</span>
               <input type="number" id="encode-rate" min="0" step="0.5" value="0"

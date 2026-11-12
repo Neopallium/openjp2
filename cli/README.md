@@ -21,12 +21,18 @@ TGA, WebP, PNM, ...) and writes a JPEG 2000 codestream:
 $ openjp2-cli compress photo.png photo.jp2
 $ openjp2-cli compress photo.png out.j2k        # raw codestream
 $ openjp2-cli compress -l -r 5 photo.png out.jp2     # lossy 9-7, 5 resolutions
+$ openjp2-cli compress --layers 6 photo.png out.jp2   # 6 quality layers
+$ openjp2-cli compress --rates 100,20,5,0 photo.png out.jp2  # explicit ladder
 $ openjp2-cli compress --rate 20 photo.png out.jp2   # 20:1 ratio layer
 $ openjp2-cli compress --tile 512x512 --order RLCP photo.png out.jp2
 ```
 
 Defaults: lossless (reversible 5-3), 6 resolutions, 1 layer, single tile,
 LRCP progression.
+
+Quality layers need rate targets: a bare `--layers N` (N > 1) generates a
+default geometric ladder from 100:1 to a lossless final layer; `--rates`
+overrides it with an explicit comma-separated list (`0` = lossless).
 
 ### `decompress` — decode JP2/J2K to PNG
 

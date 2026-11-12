@@ -146,10 +146,7 @@ pub fn decode_info(data: &[u8]) -> Result<ImageInfo, JsValue> {
     components: core.numcomps,
     prec: comp.prec,
     sgnd: comp.sgnd != 0,
-    numresolutions: tccp
-      .map(|t| t.numresolutions)
-      .unwrap_or(1)
-      .max(1),
+    numresolutions: tccp.map(|t| t.numresolutions).unwrap_or(1).max(1),
     color_space: format!("{:?}", core.color_space),
     has_icc_profile: !core.icc_profile_buf.is_empty(),
     num_layers: default_tile.map(|t| t.numlayers).unwrap_or(1),
@@ -419,6 +416,11 @@ pub struct EncodeOptions {
   /// Compression ratio for rate-distortion allocation (`0` = off,
   /// fixed layers instead).
   pub rate: f32,
+  /// Explicit per-layer rate targets as a comma-separated list (e.g.
+  /// `"100,20,5,0"`; `0` = lossless final layer).  When set, it takes
+  /// precedence over `rate` and the automatic ladder.
+  #[wasm_bindgen(getter_with_clone)]
+  pub rates: Option<String>,
   /// COM comment marker embedded in the codestream.
   #[wasm_bindgen(getter_with_clone)]
   pub comment: Option<String>,
@@ -446,6 +448,7 @@ impl Default for EncodeOptions {
       tile_w: 0,
       tile_h: 0,
       rate: 0.0,
+      rates: None,
       comment: None,
       jp2: true,
     }
@@ -508,21 +511,40 @@ pub fn encode_rgba_opt(
   if opts.num_resolutions > 0 {
     params = params.num_resolutions(opts.num_resolutions);
   }
-  if opts.num_layers > 0 {
-    params = params.num_layers(opts.num_layers);
-  }
   if !opts.lossless {
     params = params.irreversible(true);
   }
-  if opts.rate > 0.0 {
-    // ratio allocation: one layer at the requested ratio
-    params = params
-      .num_layers(1)
-      .layer_rate(opts.rate)
-      .irreversible(!opts.lossless);
-    if opts.num_resolutions > 0 {
-      params = params.num_resolutions(opts.num_resolutions);
+  /* Quality layers.  Rate targets are what actually split the code-block
+  passes across layers: a bare layer count leaves everything in the last
+  layer, so decoding N layers would look identical to all of them.
+  Priority: explicit `rates`, then a single `rate`, then an automatic
+  geometric ladder for `num_layers > 1`. */
+  let explicit_rates: Vec<f32> = opts
+    .rates
+    .as_deref()
+    .unwrap_or("")
+    .split(',')
+    .filter_map(|s| s.trim().parse::<f32>().ok())
+    .collect();
+  if !explicit_rates.is_empty() {
+    for rate in explicit_rates {
+      params = params.layer_rate(rate);
     }
+  } else if opts.rate > 0.0 {
+    params = params.layer_rate(opts.rate);
+  } else if opts.num_layers > 1 {
+    let n = opts.num_layers.min(100);
+    for i in 0..n {
+      // geometric ladder from 100:1 down to the lossless final layer
+      let ratio = if i == n - 1 {
+        0.0
+      } else {
+        100.0f32.powf(1.0 - i as f32 / (n - 1) as f32)
+      };
+      params = params.layer_rate(ratio);
+    }
+  } else if opts.num_layers > 0 {
+    params = params.num_layers(opts.num_layers);
   }
   if opts.tile_w > 0 && opts.tile_h > 0 {
     params = params.tile_size(opts.tile_w, opts.tile_h);

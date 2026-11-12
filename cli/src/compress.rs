@@ -37,6 +37,12 @@ pub struct CompressArgs {
   #[arg(long)]
   pub rate: Option<f32>,
 
+  /// Explicit per-layer rate targets, comma-separated (e.g.
+  /// `100,20,5,0`; `0` = lossless final layer).  Overrides `--rate` and
+  /// the automatic ladder.
+  #[arg(long, value_name = "R1,R2,...")]
+  pub rates: Option<String>,
+
   /// Tile size as `WxH` (e.g. `512x512`); default is a single tile.
   #[arg(long, value_name = "WxH", value_parser = parse_tile)]
   pub tile: Option<(u32, u32)>,
@@ -129,6 +135,26 @@ fn parse_tile(s: &str) -> Result<(u32, u32), String> {
   Ok((w, h))
 }
 
+/// Parses a comma-separated rate list (`100,20,5,0`).
+fn parse_rates(s: &str) -> Vec<f32> {
+  s.split(',')
+    .filter_map(|v| v.trim().parse::<f32>().ok())
+    .collect()
+}
+
+/// The default quality-layer ladder for `n` layers: a geometric rate
+/// progression from 100:1 down to a lossless final layer.
+fn default_layer_rates(n: u32) -> impl Iterator<Item = f32> {
+  let n = n.min(100);
+  (0..n).map(move |i| {
+    if i == n - 1 {
+      0.0
+    } else {
+      100.0f32.powf(1.0 - i as f32 / (n - 1) as f32)
+    }
+  })
+}
+
 pub fn run(args: CompressArgs) -> openjp2::Result<()> {
   let source = ::image::open(&args.input).map_err(|e| {
     openjp2::Error::Io(std::io::Error::new(
@@ -138,17 +164,28 @@ pub fn run(args: CompressArgs) -> openjp2::Result<()> {
   })?;
   let image = Image::from_dynamic_image(&source);
 
-  let mut params = EncodeParameters::new()
-    .num_resolutions(args.resolutions)
-    .num_layers(args.layers);
+  let mut params = EncodeParameters::new().num_resolutions(args.resolutions);
   if args.lossy {
     params = params.irreversible(true);
   }
-  if let Some(rate) = args.rate {
-    /* Ratio allocation: one layer at the requested ratio. */
-    params = EncodeParameters::new()
-      .num_resolutions(args.resolutions)
-      .layer_rate(rate);
+  /* Quality layers need rate targets: a bare layer count leaves every
+  code-block pass in the final layer, so decoders would see no
+  difference between N layers and all of them.  Priority: explicit
+  `--rates`, then a single `--rate`, then the automatic geometric
+  ladder for `--layers > 1`. */
+  let explicit_rates = args.rates.as_deref().map(parse_rates).unwrap_or_default();
+  if !explicit_rates.is_empty() {
+    for rate in explicit_rates {
+      params = params.layer_rate(rate);
+    }
+  } else if let Some(rate) = args.rate {
+    params = params.layer_rate(rate);
+  } else if args.layers > 1 {
+    for rate in default_layer_rates(args.layers) {
+      params = params.layer_rate(rate);
+    }
+  } else {
+    params = params.num_layers(args.layers.max(1));
   }
   if let Some((w, h)) = args.tile {
     params = params.tile_size(w, h);

@@ -146,6 +146,7 @@ self.onmessage = (ev) => {
           opts.tile_w = msg.opts.tile_w;
           opts.tile_h = msg.opts.tile_h;
           opts.rate = msg.opts.rate;
+          opts.rates = msg.opts.rates || null;
           opts.comment = msg.opts.comment || null;
           opts.jp2 = msg.opts.jp2;
           const bytes = encode_rgba_opt(

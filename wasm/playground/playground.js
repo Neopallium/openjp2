@@ -113,6 +113,7 @@ function encodeOpts() {
     tile_w: Number($("encode-tilew").value) || 0,
     tile_h: Number($("encode-tileh").value) || 0,
     rate: Number($("encode-rate").value) || 0,
+    rates: $("encode-rates").value.trim() || null,
     comment: $("encode-comment").value || null,
     jp2: $("encode-format").value === "jp2",
   };
@@ -196,6 +197,7 @@ async function workerEncode(width, height, rgba, opts) {
     e.tile_w = opts.tile_w;
     e.tile_h = opts.tile_h;
     e.rate = opts.rate;
+    e.rates = opts.rates;
     e.comment = opts.comment;
     e.jp2 = opts.jp2;
     return encode_rgba_opt(width, height, rgba, e);
@@ -857,6 +859,7 @@ for (const id of [
   "encode-tilew",
   "encode-tileh",
   "encode-rate",
+  "encode-rates",
   "encode-comment",
 ]) {
   const el = $(id);
