@@ -11,6 +11,7 @@ import init, {
   decode_probe_opt,
   decode_info,
   encode_rgba_opt,
+  layer_byte_thresholds,
   DecodeOptions,
   EncodeOptions,
   version,
@@ -156,6 +157,18 @@ self.onmessage = (ev) => {
             opts,
           );
           self.postMessage({ id: msg.id, ok: true, bytes }, [bytes.buffer]);
+        })
+        .catch((e) => self.postMessage({ id: msg.id, ok: false, error: String(e) }));
+      break;
+    }
+    case "layerbytes": {
+      ready()
+        .then(() => {
+          const thresholds = layer_byte_thresholds(
+            new Uint8Array(msg.data),
+            !!msg.strict,
+          );
+          self.postMessage({ id: msg.id, ok: true, thresholds });
         })
         .catch((e) => self.postMessage({ id: msg.id, ok: false, error: String(e) }));
       break;
