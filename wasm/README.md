@@ -24,9 +24,9 @@ wasm-bindgen target/wasm32-unknown-unknown/release/openjp2_wasm.wasm \
 | --- | --- |
 | `init()` | Installs the console panic hook (call once). |
 | `version()` | The crate version string. |
-| `decode_info(bytes)` | `{ width, height, components, prec, sgnd, numresolutions }` from the header only. |
+| `decode_info(bytes)` | Header metadata: `{ width, height, components, prec, sgnd, numresolutions, color_space, has_icc_profile, num_layers, progression, mct, tiles_h, tiles_v, tile_w, tile_h, codeblock_w, codeblock_h, dx, dy }`. |
 | `decode_to_rgba(bytes, strict?)` | Decodes to tightly packed RGBA8 (`w * h * 4` bytes). |
-| `decode_probe(bytes, strict?)` | Lenient decode returning `{ width, height, complete, pixels }` — never fails on a truncated codestream with a readable header (the truncation-slider backend). |
+| `decode_probe(bytes, strict?)` | Lenient decode returning `{ width, height, complete, components, color_space, pixels }` — never fails on a truncated codestream with a readable header (the truncation-slider backend). |
 | `decode_probe_opt(bytes, opts)` | Like `decode_probe`, with a `DecodeOptions` (strict, `reduce` resolution factor, `layers`, decode area, ignore-pclr). |
 | `encode_rgba_to_j2k(w, h, rgba, lossless)` | Encodes RGBA8 to a J2K codestream. |
 | `encode_rgba_to_jp2(w, h, rgba, lossless)` | Encodes RGBA8 to a JP2 file. |

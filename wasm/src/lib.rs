@@ -63,7 +63,8 @@ pub fn version() -> String {
   env!("CARGO_PKG_VERSION").to_string()
 }
 
-/// Codestream geometry and component layout (no pixel decoding).
+/// Codestream geometry, layout and coding defaults (header only, no
+/// pixel decoding).
 #[wasm_bindgen]
 pub struct ImageInfo {
   /// Image width in pixels.
@@ -79,9 +80,39 @@ pub struct ImageInfo {
   /// Number of resolutions in the codestream (DWT levels + 1);
   /// `reduce` values `0..numresolutions-1` are decodable.
   pub numresolutions: u32,
+  /// Declared colour space (`Unknown` / `Srgb` / `Gray` / `Sycc` /
+  /// `Eycc` / `Cmyk`).
+  #[wasm_bindgen(getter_with_clone)]
+  pub color_space: String,
+  /// Whether the codestream carries an ICC colour profile.
+  pub has_icc_profile: bool,
+  /// Number of quality layers in the default tile.
+  pub num_layers: u32,
+  /// Progression order (`0` = LRCP, `1` = RLCP, `2` = RPCL, `3` = PCRL,
+  /// `4` = CPRL).
+  pub progression: u32,
+  /// Multiple-component transform mode (`0`/`1`/`2`).
+  pub mct: u32,
+  /// Tiles horizontally.
+  pub tiles_h: u32,
+  /// Tiles vertically.
+  pub tiles_v: u32,
+  /// Tile width.
+  pub tile_w: u32,
+  /// Tile height.
+  pub tile_h: u32,
+  /// Code-block width exponent (`2^codeblock_w` pixels).
+  pub codeblock_w: u32,
+  /// Code-block height exponent (`2^codeblock_h` pixels).
+  pub codeblock_h: u32,
+  /// Horizontal component subsampling (XRsiz).
+  pub dx: u32,
+  /// Vertical component subsampling (YRsiz).
+  pub dy: u32,
 }
 
-/// Reads the codestream header and returns the geometry.
+/// Reads the codestream header and returns the geometry and coding
+/// defaults.
 ///
 /// Returns an error `JsValue` describing the problem when the data is
 /// not a decodable JP2/J2K codestream.
@@ -98,18 +129,40 @@ pub fn decode_info(data: &[u8]) -> Result<ImageInfo, JsValue> {
     .comps
     .first()
     .ok_or_else(|| js_err("image has no components"))?;
-  let numresolutions = decoder
-    .cstr_info()
-    .and_then(|info| info.default_tile.tccps.first().map(|t| t.numresolutions))
-    .unwrap_or(1)
-    .max(1);
+  let info = decoder.cstr_info();
+  let default_tile = info.as_ref().map(|i| &i.default_tile);
+  let tccp = default_tile.and_then(|t| t.tccps.first());
+  let progression = match default_tile.map(|t| t.prg) {
+    Some(openjp2::ProgressionOrder::Lrcp) => 0,
+    Some(openjp2::ProgressionOrder::Rlcp) => 1,
+    Some(openjp2::ProgressionOrder::Rpcl) => 2,
+    Some(openjp2::ProgressionOrder::Pcrl) => 3,
+    Some(openjp2::ProgressionOrder::Cprl) => 4,
+    _ => 0,
+  };
   Ok(ImageInfo {
     width,
     height,
     components: core.numcomps,
     prec: comp.prec,
     sgnd: comp.sgnd != 0,
-    numresolutions,
+    numresolutions: tccp
+      .map(|t| t.numresolutions)
+      .unwrap_or(1)
+      .max(1),
+    color_space: format!("{:?}", core.color_space),
+    has_icc_profile: !core.icc_profile_buf.is_empty(),
+    num_layers: default_tile.map(|t| t.numlayers).unwrap_or(1),
+    progression,
+    mct: default_tile.map(|t| t.mct).unwrap_or(0),
+    tiles_h: info.as_ref().map(|i| i.tw).unwrap_or(1),
+    tiles_v: info.as_ref().map(|i| i.th).unwrap_or(1),
+    tile_w: info.as_ref().map(|i| i.tdx).unwrap_or(width),
+    tile_h: info.as_ref().map(|i| i.tdy).unwrap_or(height),
+    codeblock_w: tccp.map(|t| t.cblkw).unwrap_or(6),
+    codeblock_h: tccp.map(|t| t.cblkh).unwrap_or(6),
+    dx: comp.dx,
+    dy: comp.dy,
   })
 }
 
@@ -144,12 +197,17 @@ pub fn decode_to_rgba_full(data: &[u8]) -> Result<Vec<u8>, JsValue> {
 /// markers reach EOC (the playground does this on the JS side).
 #[wasm_bindgen]
 pub struct DecodeProbe {
-  /// Declared image width.
+  /// Declared image width (component plane).
   pub width: u32,
-  /// Declared image height.
+  /// Declared image height (component plane).
   pub height: u32,
   /// Whether every pixel of the declared geometry was decoded.
   pub complete: bool,
+  /// Number of components in the image.
+  pub components: u32,
+  /// Declared colour space.
+  #[wasm_bindgen(getter_with_clone)]
+  pub color_space: String,
   /// Tightly packed RGBA8 (width * height * 4); empty when only the
   /// header survived.
   #[wasm_bindgen(getter_with_clone)]
@@ -298,6 +356,8 @@ pub fn decode_probe_opt(data: &[u8], opts: &DecodeOptions) -> Result<DecodeProbe
     width: w as u32,
     height: h as u32,
     complete,
+    components: image.num_components(),
+    color_space: format!("{:?}", image.color_space()),
     pixels,
   })
 }

@@ -86,6 +86,8 @@ let decodeSeq = 0; // truncation-point ordering (explorer)
 let loadSeq = 0; // file-load generation (panel + explorer)
 let reduce = 0; // resolution reduction factor (0 = full)
 let numResolutions = 1; // from decode_info (header)
+let headerInfo = null; // decode_info metadata (header/coding defaults)
+let comments = []; // COM marker texts (encoder identification)
 
 /// The decoder settings (mirrors the wasm `DecodeOptions`).
 function decodeOpts() {
@@ -136,13 +138,22 @@ async function probeDecode(data, opts, seq, tag) {
       const copy = new Uint8Array(data); // must be standalone to transfer
       const res = await rpc({ type: "decode", tag, opts, data: copy.buffer }, [copy.buffer]);
       if (seq !== undefined && seq !== decodeSeq) return null; // stale
-      return { width: res.width, height: res.height, complete: res.complete, pixels: res.pixels };
+      return {
+        width: res.width,
+        height: res.height,
+        complete: res.complete,
+        components: res.components,
+        color_space: res.color_space,
+        pixels: res.pixels,
+      };
     }
     const probe = decode_probe_opt(data, fallbackDecodeOpts(opts));
     return {
       width: probe.width,
       height: probe.height,
       complete: probe.complete,
+      components: probe.components,
+      color_space: probe.color_space,
       pixels: new Uint8Array(probe.pixels),
     };
   } finally {
@@ -552,12 +563,47 @@ async function showDecode(data) {
   const ms = performance.now() - t0;
   drawProbe(probe.width, probe.height, probe.pixels, decodeCanvas);
   const complete = structurallyComplete(data, csOffset);
-  setInfo($("decode-info"), [
-    ["size", `${probe.width}×${probe.height}`],
-    ["pixels", complete ? "complete" : "truncated (undecoded areas are black)"],
-    ["decode", `${ms.toFixed(0)} ms`],
-  ]);
+  renderImageInfo(probe, complete, ms);
   $("decode-drop").classList.add("has-image");
+}
+
+const ORDER_NAMES = ["LRCP", "RLCP", "RPCL", "PCRL", "CPRL"];
+
+/// Renders the file metadata + decode status in the Decode panel.
+function renderImageInfo(probe, complete, ms) {
+  const rows = [];
+  const h = headerInfo;
+  rows.push(["size", `${probe.width}×${probe.height}`]);
+  const comps = probe.components || h?.components;
+  if (comps) {
+    const prec = h ? `${h.prec}-bit ${h.sgnd ? "signed" : "unsigned"}` : "";
+    rows.push(["components", prec ? `${comps} (${prec})` : `${comps}`]);
+  }
+  const cs = probe.color_space || h?.color_space;
+  if (cs) rows.push(["colour space", cs + (h?.has_icc_profile ? " (ICC profile)" : "")]);
+  if (h) {
+    rows.push(["resolutions", `${h.numresolutions}`]);
+    rows.push([
+      "layers",
+      `${h.num_layers}` + (h.num_layers > 1 ? " (quality layers in the codestream)" : ""),
+    ]);
+    rows.push(["progression", ORDER_NAMES[h.progression] || "?"]);
+    rows.push([
+      "tiles",
+      `${h.tiles_h}×${h.tiles_v} (${h.tile_w}×${h.tile_h} each)`,
+    ]);
+    rows.push(["code-blocks", `${2 ** h.codeblock_w}×${2 ** h.codeblock_h}`]);
+    if (h.dx !== 1 || h.dy !== 1) rows.push(["subsampling", `${h.dx}×${h.dy}`]);
+    if (h.mct) rows.push(["MCT", `${h.mct}`]);
+  }
+  if (comments.length) {
+    rows.push(["encoded by", comments[0]]);
+  } else {
+    rows.push(["encoded by", "unknown (no COM marker)"]);
+  }
+  rows.push(["pixels", complete ? "complete" : "truncated (undecoded areas are black)"]);
+  rows.push(["decode", `${ms.toFixed(0)} ms`]);
+  setInfo($("decode-info"), rows);
 }
 
 function loadCodestream(file) {
@@ -578,6 +624,7 @@ function loadCodestream(file) {
     ranges = structure.ranges;
     treeRoot = structure.tree;
     csOffset = structure.csOffset;
+    comments = structure.comments || [];
     codestream = data;
     loadSeq += 1;
     fetchInfo(data);
@@ -713,6 +760,11 @@ $("decode-strict").addEventListener("change", () => {
   }
 });
 
+// The '?' help badges inside <label>s must not toggle the setting.
+for (const h of document.querySelectorAll(".help")) {
+  h.addEventListener("click", (e) => e.preventDefault());
+}
+
 // ---------------------------------------------------------------------------
 // decode/encode settings
 
@@ -730,6 +782,7 @@ async function fetchInfo(data) {
   } catch {
     return;
   }
+  headerInfo = info;
   numResolutions = Math.max(1, info.numresolutions || 1);
   reduce = Math.min(reduce, numResolutions - 1);
   renderResolutions();

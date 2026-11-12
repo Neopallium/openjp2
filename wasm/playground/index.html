@@ -30,19 +30,19 @@
       <div class="controls" id="decode-settings">
         <label class="row"><input type="checkbox" id="decode-strict"
           title="Strict codestream validation: reject files that the lenient mode tolerates (e.g. truncated or slightly non-compliant codestreams)." />
-          strict mode</label>
-        <label class="row">layers
+          strict mode<span class="help" tabindex="0" data-help="Strict codestream validation.&#10;&#10;Lenient (default): tolerate truncated or slightly non-compliant files, keeping whatever decodes. Strict: reject them, which is useful to check a file against the standard.">?</span></label>
+        <label class="row">layers<span class="help" tabindex="0" data-help="Quality layers to decode.&#10;&#10;A JPEG 2000 codestream can store its data in several quality layers; decoding only the first N layers is faster and yields a lower-quality image. 0 = decode all layers.&#10;&#10;Only files that actually have multiple layers (e.g. encoded with several -r rates) show a difference.">?</span>
           <input type="number" id="decode-layers" min="0" value="0"
             title="Number of quality layers to decode (0 = all layers). Lower values decode faster at lower quality." />
         </label>
         <div class="row resolution-row">
-          <span title="Decode the codestream at one of its resolutions (the DWT decomposition levels); lower resolutions are smaller and faster.">resolution</span>
+          <span title="Decode the codestream at one of its resolutions (the DWT decomposition levels); lower resolutions are smaller and faster.">resolution</span><span class="help" tabindex="0" data-help="Decode at a reduced resolution.&#10;&#10;The codestream stores a resolution pyramid (the inverse DWT levels). Choosing 1/2, 1/4, ... decodes only the lower-resolution version: much faster and less memory, at reduced detail. &#39;full&#39; decodes the largest resolution.">?</span>
           <div class="presets" id="decode-resolutions"></div>
         </div>
         <details class="advanced">
           <summary>advanced</summary>
           <div class="advanced-body">
-            <label class="row">decode area (x0,y0,x1,y1)
+            <label class="row">decode area (x0,y0,x1,y1)<span class="help" tabindex="0" data-help="Decode only a window of the image.&#10;&#10;x0,y0 = top-left corner; x1,y1 = bottom-right corner (exclusive). The decoder processes only the tiles and code-blocks intersecting that window. Leave all values at 0 to decode the whole image.">?</span>
               <span class="area-inputs">
                 <input type="number" id="area-x0" min="0" value="0" title="Decode-area left edge; 0 = image origin." />
                 <input type="number" id="area-y0" min="0" value="0" title="Decode-area top edge; 0 = image origin." />
@@ -52,7 +52,7 @@
             </label>
             <label class="row"><input type="checkbox" id="decode-ignore-pclr"
               title="Ignore the palette / component-mapping / channel-definition boxes: decode the raw codestream components instead of the palette-expanded pixels." />
-              ignore pclr/cmap/cdef boxes</label>
+              ignore pclr/cmap/cdef boxes<span class="help" tabindex="0" data-help="Ignore the JP2 palette (pclr), component-mapping (cmap) and channel-definition (cdef) boxes.&#10;&#10;The raw codestream components are decoded instead of the palette-expanded RGB pixels, which is useful to inspect the underlying component data.">?</span></label>
           </div>
         </details>
       </div>
@@ -70,23 +70,23 @@
       <div class="controls" id="encode-settings">
         <label class="row"><input type="checkbox" id="encode-lossless" checked
           title="Use the reversible 5-3 wavelet (lossless); uncheck for the irreversible 9-7 wavelet (better compression, slightly lossy)." />
-          lossless (5-3)</label>
-        <label class="row">container
+          lossless (5-3)<span class="help" tabindex="0" data-help="Choose the wavelet transform.&#10;&#10;Lossless (reversible 5-3): the decoded samples are bit-exact.&#10;Lossy (irreversible 9-7): better compression, with a small, controlled error.">?</span></label>
+        <label class="row">container<span class="help" tabindex="0" data-help="Output container.&#10;&#10;JP2 wraps the codestream in the ISO/IEC 15444-1 file format (signature, colour and metadata boxes). J2K writes only the raw codestream.">?</span>
           <select id="encode-format"
             title="Wrap the codestream in the JP2 file container, or write the raw J2K codestream.">
             <option value="jp2" selected>JP2 (.jp2)</option>
             <option value="j2k">J2K (.j2k)</option>
           </select>
         </label>
-        <label class="row">resolutions
+        <label class="row">resolutions<span class="help" tabindex="0" data-help="Number of resolutions in the pyramid.&#10;&#10;The encoder decomposes the image into 2^N-1... levels (e.g. 6 = 5 DWT levels), storing progressively smaller versions. Decoders can then show a reduced-resolution preview without decoding everything.">?</span>
           <input type="number" id="encode-res" min="1" max="33" value="6"
             title="Number of resolutions (DWT decomposition levels + 1): the codestream stores a pyramid of progressively smaller versions of the image." />
         </label>
-        <label class="row">layers
+        <label class="row">layers<span class="help" tabindex="0" data-help="Number of quality layers.&#10;&#10;Each layer adds quality; a decoder can stop after any layer, giving a choice between file size and quality. More layers give finer truncation options at a small size cost.">?</span>
           <input type="number" id="encode-layers" min="1" max="100" value="1"
             title="Number of quality layers: each layer adds more quality, letting decoders stop early at a lower quality level." />
         </label>
-        <label class="row">order
+        <label class="row">order<span class="help" tabindex="0" data-help="Packet progression order — how the codestream interleaves packets, i.e. which parts become decodable first:&#10;&#10;• LRCP: layer → resolution → component → precinct. Quality-progressive: a little of the whole image at increasing quality.&#10;• RLCP: resolution → layer → component → precinct. Resolution-progressive: complete low resolutions first.&#10;• RPCL: resolution → precinct → component → layer.&#10;• PCRL: precinct → component → resolution → layer. Position-progressive: spatial regions first.&#10;• CPRL: component → precinct → resolution → layer.">?</span>
           <select id="encode-order"
             title="Packet progression order: the order the codestream interleaves quality, resolution, component and position (progressive-by-…).">
             <option value="0" selected>LRCP</option>
@@ -99,7 +99,7 @@
         <details class="advanced">
           <summary>advanced</summary>
           <div class="advanced-body">
-            <label class="row">tile size
+            <label class="row">tile size<span class="help" tabindex="0" data-help="Split the image into independent tiles of this size (W×H pixels).&#10;&#10;Larger tiles compress better; smaller tiles allow faster random access and more parallel decoding. 0×0 = a single tile covering the whole image.">?</span>
               <span class="area-inputs">
                 <input type="number" id="encode-tilew" min="0" value="0"
                   title="Tile width in pixels (0 = a single tile covering the whole image)." />
@@ -107,11 +107,11 @@
                   title="Tile height in pixels (0 = a single tile covering the whole image)." />
               </span>
             </label>
-            <label class="row">ratio
+            <label class="row">ratio<span class="help" tabindex="0" data-help="Target compression ratio (e.g. 20 = 20:1).&#10;&#10;Uses rate-distortion optimisation to pick one quality layer at that ratio; it overrides the fixed layer count. 0 = keep the fixed layers.">?</span>
               <input type="number" id="encode-rate" min="0" step="0.5" value="0"
                 title="Target compression ratio (e.g. 20 = 20:1); overrides the layer count with a single rate-allocated layer. 0 = use the fixed layer count." />
             </label>
-            <label class="row">comment
+            <label class="row">comment<span class="help" tabindex="0" data-help="Free-text COM marker embedded in the codestream.&#10;&#10;Viewers and tools use it to identify the encoder (e.g. &#34;Created by ...&#34;); the Playground shows it as &#39;encoded by&#39; in the Decode panel.">?</span>
               <input type="text" id="encode-comment"
                 title="Free-text COM comment marker embedded in the codestream." />
             </label>

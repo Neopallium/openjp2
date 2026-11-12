@@ -124,7 +124,7 @@ function walkBoxes(data, ranges, parent, off, end) {
 
 /// Walks the codestream markers; tile-part payloads are skipped via SOT's
 /// Psot.  Nesting goes into `parent` (the jp2c node, or the tree root).
-function walkMarkers(data, ranges, cs, end, parent) {
+function walkMarkers(data, ranges, cs, end, parent, comments) {
   if (cs + 2 > data.length || data[cs] !== 0xff || data[cs + 1] !== 0x4f) {
     const node = makeNode("(no codestream found)", cs, end, "corrupt");
     parent.children.push(node);
@@ -184,6 +184,18 @@ function walkMarkers(data, ranges, cs, end, parent) {
       pos += 1;
       continue;
     }
+    if (code === 0x64) {
+      // COM: Rcom(2) + Ccom text
+      const l = u16(data, pos + 2);
+      if (l > 4 && pos + 2 + l <= data.length) {
+        const rcom = u16(data, pos + 4);
+        const text = new TextDecoder("utf-8", { fatal: false }).decode(
+          data.subarray(pos + 6, pos + 2 + l),
+        );
+        const clean = text.replace(/\0+$/, "").trim();
+        if (rcom === 1 && clean) comments.push(clean);
+      }
+    }
     // length markers
     const l = u16(data, pos + 2);
     if (l === 0) {
@@ -213,15 +225,16 @@ export function buildStructure(data) {
     data.length,
     "codestream",
   );
+  const comments = [];
   let cs = -1;
   if (data[0] === 0xff && data[1] === 0x4f) {
     cs = 0;
-    walkMarkers(data, ranges, 0, data.length, root);
+    walkMarkers(data, ranges, 0, data.length, root, comments);
   } else {
     const jp2c = walkBoxes(data, ranges, root, 0, data.length);
     if (jp2c) {
       cs = jp2c.start + 8;
-      walkMarkers(data, ranges, cs, jp2c.end, jp2c);
+      walkMarkers(data, ranges, cs, jp2c.end, jp2c, comments);
     }
   }
   // cover any leftover gaps
@@ -239,7 +252,7 @@ export function buildStructure(data) {
   }
   ranges.push(...extra);
   ranges.sort((a, b) => a.start - b.start || b.end - a.end);
-  return { ranges, tree: root, csOffset: cs };
+  return { ranges, tree: root, csOffset: cs, comments };
 }
 
 /// Lightweight marker walk (no ranges/tree) for the completeness check:

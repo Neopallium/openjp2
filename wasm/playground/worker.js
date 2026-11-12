@@ -47,6 +47,8 @@ async function runJob(job) {
     width: probe.width,
     height: probe.height,
     complete: probe.complete,
+    components: probe.components,
+    color_space: probe.color_space,
     pixels: probe.pixels,
   };
 }
@@ -115,6 +117,19 @@ self.onmessage = (ev) => {
             prec: info.prec,
             sgnd: info.sgnd,
             numresolutions: info.numresolutions,
+            color_space: info.color_space,
+            has_icc_profile: info.has_icc_profile,
+            num_layers: info.num_layers,
+            progression: info.progression,
+            mct: info.mct,
+            tiles_h: info.tiles_h,
+            tiles_v: info.tiles_v,
+            tile_w: info.tile_w,
+            tile_h: info.tile_h,
+            codeblock_w: info.codeblock_w,
+            codeblock_h: info.codeblock_h,
+            dx: info.dx,
+            dy: info.dy,
           });
         })
         .catch((e) => self.postMessage({ id: msg.id, ok: false, error: String(e) }));
