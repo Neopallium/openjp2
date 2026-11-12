@@ -76,6 +76,9 @@ pub struct ImageInfo {
   pub prec: u32,
   /// Whether the component samples are signed.
   pub sgnd: bool,
+  /// Number of resolutions in the codestream (DWT levels + 1);
+  /// `reduce` values `0..numresolutions-1` are decodable.
+  pub numresolutions: u32,
 }
 
 /// Reads the codestream header and returns the geometry.
@@ -84,14 +87,29 @@ pub struct ImageInfo {
 /// not a decodable JP2/J2K codestream.
 #[wasm_bindgen]
 pub fn decode_info(data: &[u8]) -> Result<ImageInfo, JsValue> {
-  let image = Image::from_bytes(data).map_err(js_err)?;
-  let comp = &image.components()[0];
+  let format = openjp2::detect_format(data).map_err(js_err)?;
+  let mut stream = openjp2::Stream::from_bytes(data.to_vec());
+  let mut decoder = openjp2::Decoder::new(format).map_err(js_err)?;
+  let header = decoder.read_header(&mut stream).map_err(js_err)?;
+  let width = header.width();
+  let height = header.height();
+  let core = header.into_core_image();
+  let comp = core
+    .comps
+    .first()
+    .ok_or_else(|| js_err("image has no components"))?;
+  let numresolutions = decoder
+    .cstr_info()
+    .and_then(|info| info.default_tile.tccps.first().map(|t| t.numresolutions))
+    .unwrap_or(1)
+    .max(1);
   Ok(ImageInfo {
-    width: image.width(),
-    height: image.height(),
-    components: image.num_components(),
+    width,
+    height,
+    components: core.numcomps,
     prec: comp.prec,
     sgnd: comp.sgnd != 0,
+    numresolutions,
   })
 }
 
@@ -145,14 +163,80 @@ pub struct DecodeProbe {
 /// codestream that has at least a readable header.
 #[wasm_bindgen]
 pub fn decode_probe(data: &[u8], strict: Option<bool>) -> Result<DecodeProbe, JsValue> {
+  let opts = DecodeOptions {
+    strict: strict.unwrap_or(false),
+    ..Default::default()
+  };
+  decode_probe_opt(data, &opts)
+}
+
+/// Decoder settings for [`decode_probe_opt`] (the safe-API builder
+/// mirrors: `DecodeParameters`).
+#[wasm_bindgen]
+#[derive(Default)]
+pub struct DecodeOptions {
+  /// Strict codestream validation (default: lenient).
+  pub strict: bool,
+  /// Resolution reduction factor (`0` = full, `1` = half, ...; must be
+  /// below the codestream's resolution count).
+  pub reduce: u32,
+  /// Number of quality layers to decode (`0` = all layers).
+  pub layers: u32,
+  /// Decode-area window `x0,y0,x1,y1` (end exclusive; all zeros = the
+  /// whole image).
+  pub x0: u32,
+  /// Decode-area window top.
+  pub y0: u32,
+  /// Decode-area window right.
+  pub x1: u32,
+  /// Decode-area window bottom.
+  pub y1: u32,
+  /// Ignore the pclr/cmap/cdef boxes (the C's
+  /// `OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG`).
+  pub ignore_pclr_cmap_cdef: bool,
+}
+
+#[wasm_bindgen]
+impl DecodeOptions {
+  /// Default settings: lenient, full resolution, all layers, whole
+  /// image.
+  #[wasm_bindgen(constructor)]
+  pub fn new() -> Self {
+    Self::default()
+  }
+}
+
+/// Decodes with the given settings and reports how much of the image
+/// survived (see [`decode_probe`]).
+#[wasm_bindgen]
+pub fn decode_probe_opt(data: &[u8], opts: &DecodeOptions) -> Result<DecodeProbe, JsValue> {
   let mut params = DecodeParameters::new();
-  if strict.unwrap_or(false) {
+  if opts.strict {
     params = params.strict(true);
   }
+  if opts.reduce > 0 {
+    params = params.reduce(opts.reduce);
+  }
+  if opts.layers > 0 {
+    params = params.layers(opts.layers);
+  }
+  if opts.x1 > opts.x0 && opts.y1 > opts.y0 {
+    params = params.decode_area(Some(openjp2::DecodeArea::new(
+      opts.x0, opts.y0, opts.x1, opts.y1,
+    )));
+  }
+  if opts.ignore_pclr_cmap_cdef {
+    params = params.ignore_pclr_cmap_cdef();
+  }
   let image = Image::from_bytes_with(data, params).map_err(js_err)?;
-  let w = image.width() as usize;
-  let h = image.height() as usize;
   let comps = image.components();
+  /* The image bounds stay full-size; the component planes carry the
+  reduction (and subsampling).  Use the first component's plane dims,
+  like the image-crate conversion does. */
+  let (w, h) = comps
+    .first()
+    .map(|c| (c.w as usize, c.h as usize))
+    .unwrap_or((0, 0));
   let total = w * h;
   let mut pixels = vec![0u8; total * 4];
   let mut complete = !comps.is_empty();
@@ -211,8 +295,8 @@ pub fn decode_probe(data: &[u8], strict: Option<bool>) -> Result<DecodeProbe, Js
     }
   }
   Ok(DecodeProbe {
-    width: image.width(),
-    height: image.height(),
+    width: w as u32,
+    height: h as u32,
     complete,
     pixels,
   })
@@ -230,7 +314,12 @@ pub fn encode_rgba_to_j2k(
   rgba: &[u8],
   lossless: bool,
 ) -> Result<Vec<u8>, JsValue> {
-  encode_rgba(width, height, rgba, lossless, false).map_err(js_err)
+  let opts = EncodeOptions {
+    lossless,
+    jp2: false,
+    ..Default::default()
+  };
+  encode_rgba_opt(width, height, rgba, &opts)
 }
 
 /// Encodes tightly packed RGBA8 pixels to a JP2 file (like
@@ -242,7 +331,158 @@ pub fn encode_rgba_to_jp2(
   rgba: &[u8],
   lossless: bool,
 ) -> Result<Vec<u8>, JsValue> {
-  encode_rgba(width, height, rgba, lossless, true).map_err(js_err)
+  let opts = EncodeOptions {
+    lossless,
+    jp2: true,
+    ..Default::default()
+  };
+  encode_rgba_opt(width, height, rgba, &opts)
+}
+
+/// Encoder settings for [`encode_rgba_opt`] (the safe-API builder
+/// mirrors: `EncodeParameters`).
+#[wasm_bindgen]
+pub struct EncodeOptions {
+  /// Reversible 5-3 (lossless) or irreversible 9-7 transform.
+  pub lossless: bool,
+  /// Number of resolutions (`0` = the encoder default of 6).
+  pub num_resolutions: u32,
+  /// Number of quality layers (`0` = one layer).
+  pub num_layers: u32,
+  /// Packet progression order (`0` = LRCP, `1` = RLCP, `2` = RPCL,
+  /// `3` = PCRL, `4` = CPRL).
+  pub progression: u32,
+  /// Tile width (`0` = single tile).
+  pub tile_w: u32,
+  /// Tile height (`0` = single tile).
+  pub tile_h: u32,
+  /// Compression ratio for rate-distortion allocation (`0` = off,
+  /// fixed layers instead).
+  pub rate: f32,
+  /// COM comment marker embedded in the codestream.
+  #[wasm_bindgen(getter_with_clone)]
+  pub comment: Option<String>,
+  /// Wrap the codestream in the JP2 container.
+  pub jp2: bool,
+}
+
+#[wasm_bindgen]
+impl EncodeOptions {
+  /// Default settings: lossless 5-3, 6 resolutions, one layer, LRCP,
+  /// single tile, no ratio allocation, JP2 container.
+  #[wasm_bindgen(constructor)]
+  pub fn new() -> Self {
+    Self::default()
+  }
+}
+
+impl Default for EncodeOptions {
+  fn default() -> Self {
+    Self {
+      lossless: true,
+      num_resolutions: 6,
+      num_layers: 1,
+      progression: 0,
+      tile_w: 0,
+      tile_h: 0,
+      rate: 0.0,
+      comment: None,
+      jp2: true,
+    }
+  }
+}
+
+/// Encodes tightly packed RGBA8 pixels with the given settings (see
+/// [`EncodeOptions`]).
+#[wasm_bindgen]
+pub fn encode_rgba_opt(
+  width: u32,
+  height: u32,
+  rgba: &[u8],
+  opts: &EncodeOptions,
+) -> Result<Vec<u8>, JsValue> {
+  let n = width as usize * height as usize;
+  if rgba.len() < n * 4 {
+    return Err(js_err(format!(
+      "rgba buffer is {} bytes, expected {}",
+      rgba.len(),
+      n * 4
+    )));
+  }
+  let mut r = Vec::with_capacity(n);
+  let mut g = Vec::with_capacity(n);
+  let mut b = Vec::with_capacity(n);
+  for px in rgba[..n * 4].as_chunks::<4>().0 {
+    r.push(px[0] as i32);
+    g.push(px[1] as i32);
+    b.push(px[2] as i32);
+  }
+  let comp = |data: Vec<i32>| openjp2::CoreImageComp {
+    dx: 1,
+    dy: 1,
+    w: width,
+    h: height,
+    x0: 0,
+    y0: 0,
+    prec: 8,
+    bpp: 8,
+    sgnd: 0,
+    resno_decoded: 0,
+    factor: 0,
+    alpha: 0,
+    data,
+  };
+  let core = openjp2::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: width,
+    y1: height,
+    numcomps: 3,
+    color_space: openjp2::ColorSpace::Srgb,
+    comps: vec![comp(r), comp(g), comp(b)],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let image = Image::from_core_image(core);
+  let mut params = EncodeParameters::new();
+  if opts.num_resolutions > 0 {
+    params = params.num_resolutions(opts.num_resolutions);
+  }
+  if opts.num_layers > 0 {
+    params = params.num_layers(opts.num_layers);
+  }
+  if !opts.lossless {
+    params = params.irreversible(true);
+  }
+  if opts.rate > 0.0 {
+    // ratio allocation: one layer at the requested ratio
+    params = params
+      .num_layers(1)
+      .layer_rate(opts.rate)
+      .irreversible(!opts.lossless);
+    if opts.num_resolutions > 0 {
+      params = params.num_resolutions(opts.num_resolutions);
+    }
+  }
+  if opts.tile_w > 0 && opts.tile_h > 0 {
+    params = params.tile_size(opts.tile_w, opts.tile_h);
+  }
+  params = params.progression_order(match opts.progression {
+    1 => openjp2::ProgressionOrder::Rlcp,
+    2 => openjp2::ProgressionOrder::Rpcl,
+    3 => openjp2::ProgressionOrder::Pcrl,
+    4 => openjp2::ProgressionOrder::Cprl,
+    _ => openjp2::ProgressionOrder::Lrcp,
+  });
+  if let Some(comment) = &opts.comment {
+    params = params.comment(comment);
+  }
+  if opts.jp2 {
+    image.encode_jp2(params)
+  } else {
+    image.encode(params)
+  }
+  .map_err(js_err)
 }
 
 /// Converts the decoded component planes to tightly packed RGBA8.
@@ -315,69 +555,6 @@ fn to_rgba(image: &Image) -> Result<Vec<u8>, String> {
     }
   }
   Ok(out)
-}
-
-/// Builds a 3-component 8-bit image from RGBA8 and encodes it.
-fn encode_rgba(
-  width: u32,
-  height: u32,
-  rgba: &[u8],
-  lossless: bool,
-  jp2: bool,
-) -> Result<Vec<u8>, String> {
-  let n = width as usize * height as usize;
-  if rgba.len() < n * 4 {
-    return Err(format!(
-      "rgba buffer is {} bytes, expected {}",
-      rgba.len(),
-      n * 4
-    ));
-  }
-  let mut r = Vec::with_capacity(n);
-  let mut g = Vec::with_capacity(n);
-  let mut b = Vec::with_capacity(n);
-  for px in rgba[..n * 4].as_chunks::<4>().0 {
-    r.push(px[0] as i32);
-    g.push(px[1] as i32);
-    b.push(px[2] as i32);
-  }
-  let comp = |data: Vec<i32>| openjp2::CoreImageComp {
-    dx: 1,
-    dy: 1,
-    w: width,
-    h: height,
-    x0: 0,
-    y0: 0,
-    prec: 8,
-    bpp: 8,
-    sgnd: 0,
-    resno_decoded: 0,
-    factor: 0,
-    alpha: 0,
-    data,
-  };
-  let core = openjp2::CoreImage {
-    x0: 0,
-    y0: 0,
-    x1: width,
-    y1: height,
-    numcomps: 3,
-    color_space: openjp2::ColorSpace::Srgb,
-    comps: vec![comp(r), comp(g), comp(b)],
-    icc_profile_buf: Vec::new(),
-    icc_profile_is_cielab: false,
-  };
-  let image = Image::from_core_image(core);
-  let mut params = EncodeParameters::new().num_resolutions(6).num_layers(1);
-  if !lossless {
-    params = params.irreversible(true);
-  }
-  if jp2 {
-    image.encode_jp2(params)
-  } else {
-    image.encode(params)
-  }
-  .map_err(|e| e.to_string())
 }
 
 fn js_err(e: impl std::fmt::Display) -> JsValue {

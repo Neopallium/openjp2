@@ -24,11 +24,13 @@ wasm-bindgen target/wasm32-unknown-unknown/release/openjp2_wasm.wasm \
 | --- | --- |
 | `init()` | Installs the console panic hook (call once). |
 | `version()` | The crate version string. |
-| `decode_info(bytes)` | `{ width, height, components, prec, sgnd }` without decoding pixels. |
+| `decode_info(bytes)` | `{ width, height, components, prec, sgnd, numresolutions }` from the header only. |
 | `decode_to_rgba(bytes, strict?)` | Decodes to tightly packed RGBA8 (`w * h * 4` bytes). |
 | `decode_probe(bytes, strict?)` | Lenient decode returning `{ width, height, complete, pixels }` — never fails on a truncated codestream with a readable header (the truncation-slider backend). |
+| `decode_probe_opt(bytes, opts)` | Like `decode_probe`, with a `DecodeOptions` (strict, `reduce` resolution factor, `layers`, decode area, ignore-pclr). |
 | `encode_rgba_to_j2k(w, h, rgba, lossless)` | Encodes RGBA8 to a J2K codestream. |
 | `encode_rgba_to_jp2(w, h, rgba, lossless)` | Encodes RGBA8 to a JP2 file. |
+| `encode_rgba_opt(w, h, rgba, opts)` | Encodes with an `EncodeOptions` (lossless, resolutions, layers, progression order, tile size, ratio, comment, container). |
 
 Pixels are always RGBA8: 1-component images become grayscale, 3-component
 RGB; samples outside 8 bits are shifted/clamped. Subsampled components are
@@ -41,9 +43,15 @@ not applied.
 `playground/build.sh serve`):
 
 - **Decode** — drop a JP2/J2K file to preview it on a canvas (multi-tile
-  codestreams decode in parallel); a strict-mode checkbox flips validation.
-- **Encode** — drop any browser-readable image to encode it to JP2/J2K
-  (lossless 5-3 or lossy 9-7) and download the result.
+  codestreams decode in parallel); settings: strict mode, quality layers,
+  **resolution switching** (decode any of the codestream's DWT pyramid
+  levels with one click) and — under *advanced* — a decode-area window
+  and the ignore-pclr switch.
+- **Encode** — drop any browser-readable image to encode it to JP2/J2K;
+  settings: lossless/lossy transform, container, resolution count,
+  quality layers, progression order, and — under *advanced* — tile size,
+  compression ratio and a COM comment.  Every setting has a hover
+  tooltip explaining it.
 - **Explorer** — a structural tree of the file (JP2 boxes → codestream
   markers → tile-parts) linked bidirectionally with the hex view (click a
   tree node to highlight its bytes, click a byte to highlight its tree

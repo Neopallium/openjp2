@@ -4,9 +4,11 @@
 // worker cannot load (e.g. `file://` without a server), the page falls
 // back to running the wasm on the main thread.
 import init, {
-  decode_probe,
-  encode_rgba_to_jp2,
-  encode_rgba_to_j2k,
+  decode_probe_opt,
+  encode_rgba_opt,
+  decode_info,
+  DecodeOptions,
+  EncodeOptions,
   version,
 } from "./pkg/openjp2_wasm.js";
 import {
@@ -82,6 +84,37 @@ function rpc(msg, transfer) {
 
 let decodeSeq = 0; // truncation-point ordering (explorer)
 let loadSeq = 0; // file-load generation (panel + explorer)
+let reduce = 0; // resolution reduction factor (0 = full)
+let numResolutions = 1; // from decode_info (header)
+
+/// The decoder settings (mirrors the wasm `DecodeOptions`).
+function decodeOpts() {
+  return {
+    strict: $("decode-strict").checked,
+    reduce: reduce,
+    layers: Number($("decode-layers").value) || 0,
+    x0: Number($("area-x0").value) || 0,
+    y0: Number($("area-y0").value) || 0,
+    x1: Number($("area-x1").value) || 0,
+    y1: Number($("area-y1").value) || 0,
+    ignore_pclr_cmap_cdef: $("decode-ignore-pclr").checked,
+  };
+}
+
+/// The encoder settings (mirrors the wasm `EncodeOptions`).
+function encodeOpts() {
+  return {
+    lossless: $("encode-lossless").checked,
+    num_resolutions: Number($("encode-res").value) || 6,
+    num_layers: Number($("encode-layers").value) || 1,
+    progression: Number($("encode-order").value) || 0,
+    tile_w: Number($("encode-tilew").value) || 0,
+    tile_h: Number($("encode-tileh").value) || 0,
+    rate: Number($("encode-rate").value) || 0,
+    comment: $("encode-comment").value || null,
+    jp2: $("encode-format").value === "jp2",
+  };
+}
 
 /// Busy indicator: count of in-flight decode/encode jobs.
 const active = { decode: 0, encode: 0 };
@@ -95,17 +128,17 @@ function updateBusy() {
 /// Decode to an RGBA probe, on the worker when available.  `seq` guards
 /// against stale results from rapid truncation changes (explorer only);
 /// `tag` tells the worker whether the job may be coalesced.
-async function probeDecode(data, strict, seq, tag) {
+async function probeDecode(data, opts, seq, tag) {
   active.decode += 1;
   updateBusy();
   try {
     if (workerUp) {
       const copy = new Uint8Array(data); // must be standalone to transfer
-      const res = await rpc({ type: "decode", tag, data: copy.buffer, strict }, [copy.buffer]);
+      const res = await rpc({ type: "decode", tag, opts, data: copy.buffer }, [copy.buffer]);
       if (seq !== undefined && seq !== decodeSeq) return null; // stale
       return { width: res.width, height: res.height, complete: res.complete, pixels: res.pixels };
     }
-    const probe = decode_probe(data, strict);
+    const probe = decode_probe_opt(data, fallbackDecodeOpts(opts));
     return {
       width: probe.width,
       height: probe.height,
@@ -118,21 +151,43 @@ async function probeDecode(data, strict, seq, tag) {
   }
 }
 
-async function workerEncode(width, height, rgba, lossless, format) {
+/// Builds the wasm DecodeOptions for the main-thread fallback path.
+function fallbackDecodeOpts(o) {
+  const opts = new DecodeOptions();
+  opts.strict = o.strict;
+  opts.reduce = o.reduce;
+  opts.layers = o.layers;
+  opts.x0 = o.x0;
+  opts.y0 = o.y0;
+  opts.x1 = o.x1;
+  opts.y1 = o.y1;
+  opts.ignore_pclr_cmap_cdef = o.ignore_pclr_cmap_cdef;
+  return opts;
+}
+
+async function workerEncode(width, height, rgba, opts) {
   active.encode += 1;
   updateBusy();
   try {
     if (workerUp) {
       const copy = new Uint8Array(rgba);
       const res = await rpc(
-        { type: "encode", width, height, data: copy.buffer, lossless, format },
+        { type: "encode", opts, width, height, data: copy.buffer },
         [copy.buffer],
       );
       return new Uint8Array(res.bytes);
     }
-    return format === "j2k"
-      ? encode_rgba_to_j2k(width, height, rgba, lossless)
-      : encode_rgba_to_jp2(width, height, rgba, lossless);
+    const e = new EncodeOptions();
+    e.lossless = opts.lossless;
+    e.num_resolutions = opts.num_resolutions;
+    e.num_layers = opts.num_layers;
+    e.progression = opts.progression;
+    e.tile_w = opts.tile_w;
+    e.tile_h = opts.tile_h;
+    e.rate = opts.rate;
+    e.comment = opts.comment;
+    e.jp2 = opts.jp2;
+    return encode_rgba_opt(width, height, rgba, e);
   } finally {
     active.encode -= 1;
     updateBusy();
@@ -369,7 +424,7 @@ async function explorerDecode(cut) {
   const myLoad = loadSeq;
   let status;
   try {
-    const probe = await probeDecode(sub, false, seq, "explorer");
+    const probe = await probeDecode(sub, decodeOpts(), seq, "explorer");
     if (!probe || myLoad !== loadSeq) return; // superseded / new file
     const ms = performance.now() - t0;
     drawProbe(probe.width, probe.height, probe.pixels, explorerCanvas);
@@ -433,12 +488,12 @@ function renderPresets() {
 
 const decodeCanvas = $("decode-canvas");
 
-async function showDecode(data, strict) {
+async function showDecode(data) {
   const t0 = performance.now();
   const myLoad = loadSeq;
   // No truncation-seq guard: the panel always shows the full-file
   // decode; only a newer file load supersedes it.
-  const probe = await probeDecode(data, strict, undefined, "panel");
+  const probe = await probeDecode(data, decodeOpts(), undefined, "panel");
   if (myLoad !== loadSeq) return;
   const ms = performance.now() - t0;
   drawProbe(probe.width, probe.height, probe.pixels, decodeCanvas);
@@ -471,9 +526,8 @@ function loadCodestream(file) {
     csOffset = structure.csOffset;
     codestream = data;
     loadSeq += 1;
-    showDecode(data, $("decode-strict").checked).catch((e) =>
-      setInfo($("decode-info"), [["error", String(e)]]),
-    );
+    fetchInfo(data);
+    showDecode(data).catch((e) => setInfo($("decode-info"), [["error", String(e)]]));
     // explorer
     const slider = $("trunc-slider");
     slider.max = data.length;
@@ -538,11 +592,9 @@ async function runEncode() {
   const ctx = encodeCanvas.getContext("2d");
   const { width, height } = encodeCanvas;
   const rgba = ctx.getImageData(0, 0, width, height).data;
-  const lossless = $("encode-lossless").checked;
-  const format = $("encode-format").value;
   const t0 = performance.now();
   try {
-    encoded = await workerEncode(width, height, rgba, lossless, format);
+    encoded = await workerEncode(width, height, rgba, encodeOpts());
   } catch (e) {
     setInfo($("encode-info"), [["error", String(e)]]);
     return;
@@ -556,8 +608,6 @@ async function runEncode() {
   $("encode-download").disabled = false;
 }
 
-$("encode-lossless").addEventListener("change", runEncode);
-$("encode-format").addEventListener("change", runEncode);
 $("encode-download").addEventListener("click", () => {
   if (!encoded) return;
   const ext = $("encode-format").value;
@@ -604,11 +654,109 @@ wireDrop($("encode-drop"), encodeInput, loadSourceImage);
 
 $("decode-strict").addEventListener("change", () => {
   if (codestream) {
-    showDecode(codestream, $("decode-strict").checked).catch((e) =>
-      setInfo($("decode-info"), [["error", String(e)]]),
-    );
+    showDecode(codestream).catch((e) => setInfo($("decode-info"), [["error", String(e)]]));
   }
 });
+
+// ---------------------------------------------------------------------------
+// decode/encode settings
+
+/// Fetches the header info (numresolutions drives the resolution buttons).
+async function fetchInfo(data) {
+  let info;
+  try {
+    if (workerUp) {
+      const copy = new Uint8Array(data);
+      info = await rpc({ type: "info", data: copy.buffer }, [copy.buffer]);
+    } else {
+      await init();
+      info = decode_info(data);
+    }
+  } catch {
+    return;
+  }
+  numResolutions = Math.max(1, info.numresolutions || 1);
+  reduce = Math.min(reduce, numResolutions - 1);
+  renderResolutions();
+}
+
+/// Resolution buttons: decode the codestream at each of its resolutions
+/// (reduce 0..numresolutions-1), like the truncation presets.
+function renderResolutions() {
+  const el = $("decode-resolutions");
+  el.replaceChildren();
+  if (numResolutions <= 1) {
+    const span = document.createElement("span");
+    span.className = "muted";
+    span.textContent = "single resolution";
+    el.appendChild(span);
+    return;
+  }
+  for (let r = 0; r < numResolutions; r++) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = r === 0 ? "full" : `1/${2 ** r}`;
+    b.classList.toggle("active", r === reduce);
+    b.title =
+      r === 0
+        ? "decode at the full resolution"
+        : `decode at 1/${2 ** r} resolution (the codestream's ${r + 1}. resolution)`;
+    b.addEventListener("click", () => {
+      reduce = r;
+      renderResolutions();
+      if (codestream) {
+        showDecode(codestream).catch((e) =>
+          setInfo($("decode-info"), [["error", String(e)]]),
+        );
+        explorerDecode($("trunc-slider").value);
+      }
+    });
+    el.appendChild(b);
+  }
+}
+
+let decodeSettingTimer = null;
+function decodeSettingsChanged() {
+  if (!codestream) return;
+  clearTimeout(decodeSettingTimer);
+  decodeSettingTimer = setTimeout(() => {
+    showDecode(codestream).catch((e) => setInfo($("decode-info"), [["error", String(e)]]));
+    explorerDecode($("trunc-slider").value);
+  }, 200);
+}
+
+for (const id of ["decode-layers", "area-x0", "area-y0", "area-x1", "area-y1"]) {
+  $(id).addEventListener("input", decodeSettingsChanged);
+}
+$("decode-ignore-pclr").addEventListener("change", () => {
+  if (codestream) {
+    showDecode(codestream).catch((e) => setInfo($("decode-info"), [["error", String(e)]]));
+    explorerDecode($("trunc-slider").value);
+  }
+});
+
+let encodeSettingTimer = null;
+function encodeSettingsChanged() {
+  clearTimeout(encodeSettingTimer);
+  encodeSettingTimer = setTimeout(runEncode, 200);
+}
+for (const id of [
+  "encode-lossless",
+  "encode-format",
+  "encode-order",
+  "encode-res",
+  "encode-layers",
+  "encode-tilew",
+  "encode-tileh",
+  "encode-rate",
+  "encode-comment",
+]) {
+  const el = $(id);
+  el.addEventListener(el.tagName === "INPUT" && el.type === "text" ? "input" : "change", encodeSettingsChanged);
+  if (el.tagName === "INPUT" && el.type === "number") {
+    el.addEventListener("input", encodeSettingsChanged);
+  }
+}
 
 // ---------------------------------------------------------------------------
 

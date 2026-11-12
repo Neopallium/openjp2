@@ -2,15 +2,17 @@
 // the main thread so the UI stays responsive.
 //
 // Decode requests come in two flavours:
-// - "panel" jobs (the Decode section, strict toggle): always run.
+// - "panel" jobs (the Decode section, settings changes): always run.
 // - "explorer" jobs (the truncation slider): coalesced — only the latest
 //   queued truncation point is decoded, and every superseded request id
 //   receives that result (the main thread discards stale ones).
 
 import init, {
-  decode_probe,
-  encode_rgba_to_jp2,
-  encode_rgba_to_j2k,
+  decode_probe_opt,
+  decode_info,
+  encode_rgba_opt,
+  DecodeOptions,
+  EncodeOptions,
   version,
 } from "./pkg/openjp2_wasm.js";
 
@@ -24,11 +26,23 @@ let panelQueue = [];
 let explorerQueue = [];
 let running = false;
 
+function optionsFrom(msg) {
+  const opts = new DecodeOptions();
+  opts.strict = msg.opts.strict;
+  opts.reduce = msg.opts.reduce;
+  opts.layers = msg.opts.layers;
+  opts.x0 = msg.opts.x0;
+  opts.y0 = msg.opts.y0;
+  opts.x1 = msg.opts.x1;
+  opts.y1 = msg.opts.y1;
+  opts.ignore_pclr_cmap_cdef = msg.opts.ignore_pclr_cmap_cdef;
+  return opts;
+}
+
 async function runJob(job) {
-  const { id, data, strict } = job;
-  const probe = decode_probe(new Uint8Array(data), strict);
+  const probe = decode_probe_opt(new Uint8Array(job.data), optionsFrom(job));
   return {
-    id,
+    id: job.id,
     ok: true,
     width: probe.width,
     height: probe.height,
@@ -79,21 +93,52 @@ self.onmessage = (ev) => {
   const msg = ev.data;
   switch (msg.type) {
     case "decode": {
+      const job = { id: msg.id, data: msg.data, opts: msg.opts };
       if (msg.tag === "panel") {
-        panelQueue.push({ id: msg.id, data: msg.data, strict: msg.strict });
+        panelQueue.push(job);
       } else {
-        explorerQueue.push({ id: msg.id, data: msg.data, strict: msg.strict });
+        explorerQueue.push(job);
       }
       drain();
+      break;
+    }
+    case "info": {
+      ready()
+        .then(() => {
+          const info = decode_info(new Uint8Array(msg.data));
+          self.postMessage({
+            id: msg.id,
+            ok: true,
+            width: info.width,
+            height: info.height,
+            components: info.components,
+            prec: info.prec,
+            sgnd: info.sgnd,
+            numresolutions: info.numresolutions,
+          });
+        })
+        .catch((e) => self.postMessage({ id: msg.id, ok: false, error: String(e) }));
       break;
     }
     case "encode": {
       ready()
         .then(() => {
-          const bytes =
-            msg.format === "j2k"
-              ? encode_rgba_to_j2k(msg.width, msg.height, new Uint8Array(msg.data), msg.lossless)
-              : encode_rgba_to_jp2(msg.width, msg.height, new Uint8Array(msg.data), msg.lossless);
+          const opts = new EncodeOptions();
+          opts.lossless = msg.opts.lossless;
+          opts.num_resolutions = msg.opts.num_resolutions;
+          opts.num_layers = msg.opts.num_layers;
+          opts.progression = msg.opts.progression;
+          opts.tile_w = msg.opts.tile_w;
+          opts.tile_h = msg.opts.tile_h;
+          opts.rate = msg.opts.rate;
+          opts.comment = msg.opts.comment || null;
+          opts.jp2 = msg.opts.jp2;
+          const bytes = encode_rgba_opt(
+            msg.width,
+            msg.height,
+            new Uint8Array(msg.data),
+            opts,
+          );
           self.postMessage({ id: msg.id, ok: true, bytes }, [bytes.buffer]);
         })
         .catch((e) => self.postMessage({ id: msg.id, ok: false, error: String(e) }));
