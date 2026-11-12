@@ -43,6 +43,17 @@
             <option value="4">400%</option>
           </select>
         </label>
+        <label class="row">threads
+          <select id="decode-threads" title="Rayon worker threads for decode/encode (WebAssembly threads need SharedArrayBuffer and cross-origin isolation).">
+            <option value="1" selected>off (single-threaded)</option>
+            <option value="0">auto</option>
+            <option value="2">2</option>
+            <option value="4">4</option>
+            <option value="8">8</option>
+          </select>
+          <span class="help" tabindex="0" data-help="Rayon worker threads for decode and encode.&#10;&#10;WebAssembly threads use SharedArrayBuffer, which browsers only expose to cross-origin-isolated pages (COOP + COEP response headers). GitHub Pages cannot set those headers, so the deployed site runs single-threaded; run `wasm/playground/build.sh --threads serve` locally to use threads.&#10;&#10;Decoding and encoding are parallelised across tiles.">?</span>
+        </label>
+        <div id="threads-note" class="muted"></div>
         <div class="row resolution-row">
           <span title="Decode the codestream at one of its resolutions (the DWT decomposition levels); lower resolutions are smaller and faster.">resolution</span><span class="help" tabindex="0" data-help="Decode at a reduced resolution.&#10;&#10;The codestream stores a resolution pyramid (the inverse DWT levels). Choosing 1/2, 1/4, ... decodes only the lower-resolution version: much faster and less memory, at reduced detail. &#39;full&#39; decodes the largest resolution.">?</span>
           <div class="presets" id="decode-resolutions"></div>

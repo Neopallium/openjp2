@@ -63,6 +63,38 @@ pub fn version() -> String {
   env!("CARGO_PKG_VERSION").to_string()
 }
 
+/// Initialises the rayon worker pool for the threaded (SharedArrayBuffer)
+/// build.  Returns a JavaScript promise that resolves when the workers
+/// are ready; call it once before decoding/encoding.
+///
+/// Only available when the crate is built with the `threads` feature
+/// (see `playground/build.sh --threads`).
+#[cfg(feature = "threads")]
+#[wasm_bindgen]
+pub fn init_thread_pool(num_threads: usize) -> js_sys::Promise {
+  wasm_bindgen_rayon::init_thread_pool(num_threads)
+}
+
+/// Whether this build has the rayon thread pool (the `threads` feature).
+#[wasm_bindgen]
+pub fn has_threads() -> bool {
+  cfg!(feature = "threads")
+}
+
+/// Number of rayon worker threads available (1 = single-threaded, or no
+/// thread support in this build).
+#[wasm_bindgen]
+pub fn thread_count() -> usize {
+  #[cfg(feature = "threads")]
+  {
+    rayon::current_num_threads()
+  }
+  #[cfg(not(feature = "threads"))]
+  {
+    1
+  }
+}
+
 /// Codestream geometry, layout and coding defaults (header only, no
 /// pixel decoding).
 #[wasm_bindgen]

@@ -31,6 +31,7 @@ wasm-bindgen target/wasm32-unknown-unknown/release/openjp2_wasm.wasm \
 | `encode_rgba_to_j2k(w, h, rgba, lossless)` | Encodes RGBA8 to a J2K codestream. |
 | `encode_rgba_to_jp2(w, h, rgba, lossless)` | Encodes RGBA8 to a JP2 file. |
 | `encode_rgba_opt(w, h, rgba, opts)` | Encodes with an `EncodeOptions` (lossless, resolutions, layers, explicit per-layer rates, progression order, tile size, ratio, comment, container). |
+| `init_thread_pool(n)` / `has_threads()` / `thread_count()` | Threaded build only: initialise and query the rayon pool (`threads` feature). |
 | `codestream_structure(bytes, strict?)` | `{ thresholds, packets }` — the per-layer byte prefixes plus the packet index (six `u32`s per packet: start, end, layer, resolution, component, precinct). |
 | `layer_byte_thresholds(bytes, strict?)` | Per quality layer, the smallest file prefix that still fully decodes that many layers (from the decoder's packet index). |
 
@@ -38,6 +39,27 @@ Pixels are always RGBA8: 1-component images become grayscale, 3-component
 RGB; samples outside 8 bits are shifted/clamped. Subsampled components are
 rejected (use the full `openjp2` API for those). ICC colour management is
 not applied.
+
+## WebAssembly threads (rayon)
+
+The crate has a `threads` feature that enables the core's rayon
+parallelism (parallel tile decode/encode) via
+[`wasm-bindgen-rayon`](https://crates.io/crates/wasm-bindgen-rayon):
+
+```sh
+rustup toolchain install nightly
+rustup +nightly component add rust-src
+rustup +nightly target add wasm32-unknown-unknown
+wasm/playground/build.sh --threads
+```
+
+The threaded build lands in `playground/pkg-mt/` and is loaded only when
+the page is **cross-origin isolated** (`SharedArrayBuffer` available —
+COOP/COEP headers); otherwise the single-threaded `pkg/` build is used.
+`build.sh serve` sends those headers for local testing.  GitHub Pages
+cannot set response headers, so the deployed playground stays
+single-threaded (its "threads" setting explains this); the threaded build
+and toggle are for local/custom deployments.
 
 ## Playground
 

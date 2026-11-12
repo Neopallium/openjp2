@@ -7,28 +7,26 @@
 //   queued truncation point is decoded, and every superseded request id
 //   receives that result (the main thread discards stale ones).
 
-import init, {
-  decode_probe_opt,
-  decode_info,
-  encode_rgba_opt,
-  codestream_structure,
-  DecodeOptions,
-  EncodeOptions,
-  version,
-} from "./pkg/openjp2_wasm.js";
+import { loadWasm, wasm } from "./wasm-loader.js";
 
+let threads = 1;
 let readyPromise = null;
 function ready() {
-  if (!readyPromise) readyPromise = init();
+  if (!readyPromise) readyPromise = loadWasm(threads);
   return readyPromise;
 }
+// wait for the main thread's init message (thread configuration)
+let initResolve;
+const initPromise = new Promise((resolve) => {
+  initResolve = resolve;
+});
 
 let panelQueue = [];
 let explorerQueue = [];
 let running = false;
 
 function optionsFrom(msg) {
-  const opts = new DecodeOptions();
+  const opts = new (wasm().DecodeOptions)();
   opts.strict = msg.opts.strict;
   opts.reduce = msg.opts.reduce;
   opts.layers = msg.opts.layers;
@@ -41,7 +39,7 @@ function optionsFrom(msg) {
 }
 
 async function runJob(job) {
-  const probe = decode_probe_opt(new Uint8Array(job.data), optionsFrom(job));
+  const probe = wasm().decode_probe_opt(new Uint8Array(job.data), optionsFrom(job));
   return {
     id: job.id,
     ok: true,
@@ -92,8 +90,16 @@ async function drain() {
   }
 }
 
-self.onmessage = (ev) => {
+self.onmessage = async (ev) => {
   const msg = ev.data;
+  if (msg.type === "init") {
+    threads = Math.max(1, msg.threads | 0);
+    initResolve();
+    return;
+  }
+  await initPromise;
+  await ready();
+  const api = wasm();
   switch (msg.type) {
     case "decode": {
       const job = { id: msg.id, data: msg.data, opts: msg.opts };
@@ -108,7 +114,7 @@ self.onmessage = (ev) => {
     case "info": {
       ready()
         .then(() => {
-          const info = decode_info(new Uint8Array(msg.data));
+          const info = api.decode_info(new Uint8Array(msg.data));
           self.postMessage({
             id: msg.id,
             ok: true,
@@ -139,7 +145,7 @@ self.onmessage = (ev) => {
     case "encode": {
       ready()
         .then(() => {
-          const opts = new EncodeOptions();
+          const opts = new (api.EncodeOptions)();
           opts.lossless = msg.opts.lossless;
           opts.num_resolutions = msg.opts.num_resolutions;
           opts.num_layers = msg.opts.num_layers;
@@ -150,7 +156,7 @@ self.onmessage = (ev) => {
           opts.rates = msg.opts.rates || null;
           opts.comment = msg.opts.comment || null;
           opts.jp2 = msg.opts.jp2;
-          const bytes = encode_rgba_opt(
+          const bytes = api.encode_rgba_opt(
             msg.width,
             msg.height,
             new Uint8Array(msg.data),
@@ -164,7 +170,7 @@ self.onmessage = (ev) => {
     case "structure": {
       ready()
         .then(() => {
-          const s = codestream_structure(new Uint8Array(msg.data), !!msg.strict);
+          const s = api.codestream_structure(new Uint8Array(msg.data), !!msg.strict);
           self.postMessage(
             { id: msg.id, ok: true, thresholds: s.thresholds, packets: s.packets },
             [s.thresholds.buffer, s.packets.buffer],
@@ -175,7 +181,14 @@ self.onmessage = (ev) => {
     }
     case "version": {
       ready()
-        .then(() => self.postMessage({ id: msg.id, ok: true, version: version() }))
+        .then(() =>
+          self.postMessage({
+            id: msg.id,
+            ok: true,
+            version: api.version(),
+            threads: api.thread_count ? api.thread_count() : 1,
+          }),
+        )
         .catch((e) => self.postMessage({ id: msg.id, ok: false, error: String(e) }));
       break;
     }

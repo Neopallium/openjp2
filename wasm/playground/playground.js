@@ -3,15 +3,7 @@
 // The heavy wasm decode/encode runs in a Web Worker (worker.js); if the
 // worker cannot load (e.g. `file://` without a server), the page falls
 // back to running the wasm on the main thread.
-import init, {
-  decode_probe_opt,
-  encode_rgba_opt,
-  decode_info,
-  codestream_structure,
-  DecodeOptions,
-  EncodeOptions,
-  version,
-} from "./pkg/openjp2_wasm.js";
+import { loadWasm, wasm, threadsSupported } from "./wasm-loader.js";
 import {
   MARKERS,
   KINDS,
@@ -48,19 +40,34 @@ function setInfo(el, entries) {
 // ---------------------------------------------------------------------------
 // worker plumbing (with a main-thread fallback)
 
-const worker = (() => {
-  try {
-    return new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
-  } catch {
-    return null;
-  }
-})();
-
-let workerUp = worker !== null;
+let worker = null;
+let workerUp = false;
+let threadInfo = 1;
 let callId = 0;
 const pending = new Map();
 
-if (worker) {
+/// The requested rayon pool size (1 = off); 0 = auto.
+function threadsValue() {
+  const v = Number($("decode-threads").value);
+  if (v === 0) return Math.min(navigator.hardwareConcurrency || 4, 16);
+  return v >= 1 ? v : 1;
+}
+
+/// (Re)creates the decode worker, passing it the thread configuration.
+function startWorker() {
+  if (worker) {
+    worker.terminate();
+    worker = null;
+  }
+  for (const [, p] of pending) p.reject(new Error("worker restarted"));
+  pending.clear();
+  try {
+    worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
+  } catch {
+    worker = null;
+  }
+  workerUp = worker !== null;
+  if (!worker) return;
   worker.onmessage = (ev) => {
     const { id, ok, ...rest } = ev.data;
     const p = pending.get(id);
@@ -76,6 +83,7 @@ if (worker) {
     for (const [, p] of pending) p.reject(new Error("worker failed"));
     pending.clear();
   };
+  worker.postMessage({ type: "init", threads: threadsValue() });
 }
 
 function rpc(msg, transfer) {
@@ -152,7 +160,8 @@ async function probeDecode(data, opts, seq, tag) {
         pixels: res.pixels,
       };
     }
-    const probe = decode_probe_opt(data, fallbackDecodeOpts(opts));
+    await loadWasm(threadsValue());
+    const probe = wasm().decode_probe_opt(data, fallbackDecodeOpts(opts));
     return {
       width: probe.width,
       height: probe.height,
@@ -169,7 +178,7 @@ async function probeDecode(data, opts, seq, tag) {
 
 /// Builds the wasm DecodeOptions for the main-thread fallback path.
 function fallbackDecodeOpts(o) {
-  const opts = new DecodeOptions();
+  const opts = new (wasm().DecodeOptions)();
   opts.strict = o.strict;
   opts.reduce = o.reduce;
   opts.layers = o.layers;
@@ -193,7 +202,8 @@ async function workerEncode(width, height, rgba, opts) {
       );
       return new Uint8Array(res.bytes);
     }
-    const e = new EncodeOptions();
+    await loadWasm(threadsValue());
+    const e = new (wasm().EncodeOptions)();
     e.lossless = opts.lossless;
     e.num_resolutions = opts.num_resolutions;
     e.num_layers = opts.num_layers;
@@ -204,7 +214,7 @@ async function workerEncode(width, height, rgba, opts) {
     e.rates = opts.rates;
     e.comment = opts.comment;
     e.jp2 = opts.jp2;
-    return encode_rgba_opt(width, height, rgba, e);
+    return wasm().encode_rgba_opt(width, height, rgba, e);
   } finally {
     active.encode -= 1;
     updateBusy();
@@ -627,8 +637,8 @@ async function computeStructure(data) {
       thresholds = res.thresholds;
       packets = res.packets;
     } else {
-      await init();
-      const s = codestream_structure(data, false);
+      await loadWasm(threadsValue());
+      const s = wasm().codestream_structure(data, false);
       thresholds = s.thresholds;
       packets = s.packets;
     }
@@ -1047,8 +1057,8 @@ async function fetchInfo(data) {
       const copy = new Uint8Array(data);
       info = await rpc({ type: "info", data: copy.buffer }, [copy.buffer]);
     } else {
-      await init();
-      info = decode_info(data);
+      await loadWasm(threadsValue());
+      info = wasm().decode_info(data);
     }
   } catch {
     return;
@@ -1139,6 +1149,77 @@ for (const id of [
 }
 
 // ---------------------------------------------------------------------------
+// thread pool configuration
+
+let mtProbe = null;
+
+/// Whether the threaded build (pkg-mt/) is deployed.
+function mtBuildAvailable() {
+  if (!mtProbe) {
+    mtProbe = fetch("./pkg-mt/openjp2_wasm.js", { method: "HEAD" })
+      .then((r) => r.ok)
+      .catch(() => false);
+  }
+  return mtProbe;
+}
+
+async function refreshThreadInfo() {
+  try {
+    const res = await rpc({ type: "version" });
+    threadInfo = res.threads || 1;
+    $("version").textContent =
+      `openjp2-wasm ${res.version}` + (threadInfo > 1 ? ` · ${threadInfo} threads` : "");
+    if (threadInfo <= 1 && threadsValue() > 1) {
+      $("decode-threads").value = "1";
+      $("threads-note").textContent =
+        "threaded build failed to initialise — using single-threaded";
+    }
+  } catch {
+    /* worker restarted */
+  }
+}
+
+(async () => {
+  const sel = $("decode-threads");
+  const note = $("threads-note");
+  if (!threadsSupported()) {
+    sel.disabled = true;
+    note.textContent =
+      "threads unavailable: the page is not cross-origin isolated (needs COOP/COEP headers; GitHub Pages cannot set them)";
+    return;
+  }
+  if (!(await mtBuildAvailable())) {
+    sel.disabled = true;
+    note.textContent =
+      "threads unavailable: the threaded build is not installed (run build.sh --threads)";
+    return;
+  }
+  note.textContent = "threaded build available — pick a thread count";
+})();
+
+$("decode-threads").addEventListener("change", async () => {
+  const sel = $("decode-threads");
+  if (threadsValue() > 1) {
+    if (!threadsSupported() || !(await mtBuildAvailable())) {
+      sel.value = "1";
+      return;
+    }
+  }
+  startWorker();
+  if (codestream) {
+    showDecode(codestream).catch((e) =>
+      setInfo($("decode-info"), [["error", String(e)]]),
+    );
+    explorerDecode(currentCut);
+    computeStructure(codestream);
+  }
+  refreshThreadInfo();
+});
+
+// ---------------------------------------------------------------------------
+
+// the select must exist before the worker reads it
+startWorker();
 
 (async () => {
   try {
@@ -1146,11 +1227,13 @@ for (const id of [
     if (workerUp) {
       const res = await rpc({ type: "version" });
       v = res.version;
+      threadInfo = res.threads || 1;
     } else {
-      await init();
-      v = version();
+      const s = await loadWasm(threadsValue());
+      v = wasm().version();
+      threadInfo = s.threads;
     }
-    $("version").textContent = `openjp2-wasm ${v}`;
+    $("version").textContent = `openjp2-wasm ${v}` + (threadInfo > 1 ? ` · ${threadInfo} threads` : "");
   } catch {
     $("version").textContent = "openjp2-wasm";
   }

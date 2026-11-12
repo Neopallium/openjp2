@@ -46,6 +46,7 @@ cmake_install.cmake
 /plan-finishOpenjpegRustSafePort.prompt.md
 
 # Generated wasm-bindgen glue for the playground (build with
-# wasm/playground/build.sh).
+# wasm/playground/build.sh; pkg-mt is the threaded variant).
 /wasm/playground/pkg/
+/wasm/playground/pkg-mt/
 
