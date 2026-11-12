@@ -469,3 +469,30 @@ export function attachPackets(tree, packets) {
   }
   return count;
 }
+
+/// For a codestream's progression order, groups the packet entries by the
+/// outermost progression dimension (layer for LRCP, resolution for
+/// RLCP/RPCL, precinct for PCRL, component for CPRL) and returns the
+/// cumulative byte threshold of each group — i.e. the prefix length that
+/// fully contains the first N values of that dimension.
+///
+/// `packets` is the flat sextuple array (start, end, layno, resno,
+/// compno, precno).  Returns `{ dimension, groups: [{ value, bytes }] }`.
+export function progressionGroups(packets, order) {
+  // sextuple indexes: 2 = layer, 3 = resolution, 4 = component, 5 = precinct
+  const dim = order === 0 ? 2 : order === 1 || order === 2 ? 3 : order === 3 ? 5 : 4;
+  const names = ["layer", "resolution", "resolution", "precinct", "component"];
+  const byValue = new Map();
+  for (let i = 0; i < packets.length; i += 6) {
+    const v = packets[i + dim];
+    const end = packets[i + 1];
+    byValue.set(v, Math.max(byValue.get(v) || 0, end));
+  }
+  const values = [...byValue.keys()].sort((a, b) => a - b);
+  let acc = 0;
+  const groups = values.map((value) => {
+    acc = Math.max(acc, byValue.get(value));
+    return { value, bytes: acc };
+  });
+  return { dimension: names[order] || "layer", groups };
+}

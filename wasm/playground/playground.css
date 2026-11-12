@@ -330,6 +330,8 @@ button:disabled { background: #3a3f4a; color: var(--muted); cursor: default; }
 .area-inputs { display: inline-flex; gap: 0.3rem; }
 .area-inputs input { width: 3.8rem; }
 .resolution-row { flex-wrap: wrap; }
+.progression-row { flex-wrap: wrap; }
+.progression-row #progression-label { font-size: 0.85rem; }
 
 /* truncation controls */
 .trunc-bytes { flex-wrap: wrap; }

@@ -21,6 +21,7 @@ import {
   structurallyComplete,
   codestreamHeaderInfo,
   attachPackets,
+  progressionGroups,
 } from "./structure.js";
 
 // ---------------------------------------------------------------------------
@@ -570,6 +571,48 @@ for (const b of document.querySelectorAll("#trunc-steps button")) {
 // ---------------------------------------------------------------------------
 // quality-layer byte thresholds
 
+/// Buttons that truncate the file at each value of the progression
+/// order's outermost dimension (LRCP: layer, RLCP/RPCL: resolution,
+/// PCRL: precinct, CPRL: component).
+function renderProgressionButtons(packets, order, numResolutions) {
+  const labelEl = $("progression-label");
+  const el = $("progression-presets");
+  el.replaceChildren();
+  const { dimension, groups } = progressionGroups(packets, order);
+  if (!groups.length) {
+    labelEl.textContent = "";
+    return;
+  }
+  labelEl.textContent = `order ${ORDER_NAMES[order] || "?"} — truncate at each ${dimension}:`;
+  const noun = (n) => `${n} ${dimension}${n === 1 ? "" : "s"}`;
+  const MAX = 40;
+  for (const g of groups.slice(0, MAX)) {
+    const b = document.createElement("button");
+    b.type = "button";
+    if (dimension === "layer") {
+      b.textContent = `L${g.value + 1}`;
+    } else if (dimension === "resolution") {
+      const scale = 2 ** (numResolutions - 1 - g.value);
+      b.textContent = scale <= 1 ? "full" : `1/${scale}`;
+    } else if (dimension === "precinct") {
+      b.textContent = `P${g.value + 1}`;
+    } else {
+      b.textContent = `C${g.value + 1}`;
+    }
+    b.title = `truncate to ${fmtBytes(g.bytes)}: fully contains the first ${noun(
+      g.value + 1,
+    )} (${g.bytes.toLocaleString()} bytes)`;
+    b.addEventListener("click", () => setCut(Math.min(g.bytes, codestream.length)));
+    el.appendChild(b);
+  }
+  if (groups.length > MAX) {
+    const note = document.createElement("span");
+    note.className = "muted";
+    note.textContent = `… ${groups.length - MAX} more`;
+    el.appendChild(note);
+  }
+}
+
 /// Fetches the codestream structure (per-layer prefix lengths and the
 /// packet index) and renders the layer table + the tree's packet detail.
 async function computeStructure(data) {
@@ -596,6 +639,8 @@ async function computeStructure(data) {
   if (packets && packets.length) {
     const n = attachPackets(treeRoot, packets);
     if (n > 0) renderTree(treeRoot, currentCut);
+    const cod = codestreamHeaderInfo(data);
+    renderProgressionButtons(packets, cod ? cod.progression : 0, cod ? cod.resolutions : 1);
   }
   if (!thresholds || !thresholds.length) {
     el.textContent = "";
@@ -765,6 +810,8 @@ function loadCodestream(file) {
     renderTree(treeRoot, data.length);
     renderLegend();
     renderPresets();
+    $("progression-label").textContent = "";
+    $("progression-presets").replaceChildren();
     explorerDecode(data.length);
     computeStructure(data);
   });

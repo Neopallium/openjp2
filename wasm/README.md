@@ -69,7 +69,10 @@ not applied.
   stream it belongs to (click one for its meaning and a link into the
   JPEG 2000 spec; unrecognized bytes are marked corrupt), a per-layer
   byte-size table (how large a truncated file must be to fully decode N
-  quality layers; clicking a row sets the truncation point), and a
+  quality layers; clicking a row sets the truncation point), buttons
+  that truncate at each level of the progression order's outermost
+  dimension (layer for LRCP, resolution for RLCP/RPCL, precinct for
+  PCRL, component for CPRL), and a
   truncation control — a 0.01%-step slider, a byte-length field,
   ±1/10/100/1k byte buttons and size presets (500 B … 1 MiB) — that cuts
   the codestream and re-decodes it live into the preview (debounced, with
