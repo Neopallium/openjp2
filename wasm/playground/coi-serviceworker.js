@@ -1,5 +1,12 @@
 /*! coi-serviceworker v0.1.7 - Guido Zuidhof and contributors, licensed under MIT */
-// Vendored for the openjp2 playground: enables cross-origin isolation
+// Vendored for the openjp2 playground.  Local changes vs. upstream:
+// - fetches bypass the HTTP cache (cache: "no-store") so a redeployment
+//   is picked up immediately (GitHub Pages serves max-age=600 files),
+//   including a direct URL fetch for navigation requests (a navigate-mode
+//   Request cannot be re-created with init options),
+// - the worker registers with updateViaCache: "none".
+//
+// It enables cross-origin isolation
 // (COOP/COEP via a service worker) on static hosts such as GitHub Pages,
 // which is required for SharedArrayBuffer / WebAssembly threads.
 let coepCredentialless = false;
@@ -30,33 +37,47 @@ if (typeof window === 'undefined') {
             return;
         }
 
+        const addHeaders = (response) => {
+            if (response.status === 0) {
+                return response;
+            }
+
+            const newHeaders = new Headers(response.headers);
+            newHeaders.set("Cross-Origin-Embedder-Policy",
+                coepCredentialless ? "credentialless" : "require-corp"
+            );
+            if (!coepCredentialless) {
+                newHeaders.set("Cross-Origin-Resource-Policy", "cross-origin");
+            }
+            newHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
+
+            return new Response(response.body, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: newHeaders,
+            });
+        };
+        // openjp2 playground: never serve from the HTTP cache, so a new
+        // deployment takes effect immediately (GitHub Pages sends
+        // Cache-Control: max-age=600 for static files).  A navigation
+        // request cannot be re-created with init options, so fetch its
+        // URL directly instead.
+        if (r.mode === "navigate") {
+            event.respondWith(
+                fetch(r.url, { cache: "no-store" })
+                    .then(addHeaders)
+                    .catch((e) => console.error(e))
+            );
+            return;
+        }
         const request = (coepCredentialless && r.mode === "no-cors")
             ? new Request(r, {
                 credentials: "omit",
             })
             : r;
         event.respondWith(
-            fetch(request)
-                .then((response) => {
-                    if (response.status === 0) {
-                        return response;
-                    }
-
-                    const newHeaders = new Headers(response.headers);
-                    newHeaders.set("Cross-Origin-Embedder-Policy",
-                        coepCredentialless ? "credentialless" : "require-corp"
-                    );
-                    if (!coepCredentialless) {
-                        newHeaders.set("Cross-Origin-Resource-Policy", "cross-origin");
-                    }
-                    newHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
-
-                    return new Response(response.body, {
-                        status: response.status,
-                        statusText: response.statusText,
-                        headers: newHeaders,
-                    });
-                })
+            fetch(request, { cache: "no-store" })
+                .then(addHeaders)
                 .catch((e) => console.error(e))
         );
     });
@@ -124,7 +145,9 @@ if (typeof window === 'undefined') {
             return;
         }
 
-        n.serviceWorker.register(window.document.currentScript.src).then(
+        n.serviceWorker.register(window.document.currentScript.src, {
+            updateViaCache: "none",
+        }).then(
             (registration) => {
                 !coi.quiet && console.log("COOP/COEP Service Worker registered", registration.scope);
 

@@ -61,7 +61,11 @@ COOP/COEP headers); otherwise the single-threaded `pkg/` build is used.
 [coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker), a
 service worker that injects the headers and reloads the page once into an
 isolated state, so the "threads" setting works there too (where the
-browser supports it; HTTPS or localhost is required).
+browser supports it; HTTPS or localhost is required).  The vendored copy
+additionally fetches with `cache: "no-store"` (and registers with
+`updateViaCache: "none"`), so a new deployment is picked up immediately
+instead of being masked by GitHub Pages' 10-minute HTTP cache; the very
+first visit (before the worker is active) may still need one reload.
 
 ## Playground
 
