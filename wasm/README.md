@@ -31,6 +31,7 @@ wasm-bindgen target/wasm32-unknown-unknown/release/openjp2_wasm.wasm \
 | `encode_rgba_to_j2k(w, h, rgba, lossless)` | Encodes RGBA8 to a J2K codestream. |
 | `encode_rgba_to_jp2(w, h, rgba, lossless)` | Encodes RGBA8 to a JP2 file. |
 | `encode_rgba_opt(w, h, rgba, opts)` | Encodes with an `EncodeOptions` (lossless, resolutions, layers, explicit per-layer rates, progression order, tile size, ratio, comment, container). |
+| `codestream_structure(bytes, strict?)` | `{ thresholds, packets }` — the per-layer byte prefixes plus the packet index (six `u32`s per packet: start, end, layer, resolution, component, precinct). |
 | `layer_byte_thresholds(bytes, strict?)` | Per quality layer, the smallest file prefix that still fully decodes that many layers (from the decoder's packet index). |
 
 Pixels are always RGBA8: 1-component images become grayscale, 3-component
@@ -59,7 +60,9 @@ not applied.
   encoding reports what the produced file's header actually declares.
 - **Explorer** — a structural tree of the file (JP2 boxes → codestream
   markers → tile-parts; the COD node lists the progression order, layer
-  and resolution counts, code-block size and transform) linked
+  and resolution counts, code-block size and transform, and each
+  tile-part expands into its packets grouped layer → resolution →
+  component with byte ranges) linked
   bidirectionally with the hex view (click a tree node to highlight its
   bytes, click a byte to highlight its tree node), a byte-level hex view
   where **every byte** is colour-coded and labelled with the part of the

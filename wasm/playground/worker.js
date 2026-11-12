@@ -11,7 +11,7 @@ import init, {
   decode_probe_opt,
   decode_info,
   encode_rgba_opt,
-  layer_byte_thresholds,
+  codestream_structure,
   DecodeOptions,
   EncodeOptions,
   version,
@@ -161,14 +161,14 @@ self.onmessage = (ev) => {
         .catch((e) => self.postMessage({ id: msg.id, ok: false, error: String(e) }));
       break;
     }
-    case "layerbytes": {
+    case "structure": {
       ready()
         .then(() => {
-          const thresholds = layer_byte_thresholds(
-            new Uint8Array(msg.data),
-            !!msg.strict,
+          const s = codestream_structure(new Uint8Array(msg.data), !!msg.strict);
+          self.postMessage(
+            { id: msg.id, ok: true, thresholds: s.thresholds, packets: s.packets },
+            [s.thresholds.buffer, s.packets.buffer],
           );
-          self.postMessage({ id: msg.id, ok: true, thresholds });
         })
         .catch((e) => self.postMessage({ id: msg.id, ok: false, error: String(e) }));
       break;

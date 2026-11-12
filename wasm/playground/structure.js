@@ -377,3 +377,95 @@ export function codestreamHeaderInfo(data) {
   }
   return out;
 }
+
+/// Attaches packet entries (flat sextuples: start, end, layno, resno,
+/// compno, precno) to the tree's tile-data nodes, grouped
+/// layer > resolution > component > packet.  Returns the packet count.
+export function attachPackets(tree, packets) {
+  const count = Math.floor(packets.length / 6);
+  if (!count) return 0;
+  const MAX_DETAIL = 20000;
+  const tileNodes = [];
+  (function walk(n) {
+    if (n.kind === "tile-data") tileNodes.push(n);
+    for (const c of n.children) walk(c);
+  })(tree);
+  if (!tileNodes.length) return 0;
+  const buckets = tileNodes.map(() => []);
+  for (let i = 0; i < count; i++) {
+    const o = i * 6;
+    const start = packets[o];
+    const end = packets[o + 1];
+    let bi = tileNodes.findIndex((n) => start >= n.start && start < n.end);
+    if (bi < 0) bi = tileNodes.length - 1;
+    buckets[bi].push({
+      start,
+      end,
+      layno: packets[o + 2],
+      resno: packets[o + 3],
+      compno: packets[o + 4],
+      precno: packets[o + 5],
+    });
+  }
+  const span = (list) => [
+    list.reduce((m, p) => Math.min(m, p.start), Infinity),
+    list.reduce((m, p) => Math.max(m, p.end), 0),
+  ];
+  const node = (label, start, end) => makeNode(label, start, end, "tile-data");
+  for (let t = 0; t < tileNodes.length; t++) {
+    const list = buckets[t];
+    const parent = tileNodes[t];
+    if (!list.length) continue;
+    // avoid duplicate subtrees when re-attached
+    if (parent.children.some((c) => c.label.startsWith("layer "))) continue;
+    if (count > MAX_DETAIL) {
+      const [s, e] = span(list);
+      parent.children.push(node(`${list.length} packets (too many to list)`, s, e));
+      continue;
+    }
+    const byLayer = new Map();
+    for (const p of list) {
+      if (!byLayer.has(p.layno)) byLayer.set(p.layno, []);
+      byLayer.get(p.layno).push(p);
+    }
+    for (const layno of [...byLayer.keys()].sort((a, b) => a - b)) {
+      const layerPkts = byLayer.get(layno);
+      const [ls, le] = span(layerPkts);
+      const layerNode = node(`layer ${layno + 1} (${layerPkts.length} packets)`, ls, le);
+      const byRes = new Map();
+      for (const p of layerPkts) {
+        if (!byRes.has(p.resno)) byRes.set(p.resno, []);
+        byRes.get(p.resno).push(p);
+      }
+      for (const resno of [...byRes.keys()].sort((a, b) => a - b)) {
+        const resPkts = byRes.get(resno);
+        const [rs, re] = span(resPkts);
+        const resNode = node(`resolution ${resno} (${resPkts.length})`, rs, re);
+        const byComp = new Map();
+        for (const p of resPkts) {
+          if (!byComp.has(p.compno)) byComp.set(p.compno, []);
+          byComp.get(p.compno).push(p);
+        }
+        for (const compno of [...byComp.keys()].sort((a, b) => a - b)) {
+          const compPkts = byComp.get(compno).sort((a, b) => a.precno - b.precno);
+          const [cs, ce] = span(compPkts);
+          const compNode = node(`component ${compno} (${compPkts.length})`, cs, ce);
+          for (const p of compPkts) {
+            compNode.children.push(
+              node(
+                `L${layno + 1} R${resno} C${compno} P${p.precno} — ${fmtBytes(p.end - p.start)}`,
+                p.start,
+                p.end,
+              ),
+            );
+          }
+          resNode.children.push(compNode);
+        }
+        layerNode.children.push(resNode);
+      }
+      parent.children.push(layerNode);
+    }
+    parent.packets = true;
+  }
+  return count;
+}

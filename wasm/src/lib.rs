@@ -567,15 +567,27 @@ pub fn encode_rgba_opt(
   .map_err(js_err)
 }
 
-/// For each quality layer `L`, the smallest file prefix (bytes) that
-/// still contains every packet of the first `L` quality layers — i.e.
-/// how large a truncated file must be to fully decode `L` layers.
-///
-/// The values come from the decoder's codestream index (the maximum
-/// packet end position per layer), so the last entry is the end of the
-/// final packet (the file size minus any trailing EOC/marker bytes).
+/// Codestream structure: the quality-layer byte thresholds plus the
+/// packet entries (flat sextuples `start, end, layer, resolution,
+/// component, precinct`, in packet order).
 #[wasm_bindgen]
-pub fn layer_byte_thresholds(data: &[u8], strict: Option<bool>) -> Result<Vec<u32>, JsValue> {
+pub struct CodestreamStructure {
+  /// Per-layer minimum file prefix (see [`layer_byte_thresholds`]).
+  #[wasm_bindgen(getter_with_clone)]
+  pub thresholds: Vec<u32>,
+  /// Packet entries, six `u32`s each: start, end, layno, resno, compno,
+  /// precno (absolute stream offsets).
+  #[wasm_bindgen(getter_with_clone)]
+  pub packets: Vec<u32>,
+}
+
+/// Decodes once and returns the codestream structure (layer byte
+/// thresholds and the packet index).  Used by the playground's Explorer.
+#[wasm_bindgen]
+pub fn codestream_structure(
+  data: &[u8],
+  strict: Option<bool>,
+) -> Result<CodestreamStructure, JsValue> {
   let format = openjp2::detect_format(data).map_err(js_err)?;
   let mut stream = openjp2::Stream::from_bytes(data.to_vec());
   let mut decoder = openjp2::Decoder::new(format).map_err(js_err)?;
@@ -587,13 +599,37 @@ pub fn layer_byte_thresholds(data: &[u8], strict: Option<bool>) -> Result<Vec<u3
   let index = decoder
     .cstr_index()
     .ok_or_else(|| js_err("no codestream index"))?;
-  Ok(
-    index
-      .layer_byte_thresholds()
-      .into_iter()
-      .map(|v| v.min(u32::MAX as u64) as u32)
-      .collect(),
-  )
+  let thresholds = index
+    .layer_byte_thresholds()
+    .into_iter()
+    .map(|v| v.min(u32::MAX as u64) as u32)
+    .collect();
+  let mut packets = Vec::new();
+  for p in index.packets() {
+    packets.push(p.start_pos.max(0).min(u32::MAX as i64) as u32);
+    packets.push(p.end_pos.max(0).min(u32::MAX as i64) as u32);
+    packets.push(p.layno);
+    packets.push(p.resno);
+    packets.push(p.compno);
+    packets.push(p.precno);
+  }
+  Ok(CodestreamStructure {
+    thresholds,
+    packets,
+  })
+}
+
+/// For each quality layer `L`, the smallest file prefix (bytes) that
+/// still contains every packet of the first `L` quality layers — i.e.
+/// how large a truncated file must be to fully decode `L` layers.
+///
+/// The values come from the decoder's codestream index (the maximum
+/// packet end position per layer), so the last entry is the end of the
+/// final packet (the file size minus any trailing EOC/marker bytes).
+#[wasm_bindgen]
+pub fn layer_byte_thresholds(data: &[u8], strict: Option<bool>) -> Result<Vec<u32>, JsValue> {
+  let structure = codestream_structure(data, strict)?;
+  Ok(structure.thresholds)
 }
 
 fn to_rgba(image: &Image) -> Result<Vec<u8>, String> {

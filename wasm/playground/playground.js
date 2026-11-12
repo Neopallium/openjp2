@@ -7,7 +7,7 @@ import init, {
   decode_probe_opt,
   encode_rgba_opt,
   decode_info,
-  layer_byte_thresholds,
+  codestream_structure,
   DecodeOptions,
   EncodeOptions,
   version,
@@ -20,6 +20,7 @@ import {
   buildStructure,
   structurallyComplete,
   codestreamHeaderInfo,
+  attachPackets,
 } from "./structure.js";
 
 // ---------------------------------------------------------------------------
@@ -365,7 +366,8 @@ function treeEl(node, cut, open) {
   head.dataset.end = node.end;
   if (node.children.length) {
     const det = document.createElement("details");
-    det.open = open;
+    // packet-detail nodes open automatically so the layers are visible
+    det.open = open || !!node.packets;
     const sum = document.createElement("summary");
     sum.textContent = node.label;
     const ul = document.createElement("ul");
@@ -552,24 +554,32 @@ for (const b of document.querySelectorAll("#trunc-steps button")) {
 // ---------------------------------------------------------------------------
 // quality-layer byte thresholds
 
-/// Fetches the per-layer prefix lengths (worker when available) and
-/// renders the table; each row links the truncation point to that size.
-async function computeLayerSizes(data) {
+/// Fetches the codestream structure (per-layer prefix lengths and the
+/// packet index) and renders the layer table + the tree's packet detail.
+async function computeStructure(data) {
   const el = $("layer-sizes");
   el.textContent = "computing layer sizes…";
   let thresholds;
+  let packets;
   try {
     if (workerUp) {
       const copy = new Uint8Array(data);
-      const res = await rpc({ type: "layerbytes", data: copy.buffer }, [copy.buffer]);
+      const res = await rpc({ type: "structure", data: copy.buffer }, [copy.buffer]);
       thresholds = res.thresholds;
+      packets = res.packets;
     } else {
       await init();
-      thresholds = layer_byte_thresholds(data, false);
+      const s = codestream_structure(data, false);
+      thresholds = s.thresholds;
+      packets = s.packets;
     }
   } catch (e) {
     el.textContent = `layer sizes unavailable: ${e}`;
     return;
+  }
+  if (packets && packets.length) {
+    const n = attachPackets(treeRoot, packets);
+    if (n > 0) renderTree(treeRoot, currentCut);
   }
   if (!thresholds || !thresholds.length) {
     el.textContent = "";
@@ -740,7 +750,7 @@ function loadCodestream(file) {
     renderLegend();
     renderPresets();
     explorerDecode(data.length);
-    computeLayerSizes(data);
+    computeStructure(data);
   });
 }
 
