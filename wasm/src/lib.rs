@@ -567,10 +567,35 @@ pub fn encode_rgba_opt(
   .map_err(js_err)
 }
 
-/// Converts the decoded component planes to tightly packed RGBA8.
+/// For each quality layer `L`, the smallest file prefix (bytes) that
+/// still contains every packet of the first `L` quality layers — i.e.
+/// how large a truncated file must be to fully decode `L` layers.
 ///
-/// Handles 1 (gray), 2 (gray+alpha), 3 (RGB) and 4 (RGBA) components;
-/// rejects subsampled components (`dx != 1 || dy != 1`).
+/// The values come from the decoder's codestream index (the maximum
+/// packet end position per layer), so the last entry is the end of the
+/// final packet (the file size minus any trailing EOC/marker bytes).
+#[wasm_bindgen]
+pub fn layer_byte_thresholds(data: &[u8], strict: Option<bool>) -> Result<Vec<u32>, JsValue> {
+  let format = openjp2::detect_format(data).map_err(js_err)?;
+  let mut stream = openjp2::Stream::from_bytes(data.to_vec());
+  let mut decoder = openjp2::Decoder::new(format).map_err(js_err)?;
+  decoder
+    .set_strict(strict.unwrap_or(false))
+    .map_err(js_err)?;
+  decoder.read_header(&mut stream).map_err(js_err)?;
+  decoder.decode(&mut stream).map_err(js_err)?;
+  let index = decoder
+    .cstr_index()
+    .ok_or_else(|| js_err("no codestream index"))?;
+  Ok(
+    index
+      .layer_byte_thresholds()
+      .into_iter()
+      .map(|v| v.min(u32::MAX as u64) as u32)
+      .collect(),
+  )
+}
+
 fn to_rgba(image: &Image) -> Result<Vec<u8>, String> {
   let w = image.width() as usize;
   let h = image.height() as usize;

@@ -521,7 +521,6 @@ name = "libtiff-sys"
 version = "0.1.0"
 dependencies = [
  "bindgen",
- "libc",
  "pkg-config",
 ]
 

@@ -31,6 +31,7 @@ wasm-bindgen target/wasm32-unknown-unknown/release/openjp2_wasm.wasm \
 | `encode_rgba_to_j2k(w, h, rgba, lossless)` | Encodes RGBA8 to a J2K codestream. |
 | `encode_rgba_to_jp2(w, h, rgba, lossless)` | Encodes RGBA8 to a JP2 file. |
 | `encode_rgba_opt(w, h, rgba, opts)` | Encodes with an `EncodeOptions` (lossless, resolutions, layers, explicit per-layer rates, progression order, tile size, ratio, comment, container). |
+| `layer_byte_thresholds(bytes, strict?)` | Per quality layer, the smallest file prefix that still fully decodes that many layers (from the decoder's packet index). |
 
 Pixels are always RGBA8: 1-component images become grayscale, 3-component
 RGB; samples outside 8 bits are shifted/clamped. Subsampled components are
@@ -57,16 +58,20 @@ not applied.
   (e.g. a `layers` count that a rates list overrides), and after
   encoding reports what the produced file's header actually declares.
 - **Explorer** — a structural tree of the file (JP2 boxes → codestream
-  markers → tile-parts) linked bidirectionally with the hex view (click a
-  tree node to highlight its bytes, click a byte to highlight its tree
-  node), a byte-level hex view where **every byte** is colour-coded and
-  labelled with the part of the stream it belongs to (click one for its
-  meaning and a link into the JPEG 2000 spec; unrecognized bytes are
-  marked corrupt), and a truncation control — a 0.01%-step slider, a
-  byte-length field, ±1/10/100/1k byte buttons and size presets
-  (500 B … 1 MiB) — that cuts the codestream and re-decodes it live into
-  the preview (debounced, with in-place hex/tree updates), demonstrating
-  the lenient decoder's tolerance for truncated files.
+  markers → tile-parts; the COD node lists the progression order, layer
+  and resolution counts, code-block size and transform) linked
+  bidirectionally with the hex view (click a tree node to highlight its
+  bytes, click a byte to highlight its tree node), a byte-level hex view
+  where **every byte** is colour-coded and labelled with the part of the
+  stream it belongs to (click one for its meaning and a link into the
+  JPEG 2000 spec; unrecognized bytes are marked corrupt), a per-layer
+  byte-size table (how large a truncated file must be to fully decode N
+  quality layers; clicking a row sets the truncation point), and a
+  truncation control — a 0.01%-step slider, a byte-length field,
+  ±1/10/100/1k byte buttons and size presets (500 B … 1 MiB) — that cuts
+  the codestream and re-decodes it live into the preview (debounced, with
+  in-place hex/tree updates), demonstrating the lenient decoder's
+  tolerance for truncated files.
 
 All decode/encode work runs in a Web Worker (`worker.js`) so the page
 never freezes during a decode; where module workers are unavailable the

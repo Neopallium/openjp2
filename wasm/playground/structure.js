@@ -30,6 +30,9 @@ export const MARKERS = {
 };
 export const SPEC_URL = "https://www.itu.int/rec/T-REC-T.800";
 
+/// Packet progression order names (COD SGcod index).
+export const PROGRESSIONS = ["LRCP", "RLCP", "RPCL", "PCRL", "CPRL"];
+
 // JP2 boxes (ISO/IEC 15444-1 Annex I).
 export const BOXES = {
   "jP  ": ["JP2 signature", "The 12-byte file signature box (I.5.1)."],
@@ -205,9 +208,28 @@ function walkMarkers(data, ranges, cs, end, parent, comments) {
       continue;
     }
     const segEnd = Math.min(pos + 2 + l, end);
-    mark(name, pos, segEnd - pos, "marker", code, MARKERS[code]?.[2]);
+    const node = mark(name, pos, segEnd - pos, "marker", code, MARKERS[code]?.[2]);
     pushRange(ranges, pos, pos + 2, "marker", `${name} marker`, code, MARKERS[code]?.[2]);
     pushRange(ranges, pos + 2, segEnd, "marker-body", `${name} segment body`);
+    if (code === 0x52 && segEnd > pos + 10) {
+      // COD: expose the coding defaults as tree children (same range)
+      const body = pos + 4;
+      const prog = PROGRESSIONS[data[body + 1]] || "?";
+      const layers = u16(data, body + 2);
+      const res = data[body + 5] + 1;
+      const cb = 1 << (data[body + 6] + 2);
+      const transform = data[body + 9];
+      const meta = (label) =>
+        makeNode(label, pos, segEnd, "marker", 0x52, MARKERS[0x52][2]);
+      node.children.push(meta(`progression: ${prog}`));
+      node.children.push(meta(`quality layers: ${layers}`));
+      node.children.push(meta(`resolutions: ${res}`));
+      node.children.push(meta(`code-blocks: ${cb}×${cb}`));
+      node.children.push(
+        meta(`transform: ${transform === 1 ? "reversible 5-3" : "irreversible 9-7"}`),
+      );
+      node.meta = true;
+    }
     pos = segEnd;
   }
   if (pos < end) {

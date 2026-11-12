@@ -41,6 +41,7 @@
 use super::bio::*;
 use super::consts::*;
 use super::event::*;
+use super::j2k::PacketInfo;
 use super::math::*;
 use super::openjpeg::*;
 use super::pi::*;
@@ -275,7 +276,9 @@ pub(crate) fn t2_decode_packets(
   mut src: &mut [u8],
   mut p_data_read: &mut u32,
   mut p_manager: &mut EventMgr,
-) -> OpResult {
+  p_data_start: i64,
+) -> Result<Vec<PacketInfo>, ()> {
+  let mut packet_index: Vec<PacketInfo> = Vec::new();
   let p_data_read_initial = src.len();
   let image = &mut *t2.image;
   let cp = &mut *t2.cp;
@@ -373,6 +376,7 @@ pub(crate) fn t2_decode_packets(
           }
         }
       }
+      let mut l_header_len: u32 = 0;
       if skip_packet == 0 {
         l_nb_bytes_read = 0_u32;
         first_pass_failed[pi.compno as usize] = false;
@@ -384,6 +388,7 @@ pub(crate) fn t2_decode_packets(
           &mut src[..],
           src_base,
           &mut l_nb_bytes_read,
+          &mut l_header_len,
           p_manager,
         )
         .is_err()
@@ -403,6 +408,7 @@ pub(crate) fn t2_decode_packets(
           pi,
           &mut src[..],
           &mut l_nb_bytes_read,
+          &mut l_header_len,
           p_manager,
         )
         .is_err()
@@ -420,18 +426,27 @@ pub(crate) fn t2_decode_packets(
           .minimum_num_resolutions
           .wrapping_sub(1u32)
       }
+      let packet_start = p_data_start + src_base as i64;
+      packet_index.push(PacketInfo {
+        start_pos: packet_start,
+        end_ph_pos: packet_start + l_header_len as i64,
+        end_pos: packet_start + l_nb_bytes_read as i64,
+        disto: 0.0,
+        layno: pi.layno,
+        resno: pi.resno,
+        compno: pi.compno,
+        precno: pi.precno,
+      });
       let (_, rest) = src.split_at_mut(l_nb_bytes_read as usize);
       src = rest;
       src_base += l_nb_bytes_read as usize;
     }
     pino += 1;
   }
-  /* INDEX >> */
-  /* << INDEX */
   /* don't forget to release pi */
   pi_destroy(&mut pi_vec);
   *p_data_read = (p_data_read_initial - src.len()) as u32;
-  Ok(())
+  Ok(packet_index)
 }
 pub(crate) fn t2_create<'a>(image: &'a mut CoreImage, cp: &'a mut Cp) -> Box<T2<'a>> {
   /* create the t2 structure */
@@ -456,6 +471,7 @@ fn t2_decode_packet(
   src: &mut [u8],
   src_base: usize,
   p_data_read: &mut u32,
+  p_header_len: &mut u32,
   p_manager: &mut EventMgr,
 ) -> OpResult {
   let mut l_read_data: bool = false;
@@ -476,6 +492,7 @@ fn t2_decode_packet(
   {
     return Err(());
   }
+  *p_header_len = l_nb_bytes_read;
   let src = &mut src[l_nb_bytes_read as usize..];
   let src_base = src_base + l_nb_bytes_read as usize;
   l_nb_total_bytes_read =
@@ -511,6 +528,7 @@ fn t2_skip_packet(
   pi: &mut PiIterator,
   src: &mut [u8],
   p_data_read: &mut u32,
+  p_header_len: &mut u32,
   p_manager: &mut EventMgr,
 ) -> OpResult {
   let mut l_read_data: bool = false;
@@ -531,6 +549,7 @@ fn t2_skip_packet(
   {
     return Err(());
   }
+  *p_header_len = l_nb_bytes_read;
   let (_, src_rest) = src.split_at_mut(l_nb_bytes_read as usize);
   l_nb_total_bytes_read =
     (l_nb_total_bytes_read as core::ffi::c_uint).wrapping_add(l_nb_bytes_read);

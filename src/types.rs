@@ -307,6 +307,9 @@ pub(crate) struct Tcd {
   pub win_y1: u32,
   pub whole_tile_decoding: bool,
   pub used_component: Vec<bool>,
+  /// Packet entries collected by the current tile decode (moved into the
+  /// codestream index afterwards).
+  pub packet_index: Vec<super::j2k::PacketInfo>,
 }
 
 #[derive(Clone)]
@@ -332,6 +335,8 @@ pub(crate) struct Tcp {
   /// MQ decoder's synthetic end marker.
   pub m_data: Vec<u8>,
   pub m_data_size: u32,
+  /// Absolute stream offset of the current tile-part's data (after SOD).
+  pub m_data_start_pos: i64,
   pub mct_norms: Vec<f64>,
   pub m_mct_decoding_matrix: Vec<f32>,
   pub m_mct_coding_matrix: Vec<f32>,
@@ -362,6 +367,7 @@ impl Default for Tcp {
       m_nb_tile_parts: 0,
       m_data: Vec::new(),
       m_data_size: 0,
+      m_data_start_pos: 0,
       mct_norms: Vec::new(),
       m_mct_decoding_matrix: Vec::new(),
       m_mct_coding_matrix: Vec::new(),

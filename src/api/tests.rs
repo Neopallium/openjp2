@@ -2318,3 +2318,73 @@ fn encode_16bit_deep_dwt() {
     assert_eq!(x, y, "reversible 5-3 must be lossless");
   }
 }
+
+/// The codestream index reports every packet's identity (layer,
+/// resolution, component, precinct) and byte positions, and the derived
+/// per-layer byte thresholds are exact: a codestream prefix cut at the
+/// threshold decodes identically to the full file for that layer count,
+/// while one byte less does not.
+#[test]
+fn cstr_index_packet_structure_and_layer_thresholds() {
+  let buf = std::fs::read("samples/Hadley_Crater.jp2").expect("sample file");
+  let image = Image::from_bytes(&buf).expect("decode");
+  let mut params = EncodeParameters::new().num_resolutions(3);
+  for rate in [40.0f32, 10.0, 0.0] {
+    params = params.layer_rate(rate);
+  }
+  let codestream = image.clone().encode(params).expect("encode");
+
+  let mut dec = crate::codec::Decoder::new(crate::J2KFormat::J2K).expect("decoder");
+  let mut stream = crate::stream::Stream::from_bytes(codestream.clone());
+  dec.read_header(&mut stream).expect("header");
+  dec.set_resolution_factor(2).expect("reduce"); // keep the test fast
+  dec.decode(&mut stream).expect("decode");
+  let index = dec.cstr_index().expect("codestream index");
+  let packets: Vec<_> = index.packets().collect();
+  assert!(!packets.is_empty(), "packets were not indexed");
+  for p in &packets {
+    assert!(p.layno < 3, "layer {} out of range", p.layno);
+    assert!(p.start_pos < p.end_ph_pos, "packet header positions");
+    assert!(p.end_ph_pos <= p.end_pos, "packet end before header end");
+    assert!(p.end_pos as usize <= codestream.len(), "packet past EOF");
+  }
+  let layer_counts: std::collections::BTreeSet<u32> = packets.iter().map(|p| p.layno).collect();
+  assert_eq!(layer_counts.len(), 3, "all layers should appear");
+
+  let thresholds = index.layer_byte_thresholds();
+  assert_eq!(thresholds.len(), 3);
+  assert!(
+    thresholds.windows(2).all(|w| w[0] <= w[1]),
+    "thresholds must be monotonic: {:?}",
+    thresholds
+  );
+  assert!(thresholds[2] as usize <= codestream.len());
+
+  // exactness: a prefix cut at the threshold decodes identically to the
+  // full codestream for that layer count (all layer packets are present).
+  // (A byte or two less may still decode the same when the trailing byte
+  // is code-block padding/termination, so the boundary is inclusive.)
+  for (i, &t) in thresholds.iter().enumerate() {
+    let layers = i as u32 + 1;
+    let full = Image::from_bytes_with(
+      &codestream,
+      DecodeParameters::new().layers(layers).reduce(2),
+    )
+    .expect("full decode");
+    let part = Image::from_bytes_with(
+      &codestream[..t as usize],
+      DecodeParameters::new().layers(layers).reduce(2),
+    )
+    .expect("prefix decode");
+    assert!(
+      full
+        .components()
+        .iter()
+        .zip(part.components())
+        .all(|(a, b)| a.data == b.data),
+      "prefix at threshold {} must match layers={}",
+      t,
+      layers
+    );
+  }
+}

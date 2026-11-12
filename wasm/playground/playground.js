@@ -7,6 +7,7 @@ import init, {
   decode_probe_opt,
   encode_rgba_opt,
   decode_info,
+  layer_byte_thresholds,
   DecodeOptions,
   EncodeOptions,
   version,
@@ -549,6 +550,70 @@ for (const b of document.querySelectorAll("#trunc-steps button")) {
 }
 
 // ---------------------------------------------------------------------------
+// quality-layer byte thresholds
+
+/// Fetches the per-layer prefix lengths (worker when available) and
+/// renders the table; each row links the truncation point to that size.
+async function computeLayerSizes(data) {
+  const el = $("layer-sizes");
+  el.textContent = "computing layer sizes…";
+  let thresholds;
+  try {
+    if (workerUp) {
+      const copy = new Uint8Array(data);
+      const res = await rpc({ type: "layerbytes", data: copy.buffer }, [copy.buffer]);
+      thresholds = res.thresholds;
+    } else {
+      await init();
+      thresholds = layer_byte_thresholds(data, false);
+    }
+  } catch (e) {
+    el.textContent = `layer sizes unavailable: ${e}`;
+    return;
+  }
+  if (!thresholds || !thresholds.length) {
+    el.textContent = "";
+    return;
+  }
+  const rows = thresholds.map((bytes, i) => {
+    const pct = ((bytes / data.length) * 100).toFixed(1);
+    const tr = document.createElement("tr");
+    const l = document.createElement("td");
+    l.textContent = `${i + 1}`;
+    const b = document.createElement("td");
+    b.textContent = fmtBytes(bytes);
+    const p = document.createElement("td");
+    p.textContent = `${pct}%`;
+    tr.append(l, b, p);
+    tr.title = `click: truncate the file to ${bytes} bytes (fully decodes ${i + 1} layer${i === 0 ? "" : "s"})`;
+    tr.addEventListener("click", () => setCut(Math.min(bytes, codestream.length)));
+    return tr;
+  });
+  const table = document.createElement("table");
+  table.append(
+    (() => {
+      const head = document.createElement("tr");
+      for (const h of ["layer", "needs ≥", "of file"]) {
+        const th = document.createElement("th");
+        th.textContent = h;
+        head.appendChild(th);
+      }
+      return head;
+    })(),
+  );
+  for (const r of rows) table.appendChild(r);
+  el.replaceChildren(
+    (() => {
+      const cap = document.createElement("div");
+      cap.className = "hint";
+      cap.textContent = "To fully decode N quality layers, a truncated file needs at least:";
+      return cap;
+    })(),
+    table,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // truncation presets
 
 const PRESETS = [500, 1024, 4096, 32768, 262144, 1048576];
@@ -675,6 +740,7 @@ function loadCodestream(file) {
     renderLegend();
     renderPresets();
     explorerDecode(data.length);
+    computeLayerSizes(data);
   });
 }
 

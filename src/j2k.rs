@@ -38,14 +38,23 @@ pub struct TpIndex {
 /// A codestream-index packet entry (the C `PacketInfo` fields).
 #[derive(Copy, Clone, Default, Debug)]
 pub struct PacketInfo {
-  /// Start position of the packet.
+  /// Start position of the packet (absolute stream offset).
   pub start_pos: i64,
-  /// End of the packet header.
+  /// End of the packet header (absolute stream offset).
   pub end_ph_pos: i64,
-  /// End position of the packet.
+  /// End position of the packet (absolute stream offset).
   pub end_pos: i64,
-  /// Accumulated distortion of the packet.
+  /// Accumulated distortion of the packet (0 for decodes; the C only
+  /// fills it during encoding).
   pub disto: f64,
+  /// Quality layer of the packet.
+  pub layno: u32,
+  /// Resolution level of the packet.
+  pub resno: u32,
+  /// Component of the packet.
+  pub compno: u32,
+  /// Precinct of the packet.
+  pub precno: u32,
 }
 
 /// Owned codestream index (marker/tile-part/packet layout of a decoded
@@ -62,6 +71,34 @@ pub struct CodestreamIndex {
   pub markers: Vec<MarkerInfo>,
   /// Per-tile indexes.
   pub tiles: Vec<CodestreamTileIndex>,
+}
+
+impl CodestreamIndex {
+  /// All packet entries of all tiles, in tile order.
+  pub fn packets(&self) -> impl Iterator<Item = &PacketInfo> {
+    self.tiles.iter().flat_map(|t| t.packet_index.iter())
+  }
+
+  /// The smallest stream prefix length (bytes, absolute file offsets)
+  /// needed to fully decode each quality layer: entry `i` is the maximum
+  /// packet end position over all packets with `layno <= i`, so decoding
+  /// a prefix of that length (or longer) yields all packets of layers
+  /// `1..=i+1`.  The vector's length is the codestream's layer count;
+  /// the last entry equals the codestream size for a complete file.
+  pub fn layer_byte_thresholds(&self) -> Vec<u64> {
+    let mut num_layers = 0u32;
+    for p in self.packets() {
+      num_layers = num_layers.max(p.layno + 1);
+    }
+    let mut out = vec![0u64; num_layers as usize];
+    for p in self.packets() {
+      let end = p.end_pos.max(0) as u64;
+      for slot in out.iter_mut().skip(p.layno as usize) {
+        *slot = (*slot).max(end);
+      }
+    }
+    out
+  }
 }
 
 /// One tile's codestream-index entry.
@@ -3847,9 +3884,11 @@ fn j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr
   } else {
     l_sot_length_pb_detected = 1i32
   }
-  /* Index */
+  /* Index: the SOD marker is the two bytes just consumed, so the
+  tile-part payload starts at the current stream position. */
+  let l_current_pos = stream_tell(p_stream) - 2i64;
+  l_tcp.m_data_start_pos = l_current_pos + 2i64;
   if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
-    let mut l_current_pos = stream_tell(p_stream) - 2i64;
     let tile = &mut l_cstr_index.tiles[p_j2k.m_current_tile_number as usize];
     let l_current_tile_part = tile.current_tpsno;
     if l_current_tile_part < tile.nb_tps {
@@ -8060,6 +8099,7 @@ pub(crate) fn j2k_decode_tile(
       let image = p_j2k.m_private_image.as_deref().expect("m_private_image");
       (image.x0, image.y0, image.x1, image.y1)
     };
+  let l_data_start = p_j2k.m_cp.tcps[p_tile_index as usize].m_data_start_pos;
   if tcd_decode_tile(
     &mut p_j2k.m_tcd,
     l_bounds_x0,
@@ -8076,6 +8116,7 @@ pub(crate) fn j2k_decode_tile(
       .as_deref_mut()
       .expect("m_private_image"),
     &mut p_j2k.m_cp,
+    l_data_start,
   )
   .is_err()
   {
@@ -8083,6 +8124,14 @@ pub(crate) fn j2k_decode_tile(
     p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
     event_msg!(p_manager, EVT_ERROR, "Failed to decode.\n",);
     return Err(());
+  }
+  /* Move the packet entries collected during the tile decode into the
+  codestream index (the Rust structural API: Decoder::cstr_index). */
+  if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
+    if let Some(tile) = l_cstr_index.tiles.get_mut(p_tile_index as usize) {
+      tile.nb_packet = p_j2k.m_tcd.packet_index.len() as u32;
+      tile.packet_index = std::mem::take(&mut p_j2k.m_tcd.packet_index);
+    }
   }
   /* p_data can be set to NULL when the call will take care of using */
   /* itself the TCD data. This is typically the case for whole single */

@@ -1256,6 +1256,9 @@ pub(crate) fn tcd_encode_tile(
   }
   Ok(())
 }
+/// Decodes one tile-part.  Mirrors the C `opj_tcd_decode_tile` signature
+/// (hence the argument count).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn tcd_decode_tile(
   p_tcd: &mut Tcd,
   win_x0: u32,
@@ -1269,9 +1272,11 @@ pub(crate) fn tcd_decode_tile(
   p_manager: &mut EventMgr,
   image: &mut CoreImage,
   cp: &mut Cp,
+  p_data_start: i64,
 ) -> OpResult {
   let mut l_data_read: u32 = 0;
   let mut compno: u32 = 0;
+  p_tcd.packet_index.clear();
   p_tcd.tcd_tileno = p_tile_no;
   p_tcd.win_x0 = win_x0;
   p_tcd.win_y0 = win_y0;
@@ -1402,7 +1407,17 @@ pub(crate) fn tcd_decode_tile(
     }
   }
 
-  if tcd_t2_decode(p_tcd, p_src, &mut l_data_read, p_manager, image, cp).is_err() {
+  if tcd_t2_decode(
+    p_tcd,
+    p_src,
+    &mut l_data_read,
+    p_manager,
+    image,
+    cp,
+    p_data_start,
+  )
+  .is_err()
+  {
     return Err(());
   }
   /*------------------TIER1-----------------*/
@@ -1652,20 +1667,19 @@ fn tcd_t2_decode(
   mut p_manager: &mut EventMgr,
   image: &mut CoreImage,
   cp: &mut Cp,
+  p_data_start: i64,
 ) -> OpResult {
   let mut t2 = t2_create(image, cp);
-  if t2_decode_packets(
+  let packets = t2_decode_packets(
     p_tcd,
     &mut t2,
     p_tcd.tcd_tileno,
     p_src_data,
     p_data_read,
     p_manager,
-  )
-  .is_err()
-  {
-    return Err(());
-  }
+    p_data_start,
+  )?;
+  p_tcd.packet_index = packets;
 
   /*---------------CLEAN-------------------*/
   Ok(())
