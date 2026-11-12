@@ -364,19 +364,17 @@ function treeEl(node, cut, open) {
   head.className = "tree-node";
   head.dataset.start = node.start;
   head.dataset.end = node.end;
-  if (node.children.length) {
-    const det = document.createElement("details");
-    // packet-detail nodes open automatically so the layers are visible
-    det.open = open || !!node.packets;
-    const sum = document.createElement("summary");
-    sum.textContent = node.label;
-    const ul = document.createElement("ul");
-    for (const child of node.children) ul.appendChild(treeEl(child, cut, false));
-    det.append(sum, ul);
-    head.appendChild(det);
-  } else {
-    head.textContent = node.label;
+  const hasChildren = node.children.length > 0;
+  if (hasChildren) {
+    const arrow = document.createElement("span");
+    arrow.className = "tree-toggle";
+    arrow.textContent = "\u25B8"; // small right-pointing triangle
+    head.appendChild(arrow);
   }
+  const label = document.createElement("span");
+  label.className = "tree-label";
+  label.textContent = node.label;
+  head.appendChild(label);
   const span = document.createElement("span");
   span.className = "tree-range";
   span.textContent = `${fmtBytes(node.end - node.start)}`;
@@ -386,7 +384,10 @@ function treeEl(node, cut, open) {
     head.title = "beyond the truncation point";
   }
   head.addEventListener("click", (ev) => {
-    if (ev.target.closest("summary")) return; // let details toggle
+    if (ev.target.closest(".tree-toggle")) {
+      li.classList.toggle("open");
+      return;
+    }
     const range = {
       start: node.start,
       end: node.end,
@@ -400,6 +401,16 @@ function treeEl(node, cut, open) {
     selectTreeNodes(node.start, node.end, true);
   });
   li.appendChild(head);
+  if (hasChildren) {
+    /* children live in a sibling of the row (not inside it) so opening a
+    subtree cannot widen the row and push its size label around */
+    const ul = document.createElement("ul");
+    ul.className = "tree-children";
+    for (const child of node.children) ul.appendChild(treeEl(child, cut, false));
+    li.appendChild(ul);
+    // packet-detail nodes open automatically so the layers are visible
+    if (open || node.packets) li.classList.add("open");
+  }
   return li;
 }
 
@@ -417,6 +428,12 @@ function selectTreeNodes(start, end, preferSmallest) {
       )[0]
     : nodes[0];
   chosen.classList.add("selected");
+  // reveal the node by opening its collapsed ancestors
+  let ancestor = chosen.closest("li");
+  while (ancestor) {
+    ancestor.classList.add("open");
+    ancestor = ancestor.parentElement ? ancestor.parentElement.closest("li") : null;
+  }
   chosen.scrollIntoView({ block: "nearest" });
 }
 
