@@ -29,6 +29,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # nightly + rust-src for the threaded (rayon) wasm variant
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
+          targets: wasm32-unknown-unknown
+
+      # stable last so it stays the default toolchain
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -37,8 +44,8 @@ jobs:
         # Keep in sync with the wasm-bindgen version in wasm/Cargo.lock.
         run: cargo install wasm-bindgen-cli --version 0.2.130
 
-      - name: Build the playground
-        run: bash wasm/playground/build.sh
+      - name: Build the playground (single-threaded + threaded)
+        run: bash wasm/playground/build.sh --threads
 
       - name: Upload the site
         uses: actions/upload-pages-artifact@v3

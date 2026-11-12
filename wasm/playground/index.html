@@ -206,6 +206,9 @@
     your browser.
   </footer>
 
+  <!-- Enables cross-origin isolation (COOP/COEP) on static hosts such as
+       GitHub Pages, required for SharedArrayBuffer / wasm threads. -->
+  <script src="coi-serviceworker.js"></script>
   <script type="module" src="playground.js"></script>
 </body>
 </html>

@@ -1185,7 +1185,7 @@ async function refreshThreadInfo() {
   if (!threadsSupported()) {
     sel.disabled = true;
     note.textContent =
-      "threads unavailable: the page is not cross-origin isolated (needs COOP/COEP headers; GitHub Pages cannot set them)";
+      "threads unavailable: the page is not cross-origin isolated (the COI service worker may enable it after a reload; otherwise serve with COOP/COEP headers)";
     return;
   }
   if (!(await mtBuildAvailable())) {

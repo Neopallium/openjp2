@@ -56,10 +56,12 @@ wasm/playground/build.sh --threads
 The threaded build lands in `playground/pkg-mt/` and is loaded only when
 the page is **cross-origin isolated** (`SharedArrayBuffer` available —
 COOP/COEP headers); otherwise the single-threaded `pkg/` build is used.
-`build.sh serve` sends those headers for local testing.  GitHub Pages
-cannot set response headers, so the deployed playground stays
-single-threaded (its "threads" setting explains this); the threaded build
-and toggle are for local/custom deployments.
+`build.sh serve` sends those headers for local testing.  On GitHub Pages
+(which cannot set response headers) the page includes
+[coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker), a
+service worker that injects the headers and reloads the page once into an
+isolated state, so the "threads" setting works there too (where the
+browser supports it; HTTPS or localhost is required).
 
 ## Playground
 
