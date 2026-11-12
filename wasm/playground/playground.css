@@ -129,9 +129,25 @@ button:disabled { background: #3a3f4a; color: var(--muted); cursor: default; }
   align-items: flex-start;
   margin-top: 0.75rem;
 }
-/* zoomed: natural/magnified size in a scrollable box, top-left aligned */
+/* zoomed: natural/magnified size in a scrollable box, top-left aligned.
+   The max-width/max-height fit constraints must be lifted, otherwise
+   every zoom level clamps back to the container size (and the two
+   independent clamps distort the aspect ratio). */
 .explorer-preview.zoomed { justify-content: flex-start; }
-.dropzone.zoomed { align-items: flex-start; justify-content: flex-start; overflow: auto; }
+.explorer-preview.zoomed canvas {
+  max-width: none;
+  max-height: none;
+}
+.dropzone.zoomed {
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: auto;
+  max-height: 30rem;
+}
+.dropzone.zoomed canvas {
+  max-width: none;
+  max-height: none;
+}
 .explorer-preview canvas {
   image-rendering: pixelated;
   max-width: 100%;

@@ -424,11 +424,13 @@ const explorerCanvas = $("explorer-canvas");
 
 /// Applies the zoom selection to a canvas: 0 = fit (CSS max-size
 /// scaling), >=1 = natural/magnified size with CSS px, scrolling the box.
+/// Both dimensions are set explicitly so the aspect ratio never depends
+/// on the CSS max-* clamps.
 function applyZoom(canvas, box, zoom) {
   if (!box) return;
   if (zoom > 0) {
     canvas.style.width = `${canvas.width * zoom}px`;
-    canvas.style.height = "auto";
+    canvas.style.height = `${canvas.height * zoom}px`;
     box.classList.add("zoomed");
   } else {
     canvas.style.width = "";
