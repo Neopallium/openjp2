@@ -421,6 +421,21 @@ function selectTreeNodes(start, end, preferSmallest) {
 
 const explorerCanvas = $("explorer-canvas");
 
+/// Applies the zoom selection to a canvas: 0 = fit (CSS max-size
+/// scaling), >=1 = natural/magnified size with CSS px, scrolling the box.
+function applyZoom(canvas, box, zoom) {
+  if (!box) return;
+  if (zoom > 0) {
+    canvas.style.width = `${canvas.width * zoom}px`;
+    canvas.style.height = "auto";
+    box.classList.add("zoomed");
+  } else {
+    canvas.style.width = "";
+    canvas.style.height = "";
+    box.classList.remove("zoomed");
+  }
+}
+
 function drawProbe(width, height, pixels, canvas) {
   const ctx = canvas.getContext("2d");
   canvas.width = width;
@@ -451,6 +466,7 @@ async function explorerDecode(cut) {
     if (!probe || myLoad !== loadSeq) return; // superseded / new file
     const ms = performance.now() - t0;
     drawProbe(probe.width, probe.height, probe.pixels, explorerCanvas);
+    applyZoom(explorerCanvas, $("explorer-preview"), Number($("explorer-zoom").value) || 0);
     setInfo($("explorer-info"), [
       ["size", `${probe.width}×${probe.height}`],
       ["pixels", complete ? "complete" : "truncated (black = not decoded)"],
@@ -550,6 +566,14 @@ function renderPresets() {
   }
 }
 
+// zoom selectors re-apply the current zoom to the last drawn canvas
+$("decode-zoom").addEventListener("change", () =>
+  applyZoom(decodeCanvas, $("decode-drop"), Number($("decode-zoom").value) || 0),
+);
+$("explorer-zoom").addEventListener("change", () =>
+  applyZoom(explorerCanvas, $("explorer-preview"), Number($("explorer-zoom").value) || 0),
+);
+
 // ---------------------------------------------------------------------------
 // decode panel
 
@@ -564,6 +588,7 @@ async function showDecode(data) {
   if (myLoad !== loadSeq) return;
   const ms = performance.now() - t0;
   drawProbe(probe.width, probe.height, probe.pixels, decodeCanvas);
+  applyZoom(decodeCanvas, $("decode-drop"), Number($("decode-zoom").value) || 0);
   const complete = structurallyComplete(data, csOffset);
   renderImageInfo(probe, complete, ms);
   $("decode-drop").classList.add("has-image");
@@ -585,9 +610,14 @@ function renderImageInfo(probe, complete, ms) {
   if (cs) rows.push(["colour space", cs + (h?.has_icc_profile ? " (ICC profile)" : "")]);
   if (h) {
     rows.push(["resolutions", `${h.numresolutions}`]);
+    const active = decodeOpts().layers;
     rows.push([
       "layers",
-      `${h.num_layers}` + (h.num_layers > 1 ? " (quality layers in the codestream)" : ""),
+      (h.num_layers <= 1
+        ? "1 (single-layer codestream; the setting has no effect)"
+        : active > 0
+          ? `decoding first ${active} of ${h.num_layers} quality layers`
+          : `${h.num_layers} (all) quality layers`),
     ]);
     rows.push(["progression", ORDER_NAMES[h.progression] || "?"]);
     rows.push([

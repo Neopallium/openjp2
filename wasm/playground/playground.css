@@ -126,8 +126,12 @@ button:disabled { background: #3a3f4a; color: var(--muted); cursor: default; }
   max-height: 20rem;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   margin-top: 0.75rem;
 }
+/* zoomed: natural/magnified size in a scrollable box, top-left aligned */
+.explorer-preview.zoomed { justify-content: flex-start; }
+.dropzone.zoomed { align-items: flex-start; justify-content: flex-start; overflow: auto; }
 .explorer-preview canvas {
   image-rendering: pixelated;
   max-width: 100%;
