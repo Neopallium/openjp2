@@ -58,10 +58,11 @@ not applied.
   node), a byte-level hex view where **every byte** is colour-coded and
   labelled with the part of the stream it belongs to (click one for its
   meaning and a link into the JPEG 2000 spec; unrecognized bytes are
-  marked corrupt), and a truncation slider — with size preset buttons
+  marked corrupt), and a truncation control — a 0.01%-step slider, a
+  byte-length field, ±1/10/100/1k byte buttons and size presets
   (500 B … 1 MiB) — that cuts the codestream and re-decodes it live into
-  the preview, demonstrating the lenient decoder's tolerance for
-  truncated files.
+  the preview (debounced, with in-place hex/tree updates), demonstrating
+  the lenient decoder's tolerance for truncated files.
 
 All decode/encode work runs in a Web Worker (`worker.js`) so the page
 never freezes during a decode; where module workers are unavailable the
