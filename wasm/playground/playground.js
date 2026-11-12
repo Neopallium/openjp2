@@ -365,12 +365,11 @@ function treeEl(node, cut, open) {
   head.dataset.start = node.start;
   head.dataset.end = node.end;
   const hasChildren = node.children.length > 0;
-  if (hasChildren) {
-    const arrow = document.createElement("span");
-    arrow.className = "tree-toggle";
-    arrow.textContent = "\u25B8"; // small right-pointing triangle
-    head.appendChild(arrow);
-  }
+  // always reserve the toggle column so labels of leaves and parents align
+  const arrow = document.createElement("span");
+  arrow.className = hasChildren ? "tree-toggle" : "tree-toggle tree-toggle-empty";
+  arrow.textContent = "\u25B8"; // small right-pointing triangle
+  head.appendChild(arrow);
   const label = document.createElement("span");
   label.className = "tree-label";
   label.textContent = node.label;

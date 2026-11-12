@@ -219,6 +219,7 @@ button:disabled { background: #3a3f4a; color: var(--muted); cursor: default; }
   transition: transform 0.12s ease;
 }
 .tree li.open > .tree-node > .tree-toggle { transform: rotate(90deg); }
+.tree-toggle-empty { visibility: hidden; }
 .tree-label {
   flex: 1 1 auto;
   min-width: 0;
