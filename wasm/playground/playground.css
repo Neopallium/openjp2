@@ -311,3 +311,13 @@ button:disabled { background: #3a3f4a; color: var(--muted); cursor: default; }
 
 footer { padding: 0 2rem 2rem; color: var(--muted); font-size: 0.85rem; }
 footer a { color: var(--accent); }
+
+/* effective encoder settings + conflict warnings */
+.effective {
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.effective b { color: var(--ink); }
+.effective .file { color: #9fb7d0; }
+.effective .warn { color: var(--marker-hot); }

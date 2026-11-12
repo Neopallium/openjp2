@@ -18,6 +18,7 @@ import {
   fmtBytes,
   buildStructure,
   structurallyComplete,
+  codestreamHeaderInfo,
 } from "./structure.js";
 
 // ---------------------------------------------------------------------------
@@ -706,6 +707,7 @@ $("hex-view").addEventListener("click", (ev) => {
 
 const encodeCanvas = $("encode-canvas");
 let encoded = null;
+let encodeLoaded = false;
 
 function loadSourceImage(file) {
   const url = URL.createObjectURL(file);
@@ -716,13 +718,108 @@ function loadSourceImage(file) {
     encodeCanvas.getContext("2d").drawImage(img, 0, 0);
     URL.revokeObjectURL(url);
     $("encode-drop").classList.add("has-image");
+    encodeLoaded = true;
     setInfo($("encode-info"), [["size", `${img.naturalWidth}×${img.naturalHeight}`]]);
     runEncode();
   };
   img.src = url;
 }
 
+const TILE_TEXT = (w, h) => (w > 0 && h > 0 ? `${w}×${h} tile` : "single tile");
+
+/// The quality-layer ladder the encoder will use for the current inputs.
+/// Mirrors the encoder's precedence: rates > rate > automatic ladder.
+function autoLadder(n) {
+  n = Math.min(Math.max(1, n), 100);
+  return Array.from({ length: n }, (_, i) =>
+    i === n - 1 ? 0 : 100 ** (1 - i / (n - 1)),
+  );
+}
+
+function fmtRatio(r) {
+  return r === 0 ? "lossless" : `${+r.toFixed(2)}:1`;
+}
+
+function effectiveEncodeConfig() {
+  const layersIn = Math.max(1, Number($("encode-layers").value) || 1);
+  const rate = Number($("encode-rate").value) || 0;
+  const ratesRaw = $("encode-rates").value.trim();
+  const parsed = ratesRaw ? ratesRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  const explicit = parsed.map(Number).filter((n) => Number.isFinite(n) && n >= 0);
+  const dropped = parsed.length - explicit.length;
+  const warnings = [];
+  let ladder;
+  if (explicit.length) {
+    ladder = explicit.slice(0, 100);
+    if (layersIn !== explicit.length) {
+      warnings.push(
+        `"layers" is ignored: the rates list defines ${explicit.length} layer${explicit.length === 1 ? "" : "s"}.`,
+      );
+    }
+    if (explicit.length > 100) {
+      warnings.push("Only the first 100 rates are used (the format's layer limit).");
+    }
+    if (dropped) {
+      warnings.push(`${dropped} invalid rate entr${dropped === 1 ? "y" : "ies"} ignored.`);
+    }
+  } else if (rate > 0) {
+    ladder = [rate];
+    if (layersIn !== 1) {
+      warnings.push('"layers" is ignored: a single ratio layer is used.');
+    }
+    if (ratesRaw) {
+      warnings.push('"rates" has no valid entries; the single ratio is used.');
+    }
+  } else if (layersIn > 1) {
+    ladder = autoLadder(layersIn);
+    if (layersIn > 100) {
+      warnings.push("Layers are capped at 100 (the format's limit).");
+    }
+  } else {
+    ladder = [0];
+  }
+  return {
+    ladder,
+    warnings,
+    lossless: $("encode-lossless").checked,
+    resolutions: Number($("encode-res").value) || 6,
+    order: Number($("encode-order").value) || 0,
+    tileW: Number($("encode-tilew").value) || 0,
+    tileH: Number($("encode-tileh").value) || 0,
+  };
+}
+
+/// Shows the effective settings and warnings, plus (once encoded) what
+/// the produced file's header actually declares.
+function renderEffective(file) {
+  const el = $("encode-effective");
+  const cfg = effectiveEncodeConfig();
+  const layerWord = cfg.ladder.length === 1 ? "layer" : "layers";
+  const rows = [];
+  rows.push(
+    `<div><b>Effective:</b> ${cfg.ladder.length} ${layerWord} — ` +
+      `${cfg.ladder.map(fmtRatio).join(", ")} · ${cfg.resolutions} resolutions · ` +
+      `${ORDER_NAMES[cfg.order]} · ${TILE_TEXT(cfg.tileW, cfg.tileH)} · ` +
+      `${cfg.lossless ? "lossless 5-3" : "lossy 9-7"}</div>`,
+  );
+  if (file) {
+    rows.push(
+      `<div class="file">File: ${file.layers} ${file.layers === 1 ? "layer" : "layers"} · ` +
+        `${file.resolutions} resolutions · ${ORDER_NAMES[file.progression] || "?"} · ` +
+        `${file.transform === 1 ? "lossless 5-3" : "lossy 9-7"} · ` +
+        `${TILE_TEXT(file.tile_w === file.width ? 0 : file.tile_w, file.tile_h === file.height ? 0 : file.tile_h)}` +
+        `${file.codeblock ? ` · ${file.codeblock}² code-blocks` : ""}</div>`,
+    );
+  }
+  for (const w of cfg.warnings) {
+    rows.push(`<div class="warn">⚠ ${w}</div>`);
+  }
+  el.innerHTML = rows.join("");
+}
+
 async function runEncode() {
+  renderEffective();
+  if (!encodeLoaded) return;
   const ctx = encodeCanvas.getContext("2d");
   const { width, height } = encodeCanvas;
   const rgba = ctx.getImageData(0, 0, width, height).data;
@@ -740,6 +837,7 @@ async function runEncode() {
     ["encode", `${ms.toFixed(0)} ms`],
   ]);
   $("encode-download").disabled = false;
+  renderEffective(codestreamHeaderInfo(encoded));
 }
 
 $("encode-download").addEventListener("click", () => {

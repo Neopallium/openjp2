@@ -51,8 +51,11 @@ not applied.
   settings: lossless/lossy transform, container, resolution count,
   quality layers, progression order, and — under *advanced* — tile size,
   per-layer rates, compression ratio and a COM comment.  Every setting
-  has a tooltip and a `?` badge with a longer explanation.  Quality
-  layers use an automatic rate ladder unless explicit rates are given.
+  has a tooltip and a `?` badge with a longer explanation.  The panel
+  shows the *effective* configuration (including the automatic layer
+  ladder when no rates are given), warns about conflicting settings
+  (e.g. a `layers` count that a rates list overrides), and after
+  encoding reports what the produced file's header actually declares.
 - **Explorer** — a structural tree of the file (JP2 boxes → codestream
   markers → tile-parts) linked bidirectionally with the hex view (click a
   tree node to highlight its bytes, click a byte to highlight its tree

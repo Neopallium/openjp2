@@ -286,3 +286,72 @@ export function structurallyComplete(data, cs) {
   }
   return false;
 }
+
+/// Reads the SIZ/COD fields of a JP2/J2K file and returns what the
+/// codestream actually declares (the ground truth for the encoder UI):
+/// `{ width, height, components, layers, progression, resolutions,
+///    transform, codeblock, tile_w, tile_h }`.  Returns null when the
+/// header is unreadable.
+export function codestreamHeaderInfo(data) {
+  // locate the codestream (raw SOC or the jp2c box body)
+  let cs = -1;
+  if (data.length >= 2 && data[0] === 0xff && data[1] === 0x4f) {
+    cs = 0;
+  } else {
+    let off = 0;
+    while (off + 8 <= data.length) {
+      const len = u32(data, off) === 0 ? data.length - off : u32(data, off);
+      const type = String.fromCharCode(
+        data[off + 4], data[off + 5], data[off + 6], data[off + 7],
+      );
+      if (len < 8) break;
+      if (type === "jp2c") {
+        cs = off + 8;
+        break;
+      }
+      off += len;
+    }
+  }
+  if (cs < 0 || cs + 2 > data.length || data[cs] !== 0xff || data[cs + 1] !== 0x4f) {
+    return null;
+  }
+  const out = {
+    width: 0,
+    height: 0,
+    components: 0,
+    layers: 0,
+    progression: 0,
+    resolutions: 0,
+    transform: 1,
+    codeblock: 0,
+    tile_w: 0,
+    tile_h: 0,
+  };
+  let pos = cs + 2;
+  while (pos + 1 < data.length) {
+    if (data[pos] !== 0xff) break;
+    const code = data[pos + 1];
+    if (code === 0x93 || code === 0x90 || code === 0xd9) break;
+    const l = u16(data, pos + 2);
+    if (l < 2) break;
+    const body = pos + 4;
+    if (code === 0x51 && body + 38 <= data.length) {
+      // SIZ: Rsiz, Xsiz, Ysiz, XOsiz, YOsiz, XTsiz, YTsiz, XTOsiz, YTOsiz, Csiz
+      out.width = u32(data, body + 2) - u32(data, body + 10);
+      out.height = u32(data, body + 6) - u32(data, body + 14);
+      out.tile_w = u32(data, body + 18);
+      out.tile_h = u32(data, body + 22);
+      out.components = u16(data, body + 34);
+    } else if (code === 0x52 && body + 10 <= data.length) {
+      // COD: Scod, prog, numlayers(2), mct, SPcod: numdecomp, cblk w/h
+      // exponents (stored - 2), style, transform
+      out.progression = data[body + 1];
+      out.layers = u16(data, body + 2);
+      out.resolutions = data[body + 5] + 1;
+      out.codeblock = 1 << (data[body + 6] + 2);
+      out.transform = data[body + 9]; // 1 = reversible 5-3, 0 = 9-7
+    }
+    pos += 2 + l;
+  }
+  return out;
+}
