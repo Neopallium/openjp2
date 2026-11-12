@@ -45,7 +45,16 @@ wasm-bindgen target/wasm32-unknown-unknown/release/openjp2_wasm.wasm \
 
 if [[ "$THREADS" == "1" ]]; then
   echo "==> building the threaded (rayon) variant (nightly + build-std)"
-  RUSTFLAGS='-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--max-memory=2147483648' \
+  # --shared-memory is required: wasm-bindgen-rayon posts the memory to
+  # its workers, which only works for SharedArrayBuffer-backed memory.
+  # Flags from the wasm-bindgen-rayon README: shared+imported memory and
+  # the TLS symbols its worker transform needs.
+  THREAD_FLAGS='-C target-feature=+atomics,+bulk-memory,+mutable-globals'
+  THREAD_FLAGS="$THREAD_FLAGS -C link-arg=--shared-memory -C link-arg=--import-memory"
+  THREAD_FLAGS="$THREAD_FLAGS -C link-arg=--max-memory=2147483648"
+  THREAD_FLAGS="$THREAD_FLAGS -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size"
+  THREAD_FLAGS="$THREAD_FLAGS -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
+  RUSTFLAGS="$THREAD_FLAGS" \
     cargo +nightly build --target wasm32-unknown-unknown --release \
     --features threads -Z build-std=std,panic_abort
   echo "==> generating JS glue into playground/pkg-mt/"

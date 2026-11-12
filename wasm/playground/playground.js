@@ -656,7 +656,8 @@ async function computeStructure(data) {
     el.textContent = "";
     return;
   }
-  const rows = thresholds.map((bytes, i) => {
+  // thresholds is a Uint32Array (typed arrays' map returns a typed array)
+  const rows = Array.from(thresholds, (bytes, i) => {
     const pct = ((bytes / data.length) * 100).toFixed(1);
     const tr = document.createElement("tr");
     const l = document.createElement("td");

@@ -53,6 +53,11 @@ rustup +nightly target add wasm32-unknown-unknown
 wasm/playground/build.sh --threads
 ```
 
+The build uses the flags from the wasm-bindgen-rayon README
+(`--shared-memory --import-memory` and the `__wasm_init_tls`/`__tls_*`
+exports) and enables its `no-bundler` feature, since the playground is
+served directly without a bundler.
+
 The threaded build lands in `playground/pkg-mt/` and is loaded only when
 the page is **cross-origin isolated** (`SharedArrayBuffer` available —
 COOP/COEP headers); otherwise the single-threaded `pkg/` build is used.
