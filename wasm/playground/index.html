@@ -129,9 +129,26 @@
         it live into the preview (lenient mode tolerates truncated files).</p>
       <div class="controls">
         <label class="row">truncate at
-          <input type="range" id="trunc-slider" min="0" max="100" value="100" />
+          <input type="range" id="trunc-slider" min="0" max="100" step="0.01" value="100"
+            title="Truncation point as a percentage of the file; the smallest step is 0.01%." />
           <span id="trunc-label">100%</span>
         </label>
+        <div class="row trunc-bytes">
+          <label>bytes
+            <input type="number" id="trunc-bytes" min="0" step="1" value="0"
+              title="Exact truncation length in bytes (editable)." />
+          </label>
+          <div class="presets" id="trunc-steps">
+            <button type="button" data-delta="-1024" title="back 1 KiB">−1k</button>
+            <button type="button" data-delta="-100" title="back 100 bytes">−100</button>
+            <button type="button" data-delta="-10" title="back 10 bytes">−10</button>
+            <button type="button" data-delta="-1" title="back 1 byte">−1</button>
+            <button type="button" data-delta="1" title="forward 1 byte">+1</button>
+            <button type="button" data-delta="10" title="forward 10 bytes">+10</button>
+            <button type="button" data-delta="100" title="forward 100 bytes">+100</button>
+            <button type="button" data-delta="1024" title="forward 1 KiB">+1k</button>
+          </div>
+        </div>
         <div class="presets" id="trunc-presets"></div>
         <div id="trunc-status"></div>
       </div>

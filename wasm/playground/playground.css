@@ -238,6 +238,17 @@ button:disabled { background: #3a3f4a; color: var(--muted); cursor: default; }
 .area-inputs input { width: 3.8rem; }
 .resolution-row { flex-wrap: wrap; }
 
+/* truncation controls */
+.trunc-bytes { flex-wrap: wrap; }
+.trunc-bytes > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.trunc-bytes input[type="number"] { width: 6.5rem; }
+#trunc-slider { flex: 1 1 12rem; min-width: 8rem; }
+#trunc-label { min-width: 5.5rem; text-align: right; font-variant-numeric: tabular-nums; }
+
 .marker-detail { margin-top: 0.5rem; min-height: 2.5rem; }
 .marker-detail a { color: var(--accent); }
 .marker-name { font-weight: 700; }

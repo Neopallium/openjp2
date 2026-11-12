@@ -217,10 +217,34 @@ function buildLabelIndex(data) {
 }
 
 let labelIndex = null;
+let hexSpans = []; // .byte spans by byte offset (for in-place cut updates)
+let currentCut = 0; // current truncation point in bytes
+
+/// Styles one hex byte span for the given truncation point.
+function styleHexSpan(s, i, cut) {
+  s.dataset.offset = i;
+  if (i >= cut) {
+    s.className = "cut";
+    s.title = "beyond the truncation point";
+    delete s.dataset.range;
+  } else {
+    const ri = labelIndex[i];
+    const range = ri !== 0xffffffff ? ranges[ri] : null;
+    const kind = range ? KINDS[range.kind] : KINDS.corrupt;
+    s.className = `byte ${kind.cls}`;
+    if (range) {
+      s.dataset.range = ri;
+      s.title = `${range.label} (${range.start}–${range.end})`;
+    } else {
+      s.title = "unrecognized / corrupt data";
+    }
+  }
+}
 
 function renderHex(data, cut) {
   const view = $("hex-view");
   view.textContent = "";
+  hexSpans = [];
   if (!data || !data.length) {
     view.innerHTML = '<div class="hex-empty">decode a file first</div>';
     return;
@@ -243,22 +267,8 @@ function renderHex(data, cut) {
       } else {
         const b = data[i];
         s.textContent = b.toString(16).padStart(2, "0") + " ";
-        s.dataset.offset = i;
-        if (i >= cut) {
-          s.className = "cut";
-          s.title = "beyond the truncation point";
-        } else {
-          const ri = labelIndex[i];
-          const range = ri !== 0xffffffff ? ranges[ri] : null;
-          const kind = range ? KINDS[range.kind] : KINDS.corrupt;
-          s.className = `byte ${kind.cls}`;
-          if (range) {
-            s.dataset.range = ri;
-            s.title = `${range.label} (${range.start}–${range.end})`;
-          } else {
-            s.title = "unrecognized / corrupt data";
-          }
-        }
+        styleHexSpan(s, i, cut);
+        hexSpans[i] = s;
       }
       line.appendChild(s);
     }
@@ -447,18 +457,64 @@ async function explorerDecode(cut) {
 
 let truncTimer = null;
 
-function applyCut(cut) {
-  $("trunc-label").textContent = `${Math.round((cut / codestream.length) * 100)}%`;
-  renderHex(codestream, cut);
-  renderTree(treeRoot, cut);
-  clearTimeout(truncTimer);
-  truncTimer = setTimeout(() => explorerDecode(cut), 150);
+/// Applies a new truncation point: syncs the slider/byte field/label,
+/// updates the hex cut highlight and tree dimming in place (no re-render,
+/// so nothing jumps), and debounces the re-decode.
+function setCut(cut, decode = true) {
+  if (!codestream) return;
+  cut = Math.max(0, Math.min(cut, codestream.length));
+  const prev = currentCut;
+  currentCut = cut;
+  const pct = codestream.length ? (cut / codestream.length) * 100 : 100;
+  $("trunc-slider").value = pct;
+  $("trunc-bytes").value = cut;
+  $("trunc-label").textContent = `${pct.toFixed(2)}%`;
+  if (prev !== cut) updateCutSpans(prev, cut);
+  updateTreeCut(cut);
+  if (decode) {
+    clearTimeout(truncTimer);
+    truncTimer = setTimeout(() => explorerDecode(cut), 120);
+  }
+}
+
+/// Restyles only the hex bytes between the old and the new cut point.
+function updateCutSpans(prev, cut) {
+  const n = Math.min(codestream.length, HEX_CAP);
+  const lo = Math.max(0, Math.min(prev, cut));
+  const hi = Math.min(n, Math.max(prev, cut));
+  for (let i = lo; i < hi; i++) {
+    const s = hexSpans[i];
+    if (s) styleHexSpan(s, i, cut);
+  }
+}
+
+/// Dims the tree nodes beyond the cut point without rebuilding the tree
+/// (keeps the user's expand/collapse state).
+function updateTreeCut(cut) {
+  for (const node of document.querySelectorAll("#tree-view .tree-node[data-start]")) {
+    node.classList.toggle("beyond-cut", Number(node.dataset.start) >= cut);
+  }
 }
 
 $("trunc-slider").addEventListener("input", (ev) => {
   if (!codestream) return;
-  applyCut(Number(ev.target.value));
+  // the slider is in percent with 0.01% steps
+  const pct = Number(ev.target.value);
+  setCut(Math.round((pct / 100) * codestream.length));
 });
+
+$("trunc-bytes").addEventListener("input", (ev) => {
+  if (!codestream) return;
+  const v = Number(ev.target.value);
+  if (Number.isFinite(v)) setCut(v);
+});
+
+for (const b of document.querySelectorAll("#trunc-steps button")) {
+  b.addEventListener("click", () => {
+    if (!codestream) return;
+    setCut(currentCut + Number(b.dataset.delta));
+  });
+}
 
 // ---------------------------------------------------------------------------
 // truncation presets
@@ -475,9 +531,7 @@ function renderPresets() {
     b.disabled = !codestream || size >= codestream.length;
     b.title = `truncate to ${size} bytes`;
     b.addEventListener("click", () => {
-      const cut = Math.min(size, codestream.length);
-      $("trunc-slider").value = cut;
-      applyCut(cut);
+      setCut(size);
     });
     el.appendChild(b);
   }
@@ -529,10 +583,11 @@ function loadCodestream(file) {
     fetchInfo(data);
     showDecode(data).catch((e) => setInfo($("decode-info"), [["error", String(e)]]));
     // explorer
-    const slider = $("trunc-slider");
-    slider.max = data.length;
-    slider.value = data.length;
-    $("trunc-label").textContent = "100%";
+    currentCut = data.length;
+    $("trunc-slider").value = 100;
+    $("trunc-bytes").max = data.length;
+    $("trunc-bytes").value = data.length;
+    $("trunc-label").textContent = "100.00%";
     renderHex(data, data.length);
     renderTree(treeRoot, data.length);
     renderLegend();
@@ -708,7 +763,7 @@ function renderResolutions() {
         showDecode(codestream).catch((e) =>
           setInfo($("decode-info"), [["error", String(e)]]),
         );
-        explorerDecode($("trunc-slider").value);
+        explorerDecode(currentCut);
       }
     });
     el.appendChild(b);
@@ -721,7 +776,7 @@ function decodeSettingsChanged() {
   clearTimeout(decodeSettingTimer);
   decodeSettingTimer = setTimeout(() => {
     showDecode(codestream).catch((e) => setInfo($("decode-info"), [["error", String(e)]]));
-    explorerDecode($("trunc-slider").value);
+    explorerDecode(currentCut);
   }, 200);
 }
 
@@ -731,7 +786,7 @@ for (const id of ["decode-layers", "area-x0", "area-y0", "area-x1", "area-y1"]) 
 $("decode-ignore-pclr").addEventListener("change", () => {
   if (codestream) {
     showDecode(codestream).catch((e) => setInfo($("decode-info"), [["error", String(e)]]));
-    explorerDecode($("trunc-slider").value);
+    explorerDecode(currentCut);
   }
 });
 
