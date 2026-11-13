@@ -2516,6 +2516,7 @@ fn detect_format_from_file_prefers_magic_over_extension() {
   assert_eq!(detected, Ok(J2KFormat::JP2));
 }
 
+#[cfg(feature = "image")]
 #[test]
 fn get_pixels_clamps_out_of_range_samples() {
   let comp = crate::CoreImageComp {
