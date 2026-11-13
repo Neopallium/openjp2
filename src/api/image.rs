@@ -59,6 +59,48 @@ impl Image {
     self.core.color_space
   }
 
+  /// Horizontal origin of the image (`core.x0`).
+  pub fn x_offset(&self) -> u32 {
+    self.core.x0
+  }
+
+  /// Vertical origin of the image (`core.y0`).
+  pub fn y_offset(&self) -> u32 {
+    self.core.y0
+  }
+
+  /// Save the image to a JPEG 2000 file; the format is detected from the
+  /// file extension (`.j2k`/`.j2c`/`.jpc`/`.jhc` = codestream,
+  /// `.jp2`/`.jph` = JP2 container).
+  ///
+  /// The image is cloned first (`encode*` consume the image, since the
+  /// encoder transforms the component buffers in place).
+  pub fn save_as_file<P: AsRef<std::path::Path>>(&self, path: P) -> Result<()> {
+    self.save_as_file_with(path, EncodeParameters::new())
+  }
+
+  /// Like [`Self::save_as_file`] with explicit encoder parameters.
+  pub fn save_as_file_with<P: AsRef<std::path::Path>>(
+    &self,
+    path: P,
+    params: EncodeParameters,
+  ) -> Result<()> {
+    let path = path.as_ref();
+    let ext = path.extension().map(|ext| ext.to_string_lossy());
+    let format = crate::detect_format_from_extension(ext.as_deref()).map_err(Error::Unsupported)?;
+    let bytes = match format {
+      J2KFormat::JP2 => self.clone().encode_jp2(params),
+      J2KFormat::J2K => self.clone().encode(params),
+      other => {
+        return Err(Error::Unsupported(format!(
+          "format {:?} is not supported for encoding",
+          other
+        )))
+      }
+    }?;
+    std::fs::write(path, bytes).map_err(Error::Io)
+  }
+
   /// Number of components.
   pub fn num_components(&self) -> u32 {
     self.core.numcomps
@@ -219,10 +261,10 @@ impl Image {
     }
   }
 
-  /// Encode the image to a JPEG 2000 codestream (or JP2 file when
-  /// `format` is set) held in an in-memory buffer.  Takes the image by
-  /// value: the encoder transforms the component buffers in place, so no
-  /// copy is made (clone first to keep the source).
+  /// Encode the image to a JPEG 2000 codestream held in an in-memory
+  /// buffer.  Takes the image by value: the encoder transforms the
+  /// component buffers in place, so no copy is made (clone first to keep
+  /// the source).
   pub fn encode(self, params: EncodeParameters) -> Result<Vec<u8>> {
     encode_image(self.core, params.into_inner(), J2KFormat::J2K)
   }
@@ -242,5 +284,19 @@ impl Image {
     writer: W,
   ) -> Result<()> {
     encode_image_to_writer(self.core, params.into_inner(), J2KFormat::J2K, writer)
+  }
+}
+
+impl std::fmt::Debug for Image {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("Image")
+      .field("width", &self.width())
+      .field("height", &self.height())
+      .field("x_offset", &self.x_offset())
+      .field("y_offset", &self.y_offset())
+      .field("color_space", &self.color_space())
+      .field("num_components", &self.num_components())
+      .field("has_icc_profile", &self.has_icc_profile())
+      .finish()
   }
 }

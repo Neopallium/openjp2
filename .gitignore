@@ -49,6 +49,7 @@ __pycache__/
 /open-findings.md
 /review_*.md
 /old_reviews/
+/openjp2-recommendations.md
 /plan-*.prompt.md
 
 # Generated wasm-bindgen glue for the playground (build with

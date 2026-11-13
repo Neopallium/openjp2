@@ -43,13 +43,14 @@ crate-type = ["rlib"]
 [dependencies]
 openjp2-ctypes = { path = "ctypes", version = "0.7.0" }
 rayon = { version = "1.11", optional = true }
-image = { version = "0.25", default-features = false, optional = true }
+image = { version = "0.25.9", default-features = false, optional = true }
 bitflags = "1.3.2"
 byteorder = { version = "1.5" }
 log = "0.4.17"
 
 smallvec = "1.13"
 wide = { version = "1.7", optional = true }
+serde = { version = "1", optional = true }
 
 [features]
 # Parallelism via rayon is optional: some platforms/targets cannot use
@@ -64,6 +65,11 @@ event-handlers = []
 threads = ["rayon"]
 # `image`-crate interop (Image::get_pixels / DynamicImage conversion).
 image = ["dep:image"]
+# Serialization support for the safe-API types (ImageData /
+# ImagePixelData when the image feature is on, plus DecodeArea,
+# DecodeLimits, ColorSpace and ProgressionOrder).  Forwards to the image
+# crate's own serde support so the pixel-format field derives too.
+serde = ["dep:serde", "image?/serde"]
 # Write the upstream OpenJPEG product/version string into the default
 # codestream comment (COM marker) instead of the port's own name and
 # version, so encoded files are byte-identical to the C reference.
@@ -72,3 +78,6 @@ openjpeg-version-string = []
 # SIMD-accelerated DWT kernels via the `wide` crate (safe API; the
 # kernels run on the generic build without it).  Off by default.
 simd = ["dep:wide"]
+
+[dev-dependencies]
+serde_json = "1"

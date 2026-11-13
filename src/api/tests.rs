@@ -2726,3 +2726,169 @@ fn skip_clamps_at_the_end_of_the_stream() {
   assert!(stream.skip(1).is_err(), "nothing left to skip");
   assert_eq!(stream.tell(), 3);
 }
+
+#[test]
+fn decode_area_parses_x0_y0_x1_y1() {
+  assert_eq!(
+    "10:4:12:10".parse::<DecodeArea>(),
+    Ok(DecodeArea::new(10, 4, 12, 10))
+  );
+  assert_eq!(
+    "10:4".parse::<DecodeArea>(),
+    Ok(DecodeArea::new(10, 4, 0, 0))
+  );
+  assert!("".parse::<DecodeArea>().is_err());
+  assert!("10:x:12:10".parse::<DecodeArea>().is_err());
+}
+
+#[test]
+fn save_as_file_round_trips_by_extension() {
+  let (w, h) = (32u32, 32u32);
+  let core = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: w,
+    y1: h,
+    numcomps: 1,
+    color_space: crate::ColorSpace::Gray,
+    comps: vec![crate::CoreImageComp {
+      dx: 1,
+      dy: 1,
+      w,
+      h,
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data: (0..(w * h)).map(|i| (i % 251) as i32).collect(),
+    }],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let image = Image::from_core_image(core);
+  let dir = std::env::temp_dir();
+  let id = format!("{:?}", std::thread::current().id());
+  let j2k_path = dir.join(format!("openjp2-save-{}-{id}.j2k", std::process::id()));
+  let jp2_path = dir.join(format!("openjp2-save-{}-{id}.jp2", std::process::id()));
+  image.save_as_file(&j2k_path).expect("save j2k");
+  image.save_as_file(&jp2_path).expect("save jp2");
+  let back_j2k = Image::from_file(&j2k_path).expect("read j2k");
+  let back_jp2 = Image::from_file(&jp2_path).expect("read jp2");
+  assert_eq!((back_j2k.width(), back_j2k.height()), (w, h));
+  assert_eq!((back_jp2.width(), back_jp2.height()), (w, h));
+  let bad_path = dir.join(format!("openjp2-save-{}-{id}.xyz", std::process::id()));
+  assert!(image.save_as_file(&bad_path).is_err(), "unknown extension");
+  let _ = std::fs::remove_file(&j2k_path);
+  let _ = std::fs::remove_file(&jp2_path);
+}
+
+#[test]
+fn image_origin_accessors_and_debug() {
+  let core = crate::CoreImage {
+    x0: 7,
+    y0: 9,
+    x1: 71,
+    y1: 41,
+    numcomps: 0,
+    color_space: crate::ColorSpace::Gray,
+    comps: Vec::new(),
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let image = Image::from_core_image(core);
+  assert_eq!((image.x_offset(), image.y_offset()), (7, 9));
+  let rendered = format!("{:?}", image);
+  assert!(rendered.contains("width") && rendered.contains("x_offset"));
+}
+
+#[test]
+fn component_accessors_mirror_the_fields() {
+  let comp = crate::CoreImageComp {
+    dx: 1,
+    dy: 1,
+    w: 10,
+    h: 20,
+    x0: 0,
+    y0: 0,
+    prec: 12,
+    bpp: 12,
+    sgnd: 1,
+    resno_decoded: 0,
+    factor: 0,
+    alpha: 1,
+    data: vec![0; 200],
+  };
+  assert_eq!(comp.width(), 10);
+  assert_eq!(comp.height(), 20);
+  assert_eq!(comp.precision(), 12);
+  assert_eq!(comp.bpp(), 12);
+  assert!(comp.is_alpha());
+  assert!(comp.is_signed());
+}
+
+#[test]
+fn decoder_exposes_the_header_image() {
+  let buf = std::fs::read("doc/example.jp2").expect("example image");
+  let mut decoder = Decoder::new(J2KFormat::JP2).expect("decoder");
+  let mut stream = Stream::from_bytes(buf);
+  assert!(decoder.header().is_none());
+  decoder.read_header(&mut stream).expect("header");
+  let header = decoder.header().expect("header stored");
+  assert_eq!((header.x1 - header.x0, header.y1 - header.y0), (512, 512));
+}
+
+#[cfg(feature = "image")]
+#[test]
+fn pixel_data_len_and_is_empty() {
+  use crate::ImagePixelData;
+  assert_eq!(ImagePixelData::Rgb8(vec![0u8; 12]).len(), 12);
+  assert_eq!(ImagePixelData::Rgba16(vec![0u16; 8]).len(), 8);
+  assert!(ImagePixelData::L8(Vec::new()).is_empty());
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn serde_safe_api_types_round_trip() {
+  let area = DecodeArea::new(1, 2, 3, 4);
+  let json = serde_json::to_string(&area).unwrap();
+  assert_eq!(serde_json::from_str::<DecodeArea>(&json).unwrap(), area);
+
+  let limits = DecodeLimits {
+    max_image_width: 100,
+    max_image_height: 200,
+    max_tile_pixels: 300,
+    max_mem_alloc: 400,
+    max_metadata_len: 500,
+  };
+  let json = serde_json::to_string(&limits).unwrap();
+  assert_eq!(serde_json::from_str::<DecodeLimits>(&json).unwrap(), limits);
+
+  let cs = ColorSpace::Sycc;
+  let json = serde_json::to_string(&cs).unwrap();
+  assert_eq!(serde_json::from_str::<ColorSpace>(&json).unwrap(), cs);
+
+  let prg = ProgressionOrder::Rpcl;
+  let json = serde_json::to_string(&prg).unwrap();
+  assert_eq!(
+    serde_json::from_str::<ProgressionOrder>(&json).unwrap(),
+    prg
+  );
+}
+
+#[cfg(all(feature = "serde", feature = "image"))]
+#[test]
+fn serde_image_data_round_trip() {
+  let data = crate::ImageData {
+    width: 2,
+    height: 1,
+    format: ::image::ExtendedColorType::Rgb8,
+    data: crate::ImagePixelData::Rgb8(vec![1, 2, 3, 4, 5, 6]),
+  };
+  let json = serde_json::to_string(&data).unwrap();
+  let back: crate::ImageData = serde_json::from_str(&json).unwrap();
+  assert_eq!(back, data);
+}

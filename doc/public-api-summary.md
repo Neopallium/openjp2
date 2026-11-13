@@ -242,8 +242,20 @@ the serial paths, with conservative fallbacks.
 `default = ["rayon", "image"]`; `rayon` (parallel tile decode/encode),
 `threads` (alias of rayon), `event-handlers` (C-style callbacks),
 `image` (image-crate interop), `simd` (`wide`-crate DWT kernels, off by
-default), `openjpeg-version-string` (byte-identical COM comment to the C
-reference).
+default), `serde` (Serialize/Deserialize for `ImageData`,
+`ImagePixelData`, `DecodeArea`, `DecodeLimits`, `ColorSpace` and
+`ProgressionOrder`; forwards to `image/serde`), `openjpeg-version-string`
+(byte-identical COM comment to the C reference).
+
+### jpeg2k-compatibility additions
+
+The 0.7.x line also carries the additive API that `jpeg2k` re-exports:
+`Image::save_as_file`/`save_as_file_with` (extension-detected format),
+`Image::x_offset()`/`y_offset()` + `Debug`, `CoreImageComp`'s
+`width`/`height`/`precision`/`bpp`/`is_alpha`/`is_signed` accessors,
+`DecodeArea`'s `Default` + `FromStr` (`"x0:y0:x1:y1"`), `Debug` on the
+codestream index/info structs, `ImagePixelData::len()`/`is_empty()`, and
+`Decoder::header()` (the header image after `read_header`).
 
 ## Sibling crates
 

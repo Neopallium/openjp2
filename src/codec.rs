@@ -449,6 +449,12 @@ impl Decoder {
     }
   }
 
+  /// The main-header image read by [`Self::read_header`] (its component
+  /// data is empty), if it has been called.
+  pub fn header(&self) -> Option<&CoreImage> {
+    self.header.as_ref()
+  }
+
   /// Reads the codestream header.  Must be called before `decode`,
   /// `decode_tile_data` and `get_decoded_tile`.
   pub fn read_header(&mut self, stream: &mut Stream) -> Result<HeaderImage> {

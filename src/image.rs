@@ -558,6 +558,36 @@ impl CoreImage {
 }
 
 impl CoreImageComp {
+  /// Component width in samples.
+  pub fn width(&self) -> u32 {
+    self.w
+  }
+
+  /// Component height in samples.
+  pub fn height(&self) -> u32 {
+    self.h
+  }
+
+  /// Sample precision in bits.
+  pub fn precision(&self) -> u32 {
+    self.prec
+  }
+
+  /// Bits per sample as declared.
+  pub fn bpp(&self) -> u32 {
+    self.bpp
+  }
+
+  /// Whether this component is the alpha channel.
+  pub fn is_alpha(&self) -> bool {
+    self.alpha != 0
+  }
+
+  /// Whether the sample data is signed.
+  pub fn is_signed(&self) -> bool {
+    self.sgnd != 0
+  }
+
   /// Component data scaled to unsigned 8-bit values (precision-aware).
   #[cfg(feature = "image")]
   pub fn data_u8(&self) -> impl Iterator<Item = u8> + '_ {

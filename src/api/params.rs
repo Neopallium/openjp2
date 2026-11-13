@@ -8,6 +8,7 @@ use crate::consts::J2K_MAXRLVLS;
 
 /// The colour space a codestream declares (the JP2 `colr`/COD value).
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ColorSpace {
   /// Unknown / not declared.
   #[default]
@@ -53,6 +54,7 @@ impl From<ColorSpace> for OPJ_COLOR_SPACE {
 /// Packet progression order (mirrors the C `ProgressionOrder` values).
 /// Packet progression order (the COD marker's progression field).
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ProgressionOrder {
   /// Layer, resolution, component, precinct.
   #[default]
@@ -96,7 +98,8 @@ impl From<ProgressionOrder> for crate::c_api_types::OPJ_PROG_ORDER {
 }
 
 /// Rectangular decode area in image coordinates (`x0 <= x < x1`).
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DecodeArea {
   /// Inclusive x origin.
   pub start_x: u32,
@@ -120,6 +123,24 @@ impl DecodeArea {
   }
 }
 
+impl std::str::FromStr for DecodeArea {
+  type Err = std::num::ParseIntError;
+
+  /// Parses `"x0:y0:x1:y1"`; missing fields default to `0`.
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let dims = s
+      .splitn(4, ':')
+      .map(|v| v.parse::<u32>())
+      .collect::<Result<Vec<u32>, _>>()?;
+    Ok(Self::new(
+      dims.first().copied().unwrap_or(0),
+      dims.get(1).copied().unwrap_or(0),
+      dims.get(2).copied().unwrap_or(0),
+      dims.get(3).copied().unwrap_or(0),
+    ))
+  }
+}
+
 /// Optional resource limits for decoding untrusted input.
 ///
 /// These guards exist only in the Rust core API (the C-ABI mirror keeps
@@ -135,6 +156,7 @@ impl DecodeArea {
 /// corrupt header cannot drive a multi-gigabyte allocation out of a tiny
 /// input; set it explicitly for larger images.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DecodeLimits {
   /// Maximum decoded image width in pixels (0 = unlimited).
   pub max_image_width: u32,

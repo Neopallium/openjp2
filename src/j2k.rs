@@ -59,7 +59,7 @@ pub struct PacketInfo {
 
 /// Owned codestream index (marker/tile-part/packet layout of a decoded
 /// codestream; `Decoder::cstr_index`).
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct CodestreamIndex {
   /// Byte offset of the start of the main header (the SOC marker).
   pub main_head_start: i64,
@@ -102,7 +102,7 @@ impl CodestreamIndex {
 }
 
 /// One tile's codestream-index entry.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct CodestreamTileIndex {
   /// Tile number.
   pub tileno: u32,
@@ -123,7 +123,7 @@ pub struct CodestreamTileIndex {
 }
 
 /// Safe, owned codestream info v2 (the C mirror is built by the capi crate).
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct CstrInfoV2 {
   /// Number of components.
   pub nbcomps: u32,
@@ -144,7 +144,7 @@ pub struct CstrInfoV2 {
 }
 
 /// Per-component default-tile coding parameters of the codestream header.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct CstrTccpInfoV2 {
   /// Coding style.
   pub csty: u32,
@@ -159,7 +159,7 @@ pub struct CstrTccpInfoV2 {
 }
 
 /// Per-component tccp info of the codestream header.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CstrCompInfoV2 {
   /// Component coding style.
   pub csty: u32,

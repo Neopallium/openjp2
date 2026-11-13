@@ -8,6 +8,7 @@ use core::convert::TryFrom;
 
 /// Pixel data in a canonical 8/16-bit layout.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ImagePixelData {
   /// 8-bit luminance.
   L8(Vec<u8>),
@@ -29,6 +30,7 @@ pub enum ImagePixelData {
 
 /// Decoded pixels with their colour format.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ImageData {
   /// Image width in pixels.
   pub width: u32,
@@ -38,6 +40,22 @@ pub struct ImageData {
   pub format: ::image::ExtendedColorType,
   /// The pixel data.
   pub data: ImagePixelData,
+}
+
+impl ImagePixelData {
+  /// Number of samples (bytes for the 8-bit layouts, words for the
+  /// 16-bit layouts).
+  pub fn len(&self) -> usize {
+    match self {
+      Self::L8(v) | Self::La8(v) | Self::Rgb8(v) | Self::Rgba8(v) => v.len(),
+      Self::L16(v) | Self::La16(v) | Self::Rgb16(v) | Self::Rgba16(v) => v.len(),
+    }
+  }
+
+  /// Whether the pixel data is empty.
+  pub fn is_empty(&self) -> bool {
+    self.len() == 0
+  }
 }
 
 impl Image {
