@@ -21,6 +21,10 @@ exclude = [
   "fuzz/*",
   "wasm/*",
   "cli/*",
+  # dev/CI-only files (kept in the repository, not in the crate)
+  "examples/*",
+  "scripts/*",
+  ".github/*",
 ]
 
 [workspace]
@@ -67,15 +71,4 @@ openjpeg-version-string = []
 # kernels run on the generic build without it).  Off by default.
 simd = ["dep:wide"]
 
-[[example]]
-name = "bench_decode"
-path = "examples/bench_decode.rs"
-
-[[example]]
-name = "simple_decode"
-path = "examples/simple_decode.rs"
-
-[[example]]
-name = "simple_encode"
-path = "examples/simple_encode.rs"
 required-features = ["image"]

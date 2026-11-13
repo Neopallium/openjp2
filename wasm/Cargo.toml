@@ -10,7 +10,7 @@ keywords = ["j2k", "jp2", "jpeg2000", "image", "wasm"]
 edition = "2021"
 autobins = false
 
-exclude = ["examples/*"]
+exclude = ["examples/*", "playground/*"]
 
 [workspace]
 
