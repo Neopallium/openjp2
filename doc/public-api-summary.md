@@ -251,7 +251,7 @@ default), `serde` (Serialize/Deserialize for `ImageData`,
 
 The 0.7.x line also carries the additive API that `jpeg2k` re-exports:
 `Image::save_as_file`/`save_as_file_with` (extension-detected format),
-`Image::x_offset()`/`y_offset()` + `Debug`, `CoreImageComp`'s
+`Image::x_offset()`/`y_offset()`/`orig_width()`/`orig_height()` + `Debug`, `CoreImageComp`'s
 `width`/`height`/`precision`/`bpp`/`is_alpha`/`is_signed` accessors,
 `DecodeArea`'s `Default` + `FromStr` (`"x0:y0:x1:y1"`), `Debug` on the
 codestream index/info structs, `ImagePixelData::len()`/`is_empty()`, and

@@ -54,6 +54,18 @@ impl Image {
     self.core.y1.wrapping_sub(self.core.y0)
   }
 
+  /// Width of the full image extent (`x1 - x0`), like [`Self::width`];
+  /// kept under the `jpeg2k`-compatible name.
+  pub fn orig_width(&self) -> u32 {
+    self.width()
+  }
+
+  /// Height of the full image extent (`y1 - y0`), like [`Self::height`];
+  /// kept under the `jpeg2k`-compatible name.
+  pub fn orig_height(&self) -> u32 {
+    self.height()
+  }
+
   /// The image colour space.
   pub fn color_space(&self) -> ColorSpace {
     self.core.color_space

@@ -2801,6 +2801,7 @@ fn image_origin_accessors_and_debug() {
   };
   let image = Image::from_core_image(core);
   assert_eq!((image.x_offset(), image.y_offset()), (7, 9));
+  assert_eq!((image.orig_width(), image.orig_height()), (64, 32));
   let rendered = format!("{:?}", image);
   assert!(rendered.contains("width") && rendered.contains("x_offset"));
 }
