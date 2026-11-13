@@ -9,10 +9,11 @@ one definition of the types that appear at the C boundary:
   codec parameters, stream parameters) — `ctypes/src/lib.rs`
 - the `openjpeg.h` constants and enums — `ctypes/src/consts.rs`
 
-The pure-Rust core re-exports these under `openjp2::ffi` (the only place
-C types appear in the core's public namespace); `openjp2-capi` uses them
-directly to implement the `#[no_mangle]` ABI. Nothing else should need
-this crate.
+The core itself is C-name-free: it uses these types only behind the
+deliberate `ColorSpace`/`ProgressionOrder` conversion impls and the
+C-shaped low-level parameter structs, never in its public signatures.
+`openjp2-capi` uses them directly to implement the `#[no_mangle]` ABI.
+Nothing else should need this crate.
 
 ## License
 

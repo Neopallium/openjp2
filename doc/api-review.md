@@ -1,5 +1,10 @@
 # openjp2 Public API Review & Proposal
 
+> Historical review record: the statuses below are kept up to date,
+> but the final layout of the public surface is documented in
+> `doc/public-api-summary.md` (the C mirrors ended up in the separate
+> `openjp2-ctypes` crate, not an `openjp2::ffi` module).
+
 Goal: make the `openjp2` crate's public API follow Rust best practices and
 align it with the [`jpeg2k`](https://crates.io/crates/jpeg2k) crate
 (v0.10.1, same author) so that `jpeg2k` can become a thin wrapper /
@@ -156,12 +161,15 @@ the crate root.
 - `Stream` (Read/Write/Seek) — keep, add `from_reader` (PR #6's idea).
 - `CodestreamIndex`/`CstrInfoV2`/`CstrTccpInfoV2` safe structs — keep,
   wrap them in the accessor types above.
-- The C mirror types move behind a `pub mod ffi` (`openjp2::ffi::*`)
-  instead of `pub use c_api_types::*`, so the C names stop polluting the
-  default namespace while staying available for C-ABI users.
-- Cargo features: rename/align with `jpeg2k` — `default = ["image",
-  "threads", "file-io"]` where `threads` = rayon and `image` = the
-  `image`-crate interop (`ImageData`, `DynamicImage` conversions).
+- The C mirror types move out of the core into the shared
+  `openjp2-ctypes` crate (types + `openjpeg.h` constants), consumed by
+  `openjp2-capi`; the core's public namespace is C-name-free (the
+  temporary `openjp2::ffi` idea was dropped in favour of the separate
+  crate).
+- Cargo features: `default = ["rayon", "image"]`; `rayon` = parallel
+  tile decode/encode (aliased as `threads`), `image` = the `image`-crate
+  interop (`ImageData`, `DynamicImage` conversions), plus
+  `event-handlers`, `simd` and `openjpeg-version-string`.
 
 ### 3.5 Making `jpeg2k` a thin wrapper
 
@@ -178,7 +186,8 @@ Migration path (non-breaking first, breaking second):
 1. Add `Error`/`Result` and the new types alongside the old API; deprecate
    the `OPJ_BOOL`-returning methods with `#[deprecated]`.
 2. Add the `Image::from_*` one-shot API + `DecodeParameters` builder.
-3. Move the C mirrors to `pub mod ffi` and re-export for compatibility.
+3. Move the C mirrors out of the core (final design: a separate
+   `openjp2-ctypes` crate; the earlier `pub mod ffi` plan was dropped).
 4. Release 0.7 with the old API removed (0.7 is unpublished, so the breaking
    changes land there directly).
 
@@ -212,13 +221,13 @@ drops `OPJ_BOOL` internally.
 |---|---|
 | `Error`/`Result` | ✅ `openjp2::{Error, Result}` (`src/api.rs`) |
 | `ColorSpace` | ✅ safe enum with `From` conversions |
-| `DecodeArea`/`DecodeParameters` builder | ✅ (reduce/layers/strict/decode_area/ignore_pclr_cmap_cdef) |
+| `DecodeArea`/`DecodeParameters` builder | ✅ (reduce/layers/strict/threads/limits/decode_area/ignore_pclr_cmap_cdef) |
 | `Image` one-shot API | ✅ from_bytes/from_bytes_with/from_file/from_file_with + accessors + into_core_image |
 | `EncodeParameters` builder + `Image::encode`/`encode_jp2` | ✅ (num_resolutions/num_layers/irreversible/codeblock sizes/progression_order/tile_size/layer_rate/comment) |
 | `image`-crate interop | ✅ behind the `image` feature: `ImageData`/`ImagePixelData`, `get_pixels`, `TryFrom<&Image> for DynamicImage` |
 | Index/info accessors | ✅ `CodestreamIndex`/`CstrInfoV2` jpeg2k-style accessors |
 | `DumpImage` | ✅ (decode/index/info/dump text) |
-| `ffi` module for the C mirrors | ✅ `openjp2::ffi` (the old glob re-exports stay for compatibility) |
+| C mirrors | ✅ moved to the separate `openjp2-ctypes` crate (the `ffi` module was dropped; the core is C-name-free) |
 | `threads` feature alias | ✅ (`threads = ["rayon"]`) |
 | jpeg2k thin-wrapper PoC | ✅ `/tmp/jpeg2k-openjp2` runs jpeg2k's README/convert/save/dump examples over openjp2 with no `openjpeg-sys` |
 | `Codec` Result-ification + deprecations | ✅ deprecations done (47c60c7f); the `Result`-typed `Codec` itself stays deferred (breaking-change prep, migration steps 1-2) |

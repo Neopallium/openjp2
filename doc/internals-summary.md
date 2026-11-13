@@ -1,6 +1,6 @@
 # openjp2 — Internal Structure Summary
 
-Written 2026-11-10, against HEAD `136dfd0d`. Complements `doc/code-outline.md`
+Updated 2026-11-13, against 0.7.0 (HEAD `276d0689`). Complements `doc/code-outline.md`
 (a module↔spec map) with a data-flow view of the two pipelines. The code is a
 faithful, `#![forbid(unsafe_code)]` port of OpenJPEG 2.5.x; module names map
 1:1 to the C files (`src/lib/openjp2/*.c`).
@@ -11,14 +11,13 @@ faithful, `#![forbid(unsafe_code)]` port of OpenJPEG 2.5.x; module names map
 |---|---|
 | `types.rs` | Central data model: `Cp`/`Tcp`/`Tccp` (coding parameters), `Tcd`/`TcdTile`/`TcdTileComp`/`TcdResolution`/`TcdBand`/`TcdPrecinct` (tile geometry), `CodeBlocks::Enc(Vec<TcdCblkEnc>)`/`Dec(Vec<TcdCblkDec>)` (per-precinct codeblocks), `TileBuf` (owned `Vec<i32>` sample buffer), `J2k`/`Jp2` codec state, `EncoderParameters`/`DecoderParameters`. |
 | `stream.rs` | `Stream`: `BufReader`/`BufWriter` over `Box<dyn ReadSeek/WriteSeek>`, tracked byte offset, `get_bytes_left` vs the declared length, seek. The C-callback adapter lives in the capi crate. |
-| `cio.rs` | Big-endian fixed-width reads/writes (`opj_read_bytes`, `opj_write_bytes`, float/double). |
+| `cio.rs` | Big-endian fixed-width reads/writes (`read_bytes`, `write_bytes`, float/double). |
 | `bio.rs` | Bit-level I/O (used by tier-2 packet headers and tag trees). |
 | `mqc.rs` | MQ arithmetic coder, enc + dec, MQ + raw/bypass modes. Owns `Vec<Cell<u8>>` (payload buffer; `buf[0]` is the encode sentinel, re-zeroed in `init_enc`); 19 context states padded to a 256-entry value array for branch-free indexing. |
 | `tgt.rs` | Tag trees (encode/decode) for inclusion/msb packets. |
 | `t1_luts.rs`, `t1_ht_luts.rs` | Generated lookup tables (contexts, NMSEDEC, ZC/SC/SPB, HT VLC). |
 | `math.rs` | Wrapping/ceildiv/clamp helpers (the C's overflow semantics). |
 | `event.rs` | `EventMgr`: `Mutex`-wrapped `FnMut(&str)` sinks per level (Sync for rayon workers). |
-| `function_list.rs` | `ProcedureList<P>`: ordered callbacks (the C's `opj_procedure_list_t`). |
 | `par.rs` | Rayon helpers (`map_collect`, `for_each`, `for_each_chunks_mut`, `for_each_range`, `configure_pool`); sequential fallbacks when the feature is off. |
 | `sparse_array.rs` | Sparse sample array (HTJ2K blocks): `Vec<Option<Vec<i32>>>` blocks, region read/write with strides. |
 | `mct.rs` | Multi-component transforms: reversible (i32), irreversible (f32 bit-pattern in i32), custom matrices (13-bit fixed point; `invert.rs` provides the LUP inverse). |
@@ -32,7 +31,10 @@ faithful, `#![forbid(unsafe_code)]` port of OpenJPEG 2.5.x; module names map
 | `j2k.rs` | Codestream state machine: every marker read/write handler, main/tile-part header loops, tile decode loop, parallel tile decode/encode drivers, `setup_encoder/decoder`. |
 | `jp2.rs` | JP2 box reader/writer (jp/ ftyp/ jp2h/ ihdr/ colr/ bpcc/ pclr/ cdef/ cmap/ jp2c), colour post-processing (`check_color`, `apply_pclr`, `apply_cdef`). |
 | `codec.rs` | `Decoder`/`Encoder` over the `CodecFormat` enum (`J2k`/`Jp2`), each with an `EventMgr`; shared surface (handlers, `set_threads`, dump, cstr accessors, `get_tile_geometry`) via an internal macro + parallel dispatch hooks. The merged `Codec` handle lives in `openjp2-capi` (`capi/src/codec.rs`). |
-| `api.rs` | The safe high-level API + `catch_unwind` guards around decode/encode drivers. |
+| `api/` | The public `api` module (re-exported at the root): `Image`, the parameter builders, typed errors, the dump driver, image-crate interop, and `catch_unwind` guards around the decode/encode drivers. |
+| `consts.rs` | The C-mirror marker/flag constants under native names (`J2K_MS_*`, `J2K_MAXRLVLS`, …). |
+| `fprintf.rs` | `StringWriter`: the string sink used by the dump text. |
+| `openjpeg.rs` | Crate-private re-export hub for the codec modules (`Stream`, `CoreImage`, …). |
 
 Key structural decisions (recorded so they are not rediscovered):
 - Codeblock payloads live in `tcp.m_data` (the tile-part buffer); each
@@ -49,7 +51,7 @@ Key structural decisions (recorded so they are not rediscovered):
 
 ```
 Image::from_bytes / DumpImage
- └─ decode_stream (catch_unwind)  [api.rs]
+ └─ decode_stream (catch_unwind)  [api/]
      ├─ Decoder::new + setup_decoder + set_decode_limits + strict
      ├─ read_header
      │   ├─ J2K: marker loop (j2k.rs read_header_procedure)
@@ -68,12 +70,12 @@ Image::from_bytes / DumpImage
      │     re-applies JP2 colour post-processing.  Conservative guards:
      │     whole-image/area-covering tiles only, layer/reduce cases fall
      │     back to serial (cross-tile buffer-reuse parity).
-     └─ serial decode (j2k.rs opj_j2k_decode)
+     └─ serial decode (j2k.rs: j2k_decode)
            └─ decode_tiles loop (procedure list)
                 ├─ read_tile_header: tile-part loop → tcp.m_data (Psot-clamped
                 │     read; try_reserve-guarded allocation), SOT/COD/COC/QCD/…
-                ├─ opj_j2k_decode_tile
-                │    ├─ opj_tcd_init_decode_tile: geometry (resolutions/bands/
+                ├─ j2k_decode_tile
+                │    ├─ tcd_init_decode_tile: geometry (resolutions/bands/
                 │    │     precincts/codeblocks, incl. the issue726 stored-
                 │    │     geometry fix), tile buffer sizing (try_reserve)
                 │    ├─ t2 decode (t2.rs + pi.rs): packet headers via bio +
@@ -102,7 +104,7 @@ hard failures.
 
 ```
 Image::encode / encode_jp2 / encode_to_writer
- └─ encode_image* (catch_unwind) [api.rs]
+ └─ encode_image* (catch_unwind) [api/]
      ├─ Encoder::new + setup_encoder (j2k.rs)
      │     • parameter validation (layers 0..=100, numpocs ≤ 32,
      │       res_spec×numresolution shift guard, prog order, prec 1..=31,

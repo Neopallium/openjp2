@@ -1,5 +1,11 @@
 # openjp2 — Proposed Public API & Internal Structure
 
+> **Status note (0.7):** this is the plan record.  Everything below
+> landed except where noted; in particular the `openjp2::ffi` module
+> idea was superseded by the separate `openjp2-ctypes` crate (the
+> core is C-name-free).  See `doc/public-api-summary.md` for the
+> current surface.
+
 Written 2026-11-10. Builds on `doc/public-api-summary.md` (current state),
 `doc/internals-summary.md` (current pipelines) and `doc/api-review.md` (the
 jpeg2k-parity work, mostly landed). The goal of this document: propose the

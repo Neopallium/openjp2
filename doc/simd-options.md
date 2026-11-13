@@ -56,7 +56,7 @@ the current use.
 - New cargo feature `simd` (pass-throughs on the tools and capi
   crates) adding the optional `wide` dependency.
 - A `wide`-based kernel for the 5-3 inverse DWT **vertical pass**
-  (`opj_idwt53_v_simd` in `src/dwt.rs`), processing 4 columns at once
+  (`idwt53_v_simd` in `src/dwt.rs`), processing 4 columns at once
   with `i32x4`:
   - reads the plain column layout (rows 0..sn-1 = low, sn.. = high),
     writes the interleaved result to a scratch buffer and copies back -

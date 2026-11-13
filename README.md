@@ -1,5 +1,11 @@
 # openjp2
 
+[![CI](https://github.com/Neopallium/openjp2/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Neopallium/openjp2/actions/workflows/ci.yml)
+[![Pages](https://github.com/Neopallium/openjp2/actions/workflows/pages.yml/badge.svg?branch=master)](https://github.com/Neopallium/openjp2/actions/workflows/pages.yml)
+[![crates.io](https://img.shields.io/crates/v/openjp2.svg)](https://crates.io/crates/openjp2)
+[![docs.rs](https://docs.rs/openjp2/badge.svg)](https://docs.rs/openjp2)
+[![license](https://img.shields.io/crates/l/openjp2.svg)](LICENSE)
+
 A pure-Rust port of [OpenJPEG](https://github.com/uclouvain/openjpeg)
 (the JPEG 2000 reference implementation), with a safe high-level API,
 a C ABI drop-in for `libopenjp2`, and CLI tools.
@@ -12,8 +18,33 @@ wasm/       the openjp2-wasm crate: WASM bindings + the GitHub-Pages playground
 cli/        the openjp2-cli crate: modern compress / decompress / dump tools
 tools/      the openjp2-tools crate: opj_compress / opj_decompress / opj_dump / ... (C parity)
 openjpeg/   the C/CMake reference project (upstream openjpeg, tests, test data)
-doc/        design spec, code outline, API review
+doc/        design spec, public-API summary, code outline, internals, differences, ...
 ```
+
+## Playground
+
+Try it in the browser: **<https://neopallium.github.io/openjp2/>** — the
+[`openjp2-wasm`](wasm/) playground runs the pure-Rust decoder/encoder
+entirely client-side via WebAssembly:
+
+- **Decode** — drop a `.jp2` / `.j2k` file to preview it (multi-tile
+  codestreams decode in parallel), zoom to 1:1 pixels, switch between the
+  codestream's resolutions, and cap quality layers or a decode area.
+- **Encode** — drop a PNG/JPEG/WebP/... image and download JP2/J2K;
+  tune lossless/lossy, resolutions, quality layers (with a rate ladder),
+  progression order, tiles, ratio and comment.  The panel shows the
+  *effective* settings, warns about conflicts, and reports what the
+  produced file's header actually declares.
+- **Explorer** — every byte of the codestream labelled (boxes, markers,
+  tile-parts, packets), a structure tree whose `COD` node lists the
+  progression order / layer / resolution structure and whose tile-parts
+  expand into individual packets, per-layer byte-size thresholds, and a
+  truncation slider (0.01% steps plus ±1/10/100/1k byte buttons) that
+  re-decodes live to show how much of the image survives.
+
+No uploads: decoding, encoding and inspection all happen in the browser.
+Where the page can be cross-origin isolated, the optional threaded build
+(WebAssembly rayon threads) can be enabled from the Decode panel.
 
 ## Using the safe API
 
@@ -44,8 +75,10 @@ fn main() -> Result<()> {
 ```
 
 The API mirrors the [`jpeg2k`](https://crates.io/crates/jpeg2k) crate so it
-can act as a thin wrapper (see `doc/api-review.md`); the C-ABI mirror types
-are available under the `ffi` module.
+can act as a thin wrapper (see `doc/api-review.md`).  The core's public API
+is C-name-free: the C-ABI mirror types live in the separate
+[`openjp2-ctypes`](ctypes/) crate, and the C functions in
+[`openjp2-capi`](capi/).
 
 ## Parallelism
 
@@ -80,7 +113,9 @@ the CLI tools keep the C default (strict).
 
 Build without rayon for no-rayon targets: `cargo build --no-default-features --features image`.
 The WASM bindings (crate `openjp2-wasm`) build the core with
-`--no-default-features` for `wasm32-unknown-unknown`.
+`--no-default-features` for `wasm32-unknown-unknown`; their optional
+`threads` feature adds a `wasm-bindgen-rayon` worker pool (needs
+SharedArrayBuffer + cross-origin isolation).
 
 ## Development
 
@@ -93,13 +128,19 @@ The WASM bindings (crate `openjp2-wasm`) build the core with
   `openjpeg/data/` (untracked).
 - Gates: `cargo test --workspace` (unit + tools conformance/nonreg),
   `bash scripts/check_ctest.sh`, `cd capi && cargo test`.
-- `OPJ_NUM_THREADS` sizes the rayon pool (first successful global
-  configuration wins).
+- `RAYON_NUM_THREADS` sizes the rayon pool; the C-parity tools also
+  honour `OPJ_NUM_THREADS` (like the upstream CLIs).
 
 ## Docs
 
 - `doc/jpeg2000-design-spec.md` — JPEG 2000 formats & algorithms (no code refs)
 - `doc/code-outline.md` — module map onto the spec and the pipelines
+- `doc/public-api-summary.md` — the current public API map
+- `doc/internals-summary.md` — internal module/data-flow summary
 - `doc/api-review.md` — public API review + the jpeg2k alignment plan
 - `doc/differences.md` — intentional divergences from the C reference
+- `doc/component-data-types.md` — component data representations
 - `doc/simd-options.md` — SIMD options, measurements, and the `simd` feature
+- `doc/redesign-proposal.md` — the 0.7 redesign plan record
+- `doc/jpeg2000-design-spec.md` — the format/algorithm spec (also embedded in
+  the crate docs as the `design_spec` module)

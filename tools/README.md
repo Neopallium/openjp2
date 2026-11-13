@@ -14,8 +14,9 @@ the upstream CLI's parameters and output formats so the ctest
 non-regression suite can run against them byte-for-byte.
 
 > **Not for release use.** This crate exists to gate C parity (see
-> `scripts/check_ctest.sh`); it is not published. A modern user-facing
-> CLI (`openjp2-cli`) is planned separately.
+> `scripts/check_ctest.sh`); it is not published. The modern user-facing
+> CLI lives in the sibling `openjp2-cli` crate (`cli/`): `compress`,
+> `decompress` and `dump` subcommands without C-parity parameters.
 
 ## Build
 

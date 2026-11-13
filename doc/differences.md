@@ -91,13 +91,28 @@ a literal transcription.  This page lists the intentional divergences.
 ## API and layout
 
 - The C-ABI mirror types keep the C spellings (`opj_dparameters_t`, ...)
-  behind `openjp2::ffi` / `openjp2_capi::*`; the safe API
-  (`Image`, `DecodeParameters`, `EncodeParameters`, ...) is new and
-  deliberately not C-shaped.
+  only in the separate `openjp2-ctypes` crate (types + constants) and
+  `openjp2-capi` (the `#[no_mangle]` functions); the core's public API is
+  C-name-free.  The safe API (`Image`, `DecodeParameters`,
+  `EncodeParameters`, ...) is new and deliberately not C-shaped.
+- The core also exposes a *Rust-only* codestream-structure API the C
+  library does not provide: `Decoder::cstr_index()` returns packet
+  entries with their identity (`PacketInfo { start_pos, end_ph_pos,
+  end_pos, disto, layno, resno, compno, precno }`), plus helpers
+  `CodestreamIndex::packets()` and `layer_byte_thresholds()`.  The C's
+  `opj_packet_info_t` array is allocated/freed but never populated, so
+  this is an intentional extension (the C-ABI mirror stays unchanged).
 - `opj_stream_private` maps to the Rust `Stream` (reader/writer adapters);
   C custom streams round-trip through callback shims in the capi crate.
 - The `opj_codec_private_t` layout is internal; only the opaque C handle
   is stable.
+- The C tools (`opj_compress` / `opj_decompress` / `opj_dump` byte-parity)
+  live in `openjp2-tools`; the `openjp2-cli` crate is a separate modern
+  front-end (no C-parity parameters) and `openjp2-wasm` provides the
+  browser bindings and the playground.
+- The decoder does not validate the POC marker's progression order at
+  parse time (like the C): an invalid value flows through, and the
+  decode-time packet walk is what matters.
 
 ## Decode strictness
 
