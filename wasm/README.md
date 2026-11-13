@@ -5,6 +5,41 @@ Rust API of [`openjp2`](https://crates.io/crates/openjp2) — **not** the
 legacy C ABI — so a browser can decode JPEG 2000 (`JP2`/`J2K`) files
 without native code.
 
+## Playground
+
+Try it in the browser: **<https://neopallium.github.io/openjp2/>** — the
+playground runs the pure-Rust decoder/encoder entirely client-side via
+WebAssembly:
+
+- **Decode** — drop a `.jp2` / `.j2k` file to preview it (multi-tile
+  codestreams decode in parallel), zoom to 1:1 pixels, switch between the
+  codestream's resolutions, and cap quality layers or a decode area.
+- **Encode** — drop a PNG/JPEG/WebP/... image and download JP2/J2K; tune
+  lossless/lossy, resolutions, quality layers (with a rate ladder),
+  progression order, tiles, ratio and comment.  The panel shows the
+  *effective* settings, warns about conflicts, and reports what the
+  produced file's header actually declares.
+- **Explorer** — every byte of the codestream labelled (boxes, markers,
+  tile-parts, packets), a structure tree whose `COD` node lists the
+  progression order / layer / resolution structure and whose tile-parts
+  expand into individual packets, per-layer byte-size thresholds, and a
+  truncation slider (0.01% steps plus +/-1/10/100/1k byte buttons) that
+  re-decodes live to show how much of the image survives.
+
+No uploads: decoding, encoding and inspection all happen in the browser.
+Where the page can be cross-origin isolated, the optional threaded build
+(WebAssembly rayon threads) can be enabled from the Decode panel.
+
+`playground/` holds the site source; `playground/build.sh serve` runs it
+locally (with the COOP/COEP headers).  All decode/encode work runs in a
+Web Worker (`worker.js`) so the page never freezes during a decode; where
+module workers are unavailable the page falls back to running the wasm on
+the main thread.
+
+The site is published by `.github/workflows/pages.yml` on every push that
+touches `wasm/**` or `src/**` (requires Pages → "GitHub Actions" in the
+repository settings).
+
 ## Build
 
 ```sh
@@ -71,41 +106,6 @@ additionally fetches with `cache: "no-store"` (and registers with
 `updateViaCache: "none"`), so a new deployment is picked up immediately
 instead of being masked by GitHub Pages' 10-minute HTTP cache; the very
 first visit (before the worker is active) may still need one reload.
-
-## Playground
-
-Try it in the browser: **<https://neopallium.github.io/openjp2/>** — the
-playground runs the pure-Rust decoder/encoder entirely client-side via
-WebAssembly:
-
-- **Decode** — drop a `.jp2` / `.j2k` file to preview it (multi-tile
-  codestreams decode in parallel), zoom to 1:1 pixels, switch between the
-  codestream's resolutions, and cap quality layers or a decode area.
-- **Encode** — drop a PNG/JPEG/WebP/... image and download JP2/J2K; tune
-  lossless/lossy, resolutions, quality layers (with a rate ladder),
-  progression order, tiles, ratio and comment.  The panel shows the
-  *effective* settings, warns about conflicts, and reports what the
-  produced file's header actually declares.
-- **Explorer** — every byte of the codestream labelled (boxes, markers,
-  tile-parts, packets), a structure tree whose `COD` node lists the
-  progression order / layer / resolution structure and whose tile-parts
-  expand into individual packets, per-layer byte-size thresholds, and a
-  truncation slider (0.01% steps plus +/-1/10/100/1k byte buttons) that
-  re-decodes live to show how much of the image survives.
-
-No uploads: decoding, encoding and inspection all happen in the browser.
-Where the page can be cross-origin isolated, the optional threaded build
-(WebAssembly rayon threads) can be enabled from the Decode panel.
-
-`playground/` holds the site source; `playground/build.sh serve` runs it
-locally (with the COOP/COEP headers).  All decode/encode work runs in a
-Web Worker (`worker.js`) so the page never freezes during a decode; where
-module workers are unavailable the page falls back to running the wasm on
-the main thread.
-
-The site is published by `.github/workflows/pages.yml` on every push that
-touches `wasm/**` or `src/**` (requires Pages → "GitHub Actions" in the
-repository settings).
 
 ## Example
 
