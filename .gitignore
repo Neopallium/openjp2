@@ -47,9 +47,8 @@ __pycache__/
 # retained locally, untracked, for reference).
 /RESUME-session.md
 /open-findings.md
-/review_2.md
-/review_3.md
-/plan-finishOpenjpegRustSafePort.prompt.md
+/review_*.md
+/plan-*.prompt.md
 
 # Generated wasm-bindgen glue for the playground (build with
 # wasm/playground/build.sh; pkg-mt is the threaded variant).
