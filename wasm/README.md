@@ -74,47 +74,34 @@ first visit (before the worker is active) may still need one reload.
 
 ## Playground
 
-`playground/` is the GitHub-Pages site (also served locally by
-`playground/build.sh serve`):
+Try it in the browser: **<https://neopallium.github.io/openjp2/>** — the
+playground runs the pure-Rust decoder/encoder entirely client-side via
+WebAssembly:
 
-- **Decode** — drop a JP2/J2K file to preview it on a canvas (multi-tile
-  codestreams decode in parallel); settings: strict mode, quality layers,
-  **resolution switching** (decode any of the codestream's DWT pyramid
-  levels with one click) and — under *advanced* — a decode-area window
-  and the ignore-pclr switch.
-- **Encode** — drop any browser-readable image to encode it to JP2/J2K;
-  settings: lossless/lossy transform, container, resolution count,
-  quality layers, progression order, and — under *advanced* — tile size,
-  per-layer rates, compression ratio and a COM comment.  Every setting
-  has a tooltip and a `?` badge with a longer explanation.  The panel
-  shows the *effective* configuration (including the automatic layer
-  ladder when no rates are given), warns about conflicting settings
-  (e.g. a `layers` count that a rates list overrides), and after
-  encoding reports what the produced file's header actually declares.
-- **Explorer** — a structural tree of the file (JP2 boxes → codestream
-  markers → tile-parts; the COD node lists the progression order, layer
-  and resolution counts, code-block size and transform, and each
-  tile-part expands into its packets grouped layer → resolution →
-  component with byte ranges) linked
-  bidirectionally with the hex view (click a tree node to highlight its
-  bytes, click a byte to highlight its tree node), a byte-level hex view
-  where **every byte** is colour-coded and labelled with the part of the
-  stream it belongs to (click one for its meaning and a link into the
-  JPEG 2000 spec; unrecognized bytes are marked corrupt), a per-layer
-  byte-size table (how large a truncated file must be to fully decode N
-  quality layers; clicking a row sets the truncation point), buttons
-  that truncate at each level of the progression order's outermost
-  dimension (layer for LRCP, resolution for RLCP/RPCL, precinct for
-  PCRL, component for CPRL), and a
-  truncation control — a 0.01%-step slider, a byte-length field,
-  ±1/10/100/1k byte buttons and size presets (500 B … 1 MiB) — that cuts
-  the codestream and re-decodes it live into the preview (debounced, with
-  in-place hex/tree updates), demonstrating the lenient decoder's
-  tolerance for truncated files.
+- **Decode** — drop a `.jp2` / `.j2k` file to preview it (multi-tile
+  codestreams decode in parallel), zoom to 1:1 pixels, switch between the
+  codestream's resolutions, and cap quality layers or a decode area.
+- **Encode** — drop a PNG/JPEG/WebP/... image and download JP2/J2K; tune
+  lossless/lossy, resolutions, quality layers (with a rate ladder),
+  progression order, tiles, ratio and comment.  The panel shows the
+  *effective* settings, warns about conflicts, and reports what the
+  produced file's header actually declares.
+- **Explorer** — every byte of the codestream labelled (boxes, markers,
+  tile-parts, packets), a structure tree whose `COD` node lists the
+  progression order / layer / resolution structure and whose tile-parts
+  expand into individual packets, per-layer byte-size thresholds, and a
+  truncation slider (0.01% steps plus +/-1/10/100/1k byte buttons) that
+  re-decodes live to show how much of the image survives.
 
-All decode/encode work runs in a Web Worker (`worker.js`) so the page
-never freezes during a decode; where module workers are unavailable the
-page falls back to running the wasm on the main thread.
+No uploads: decoding, encoding and inspection all happen in the browser.
+Where the page can be cross-origin isolated, the optional threaded build
+(WebAssembly rayon threads) can be enabled from the Decode panel.
+
+`playground/` holds the site source; `playground/build.sh serve` runs it
+locally (with the COOP/COEP headers).  All decode/encode work runs in a
+Web Worker (`worker.js`) so the page never freezes during a decode; where
+module workers are unavailable the page falls back to running the wasm on
+the main thread.
 
 The site is published by `.github/workflows/pages.yml` on every push that
 touches `wasm/**` or `src/**` (requires Pages → "GitHub Actions" in the
