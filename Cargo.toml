@@ -25,6 +25,8 @@ exclude = [
   "examples/*",
   "scripts/*",
   ".github/*",
+  # dev/test data (the docs use doc/example.jp2 instead)
+  "samples/*",
 ]
 
 [workspace]

@@ -22,7 +22,7 @@
 //! fn main() -> Result<()> {
 //!     // One-shot decode (JP2 or J2K, auto-detected; multi-tile codestreams
 //!     // decode tiles in parallel).
-//!     let image = Image::from_file("samples/Hadley_Crater.jp2")?;
+//!     let image = Image::from_file("doc/example.jp2")?;
 //!     println!("{}x{} {:?}", image.width(), image.height(), image.color_space());
 //!     Ok(())
 //! }
@@ -34,7 +34,7 @@
 //! use openjp2::*;
 //!
 //! fn main() -> Result<()> {
-//!     let image = Image::from_file("samples/Hadley_Crater.jp2")?;
+//!     let image = Image::from_file("doc/example.jp2")?;
 //!
 //!     // Raw codestream (J2K); the default 5-3 wavelet is reversible (lossless).
 //!     let codestream: Vec<u8> = image.clone().encode(EncodeParameters::new())?;
@@ -73,7 +73,7 @@
 //!
 //! fn main() -> Result<()> {
 //!     // Inspect the image dimensions without decoding the pixel data.
-//!     let buf = std::fs::read("samples/Hadley_Crater.jp2")?;
+//!     let buf = std::fs::read("doc/example.jp2")?;
 //!     let mut decoder = Decoder::new(J2KFormat::JP2)?;
 //!     let mut stream = Stream::from_bytes(buf);
 //!     let header = decoder.read_header(&mut stream)?;
