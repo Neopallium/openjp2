@@ -1,6 +1,9 @@
 use super::*;
 
 /// A fully decoded JPEG 2000 image (owned pixel data).
+///
+/// `Clone` deep-copies every component buffer; clone only when the
+/// source must survive a by-value encode.
 #[derive(Clone)]
 pub struct Image {
   pub(crate) core: CoreImage,
@@ -29,8 +32,8 @@ impl Image {
     decode_stream(&mut stream, format, &params)
   }
 
-  /// Decode a whole image from a file (feature `file-io`-independent: the
-  /// file is read into memory first).
+  /// Decode a whole image from a file (the file is read into memory
+  /// first; no extra feature is required).
   pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
     Self::from_file_with(path, DecodeParameters::default())
   }

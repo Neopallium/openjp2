@@ -295,6 +295,9 @@ impl DecodeParameters {
   /// Limit the number of worker threads used for this decode (`0` = the
   /// process-wide rayon pool, the default; `n > 0` = a local n-thread pool
   /// for this decode only).  The result is byte-identical either way.
+  /// With the one-shot API the pool lives for this decode only; the
+  /// low-level `Decoder` keeps it for the codec's lifetime.  If the pool
+  /// cannot be built, the ambient pool is used (a warning is logged).
   pub fn threads(mut self, n: usize) -> Self {
     self.threads = n;
     self
@@ -506,7 +509,8 @@ impl EncodeParameters {
 
   /// Append a quality layer with the given compression ratio
   /// (e.g. `20.0` = 20:1); enables rate-distortion ratio allocation (the
-  /// C's `-q` option).
+  /// C's `-r` option; `-q` is PSNR-target allocation and has no safe
+  /// builder — use `low_level()`).
   ///
   /// Layers beyond the 100 supported by the format are silently ignored
   /// (debug builds assert).
@@ -539,7 +543,6 @@ impl EncodeParameters {
     self
   }
 
-  /// Access the underlying low-level parameters.
   /// Mutable access to the low-level C-mirror parameters (advanced
   /// knobs: custom MCT, cinema profiles, ...).
   pub fn low_level(&mut self) -> &mut crate::EncoderParameters {

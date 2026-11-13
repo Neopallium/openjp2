@@ -752,6 +752,14 @@ fn get_pixels_alpha() {
     }
     other => panic!("unexpected {:?}", other),
   }
+  /* alpha_default above the layout range is clamped (G7 / r4-L15). */
+  let clamped = gray
+    .get_pixels(Some(300))
+    .expect("get_pixels clamped alpha");
+  match clamped.data {
+    super::image_conv::ImagePixelData::La8(v) => assert_eq!(&v[0..2], &[7, 255]),
+    other => panic!("unexpected {:?}", other),
+  }
 }
 
 /// Code-block sizes and comment markers through the builder.

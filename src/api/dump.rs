@@ -91,11 +91,18 @@ impl DumpImage {
     self.codec.cstr_info()
   }
 
-  /// The dump text for the given info flag.
+  /// The dump text for the given info flag.  A decoder panic inside the
+  /// dump is contained (the panic message becomes the dump text) instead
+  /// of aborting the host, consistent with the crate's decode policy.
   pub fn dump(&self, info_flag: i32) -> String {
-    let mut out = String::new();
-    self.codec.dump_codec(info_flag, &mut out);
-    out
+    match catch_codec_panic(true, || {
+      let mut out = String::new();
+      self.codec.dump_codec(info_flag, &mut out);
+      Ok(out)
+    }) {
+      Ok(out) => out,
+      Err(err) => err.to_string(),
+    }
   }
 }
 

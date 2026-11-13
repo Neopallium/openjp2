@@ -63,7 +63,13 @@ impl Image {
   ///
   /// `alpha_default` fills a missing alpha channel with a constant value
   /// (jpeg2k-compatible: for a 1/3-component image, an extra alpha
-  /// channel with the given value is emitted).
+  /// channel with the given value is emitted).  Values above the layout
+  /// range are clamped (255 for 8-bit, 65535 for 16-bit).
+  ///
+  /// The image must be fully decoded: every component's data length must
+  /// match its declared `w * h` geometry.  1/3/4-component layouts are
+  /// supported (2 components need an alpha-marked second component);
+  /// SYCC/EYCC/CMYK colour spaces are rejected.
   pub fn get_pixels(&self, alpha_default: Option<u32>) -> Result<ImageData> {
     let comps = &self.core.comps;
     let (width, height) = comps
@@ -89,7 +95,7 @@ impl Image {
       .any(|c| c.data.len() != (c.w as usize) * (c.h as usize))
     {
       return Err(Error::Unsupported(
-        "component data is truncated (partial decode); the image must be fully decoded".into(),
+        "component data length does not match the declared geometry; the image must be fully decoded".into(),
       ));
     }
     let max_prec = comps.iter().fold(0u32, |max, c| max.max(c.prec));
@@ -105,7 +111,7 @@ impl Image {
         if let Some(alpha) = alpha_default {
           (
             ::image::ExtendedColorType::La8,
-            ImagePixelData::La8(comp_u8(r).flat_map(|r| [r, alpha as u8]).collect()),
+            ImagePixelData::La8(comp_u8(r).flat_map(|r| [r, alpha.min(255) as u8]).collect()),
           )
         } else {
           (
@@ -118,7 +124,11 @@ impl Image {
         if let Some(alpha) = alpha_default {
           (
             ::image::ExtendedColorType::La16,
-            ImagePixelData::La16(comp_u16(r).flat_map(|r| [r, alpha as u16]).collect()),
+            ImagePixelData::La16(
+              comp_u16(r)
+                .flat_map(|r| [r, alpha.min(65535) as u16])
+                .collect(),
+            ),
           )
         } else {
           (
@@ -152,7 +162,7 @@ impl Image {
             ImagePixelData::Rgba8(
               comp_u8(r)
                 .zip(comp_u8(g).zip(comp_u8(b)))
-                .flat_map(|(r, (g, b))| [r, g, b, alpha as u8])
+                .flat_map(|(r, (g, b))| [r, g, b, alpha.min(255) as u8])
                 .collect(),
             ),
           )
@@ -175,7 +185,7 @@ impl Image {
             ImagePixelData::Rgba16(
               comp_u16(r)
                 .zip(comp_u16(g).zip(comp_u16(b)))
-                .flat_map(|(r, (g, b))| [r, g, b, alpha as u16])
+                .flat_map(|(r, (g, b))| [r, g, b, alpha.min(65535) as u16])
                 .collect(),
             ),
           )

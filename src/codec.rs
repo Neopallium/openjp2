@@ -89,12 +89,12 @@ pub struct HeaderImage(CoreImage);
 impl HeaderImage {
   /// Image width in pixels.
   pub fn width(&self) -> u32 {
-    self.0.x1 - self.0.x0
+    self.0.x1.wrapping_sub(self.0.x0)
   }
 
   /// Image height in pixels.
   pub fn height(&self) -> u32 {
-    self.0.y1 - self.0.y0
+    self.0.y1.wrapping_sub(self.0.y0)
   }
 
   /// Number of components.
@@ -321,11 +321,16 @@ impl Decoder {
         return f(self);
       }
       if self.pool.is_none() {
-        self.pool = rayon::ThreadPoolBuilder::new()
+        match rayon::ThreadPoolBuilder::new()
           .num_threads(self.threads)
           .build()
-          .ok()
-          .map(std::rc::Rc::new);
+        {
+          Ok(pool) => self.pool = Some(std::rc::Rc::new(pool)),
+          Err(err) => log::warn!(
+            "cannot build the {}-thread decode pool ({err}); using the ambient pool",
+            self.threads
+          ),
+        }
       }
       match &self.pool {
         Some(pool) => {
