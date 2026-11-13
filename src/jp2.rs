@@ -1775,12 +1775,33 @@ fn jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpR
   while !buf.is_empty() {
     // Try reading box header.
     if let Err(e) = header.read(&mut buf, 0) {
-      let msg = format!("Stream error while reading JP2 Header box: {}", e);
-      event_msg!(p_manager, EVT_ERROR, &msg);
+      /* The C logs a box-reader diagnostic and then the caller's generic
+      line; keep both messages (the generic reader returns text, not an
+      event). */
+      let detail = if e.contains("Cannot handle box sizes") {
+        "Cannot handle box sizes higher than 2^32"
+      } else if e.contains("undefined size") {
+        "Cannot handle box of undefined sizes"
+      } else if e.contains("Truncated JP2 XLBox") {
+        "Cannot handle XL box of less than 16 bytes"
+      } else {
+        "Cannot handle box of less than 8 bytes"
+      };
+      event_msg!(p_manager, EVT_ERROR, "{}\\n", detail);
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Stream error while reading JP2 Header box\\n",
+      );
       return Err(());
     }
     if header.length < header.header_length {
-      event_msg!(p_manager, EVT_ERROR, "Box length is inconsistent.\n",);
+      event_msg!(p_manager, EVT_ERROR, "Box length is inconsistent.\\n",);
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Stream error while reading JP2 Header box\\n",
+      );
       return Err(());
     }
     let content_length = header.content_length() as usize;
