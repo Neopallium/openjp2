@@ -9545,9 +9545,8 @@ fn j2k_allocate_tile_element_cstr_index(
   cstr_index
     .tiles
     .resize(nb_of_tiles as usize, CodestreamTileIndex::default());
-  for tile in &mut cstr_index.tiles {
-    tile.markers = Vec::with_capacity(100);
-  }
+  /* The per-tile marker lists grow on demand: preallocating 100 slots per
+  tile cost ~157 MiB at the 65535-tile legal maximum. */
   Ok(())
 }
 
@@ -9976,11 +9975,14 @@ pub(crate) fn j2k_decode_tile_worker(
   reduce: u32,
   strict: bool,
   decode_bounds: Option<&CoreImage>,
+  limits: crate::api::DecodeLimits,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
 ) -> Option<(Tcd, Vec<u32>)> {
   let mut j2k = j2k_create_decompress()?;
   j2k.m_cp = cp.clone();
+  j2k.decode_limits = limits;
+  j2k.m_cp.max_mem = limits.effective_max_mem();
   j2k.m_cp.m_specific_param.m_dec.m_layer = layer;
   j2k.m_cp.m_specific_param.m_dec.m_reduce = reduce;
   j2k.m_private_image = Some(Box::new(header.clone()));
@@ -10139,6 +10141,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
   strict: bool,
   decode_bounds: Option<&CoreImage>,
   merge_image: &CoreImage,
+  limits: crate::api::DecodeLimits,
   stream: &mut Stream,
   p_manager: &mut EventMgr,
   max_mem: u64,
@@ -10283,6 +10286,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
           reduce,
           strict,
           decode_bounds,
+          limits,
           &mut worker_stream,
           &mut manager,
         );

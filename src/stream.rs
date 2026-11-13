@@ -289,6 +289,16 @@ impl Stream {
 
   /// Moves the position forward by `count` bytes.
   pub fn skip(&mut self, count: i64) -> io::Result<i64> {
+    self.skip_inner(count, None)
+  }
+
+  /// [`Self::skip`] with the C's `EVT_INFO "Stream reached its end !"`
+  /// routed through the caller's event manager (the codec call sites).
+  pub(crate) fn skip_events(&mut self, count: i64, p_manager: &EventMgr) -> io::Result<i64> {
+    self.skip_inner(count, Some(p_manager))
+  }
+
+  fn skip_inner(&mut self, count: i64, p_manager: Option<&EventMgr>) -> io::Result<i64> {
     if count < 0 {
       log::trace!("Can't skip with count < 0: {count}");
       return Err(io::Error::other(format!(
@@ -305,7 +315,12 @@ impl Stream {
         .saturating_sub(self.m_byte_offset)
         .max(0);
       if count > remaining {
-        log::info!("Stream reached its end !");
+        match p_manager {
+          Some(manager) => {
+            event_msg!(manager, EVT_INFO, "Stream reached its end !\n");
+          }
+          None => log::info!("Stream reached its end !"),
+        }
         if remaining > 0 {
           self.m_inner.seek_relative(remaining)?;
           self.m_byte_offset = self.m_byte_offset.saturating_add(remaining);
@@ -419,9 +434,9 @@ pub(crate) fn stream_get_number_byte_left(p_stream: &Stream) -> i64 {
 pub(crate) fn stream_skip(
   p_stream: &mut Stream,
   mut p_size: i64,
-  mut _p_event_mgr: &mut EventMgr,
+  p_event_mgr: &mut EventMgr,
 ) -> i64 {
-  match p_stream.skip(p_size) {
+  match p_stream.skip_events(p_size, p_event_mgr) {
     Ok(offset) => {
       log::trace!("-- skip({p_size}) = {}", offset);
       offset

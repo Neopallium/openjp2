@@ -84,7 +84,13 @@ pub struct PiIterator {
   pub poc: crate::types::Poc,
   /// The POC/COD declared an invalid progression order (the C's
   /// `OPJ_PROG_UNKNOWN`); the public `Poc::prg` enum cannot represent it.
+  /// `pi_next` returns no packets for this entry.
   pub prg_unknown: bool,
+  /// The invalid order came from the COD marker (the tile's default
+  /// progression), which fails the whole tile in the C (t2's pre-check).
+  /// A POC-marker byte does NOT: the C walks zero packets for that POC
+  /// segment and keeps the rest.
+  pub prg_unknown_fatal: bool,
   pub numcomps: u32,
   pub comps: Vec<PiComp>,
   pub tx0: u32,
@@ -1656,6 +1662,7 @@ pub(crate) fn pi_update_decode_poc(
   while pino < l_bound {
     p_pi[pino as usize].poc.prg = p_tcp.pocs[pino as usize].prg; /* Component Index #0 (End) */
     p_pi[pino as usize].prg_unknown = p_tcp.poc_prg_raw[pino as usize] > 4u8;
+    p_pi[pino as usize].prg_unknown_fatal = false;
     p_pi[pino as usize].first = true; /* Layer Index #0 (End) */
     p_pi[pino as usize].poc.resno0 = p_tcp.pocs[pino as usize].resno0;
     p_pi[pino as usize].poc.compno0 = p_tcp.pocs[pino as usize].compno0;
@@ -1687,6 +1694,7 @@ pub(crate) fn pi_update_decode_not_poc(
   while pino < l_bound {
     p_pi[pino as usize].poc.prg = p_tcp.prg.into();
     p_pi[pino as usize].prg_unknown = p_tcp.prg == ProgressionOrder::Unknown;
+    p_pi[pino as usize].prg_unknown_fatal = p_pi[pino as usize].prg_unknown;
     p_pi[pino as usize].first = true;
     p_pi[pino as usize].poc.resno0 = 0_u32;
     p_pi[pino as usize].poc.compno0 = 0_u32;

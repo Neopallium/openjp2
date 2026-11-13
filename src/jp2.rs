@@ -1778,6 +1778,8 @@ fn jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpR
       /* The C logs a box-reader diagnostic and then the caller's generic
       line; keep both messages (the generic reader returns text, not an
       event). */
+      /* Map the generic reader's error strings onto the exact
+      opj_jp2_read_boxhdr_char diagnostics. */
       let detail = if e.contains("Cannot handle box sizes") {
         "Cannot handle box sizes higher than 2^32"
       } else if e.contains("undefined size") {
@@ -1785,6 +1787,8 @@ fn jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpR
       } else if e.contains("Truncated JP2 XLBox") {
         "Cannot handle XL box of less than 16 bytes"
       } else {
+        /* The remaining reader errors are all the truncated-8-byte-header
+        family (opj_jp2_read_boxhdr_char's p_box_max_size < 8). */
         "Cannot handle box of less than 8 bytes"
       };
       event_msg!(p_manager, EVT_ERROR, "{}\\n", detail);

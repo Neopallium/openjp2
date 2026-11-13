@@ -301,9 +301,10 @@ pub(crate) fn t2_decode_packets(
      * l_current_pi->resno is always >= p_tile->comps[l_current_pi->compno].minimum_num_resolutions
      * and no l_img_comp->resno_decoded are computed
      */
-    /* C t2.c: the packet iterator for this POC has no valid order (an
-    invalid COD or POC marker byte); the whole tile decode fails. */
-    if pi_vec[pino as usize].prg_unknown {
+    /* C t2.c: an invalid COD progression order fails the whole tile here.
+    An invalid POC marker byte must NOT: its segment walks zero packets
+    (pi_next returns Err -> break) and the other segments decode. */
+    if pi_vec[pino as usize].prg_unknown_fatal {
       return Err(());
     }
     let mut first_pass_failed: Vec<bool> = vec![true; image.numcomps as usize];

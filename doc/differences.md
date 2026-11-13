@@ -127,7 +127,12 @@ a literal transcription.  This page lists the intentional divergences.
   friends) defaults to LENIENT decoding (`DecodeParameters::strict()`
   opts in) - a forgiving default for partial/truncated codestreams.
   Verified byte-identical to the C reference's `-allow-partial` output
-  on the partial-codestream test files (e.g. v4dwt_interleave_h).
+  on the partial-codestream test files (e.g. v4dwt_interleave_h).  One
+  crafted-input corner goes further than the C: an invalid COD
+  progression order fails the tile in the C even with
+  `-allow-partial`, while the port's lenient one-shot API returns the
+  header image with empty component data (its documented partial
+  contract); strict mode fails like the C.
 
 ## Behavioural edge cases
 

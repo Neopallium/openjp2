@@ -2599,8 +2599,10 @@ fn invalid_cod_progression_order_fails_the_decode() {
     strict.is_err(),
     "an invalid COD progression order must fail like the C (t2 rejects the tile)"
   );
-  /* Lenient mode keeps the documented partial-decode contract: the header
-  image comes back, but no packets are decoded as LRCP. */
+  /* Lenient mode keeps the port's documented partial-decode contract
+  (codec.rs decode_body): the header image comes back with empty data.
+  This is a deliberate divergence: the C hard-fails the tile here even in
+  lenient mode (see doc/differences.md). */
   let lenient = Image::from_bytes(&bytes).expect("lenient partial image");
   assert!(
     lenient.components().iter().all(|c| c.data.is_empty()),
@@ -2928,4 +2930,53 @@ fn serde_image_data_round_trip() {
   let json = serde_json::to_string(&data).unwrap();
   let back: crate::ImageData = serde_json::from_str(&json).unwrap();
   assert_eq!(back, data);
+}
+
+#[test]
+fn invalid_poc_progression_yields_zero_packets_like_the_c() {
+  let (w, h) = (64u32, 64u32);
+  let core = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: w,
+    y1: h,
+    numcomps: 1,
+    color_space: crate::ColorSpace::Gray,
+    comps: vec![crate::CoreImageComp {
+      dx: 1,
+      dy: 1,
+      w,
+      h,
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data: (0..(w * h)).map(|i| (i % 251) as i32).collect(),
+    }],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let mut bytes = Image::from_core_image(core)
+    .encode(EncodeParameters::new())
+    .expect("encode");
+  /* Insert a POC marker whose Ppoc byte is 7 (invalid).  The C walks zero
+  packets for that segment and the tile still decodes (the invalid order
+  comes from a POC byte, not the COD). */
+  let sot = bytes
+    .windows(2)
+    .position(|w| w == [0xFF, 0x90])
+    .expect("SOT");
+  /* FF5F, Lpoc=9: RSpoc=0, CSpoc=0, LYEpoc=1, REpoc=5, CEpoc=0, Ppoc=7 */
+  let poc = [
+    0xFF, 0x5F, 0x00, 0x09, 0x00, 0x00, 0x00, 0x01, 0x05, 0x00, 0x07,
+  ];
+  bytes.splice(sot..sot, poc);
+  let decoded = Image::from_bytes_with(&bytes, DecodeParameters::default().strict(true))
+    .expect("the C decodes this successfully (zero packets for the invalid segment)");
+  assert_eq!((decoded.width(), decoded.height()), (w, h));
+  assert_eq!(decoded.components()[0].data.len(), (w * h) as usize);
 }
