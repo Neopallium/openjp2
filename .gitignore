@@ -32,6 +32,10 @@ cmake_install.cmake
 /openjpeg/old_logs/
 *.log
 
+# Python bytecode (scripts)
+__pycache__/
+*.pyc
+
 # Extra scripts
 *.sh
 # ...except the playground's build script, which is part of the site tooling.
