@@ -3068,3 +3068,116 @@ fn stream_read_marks_hard_errors() {
   let _ = ok.read(&mut buf);
   assert!(!ok.is_error());
 }
+
+#[test]
+fn encode_jp2_to_writer_round_trip() {
+  let (w, h) = (32u32, 32u32);
+  let core = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: w,
+    y1: h,
+    numcomps: 1,
+    color_space: crate::ColorSpace::Gray,
+    comps: vec![crate::CoreImageComp {
+      dx: 1,
+      dy: 1,
+      w,
+      h,
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data: (0..(w * h)).map(|i| (i % 251) as i32).collect(),
+    }],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let image = Image::from_core_image(core);
+  let out_path = std::env::temp_dir().join("openjp2_encode_jp2_to_writer.jp2");
+  let file = std::fs::File::create(&out_path).expect("create");
+  image
+    .encode_jp2_to_writer(EncodeParameters::new(), file)
+    .expect("jp2 writer");
+  let back = Image::from_file(&out_path).expect("read back");
+  let _ = std::fs::remove_file(&out_path);
+  assert_eq!((back.width(), back.height()), (w, h));
+}
+
+/// A stream write failure during the parallel ordered write loop must
+/// surface as an error, never a serial retry that appends a second
+/// codestream over the partially written one (r4-M8 / G18).
+#[cfg(feature = "rayon")]
+#[test]
+fn parallel_encode_does_not_retry_on_a_stream_failure() {
+  struct FailingOnce {
+    inner: std::io::Cursor<Vec<u8>>,
+    fail_at: u64,
+    failed: bool,
+  }
+  impl std::io::Write for FailingOnce {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+      let pos = self.inner.position();
+      if !self.failed && pos + buf.len() as u64 > self.fail_at {
+        self.failed = true;
+        return Err(std::io::Error::other("injected stream failure"));
+      }
+      self.inner.write(buf)
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+      self.inner.flush()
+    }
+  }
+  impl std::io::Seek for FailingOnce {
+    fn seek(&mut self, pos: std::io::SeekFrom) -> std::io::Result<u64> {
+      self.inner.seek(pos)
+    }
+  }
+
+  /* Two 1024x1024 incompressible tiles: the second tile's write forces the
+  1 MiB BufWriter to flush mid-loop, where the injected failure lands. */
+  let (w, h) = (2048u32, 1024u32);
+  let data: Vec<i32> = (0..(w as u64 * h as u64))
+    .map(|i| ((i.wrapping_mul(6364136223846793005).wrapping_add(1) >> 33) & 0xFF) as i32)
+    .collect();
+  let core = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: w,
+    y1: h,
+    numcomps: 1,
+    color_space: crate::ColorSpace::Gray,
+    comps: vec![crate::CoreImageComp {
+      dx: 1,
+      dy: 1,
+      w,
+      h,
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data,
+    }],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let writer = FailingOnce {
+    inner: std::io::Cursor::new(Vec::new()),
+    fail_at: 512 * 1024,
+    failed: false,
+  };
+  let result = Image::from_core_image(core)
+    .encode_to_writer(EncodeParameters::new().tile_size(1024, 1024), writer);
+  assert!(
+    result.is_err(),
+    "a mid-stream write failure must error, not retry into a duplicate codestream"
+  );
+}

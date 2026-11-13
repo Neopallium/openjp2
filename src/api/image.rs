@@ -306,6 +306,15 @@ impl Image {
   ) -> Result<()> {
     encode_image_to_writer(self.core, params.into_inner(), J2KFormat::J2K, writer)
   }
+
+  /// JP2-container flavour of [`Self::encode_to_writer`] (R4-I9).
+  pub fn encode_jp2_to_writer<W: std::io::Write + std::io::Seek + 'static>(
+    self,
+    params: EncodeParameters,
+    writer: W,
+  ) -> Result<()> {
+    encode_image_to_writer(self.core, params.into_inner(), J2KFormat::JP2, writer)
+  }
 }
 
 impl std::fmt::Debug for Image {

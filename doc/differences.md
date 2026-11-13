@@ -41,6 +41,9 @@ a literal transcription.  This page lists the intentional divergences.
   events and the driver replays them on the caller's manager in tile
   order, so the event stream matches the serial paths (including the
   per-tile INFO line).
+- House decision (r4-I4): diagnostic text drops the C's `opj_`
+  function-name prefixes (`t2_encode_packet():` etc.).  Stderr/log
+  diffing against the C tools must normalize the prefix.
 
 ## Threading
 
@@ -133,6 +136,28 @@ a literal transcription.  This page lists the intentional divergences.
   `-allow-partial`, while the port's lenient one-shot API returns the
   header image with empty component data (its documented partial
   contract); strict mode fails like the C.
+
+## Positive divergences (KEEP)
+
+- HT-block window decoding yields real samples where C yields zeros (the
+  C's HT path decodes into `t1->data` only and post-processes the zeroed
+  `decoded_data` — an upstream bug).
+- `Csiz == 0` is rejected where the C accepts and then UB-derefs
+  `tccps[0]`.
+- `update_tile_data`/`get_decoded_tile_size` skip unused components
+  gracefully where the C `memcpy`s from NULL.
+- `j2k_add_mct` scans all MCC records (see open-findings OF-48).
+- The encoder never mutates the caller's source image: every tile packs
+  through `j2k_get_tile_data` with `& 0xff`/`& 0xffff` masking, where the
+  C's `l_reuse_data` path aliases and mutates the component buffers
+  unmasked (the C is internally inconsistent — its multi-tile path masks
+  like the port).  Identical bytes for in-range data; differs only for
+  hand-built out-of-range samples in a single aligned tile.
+- COM comments with an embedded NUL write the whole Vec; the C's
+  `strlen` truncates (Rust-native API only).
+- The parallel encoder materializes every tile's encoded bytes before the
+  ordered write (peak memory ~ full codestream + worker scratch) — the
+  price of the byte-identity design.
 
 ## Behavioural edge cases
 
