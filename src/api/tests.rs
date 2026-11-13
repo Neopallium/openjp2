@@ -3026,3 +3026,45 @@ fn set_rgb_rejects_dimension_overflow() {
   let mut core = crate::CoreImage::default();
   assert!(!core.set_rgb(usize::MAX / 2 + 1, 2, &[], &[], &[]));
 }
+
+#[test]
+fn stream_read_marks_hard_errors() {
+  struct FailingReader {
+    served: usize,
+  }
+  impl std::io::Read for FailingReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+      if self.served >= 2 {
+        return Err(std::io::Error::other("injected failure"));
+      }
+      let n = buf.len().min(2 - self.served);
+      buf[..n].fill(1);
+      self.served += n;
+      Ok(n)
+    }
+  }
+  impl std::io::Seek for FailingReader {
+    fn seek(&mut self, pos: std::io::SeekFrom) -> std::io::Result<u64> {
+      match pos {
+        std::io::SeekFrom::Start(p) => {
+          self.served = p as usize;
+          Ok(p)
+        }
+        std::io::SeekFrom::Current(d) => {
+          self.served = (self.served as i64 + d).max(0) as usize;
+          Ok(self.served as u64)
+        }
+        std::io::SeekFrom::End(_) => Err(std::io::Error::other("no end")),
+      }
+    }
+  }
+  let mut stream = Stream::new_input(8, FailingReader { served: 0 }, 100);
+  let mut buf = [0u8; 8];
+  let got = stream.read(&mut buf).expect("short read on hard error");
+  assert_eq!(got, 2);
+  assert!(stream.is_error(), "hard error must set the sticky flag");
+  /* EOF short reads must not set the flag. */
+  let mut ok = Stream::from_bytes(vec![1, 2]);
+  let _ = ok.read(&mut buf);
+  assert!(!ok.is_error());
+}

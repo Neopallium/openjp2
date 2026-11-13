@@ -58,6 +58,9 @@ pub struct Stream {
   pub(crate) m_inner: super::stream::StreamInner,
   pub(crate) m_stream_length: u64,
   pub(crate) m_byte_offset: i64,
+  /// Sticky flag: a hard (non-EOF) I/O error occurred on a read (the C's
+  /// `OPJ_STREAM_STATUS_ERROR`).  EOF short reads leave it clear.
+  pub(crate) m_error: bool,
 }
 pub(crate) type stream_private = Stream;
 
@@ -166,6 +169,7 @@ impl Stream {
       m_inner: super::stream::StreamInner::new_reader(buffer_size, reader),
       m_stream_length: stream_length,
       m_byte_offset: 0,
+      m_error: false,
     }
   }
 
@@ -178,6 +182,7 @@ impl Stream {
       m_inner: super::stream::StreamInner::from_bytes(bytes),
       m_stream_length: len,
       m_byte_offset: 0,
+      m_error: false,
     }
   }
 
@@ -197,6 +202,7 @@ impl Stream {
       m_inner: super::stream::StreamInner::new_writer(buffer_size, writer),
       m_stream_length: 0,
       m_byte_offset: 0,
+      m_error: false,
     }
   }
 
@@ -218,21 +224,28 @@ impl Stream {
         self.m_byte_offset += len as i64;
         Ok(len)
       }
-      Err(_err) => {
+      Err(err) => {
         /* read_exact may have delivered a partial prefix before hitting
         EOF; those bytes are already in `buf`.  Count them through the
         reader's position delta so they are not silently lost (a plain
         follow-up read would start after them and return 0). */
         let pos = match self.m_inner.stream_position() {
           Ok(pos) => pos,
-          Err(err) => {
-            log::trace!("Failed to read from stream: {err}");
-            return Err(err);
+          Err(pos_err) => {
+            self.m_error = true;
+            log::trace!("Failed to read from stream: {pos_err}");
+            return Err(pos_err);
           }
         };
         let consumed = (pos as i64).saturating_sub(self.m_byte_offset).max(0) as usize;
         let nb = consumed.min(len);
         self.m_byte_offset += nb as i64;
+        /* Hard I/O errors are distinguished from EOF for embedders with
+        custom readers (the C's ERROR status; cio.c:327-334). */
+        if err.kind() != io::ErrorKind::UnexpectedEof {
+          self.m_error = true;
+          log::trace!("Stream read error: {err}");
+        }
         Ok(nb)
       }
     }
@@ -258,6 +271,12 @@ impl Stream {
   pub fn flush(&mut self) -> io::Result<()> {
     log::trace!("-- flush(), offset={}", self.m_byte_offset);
     self.m_inner.flush()
+  }
+
+  /// Whether a hard I/O error occurred on a read (sticky; EOF does not
+  /// set it).  Mirror of the C stream's ERROR status.
+  pub fn is_error(&self) -> bool {
+    self.m_error
   }
 
   /// The current byte position.

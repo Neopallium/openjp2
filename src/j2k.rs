@@ -1827,6 +1827,9 @@ fn j2k_write_cod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMg
   {
     return Err(());
   }
+  /* Sibling writers restore the shared scratch (the C keeps one
+  allocation alive across markers). */
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
   Ok(())
 }
 
@@ -2236,6 +2239,9 @@ fn j2k_write_qcd(
   if stream_write_data(p_stream, &l_buf[..l_qcd_size as usize], p_manager) != l_qcd_size as usize {
     return Err(());
   }
+  /* Sibling writers restore the shared scratch (the C keeps one
+  allocation alive across markers). */
+  p_j2k.m_specific_param.m_encoder.m_header_tile_data = l_buf;
   Ok(())
 }
 //
@@ -3830,7 +3836,6 @@ fn j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr
     /* If we are here, we'll try to read the data after allocation */
     /* Check enough bytes left in stream before allocation */
     if p_j2k.m_specific_param.m_decoder.m_sot_length as i64 > stream_get_number_byte_left(p_stream)
-      && p_stream.m_stream_length != 0
     {
       if strict {
         event_msg!(
@@ -3851,15 +3856,19 @@ fn j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr
         data runs out).  A negative byte count (seek past the declared EOF
         via crafted TLM offsets) must clamp to zero, not wrap to a ~4 GiB
         value that slips past the u32 guard below. */
-        p_j2k.m_specific_param.m_decoder.m_sot_length =
-          stream_get_number_byte_left(p_stream).max(0) as u32;
+        /* The clamp only makes sense with a known stream length (for
+        unknown-length streams the C warns and reads on). */
+        if p_stream.m_stream_length != 0 {
+          p_j2k.m_specific_param.m_decoder.m_sot_length =
+            stream_get_number_byte_left(p_stream).max(0) as u32;
+          lenient_clamped = true;
+        }
         /* The C's lenient path exits the tile loop through the NEOC state
         with no error event; mirror it so the next read_tile_header round
         does not re-enter at EOF and emit an unconditional error.  The
         state must survive the read below (it used to be overwritten with
         TPHSOT because the clamped read succeeds fully). */
         p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
-        lenient_clamped = true;
       }
     }
     if pre_clamp_sot_length > u32::MAX - COMMON_CBLK_DATA_EXTRA {
@@ -8222,14 +8231,17 @@ pub(crate) fn j2k_decode_tile(
       );
       return if strict { Err(()) } else { Ok(()) };
     }
-    let strict = p_j2k.m_cp.strict;
     l_current_marker = J2KMarker::from_buffer(&l_data);
     if l_current_marker == J2KMarker::EOC {
       p_j2k.m_current_tile_number = 0_u32;
       p_j2k.m_specific_param.m_decoder.m_state = J2KState::EOC
-    } else if l_current_marker == J2KMarker::UNK(0x8080u32) && !strict {
-      /* cf. https://code.google.com/p/openjpeg/issues/detail?id=226 -
-      lenient only: strict mode reaches the SOT error below like the C. */
+    } else if l_current_marker == J2KMarker::UNK(0x8080u32) {
+      /* cf. https://code.google.com/p/openjpeg/issues/detail?id=226.
+      The C reaches the same accept through its read_tile_header hack
+      (bytes_left == 0 after the size read); here the marker is consumed
+      by the tile walk itself (the file ends with 0x8080 + 2 bytes), so
+      the accept must be unconditional to match the reference behaviour
+      (pinned by the nonreg issue226 test). */
       if stream_get_number_byte_left(p_stream) == 2i64 {
         p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
         event_msg!(
@@ -9067,7 +9079,6 @@ fn j2k_read_spcod_spcoc(
       .as_deref_mut()
       .expect("decoder m_default_tcp is always set")
   };
-  let mut reduce_err = false;
   let l_tccp = &mut l_tcp.tccps[compno as usize];
   /* make sure room is sufficient */
   if *p_header_size < 5u32 {
@@ -9094,7 +9105,8 @@ fn j2k_read_spcod_spcoc(
                     "Error decoding component {}.\nThe number of resolutions to remove ({}) is greater or equal than the number of resolutions of this component ({})\nModify the cp_reduce parameter.\n\n", compno,
                     m_reduce,
                     l_tccp.numresolutions);
-    reduce_err = true;
+    /* The C returns immediately (its state bit is write-only). */
+    return Err(());
   }
   /* SPcod (E) / SPcoc (B) */
   l_tccp.cblkw = read_bytes(&header_data[cursor..], 1_u32);
@@ -9166,10 +9178,6 @@ fn j2k_read_spcod_spcoc(
       l_tccp.prch[i as usize] = 15_u32;
       i += 1;
     }
-  }
-  if reduce_err {
-    p_j2k.m_specific_param.m_decoder.m_state |= J2KState::ERR;
-    return Err(());
   }
   Ok(())
 }
@@ -10240,6 +10248,10 @@ pub(crate) fn j2k_decode_tiles_parallel(
       } else if marker == 0xFF4F || marker == 0xFF93 {
         /* SOC/SOD carry no length field (2 bytes). */
         pos += 2;
+      } else if marker == 0xFF91 || marker == 0xFF92 {
+        /* EPH/SOP carry no length field and cannot legally appear in the
+        walked region; the walk is misaligned - decline (serial fallback). */
+        return None;
       } else {
         /* A marker with a length field (Lmar includes itself). */
         let lmar = u16::from_be_bytes([bytes[pos + 2], bytes[pos + 3]]) as usize;

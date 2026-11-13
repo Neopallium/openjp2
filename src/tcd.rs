@@ -2220,11 +2220,14 @@ fn tcd_mct_encode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp) -> OpResu
   let comps = &mut p_tcd.tcd_image.tiles.comps[..];
   /* The standard MCT needs 3 components of equal plane size; the C reads
   OOB for fewer or mismatched (review round 2, LOW-3; open-findings OF-07).
-  Fail the encode cleanly instead of panicking. */
+  Fail the encode cleanly instead of panicking.  For mct=1 the C
+  transforms comps 0..2 only: a differently-subsampled extra component is
+  legal.  The custom mct=2 applies to every component. */
   if comps.len() < 3 {
     return Err(());
   }
-  if comps[1..]
+  let mct_comps = if tcp.mct == 1u32 { 3usize } else { comps.len() };
+  if comps[1..mct_comps]
     .iter()
     .any(|c| (c.x1 - c.x0, c.y1 - c.y0) != (comps[0].x1 - comps[0].x0, comps[0].y1 - comps[0].y0))
   {
