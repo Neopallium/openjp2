@@ -223,10 +223,22 @@ pub(crate) fn t2_encode_packets(
     if let Some(marker_info) = p_marker_info.as_deref_mut() {
       if marker_info.need_plt {
         /* One time use intended */
-        assert!(marker_info.packet_count == 0u32);
-        assert!(marker_info.p_packet_size.is_empty());
+        debug_assert!(marker_info.packet_count == 0u32);
+        debug_assert!(marker_info.p_packet_size.is_empty());
         let count = get_encoding_packet_count(image, cp, p_tile_no) as usize;
-        marker_info.p_packet_size = vec![0; count];
+        /* The C's malloc is checked; a crafted geometry can ask for up to
+        2^32 entries here. */
+        let mut sizes = Vec::new();
+        if sizes.try_reserve_exact(count).is_err() {
+          event_msg!(
+            p_manager,
+            EVT_ERROR,
+            "Not enough memory for the PLT packet sizes\n",
+          );
+          return Err(());
+        }
+        sizes.resize(count, 0);
+        marker_info.p_packet_size = sizes;
       }
     }
     loop {

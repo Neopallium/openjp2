@@ -575,7 +575,7 @@ fn rev_fetch(vlcp: &mut rev_struct_t) -> u32 {
 /// `vlcp` -- is a pointer to rev_struct structure
 /// `num_bits` -- is the number of bits to be removed
 fn rev_advance(vlcp: &mut rev_struct_t, mut num_bits: u32) -> u32 {
-  assert!(num_bits <= vlcp.bits); // remove bits
+  debug_assert!(num_bits <= vlcp.bits); // remove bits
   vlcp.tmp >>= num_bits; // decrement the number of bits
   vlcp.bits = (vlcp.bits as core::ffi::c_uint).wrapping_sub(num_bits);
   vlcp.tmp as u32
@@ -745,7 +745,7 @@ fn rev_fetch_mrp(mrp: &mut rev_struct_t) -> u32 {
 /// `mrp` -- is a pointer to rev_struct structure
 /// `num_bits` -- is the number of bits to be removed
 fn rev_advance_mrp(mrp: &mut rev_struct_t, mut num_bits: u32) -> u32 {
-  assert!(num_bits <= mrp.bits); // discard the lowest num_bits bits
+  debug_assert!(num_bits <= mrp.bits); // discard the lowest num_bits bits
   mrp.tmp >>= num_bits;
   mrp.bits = (mrp.bits as core::ffi::c_uint).wrapping_sub(num_bits);
   mrp.tmp as u32
@@ -955,7 +955,7 @@ fn frwd_read(msp: &mut frwd_struct_t) {
   let mut bits: u32 = 0; // read 32 bits
   let mut t: u32 = 0;
   let mut unstuff: i32 = 0;
-  assert!(msp.bits <= 32u32);
+  debug_assert!(msp.bits <= 32u32);
   val = 0u32;
   if msp.size > 3i32 {
     val = read_le_uint32(msp.data, msp.pos);
@@ -1014,7 +1014,7 @@ fn frwd_init<'a>(
   msp.unstuff = 0i32;
   msp.size = size;
   msp.x = x;
-  assert!(msp.x == 0u32 || msp.x == 0xffu32);
+  debug_assert!(msp.x == 0u32 || msp.x == 0xffu32);
   //This code is designed for an architecture that read address should
   // align to the read size (address multiple of 4 if read size is 4)
   //These few lines take care of the case where data is not at a multiple
@@ -1051,7 +1051,7 @@ fn frwd_init<'a>(
 /// `msp` -- is a pointer to frwd_struct_t
 /// `num_bits` -- is the number of bit to consume
 fn frwd_advance(msp: &mut frwd_struct_t, mut num_bits: u32) {
-  assert!(num_bits <= msp.bits);
+  debug_assert!(num_bits <= msp.bits);
   msp.tmp >>= num_bits;
   msp.bits = (msp.bits as core::ffi::c_uint).wrapping_sub(num_bits);
 }
@@ -2033,7 +2033,7 @@ pub(crate) fn t1_ht_decode_cblk(
                 if sig & sample_mask != 0 {
                   //if LSB is set
                   let mut sym: u32 = 0; // decoded value cannot be zero
-                  assert!(ht_data[dp] != 0u32);
+                  debug_assert!(ht_data[dp] != 0u32);
                   sym = cwd & 1u32;
                   // remove center of bin if sym is 0
                   let fresh16 = &mut (ht_data[dp]); // put half the center of bin
@@ -2045,7 +2045,7 @@ pub(crate) fn t1_ht_decode_cblk(
                 sample_mask = (sample_mask as core::ffi::c_uint).wrapping_add(sample_mask);
                 if sig & sample_mask != 0 {
                   let mut sym_0: u32 = 0;
-                  assert!(ht_data[dp + (stride) as usize] != 0u32);
+                  debug_assert!(ht_data[dp + (stride) as usize] != 0u32);
                   sym_0 = cwd & 1u32;
                   let fresh18 = &mut (ht_data[dp + (stride) as usize]);
                   *fresh18 ^= (1u32).wrapping_sub(sym_0) << p.wrapping_sub(1u32);
@@ -2056,7 +2056,7 @@ pub(crate) fn t1_ht_decode_cblk(
                 sample_mask = (sample_mask as core::ffi::c_uint).wrapping_add(sample_mask);
                 if sig & sample_mask != 0 {
                   let mut sym_1: u32 = 0;
-                  assert!(ht_data[dp + (2i32 * stride) as usize] != 0u32);
+                  debug_assert!(ht_data[dp + (2i32 * stride) as usize] != 0u32);
                   sym_1 = cwd & 1u32;
                   let fresh20 = &mut (ht_data[dp + (2i32 * stride) as usize]);
                   *fresh20 ^= (1u32).wrapping_sub(sym_1) << p.wrapping_sub(1u32);
@@ -2067,7 +2067,7 @@ pub(crate) fn t1_ht_decode_cblk(
                 sample_mask = (sample_mask as core::ffi::c_uint).wrapping_add(sample_mask);
                 if sig & sample_mask != 0 {
                   let mut sym_2: u32 = 0;
-                  assert!(ht_data[dp + (3i32 * stride) as usize] != 0u32);
+                  debug_assert!(ht_data[dp + (3i32 * stride) as usize] != 0u32);
                   sym_2 = cwd & 1u32;
                   let fresh22 = &mut (ht_data[dp + (3i32 * stride) as usize]);
                   *fresh22 ^= (1u32).wrapping_sub(sym_2) << p.wrapping_sub(1u32);
@@ -2196,7 +2196,7 @@ pub(crate) fn t1_ht_decode_cblk(
                   //scan mbr to find a new significant sample
                   sample_mask_0 = 0x11111111u32 & col_mask_0; // LSB
                   if mbr_0 & sample_mask_0 != 0 {
-                    assert!(ht_data[dp_0] == 0u32);
+                    debug_assert!(ht_data[dp_0] == 0u32);
                     if cwd_0 & 1u32 != 0 {
                       //consume bit and increment number of
                       //consumed bits
@@ -2212,7 +2212,7 @@ pub(crate) fn t1_ht_decode_cblk(
                   }
                   sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0);
                   if mbr_0 & sample_mask_0 != 0 {
-                    assert!(ht_data[dp_0 + (stride) as usize] == 0u32);
+                    debug_assert!(ht_data[dp_0 + (stride) as usize] == 0u32);
                     if cwd_0 & 1u32 != 0 {
                       let mut t_6: u32 = 0;
                       new_sig |= sample_mask_0;
@@ -2224,7 +2224,7 @@ pub(crate) fn t1_ht_decode_cblk(
                   }
                   sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0);
                   if mbr_0 & sample_mask_0 != 0 {
-                    assert!(ht_data[dp_0 + (2i32 * stride) as usize] == 0u32);
+                    debug_assert!(ht_data[dp_0 + (2i32 * stride) as usize] == 0u32);
                     if cwd_0 & 1u32 != 0 {
                       let mut t_7: u32 = 0;
                       new_sig |= sample_mask_0;
@@ -2236,7 +2236,7 @@ pub(crate) fn t1_ht_decode_cblk(
                   }
                   sample_mask_0 = (sample_mask_0 as core::ffi::c_uint).wrapping_add(sample_mask_0);
                   if mbr_0 & sample_mask_0 != 0 {
-                    assert!(ht_data[dp_0 + (3i32 * stride) as usize] == 0u32);
+                    debug_assert!(ht_data[dp_0 + (3i32 * stride) as usize] == 0u32);
                     if cwd_0 & 1u32 != 0 {
                       let mut t_8: u32 = 0;
                       new_sig |= sample_mask_0;
@@ -2267,7 +2267,7 @@ pub(crate) fn t1_ht_decode_cblk(
                     //scan 4 signs
                     sample_mask_1 = 0x11111111u32 & col_mask_1;
                     if new_sig & sample_mask_1 != 0 {
-                      assert!(ht_data[dp_1] == 0u32);
+                      debug_assert!(ht_data[dp_1] == 0u32);
                       //consume bit and increment number
                       //of consumed bits
                       let fresh30 = &mut (ht_data[dp_1]); //put value and sign
@@ -2278,7 +2278,7 @@ pub(crate) fn t1_ht_decode_cblk(
                     sample_mask_1 =
                       (sample_mask_1 as core::ffi::c_uint).wrapping_add(sample_mask_1);
                     if new_sig & sample_mask_1 != 0 {
-                      assert!(ht_data[dp_1 + (stride) as usize] == 0u32);
+                      debug_assert!(ht_data[dp_1 + (stride) as usize] == 0u32);
                       let fresh31 = &mut (ht_data[dp_1 + (stride) as usize]);
                       *fresh31 |= (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
@@ -2287,7 +2287,7 @@ pub(crate) fn t1_ht_decode_cblk(
                     sample_mask_1 =
                       (sample_mask_1 as core::ffi::c_uint).wrapping_add(sample_mask_1);
                     if new_sig & sample_mask_1 != 0 {
-                      assert!(ht_data[dp_1 + (2i32 * stride) as usize] == 0u32);
+                      debug_assert!(ht_data[dp_1 + (2i32 * stride) as usize] == 0u32);
                       let fresh32 = &mut (ht_data[dp_1 + (2i32 * stride) as usize]);
                       *fresh32 |= (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
@@ -2296,7 +2296,7 @@ pub(crate) fn t1_ht_decode_cblk(
                     sample_mask_1 =
                       (sample_mask_1 as core::ffi::c_uint).wrapping_add(sample_mask_1);
                     if new_sig & sample_mask_1 != 0 {
-                      assert!(ht_data[dp_1 + (3i32 * stride) as usize] == 0u32);
+                      debug_assert!(ht_data[dp_1 + (3i32 * stride) as usize] == 0u32);
                       let fresh33 = &mut (ht_data[dp_1 + (3i32 * stride) as usize]);
                       *fresh33 |= (cwd_0 & 1u32) << 31i32 | val_15;
                       cwd_0 >>= 1i32;
@@ -2371,7 +2371,7 @@ pub(crate) fn t1_ht_decode_cblk(
               let mut sample_mask_2 = 0x11111111u32 & col_mask_2;
               if sig_1 & sample_mask_2 != 0 {
                 let mut sym_3: u32 = 0;
-                assert!(ht_data[dp_2] != 0u32);
+                debug_assert!(ht_data[dp_2] != 0u32);
                 sym_3 = cwd_1 & 1u32;
                 let fresh39 = &mut (ht_data[dp_2]);
                 *fresh39 ^= (1u32).wrapping_sub(sym_3) << p.wrapping_sub(1u32);
@@ -2382,7 +2382,7 @@ pub(crate) fn t1_ht_decode_cblk(
               sample_mask_2 = (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2);
               if sig_1 & sample_mask_2 != 0 {
                 let mut sym_4: u32 = 0;
-                assert!(ht_data[dp_2 + (stride) as usize] != 0u32);
+                debug_assert!(ht_data[dp_2 + (stride) as usize] != 0u32);
                 sym_4 = cwd_1 & 1u32;
                 let fresh41 = &mut (ht_data[dp_2 + (stride) as usize]);
                 *fresh41 ^= (1u32).wrapping_sub(sym_4) << p.wrapping_sub(1u32);
@@ -2393,7 +2393,7 @@ pub(crate) fn t1_ht_decode_cblk(
               sample_mask_2 = (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2);
               if sig_1 & sample_mask_2 != 0 {
                 let mut sym_5: u32 = 0;
-                assert!(ht_data[dp_2 + (2i32 * stride) as usize] != 0u32);
+                debug_assert!(ht_data[dp_2 + (2i32 * stride) as usize] != 0u32);
                 sym_5 = cwd_1 & 1u32;
                 let fresh43 = &mut (ht_data[dp_2 + (2i32 * stride) as usize]);
                 *fresh43 ^= (1u32).wrapping_sub(sym_5) << p.wrapping_sub(1u32);
@@ -2404,7 +2404,7 @@ pub(crate) fn t1_ht_decode_cblk(
               sample_mask_2 = (sample_mask_2 as core::ffi::c_uint).wrapping_add(sample_mask_2);
               if sig_1 & sample_mask_2 != 0 {
                 let mut sym_6: u32 = 0;
-                assert!(ht_data[dp_2 + (3i32 * stride) as usize] != 0u32);
+                debug_assert!(ht_data[dp_2 + (3i32 * stride) as usize] != 0u32);
                 sym_6 = cwd_1 & 1u32;
                 let fresh45 = &mut (ht_data[dp_2 + (3i32 * stride) as usize]);
                 *fresh45 ^= (1u32).wrapping_sub(sym_6) << p.wrapping_sub(1u32);
@@ -2543,7 +2543,7 @@ pub(crate) fn t1_ht_decode_cblk(
                 //scan 4 mbr
                 sample_mask_3 = 0x11111111u32 & col_mask_3;
                 if mbr_2 & sample_mask_3 != 0 {
-                  assert!(ht_data[dp_3] == 0u32);
+                  debug_assert!(ht_data[dp_3] == 0u32);
                   if cwd_2 & 1u32 != 0 {
                     let mut t_12: u32 = 0;
                     new_sig_0 |= sample_mask_3;
@@ -2555,7 +2555,7 @@ pub(crate) fn t1_ht_decode_cblk(
                 }
                 sample_mask_3 = (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3);
                 if mbr_2 & sample_mask_3 != 0 {
-                  assert!(ht_data[dp_3 + (stride) as usize] == 0u32);
+                  debug_assert!(ht_data[dp_3 + (stride) as usize] == 0u32);
                   if cwd_2 & 1u32 != 0 {
                     let mut t_13: u32 = 0;
                     new_sig_0 |= sample_mask_3;
@@ -2567,7 +2567,7 @@ pub(crate) fn t1_ht_decode_cblk(
                 }
                 sample_mask_3 = (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3);
                 if mbr_2 & sample_mask_3 != 0 {
-                  assert!(ht_data[dp_3 + (2i32 * stride) as usize] == 0u32);
+                  debug_assert!(ht_data[dp_3 + (2i32 * stride) as usize] == 0u32);
                   if cwd_2 & 1u32 != 0 {
                     let mut t_14: u32 = 0;
                     new_sig_0 |= sample_mask_3;
@@ -2579,7 +2579,7 @@ pub(crate) fn t1_ht_decode_cblk(
                 }
                 sample_mask_3 = (sample_mask_3 as core::ffi::c_uint).wrapping_add(sample_mask_3);
                 if mbr_2 & sample_mask_3 != 0 {
-                  assert!(ht_data[dp_3 + (3i32 * stride) as usize] == 0u32);
+                  debug_assert!(ht_data[dp_3 + (3i32 * stride) as usize] == 0u32);
                   if cwd_2 & 1u32 != 0 {
                     let mut t_15: u32 = 0;
                     new_sig_0 |= sample_mask_3;
@@ -2608,7 +2608,7 @@ pub(crate) fn t1_ht_decode_cblk(
                   //scan 4 signs
                   sample_mask_4 = 0x11111111u32 & col_mask_4;
                   if new_sig_0 & sample_mask_4 != 0 {
-                    assert!(ht_data[dp_4] == 0u32);
+                    debug_assert!(ht_data[dp_4] == 0u32);
                     let fresh53 = &mut (ht_data[dp_4]);
                     *fresh53 |= (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
@@ -2616,7 +2616,7 @@ pub(crate) fn t1_ht_decode_cblk(
                   }
                   sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4);
                   if new_sig_0 & sample_mask_4 != 0 {
-                    assert!(ht_data[dp_4 + (stride) as usize] == 0u32);
+                    debug_assert!(ht_data[dp_4 + (stride) as usize] == 0u32);
                     let fresh54 = &mut (ht_data[dp_4 + (stride) as usize]);
                     *fresh54 |= (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
@@ -2624,7 +2624,7 @@ pub(crate) fn t1_ht_decode_cblk(
                   }
                   sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4);
                   if new_sig_0 & sample_mask_4 != 0 {
-                    assert!(ht_data[dp_4 + (2i32 * stride) as usize] == 0u32);
+                    debug_assert!(ht_data[dp_4 + (2i32 * stride) as usize] == 0u32);
                     let fresh55 = &mut (ht_data[dp_4 + (2i32 * stride) as usize]);
                     *fresh55 |= (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;
@@ -2632,7 +2632,7 @@ pub(crate) fn t1_ht_decode_cblk(
                   }
                   sample_mask_4 = (sample_mask_4 as core::ffi::c_uint).wrapping_add(sample_mask_4);
                   if new_sig_0 & sample_mask_4 != 0 {
-                    assert!(ht_data[dp_4 + (3i32 * stride) as usize] == 0u32);
+                    debug_assert!(ht_data[dp_4 + (3i32 * stride) as usize] == 0u32);
                     let fresh56 = &mut (ht_data[dp_4 + (3i32 * stride) as usize]);
                     *fresh56 |= (cwd_2 & 1u32) << 31i32 | val_16;
                     cwd_2 >>= 1i32;

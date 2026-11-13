@@ -2988,3 +2988,41 @@ fn invalid_poc_progression_yields_zero_packets_like_the_c() {
   assert_eq!((decoded.width(), decoded.height()), (w, h));
   assert_eq!(decoded.components()[0].data.len(), (w * h) as usize);
 }
+
+#[test]
+fn encoder_rejects_zero_component_subsampling() {
+  let mut encoder = Encoder::new(J2KFormat::J2K).expect("encoder");
+  let mut params = EncodeParameters::default().into_inner();
+  let mut image = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: 16,
+    y1: 16,
+    numcomps: 1,
+    color_space: crate::ColorSpace::Gray,
+    comps: vec![crate::CoreImageComp {
+      dx: 0,
+      dy: 1,
+      w: 16,
+      h: 16,
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data: vec![0; 16 * 16],
+    }],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  assert!(encoder.setup(&mut params, &mut image).is_err());
+}
+
+#[test]
+fn set_rgb_rejects_dimension_overflow() {
+  let mut core = crate::CoreImage::default();
+  assert!(!core.set_rgb(usize::MAX / 2 + 1, 2, &[], &[], &[]));
+}

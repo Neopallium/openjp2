@@ -96,6 +96,12 @@ impl SparseArray {
     }
 
     let total_blocks = (block_count_hor * block_count_ver) as usize;
+    /* The C's calloc is checked here too. */
+    let mut blocks: Vec<Option<Vec<i32>>> = Vec::new();
+    if blocks.try_reserve_exact(total_blocks).is_err() {
+      return None;
+    }
+    blocks.resize(total_blocks, None);
     Some(Self {
       width,
       height,
@@ -103,7 +109,7 @@ impl SparseArray {
       block_height,
       block_count_hor,
       block_count_ver,
-      blocks: vec![None; total_blocks],
+      blocks,
     })
   }
 
@@ -257,7 +263,13 @@ pub(crate) fn sparse_array_write<T: SparseSample>(
       x_incr = x_incr.min(x1.wrapping_sub(x));
       let index = sa.block_index(block_x, block_y);
       if sa.blocks[index].is_none() {
-        sa.blocks[index] = Some(vec![0i32; (sa.block_width * sa.block_height) as usize]);
+        let size = (sa.block_width * sa.block_height) as usize;
+        let mut block = Vec::new();
+        if block.try_reserve_exact(size).is_err() {
+          return false;
+        }
+        block.resize(size, 0i32);
+        sa.blocks[index] = Some(block);
       }
       if let Some(ref mut dest_block) = sa.blocks[index] {
         let mut dest = dest_block[((block_y_offset * sa.block_width) + block_x_offset) as usize..]

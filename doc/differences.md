@@ -161,9 +161,11 @@ a literal transcription.  This page lists the intentional divergences.
   the `openjpeg-version-string` feature (off by default) writes the
   upstream OpenJPEG product/version string instead, making encoded
   files byte-identical to the C reference for test comparisons.
-- The ~200 `assert!` sites in the core are ports of the C's `assert()`
-  (stripped by NDEBUG in release C builds).  They encode invariants the
-  C relies on too; the mutation/truncation fuzz campaigns (tens of
-  thousands of decodes, zero panics) show they do not fire on corrupt
-  input, and the bounds-checked Rust code fails loudly instead of
-  running past them, so they are kept.
+- The core contains no release-active `assert!` macros.  The ~200 ports
+  of the C's `assert()` (stripped by NDEBUG in release C builds) are
+  `debug_assert!`, so release builds never panic on them; the
+  mutation/truncation fuzz campaigns (tens of thousands of decodes,
+  zero panics) show they do not fire on corrupt input in any build.
+  The remaining `panic!`/`unreachable!` sites are internal-misuse
+  guards (e.g. a decoder precinct accessed through the encoder
+  accessor), unreachable from codestream data.

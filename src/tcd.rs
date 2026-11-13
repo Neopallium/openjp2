@@ -2081,7 +2081,10 @@ fn tcd_dc_level_shift_decode(p_tcd: &mut Tcd, image: &mut CoreImage, cp: &mut Cp
           [(l_tile_comp.minimum_num_resolutions.wrapping_sub(1u32)) as usize]
           .x0) as u32)
         .wrapping_sub(l_width);
-      assert!(
+      /* OF-34-class positive guard (KEEP): in release builds the TileBuf
+      slice bound below panics on the same geometry, where release-C would
+      heap-corrupt via a negative stride.  debug_assert! only for style. */
+      debug_assert!(
         l_height == 0u32
           || l_width.wrapping_add(l_stride) as usize
             <= l_tile_comp.data.bytes().wrapping_div(l_height as usize)

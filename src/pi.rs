@@ -1207,7 +1207,7 @@ pub(crate) fn get_encoding_parameters(
   let mut l_ty0: u32 = 0;
   /* preconditions */
 
-  assert!(p_tileno < p_cp.tw.wrapping_mul(p_cp.th));
+  debug_assert!(p_tileno < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations */
   let tcp = &p_cp.tcps[p_tileno as usize];
   /* here calculation of tx0, tx1, ty0, ty1, maxprec, dx and dy */
@@ -1349,7 +1349,7 @@ pub(crate) fn get_all_encoding_parameters(
   let mut l_ty0: u32 = 0;
   /* preconditions in debug*/
 
-  assert!(tileno < p_cp.tw.wrapping_mul(p_cp.th));
+  debug_assert!(tileno < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations*/
   let tcp = &p_cp.tcps[tileno as usize];
   /* position in x and y of tile*/
@@ -1493,24 +1493,41 @@ pub(crate) fn pi_create(image: &CoreImage, cp: &Cp, tileno: u32) -> Vec<PiIterat
   let mut l_poc_bound: u32 = 0;
   /* preconditions in debug*/
 
-  assert!(tileno < cp.tw.wrapping_mul(cp.th));
+  debug_assert!(tileno < cp.tw.wrapping_mul(cp.th));
   /* initializations*/
   let tcp = &cp.tcps[tileno as usize];
   l_poc_bound = tcp.numpocs.wrapping_add(1u32);
-  /* memory allocations*/
-  let mut l_pi: Vec<PiIterator> = Vec::with_capacity(l_poc_bound as usize);
+  /* memory allocations (the C's mallocs are checked; an empty result is
+  the caller's failure signal) */
+  let mut l_pi: Vec<PiIterator> = Vec::new();
+  if l_pi.try_reserve_exact(l_poc_bound as usize).is_err() {
+    return l_pi;
+  }
   pino = 0_u32;
   while pino < l_poc_bound {
+    let mut comps: Vec<PiComp> = Vec::new();
+    if comps.try_reserve_exact(image.numcomps as usize).is_err() {
+      return Vec::new();
+    }
+    comps.resize(image.numcomps as usize, PiComp::default());
     let mut current = PiIterator {
       numcomps: image.numcomps,
-      comps: vec![Default::default(); image.numcomps as usize],
+      comps,
       ..Default::default()
     };
     compno = 0_u32;
     while compno < image.numcomps {
       let comp = &mut current.comps[compno as usize];
       let tccp = &tcp.tccps[compno as usize];
-      comp.resolutions = vec![Default::default(); tccp.numresolutions as usize];
+      let mut resolutions: Vec<PiResolution> = Vec::new();
+      if resolutions
+        .try_reserve_exact(tccp.numresolutions as usize)
+        .is_err()
+      {
+        return Vec::new();
+      }
+      resolutions.resize(tccp.numresolutions as usize, PiResolution::default());
+      comp.resolutions = resolutions;
       comp.numresolutions = tccp.numresolutions;
       compno += 1;
     }
@@ -1537,7 +1554,7 @@ pub(crate) fn pi_update_encode_poc_and_final(
   let mut l_poc_bound: u32 = 0;
   /* preconditions in debug*/
 
-  assert!(p_tileno < p_cp.tw.wrapping_mul(p_cp.th));
+  debug_assert!(p_tileno < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations*/
   let l_tcp = &mut p_cp.tcps[p_tileno as usize];
   /* number of iterations in the loop */
@@ -1618,7 +1635,7 @@ pub(crate) fn pi_update_encode_not_poc(
   let mut l_poc_bound: u32 = 0;
   /* preconditions in debug*/
 
-  assert!(p_tileno < p_cp.tw.wrapping_mul(p_cp.th));
+  debug_assert!(p_tileno < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations*/
   let l_tcp = &mut p_cp.tcps[p_tileno as usize];
   /* number of iterations in the loop */
@@ -1822,7 +1839,7 @@ pub(crate) fn pi_create_decode(
   let mut l_step_l: u32 = 0;
   /* preconditions in debug */
 
-  assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
+  debug_assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations */
   l_bound = p_cp.tcps[p_tile_no as usize].numpocs.wrapping_add(1u32);
   let l_data_stride = (4i32 * J2K_MAXRLVLS as i32) as usize;
@@ -1998,7 +2015,7 @@ pub(crate) fn get_encoding_packet_count(p_image: &mut CoreImage, p_cp: &Cp, p_ti
   let mut l_dy_min: u32 = 0;
   /* preconditions in debug*/
 
-  assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
+  debug_assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* get encoding parameters*/
   get_all_encoding_parameters(
     p_image,
@@ -2048,7 +2065,7 @@ pub(crate) fn pi_initialise_encode(
   let mut l_step_l: u32 = 0;
   /* preconditions in debug*/
 
-  assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
+  debug_assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* initializations*/
   l_bound = p_cp.tcps[p_tile_no as usize].numpocs.wrapping_add(1u32);
   let l_data_stride = (4i32 * J2K_MAXRLVLS as i32) as usize;
@@ -2509,7 +2526,7 @@ pub(crate) fn pi_update_encoding_parameters(
   let mut l_dy_min: u32 = 0;
   /* preconditions */
 
-  assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
+  debug_assert!(p_tile_no < p_cp.tw.wrapping_mul(p_cp.th));
   /* get encoding parameters */
   get_encoding_parameters(
     p_image,

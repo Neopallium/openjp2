@@ -58,7 +58,7 @@ pub(crate) fn uint_ceildivpow2(mut a: u32, mut b: u32) -> u32 {
 
 #[inline]
 pub(crate) fn uint_ceildiv(mut a: u32, mut b: u32) -> u32 {
-  assert!(b != 0);
+  debug_assert!(b != 0);
   (a as u64)
     .wrapping_add(b as u64)
     .wrapping_sub(1_u64)
@@ -72,13 +72,13 @@ pub(crate) fn int64_ceildivpow2(mut a: i64, mut b: i32) -> i32 {
 
 #[inline]
 pub(crate) fn int_ceildiv(mut a: i32, mut b: i32) -> i32 {
-  assert!(b != 0);
+  debug_assert!(b != 0);
   ((a as i64 + b as i64 - 1_i64) / b as i64) as i32
 }
 
 #[inline]
 pub(crate) fn uint64_ceildiv_res_uint32(a: u64, b: u64) -> u32 {
-  assert!(b != 0);
+  debug_assert!(b != 0);
   a.div_ceil(b) as u32
 }
 

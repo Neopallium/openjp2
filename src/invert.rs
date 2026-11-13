@@ -175,7 +175,7 @@ fn lup_solve(
   nb_compo: usize,
   p_intermediate_data: &mut [f32],
 ) {
-  assert!(nb_compo > 0);
+  debug_assert!(nb_compo > 0);
   let mut l_line_matrix = 0usize;
   let mut l_intermediate_ptr = 0usize;
   let mut l_current_permutation_ptr = 0usize;

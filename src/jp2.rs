@@ -88,7 +88,7 @@ impl Jp2BoxHeader {
         return Err("Cannot handle box sizes higher than 2^32".to_string());
       }
       self.length = max_size as u32;
-      assert!(self.length as usize == max_size);
+      debug_assert!(self.length as usize == max_size);
       return Ok(());
     }
     /* do we have a "special very large box ?" */
@@ -321,7 +321,7 @@ fn jp2_write_cdef(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
     return false;
   };
   let len = info.len() as u32;
-  assert!(!info.is_empty());
+  debug_assert!(!info.is_empty());
   let mut header = Jp2BoxHeader::new(Jp2BoxType::CDEF);
   header.length += 2 + (len * 6);
   header.write(buf);
@@ -340,12 +340,12 @@ fn jp2_write_colr(mut jp2: &mut Jp2, buf: &mut Vec<u8>) -> bool {
   let mut header = Jp2BoxHeader::new(Jp2BoxType::COLR);
   header.length += 3;
   /* Meth value is restricted to 1 or 2 (Table I.9 of part 1) */
-  assert!(meth == 1 || meth == 2);
+  debug_assert!(meth == 1 || meth == 2);
   header.length += match meth {
     1 => 4,
     2 => {
       let len = jp2.color.icc_profile_len();
-      assert!(len != 0);
+      debug_assert!(len != 0);
       len as u32
     }
     _ => return false,

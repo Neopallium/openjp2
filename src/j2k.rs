@@ -993,7 +993,7 @@ fn j2k_check_poc_val(
   let step_r = p_num_comps.wrapping_mul(step_c);
   let step_l = p_nb_resolutions.wrapping_mul(step_r);
   let mut loss = 0i32;
-  assert!(p_nb_pocs > 0u32);
+  debug_assert!(p_nb_pocs > 0u32);
   /* The C's calloc fails gracefully on OOM; a vec! would abort.  Reserve
   first (encoder parameters, but the shape is attacker-influenced through
   the low-level API). */
@@ -1079,14 +1079,14 @@ fn j2k_get_num_tp(cp: &mut Cp, pino: u32, tileno: u32) -> u32 {
   let mut tpnum = 1_u32;
   /*  preconditions */
 
-  assert!(tileno < cp.tw.wrapping_mul(cp.th));
-  assert!(pino < cp.tcps[tileno as usize].numpocs.wrapping_add(1u32));
+  debug_assert!(tileno < cp.tw.wrapping_mul(cp.th));
+  debug_assert!(pino < cp.tcps[tileno as usize].numpocs.wrapping_add(1u32));
   /* get the given tile coding parameter */
   let tcp = &cp.tcps[tileno as usize];
   let l_current_poc = &tcp.pocs[pino as usize];
   /* get the progression order as a character string */
   let prog = j2k_convert_progression_order(tcp.prg);
-  assert!(prog != ProgressionOrder::Unknown);
+  debug_assert!(prog != ProgressionOrder::Unknown);
   if cp.m_specific_param.m_enc.m_tp_on {
     // C: for (i = 0; i < 4; ++i) — the index is also written to m_tp_pos on the split step.
     for (i, step) in prog.get_order().iter().enumerate() {
@@ -3085,7 +3085,7 @@ fn j2k_merge_ppm(p_cp: &mut Cp, p_manager: &mut EventMgr) -> OpResult {
   let mut l_n_ppm_remaining: u32 = 0;
   /* preconditions */
 
-  assert!(p_cp.ppm_buffer.is_empty());
+  debug_assert!(p_cp.ppm_buffer.is_empty());
   if !p_cp.ppm {
     return Ok(());
   }
@@ -3304,6 +3304,10 @@ fn j2k_write_tlm(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMg
   );
   let mut l_buf = core::mem::take(&mut p_j2k.m_specific_param.m_encoder.m_header_tile_data);
   l_buf.resize(l_tlm_size as usize, 0);
+  /* The C memsets the whole placeholder; Vec::resize only zero-fills when
+  growing, so a shrunk buffer would keep stale COC/QCC bytes on the wire
+  until j2k_write_updated_tlm patches them. */
+  l_buf[..l_tlm_size as usize].fill(0);
   let mut pos: usize = 0;
   /* change the way data is written to avoid seeking if possible */
   p_j2k.m_specific_param.m_encoder.m_tlm_start = stream_tell(p_stream); /* TLM */
@@ -3570,7 +3574,7 @@ fn j2k_read_sot(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
       || l_tile_y < p_j2k.m_specific_param.m_decoder.m_start_tile_y
       || l_tile_y >= p_j2k.m_specific_param.m_decoder.m_end_tile_y;
   } else {
-    assert!(p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec >= 0i32);
+    debug_assert!(p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec >= 0i32);
     p_j2k.m_specific_param.m_decoder.m_skip_data =
       p_j2k.m_current_tile_number != p_j2k.m_specific_param.m_decoder.m_tile_ind_to_dec as u32;
   }
@@ -3781,7 +3785,7 @@ fn j2k_write_sod(
     {
       return Err(());
     }
-    assert!(l_data_written_plt <= p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_plt);
+    debug_assert!(l_data_written_plt <= p_j2k.m_specific_param.m_encoder.m_reserved_bytes_for_plt);
     /* Move PLT marker(s) before SOD */
     data.copy_within(0..*p_data_written as usize, l_data_written_plt as usize);
     data[..l_data_written_plt as usize]
@@ -5605,8 +5609,8 @@ fn j2k_is_imf_compliant(
                       mainlevel as core::ffi::c_int);
     ret = Err(())
   } else {
-    /* Validate sublevel */
-    assert!(
+    /* Validate sublevel (static table layout; input-independent) */
+    debug_assert!(
       core::mem::size_of::<[u16; 12]>()
         == ((11i32 + 1i32) as usize).wrapping_mul(core::mem::size_of::<u16>())
     );
@@ -6027,6 +6031,18 @@ pub(crate) fn j2k_setup_encoder(
         EVT_ERROR,
         "Invalid image component precision : {} not in range [1,31]\n",
         comp.prec,
+      );
+      return Err(());
+    }
+    /* The decode side validates dx/dy (j2k_read_siz); mirror it so a
+    hand-built image with dx/dy = 0 cannot reach the ceildiv asserts. */
+    if comp.dx == 0 || comp.dx > 255 || comp.dy == 0 || comp.dy > 255 {
+      event_msg!(
+        p_manager,
+        EVT_ERROR,
+        "Invalid image component subsampling : dx={} dy={} (should be between 1 and 255)\n",
+        comp.dx,
+        comp.dy,
       );
       return Err(());
     }
@@ -6682,7 +6698,7 @@ pub(crate) fn j2k_setup_encoder(
       if parameters.csty & 0x1i32 != 0 {
         let mut p = 0i32;
         let mut it_res: i32 = 0;
-        assert!(tccp_1.numresolutions > 0u32);
+        debug_assert!(tccp_1.numresolutions > 0u32);
         it_res = tccp_1.numresolutions as i32 - 1i32;
         while it_res >= 0i32 {
           if p < parameters.res_spec {
@@ -6701,7 +6717,7 @@ pub(crate) fn j2k_setup_encoder(
             let mut size_prcw = 0i32;
             let mut size_prch = 0i32;
             /*end for*/
-            assert!(res_spec > 0i32);
+            debug_assert!(res_spec > 0i32);
             size_prcw = parameters.prcw_init[(res_spec - 1i32) as usize] >> (p - (res_spec - 1i32));
             size_prch = parameters.prch_init[(res_spec - 1i32) as usize] >> (p - (res_spec - 1i32));
             if size_prcw < 1i32 {
@@ -8357,8 +8373,8 @@ fn update_image_data_comp(
      * by this input area.
      * */
 
-    assert!(res_x0 >= 0i32);
-    assert!(res_x1 >= 0i32);
+    debug_assert!(res_x0 >= 0i32);
+    debug_assert!(res_x1 >= 0i32);
     if l_x0_dest < res_x0 as u32 {
       l_start_x_dest = (res_x0 as u32).wrapping_sub(l_x0_dest);
       l_offset_x0_src = 0i32;
@@ -8874,8 +8890,8 @@ fn j2k_get_spcod_spcoc_size(p_j2k: &mut J2k, p_tile_no: u32, p_comp_no: u32) -> 
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
   /* preconditions again */
 
-  assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
-  assert!(
+  debug_assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
+  debug_assert!(
     p_comp_no
       < p_j2k
         .m_private_image
@@ -8963,8 +8979,8 @@ fn j2k_write_spcod_spcoc(
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
   /* preconditions again */
   /* SPcoc (E) */
-  assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
-  assert!(
+  debug_assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
+  debug_assert!(
     p_comp_no
       < p_j2k
         .m_private_image
@@ -9033,7 +9049,7 @@ fn j2k_read_spcod_spcoc(
   let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
   let m_reduce = p_j2k.m_cp.m_specific_param.m_dec.m_reduce;
   /* precondition again */
-  assert!(
+  debug_assert!(
     compno
       < p_j2k
         .m_private_image
@@ -9217,8 +9233,8 @@ fn j2k_get_sqcd_sqcc_size(p_j2k: &mut J2k, p_tile_no: u32, p_comp_no: u32) -> u3
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
   /* preconditions again */
 
-  assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
-  assert!(
+  debug_assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
+  debug_assert!(
     p_comp_no
       < p_j2k
         .m_private_image
@@ -9318,8 +9334,8 @@ fn j2k_write_sqcd_sqcc(
   let l_tccp = &p_j2k.m_cp.tcps[p_tile_no as usize].tccps[p_comp_no as usize];
   /* preconditions again */
   /* SPqcx_i */
-  assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
-  assert!(
+  debug_assert!(p_tile_no < p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th));
+  debug_assert!(
     p_comp_no
       < p_j2k
         .m_private_image
@@ -9404,7 +9420,7 @@ fn j2k_read_sqcd_sqcc(
   /* come from tile part header or main header ?*/
   let is_tph = p_j2k.m_specific_param.m_decoder.m_state == J2KState::TPH;
   /* precondition again*/
-  assert!(
+  debug_assert!(
     p_comp_no
       < p_j2k
         .m_private_image
@@ -11199,7 +11215,7 @@ fn j2k_post_write_tile(
   let mut l_tile_size = 0_u32;
   let mut l_available_data: u32 = 0;
   /* preconditions */
-  assert!(!p_j2k
+  debug_assert!(!p_j2k
     .m_specific_param
     .m_encoder
     .m_encoded_tile_data

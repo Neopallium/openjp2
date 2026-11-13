@@ -245,7 +245,13 @@ impl CoreImageComp {
 
   /// Allocate (zeroed) data for w * h samples.
   pub fn alloc_data(&mut self) -> bool {
-    self.data = vec![0; (self.w as usize).wrapping_mul(self.h as usize)];
+    let len = (self.w as usize).wrapping_mul(self.h as usize);
+    let mut data = Vec::new();
+    if data.try_reserve_exact(len).is_err() {
+      return false;
+    }
+    data.resize(len, 0);
+    self.data = data;
     true
   }
 
@@ -424,7 +430,9 @@ impl CoreImage {
 
   /// Sets three same-sized components from separate RGB planes.
   pub fn set_rgb(&mut self, w: usize, h: usize, r: &[i32], g: &[i32], b: &[i32]) -> bool {
-    let len = w * h;
+    let Some(len) = w.checked_mul(h) else {
+      return false;
+    };
     if r.len() != len || g.len() != len || b.len() != len || self.comps.len() < 3 {
       return false;
     }
