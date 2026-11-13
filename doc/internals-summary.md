@@ -1,6 +1,6 @@
 # openjp2 — Internal Structure Summary
 
-Updated 2026-11-13, against 0.7.0 (HEAD `276d0689`). Complements `doc/code-outline.md`
+Updated 2026-11-13, against 0.7.1. Complements `doc/code-outline.md`
 (a module↔spec map) with a data-flow view of the two pipelines. The code is a
 faithful, `#![forbid(unsafe_code)]` port of OpenJPEG 2.5.x; module names map
 1:1 to the C files (`src/lib/openjp2/*.c`).

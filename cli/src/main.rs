@@ -1,6 +1,7 @@
-//! `openjp2-cli`: modern command-line tools for the pure-Rust OpenJPEG
-//! port.  Encode any readable image to JPEG 2000, decode JP2/J2K back to
-//! a common format, and inspect codestream structure.
+//! The `openjp2` command-line tool: modern front-end for the pure-Rust
+//! OpenJPEG port (the `openjp2-cli` package installs the `openjp2` binary).
+//! Encode any readable image to JPEG 2000, decode JP2/J2K back to a common
+//! format, and inspect codestream structure.
 //!
 //! The C-parity tools (byte-compatible with the upstream `opj_compress` /
 //! `opj_decompress` / `opj_dump`) live in the `openjp2-tools` crate; this
@@ -15,7 +16,7 @@ use clap::{Parser, Subcommand};
 /// JPEG 2000 encode/decode/inspect — pure-Rust OpenJPEG.
 #[derive(Parser)]
 #[command(
-  name = "openjp2-cli",
+  name = "openjp2",
   version,
   about = "JPEG 2000 encode/decode/inspect - pure-Rust OpenJPEG",
   long_about = None,

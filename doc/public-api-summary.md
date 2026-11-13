@@ -1,6 +1,6 @@
 # openjp2 — Current Public API Structure
 
-Updated 2026-11-13, against 0.7.0 (HEAD `276d0689`). This is a factual map
+Updated 2026-11-13, against 0.7.1. This is a factual map
 of the public surface as it exists today (the *proposal* is in
 `doc/redesign-proposal.md`; the earlier `doc/api-review.md` tracks the
 jpeg2k-parity work).
@@ -252,5 +252,5 @@ reference).
 | `openjp2-capi` | `#[no_mangle]` C ABI (`libopenjp2` drop-in) + the merged `opj_codec_t*` handle |
 | `openjp2-ctypes` | C-ABI mirror types and `openjpeg.h` constants |
 | `openjp2-tools` | C-parity `opj_compress` / `opj_decompress` / `opj_dump` |
-| `openjp2-cli` | modern `openjp2-cli compress` / `decompress` / `dump` |
+| `openjp2-cli` | modern `openjp2 compress` / `decompress` / `dump` (the package installs the `openjp2` binary) |
 | `openjp2-wasm` | WASM bindings + the GitHub-Pages playground |
