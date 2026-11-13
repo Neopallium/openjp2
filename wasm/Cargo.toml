@@ -18,7 +18,7 @@ exclude = ["examples/*"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-openjp2 = { path = "..", default-features = false }
+openjp2 = { path = "..", version = "0.7.0", default-features = false }
 wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1"
 wasm-bindgen-rayon = { version = "1.3", optional = true, features = ["no-bundler"] }

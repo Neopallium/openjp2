@@ -13,7 +13,7 @@ name = "openjp2-cli"
 path = "src/main.rs"
 
 [dependencies]
-openjp2 = { path = ".." }
+openjp2 = { path = "..", version = "0.7.0" }
 clap = { version = "4.6", features = ["derive"] }
 image = { version = "0.25", default-features = false, features = [
   "png",

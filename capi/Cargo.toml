@@ -5,7 +5,7 @@ version = "0.7.0"
 license = "BSD-2-Clause"
 description = "C ABI for the Rust port of Openjpeg."
 repository = "https://github.com/Neopallium/openjp2"
-documentation = "https://docs.rs/openjp2"
+documentation = "https://docs.rs/openjp2-capi"
 keywords = ["j2k", "jp2", "jpeg2000", "image"]
 edition = "2018"
 autobins = false
@@ -33,7 +33,7 @@ openjpeg-version-string = ["openjp2_core/openjpeg-version-string"]
 simd = ["openjp2_core/simd"]
 
 [dependencies]
-openjp2_core = { package = "openjp2", path = "..", default-features = false, features = ["event-handlers"] }
-openjp2-ctypes = { path = "../ctypes" }
+openjp2_core = { package = "openjp2", path = "..", version = "0.7.0", default-features = false, features = ["event-handlers"] }
+openjp2-ctypes = { path = "../ctypes", version = "0.7.0" }
 libc = { version = "0.2", optional = true }
 log = "0.4.17"
