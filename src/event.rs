@@ -141,3 +141,43 @@ macro_rules! event_msg {
     }
   };
 }
+
+/// Collects a worker's events so a parallel driver can replay them on the
+/// caller's manager in tile order (rayon workers cannot share `&mut
+/// EventMgr`).  The replay preserves the serial event stream, including
+/// diagnostics from user-installed handlers.
+#[derive(Default)]
+pub(crate) struct CollectedEvents {
+  pub(crate) info: Vec<String>,
+  pub(crate) warning: Vec<String>,
+  pub(crate) error: Vec<String>,
+}
+
+/// A fresh manager that forwards every event into `events`.
+pub(crate) fn collecting_manager(
+  events: &std::sync::Arc<std::sync::Mutex<CollectedEvents>>,
+) -> EventMgr {
+  let mut manager = EventMgr::default();
+  let info = events.clone();
+  manager.set_info_handler(move |msg| info.lock().unwrap().info.push(msg.to_owned()));
+  let warning = events.clone();
+  manager.set_warning_handler(move |msg| warning.lock().unwrap().warning.push(msg.to_owned()));
+  let error = events.clone();
+  manager.set_error_handler(move |msg| error.lock().unwrap().error.push(msg.to_owned()));
+  manager
+}
+
+impl CollectedEvents {
+  /// Replays the collected events through `manager`.
+  pub(crate) fn replay(&self, manager: &mut EventMgr) {
+    for msg in &self.info {
+      manager.msg_write(EventType::Info, msg);
+    }
+    for msg in &self.warning {
+      manager.msg_write(EventType::Warning, msg);
+    }
+    for msg in &self.error {
+      manager.msg_write(EventType::Error, msg);
+    }
+  }
+}

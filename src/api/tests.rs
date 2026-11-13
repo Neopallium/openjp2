@@ -2667,3 +2667,61 @@ fn mixed_coc_transform_with_mct_is_rejected() {
     "mixed per-component transforms must be rejected, not panic or silently skip MCT"
   );
 }
+
+#[test]
+fn stray_sop_in_main_header_is_rejected() {
+  let (w, h) = (32u32, 32u32);
+  let core = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: w,
+    y1: h,
+    numcomps: 1,
+    color_space: crate::ColorSpace::Gray,
+    comps: vec![crate::CoreImageComp {
+      dx: 1,
+      dy: 1,
+      w,
+      h,
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data: vec![0; (w * h) as usize],
+    }],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let mut bytes = Image::from_core_image(core)
+    .encode(EncodeParameters::new())
+    .expect("encode");
+  let sot = bytes
+    .windows(2)
+    .position(|w| w == [0xFF, 0x90])
+    .expect("SOT");
+  /* C's marker table has SOP with a NULL handler, so it reaches the
+  position check and is rejected; it must not be skip-scanned as unknown. */
+  bytes.splice(sot..sot, [0xFF, 0x91]);
+  assert!(Image::from_bytes_with(&bytes, DecodeParameters::default().strict(true)).is_err());
+}
+
+#[test]
+fn guard_bits_uses_atoi_semantics() {
+  let mut encoder = Encoder::new(J2KFormat::J2K).expect("encoder");
+  assert!(encoder.extra_options(&["GUARD_BITS=-3"]).is_err());
+  assert!(encoder.extra_options(&["GUARD_BITS= 3"]).is_ok());
+  assert!(encoder.extra_options(&["GUARD_BITS=+3"]).is_ok());
+}
+
+#[test]
+fn skip_clamps_at_the_end_of_the_stream() {
+  let mut stream = Stream::from_bytes(vec![1, 2, 3]);
+  assert_eq!(stream.skip(2).expect("partial skip"), 2);
+  assert_eq!(stream.skip(5).expect("clamped skip"), 1);
+  assert!(stream.skip(1).is_err(), "nothing left to skip");
+  assert_eq!(stream.tell(), 3);
+}

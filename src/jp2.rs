@@ -40,14 +40,23 @@ impl Jp2BoxHeader {
     }
   }
 
-  pub fn from_stream(reader: &mut Stream) -> Option<Self> {
+  pub fn from_stream(reader: &mut Stream, p_manager: &mut EventMgr) -> Option<Self> {
     let mut header = Self::default();
     let mut max_size = stream_get_number_byte_left(reader);
     if max_size < 0 {
       max_size = 0;
     }
-    header.read(reader, max_size as usize).ok()?;
-    Some(header)
+    match header.read(reader, max_size as usize) {
+      Ok(()) => Some(header),
+      Err(msg) => {
+        /* The C logs the 2^32 box-size rejection; the reader returns it as
+        an Err string, which the old `.ok()?` discarded. */
+        if msg.contains("Cannot handle box sizes") {
+          event_msg!(p_manager, EVT_ERROR, "{}\\n", msg);
+        }
+        None
+      }
+    }
   }
 
   pub fn ty_u32(&self) -> u32 {
@@ -200,9 +209,9 @@ fn jp2_read_ihdr(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpR
       p_manager,
       EVT_ERROR,
       "Wrong values for: w({}) h({}) numcomps({}) (ihdr)\n",
-      jp2.w,
-      jp2.h,
-      numcomps,
+      jp2.w as core::ffi::c_int,
+      jp2.h as core::ffi::c_int,
+      numcomps as core::ffi::c_int,
     );
     return Err(());
   }
@@ -546,7 +555,7 @@ fn jp2_apply_pclr(image: &mut CoreImage, pclr: &Jp2Pclr, p_manager: &mut EventMg
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "image->comps[{}].data == NULL in jp2_apply_pclr().\n",
+        "image->comps[{}].data == NULL in opj_jp2_apply_pclr().\n",
         i as core::ffi::c_int,
       );
       return Err(());
@@ -566,7 +575,7 @@ fn jp2_apply_pclr(image: &mut CoreImage, pclr: &Jp2Pclr, p_manager: &mut EventMg
     event_msg!(
       p_manager,
       EVT_ERROR,
-      "Memory allocation failure in jp2_apply_pclr().\n",
+      "Memory allocation failure in opj_jp2_apply_pclr().\n",
     );
     return Err(());
   }
@@ -755,7 +764,7 @@ fn jp2_apply_cdef(image: &mut CoreImage, color: &mut Jp2Color, manager: &mut Eve
       event_msg!(
         manager,
         EVT_WARNING,
-        "jp2_apply_cdef: cn={}, numcomps={}\n",
+        "opj_jp2_apply_cdef: cn={}, numcomps={}\n",
         cn as core::ffi::c_int,
         numcomps,
       );
@@ -767,7 +776,7 @@ fn jp2_apply_cdef(image: &mut CoreImage, color: &mut Jp2Color, manager: &mut Eve
         event_msg!(
           manager,
           EVT_WARNING,
-          "jp2_apply_cdef: acn={}, numcomps={}\n",
+          "opj_jp2_apply_cdef: acn={}, numcomps={}\n",
           acn as core::ffi::c_int,
           numcomps,
         );
@@ -1115,6 +1124,12 @@ fn jp2_write_ftyp(jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) 
   Ok(())
 }
 
+/// The C prints box types as the raw four-character code (`'jp2h'`); the
+/// event log mirrors that instead of a hex word.
+fn box_type_text(ty: u32) -> String {
+  String::from_utf8_lossy(&ty.to_be_bytes()).into_owned()
+}
+
 /// Writes the Jpeg2000 codestream Header box - JP2C Header box. This function must be called AFTER the coding has been done.
 ///
 /// `stream` -- the stream to write data to.
@@ -1135,11 +1150,7 @@ fn jp2_write_jp2c(jp2: &mut Jp2, stream: &mut Stream, p_manager: &mut EventMgr) 
     return Err(());
   }
   if !header.write(stream) {
-    event_msg!(
-      p_manager,
-      EVT_ERROR,
-      "Error while writing jp2c header to stream\n",
-    );
+    event_msg!(p_manager, EVT_ERROR, "Failed to seek in the stream.\n",);
     return Err(());
   }
   if stream_seek(stream, j2k_codestream_exit, p_manager).is_err() {
@@ -1459,7 +1470,7 @@ fn jp2_read_header_procedure(
 ) -> OpResult {
   let mut data = Vec::<u8>::new();
 
-  while let Some(header) = Jp2BoxHeader::from_stream(stream) {
+  while let Some(header) = Jp2BoxHeader::from_stream(stream, p_manager) {
     /* is it the codestream box ? */
     if header.ty == Jp2BoxType::JP2C {
       if jp2.jp2_state & JP2_STATE_HEADER as core::ffi::c_uint != 0 {
@@ -1512,8 +1523,8 @@ fn jp2_read_header_procedure(
         event_msg!(
           p_manager,
           EVT_WARNING,
-          "Found a misplaced \'{:x}\' box outside jp2h box\n",
-          header.ty_u32(),
+          "Found a misplaced \'{}\' box outside jp2h box\n",
+          box_type_text(header.ty_u32()),
         );
         if jp2.jp2_state & JP2_STATE_HEADER != 0 {
           /* read anyway, we already have jp2h */
@@ -1521,8 +1532,8 @@ fn jp2_read_header_procedure(
           event_msg!(
             p_manager,
             EVT_WARNING,
-            "JPEG2000 Header box not read yet, \'{:x}\' box will be ignored\n",
-            header.ty_u32(),
+            "JPEG2000 Header box not read yet, \'{}\' box will be ignored\n",
+            box_type_text(header.ty_u32()),
           );
           jp2.jp2_state |= JP2_STATE_UNKNOWN;
           if stream_skip(stream, data_size as i64, p_manager) != data_size as i64 {
@@ -1541,11 +1552,11 @@ fn jp2_read_header_procedure(
         event_msg!(
           p_manager,
           EVT_ERROR,
-          "Invalid box size {} for box \'{:x}\'. Need {} bytes, {} bytes remaining \n",
-          header.length,
-          header.ty_u32(),
-          data_size,
-          stream_get_number_byte_left(stream) as u32,
+          "Invalid box size {} for box \'{}\'. Need {} bytes, {} bytes remaining \n",
+          header.length as core::ffi::c_int,
+          box_type_text(header.ty_u32()),
+          data_size as core::ffi::c_int,
+          stream_get_number_byte_left(stream) as u32 as core::ffi::c_int,
         );
         return Err(());
       }

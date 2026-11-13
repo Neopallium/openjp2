@@ -773,13 +773,14 @@ impl Decoder {
       Some(area_image),
       area_image,
       stream,
+      &mut self.m_event_mgr,
       limits.effective_max_mem(),
     )?;
     /* JP2 palette/component-mapping post-processing (same as the serial
     jp2_decode). */
     if let CodecFormat::JP2(jp2) = &mut self.m_codec {
-      let mut manager = crate::event::EventMgr::default();
-      if crate::jp2::jp2_apply_color_postprocessing(jp2, &mut core, &mut manager).is_err() {
+      if crate::jp2::jp2_apply_color_postprocessing(jp2, &mut core, &mut self.m_event_mgr).is_err()
+      {
         return None;
       }
     }
@@ -827,8 +828,7 @@ impl Decoder {
       for comp in &mut merge.comps {
         comp.factor = reduce;
       }
-      let mut manager = crate::event::EventMgr::default();
-      if crate::j2k::j2k_update_image_dimensions(&mut merge, &mut manager).is_err() {
+      if crate::j2k::j2k_update_image_dimensions(&mut merge, &mut self.m_event_mgr).is_err() {
         return None;
       }
     }
@@ -844,14 +844,15 @@ impl Decoder {
       None,
       &merge,
       stream,
+      &mut self.m_event_mgr,
       limits.effective_max_mem(),
     )?;
     /* JP2 files with a palette/component mapping need the same colour
     post-processing the serial jp2_decode applies after the codestream
     decode (the palette lookup turns indices into colour values). */
     if let CodecFormat::JP2(jp2) = &mut self.m_codec {
-      let mut manager = crate::event::EventMgr::default();
-      if crate::jp2::jp2_apply_color_postprocessing(jp2, &mut core, &mut manager).is_err() {
+      if crate::jp2::jp2_apply_color_postprocessing(jp2, &mut core, &mut self.m_event_mgr).is_err()
+      {
         return None;
       }
     }
@@ -989,7 +990,6 @@ impl Encoder {
     if num_tiles <= 1 {
       return None;
     }
-    let mut manager = crate::event::EventMgr::default();
-    Some(crate::j2k::j2k_encode_tiles_parallel(j2k, stream, &mut manager).is_ok())
+    Some(crate::j2k::j2k_encode_tiles_parallel(j2k, stream, &mut self.m_event_mgr).is_ok())
   }
 }

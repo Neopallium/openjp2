@@ -47,7 +47,11 @@ impl DumpImage {
     dropped). */
     codec.set_strict(params.strict)?;
     codec.set_limits(params.limits)?;
-    catch_codec_panic(true, || codec.read_header(&mut stream).map(|_| ()))?;
+    let header = catch_codec_panic(true, || codec.read_header(&mut stream))?;
+    if let Some(area) = params.decode_area {
+      let mut core = header.into_core_image();
+      codec.set_decode_area(&mut core, Some(area))?;
+    }
     Ok(Self { codec, stream })
   }
 

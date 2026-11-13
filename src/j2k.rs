@@ -1376,7 +1376,7 @@ fn j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
       p_manager,
       EVT_ERROR,
       "Error with SIZ marker: number of component is illegal -> {}\n",
-      l_tmp,
+      l_tmp as core::ffi::c_int,
     );
     return Err(());
   }
@@ -7116,7 +7116,9 @@ fn j2k_read_header_procedure(
     /* Manage case where marker is unknown (or has no table entry in the C:
     EPH/SOC/SOD/EOC are skipped by the C's read_unk scan, so corrupt
     streams with stray FF 92/4F/93/D9 recover there - review round 3 M3). */
-    if l_marker_handler.is_unknown() || !l_marker_handler.has_handler() {
+    if l_marker_handler.is_unknown()
+      || (!l_marker_handler.has_handler() && !matches!(l_marker_handler, J2KMarker::SOP))
+    {
       if j2k_read_unk(p_j2k, p_stream, &mut l_current_marker, p_manager).is_err() {
         p_j2k.record_error_context(
           l_current_marker.as_u32(),
@@ -10125,6 +10127,7 @@ impl AsRef<[u8]> for SharedBuf {
 }
 
 #[cfg(feature = "rayon")]
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn j2k_decode_tiles_parallel(
   cp: &Cp,
   header: &CoreImage,
@@ -10137,6 +10140,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
   decode_bounds: Option<&CoreImage>,
   merge_image: &CoreImage,
   stream: &mut Stream,
+  p_manager: &mut EventMgr,
   max_mem: u64,
 ) -> Option<CoreImage> {
   use rayon::prelude::*;
@@ -10233,7 +10237,12 @@ pub(crate) fn j2k_decode_tiles_parallel(
 
   /* Decode the requested tiles in parallel (on the caller's chosen pool
   via par::with_current_pool — DecodeParameters::threads). */
-  let decoded: Vec<Option<(Tcd, Vec<u32>)>> = crate::par::with_current_pool(|| {
+  let decoded: Vec<
+    Option<(
+      (Tcd, Vec<u32>),
+      std::sync::Arc<std::sync::Mutex<crate::event::CollectedEvents>>,
+    )>,
+  > = crate::par::with_current_pool(|| {
     tiles
       .into_par_iter()
       .map(|&tile_no| {
@@ -10245,7 +10254,10 @@ pub(crate) fn j2k_decode_tiles_parallel(
         if worker_stream.seek(first_sot[tile_no as usize] + 2).is_err() {
           return None;
         }
-        let mut manager = EventMgr::default();
+        let events = std::sync::Arc::new(std::sync::Mutex::new(
+          crate::event::CollectedEvents::default(),
+        ));
+        let mut manager = crate::event::collecting_manager(&events);
         /* The sequential decode (and the C reference) reuses code-block
         state ACROSS tiles: for "tolerant" codestreams whose packet
         segments overrun their packets (g1_colr.j2c), the serial walk
@@ -10256,10 +10268,12 @@ pub(crate) fn j2k_decode_tiles_parallel(
         back to the (correct) sequential decode. */
         let recovered = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let recovered2 = recovered.clone();
+        let events2 = events.clone();
         manager.set_warning_handler(move |msg: &str| {
           if msg.contains("segment too long") {
             recovered2.store(true, std::sync::atomic::Ordering::Relaxed);
           }
+          events2.lock().unwrap().warning.push(msg.to_owned());
         });
         let result = j2k_decode_tile_worker(
           cp,
@@ -10275,7 +10289,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
         if recovered.load(std::sync::atomic::Ordering::Relaxed) {
           return None;
         }
-        result
+        result.map(|r| (r, events))
       })
       .collect()
   });
@@ -10286,7 +10300,9 @@ pub(crate) fn j2k_decode_tiles_parallel(
     .iter()
     .copied()
     .zip(decoded.into_iter().map(|t| {
-      let (tcd, resno) = t.expect("checked above");
+      let ((tcd, resno), events) = t.expect("checked above");
+      /* Replay diagnostics in tile order, like the serial decode. */
+      events.lock().unwrap().replay(p_manager);
       (tcd, resno)
     }))
     .map(|(tile, (tcd, resno))| (tile, tcd, resno))
@@ -10295,8 +10311,7 @@ pub(crate) fn j2k_decode_tiles_parallel(
   /* Merge in tile order (sequential; the per-tile update is already
   parallel across components). */
   let mut output = merge_image.clone();
-  let mut manager = EventMgr::default();
-  if j2k_merge_tile_results(decoded, header, &mut output, &mut manager, max_mem).is_err() {
+  if j2k_merge_tile_results(decoded, header, &mut output, p_manager, max_mem).is_err() {
     return None;
   }
   Some(output)
@@ -10644,12 +10659,21 @@ pub(crate) fn j2k_encoder_set_extra_options(
     } else if option.starts_with("GUARD_BITS=") {
       let mut tileno: u32 = 0;
       let mut cp = &mut p_j2k.m_cp;
-      /* The C parses the value with atoi: leading digits, stop at the
-      first non-digit ("3x" -> 3, "" -> 0). */
+      /* The C parses the value with atoi: leading whitespace, an optional
+      sign, then digits until the first non-digit (" 3" -> 3, "-3" -> -3,
+      "" -> 0). */
       let gb_str = option
         .strip_prefix("GUARD_BITS=")
         .expect("starts_with check above");
-      let numgbits = gb_str
+      let gb_str = gb_str.trim_start_matches(|c: char| c.is_ascii_whitespace());
+      let (negative, digits) = if let Some(rest) = gb_str.strip_prefix('-') {
+        (true, rest)
+      } else if let Some(rest) = gb_str.strip_prefix('+') {
+        (false, rest)
+      } else {
+        (false, gb_str)
+      };
+      let mut numgbits = digits
         .chars()
         .take_while(|c| c.is_ascii_digit())
         .fold(0i32, |acc, c| {
@@ -10657,6 +10681,9 @@ pub(crate) fn j2k_encoder_set_extra_options(
             .saturating_mul(10)
             .saturating_add((c as u8).wrapping_sub(b'0') as i32)
         });
+      if negative {
+        numgbits = numgbits.saturating_neg();
+      }
       if !(0..=7).contains(&numgbits) {
         event_msg!(
           p_manager,
@@ -10855,23 +10882,45 @@ pub(crate) fn j2k_encode_tiles_parallel(
   /* Encode every tile in parallel; the workers read the pixels from the
   shared image (read-only) and write their tile-parts (and their TLM
   entries) into per-worker buffers. */
-  let results: Vec<Option<(Vec<u8>, Vec<u8>, usize)>> = {
+  let results: Vec<
+    Option<(
+      Vec<u8>,
+      Vec<u8>,
+      usize,
+      std::sync::Arc<std::sync::Mutex<crate::event::CollectedEvents>>,
+    )>,
+  > = {
     let real = p_j2k.m_private_image.as_deref().expect("m_private_image");
     (0..num_tiles)
       .into_par_iter()
       .map(|tile_no| {
-        let mut manager = EventMgr::default();
-        j2k_encode_tile(&cp, &header, &enc, tile_no, real, &mut manager)
+        let events = std::sync::Arc::new(std::sync::Mutex::new(
+          crate::event::CollectedEvents::default(),
+        ));
+        let mut manager = crate::event::collecting_manager(&events);
+        let result = j2k_encode_tile(&cp, &header, &enc, tile_no, real, &mut manager);
+        result.map(|r| (r.0, r.1, r.2, events))
       })
       .collect()
   };
   if results.iter().any(Option::is_none) {
+    /* The serial fallback re-emits every worker diagnostic. */
     return Err(());
   }
   /* Write the tile-parts in order, merging the per-part TLM entries the
-  same way the serial loop does. */
-  for result in results {
-    let (bytes, tlm_buf, tlm_cur) = result.expect("checked above");
+  same way the serial loop does.  Replay each worker's events in tile
+  order so the event stream matches the serial encode; the master emits
+  the per-tile INFO line the workers do not see. */
+  for (idx, result) in results.into_iter().enumerate() {
+    let (bytes, tlm_buf, tlm_cur, events) = result.expect("checked above");
+    event_msg!(
+      p_manager,
+      EVT_INFO,
+      "tile number {} / {}\n",
+      (idx as u32).wrapping_add(1u32),
+      num_tiles,
+    );
+    events.lock().unwrap().replay(p_manager);
     if stream_write_data(p_stream, &bytes, p_manager) != bytes.len() {
       return Err(());
     }

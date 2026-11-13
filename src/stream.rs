@@ -295,12 +295,20 @@ impl Stream {
         "Can't skip with count < 0: {count}"
       )));
     }
-    if self.m_stream_length > 0 {
-      let new_offset = self.m_byte_offset + count;
-      if (new_offset as u64) > self.m_stream_length {
-        log::trace!("Skip pass the end of the stream.");
-        return Err(io::Error::other("Skip pass the end of the stream"));
+    /* Mirror the C's opj_stream_read_skip: clamp at the declared stream
+    length, seek to EOF, and return the partial count (or -1 when nothing
+    could be skipped). */
+    let remaining = (self.m_stream_length.min(i64::MAX as u64) as i64)
+      .saturating_sub(self.m_byte_offset)
+      .max(0);
+    if count > remaining {
+      log::info!("Stream reached its end !");
+      if remaining > 0 {
+        self.m_inner.seek_relative(remaining)?;
+        self.m_byte_offset = self.m_byte_offset.saturating_add(remaining);
+        return Ok(remaining);
       }
+      return Err(io::Error::other("Skip pass the end of the stream"));
     }
     let res = self
       .m_inner

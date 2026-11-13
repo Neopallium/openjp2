@@ -1384,7 +1384,7 @@ pub(crate) fn t1_ht_decode_cblk(
     event_msg!(
       p_manager,
       EVT_ERROR,
-      "Malformed HT codeblock.  Incorrect MEL segment sequence.\n"
+      "Malformed HT codeblock. Incorrect MEL segment sequence.\n"
     );
     return Err(());
   }
@@ -1546,7 +1546,7 @@ pub(crate) fn t1_ht_decode_cblk(
     consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, &mut u_q);
     if u_q[0_usize] > zero_bplanes_p1 || u_q[1_usize] > zero_bplanes_p1 {
       event_msg!(p_manager, EVT_ERROR,
-                            "Malformed HT codeblock. Decoding this codeblock is stopped. u_q is larger than zero bitplanes + 1 \n");
+                            "Malformed HT codeblock. Decoding this codeblock is stopped. U_q is larger than zero bitplanes + 1 \n");
       return Err(());
     }
     //consume u bits in the VLC code
@@ -1840,7 +1840,7 @@ pub(crate) fn t1_ht_decode_cblk(
       } //for next double quad
       if u_q_0[0_usize] > zero_bplanes_p1 || u_q_0[1_usize] > zero_bplanes_p1 {
         event_msg!(p_manager, EVT_ERROR,
-                                "Malformed HT codeblock. Decoding this codeblock is stopped. u_q islarger than bitplanes + 1 \n");
+                                "Malformed HT codeblock. Decoding this codeblock is stopped. U_q islarger than bitplanes + 1 \n");
         return Err(());
       }
       ls0 = line_state[lsp + 2].get();
