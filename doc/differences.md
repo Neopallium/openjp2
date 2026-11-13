@@ -141,6 +141,10 @@ a literal transcription.  This page lists the intentional divergences.
 - `opj_get_num_cpus()` reports `std::thread::available_parallelism()`;
   `opj_has_thread_support()` reports the `rayon` feature.
 - Error messages are best-effort translations of the C diagnostics.
+- Lenient decode stops iterating packets once the tile data is exhausted
+  (a truncated stream yields zero-byte packets for the whole remaining
+  include-mask space in the C; the output is identical, but the port
+  avoids the pathological multi-minute loop the C burns).
 - Mixed per-component transforms (COC `qmfbid` differs between the MCT
   components): the C reinterprets the raw tile buffers regardless of
   their nominal type.  The typed Rust port cannot do that, so strict

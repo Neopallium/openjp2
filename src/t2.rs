@@ -325,6 +325,14 @@ pub(crate) fn t2_decode_packets(
       if pi_next(pi, p_manager).is_err() {
         break;
       }
+      /* Lenient truncation short-circuit: when the tile data is exhausted
+      every remaining packet reads zero bytes, so the C's loop burns the
+      whole include-mask space without changing the output (minutes on
+      crafted headers).  Breaking here produces the identical image.
+      Strict mode keeps walking - its read path reports the truncation. */
+      if src.is_empty() && !cp.strict {
+        break;
+      }
       let mut skip_packet = 0i32;
       log::debug!(
         "packet offset=00000166 prg={} cmptno={:02} rlvlno={:02} prcno={:03} lyrno={:02}",
