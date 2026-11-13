@@ -219,14 +219,16 @@ pub(crate) fn comp_u8(comp: &CoreImageComp) -> impl Iterator<Item = u8> + '_ {
   let prec = comp.prec.clamp(1, 31);
   let signed = comp.sgnd != 0;
   data.iter().map(move |p| {
+    const NEW_MAX: i64 = 255;
+    let v = i64::from(*p);
     if signed {
       let old_max = 1i64 << (prec - 1);
-      const NEW_MAX: i64 = 1 << 7;
-      ((((*p as i64) * NEW_MAX) / old_max) + NEW_MAX) as u8
+      (((v * NEW_MAX) / old_max) + NEW_MAX).clamp(0, NEW_MAX) as u8
     } else {
-      let old_max = (1u64 << prec) - 1;
-      const NEW_MAX: u64 = (1 << 8) - 1;
-      (((*p as u64) * NEW_MAX) / old_max) as u8
+      /* Unsigned comps with a negative sample (only hand-built images can
+      produce them) must clamp, not wrap through a huge u64 product. */
+      let old_max = (1i64 << prec) - 1;
+      ((v.clamp(0, old_max) * NEW_MAX) / old_max) as u8
     }
   })
 }
@@ -239,14 +241,16 @@ pub(crate) fn comp_u16(comp: &CoreImageComp) -> impl Iterator<Item = u16> + '_ {
   let prec = comp.prec.clamp(1, 31);
   let signed = comp.sgnd != 0;
   data.iter().map(move |p| {
+    const NEW_MAX: i64 = 65535;
+    let v = i64::from(*p);
     if signed {
       let old_max = 1i64 << (prec - 1);
-      const NEW_MAX: i64 = 1 << 15;
-      ((((*p as i64) * NEW_MAX) / old_max) + NEW_MAX) as u16
+      (((v * NEW_MAX) / old_max) + NEW_MAX).clamp(0, NEW_MAX) as u16
     } else {
-      let old_max = (1u64 << prec) - 1;
-      const NEW_MAX: u64 = (1 << 16) - 1;
-      (((*p as u64) * NEW_MAX) / old_max) as u16
+      /* See comp_u8: clamp out-of-range/negative samples instead of
+      wrapping through an unsigned product. */
+      let old_max = (1i64 << prec) - 1;
+      ((v.clamp(0, old_max) * NEW_MAX) / old_max) as u16
     }
   })
 }

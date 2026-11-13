@@ -221,6 +221,8 @@ fn j2k_dump_mh_index<W: StringWriter>(p_j2k: &J2k, out_stream: &mut W) {
         );
       }
     }
+    /* C j2k.c:11609 closes the tile-index block with "\t }\n". */
+    fprintf!(out_stream, "\t }}\n");
   }
   fprintf!(out_stream, "}}\n");
 }

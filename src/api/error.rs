@@ -30,7 +30,8 @@ impl core::fmt::Display for Error {
       Error::Decode(d) => {
         write!(f, "decode error: {}", d.message)?;
         if let Some(m) = d.marker {
-          write!(f, " (marker FF{m:02X})")?;
+          /* `m` is the full 16-bit marker (0xFF51), not a suffix byte. */
+          write!(f, " (marker {m:#06X})")?;
         }
         if let Some(b) = d.box_ {
           write!(f, " (box {})", String::from_utf8_lossy(&b))?;

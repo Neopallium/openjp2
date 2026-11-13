@@ -1080,11 +1080,11 @@ fn t1_allocate_buffers(mut t1: &mut T1Coder, mut w: u32, mut h: u32) -> OpResult
   /* No risk of overflow. Prior checks ensure those assert are met */
   /* They are per the specification */
 
-  assert!(w <= 1024u32);
-  assert!(h <= 1024u32);
-  assert!(w.wrapping_mul(h) <= 4096u32);
+  debug_assert!(w <= 1024u32);
+  debug_assert!(h <= 1024u32);
+  debug_assert!(w.wrapping_mul(h) <= 4096u32);
   /* encoder uses tile buffer, so no need to allocate */
-  let datasize = w * h;
+  let datasize = w.wrapping_mul(h);
   t1.data.resize(datasize as usize);
   // We expand these buffers to multiples of 16 bytes.
   // We need 4 buffers of 129 integers each, expanded to 132 integers each

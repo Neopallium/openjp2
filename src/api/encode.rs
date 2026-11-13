@@ -23,7 +23,6 @@ pub(crate) fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + '
 ) -> Result<()> {
   let mut codec = Encoder::new(format)?;
   let mut params = params;
-  let mut image = image.clone();
   codec.setup(&mut params, &mut image)?;
   let mut stream = Stream::new_output(J2K_STREAM_CHUNK_SIZE as usize, writer);
   codec.start(&mut image, &mut stream)?;

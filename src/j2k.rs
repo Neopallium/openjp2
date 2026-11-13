@@ -5926,6 +5926,18 @@ pub(crate) fn j2k_setup_encoder(
   image: &mut CoreImage,
   p_manager: &mut EventMgr,
 ) -> OpResult {
+  /* A degenerate image (no components, or a numcomps/comps.len() mismatch)
+  is rejected up front: later code indexes comps[0] and tccps[0], which
+  would panic instead of returning the C-style encode error. */
+  if image.numcomps == 0 || image.comps.len() as u32 != image.numcomps {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Invalid number of components: {}\n",
+      image.numcomps,
+    );
+    return Err(());
+  }
   let mut i: u32 = 0;
   let mut j: u32 = 0;
   let mut tileno: u32 = 0;
@@ -8583,23 +8595,33 @@ pub(crate) fn j2k_set_decode_area(
   p_manager: &mut EventMgr,
 ) -> OpResult {
   let l_cp = &p_j2k.m_cp;
-  let mut l_image = p_j2k
-    .m_private_image
-    .as_deref_mut()
-    .expect("m_private_image");
+  let single_tile_with_data = p_j2k.m_cp.tw == 1u32
+    && p_j2k.m_cp.th == 1u32
+    && p_j2k
+      .m_cp
+      .tcps
+      .first()
+      .is_some_and(|tcp| !tcp.m_data.is_empty());
+  if !single_tile_with_data && p_j2k.m_specific_param.m_decoder.m_state != J2KState::TPHSOT {
+    /* Check if we are read the main header (C checks before touching the
+    private image, so a call before read_header is a clean error). */
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Need to decode the main header before begin to decode the remaining codestream.\n",
+    );
+    return Err(());
+  }
+  let Some(mut l_image) = p_j2k.m_private_image.as_deref_mut() else {
+    event_msg!(
+      p_manager,
+      EVT_ERROR,
+      "Need to decode the main header before begin to decode the remaining codestream.\n",
+    );
+    return Err(());
+  };
   let mut ret: crate::types::OpResult = Ok(());
   let mut it_comp: u32 = 0;
-  if !(p_j2k.m_cp.tw == 1u32 && p_j2k.m_cp.th == 1u32 && !p_j2k.m_cp.tcps[0].m_data.is_empty()) {
-    /* Check if we are read the main header */
-    if p_j2k.m_specific_param.m_decoder.m_state != J2KState::TPHSOT {
-      event_msg!(
-        p_manager,
-        EVT_ERROR,
-        "Need to decode the main header before begin to decode the remaining codestream.\n",
-      );
-      return Err(());
-    }
-  }
   /* Update the comps[].factor member of the output image with the one */
   /* of m_reduce */
   it_comp = 0_u32;

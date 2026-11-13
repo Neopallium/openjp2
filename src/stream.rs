@@ -173,9 +173,10 @@ impl Stream {
   /// into a direct cursor (no `BufReader` indirection, no copy) — the
   /// common decode-from-buffer shape.
   pub fn from_bytes(bytes: Vec<u8>) -> Self {
+    let len = bytes.len() as u64;
     Self {
-      m_inner: super::stream::StreamInner::from_bytes(bytes.clone()),
-      m_stream_length: bytes.len() as u64,
+      m_inner: super::stream::StreamInner::from_bytes(bytes),
+      m_stream_length: len,
       m_byte_offset: 0,
     }
   }

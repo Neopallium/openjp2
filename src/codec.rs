@@ -239,10 +239,12 @@ macro_rules! codec_common {
           CodecFormat::JP2(jp2) => &jp2.j2k,
         };
         let tcp = j2k.m_specific_param.m_decoder.m_default_tcp.as_deref();
-        let (cblkw, cblkh) = match tcp {
-          Some(t) => (t.tccps[0].cblkw, t.tccps[0].cblkh),
-          None => (0, 0),
-        };
+        /* `tccps` is empty until the SIZ marker is read (`Tcp::default()`),
+        so a call before `read_header` must return zeros, not index it. */
+        let (cblkw, cblkh) = tcp
+          .and_then(|t| t.tccps.first())
+          .map(|t| (t.cblkw, t.cblkh))
+          .unwrap_or((0, 0));
         (j2k.m_cp.tdx, j2k.m_cp.tdy, cblkw, cblkh)
       }
 
@@ -385,31 +387,47 @@ impl Decoder {
     header: &mut CoreImage,
     area: Option<DecodeArea>,
   ) -> Result<()> {
+    let had_area = self.pending_area.is_some();
     self.pending_area = area;
-    if let Some(area) = area {
-      let ok = match &mut self.m_codec {
-        CodecFormat::J2K(dec) => j2k_set_decode_area(
-          dec,
-          header,
-          area.start_x as i32,
-          area.start_y as i32,
-          area.end_x as i32,
-          area.end_y as i32,
-          &mut self.m_event_mgr,
-        ),
-        CodecFormat::JP2(dec) => jp2_set_decode_area(
-          dec,
-          header,
-          area.start_x as i32,
-          area.start_y as i32,
-          area.end_x as i32,
-          area.end_y as i32,
-          &mut self.m_event_mgr,
-        ),
-      };
-      if ok.is_err() {
-        return Err(self.decode_error("set_decode_area failed"));
-      }
+    /* `None` resets to the full image: the codec-side tile window set by a
+    previous `Some(area)` must be cleared too (a bare `pending_area = None`
+    would leave the next decode restricted to that window).  The C resets
+    with the all-zero area. */
+    let Some((start_x, start_y, end_x, end_y)) = area
+      .map(|a| {
+        (
+          a.start_x as i32,
+          a.start_y as i32,
+          a.end_x as i32,
+          a.end_y as i32,
+        )
+      })
+      .or(if had_area { Some((0, 0, 0, 0)) } else { None })
+    else {
+      return Ok(());
+    };
+    let ok = match &mut self.m_codec {
+      CodecFormat::J2K(dec) => j2k_set_decode_area(
+        dec,
+        header,
+        start_x,
+        start_y,
+        end_x,
+        end_y,
+        &mut self.m_event_mgr,
+      ),
+      CodecFormat::JP2(dec) => jp2_set_decode_area(
+        dec,
+        header,
+        start_x,
+        start_y,
+        end_x,
+        end_y,
+        &mut self.m_event_mgr,
+      ),
+    };
+    if ok.is_err() {
+      return Err(self.decode_error("set_decode_area failed"));
     }
     Ok(())
   }

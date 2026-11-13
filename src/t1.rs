@@ -2295,7 +2295,7 @@ fn t1_decode_cblk(
   mqc_setstate(&mut t1.mqc, T1_CTXNO_ZC, 0, 4);
 
   if cblk.corrupted {
-    assert_eq!(cblk.numchunks, 0);
+    debug_assert_eq!(cblk.numchunks, 0);
     return Ok(());
   }
 

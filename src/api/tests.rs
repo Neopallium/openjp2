@@ -2435,3 +2435,117 @@ fn empty_code_blocks_decode_cleanly() {
     "flat image must round-trip to zeros"
   );
 }
+
+#[test]
+fn tile_geometry_before_header_is_zero() {
+  let decoder = Decoder::new(J2KFormat::J2K).expect("decoder");
+  assert_eq!(decoder.get_tile_geometry(), (0, 0, 0, 0));
+}
+
+#[test]
+fn set_decode_area_before_header_is_an_error() {
+  let mut decoder = Decoder::new(J2KFormat::J2K).expect("decoder");
+  let mut header = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: 0,
+    y1: 0,
+    numcomps: 0,
+    color_space: crate::ColorSpace::Gray,
+    comps: Vec::new(),
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let result = decoder.set_decode_area(&mut header, Some(DecodeArea::new(0, 0, 16, 16)));
+  assert!(
+    result.is_err(),
+    "set_decode_area before read_header must fail cleanly"
+  );
+}
+
+#[test]
+fn decode_area_none_resets_to_the_full_image() {
+  let buf = std::fs::read("doc/example.jp2").expect("example image");
+  let mut decoder = Decoder::new(J2KFormat::JP2).expect("decoder");
+  let mut stream = Stream::from_bytes(buf);
+  let header = decoder.read_header(&mut stream).expect("header");
+  let (full_w, full_h) = (header.width(), header.height());
+  let mut core = header.into_core_image();
+  decoder
+    .set_decode_area(&mut core, Some(DecodeArea::new(0, 0, 128, 64)))
+    .expect("set area");
+  assert_eq!((core.x1 - core.x0, core.y1 - core.y0), (128, 64));
+  decoder
+    .set_decode_area(&mut core, None)
+    .expect("reset area");
+  assert_eq!((core.x1 - core.x0, core.y1 - core.y0), (full_w, full_h));
+}
+
+#[test]
+fn zero_component_image_is_rejected_by_setup() {
+  let mut encoder = Encoder::new(J2KFormat::J2K).expect("encoder");
+  let mut params = EncodeParameters::default().into_inner();
+  let mut image = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: 16,
+    y1: 16,
+    numcomps: 0,
+    color_space: crate::ColorSpace::Gray,
+    comps: Vec::new(),
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  assert!(encoder.setup(&mut params, &mut image).is_err());
+}
+
+#[test]
+fn detect_format_from_file_prefers_magic_over_extension() {
+  const JP2_MAGIC: [u8; 12] = [
+    0x00, 0x00, 0x00, 0x0C, b'j', b'P', b' ', b' ', 0x0D, 0x0A, 0x87, 0x0A,
+  ];
+  let dir = std::env::temp_dir();
+  let path = dir.join(format!(
+    "openjp2-detect-{}-{:?}.dat",
+    std::process::id(),
+    std::thread::current().id()
+  ));
+  std::fs::write(&path, JP2_MAGIC).expect("write temp file");
+  let detected = crate::detect_format_from_file(&path);
+  let _ = std::fs::remove_file(&path);
+  assert_eq!(detected, Ok(J2KFormat::JP2));
+}
+
+#[test]
+fn get_pixels_clamps_out_of_range_samples() {
+  let comp = crate::CoreImageComp {
+    dx: 1,
+    dy: 1,
+    w: 4,
+    h: 1,
+    x0: 0,
+    y0: 0,
+    prec: 8,
+    bpp: 8,
+    sgnd: 0,
+    resno_decoded: 0,
+    factor: 0,
+    alpha: 0,
+    data: vec![-5, 0, 128, 1000],
+  };
+  let out: Vec<u8> = comp.data_u8().collect();
+  assert_eq!(out, vec![0, 0, 128, 255]);
+}
+
+#[test]
+fn decode_error_display_renders_the_full_marker() {
+  let error = Error::Decode(DecodeError {
+    message: "bad header".into(),
+    marker: Some(0xFF51),
+    ..Default::default()
+  });
+  assert_eq!(
+    error.to_string(),
+    "decode error: bad header (marker 0xFF51)"
+  );
+}

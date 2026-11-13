@@ -217,25 +217,28 @@ fn detect_from_file_magic<P: AsRef<std::path::Path>>(path: P) -> Result<J2KForma
 pub fn detect_format_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<J2KFormat, String> {
   let path = path.as_ref();
   let ext = path.extension().map(|ext| ext.to_string_lossy());
-  let ext_format = detect_format_from_extension(ext.as_deref())?;
-  if ext_format == J2KFormat::JPT {
+  let ext_format = detect_format_from_extension(ext.as_deref());
+  /* JPT has no fixed magic prefix; keep classifying it by extension. */
+  if matches!(ext_format, Ok(J2KFormat::JPT)) {
     return Ok(J2KFormat::JPT);
   }
 
-  // Detect format from magic bytes
-  let Ok(magic_format) = detect_from_file_magic(path) else {
-    return Ok(ext_format);
-  };
-
-  // Log warning if magic bytes and file extension don't match
-  if ext_format != magic_format {
-    eprintln!(
-      "Warning: File {:?} extension format ({:?}) doesn't match magic bytes format ({:?})",
-      path, ext_format, magic_format
-    );
+  // Probe the magic bytes first, so a valid codestream with an unknown or
+  // missing extension still decodes (the extension is only a fallback).
+  match detect_from_file_magic(path) {
+    Ok(magic_format) => {
+      if let Ok(ext_format) = ext_format {
+        if ext_format != magic_format {
+          eprintln!(
+            "Warning: File {:?} extension format ({:?}) doesn't match magic bytes format ({:?})",
+            path, ext_format, magic_format
+          );
+        }
+      }
+      Ok(magic_format)
+    }
+    Err(_) => ext_format,
   }
-
-  Ok(magic_format)
 }
 
 mod bio;
