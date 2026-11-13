@@ -37,9 +37,10 @@ a literal transcription.  This page lists the intentional divergences.
   `openjp2-capi` crate (and the CLI tools, which mirror the C CLI's
   callback printing) enables.  With no handler AND no `log` sink installed,
   messages are dropped (standard `log` behavior).  The message TEXT is
-  identical in both modes; parallel workers' messages become visible
-  through `log` where they used to be dropped (their per-worker managers
-  had no handlers).
+  identical in both modes.  Parallel encode/decode workers collect their
+  events and the driver replays them on the caller's manager in tile
+  order, so the event stream matches the serial paths (including the
+  per-tile INFO line).
 
 ## Threading
 
@@ -135,6 +136,17 @@ a literal transcription.  This page lists the intentional divergences.
 - `opj_get_num_cpus()` reports `std::thread::available_parallelism()`;
   `opj_has_thread_support()` reports the `rayon` feature.
 - Error messages are best-effort translations of the C diagnostics.
+- Mixed per-component transforms (COC `qmfbid` differs between the MCT
+  components): the C reinterprets the raw tile buffers regardless of
+  their nominal type.  The typed Rust port cannot do that, so strict
+  decodes reject the mix and lenient decodes skip the MCT with a warning.
+- The JP2 writer checks that the output stream is seekable before
+  writing (the C has an NDEBUG-stripped assert) and logs a failed JP2C
+  header write; upstream returns FALSE silently there.
+- `Decoder`/`DumpImage` keep a Rust-only per-packet index for the
+  structural API.  It is capped at 1M packets per tile so a truncated
+  stream cannot drive unbounded allocation (the C has no live
+  counterpart; its packet recording is `#ifdef TODO_MSD`).
 - CMYK->RGB in the Rust tools uses the canonical f32 + truncation
   semantics (the current upstream C tools' float code drifts by a few
   +1 pixels on this platform and disagrees with its own md5refs; the
