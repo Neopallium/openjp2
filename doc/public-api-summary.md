@@ -1,6 +1,6 @@
 # openjp2 — Current Public API Structure
 
-Updated 2026-11-13, against 0.7.1. This is a factual map
+Updated 2026-11-13, against 0.7.0. This is a factual map
 of the public surface as it exists today (the *proposal* is in
 `doc/redesign-proposal.md`; the earlier `doc/api-review.md` tracks the
 jpeg2k-parity work).

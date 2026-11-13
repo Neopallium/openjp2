@@ -1,6 +1,6 @@
 [package]
 name = "openjp2-ctypes"
-version = "0.7.1"
+version = "0.7.0"
 edition = "2018"
 license = "BSD-2-Clause"
 description = "C-ABI mirror types shared by the openjp2 core and the openjp2-capi crate."

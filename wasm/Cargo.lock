@@ -119,7 +119,7 @@ checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "openjp2"
-version = "0.7.1"
+version = "0.7.0"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -131,11 +131,11 @@ dependencies = [
 
 [[package]]
 name = "openjp2-ctypes"
-version = "0.7.1"
+version = "0.7.0"
 
 [[package]]
 name = "openjp2-wasm"
-version = "0.7.1"
+version = "0.7.0"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
