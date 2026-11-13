@@ -301,13 +301,12 @@ pub(crate) fn t2_decode_packets(
      * l_current_pi->resno is always >= p_tile->comps[l_current_pi->compno].minimum_num_resolutions
      * and no l_img_comp->resno_decoded are computed
      */
-    let mut first_pass_failed: Vec<bool> = Vec::new();
-    /* (The C also rejects `poc.prg == ProgressionOrder::Unknown` here.  The native
-    `Poc` cannot hold an invalid progression order: `read_poc` converts the
-    raw byte with `ProgressionOrder::from`, which collapses invalid values to
-    `Lrcp` - so the decode-time check is unrepresentable and the error path
-    never fires.) */
-    first_pass_failed = vec![true; image.numcomps as usize];
+    /* C t2.c: the packet iterator for this POC has no valid order (an
+    invalid COD or POC marker byte); the whole tile decode fails. */
+    if pi_vec[pino as usize].prg_unknown {
+      return Err(());
+    }
+    let mut first_pass_failed: Vec<bool> = vec![true; image.numcomps as usize];
     loop {
       let pi = &mut pi_vec[pino as usize];
       if pi_next(pi, p_manager).is_err() {

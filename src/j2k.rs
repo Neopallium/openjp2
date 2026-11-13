@@ -2724,6 +2724,7 @@ fn j2k_read_poc(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
     poc.resno1 = resno1; /* CEpoc_i */
     poc.compno1 = compno1; /* Ppoc_i */
     poc.prg = crate::api::ProgressionOrder::from(l_tmp as core::ffi::c_int);
+    l_tcp.poc_prg_raw[i as usize] = l_tmp as u8;
     /* make sure comp is in acceptable bounds */
     poc.compno1 = uint_min(poc.compno1, l_nb_comp);
     i += 1;
@@ -3815,7 +3816,11 @@ fn j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr
   }
   /* Check to avoid pass the limit of u32 */
   /* Patch to support new PHR data */
+  let mut lenient_clamped = false;
   if p_j2k.m_specific_param.m_decoder.m_sot_length != 0 {
+    /* The C evaluates the u32-overflow guard on the marker's Psot, before
+    any lenient clamping the port adds for progressive download. */
+    let pre_clamp_sot_length = p_j2k.m_specific_param.m_decoder.m_sot_length;
     /* If we are here, we'll try to read the data after allocation */
     /* Check enough bytes left in stream before allocation */
     if p_j2k.m_specific_param.m_decoder.m_sot_length as i64 > stream_get_number_byte_left(p_stream)
@@ -3844,11 +3849,14 @@ fn j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr
           stream_get_number_byte_left(p_stream).max(0) as u32;
         /* The C's lenient path exits the tile loop through the NEOC state
         with no error event; mirror it so the next read_tile_header round
-        does not re-enter at EOF and emit an unconditional error. */
+        does not re-enter at EOF and emit an unconditional error.  The
+        state must survive the read below (it used to be overwritten with
+        TPHSOT because the clamped read succeeds fully). */
         p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
+        lenient_clamped = true;
       }
     }
-    if p_j2k.m_specific_param.m_decoder.m_sot_length > u32::MAX - COMMON_CBLK_DATA_EXTRA {
+    if pre_clamp_sot_length > u32::MAX - COMMON_CBLK_DATA_EXTRA {
       event_msg!(
         p_manager,
         EVT_ERROR,
@@ -3933,7 +3941,8 @@ fn j2k_read_sod(p_j2k: &mut J2k, p_stream: &mut Stream, p_manager: &mut EventMgr
       return Err(());
     }
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC
-  } else {
+  } else if !lenient_clamped {
+    /* The lenient clamp above already selected NEOC; keep it. */
     p_j2k.m_specific_param.m_decoder.m_state = J2KState::TPHSOT
   }
   l_tcp.m_data_size = l_tcp.m_data_size.wrapping_add(l_current_read_size as u32);
@@ -4576,6 +4585,9 @@ fn j2k_read_mct(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
   l_mct_data.m_index = l_indix;
   l_mct_data.m_array_type = (l_tmp >> 8i32 & 3u32) as J2K_MCT_ARRAY_TYPE;
   l_mct_data.m_element_type = MCTElementType::new(l_tmp >> 10i32 & 3u32);
+  /* The C frees the previous payload before parsing Ymct, so a warning
+  return leaves no stale matrix behind (j2k.c:5967-5983). */
+  l_mct_data.m_data.clear();
   l_tmp = read_bytes(&header_data[cursor..], 2_u32); /* Ymct */
   cursor += 2usize;
   if l_tmp != 0u32 {
@@ -4587,7 +4599,6 @@ fn j2k_read_mct(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
     return Ok(());
   }
   p_header_size = p_header_size.wrapping_sub(6u32);
-  l_mct_data.m_data.clear();
   /* C: memcpy(m_data, p_header_data + 6, p_header_size - 6) — the payload starts after the
    * Zmct/Imct/Ymct header fields. */
   l_mct_data

@@ -322,6 +322,9 @@ pub(crate) struct Tcp {
   pub rates: [f32; 100],
   pub numpocs: u32,
   pub pocs: [Poc; J2K_MAX_POCS as usize],
+  /* Raw Ppoc bytes from the POC markers: values > 4 are invalid and must be
+  observable even though the public `Poc::prg` enum folds them to LRCP. */
+  pub(crate) poc_prg_raw: [u8; J2K_MAX_POCS as usize],
   pub ppt_markers: Vec<Ppx>,
   pub ppt_buffer: Vec<u8>,
   /* read cursor into `ppt_buffer`; `ppt_len` is the number of bytes left from it */
@@ -357,6 +360,7 @@ impl Default for Tcp {
       rates: [0.0; 100],
       numpocs: 0,
       pocs: [Default::default(); J2K_MAX_POCS as usize],
+      poc_prg_raw: [0; J2K_MAX_POCS as usize],
       ppt_markers: Vec::new(),
       ppt_buffer: Vec::new(),
       ppt_data_pos: 0,

@@ -1879,6 +1879,37 @@ fn tcd_mct_decode(
     /* The whole-tile path targets `data`, the window path `data_win`. */
     let whole = p_tcd.whole_tile_decoding;
     let numcomps = comps.len();
+    /* COC can set qmfbid per component, while MCT needs one transform for
+    all participating components.  The C reinterprets the raw buffers
+    regardless of their nominal type; the typed port cannot, so reject the
+    mix in strict mode and skip the MCT with a warning in lenient mode
+    instead of silently doing nothing (mct=1) or indexing empty slices
+    (mct=2). */
+    let expected_f32 = tcp.tccps[0].qmfbid != 1u32;
+    let mixed_types = comps.iter().take(3).any(|c| {
+      let is_f32 = if whole {
+        c.data.is_f32()
+      } else {
+        c.data_win.is_f32()
+      };
+      is_f32 != expected_f32
+    });
+    if mixed_types {
+      if cp.strict {
+        event_msg!(
+          p_manager,
+          EVT_ERROR,
+          "Components don't all use the same wavelet transform. Skip the MCT step.\n",
+        );
+        return Err(());
+      }
+      event_msg!(
+        p_manager,
+        EVT_WARNING,
+        "Components don't all use the same wavelet transform. Skip the MCT step.\n",
+      );
+      return Ok(());
+    }
     if tcp.mct == 2u32 {
       if tcp.m_mct_decoding_matrix.is_empty() {
         /* mct=2 without a decoding matrix (no usable MCT/MCC/MCO

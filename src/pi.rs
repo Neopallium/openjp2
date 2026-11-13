@@ -82,6 +82,9 @@ pub struct PiIterator {
   pub layno: u32,
   pub first: bool,
   pub poc: crate::types::Poc,
+  /// The POC/COD declared an invalid progression order (the C's
+  /// `OPJ_PROG_UNKNOWN`); the public `Poc::prg` enum cannot represent it.
+  pub prg_unknown: bool,
   pub numcomps: u32,
   pub comps: Vec<PiComp>,
   pub tx0: u32,
@@ -1652,6 +1655,7 @@ pub(crate) fn pi_update_decode_poc(
   pino = 0_u32; /* Resolution Level Index #0 (End) */
   while pino < l_bound {
     p_pi[pino as usize].poc.prg = p_tcp.pocs[pino as usize].prg; /* Component Index #0 (End) */
+    p_pi[pino as usize].prg_unknown = p_tcp.poc_prg_raw[pino as usize] > 4u8;
     p_pi[pino as usize].first = true; /* Layer Index #0 (End) */
     p_pi[pino as usize].poc.resno0 = p_tcp.pocs[pino as usize].resno0;
     p_pi[pino as usize].poc.compno0 = p_tcp.pocs[pino as usize].compno0;
@@ -1682,6 +1686,7 @@ pub(crate) fn pi_update_decode_not_poc(
   pino = 0_u32;
   while pino < l_bound {
     p_pi[pino as usize].poc.prg = p_tcp.prg.into();
+    p_pi[pino as usize].prg_unknown = p_tcp.prg == ProgressionOrder::Unknown;
     p_pi[pino as usize].first = true;
     p_pi[pino as usize].poc.resno0 = 0_u32;
     p_pi[pino as usize].poc.compno0 = 0_u32;
@@ -2525,6 +2530,9 @@ pub(crate) fn pi_update_encoding_parameters(
 }
 
 pub(crate) fn pi_next(pi: &mut PiIterator, manager: &mut EventMgr) -> OpResult {
+  if pi.prg_unknown {
+    return Err(());
+  }
   match pi.poc.prg as core::ffi::c_int {
     0 => return pi_next_lrcp(pi, manager),
     1 => return pi_next_rlcp(pi, manager),

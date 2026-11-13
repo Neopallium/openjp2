@@ -1897,6 +1897,12 @@ fn t1_clbl_decode_processor(
     cblk
       .decoded_data
       .resize(cblk_w as usize * cblk_h as usize, Cell::new(0));
+  } else if !cblk.decoded_data.is_empty() {
+    /* Whole-tile decoding writes through `t1.data`.  A decoded_data buffer
+    left over from an earlier window decode would otherwise redirect this
+    decode into it while the write-back reads the (zeroed) t1.data; the C
+    frees it defensively (t1.c:1650). */
+    cblk.decoded_data.clear();
   }
 
   // Per-worker decode workspace (see T1Pool).

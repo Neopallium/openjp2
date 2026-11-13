@@ -2549,3 +2549,121 @@ fn decode_error_display_renders_the_full_marker() {
     "decode error: bad header (marker 0xFF51)"
   );
 }
+
+#[test]
+fn invalid_cod_progression_order_fails_the_decode() {
+  let (w, h) = (64u32, 64u32);
+  let core = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: w,
+    y1: h,
+    numcomps: 1,
+    color_space: crate::ColorSpace::Gray,
+    comps: vec![crate::CoreImageComp {
+      dx: 1,
+      dy: 1,
+      w,
+      h,
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data: (0..(w * h)).map(|i| (i % 251) as i32).collect(),
+    }],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let mut bytes = Image::from_core_image(core)
+    .encode(EncodeParameters::new())
+    .expect("encode");
+  let cod = bytes
+    .windows(2)
+    .position(|w| w == [0xFF, 0x52])
+    .expect("COD marker");
+  /* FF52, Lcod(2), Scod(1), then SGcod's first byte is the progression order. */
+  let prg = cod + 2 + 2 + 1;
+  assert_eq!(bytes[prg], 0, "default progression is LRCP");
+  bytes[prg] = 7;
+  let strict = Image::from_bytes_with(&bytes, DecodeParameters::default().strict(true));
+  assert!(
+    strict.is_err(),
+    "an invalid COD progression order must fail like the C (t2 rejects the tile)"
+  );
+  /* Lenient mode keeps the documented partial-decode contract: the header
+  image comes back, but no packets are decoded as LRCP. */
+  let lenient = Image::from_bytes(&bytes).expect("lenient partial image");
+  assert!(
+    lenient.components().iter().all(|c| c.data.is_empty()),
+    "invalid progression must not decode packets in a fallback order"
+  );
+}
+
+#[test]
+fn mixed_coc_transform_with_mct_is_rejected() {
+  let (w, h) = (64u32, 64u32);
+  let data: Vec<i32> = (0..(w * h)).map(|i| (i % 251) as i32).collect();
+  let comp = |data: &Vec<i32>| crate::CoreImageComp {
+    dx: 1,
+    dy: 1,
+    w,
+    h,
+    x0: 0,
+    y0: 0,
+    prec: 8,
+    bpp: 8,
+    sgnd: 0,
+    resno_decoded: 0,
+    factor: 0,
+    alpha: 0,
+    data: data.clone(),
+  };
+  let core = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: w,
+    y1: h,
+    numcomps: 3,
+    color_space: crate::ColorSpace::Srgb,
+    comps: vec![comp(&data), comp(&data), comp(&data)],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let mut params = EncodeParameters::new();
+  params.low_level().tcp_mct = 1;
+  let mut bytes = Image::from_core_image(core)
+    .encode(params)
+    .expect("encode with MCT");
+  /* Find COD and copy its SPcod for a COC on component 1 with qmfbid=0
+  (9-7) while components 0/2 stay reversible. */
+  let find = |m: u16| {
+    let pat = m.to_be_bytes();
+    bytes
+      .windows(2)
+      .position(|w| w == pat)
+      .unwrap_or_else(|| panic!("marker {:#06X}", m))
+  };
+  let cod = find(0xFF52);
+  let lcod = u16::from_be_bytes([bytes[cod + 2], bytes[cod + 3]]) as usize;
+  let scod = bytes[cod + 4];
+  let spcod_start = cod + 5 + 4; /* Scod + prg(1) + layers(2) + mct(1) */
+  let spcod_end = cod + 2 + lcod;
+  let mut spcoc = bytes[spcod_start..spcod_end].to_vec();
+  spcoc[4] = 0; /* SPcoc: numres, cblkw, cblkh, style, qmfbid */
+  let lcoc = (2 + 1 + 1 + spcoc.len()) as u16;
+  let mut coc = vec![0xFF, 0x53];
+  coc.extend_from_slice(&lcoc.to_be_bytes());
+  coc.push(1); /* component 1 */
+  coc.push(scod);
+  coc.extend_from_slice(&spcoc);
+  let sot = find(0xFF90);
+  bytes.splice(sot..sot, coc);
+  assert!(
+    Image::from_bytes_with(&bytes, DecodeParameters::default().strict(true)).is_err(),
+    "mixed per-component transforms must be rejected, not panic or silently skip MCT"
+  );
+}
