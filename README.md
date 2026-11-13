@@ -10,17 +10,6 @@ A pure-Rust port of [OpenJPEG](https://github.com/uclouvain/openjpeg)
 (the JPEG 2000 reference implementation), with a safe high-level API,
 a C ABI drop-in for `libopenjp2`, and CLI tools.
 
-```
-src/        the openjp2 crate (core + safe API)
-capi/       the openjp2-capi crate: #[no_mangle] C ABI producing libopenjp2.{a,so}
-ctypes/     the openjp2-ctypes crate: C-ABI mirror types + openjpeg.h constants
-wasm/       the openjp2-wasm crate: WASM bindings + the GitHub-Pages playground
-cli/        the openjp2-cli crate: modern compress / decompress / dump tools
-tools/      the openjp2-tools crate: opj_compress / opj_decompress / opj_dump / ... (C parity)
-openjpeg/   the C/CMake reference project (upstream openjpeg, tests, test data)
-doc/        design spec, public-API summary, code outline, internals, differences, ...
-```
-
 ## Playground
 
 Try it in the browser: **<https://neopallium.github.io/openjp2/>** — the
@@ -45,6 +34,19 @@ entirely client-side via WebAssembly:
 No uploads: decoding, encoding and inspection all happen in the browser.
 Where the page can be cross-origin isolated, the optional threaded build
 (WebAssembly rayon threads) can be enabled from the Decode panel.
+
+## Repository layout
+
+```
+src/        the openjp2 crate (core + safe API)
+capi/       the openjp2-capi crate: #[no_mangle] C ABI producing libopenjp2.{a,so}
+ctypes/     the openjp2-ctypes crate: C-ABI mirror types + openjpeg.h constants
+wasm/       the openjp2-wasm crate: WASM bindings + the GitHub-Pages playground
+cli/        the openjp2-cli crate: modern compress / decompress / dump tools
+tools/      the openjp2-tools crate: opj_compress / opj_decompress / opj_dump / ... (C parity)
+openjpeg/   the C/CMake reference project (upstream openjpeg, tests, test data)
+doc/        design spec, public-API summary, code outline, internals, differences, ...
+```
 
 ## Using the safe API
 
