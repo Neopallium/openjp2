@@ -55,10 +55,14 @@ a literal transcription.  This page lists the intentional divergences.
   below to shape parallelism.  The CLI tools size the pool from
   `-threads N` / `OPJ_NUM_THREADS` / `RAYON_NUM_THREADS`.
 - The port parallelises more than the C: per-tile code-block decode/encode,
-  DWT, DC shift (as in the C), plus tile-level concurrent decode and
-  encode in the safe API (`Image::from_bytes` / `Image::encode`).
-  Byte-identical results by construction (any unsupported layout falls
-  back to the sequential path).
+  DWT, DC shift (as in the C), plus tile-level concurrent decode (inside
+  `Decoder::decode`, so both the safe API and the C `opj_decode` benefit
+  for eligible multi-tile, whole-image, full-quality decodes) and
+  tile-level concurrent encode in the safe API (`Image::encode`; the C
+  `opj_encode` path keeps the sequential tile loop, with parallel
+  code-block encoding inside each tile).  Byte-identical results by
+  construction (any unsupported layout falls back to the sequential
+  path).
 - At 24 threads the port decodes ~26% faster than the C reference on the
   standard benchmark file; single-threaded it is within ~13%.
 - The tile-level concurrent decode only runs where it is byte-identical
