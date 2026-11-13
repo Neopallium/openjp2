@@ -6,7 +6,24 @@ the safe Rust API.  The C-parity tools (byte-compatible with the upstream
 `opj_compress` / `opj_decompress` / `opj_dump`) live in the sibling
 [`openjp2-tools`](../tools) crate.
 
+## Install
+
 ```console
+$ cargo install --locked openjp2-cli
+```
+
+The crate is named `openjp2-cli`, but it installs the **`openjp2`**
+binary:
+
+```console
+$ openjp2 --version
+```
+
+To build from a checkout instead:
+
+```console
+$ cargo install --path cli
+# development build, no install:
 $ cargo run -p openjp2-cli -- --help
 ```
 
