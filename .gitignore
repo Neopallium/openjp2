@@ -36,6 +36,8 @@ cmake_install.cmake
 *.sh
 # ...except the playground's build script, which is part of the site tooling.
 !/wasm/playground/build.sh
+# ...and the C-ABI check driver, which CI runs directly.
+!/scripts/check_abi.sh
 
 # Agent/planning working notes: kept out of the git history (the files are
 # retained locally, untracked, for reference).

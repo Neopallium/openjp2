@@ -325,6 +325,32 @@ jobs:
           ASAN_OPTIONS: detect_leaks=0
 
   # ------------------------------------------------------------------
+  # C-ABI compatibility: the Rust libopenjp2 against the C reference
+  # build (same OpenJPEG version): exported opj_* surface, public
+  # function signatures and public struct layouts.  libabigail's abidw
+  # supplies the type information from DWARF.
+  # ------------------------------------------------------------------
+  abi:
+    name: ABI (C-ABI vs C reference)
+    runs-on: ubuntu-24.04
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install requirements
+        run: |
+          sudo apt update
+          sudo apt install -y cmake gcc libabigail-tools
+
+      - name: Install Rust (stable)
+        run: |
+          rustup update stable
+          rustup default stable
+
+      - name: Check the C-ABI surface
+        run: ./scripts/check_abi.sh
+
+  # ------------------------------------------------------------------
   # Fuzz target compile check (replaces the upstream cifuzz job, which
   # only applies to the google/oss-fuzz service); a time-capped fuzz
   # smoke run is available via workflow_dispatch.

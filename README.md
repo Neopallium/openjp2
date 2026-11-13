@@ -128,6 +128,11 @@ SharedArrayBuffer + cross-origin isolation).
   `openjpeg/data/` (untracked).
 - Gates: `cargo test --workspace` (unit + tools conformance/nonreg),
   `bash scripts/check_ctest.sh`, `cd capi && cargo test`.
+- C-ABI check: `./scripts/check_abi.sh` builds the C reference and the
+  Rust `libopenjp2`, then compares the exported `opj_*` surface, function
+  signatures and public struct layouts (the type-level part needs
+  libabigail: `apt install abigail-tools`; see `doc/abi-check.md`).  CI
+  runs it in the `abi` job.
 - `RAYON_NUM_THREADS` sizes the rayon pool; the C-parity tools also
   honour `OPJ_NUM_THREADS` (like the upstream CLIs).
 
@@ -140,6 +145,7 @@ SharedArrayBuffer + cross-origin isolation).
 - `doc/api-review.md` — public API review + the jpeg2k alignment plan
 - `doc/differences.md` — intentional divergences from the C reference
 - `doc/component-data-types.md` — component data representations
+- `doc/abi-check.md` — the C-ABI compatibility check and the options behind it
 - `doc/simd-options.md` — SIMD options, measurements, and the `simd` feature
 - `doc/redesign-proposal.md` — the 0.7 redesign plan record
 - `doc/jpeg2000-design-spec.md` — the format/algorithm spec (also embedded in
