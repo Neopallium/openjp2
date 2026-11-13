@@ -1071,7 +1071,7 @@ pub(crate) fn mqc_bypass_init_enc(mut mqc: &mut Mqc) {
   debug_assert!(mqc.check_start(0));
   mqc.c = 0;
   /* in theory we should initialize to 8, but use this special value */
-  /* as a hint that mqc_bypass_enc() has never been called, so */
+  /* as a hint that mqc_bypass_enc_macro() has never been called, so */
   /* as to avoid the 0xff 0x7f elimination trick in mqc_bypass_flush_enc() */
   /* to trigger when we don't have output any bit during this bypass sequence */
   /* Any value > 8 will do */
@@ -1079,10 +1079,6 @@ pub(crate) fn mqc_bypass_init_enc(mut mqc: &mut Mqc) {
   /* Given that we are called after mqc_flush(), the previous byte */
   /* cannot be 0xff. */
   debug_assert!(mqc.bp_peek_offset(-1) != 0xff);
-}
-
-pub(crate) fn mqc_bypass_enc(mut mqc: &mut Mqc, d: u32) {
-  mqc_bypass_enc_macro(mqc, d)
 }
 
 pub(crate) fn mqc_bypass_get_extra_bytes(mut mqc: &mut Mqc, mut erterm: bool) -> u32 {

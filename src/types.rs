@@ -636,20 +636,6 @@ impl TileBuf {
     }
   }
 
-  pub(crate) fn as_mut_i32_ptr(&self) -> *mut i32 {
-    match self {
-      TileBuf::Empty => core::ptr::null_mut(),
-      TileBuf::I32 { data, .. } => {
-        if data.is_empty() {
-          core::ptr::null_mut()
-        } else {
-          data.as_ptr() as *mut i32
-        }
-      }
-      TileBuf::F32 { .. } => core::ptr::null_mut(),
-    }
-  }
-
   pub(crate) fn is_null(&self) -> bool {
     match self {
       TileBuf::Empty => true,

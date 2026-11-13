@@ -1641,7 +1641,7 @@ fn parallel_tlm_multi_part_matches_serial() {
       let parallel = codec.encode_parallel(&mut stream);
       assert_eq!(
         parallel,
-        Some(true),
+        crate::codec::ParallelEncodeResult::Ok,
         "parallel path must handle TLM + multi-part"
       );
       codec.finish(&mut stream).unwrap();
@@ -3179,5 +3179,133 @@ fn parallel_encode_does_not_retry_on_a_stream_failure() {
   assert!(
     result.is_err(),
     "a mid-stream write failure must error, not retry into a duplicate codestream"
+  );
+}
+
+#[test]
+fn encode_refuses_an_advanced_tile_cursor() {
+  let mut j2k = crate::j2k::j2k_create_compress().expect("encoder");
+  j2k.m_current_tile_number = 1; // e.g. a preceding write_tile call
+  let writer = crate::stream::SharedVecWriter {
+    buf: std::rc::Rc::new(std::cell::RefCell::new(Vec::new())),
+    pos: 0,
+  };
+  let mut stream = Stream::new_output(crate::consts::J2K_STREAM_CHUNK_SIZE as usize, writer);
+  let mut manager = crate::event::EventMgr::default();
+  assert!(
+    crate::j2k::j2k_encode(&mut j2k, &mut stream, &mut manager).is_err(),
+    "serial encode must refuse a non-zero tile cursor"
+  );
+  #[cfg(feature = "rayon")]
+  assert!(
+    crate::j2k::j2k_encode_tiles_parallel(&mut j2k, &mut stream, &mut manager, &mut false).is_err(),
+    "parallel encode must refuse a non-zero tile cursor"
+  );
+}
+
+/// The per-tile DecodeLimits check must reject a crafted SIZ whose
+/// `tile_pixels * 4 * numcomps` product overflows u64 (the old wrapping
+/// arithmetic folded it to 0 and let multi-GiB infallible allocations
+/// through; r4-H2 / G13).
+#[test]
+fn oversized_tile_memory_check_cannot_wrap() {
+  let csiz = 128u16;
+  let mut bytes = vec![0xFF, 0x4F]; // SOC
+  let lsiz = 38u16 + 3 * csiz;
+  bytes.extend_from_slice(&[0xFF, 0x51]);
+  bytes.extend_from_slice(&lsiz.to_be_bytes());
+  bytes.extend_from_slice(&0u16.to_be_bytes()); // Rsiz
+  bytes.extend_from_slice(&(1u32 << 27).to_be_bytes()); // Xsiz
+  bytes.extend_from_slice(&(1u32 << 28).to_be_bytes()); // Ysiz
+  bytes.extend_from_slice(&0u32.to_be_bytes()); // XOsiz
+  bytes.extend_from_slice(&0u32.to_be_bytes()); // YOsiz
+  bytes.extend_from_slice(&(1u32 << 27).to_be_bytes()); // XTsiz
+  bytes.extend_from_slice(&(1u32 << 28).to_be_bytes()); // YTsiz
+  bytes.extend_from_slice(&0u32.to_be_bytes()); // XTOsiz
+  bytes.extend_from_slice(&0u32.to_be_bytes()); // YTOsiz
+  bytes.extend_from_slice(&csiz.to_be_bytes());
+  for _ in 0..csiz {
+    bytes.extend_from_slice(&[7, 1, 1]); // Ssiz=7 (8-bit unsigned), XRsiz/YRsiz = 1
+  }
+  /* COD: 128 comps, mct=0, 6 resolutions, 64x64 code-blocks, reversible. */
+  bytes.extend_from_slice(&[
+    0xFF, 0x52, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x01, 0x00, 0x06, 0x04, 0x04, 0x00, 0x01,
+  ]);
+  /* QCD: Sqcd=0 (reversible), 18 one-byte stepsizes for 6 resolutions. */
+  bytes.extend_from_slice(&[0xFF, 0x5C, 0x00, 0x15, 0x00]);
+  bytes.extend_from_slice(&[0x01u8; 18]);
+  /* One tile-part: Isot=0, Psot=0 (last part), TPsot=0, TNsot=1. */
+  bytes.extend_from_slice(&[
+    0xFF, 0x90, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+  ]);
+  bytes.extend_from_slice(&[0xFF, 0x93, 0x00, 0x00, 0x00, 0x00]); // SOD + data
+
+  let result = Image::from_bytes_with(&bytes, DecodeParameters::default().strict(true));
+  assert!(
+    result.is_err(),
+    "the overflowing tile-byte product must be rejected, not wrapped"
+  );
+}
+
+/// The tile-index block of the `J2K_MH_IND` dump (r4-M13's closing line
+/// included) is exercised without the NR harness's suppression knob (G19).
+#[test]
+fn dump_shows_the_tile_index_block_for_tlm_streams() {
+  let (w, h) = (128u32, 64u32);
+  let core = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: w,
+    y1: h,
+    numcomps: 1,
+    color_space: crate::ColorSpace::Gray,
+    comps: vec![crate::CoreImageComp {
+      dx: 1,
+      dy: 1,
+      w,
+      h,
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data: (0..(w * h)).map(|i| (i % 251) as i32).collect(),
+    }],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let image = Image::from_core_image(core);
+  let mut encoder = Encoder::new(J2KFormat::J2K).expect("encoder");
+  encoder.extra_options(&["TLM=YES"]).expect("TLM");
+  let mut params = EncodeParameters::new().tile_size(64, 64).into_inner();
+  let mut core_img = image.clone().into_core_image();
+  encoder.setup(&mut params, &mut core_img).expect("setup");
+  let writer = crate::stream::SharedVecWriter {
+    buf: std::rc::Rc::new(std::cell::RefCell::new(Vec::new())),
+    pos: 0,
+  };
+  let out_buf = writer.buf.clone();
+  let mut stream = Stream::new_output(crate::consts::J2K_STREAM_CHUNK_SIZE as usize, writer);
+  encoder.start(&mut core_img, &mut stream).expect("start");
+  encoder.encode(&mut stream).expect("encode");
+  encoder.finish(&mut stream).expect("finish");
+  let bytes = out_buf.borrow().clone();
+
+  std::env::remove_var("OJP_DO_NOT_DISPLAY_TILE_INDEX_IF_TLM");
+  let mut dump = DumpImage::from_bytes(&bytes).expect("wrap");
+  dump.decode().expect("decode");
+  let text = dump.dump(J2K_MH_IND);
+  assert!(
+    text.contains("Tile index: {"),
+    "missing tile-index block: {}",
+    text
+  );
+  assert!(
+    text.contains("\t }\n}\n"),
+    "missing closing lines: {}",
+    text
   );
 }

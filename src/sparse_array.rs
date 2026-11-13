@@ -120,31 +120,10 @@ impl SparseArray {
   pub fn data_block(&self, x: u32, y: u32) -> Option<&[i32]> {
     self.blocks.get(self.block_index(x, y))?.as_deref()
   }
-
-  pub fn data_block_mut(&mut self, x: u32, y: u32) -> Option<&mut [i32]> {
-    let index = self.block_index(x, y);
-    self.blocks.get_mut(index)?.as_deref_mut()
-  }
-
-  pub fn set_data_block(&mut self, x: u32, y: u32, value: Vec<i32>) {
-    let index = self.block_index(x, y);
-    self.blocks[index] = Some(value);
-  }
 }
 
 pub(crate) fn is_region_valid(sa: &SparseArray, x0: u32, y0: u32, x1: u32, y1: u32) -> bool {
   !(x0 >= sa.width || x1 <= x0 || x1 > sa.width || y0 >= sa.height || y1 <= y0 || y1 > sa.height)
-}
-
-/// Number of `i32` slots a caller buffer must expose for a `(x1-x0) x (y1-y0)` region
-/// laid out with the given strides. This is the index of the last touched element plus one.
-fn region_extent(x0: u32, y0: u32, x1: u32, y1: u32, col_stride: u32, line_stride: u32) -> usize {
-  if x1 <= x0 || y1 <= y0 {
-    return 0;
-  }
-  let w = (x1 - x0) as usize;
-  let h = (y1 - y0) as usize;
-  (h - 1) * line_stride as usize + (w - 1) * col_stride as usize + 1
 }
 
 /// Reads a region into `dest`.

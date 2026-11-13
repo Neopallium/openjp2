@@ -833,17 +833,10 @@ impl Decoder {
     }
     let cstr_index = self.cstr_index()?;
     let tiles: Vec<u32> = (0..num_tiles).collect();
-    /* The merge target mirrors the serial output image: for a reduced
-    decode it carries the factor and the reduced component dimensions. */
-    let mut merge = header.clone();
-    if reduce > 0 {
-      for comp in &mut merge.comps {
-        comp.factor = reduce;
-      }
-      if crate::j2k::j2k_update_image_dimensions(&mut merge, &mut self.m_event_mgr).is_err() {
-        return None;
-      }
-    }
+    /* The merge target mirrors the serial output image.  The only caller
+    gates on reduce == 0, so no reduced-dimension adjustment is needed
+    here (the reduction path stays on the sequential decoder). */
+    let merge = header.clone();
     let mut core = crate::j2k::j2k_decode_tiles_parallel(
       cp,
       header,
@@ -990,19 +983,39 @@ impl Encoder {
 
   /// Parallel tile encoding into the given stream (feature `rayon`,
   /// safe-API internal): encodes every tile with a fresh codec state and
-  /// writes the tile-parts in order.  Returns None when the parallel path
-  /// does not apply, leaving the codec state untouched for the sequential
-  /// fallback.
+  /// writes the tile-parts in order.
   #[cfg(feature = "rayon")]
-  pub(crate) fn encode_parallel(&mut self, stream: &mut Stream) -> Option<bool> {
+  pub(crate) fn encode_parallel(&mut self, stream: &mut Stream) -> ParallelEncodeResult {
     let j2k = match &mut self.m_codec {
       CodecFormat::J2K(j2k) => j2k,
       CodecFormat::JP2(jp2) => &mut jp2.j2k,
     };
     let num_tiles = j2k.m_cp.tw.wrapping_mul(j2k.m_cp.th);
     if num_tiles <= 1 {
-      return None;
+      return ParallelEncodeResult::NotAttempted;
     }
-    Some(crate::j2k::j2k_encode_tiles_parallel(j2k, stream, &mut self.m_event_mgr).is_ok())
+    let mut wrote_any = false;
+    match crate::j2k::j2k_encode_tiles_parallel(j2k, stream, &mut self.m_event_mgr, &mut wrote_any)
+    {
+      Ok(()) => ParallelEncodeResult::Ok,
+      Err(()) if wrote_any => ParallelEncodeResult::WriteFailed,
+      Err(()) => ParallelEncodeResult::RetrySerial,
+    }
   }
+}
+
+/// Outcome of the parallel tile-encode driver: distinguishes a worker
+/// failure (no bytes written, the serial retry is safe) from a stream
+/// write failure (the stream already holds tile data).
+#[cfg(feature = "rayon")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ParallelEncodeResult {
+  /// The parallel encode completed.
+  Ok,
+  /// Not attempted (single tile / feature off at the call site).
+  NotAttempted,
+  /// Workers failed before any bytes were written; retry serially.
+  RetrySerial,
+  /// The ordered write failed; do NOT retry.
+  WriteFailed,
 }

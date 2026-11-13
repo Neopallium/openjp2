@@ -8199,6 +8199,9 @@ pub(crate) fn j2k_decode_tile(
     )
     .is_err()
     {
+      /* The C leaves the tile buffer intact so a low-level retry of the
+      same tile can reuse it; restore the taken buffer. */
+      p_j2k.m_cp.tcps[p_tile_index as usize].m_data = l_tile_data;
       return Err(());
     }
     /* To avoid to destroy the tcp which can be useful when we try to decode a tile decoded before (cf j2k_random_tile_access)
@@ -8353,7 +8356,6 @@ fn update_image_data_comp(
     src_data_stride = (l_tilec_i.resolutions[l_tilec_i.minimum_num_resolutions as usize - 1].x1
       - l_tilec_i.resolutions[l_tilec_i.minimum_num_resolutions as usize - 1].x0)
       as u32;
-    !l_tilec_i.data.is_null()
   } else {
     let l_res = &l_tilec_i.resolutions[l_img_comp_src.resno_decoded as usize];
     res_x0 = l_res.win_x0 as i32;
@@ -8361,7 +8363,6 @@ fn update_image_data_comp(
     res_x1 = l_res.win_x1 as i32;
     res_y1 = l_res.win_y1 as i32;
     src_data_stride = l_res.win_x1.wrapping_sub(l_res.win_x0);
-    !l_tilec_i.data_win.is_null()
   };
   let src_available = if whole_tile {
     !l_tilec_i.data.is_null()
@@ -10749,6 +10750,13 @@ pub(crate) fn j2k_encode(
   p_manager: &mut EventMgr,
 ) -> OpResult {
   /* preconditions */
+  /* The C's pre_write_tile rejects a tile index that does not match the
+  encoder cursor; mirror it up front so write_tile(0) followed by
+  encode() cannot re-emit tile 0 and desync the TLM merge. */
+  if p_j2k.m_current_tile_number != 0 {
+    event_msg!(p_manager, EVT_ERROR, "The given tile index does not match.",);
+    return Err(());
+  }
   let num_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   let header = p_j2k
     .m_private_image
@@ -10897,8 +10905,14 @@ pub(crate) fn j2k_encode_tiles_parallel(
   p_j2k: &mut J2k,
   p_stream: &mut Stream,
   p_manager: &mut EventMgr,
+  wrote_any: &mut bool,
 ) -> OpResult {
   use rayon::prelude::*;
+  /* Same cursor guard as the serial encode. */
+  if p_j2k.m_current_tile_number != 0 {
+    event_msg!(p_manager, EVT_ERROR, "The given tile index does not match.",);
+    return Err(());
+  }
   let num_tiles = p_j2k.m_cp.tw.wrapping_mul(p_j2k.m_cp.th);
   if num_tiles <= 1 {
     return Err(());
@@ -10953,6 +10967,9 @@ pub(crate) fn j2k_encode_tiles_parallel(
       num_tiles,
     );
     events.lock().unwrap().replay(p_manager);
+    /* Record the write ATTEMPT (not the logical offset): a partially
+    flushed physical write can fail without advancing tell(). */
+    *wrote_any = true;
     if stream_write_data(p_stream, &bytes, p_manager) != bytes.len() {
       return Err(());
     }

@@ -41,14 +41,17 @@ pub(crate) fn encode_image_to_writer_inner<W: std::io::Write + std::io::Seek + '
 fn encode_maybe_parallel(codec: &mut Encoder, stream: &mut Stream) -> bool {
   #[cfg(feature = "rayon")]
   {
+    use crate::codec::ParallelEncodeResult::*;
     if codec.num_tiles() > 1 {
-      let start = stream.tell();
-      if codec.encode_parallel(stream) == Some(true) {
-        return true;
-      }
-      if stream.tell() != start {
-        log::error!("parallel encode failed after writing tile data; not retrying");
-        return false;
+      match codec.encode_parallel(stream) {
+        Ok => return true,
+        WriteFailed => {
+          /* The stream already holds tile data; a serial retry would
+          append a second codestream over the partial one. */
+          log::error!("parallel encode failed after writing tile data; not retrying");
+          return false;
+        }
+        RetrySerial | NotAttempted => {}
       }
     }
   }

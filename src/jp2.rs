@@ -52,7 +52,7 @@ impl Jp2BoxHeader {
         /* The C logs the 2^32 box-size rejection; the reader returns it as
         an Err string, which the old `.ok()?` discarded. */
         if msg.contains("Cannot handle box sizes") {
-          event_msg!(p_manager, EVT_ERROR, "{}\\n", msg);
+          event_msg!(p_manager, EVT_ERROR, "{}\n", msg);
         }
         None
       }
@@ -1791,20 +1791,20 @@ fn jp2_read_jp2h(jp2: &mut Jp2, mut buf: &[u8], p_manager: &mut EventMgr) -> OpR
         family (opj_jp2_read_boxhdr_char's p_box_max_size < 8). */
         "Cannot handle box of less than 8 bytes"
       };
-      event_msg!(p_manager, EVT_ERROR, "{}\\n", detail);
+      event_msg!(p_manager, EVT_ERROR, "{}\n", detail);
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Stream error while reading JP2 Header box\\n",
+        "Stream error while reading JP2 Header box\n",
       );
       return Err(());
     }
     if header.length < header.header_length {
-      event_msg!(p_manager, EVT_ERROR, "Box length is inconsistent.\\n",);
+      event_msg!(p_manager, EVT_ERROR, "Box length is inconsistent.\n",);
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Stream error while reading JP2 Header box\\n",
+        "Stream error while reading JP2 Header box\n",
       );
       return Err(());
     }

@@ -329,15 +329,6 @@ fn smr_sign(x: i32) -> u32 {
   x as u32 >> 31
 }
 
-//#define to_smr(x)   ((x) >= 0 ? (u32)(x) : ((u32)(-x) | 0x80000000U))
-fn to_smr(x: i32) -> u32 {
-  if x >= 0 {
-    x as u32
-  } else {
-    -x as u32 | 0x80000000
-  }
-}
-
 // Local static functions
 //@{
 //@}
@@ -962,7 +953,6 @@ fn t1_enc_refpass_step_macro(
     let abs_data = smr_abs(l_datap.get());
     *nmsedec += t1_getnmsedec_ref(abs_data, bpno as u32) as i32;
     v = if abs_data & one != 0 { 1 } else { 0 };
-    log::debug!("   ctxt={}", ctxt);
     t1_setcurctx(mqc, ctxt);
 
     if type_0 == T1_TYPE_RAW {
@@ -1382,7 +1372,6 @@ fn t1_enc_clnpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mu
       let mut agg = 0;
       let mut runlen = 0u32;
       agg = (f.get() == 0) as u8;
-      log::debug!("   agg={}", agg);
       'cln: {
         if agg != 0 {
           runlen = 0;
@@ -1425,7 +1414,6 @@ fn t1_enc_clnpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mu
     let runlen = 0;
     i = 0;
     while i < w {
-      log::debug!("  agg={}", agg);
       {
         let mut flags = f.get();
         t1_enc_clnpass_step_macro(

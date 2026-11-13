@@ -40,7 +40,9 @@ a literal transcription.  This page lists the intentional divergences.
   identical in both modes.  Parallel encode/decode workers collect their
   events and the driver replays them on the caller's manager in tile
   order, so the event stream matches the serial paths (including the
-  per-tile INFO line).
+  per-tile INFO line).  The replay is level-grouped per worker (info,
+  then warning, then error), so mixed-level per-tile streams reorder
+  relative to the serial interleaving - cosmetic only.
 - House decision (r4-I4): diagnostic text drops the C's `opj_`
   function-name prefixes (`t2_encode_packet():` etc.).  Stderr/log
   diffing against the C tools must normalize the prefix.
