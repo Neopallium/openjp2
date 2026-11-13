@@ -50,7 +50,7 @@ log = "0.4.17"
 
 smallvec = "1.13"
 wide = { version = "1.7", optional = true }
-serde = { version = "1", optional = true }
+serde = { version = "1", optional = true, features = ["derive"] }
 
 [features]
 # Parallelism via rayon is optional: some platforms/targets cannot use
