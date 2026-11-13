@@ -161,6 +161,11 @@ jobs:
         env:
           OPJ_DATA_ROOT: ${{ github.workspace }}/openjpeg/data
 
+      - name: Tools non-regression suite (SIMD kernels)
+        run: cargo test -p openjp2-tools --test nonreg --features simd
+        env:
+          OPJ_DATA_ROOT: ${{ github.workspace }}/openjpeg/data
+
   # ------------------------------------------------------------------
   # Cross-target build checks: the Rust safe core AND the C-ABI crate,
   # plus the WASM bindings on wasm32 (the user-requested WASM gate).

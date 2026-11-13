@@ -73,6 +73,7 @@ Image::into_core_image(self) -> CoreImage
 Image::encode(self, EncodeParameters) -> Result<Vec<u8>>         // J2K codestream
 Image::encode_jp2(self, EncodeParameters) -> Result<Vec<u8>>     // JP2 file
 Image::encode_to_writer(self, EncodeParameters, W: Write+Seek) -> Result<()>
+Image::encode_jp2_to_writer(self, EncodeParameters, W: Write+Seek) -> Result<()>
 Image::save_as_file(&self, path) -> Result<()>                 // format from extension
 Image::save_as_file_with(&self, path, EncodeParameters) -> Result<()>
 // pixel extraction (feature "image")
