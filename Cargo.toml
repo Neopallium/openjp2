@@ -72,5 +72,3 @@ openjpeg-version-string = []
 # SIMD-accelerated DWT kernels via the `wide` crate (safe API; the
 # kernels run on the generic build without it).  Off by default.
 simd = ["dep:wide"]
-
-required-features = ["image"]

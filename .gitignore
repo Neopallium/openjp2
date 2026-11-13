@@ -48,6 +48,7 @@ __pycache__/
 /RESUME-session.md
 /open-findings.md
 /review_*.md
+/old_reviews/
 /plan-*.prompt.md
 
 # Generated wasm-bindgen glue for the playground (build with
