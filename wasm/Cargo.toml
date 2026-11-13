@@ -1,7 +1,7 @@
 [package]
 name = "openjp2-wasm"
 authors = ["Robert G. Jakabosky <rjakabosky+neopallium@neoawareness.com>"]
-version = "0.7.0"
+version = "0.7.2"
 license = "BSD-2-Clause"
 description = "WASM bindings for the pure-Rust OpenJPEG port (openjp2)."
 repository = "https://github.com/Neopallium/openjp2"
@@ -18,7 +18,7 @@ exclude = ["examples/*", "playground/*"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-openjp2 = { path = "..", version = "0.7.0", default-features = false }
+openjp2 = { path = "..", version = "0.7.2", default-features = false }
 wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1"
 wasm-bindgen-rayon = { version = "1.3", optional = true, features = ["no-bundler"] }

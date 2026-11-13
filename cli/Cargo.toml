@@ -1,6 +1,6 @@
 [package]
 name = "openjp2-cli"
-version = "0.7.1"
+version = "0.7.2"
 edition = "2021"
 license = "BSD-2-Clause"
 description = "Command-line tools for the pure-Rust OpenJPEG port (openjp2)"
@@ -13,7 +13,7 @@ name = "openjp2"
 path = "src/main.rs"
 
 [dependencies]
-openjp2 = { path = "..", version = "0.7.0" }
+openjp2 = { path = "..", version = "0.7.2" }
 clap = { version = "4.6", features = ["derive"] }
 image = { version = "0.25", default-features = false, features = [
   "png",

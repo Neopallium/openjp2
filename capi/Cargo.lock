@@ -65,7 +65,7 @@ checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "openjp2"
-version = "0.7.0"
+version = "0.7.2"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -78,7 +78,7 @@ dependencies = [
 
 [[package]]
 name = "openjp2-capi"
-version = "0.7.0"
+version = "0.7.2"
 dependencies = [
  "libc",
  "log",
@@ -88,7 +88,7 @@ dependencies = [
 
 [[package]]
 name = "openjp2-ctypes"
-version = "0.7.0"
+version = "0.7.2"
 
 [[package]]
 name = "rayon"
