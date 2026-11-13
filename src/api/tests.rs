@@ -1796,7 +1796,11 @@ fn subsampled_empty_tiles_round_trip() {
     .encode(params)
     .expect("subsampled tiled encode");
   let back = Image::from_bytes(&codestream).expect("subsampled tiled decode");
-  assert_eq!((back.width(), back.height()), (w, h));
+  assert_eq!(
+    (back.width(), back.height()),
+    (w.div_ceil(128), h.div_ceil(128))
+  );
+  assert_eq!((back.orig_width(), back.orig_height()), (w, h));
   assert_eq!(back.num_components(), 1);
   // The visible pixels (the 2x2 subsampled plane) must round-trip losslessly
   // (reversible 5-3).
@@ -2788,22 +2792,54 @@ fn save_as_file_round_trips_by_extension() {
 
 #[test]
 fn image_origin_accessors_and_debug() {
+  /* A subsampled (dx=2) component: the decoded plane is 32x16 while the
+  full image extent is 64x32. */
   let core = crate::CoreImage {
     x0: 7,
     y0: 9,
     x1: 71,
     y1: 41,
-    numcomps: 0,
+    numcomps: 1,
     color_space: crate::ColorSpace::Gray,
-    comps: Vec::new(),
+    comps: vec![crate::CoreImageComp {
+      dx: 2,
+      dy: 2,
+      w: 32,
+      h: 16,
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data: vec![0; 32 * 16],
+    }],
     icc_profile_buf: Vec::new(),
     icc_profile_is_cielab: false,
   };
   let image = Image::from_core_image(core);
   assert_eq!((image.x_offset(), image.y_offset()), (7, 9));
+  assert_eq!((image.width(), image.height()), (32, 16));
   assert_eq!((image.orig_width(), image.orig_height()), (64, 32));
   let rendered = format!("{:?}", image);
   assert!(rendered.contains("width") && rendered.contains("x_offset"));
+}
+
+#[test]
+fn reduced_decode_reports_decoded_and_original_sizes() {
+  let buf = std::fs::read("doc/example.jp2").expect("example image");
+  let full = Image::from_bytes(&buf).expect("full decode");
+  assert_eq!((full.width(), full.height()), (512, 512));
+  assert_eq!(
+    (full.orig_width(), full.orig_height()),
+    (full.width(), full.height())
+  );
+  let reduced =
+    Image::from_bytes_with(&buf, DecodeParameters::new().reduce(1)).expect("reduced decode");
+  assert_eq!((reduced.width(), reduced.height()), (256, 256));
+  assert_eq!((reduced.orig_width(), reduced.orig_height()), (512, 512));
 }
 
 #[test]

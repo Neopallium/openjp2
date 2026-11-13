@@ -44,26 +44,32 @@ impl Image {
     Self::from_bytes_with(&buf, params)
   }
 
-  /// Width of the decoded image.
+  /// Width of the decoded image: the first component's plane width.
+  /// Reduced by the decode resolution factor (and by the decode area),
+  /// like the `jpeg2k` `Image`; see [`Self::orig_width`] for the full
+  /// image extent.
   pub fn width(&self) -> u32 {
+    self.core.comps.first().map(|c| c.w).unwrap_or(0)
+  }
+
+  /// Height of the decoded image: the first component's plane height.
+  /// Reduced by the decode resolution factor (and by the decode area),
+  /// like the `jpeg2k` `Image`; see [`Self::orig_height`] for the full
+  /// image extent.
+  pub fn height(&self) -> u32 {
+    self.core.comps.first().map(|c| c.h).unwrap_or(0)
+  }
+
+  /// Full image extent width (`x1 - x0`), not reduced by the decode
+  /// resolution factor.
+  pub fn orig_width(&self) -> u32 {
     self.core.x1.wrapping_sub(self.core.x0)
   }
 
-  /// Height of the decoded image.
-  pub fn height(&self) -> u32 {
-    self.core.y1.wrapping_sub(self.core.y0)
-  }
-
-  /// Width of the full image extent (`x1 - x0`), like [`Self::width`];
-  /// kept under the `jpeg2k`-compatible name.
-  pub fn orig_width(&self) -> u32 {
-    self.width()
-  }
-
-  /// Height of the full image extent (`y1 - y0`), like [`Self::height`];
-  /// kept under the `jpeg2k`-compatible name.
+  /// Full image extent height (`y1 - y0`), not reduced by the decode
+  /// resolution factor.
   pub fn orig_height(&self) -> u32 {
-    self.height()
+    self.core.y1.wrapping_sub(self.core.y0)
   }
 
   /// The image colour space.
@@ -304,6 +310,8 @@ impl std::fmt::Debug for Image {
     f.debug_struct("Image")
       .field("width", &self.width())
       .field("height", &self.height())
+      .field("orig_width", &self.orig_width())
+      .field("orig_height", &self.orig_height())
       .field("x_offset", &self.x_offset())
       .field("y_offset", &self.y_offset())
       .field("color_space", &self.color_space())

@@ -57,8 +57,12 @@ Image::from_file_with(path, DecodeParameters) -> Result<Self>
 Image::from_core_image(CoreImage) -> Self               // escape hatch (low-level)
 Image::from_dynamic_image(&image::DynamicImage) -> Self // feature "image"
 // accessors
-Image::width() -> u32            // x1 - x0
-Image::height() -> u32           // y1 - y0
+Image::width() -> u32            // decoded size: first component's plane width
+Image::height() -> u32           // decoded size: first component's plane height
+Image::orig_width() -> u32       // full image extent (x1 - x0), unreduced
+Image::orig_height() -> u32      // full image extent (y1 - y0), unreduced
+Image::x_offset() -> u32         // image origin x0
+Image::y_offset() -> u32         // image origin y0
 Image::color_space() -> ColorSpace
 Image::num_components() -> u32
 Image::has_icc_profile() -> bool
@@ -69,6 +73,8 @@ Image::into_core_image(self) -> CoreImage
 Image::encode(self, EncodeParameters) -> Result<Vec<u8>>         // J2K codestream
 Image::encode_jp2(self, EncodeParameters) -> Result<Vec<u8>>     // JP2 file
 Image::encode_to_writer(self, EncodeParameters, W: Write+Seek) -> Result<()>
+Image::save_as_file(&self, path) -> Result<()>                 // format from extension
+Image::save_as_file_with(&self, path, EncodeParameters) -> Result<()>
 // pixel extraction (feature "image")
 Image::get_pixels(&self, alpha_default: Option<u32>) -> Result<ImageData>
 // conversions (feature "image")
