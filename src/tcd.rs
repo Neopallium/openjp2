@@ -1886,14 +1886,21 @@ fn tcd_mct_decode(
     instead of silently doing nothing (mct=1) or indexing empty slices
     (mct=2). */
     let expected_f32 = tcp.tccps[0].qmfbid != 1u32;
+    let mut missing_data = false;
     let mixed_types = comps.iter().take(3).any(|c| {
-      let is_f32 = if whole {
-        c.data.is_f32()
-      } else {
-        c.data_win.is_f32()
-      };
-      is_f32 != expected_f32
+      let buf = if whole { &c.data } else { &c.data_win };
+      if buf.is_null() {
+        /* A component outside a partial decode area has no buffer; there
+        is nothing to transform (the dimension checks above already
+        accepted the geometry). */
+        missing_data = true;
+        return false;
+      }
+      buf.is_f32() != expected_f32
     });
+    if missing_data {
+      return Ok(());
+    }
     if mixed_types {
       if cp.strict {
         event_msg!(

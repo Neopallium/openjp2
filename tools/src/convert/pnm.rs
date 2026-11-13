@@ -46,7 +46,7 @@ fn next_token(reader: &mut BufReader<std::fs::File>) -> Result<Option<String>, I
 /// written straight into the component planes.
 pub fn load_pnm_image(
   path: &Path,
-  _params: &CompressionParameters,
+  params: &CompressionParameters,
 ) -> Result<CoreImage, ImageError> {
   let file = std::fs::File::open(path).map_err(|e| ImageError::ReadError(e.to_string()))?;
   let mut reader = BufReader::new(file);
@@ -111,10 +111,15 @@ pub fn load_pnm_image(
   let bytes_per_sample = if maxval > 255 { 2 } else { 1 };
   let num_samples = (width as usize) * (height as usize);
 
+  /* Match the C tools' ppmtoimage: the image origin and the component
+  subsampling factors come from -d and -s (the PNM raster itself is always
+  full resolution). */
+  let offset = params.image_offset();
+  let subsampling = params.subsampling();
   let mut comps: Vec<CoreImageComp> = (0..num_comps)
     .map(|_| CoreImageComp {
-      dx: 1,
-      dy: 1,
+      dx: subsampling.width,
+      dy: subsampling.height,
       w: width,
       h: height,
       x0: 0,
@@ -180,10 +185,10 @@ pub fn load_pnm_image(
     }
   }
   Ok(CoreImage {
-    x0: 0,
-    y0: 0,
-    x1: width,
-    y1: height,
+    x0: offset.x,
+    y0: offset.y,
+    x1: offset.x + (width - 1) * subsampling.width + 1,
+    y1: offset.y + (height - 1) * subsampling.height + 1,
     numcomps: num_comps,
     color_space: if num_comps == 1 {
       ColorSpace::Gray

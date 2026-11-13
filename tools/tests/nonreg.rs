@@ -14,6 +14,9 @@ use rayon::prelude::*;
 #[test]
 fn test_nonreg() {
   skip_without_test_data!();
+  /* Upstream's ctest harness sets this for every non-regression dump (the
+  baselines were generated with TLM tile-index blocks suppressed). */
+  std::env::set_var("OJP_DO_NOT_DISPLAY_TILE_INDEX_IF_TLM", "YES");
 
   let tests = parse_test_commands();
   let md5_refs = MD5References::load_md5_references();
@@ -36,6 +39,7 @@ fn test_nonreg() {
 #[test]
 fn test_nonreg_dump() {
   skip_without_test_data!();
+  std::env::set_var("OJP_DO_NOT_DISPLAY_TILE_INDEX_IF_TLM", "YES");
 
   let input_nr_dir = get_input_nr_dir();
   let baseline_nr_dir = get_baseline_nr_dir().to_string_lossy().to_string();
