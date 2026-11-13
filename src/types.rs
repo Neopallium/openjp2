@@ -1024,17 +1024,6 @@ pub(crate) struct J2kEnc {
   pub m_nb_comps: u32,
 }
 
-impl J2kEnc {
-  /* Grow-only scratch buffer used to assemble a marker segment before it is written out.
-  Mirrors the C `realloc_` of `m_header_tile_data`; the returned pointer is valid until
-  the next call. */
-  pub(crate) fn header_tile_data(&mut self, size: u32) -> *mut u8 {
-    if size as usize > self.m_header_tile_data.len() {
-      self.m_header_tile_data.resize(size as usize, 0);
-    }
-    self.m_header_tile_data.as_mut_ptr()
-  }
-}
 /// TLM (Tile Length Marker) tile-part info gathered from the main header
 /// (upstream #1538).
 #[derive(Clone, Default)]
