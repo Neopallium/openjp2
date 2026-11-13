@@ -216,7 +216,6 @@ pub(crate) struct T1Coder {
   pub flags: T1Flags,
   pub w: u32,
   pub h: u32,
-  pub datasize: u32,
   pub encoder: bool,
   pub mustuse_cblkdatabuffer: bool,
   pub cblkdatabuffer: Vec<u8>,
@@ -479,7 +478,6 @@ fn t1_enc_sigpass_step_macro(
     } else {
       0
     };
-    log::debug!("   ctxt1={}", ctxt1);
     t1_setcurctx(mqc, ctxt1);
 
     if type_0 == T1_TYPE_RAW {
@@ -493,14 +491,12 @@ fn t1_enc_sigpass_step_macro(
       let ctxt2 = t1_getctxno_sc(lu);
       v = smr_sign(l_datap.get());
       *nmsedec += t1_getnmsedec_sig(smr_abs(l_datap.get()), bpno as u32) as i32;
-      log::debug!("   ctxt2={}", ctxt2);
       t1_setcurctx(mqc, ctxt2);
       if type_0 == T1_TYPE_RAW {
         /* BYPASS/LAZY MODE */
         mqc_bypass_enc_macro(mqc, v);
       } else {
         let spb = t1_getspb(lu) as u32;
-        log::debug!("   spb={}", spb);
         mqc_encode_macro(mqc, v ^ spb);
       }
       t1_update_flags(flags, flagsp, ci, v, w.wrapping_add(2), vsc);
@@ -569,39 +565,6 @@ fn t1_dec_sigpass_step_mqc_macro(
   }
 }
 
-#[inline]
-fn t1_dec_sigpass_step_mqc(
-  mut t1: &mut T1Coder,
-  mut flagsp: FlagsPtr,
-  mut datap: DataPtr,
-  mut oneplushalf: i32,
-  mut ci: u32,
-  mut flags_stride: u32,
-  mut vsc: u32,
-) {
-  let mut v = 0;
-  let mut mqc = &mut t1.mqc; // MQC component
-  let mut flags = flagsp.get();
-  t1_dec_sigpass_step_mqc_macro(
-    &mut flags,
-    flagsp,
-    flags_stride,
-    datap,
-    0,
-    ci,
-    mqc,
-    v,
-    oneplushalf,
-    vsc,
-  );
-  flagsp.set(flags);
-}
-
-// #define T1_FLAGS(x, y)
-fn t1_flags(flags: &T1Flags, w: u32, x: u32, y: u32) -> FlagsPtr<'_> {
-  flags.offset((x + 1).wrapping_add((y / 4 + 1).wrapping_mul(w.wrapping_add(2))) as isize)
-}
-
 /// Encode significant pass
 fn t1_enc_sigpass(
   mut t1: &mut T1Coder,
@@ -622,13 +585,10 @@ fn t1_enc_sigpass(
   let (mqc, mut datap, mut f) = t1.split(w + 2);
 
   *nmsedec = 0;
-  log::debug!("enc_sigpass: bpno={}", bpno);
 
   while k < h & !(0x03) {
-    log::debug!(" k={}", k);
     i = 0;
     while i < w {
-      log::debug!(" i={}", i);
       let mut flags = f.get();
       if flags == 0 {
         /* Nothing to do for any of the 4 data points */
@@ -697,10 +657,8 @@ fn t1_enc_sigpass(
 
   if k < h {
     let mut j: u32 = 0;
-    log::debug!(" k={}", k);
     i = 0;
     while i < w {
-      log::debug!(" i={}", i);
       let mut flags = f.get();
       if flags == 0 {
         /* Nothing to do for any of the 4 data points */
@@ -1072,20 +1030,6 @@ fn t1_dec_refpass_step_mqc_macro(
   }
 }
 
-#[inline]
-fn t1_dec_refpass_step_mqc(
-  mut t1: &mut T1Coder,
-  mut flagsp: FlagsPtr,
-  mut datap: DataPtr,
-  mut poshalf: i32,
-  mut ci: u32,
-) {
-  let mut v = 0;
-
-  let mut mqc = &mut t1.mqc; /* MQC component */
-  t1_dec_refpass_step_mqc_macro(flagsp, datap, 0, ci, mqc, &mut v, poshalf);
-}
-
 /// Encode refinement pass
 fn t1_enc_refpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mut type_0: u8) {
   let mut i: u32 = 0;
@@ -1100,11 +1044,9 @@ fn t1_enc_refpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mu
   log::debug!("enc_refpass: bpno={}", bpno);
 
   while k < h & !(0x03) {
-    log::debug!(" k={}", k);
     i = 0;
     while i < w {
       let flags = f.get();
-      log::debug!(" i={}", i);
       if (flags & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0 {
         /* none significant */
       } else if (flags & (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3))
@@ -1128,10 +1070,8 @@ fn t1_enc_refpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mu
   if k < h {
     let mut j: u32 = 0;
     let remaining_lines = h - k;
-    log::debug!(" k={}", k);
     i = 0;
     while i < w {
-      log::debug!(" i={}", i);
       if (f.get() & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0 {
         /* none significant */
         datap = datap.offset(remaining_lines as isize);
@@ -1324,7 +1264,6 @@ fn t1_enc_clnpass_step_macro(
           goto_partial = true;
         } else if (*flags & ((T1_SIGMA_THIS | T1_PI_THIS) << ci.wrapping_mul(3))) == 0 {
           let ctxt1 = t1_getctxno_zc(mqc, *flags >> ci.wrapping_mul(3));
-          log::debug!("   ctxt1={}", ctxt1);
           t1_setcurctx(mqc, ctxt1);
           v = if smr_abs(l_datap.get()) & one != 0 {
             1
@@ -1340,12 +1279,10 @@ fn t1_enc_clnpass_step_macro(
           let lu = t1_getctxtno_sc_or_spb_index(*flags, flagsp.at(-1), flagsp.at(1), ci);
           *nmsedec += t1_getnmsedec_sig(smr_abs(l_datap.get()), bpno as u32) as i32;
           let ctxt2 = t1_getctxno_sc(lu);
-          log::debug!("   ctxt2={}", ctxt2);
           t1_setcurctx(mqc, ctxt2);
 
           v = smr_sign(l_datap.get());
           let spb = t1_getspb(lu);
-          log::debug!("   spb={}", spb);
           mqc_encode_macro(mqc, v ^ spb as u32);
           let vsc = if (cblksty & J2K_CCP_CBLKSTY_VSC) != 0 && ci == 0 {
             1
@@ -1440,10 +1377,8 @@ fn t1_enc_clnpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mu
   log::debug!("enc_clnpass: bpno={}", bpno);
   k = 0;
   while k < (h & !0x03) {
-    log::debug!(" k={}", k);
     i = 0;
     while i < w {
-      log::debug!(" i={}", i);
       let mut agg = 0;
       let mut runlen = 0u32;
       agg = (f.get() == 0) as u8;
@@ -1488,10 +1423,8 @@ fn t1_enc_clnpass(mut t1: &mut T1Coder, mut bpno: i32, mut nmsedec: &mut i32, mu
   if k < h {
     let agg = 0;
     let runlen = 0;
-    log::debug!(" k={}", k);
     i = 0;
     while i < w {
-      log::debug!(" i={}", i);
       log::debug!("  agg={}", agg);
       {
         let mut flags = f.get();
@@ -1985,7 +1918,7 @@ fn t1_clbl_decode_processor(
       {
         match whole_tile_mutex.unwrap() {
           TileDataMutex::I32(m) => {
-            let mut tile_data = m.lock().unwrap();
+            let mut tile_data = m.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             let mut jj = 0u32;
             while jj < cblk_h {
               let base = (y.wrapping_add(jj)).wrapping_mul(tile_w).wrapping_add(x) as usize;
@@ -1999,7 +1932,7 @@ fn t1_clbl_decode_processor(
           TileDataMutex::F32(m) => {
             /* 9-7: the dequantized t1 cells hold the f32 bit patterns;
             store the words (the C reinterprets the shared array). */
-            let mut tile_data = m.lock().unwrap();
+            let mut tile_data = m.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             let mut jj = 0u32;
             while jj < cblk_h {
               let base = (y.wrapping_add(jj)).wrapping_mul(tile_w).wrapping_add(x) as usize;

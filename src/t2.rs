@@ -70,7 +70,8 @@ fn t2_putcommacode(bio: &mut Bio, mut n: i32) {
 fn t2_getcommacode(bio: &mut Bio) -> u32 {
   let mut n = 0_u32;
   while bio_read(bio, 1_u32) != 0 {
-    n += 1;
+    /* The C's u32 counter wraps here (t2.c:175-182); match it exactly. */
+    n = n.wrapping_add(1);
   }
   n
 }

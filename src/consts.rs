@@ -244,43 +244,43 @@ pub enum Jp2BoxType {
   /// No box type
   #[default]
   None,
-  /// JPEG 2000 signature box
+  /// JPIP signature box (`'jpip'`)
   JPIP,
-  /// File type box
+  /// JPEG 2000 signature box (`'jP  '`)
   JP,
-  /// JP2 header box (super-box)
+  /// File type box (`'ftyp'`)
   FTYP,
-  /// Image header box
+  /// JP2 header box, super-box (`'jp2h'`)
   JP2H,
-  /// Colour specification box
+  /// Image header box (`'ihdr'`)
   IHDR,
-  /// Contiguous codestream box
+  /// Colour specification box (`'colr'`)
   COLR,
-  /// Data entry URL box
+  /// Contiguous codestream box (`'jp2c'`)
   JP2C,
-  /// Palette box
+  /// Data entry URL box (`'url '`)
   URL,
-  /// Component Mapping box
+  /// Palette box (`'pclr'`)
   PCLR,
-  /// Channel Definition box
+  /// Component Mapping box (`'cmap'`)
   CMAP,
-  /// Data Reference box
+  /// Channel Definition box (`'cdef'`)
   CDEF,
-  /// Bits per component box
+  /// Data Reference box (`'dtbl'`)
   DTBL,
-  /// File type fields
+  /// Bits per component box (`'bpcc'`)
   BPCC,
-  /// Resolution box (super-box)
+  /// JP2 file signature box (`'jp2 '`)
   JP2,
-  /// Intellectual property box
+  /// Resolution box, super-box (`'res '`)
   RES,
-  /// XML box
+  /// Intellectual property box (`'jp2i'`)
   JP2I,
-  /// UUID box
+  /// XML box (`'xml '`)
   XML,
-  /// UUID info box (super-box)
+  /// UUID box (`'uuid'`)
   UUID,
-  /// UUID list box
+  /// UUID info box, super-box (`'uinf'`)
   UINF,
   /// Unknown box type
   Unknown(u32),

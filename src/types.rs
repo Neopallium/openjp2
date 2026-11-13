@@ -650,20 +650,6 @@ impl TileBuf {
     }
   }
 
-  pub(crate) fn as_mut_f32_ptr(&self) -> *mut f32 {
-    match self {
-      TileBuf::Empty => core::ptr::null_mut(),
-      TileBuf::F32 { data, .. } => {
-        if data.is_empty() {
-          core::ptr::null_mut()
-        } else {
-          data.as_ptr() as *mut f32
-        }
-      }
-      TileBuf::I32 { .. } => core::ptr::null_mut(),
-    }
-  }
-
   pub(crate) fn is_null(&self) -> bool {
     match self {
       TileBuf::Empty => true,
@@ -920,20 +906,6 @@ impl CodeBlocks {
     }
   }
 
-  pub(crate) fn enc_ptr(&mut self) -> *mut TcdCblkEnc {
-    match self {
-      CodeBlocks::Enc(v) => v.as_mut_ptr(),
-      _ => core::ptr::null_mut(),
-    }
-  }
-
-  pub(crate) fn dec_ptr(&mut self) -> *mut TcdCblkDec {
-    match self {
-      CodeBlocks::Dec(v) => v.as_mut_ptr(),
-      _ => core::ptr::null_mut(),
-    }
-  }
-
   pub(crate) fn enc_mut(&mut self, i: usize) -> &mut TcdCblkEnc {
     match self {
       CodeBlocks::Enc(v) => &mut v[i],
@@ -1003,17 +975,6 @@ pub(crate) struct TcdCblkEnc {
   pub totalpasses: u32,
 }
 impl TcdCblkEnc {
-  /// Start of the payload, i.e. what the C struct stored in its `data` member.
-  /// Null while no buffer has been allocated.
-  pub(crate) fn data_ptr(&self) -> *mut u8 {
-    if self.data.is_empty() {
-      core::ptr::null_mut()
-    } else {
-      // The leading byte is a sentinel; the payload starts at index 1.
-      self.data.as_ptr().wrapping_add(1) as *mut u8
-    }
-  }
-
   /// Payload byte at `index`, where index 0 is the first payload byte.
   pub(crate) fn data_byte(&self, index: usize) -> u8 {
     self.data[index + 1]

@@ -1003,7 +1003,7 @@ fn j2k_check_poc_val(
     event_msg!(
       p_manager,
       EVT_ERROR,
-      "Not enough memory to check POC values\n",
+      "Not enough memory for checking the poc values.\n",
     );
     return false;
   }
@@ -2075,8 +2075,9 @@ fn j2k_write_coc_in_memory(
     &mut l_remaining_size,
     p_manager,
   );
-  pos += *p_data_written as usize;
-  *p_data_written = pos as u32;
+  /* The C reports the full marker size (l_coc_size), not the header-only
+  count (j2k.c:2911). */
+  *p_data_written = l_coc_size;
 }
 
 /// Gets the maximum size taken by a coc.
@@ -2397,8 +2398,9 @@ fn j2k_write_qcc_in_memory(
     &mut l_remaining_size,
     p_manager,
   );
-  pos += *p_data_written as usize;
-  *p_data_written = pos as u32;
+  /* The C reports the full marker size (l_qcc_size, already adjusted for
+  the 1-byte Cqcc case) - j2k.c:3196. */
+  *p_data_written = l_qcc_size;
 }
 
 /// Gets the maximum size taken by a qcc.
@@ -6022,8 +6024,9 @@ pub(crate) fn j2k_setup_encoder(
     return Err(());
   }
   /* The C's j2k_write_cod asserts on an unknown progression order; the
-  port's write path uses it as a marker value (garbage output where the C
-  has UB) - reject it up front. */
+  port's `EncoderParameters::prog_order` enum cannot hold an invalid
+  value (the capi boundary validates the raw C field before conversion),
+  so no check is needed here.  Per-component validation follows. */
   for comp in image.comps.iter() {
     if !crate::types::prec_valid(comp.prec) {
       event_msg!(
@@ -7102,13 +7105,8 @@ fn j2k_read_header_procedure(
     p_manager,
   ) != 2
   {
-    /* Progressive-download support (lenient mode): a header that ends after
-    SIZ still yields the image dimensions and component count - accept the
-    header read so far instead of failing hard. */
-    if !strict && l_has_siz != 0 {
-      p_j2k.m_header_partial = true;
-      return Ok(());
-    }
+    /* This is the first marker after SOC: SIZ cannot have been read yet,
+    so there is nothing to salvage - fail hard like the C. */
     event_msg!(p_manager, EVT_ERROR, "Stream too short\n",);
     return Err(());
   }
@@ -8224,12 +8222,14 @@ pub(crate) fn j2k_decode_tile(
       );
       return if strict { Err(()) } else { Ok(()) };
     }
+    let strict = p_j2k.m_cp.strict;
     l_current_marker = J2KMarker::from_buffer(&l_data);
     if l_current_marker == J2KMarker::EOC {
       p_j2k.m_current_tile_number = 0_u32;
       p_j2k.m_specific_param.m_decoder.m_state = J2KState::EOC
-    } else if l_current_marker == J2KMarker::UNK(0x8080u32) {
-      /* cf. https://code.google.com/p/openjpeg/issues/detail?id=226 */
+    } else if l_current_marker == J2KMarker::UNK(0x8080u32) && !strict {
+      /* cf. https://code.google.com/p/openjpeg/issues/detail?id=226 -
+      lenient only: strict mode reaches the SOT error below like the C. */
       if stream_get_number_byte_left(p_stream) == 2i64 {
         p_j2k.m_specific_param.m_decoder.m_state = J2KState::NEOC;
         event_msg!(
@@ -8283,7 +8283,7 @@ fn j2k_update_image_data(
       event_msg!(
         p_manager,
         EVT_ERROR,
-        "Output image component data {} bytes exceeds the decoder memory limit {} bytes\\n",
+        "Output image component data {} bytes exceeds the decoder memory limit {} bytes\n",
         total,
         max_mem,
       );
