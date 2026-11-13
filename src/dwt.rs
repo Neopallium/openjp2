@@ -1511,6 +1511,7 @@ fn dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
       let h_cas = h.cas;
       let h_len = 2 * (h_sn + h_dn) as usize;
       let stride = w as usize;
+      let failed = core::sync::atomic::AtomicBool::new(false);
       par::for_each_chunks_mut(
         &mut tile_data[..level_rows * stride],
         stride,
@@ -1523,6 +1524,7 @@ fn dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
               abort). */
               let need = h_len - s.len();
               if s.try_reserve_exact(need).is_err() {
+                failed.store(true, core::sync::atomic::Ordering::Relaxed);
                 return;
               }
               s.resize(h_len, core::cell::Cell::new(0));
@@ -1541,6 +1543,9 @@ fn dwt_decode_tile(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
           });
         },
       );
+      if failed.load(core::sync::atomic::Ordering::Relaxed) {
+        return Err(());
+      }
     } else {
       let mut j: u32 = 0;
       while j < rh {
@@ -2437,6 +2442,7 @@ fn dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
       let h_len = (rw as usize) * NB_ELTS_V8 as usize;
       let (h_sn, h_dn, h_cas) = (h.sn, h.dn, h.cas);
       let stride = w as usize;
+      let failed = core::sync::atomic::AtomicBool::new(false);
       par::for_each_chunks_mut(
         &mut tile_data[..rh as usize * stride],
         stride * NB_ELTS_V8 as usize,
@@ -2446,6 +2452,7 @@ fn dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
             if s.len() < h_len {
               let need = h_len - s.len();
               if s.try_reserve_exact(need).is_err() {
+                failed.store(true, core::sync::atomic::Ordering::Relaxed);
                 return;
               }
               s.resize(h_len, core::cell::Cell::new(0.0));
@@ -2472,6 +2479,9 @@ fn dwt_decode_tile_97(tilec: &mut TcdTileComp, mut numres: u32) -> OpResult {
           });
         },
       );
+      if failed.load(core::sync::atomic::Ordering::Relaxed) {
+        return Err(());
+      }
     } else {
       j = 0_u32;
       while j + (NB_ELTS_V8 - 1) < rh {

@@ -461,6 +461,8 @@ pub(crate) struct Ppx {
 #[derive(Clone, Default)]
 pub(crate) struct Cp {
   pub rsiz: u16,
+  /// Decode memory budget visible to the packet iterator (set per tile).
+  pub(crate) max_mem: u64,
   pub tx0: u32,
   pub ty0: u32,
   pub tdx: u32,

@@ -426,16 +426,23 @@ pub(crate) fn t2_decode_packets(
           .wrapping_sub(1u32)
       }
       let packet_start = p_data_start + src_base as i64;
-      packet_index.push(PacketInfo {
-        start_pos: packet_start,
-        end_ph_pos: packet_start + l_header_len as i64,
-        end_pos: packet_start + l_nb_bytes_read as i64,
-        disto: 0.0,
-        layno: pi.layno,
-        resno: pi.resno,
-        compno: pi.compno,
-        precno: pi.precno,
-      });
+      /* This index has no live C counterpart (the C's packet recording is
+      #ifdef TODO_MSD).  Cap it so a truncated stream that yields millions
+      of zero-byte packets cannot abort the process in an infallible Vec
+      growth; the decode itself continues. */
+      const MAX_RECORDED_PACKETS: usize = 1 << 20;
+      if packet_index.len() < MAX_RECORDED_PACKETS {
+        packet_index.push(PacketInfo {
+          start_pos: packet_start,
+          end_ph_pos: packet_start + l_header_len as i64,
+          end_pos: packet_start + l_nb_bytes_read as i64,
+          disto: 0.0,
+          layno: pi.layno,
+          resno: pi.resno,
+          compno: pi.compno,
+          precno: pi.precno,
+        });
+      }
       let (_, rest) = src.split_at_mut(l_nb_bytes_read as usize);
       src = rest;
       src_base += l_nb_bytes_read as usize;

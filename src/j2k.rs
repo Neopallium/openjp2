@@ -1538,7 +1538,7 @@ fn j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
       return Err(());
     }
     if limits.max_tile_pixels != 0 {
-      let tile_pixels = (cp.tdx as u64).wrapping_mul(cp.tdy as u64);
+      let tile_pixels = (cp.tdx as u64).saturating_mul(cp.tdy as u64);
       if tile_pixels > limits.max_tile_pixels {
         event_msg!(
           p_manager,
@@ -1569,8 +1569,8 @@ fn j2k_read_siz(p_j2k: &mut J2k, header_data: &[u8], p_manager: &mut EventMgr) -
         let ch = siz_h.div_ceil(comp.dy);
         total = total.saturating_add(
           (cw as u64)
-            .wrapping_mul(ch as u64)
-            .wrapping_mul(core::mem::size_of::<i32>() as u64),
+            .saturating_mul(ch as u64)
+            .saturating_mul(core::mem::size_of::<i32>() as u64),
         );
         c += 1;
       }
@@ -8013,13 +8013,13 @@ pub(crate) fn j2k_read_tile_header(
       .numcomps;
     let img = p_j2k.m_private_image.as_deref().expect("m_private_image");
     let image_pixels =
-      (img.x1.wrapping_sub(img.x0) as u64).wrapping_mul(img.y1.wrapping_sub(img.y0) as u64);
+      (img.x1.wrapping_sub(img.x0) as u64).saturating_mul(img.y1.wrapping_sub(img.y0) as u64);
     let cp_ref = &p_j2k.m_cp;
-    let raw_tile_pixels = (cp_ref.tdx as u64).wrapping_mul(cp_ref.tdy as u64);
+    let raw_tile_pixels = (cp_ref.tdx as u64).saturating_mul(cp_ref.tdy as u64);
     let tile_pixels = raw_tile_pixels.min(image_pixels);
     let tile_bytes = tile_pixels
-      .wrapping_mul(core::mem::size_of::<i32>() as u64)
-      .wrapping_mul(numcomps as u64);
+      .saturating_mul(core::mem::size_of::<i32>() as u64)
+      .saturating_mul(numcomps as u64);
     if tile_bytes > max_mem {
       event_msg!(
         p_manager,
@@ -8087,6 +8087,8 @@ pub(crate) fn j2k_decode_tile(
 ) -> OpResult {
   let mut l_current_marker = J2KMarker::UNK(0);
   let mut l_data: [u8; 2] = [0; 2];
+  /* The packet iterator budgets its include mask against this. */
+  p_j2k.m_cp.max_mem = p_j2k.decode_limits.effective_max_mem();
   /* preconditions */
 
   if p_j2k.m_specific_param.m_decoder.m_state & J2KState::DATA == J2KState::NONE
@@ -8152,8 +8154,10 @@ pub(crate) fn j2k_decode_tile(
   codestream index (the Rust structural API: Decoder::cstr_index). */
   if let Some(l_cstr_index) = p_j2k.cstr_index.as_deref_mut() {
     if let Some(tile) = l_cstr_index.tiles.get_mut(p_tile_index as usize) {
-      tile.nb_packet = p_j2k.m_tcd.packet_index.len() as u32;
-      tile.packet_index = std::mem::take(&mut p_j2k.m_tcd.packet_index);
+      /* Multi-tile-part tiles: keep every part's packets (the previous
+      code overwrote the index with the last part). */
+      tile.packet_index.append(&mut p_j2k.m_tcd.packet_index);
+      tile.nb_packet = tile.packet_index.len() as u32;
     }
   }
   /* p_data can be set to NULL when the call will take care of using */
@@ -8253,8 +8257,8 @@ fn j2k_update_image_data(
     for comp in &p_output_image.comps {
       total = total.saturating_add(
         (comp.w as u64)
-          .wrapping_mul(comp.h as u64)
-          .wrapping_mul(core::mem::size_of::<i32>() as u64),
+          .saturating_mul(comp.h as u64)
+          .saturating_mul(core::mem::size_of::<i32>() as u64),
       );
     }
     if total > max_mem {

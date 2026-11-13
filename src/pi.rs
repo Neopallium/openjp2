@@ -1859,6 +1859,14 @@ pub(crate) fn pi_create_decode(
     include buffer); the port fails cleanly here instead. */
     return Vec::new();
   };
+  /* The include mask is eagerly zero-filled: check it against the decoder
+  memory budget (the C's calloc lazily commits, but a crafted header must
+  not drive an 8 GiB allocation out of a tiny input). */
+  let include_bytes =
+    (include_size as u64).saturating_mul(core::mem::size_of::<Cell<i16>>() as u64);
+  if p_cp.max_mem != 0 && include_bytes > p_cp.max_mem {
+    return Vec::new();
+  }
   /* An all-components-empty tile (subsampling larger than the tile size)
   legitimately yields include_size == 0: the C's calloc(0) succeeds and the
   iterator emits zero packets (precno1 = pw*ph = 0 keeps the precinct loops
