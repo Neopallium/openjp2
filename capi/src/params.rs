@@ -26,8 +26,11 @@ pub(crate) fn c_free(ptr: *mut core::ffi::c_void) {
   }
 }
 
+// Note: no `Clone`/`Copy` — the `Drop` impl frees the raw pointer fields
+// (`cp_matrice`, `cp_comment`, `mct_data`), so a bitwise clone would
+// double-free them (the old #10 bug; the C ABI never clones this struct).
 #[repr(C)]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct opj_cparameters {
   pub tile_size_on: OPJ_BOOL,
   pub cp_tx0: core::ffi::c_int,

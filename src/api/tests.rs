@@ -2388,3 +2388,50 @@ fn cstr_index_packet_structure_and_layer_thresholds() {
     );
   }
 }
+
+/// Regression: an all-zero image produces code-blocks with no coding
+/// passes (the "empty code-block" case behind the 0.6.x null-`dealloc`
+/// UB reports, issues #8/#11/#12/#13).  The safe port keeps decoded
+/// samples in owned `Vec`s, so there is no manual deallocation; decoding
+/// the flat image must be clean (this runs in debug builds, where the old
+/// code aborted on the `NonNull` precondition).
+#[test]
+fn empty_code_blocks_decode_cleanly() {
+  let (w, h) = (64u32, 64u32);
+  let core = crate::CoreImage {
+    x0: 0,
+    y0: 0,
+    x1: w,
+    y1: h,
+    numcomps: 1,
+    color_space: crate::ColorSpace::Gray,
+    comps: vec![crate::CoreImageComp {
+      dx: 1,
+      dy: 1,
+      w,
+      h,
+      x0: 0,
+      y0: 0,
+      prec: 8,
+      bpp: 8,
+      sgnd: 0,
+      resno_decoded: 0,
+      factor: 0,
+      alpha: 0,
+      data: vec![0i32; (w * h) as usize],
+    }],
+    icc_profile_buf: Vec::new(),
+    icc_profile_is_cielab: false,
+  };
+  let image = Image::from_core_image(core);
+  let codestream = image
+    .clone()
+    .encode(EncodeParameters::new().num_resolutions(3))
+    .expect("encode flat image");
+  let decoded = Image::from_bytes(&codestream).expect("decode flat image");
+  assert_eq!((decoded.width(), decoded.height()), (w, h));
+  assert!(
+    decoded.components()[0].data.iter().all(|&v| v == 0),
+    "flat image must round-trip to zeros"
+  );
+}
