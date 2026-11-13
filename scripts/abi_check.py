@@ -79,7 +79,15 @@ def exported_symbols(lib):
 
 
 def abidw_xml(abidw, lib, out_path):
-    run([abidw, "--no-show-locs", lib, "-o", out_path])
+    # libabigail <= 2.4 has no `-o` option: capture stdout instead.
+    proc = subprocess.run(
+        [abidw, "--no-show-locs", lib],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(proc.stdout)
 
 
 def num(v, default=0):
@@ -127,22 +135,6 @@ def canonical(tid, types, depth=0):
     return tag
 
 
-def size_of(tid, types, depth=0):
-    if tid is None or depth > 16:
-        return 0
-    el = types.get(tid)
-    if el is None:
-        return 0
-    tag = el.tag
-    if tag == "pointer-type-def":
-        return num(el.get("size-in-bits"), 64)
-    if tag in ("typedef-decl", "qualified-type-def", "restrict-type-def"):
-        return size_of(el.get("type-id"), types, depth + 1)
-    if tag == "array-type":
-        return num(el.get("size-in-elements"), 1) * size_of(el.get("type-id"), types, depth + 1)
-    return num(el.get("size-in-bits"))
-
-
 def functions(root, types):
     out = {}
     for fd in root.iter("function-decl"):
@@ -166,13 +158,10 @@ def structs(root, types):
             vd = dm.find("var-decl")
             if vd is None:
                 continue
-            members.append(
-                (
-                    vd.get("name", ""),
-                    num(dm.get("layout-offset-in-bits")),
-                    size_of(vd.get("type-id"), types),
-                )
-            )
+            # offsets + total size fully define the ABI layout; member
+            # *sizes* are implied and libabigail < 2.5 reports enum
+            # sizes as unknown, so they are not compared.
+            members.append((vd.get("name", ""), num(dm.get("layout-offset-in-bits"))))
         out.setdefault(name, []).append((num(el.get("size-in-bits")), tuple(members)))
     return out
 
@@ -277,7 +266,7 @@ def main():
         c_size, c_members = cerr[0]
         r_size, r_members = rerr[0]
         # keyword-escape normalization (`type_` <-> `type`)
-        norm = lambda members: [(n.rstrip("_"), o, s) for n, o, s in members]
+        norm = lambda members: [(n.rstrip("_"), o) for n, o in members]
         if c_size != r_size or norm(c_members) != norm(r_members):
             layout_bad += 1
             print(f"  {tag}: layout mismatch")

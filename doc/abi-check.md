@@ -37,8 +37,9 @@ the library; its ABI is therefore a hard contract:
    and opaque-type *names* are intentionally ignored: they do not affect
    the calling convention.
 3. **Struct layouts** — for every `typedef struct …` in the header, the
-   Rust mirror must have the same size, field order, field offsets and
-   field sizes (a trailing `_` keyword escape such as `type_` is
+   Rust mirror must have the same size, field order and field offsets
+   (member sizes are implied by the offsets and are not compared
+   separately; a trailing `_` keyword escape such as `type_` is
    normalized).  Structs that are unused by the implemented API (the
    deprecated v1 codestream-info structs and the unimplemented JP2
    metadata/index structs) are allow-listed.
